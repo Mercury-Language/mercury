@@ -22,6 +22,7 @@
 :- include_module debugger_interface.
 :- include_module declarative_debugger.
 :- include_module declarative_execution.
+:- include_module dice.
 :- include_module help.
 :- include_module interactive_query.
 :- include_module io_action.

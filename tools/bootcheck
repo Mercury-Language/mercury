@@ -1083,7 +1083,9 @@ then
 		xargs /bin/rm -f
 	fi
 
-	if (cd $stage3dir/mdbcomp && $MMAKE $mmake_opts $jfactor ${target_ext}s)
+	if (cd $stage3dir/mdbcomp && 
+		$MMAKE $mmake_opts $jfactor all-ints &&
+		$MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
 		echo "building of stage 3 mdbcomp successful"
 	else
@@ -1100,7 +1102,9 @@ then
 		fi
 	fi
 
-	if (cd $stage3dir/browser && $MMAKE $mmake_opts $jfactor ${target_ext}s)
+	if (cd $stage3dir/browser && 
+		$MMAKE $mmake_opts $jfactor all-ints &&
+		$MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
 		echo "building of stage 3 browser successful"
 	else

@@ -39,6 +39,10 @@
 :- pred read_trace_counts(string::in, read_trace_counts_result::out,
 	io::di, io::uo) is det.
 
+:- pred string_to_trace_port(string, trace_port).
+:- mode string_to_trace_port(in, out) is semidet.
+:- mode string_to_trace_port(out, in) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -171,7 +175,7 @@ parse_path_port_line(Line, PathPort, Count) :-
 	Words = string__words(Line),
 	(
 		Words = [Word1, CountStr],
-		( Port = string_to_trace_port(Word1) ->
+		( string_to_trace_port(Word1, Port) ->
 			PathPort = port_only(Port)
 		; Path = string_to_goal_path(Word1) ->
 			PathPort = path_only(Path)
@@ -181,7 +185,7 @@ parse_path_port_line(Line, PathPort, Count) :-
 		string__to_int(CountStr, Count)
 	;
 		Words = [PortStr, PathStr, CountStr],
-		Port = string_to_trace_port(PortStr),
+		string_to_trace_port(PortStr, Port),
 		Path = string_to_goal_path(PathStr),
 		PathPort = port_and_path(Port, Path),
 		string__to_int(CountStr, Count)
@@ -192,23 +196,21 @@ parse_path_port_line(Line, PathPort, Count) :-
 string_to_pred_or_func("p", predicate).
 string_to_pred_or_func("f", function).
 
-:- func string_to_trace_port(string) = trace_port is semidet.
-
-string_to_trace_port("CALL") = call.
-string_to_trace_port("EXIT") = exit.
-string_to_trace_port("REDO") = redo.
-string_to_trace_port("FAIL") = fail.
-string_to_trace_port("EXCP") = exception.
-string_to_trace_port("COND") = ite_cond.
-string_to_trace_port("THEN") = ite_then.
-string_to_trace_port("ELSE") = ite_else.
-string_to_trace_port("NEGE") = neg_enter.
-string_to_trace_port("NEGS") = neg_success.
-string_to_trace_port("NEGF") = neg_failure.
-string_to_trace_port("DISJ") = disj.
-string_to_trace_port("SWTC") = switch.
-string_to_trace_port("FRST") = nondet_pragma_first.
-string_to_trace_port("LATR") = nondet_pragma_later.
+string_to_trace_port("CALL", call).
+string_to_trace_port("EXIT", exit).
+string_to_trace_port("REDO", redo).
+string_to_trace_port("FAIL", fail).
+string_to_trace_port("EXCP", exception).
+string_to_trace_port("COND", ite_cond).
+string_to_trace_port("THEN", ite_then).
+string_to_trace_port("ELSE", ite_else).
+string_to_trace_port("NEGE", neg_enter).
+string_to_trace_port("NEGS", neg_success).
+string_to_trace_port("NEGF", neg_failure).
+string_to_trace_port("DISJ", disj).
+string_to_trace_port("SWTC", switch).
+string_to_trace_port("FRST", nondet_pragma_first).
+string_to_trace_port("LATR", nondet_pragma_later).
 
 :- func string_to_goal_path(string) = goal_path is semidet.
 

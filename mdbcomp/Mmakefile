@@ -26,7 +26,7 @@ include $(MERCURY_DIR)/Mmake.common
 # can be found by `mmc --make'.
 include Mercury.options
 
-MAIN_TARGET=main
+MAIN_TARGET=all
 
 MERCURY_MAIN_LIB_MODULES=$(MDBCOMP_LIB_NAME)
 MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES)
@@ -109,11 +109,8 @@ endif
 
 # targets
 
-.PHONY: main
-main:	library $(TAGS_FILE_EXISTS)
-
 .PHONY: all
-all:	library $(TAGS_FILE_EXISTS)
+all:	library $(mer_mdbcomp.int3s) $(mer_mdbcomp.ints) $(TAGS_FILE_EXISTS)
 
 .PHONY: library
 library: $(LIBS)

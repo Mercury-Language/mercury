@@ -2722,90 +2722,6 @@ This is useful if the details of the event,
 which were printed when control arrived at the event,
 have since scrolled off the screen.
 @sp 1
-@item set [-APBfpv] @var{param} @var{value}
-@kindex set (mdb command)
-@kindex format (mdb command)
-@kindex depth (mdb command)
-@kindex size (mdb command)
-@kindex width (mdb command)
-@kindex lines (mdb command)
-@kindex xml_browser_cmd (mdb command)
-@kindex xml_tmp_filename (mdb command)
-Updates the configuration parameters of the browser.
-The parameters that can be configured are
-@samp{format}, @samp{depth}, @samp{size}, @samp{width}, @samp{lines}, 
-@samp{xml_browser_cmd} and @samp{xml_tmp_filename}.
-@sp 1
-@itemize @bullet
-@item
-@samp{format} can be set to @samp{flat}, @samp{pretty} or @samp{verbose}
-to change the output style of the browser.
-@sp 1
-@item
-@samp{depth} is the maximum depth to which subterms will be displayed.
-Subterms at the depth limit may be abbreviated as functor/arity,
-or (in lists) may be replaced by an ellipsis (@samp{...}).
-The principal functor of any term has depth zero.
-For subterms which are not lists,
-the depth of any argument of the functor is one greater than the
-depth of the functor.
-For subterms which are lists,
-the depth of each element of the list
-is one greater than the depth of the list.
-@sp 1
-@item
-@samp{size} is the suggested maximum number of functors to display.
-Beyond this limit, subterms may be abbreviated as functor/arity,
-or (in lists) may be replaced by an ellipsis (@samp{...}).
-For the purposes of this parameter,
-the size of a list is one greater than
-the sum of the sizes of the elements in the list.
-@sp 1
-@item
-@samp{width} is the width of the screen in characters.
-@sp 1
-@item
-@samp{lines} is the maximum number of lines of one term to display.
-@sp 1
-@item
-@samp{xml_tmp_filename} is the name of the file to dump XML to before
-invoking your XML browser.
-@sp 1
-@item
-@samp{xml_browser_cmd} is the shell command(s) used to invoke your XML browser.
-If you want a stylesheet to be applied to the XML before the browser is invoked
-then you should do that in this command using the appropriate program (such as
-xsltproc).  By default if xsltproc and mozilla (or firefox) are available,
-xsltproc is invoked to apply the xul_tree.xsl stylesheet in
-extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.  
-@sp 1
-You can use the apostrophe character (') to quote the command string when using
-the @samp{set} command, for example "set xml_browser_cmd 'firefox
-file:///tmp/mdbtmp.xml'".
-@end itemize
-@sp 1
-The browser maintains separate configuration parameters
-for the three commands @samp{print *}, @samp{print @var{var}},
-and @samp{browse @var{var}}.
-A single @samp{set} command can modify the parameters
-for more than one of these;
-the options @samp{-A} or @samp{--print-all}, @samp{-P} or @samp{--print},
-and @samp{-B} or @samp{--browse}
-select which commands will be affected by the change.
-If none of these options is given,
-the default is to affect all commands.
-@sp 1
-The browser also maintains separate configuration parameters
-for the three different output formats.
-This applies to all parameters except for the format itself.
-The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
-and @samp{-v} or @samp{--verbose}
-select which formats will be affected by the change.
-If none of these options is given,
-the default is to affect all formats.
-In the case that the format itself is being set,
-these options are ignored.
-@sp 1
 @item view [-vf2] [-w @var{window-cmd}] [-s @var{server-cmd}] [-n @var{server-name}] [-t @var{timeout}]
 @itemx view -c [-v] [-s @var{server-cmd}] [-n @var{server-name}]
 @kindex view (mdb command)
@@ -3474,6 +3390,115 @@ only in some experimental versions of the Mercury runtime system.
 @kindex clear_histogram (mdb command)
 Clears the histogram printed by @samp{histogram_exp},
 i.e.@: sets the counts for all depths to zero.
+@sp 1
+@item dice [-p@var{filename}] [-f@var{filename}] [-n@var{num}] [-s[pPfFsS]+] [-o @var{filename}]
+@kindex dice (mdb command)
+Display a program dice on the screen.  
+@sp 1
+A dice is a comparison between some successful test runs of the program and a
+failing test run.  Before using the @samp{dice} command one or more passing
+execution summaries and one failing execution summary need to be generated.
+This can be done by compiling the program with deep tracing enabled (either by
+compiling in the .debug
+@c XXX The following line removed until the .decldebug grade has been 
+@c documented.
+@c or .decldebug
+grade
+or with the @samp{--trace deep}
+compiler option) and then running the program with the MERCURY_OPTIONS
+environment variable set to @samp{--trace-count}.  
+This will generate a file called @samp{.mercury_trace_counts} which contains a
+summary of the program's execution.  This summary is called a slice.  Copy the
+generated slice to a new file for each test case, to end up with some passing
+slices, say @samp{pass1}, @samp{pass2}, @samp{pass3}, etc. and a failing slice,
+say @samp{fail}.
+@sp 1
+Once one or more passing slices and a failing slice have been generated the
+@samp{dice} command can be used to display a table of statistics comparing the
+passing test runs to the failing run.  Here is an example of a dice displayed
+in an mdb session:
+@sp 1
+@example
+mdb> dice -f fail -p passes -s S -n 4
+Procedure        Path/Port  File:Line Pass (3) Fail Suspicion
+pred s.mrg/3-0   <s2;c2;e;> s.m:74       0 (0)    1      1.00
+pred s.mrg/3-0   <s2;c2;t;> s.m:67      10 (3)    4      0.29
+pred s.mrg/3-0   CALL       s.m:64      18 (3)    7      0.28
+pred s.mrg/3-0   EXIT       s.m:64      18 (3)    7      0.28
+@end example
+@sp 1
+This example tells us that the @samp{else} in @samp{s.m} on line 74 was 
+executed once in the failing test run, but never in the passing test runs, so
+this would be a good place to start looking for a bug.
+@sp 1
+Each row in the table contains statistics
+about the execution of a separate goal in the program.  Six columns are
+displayed:
+@sp 1
+@itemize @bullet
+@item @samp{Procedure}:
+The procedure in which the goal appears.
+@item @samp{Path/Port}:
+The goal path and/or port of the goal.  For atomic goals, statistics about the
+CALL event and the corresponding EXIT, FAIL or EXCP event are displayed on
+separate rows.  For other types of goals the goal path is displayed, except for
+NEGE, NEGS and NEGF events where the goal path and port are displayed. 
+@item @samp{File:Line}:
+The file name and line number of the goal.  This can be used to set a
+breakpoint on the goal.
+@item @samp{Pass (total passing test runs)}:
+The total number of times the goal was executed in all the passing test runs.
+This is followed by a number in parenthesis which indicates the number of test
+runs the goal was executed in.  The heading of this column also has a number in
+parenthesis which is the total number of passing test cases.  In the example
+above we can see that 3 passing tests were run.
+@item @samp{Fail}:
+The number of times the goal was executed in the failing test run. 
+@item @samp{Suspicion}:
+A number between 0 and 1 which gives an indication of how likely a
+particular goal is to be buggy.  The is calculated as 
+Suspicion = F / (P + F) where F is the number of times the goal
+was executed in the failing test run and P is the number of times the goal
+was executed in passing test runs.
+@end itemize
+@sp 1
+The name of the file containing the failing slice can be specified with the 
+@samp{-f} or @samp{--fail-trace-count} option or with a separate 
+@samp{set fail_trace_count @var{filename}} command.
+@sp 1
+The name of a file containing a list of the files containing the passing
+slices can be given with the @samp{-p} or @samp{--pass-trace-counts} option.
+Alternatively a separate @samp{set pass_trace_counts @var{filename}} command
+can be given.
+@sp 1
+The table can be sorted on the Pass, Fail or Suspicion columns, or a
+combination of these.  This can be done with the @samp{-s} or @samp{--sort}
+option.  The argument of this option is a string made up of any combination of
+the letters @samp{pPfFsS}.  The letters in the string indicate how the table
+should be sorted:
+@sp 1
+@itemize @bullet
+@item @samp{p}: Pass ascending
+@item @samp{P}: Pass descending
+@item @samp{f}: Fail ascending
+@item @samp{F}: Fail descending
+@item @samp{s}: Suspicion ascending
+@item @samp{S}: Suspicion descending
+@end itemize
+@sp 1
+For example the string "SF" means sort the table by suspicion, descending, and
+if any two suspicions are the same, then by number of executions in the failing
+test case, descending.
+@sp 1
+The option @samp{-n} or @samp{--top} can be used to limit the number lines
+displayed.  Only the top @var{num} lines, with respect to
+the ordering specified by the @samp{-s} option, will be displayed.  
+By default the table is limited to 50 lines.
+@sp 1
+If the @samp{-o} or @samp{--output-to-file} option is given then the output
+will be written to the specified file instead of being displayed on the
+screen.  Note that the file will be overwritten without warning if it 
+already exists.
 @end table
 
 @sp 1
@@ -3482,6 +3507,106 @@ i.e.@: sets the counts for all depths to zero.
 
 @sp 1
 @table @code
+@item set [-APBfpv] @var{param} @var{value}
+@kindex set (mdb command)
+@kindex format (mdb command)
+@kindex depth (mdb command)
+@kindex size (mdb command)
+@kindex width (mdb command)
+@kindex lines (mdb command)
+@kindex xml_browser_cmd (mdb command)
+@kindex xml_tmp_filename (mdb command)
+@kindex fail_trace_count (mdb command)
+@kindex pass_trace_counts (mdb command)
+Updates the given configuration parameter.
+The parameters that can be configured are
+@samp{format}, @samp{depth}, @samp{size}, @samp{width}, @samp{lines}, 
+@samp{xml_browser_cmd}, @samp{xml_tmp_filename}, @samp{fail_trace_count},
+@samp{pass_trace_counts}.
+@sp 1
+@itemize @bullet
+@item
+@samp{format} can be set to @samp{flat}, @samp{pretty} or @samp{verbose}
+to change the output style of the browser.
+@sp 1
+@item
+@samp{depth} is the maximum depth to which subterms will be displayed.
+Subterms at the depth limit may be abbreviated as functor/arity,
+or (in lists) may be replaced by an ellipsis (@samp{...}).
+The principal functor of any term has depth zero.
+For subterms which are not lists,
+the depth of any argument of the functor is one greater than the
+depth of the functor.
+For subterms which are lists,
+the depth of each element of the list
+is one greater than the depth of the list.
+@sp 1
+@item
+@samp{size} is the suggested maximum number of functors to display.
+Beyond this limit, subterms may be abbreviated as functor/arity,
+or (in lists) may be replaced by an ellipsis (@samp{...}).
+For the purposes of this parameter,
+the size of a list is one greater than
+the sum of the sizes of the elements in the list.
+@sp 1
+@item
+@samp{width} is the width of the screen in characters.
+@sp 1
+@item
+@samp{lines} is the maximum number of lines of one term to display.
+@sp 1
+@item
+@samp{xml_tmp_filename} is the name of the file to dump XML to before
+invoking your XML browser.
+@sp 1
+@item
+@samp{xml_browser_cmd} is the shell command(s) used to invoke your XML browser.
+If you want a stylesheet to be applied to the XML before the browser is invoked
+then you should do that in this command using the appropriate program (such as
+xsltproc).  By default if xsltproc and mozilla (or firefox) are available,
+xsltproc is invoked to apply the xul_tree.xsl stylesheet in
+extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.  
+@sp 1
+You can use the apostrophe character (') to quote the command string when using
+the @samp{set} command, for example "set xml_browser_cmd 'firefox
+file:///tmp/mdbtmp.xml'".
+@item
+@samp{fail_trace_count} is the name of a file that contains the slice of a
+failing test case run.  This configuration parameter is used by the 
+@samp{dice} command if no @samp{--fail-trace-count} option is given for that
+command.  See @ref{Experimental commands} for more information on the 
+@samp{dice} command.
+@sp 1
+@item
+@samp{pass_trace_counts} is the name of a file that contains a list of file
+names which contain the slices of passing test case runs.  This configuration
+parameter is used by the @samp{dice} command if no @samp{--pass-trace-counts}
+option is given for that command.  See @ref{Experimental commands} for more
+information on the @samp{dice} command.
+@end itemize
+@sp 1
+The browser maintains separate configuration parameters
+for the three commands @samp{print *}, @samp{print @var{var}},
+and @samp{browse @var{var}}.
+A single @samp{set} command can modify the parameters
+for more than one of these;
+the options @samp{-A} or @samp{--print-all}, @samp{-P} or @samp{--print},
+and @samp{-B} or @samp{--browse}
+select which commands will be affected by the change.
+If none of these options is given,
+the default is to affect all commands.
+@sp 1
+The browser also maintains separate configuration parameters
+for the three different output formats.
+This applies to all parameters except for the format itself.
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose}
+select which formats will be affected by the change.
+If none of these options is given,
+the default is to affect all formats.
+In the case that the format itself is being set,
+these options are ignored.
+@sp 1
 @item source [-i] @var{filename}
 @kindex source (mdb command)
 Executes the commands in the file named @var{filename}.

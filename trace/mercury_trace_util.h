@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998,2000-2002, 2004 The University of Melbourne.
+** Copyright (C) 1998,2000-2002, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,36 +21,6 @@
 #include "mercury_library_types.h"	/* for MercuryFile */
 #include <stdio.h>			/* for FILE        */
 #include "mercury_trace.h"		/* for MR_Event_Details */
-
-/*
-** When using the heap pointer, we need to restore it, in case it is
-** transient.
-*/
-#define MR_TRACE_USE_HP(STATEMENTS) do {				\
-		MR_restore_transient_registers();			\
-		STATEMENTS;						\
-		MR_save_transient_registers();				\
-	} while (0)
-
-/*
-** When calling Mercury code defined using `pragma export', we need
-** to call save_registers() and restore_registers() around it.
-** That in turn needs to be preceded/followed by
-** restore/save_transient_registers() if it is in a C function.
-*/
-
-#define MR_TRACE_CALL_MERCURY(STATEMENTS) do {				\
-		MR_bool	saved_io_enabled;				\
-									\
-		saved_io_enabled = MR_io_tabling_enabled;		\
-		MR_io_tabling_enabled = MR_FALSE;			\
-		MR_restore_transient_registers();			\
-		MR_save_registers();					\
-		STATEMENTS;						\
-		MR_restore_registers();					\
-		MR_save_transient_registers();				\
-		MR_io_tabling_enabled = saved_io_enabled;		\
-	} while (0)
 
 /*
 ** MR_c_file_to_mercury_file is used to convert MR_mdb_in and MR_mdb_out

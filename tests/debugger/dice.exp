@@ -1,0 +1,115 @@
+      E1:     C1 CALL pred dice.main/2-0 (det) dice.m:17
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> dice -f dice.fail -p dice.passes
+Procedure                Path/Port        File:Line Pass (3) Fail Suspicion
+pred dice.main/2-0       CALL             dice.m:17    3 (3)    1      0.25
+pred dice.main/2-0       EXIT             dice.m:17    3 (3)    1      0.25
+pred dice.main/2-0       <c2;?;>          dice.m:20    3 (3)    1      0.25
+pred dice.main/2-0       <c2;t;>          dice.m:22    3 (3)    1      0.25
+pred dice.merge/3-0      CALL             dice.m:64   18 (3)    7      0.28
+pred dice.merge/3-0      EXIT             dice.m:64   18 (3)    7      0.28
+pred dice.merge/3-0      <s1;>            dice.m:64    8 (3)    3      0.27
+pred dice.merge/3-0      <s2;>            dice.m:64   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;>      dice.m:67   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;c4;?;> dice.m:69   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;c4;t;> dice.m:71   10 (3)    3      0.23
+pred dice.merge/3-0      <s2;c2;s2;c4;e;> dice.m:74    0 (0)    1      1.00
+pred dice.merge_sort/2-0 CALL             dice.m:31    3 (3)    1      0.25
+pred dice.merge_sort/2-0 EXIT             dice.m:31    3 (3)    1      0.25
+pred dice.msort_n/4-0    CALL             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    EXIT             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    <?;>             dice.m:39   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;>             dice.m:54   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;t;>           dice.m:50   11 (3)    4      0.27
+pred dice.msort_n/4-0    <e;t;s2;>        dice.m:47   11 (3)    4      0.27
+pred dice.msort_n/4-0    <e;e;>           dice.m:55    8 (3)    3      0.27
+mdb> set fail_trace_count dice.fail
+mdb> set pass_trace_counts dice.passes
+mdb> dice -sS
+Procedure                Path/Port        File:Line Pass (3) Fail Suspicion
+pred dice.merge/3-0      <s2;c2;s2;c4;e;> dice.m:74    0 (0)    1      1.00
+pred dice.merge/3-0      <s2;>            dice.m:64   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;>      dice.m:67   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;c4;?;> dice.m:69   10 (3)    4      0.29
+pred dice.merge/3-0      CALL             dice.m:64   18 (3)    7      0.28
+pred dice.merge/3-0      EXIT             dice.m:64   18 (3)    7      0.28
+pred dice.merge/3-0      <s1;>            dice.m:64    8 (3)    3      0.27
+pred dice.msort_n/4-0    <e;e;>           dice.m:55    8 (3)    3      0.27
+pred dice.msort_n/4-0    CALL             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    EXIT             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    <?;>             dice.m:39   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;>             dice.m:54   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;t;>           dice.m:50   11 (3)    4      0.27
+pred dice.msort_n/4-0    <e;t;s2;>        dice.m:47   11 (3)    4      0.27
+pred dice.main/2-0       CALL             dice.m:17    3 (3)    1      0.25
+pred dice.main/2-0       EXIT             dice.m:17    3 (3)    1      0.25
+pred dice.main/2-0       <c2;?;>          dice.m:20    3 (3)    1      0.25
+pred dice.main/2-0       <c2;t;>          dice.m:22    3 (3)    1      0.25
+pred dice.merge_sort/2-0 CALL             dice.m:31    3 (3)    1      0.25
+pred dice.merge_sort/2-0 EXIT             dice.m:31    3 (3)    1      0.25
+pred dice.merge/3-0      <s2;c2;s2;c4;t;> dice.m:71   10 (3)    3      0.23
+mdb> dice -sSF
+Procedure                Path/Port        File:Line Pass (3) Fail Suspicion
+pred dice.merge/3-0      <s2;c2;s2;c4;e;> dice.m:74    0 (0)    1      1.00
+pred dice.merge/3-0      <s2;>            dice.m:64   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;>      dice.m:67   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;c4;?;> dice.m:69   10 (3)    4      0.29
+pred dice.merge/3-0      CALL             dice.m:64   18 (3)    7      0.28
+pred dice.merge/3-0      EXIT             dice.m:64   18 (3)    7      0.28
+pred dice.merge/3-0      <s1;>            dice.m:64    8 (3)    3      0.27
+pred dice.msort_n/4-0    <e;e;>           dice.m:55    8 (3)    3      0.27
+pred dice.msort_n/4-0    CALL             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    EXIT             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    <?;>             dice.m:39   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;>             dice.m:54   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;t;>           dice.m:50   11 (3)    4      0.27
+pred dice.msort_n/4-0    <e;t;s2;>        dice.m:47   11 (3)    4      0.27
+pred dice.main/2-0       CALL             dice.m:17    3 (3)    1      0.25
+pred dice.main/2-0       EXIT             dice.m:17    3 (3)    1      0.25
+pred dice.main/2-0       <c2;?;>          dice.m:20    3 (3)    1      0.25
+pred dice.main/2-0       <c2;t;>          dice.m:22    3 (3)    1      0.25
+pred dice.merge_sort/2-0 CALL             dice.m:31    3 (3)    1      0.25
+pred dice.merge_sort/2-0 EXIT             dice.m:31    3 (3)    1      0.25
+pred dice.merge/3-0      <s2;c2;s2;c4;t;> dice.m:71   10 (3)    3      0.23
+mdb> dice -n 3 -s P
+Procedure             Path/Port File:Line Pass (3) Fail Suspicion
+pred dice.msort_n/4-0 CALL      dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0 EXIT      dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0 <?;>      dice.m:39   19 (3)    7      0.27
+mdb> dice -s Fp
+Procedure                Path/Port        File:Line Pass (3) Fail Suspicion
+pred dice.merge/3-0      CALL             dice.m:64   18 (3)    7      0.28
+pred dice.merge/3-0      EXIT             dice.m:64   18 (3)    7      0.28
+pred dice.msort_n/4-0    CALL             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    EXIT             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    <?;>             dice.m:39   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;>             dice.m:54   19 (3)    7      0.27
+pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27
+pred dice.merge/3-0      <s2;>            dice.m:64   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;>      dice.m:67   10 (3)    4      0.29
+pred dice.merge/3-0      <s2;c2;s2;c4;?;> dice.m:69   10 (3)    4      0.29
+pred dice.msort_n/4-0    <e;t;>           dice.m:50   11 (3)    4      0.27
+pred dice.msort_n/4-0    <e;t;s2;>        dice.m:47   11 (3)    4      0.27
+pred dice.merge/3-0      <s1;>            dice.m:64    8 (3)    3      0.27
+pred dice.msort_n/4-0    <e;e;>           dice.m:55    8 (3)    3      0.27
+pred dice.merge/3-0      <s2;c2;s2;c4;t;> dice.m:71   10 (3)    3      0.23
+pred dice.merge/3-0      <s2;c2;s2;c4;e;> dice.m:74    0 (0)    1      1.00
+pred dice.main/2-0       CALL             dice.m:17    3 (3)    1      0.25
+pred dice.main/2-0       EXIT             dice.m:17    3 (3)    1      0.25
+pred dice.main/2-0       <c2;?;>          dice.m:20    3 (3)    1      0.25
+pred dice.main/2-0       <c2;t;>          dice.m:22    3 (3)    1      0.25
+pred dice.merge_sort/2-0 CALL             dice.m:31    3 (3)    1      0.25
+pred dice.merge_sort/2-0 EXIT             dice.m:31    3 (3)    1      0.25
+mdb> dice -sS -n 1
+Procedure           Path/Port        File:Line Pass (3) Fail Suspicion
+pred dice.merge/3-0 <s2;c2;s2;c4;e;> dice.m:74    0 (0)    1      1.00
+mdb> break dice.m:74
+ 0: + stop  linenumber dice.m:74
+mdb> c
+      E2:     C2 ELSE pred dice.merge/3-0 (det) s2;c2;s2;c4;e;
+mdb> quit -y

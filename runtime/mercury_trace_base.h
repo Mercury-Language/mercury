@@ -490,4 +490,34 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\
 	}
 
+/*
+** When using the heap pointer, we need to restore it, in case it is
+** transient.
+*/
+#define MR_TRACE_USE_HP(STATEMENTS) do {				\
+		MR_restore_transient_registers();			\
+		STATEMENTS;						\
+		MR_save_transient_registers();				\
+	} while (0)
+
+/*
+** When calling Mercury code defined using `pragma export', we need
+** to call save_registers() and restore_registers() around it.
+** That in turn needs to be preceded/followed by
+** restore/save_transient_registers() if it is in a C function.
+*/
+
+#define MR_TRACE_CALL_MERCURY(STATEMENTS) do {				\
+		MR_bool	saved_io_enabled;				\
+									\
+		saved_io_enabled = MR_io_tabling_enabled;		\
+		MR_io_tabling_enabled = MR_FALSE;			\
+		MR_restore_transient_registers();			\
+		MR_save_registers();					\
+		STATEMENTS;						\
+		MR_restore_registers();					\
+		MR_save_transient_registers();				\
+		MR_io_tabling_enabled = saved_io_enabled;		\
+	} while (0)
+
 #endif /* MERCURY_TRACE_BASE_H */

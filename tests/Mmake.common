@@ -182,7 +182,7 @@ MERCURY_MAIN_MODULES = $(PROGS)
 ERROR_OUTPUT_FILE = runtests.errs
 
 realclean_local: clean_logs clean_errors
-clean_local: clean_out clean_res clean_zip
+clean_local: clean_out clean_res clean_zip clean_trace_counts
 
 # XXX what is this target for??
 clean_mc: clean_c clean_o clean_out clean_res 
@@ -198,6 +198,9 @@ clean_logs:
 
 clean_errors:
 	rm -f $(ERROR_OUTPUT_FILE) FAILED_TESTS
+
+clean_trace_counts:
+	rm -f *.pass1 *.pass2 *.pass3 *.fail
 
 # Remove gzipped executables for tests which have failed.
 ifeq ($(TESTS),)

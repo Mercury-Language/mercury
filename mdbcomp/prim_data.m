@@ -102,6 +102,13 @@
 	;	compare
 	;	initialise.
 
+	% special_pred_name_arity(SpecialPredType, GenericPredName, Arity):
+	%	true iff there is a special predicate of category
+	%	SpecialPredType, called builtin:GenericPredName/Arity.
+:- pred special_pred_name_arity(special_pred_id, string, int).
+:- mode special_pred_name_arity(in, out, out) is det.
+:- mode special_pred_name_arity(out, in, out) is semidet.
+
 % was in compiler/prog_util.m
 
 	% string_to_sym_name(String, Separator, SymName):
@@ -179,3 +186,8 @@ sym_name_to_string(qualified(ModuleSym, Name), Separator,
 		QualName) :-
 	sym_name_to_string(ModuleSym, Separator, ModuleName),
 	string__append_list([ModuleName, Separator, Name], QualName).
+
+special_pred_name_arity(unify, "unify", 2).
+special_pred_name_arity(index, "index", 2).
+special_pred_name_arity(compare, "compare", 3).
+special_pred_name_arity(initialise, "initialise", 1).

@@ -40,13 +40,6 @@
 :- pred special_pred_interface(special_pred_id::in, (type)::in,
 	list(type)::out, list(mode)::out, determinism::out) is det.
 
-	% special_pred_name_arity(SpecialPredType, GenericPredName, Arity):
-	%	true iff there is a special predicate of category
-	%	SpecialPredType, called builtin:GenericPredName/Arity.
-:- pred special_pred_name_arity(special_pred_id, string, int).
-:- mode special_pred_name_arity(in, out, out) is det.
-:- mode special_pred_name_arity(out, in, out) is semidet.
-
 :- pred special_pred_mode_num(special_pred_id::in, int::out) is det.
 
 :- pred special_pred_list(list(special_pred_id)::out) is det.
@@ -120,11 +113,6 @@
 :- import_module bool, require, string.
 
 special_pred_list([unify, index, compare]).
-
-special_pred_name_arity(unify, "unify", 2).
-special_pred_name_arity(index, "index", 2).
-special_pred_name_arity(compare, "compare", 3).
-special_pred_name_arity(initialise, "initialise", 1).
 
 	% mode num for special procs is always 0 (the first mode)
 special_pred_mode_num(_, 0).

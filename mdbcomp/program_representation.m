@@ -192,6 +192,8 @@
 :- pred path_from_string_det(string, goal_path).
 :- mode path_from_string_det(in, out) is det.
 
+:- pred string_from_path(goal_path::in, string::out) is det.
+
 :- pred path_from_string(string, goal_path).
 :- mode path_from_string(in, out) is semidet.
 
@@ -342,6 +344,24 @@ path_step_from_string_2('f', "", first).
 path_step_from_string_2('l', "", later).
 
 is_path_separator(';').
+
+string_from_path(GoalPath, GoalPathStr) :-
+	list.map(string_from_path_step, GoalPath, GoalPathSteps),
+	GoalPathStr = string.join_list(";", GoalPathSteps) ++ ";".
+
+:- pred string_from_path_step(goal_path_step::in, string::out) is det.
+
+string_from_path_step(conj(N), "c" ++ int_to_string(N)).
+string_from_path_step(disj(N), "d" ++ int_to_string(N)).
+string_from_path_step(switch(N), "s" ++ int_to_string(N)).
+string_from_path_step(ite_cond, "?").
+string_from_path_step(ite_then, "t").
+string_from_path_step(ite_else, "e").
+string_from_path_step(neg, "~").
+string_from_path_step(exist(cut), "q!").
+string_from_path_step(exist(no_cut), "q").
+string_from_path_step(first, "f").
+string_from_path_step(later, "l").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

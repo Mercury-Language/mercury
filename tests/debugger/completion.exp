@@ -3,39 +3,39 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                    exception            quit
-P                    excp                 r
-alias                f                    register
-all_class_decls      finish               retry
-all_procedures       flag                 return
-all_regs             forward              s
-all_type_ctors       g                    save
-b                    gen_stack            save_to_file
-break                goal_paths           scope
-break_print          goto                 scroll
-browse               h                    set
-c                    help                 source
-cc_query             histogram_all        stack
-class_decl           histogram_exp        stack_default_limit
-clear_histogram      ignore               stack_regs
-condition            io_query             step
-consumer             label_stats          subgoal
-context              level                table
-continue             maxdepth             table_io
-current              mindepth             term_size
-cut_stack            mm_stacks            trust
-d                    mmc_options          trusted
-dd                   modules              type_ctor
-dd_dd                next                 unalias
-debug_vars           nondet_stack         unhide_events
-delete               p                    untrust
+?                    enable               query
+P                    exception            quit
+alias                excp                 r
+all_class_decls      f                    register
+all_procedures       finish               retry
+all_regs             flag                 return
+all_type_ctors       forward              s
+b                    g                    save
+break                gen_stack            save_to_file
+break_print          goal_paths           scope
+browse               goto                 scroll
+c                    h                    set
+cc_query             help                 source
+class_decl           histogram_all        stack
+clear_histogram      histogram_exp        stack_default_limit
+condition            ignore               stack_regs
+consumer             io_query             step
+context              label_stats          subgoal
+continue             level                table
+current              maxdepth             table_io
+cut_stack            mindepth             term_size
+d                    mm_stacks            trust
+dd                   mmc_options          trusted
+dd_dd                modules              type_ctor
+debug_vars           next                 unalias
+delete               nondet_stack         unhide_events
+dice                 p                    untrust
 disable              pneg_stack           up
 document             print                v
 document_category    print_optionals      var_details
 down                 printlevel           var_name_stats
 e                    proc_stats           vars
 echo                 procedures           view
-enable               query                
 h              help           histogram_all  histogram_exp  
 var_details     var_name_stats  vars            view
 var_details     var_name_stats  vars            
@@ -87,9 +87,10 @@ completion.sub2.       completion.sub2.sub3.
 b completion.sub2.sub3.zabc3 
  3: + stop  interface func completion.sub2.sub3.zabc3/0-0 (det)
 mdb> 
-2d                  2debug_vars         2document
-2dd                 2delete             2document_category
-2dd_dd              2disable            2down
+2d                  2delete             2document_category
+2dd                 2dice               2down
+2dd_dd              2disable            
+2debug_vars         2document           
 2debug_vars  2delete      
 2delete 
  2: E stop  interface func completion.sub1.z1/0-0 (det)

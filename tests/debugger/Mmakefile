@@ -22,6 +22,7 @@ NONRETRY_PROGS = \
 	cmd_quote			\
 	cond				\
 	debugger_regs			\
+	dice				\
 	exception_cmd			\
 	exception_value			\
 	exception_vars			\
@@ -281,6 +282,25 @@ exception_cmd.out: exception_cmd exception_cmd.inp
 		rm exception_cmd.tmp;				\
 		true;						\
 	fi
+
+dice.pass1: dice
+	MERCURY_OPTIONS=--trace-count ./dice 1 2 3 4 && \
+	mv .mercury_trace_counts dice.pass1
+
+dice.pass2: dice
+	MERCURY_OPTIONS=--trace-count ./dice 5 6 7 8 && \
+	mv .mercury_trace_counts dice.pass2
+
+dice.pass3: dice
+	MERCURY_OPTIONS=--trace-count ./dice 10 11 100 && \
+	mv .mercury_trace_counts dice.pass3
+
+dice.fail: dice
+	MERCURY_OPTIONS=--trace-count ./dice 4 1 2 3 && \
+	mv .mercury_trace_counts dice.fail
+
+dice.out: dice dice.inp dice.pass1 dice.pass2 dice.pass3 dice.fail
+	$(MDB_STD) ./dice 4 1 2 3 < dice.inp > dice.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
