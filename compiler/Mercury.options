@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2003 University of Melbourne.
+# Copyright (C) 2002-2004 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -14,7 +14,7 @@
 # --trace deep, it still takes 8 minutes on miles. Simon can change the
 # --trace-minimum to --trace deep in his workspaces if he needs to.
 CFLAGS-aditi_backend.rl_code=-O0
-MCFLAGS-aditi_backend.rl_code=--trace minimum
+MCFLAGS-aditi_backend.rl_code=--opt-space --trace minimum
 
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
