@@ -355,10 +355,11 @@
 	% and the next random seed in RS.
 	%
 :- pred array__random_permutation(array(T), array(T),
-		random__supply, random__supply).
+	random__supply, random__supply).
 :- mode array__random_permutation(array_di, array_uo, mdi, muo) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 % Everything beyond here is not intended as part of the public interface,
@@ -435,7 +436,7 @@ array_compare(Result, Array1, Array2) :-
 	).
 
 :- pred array__compare_elements(int, int, array(T), array(T),
-			comparison_result).
+	comparison_result).
 :- mode array__compare_elements(in, in, in, in, uo) is det.
 
 array__compare_elements(N, Size, Array1, Array2, Result) :-

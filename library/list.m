@@ -1419,8 +1419,8 @@ list__remove_adjacent_dups_2(P, [X1 | Xs], X0, L) :-
 	( P(X0, X1, (=)) ->
 		list__remove_adjacent_dups_2(P, Xs, X0, L)
 	;
-		L = [X0 | L0],
-		list__remove_adjacent_dups_2(P, Xs, X1, L0)
+		list__remove_adjacent_dups_2(P, Xs, X1, L0),
+		L = [X0 | L0]
 	).
 
 list__sort(P, L0, L) :-

@@ -2453,28 +2453,28 @@ tree234__foldl3(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 tree234__map_values(_Pred, empty, empty).
 tree234__map_values(Pred, Tree0, Tree) :-
 	Tree0 = two(K0, V0, Left0, Right0),
-	Tree  = two(K0, W0, Left, Right),
 	call(Pred, K0, V0, W0),
 	tree234__map_values(Pred, Left0, Left),
-	tree234__map_values(Pred, Right0, Right).
+	tree234__map_values(Pred, Right0, Right),
+	Tree  = two(K0, W0, Left, Right).
 tree234__map_values(Pred, Tree0, Tree) :-
 	Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
-	Tree  = three(K0, W0, K1, W1, Left, Middle, Right),
 	call(Pred, K0, V0, W0),
 	call(Pred, K1, V1, W1),
 	tree234__map_values(Pred, Left0, Left),
 	tree234__map_values(Pred, Middle0, Middle),
-	tree234__map_values(Pred, Right0, Right).
+	tree234__map_values(Pred, Right0, Right),
+	Tree  = three(K0, W0, K1, W1, Left, Middle, Right).
 tree234__map_values(Pred, Tree0, Tree) :-
 	Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
-	Tree  = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right),
 	call(Pred, K0, V0, W0),
 	call(Pred, K1, V1, W1),
 	call(Pred, K2, V2, W2),
 	tree234__map_values(Pred, Left0, Left),
 	tree234__map_values(Pred, LMid0, LMid),
 	tree234__map_values(Pred, RMid0, RMid),
-	tree234__map_values(Pred, Right0, Right).
+	tree234__map_values(Pred, Right0, Right),
+	Tree  = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
 %------------------------------------------------------------------------------%
 
