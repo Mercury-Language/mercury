@@ -144,7 +144,7 @@ tags_profiler:
 configure: configure.in
 	autoconf
 
-config.status: configure
+config.status: configure VERSION
 	if [ -f ./config.status ]; then \
 		./config.status --recheck; \
 	else \
@@ -219,11 +219,13 @@ version:
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: all $(PREINSTALL_HACK) \
+install: install_main install_grades
+
+.PHONY: install_main
+install_main: all $(PREINSTALL_HACK) \
 		install_scripts install_util install_runtime install_boehm_gc \
   		install_library install_compiler install_profiler install_doc \
-		$(POSTINSTALL_HACK) \
-		install_grades
+		$(POSTINSTALL_HACK)
  
 .PHONY: install_scripts
 install_scripts: scripts
