@@ -300,11 +300,24 @@ $(MLPICOBJS_DEPS) : $(MLPICOBJS)
 
 .PHONY: clean realclean change_clean clean_nu clean_sicstus clean_prof_files
 
-realclean: clean
-
-clean: clean_prof_files
-
 clean_prof_files:
 	-rm -f Prof.CallPair Prof.Counts Prof.Decl Prof.MemWords Prof.MemCells
+
+#
+# The `clean' and `realclean' targets are implemented via `clean_local'
+# and `realclean_local'.  This allows a user to add rules in their
+# Mmakefile to do a recursive mmake clean, for example, while still being
+# able to use the local versions in their original form.
+#
+
+.PHONY: clean_local realclean_local
+
+realclean: realclean_local
+
+clean: clean_local
+
+realclean_local: clean_local
+
+clean_local: clean_prof_files
 
 #-----------------------------------------------------------------------------#

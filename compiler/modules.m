@@ -2565,7 +2565,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(SourceModuleName, ".clean", no,
 				CleanTargetName),
 	io__write_strings(DepStream, [
-		"clean : ", CleanTargetName, "\n"
+		"clean_local : ", CleanTargetName, "\n"
 	]),
 	io__write_strings(DepStream, [
 		".PHONY : ", CleanTargetName, "\n",
@@ -2612,7 +2612,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(SourceModuleName, ".realclean", no,
 			RealCleanTargetName),
 	io__write_strings(DepStream, [
-		"realclean : ", RealCleanTargetName, "\n"
+		"realclean_local : ", RealCleanTargetName, "\n"
 	]),
 	io__write_strings(DepStream, [
 		".PHONY : ", RealCleanTargetName, "\n",
