@@ -29,10 +29,8 @@
 
 %---------------------------------------------------------------------------%
 
-	% XXX for semidet disjunctions, should we restore the heap pointer
-	% after every disjunct rather than at the end of the disjunction?
-
 disj_gen__generate_semi_disj(Goals, Code) -->
+	code_info__generate_nondet_saves(SaveVarsCode),
 	code_info__get_globals(Globals),
 	{ 
 		globals__lookup_bool_option(Globals,
@@ -48,7 +46,8 @@ disj_gen__generate_semi_disj(Goals, Code) -->
 	disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode),
 	code_info__remake_with_store_map,
 	code_info__maybe_restore_hp(RestoreHeap, HPRestoreCode),
-	{ Code = tree(HPSaveCode, tree(GoalsCode, HPRestoreCode)) }.
+	{ Code = tree(tree(SaveVarsCode, HPSaveCode),
+			tree(GoalsCode, HPRestoreCode)) }.
 
 :- pred disj_gen__generate_semi_cases(list(hlds__goal), label,
 					code_tree, code_info, code_info).
@@ -80,8 +79,10 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 			label(ElseLab) - "next case"
 		]) },
 			% If there are more cases, the we need to restore
-			% the expression cache, etc.
+			% the machine state, and clear registers, since
+			% we need to use the saved input vars.
 		code_info__slap_code_info(CodeInfo),
+		code_info__remake_with_call_info,
 			% generate the rest of the cases.
 		disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode0),
 		{ GoalsCode = tree(ThisCode, tree(ElseLabel, GoalsCode0)) }
