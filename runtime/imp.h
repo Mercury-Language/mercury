@@ -50,6 +50,9 @@ typedef void			Code;	/* code addresses are `void *' */
 #include	"goto.h"
 #include	"engine.h"
 
+/* continuation function type, for --high-level-C option */
+typedef void (*Cont) (void);
+
 /* DEFINITIONS FOR PROFILING */
 
 #ifdef	PROFILE_CALLS
