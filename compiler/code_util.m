@@ -407,7 +407,7 @@ code_util__translate_builtin_2("int", "//", 10002, [X, Y, Z],
 	no, yes(Y - binop((/), var(X), var(Z)))).
 code_util__translate_builtin_2("int", "builtin_mod", 10000, [X, Y, Z],
 	no, yes(Z - binop((mod), var(X), var(Y)))).
-code_util__translate_builtin_2("int", "mod", 10000, [X, Y, Z],
+code_util__translate_builtin_2("int", "rem", 10000, [X, Y, Z],
 	no, yes(Z - binop((mod), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "builtin_left_shift", 10000, [X, Y, Z],
 	no, yes(Z - binop((<<), var(X), var(Y)))).
