@@ -111,21 +111,6 @@ char__is_punct(',').
 char__is_punct('!').
 char__is_punct('?').
 
-:- pred string__to_upper(string, string).
-:- mode string__to_upper(in, out) is det.
-:- mode string__to_upper(in, in) is semidet.
-string__to_upper(StrIn, StrOut) :-
-	string__to_char_list(StrIn, ListLow),
-	string__to_upper2(ListLow, ListUpp),
-	string__from_char_list(ListUpp, StrOut).
-
-:- pred string__to_upper2(list(char) :: in, list(char) :: out) is det.
-string__to_upper2([], []).
-string__to_upper2([X|Xs], [Y|Ys]) :-
-	char__to_upper(X,Y),
-	string__to_upper2(Xs,Ys).
-
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
