@@ -976,131 +976,6 @@ det_univ_to_type(Univ, X) :-
 ****/
 
 :- pragma c_header_code("
-
-#include ""mercury_type_info.h""
-
-int	ML_compare_type_info(Word type_info_1, Word type_info_2);
-
-").
-
-:- pragma c_code("
-
-/*
-** ML_compare_type_info(type_info_1, type_info_2):
-**
-** Compare two type_info structures, using an arbitrary ordering
-** (based on the addresses of the base_type_infos, or in
-** the case of higher order types, the arity).
-**
-** You need to save and restore transient registers around
-** calls to this function.
-*/
-
-int
-ML_compare_type_info(Word t1, Word t2)
-{
-	Word	*type_info_1, *type_info_2;
-	Word	*base_type_info_1, *base_type_info_2;
-	int	num_arg_types;
-	int	i;
-
-	/* 
-	** Try to optimize a common case:
-	** If type_info addresses are equal, they must represent the
-	** same type.
-	*/
-	if (t1 == t2) {
-		return COMPARE_EQUAL;
-	}
-
-	/* 
-	** Otherwise, we need to expand equivalence types, if any.
-	*/
-	type_info_1 = (Word *) ML_collapse_equivalences(t1);
-	type_info_2 = (Word *) ML_collapse_equivalences(t2);
-
-	/* 
-	** Perhaps they are equal now...
-	*/
-	if (type_info_1 == type_info_2) {
-		return COMPARE_EQUAL;
-	}
-
-	/*
-	** Otherwise find the addresses of the base_type_infos,
-	** and compare those.
-	**
-	** Note: this is an arbitrary ordering. It doesn't matter
-	** what the ordering is, just so long as it is consistent.
-	** ANSI C doesn't guarantee much about pointer comparisons,
-	** so it is possible that this might not do the right thing
-	** on some obscure systems.
-	** The casts to (Word) here are in the hope of increasing
-	** the chance that this will work on a segmented architecture.
-	*/
-	base_type_info_1 = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info_1);
-	base_type_info_2 = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info_2);
-	if ((Word) base_type_info_1 < (Word) base_type_info_2) {
-		return COMPARE_LESS;
-	}
-	if ((Word) base_type_info_1 > (Word) base_type_info_2) {
-		return COMPARE_GREATER;
-	}
-
-	/*
-	** If the base_type_info addresses are equal, we don't need to
-	** compare the arity of the types - they must be the same -
-	** unless they are higher-order (which are all mapped to
-	** pred/0). 
-	** But we need to recursively compare the argument types, if any.
-	*/
-		/* Check for higher order */
-	if (MR_BASE_TYPEINFO_IS_HO(base_type_info_1)) 
-	{
-		int num_arg_types_2;
-
-			/* Get number of arguments from type_info */
-		num_arg_types = field(mktag(0), type_info_1, 
-			TYPEINFO_OFFSET_FOR_PRED_ARITY);
-
-		num_arg_types_2 = field(mktag(0), type_info_2, 
-			TYPEINFO_OFFSET_FOR_PRED_ARITY);
-
-			/* Check arity */
-		if (num_arg_types < num_arg_types_2) {
-			return COMPARE_LESS;
-		}
-		if (num_arg_types > num_arg_types_2) {
-			return COMPARE_GREATER;
-		}
-
-			/*
-			** Increment, so arguments are at the
-			** expected offset.
-			*/
-		type_info_1++;
-		type_info_2++;
-	} else {
-		num_arg_types = field(mktag(0), base_type_info_1,
-				OFFSET_FOR_COUNT);
-	}
-		/* compare the argument types */
-	for (i = 0; i < num_arg_types; i++) {
-		Word arg_type_info_1 = field(mktag(0), type_info_1,
-			OFFSET_FOR_ARG_TYPE_INFOS + i);
-		Word arg_type_info_2 = field(mktag(0), type_info_2,
-			OFFSET_FOR_ARG_TYPE_INFOS + i);
-		int comp = ML_compare_type_info(
-				arg_type_info_1, arg_type_info_2);
-		if (comp != COMPARE_EQUAL)
-			return comp;
-	}
-	return COMPARE_EQUAL;
-}
-
-").
-
-:- pragma c_header_code("
 /*
 **	`univ' is represented as a two word structure.
 **	One word contains the address of a type_info for the type.
@@ -1142,7 +1017,7 @@ ML_compare_type_info(Word t1, Word t2)
 	Word univ_type_info = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
 	int comp;
 	save_transient_registers();
-	comp = ML_compare_type_info(univ_type_info, TypeInfo_for_T);
+	comp = MR_compare_type_info(univ_type_info, TypeInfo_for_T);
 	restore_transient_registers();
 	if (comp == COMPARE_EQUAL) {
 		Type = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
@@ -1240,7 +1115,7 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	typeinfo1 = field(mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
 	typeinfo2 = field(mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
 	save_transient_registers();
-	comp = ML_compare_type_info(typeinfo1, typeinfo2);
+	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
 	if (comp != COMPARE_EQUAL) {
 		unify_output = FALSE;
@@ -1285,7 +1160,7 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	typeinfo1 = field(mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
 	typeinfo2 = field(mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
 	save_transient_registers();
-	comp = ML_compare_type_info(typeinfo1, typeinfo2);
+	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
 	if (comp != COMPARE_EQUAL) {
 		compare_output = comp;
@@ -1339,7 +1214,7 @@ Define_entry(mercury____Unify___std_util__type_info_0_0);
 	*/
 	int comp;
 	save_transient_registers();
-	comp = ML_compare_type_info(unify_input1, unify_input2);
+	comp = MR_compare_type_info(unify_input1, unify_input2);
 	restore_transient_registers();
 	unify_output = (comp == COMPARE_EQUAL);
 	proceed();
@@ -1359,7 +1234,7 @@ Define_entry(mercury____Compare___std_util__type_info_0_0);
 	*/
 	int comp;
 	save_transient_registers();
-	comp = ML_compare_type_info(unify_input1, unify_input2);
+	comp = MR_compare_type_info(unify_input1, unify_input2);
 	restore_transient_registers();
 	compare_output = comp;
 	proceed();
@@ -1407,7 +1282,6 @@ void	ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 				Word term_vector);
 bool	ML_typecheck_arguments(Word type_info, int arity, 
 				Word arg_list, Word* arg_vector);
-Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 
 ").
@@ -1436,7 +1310,7 @@ Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 	*/
 #if 0
 	save_transient_registers();
-	TypeInfo = ML_collapse_equivalences(TypeInfo_for_T);
+	TypeInfo = MR_collapse_equivalences(TypeInfo_for_T);
 	restore_transient_registers();
 #endif
 
@@ -1516,7 +1390,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	Word *type_info, *base_type_info;
 
 	save_transient_registers();
-	type_info = (Word *) ML_collapse_equivalences(TypeInfo);
+	type_info = (Word *) MR_collapse_equivalences(TypeInfo);
 	restore_transient_registers();
 
 	base_type_info = (Word *) MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
@@ -1574,7 +1448,7 @@ Word ML_make_ctor_info(Word *type_info, Word *base_type_info)
 	Integer arity;
 
 	save_transient_registers();
-	type_info = (Word *) ML_collapse_equivalences(TypeInfo);
+	type_info = (Word *) MR_collapse_equivalences(TypeInfo);
 	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
 	TypeCtor = ML_make_ctor_info(type_info, base_type_info);
 
@@ -1918,7 +1792,7 @@ ML_get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 		equiv_type = (Word *) MR_TYPEFUNCTORS_EQUIV_TYPE(
 				base_type_functors);
 		return ML_get_functor_info((Word)
-				ML_create_type_info((Word *) type_info, 
+				MR_create_type_info((Word *) type_info, 
 						equiv_type),
 				functor_number, info);
 	}
@@ -1964,10 +1838,10 @@ ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
 		list_arg_type_info = field(0, list_head(arg_list), 
 			UNIV_OFFSET_FOR_TYPEINFO);
 
-		arg_type_info = (Word) ML_create_type_info(
+		arg_type_info = (Word) MR_create_type_info(
 			(Word *) type_info, (Word *) arg_vector[i]);
 
-		comp = ML_compare_type_info(list_arg_type_info, arg_type_info);
+		comp = MR_compare_type_info(list_arg_type_info, arg_type_info);
 		if (comp != COMPARE_EQUAL) {
 			return FALSE;
 		}
@@ -2110,13 +1984,13 @@ ML_copy_argument_typeinfos(int arity, Word type_info, Word *arg_vector)
 
 			/* Fill in any polymorphic type_infos */
 		save_transient_registers();
-		argument = (Word) ML_create_type_info(
+		argument = (Word) MR_create_type_info(
 			(Word *) type_info, (Word *) argument);
 		restore_transient_registers();
 
 			/* Look past any equivalences */
 		save_transient_registers();
-		argument = ML_collapse_equivalences(argument);
+		argument = MR_collapse_equivalences(argument);
 		restore_transient_registers();
 
 			/* Join the argument to the front of the list */
@@ -2127,40 +2001,6 @@ ML_copy_argument_typeinfos(int arity, Word type_info, Word *arg_vector)
 	return type_info_list;
 }
 
-	/*
-	** ML_collapse_equivalences:
-	**
-	** Keep looking past equivalences until the there are no more.
-	** This only looks past equivalences of the top level type, not
-	** the argument typeinfos.
-	** 
-	** You need to save and restore transient registers around
-	** calls to this function.
-	*/
-
-Word
-ML_collapse_equivalences(Word maybe_equiv_type_info) 
-{
-	Word *functors, equiv_type_info;
-	
-	functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(
-			MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) 
-					maybe_equiv_type_info));
-
-		/* Look past equivalences */
-	while (MR_TYPEFUNCTORS_INDICATOR(functors) == MR_TYPEFUNCTORS_EQUIV) {
-		equiv_type_info = (Word) MR_TYPEFUNCTORS_EQUIV_TYPE(functors);
-		equiv_type_info = (Word) ML_create_type_info(
-				(Word *) maybe_equiv_type_info, 
-				(Word *) equiv_type_info);
-		functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(
-			MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) 
-				equiv_type_info));
-		maybe_equiv_type_info = equiv_type_info;
-	}
-
-	return maybe_equiv_type_info;
-}
 
 	/* 
 	** ML_get_num_functors:
@@ -2199,7 +2039,7 @@ ML_get_num_functors(Word type_info)
 				MR_TYPEFUNCTORS_EQUIV_TYPE(
 					base_type_functors);
 			Functors = ML_get_num_functors((Word)
-					ML_create_type_info((Word *) 
+					MR_create_type_info((Word *) 
 						type_info, equiv_type));
 			break;
 		}
@@ -2273,8 +2113,6 @@ typedef struct ML_Expand_Info_Struct {
 
 void ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info);
 
-Word * ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info);
-
 	/* NB. ML_arg() is also used by store__arg_ref in store.m */
 bool ML_arg(Word term_type_info, Word *term, Word argument_index,
 		Word *arg_type_info, Word **argument_ptr);
@@ -2319,6 +2157,9 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 ** 	If writing a C function that calls deep_copy, make sure you
 ** 	document that around your function, save_transient_registers()
 ** 	restore_transient_registers() need to be used.
+**
+** 	If you change this code you will also have reflect any changes in 
+**	runtime/mercury_deep_copy.c and runtime/mercury_table_any.c
 */
 
 void 
@@ -2393,7 +2234,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 			** Is it a type variable? 
 			*/
 		if (TYPEINFO_IS_VARIABLE(entry_value)) {
-			arg_type_info = ML_create_type_info(type_info, 
+			arg_type_info = MR_create_type_info(type_info, 
 				(Word *) entry_value);
 			ML_expand(arg_type_info, data_word_ptr, info);
 		}
@@ -2408,7 +2249,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 			** It must be an equivalent type.
 			*/
 		else {
-			arg_type_info = ML_create_type_info(type_info, 
+			arg_type_info = MR_create_type_info(type_info, 
 				(Word *) MR_TYPELAYOUT_EQUIV_TYPE(
 					entry_value));
 			ML_expand(arg_type_info, data_word_ptr, info);
@@ -2494,7 +2335,7 @@ ML_expand_simple(Word data_value, Word* simple_vector, Word * type_info,
 				MR_TYPELAYOUT_SIMPLE_VECTOR_ARGS(
 					simple_vector)[i];
 			info->type_info_vector[i] = (Word) 
-				ML_create_type_info(type_info, 
+				MR_create_type_info(type_info, 
 					arg_pseudo_type_info);
 		}
 	}
@@ -2656,112 +2497,6 @@ ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 }
 
 
-	/* 
-	** Given a type_info (term_type_info) which contains a
-	** base_type_info pointer and possibly other type_infos
-	** giving the values of the type parameters of this type,
-	** and a pseudo-type_info (arg_pseudo_type_info), which contains a
-	** base_type_info pointer and possibly other type_infos
-	** giving EITHER
-	** 	- the values of the type parameters of this type,
-	** or	- an indication of the type parameter of the
-	** 	  term_type_info that should be substituted here
-	**
-	** This returns a fully instantiated type_info, a version of the
-	** arg_pseudo_type_info with all the type variables filled in.
-	**
-	** We allocate memory for a new type_info on the Mercury heap,
-	** copy the necessary information, and return a pointer to the
-	** new type_info. 
-	**
-	** In the case where the argument's pseudo_type_info is a
-	** base_type_info with no arguments, we don't copy the
-	** base_type_info - we just return a pointer to it - no memory
-	** is allocated. The caller can check this by looking at the
-	** first cell of the returned pointer - if it is zero, this is a
-	** base_type_info. Otherwise, it is an allocated copy of a
-	** type_info.
-	**
-	** NOTE: If you are changing this code, you might also need
-	** to change the code in make_type_info in runtime/deep_copy.c,
-	** which does much the same thing, only allocating using malloc
-	** instead of on the heap.
-	*/
-
-Word * 
-ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
-{
-	int i, arity, extra_args;
-	Word *base_type_info;
-	Word *arg_type_info;
-	Word *type_info;
-
-	/* 
-	** The arg_pseudo_type_info might be a polymorphic variable.
-	** If so, then substitute it's value, and then we're done.
-	*/
-	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		arg_type_info = (Word *) 
-			term_type_info[(Word) arg_pseudo_type_info];
-
-		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
-			fatal_error(""ML_create_type_info: ""
-					""unbound type variable"");
-		}
-
-		return arg_type_info;
-	}
-
-	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
-
-	/* no arguments - optimise common case */
-	if (base_type_info == arg_pseudo_type_info) {
-		return arg_pseudo_type_info;
-	}
-
-	if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
-		arity = MR_TYPEINFO_GET_HIGHER_ARITY(arg_pseudo_type_info);
-		extra_args = 2;
-	} else {
-		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
-		extra_args = 1;
-	}
-
-	/*
-	** Iterate over the arguments, figuring out whether we
-	** need to make any substitutions.
-	** If so, copy the resulting argument type-infos into
-	** a new type_info.
-	*/
-	type_info = NULL;
-	for (i = extra_args; i < arity + extra_args; i++) {
-		arg_type_info = ML_create_type_info(term_type_info,
-				(Word *) arg_pseudo_type_info[i]);
-		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
-			fatal_error(""ML_create_type_info: ""
-				""unbound type variable"");
-		}
-		if (arg_type_info != (Word *) arg_pseudo_type_info[i]) {
-			/*
-			** We made a substitution.
-			** We need to allocate a new type_info,
-			** if we haven't done so already.
-			*/
-			if (type_info == NULL) {
-				incr_saved_hp(LVALUE_CAST(Word, type_info),
-					arity + extra_args);
-				memcpy(type_info, arg_pseudo_type_info,
-					(arity + extra_args) * sizeof(Word));
-			}
-			type_info[i] = (Word) arg_type_info;
-		}
-	}
-	if (type_info == NULL) {
-		return arg_pseudo_type_info;
-	} else {
-		return type_info;
-	}
-}
 
 /*
 ** ML_arg() is a subroutine used to implement arg/2, argument/2,
@@ -2879,7 +2614,7 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 	if (success) {
 		/* compare the actual type with the expected type */
 		comparison_result =
-			ML_compare_type_info(arg_type_info, TypeInfo_for_ArgT);
+			MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT);
 		success = (comparison_result == COMPARE_EQUAL);
 
 		if (success) {

@@ -57,6 +57,7 @@
 **	you document that around your function,
 **	save_transient_registers()/restore_transient_registers()
 **	need to be used.
+**
 */
 
 Word deep_copy(Word data, Word *type_info, Word *lower_limit, 

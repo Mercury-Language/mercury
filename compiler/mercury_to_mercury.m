@@ -303,8 +303,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = obsolete(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete")
 	;
-		{ Pragma = memo(Pred, Arity) },
-		mercury_output_pragma_decl(Pred, Arity, predicate, "memo")
+		{ Pragma = tabled(Type, Pred, Arity, _PredOrFunc, _Mode) },
+		{ eval_method_to_string(Type, TypeS) },
+		mercury_output_pragma_decl(Pred, Arity, predicate, TypeS)
 	;
 		{ Pragma = inline(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, "inline")

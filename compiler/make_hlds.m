@@ -323,12 +323,11 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		% clauses).
 		{ Pragma = c_code(_, _, _, _, _, _) },
 		{ Module = Module0 }
-	;
-		{ Pragma = memo(Name, Arity) },
-		add_pred_marker(Module0, "memo", Name, Arity, Context,
-			memo, [], Module1),
-		add_stratified_pred(Module1, "memo", Name, Arity, Context, 
-			Module)
+	;	
+		% Handle pragma tabled decls later on (when we process
+		% clauses).
+		{ Pragma = tabled(_, _, _, _, _) },
+		{ Module = Module0 }
 	;
 		{ Pragma = inline(Name, Arity) },
 		add_pred_marker(Module0, "inline", Name, Arity, Context,
@@ -526,7 +525,29 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 		module_add_pragma_fact_table(Pred, Arity, File, 
 			Status, Context, Module0, Module, Info0, Info)
 	;
-		% don't worry about any pragma decs but c_code
+		{ Pragma = tabled(Type, Name, Arity, PredOrFunc, Mode) }
+	->
+		globals__io_lookup_bool_option(type_layout, TypeLayout),
+		(
+			{ TypeLayout = yes }
+		->
+			module_add_pragma_tabled(Type, Name, Arity, PredOrFunc,
+				Mode, Context, Module0, Module)
+		;
+			{ module_info_incr_errors(Module0, Module) },
+			prog_out__write_context(Context),
+			io__write_string("Error: `:- pragma "),
+			{ eval_method_to_string(Type, EvalMethodS) },
+			io__write_string(EvalMethodS),
+			io__write_string(
+"' declaration requires the base_type_layout\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+"    structures. Use the --type-layout flag to enable them.\n")
+		),
+		{ Info = Info0 }
+	;
+		% don't worry about any pragma decs but c_code, tabling
 		% and fact_table here
 		{ Module = Module0 },
 		{ Info = Info0 }	
@@ -698,38 +719,12 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList, MaybeArgSizeInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_stratified_pred(module_info, string, sym_name, arity,
-	term__context, module_info, io__state, io__state).
-:- mode add_stratified_pred(in, in, in, in, in, out, di, uo) is det.
-
-add_stratified_pred(Module0, PragmaName, Name, Arity, Context, Module) -->
-	{ module_info_get_predicate_table(Module0, PredTable0) },
-	(
-		{ predicate_table_search_sym_arity(PredTable0, Name, 
-			Arity, PredIds) }
-	->
-		{ module_info_stratified_preds(Module0, StratPredIds0) },
-		{ set__insert_list(StratPredIds0, PredIds, StratPredIds) },
-		{ module_info_set_stratified_preds(Module0, StratPredIds, 
-			Module) }
-	;
-		{ string__append_list(
-			["`:- pragma ", PragmaName, "' declaration"],
-			Description) },
-		undefined_pred_or_func_error(Name, Arity, Context,
-			Description),
-		{ module_info_incr_errors(Module0, Module) }
-	).
-
-%-----------------------------------------------------------------------------%
-
 	% add_pred_marker(ModuleInfo0, PragmaName, Name, Arity, Context, 
 	% 	Marker, ConflictMarkers, ModuleInfo, IO0, IO)
 	% Adds Marker to the marker list of the pred(s) with give Name and
 	% Arity, updating the ModuleInfo. If the named pred does not exist,
 	% or the pred already has a marker in ConflictMarkers, report
 	% an error.
-
 :- pred add_pred_marker(module_info, string, sym_name, arity,
 	term__context, marker, list(marker), module_info,
 	io__state, io__state).
@@ -2521,6 +2516,195 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 
 %-----------------------------------------------------------------------------%
 
+:- pred module_add_pragma_tabled(eval_method, sym_name, int, 
+		maybe(pred_or_func), maybe(list(mode)), 
+		term__context, module_info, module_info, 
+		io__state, io__state).
+:- mode module_add_pragma_tabled(in, in, in, in, in, in, in, out, 
+	di, uo) is det. 
+	
+module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc, 
+		MaybeModes,  Context, ModuleInfo0, ModuleInfo) --> 
+	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
+ 	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+		
+	% Find out if we are tabling a predicate or a function 
+	(
+		{ MaybePredOrFunc = yes(PredOrFunc0) }
+	->
+		{ PredOrFunc = PredOrFunc0 },
+
+			% Lookup the pred declaration in the predicate table.
+			% (If it's not there, print an error message and insert
+			% a dummy declaration for the predicate.) 
+		(
+			{ predicate_table_search_pf_sym_arity(PredicateTable0,
+				PredOrFunc, PredName, Arity, PredIds0) }
+		->
+			{ PredIds = PredIds0 },
+			{ ModuleInfo1 = ModuleInfo0 }	
+		;
+			{ module_info_name(ModuleInfo0, ModuleName) },
+			{ string__format("pragma (%s)", [s(EvalMethodS)], 
+				Message1) },
+			maybe_undefined_pred_error(PredName, Arity, 
+				PredOrFunc, Context, Message1),
+			{ preds_add_implicit(PredicateTable0,
+				ModuleName, PredName, Arity, Context,
+				PredOrFunc, PredId, PredicateTable1) },
+			{ module_info_set_predicate_table(ModuleInfo0,
+				PredicateTable1, ModuleInfo1) },
+			{ PredIds = [PredId] }
+		)
+	;
+		(	
+			{ predicate_table_search_sym_arity(PredicateTable0,
+					PredName, Arity, PredIds0) }
+		->
+			{ ModuleInfo1 = ModuleInfo0 },
+			{ PredIds = PredIds0 }
+		;
+			{ module_info_name(ModuleInfo0, ModuleName) },
+			{ string__format("pragma (%s)", [s(EvalMethodS)], 
+				Message1) },
+			maybe_undefined_pred_error(PredName, Arity, 
+				predicate, Context, Message1),
+			{ preds_add_implicit(PredicateTable0,
+				ModuleName, PredName, Arity, Context,
+				predicate, PredId, PredicateTable1) },
+			{ module_info_set_predicate_table(ModuleInfo0,
+				PredicateTable1, ModuleInfo1) },
+			{ PredIds = [PredId] }
+		)
+	),
+	list__foldl2(module_add_pragma_tabled_2(EvalMethod, PredName, 
+			Arity, MaybePredOrFunc, MaybeModes, Context), 
+			PredIds, ModuleInfo1, ModuleInfo).
+
+
+:- pred module_add_pragma_tabled_2(eval_method, sym_name, int, 
+		maybe(pred_or_func), maybe(list(mode)), term__context,
+		pred_id, module_info, module_info, io__state, io__state).
+:- mode module_add_pragma_tabled_2(in, in, in, in, in, in, in, in, out,
+		di, uo) is det.
+
+module_add_pragma_tabled_2(EvalMethod, PredName, Arity0, MaybePredOrFunc, 
+		MaybeModes, Context, PredId, ModuleInfo0, ModuleInfo) -->
+	
+		% Lookup the pred_info for this pred,
+	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable) }, 
+	{ predicate_table_get_preds(PredicateTable, Preds) },
+	{ map__lookup(Preds, PredId, PredInfo0) },
+	
+	% Find out if we are tabling a predicate or a function 
+	(
+		{ MaybePredOrFunc = yes(PredOrFunc0) }
+	->
+		{ PredOrFunc = PredOrFunc0 }
+	;
+		{ pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc) }
+	),
+	(
+		{ PredOrFunc = predicate },
+		{ Arity = Arity0 }
+	;
+		{ PredOrFunc = function },
+		{ Arity is Arity0 + 1 }
+	),
+		
+		% print out a progress message
+	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	( 
+		{ VeryVerbose = yes }
+	->
+		io__write_string("% Processing `:- pragma "),
+		io__write_string(EvalMethodS),
+		io__write_string("' for "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string("...\n")
+	;
+		[]
+	),
+	
+	( 
+		{ pred_info_is_imported(PredInfo0) }
+	->
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+		prog_out__write_context(Context),
+		io__write_string("Error: `:- pragma "),
+		io__write_string(EvalMethodS),
+		io__write_string("' declaration for imported "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string(".\n")
+	;
+		% do we have to make sure the tabled preds are stratified?
+		(
+			{ eval_method_need_stratification(EvalMethod) }
+		->
+			{ module_info_stratified_preds(ModuleInfo0, 
+				StratPredIds0) },
+			{ set__insert(StratPredIds0, PredId, StratPredIds) },
+			{ module_info_set_stratified_preds(ModuleInfo0, 
+				StratPredIds, ModuleInfo1) }
+		;
+			{ ModuleInfo1 = ModuleInfo0 }
+		),
+		
+		% add the eval model to the proc_info for this procedure
+		{ pred_info_procedures(PredInfo0, Procs0) },
+		{ map__to_assoc_list(Procs0, ExistingProcs) },
+		(
+			{ MaybeModes = yes(Modes) }
+		->
+			(
+				{ get_procedure_matching_argmodes(
+					ExistingProcs, Modes, ModuleInfo1, 
+					ProcId) }
+			->
+				{ map__lookup(Procs0, ProcId, ProcInfo0) },
+				{ proc_info_set_eval_method(ProcInfo0, 
+					EvalMethod, ProcInfo) },
+				{ map__det_update(Procs0, ProcId, ProcInfo, 
+					Procs) },
+				{ pred_info_set_procedures(PredInfo0, Procs, 
+					PredInfo) },
+				{ module_info_set_pred_info(ModuleInfo1, 
+					PredId, PredInfo, ModuleInfo) }
+			;
+				{ module_info_incr_errors(ModuleInfo1, 
+					ModuleInfo) }, 
+				prog_out__write_context(Context),
+				io__write_string("Error: `:- pragma "),
+				io__write_string(EvalMethodS),
+				io__write_string(
+				     "' declaration for undeclared mode of "), 
+				hlds_out__write_call_id(PredOrFunc, 
+					PredName/Arity),
+				io__write_string(".\n")
+			)
+		;
+			{ set_eval_method_list(ExistingProcs, EvalMethod, 
+				Procs0, Procs) },
+			{ pred_info_set_procedures(PredInfo0, Procs, 
+				PredInfo) },
+			{ module_info_set_pred_info(ModuleInfo1, PredId, 
+				PredInfo, ModuleInfo) }
+		)
+	).
+
+:- pred set_eval_method_list(assoc_list(proc_id, proc_info), eval_method, 
+	proc_table, proc_table).
+:- mode set_eval_method_list(in, in, in, out) is det.
+
+set_eval_method_list([], _, Procs, Procs).
+set_eval_method_list([ProcId - ProcInfo0|Rest], EvalMethod, Procs0, Procs) :-
+	proc_info_set_eval_method(ProcInfo0, EvalMethod, ProcInfo),
+	map__det_update(Procs0, ProcId, ProcInfo, Procs1),
+	set_eval_method_list(Rest, EvalMethod, Procs1, Procs).
+	
+%-----------------------------------------------------------------------------%
+
 	% from the list of pragma_vars extract the modes.
 :- pred pragma_get_modes(list(pragma_var), list(mode)).
 :- mode pragma_get_modes(in, out) is det.
@@ -3337,6 +3521,7 @@ transform_goal_2(some(Vars0, Goal0), _, VarSet0, Subst,
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet, Info0, Info),
 	{ goal_info_init(GoalInfo) }.
 
+
 transform_goal_2(if_then_else(Vars0, A0, B0, C0), _, VarSet0, Subst,
 	if_then_else(Vars, A, B, C, Empty) - GoalInfo, VarSet, Info0, Info)
 		-->
@@ -3829,7 +4014,7 @@ unravel_unification(term__variable(X), RHS,
 				Modes, Det, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;
-	        % handle if-then-else expressions
+		% handle if-then-else expressions
 		{   F = term__atom("else"),
 		    Args = [term__functor(term__atom("if"), [
 				term__functor(term__atom("then"),

@@ -779,5 +779,26 @@ typedef struct {
 
 #define MR_make_array(sz) ((MR_ArrayType *) make_many(Word, (sz) + 1))
 
+
+Word * MR_create_type_info(Word *, Word *);
+int MR_compare_type_info(Word, Word);
+Word MR_collapse_equivalences(Word);
+
+/* 
+** definitions for creating type infos from pseudo_type_info's
+*/
+
+/* for make_type_info(), we keep a list of allocated memory cells */
+struct MR_MemoryCellNode {
+	void *data;
+	struct MR_MemoryCellNode *next;
+};
+typedef struct MR_MemoryCellNode *MR_MemoryList;
+
+Word * MR_make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
+	MR_MemoryList *allocated);
+void MR_deallocate(MR_MemoryList allocated_memory_cells);
+
+
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_TYPEINFO_H */

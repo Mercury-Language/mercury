@@ -744,7 +744,6 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 pragma_allowed_in_interface(c_header_code(_), no).
 pragma_allowed_in_interface(c_code(_), no).
 pragma_allowed_in_interface(c_code(_, _, _, _, _, _), no).
-pragma_allowed_in_interface(memo(_, _), no).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).
@@ -753,6 +752,7 @@ pragma_allowed_in_interface(import(_, _, _, _, _), no).
 pragma_allowed_in_interface(source_file(_), yes).
 	% yes, but the parser will strip out `source_file' pragmas anyway...
 pragma_allowed_in_interface(fact_table(_, _, _), no).
+pragma_allowed_in_interface(tabled(_, _, _, _, _), no).
 pragma_allowed_in_interface(promise_pure(_, _), no).
 pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
 pragma_allowed_in_interface(termination_info(_, _, _, _, _), yes).

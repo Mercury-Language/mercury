@@ -181,7 +181,9 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 				{ inlining__is_simple_goal(Goal,
 						InlineThreshold) },
 				{ pred_info_get_markers(PredInfo0, Markers) },
-				{ \+ check_marker(Markers, no_inline) }
+				{ \+ check_marker(Markers, no_inline) },
+				{ proc_info_eval_method(ProcInfo, 
+					eval_normal) }
 			;
 				{ pred_info_requested_inlining(PredInfo0) }
 			;

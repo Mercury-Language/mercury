@@ -554,7 +554,6 @@ hlds_out__marker_name(no_inline, "no_inline").
 hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(magic, "magic").
 hlds_out__marker_name(obsolete, "obsolete").
-hlds_out__marker_name(memo, "memo").
 hlds_out__marker_name(class_method, "class_method").
 hlds_out__marker_name((impure), "impure").
 hlds_out__marker_name((semipure), "semipure").

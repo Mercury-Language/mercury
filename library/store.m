@@ -304,12 +304,12 @@ ref_functor(Ref, Functor, Arity) -->
 	{ functor(Val, Functor, Arity) }.
 
 :- pragma c_header_code("
+	#include ""mercury_type_info.h""
+
 	/* ML_arg() is defined in std_util.m */
 	bool ML_arg(Word term_type_info, Word *term, Word argument_index,
 			Word *arg_type_info, Word **argument_ptr);
 
-	/* ML_compare_type_info() is defined in std_util.m */
-	int ML_compare_type_info(Word type_info_1, Word type_info_2);
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::di, S::uo),
@@ -326,7 +326,7 @@ ref_functor(Ref, Functor, Arity) -->
 		fatal_error(""store__arg_ref: argument number out of range"");
 	}
 
-	if (ML_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
+	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
 		COMPARE_EQUAL)
 	{
 		fatal_error(""store__arg_ref: argument has wrong type"");
@@ -352,7 +352,7 @@ ref_functor(Ref, Functor, Arity) -->
 	      fatal_error(""store__new_arg_ref: argument number out of range"");
 	}
 
-	if (ML_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
+	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
 		COMPARE_EQUAL)
 	{
 	      fatal_error(""store__new_arg_ref: argument has wrong type"");

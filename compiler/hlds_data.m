@@ -674,6 +674,7 @@ mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
 
 :- pred determinism_to_code_model(determinism, code_model).
 :- mode determinism_to_code_model(in, out) is det.
+:- mode determinism_to_code_model(out, in) is multidet.
 
 :- implementation.
 

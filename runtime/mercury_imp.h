@@ -67,6 +67,7 @@
 #include	"mercury_prof.h"
 #include	"mercury_misc.h"
 
+#include	"mercury_tabling.h"
 
 #include	"mercury_grade.h"
 

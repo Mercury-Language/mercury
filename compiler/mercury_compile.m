@@ -33,6 +33,7 @@
 :- import_module equiv_type, make_hlds, typecheck, purity, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module stratify, check_typeclass, simplify, intermod, trans_opt.
+:- import_module table_gen.
 :- import_module bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
 :- import_module deforest, dnf, constraint, unused_args, dead_proc_elim.
@@ -742,9 +743,12 @@ mercury_compile__frontend_pass_2_by_preds(HLDS0, HLDS, FoundError) -->
 % :- mode mercury_compile__middle_pass(in, di, uo, di, uo) is det.
 :- mode mercury_compile__middle_pass(in, in, out, di, uo) is det.
 
-mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
+mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+
+	mercury_compile__tabling(HLDS24, Verbose, HLDS25),
+	mercury_compile__maybe_dump_hlds(HLDS25, "25", "tabling"), !,
 
 	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS26),
 	mercury_compile__maybe_dump_hlds(HLDS26, "26", "polymorphism"), !,
@@ -1284,6 +1288,19 @@ mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, Verbose, Stats,
 	;
 		{ ModuleInfo = ModuleInfo0 }
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__tabling(module_info, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__tabling(in, in, out, di, uo) is det.
+
+mercury_compile__tabling(HLDS0, Verbose, HLDS) -->
+	maybe_write_string(Verbose,
+		"% Transforming tabled predicates..."),
+	maybe_flush_output(Verbose),
+	{ table_gen__process_module(HLDS0, HLDS) },
+	maybe_write_string(Verbose, " done.\n").
 
 %-----------------------------------------------------------------------------%
 

@@ -258,8 +258,12 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 	determinism_components(Detism1, CanFail1, MaxSoln1),
 	det_switch_canfail(CanFail0, CanFail1, CanFail),
 	det_switch_maxsoln(MaxSoln0, MaxSoln1, MaxSoln),
-	determinism_components(Detism, CanFail, MaxSoln),
+	determinism_components(Detism2, CanFail, MaxSoln),
 
+		% Now see if the evaluation model can change the detism
+	proc_info_eval_method(Proc0, EvalMethod),
+	eval_method_change_determinism(EvalMethod, Detism2, Detism),		
+			
 		% Save the newly inferred information
 	proc_info_set_goal(Proc0, Goal, Proc1),
 	proc_info_set_inferred_determinism(Proc1, Detism, Proc),

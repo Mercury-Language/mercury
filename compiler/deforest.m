@@ -1495,7 +1495,6 @@ deforest__call(PredId, ProcId, Args, SymName, Goal0, Goal) -->
 	{ pred_info_get_markers(PredInfo, Markers) },
 	( 
 		{ \+ check_marker(Markers, no_inline) },
-		{ \+ check_marker(Markers, memo) },
 		{ map__search(ProcArgInfos, proc(PredId, ProcId), 
 			ProcArgInfo) },
 		{ ProcArgInfo = pd_branch_info(_, LeftArgs, _) },

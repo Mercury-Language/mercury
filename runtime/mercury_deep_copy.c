@@ -14,22 +14,12 @@
 
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
 
-/* for make_type_info(), we keep a list of allocated memory cells */
-struct MemoryCellNode {
-	void *data;
-	struct MemoryCellNode *next;
-};
-typedef struct MemoryCellNode *MemoryList;
-
 /*
 ** Prototypes.
 */
 static Word get_base_type_layout_entry(Word data, Word *type_info);
 static Word deep_copy_arg(Word data, Word *type_info, Word *arg_type_info,
 	Word *lower_limit, Word *upper_limit);
-static Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
-	MemoryList *allocated);
-static void deallocate(MemoryList allocated_memory_cells);
 static Word * deep_copy_type_info(Word *type_info,
 	Word *lower_limit, Word *upper_limit);
 
@@ -40,6 +30,9 @@ MR_DECLARE_STRUCT(mercury_data___base_type_info_func_0);
 ** deep_copy(): see mercury_deep_copy.h for documentation.
 **
 ** Due to the depth of the control here, we'll use 4 space indentation.
+**
+** NOTE : changes to this function will probably also have to be reflected 
+** in the function std_util::ML_expand() and mercury_table_any.c
 */
 Word 
 deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
@@ -355,151 +348,19 @@ static Word
 deep_copy_arg(Word data, Word *term_type_info, Word *arg_pseudo_type_info,
 		Word *lower_limit, Word *upper_limit)
 {
-	MemoryList allocated_memory_cells;
+	MR_MemoryList allocated_memory_cells;
 	Word *new_type_info;
 	Word new_data;
 
 	allocated_memory_cells = NULL;
-	new_type_info = make_type_info(term_type_info, arg_pseudo_type_info,
+	new_type_info = MR_make_type_info(term_type_info, arg_pseudo_type_info,
 					&allocated_memory_cells);
 	new_data = deep_copy(data, new_type_info, lower_limit, upper_limit);
-	deallocate(allocated_memory_cells);
+	MR_deallocate(allocated_memory_cells);
 
 	return new_data;
 }
 
-/*
-** deallocate() frees up a list of memory cells
-*/
-static void
-deallocate(MemoryList allocated)
-{
-	while (allocated != NULL) {
-	    MemoryList next = allocated->next;
-	    free(allocated->data);
-	    free(allocated);
-	    allocated = next;
-	}
-}
-
-	/* 
-	** Given a type_info (term_type_info) which contains a
-	** base_type_info pointer and possibly other type_infos
-	** giving the values of the type parameters of this type,
-	** and a pseudo-type_info (arg_pseudo_type_info), which contains a
-	** base_type_info pointer and possibly other type_infos
-	** giving EITHER
-	** 	- the values of the type parameters of this type,
-	** or	- an indication of the type parameter of the
-	** 	  term_type_info that should be substituted here
-	**
-	** This returns a fully instantiated type_info, a version of the
-	** arg_pseudo_type_info with all the type variables filled in.
-	** If there are no type variables to fill in, we return the
-	** arg_pseudo_type_info, unchanged. Otherwise, we allocate
-	** memory using malloc().  Any such memory allocated will be
-	** inserted into the list of allocated memory cells.
-	** It is the caller's responsibility to free these cells
-	** by calling deallocate() on the list when they are no longer
-	** needed.
-	**
-	** This code could be tighter. In general, we want to
-	** handle our own allocations rather than using malloc().
-	**
-	** NOTE: If you are changing this code, you might also need
-	** to change the code in create_type_info in library/std_util.m,
-	** which does much the same thing, only allocating on the 
-	** heap instead of using malloc.
-	*/
-
-Word *
-make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
-	MemoryList *allocated) 
-{
-	int i, arity, extra_args;
-	Word *base_type_info;
-	Word *arg_type_info;
-	Word *type_info;
-
-	/* 
-	** The arg_pseudo_type_info might be a polymorphic variable.
-	** If so, then substitute its value, and then we're done.
-	*/
-	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		arg_type_info = (Word *) 
-			term_type_info[(Word) arg_pseudo_type_info];
-		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
-			fatal_error("make_type_info: "
-				"unbound type variable");
-		}
-		return arg_type_info;
-	}
-
-	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
-
-	/* no arguments - optimise common case */
-	if (base_type_info == arg_pseudo_type_info) {
-		return arg_pseudo_type_info;
-	} 
-
-        if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
-                arity = MR_TYPEINFO_GET_HIGHER_ARITY(arg_pseudo_type_info);
-                extra_args = 2;
-        } else {
-                arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
-                extra_args = 1;
-        }
-
-	/*
-	** Iterate over the arguments, figuring out whether we
-	** need to make any substitutions.
-	** If so, copy the resulting argument type-infos into
-	** a new type_info.
-	*/
-	type_info = NULL;
-	for (i = extra_args; i < arity + extra_args; i++) {
-		arg_type_info = make_type_info(term_type_info,
-			(Word *) arg_pseudo_type_info[i], allocated);
-		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
-			fatal_error("make_type_info: "
-				"unbound type variable");
-		}
-		if (arg_type_info != (Word *) arg_pseudo_type_info[i]) {
-			/*
-			** We made a substitution.
-			** We need to allocate a new type_info,
-			** if we haven't done so already.
-			*/
-			if (type_info == NULL) {
-				MemoryList node;
-				/*
-				** allocate a new type_info and copy the
-				** data across from arg_pseduo_type_info
-				*/
-				type_info = checked_malloc(
-					(arity + extra_args) * sizeof(Word));
-				memcpy(type_info, arg_pseudo_type_info,
-					(arity + extra_args) * sizeof(Word));
-				/*
-				** insert this type_info cell into the linked
-				** list of allocated memory cells, so we can
-				** free it later on
-				*/
-				node = checked_malloc(sizeof(*node));
-				node->data = type_info;
-				node->next = *allocated;
-				*allocated = node;
-			}
-			type_info[i] = (Word) arg_type_info;
-		}
-	}
-	if (type_info == NULL) {
-		return arg_pseudo_type_info;
-	} else {
-		return type_info;
-	}
-
-} /* end make_type_info() */
 
 Word *
 deep_copy_type_info(Word *type_info, Word *lower_limit, Word *upper_limit)

@@ -104,9 +104,6 @@
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, C Code Implementation Info
 
-	;	memo(sym_name, arity)
-			% Predname, Arity
-
 	;	inline(sym_name, arity)
 			% Predname, Arity
 
@@ -140,6 +137,10 @@
 	;	fact_table(sym_name, arity, string)
 			% Predname, Arity, Fact file name.
 
+	;	tabled(eval_method, sym_name, int, maybe(pred_or_func), 
+				maybe(list(mode)))
+			% Tabling type, Predname, Arity, PredOrFunc?, Mode?
+	
 	;	promise_pure(sym_name, arity)
 			% Predname, Arity
 
@@ -155,6 +156,7 @@
 			% This includes c_code, and imported predicates.
 			% termination_info pragmas are used in opt and
 			% trans_opt files.
+
 
 	;	terminates(sym_name, arity)
 			% Predname, Arity

@@ -547,8 +547,10 @@ switch_covers_all_cases(CasesList, Type, ModuleInfo) :-
 :- mode fix_case_list(in, in, out) is det.
 
 fix_case_list([], _, []).
-fix_case_list([Functor - DisjList | Cases0], GoalInfo,
+fix_case_list([Functor - DisjList0 | Cases0], GoalInfo,
 		[case(Functor, Goal) | Cases]) :-
+		% We need to put the list back the right way around.
+	list__reverse(DisjList0, DisjList),
 	disj_list_to_goal(DisjList, GoalInfo, Goal),
 	fix_case_list(Cases0, GoalInfo, Cases).
 

@@ -124,10 +124,10 @@
 int	hash_string(Word);
 
 #ifdef __GNUC__
-#define hash_string(s)					\
-	({ int hash;					\
-	   do_hash_string(hash, s);			\
-	   hash;					\
+#define hash_string(s)							\
+	({ int hash_string_result;					\
+	   do_hash_string(hash_string_result, s);			\
+	   hash_string_result;						\
 	})
 #endif
 
@@ -136,9 +136,9 @@ int	hash_string(Word);
 ** it uses the macro HASH_STRING_FUNC_BODY below.
 */
 
-#define HASH_STRING_FUNC_BODY				\
-	   int hash;					\
-	   do_hash_string(hash, s);			\
-	   return hash;
+#define HASH_STRING_FUNC_BODY						\
+	   int hash_string_result;					\
+	   do_hash_string(hash_string_result, s);			\
+	   return hash_string_result;
 
 #endif /* not MERCURY_STRING_H */

@@ -654,7 +654,17 @@ qualify_pragma(c_code(Rec, SymName, PredOrFunc, PragmaVars0, Varset, CCode),
 		c_code(Rec, SymName, PredOrFunc, PragmaVars, Varset, CCode), 
 		Info0, Info) -->
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
-qualify_pragma(memo(A, B), memo(A, B), Info, Info) --> [].
+qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes), 
+	Info0, Info) --> 
+	(
+		{ MModes0 = yes(Modes0) }
+	->
+		qualify_mode_list(Modes0, Modes, Info0, Info),
+		{ MModes = yes(Modes) }
+	;
+		{ Info = Info0 },
+		{ MModes = no }
+	).
 qualify_pragma(inline(A, B), inline(A, B), Info, Info) --> [].
 qualify_pragma(no_inline(A, B), no_inline(A, B), Info, Info) --> [].
 qualify_pragma(obsolete(A, B), obsolete(A, B), Info, Info) --> [].

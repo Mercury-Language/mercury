@@ -614,7 +614,8 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 	% don't try to inline imported predicates, since we don't
 	% have the code for them.
 
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, 
+		ProcInfo),
 	\+ pred_info_is_imported(PredInfo),
 		% this next line catches the case of locally defined
 		% unification predicates for imported types.
@@ -623,6 +624,14 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	),
 
+	% Only try to inline procedures which are evaluated using
+	% normal evaluation. Currently we can't inline procs evaluated
+	% using any of the other methods because the code generator for
+	% the methods can only handle whole procedures not code 
+	% fragments.
+
+	proc_info_eval_method(ProcInfo, eval_normal),
+	
 	% don't inlining anything we have been specifically requested
 	% not to inline.
 

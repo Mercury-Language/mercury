@@ -329,16 +329,19 @@ check_pred_modes(WhatToCheck, ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 	globals__io_lookup_int_option(mode_inference_iteration_limit,
 		MaxIterations),
 	modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
-					ModuleInfo, UnsafeToContinue),
+					ModuleInfo1, UnsafeToContinue),
 	( { WhatToCheck = check_unique_modes(_) },
-		write_mode_inference_messages(PredIds, yes, ModuleInfo)
+		write_mode_inference_messages(PredIds, yes, ModuleInfo1),
+		{ ModuleInfo2 = ModuleInfo1 }
 	; { WhatToCheck = check_modes },
 		( { UnsafeToContinue = yes } ->
-			write_mode_inference_messages(PredIds, no, ModuleInfo)
+			write_mode_inference_messages(PredIds, no, ModuleInfo1)
 		;
 			[]
-		)
-	).
+		),
+		check_eval_methods(ModuleInfo1, ModuleInfo2)
+	),
+	{ ModuleInfo = ModuleInfo2 }.
 
 	% Iterate over the list of pred_ids in a module.
 
@@ -1801,6 +1804,127 @@ mode_context_to_unify_context(higher_order_call(_PredOrFunc, _Arg), _ModeInfo,
 		% XXX could do better; it's not really explicit
 mode_context_to_unify_context(uninitialized, _, _) :-
 	error("mode_context_to_unify_context: uninitialized context").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred check_eval_methods(module_info, module_info, io__state, io__state).
+:- mode check_eval_methods(in, out, di, uo) is det.
+
+check_eval_methods(ModuleInfo0, ModuleInfo) -->
+	{ module_info_predids(ModuleInfo0, PredIds) },
+	pred_check_eval_methods(PredIds, ModuleInfo0, ModuleInfo).
+
+:- pred pred_check_eval_methods(list(pred_id), module_info, module_info,
+		io__state, io__state).
+:- mode pred_check_eval_methods(in, in, out, di, uo) is det.
+
+pred_check_eval_methods([], M, M) --> [].
+pred_check_eval_methods([PredId|Rest], ModuleInfo0, ModuleInfo) --> 
+	{ module_info_preds(ModuleInfo0, Preds) },
+	{ map__lookup(Preds, PredId, PredInfo) },
+	{ pred_info_procids(PredInfo, ProcIds) },
+	proc_check_eval_methods(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
+	pred_check_eval_methods(Rest, ModuleInfo1, ModuleInfo).	
+
+:- pred proc_check_eval_methods(list(proc_id), pred_id, module_info, 
+		module_info, io__state, io__state).
+:- mode proc_check_eval_methods(in, in, in, out, di, uo) is det.
+
+proc_check_eval_methods([], _, M, M) --> [].
+proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) --> 
+	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, 
+		_, ProcInfo) },
+	{ proc_info_eval_method(ProcInfo, EvalMethod) },
+	( { EvalMethod \= eval_normal } ->
+		{ proc_info_context(ProcInfo, Context) },
+		{ eval_method_to_string(EvalMethod, EvalMethodS) },
+		globals__io_lookup_bool_option(verbose_errors, 
+			VerboseErrors),
+		{ proc_info_argmodes(ProcInfo, Modes) },
+		( 
+			\+ { only_fully_in_out_modes(Modes, 
+				ModuleInfo0) } 
+		->
+			prog_out__write_context(Context),
+			io__write_string(" Sorry, not impemented: `pragma "),
+			io__write_string(EvalMethodS),
+			io__write_string("'\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+"    declaration not allowed for procedure with\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+"    partially instantiated modes.\n"), 
+			( { VerboseErrors = yes } ->
+				io__write_string(
+"	Tabling of predicates/functions with partially instantiated modes
+	is not currently implemented.\n")
+			;
+				[]
+			),
+			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) }
+		;
+			{ ModuleInfo1 = ModuleInfo0 }	
+		),	
+		( 
+			\+ { only_nonunique_modes(Modes, 
+				ModuleInfo1) } 
+		->
+			prog_out__write_context(Context),
+			io__write_string(" Error: `pragma "),
+			io__write_string(EvalMethodS),
+			io__write_string("'\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+"    declaration not allowed for procedure with\n"),
+			prog_out__write_context(Context),
+			io__write_string("    unique modes.\n"), 
+			( { VerboseErrors = yes } ->
+				io__write_string(
+"	Tabling of predicates/functions with unique modes is not allowed
+	as this would lead to a copying of the unique arguments which 
+	would result in them no longer being unique.\n")
+			;
+				[]
+			),
+			{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
+		;
+			{ ModuleInfo2 = ModuleInfo1 }	
+		)
+	;
+		{ ModuleInfo2 = ModuleInfo0 }	
+		
+	),
+	proc_check_eval_methods(Rest, PredId, ModuleInfo2, ModuleInfo).
+
+:- pred only_fully_in_out_modes(list(mode), module_info).
+:- mode only_fully_in_out_modes(in, in) is semidet.
+
+only_fully_in_out_modes([], _).
+only_fully_in_out_modes([Mode|Rest], ModuleInfo) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	(
+		inst_is_ground(ModuleInfo, InitialInst)
+	;
+		inst_is_free(ModuleInfo, InitialInst),
+		(
+			inst_is_free(ModuleInfo, FinalInst)
+		;
+			inst_is_ground(ModuleInfo, FinalInst)
+		)
+	),
+	only_fully_in_out_modes(Rest, ModuleInfo).
+
+:- pred only_nonunique_modes(list(mode), module_info).
+:- mode only_nonunique_modes(in, in) is semidet.
+
+only_nonunique_modes([], _).
+only_nonunique_modes([Mode|Rest], ModuleInfo) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	inst_is_not_partly_unique(ModuleInfo, InitialInst),
+	inst_is_not_partly_unique(ModuleInfo, FinalInst),
+	only_nonunique_modes(Rest, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

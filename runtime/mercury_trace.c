@@ -1321,10 +1321,6 @@ MR_trace_lookup_live_lval(MR_Live_Lval locn, bool *succeeded)
 	return value;
 }
 
-/* XXX fix this ref to the library */
-extern	Word	*ML_create_type_info(Word *term_type_info,
-			Word *arg_pseudo_type_info);
-
 static bool
 MR_trace_get_type_and_value(const MR_Stack_Layout_Var *var,
 	Word *type_params, Word *type_info, Word *value)
@@ -1338,7 +1334,7 @@ MR_trace_get_type_and_value(const MR_Stack_Layout_Var *var,
 	}
 
 	pseudo_type_info = MR_LIVE_TYPE_GET_VAR_TYPE(var->MR_slv_live_type);
-	*type_info = (Word) ML_create_type_info(type_params, pseudo_type_info);
+	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
 	*value = MR_trace_lookup_live_lval(var->MR_slv_locn, &succeeded);
 	return succeeded;
 }

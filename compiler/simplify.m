@@ -514,14 +514,15 @@ simplify__goal_2(Goal, GoalInfo, Goal, GoalInfo, Info, Info) :-
 
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = call(PredId, ProcId, Args, IsBuiltin, _, _),
+	simplify_info_get_module_info(Info0, ModuleInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
+		ProcInfo),
 
 	%
 	% check for calls to predicates with `pragma obsolete' declarations
 	%
 	(
 		simplify_do_warn(Info0),
-		simplify_info_get_module_info(Info0, ModuleInfo),
-		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_get_markers(PredInfo, Markers),
 		check_marker(Markers, obsolete),
 		%
@@ -583,8 +584,15 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		proc_info_argmodes(ProcInfo1, ArgModes),
 		simplify_info_get_common_info(Info1, CommonInfo1),
 		simplify__input_args_are_equiv(Args, HeadVars, ArgModes,
-			CommonInfo1, ModuleInfo1)
-	->
+			CommonInfo1, ModuleInfo1),
+
+		% 
+		% Don't count procs using minimal evaluation as they 
+		% should always terminate if they have a finite number
+		% of answers. 
+		%
+		\+ proc_info_eval_method(ProcInfo, eval_minimal)	
+	->	
 		goal_info_get_context(GoalInfo0, Context2),
 		simplify_info_add_msg(Info1, warn_infinite_recursion(Context2),
 				Info2)
