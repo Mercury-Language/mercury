@@ -196,7 +196,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
-	{ copy(OptionTable, OptionTable1) }, % XXX
+	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
 		TypeInfoMethod, PrologDialect, TermNorm),
 

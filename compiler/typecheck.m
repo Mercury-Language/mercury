@@ -2330,7 +2330,7 @@ typecheck_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 	map__init(TypeBindings),
 	FoundTypeError = no,
 	WarnedAboutOverloading = no,
-	copy(IOState0, IOState),	% XXX
+	unsafe_promise_unique(IOState0, IOState),	% XXX
 	TypeCheckInfo = typecheck_info(
 		IOState, ModuleInfo, CallPredId, 0, PredId, Context,
 		unify_context(explicit, []),
@@ -2346,7 +2346,7 @@ typecheck_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 
 typecheck_info_get_io_state(typecheck_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_), 
 		IOState) :-
-	copy(IOState0, IOState).	% XXX
+	unsafe_promise_unique(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
 
@@ -2356,7 +2356,7 @@ typecheck_info_get_io_state(typecheck_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_),
 
 typecheck_info_set_io_state(typecheck_info(_,B,C,D,E,F,G,H,I,J,K,L,M), IOState0,
 			typecheck_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M)) :-
-	copy(IOState0, IOState).	% XXX
+	unsafe_promise_unique(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
 
