@@ -1,11 +1,11 @@
-      E1:     C1  1 CALL pred nondet_stack.main/2-0 (cc_multi) nondet_stack.m:NNNN
+      E1:     C1 CALL pred nondet_stack.main/2-0 (cc_multi) nondet_stack.m:NNNN
 mdb> echo on
 Command echo enabled.
 mdb> context none
 Contexts will not be printed.
 mdb> register --quiet
 mdb> goto 22
-      E2:     C2  6 SWTC pred nondet_stack.qperm/2-0 (nondet) s2;
+      E2:     C2 SWTC pred nondet_stack.qperm/2-0 (nondet) s2;
 mdb> nondet_stack 3
 non 135: ordinary, 13 words
  redoip: unnamed label
@@ -190,7 +190,7 @@ non  10: ordinary, 6 words
  succip: label wrapper_not_reached
  succfr: non   4
 mdb> goto 39
-      E3:     C3  3 CALL pred nondet_stack.safe/1-0 (semidet)
+      E3:     C3 CALL pred nondet_stack.safe/1-0 (semidet)
 mdb> nondet_stack
 non 217: temp
  redoip: label UNKNOWN
@@ -481,7 +481,7 @@ non  10: ordinary, 6 words
 mdb> break nondet_stack__test
  0: + stop  interface pred nondet_stack.test/2-0 (nondet)
 mdb> continue
-      E4:     C4  2 CALL pred nondet_stack.test/2-0 (nondet)
+      E4:     C4 CALL pred nondet_stack.test/2-0 (nondet)
 mdb> nondet_stack
 non 284: ordinary, 12 words
  redoip: unnamed label

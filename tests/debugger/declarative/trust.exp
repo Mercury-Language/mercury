@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred trust.main/2-0 (cc_multi) trust.m:13
+      E1:     C1 CALL pred trust.main/2-0 (cc_multi) trust.m:13
 mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
@@ -60,16 +60,16 @@ Trusted Objects:
 mdb> untrust 99
 mdb: no such trusted object
 mdb> step
-      E2:     C2  2 CALL pred trust.dostuff/2-0 (cc_multi)
+      E2:     C2 CALL pred trust.dostuff/2-0 (cc_multi)
 mdb> finish
-      E3:     C2  2 EXIT pred trust.dostuff/2-0 (cc_multi)
+      E3:     C2 EXIT pred trust.dostuff/2-0 (cc_multi)
 mdb> dd
 dostuff(w("aaabbb"), '=')
 Valid? n
 Found incorrect contour:
 dostuff(w("aaabbb"), '=')
 Is this a bug? y
-      E3:     C2  2 EXIT pred trust.dostuff/2-0 (cc_multi)
+      E3:     C2 EXIT pred trust.dostuff/2-0 (cc_multi)
 mdb> continue
 aaabbb
 '='

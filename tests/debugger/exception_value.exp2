@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred exception_value.main/2-0 (cc_multi) exception_value.m:12
+      E1:     C1 CALL pred exception_value.main/2-0 (cc_multi) exception_value.m:12
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,16 +7,16 @@ mdb> break p
 mdb> break q
  1: + stop  interface pred exception_value.q/1-0 (det)
 mdb> continue
-      E2:     C2  4 CALL pred exception_value.p/1-0 (det) exception_value.m:30 (exception.m:NNNN)
+      E2:     C2 CALL pred exception_value.p/1-0 (det) exception_value.m:30 (exception.m:NNNN)
 mdb> finish
-      E3:     C2  4 EXCP pred exception_value.p/1-0 (det)
+      E3:     C2 EXCP pred exception_value.p/1-0 (det)
 mdb> print exception
 	"p exception"
 mdb> continue
 exception(univ_cons("p exception"))
-      E4:     C3  4 CALL pred exception_value.q/1-0 (det) exception_value.m:35 (exception.m:NNNN)
+      E4:     C3 CALL pred exception_value.q/1-0 (det) exception_value.m:35 (exception.m:NNNN)
 mdb> finish
-      E5:     C3  4 EXCP pred exception_value.q/1-0 (det)
+      E5:     C3 EXCP pred exception_value.q/1-0 (det)
 mdb> browse exception
 browser> set depth 9
 browser> set size 99

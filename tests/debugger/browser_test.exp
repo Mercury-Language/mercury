@@ -1,13 +1,13 @@
-      E1:     C1  1 CALL pred browser_test.main/2-0 (det) browser_test.m:16
+      E1:     C1 CALL pred browser_test.main/2-0 (det) browser_test.m:16
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break big_data
  0: + stop  interface pred browser_test.big_data/1-0 (det)
 mdb> continue
-      E2:     C2  2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:37 (browser_test.m:20)
+      E2:     C2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:37 (browser_test.m:20)
 mdb> finish
-      E3:     C2  2 EXIT pred browser_test.big_data/1-0 (det) browser_test.m:37 (browser_test.m:20)
+      E3:     C2 EXIT pred browser_test.big_data/1-0 (det) browser_test.m:37 (browser_test.m:20)
 mdb> delete *
  0: E stop  interface pred browser_test.big_data/1-0 (det)
 mdb> save_to_file 1 browser_test.save.1
@@ -119,14 +119,14 @@ mdb> print Data/1/2
 mdb> print 1^1^2^3
 mdb: the path 3 does not exist.
 mdb> retry
-      E2:     C2  2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:37 (browser_test.m:20)
+      E2:     C2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:37 (browser_test.m:20)
 mdb> break list_data
  0: + stop  interface pred browser_test.list_data/1-0 (det)
 mdb> continue
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big(small, 5, small)), 6, small)).
-      E4:     C3  2 CALL pred browser_test.list_data/1-0 (det) browser_test.m:66 (browser_test.m:23)
+      E4:     C3 CALL pred browser_test.list_data/1-0 (det) browser_test.m:66 (browser_test.m:23)
 mdb> finish
-      E5:     C3  2 EXIT pred browser_test.list_data/1-0 (det) browser_test.m:66 (browser_test.m:23)
+      E5:     C3 EXIT pred browser_test.list_data/1-0 (det) browser_test.m:66 (browser_test.m:23)
 mdb> save_to_file Data browser_test.save.2
 mdb> break a_func
  1: + stop  interface func browser_test.a_func/1-0 (det)
@@ -186,9 +186,9 @@ seq(
  5
 )
 
-      E6:     C4  2 CALL func browser_test.a_func/1-0 (det) browser_test.m:112 (browser_test.m:31)
+      E6:     C4 CALL func browser_test.a_func/1-0 (det) browser_test.m:112 (browser_test.m:31)
 mdb> finish
-      E7:     C4  2 EXIT func browser_test.a_func/1-0 (det) browser_test.m:112 (browser_test.m:31)
+      E7:     C4 EXIT func browser_test.a_func/1-0 (det) browser_test.m:112 (browser_test.m:31)
 mdb> print -p
 a_func(big(big(...), ...)) = big(big(...), ...)
 mdb> print -r

@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred breakpoints.main/2-0 (cc_multi) breakpoints.m:31
+      E1:     C1 CALL pred breakpoints.main/2-0 (cc_multi) breakpoints.m:31
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -22,7 +22,7 @@ Ambiguous procedure specification. The matches are:
 Which do you want to put a breakpoint on (0-1 or *)? 0
  0: + stop  interface pred breakpoints.data/1-0 (det)
 mdb> continue
-      E2:     C2  3 CALL pred breakpoints.data/1-0 (det) breakpoints.m:58 (breakpoints.m:56)
+      E2:     C2 CALL pred breakpoints.data/1-0 (det) breakpoints.m:58 (breakpoints.m:56)
 mdb> disable 0
  0: - stop  interface pred breakpoints.data/1-0 (det)
 mdb> break info
@@ -91,21 +91,21 @@ mdb> disable 3
 mdb> break nodiag
  0: + stop  interface pred breakpoints.nodiag/3-0 (semidet)
 mdb> continue
-      E3:     C3  3 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:61)
+      E3:     C3 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:61)
 mdb> continue
-      E4:     C3  3 SWTC pred breakpoints.qperm/2-0 (nondet) s2; breakpoints.m:65
+      E4:     C3 SWTC pred breakpoints.qperm/2-0 (nondet) s2; breakpoints.m:65
 mdb> finish -N
-      E5:     C4  4 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
+      E5:     C4 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
 mdb> finish -n
-      E6:     C4  4 EXIT pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
+      E6:     C4 EXIT pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
 mdb> continue
-      E7:     C3  3 EXIT pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:61)
+      E7:     C3 EXIT pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:61)
 mdb> continue
-      E8:     C5  3 CALL pred breakpoints.safe/1-0 (semidet) breakpoints.m:74 (breakpoints.m:62)
+      E8:     C5 CALL pred breakpoints.safe/1-0 (semidet) breakpoints.m:74 (breakpoints.m:62)
 mdb> finish
-      E9:     C6  4 CALL pred breakpoints.nodiag/3-0 (semidet) breakpoints.m:79 (breakpoints.m:76)
-     E10:     C6  4 FAIL pred breakpoints.nodiag/3-0 (semidet) breakpoints.m:79 (breakpoints.m:76)
-     E11:     C5  3 FAIL pred breakpoints.safe/1-0 (semidet) breakpoints.m:74 (breakpoints.m:62)
+      E9:     C6 CALL pred breakpoints.nodiag/3-0 (semidet) breakpoints.m:79 (breakpoints.m:76)
+     E10:     C6 FAIL pred breakpoints.nodiag/3-0 (semidet) breakpoints.m:79 (breakpoints.m:76)
+     E11:     C5 FAIL pred breakpoints.safe/1-0 (semidet) breakpoints.m:74 (breakpoints.m:62)
 mdb> delete *
  0: E stop  interface pred breakpoints.nodiag/3-0 (semidet)
  1: E stop  interface pred breakpoints.qperm/2-0 (nondet)
@@ -127,14 +127,14 @@ mdb> break -i -I3 qperm
  0: + stop  interface pred breakpoints.qperm/2-0 (nondet)
             (ignore next 3 interface events)
 mdb> continue
-     E12:     C7  6 REDO pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
+     E12:     C7 REDO pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> ignore -E4 0
  0: + stop  interface pred breakpoints.qperm/2-0 (nondet)
             (ignore next 4 call events)
 mdb> continue
-     E13:     C8  8 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
+     E13:     C8 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
 mdb> print *
        HeadVar__1             	[]
 mdb> delete *

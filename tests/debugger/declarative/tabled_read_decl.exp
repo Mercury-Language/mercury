@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred tabled_read_decl.main/2-0 (det) tabled_read_decl.m:17
+      E1:     C1 CALL pred tabled_read_decl.main/2-0 (det) tabled_read_decl.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -10,9 +10,9 @@ I/O tabling started.
 mdb> break tabled_read_decl__test
  0: + stop  interface pred tabled_read_decl.test/4-0 (det)
 mdb> continue
-      E2:     C2  3 CALL pred tabled_read_decl.test/4-0 (det)
+      E2:     C2 CALL pred tabled_read_decl.test/4-0 (det)
 mdb> finish -n
-      E3:     C2  3 EXIT pred tabled_read_decl.test/4-0 (det)
+      E3:     C2 EXIT pred tabled_read_decl.test/4-0 (det)
 mdb> print
 test('<<c_pointer>>', 1123, _, state('<<c_pointer>>'))
 mdb> dd -a
@@ -81,7 +81,7 @@ read_char_code('<<c_pointer>>', 50)
 read_char_code('<<c_pointer>>', 51)
 read_char_code('<<c_pointer>>', 10)
 Is this a bug? yes
-      E3:     C2  3 EXIT pred tabled_read_decl.test/4-0 (det)
+      E3:     C2 EXIT pred tabled_read_decl.test/4-0 (det)
 mdb> c -n -S
 1123
 1456

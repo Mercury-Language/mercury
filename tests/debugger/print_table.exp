@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred print_table.main/2-0 (det) print_table.m:13
+      E1:     C1 CALL pred print_table.main/2-0 (det) print_table.m:13
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -9,9 +9,9 @@ mdb> register --quiet
 mdb> b p
  0: + stop  interface pred print_table.p/3-0 (det)
 mdb> c
-      E2:     C2  2 CALL pred print_table.p/3-0 (det)
+      E2:     C2 CALL pred print_table.p/3-0 (det)
 mdb> f -n
-      E3:     C2  2 EXIT pred print_table.p/3-0 (det)
+      E3:     C2 EXIT pred print_table.p/3-0 (det)
 mdb> table p
 memo table for pred print_table.p/3-0 (det):
 <5, 0>: succeeded <0>
@@ -33,9 +33,9 @@ end of table (6 entries)
 mdb> table p 5 2
 <5, 2>: succeeded <15>
 mdb> c
-      E4:     C3  2 CALL pred print_table.p/3-0 (det)
+      E4:     C3 CALL pred print_table.p/3-0 (det)
 mdb> f -n
-      E5:     C3  2 EXIT pred print_table.p/3-0 (det)
+      E5:     C3 EXIT pred print_table.p/3-0 (det)
 mdb> table p
 memo table for pred print_table.p/3-0 (det):
 <4, 0>: succeeded <0>
@@ -70,9 +70,9 @@ end of table (4 entries)
 mdb> table p 4 2
 <4, 2>: succeeded <12>
 mdb> c
-      E6:     C4  2 CALL pred print_table.p/3-0 (det)
+      E6:     C4 CALL pred print_table.p/3-0 (det)
 mdb> f -n
-      E7:     C4  2 EXIT pred print_table.p/3-0 (det)
+      E7:     C4 EXIT pred print_table.p/3-0 (det)
 mdb> table p
 memo table for pred print_table.p/3-0 (det):
 <2, 0>: succeeded <0>
@@ -110,9 +110,9 @@ end of table (4 entries)
 mdb> table p 2 1
 <2, 1>: succeeded <2>
 mdb> c
-      E8:     C5  2 CALL pred print_table.p/3-0 (det)
+      E8:     C5 CALL pred print_table.p/3-0 (det)
 mdb> f -n
-      E9:     C5  2 EXIT pred print_table.p/3-0 (det)
+      E9:     C5 EXIT pred print_table.p/3-0 (det)
 mdb> table p
 memo table for pred print_table.p/3-0 (det):
 <1, 0>: succeeded <0>
@@ -157,9 +157,9 @@ mdb: break point #1 does not exist.
 mdb> b q
  1: + stop  interface pred print_table.q/3-0 (semidet)
 mdb> c
-     E10:     C6  2 CALL pred print_table.q/3-0 (semidet)
+     E10:     C6 CALL pred print_table.q/3-0 (semidet)
 mdb> f -n
-     E11:     C6  2 EXIT pred print_table.q/3-0 (semidet)
+     E11:     C6 EXIT pred print_table.q/3-0 (semidet)
 mdb> table q
 memo table for pred print_table.q/3-0 (semidet):
 <3, 0>: succeeded <0>
@@ -177,9 +177,9 @@ mdb> table q 3 2
 mdb> table q 4
 call table does not contain 4 in argument position 1.
 mdb> c
-     E12:     C7  2 CALL pred print_table.q/3-0 (semidet)
+     E12:     C7 CALL pred print_table.q/3-0 (semidet)
 mdb> f -n
-     E13:     C7  2 FAIL pred print_table.q/3-0 (semidet)
+     E13:     C7 FAIL pred print_table.q/3-0 (semidet)
 mdb> table q
 memo table for pred print_table.q/3-0 (semidet):
 <3, 0>: succeeded <0>
@@ -209,12 +209,12 @@ mdb> delete 1
 mdb> b r
  1: + stop  interface pred print_table.r/2-0 (det)
 mdb> c
-     E14:     C8  2 CALL pred print_table.r/2-0 (det)
+     E14:     C8 CALL pred print_table.r/2-0 (det)
 mdb> table r
 memo table for pred print_table.r/2-0 (det):
 end of table (0 entries)
 mdb> s
-     E15:     C8  2 COND pred print_table.r/2-0 (det)
+     E15:     C8 COND pred print_table.r/2-0 (det)
 mdb> table r
 memo table for pred print_table.r/2-0 (det):
 <3>: working
@@ -222,13 +222,13 @@ end of table (1 entry)
 mdb> table r 3
 <3>: working
 mdb> c
-     E16:     C9  3 CALL pred print_table.r/2-0 (det)
+     E16:     C9 CALL pred print_table.r/2-0 (det)
 mdb> table r
 memo table for pred print_table.r/2-0 (det):
 <3>: working
 end of table (1 entry)
 mdb> f -n
-     E17:     C9  3 EXIT pred print_table.r/2-0 (det)
+     E17:     C9 EXIT pred print_table.r/2-0 (det)
 mdb> table r
 memo table for pred print_table.r/2-0 (det):
 <0>: succeeded <0>
@@ -237,7 +237,7 @@ memo table for pred print_table.r/2-0 (det):
 <3>: working
 end of table (4 entries)
 mdb> f -n 1
-     E18:     C8  2 EXIT pred print_table.r/2-0 (det)
+     E18:     C8 EXIT pred print_table.r/2-0 (det)
 mdb> table r
 memo table for pred print_table.r/2-0 (det):
 <0>: succeeded <0>
@@ -250,20 +250,20 @@ mdb> delete 1
 mdb> b s
  1: + stop  interface pred print_table.s/6-0 (det)
 mdb> c
-     E19:    C10  2 CALL pred print_table.s/6-0 (det)
+     E19:    C10 CALL pred print_table.s/6-0 (det)
 mdb> table s
 memo table for pred print_table.s/6-0 (det):
 end of table (0 entries)
 mdb> f -n
-     E20:    C10  2 EXIT pred print_table.s/6-0 (det)
+     E20:    C10 EXIT pred print_table.s/6-0 (det)
 mdb> table s
 memo table for pred print_table.s/6-0 (det):
 <3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
 end of table (1 entry)
 mdb> c
-     E21:    C11  2 CALL pred print_table.s/6-0 (det)
+     E21:    C11 CALL pred print_table.s/6-0 (det)
 mdb> f -n
-     E22:    C11  2 EXIT pred print_table.s/6-0 (det)
+     E22:    C11 EXIT pred print_table.s/6-0 (det)
 mdb> table s
 memo table for pred print_table.s/6-0 (det):
 <3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
@@ -285,17 +285,17 @@ memo table for pred print_table.s/6-0 (det):
 <3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
 end of table (1 entry)
 mdb> c
-     E23:    C12  2 CALL pred print_table.s/6-0 (det)
+     E23:    C12 CALL pred print_table.s/6-0 (det)
 mdb> f -n
-     E24:    C12  2 EXIT pred print_table.s/6-0 (det)
+     E24:    C12 EXIT pred print_table.s/6-0 (det)
 mdb> c
-     E25:    C13  2 CALL pred print_table.s/6-0 (det)
+     E25:    C13 CALL pred print_table.s/6-0 (det)
 mdb> f -n
-     E26:    C13  2 EXIT pred print_table.s/6-0 (det)
+     E26:    C13 EXIT pred print_table.s/6-0 (det)
 mdb> c
-     E27:    C14  2 CALL pred print_table.s/6-0 (det)
+     E27:    C14 CALL pred print_table.s/6-0 (det)
 mdb> f -n
-     E28:    C14  2 EXIT pred print_table.s/6-0 (det)
+     E28:    C14 EXIT pred print_table.s/6-0 (det)
 mdb> table s
 memo table for pred print_table.s/6-0 (det):
 <3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
@@ -351,18 +351,18 @@ mdb> delete 1
 mdb> b t
  1: + stop  interface pred print_table.t/3-0 (nondet)
 mdb> c
-     E29:    C15  2 CALL pred print_table.t/3-0 (nondet)
+     E29:    C15 CALL pred print_table.t/3-0 (nondet)
 mdb> table t
 memo table for pred print_table.t/3-0 (nondet):
 end of table (0 entries)
 mdb> s
-     E30:    C15  2 DISJ pred print_table.t/3-0 (nondet)
+     E30:    C15 DISJ pred print_table.t/3-0 (nondet)
 mdb> table t
 memo table for pred print_table.t/3-0 (nondet):
 <1, 2>: active
 end of table (1 entry)
 mdb> finish
-     E31:    C15  2 EXIT pred print_table.t/3-0 (nondet)
+     E31:    C15 EXIT pred print_table.t/3-0 (nondet)
 mdb> table t
 memo table for pred print_table.t/3-0 (nondet):
 <1, 2>: incomplete
@@ -373,7 +373,7 @@ mdb> delete 1
 mdb> b tdone
  1: + stop  interface pred print_table.tdone/0-0 (det)
 mdb> c
-     E32:    C16  2 CALL pred print_table.tdone/0-0 (det)
+     E32:    C16 CALL pred print_table.tdone/0-0 (det)
 mdb> table t
 memo table for pred print_table.t/3-0 (nondet):
 <1, 2>: complete

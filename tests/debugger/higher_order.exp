@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred higher_order.main/2-0 (det) higher_order.m:12
+      E1:     C1 CALL pred higher_order.main/2-0 (det) higher_order.m:12
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -7,56 +7,56 @@ mdb> set size 100
 mdb> set depth 100
 mdb> set format flat
 mdb> step
-      E2:     C2  2 CALL pred higher_order.domap/3-0 (det)
+      E2:     C2 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	float_add2(3.00000000000000)
        HeadVar__2             	[1.00000000000000, 2.00000000000000, 3.00000000000000, 4.00000000000000, 5.00000000000000]
 mdb> finish
-      E3:     C2  2 EXIT pred higher_order.domap/3-0 (det)
+      E3:     C2 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	float_add2(3.00000000000000)
        HeadVar__2             	[1.00000000000000, 2.00000000000000, 3.00000000000000, 4.00000000000000, 5.00000000000000]
        HeadVar__3             	[4.00000000000000, 5.00000000000000, 6.00000000000000, 7.00000000000000, 8.00000000000000]
 mdb> step
-      E4:     C3  2 CALL pred higher_order.domap/3-0 (det)
+      E4:     C3 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	float_op3(4.00000000000000, 5.00000000000000)
        HeadVar__2             	[1.00000000000000, 2.00000000000000, 3.00000000000000, 4.00000000000000, 5.00000000000000]
 mdb> finish
-      E5:     C3  2 EXIT pred higher_order.domap/3-0 (det)
+      E5:     C3 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	float_op3(4.00000000000000, 5.00000000000000)
        HeadVar__2             	[1.00000000000000, 2.00000000000000, 3.00000000000000, 4.00000000000000, 5.00000000000000]
        HeadVar__3             	[9.00000000000000, 14.0000000000000, 19.0000000000000, 24.0000000000000, 29.0000000000000]
 mdb> step
-      E6:     C4  2 CALL pred higher_order.domap/3-0 (det)
+      E6:     C4 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	max(3)
        HeadVar__2             	[1, 2, 3, 4, 5]
 mdb> finish
-      E7:     C4  2 EXIT pred higher_order.domap/3-0 (det)
+      E7:     C4 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	max(3)
        HeadVar__2             	[1, 2, 3, 4, 5]
        HeadVar__3             	[3, 3, 3, 4, 5]
 mdb> step
-      E8:     C5  2 CALL pred higher_order.domap/3-0 (det)
+      E8:     C5 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	'IntroducedFrom__pred__main__21__1'([6])
        HeadVar__2             	[[1, 2], [3, 4, 5]]
 mdb> finish
-      E9:     C5  2 EXIT pred higher_order.domap/3-0 (det)
+      E9:     C5 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	'IntroducedFrom__pred__main__21__1'([6])
        HeadVar__2             	[[1, 2], [3, 4, 5]]
        HeadVar__3             	[[6, 1, 2], [6, 3, 4, 5]]
 mdb> step
-     E10:     C6  2 CALL pred higher_order.domap/3-0 (det)
+     E10:     C6 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	'IntroducedFrom__pred__main__22__2'(["a"])
        HeadVar__2             	[["one", "two"], ["three", "four", "five"]]
 mdb> finish
-     E11:     C6  2 EXIT pred higher_order.domap/3-0 (det)
+     E11:     C6 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
        HeadVar__1             	'IntroducedFrom__pred__main__22__2'(["a"])
        HeadVar__2             	[["one", "two"], ["three", "four", "five"]]

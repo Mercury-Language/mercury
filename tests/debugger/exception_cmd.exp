@@ -1,8 +1,8 @@
-      E1:     C1  1 CALL pred exception_cmd.main/2-0 (det) exception_cmd.m:12
+      E1:     C1 CALL pred exception_cmd.main/2-0 (det) exception_cmd.m:12
 mdb> echo on
 Command echo enabled.
 mdb> exception
-      E2:     C2  2 EXCP pred exception_cmd.test/2-0 (det)
+      E2:     C2 EXCP pred exception_cmd.test/2-0 (det)
 mdb> print *
        X (arg 1)              	42
 mdb> continue

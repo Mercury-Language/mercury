@@ -1,13 +1,13 @@
-      E1:     C1  1 CALL pred if_then_else.main/2-0 (det) if_then_else.m:7
+      E1:     C1 CALL pred if_then_else.main/2-0 (det) if_then_else.m:7
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break ite
  0: + stop  interface pred if_then_else.ite/2-0 (det)
 mdb> continue
-      E2:     C2  2 CALL pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+      E2:     C2 CALL pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
 mdb> finish
-      E3:     C2  2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+      E3:     C2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
 mdb> dd
 ite(0, 1)
 Valid? no
@@ -18,12 +18,12 @@ Valid? yes
 Found incorrect contour:
 ite(0, 1)
 Is this a bug? yes
-      E3:     C2  2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+      E3:     C2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
 mdb> continue
 ite(0, 1).
-      E4:     C3  2 CALL pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      E4:     C3 CALL pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
 mdb> finish
-      E5:     C3  2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      E5:     C3 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
 mdb> dd
 ite(1, 0)
 Valid? no
@@ -33,6 +33,6 @@ Complete? yes
 Found incorrect contour:
 ite(1, 0)
 Is this a bug? yes
-      E5:     C3  2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      E5:     C3 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
 mdb> continue
 ite(1, 0).

@@ -1,13 +1,13 @@
-      E1:     C1  1 CALL pred remember_modes.main/2-0 (det) remember_modes.m:37
+      E1:     C1 CALL pred remember_modes.main/2-0 (det) remember_modes.m:37
 mdb> Contexts will not be printed.
 mdb> mdb> echo on
 Command echo enabled.
 mdb> break q
  0: + stop  interface pred remember_modes.q/5-0 (semidet)
 mdb> continue
-      E2:     C2  2 CALL pred remember_modes.q/5-0 (semidet)
+      E2:     C2 CALL pred remember_modes.q/5-0 (semidet)
 mdb> finish
-      E3:     C2  2 EXIT pred remember_modes.q/5-0 (semidet)
+      E3:     C2 EXIT pred remember_modes.q/5-0 (semidet)
 mdb> dd
 q(1, 1, 2, 1, 2)
 Valid? no
@@ -16,7 +16,7 @@ Valid? yes
 Found incorrect contour:
 q(1, 1, 2, 1, 2)
 Is this a bug? yes
-      E3:     C2  2 EXIT pred remember_modes.q/5-0 (semidet)
+      E3:     C2 EXIT pred remember_modes.q/5-0 (semidet)
 mdb> continue
 1
 2

@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred propositional.main/2-0 (det) propositional.m:13
+      E1:     C1 CALL pred propositional.main/2-0 (det) propositional.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,9 +7,9 @@ mdb> break a
 mdb> break b
  1: + stop  interface pred propositional.b/0-0 (semidet)
 mdb> continue
-      E2:     C2  2 CALL pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
+      E2:     C2 CALL pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
 mdb> finish
-      E3:     C2  2 EXIT pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
+      E3:     C2 EXIT pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
 mdb> dd
 a
 Valid? no
@@ -18,11 +18,11 @@ Valid? yes
 Found incorrect contour:
 a
 Is this a bug? yes
-      E3:     C2  2 EXIT pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
+      E3:     C2 EXIT pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
 mdb> continue
-      E4:     C3  2 CALL pred propositional.b/0-0 (semidet) propositional.m:29 (propositional.m:10)
+      E4:     C3 CALL pred propositional.b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> finish
-      E5:     C3  2 EXIT pred propositional.b/0-0 (semidet) propositional.m:29 (propositional.m:10)
+      E5:     C3 EXIT pred propositional.b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> dd
 b
 Valid? no
@@ -33,8 +33,8 @@ Valid? yes
 Found incorrect contour:
 f
 Is this a bug? yes
-      E6:     C4  3 EXIT pred propositional.f/0-0 (semidet) propositional.m:35 (propositional.m:29)
+      E6:     C4 EXIT pred propositional.f/0-0 (semidet) propositional.m:35 (propositional.m:29)
 mdb> continue
-      E5:     C3  2 EXIT pred propositional.b/0-0 (semidet) propositional.m:29 (propositional.m:10)
+      E5:     C3 EXIT pred propositional.b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> continue
 yes

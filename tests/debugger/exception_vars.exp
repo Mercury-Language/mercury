@@ -1,10 +1,10 @@
-      E1:     C1  1 CALL pred exception_vars.main/2-0 (det) exception_vars.m:12
+      E1:     C1 CALL pred exception_vars.main/2-0 (det) exception_vars.m:12
 mdb> echo on
 Command echo enabled.
 mdb> goto 2
-      E2:     C2  2 CALL pred exception_vars.test/2-0 (det) exception_vars.m:19 (exception_vars.m:12)
+      E2:     C2 CALL pred exception_vars.test/2-0 (det) exception_vars.m:19 (exception_vars.m:12)
 mdb> finish
-      E3:     C2  2 EXCP pred exception_vars.test/2-0 (det)
+      E3:     C2 EXCP pred exception_vars.test/2-0 (det)
 mdb> print *
        X (arg 1)              	42
 mdb> continue
