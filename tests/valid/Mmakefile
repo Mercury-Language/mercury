@@ -62,6 +62,7 @@ OTHER_SOURCES= \
 	indexing.m \
 	inhibit_warn_test.m \
 	inlining_bug.m \
+	inst_perf_bug_1.m \
 	int64.m \
 	intermod_impure.m \
 	intermod_lambda.m \
@@ -139,6 +140,7 @@ OTHER_SOURCES= \
 #	assoc_list.m
 #	determinism.m
 #	mode_merge_insts.m
+#	inst_perf_bug_2.m
 
 
 # Base grades `jump' and `fast'

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1390,56 +1390,65 @@ merge_uniq(UniqA, UniqB, Merged) :-
 
 merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq) :-
 	merge_uniq(UniqA, UniqB, Uniq0),
-	set__init(Expansions),
-	merge_bound_inst_list_uniq(ListB, Uniq0, ModuleInfo, Expansions, Uniq).
+	set__init(Expansions0),
+	merge_bound_inst_list_uniq(ListB, Uniq0, ModuleInfo,
+		Expansions0, _Expansions, Uniq).
 
 :- pred merge_bound_inst_list_uniq(list(bound_inst), uniqueness, module_info,
-			set(inst_name), uniqueness).
-:- mode merge_bound_inst_list_uniq(in, in, in, in, out) is det.
+			set(inst_name), set(inst_name), uniqueness).
+:- mode merge_bound_inst_list_uniq(in, in, in, in, out, out) is det.
 
-merge_bound_inst_list_uniq([], Uniq, _, _, Uniq).
+merge_bound_inst_list_uniq([], Uniq, _, Expansions, Expansions, Uniq).
 merge_bound_inst_list_uniq([BoundInst | BoundInsts], Uniq0,
-			ModuleInfo, Expansions, Uniq) :-
+			ModuleInfo, Expansions0, Expansions, Uniq) :-
 	BoundInst = functor(_ConsId, ArgInsts),
-	merge_inst_list_uniq(ArgInsts, Uniq0, ModuleInfo, Expansions, Uniq1),
-	merge_bound_inst_list_uniq(BoundInsts, Uniq1, ModuleInfo, Expansions,
-		Uniq).
+	merge_inst_list_uniq(ArgInsts, Uniq0, ModuleInfo,
+		Expansions0, Expansions1, Uniq1),
+	merge_bound_inst_list_uniq(BoundInsts, Uniq1, ModuleInfo,
+		Expansions1, Expansions, Uniq).
 
 :- pred merge_inst_list_uniq(list(inst), uniqueness, module_info,
-			set(inst_name), uniqueness).
-:- mode merge_inst_list_uniq(in, in, in, in, out) is det.
+			set(inst_name), set(inst_name), uniqueness).
+:- mode merge_inst_list_uniq(in, in, in, in, out, out) is det.
 
-merge_inst_list_uniq([], Uniq, _, _, Uniq).
-merge_inst_list_uniq([Inst | Insts], Uniq0, ModuleInfo, Expansions, Uniq) :-
-	merge_inst_uniq(Inst, Uniq0, ModuleInfo, Expansions, Uniq1),
-	merge_inst_list_uniq(Insts, Uniq1, ModuleInfo, Expansions, Uniq).
+merge_inst_list_uniq([], Uniq, _, Expansions, Expansions, Uniq).
+merge_inst_list_uniq([Inst | Insts], Uniq0, ModuleInfo,
+		Expansions0, Expansions, Uniq) :-
+	merge_inst_uniq(Inst, Uniq0, ModuleInfo, Expansions0, Expansions1,
+		Uniq1),
+	merge_inst_list_uniq(Insts, Uniq1, ModuleInfo, Expansions1, Expansions,
+		Uniq).
 
-:- pred merge_inst_uniq(inst, uniqueness, module_info, set(inst_name),
-			uniqueness).
-:- mode merge_inst_uniq(in, in, in, in, out) is det.
+:- pred merge_inst_uniq(inst, uniqueness, module_info,
+		set(inst_name), set(inst_name), uniqueness).
+:- mode merge_inst_uniq(in, in, in, in, out, out) is det.
 
-merge_inst_uniq(any(UniqA), UniqB, _, _, Uniq) :-
+merge_inst_uniq(any(UniqA), UniqB, _, Expansions, Expansions, Uniq) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-merge_inst_uniq(free, Uniq, _, _, Uniq).
-merge_inst_uniq(free(_), Uniq, _, _, Uniq).
-merge_inst_uniq(bound(UniqA, ListA), UniqB, ModuleInfo, Expansions, Uniq) :-
+merge_inst_uniq(free, Uniq, _, Expansions, Expansions, Uniq).
+merge_inst_uniq(free(_), Uniq, _, Expansions, Expansions, Uniq).
+merge_inst_uniq(bound(UniqA, ListA), UniqB, ModuleInfo,
+		Expansions0, Expansions, Uniq) :-
 	merge_uniq(UniqA, UniqB, Uniq0),
-	merge_bound_inst_list_uniq(ListA, Uniq0, ModuleInfo, Expansions, Uniq).
-merge_inst_uniq(ground(UniqA, _), UniqB, _, _, Uniq) :-
+	merge_bound_inst_list_uniq(ListA, Uniq0, ModuleInfo,
+		Expansions0, Expansions, Uniq).
+merge_inst_uniq(ground(UniqA, _), UniqB, _, Expansions, Expansions, Uniq) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-merge_inst_uniq(abstract_inst(_,_), UniqB, _, _, Uniq) :-
+merge_inst_uniq(abstract_inst(_,_), UniqB, _, Expansions, Expansions, Uniq) :-
 	merge_uniq(shared, UniqB, Uniq).
-merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo, Expansions,
-		Uniq) :-
-	( set__member(InstName, Expansions) ->
-		Uniq = UniqB
+merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo,
+		Expansions0, Expansions, Uniq) :-
+	( set__member(InstName, Expansions0) ->
+		Uniq = UniqB,
+		Expansions = Expansions0
 	;
-		set__insert(Expansions, InstName, Expansions1),
+		set__insert(Expansions0, InstName, Expansions1),
 		inst_lookup(ModuleInfo, InstName, Inst),
-		merge_inst_uniq(Inst, UniqB, ModuleInfo, Expansions1, Uniq)
+		merge_inst_uniq(Inst, UniqB, ModuleInfo,
+			Expansions1, Expansions, Uniq)
 	).
-merge_inst_uniq(not_reached, Uniq, _, _, Uniq).
-merge_inst_uniq(inst_var(_), _, _, _, _) :-
+merge_inst_uniq(not_reached, Uniq, _, Expansions, Expansions, Uniq).
+merge_inst_uniq(inst_var(_), _, _, Expansions, Expansions, _) :-
 	error("merge_inst_uniq: unexpected inst_var").
 
 %-----------------------------------------------------------------------------%
