@@ -126,6 +126,7 @@ case $HOST in
 			# forever to compile with --intermodule-optimization
 			# and --deforestation), so disable it for now.
 	earth)		OPTIMIZE="-O5 --intermodule-optimization --no-deforestation" ;;
+	mars)		OPTIMIZE=-O5 ;;
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
 	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
 esac
@@ -170,7 +171,7 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 
 case $HOST in
-	hg|ender|roy|venus|earth) 	
+	hg|ender|roy|venus|earth|mars) 	
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -222,13 +223,14 @@ case $HOST in
 	roy) 		PARALLEL= ;; 	# one CPU
 	venus) 		PARALLEL= ;; 	# one CPU
 	earth) 		PARALLEL= ;; 	# one CPU
+	mars) 		PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
-	hg|ender|roy|venus)
-		# XXX Add earth to the list above once a compiler
+	hg|ender|roy|venus|earth)
+		# XXX Add mars to the list above once a compiler
 		# is installed there.
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
@@ -407,7 +409,7 @@ case $HOST in
 		;;
 esac
 case $HOST in
-	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender|earth)
+	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender|earth|mars)
 		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
@@ -556,7 +558,7 @@ case $HOST in
 		# requires --enable-all-grades
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	hg|quicksilver|hydra|ender|kryten|taifun|venus|earth)
+	hg|quicksilver|hydra|ender|kryten|taifun|venus|earth|mars)
 		case "$C_COMPILER" in
 			gcc)	GRADES="asm_fast.gc.tr" ;;
 			*)	GRADES="" ;;
@@ -687,6 +689,12 @@ case $HOST in
 		;;
 
 	earth)	GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			hlc.gc hlc.par.gc"
+		;;
+
+	mars)	GRADES="asm_fast.gc asm_fast
 			asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
 			hlc.gc hlc.par.gc"
@@ -827,6 +835,9 @@ case $HOST in
 		;;
 	earth)	
 		fullname=i686-pc-linux-libc2.1-gnu-O5-intermod
+		;;
+	mars)	
+		fullname=i686-pc-linux-libc2.1-gnu-O5
 		;;
 	roy)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
