@@ -391,6 +391,11 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% hence not set up a stack frame.
 	option_implies(typeinfo_liveness, middle_rec, bool(no)),
 
+	% XXX value numbering implements the wrong semantics for LLDS
+	% operations involving tickets, which are generated only with
+	% --use-trail.
+	option_implies(use_trail, optimize_value_number, bool(no)),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),
