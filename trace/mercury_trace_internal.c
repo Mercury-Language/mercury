@@ -567,6 +567,15 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	layout = event_info->MR_event_sll;
 	saved_regs = event_info->MR_saved_regs;
 
+	/*
+	** The code for many commands calls getopt, and getopt may print to
+	** stderr. We flush MR_mdb_out here to make sure that all normal output
+	** so far (including the echoed command, if echoing is turned on) gets
+	** output first.
+	*/
+
+	fflush(MR_mdb_out);
+
 	if (streq(words[0], "step")) {
 		int	n;
 
