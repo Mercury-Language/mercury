@@ -294,7 +294,6 @@ switch_util__switch_priority(shared_with_reserved_addresses(RAs, Tag), N) :-
 	N = N0 + list__length(RAs).
 	% The following tags should all never occur in switches.
 switch_util__switch_priority(pred_closure_tag(_, _, _), 6).
-switch_util__switch_priority(code_addr_constant(_, _), 6).
 switch_util__switch_priority(type_ctor_info_constant(_, _, _), 6).
 switch_util__switch_priority(base_typeclass_info_constant(_, _, _), 6).
 switch_util__switch_priority(tabling_pointer_constant(_, _), 6).

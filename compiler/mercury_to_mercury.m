@@ -1581,17 +1581,6 @@ mercury_format_cons_id(pred_const(PredId, ProcId, EvalMethod), _) -->
 	add_string(", "),
 	add_lambda_eval_method(EvalMethod),
 	add_string(")>").
-mercury_format_cons_id(code_addr_const(PredId, ProcId), _) -->
-	% XXX Sufficient, but probably should print this out in
-	%     name/arity form.
-
-	{ pred_id_to_int(PredId, PredInt) },
-	{ proc_id_to_int(ProcId, ProcInt) },
-	add_string("<code_addr_const("),
-	add_int(PredInt),
-	add_string(", "),
-	add_int(ProcInt),
-	add_string(")>").
 mercury_format_cons_id(type_ctor_info_const(Module, Type, Arity), _) -->
 	{ prog_out__sym_name_to_string(Module, ModuleString) },
 	{ string__int_to_string(Arity, ArityString) },

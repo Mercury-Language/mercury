@@ -50,7 +50,6 @@ are_equivalence_types_expanded(ModuleInfo) :-
 cons_id_to_tag(int_const(X), _, _) = int_constant(X).
 cons_id_to_tag(float_const(X), _, _) = float_constant(X).
 cons_id_to_tag(string_const(X), _, _) = string_constant(X).
-cons_id_to_tag(code_addr_const(P,M), _, _) = code_addr_constant(P,M).
 cons_id_to_tag(pred_const(P,M,E), _, _) = pred_closure_tag(P,M,E).
 cons_id_to_tag(type_ctor_info_const(M,T,A), _, _) =
 		type_ctor_info_constant(M,T,A).

@@ -328,7 +328,6 @@ hlds_out__cons_id_to_string(string_const(String), S) :-
 
 hlds_out__cons_id_to_string(float_const(_), "<float>").
 hlds_out__cons_id_to_string(pred_const(_, _, _), "<pred>").
-hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
 hlds_out__cons_id_to_string(type_ctor_info_const(_, _, _), "<type_ctor_info>").
 hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
 	"<base_typeclass_info>").
@@ -348,8 +347,6 @@ hlds_out__write_cons_id(float_const(Float)) -->
 	io__write_float(Float).
 hlds_out__write_cons_id(pred_const(_PredId, _ProcId, _)) -->
 	io__write_string("<pred>").
-hlds_out__write_cons_id(code_addr_const(_PredId, _ProcId)) -->
-	io__write_string("<code_addr>").
 hlds_out__write_cons_id(type_ctor_info_const(_, _, _)) -->
 	io__write_string("<type_ctor_info>").
 hlds_out__write_cons_id(base_typeclass_info_const(_, _, _, _)) -->
@@ -2461,11 +2458,6 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 			cons(qualified(PredModule, PredName),
 				list__length(ArgVars)),
 			ArgVars, VarSet, ModuleInfo, AppendVarnums)
-	;
-		{ ConsId = code_addr_const(PredId, ProcId) },
-		io__write_string("code_addr_const("),
-		hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId),
-		io__write_string(")")
 	;
 		{ ConsId = type_ctor_info_const(Module, Name, Arity) },
 		io__write_string("type_ctor_info("""),

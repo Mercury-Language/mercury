@@ -507,9 +507,6 @@ rl_exprn__set_term_arg_cons_id_code(string_const(Str), _, TupleNum, FieldNum,
 	}.
 rl_exprn__set_term_arg_cons_id_code(pred_const(_, _, _), _, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
-rl_exprn__set_term_arg_cons_id_code(code_addr_const(_, _),
-		_, _, _, _, _, _) -->
-	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 rl_exprn__set_term_arg_cons_id_code(type_ctor_info_const(_, _, _),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
@@ -1153,9 +1150,6 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 	; 
 		{ ConsId = pred_const(_, _, _) },
 		{ error("rl_exprn__unify: unsupported cons_id - pred_const") }
-	; 
-		{ ConsId = code_addr_const(_, _) },
-		{ error("rl_exprn__unify: unsupported cons_id - code_addr_const") }
 	; 
 		{ ConsId = type_ctor_info_const(_, _, _) },
 		% XXX for now we ignore these and hope it doesn't matter.

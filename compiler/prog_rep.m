@@ -101,8 +101,6 @@ prog_rep__represent_cons_id(string_const(String), Rep) :-
 	string__append_list(["""", String, """"], Rep).
 prog_rep__represent_cons_id(pred_const(_, _, _), Rep) :-
 	Rep = "$pred_const".
-prog_rep__represent_cons_id(code_addr_const(_, _), Rep) :-
-	Rep = "$code_addr_const".
 prog_rep__represent_cons_id(type_ctor_info_const(_, _, _), Rep) :-
 	Rep = "$type_ctor_info_const".
 prog_rep__represent_cons_id(base_typeclass_info_const(_, _, _, _), Rep) :-

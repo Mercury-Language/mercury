@@ -737,12 +737,6 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			sorry(this_file, "bytecode for Aditi lambda expressions")
 		)
 	;
-		ConsId = code_addr_const(PredId, ProcId),
-		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
-		proc_id_to_int(ProcId, ProcInt),
-		ByteConsId = code_addr_const(ModuleName, PredName, Arity,
-			ProcInt)
-	;
 		ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
 		ByteConsId = type_ctor_info_const(ModuleName, TypeName,
 			TypeArity)
@@ -780,8 +774,6 @@ bytecode_gen__map_cons_tag(float_constant(_), _) :-
 	unexpected(this_file, "float_constant cons tag for non-float_constant cons id").
 bytecode_gen__map_cons_tag(pred_closure_tag(_, _, _), _) :-
 	unexpected(this_file, "pred_closure_tag cons tag for non-pred_const cons id").
-bytecode_gen__map_cons_tag(code_addr_constant(_, _), _) :-
-	unexpected(this_file, "code_addr_constant cons tag for non-address_const cons id").
 bytecode_gen__map_cons_tag(type_ctor_info_constant(_, _, _), _) :-
 	unexpected(this_file, "type_ctor_info_constant cons tag for non-type_ctor_info_constant cons id").
 bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-

@@ -255,10 +255,6 @@ unify_gen__generate_tag_test_rval_2(pred_closure_tag(_, _, _), _Rval,
 	% This should never happen, since the error will be detected
 	% during mode checking.
 	error("Attempted higher-order unification").
-unify_gen__generate_tag_test_rval_2(code_addr_constant(_, _), _Rval,
-		_TestRval) :-
-	% This should never happen
-	error("Attempted code_addr unification").
 unify_gen__generate_tag_test_rval_2(type_ctor_info_constant(_, _, _), _, _) :-
 	% This should never happen
 	error("Attempted type_ctor_info unification").
@@ -449,16 +445,6 @@ unify_gen__generate_construction_2(table_io_decl_tag(RttiProcLabel),
 	),
 	{ DataAddr = layout_addr(table_io_decl(RttiProcLabel)) },
 	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
-unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
-		Var, Args, _Modes, _, _, empty) -->
-	( { Args = [] } ->
-		[]
-	;
-		{ error("unify_gen: address constant has args") }
-	),
-	code_info__get_module_info(ModuleInfo),
-	code_info__make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
-	code_info__assign_const_to_var(Var, const(code_addr_const(CodeAddr))).
 unify_gen__generate_construction_2(reserved_address(RA),
 		Var, Args, _Modes, _, _, empty) -->
 	( { Args = [] } ->
@@ -815,9 +801,6 @@ unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code) -->
 		{ Code = empty }
 	;
 		{ Tag = pred_closure_tag(_, _, _) },
-		{ Code = empty }
-	;
-		{ Tag = code_addr_constant(_, _) },
 		{ Code = empty }
 	;
 		{ Tag = type_ctor_info_constant(_, _, _) },

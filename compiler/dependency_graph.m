@@ -505,19 +505,6 @@ dependency_graph__add_arcs_in_cons(pred_const(Pred, Proc, _), Caller,
 	;
 		true
 	).
-dependency_graph__add_arcs_in_cons(code_addr_const(Pred, Proc), Caller,
-		!DepGraph) :-
-	(
-			% If the node isn't in the relation, then
-			% we didn't insert it because is was imported,
-			% and we don't consider it.
-		relation__search_element(!.DepGraph,
-			dependency_node(proc(Pred, Proc)), Callee)
-	->
-		relation__add(!.DepGraph, Caller, Callee, !:DepGraph)
-	;
-		true
-	).
 dependency_graph__add_arcs_in_cons(type_ctor_info_const(_, _, _),
 		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(base_typeclass_info_const(_, _, _, _),

@@ -498,9 +498,6 @@ dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 			ConsId = pred_const(PredId, ProcId, _),
 			Entity = proc(PredId, ProcId)
 		;
-			ConsId = code_addr_const(PredId, ProcId),
-			Entity = proc(PredId, ProcId)
-		;
 			ConsId = type_ctor_info_const(Module, TypeName, Arity),
 			Entity = base_gen_info(Module, TypeName, Arity)
 		)

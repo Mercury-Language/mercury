@@ -449,9 +449,6 @@ ml_gen_constant(deep_profiling_proc_static_tag(_), _, _) -->
 ml_gen_constant(table_io_decl_tag(_), _, _) -->
 	{ error("ml_gen_constant: table_io_decl_tag not yet supported") }.
 
-ml_gen_constant(code_addr_constant(PredId, ProcId), _, ProcAddrRval) -->
-	ml_gen_proc_addr_rval(PredId, ProcId, ProcAddrRval).
-
 ml_gen_constant(reserved_address(ReservedAddr), VarType, Rval) -->
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
@@ -1329,9 +1326,6 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
 		{ Tag = pred_closure_tag(_, _, _) },
 		{ MLDS_Statements = [] }
 	;
-		{ Tag = code_addr_constant(_, _) },
-		{ MLDS_Statements = [] }
-	;
 		{ Tag = type_ctor_info_constant(_, _, _) },
 		{ MLDS_Statements = [] }
 	;
@@ -1442,9 +1436,6 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
 		error("ml_tag_offset_and_argnum")
 	;
 		Tag = pred_closure_tag(_, _, _),
-		error("ml_tag_offset_and_argnum")
-	;
-		Tag = code_addr_constant(_, _),
 		error("ml_tag_offset_and_argnum")
 	;
 		Tag = type_ctor_info_constant(_, _, _),
@@ -1778,9 +1769,6 @@ ml_gen_tag_test_rval(pred_closure_tag(_, _, _), _, _, _Rval) = _TestRval :-
 	% This should never happen, since the error will be detected
 	% during mode checking.
 	error("Attempted higher-order unification").
-ml_gen_tag_test_rval(code_addr_constant(_, _), _, _, _Rval) = _TestRval :-
-	% This should never happen
-	error("Attempted code_addr unification").
 ml_gen_tag_test_rval(type_ctor_info_constant(_, _, _), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted type_ctor_info unification").

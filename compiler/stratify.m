@@ -785,13 +785,7 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), Calls,
 		% been transformed to lambda goals. see above
 		Unification = construct(_Var2, ConsId, _, _, _, _, _)
 	->
-		(
-			(
-				ConsId = pred_const(PredId, ProcId, _)
-			;
-				ConsId = code_addr_const(PredId, ProcId)
-			)
-		->
+		( ConsId = pred_const(PredId, ProcId, _) ->
 			set__insert(HasAT0, proc(PredId, ProcId), HasAT)
 		;
 			HasAT = HasAT0
@@ -886,13 +880,7 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), Calls0,
 		% been transformed to lambda goals see above
 		Unification = construct(_Var2, ConsId, _, _, _, _, _)
 	->
-		(
-			(
-				ConsId = pred_const(PredId, ProcId, _)
-			;
-				ConsId = code_addr_const(PredId, ProcId)
-			)
-		->
+		( ConsId = pred_const(PredId, ProcId, _) ->
 			Calls =  [proc(PredId, ProcId) | Calls0]
 		;
 			Calls = Calls0

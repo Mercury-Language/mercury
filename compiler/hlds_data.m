@@ -37,17 +37,12 @@
 	;	int_const(int)
 	;	string_const(string)
 	;	float_const(float)
-	;	pred_const(pred_id, proc_id,
-			lambda_eval_method)
-	;	code_addr_const(pred_id, proc_id)
-		% No longer used. code_addr_const cons_ids
-		% were once used to construct type_infos.
-		% Note that a pred_const is for a closure
-		% whereas a code_addr_const is just an address.
+	;	pred_const(pred_id, proc_id, lambda_eval_method)
+		% Note that a pred_const represents a closure,
+		% not just a code address.
 	;	type_ctor_info_const(module_name, string, int)
 		% module name, type name, type arity
-	;	base_typeclass_info_const(module_name,
-			class_id, int, string)
+	;	base_typeclass_info_const(module_name, class_id, int, string)
 		% module name of instance declaration
 		% (not filled in so that link errors result
 		% from overlapping instances),
@@ -132,14 +127,13 @@
 	% Various predicates for accessing the cons_id type.
 
 	% Given a cons_id and a list of argument terms, convert it into a
-	% term. Fails if the cons_id is a pred_const, code_addr_const or
-	% type_ctor_info_const.
+	% term. Fails if the cons_id is a pred_const, or type_ctor_info_const.
 
 :- pred cons_id_and_args_to_term(cons_id, list(term(T)), term(T)).
 :- mode cons_id_and_args_to_term(in, in, out) is semidet.
 
-	% Get the arity of a cons_id, aborting on pred_const, code_addr_const
-	% and type_ctor_info_const.
+	% Get the arity of a cons_id, aborting on pred_const and
+	% type_ctor_info_const.
 
 :- pred cons_id_arity(cons_id, arity).
 :- mode cons_id_arity(in, out) is det.
@@ -201,8 +195,6 @@ cons_id_arity(string_const(_), 0).
 cons_id_arity(float_const(_), 0).
 cons_id_arity(pred_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of pred_const").
-cons_id_arity(code_addr_const(_, _), _) :-
-	error("cons_id_arity: can't get arity of code_addr_const").
 cons_id_arity(type_ctor_info_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of type_ctor_info_const").
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
@@ -219,7 +211,6 @@ cons_id_maybe_arity(int_const(_), yes(0)).
 cons_id_maybe_arity(string_const(_), yes(0)).
 cons_id_maybe_arity(float_const(_), yes(0)).
 cons_id_maybe_arity(pred_const(_, _, _), no) .
-cons_id_maybe_arity(code_addr_const(_, _), no).
 cons_id_maybe_arity(type_ctor_info_const(_, _, _), no) .
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _), no).
 cons_id_maybe_arity(tabling_pointer_const(_, _), no).
@@ -382,11 +373,6 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 			% hold the number of args and the address of
 			% the procedure respectively.
 			% The remaining words hold the arguments.
-	;	code_addr_constant(pred_id, proc_id)
-			% Procedure address constants
-			% (used for constructing type_infos).
-			% The word just contains the address of the
-			% specified procedure.
 	;	type_ctor_info_constant(module_name, string, arity)
 			% This is how we refer to type_ctor_info structures
 			% represented as global data. The args are
@@ -512,7 +498,6 @@ get_primary_tag(string_constant(_)) = no.
 get_primary_tag(float_constant(_)) = no.
 get_primary_tag(int_constant(_)) = no.
 get_primary_tag(pred_closure_tag(_, _, _)) = no.
-get_primary_tag(code_addr_constant(_, _)) = no.
 get_primary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_primary_tag(base_typeclass_info_constant(_, _, _)) = no.
 get_primary_tag(tabling_pointer_constant(_, _)) = no.
@@ -532,7 +517,6 @@ get_secondary_tag(string_constant(_)) = no.
 get_secondary_tag(float_constant(_)) = no.
 get_secondary_tag(int_constant(_)) = no.
 get_secondary_tag(pred_closure_tag(_, _, _)) = no.
-get_secondary_tag(code_addr_constant(_, _)) = no.
 get_secondary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_secondary_tag(base_typeclass_info_constant(_, _, _)) = no.
 get_secondary_tag(tabling_pointer_constant(_, _)) = no.
