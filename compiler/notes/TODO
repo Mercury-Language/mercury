@@ -5,8 +5,16 @@ semideterministic and nondeterministic code generation
 
 types with constants only (enumerations) should be handled as ints.
 
+mercury_to_goedel.nl
+--------------------
+see comments at the start of that file
+
 other
 -----
+
+replace all instances of term_functor, term_atom, term_string, term_float,
+term_int, term_variable with term__functor, term__atom, term__string,
+term__float, term__variable respectively.
 
 finish type checking (see typecheck.nl for details)
 
