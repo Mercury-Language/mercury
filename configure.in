@@ -1799,7 +1799,7 @@ else
 fi
 ])
 AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)	
-AC_DEFINE(AS)
+AC_SUBST(AS)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
 AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
