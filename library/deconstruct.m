@@ -224,7 +224,7 @@
 
 :- implementation.
 
-:- import_module int, require.
+:- import_module int, require, rtti_implementation.
 
 %-----------------------------------------------------------------------------%
 
