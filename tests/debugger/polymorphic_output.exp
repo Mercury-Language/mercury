@@ -5,11 +5,11 @@ mdb> register --quiet
 mdb> context none
 Contexts will not be printed.
 mdb> b functor_names
- 0: + stop  interface func polymorphic_output:functor_names/2-0 (det)
+ 0: + stop  interface func polymorphic_output:functor_names/1-0 (det)
 mdb> c
-       2:      2  2 CALL func polymorphic_output:functor_names/2-0 (det)
+       2:      2  2 CALL func polymorphic_output:functor_names/1-0 (det)
 mdb> delete 0
- 0: E stop  interface func polymorphic_output:functor_names/2-0 (det)
+ 0: E stop  interface func polymorphic_output:functor_names/1-0 (det)
 mdb> p goal
 functor_names(two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))) = _
 mdb> set format verbose

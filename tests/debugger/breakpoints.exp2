@@ -1,0 +1,147 @@
+       1:      1  1 CALL pred breakpoints:main/2-0 (cc_multi) breakpoints.m:17
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break data
+Ambiguous procedure specification. The matches are:
+0: pred breakpoints:data/1-0 (det)
+1: func breakpoints:data/0-0 (det)
+
+Which do you want to put a breakpoint on (0-1 or *)? *
+ 0: + stop  interface pred breakpoints:data/1-0 (det)
+ 1: + stop  interface func breakpoints:data/0-0 (det)
+mdb> delete 0
+ 0: E stop  interface pred breakpoints:data/1-0 (det)
+mdb> delete 1
+ 1: E stop  interface func breakpoints:data/0-0 (det)
+mdb> break data
+Ambiguous procedure specification. The matches are:
+0: pred breakpoints:data/1-0 (det)
+1: func breakpoints:data/0-0 (det)
+
+Which do you want to put a breakpoint on (0-1 or *)? 0
+ 0: + stop  interface pred breakpoints:data/1-0 (det)
+mdb> continue
+       3:      3  3 CALL pred breakpoints:data/1-0 (det) breakpoints.m:44 (breakpoints.m:42)
+mdb> disable 0
+ 0: - stop  interface pred breakpoints:data/1-0 (det)
+mdb> break info
+ 0: - stop  interface pred breakpoints:data/1-0 (det)
+mdb> break qperm
+ 1: + stop  interface pred breakpoints:qperm/2-0 (nondet)
+mdb> break safe
+ 2: + stop  interface pred breakpoints:safe/1-0 (semidet)
+mdb> break -e qperm
+ 3: + stop      entry pred breakpoints:qperm/2-0 (nondet)
+mdb> break -a qperm
+ 4: + stop        all pred breakpoints:qperm/2-0 (nondet)
+mdb> break /
+Ambiguous procedure specification. The matches are:
+0: func breakpoints://2-0 (det)
+1: func breakpoints:print_list://2-0 (det)
+2: func float://2-0 (det)
+3: func rational://2-0 (det)
+
+Which do you want to put a breakpoint on (0-3 or *)? 0
+ 5: + stop  interface func breakpoints://2-0 (det)
+mdb> break //2
+Ambiguous procedure specification. The matches are:
+0: func breakpoints://2-0 (det)
+1: func breakpoints:print_list://2-0 (det)
+2: func float://2-0 (det)
+3: func rational://2-0 (det)
+
+Which do you want to put a breakpoint on (0-3 or *)? 0
+ 6: + stop  interface func breakpoints://2-0 (det)
+mdb> break breakpoints:print_list:-/2
+ 7: + stop  interface func breakpoints:print_list:-/2-0 (det)
+mdb> break breakpoints:print_list:--0
+ 8: + stop  interface func breakpoints:print_list:-/2-0 (det)
+mdb> break breakpoints__print_list__/-0
+ 9: + stop  interface func breakpoints:print_list://2-0 (det)
+mdb> break breakpoints__print_list__print_list
+10: + stop  interface pred breakpoints:print_list:print_list/3-0 (det)
+mdb> break breakpoints:print_list:print_list/3
+11: + stop  interface pred breakpoints:print_list:print_list/3-0 (det)
+mdb> break info
+ 0: - stop  interface pred breakpoints:data/1-0 (det)
+ 1: + stop  interface pred breakpoints:qperm/2-0 (nondet)
+ 2: + stop  interface pred breakpoints:safe/1-0 (semidet)
+ 3: + stop      entry pred breakpoints:qperm/2-0 (nondet)
+ 4: + stop        all pred breakpoints:qperm/2-0 (nondet)
+ 5: + stop  interface func breakpoints://2-0 (det)
+ 6: + stop  interface func breakpoints://2-0 (det)
+ 7: + stop  interface func breakpoints:print_list:-/2-0 (det)
+ 8: + stop  interface func breakpoints:print_list:-/2-0 (det)
+ 9: + stop  interface func breakpoints:print_list://2-0 (det)
+10: + stop  interface pred breakpoints:print_list:print_list/3-0 (det)
+11: + stop  interface pred breakpoints:print_list:print_list/3-0 (det)
+mdb> delete 0
+ 0: D stop  interface pred breakpoints:data/1-0 (det)
+mdb> break info
+ 1: + stop  interface pred breakpoints:qperm/2-0 (nondet)
+ 2: + stop  interface pred breakpoints:safe/1-0 (semidet)
+ 3: + stop      entry pred breakpoints:qperm/2-0 (nondet)
+ 4: + stop        all pred breakpoints:qperm/2-0 (nondet)
+ 5: + stop  interface func breakpoints://2-0 (det)
+ 6: + stop  interface func breakpoints://2-0 (det)
+ 7: + stop  interface func breakpoints:print_list:-/2-0 (det)
+ 8: + stop  interface func breakpoints:print_list:-/2-0 (det)
+ 9: + stop  interface func breakpoints:print_list://2-0 (det)
+10: + stop  interface pred breakpoints:print_list:print_list/3-0 (det)
+11: + stop  interface pred breakpoints:print_list:print_list/3-0 (det)
+mdb> disable 3
+ 3: - stop      entry pred breakpoints:qperm/2-0 (nondet)
+mdb> break nodiag
+ 0: + stop  interface pred breakpoints:nodiag/3-0 (semidet)
+mdb> continue
+       7:      5  3 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:47)
+mdb> continue
+       8:      5  3 SWTC pred breakpoints:qperm/2-0 (nondet) s2; breakpoints.m:51
+mdb> finish -N
+      12:      7  4 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:54)
+mdb> finish -n
+      38:      7  4 EXIT pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:54)
+mdb> continue
+      39:      5  3 EXIT pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:47)
+mdb> continue
+      40:     16  3 CALL pred breakpoints:safe/1-0 (semidet) breakpoints.m:60 (breakpoints.m:48)
+mdb> finish
+      42:     17  4 CALL pred breakpoints:nodiag/3-0 (semidet) breakpoints.m:65 (breakpoints.m:62)
+      45:     17  4 FAIL pred breakpoints:nodiag/3-0 (semidet) breakpoints.m:65 (breakpoints.m:62)
+      46:     16  3 FAIL pred breakpoints:safe/1-0 (semidet) breakpoints.m:60 (breakpoints.m:48)
+mdb> delete *
+ 0: E stop  interface pred breakpoints:nodiag/3-0 (semidet)
+ 1: E stop  interface pred breakpoints:qperm/2-0 (nondet)
+ 2: E stop  interface pred breakpoints:safe/1-0 (semidet)
+ 3: D stop      entry pred breakpoints:qperm/2-0 (nondet)
+ 4: E stop        all pred breakpoints:qperm/2-0 (nondet)
+ 5: E stop  interface func breakpoints://2-0 (det)
+ 6: E stop  interface func breakpoints://2-0 (det)
+ 7: E stop  interface func breakpoints:print_list:-/2-0 (det)
+ 8: E stop  interface func breakpoints:print_list:-/2-0 (det)
+ 9: E stop  interface func breakpoints:print_list://2-0 (det)
+10: E stop  interface pred breakpoints:print_list:print_list/3-0 (det)
+11: E stop  interface pred breakpoints:print_list:print_list/3-0 (det)
+mdb> break info
+There are no break points.
+mdb> delete *
+There are no break points.
+mdb> break -i -I3 qperm
+ 0: + stop  interface pred breakpoints:qperm/2-0 (nondet)
+            (ignore next 3 interface events)
+mdb> continue
+      50:     11  6 REDO pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:54)
+mdb> print *
+       HeadVar__1             	[4, 5]
+mdb> ignore -E4 0
+ 0: + stop  interface pred breakpoints:qperm/2-0 (nondet)
+            (ignore next 4 call events)
+mdb> continue
+     123:     32  8 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:54)
+mdb> print *
+       HeadVar__1             	[]
+mdb> delete *
+ 0: E stop  interface pred breakpoints:qperm/2-0 (nondet)
+mdb> continue
+[1, 3, 5, 2, 4]
