@@ -401,7 +401,8 @@ do
 		*.memprof*)
 			# we need to link statically for profiling on DEC Alpha
 			(cd benchmarks &&
-			rm -f poly &&
+			touch poly.m &&
+			mmake poly.depend &&
 			mmake poly \
 				GRADE="$grade" \
 				EXTRA_MCFLAGS="$TEST_MCFLAGS" \

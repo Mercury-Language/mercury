@@ -339,8 +339,18 @@ then
 	then
 		echo "building of stage 1 successful"
 	else
-		echo "building of stage 1 not successful"
-		exit 1
+		cd $root/library;
+		mmake depend
+		cd $root/compiler;
+		mmake depend
+		cd $root
+		if mmake $mmake_opts MMAKEFLAGS=$jfactor all
+		then
+			echo "building of stage 1 successful"
+		else
+			echo "building of stage 1 not successful"
+			exit 1
+		fi
 	fi
 
 	# this is only for a transition period,
