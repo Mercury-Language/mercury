@@ -34,8 +34,17 @@ SINGLEMODULE_PROGS= \
 	bind_var_errors \
 	builtin_int \
 	builtin_proc \
+	circ_inst \
+	circ_inst2 \
+	circ_inst3 \
+	circ_inst4 \
+	circ_mode \
+	circ_mode2 \
+	circ_mode3 \
+	circ_mode4 \
 	circ_type \
 	circ_type2 \
+	circ_type3 \
 	constrained_poly_insts \
 	constructor_warning \
 	det_errors \
@@ -161,10 +170,6 @@ USE_SUBDIR_MODULES = \
 #			the type class name should be in quotes)
 #	typeclass_mode_{2,3,4} (compiler calls error/1)
 #	cyclic_typeclass (compiler goes into an infinite loop)
-#	circ_inst{,2} (error is not detected)
-#	circ_inst{3,4} (compiler goes into an infinite loop)
-#	circ_mode{,2} (error is not detected)
-#	circ_mode{3,4} (compiler goes into an infinite loop)
 #	ho_default_func_4 (due to a bug in the mode-checker ---
 #			see XXX comment in inst_match:inst_matches_final_3)
 #	inst_matches_final_bug (due to same bug as ho_default_func_4)

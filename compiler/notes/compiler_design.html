@@ -276,9 +276,9 @@ stored in the io__state, using the type globals defined in globals.m.
 
 <li> conversion to superhomogeneous form and into HLDS <br>
 
-	make_hlds.m transforms the code into superhomogeneous form,
+	make_hlds.m transforms the clauses into superhomogeneous form,
 	and at the same time converts the parse tree into the HLDS.
-	It expands away universal quantification
+	It expands away state variable syntax, universal quantification
 	(using `all [Vs] G' ===> `not (some [Vs] (not G))')
 	and implication (using `A => B' ===> `not(A, not B)').
 	It converts `pragma import', `pragma c_code' and `pragma fact_table'
@@ -291,6 +291,9 @@ stored in the io__state, using the type globals defined in globals.m.
 	make_hlds.m also calls make_tags.m which chooses the data
 	representation for each discriminated union type by
 	assigning tags to each functor.
+	make_hlds.m also performs a number of semantic checks,
+	such as checking for circular insts and modes
+	and warning about singleton variables.
 </ul>
 
 <p>
@@ -1271,6 +1274,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2002-10-31 05:47:59 $ by $Author: rafe $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-11-22 13:20:07 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
