@@ -46,6 +46,12 @@
 :- mode output_list_skel :: free -> list_skel.
 :- mode list_skel_output :: list_skel -> ground.
 
+	% These modes are particularly useful for passing round lists
+	% of higher order terms, since they have complicated insts
+	% which are not correctly approximated by "ground".
+:- mode list_skel_in(I) :: list_skel(I) -> list_skel(I).
+:- mode list_skel_out(I) :: free -> list_skel(I).
+
 %-----------------------------------------------------------------------------%
 
 	% Standard append predicate:
@@ -697,5 +703,94 @@ list__perm([], []).
 list__perm([X|Xs], Ys) :-
 	list__perm(Xs, Ys0),
 	list__insert(X, Ys0, Ys).
+
+%-----------------------------------------------------------------------------%
+%
+% The following group of predicates use higher-order terms to simplify
+% various list processing tasks. They implement pretty much standard
+% sorts of operations provided by standard libraries for functional languages.
+%
+% Most of this code was originally by philip, modified and reformatted
+% by conway.
+%
+%-----------------------------------------------------------------------------%
+:- interface.
+
+:- import_module std_util.
+
+	% list__map_det(T, L, M) uses the closure T
+	% to transform the elements of L into the elements of L.
+:- pred list__map(pred(X, Y), list(X), list(Y)).
+:- mode list__map(pred(in, out) is det, in, out) is det.
+:- mode list__map(pred(in, out) is semidet, in, out) is semidet.
+:- mode list__map(pred(in, out) is multi, in, out) is multi.
+:- mode list__map(pred(in, out) is nondet, in, out) is nondet.
+
+
+	% list__map_maybe(T, L, M) uses the semidet closure T
+	% to transform the elements of the list L. If T fails,
+	% for some member of L, the correpsonding element of M
+	% is 'no'. Otherwise the corresponding element of M is
+	% 'yes(Y)' where Y is the output argument of T.
+:- pred list__map_maybe(pred(X, Y), list(X), list(maybe(Y))).
+:- mode list__map_maybe(pred(in, out) is semidet, in, out) is det.
+
+	% list__foldl(Pred, List, Start, End) calls Pred with each
+	% element of List (working left-to-right) and an accumulator
+	% (with the initial value of Start), and returns the final
+	% value in End.
+:- pred list__foldl(pred(X, Y, Y), list(X), Y, Y).
+:- mode list__foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode list__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+
+	% list__foldr(Pred, List, Start, End) calls Pred with each
+	% element of List (working right-to-left) and an accumulator
+	% (with the initial value of Start), and returns the final
+	% value in End.
+:- pred list__foldr(pred(X, Y, Y), list(X), Y, Y).
+:- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+
+	% list__apply(Cs, Bs) takes a list of closures with one
+	% output argument Cs, and calls the closures, returning
+	% the resulting bindings in Bs.
+:- pred list__apply(list(pred(T)), list(T)).
+:- mode list__apply(list_skel_in(pred(out) is det), out) is det.
+:- mode list__apply(list_skel_in(pred(out) is semidet), out) is semidet.
+:- mode list__apply(list_skel_in(pred(out) is multi), out) is multi.
+:- mode list__apply(list_skel_in(pred(out) is nondet), out) is nondet.
+
+:- implementation.
+
+list__map(_, [],  []).
+list__map(P, [H0|T0], [H|T]) :-
+	call(P, H0, H),
+	list__map(P, T0, T).
+
+list__map_maybe(_, [],  []).
+list__map_maybe(P, [H0|T0], [H|T]) :-
+	(
+		call(P, H0, H1)
+	->
+		H = yes(H1)
+	;
+		H = no
+	),
+	list__map_maybe(P, T0, T).
+
+list__foldl(_, [], Acc, Acc).
+list__foldl(P, [H|T], Acc0, Acc) :-
+	call(P, H, Acc0, Acc1),
+	list__foldl(P, T, Acc1, Acc).
+
+list__foldr(_, [], Acc, Acc).
+list__foldr(P, [H|T], Acc0, Acc) :-
+	list__foldr(P, T, Acc0, Acc1),
+	call(P, H, Acc1, Acc).
+
+list__apply([], []).
+list__apply([C|Cs], [B|Bs]) :-
+	call(C, B),
+	list__apply(Cs, Bs).
 
 %-----------------------------------------------------------------------------%
