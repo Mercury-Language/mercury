@@ -329,19 +329,19 @@ goal_util__rename_var_maps_2([V - L | Vs], Must, Subn, [N - L | Ns]) :-
 :- mode goal_util__name_apart_goalinfo(in, in, in, out) is det.
 
 goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
-	goal_info_pre_births(GoalInfo0, PreBirths0),
+	goal_info_get_pre_births(GoalInfo0, PreBirths0),
 	goal_util__name_apart_set(PreBirths0, Must, Subn, PreBirths),
 	goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo1),
 
-	goal_info_pre_deaths(GoalInfo1, PreDeaths0),
+	goal_info_get_pre_deaths(GoalInfo1, PreDeaths0),
 	goal_util__name_apart_set(PreDeaths0, Must, Subn, PreDeaths),
 	goal_info_set_pre_deaths(GoalInfo1, PreDeaths, GoalInfo2),
 
-	goal_info_post_births(GoalInfo2, PostBirths0),
+	goal_info_get_post_births(GoalInfo2, PostBirths0),
 	goal_util__name_apart_set(PostBirths0, Must, Subn, PostBirths),
 	goal_info_set_post_births(GoalInfo2, PostBirths, GoalInfo3),
 
-	goal_info_post_deaths(GoalInfo3, PostDeaths0),
+	goal_info_get_post_deaths(GoalInfo3, PostDeaths0),
 	goal_util__name_apart_set(PostDeaths0, Must, Subn, PostDeaths),
 	goal_info_set_post_deaths(GoalInfo3, PostDeaths, GoalInfo4),
 
@@ -353,20 +353,7 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 	instmap_delta_apply_sub(InstMap0, Must, Subn, InstMap),
 	goal_info_set_instmap_delta(GoalInfo5, InstMap, GoalInfo6),
 
-	goal_info_nondet_lives(GoalInfo6, NondetLives0),
-	goal_util__name_apart_set(NondetLives0, Must, Subn, NondetLives),
-	goal_info_set_nondet_lives(GoalInfo6, NondetLives, GoalInfo7),
-
-	goal_info_cont_lives(GoalInfo7, MaybeContLives0),
-	( MaybeContLives0 = yes(ContLives0) ->
-		goal_util__name_apart_set(ContLives0, Must, Subn, ContLives),
-		MaybeContLives = yes(ContLives),
-		goal_info_set_cont_lives(GoalInfo7, MaybeContLives, GoalInfo8)
-	;
-		GoalInfo8 = GoalInfo7
-	),
-
-	goal_info_follow_vars(GoalInfo8, MaybeFollowVars0),
+	goal_info_get_follow_vars(GoalInfo6, MaybeFollowVars0),
 	(
 		MaybeFollowVars0 = no,
 		MaybeFollowVars = no
@@ -375,7 +362,7 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 		goal_util__rename_var_maps(FollowVars0, Must, Subn, FollowVars),
 		MaybeFollowVars = yes(FollowVars)
 	),
-	goal_info_set_follow_vars(GoalInfo8, MaybeFollowVars, GoalInfo).
+	goal_info_set_follow_vars(GoalInfo6, MaybeFollowVars, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

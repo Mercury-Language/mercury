@@ -238,6 +238,12 @@
 :- pred code_info__set_shapes(shape_table, code_info, code_info).
 :- mode code_info__set_shapes(in, in, out) is det.
 
+:- pred code_info__get_follow_vars(follow_vars, code_info, code_info).
+:- mode code_info__get_follow_vars(out, in, out) is det.
+
+:- pred code_info__set_follow_vars(follow_vars, code_info, code_info).
+:- mode code_info__set_follow_vars(in, in, out) is det.
+
 :- implementation.
 
 % This implementation section is an ugly hack.
@@ -430,12 +436,6 @@
 :- pred code_info__set_instmap(instmap, code_info, code_info).
 :- mode code_info__set_instmap(in, in, out) is det.
 
-:- pred code_info__get_nondet_lives(set(var), code_info, code_info).
-:- mode code_info__get_nondet_lives(out, in, out) is det.
-
-:- pred code_info__set_nondet_lives(set(var), code_info, code_info).
-:- mode code_info__set_nondet_lives(in, in, out) is det.
-
 :- pred code_info__can_generate_direct_branch(code_addr, code_info, code_info).
 :- mode code_info__can_generate_direct_branch(out, in, out) is semidet.
 
@@ -513,9 +513,8 @@
 			stack(pair(lval, lval_or_ticket)),
 					% the locations in use on the stack
 			shape_table,	% Table of shapes.
-			set(var),	% Variables that are not quite live
-					% but are only nondet-live (so that
-					% we make sure we save them).
+			follow_vars,	% Advisory information about where
+					% each variable will be needed next.
 			set(var),	% Zombie variables; variables that have
 					% been killed but are protected by a
 					% resume point.
@@ -546,7 +545,7 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, Requests, _FollowVars,
+		PredId, ProcId, ProcInfo, Requests, FollowVars,
 		ModuleInfo, Shapes, C) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
@@ -557,7 +556,6 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	stack__init(Continue),
 	stack__init(PushedVals0),
 	stack__init(ResumeSetStack0),
-	set__init(NondetLives),
 	set__init(Zombies),
 	code_info__max_slot(StackSlots, SlotCount0),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -588,7 +586,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		Globals,
 		PushedVals0,
 		Shapes,
-		NondetLives,
+		FollowVars,
 		Zombies,
 		ResumeSetStack0,
 		[]
@@ -719,11 +717,9 @@ code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 %---------------------------------------------------------------------------%
 
 code_info__get_live_variables(VarList) -->
-	code_info__get_liveness_info(NormalLiveVars),
+	code_info__get_liveness_info(ForwardLiveVars),
 	code_info__current_resume_point_vars(ResumeVars),
-	code_info__get_nondet_lives(NondetLiveVars),
-	{ set__union(NormalLiveVars, NondetLiveVars, Vars1) },
-	{ set__union(Vars1, ResumeVars, Vars) },
+	{ set__union(ForwardLiveVars, ResumeVars, Vars) },
 	{ set__to_sorted_list(Vars, VarList) }.
 
 %---------------------------------------------------------------------------%
@@ -731,13 +727,10 @@ code_info__get_live_variables(VarList) -->
 code_info__variable_is_live(Var) -->
 	code_info__get_liveness_info(Liveness),
 	code_info__current_resume_point_vars(ResumeVars),
-	code_info__get_nondet_lives(Nondets),
 	(
 		{ set__member(Var, Liveness) }
 	;
 		{ set__member(Var, ResumeVars) }
-	;
-		{ set__member(Var, Nondets) }
 	).
 
 %---------------------------------------------------------------------------%
@@ -1023,10 +1016,7 @@ code_info__make_vars_dead(Vars0) -->
 	code_info__get_zombies(Zombies0),
 	{ set__union(Zombies0, FlushVars, Zombies) },
 	code_info__set_zombies(Zombies),
-	code_info__get_nondet_lives(NondetLives),
-		% Don't kill off nondet-live or zombie variables
-	{ set__difference(Vars0, NondetLives, Vars1) },
-	{ set__difference(Vars1, Zombies, Vars) },
+	{ set__difference(Vars0, Zombies, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
 	code_info__make_vars_dead_2(VarList).
 
@@ -2557,7 +2547,7 @@ code_info__get_shapes(S, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, S,
 		_, _, _, _).
 
-code_info__get_nondet_lives(T, CI, CI) :-
+code_info__get_follow_vars(T, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		T, _, _, _).
 
@@ -2610,9 +2600,8 @@ code_info__get_commit_vals(W, CI, CI) :-
 % 	R		stack(pair(lval, lval_or_ticket)),
 % 					% the locations in use on the stack
 % 	S		shape_table,	% Table of shapes.
-% 	T		set(var),	% Variables that are not quite live
-% 					% but are only nondet-live (so that
-% 					% we make sure we save them).
+% 	T		follow_vars,	% Advisory information about where
+% 					% each variable will be needed next.
 % 	U		set(var),	% Zombie variables; variables that have
 % 					% been killed but are protected by a
 % 					% resume point.
@@ -2740,7 +2729,7 @@ code_info__set_shapes(S, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U, V, W).
 
-code_info__set_nondet_lives(T, CI0, CI) :-
+code_info__set_follow_vars(T, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, _, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,

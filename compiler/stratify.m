@@ -193,7 +193,7 @@ first_order_check_goal(pragma_c_code(_, _IsRec, CPred, CProc, _, _),
 		{ Negated = yes },
 		{ list__member(proc(CPred, CProc),  WholeScc) }
 	->
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		emit_message(ThisPredProcId, Context, 
 			"call introduces a non-stratified loop", 
 			Error, Module0, Module)	
@@ -210,7 +210,7 @@ first_order_check_goal(call(CPred, CProc, _Args, Builtin, _Contex, _Sym),
 		{ Negated = yes },
 		{ list__member(Callee, WholeScc) }
 	->
-		{ goal_info_context(GInfo, Context) },
+		{ goal_info_get_context(GInfo, Context) },
 		emit_message(ThisPredProcId, Context, 
 			"call introduces a non-stratified loop", 
 			Error, Module0, Module)	
@@ -218,7 +218,7 @@ first_order_check_goal(call(CPred, CProc, _Args, Builtin, _Contex, _Sym),
 		{ \+ hlds__is_builtin_is_internal(Builtin) },
 		{ \+ local_proc(Module0, Callee) }
 	->
-		{ goal_info_context(GInfo, Context) },
+		{ goal_info_get_context(GInfo, Context) },
 	        emit_message(ThisPredProcId, Context,
                         "call to non-local predicate may introduce a non-stratified loop",
                         Error, Module0, Module)
@@ -229,7 +229,7 @@ first_order_check_goal(call(CPred, CProc, _Args, Builtin, _Contex, _Sym),
 first_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, 
 	_Det), GInfo, _Negated, _WholeScc, ThisPredProcId, Error,  
 	Module0, Module) --> 
-	{ goal_info_context(GInfo, Context) },
+	{ goal_info_get_context(GInfo, Context) },
 	emit_message(ThisPredProcId, Context,
 		"higher order call may introduce a non-stratified loop",
 		Error, Module0, Module).
@@ -385,7 +385,7 @@ higher_order_check_goal((call(_CPred, _CProc, _Args, _Builtin, _Contex, Sym)),
 		),
 		{ Name = "solutions" }
 	->
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		emit_message(ThisPredProcId, Context, 
 			"call to solutions/2 introduces a non-stratified loop", 
 			Error, Module0, Module)
@@ -401,7 +401,7 @@ higher_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, _Det),
 		{ Negated = yes },
 		{ HighOrderLoops = yes }
 	->
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		emit_message(ThisPredProcId, Context, 
 			"higher order call may introduce a non-stratified loop", 
 			Error, Module0, Module)		

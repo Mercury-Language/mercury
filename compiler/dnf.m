@@ -378,7 +378,7 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 
-	goal_info_context(GoalInfo, Context),
+	goal_info_get_context(GoalInfo, Context),
 	goal_info_get_determinism(GoalInfo, Detism),
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars),

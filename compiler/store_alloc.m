@@ -73,10 +73,10 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 
 store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 		Goal - GoalInfo0, Liveness) :-
-	goal_info_pre_births(GoalInfo0, PreBirths),
-	goal_info_pre_deaths(GoalInfo0, PreDeaths),
-	goal_info_post_births(GoalInfo0, PostBirths),
-	goal_info_post_deaths(GoalInfo0, PostDeaths),
+	goal_info_get_pre_births(GoalInfo0, PreBirths),
+	goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
+	goal_info_get_post_births(GoalInfo0, PostBirths),
+	goal_info_get_post_deaths(GoalInfo0, PostDeaths),
 
 	set__difference(Liveness0,  PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),

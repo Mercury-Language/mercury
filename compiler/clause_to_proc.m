@@ -143,7 +143,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 		goal_info_init(GoalInfo0),
 		( GoalList = [FirstGoal | _] ->
 			FirstGoal = _ - FirstGoalInfo,
-			goal_info_context(FirstGoalInfo, Context)
+			goal_info_get_context(FirstGoalInfo, Context)
 		;
 			proc_info_context(Proc0, Context)
 		),

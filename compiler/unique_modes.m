@@ -218,7 +218,7 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% store the current context in the mode_info
 	%
 	Goal0 = GoalExpr0 - GoalInfo0,
-	goal_info_context(GoalInfo0, Context),
+	goal_info_get_context(GoalInfo0, Context),
 	term__context_init(EmptyContext),
 	( Context = EmptyContext ->
 		ModeInfo1 = ModeInfo0

@@ -606,7 +606,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			VarSet, Indent, Follow, TypeQual) -->
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
-%		{ goal_info_context(GoalInfo, Context) },
+%		{ goal_info_get_context(GoalInfo, Context) },
 %		{ term__context_file(Context, FileName) },
 %		{ term__context_line(Context, LineNumber) },
 %		( { FileName \= "" } ->
@@ -629,7 +629,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
-		{ goal_info_pre_births(GoalInfo, PreBirths) },
+		{ goal_info_get_pre_births(GoalInfo, PreBirths) },
 		{ set__to_sorted_list(PreBirths, PreBirthList) },
 		( { PreBirthList \= [] } ->
 			hlds_out__write_indent(Indent),
@@ -639,7 +639,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
-		{ goal_info_pre_deaths(GoalInfo, PreDeaths) },
+		{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
 		{ set__to_sorted_list(PreDeaths, PreDeathList) },
 		( { PreDeathList \= [] } ->
 			hlds_out__write_indent(Indent),
@@ -649,7 +649,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
-		{ goal_info_follow_vars(GoalInfo, MaybeFollowVars) },
+		{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
 		(
 			{ MaybeFollowVars = yes(FollowVars) }
 		->
@@ -683,7 +683,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 				Indent),
 			io__write_string("\n")
 		),
-		{ goal_info_post_births(GoalInfo, PostBirths) },
+		{ goal_info_get_post_births(GoalInfo, PostBirths) },
 		{ set__to_sorted_list(PostBirths, PostBirthList) },
 		( { PostBirthList \= [] } ->
 			hlds_out__write_indent(Indent),
@@ -693,7 +693,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
-		{ goal_info_post_deaths(GoalInfo, PostDeaths) },
+		{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
 		{ set__to_sorted_list(PostDeaths, PostDeathList) },
 		( { PostDeathList \= [] } ->
 			hlds_out__write_indent(Indent),

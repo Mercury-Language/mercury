@@ -132,7 +132,7 @@ implicitly_quantify_goal(Goal0, Varset0, VarTypes0, OutsideVars,
 
 implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	quantification__get_seen(SeenVars),
-	{ goal_info_context(GoalInfo0, Context) },
+	{ goal_info_get_context(GoalInfo0, Context) },
 	implicitly_quantify_goal_2(Goal0, Context, Goal1),
 	quantification__get_nonlocals(NonLocalVars),
 	(

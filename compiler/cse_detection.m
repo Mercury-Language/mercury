@@ -557,7 +557,7 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			Var1 = UnifyVar1,
 			UnifyInfo0 = deconstruct(_, _, _, _, _),
 			MaybeUnify0 = yes(OldUnifyGoal),
-			goal_info_context(GoalInfo, Context),
+			goal_info_get_context(GoalInfo, Context),
 			find_similar_deconstruct(OldUnifyGoal, UnifyInfo0,
 				Context, Replacements)
 		->
@@ -611,7 +611,7 @@ construct_common_unify(Var, GoalExpr0 - GoalInfo, Goal, Varset0, Varset,
 		;
 			error("unexpected unify structure in construct_common_unify")
 		),
-		goal_info_context(GoalInfo, Context),
+		goal_info_get_context(GoalInfo, Context),
 		create_parallel_subterms(Args, Context, Ucontext,
 			Varset0, Varset, Typemap0, Typemap, Sub, Replacements),
 		goal_util__rename_vars_in_goal(GoalExpr1 - GoalInfo, Sub, Goal)

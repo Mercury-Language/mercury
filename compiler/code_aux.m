@@ -55,12 +55,10 @@
 	%	  branched computations join unnecessarily.
 	%	- The variables that die before a goal (The predeath set)
 	%	  are removed from the exprn_info structure.
-	%	- The variables that die but may still become live on
-	%	  backtracking (and therefore still need to be stored on
-	%	  the stack) are updated (those in the goal-info replace
-	%	  the existing set).
 	%	- If the goal establishes a resume_point, its variables are
 	%	  pushed onto the resume point variable stack.
+	%	- The advisory information about where variables will be
+	%	  needed next is updated if GoalInfo has new information.
 	% If any of the variables that have died wrt forward execution are
 	% nevertheless needed at a resume point, we need to flush them to
 	% their stack slots. The returned code does this.
@@ -222,8 +220,6 @@ code_aux__is_recursive_call(Goal, CodeInfo) :-
 	% Update the code info structure to be consistent
 	% immediately prior to generating a goal
 code_aux__pre_goal_update(GoalInfo, Atomic) -->
-	{ goal_info_nondet_lives(GoalInfo, NondetLives) },
-	code_info__set_nondet_lives(NondetLives),
 	{ goal_info_get_resume_point(GoalInfo, ResumePoint) },
 	(
 		{ ResumePoint = no_resume_point }
@@ -231,13 +227,20 @@ code_aux__pre_goal_update(GoalInfo, Atomic) -->
 		{ ResumePoint = resume_point(_, _) },
 		{ error("pre_goal_update with resume point") }
 	),
-	{ goal_info_pre_births(GoalInfo, PreBirths) },
-	{ goal_info_pre_deaths(GoalInfo, PreDeaths) },
+	{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
+	(
+		{ MaybeFollowVars = yes(FollowVars) },
+		code_info__set_follow_vars(FollowVars)
+	;
+		{ MaybeFollowVars = no }
+	),
+	{ goal_info_get_pre_births(GoalInfo, PreBirths) },
+	{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
 	code_info__update_liveness_info(PreBirths),
 	code_info__update_deadness_info(PreDeaths),
 	code_info__make_vars_dead(PreDeaths),
 	( { Atomic = yes } ->
-		{ goal_info_post_deaths(GoalInfo, PostDeaths) },
+		{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
 		code_info__update_deadness_info(PostDeaths)
 	;
 		[]
@@ -246,8 +249,8 @@ code_aux__pre_goal_update(GoalInfo, Atomic) -->
 	% Update the code info structure to be consistent
 	% immediately after generating a goal
 code_aux__post_goal_update(GoalInfo) -->
-	{ goal_info_post_births(GoalInfo, PostBirths) },
-	{ goal_info_post_deaths(GoalInfo, PostDeaths) },
+	{ goal_info_get_post_births(GoalInfo, PostBirths) },
+	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
 	code_info__update_liveness_info(PostBirths),
 	code_info__update_deadness_info(PostDeaths),
 	code_info__make_vars_dead(PostDeaths),

@@ -300,7 +300,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		string__append("__LambdaGoal__", LambdaCountStr, PName0),
 		string__append(ModuleName, PName0, PName),
 		PredName = qualified(ModuleName, PName),
-		goal_info_context(LambdaGoalInfo, LambdaContext),
+		goal_info_get_context(LambdaGoalInfo, LambdaContext),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
 		lambda__uni_modes_to_modes(UniModes, OrigArgModes),

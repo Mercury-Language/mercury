@@ -296,7 +296,7 @@ det_diagnose_goal_2(disj(Goals, _), GoalInfo, Desired, Actual, SwitchContext,
 		{ DesSolns \= at_most_many_cc },
 		{ Clauses > 1 }
 	->
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		prog_out__write_context(Context),
 		io__write_string("  Disjunction has multiple clauses with solutions.\n"),
 		{ Diagnosed = yes }
@@ -315,7 +315,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 		{ SwitchCanFail = can_fail },
 		{ determinism_components(Desired, cannot_fail, _) }
 	->
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		det_diagnose_write_switch_context(Context, SwitchContext,
 			DetInfo),
 		prog_out__write_context(Context),
@@ -351,7 +351,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 
 det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 		Desired, Actual, _, DetInfo, yes) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
 	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
@@ -395,7 +395,7 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 
 det_diagnose_goal_2(higher_order_call(_, _, _, _, _), GoalInfo,
 		Desired, Actual, _, _MiscInfo, yes) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
 	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
@@ -436,7 +436,7 @@ det_diagnose_goal_2(higher_order_call(_, _, _, _, _), GoalInfo,
 
 det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 		Desired, Actual, _, DetInfo, yes) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, _DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, _ActualSolns) },
 	{ First = yes, Last = yes },
@@ -487,7 +487,7 @@ det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed) -->
 		{ DesiredCanFail = cannot_fail },
 		{ ActualCanFail = can_fail }
 	->
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		prog_out__write_context(Context),
 		io__write_string("  Negated goal can succeed.\n"),
 		{ Diagnosed = yes }
@@ -495,7 +495,7 @@ det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed) -->
 		{ DesiredSolns = at_most_zero },
 		{ ActualSolns \= at_most_zero }
 	->
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		prog_out__write_context(Context),
 		io__write_string("  Negated goal can fail.\n"),
 		{ Diagnosed = yes }
@@ -518,7 +518,7 @@ det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
 
 det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _), GoalInfo, Desired, 
 		_, _, _, yes) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("  Determinism declaration not satisfied. Desired \n"),
 	prog_out__write_context(Context),
@@ -803,7 +803,7 @@ det_report_msgs_2([Msg | Msgs], ModuleInfo,
 :- mode det_report_msg(in, in, out, di, uo) is det.
 
 det_report_msg(multidet_disj(GoalInfo, Disjuncts0), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
 	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
@@ -812,7 +812,7 @@ det_report_msg(multidet_disj(GoalInfo, Disjuncts0), _, warning) -->
 	prog_out__write_context(Context),
 	io__write_string("  has no outputs, but can succeed more than once.\n").
 det_report_msg(det_disj(GoalInfo, Disjuncts0), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
 	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
@@ -821,7 +821,7 @@ det_report_msg(det_disj(GoalInfo, Disjuncts0), _, warning) -->
 	prog_out__write_context(Context),
 	io__write_string("  will succeed exactly once.\n").
 det_report_msg(semidet_disj(GoalInfo, Disjuncts0), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
 	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
@@ -830,7 +830,7 @@ det_report_msg(semidet_disj(GoalInfo, Disjuncts0), _, warning) -->
 	prog_out__write_context(Context),
 	io__write_string("  is semidet, yet it has an output.\n").
 det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
 	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
@@ -839,34 +839,34 @@ det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0), _, warning) -->
 	prog_out__write_context(Context),
 	io__write_string("  cannot succeed.\n").
 det_report_msg(zero_soln_disjunct(GoalInfo), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: this disjunct will never have any solutions.\n").
 det_report_msg(ite_cond_cannot_fail(GoalInfo), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the condition of this if-then-else cannot fail.\n").
 det_report_msg(ite_cond_cannot_succeed(GoalInfo), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the condition of this if-then-else cannot succeed.\n").
 det_report_msg(negated_goal_cannot_fail(GoalInfo), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot fail.\n").
 det_report_msg(negated_goal_cannot_succeed(GoalInfo), _, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot succeed.\n").
 det_report_msg(warn_obsolete(PredId, GoalInfo), ModuleInfo, warning) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: call to obsolete "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(".\n").
 det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
 		ModuleInfo, error) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Error: call to "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
@@ -878,7 +878,7 @@ det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
 	io__set_exit_status(1).
 det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
 		_ModuleInfo, error) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Error: higher-order call to predicate with determinism `"),
 	mercury_output_det(Detism),
@@ -889,7 +889,7 @@ det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
 det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 			PredId, ProcId), ModuleInfo, error) -->
 	report_pred_proc_id(ModuleInfo, PredId, ProcId, no, _ProcContext),
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Determinism error in lambda expression.\n"),
 	prog_out__write_context(Context),
@@ -922,10 +922,10 @@ det_report_sort_context_lines([Goal0 | Goals0], Goals) :-
 det_report_insert_context_line([], Goal, [Goal]).
 det_report_insert_context_line([Goal0 | Goals0], Goal, Goals) :-
 	Goal0 = _ - GoalInfo0,
-	goal_info_context(GoalInfo0, Context0),
+	goal_info_get_context(GoalInfo0, Context0),
 	term__context_line(Context0, Line0),
 	Goal = _ - GoalInfo,
-	goal_info_context(GoalInfo, Context),
+	goal_info_get_context(GoalInfo, Context),
 	term__context_line(Context, Line),
 	( Line < Line0 ->
 		Goals = [Goal, Goal0 | Goals0]
@@ -941,7 +941,7 @@ det_report_insert_context_line([Goal0 | Goals0], Goal, Goals) :-
 
 det_report_context_lines([], _) --> [].
 det_report_context_lines([_ - GoalInfo | Goals], First) -->
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	{ term__context_line(Context, Line) },
 	( { First = yes } ->
 		[]

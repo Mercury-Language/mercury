@@ -495,7 +495,7 @@ c_gen_local_var_decls_2([Var|Vars], VarSet, VarTypes, Indent) -->
 c_gen_goal(Goal - GoalInfo, Indent, CGenInfo0, CGenInfo) -->
 	globals__io_lookup_bool_option(line_numbers, LineNumbers),
 	( { LineNumbers = yes } ->
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		{ term__context_file(Context, FileName) },
 		{ term__context_line(Context, LineNumber) },
 		( { FileName \= "" } ->

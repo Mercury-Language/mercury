@@ -552,7 +552,7 @@ END JUNK ***************************/
 	% in make_hlds, but it was easier to do here.)
 
 typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
-	goal_info_context(GoalInfo0, Context),
+	goal_info_get_context(GoalInfo0, Context),
 	term__context_init(EmptyContext),
 	( Context = EmptyContext ->
 		type_info_get_context(TypeInfo0, EnclosingContext),

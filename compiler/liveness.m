@@ -441,10 +441,10 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0], Deadness0,
 
 detect_resume_points_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 		ResumeVars0, Goal - GoalInfo0, Liveness) :-
-	goal_info_pre_births(GoalInfo0, PreBirths0),
-	goal_info_post_births(GoalInfo0, PostBirths0),
-	goal_info_pre_deaths(GoalInfo0, PreDeaths0),
-	goal_info_post_deaths(GoalInfo0, PostDeaths0),
+	goal_info_get_pre_births(GoalInfo0, PreBirths0),
+	goal_info_get_post_births(GoalInfo0, PostBirths0),
+	goal_info_get_pre_deaths(GoalInfo0, PreDeaths0),
+	goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
 
 	set__difference(Liveness0, PreDeaths0, Liveness1),
 	set__union(Liveness1, PreBirths0, Liveness2),
@@ -487,18 +487,25 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	% compute the set of variables that may be needed at the start
 	% of the else part and attach this set to the condition
 	Else0 = _ElseExpr0 - ElseInfo0,
-	goal_info_pre_deaths(ElseInfo0, ElsePreDeath0),
+	goal_info_get_pre_deaths(ElseInfo0, ElsePreDeath0),
 	set__difference(Liveness0, ElsePreDeath0, CondResumeVars0),
 	set__union(CondResumeVars0, ResumeVars0, CondResumeVars),
 
+	detect_resume_points_in_goal(Cond0, Liveness0, LiveInfo,
+		CondResumeVars, Cond1, LivenessCond),
+	detect_resume_points_in_goal(Then0, LivenessCond, LiveInfo,
+		ResumeVars0, Then, LivenessThen),
+	detect_resume_points_in_goal(Else0, Liveness0, LiveInfo,
+		ResumeVars0, Else, LivenessElse),
+
 	(
-		code_util__cannot_stack_flush(Cond0),
+		code_util__cannot_stack_flush(Cond1),
 		goal_info_get_code_model(GoalInfo0, CodeModel),
 		CodeModel \= model_non
 	->
 		CondResumeLocs = orig_only
 	;
-		code_util__cannot_fail_before_stack_flush(Cond0)
+		code_util__cannot_fail_before_stack_flush(Cond1)
 	->
 		CondResumeLocs = stack_only
 	;
@@ -506,14 +513,7 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	),
 
 	CondResume = resume_point(CondResumeVars, CondResumeLocs),
-	goal_set_resume_point(Cond0, CondResume, Cond1),
-
-	detect_resume_points_in_goal(Cond1, Liveness0, LiveInfo,
-		CondResumeVars, Cond, LivenessCond),
-	detect_resume_points_in_goal(Then0, LivenessCond, LiveInfo,
-		ResumeVars0, Then, LivenessThen),
-	detect_resume_points_in_goal(Else0, Liveness0, LiveInfo,
-		ResumeVars0, Else, LivenessElse),
+	goal_set_resume_point(Cond1, CondResume, Cond),
 
 	(
 		set__equal(LivenessThen, LivenessElse)
@@ -551,9 +551,17 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	set__union(Liveness, ResumeVars0, ResumeVars1),
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars1,
 		Goal1, _Liveness),
+
 	% attach the set of variables alive after the negation
 	% as the resume point set of the negated goal
-	Resume = resume_point(ResumeVars1, stack_and_orig),
+	( code_util__cannot_stack_flush(Goal1) ->
+		ResumeLocs = orig_only
+	; code_util__cannot_fail_before_stack_flush(Goal1) ->
+		ResumeLocs = stack_only
+	;
+		ResumeLocs = stack_and_orig
+	),
+	Resume = resume_point(ResumeVars1, ResumeLocs),
 	goal_set_resume_point(Goal1, Resume, Goal).
 
 detect_resume_points_in_goal_2(higher_order_call(A,B,C,D,E), _, Liveness, _, _,
@@ -676,7 +684,7 @@ detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
 	goal_set_resume_point(Goal1, Resume, Goal),
 
 	Goal = _ - GoalInfo,
-	goal_info_pre_deaths(GoalInfo, PreDeaths),
+	goal_info_get_pre_deaths(GoalInfo, PreDeaths),
 	set__difference(Liveness0, PreDeaths, NeededFirst),
 	set__union(NeededFirst, NeededRest, Needed),
 
@@ -693,7 +701,7 @@ detect_resume_points_in_last_disjunct(Goal0, Liveness0, LiveInfo,
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo,
 		ResumeVars0, Goal, Liveness),
 	Goal = _ - GoalInfo,
-	goal_info_pre_deaths(GoalInfo, PreDeaths),
+	goal_info_get_pre_deaths(GoalInfo, PreDeaths),
 	set__difference(Liveness0, PreDeaths, Needed).
 
 :- pred detect_resume_points_in_cases(list(case), set(var), live_info,
@@ -805,7 +813,7 @@ initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 :- mode stuff_liveness_residue_after_goal(in, in, out) is det.
 
 stuff_liveness_residue_after_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
-	goal_info_post_births(GoalInfo0, PostBirths0),
+	goal_info_get_post_births(GoalInfo0, PostBirths0),
 	set__union(PostBirths0, Residue, PostBirths),
 	goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo).
 
@@ -814,7 +822,7 @@ stuff_liveness_residue_after_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 
 stuff_deadness_residue_before_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo)
 		:-
-	goal_info_pre_deaths(GoalInfo0, PreDeaths0),
+	goal_info_get_pre_deaths(GoalInfo0, PreDeaths0),
 	set__union(PreDeaths0, Residue, PreDeaths),
 	goal_info_set_pre_deaths(GoalInfo0, PreDeaths, GoalInfo).
 

@@ -162,7 +162,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 	{ proc_info_stack_slots(ProcInfo, StackSlots) },
 	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst) },
 	{ Goal = _ - GoalInfo },
-	{ goal_info_follow_vars(GoalInfo, MaybeFollowVars) },
+	{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
 	{
 		MaybeFollowVars = yes(FollowVars)
 	;

@@ -660,7 +660,7 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 		%
 		% store the current context in the mode_info
 		%
-	goal_info_context(GoalInfo0, Context),
+	goal_info_get_context(GoalInfo0, Context),
 	term__context_init(EmptyContext),
 	( Context = EmptyContext ->
 		ModeInfo1 = ModeInfo0
@@ -866,7 +866,7 @@ handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
 		% combine the main goal and the extra goals into a conjunction
 		Goal0 = MainGoal - GoalInfo,
 		ExtraGoals = BeforeGoals0 - AfterGoals0,
-		goal_info_context(GoalInfo0, Context),
+		goal_info_get_context(GoalInfo0, Context),
 		handle_extra_goals_contexts(BeforeGoals0, Context, BeforeGoals),
 		handle_extra_goals_contexts(AfterGoals0, Context, AfterGoals),
 		list__append(BeforeGoals, [Goal0 | AfterGoals], GoalList),

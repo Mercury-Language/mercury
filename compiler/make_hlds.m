@@ -1824,7 +1824,7 @@ warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, QuantVars, VarSet,
 	%
 	( { Vars \= [] } ->
 		{ goal_vars(SubGoal, SubGoalVars) },
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		{ set__init(EmptySet) },
 		warn_singletons(Vars, EmptySet, SubGoalVars, VarSet, Context,
 			PredCallId)
@@ -1844,7 +1844,7 @@ warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else, _), GoalInfo,
 		{ goal_vars(Cond, CondVars) },
 		{ goal_vars(Then, ThenVars) },
 		{ set__union(CondVars, ThenVars, CondThenVars) },
-		{ goal_info_context(GoalInfo, Context) },
+		{ goal_info_get_context(GoalInfo, Context) },
 		{ set__init(EmptySet) },
 		warn_singletons(Vars, EmptySet, CondThenVars, VarSet,
 			Context, PredCallId)
@@ -1860,14 +1860,14 @@ warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else, _), GoalInfo,
 warn_singletons_in_goal_2(call(_, _, Args, _, _, _),
 			GoalInfo, QuantVars, VarSet, PredCallId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
 warn_singletons_in_goal_2(higher_order_call(_, Args, _, _, _),
 			GoalInfo, QuantVars, VarSet, PredCallId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
@@ -1878,7 +1878,7 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 
 warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames), 
 		GoalInfo, _QuantVars, _VarSet, PredCallId) --> 
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons_in_pragma_c_code(C_Code, ArgNames, Context, 
 		PredCallId).
 
@@ -1907,14 +1907,14 @@ warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId) -->
 
 warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons([X, Y], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
 warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
 				CallPredId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
@@ -1926,7 +1926,7 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 	%
 	{ LambdaGoal = _ - LambdaGoalInfo },
 	{ goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals) },
-	{ goal_info_context(GoalInfo, Context) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons(LambdaVars, LambdaNonLocals, QuantVars, VarSet,
 			Context, CallPredId),
 
