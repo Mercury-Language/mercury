@@ -1012,15 +1012,18 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 		PublicChildren, FactDeps, Module0) },
 
 		% If this module has any seperately-compiled sub-modules,
-		% then we need to make everything in this module exported.
+		% then we need to make everything in this module
+		% exported_to_submodules.  We do that by splitting
+		% out the declarations and putting them in a special
+		% `:- private_interface' section.
 	{ get_children(Items0, Children) },
 	{ Children = [] ->
 		Module1 = Module0
 	;
 		split_clauses_and_decls(Items0, Clauses, Decls),
-		make_pseudo_decl(interface, InterfaceDecl),
+		make_pseudo_decl(private_interface, PrivateInterfaceDecl),
 		make_pseudo_decl(implementation, ImplementationDecl),
-		list__append([InterfaceDecl | Decls],
+		list__append([PrivateInterfaceDecl | Decls],
 			[ImplementationDecl | Clauses], Items1),
 		module_imports_set_items(Module0, Items1, Module1)
 	},

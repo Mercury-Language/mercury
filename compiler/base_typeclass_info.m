@@ -78,15 +78,7 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 	(
 			% Only make the base_typeclass_info if the instance
 			% declaration originally came from _this_ module.
-		(
-			ImportStatus = exported
-		;
-			ImportStatus = abstract_exported 
-		;
-			ImportStatus = pseudo_exported
-		;
-			ImportStatus = local
-		)
+		status_defined_in_this_module(ImportStatus, yes)
 	->
 
 		base_typeclass_info__make_instance_string(InstanceTypes, 

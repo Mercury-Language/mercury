@@ -61,6 +61,7 @@ PROGS=	\
 	nested \
 	nested2 \
 	nested3 \
+	nested_intermod_main \
 	no_fully_strict \
 	no_inline \
 	nondet_ctrl_vn \
@@ -110,6 +111,8 @@ MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-rnd		=	-O6
 MCFLAGS-bigtest		=	--intermodule-optimization -O3
+MCFLAGS-nested_intermod	=	--intermodule-optimization
+MCFLAGS-nested_intermod_main =	--intermodule-optimization
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked

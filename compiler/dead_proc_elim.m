@@ -179,9 +179,8 @@ dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 		Arity, _Status, _Elim, _Procs),
 	(
 		% XXX: We'd like to do this, but there are problems.
-		% ( Status = exported
-		% ; Status = abstract_exported
-		% )
+		% status_is_exported(Status, yes)
+		%
 		% We need to do more thorough analysis of the
 		% reachability of the special predicates, in general,
 		% because using arg/3 allows us to get at base_type_info
@@ -228,11 +227,7 @@ get_instance_pred_procs(Instance, Queue0, Queue, Needed0, Needed) :-
 	(
 			% We only need the instance declarations which were
 			% made in this module.
-		( ImportStatus = exported
-		; ImportStatus = abstract_exported 
-		; ImportStatus = pseudo_exported
-		; ImportStatus = local
-		)
+		status_defined_in_this_module(ImportStatus, yes)
 	->
 		get_instance_pred_procs2(PredProcIds, Queue0, Queue, 
 			Needed0, Needed)

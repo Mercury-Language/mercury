@@ -170,7 +170,31 @@
 	;	pseudo_exported % the converse of pseudo_imported
 				% this means that only the (in, in) mode
 				% of a unification is exported
-	;	local.		% defined in the implementation of this module
+	;	exported_to_submodules
+				% defined in the implementation of this module,
+				% and thus in a sense local,
+				% but the module contains sub-modules,
+				% so the entity needs to be exported
+				% to those sub-modules
+	;	local.		% defined in the implementation of this module,
+				% and the module does not contain any
+				% sub-modules.
+
+	% returns yes if the status indicates that the item was
+	% in any way exported -- that is, if it could be used
+	% by any other module, or by sub-modules of this module.
+:- pred status_is_exported(import_status::in, bool::out) is det.
+
+	% returns yes if the status indicates that the item was
+	% in any way imported -- that is, if it was defined in
+	% some other module, or in a sub-module of this module.
+	% This is the opposite of status_defined_in_this_module.
+:- pred status_is_imported(import_status::in, bool::out) is det.
+
+	% returns yes if the status indicates that the item was
+	% defined in this module.  This is the opposite of
+	% status_is_imported.
+:- pred status_defined_in_this_module(import_status::in, bool::out) is det.
 
 	% N-ary functions are converted into N+1-ary predicates.
 	% (Clauses are converted in make_hlds, but calls to functions
@@ -388,9 +412,18 @@
 
 :- pred pred_info_is_pseudo_imported(pred_info::in) is semidet.
 
+	% pred_info_is_exported does *not* include predicates which are
+	% exported_to_submodules or pseudo_exported
 :- pred pred_info_is_exported(pred_info::in) is semidet.
 
+:- pred pred_info_is_exported_to_submodules(pred_info::in) is semidet.
+
 :- pred pred_info_is_pseudo_exported(pred_info::in) is semidet.
+
+	% procedure_is_exported includes all modes of exported or
+	% exported_to_submodules predicates, plus the in-in mode
+	% for pseudo_exported unification predicates.
+:- pred procedure_is_exported(pred_info::in, proc_id::in) is semidet.
 
 	% Set the import_status of the predicate to `imported'.
 	% This is used for `:- external(foo/2).' declarations.
@@ -502,6 +535,30 @@ hlds_pred__in_in_unification_proc_id(0).
 invalid_pred_id(-1).
 
 invalid_proc_id(-1).
+
+status_is_exported(imported,			no).
+status_is_exported(abstract_imported,		no).
+status_is_exported(pseudo_imported,		no).
+status_is_exported(opt_imported,		no).
+status_is_exported(exported,			yes).
+status_is_exported(abstract_exported,		yes).
+status_is_exported(pseudo_exported,		yes).
+status_is_exported(exported_to_submodules,	yes).
+status_is_exported(local,			no).
+
+status_is_imported(Status, Imported) :-
+	status_defined_in_this_module(Status, InThisModule),
+	bool__not(InThisModule, Imported).
+
+status_defined_in_this_module(imported,			no).
+status_defined_in_this_module(abstract_imported,	no).
+status_defined_in_this_module(pseudo_imported,		no).
+status_defined_in_this_module(opt_imported,		no).
+status_defined_in_this_module(exported,			yes).
+status_defined_in_this_module(abstract_exported,	yes).
+status_defined_in_this_module(pseudo_exported,		yes).
+status_defined_in_this_module(exported_to_submodules,	yes).
+status_defined_in_this_module(local,			yes).
 
 	% The information specific to a predicate, as opposed to a procedure.
 	% (Functions count as predicates.)
@@ -626,9 +683,15 @@ pred_info_non_imported_procids(PredInfo, ProcIds) :-
 
 pred_info_exported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
-	( ImportStatus = exported ->
+	(
+		( ImportStatus = exported
+		; ImportStatus = exported_to_submodules
+		)
+	->
 		pred_info_procids(PredInfo, ProcIds)
-	; ImportStatus = pseudo_exported ->
+	;
+		ImportStatus = pseudo_exported
+	->
 		ProcIds = [0]
 	;
 		ProcIds = []
@@ -699,9 +762,23 @@ pred_info_is_exported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	ImportStatus = exported.
 
+pred_info_is_exported_to_submodules(PredInfo) :-
+	pred_info_import_status(PredInfo, ImportStatus),
+	ImportStatus = exported_to_submodules.
+
 pred_info_is_pseudo_exported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	ImportStatus = pseudo_exported.
+
+procedure_is_exported(PredInfo, ProcId) :-
+	(
+		pred_info_is_exported(PredInfo)
+	;
+		pred_info_is_exported_to_submodules(PredInfo)
+	;
+		pred_info_is_pseudo_exported(PredInfo),
+		hlds_pred__in_in_unification_proc_id(ProcId)
+	).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
