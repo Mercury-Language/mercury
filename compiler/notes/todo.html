@@ -6,12 +6,12 @@
 <body bgcolor="#ffffff" text="#000000">
 
 <hr>
-<!-------------------------->
+<!--======================-->
 
 <h1> TODO LIST </h1>
 
 <hr>
-<!-------------------------->
+<!--======================-->
 
 <p>
 
@@ -34,7 +34,8 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <p>
 
 <ul>
-<li> Fix the three known type inference bugs (see comments in typecheck.m).
+<li> Change type inference to handle ambiguity better
+     (see the XXX comment near the start of typecheck.m).
 
 </ul>
 
@@ -50,10 +51,9 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <li> extend the mode system to allow known aliasing.
      This is needed to make partially instantiated modes and unique modes work.
-	[being done by bromage, nearly finished]
-
-<li> report an error if two mode declarations for a predicate
-     specify identical modes.
+	[supported on the "alias" branch, but there were some serious
+	 performance problems... has not been merged back into the main
+	 branch]
 
 <li> detect incorrect usage of `bound(...)' insts.
      That is, make sure that all of the functors in a bound(...) inst
@@ -66,7 +66,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <p>
 
 <ul>
-<li> add functionality for promise ex declarations:
+<li> add functionality for promise exclusive declarations:
      <ul>
      	<li> add error checking and type checking as for assertions
 	<li> include declaration information in the module_info
@@ -121,9 +121,47 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 </ul>
 
-<hr>
-<!-------------------------->
+<h2> back-ends </h2>
 
+<h3> low-level (LLDS) back-end </h3>
+<ul>
+<li> support accurate garbage collection
+</ul>
+
+<h3> high-level C back-end </h3>
+<ul>
+<li> finish off support for accurate garbage collection;
+     see the comments in compiler/ml_elim_nested.m
+<li> implement a better solution to the problem with abstract
+     equivalence types defined as float (the current solution
+     is to use --intermodule-optimization, but it would better
+     to only do this for abstract equivalence types)
+<li> see also the comments in compiler/ml_code_gen.m
+</ul>
+
+<h2> native code back-end </h2>
+<ul>
+<li> support on platforms other than Linux/x86.
+<li> commit GCC tail-call improvements to GCC CVS repository
+<li> support `--gc accurate'
+<li> support `--gc none'
+</ul>
+
+<h3> .NET back-end </h3>
+<ul>
+<li> finish off standard library implementation
+<li> see also the TODO list in compiler/mlds_to_il.m
+</ul>
+
+<h3> Java back-end </h3>
+<ul>
+<li> implement the foreign language interface
+<li> finish off standard library implementation
+<li> see also the TODO list in compiler/mlds_to_java.m
+</ul>
+
+<hr>
+<!--======================-->
 
 <h1> WISH LIST </h1>
 
@@ -162,7 +200,8 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      "micro-unification" pieces when necessary.
      (When is it necessary?)
 
-<li> handle polymorphic modes (some research issues?)
+<li> extend polymorphic modes,
+     e.g. to handle uniqueness polymorphism (some research issues?)
 
 <li> handle abstract insts in the same way abstract types are handled
      (a research issue - is this possible at all?)
@@ -216,54 +255,72 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
   	[vice versa done by stayl]
 </ul>
 
-<h2> code generation: </h2>
-
-<ul>
-<li> use floating point registers
-
-<li> allow floating point fields of structures without boxing
-	(need multi-word fields)
-
-<li> inter-procedural register allocation 
-
-<li> stack allocation of structures
-
-<li> retarget code generator to Java VM
-</ul>
-
 <h2> source-level transformations </h2>
 
 <ul>
 <li> more work on module system, separate compilation, and the multiple
      specialisation problem
 
-<li> extended DCGs
-
 <li> transform non-tail-recursive predicates into tail-recursive form
-     using accumulators
-	[being worked on by petdr]
+     using accumulators.  (This is already done, but not enabled by
+     default since it can make some programs run much more slowly.
+     More work is needed to only enable this optimization in cases
+     when it will improve performance rather than pessimize it.)
 
 <li> improvements to deforestation / partial deduction
 
 </ul>
 
-<h2> low-level optimizations </h2>
+<h2> code generation: </h2>
 
 <ul>
-<li> reduce the overhead of higher-order predicate calls (avoid copying
-     the real registers into the fake_reg array and back)
+<li> allow floating point fields of structures without boxing
+	(need multi-word fields)
+
+<li> stack allocation of structures
 
 <li> tail recursion optimization using pass-by-reference argument conventions
 	[being worked on by dmo]
 
+</ul>
+
+<h2> LLDS back-end: </h2>
+
+<ul>
+<li> use floating point registers
+
+<li> inter-procedural register allocation 
+
 <li> other specializations, e.g. if argument is known to be bound to
      f(X,Y), then just pass X and Y in registers
+
+<li> reduce the overhead of higher-order predicate calls (avoid copying
+     the real registers into the fake_reg array and back)
 
 <li> trim stack frames before making recursive calls, to minimize stack usage
      (this would probably be a pessimization much of the time - zs)
      and to minimize unnecessary garbage retention.
+
+<li> target C--
 </ul>
 
+<h2> native code back-end </h2>
+
+<ul>
+<li> consider supporting exception handling in a manner
+     that is compatible with C++ and Java
+<li> inline more of the standard library primitives that are
+     currently implemented in C
+</ul>
+
+<h2> garbage collection <h2>
+<ul>
+<li> implement liveness-accurate GC
+<li> implement incremental GC
+<li> implement generational GC
+<li> implement parallel GC
+<li> implement real-time GC
+</ul>
   
 <h2> compilation speed </h2>
 
@@ -276,6 +333,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> improve the efficiency of mode checking very large facts
      (e.g. this is particularly bad when compiling eliza.m).
 
+<li> use "store" rather than "map" for the major compiler data structures
 </ul>
 
 
@@ -307,10 +365,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      similar to Gofer
      [not-so-fast bytecode compiler done, but bytecode interpreter
      not implemented]
-
-<li> implement "accurate" garbage collection
-
-<li> implement parallel garbage collection
 
 <li> implement user-defined operators: <br>
 	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
@@ -350,8 +404,8 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 </ul>
 
 <hr>
-<!-------------------------->
+<!--======================-->
 
-Last update was $Date: 2002-02-08 02:27:12 $ by $Author: lljy $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-10-24 01:38:38 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
