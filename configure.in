@@ -1836,6 +1836,7 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # set up some default values that should work on most systems
 # see Mmake.common.in for documentation on the meaning of these variables
 LINK_SHARED_OBJ="$CC -shared"
+LINK_SHARED_OBJ_SH="$CC -shared"
 SHARED_LIBS='`gcc -print-libgcc-file-name` -lm -lc'
 EXE_RPATH_OPT="-Wl,-rpath,"
 EXE_RPATH_SEP=" -Wl,-rpath,"
@@ -1863,6 +1864,7 @@ case "$host" in
 		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -Bshareable"
+		LINK_SHARED_OBJ_SH="ld -Bshareable"
 		EXT_FOR_SHARED_LIB=so
 		# From Kevet Duncombe <dunc@acm.org> tested on FreeBSD 2.2.5
 		EXE_RPATH_OPT="-R"
@@ -1874,6 +1876,7 @@ case "$host" in
 		AC_MSG_RESULT(yes)
 		SHARED_LIBS="-lm -lc"	# don't link in libgcc.a
 		LINK_SHARED_OBJ="$CC -G"
+		LINK_SHARED_OBJ_SH="$CC -G"
 		ERROR_UNDEFINED="-Wl,-z,defs"
 		EXE_RPATH_OPT="-R"
 		EXE_RPATH_SEP=" -R"
@@ -1914,8 +1917,10 @@ case "$host" in
 		;;
 	alpha-dec-osf*)
 		AC_MSG_RESULT(yes)
-		LINK_SHARED_OBJ="gcc -shared \
-			-Wl,-O3,-update_registry,../so_locations"
+		LINK_SHARED_OBJ='gcc -shared \
+		-Wl,-O3,-update_registry,$(SO_LOCATIONS_DIR)so_locations'
+		LINK_SHARED_OBJ_SH='gcc -shared \
+		-Wl,-O3,-update_registry,${SO_LOCATIONS_DIR}so_locations'
 		ERROR_UNDEFINED="-Wl,-error_unresolved"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
@@ -1927,8 +1932,12 @@ case "$host" in
 		EXT_FOR_PIC_OBJECTS=o
 		;;
 	mips-sgi-irix5.*)
-		LINK_SHARED_OBJ="ld -shared -update_registry ../so_locations\
-			-quickstart_info -rdata_shared"
+		LINK_SHARED_OBJ='ld -shared \
+			-update_registry $(SO_LOCATIONS_DIR)so_locations \
+			-quickstart_info -rdata_shared'
+		LINK_SHARED_OBJ_SH='ld -shared \
+			-update_registry ${SO_LOCATIONS_DIR}so_locations \
+			-quickstart_info -rdata_shared'
 		ERROR_UNDEFINED="-no_unresolved"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
@@ -2006,6 +2015,7 @@ esac
 #-----------------------------------------------------------------------------#
 
 AC_SUBST(LINK_SHARED_OBJ)
+AC_SUBST(LINK_SHARED_OBJ_SH)
 AC_SUBST(ERROR_UNDEFINED)
 AC_SUBST(ALLOW_UNDEFINED)
 AC_SUBST(EXE_RPATH_OPT)
