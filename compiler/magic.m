@@ -166,8 +166,8 @@
 
 :- import_module io.
 
-:- pred magic__process_module(module_info, module_info, io__state, io__state).
-:- mode magic__process_module(in, out, di, uo) is det.
+:- pred magic__process_module(module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -283,7 +283,7 @@ magic__process_module(ModuleInfo0, ModuleInfo) -->
 	%
 :- pred magic__ite_to_disj_and_simplify(list(simplification)::in, pred_id::in,
 	proc_id::in, proc_info::in, proc_info::out, module_info::in,
-	module_info::out, io__state::di, io__state::uo) is det.
+	module_info::out, io::di, io::uo) is det.
 
 magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
 		!ProcInfo, !ModuleInfo) -->
@@ -1648,8 +1648,8 @@ magic__rename_and_generate_closures([Arg | Args], ExtraGoals,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred magic__process_scc(aditi_scc::in, magic_info::in,
-		magic_info::out, io__state::di, io__state::uo) is det.
+:- pred magic__process_scc(aditi_scc::in, magic_info::in, magic_info::out,
+	io::di, io::uo) is det.
 
 magic__process_scc(aditi_scc(SCC0, _), Info0, Info) -->
 	{ list__condense(SCC0, SCC) },

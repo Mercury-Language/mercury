@@ -1387,10 +1387,9 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
 		error("gen_init_special_pred: cannot extract univ value")
 	).
 
-:- pred gen_wrapper_func_and_initializer(module_info, int, rtti_proc_label,
-		closure_kind, mlds__initializer,
-		list(mlds__defn), list(mlds__defn)).
-:- mode gen_wrapper_func_and_initializer(in, in, in, in, out, in, out) is det.
+:- pred gen_wrapper_func_and_initializer(module_info::in, int::in,
+	rtti_proc_label::in, closure_kind::in, mlds__initializer::out,
+	list(mlds__defn)::in, list(mlds__defn)::out) is det.
 
 gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
 		ClosureKind, Init, ExtraDefns0, ExtraDefns) :-

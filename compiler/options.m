@@ -39,7 +39,7 @@
 %	The MaybeOptionTableOut may either be ok(OptionTableOut), or it may
 %	be error(ErrorString).
 
-:- pred options_help(io__state::di, io__state::uo) is det.
+:- pred options_help(io::di, io::uo) is det.
 
 :- type option_table == option_table(option).
 :- type maybe_option_table == maybe_option_table(option).
@@ -2501,7 +2501,7 @@ options_help -->
 	options_help_build_system,
 	options_help_misc.
 
-:- pred options_help_warning(io__state::di, io__state::uo) is det.
+:- pred options_help_warning(io::di, io::uo) is det.
 
 options_help_warning -->
 	io__write_string("\nWarning Options:\n"),
@@ -2587,7 +2587,7 @@ options_help_warning -->
 		"\ttarget code (e.g. gcc)."
 	]).
 
-:- pred options_help_verbosity(io__state::di, io__state::uo) is det.
+:- pred options_help_verbosity(io::di, io::uo) is det.
 
 options_help_verbosity -->
 	io__write_string("\nVerbosity Options:\n"),
@@ -2644,7 +2644,7 @@ options_help_verbosity -->
 		"\tOutput detailed debugging traces of the `--make' option."
 	]).
 
-:- pred options_help_output(io__state::di, io__state::uo) is det.
+:- pred options_help_output(io::di, io::uo) is det.
 
 options_help_output -->
 	io__write_string("\nOutput Options:\n"),
@@ -2722,7 +2722,7 @@ options_help_output -->
 		"\tstandard output."
 	]).
 
-:- pred options_help_aux_output(io__state::di, io__state::uo) is det.
+:- pred options_help_aux_output(io::di, io::uo) is det.
 
 options_help_aux_output -->
 	io__write_string("\nAuxiliary Output Options:\n"),
@@ -2865,7 +2865,7 @@ options_help_aux_output -->
 		*/
 	]).
 
-:- pred options_help_semantics(io__state::di, io__state::uo) is det.
+:- pred options_help_semantics(io::di, io::uo) is det.
 
 options_help_semantics -->
 	io__write_string("\nLanguage semantics options:\n"),
@@ -2903,7 +2903,7 @@ options_help_semantics -->
 	]).
 
 
-:- pred options_help_termination(io__state::di, io__state::uo) is det.
+:- pred options_help_termination(io::di, io::uo) is det.
 
 options_help_termination -->
 	io__write_string("\nTermination Analysis Options:\n"),
@@ -2943,7 +2943,7 @@ options_help_termination -->
 	]).
 
 
-:- pred options_help_compilation_model(io__state::di, io__state::uo) is det.
+:- pred options_help_compilation_model(io::di, io::uo) is det.
 
 options_help_compilation_model -->
 	io__write_string("\nCompilation model options:\n"),
@@ -3340,7 +3340,7 @@ your program compiled with different options.
 
 	]).
 
-:- pred options_help_code_generation(io__state::di, io__state::uo) is det.
+:- pred options_help_code_generation(io::di, io::uo) is det.
 
 options_help_code_generation -->
 	io__write_string("\nCode generation options:\n"),
@@ -3436,7 +3436,7 @@ options_help_code_generation -->
 		"\treal machine registers."
 	]).
 
-:- pred options_help_optimization(io__state::di, io__state::uo) is det.
+:- pred options_help_optimization(io::di, io::uo) is det.
 
 options_help_optimization -->
 	io__write_string("\nOptimization Options:\n"),
@@ -3496,8 +3496,7 @@ options_help_optimization -->
 		"\t`--split-c-files'."
 	]).
 
-:- pred options_help_hlds_hlds_optimization(io__state::di, io__state::uo)
-	is det.
+:- pred options_help_hlds_hlds_optimization(io::di, io::uo) is det.
 
 options_help_hlds_hlds_optimization -->
 	io__write_string("\n    High-level (HLDS -> HLDS) optimizations:\n"),
@@ -3634,7 +3633,7 @@ options_help_hlds_hlds_optimization -->
 		"\tA value of -1 specifies no limit. The default is 15."
 	]).
 
-:- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
+:- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.
 
 options_help_hlds_llds_optimization -->
 	io__write_string("\n    Medium-level (HLDS -> LLDS) optimizations:\n"),
@@ -3683,7 +3682,7 @@ options_help_hlds_llds_optimization -->
 %		"\tanother procedure invocation".
 	]).
 
-:- pred options_help_llds_llds_optimization(io__state::di, io__state::uo) is det.
+:- pred options_help_llds_llds_optimization(io::di, io::uo) is det.
 
 options_help_llds_llds_optimization -->
 	io__write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n"),
@@ -3726,7 +3725,7 @@ options_help_llds_llds_optimization -->
 		"\tIterate most optimizations at most <n> times (default: 3)."
 	]).
 
-:- pred options_help_mlds_mlds_optimization(io__state::di, io__state::uo) is det.
+:- pred options_help_mlds_mlds_optimization(io::di, io::uo) is det.
 
 options_help_mlds_mlds_optimization -->
 	io__write_string("\n    MLDS -> MLDS optimizations:\n"),
@@ -3746,7 +3745,7 @@ options_help_mlds_mlds_optimization -->
 	]).
 
 
-:- pred options_help_rl_rl_optimization(io__state::di, io__state::uo) is det.
+:- pred options_help_rl_rl_optimization(io::di, io::uo) is det.
 
 options_help_rl_rl_optimization -->
 	io__write_string("\n    Aditi-RL optimizations:\n"),
@@ -3769,7 +3768,7 @@ options_help_rl_rl_optimization -->
 		*/
 	]).
 
-:- pred options_help_output_optimization(io__state::di, io__state::uo) is det.
+:- pred options_help_output_optimization(io::di, io::uo) is det.
 
 options_help_output_optimization -->
 	io__write_string("\n    Output-level (LLDS -> C) optimizations:\n"),
@@ -3792,8 +3791,7 @@ options_help_output_optimization -->
 		"\tseverely stress the C compiler on large modules."
 	]).
 
-:- pred options_help_target_code_compilation(io__state::di,
-		io__state::uo) is det.
+:- pred options_help_target_code_compilation(io::di, io::uo) is det.
 
 options_help_target_code_compilation -->
 	io__write_string("\n    Target code compilation:\n"),
@@ -3894,7 +3892,7 @@ options_help_target_code_compilation -->
 		"\tto be quoted when passed to the shell."
 	]).
 
-:- pred options_help_link(io__state::di, io__state::uo) is det.
+:- pred options_help_link(io::di, io::uo) is det.
 
 options_help_link -->
 	io__write_string("\nLink Options:\n"),
@@ -4010,7 +4008,7 @@ options_help_link -->
 		% they are deliberately not documented.
 	]).
 
-:- pred options_help_build_system(io__state::di, io__state::uo) is det.
+:- pred options_help_build_system(io::di, io::uo) is det.
 
 options_help_build_system -->
 	io__write_string("\nBuild System Options:\n"),
@@ -4098,7 +4096,7 @@ options_help_build_system -->
 		"\twork with `mmc --make')."
 	]).
 
-:- pred options_help_misc(io__state::di, io__state::uo) is det.
+:- pred options_help_misc(io::di, io::uo) is det.
 
 options_help_misc -->
 	io__write_string("\nMiscellaneous Options:\n"),
@@ -4126,8 +4124,7 @@ options_help_misc -->
 		% use by the `Mercury.config' file.
 	]).
 
-:- pred write_tabbed_lines(list(string), io__state, io__state).
-:- mode write_tabbed_lines(in, di, uo) is det.
+:- pred write_tabbed_lines(list(string)::in, io::di, io::uo) is det.
 
 write_tabbed_lines([]) --> [].
 write_tabbed_lines([Str|Strs]) -->
@@ -4135,7 +4132,5 @@ write_tabbed_lines([Str|Strs]) -->
 	io__write_string(Str),
 	io__write_char('\n'),
 	write_tabbed_lines(Strs).
-
-:- end_module options.
 
 %-----------------------------------------------------------------------------%

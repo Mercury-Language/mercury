@@ -828,7 +828,7 @@ hlds_out__write_preds(Indent, ModuleInfo, PredTable, !IO) :-
 		PredIds, !IO).
 
 :- pred hlds_out__maybe_write_pred(int::in, module_info::in, pred_table::in,
-	pred_id::in, io__state::di, io__state::uo) is det.
+	pred_id::in, io::di, io::uo) is det.
 
 hlds_out__maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
         globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
@@ -1209,7 +1209,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 :- pred hlds_out__write_annotated_clause_heads(module_info::in,
 	term__context::in, pred_id::in, list(proc_id)::in, prog_varset::in,
 	bool::in, list(prog_term)::in, pred_or_func::in, bool::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 hlds_out__write_annotated_clause_heads(_, _, _, [], _, _, _, _, _, !IO).
 hlds_out__write_annotated_clause_heads(ModuleInfo, Context, PredId,
@@ -1225,7 +1225,7 @@ hlds_out__write_annotated_clause_heads(ModuleInfo, Context, PredId,
 :- pred hlds_out__write_annotated_clause_head(module_info::in,
 	term__context::in, pred_id::in, proc_id::in, prog_varset::in,
 	bool::in, list(prog_term)::in, pred_or_func::in, bool::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 hlds_out__write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId,
 		VarSet, AppendVarNums, HeadTerms,
@@ -1953,7 +1953,7 @@ hlds_out__write_foreign_args([Arg | Args], VarSet, TVarSet, AppendVarNums,
 	).
 
 :- pred hlds_out__write_llds_code_gen_info(hlds_goal_info::in, prog_varset::in,
-	bool::in, int::in, string::in, io__state::di, io__state::uo) is det.
+	bool::in, int::in, string::in, io::di, io::uo) is det.
 
 hlds_out__write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
 		Indent, Verbose, !IO) :-
@@ -2120,7 +2120,7 @@ hlds_out__write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
 	).
 
 :- pred hlds_out__write_vars(list(prog_var)::in, prog_varset::in, bool::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 hlds_out__write_vars([], _, _, !IO).
 hlds_out__write_vars([Var], VarSet, AppendVarNums, !IO) :-
@@ -2827,7 +2827,7 @@ hlds_out__write_instmap_delta(InstMapDelta, VarSet, AppendVarNums, Indent,
 	).
 
 :- pred hlds_out__write_instmap_delta_vars(instmap_delta::in, prog_varset::in,
-	bool::in, io__state::di, io__state::uo) is det.
+	bool::in, io::di, io::uo) is det.
 
 hlds_out__write_instmap_delta_vars(InstMapDelta, VarSet, AppendVarNums, !IO) :-
 	( instmap_delta_is_unreachable(InstMapDelta) ->
@@ -3692,8 +3692,8 @@ hlds_out__write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
 			Indent1, ".\n", !IO)
 	).
 
-% :- pred hlds_out__write_varnames(int, map(var, string), io__state, io__state).
-% :- mode hlds_out__write_varnames(in, in, di, uo) is det.
+% :- pred hlds_out__write_varnames(int::in, map(var, string)::in,
+%	io::di, io::uo) is det.
 %
 % hlds_out__write_varnames(Indent, VarNames) -->
 %	{ map__to_assoc_list(VarNames, VarNameList) },
@@ -3711,9 +3711,8 @@ hlds_out__write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
 %		io__write_string("]\n")
 %	).
 %
-% :- pred hlds_out__write_varnames_2(int, list(pair(var, string)),
-%	io__state, io__state).
-% :- mode hlds_out__write_varnames_2(in, in, di, uo) is det.
+% :- pred hlds_out__write_varnames_2(int::in, list(pair(var, string))::in,
+%	io::di, io::uo) is det.
 %
 % hlds_out__write_varnames_2(Indent, VarNameList0) -->
 %	(

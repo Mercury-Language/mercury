@@ -20,16 +20,16 @@
 
 	% Transform Aditi builtin generic_call goals into calls to
 	% the predicates in extras/aditi/aditi_private_builtin.m.
-:- pred transform_aditi_builtins(module_info, module_info,
-		io__state, io__state).
-:- mode transform_aditi_builtins(in, out, di, uo) is det.
+:- pred transform_aditi_builtins(module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
 	% Change the goal for the given procedure to call the
 	% corresponding Aditi procedure.
-:- pred create_aditi_call_proc(pred_proc_id, module_info, module_info).
-:- mode create_aditi_call_proc(in, in, out) is det.
+:- pred create_aditi_call_proc(pred_proc_id::in,
+	module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module aditi_backend__rl.
@@ -62,11 +62,9 @@ transform_aditi_builtins(ModuleInfo0, ModuleInfo) -->
 		update_module_io(transform_aditi_builtins_in_proc), _,
 		ModuleInfo0, ModuleInfo).
 
-:- pred transform_aditi_builtins_in_proc(pred_id, proc_id,
-		proc_info, proc_info, module_info, module_info,
-		io__state, io__state).
-:- mode transform_aditi_builtins_in_proc(in, in, in, out,
-		in, out, di, uo) is det.
+:- pred transform_aditi_builtins_in_proc(pred_id::in, proc_id::in,
+	proc_info::in, proc_info::out, module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
 transform_aditi_builtins_in_proc(PredId, _ProcId, !ProcInfo,
 		!ModuleInfo, IO, IO) :-
@@ -84,16 +82,15 @@ transform_aditi_builtins_in_proc(PredId, _ProcId, !ProcInfo,
 		true
 	).
 
-:- pred transform_aditi_builtins_in_goal(hlds_goal, hlds_goal,
-		aditi_transform_info, aditi_transform_info).
-:- mode transform_aditi_builtins_in_goal(in, out, in, out) is det.
+:- pred transform_aditi_builtins_in_goal(hlds_goal::in, hlds_goal::out,
+	aditi_transform_info::in, aditi_transform_info::out) is det.
 
 transform_aditi_builtins_in_goal(Goal0 - GoalInfo, Goal - GoalInfo) -->
 	transform_aditi_builtins_in_goal_expr(Goal0, GoalInfo, Goal).
 
-:- pred transform_aditi_builtins_in_goal_expr(hlds_goal_expr, hlds_goal_info,
-		hlds_goal_expr, aditi_transform_info, aditi_transform_info).
-:- mode transform_aditi_builtins_in_goal_expr(in, in, out, in, out) is det.
+:- pred transform_aditi_builtins_in_goal_expr(hlds_goal_expr::in,
+	hlds_goal_info::in, hlds_goal_expr::out,
+	aditi_transform_info::in, aditi_transform_info::out) is det.
 
 transform_aditi_builtins_in_goal_expr(Goal0, GoalInfo, Goal) -->
 	{ Goal0 = unify(_, _, _, Unification, _) },

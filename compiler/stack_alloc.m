@@ -31,7 +31,7 @@
 :- import_module io.
 
 :- pred allocate_stack_slots_in_proc(pred_id::in, proc_id::in, module_info::in,
-	proc_info::in, proc_info::out, io__state::di, io__state::uo) is det.
+	proc_info::in, proc_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

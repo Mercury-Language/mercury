@@ -78,9 +78,8 @@
 	% an edge.
 	%
 :- pred dependency_graph__write_graph(dependency_info::in,
-	pred(pred_proc_id, io__state, io__state)::pred(in, di, uo) is det,
-	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
-		pred(in, in, di, uo) is det,
+	pred(pred_proc_id, io, io)::pred(in, di, uo) is det,
+	pred(pred_proc_id, pred_proc_id, io, io)::pred(in, in, di, uo) is det,
 	io::di, io::uo) is det.
 
 	% write_graph_nodes(Nodes, Graph, WriteNode, WriteEdge)
@@ -90,9 +89,8 @@
 	%
 :- pred dependency_graph__write_graph_nodes(list(pred_proc_id)::in,
 	dependency_graph::in,
-	pred(pred_proc_id, io__state, io__state)::pred(in, di, uo) is det,
-	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
-		pred(in, in, di, uo) is det,
+	pred(pred_proc_id, io, io)::pred(in, di, uo) is det,
+	pred(pred_proc_id, pred_proc_id, io, io)::pred(in, in, di, uo) is det,
 	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -577,14 +575,12 @@ dependency_graph__write_dependency_graph(!ModuleInfo, !IO) :-
 	write_graph(DepInfo, write_empty_node,
 		write_dep_graph_link(!.ModuleInfo), !IO).
 
-:- pred write_empty_node(pred_proc_id::in, io__state::di, io__state::uo)
-	is det.
+:- pred write_empty_node(pred_proc_id::in, io::di, io::uo) is det.
 
 write_empty_node(_, !IO).
 
 :- pred write_prof_dep_graph_link(module_info::in,
-	pred_proc_id::in, pred_proc_id::in,
-	io__state::di, io__state::uo) is det.
+	pred_proc_id::in, pred_proc_id::in, io::di, io::uo) is det.
 
 write_prof_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
 	Parent = proc(PPredId, PProcId),	% Caller
@@ -595,8 +591,7 @@ write_prof_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
 	io__write_string("\n", !IO).
 
 :- pred write_dep_graph_link(module_info::in,
-	pred_proc_id::in, pred_proc_id::in,
-	io__state::di, io__state::uo) is det.
+	pred_proc_id::in, pred_proc_id::in, io::di, io::uo) is det.
 
 write_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
 	Parent = proc(PPredId, PProcId),	% Caller
@@ -640,9 +635,8 @@ write_graph_nodes([Node | Nodes], Graph, WriteNode, WriteLink, !IO) :-
 
 :- pred write_graph_children(list(relation_key)::in, pred_proc_id::in,
 	dependency_graph::in,
-	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
-		pred(in, in, di, uo) is det,
-	io__state::di, io__state::uo) is det.
+	pred(pred_proc_id, pred_proc_id, io, io)::pred(in, in, di, uo) is det,
+	io::di, io::uo) is det.
 
 write_graph_children([], _Parent, _Graph, _WriteLink, !IO).
 write_graph_children([ChildKey | Children], Parent, Graph, WriteLink, !IO) :-
@@ -655,9 +649,9 @@ write_graph_children([ChildKey | Children], Parent, Graph, WriteLink, !IO) :-
 % dependency_graph__output_label:
 %	Prints out the label corresponding to PredId and ProcId.
 %
-:- pred dependency_graph__output_label(module_info, pred_id, proc_id,
-	io__state, io__state).
-:- mode dependency_graph__output_label(in, in, in, di, uo) is det.
+
+:- pred dependency_graph__output_label(module_info::in,
+	pred_id::in, proc_id::in, io::di, io::uo) is det.
 
 dependency_graph__output_label(ModuleInfo, PredId, ProcId, !IO) :-
 	ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),

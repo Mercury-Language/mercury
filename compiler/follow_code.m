@@ -148,11 +148,11 @@ move_follow_code_in_cases([case(Cons, Goal0)|Goals0], [case(Cons, Goal)|Goals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-	pair(bool)::in, bool::in, bool::out) is det.
-
 	% Find the first branched structure, and split the
 	% conj into those goals before and after it.
+
+:- pred move_follow_code_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+	pair(bool)::in, bool::in, bool::out) is det.
 
 move_follow_code_in_conj(Goals0, Goals, Flags, !R) :-
 	move_follow_code_in_conj_2(Goals0, [], RevGoals, Flags, !R),
@@ -291,37 +291,6 @@ move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% move_prev_code(Goal0, Goal, ForbiddenVars0, RevPrevGoals0, RevPrevGoals,
-% 		!R) :-
-% 	(
-% 		move_prev_code_breakup_branched(Goal0, Cond0, First0, Rest0)
-% 	->
-% 		move_prev_code_new_forbidden_vars(Cond0, First0,
-% 			ForbiddenVars0, ForbiddenVars1),
-% 		(
-% 			move_prev_code_vars_difference(Cond0, First0, Rest0,
-% 				ForbiddenVars0, LocalVars),
-% 			move_prev_code_can_pull_producer(LocalVars, Producers,
-% 				RevPrevGoals0, RevPrevGoals1)
-% 		->
-% 			move_prev_code(Rest0, Rest, ForbiddenVars1,
-% 				RevPrevGoals1, RevPrevGoals, !R),
-% 			move_prev_code_replace_first(Goal0,
-% 				Producers, Rest, Goal)
-% 		;
-% 			move_prev_code(Rest0, Rest, ForbiddenVars1,
-% 				RevPrevGoals0, RevPrevGoals, !R)
-% 		)
-% 	;
-% 		R = R0,
-% 		Goal = Goal0,
-% 		RevPrevGoals = [Goal0 | RevPrevGoals0]
-% 	).
-%
-% :- pred move_prev_code_breakup_branched(hlds_goal, hlds_goal, hlds_goal,
-% 	hlds_goal).
-% :- mode move_prev_code_breakup_branched(in, out, out, out) is semidet.
-
 :- pred move_prev_code_forbidden_vars(list(hlds_goal)::in, set(prog_var)::out)
 	is det.
 
@@ -331,31 +300,3 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 	move_prev_code_forbidden_vars(Goals, Varset0),
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__union(Varset0, NonLocals, Varset).
-
-%
-% :- pred move_prev_code_new_forbidden_vars(hlds_goal, hlds_goal,
-% 	set(prog_var), set(prog_var)).
-% :- mode move_prev_code_new_forbidden_vars(in, in, in, out) is det.
-%
-% :- pred move_prev_code_vars_difference(hlds_goal, hlds_goal, hlds_goal,
-% 	set(prog_var), set(prog_var)).
-% :- mode move_prev_code_vars_difference(in, in, in, in, out) is det.
-%
-% move_prev_code_vars_difference(Cond, First, Rest, ForbiddenVars, LocalVars) :-
-% 	Cond  = _ - CondInfo,
-% 	First = _ - FirstInfo,
-% 	Rest  = _ - RestInfo,
-% 	goal_info_get_nonlocals(CondInfo,  CondVars),
-% 	goal_info_get_nonlocals(FirstInfo, FirstVars),
-% 	goal_info_get_nonlocals(RestInfo,  RestVars),
-% 	set__union(CondVars, FirstVars, ThisBranchVars),
-% 	set__difference(ThisBranchVars, RestVars, LocalVars0),
-% 	set__difference(LocalVars0, ForbiddenVars, LocalVars).
-%
-% :- pred move_prev_code_can_pull_producer(set(prog_var), list(hlds_goal),
-% 	list(hlds_goal), list(hlds_goal)).
-% :- mode move_prev_code_can_pull_producer(in, in, di, uo) is det.
-%
-% :- pred move_prev_code_replace_first(hlds_goal,
-% 	list(hlds_goal), list(hlds_goal), hlds_goal).
-% :- mode move_prev_code_replace_first(di, in, in, uo) is det.

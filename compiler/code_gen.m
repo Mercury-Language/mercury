@@ -43,7 +43,7 @@
 		% Translate a HLDS module to LLDS.
 
 :- pred generate_code(module_info::in, global_data::in, global_data::out,
-	list(c_procedure)::out, io__state::di, io__state::uo) is det.
+	list(c_procedure)::out, io::di, io::uo) is det.
 
 		% Translate a HLDS procedure to LLDS, threading through
 		% the data structure that records information about layout
@@ -127,7 +127,7 @@ generate_code(ModuleInfo0, !GlobalData, Procedures, !IO) :-
 :- pred generate_pred_list_code(module_info::in,
 	global_data::in, global_data::out,
 	list(pred_id)::in, list(c_procedure)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 generate_pred_list_code(_ModuleInfo, !GlobalData, [], [], !IO).
 generate_pred_list_code(ModuleInfo, !GlobalData, [PredId | PredIds],
@@ -140,7 +140,7 @@ generate_pred_list_code(ModuleInfo, !GlobalData, [PredId | PredIds],
 
 :- pred generate_maybe_pred_code(module_info::in,
 	global_data::in, global_data::out, pred_id::in,
-	list(c_procedure)::out, io__state::di, io__state::uo) is det.
+	list(c_procedure)::out, io::di, io::uo) is det.
 
 	% Note that some of the logic of generate_maybe_pred_code is duplicated
 	% by mercury_compile__backend_pass_by_preds, so modifications here may

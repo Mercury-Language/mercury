@@ -1325,9 +1325,8 @@ stack_layout__construct_table_arg_pti_rval(ClosureArg,
 	% type_info) defined by hand in builtin.m to stand for values of
 	% each such kind; one for succips, one for hps, etc.
 
-:- pred stack_layout__represent_live_value_type(live_value_type, rval,
-	llds_type, stack_layout_info, stack_layout_info).
-:- mode stack_layout__represent_live_value_type(in, out, out, in, out) is det.
+:- pred stack_layout__represent_live_value_type(live_value_type::in, rval::out,
+	llds_type::out, stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__represent_live_value_type(succip, Rval, data_ptr, !Info) :-
 	stack_layout__represent_special_live_value_type("succip", Rval).

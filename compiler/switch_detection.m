@@ -24,7 +24,7 @@
 :- import_module bool, io, list.
 
 :- pred detect_switches(module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pred detect_switches_in_proc(proc_id::in, pred_id::in,
 	module_info::in, module_info::out) is det.

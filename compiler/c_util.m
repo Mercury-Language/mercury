@@ -83,8 +83,7 @@
 
 	% As above, but write the string to the current output stream
 	% rather than returning it.
-:- pred c_util__output_float_literal(float::in, io__state::di, io__state::uo)
-	is det.
+:- pred c_util__output_float_literal(float::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -214,7 +213,7 @@ c_util__output_quoted_multi_string(Len, S, !IO) :-
 	c_util__output_quoted_multi_string_2(0, Len, S, !IO).
 
 :- pred c_util__output_quoted_multi_string_2(int::in, int::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 c_util__output_quoted_multi_string_2(Cur, Len, S, !IO) :-
 	( Cur < Len ->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,8 +83,8 @@
 % Uncomment if you want to dump performance information into the .err file.
 % :- import_module unsafe.
 
-:- import_module term.
-:- import_module int, assoc_list, map, queue, std_util, require, io.
+:- import_module int, string, assoc_list, map, queue.
+:- import_module term, std_util, require, io.
 
 % The stack optimization graph is a bipartite graph, whose two node types
 % are cost nodes and benefit nodes. Each node represents a copy of an
@@ -295,15 +295,15 @@ find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
 	prog_var::in, list(cost_operation)::in, list(cost_operation)::out)
 	is det.
 
-find_cell_var_loads_for_field([], _, CostOps, CostOps).
+find_cell_var_loads_for_field([], _, !CostOps).
 find_cell_var_loads_for_field([SegmentNum - SegmentVars | AfterFlush],
-		FieldVar, CostOps0, CostOps) :-
+		FieldVar, !CostOps) :-
 	( set__member(FieldVar, SegmentVars) ->
-		CostOps1 = [cell_var_load(SegmentNum) | CostOps0]
+		!:CostOps = [cell_var_load(SegmentNum) | !.CostOps]
 	;
-		CostOps1 = CostOps0
+		true
 	),
-	find_cell_var_loads_for_field(AfterFlush, FieldVar, CostOps1, CostOps).
+	find_cell_var_loads_for_field(AfterFlush, FieldVar, !CostOps).
 
 %-----------------------------------------------------------------------------%
 
@@ -346,17 +346,16 @@ make_benefit_op_copies(Cur, Op) =
 :- pred gather_benefits(field_costs_benefits::in, set(benefit_node)::in,
 	set(benefit_node)::out) is det.
 
-gather_benefits(field_costs_benefits(_, _, FieldBenefits),
-		Benefits0, Benefits) :-
-	set__union(Benefits0, FieldBenefits, Benefits).
+gather_benefits(field_costs_benefits(_, _, FieldBenefits), !Benefits) :-
+	set__union(FieldBenefits, !Benefits).
 
 % Accumulate all the cost nodes.
 
 :- pred gather_costs(field_costs_benefits::in, set(cost_node)::in,
 	set(cost_node)::out) is det.
 
-gather_costs(field_costs_benefits(_, FieldCosts, _), Costs0, Costs) :-
-	set__union(Costs0, FieldCosts, Costs).
+gather_costs(field_costs_benefits(_, FieldCosts, _), !Costs) :-
+	set__union(FieldCosts, !Costs).
 
 %-----------------------------------------------------------------------------%
 
@@ -376,41 +375,38 @@ create_graph(CostsBenefits) = Graph :-
 	map(benefit_node, set(cost_node))::out) is det.
 
 create_graph_links(field_costs_benefits(_FieldVar, Costs, Benefits),
-		CostToBenefitsMap0, CostToBenefitsMap,
-		BenefitToCostsMap0, BenefitToCostsMap) :-
+		!CostToBenefitsMap, !BenefitToCostsMap) :-
 	list__foldl(add_cost_benefit_links(Benefits),
-		set__to_sorted_list(Costs),
-		CostToBenefitsMap0, CostToBenefitsMap),
+		set__to_sorted_list(Costs), !CostToBenefitsMap),
 	list__foldl(add_benefit_cost_links(Costs),
-		set__to_sorted_list(Benefits),
-		BenefitToCostsMap0, BenefitToCostsMap).
+		set__to_sorted_list(Benefits), !BenefitToCostsMap).
 
 :- pred add_cost_benefit_links(set(benefit_node)::in, cost_node::in,
 	map(cost_node, set(benefit_node))::in,
 	map(cost_node, set(benefit_node))::out) is det.
 
-add_cost_benefit_links(Benefits, Cost, CostToBenefitsMap0, CostToBenefitsMap) :-
-	( map__search(CostToBenefitsMap0, Cost, CostBenefits0) ->
+add_cost_benefit_links(Benefits, Cost, !CostToBenefitsMap) :-
+	( map__search(!.CostToBenefitsMap, Cost, CostBenefits0) ->
 		set__union(CostBenefits0, Benefits, CostBenefits),
-		map__det_update(CostToBenefitsMap0, Cost, CostBenefits,
-			CostToBenefitsMap)
+		map__det_update(!.CostToBenefitsMap, Cost, CostBenefits,
+			!:CostToBenefitsMap)
 	;
-		map__det_insert(CostToBenefitsMap0, Cost, Benefits,
-			CostToBenefitsMap)
+		map__det_insert(!.CostToBenefitsMap, Cost, Benefits,
+			!:CostToBenefitsMap)
 	).
 
 :- pred add_benefit_cost_links(set(cost_node)::in, benefit_node::in,
 	map(benefit_node, set(cost_node))::in,
 	map(benefit_node, set(cost_node))::out) is det.
 
-add_benefit_cost_links(Costs, Benefit, BenefitToCostsMap0, BenefitToCostsMap) :-
-	( map__search(BenefitToCostsMap0, Benefit, BenefitCosts0) ->
+add_benefit_cost_links(Costs, Benefit, !BenefitToCostsMap) :-
+	( map__search(!.BenefitToCostsMap, Benefit, BenefitCosts0) ->
 		set__union(BenefitCosts0, Costs, BenefitCosts),
-		map__det_update(BenefitToCostsMap0, Benefit, BenefitCosts,
-			BenefitToCostsMap)
+		map__det_update(!.BenefitToCostsMap, Benefit, BenefitCosts,
+			!:BenefitToCostsMap)
 	;
-		map__det_insert(BenefitToCostsMap0, Benefit, Costs,
-			BenefitToCostsMap)
+		map__det_insert(!.BenefitToCostsMap, Benefit, Costs,
+			!:BenefitToCostsMap)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -426,12 +422,12 @@ maximal_matching(BenefitNodes, Graph) = Matching :-
 :- pred maximize_matching(list(benefit_node)::in, stack_slot_graph::in,
 	matching::in, matching::out) is det.
 
-maximize_matching(BenefitNodes, Graph, Matching0, Matching) :-
-	( Path = find_augmenting_path(BenefitNodes, Graph, Matching0) ->
-		Matching1 = update_matches(Path, Matching0),
-		maximize_matching(BenefitNodes, Graph, Matching1, Matching)
+maximize_matching(BenefitNodes, Graph, !Matching) :-
+	( Path = find_augmenting_path(BenefitNodes, Graph, !.Matching) ->
+		!:Matching = update_matches(Path, !.Matching),
+		maximize_matching(BenefitNodes, Graph, !Matching)
 	;
-		Matching = Matching0
+		true
 	).
 
 :- func update_matches(edge_list, matching) = matching.
@@ -521,22 +517,20 @@ find_unmatched_cost([CostNode - MaybeBenefitNode | Matches]) = Unmatched :-
 	edge_list::in, queue(benefit_node_and_edge_list)::in,
 	queue(benefit_node_and_edge_list)::out) is det.
 
-add_alternates([], Seen, Seen, _, _, Queue, Queue).
-add_alternates([CostNode - MaybeAdjBenefitNode | CostMatches], Seen0, Seen,
-		BenefitNode, Path, Queue0, Queue) :-
+add_alternates([], !Seen, _, _, !Queue).
+add_alternates([CostNode - MaybeAdjBenefitNode | CostMatches], !Seen,
+		BenefitNode, Path, !Queue) :-
 	(
 		MaybeAdjBenefitNode = yes(AdjBenefitNode),
-		not list__member(AdjBenefitNode, Seen0)
+		not list__member(AdjBenefitNode, !.Seen)
 	->
-		Seen1 = [AdjBenefitNode | Seen0],
-		Queue1 = queue__put(Queue0,
+		!:Seen = [AdjBenefitNode | !.Seen],
+		!:Queue = queue__put(!.Queue,
 			AdjBenefitNode - [BenefitNode - CostNode | Path])
 	;
-		Seen1 = Seen0,
-		Queue1 = Queue0
+		true
 	),
-	add_alternates(CostMatches, Seen1, Seen, BenefitNode, Path,
-		Queue1, Queue).
+	add_alternates(CostMatches, !Seen, BenefitNode, Path, !Queue).
 
 %-----------------------------------------------------------------------------%
 
@@ -563,30 +557,30 @@ reachable_by_alternating_path(SelectedCostNodes, Graph, Matching)
 	set(benefit_node)::out) is det.
 
 reachable_by_alternating_path(SelectedCostNodes, Graph, Matching,
-		BenefitNodes0, BenefitNodes) :-
+		!BenefitNodes) :-
 	( SelectedCostNodes = [] ->
-		BenefitNodes = BenefitNodes0
+		true
 	;
 		Graph = stack_slot_graph(CostToBenefitsMap, _),
 		list__foldl(adjacents(CostToBenefitsMap), SelectedCostNodes,
 			set__init, AdjBenefitNodes),
-		set__union(AdjBenefitNodes, BenefitNodes0, BenefitNodes1),
-		set__difference(BenefitNodes0, AdjBenefitNodes,
+		set__difference(!.BenefitNodes, AdjBenefitNodes,
 			NewBenefitNodes),
+		set__union(AdjBenefitNodes, !BenefitNodes),
 		set__to_sorted_list(NewBenefitNodes, NewBenefitNodeList),
 		Matching = matching(_, BenefitToCostMap),
 		LinkedCostNodes = list__map(map__lookup(BenefitToCostMap),
 			NewBenefitNodeList),
 		reachable_by_alternating_path(LinkedCostNodes, Graph, Matching,
-			BenefitNodes1, BenefitNodes)
+			!BenefitNodes)
 	).
 
 :- pred adjacents(map(cost_node, set(benefit_node))::in, cost_node::in,
 	set(benefit_node)::in, set(benefit_node)::out) is det.
 
-adjacents(CostToBenefitsMap, CostNode, BenefitNodes0, BenefitNodes) :-
+adjacents(CostToBenefitsMap, CostNode, !BenefitNodes) :-
 	map__lookup(CostToBenefitsMap, CostNode, AdjBenefitNodes),
-	set__union(BenefitNodes0, AdjBenefitNodes, BenefitNodes).
+	set__union(AdjBenefitNodes, !BenefitNodes).
 
 %-----------------------------------------------------------------------------%
 
@@ -628,7 +622,8 @@ compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
 	; set__equal(MarkedFieldBenefits, FieldBenefits) ->
 		ViaCellVars = ViaCellVars1
 	;
-		error("compute_via_cell_vars: theorem violation: intersection neither empty nor full")
+		error("compute_via_cell_vars: theorem violation: " ++
+			"intersection neither empty nor full")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -675,8 +670,7 @@ get_unmatched_cost_nodes([Node | Nodes], MatchingCB) = UnmatchedNodes :-
 	set(prog_var)::in, bool::in, set(prog_var)::in,
 	assoc_list(int, set(prog_var))::in,
 	list(benefit_node)::in, list(benefit_operation)::in,
-	list(cost_node)::in, list(cost_operation)::in,
-	io__state::di, io__state::uo) is det.
+	list(cost_node)::in, list(cost_operation)::in, io::di, io::uo) is det.
 
 dump_results(CellVar, CandidateFieldVars, OccurringCandidateFieldVarList,
 		ViaCellOccurringVars, Nullified, BeforeFlush, AfterFlush,
@@ -731,7 +725,7 @@ dump_results(CellVar, CandidateFieldVars, OccurringCandidateFieldVarList,
 	io__write_string("\n%\n").
 
 :- pred dump_after_flush(pair(int, set(prog_var))::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 dump_after_flush(SegmentNum - SegmentVars) -->
 	{ set__to_sorted_list(SegmentVars, SegmentVarList) },

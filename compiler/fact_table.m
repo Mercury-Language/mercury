@@ -184,7 +184,7 @@
 	% predicate, and create an array of pointers to these arrays to access
 	% the data.  The size should be a power of 2 to make the generated
 	% code more efficient.
-:- pred fact_table_size(int::out, io__state::di, io__state::uo) is det.
+:- pred fact_table_size(int::out, io::di, io::uo) is det.
 
 fact_table_size(FactTableSize, !IO) :-
 	globals__io_lookup_int_option(fact_table_max_array_size,
@@ -3275,7 +3275,7 @@ void mercury_sys_init_%s_module(void) {
 
 	% Delete a file.  Report an error message if something goes wrong.
 
-:- pred delete_temporary_file(string::in, io__state::di, io__state::uo) is det.
+:- pred delete_temporary_file(string::in, io::di, io::uo) is det.
 
 delete_temporary_file(FileName, !IO) :-
 	io__remove_file(FileName, Result, !IO),

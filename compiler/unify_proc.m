@@ -111,7 +111,7 @@
 
 :- pred modecheck_queued_procs(how_to_check_goal::in,
 	pred_table::in, pred_table::out, module_info::in, module_info::out,
-	bool::out, io__state::di, io__state::uo) is det.
+	bool::out, io::di, io::uo) is det.
 
 	% Given the type and mode of a unification, look up the
 	% mode number for the unification proc.
@@ -453,7 +453,7 @@ queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo, !IO) :-
 
 :- pred modecheck_queued_proc(how_to_check_goal::in, pred_proc_id::in,
 	pred_table::in, pred_table::out, module_info::in, module_info::out,
-	bool::out, io__state::di, io__state::uo) is det.
+	bool::out, io::di, io::uo) is det.
 
 modecheck_queued_proc(HowToCheckGoal, PredProcId, OldPredTable0, OldPredTable,
 		!ModuleInfo, Changed, !IO) :-

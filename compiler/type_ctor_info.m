@@ -476,9 +476,8 @@ type_ctor_info_rtti_version = 9.
 % and also construct rtti_data definitions for all of the pseudo_type_infos
 % that it references and prepend them to the given list of rtti_data tables.
 
-:- pred make_pseudo_type_info_and_tables(type, int, existq_tvars, rtti_data,
-		list(rtti_data), list(rtti_data)).
-:- mode make_pseudo_type_info_and_tables(in, in, in, out, in, out) is det.
+:- pred make_pseudo_type_info_and_tables((type)::in, int::in, existq_tvars::in,
+	rtti_data::out, list(rtti_data)::in, list(rtti_data)::out) is det.
 
 make_pseudo_type_info_and_tables(Type, UnivTvars, ExistTvars, RttiData,
 		Tables0, Tables) :-

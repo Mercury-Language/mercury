@@ -198,7 +198,7 @@ term_errors__report_term_errors(SCC, Errors, Module, !IO) :-
 
 :- pred term_errors__report_arg_size_errors(list(pred_proc_id)::in,
 	list(term_errors__error)::in, module_info::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 term_errors__report_arg_size_errors(SCC, Errors, Module, !IO) :-
 	get_context_from_scc(SCC, Module, Context),

@@ -21,7 +21,7 @@
 :- import_module io, list.
 
 :- pred bytecode_gen__module(module_info::in, list(byte_code)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -61,47 +61,49 @@
 
 %---------------------------------------------------------------------------%
 
-bytecode_gen__module(ModuleInfo, Code) -->
-	{ module_info_predids(ModuleInfo, PredIds) },
-	bytecode_gen__preds(PredIds, ModuleInfo, CodeTree),
-	{ tree__flatten(CodeTree, CodeList) },
-	{ list__condense(CodeList, Code) }.
+bytecode_gen__module(ModuleInfo, Code, !IO) :-
+	module_info_predids(ModuleInfo, PredIds),
+	bytecode_gen__preds(PredIds, ModuleInfo, CodeTree, !IO),
+	tree__flatten(CodeTree, CodeList),
+	list__condense(CodeList, Code).
 
 :- pred bytecode_gen__preds(list(pred_id)::in, module_info::in,
-	byte_tree::out, io__state::di, io__state::uo) is det.
+	byte_tree::out, io::di, io::uo) is det.
 
-bytecode_gen__preds([], _ModuleInfo, empty) --> [].
-bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code) -->
-	{ module_info_preds(ModuleInfo, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ ProcIds = pred_info_non_imported_procids(PredInfo) },
-	( { ProcIds = [] } ->
-		{ PredCode = empty }
+bytecode_gen__preds([], _ModuleInfo, empty, !IO).
+bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
+	module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	ProcIds = pred_info_non_imported_procids(PredInfo),
+	( ProcIds = [] ->
+		PredCode = empty
 	;
 		bytecode_gen__pred(PredId, ProcIds, PredInfo, ModuleInfo,
-			ProcsCode),
-		{ predicate_name(ModuleInfo, PredId, PredName) },
-		{ list__length(ProcIds, ProcsCount) },
-		{ Arity = pred_info_arity(PredInfo) },
-		{ bytecode_gen__get_is_func(PredInfo, IsFunc) },
-		{ EnterCode = node([enter_pred(PredName, Arity, IsFunc,
-			ProcsCount)]) },
-		{ EndofCode = node([endof_pred]) },
-		{ PredCode = tree(EnterCode, tree(ProcsCode, EndofCode)) }
+			ProcsCode, !IO),
+		predicate_name(ModuleInfo, PredId, PredName),
+		list__length(ProcIds, ProcsCount),
+		Arity = pred_info_arity(PredInfo),
+		bytecode_gen__get_is_func(PredInfo, IsFunc),
+		EnterCode = node([enter_pred(PredName, Arity, IsFunc,
+			ProcsCount)]),
+		EndofCode = node([endof_pred]),
+		PredCode = tree(EnterCode, tree(ProcsCode, EndofCode))
 	),
-	bytecode_gen__preds(PredIds, ModuleInfo, OtherCode),
-	{ Code = tree(PredCode, OtherCode) }.
+	bytecode_gen__preds(PredIds, ModuleInfo, OtherCode, !IO),
+	Code = tree(PredCode, OtherCode).
 
 :- pred bytecode_gen__pred(pred_id::in, list(proc_id)::in, pred_info::in,
-	module_info::in, byte_tree::out, io__state::di, io__state::uo) is det.
+	module_info::in, byte_tree::out, io::di, io::uo) is det.
 
-bytecode_gen__pred(_PredId, [], _PredInfo, _ModuleInfo, empty) --> [].
-bytecode_gen__pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code) -->
+bytecode_gen__pred(_PredId, [], _PredInfo, _ModuleInfo, empty, !IO).
+bytecode_gen__pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code,
+		!IO) :-
 	write_proc_progress_message("% Generating bytecode for ",
-		PredId, ProcId, ModuleInfo),
-	{ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, ProcCode) },
-	bytecode_gen__pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode),
-	{ Code = tree(ProcCode, ProcsCode) }.
+		PredId, ProcId, ModuleInfo, !IO),
+	bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, ProcCode),
+	bytecode_gen__pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode,
+		!IO),
+	Code = tree(ProcCode, ProcsCode).
 
 :- pred bytecode_gen__proc(proc_id::in, pred_info::in,
 	module_info::in, byte_tree::out) is det.
@@ -125,7 +127,7 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 		VarMap0, VarMap, VarInfos),
 
 	bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo0),
-	bytecode_gen__get_next_label(ByteInfo0, ZeroLabel, ByteInfo1),
+	bytecode_gen__get_next_label(ZeroLabel, ByteInfo0, ByteInfo1),
 
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, Args),
@@ -138,15 +140,13 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 	% If semideterministic, reserve temp slot 0 for the return value
 	( CodeModel = model_semi ->
-		bytecode_gen__get_next_temp(ByteInfo1, _FrameTemp, ByteInfo2)
+		bytecode_gen__get_next_temp(_FrameTemp, ByteInfo1, ByteInfo2)
 	;
 		ByteInfo2 = ByteInfo1
 	),
 
 	bytecode_gen__goal(Goal, ByteInfo2, ByteInfo3, GoalCode),
-
-	bytecode_gen__get_next_label(ByteInfo3, EndLabel, ByteInfo),
-
+	bytecode_gen__get_next_label(EndLabel, ByteInfo3, ByteInfo),
 	bytecode_gen__get_counts(ByteInfo, LabelCount, TempCount),
 
 	ZeroLabelCode = node([label(ZeroLabel)]),
@@ -177,9 +177,8 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 :- pred bytecode_gen__goal(hlds_goal::in, byte_info::in, byte_info::out,
 	byte_tree::out) is det.
 
-bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo0, ByteInfo, Code) :-
-	bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo,
-		GoalCode),
+bytecode_gen__goal(GoalExpr - GoalInfo, !ByteInfo, Code) :-
+	bytecode_gen__goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
 	goal_info_get_context(GoalInfo, Context),
 	term__context_line(Context, Line),
 	Code = tree(node([context(Line)]), GoalCode).
@@ -187,43 +186,39 @@ bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo0, ByteInfo, Code) :-
 :- pred bytecode_gen__goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
 	byte_info::in, byte_info::out, byte_tree::out) is det.
 
-bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
+bytecode_gen__goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
 	(
 		GoalExpr = generic_call(GenericCallType,
 			ArgVars, ArgModes, Detism),
 		( GenericCallType = higher_order(PredVar, _, _, _) ->
 			bytecode_gen__higher_order_call(PredVar, ArgVars,
-				ArgModes, Detism, ByteInfo0, Code),
-			ByteInfo = ByteInfo0
+				ArgModes, Detism, !.ByteInfo, Code)
 		;
 			% XXX
+			% string__append_list([
+			% "bytecode for ", GenericCallFunctor, " calls"], Msg),
+			% sorry(this_file, Msg)
 			functor(GenericCallType, _GenericCallFunctor, _),
-			/*string__append_list([
-				"bytecode for ", GenericCallFunctor, " calls"], Msg),
-			sorry(this_file, Msg)*/
-			Code = node([not_supported]),
-			ByteInfo = ByteInfo0
+			Code = node([not_supported])
 		)
 	;
 		GoalExpr = call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		( BuiltinState = not_builtin ->
 			goal_info_get_determinism(GoalInfo, Detism),
 			bytecode_gen__call(PredId, ProcId, ArgVars, Detism,
-				ByteInfo0, Code)
+				!.ByteInfo, Code)
 		;
 			bytecode_gen__builtin(PredId, ProcId, ArgVars,
-				ByteInfo0, Code)
-		),
-		ByteInfo = ByteInfo0
+				!.ByteInfo, Code)
+		)
 	;
 		GoalExpr = unify(Var, RHS, _Mode, Unification, _),
-		bytecode_gen__unify(Unification, Var, RHS, ByteInfo0, Code),
-		ByteInfo = ByteInfo0
+		bytecode_gen__unify(Unification, Var, RHS, !.ByteInfo, Code)
 	;
 		GoalExpr = not(Goal),
-		bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, SomeCode),
-		bytecode_gen__get_next_label(ByteInfo1, EndLabel, ByteInfo2),
-		bytecode_gen__get_next_temp(ByteInfo2, FrameTemp, ByteInfo),
+		bytecode_gen__goal(Goal, !ByteInfo, SomeCode),
+		bytecode_gen__get_next_label(EndLabel, !ByteInfo),
+		bytecode_gen__get_next_temp(FrameTemp, !ByteInfo),
 		EnterCode = node([enter_negation(FrameTemp, EndLabel)]),
 		EndofCode = node([endof_negation_goal(FrameTemp),
 			label(EndLabel), endof_negation]),
@@ -232,48 +227,46 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			     EndofCode))
 	;
 		GoalExpr = some(_, _, Goal),
-		bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, SomeCode),
-		bytecode_gen__get_next_temp(ByteInfo1, Temp, ByteInfo),
+		bytecode_gen__goal(Goal, !ByteInfo, SomeCode),
+		bytecode_gen__get_next_temp(Temp, !ByteInfo),
 		EnterCode = node([enter_commit(Temp)]),
 		EndofCode = node([endof_commit(Temp)]),
 		Code = tree(EnterCode, tree(SomeCode, EndofCode))
 	;
 		GoalExpr = conj(GoalList),
-		bytecode_gen__conj(GoalList, ByteInfo0, ByteInfo, Code)
+		bytecode_gen__conj(GoalList, !ByteInfo, Code)
 	;
 		GoalExpr = par_conj(_GoalList),
 		sorry(this_file, "bytecode_gen of parallel conjunction")
 	;
 		GoalExpr = disj(GoalList),
 		( GoalList = [] ->
-			Code = node([fail]),
-			ByteInfo = ByteInfo0
+			Code = node([fail])
 		;
-			bytecode_gen__get_next_label(ByteInfo0, EndLabel,
-				ByteInfo1),
-			bytecode_gen__disj(GoalList, ByteInfo1, EndLabel,
-				ByteInfo, DisjCode),
+			bytecode_gen__get_next_label(EndLabel, !ByteInfo),
+			bytecode_gen__disj(GoalList, EndLabel, !ByteInfo,
+				DisjCode),
 			EnterCode = node([enter_disjunction(EndLabel)]),
 			EndofCode = node([endof_disjunction, label(EndLabel)]),
 			Code = tree(EnterCode, tree(DisjCode, EndofCode))
 		)
 	;
 		GoalExpr = switch(Var, _, CasesList),
-		bytecode_gen__get_next_label(ByteInfo0, EndLabel, ByteInfo1),
-		bytecode_gen__switch(CasesList, Var, ByteInfo1, EndLabel,
-			ByteInfo, SwitchCode),
-		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
+		bytecode_gen__get_next_label(EndLabel, !ByteInfo),
+		bytecode_gen__switch(CasesList, Var, EndLabel, !ByteInfo,
+			SwitchCode),
+		bytecode_gen__map_var(!.ByteInfo, Var, ByteVar),
 		EnterCode = node([enter_switch(ByteVar, EndLabel)]),
 		EndofCode = node([endof_switch, label(EndLabel)]),
 		Code = tree(EnterCode, tree(SwitchCode, EndofCode))
 	;
 		GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-		bytecode_gen__get_next_label(ByteInfo0, EndLabel, ByteInfo1),
-		bytecode_gen__get_next_label(ByteInfo1, ElseLabel, ByteInfo2),
-		bytecode_gen__get_next_temp(ByteInfo2, FrameTemp, ByteInfo3),
-		bytecode_gen__goal(Cond, ByteInfo3, ByteInfo4, CondCode),
-		bytecode_gen__goal(Then, ByteInfo4, ByteInfo5, ThenCode),
-		bytecode_gen__goal(Else, ByteInfo5, ByteInfo, ElseCode),
+		bytecode_gen__get_next_label(EndLabel, !ByteInfo),
+		bytecode_gen__get_next_label(ElseLabel, !ByteInfo),
+		bytecode_gen__get_next_temp(FrameTemp, !ByteInfo),
+		bytecode_gen__goal(Cond, !ByteInfo, CondCode),
+		bytecode_gen__goal(Then, !ByteInfo, ThenCode),
+		bytecode_gen__goal(Else, !ByteInfo, ElseCode),
 		EnterIfCode = node([enter_if(ElseLabel, EndLabel, FrameTemp)]),
 		EnterThenCode = node([enter_then(FrameTemp)]),
 		EndofThenCode = node([endof_then(EndLabel), label(ElseLabel),
@@ -289,18 +282,18 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			     EndofIfCode))))))
 	;
 		GoalExpr = foreign_proc(_, _, _, _, _, _),
-		Code = node([not_supported]),
-		ByteInfo = ByteInfo0
+		Code = node([not_supported])
 	;
 		GoalExpr = shorthand(_),
 		% these should have been expanded out by now
-		unexpected(this_file, "bytecode_gen__goal_expr: unexpected shorthand")
+		unexpected(this_file,
+			"bytecode_gen__goal_expr: unexpected shorthand")
 	).
 
 %---------------------------------------------------------------------------%
 
 :- pred bytecode_gen__gen_places(list(pair(prog_var, arg_loc))::in,
-		byte_info::in, byte_tree::out) is det.
+	byte_info::in, byte_tree::out) is det.
 
 bytecode_gen__gen_places([], _, empty).
 bytecode_gen__gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
@@ -309,7 +302,7 @@ bytecode_gen__gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
 	Code = tree(node([place_arg(r, Loc, ByteVar)]), OtherCode).
 
 :- pred bytecode_gen__gen_pickups(list(pair(prog_var, arg_loc))::in,
-		byte_info::in, byte_tree::out) is det.
+	byte_info::in, byte_tree::out) is det.
 
 bytecode_gen__gen_pickups([], _, empty).
 bytecode_gen__gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
@@ -324,8 +317,8 @@ bytecode_gen__gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
 :- pred bytecode_gen__higher_order_call(prog_var::in, list(prog_var)::in,
 	list(mode)::in, determinism::in, byte_info::in, byte_tree::out) is det.
 
-bytecode_gen__higher_order_call(PredVar, ArgVars, ArgModes, Detism,
-		ByteInfo, Code) :-
+bytecode_gen__higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo,
+		Code) :-
 	determinism_to_code_model(Detism, CodeModel),
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
 	list__map(bytecode_gen__get_var_type(ByteInfo), ArgVars, ArgTypes),
@@ -426,8 +419,7 @@ bytecode_gen__map_test(ByteInfo, TestExpr, Code) :-
 	).
 
 :- pred bytecode_gen__map_assign(byte_info::in, prog_var::in,
-		simple_expr(prog_var)::in(simple_assign_expr),
-		byte_tree::out) is det.
+	simple_expr(prog_var)::in(simple_assign_expr), byte_tree::out) is det.
 
 bytecode_gen__map_assign(ByteInfo, Var, Expr, Code) :-
 	(
@@ -472,14 +464,12 @@ bytecode_gen__map_arg(ByteInfo, Expr, ByteArg) :-
 :- pred bytecode_gen__unify(unification::in, prog_var::in, unify_rhs::in,
 	byte_info::in, byte_tree::out) is det.
 
-bytecode_gen__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
-		_, _, ByteInfo, Code) :-
+bytecode_gen__unify(construct(Var, ConsId, Args, UniModes, _, _, _), _, _,
+		ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
-	(
-		ByteConsId = pred_const(_, _, _, _, _)
-	->
+	( ByteConsId = pred_const(_, _, _, _, _) ->
 		Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
 	;
 		% Don't call bytecode_gen__map_uni_modes until after
@@ -503,9 +493,7 @@ bytecode_gen__unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
 	bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs),
-	(
-		bytecode_gen__all_dirs_same(Dirs, to_arg)
-	->
+	( bytecode_gen__all_dirs_same(Dirs, to_arg) ->
 		Code = node([deconstruct(ByteVar, ByteConsId, ByteArgs)])
 	;
 		assoc_list__from_corresponding_lists(ByteArgs, Dirs, Pairs),
@@ -520,7 +508,6 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var2, ByteVar2),
 	bytecode_gen__get_var_type(ByteInfo, Var1, Var1Type),
 	bytecode_gen__get_var_type(ByteInfo, Var2, Var2Type),
-
 	(
 		type_to_ctor_and_args(Var1Type, TypeCtor1, _),
 		type_to_ctor_and_args(Var2Type, TypeCtor2, _)
@@ -533,11 +520,8 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	;
 		unexpected(this_file, "failed lookup of type id")
 	),
-
 	ByteInfo = byte_info(_, _, ModuleInfo, _, _),
-
 	TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
-
 	(
 		TypeCategory = int_type,
 		TestId = int_test
@@ -583,8 +567,8 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	),
 	Code = node([test(ByteVar1, ByteVar2, TestId)]).
 bytecode_gen__unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-
-	unexpected(this_file,
-		"complicated unifications should have been handled by polymorphism.m").
+	unexpected(this_file, "complicated unifications " ++
+		"should have been handled by polymorphism.m").
 
 :- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, list(prog_var)::in,
 	byte_info::in, list(byte_dir)::out) is det.
@@ -613,7 +597,8 @@ bytecode_gen__map_uni_modes([UniMode | UniModes], [Arg | Args], ByteInfo,
 	->
 		Dir = to_none
 	;
-		unexpected(this_file, "invalid mode for (de)construct unification")
+		unexpected(this_file,
+			"invalid mode for (de)construct unification")
 	),
 	bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs).
 bytecode_gen__map_uni_modes([], [_|_], _, _) :-
@@ -635,33 +620,30 @@ bytecode_gen__all_dirs_same([Dir | Dirs], Dir) :-
 :- pred bytecode_gen__conj(list(hlds_goal)::in, byte_info::in, byte_info::out,
 	byte_tree::out) is det.
 
-bytecode_gen__conj([], ByteInfo, ByteInfo, empty).
-bytecode_gen__conj([Goal | Goals], ByteInfo0, ByteInfo, Code) :-
-	bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, ThisCode),
-	bytecode_gen__conj(Goals, ByteInfo1, ByteInfo, OtherCode),
+bytecode_gen__conj([], !ByteInfo, empty).
+bytecode_gen__conj([Goal | Goals], !ByteInfo, Code) :-
+	bytecode_gen__goal(Goal, !ByteInfo, ThisCode),
+	bytecode_gen__conj(Goals, !ByteInfo, OtherCode),
 	Code = tree(ThisCode, OtherCode).
 
 %---------------------------------------------------------------------------%
 
 	% Generate bytecode for each disjunct of a disjunction.
 
-:- pred bytecode_gen__disj(list(hlds_goal)::in, byte_info::in,
-	int::in, byte_info::out,  byte_tree::out) is det.
+:- pred bytecode_gen__disj(list(hlds_goal)::in, int::in,
+	byte_info::in, byte_info::out,  byte_tree::out) is det.
 
 bytecode_gen__disj([], _, _, _, _) :-
 	unexpected(this_file, "empty disjunction in bytecode_gen__disj").
-bytecode_gen__disj([Disjunct | Disjuncts], ByteInfo0, EndLabel,
-		ByteInfo, Code) :-
-	bytecode_gen__goal(Disjunct, ByteInfo0, ByteInfo1, ThisCode),
+bytecode_gen__disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
+	bytecode_gen__goal(Disjunct, !ByteInfo, ThisCode),
 	( Disjuncts = [] ->
 		EnterCode = node([enter_disjunct(-1)]),
 		EndofCode = node([endof_disjunct(EndLabel)]),
-		Code = tree(EnterCode, tree(ThisCode, EndofCode)),
-		ByteInfo = ByteInfo1
+		Code = tree(EnterCode, tree(ThisCode, EndofCode))
 	;
-		bytecode_gen__disj(Disjuncts, ByteInfo1, EndLabel,
-			ByteInfo2, OtherCode),
-		bytecode_gen__get_next_label(ByteInfo2, NextLabel, ByteInfo),
+		bytecode_gen__disj(Disjuncts, EndLabel, !ByteInfo, OtherCode),
+		bytecode_gen__get_next_label(NextLabel, !ByteInfo),
 		EnterCode = node([enter_disjunct(NextLabel)]),
 		EndofCode = node([endof_disjunct(EndLabel), label(NextLabel)]),
 		Code =
@@ -675,17 +657,16 @@ bytecode_gen__disj([Disjunct | Disjuncts], ByteInfo0, EndLabel,
 
 	% Generate bytecode for each arm of a switch.
 
-:- pred bytecode_gen__switch(list(case)::in, prog_var::in, byte_info::in,
-	int::in, byte_info::out, byte_tree::out) is det.
+:- pred bytecode_gen__switch(list(case)::in, prog_var::in, int::in,
+	byte_info::in, byte_info::out, byte_tree::out) is det.
 
-bytecode_gen__switch([], _, ByteInfo, _, ByteInfo, empty).
-bytecode_gen__switch([case(ConsId, Goal) | Cases], Var, ByteInfo0, EndLabel,
-		ByteInfo, Code) :-
-	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
-	bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, ThisCode),
-	bytecode_gen__switch(Cases, Var, ByteInfo1, EndLabel,
-		ByteInfo2, OtherCode),
-	bytecode_gen__get_next_label(ByteInfo2, NextLabel, ByteInfo),
+bytecode_gen__switch([], _, _, !ByteInfo, empty).
+bytecode_gen__switch([case(ConsId, Goal) | Cases], Var, EndLabel,
+		!ByteInfo, Code) :-
+	bytecode_gen__map_cons_id(!.ByteInfo, Var, ConsId, ByteConsId),
+	bytecode_gen__goal(Goal, !ByteInfo, ThisCode),
+	bytecode_gen__switch(Cases, Var, EndLabel, !ByteInfo, OtherCode),
+	bytecode_gen__get_next_label(NextLabel, !ByteInfo),
 	EnterCode = node([enter_switch_arm(ByteConsId, NextLabel)]),
 	EndofCode = node([endof_switch_arm(EndLabel), label(NextLabel)]),
 	Code = tree(EnterCode, tree(ThisCode, tree(EndofCode, OtherCode))).
@@ -710,8 +691,9 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			( FunctorList = [Char] ->
 				ByteConsId = char_const(Char)
 			;
-				unexpected(this_file,
-					"map_cons_id: unqualified cons_id is not a char_const")
+				unexpected(this_file, "map_cons_id: " ++
+					"unqualified cons_id is not " ++
+					"a char_const")
 			)
 		;
 			(
@@ -832,16 +814,16 @@ bytecode_gen__map_cons_tag(shared_with_reserved_addresses(_, _), _) :-
 	map(prog_var, type)::in, int::in, map(prog_var, byte_var)::in,
 	map(prog_var, byte_var)::out, list(byte_var_info)::out) is det.
 
-bytecode_gen__create_varmap([], _, _, _, VarMap, VarMap, []).
+bytecode_gen__create_varmap([], _, _, _, !VarMap, []).
 bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
-		VarMap0, VarMap, VarInfos) :-
-	map__det_insert(VarMap0, Var, N0, VarMap1),
+		!VarMap, VarInfos) :-
+	map__det_insert(!.VarMap, Var, N0, !:VarMap),
 	N1 = N0 + 1,
 	varset__lookup_name(VarSet, Var, VarName),
 	map__lookup(VarTypes, Var, VarType),
 	bytecode_gen__create_varmap(VarList, VarSet, VarTypes, N1,
-		VarMap1, VarMap, VarInfos1),
-	VarInfos = [var_info(VarName, VarType) | VarInfos1].
+		!VarMap, VarInfosTail),
+	VarInfos = [var_info(VarName, VarType) | VarInfosTail].
 
 %---------------------------------------------------------------------------%(
 
@@ -892,21 +874,21 @@ bytecode_gen__map_var(ByteInfo, Var, ByteVar) :-
 bytecode_gen__get_var_type(ByteInfo, Var, Type) :-
 	map__lookup(ByteInfo ^ byteinfo_vartypes, Var, Type).
 
-:- pred bytecode_gen__get_next_label(byte_info::in, int::out, byte_info::out)
+:- pred bytecode_gen__get_next_label(int::out, byte_info::in, byte_info::out)
 	is det.
 
-bytecode_gen__get_next_label(ByteInfo0, Label, ByteInfo) :-
-	LabelCounter0 = ByteInfo0 ^ byteinfo_label_counter,
+bytecode_gen__get_next_label(Label, !ByteInfo) :-
+	LabelCounter0 = !.ByteInfo ^ byteinfo_label_counter,
 	counter__allocate(Label, LabelCounter0, LabelCounter),
-	ByteInfo = ByteInfo0 ^ byteinfo_label_counter := LabelCounter.
+	!:ByteInfo = !.ByteInfo ^ byteinfo_label_counter := LabelCounter.
 
-:- pred bytecode_gen__get_next_temp(byte_info::in, int::out, byte_info::out)
+:- pred bytecode_gen__get_next_temp(int::out, byte_info::in, byte_info::out)
 	is det.
 
-bytecode_gen__get_next_temp(ByteInfo0, Temp, ByteInfo) :-
-	TempCounter0 = ByteInfo0 ^ byteinfo_temp_counter,
+bytecode_gen__get_next_temp(Temp, !ByteInfo) :-
+	TempCounter0 = !.ByteInfo ^ byteinfo_temp_counter,
 	counter__allocate(Temp, TempCounter0, TempCounter),
-	ByteInfo = ByteInfo0 ^ byteinfo_temp_counter := TempCounter.
+	!:ByteInfo = !.ByteInfo ^ byteinfo_temp_counter := TempCounter.
 
 :- pred bytecode_gen__get_counts(byte_info::in, int::out, int::out) is det.
 
@@ -918,8 +900,7 @@ bytecode_gen__get_counts(ByteInfo0, Label, Temp) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred bytecode_gen__get_is_func(pred_info, byte_is_func).
-:- mode bytecode_gen__get_is_func(in, out) is det.
+:- pred bytecode_gen__get_is_func(pred_info::in, byte_is_func::out) is det.
 
 bytecode_gen__get_is_func(PredInfo, IsFunc) :-
 	( pred_info_is_pred_or_func(PredInfo) = predicate ->

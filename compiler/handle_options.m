@@ -1862,8 +1862,7 @@ reset_grade_options(Options0, Options) :-
 			map__set(Opts0, Option, Value, Opts)
 		), Options0, Options).
 
-:- pred grade_start_values(pair(option, option_data)).
-:- mode grade_start_values(out) is multi.
+:- pred grade_start_values(pair(option, option_data)::out) is multi.
 
 grade_start_values(asm_labels - bool(no)).
 grade_start_values(gcc_non_local_gotos - bool(no)).
@@ -1885,8 +1884,7 @@ grade_start_values(pic_reg - bool(no)).
 grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).
 
-:- pred split_grade_string(string, list(string)).
-:- mode split_grade_string(in, out) is semidet.
+:- pred split_grade_string(string::in, list(string)::out) is semidet.
 
 split_grade_string(GradeStr, Components) :-
 	string__to_char_list(GradeStr, Chars),

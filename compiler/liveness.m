@@ -166,7 +166,7 @@
 	% resume point information.
 
 :- pred detect_liveness_proc(pred_id::in, proc_id::in, module_info::in,
-	proc_info::in, proc_info::out, io__state::di, io__state::uo) is det.
+	proc_info::in, proc_info::out, io::di, io::uo) is det.
 
 	% Return the set of variables live at the start of the procedure.
 
@@ -269,16 +269,17 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 
 :- pred maybe_write_progress_message(string::in, int::in, int::in,
 	hlds_goal::in, prog_varset::in, module_info::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 maybe_write_progress_message(Message, DebugLiveness, PredIdInt,
-		Goal, VarSet, ModuleInfo) -->
-	( { DebugLiveness = PredIdInt } ->
-		io__write_string(Message),
-		io__write_string(":\n"),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, yes, 0, "\n")
+		Goal, VarSet, ModuleInfo, !IO) :-
+	( DebugLiveness = PredIdInt ->
+		io__write_string(Message, !IO),
+		io__write_string(":\n", !IO),
+		hlds_out__write_goal(Goal, ModuleInfo, VarSet, yes, 0, "\n",
+			!IO)
 	;
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%

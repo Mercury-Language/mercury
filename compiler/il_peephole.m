@@ -3,9 +3,9 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % il_peephole.m - local ILDS to ILDS optimizations based on pattern-matching.
-
+%
 % Authors: trd (based on peephole.m by fjh and zs).
 %
 % Please note that some of the optimizations in this module are required
@@ -43,7 +43,7 @@
 	% those optimizations which are necessary for verifiable code.
 
 :- pred il_peephole__optimize(bool::in,
-		list(ilasm__decl)::in, list(ilasm__decl)::out) is det.
+	list(ilasm__decl)::in, list(ilasm__decl)::out) is det.
 
 :- implementation.
 
@@ -87,6 +87,7 @@ optimize_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 
 :- pred optimize_class_member(bool::in, class_member::in, class_member::out,
 	bool::in, bool::out) is det.
+
 optimize_class_member(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = method(A, MethodDecls0) ->
 		list__map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
@@ -119,6 +120,7 @@ optimize_class_member(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 :- pred optimize_method_decl(bool::in,
 	method_body_decl::in, method_body_decl::out,
 	bool::in, bool::out) is det.
+
 optimize_method_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = instrs(Instrs0) ->
 		optimize_instrs(VerifyOnly, Instrs0, Instrs, Mod1),
@@ -134,8 +136,8 @@ optimize_method_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 optimize_instrs(VerifyOnly, Instrs0, Instrs, Mod) :-
 	optimize_2(VerifyOnly, Instrs0, Instrs, Mod).
 
-:- pred optimize_2(bool, instrs, instrs, bool).
-:- mode optimize_2(in, in, out, out) is det.
+:- pred optimize_2(bool::in, instrs::in, instrs::out, bool::out) is det.
+
 optimize_2(_, [], [], no).
 optimize_2(VerifyOnly, [Instr0 | Instrs0], Instrs, Mod) :-
 	optimize_2(VerifyOnly, Instrs0, Instrs1, Mod0),
@@ -145,8 +147,8 @@ optimize_2(VerifyOnly, [Instr0 | Instrs0], Instrs, Mod) :-
 	% Try to optimize the beginning of the given instruction sequence.
 	% If successful, try it again.
 
-:- pred opt_instr(bool, instr, instrs, instrs, bool).
-:- mode opt_instr(in, in, in, out, out) is det.
+:- pred opt_instr(bool::in, instr::in, instrs::in, instrs::out, bool::out)
+	is det.
 
 opt_instr(VerifyOnly, Instr0, Instrs0, Instrs, Mod) :-
 	(
@@ -169,8 +171,7 @@ opt_instr(VerifyOnly, Instr0, Instrs0, Instrs, Mod) :-
 	% The second argument says whether or not to only do the optimizations
 	% which are needed for verifiability.
 
-:- pred match(instr, bool, instrs, instrs).
-:- mode match(in, in, in, out) is semidet.
+:- pred match(instr::in, bool::in, instrs::in, instrs::out) is semidet.
 
 	% If a ret is followed by anything other than a label,
 	% then we can delete the instruction that follows,
@@ -281,8 +282,8 @@ match(start_block(scope(Locals), Id), VerifyOnly) -->
 	% stloc(X) patterns.
 	% This could be more efficient if it stopped looking outside the
 	% enclosing scope.
-:- pred match_start_scope_1(instr, instrs, instrs).
-:- mode match_start_scope_1(in, in, out) is semidet.
+:- pred match_start_scope_1(instr::in, instrs::in, instrs::out) is semidet.
+
 match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 
 		% Is this variable a local that is unused?
@@ -358,8 +359,8 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 	% it.
 	% This could be more efficient if it stopped looking outside the
 	% enclosing scope.
-:- pred match_start_scope_2(instr, instrs, instrs).
-:- mode match_start_scope_2(in, in, out) is semidet.
+:- pred match_start_scope_2(instr::in, instrs::in, instrs::out) is semidet.
+
 match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 
 	no_handwritten_code(Instrs0, Id),
@@ -378,7 +379,6 @@ match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 		Locals, UnusedLocals, UsedLocals),
 	UnusedLocals \= [],
 
-
 		% Comment and replacement
 	list__map((pred(VarName - _Type::in, Comment::out) is det :-
 		string__format(
@@ -396,14 +396,12 @@ match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 	% are available we could actually do this, but
 	% currently we don't, because the code below is incomplete.
 	% This procedure is not yet called from anywhere.
-:- pred match4(instr, instrs, instrs).
-:- mode match4(in, in, out) is semidet.
+:- pred match4(instr::in, instrs::in, instrs::out) is semidet.
+
 match4(start_block(scope([]), _), Instrs0, Instrs) :-
 	Replacement = [],
 	Rest = Instrs0,
 	Instrs = list__append(Replacement, Rest).
-
-
 
 %-----------------------------------------------------------------------------%
 
@@ -427,6 +425,7 @@ no_handwritten_code([Instr | Instrs], Id) :-
 	% Skips over a block until the end of the block (with Id matching
 	% the given Id) is found.
 :- func skip_over_block(instrs, int) = instrs.
+
 skip_over_block([], _) = [].
 skip_over_block([Instr | Instrs], Id) =
 	( Instr = end_block(_, Id) ->
@@ -434,8 +433,6 @@ skip_over_block([Instr | Instrs], Id) =
 	;
 		skip_over_block(Instrs, Id)
 	).
-
-
 
 	% Skip over all the comments.
 :- pred skip_comments(instrs::in, instrs::out, instrs::out) is det.
@@ -450,8 +447,6 @@ skip_comments(Instrs0, Instrs, Comments) :-
 skip_nops(Instrs0, Instrs, Nops) :-
         list__takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
 		Instrs0, Nops, Instrs).
-
-
 
 	% keep_looking(Producer, Condition, Input, IntermediateResult0,
 	%	FinalResult, Leftovers) :-
@@ -469,9 +464,9 @@ skip_nops(Instrs0, Instrs, Nops) :-
 	% Input that you threw away while looking for a match.  However
 	% it is easy to put this part of the input in the intermediate
 	% and final results.
-:- pred keep_looking(pred(A, A, B, B), pred(B, C), A, B, C, A).
-:- mode keep_looking(pred(in, out, in, out) is semidet,
-		pred(in, out) is semidet, in, in, out, out) is semidet.
+:- pred keep_looking(pred(A, A, B, B)::in(pred(in, out, in, out) is semidet),
+	pred(B, C)::in(pred(in, out) is semidet), A::in, B::in, C::out, A::out)
+	is semidet.
 
 keep_looking(Producer, Condition, Input, IntermediateResult0,
 		FinalResult, Leftovers) :-
@@ -488,6 +483,7 @@ keep_looking(Producer, Condition, Input, IntermediateResult0,
 
 	% These instructions can make a call
 :- func can_call(instr) = bool.
+
 can_call(call(_)) 				= yes.
 can_call(calli(_)) 				= yes.
 can_call(callvirt(_)) 				= yes.
@@ -586,6 +582,7 @@ can_call(unbox(_Type)) 				= no.
 	% control flow, they are simply part of instr for
 	% convenience.
 :- func equivalent_to_nop(instr) = bool.
+
 equivalent_to_nop(comment(_)) 				= yes.
 equivalent_to_nop(start_block(scope(_), _)) 		= yes.
 equivalent_to_nop(end_block(scope(_), _))	 	= yes.
@@ -683,7 +680,6 @@ equivalent_to_nop(sizeof(_Type))			= no.
 equivalent_to_nop(stobj(_))				= no.
 equivalent_to_nop(stsfld(_FieldRef)) 			= no.
 equivalent_to_nop(unbox(_Type)) 			= no.
-
 
 	% These instructions can branch control flow.
 :- func can_branch(instr) = bool.
@@ -784,4 +780,3 @@ can_branch(stobj(_)) 					= no.
 can_branch(sizeof(_Type))				= no.
 can_branch(stsfld(_FieldRef)) 				= no.
 can_branch(unbox(_Type)) 				= no.
-

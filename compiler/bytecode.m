@@ -132,10 +132,10 @@
 :- type byte_is_func	==	int.	% 0 if a predicate, 1 if a function
 
 :- pred output_bytecode_file(string::in, list(byte_code)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pred debug_bytecode_file(string::in, list(byte_code)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -146,7 +146,7 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_out.
 
-:- import_module library, int, string, require.
+:- import_module library, assoc_list, int, string, require.
 
 :- pred bytecode__version(int::out) is det.
 
@@ -196,8 +196,7 @@ debug_bytecode_file(FileName, ByteCodes) -->
 		io__set_exit_status(1)
 	).
 
-:- pred output_bytecode_list(list(byte_code), io__state, io__state).
-:- mode output_bytecode_list(in, di, uo) is det.
+:- pred output_bytecode_list(list(byte_code)::in, io::di, io::uo) is det.
 
 output_bytecode_list([]) --> [].
 output_bytecode_list([ByteCode | ByteCodes]) -->
@@ -206,8 +205,7 @@ output_bytecode_list([ByteCode | ByteCodes]) -->
 	output_args(ByteCode),
 	output_bytecode_list(ByteCodes).
 
-:- pred debug_bytecode_list(list(byte_code), io__state, io__state).
-:- mode debug_bytecode_list(in, di, uo) is det.
+:- pred debug_bytecode_list(list(byte_code)::in, io::di, io::uo) is det.
 
 debug_bytecode_list([]) --> [].
 debug_bytecode_list([ByteCode | ByteCodes]) -->
@@ -217,8 +215,7 @@ debug_bytecode_list([ByteCode | ByteCodes]) -->
 	io__write_char('\n'),
 	debug_bytecode_list(ByteCodes).
 
-:- pred output_args(byte_code, io__state, io__state).
-:- mode output_args(in, di, uo) is det.
+:- pred output_args(byte_code::in, io::di, io::uo) is det.
 
 output_args(enter_pred(PredId, PredArity, IsFunc, ProcCount)) -->
 	output_pred_id(PredId),
@@ -346,8 +343,7 @@ output_args(context(Line)) -->
 	output_short(Line).
 output_args(not_supported) --> [].
 
-:- pred debug_args(byte_code, io__state, io__state).
-:- mode debug_args(in, di, uo) is det.
+:- pred debug_args(byte_code::in, io::di, io::uo) is det.
 
 debug_args(enter_pred(PredId, PredArity, IsFunc, ProcsCount)) -->
 	debug_pred_id(PredId),
@@ -477,45 +473,39 @@ debug_args(not_supported) --> [].
 
 %---------------------------------------------------------------------------%
 
-:- pred output_var_infos(list(byte_var_info), io__state, io__state).
-:- mode output_var_infos(in, di, uo) is det.
+:- pred output_var_infos(list(byte_var_info)::in, io::di, io::uo) is det.
 
 output_var_infos([]) --> [].
 output_var_infos([Var | Vars]) -->
 	output_var_info(Var),
 	output_var_infos(Vars).
 
-:- pred output_var_info(byte_var_info, io__state, io__state).
-:- mode output_var_info(in, di, uo) is det.
+:- pred output_var_info(byte_var_info::in, io::di, io::uo) is det.
 
 output_var_info(var_info(Name, _)) -->
 	output_string(Name).
 
-:- pred debug_var_infos(list(byte_var_info), io__state, io__state).
-:- mode debug_var_infos(in, di, uo) is det.
+:- pred debug_var_infos(list(byte_var_info)::in, io::di, io::uo) is det.
 
 debug_var_infos([]) --> [].
 debug_var_infos([Var | Vars]) -->
 	debug_var_info(Var),
 	debug_var_infos(Vars).
 
-:- pred debug_var_info(byte_var_info, io__state, io__state).
-:- mode debug_var_info(in, di, uo) is det.
+:- pred debug_var_info(byte_var_info::in, io::di, io::uo) is det.
 
 debug_var_info(var_info(Name, _)) -->
 	debug_string(Name).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_determinism(determinism, io__state, io__state).
-:- mode output_determinism(in, di, uo) is det.
+:- pred output_determinism(determinism::in, io::di, io::uo) is det.
 
 output_determinism(Detism) -->
 	{ determinism_code(Detism, Code) },
 	output_byte(Code).
 
-:- pred debug_determinism(determinism, io__state, io__state).
-:- mode debug_determinism(in, di, uo) is det.
+:- pred debug_determinism(determinism::in, io::di, io::uo) is det.
 
 debug_determinism(Detism) -->
 	{ determinism_debug(Detism, Debug) },
@@ -523,57 +513,53 @@ debug_determinism(Detism) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_reg(byte_reg_type, int, io__state, io__state).
-:- mode output_reg(in, in, di, uo) is det.
+:- pred output_reg(byte_reg_type::in, int::in, io::di, io::uo) is det.
 
 output_reg(r, N) -->
 	output_byte(N).
 
-:- pred debug_reg(byte_reg_type, int, io__state, io__state).
-:- mode debug_reg(in, in, di, uo) is det.
+:- pred debug_reg(byte_reg_type::in, int::in, io::di, io::uo) is det.
 
 debug_reg(r, N) -->
 	debug_int(N).
 
 %---------------------------------------------------------------------------%
-:- pred output_is_func(byte_is_func, io__state, io__state).
-:- mode output_is_func(in, di, uo) is det.
+
+:- pred output_is_func(byte_is_func::in, io::di, io::uo) is det.
 
 output_is_func(IsFunc) -->
-	(	{ IsFunc = 1 ; IsFunc = 0 }
-	->	output_byte(IsFunc)
-	;	{ error("Invalid predicate or function specified in bytecode") }
+	( { IsFunc = 1 ; IsFunc = 0 } ->
+		output_byte(IsFunc)
+	;
+		{ error("Invalid predicate or function specified in bytecode") }
 	).
 
-:- pred debug_is_func(byte_is_func, io__state, io__state).
-:- mode debug_is_func(in, di, uo) is det.
+:- pred debug_is_func(byte_is_func::in, io::di, io::uo) is det.
 
 debug_is_func(IsFunc) -->
-	(	{ IsFunc = 1 }
-	->	debug_string("func")
-	;	{ IsFunc = 0 }
-	->	debug_string("pred")
-	;	{ error("Invalid predicate or function specifier in bytecode") }
+	( { IsFunc = 1 } ->
+		debug_string("func")
+	; { IsFunc = 0 } ->
+		debug_string("pred")
+	;
+		{ error("Invalid predicate or function specifier in bytecode") }
 	).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_length(int, io__state, io__state).
-:- mode output_length(in, di, uo) is det.
+:- pred output_length(int::in, io::di, io::uo) is det.
 
 output_length(Length) -->
 	output_short(Length).
 
-:- pred debug_length(int, io__state, io__state).
-:- mode debug_length(in, di, uo) is det.
+:- pred debug_length(int::in, io::di, io::uo) is det.
 
 debug_length(Length) -->
 	debug_int(Length).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_arg(byte_arg, io__state, io__state).
-:- mode output_arg(in, di, uo) is det.
+:- pred output_arg(byte_arg::in, io::di, io::uo) is det.
 
 output_arg(var(Var)) -->
 	output_byte(0),
@@ -585,8 +571,7 @@ output_arg(float_const(FloatVal)) -->
 	output_byte(2),
 	output_float(FloatVal).
 
-:- pred debug_arg(byte_arg, io__state, io__state).
-:- mode debug_arg(in, di, uo) is det.
+:- pred debug_arg(byte_arg::in, io::di, io::uo) is det.
 
 debug_arg(var(Var)) -->
 	debug_string("var"),
@@ -600,28 +585,24 @@ debug_arg(float_const(FloatVal)) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_var(byte_var, io__state, io__state).
-:- mode output_var(in, di, uo) is det.
+:- pred output_var(byte_var::in, io::di, io::uo) is det.
 
 output_var(Var) -->
 	output_short(Var).
 
-:- pred output_vars(list(byte_var), io__state, io__state).
-:- mode output_vars(in, di, uo) is det.
+:- pred output_vars(list(byte_var)::in, io::di, io::uo) is det.
 
 output_vars([]) --> [].
 output_vars([Var | Vars]) -->
 	output_var(Var),
 	output_vars(Vars).
 
-:- pred debug_var(byte_var, io__state, io__state).
-:- mode debug_var(in, di, uo) is det.
+:- pred debug_var(byte_var::in, io::di, io::uo) is det.
 
 debug_var(Var) -->
 	debug_int(Var).
 
-:- pred debug_vars(list(byte_var), io__state, io__state).
-:- mode debug_vars(in, di, uo) is det.
+:- pred debug_vars(list(byte_var)::in, io::di, io::uo) is det.
 
 debug_vars([]) --> [].
 debug_vars([Var | Vars]) -->
@@ -630,22 +611,19 @@ debug_vars([Var | Vars]) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_temp(byte_temp, io__state, io__state).
-:- mode output_temp(in, di, uo) is det.
+:- pred output_temp(byte_temp::in, io::di, io::uo) is det.
 
 output_temp(Var) -->
 	output_short(Var).
 
-:- pred debug_temp(byte_temp, io__state, io__state).
-:- mode debug_temp(in, di, uo) is det.
+:- pred debug_temp(byte_temp::in, io::di, io::uo) is det.
 
 debug_temp(Var) -->
 	debug_int(Var).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_dir(byte_dir, io__state, io__state).
-:- mode output_dir(in, di, uo) is det.
+:- pred output_dir(byte_dir::in, io::di, io::uo) is det.
 
 output_dir(to_arg) -->
 	output_byte(0).
@@ -654,8 +632,8 @@ output_dir(to_var) -->
 output_dir(to_none) -->
 	output_byte(2).
 
-:- pred output_var_dirs(list(pair(byte_var, byte_dir)), io__state, io__state).
-:- mode output_var_dirs(in, di, uo) is det.
+:- pred output_var_dirs(assoc_list(byte_var, byte_dir)::in,
+	io::di, io::uo) is det.
 
 output_var_dirs([]) --> [].
 output_var_dirs([Var - Dir | VarDirs]) -->
@@ -663,8 +641,7 @@ output_var_dirs([Var - Dir | VarDirs]) -->
 	output_dir(Dir),
 	output_var_dirs(VarDirs).
 
-:- pred debug_dir(byte_dir, io__state, io__state).
-:- mode debug_dir(in, di, uo) is det.
+:- pred debug_dir(byte_dir::in, io::di, io::uo) is det.
 
 debug_dir(to_arg) -->
 	debug_string("to_arg").
@@ -673,8 +650,8 @@ debug_dir(to_var) -->
 debug_dir(to_none) -->
 	debug_string("to_none").
 
-:- pred debug_var_dirs(list(pair(byte_var, byte_dir)), io__state, io__state).
-:- mode debug_var_dirs(in, di, uo) is det.
+:- pred debug_var_dirs(assoc_list(byte_var, byte_dir)::in,
+	io::di, io::uo) is det.
 
 debug_var_dirs([]) --> [].
 debug_var_dirs([Var - Dir | VarDirs]) -->
@@ -684,16 +661,16 @@ debug_var_dirs([Var - Dir | VarDirs]) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_test_id(byte_test_id, io__state, io__state).
-:- mode output_test_id(in, di, uo) is det.
+:- pred output_test_id(byte_test_id::in, io::di, io::uo) is det.
+
 output_test_id(int_test)	--> output_byte(0).
 output_test_id(char_test)	--> output_byte(1).
 output_test_id(string_test)	--> output_byte(2).
 output_test_id(float_test) 	--> output_byte(3).
 output_test_id(enum_test) 	--> output_byte(4).
 
-:- pred debug_test_id(byte_test_id, io__state, io__state).
-:- mode debug_test_id(in, di, uo) is det.
+:- pred debug_test_id(byte_test_id::in, io::di, io::uo) is det.
+
 debug_test_id(int_test)		--> debug_string("int").
 debug_test_id(char_test)	--> debug_string("char").
 debug_test_id(string_test)	--> debug_string("string").
@@ -702,65 +679,57 @@ debug_test_id(enum_test) 	--> debug_string("enum").
 
 
 %---------------------------------------------------------------------------%
-:- pred output_module_id(byte_module_id, io__state, io__state).
-:- mode output_module_id(in, di, uo) is det.
+
+:- pred output_module_id(byte_module_id::in, io::di, io::uo) is det.
 
 output_module_id(ModuleId) -->
 	{ prog_out__sym_name_to_string(ModuleId, ModuleIdString) },
 	output_string(ModuleIdString).
 
-:- pred debug_module_id(byte_module_id, io__state, io__state).
-:- mode debug_module_id(in, di, uo) is det.
+:- pred debug_module_id(byte_module_id::in, io::di, io::uo) is det.
 
 debug_module_id(ModuleId) -->
 	debug_sym_name(ModuleId).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_pred_id(byte_pred_id, io__state, io__state).
-:- mode output_pred_id(in, di, uo) is det.
+:- pred output_pred_id(byte_pred_id::in, io::di, io::uo) is det.
 
 output_pred_id(PredId) -->
 	output_string(PredId).
 
-:- pred debug_pred_id(byte_pred_id, io__state, io__state).
-:- mode debug_pred_id(in, di, uo) is det.
+:- pred debug_pred_id(byte_pred_id::in, io::di, io::uo) is det.
 
 debug_pred_id(PredId) -->
 	debug_string(PredId).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_proc_id(byte_proc_id, io__state, io__state).
-:- mode output_proc_id(in, di, uo) is det.
+:- pred output_proc_id(byte_proc_id::in, io::di, io::uo) is det.
 
 output_proc_id(ProcId) -->
 	output_byte(ProcId).
 
-:- pred debug_proc_id(byte_proc_id, io__state, io__state).
-:- mode debug_proc_id(in, di, uo) is det.
+:- pred debug_proc_id(byte_proc_id::in, io::di, io::uo) is det.
 
 debug_proc_id(ProcId) -->
 	debug_int(ProcId).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_label_id(int, io__state, io__state).
-:- mode output_label_id(in, di, uo) is det.
+:- pred output_label_id(int::in, io::di, io::uo) is det.
 
 output_label_id(LabelId) -->
 	output_short(LabelId).
 
-:- pred debug_label_id(int, io__state, io__state).
-:- mode debug_label_id(in, di, uo) is det.
+:- pred debug_label_id(int::in, io::di, io::uo) is det.
 
 debug_label_id(LabelId) -->
 	debug_int(LabelId).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_cons_id(byte_cons_id, io__state, io__state).
-:- mode output_cons_id(in, di, uo) is det.
+:- pred output_cons_id(byte_cons_id::in, io::di, io::uo) is det.
 
 output_cons_id(cons(ModuleId, Functor, Arity, Tag)) -->
 	output_byte(0),
@@ -798,14 +767,15 @@ output_cons_id(base_typeclass_info_const(_, _, _)) -->
 	{ error("Sorry, bytecode for typeclass not yet implemented") },
 	output_byte(8).
 output_cons_id(type_info_cell_constructor) -->
-	{ error("Sorry, bytecode for type_info_cell_constructor not yet implemented") },
+	{ error("Sorry, bytecode for type_info_cell_constructor " ++
+		"not yet implemented") },
 	output_byte(9).
 output_cons_id(typeclass_info_cell_constructor) -->
-	{ error("Sorry, bytecode for typeclass_info_cell_constructor not yet implemented") },
+	{ error("Sorry, bytecode for typeclass_info_cell_constructor " ++
+		"not yet implemented") },
 	output_byte(10).
 
-:- pred debug_cons_id(byte_cons_id, io__state, io__state).
-:- mode debug_cons_id(in, di, uo) is det.
+:- pred debug_cons_id(byte_cons_id::in, io::di, io::uo) is det.
 
 debug_cons_id(cons(ModuleId, Functor, Arity, Tag)) -->
 	debug_string("functor"),
@@ -854,8 +824,7 @@ debug_cons_id(typeclass_info_cell_constructor) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_tag(byte_cons_tag, io__state, io__state).
-:- mode output_tag(in, di, uo) is det.
+:- pred output_tag(byte_cons_tag::in, io::di, io::uo) is det.
 
 output_tag(unshared_tag(Primary)) -->
 	output_byte(0),
@@ -874,8 +843,7 @@ output_tag(enum_tag(Enum)) -->
 output_tag(no_tag) -->
 	output_byte(4).
 
-:- pred debug_tag(byte_cons_tag, io__state, io__state).
-:- mode debug_tag(in, di, uo) is det.
+:- pred debug_tag(byte_cons_tag::in, io::di, io::uo) is det.
 
 debug_tag(unshared_tag(Primary)) -->
 	debug_string("unshared_tag"),
@@ -896,15 +864,13 @@ debug_tag(no_tag) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_binop(binary_op, io__state, io__state).
-:- mode output_binop(in, di, uo) is det.
+:- pred output_binop(binary_op::in, io::di, io::uo) is det.
 
 output_binop(Binop) -->
 	{ binop_code(Binop, Code) },
 	output_byte(Code).
 
-:- pred debug_binop(binary_op, io__state, io__state).
-:- mode debug_binop(in, di, uo) is det.
+:- pred debug_binop(binary_op::in, io::di, io::uo) is det.
 
 debug_binop(Binop) -->
 	{ binop_debug(Binop, Debug) },
@@ -912,15 +878,13 @@ debug_binop(Binop) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_unop(unary_op, io__state, io__state).
-:- mode output_unop(in, di, uo) is det.
+:- pred output_unop(unary_op::in, io::di, io::uo) is det.
 
 output_unop(Unop) -->
 	{ unop_code(Unop, Code) },
 	output_byte(Code).
 
-:- pred debug_unop(unary_op, io__state, io__state).
-:- mode debug_unop(in, di, uo) is det.
+:- pred debug_unop(unary_op::in, io::di, io::uo) is det.
 
 debug_unop(Unop) -->
 	{ unop_debug(Unop, Debug) },
@@ -928,8 +892,7 @@ debug_unop(Unop) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred byte_code(byte_code, int).
-:- mode byte_code(in, out) is det.
+:- pred byte_code(byte_code::in, int::out) is det.
 
 byte_code(enter_pred(_, _, _, _),		 0).
 byte_code(endof_pred,				 1).
@@ -974,8 +937,7 @@ byte_code(not_supported,			39).
 byte_code(enter_else(_),			40).
 byte_code(endof_negation_goal(_),		41).
 
-:- pred byte_debug(byte_code, string).
-:- mode byte_debug(in, out) is det.
+:- pred byte_debug(byte_code::in, string::out) is det.
 
 byte_debug(enter_pred(_, _, _, _),		"enter_pred").
 byte_debug(endof_pred,				"endof_pred").
@@ -1020,8 +982,7 @@ byte_debug(fail,				"fail").
 byte_debug(context(_),				"context").
 byte_debug(not_supported,			"not_supported").
 
-:- pred determinism_code(determinism, int).
-:- mode determinism_code(in, out) is det.
+:- pred determinism_code(determinism::in, int::out) is det.
 
 determinism_code(det,		0).
 determinism_code(semidet,	1).
@@ -1032,8 +993,7 @@ determinism_code(cc_nondet,	5).
 determinism_code(erroneous,	6).
 determinism_code(failure,	7).
 
-:- pred determinism_debug(determinism, string).
-:- mode determinism_debug(in, out) is det.
+:- pred determinism_debug(determinism::in, string::out) is det.
 
 determinism_debug(det,		"det").
 determinism_debug(semidet,	"semidet").
@@ -1044,8 +1004,7 @@ determinism_debug(cc_nondet,	"cc_nondet").
 determinism_debug(erroneous,	"erroneous").
 determinism_debug(failure,	"failure").
 
-:- pred binop_code(binary_op, int).
-:- mode binop_code(in, out) is det.
+:- pred binop_code(binary_op::in, int::out) is det.
 
 binop_code((+),			 0).
 binop_code((-),			 1).
@@ -1085,8 +1044,7 @@ binop_code(float_ge,		34).
 binop_code(body,		35).
 binop_code(unsigned_le,		36).
 
-:- pred binop_debug(binary_op, string).
-:- mode binop_debug(in, out) is det.
+:- pred binop_debug(binary_op::in, string::out) is det.
 
 binop_debug((+),		"+").
 binop_debug((-),		"-").
@@ -1126,8 +1084,7 @@ binop_debug(float_ge,		"float_ge").
 binop_debug(body,		"body").
 binop_debug(unsigned_le,	"unsigned_le").
 
-:- pred unop_code(unary_op, int).
-:- mode unop_code(in, out) is det.
+:- pred unop_code(unary_op::in, int::out) is det.
 
 unop_code(mktag,		 0).
 unop_code(tag,			 1).
@@ -1139,8 +1096,7 @@ unop_code(hash_string,		 6).
 unop_code(bitwise_complement,	 7).
 unop_code((not),		 8).
 
-:- pred unop_debug(unary_op, string).
-:- mode unop_debug(in, out) is det.
+:- pred unop_debug(unary_op::in, string::out) is det.
 
 unop_debug(mktag,		"mktag").
 unop_debug(tag,			"tag").
@@ -1154,12 +1110,9 @@ unop_debug((not),		"not").
 
 %---------------------------------------------------------------------------%
 
-/*
-**	debug_cstring prints a string quoted in the manner of C.
-*/
+	% debug_cstring prints a string quoted in the manner of C.
 
-:- pred debug_cstring(string, io__state, io__state).
-:- mode debug_cstring(in, di, uo) is det.
+:- pred debug_cstring(string::in, io::di, io::uo) is det.
 
 debug_cstring(Str) -->
 	io__write_char('"'),
@@ -1169,29 +1122,25 @@ debug_cstring(Str) -->
 	% the string as a bytecode argument. This is not very elegant.
 	io__write_char(' ').
 
-:- pred debug_string(string, io__state, io__state).
-:- mode debug_string(in, di, uo) is det.
+:- pred debug_string(string::in, io::di, io::uo) is det.
 
 debug_string(Val) -->
 	io__write_string(Val),
 	io__write_char(' ').
 
-:- pred debug_int(int, io__state, io__state).
-:- mode debug_int(in, di, uo) is det.
+:- pred debug_int(int::in, io::di, io::uo) is det.
 
 debug_int(Val) -->
 	io__write_int(Val),
 	io__write_char(' ').
 
-:- pred debug_float(float, io__state, io__state).
-:- mode debug_float(in, di, uo) is det.
+:- pred debug_float(float::in, io::di, io::uo) is det.
 
 debug_float(Val) -->
 	io__write_float(Val),
 	io__write_char(' ').
 
-:- pred debug_sym_name(sym_name, io__state, io__state).
-:- mode debug_sym_name(in, di, uo) is det.
+:- pred debug_sym_name(sym_name::in, io::di, io::uo) is det.
 
 debug_sym_name(unqualified(Val)) -->
 	io__write_string(Val),

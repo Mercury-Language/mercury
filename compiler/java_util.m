@@ -25,8 +25,7 @@
 	% Succeeds iff the given string matches a reserved
 	% word in Java.
 	%
-:- pred java_util__is_keyword(string).
-:- mode java_util__is_keyword(in) is semidet.
+:- pred java_util__is_keyword(string::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -40,34 +39,29 @@
 	% or function name.  The operand needs
 	% to be placed in parentheses after the operator name.
 	%
-:- pred java_util__unary_prefix_op(builtin_ops__unary_op, string).
-:- mode java_util__unary_prefix_op(in, out) is det.
+:- pred java_util__unary_prefix_op(unary_op::in, string::out) is det.
 
 	% The operator returned will be <, >, etc.;
 	% it can be used in the form:
 	% `<string_object>.CompareTo(<Arg1>, <Arg2>) <Op> 0'.
 	%
-:- pred java_util__string_compare_op(binary_op, string).
-:- mode java_util__string_compare_op(in, out) is semidet.
+:- pred java_util__string_compare_op(binary_op::in, string::out) is semidet.
 
 	% The operator returned will be +, *, etc.;
 	% the arguments should be floats and the result will be a float.
 	%
-:- pred java_util__float_op(binary_op, string).
-:- mode java_util__float_op(in, out) is semidet.
+:- pred java_util__float_op(binary_op::in, string::out) is semidet.
 
 	% The operator returned will be <, >, etc.;
 	% the arguments should be floats and the result will be a boolean.
 	%
-:- pred java_util__float_compare_op(binary_op, string).
-:- mode java_util__float_compare_op(in, out) is semidet.
+:- pred java_util__float_compare_op(binary_op::in, string::out) is semidet.
 
 	% The operator returned will be an infix operator.
 	% The arguments should be integer or booleans
 	% and the result will be an integer or a boolean.
 	%
-:- pred java_util__binary_infix_op(binary_op, string).
-:- mode java_util__binary_infix_op(in, out) is semidet.
+:- pred java_util__binary_infix_op(binary_op::in, string::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -45,11 +45,11 @@
 
 	% check every predicate in a module
 :- pred unique_modes__check_module(module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% just check a single procedure
 :- pred unique_modes__check_proc(proc_id::in, pred_id::in, module_info::in,
-	module_info::out, bool::out, io__state::di, io__state::uo) is det.
+	module_info::out, bool::out, io::di, io::uo) is det.
 
 	% just check a single goal
 :- pred unique_modes__check_goal(hlds_goal::in, hlds_goal::out,

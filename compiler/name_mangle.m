@@ -66,12 +66,12 @@
 	% with the appropriate mercury_data_prefix.
 
 :- pred output_base_typeclass_info_name(tc_name::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% Prints the name of the initialization function
 	% for a given module.
 
-:- pred output_init_name(module_name::in, io__state::di, io__state::uo) is det.
+:- pred output_init_name(module_name::in, io::di, io::uo) is det.
 
 	% Returns the name of the initialization function
 	% for a given module.
@@ -86,8 +86,7 @@
 	% Print out the name of the tabling variable for the specified
 	% procedure.
 
-:- pred output_tabling_pointer_var_name(proc_label::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_tabling_pointer_var_name(proc_label::in, io::di, io::uo) is det.
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.
@@ -306,8 +305,7 @@ maybe_qualify_name(Module0, Name0) = Name :-
 	% If the functor name is not found in the table, then
 	% we use a fall-back method which produces ugly names.
 
-:- pred name_conversion_table(string, string).
-:- mode name_conversion_table(in, out) is semidet.
+:- pred name_conversion_table(string::in, string::out) is semidet.
 
 name_conversion_table("\\=", "f_not_equal").
 name_conversion_table(">=", "f_greater_or_equal").

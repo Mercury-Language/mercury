@@ -24,11 +24,11 @@
 	% Check that the argument types and modes are legal for
 	% an Aditi relation.
 :- pred magic_util__check_args(list(prog_var)::in, list(mode)::in,
-		list(type)::in, prog_context::in, magic_arg_id_type::in,
-		magic_info::in, magic_info::out) is det.
+	list(type)::in, prog_context::in, magic_arg_id_type::in,
+	magic_info::in, magic_info::out) is det.
 
 :- pred magic_util__report_errors(list(magic_error)::in, module_info::in,
-		bool::in, io__state::di, io__state::uo) is det.
+	bool::in, io::di, io::uo) is det.
 
 	% Determine whether a given goal contains a call to an
 	% Aditi procedure. Strip out any explicit quantifications
@@ -36,8 +36,8 @@
 	% Multiple nested explicit quantifications should have
 	% been removed by simplify.m.
 :- pred magic_util__goal_is_aditi_call(module_info::in,
-		map(pred_proc_id, pred_proc_id)::in, hlds_goal::in,
-		db_call::out, list(hlds_goal)::out) is semidet.
+	map(pred_proc_id, pred_proc_id)::in, hlds_goal::in,
+	db_call::out, list(hlds_goal)::out) is semidet.
 
 	% Information about a database call.
 :- type db_call
@@ -55,60 +55,60 @@
 
 :- pred magic_util__db_call_nonlocals(db_call::in, set(prog_var)::out) is det.
 :- pred magic_util__db_call_input_args(db_call::in,
-		list(prog_var)::out) is det.
+	list(prog_var)::out) is det.
 :- pred magic_util__db_call_output_args(db_call::in,
-		list(prog_var)::out) is det.
+	list(prog_var)::out) is det.
 :- pred magic_util__db_call_context(db_call::in, prog_context::out) is det.
 :- pred magic_util__db_call_pred_proc_id(db_call::in,
-		pred_proc_id::out) is det.
+	pred_proc_id::out) is det.
 
 :- pred magic_util__rename_vars_in_db_call(db_call::in,
-		map(prog_var, prog_var)::in, db_call::out) is det.
+	map(prog_var, prog_var)::in, db_call::out) is det.
 
 	% Do all the necessary goal fiddling to handle the input
 	% to an Aditi procedure.
 :- pred magic_util__setup_call(list(hlds_goal)::in, db_call::in,
-		set(prog_var)::in, list(hlds_goal)::out,
-		magic_info::in, magic_info::out) is det.
+	set(prog_var)::in, list(hlds_goal)::out,
+	magic_info::in, magic_info::out) is det.
 
 	% Create a closure given the goal and arguments.
 :- pred magic_util__create_closure(int::in, prog_var::in, (mode)::in,
-		hlds_goal::in, list(prog_var)::in, list(prog_var)::in,
-		hlds_goal::out, magic_info::in, magic_info::out) is det.
+	hlds_goal::in, list(prog_var)::in, list(prog_var)::in,
+	hlds_goal::out, magic_info::in, magic_info::out) is det.
 
 	% Add the goal as a disjunct of the magic predicate for the
 	% pred_proc_id. The list of variables is the list of head
 	% variables of the `clause'.
 :- pred magic_util__add_to_magic_predicate(pred_proc_id::in, hlds_goal::in,
-		list(prog_var)::in, magic_info::in, magic_info::out) is det.
+	list(prog_var)::in, magic_info::in, magic_info::out) is det.
 
 	% Get information to build a call to the magic
 	% predicate for the current procedure.
 :- pred magic_util__magic_call_info(pred_id::out, proc_id::out, sym_name::out,
-		list(prog_var)::out, list(prog_var)::out, list(mode)::out,
-		magic_info::in, magic_info::out) is det.
+	list(prog_var)::out, list(prog_var)::out, list(mode)::out,
+	magic_info::in, magic_info::out) is det.
 
 	% Convert all modes to output, creating test unifications
 	% where the original mode was input. This will result in
 	% a join on the input attributes.
 :- pred magic_util__create_input_test_unifications(module_info::in,
-		list(prog_var)::in, list(prog_var)::in, list(mode)::in,
-		list(prog_var)::out, list(hlds_goal)::in, list(hlds_goal)::out,
-		hlds_goal_info::in, hlds_goal_info::out,
-		proc_info::in, proc_info::out) is det.
+	list(prog_var)::in, list(prog_var)::in, list(mode)::in,
+	list(prog_var)::out, list(hlds_goal)::in, list(hlds_goal)::out,
+	hlds_goal_info::in, hlds_goal_info::out,
+	proc_info::in, proc_info::out) is det.
 
 	% Convert an input mode to output.
 :- pred magic_util__mode_to_output_mode(module_info::in,
-		(mode)::in, (mode)::out) is det.
+	(mode)::in, (mode)::out) is det.
 
 	% Adjust an index to account for the removal of the `aditi:state'
 	% from the argument list.
 :- pred magic_util__adjust_index(list(type)::in, index_spec::in,
-		index_spec::out) is det.
+	index_spec::out) is det.
 
 	% Remove any aditi:states from the set of vars.
 :- pred magic_util__restrict_nonlocals(set(prog_var)::in, set(prog_var)::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 
 	% Given a prefix, create a unique new name for the predicate
 	% using prog_util__make_pred_name_with_context. The boolean
@@ -163,7 +163,7 @@ magic_util__db_call_output_args(db_call(_, _, _, _, _, Outputs, _), Outputs).
 
 magic_util__rename_vars_in_db_call(Call0, Subn, Call) :-
 	Call0 = db_call(MaybeClosures0, Goal0, PredProcId, Args0,
-			Inputs0, Outputs0, MaybeNegGoals0),
+		Inputs0, Outputs0, MaybeNegGoals0),
 	(
 		MaybeClosures0 = yes(Closures0),
 		goal_util__rename_vars_in_goals(Closures0, no, Subn, Closures),
@@ -187,7 +187,7 @@ magic_util__rename_vars_in_db_call(Call0, Subn, Call) :-
 		MaybeNegGoals = no
 	),
 	Call = db_call(MaybeClosures, Goal, PredProcId, Args,
-			Inputs, Outputs, MaybeNegGoals).
+		Inputs, Outputs, MaybeNegGoals).
 
 %-----------------------------------------------------------------------------%
 
@@ -252,7 +252,7 @@ magic_util__goal_is_aditi_call_2(ModuleInfo, PredMap,
 	).
 
 :- pred magic_util__neg_goal_is_aditi_call(module_info::in, pred_map::in,
-		hlds_goal::in, hlds_goal_info::in, db_call::out) is semidet.
+	hlds_goal::in, hlds_goal_info::in, db_call::out) is semidet.
 
 magic_util__neg_goal_is_aditi_call(ModuleInfo, PredMap,
 		NegGoal0, NegGoalInfo, Call) :-
@@ -303,7 +303,8 @@ magic_util__adjust_index(ArgTypes, index_spec(IndexType, Attrs0),
 			)),
 		list__map(AdjustAttr, Attrs0, Attrs)
 	;
-		error("magic_util__adjust_index: no aditi__state in base relation argument types")
+		error("magic_util__adjust_index: " ++
+			"no aditi__state in base relation argument types")
 	).
 
 magic_util__restrict_nonlocals(NonLocals0, NonLocals) -->
@@ -443,7 +444,7 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 	% XXX we should check that the input query of an aggregate
 	% is an Aditi relation, not a top-down Mercury predicate.
 :- pred magic_util__setup_aggregate_input(hlds_goal::in, list(hlds_goal)::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 
 magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 
@@ -604,9 +605,9 @@ magic_util__create_input_test_unifications(ModuleInfo, [Var | Vars], InputArgs,
 		ProcInfo1, ProcInfo).
 
 :- pred magic_util__create_input_test_unification(module_info::in,
-		prog_var::in, (mode)::in, prog_var::out,
-		hlds_goal::out, hlds_goal_info::in,
-		hlds_goal_info::out, proc_info::in, proc_info::out) is det.
+	prog_var::in, (mode)::in, prog_var::out,
+	hlds_goal::out, hlds_goal_info::in,
+	hlds_goal_info::out, proc_info::in, proc_info::out) is det.
 
 magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
 		Test, CallInfo0, CallInfo, !ProcInfo) :-
@@ -679,9 +680,9 @@ magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
 
 	% Create the magic input closures for a call to a lower sub-module.
 :- pred magic_util__create_input_closures(list(prog_var)::in,
-		list(prog_var)::in, list(mode)::in, hlds_goal::in,
-		magic_proc_info::in, int::in, list(hlds_goal)::out,
-		list(prog_var)::out, magic_info::in, magic_info::out) is det.
+	list(prog_var)::in, list(mode)::in, hlds_goal::in,
+	magic_proc_info::in, int::in, list(hlds_goal)::out,
+	list(prog_var)::out, magic_info::in, magic_info::out) is det.
 
 magic_util__create_input_closures([], _, _, _, _, _, [], []) --> [].
 magic_util__create_input_closures([_ | MagicVars], InputArgs,
@@ -741,7 +742,7 @@ magic_util__create_input_closures([_ | MagicVars], InputArgs,
 	% Create a variable to hold an input closure for a lower sub-module
 	% call, returning the argument types of the closure.
 :- pred magic_util__get_input_var(list(type)::in, int::in, prog_var::out,
-		list(type)::out, proc_info::in, proc_info::out) is det.
+	list(type)::out, proc_info::in, proc_info::out) is det.
 
 magic_util__get_input_var(MagicTypes, CurrVar, InputVar, ArgTypes,
 		!ProcInfo) :-
@@ -999,8 +1000,8 @@ magic_util__magic_call_info(MagicPredId, MagicProcId,
 	% has been transformed. If the goal is already a single call
 	% this is unnecessary.
 :- pred magic_util__maybe_create_supp_call(list(hlds_goal)::in,
-		set(prog_var)::in, list(prog_var)::in, term__context::in,
-		hlds_goal::out, magic_info::in, magic_info::out) is det.
+	set(prog_var)::in, list(prog_var)::in, term__context::in,
+	hlds_goal::out, magic_info::in, magic_info::out) is det.
 
 magic_util__maybe_create_supp_call(PrevGoals, NonLocals, InputArgs,
 		Context, SuppCall) -->
@@ -1023,8 +1024,8 @@ magic_util__maybe_create_supp_call(PrevGoals, NonLocals, InputArgs,
 	% possible, choose any order. If there are duplicates in the
 	% call input list, a projection is unavoidable.
 :- pred magic_util__order_supp_call_outputs(list(hlds_goal)::in,
-		list(prog_var)::in, set(prog_var)::in,
-		list(prog_var)::in, list(prog_var)::out) is det.
+	list(prog_var)::in, set(prog_var)::in,
+	list(prog_var)::in, list(prog_var)::out) is det.
 
 magic_util__order_supp_call_outputs(Goals, MagicVars, NonLocals,
 		ArgsInOrder, Args) :-
@@ -1260,7 +1261,7 @@ magic_util__check_args_2([Var | Vars], [ArgMode | ArgModes],
 	.
 
 :- pred update_rtti_arg_state(rtti_arg_state::in,
-		rtti_arg::in, rtti_arg_state::out) is det.
+	rtti_arg::in, rtti_arg_state::out) is det.
 
 update_rtti_arg_state(no_rtti, Arg, found_rtti(Arg)).
 update_rtti_arg_state(found_rtti(Arg0), Arg1, found_rtti(Arg)) :-
@@ -1283,7 +1284,7 @@ update_rtti_arg(typeclass_info, both, both).
 	% Go over a type collecting any reasons why that type cannot
 	% be an argument type of an Aditi relation.
 :- pred magic_util__check_type((type)::in, set(argument_error)::out,
-		maybe(rtti_arg)::out, magic_info::in, magic_info::out) is det.
+	maybe(rtti_arg)::out, magic_info::in, magic_info::out) is det.
 
 magic_util__check_type(ArgType, Errors, MaybeRtti) -->
 
@@ -1380,8 +1381,8 @@ magic_util__check_type_ctor(Parents, TypeCtor, Errors0, Errors) -->
 	).
 
 :- pred magic_util__check_type_defn(hlds_type_body::in, set(type_ctor)::in,
-		set(argument_error)::in, set(argument_error)::out,
-		magic_info::in, magic_info::out) is det.
+	set(argument_error)::in, set(argument_error)::out,
+	magic_info::in, magic_info::out) is det.
 
 magic_util__check_type_defn(du_type(Ctors, _, _, _, _, _, _),
 		Parents, Errors0, Errors) -->
@@ -1394,8 +1395,8 @@ magic_util__check_type_defn(foreign_type(_, _), _, _, _) -->
 	{ error("magic_util__check_type_defn: foreign_type") }.
 
 :- pred magic_util__check_ctor(set(type_ctor)::in, constructor::in,
-		set(argument_error)::in, set(argument_error)::out,
-		magic_info::in, magic_info::out) is det.
+	set(argument_error)::in, set(argument_error)::out,
+	magic_info::in, magic_info::out) is det.
 
 magic_util__check_ctor(Parents, ctor(ExistQVars, _, _, CtorArgs),
 		Errors0, Errors) -->
@@ -1441,116 +1442,115 @@ magic_util__check_ctor(Parents, ctor(ExistQVars, _, _, CtorArgs),
 
 :- type magic_info.
 
-:- pred magic_info_init(module_info, magic_info).
-:- mode magic_info_init(in, out) is det.
+:- pred magic_info_init(module_info::in, magic_info::out) is det.
 
 :- pred magic_info_get_module_info(module_info::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_error_pred_proc_id(pred_proc_id::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_curr_pred_proc_id(pred_proc_id::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_pred_info(pred_info::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_proc_info(proc_info::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_scc(list(pred_proc_id)::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_magic_map(magic_map::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_magic_vars(list(prog_var)::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_magic_var_map(map(pred_proc_id, prog_var)::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_get_next_supp_id(int::out, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_get_magic_proc_info(map(pred_proc_id, magic_proc_info)::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_get_pred_map(pred_map::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_get_error_vars(set(prog_var)::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_get_errors(magic_errors::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_get_ok_types(set(type_ctor)::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_get_bad_types(map(type_ctor, set(argument_error))::out,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 
 :- pred magic_info_set_module_info(module_info::in, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_set_error_pred_proc_id(pred_proc_id::in, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_set_curr_pred_proc_id(pred_proc_id::in, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_set_pred_info(pred_info::in, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_set_proc_info(proc_info::in, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_set_scc(list(pred_proc_id)::in, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_set_magic_map(magic_map::in, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_set_magic_vars(list(prog_var)::in, magic_info::in,
-		magic_info::out) is det.
+	magic_info::out) is det.
 :- pred magic_info_set_magic_var_map(map(pred_proc_id, prog_var)::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_set_magic_proc_info(map(pred_proc_id, magic_proc_info)::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_set_pred_map(pred_map::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_set_error_vars(set(prog_var)::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_set_errors(magic_errors::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_set_ok_types(set(type_ctor)::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 :- pred magic_info_set_bad_types(map(type_ctor, set(argument_error))::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- type magic_info
-	--->	magic_info(
-			module_info :: module_info,
-			error_pred_proc_id :: maybe(pred_proc_id),
-			curr_pred_proc_id :: maybe(pred_proc_id),
-			pred_info :: maybe(pred_info),
-			proc_info :: maybe(proc_info),
-			scc :: list(pred_proc_id),
-						% preds in the current
-						% sub-module
-			magic_map :: magic_map,	% magic pred_proc_id for
-						% each pred_proc_id
+:- type magic_info --->
+	magic_info(
+		module_info		:: module_info,
+		error_pred_proc_id	:: maybe(pred_proc_id),
+		curr_pred_proc_id	:: maybe(pred_proc_id),
+		pred_info		:: maybe(pred_info),
+		proc_info		:: maybe(proc_info),
+		scc			:: list(pred_proc_id),
+					% preds in the current sub-module
+		magic_map		:: magic_map,
+					% magic pred_proc_id for
+					% each pred_proc_id
 
-			magic_vars :: list(prog_var),
-						% magic input variables
+		magic_vars		:: list(prog_var),
+					% magic input variables
 
-			magic_var_map :: map(pred_proc_id, prog_var),
-						% magic input variables for
-						% each entry-point of the
-						% sub-module
-			next_supp_id :: int,	% next supp id
-			magic_proc_info :: map(pred_proc_id, magic_proc_info),
-			pred_map :: pred_map,
-						% map from old to transformed
-						% pred_proc_id
-			error_vars :: set(prog_var),
-						% vars for which errors have
-						% been reported.
-			errors :: magic_errors,
-			ok_types :: set(type_ctor),
-						% type_ctors which are allowed
-						% as argument types of
-						% Aditi predicates. A type
-						% is ok if no part of it is
-						% higher-order or abstract.
-			bad_types :: map(type_ctor, set(argument_error))
-						% type_ctors which are not ok
-						% as Aditi argument types.
-		).
+		magic_var_map		:: map(pred_proc_id, prog_var),
+					% magic input variables for
+					% each entry-point of the
+					% sub-module
+		next_supp_id		:: int,	% next supp id
+		magic_proc_info		:: map(pred_proc_id, magic_proc_info),
+		pred_map		:: pred_map,
+					% map from old to transformed
+					% pred_proc_id
+		error_vars		:: set(prog_var),
+					% vars for which errors have
+					% been reported.
+		errors			:: magic_errors,
+		ok_types		:: set(type_ctor),
+					% type_ctors which are allowed
+					% as argument types of
+					% Aditi predicates. A type
+					% is ok if no part of it is
+					% higher-order or abstract.
+		bad_types		:: map(type_ctor, set(argument_error))
+					% type_ctors which are not ok
+					% as Aditi argument types.
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1564,8 +1564,8 @@ magic_info_init(ModuleInfo, MagicInfo) :-
 	map__init(BadTypes),
 	set__init(ErrorVars),
 	MagicInfo = magic_info(ModuleInfo, no, no, no, no, [], MagicMap, [],
-			VarMap, 1, MagicProcInfo, PredMap, ErrorVars, Errors,
-			OKTypes, BadTypes).
+		VarMap, 1, MagicProcInfo, PredMap, ErrorVars, Errors,
+		OKTypes, BadTypes).
 
 magic_info_get_module_info(Info ^ module_info, Info, Info).
 
@@ -1756,7 +1756,7 @@ magic_util__report_errors(Errors, ModuleInfo, Verbose) -->
 	list__foldl(magic_util__report_error(ModuleInfo, Verbose), Errors).
 
 :- pred magic_util__report_error(module_info::in, bool::in, magic_error::in,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 magic_util__report_error(ModuleInfo, Verbose,
 		argument_error(Error, Arg, proc(PredId, _)) - Context) -->
@@ -1846,7 +1846,7 @@ magic_util__report_error(ModuleInfo, _Verbose,
 	write_error_pieces(Context, 0, Pieces).
 
 :- pred magic_util__error_arg_id_piece(magic_arg_id::in,
-		format_component::out) is det.
+	format_component::out) is det.
 
 magic_util__error_arg_id_piece(arg_number(ArgNo), words(ArgWords)) :-
 	string__int_to_string(ArgNo, ArgStr),
@@ -1855,8 +1855,8 @@ magic_util__error_arg_id_piece(var_name(Name), words(NameStr)) :-
 	string__append_list(["`", Name, "'"], NameStr).
 
 :- pred magic_util__report_argument_error(term__context::in,
-		argument_error::in, format_component::in, bool::in,
-		list(format_component)::out) is det.
+	argument_error::in, format_component::in, bool::in,
+	list(format_component)::out) is det.
 
 magic_util__report_argument_error(_Context, partially_instantiated,
 		ArgPiece, _Verbose, Pieces) :-

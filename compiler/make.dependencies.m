@@ -18,8 +18,7 @@
 	% The reason we don't return maybe(Deps) is that with `--keep-going'
 	% we want to do as much work as possible.
 :- type find_module_deps(T) ==
-		pred(module_name, bool, set(T),
-			make_info, make_info, io__state, io__state).
+		pred(module_name, bool, set(T), make_info, make_info, io, io).
 :- inst find_module_deps ==
 		(pred(in, out, out, in, out, di, uo) is det).
 
@@ -44,7 +43,7 @@
 	% module_names to find all target files for those modules.
 :- pred union_deps(find_module_deps(T)::in(find_module_deps),
 	module_name::in, bool::out, set(T)::in, set(T)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -52,12 +51,12 @@
 	% reachable (by import) from the given module.
 :- pred find_reachable_local_modules(module_name::in, bool::out,
 		set(module_name)::out, make_info::in, make_info::out,
-		io__state::di, io__state::uo) is det.
+		io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_status(dependency_file::in, dependency_status::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -73,7 +72,7 @@
 	% Check that all the dependency targets are up-to-date.
 :- pred check_dependencies(file_name::in, maybe_error(timestamp)::in, bool::in,
 	list(dependency_file)::in, dependencies_result::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 	% check_dependencies(TargetFileName, TargetFileTimestamp,
 	%	BuildDepsSucceeded, Dependencies, Result)
@@ -81,9 +80,9 @@
 	% Check that all the dependency files are up-to-date.
 :- pred check_dependency_timestamps(file_name::in, maybe_error(timestamp)::in,
 	bool::in, list(File)::in,
-	pred(File, io__state, io__state)::(pred(in, di, uo) is det),
+	pred(File, io, io)::(pred(in, di, uo) is det),
 	list(maybe_error(timestamp))::in, dependencies_result::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -314,7 +313,7 @@ FindFiles `files_of` FindDeps =
 :- pred map_find_module_deps(find_module_deps(T)::in(find_module_deps),
 	find_module_deps(module_name)::in(find_module_deps),
 	module_name::in, bool::out, set(T)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 map_find_module_deps(FindDeps2, FindDeps1, ModuleName,
 		Success, Result, Info0, Info) -->
@@ -334,17 +333,17 @@ map_find_module_deps(FindDeps2, FindDeps1, ModuleName,
 %-----------------------------------------------------------------------------%
 
 :- pred no_deps(module_name::in, bool::out, set(T)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 no_deps(_, yes, set__init, Info, Info) --> [].
 
 :- pred self(module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 self(ModuleName, yes, set__make_singleton_set(ModuleName), Info, Info) --> [].
 
 :- pred parents(module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 parents(ModuleName, yes, set__list_to_set(get_ancestors(ModuleName)),
 		Info, Info) --> [].
@@ -356,7 +355,7 @@ parents(ModuleName, yes, set__list_to_set(get_ancestors(ModuleName)),
 init_cached_direct_imports = map__init.
 
 :- pred direct_imports(module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 direct_imports(ModuleName, Success, Modules, Info0, Info) -->
     ( { Result0 = Info0 ^ cached_direct_imports ^ elem(ModuleName) } ->
@@ -401,7 +400,7 @@ direct_imports(ModuleName, Success, Modules, Info0, Info) -->
 	% which does not use `--intermodule-optimization'.
 :- pred non_intermod_direct_imports(module_name::in, bool::out,
 	set(module_name)::out, make_info::in, make_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 non_intermod_direct_imports(ModuleName, Success, Modules, Info0, Info) -->
 	get_module_dependencies(ModuleName, MaybeImports, Info0, Info1),
@@ -450,7 +449,7 @@ non_intermod_direct_imports(ModuleName, Success, Modules, Info0, Info) -->
 
 	% Return the list of modules for which we should read `.int2' files.
 :- pred indirect_imports(module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 indirect_imports(ModuleName, Success, Modules, Info0, Info) -->
 	indirect_imports_2(direct_imports, ModuleName,
@@ -461,7 +460,7 @@ indirect_imports(ModuleName, Success, Modules, Info0, Info) -->
 	% modules imported by a `.opt' file.
 :- pred non_intermod_indirect_imports(module_name::in, bool::out,
 	set(module_name)::out, make_info::in, make_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 non_intermod_indirect_imports(ModuleName, Success, Modules, Info0, Info) -->
 	indirect_imports_2(non_intermod_direct_imports, ModuleName,
@@ -469,7 +468,7 @@ non_intermod_indirect_imports(ModuleName, Success, Modules, Info0, Info) -->
 
 :- pred indirect_imports_2(find_module_deps(module_name)::in(find_module_deps),
 	module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 indirect_imports_2(FindDirectImports, ModuleName, Success, IndirectImports,
 		Info0, Info) -->
@@ -496,7 +495,7 @@ indirect_imports_2(FindDirectImports, ModuleName, Success, IndirectImports,
 
 	% Return the list of modules for which we should read `.opt' files.
 :- pred intermod_imports(module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 intermod_imports(ModuleName, Success, Modules, Info0, Info) -->
 	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
@@ -523,7 +522,7 @@ intermod_imports(ModuleName, Success, Modules, Info0, Info) -->
 %-----------------------------------------------------------------------------%
 
 :- pred foreign_imports(module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 foreign_imports(ModuleName, Success, Modules, Info0, Info) -->
 	%
@@ -544,7 +543,7 @@ foreign_imports(ModuleName, Success, Modules, Info0, Info) -->
 
 :- pred find_module_foreign_imports(set(foreign_language)::in, module_name::in,
 	bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_module_foreign_imports(Languages, ModuleName,
 		Success, ForeignModules, Info0, Info) -->
@@ -563,7 +562,7 @@ find_module_foreign_imports(Languages, ModuleName,
 
 :- pred find_module_foreign_imports_2(set(foreign_language)::in,
 	module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_module_foreign_imports_2(Languages, ModuleName,
 		Success, ForeignModules, Info0, Info) -->
@@ -619,7 +618,7 @@ get_foreign_imported_modules_2(MaybeLanguages, ForeignImportModules) =
 	%
 :- pred foreign_imports(foreign_language::in,
 	module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 foreign_imports(Lang, ModuleName, Success, Modules, !Info) -->
 	get_module_dependencies(ModuleName, MaybeImports, !Info),
@@ -676,7 +675,7 @@ maybe_keep_std_lib_module(CurrentModule, ImportedModule) :-
 
 :- pred fact_table(module_name::in,
 	bool::out, set(pair(file_name, maybe(option)))::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 fact_table(ModuleName, Success, Files, Info0, Info) -->
 	get_module_dependencies(ModuleName, MaybeImports, Info0, Info),
@@ -724,7 +723,7 @@ find_reachable_local_modules(ModuleName, Success, Modules, Info0, Info) -->
 
 :- pred find_transitive_implementation_imports(module_name::in, bool::out,
 		set(module_name)::out, make_info::in, make_info::out,
-		io__state::di, io__state::uo) is det.
+		io::di, io::uo) is det.
 
 find_transitive_implementation_imports(ModuleName, Success, Modules,
 		Info0, Info) -->
@@ -734,7 +733,7 @@ find_transitive_implementation_imports(ModuleName, Success, Modules,
 
 :- pred find_transitive_interface_imports(module_name::in, bool::out,
 		set(module_name)::out, make_info::in, make_info::out,
-		io__state::di, io__state::uo) is det.
+		io::di, io::uo) is det.
 
 find_transitive_interface_imports(ModuleName,
 		Success, Modules, Info0, Info) -->
@@ -744,7 +743,7 @@ find_transitive_interface_imports(ModuleName,
 
 :- pred find_transitive_module_dependencies(transitive_dependencies_type::in,
 	module_locn::in, module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_transitive_module_dependencies(DependenciesType, ModuleLocn,
 		ModuleName, Success, Modules, Info0, Info) -->
@@ -761,7 +760,7 @@ find_transitive_module_dependencies(DependenciesType, ModuleLocn,
 	transitive_dependencies_type::in, module_locn::in,
 	module_name::in, bool::out, set(module_name)::in,
 	set(module_name)::out, make_info::in, make_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
 		ModuleLocn, ModuleName, Success, Modules0, Modules,
@@ -953,8 +952,8 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
     ).
 
 :- pred debug_newer_dependencies(string::in, maybe_error(timestamp)::in,
-	list(T)::in, pred(T, io__state, io__state)::(pred(in, di, uo) is det),
-	list(maybe_error(timestamp))::in, io__state::di, io__state::uo) is det.
+	list(T)::in, pred(T, io, io)::(pred(in, di, uo) is det),
+	list(maybe_error(timestamp))::in, io::di, io::uo) is det.
 
 debug_newer_dependencies(TargetFileName, MaybeTimestamp,
 		DepFiles, WriteDepFile, DepTimestamps) -->

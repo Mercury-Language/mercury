@@ -31,10 +31,10 @@
 
 	% make__process_args(OptionArgs, NonOptionArgs).
 :- pred make__process_args(options_variables::in, list(string)::in,
-		list(file_name)::in, io__state::di, io__state::uo) is det.
+	list(file_name)::in, io::di, io::uo) is det.
 
 :- pred make__write_module_dep_file(module_imports::in,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- func make__module_dep_file_extension = string.
 

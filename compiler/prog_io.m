@@ -72,8 +72,7 @@
 	% success (where FileInfo is information about the file such as
 	% the file name or the directory in which it was found), or
 	% `error(Message)' on failure.
-:- type open_file(FileInfo) ==
-		pred(maybe_error(FileInfo), io__state, io__state).
+:- type open_file(FileInfo) == pred(maybe_error(FileInfo), io, io).
 :- inst open_file == (pred(out, di, uo) is det).
 
 	% prog_io__read_module(OpenFile, FileName, DefaultModuleName,
@@ -99,50 +98,44 @@
 	;	some_module_errors	% some syntax errors
 	;	fatal_module_errors.	% couldn't open the file
 
-:- pred prog_io__read_module(open_file(FileInfo), module_name, bool,
-		module_error, maybe(FileInfo), module_name, message_list,
-		item_list, maybe(io__res(timestamp)), io__state, io__state).
-:- mode prog_io__read_module(in(open_file), in, in,
-		out, out, out, out, out, out, di, uo) is det.
+:- pred prog_io__read_module(open_file(FileInfo)::in(open_file),
+	module_name::in, bool::in, module_error::out, maybe(FileInfo)::out,
+	module_name::out, message_list::out, item_list::out,
+	maybe(io__res(timestamp))::out, io::di, io::uo) is det.
 
-:- pred prog_io__read_module_if_changed(open_file(FileInfo), module_name,
-		timestamp, module_error, maybe(FileInfo), module_name,
-		message_list, item_list, maybe(io__res(timestamp)),
-		io__state, io__state).
-:- mode prog_io__read_module_if_changed(in(open_file), in, in,
-		out, out, out, out, out, out, di, uo) is det.
+:- pred prog_io__read_module_if_changed(open_file(FileInfo)::in(open_file),
+	module_name::in, timestamp::in, module_error::out,
+	maybe(FileInfo)::out, module_name::out, message_list::out,
+	item_list::out, maybe(io__res(timestamp))::out, io::di, io::uo) is det.
 
 	% Same as prog_io__read_module, but use intermod_directories
 	% instead of search_directories when searching for the file.
 	% Also report an error if the actual module name doesn't match
 	% the expected module name.
-:- pred prog_io__read_opt_file(file_name, module_name, module_error,
-		message_list, item_list, io__state, io__state).
-:- mode prog_io__read_opt_file(in, in, out, out, out, di, uo) is det.
+:- pred prog_io__read_opt_file(file_name::in, module_name::in,
+	module_error::out, message_list::out, item_list::out, io::di, io::uo)
+	is det.
 
 	% check_module_has_expected_name(FileName, ExpectedName, ActualName):
 	%	Check that two module names are equal,
 	%	and report an error if they aren't.
-:- pred check_module_has_expected_name(file_name, module_name, module_name,
-		io__state, io__state).
-:- mode check_module_has_expected_name(in, in, in, di, uo) is det.
+:- pred check_module_has_expected_name(file_name::in, module_name::in,
+	module_name::in, io::di, io::uo) is det.
 
 	% search_for_file(Dirs, FileName, FoundFileName, IO0, IO)
 	%
 	% Search Dirs for FileName, opening the file if it is found,
 	% and returning the path name of the file that was found.
-:- pred search_for_file(list(dir_name), file_name, maybe_error(file_name),
-		io__state, io__state).
-:- mode search_for_file(in, in, out, di, uo) is det.
+:- pred search_for_file(list(dir_name)::in, file_name::in,
+	maybe_error(file_name)::out, io::di, io::uo) is det.
 
 	% search_for_file_returning_dir(Dirs, FileName, FoundDirName, IO0, IO)
 	%
 	% Search Dirs for FileName, opening the file if it is found,
 	% and returning the name of the directory in which the file
 	% was found.
-:- pred search_for_file_returning_dir(list(dir_name), file_name,
-		maybe_error(dir_name), io__state, io__state).
-:- mode search_for_file_returning_dir(in, in, out, di, uo) is det.
+:- pred search_for_file_returning_dir(list(dir_name)::in, file_name::in,
+	maybe_error(dir_name)::out, io::di, io::uo) is det.
 
 	% search_for_module_source(Dirs, ModuleName,
 	%	FoundSourceFileName, IO0, IO)
@@ -152,13 +145,12 @@
 	% qualified versions of ModuleName.
 	% For example, module foo:bar:baz can be found
 	% in foo.bar.m, bar.baz.m or bar.m.
-:- pred search_for_module_source(list(dir_name), module_name,
-		maybe_error(file_name), io__state, io__state).
-:- mode search_for_module_source(in, in, out, di, uo) is det.
+:- pred search_for_module_source(list(dir_name)::in, module_name::in,
+	maybe_error(file_name)::out, io::di, io::uo) is det.
 
 	% Read the first item from the given file to find the module name.
-:- pred find_module_name(file_name, maybe(module_name), io__state, io__state).
-:- mode find_module_name(in, out, di, uo) is det.
+:- pred find_module_name(file_name::in, maybe(module_name)::out,
+	io::di, io::uo) is det.
 
 	% parse_item(ModuleName, VarSet, Term, MaybeItem)
 	%
@@ -166,8 +158,8 @@
 	% otherwise it is bound to an appropriate error message.
 	% Qualify appropriate parts of the item, with ModuleName as the
 	% module name.
-:- pred parse_item(module_name, varset, term, maybe_item_and_context).
-:- mode parse_item(in, in, in, out) is det.
+:- pred parse_item(module_name::in, varset::in, term::in,
+	maybe_item_and_context::out) is det.
 
 	% parse_decl(ModuleName, VarSet, Term, Result)
 	%
@@ -175,14 +167,14 @@
 	% parsed item, otherwise it is bound to an appropriate error message.
 	% Qualify appropriate parts of the item, with ModuleName as the module
 	% name.
-:- pred parse_decl(module_name, varset, term, maybe_item_and_context).
-:- mode parse_decl(in, in, in, out) is det.
+:- pred parse_decl(module_name::in, varset::in, term::in,
+	maybe_item_and_context::out) is det.
 
 	% parse_type_defn_head(ModuleName, Head, Body, HeadResult).
 	%
 	% Check the head of a type definition for errors.
-:- pred parse_type_defn_head(module_name, term, term, maybe_functor).
-:- mode parse_type_defn_head(in, in, in, out) is det.
+:- pred parse_type_defn_head(module_name::in, term::in, term::in,
+	maybe_functor::out) is det.
 
 	% get_maybe_equality_compare_preds(ModuleName,
 	%		Body0, Body, MaybeEqualPred):
@@ -195,9 +187,8 @@
 	%	MaybeEqualPred.  If not, returns Body = Body0
 	%	and `no' in MaybeEqualPred.
 
-:- pred get_maybe_equality_compare_preds(module_name, term, term,
-		maybe1(maybe(unify_compare))).
-:- mode get_maybe_equality_compare_preds(in, in, out, out) is det.
+:- pred get_maybe_equality_compare_preds(module_name::in, term::in, term::out,
+	maybe1(maybe(unify_compare))::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -214,8 +205,8 @@
 	% sym_name_and_args takes a term and returns a sym_name and a list of
 	% argument terms.
 	% It fails if the input is not valid syntax for a QualifiedTerm.
-:- pred sym_name_and_args(term(T), sym_name, list(term(T))).
-:- mode sym_name_and_args(in, out, out) is semidet.
+:- pred sym_name_and_args(term(T)::in, sym_name::out, list(term(T))::out)
+	is semidet.
 
 	% parse_qualified_term/4 takes a term (and also the containing
 	% term, and a string describing the context from which it
@@ -223,8 +214,8 @@
 	% and returns a sym_name and a list of argument terms.
 	% Returns an error on ill-formed input.
 	% See also parse_implicitly_qualified_term/5 (below).
-:- pred parse_qualified_term(term(T), term(T), string, maybe_functor(T)).
-:- mode parse_qualified_term(in, in, in, out) is det.
+:- pred parse_qualified_term(term(T)::in, term(T)::in, string::in,
+	maybe_functor(T)::out) is det.
 
 	% parse_implicitly_qualified_term(DefaultModName, Term,
 	%	ContainingTerm, Msg, Result):
@@ -244,29 +235,27 @@
 	% name of the current module) -- specifying a module qualifier
 	% explicitly is redundant, but it is allowed, so long as the
 	% module qualifier specified matches the default.
-:- pred parse_implicitly_qualified_term(module_name, term(T), term(T), string,
-					maybe_functor(T)).
-:- mode parse_implicitly_qualified_term(in, in, in, in, out) is det.
+:- pred parse_implicitly_qualified_term(module_name::in, term(T)::in,
+	term(T)::in, string::in, maybe_functor(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 	% Replace all occurrences of inst_var(I) with
 	% constrained_inst_var(I, ground(shared, none)).
-:- pred constrain_inst_vars_in_mode(mode, mode).
-:- mode constrain_inst_vars_in_mode(in, out) is det.
+:- pred constrain_inst_vars_in_mode((mode)::in, (mode)::out) is det.
 
 	% Replace all occurrences of inst_var(I) with
 	% constrained_inst_var(I, Inst) where I -> Inst is in the inst_var_sub.
 	% If I is not in the inst_var_sub, default to ground(shared, none).
-:- pred constrain_inst_vars_in_mode(inst_var_sub, mode, mode).
-:- mode constrain_inst_vars_in_mode(in, in, out) is det.
+:- pred constrain_inst_vars_in_mode(inst_var_sub::in, (mode)::in, (mode)::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 
 	% Check that for each constrained_inst_var all occurrences have the
 	% same constraint.
-:- pred inst_var_constraints_are_consistent_in_modes(list(mode)).
-:- mode inst_var_constraints_are_consistent_in_modes(in) is semidet.
+:- pred inst_var_constraints_are_consistent_in_modes(list(mode)::in)
+	is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -423,9 +412,8 @@ search_for_file(Dirs, FileName, Result) -->
 search_for_file_returning_dir(Dirs, FileName, R) -->
 	search_for_file_returning_dir(Dirs, Dirs, FileName, R).
 
-:- pred search_for_file_returning_dir(list(dir_name), list(dir_name),
-		file_name, maybe_error(dir_name), io__state, io__state).
-:- mode search_for_file_returning_dir(in, in, in, out, di, uo) is det.
+:- pred search_for_file_returning_dir(list(dir_name)::in, list(dir_name)::in,
+	file_name::in, maybe_error(dir_name)::out, io::di, io::uo) is det.
 
 search_for_file_returning_dir([], AllDirs, FileName, error(Msg)) -->
 	{ Msg = append_list(["cannot find `", FileName, "' in directories ",
@@ -446,9 +434,9 @@ search_for_file_returning_dir([Dir | Dirs], AllDirs, FileName, R) -->
 search_for_module_source(Dirs, ModuleName, MaybeFileName) -->
 	search_for_module_source(Dirs, ModuleName, ModuleName, MaybeFileName).
 
-:- pred search_for_module_source(list(dir_name), module_name, module_name,
-		maybe_error(file_name), io__state, io__state).
-:- mode search_for_module_source(in, in, in, out, di, uo) is det.
+:- pred search_for_module_source(list(dir_name)::in,
+	module_name::in, module_name::in, maybe_error(file_name)::out,
+	io::di, io::uo) is det.
 
 search_for_module_source(Dirs, ModuleName, PartialModuleName, Result) -->
 	module_name_to_file_name(PartialModuleName, ".m", no, FileName),
@@ -495,8 +483,8 @@ drop_one_qualifier_2(ParentQual, ChildName) =  PartialQual :-
 
 :- type module_end ---> no ; yes(module_name, prog_context).
 
-:- pred get_end_module(item_list, module_name, item_list, module_end).
-:- mode get_end_module(in, in, out, out) is det.
+:- pred get_end_module(item_list::in, module_name::in, item_list::out,
+	module_end::out) is det.
 
 get_end_module(RevItems0, ModuleName, RevItems, EndModule) :-
 	(
@@ -564,8 +552,8 @@ check_end_module(EndModule, !Messages, !Items, !Error) :-
 	% Create a dummy term.
 	% Used for error messages that are not associated with any
 	% particular term or context.
-:- pred dummy_term(term).
-:- mode dummy_term(out) is det.
+:- pred dummy_term(term::out) is det.
+
 dummy_term(Term) :-
 	term__context_init(Context),
 	dummy_term_with_context(Context, Term).
@@ -575,8 +563,8 @@ dummy_term(Term) :-
 	% context, but for which we don't want to print out the term
 	% (or for which the term isn't available to be printed out).
 
-:- pred dummy_term_with_context(term__context, term).
-:- mode dummy_term_with_context(in, out) is det.
+:- pred dummy_term_with_context(term__context::in, term::out) is det.
+
 dummy_term_with_context(Context, Term) :-
 	Term = term__functor(term__atom(""), [], Context).
 

@@ -38,7 +38,7 @@
 :- import_module io.
 
 :- pred deforestation(module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
