@@ -24,6 +24,7 @@ ENDINIT
 #include "mercury_misc.h"
 #include <stdio.h>
 #include <unistd.h>		/* for the write system call */
+#include <errno.h>
 
 /*
 ** Do we want to use the debugger within this process, or do want to use
