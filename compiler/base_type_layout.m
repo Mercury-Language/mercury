@@ -118,7 +118,9 @@
 % 	   If under 1024, the rest of the word is a type variable number,
 % 	   that is, the polymophic argument number (starting at 1) of
 % 	   the type. Substitute that variable, and you have the type
-% 	   this type is equivalent to.
+% 	   this type is equivalent to. (Variable numbers greater than
+% 	   `existential_var_base' correspond to existentially quantified
+% 	   variables).
 %
 % 	   If over 1024, it's just a pointer to a vector, containing
 % 	   	- an indicator whether this is a no_tag or not
@@ -1361,7 +1363,7 @@ base_type_layout__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
 				list__nth_member_search(ExistQTvars, 
 					Var, ExistNum0)
 			->
-				VarInt = ExistNum0 + NumUnivQTvars
+				VarInt = ExistNum0 + existential_var_base
 			;
 				error("base_type_layout: var not in list")
 			)
@@ -1376,6 +1378,11 @@ base_type_layout__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
 		error("type_ctor_layout: type neither var nor non-var")
 	).
 
+	% The base number from which we count existentially quantified 
+	% variables. Note that this number must be kept in synch with
+	% MR_EXISTENTIAL_VAR_BASE in runtime/mercury_type_info.h
+:- func existential_var_base = int.
+existential_var_base = 512.
 
 	% Remove a create() from an rval, if present.
 	

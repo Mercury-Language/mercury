@@ -269,16 +269,11 @@ MR_get_arg_type_info(const Word *term_type_info,
 	const Word *functor_descriptor)
 {
 	Word *arg_type_info;
-	MR_TypeCtorInfo type_ctor_info;
-	int num_univ_type_infos;
 	Unsigned arg_num;
 
 	arg_num = (Unsigned) arg_pseudo_type_info;
 
-	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(term_type_info);
-
-	num_univ_type_infos = type_ctor_info->arity;
-	if (arg_num <= num_univ_type_infos) {
+	if (MR_TYPE_VARIABLE_IS_UNIV_QUANT(arg_num)) {
 		/*
 		** This is a universally quantified type variable
 		*/
@@ -295,7 +290,7 @@ MR_get_arg_type_info(const Word *term_type_info,
 			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TYPE_INFO_LOCNS(
 				functor_descriptor);
 		type_info_locn =
-			type_info_locns[arg_num - num_univ_type_infos - 1];
+			type_info_locns[arg_num - MR_EXISTENTIAL_VAR_BASE - 1];
 
 		if (MR_TYPE_INFO_LOCN_IS_INDIRECT(type_info_locn)) {
 			/*

@@ -296,6 +296,19 @@ enum MR_TypeLayoutValue {
 #define TYPEINFO_IS_VARIABLE(T)		( (Word) T <= TYPE_CTOR_LAYOUT_MAX_VARINT )
 
 /*
+** The number above or equal to which a type variable is considered to be
+** existentially quantified.
+**
+** Should be kept in sync with existential_var_base in
+** compiler/base_type_layout.m
+*/
+
+#define MR_EXISTENTIAL_VAR_BASE			512
+
+#define MR_TYPE_VARIABLE_IS_EXIST_QUANT(T)	( (Word) T > MR_EXISTENTIAL_VAR_BASE )
+#define MR_TYPE_VARIABLE_IS_UNIV_QUANT(T)	( (Word) T <= MR_EXISTENTIAL_VAR_BASE )
+
+/*
 ** This constant is also used for other information - for
 ** ctor infos a small integer is used for higher order types.
 ** Even integers represent preds, odd represent functions.
