@@ -18,11 +18,22 @@
 :- import_module list, code_info, hlds, llds.
 :- import_module map, varset, string.
 
+	% code_aux__contains_only_builtins(G) is true if G is a leaf procedure,
+	% i.e. control does not leave G to call another procedure, even if
+	% that procedure is a complicated unification.
+
 :- pred code_aux__contains_only_builtins(hlds__goal).
 :- mode code_aux__contains_only_builtins(in) is semidet.
 
 :- pred code_aux__goal_is_flat(hlds__goal).
 :- mode code_aux__goal_is_flat(in) is semidet.
+
+	% code_aux__contains_simple_recursive_call(G, CI, Last) succeeds
+	% if G is a conjunction of goals, exactly one of which is a recursive
+	% call (CI says what the current procedure is), and there are no
+	% other goals that cause control to leave this procedure. Last is
+	% set dependening on whether the recursive call is last in the
+	% conjunction or not.
 
 :- pred code_aux__contains_simple_recursive_call(hlds__goal, code_info, bool).
 :- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
