@@ -1187,13 +1187,9 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	{ set__delete_list(NewDepsSet0, [ModuleName | DirectImports1],
 						NewDepsSet) },
 	{ set__to_sorted_list(NewDepsSet, NewDeps) },
-	globals__io_lookup_option(inhibit_warnings, NoWarn),
-		% stop a spurious warning
-	globals__io_set_option(inhibit_warnings, bool(yes)),
 	{ Module1 = module_imports(ModuleName, DirectImports1,
 					IndirectImports0, [], no) },
 	process_module_interfaces(NewDeps, [], Module1, Module2),
-	globals__io_set_option(inhibit_warnings, NoWarn),
 	{ Module2 = module_imports(_, DirectImports, IndirectImports,
 		InterfaceItems, IntError) },
 	{ list__append(OptItems, InterfaceItems, NewItems) },
