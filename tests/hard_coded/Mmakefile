@@ -190,6 +190,9 @@ else
 endif
 
 # We do not pass the following tests at all:
+# 
+# XXX loop_inv_test0, loop_inv_test1, loop_inv_test2:
+#     loop invariant optimization is not properly optimizing these cases.
 #
 # XXX var_not_found -- mode error in automatically generated unification
 #		predicate.  This test uses partially instantiated modes,
@@ -200,7 +203,7 @@ endif
 # XXX needs_init doesn't work yet in profiling grades.
 #
 # XXX compare_rep_array doesn't work because MR_COMPARE_BY_RTTI is
-# not yet implemented for arrays.
+#     not yet implemented for arrays.
 
 # The following tests are passed only in some grades.
 
