@@ -413,7 +413,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% `follow_vars.m' fills in
 				% the follow_vars field.
 			;	call(pred_id, proc_id, list(var), is_builtin,
-					sym_name, follow_vars)
+					maybe(call_unify_context), sym_name,
+					follow_vars)
 
 				% Deterministic disjunctions are converted
 				% into case statements by the switch
@@ -507,6 +508,12 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type unify_sub_context ==	pair(cons_id, int).
 
 :- type unify_sub_contexts ==	list(unify_sub_context).
+
+:- type call_unify_context	--->	call_unify_context(
+					var,
+					unify_rhs,
+					unify_context
+				).
 
 :- type hlds__goals	==	list(hlds__goal).
 
@@ -2050,7 +2057,7 @@ disj_list_to_goal(ConjList, GoalInfo, Goal) :-
 
 goal_is_atomic(conj([])).
 goal_is_atomic(disj([])).
-goal_is_atomic(call(_,_,_,_,_,_)).
+goal_is_atomic(call(_,_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%

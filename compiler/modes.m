@@ -435,8 +435,8 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_2(call(PredId, _, Args0, _, PredName, Follow), NonLocals, Goal)
-		-->
+modecheck_goal_2(call(PredId, _, Args0, _, Context, PredName, Follow),
+		NonLocals, Goal) -->
 	mode_checkpoint(enter, "call"),
 	{ list__length(Args0, Arity) },
 	mode_info_set_call_context(call(PredName/Arity)),
@@ -445,7 +445,7 @@ modecheck_goal_2(call(PredId, _, Args0, _, PredName, Follow), NonLocals, Goal)
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	{ code_util__is_builtin(ModuleInfo, PredId, Mode, Builtin) },
-	{ Call = call(PredId, Mode, Args, Builtin, PredName, Follow) },
+	{ Call = call(PredId, Mode, Args, Builtin, Context, PredName, Follow) },
 	{ handle_extra_goals(Call, ExtraGoals, NonLocals, Args0, Args,
 				ModeInfo0, ModeInfo, Goal) },
 	mode_info_unset_call_context,

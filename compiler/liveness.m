@@ -218,7 +218,7 @@ detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, ModuleInfo,
 		Liveness, some(Vars, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(call(A,B,C,D,E,F), L, _, L, call(A,B,C,D,E,F)).
+detect_liveness_in_goal_2(call(A,B,C,D,E,F,G), L, _, L, call(A,B,C,D,E,F,G)).
 
 detect_liveness_in_goal_2(unify(A,B,C,D,E), L, _, L, unify(A,B,C,D,E)).
 
@@ -362,7 +362,7 @@ detect_deadness_in_goal_2(some(Vars, Goal0), Deadness0, ModuleInfo,
 		Deadness, some(Vars, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, Deadness, Goal).
 
-detect_deadness_in_goal_2(call(A,B,C,D,E,F), Dn, _, Dn, call(A,B,C,D,E,F)).
+detect_deadness_in_goal_2(call(A,B,C,D,E,F,G), Dn, _, Dn, call(A,B,C,D,E,F,G)).
 
 detect_deadness_in_goal_2(unify(A,B,C,D,E), Dn, _, Dn, unify(A,B,C,D,E)).
 

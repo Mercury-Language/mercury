@@ -263,6 +263,8 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		{ map__lookup(PredTable, PredId, PredInfo) },
 		( { pred_info_is_imported(PredInfo) } ->
 			[]
+		; { pred_info_is_pseudo_imported(PredInfo) } ->
+			[]
 		;
 			hlds_out__write_pred(Indent, ModuleInfo, PredId,
 				PredInfo)
@@ -485,18 +487,14 @@ hlds_out__write_goal_2(switch(Var, CanFail, CasesList), ModuleInfo, VarSet, Inde
 	io__write_string(")").
 
 hlds_out__write_goal_2(some(Vars, Goal), ModuleInfo, VarSet, Indent) -->
-	( { Vars = [] } ->
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent)
-	;
-		io__write_string("some ["),
-		mercury_output_vars(Vars, VarSet),
-		io__write_string("] ("),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
-		mercury_output_newline(Indent),
-		io__write_string(")")
-	).
+	io__write_string("some ["),
+	mercury_output_vars(Vars, VarSet),
+	io__write_string("] ("),
+	{ Indent1 is Indent + 1 },
+	mercury_output_newline(Indent1),
+	hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string(")").
 
 hlds_out__write_goal_2(if_then_else(Vars, A, B, C), ModuleInfo, VarSet, Indent)
 		-->
@@ -566,7 +564,7 @@ hlds_out__write_goal_2(disj(List), ModuleInfo, VarSet, Indent) -->
 		io__write_string("fail")
 	).
 
-hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, PredName, _Follow),
+hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName, _Follow),
 					_ModuleInfo, VarSet, _Indent) -->
 		% XXX we should print more info here
 	{ unqualify_name(PredName, Name) },

@@ -689,7 +689,7 @@ code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
 code_gen__generate_det_goal_2(not(_), _GoalInfo, _Instr) -->
 	{ error("Negation cannot occur in deterministic code.") }.
 code_gen__generate_det_goal_2(
-		call(PredId, ProcId, Args, Builtin, _, _Follow),
+		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Instr) -->
 	(
 		{ is_builtin__is_internal(Builtin) }
@@ -788,7 +788,7 @@ code_gen__generate_semi_goal_2(disj(Goals), GoalInfo, Code) -->
 code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
 	code_gen__generate_negation(Goal, Code).
 code_gen__generate_semi_goal_2(
-		call(PredId, ProcId, Args, Builtin, _, _Follow),
+		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Code) -->
 	(
 		{ is_builtin__is_internal(Builtin) }
@@ -930,7 +930,7 @@ code_gen__generate_non_goal_2(disj(Goals), GoalInfo, Code) -->
 code_gen__generate_non_goal_2(not(_Goal), _GoalInfo, _Code) -->
 	{ error("Cannot have a nondet negation.") }.
 code_gen__generate_non_goal_2(
-		call(PredId, ProcId, Args, Builtin, _, _Follow),
+		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Code) -->
 	(
 		{ is_builtin__is_internal(Builtin) }

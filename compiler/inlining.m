@@ -125,7 +125,7 @@ inlining__inlining_in_goal_2(some(Vars, Goal0), Varset0, VarTypes0, ModuleInfo,
 		Goal, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, SymName, Follow),
+		call(PredId, ProcId, ArgVars, Builtin, Context, Sym, Follow),
 		Varset0, VarTypes0, ModuleInfo, Goal, Varset, VarTypes) :-
 	(
 		\+ is_builtin__is_internal(Builtin),
@@ -151,7 +151,8 @@ inlining__inlining_in_goal_2(
 			Subn1, CVarTypes, Varset, VarTypes, Subn),
 		inlining__name_apart(CalledGoal, Subn, Goal - _GoalInfo)
 	;
-		Goal = call(PredId, ProcId, ArgVars, Builtin, SymName, Follow),
+		Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym,
+			Follow),
 		Varset = Varset0,
 		VarTypes = VarTypes0
 	).
@@ -302,8 +303,9 @@ inlining__name_apart_2(some(Vars0, Goal0), Subn, some(Vars, Goal)) :-
 	inlining__name_apart(Goal0, Subn, Goal).
 
 inlining__name_apart_2(
-		call(PredId, ProcId, Args0, Builtin, SymName, Follow0), Subn,
-		call(PredId, ProcId, Args, Builtin, SymName, Follow)) :-
+		call(PredId, ProcId, Args0, Builtin, Context, Sym, Follow0),
+		Subn,
+		call(PredId, ProcId, Args, Builtin, Context, Sym, Follow)) :-
 	map__apply_to_list(Args0, Subn, Args),
 	inlining__rename_follow_vars(Follow0, Subn, Follow).
 

@@ -972,7 +972,7 @@ unify_proc__generate_du_write_clauses([Ctor | Ctors], X, Term,
 %-----------------------------------------------------------------------------%
 
 :- pred unify_proc__build_call(string, list(var), hlds__goal,
-				unify_proc_info, unify_proc_info).
+			unify_proc_info, unify_proc_info).
 :- mode unify_proc__build_call(in, in, out, in, out) is det.
 
 unify_proc__build_call(Name, ArgVars, Goal) -->
@@ -990,8 +990,11 @@ unify_proc__build_call(Name, ArgVars, Goal) -->
 	{ ModeId = 0 },
 	{ map__init(Follow) },
 	{ is_builtin__make_builtin(no, no, Builtin) },
+	% We cheat by not providing a context for the call.
+	% Since automatically generated procedures should not have errors,
+	% the absence of a context should not be a problem.
 	{ Call = call(IndexPredId, ModeId, ArgVars, Builtin,
-			unqualified(Name), Follow) },
+			no, unqualified(Name), Follow) },
 	{ goal_info_init(GoalInfo) },
 	{ Goal = Call - GoalInfo }.
 

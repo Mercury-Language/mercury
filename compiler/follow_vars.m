@@ -17,8 +17,8 @@
 % corresponding registers, so we initialize the follow_vars accordingly.
 % As we traverse throught the goal, at each call(...) we attach the 
 % follow_vars map we have computed, and start computing a new one to
-% be attatch to the preceding call.  When we finish traversing the goal,
-% we attatch the last computed follow_vars to the proc_info.
+% be attached to the preceding call.  When we finish traversing the goal,
+% we attach the last computed follow_vars to the proc_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -181,8 +181,8 @@ find_follow_vars_in_goal_2(some(Vars, Goal0), ModuleInfo, FollowVars0,
 	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
 		FollowVars).
 
-find_follow_vars_in_goal_2(call(A,B,C,D,E,_F), ModuleInfo, FollowVars0,
-				call(A,B,C,D,E, FollowVars0), FollowVars) :-
+find_follow_vars_in_goal_2(call(A,B,C,D,E,F,_), ModuleInfo, FollowVars0,
+				call(A,B,C,D,E,F, FollowVars0), FollowVars) :-
 	(
 		is_builtin__is_inline(D)
 	->

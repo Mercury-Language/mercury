@@ -195,8 +195,7 @@ dependency_graph__add_arcs_in_goal_2(some(_Vars, Goal), Caller,
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(
-		call(PredId, ProcId, _ArgTerms, Builtin, _SymName, _Follow),
+dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _, _),
 			Caller, DepGraph0, DepGraph) :-
 	(
 		is_builtin__is_inline(Builtin)

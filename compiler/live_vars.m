@@ -205,7 +205,7 @@ detect_live_vars_in_goal_2(some(_Vs, Goal0), ExtraLives0, Liveness0, LiveSets0,
 	).
 
 detect_live_vars_in_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, _SymName, _Follow),
+		call(PredId, ProcId, ArgVars, Builtin, _, _, _),
 		ExtraLives0, Liveness, LiveSets0,
 		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	(

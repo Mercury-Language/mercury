@@ -532,10 +532,10 @@ typecheck_goal_2(not(A0), not(A)) -->
 typecheck_goal_2(some(Vs, G0), some(Vs, G)) -->
 	checkpoint("some"),
 	typecheck_goal(G0, G).
-typecheck_goal_2(call(_, Mode, Args, Builtin, PredName, Follow),
-			call(PredId, Mode, Args, Builtin, PredName, Follow)) -->
+typecheck_goal_2(call(_, Mode, Args, Builtin, Context, Name, Follow),
+		call(PredId, Mode, Args, Builtin, Context, Name, Follow)) -->
 	checkpoint("call"),
-	typecheck_call_pred(PredName, Args, PredId).
+	typecheck_call_pred(Name, Args, PredId).
 typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 		unify(A, B, Mode, Info, UnifyContext)) -->
 	checkpoint("unify"),

@@ -177,9 +177,9 @@ store_alloc_in_goal_2(some(Vars, Goal0), Liveness0, Follow0, ModuleInfo,
 	store_alloc_in_goal(Goal0, Liveness0, Follow0, ModuleInfo,
 					Goal, Liveness, Follow).
 
-store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _Follow0, _ModuleInfo,
-				call(A, B, C, D, E, F), Liveness, Follow, no) :-
-	Follow = F.
+store_alloc_in_goal_2(call(A, B, C, D, E, F, G), Liveness, _Follow0,
+		_ModuleInfo, call(A, B, C, D, E, F, G), Liveness, Follow, no) :-
+	Follow = G.
 
 store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, Follow0, _ModuleInfo,
 				unify(A,B,C,D,E), Liveness, Follow, no) :-

@@ -139,9 +139,9 @@ implicitly_quantify_goal_2(if_then_else(Vars, A0, B0, C0),
 	set__union(NonLocalsSuccess, NonLocalsC, NonLocalsIfThenElse),
 	set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocals).
 
-implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F),
+implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F, G),
 		OutsideVars, _QuantVars,
-		call(A, B, HeadVars, D, E, F), NonLocalVars) :-
+		call(A, B, HeadVars, D, E, F, G), NonLocalVars) :-
 	set__list_to_set(HeadVars, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
 
@@ -325,7 +325,7 @@ goal_vars_2(unify(A, B, _, _, _), Set0, Set) :-
 	set__insert(Set0, A, Set1),
 	unify_rhs_vars(B, Set1, Set).
 
-goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, Set) :-
+goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
 goal_vars_2(conj(Goals), Set0, Set) :-

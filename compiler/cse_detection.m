@@ -184,7 +184,7 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, ModuleInfo, Redo,
 	module_info, bool, hlds__goal_expr).
 :- mode detect_cse_in_goal_2(in, in, in, in, out, out) is det.
 
-detect_cse_in_goal_2(call(A,B,C,D,E,F), _, _, _, no, call(A,B,C,D,E,F)).
+detect_cse_in_goal_2(call(A,B,C,D,E,F,G), _, _, _, no, call(A,B,C,D,E,F,G)).
 
 detect_cse_in_goal_2(unify(A,B,C,D,E), _, _, _, no, unify(A,B,C,D,E)).
 

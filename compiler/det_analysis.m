@@ -413,8 +413,8 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), InstMap0, MiscInfo, _, _,
 	% This is the point at which annotations start changing
 	% when we iterate to fixpoint for global determinism analysis.
 
-det_infer_goal_2(call(PredId, ModeId, A, B, N, F), _, MiscInfo, _, _,
-		call(PredId, ModeId, A, B, N, F), Detism) :-
+det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), _, MiscInfo, _, _,
+		call(PredId, ModeId, A, B, C, N, F), Detism) :-
 	det_lookup_detism(MiscInfo, PredId, ModeId, Detism).
 
 	% unifications are either deterministic or semideterministic.
@@ -943,39 +943,30 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
 		Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
-det_diagnose_goal_2(call(PredId, ModeId, _, _, _, _), GoalInfo,
-		Desired, Actual, _, misc_info(ModuleInfo, _, _), yes) -->
+det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _, _), GoalInfo,
+		Desired, Actual, _, MiscInfo, yes) -->
 	{ goal_info_context(GoalInfo, Context) },
-	{ module_info_preds(ModuleInfo, PredTable) },
-	{ predicate_name(ModuleInfo, PredId, PredName) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_procedures(PredInfo, ProcTable) },
-	{ map__lookup(ProcTable, ModeId, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
 	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
 	( { CmpCanFail = tighter } ->
-		prog_out__write_context(Context),
-		io__write_string("  Call to `"),
-		det_report_pred_name_mode(PredName, ArgModes),
-		io__write_string("' can fail.\n"),
+		det_report_call_context(Context, CallContext, MiscInfo,
+			PredId, ModeId),
+		io__write_string("can fail.\n"),
 		{ Diagnosed1 = yes }
 	;
 		{ Diagnosed1 = no }
 	),
 	{ compare_solncounts(DesiredSolns, ActualSolns, CmpSolns) },
 	( { CmpSolns = tighter } ->
-		prog_out__write_context(Context),
-		io__write_string("  Call to `"),
-		det_report_pred_name_mode(PredName, ArgModes),
-		io__write_string("' can succeed"),
+		det_report_call_context(Context, CallContext, MiscInfo,
+			PredId, ModeId),
+		io__write_string("can succeed"),
 		( { DesiredSolns = at_most_one } ->
-			io__write_string(" more than once")
+			io__write_string(" more than once\n.")
 		;
-			[]
+			io__write_string(".\n")
 		),
-		io__write_string(".\n"),
 		{ Diagnosed2 = yes }
 	;
 		{ Diagnosed2 = no }
@@ -985,47 +976,36 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, _, _), GoalInfo,
 		{ Diagnosed = yes }
 	;
 		{ Diagnosed = no },
-		prog_out__write_context(Context),
-		io__write_string("  Call to `"),
-		det_report_pred_name_mode(PredName, ArgModes),
-		io__write_string("' has unknown determinism problem\n"),
+		det_report_call_context(Context, CallContext, MiscInfo,
+			PredId, ModeId),
+		io__write_string("has unknown determinism problem;\n"),
 		prog_out__write_context(Context),
 		io__write_string("  desired determinism is "),
 		hlds_out__write_determinism(Desired),
 		io__write_string(", while actual determinism is "),
 		hlds_out__write_determinism(Actual),
-		io__write_string("\n")
+		io__write_string(".\n")
 	).
 
 det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
-		Desired, Actual, _, MiscInfo, Diagnosed) -->
+		Desired, Actual, _, MiscInfo, yes) -->
 	{ goal_info_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, _DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, _ActualSolns) },
-	hlds_out__write_unify_context(UnifyContext, Context),
-	prog_out__write_context(Context),
-	{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
-	{ proc_info_variables(ProcInfo, Varset) },
-	io__write_string("  unification of `"),
-	mercury_output_var(LT, Varset),
-	io__write_string("' and `"),
-	{ MiscInfo = misc_info(ModuleInfo, _, _) },
-	hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3),
+	det_report_unify_context(Context, UnifyContext, MiscInfo, LT, RT),
 	(
 		{ DesiredCanFail = cannot_fail },
 		{ ActualCanFail = can_fail }
 	->
-		{ Diagnosed = yes },
-		io__write_string("' can fail.\n")
+		io__write_string("can fail.\n")
 	;
-		{ Diagnosed = no },
-		io__write_string("' has unknown determinism problem;\n"),
+		io__write_string("has unknown determinism problem;\n"),
 		prog_out__write_context(Context),
 		io__write_string("  desired determinism is "),
 		hlds_out__write_determinism(Desired),
 		io__write_string(", while actual determinism is "),
 		hlds_out__write_determinism(Actual),
-		io__write_string("\n")
+		io__write_string(".\n")
 	).
 
 det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
@@ -1070,6 +1050,61 @@ det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
 	},
 	det_diagnose_goal(Goal, InternalDesired, SwitchContext, MiscInfo,
 		Diagnosed).
+
+%-----------------------------------------------------------------------------%
+
+:- pred det_report_call_context(term__context, maybe(call_unify_context),
+	misc_info, pred_id, proc_id, io__state, io__state).
+:- mode det_report_call_context(in, in, in, in, in, di, uo) is det.
+
+det_report_call_context(Context, CallUnifyContext, MiscInfo, PredId, ModeId) -->
+	(
+		{ CallUnifyContext = yes(call_unify_context(LT, RT, UC)) },
+		det_report_unify_context(Context, UC, MiscInfo, LT, RT)
+	;
+		{ CallUnifyContext = no },
+		{ MiscInfo = misc_info(ModuleInfo, _, _) },
+		{ module_info_preds(ModuleInfo, PredTable) },
+		{ predicate_name(ModuleInfo, PredId, PredName) },
+		{ map__lookup(PredTable, PredId, PredInfo) },
+		{ pred_info_procedures(PredInfo, ProcTable) },
+		{ map__lookup(ProcTable, ModeId, ProcInfo) },
+		{ proc_info_argmodes(ProcInfo, ArgModes) },
+		prog_out__write_context(Context),
+		io__write_string("  Call to `"),
+		det_report_pred_name_mode(PredName, ArgModes),
+		io__write_string("' ")
+	).
+
+:- pred det_report_unify_context(term__context, unify_context,
+	misc_info, var, unify_rhs, io__state, io__state).
+:- mode det_report_unify_context(in, in, in, in, in, di, uo) is det.
+
+det_report_unify_context(Context, UnifyContext, MiscInfo, LT, RT) -->
+	hlds_out__write_unify_context(UnifyContext, Context),
+	prog_out__write_context(Context),
+	{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
+	{ proc_info_variables(ProcInfo, Varset) },
+	io__write_string("  unification of `"),
+	mercury_output_var(LT, Varset),
+	io__write_string("' and `"),
+	{ MiscInfo = misc_info(ModuleInfo, _, _) },
+	hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3),
+	io__write_string("' ").
+
+:- pred det_report_pred_name_mode(string, list((mode)), io__state, io__state).
+:- mode det_report_pred_name_mode(in, in, di, uo) is det.
+
+det_report_pred_name_mode(PredName, ArgModes) -->
+	io__write_string(PredName),
+	( { ArgModes \= [] } ->
+		{ varset__init(InstVarSet) },	% XXX inst var names
+		io__write_string("("),
+		mercury_output_mode_list(ArgModes, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1185,20 +1220,6 @@ no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
 	no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
-
-:- pred det_report_pred_name_mode(string, list((mode)), io__state, io__state).
-:- mode det_report_pred_name_mode(in, in, di, uo) is det.
-
-det_report_pred_name_mode(PredName, ArgModes) -->
-	io__write_string(PredName),
-	( { ArgModes \= [] } ->
-		{ varset__init(InstVarSet) },	% XXX inst var names
-		io__write_string("("),
-		mercury_output_mode_list(ArgModes, InstVarSet),
-		io__write_string(")")
-	;
-		[]
-	).
 
 :- pred det_diagnose_missing_consids(list(cons_id), list(case), list(cons_id)).
 :- mode det_diagnose_missing_consids(in, in, out) is det.

@@ -180,8 +180,8 @@ constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
 	constraint__checkpoint(exit, "some").
 
 constraint__propagate_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, SymName, Follow),
-		call(PredId, ProcId, ArgVars, Builtin, SymName, Follow)) -->
+		call(PredId, ProcId, ArgVars, Builtin, Sym, Context, Follow),
+		call(PredId, ProcId, ArgVars, Builtin, Sym, Context, Follow)) -->
 	constraint__checkpoint(enter, "call"),
 	constraint__checkpoint(exit, "call").
 

@@ -1177,7 +1177,7 @@ transform_goal_2(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 		invalid_pred_id(PredId),
 		map__init(Follow),
-		Goal2 = call(PredId, ModeId, HeadVars, Builtin,
+		Goal2 = call(PredId, ModeId, HeadVars, Builtin, no,
 							SymName, Follow) -
 				GoalInfo,
 		goal_info_init(GoalInfo),
