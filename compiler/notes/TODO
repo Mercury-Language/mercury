@@ -1,0 +1,22 @@
+codegen.nl
+----------
+
+semideterministic and nondeterministic code generation
+
+integer, float and string constant handling.
+types with > 4 tags need handling in llds.
+types with constants only (enumerations) should be handled as ints.
+
+other
+-----
+
+finish type checking
+
+mode anaylsis
+
+optimization of various sorts
+
+module system & seperate compilation
+
+report line numbers in error messages; better error handling
+
