@@ -291,9 +291,9 @@ parse_special_il_type_name("natural unsigned int", il(value, "mscorlib",
 parse_special_il_type_name("native unsigned int", il(value, "mscorlib",
 			qualified(unqualified("System"), "UIntPtr"))).
 parse_special_il_type_name("refany", il(value, "mscorlib",
-			qualified(unqualified("System"), "TypeReference"))).
+			qualified(unqualified("System"), "TypedReference"))).
 parse_special_il_type_name("typedref", il(value, "mscorlib",
-			qualified(unqualified("System"), "TypeReference"))).
+			qualified(unqualified("System"), "TypedReference"))).
 parse_special_il_type_name("unsigned int8", il(value, "mscorlib",
 			qualified(unqualified("System"), "Byte"))).
 parse_special_il_type_name("unsigned int16", il(value, "mscorlib",
