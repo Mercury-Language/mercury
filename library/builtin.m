@@ -358,6 +358,26 @@ const struct mercury_data___type_ctor_layout_redoip_0_struct {
 
 #endif /* NATIVE_GC */
 
+	/* type_ctor_layout for `trail ptr' (only used by agc and debugger) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_layout_trail_ptr_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___type_ctor_layout_trail_ptr_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_TRAIL_PTR_VALUE))
+};
+
+	/* type_ctor_layout for `ticket' (only used by agc and debugger) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_layout_ticket_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___type_ctor_layout_ticket_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_TICKET_VALUE))
+};
+
 	/* type_ctor_functors definitions */
 
 	/* type_ctor_functors for `int' */
@@ -463,6 +483,24 @@ const struct mercury_data___type_ctor_functors_redoip_0_struct {
 
 #endif /* NATIVE_GC */
 
+	/* type_ctor_functors for `trail ptr' (only used by agc and debugger) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_functors_trail_ptr_0_struct {
+	Integer f1;
+} mercury_data___type_ctor_functors_trail_ptr_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+	/* type_ctor_functors for `ticket' (only used by agc and debugger) */
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data___type_ctor_functors_ticket_0_struct {
+	Integer f1;
+} mercury_data___type_ctor_functors_ticket_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
 	/* type_ctor_infos definitions */
 
 	/* type_ctor_info for `int' */
@@ -564,9 +602,9 @@ mercury_data___type_ctor_info_succip_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	(const Word *) & mercury_data___type_ctor_layout_succip_0,
-	(const Word *) & mercury_data___type_ctor_functors_succip_0,
-	(const Word *) & mercury_data___type_ctor_layout_succip_0,
+	MR_TYPECTOR_REP_SUCCIP,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_succip_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_succip_0,
 	string_const(""builtin"", 7),
 	string_const(""succip"", 6)
 };
@@ -580,9 +618,9 @@ mercury_data___type_ctor_info_hp_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	(const Word *) & mercury_data___type_ctor_layout_hp_0,
-	(const Word *) & mercury_data___type_ctor_functors_hp_0,
-	(const Word *) & mercury_data___type_ctor_layout_hp_0,
+	MR_TYPECTOR_REP_HP,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_hp_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_hp_0,
 	string_const(""builtin"", 7),
 	string_const(""hp"", 2)
 };
@@ -596,9 +634,9 @@ mercury_data___type_ctor_info_curfr_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
-	(const Word *) & mercury_data___type_ctor_functors_curfr_0,
-	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
+	MR_TYPECTOR_REP_CURFR,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_curfr_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_curfr_0,
 	string_const(""builtin"", 7),
 	string_const(""curfr"", 5)
 };
@@ -612,27 +650,11 @@ mercury_data___type_ctor_info_maxfr_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	(const Word *) & mercury_data___type_ctor_layout_maxfr_0,
-	(const Word *) & mercury_data___type_ctor_functors_maxfr_0,
-	(const Word *) & mercury_data___type_ctor_layout_maxfr_0,
+	MR_TYPECTOR_REP_MAXFR,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_maxfr_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_maxfr_0,
 	string_const(""builtin"", 7),
 	string_const(""maxfr"", 5)
-};
-
-	/* type_ctor_info for `redoip' (only used by accurate gc) */
-
-Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data___type_ctor_info_redoip_0 = {
-	((Integer) 0),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
-	(const Word *) & mercury_data___type_ctor_functors_redoip_0,
-	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
-	string_const(""builtin"", 7),
-	string_const(""redoip"", 6)
 };
 
 	/* type_ctor_info for `redofr' (only used by accurate gc) */
@@ -644,14 +666,62 @@ mercury_data___type_ctor_info_redofr_0 = {
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	(const Word *) & mercury_data___type_ctor_layout_redofr_0,
-	(const Word *) & mercury_data___type_ctor_functors_redofr_0,
-	(const Word *) & mercury_data___type_ctor_layout_redofr_0,
+	MR_TYPECTOR_REP_REDOFR,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_redofr_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_redofr_0,
 	string_const(""builtin"", 7),
 	string_const(""redofr"", 6)
 };
 
+	/* type_ctor_info for `redoip' (only used by accurate gc) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_redoip_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_TYPECTOR_REP_REDOIP,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_redoip_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_redoip_0,
+	string_const(""builtin"", 7),
+	string_const(""redoip"", 6)
+};
+
 #endif /* NATIVE_GC */
+
+	/* type_ctor_info for `trai ptr' (only used by agc and debugger) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_trail_ptr_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_TYPECTOR_REP_TRAIL_PTR,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_trail_ptr_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_trail_ptr_0,
+	string_const(""builtin"", 7),
+	string_const(""trail_ptr"", 9)
+};
+
+	/* type_ctor_info for `ticket' (only used by agc and debugger) */
+
+Declare_entry(mercury__unused_0_0);
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_ticket_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_TYPECTOR_REP_TICKET,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_ticket_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_ticket_0,
+	string_const(""builtin"", 7),
+	string_const(""ticket"", 6)
+};
 
 BEGIN_MODULE(builtin_types_module)
 
@@ -674,7 +744,7 @@ void sys_init_builtin_types_module(void) {
 	** labels for the special preds of int, float, pred, 
 	** character and string. If they aren't initialized,
 	** we might initialize the type_ctor_info with
-	** garbage
+	** garbage.
 	*/
 	mercury__private_builtin__init();
 

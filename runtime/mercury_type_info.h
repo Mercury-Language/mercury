@@ -201,6 +201,8 @@ typedef	Word	MR_PseudoTypeInfo;
 ** Changes in this type may need to be reflected in
 ** compiler/base_type_layout.m.
 **
+** XXX Much of the information in this type is now stored in TypeCtorRep;
+** it is here only temporarily.
 */
 
 enum MR_TypeLayoutValue {
@@ -220,7 +222,7 @@ enum MR_TypeLayoutValue {
 		/*
 		** The following enum values represent the "types" of
 		** of values stored in lvals that the garbage collector
-		** needs to know about.
+		** and/or the debugger need to know about.
 		*/
 	MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE,
 	MR_TYPE_CTOR_LAYOUT_HP_VALUE,
@@ -228,6 +230,8 @@ enum MR_TypeLayoutValue {
 	MR_TYPE_CTOR_LAYOUT_MAXFR_VALUE,
 	MR_TYPE_CTOR_LAYOUT_REDOFR_VALUE,
 	MR_TYPE_CTOR_LAYOUT_REDOIP_VALUE,
+	MR_TYPE_CTOR_LAYOUT_TRAIL_PTR_VALUE,
+	MR_TYPE_CTOR_LAYOUT_TICKET_VALUE,
 	MR_TYPE_CTOR_LAYOUT_UNWANTED_VALUE
 };
 
@@ -758,6 +762,14 @@ typedef enum MR_TypeCtorRepresentation {
 	MR_TYPECTOR_REP_TYPEINFO,
 	MR_TYPECTOR_REP_TYPECLASSINFO,
 	MR_TYPECTOR_REP_ARRAY,
+	MR_TYPECTOR_REP_SUCCIP,
+	MR_TYPECTOR_REP_HP,
+	MR_TYPECTOR_REP_CURFR,
+	MR_TYPECTOR_REP_MAXFR,
+	MR_TYPECTOR_REP_REDOFR,
+	MR_TYPECTOR_REP_REDOIP,
+	MR_TYPECTOR_REP_TRAIL_PTR,
+	MR_TYPECTOR_REP_TICKET,
 	MR_TYPECTOR_REP_UNKNOWN
 } MR_TypeCtorRepresentation;
 
@@ -781,6 +793,7 @@ MR_DiscUnionTagRepresentation MR_get_tag_representation(Word layout_entry);
 
 /*---------------------------------------------------------------------------*/
 
+/* XXX these typedefs should include const [zs, 14 Sep 1999] */
 typedef	Word *	MR_TypeCtorFunctors;
 typedef	Word *	MR_TypeCtorLayout;
 
@@ -797,7 +810,7 @@ struct MR_TypeCtorInfo_struct {
 	Code				*index_pred;
 	Code				*compare_pred;
 		/* 
-		** The representation that is used for this
+		** The representation that is used for this type
 		** constructor -- e.g. an enumeration, or a builtin
 		** type, or a no-tag type, etc.
 		*/

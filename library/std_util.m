@@ -2205,7 +2205,7 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 ** vector may contain pointers into the Mercury heap, and
 ** memory allocated with malloc will not be traced by the
 ** Boehm collector.)
-** It is the responsibility of the  caller to deallocate this
+** It is the responsibility of the caller to deallocate this
 ** memory (using oldmem()), and to copy any fields of this vector to
 ** the Mercury heap. The type_infos that the elements of
 ** this vector point to are either
@@ -2480,11 +2480,10 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	    */
 	    fatal_error(""ML_expand: cannot expand void types"");
 
-        case MR_TYPECTOR_REP_ARRAY:
+        case MR_TYPECTOR_REP_C_POINTER:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<array>>"");
+                make_aligned_string(info->functor, ""<<c_pointer>>"");
             }
-	    /* XXX should we return the arguments here? */
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
@@ -2500,9 +2499,92 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->arity = 0;
             break;
 
-        case MR_TYPECTOR_REP_C_POINTER:
+        case MR_TYPECTOR_REP_TYPECLASSINFO:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<c_pointer>>"");
+                make_aligned_string(info->functor, ""<<typeclassinfo>>"");
+            }
+	    /* XXX should we return the arguments here? */
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_ARRAY:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<array>>"");
+            }
+	    /* XXX should we return the arguments here? */
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_SUCCIP:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<succip>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_HP:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<hp>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_CURFR:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<curfr>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_MAXFR:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<maxfr>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_REDOFR:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<redofr>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_REDOIP:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<redoip>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_TRAIL_PTR:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<trail_ptr>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_TYPECTOR_REP_TICKET:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<ticket>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;

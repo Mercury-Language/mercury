@@ -318,14 +318,16 @@
 			% The rval must specify a ticket allocated with
 			% `store_ticket' and not yet invalidated or
 			% deallocated.
-			% If undo_reason is `undo' or `exception', restore
-			% any mutable global state to the state it was in when
-			% the ticket was obtained with store_ticket();
-			% invalidates any tickets allocated after this one.
-			% If undo_reason is `commit' or `solve', leave the state
-			% unchanged, just check that it is safe to commit
-			% to this solution (i.e. that there are no outstanding
-			% delayed goals -- this is the "floundering" check).
+			% If reset_trail_reason is `undo', `exception', or
+			% `retry', restore any mutable global state to the
+			% state it was in when the ticket was obtained with
+			% store_ticket(); invalidates any tickets allocated
+			% after this one.
+			% If reset_trail_reason is `commit' or `solve', leave
+			% the state unchanged, just check that it is safe to
+			% commit to this solution (i.e. that there are no
+			% outstanding delayed goals -- this is the
+			% "floundering" check).
 			% Note that we do not discard trail entries after
 			% commits, because that would in general be unsafe.
 			%
@@ -514,6 +516,7 @@
 	;	commit
 	;	solve
 	;	exception
+	;	retry
 	;	gc
 	.
 
@@ -579,6 +582,8 @@
 	;	redoip				% A stored redoip.
 	;	redofr				% A stored redofr.
 	;	hp				% A stored heap pointer.
+	;	trail_ptr			% A stored trail pointer.
+	;	ticket				% A stored ticket.
 	;	var(prog_var, string, type, llds_inst)
 						% A variable (the var number
 						% and name are for execution

@@ -371,7 +371,7 @@ code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
 		{ MaybeFailVars = yes(FailVars) }
 	;
 		{ MaybeFailVars = no },
-		{ TraceSlotInfo = trace_slot_info(no, no) }
+		{ TraceSlotInfo = trace_slot_info(no, no, no) }
 	).
 
 %---------------------------------------------------------------------------%

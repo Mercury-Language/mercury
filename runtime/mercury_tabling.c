@@ -642,6 +642,18 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             fatal_error("Cannot table a void type");
             break;
 
+        case MR_TYPECTOR_REP_C_POINTER:
+            fatal_error("Attempt to table a C_POINTER");
+            break;
+
+        case MR_TYPECTOR_REP_TYPEINFO:
+            MR_DEBUG_TABLE_TYPEINFO(table, (Word *) data_value);
+            break;
+
+        case MR_TYPECTOR_REP_TYPECLASSINFO:
+            fatal_error("Attempt to table a type_class_info");
+            break;
+
         case MR_TYPECTOR_REP_ARRAY: {
             int i;
             MR_ArrayType *array;
@@ -659,12 +671,37 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             }
             break;
         }
-        case MR_TYPECTOR_REP_TYPEINFO:
-            MR_DEBUG_TABLE_TYPEINFO(table, (Word *) data_value);
+
+        case MR_TYPECTOR_REP_SUCCIP:
+            fatal_error("Attempt to table a saved succip");
             break;
 
-        case MR_TYPECTOR_REP_C_POINTER:
-            fatal_error("Attempt to use a C_POINTER tag in table");
+        case MR_TYPECTOR_REP_HP:
+            fatal_error("Attempt to table a saved hp");
+            break;
+
+        case MR_TYPECTOR_REP_CURFR:
+            fatal_error("Attempt to table a saved curfr");
+            break;
+
+        case MR_TYPECTOR_REP_MAXFR:
+            fatal_error("Attempt to table a saved maxfr");
+            break;
+
+        case MR_TYPECTOR_REP_REDOFR:
+            fatal_error("Attempt to table a saved redofr");
+            break;
+
+        case MR_TYPECTOR_REP_REDOIP:
+            fatal_error("Attempt to table a saved redoip");
+            break;
+
+        case MR_TYPECTOR_REP_TRAIL_PTR:
+            fatal_error("Attempt to table a saved trail pointer");
+            break;
+
+        case MR_TYPECTOR_REP_TICKET:
+            fatal_error("Attempt to table a saved ticket");
             break;
 
         case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */

@@ -406,6 +406,22 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 				MR_LONG_LVAL_NUMBER(location));
 		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
 		MR_trace_event_number = MR_event_num_stackvar(this_frame);
+
+#ifdef	MR_USE_TRAIL
+		if (entry->MR_sle_maybe_trail >= 0) {
+			Word	ticket_counter;
+			Word	trail_ptr;
+
+			trail_ptr = MR_based_stackvar(this_frame,
+					entry->MR_sle_maybe_trail);
+			ticket_counter = MR_based_stackvar(this_frame,
+					entry->MR_sle_maybe_trail+1);
+			MR_reset_ticket(trail_ptr, MR_retry);
+			MR_discard_tickets_to(ticket_counter);
+		} else {
+			fatal_error("retry cannot restore the trail");
+		}
+#endif
 	} else {
 		Word	*this_frame;
 
@@ -422,6 +438,22 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		MR_saved_curfr(saved_regs) = MR_succfr_slot(this_frame);
 		MR_saved_maxfr(saved_regs) = MR_prevfr_slot(this_frame);
 		MR_trace_event_number = MR_event_num_framevar(this_frame);
+
+#ifdef	MR_USE_TRAIL
+		if (entry->MR_sle_maybe_trail >= 0) {
+			Word	ticket_counter;
+			Word	trail_ptr;
+
+			trail_ptr = MR_based_framevar(this_frame,
+					entry->MR_sle_maybe_trail);
+			ticket_counter = MR_based_framevar(this_frame,
+					entry->MR_sle_maybe_trail+1);
+			MR_reset_ticket(trail_ptr, MR_retry);
+			MR_discard_tickets_to(ticket_counter);
+		} else {
+			fatal_error("retry cannot restore the trail");
+		}
+#endif
 	}
 
 	for (i = 1; i < arg_max; i++) {

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -490,6 +490,7 @@ ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
 	switch (reason) {
 		case MR_exception:
 		case MR_undo:
+		case MR_retry:
 			/* just undo the update */
 			ML_var_last_goal.prev = old_goal;
 			break;

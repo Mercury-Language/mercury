@@ -81,11 +81,20 @@
 					% value of the from-full flag at call.
 					% Otherwise, it will be no.
 
-			maybe(int)	% If --trace-decl is set, this will
+			maybe(int),	% If --trace-decl is set, this will
 					% be yes(M), where stack slots M
 					% and M+1 are reserved for the runtime
 					% system to use in building proof
 					% trees for the declarative debugger.
+					% Otherwise, it will be no.
+
+			maybe(int)	% If --use-trail is set, this will
+					% be yes(M), where stack slots M
+					% and M+1 are the slots that hold the
+					% saved values of the trail pointer
+					% and the ticket counter respectively
+					% at the time of the call. Otherwise,
+					% it will be no.
 		).
 
 	% Return the set of input variables whose values should be preserved
@@ -196,7 +205,7 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	).
 
 	% trace__reserved_slots and trace__setup cooperate in the allocation
-	% of stack slots for tracing purposes. The allocation is done in four
+	% of stack slots for tracing purposes. The allocation is done in five
 	% stages.
 	%
 	% stage 1:	Allocate the fixed slots, slots 1, 2 and 3, to hold
@@ -209,11 +218,24 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	%
 	% stage 3:	If the procedure is shallow traced, allocate the
 	%		next available slot to the saved copy of the
-	%		from-full flag.
+	%		from-full flag. The number of this slot is recorded
+	%		in the maybe_from_full field in the proc layout;
+	%		if there is no such slot, that field will contain -1.
 	%
 	% stage 4:	If --trace-decl is given, allocate the next two
 	%		available slots to hold the pointers to the proof tree
 	%		node of the parent and of this call respectively.
+	%		The number of the first of these two slots is recorded
+	%		in the maybe_decl_debug field in the proc layout;
+	%		if there are no such slots, that field will contain -1.
+	%
+	% stage 5:	If --use-trail is set (given or implied), allocate
+	%		two slots to hold the saved value of the trail pointer
+	%		and the ticket counter at the point of the call, for
+	%		use in implementing retry. The number of the first of
+	%		these two slots is recorded in the maybe_trail field
+	%		in the proc layout; if there are no such slots, that
+	%		field will contain -1.
 	%
 	% The runtime system cannot know whether the stack frame has a slot
 	% that holds the saved from-full flag and whether it has the slots
@@ -264,7 +286,14 @@ trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
 		;
 			DeclDebug = 0
 		),
-		ReservedSlots is Fixed + RedoLayout + FromFull + DeclDebug
+		globals__lookup_bool_option(Globals, use_trail, UseTrail),
+		( UseTrail = yes ->
+			Trail = 2
+		;
+			Trail = 0
+		),
+		ReservedSlots is Fixed + RedoLayout + FromFull + DeclDebug +
+			Trail
 	).
 
 trace__setup(Globals, TraceSlotInfo, TraceInfo) -->
@@ -302,12 +331,29 @@ trace__setup(Globals, TraceSlotInfo, TraceInfo) -->
 		TraceInternal = no
 	},
 	{ globals__lookup_bool_option(Globals, trace_decl, yes) ->
-		MaybeDeclSlots = yes(NextSlotAfterFromFull)
+		MaybeDeclSlots = yes(NextSlotAfterFromFull),
+		NextSlotAfterDecl = NextSlotAfterFromFull + 2
 	;
-		MaybeDeclSlots = no
+		MaybeDeclSlots = no,
+		NextSlotAfterDecl = NextSlotAfterFromFull
 	},
-	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeDeclSlots) },
-	{ init_trace_info(TraceType, TraceInternal, TraceDecl,
+	{ globals__lookup_bool_option(Globals, use_trail, yes) ->
+		MaybeTrailSlot = yes(NextSlotAfterDecl),
+		( CodeModel = model_non ->
+			TrailLval =  framevar(NextSlotAfterDecl),
+			TicketLval = framevar(NextSlotAfterDecl+1)
+		;
+			TrailLval =  stackvar(NextSlotAfterDecl),
+			TicketLval = stackvar(NextSlotAfterDecl+1)
+		),
+		MaybeTrailLvals = yes(TrailLval - TicketLval)
+	;
+		MaybeTrailSlot = no,
+		MaybeTrailLvals = no
+	},
+	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
+		MaybeDeclSlots, MaybeTrailSlot) },
+	{ init_trace_info(TraceType, TraceInternal, TraceDecl, MaybeTrailLvals,
 		MaybeRedoLayout, TraceInfo) }.
 
 trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
@@ -315,6 +361,7 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	{
 	trace_info_get_trace_type(TraceInfo, TraceType),
 	trace_info_get_maybe_redo_layout_slot(TraceInfo, MaybeRedoLayoutSlot),
+	trace_info_get_maybe_trail_slots(TraceInfo, MaybeTrailLvals),
 	trace__event_num_slot(CodeModel, EventNumLval),
 	trace__call_num_slot(CodeModel, CallNumLval),
 	trace__call_depth_slot(CodeModel, CallDepthLval),
@@ -340,20 +387,37 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		FillFourSlots = FillThreeSlots
 	),
 	(
+		% This could be done by generating proper LLDS instead of C.
+		% However, in shallow traced code we want to execute this
+		% only when the caller is deep traced, and everything inside
+		% that test must be in C code.
+		MaybeTrailLvals = yes(TrailLval - TicketLval),
+		trace__stackref_to_string(TrailLval, TrailLvalStr),
+		trace__stackref_to_string(TicketLval, TicketLvalStr),
+		string__append_list([
+			FillFourSlots, "\n",
+			"\t\tMR_mark_ticket_stack(", TicketLvalStr, ");\n",
+			"\t\tMR_store_ticket(", TrailLvalStr, ");"
+		], FillAllSlots)
+	;
+		MaybeTrailLvals = no,
+		FillAllSlots = FillFourSlots
+	),
+	(
 		TraceType = shallow_trace(CallFromFullSlot),
 		trace__stackref_to_string(CallFromFullSlot,
 			CallFromFullSlotStr),
 		string__append_list([
 			"\t\t", CallFromFullSlotStr, " = MR_trace_from_full;\n",
 			"\t\tif (MR_trace_from_full) {\n",
-			FillFourSlots, "\n",
+			FillAllSlots, "\n",
 			"\t\t} else {\n",
 			"\t\t\t", CallDepthStr, " = MR_trace_call_depth;\n",
 			"\t\t}"
 		], TraceStmt)
 	;
 		TraceType = deep_trace,
-		TraceStmt = FillFourSlots
+		TraceStmt = FillAllSlots
 	),
 	TraceCode = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt)],
@@ -463,7 +527,7 @@ trace__maybe_generate_pragma_event_code(PragmaPort, Code) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
-		{ TraceInfo = trace_info(_, yes, _, _) }
+		{ trace_info_get_trace_internal(TraceInfo, yes) }
 	->
 		{ trace__convert_nondet_pragma_port_type(PragmaPort, Port) },
 		trace__generate_event_code(Port, nondet_pragma, TraceInfo,
@@ -486,7 +550,8 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 		Code) -->
 	(
 		{ Port = fail },
-		{ TraceInfo = trace_info(_, _, _, yes(RedoLabel)) }
+		{ trace_info_get_maybe_redo_layout_slot(TraceInfo,
+			yes(RedoLabel)) }
 	->
 		% The layout information for the redo event is the same as
 		% for the fail event; all the non-clobbered inputs in their
@@ -592,8 +657,9 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 	}.
 
 trace__maybe_setup_redo_event(TraceInfo, Code) :-
-	TraceInfo = trace_info(TraceType, _, _, TraceRedo),
-	( TraceRedo = yes(_) ->
+	trace_info_get_maybe_redo_layout_slot(TraceInfo, TraceRedoLayout),
+	( TraceRedoLayout = yes(_) ->
+		trace_info_get_trace_type(TraceInfo, TraceType),
 		(
 			TraceType = shallow_trace(Lval),
 			% The code in the runtime looks for the from-full
@@ -790,6 +856,11 @@ trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
 					% from-full flag.
 			bool,		% The value of --trace-internal.
 			bool,		% The value of --trace-decl.
+			maybe(pair(lval)),
+					% If trailing is enabled, the lvals
+					% of the slots that hold the value
+					% of the trail pointer and the ticket
+					% counter at the time of the call.
 			maybe(label)	% If we are generating redo events,
 					% this has the label associated with
 					% the fail event, which we then reserve
@@ -800,22 +871,27 @@ trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
 					% two events have identical layouts).
 		).
 
-:- pred init_trace_info(trace_type::in, bool::in, bool::in, maybe(label)::in,
-	trace_info::out) is det.
+:- pred init_trace_info(trace_type::in, bool::in, bool::in,
+	maybe(pair(lval))::in, maybe(label)::in, trace_info::out) is det.
 
 :- pred trace_info_get_trace_type(trace_info::in, trace_type::out) is det.
 :- pred trace_info_get_trace_internal(trace_info::in, bool::out) is det.
 :- pred trace_info_get_trace_decl(trace_info::in, bool::out) is det.
+:- pred trace_info_get_maybe_trail_slots(trace_info::in,
+	maybe(pair(lval))::out) is det.
 :- pred trace_info_get_maybe_redo_layout_slot(trace_info::in,
 	maybe(label)::out) is det.
 
 init_trace_info(TraceType, TraceInternal, TraceDecl,
-	MaybeRedoLayoutSlot,
-	trace_info(TraceType, TraceInternal, TraceDecl, MaybeRedoLayoutSlot)).
+	MaybeTrailSlot, MaybeRedoLayoutSlot,
+	trace_info(TraceType, TraceInternal, TraceDecl,
+		MaybeTrailSlot, MaybeRedoLayoutSlot)).
 
-trace_info_get_trace_type(trace_info(TraceType, _, _, _), TraceType).
-trace_info_get_trace_internal(trace_info(_, TraceInternal, _, _),
+trace_info_get_trace_type(trace_info(TraceType, _, _, _, _), TraceType).
+trace_info_get_trace_internal(trace_info(_, TraceInternal, _, _, _),
 	TraceInternal).
-trace_info_get_trace_decl(trace_info(_, _, TraceDecl, _), TraceDecl).
-trace_info_get_maybe_redo_layout_slot(trace_info(_, _, _, MaybeRedoLayoutSlot),
-	MaybeRedoLayoutSlot).
+trace_info_get_trace_decl(trace_info(_, _, TraceDecl, _, _), TraceDecl).
+trace_info_get_maybe_trail_slots(trace_info(_, _, _, MaybesTrailSlot, _),
+	MaybesTrailSlot).
+trace_info_get_maybe_redo_layout_slot(trace_info(_, _, _, _,
+	MaybeRedoLayoutSlot), MaybeRedoLayoutSlot).

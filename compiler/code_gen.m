@@ -213,7 +213,8 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 
 		% Generate code for the procedure.
 	generate_category_code(CodeModel, Goal, OutsideResumePoint,
-		CodeTree, MaybeTraceCallLabel, FrameInfo, CodeInfo0, CodeInfo),
+		TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
+		CodeInfo0, CodeInfo),
 	code_info__get_cell_count(CellCount, CodeInfo, _),
 
 		% Turn the code tree into a list.
@@ -325,10 +326,11 @@ maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
 	% for the failure continuation at all times.)
 
 :- pred generate_category_code(code_model::in, hlds_goal::in,
-	resume_point_info::in, code_tree::out, maybe(label)::out,
-	frame_info::out, code_info::in, code_info::out) is det.
+	resume_point_info::in, trace_slot_info::in, code_tree::out,
+	maybe(label)::out, frame_info::out, code_info::in, code_info::out)
+	is det.
 
-generate_category_code(model_det, Goal, ResumePoint, Code,
+generate_category_code(model_det, Goal, ResumePoint, TraceSlotInfo, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
 		% generate the code for the body of the clause
 	(
@@ -352,7 +354,8 @@ generate_category_code(model_det, Goal, ResumePoint, Code,
 		code_gen__generate_goal(model_det, Goal, BodyCode),
 		code_gen__generate_entry(model_det, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_det, FrameInfo, _, ExitCode),
+		code_gen__generate_exit(model_det, FrameInfo, TraceSlotInfo,
+			_, ExitCode),
 		{ Code =
 			tree(EntryCode,
 			tree(TraceCallCode,
@@ -361,7 +364,7 @@ generate_category_code(model_det, Goal, ResumePoint, Code,
 		}
 	).
 
-generate_category_code(model_semi, Goal, ResumePoint, Code,
+generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
 	{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
 	{ FailCode = node([
@@ -377,7 +380,7 @@ generate_category_code(model_semi, Goal, ResumePoint, Code,
 		code_gen__generate_goal(model_semi, Goal, BodyCode),
 		code_gen__generate_entry(model_semi, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_semi, FrameInfo,
+		code_gen__generate_exit(model_semi, FrameInfo, TraceSlotInfo,
 			RestoreDeallocCode, ExitCode),
 
 		code_info__generate_resume_point(ResumePoint, ResumeCode),
@@ -401,7 +404,7 @@ generate_category_code(model_semi, Goal, ResumePoint, Code,
 		code_gen__generate_goal(model_semi, Goal, BodyCode),
 		code_gen__generate_entry(model_semi, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_semi, FrameInfo,
+		code_gen__generate_exit(model_semi, FrameInfo, TraceSlotInfo,
 			RestoreDeallocCode, ExitCode),
 		code_info__generate_resume_point(ResumePoint, ResumeCode),
 		{ Code =
@@ -414,7 +417,7 @@ generate_category_code(model_semi, Goal, ResumePoint, Code,
 		}
 	).
 
-generate_category_code(model_non, Goal, ResumePoint, Code,
+generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 		MaybeTraceCallLabel, FrameInfo) -->
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
@@ -424,7 +427,8 @@ generate_category_code(model_non, Goal, ResumePoint, Code,
 		code_gen__generate_goal(model_non, Goal, BodyCode),
 		code_gen__generate_entry(model_non, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_non, FrameInfo, _, ExitCode),
+		code_gen__generate_exit(model_non, FrameInfo, TraceSlotInfo,
+			_, ExitCode),
 
 		code_info__generate_resume_point(ResumePoint, ResumeCode),
 		{ code_info__resume_point_vars(ResumePoint, ResumeVarList) },
@@ -432,6 +436,13 @@ generate_category_code(model_non, Goal, ResumePoint, Code,
 		code_info__set_forward_live_vars(ResumeVars),
 		trace__generate_external_event_code(fail, TraceInfo, _, _,
 			TraceFailCode),
+		{ TraceSlotInfo = trace_slot_info(_, _, yes(_)) ->
+			DiscardTraceTicketCode = node([
+				discard_ticket - "discard retry ticket"
+			])
+		;
+			DiscardTraceTicketCode = empty
+		},
 		{ FailCode = node([
 			goto(do_fail) - "fail after fail trace port"
 		]) },
@@ -442,14 +453,16 @@ generate_category_code(model_non, Goal, ResumePoint, Code,
 			tree(ExitCode,
 			tree(ResumeCode,
 			tree(TraceFailCode,
-			     FailCode))))))
+			tree(DiscardTraceTicketCode,
+			     FailCode)))))))
 		}
 	;
 		{ MaybeTraceCallLabel = no },
 		code_gen__generate_goal(model_non, Goal, BodyCode),
 		code_gen__generate_entry(model_non, Goal, ResumePoint,
 			FrameInfo, EntryCode),
-		code_gen__generate_exit(model_non, FrameInfo, _, ExitCode),
+		code_gen__generate_exit(model_non, FrameInfo, TraceSlotInfo,
+			_, ExitCode),
 		{ Code =
 			tree(EntryCode,
 			tree(BodyCode,
@@ -613,7 +626,8 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
 	% our caller; this is why we return RestoreDeallocCode.
 	%
 	% At the moment the only special slots are the succip slot, and
-	% the slots holding the call number and call depth for tracing.
+	% the tracing slots (holding the call sequence number, call event
+	% number, call depth, from-full indication, and trail state).
 	%
 	% Not all frames will have all these components. For example, for
 	% nondet procedures we don't deallocate the stack frame before
@@ -625,9 +639,11 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
 	% we need only #undef a macro defined by the procedure prologue.
 
 :- pred code_gen__generate_exit(code_model::in, frame_info::in,
-	code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
+	trace_slot_info::in, code_tree::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
+code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo,
+		RestoreDeallocCode, ExitCode) -->
 	{ StartComment = node([
 		comment("Start of procedure epilogue") - ""
 	]) },
@@ -662,26 +678,41 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
 		;
 			code_info__setup_call(Args, callee, FlushCode)
 		),
-		(
-			{ MaybeSuccipSlot = yes(SuccipSlot) }
+		{
+			MaybeSuccipSlot = yes(SuccipSlot)
 		->
-			{ RestoreSuccipCode = node([
+			RestoreSuccipCode = node([
 				assign(succip, lval(stackvar(SuccipSlot))) -
 					"restore the success ip"
-			]) }
+			])
 		;
-			{ RestoreSuccipCode = empty }
-		),
-		(
-			{ TotalSlots = 0 ; CodeModel = model_non }
+			RestoreSuccipCode = empty
+		},
+		{
+			( TotalSlots = 0 ; CodeModel = model_non )
 		->
-			{ DeallocCode = empty }
+			DeallocCode = empty
 		;
-			{ DeallocCode = node([
+			DeallocCode = node([
 				decr_sp(TotalSlots) - "Deallocate stack frame"
-			]) }
-		),
-		{ RestoreDeallocCode = tree(RestoreSuccipCode, DeallocCode ) },
+			])
+		},
+		{
+			TraceSlotInfo = trace_slot_info(_, _, yes(_)),
+			CodeModel \= model_non
+		->
+			DiscardTraceTicketCode = node([
+				discard_ticket - "discard retry ticket"
+			])
+		;
+			DiscardTraceTicketCode = empty
+		},
+
+		{ RestoreDeallocCode =
+			tree(RestoreSuccipCode,
+			tree(DeallocCode,
+			     DiscardTraceTicketCode))
+		},
 
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
 		( { MaybeTraceInfo = yes(TraceInfo) } ->

@@ -78,6 +78,9 @@
 %	maybe decl debug	(int_least16_t) - number of the first of two
 %				stack slots used by the declarative debugger,
 %				if --trace-decl is set
+%	maybe trail		(int_least16_t) - number of the first of two
+%				stack slots used for recording the state of
+%				the trail, if trailing is enabled
 %
 % The first will point to the per-label layout info for the label associated
 % with the call event at the entry to the procedure. The purpose of this
@@ -480,7 +483,7 @@ stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
 		ModuleRval = yes(const(data_addr_const(
 				data_addr(ModuleName, module_layout)))),
 		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
-			MaybeDeclSlots),
+			MaybeDeclSlots, MaybeTrailSlot),
 		( MaybeFromFullSlot = yes(FromFullSlot) ->
 			FromFullRval = yes(const(int_const(FromFullSlot)))
 		;
@@ -491,8 +494,14 @@ stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
 		;
 			DeclRval = yes(const(int_const(-1)))
 		),
-		Rvals = [CallRval, ModuleRval, FromFullRval, DeclRval],
-		ArgTypes = initial([2 - yes(data_ptr), 2 - yes(int_least16)],
+		( MaybeTrailSlot = yes(TrailSlot) ->
+			TrailRval = yes(const(int_const(TrailSlot)))
+		;
+			TrailRval = yes(const(int_const(-1)))
+		),
+		Rvals = [CallRval, ModuleRval,
+			FromFullRval, DeclRval, TrailRval],
+		ArgTypes = initial([2 - yes(data_ptr), 3 - yes(int_least16)],
 			none)
 	;
 		% Indicate the absence of the trace layout fields.
@@ -980,15 +989,15 @@ stack_layout__construct_closure_arg_rval(ClosureArg,
 
 %---------------------------------------------------------------------------%
 
-	% The constants and representations here should be kept in sync
-	% with runtime/mercury_stack_layout.h, which contains structure
-	% definitions and macros to access the data structures we build here.
-
-	% Construct a representation of a live_value_type without the name.
+	% Construct a representation of the type of a value.
 	%
-	% Low integers for special values, a pointer for other values.
-	% (Remember to keep the low integers below the max varint value in
-	% runtime/mercury_type_info.h).
+	% For values representing variables, this will be a pseudo_type_info
+	% describing the type of the variable.
+	%
+	% For the kinds of values used internally by the compiler,
+	% this will be a pointer to a specific type_ctor_info (acting as a
+	% type_info) defined by hand in builtin.m to stand for values of
+	% each such kind; one for succips, one for hps, etc.
 
 :- pred stack_layout__represent_live_value_type(live_value_type, rval,
 	llds_type, stack_layout_info, stack_layout_info).
@@ -1016,6 +1025,14 @@ stack_layout__represent_live_value_type(redofr, Rval, data_ptr) -->
 	{ Rval = const(AddrConst) }.
 stack_layout__represent_live_value_type(redoip, Rval, data_ptr) -->
 	{ TypeCtor = type_ctor(info, "redoip", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(trail_ptr, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "trail_ptr", 0) },
+	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
+	{ Rval = const(AddrConst) }.
+stack_layout__represent_live_value_type(ticket, Rval, data_ptr) -->
+	{ TypeCtor = type_ctor(info, "ticket", 0) },
 	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
 	{ Rval = const(AddrConst) }.
 stack_layout__represent_live_value_type(unwanted, Rval, data_ptr) -->

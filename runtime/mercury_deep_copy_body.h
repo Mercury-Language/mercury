@@ -152,7 +152,7 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                     lower_limit, upper_limit);
             break;
 
-        case MR_TYPECTOR_REP_INT:
+        case MR_TYPECTOR_REP_INT:  /* fallthru */
         case MR_TYPECTOR_REP_CHAR:
             new_data = data;
             break;
@@ -236,7 +236,7 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
             }
         }
             break;
-        
+
         case MR_TYPECTOR_REP_UNIV: 
             /* if the univ is stored in range, copy it */ 
             if (in_range(data_value)) {
@@ -314,7 +314,33 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                 new_data = data;
             }
             break;
-            
+
+        case MR_TYPECTOR_REP_SUCCIP: /* fallthru */
+        case MR_TYPECTOR_REP_REDOIP:
+	    /* code addresses are never relocated */
+            new_data = data;
+            break;
+
+        case MR_TYPECTOR_REP_HP:
+            /*
+	    ** Tyson hasn't yet moved the code for copying saved heap pointers
+	    ** here.
+	    */
+            fatal_error("Sorry, not implemented: copying saved heap pointers");
+            break;
+
+        case MR_TYPECTOR_REP_CURFR: /* fallthru */
+        case MR_TYPECTOR_REP_MAXFR:
+	    /* we do not modify the layout of the nondet stack */
+            new_data = data;
+            break;
+
+        case MR_TYPECTOR_REP_TRAIL_PTR:
+        case MR_TYPECTOR_REP_TICKET:
+	    /* XXX we do not yet compress the trail when doing gc */
+            new_data = data;
+            break;
+
         case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
         default:
             fatal_error("Unknown layout type in deep copy");

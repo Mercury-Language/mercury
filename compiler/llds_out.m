@@ -1782,6 +1782,8 @@ output_reset_trail_reason(solve) -->
 	io__write_string("MR_solve").
 output_reset_trail_reason(exception) -->
 	io__write_string("MR_exception").
+output_reset_trail_reason(retry) -->
+	io__write_string("MR_retry").
 output_reset_trail_reason(gc) -->
 	io__write_string("MR_gc").
 
@@ -1870,12 +1872,14 @@ output_layout_locn(Locn) -->
 :- pred output_live_value_type(live_value_type, io__state, io__state).
 :- mode output_live_value_type(in, di, uo) is det.
 
-output_live_value_type(succip) --> io__write_string("MR_succip").
-output_live_value_type(curfr) --> io__write_string("MR_curfr").
-output_live_value_type(maxfr) --> io__write_string("MR_maxfr").
-output_live_value_type(redofr) --> io__write_string("MR_redofr").
-output_live_value_type(redoip) --> io__write_string("MR_redoip").
-output_live_value_type(hp) --> io__write_string("MR_hp").
+output_live_value_type(succip) --> io__write_string("type succip").
+output_live_value_type(curfr) --> io__write_string("type curfr").
+output_live_value_type(maxfr) --> io__write_string("type maxfr").
+output_live_value_type(redofr) --> io__write_string("type redofr").
+output_live_value_type(redoip) --> io__write_string("type redoip").
+output_live_value_type(hp) --> io__write_string("type hp").
+output_live_value_type(trail_ptr) --> io__write_string("type trail_ptr").
+output_live_value_type(ticket) --> io__write_string("type ticket").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
 output_live_value_type(var(Var, Name, Type, LldsInst)) --> 
 	io__write_string("var("),

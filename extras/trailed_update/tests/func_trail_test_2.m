@@ -73,7 +73,8 @@ void trace_fail(int handle, MR_untrail_reason reason) {
 	switch (reason) {
 	    case MR_exception:
 	    case MR_undo:
-/*		printf(""trace_fail: exception/undo\n""); */
+	    case MR_retry:
+/*		printf(""trace_fail: exception/undo/retry\n""); */
 	        printf(""<= fail: %d\n"", handle);
 		break;
 	    default:
@@ -87,7 +88,8 @@ void trace_redo(int handle, MR_untrail_reason reason) {
 	switch (reason) {
 	    case MR_exception:
 	    case MR_undo:
-/*		printf(""trace_redo: exception/undo\n""); */
+	    case MR_retry:
+/*		printf(""trace_redo: exception/undo/retry\n""); */
 	        printf("">= redo: %d\n"", handle);
 		break;
 	    case MR_commit:

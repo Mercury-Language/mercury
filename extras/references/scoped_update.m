@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,8 +107,9 @@ ME_enter_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason)
 	switch (reason) {
 		case MR_exception:
 		case MR_undo:
+		case MR_retry:
 			ME_untrail_msg(""ME_enter_scope_failing: ""
-					""exception/undo\n"");
+					""exception/undo/retry\n"");
 			ME_show_handle(""=> fail back into scope.  old:  "",
 					handle);
 			handle->outsideval = *handle->var;
@@ -116,6 +117,7 @@ ME_enter_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason)
 			ME_show_handle(""=>                        new:  "",
 					handle);
 			break;
+
 		default:
 			ME_untrail_msg(""ME_enter_scope_failing: default\n"");
 			break;
@@ -128,14 +130,16 @@ ME_exit_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason)
 	switch (reason) {
 		case MR_exception:
 		case MR_undo:
+		case MR_retry:
 			ME_untrail_msg(""ME_exit_scope_failing: ""
-					""exception/undo\n"");
+					""exception/undo/retry\n"");
 			ME_show_handle(""<= fail back out of scope.  old:  "",
 					handle);
 			*handle->var = handle->outsideval;
 			ME_show_handle(""<=                          new:  "",
 					handle);
 			break;
+
 		case MR_commit:
 		case MR_solve:
 			ME_untrail_msg(""ME_exit_scope_failing: ""
@@ -144,6 +148,7 @@ ME_exit_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason)
 			handle->var = (Word *) 0;
 			handle->outsideval = handle->insideval = (Word) 0;
 			break;
+
 		default:
 			ME_untrail_msg(""ME_exit_scope_failing: default\n"");
 			/* we may need to do something if reason == MR_gc */

@@ -32,16 +32,18 @@
 ** MR_store_ticket()
 **	called when creating a choice point, or before a commit
 ** MR_reset_ticket()
-**	called when resuming forward execution after failing (MR_undo),
-**	or after a commit (MR_commit), or after a "soft commit"
-**	[one that doesn't prune away all the alternative solutions,
-**	but which does require us to commit to this goal being solvable]
-**	in an if-then-else with a nondet condition, or in solutions/2
-**	(MR_solve).
+**	called under the following circumstances, with different parameters:
+**	- when resuming forward execution after failing (MR_undo);
+**	- after a commit (MR_commit);
+**	- after a "soft commit" [one that doesn't prune away all the
+**	  alternative solutions, but which does require us to commit to
+**	  this goal being solvable] in an if-then-else with a nondet condition,
+**	  or in solutions/2 (MR_solve);
+**	- when executing a `retry' command in the debugger (MR_retry).
 ** MR_discard_ticket()
 **	called when cutting away or failing over the topmost choice point
 ** MR_mark_ticket_stack()
-**	called before a commit
+**	called before a commit, and when entering an execution traced procedure
 ** MR_discard_tickets_to()
 **	called after a commit
 */
@@ -145,6 +147,14 @@ typedef enum {
 	** choose to behave differently for exceptions than for failure.
 	*/
 	MR_exception,  
+
+	/*
+	** MR_retry:
+	** A `retry' command was executed in the debugger.
+	** Behaves as MR_undo, except that function trail entries may
+	** choose to behave differently for retries than for failure.
+	*/
+	MR_retry,  
 
 	/*
 	** MR_gc:

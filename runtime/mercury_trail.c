@@ -54,6 +54,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 	    break;
 	case MR_undo:
 	case MR_exception:
+	case MR_retry:
 	    /* Handle both function and value trail entries */
 	    while (tr_ptr != old_trail_ptr) {
 		tr_ptr--;
