@@ -11,6 +11,10 @@
 :- interface.
 :- import_module llds, value_number, list, int, std_util.
 
+:- type instmap == map(label, instruction).
+:- type tailmap == map(label, list(instruction)).
+:- type succmap == map(label, bool).
+
 :- pred opt_util__gather_comments(list(instruction),
 	list(instruction), list(instruction)).
 :- mode opt_util__gather_comments(in, out, out) is det.

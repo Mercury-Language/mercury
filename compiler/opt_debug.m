@@ -9,7 +9,7 @@
 :- module opt_debug.
 
 :- interface.
-:- import_module llds, value_number, peephole, list, std_util, int.
+:- import_module llds, value_number, opt_util, list, std_util, int.
 
 :- pred opt_debug__dump_tables(vn_tables, string).
 :- mode opt_debug__dump_tables(in, out) is det.
@@ -68,9 +68,6 @@
 :- pred opt_debug__print_instmap(tailmap).
 :- mode opt_debug__print_instmap(in) is det.
 
-:- pred opt_debug__print_redoipmap(redoipmap).
-:- mode opt_debug__print_redoipmap(in) is det.
-
 :- pred opt_debug__print_proclist(list(pair(label, list(instruction)))).
 :- mode opt_debug__print_proclist(in) is det.
 
@@ -83,7 +80,6 @@
 :- external(opt_debug__dump_rval/2).
 :- external(opt_debug__print_tailmap/1).
 :- external(opt_debug__print_instmap/1).
-:- external(opt_debug__print_redoipmap/1).
 :- external(opt_debug__print_proclist/1).
 
 opt_debug__dump_lval_to_vn([], "").

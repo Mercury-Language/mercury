@@ -21,7 +21,7 @@
 :- implementation.
 :- import_module prog_io, make_hlds, typecheck, modes, switch_detection.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
-:- import_module arg_info, store_alloc, code_gen, peephole, llds, inlining.
+:- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
@@ -105,27 +105,27 @@ main_predicate_2(ok(OptionTable0), Args) -->
 convert_grade_option("") --> [].
 convert_grade_option("fast") -->
 	set_bool_opt(debug, no),
-	set_bool_opt(optimize, yes),
+	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, yes).
 convert_grade_option("jump") -->
 	set_bool_opt(debug, no),
-	set_bool_opt(optimize, yes),
+	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, no).
 convert_grade_option("reg") -->
 	set_bool_opt(debug, no),
-	set_bool_opt(optimize, yes),
+	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, yes).
 convert_grade_option("none") -->
 	set_bool_opt(debug, yes),
-	set_bool_opt(optimize, yes),
+	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, no).
 convert_grade_option("debug") -->
 	set_bool_opt(debug, yes),
-	set_bool_opt(optimize, no),
+	set_bool_opt(c_optimize, no),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, no).
 
@@ -991,7 +991,7 @@ mercury_compile(module(Module, _, _, _, _)) -->
 
 	( { DoCodeGen = yes } ->
 #endif
-		mercury_compile__maybe_do_peephole(LLDS1, LLDS2),
+		mercury_compile__maybe_do_optimize(LLDS1, LLDS2),
 % #if NU_PROLOG
 % 		[]
 % 	;
@@ -1258,22 +1258,22 @@ mercury_compile__generate_code(HLDS0, LLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
 
-:- pred mercury_compile__maybe_do_peephole(c_file, c_file,
+:- pred mercury_compile__maybe_do_optimize(c_file, c_file,
 						io__state, io__state).
-:- mode mercury_compile__maybe_do_peephole(in, out, di, uo) is det.
+:- mode mercury_compile__maybe_do_optimize(in, out, di, uo) is det.
 
-mercury_compile__maybe_do_peephole(LLDS0, LLDS) -->
-	globals__io_lookup_bool_option(peephole, PeepHole),
+mercury_compile__maybe_do_optimize(LLDS0, LLDS) -->
+	globals__io_lookup_bool_option(optimize, Optimize),
 	(
-		{ PeepHole = yes }
+		{ Optimize = yes }
 	->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose,
-			"% Doing peephole optimizations..."),
+			"% Doing optimizations..."),
 		maybe_flush_output(Verbose),
 		globals__io_get_globals(Globals),
 		{ globals__get_options(Globals, Options) },
-		{ peephole__optimize(Options, LLDS0, LLDS) },
+		{ optimize__main(Options, LLDS0, LLDS) },
 		maybe_write_string(Verbose, " done.\n"),
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics)
@@ -1392,8 +1392,8 @@ mercury_compile__c_to_obj(Module, Succeeded) -->
 	;
 		DebugOpt = "-DSPEED "
 	},
-	globals__io_lookup_bool_option(optimize, Optimize),
-	{ Optimize = yes, Debug = no ->
+	globals__io_lookup_bool_option(c_optimize, C_optimize),
+	{ C_optimize = yes, Debug = no ->
 		OptimizeOpt = "-O2 -fomit-frame-pointer "
 	;
 		OptimizeOpt = ""

@@ -11,11 +11,11 @@
 :- interface.
 :- import_module llds, list.
 
-:- pred frameopt__optimize(list(instruction), list(instruction), bool).
-:- mode frameopt__optimize(in, out, out) is det.
+	% Delay the construction of det stack frames as long as possible,
+	% in order to avoid the construction in as many cases as possible.
 
-:- pred frameopt__post_optimize(list(instruction), list(instruction), bool).
-:- mode frameopt__post_optimize(in, out, out) is det.
+:- pred frameopt__main(list(instruction), list(instruction), bool).
+:- mode frameopt__main(in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -23,7 +23,7 @@
 
 :- import_module opt_util, code_util, map, set, int, string, require, std_util.
 
-frameopt__optimize(Instrs0, Instrs, Mod) :-
+frameopt__main(Instrs0, Instrs, Mod) :-
 	opt_util__gather_comments(Instrs0, Comment1, Instrs1),
 	(
 		Instrs1 = [Instr1prime | Instrs2prime],
@@ -46,9 +46,6 @@ frameopt__optimize(Instrs0, Instrs, Mod) :-
 	(
 		opt_util__detstack_setup(Instrs3, FrameSize, Body0)
 	->
-		% nl,
-		% write(FirstLabel),
-		% nl,
 		set__init(FrameSet0),
 		set__init(SuccipSet0),
 		frameopt__repeat_build_sets(Body0, FrameSize,
@@ -61,26 +58,20 @@ frameopt__optimize(Instrs0, Instrs, Mod) :-
 			FrameSet, SuccipSet, TeardownMap,
 			ProcLabel, N1, _, Body1),
 		list__append(Body1, Extra, Body2),
-		list__condense([Comment1, [Instr1], Comment2, Body2], Instrs),
-		( Instrs = Instrs0 ->
+		list__condense([Comment1, [Instr1], Comment2, Body2], Instrs4),
+		( Instrs4 = Instrs0 ->
+			Instrs = Instrs0,
 			Mod = no
+		; frameopt__is_succip_restored(Instrs4) ->
+			Instrs = Instrs4,
+			Mod = yes
 		;
+			frameopt__dont_save_succip(Instrs4, Instrs),
 			Mod = yes
 		)
 	;
 		Instrs = Instrs0,
 		Mod = no
-	).
-
-%-----------------------------------------------------------------------------%
-
-frameopt__post_optimize(Instrs0, Instrs, Mod) :-
-	( frameopt__is_succip_restored(Instrs0) ->
-		Instrs = Instrs0,
-		Mod = no
-	;
-		frameopt__dont_save_succip(Instrs0, Instrs),
-		Mod = yes
 	).
 
 %-----------------------------------------------------------------------------%
@@ -725,6 +716,8 @@ frameopt__generate_labels([Label | Labels], SetupFrame0, SetupSuccip0,
 
 %-----------------------------------------------------------------------------%
 
+	% Find out if succip is ever restored.
+
 :- pred frameopt__is_succip_restored(list(instruction)).
 :- mode frameopt__is_succip_restored(in) is semidet.
 
@@ -734,6 +727,9 @@ frameopt__is_succip_restored([Uinstr - _Comment | Instrs]) :-
 	;
 		frameopt__is_succip_restored(Instrs)
 	).
+
+	% Remove unnecessary saves of the succip which were speculatively
+	% introduced by frameopt__main.
 
 :- pred frameopt__dont_save_succip(list(instruction), list(instruction)).
 :- mode frameopt__dont_save_succip(in, out) is det.

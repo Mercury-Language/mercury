@@ -80,18 +80,17 @@
 		;	gcc_non_local_gotos
 		;	gcc_global_registers
 	% Optimisation Options
-		;	peephole
-		;	peephole_local
-		;	peephole_jump_opt
-		;	peephole_label_elim
-		;	peephole_opt_redoip
-		;	peephole_value_number
-		;	peephole_frame_opt
-		;	peephole_repeat
+		;	optimize
+		;	optimize_peep
+		;	optimize_jumps
+		;	optimize_labels
+		;	optimize_value_number
+		;	optimize_frames
+		;	optimize_repeat
 		;	static_ground_terms
 		;	smart_indexing
 		;	inlining
-		;	optimize
+		;	c_optimize
 		;	debug
 		;	grade
 	% Miscellaneous Options
@@ -177,16 +176,15 @@ option_defaults_2(code_gen_option, [
 option_defaults_2(optimization_option, [
 		% Optimization options
 	debug			-	bool(no),
-	optimize		-	bool(no),
+	c_optimize		-	bool(no),
 	grade			-	string(""),
-	peephole		-	bool(yes),
-	peephole_local		-	bool(yes),
-	peephole_jump_opt	-	bool(yes),
-	peephole_label_elim	-	bool(yes),
-	peephole_opt_redoip	-	bool(yes),
-	peephole_value_number	-	bool(no),
-	peephole_frame_opt	-	bool(yes),
-	peephole_repeat		-	int(4),
+	optimize		-	bool(yes),
+	optimize_peep		-	bool(yes),
+	optimize_jumps		-	bool(yes),
+	optimize_labels		-	bool(yes),
+	optimize_value_number	-	bool(no),
+	optimize_frames		-	bool(yes),
+	optimize_repeat		-	int(4),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes),
 	inlining		-	bool(yes)
@@ -215,7 +213,7 @@ short_option('l', 			line_numbers).
 short_option('m', 			modecheck).
 short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
-short_option('O', 			optimize).
+short_option('O', 			c_optimize).
 short_option('P', 			convert_to_mercury).
 short_option('S', 			statistics).
 short_option('s', 			grade).
@@ -227,7 +225,7 @@ short_option('w', 			warn_singleton_vars).
 short_option('z', 			inlining).
 
 long_option("grade",			grade).
-long_option("optimize",			optimize).
+long_option("c-optimize",		c_optimize).
 long_option("debug",			debug).
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
@@ -274,14 +272,13 @@ long_option("link",			link).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
 long_option("gcc-global-registers",	gcc_global_registers).
 long_option("mod-comments",		mod_comments).
-long_option("peephole",			peephole).
-long_option("peephole-local",		peephole_local).
-long_option("peephole-jump-opt",	peephole_jump_opt).
-long_option("peephole-label-elim",	peephole_label_elim).
-long_option("peephole-opt-redoip",	peephole_opt_redoip).
-long_option("peephole-value-number",	peephole_value_number).
-long_option("peephole-frame-opt",	peephole_frame_opt).
-long_option("peephole-repeat",		peephole_repeat).
+long_option("optimize",			optimize).
+long_option("optimize-peep",		optimize_peep).
+long_option("optimize-jumps",		optimize_jumps).
+long_option("optimize-labels",		optimize_labels).
+long_option("optimize-value-number",	optimize_value_number).
+long_option("optimize-frames",		optimize_frames).
+long_option("optimize-repeat",		optimize_repeat).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
 long_option("inlining",			inlining).
@@ -357,7 +354,7 @@ options_help -->
 	io__write_string("\t-s {debug, none, reg, jump, fast}\n"),
 	io__write_string("\t--grade {debug, none, reg, jump, fast}\n"),
 	io__write_string("\t\tSelect the compilation model.  This is a convenient way of\n"),
-	io__write_string("\t\tselecting a setting for the --optimize, --gcc-global-registers,\n"),
+	io__write_string("\t\tselecting a setting for the --c-optimize, --gcc-global-registers,\n"),
 	io__write_string("\t\t--gcc-non-local-gotos, and --debug options simultaneously.\n"),
 
 	io__write_string("\t--gc {none, conservative, accurate}\n"),
@@ -390,22 +387,20 @@ options_help -->
 	io__write_string("\t--debug\n"),
 	io__write_string("\t\tEnable debugging.\n"),
 	io__write_string("\nOptimization Options\n"),
-	io__write_string("\t--no-peephole\n"),
-	io__write_string("\t\tDisable the peephole optimisation pass.\n"),
-	io__write_string("\t--no-peephole-local\n"),
-	io__write_string("\t\tDisable pattern matching optimisations.\n"),
-	io__write_string("\t--no-peephole-jump-opt\n"),
+	io__write_string("\t--no-optimize\n"),
+	io__write_string("\t\tDisable the optimisation pass.\n"),
+	io__write_string("\t--no-optimize-peep\n"),
+	io__write_string("\t\tDisable local peephole optimisations.\n"),
+	io__write_string("\t--no-optimize-jumps\n"),
 	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
-	io__write_string("\t--no-peephole-label-elim\n"),
-	io__write_string("\t\tDisable elimination of useless labels\n"),
-	io__write_string("\t--no-peephole-opt-redoip\n"),
-	io__write_string("\t\tDisable optimizations of redoips\n"),
-	io__write_string("\t--peephole-value-number\n"),
+	io__write_string("\t--no-optimize-labels\n"),
+	io__write_string("\t\tDisable elimination of dead labels and code\n"),
+	io__write_string("\t--optimize-value-number\n"),
 	io__write_string("\t\tPerform value numbering\n"),
-	io__write_string("\t--no-peephole-frame-opt\n"),
+	io__write_string("\t--no-optimize-frames\n"),
 	io__write_string("\t\tDisable stack frame optimizations\n"),
-	io__write_string("\t--peephole-repeat <n>\n"),
-	io__write_string("\t\tIterate peephole optimizations at most <n> times\n"),
+	io__write_string("\t--optimize-repeat <n>\n"),
+	io__write_string("\t\tIterate optimizations at most <n> times\n"),
 	io__write_string("\t--no-static-ground-terms\n"),
 	io__write_string("\t\tConstruct all terms at runtime; disable the optimization\n"),
 	io__write_string("\t\tof constructing constant ground terms at compile time\n"),
@@ -415,7 +410,7 @@ options_help -->
 	io__write_string("\t\tdisable string hashing and integer table-lookup indexing.\n"),
 	io__write_string("\t--no-inlining\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
-	io__write_string("\t--optimize\n"),
+	io__write_string("\t--c-optimize\n"),
 	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),
