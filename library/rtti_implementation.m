@@ -823,8 +823,11 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 #endif
 ").
 high_level_data :-
-	std_util__semidet_succeed,
-	private_builtin__sorry("high_level_data").
+	( std_util__semidet_succeed ->
+		private_builtin__sorry("high_level_data")
+	;
+		std_util__semidet_succeed
+	).
 
 :- pred get_arg_type_info(type_info::in, P::in, T::in,
 	du_functor_descriptor::in, type_info::out) is det.
@@ -1262,7 +1265,7 @@ functor_arg_types(X::in) = (unsafe_cast(X)::out) :-
 		(exist_info::out) is semidet.
 
 functor_exist_info(X::in) = (unsafe_cast(X)::out) :- 
-	det_unimplemented("functor_exist_info").
+	semidet_unimplemented("functor_exist_info").
 
 :- pragma foreign_proc("C#",
 	functor_exist_info(FunctorDescriptor::in) = (ExistInfo::out),
