@@ -135,6 +135,10 @@
 	% unify(X, Y) is true iff X = Y.
 :- pred unify(T::in, T::in) is semidet.
 
+	% solve_equal(X, Y) is true iff X = Y.
+	% Should only be used with --use-solve-equal compiler option
+:- pred solve_equal(T::in(any), T::in(any)) is semidet.
+
 :- type comparison_result ---> (=) ; (<) ; (>).
 
 	% compare(Res, X, Y) binds Res to =, <, or >
@@ -187,6 +191,7 @@
 :- external(unify/2).
 :- external(index/2).
 :- external(compare/3).
+:- external(solve_equal/2).
 
 %-----------------------------------------------------------------------------%
 
@@ -590,14 +595,23 @@ mercury_data_builtin__base_type_functors_c_pointer_0_struct {
 Define_extern_entry(mercury____Unify___builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Index___builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Define_extern_entry(mercury____SolveEqual___builtin__c_pointer_0_0);
+#endif
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___builtin__c_pointer_0_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___builtin__c_pointer_0_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___builtin__c_pointer_0_0);
+#ifdef MR_USE_SOLVE_EQUAL
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____SolveEqual___builtin__c_pointer_0_0);
+#endif
 
 BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Unify___builtin__c_pointer_0_0);
 	init_entry(mercury____Index___builtin__c_pointer_0_0);
 	init_entry(mercury____Compare___builtin__c_pointer_0_0);
+#ifdef MR_USE_SOLVE_EQUAL
+	init_entry(mercury____SolveEqual___builtin__c_pointer_0_0);
+#endif
 
 BEGIN_CODE
 Define_entry(mercury____Unify___builtin__c_pointer_0_0);
@@ -620,6 +634,16 @@ Define_entry(mercury____Compare___builtin__c_pointer_0_0);
 			  compare_input1 < compare_input2 ? COMPARE_LESS :
 			  COMPARE_GREATER);
 	proceed();
+
+#ifdef MR_USE_SOLVE_EQUAL
+Define_entry(mercury____SolveEqual___builtin__c_pointer_0_0);
+	/*
+	** For c_pointer, we assume that ``solve_equal'' is the same as
+	** ``unify''...
+	*/
+	tailcall(ENTRY(mercury____Unify___builtin__c_pointer_0_0),
+		ENTRY(mercury____SolveEqual___builtin__c_pointer_0_0));
+#endif
 
 END_MODULE
 

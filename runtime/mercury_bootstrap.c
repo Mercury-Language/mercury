@@ -44,10 +44,13 @@ mercury_data_private_builtin__base_type_info_type_info_1_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-	const Word *f5;
+#ifdef MR_USE_SOLVE_EQUAL
+	Code *f5;
+#endif
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 } mercury_data_private_builtin__base_type_info_type_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
@@ -56,6 +59,10 @@ mercury_data_private_builtin__base_type_info_type_info_1_struct {
 		mercury____Index___private_builtin__type_info_1_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Compare___private_builtin__type_info_1_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Unify___private_builtin__type_info_1_0)),
+#endif
 	(const Word *) &
 		mercury_data_private_builtin__base_type_layout_type_info_1,
 	(const Word *) &

@@ -96,6 +96,16 @@
 	--no-use-trail)
 		use_trail=false ;;
 
+	--reserve-tag)
+		reserve_tag=true ;;
+	--no-reserve-tag)
+		reserve_tag=false ;;
+
+	--use-solve-equal)
+		use_solve_equal=true ;;
+	--no-use-solve-equal)
+		use_solve_equal=false ;;
+
 	--args)
 		shift
 		case "$1" in
@@ -125,6 +135,7 @@
 		#	compiler/handle_options.m
 		#	scripts/ml.in
 
+	    gc_method=none
 	    grade_pieces=`echo $grade | tr '.' ' '`
 	    for grade_piece in $grade_pieces
 	    do
@@ -147,6 +158,10 @@
 				args_method=simple
 				;;
 			tr)	use_trail=true
+				;;
+			rt)	reserve_tag=true
+				;;
+			se)	use_solve_equal=true
 				;;
 			memprof)
 				profile_time=false

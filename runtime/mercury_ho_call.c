@@ -66,6 +66,7 @@ Define_extern_entry(mercury__compare_3_1);
 Define_extern_entry(mercury__compare_3_2);
 Define_extern_entry(mercury__compare_3_3);
 Declare_label(mercury__compare_3_0_i1);
+Define_extern_entry(mercury__solve_equal_2_0);
 
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_closure)
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_closure)
@@ -83,6 +84,7 @@ MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_1)
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_2)
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_3)
 MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__compare_3_0, 1)
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__solve_equal_2_0)
 
 
 BEGIN_MODULE(call_module)
@@ -102,6 +104,7 @@ BEGIN_MODULE(call_module)
 	init_entry(mercury__compare_3_2);
 	init_entry(mercury__compare_3_3);
 	init_label_sl(mercury__compare_3_0_i1);
+	init_entry(mercury__solve_equal_2_0);
 BEGIN_CODE
 
 Define_entry(do_call_det_closure);
@@ -573,6 +576,76 @@ Define_label(mercury__compare_3_0_i1);
 	proceed();
 #endif
 }
+
+#ifdef MR_USE_SOLVE_EQUAL
+/*
+** mercury__solve_equal_2_0 is called as `solve_equal(TypeInfo, X, Y)'
+** in the mode `solve_equal(in(any), in(any), in) is semidet'.
+**
+** With the simple parameter passing convention, the inputs are in the
+** registers r2, r3 and r4. With the compact parameter passing convention,
+** the inputs are in the registers r1, r2 and r3.
+**
+** The only ("visible") output is the success/failure indication,
+** which goes in r1 with both calling conventions.
+**
+** We call the type-specific unification routine as
+** `SolveEqualPred(...ArgTypeInfos..., X, Y)' is semidet, with all arguments
+** input.
+** Again r1 will hold the success/failure continuation; the input arguments
+** start either in r1 or r2 depending on the argument passing convention.
+*/
+
+Define_entry(mercury__solve_equal_2_0);
+{
+	Code	*solve_equal_pred;	/* address of the solve_equal pred */
+					/* for this type */
+	int	type_arity;		/* number of type_info args */
+	Word	args_base;		/* the address of the word before */
+					/* the first type_info argument */
+	Word	x, y;
+	int	i;
+
+	Word	base_type_info;
+
+	x = mercury__solve_equal__x;
+	y = mercury__solve_equal__y;
+
+	base_type_info = field(0, mercury__solve_equal__typeinfo, 0);
+	if (base_type_info == 0) {
+		type_arity = 0;
+		solve_equal_pred = (Code *) field(0,
+				mercury__solve_equal__typeinfo,
+				OFFSET_FOR_SOLVE_EQUAL_PRED);
+		/* args_base will not be needed */
+	} else {
+		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
+		solve_equal_pred = (Code *) field(0, base_type_info,
+				OFFSET_FOR_SOLVE_EQUAL_PRED);
+		args_base = mercury__solve_equal__typeinfo;
+	}
+
+	save_registers();
+
+	/* we call `SolveEqualPred(...ArgTypeInfos..., X, Y)' */
+	/* virtual_reg(1) will hold the success/failure indication */
+	for (i = 1; i <= type_arity; i++) {
+		virtual_reg(i + mercury__solve_equal__offset) =
+			field(0, args_base, i);
+	}
+	virtual_reg(type_arity + mercury__solve_equal__offset + 1) = x;
+	virtual_reg(type_arity + mercury__solve_equal__offset + 2) = y;
+
+	restore_registers();
+
+	tailcall(solve_equal_pred, LABEL(mercury__solve_equal_2_0));
+}
+#else /* not MR_USE_SOLVE_EQUAL */
+Define_entry(mercury__solve_equal_2_0);
+	incr_sp_push_msg(2, "builtin:solve_equal");
+	fatal_error("solve_equal not available in this grade");
+#endif /* not MR_USE_SOLVE_EQUAL */
+
 END_MODULE
 void mercury_sys_init_call(void); /* suppress gcc warning */
 void mercury_sys_init_call(void) {

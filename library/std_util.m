@@ -1080,27 +1080,45 @@ Define_extern_entry(mercury____Unify___std_util__univ_0_0);
 Define_extern_entry(mercury____Index___std_util__univ_0_0);
 Define_extern_entry(mercury____Compare___std_util__univ_0_0);
 Declare_label(mercury____Compare___std_util__univ_0_0_i1);
+#ifdef MR_USE_SOLVE_EQUAL
+Define_extern_entry(mercury____SolveEqual___std_util__univ_0_0);
+#endif
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___std_util__univ_0_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__univ_0_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__univ_0_0);
 MR_MAKE_STACK_LAYOUT_INTERNAL(mercury____Compare___std_util__univ_0_0, 1);
+#ifdef MR_USE_SOLVE_EQUAL
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____SolveEqual___std_util__univ_0_0);
+#endif
 
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
 Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Define_extern_entry(mercury____SolveEqual___std_util__type_info_0_0);
+#endif
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___std_util__type_info_0_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__type_info_0_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__type_info_0_0);
+#ifdef MR_USE_SOLVE_EQUAL
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____SolveEqual___std_util__type_info_0_0);
+#endif
 
 BEGIN_MODULE(unify_univ_module)
 	init_entry_sl(mercury____Unify___std_util__univ_0_0);
 	init_entry_sl(mercury____Index___std_util__univ_0_0);
 	init_entry_sl(mercury____Compare___std_util__univ_0_0);
 	init_label_sl(mercury____Compare___std_util__univ_0_0_i1);
+#ifdef MR_USE_SOLVE_EQUAL
+	init_entry_sl(mercury____SolveEqual___std_util__univ_0_0);
+#endif
 
 	init_entry_sl(mercury____Unify___std_util__type_info_0_0);
 	init_entry_sl(mercury____Index___std_util__type_info_0_0);
 	init_entry_sl(mercury____Compare___std_util__type_info_0_0);
+#ifdef MR_USE_SOLVE_EQUAL
+	init_entry_sl(mercury____SolveEqual___std_util__type_info_0_0);
+#endif
 
 BEGIN_CODE
 Define_entry(mercury____Unify___std_util__univ_0_0);
@@ -1212,6 +1230,11 @@ Define_label(mercury____Compare___std_util__univ_0_0_i1);
 	proceed();
 #endif
 
+#ifdef MR_USE_SOLVE_EQUAL
+Define_entry(mercury____SolveEqual___std_util__univ_0_0);
+	fatal_error(""solve equal not defined for std_util:univ/0"");
+#endif
+
 
 Define_entry(mercury____Unify___std_util__type_info_0_0);
 {
@@ -1248,6 +1271,11 @@ Define_entry(mercury____Compare___std_util__type_info_0_0);
 	compare_output = comp;
 	proceed();
 }
+
+#ifdef MR_USE_SOLVE_EQUAL
+Define_entry(mercury____SolveEqual___std_util__type_info_0_0);
+	fatal_error(""solve equal not defined for std_util:type_info/0"");
+#endif
 
 END_MODULE
 

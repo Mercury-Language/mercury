@@ -33,11 +33,11 @@
 #define MR_PASTE2(p1,p2)	MR_PASTE2_2(p1,p2)
 #define MR_PASTE2_2(p1,p2)	p1##p2
 
-/* paste 13 macros together */
-#define MR_PASTE13(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12) \
-			MR_PASTE13_2(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12)
-#define MR_PASTE13_2(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12) \
-			p0##p1##p2##p3##p4##p5##p6##p7##p8##p9##p10##p11##p12
+/* paste 15 macros together */
+#define MR_PASTE15(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14) \
+	MR_PASTE15_2(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14)
+#define MR_PASTE15_2(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14) \
+	p0##p1##p2##p3##p4##p5##p6##p7##p8##p9##p10##p11##p12##p13##p14
 
 /*
 ** Here we build up the MR_GRADE macro part at a time,
@@ -128,36 +128,48 @@
   #define MR_GRADE_PART_6
 #endif
 
-#if TAGBITS == 0
-  #define MR_GRADE_PART_7	_notags
-#elif defined(HIGHTAGS)
-  #define MR_GRADE_PART_7	MR_PASTE2(_hightags, TAGBITS)
+#ifdef MR_RESERVE_TAG
+  #define MR_GRADE_PART_7	_rt
 #else
-  #define MR_GRADE_PART_7	MR_PASTE2(_tags, TAGBITS)
+  #define MR_GRADE_PART_7
+#endif
+
+#ifdef MR_USE_SOLVE_EQUAL
+  #define MR_GRADE_PART_8	_se
+#else
+  #define MR_GRADE_PART_8
+#endif
+
+#if TAGBITS == 0
+  #define MR_GRADE_PART_9	_notags
+#elif defined(HIGHTAGS)
+  #define MR_GRADE_PART_9	MR_PASTE2(_hightags, TAGBITS)
+#else
+  #define MR_GRADE_PART_9	MR_PASTE2(_tags, TAGBITS)
 #endif
 
 #ifdef BOXED_FLOAT
-  #define MR_GRADE_PART_8
+  #define MR_GRADE_PART_10
 #else				/* "ubf" stands for "unboxed float" */
-  #define MR_GRADE_PART_8	_ubf
+  #define MR_GRADE_PART_10	_ubf
 #endif
 
 #ifdef COMPACT_ARGS
-  #define MR_GRADE_PART_9	
+  #define MR_GRADE_PART_11	
 #else				/* "sa" stands for "simple args" */
-  #define MR_GRADE_PART_9	_sa
+  #define MR_GRADE_PART_11	_sa
 #endif
 
 #ifndef MR_DEBUG_NONDET_STACK
-  #define MR_GRADE_PART_10
+  #define MR_GRADE_PART_12
 #else
-  #define MR_GRADE_PART_10	_debugNDS
+  #define MR_GRADE_PART_12	_debugNDS
 #endif
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
-  #define MR_GRADE_PART_11	_picreg
+  #define MR_GRADE_PART_13	_picreg
 #else
-  #define MR_GRADE_PART_11
+  #define MR_GRADE_PART_13
 #endif
 
 /*
@@ -169,19 +181,19 @@
 */
 #if defined(MR_STACK_TRACE)
   #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_PART_12	_debug
+    #define MR_GRADE_PART_14	_debug
   #else
-    #define MR_GRADE_PART_12	_strce
+    #define MR_GRADE_PART_14	_strce
   #endif
 #else
   #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_PART_12	_trace
+    #define MR_GRADE_PART_14	_trace
   #else
-    #define MR_GRADE_PART_12
+    #define MR_GRADE_PART_14
   #endif
 #endif
 
-#define MR_GRADE		MR_PASTE13(			\
+#define MR_GRADE		MR_PASTE15(			\
 					MR_GRADE_PART_0,	\
 					MR_GRADE_PART_1,	\
 					MR_GRADE_PART_2,	\
@@ -194,7 +206,9 @@
 					MR_GRADE_PART_9,	\
 					MR_GRADE_PART_10,	\
 					MR_GRADE_PART_11,	\
-					MR_GRADE_PART_12	\
+					MR_GRADE_PART_12,	\
+					MR_GRADE_PART_13,	\
+					MR_GRADE_PART_14	\
 				)
 
 #define MR_GRADE_VAR		MR_PASTE2(MR_grade_,MR_GRADE)

@@ -94,7 +94,13 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 			)
 		;
 			max_num_tags(NumTagBits, MaxNumTags),
-			MaxTag is MaxNumTags - 1,
+			globals__lookup_bool_option(Globals, reserve_tag,
+					ReserveTag),
+			( ReserveTag = yes ->
+				MaxTag is MaxNumTags - 2
+			;
+				MaxTag is MaxNumTags - 1
+			),
 			split_constructors(Ctors, Constants, Functors),
 			assign_constant_tags(Constants, CtorTags0,
 						CtorTags1, NextTag),

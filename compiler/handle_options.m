@@ -506,6 +506,8 @@ long_usage -->
 	;	gc		% the kind of GC to use
 	;	prof		% what profiling options to use
 	;	trail		% whether or not to use trailing
+	;	tag		% whether or not to reserve a tag
+	;	solve_equal	% whether or not to generate solve_equal slots
 	;	args		% argument passing convention
 	;	trace		% tracing/debugging options
 	;	par		% parallelism / multithreading
@@ -637,6 +639,12 @@ grade_component_table("strace", trace,
 
 	% Trailing components
 grade_component_table("tr", trail, [use_trail - bool(yes)]).
+
+	% Tag reservation components
+grade_component_table("rt", tag, [reserve_tag - bool(yes)]).
+
+	% Solve equal components
+grade_component_table("se", solve_equal, [use_solve_equal - bool(yes)]).
 
 
 :- pred split_grade_string(string, list(string)).

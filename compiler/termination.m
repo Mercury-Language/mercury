@@ -531,6 +531,11 @@ special_pred_id_to_termination(index, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no], OutList),
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop.
+		% XXX Don't really know - just guessing here (WH)
+special_pred_id_to_termination(solve_equal, HeadVars, ArgSize, Termination) :-
+	term_util__make_bool_list(HeadVars, [yes, yes], OutList),
+	ArgSize = finite(0, OutList),
+	Termination = cannot_loop.
 
 % The list of proc_ids must refer to builtin predicates.  This predicate
 % sets the termination information of builtin predicates.

@@ -26,7 +26,7 @@
 % argument for every type variable in the predicate's type declaration.
 % The argument gives information about the type, including higher-order
 % predicate variables for each of the builtin polymorphic operations
-% (currently unify/2, compare/3, index/2).
+% (currently unify/2, compare/3, index/2, solve_equal/2).
 %
 %-----------------------------------------------------------------------------%
 %
@@ -44,12 +44,15 @@
 %	word 1		<=/2 predicate for type>
 %	word 2		<index/2 predicate for type>
 %	word 3		<compare/3 predicate for type>
-%	word 4		<base_type_layout for type>
-%	word 5		<base_type_functors for type>
-%	word 6		<string name of type constructor>
+% #ifdef MR_USE_SOLVE_EQUAL
+%	word 4		<solve_equal/2 predicate for type>
+% #endif
+%	word 4/5	<base_type_layout for type>
+%	word 5/6	<base_type_functors for type>
+%	word 6/7	<string name of type constructor>
 %			e.g. "int" for `int', "list" for `list(T)',
 %			"map" for `map(K,V)'
-%	word 7		<string name of module>
+%	word 7/8	<string name of module>
 %
 % The other cell is the type_info structure, laid out like this:
 %
@@ -128,6 +131,7 @@
 %			'__Unify__'<list/1>,
 %			'__Index__'<list/1>,
 %			'__Compare__'<list/1>,
+%		[	'__SolveEqual__'<list/1>,	]
 %			<base_type_layout for list/1>,
 %			<base_type_functors for list/1>,
 %			"list",
@@ -141,6 +145,7 @@
 %			builtin_unify_int,
 %			builtin_index_int,
 %			builtin_compare_int,
+%		[	builtin_solve_equal_non_solver_type,	]
 %			<base_type_layout for int/0>,
 %			<base_type_functors for int/0>,
 %			"int",
@@ -401,10 +406,9 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 %	not defined in this module, and we get far too many of them anyway.
 %	write_proc_progress_message("% Transforming polymorphism for ",
 %				PredId, ProcId, ModuleInfo0, IO0, IO1),
-	IO1 = IO0,
 
 	polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, 
-		ModuleInfo0, ProcInfo, PredInfo1, ModuleInfo1),
+		ModuleInfo0, ProcInfo, PredInfo1, ModuleInfo1, IO0, IO1),
 
 	pred_info_procedures(PredInfo1, ProcTable1),
 	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
@@ -475,11 +479,13 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 
 
 :- pred polymorphism__process_proc(proc_id, proc_info, pred_id, pred_info,
-			module_info, proc_info, pred_info, module_info).
-:- mode polymorphism__process_proc(in, in, in, in, in, out, out, out) is det.
+			module_info, proc_info, pred_info, module_info,
+			io__state, io__state).
+:- mode polymorphism__process_proc(in, in, in, in, in, out, out, out,
+			di, uo) is det.
 
 polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, ModuleInfo0,
-				ProcInfo, PredInfo, ModuleInfo) :-
+				ProcInfo, PredInfo, ModuleInfo, IO0, IO) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	init_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, Info0),
 	polymorphism__setup_headvars(PredInfo0, ProcInfo0,
@@ -494,12 +500,14 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, ModuleInfo0,
 		)
 	->
 		Goal = Goal0,
-		Info = Info1
+		Info = Info1,
+		IO = IO0
 	;
 		%
 		% process any polymorphic calls inside the goal
 		%
-		polymorphism__process_goal(Goal0, Goal1, Info1, Info2),
+		polymorphism__process_goal(Goal0, Goal1, IO0, IO,
+				Info1, Info2),
 
 		%
 		% generate code to construct the type-class-infos
@@ -818,35 +826,38 @@ polymorphism__assign_var_2(Var1, Var2, Goal) :-
 	Goal = unify(Var1, var(Var2), Mode, UnifyInfo, UnifyC) - GoalInfo.
 
 :- pred polymorphism__process_goal(hlds_goal, hlds_goal,
-					poly_info, poly_info).
-:- mode polymorphism__process_goal(in, out, in, out) is det.
+			io__state, io__state, poly_info, poly_info).
+:- mode polymorphism__process_goal(in, out, di, uo, in, out) is det.
 
-polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
-	polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal).
+polymorphism__process_goal(Goal0 - GoalInfo0, Goal, IO0, IO) -->
+	polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal, IO0, IO).
 
 :- pred polymorphism__process_goal_expr(hlds_goal_expr, hlds_goal_info,
-					hlds_goal, poly_info, poly_info).
-:- mode polymorphism__process_goal_expr(in, in, out, in, out) is det.
+		hlds_goal, io__state, io__state, poly_info, poly_info).
+:- mode polymorphism__process_goal_expr(in, in, out, di, uo, in, out) is det.
 
 	% We don't need to add type-infos for higher-order calls,
 	% since the type-infos are added when the closures are
 	% constructed, not when they are called.  (Or at least I
 	% think we don't... -fjh.)
 polymorphism__process_goal_expr(higher_order_call(A, B, C, D, E, F),
-		GoalInfo, higher_order_call(A, B, C, D, E, F) - GoalInfo)
+		GoalInfo, higher_order_call(A, B, C, D, E, F) - GoalInfo,
+		IO, IO)
 		--> [].
 
 	% The same goes for class method calls
 polymorphism__process_goal_expr(class_method_call(A, B, C, D, E, F),
-		GoalInfo, class_method_call(A, B, C, D, E, F) - GoalInfo)
+		GoalInfo, class_method_call(A, B, C, D, E, F) - GoalInfo,
+		IO, IO)
 		--> [].
 
 polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
-		Builtin, UnifyContext, Name0), GoalInfo, Goal) -->
+		Builtin, UnifyContext, Name0), GoalInfo, Goal, IO0, IO) -->
 	% Check for a call to a special predicate like compare/3
 	% for which the type is known at compile-time.
 	% Replace such calls with calls to the particular version
 	% for that type.
+	{ special_pred_list(SpecialPredIds, IO0, IO) },
 	(
 		{ Name0 = unqualified(PredName0) },
 		{ list__length(ArgVars0, Arity) },
@@ -861,7 +872,6 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 		% don't try this for any special preds if they're not
 		% implemented
 
-		{ special_pred_list(SpecialPredIds) },
 		{ list__member(SpecialPredId, SpecialPredIds) }
 	->
 		{ poly_info_get_module_info(Info0, ModuleInfo) },
@@ -883,7 +893,7 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
 polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
-				GoalInfo, Goal) -->
+				GoalInfo, Goal, IO0, IO) -->
 	(
 		{ Unification = complicated_unify(UniMode, CanFail) },
 		{ Y = var(YVar) }
@@ -948,7 +958,8 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 
 				{ list__append(Goals, [Call], TheGoals) },
 				{ Goal = conj(TheGoals) - GoalInfo }
-			)
+			),
+			{ IO = IO0 }
 
 		; { type_is_higher_order(Type, _, _) } ->
 			{ SymName = unqualified("builtin_unify_pred") },
@@ -970,7 +981,8 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			{ CallContext = call_unify_context(XVar, Y, Context) },
 			{ Call = call(PredId, ProcId, ArgVars, not_builtin,
 				yes(CallContext), SymName) },
-			polymorphism__process_goal_expr(Call, GoalInfo, Goal)
+			polymorphism__process_goal_expr(Call, GoalInfo, Goal,
+					IO0, IO)
 			
 		; { type_to_type_id(Type, TypeId, _) } ->
 
@@ -990,7 +1002,8 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			{ CallContext = call_unify_context(XVar, Y, Context) },
 			{ Call = call(PredId, ProcId, ArgVars, not_builtin,
 				yes(CallContext), SymName) },
-			polymorphism__process_goal_expr(Call, GoalInfo, Goal)
+			polymorphism__process_goal_expr(Call, GoalInfo, Goal,
+					IO0, IO)
 		;
 			{ error("polymorphism: type_to_type_id failed") }
 		)
@@ -1001,7 +1014,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		% for lambda expressions, we must recursively traverse the
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
-		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
+		polymorphism__process_goal(LambdaGoal0, LambdaGoal1, IO0, IO),
 		% XXX currently we don't allow lambda goals to be
 		% existentially typed
 		{ ExistQVars = [] },
@@ -1014,37 +1027,41 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 				- GoalInfo }
 	;
 		% ordinary unifications are left unchanged,
-		{ Goal = unify(XVar, Y, Mode, Unification, Context) - GoalInfo }
+		{ Goal = unify(XVar, Y, Mode, Unification, Context) -
+				GoalInfo },
+		{ IO = IO0 }
 	).
 
 	% the rest of the clauses just process goals recursively
 
 polymorphism__process_goal_expr(conj(Goals0), GoalInfo,
-		conj(Goals) - GoalInfo) -->
-	polymorphism__process_goal_list(Goals0, Goals).
+		conj(Goals) - GoalInfo, IO0, IO) -->
+	polymorphism__process_goal_list(Goals0, Goals, IO0, IO).
 polymorphism__process_goal_expr(par_conj(Goals0, SM), GoalInfo,
-		par_conj(Goals, SM) - GoalInfo) -->
-	polymorphism__process_goal_list(Goals0, Goals).
+		par_conj(Goals, SM) - GoalInfo, IO0, IO) -->
+	polymorphism__process_goal_list(Goals0, Goals, IO0, IO).
 polymorphism__process_goal_expr(disj(Goals0, SM), GoalInfo,
-		disj(Goals, SM) - GoalInfo) -->
-	polymorphism__process_goal_list(Goals0, Goals).
-polymorphism__process_goal_expr(not(Goal0), GoalInfo, not(Goal) - GoalInfo) -->
-	polymorphism__process_goal(Goal0, Goal).
+		disj(Goals, SM) - GoalInfo, IO0, IO) -->
+	polymorphism__process_goal_list(Goals0, Goals, IO0, IO).
+polymorphism__process_goal_expr(not(Goal0), GoalInfo, not(Goal) - GoalInfo,
+		IO0, IO) -->
+	polymorphism__process_goal(Goal0, Goal, IO0, IO).
 polymorphism__process_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo,
-				switch(Var, CanFail, Cases, SM) - GoalInfo) -->
-	polymorphism__process_case_list(Cases0, Cases).
+				switch(Var, CanFail, Cases, SM) - GoalInfo,
+				IO0, IO) -->
+	polymorphism__process_case_list(Cases0, Cases, IO0, IO).
 polymorphism__process_goal_expr(some(Vars, Goal0), GoalInfo,
-			some(Vars, Goal) - GoalInfo) -->
-	polymorphism__process_goal(Goal0, Goal).
+			some(Vars, Goal) - GoalInfo, IO0, IO) -->
+	polymorphism__process_goal(Goal0, Goal, IO0, IO).
 polymorphism__process_goal_expr(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
-			if_then_else(Vars, A, B, C, SM) - GoalInfo) -->
-	polymorphism__process_goal(A0, A),
-	polymorphism__process_goal(B0, B),
-	polymorphism__process_goal(C0, C).
+		if_then_else(Vars, A, B, C, SM) - GoalInfo, IO0, IO) -->
+	polymorphism__process_goal(A0, A, IO0, IO1),
+	polymorphism__process_goal(B0, B, IO1, IO2),
+	polymorphism__process_goal(C0, C, IO2, IO).
 
 polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode),
-		GoalInfo, Goal) -->
+		GoalInfo, Goal, IO, IO) -->
 	polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo,
 		PredId, ProcId, ArgVars, ExtraVars, CallGoalInfo, ExtraGoals),
 
@@ -1195,24 +1212,24 @@ polymorphism__c_code_add_typeinfos_2([TVar|TVars], TypeVarSet, Mode,
 	).
 
 :- pred polymorphism__process_goal_list(list(hlds_goal), list(hlds_goal),
-					poly_info, poly_info).
-:- mode polymorphism__process_goal_list(in, out, in, out) is det.
+				io__state, io__state, poly_info, poly_info).
+:- mode polymorphism__process_goal_list(in, out, di, uo, in, out) is det.
 
-polymorphism__process_goal_list([], []) --> [].
-polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
-	polymorphism__process_goal(Goal0, Goal),
-	polymorphism__process_goal_list(Goals0, Goals).
+polymorphism__process_goal_list([], [], IO, IO) --> [].
+polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals], IO0, IO) -->
+	polymorphism__process_goal(Goal0, Goal, IO0, IO1),
+	polymorphism__process_goal_list(Goals0, Goals, IO1, IO).
 
 :- pred polymorphism__process_case_list(list(case), list(case),
-					poly_info, poly_info).
-:- mode polymorphism__process_case_list(in, out, in, out) is det.
+				io__state, io__state, poly_info, poly_info).
+:- mode polymorphism__process_case_list(in, out, di, uo, in, out) is det.
 
-polymorphism__process_case_list([], []) --> [].
-polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
+polymorphism__process_case_list([], [], IO, IO) --> [].
+polymorphism__process_case_list([Case0 | Cases0], [Case | Cases], IO0, IO) -->
 	{ Case0 = case(ConsId, Goal0) },
-	polymorphism__process_goal(Goal0, Goal),
+	polymorphism__process_goal(Goal0, Goal, IO0, IO1),
 	{ Case = case(ConsId, Goal) },
-	polymorphism__process_case_list(Cases0, Cases).
+	polymorphism__process_case_list(Cases0, Cases, IO1, IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -1489,7 +1489,7 @@ mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose,
 		"% Generating base_type_info structures..."),
 	maybe_flush_output(Verbose),
-	{ base_type_info__generate_hlds(HLDS0, HLDS) },
+	base_type_info__generate_hlds(HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 

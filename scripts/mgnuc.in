@@ -33,6 +33,8 @@ Options:
 	-g, --c-debug
 	--no-c-optimize
 	--use-trail
+	--reserve-tag
+	--use-solve-equal
 	--args {simple, compact}
 	--pic-reg
 	--inline-alloc
@@ -268,6 +270,16 @@ case $use_trail in
 	false)		TRAIL_OPTS="" ;;
 esac
 
+case $reserve_tag in
+	true)		RESERVE_TAG_OPTS="-DMR_RESERVE_TAG" ;;
+	false)		RESERVE_TAG_OPTS="" ;;
+esac
+
+case $use_solve_equal in
+	true)		SOLVE_EQUAL_OPTS="-DMR_USE_SOLVE_EQUAL" ;;
+	false)		SOLVE_EQUAL_OPTS="" ;;
+esac
+
 case $thread_safe in
 	true)
 	case $FULLARCH in
@@ -418,8 +430,9 @@ ALL_CC_OPTS="$ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
 		$GRADE_OPTS $GC_OPTS \
 		$TRACE_OPTS $STACK_TRACE_OPTS $LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
-		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS $THREAD_OPTS \
-		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS"
+		$INLINE_ALLOC_OPTS $TRAIL_OPTS $RESERVE_TAG_OPTS \
+		$SOLVE_EQUAL_OPTS $SPLIT_OPTS $THREAD_OPTS $PICREG_OPTS \
+		$ARCH_OPTS $ARG_OPTS"
 
 case $verbose in true)
 	echo $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS ;;

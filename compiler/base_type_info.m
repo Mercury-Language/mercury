@@ -28,8 +28,9 @@
 :- import_module hlds_module, llds.
 :- import_module list.
 
-:- pred base_type_info__generate_hlds(module_info, module_info).
-:- mode base_type_info__generate_hlds(in, out) is det.
+:- pred base_type_info__generate_hlds(module_info, module_info,
+		io__state, io__state).
+:- mode base_type_info__generate_hlds(in, out, di, uo) is det.
 
 :- pred base_type_info__generate_llds(module_info, list(c_module)).
 :- mode base_type_info__generate_llds(in, out) is det.
@@ -45,12 +46,12 @@
 
 %---------------------------------------------------------------------------%
 
-base_type_info__generate_hlds(ModuleInfo0, ModuleInfo) :-
+base_type_info__generate_hlds(ModuleInfo0, ModuleInfo, IO0, IO) :-
 	module_info_name(ModuleInfo0, ModuleName),
 	module_info_types(ModuleInfo0, TypeTable),
 	map__keys(TypeTable, TypeIds),
 	base_type_info__gen_base_gen_infos(TypeIds, TypeTable, ModuleName,
-		ModuleInfo0, BaseGenInfos),
+		ModuleInfo0, BaseGenInfos, IO0, IO),
 	module_info_set_base_gen_infos(ModuleInfo0, BaseGenInfos,
 		ModuleInfo).
 
@@ -59,14 +60,14 @@ base_type_info__generate_hlds(ModuleInfo0, ModuleInfo) :-
 	% for each.
 
 :- pred base_type_info__gen_base_gen_infos(list(type_id), type_table,
-	module_name, module_info, list(base_gen_info)).
-:- mode base_type_info__gen_base_gen_infos(in, in, in, in, out) is det.
+	module_name, module_info, list(base_gen_info), io__state, io__state).
+:- mode base_type_info__gen_base_gen_infos(in, in, in, in, out, di, uo) is det.
 
-base_type_info__gen_base_gen_infos([], _, _, _, []).
+base_type_info__gen_base_gen_infos([], _, _, _, [], IO, IO).
 base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
-		ModuleInfo, BaseGenInfos) :-
+		ModuleInfo, BaseGenInfos, IO0, IO) :-
 	base_type_info__gen_base_gen_infos(TypeIds, TypeTable, ModuleName,
-		ModuleInfo, BaseGenInfos1),
+		ModuleInfo, BaseGenInfos1, IO0, IO1),
 	TypeId = SymName - TypeArity,
 	(
 		SymName = qualified(TypeModuleName, TypeName),
@@ -76,7 +77,7 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 		->
 			map__lookup(TypeTable, TypeId, TypeDefn),
 			hlds_data__get_type_defn_status(TypeDefn, Status),
-			special_pred_list(Specials),
+			special_pred_list(Specials, IO1, IO),
 			module_info_globals(ModuleInfo, Globals),
 			globals__have_static_code_addresses(Globals, 
 				StaticCode),
@@ -99,7 +100,8 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 				TypeName, TypeArity, Status, Elim, Procs),
 			BaseGenInfos = [Info | BaseGenInfos1]
 		;
-			BaseGenInfos = BaseGenInfos1
+			BaseGenInfos = BaseGenInfos1,
+			IO = IO1
 		)
 	;
 		SymName = unqualified(TypeName),

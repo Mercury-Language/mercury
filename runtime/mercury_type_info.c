@@ -50,25 +50,34 @@ const struct mercury_data___base_type_functors_pred_0_struct {
 Declare_entry(mercury__builtin_unify_pred_2_0);
 Declare_entry(mercury__builtin_index_pred_2_0);
 Declare_entry(mercury__builtin_compare_pred_3_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Declare_entry(mercury__builtin_solve_equal_non_solver_type_2_0);
+#endif
 MR_STATIC_CODE_CONST struct mercury_data___base_type_info_func_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
+#ifdef MR_USE_SOLVE_EQUAL
 	Code *f5;
+#endif
+#ifdef USE_TYPE_TO_TERM
 	Code *f6;
+	Code *f7;
 #endif
 #ifdef USE_TYPE_LAYOUT
-	const Word *f7;
 	const Word *f8;
 	const Word *f9;
+	const Word *f10;
 #endif
 } mercury_data___base_type_info_func_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_non_solver_type_2_0)),
+#endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_pred_0,
 	(const Word *) & mercury_data___base_type_functors_pred_0,
@@ -84,25 +93,34 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_func_0_struct {
 Declare_entry(mercury__builtin_unify_pred_2_0);
 Declare_entry(mercury__builtin_index_pred_2_0);
 Declare_entry(mercury__builtin_compare_pred_3_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Declare_entry(mercury__builtin_solve_equal_non_solver_type_2_0);
+#endif
 MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
+#ifdef MR_USE_SOLVE_EQUAL
 	Code *f5;
+#endif
+#ifdef USE_TYPE_TO_TERM
 	Code *f6;
+	Code *f7;
 #endif
 #ifdef USE_TYPE_LAYOUT
-	const Word *f7;
 	const Word *f8;
 	const Word *f9;
+	const Word *f10;
 #endif
 } mercury_data___base_type_info_pred_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_non_solver_type_2_0)),
+#endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_pred_0,
 	(const Word *) & mercury_data___base_type_functors_pred_0,

@@ -63,6 +63,8 @@ Options:
 	--debug
 	--low-level-debug
 	--use-trail
+	--reserve-tag
+	--use-solve-equal
 	--args {simple, compact}
 	--pic-reg
 		See the documentation in the \"Invocation\" section
@@ -292,6 +294,14 @@ case $profile_time,$profile_calls,$profile_memory in
 esac
 case $use_trail in
 	true)		GRADE="$GRADE.tr" ;;
+	false)		;;
+esac
+case $reserve_tag in
+	true)		GRADE="$GRADE.rt" ;;
+	false)		;;
+esac
+case $use_solve_equal in
+	true)		GRADE="$GRADE.se" ;;
 	false)		;;
 esac
 case $args_method in

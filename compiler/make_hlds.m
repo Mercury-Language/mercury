@@ -991,12 +991,12 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 				{ type_id_is_hand_defined(TypeId) }
 			)
 		->
-			{ special_pred_list(SpecialPredIds) },
+			special_pred_list(SpecialPredIds),
 			{ add_special_pred_decl_list(SpecialPredIds,
 					Module1, TVarSet, Type, TypeId,
 					Context, Status, Module2) }
 		;
-			{ special_pred_list(SpecialPredIds) },
+			special_pred_list(SpecialPredIds),
 			{ add_special_pred_list(SpecialPredIds,
 					Module1, TVarSet, Type, TypeId,
 					Body, Context, Status, Module2) }
@@ -1113,12 +1113,13 @@ combine_status_abstract_imported(Status2, Status) :-
 	).
 
 :- pred add_special_preds(module_info, tvarset, type, type_id, 
-		hlds_type_body, term__context, import_status, module_info).
-:- mode add_special_preds(in, in, in, in, in, in, in, out) is det.
+		hlds_type_body, term__context, import_status, module_info,
+		io__state, io__state).
+:- mode add_special_preds(in, in, in, in, in, in, in, out, di, uo) is det.
 
 add_special_preds(Module0, TVarSet, Type, TypeId,
-			Body, Context, Status, Module) :-
-	special_pred_list(SpecialPredIds),
+			Body, Context, Status, Module, IO0, IO) :-
+	special_pred_list(SpecialPredIds, IO0, IO),
 	( Body = abstract_type ->
 		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
 				Type, TypeId, Context, Status, Module)

@@ -166,10 +166,11 @@
 %-----------------------------------------------------------------------------%
 
 	% Construct a mode corresponding to the standard `in',
-	% `out', or `uo' mode.
+	% `out', `uo', or `in(any)' mode.
 :- pred in_mode((mode)::out) is det.
 :- pred out_mode((mode)::out) is det.
 :- pred uo_mode((mode)::out) is det.
+:- pred in_any_mode((mode)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1551,6 +1552,8 @@ in_mode(Mode) :- make_std_mode("in", [], Mode).
 out_mode(Mode) :- make_std_mode("out", [], Mode).
 
 uo_mode(Mode) :- make_std_mode("uo", [], Mode).
+
+in_any_mode(Mode) :- make_std_mode("in", [any(shared)], Mode).
 
 :- pred make_std_mode(string, list(inst), mode).
 :- mode make_std_mode(in, in, out) is det.

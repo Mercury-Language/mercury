@@ -67,6 +67,11 @@
 :- pred builtin_compare_non_canonical_type(comparison_result::uo,
 		T::in, T::in) is det.
 
+% The following pred is used for calls to solve_equal/2 for non-solver types
+% (i.e. types for which no solve predicate has been specified).
+:- pred builtin_solve_equal_non_solver_type(T::(any->any), T::(any->any))
+		is semidet.
+
 :- pred unused is det.
 
 	% compare_error is used in the code generated for compare/3 preds
@@ -494,6 +499,20 @@ builtin_compare_non_canonical_type(Res, X, _Y) :-
 	;
 		% the following is never executed
 		Res = (<)
+	).
+
+builtin_solve_equal_non_solver_type(X, _Y) :-
+	% suppress determinism warning
+	( semidet_succeed ->
+		string__append_list([
+			"call to solve_equal/2 for non-solver type `",
+			type_name(type_of(X)),
+			"'"],
+			Message),
+		error(Message)
+	;
+		% the following is never executed
+		semidet_succeed
 	).
 
 :- external(builtin_unify_pred/2).

@@ -117,8 +117,8 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 		globals__io_lookup_bool_option(intermod_unused_args,
 			UnusedArgs),
 		( { UnusedArgs = yes } ->
-			{ do_adjust_pred_import_status(IntermodInfo,
-				ModuleInfo1, ModuleInfo) }
+			do_adjust_pred_import_status(IntermodInfo,
+				ModuleInfo1, ModuleInfo)
 		;
 			{ ModuleInfo = ModuleInfo1 }
 		)
@@ -1222,13 +1222,14 @@ intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 	intermod__gather_preds(PredIds, yes, Threshold,
 		Deforestation, Info0, Info1),
 	intermod__gather_abstract_exported_types(Info1, Info),
-	do_adjust_pred_import_status(Info, Module0, Module),
-	maybe_write_string(VVerbose, " done\n", IO2, IO).
+	do_adjust_pred_import_status(Info, Module0, Module, IO2, IO3),
+	maybe_write_string(VVerbose, " done\n", IO3, IO).
 
 :- pred do_adjust_pred_import_status(intermod_info::in,
-		module_info::in, module_info::out) is det.
+		module_info::in, module_info::out,
+		io__state::di, io__state::uo) is det.
 
-do_adjust_pred_import_status(Info, Module0, Module) :-
+do_adjust_pred_import_status(Info, Module0, Module, IO0, IO) :-
 	intermod_info_get_pred_decls(PredDecls0, Info, _),
 	intermod_info_get_types(TypeIds0, Info, _),
 	set__to_sorted_list(PredDecls0, PredDecls),
@@ -1236,7 +1237,7 @@ do_adjust_pred_import_status(Info, Module0, Module) :-
 	module_info_types(Module0, Types0),
 	set_list_of_types_exported(TypeIds, Types0, Types),
 	module_info_set_types(Module0, Types, Module1),
-	special_pred_list(SpecPredIdList),
+	special_pred_list(SpecPredIdList, IO0, IO),
 	module_info_get_special_pred_map(Module1, SpecPredMap),
 	module_info_preds(Module1, Preds0),
 	fixup_special_preds(TypeIds, SpecPredIdList,

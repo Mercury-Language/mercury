@@ -126,6 +126,8 @@
 		;	stack_trace
 		;	require_tracing
 		;	use_trail
+		;	reserve_tag
+		;	use_solve_equal
 		;	pic_reg
 		;	tags
 		;	num_tag_bits
@@ -415,6 +417,8 @@ option_defaults_2(compilation_model_option, [
 	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
 	use_trail		-	bool(no),
+	reserve_tag		-	bool(no),
+	use_solve_equal		-	bool(no),
 	pic_reg			-	bool(no),
 	tags			-	string("low"),
 	num_tag_bits		-	int(-1),
@@ -744,6 +748,8 @@ long_option("debug",			debug).
 % long_option("stack-trace",		stack_trace).
 % long_option("require-tracing",	require_tracing).
 long_option("use-trail",		use_trail).
+long_option("reserve-tag",		reserve_tag).
+long_option("use-solve-equal",		use_solve_equal).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
@@ -1515,6 +1521,14 @@ options_help_compilation_model -->
 		"\tEnable use of a trail.",
 		"\tThis is necessary for interfacing with constraint solvers,",
 		"\tor for backtrackable destructive update.",
+		"--reserve-tag\t\t\t(grade modifier: `.rt')",
+		"\tReserve a tag.",
+		"\tThis is necessary for a seamless Herbrand solver -",
+		"\tintended for use with HAL.",
+		"--use-solve-equal\t\t\t(grade modifier: `.se')",
+		"\tGenerate and use the \"solve equal\" slot.",
+		"\tThis is necessary for HAL to be able to perform polymorphic",
+		"\t\"old-old\" unification.",
 		"-p, --profiling, --time-profiling",
 		"\t\t\t\t(grade modifier: `.prof')",
 		"\tEnable time and call profiling.  Insert profiling hooks in the",

@@ -112,6 +112,7 @@
 :- import_module quantification, clause_to_proc.
 :- import_module globals, options, modes, mode_util, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
+:- import_module llds_out.
 
 	% We keep track of all the complicated unification procs we need
 	% by storing them in the proc_requests structure.
@@ -192,6 +193,8 @@ unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
 		Determinism = semidet,
 		inst_is_ground_or_any(ModuleInfo, XInitial),
 		inst_is_ground_or_any(ModuleInfo, YInitial)
+		% XXX Should fix this to be just ground!
+		% And then call the solve for inst any...
 	->
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	;
@@ -443,6 +446,10 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		unify_proc__generate_compare_clauses(TypeBody, Res, X, Y,
 					Context,
 					Clauses, VarTypeInfo1, VarTypeInfo)
+	; SpecialPredId = solve_equal, Args = [H1, H2] ->
+		unify_proc__generate_solve_equal_clauses(TypeBody, H1, H2,
+					Context, ModuleInfo, Type,
+					Clauses, VarTypeInfo1, VarTypeInfo)
 	;
 		error("unknown special pred")
 	),
@@ -547,6 +554,80 @@ unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Context, Clauses)
 			Clauses)
 	).
 
+:- pred unify_proc__generate_solve_equal_clauses(hlds_type_body, var, var,
+				term__context, module_info, type, list(clause),
+				unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_solve_equal_clauses(in, in, in, in, in, in, out,
+		in, out) is det.
+
+unify_proc__generate_solve_equal_clauses(TypeBody, H1, H2, Context,
+		ModuleInfo, Type, Clauses) -->
+	% Check to see whether a predicate for this has been provided
+	{ module_info_get_predicate_table(ModuleInfo, PredTable) },
+	( { type_util__type_to_type_id(Type, TypeSymName - TypeArity0, _) } ->
+		( { TypeSymName = unqualified(_) },
+			{ error("unify_proc__generate_solve_equal_clauses: Cannot generate solve_equal clauses for unqualified type") }
+		; { TypeSymName = qualified(ModuleName, TypeName0) },
+			{ llds_out__name_mangle(TypeName0, TypeName) }
+		),
+		{ TypeArity = TypeArity0 }
+	;
+		{ error("unify_proc__generate_solve_equal_clauses: type_to_type_id failed") }
+	),
+	% Construct predicate name
+	{ string__int_to_string(TypeArity, TypeArityString) },
+	{ string__append_list( [TypeName, "_", TypeArityString,
+			"___SolveEqual__"], PredName) },
+
+	{ ArgVars = [H1, H2] },
+	( { predicate_table_search_pred_m_n_a(PredTable, ModuleName, PredName,
+			2, [_|_]) } ->
+		%
+		% Just generate a call to the provided predicate.
+		% (The pred_id and proc_id will be figured
+		% out by type checking and mode analysis.)
+		%
+		{ invalid_pred_id(PredId) },
+		{ invalid_proc_id(ModeId) },
+		{ Call = call(PredId, ModeId, ArgVars, not_builtin, no,
+				unqualified(PredName)) },
+		{ goal_info_init(GoalInfo0) },
+		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+		{ Goal = Call - GoalInfo },
+		unify_proc__quantify_clause_body(ArgVars, Goal, Context,
+				Clauses)
+	;
+%/*
+%		XXX any/any modes break this
+%		XXX When fixing, make sure TypeBody is restored in head
+		( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred),
+				IsEnum = no } ->
+			( { MaybeEqPred = yes(_EqPredName) } ->
+%*/
+				%
+				% XXX Don't know what to do here:
+				% just generate code that will call error/1
+				%
+				unify_proc__build_call(
+					"builtin_solve_equal_non_solver_type",
+					ArgVars, Context, Goal),
+				unify_proc__quantify_clause_body(ArgVars,
+					Goal, Context, Clauses)
+%/*
+			;
+				unify_proc__generate_du_solve_equal_clauses(
+					Ctors, H1, H2, Context, Clauses)
+			)
+		;
+			{ create_atomic_unification(H1, var(H2), Context,
+					explicit, [], Goal) },
+			unify_proc__quantify_clause_body(ArgVars, Goal,
+					Context, Clauses)
+		)
+%*/
+	).
+
+
 :- pred unify_proc__quantify_clause_body(list(var), hlds_goal, term__context,
 			list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__quantify_clause_body(in, in, in, out, in, out) is det.
@@ -624,6 +705,43 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) },
 	unify_proc__generate_du_unify_clauses(Ctors, H1, H2, Context, Clauses).
+
+:- pred unify_proc__generate_du_solve_equal_clauses(list(constructor), var, var,
+				term__context, list(clause),
+				unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_du_solve_equal_clauses(in, in, in, in, out, in, out)
+	is det.
+
+unify_proc__generate_du_solve_equal_clauses([], _H1, _H2, _Context, []) --> [].
+unify_proc__generate_du_solve_equal_clauses([Ctor | Ctors], H1, H2, Context,
+		[Clause | Clauses]) -->
+	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
+	{ list__length(ArgTypes, FunctorArity) },
+	{ FunctorConsId = cons(FunctorName, FunctorArity) },
+	unify_proc__make_fresh_vars(ArgTypes, Vars1),
+	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	{ create_atomic_unification(
+		H1, functor(FunctorConsId, Vars1), Context, explicit, [], 
+		SolveEqualH1_Goal) },
+	{ create_atomic_unification(
+		H2, functor(FunctorConsId, Vars2), Context, explicit, [], 
+		SolveEqualH2_Goal) },
+	unify_proc__solve_equal_var_lists(Vars1, Vars2, SolveEqualArgs_Goal),
+	{ GoalList = [SolveEqualH1_Goal, SolveEqualH2_Goal |
+		SolveEqualArgs_Goal] },
+	{ goal_info_init(GoalInfo0) },
+	{ goal_info_set_context(GoalInfo0, Context,
+		GoalInfo) },
+	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
+	unify_proc__info_get_varset(Varset0),
+	unify_proc__info_get_types(Types0),
+	{ implicitly_quantify_clause_body([H1, H2], Goal,
+		Varset0, Types0, Body, Varset, Types, _Warnings) },
+	unify_proc__info_set_varset(Varset),
+	unify_proc__info_set_types(Types),
+	{ Clause = clause([], Body, Context) },
+	unify_proc__generate_du_solve_equal_clauses(Ctors, H1, H2, Context,
+		Clauses).
 
 %-----------------------------------------------------------------------------%
 
@@ -1010,6 +1128,21 @@ unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
 	create_atomic_unification(Var1, var(Var2), Context, explicit, [],
 		Goal),
 	unify_proc__unify_var_lists(Vars1, Vars2, Goals).
+
+:- pred unify_proc__solve_equal_var_lists(list(var), list(var),
+		list(hlds_goal), unify_proc_info, unify_proc_info).
+:- mode unify_proc__solve_equal_var_lists(in, in, out, in, out) is det.
+
+unify_proc__solve_equal_var_lists([], [_|_], _) -->
+	{ error("unify_proc__solve_equal_var_lists: length mismatch") }.
+unify_proc__solve_equal_var_lists([_|_], [], _) -->
+	{ error("unify_proc__solve_equal_var_lists: length mismatch") }.
+unify_proc__solve_equal_var_lists([], [], []) --> [].
+unify_proc__solve_equal_var_lists([Var1 | Vars1], [Var2 | Vars2],
+		[Goal | Goals]) -->
+	{ term__context_init(Context) },
+	unify_proc__build_call("solve_equal", [Var1, Var2], Context, Goal),
+	unify_proc__solve_equal_var_lists(Vars1, Vars2, Goals).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

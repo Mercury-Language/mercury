@@ -233,6 +233,14 @@
 :- pred array_compare(comparison_result, array(T), array(T)).
 :- mode array_compare(out, in, in) is det.
 
+/*
+	% solve_equal/2 for arrays
+	% Should only be used with --use-solve-equal
+
+:- pred array_solve_equal(array(T), array(T)).
+:- mode array_solve_equal(in(array(any)), in(array(any))) is semidet.
+*/
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -263,9 +271,15 @@ lower bounds other than zero are not supported
 Define_extern_entry(mercury____Unify___array__array_1_0);
 Define_extern_entry(mercury____Index___array__array_1_0);
 Define_extern_entry(mercury____Compare___array__array_1_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Define_extern_entry(mercury____SolveEqual___array__array_1_0);
+#endif
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___array__array_1_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___array__array_1_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___array__array_1_0);
+#ifdef MR_USE_SOLVE_EQUAL
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____SolveEqual___array__array_1_0);
+#endif
 
 #ifdef  USE_TYPE_LAYOUT
 
@@ -291,6 +305,9 @@ BEGIN_MODULE(array_module_builtins)
 	init_entry_sl(mercury____Unify___array__array_1_0);
 	init_entry_sl(mercury____Index___array__array_1_0);
 	init_entry_sl(mercury____Compare___array__array_1_0);
+#ifdef MR_USE_SOLVE_EQUAL
+	init_entry_sl(mercury____SolveEqual___array__array_1_0);
+#endif
 BEGIN_CODE
 
 Define_entry(mercury____Unify___array__array_1_0);
@@ -307,6 +324,15 @@ Define_entry(mercury____Compare___array__array_1_0);
 	tailcall(ENTRY(mercury__array__array_compare_3_0),
 		ENTRY(mercury____Compare___array__array_1_0));
 
+#ifdef MR_USE_SOLVE_EQUAL
+Define_entry(mercury____SolveEqual___array__array_1_0);
+	fatal_error(""solve equal not defined for array:array/1"");
+	/* this is implemented in Mercury, not hand-coded low-level C */
+/*
+	tailcall(ENTRY(mercury__array__array_solve_equal_2_0),
+		ENTRY(mercury____SolveEqual___array__array_1_0));
+*/
+#endif
 END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
@@ -375,6 +401,30 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 			Result = ElemResult
 		)
 	).
+
+/*
+	% solve_equal/2 for arrays
+
+array_solve_equal(Array1, Array2) :-
+	array__size(Array1, Size),
+	array__size(Array2, Size),
+	array__solve_equal_elements(0, Size, Array1, Array2).
+
+:- pred array__solve_equal_elements(int, int, array(T), array(T)).
+:- mode array__solve_equal_elements(in, in, in(array(any)), in(array(any)))
+		is semidet.
+
+array__solve_equal_elements(N, Size, Array1, Array2) :-
+	( N = Size ->
+		true
+	;
+		array__lookup(Array1, N, Elem1),
+		array__lookup(Array2, N, Elem2),
+		solve_equal(Elem1, Elem2),
+		N1 is N + 1,
+		array__solve_equal_elements(N1, Size, Array1, Array2)
+	).
+*/
 
 %-----------------------------------------------------------------------------%
 
