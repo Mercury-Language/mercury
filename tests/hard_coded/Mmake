@@ -39,6 +39,7 @@ PROGS=	\
 	ho_order \
 	ho_solns \
 	ho_univ_to_type \
+	impossible_unify \
 	name_mangling \
 	no_fully_strict \
 	no_inline \
