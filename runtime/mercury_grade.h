@@ -178,7 +178,11 @@
   #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _ubf)
 #endif
 
-#define MR_GRADE_PART_10	MR_GRADE_PART_9
+#ifdef MR_NEW_MERCURYFILE_STRUCT
+  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, _file)
+#else
+  #define MR_GRADE_PART_10	MR_GRADE_PART_9
+#endif
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
   #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _picreg)
@@ -322,9 +326,14 @@ extern const char MR_GRADE_VAR;
 #endif
 
 /*
-** Parts 8-10 above (i.e. tag bits, and (un)boxed float)
+** Parts 8-9 above (i.e. tag bits, and (un)boxed float)
 ** are documented as "not for general use", and can't be set via the
 ** `--grade' option; we don't bother to pass them on.
+**
+** Likewise part 10 above (i.e. MR_NEW_MERCURYFILE_STRUCT)
+** can't be set by the `--grade' option; it's intended to be
+** set by the configure script at configuration time.
+** So we don't bother to pass it on.
 */
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
