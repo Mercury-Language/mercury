@@ -1883,7 +1883,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			PicAsmDateFileName),
 		module_name_to_file_name(ModuleName, ".$O", no, ObjFileName),
 		module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName),
-		module_name_to_file_name(ModuleName, ".il", no, ILFileName),
 		module_name_to_file_name(ModuleName, ".il_date", no,
 			ILDateFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
@@ -1899,7 +1898,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			ErrFileName, " ",
 			SplitObjPattern, " ",
 			RLOFileName, " ",
-			ILFileName, " : ",
+			ILDateFileName, " : ",
 			SourceFileName
 		] ),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
