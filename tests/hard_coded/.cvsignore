@@ -41,3 +41,12 @@ boyer
 test_imported_no_tag
 construct
 nullary_ho_func
+det_in_semidet_cntxt
+error_func
+export_test
+export_test.h
+float_map
+getopt_test
+higher_order_type_manip
+ho_order
+no_inline
