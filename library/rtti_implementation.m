@@ -970,13 +970,14 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 
 :- pragma foreign_proc("C#",
 	get_subterm(TypeInfo::in, Term::in, Index::in,
-		TagOffset::in) = (Arg::out), [promise_pure], "
+		ExtraArgs::in) = (Arg::out), [promise_pure], "
+	int i = Index + ExtraArgs;
 	try {
 		// try low level data
-		Arg = ((object[]) Term)[Index + TagOffset];
+		Arg = ((object[]) Term)[i];
 	} catch (System.InvalidCastException) {
 		// try high level data
-		Arg = Term.GetType().GetFields()[Index].GetValue(Term);
+		Arg = Term.GetType().GetFields()[i].GetValue(Term);
 	}
 	TypeInfo_for_T = TypeInfo;
 ").
