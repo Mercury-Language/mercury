@@ -47,6 +47,9 @@
 :- pred bintree__delete(bintree(K,V), K, bintree(K,V)).
 :- mode bintree__delete(in, in, out).
 
+:- pred bintree__remove(bintree(K,V), K, V, bintree(K,V)).
+:- mode bintree__remove(in, in, out, out).
+
 :- pred bintree__keys(bintree(K,_V), list(K)).
 :- mode bintree__keys(in, out) is det.
 
@@ -83,7 +86,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module require, int.
 
 :- type bintree(K,V)		--->	empty
 				;	tree(
@@ -214,6 +217,29 @@ bintree__delete(tree(K0, V0, Left, Right), K, Tree) :-
 		bintree__delete(Left, K, Tree1),
 		Tree = tree(K0, V0, Tree1, Right)
 	).
+
+%-----------------------------------------------------------------------------%
+
+bintree__remove(empty, _K, _V, empty) :-
+	error("Cannot remove a nonexistant item from bintree,").
+bintree__remove(tree(K0, V0, Left, Right), K, V, Tree) :-
+	compare(Result, K0, K),
+	(
+		Result = (=)
+	->
+		V = V0,
+		bintree__fixup(Left, Right, Tree)
+	;
+		Result = (<)
+	->
+		bintree__remove(Right, K, V, Tree1),
+		Tree = tree(K0, V0, Left, Tree1)
+	;
+		bintree__remove(Left, K, V, Tree1),
+		Tree = tree(K0, V0, Tree1, Right)
+	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred bintree__fixup(bintree(K,V), bintree(K,V), bintree(K,V)).
 :- mode bintree__fixup(in, in, out) is det.

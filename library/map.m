@@ -90,6 +90,10 @@
 :- pred map__delete(map(K,V), K, map(K,V)).
 :- mode map__delete(in, in, out).
 
+	% delete a key-value pair from a map and return the value.
+:- pred map__remove(map(K,V), K, V, map(K,V)).
+:- mode map__remove(in, in, out, out).
+
 :- pred map__from_corresponding_lists(list(K), list(V), map(K, V)).
 :- mode map__from_corresponding_lists(in, in, out).
 
@@ -154,6 +158,9 @@ map__from_sorted_assoc_list(L, M) :-
 
 map__delete(Map0, Key, Map) :-
 	bintree__delete(Map0, Key, Map).
+
+map__remove(Map0, Key, Value, Map) :-
+	bintree__remove(Map0, Key, Value, Map).
 
 %-----------------------------------------------------------------------------%
 
