@@ -26,6 +26,7 @@ MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(LIBRARY_QLS) $(NU_LIBRARY_QLS)`
 
 MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mc
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
+MGNUCFLAGS =	-I $(MERCURY_DIR)/boehm_gc
 MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
 		MERCURY_MOD_LIB_MODS="$(SYS_MODS)" \
 		mod2init
@@ -118,9 +119,6 @@ library.sicstus library.sicstus.debug: $(NU_LIBRARY_QLS)
 
 library.nu.debug: error.no debug.no
 library.sicstus.debug: error.ql
-
-library.sicstus.link: $(library.qls)
-	$(MSL) -i -o library.sicstus.link $(library.qls)
 
 #-----------------------------------------------------------------------------#
 
