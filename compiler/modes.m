@@ -317,7 +317,11 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 	modecheck_report_errors(ModeInfo2, ModeInfo),
 	mode_info_get_num_errors(ModeInfo, NumErrors),
 	mode_info_get_io_state(ModeInfo, IOState),
-	proc_info_set_goal(ProcInfo1, Body, ProcInfo).
+	mode_info_get_varset(ModeInfo, VarSet),
+	mode_info_get_var_types(ModeInfo, VarTypes),
+	proc_info_set_goal(ProcInfo1, Body, ProcInfo2),
+	proc_info_set_variables(ProcInfo2, VarSet, ProcInfo3),
+	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo).
 
 :- pred modecheck_final_insts(list(var), list(mode), mode_info, mode_info).
 :- mode modecheck_final_insts(in, in, in, out) is det.
@@ -1156,109 +1160,36 @@ modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
 modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 			ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	( InstMap0 = reachable(InstMapping0) ->
+	( InstMap0 = reachable(_) ->
 		% The new inst must be computed by unifying the
 		% old inst and the proc's final inst
-		instmap_lookup_var(InstMap0, Var0, Inst0),
+		instmap_lookup_var(InstMap0, Var0, VarInst0),
 		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 		(
-			abstractly_unify_inst(dead, Inst0, FinalInst,
+			abstractly_unify_inst(dead, VarInst0, FinalInst,
 				ModuleInfo0, UnifyInst, ModuleInfo1)
 		->
 			ModuleInfo = ModuleInfo1,
-			Inst = UnifyInst
+			VarInst = UnifyInst
 		;
 			error("modecheck_set_var_inst: unify_inst failed")
 		),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
-		(
-			% If we haven't added any information and
-			% we haven't bound any part of the var, then
-			% we haven't done anything.
-
-			inst_matches_initial(Inst0, Inst, ModuleInfo)
-		->
-			(
-				% If this was a call to an implied mode
-				% for that variable, then we
-				% need to introduce a fresh variable.
-				\+ inst_matches_final(Inst0, InitialInst,
-					ModuleInfo)
-			->
-				% XXX - implied modes not implemented
-				% we should introduce a fresh variable
-				Var = Var0,
-				Goals = [] - [],
-				set__singleton_set(WaitingVars, Var0),
-				mode_info_error(WaitingVars,
-					mode_error_implied_mode(Var0, Inst0,
-								InitialInst),
-						ModeInfo1, ModeInfo
-				)
-			;
-				Var = Var0,
-				Goals = [] - [],
-				ModeInfo = ModeInfo1
-			)
-		;
-			% We must have either added some information,
-			% or bound part of the var.  The call to
-			% inst_matches_final will fail iff we have
-			% bound part of a var.
-			inst_matches_final(Inst, Inst0, ModuleInfo)
-		->
-			% We've just added some information
-			Var = Var0,
-			Goals = [] - [],
-			map__set(InstMapping0, Var0, Inst, InstMapping),
-			InstMap = reachable(InstMapping),
-			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
-			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
-			delay_info__bind_var(DelayInfo0, Var0, DelayInfo),
-			mode_info_set_delay_info(DelayInfo, ModeInfo2, ModeInfo)
-		;
-			% We've bound part of the var.  If the var was locked,
-			% then we need to report an error.
-			mode_info_var_is_locked(ModeInfo0, Var0)
-		->
-			Var = Var0,
-			Goals = [] - [],
-			set__singleton_set(WaitingVars, Var0),
-			mode_info_error(WaitingVars,
-					mode_error_bind_var(Var0, Inst0, Inst),
-					ModeInfo1, ModeInfo
-			)
-		;
-			% We've bound part of the var.  If this was a call
-			% to an implied mode for that variable, then we
-			% need to introduce a fresh variable.
-			\+ inst_matches_final(Inst0, InitialInst, ModuleInfo)
-		->
-			% XXX - implied modes not implemented
-			% we should introduce a fresh variable
-			Var = Var0,
-			Goals = [] - [],
-			set__singleton_set(WaitingVars, Var0),
-			mode_info_error(WaitingVars,
-				mode_error_implied_mode(Var0, Inst0,
-							InitialInst),
-					ModeInfo1, ModeInfo
-			)
-		;
-			Var = Var0,
-			Goals = [] - [],
-			map__set(InstMapping0, Var0, Inst, InstMapping),
-			InstMap = reachable(InstMapping),
-			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
-			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
-			delay_info__bind_var(DelayInfo0, Var0, DelayInfo),
-			mode_info_set_delay_info(DelayInfo, ModeInfo2, ModeInfo)
-		)
+		handle_implied_mode(Var0,
+			VarInst0, VarInst, InitialInst, FinalInst,
+		 	Var, Goals, ModeInfo1, ModeInfo2),
+		modecheck_set_var_inst(Var0, FinalInst, ModeInfo2, ModeInfo)
 	;
 		Var = Var0,
 		Goals = [] - [],
 		ModeInfo = ModeInfo0
 	).
+
+	% Note that there are two versions of modecheck_set_var_inst,
+	% one with arity 7 and one with arity 4.
+	% The former is used for predicate calls, where we may need
+	% to introduce unifications to handle calls to implied modes.
+	% The latter 
 
 :- pred modecheck_set_var_inst(var, inst, mode_info, mode_info).
 :- mode modecheck_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
@@ -1322,6 +1253,70 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 		)
 	;
 		ModeInfo = ModeInfo0
+	).
+
+
+% If this was a call to an implied mode for that variable, then we need to
+% introduce a fresh variable.
+
+:- pred handle_implied_mode(var, inst, inst, inst, inst,
+				var, pair(list(hlds__goal)),
+				mode_info, mode_info).
+:- mode handle_implied_mode(in, in, in, in, in, out, out,
+				mode_info_di, mode_info_uo) is det.
+handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst,
+		Var, Goals, ModeInfo0, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo0, ModuleInfo),
+	(
+		% If the initial inst of the variable matches
+		% the initial inst specified in the pred's mode declaration,
+		% then it's not a call to an implied mode, it's an exact
+		% match with a genuine mode.
+		inst_matches_final(VarInst0, InitialInst, ModuleInfo)
+	->
+		Var = Var0,
+		Goals = [] - [],
+		ModeInfo = ModeInfo0
+	;
+		% This is the implied mode case.
+		% We do not yet handle implied modes for partially
+		% instantiated vars, since that would require
+		% doing a deep copy, and we don't know how to do that yet.
+		( inst_is_bound(ModuleInfo, InitialInst) ->
+			% This is the case we can't handle
+			Var = Var0,
+			Goals = [] - [],
+			set__singleton_set(WaitingVars, Var0),
+			mode_info_error(WaitingVars,
+				mode_error_implied_mode(Var0, VarInst0,
+				InitialInst),
+				ModeInfo0, ModeInfo
+			)
+		;
+			% This is the simple case of implied modes,
+			% where the declared mode was free -> ...
+			mode_info_get_varset(ModeInfo0, VarSet0),
+			mode_info_get_var_types(ModeInfo0, VarTypes0),
+			varset__new_var(VarSet0, Var, VarSet),
+			map__lookup(VarTypes0, Var0, VarType),
+			map__set(VarTypes0, Var, VarType, VarTypes),
+			mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
+			mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo),
+			ModeVar0 = (VarInst0 -> VarInst),
+			ModeVar = (FinalInst -> VarInst),
+			categorize_unify_var_var(ModeVar0, ModeVar,
+				live, dead, Var0, Var,
+				VarTypes, ModuleInfo, Unification),
+			AfterGoal = unify(term__variable(Var0),
+					term__variable(Var),
+					ModeVar0 - ModeVar,
+					Unification,
+					unify_context(explicit, [])
+						% XXX context is wrong
+			),
+			goal_info_init(GoalInfo), % XXX is that wrong?
+			Goals = [] - [AfterGoal - GoalInfo]
+		)
 	).
 
 %-----------------------------------------------------------------------------%
