@@ -238,6 +238,8 @@ endif
 # compiler if one of the libraries changes.
 
 ifeq ($(findstring il,$(GRADE)),il)        
+MS_CSCFLAGS=/lib:`$(FIX_PATH_FOR_CSC) ../analysis`
+
 # This line works around an Mmake bug: mmake doesn't record
 # dependencies properly with --transitive-intermodule-optimization
 %.il: opts
