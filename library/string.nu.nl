@@ -44,3 +44,30 @@ string__length(String, Length) :-
 	list__length(String, Length).
 
 %-----------------------------------------------------------------------------%
+
+string__split(String, Count, LeftString, RightString) :-
+	(
+		Count =< 0
+	->
+		LeftString = "",
+		RightString = String
+	;
+		string__to_int_list(String, CodesList),
+		list__split_list(Count, CodesList, LeftCodes, RightCodes)
+	->
+		string__to_int_list(LeftString, LeftCodes),
+		string__to_int_list(RightString, RightCodes)
+	;
+		LeftString = String,
+		RightString = ""
+	).
+
+%-----------------------------------------------------------------------------%
+
+string__first_char(String0, Char, String) :-
+	string__to_int_list(String0, List0),
+	List0 = [CharCode | List],
+	string__to_int_list(String, List),
+	char_to_int(Char, CharCode).
+
+%-----------------------------------------------------------------------------%

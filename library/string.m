@@ -12,9 +12,6 @@
 
 % This modules provides basic string handling facilities.
 
-% XXX The efficiency of many of these operations is very poor with
-%     the current implementation.
-
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -207,6 +204,11 @@
 :- external(string__float_to_string/2).
 :- external(string__to_float/2).
 :- external(string__to_int_list/2).
+:- external(string__index/3).
+:- external(string__length/2).
+:- external(string__append/3).
+:- external(string__split/4).
+:- external(string__first_char/3).
 
 string__to_int(String, Int) :-
 	string__base_string_to_int(10, String, Int).
@@ -228,30 +230,11 @@ string__base_string_to_int_2(Base, String, Int0, Int) :-
 		Int = Int0
 	).
 
-:- external(string__index/3).
-
 string__index_det(String, Int, Char) :-
 	( string__index(String, Int, Char0) ->
 		Char = Char0
 	;
 		error("string__index_det: index out of range")
-	).
-
-string__split(String, Count, LeftString, RightString) :-
-	(
-		Count < 0
-	->
-		LeftString = "",
-		RightString = String
-	;
-		string__to_int_list(String, CodesList),
-		list__split_list(Count, CodesList, LeftCodes, RightCodes)
-	->
-		string__to_int_list(LeftString, LeftCodes),
-		string__to_int_list(RightString, RightCodes)
-	;
-		LeftString = String,
-		RightString = ""
 	).
 
 string__left(String, Count, LeftString) :-
@@ -265,9 +248,6 @@ string__right(String, RightCount, RightString) :-
 string__substring(String, Start, Count, Substring) :-
 	string__right(String, Start, Right),
 	string__left(Right, Count, Substring).
-
-:- external(string__length/2).
-:- external(string__append/3).
 
 string__remove_suffix(A, B, C) :-
 	string__to_int_list(A, LA),
@@ -380,12 +360,6 @@ string__digit_to_char(32, 'W').
 string__digit_to_char(33, 'X').
 string__digit_to_char(34, 'Y').
 string__digit_to_char(35, 'Z').
-
-string__first_char(String0, Char, String) :-
-	string__to_int_list(String0, List0),
-	List0 = [CharCode | List],
-	string__to_int_list(String, List),
-	char_to_int(Char, CharCode).
 
 string__to_char_list(String, CharList) :-
 	string__to_int_list(String, IntList),
