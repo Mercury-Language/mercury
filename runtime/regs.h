@@ -1,3 +1,6 @@
+#ifndef REGS_H
+#define REGS_H
+
 /*
 ** The virtual machine registers are built up using two levels
 ** of abstraction.  This file defines the virtual machine registers
@@ -8,8 +11,8 @@
 #include "machregs.h"
 
 /* GNU C allows lvalue casts, so if we have gcc, use them.
-** If we don't have gcc, then we can use *(type *)&val,
-** but that wouldn't work for gcc since val might be a global
+** If we don't have gcc, then we can use *(type *)&lval,
+** but that wouldn't work for gcc since lval might be a global
 ** register in which case we couldn't take it's address.
 */
 #ifdef __GNUC__
@@ -62,3 +65,5 @@ extern Word r29;
 extern Word r30;
 extern Word r31;
 extern Word r32;
+
+#endif /* REGS_H */

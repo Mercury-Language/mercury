@@ -1,3 +1,6 @@
+#ifndef STD_H
+#define STD_H
+
 /*
 **	Standard definitions for C
 */
@@ -76,3 +79,5 @@
 #define	CONTROL(c)	(c & 037)
 #define	BELL		'\007'
 #define	ESC		'\033'
+
+#endif /* STD_H */
