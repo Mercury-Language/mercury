@@ -104,7 +104,38 @@
 	skip(label):
 #else
 
-  #define ASM_JUMP(label)	goto *(label)
+  #ifdef __i386__
+    /*
+    ** The following hack works around a stack leak on the i386.
+    ** The problem is that gcc pushes function parameters onto
+    ** the stack when calling C functions such as GC_malloc(),
+    ** and only restores the stack pointer in the epilogue.
+    ** With non-local gotos, we jump out of the function without
+    ** executing its epilogue, so the stack pointer never gets
+    ** restored.  The result is a memory leak; for example,
+    ** `mc --generate-dependencies mercury_compile' exceeds the
+    ** Slackware Linux default stack space limit of 8M.
+    **
+    ** GNU C has an option `-fno-defer-pop' which is supposed to
+    ** avoid this sort of thing, but it doesn't work for our
+    ** code using non-local gotos.
+    **
+    ** We work around this using the dummy assembler code below, which
+    ** pretends to use the stack pointer, forcing gcc to flush any updates
+    ** of the stack pointer immediately, rather than deferring them until
+    ** the function epilogue.
+    **
+    ** I know this is awful.  It wasn't _my_ idea to use non-local gotos ;-)
+    */
+    #define ASM_JUMP(label)				\
+  	{ register int stack_pointer __asm__("esp");	\
+  	__asm__("" : : "g"(stack_pointer)); }		\
+  	goto *(label)
+  #else
+    #define ASM_JUMP(label)				\
+  	goto *(label)
+  #endif
+
   #define ASM_ENTRY(label) 				\
   	entry(label):					\
 	__asm__(".globl entry_" stringify(label) "\n\t"	\
@@ -229,7 +260,12 @@
 	entry(label) = &&label
     #define ENTRY(label) 	(entry(label))
 
-    #define JUMP(label)		goto *(label)
+    #ifdef __i386__
+      /* see comment in definition of ASM_JUMP */
+      #define JUMP(label)		ASM_JUMP(label)
+    #else
+      #define JUMP(label)		goto *(label)
+    #endif
 
   #endif
 
