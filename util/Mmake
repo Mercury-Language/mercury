@@ -11,8 +11,11 @@ install: mkinit
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp mkinit $(INSTALL_BINDIR)
 
+# suppress the default Mmake rule which removes all the .c files
+CLEAN_C =
+
 clean:
-	-rm mkinit.o
+	-rm -f mkinit.o
 
 realclean:
-	-rm mkinit.o mkinit
+	-rm -f mkinit.o mkinit
