@@ -2,10 +2,10 @@
 
 INTRODUCTION
 
-Mercury has been ported to Windows 95 and Windows NT using the "Cygwin"
+Mercury has been ported to Windows using the "Cygwin"
 (formerly also known as "Cygwin32" and "gnu-win32") Unix emulation
-package from Cygnus.  It should work on Windows 98 too, but we haven't
-tested that.
+package from Cygnus.  We've tested the port on Windows 2000,
+but it should work on Windows 95, Windows 98, and Windows NT too.
 
 This file documents how to build the source distribution
 of Mercury on Windows using Cygwin.
@@ -57,6 +57,10 @@ Configure with
 	sh configure
 
 as described in the INSTALL file.
+On Windows 2000, it may start up the "Microsoft Management Console"
+program (the autoconfiguration process looks for a program named "mmc").
+If so, just close that application, e.g. by selecting "Exit" from
+the "Console" menu.
 
 Reportedly running configure sometimes results in permission errors,
 but apparently the errors go away if you run configure a second time.
@@ -102,6 +106,9 @@ USING MERCURY
 
 Once you've finished installing, you need to add the appropriate
 directory, normally /usr/local/mercury-<VERSION>/bin, to your PATH. 
+On Windows 2000, you need to make sure that this directory precedes
+the Windows system directory in the PATH, otherwise `mmc' will invoke the
+Microsoft Management Console rather than the Melbourne Mercury Compiler.
 
 You should be able to read the HTML version of the Mercury
 documentation, which by default gets installed in
