@@ -1,6 +1,7 @@
-# For accumulators to be introduced into r, R0 and [H] must have their
-# order swapped.  The compiler should warn the user that this may have
-# performance implications (a good one in this case).
+% For accumulators to be introduced into r, R0 and [H] must have their
+% order swapped.  The compiler should warn the user that this may have
+% performance implications (a good one in this case).
+
 :- module arg_order_rearrangment.
 :- interface.
 :- import_module list.
