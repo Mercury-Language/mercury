@@ -22,7 +22,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury implementation.
 
-Copyright (C) 1995-1998 The University of Melbourne.
+Copyright (C) 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -52,7 +52,7 @@ into another language, under the above conditions for modified versions.
 @author Peter Ross
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1998 The University of Melbourne.
+Copyright @copyright{} 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -187,9 +187,14 @@ Some of its options (e.g. @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in other Unix compilers.
 
 Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
-or module names.  For a module name such as @samp{foo.bar.baz},
+or module names, with @samp{.} (rather than @samp{__} or @samp{:})
+as the module qualifier.  For a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in files @file{foo.bar.baz.m},
 @file{bar.baz.m}, and @file{baz.m}, in that order.
+Note that if the file name does not include all the module
+qualifiers (e.g. if it is @file{bar.baz.m} or @file{baz.m}
+rather than @file{foo.bar.baz.m}), then the module name in the
+@samp{:- module} declaration for that module must be fully qualified.
 
 To compile a program which consists of just a single source file,
 use the command
@@ -2196,7 +2201,8 @@ mmc [@var{options}] @var{arguments}
 
 Arguments can be either module names or file names.
 Arguments ending in @samp{.m} are assumed to be file names,
-while other arguments are assumed to be module names.
+while other arguments are assumed to be module names, with
+@samp{.} (rather than @samp{__} or @samp{:}) as module qualifier.
 If you specify a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in files @file{foo.bar.baz.m},
 @file{bar.baz.m}, and @file{baz.m}, in that order.

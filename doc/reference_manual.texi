@@ -2706,9 +2706,10 @@ of sub-modules.
 Each of the named sub-modules in an @samp{:- include_module} declaration
 must be defined in a separate source file.
 The mapping between module names and source file names is
-implementation-defined.  (The University of Melbourne Mercury
-implementation requires a module named @samp{foo:bar:baz} to be
-located in source file @file{foo.bar.baz.m}.)
+implementation-defined.  (For a module named @samp{foo:bar:baz},
+The University of Melbourne Mercury implementation requires the source
+to be located in a file named @file{foo.bar.baz.m}, @file{bar.baz.m},
+or @file{baz.m}.) 
 The separate source file must contain the declaration (interface)
 and definition (implementation) of the sub-module.
 It must start with a @samp{:- module} declaration
@@ -2717,7 +2718,11 @@ in the parent, followed by the interface and (if necessary)
 implementation sections, and it may optionally end with a @samp{:- end_module}
 declaration.  (Note: the module names in the @samp{:- module},
 @samp{:- end_module}, and @samp{:- include_module} declarations
-need not be fully-qualified.)
+need not be fully-qualified.  However,
+if the file name used for a particular module does
+not include all the module qualifiers, then the University of Melbourne
+Mercury implementation requires the module name in the @samp{:- module}
+declaration for that module to be fully qualified.)
 
 If an @samp{:- include_module} declaration occurs in the interface
 section of a module, then only the declarations (interfaces) of the sub-modules
@@ -2766,10 +2771,12 @@ When using nested modules,
 the Mercury build tool Mmake sometimes tries to build things in the
 wrong order and hence reports spurious errors about @samp{.int*} files
 not being found.  In these cases, simply typing @samp{mmake} again will
-usually solve the problem.
+usually solve the problem.  (If it doesn't, the work-around is
+to use separate sub-modules rather than nested sub-modules, i.e. put
+the sub-modules in a separate source file.)
 @item
 Using @samp{mmake} to do parallel makes (e.g. @samp{mmake --jobs 2})
-doesn't always work correctly if you're using nested sub modules.
+doesn't always work correctly if you're using nested sub-modules.
 (The work-around is to use separate sub-modules instead of nested
 sub-modules, i.e. to put the sub-modules in separate source files.)
 @end itemize
