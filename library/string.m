@@ -15,7 +15,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module char, int, float, require, std_util.
+:- import_module list, char, int, float, require, std_util.
 
 :- pred string__length(string, int).
 :- mode string__length(in, out) is det.
@@ -265,6 +265,8 @@
 %		It is always better to include a `.' to remove ambiguity.  This
 %		interpretation is non-standard and may change.
 %
+%		Numbers are truncated by a precision value, not rounded off.
+%
 
 
 %------------------------------------------------------------------------------%
@@ -279,7 +281,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, int, require.
 
 :- pred string__to_int_list(string, list(int)).
 :- mode string__to_int_list(in, out) is det.
@@ -1105,7 +1106,7 @@ string__format_calc_prec(Istring, Ostring, Precision) :-
 	(
 		string__find_index( Istring, '.', Index)
 	->
-		Spa is Prec + Index + 1
+		Spa is Prec + Index
 	;
 		error("stringf:  An error with conversion  float==>string")
 	),
