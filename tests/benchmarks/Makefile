@@ -8,16 +8,22 @@ include ../../compiler/Makefile.mercury
 include ../Makefile.tests
 
 MC=mmc
+# ML=MERCURY_CLIB_DIR=../../code ml
 
 #-----------------------------------------------------------------------------#
 
 PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
-	tak query
+	tak query arithmetic
 OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
 RESS=	$(PROGS:%=%.res)
+MODS=	$(PROGS:%=%.mod)
 
 check: $(EXPS) $(OUTS) $(RESS)
+
+mods: $(MODS)
+
+$(MODS): printlist.int
 
 all:	$(PROGS)
 
@@ -29,6 +35,3 @@ clean_progs:
 	rm -f $(PROGS)
 
 #-----------------------------------------------------------------------------#
-
-%_init.c: %.mod
-	$(MOD2INIT) $(MOD2INITFLAGS)  /usr/contrib/lib/mercury/modules/* printlist.mod $< > $@
