@@ -6,6 +6,11 @@ This file contains various notes about the design of the compiler.
 
 OUTLINE
 
+The main job of the compiler is to translate Mercury into C, although it
+can also translate (subsets of) Mercury to some other languages (Goedel,
+the bytecode of a debugger currently under development, and possibly in
+the future the Aditi Relational Language).
+
 The top-level of the compiler is in the file mercury_compile.m.
 The basic design is that compilation is broken into the following
 stages:
@@ -55,11 +60,16 @@ stored in the io__state, using the type globals defined in globals.m.
 
 	The result of this stage is a parse tree that has a one-to-one
 	correspondence with the source code.  The parse tree data structure
-	definition is in prog_data, while the code to create it is in
-	prog_io.m.  The modules prog_out.m and mercury_to_mercury.m
-	contain predicates for printing the parse tree.
-	prog_util.m contains some utility predicates for manipulating
-	the parse tree.
+	definition is in prog_data.m, while the code to create it is in
+	prog_io.m and its submodules prog_io_dcg.m (which handles clauses
+	using Definite Clause Grammar notation), prog_io_goal.m (which handles
+	goals), prog_io_pragma.m (which handles pragma declarations) and
+	prog_io_util.m (which defines predicates and types needed by the other
+	prog_io*.m modules.
+
+	The modules prog_out.m and mercury_to_mercury.m contain predicates
+	for printing the parse tree.  prog_util.m contains some utility
+	predicates for manipulating the parse tree.
 
 * imports and exports are handled at this point (modules.m)
 
@@ -91,7 +101,7 @@ stored in the io__state, using the type globals defined in globals.m.
 
 * conversion to superhomogeneous form and into HLDS
 
-	make_hlds.m transforms the code into superhomogenous form,
+	make_hlds.m transforms the code into superhomogeneous form,
 	and at the same time converts the parse tree into the HLDS.
 	make_hlds.m also calls make_tags.m which chooses the data
 	representation for each discriminated union type by
@@ -247,6 +257,9 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   even the user doesn't, and automatically constructed unification and
   comparison predicates are often dead as well.
 
+* elimination of useless assignments, assignments that merely introduce
+  another name for an already existing variable (excess.m).
+
 * reducing the number of variables that have to be saved across procedure calls
   (saved_vars.m). We do this by putting the code that generates the value of
   a variable just before the use of that variable, duplicating the variable
@@ -284,19 +297,17 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 			This transformation, which is performed by
 			follow_code.m, improves the results of follow_vars.
 		allocating the follow vars (follow_vars.m)
-			Traverses backwards over the HLDS, annotating each
-			branched structure with the variable target locations
-			for the following call, so we can generate
-			efficient code by putting variables in the right spot.
-			This module is not called from mercury_compile.m;
-			it is called from store_alloc.m.
+			Traverses backwards over the HLDS, annotating some
+			goals with information about what locations variables
+			will be needed in next.  This allows us to generate
+			more efficient code by putting variables in the right
+			spot directly.  This module is not called from
+			mercury_compile.m; it is called from store_alloc.m.
 		allocating the store map (store_alloc.m)
-			Allocates locations for variables at the end of
-			branched goals.  Annotates the goal_info for
-			each branched goal with allocation of variable
-			target locations before so that we can generate
-			correct code by putting variables in the same
-			spot in each branch.
+			Annotates each branched goal with variable location
+			information so that we can generate correct code
+			by putting variables in the same spot at the end
+			of each branch.
 
 * code generation
 
@@ -319,6 +330,7 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 	It also calls middle_rec.m to do middle recursion optimization.
 
 	The code generation modules make use of
+
 		code_info.m
 			The main data structure for the code generator
 		code_exprn.m
@@ -350,7 +362,11 @@ They are:
 
 * optimization of stack frame allocation/deallocation (frameopt.m)
 
+* filling branch delay slots (delay_slot.m)
+
 * dead code and dead label removal (labelopt.m)
+
+* peephole optimization (peephole.m)
 
 * value numbering
 
@@ -398,11 +414,15 @@ They are:
 		modules of the value numbering optimization.
 	vn_util.m
 		Utility predicates.
+	vn_verify.m
+		Sanity checks to make sure that (a) the optimized code
+		computes the same values as the original code, and (b)
+		the optimized code does not dereference tagged pointers
+		until the tag is known. (Violations of (b) usually cause
+		unaligned accesses, which cause bus errors on many machines.)
 
 	Several of these modules (and also frameopt, above) use livemap.m,
 	which finds the set of locations live at each label.
-
-* peephole optimization (peephole.m)
 
 Depending on which optimization flags are enabled,
 optimize.m may invoke many of these passes multiple times.
@@ -428,7 +448,28 @@ contains miscellaneous predicates for LLDS-to-LLDS optimization.
 
 -----------------------------------------------------------------------------
 
+BYTECODE
+
+The Mercury compiler can translate Mercury programs into bytecode for
+interpretation by the Mercury debugger currently under development.
+The generation of bytecode happens after semantic checks have been
+completed.
+
+* bytecode.m defines the internal representation of bytecodes, and contains
+  the predicates to emit them in two forms. The raw bytecode form is emitted
+  into <filename>.bytecode for interpretation, while a human-readable form
+  is emitted into <filename>.bytedebug for visual inspection.
+
+* bytecode_gen.m contains the predicates that translate HLDS into bytecode.
+
+-----------------------------------------------------------------------------
+
 MISCELLANEOUS
+
+	det_util:
+		This module contains utility predicates needed by the parts
+		of the semantic analyzer and optimizer concerned with
+		determinism.
 
 	special_pred.m, unify_proc.m:
 		These modules contain stuff for handling the special
@@ -462,6 +503,12 @@ CURRENTLY USELESS
 The following modules do not serve any function at the moment.
 Some of them are obsolete; other are work-in-progress.
 (For some of them its hard to say which!)
+
+	lco.m:
+		This finds predicates whose implementations would benefit
+		from last call optimization modulo constructor application.
+		It does not apply the optimization and will not until the
+		mode system is capable of expressing definite aliasing.
 
 	mercury_to_goedel.m:
 		This converts from item_list to Goedel source code.
