@@ -47,8 +47,14 @@
 #include "mercury_array_macros.h"
 #include <stdio.h>
 
-static	MR_Trace_Cmd_Info	MR_trace_ctrl = { MR_CMD_GOTO, 0, 0,
-					MR_PRINT_LEVEL_SOME, FALSE };
+static	MR_Trace_Cmd_Info	MR_trace_ctrl = {
+	MR_CMD_GOTO,
+	0,	/* stop depth */
+	0,	/* stop event */
+	MR_PRINT_LEVEL_SOME,
+	FALSE,	/* not strict */
+	TRUE	/* must check */
+};
 
 Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, Unsigned seqno, Unsigned depth,

@@ -391,20 +391,28 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	Word		*saved_regs = event_info->MR_saved_regs;
 	Integer		modules_list_length;
 	Word		modules_list;
+	static String	MR_mmc_options;
+
+        /*
+        ** These globals can be overwritten when we call Mercury code,
+        ** such as the code in browser/debugger_interface.m.
+	** We therefore save them here and restore them before
+	** exiting from this function.  However, we store the
+        ** saved values in a structure that we pass to MR_trace_debug_cmd,
+        ** to allow them to be modified by MR_trace_retry().
+        */
+	event_details.MR_call_seqno = MR_trace_call_seqno;
+	event_details.MR_call_depth = MR_trace_call_depth;
+	event_details.MR_event_number = MR_trace_event_number;
 
 	/* 
 	** MR_mmc_options contains the options to pass to mmc when compiling 
 	** queries. We initialise it to the String "".
 	*/
-	static String	MR_mmc_options;
 	MR_TRACE_CALL_MERCURY(ML_DI_init_mercury_string(&MR_mmc_options));
 
 	MR_trace_init_point_vars(event_info->MR_event_sll,
 		event_info->MR_saved_regs);
-
-	event_details.MR_call_seqno = MR_trace_call_seqno;
-	event_details.MR_call_depth = MR_trace_call_depth;
-	event_details.MR_event_number = MR_trace_event_number;
 
 	if (searching) {
 		/* XXX should also pass registers here,
@@ -416,7 +424,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			MR_send_message_to_socket("forward_move_match_found");
 			searching = FALSE;
 		} else {
-			return jumpaddr;
+			goto done;
 		}
 	}
 
@@ -436,7 +444,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				}
 				search_data = debugger_request;
 			        searching = TRUE;
-				return jumpaddr;
+				goto done;
 
 			case MR_REQUEST_CURRENT_LIVE_VAR_NAMES:
 				if (MR_debug_socket) {
@@ -492,7 +500,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					cmd->MR_trace_cmd = MR_CMD_GOTO;
 					cmd->MR_trace_stop_event = 
 						MR_trace_event_number + 1;
-					return jumpaddr;
+					goto done;
 				} else {
 					MR_send_message_to_socket_format(
 						"error(\"%s\").\n", message);
@@ -626,7 +634,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			  }
 			case MR_REQUEST_NO_TRACE:
 				cmd->MR_trace_cmd = MR_CMD_TO_END;
-				return jumpaddr;
+				goto done;
 
 			default:
 				fatal_error("unexpected request read from "
@@ -634,9 +642,21 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		}
 	}
 
+done:
+	/*
+	** Recalculate the `must_check' flag, in case we
+	** changed the command strictness or print-level
+	*/
 	cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
 			(cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
 
+	/*
+	** Restore the event numbers, in case the Mercury
+	** code that we call from the trace system
+	** (e.g. browser/debugger_interface.m)
+	** clobbered them.  That could happen if that code
+	** had been compiled with debugging enabled.
+	*/
 	MR_trace_call_seqno = event_details.MR_call_seqno;
 	MR_trace_call_depth = event_details.MR_call_depth;
 	MR_trace_event_number = event_details.MR_event_number;
@@ -1008,6 +1028,7 @@ MR_get_var_number(Word debugger_request)
 **	- the atom 'pred' or 'func' depending if the procedure is a function 
 **	  or not
 **	- proc('string:string'/long-long) (the name of the procedure)
+**		XXX this is not valid format for a Mercury term
 **	- det(string) (the determinism of the procedure)
 **	- def_module(string) (the name of the defining module if different from
 **	  the current one)
@@ -1017,6 +1038,8 @@ MR_get_var_number(Word debugger_request)
 **	- detail(unsigned long, unsigned long, unsigned long) (as above)
 **	- proc('string for string:string'/long-long) (the name of the 
 **	  compiler-generated procedure)
+**		XXX this is not valid format for a Mercury term
+**	- det(string) (as above)
 **	- def_module(string) (as above)
 ** 3) The debuggee sends "end_stack"
 */
