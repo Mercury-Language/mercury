@@ -70,15 +70,27 @@ void proceed_msg(void)
 	printf("\nreturning from determinate procedure\n");
 }
 
+void cr1_msg(Word val0, const Word *addr)
+{
+	printf("put value %9x at ", val0);
+	printheap((Word) addr);
+}
+
+void cr2_msg(Word val0, Word val1, const Word *addr)
+{
+	printf("put values %9x,%9x at ", val0, val1);
+	printheap((Word) addr);
+}
+
 void push_msg(Word val, const Word *addr)
 {
-	printf("push value %x to ", val);
+	printf("push value %9x to ", val);
 	printstack((Word) addr);
 }
 
 void pop_msg(Word val, const Word *addr)
 {
-	printf("pop value %x from ", val);
+	printf("pop value %9x from ", val);
 	printstack((Word) addr);
 }
 
@@ -94,19 +106,19 @@ void printint(Word n)
 }
 void printheap(Word h)
 {
-	printf("ptr %x, offset %3d words\n",
+	printf("ptr %9x, offset %3d words\n",
 		h, (Word *) h - heapmin);
 }
 
 void printstack(Word s)
 {
-	printf("ptr %x, offset %3d words\n",
+	printf("ptr %9x, offset %3d words\n",
 		s, (Word *) s - stackmin);
 }
 
 void printcpstack(Word s)
 {
-	printf("ptr %x, offset %3d words, procedure %s\n",
+	printf("ptr %9x, offset %3d words, procedure %s\n",
 		s, (Word *) s - cpstackmin,
 		(const char *)(((Word *) s)[PREDNM]));
 }
@@ -244,21 +256,13 @@ PrintRegFunc	*regtable[MAXENTRIES][16] =
 	{ printlabel, printint, printlist, FNULL,
 	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+/* MEMDET_1 */
+	{ printlabel, printlist, printint, printint,
+	FNULL, FNULL, printheap, printstack,
+	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
 /* MKLIST_1 */
 	{ printlabel, printlist, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
-/* Q_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
-/* NEG_NOT_Q_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
-/* INT_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
 /* HEAP_1 */
 	{ printlabel, printlist, printint, FNULL,
 	FNULL, FNULL, printheap, printstack,
@@ -268,10 +272,50 @@ PrintRegFunc	*regtable[MAXENTRIES][16] =
 	{ printlabel, printint, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL,
 	FNULL, FNULL, FNULL, FNULL,
 	FNULL, printcpstack, printcpstack, printcpstack },
-/* MEMDET_1 */
-	{ printlabel, printlist, printint, printint,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+/* INT_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* Q_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* NOT_Q_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* NOT_Q5_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* DETNEG_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* NONDETNEG_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* A_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* C_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* D_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* E_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* F_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
 };
 
 void printregs(const char *msg)

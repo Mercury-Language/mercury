@@ -3,17 +3,23 @@
 #include	"getopt.h"
 #include	"std.h"
 
+/* GENERAL DEFINITIONS */
+
+#define	WORDSIZE	4
+
 typedef	uint	Word;
 typedef void	Code;
 
+/* DEFINITIONS FOR THE LABEL TABLE */
+
 typedef struct s_entry
 {
-	const char	*e_name;	/* the name of the procedure	*/
-	Code		*e_addr;	/* the address of the code	*/
-	Code		*e_input;	/* the address of the input generator */
+	const char	*e_name;   /* name of the procedure	     */
+	Code		*e_addr;   /* address of the code	     */
+	Code		*e_input;  /* address of the input generator */
 } Entry;
 
-/* when you modify this, modify the table in aux.c as well */
+/* when you modify this, you must modify the table in aux.c as well */
 enum {
 	APPEND_1,
 	APPEND_2,
@@ -23,78 +29,58 @@ enum {
 	ACLENGTH_1,
 	MEMBER_1,
 	MEMBER_2,
+	MEMDET_1,
 	MKLIST_1,
-	Q_1,
-	NEG_NOT_Q,
-	INT_1,
 	HEAP_1,
 	ONETEN_1,
-	MEMDET_1,
+	INT_1,
+	Q_1,
+	NOT_Q_1,
+	NOT_Q5_1,
+	DETNEG_1,
+	NONDETNEG_1,
+	A_1,
+	C_1,
+	D_1,
+	E_1,
+	F_1,
 	MAXENTRIES
 };
 
 #define	STARTLABELS	40
 #define	MAXLABELS	400
 
-reg	Word	r0 __asm("s0");
-reg	Word	r1 __asm("s1");
-reg	Word	r2 __asm("s2");
-reg	Word	r3 __asm("s3");
-reg	Word	r4 __asm("s4");
-reg	Word	r5 __asm("s5");
-reg	Word	r6 __asm("s6");
-reg	Word	r7 __asm("s7");
+#define	makeentry(e, n, a, i)					\
+			do {					\
+				entries[e].e_name  = n;		\
+				entries[e].e_addr  = a;		\
+				entries[e].e_input = i;		\
+			} while (0)
 
-extern	Word	tmp0;
-extern	Word	tmp1;
-extern	Word	tmp2;
-extern	Word	tmp3;
-extern	Word	tmp4;
-extern	Word	tmp5;
-extern	Word	tmp6;
-extern	Word	tmp7;
+#define	makelabel(n, a)	do {					\
+				entries[cur_entry].e_name  = n;	\
+				entries[cur_entry].e_addr  = a;	\
+				entries[cur_entry].e_input = NULL;\
+				cur_entry += 1;			\
+			} while (0)
 
-#define	hp	((Word *) r6)
-#define	sp	((Word *) r7)
+/* a table of the entry points defined by the various modules */
+extern	Entry	entries[];
+extern	int	cur_entry;	/* next free slot in entries table   */
+extern	int	which;		/* procedure called from interpreter */
 
-#define	succip	((Code *) r0)
-#define	childcp	((Word *) tmp5)
-#define	curcp	((Word *) tmp6)
-#define	maxcp	((Word *) tmp7)
-
-#define	MAXHEAP		0x10000
-#define	MAXSTACK	0x10000
-#define	MAXCPSTACK	0x10000
-#define	CACHE_OFFSET	0x200
-
-extern	int	cur_entry;
-extern	Word	heap[];
-extern	Word	stack[];
-extern	Word	cpstack[];
-extern	bool	calldebug;
-extern	bool	heapdebug;
-extern	bool	stackdebug;
-extern	bool	cpstackdebug;
-extern	bool	detaildebug;
-extern	Word	*heapmax;
-extern	Word	*stackmax;
-extern	Word	*cpstackmax;
-extern	Word	*heapmin;
-extern	Word	*stackmin;
-extern	Word	*cpstackmin;
-
-/* for use only during input setup */
-extern	int	r1val;
-extern	int	r2val;
-extern	int	r3val;
-extern	int	repcounter;
-
+/* standard labels in the entry table */
+extern	Code	*doredo;
 extern	Code	*dofail;
 extern	Code	*doresethpfail;
 extern	Code	*doresetcpvar0fail;
-extern	Code	*doredo;
+extern	Code	*dosucceed;
+extern	Code	*doslownegfail;
+extern	Code	*doslownegsucceed;
+extern	Code	*dofastnegredo;
+extern	Code	*dofastnegproceed;
 
-#define	WORDSIZE	4
+/* DEFINITIONS FOR WORD LAYOUT */
 
 #ifdef	HIGHTAGS
 
@@ -122,15 +108,151 @@ extern	Code	*doredo;
 #define	TAG_CONS	mktag(bTAG_CONS)
 #define	TAG_VAR		mktag(bTAG_VAR)
 
-/* these offsets and used by both choice points and reclaim points */
+#define	deref(p)	({					\
+				reg	Word	pt;		\
+								\
+				pt = p;				\
+				while (tag(pt) == TAG_VAR)	\
+					pt = * (Word *)		\
+						body(pt, TAG_VAR);\
+				pt;				\
+			})
 
-#define	PREDNM		-0
-#define	REDOIP		-1	/* in this proc, set up at clause entry	*/
-#define	PREVCP		-2	/* prev cp on stack, set up at call	*/
-#define	SAVEHP		-3	/* in calling proc, set up at call	*/
-#define	SUCCIP		-3	/* in calling proc, set up at call	*/
-#define	SUCCCP		-4	/* cp of calling proc, set up at call	*/
-#define	SAVEVAL		-5
+/* DEFINITIONS FOR VIRTUAL MACHINE REGISTERS */
+
+reg	Word	r0 __asm("s0");
+reg	Word	r1 __asm("s1");
+reg	Word	r2 __asm("s2");
+reg	Word	r3 __asm("s3");
+reg	Word	r4 __asm("s4");
+reg	Word	r5 __asm("s5");
+reg	Word	r6 __asm("s6");
+reg	Word	r7 __asm("s7");
+
+extern	Word	tmp0;
+extern	Word	tmp1;
+extern	Word	tmp2;
+extern	Word	tmp3;
+extern	Word	tmp4;
+extern	Word	tmp5;
+extern	Word	tmp6;
+extern	Word	tmp7;
+
+#define	hp	((Word *) r6)
+#define	sp	((Word *) r7)
+
+#define	succip	((Code *) r0)
+#define	childcp	((Word *) tmp5)
+#define	curcp	((Word *) tmp6)
+#define	maxcp	((Word *) tmp7)
+
+/* DEFINITIONS FOR CALLS AND RETURNS */
+
+#define	call(proc, succcont)					\
+			do {					\
+				debugcall(proc, succcont);	\
+				succip = succcont;		\
+				goto *proc;			\
+			} while (0)
+
+#define	callentry(entry, succcont)				\
+			do {					\
+				debugcall(entries[entry].e_addr, succcont);\
+				succip = succcont;		\
+				goto *entries[entry].e_addr;	\
+			} while (0)
+
+#define	tailcall(proc)	do {					\
+				debugtailcall(proc);		\
+				goto *proc;			\
+			} while (0)
+
+#define	tailcallentry(entry, succcont)				\
+			do {					\
+				debugtailcall(entries[entry].e_addr);\
+				goto *entries[entry].e_addr;	\
+			} while (0)
+
+#define	proceed()	do {					\
+				debugproceed();			\
+				goto *succip;			\
+			} while (0)
+
+/* DEFINITIONS FOR VIRTUAL MACHINE DATA AREAS */
+
+#define	MAXHEAP		0x10000
+#define	MAXSTACK	0x10000
+#define	MAXCPSTACK	0x10000
+#define	CACHE_OFFSET	0x200
+
+extern	Word	heap[];
+extern	Word	stack[];
+extern	Word	cpstack[];
+
+extern	Word	*heapmax;
+extern	Word	*stackmax;
+extern	Word	*cpstackmax;
+
+extern	Word	*heapmin;
+extern	Word	*stackmin;
+extern	Word	*cpstackmin;
+
+/* DEFINITIONS FOR MANIPULATING THE HEAP */
+
+#define create1(w1)	({					\
+				reg	Word	p;		\
+								\
+				hp[0] = (Word) (w1);		\
+				debugcr1(hp[0], hp);	\
+				p = (Word) hp;			\
+				hp += 1;			\
+				heap_overflow_check();		\
+				/* return */ p;			\
+			})
+
+#define create2(w1, w2)	({					\
+				reg	Word	p;		\
+								\
+				hp[0] = (Word) (w1);		\
+				hp[1] = (Word) (w2);		\
+				debugcr2(hp[0], hp[1], hp);	\
+				p = (Word) hp;			\
+				hp += 2;			\
+				heap_overflow_check();		\
+				/* return */ p;			\
+			})
+
+/* DEFINITIONS FOR MANIPULATING THE STACK */
+
+#define	stackvar(n)	sp[-n]
+
+#define	push(w)		do {					\
+				*sp = (Word) (w);		\
+				debugpush(*sp, sp);		\
+				sp += 1;			\
+				stack_overflow_check();		\
+			} while (0)
+
+#define	pop()		({					\
+				reg	Word	w;		\
+								\
+				sp -= 1;			\
+				w = *sp;			\
+				debugpop(*sp, sp);		\
+				stack_underflow_check();	\
+				/* return */ w;			\
+			})
+
+/* DEFINITIONS FOR CHOICE AND RECLAIM POINTS */
+
+/* these offsets and used by both choice points and reclaim points */
+#define	PREDNM		-0   /* for debugging, set up at call	     */
+#define	REDOIP		-1   /* in this proc, set up at clause entry */
+#define	PREVCP		-2   /* prev cp on stack, set up at call     */
+#define	SAVEHP		-3   /* in calling proc, set up at call      */
+#define	SUCCIP		-3   /* in calling proc, set up at call      */
+#define	SUCCCP		-4   /* cp of calling proc, set up at call   */
+#define	SAVEVAL		-5   /* saved values start at this offset    */
 
 /* the offsets used by choice points */
 #define	cpprednm	(const char *) curcp[PREDNM]
@@ -146,9 +268,9 @@ extern	Code	*doredo;
 #define	recprevcp	(Word *) maxcp[PREVCP]
 #define	recsavehp	(Word *) maxcp[SAVEHP]
 
-#define	RECLAIM_SIZE	4				/* units: words */
+#define	RECLAIM_SIZE	4	/* units: words */
 
-#define	stackvar(n)	sp[-n]
+/* DEFINITIONS FOR MANIPULATING THE CHOICE POINT STACK */
 
 #define	mkcp(prednm, n, redoip)					\
 			do {					\
@@ -208,51 +330,22 @@ extern	Code	*doredo;
 				goto *cpredoip;			\
 			} while (0)
 
-#define	call(proc, succcont)					\
+#define	slowneg_setup(XXX)					\
 			do {					\
-				debugcall(proc, succcont);	\
-				succip = succcont;		\
-				goto *proc;			\
+				/* XXX */			\
 			} while (0)
 
-#define	callentry(entry, succcont)				\
+#define	fastneg_setup(XXX)					\
 			do {					\
-				debugcall(entries[entry].e_addr, succcont);\
-				succip = succcont;		\
-				goto *entries[entry].e_addr;	\
+				push(cpredoip);			\
+				push(maxcp);			\
+				/* XXX */			\
 			} while (0)
 
-#define	tailcall(proc)	do {					\
-				debugtailcall(proc);		\
-				goto *proc;			\
-			} while (0)
-
-#define	tailcallentry(entry, succcont)				\
-			do {					\
-				debugtailcall(entries[entry].e_addr);\
-				goto *entries[entry].e_addr;	\
-			} while (0)
-
-#define	proceed()	do {					\
-				debugproceed();			\
-				goto *succip;			\
-			} while (0)
-
-#define	makeentry(e, n, a, i)					\
-			do {					\
-				entries[e].e_name  = n;		\
-				entries[e].e_addr  = a;		\
-				entries[e].e_input = i;		\
-			} while (0)
-
-#define	makelabel(n, a)	do {					\
-				entries[cur_entry].e_name  = n;	\
-				entries[cur_entry].e_addr  = a;	\
-				entries[cur_entry].e_input = NULL;\
-				cur_entry += 1;			\
-			} while (0)
+/* DEFINITIONS FOR OVERFLOW CHECKS */
 
 #ifdef	SPEED
+
 #define	heap_overflow_check()					\
 			do { } while (0)
 #define	stack_overflow_check()					\
@@ -263,13 +356,72 @@ extern	Code	*doredo;
 			do { } while (0)
 #define	cpstack_underflow_check()				\
 			do { } while (0)
-#define	heap_cr1_msg(val0, hp)					\
+#else
+
+#define	heap_overflow_check()					\
+			do {					\
+				if (hp >= &heap[MAXHEAP])	\
+				{				\
+					printf("heap overflow\n");\
+					exit(1);		\
+				}				\
+				if (hp > heapmax)		\
+					heapmax = hp;		\
+			} while (0)
+
+#define	stack_overflow_check()					\
+			do {					\
+				if (sp >= &stack[MAXSTACK])	\
+				{				\
+					printf("stack overflow\n");\
+					exit(1);		\
+				}				\
+				if (sp > stackmax)		\
+					stackmax = sp;		\
+			} while (0)
+
+#define	stack_underflow_check()					\
+			do {					\
+				if (sp < stackmin)		\
+				{				\
+					printf("stack underflow\n");\
+					exit(1);		\
+				}				\
+			} while (0)
+
+#define	cpstack_overflow_check()				\
+			do {					\
+				if (maxcp >= &cpstack[MAXCPSTACK])	\
+				{				\
+					printf("cpstack overflow\n");\
+					exit(1);		\
+				}				\
+				if (maxcp > cpstackmax)		\
+					cpstackmax = maxcp;	\
+			} while (0)
+
+#define	cpstack_underflow_check()				\
+			do {					\
+				if (maxcp < cpstackmin)		\
+				{				\
+					printf("cpstack underflow\n");\
+					exit(1);		\
+				}				\
+			} while (0)
+
+#endif
+
+/* DEFINITIONS FOR DEBUGGING MESSAGES */
+
+#ifdef	SPEED
+
+#define	debugcr1(val0, hp)					\
 			do { } while (0)
-#define	heap_cr2_msg(val0, val1, hp)				\
+#define	debugcr2(val0, val1, hp)				\
 			do { } while (0)
-#define	stack_push_msg(val, sp)					\
+#define	debugpush(val, sp)					\
 			do { } while (0)
-#define	stack_pop_msg(val, sp)					\
+#define	debugpop(val, sp)					\
 			do { } while (0)
 #define	debugregs(msg)						\
 			do { } while (0)
@@ -299,188 +451,127 @@ extern	Code	*doredo;
 			do { } while (0)
 #define	debugmsg3(msg, arg1, arg2, arg3)			\
 			do { } while (0)
+
 #else
-#define	heap_overflow_check()					\
-			do {					\
-				if (hp >= &heap[MAXHEAP])	\
-				{				\
-					printf("heap overflow\n");\
-					exit(1);		\
-				}				\
-				if (hp > heapmax)		\
-					heapmax = hp;		\
-			} while (0)
-#define	stack_overflow_check()					\
-			do {					\
-				if (sp >= &stack[MAXSTACK])	\
-				{				\
-					printf("stack overflow\n");\
-					exit(1);		\
-				}				\
-				if (sp > stackmax)		\
-					stackmax = sp;		\
-			} while (0)
-#define	stack_underflow_check()					\
-			do {					\
-				if (sp < stackmin)		\
-				{				\
-					printf("stack underflow\n");\
-					exit(1);		\
-				}				\
-			} while (0)
-#define	cpstack_overflow_check()				\
-			do {					\
-				if (maxcp >= &cpstack[MAXCPSTACK])	\
-				{				\
-					printf("cpstack overflow\n");\
-					exit(1);		\
-				}				\
-				if (maxcp > cpstackmax)		\
-					cpstackmax = maxcp;	\
-			} while (0)
-#define	cpstack_underflow_check()				\
-			do {					\
-				if (maxcp < cpstackmin)		\
-				{				\
-					printf("cpstack underflow\n");\
-					exit(1);		\
-				}				\
-			} while (0)
-#define	heap_cr1_msg(val0, hp)					\
+
+#define	debugcr1(val0, hp)					\
 			do {					\
 				if (heapdebug)			\
-					printf("put %x at %x\n",\
-					val0, hp);		\
+					cr1_msg(val0, hp);	\
 			} while (0)
-#define	heap_cr2_msg(val0, val1, hp)				\
+
+#define	debugcr2(val0, val1, hp)				\
 			do {					\
 				if (heapdebug)			\
-					printf("put %x,%x at %p\n",\
-					val0, val1, hp);\
+					cr2_msg(val0, val1, hp);\
 			} while (0)
-#define	stack_push_msg(val, sp)					\
+
+#define	debugpush(val, sp)					\
 			do {					\
 				if (stackdebug)			\
 					push_msg(val, sp);	\
 			} while (0)
-#define	stack_pop_msg(val, sp)					\
+
+#define	debugpop(val, sp)					\
 			do {					\
 				if (stackdebug)			\
 					pop_msg(val, sp);	\
 			} while (0)
-#define	debugregs(msg)						\
-			printregs(msg)
+
+#define	debugregs(msg)	printregs(msg)
+
 #define	debugmkcp()	do {					\
 				if (cpstackdebug)		\
 					mkcp_msg();		\
 			} while (0)
+
 #define	debugmkreclaim()					\
 			do {					\
 				if (cpstackdebug)		\
 					mkreclaim_msg();	\
 			} while (0)
+
 #define	debugmodcp()	do {					\
 				if (cpstackdebug)		\
 					modcp_msg();		\
 			} while (0)
+
 #define	debugsucceed()	do {					\
 				if (cpstackdebug)		\
 					succeed_msg();		\
 			} while (0)
+
 #define	debugfail()	do {					\
 				if (cpstackdebug)		\
 					fail_msg();		\
 			} while (0)
+
 #define	debugredo()	do {					\
 				if (cpstackdebug)		\
 					redo_msg();		\
 			} while (0)
+
 #define	debugcall(proc, succcont)				\
 			do {					\
 				if (calldebug)			\
 					call_msg(proc, succcont);\
 			} while (0)
+
 #define	debugtailcall(proc)					\
 			do {					\
 				if (calldebug)			\
 					tailcall_msg(proc);	\
 			} while (0)
+
 #define	debugproceed()	do {					\
 				if (calldebug)			\
 					proceed_msg();		\
 			} while (0)
+
 #define	debugmsg0(msg)	do {					\
 				printf(msg);			\
 			} while (0)
+
 #define	debugmsg1(msg, arg1)					\
 			do {					\
 				printf(msg, arg1);		\
 			} while (0)
+
 #define	debugmsg2(msg, arg1, arg2)				\
 			do {					\
 				printf(msg, arg1, arg2);	\
 			} while (0)
+
 #define	debugmsg3(msg, arg1, arg2, arg3)			\
 			do {					\
 				printf(msg, arg1, arg2, arg3);	\
 			} while (0)
+
 #endif
 
-#define	deref(p)	({					\
-				Word pt;			\
-								\
-				pt = p;				\
-				while (tag(pt) == TAG_VAR)	\
-					pt = * (Word *)		\
-						body(pt, TAG_VAR);\
-				pt;				\
-			})
+/* DEFINITIONS FOR SYSTEM INITIALIZATION */
 
-#define create1(w1)	({					\
-				Word p;				\
-								\
-				hp[0] = (Word) (w1);		\
-				heap_cr1_msg(hp[0], hp);	\
-				p = (Word) hp;			\
-				hp += 1;			\
-				heap_overflow_check();		\
-				p;				\
-			})
+extern	int	r1val;
+extern	int	r2val;
+extern	int	r3val;
+extern	int	repcounter;
 
-#define create2(w1, w2)	({					\
-				Word p;				\
-								\
-				hp[0] = (Word) (w1);		\
-				hp[1] = (Word) (w2);		\
-				heap_cr2_msg(hp[0], hp[1], hp);	\
-				p = (Word) hp;			\
-				hp += 2;			\
-				heap_overflow_check();		\
-				p;				\
-			})
+extern	void	list_module(void);
+extern	void	nrev_module(void);
+extern	void	length_module(void);
+extern	void	aclength_module(void);
+extern	void	member_module(void);
+extern	void	memdet_module(void);
+extern	void	mklist_module(void);
+extern	void	ab_module(void);
+extern	void	back_module(void);
+extern	void	neg_module(void);
+extern	void	heap_module(void);
 
-#define	push(w)		do {					\
-				*sp = (Word) (w);		\
-				stack_push_msg(*sp, sp);	\
-				sp += 1;			\
-				stack_overflow_check();		\
-			} while (0)
+extern	Word	mklist(int start, int len);
+extern	void	mkinput(int r1val, int r2val, int r3val);
 
-#define	pop()		({					\
-				Word w;				\
-								\
-				sp -= 1;			\
-				w = *sp;			\
-				stack_pop_msg(*sp, sp);		\
-				stack_underflow_check();	\
-				/* return */ w;			\
-			})
-
-extern	int	which;
-
-/* A table of the entry points defined by the various modules */
-
-extern	Entry	entries[];
+/* DEFINITIONS TO SUPPORT DEBUGGING */
 
 /*
 ** For each entry point, a table function pointers which indicate
@@ -491,26 +582,13 @@ extern	Entry	entries[];
 typedef void PrintRegFunc(Word);
 extern	PrintRegFunc * regtable[MAXENTRIES][16];
 
-/* prototypes for the modules */
+extern	bool	calldebug;
+extern	bool	heapdebug;
+extern	bool	stackdebug;
+extern	bool	cpstackdebug;
+extern	bool	detaildebug;
 
-extern	void	list_module(void);
-extern	void	nrev_module(void);
-extern	void	length_module(void);
-extern	void	aclength_module(void);
-extern	void	member_module(void);
-extern	void	mklist_module(void);
-extern	void	ab_module(void);
-extern	void	ex_module(void);
-extern	void	back_module(void);
-extern	void	neg_module(void);
-extern	void	heap_module(void);
-
-/* old (obsolete?) */
-
-extern	Word	mklist(int start, int len);
-extern	void	mkinput(int r1val, int r2val, int r3val);
-
-/* Debugging messages, defined in aux.c */
+/* debugging messages, defined in aux.c */
 
 extern	void	mkcp_msg(void);
 extern	void	mkreclaim_msg(void);
@@ -521,10 +599,12 @@ extern	void	redo_msg(void);
 extern	void	call_msg(const Word *proc, const Word *succcont);
 extern	void	tailcall_msg(const Word *proc);
 extern	void	proceed_msg(void);
+extern	void	cr1_msg(Word val0, const Word *addr);
+extern	void	cr2_msg(Word val0, Word val1, const Word *addr);
 extern	void	push_msg(Word val, const Word *addr);
 extern	void	pop_msg(Word val, const Word *addr);
 
-/* More debugging messages, defined in aux.c */
+/* more debugging messages, defined in aux.c */
 
 extern	void	printregs(const char *msg);
 extern	void	printtmps(void);
@@ -536,4 +616,3 @@ extern	void	printlist(Word p);
 extern	void	printlabel(Word w);
 extern	void	printregs(const char *);
 extern	void	dumpcpstack(void);
-
