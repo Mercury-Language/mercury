@@ -12,10 +12,19 @@ END-INFO-DIR-ENTRY
 @end ifinfo
 @end ignore
 
+@c failed attempt to control spacing
+@c @tex
+@c \global\chapheadingskip = 12pt plus 4pt minus 2pt
+@c \global\secheadingskip = 9pt plus 3pt minus 2pt
+@c \global\subsecheadingskip = 7pt plus 2pt minus 2pt 
+@c % 2pt parskip is better for smallbook
+@c \global\parskip 2pt plus 1pt
+@c @end tex
+
 @c @smallbook
 @c @cropmarks
 @finalout
-@setchapternewpage on
+@setchapternewpage off
 @ifinfo
 This file is the Mercury Frequently Asked Questions list.
 It contains a list of frequently asked questions about Mercury, with answers.

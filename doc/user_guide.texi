@@ -15,7 +15,7 @@ END-INFO-DIR-ENTRY
 @c @smallbook
 @c @cropmarks
 @finalout
-@setchapternewpage on
+@setchapternewpage off
 @ifinfo
 This file documents the Mercury implementation.
 
@@ -864,6 +864,10 @@ Emit the fail or redo macro instead of a branch
 to the fail or redo code in the runtime system.
 
 @sp 1
+@item --no-simple-neg
+Don't generate simplified code for simple negations.
+
+@sp 1
 @item --no-gcc-global-registers
 Don't use GNU C's global register variables extension.
 
@@ -941,10 +945,17 @@ Disable elimination of jumps to ordinary code.
 Disable elimination of dead labels and code.
 
 @sp 1
+@item --optimize-dups
+Enable elimination of duplicate code.
+
+@c @sp 1
+@c @item --optimize-copyprop
+@c Enable the copy propagation optimization.
+
+@sp 1
 @item --optimize-value-number
-Perform value numbering. Use of this option together with
-conservative garbage collection requires a collector compiled
-with @samp{-DALL_INTERIOR_POINTERS}.
+Perform value numbering on extended basic blocks.
+@c @samp{-DALL_INTERIOR_POINTERS}.
 
 @c @item --pred-value-number
 @c Extend value numbering to whole predicates, rather than just basic blocks.
