@@ -41,7 +41,7 @@
 
 #define	MR_mktag(t)	((MR_Word)(t) << (MR_WORDBITS - MR_TAGBITS))
 #define	MR_unmktag(w)	((MR_Word)(w) >> (MR_WORDBITS - MR_TAGBITS))
-#define	MR_tag(w)	((w) & ~(~(MR_Word)0 >> MR_TAGBITS))
+#define	MR_tag(w)	(((MR_Word)(w)) & ~(~(MR_Word)0 >> MR_TAGBITS))
 #define	MR_mkbody(i)	(i)
 #define	MR_unmkbody(w)	(w)
 #define	MR_body(w, t)	((w) & (~(MR_Word)0 >> MR_TAGBITS))
@@ -51,7 +51,7 @@
 
 #define	MR_mktag(t)	(t)
 #define	MR_unmktag(w)	(w)
-#define	MR_tag(w)	((w) & ((1 << MR_TAGBITS) - 1))
+#define	MR_tag(w)	(((MR_Word)(w)) & ((1 << MR_TAGBITS) - 1))
 #define	MR_mkbody(i)	((i) << MR_TAGBITS)
 #define	MR_unmkbody(w)	((MR_Word) (w) >> MR_TAGBITS)
 #define	MR_body(w, t)	((MR_Word) (w) - (t))
