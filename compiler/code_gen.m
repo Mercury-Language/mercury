@@ -906,7 +906,6 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 		Code) -->
 		% This code is a cut-down version of the code for semidet
 		% if-then-elses.
-		% XXX It does not save or restore tickets
 
 	code_info__make_known_failure_cont(ResumeVars, ResumeLocs, no,
 		no, _, ModContCode),

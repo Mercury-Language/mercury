@@ -104,7 +104,8 @@ disj_gen__generate_pruned_disj(Goals, StoreMap, Code) -->
 	% For a det disj, this goal will be det,
 	% and may be followed by other goals.
 	%
-	% XXX We ought not to restore anything in the first disjunct.
+	% XXX For efficiency, we ought not to restore anything in the
+	% first disjunct.
 
 disj_gen__generate_pruned_disjuncts([], _, _, _, _, _, _, _, _) -->
 	{ error("Empty pruned disjunction!") }.
@@ -250,7 +251,7 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 		MaybeHpSlot, MaybeTicketSlot, no, GoalsCode),
 
 		% since we don't know which disjunct we have come from
-		% we must set the current failure continuation to unkown.
+		% we must set the current failure continuation to unknown.
 
 	code_info__unset_failure_cont(FlushResumeVarsCode),
 	code_info__remake_with_store_map(StoreMap),
@@ -261,7 +262,8 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 
 %---------------------------------------------------------------------------%
 
-	% XXX We ought not to restore anything in the first disjunct.
+	% XXX For efficiency, we ought not to restore anything in the
+	% first disjunct.
 
 :- pred disj_gen__generate_non_disjuncts(list(hlds_goal), store_map, label,
 	bool, maybe(lval), maybe(lval), bool, code_tree, code_info, code_info).
@@ -361,7 +363,7 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		code_info__generate_branch_end(model_non, StoreMap, SaveCode),
 
 		{ EndCode = node([
-			label(EndLabel) - "End of pruned disj"
+			label(EndLabel) - "End of nondet disj"
 		]) },
 		{ Code = tree(RestoreHPCode,
 			 tree(RestorePopTicketCode,

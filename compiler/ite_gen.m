@@ -212,7 +212,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 
 	code_info__grab_code_info(CodeInfo),
 
-		% Generate the condition es either a semi-deterministic
+		% Generate the condition as either a semi-deterministic
 		% or as a non-deterministic goal (the failure continuation
 		% must be set up the same way)
 	code_info__push_resume_point_vars(ResumeVars),
@@ -223,6 +223,10 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	( { MaybeMaxfrLval = yes(MaxfrLval) } ->
 		code_info__do_soft_cut(MaxfrLval, SoftCutCode),
 		code_info__unset_failure_cont(FlushCode)
+			% XXX why call unset_failure_cont here?
+			% We're going to call it from branch_end at the
+			% end of the `then' anyway, so is this
+			% one really necessary?
 	;
 		{ SoftCutCode = empty },
 		{ FlushCode = empty }

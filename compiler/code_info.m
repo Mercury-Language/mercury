@@ -1177,8 +1177,8 @@ code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
 			;
 				{ TempFrameCode = node([
 					assign(redoip(lval(maxfr)),
-						const(code_addr_const(RedoAddr)))
-						- "Set failure continuation"
+					    const(code_addr_const(RedoAddr)))
+				- "Set failure continuation on temp frame"
 				]) }
 			),
 			{ HaveTempFrame = yes }
@@ -1330,7 +1330,7 @@ code_info__restore_failure_cont(Code) -->
 			ResetCode = node([
 				assign(redoip(lval(maxfr)),
 					const(code_addr_const(RedoAddress)))
-					- "restore failure cont"
+					- "restore known failure cont"
 			])
 		}
 	),
