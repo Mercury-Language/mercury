@@ -46,7 +46,8 @@ HDRS		=	\
 			mercury_trace_readline.h	\
 			mercury_trace_spy.h		\
 			mercury_trace_tables.h		\
-			mercury_trace_util.h
+			mercury_trace_util.h		\
+			mercury_trace_vars.h
 
 # keep this list in alphabetical order, please
 CFILES		= 	\
@@ -59,7 +60,8 @@ CFILES		= 	\
 			mercury_trace_internal.c	\
 			mercury_trace_readline.c	\
 			mercury_trace_spy.c		\
-			mercury_trace_tables.c
+			mercury_trace_tables.c		\
+			mercury_trace_vars.c
 
 # The object files in this directory depend on many of the header files
 # in the runtime. However, changes to many of these header files require
