@@ -66,6 +66,10 @@
 :- pred map__to_assoc_list(map(K,V), list(pair(K,V))).
 :- mode map__to_assoc_list(input, output).
 
+	% convert a map to an associate list
+:- pred map__from_assoc_list(list(pair(K,V)), map(K,V)).
+:- mode map__from_assoc_list(input, output).
+
 	% delete a key-value pair from a map
 :- pred map__delete(map(K,V), K, map(K,V)).
 :- mode map__delete(input, input, output).
@@ -111,6 +115,9 @@ map__keys(Map, KeyList) :-
 
 map__to_assoc_list(M, L) :-
 	bintree__to_list(M, L).
+
+map__from_assoc_list(L, M) :-
+	bintree__from_list(L, M).
 
 map__delete(Map0, Key, Map) :-
 	bintree__delete(Map0, Key, Map).
