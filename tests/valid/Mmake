@@ -38,7 +38,6 @@ SOURCES= \
 	same_length_2.m \
 	soln_context.m \
 	two_pragma_c_codes.m \
-	type_loop.m \
 	undead_proc.m \
 	uniq_unify.m \
 	unreachable_code.m
