@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1134,9 +1134,9 @@ infer_determinism_pass_2([proc_stream(ProcID, Stream) | ProcStreams],
 	{ map__lookup(ProcTable0, ProcID, ProcInfo0) },
 	io__output_stream_name(Stream, FileName),
 	io__close_output(Stream),
-	{ string__format(
-	    "sort -o %s %s && cut -d'~' -f1 %s | sort -cu >/dev/null 2>&1",
-	    [s(FileName), s(FileName), s(FileName)], Command) },
+	{ make_command_string(string__format(
+		"sort -o %s %s && cut -d'~' -f1 %s | sort -cu >/dev/null 2>&1",
+		[s(FileName), s(FileName), s(FileName)]), double, Command) },
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Invoking system command `"),
 	maybe_write_string(Verbose, Command),
@@ -1350,8 +1350,8 @@ write_fact_args([Arg | Args], OutputStream) -->
 
 maybe_append_data_table(no, _, _) --> [].
 maybe_append_data_table(yes, OutputFileName, DataFileName) -->
-	{ string__format("cat %s >>%s", 
-		[s(DataFileName), s(OutputFileName)], Command) },
+	{ make_command_string(string__format("cat %s >>%s", 
+		[s(DataFileName), s(OutputFileName)]), forward, Command) },
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Invoking system command `"),
 	maybe_write_string(Verbose, Command),

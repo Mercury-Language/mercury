@@ -258,7 +258,7 @@
 
 :- import_module rtti, rtti_out, layout, layout_out, options, trace_params.
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
-:- import_module export, mercury_to_mercury, modules.
+:- import_module export, mercury_to_mercury, modules, passes_aux.
 :- import_module c_util.
 
 :- import_module int, char, string, std_util.
@@ -4418,8 +4418,9 @@ output_rl_byte(Byte) -->
 :- pred make_directory(string::in, io__state::di, io__state::uo) is det.
 
 make_directory(DirName) -->
-	{ string__format("[ -d %s ] || mkdir -p %s", [s(DirName), s(DirName)],
-		Command) },
+	{ make_command_string(string__format(
+		"[ -d %s ] || mkdir -p %s", [s(DirName), s(DirName)]),
+		forward, Command) },
 	io__call_system(Command, _Result).
 
 %-----------------------------------------------------------------------------%

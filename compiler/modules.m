@@ -792,8 +792,9 @@ make_directory(DirName) -->
 	( { dir__this_directory(DirName) } ->
 		[]
 	;
-		{ string__format("[ -d %s ] || mkdir -p %s",
-			[s(DirName), s(DirName)], Command) },
+		{ make_command_string(string__format(
+			"[ -d %s ] || mkdir -p %s",
+			[s(DirName), s(DirName)]), forward, Command) },
 		io__call_system(Command, _Result)
 	).
 
