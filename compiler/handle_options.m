@@ -1045,9 +1045,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	globals__io_lookup_maybe_string_option(config_file, ConfigFile),
 	% yes("") means `--config-file' was not passed on the command line.
 	( { ConfigFile = yes("") } ->
-		( { MaybeStdLibDir = yes(StdLibDir1) } ->
+		( { MaybeConfDir = yes(ConfDir1) } ->
 			globals__io_set_option(config_file, maybe_string(yes(
-				StdLibDir1/"conf"/"Mercury.config")))
+				ConfDir1/"conf"/"Mercury.config")))
 		;
 			globals__io_set_option(config_file, maybe_string(no))
 		)
