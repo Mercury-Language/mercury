@@ -138,9 +138,9 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;
-		GoalExpr0 = bi_implication(_, _),
+		GoalExpr0 = shorthand(_),
 		% these should have been expanded out by now
-		error("detect_cse_in_goal_2: unexpected bi_implication")
+		error("detect_cse_in_goal_2: unexpected shorthand")
 	).
 
 %-----------------------------------------------------------------------------%

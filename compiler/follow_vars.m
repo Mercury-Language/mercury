@@ -207,9 +207,9 @@ find_follow_vars_in_goal_expr(foreign_proc(A,B,C,D,E,F,G),
 		foreign_proc(A,B,C,D,E,F,G),
 		FollowVarsMap, NextNonReserved).
 
-find_follow_vars_in_goal_expr(bi_implication(_,_), _, _, _, _, _, _, _) :-
+find_follow_vars_in_goal_expr(shorthand(_), _, _, _, _, _, _, _) :-
 	% these should have been expanded out by now
-	error("find_follow_vars_in_goal_2: unexpected bi_implication").
+	error("find_follow_vars_in_goal_2: unexpected shorthand").
 
 find_follow_vars_in_goal_expr(
 		generic_call(GenericCall, Args, Modes, Det),

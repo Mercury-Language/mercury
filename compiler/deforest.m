@@ -220,9 +220,9 @@ deforest__goal(Goal0, Goal) -->
 deforest__goal(Goal, Goal) -->
 	{ Goal = unify(_, _, _, _, _) - _ }.
 
-deforest__goal(bi_implication(_, _) - _, _) -->
+deforest__goal(shorthand(_) - _, _) -->
 	% these should have been expanded out by now
-	{ error("deforest__goal: unexpected bi_implication") }.
+	{ error("deforest__goal: unexpected shorthand") }.
 
 %-----------------------------------------------------------------------------%
 

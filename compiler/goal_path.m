@@ -90,9 +90,9 @@ fill_expr_slots(generic_call(A,B,C,D), _, _, _, generic_call(A,B,C,D)).
 fill_expr_slots(unify(A,B,C,D,E), _, _, _, unify(A,B,C,D,E)).
 fill_expr_slots(foreign_proc(A,B,C,D,E,F,G), _, _, _,
 		foreign_proc(A,B,C,D,E,F,G)).
-fill_expr_slots(bi_implication(_, _), _, _, _, _) :-
+fill_expr_slots(shorthand(_), _, _, _, _) :-
 	% these should have been expanded out by now
-	error("fill_expr_slots: unexpected bi_implication").
+	error("fill_expr_slots: unexpected shorthand").
 
 :- pred fill_conj_slots(list(hlds_goal)::in, goal_path::in, int::in,
 	slot_info::in, list(hlds_goal)::out) is det.

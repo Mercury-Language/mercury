@@ -1621,8 +1621,19 @@ hlds_out__write_goal_2(foreign_proc(Attributes, _, _, ArgVars,
 	io__write_string(")"),
 	io__write_string(Follow).
 
-hlds_out__write_goal_2(bi_implication(LHS, RHS), ModuleInfo, VarSet,
+hlds_out__write_goal_2(shorthand(ShortHandGoal), ModuleInfo, VarSet,
 		AppendVarnums, Indent, Follow, TypeQual) -->
+	hlds_out__write_goal_2_shorthand(ShortHandGoal, ModuleInfo,
+		VarSet, AppendVarnums, Indent, Follow, TypeQual).
+
+
+:- pred hlds_out__write_goal_2_shorthand(shorthand_goal_expr, module_info,
+	prog_varset, bool, int, string, maybe_vartypes, io__state, io__state).
+:- mode hlds_out__write_goal_2_shorthand(in, in, in, in, in, in, in, di, uo)
+	is det.
+
+hlds_out__write_goal_2_shorthand(bi_implication(LHS, RHS), ModuleInfo, 
+		VarSet,	AppendVarnums, Indent, Follow, TypeQual) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("( % bi-implication\n"),
 	{ Indent1 is Indent + 1 },
@@ -1635,6 +1646,8 @@ hlds_out__write_goal_2(bi_implication(LHS, RHS), ModuleInfo, VarSet,
 	hlds_out__write_indent(Indent),
 	io__write_string(")"),
 	io__write_string(Follow).
+
+
 
 :- pred hlds_out__write_varnum_list(list(prog_var), io__state, io__state).
 :- mode hlds_out__write_varnum_list(in, di, uo) is det.

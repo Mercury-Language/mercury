@@ -707,8 +707,8 @@ unneeded_code__process_goal_internal(Goal0, Goal, InstMap0, InstMap,
 		GoalExpr = some(Vars, CanRemove, SomeGoal),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = bi_implication(_, _),
-		error("bi-implication in unneeded_code__process_goal_internal")
+		GoalExpr0 = shorthand(_),
+		error("shorthand in unneeded_code__process_goal_internal")
 	).
 
 %---------------------------------------------------------------------------%
@@ -1010,8 +1010,8 @@ unneeded_code__refine_goal(Goal0, RefinedGoals0, Goal, RefinedGoals) :-
 		GoalExpr = some(Vars, CanFail, SomeGoal),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = bi_implication(_, _),
-		error("bi-implication in unneeded_code__refine_goal")
+		GoalExpr0 = shorthand(_),
+		error("shorthand in unneeded_code__refine_goal")
 	).
 
 :- pred unneeded_code__refine_conj(list(hlds_goal)::in, refined_goal_map::in,

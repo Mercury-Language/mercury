@@ -1155,9 +1155,9 @@ code_gen__generate_goal_2(foreign_proc(Attributes,
 	;
 		{ error("code_gen__generate_goal_2: foreign code other than C unexpected") }
 	).
-code_gen__generate_goal_2(bi_implication(_, _), _, _, _) -->
+code_gen__generate_goal_2(shorthand(_), _, _, _) -->
 	% these should have been expanded out by now
-	{ error("code_gen__generate_goal_2: unexpected bi_implication") }.
+	{ error("code_gen__generate_goal_2: unexpected shorthand") }.
 
 %---------------------------------------------------------------------------%
 

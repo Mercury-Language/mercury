@@ -634,9 +634,9 @@ inlining__inlining_in_goal(
 		foreign_proc(A, B, C, D, E, F, G) - GoalInfo,
 		foreign_proc(A, B, C, D, E, F, G) - GoalInfo) --> [].
 
-inlining__inlining_in_goal(bi_implication(_, _) - _, _) -->
+inlining__inlining_in_goal(shorthand(_) - _, _) -->
 	% these should have been expanded out by now
-	{ error("inlining__inlining_in_goal: unexpected bi_implication") }.
+	{ error("inlining__inlining_in_goal: unexpected shorthand") }.
 
 %-----------------------------------------------------------------------------%
 

@@ -210,9 +210,9 @@ prog_rep__represent_goal_expr(foreign_proc(_,
 		DetismRep, FilenameRep, LinenoRep, ChangedVarsRep),
 	Rep = atomic_goal_rep(DetismRep, FilenameRep, LinenoRep,
 		ChangedVarsRep, AtomicGoalRep).
-prog_rep__represent_goal_expr(bi_implication(_, _), _, _, _, _) :-
+prog_rep__represent_goal_expr(shorthand(_), _, _, _, _) :-
 	% these should have been expanded out by now
-	error("prog_rep__represent_goal: unexpected bi_implication").
+	error("prog_rep__represent_goal: unexpected shorthand").
 
 %---------------------------------------------------------------------------%
 

@@ -243,9 +243,9 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
-		GoalExpr0 = bi_implication(_, _),
+		GoalExpr0 = shorthand(_),
 		% these should have been expanded out by now
-		error("dnf__transform_goal: unexpected bi_implication")
+		error("dnf__transform_goal: unexpected shorthand")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -474,7 +474,17 @@ dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome,
 	).
 dnf__is_atomic_expr(_, _, _, if_then_else(_, _, _, _, _), no).
 dnf__is_atomic_expr(_, _, _, foreign_proc(_, _, _, _, _, _, _), yes).
-dnf__is_atomic_expr(_, _, _, bi_implication(_, _), no).
+dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome, shorthand(ShorthandGoal),
+		IsAtomic) :-
+	dnf__is_atomic_expr_shorthand(MaybeNonAtomic, InNeg, InSome,
+			ShorthandGoal, IsAtomic).
+
+
+:- pred dnf__is_atomic_expr_shorthand(maybe(set(pred_proc_id))::in, bool::in,
+		bool::in, shorthand_goal_expr::in, bool::out) is det.
+
+dnf__is_atomic_expr_shorthand(_, _, _, bi_implication(_,_), no).
+
 
 :- pred dnf__free_of_nonatomic(hlds_goal::in,
 	set(pred_proc_id)::in) is semidet.

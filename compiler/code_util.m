@@ -500,12 +500,20 @@ code_util__goal_may_allocate_heap_2(if_then_else(_Vars, C, T, E, _), May) :-
 	;
 		code_util__goal_may_allocate_heap(E, May)
 	).
-code_util__goal_may_allocate_heap_2(bi_implication(G1, G2), May) :-
+code_util__goal_may_allocate_heap_2(shorthand(ShorthandGoal), May) :-
+	code_util__goal_may_allocate_heap_2_shorthand(ShorthandGoal, May).
+
+:- pred code_util__goal_may_allocate_heap_2_shorthand(shorthand_goal_expr::in, 
+	bool::out) is det.
+	
+code_util__goal_may_allocate_heap_2_shorthand(bi_implication(G1, G2), May) :-
 	( code_util__goal_may_allocate_heap(G1, yes) ->
 		May = yes
 	;
 		code_util__goal_may_allocate_heap(G2, May)
 	).
+
+
 
 :- pred code_util__goal_list_may_allocate_heap(list(hlds_goal)::in, bool::out)
 	is det.
@@ -576,12 +584,20 @@ code_util__goal_may_alloc_temp_frame_2(if_then_else(_Vars, C, T, E, _), May) :-
 	;
 		code_util__goal_may_alloc_temp_frame(E, May)
 	).
-code_util__goal_may_alloc_temp_frame_2(bi_implication(G1, G2), May) :-
+code_util__goal_may_alloc_temp_frame_2(shorthand(ShorthandGoal), May) :-
+	code_util__goal_may_alloc_temp_frame_2_shorthand(ShorthandGoal,May).
+		
+:- pred code_util__goal_may_alloc_temp_frame_2_shorthand(
+		shorthand_goal_expr::in, bool::out) is det.
+
+code_util__goal_may_alloc_temp_frame_2_shorthand(bi_implication(G1, G2), 
+		May) :-
 	( code_util__goal_may_alloc_temp_frame(G1, yes) ->
 		May = yes
 	;
 		code_util__goal_may_alloc_temp_frame(G2, May)
 	).
+
 
 :- pred code_util__goal_list_may_alloc_temp_frame(list(hlds_goal)::in,
 	bool::out) is det.
@@ -842,10 +858,10 @@ code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else, _),
 	CTMax is CMax + TMax,
 	int__min(CTMin, EMin, Min),
 	int__max(CTMax, EMax, Max).
-code_util__count_recursive_calls_2(bi_implication(_, _),
+code_util__count_recursive_calls_2(shorthand(_),
 		_, _, _, _) :-
 	% these should have been expanded out by now
-	error("code_util__count_recursive_calls_2: unexpected bi_implication").
+	error("code_util__count_recursive_calls_2: unexpected shorthand").
 
 :- pred code_util__count_recursive_calls_conj(list(hlds_goal),
 	pred_id, proc_id, int, int, int, int).

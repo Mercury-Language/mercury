@@ -104,9 +104,9 @@ pd_cost__goal(foreign_proc(Attributes, _, _, Args, _, _, _) - _,
 	pd_cost__reg_assign(AssignCost),
 	Cost is Cost1 + Cost2 + AssignCost * InputArgs.
 
-pd_cost__goal(bi_implication(_, _) - _, _) :-
+pd_cost__goal(shorthand(_) - _, _) :-
 	% these should have been expanded out by now
-	error("pd_cost__goal: unexpected bi_implication").
+	error("pd_cost__goal: unexpected shorthand").
 
 :- pred pd_cost__unify(set(prog_var)::in, unification::in, int::out) is det.
 

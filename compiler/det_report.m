@@ -655,9 +655,9 @@ det_diagnose_goal_2(foreign_proc(_, _, _, _, _, _, _), GoalInfo,
 	% prog_out__write_context(Context),
 	% io__write_string("  for modes which don't succeed more than once.\n").
 
-det_diagnose_goal_2(bi_implication(_, _), _, _, _, _, _, _) -->
+det_diagnose_goal_2(shorthand(_), _, _, _, _, _, _) -->
 	% these should have been expanded out by now
-	{ error("det_diagnose_goal_2: unexpected bi_implication") }.
+	{ error("det_diagnose_goal_2: unexpected shorthand") }.
 
 %-----------------------------------------------------------------------------%
 

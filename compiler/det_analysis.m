@@ -677,9 +677,9 @@ det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId,
 		Detism = erroneous
 	).
 
-det_infer_goal_2(bi_implication(_, _), _, _, _, _, _, _, _, _, _) :-
+det_infer_goal_2(shorthand(_), _, _, _, _, _, _, _, _, _) :-
 	% these should have been expanded out by now
-	error("det_infer_goal_2: unexpected bi_implication").
+	error("det_infer_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 

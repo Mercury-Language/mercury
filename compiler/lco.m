@@ -94,9 +94,9 @@ lco_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, unify(A,B,C,D,E)).
 lco_in_goal_2(foreign_proc(A,B,C,D,E,F,G), _,
 		foreign_proc(A,B,C,D,E,F,G)).
 
-lco_in_goal_2(bi_implication(_, _), _, _) :-
+lco_in_goal_2(shorthand(_), _, _) :-
 	% these should have been expanded out by now
-	error("lco_in_goal_2: unexpected bi_implication").
+	error("lco_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 

@@ -377,7 +377,17 @@ goal_util__name_apart_2(foreign_proc(A,B,C,Vars0,E,F,G), Must, Subn,
 		foreign_proc(A,B,C,Vars,E,F,G)) :-
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
 
-goal_util__name_apart_2(bi_implication(LHS0, RHS0), Must, Subn,
+goal_util__name_apart_2(shorthand(ShorthandGoal0), Must, Subn,
+		shorthand(ShrothandGoal)) :-
+	goal_util__name_apart_2_shorthand(ShorthandGoal0, Must, Subn,
+		ShrothandGoal).
+
+
+:- pred goal_util__name_apart_2_shorthand(shorthand_goal_expr, bool,
+		map(prog_var, prog_var), shorthand_goal_expr).
+:- mode goal_util__name_apart_2_shorthand(in, in, in, out) is det.
+
+goal_util__name_apart_2_shorthand(bi_implication(LHS0, RHS0), Must, Subn,
 		bi_implication(LHS, RHS)) :-
 	goal_util__rename_vars_in_goal(LHS0, Must, Subn, LHS),
 	goal_util__rename_vars_in_goal(RHS0, Must, Subn, RHS).
@@ -614,9 +624,20 @@ goal_util__goal_vars_2(foreign_proc(_, _, _, ArgVars, _, _, _),
 		Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
-goal_util__goal_vars_2(bi_implication(LHS - _, RHS - _), Set0, Set) :-
+goal_util__goal_vars_2(shorthand(ShorthandGoal), Set0, Set) :-
+	goal_util__goal_vars_2_shorthand(ShorthandGoal, Set0, Set).
+
+
+:- pred goal_util__goal_vars_2_shorthand(shorthand_goal_expr, set(prog_var),
+		set(prog_var)).
+:- mode goal_util__goal_vars_2_shorthand(in, in, out) is det.
+
+goal_util__goal_vars_2_shorthand(bi_implication(LHS - _, RHS - _), Set0, 
+		Set) :-
 	goal_util__goal_vars_2(LHS, Set0, Set1),
 	goal_util__goal_vars_2(RHS, Set1, Set).
+
+
 
 goal_util__goals_goal_vars([], Set, Set).
 goal_util__goals_goal_vars([Goal - _ | Goals], Set0, Set) :-
@@ -755,7 +776,13 @@ goal_expr_size(call(_, _, _, _, _, _), 1).
 goal_expr_size(generic_call(_, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(foreign_proc(_, _, _, _, _, _, _), 1).
-goal_expr_size(bi_implication(LHS, RHS), Size) :-
+goal_expr_size(shorthand(ShorthandGoal), Size) :-
+	goal_expr_size_shorthand(ShorthandGoal, Size).
+	
+:- pred goal_expr_size_shorthand(shorthand_goal_expr, int).
+:- mode goal_expr_size_shorthand(in, out) is det.
+
+goal_expr_size_shorthand(bi_implication(LHS, RHS), Size) :-
 	goal_size(LHS, Size1),
 	goal_size(RHS, Size2),
 	Size is Size1 + Size2 + 1.

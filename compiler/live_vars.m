@@ -381,10 +381,10 @@ build_live_sets_in_goal_2(foreign_proc(Attributes,
 			NondetLiveness, LiveSets)
 	).
 
-build_live_sets_in_goal_2(bi_implication(_, _), _, _, _, _, _, _, _, _, _)
+build_live_sets_in_goal_2(shorthand(_), _, _, _, _, _, _, _, _, _)
 		:-
 	% these should have been expanded out by now
-	error("build_live_sets_in_goal_2: unexpected bi_implication").
+	error("build_live_sets_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 

@@ -283,9 +283,9 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		Code = node([not_supported]),
 		ByteInfo = ByteInfo0
 	;
-		GoalExpr = bi_implication(_, _),
+		GoalExpr = shorthand(_),
 		% these should have been expanded out by now
-		error("bytecode_gen__goal_expr: unexpected bi_implication")
+		error("bytecode_gen__goal_expr: unexpected shorthand")
 	).
 
 %---------------------------------------------------------------------------%

@@ -125,9 +125,9 @@ move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
 move_follow_code_in_goal_2(foreign_proc(A,B,C,D,E,F,G), 
 			foreign_proc(A,B,C,D,E,F,G), _, R, R).
 
-move_follow_code_in_goal_2(bi_implication(_, _), _, _, _, _) :-
+move_follow_code_in_goal_2(shorthand(_), _, _, _, _) :-
 	% these should have been expanded out by now
-	error("move_follow_code_in_goal_2: unexpected bi_implication").
+	error("move_follow_code_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 

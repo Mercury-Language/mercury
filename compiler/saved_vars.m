@@ -137,9 +137,9 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
 	;
-		GoalExpr0 = bi_implication(_, _),
+		GoalExpr0 = shorthand(_),
 		% these should have been expanded out by now
-		error("saved_vars_in_goal: unexpected bi_implication")
+		error("saved_vars_in_goal: unexpected shorthand")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -376,9 +376,9 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				IsNonLocal, SlotInfo3, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
 		;
-			Goal0Expr = bi_implication(_, _),
+			Goal0Expr = shorthand(_),
 			% these should have been expanded out by now
-			error("saved_vars_delay_goal: unexpected bi_implication")
+			error("saved_vars_delay_goal: unexpected shorthand")
 		)
 	;
 		saved_vars_delay_goal(Goals0, Construct, Var, IsNonLocal,

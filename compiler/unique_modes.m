@@ -521,9 +521,9 @@ unique_modes__check_goal_2(foreign_proc(Attributes,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "foreign_proc").
 
-unique_modes__check_goal_2(bi_implication(_, _), _, _) -->
+unique_modes__check_goal_2(shorthand(_), _, _) -->
 	% these should have been expanded out by now
-	{ error("unique_modes__check_goal_2: unexpected bi_implication") }.
+	{ error("unique_modes__check_goal_2: unexpected shorthand") }.
 
 :- pred unique_modes__check_call(pred_id, proc_id, list(prog_var), proc_id, 
 			mode_info, mode_info).

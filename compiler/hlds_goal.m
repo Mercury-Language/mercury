@@ -191,22 +191,34 @@
 					% stored at the start of the parallel
 					% conjunction.
 
-		% bi-implication (A <=> B)
+		% shorthand goals
 		%
-		% These get eliminated by quantification.m,
-		% so most passes of the compiler will just call error/1
-		% if they occur.
+		% All shorthand goals are eliminated during or shortly after
+		% the construction of the hlds, so most passes of the compiler
+		% will just call error/1 if they occur.
+	;	shorthand(
+			shorthand_goal_expr
+			)
+	.
+
+		
+
+	% Instances of these `shorthand' goals are implemented by a
+	% hlds --> hlds transformation that replaces them with
+	% equivalent non-shorthand goals. 
+:- type shorthand_goal_expr
+		% bi-implication (A <=> B)
 		%
 		% Note that ordinary implications (A => B)
 		% and reverse implications (A <= B) are expanded
 		% out before we construct the HLDS.  But we can't
 		% do that for bi-implications, because if expansion
 		% of bi-implications is done before implicit quantification,
-		% then the quantification would be wrong.
-
-	;	bi_implication(hlds_goal, hlds_goal)
-
+		% then the quantification would be wrong
+	--->	bi_implication(hlds_goal, hlds_goal)
 	.
+
+	
 
 %-----------------------------------------------------------------------------%
 %
@@ -547,6 +559,8 @@
 					% of insts to a pair of new insts
 					% Each pair represents the insts
 					% of the LHS and the RHS respectively
+
+
 
 %-----------------------------------------------------------------------------%
 %
@@ -1525,15 +1539,25 @@ goal_has_foreign(Goal) = HasForeign :-
 		GoalExpr = par_conj(Goals, _),
 		HasForeign = goal_list_has_foreign(Goals)
 	;
-		GoalExpr = bi_implication(Goal2, Goal3),
-		HasForeign =
-		(	goal_has_foreign(Goal2) = yes
-		->	yes
-		;	goal_has_foreign(Goal3) = yes
-		->	yes
-		;	no
-		)
+		GoalExpr = shorthand(ShorthandGoal),
+		HasForeign = goal_has_foreign_shorthand(ShorthandGoal)
 	).
+
+
+	% Return yes if the shorthand goal contains any foreign code
+:- func goal_has_foreign_shorthand(shorthand_goal_expr) = bool.
+:- mode goal_has_foreign_shorthand(in) = out is det.
+
+goal_has_foreign_shorthand(bi_implication(Goal2, Goal3)) = HasForeign :-
+	HasForeign =
+	(	goal_has_foreign(Goal2) = yes
+	->	yes
+	;	goal_has_foreign(Goal3) = yes
+	->	yes
+	;	no
+	).
+
+
 
 goal_list_has_foreign([]) = no.
 goal_list_has_foreign([X | Xs]) =
@@ -1646,11 +1670,20 @@ set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = unify(_, _, _, _, _).
 set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = foreign_proc(_, _, _, _, _, _, _).
-set_goal_contexts_2(Context, bi_implication(LHS0, RHS0),
+set_goal_contexts_2(Context, shorthand(ShorthandGoal0),
+		shorthand(ShorthandGoal)) :-
+	set_goal_contexts_2_shorthand(Context, ShorthandGoal0,
+		ShorthandGoal).
+
+:- pred set_goal_contexts_2_shorthand(prog_context, shorthand_goal_expr,
+		shorthand_goal_expr).
+:- mode set_goal_contexts_2_shorthand(in, in, out) is det.
+
+set_goal_contexts_2_shorthand(Context, bi_implication(LHS0, RHS0),
 		bi_implication(LHS, RHS)) :-
 	set_goal_contexts(Context, LHS0, LHS),
 	set_goal_contexts(Context, RHS0, RHS).
-
+	
 %-----------------------------------------------------------------------------%
 
 create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,

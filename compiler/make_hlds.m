@@ -4574,11 +4574,23 @@ warn_singletons_in_goal_2(foreign_proc(Attrs, _, _, _, ArgInfo, _,
 	warn_singletons_in_pragma_foreign_code(PragmaImpl, Lang,
 		ArgInfo, Context, PredCallId, MI).
 
-warn_singletons_in_goal_2(bi_implication(LHS, RHS), _GoalInfo, QuantVars,
+warn_singletons_in_goal_2(shorthand(ShorthandGoal), GoalInfo, QuantVars,
 		VarSet, PredCallId, MI) -->
+	warn_singletons_in_goal_2_shorthand(ShorthandGoal, GoalInfo, 
+		QuantVars, VarSet, PredCallId, MI).
+
+
+:- pred warn_singletons_in_goal_2_shorthand(shorthand_goal_expr,
+		hlds_goal_info, set(prog_var), prog_varset, simple_call_id,
+		module_info, io__state, io__state).
+:- mode warn_singletons_in_goal_2_shorthand(in, in, in, in, in, in, di, uo)
+		is det.
+
+warn_singletons_in_goal_2_shorthand(bi_implication(LHS, RHS), _GoalInfo, 
+		QuantVars, VarSet, PredCallId, MI) -->
 	warn_singletons_in_goal_list([LHS, RHS], QuantVars, VarSet,
 		PredCallId, MI).
-
+		
 
 :- pred warn_singletons_in_goal_list(list(hlds_goal), set(prog_var),
 		prog_varset, simple_call_id, module_info,
@@ -5314,7 +5326,7 @@ transform_goal_2(equivalent(P0, Q0), _Context, VarSet0, Subst, Goal, VarSet,
 	{ goal_info_init(GoalInfo) },
 	transform_goal(P0, VarSet0, Subst, P, VarSet1, Info0, Info1),
 	transform_goal(Q0, VarSet1, Subst, Q, VarSet, Info1, Info),
-	{ Goal = bi_implication(P, Q) - GoalInfo }.
+	{ Goal = shorthand(bi_implication(P, Q)) - GoalInfo }.
 
 transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 		VarSet, Info0, Info) -->

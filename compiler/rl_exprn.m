@@ -857,9 +857,9 @@ rl_exprn__goal(foreign_proc(_, _, _, _, _, _, _) - _, _, _) -->
 	{ error("rl_exprn__goal: foreign_proc not yet implemented") }.
 rl_exprn__goal(some(_, _, Goal) - _, Fail, Code) -->
 	rl_exprn__goal(Goal, Fail, Code).
-rl_exprn__goal(bi_implication(_, _) - _, _, _) -->
+rl_exprn__goal(shorthand(_) - _, _, _) -->
 	% these should have been expanded out by now
-	{ error("rl_exprn__goal: unexpected bi_implication") }.
+	{ error("rl_exprn__goal: unexpected shorthand") }.
 
 :- pred rl_exprn__cases(prog_var::in, list(case)::in, byte_tree::in,
 		byte_tree::in, byte_tree::out, 

@@ -1291,9 +1291,9 @@ modecheck_goal_expr(foreign_proc(Attributes, PredId, ProcId0,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_foreign_code").
 
-modecheck_goal_expr(bi_implication(_, _), _, _) -->
+modecheck_goal_expr(shorthand(_), _, _) -->
 	% these should have been expanded out by now
-	{ error("modecheck_goal_expr: unexpected bi_implication") }.
+	{ error("modecheck_goal_expr: unexpected shorthand") }.
 
 append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).
 append_extra_goals(extra_goals(BeforeGoals, AfterGoals),

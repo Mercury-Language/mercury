@@ -1399,9 +1399,9 @@ recompute_instmap_delta_2(_,
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, VarTypes, InstMap, InstMapDelta).
 
-recompute_instmap_delta_2(_, bi_implication(_, _), _, _, _, _, _) -->
+recompute_instmap_delta_2(_, shorthand(_), _, _, _, _, _) -->
 	% these should have been expanded out by now
-	{ error("recompute_instmap_delta_2: unexpected bi_implication") }.
+	{ error("recompute_instmap_delta_2: unexpected shorthand") }.
 	
 %-----------------------------------------------------------------------------%
 

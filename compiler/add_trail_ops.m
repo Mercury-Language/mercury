@@ -271,9 +271,9 @@ goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal) -->
 		{ Goal = PragmaForeign - GoalInfo }
 	).
 
-goal_expr_add_trail_ops(bi_implication(_, _), _, _) -->
+goal_expr_add_trail_ops(shorthand(_), _, _) -->
 	% these should have been expanded out by now
-	{ error("goal_expr_add_trail_ops: unexpected bi_implication") }.
+	{ error("goal_expr_add_trail_ops: unexpected shorthand") }.
 
 :- pred conj_add_trail_ops(hlds_goals::in, hlds_goals::out,
 		trail_ops_info::in, trail_ops_info::out) is det.

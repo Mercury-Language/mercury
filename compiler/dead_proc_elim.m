@@ -510,9 +510,9 @@ dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 		Queue = Queue0,
 		Needed = Needed0
 	).
-dead_proc_elim__examine_expr(bi_implication(_,_), _, _, _, _, _) :-
+dead_proc_elim__examine_expr(shorthand(_), _, _, _, _, _) :-
 	% these should have been expanded out by now
-	error("detect_cse_in_goal_2: unexpected bi_implication").
+	error("detect_cse_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -885,9 +885,9 @@ pre_modecheck_examine_goal(foreign_proc(_, _, _, _, _, _, _) - _) -->
 	[].
 pre_modecheck_examine_goal(unify(_, Rhs, _, _, _) - _) -->
 	pre_modecheck_examine_unify_rhs(Rhs).
-pre_modecheck_examine_goal(bi_implication(_, _) - _) -->
+pre_modecheck_examine_goal(shorthand(_) - _) -->
 	% these should have been expanded out by now
-	{ error("pre_modecheck_examine_goal: unexpected bi_implication") }.
+	{ error("pre_modecheck_examine_goal: unexpected shorthand") }.
 
 :- pred pre_modecheck_examine_unify_rhs(unify_rhs::in, 
 		dead_pred_info::in, dead_pred_info::out) is det.

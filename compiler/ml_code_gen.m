@@ -2039,9 +2039,9 @@ ml_gen_goal_expr(foreign_proc(Attributes,
                         C_Code, OuterContext, MLDS_Decls, MLDS_Statements)
         ).
 
-ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
+ml_gen_goal_expr(shorthand(_), _, _, _, _) -->
 	% these should have been expanded out by now
-	{ error("ml_gen_goal_expr: unexpected bi_implication") }.
+	{ error("ml_gen_goal_expr: unexpected shorthand") }.
 
 :- pred ml_gen_nondet_pragma_c_code(code_model, pragma_foreign_proc_attributes,
 		pred_id, proc_id, list(prog_var),

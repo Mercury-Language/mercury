@@ -106,9 +106,9 @@ goal_expr_mark_static_terms(unify(A,B,C, Unification0, E),
 goal_expr_mark_static_terms(foreign_proc(A,B,C,D,E,F,G),
 		foreign_proc(A,B,C,D,E,F,G), SI, SI).
 
-goal_expr_mark_static_terms(bi_implication(_, _), _, _, _) :-
+goal_expr_mark_static_terms(shorthand(_), _, _, _) :-
 	% these should have been expanded out by now
-	error("fill_expr_slots: unexpected bi_implication").
+	error("fill_expr_slots: unexpected shorthand").
 
 :- pred conj_mark_static_terms(hlds_goals::in, hlds_goals::out,
 		static_info::in, static_info::out) is det.

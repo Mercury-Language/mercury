@@ -506,9 +506,9 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 intermod__traverse_goal(foreign_proc(A,B,C,D,E,F,G) - Info,
 		foreign_proc(A,B,C,D,E,F,G) - Info, yes) --> [].
 
-intermod__traverse_goal(bi_implication(_, _) - _, _, _) -->
+intermod__traverse_goal(shorthand(_) - _, _, _) -->
 	% these should have been expanded out by now
-	{ error("intermod__traverse_goal: unexpected bi_implication") }.
+	{ error("intermod__traverse_goal: unexpected shorthand") }.
 
 
 :- pred intermod__traverse_list_of_goals(hlds_goals::in, hlds_goals::out,

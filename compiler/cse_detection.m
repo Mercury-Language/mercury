@@ -285,9 +285,9 @@ detect_cse_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM), GoalInfo,
 	detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
 		SM, InstMap, CseInfo0, CseInfo, Redo, Goal).
 
-detect_cse_in_goal_2(bi_implication(_, _), _, _, _, _, _, _) :-
+detect_cse_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
 	% these should have been expanded out by now
-	error("detect_cse_in_goal_2: unexpected bi_implication").
+	error("detect_cse_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 

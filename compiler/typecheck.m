@@ -1087,7 +1087,17 @@ typecheck_goal_2(foreign_proc(A, PredId, C, Args, E, F, G),
 		OrigTypeAssignSet) },
 	typecheck_call_pred_id(PredId, Args),
 	perform_context_reduction(OrigTypeAssignSet).
-typecheck_goal_2(bi_implication(LHS0, RHS0), bi_implication(LHS, RHS)) -->
+typecheck_goal_2(shorthand(ShorthandGoal0), shorthand(ShorthandGoal)) -->
+	typecheck_goal_2_shorthand(ShorthandGoal0, ShorthandGoal).
+
+
+:- pred typecheck_goal_2_shorthand(shorthand_goal_expr, shorthand_goal_expr,
+				typecheck_info, typecheck_info).
+:- mode typecheck_goal_2_shorthand(in, out, typecheck_info_di, 
+				typecheck_info_uo) is det.
+
+typecheck_goal_2_shorthand(bi_implication(LHS0, RHS0), 
+		bi_implication(LHS, RHS)) -->
 	checkpoint("<=>"),
 	typecheck_goal(LHS0, LHS),
 	typecheck_goal(RHS0, RHS).
