@@ -113,7 +113,7 @@ extern	MR_Trace_Type	MR_trace_handler;
 extern	bool		MR_trace_enabled;
 
 extern	MR_Unsigned	MR_trace_event_number;
-extern	MR_Bool		MR_trace_from_full;
+extern	bool		MR_trace_from_full;
 
 /*
 ** The details of I/O tabling are documented in library/table_builtin.m.
