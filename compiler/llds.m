@@ -301,7 +301,7 @@ output_tag(Tag) -->
 output_rval(binop(Op, X, Y)) -->
 	io__write_string("("),
 	output_rval(X),
-	ouput_operator(Op),
+	output_operator(Op),
 	output_rval(Y),
 	io__write_string(")").
 output_rval(const(N)) -->
@@ -332,8 +332,14 @@ output_lval(field(Tag, Reg, FieldNum)) -->
 :- pred output_operator(operator, io__state, io__state).
 :- mode output_operator(input, di, do).
 
-output_operator(Op) -->
-	io__write_string(Op).
+output_operator(+) -->
+	io__write_string("+").
+output_operator(-) -->
+	io__write_string("-").
+output_operator(*) -->
+	io__write_string("*").
+output_operator(/) -->
+	io__write_string("/").
 
 %-----------------------------------------------------------------------------%
 
