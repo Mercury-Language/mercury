@@ -1901,10 +1901,10 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
 	Goal = par_conj(Goals) - _GoalInfo,
 	candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars).
 
-candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
+candidate_init_vars_3(ModeInfo, Goal0, !NonFree, !CandidateVars) :-
 		% An existentially quantified goal.
 		%
-	Goal = some(_, _, Goal) - _GoalInfo,
+	Goal0 = some(_, _, Goal) - _GoalInfo,
 	candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars).
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
