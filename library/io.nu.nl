@@ -145,10 +145,6 @@ io__init(Args) :-
 
 io__gc_init(_, _) --> [].
 
-:- pred io__gc_init(io__state, io__state).
-:- mode io__gc_init(di, uo) is det.
-io__gc_init --> [].
-
 :- pred atoms_to_strings(list(atom), list(string)).
 :- mode atoms_to_strings(in, out) is det.
 
