@@ -7,7 +7,7 @@
 /*
 ** context.h - defines Mercury multithreading stuff.
 **
-** A Context is like a thread. It contains a detstack, a nondetstack,
+** A Context is like a thread. It contains a detstack, a nondetstack, a trail,
 ** the various pointers that refer to them, a succip, and a thread-
 ** resumption continuation. Contexts are initally stored in a free-list.
 ** When one is running, the Unix process that is executing it has a pointer
@@ -48,6 +48,7 @@
 #include <sys/types.h>		/* for pid_t */
 
 #include "mercury_types.h"	/* for Word */
+#include "mercury_trail.h"	/* for MR_TrailEntry */
 #include "memory.h"		/* for MemoryZone */
 #include "spinlock.h"		/* for SpinLock */
 #include "goto.h"		/* for GOTO() */
@@ -88,23 +89,37 @@ struct CONTEXT {
 		** currently running then `next' points to the next runnable
 		** context in the runqueue.
 		*/
+
 	Code		*resume;
 		/*
 		** a pointer to the code at which execution should resume when
 		** this context is next scheduled.
 		*/
+
 	Code		*context_succip;
 		/* succip for this context */
+
 	MemoryZone	*detstack_zone;
 		/* pointer to the detstack_zone for this context */
 	Word		*context_sp;
 		/* saved stack pointer for this context */
+
 	MemoryZone	*nondetstack_zone;
 		/* pointer to the nondetstack_zone for this context */
 	Word		*context_maxfr;
 		/* saved maxfr pointer for this context */
 	Word		*context_curfr;
 		/* saved curfr pointer for this context */
+
+#ifdef MR_USE_TRAIL
+	MemoryZone	*trail_zone;
+		/* pointer to the MR_trail_zone for this context */
+	MR_TrailEntry	*context_trail_ptr;
+		/* saved MR_trail_ptr for this context */
+	MR_ChoicepointId context_ticket_counter;
+		/* saved MR_ticket_counter for this context */
+#endif
+
 	Word		*context_hp;
 		/* saved hp for this context */
 	Word		*min_heap_reclamation_point;
@@ -317,6 +332,12 @@ extern Code *do_schedule_resume;
 
 #endif
 
+#ifdef MR_USE_TRAIL
+#define MR_IF_USE_TRAIL(x) x
+#else
+#define MR_IF_USE_TRAIL(x)
+#endif
+
 #define	load_context(cptr)	do {					\
 		Context	*load_context_c;				\
 		load_context_c = (cptr);				\
@@ -326,6 +347,12 @@ extern Code *do_schedule_resume;
 		nondetstack_zone = load_context_c->nondetstack_zone;	\
 		maxfr		= load_context_c->context_maxfr;	\
 		curfr		= load_context_c->context_curfr;	\
+	        MR_IF_USE_TRAIL(					\
+		    MR_trail_zone = load_context_c->trail_zone;		\
+		    MR_trail_ptr = load_context_c->context_trail_ptr;	\
+		    MR_ticket_counter =					\
+				load_context_c->context_ticket_counter;	\
+	    	)							\
 		set_min_heap_reclamation_point(load_context_c);	\
 	} while (0)
 
@@ -338,6 +365,12 @@ extern Code *do_schedule_resume;
 		save_context_c->nondetstack_zone = nondetstack_zone;	\
 		save_context_c->context_maxfr	= maxfr;		\
 		save_context_c->context_curfr	= curfr;		\
+		MR_IF_USE_TRAIL(					\
+		    save_context_c->trail_zone = MR_trail_zone;		\
+		    save_context_c->context_trail_ptr = MR_trail_ptr;	\
+		    save_context_c->context_ticket_counter =		\
+						MR_ticket_counter;	\
+		)							\
 		save_hp_in_context(save_context_c);			\
 	} while (0)
 

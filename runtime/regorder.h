@@ -61,6 +61,10 @@
 #define curfr		LVALUE_CAST(Word *, count_usage(CF_RN, mr8))
 #define maxfr		LVALUE_CAST(Word *, count_usage(MF_RN, mr9))
 
+#define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
+#define MR_ticket_counter	 \
+		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
+
 #define VIRTUAL_REG_MAP_BODY	{ \
 	2, \
 	3, \

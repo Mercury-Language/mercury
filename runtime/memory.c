@@ -242,6 +242,14 @@ init_memory(void)
 	nondstack_size      = round_up(nondstack_size * 1024, unit);
 	nondstack_zone_size = round_up(nondstack_zone_size * 1024, unit);
 
+#ifdef MR_USE_TRAIL
+	trail_size       = round_up(trail_size * 1024, unit);
+	trail_zone_size  = round_up(trail_zone_size * 1024, unit);
+#else
+	trail_size	    = 0;
+	trail_zone_size	    = 0;
+#endif
+
 	/*
 	** If the zone sizes were set to something too big, then
 	** set them to a single unit.
@@ -264,6 +272,11 @@ init_memory(void)
 		nondstack_zone_size = unit;
 	}
 
+#ifdef MR_USE_TRAIL
+	if (trail_zone_size >= trail_size) {
+		trail_zone_size = unit;
+	}
+#endif
 
 	init_memory_arena();
 	init_zones();

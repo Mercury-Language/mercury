@@ -37,6 +37,7 @@ size_t		heap_size =      	4096;
 size_t		detstack_size =  	2048;
 size_t		nondstack_size =  	128;
 size_t		solutions_heap_size =	1024;
+size_t		trail_size =		128;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
@@ -44,6 +45,7 @@ size_t		heap_zone_size =	16;
 size_t		detstack_zone_size =	16;
 size_t		nondstack_zone_size =	16;
 size_t		solutions_heap_zone_size = 16;
+size_t		trail_zone_size =	16;
 
 /* primary cache size to optimize for, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
@@ -70,18 +72,6 @@ const char *	progname;
 int		mercury_argc;	/* not counting progname */
 char **		mercury_argv;
 int		mercury_exit_status = 0;
-
-/*
-** Constraint solver trail.
-**
-** XXX this should not be here; it should be in engine.mod
-** or constraints.c or somewhere like that.
-*/
-#ifdef CONSTRAINTS
-int		*mercury_solver_sp;
-int		*mercury_solver_sp_old;
-size_t		solver_ticket_stack_size = SOLVER_STACK_SIZE;
-#endif
 
 /*
 ** The Mercury runtime calls io:run/0 in the Mercury library, and the Mercury
@@ -188,14 +178,6 @@ mercury_runtime_main(int argc, char **argv)
 #endif
 
 	(*address_of_mercury_init_io)();
-
-#ifdef CONSTRAINTS
-	perform_solver_initialisations();
-		/* convert the stack size to bytes from kb */
-	solver_ticket_stack_size *= 1024;
-	mercury_solver_sp =checked_malloc(solver_ticket_stack_size*sizeof(int));
-	mercury_solver_sp_old = mercury_solver_sp;
-#endif
 
 	/* execute the selected entry point */
 	init_engine();
@@ -519,9 +501,9 @@ process_options(int argc, char **argv)
 			else if (optarg[0] == 'l')
 				entry_table_size = size *
 					1024 / (2 * sizeof(List *));
-#ifdef CONSTRAINTS
-			else if (optarg[0] == 's')
-				solver_ticket_stack_size = size;
+#ifdef MR_USE_TRAIL
+			else if (optarg[0] == 't')
+				trail_size = size;
 #endif
 			else
 				usage();
@@ -589,6 +571,10 @@ process_options(int argc, char **argv)
 				detstack_zone_size = size;
 			else if (optarg[0] == 'n')
 				nondstack_zone_size = size;
+#ifdef MR_USE_TRAIL
+			else if (optarg[0] == 't')
+				trail_zone_size = size;
+#endif
 			else
 				usage();
 
@@ -644,13 +630,16 @@ usage(void)
 		"-sh<n> \t\tallocate n kb for the heap\n"
 		"-sd<n> \t\tallocate n kb for the det stack\n"
 		"-sn<n> \t\tallocate n kb for the nondet stack\n"
-#ifdef CONSTRAINTS
-		"-ss<n> \t\tallocate n kb for the solver ticket stack\n"
+#ifdef MR_USE_TRAIL
+		"-st<n> \t\tallocate n kb for the trail\n"
 #endif
 		"-sl<n> \t\tallocate n kb for the label table\n"
 		"-zh<n> \t\tallocate n kb for the heap redzone\n"
 		"-zd<n> \t\tallocate n kb for the det stack redzone\n"
 		"-zn<n> \t\tallocate n kb for the nondet stack redzone\n"
+#ifdef MR_USE_TRAIL
+		"-zt<n> \t\tallocate n kb for the trail redzone\n"
+#endif
 		"-P<n> \t\tnumber of processes to use for parallel execution\n"
 		"\t\tapplies only if Mercury is configured with --enable-parallel\n"
 		"-p<n> \t\tprimary cache size in kbytes\n"
@@ -769,6 +758,12 @@ print_register_usage_counts(void)
 				break;
 			case MF_RN:
 				printf("maxfr");
+				break;
+			case MR_TRAIL_PTR_RN:
+				printf("MR_trail_ptr");
+				break;
+			case MR_TICKET_COUNTER_RN:
+				printf("MR_ticket_counter");
 				break;
 			default:
 				printf("UNKNOWN%d", i);

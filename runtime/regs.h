@@ -155,6 +155,8 @@ extern	Word	set_reg(int, Word);
 #define	SP_RN	(ORD_RN + 2)
 #define	CF_RN	(ORD_RN + 3)
 #define	MF_RN	(ORD_RN + 4)
-#define MAX_RN	(ORD_RN + 5)
+#define MR_TRAIL_PTR_RN		(ORD_RN + 5)
+#define MR_TICKET_COUNTER_RN	(ORD_RN + 6)
+#define MAX_RN			(ORD_RN + 7)
 
 #endif /* not REGS_H */

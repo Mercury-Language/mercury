@@ -25,8 +25,8 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 HDRS		= misc.h calls.h conf.h context.h \
 		  deep_copy.h dlist.h debug.h dummy.h \
 		  engine.h getopt.h goto.h heap.h imp.h init.h label.h \
-		  memory.h mercury_solver_backtrack.h \
-		  mercury_float.h mercury_string.h mercury_types.h \
+		  memory.h mercury_float.h mercury_string.h mercury_trail.h \
+		  mercury_types.h \
 		  overflow.h prof.h prof_mem.h regorder.h regs.h \
 		  spinlock.h std.h stacks.h \
 		  table.h tags.h timing.h type_info.h wrapper.h
@@ -40,7 +40,7 @@ MOD_CS		= engine.c wrapper.c call.c context.c type_info.c
 MOD_OS		= $(MOD_CS:.c=.o)
 ORIG_CS		= deep_copy.c dlist.c dummy.c label.c \
 		  memory.c misc.c regs.c table.c timing.c prof.c prof_mem.c \
-		  spinlock.c mercury_float.c
+		  spinlock.c mercury_float.c mercury_trail.c
 ORIG_OS		= $(ORIG_CS:.c=.o)
 OBJS		= $(MOD_OS) $(ORIG_OS)
 # OBJS		= engine.o wrapper.o call.o \

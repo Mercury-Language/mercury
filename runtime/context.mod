@@ -159,6 +159,18 @@ new_context(void)
 	bt_succip(c->context_curfr) = ENTRY(do_not_reached);
 	bt_succfr(c->context_curfr) = NULL;
 
+#ifdef MR_USE_TRAIL
+	if (c->trail_zone != NULL) {
+		reset_zone(c->trail_zone);
+	} else {
+		c->trail_zone = create_zone("trail", 0,
+			trail_size, next_offset(), trail_zone_size, 
+			default_handler);
+	}
+	c->context_trail_ptr = (MR_TrailEntry *) c->trail_zone->min;
+	c->context_ticket_counter = 0;
+#endif
+
 	c->context_hp = NULL;
 
 	return c;

@@ -43,8 +43,8 @@
 #include	"wrapper.h"
 #include	"context.h"
 #include	"type_info.h"
-#ifdef CONSTRAINTS
-#include	"mercury_solver_backtrack.h"
+#ifdef MR_USE_TRAIL
+#include	"mercury_trail.h"
 #endif
 
 #include	"debug.h"
