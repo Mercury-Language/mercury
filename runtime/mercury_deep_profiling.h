@@ -51,6 +51,11 @@ struct MR_ProfilingMetrics_Struct {
 	unsigned				MR_own_allocs;
 	unsigned				MR_own_words;
 #endif
+	/* ANSI/ISO C requires non-empty structs */
+#if !defined(MR_DEEP_PROFILING_PORT_COUNTS) && \
+	!defined(MR_DEEP_PROFILING_TIMING) && !defined(MR_DEEP_PROFILING_MEMORY)
+	unsigned				dummy;
+#endif
 };
 
 struct MR_CallSiteStatic_Struct {
