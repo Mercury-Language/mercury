@@ -51,7 +51,7 @@
 
 output_mlds(MLDS) -->
 	{ ModuleName = mlds__get_module_name(MLDS) },
-	module_name_to_file_name(ModuleName, ".il", no, ILAsmFile),
+	module_name_to_file_name(ModuleName, ".il", yes, ILAsmFile),
 	output_to_file(ILAsmFile, output_assembler(MLDS), Result),
 
 		% Put the pragma C code into a C++ file.
@@ -59,7 +59,7 @@ output_mlds(MLDS) -->
 		% we should just put managed C++ foreign code into
 		% this file.
 	( { Result = yes } ->
-		module_name_to_file_name(ModuleName, "__c_code.cpp", no, 
+		module_name_to_file_name(ModuleName, "__c_code.cpp", yes, 
 			CPPFile),
 		output_to_file(CPPFile, output_c_code(MLDS),
 			_Result)
