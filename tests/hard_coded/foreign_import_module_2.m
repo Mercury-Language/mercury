@@ -11,3 +11,10 @@
 :- pragma export(foo(in, out), "foo").
 
 foo(X, X+1).
+
+:- pragma foreign_code("MC++", "
+	static void foo2(MR_Integer X, MR_Ref(MR_Integer) Y)
+	{
+		*Y = X + 1;
+	}
+").

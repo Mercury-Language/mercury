@@ -89,6 +89,26 @@
 :- func foreign__to_type_string(foreign_language, exported_type) = string.
 :- func foreign__to_type_string(foreign_language, module_info, (type)) = string.
 
+	%
+	% foreign__foreign_import_module_name(ForeignImport)
+	%
+	% returns the module name which represents the ForeignImport.
+	%
+	% For instance for the foreign_import_module representing
+	% 	:- foreign_import_module("MC++", module)
+	% would return the module_name
+	% 	unqualified("module__cpp_code")
+	%
+:- func foreign__foreign_import_module_name(foreign_import_module) = module_name.
+
+	% foreign__foreign_import_module_name(ForeignImport, CurrentModule)
+	%
+	% returns the module name needed to refer to ForeignImport from the
+	% CurrentModule.
+	%
+:- func foreign__foreign_import_module_name(foreign_import_module, module_name) =
+		module_name.
+
 	% Filter the decls for the given foreign language. 
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
@@ -201,6 +221,7 @@
 :- import_module check_hlds__mode_util, hlds__error_util.
 :- import_module hlds__hlds_data, parse_tree__prog_out.
 :- import_module backend_libs__code_model, libs__globals.
+:- import_module parse_tree__modules.
 
 	% Currently we don't use the globals to compare foreign language
 	% interfaces, but if we added appropriate options we might want
@@ -685,6 +706,58 @@ to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
 	).
 to_type_string(il, mercury(_Type)) = _ :-
 	sorry(this_file, "to_type_string for il").
+
+%-----------------------------------------------------------------------------%
+
+foreign__foreign_import_module_name(
+		foreign_import_module(Lang, ForeignImportModule, _)) =
+		ModuleName :-
+	( Lang = c,
+		ModuleName = ForeignImportModule
+	; Lang = il,
+		ModuleName = ForeignImportModule
+	; Lang = managed_cplusplus,
+		ModuleName = foreign_language_module_name(ForeignImportModule,
+				Lang)
+	; Lang = csharp,
+		ModuleName = foreign_language_module_name(ForeignImportModule,
+				Lang)
+	).
+
+foreign__foreign_import_module_name(ModuleForeignImported, CurrentModule) =
+		ImportedForeignCodeModuleName :-
+	ModuleForeignImported = foreign_import_module(Lang, _, _),
+	ImportedForeignCodeModuleName1 = ModuleForeignImported ^
+			foreign__foreign_import_module_name,
+	( Lang = c,
+		ImportedForeignCodeModuleName = ImportedForeignCodeModuleName1
+	; Lang = il,
+		ImportedForeignCodeModuleName = handle_std_library(
+				CurrentModule, ImportedForeignCodeModuleName1)
+	; Lang = managed_cplusplus,
+		ImportedForeignCodeModuleName = handle_std_library(
+				CurrentModule, ImportedForeignCodeModuleName1)
+	; Lang = csharp,
+		ImportedForeignCodeModuleName = handle_std_library(
+				CurrentModule, ImportedForeignCodeModuleName1)
+	).
+
+	%
+	% On the il backend, we need to refer to the module "mercury" when
+	% referencing a std library module when we are not actually building
+	% the std library.
+	%
+:- func handle_std_library(module_name, module_name) = module_name.
+
+handle_std_library(CurrentModule, ModuleName0) = ModuleName :-
+	(
+		mercury_std_library_module_name(ModuleName0),
+		\+ mercury_std_library_module_name(CurrentModule)
+	->
+		ModuleName = unqualified("mercury")
+	;
+		ModuleName = ModuleName0
+	).
 
 %-----------------------------------------------------------------------------%
 

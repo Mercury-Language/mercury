@@ -170,8 +170,20 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 	{ Info = Info1 }
     ;
 	{ Status = being_built },
-	{ error(
-	"make_module_target: target being built, circular dependencies?") },
+	( { TargetFile = _FileName - foreign_il_asm(_Lang) } ->
+		io__write_string(
+			"Error: circular dependency detected while building\n"),
+		io__write_string("  `"),
+		write_dependency_file(Dep),
+		io__write_string("'.\n"),
+		io__write_string(
+		"  This is due to a forbidden foreign_import_module cycle.\n"),
+		io__set_exit_status(1)
+	;
+		{ error(
+	"make_module_target: target being built, circular dependencies?"
+		) }
+	),
 	{ Succeeded = no },
 	{ Info = Info1 }
     ;

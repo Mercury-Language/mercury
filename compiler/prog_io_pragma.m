@@ -179,12 +179,8 @@ parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms,
 	    sym_name_and_args(ImportTerm, Import, [])
 	->
 	    ( parse_foreign_language(LangTerm, Language) ->
-		( Language = c ->
-		    Result = ok(pragma(
-		    	foreign_import_module(Language, Import)))
-		;
-		    Result = error("`:- pragma foreign_import_module' not yet supported for languages other than C", LangTerm)
-		)
+	    	Result = ok(pragma(
+			foreign_import_module(Language, Import)))
 	    ;
 		Result = error("invalid foreign language in `:- pragma foreign_import_module' declaration",
 			LangTerm)

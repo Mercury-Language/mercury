@@ -89,7 +89,6 @@ output_src_end(ModuleName) -->
 :- mode generate_code(in(managed_lang), in, di, uo) is det.
 
 generate_code(Lang, MLDS) -->
-
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns) },
 	{ ClassName = class_name(mercury_module_name_to_mlds(ModuleName), 
 			wrapper_class_name) },
@@ -102,8 +101,7 @@ generate_code(Lang, MLDS) -->
 
 		% Get the foreign code for the required language.
 	{ ForeignCode = map__lookup(AllForeignCode, Lang) },
-	generate_foreign_header_code(Lang,
-			mercury_module_name_to_mlds(ModuleName), ForeignCode),
+	generate_foreign_header_code(Lang, ModuleName, ForeignCode),
 
 		% Output the namespace.
 	{ generate_namespace_details(Lang, ClassName,
@@ -239,14 +237,32 @@ output_language_specific_header_code(managed_cplusplus, ModuleName, Imports) -->
 	).
 
 
-	% XXX we don't handle `:- pragma foreign_import_module'.
 :- pred generate_foreign_header_code(foreign_language::in(managed_lang),
-		mlds_module_name::in, mlds__foreign_code::in,
+		module_name::in, mlds__foreign_code::in,
 		io__state::di, io__state::uo) is det.
 
-generate_foreign_header_code(Lang, _ModuleName, 
-		mlds__foreign_code(RevHeaderCode, _RevImports, _RevBodyCode,
+generate_foreign_header_code(Lang, ModuleName, 
+		mlds__foreign_code(RevHeaderCode, RevImports, _RevBodyCode,
 			_ExportDefns)) -->
+
+	% Only MC++ can declare which assemblies it refers to in its
+	% source file.  C# declares which assemblies it refers to via
+	% command line arguments to the C# compiler.
+	( { Lang = managed_cplusplus },
+		{ Imports = list__reverse(RevImports) },
+		list__foldl(
+			(pred(ForeignImport::in, di, uo) is det -->
+				module_name_to_search_file_name(
+					foreign_import_module_name(
+						    ForeignImport, ModuleName),
+						".dll", FileName),
+				io__write_strings(["#using """,
+						FileName, """\n"])
+			), Imports)
+	; { Lang = csharp },
+		[]
+	),
+
 	{ HeaderCode = list__reverse(RevHeaderCode) },
 	io__write_list(HeaderCode, "\n", 
 		(pred(foreign_decl_code(CodeLang, Code, Context)::in,
@@ -282,7 +298,6 @@ generate_namespace_details(Lang, ClassName, NameSpaceFmtStr, Namespace) :-
 		Namespace = Namespace0
 	).
 
-	% XXX we don't handle `:- pragma foreign_import_module'.
 :- pred generate_foreign_code(foreign_language::in(managed_lang),
 		mlds_module_name::in, mlds__foreign_code::in,
 		io__state::di, io__state::uo) is det.

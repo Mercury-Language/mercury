@@ -5595,6 +5595,9 @@ tells the implementation that @file{@var{ImportedModule}.mh} must be built
 before the object file for the module containing the
 @samp{pragma foreign_import_module} declaration.
 
+A cycle of @samp{pragma foreign_import_module}, where the language is either
+@samp{"MC++"} or @samp{"C#"}, is not permitted.
+
 @node Adding foreign definitions
 @section Adding foreign definitions
 

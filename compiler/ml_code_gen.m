@@ -817,14 +817,16 @@ ml_gen_foreign_code(ModuleInfo, All_MLDS_ForeignCode) -->
 	{ module_info_get_foreign_import_module(ModuleInfo, ForeignImports) },
 	{ module_info_get_foreign_body_code(ModuleInfo, ForeignBodys) },
 	globals__io_get_backend_foreign_languages(BackendForeignLanguages),
-	
+
+	{ WantedForeignImports = list__condense(
+		list__map((func(L) = Imports :-
+			foreign__filter_imports(L, ForeignImports, Imports, _)
+		), BackendForeignLanguages)) },
+
 	{ list__foldl((pred(Lang::in, Map0::in, Map::out) is det :-
 			foreign__filter_decls(Lang,
 				ForeignDecls, WantedForeignDecls, 
 				_OtherForeignDecls),
-			foreign__filter_imports(Lang,
-				ForeignImports, WantedForeignImports, 
-				_OtherForeignImports),
 			foreign__filter_bodys(Lang,
 				ForeignBodys, WantedForeignBodys,
 				_OtherForeignBodys),

@@ -2587,10 +2587,9 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		    % of it sub-modules dlls, as they are referenced from
 		    % inside the top level dll.
 
+		module_name_to_file_name(ModuleName, ".dll", no, DllFileName),
 		{ SubModules = submodules(ModuleName, AllDeps) },
 		( { Target = il, SubModules \= [] } ->
-			module_name_to_file_name(ModuleName, ".dll", no,
-					DllFileName),
 			io__write_strings(DepStream, [DllFileName, " : "]),
 			write_dll_dependencies_list(SubModules, "", DepStream),
 			io__nl(DepStream)
@@ -2612,19 +2611,31 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		% Handle dependencies introduced by
 		% `:- pragma foreign_import_module' declarations.
 		%
-		{ ForeignImportedModules =
-		    list__map(
-			(func(foreign_import_module(_, ForeignImportModule, _))
-				= ForeignImportModule),
-			ForeignImports) },
-		( { ForeignImports = [] } ->
+		{ list__filter_map(
+			(pred(ForeignImportMod::in, Import::out) is semidet :-
+				Import = foreign_import_module_name(
+						ForeignImportMod,
+						SourceFileModuleName),
+
+				% XXX We can't include mercury.dll as mmake
+				% can't find it, but we know that it exists.
+				Import \= unqualified("mercury")
+			), ForeignImports, ForeignImportedModules) },
+		( { ForeignImportedModules = [] } ->
 			[]
 		;
+			{ Target = il ->
+				ForeignImportTarget = DllFileName,
+				ForeignImportExt = ".dll"
+			;
+				ForeignImportTarget = ObjFileName,
+				ForeignImportExt = ".mh"
+			},
 			io__write_string(DepStream, "\n\n"),
-			io__write_string(DepStream, ObjFileName),
+			io__write_string(DepStream, ForeignImportTarget),
 			io__write_string(DepStream, " : "),
-			write_dependencies_list(ForeignImportedModules, ".mh",
-				DepStream),
+			write_dependencies_list(ForeignImportedModules,
+					ForeignImportExt, DepStream),
 			io__write_string(DepStream, "\n\n")
 		),
 
@@ -2634,7 +2645,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		->
 			{ Langs = set__to_sorted_list(LangSet) },
 			list__foldl(write_foreign_dependency_for_il(DepStream,
-				ModuleName, AllDeps), Langs)
+				ModuleName, AllDeps, ForeignImports), Langs)
 		;
 			[]
 		),
@@ -2846,10 +2857,10 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	% scripts/Mmake.rules).
 	% 
 :- pred write_foreign_dependency_for_il(io__output_stream::in,sym_name::in,
-		list(module_name)::in, foreign_language::in,
-		io__state::di, io__state::uo) is det.
-write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps, ForeignLang)
-		-->
+		list(module_name)::in, foreign_import_module_info::in,
+		foreign_language::in, io__state::di, io__state::uo) is det.
+write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
+		ForeignImports, ForeignLang) -->
 	( 
 		{ ForeignModuleName = foreign_language_module_name(
 			ModuleName, ForeignLang) },
@@ -2893,8 +2904,14 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps, ForeignLang)
 			;
 				Prefix = "/r:"
 			},
+			{ ForeignDeps = list__map(
+				(func(M) =
+					foreign_import_module_name(
+							M, ModuleName)
+				), ForeignImports) },
+			{ Deps = AllDeps ++ ForeignDeps },
 			write_dll_dependencies_list(
-				referenced_dlls(ModuleName, AllDeps),
+				referenced_dlls(ModuleName, Deps),
 				Prefix, DepStream),
 			io__nl(DepStream)
 		;
@@ -4864,11 +4881,8 @@ get_item_foreign_code(Globals, Item, Info0, Info) :-
 		Info = Info1 ^ module_contains_foreign_export :=
 				contains_foreign_export
 	;
-		% XXX handle lang \= c for
-		% `:- pragma foreign_import_module'.
 		Pragma = foreign_import_module(Lang, Import),
-		Lang = c,
-		list__member(c, BackendLangs)
+		list__member(Lang, BackendLangs)
 	->
 		Info = Info0 ^ all_foreign_import_module_info :=
 	    		[foreign_import_module(Lang, Import, Context) | 	

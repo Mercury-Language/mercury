@@ -153,7 +153,10 @@ target_dependencies(Globals, c_header(_)) =
 		target_dependencies(Globals, c_code).
 target_dependencies(Globals, c_code) = compiled_code_dependencies(Globals).
 target_dependencies(Globals, il_code) = compiled_code_dependencies(Globals).
-target_dependencies(_, il_asm) = il_code `of` self.
+target_dependencies(_, il_asm) =
+	combine_deps_list([
+		il_code `of` self
+	]).
 target_dependencies(Globals, java_code) = compiled_code_dependencies(Globals). 
 target_dependencies(Globals, asm_code(_)) =
 		compiled_code_dependencies(Globals).
@@ -192,7 +195,15 @@ target_dependencies(_, intermodule_interface) =
 target_dependencies(_, foreign_il_asm(_)) =
 	combine_deps_list([
 		il_asm `of` self,
-		il_asm `of` filter(maybe_keep_std_lib_module, direct_imports)
+		il_asm `of` filter(maybe_keep_std_lib_module, direct_imports),
+		il_asm `of` filter(maybe_keep_std_lib_module,
+				foreign_imports(il)),
+		foreign_il_asm(managed_cplusplus) `of`
+				filter(maybe_keep_std_lib_module,
+					foreign_imports(managed_cplusplus)),
+		foreign_il_asm(csharp) `of`
+				filter(maybe_keep_std_lib_module,
+					foreign_imports(csharp))
 	]).
 target_dependencies(Globals, foreign_object(PIC, _)) =
 	get_foreign_deps(Globals, PIC).
@@ -577,6 +588,32 @@ get_foreign_imported_modules_2(MaybeLanguages, ForeignImportModules) =
 			MaybeLanguages = no
 		)
 	    ), ForeignImportModules).
+
+%-----------------------------------------------------------------------------%
+
+	%
+	% foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO)
+	%
+	% From the module, ModuleName, extract the set of modules, Modules,
+	% which are mentioned in foreign_import_module declarations with the
+	% specified language, Lang.
+	%
+:- pred foreign_imports(foreign_language::in,
+	module_name::in, bool::out, set(module_name)::out,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
+foreign_imports(Lang, ModuleName, Success, Modules, !Info) -->
+	get_module_dependencies(ModuleName, MaybeImports, !Info),
+	{ MaybeImports = yes(Imports),
+		list__filter_map((pred(FI::in, M::out) is semidet :-
+				FI = foreign_import_module(Lang, M, _)
+			), Imports ^ foreign_import_module_info, ModulesList),
+		set__list_to_set(ModulesList, Modules),
+		Success = yes
+	; MaybeImports = no,
+		Modules = set__init,
+		Success = no
+	}.
 
 %-----------------------------------------------------------------------------%
 

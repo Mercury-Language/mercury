@@ -160,6 +160,7 @@
 :- import_module libs__options, libs__handle_options.
 :- import_module hlds__passes_aux, libs__trace_params.
 :- import_module parse_tree__prog_out.
+:- import_module backend_libs__foreign.
 
 :- import_module ll_backend__llds_out.	% for llds_out__make_init_name and
 					% llds_out__make_rl_data_name
@@ -295,8 +296,13 @@ compile_csharp_file(ErrorStream, Imports,
 	;
 		Prefix = "/r:"
 	},
+	{ ForeignDeps = list__map(
+		(func(M) =
+			foreign_import_module_name(M, Imports ^ module_name)
+		), Imports ^ foreign_import_module_info ) },
 	{ ReferencedDlls = referenced_dlls(Imports ^ module_name,
-			Imports ^ int_deps ++ Imports ^ impl_deps) },
+			Imports ^ int_deps ++ Imports ^ impl_deps ++
+			ForeignDeps) },
 	list__map_foldl((pred(Mod::in, Result::out, di, uo) is det -->
 			module_name_to_file_name(Mod, ".dll", no, FileName),
 			{ Result = [Prefix, FileName, " "] }
