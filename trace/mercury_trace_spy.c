@@ -339,18 +339,19 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
 
 int
 MR_add_line_spy_point(MR_Spy_Action action,
-	const char *filename, int linenumber)
+	const char *orig_filename, int linenumber)
 {
 	MR_Spy_Point	*point;
 	int		point_slot;
 	int		old_size, new_size;
+	char 		*filename;
 
 	/*
 	** The original filename string may have come from a buffer
 	** or other volatile storage.
 	*/
 
-	filename = MR_copy_string(filename);
+	filename = MR_copy_string(orig_filename);
 
 	point_slot = MR_spy_point_next;
 

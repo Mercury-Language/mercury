@@ -41,7 +41,7 @@ struct MR_Spy_Point_Struct {
 	MR_Spy_Action			spy_action;
 	const MR_Stack_Layout_Entry	*spy_proc;      /* if not LINENO */
 	const MR_Stack_Layout_Label	*spy_label;	/* if SPECIFIC */
-	const char			*spy_filename;  /* if LINENO */
+	char				*spy_filename;  /* if LINENO */
 	int				spy_linenumber; /* if LINENO */
 	MR_Spy_Point			*spy_next;	/* if not LINENO */
 };
