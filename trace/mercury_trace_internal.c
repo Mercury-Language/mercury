@@ -2540,6 +2540,8 @@ MR_trace_usage(const char *cat, const char *item)
 /*
 ** Read lines until we find one that contains only "end".
 ** Return the lines concatenated together.
+** The memory returned is allocated with MR_malloc();
+** it is the caller's responsibility to MR_free() it when appropriate.
 */
 
 static const char *
@@ -2554,7 +2556,8 @@ MR_trace_read_help_text(void)
 
 	next_char_slot = 0;
 	while ((text = MR_trace_getline("cat> ", MR_mdb_in, MR_mdb_out))
-			!= NULL) {
+			!= NULL)
+	{
 		if (streq(text, "end")) {
 			MR_free(text);
 			break;
@@ -2573,6 +2576,8 @@ MR_trace_read_help_text(void)
 		MR_free(text);
 	}
 
+	MR_ensure_big_enough(next_char_slot, doc_char, char,
+			MR_INIT_DOC_CHARS);
 	doc_chars[next_char_slot] = '\0';
 	return doc_chars;
 }
@@ -2589,6 +2594,9 @@ MR_trace_read_help_text(void)
 ** *words_max strings. The number of strings (words) filled in will be
 ** given by *word_count.
 **
+** The space for the *words array is allocated with MR_malloc().
+** It is the caller's responsibility to free it when appropriate.
+** The elements of the *words array point to memory from the line array.
 ** The lifetime of the elements of the *words array expires when
 ** the line array is MR_free()'d or further modified or when
 ** MR_trace_parse_line is called again, whichever comes first.
@@ -2671,7 +2679,8 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 **
 ** On return *words will point to an array of strings, with space for
 ** *words_max strings. The number of strings filled in will be given by
-** the return value.
+** the return value.  The memory for *words is allocated with MR_malloc(),
+** and it is the responsibility of the caller to MR_free() it when appropriate.
 */
 
 static int
@@ -2831,6 +2840,11 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 ** newline).
 ** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
 ** occurs on an empty line, return NULL.
+**
+** Whether the line is read from the queue or from mdb_in, if this function
+** returns a non-NULL value, then the memory for the line returned will have
+** been allocated with MR_malloc(), and it is the caller's resposibility
+** to MR_free() it when appropriate.
 */
 
 char *
@@ -2860,6 +2874,9 @@ MR_trace_getline(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 
 /*
 ** If there any lines waiting in the queue, return the first of these.
+** The memory for the line will have been allocated with MR_malloc(),
+** and it is the caller's resposibility to MR_free() it when appropriate.
+** If there are no lines in the queue, this function returns NULL.
 */
 
 static char *
