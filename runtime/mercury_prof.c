@@ -93,6 +93,11 @@ typedef struct s_prof_time_node {
 
 MR_Code *		volatile	MR_prof_current_proc;
 
+#ifdef PROFILE_CALLS
+  MR_Code *		MR_prof_ho_caller_proc;
+#endif
+
+
 /* 
 ** Private global variables
 */

@@ -1242,6 +1242,7 @@ Define_entry(do_interpreter);
 	}
 
 #ifdef  PROFILE_TIME
+	set_prof_current_proc(program_entry_point);
 	if (MR_profiling) MR_prof_turn_on_time_profiling();
 #endif
 

@@ -126,16 +126,11 @@ Define_entry(mercury__do_call_closure);
 	restore_registers();
 
 	/*
-	** Note that we pass MR_prof_current_proc rather than
+	** Note that we pass MR_prof_ho_caller_proc rather than
 	** LABEL(do_call_closure), so that the call gets recorded
 	** as having come from our caller.
-	** XXX This won't do the right thing if PROFILE_CALLS is
-	** defined but PROFILE_TIME isn't, since MR_prof_current_proc
-	** will be NULL in that case.  But that combination of
-	** configuration parameters isn't really supported.
 	*/
-	tailcall(closure->MR_closure_code,
-		MR_prof_current_proc);
+	tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
 }
 
 	/*
@@ -189,15 +184,11 @@ Define_entry(mercury__do_call_class_method);
 	restore_registers();
 
 	/*
-	** Note that we pass MR_prof_current_proc rather than
+	** Note that we pass MR_prof_ho_caller_proc rather than
 	** LABEL(do_call_class_method), so that the call gets recorded
 	** as having come from our caller.
-	** XXX This won't do the right thing if PROFILE_CALLS is
-	** defined but PROFILE_TIME isn't, since MR_prof_current_proc
-	** will be NULL in that case.  But that combination of
-	** configuration parameters isn't really supported.
 	*/
-	tailcall(destination, MR_prof_current_proc);
+	tailcall(destination, MR_prof_ho_caller_proc);
 }
 
 /*

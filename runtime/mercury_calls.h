@@ -18,7 +18,6 @@
 		do {						\
 			debugcall(LABEL(label), (succ_cont));	\
 			MR_succip = (succ_cont);			\
-			set_prof_current_proc(LABEL(label));	\
 			GOTO_LABEL(label);			\
 		} while (0)
 
@@ -46,7 +45,6 @@
 			__label__ fixup_gp;			\
 			debugcall((proc), (succ_cont));		\
 			MR_succip = (&&fixup_gp);		\
-			set_prof_current_proc(proc);		\
 			GOTO(proc);				\
 		fixup_gp:					\
 			ASM_FIXUP_REGS				\
@@ -58,7 +56,6 @@
 			__label__ fixup_gp;			\
 			debugcall((proc), (succ_cont));		\
 			MR_succip = (&&fixup_gp);		\
-			set_prof_current_proc(proc);		\
 			GOTO(proc);				\
 		fixup_gp:					\
 			ASM_FIXUP_REGS				\
@@ -69,7 +66,6 @@
 		do {						\
 			debugcall((proc), (succ_cont));		\
 			MR_succip = (succ_cont);		\
-			set_prof_current_proc(proc);		\
 			GOTO(proc);				\
 		} while (0)
   #define noprof_call_localret(proc, succ_cont) 		\
@@ -88,12 +84,14 @@
 #define	call(proc, succ_cont, current_label)			\
 		do {						\
 			PROFILE((proc), (current_label));	\
+			set_prof_current_proc(proc);		\
 			noprof_call((proc), (succ_cont));	\
 		} while (0)
 
 #define	call_localret(proc, succ_cont, current_label)		\
 		do {						\
 			PROFILE((proc), (current_label));	\
+			set_prof_current_proc(proc);		\
 			noprof_call_localret(proc, succ_cont);	\
 		} while (0)
 

@@ -1647,8 +1647,9 @@ output_instruction(if_val(Rval, Target), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
 	io__write_string("\tif ("),
 	output_rval_as_type(Rval, bool),
-	io__write_string(")\n\t\t"),
-	output_goto(Target, CallerLabel).
+	io__write_string(") {\n\t\t"),
+	output_goto(Target, CallerLabel),
+	io__write_string("\t}\n").
 
 output_instruction(incr_hp(Lval, MaybeTag, Rval, TypeMsg), ProfInfo) -->
 	(
@@ -3069,12 +3070,20 @@ output_goto(do_trace_redo_fail_shallow, _) -->
 	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_shallow));\n").
 output_goto(do_trace_redo_fail_deep, _) -->
 	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_deep));\n").
-output_goto(do_call_closure, _CallerLabel) -->
-	% see comment in output_call for why we use `noprof_' here
-	io__write_string("noprof_tailcall(ENTRY(mercury__do_call_closure));\n").
-output_goto(do_call_class_method, _CallerLabel) -->
-	% see comment in output_call for why we use `noprof_' here
-	io__write_string("noprof_tailcall(ENTRY(mercury__do_call_class_method));\n").
+output_goto(do_call_closure, CallerLabel) -->
+	% see comment in output_call for why we use `noprof_' etc. here
+	io__write_string("MR_set_prof_ho_caller_proc("),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n\t\t"),
+	io__write_string(
+		"noprof_tailcall(ENTRY(mercury__do_call_closure));\n").
+output_goto(do_call_class_method, CallerLabel) -->
+	% see comment in output_call for why we use `noprof_' etc. here
+	io__write_string("MR_set_prof_ho_caller_proc("),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n\t\t"),
+	io__write_string(
+		"noprof_tailcall(ENTRY(mercury__do_call_class_method));\n").
 output_goto(do_det_aditi_call, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_det_aditi_call),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -3129,12 +3138,18 @@ output_call(Target, Continuation, CallerLabel) -->
 	% a `call', we ensure that time spent inside those
 	% routines is credited to the caller, rather than to
 	% do_call_closure or do_call_class_method itself.
+	% But if we do use a noprof_call, we need to set
+	% MR_prof_ho_caller_proc, so that the callee knows
+	% which proc it has been called from.
 	(
 		{ Target = do_call_closure
 		; Target = do_call_class_method
 		}
 	->
 		{ ProfileCall = no },
+		io__write_string("MR_set_prof_ho_caller_proc("),
+		output_label_as_code_addr(CallerLabel),
+		io__write_string(");\n\t"),
 		io__write_string("noprof_")
 	;
 		{ ProfileCall = yes }
