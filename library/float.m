@@ -530,12 +530,12 @@ is_nan_or_inf(Float) :-
 	float__min = (Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	% We can't use System.Double.MinValue, because in v1 of the .NET CLR,
-	% that means something completely different: the negative number
-	% with the greatest absolute value.
-	% Instead, we just hard-code the appropriate value (copied from the
-	% glibc header files); this is OK, because the ECMA specification
-	% nails down the representation of double as 64-bit IEEE.
+	// We can't use System.Double.MinValue, because in v1 of the .NET CLR,
+	// that means something completely different: the negative number
+	// with the greatest absolute value.
+	// Instead, we just hard-code the appropriate value (copied from the
+	// glibc header files); this is OK, because the ECMA specification
+	// nails down the representation of double as 64-bit IEEE.
 	Min = 2.2250738585072014e-308;
 ").
 
@@ -550,14 +550,14 @@ is_nan_or_inf(Float) :-
 	float__epsilon = (Eps::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	% We can't use System.Double.Epsilon, because in v1 of the .NET CLR,
-	% that means something completely different: the smallest (denormal)
-	% positive number.  I don't know what the people who designed that
-	% were smoking; that semantics for 'epsilon' is different from the
-	% use of 'epsilon' in C, Lisp, Ada, etc., not to mention Mercury.
-	% Instead, we just hard-code the appropriate value (copied from the
-	% glibc header files); this is OK, because the ECMA specification
-	% nails down the representation of double as 64-bit IEEE.
+	// We can't use System.Double.Epsilon, because in v1 of the .NET CLR,
+	// that means something completely different: the smallest (denormal)
+	// positive number.  I don't know what the people who designed that
+	// were smoking; that semantics for 'epsilon' is different from the
+	// use of 'epsilon' in C, Lisp, Ada, etc., not to mention Mercury.
+	// Instead, we just hard-code the appropriate value (copied from the
+	// glibc header files); this is OK, because the ECMA specification
+	// nails down the representation of double as 64-bit IEEE.
 	Eps = 2.2204460492503131e-16;
 ").
 
@@ -572,9 +572,9 @@ is_nan_or_inf(Float) :-
 	float__radix = (Radix::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	% The ECMA specification requires that double be 64-bit IEEE.
-	% I think that implies that it must have Radix = 2.
-	% This is definitely right for x86, anyway.
+	// The ECMA specification requires that double be 64-bit IEEE.
+	// I think that implies that it must have Radix = 2.
+	// This is definitely right for x86, anyway.
 	Radix = 2;
 ").
 
@@ -589,7 +589,7 @@ is_nan_or_inf(Float) :-
 	float__mantissa_digits = (MantDig::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	% ECMA specifies that System.Double is 64-bit IEEE float
+	// ECMA specifies that System.Double is 64-bit IEEE float
 	MantDig = 53;
 ").
 
@@ -606,7 +606,7 @@ is_nan_or_inf(Float) :-
 	float__min_exponent = (MinExp::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	% ECMA specifies that System.Double is 64-bit IEEE float
+	// ECMA specifies that System.Double is 64-bit IEEE float
 	MinExp = -1021;
 ").
 
@@ -623,7 +623,7 @@ is_nan_or_inf(Float) :-
 	float__max_exponent = (MaxExp::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	% ECMA specifies that System.Double is 64-bit IEEE float
+	// ECMA specifies that System.Double is 64-bit IEEE float
 	MaxExp = 1024;
 ").
 

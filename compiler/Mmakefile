@@ -196,6 +196,7 @@ mercury_compile$(EXT_FOR_EXE): $(MC_PROG)$(EXT_FOR_EXE)
 ifeq ($(findstring il,$(GRADE)),il)        
 	# set the stack size to 100M -- the default of 1M is too low
 	-editbin /nologo /stack:100000000 mercury_compile$(EXT_FOR_EXE)
+	cp ../analysis/*.dll ../browser/*.dll .
 endif
 
 libmercury_compile.a: lib$(MC_PROG).a

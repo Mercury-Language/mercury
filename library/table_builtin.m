@@ -373,6 +373,7 @@ table_simple_mark_as_inactive(_) :-
 	impure private_builtin__imp,
 	private_builtin__sorry("table_simple_mark_as_inactive").
 
+:- pragma promise_semipure(table_simple_get_answer_block/2).
 table_simple_get_answer_block(_, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
