@@ -345,6 +345,14 @@ typedef	enum {
 	MR_EVAL_METHOD_MINIMAL
 } MR_EvalMethod;
 
+/*
+** We cannot put enums into structures as bit fields. To avoid wasting space,
+** we put MR_EvalMethodInts into structures instead of MR_EvalMethods
+** themselves.
+*/
+
+typedef	MR_int_least8_t		MR_EvalMethodInt;
+
 typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* stack traversal group */
 	MR_Code			*MR_sle_code_addr;
@@ -367,10 +375,13 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	MR_int_least8_t		MR_sle_maybe_from_full;
 	MR_int_least8_t		MR_sle_maybe_trail;
 	MR_int_least8_t		MR_sle_maybe_maxfr;
-	MR_EvalMethod		MR_sle_eval_method:8;
+	MR_EvalMethodInt	MR_sle_eval_method_CAST_ME;
 	MR_int_least8_t		MR_sle_maybe_call_table;
 	MR_int_least8_t		MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
+
+#define	MR_sle_eval_method(entry)				\
+			((MR_EvalMethod) (entry)->MR_sle_eval_method_CAST_ME)
 
 #define	MR_sle_user	MR_sle_proc_id.MR_proc_user
 #define	MR_sle_comp	MR_sle_proc_id.MR_proc_comp
