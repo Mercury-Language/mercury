@@ -843,13 +843,13 @@ find_smart_recompilation_target_files(TopLevelModuleName,
 :- mode find_timestamp_files(in, in, out(find_timestamp_file_names)) is det.
 
 find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
-	globals__lookup_bool_option(Globals, pic_reg, PicReg),
+	globals__lookup_bool_option(Globals, pic, Pic),
 	globals__get_target(Globals, CompilationTarget),
 	( CompilationTarget = c, TimestampSuffix = ".c_date"
 	; CompilationTarget = il, TimestampSuffix = ".il_date"
 	; CompilationTarget = java, TimestampSuffix = ".java_date"
 	; CompilationTarget = asm,
-		TimestampSuffix = (PicReg = yes -> ".pic_s_date" ; ".s_date")
+		TimestampSuffix = (Pic = yes -> ".pic_s_date" ; ".s_date")
 	),
 	FindTimestampFiles =
 	    (pred(ModuleName::in, TimestampFiles::out, di, uo) is det -->
