@@ -340,6 +340,12 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 				VnTables0, VnTables),
 			Vnrval = vn_binop((+), VnExpr, Vn12)
 		;
+						% e+0 => e
+			Vnrval2 = vn_const(int_const(0))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
 			fail
 		)
 	;
@@ -412,6 +418,12 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 				Vn2), VnExpr, VnTables0, VnTables),
 			Vnrval = vn_binop((float_plus), VnExpr, Vn12)
 		;
+						% e+0 => e
+			Vnrval2 = vn_const(float_const(0.0))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
 			fail
 		)
 	;
@@ -441,6 +453,12 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vn1 = Vn2
 		->
 			Vnrval = vn_const(int_const(0)),
+			VnTables = VnTables0
+		;
+						% e-0 => e
+			Vnrval2 = vn_const(int_const(0))
+		->
+			Vnrval = Vnrval1,
 			VnTables = VnTables0
 		;
 			fail
@@ -474,6 +492,12 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval = vn_const(int_const(0)),
 			VnTables = VnTables0
 		;
+						% e-0 => e
+			Vnrval2 = vn_const(float_const(0.0))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
 			fail
 		)
 	;
@@ -487,6 +511,18 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval = vn_const(int_const(I)),
 			VnTables = VnTables0
 		;
+						% e*1 => e
+			Vnrval2 = vn_const(int_const(1))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
+						% 1*e => e
+			Vnrval1 = vn_const(int_const(1))
+		->
+			Vnrval = Vnrval2,
+			VnTables = VnTables0
+		;
 			fail
 		)
 	;
@@ -498,6 +534,18 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 		->
 			F is F1 * F2,
 			Vnrval = vn_const(float_const(F)),
+			VnTables = VnTables0
+		;
+						% e*1 => e
+			Vnrval2 = vn_const(float_const(1.0))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
+						% 1*e => e
+			Vnrval1 = vn_const(float_const(1.0))
+		->
+			Vnrval = Vnrval2,
 			VnTables = VnTables0
 		;
 			fail
@@ -514,6 +562,12 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval = vn_const(int_const(I)),
 			VnTables = VnTables0
 		;
+						% e/1 => e
+			Vnrval2 = vn_const(int_const(1))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
 			fail
 		)
 	;
@@ -528,11 +582,80 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval = vn_const(float_const(F)),
 			VnTables = VnTables0
 		;
+						% e/1 => e
+			Vnrval2 = vn_const(float_const(1.0))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;	
+		Binop = ('|'),
+		(
+						% c1\/c2 => c
+			Vnrval1 = vn_const(int_const(I1)),
+			Vnrval2 = vn_const(int_const(I2))
+		->
+			I is I1 \/ I2,
+			Vnrval = vn_const(int_const(I)),
+			VnTables = VnTables0
+		;
+						% e\/0 => e
+			Vnrval2 = vn_const(int_const(0))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
+						% 0\/e => e
+			Vnrval1 = vn_const(int_const(0))
+		->
+			Vnrval = Vnrval2,
+			VnTables = VnTables0
+		;
+						% e\/e => e
+			Vn1 = Vn2
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;	
+		Binop = (&),
+		(
+						% c1/\c2 => c
+			Vnrval1 = vn_const(int_const(I1)),
+			Vnrval2 = vn_const(int_const(I2))
+		->
+			I is I1 /\ I2,
+			Vnrval = vn_const(int_const(I)),
+			VnTables = VnTables0
+		;
+						% e/\0 => 0
+			Vnrval2 = vn_const(int_const(0))
+		->
+			Vnrval = vn_const(int_const(0)),
+			VnTables = VnTables0
+		;
+						% 0/\e => 0
+			Vnrval1 = vn_const(int_const(0))
+		->
+			Vnrval = vn_const(int_const(0)),
+			VnTables = VnTables0
+		;
+						% e/\e => e
+			Vn1 = Vn2
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
 			fail
 		)
 	;	
 		Binop = (>>),
 		(
+						% c1>>c2 => c
 			Vnrval1 = vn_const(int_const(I1)),
 			Vnrval2 = vn_const(int_const(I2))
 		->
@@ -540,16 +663,29 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval = vn_const(int_const(I)),
 			VnTables = VnTables0
 		;
+						% e>>0 => e
+			Vnrval2 = vn_const(int_const(0))
+		->
+			Vnrval = Vnrval1,
+			VnTables = VnTables0
+		;
 			fail
 		)
 	;	
 		Binop = (<<),
 		(
+						% c1<<c2 => c
 			Vnrval1 = vn_const(int_const(I1)),
 			Vnrval2 = vn_const(int_const(I2))
 		->
 			I is I1 << I2,
 			Vnrval = vn_const(int_const(I)),
+			VnTables = VnTables0
+		;
+						% e<<0 => e
+			Vnrval2 = vn_const(int_const(0))
+		->
+			Vnrval = Vnrval1,
 			VnTables = VnTables0
 		;
 			fail

@@ -21,6 +21,7 @@ SOURCES= \
 	det_condition.m \
 	det_inference.m \
 	det_switch.m \
+	double_vn.m \
 	easy_nondet_test.m \
 	easy_nondet_test_2.m \
 	empty_switch.m \
@@ -45,6 +46,7 @@ SOURCES= \
 	lambda_switch.m \
 	lambda_type.m \
 	lazy_list.m \
+	livevals_seq.m \
 	loop.m \
 	loop_in_disj.m \
 	middle_rec_labels.m \
@@ -93,7 +95,9 @@ GRADE-agc_unbound_typevars	= asm_fast.agc
 GRADE-agc_unbound_typevars2	= asm_fast.agc
 GRADE-agc_unused_in		= asm_fast.agc
 MCFLAGS-compl_unify_bug		= -O3
+MCFLAGS-double_vn		= -O4
 MCFLAGS-higher_order_implied_mode = -O-1
+MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-simplify_bug		= -O-1

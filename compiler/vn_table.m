@@ -298,33 +298,36 @@ vn_table__add_new_use(Vn, NewUse, VnTables0, VnTables) :-
 	;
 		error("cannot find old use set in add_new_use")
 	),
-	(
-		list__member(NewUse, Uses0),
-		\+ (
-			NewUse = src_access(_)
-		;
-			NewUse = src_vn(UserVn),
-			map__lookup(Vn_to_rval_table0, UserVn, VnRval),
-			VnRval = vn_binop(Operator, _, _),
-			( Operator = (+)
-			; Operator = (*)
-			; Operator = float_plus
-			; Operator = float_times
-			; Operator = (<<)
-			; Operator = (>>)
-			)
-		)
-	->
-		opt_debug__dump_tables(VnTables0, T_str),
-		opt_debug__dump_vn(Vn, V_str),
-		opt_debug__dump_use(NewUse, U_str),
-		string__append_list(["\n", T_str, "\n",
-			"new use for vn ", V_str, " = ", U_str, "\n",
-			"new use already known"], Msg),
-		error(Msg)
-	;
-		Uses1 = [NewUse | Uses0]
-	),
+%		Reenable the commented out stuff if you want the compiler
+%		to fail when an operator is used with two identical operands
+%		in a situation that might be optimizable.
+%	(
+%		list__member(NewUse, Uses0),
+%		\+ (
+%			NewUse = src_access(_)
+%		;
+%			NewUse = src_vn(UserVn),
+%			map__lookup(Vn_to_rval_table0, UserVn, VnRval),
+%			VnRval = vn_binop(Operator, _, _),
+%			( Operator = (+)
+%			; Operator = (*)
+%			; Operator = float_plus
+%			; Operator = float_times
+%			; Operator = (<<)
+%			; Operator = (>>)
+%			)
+%		)
+%	->
+%		opt_debug__dump_tables(VnTables0, T_str),
+%		opt_debug__dump_vn(Vn, V_str),
+%		opt_debug__dump_use(NewUse, U_str),
+%		string__append_list(["\n", T_str, "\n",
+%			"new use for vn ", V_str, " = ", U_str, "\n",
+%			"new use already known"], Msg),
+%		error(Msg)
+%	;
+		Uses1 = [NewUse | Uses0],
+%	),
 	map__det_update(Vn_to_uses_table0, Vn, Uses1, Vn_to_uses_table1),
 	VnTables = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
