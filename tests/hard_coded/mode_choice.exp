@@ -1,0 +1,16 @@
+T0: test1(in, out, out)
+T0b: test1(in, out, out)
+T1: test1(in, in, out)
+T2: test2(di, uo)
+T3: test2(in, out)
+T4: test2(in, out)
+T5: test3(in(any), out)
+T6: test3(out(any), out)
+T7: test4(in, out, out)
+T8: 
+T9: test4(in, out, out)
+T10: 
+T11: test4(out, in, out)
+T12: test5(in(a), in(ab), out)
+T13: test5(in(a), in(ab), out)
+T14: test5(in(ab), in(b), out)
