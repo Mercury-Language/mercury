@@ -77,7 +77,7 @@
 	% rather than applying it to a list of terms.
 
 :- pred varset__merge_subst(varset, varset, varset, substitution).
-:- mode varset__merge_subst(in, in, in, out).
+:- mode varset__merge_subst(in, in, out, out).
 
 
 %-----------------------------------------------------------------------------%
