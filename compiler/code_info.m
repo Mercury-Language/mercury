@@ -1715,18 +1715,16 @@ code_info__must_be_swapped(Vars, Args, Lval) -->
 	code_info__get_liveness_info(Liveness),
 	code_info__get_variables(Variables),
 	{ 
-		code_info__var_must_be_swapped(Vars, Args, Liveness,
-			Variables, Lval)
+			set__member(Var0, Vars),
+			set__member(Var0, Liveness)
 		;
 		% We also need to swap out variables if they might
 		% be an argument that we haven't positioned yet.
-			set__member(Var, Vars),
-			list__member(Var, Args)
+		% (transitively)
+			set__member(Var1, Vars),
+			list__member(Var2, Args),
+			code_info__variable_depends(Var2, Var1, Variables)
 	}.
-
-:- pred code_info__var_must_be_swapped(set(var), list(var), liveness_info,
-					variable_info, lval).
-:- mode code_info__var_must_be_swapped(in, in, in, in, in) is semidet.
 
 	% The contents of a location must be swapped if any
 	% of the variables in it must be swapped.
@@ -1740,11 +1738,56 @@ code_info__must_be_swapped(Vars, Args, Lval) -->
 	% if it is in the livevars or it is one of the remaining
 	% arguments for the current call.
 
-code_info__var_must_be_swapped(Vars, Args, Liveness, Variables, ThisLval) :-
-	set__member(V, Vars),
-	( set__member(V, Liveness) ; list__member(V, Args) ),
-	map__search(Variables, V, evaluated(Lvals)),
-	\+ (set__member(Lval, Lvals), Lval \= ThisLval).
+%---------------------------------------------------------------------------%
+
+:- pred code_info__variable_depends(var, var, map(var, variable_stat)).
+:- mode code_info__variable_depends(in, in, in) is semidet.
+
+code_info__variable_depends(Var, DVar, Variables) :-
+	map__search(Variables, Var, cached(RVal, _)),
+	code_info__variable_depends_rval(DVar, RVal, Variables).
+
+:- pred code_info__variable_depends_rval(var, rval, map(var, variable_stat)).
+:- mode code_info__variable_depends_rval(in, in, in) is semidet.
+
+code_info__variable_depends_rval(DVar, var(NVar), Variables) :-
+	(
+		DVar = NVar
+	->
+		true
+	;
+		code_info__variable_depends(DVar, NVar, Variables)
+	).
+code_info__variable_depends_rval(DVar, unop(_, RVal), Variables) :-
+	code_info__variable_depends_rval(DVar, RVal, Variables).
+code_info__variable_depends_rval(DVar, binop(_, RVal1, RVal2), Variables) :-
+	(
+		code_info__variable_depends_rval(DVar, RVal1, Variables)
+	;
+		code_info__variable_depends_rval(DVar, RVal2, Variables)
+	).
+code_info__variable_depends_rval(DVar, mkword(_, RVal), Variables) :-
+	code_info__variable_depends_rval(DVar, RVal, Variables).
+code_info__variable_depends_rval(DVar, lval(LVal), Variables) :-
+	code_info__variable_depends_lval(DVar, LVal, Variables).
+
+:- pred code_info__variable_depends_lval(var, lval, map(var, variable_stat)).
+:- mode code_info__variable_depends_lval(in, in, in) is semidet.
+
+code_info__variable_depends_lval(DVar, field(_, RVal1, RVal2), Variables) :-
+	(
+		code_info__variable_depends_rval(DVar, RVal1, Variables)
+	;
+		code_info__variable_depends_rval(DVar, RVal2, Variables)
+	).
+code_info__variable_depends_lval(DVar, lvar(NVar), Variables) :-
+	(
+		DVar = NVar
+	->
+		true
+	;
+		code_info__variable_depends(DVar, NVar, Variables)
+	).
 
 %---------------------------------------------------------------------------%
 

@@ -328,8 +328,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 					hlds__goal, hlds__goal).
 
 	% Record whether a call is a builtin or not, and if so, which one.
-:- type is_builtin	--->	not_builtin
-			;	is_builtin.
+:- type is_builtin.
 
 :- type call_info	==	map(var, lval).
 
@@ -1723,6 +1722,29 @@ goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+:- pred is_builtin__is_internal(is_builtin).
+:- mode is_builtin__is_internal(in) is semidet.
+
+:- pred is_builtin__is_inline(is_builtin).
+:- mode is_builtin__is_inline(in) is semidet.
+
+:- pred is_builtin__make_builtin(bool, bool, is_builtin).
+:- mode is_builtin__make_builtin(in, in, out) is det.
+
+:- implementation.
+
+:- type is_builtin	== pair(bool).
+
+is_builtin__is_internal(yes - _).
+
+is_builtin__is_inline(_ - yes).
+
+is_builtin__make_builtin(Int, Inl, Int - Inl).
+
 %-----------------------------------------------------------------------------%
 
 :- interface.

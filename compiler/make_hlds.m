@@ -965,7 +965,7 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 	;
 		% fill unused slots with any old junk 
 		ModeId = 0,
-		Builtin = not_builtin,
+		is_builtin__make_builtin(no, no, Builtin),
 
 		term__apply_substitution(Goal0, Subst, Goal1),
 		( Goal1 = term__functor(term__atom(PredName0), Args0, _) ->

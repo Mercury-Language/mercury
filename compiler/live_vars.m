@@ -189,9 +189,7 @@ detect_live_vars_in_goal_2(
 		ExtraLives0, Liveness, LiveSets0,
 		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	(
-		Builtin = is_builtin,
-		predicate_name(ModuleInfo, PredId, PredName),
-		PredName \= "call"
+		is_builtin__is_inline(Builtin)
 	->
 		LiveSets = LiveSets0,
 		ExtraLives = ExtraLives0

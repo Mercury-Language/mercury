@@ -312,7 +312,8 @@ polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
 
 			{ SymName = unqualified("=") },
 			{ Args = [X, Y] },
-			{ Call = call(PredId, ProcId,  Args, not_builtin,
+			{ is_builtin__make_builtin(yes, no, Builtin) },
+			{ Call = call(PredId, ProcId,  Args, Builtin,
 					SymName, FollowVars) },
 			polymorphism__process_goal_2(Call, GoalInfo, Goal)
 		;

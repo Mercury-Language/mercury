@@ -287,7 +287,8 @@ move_follow_code_is_builtin(Goal - _GoalInfo) :-
 	->
 		true
 	;
-		Goal = call(_,_,_,is_builtin, _, _)
+		Goal = call(_,_,_,Builtin, _, _),
+		is_builtin__is_inline(Builtin)
 	).
 		
 %-----------------------------------------------------------------------------%

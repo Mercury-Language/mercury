@@ -60,7 +60,8 @@ code_aux__contains_only_builtins_2(if_then_else(_Vars, Cond, Then, Else)) :-
 	code_aux__contains_only_builtins(Cond),
 	code_aux__contains_only_builtins(Then),
 	code_aux__contains_only_builtins(Else).
-code_aux__contains_only_builtins_2(call(_, _, _, is_builtin, _, _)).
+code_aux__contains_only_builtins_2(call(_, _, _, Builtin, _, _)) :-
+	is_builtin__is_inline(Builtin).
 code_aux__contains_only_builtins_2(unify(_, _, _, Uni, _)) :-
 	(
 		Uni = assign(_, _)
@@ -143,7 +144,8 @@ code_aux__contains_simple_recursive_call_2([Goal|Goals], CodeInfo, CodeInfo) :-
 :- mode code_aux__is_recursive_call(in, in) is semidet.
 
 code_aux__is_recursive_call(Goal, CodeInfo) :-
-	Goal = call(CallPredId, CallProcId, _, not_builtin, _, _),
+	Goal = call(CallPredId, CallProcId, _, Builtin, _, _),
+	\+ is_builtin__is_internal(Builtin),
 	code_info__get_pred_id(PredId, CodeInfo, _),
 	PredId = CallPredId,
 	code_info__get_proc_id(ProcId, CodeInfo, _),

@@ -549,7 +549,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 	code_info__clear_reserved_registers,
 		% place the immediate input arguments in registers
 		% starting at r4.
-	call_gen__generate_immediate_args(InVars, 4, ImmediateCode),
+	call_gen__generate_immediate_args(InVars, InVars, 4, ImmediateCode),
 	code_info__generate_stack_livevals(LiveVals0),
 	{ bintree_set__insert(LiveVals0, reg(r(1)), LiveVals) },
 	call_gen__generate_return_livevals([], OutLiveVals),
@@ -620,15 +620,15 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_immediate_args(list(var), int, code_tree,
+:- pred call_gen__generate_immediate_args(list(var), list(var), int, code_tree,
 							code_info, code_info).
-:- mode call_gen__generate_immediate_args(in, in, out, in, out) is det.
+:- mode call_gen__generate_immediate_args(in, in, in, out, in, out) is det.
 
-call_gen__generate_immediate_args([], _N, empty) --> [].
-call_gen__generate_immediate_args([V|Vs], N0, Code) -->
-	code_info__generate_expression(V, var(V), reg(r(N0)), Code0),
+call_gen__generate_immediate_args([], _Args, _N, empty) --> [].
+call_gen__generate_immediate_args([V|Vs], Args, N0, Code) -->
+	code_info__shuffle_register(V, Args, r(N0), Code0),
 	{ N1 is N0 + 1 },
-	call_gen__generate_immediate_args(Vs, N1, Code1),
+	call_gen__generate_immediate_args(Vs, Args, N1, Code1),
 	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%

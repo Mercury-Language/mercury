@@ -645,10 +645,14 @@ hlds_out__write_some(_Vars, _VarSet) --> [].
 :- pred hlds_out__write_builtin(is_builtin, io__state, io__state).
 :- mode hlds_out__write_builtin(in, in, out) is det.
 
-hlds_out__write_builtin(is_builtin) -->
-	io__write_string("is_builtin").
-hlds_out__write_builtin(not_builtin) -->
-	io__write_string("not_builtin").
+hlds_out__write_builtin(Builtin) -->
+	(
+		{ is_builtin__is_inline(Builtin) }
+	->
+		io__write_string("is inline")
+	;
+		io__write_string("is not inline")
+	).
 
 :- pred hlds_out__write_instmap(instmap, varset, int, io__state, io__state).
 :- mode hlds_out__write_instmap(in, in, in, di, uo) is det.

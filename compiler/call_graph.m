@@ -163,7 +163,7 @@ call_graph__add_arcs_in_goal_2(
 		call(PredId, ProcId, _ArgTerms, Builtin, _SymName, _Follow),
 			Caller, CallGraph0, CallGraph) :-
 	(
-		Builtin = is_builtin
+		is_builtin__is_inline(Builtin)
 	->
 		CallGraph = CallGraph0
 	;

@@ -130,7 +130,7 @@ inlining__inlining_in_goal_2(
 		call(PredId, ProcId, Args, Builtin, SymName, Follow),
 		Varset0, VarTypes0, ModuleInfo, Goal, Varset, VarTypes) :-
 	(
-		Builtin = not_builtin,
+		\+ is_builtin__is_internal(Builtin),
         	module_info_preds(ModuleInfo, Preds),
         	map__lookup(Preds, PredId, PredInfo),
 		\+ pred_info_is_imported(PredInfo),

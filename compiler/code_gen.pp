@@ -379,7 +379,9 @@ code_gen__generate_det_goal_2(
 		call(PredId, ProcId, Args0, Builtin, _, _Follow),
 							_GoalInfo, Instr) -->
 	{ term__vars_list(Args0, Args) },
-	( { Builtin = is_builtin } ->
+	(
+		{ is_builtin__is_internal(Builtin) }
+	->
 		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
 	;
 		code_info__set_succip_used(yes),
@@ -800,7 +802,9 @@ code_gen__generate_semi_goal_2(
 		call(PredId, ProcId, Args0, Builtin, _, _Follow),
 							_GoalInfo, Code) -->
 	{ term__vars_list(Args0, Args) },
-	( { Builtin = is_builtin } ->
+	(
+		{ is_builtin__is_internal(Builtin) }
+	->
 		call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code)
 	;
 		code_info__set_succip_used(yes),
@@ -981,7 +985,9 @@ code_gen__generate_non_goal_2(
 		call(PredId, ProcId, Args0, Builtin, _, _Follow),
 							_GoalInfo, Code) -->
 	{ term__vars_list(Args0, Args) },
-	( { Builtin = is_builtin } ->
+	(
+		{ is_builtin__is_internal(Builtin) }
+	->
 		call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code)
 	;
 		code_info__set_succip_used(yes),
