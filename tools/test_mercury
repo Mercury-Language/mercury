@@ -1085,7 +1085,7 @@ case $status in
 		$STABLE/mercury-INSTALL-$version.$fullname.txt &&
 	rsh $BETA_FTPHOST "rm -f \
 		$BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz \
-		$BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.txt" &&
+		$BETA_FTPDIR/mercury*-$RELEASE_VERSION_PATTERN.$fullname.txt" &&
 	rcp $STABLE/mercury*-$version.$fullname.* $BETA_FTPHOST:$BETA_FTPDIR &&
 	case "$CVSROOT" in
 	    :pserver:guest* | :pserver:anon*)
