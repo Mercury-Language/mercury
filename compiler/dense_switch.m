@@ -36,6 +36,14 @@
 :- mode dense_switch__generate(in, in, in, in, in, in, in,
 	out, in, out) is det.
 
+	% also used by lookup_switch
+:- pred dense_switch__calc_density(int, int, int).
+:- mode dense_switch__calc_density(in, in, out) is det.
+
+	% also used by lookup_switch
+:- pred dense_switch__type_range(builtin_type, type, int, code_info, code_info).
+:- mode dense_switch__type_range(in, in, out, in, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -89,9 +97,6 @@ dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 	% Calculate the percentage density given the range
 	% and the number of cases.
 
-:- pred dense_switch__calc_density(int, int, int).
-:- mode dense_switch__calc_density(in, in, out) is det.
-
 dense_switch__calc_density(NumCases, Range, Density) :-
 	N1 is NumCases * 100,
 	Density is N1 // Range.
@@ -101,9 +106,6 @@ dense_switch__calc_density(NumCases, Range, Density) :-
 	% Determine the range of an atomic type.
 	% Fail if the type isn't the sort of type that has a range
 	% or if the type's range is to big to switch on (e.g. int).
-
-:- pred dense_switch__type_range(builtin_type, type, int, code_info, code_info).
-:- mode dense_switch__type_range(in, in, out, in, out) is semidet.
 
 	% XXX the size of `character' is hard-coded here.
 

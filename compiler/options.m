@@ -143,6 +143,7 @@
 		;	smart_indexing
 		;	req_density
 		;	dense_switch_size
+		;	lookup_switch_size
 		;	string_switch_size
 		;	tag_switch_size
 		;	middle_rec
@@ -301,6 +302,7 @@ option_defaults_2(optimization_option, [
 	smart_indexing		-	bool(yes),
 	req_density		-	int(25),
 	dense_switch_size	-	int(4),
+	lookup_switch_size	-	int(4),
 	string_switch_size	-	int(8),
 	tag_switch_size		-	int(3),
 	middle_rec		-	bool(yes),
@@ -461,8 +463,9 @@ long_option("pred-value-number",	pred_value_number).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
 long_option("req-density",		req_density).
-long_option("dense-switch_size",	dense_switch_size).
-long_option("string-switch_size",	string_switch_size).
+long_option("dense-switch-size",	dense_switch_size).
+long_option("lookup-switch-size",	lookup_switch_size).
+long_option("string-switch-size",	string_switch_size).
 long_option("tag-switch-size",		tag_switch_size).
 long_option("middle-rec",		middle_rec).
 long_option("inlining",			inlining).
@@ -727,6 +730,9 @@ options_help -->
 	io__write_string("\t\tmust have at least this percentage of full slots (default: 25).\n"),
 	io__write_string("\t--dense-switch-size <n>\n"),
 	io__write_string("\t\tThe jump table generated for an atomic switch\n"),
+	io__write_string("\t\tmust have at least this many entries (default: 4).\n"),
+	io__write_string("\t--lookup-switch-size <n>\n"),
+	io__write_string("\t\tThe lookup table generated for an atomic switch\n"),
 	io__write_string("\t\tmust have at least this many entries (default: 4).\n"),
 	io__write_string("\t--string-switch-size <n>\n"),
 	io__write_string("\t\tThe hash table generated for a string switch\n"),

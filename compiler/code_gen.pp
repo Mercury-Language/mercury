@@ -717,12 +717,12 @@ code_gen__generate_det_goal_2(switch(Var, CanFail, CaseList), GoalInfo, Instr) -
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
-		switch_gen__generate_switch(model_det,
-						Var, CanFail, CaseList, Instr),
+		switch_gen__generate_switch(model_det, Var, CanFail,
+						CaseList, GoalInfo, Instr),
 		code_info__pop_store_map
 	;
 		switch_gen__generate_switch(model_det,
-						Var, CanFail, CaseList, Instr)
+				Var, CanFail, CaseList, GoalInfo, Instr)
 	).
 code_gen__generate_det_goal_2(
 		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
@@ -997,11 +997,11 @@ code_gen__generate_semi_goal_2(switch(Var, CanFail, CaseList), GoalInfo, Instr) 
 	->
 		code_info__push_store_map(StoreMap),
 		switch_gen__generate_switch(model_semi,
-						Var, CanFail, CaseList, Instr),
+				Var, CanFail, CaseList, GoalInfo, Instr),
 		code_info__pop_store_map
 	;
 		switch_gen__generate_switch(model_semi,
-						Var, CanFail, CaseList, Instr)
+					Var, CanFail, CaseList, GoalInfo, Instr)
 	).
 code_gen__generate_semi_goal_2(
 		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
@@ -1179,11 +1179,11 @@ code_gen__generate_non_goal_2(switch(Var, CanFail, CaseList), GoalInfo, Instr) -
 	->
 		code_info__push_store_map(StoreMap),
 		switch_gen__generate_switch(model_non,
-						Var, CanFail, CaseList, Instr),
+				Var, CanFail, CaseList, GoalInfo, Instr),
 		code_info__pop_store_map
 	;
 		switch_gen__generate_switch(model_non,
-						Var, CanFail, CaseList, Instr)
+				Var, CanFail, CaseList, GoalInfo, Instr)
 	).
 code_gen__generate_non_goal_2(
 		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),

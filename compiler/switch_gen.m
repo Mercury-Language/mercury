@@ -19,6 +19,13 @@
 %	if the cases are not sparse, we use the value of the switch variable
 %	to index into a jump table.
 %
+%	If all the alternative goals for a switch on an atomic data type
+%	contain only construction unifications of constants, then we generate
+%	a dense lookup table (an array) for each output variable of the switch,
+%	rather than a dense jump table, so that executing the switch becomes
+%	a matter of doing an array index for each output variable - avoiding
+%	the branch overhead of the jump-table.
+%
 %	For switches on discriminated union types, we generate a chain of
 %	if-then-elses on the primary tags but then use the secondary tag
 %	to index into a jump table if the table is big enough.
@@ -38,8 +45,8 @@
 :- import_module hlds, code_info.
 
 :- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
-	code_tree, code_info, code_info).
-:- mode switch_gen__generate_switch(in, in, in, in, out, in, out) is det.
+	hlds__goal_info, code_tree, code_info, code_info).
+:- mode switch_gen__generate_switch(in, in, in, in, in, out, in, out) is det.
 
 % These types are exported to dense_switch, string_switch and tag_switch.
 
@@ -50,7 +57,7 @@
 
 :- implementation.
 
-:- import_module dense_switch, string_switch, tag_switch.
+:- import_module dense_switch, string_switch, tag_switch, lookup_switch.
 :- import_module bool, int, string, list, map, tree, std_util, require.
 :- import_module llds, code_gen, unify_gen, type_util, code_util.
 :- import_module globals, options.
@@ -66,7 +73,8 @@
 	% Choose which method to use to generate the switch.
 	% CanFail says whether the switch covers all cases.
 
-switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, Code) -->
+switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
+		Code) -->
 	switch_gen__determine_category(CaseVar, SwitchCategory),
 	code_info__get_next_label(EndLabel),
 	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),
@@ -75,6 +83,23 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, Code) -->
 	{ globals__lookup_bool_option(Globals, smart_indexing,
 		Indexing) },
 	(
+		{ Indexing = yes },
+		{ SwitchCategory = atomic_switch },
+		{ list__length(TaggedCases, NumCases) },
+		{ globals__lookup_int_option(Globals, lookup_switch_size,
+			LookupSize) },
+		{ NumCases >= LookupSize },
+		{ globals__lookup_int_option(Globals, req_density,
+			ReqDensity) },
+		lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
+			CanFail, ReqDensity, CodeModel, FirstVal, LastVal,
+			NeedRangeCheck, NeedBitVecCheck,
+			OutVars, CaseVals, MLiveness)
+	->
+		lookup_switch__generate(CaseVar, OutVars, CaseVals,
+			FirstVal, LastVal, NeedRangeCheck,
+			NeedBitVecCheck, MLiveness, Code)
+	;
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
 		{ list__length(TaggedCases, NumCases) },
