@@ -12,7 +12,10 @@ builtin_strcmp_2(<, -1).
 builtin_strcmp_2(=, 0).
 builtin_strcmp_2(>, 1).
 
-copy(X, X).
+copy(X, Y) :-
+	duplicate(X, Y).
+
+unsafe_promise_unique(X, X).
 
 unify(X, X).
 
