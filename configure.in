@@ -53,6 +53,13 @@ if test "$prefix" = "NONE"; then
 else
 	PREFIX="$prefix"
 fi
+case "$PREFIX" in
+    *\ *)
+	AC_MSG_ERROR(cannot install into a directory with a name containing spaces: \`$PREFIX.')
+	exit 1
+	;;
+esac
+
 LIBDIR="$PREFIX/lib/mercury"
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
 AC_SUBST(PREFIX)
