@@ -402,6 +402,15 @@
 :- pred list__filter_map(pred(X, Y), list(X), list(Y), list(X)).
 :- mode list__filter_map(pred(in, out) is semidet, in, out, out) is det.
 
+	% list__takewhile(Predicate, List, UptoList, AfterList) takes a
+	% closure with one input argument, and calls it on successive members
+	% of List as long as the calls succeed. The elements for which
+	% the call succeeds are placed in UptoList and the first element for
+	% which the call fails, and all the remaining elements of List are
+	% placed in AfterList.
+:- pred list__takewhile(pred(T), list(T), list(T), list(T)).
+:- mode list__takewhile(pred(in) is semidet, in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% list__sort(Compare, Unsorted, Sorted) is true iff Sorted is a
@@ -942,6 +951,16 @@ list__filter_map(P, [H0|T0], L, M) :-
 		M = [H0|M1]
         ),
         list__filter_map(P, T0, L1, M1).
+
+list__takewhile(_, [], [], []).
+list__takewhile(P, [X|Xs], Ins, Outs) :-
+	( call(P, X) ->
+		Ins = [X|Ins0],
+		list__takewhile(P, Xs, Ins0, Outs)
+	;
+		Ins = [],
+		Outs = [X|Xs]
+	).
 
 list__sort_and_remove_dups(P, L0, L) :-
 	list__sort(P, L0, L1),
