@@ -20,7 +20,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, string, list, require, std_util.
+:- import_module code_util, map, bintree_set, string, list, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -295,7 +295,7 @@ peephole__opt_instr_2(mkframe(Descr, Slots, _), Comment, Instrs0, Instrs) :-
 	%
 	% dead code after a `goto' is deleted in label-elim.
 
-peephole__opt_instr_2(goto(Label), Comment, Instrs0, Instrs) :-
+peephole__opt_instr_2(goto(Label), _Comment, Instrs0, Instrs) :-
 	peephole__is_this_label_next(Label, Instrs0),
 	Instrs = Instrs0.
 
@@ -313,7 +313,7 @@ peephole__opt_instr_2(goto(Label), Comment, Instrs0, Instrs) :-
 
 peephole__opt_instr_2(if_val(Rval, Target), _C1, Instrs0, Instrs) :-
 	( Instrs0 = [goto(Somewhere) - C2, label(Target) - C3 | Instrs1] ->
-		peephole__neg_rval(Rval, NotRval),
+		code_util__neg_rval(Rval, NotRval),
 		Instrs = [if_val(NotRval, Somewhere) - C2, label(Target) - C3
 				| Instrs1]
 	; Instrs0 = [label(Target) - _ | _] ->
@@ -342,13 +342,13 @@ peephole__opt_instr_2(if_val(Rval, Target), _C1, Instrs0, Instrs) :-
 	% If the instruction before the label branches away, we also
 	% remove the instruction block following the label.
 
-:- type usemap == map(label, bool).
+:- type usemap == bintree_set(label).
 
 :- pred peephole__label_elim(list(instruction), list(instruction)).
 :- mode peephole__label_elim(in, out) is det.
 
 peephole__label_elim(Instructions0, Instructions) :-
-	map__init(Usemap0),
+	bintree_set__init(Usemap0),
 	peephole__label_elim_build_usemap(Instructions0, Usemap0, Usemap),
 	peephole__label_elim_instr_list(Instructions0, Usemap, Instructions).
 
@@ -359,23 +359,23 @@ peephole__label_elim_build_usemap([], Usemap, Usemap).
 peephole__label_elim_build_usemap([Instr - _Comment|Instructions],
 		Usemap0, Usemap) :-
 	( Instr = call(Code_addr, Label) ->
-		map__set(Usemap0, Label, yes, Usemap1),
+		bintree_set__insert(Usemap0, Label, Usemap1),
 		peephole__code_addr_build_usemap(Code_addr, Usemap1, Usemap2)
 	; Instr = entrycall(Code_addr, Label) ->
-		map__set(Usemap0, Label, yes, Usemap1),
+		bintree_set__insert(Usemap0, Label, Usemap1),
 		peephole__code_addr_build_usemap(Code_addr, Usemap1, Usemap2)
 	; Instr = unicall(_, Label) ->
-		map__set(Usemap0, Label, yes, Usemap2)
+		bintree_set__insert(Usemap0, Label, Usemap2)
 	; Instr = tailcall(local(Label)) ->
-		map__set(Usemap0, Label, yes, Usemap2)
+		bintree_set__insert(Usemap0, Label, Usemap2)
 	; Instr = mkframe(_, _, yes(Label)) ->
-		map__set(Usemap0, Label, yes, Usemap2)
+		bintree_set__insert(Usemap0, Label, Usemap2)
 	; Instr = modframe(yes(Label)) ->
-		map__set(Usemap0, Label, yes, Usemap2)
+		bintree_set__insert(Usemap0, Label, Usemap2)
 	; Instr = goto(Label) ->
-		map__set(Usemap0, Label, yes, Usemap2)
+		bintree_set__insert(Usemap0, Label, Usemap2)
 	; Instr = if_val(_, Label) ->
-		map__set(Usemap0, Label, yes, Usemap2)
+		bintree_set__insert(Usemap0, Label, Usemap2)
 	;
 		Usemap2 = Usemap0
 	),
@@ -386,7 +386,7 @@ peephole__label_elim_build_usemap([Instr - _Comment|Instructions],
 
 peephole__code_addr_build_usemap(Code_addr, Usemap0, Usemap) :-
 	( Code_addr = local(Label) ->
-		map__set(Usemap0, Label, yes, Usemap)
+		bintree_set__insert(Usemap0, Label, Usemap)
 	;
 		Usemap = Usemap0
 	).
@@ -406,7 +406,11 @@ peephole__label_elim_instr_list([], _Fallthrough, _Usemap, []).
 peephole__label_elim_instr_list([Instr0 | Moreinstrs0],
 		Fallthrough, Usemap, [Instr | Moreinstrs]) :-
 	( Instr0 = label(Label) - Comment ->
-		( ( Label = entrylabel(_, _, _, _) ; map__search(Usemap, Label, _)) ->
+		(
+		    (   Label = entrylabel(_, _, _, _)
+		    ;   bintree_set__is_member(Label, Usemap)
+		    )
+		->
 			Instr = Instr0,
 			peephole__label_elim_instr_list(Moreinstrs0, yes, Usemap, Moreinstrs)
 		; Fallthrough = yes ->
@@ -554,18 +558,6 @@ peephole__cannot_fallthrough(fail).
 peephole__cannot_fallthrough(redo).
 peephole__cannot_fallthrough(succeed).
 peephole__cannot_fallthrough(proceed).
-
-	% Negate a condition.
-
-:- pred peephole__neg_rval(rval, rval).
-:- mode peephole__neg_rval(in, out) is det.
-
-peephole__neg_rval(Rval, NegRval) :-
-	( Rval = not(NegRval0) ->
-		NegRval = NegRval0
-	;	
-		NegRval = not(Rval)
-	).
 
 %-----------------------------------------------------------------------------%
 

@@ -2125,7 +2125,8 @@ code_info__generate_test_and_fail(Rval, Code) -->
 	(
 		code_info__failure_cont(Cont)
 	->
-		{ Code = node([ if_val(not(Rval), Cont) - "" ]) }
+		{ code_util__neg_rval(Rval, NegRval) },
+		{ Code = node([ if_val(NegRval, Cont) - "" ]) }
 	;
 		code_info__get_next_label(Success),
 		{ Code = node([

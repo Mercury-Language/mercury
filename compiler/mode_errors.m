@@ -165,11 +165,7 @@ find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
 	Error = delayed_goal(_, mode_error_info(_, _, _, ModeContext), _),
 	(
 		% an error is important iff it is not a head unification
-		(
-		  ModeContext = unify_arg(unify_context(head(_), _), _, _, _)
-		;
-		  ModeContext = unify(unify_context(head(_), _), _)
-		)
+		ModeContext = unify(unify_context(head(_), _), _)
 	->
 		ImportantErrors1 = ImportantErrors,
 		OtherErrors = [Error | OtherErrors1]

@@ -39,82 +39,86 @@
 			io__state::di, io__state::uo) is det.
 :- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
 
-:- type option		--->
-		% Verbosity/Output options
-				verbose
-			;	very_verbose
-			;	verbose_errors
-			;	statistics
-			;	dump_hlds
-			;	verbose_dump_hlds
-		% Code generation options
-			;	generate_code
-			;	lazy_code
-			;	reclaim_heap_on_semidet_failure
-			;	reclaim_heap_on_nondet_failure
-			;	generate_dependencies
-		% Optimisation Options
-			;	peephole
-			;	peephole_local
-			;	peephole_jump_opt
-			;	peephole_label_elim
-			;	optimize
-			;	debug
-			;	grade
-			;	builtin_module
-			;	make_interface
-			;	heap_space
-			;	search_directories
-			;	convert_to_mercury
-			;	convert_to_goedel
-			;	help
-			;	line_numbers
-			;	warn_singleton_vars
-			;	warn_missing_det_decls
-			;	warn_det_decls_too_lax
-			;	modecheck
-			;	debug_types
-			;	debug_modes
-			;	tags
-			;	follow_code
-			;	follow_vars
-			;	num_tag_bits
-			;	gc
-			;	compile_to_c
-			;	compile
-			;	cc
-			;	cflags
-			;	c_include_directory
-			;	link
-			;	gcc_non_local_gotos
-			;	gcc_global_registers
-			;	mod_comments.
+:- type option	
+	% Warning options
+		--->	warn_singleton_vars
+		;	warn_missing_det_decls
+		;	warn_det_decls_too_lax
+	% Verbosity options
+		;	verbose
+		;	very_verbose
+		;	verbose_errors
+		;	statistics
+		;	debug_types
+		;	debug_modes
+	% Output options
+		;	make_interface
+		;	convert_to_mercury
+		;	convert_to_goedel
+		;	modecheck
+		;	dump_hlds
+		;	verbose_dump_hlds
+		;	generate_code
+		;	compile_to_c
+		;	compile
+		;	link
+		;	line_numbers
+		;	mod_comments
+	% Code generation options
+		;	lazy_code
+		;	reclaim_heap_on_semidet_failure
+		;	reclaim_heap_on_nondet_failure
+		;	generate_dependencies
+		;	tags
+		;	num_tag_bits
+		;	follow_code
+		;	follow_vars
+		;	gc
+		;	cc
+		;	cflags
+		;	c_include_directory
+		;	gcc_non_local_gotos
+		;	gcc_global_registers
+	% Optimisation Options
+		;	peephole
+		;	peephole_local
+		;	peephole_jump_opt
+		;	peephole_label_elim
+		;	optimize
+		;	debug
+		;	grade
+	% Miscellaneous Options
+		;	builtin_module
+		;	heap_space
+		;	search_directories
+		;	help.
 
 :- implementation.
 
 option_defaults([
+		% Warning Options
+	warn_singleton_vars	-	bool(yes),
+	warn_missing_det_decls	-	bool(yes),
+	warn_det_decls_too_lax	-	bool(yes),
+		% Verbosity Options
 	verbose			-	bool(no),
 	very_verbose		-	bool(no),
 	verbose_errors		-	bool(no),
 	statistics		-	bool(no),
+	debug_types		- 	bool(no),
+	debug_modes		- 	bool(no),
+		% Output Options
+	generate_dependencies	-	bool(no),
+	make_interface		-	bool(no),
+	convert_to_mercury 	-	bool(no),
+	convert_to_goedel 	-	bool(no),
+	modecheck		-	bool(yes),
 	dump_hlds		-	bool(no),
 	verbose_dump_hlds	-	bool(no),
 	generate_code		-	bool(no),
-	generate_dependencies	-	bool(no),
-	builtin_module		-	string("mercury_builtin"),
-	make_interface		-	bool(no),
-	heap_space		-	int(0),
-	search_directories 	-	accumulating(["."]),
-	convert_to_mercury 	-	bool(no),
-	convert_to_goedel 	-	bool(no),
-	help 			-	bool(no),
 	line_numbers		-	bool(no),
-	warn_singleton_vars	-	bool(yes),
-	warn_missing_det_decls	-	bool(yes),
-	warn_det_decls_too_lax	-	bool(yes),
-	modecheck		-	bool(yes),
-	debug_types		- 	bool(no),
-	debug_modes		- 	bool(no),
+	mod_comments		-	bool(yes),
+		% Code Generation Options
 	tags			-	string("low"),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
@@ -131,38 +135,45 @@ option_defaults([
 	link			-	bool(no),
 	gcc_non_local_gotos	-	bool(no),
 	gcc_global_registers	-	bool(no),
+		% Optimization options
 	debug			-	bool(no),
 	optimize		-	bool(no),
 	grade			-	string(""),
-	mod_comments		-	bool(yes),
 	peephole		-	bool(yes),
 	peephole_local		-	bool(yes),
 	peephole_jump_opt	-	bool(yes),
-	peephole_label_elim	-	bool(yes)
+	peephole_label_elim	-	bool(yes),
+		% Miscellaneous Options
+	builtin_module		-	string("mercury_builtin"),
+	heap_space		-	int(0),
+	search_directories 	-	accumulating(["."]),
+	help 			-	bool(no)
 ]).
 
+	% please keep this in alphabetic order
+short_option('b', 			builtin_module).
+short_option('c', 			compile).
+short_option('d', 			dump_hlds).
+short_option('D', 			verbose_dump_hlds).
+short_option('e', 			verbose_errors).
+short_option('G', 			convert_to_goedel).
+short_option('g', 			generate_code).
+short_option('h', 			help).
+short_option('H', 			heap_space).
+short_option('i', 			make_interface).
+short_option('I', 			search_directories).
+short_option('l', 			line_numbers).
+short_option('m', 			modecheck).
+short_option('M', 			generate_dependencies).
+short_option('N', 			debug_modes).
+short_option('O', 			optimize).
+short_option('P', 			convert_to_mercury).
+short_option('s', 			statistics).
+short_option('S', 			grade).
+short_option('T', 			debug_types).
 short_option('v', 			verbose).
 short_option('V', 			very_verbose).
 short_option('w', 			warn_singleton_vars).
-short_option('e', 			verbose_errors).
-short_option('s', 			statistics).
-short_option('d', 			dump_hlds).
-short_option('D', 			verbose_dump_hlds).
-short_option('g', 			generate_code).
-short_option('b', 			builtin_module).
-short_option('i', 			make_interface).
-short_option('H', 			heap_space).
-short_option('h', 			help).
-short_option('I', 			search_directories).
-short_option('P', 			convert_to_mercury).
-short_option('G', 			convert_to_goedel).
-short_option('l', 			line_numbers).
-short_option('m', 			modecheck).
-short_option('T', 			debug_types).
-short_option('N', 			debug_modes).
-short_option('M', 			generate_dependencies).
-short_option('c', 			compile).
-short_option('O', 			optimize).
 
 long_option("grade",			grade).
 long_option("optimize",			optimize).

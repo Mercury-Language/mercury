@@ -22,12 +22,14 @@
 			unify_context,	% original source of the unification
 			side		% LHS or RHS
 		)
+/**** Not yet used
 	;	unify_arg(
 			unify_context,
 			side,
 			cons_id,
 			int
 		)
+****/
 	;	uninitialized.
 
 :- type side ---> left ; right.

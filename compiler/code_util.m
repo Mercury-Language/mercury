@@ -29,11 +29,21 @@
 :- pred code_util__arg_loc_to_register(arg_loc, reg).
 :- mode code_util__arg_loc_to_register(in, out) is det.
 
+	% Determine whether a goal might allocate some heap space,
+	% i.e. whether it contains any construction unifications
+	% or predicate calls.
+
 :- pred code_util__goal_may_allocate_heap(hlds__goal).
 :- mode code_util__goal_may_allocate_heap(in) is semidet.
 
 :- pred code_util__goal_list_may_allocate_heap(list(hlds__goal)).
 :- mode code_util__goal_list_may_allocate_heap(in) is semidet.
+
+	% Negate a condition.
+	% This is used mostly just to make the generated code more readable.
+
+:- pred code_util__neg_rval(rval, rval).
+:- mode code_util__neg_rval(in, out) is det.
 
 :- pred atom_to_operator(string, operator).
 :- mode atom_to_operator(in, out) is semidet.
@@ -146,4 +156,34 @@ code_util__goal_list_may_allocate_heap([_ | Goals]) :-
 	code_util__goal_list_may_allocate_heap(Goals).
 
 %-----------------------------------------------------------------------------%
+
+	% Negate a condition.
+	% This is used mostly just to make the generated code more readable.
+
+code_util__neg_rval(Rval, NegRval) :-
+	( code_util__neg_rval_2(Rval, NegRval0) ->
+		NegRval = NegRval0
+	;
+		NegRval = not(Rval)
+	).
+
+:- pred code_util__neg_rval_2(rval, rval).
+:- mode code_util__neg_rval_2(in, out) is semidet.
+
+code_util__neg_rval_2(not(Rval), Rval).
+code_util__neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-
+	code_util__neg_op(Op, NegOp).
+code_util__neg_rval_2(false, true).
+code_util__neg_rval_2(true, false).
+	
+:- pred code_util__neg_op(operator, operator).
+:- mode code_util__neg_op(in, out) is semidet.
+
+code_util__neg_op(eq, ne).
+code_util__neg_op(ne, eq).
+code_util__neg_op(<, >=).
+code_util__neg_op(<=, >).
+code_util__neg_op(>, <=).
+code_util__neg_op(>=, <).
+
 %-----------------------------------------------------------------------------%

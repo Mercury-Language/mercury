@@ -616,9 +616,11 @@ inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 :- mode inst_apply_substitution(in, in, out) is det.
 
 inst_apply_substitution(free, _, free).
+inst_apply_substitution(free(T), _, free(T)).
 inst_apply_substitution(ground, _, ground).
 inst_apply_substitution(bound(Alts0), Subst, bound(Alts)) :-
 	alt_list_apply_substitution(Alts0, Subst, Alts).
+inst_apply_substitution(not_reached, _, not_reached).
 inst_apply_substitution(inst_var(Var), Subst, Result) :-
 	(
 		% XXX should params be vars?
@@ -634,6 +636,7 @@ inst_apply_substitution(defined_inst(InstName0), Subst,
 inst_apply_substitution(abstract_inst(Name, Args0), Subst,
 		    abstract_inst(Name, Args)) :-
 	inst_list_apply_substitution(Args0, Subst, Args).
+
 
 :- pred inst_name_apply_substitution(inst_name, inst_subst, inst_name).
 :- mode inst_name_apply_substitution(in, in, out) is det.
@@ -651,6 +654,10 @@ inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,
 	inst_apply_substitution(InstB0, Subst, InstB).
 inst_name_apply_substitution(ground_inst(Inst0), Subst, ground_inst(Inst)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
+inst_name_apply_substitution(typed_inst(T, Inst0), Subst,
+		typed_inst(T, Inst)) :-
+	inst_name_apply_substitution(Inst0, Subst, Inst).
+inst_name_apply_substitution(typed_ground(T), _, typed_ground(T)).
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
 				list(bound_inst)).

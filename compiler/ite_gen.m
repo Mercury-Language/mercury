@@ -127,7 +127,83 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 
 %---------------------------------------------------------------------------%
 
-ite_gen__generate_nondet_ite(_CondGoal, _ThenGoal, _ElseGoal, _Instr) -->
-	{ error("Unimplemented") }.
+ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
+	code_info__get_globals(Options),
+	{ 
+		globals__lookup_bool_option(Options,
+				reclaim_heap_on_semidet_failure, yes),
+		code_util__goal_may_allocate_heap(CondGoal)
+	->
+		ReclaimHeap = yes
+	;
+		ReclaimHeap = no
+	},
+	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
+	code_info__get_next_label(ElseLab),
+	code_info__push_failure_cont(yes(ElseLab)),
+	{ CondGoal = _ - GoalInfo },
+	{ goal_info_determinism(GoalInfo, CondDeterminism) },
+	{ CondDeterminism = nondeterministic ->
+		ModRedoipCode = node([
+			modframe(yes(ElseLab)) - "Set failure continuation"
+		])
+	;
+		ModRedoipCode = empty
+	},
+		% generate the semi-deterministic test goal
+	code_gen__generate_non_goal(CondGoal, CondCode),
+	code_info__pop_failure_cont,
+	( { CondDeterminism = nondeterministic } ->
+		( code_info__failure_cont(ContLab1) ->
+			{ Label = yes(ContLab1) }
+		;
+			{ Label = no }
+		),
+		{ RestoreRedoipCode = node([
+			modframe(Label) - "Restore failure continuation"
+		]) }
+	;
+		{ RestoreRedoipCode = empty }
+	),
+	code_info__grab_code_info(CodeInfo),
+	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
+	code_gen__generate_forced_non_goal(ThenGoal, ThenGoalCode),
+	code_info__slap_code_info(CodeInfo),
+	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
+	code_gen__generate_forced_non_goal(ElseGoal, ElseGoalCode),
+	code_info__get_next_label(EndLab),
+	{ TestCode = tree(
+		tree(
+			HPSaveCode,
+			ModRedoipCode
+		),
+		CondCode
+	) },
+	{ ThenCode = tree(
+		tree(
+			tree(
+				RestoreRedoipCode,
+				HPPopCode
+			),
+			ThenGoalCode
+		),
+		node([ goto(EndLab) - "Jump to the end of if-then-else" ])
+	) },
+	{ ElseCode = tree(
+		tree(
+			node([label(ElseLab) - "else case"]),
+			tree(
+				tree(
+					RestoreRedoipCode,
+					HPRestoreCode
+				),
+				ElseGoalCode
+			)
+		),
+		node([label(EndLab) - "end of if-then-else"])
+	) },
+		% generate the then condition
+	{ Instr = tree(TestCode, tree(ThenCode, ElseCode)) },
+	code_info__remake_with_store_map.
 
 %---------------------------------------------------------------------------%

@@ -110,7 +110,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 			modframe(yes(ContLab0)) -
 					"Set failure continuation"
 		]) },
-		{ FailCode = node([
+		{ SuccCode = node([
 			goto(EndLab) - "Jump to end of disj",
 			label(ContLab0) - "Start of next disjunct"
 		]) },
@@ -129,7 +129,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		code_info__slap_code_info(CodeInfo),
 		code_info__pop_failure_cont,
 		{ DisjCode = tree(tree(tree(ContCode,SaveHeapCode), GoalCode),
-			tree(FailCode, tree(RestoreHeapCode, RestCode))) },
+			tree(SuccCode, tree(RestoreHeapCode, RestCode))) },
 		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode)
 	;
 		( code_info__failure_cont(ContLab1) ->
@@ -140,14 +140,12 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		{ ContCode = node([
 			modframe(Label) - "Restore failure continuation"
 		]) },
-		{ FailCode = empty },
 		code_info__grab_code_info(CodeInfo),
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
 		{ RestCode = node([
 			label(EndLab) - "End of disj"
 		]) },
-		{ DisjCode = tree(tree(ContCode, GoalCode),
-			tree(FailCode, RestCode)) }
+		{ DisjCode = tree(tree(ContCode, GoalCode), RestCode) }
 	).
 
 %---------------------------------------------------------------------------%
