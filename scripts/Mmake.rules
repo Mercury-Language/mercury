@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2001 The University of Melbourne.
+# Copyright (C) 1995-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -385,11 +385,11 @@ endif # $(findstring il,$(GRADE)) != ""
 
 #-----------------------------------------------------------------------------#
 #
-# Code to handle dependencies on $(MLOBJS) and $(MLPICOBJS).
+# Code to handle dependencies on $(ALL_MLOBJS) and $(ALL_MLPICOBJS).
 #
 
 # The generated `.dep' files include rules for targets which may depend
-# on $(MLOBJS) or $(MLPICOBJS).  However, the definition of $(MLOBJS)
+# on $(ALL_MLOBJS) or $(ALL_MLPICOBJS).  However, the definition of $(MLOBJS)
 # or $(MLPICOBJS) is in the user's Mmakefile, and the `.dep' files get
 # included *before* the Mmakefile.  The `.dep' files cannot contain
 # those dependency directly, because $(MLOBJS) and $(MLPICOBJS) variables
@@ -397,11 +397,11 @@ endif # $(findstring il,$(GRADE)) != ""
 #
 # Instead, the generated `.dep' files just add the appropriate targets to
 # the $(MLOBJS_DEPS) or $(MLPICOBJS_DEPS) variables, and then we record the
-# dependency of those files on $(MLOBJS) or $(MLPICOBJS) here in Mmake.rules,
-# which gets included after the user's Mmakefile.
+# dependency of those files on $(ALL_MLOBJS) or $(ALL_MLPICOBJS) here in
+# Mmake.rules, which gets included after the user's Mmakefile.
 
-$(MLOBJS_DEPS) : $(MLOBJS)
-$(MLPICOBJS_DEPS) : $(MLPICOBJS)
+$(MLOBJS_DEPS) : $(ALL_MLOBJS)
+$(MLPICOBJS_DEPS) : $(ALL_MLPICOBJS)
 
 #-----------------------------------------------------------------------------#
 #

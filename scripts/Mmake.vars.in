@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2001 The University of Melbourne.
+# Copyright (C) 1996-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -192,8 +192,11 @@ EXTRA_MLFLAGS	=
 LIB_MLFLAGS	= $(patsubst %,-R%,$(EXTRA_C_LIB_DIRS)) \
 		  $(patsubst %,-L%,$(EXTRA_C_LIB_DIRS))
 
+ALL_MLOBJS	= $(MLOBJS) $(EXTRA_MLOBJS) $(TARGET_MLOBJS)
 MLOBJS		=
-MLPICOBJS	= $(MLOBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
+EXTRA_MLOBJS	=
+ALL_MLPICOBJS	= $(ALL_MLOBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
+
 ALL_MLLIBS	= $(MLLIBS) $(EXTRA_MLLIBS) $(TARGET_MLLIBS) $(LIB_MLLIBS)
 # XXX ALL_MLLIBS_DEP should contain a list of the file names of the
 # libraries specified in ALL_MLLIBS, but I can't see how to know whether
@@ -276,7 +279,7 @@ EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 # support for RM_C was removed from the compiler.
 RM_C = :
 
-# lists of targets that depend on $(MLOBJS) and $(MLPICOBJS)
+# lists of targets that depend on $(ALL_MLOBJS) and $(ALL_MLPICOBJS)
 MLOBJS_DEPS = 
 MLPICOBJS_DEPS = 
 
@@ -347,6 +350,11 @@ TARGET_MLFLAGS = \
   $(maybe-target-MLFLAGS-$(findstring undefined,$(origin MLFLAGS-$@)))
 maybe-target-MLFLAGS- = $(MLFLAGS-$@)
 maybe-target-MLFLAGS-undefined =
+
+TARGET_MLOBJS = \
+  $(maybe-target-MLOBJS-$(findstring undefined,$(origin MLOBJS-$@)))
+maybe-target-MLOBJS- = $(MLOBJS-$@)
+maybe-target-MLOBJS-undefined =
 
 TARGET_MLLIBS = \
   $(maybe-target-MLLIBS-$(findstring undefined,$(origin MLLIBS-$@)))

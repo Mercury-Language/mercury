@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3543,11 +3543,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	{ MainRule =
 		[ExeFileName, " : $(", MakeVarName, ".cs_or_ss) ",
 			"$(", MakeVarName, ".os) ",
-			InitObjFileName, " $(MLOBJS) ", All_MLLibsDepString,
-			"\n",
+			InitObjFileName, " $(ALL_MLOBJS) ",
+			All_MLLibsDepString, "\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
 			ExeFileName, " ", InitObjFileName, " \\\n",
-		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(ALL_MLLIBS)\n"] },
+		"\t	$(", MakeVarName, ".os) $(ALL_MLOBJS) $(ALL_MLLIBS)\n"]
+	},
 	{ EndIf = ["endif\n"] },
 
 	globals__io_get_target(Target),
@@ -3575,10 +3576,11 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		SplitLibFileName, " : $(", MakeVarName, ".dir_os) $(MLOBJS)\n",
+		SplitLibFileName,
+			" : $(", MakeVarName, ".dir_os) $(ALL_MLOBJS)\n",
 		"\trm -f ", SplitLibFileName, "\n",
 		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)",
-		SplitLibFileName, " $(MLOBJS)\n",
+		SplitLibFileName, " $(ALL_MLOBJS)\n",
 		"\tfind $(", MakeVarName, ".dirs) -name ""*.$O"" -print | \\\n",
 		"\t	xargs $(AR) q ", SplitLibFileName, "\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
@@ -3635,19 +3637,19 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		SharedLibFileName, " : $(", MakeVarName, ".cs_or_ss) ",
 			"$(", MakeVarName, ".pic_os) ",
-			"$(MLPICOBJS) ", All_MLLibsDepString, "\n",
+			"$(ALL_MLPICOBJS) ", All_MLLibsDepString, "\n",
 		"\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
 			"-o ", SharedLibFileName, " \\\n",
-		"\t\t$(", MakeVarName, ".pic_os) $(MLPICOBJS) ",
+		"\t\t$(", MakeVarName, ".pic_os) $(ALL_MLPICOBJS) ",
 			"$(ALL_MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
 		LibFileName, " : $(", MakeVarName, ".cs_or_ss) ",
-			"$(", MakeVarName, ".os) $(MLOBJS)\n",
+			"$(", MakeVarName, ".os) $(ALL_MLOBJS)\n",
 		"\trm -f ", LibFileName, "\n",
 		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)", LibFileName, " ",
-			"$(", MakeVarName, ".os) $(MLOBJS)\n",
+			"$(", MakeVarName, ".os) $(ALL_MLOBJS)\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", LibFileName, "\n\n"
 	]),
 
