@@ -64,7 +64,7 @@
 
 :- implementation.
 
-:- import_module require, set.
+:- import_module require, set, string.
 
 assoc_list__reverse_members([], []).
 assoc_list__reverse_members([K - V | KVs], [V - K | VKs]) :-
@@ -74,7 +74,25 @@ assoc_list__from_corresponding_lists(Ks, Vs, KVs) :-
 	( assoc_list__from_corresponding_2(Ks, Vs, KVs0) ->
 		KVs = KVs0
 	;
-		error("assoc_list__from_corresponding_lists: lists have different lengths.")
+		KeyType = type_name(type_of(Ks)),
+		list__length(Ks, KeyLength),
+		string__int_to_string(KeyLength, KeyLengthString),
+		ValueType = type_name(type_of(Vs)),
+		list__length(Vs, ValueLength),
+		string__int_to_string(ValueLength, ValueLengthString),
+		string__append_list(
+			["assoc_list__from_corresponding_lists: lists have different lengths.\n",
+			"\tKey list type: ",
+			KeyType,
+			"\n\tKey list length: ",
+			KeyLengthString,
+			"\n\tValue list type: ",
+			ValueType,
+			"\n\tValue list length: ",
+			ValueLengthString
+			],
+			ErrorString),
+		error(ErrorString)
 	).
 
 :- pred assoc_list__from_corresponding_2(list(K), list(V), assoc_list(K,V)).

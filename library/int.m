@@ -288,7 +288,7 @@ int__log2_2(X, N0, N) :-
 %-----------------------------------------------------------------------------%
 
 % is/2 is replaced with `=' in the parser, but the following is useful
-% in case you should take the address of `is' or something wierd like that.
+% in case you should take the address of `is' or something weird like that.
 
 % we use pragma(c_code) to avoid complaints about redefinition of is/2
 % from the Prolog compilers.

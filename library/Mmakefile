@@ -65,12 +65,12 @@ MTAGS	=	$(SCRIPTS_DIR)/mtags
 NU_LIBRARY_NOS = \
 	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
 	int.nu.no float.nu.no char.nu.no mercury_builtin.nu.no
-NU_OVERRIDING_LIBRARY_NOS = map.nu.no
+NU_OVERRIDING_LIBRARY_NOS = map.nu.no assoc_list.nu.no
 
 NU_LIBRARY_QLS = \
 	io.nu.ql require.nu.ql std_util.nu.ql string.nu.ql term_io.nu.ql \
 	int.nu.ql float.nu.ql char.nu.ql mercury_builtin.nu.ql sp_lib.ql
-NU_OVERRIDING_LIBRARY_QLS = map.nu.ql
+NU_OVERRIDING_LIBRARY_QLS = map.nu.ql assoc_list.nu.ql
 
 #-----------------------------------------------------------------------------#
 
