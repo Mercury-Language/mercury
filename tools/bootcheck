@@ -176,13 +176,13 @@ then
 	write_out_profile_data=false
 fi
 
-# If you change these, you will also need to change scripts/ml.in,
-# scripts/c2init.in, Mmake.workspace, tools/binary, tools/binary_step
-# and tools/linear.
+# If you change these, you will also need to change the files indicated
+# in scripts/c2init.in.
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
+MDBCOMP_LIB_NAME=mer_mdbcomp
 ANALYSIS_LIB_NAME=mer_analysis
 
 while [ $# -gt 0 ]; do
@@ -520,6 +520,7 @@ then
 		$LN_S $root/browser/*.m .
 		cp $root/browser/Mmake* $root/browser/Mercury.options .
 		$LN_S $root/browser/$BROWSER_LIB_NAME.init .
+		$LN_S $root/browser/$MDCOMP_LIB_NAME.init .
 		$LN_S $root/browser/RESERVED_MACRO_NAMES .
 		cd $root/stage2
 		mkdir analysis
@@ -853,6 +854,7 @@ then
 	$LN_S $root/browser/*.m .
 	cp $root/browser/Mmake* $root/browser/Mercury.options .
 	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
+	$LN_S $root/browser/$MDBCOMP_LIB_NAME.init .
 	cd $root/stage3
 	mkdir analysis
 	cd analysis

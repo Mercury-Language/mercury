@@ -24,8 +24,8 @@
 :- import_module hlds__instmap.
 :- import_module parse_tree__prog_data.
 
-:- import_module mdb.
-:- import_module mdb__program_representation.
+:- import_module mdbcomp.
+:- import_module mdbcomp__program_representation.
 
 :- import_module list.
 

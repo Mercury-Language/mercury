@@ -34,7 +34,16 @@ include $(MERCURY_DIR)/Mmake.common
 include Mercury.options
 
 MAIN_TARGET=library
-MERCURY_MAIN_MODULES=$(BROWSER_LIB_NAME) browse_test declarative_test
+
+MERCURY_MAIN_LIB_MODULES=$(BROWSER_LIB_NAME) $(MDBCOMP_LIB_NAME)
+MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES) browse_test declarative_test
+
+DEPENDS =	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+INTS =		$(patsubst %,%.int,$(MERCURY_MAIN_MODULES))
+INT3S =		$(patsubst %,%.int3,$(MERCURY_MAIN_MODULES))
+
+LIBS =		$(patsubst %,lib%,$(MERCURY_MAIN_LIB_MODULES))
+CHECKS =	$(patsubst %,%.check,$(MERCURY_MAIN_LIB_MODULES))
 
 #-----------------------------------------------------------------------------#
 
@@ -60,6 +69,7 @@ LN	=	ln
 
 ifeq ($(USE_DLLS),yes)
 
+# XXX what do we need here for MDCOMP_LIB_NAME?
 DLL_CFLAGS = -Dlib$(BROWSER_LIB_NAME)_DEFINE_DLL
 
 include $(MERCURY_DIR)/Makefile.DLLs
@@ -75,13 +85,15 @@ endif
 
 # targets
 
-.PHONY: all
-all : library browse_test declarative_test
+.PHONY: library
+library: $(LIBS)
 
-DEPENDS = $(BROWSER_LIB_NAME).depend browse_test.depend declarative_test.depend
+.PHONY: all
+all: library browse_test declarative_test
+
 .PHONY: depend
-depend		: $(DEPENDS)
-$(DEPENDS)	: Mercury.modules
+depend:	$(DEPENDS)
+$(DEPENDS): Mercury.modules
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
@@ -91,65 +103,66 @@ Mercury.modules:
 	$(MC) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: check
-check		: $(BROWSER_LIB_NAME).check
+check:	$(CHECKS)
 
 .PHONY: all-ints 
 all-ints: ints int3s
 
 .PHONY: ints 
-ints		: $(BROWSER_LIB_NAME).ints \
-			browse_test.ints declarative_test.ints
+ints:	$(INTS)
 
 .PHONY: int3s 
-int3s		: $(BROWSER_LIB_NAME).int3s
+int3s:	$(INT3S)
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(MTAGS) $($(BROWSER_LIB_NAME).ms)
-	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../library/*.m
+tags:	$(MTAGS) $($(BROWSER_LIB_NAME).ms) $($(MDBCOMP_LIB_NAME).ms)
+	$(MTAGS) $($(BROWSER_LIB_NAME).ms) $($(MDBCOMP_LIB_NAME).ms) \
+		../library/*.m
 
-$(BROWSER_LIB_NAME).stats : $(COMPILER_DIR)/source_stats.awk \
-				$($(BROWSER_LIB_NAME).ms)
+$(BROWSER_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
+		$($(BROWSER_LIB_NAME).ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \
 		`vpath_find $($(BROWSER_LIB_NAME).ms)` > $@
-	
+
+$(MDCOMP_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
+		$($(MDCOMP_LIB_NAME).ms)
+	awk -f $(COMPILER_DIR)/source_stats.awk \
+		`vpath_find $($(MDCOMP_LIB_NAME).ms)` > $@
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
-dates		:
-	touch $($(BROWSER_LIB_NAME).dates)
+dates:
+	touch $($(BROWSER_LIB_NAME).dates) $($(MDBCOMP_LIB_NAME).dates)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs ss ils
 ifeq ($(MMAKE_USE_MMC_MAKE),no)
-os: $($(BROWSER_LIB_NAME).os)
-cs: $($(BROWSER_LIB_NAME).cs)
-ss: $($(BROWSER_LIB_NAME).ss)
-ils: $($(BROWSER_LIB_NAME).ils)
+os: $($(BROWSER_LIB_NAME).os) $($(MDBCOMP_LIB_NAME).os)
+cs: $($(BROWSER_LIB_NAME).cs) $($(MDBCOMP_LIB_NAME).cs)
+ss: $($(BROWSER_LIB_NAME).ss) $($(MDBCOMP_LIB_NAME).ss)
+ils: $($(BROWSER_LIB_NAME).ils) $($(MDBCOMP_LIB_NAME).ils)
 else
-os: $(BROWSER_LIB_NAME).os
-cs: $(BROWSER_LIB_NAME).cs
-ss: $(BROWSER_LIB_NAME).ss
-ils: $(BROWSER_LIB_NAME).ils
+os: $(BROWSER_LIB_NAME).os $(MDBCOMP_LIB_NAME).os
+cs: $(BROWSER_LIB_NAME).cs $(MDBCOMP_LIB_NAME).cs
+ss: $(BROWSER_LIB_NAME).ss $(MDBCOMP_LIB_NAME).ss
+ils: $(BROWSER_LIB_NAME).ils $(MDBCOMP_LIB_NAME).ils
 endif
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: library
-library: lib$(BROWSER_LIB_NAME)
-
 # Ensure we recompile mdb__version if VERSION is changed.
 $(os_subdir)mdb.o \
 $(os_subdir)mdb.pic_o \
+$(os_subdir)mdbcomp.o \
+$(os_subdir)mdbcomp.pic_o \
         : $(RUNTIME_DIR)/mercury_conf.h
 
 #-----------------------------------------------------------------------------#
 
-# In the past we generated libmdb.* and then linked
-# libmer_browser.* to the files.
 realclean_local:
-	rm -rf libmdb.so libmdb.a mdb.init
 	rm -f Mercury.modules tags
 
 #-----------------------------------------------------------------------------#
@@ -177,18 +190,24 @@ install_library:
 else 
 
 .PHONY: install_init
-install_init: $(BROWSER_LIB_NAME).init install_dirs
+install_init: $(BROWSER_LIB_NAME).init $(MDBCOMP_LIB_NAME).init install_dirs
 	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_MODULE_DIR)
-
+	cp `vpath_find $(MDBCOMP_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_library
-install_library: lib$(BROWSER_LIB_NAME).$A \
-		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_dirs
+install_library: \
+		lib$(BROWSER_LIB_NAME).$A \
+		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
+		lib$(MDBCOMP_LIB_NAME).$A \
+		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
+		install_dirs
 	cp `vpath_find lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find lib$(MDBCOMP_LIB_NAME).$A \
+		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
 	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(BROWSER_LIB_NAME).$A
+	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(MDBCOMP_LIB_NAME).$A
 
 endif
-
-

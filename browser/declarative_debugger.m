@@ -35,9 +35,13 @@
 %-----------------------------------------------------------------------------%
 
 :- module mdb__declarative_debugger.
+
 :- interface.
-:- import_module mdb__declarative_execution, mdb__program_representation.
+
+:- import_module mdb__declarative_execution.
 :- import_module mdb__io_action.
+:- import_module mdbcomp__program_representation.
+
 :- import_module io, bool, list, std_util, string.
 
 	% This type represents the possible truth values for nodes
@@ -240,8 +244,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mdb__declarative_analyser, mdb__declarative_oracle.
+
+:- import_module mdb__declarative_analyser.
+:- import_module mdb__declarative_oracle.
 :- import_module mdb__declarative_tree.
+
 :- import_module exception, int, map.
 
 unravel_decl_atom(DeclAtom, TraceAtom, IoActions) :-

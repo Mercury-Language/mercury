@@ -8,6 +8,8 @@
 
 :- interface.
 
+:- import_module mdbcomp.
+
 :- pred mdb__version(string::out) is det.
 
 	% These interface modules are used directly by the test programs
@@ -21,7 +23,6 @@
 :- include_module help.
 :- include_module interactive_query.
 :- include_module io_action.
-:- include_module program_representation.
 
 :- implementation.
 

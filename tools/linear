@@ -43,9 +43,8 @@ Options:
 		Execute runtests from the named subdirectory of tests.
 "
 
-# If you change this, you will also need to change scripts/ml.in,
-# scripts/c2init.in, Mmake.workspace, tools/bootcheck, tools/binary
-# and tools/binary_step.
+# If you change this, you will also need to change the files indicated
+# in scripts/c2init.in.
 STD_LIB_NAME=mer_std
 
 bootcheck=""

@@ -32,7 +32,7 @@
 
 #include "mdb.browse.mh"
 #include "mdb.browser_info.mh"
-#include "mdb.program_representation.mh"
+#include "mdbcomp.program_representation.mh"
 
 #include <stdio.h>
 #include <stdlib.h>

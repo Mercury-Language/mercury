@@ -30,13 +30,28 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 # include the file `canonical_grade.sh-subr'
 @CANONICAL_GRADE@
 
-# If you change these, you will also need to change Mmake.workspace,
-# compiler/compile_target_code.m, scripts/ml.in, tools/bootcheck,
-# tools/binary, tools/binary_step and tools/linear.
+# If you change one of these, or if you add a new one, you will also need
+# to check the following files to see if corresponding changes are needed
+# there as well:
+#
+#	Mmake.workspace
+#	Mmakefile
+#	compiler/compile_target_code.m
+#	scripts/c2init.in
+#	scripts/ml.in
+#	tools/bootcheck,
+#	tools/binary
+#	tools/binary_step
+#	tools/linear
+#	tools/lmc
+#	tools/lml
+
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
+MDBCOMP_LIB_NAME=mer_mdbcomp
+ANALYSIS_LIB_NAME=mer_analysis
 
 MKINIT=${MERCURY_MKINIT=mkinit}
 
@@ -53,8 +68,10 @@ esac
 if [ "$mercury_stdlib_dir" != "" ]
 then
 	MERCURY_MOD_LIB_MODS="$mercury_stdlib_dir/modules/$RT_LIB_NAME.init \
-			$mercury_stdlib_dir/modules/$STD_LIB_NAME.init"
-	MERCURY_TRACE_LIB_MODS="$mercury_stdlib_dir/modules/$BROWSER_LIB_NAME.init"
+		$mercury_stdlib_dir/modules/$STD_LIB_NAME.init"
+	MERCURY_TRACE_LIB_MODS="\
+		$mercury_stdlib_dir/modules/$BROWSER_LIB_NAME.init \
+		$mercury_stdlib_dir/modules/$MDBCOMP_LIB_NAME.init"
 fi
 MERCURY_TRACE_LIB_MODS="$MERCURY_TRACE_LIB_MODS $trace_init_files"
 

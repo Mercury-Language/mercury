@@ -11,8 +11,11 @@
 %-----------------------------------------------------------------------------%
 
 :- module mdb__declarative_tree.
+
 :- interface.
-:- import_module mdb__declarative_analyser, mdb__declarative_execution.
+
+:- import_module mdb__declarative_analyser.
+:- import_module mdb__declarative_execution.
 
 	% The type of nodes in our implementation of EDTs.  The parameter
 	% is meant to be the type of references to trace nodes.  In
@@ -37,8 +40,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mdb__declarative_debugger, mdb__io_action.
-:- import_module mdb__program_representation.
+
+:- import_module mdb__declarative_debugger.
+:- import_module mdb__io_action.
+:- import_module mdbcomp__program_representation.
+
 :- import_module assoc_list, bool, exception, int, list, map, std_util.
 
 :- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)

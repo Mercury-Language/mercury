@@ -13,8 +13,11 @@
 %
 
 :- module mdb__declarative_user.
+
 :- interface.
+
 :- import_module mdb__declarative_debugger.
+
 :- import_module list, io.
 
 :- type user_question(T)
@@ -50,8 +53,14 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mdb__browser_info, mdb__browse, mdb__io_action, mdb__util.
-:- import_module mdb__declarative_execution, mdb__program_representation.
+
+:- import_module mdb__browser_info.
+:- import_module mdb__browse.
+:- import_module mdb__io_action.
+:- import_module mdb__util.
+:- import_module mdb__declarative_execution.
+:- import_module mdbcomp__program_representation.
+
 :- import_module std_util, char, string, bool, int, deconstruct.
 
 :- type user_state

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,8 +15,12 @@
 % to produce a bug diagnosis.
 
 :- module mdb__declarative_execution.
+
 :- interface.
-:- import_module mdb__program_representation, mdb__util.
+
+:- import_module mdb__util.
+:- import_module mdbcomp__program_representation.
+
 :- import_module list, std_util, string, io, bool.
 
 	% This type represents a port in the annotated trace.

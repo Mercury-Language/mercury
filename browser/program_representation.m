@@ -29,11 +29,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module mdb__program_representation.
+:- module mdbcomp__program_representation.
 
 :- interface.
 
-:- import_module mdb__browser_info.
 :- import_module char, list, std_util.
 
 	% A representation of the goal we execute.  These need to be
@@ -202,9 +201,6 @@
 
 :- type term_path ==	list(int).
 
-:- pred convert_dirs_to_term_path(list(dir), term_path).
-:- mode convert_dirs_to_term_path(in, out) is det.
-
 	% Returns type_of(_ `with_type` proc_rep), for use in C code.
 :- func proc_rep_type = type_desc.
 
@@ -243,14 +239,6 @@ call_is_primitive(ModuleName, PredName) :-
 	;
 		ModuleName = "term_size_prof_builtin"
 	).
-
-convert_dirs_to_term_path([], []).
-convert_dirs_to_term_path([child_num(N) | Dirs], [N | TermPath]) :-
-	convert_dirs_to_term_path(Dirs, TermPath).
-convert_dirs_to_term_path([child_name(_) | _], _) :-
-	error("convert_dirs_to_term_path: not in canonical form").
-convert_dirs_to_term_path([parent | _], _) :-
-	error("convert_dirs_to_term_path: not in canonical form").
 
 :- pragma export(proc_rep_type = out, "ML_proc_rep_type").
 

@@ -48,7 +48,9 @@ The subdirectories containing major subsystems are as follows:
 <li> library: the Mercury standard library (written in Mercury)
 <li> compiler: the Mercury compiler (written in Mercury)
 <li> trace: the part of the Mercury debugger that is written in C
-<li> browser: the part of the Mercury debugger that is written in Mercury
+<li> browser: the part of the Mercury debugger that is written in Mercury,
+     including the library that defines the Mercury data structures generated
+     by the compiler for the debugger.
 <li> profiler: the Mercury profiler (written in Mercury)
 <li> extras: additional Mercury libraries.  These are distributed
      separately from the main Mercury distribution.
@@ -123,8 +125,9 @@ from `configure.in'.
 
 <h2> Libraries and dependencies </h2>
 
-Each major subsystem (except `extras') gets compiled to a single
-library or executable program.
+Each major subsystem (which doesn't include `extras')
+gets compiled to a single library or executable program,
+except for the browser directory, which gets compiled to two libraries.
 
 On most systems, mutual recursion between libraries is not very
 well supported.  On Unix, for static linking you need to list the
@@ -146,6 +149,7 @@ a program in the following order:
 <li>    the main program object files (e.g. compiler/*.o or profiler/*.o)
 <li>    trace library (trace/libmer_trace.a)
 <li>    browser library (browser/libmer_browser.a)
+<li>    mdbcomp library (browser/libmer_mdbcomp.a)
 <li>    standard library (library/libmer_std.a)
 <li>    runtime library (runtime/libmer_rt.a)
 <li>    Boehm collector (boehm_gc/libgc.a)
@@ -162,6 +166,6 @@ other components.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2000-08-21 14:49:50 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2003-10-27 06:00:38 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

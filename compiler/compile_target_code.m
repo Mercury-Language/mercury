@@ -947,7 +947,8 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 				StdLibDir/"modules"/"mer_std.init" |
 				InitFileNamesList0] },
 		{ TraceInitFileNamesList =
-				[StdLibDir/"modules"/"mer_browser.init" |
+				[StdLibDir/"modules"/"mer_browser.init",
+				StdLibDir/"modules"/"mer_mdbcomp.init" |
 				TraceInitFileNamesList0] }
 	;
 		{ MaybeStdLibDir = no },
@@ -1354,29 +1355,33 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs) -->
 				("libmer_trace" ++ LibExt)) ++
 			" " ++
 			quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
-				("libmer_browser" ++ LibExt)) },
+				("libmer_browser" ++ LibExt)) ++
+			" " ++
+			quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+				("libmer_mdbcomp" ++ LibExt)) },
 		make_link_lib(TargetType, "mer_trace", TraceLib),
 		make_link_lib(TargetType, "mer_browser", BrowserLib),
+		make_link_lib(TargetType, "mer_mdbcomp", MdbCompLib),
 		{ SharedTraceLibs = string__join_list(" ",
-					[TraceLib, BrowserLib]) }
+				[TraceLib, BrowserLib, MdbCompLib]) }
 	),
 
 	globals__io_lookup_string_option(mercury_linkage, MercuryLinkage),
 	( { MercuryLinkage = "static" } ->
-	    { StdLibs = string__join_list(" ",
-		[StaticTraceLibs,
-		quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
-			("libmer_std" ++ LibExt)),
-		quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
-			("libmer_rt" ++ LibExt)),
-		StaticGCLibs]) }
+		{ StdLibs = string__join_list(" ",
+			[StaticTraceLibs,
+			quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+				("libmer_std" ++ LibExt)),
+			quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+				("libmer_rt" ++ LibExt)),
+			StaticGCLibs]) }
 	; { MercuryLinkage = "shared" } ->
-	    make_link_lib(TargetType, "mer_std", StdLib),
-	    make_link_lib(TargetType, "mer_rt", RuntimeLib),
-	    { StdLibs = string__join_list(" ",
-		[SharedTraceLibs, StdLib, RuntimeLib, SharedGCLibs]) }
+		make_link_lib(TargetType, "mer_std", StdLib),
+		make_link_lib(TargetType, "mer_rt", RuntimeLib),
+		{ StdLibs = string__join_list(" ",
+			[SharedTraceLibs, StdLib, RuntimeLib, SharedGCLibs]) }
 	;
-	    { error("unknown linkage " ++ MercuryLinkage) }
+		{ error("unknown linkage " ++ MercuryLinkage) }
 	).
 
 :- pred make_link_lib(linked_target_type::in, string::in, string::out,

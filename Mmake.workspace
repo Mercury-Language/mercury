@@ -73,13 +73,13 @@ MPS_GC_OBJ_DIR=$(MPS_GC_DIR)/$(MPS_PFM)/$(MPS_VARIETY)
 # have just a ".init" suffix. (The trace library does not have a .init file,
 # since it contains no Mercury code.)
 #
-# If you change these, you will also need to change
-# compiler/compile_target_code.m, scripts/ml.in, scripts/c2init.in,
-# tools/bootcheck, tools/binary, tools/binary_step and tools/linear.
+# If you change these, you will also need to change the files indicated
+# in scripts/c2init.in.
 RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
 BROWSER_LIB_NAME = mer_browser
+MDBCOMP_LIB_NAME = mer_mdbcomp
 ANALYSIS_LIB_NAME = mer_analysis
 
 # This specifies the path to the so_locations file (or its equivalent),
@@ -110,7 +110,8 @@ endif
 
 MCFLAGS += 	--no-mercury-stdlib-dir -I$(LIBRARY_DIR)
 MGNUCFLAGS +=	--no-mercury-stdlib-dir
-C2INITFLAGS += 	--trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init
+C2INITFLAGS += 	--trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
+		--trace-init-file $(BROWSER_DIR)/$(MDBCOMP_LIB_NAME).init
 C2INITARGS +=	$(LIBRARY_DIR)/$(STD_LIB_NAME).init \
 		$(RUNTIME_DIR)/$(RT_LIB_NAME).init
 MLFLAGS +=	--no-mercury-stdlib-dir
@@ -180,7 +181,8 @@ ifneq ($(LINK_RUNTIME_ONLY),yes)
 STATIC_STD_LIBS = $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 ifneq ($(LINK_STDLIB_ONLY),yes)
 STATIC_TRACE_LIBS = $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
-		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
+		$(BROWSER_DIR)/lib$(MDBCOMP_LIB_NAME).$A
 endif
 endif
 endif
@@ -197,7 +199,8 @@ LINK_RT_LIB_OPTS = -l$(RT_LIB_NAME)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
 LINK_STD_LIB_OPTS = -l$(STD_LIB_NAME)
 ifneq ($(LINK_STDLIB_ONLY),yes)
-LINK_TRACE_LIB_OPTS = -l$(TRACE_LIB_NAME) -l$(BROWSER_LIB_NAME)
+LINK_TRACE_LIB_OPTS = -l$(TRACE_LIB_NAME) -l$(BROWSER_LIB_NAME) \
+	-l$(MDBCOMP_LIB_NAME)
 endif
 endif
 endif

@@ -88,13 +88,13 @@ DL_LIBRARY="@DL_LIBRARY@"
 # Likewise for -lreadline -l{termcap,curses,ncurses}
 READLINE_LIBRARIES="@READLINE_LIBRARIES@"
 
-# If you change these, you will also need to change Mmake.workspace,
-# compiler/compile_target_code.m, scripts/c2init.in, tools/bootcheck,
-# tools/binary, tools/binary_step and tools/linear.
+# If you change these, you will also need to change the files indicated
+# in scripts/c2init.in.
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
+MDBCOMP_LIB_NAME=mer_mdbcomp
 
 MAYBE_STATIC_OPT=""
 
@@ -212,7 +212,8 @@ case $readline in
 esac
 
 case $trace in
-	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME"
+	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME \
+		   -l$MDBCOMP_LIB_NAME"
 		TRACE_LIBS_SYSTEM="$TRACE_LIBS_SYSTEM $READLINE_LIBRARIES"
 		TRACE_STATIC_LIBS="\
 		  `$FIX_PATH_FOR_LINKER \

@@ -13,6 +13,10 @@
 :- module mdb__browser_info.
 
 :- interface.
+
+:- import_module mdbcomp.
+:- import_module mdbcomp__program_representation.
+
 :- import_module bool, list, std_util, io.
 
 :- type browser_term
@@ -121,6 +125,8 @@
 
 :- func browser_info__get_num_printed_io_actions(browser_persistent_state)
 	= int.
+
+:- pred convert_dirs_to_term_path(list(dir)::in, term_path::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -598,5 +604,15 @@ pretty_value(BrowserDb, Univ0) = Value :-
 		Univ = Univ0
 	),
 	Value = univ_value(Univ).
+
+%---------------------------------------------------------------------------%
+
+convert_dirs_to_term_path([], []).
+convert_dirs_to_term_path([child_num(N) | Dirs], [N | TermPath]) :-
+	convert_dirs_to_term_path(Dirs, TermPath).
+convert_dirs_to_term_path([child_name(_) | _], _) :-
+	error("convert_dirs_to_term_path: not in canonical form").
+convert_dirs_to_term_path([parent | _], _) :-
+	error("convert_dirs_to_term_path: not in canonical form").
 
 %---------------------------------------------------------------------------%

@@ -11,9 +11,13 @@
 %
 
 :- module mdb__declarative_analyser.
+
 :- interface.
-:- import_module mdb__declarative_debugger, mdb__program_representation.
+
+:- import_module mdb__declarative_debugger.
 :- import_module mdb__io_action.
+:- import_module mdbcomp__program_representation.
+
 :- import_module list, std_util.
 
 	% This typeclass defines how EDTs may be accessed by this module.

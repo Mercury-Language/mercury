@@ -261,7 +261,7 @@ OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
 # 		(the `runtime' and `trace' directories)
 # 	`ML_' for stuff in the Mercury standard library
 # 		(the `library' directory)
-# 	`MDB_' for stuff in the browser
+# 	`MDB_' and `MDBCOMP_'for stuff in the browser
 # 		(the `browser' directory)
 # 	`GC_' for stuff in the Boehm et al conservative garbage collector
 # 		(the `boehm_gc' directory)
@@ -293,9 +293,9 @@ endif
 
 ifeq ("$(ALLOW_BROWSER_PREFIX)","yes")
 BROWSER_MACRO_PREFIX_EXPRS = \
-	-e '^MDB_'
+	-e '^MDB_' -e '^MDBCOMP_'
 BROWSER_OBJ_PREFIX_EXPRS = \
-	-e '^MDB_' -e '^mdb_'
+	-e '^MDB_' -e '^MDBCOMP_' -e '^mdb_' -e '^mdbcomp_'
 else
 BROWSER_MACRO_PREFIX_EXPRS =
 BROWSER_OBJ_PREFIX_EXPRS =
