@@ -47,19 +47,17 @@ and then PIC and non-PIC code could be mixed without any problems.)
 --------------------
 
 diff -u -r1.9 os_dep.c
---- os_dep.c    1997/03/06 02:51:19     1.9
-+++ os_dep.c    1997/08/07 14:14:26
+--- os_dep.c	1997/03/06 02:51:19	1.9
++++ os_dep.c	1997/10/15 10:04:53
 @@ -23,9 +23,11 @@
-     /* for some early 1.3.X releases.  Will hopefully go away soon.  */
-     /* in some later Linux releases, asm/sigcontext.h may have to */
-     /* be included instead.  */
-+# if 0
+     /* for some early 1.3.X releases.  Will hopefully go away soon.	*/
+     /* in some later Linux releases, asm/sigcontext.h may have to	*/
+     /* be included instead.						*/
++#  if 0
  #   define __KERNEL__
  #   include <asm/signal.h>
  #   undef __KERNEL__
-+# endif
++#  endif
  # endif
- # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) &&
-!defined(MACOS)
+ # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) && !defined(MACOS)
  #   include <sys/types.h>
-
