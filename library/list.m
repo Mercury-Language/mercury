@@ -279,9 +279,6 @@ list__member(Element, List, SubList) :-
 	SubList = [Element | _],
 	list__append(_, SubList, List).
 
-list__member(X, [X|_]).
-list__member(X, [_|Xs]) :- list__member(X, Xs).
-
 :- pred length(list(_T), int).
 :- mode length(in, in) is semidet.     % implied
 :- mode length(in, out) is det.                % implied
