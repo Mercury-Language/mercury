@@ -1795,7 +1795,7 @@ MR_trace_validate_var_count(const MR_Stack_Layout_Label *layout,
 ** Find and validate the number of a variable given by a variable
 ** specification in the given layout. If successful, return the
 ** number of the variable in *which_var_ptr, and a NULL string;
-** otherwise a return a string containing an error message.
+** otherwise return a string containing an error message.
 */
 
 static const char *
