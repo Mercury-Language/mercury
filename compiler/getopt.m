@@ -24,8 +24,6 @@
 	%		check POSIX conformance.
 	%		improve error messages.
 
-:- type option_table == map(option, option_data).
-
 :- type maybe_option_table	--->	ok(option_table)
 				;	error(string).
 
