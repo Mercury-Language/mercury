@@ -758,7 +758,8 @@ case "$host" in
 		;;
 	alpha-dec-osf*)
 		AC_MSG_RESULT(yes)
-		LINK_SHARED_OBJ="ld -shared"
+		LINK_SHARED_OBJ="ld -O3 -shared \
+			-update_registry ../so_locations"
 		CFLAGS_FOR_PIC=
 		EXT_FOR_PIC_OBJECTS=o
 		EXT_FOR_SHARED_LIB=so
