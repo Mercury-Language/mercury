@@ -14,6 +14,8 @@
 
 :- interface.
 
+:- import_module float.
+
 % '<' and '>' are currently defined in mercury_builtin.nl, since they need to
 % be because they are used in the implementation of compare/3.
 % 
@@ -37,6 +39,9 @@
 
 :- pred int__min(int, int, int).
 :- mode int__min(in, in, out) is det.
+
+:- pred int__to_float(int, float) is det.
+:- mode int__to_float(in ,out) is det.
 
 :- pred int__pow(int, int, int).
 :- mode int__pow(in, in, out) is det.
@@ -163,6 +168,10 @@ int__min(X, Y, Min) :-
 	;
 		Min = Y
 	).
+
+
+:- external(int__to_float/2).
+
 
 int__pow(Val, Exp, Result) :-
 	( Exp < 0 ->
