@@ -208,6 +208,8 @@ HDR_CHECK_OBJS = $(HDRS:.h=.check.$O)
 HDR_CHECK_MACROS = $(HDRS:.h=.check.macros)
 OBJ_CHECKS = $(OBJS:%=%.obj_check)
 
+$(HDR_CHECK_OBJS):	mercury_conf.h
+
 #-----------------------------------------------------------------------------#
 
 # Stuff for Windows DLLs
