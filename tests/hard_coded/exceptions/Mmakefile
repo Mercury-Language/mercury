@@ -33,7 +33,7 @@ test_uncaught_exception.out: test_uncaught_exception
 		grep . $@.tmp; \
 		exit 1; \
 	else \
-		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		sed -e '/pred exception/s/exception.m:[0-9]*/exception.m:NNNN/g' \
 			< $@.tmp > $@ ; \
 		rm -f $@.tmp; \
 	fi
