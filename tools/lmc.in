@@ -72,7 +72,8 @@ else
 	echo "$WORKSPACE/boehm_gc does not have a gc library"
 fi
 
-LIB_FLAGS="--link-object $WORKSPACE/trace/libmer_trace.a --link-object $WORKSPACE/browser/libmer_browser.a --link-object $WORKSPACE/library/libmer_std.a --link-object $WORKSPACE/runtime/libmer_rt.a --link-object $gclib -lm @TRACE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
+LIB_FLAGS="--link-object $WORKSPACE/trace/libmer_trace.a --link-object
+$WORKSPACE/browser/libmer_browser.a --link-object $WORKSPACE/browser/libmer_mdbcomp.a --link-object $WORKSPACE/library/libmer_std.a --link-object $WORKSPACE/runtime/libmer_rt.a --link-object $gclib -lm @TRACE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
 
 INIT_FLAGS="--trace-init-file $WORKSPACE/browser/mer_browser.init --init-file $WORKSPACE/library/mer_std.init --init-file $WORKSPACE/runtime/mer_rt.init"
 
