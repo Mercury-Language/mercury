@@ -121,6 +121,7 @@ termExpansion((:- import_module(_)), (:- fail)).
 % termExpansion((:- use_op(_)), (:- fail)).
 
 termExpansion((:- external(_)), (:- fail)).
+termExpansion((:- pragma(_)), (:- fail)).
 termExpansion((:- pragma(_, _)), (:- fail)).
 termExpansion((:- pragma(_, _, _)), (:- fail)).
 

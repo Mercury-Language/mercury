@@ -112,6 +112,7 @@ mercury_declaration(external(_)).
 
 mercury_declaration(when(_,_)).
 
+mercury_declaration(pragma(_)).
 mercury_declaration(pragma(_,_)).
 mercury_declaration(pragma(_,_,_)).
 
