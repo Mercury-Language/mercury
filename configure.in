@@ -10,7 +10,12 @@
 # `configure' script.
 #
 # IMPORTANT NOTE: any changes here will usually also require changes in
-# bindist/bindist.configure.in or bindist/bindist.build_vars.in.
+# bindist/bindist.configure.in and/or bindist/bindist.build_vars.in.
+#
+# XXX Much of the code here is duplicated in bindist/bindist.configure.in.
+#     We should abstract it out into macros defined in aclocal.m4,
+#     so that the same code can be shared between both this file and
+#     bindist/bindist.configure.in.
 #
 #-----------------------------------------------------------------------------#
 #
