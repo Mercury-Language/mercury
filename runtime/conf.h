@@ -35,6 +35,7 @@
 #define	HAVE_SYSCONF
 #define	HAVE_UCONTEXT
 #define	PC_INDEX	REG_PC
+#define	SIGACTION_FIELD	sa_sigaction
 #define	KNOWN
 #endif
 
@@ -52,7 +53,7 @@
 #define	HAVE_SYSCONF
 #define	HAVE_UCONTEXT
 #define	PC_INDEX	CTX_EPC
-#define	sa_sigaction	sa_handler
+#define	SIGACTION_FIELD	sa_handler
 #define	KNOWN
 #endif
 

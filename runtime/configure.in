@@ -1,0 +1,216 @@
+AC_INIT(wrapper.mod)
+AC_CONFIG_HEADER(autoconf.h)
+AC_PROG_CC
+AC_PROG_CPP
+AC_RETSIGTYPE
+AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction)
+echo checking for sys/siginfo.h
+AC_TEST_CPP([#include <sys/siginfo.h>], [HAVE_SIGINFO_H=1])
+if test $HAVE_SIGINFO_H = 1
+then
+	AC_DEFINE(HAVE_SIGINFO_H)
+fi
+echo checking for sys/ucontext.h
+AC_TEST_CPP([#include <sys/ucontext.h>], [HAVE_UCONTEXT_H=1])
+if test $HAVE_UCONTEXT_H = 1
+then
+	AC_DEFINE(HAVE_UCONTEXT_H)
+fi
+if echo "$DEFS" | grep "HAVE_SIGACTION 1" > /dev/null 2>&1
+then
+	echo checking for sigaction field names
+	PC_INDEX=""
+	AC_TEST_PROGRAM([
+	#include <signal.h>
+	extern void handler(int signum, siginfo_t *info, void *context);
+	main() {
+		struct sigaction act;
+		act.sa_flags = SA_SIGINFO | SA_RESTART;
+		act.sa_sigaction = handler;
+		if (sigemptyset(&act.sa_mask) != 0)
+			exit(1);
+		if (sigaction(SIGSEGV, &act, NULL) != 0)
+			exit(1);
+		exit(0);
+	}
+	void handler(int signum, siginfo_t *info, void *context) {
+		return;
+	}], [AC_DEFINE(SIGACTION_FIELD, sa_sigaction)], [AC_DEFINE(SIGACTION_FIELD, sa_handler)])
+	if test $HAVE_SIGINFO_H = 1 -a $HAVE_UCONTEXT_H = 1
+	then
+		echo checking for pc access at signals
+		AC_TEST_PROGRAM([
+		$DEFS
+		#include <stdio.h>
+		#include <signal.h>
+		#include <sys/siginfo.h>
+		#include <sys/ucontext.h>
+		int save_signum = 0;
+		int save_cause;
+		int save_pc;
+		extern void handler(int signum, siginfo_t *info, void *context);
+		main() {
+			struct sigaction act;
+			act.sa_flags = SA_SIGINFO | SA_RESTART;
+			act.SIGACTION_FIELD = handler;
+			if (sigemptyset(&act.sa_mask) != 0)
+				exit(1);
+			if (sigaction(SIGSEGV, &act, NULL) != 0)
+				exit(1);
+			if (kill(getpid(), SIGSEGV) != 0)
+				exit(1);
+			if (save_signum == 0)
+				exit(1);
+			exit(0);
+		}
+		void handler(int signum, siginfo_t *info, void *context) {
+			save_signum = signum;
+			switch (info->si_code) {
+			case SEGV_MAPERR:	save_cause = info->si_code;
+						break;
+			case SEGV_ACCERR:	save_cause = info->si_code;
+						break;
+			}
+			switch (info->si_code) {
+			case BUS_ADRALN:	save_cause = info->si_code;
+						break;
+			case BUS_ADRERR:	save_cause = info->si_code;
+						break;
+			case BUS_OBJERR:	save_cause = info->si_code;
+						break;
+			}
+			save_cause = info->si_code;
+			save_pc = ((ucontext_t *) context)->uc_mcontext.gregs[REG_PC];
+		}], [AC_DEFINE(PC_INDEX, REG_PC)], [])
+		AC_TEST_PROGRAM([
+		$DEFS
+		#include <stdio.h>
+		#include <signal.h>
+		#include <sys/siginfo.h>
+		#include <sys/ucontext.h>
+		int save_signum = 0;
+		int save_cause;
+		int save_pc;
+		extern void handler(int signum, siginfo_t *info, void *context);
+		main() {
+			struct sigaction act;
+			act.sa_flags = SA_SIGINFO | SA_RESTART;
+			act.SIGACTION_FIELD = handler;
+			if (sigemptyset(&act.sa_mask) != 0)
+				exit(1);
+			if (sigaction(SIGSEGV, &act, NULL) != 0)
+				exit(1);
+			if (kill(getpid(), SIGSEGV) != 0)
+				exit(1);
+			if (save_signum == 0)
+				exit(1);
+			exit(0);
+		}
+		void handler(int signum, siginfo_t *info, void *context) {
+			save_signum = signum;
+			switch (info->si_code) {
+			case SEGV_MAPERR:	save_cause = info->si_code;
+						break;
+			case SEGV_ACCERR:	save_cause = info->si_code;
+						break;
+			}
+			switch (info->si_code) {
+			case BUS_ADRALN:	save_cause = info->si_code;
+						break;
+			case BUS_ADRERR:	save_cause = info->si_code;
+						break;
+			case BUS_OBJERR:	save_cause = info->si_code;
+						break;
+			}
+			save_cause = info->si_code;
+			save_pc = ((ucontext_t *) context)->uc_mcontext.gregs[CTX_EPC];
+		}], [AC_DEFINE(PC_INDEX, CTX_EPC)], [])
+	fi
+fi
+echo checking for gcc labels
+AC_TEST_PROGRAM([
+main() {
+	void *succip;
+
+	succip = &&last;
+	goto *succip;
+	exit(1);
+last:
+	exit(0);
+}], [HAVE_GCC_LABELS=1], [HAVE_GCC_LABELS=0])
+AC_SUBST(HAVE_GCC_LABELS)
+if test $HAVE_GCC_LABELS = 1
+then
+	AC_DEFINE(HAVE_GCC_LABELS)
+fi
+echo checking for asm labels
+AC_TEST_PROGRAM([
+#include "imp.h"
+void *volatile volatile_global_pointer;
+extern void mercury__label1 (void) __asm__("entry_" "mercury__label1" );
+main() {
+	void *addr;
+
+	volatile_global_pointer = &&mercury__label1;
+	addr = &mercury__label1;
+	goto *addr;
+	exit(1);
+
+mercury__label1:
+	__asm__(".globl entry_" "mercury__label1" "\n" "entry_"
+		"mercury__label1" ":");
+	exit(0);
+}], [HAVE_ASM_LABELS=1], [HAVE_ASM_LABELS=0])
+AC_SUBST(HAVE_ASM_LABELS)
+if test $HAVE_ASM_LABELS = 1
+then
+	AC_DEFINE(HAVE_ASM_LABELS)
+fi
+HAVE_GCC_REGS=no
+echo checking for gcc registers for mips
+AC_TEST_PROGRAM([
+#define	reg	register
+typedef	unsigned int Word;
+#include "machdeps/mips_regs.h"
+main() {
+	mr0 = 20;
+	mr7 = 22;
+	if (mr0 + mr7 != 42)
+		exit(1);
+	exit(0);
+}], [HAVE_GCC_REGS=mips], [])
+echo checking for gcc registers for sparc
+AC_TEST_PROGRAM([
+$DEFS
+#ifdef	HAVE_GCC_LABELS
+#define	USE_GCC_NONLOCAL_GOTOS
+#endif
+#define	reg	register
+typedef	unsigned int Word;
+#include "machdeps/sparc_regs.h"
+main() {
+	mr0 = 20;
+	mr7 = 22;
+	if (mr0 + mr7 != 42)
+		exit(1);
+	exit(0);
+}], [HAVE_GCC_REGS=sparc], [])
+echo checking for gcc registers for x86
+AC_TEST_PROGRAM([
+#define	reg	register
+typedef	unsigned int Word;
+#include "machdeps/i386_regs.h"
+main() {
+	mr0 = 20;
+	mr7 = 22;
+	if (mr0 + mr7 != 42)
+		exit(1);
+	exit(0);
+}], [HAVE_GCC_REGS=i386], [])
+AC_SUBST(HAVE_GCC_REGS)
+if test $HAVE_GCC_REGS != ""
+then
+	AC_DEFINE(HAVE_GCC_REGS, $HAVE_GCC_REGS)
+fi
+AC_OUTPUT(Makefile.conf)
+chmod u-w Makefile.conf autoconf.h

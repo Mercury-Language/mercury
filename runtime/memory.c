@@ -3,6 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
 #include <unistd.h>
 #include "imp.h"
 #include "ext_stdlib.h"
@@ -32,8 +33,9 @@
 */
 
 #include <stdio.h>
-FILE *popen(const char *command, const char *type);
-int pclose (FILE *stream);
+
+FILE	*popen(const char *command, const char *type);
+int	pclose(FILE *stream);
 
 #ifdef	HAVE_MPROTECT
 #include <sys/mman.h>
@@ -62,7 +64,7 @@ extern	int	getpagesize(void);
 #endif
 #endif
 
-#ifdef CONSERVATIVE_GC
+#ifdef	CONSERVATIVE_GC
 #define memalign(a,s)   GC_MALLOC_UNCOLLECTABLE(s)
 #else
 #ifndef	HAVE_MEMALIGN
@@ -128,11 +130,13 @@ void init_memory(void)
 	unit = max(page_size, pcache_size);
 
 #ifdef CONSERVATIVE_GC
-	heap_size = heap_zone_size = 0;
+	heap_zone_size      = 0;
+	heap_size	    = 0;
 #else
 	heap_zone_size      = roundup(heap_zone_size * 1024, unit);
 	heap_size           = roundup(heap_size * 1024, unit);
 #endif
+
 	detstack_size       = roundup(detstack_size * 1024, unit);
 	detstack_zone_size  = roundup(detstack_zone_size * 1024, unit);
 	nondstack_size      = roundup(nondstack_size * 1024, unit);
@@ -182,7 +186,9 @@ void init_memory(void)
 	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
 
 #ifdef CONSERVATIVE_GC
-	heap = heapmin = heapend = 0;
+	heap    = 0;
+	heapmin = 0;
+	heapend = 0;
 #else
 	heap    = (Word *) arena;
 	heapmin = (Word *) ((char *) heap + heap_offset);
@@ -321,7 +327,7 @@ static void setup_mprotect(void)
 	heap_zone_left = heap_zone_size;
 	heap_zone = (caddr_t) (heapend) - heap_zone_size;
 	if (heap_zone_size > 0
-	    && mprotect(heap_zone, heap_zone_size, MY_PROT) != 0)
+	&& mprotect(heap_zone, heap_zone_size, MY_PROT) != 0)
 	{
 		perror("Mercury runtime: cannot protect heap redzone");
 		exit(1);
@@ -330,7 +336,7 @@ static void setup_mprotect(void)
 	detstack_zone_left = detstack_zone_size;
 	detstack_zone = (caddr_t) (detstackend) - detstack_zone_size;
 	if (detstack_zone_size > 0
-	    && mprotect(detstack_zone, detstack_zone_size, MY_PROT) != 0)
+	&& mprotect(detstack_zone, detstack_zone_size, MY_PROT) != 0)
 	{
 		perror("Mercury runtime: cannot protect detstack redzone");
 		exit(1);
@@ -339,7 +345,7 @@ static void setup_mprotect(void)
 	nondstack_zone_left = nondstack_zone_size;
 	nondstack_zone = (caddr_t) (nondstackend) - nondstack_zone_size;
 	if (nondstack_zone_size > 0
-	    && mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) != 0)
+	&& mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) != 0)
 	{
 		perror("Mercury runtime: cannot protect nondstack redzone");
 		exit(1);
@@ -353,7 +359,9 @@ static void setup_mprotect(void)
 ** It is like fatal_error(), except that it is safe to call from a signal
 ** handler
 */
+
 #define STDERR 2
+
 static void fatal_abort(const char *str)
 {
 	write(STDERR, str, strlen(str));
@@ -530,14 +538,14 @@ static void setup_signal(void)
 		exit(1);
 	}
 
-	act.sa_sigaction = complex_bushandler;
+	act.SIGACTION_FIELD = complex_bushandler;
 	if (sigaction(SIGBUS, &act, NULL) != 0)
 	{
 		perror("Mercury runtime: cannot set SIGBUS handler");
 		exit(1);
 	}
 
-	act.sa_sigaction = complex_segvhandler;
+	act.SIGACTION_FIELD = complex_segvhandler;
 	if (sigaction(SIGSEGV, &act, NULL) != 0)
 	{
 		perror("Mercury runtime: cannot set SIGSEGV handler");
@@ -574,7 +582,8 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 	exit(1);
 }
 
-static void explain_segv(siginfo_t *info, void *context) {
+static void explain_segv(siginfo_t *info, void *context)
+{
 	fprintf(stderr,
 		"\n*** Mercury runtime: caught segmentation violation ***\n");
 
@@ -608,11 +617,13 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 				"segmentation violation ***\n");
 		exit(1);
 	}
+
 	/*
 	** If we're debugging, print the segv explanation messages
 	** before we call try_munprotect.  But if we're not debugging,
 	** only print them if try_munprotect fails.
 	*/
+
 	if (memdebug) explain_segv(info, context);
 	if (try_munprotect(info->si_addr))
 	{
