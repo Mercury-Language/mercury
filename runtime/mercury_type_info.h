@@ -421,25 +421,25 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define	MR_unravel_univ(univ, typeinfo, value)                      \
     do {                                                            \
-        typeinfo = (MR_TypeInfo) MR_field(MR_UNIV_TAG, (univ),\
+        typeinfo = (MR_TypeInfo) MR_field(MR_UNIV_TAG, (univ),      \
                         MR_UNIV_OFFSET_FOR_TYPEINFO);               \
-        value = MR_field(MR_UNIV_TAG, (univ),             \
+        value = MR_field(MR_UNIV_TAG, (univ),                       \
                         MR_UNIV_OFFSET_FOR_DATA);                   \
     } while (0)
 
 #define MR_define_univ_fields(univ, typeinfo, value)                \
     do {                                                            \
-        MR_field(MR_UNIV_TAG, (univ), MR_UNIV_OFFSET_FOR_TYPEINFO) \
+        MR_field(MR_UNIV_TAG, (univ), MR_UNIV_OFFSET_FOR_TYPEINFO)  \
             = (MR_Word) (typeinfo);                                 \
-        MR_field(MR_UNIV_TAG, (univ), MR_UNIV_OFFSET_FOR_DATA)     \
+        MR_field(MR_UNIV_TAG, (univ), MR_UNIV_OFFSET_FOR_DATA)      \
             = (MR_Word) (value);                                    \
     } while (0)
 
 /* Allocate a univ on the heap */
+/* XXX we should use MR_tag_incr_hp_msg() here */
 #define MR_new_univ_on_hp(univ, typeinfo, value)                    \
     do {                                                            \
-        MR_tag_incr_hp_msg((univ), MR_UNIV_TAG,           	    \
-                        2, MR_PROC_LABEL, "std_util:univ/0");       \
+        MR_tag_incr_hp((univ), MR_UNIV_TAG, 2);                     \
         MR_define_univ_fields((univ), (typeinfo), (value));         \
     } while (0)
 
