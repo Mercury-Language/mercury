@@ -4234,7 +4234,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 			"ifneq ($(EXT_FOR_EXE),)\n",
-			".PHONY	", ExeFileName, "\n",
+			".PHONY	: ", ExeFileName, "\n",
 			ExeFileName, " : ", ExeFileName, "$(EXT_FOR_EXE)\n",
 			"endif\n"
 	]),
