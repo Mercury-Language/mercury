@@ -18,6 +18,11 @@ calculator.m            A simple four-function arithmetic calculator,
 			with a parser written using the Definite Clause
 			Grammar notation.
 
+calculator2.m		A simple four-function arithmetic calculator,
+			which uses the parser module in the standard
+			library with a user-defined operator precendence
+			table.
+
 committed_choice.m	An example illustrating committed-choice
 			nondeterminism in Mercury.
 

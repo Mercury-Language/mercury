@@ -2095,8 +2095,8 @@ io__write(Term) -->
 	io__write_univ(Univ).
 
 io__write_univ(Univ) -->
-	{ ops__max_priority(MaxPriority) },
-	io__write_univ(Univ, MaxPriority + 1).
+	io__get_op_table(OpTable),
+	io__write_univ(Univ, ops__max_priority(OpTable) + 1).
 
 :- pred io__write_univ(univ, ops__priority, io__state, io__state).
 :- mode io__write_univ(in, in, di, uo) is det.
@@ -2274,8 +2274,7 @@ io__write_ordinary_term(Univ, Priority) -->
 		(
 			{ Args = [] },
 			{ ops__lookup_op(OpTable, Functor) },
-			{ ops__max_priority(MaxPriority) },
-			{ Priority =< MaxPriority }
+			{ Priority =< ops__max_priority(OpTable) }
 		->
 			io__write_char('('),
 			term_io__quote_atom(Functor),
@@ -2860,10 +2859,9 @@ io__report_stats(Selector) -->
 io__init_state -->
 	io__gc_init(type_of(StreamNames), type_of(Globals)),
 	{ map__init(StreamNames) },
-	{ ops__init_op_table(OpTable) },
 	{ type_to_univ("<globals>", Globals) },
 	io__set_stream_names(StreamNames),
-	io__set_op_table(OpTable),
+	io__set_op_table(ops__init_mercury_op_table),
 	io__set_globals(Globals),
 	io__insert_std_stream_names.
 
@@ -2958,8 +2956,7 @@ io__error_message(io_error(Error), Error).
 	% XXX design flaw with regard to unique modes and
 	% io__get_op_table
 
-io__get_op_table(OpTable) -->
-	{ ops__init_op_table(OpTable) }.
+io__get_op_table(ops__init_mercury_op_table) --> [].
 
 io__set_op_table(_OpTable) --> [].
 

@@ -1,5 +1,5 @@
-func_errors.m:010: Error: some but not all arguments have modes: bar((int :: in), int).
-func_errors.m:011: Error: function arguments have modes, but function result doesn't: baz((int :: in), (int :: in)).
+func_errors.m:010: Error: some but not all arguments have modes: bar(int :: in, int).
+func_errors.m:011: Error: function arguments have modes, but function result doesn't: baz(int :: in, int :: in).
 func_errors.m:012: Error: function result has mode, but function arguments don't: quux(int, int).
-func_errors.m:018: Error: some but not all arguments have modes: q((int :: in), int).
+func_errors.m:018: Error: some but not all arguments have modes: q(int :: in, int).
 For more information, try recompiling with `-E'.

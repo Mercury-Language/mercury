@@ -1,4 +1,4 @@
-some.m:006: Error: unrecognized declaration: some junk pred p2((int :: in)) is semidet.
+some.m:006: Error: unrecognized declaration: some junk pred p2(int :: in) is semidet.
 some.m:012: In clause for predicate `some:p1/1':
 some.m:012:   in argument 1 of call to predicate `some/2':
 some.m:012:   error: undefined symbol `junk/0'.

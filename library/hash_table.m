@@ -271,7 +271,7 @@ find_slot(HT, K) = H :-
     (HT ^ hash_pred)(K, Hash1a, Hash2a),
     int__abs(Hash1a, Hash1),
     int__abs(Hash2a, Hash2),
-    H0    = Hash1 `rem` HT ^ num_buckets,
+    H0    = Hash1 rem HT ^ num_buckets,
     Delta = Hash2 + Hash2 + 1,          % Have to ensure it's odd and non-zero.
     H     = find_slot_2(HT, K, H0, Delta).
 
@@ -287,7 +287,7 @@ find_slot_2(HT, K, H0, Delta) = H :-
       else if HT ^ keys ^ elem(H0) = K then
         H  = H0
       else
-        H1 = (H0 + Delta) `rem` HT ^ num_buckets,
+        H1 = (H0 + Delta) rem HT ^ num_buckets,
         H  = find_slot_2(HT, K, H1, Delta)
     ).
 

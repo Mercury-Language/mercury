@@ -3301,31 +3301,31 @@ mercury_format_quoted_atom(Name, NextToGraphicToken) -->
 :- mode mercury_op(in) is semidet.
 
 mercury_op(Op) :-
-	ops__lookup_op(ops__init_op_table, Op).
+	ops__lookup_op(ops__init_mercury_op_table, Op).
 
 :- pred mercury_binary_prefix_op(string).
 :- mode mercury_binary_prefix_op(in) is semidet.
 
 mercury_binary_prefix_op(Op) :-
-	ops__lookup_binary_prefix_op(ops__init_op_table, Op, _, _, _).
+	ops__lookup_binary_prefix_op(ops__init_mercury_op_table, Op, _, _, _).
 
 :- pred mercury_infix_op(string).
 :- mode mercury_infix_op(in) is semidet.
 
 mercury_infix_op(Op) :-
-	ops__lookup_infix_op(ops__init_op_table, Op, _, _, _).
+	ops__lookup_infix_op(ops__init_mercury_op_table, Op, _, _, _).
 
 :- pred mercury_unary_prefix_op(string).
 :- mode mercury_unary_prefix_op(in) is semidet.
 
 mercury_unary_prefix_op(Op) :-
-	ops__lookup_prefix_op(ops__init_op_table, Op, _, _).
+	ops__lookup_prefix_op(ops__init_mercury_op_table, Op, _, _).
 
 :- pred mercury_unary_postfix_op(string).
 :- mode mercury_unary_postfix_op(in) is semidet.
 
 mercury_unary_postfix_op(Op) :-
-	ops__lookup_postfix_op(ops__init_op_table, Op, _, _).
+	ops__lookup_postfix_op(ops__init_mercury_op_table, Op, _, _).
 
 %-----------------------------------------------------------------------------%
 

@@ -62,6 +62,14 @@ Changes to the Mercury standard library:
   return `[|]' rather than `.' for lists, and calls to std_util__construct
   which construct lists may need to be updated.
 
+* ops.m now defines a typeclass which can be used to define operator
+  precedence tables for use by parser.m and term_io.m. See
+  samples/calculator2.m for an example program.
+
+  The `ops__table' type has been renamed `ops__mercury_op_table'.
+  `ops__init_op_table' has been renamed `ops__init_mercury_op_table'.
+  `ops__max_priority' is now a function taking an operator table argument.
+
 * The predicates and functions in int.m, float, math.m and array.m now 
   generate exceptions rather than program aborts on domain errors and
   out-of-bounds array accesses. There are new functions
