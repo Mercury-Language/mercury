@@ -23,24 +23,14 @@ INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 
 EMACS_SCRIPTS		= scripts/gud.el
 
-SICSTUS_SCRIPTS		= scripts/msc scripts/msl \
-			scripts/msp scripts/sicstus_conv
-
-NUPROLOG_SCRIPTS	= scripts/mnc scripts/mnp scripts/mnl
-
 INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 
 INSTALL_MDB_EXTRAS	= scripts/mdbrc
 
 LIB_PARTS		= bin doc html inc ints lib mdb/mdb_doc modules
-LIB_NUPROLOG_PARTS	= @NUPROLOG@
-LIB_SICSTUS_PARTS	= @SICSTUS@
 
 UTILS			= util/mdemangle util/mkinit util/mtags \
 			  util/mprof_merge_runs
-
-INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
-INSTALL_SICSTUS		= @INSTALL_SICSTUS@
 
 #-----------------------------------------------------------------------------#
 
@@ -52,7 +42,7 @@ all:
 
 .PHONY: install
 install: install_lib install_info install_man install_scripts install_mmake \
-		install_mdb install_util $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
+		install_mdb install_util
 	@echo
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
@@ -70,17 +60,8 @@ install_lib:
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
 	gzip --decompress lib.tar.gz
-	# if the binary distribution doesn't include NU-Prolog or
-	# SICStus Prolog support, then attempting to extract them
-	# from the tar file will fail; we therefore ignore any errors
-	# in those two steps.
-	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && {		\
-		[ -n "$(LIB_NUPROLOG_PARTS)" ] &&			\
-			tar -xf $$LIB_TAR_FILE $(LIB_NUPROLOG_PARTS);	\
-		[ -n "$(LIB_SICSTUS_PARTS)" ] &&			\
-			tar -xf $$LIB_TAR_FILE $(LIB_SICSTUS_PARTS);	\
-		tar -xf $$LIB_TAR_FILE $(LIB_PARTS);			\
-	}
+	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && \
+		tar -xf $$LIB_TAR_FILE $(LIB_PARTS)
 	gzip lib.tar # tidy up
 	@echo "-- Done."
 
@@ -138,26 +119,5 @@ install_mdb:
 install_util: 
 	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp $(UTILS) $(INSTALL_BINDIR)
-
-install_nuprolog:
-	@echo "-- Installing NU-Prolog scripts in $(INSTALL_BINDIR)"
-	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
-	cp $(NUPROLOG_SCRIPTS) $(INSTALL_BINDIR)
-	for file in $(NUPROLOG_SCRIPTS); do \
-		base=`basename $$file`; \
-		chmod +w $(INSTALL_BINDIR)/$$base ;\
-	done
-	@echo "-- Done."
-
-.PHONY: install_sicstus
-install_sicstus:
-	@echo "-- Installing SICStus-Prolog scripts in $(INSTALL_BINDIR)"
-	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
-	cp $(SICSTUS_SCRIPTS) $(INSTALL_BINDIR)
-	for file in $(SICSTUS_SCRIPTS); do \
-		base=`basename $$file`; \
-		chmod +w $(INSTALL_BINDIR)/$$base ;\
-	done
-	@echo "-- Done."
 
 #-----------------------------------------------------------------------------#
