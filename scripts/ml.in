@@ -38,6 +38,11 @@ Options:
 	-static, --static
 		Similar to \`--mercury-libs static', but applies to all
 		libraries, not just the standard Mercury libraries.
+	--make-shared-lib
+		Produce a shared library, rather than an executable.
+	-R <directory>, --shared-lib-dir <directory>
+		Include <directory> in the list of directories that the
+		dynamic linker will use to search for shared libraries.
 	--no-demangle
 		Don't pipe the output of the linker through the Mercury
 		demangler.
@@ -58,6 +63,10 @@ CC=${MERCURY_C_COMPILER="@CC@"}
 MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
 EXE_RPATH_OPT=${MERCURY_EXE_RPATH_OPT="@EXE_RPATH_OPT@"}
 EXE_RPATH_SEP=${MERCURY_EXE_RPATH_SEP="@EXE_RPATH_SEP@"}
+LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ@"}
+SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
+SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
+SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 
 verbose=false
 case $FULLARCH in
@@ -81,7 +90,9 @@ case $FULLARCH in
 esac
 demangle=true
 GRADE=$DEFAULT_GRADE
-STATIC_OR_SHARED_OPT=""
+MAYBE_STATIC_OPT=""
+make_shared_lib=false
+user_shlib_dirs=""
 
 while true; do
     case "$1" in
@@ -106,6 +117,12 @@ while true; do
 		strip=true
 		shift ;;
 	-g|--no-strip)
+		strip=false
+		shift ;;
+	--make-shared-lib)
+		make_shared_lib=true
+		# on some targets, stripping shared libraries will
+		# make them unusable, I think, so don't strip
 		strip=false
 		shift ;;
 	--no-libs)
@@ -134,7 +151,7 @@ EOF
 		esac
 		;;
 	-shared|--shared)
-		STATIC_OR_SHARED_OPT=-shared
+		MAYBE_STATIC_OPT=""
 		case $mercury_libs in static)
 			mercury_libs=shared ;;
 		esac
@@ -149,15 +166,25 @@ EOF
 		    	# boehm_gc/dyn_load.c.
 		    	# (We might eventually need similar treatment
 		    	# for other OSs too)
-			STATIC_OR_SHARED_OPT="-static -Wl,-defsym,_DYNAMIC=0"
+			MAYBE_STATIC_OPT="-static -Wl,-defsym,_DYNAMIC=0"
 			;;
 		    *)
-			STATIC_OR_SHARED_OPT=-static
+			MAYBE_STATIC_OPT=-static
 			;;
 		esac
 		case $mercury_libs in shared)
 			mercury_libs=static ;;
 		esac
+		shift
+		;;
+	-R|--shared-lib-dir)
+		dir="$2"
+		user_shlib_dirs="$user_shlib_dirs $dir"
+		shift; shift
+		;;
+	-R*)
+		dir="` expr $1 : '-R\(.*\)' `"
+		user_shlib_dirs="$user_shlib_dirs $dir"
 		shift
 		;;
 	--)
@@ -191,26 +218,59 @@ case $strip in
 	false)  STRIP_OPTS="" ;;
 esac
 
+case $make_shared_lib in
+    true)
+	LINKER="$LINK_SHARED_OBJ"
+	RPATH_OPT="$SHLIB_RPATH_OPT"
+	RPATH_SEP="$SHLIB_RPATH_SEP"
+	STDLIBS="$SHARED_LIBS"
+	;;
+    false)
+	LINKER="$CC"
+	RPATH_OPT="$EXE_RPATH_OPT"
+	RPATH_SEP="$EXE_RPATH_SEP"
+	STDLIBS="-lm"
+	;;
+esac
+
 LIBDIR_OPTS="
 	-L$LIBDIR/$GRADE/$FULLARCH
 	-L$LIBDIR/$FULLARCH
 "
 case $mercury_libs in
-	shared) LIBS=${MERCURY_LIBS="-lmercury -lmer $LIBGC -lm"}
-		RPATH_1="$EXE_RPATH_OPT$DEFAULT_LIBDIR/$GRADE/$FULLARCH"
-		RPATH_2="$EXE_RPATH_SEP$DEFAULT_LIBDIR/$FULLARCH"
-		LIBDIR_OPTS="$RPATH_1$RPATH_2 $LIBDIR_OPTS"
+	shared)
+		LIBS=${MERCURY_LIBS="-lmercury -lmer $LIBGC $STDLIBS"}
+		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE/$FULLARCH"
+		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$FULLARCH"
 		;;
 	static) LIBS=${MERCURY_LIBS="\
 			$LIBDIR/$GRADE/$FULLARCH/libmercury.a \
 			$LIBDIR/$GRADE/$FULLARCH/libmer.a \
 			$LIBGC_STATIC \
-			-lm"}
+			$STDLIBS"}
+		merc_shlib_dirs=""
 		;;
-	none)	LIBS=""
+	none)	LIBS="$STDLIBS"
 		LIBDIR_OPTS=""
+		merc_shlib_dirs=""
 		;;
 esac
+
+RPATH_OPT_LIST=
+prev=""
+for dir in $merc_shlib_dirs $user_shlib_dirs 'kludge for broken shells'; do
+    case "$dir" in
+	'kludge for broken shells')
+	    ;;
+	*)
+	    case "$prev" in
+		"") RPATH_OPT_LIST="$RPATH_OPT$dir" ;;
+		*)  RPATH_OPT_LIST="$RPATH_OPT_LIST$RPATH_SEP$dir" ;;
+	    esac
+	    ;;
+    esac
+    prev=$dir
+done
 
 # On Irix 5, grades `fast' and `jump' only work in non_shared mode.
 case $FULLARCH in
@@ -234,12 +294,12 @@ case $verbose in
     true)
 	case $demangle in
 	    false)
-		echo $CC $STRIP_OPTS $SHARED_OR_STATIC_OPTS $ARCH_OPTS \
-			"$@" $LIBDIR_OPTS $LIBS
+		echo $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			"$@" $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS
 		;;
 	    true)
-		echo $CC $STRIP_OPTS $SHARED_OR_STATIC_OPTS $ARCH_OPTS \
-			"$@" $LIBDIR_OPTS $LIBS "|"
+		echo $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			"$@" $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS "|"
 		echo "$DEMANGLER"
 		;;
 	esac
@@ -270,8 +330,8 @@ case $demangle in
 	;;
 esac
 case $# in
-	0) exec $CC $STRIP_OPTS $STATIC_OR_SHARED_OPT $ARCH_OPTS \
-		$LIBDIR_OPTS $LIBS ;;
-	*) exec $CC $STRIP_OPTS $STATIC_OR_SHARED_OPT $ARCH_OPTS "$@" \
-		$LIBDIR_OPTS $LIBS ;;
+	0) exec $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+		$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
+	*) exec $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS "$@" \
+		$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
 esac
