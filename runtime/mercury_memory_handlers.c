@@ -547,12 +547,12 @@ get_pc_from_context(void *the_context)
 
   #ifdef PC_ACCESS
 
-	struct sigcontext *context = the_context;
+	ucontext_t *context = the_context;
 
     #ifdef PC_ACCESS_GREG
-	pc_at_signal = (Code *) context->gregs[PC_ACCESS];
+	pc_at_signal = (Code *) context->uc_mcontext.gregs[PC_ACCESS];
     #else
-	pc_at_signal = (Code *) context->PC_ACCESS;
+	pc_at_signal = (Code *) context->uc_mcontext.PC_ACCESS;
     #endif
 
   #else /* not PC_ACCESS */
