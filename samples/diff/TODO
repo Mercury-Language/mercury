@@ -1,0 +1,40 @@
+
+Things which should be straightforward:
+
+ * The following options should be supported but aren't:
+
+	--expand-tabs
+	--initial-tab
+	--ignore-case
+	--ignore-all-space
+	--ignore-space-change
+	--sdiff-merge-assist
+
+ * Optimise the case of the --brief output style, where a full-blown diff
+   isn't necessary but we currently do it anyway.  Similarly, if no diff
+   implies no output (which it does for some output styles) we could
+   avoid a full diff sometimes.
+
+ * We currently aren't careful about noticing the difference between a
+   file which has a return/new line on the last line and one which
+   doesn't.  Admittedly this distinction has never made a difference to
+   any diffing I've done, but if we're going try to be compliant...
+
+
+Things which need a bit more work:
+
+ * Implement a more efficient diff algorithm.
+
+ * Support diffing of binary files.  Mostly this just requires being
+   more careful than we currently are.
+
+
+Things which would be nice but may/will require a lot of work:
+
+ * Implement a "regexp" module so we can handle more options.
+
+ * Output file dates on context/unified diffs.
+
+ * Directory diffs.
+
+
