@@ -102,12 +102,16 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
 	strftime(Result, size, ""%Y-%m-%d %H:%M:%S"", &t);
 }").
 
-:- pragma foreign_proc("MC++",
-	gmtime_to_timestamp_2(_Yr::in, _Mnt::in, _MD::in, _Hrs::in, _Min::in,
-		_Sec::in, _YD::in, _WD::in, _N::in) = (_Result::out),
+:- pragma foreign_proc("C#",
+	gmtime_to_timestamp_2(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
+		Sec::in, _YD::in, _WD::in, _N::in) = (Result::out),
 	[will_not_call_mercury, promise_pure],
 "{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	System.DateTime t;
+	t = new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
+
+	string format_str = ""yyyy-MM-dd hh:mm:ss"";
+	Result = t.ToString(format_str);
 }").
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
