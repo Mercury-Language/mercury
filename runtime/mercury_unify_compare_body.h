@@ -6,10 +6,11 @@
 
 /*
 ** This file contains a piece of code that is included by mercury_ho_call.c
-** three times:
+** four times:
 ** 
 ** - as the body of the mercury__unify_2_0 Mercury procedure,
 ** - as the body of the mercury__compare_3_3 Mercury procedure, and
+** - as the body of the MR_generic_unify C function.
 ** - as the body of the MR_generic_compare C function.
 **
 ** The inclusions are surrounded by #defines and #undefs of the macros
@@ -21,14 +22,20 @@
 ** its result slightly differently.
 **
 ** The reason why there is both a Mercury procedure and a C function for
-** comparisons is that the Mercury procedure needs a mechanism that allows it
-** to compare each argument of a function symbol, and doing it with a loop body
-** that calls C function is significantly easier to program, and probably
-** more efficient, than using recursion in Mercury. The Mercury procedure and
-** C function share code because they implement the same task.
+** unifications and comparisons is that the Mercury procedure needs a
+** mechanism that allows it to unify or compare each argument of a function
+** symbol, and doing it with a loop body that calls C function is
+** significantly easier to program, and probably more efficient, than
+** using recursion in Mercury. The Mercury procedure and C function share code
+** because they implement the same task.
 **
-** There is no C function for unification, since the C function for comparison
-** is sufficient for programming the Mercury procedure for unification.
+** We need separate C functions for unifications and comparison because
+** with --no-special-preds, a type with user-defined equality has an
+** a non-NULL unify_pred field in its type_ctor_info but a NULL compare_pred
+** field. While in principle unification is a special case of comparison,
+** we cannot implement unifications by comparisons for such types:
+** they support unifications but not comparisons. Since we cannot do it
+** for such types, it is simplest not to do it for any types.
 */
 
     DECLARE_LOCALS
@@ -37,8 +44,8 @@
 start_label:
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-#ifdef  MR_CTOR_REP_STATS
-    ctor_rep_stats_array[type_ctor_info->type_ctor_rep]++;
+#ifdef  MR_TYPE_CTOR_STATS
+    MR_register_type_ctor_stat(&type_stat_struct, type_ctor_info);
 #endif
 
     switch (type_ctor_info->type_ctor_rep) {
@@ -76,8 +83,19 @@ start_label:
 
         case MR_TYPECTOR_REP_DU:
             {
+                const MR_DuFunctorDesc  *functor_desc;
+#ifdef  select_compare_code
                 const MR_DuFunctorDesc  *x_functor_desc;
                 const MR_DuFunctorDesc  *y_functor_desc;
+                MR_DuPtagLayout         *x_ptaglayout;
+                MR_DuPtagLayout         *y_ptaglayout;
+#else
+                Word                    x_ptag;
+                Word                    y_ptag;
+                Word                    x_sectag;
+                Word                    y_sectag;
+                MR_DuPtagLayout         *ptaglayout;
+#endif
                 Word                    *x_data_value;
                 Word                    *y_data_value;
                 const MR_DuExistInfo    *exist_info;
@@ -85,6 +103,8 @@ start_label:
                 int                     cur_slot;
                 int                     arity;
                 int                     i;
+
+#ifdef  select_compare_code
 
 #define MR_find_du_functor_desc(data, data_value, functor_desc)               \
                 do {                                                          \
@@ -119,7 +139,6 @@ start_label:
                 if (x_functor_desc->MR_du_functor_ordinal !=
                     y_functor_desc->MR_du_functor_ordinal)
                 {
-#ifdef  select_compare_code
                     if (x_functor_desc->MR_du_functor_ordinal <
                         y_functor_desc->MR_du_functor_ordinal)
                     {
@@ -127,13 +146,51 @@ start_label:
                     } else {
                         return_answer(MR_COMPARE_GREATER);
                     }
-#else
-                    return_answer(FALSE);
-#endif
                 }
 
-                /* x_functor_desc and y_functor_desc must be the same */
-                if (x_functor_desc->MR_du_functor_sectag_locn ==
+                functor_desc = x_functor_desc;
+#else
+                x_ptag = MR_tag(x);
+                y_ptag = MR_tag(y);
+
+                if (x_ptag != y_ptag) {
+                    return_answer(FALSE);
+                }
+
+                ptaglayout = &type_ctor_info->type_layout.layout_du[x_ptag];
+                x_data_value = (Word *) MR_body(x, x_ptag);
+                y_data_value = (Word *) MR_body(y, y_ptag);
+
+                switch (ptaglayout->MR_sectag_locn) {
+                    case MR_SECTAG_LOCAL:
+                        x_sectag = MR_unmkbody(x_data_value);
+                        y_sectag = MR_unmkbody(y_data_value);
+
+                        if (x_sectag != y_sectag) {
+                            return_answer(FALSE);
+                        }
+
+                        break;
+
+                    case MR_SECTAG_REMOTE:
+                        x_sectag = x_data_value[0];
+                        y_sectag = y_data_value[0];
+
+                        if (x_sectag != y_sectag) {
+                            return_answer(FALSE);
+                        }
+
+                        break;
+
+                    case MR_SECTAG_NONE:
+                        x_sectag = 0;
+                        break;
+                }
+
+                functor_desc = ptaglayout->MR_sectag_alternatives[x_sectag];
+#endif
+
+                if (functor_desc->MR_du_functor_sectag_locn ==
                     MR_SECTAG_REMOTE)
                 {
                     cur_slot = 1;
@@ -141,8 +198,8 @@ start_label:
                     cur_slot = 0;
                 }
 
-                arity = x_functor_desc->MR_du_functor_orig_arity;
-                exist_info = x_functor_desc->MR_du_functor_exist_info;
+                arity = functor_desc->MR_du_functor_orig_arity;
+                exist_info = functor_desc->MR_du_functor_exist_info;
 
                 if (exist_info != NULL) {
                     int                     num_ti_plain;
@@ -187,24 +244,28 @@ start_label:
                 for (i = 0; i < arity; i++) {
                     MR_TypeInfo arg_type_info;
 
-                    if (MR_arg_type_may_contain_var(x_functor_desc, i)) {
+                    if (MR_arg_type_may_contain_var(functor_desc, i)) {
                         arg_type_info = MR_create_type_info_maybe_existq(
                             MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                            x_functor_desc->MR_du_functor_arg_types[i],
-                            x_data_value, x_functor_desc);
+                            functor_desc->MR_du_functor_arg_types[i],
+                            x_data_value, functor_desc);
                     } else {
                         arg_type_info = (MR_TypeInfo)
-                            x_functor_desc->MR_du_functor_arg_types[i];
+                            functor_desc->MR_du_functor_arg_types[i];
                     }
+#ifdef  select_compare_code
                     result = MR_generic_compare(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);
-                        if (result != MR_COMPARE_EQUAL) {
-#ifdef  select_compare_code
-                            return_answer(result);
+                    if (result != MR_COMPARE_EQUAL) {
+                        return_answer(result);
+                    }
 #else
-                            return_answer(FALSE);
+                    result = MR_generic_unify(arg_type_info,
+                        x_data_value[cur_slot], y_data_value[cur_slot]);
+                    if (! result) {
+                        return_answer(FALSE);
+                    }
 #endif
-                        }
                     cur_slot++;
                 }
 

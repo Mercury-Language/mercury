@@ -2647,7 +2647,7 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 			PredName, PredId, ProcId) :-
 	classify_type(Type, ModuleInfo, TypeCategory),
-	( TypeCategory = user_type ->
+	( ( TypeCategory = user_type ; TypeCategory = enum_type ) ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
 		( type_to_type_id(Type, TypeId, _TypeArgs) ->
 			map__search(SpecialPredMap, SpecialPredId - TypeId,

@@ -401,7 +401,7 @@ typedef enum {
     MR_TYPECTOR_REP_EQUIV_GROUND,
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
-    ** MR_CTOR_REP_STATS depends on this.
+    ** MR_TYPE_CTOR_STATS depends on this.
     */
     MR_TYPECTOR_REP_UNKNOWN
 } MR_TypeCtorRep;

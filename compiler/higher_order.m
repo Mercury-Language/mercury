@@ -170,15 +170,15 @@ recursively_process_requests(Params, Requests0, GoalSizes, NextHOid0, NextHOid,
 :- type request
 	---> request(
 		pred_proc_id,			% calling pred
-		pred_proc_id,			% called pred 
+		pred_proc_id,			% called pred
 		list(prog_var),			% call args
 		list(tvar),			% type variables for which
-						% extra type-infos must be 
+						% extra type-infos must be
 						% passed from the caller if
-						% --typeinfo-liveness is set. 
+						% --typeinfo-liveness is set.
 		list(higher_order_arg),
 		list(type),			% argument types in caller
-		bool,				% should the interface of 
+		bool,				% should the interface of
 						% the specialized procedure
 						% use typeinfo liveness.
 		tvarset,			% caller's typevarset.
@@ -189,7 +189,7 @@ recursively_process_requests(Params, Requests0, GoalSizes, NextHOid0, NextHOid,
 						% generated
 	).
 
-		% Stores cons_id, index in argument vector, number of 
+		% Stores cons_id, index in argument vector, number of
 		% curried arguments of a higher order argument, higher-order
 		% curried arguments with known values.
 		% For cons_ids other than pred_const and `type_info',
@@ -208,10 +208,10 @@ recursively_process_requests(Params, Requests0, GoalSizes, NextHOid0, NextHOid,
 :- type goal_sizes == map(pred_id, int). 	%stores the size of each
 				% predicate's goal used in the heuristic
 				% to decide which preds are specialized
-		
+
 	% Used to hold the value of known higher order variables.
 	% If a variable is not in the map, it does not have a value yet.
-:- type pred_vars == map(prog_var, maybe_const). 
+:- type pred_vars == map(prog_var, maybe_const).
 
 	% The list of vars is a list of the curried arguments, which must
 	% be explicitly passed to the specialized predicate.
@@ -226,7 +226,7 @@ recursively_process_requests(Params, Requests0, GoalSizes, NextHOid0, NextHOid,
 	.
 
 	% used while traversing goals
-:- type higher_order_info 
+:- type higher_order_info
 	---> info(
 		pred_vars,	% higher_order variables
 		set(request),	% requested versions
@@ -264,7 +264,7 @@ recursively_process_requests(Params, Requests0, GoalSizes, NextHOid0, NextHOid,
 		pred_proc_id,		% version pred_proc_id
 		pred_proc_id,		% old pred_proc_id
 		pred_proc_id,		% requesting caller
-		sym_name,		% name 
+		sym_name,		% name
 		list(higher_order_arg),	% specialized args
 		list(prog_var),		% unspecialised argument vars in caller
 		list(tvar),		% extra typeinfo tvars in caller
@@ -277,7 +277,7 @@ recursively_process_requests(Params, Requests0, GoalSizes, NextHOid0, NextHOid,
 					% specialization
 	).
 
-	% Returned by traverse_goal. 
+	% Returned by traverse_goal.
 :- type changed
 	--->	changed		% Need to requantify goal + check other procs
 	;	request		% Need to check other procs
@@ -292,7 +292,7 @@ get_specialization_requests(_Params, [], _NewPreds, Requests, Requests,
 		Sizes, Sizes, ModuleInfo, ModuleInfo).
 get_specialization_requests(Params, [PredId | PredIds], NewPreds, Requests0,
 		Requests, GoalSizes0, GoalSizes, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, Preds0), 
+	module_info_preds(ModuleInfo0, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
 	pred_info_non_imported_procids(PredInfo0, NonImportedProcs),
 	(
@@ -327,14 +327,14 @@ get_specialization_requests(Params, [PredId | PredIds], NewPreds, Requests0,
 		Requests2, Requests, GoalSizes1, GoalSizes,
 		ModuleInfo3, ModuleInfo).
 
-		% This is called when the first procedure of a pred was 
+		% This is called when the first procedure of a pred was
 		% changed. It fixes up all the other procs, ignoring the
 		% goal_size and requests that come out, since that information
-		% has already been collected. 
+		% has already been collected.
 :- pred traverse_other_procs(ho_params::in, pred_id::in, list(proc_id)::in,
 	module_info::in, module_info::out, pred_info::in, pred_info::out,
 	new_preds::in, set(request)::in, set(request)::out,
-	proc_table::in, proc_table::out) is det. 
+	proc_table::in, proc_table::out) is det.
 
 traverse_other_procs(_Params, _PredId, [], Module, Module, PredInfo, PredInfo,
 		_, Requests, Requests, Procs, Procs).
@@ -351,7 +351,7 @@ traverse_other_procs(Params, PredId, [ProcId | ProcIds],
 	traverse_other_procs(Params, PredId, ProcIds, ModuleInfo1, ModuleInfo,
 		PredInfo1, PredInfo, NewPreds,
 		Requests1, Requests, Procs1, Procs).
-	
+
 %-------------------------------------------------------------------------------
 	% Goal traversal
 
@@ -400,13 +400,13 @@ fixup_proc_info(MustRecompute, Goal0, Info0, Info) :-
 		Info = Info0
 	).
 
-	% Traverses the goal collecting higher order variables for which 
+	% Traverses the goal collecting higher order variables for which
 	% the value is known, and specializing calls and adding
-	% specialization requests to the request_info structure. 
+	% specialization requests to the request_info structure.
 	% The first time through the only predicate we can specialize
 	% is call/N. The pred_proc_id is that of the current procedure,
 	% used to find out which procedures need fixing up later.
-:- pred traverse_goal_2(hlds_goal::in, hlds_goal::out, 
+:- pred traverse_goal_2(hlds_goal::in, hlds_goal::out,
 	higher_order_info::in, higher_order_info::out) is det.
 
 traverse_goal_2(conj(Goals0) - Info, conj(Goals) - Info) -->
@@ -428,7 +428,7 @@ traverse_goal_2(switch(Var, CanFail, Cases0, SM) - Info,
 
 		% check whether this call could be specialized
 traverse_goal_2(Goal0, Goal) -->
-	{ Goal0 = generic_call(GenericCall, Args, _, _) - GoalInfo }, 
+	{ Goal0 = generic_call(GenericCall, Args, _, _) - GoalInfo },
 	(
 		{
 			GenericCall = higher_order(Var, _, _),
@@ -447,7 +447,7 @@ traverse_goal_2(Goal0, Goal) -->
 
 		% check whether this call could be specialized
 traverse_goal_2(Goal0, Goal) -->
-	{ Goal0 = call(_,_,_,_,_,_) - _ }, 
+	{ Goal0 = call(_,_,_,_,_,_) - _ },
 	maybe_specialize_call(Goal0, Goal).
 
 		% if-then-elses are handled as disjunctions
@@ -475,7 +475,7 @@ traverse_goal_2(Goal, Goal) -->
 	{ Goal = pragma_c_code(_, _, _, _, _, _, _) - _ }.
 
 traverse_goal_2(Goal, Goal) -->
-	{ Goal = unify(_, _, _, Unify, _) - _ }, 
+	{ Goal = unify(_, _, _, Unify, _) - _ },
 	check_unify(Unify).
 
 traverse_goal_2(bi_implication(_, _) - _, _) -->
@@ -516,7 +516,7 @@ traverse_disj_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
 		PostInfo2, PostInfo).
 
 		% Switches are treated in exactly the same way as disjunctions.
-:- pred traverse_cases(list(case)::in, list(case)::out, 
+:- pred traverse_cases(list(case)::in, list(case)::out,
 	higher_order_info::in, higher_order_info::out) is det.
 
 traverse_cases([], []) --> [].
@@ -593,11 +593,11 @@ merge_post_branch_infos(PredVars1, PredVars2, PredVars) :-
 	map__to_assoc_list(PredVars1, PredVarList1),
 	map__to_assoc_list(PredVars2, PredVarList2),
 	merge_pred_var_lists(PredVarList1, PredVarList2, PredVarList),
-	map__from_assoc_list(PredVarList, PredVars). 
-	
+	map__from_assoc_list(PredVarList, PredVars).
+
 		% find out which variables after a disjunction cannot
 		% be specialized
-:- pred merge_pred_var_lists(assoc_list(prog_var, maybe_const)::in,  	
+:- pred merge_pred_var_lists(assoc_list(prog_var, maybe_const)::in,
 			assoc_list(prog_var, maybe_const)::in,
 			assoc_list(prog_var, maybe_const)::out) is det.
 
@@ -630,8 +630,8 @@ merge_pred_var_with_list(Var1 - Value1, [Var2 - Value2 | Vars], MergedList) :-
 	;
 		MergedList = [Var2 - Value2 | MergedList1],
 		merge_pred_var_with_list(Var1 - Value1, Vars, MergedList1)
-	).	
-			
+	).
+
 :- pred check_unify(unification::in, higher_order_info::in,
 				higher_order_info::out) is det.
 
@@ -643,8 +643,8 @@ check_unify(assign(Var1, Var2)) -->
 
 	% deconstructing a higher order term is not allowed
 check_unify(deconstruct(_, _, _, _, _)) --> [].
-	
-check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), Info0, Info) :- 
+
+check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), Info0, Info) :-
 	Info0 = info(PredVars0, Requests, NewPreds, PredProcId,
 		PredInfo, ProcInfo, ModuleInfo, Params, Changed),
 	( is_interesting_cons_id(Params, ConsId) ->
@@ -668,11 +668,11 @@ check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), Info0, Info) :-
 				constant(ConsId, Args), PredVars)
 		)
 	;
-		PredVars = PredVars0	
+		PredVars = PredVars0
 	),
-	Info = info(PredVars, Requests, NewPreds, PredProcId, 
+	Info = info(PredVars, Requests, NewPreds, PredProcId,
 		PredInfo, ProcInfo, ModuleInfo, Params, Changed).
-	
+
 check_unify(complicated_unify(_, _, _)) -->
 	{ error("higher_order:check_unify - complicated unification") }.
 
@@ -697,14 +697,14 @@ is_interesting_cons_id(ho_params(_, _, yes, _, _), int_const(_)).
 	% Process a higher-order call or class_method_call to see if it
 	% could possibly be specialized.
 :- pred maybe_specialize_higher_order_call(prog_var::in, maybe(int)::in,
-	list(prog_var)::in, hlds_goal::in, list(hlds_goal)::out, 
+	list(prog_var)::in, hlds_goal::in, list(hlds_goal)::out,
 	higher_order_info::in, higher_order_info::out) is det.
 
 maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 		Goal0 - GoalInfo, Goals, Info0, Info) :-
 	Info0 = info(PredVars, Requests0, NewPreds, PredProcId,
 		CallerPredInfo0, CallerProcInfo0, ModuleInfo, Params, Changed),
-		
+
 	% We can specialize calls to call/N and class_method_call/N if
 	% the closure or typeclass_info has a known value.
 	(
@@ -738,7 +738,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 			list__length(InstanceConstraints, InstanceArity),
 			list__take(InstanceArity, OtherTypeClassArgs,
 				InstanceConstraintArgs)
-		->	
+		->
 			list__index1_det(ClassInterface, Method,
 				hlds_class_proc(PredId, ProcId)),
 			list__append(InstanceConstraintArgs, Args, AllArgs)
@@ -780,7 +780,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 	->
 		pred_info_set_typevarset(CallerPredInfo0,
 			TVarSet, CallerPredInfo),
-		% Pull out the argument typeclass_infos. 
+		% Pull out the argument typeclass_infos.
 		( InstanceConstraints = [] ->
 			ExtraGoals = [],
 			CallerProcInfo = CallerProcInfo0,
@@ -844,7 +844,7 @@ find_matching_instance_method([Instance | Instances], MethodNum,
 
 :- pred instance_matches(list(type)::in, hlds_instance_defn::in,
 	list(class_constraint)::out, tvarset::in, tvarset::out) is semidet.
-	
+
 instance_matches(ClassTypes, Instance, Constraints, TVarSet0, TVarSet) :-
 	Instance = hlds_instance_defn(_, _, Constraints0,
 		InstanceTypes0, _, _, InstanceTVarSet, _),
@@ -926,11 +926,14 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 		error("higher_order.m: call expected")
 	),
 	module_info_pred_info(Module0, CalledPred, CalleePredInfo),
+	module_info_globals(Module0, Globals),
+	globals__lookup_bool_option(Globals, special_preds, HaveSpecialPreds),
 	(
 		% Look for calls to unify/2 and compare/3 which can
 		% be specialized.
 		specialize_special_pred(CalledPred, CalledProc,
-			Args0, MaybeContext, Goal1, Info0, Info1) 
+			Args0, MaybeContext, HaveSpecialPreds, Goal1,
+			Info0, Info1)
 	->
 		Goal = Goal1,
 		higher_order_info_update_changed_status(changed, Info1, Info)
@@ -973,7 +976,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 			IsUserSpecProc = no
 		),
 
-		( 
+		(
 			(
 				HigherOrderArgs0 = [_ | _]
 			;
@@ -995,7 +998,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 				pred_info_typevarset(CalleePredInfo,
 					CalleeTVarSet),
 				pred_info_get_exist_quant_tvars(CalleePredInfo,
-					CalleeExistQTVars),	
+					CalleeExistQTVars),
 				pred_info_typevarset(PredInfo0, TVarSet),
 				type_subst_makes_instance_known(
 					Module0, CalleeUnivConstraints0,
@@ -1022,7 +1025,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 					Module0, Module, PredInfo0, PredInfo,
 					ProcInfo0, ProcInfo),
 
-				list__append(ExtraTypeInfoVars, Args1, Args),	
+				list__append(ExtraTypeInfoVars, Args1, Args),
 				CallGoal = call(NewCalledPred, NewCalledProc,
 					Args, IsBuiltin, MaybeContext, NewName),
 				list__append(ExtraTypeInfoGoals,
@@ -1057,7 +1060,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 		;
 			Info = Info0,
 			Goal = Goal0
-		)	
+		)
 	).
 
 	% Returns a list of the higher-order arguments in a call that have
@@ -1077,7 +1080,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 	(
 		% We don't specialize arguments whose declared type is
 		% polymorphic. The closure they pass cannot possibly
-		% be called within the called predicate, since that predicate 
+		% be called within the called predicate, since that predicate
 		% doesn't know it's a closure (without some dodgy use of
 		% type_to_univ and univ_to_type).
 		map__search(PredVars, Arg, constant(ConsId, CurriedArgs)),
@@ -1135,7 +1138,7 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
 	term__apply_substitution_to_list(CalleeArgTypes0, TypeRenaming,
 		CalleeArgTypes1),
 
-	% Substitute the types in the callee's class constraints. 
+	% Substitute the types in the callee's class constraints.
 	% Typechecking has already succeeded, so none of the head type
 	% variables will be bound by the substitution.
 	HeadTypeParams = [],
@@ -1157,7 +1160,7 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
 	CalleeUnivConstraint = constraint(_, ConstraintArgs),
 	module_info_instances(ModuleInfo, InstanceTable),
 	map__search(InstanceTable, class_id(ClassName, ClassArity), Instances),
-	list__member(Instance, Instances), 	
+	list__member(Instance, Instances),
 	instance_matches(ConstraintArgs, Instance, _, TVarSet, _),
 	\+ instance_matches(ConstraintArgs0, Instance, _, TVarSet, _).
 
@@ -1184,7 +1187,7 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
 	% type-infos that the call specialization code is expecting to
 	% come from the curried arguments of the higher-order arguments
 	% will not be present in the specialized argument list.
-:- pred find_matching_version(higher_order_info::in, 
+:- pred find_matching_version(higher_order_info::in,
 	pred_id::in, proc_id::in, list(prog_var)::in, prog_context::in,
 	list(higher_order_arg)::in, bool::in, find_result::out) is det.
 
@@ -1216,11 +1219,11 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
 
 	Request = request(Caller, proc(CalledPred, CalledProc), Args0,
 		ExtraTypeInfoTVars, HigherOrderArgs, CallArgTypes,
-		TypeInfoLiveness, TVarSet, IsUserSpecProc, Context), 
+		TypeInfoLiveness, TVarSet, IsUserSpecProc, Context),
 
 	% Check to see if any of the specialized
 	% versions of the called pred apply here.
-	( 
+	(
 		NewPreds = new_preds(NewPredMap, _),
 		map__search(NewPredMap, proc(CalledPred, CalledProc),
 			Versions0),
@@ -1387,7 +1390,7 @@ search_for_version(Info, Params, ModuleInfo, Request,
 			Versions, Match0, Match)
 	).
 
-	% Check whether the request has already been implemented by 
+	% Check whether the request has already been implemented by
 	% the new_pred, maybe ordering the list of extra type_infos
 	% in the caller predicate to match up with those in the caller.
 :- pred version_matches(ho_params::in, module_info::in, request::in,
@@ -1397,7 +1400,7 @@ version_matches(Params, ModuleInfo, Request, Version,
 		match(Version, PartialMatch, Args, ExtraTypeInfoTypes)) :-
 
 	Request = request(_, Callee, Args0, _, RequestHigherOrderArgs,
-		CallArgTypes, _, RequestTVarSet, _, _), 
+		CallArgTypes, _, RequestTVarSet, _, _),
 	Version = new_pred(_, _, _, _, VersionHigherOrderArgs,
 		_, VersionExtraTypeInfoTVars, VersionArgTypes0,
 		_, VersionTVarSet, _),
@@ -1422,8 +1425,8 @@ version_matches(Params, ModuleInfo, Request, Version,
 		% specialization.
 		MatchIsPartial = no
 	;
-		TypeSpec = no	
-	;	
+		TypeSpec = no
+	;
 		pred_info_is_imported(CalleePredInfo)
 	),
 
@@ -1441,7 +1444,7 @@ version_matches(Params, ModuleInfo, Request, Version,
 		TVarSubn, ExtraTypeInfoTypes0),
 	term__apply_rec_substitution_to_list(ExtraTypeInfoTypes0, TypeSubn,
 		ExtraTypeInfoTypes),
-	
+
 	get_extra_arguments(HigherOrderArgs, Args0, Args).
 
 :- pred higher_order_args_match(list(higher_order_arg)::in,
@@ -1470,9 +1473,9 @@ higher_order_args_match([RequestArg | Args1], [VersionArg | Args2],
 	;
 		% type-info arguments present in the request may be missing
 		% from the version if we are doing user-guided type
-		% specialization. 
+		% specialization.
 		% All of the arguments in the version must be
-		% present in the request for a match. 
+		% present in the request for a match.
 		ArgNo1 < ArgNo2,
 
 		% All the higher-order arguments must be present in the
@@ -1503,7 +1506,7 @@ get_extra_arguments([HOArg | HOArgs], Args0, Args) :-
 				higher_order_info::out) is det.
 
 maybe_add_alias(LVar, RVar,
-		info(PredVars0, Requests, NewPreds, PredProcId, 
+		info(PredVars0, Requests, NewPreds, PredProcId,
 			PredInfo, ProcInfo, ModuleInfo, Params, Changed),
 		info(PredVars, Requests, NewPreds, PredProcId,
 			PredInfo, ProcInfo, ModuleInfo, Params, Changed)) :-
@@ -1514,7 +1517,7 @@ maybe_add_alias(LVar, RVar,
 	;
 		PredVars = PredVars0
 	).
-		
+
 :- pred update_changed_status(changed::in, changed::in, changed::out) is det.
 
 update_changed_status(changed, _, changed).
@@ -1567,11 +1570,11 @@ interpret_typeclass_info_manipulator(Manipulator, Args,
 		InstanceDefn = hlds_instance_defn(_, _, Constraints, _,_,_,_,_),
 		(
 			Manipulator = type_info_from_typeclass_info,
-			list__length(Constraints, NumConstraints),	
+			list__length(Constraints, NumConstraints),
 			Index = Index0 + NumConstraints
 		;
 			Manipulator = superclass_from_typeclass_info,
-			list__length(Constraints, NumConstraints),	
+			list__length(Constraints, NumConstraints),
 			% polymorphism.m adds the number of
 			% type_infos to the index.
 			Index = Index0 + NumConstraints
@@ -1596,11 +1599,11 @@ interpret_typeclass_info_manipulator(Manipulator, Args,
 	% Succeed if the called pred is "unify", "compare" or "index" and
 	% is specializable, returning a specialized goal.
 :- pred specialize_special_pred(pred_id::in, proc_id::in, list(prog_var)::in,
-		maybe(call_unify_context)::in, hlds_goal_expr::out,
-		higher_order_info::in, higher_order_info::out) is semidet.
-		
+	maybe(call_unify_context)::in, bool::in, hlds_goal_expr::out,
+	higher_order_info::in, higher_order_info::out) is semidet.
+
 specialize_special_pred(CalledPred, CalledProc, Args,
-		MaybeContext, Goal, Info0, Info) :-
+		MaybeContext, HaveSpecialPreds, Goal, Info0, Info) :-
 	Info0 = info(PredVars, B, C, D, E, ProcInfo0, ModuleInfo, H, I),
 	proc_info_vartypes(ProcInfo0, VarTypes),
 	module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
@@ -1623,30 +1626,91 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 	),
 
 	(
-		SpecialId = unify,
+		% Look for unification or comparison applied directly to
+		% a builtin or atomic type. This needs to be done separately
+		% from the case for user-defined types, for two reasons.
+		% First, because we want to specialize such calls even if
+		% we are not generating any special preds. Second, because
+		% the specialized code is different in the two cases:
+		% here it is a call to a builtin predicate, perhaps preceded
+		% by casts; there it is a call to a compiler-generated
+		% predicate.
+
+		specializeable_special_call(SpecialId, CalledProc),
 		type_is_atomic(SpecialPredType, ModuleInfo),
-		proc_id_to_int(CalledProc, CalledProcInt),
-		CalledProcInt = 0
+		\+ type_has_user_defined_equality_pred(ModuleInfo,
+			SpecialPredType, _)
 	->
-		% Unifications of atomic types can be specialized
-		% to simple_tests.
-		SpecialPredArgs = [Arg1, Arg2],
-		in_mode(In),
-		Goal = unify(Arg1, var(Arg2), (In - In),
-			simple_test(Arg1, Arg2), unify_context(explicit, [])),
-		Info = Info0
+		(
+			SpecialId = unify,
+			SpecialPredArgs = [Arg1, Arg2]
+		;
+			SpecialId = compare,
+			SpecialPredArgs = [_, Arg1, Arg2]
+		),
+		(
+			SpecialId = unify,
+			in_mode(In),
+			Goal = unify(Arg1, var(Arg2), (In - In),
+				simple_test(Arg1, Arg2),
+				unify_context(explicit, [])),
+			Info = Info0
+		;
+			SpecialId = compare,
+			SpecialPredArgs = [ComparisonResult, _, _],
+			find_builtin_type_with_equivalent_compare(
+				ModuleInfo, SpecialPredType, CompareType,
+				NeedIntCast),
+			polymorphism__get_special_proc(CompareType,
+				SpecialId, ModuleInfo, SymName,
+				SpecialPredId, SpecialProcId),
+			(
+				NeedIntCast = no,
+				NewCallArgs = [ComparisonResult, Arg1, Arg2],
+				Goal = call(SpecialPredId, SpecialProcId,
+					NewCallArgs, not_builtin,
+					MaybeContext, SymName),
+				Info = Info0
+			;
+				NeedIntCast = yes,
+				generate_unsafe_type_cast(ModuleInfo,
+					CompareType, Arg1, CastArg1, CastGoal1,
+					ProcInfo0, ProcInfo1),
+				generate_unsafe_type_cast(ModuleInfo,
+					CompareType, Arg2, CastArg2, CastGoal2,
+					ProcInfo1, ProcInfo),
+				NewCallArgs = [ComparisonResult,
+					CastArg1, CastArg2],
+				Call = call(SpecialPredId, SpecialProcId,
+					NewCallArgs, not_builtin,
+					MaybeContext, SymName),
+				set__list_to_set([ComparisonResult,
+					Arg1, Arg2], NonLocals),
+				instmap_delta_from_assoc_list(
+					[ComparisonResult - ground(shared,no)],
+					InstMapDelta),
+				Detism = det,
+				goal_info_init(NonLocals, InstMapDelta,
+					Detism, GoalInfo),
+				Goal = conj([CastGoal1, CastGoal2,
+						Call - GoalInfo]),
+				Info = info(PredVars, B, C, D, E, ProcInfo,
+					ModuleInfo, H, I)
+			)
+		)
 	;
 		% Look for unification or comparison applied to a no-tag type
-		% wrapping a builtin type. 
+		% wrapping a builtin or atomic type.
 		% This needs to be done to optimize all the map_lookups
 		% with keys of type `term__var/1' in the compiler.
 		% (:- type var(T) ---> var(int).)
-		% This could possibly be better handled by just inlining 
+		% This could possibly be better handled by just inlining
 		% the unification code, but the compiler doesn't have the
 		% code for the comparison or in-in unification procedures
-		% for imported types, and unification and comparison will
-		% eventually be implemented in C code in the runtime system. 
-		( SpecialId = unify ; SpecialId = compare ),
+		% for imported types, and unification and comparison may
+		% be implemented in C code in the runtime system.
+
+		specializeable_special_call(SpecialId, CalledProc),
 		type_constructors(SpecialPredType, ModuleInfo, Constructors),
 		type_is_no_tag_type(Constructors, Constructor, WrappedType),
 		\+ type_has_user_defined_equality_pred(ModuleInfo,
@@ -1655,9 +1719,7 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 		% This could be done for non-atomic types, but it would
 		% be a bit more complicated because the type-info for
 		% the wrapped type would need to be extracted first.
-		type_is_atomic(WrappedType, ModuleInfo),
-		proc_id_to_int(CalledProc, CalledProcInt),
-		CalledProcInt = 0
+		type_is_atomic(WrappedType, ModuleInfo)
 	->
 		(
 			SpecialId = unify,
@@ -1669,7 +1731,7 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 		unwrap_no_tag_arg(WrappedType, Constructor, Arg1,
 			UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
 		unwrap_no_tag_arg(WrappedType, Constructor, Arg2,
-			UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo),
+			UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo2),
 		set__list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
 		(
 			SpecialId = unify,
@@ -1680,31 +1742,68 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 			SpecialGoal = unify(UnwrappedArg1, var(UnwrappedArg2),
 				(In - In),
 				simple_test(UnwrappedArg1, UnwrappedArg2),
-				unify_context(explicit, [])) 
+				unify_context(explicit, [])),
+			goal_info_init(NonLocals, InstMapDelta, Detism,
+				GoalInfo),
+			Goal = conj([ExtractGoal1, ExtractGoal2,
+					SpecialGoal - GoalInfo]),
+			Info = info(PredVars, B, C, D, E, ProcInfo2,
+				ModuleInfo, H, I)
 		;
 			SpecialId = compare,
 			SpecialPredArgs = [ComparisonResult, _, _],
-			set__insert(NonLocals0, ComparisonResult, NonLocals), 
-			NewCallArgs = [ComparisonResult,
-				UnwrappedArg1, UnwrappedArg2],
+			set__insert(NonLocals0, ComparisonResult, NonLocals),
 			instmap_delta_from_assoc_list(
 				[ComparisonResult - ground(shared, no)],
 				InstMapDelta),
 			Detism = det,
 			% Build a new call with the unwrapped arguments.
-			polymorphism__get_special_proc(WrappedType,
+			find_builtin_type_with_equivalent_compare(
+				ModuleInfo, WrappedType, CompareType,
+				NeedIntCast),
+			polymorphism__get_special_proc(CompareType,
 				SpecialId, ModuleInfo, SymName,
 				SpecialPredId, SpecialProcId),
-			SpecialGoal = call(SpecialPredId, SpecialProcId,
-				NewCallArgs, not_builtin,
-				MaybeContext, SymName)
-		),
-		goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo),
-
-		Goal = conj([ExtractGoal1, ExtractGoal2,
-				SpecialGoal - GoalInfo]),
-		Info = info(PredVars, B, C, D, E, ProcInfo, ModuleInfo, H, I)
+			(
+				NeedIntCast = no,
+				NewCallArgs = [ComparisonResult,
+					UnwrappedArg1, UnwrappedArg2],
+				SpecialGoal = call(SpecialPredId,
+					SpecialProcId, NewCallArgs,
+					not_builtin, MaybeContext, SymName),
+				goal_info_init(NonLocals, InstMapDelta, Detism,
+					GoalInfo),
+				Goal = conj([ExtractGoal1, ExtractGoal2,
+						SpecialGoal - GoalInfo]),
+				Info = info(PredVars, B, C, D, E, ProcInfo2,
+					ModuleInfo, H, I)
+			;
+				NeedIntCast = yes,
+				generate_unsafe_type_cast(ModuleInfo,
+					CompareType, UnwrappedArg1, CastArg1,
+					CastGoal1, ProcInfo2, ProcInfo3),
+				generate_unsafe_type_cast(ModuleInfo,
+					CompareType, UnwrappedArg2, CastArg2,
+					CastGoal2, ProcInfo3, ProcInfo4),
+				NewCallArgs = [ComparisonResult,
+					CastArg1, CastArg2],
+				SpecialGoal = call(SpecialPredId,
+					SpecialProcId, NewCallArgs,
+					not_builtin, MaybeContext, SymName),
+				goal_info_init(NonLocals, InstMapDelta, Detism,
+					GoalInfo),
+				Goal = conj([ExtractGoal1, CastGoal1,
+						ExtractGoal2, CastGoal2,
+						SpecialGoal - GoalInfo]),
+				Info = info(PredVars, B, C, D, E, ProcInfo4,
+					ModuleInfo, H, I)
+			)
+		)
 	;
+			% We can only specialize unifications and comparisons
+			% to call the type-specific unify or compare predicate
+			% if we are generating such predicates.
+		HaveSpecialPreds = yes,
 		polymorphism__get_special_proc(SpecialPredType, SpecialId,
 			ModuleInfo, SymName, SpecialPredId, SpecialProcId),
 		( type_is_higher_order(SpecialPredType, _, _, _) ->
@@ -1713,11 +1812,85 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 			CallArgs = SpecialPredArgs
 		;
 			list__append(TypeInfoArgs, SpecialPredArgs, CallArgs)
-		),	
+		),
 		Goal = call(SpecialPredId, SpecialProcId, CallArgs,
 			not_builtin, MaybeContext, SymName),
 		Info = Info0
 	).
+
+:- pred find_builtin_type_with_equivalent_compare(module_info::in,
+	(type)::in, (type)::out, bool::out) is det.
+
+find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
+		NeedIntCast) :-
+	classify_type(Type, ModuleInfo, TypeCategory),
+	(
+		TypeCategory = int_type,
+		EqvType = Type,
+		NeedIntCast = no
+	;
+		TypeCategory = char_type,
+		EqvType = Type,
+		NeedIntCast = no
+	;
+		TypeCategory = str_type,
+		EqvType = Type,
+		NeedIntCast = no
+	;
+		TypeCategory = float_type,
+		EqvType = Type,
+		NeedIntCast = no
+	;
+		TypeCategory = pred_type,
+		error("pred type in find_builtin_type_with_equivalent_compare")
+	;
+		TypeCategory = enum_type,
+		construct_type(unqualified("int") - 0, [], EqvType),
+		NeedIntCast = yes
+	;
+		TypeCategory = polymorphic_type,
+		error("poly type in find_builtin_type_with_equivalent_compare")
+	;
+		TypeCategory = user_type,
+		error("user type in find_builtin_type_with_equivalent_compare")
+	).
+
+:- pred specializeable_special_call(special_pred_id::in, proc_id::in)
+	is semidet.
+
+specializeable_special_call(SpecialId, CalledProc) :-
+	proc_id_to_int(CalledProc, CalledProcInt),
+	CalledProcInt = 0,
+	(
+		SpecialId = unify
+	;
+		SpecialId = compare
+	).
+
+:- pred generate_unsafe_type_cast(module_info::in, (type)::in,
+	prog_var::in, prog_var::out, hlds_goal::out,
+	proc_info::in, proc_info::out) is det.
+
+generate_unsafe_type_cast(ModuleInfo, ToType, Arg, CastArg, Goal,
+		ProcInfo0, ProcInfo) :-
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	mercury_private_builtin_module(MercuryBuiltin),
+	(
+		predicate_table_search_pred_m_n_a(PredicateTable,
+			MercuryBuiltin, "unsafe_type_cast", 2, [PredIdPrime])
+	->
+		PredId = PredIdPrime
+	;
+		error("generate_unsafe_type_cast: pred table lookup failed")
+	),
+	hlds_pred__initial_proc_id(ProcId),
+	proc_info_create_var_from_type(ProcInfo0, ToType, CastArg, ProcInfo),
+	set__list_to_set([Arg, CastArg], NonLocals),
+	instmap_delta_from_assoc_list([CastArg - ground(shared, no)],
+		InstMapDelta),
+	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
+	Goal = call(PredId, ProcId, [Arg, CastArg], not_builtin,
+		no, qualified(MercuryBuiltin, "unsafe_type_cast")) - GoalInfo.
 
 :- pred unwrap_no_tag_arg((type)::in, sym_name::in, prog_var::in,
 	prog_var::out, hlds_goal::out, proc_info::in, proc_info::out) is det.
@@ -1742,15 +1915,15 @@ unwrap_no_tag_arg(WrappedType, Constructor, Arg, UnwrappedArg,
 		unify_context(explicit, [])) - GoalInfo.
 
 %-------------------------------------------------------------------------------
-% Predicates to process requests for specialization, and create any  
-% new predicates that are required.	
+% Predicates to process requests for specialization, and create any
+% new predicates that are required.
 
-		% Filter out requests for higher-order specialization 
+		% Filter out requests for higher-order specialization
 		% for preds which are too large. Maybe we could allow
 		% programmers to declare which predicates they want
 		% specialized, as with inlining?
 		% Don't create specialized versions of specialized
-		% versions, since for some fairly contrived examples 
+		% versions, since for some fairly contrived examples
 		% involving recursively building up lambda expressions
 		% this can create ridiculous numbers of versions.
 :- pred filter_requests(ho_params::in, module_info::in,
@@ -1801,7 +1974,7 @@ filter_requests_2(Params, ModuleInfo, [Request | Requests0],
 				{ FilteredRequests1 = FilteredRequests0 },
 				maybe_write_string(VeryVerbose,
 				"%    not specializing (goal too large).\n")
-			)	
+			)
 		;
 			% Previously specialized versions aren't put
 			% in the goal_sizes map to ensure that we don't
@@ -1822,7 +1995,7 @@ filter_requests_2(Params, ModuleInfo, [Request | Requests0],
 		io__state::di, io__state::uo) is det.
 
 create_new_preds(_, [], NewPreds, NewPreds, NewPredList, NewPredList,
-		ToFix, ToFix, NextId, NextId, Mod, Mod, IO, IO). 
+		ToFix, ToFix, NextId, NextId, Mod, Mod, IO, IO).
 create_new_preds(Params, [Request | Requests], NewPreds0, NewPreds,
 		NewPredList0, NewPredList, PredsToFix0, PredsToFix,
 		NextHOid0, NextHOid, Module0, Module, IO0, IO)  :-
@@ -1845,7 +2018,7 @@ create_new_preds(Params, [Request | Requests], NewPreds0, NewPreds,
 		->
 			create_new_pred(Request, NewPred, NextHOid0,
 				NextHOid1, NewPreds0, NewPreds1,
-				Module0, Module1, IO0, IO2), 
+				Module0, Module1, IO0, IO2),
 			NewPredList1 = [NewPred | NewPredList0]
 		;
 			Module1 = Module0,
@@ -1881,7 +2054,7 @@ add_new_pred(CalledPredProcId, NewPred, new_preds(NewPreds0, PredVars),
 	module_info::out, io__state::di, io__state::uo) is det.
 
 create_new_pred(Request, NewPred, NextHOid0, NextHOid, NewPreds0, NewPreds,
-		ModuleInfo0, ModuleInfo, IOState0, IOState) :- 
+		ModuleInfo0, ModuleInfo, IOState0, IOState) :-
 	Request = request(Caller, CalledPredProc, CallArgs, ExtraTypeInfoTVars,
 			HOArgs, ArgTypes, TypeInfoLiveness,
 			CallerTVarSet, IsUserTypeSpec, Context),
@@ -1933,7 +2106,7 @@ create_new_pred(Request, NewPred, NextHOid0, NextHOid, NewPreds0, NewPreds,
 	map__init(EmptyProofs),
 	map__init(EmptyTIMap),
 	map__init(EmptyTCIMap),
-	
+
 	% This isn't looked at after here, and just clutters up
 	% hlds dumps if it's filled in.
 	ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
@@ -2028,7 +2201,7 @@ output_higher_order_args(ModuleInfo, NumToDrop, [HOArg | HOArgs]) -->
 fixup_preds(Params, PredProcIds, NewPreds, ModuleInfo0, ModuleInfo) :-
 	set__init(Requests0),
 	MustRecompute = no,
-	fixup_preds(MustRecompute, Params, PredProcIds, NewPreds, Requests0, _, 
+	fixup_preds(MustRecompute, Params, PredProcIds, NewPreds, Requests0, _,
 		ModuleInfo0, ModuleInfo).
 
 :- pred fixup_specialized_versions(ho_params::in, list(new_pred)::in,
@@ -2101,7 +2274,7 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 	%
 	proc_info_vartypes(NewProcInfo0, VarTypes0),
 	varset__merge_subst(CallerTypeVarSet, TypeVarSet0,
-		TypeVarSet, TypeRenaming), 
+		TypeVarSet, TypeRenaming),
         apply_substitution_to_type_map(VarTypes0, TypeRenaming, VarTypes1),
 
 	% the real set of existentially quantified variables may be
@@ -2115,7 +2288,7 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 
 	term__var_list_to_term_list(ExtraTypeInfoTVars0,
 		ExtraTypeInfoTVarTypes0),
-	
+
 	apply_rec_substitution_to_type_map(VarTypes1, TypeSubn, VarTypes2),
 	proc_info_set_vartypes(NewProcInfo0, VarTypes2, NewProcInfo1),
 
@@ -2123,12 +2296,12 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 		HOArgs = HOArgs0,
 		ExtraTypeInfoTVarTypes = ExtraTypeInfoTVarTypes0,
 		ExtraTypeInfoTVars = ExtraTypeInfoTVars0
-	;	
+	;
 		% If there are existentially quantified variables in the
 		% callee we may need to bind type variables in the caller.
 		list__map(substitute_higher_order_arg(TypeSubn),
 			HOArgs0, HOArgs),
-		
+
 		term__apply_rec_substitution_to_list(ExtraTypeInfoTVarTypes0,
 			TypeSubn, ExtraTypeInfoTVarTypes),
 		% The substitution should never bind any of the type variables
@@ -2156,10 +2329,10 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 	% Let traverse_goal know about the constant input arguments.
 	NewPreds0 = new_preds(A, PredVarMap0),
 	map__det_insert(PredVarMap0, NewPredProcId, PredVars, PredVarMap),
-	NewPreds = new_preds(A, PredVarMap),	
+	NewPreds = new_preds(A, PredVarMap),
 
 	%
-	% Fix up the typeinfo_varmap. 
+	% Fix up the typeinfo_varmap.
 	%
 	proc_info_typeinfo_varmap(NewProcInfo3, TypeInfoVarMap0),
 
@@ -2248,14 +2421,14 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 		% Build the initial pred_vars map which records
 		% higher-order and type_info constants for a call to
 		% traverse_goal.
-		%	
+		%
 		% Build a var-var renaming from the requesting
 		% call's arguments to the headvars of the specialized
 		% version.
 		%
 		% This predicate is recursively applied to all curried
 		% higher order arguments of higher order arguments.
-:- pred construct_higher_order_terms(module_info::in, list(prog_var)::in, 
+:- pred construct_higher_order_terms(module_info::in, list(prog_var)::in,
 		list(prog_var)::out, list(mode)::in, list(mode)::out,
 		list(higher_order_arg)::in, proc_info::in, proc_info::out,
 		map(prog_var, prog_var)::in, map(prog_var, prog_var)::out,
@@ -2323,7 +2496,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 %-----------------------------------------------------------------------------%
 
 	% Substitute the types in a higher_order_arg.
-:- pred substitute_higher_order_arg(tsubst::in, higher_order_arg::in, 
+:- pred substitute_higher_order_arg(tsubst::in, higher_order_arg::in,
 		higher_order_arg::out) is det.
 
 substitute_higher_order_arg(Subn, HOArg0, HOArg) :-
@@ -2380,9 +2553,9 @@ maybe_add_constraint(Constraints0, Constraint0, Constraints) :-
 		% Remove duplicates.
 		\+ list__member(Constraint, Constraints0)
 	->
-		Constraints = [Constraint | Constraints0]	
+		Constraints = [Constraint | Constraints0]
 	;
-		Constraints = Constraints0		
+		Constraints = Constraints0
 	).
 
 %-----------------------------------------------------------------------------%

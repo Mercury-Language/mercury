@@ -110,12 +110,32 @@ int		mercury_exit_status = 0;
 
 bool		MR_profiling = TRUE;
 
-#ifdef	MR_CTOR_REP_STATS
-#include	"mercury_type_info.h"
+#ifdef	MR_TYPE_CTOR_STATS
 
-long		MR_ctor_rep_unify[MR_TYPECTOR_REP_UNKNOWN + 1];
-long		MR_ctor_rep_index[MR_TYPECTOR_REP_UNKNOWN + 1];
-long		MR_ctor_rep_compare[MR_TYPECTOR_REP_UNKNOWN + 1];
+#include	"mercury_type_info.h"
+#include	"mercury_array_macros.h"
+
+typedef struct {
+	ConstString	type_stat_module;
+	ConstString	type_stat_name;
+	int		type_stat_ctor_rep;
+	long		type_stat_count;
+} MR_TypeNameStat;
+
+struct MR_TypeStat_Struct {
+	long		type_ctor_reps[MR_TYPECTOR_REP_UNKNOWN + 1];
+	MR_TypeNameStat	*type_ctor_names;
+	int		type_ctor_name_max;
+	int		type_ctor_name_next;
+};
+
+/* we depend on these five structs being initialized to zero */
+MR_TypeStat	MR_type_stat_mer_unify;
+MR_TypeStat	MR_type_stat_c_unify;
+MR_TypeStat	MR_type_stat_mer_index;
+MR_TypeStat	MR_type_stat_mer_compare;
+MR_TypeStat	MR_type_stat_c_compare;
+
 #endif
 
 /*
@@ -214,8 +234,10 @@ static	void	make_argv(const char *, char **, char ***, int *);
 #ifdef MEASURE_REGISTER_USAGE
 static	void	print_register_usage_counts(void);
 #endif
-#ifdef MR_CTOR_REP_STATS
+#ifdef MR_TYPE_CTOR_STATS
 static	void	MR_print_type_ctor_stats(void);
+static	void	MR_print_one_type_ctor_stat(FILE *fp, const char *op,
+			MR_TypeStat *type_stat);
 #endif
 
 Declare_entry(do_interpreter);
@@ -929,7 +951,7 @@ mercury_runtime_main(void)
 			((double) (time_at_finish - time_at_start)) / 1000);
 	}
 
-#ifdef	MR_CTOR_REP_STATS
+#ifdef	MR_TYPE_CTOR_STATS
 	MR_print_type_ctor_stats();
 #endif
 
@@ -943,46 +965,94 @@ mercury_runtime_main(void)
 
 } /* end mercury_runtime_main() */
 
-#ifdef	MR_CTOR_REP_STATS
+#ifdef	MR_TYPE_CTOR_STATS
 
 static	ConstString	MR_ctor_rep_name[] = {
 	MR_CTOR_REP_NAMES
 };
 
+#define	MR_INIT_CTOR_NAME_ARRAY_SIZE	10
+
+void
+MR_register_type_ctor_stat(MR_TypeStat *type_stat,
+	MR_TypeCtorInfo type_ctor_info)
+{
+	int	i;
+
+	type_stat->type_ctor_reps[type_ctor_info->type_ctor_rep]++;
+
+	for (i = 0; i < type_stat->type_ctor_name_next; i++) {
+		/*
+		** We can compare pointers instead of using strcmp,
+		** because the pointers in the array come from the
+		** type_ctor_infos themselves, and there is only one
+		** static type_ctor_info for each modulename:typename
+		** combination.
+		*/
+
+		if (type_stat->type_ctor_names[i].type_stat_module ==
+			type_ctor_info->type_ctor_module_name &&
+			type_stat->type_ctor_names[i].type_stat_name ==
+			type_ctor_info->type_ctor_name)
+		{
+			type_stat->type_ctor_names[i].type_stat_count++;
+			return;
+		}
+	}
+
+	MR_ensure_room_for_next(type_stat->type_ctor_name, MR_TypeNameStat,
+		MR_INIT_CTOR_NAME_ARRAY_SIZE);
+
+	i = type_stat->type_ctor_name_next;
+	type_stat->type_ctor_names[i].type_stat_module =
+		type_ctor_info->type_ctor_module_name;
+	type_stat->type_ctor_names[i].type_stat_name =
+		type_ctor_info->type_ctor_name;
+	type_stat->type_ctor_names[i].type_stat_ctor_rep =
+		type_ctor_info->type_ctor_rep;
+	type_stat->type_ctor_names[i].type_stat_count = 1;
+	type_stat->type_ctor_name_next++;
+}
+
 static void
 MR_print_type_ctor_stats(void)
 {
 	FILE	*fp;
+
+	fp = fopen(MR_TYPE_CTOR_STATS, "a");
+	if (fp == NULL) {
+		return;
+	}
+
+	MR_print_one_type_ctor_stat(fp, "UNIFY", &MR_type_stat_mer_unify);
+	MR_print_one_type_ctor_stat(fp, "UNIFY_C", &MR_type_stat_c_unify);
+	MR_print_one_type_ctor_stat(fp, "INDEX", &MR_type_stat_mer_index);
+	MR_print_one_type_ctor_stat(fp, "COMPARE", &MR_type_stat_mer_compare);
+	MR_print_one_type_ctor_stat(fp, "COMPARE_C", &MR_type_stat_c_compare);
+
+	(void) fclose(fp);
+}
+
+static void
+MR_print_one_type_ctor_stat(FILE *fp, const char *op, MR_TypeStat *type_stat)
+{
 	int	i;
 
-	fp = fopen(MR_CTOR_REP_STATS, "a");
-	if (fp != NULL) {
-
-		for (i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
-			if (MR_ctor_rep_unify[i] > 0) {
-				fprintf(fp, "UNIFY   %-15s %20ld\n",
-					MR_ctor_rep_name[i],
-					MR_ctor_rep_unify[i]);
-			}
+	for (i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
+		if (type_stat->type_ctor_reps[i] > 0) {
+			fprintf(fp, "%s %s %ld\n", op,
+				MR_ctor_rep_name[i],
+				type_stat->type_ctor_reps[i]);
 		}
+	}
 
-		for (i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
-			if (MR_ctor_rep_index[i] > 0) {
-				fprintf(fp, "INDEX   %-15s %20ld\n",
-					MR_ctor_rep_name[i],
-					MR_ctor_rep_index[i]);
-			}
-		}
-
-		for (i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
-			if (MR_ctor_rep_compare[i] > 0) {
-				fprintf(fp, "COMPARE %-15s %20ld\n",
-					MR_ctor_rep_name[i],
-					MR_ctor_rep_compare[i]);
-			}
-		}
-
-		(void) fclose(fp);
+	for (i = 0; i < type_stat->type_ctor_name_next; i++) {
+		fprintf(fp, "%s %s %s %s %ld\n", op,
+			type_stat->type_ctor_names[i].type_stat_module,
+			type_stat->type_ctor_names[i].type_stat_name,
+			MR_ctor_rep_name[type_stat->
+				type_ctor_names[i].type_stat_ctor_rep],
+			type_stat->type_ctor_names[i].type_stat_count);
 	}
 }
 

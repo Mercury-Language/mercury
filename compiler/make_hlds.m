@@ -2744,7 +2744,7 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 		)
 	->
 		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
-			Type, TypeId, Context, Status, Module)
+			Type, TypeId, Body, Context, Status, Module)
 	;
 		add_special_pred_list(SpecialPredIds, Module0, TVarSet,
 			Type, TypeId, Body, Context, Status, Module)
@@ -2772,15 +2772,42 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 		Context, Status0, Module) :-
 	module_info_globals(Module0, Globals),
 	globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
-	( GenSpecialPreds = yes ->
+	(
+		GenSpecialPreds = yes,
 		add_special_pred_for_real(SpecialPredId, Module0, TVarSet,
 			Type, TypeId, TypeBody, Context, Status0, Module)
-	; SpecialPredId = unify ->
-		add_special_pred_for_real(SpecialPredId, Module0, TVarSet,
-			Type, TypeId, TypeBody, Context, pseudo_imported,
-			Module)
 	;
-		Module = Module0
+		GenSpecialPreds = no,
+		(
+			SpecialPredId = unify,
+			add_special_pred_unify_status(TypeBody, Status0,
+				Status),
+			add_special_pred_for_real(SpecialPredId, Module0,
+				TVarSet, Type, TypeId, TypeBody, Context,
+				Status, Module)
+		;
+			SpecialPredId = index,
+			Module = Module0
+		;
+			SpecialPredId = compare,
+			( TypeBody = du_type(_, _, _, yes(_)) ->
+					% The compiler generated comparison
+					% procedure prints an error message,
+					% since comparisons of types with
+					% user-defined equality are not
+					% allowed. We get the runtime system
+					% invoke this procedure instead of
+					% printing the error message itself,
+					% because it is easier to generate
+					% a good error message in Mercury code
+					% than in C code.
+				add_special_pred_for_real(SpecialPredId,
+					Module0, TVarSet, Type, TypeId,
+					TypeBody, Context, Status0, Module)
+			;
+				Module = Module0
+			)
+		)
 	).
 
 :- pred add_special_pred_for_real(special_pred_id,
@@ -2806,7 +2833,25 @@ add_special_pred_for_real(SpecialPredId,
 	map__lookup(Preds0, PredId, PredInfo0),
 	% if the type was imported, then the special preds for that
 	% type should be imported too
-	( (Status = imported(_) ; Status = pseudo_imported) ->
+	(
+		(Status = imported(_) ; Status = pseudo_imported)
+	->
+		pred_info_set_import_status(PredInfo0, Status, PredInfo1)
+	;
+		TypeBody = du_type(_, _, _, yes(_)),
+		pred_info_import_status(PredInfo0, OldStatus),
+		OldStatus = pseudo_imported,
+		status_is_imported(Status, no)
+	->
+		% We can only get here with --no-special-preds if the old
+		% status is from an abstract declaration of the type.
+		% Since the compiler did not then know that the type definition
+		% will specify a user-defined equality predicate, it set up
+		% the status as pseudo_imported in order to prevent the
+		% generation of code for mode 0 of the __Unify__ predicate
+		% for the type. However, for types with user-defined equality,
+		% we *do* want to generate code for mode 0 of __Unify__,
+		% so we fix the status.
 		pred_info_set_import_status(PredInfo0, Status, PredInfo1)
 	;
 		PredInfo1 = PredInfo0
@@ -2818,24 +2863,24 @@ add_special_pred_for_real(SpecialPredId,
 	module_info_set_preds(Module1, Preds, Module).
 
 :- pred add_special_pred_decl_list(list(special_pred_id),
-			module_info, tvarset, type, type_id, 
+			module_info, tvarset, type, type_id, hlds_type_body,
 			prog_context, import_status, module_info).
-:- mode add_special_pred_decl_list(in, in, in, in, in, in, in, out) is det.
+:- mode add_special_pred_decl_list(in, in, in, in, in, in, in, in, out) is det.
 
-add_special_pred_decl_list([], Module, _, _, _, _, _, Module).
+add_special_pred_decl_list([], Module, _, _, _, _, _, _, Module).
 add_special_pred_decl_list([SpecialPredId | SpecialPredIds], Module0,
-		TVarSet, Type, TypeId, Context, Status, Module) :-
+		TVarSet, Type, TypeId, TypeBody, Context, Status, Module) :-
 	add_special_pred_decl(SpecialPredId, Module0,
-		TVarSet, Type, TypeId, Context, Status, Module1),
+		TVarSet, Type, TypeId, TypeBody, Context, Status, Module1),
 	add_special_pred_decl_list(SpecialPredIds, Module1,
-		TVarSet, Type, TypeId, Context, Status, Module).
+		TVarSet, Type, TypeId, TypeBody, Context, Status, Module).
 
 :- pred add_special_pred_decl(special_pred_id,
-		module_info, tvarset, type, type_id, prog_context,
-		import_status, module_info).
-:- mode add_special_pred_decl(in, in, in, in, in, in, in, out) is det.
+		module_info, tvarset, type, type_id, hlds_type_body,
+		prog_context, import_status, module_info).
+:- mode add_special_pred_decl(in, in, in, in, in, in, in, in, out) is det.
 
-add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeId,
+add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 		Context, Status0, Module) :-
 	module_info_globals(Module0, Globals),
 	globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
@@ -2843,9 +2888,9 @@ add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeId,
 		add_special_pred_decl_for_real(SpecialPredId, Module0,
 			TVarSet, Type, TypeId, Context, Status0, Module)
 	; SpecialPredId = unify ->
+		add_special_pred_unify_status(TypeBody, Status0, Status),
 		add_special_pred_decl_for_real(SpecialPredId, Module0,
-			TVarSet, Type, TypeId, Context, pseudo_imported,
-			Module)
+			TVarSet, Type, TypeId, Context, Status, Module)
 	;
 		Module = Module0
 	).
@@ -2890,6 +2935,25 @@ add_special_pred_decl_for_real(SpecialPredId,
 	map__set(SpecialPredMap0, SpecialPredId - TypeId, PredId,
 		SpecialPredMap),
 	module_info_set_special_pred_map(Module1, SpecialPredMap, Module).
+
+:- pred add_special_pred_unify_status(hlds_type_body::in, import_status::in,
+	import_status::out) is det.
+
+add_special_pred_unify_status(TypeBody, Status0, Status) :-
+	( TypeBody = du_type(_, _, _, yes(_)) ->
+			% If the type has user-defined equality,
+			% then we create a real __Unify__ predicate
+			% for it, whose body calls the user-specified
+			% predicate. The compiler's usual type checking
+			% algorithm will handle any necessary
+			% disambiguation from predicates with the same
+			% name but different argument types, and the
+			% usual mode checking algorithm will select
+			% the right mode of the chosen predicate.
+		Status = Status0
+	;
+		Status = pseudo_imported
+	).
 
 :- pred adjust_special_pred_status(import_status, special_pred_id,
 				import_status).

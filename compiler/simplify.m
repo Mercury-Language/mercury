@@ -1136,30 +1136,8 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		% are being unified.
 		%
 		simplify__type_info_locn(TypeVar, TypeInfoVar, ExtraGoals),
-		{ ArgVars = [TypeInfoVar, XVar, YVar] },
-
-		{ module_info_get_predicate_table(ModuleInfo,
-			PredicateTable) },
-		{ mercury_public_builtin_module(MercuryBuiltin) },
-		{ predicate_table_search_pred_m_n_a(PredicateTable,
-			MercuryBuiltin, "unify", 2, [CallPredId])
-		->
-			PredId = CallPredId
-		;
-			error("simplify.m: can't find `builtin:unify/2'")
-		},
-		% Note: the mode for polymorphic unifications
-		% should be `in, in'. 
-		% (This should have been checked by mode analysis.)
-		{ hlds_pred__in_in_unification_proc_id(ProcId) },
-
-		{ SymName = unqualified("unify") },
-		{ code_util__builtin_state(ModuleInfo, PredId, ProcId,
-			BuiltinState) },
-		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
-		{ Call = call(PredId, ProcId, ArgVars,
-			BuiltinState, yes(CallContext), SymName)
-			- GoalInfo0 }
+		{ simplify__call_generic_unify(TypeInfoVar, XVar, YVar,
+			ModuleInfo, Context, GoalInfo0, Call) }
 
 	; { type_is_higher_order(Type, _, _, _) } ->
 		%
@@ -1188,45 +1166,100 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		simplify__goal_2(Call0, GoalInfo0, Call1, GoalInfo),
 		{ Call = Call1 - GoalInfo },
 		{ ExtraGoals = [] }
-
-	; { type_to_type_id(Type, TypeId, TypeArgs) } ->
-		%
-		% Convert other complicated unifications into
-		% calls to specific unification predicates,
-		% inserting extra typeinfo arguments if necessary.
-		%
-
-		% generate code to construct the new type_info arguments
-		simplify__make_type_info_vars(TypeArgs, TypeInfoVars,
-			ExtraGoals),
-
-		% create the new call goal
-		{ list__append(TypeInfoVars, [XVar, YVar], ArgVars) },
-		{ module_info_get_special_pred_map(ModuleInfo,
-			SpecialPredMap) },
-		{ map__lookup(SpecialPredMap, unify - TypeId, PredId) },
-		{ determinism_components(Det, CanFail, at_most_one) },
-		{ unify_proc__lookup_mode_num(ModuleInfo, TypeId,
-		 	UniMode, Det, ProcId) },
-		{ SymName = unqualified("__Unify__") },
-		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
-		{ Call0 = call(PredId, ProcId, ArgVars, not_builtin,
-			yes(CallContext), SymName) },
-
-		% add the extra type_info vars to the nonlocals for the call
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
-		{ set__insert_list(NonLocals0, TypeInfoVars, NonLocals) },
-		{ goal_info_set_nonlocals(GoalInfo0, NonLocals,
-			CallGoalInfo0) },
-
-		% recursively simplify the call goal
-		simplify__goal_2(Call0, CallGoalInfo0, Call1, CallGoalInfo1),
-		{ Call = Call1 - CallGoalInfo1 }
 	;
-		{ error("simplify: type_to_type_id failed") }
+		{ type_to_type_id(Type, TypeIdPrime, TypeArgsPrime) ->
+			TypeId = TypeIdPrime,
+			TypeArgs = TypeArgsPrime
+		;
+			error("simplify: type_to_type_id failed")
+		},
+		{ determinism_components(Det, CanFail, at_most_one) },
+		{ unify_proc__lookup_mode_num(ModuleInfo, TypeId, UniMode, Det,
+			ProcId) },
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__lookup_bool_option(Globals, special_preds,
+			SpecialPreds) },
+		(
+			{ SpecialPreds = no },
+			{ proc_id_to_int(ProcId, ProcIdInt) },
+			{ ProcIdInt = 0 }
+		->
+			simplify__make_type_info_vars([Type], TypeInfoVars,
+				ExtraGoals),
+			{ TypeInfoVars = [TypeInfoVarPrime] ->
+				TypeInfoVar = TypeInfoVarPrime
+			;
+				error("simplify__process_compl_unify: more than one typeinfo for one type var")
+			},
+			{ simplify__call_generic_unify(TypeInfoVar, XVar, YVar,
+				ModuleInfo, Context, GoalInfo0, Call) }
+		;
+			%
+			% Convert other complicated unifications into
+			% calls to specific unification predicates,
+			% inserting extra typeinfo arguments if necessary.
+			%
+
+			simplify__make_type_info_vars(TypeArgs,
+				TypeInfoVars, ExtraGoals),
+			{ simplify__call_specific_unify(TypeId, TypeInfoVars,
+				XVar, YVar, ProcId, ModuleInfo, Context,
+				GoalInfo0, Call0, CallGoalInfo0) },
+			simplify__goal_2(Call0, CallGoalInfo0,
+				Call1, CallGoalInfo1),
+			{ Call = Call1 - CallGoalInfo1 }
+		)
 	),
 	{ list__append(ExtraGoals, [Call], ConjList) },
 	{ conj_list_to_goal(ConjList, GoalInfo0, Goal) }.
+
+:- pred simplify__call_generic_unify(prog_var::in, prog_var::in,  prog_var::in, 
+	module_info::in, unify_context::in, hlds_goal_info::in, hlds_goal::out)
+	is det.
+
+simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
+		GoalInfo, Call) :-
+	ArgVars = [TypeInfoVar, XVar, YVar],
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	mercury_public_builtin_module(MercuryBuiltin),
+	( predicate_table_search_pred_m_n_a(PredicateTable,
+		MercuryBuiltin, "unify", 2, [CallPredId])
+	->
+		PredId = CallPredId
+	;
+		error("simplify.m: can't find `builtin:unify/2'")
+	),
+	% Note: the mode for polymorphic unifications
+	% should be `in, in'. 
+	% (This should have been checked by mode analysis.)
+	hlds_pred__in_in_unification_proc_id(ProcId),
+
+	SymName = unqualified("unify"),
+	code_util__builtin_state(ModuleInfo, PredId, ProcId, BuiltinState),
+	CallContext = call_unify_context(XVar, var(YVar), Context),
+	Call = call(PredId, ProcId, ArgVars, BuiltinState, yes(CallContext),
+		SymName) - GoalInfo.
+
+:- pred simplify__call_specific_unify(type_id::in, list(prog_var)::in,
+	prog_var::in, prog_var::in, proc_id::in,
+	module_info::in, unify_context::in, hlds_goal_info::in,
+	hlds_goal_expr::out, hlds_goal_info::out) is det.
+
+simplify__call_specific_unify(TypeId, TypeInfoVars, XVar, YVar, ProcId,
+		ModuleInfo, Context, GoalInfo0, CallExpr, CallGoalInfo) :-
+	% create the new call goal
+	list__append(TypeInfoVars, [XVar, YVar], ArgVars),
+	module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
+	map__lookup(SpecialPredMap, unify - TypeId, PredId),
+	SymName = unqualified("__Unify__"),
+	CallContext = call_unify_context(XVar, var(YVar), Context),
+	CallExpr = call(PredId, ProcId, ArgVars, not_builtin,
+		yes(CallContext), SymName),
+
+	% add the extra type_info vars to the nonlocals for the call
+	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	set__insert_list(NonLocals0, TypeInfoVars, NonLocals),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, CallGoalInfo).
 
 :- pred simplify__make_type_info_vars(list(type)::in, list(prog_var)::out,
 	list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.

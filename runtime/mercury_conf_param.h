@@ -198,12 +198,11 @@
 ** Enable this if you want to count the number of execution tracing events
 ** at various call depths.
 **
-** MR_CTOR_REP_STATS
+** MR_TYPE_CTOR_STATS
 ** If you want to keep statistics on the number of times the generic unify,
-** index and compare functions are invoked with type constructors of the
-** various kinds of representations, then set this macro to a string giving
-** the name of the file to which the statistics should be appended when the
-** program exits.
+** index and compare functions are invoked with various kinds of type
+** constructors, then set this macro to a string giving the name of the file
+** to which the statistics should be appended when the program exits.
 **
 ** MR_TABLE_STATISTICS
 ** Enable this if you want to gather statistics about the operation of the

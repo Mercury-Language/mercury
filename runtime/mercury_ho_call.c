@@ -22,7 +22,8 @@ ENDINIT
 #include "mercury_imp.h"
 #include "mercury_ho_call.h"
 
-static Word MR_generic_compare(MR_TypeInfo type_info, Word x, Word y);
+static	Word	MR_generic_compare(MR_TypeInfo type_info, Word x, Word y);
+static	Word	MR_generic_unify(MR_TypeInfo type_info, Word x, Word y);
 
 /*
 ** The called closure may contain only input arguments. The extra arguments
@@ -182,18 +183,21 @@ Define_entry(mercury__unify_2_0);
 #define	DECLARE_LOCALS							\
 	MR_TypeCtorInfo	type_ctor_info;					\
 	MR_TypeInfo	type_info;					\
-	Word		x, y;
+	Word		x, y;						\
+	Code		*saved_succip;
 
 #define initialize()							\
 	do {								\
 		type_info = (MR_TypeInfo) r1;				\
 		x = r2;							\
 		y = r3;							\
+		saved_succip = MR_succip;				\
 	} while(0)
 
 #define return_answer(answer)						\
 	do {								\
 		r1 = (answer);						\
+		MR_succip = saved_succip;				\
 		proceed();						\
 	} while(0)
 
@@ -202,7 +206,7 @@ Define_entry(mercury__unify_2_0);
 
 #define	start_label		unify_start
 #define	call_user_code_label	call_unify_in_proc
-#define	ctor_rep_stats_array	MR_ctor_rep_unify
+#define	type_stat_struct	MR_type_stat_mer_unify
 #define	attempt_msg		"attempt to unify "
 
 #include "mercury_unify_compare_body.h"
@@ -213,7 +217,7 @@ Define_entry(mercury__unify_2_0);
 #undef	tailcall_user_pred
 #undef  start_label
 #undef	call_user_code_label
-#undef  ctor_rep_stats_array
+#undef  type_stat_struct
 #undef  attempt_msg
 
 }
@@ -239,8 +243,8 @@ Define_entry(mercury__index_2_0);
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-#ifdef  MR_CTOR_REP_STATS
-    MR_ctor_rep_index[type_ctor_info->type_ctor_rep]++;
+#ifdef  MR_TYPE_CTOR_STATS
+    MR_register_type_ctor_stat(&MR_type_stat_mer_index, type_ctor_info);
 #endif
 
     switch (type_ctor_info->type_ctor_rep) {
@@ -396,18 +400,21 @@ Define_entry(mercury__compare_3_3);
 #define	DECLARE_LOCALS							\
 	MR_TypeCtorInfo	type_ctor_info;					\
 	MR_TypeInfo	type_info;					\
-	Word		x, y;
+	Word		x, y;						\
+	Code		*saved_succip;
 
 #define initialize()							\
 	do {								\
 		type_info = (MR_TypeInfo) r1;				\
 		x = r2;							\
 		y = r3;							\
+		saved_succip = MR_succip;				\
 	} while(0)
 
 #define return_answer(answer)						\
 	do {								\
 		r1 = (answer);						\
+		MR_succip = saved_succip;				\
 		proceed();						\
 	} while(0)
 
@@ -416,7 +423,7 @@ Define_entry(mercury__compare_3_3);
 
 #define	start_label		compare_start
 #define	call_user_code_label	call_compare_in_proc
-#define	ctor_rep_stats_array	MR_ctor_rep_compare
+#define	type_stat_struct	MR_type_stat_mer_compare
 #define	attempt_msg		"attempt to compare "
 #define	select_compare_code
 
@@ -428,12 +435,52 @@ Define_entry(mercury__compare_3_3);
 #undef	tailcall_user_pred
 #undef  start_label
 #undef	call_user_code_label
-#undef  ctor_rep_stats_array
+#undef  type_stat_struct
 #undef  attempt_msg
 #undef	select_compare_code
 
 }
 END_MODULE
+
+static Word
+MR_generic_unify(MR_TypeInfo type_info, Word x, Word y)
+{
+
+#define	DECLARE_LOCALS							\
+	MR_TypeCtorInfo	type_ctor_info;
+
+#define initialize()							\
+	do {								\
+		(void) 0; /* do nothing */				\
+	} while(0)
+
+#define return_answer(answer)						\
+	return (answer)
+
+#define	tailcall_user_pred()						\
+	do {								\
+		save_transient_registers();				\
+		(void) MR_call_engine(type_ctor_info->unify_pred, FALSE);\
+		restore_transient_registers();				\
+		return (r1);						\
+	} while (0)
+
+#define	start_label		unify_func_start
+#define	call_user_code_label	call_unify_in_func
+#define	type_stat_struct	MR_type_stat_c_unify
+#define	attempt_msg		"attempt to unify "
+
+#include "mercury_unify_compare_body.h"
+
+#undef  DECLARE_LOCALS
+#undef  initialize
+#undef  return_answer
+#undef	tailcall_user_pred
+#undef  start_label
+#undef	call_user_code_label
+#undef  type_stat_struct
+#undef  attempt_msg
+}
 
 static Word
 MR_generic_compare(MR_TypeInfo type_info, Word x, Word y)
@@ -460,7 +507,7 @@ MR_generic_compare(MR_TypeInfo type_info, Word x, Word y)
 
 #define	start_label		compare_func_start
 #define	call_user_code_label	call_compare_in_func
-#define	ctor_rep_stats_array	MR_ctor_rep_compare
+#define	type_stat_struct	MR_type_stat_c_compare
 #define	attempt_msg		"attempt to compare "
 #define	select_compare_code
 
@@ -472,7 +519,7 @@ MR_generic_compare(MR_TypeInfo type_info, Word x, Word y)
 #undef	tailcall_user_pred
 #undef  start_label
 #undef	call_user_code_label
-#undef  ctor_rep_stats_array
+#undef  type_stat_struct
 #undef  attempt_msg
 #undef	select_compare_code
 }

@@ -195,12 +195,21 @@ enum MR_TimeProfileMethod {
 extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
-extern	bool MR_profiling;
+extern	bool		MR_profiling;
 
-#ifdef  MR_CTOR_REP_STATS
-extern	long	MR_ctor_rep_unify[];
-extern	long	MR_ctor_rep_index[];
-extern	long	MR_ctor_rep_compare[];
+#ifdef  MR_TYPE_CTOR_STATS
+
+typedef	struct MR_TypeStat_Struct	MR_TypeStat;
+
+extern	MR_TypeStat	MR_type_stat_mer_unify;
+extern	MR_TypeStat	MR_type_stat_c_unify;
+extern	MR_TypeStat	MR_type_stat_mer_index;
+extern	MR_TypeStat	MR_type_stat_mer_compare;
+extern	MR_TypeStat	MR_type_stat_c_compare;
+
+extern	void		MR_register_type_ctor_stat(MR_TypeStat *type_stat,
+				MR_TypeCtorInfo type_ctor_info);
+
 #endif
 
 #endif /* not MERCURY_WRAPPER_H */
