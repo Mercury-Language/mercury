@@ -196,6 +196,7 @@ then
 	ln -s $root/scripts .
 	ln -s $root/util .
 	ln -s $root/profiler .
+	ln -s $root/lp_solve .
 	ln -s $root/conf* .
 	ln -s $root/VERSION .
 	ln -s $root/.README.in .
@@ -357,6 +358,7 @@ ln -s $root/doc .
 ln -s $root/scripts .
 ln -s $root/util .
 ln -s $root/profiler .
+ln -s $root/lp_solve .
 ln -s $root/conf* .
 ln -s $root/VERSION .
 ln -s $root/.README.in .
@@ -467,6 +469,7 @@ ln -s $root/runtime .
 ln -s $root/scripts .
 ln -s $root/util .
 ln -s $root/profiler .
+ln -s $root/lp_solve .
 ln -s $root/conf* .
 ln -s $root/VERSION .
 ln -s $root/.README.in .
