@@ -15,7 +15,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 INCPATH		= -I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) -I.
 LIBPATH		= -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
-CFLAGS		= -g $(EXTRA_CFLAGS) -D_POSIX_SOURCE $(INCPATH)
+CFLAGS		= -g $(EXTRA_CFLAGS) -D_POSIX_SOURCE $(INCPATH) -DDEBUGGING
 MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= $(CFLAGS) 
 
@@ -26,13 +26,13 @@ VPATH		= $(MERCURY_DIR)/runtime
 
 #-----------------------------------------------------------------------------#
 
-MB_HDRS		= bytecode.h disasm.h mbi.h mem.h machine.h \
+MB_HDRS		= bytecode.h dict.h disasm.h mbi.h mem.h machine.h \
 		  mdis.h static_data.h template.h util.h
 
 HDRS		= $(MB_HDRS) getopt.h 
 
-ORIG_CS		= bytecode.c disasm.c machine.c mbi.c mbi_main.c mdis.c mem.c \
-		  static_data.c template.c util.c
+ORIG_CS		= bytecode.c dict.c disasm.c machine.c mbi.c mbi_main.c \
+		  mdis.c mem.c static_data.c template.c util.c
 
 LIBS		= -lmer ` \
                   case "$(GRADE)" in \
@@ -48,14 +48,14 @@ all: mdis mbi libmbi
 
 MDIS_OBJS = bytecode.o disasm.o mdis.o mem.o util.o
 mdis: $(MDIS_OBJS)
-	$(MGNUC) $(CFLAGS) -static -o mdis $(MDIS_OBJS) $(LIBPATH) $(LIBS)
+	$(MGNUC) $(CFLAGS) -o mdis $(MDIS_OBJS) $(LIBPATH) $(LIBS)
 
-LIBMBI_OBJS = bytecode.o mbi.o mem.o util.o
+LIBMBI_OBJS = bytecode.o dict.o mbi.o mem.o util.o 
 LIBMBI_PIC_OBJS = $(LIBMBI_OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
 MBI_OBJS = mbi_main.o $(LIBMBI_OBJS)
 
 mbi: $(MBI_OBJS)
-	$(MGNUC) $(CFLAGS) -static -o mbi $(MBI_OBJS) $(LIBPATH) $(LIBS)
+	$(MGNUC) $(CFLAGS) -o mbi $(MBI_OBJS) $(LIBPATH) $(LIBS)
 
 libmbi: libmbi.a libmbi.$(EXT_FOR_SHARED_LIB)
 
