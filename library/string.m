@@ -888,7 +888,7 @@ string__to_char_list(Str::uo, CharList::in) :-
 		Str = ""
 	; CharList = [C | Cs],
 		string__to_char_list(Str0, Cs),
-		Str = string__char_to_string(C) ++ Str0
+		string__first_char(Str, C, Str0)
 	).
 
 :- pred string__to_char_list_2(string::in, int::in, list(char)::uo) is det.
