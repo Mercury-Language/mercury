@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2004 The University of Melbourne.
+** Copyright (C) 1998-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -644,7 +644,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					stdout, layout,
 					MR_saved_sp(saved_regs),
 					MR_saved_curfr(saved_regs),
-					include_trace_data, MR_FALSE, 0,
+					include_trace_data, MR_FALSE, 0, 0,
 					&MR_dump_stack_record_print_to_socket);
 				MR_send_message_to_socket("end_stack");
 				if (message != NULL) {
@@ -671,7 +671,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				** MR_dump_nondet_stack() (as we do
 				** with MR_dump_stack_record_print()).
 				*/						
-				MR_dump_nondet_stack(stdout, NULL, 0,
+				MR_dump_nondet_stack(stdout, NULL, 0, 0,
 					MR_saved_maxfr(saved_regs));
 				MR_send_message_to_socket("ok");
 				break;

@@ -2,7 +2,7 @@ echo on
 context none
 register --quiet
 goto 22
-nondet_stack 3
+nondet_stack -f 3
 nondet_stack
 stack_regs
 nondet_stack -d

@@ -144,8 +144,9 @@ mdb> stack -d
    4      E4      C3    2 pred queens.queen/2-0 (nondet) (queens.m:30) c2;
    5      E1      C1    1 pred queens.main/2-0 (cc_multi) (queens.m:15) ?;c2;q!;
 mdb> stack 3
-   0    3* pred queens.qperm/2-0 (nondet) (queens.m:36 and others)
-<more stack frames snipped>
+   0    4* pred queens.qperm/2-0 (nondet) (queens.m:36 and others)
+   4       pred queens.queen/2-0 (nondet) (queens.m:30)
+   5       pred queens.main/2-0 (cc_multi) (queens.m:15)
 mdb> stack -d 3
    0     E20     C10    6 pred queens.qperm/2-0 (nondet) (queens.m:36) (empty)
    1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:40) s2;c3;

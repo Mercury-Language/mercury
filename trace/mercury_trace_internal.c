@@ -131,6 +131,13 @@ static	int			MR_scroll_limit = 24;
 static	int			MR_scroll_next = 0;
 
 /*
+** This variable controls the number of stack frame lines printed by the stack
+** and nondet_stack commands if the user doesn't override it.
+*/
+
+static	int			MR_stack_default_line_limit = 0;
+
+/*
 ** We echo each command just as it is executed iff this variable is MR_TRUE.
 */
 
@@ -436,6 +443,7 @@ static	MR_TraceCmdFunc	MR_trace_cmd_io_query;
 static	MR_TraceCmdFunc	MR_trace_cmd_printlevel;
 static	MR_TraceCmdFunc	MR_trace_cmd_mmc_options;
 static	MR_TraceCmdFunc	MR_trace_cmd_scroll;
+static	MR_TraceCmdFunc	MR_trace_cmd_stack_default_limit;
 static	MR_TraceCmdFunc	MR_trace_cmd_context;
 static	MR_TraceCmdFunc	MR_trace_cmd_goal_paths;
 static	MR_TraceCmdFunc	MR_trace_cmd_scope;
@@ -494,10 +502,10 @@ static	void	MR_trace_maybe_sync_source_window(MR_Event_Info *event_info,
 			MR_bool verbose);
 static	void	MR_trace_maybe_close_source_window(MR_bool verbose);
 
-static	void	MR_trace_cmd_stack_2(MR_Event_Info *event_info, int limit,
-			MR_bool detailed);
+static	void	MR_trace_cmd_stack_2(MR_Event_Info *event_info,	
+			MR_bool detailed, int frame_limit, int line_limit);
 static	void	MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info,
-			int limit, MR_bool detailed);
+			MR_bool detailed, int frame_limit, int line_limit);
 
 static	MR_bool	MR_trace_options_movement_cmd(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
@@ -521,7 +529,7 @@ static	MR_bool	MR_trace_options_ignore(MR_bool *ignore_errors, char ***words,
 static	MR_bool	MR_trace_options_detailed(MR_bool *detailed, char ***words,
 			int *word_count, const char *cat, const char *item);
 static	MR_bool	MR_trace_options_stack_trace(MR_bool *detailed,
-			char ***words, int *word_count,
+			int *frame_limit, char ***words, int *word_count,
 			const char *cat, const char *item);
 static	MR_bool	MR_trace_options_confirmed(MR_bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
@@ -2190,19 +2198,23 @@ MR_trace_cmd_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Code **jumpaddr)
 {
 	MR_bool			detailed;
-	int			limit;
+	int			frame_limit = 0;
+	int			line_limit = MR_stack_default_line_limit;
+	int			spec_line_limit;
 
 	detailed = MR_FALSE;
-	if (! MR_trace_options_stack_trace(&detailed, &words, &word_count,
-		"browsing", "stack"))
+	if (! MR_trace_options_stack_trace(&detailed, &frame_limit,
+		&words, &word_count, "browsing", "stack"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
-		MR_trace_cmd_stack_2(event_info, 0, detailed);
+		MR_trace_cmd_stack_2(event_info, detailed,
+			frame_limit, line_limit);
 	} else if (word_count == 2 &&
-		MR_trace_is_natural_number(words[1], &limit))
+		MR_trace_is_natural_number(words[1], &spec_line_limit))
 	{
-		MR_trace_cmd_stack_2(event_info, limit, detailed);
+		MR_trace_cmd_stack_2(event_info, detailed,
+			frame_limit, spec_line_limit);
 	} else {
 		MR_trace_usage("browsing", "stack");
 	}
@@ -2211,7 +2223,8 @@ MR_trace_cmd_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static void
-MR_trace_cmd_stack_2(MR_Event_Info *event_info, int limit, MR_bool detailed)
+MR_trace_cmd_stack_2(MR_Event_Info *event_info, MR_bool detailed,
+	int frame_limit, int line_limit)
 {
 	const MR_Label_Layout	*layout;
 	MR_Word 		*saved_regs;
@@ -2224,7 +2237,7 @@ MR_trace_cmd_stack_2(MR_Event_Info *event_info, int limit, MR_bool detailed)
 	msg = MR_dump_stack_from_layout(MR_mdb_out, layout,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
 		detailed, MR_context_position != MR_CONTEXT_NOWHERE,
-		limit, &MR_dump_stack_record_print);
+		frame_limit, line_limit, &MR_dump_stack_record_print);
 
 	if (msg != NULL) {
 		fflush(MR_mdb_out);
@@ -3078,6 +3091,48 @@ MR_trace_cmd_scroll(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static MR_Next
+MR_trace_cmd_stack_default_limit(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	int	n;
+
+	if (word_count == 2) {
+		if (MR_trace_is_natural_number(words[1], &n)) {
+			MR_stack_default_line_limit = n;
+			if (! MR_trace_internal_interacting) {
+				return KEEP_INTERACTING;
+			}
+			
+			if (MR_stack_default_line_limit > 0) {
+				fprintf(MR_mdb_out,
+					"Default stack dump size limit set to "
+					"%d.\n", MR_stack_default_line_limit);
+			} else {
+				fprintf(MR_mdb_out,
+					"Default stack dump size limit set to "
+					"none.\n");
+			}
+		} else {
+			MR_trace_usage("parameter", "stack_default_limit");
+		}
+	} else if (word_count == 1) {
+		if (MR_stack_default_line_limit > 0) {
+			fprintf(MR_mdb_out,
+				"Default stack dump size limit is %d.\n",
+				MR_stack_default_line_limit);
+		} else {
+			fprintf(MR_mdb_out,
+				"There is no default stack dump size limit.\n");
+		}
+	} else {
+		MR_trace_usage("parameter", "stack_default_limit");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
 MR_trace_cmd_context(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
@@ -3807,19 +3862,23 @@ MR_trace_cmd_nondet_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Code **jumpaddr)
 {
 	MR_bool			detailed;
-	int			limit;
+	int			frame_limit = 0;
+	int			line_limit = MR_stack_default_line_limit;
+	int			spec_line_limit;
 
 	detailed = MR_FALSE;
-	if (! MR_trace_options_stack_trace(&detailed, &words, &word_count,
-		"browsing", "nondet_stack"))
+	if (! MR_trace_options_stack_trace(&detailed, &frame_limit,
+		&words, &word_count, "browsing", "nondet_stack"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
-		MR_trace_cmd_nondet_stack_2(event_info, 0, detailed);
+		MR_trace_cmd_nondet_stack_2(event_info, detailed,
+			frame_limit, line_limit);
 	} else if (word_count == 2 &&
-		MR_trace_is_natural_number(words[1], &limit))
+		MR_trace_is_natural_number(words[1], &spec_line_limit))
 	{
-		MR_trace_cmd_nondet_stack_2(event_info, limit, detailed);
+		MR_trace_cmd_nondet_stack_2(event_info, detailed,
+			frame_limit, spec_line_limit);
 	} else {
 		MR_trace_usage("developer", "nondet_stack");
 	}
@@ -3828,8 +3887,8 @@ MR_trace_cmd_nondet_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static void
-MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info, int limit,
-	MR_bool detailed)
+MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info, MR_bool detailed,
+	int frame_limit, int line_limit)
 {
 	const MR_Label_Layout	*layout;
 	MR_Word 		*saved_regs;
@@ -3842,12 +3901,13 @@ MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info, int limit,
 		int	saved_level;
 
 		saved_level = MR_trace_current_level();
-		MR_dump_nondet_stack_from_layout(MR_mdb_out, NULL, limit,
+		MR_dump_nondet_stack_from_layout(MR_mdb_out, NULL,
+			frame_limit, line_limit,
 			MR_saved_maxfr(saved_regs), layout,
 			MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
 		MR_trace_set_level(saved_level, MR_print_optionals);
 	} else {
-		MR_dump_nondet_stack(MR_mdb_out, NULL, limit,
+		MR_dump_nondet_stack(MR_mdb_out, NULL, frame_limit, line_limit,
 			MR_saved_maxfr(saved_regs));
 	}
 }
@@ -6189,19 +6249,28 @@ MR_trace_options_detailed(MR_bool *detailed, char ***words, int *word_count,
 }
 
 static MR_bool
-MR_trace_options_stack_trace(MR_bool *detailed,
+MR_trace_options_stack_trace(MR_bool *detailed, int *frame_limit,
 	char ***words, int *word_count, const char *cat, const char *item)
 {
 	int	c;
 
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "d",
+	while ((c = MR_getopt_long(*word_count, *words, "df:",
 		MR_trace_detailed_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
 			case 'd':
 				*detailed = MR_TRUE;
+				break;
+
+			case 'f':
+				if (! MR_trace_is_natural_number(MR_optarg, 
+					frame_limit))
+				{
+					MR_trace_usage(cat, item);
+					return MR_FALSE;
+				}
 				break;
 
 			default:
@@ -7581,6 +7650,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		NULL, MR_trace_null_completer },
 	{ "parameter", "scroll", MR_trace_cmd_scroll,
 		MR_trace_on_off_args, MR_trace_null_completer },
+	{ "parameter", "stack_default_limit", MR_trace_cmd_stack_default_limit,
+		NULL, MR_trace_null_completer },
 	{ "parameter", "context", MR_trace_cmd_context,
 		MR_trace_context_cmd_args, MR_trace_null_completer },
 	{ "parameter", "goal_paths", MR_trace_cmd_goal_paths,

@@ -36,6 +36,7 @@ mmc_options          xyzzy xyzzy xyzzy xyzzy xyzzy
 printlevel           xyzzy xyzzy xyzzy xyzzy xyzzy
 echo                 xyzzy xyzzy xyzzy xyzzy xyzzy
 scroll               xyzzy xyzzy xyzzy xyzzy xyzzy
+stack_default_limit  xyzzy xyzzy xyzzy xyzzy xyzzy
 context              xyzzy xyzzy xyzzy xyzzy xyzzy
 goal_paths           xyzzy xyzzy xyzzy xyzzy xyzzy
 scope                xyzzy xyzzy xyzzy xyzzy xyzzy

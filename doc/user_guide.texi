@@ -2602,7 +2602,7 @@ the @samp{set} command.  See the documentation for @samp{set} for more details.
 @c for @samp{set} for more details.
 @sp 1
 
-@item stack [-d] [@var{num}] 
+@item stack [-d] [-f@var{numframes}] [@var{numlines}] 
 @kindex stack (mdb command)
 Prints the names of the ancestors of the call
 specified by the current event.
@@ -2615,8 +2615,11 @@ specifies that for each ancestor call,
 the call's event number, sequence number and depth should also be printed
 if the call is to a procedure that is being execution traced.
 @sp 1
-The optional number, if present,
-specifies that only the topmost @var{num} stack frames should be printed.
+If the @samp{-f} option, if present, specifies that
+only the topmost @var{numframes} stack frames should be printed.
+@sp 1
+The optional number @var{numlines}, if present,
+specifies that only the topmost @var{numlines} lines should be printed.
 @sp 1
 This command will report an error if there is no stack trace
 information available about any ancestor.
@@ -3127,6 +3130,12 @@ which should correspond to the number of lines available on the terminal.
 @item scroll
 Reports whether user scroll control is enabled and what the window size is.
 @sp 1
+@item stack_default_limit @var{size}
+@kindex stack_default_limit (mdb command)
+Set the default number of lines printed by
+the @samp{stack} and @samp{nondet_stack} commands to @var{size}.
+If @var{size} is zero, the limit is disabled.
+@sp 1
 @item context none
 @kindex context (mdb command)
 @cindex line numbers
@@ -3438,15 +3447,18 @@ prints the contents of the frames on the generator stack,
 the cut stack and the possible negated context stack.
 In other grades, it reports an error.
 @sp 1
-@item nondet_stack [-d] [@var{num}]
+@item nondet_stack [-d] [-f@var{numframes}] [@var{numlines}]
 @kindex nondet_stack (mdb command)
 Prints the contents of the frames on the nondet stack.
 By default, it prints only of the fixed slots in each nondet stack frame,
 but if the option @samp{-d} or @samp{--detailed} option is given,
 it will also print the names and values of the live variables in them.
 @sp 1
-The optional number, if present,
-specifies that only the topmost @var{num} stack frames should be printed.
+If the @samp{-f} option, if present, specifies that
+only the topmost @var{numframes} stack frames should be printed.
+@sp 1
+The optional number @var{numlines}, if present,
+specifies that only the topmost @var{numlines} lines should be printed.
 @sp 1
 @item stack_regs
 @kindex stack_regs (mdb command)

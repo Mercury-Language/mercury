@@ -3,30 +3,38 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                  disable            level              scope
-P                  document           maxdepth           scroll
-alias              document_category  mindepth           set
-all_class_decls    down               mm_stacks          source
-all_procedures     e                  mmc_options        stack
-all_regs           echo               modules            stack_regs
-all_type_ctors     enable             next               step
-b                  exception          nondet_stack       subgoal
-break              excp               p                  table
-browse             f                  pneg_stack         table_io
-c                  finish             print              term_size
-cc_query           flag               print_optionals    trust
-class_decl         forward            printlevel         trusted
-clear_histogram    g                  proc_stats         type_ctor
-consumer           gen_stack          procedures         unalias
-context            goal_paths         query              unhide_events
-continue           goto               quit               untrust
-current            h                  r                  up
-cut_stack          help               register           v
-d                  histogram_all      retry              var_details
-dd                 histogram_exp      return             var_name_stats
-dd_dd              ignore             s                  vars
-debug_vars         io_query           save               view
-delete             label_stats        save_to_file       
+?                    excp                 quit
+P                    f                    r
+alias                finish               register
+all_class_decls      flag                 retry
+all_procedures       forward              return
+all_regs             g                    s
+all_type_ctors       gen_stack            save
+b                    goal_paths           save_to_file
+break                goto                 scope
+browse               h                    scroll
+c                    help                 set
+cc_query             histogram_all        source
+class_decl           histogram_exp        stack
+clear_histogram      ignore               stack_default_limit
+consumer             io_query             stack_regs
+context              label_stats          step
+continue             level                subgoal
+current              maxdepth             table
+cut_stack            mindepth             table_io
+d                    mm_stacks            term_size
+dd                   mmc_options          trust
+dd_dd                modules              trusted
+debug_vars           next                 type_ctor
+delete               nondet_stack         unalias
+disable              p                    unhide_events
+document             pneg_stack           untrust
+document_category    print                up
+down                 print_optionals      v
+e                    printlevel           var_details
+echo                 proc_stats           var_name_stats
+enable               procedures           vars
+exception            query                view
 h              help           histogram_all  histogram_exp  
 var_details     var_name_stats  vars            view
 var_details     var_name_stats  vars            
@@ -40,7 +48,7 @@ mdb>
 p --flat D
 mdb: there is no such variable.
 mdb> 
-stack       stack_regs  
+stack                stack_default_limit  stack_regs
 stack --detailed 
    0       1       1    1 pred completion.main/2-0 (det) (completion.m:13) (empty)
 mdb> 

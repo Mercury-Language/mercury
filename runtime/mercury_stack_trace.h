@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -72,7 +72,8 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				MR_Word *det_stack_pointer,
 				MR_Word *current_frame,
 				MR_bool include_trace_data,
-				MR_bool include_contexts, int limit,
+				MR_bool include_contexts,
+				int frame_limit, int line_limit,
 				MR_Print_Stack_Record print_stack_record);
 
 /*
@@ -83,8 +84,8 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 **	The output format is not meant to be intelligible to non-implementors.
 */
 
-extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, int limit,
-			MR_Word *maxfr);
+extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
+			int frame_limit, int line_limit, MR_Word *maxfr);
 
 /*
 ** MR_dump_nondet_stack_from_layout:
@@ -95,8 +96,8 @@ extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, int limit,
 */
 
 extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
-			MR_Word *limit_addr, int limit, MR_Word *maxfr,
-			const MR_Label_Layout *label_layout,
+			MR_Word *limit_addr, int frame_limit, int line_limit,
+			MR_Word *maxfr, const MR_Label_Layout *label_layout,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
