@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1183,6 +1183,11 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
 				module_info, pred_id).
 :- mode get_pred_id(in, in, in, in, in, out) is semidet.
 
+	% Given a pred_id, return the single proc_id, aborting
+	% if there are no modes or more than one mode.
+:- pred get_proc_id(module_info, pred_id, proc_id).
+:- mode get_proc_id(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1753,15 +1758,10 @@ get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
 		error(Msg)
 
 	),
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	get_proc_id(PredicateTable, PredId, ProcId).
+	get_proc_id(ModuleInfo, PredId, ProcId).
 
-:- pred get_proc_id(predicate_table, pred_id, proc_id).
-:- mode get_proc_id(in, in, out) is det.
-
-get_proc_id(PredicateTable, PredId, ProcId) :-
-	predicate_table_get_preds(PredicateTable, Preds),
-	map__lookup(Preds, PredId, PredInfo),
+get_proc_id(ModuleInfo, PredId, ProcId) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_procids(PredInfo, ProcIds),
 	( ProcIds = [ProcId0] ->
 		ProcId = ProcId0

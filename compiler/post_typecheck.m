@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1045,9 +1045,41 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		Goal = FuncCall - GoalInfo0
 	;
 		%
+		% Is the function symbol a higher-order predicate
+		% or function constant?
+		%
+		ConsId0 = cons(Name, _),
+		type_is_higher_order(TypeOfX, PredOrFunc,
+			_EvalMethod, HOArgTypes),
+
+		%
+		% We don't do this for the clause introduced by the
+		% compiler for a field access function -- that needs
+		% to be expanded into unifications below.
+		%
+		\+ pred_info_is_field_access_function(ModuleInfo0, PredInfo0),
+
+		%
+		% Find the pred_id of the constant.
+		%
+		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
+		AllArgTypes = ArgTypes0 ++ HOArgTypes,
+		pred_info_typevarset(PredInfo0, TVarSet),
+		get_pred_id(Name, PredOrFunc, TVarSet, AllArgTypes,
+			ModuleInfo0, _PredId)
+	->
+		% Leave it alone.
+		PredInfo = PredInfo0,
+		Goal = unify(X0, functor(ConsId0, ArgVars0), Mode0,
+				Unification0, UnifyContext) - GoalInfo0
+	;
+		%
 		% Is it a call to an automatically generated field access
-		% function. This test must be after conversion of function
-		% calls into predicate calls above.
+		% function. This test must come after the tests for
+		% function calls and higher-order terms above.
+		% It's done that way because it's easier to check
+		% that the types match for functions calls and
+		% higher-order terms.
 		%
 		ConsId0 = cons(Name, Arity),
 		is_field_access_function_name(ModuleInfo0, Name, Arity,
