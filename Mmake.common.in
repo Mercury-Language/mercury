@@ -116,3 +116,6 @@ MCFLAGS	= --no-infer-all --halt-at-warn $(EXTRA_MCFLAGS)
 -include $(MERCURY_DIR)/Mmake.params
 
 #-----------------------------------------------------------------------------#
+
+# XXX as a temporary hack to get things to bootstrap, set `--no-type-layout'.
+MCFLAGS	= --no-infer-all --halt-at-warn --no-type-layout $(EXTRA_MCFLAGS)
