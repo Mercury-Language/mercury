@@ -35,4 +35,7 @@ typedef enum { MR_NORMAL_QUERY, MR_CC_QUERY, MR_IO_QUERY } MR_Query_Type;
 extern	void	MR_trace_query(MR_Query_Type type, const char *options,
 			int num_imports, /* const */ char *imports[]);
 
+extern	void	MR_trace_query_external(MR_Query_Type type, String options,
+			int num_imports, Word imports_list);
+
 #endif	/* MERCURY_TRACE_BROWSE_H */

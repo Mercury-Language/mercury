@@ -22,6 +22,12 @@
 		io__input_stream::in, io__output_stream::in,
 		state::di, state::uo) is det.
 
+% query_external/7 is the same as query/7 but for the use of the external 
+% debugger.
+:- pred query_external(query_type::in, imports::in, options::in,
+		io__input_stream::in, io__output_stream::in,
+		state::di, state::uo) is det.
+
 :- type query_type ---> normal_query ; cc_query ; io_query.
 :- type imports == list(string).
 :- type options == string.
@@ -73,6 +79,60 @@ query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout) -->
 		)
 	).
 
+
+% Type of the terms sent to the socket during an interactive query session 
+% under the control of the external debugger.
+:- type interactive_query_response 
+	--->	iq_ok
+	;	iq_imported(imports)
+	;	iq_quit
+	;	iq_eof
+	;	iq_error(string)
+	.
+
+:- pragma export(query_external(in, in, in, in, in, di, uo), 
+	"ML_query_external").
+
+query_external(QueryType, Imports, Options, SocketIn, SocketOut) -->
+	io__set_input_stream(SocketIn, OldStdin),
+	term_io__read_term(Result),
+	io__set_input_stream(OldStdin, _),
+	( { Result = eof },
+		send_term_to_socket(iq_eof, SocketOut)
+	; { Result = error(ErrorMsg, _Line) },
+		send_term_to_socket(iq_error(ErrorMsg), SocketOut),
+		query_external(QueryType, Imports, Options, SocketIn, SocketOut)
+	; { Result = term(VarSet, Term) },
+		(if { Term = term__functor(term__atom("quit"), [], _) } then
+			send_term_to_socket(iq_quit, SocketOut)
+		else if { Term = term__functor(term__atom("options"),
+				[term__functor(term__string(NewOptions),
+					[], _)], _) } then
+			send_term_to_socket(iq_ok, SocketOut),
+			query_external(QueryType, Imports, NewOptions,
+				SocketIn, SocketOut)
+		else if { term_to_list(Term, ModuleList) } then
+			{ list__append(Imports, ModuleList, NewImports) },
+			send_term_to_socket(iq_imported(NewImports), SocketOut),
+			query_external(QueryType, NewImports, Options,
+				SocketIn, SocketOut)
+		else
+			run_query(Options,
+				prog(QueryType, Imports, Term, VarSet)),
+			send_term_to_socket(iq_ok, SocketOut),
+			query_external(QueryType, Imports, Options,
+				SocketIn, SocketOut)
+		)
+	).
+
+:- pred send_term_to_socket(interactive_query_response, io__output_stream,
+	io__state, io__state).
+:- mode send_term_to_socket(in, in, di, uo) is det.
+send_term_to_socket(Term, SocketStream) -->
+	write(SocketStream, Term),
+	print(SocketStream, ".\n"),
+	flush_output(SocketStream).
+
 :- func query_prompt(query_type) = string.
 query_prompt(normal_query) = "?- ".
 query_prompt(cc_query) = "?- ".
@@ -90,12 +150,19 @@ term_to_list(term__functor(term__atom("."),
 :- mode run_query(in, in, di, uo) is det.
 run_query(Options, Program) -->
 	{ SourceFile = "query.m" },
-	write_prog_to_file(Program, SourceFile),
-	compile_file(Options, Succeeded),
-	(if { Succeeded = yes } then
-		dynamically_load_and_run
+	io__get_environment_var("MERCURY_OPTIONS", MAYBE_MERCURY_OPTIONS),
+	(if { MAYBE_MERCURY_OPTIONS = yes(MERCURY_OPTIONS) } then	
+		io__set_environment_var("MERCURY_OPTIONS", ""),
+		write_prog_to_file(Program, SourceFile),
+		compile_file(Options, Succeeded),
+		(if { Succeeded = yes } then
+			dynamically_load_and_run
+		else
+			{ true }
+		),
+		io__set_environment_var("MERCURY_OPTIONS", MERCURY_OPTIONS)
 	else
-		{ true }
+		print("Unable to unset MERCURY_OPTIONS environment variable")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -342,8 +409,9 @@ compile_file(Options, Succeeded) -->
 	invoke_system_command(Command, Succeeded0),
 	( { Succeeded0 = yes } ->
 		{ string__append_list([
-			"ml --grade ", grade_option, " ",
-			"--make-shared-lib -o libquery.so ", Options,
+			"ml --grade ", grade_option,
+			" --trace",
+			" --make-shared-lib -o libquery.so ", Options,
 			" query.o"], Command2) },
 		invoke_system_command(Command2, Succeeded)
 	;

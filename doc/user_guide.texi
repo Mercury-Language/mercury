@@ -1340,6 +1340,12 @@ even if the number and the command are not separated by white space.
 @item query @var{module1} @var{module2} @dots{}
 @itemx cc_query @var{module1} @var{module2} @dots{}
 @itemx io_query @var{module1} @var{module2} @dots{}
+
+@c This documentation has been duplicated in 
+@c Opium-M/source/interactive_queries.op so please tell me (jahier@irisa.fr)
+@c to update my documentation on interactive queries if you update this 
+@c subsection.
+
 These commands allow you to type in queries (goals) interactively
 in the debugger.  When you use one of these commands, the debugger
 will respond with a query prompt (@samp{?-} or @samp{run <--}),

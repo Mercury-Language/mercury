@@ -27,6 +27,7 @@
 #include "mercury_trace_external.h"
 #include "mercury_trace_util.h"
 #include "mercury_layout_util.h"
+#include "mercury_trace_browse.h"
 
 #include "debugger_interface.h"
 #include "std_util.h"
@@ -65,13 +66,21 @@ typedef enum {
 					 port of the current event	      */
 	MR_REQUEST_STACK         = 10,/* print the ancestors list             */
 	MR_REQUEST_NONDET_STACK  = 11,/* print the nondet stack		      */
-	MR_REQUEST_STACK_REGS    = 12 /* prints the contents of the virtual
+	MR_REQUEST_STACK_REGS    = 12,/* prints the contents of the virtual
 							   machine registers. */
+	MR_REQUEST_INTERACTIVE_QUERY_NORMAL	 
+				 = 13,/* wait for a normal interactive query  */
+	MR_REQUEST_INTERACTIVE_QUERY_CC	 
+				 = 14,/* wait for a cc interactive query      */
+	MR_REQUEST_INTERACTIVE_QUERY_IO	 
+				 = 15,/* wait for a io interactive query      */
+	MR_REQUEST_MMC_OPTIONS	 = 16 /* pass down new options to compile
+					 queries with			      */
 
 } MR_debugger_request_type;
 
-static MercuryFile MR_debugger_socket_in;
-static MercuryFile MR_debugger_socket_out;
+MercuryFile MR_debugger_socket_in;
+MercuryFile MR_debugger_socket_out;
 
 /*
 ** Use a GNU C extension to enforce static type checking
@@ -116,6 +125,10 @@ static void	MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 static void	MR_dump_stack_record_print_to_socket(FILE *fp, 
 			const MR_Stack_Layout_Entry *entry_layout, int count, 
 			int start_level, Word *base_sp, Word *base_curfr);
+static void	MR_get_list_modules_to_import(Word debugger_request, 
+			Integer *modules_list_length_ptr, Word *modules_list_ptr);
+static void	MR_get_mmc_options(Word debugger_request, 
+			String *mmc_options_ptr);
 
 #if 0
 This pseudocode should go in the debugger process:
@@ -375,6 +388,15 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Trace_Port	port = event_info->MR_trace_port;
 	const char 	*path = event_info->MR_event_path;
 	Word		*saved_regs = event_info->MR_saved_regs;
+	Integer		modules_list_length;
+	Word		modules_list;
+
+/* 
+** MR_mmc_options contains the options to pass to mmc when compiling queries.
+** We initialise it to the String "".
+*/
+	static String	MR_mmc_options;
+	MR_TRACE_CALL_MERCURY(ML_DI_init_mercury_string(&MR_mmc_options));
 
 	event_details.MR_call_seqno = MR_trace_call_seqno;
 	event_details.MR_call_depth = MR_trace_call_depth;
@@ -533,6 +555,56 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					MR_saved_maxfr(saved_regs));
 				break;
 			
+			case MR_REQUEST_INTERACTIVE_QUERY_NORMAL:
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_INTERACTIVE_QUERY"
+						"_NORMAL\n");
+				}
+				MR_get_list_modules_to_import(
+					debugger_request, &modules_list_length,
+					&modules_list);
+				MR_trace_query_external(MR_NORMAL_QUERY, 
+					MR_mmc_options, modules_list_length, 
+					modules_list);
+				break;
+
+			case MR_REQUEST_INTERACTIVE_QUERY_IO:
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_INTERACTIVE_QUERY_IO\n");
+				}
+				MR_get_list_modules_to_import(
+					debugger_request, &modules_list_length,
+					&modules_list);
+				MR_trace_query_external(MR_IO_QUERY, 
+					MR_mmc_options, modules_list_length, 
+					modules_list);
+				break;
+
+			case MR_REQUEST_INTERACTIVE_QUERY_CC:
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_INTERACTIVE_QUERY_CC\n");
+				}
+				MR_get_list_modules_to_import(
+					debugger_request, &modules_list_length,
+					&modules_list);
+				MR_trace_query_external(MR_CC_QUERY, 
+					MR_mmc_options, modules_list_length, 
+					modules_list);
+				break;
+
+			case MR_REQUEST_MMC_OPTIONS:
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_MMC_OPTIONS\n");
+				}
+				MR_get_mmc_options(debugger_request, 
+					&MR_mmc_options);
+				MR_send_message_to_socket("mmc_options_ok");
+				break;
+
 			case MR_REQUEST_NO_TRACE:
 				cmd->MR_trace_cmd = MR_CMD_TO_END;
 				return jumpaddr;
@@ -1057,6 +1129,28 @@ MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 	MR_send_message_to_socket_format("det(\"%s\").\n", 
 		MR_detism_names[entry->MR_sle_detism]);
 
+}
+
+static void
+MR_get_list_modules_to_import(Word debugger_request, 
+	Integer *modules_list_length_ptr, Word *modules_list_ptr)
+{
+	MR_TRACE_CALL_MERCURY(
+		ML_DI_get_list_modules_to_import(
+			debugger_request, 
+			modules_list_length_ptr, 
+			modules_list_ptr);
+		);
+}
+
+static void
+MR_get_mmc_options(Word debugger_request, String *mmc_options_ptr)
+{
+	MR_TRACE_CALL_MERCURY(
+		ML_DI_get_mmc_options(
+			debugger_request, 
+			mmc_options_ptr);
+		);
 }
 
 #endif /* MR_USE_EXTERNAL_DEBUGGER */

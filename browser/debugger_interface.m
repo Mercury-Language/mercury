@@ -32,6 +32,7 @@
 :- implementation.
 :- import_module io, require.
 :- import_module list, bool, std_util.
+:- import_module interactive_query.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 
@@ -160,6 +161,14 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			% something went wrong when trying to get the
 			% next request
 	;	error(string)
+			% to type interactive queries
+	;	query(imports)
+			% to type cc interactive queries
+	;	cc_query(imports)
+			% to type interactive queries that perform io
+	;	io_query(imports)
+			% options to compile queries with
+	;	mmc_options(options)
 	.
 
 :- type event_number == int.
@@ -513,6 +522,58 @@ read_request_from_socket(SocketStream, Request, RequestType) -->
 	***********/
 
 
+%-----------------------------------------------------------------------------%
+
+:- pred get_list_modules_to_import(debugger_request, int, imports).
+:- mode get_list_modules_to_import(in, out, out) is det.
+
+:- pragma export(get_list_modules_to_import(in, out, out),
+		"ML_DI_get_list_modules_to_import").
+
+get_list_modules_to_import(DebuggerRequest, ListLength, ModulesList) :-
+	(
+		DebuggerRequest = query(List)
+	->
+		ModulesList = List
+	;
+		DebuggerRequest = cc_query(List)
+	->
+		ModulesList = List
+	;
+		DebuggerRequest = io_query(List)
+	->
+		ModulesList = List
+	;
+		error("get_list_modules_to_import: not a query request")
+	),
+	length(ModulesList, ListLength).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_mmc_options(debugger_request, options).
+:- mode get_mmc_options(in, out) is det.
+
+:- pragma export(get_mmc_options(in, out), "ML_DI_get_mmc_options").
+
+get_mmc_options(DebuggerRequest, Options) :-
+	(
+		DebuggerRequest = mmc_options(Options1)
+	->
+		Options = Options1
+	;
+		error("get_mmc_options: not a mmc_options request")
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred init_mercury_string(string).
+:- mode init_mercury_string(out) is det.
+
+:- pragma export(init_mercury_string(out), "ML_DI_init_mercury_string").
+
+init_mercury_string("").
+
+%------------------------------------------------------------------------------%
 
 :- pred classify_request(debugger_request, int).
 :- mode classify_request(in, out) is det.
@@ -533,6 +594,10 @@ classify_request(retry, 9).
 classify_request(stack, 10).
 classify_request(nondet_stack, 11).
 classify_request(stack_regs, 12).
+classify_request(query(_),13).
+classify_request(cc_query(_),14).
+classify_request(io_query(_),15).
+classify_request(mmc_options(_),16).
 
 
 %-----------------------------------------------------------------------------%

@@ -14,6 +14,13 @@ extern	void	MR_trace_final_external(void);
 extern	Code   *MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info);
 
+/*
+** External debugger socket streams.
+*/
+
+extern MercuryFile MR_debugger_socket_in;
+extern MercuryFile MR_debugger_socket_out;
+
 #endif	/* MR_USE_EXTERNAL_DEBUGGER */
 
 #endif	/* MERCURY_TRACE_EXTERNAL_H */

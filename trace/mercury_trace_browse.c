@@ -29,6 +29,7 @@
 #include "browse.h"
 #include "interactive_query.h"
 #include "std_util.h"
+#include "mercury_trace_external.h"
 #include <stdio.h>
 
 static	Word		MR_trace_browser_state;
@@ -129,5 +130,16 @@ MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 	MR_TRACE_CALL_MERCURY(
 		ML_query(type, imports_list, (String) options_on_heap,
 			(Word) &mdb_in, (Word) &mdb_out);
+	);
+}
+
+void
+MR_trace_query_external(MR_Query_Type type, String options, int num_imports,
+	Word imports_list)
+{
+	MR_TRACE_CALL_MERCURY(
+		ML_query_external(type, imports_list,  options,
+			(Word) &MR_debugger_socket_in, 
+			(Word) &MR_debugger_socket_out);
 	);
 }
