@@ -19,7 +19,6 @@ PROGS=		array_test \
 		commit_bug \
 		commit_bug_2 \
 		disj_disj \
-		dnf \
 		hello_again \
 		interpreter \
 		nasty_nondet \
@@ -61,7 +60,9 @@ PROGS=		array_test \
 		unreachable 
 
 # space.m does not work, due to an unfixed bug in code generation.
-NOT_WORKING =	space
+# dnf.m does not work in non-gc grades, because it uses `pragma memo'
+# (i.e. tabling) and tabling is not yet implemented for non-gc grades.
+NOT_WORKING =	space dnf
 
 # mode_inf and mode_inf_bug need to be compiled with `--infer-all'.
 MCFLAGS-mode_inf = --infer-all
