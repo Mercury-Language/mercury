@@ -324,8 +324,10 @@ mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
 		% and then recurse
 		mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 		ConsId = cons(FunctorName, 1),
-		get_arg_inst(InitialInst, ModuleInfo, ConsId, InitialArgInst),
-		get_arg_inst(FinalInst, ModuleInfo, ConsId, FinalArgInst),
+		get_single_arg_inst(InitialInst, ModuleInfo, ConsId,
+			InitialArgInst),
+		get_single_arg_inst(FinalInst, ModuleInfo, ConsId,
+			FinalArgInst),
 		ModeOfArg = (InitialArgInst -> FinalArgInst),
 		mode_to_arg_mode(ModuleInfo, ModeOfArg, ArgType, ArgMode)
 	;
@@ -346,44 +348,44 @@ mode_to_arg_mode_2(ModuleInfo, Mode, ArgMode) :-
 
 %-----------------------------------------------------------------------------%
 
-	% get_arg_inst(Inst, ConsId, Arity, ArgInsts):
+	% get_single_arg_inst(Inst, ConsId, Arity, ArgInsts):
 	% Given an inst `Inst', figure out what the inst of the
 	% argument would be, assuming that the functor is
 	% the one given by the specified ConsId, whose arity is 1.
 	%
-:- pred get_arg_inst(inst, module_info, cons_id, inst).
-:- mode get_arg_inst(in, in, in, out) is det.
+:- pred get_single_arg_inst(inst, module_info, cons_id, inst).
+:- mode get_single_arg_inst(in, in, in, out) is det.
 
-get_arg_inst(defined_inst(InstName), ModuleInfo, ConsId, ArgInst) :-
+get_single_arg_inst(defined_inst(InstName), ModuleInfo, ConsId, ArgInst) :-
 	inst_lookup(ModuleInfo, InstName, Inst),
-	get_arg_inst(Inst, ModuleInfo, ConsId, ArgInst).
-get_arg_inst(not_reached, _, _, not_reached).
-get_arg_inst(ground(Uniq, _PredInst), _, _, ground(Uniq, no)).
-get_arg_inst(bound(_Uniq, List), _, ConsId, ArgInst) :-
-	( get_arg_inst_2(List, ConsId, ArgInst0) ->
+	get_single_arg_inst(Inst, ModuleInfo, ConsId, ArgInst).
+get_single_arg_inst(not_reached, _, _, not_reached).
+get_single_arg_inst(ground(Uniq, _PredInst), _, _, ground(Uniq, no)).
+get_single_arg_inst(bound(_Uniq, List), _, ConsId, ArgInst) :-
+	( get_single_arg_inst_2(List, ConsId, ArgInst0) ->
 		ArgInst = ArgInst0
 	;
 		% the code is unreachable
 		ArgInst = not_reached
 	).
-get_arg_inst(free, _, _, free).
-get_arg_inst(free(_Type), _, _, free).
-get_arg_inst(any(Uniq), _, _, any(Uniq)).
-get_arg_inst(abstract_inst(_, _), _, _, _) :-
-	error("get_arg_inst: abstract insts not supported").
-get_arg_inst(inst_var(_), _, _, _) :-
-	error("get_arg_inst: inst_var").
+get_single_arg_inst(free, _, _, free).
+get_single_arg_inst(free(_Type), _, _, free).
+get_single_arg_inst(any(Uniq), _, _, any(Uniq)).
+get_single_arg_inst(abstract_inst(_, _), _, _, _) :-
+	error("get_single_arg_inst: abstract insts not supported").
+get_single_arg_inst(inst_var(_), _, _, _) :-
+	error("get_single_arg_inst: inst_var").
 
-:- pred get_arg_inst_2(list(bound_inst), cons_id, inst).
-:- mode get_arg_inst_2(in, in, out) is semidet.
+:- pred get_single_arg_inst_2(list(bound_inst), cons_id, inst).
+:- mode get_single_arg_inst_2(in, in, out) is semidet.
 
-get_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
+get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
 	(
 		BoundInst = functor(ConsId, [ArgInst0])
 	->
 		ArgInst = ArgInst0
 	;
-		get_arg_inst_2(BoundInsts, ConsId, ArgInst)
+		get_single_arg_inst_2(BoundInsts, ConsId, ArgInst)
 	).
 
 %-----------------------------------------------------------------------------%
