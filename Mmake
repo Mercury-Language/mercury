@@ -144,11 +144,12 @@ Mmake.common: Mmake.common.in config.status
 tar:
 	touch Mmake.params
 	cd util && mmake
-	cd runtime && $(SUBDIR_MMAKE) cs
+	cd runtime && $(SUBDIR_MMAKE) cs runtime.init
 	cd library && $(SUBDIR_MMAKE) depend
-	cd library && $(SUBDIR_MMAKE) ints cs
+	cd library && $(SUBDIR_MMAKE) ints cs library.init
 	cd compiler && $(SUBDIR_MMAKE) depend
 	cd compiler && $(SUBDIR_MMAKE) ints cs tags
+	cd profiler && $(SUBDIR_MMAKE) depend
 	cd profiler && $(SUBDIR_MMAKE) ints cs tags
 	cd library && $(SUBDIR_MMAKE) tags
 	cd doc && $(SUBDIR_MMAKE) info html dvi
