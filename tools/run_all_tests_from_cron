@@ -112,6 +112,13 @@ case "$BRANCH" in
         ;;
 esac
 
+# While we are preparing for the release, test the release branch
+# intensively -- only test the main branch on one host (the ROTD host).
+case $HOST in
+earth)	;;
+*)	BRANCH=$release_branch ;;
+esac
+
 #-----------------------------------------------------------------------------#
 
 echo run_test $HOST $C_COMPILER
