@@ -685,7 +685,8 @@ unify_proc__build_call(Name, ArgVars, Goal) -->
 	{ ModeId = 0 },
 	{ map__init(Follow) },
 	{ term__var_list_to_term_list(ArgVars, Args) },
-	{ Call = call(IndexPredId, ModeId, Args, not_builtin,
+	{ is_builtin__make_builtin(no, no, Builtin) },
+	{ Call = call(IndexPredId, ModeId, Args, Builtin,
 			unqualified(Name), Follow) },
 	{ goal_info_init(GoalInfo) },
 	{ Goal = Call - GoalInfo }.
