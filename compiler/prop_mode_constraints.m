@@ -12,37 +12,39 @@
 % structures intended for a propagation solver. It deals only with the
 % simple constraint system, described in the paper "Constraint-based
 % mode analysis of Mercury" by David Overton, Zoltan Somogyi and Peter
-% Stuckey. XXX That paper is the main documentation of the concepts
+% Stuckey.
+%
+% XXX That paper is the main documentation of the concepts
 % behind the algorithm as well as the algorithm itself.
 %
+%-----------------------------------------------------------------------------%
 
 :- module check_hlds.prop_mode_constraints.
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module check_hlds.build_mode_constraints.
 :- import_module check_hlds.abstract_mode_constraints.
+:- import_module check_hlds.build_mode_constraints.
+
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module list, map, io.
 
+:- import_module io.
+:- import_module list.
+:- import_module map.
 
-
+%-----------------------------------------------------------------------------%
 
 	% This predicate adds to the pred_constraints_map the mode
 	% declaration and goal constraints for each of the predicates in
-	% the provided scc. Any required constraint variables are added
+	% the provided SCC.  Any required constraint variables are added
 	% to the mc_varset and mc_var_map. Calls to predicates with no
 	% mode declaration require head variable constraint variables,
 	% so these are produced first for all preds in the SCC before
 	% goal constraints.
 	%
-:- pred process_scc(
-	module_info::in, list(pred_id)::in,
-	mc_varset::in, mc_varset::out,
-	mc_var_map::in, mc_var_map::out,
-	pred_constraints_map::in, pred_constraints_map::out
-	) is det.
-
+:- pred process_scc(module_info::in, list(pred_id)::in,
+	mc_varset::in, mc_varset::out, mc_var_map::in, mc_var_map::out,
+	pred_constraints_map::in, pred_constraints_map::out) is det.
 
 	% Storing constraints by predicate.
 	%
@@ -52,45 +54,46 @@
 	% information in the pred_constraints_map, indicating which
 	% predicate each set of constraints applies to.
 	%
-:- pred pretty_print_pred_constraints_map(
-	module_info::in,
-	mc_varset::in,
-	pred_constraints_map::in,
-	io::di, io::uo
-	) is det.
+:- pred pretty_print_pred_constraints_map(module_info::in, mc_varset::in,
+	pred_constraints_map::in, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module check_hlds.goal_path.
+:- import_module check_hlds.mode_constraint_robdd.
+:- import_module check_hlds.mode_ordering.
+:- import_module check_hlds.mode_util.
 
-:- import_module check_hlds__goal_path.
-:- import_module check_hlds__mode_constraint_robdd.
-:- import_module check_hlds__mode_ordering.
-:- import_module check_hlds__mode_util.
-:- import_module hlds__hhf.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__inst_graph.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
+:- import_module hlds.hhf.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.inst_graph.
+:- import_module hlds.passes_aux.
+
+:- import_module libs.globals.
+:- import_module libs.options.
+
 :- import_module mode_robdd.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_mode.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.modules.
-:- import_module transform_hlds__dependency_graph.
+:- import_module transform_hlds.dependency_graph.
 
-:- import_module map, std_util, bool, set, multi_map, require, int.
+:- import_module std_util, bool, set, multi_map, require, int.
 :- import_module robdd, term, string, assoc_list, sparse_bitset.
 :- import_module bimap, varset, term_io.
-:- import_module gc.
+:- import_module svmap.
+
+%-----------------------------------------------------------------------------%
 
 process_scc(ModuleInfo, SCC0, !Varset, !VarMap, !Constraints) :-
 		% Process only predicates from this module
 	list.filter(
-		(pred(PredID::in) is semidet :-
-			module_info_pred_info(ModuleInfo, PredID, PredInfo),
+		(pred(PredId::in) is semidet :-
+			module_info_pred_info(ModuleInfo, PredId, PredInfo),
 			(	pred_info_is_imported(PredInfo)
 			;	pred_info_is_pseudo_imported(PredInfo)
 			)
@@ -108,11 +111,7 @@ process_scc(ModuleInfo, SCC0, !Varset, !VarMap, !Constraints) :-
 
 		% Now go through the SCC and add the constraint
 		% variables and then constraints predicate by predicate
-	foldl3(process_pred(ModuleInfo), SCC, !Varset, !VarMap, !Constraints).
-
-
-
-
+	list.foldl3(process_pred(ModuleInfo), SCC, !Varset, !VarMap, !Constraints).
 
 	% Performs a number of tasks for one predicate:
 	% 	1) Fills out the goal_path information in the
@@ -123,43 +122,32 @@ process_scc(ModuleInfo, SCC0, !Varset, !VarMap, !Constraints) :-
 	% 	3) Adds mode declaration constraints
 	% 	4) Adds goal constraints
 	% 
-	% Note: It relies on the head variables for any predicate
+	% NOTE: it relies on the head variables for any predicate
 	% without mode declarations that is called to have the
 	% constraint variables corresponding to [] to already be in the
 	% mc_var_map
 	%
 :- pred process_pred(module_info::in, pred_id::in,
-	mc_varset::in, mc_varset::out,
-	mc_var_map::in, mc_var_map::out,
-	pred_constraints_map::in, pred_constraints_map::out
-	) is det.
+	mc_varset::in, mc_varset::out, mc_var_map::in, mc_var_map::out,
+	pred_constraints_map::in, pred_constraints_map::out) is det.
 
-
-process_pred(ModuleInfo, PredID, !Varset, !VarMap, !Constraints) :-
-	module_info_pred_info(ModuleInfo, PredID, PredInfo),
-	process_pred(
-		ModuleInfo,
-		PredID,
-		PredInfo,
-		!Varset,
-		!VarMap,
-		!Constraints
-	).
+process_pred(ModuleInfo, PredId, !Varset, !VarMap, !Constraints) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	process_pred(ModuleInfo, PredId, PredInfo, !Varset, !VarMap,
+		!Constraints).
 
 	% The working part of process_pred/8 - just with the pred_info
 	% unpacked from the module_info
 	%
 :- pred process_pred(module_info::in, pred_id::in, pred_info::in,
-	mc_varset::in, mc_varset::out,
-	mc_var_map::in, mc_var_map::out,
-	pred_constraints_map::in, pred_constraints_map::out
-	) is det.
+	mc_varset::in, mc_varset::out, mc_var_map::in, mc_var_map::out,
+	pred_constraints_map::in, pred_constraints_map::out) is det.
 
-process_pred(ModuleInfo, PredID, PredInfo0, !Varset, !VarMap, !Constraints) :-
+process_pred(ModuleInfo, PredId, PredInfo0, !Varset, !VarMap, !Constraints) :-
 
 		% XXX Currently the constraints simply say that if a
 		% variable is bound at a disjunct it is bound at the
-		% disjuction by making the relevant variables
+		% disjunction by making the relevant variables
 		% equivalent. Setting GoalPathOptimisation to yes will
 		% cause the disjucts to be given the same path as the
 		% disjunction, so that the relevant constraint variables
@@ -183,23 +171,16 @@ process_pred(ModuleInfo, PredID, PredInfo0, !Varset, !VarMap, !Constraints) :-
 	clauses_info_headvars(ClausesInfo, HeadVars),
 	clauses_info_clauses(ClausesInfo, Clauses),
 	clauses_info_varset(ClausesInfo, ProgVarset),
-	Goals = list.map(
-		func(clause(_, ClauseBody, _, _)) = ClauseBody,
-		Clauses
-	),
+	Goals = list.map((func(clause(_, ClauseBody, _, _)) = ClauseBody),
+		Clauses),
 
 		% Here build goal constraint vars.
-	foldl2(
-		add_mc_vars_for_goal(PredID, ProgVarset),
-		Goals,
-		!Varset,
-		!VarMap
-	),
+	list.foldl2(add_mc_vars_for_goal(PredId, ProgVarset),
+		Goals, !Varset, !VarMap),
 
 		% Here check for mode declarations and add apppropriate
 		% constraints.
 	map.values(ProcTable, ProcInfos),
-
 	
 	list.filter_map(
 		(pred(ProcInfo::in, (ProcHVars - ArgModes)::out) is semidet :-
@@ -218,30 +199,28 @@ process_pred(ModuleInfo, PredID, PredInfo0, !Varset, !VarMap, !Constraints) :-
 		),
 		ProcInfos,
 		HeadVarArgModesPairs
-	),	% Pair up the any existing arg mode declarations with
-		% their corresponding head variables from the
-		% proc_info's.
-
-	(	HeadVarArgModesPairs = [],
-			% No declared modes, no constraints
+	),
+	%
+	% Pair up the any existing arg mode declarations with
+	% their corresponding head variables from the proc_infos.
+	%
+	(
+		HeadVarArgModesPairs = [], % No declared modes, no constraints
 		ModeDeclConstraints = []
-	;	HeadVarArgModesPairs = [_|_],	% Some declared modes
-		mode_decls_constraints(
-			ModuleInfo,
-			!.VarMap,
-			PredID,
+	;	
+		HeadVarArgModesPairs = [_|_],	% Some declared modes
+		mode_decls_constraints(ModuleInfo, !.VarMap, PredId,
 			list.map(snd, HeadVarArgModesPairs),
 			list.map(fst, HeadVarArgModesPairs),
-			ModeDeclConstraints
-		)
+			ModeDeclConstraints)
 	),
-
-
-		% This builds the constraints for this predicate. Note
-		% that the main goal may need to be temporarily formed
-		% by putting clauses into a disjunction. The goal paths
-		% added by goal_path.fill_slots_in_clauses reflect this
-		% disjunction.
+	%
+	% This builds the constraints for this predicate. Note
+	% that the main goal may need to be temporarily formed
+	% by putting clauses into a disjunction. The goal paths
+	% added by goal_path.fill_slots_in_clauses reflect this
+	% disjunction.
+	%
 	(
 		Goals = [],
 		GoalConstraints = []
@@ -252,16 +231,11 @@ process_pred(ModuleInfo, PredID, PredInfo0, !Varset, !VarMap, !Constraints) :-
 		MainGoal = disj(Goals),
 		MainGoalPath = [],
 		Nonlocals = set.list_to_set(HeadVars),
-		goal_expr_constraints(
-			ModuleInfo, !.VarMap, PredID, MainGoal,
-			MainGoalPath, Nonlocals, GoalConstraints
-		)
+		goal_expr_constraints(ModuleInfo, !.VarMap, PredId, MainGoal,
+			MainGoalPath, Nonlocals, GoalConstraints)
 	),
 	PredConstraints = list.append(ModeDeclConstraints, GoalConstraints),
-	map.det_insert(!.Constraints, PredID, PredConstraints, !:Constraints).
-
-
-
+	svmap.det_insert(PredId, PredConstraints, !Constraints).
 
 	% Put the constraints to the current output stream in human
 	% readable format. It titles each pred's constraints with a
@@ -281,21 +255,17 @@ pretty_print_pred_constraints_map(
 		!IO
 	).
 
-
-
 	% Puts the constraints for the specified predicate from the
 	% pred_constraints_map to the current output stream in human
 	% readable format.
 	%
-:- pred pretty_print_pred_constraints(
-	module_info::in, mc_varset::in, pred_constraints_map::in,
-	pred_id::in, io::di, io::uo
-	) is det.
+:- pred pretty_print_pred_constraints(module_info::in, mc_varset::in,
+	pred_constraints_map::in, pred_id::in, io::di, io::uo) is det.
 
-pretty_print_pred_constraints(
-	ModuleInfo, ConstraintVarset, PredConstraintsMap, PredID, !IO) :-
-	io.print("\nConstraints for pred ", !IO),
-	hlds_module.module_info_pred_info(ModuleInfo, PredID, PredInfo),
+pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
+		PredConstraintsMap, PredId, !IO) :-
+	io.write_string("\nConstraints for pred ", !IO),
+	hlds_module.module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	ModuleName = hlds_pred.pred_info_module(PredInfo),
 	PredName = hlds_pred.pred_info_name(PredInfo),
 	CreateDirectories = no,
@@ -304,16 +274,12 @@ pretty_print_pred_constraints(
 		CreateDirectories,
 		FullPredNameString, !IO
 	),
-	io.print(FullPredNameString, !IO),
-	io.print(":\n", !IO),
+	io.write_string(FullPredNameString ++ ":\n", !IO),
 
-	map.lookup(
-		PredConstraintsMap,
-		PredID,
-		PredConstraints
-	),
-	abstract_mode_constraints.pretty_print_constraints(
-		ConstraintVarset,
-		PredConstraints,
-		!IO
-	).
+	map.lookup(PredConstraintsMap, PredId, PredConstraints),
+	abstract_mode_constraints.pretty_print_constraints(ConstraintVarset,
+		PredConstraints, !IO).
+
+%----------------------------------------------------------------------------%
+:- end_module prop_mode_constraints.
+%----------------------------------------------------------------------------%

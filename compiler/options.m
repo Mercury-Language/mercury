@@ -1524,6 +1524,7 @@ long_option("generate-schemas",		generate_schemas).
 long_option("mode-constraints",		mode_constraints).
 long_option("simple-mode-constraints",	simple_mode_constraints).
 long_option("prop-mode-constraints",	prop_mode_constraints).
+long_option("propagate-mode-constraints", prop_mode_constraints).
 long_option("benchmark-modes",		benchmark_modes).
 long_option("benchmark-modes-repeat",	benchmark_modes_repeat).
 
