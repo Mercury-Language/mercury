@@ -19,8 +19,17 @@ DIFF_OPTS=-c
 
 %_init.c: Entry
 
+#
+# If there is a `.inp' file, then we pipe that in as the command's input.
+# Then we run the command, with stdout and stderr both redirected to the 
+# `.out' file.  Finally if the command fails (returns non-zero exit status),
+# we print out the contents of the `.out' file.  We use `grep . $@ /dev/null'
+# to print out the contents, because that precedes each line of output with
+# the filename, which is helpful when running a parallel make.
+#
 %.out: %
-	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
+	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
+		{ grep . $@ /dev/null; exit 1; }
 
 #
 # For some test cases, there is more than one valid output.
