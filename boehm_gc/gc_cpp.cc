@@ -48,7 +48,7 @@ void* operator new( size_t size,
 #endif
 
 #ifdef OPERATOR_NEW_ARRAY
-# ifdef _MSC_VER
+# ifndef _MSC_VER
 
 void* operator new[]( size_t size ) {
     return GC_MALLOC_UNCOLLECTABLE( size );}
