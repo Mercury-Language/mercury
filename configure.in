@@ -2782,12 +2782,14 @@ case "$host" in
 		AC_MSG_RESULT(disabled for now because it is untested)
 
 		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
 		;;
 	*)
 		# CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating
 		# libgc.a.  If the system doesn't support shared libraries,
 		# then we should set it to empty, not `-fpic'.
 		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
 		AC_MSG_RESULT(no)
 		;;
 esac
