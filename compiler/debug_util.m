@@ -1,5 +1,12 @@
 :- module debug_util.
 
+% main author: ksiew
+
+% This module is mostly junk;
+% it contains miscellaneous utility predicates used by debugger.m.
+% We should probably throw both it and debugger.m away.
+%	- fjh.
+
 :- interface.
 :- import_module hlds, io.
 

@@ -1,5 +1,13 @@
 :- module debugger.
 
+% main author: ksiew
+
+% This module is mostly junk;
+% it contains an (unfinished) debugger which works by
+% interpreting the HLDS.
+% We should probably throw both it and debug_util.m away.
+%	- fjh.
+
 :- interface.
 :- import_module hlds, io.
 
