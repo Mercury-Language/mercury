@@ -188,7 +188,7 @@ do
 		then
 			echo bootcheck succeeded > batch/$batch.out.$visn
 		fi
-		mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
+		cp stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
 		size batch/$batch.mercury_compile.$visn | tail -1 | sed -e 's/mercury_compile.//' | sed -e 's/batch\///' >> batch/$batch.sizes
 		/bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
 		gzip batch/$batch.mercury_compile.$visn
@@ -200,7 +200,7 @@ do
 		if test -x stage2/compiler/mercury_compile
 		then
 			echo bootcheck of version $visn failed but produced compiler
-			mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
+			cp stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
 			size batch/$batch.mercury_compile.$visn | tail -1 | sed -e 's/mercury_compile.//' | sed -e 's/batch\///' >> batch/$batch.sizes
 			/bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
 			gzip batch/$batch.mercury_compile.$visn
