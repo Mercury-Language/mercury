@@ -496,6 +496,6 @@ realclean_subdirs: clean_subdirs
 
 .PHONY: realclean_config
 realclean_config:
-	rm -f config.cache config.status config.log
+	rm -f config.cache config.status config.log configure.log
 
 #-----------------------------------------------------------------------------#
