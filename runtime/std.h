@@ -7,6 +7,8 @@
 #ifndef STD_H
 #define STD_H
 
+#include <stdlib.h>	/* for size_t */
+
 /*
 **	Standard definitions for C
 */
