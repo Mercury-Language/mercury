@@ -11,6 +11,7 @@
 #include "mercury_types.h"		/* for MR_Word, etc. */
 #include "mercury_stack_layout.h"	/* for MR_Label_Layout, etc. */
 #include "mercury_type_info.h"		/* for MR_TypeInfoParams, etc. */
+#include "mercury_ho_call.h"		/* for MR_Closure */
 
 /*
 ** These two functions copy the register state to and from the provided
@@ -37,8 +38,8 @@ extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 ** index zero will not have a type_info in it.  We store a dummy type_ctor_info
 ** there, so that the array will itself look like a typeinfo.
 ** 
-** The vector returned by MR_materialize_typeinfos is from malloc;
-** it should be freed after last use.
+** The vector returned by MR_materialize_typeinfos is from MR_malloc;
+** it should be MR_freed after last use.
 **
 ** MR_materialize_typeinfos looks up locations in the current
 ** environment, as indicated by the set of saved registers (including MR_sp
@@ -46,6 +47,11 @@ extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 ** assumes the environment is given by the given values of MR_sp and MR_curfr,
 ** and does not assume that the registers have valid contents unless saved_regs
 ** is non-null.
+**
+** MR_materialize_closure_typeinfos does much the same except that
+** it takes an MR_Closure rather than an MR_Label_Layout,
+** and it gets the type_infos from a closure using the closure_layout,
+** rather than getting them from the registers/stacks using a label_layout.
 */ 
 
 extern	MR_TypeInfoParams	MR_materialize_typeinfos(
@@ -55,6 +61,10 @@ extern	MR_TypeInfoParams	MR_materialize_typeinfos_base(
 					const MR_Label_Layout *label_layout,
 					MR_Word *saved_regs,
 					MR_Word *base_sp, MR_Word *base_curfr);
+extern	MR_TypeInfoParams	MR_materialize_closure_typeinfos(
+					const MR_Type_Param_Locns *tvar_locns,
+					MR_Closure *closure);
+
 
 /*
 ** If the given encoded location refers to a register, return its number.

@@ -452,9 +452,14 @@ try_again:
                 new_closure->MR_closure_layout = closure_layout;
                 new_closure->MR_closure_num_hidden_args = args;
                 new_closure->MR_closure_code = old_closure->MR_closure_code;
+			
+		/*
+		** Fill in the pseudo_typeinfos in the closure layout
+		** with the values from the closure.
+		*/
+                type_info_arg_vector = MR_materialize_closure_typeinfos(
+		    closure_layout->type_params, old_closure);
 
-                type_info_arg_vector =
-                    MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info);
                 /* copy the arguments */
                 for (i = 0; i < args; i++) {
                     MR_PseudoTypeInfo arg_pseudo_type_info;
@@ -471,6 +476,9 @@ try_again:
                             type_info_arg_vector, arg_pseudo_type_info,
                             lower_limit, upper_limit);
                 }
+		if (type_info_arg_vector) {
+		    MR_free(type_info_arg_vector);
+		}
 
                 new_data = (MR_Word) new_closure;
                 leave_forwarding_pointer(data_ptr, new_data);
