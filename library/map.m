@@ -89,6 +89,12 @@
 :- pred map__remove(map(K,V), K, V, map(K,V)).
 :- mode map__remove(in, in, out, out) is semidet.
 
+	% Count the number of elements in the map.
+:- pred map__count(map(K, V), int).
+:- mode map__count(in, out) is det.
+
+	% Convert a pair of lists (which must be of the same length)
+	% to a map.
 :- pred map__from_corresponding_lists(list(K), list(V), map(K, V)).
 :- mode map__from_corresponding_lists(in, in, out) is det.
 
@@ -104,9 +110,15 @@
 :- pred map__overlay(map(K,V), map(K,V), map(K,V)).
 :- mode map__overlay(in, in, out) is det.
 
+	% Given a list of keys, produce a list of their corresponding
+	% values in a specified map.
 :- pred map__apply_to_list(list(K), map(K, V), list(V)).
 :- mode map__apply_to_list(in, in, out) is det.
 
+	% Declaratively, a NOP.
+	% Operationally, a suggestion that the implemention
+	% optimize the representation of the map in the expectation
+	% of a number of lookups but few or no modifications.
 :- pred map__optimize(map(K, V), map(K, V)).
 :- mode map__optimize(in, out) is det.
 
@@ -176,6 +188,9 @@ map__delete(Map0, Key, Map) :-
 
 map__remove(Map0, Key, Value, Map) :-
 	bintree__remove(Map0, Key, Value, Map).
+
+map__count(Map, Count) :-
+	bintree__count(Map, Count).
 
 %-----------------------------------------------------------------------------%
 
