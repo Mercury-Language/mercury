@@ -5,11 +5,11 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 
-# MOD2INIT - Convert *.mod (or *.c) to *_init.c
+# C2INIT - Convert *.c to *_init.c
 #
-# This script outputs an appropriate init.c, given the .mod (or .c) files.
+# This script outputs an appropriate init.c, given the .c files.
 #
-# Usage: mod2init [-w<entry_point>] modules...
+# Usage: c2init [-w<entry-point>] [-c<maxcalls>] modules...
 #
 # Environment variables: MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS.
 
