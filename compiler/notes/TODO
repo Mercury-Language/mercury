@@ -45,8 +45,6 @@ other
 
 - fix all the XXX's and %%%'s.
 
-- map.nl: reimplement using bintree.nl or array.nl.
-
 - write a pass over hlds to recognize the builtin predicates,
   including arithmetic predicates such as "+" and arithmetic tests
   such as "<", and ensure that codegen outputs the correct code
