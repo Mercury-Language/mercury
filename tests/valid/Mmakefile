@@ -242,13 +242,23 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 OS_SUBDIR=
 RLOS_SUBDIR=
 ILS_SUBDIR=
+DLLS_SUBDIR=
 else
 OS_SUBDIR=$(os_subdir)
 RLOS_SUBDIR=$(rlos_subdir)
 ILS_SUBDIR=$(ils_subdir)
+DLLS_SUBDIR=$(dlls_subdir)
 endif
 
-OBJS =	$(OBJ_PROGS:%=$(OS_SUBDIR)%.$O) \
+
+ifeq ($(findstring il,$(GRADE)),il)
+	TARGET_OBJ_EXT=dll
+	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
+else
+	TARGET_OBJ_EXT=$(O)
+	TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
+endif
+OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
 		$(ALL_RLO_PROGS:%=$(RLOS_SUBDIR)%.rlo) \
 		$(IL_PROGS:%=$(ILS_SUBDIR)%.il)
 
@@ -276,7 +286,7 @@ export GRADEFLAGS_TRAIL
 # can be found by `mmc --make'.
 include Mercury.options
 
-$(OBJ_PROGS:%=%.runtest): %.runtest: %.$O ;
+$(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 
 $(ALL_RLO_PROGS:%=%.runtest): %.runtest: %.rlo ;
 
