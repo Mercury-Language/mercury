@@ -27,6 +27,9 @@ while true; do
 		shift
 		GRADE="$1"
 		shift ;;
+	--)
+		shift
+		break ;;
 	-static)
 		break ;;
 	-s*)
