@@ -956,8 +956,6 @@ inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions) :-
 
 :- inst_matches_initial_3(InstA, InstB, _, _) when InstA and InstB. % Indexing.
 
-	% inst_matches_initial_3(InstA, InstB, ModuleInfo, Expansions)
-	% is true iff `InstA' is at least as instantiated as `InstB'.
 	% To avoid infinite regress, we assume that
 	% inst_matches_initial is true for any pairs of insts which
 	% occur in Expansions.
@@ -970,7 +968,15 @@ inst_matches_initial_3(bound(List), ground, ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
 inst_matches_initial_3(bound(List), abstract_inst(_,_), ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
-inst_matches_initial_3(ground, Inst, _, _) :- Inst \= not_reached.
+inst_matches_initial_3(ground, free, _, _).
+inst_matches_initial_3(ground, bound(_List), _, _ModuleInfo) :-
+	true.	% XXX BUG! should fail if 
+		% and List does not include all the constructors for the type.
+		% or if List contains some not_reached insts.
+inst_matches_initial_3(ground, ground, _, _).
+inst_matches_initial_3(ground, abstract_inst(_,_), _, _) :-
+		% I don't know what this should do.
+	error("inst_matches_initial(ground, abstract_inst) == ??").
 inst_matches_initial_3(abstract_inst(_,_), free, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				ModuleInfo, Expansions) :-

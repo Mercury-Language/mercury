@@ -74,23 +74,23 @@
 
 % Inequality.
 
-:- pred T \= T.
-:- mode input \= input.
+:- pred \=(T, T).
+:- mode \=(input, input) is semidet.
 
 % The call/N family.  Note that the compiler (make_hlds.nl) will transform
 % goals which are not atoms (e.g. goals which are free variables) into
 % calls to call/1.
 
 :- pred call(pred).
-:- mode call(pred_call).
+:- mode call(pred_call) is nondet.
 
 % Logical connectives.
 % We need to implement mode segments before we can give these predicates
 % useful modes.
 
-:- pred '=>'((pred)::pred_call, (pred)::pred_call).
-:- pred '<='((pred)::pred_call, (pred)::pred_call).
-:- pred '<=>'((pred)::pred_call, (pred)::pred_call).
+:- pred '=>'((pred)::pred_call, (pred)::pred_call) is nondet.
+:- pred '<='((pred)::pred_call, (pred)::pred_call) is nondet.
+:- pred '<=>'((pred)::pred_call, (pred)::pred_call) is nondet.
 
 %-----------------------------------------------------------------------------%
 

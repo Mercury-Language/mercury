@@ -325,7 +325,6 @@ hlds_out__write_clause_head(PredId, VarSet, HeadVars) -->
 	mercury_output_term(Term, VarSet).
 
 hlds_out__write_goal(Goal - GoalInfo, VarSet, Indent) -->
-	hlds_out__write_indent(Indent),
 	globals__lookup_option(very_verbose, bool(VeryVerbose)),
 	( { VeryVerbose = yes } ->
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
@@ -350,7 +349,7 @@ hlds_out__write_goal_2(switch(Var, CasesList, _), VarSet, Indent) -->
 	mercury_output_newline(Indent1),
 	( { CasesList = [Case | Cases] } ->
 		hlds_out__write_case(Case, Var, VarSet, Indent1),
-		hlds_out__write_cases(Cases, Var, VarSet, Indent1)
+		hlds_out__write_cases(Cases, Var, VarSet, Indent)
 	;
 		io__write_string("fail")
 	),
@@ -403,23 +402,19 @@ hlds_out__write_goal_2(if_then_else(Vars, A, B, C), VarSet, Indent) -->
 	io__write_string(")").
 
 hlds_out__write_goal_2(not(Vars, Goal), VarSet, Indent) -->
-	io__write_string("(\+"),
+	io__write_string("\+"),
 	hlds_out__write_some(Vars, VarSet),
+	io__write_string(" ("),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
-	hlds_out__write_goal(Goal, VarSet, Indent),
+	hlds_out__write_goal(Goal, VarSet, Indent1),
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
 hlds_out__write_goal_2(conj(List), VarSet, Indent) -->
 	( { List = [Goal | Goals] } ->
-		io__write_string("("),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		hlds_out__write_goal(Goal, VarSet, Indent1),
-		hlds_out__write_conj(Goals, VarSet, Indent),
-		mercury_output_newline(Indent),
-		io__write_string(")")
+		hlds_out__write_goal(Goal, VarSet, Indent),
+		hlds_out__write_conj(Goals, VarSet, Indent)
 	;
 		io__write_string("true")
 	).
@@ -465,9 +460,8 @@ hlds_out__write_conj(GoalList, VarSet, Indent) -->
 		{ GoalList = [Goal | Goals] }
 	->
 		io__write_string(","),
-		{ Indent1 is Indent + 1 },
-		mercury_output_newline(Indent1),
-		hlds_out__write_goal(Goal, VarSet, Indent1),
+		mercury_output_newline(Indent),
+		hlds_out__write_goal(Goal, VarSet, Indent),
 		hlds_out__write_conj(Goals, VarSet, Indent)
 	;
 		[]
@@ -814,15 +808,15 @@ hlds_out__write_category(nondeterministic) -->
 :- pred hlds_out__write_indent(int, io__state, io__state).
 :- mode hlds_out__write_indent(in, di, uo).
 
-hlds_out__write_indent(X) -->
+hlds_out__write_indent(Indent) -->
 	(
-		{ X = 0 }
+		{ Indent = 0 }
 	->
 		[]
 	;
-		io__write_string("\t"),
-		{ X1 is X - 1 },
-		hlds_out__write_indent(X1)
+		io__write_char('\t'),
+		{ Indent1 is Indent - 1 },
+		hlds_out__write_indent(Indent1)
 	).
 
 :- pred hlds_out__write_consid(int, cons_id, io__state, io__state).

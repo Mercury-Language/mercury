@@ -570,9 +570,9 @@ mercury_output_goal(some(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
 		mercury_output_goal(Goal, VarSet, Indent)
 	;
-		io__write_string("(some ["),
+		io__write_string("some ["),
 		mercury_output_vars(Vars, VarSet),
-		io__write_string("] "),
+		io__write_string("] ("),
 		{ Indent1 is Indent + 1 },
 		mercury_output_newline(Indent1),
 		mercury_output_goal(Goal, VarSet, Indent1),
@@ -584,9 +584,9 @@ mercury_output_goal(all(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
 		mercury_output_goal(Goal, VarSet, Indent)
 	;
-		io__write_string("(all ["),
+		io__write_string("all ["),
 		mercury_output_vars(Vars, VarSet),
-		io__write_string("] "),
+		io__write_string("] ("),
 		{ Indent1 is Indent + 1 },
 		mercury_output_newline(Indent1),
 		mercury_output_goal(Goal, VarSet, Indent1),
@@ -625,11 +625,12 @@ mercury_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
 	io__write_string(")").
 
 mercury_output_goal(not(Vars, Goal), VarSet, Indent) -->
-	io__write_string("(\+"),
+	io__write_string("\\+"),
 	mercury_output_some(Vars, VarSet),
+	io__write_string(" ("),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
-	mercury_output_goal(Goal, VarSet, Indent),
+	mercury_output_goal(Goal, VarSet, Indent1),
 	mercury_output_newline(Indent),
 	io__write_string(")").
 

@@ -22,9 +22,13 @@
 :- module hlds.
 :- interface.
 :- import_module int, string, list, set, varset, term, map, prog_io, std_util.
+:- implementation.
+:- import_module mode_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- interface.
 
 :- type module_info	--->	module(
 					string,		% module name
@@ -790,52 +794,55 @@ pred_info_is_imported(PredInfo) :-
 :- interface.
 
 :- pred proc_info_init(list(mode), determinism, term__context, proc_info).
-:- mode proc_info_init(in, in, in, out).
+:- mode proc_info_init(in, in, in, out) is det.
 
 :- pred determinism_to_category(determinism, category).
 :- mode determinism_to_category(in, out) is det.
 
 :- pred proc_info_declared_determinism(proc_info, determinism).
-:- mode proc_info_declared_determinism(in, out).
+:- mode proc_info_declared_determinism(in, out) is det.
 
 :- pred proc_info_inferred_determinism(proc_info, category).
-:- mode proc_info_inferred_determinism(in, out).
+:- mode proc_info_inferred_determinism(in, out) is det.
 
 :- pred proc_info_variables(proc_info, varset).
-:- mode proc_info_variables(in, out).
+:- mode proc_info_variables(in, out) is det.
 
 :- pred proc_info_vartypes(proc_info, map(var, type)).
-:- mode proc_info_vartypes(in, out).
+:- mode proc_info_vartypes(in, out) is det.
 
 :- pred proc_info_headvars(proc_info, list(var)).
-:- mode proc_info_headvars(in, out).
+:- mode proc_info_headvars(in, out) is det.
 
 :- pred proc_info_argmodes(proc_info, list(mode)).
-:- mode proc_info_argmodes(in, out).
+:- mode proc_info_argmodes(in, out) is det.
 
 :- pred proc_info_goal(proc_info, hlds__goal).
-:- mode proc_info_goal(in, out).
+:- mode proc_info_goal(in, out) is det.
 
 :- pred proc_info_context(proc_info, term__context).
-:- mode proc_info_context(in, out).
+:- mode proc_info_context(in, out) is det.
 
 :- pred proc_info_call_info(proc_info, call_info).
-:- mode proc_info_call_info(in, out).
+:- mode proc_info_call_info(in, out) is det.
 
 :- pred proc_info_arg_registers(proc_info, list(var), map(var, int)).
-:- mode proc_info_arg_registers(in, in, out).
+:- mode proc_info_arg_registers(in, in, out) is det.
 
 :- pred proc_info_set_inferred_determinism(proc_info, category, proc_info).
-:- mode proc_info_set_inferred_determinism(in, in, out).
+:- mode proc_info_set_inferred_determinism(in, in, out) is det.
 
 :- pred proc_info_set_goal(proc_info, hlds__goal, proc_info).
-:- mode proc_info_set_goal(in, in, out).
+:- mode proc_info_set_goal(in, in, out) is det.
 
 :- pred proc_info_arg_info(proc_info, list(arg_info)).
-:- mode proc_info_arg_info(in, out).
+:- mode proc_info_arg_info(in, out) is det.
 
 :- pred proc_info_set_arg_info(proc_info, list(arg_info), proc_info).
-:- mode proc_info_set_arg_info(in, in, out).
+:- mode proc_info_set_arg_info(in, in, out) is det.
+
+:- pred proc_info_get_initial_instmap(proc_info, module_info, map(var, inst)).
+:- mode proc_info_get_initial_instmap(in, in, out) is det.
 
 :- implementation.
 
@@ -904,6 +911,12 @@ proc_info_set_goal(ProcInfo0, Goal, ProcInfo) :-
 proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, ArgInfo).
+
+proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_argmodes(ProcInfo, ArgModes),
+	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
+	map__from_corresponding_lists(HeadVars, InitialInsts, InstMap).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

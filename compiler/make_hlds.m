@@ -513,13 +513,13 @@ module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context, Module)
 
 pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 		MContext, Preds) -->
+	{ list__length(Modes, Arity) },
 	( { Det = unspecified } ->
 		unspecified_det_warning(PredName, Arity, MContext)
 	;
 		[]
 	),
-	{ list__length(Modes, Arity),
-	  make_predid(ModuleName, PredName, Arity, PredId) },
+	{ make_predid(ModuleName, PredName, Arity, PredId) },
 	(
 		% some [P0]
 		{ map__search(Preds0, PredId, P0) }
