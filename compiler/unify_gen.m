@@ -317,14 +317,14 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 % We handle currying of a higher-order pred variable as a special case.
 % We recognize
 %
-%	P = l(P0, A, B, C)
+%	P = l(P0, X, Y, Z)
 %
 %  where
 %
-%	l(P0, A, B, C, ...) :- call(P0, A, B, C, ...). % higher-order call
+%	l(P0, A, B, C, ...) :- P0(A, B, C, ...).  % higher-order call
 %
 % as a special case, and generate special code to construct the
-% new closure P from the old closure P0 by appending the args A, B, C.
+% new closure P from the old closure P0 by appending the args X, Y, Z.
 % The advantage of this optimization is that when P is called, we
 % will only need to do one indirect call rather than two.
 % (Hmm... is this optimization really worth it?  It probably
@@ -332,10 +332,12 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 %
 	{ proc_info_goal(ProcInfo, ProcInfoGoal) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
+	{ proc_info_headvars(ProcInfo, ProcHeadVars) },
 	(
-		{ ProcInfoGoal = higher_order_call(_, _, _, _,
-					CallDeterminism) - _GoalInfo },
 		{ Args = [CallPred | CallArgs] },
+		{ ProcHeadVars = [ProcPred | ProcArgs] },
+		{ ProcInfoGoal = higher_order_call(ProcPred, ProcArgs, _, _,
+					CallDeterminism) - _GoalInfo },
 		{ determinism_to_code_model(CallDeterminism, CallCodeModel) },
 			% Check that the code models are compatible.
 			% Note that det is not compatible with semidet,
@@ -346,6 +348,11 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		; CodeModel = model_non, CallCodeModel = model_det
 		}
 	->
+	    ( { CallArgs = [] } ->
+		% if there are no new arguments, we can just use the old
+		% closure
+		code_info__produce_variable(CallPred, Code, Value)
+	    ;
 		code_info__get_next_label(LoopEnd),
 		code_info__get_next_label(LoopStart),
 		code_info__acquire_reg(r, LoopCounter),
@@ -394,6 +401,7 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		code_info__release_reg(NewClosure),
 		{ Code = tree(Code1, tree(Code2, Code3)) },
 		{ Value = lval(NewClosure) }
+	    )
 	;
 		{ Code = empty },
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
