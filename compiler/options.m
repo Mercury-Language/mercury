@@ -880,7 +880,7 @@ long_option("try-switch-size",		try_switch_size).
 long_option("binary-switch-size",	binary_switch_size).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("middle-rec",		middle_rec).
-long_option("simple_neg",		simple_neg).
+long_option("simple-neg",		simple_neg).
 long_option("follow-vars",		follow_vars).
 long_option("allow-hijacks",		allow_hijacks).
 
