@@ -13,6 +13,8 @@ PROGS=	\
 	existential_type_classes \
 	existential_data_types \
 	existential_data_types_regr_test \
+	existential_rtti \
+	existential_type_switch \
 	extra_typeinfo \
 	func_default_mode_bug \
 	ho_map \
@@ -32,11 +34,13 @@ PROGS=	\
 	multi_parameter \
 	nondet_class_method \
 	operator_classname \
+	record_syntax \
 	superclass_call \
 	test_default_func_mode \
 	typeclass_exist_method \
 	typeclass_test_5 \
 	typeclass_test_6 \
+	type_spec \
 	unqualified_method \
 	use_abstract_instance
 

@@ -35,8 +35,6 @@ PROGS=	\
 	elim_special_pred \
 	existential_bound_tvar \
 	existential_reordering \
-	existential_rtti \
-	existential_type_switch \
 	existential_type_switch_opt \
 	existential_types_test \
 	eqv_type_bug \
@@ -88,7 +86,6 @@ PROGS=	\
 	quantifier2 \
 	quoting_bug_test \
 	rational_test \
-	record_syntax \
 	redoip_clobber \
 	relation_test \
 	remove_file \
@@ -107,7 +104,6 @@ PROGS=	\
 	term_io_test \
 	type_to_term_bug \
 	tim_qual1 \
-	type_spec \
 	user_defined_equality \
 	write \
 	write_reg1
