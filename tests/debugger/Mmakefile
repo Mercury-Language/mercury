@@ -4,6 +4,8 @@ main_target: check
 
 include ../Mmake.common
 
+RM_C=:
+
 #-----------------------------------------------------------------------------#
 
 DEBUGGER_PROGS=	\

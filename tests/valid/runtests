@@ -3,8 +3,8 @@
 # Return a status of 0 (true) if everything is all right, and 1 otherwise.
 
 . ../handle_options
+. ../startup
 
-mmake $gradeopt $jfactor realclean > /dev/null 2>&1
 mmake $gradeopt $jfactor depend || exit 1
 eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
 checkstatus=$?
@@ -23,7 +23,7 @@ if test "$failed" = "" -a "$checkstatus" = 0
 then
 	echo "the tests in the valid directory succeeded"
 	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
-	mmake $gradeopt $jfactor realclean > /dev/null 2>&1
+	. ../shutdown
 	exit 0
 else
 	echo "some tests in the valid directory failed: $failed"

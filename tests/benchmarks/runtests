@@ -13,8 +13,8 @@
 # on a machine that has NU-Prolog installed.
 
 . ../handle_options
+. ../startup
 
-mmake $jfactor clean > /dev/null 2>&1
 mmake $jfactor depend || exit 1
 eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
 checkstatus=$?
@@ -24,8 +24,8 @@ if test ! -s .allres -a "$checkstatus" = 0
 then
 	echo "the tests in the benchmark directory succeeded"
 	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
-	mmake $jfactor clean > /dev/null 2>&1
 	rm -f .allres
+	. ../shutdown
 	exit 0
 else
 	echo "the tests in the benchmark directory failed"

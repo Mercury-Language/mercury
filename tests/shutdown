@@ -1,0 +1,4 @@
+echo cleaning up the directory after the tests
+mmake $gradeopt $jfactor realclean > /dev/null 2>&1
+rm core > /dev/null 2>&1
+touch CLEAN
