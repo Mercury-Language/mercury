@@ -1193,15 +1193,15 @@ Changes to the Mercury implementation:
 * Numerous bug fixes.
 
 
-Mercury 0.8.1
--------------
+Mercury 0.8.1, December 16th 1998
+---------------------------------
 
 This release just corrected some bugs in the binary
 distribution for 0.8.
 
 
-Mercury 0.9:
-------------
+Mercury 0.9, December 18th, 1999
+--------------------------------
 
 HIGHLIGHTS
 ==========
@@ -1481,8 +1481,8 @@ Changes to the Mercury implementation:
 * Numerous bug fixes.
 
 
-Mercury 0.9.1:
--------------
+Mercury 0.9.1, January 26th, 2000
+---------------------------------
 
 This release is primarily a bug-fix release.  
 It fixes some bugs with the binary distribution of 0.9,
