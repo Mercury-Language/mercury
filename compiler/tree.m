@@ -21,7 +21,7 @@
 			;	tree(tree(T), tree(T)).
 
 :- pred tree__flatten(tree(T), list(T)).
-:- mode tree__flatten_2(input, output).
+:- mode tree__flatten(input, output) is det.
 
 %-----------------------------------------------------------------------------%
 
