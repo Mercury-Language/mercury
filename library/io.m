@@ -3042,17 +3042,6 @@ io__resize_buffer(buffer(Array0), _OldSize, NewSize, buffer(Array)) :-
 io__buffer_to_string(buffer(Array), Len, from_char_list(List)) :-
 	array__fetch_items(Array, min(Array), min(Array) + Len - 1, List).
 
-:- pred io__buffer_to_string(buffer::buffer_di, string::uo) is det.
-:- pragma foreign_proc("C",
-	io__buffer_to_string(Buffer::buffer_di, Str::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
-	Str = Buffer;
-}").
-
-io__buffer_to_string(buffer(Array), from_char_list(List)) :-
-	array__fetch_items(Array, min(Array), max(Array), List).
-
 :- pred io__read_into_buffer(stream::in, buffer::buffer_di, int::in, int::in,
 		    buffer::buffer_uo, int::out,
 		    io__state::di, io__state::uo) is det.

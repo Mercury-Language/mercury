@@ -257,17 +257,6 @@ eqvclass__partition_ids(EqvClass0, Ids) :-
 
 	% Given an element, get the id of the partition containing that element.
 
-:- pred eqvclass__find_partition(eqvclass(T), T, partition_id).
-:- mode eqvclass__find_partition(in, in, out) is det.
-
-eqvclass__find_partition(EqvClass0, Element, Id) :-
-	EqvClass0 = eqvclass(_NextId0, _PartitionMap0, ElementMap0),
-	( map__search(ElementMap0, Element, IdPrime) ->
-		Id = IdPrime
-	;
-		error("element not known to equivalence class")
-	).
-
 	% Given a partition id, get the elements of the partition.
 
 :- pred eqvclass__id_to_partition(eqvclass(T), partition_id, set(T)).

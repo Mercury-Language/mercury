@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -627,10 +627,6 @@ shortint_to_integer(D) =
     ;
         i(-1, [D])
     ).
-
-:- func int_max = int.
-int_max = Maxint :-
-    int__max_int(Maxint).
 
 :- func signum(int) = int.
 signum(N) = SN :-

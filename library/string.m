@@ -579,9 +579,6 @@
 :- implementation.
 :- import_module bool, integer, std_util, int, float, require.
 
-:- pred string__to_int_list(string, list(int)).
-:- mode string__to_int_list(in, out) is det.
-
 string__replace(String, SubString0, SubString1, StringOut) :-
 	string__to_char_list(String, CharList),
 	string__to_char_list(SubString0, SubCharList0),
@@ -1042,27 +1039,6 @@ string__to_char_list_2(Str, Index, CharList) :-
 
 string__from_rev_char_list(Chars::in, Str::uo) :- 
 	Str = string__from_char_list(list__reverse(Chars)).
-
-:- pred string__int_list_to_char_list(list(int), list(char)).
-:- mode string__int_list_to_char_list(in, out) is det.
-
-string__int_list_to_char_list([], []).
-string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
-	( char__to_int(Char0, Code) ->
-		Char = Char0
-	;
-		error("string__int_list_to_char_list: char__to_int failed")
-	),
-	string__int_list_to_char_list(Codes, Chars).
-
-:- pred string__char_list_to_int_list(list(char), list(int)).
-:- mode string__char_list_to_int_list(in, out) is det.
-:- mode string__char_list_to_int_list(out, in) is semidet.
-
-string__char_list_to_int_list([], []).
-string__char_list_to_int_list([Char | Chars], [Code | Codes]) :-
-	char__to_int(Char, Code),
-	string__char_list_to_int_list(Chars, Codes).
 
 string__to_upper(StrIn, StrOut) :-
 	string__to_char_list(StrIn, List),
@@ -2921,28 +2897,6 @@ max_precision = min_precision + 2.
 	    }
 	}
 }").
-
-/*-----------------------------------------------------------------------*/
-
-/*
-:- pred string__to_int_list(string, list(int)).
-:- mode string__to_int_list(in, out) is det.
-*/
-:- pragma foreign_proc("C",
-	string__to_int_list(Str::in, IntList::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"{
-	MR_ConstString p = Str + strlen(Str);
-	IntList = MR_list_empty_msg(MR_PROC_LABEL);
-	while (p > Str) {
-		p--;
-		IntList = MR_list_cons_msg((MR_UnsignedChar) *p, IntList,
-			MR_PROC_LABEL);
-	}
-}").
-string__to_int_list(String, IntList) :-
-	string__to_char_list(String, CharList),
-	IntList = list__map(char__to_int, CharList).
 
 /*-----------------------------------------------------------------------*/
 

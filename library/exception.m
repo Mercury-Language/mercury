@@ -379,8 +379,8 @@ wrap_success(Goal, succeeded(R)) :- Goal(R).
 :- pred wrap_success_or_failure(pred(T), exception_result(T)) is det.
 :- mode wrap_success_or_failure(pred(out) is det, out) is det.
 :- mode wrap_success_or_failure(pred(out) is semidet, out) is det.
-:- mode wrap_success_or_failure(pred(out) is multi, out) is multi.
-:- mode wrap_success_or_failure(pred(out) is nondet, out) is multi.
+%:- mode wrap_success_or_failure(pred(out) is multi, out) is multi. (unused)
+%:- mode wrap_success_or_failure(pred(out) is nondet, out) is multi. (unused)
 :- mode wrap_success_or_failure(pred(out) is cc_multi, out) is cc_multi.
 :- mode wrap_success_or_failure(pred(out) is cc_nondet, out) is cc_multi.
 wrap_success_or_failure(Goal, Result) :-
@@ -1281,14 +1281,14 @@ namespace mercury {
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.
 :- mode call_goal(pred(out) is semidet, out) is semidet.
-:- mode call_goal(pred(out) is nondet, out) is nondet.
+%:- mode call_goal(pred(out) is nondet, out) is nondet. % see comments below
 
 call_goal(Goal, Result) :- Goal(Result).
 
 :- pred call_handler(pred(univ, T), univ, T).
 :- mode call_handler(pred(in, out) is det, in, out) is det.
-:- mode call_handler(pred(in, out) is semidet, in, out) is semidet.
-:- mode call_handler(pred(in, out) is nondet, in, out) is nondet.
+%:- mode call_handler(pred(in, out) is semidet, in, out) is semidet. % unused
+%:- mode call_handler(pred(in, out) is nondet, in, out) is nondet. % unused
 
 call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 

@@ -832,7 +832,7 @@ tree234__insert(Tin, K, V, Tout) :-
 	).
 
 :- pred tree234__insert2(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__insert2(di_two, di, di, uo) is semidet.
+% :- mode tree234__insert2(di_two, di, di, uo) is semidet.
 % :- mode tree234__insert2(sdi_two, in, in, uo_tree234) is semidet.
 :- mode tree234__insert2(in_two, in, in, out) is semidet.
 
@@ -927,7 +927,7 @@ tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
 	).
 
 :- pred tree234__insert3(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__insert3(di_three, di, di, uo) is semidet.
+% :- mode tree234__insert3(di_three, di, di, uo) is semidet.
 % :- mode tree234__insert3(sdi_three, in, in, uo_tree234) is semidet.
 :- mode tree234__insert3(in_three, in, in, out) is semidet.
 

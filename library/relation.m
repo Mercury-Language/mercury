@@ -903,36 +903,6 @@ relation__tsort_2(Rel, Tsort) :-
 	relation__c_dfs(Rel, DomList, Vis0, _Vis, [], Tsort),
 	relation__check_tsort(Rel, Vis0, Tsort).
 
-:- pred relation__tsort_2(relation(T), list(relation_key), set(relation_key),
-	set(relation_key), list(relation_key), list(relation_key)).
-:- mode relation__tsort_2(in, in, in, out, in, out) is det.
-relation__tsort_2(_Rel, [], Vis, Vis, Tsort, Tsort).
-relation__tsort_2(Rel, [X | Xs], Vis0, Vis, Tsort0, Tsort) :-
-	stack__init(S0),
-	stack__push(S0, X, S1),
-	relation__tsort_3(Rel, S1, Vis0, Vis1, Tsort0, Tsort1),
-	list__delete_elems(Xs, Tsort1, XsRed),
-	relation__tsort_2(Rel, XsRed, Vis1, Vis, Tsort1, Tsort).
-
-:- pred relation__tsort_3(relation(T), stack(relation_key), set(relation_key),
-	set(relation_key), list(relation_key), list(relation_key)).
-:- mode relation__tsort_3(in, in, in, out, in, out) is det.
-relation__tsort_3(Rel, S0, Vis0, Vis, Tsort0, Tsort) :-
-	( stack__pop(S0, X, S1) ->
-	    ( set__member(X, Vis0) ->
-		relation__tsort_3(Rel, S1, Vis0, Vis, Tsort0, Tsort)
-	    ;
-	    	relation__lookup_from(Rel, X, AdjSet),
-	    	set__to_sorted_list(AdjSet, AdjList),
-	    	set__insert(Vis0, X, Vis1),
-	    	stack__push_list(S1, AdjList, S2),
-	    	relation__tsort_3(Rel, S2, Vis1, Vis, Tsort0, Tsort1),
-	    	Tsort = [ X | Tsort1 ]
-	    )
-	;
-	    Tsort = Tsort0, Vis = Vis0
-	).
-
 :- pred relation__check_tsort(relation(T), set(relation_key),
 		list(relation_key)).
 :- mode relation__check_tsort(in, in, in) is semidet.

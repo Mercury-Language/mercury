@@ -1008,28 +1008,6 @@ list__sort_and_remove_dups(L0, L) :-
 	list__merge_sort(L0, L1),
 	list__remove_adjacent_dups(L1, L).
 
-:- pred list__qsort(list(T), list(T), list(T)).
-:- mode list__qsort(in, in, out) is det.
-
-list__qsort([], R, R).
-list__qsort([X | L], R0, R) :-
-	list__partition(L, X, L1, L2),
-	list__qsort(L2, R0, R1),
-	list__qsort(L1, [X | R1], R).
-
-:- pred list__partition(list(T), T, list(T), list(T)).
-:- mode list__partition(in, in, out, out) is det.
-
-list__partition([], _, [], []).
-list__partition([Head | Tail], Partition, Low, High) :-
-	( compare(<, Head, Partition) ->
-		list__partition(Tail, Partition, Low1, High),
-		Low = [Head | Low1]
-	;
-		list__partition(Tail, Partition, Low, High1),
-		High = [Head | High1]
-	).
-
 %-----------------------------------------------------------------------------%
 
 :- pred list__merge_sort(list(T), list(T)).

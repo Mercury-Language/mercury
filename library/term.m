@@ -765,15 +765,6 @@ type_info_to_term(Context, TypeInfo, Term) :-
 			 	ArgTerms, Context)], Context)
 	).
 		
-
-:- pred require_equal(T::in, T::in) is det.
-require_equal(X, Y) :-
-	( X = Y ->
-		true
-	;
-		error("require_equal failed")
-	).
-
 %-----------------------------------------------------------------------------%
 
 	% term__vars(Term, Vars) is true if Vars is the list of variables
@@ -810,38 +801,6 @@ term__contains_var_list([T|_], V) :-
 	term__contains_var(T, V).
 term__contains_var_list([_|Ts], V) :-
 	term__contains_var_list(Ts, V).
-
-%-----------------------------------------------------------------------------%
-
-	% term__contains_functor(Term, Functor, Args):
-	%	term__functor(Functor, Args, _) is a subterm of Term.
-	%
-	% CURRENTLY NOT USED.
-
-:- pred term__contains_functor(term(T), const, list(term(T))).
-% :- mode term__contains_functor(in, in, in) is semidet.
-:- mode term__contains_functor(in, out, out) is nondet.
-
-term__contains_functor(term__functor(Functor, Args, _), Functor, Args).
-term__contains_functor(term__functor(_, Args, _), SubFunctor, SubArgs) :-
- 	list__member(SubTerm, Args),
- 	term__contains_functor(SubTerm, SubFunctor, SubArgs).
-
-%-----------------------------------------------------------------------------%
-
-	% term__subterm(Term, SubTerm):
-	%	SubTerm is a subterm of Term.
-	%
-	% CURRENTLY NOT USED.
-
-:- pred term__subterm(term(T), term(T)).
-:- mode term__subterm(in, in) is semidet.
-:- mode term__subterm(in, out) is multidet.
-
-term__subterm(Term, Term).
-term__subterm(term__functor(_, Args, _), SubTerm) :-
-	list__member(Term, Args),
-	term__subterm(Term, SubTerm).
 
 %-----------------------------------------------------------------------------%
 

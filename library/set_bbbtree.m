@@ -957,7 +957,7 @@ set_bbbtree__superset(SetA, SetB) :-
 
 :- pred set_bbbtree__build_node(T, set_bbbtree(T), set_bbbtree(T),
 								set_bbbtree(T)).
-:- mode set_bbbtree__build_node(di, di, di, uo) is det.
+% :- mode set_bbbtree__build_node(di, di, di, uo) is det. % unused
 :- mode set_bbbtree__build_node(in, in, in, out) is det.
 
 set_bbbtree__build_node(X, L, R, Tree) :-
@@ -979,7 +979,7 @@ set_bbbtree__build_node(X, L, R, Tree) :-
 
 :- pred set_bbbtree__single_rot_l(T, set_bbbtree(T), set_bbbtree(T),
 								set_bbbtree(T)).
-:- mode set_bbbtree__single_rot_l(di, di, di, uo) is det.
+% :- mode set_bbbtree__single_rot_l(di, di, di, uo) is det. % unused
 :- mode set_bbbtree__single_rot_l(in, in, in, out) is det.
 
 set_bbbtree__single_rot_l(_A, _X, empty, _Set) :-  % Should never occur. Here
@@ -995,7 +995,7 @@ set_bbbtree__single_rot_l(A, X, tree(B, _N, Y, Z), Set) :-
 
 :- pred set_bbbtree__single_rot_r(T, set_bbbtree(T), set_bbbtree(T),
 								set_bbbtree(T)).
-:- mode set_bbbtree__single_rot_r(di, di, di, uo) is det.
+% :- mode set_bbbtree__single_rot_r(di, di, di, uo) is det. % unused
 :- mode set_bbbtree__single_rot_r(in, in, in, out) is det.
 
 set_bbbtree__single_rot_r(_B, empty, _Z, _Set) :-  % Should never occur. Here
@@ -1019,7 +1019,7 @@ set_bbbtree__single_rot_r(B, tree(A, _N, X, Y), Z, Set) :-
 
 :- pred set_bbbtree__double_rot_l(T, set_bbbtree(T), set_bbbtree(T),
 								set_bbbtree(T)).
-:- mode set_bbbtree__double_rot_l(di, di, di, uo) is det.
+% :- mode set_bbbtree__double_rot_l(di, di, di, uo) is det. % unused
 :- mode set_bbbtree__double_rot_l(in, in, in, out) is det.
 
 set_bbbtree__double_rot_l(_A, _X, empty, _Set) :-  % Should never occur. Here
@@ -1043,7 +1043,7 @@ set_bbbtree__double_rot_l(A, X, tree(C, _N0, Y, Z), Set) :-
 
 :- pred set_bbbtree__double_rot_r(T, set_bbbtree(T), set_bbbtree(T),
 								set_bbbtree(T)).
-:- mode set_bbbtree__double_rot_r(di, di, di, uo) is det.
+% :- mode set_bbbtree__double_rot_r(di, di, di, uo) is det. % unused
 :- mode set_bbbtree__double_rot_r(in, in, in, out) is det.
 
 set_bbbtree__double_rot_r(_B, empty, _Z, _Set) :-  % Should never occur. Here
