@@ -685,6 +685,7 @@ create_new_preds([proc(PredId, ProcId) | PredProcs], UnusedArgInfo,
 make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, ProcId, PredInfo) :-
 	pred_info_module(PredInfo0, PredModule),
 	pred_info_name(PredInfo0, Name0),
+	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	string__int_to_string(ProcId, Id),
 	module_info_name(ModuleInfo, ModuleName),
 	pred_info_arg_types(PredInfo0, Tvars, ArgTypes0),
@@ -738,7 +739,7 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, ProcId, PredInfo) :-
 		%	field of the pred_info becomes used.
 	pred_info_init(ModuleName, qualified(ModuleName, Name), Arity, Tvars,
 		ArgTypes, true, Context, ClausesInfo, local, Inline,
-		GoalType, predicate, PredInfo1),
+		GoalType, PredOrFunc, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
 
 :- pred remove_listof_elements(list(T)::in, int::in, list(int)::in,
