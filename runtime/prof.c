@@ -96,6 +96,32 @@ static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 
 /* ======================================================================== */
 
+#ifndef HAVE_STRERROR
+
+/*
+** Apparently SunOS 4.1.3 doesn't have strerror()
+**	(!%^&!^% non-ANSI systems, grumble...)
+**
+** This code should perhaps go somewhere other than in prof.c.
+*/
+
+extern int sys_nerr;
+extern char *sys_errlist[];
+
+char *strerror(int errnum) {
+	if (ernum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
+		return sys_errlist[errnum];
+	} else {
+		static char buf[30];
+		sprintf(buf, "Error %d", errnum);
+		return buf;
+	}
+}
+
+#endif
+
+/* ======================================================================== */
+
 /* utility routines for opening and closing files */
 
 static FILE*
