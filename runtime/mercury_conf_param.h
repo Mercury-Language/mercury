@@ -189,6 +189,10 @@
 ** MR_DEBUG_JMPBUFS
 ** 	Enables low-level debugging messages from MR_call_engine and the
 ** 	code handling exceptions.
+**
+** MR_DEBUG_LVAL_REP
+** 	Enables low-level debugging messages from routines concerned with
+** 	the representation of lvals in the RTTI system.
 */
 
 #if MR_DEBUG_AGC_ALL

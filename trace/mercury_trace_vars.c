@@ -701,11 +701,13 @@ MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
 	if (MR_trace_is_number(word_spec, &n)) {
 		var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
 		var_spec.MR_var_spec_number = n;
+		var_spec.MR_var_spec_name = NULL; /* unused */
 		return MR_trace_browse_one_path(out, var_spec, path,
 			browser, caller, format, must_be_unique);
 	} else {
 		var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
 		var_spec.MR_var_spec_name = word_spec;
+		var_spec.MR_var_spec_number = -1; /* unused */
 		return MR_trace_browse_one_path(out, var_spec, path,
 			browser, caller, format, must_be_unique);
 	}

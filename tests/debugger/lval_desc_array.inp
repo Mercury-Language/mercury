@@ -1,0 +1,7 @@
+echo on
+context none
+register --quiet
+goto 218
+up 1
+print *
+continue

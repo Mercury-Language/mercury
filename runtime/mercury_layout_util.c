@@ -15,9 +15,8 @@
 #include "mercury_stack_layout.h"
 #include "mercury_layout_util.h"
 
-static MR_Word MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
-	bool *succeeded);
-
+static MR_Word MR_lookup_closure_long_lval(MR_Long_Lval locn,
+	MR_Closure *closure, bool *succeeded);
 
 void
 MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs)
@@ -89,14 +88,16 @@ MR_materialize_typeinfos_base(const MR_Label_Layout *label_layout,
 		int			i;
 
 		count = tvar_locns->MR_tp_param_count;
-		type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
+		type_params = (MR_TypeInfoParams)
+			MR_NEW_ARRAY(MR_Word, count + 1);
 
 		for (i = 0; i < count; i++) {
 			if (tvar_locns->MR_tp_param_locns[i] != 0)
 			{
 				type_params[i + 1] = (MR_TypeInfo)
 					MR_lookup_long_lval_base(
-						tvar_locns->MR_tp_param_locns[i],
+						tvar_locns->
+							MR_tp_param_locns[i],
 						saved_regs, base_sp, base_curfr,
 						&succeeded);
 				if (! succeeded) {
@@ -124,14 +125,16 @@ MR_materialize_closure_typeinfos(const MR_Type_Param_Locns *tvar_locns,
 		int			i;
 
 		count = tvar_locns->MR_tp_param_count;
-		type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
+		type_params = (MR_TypeInfoParams)
+			MR_NEW_ARRAY(MR_Word, count + 1);
 
 		for (i = 0; i < count; i++) {
 			if (tvar_locns->MR_tp_param_locns[i] != 0)
 			{
 				type_params[i + 1] = (MR_TypeInfo)
 					MR_lookup_closure_long_lval(
-						tvar_locns->MR_tp_param_locns[i],
+						tvar_locns->
+							MR_tp_param_locns[i],
 						closure, &succeeded);
 				if (! succeeded) {
 					MR_fatal_error("missing type param in "
@@ -166,8 +169,11 @@ MR_get_register_number_short(MR_Short_Lval locn)
 	}
 }
 
-/* if you want to debug this code, you may want to set this var to TRUE */
-static	bool	MR_print_locn = FALSE;
+#ifdef	MR_DEBUG_LVAL_REP
+  #define MR_print_locn TRUE
+#else
+  #define MR_print_locn FALSE
+#endif
 
 MR_Word
 MR_lookup_long_lval(MR_Long_Lval locn, MR_Word *saved_regs, bool *succeeded)
@@ -194,59 +200,60 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 	switch (MR_LONG_LVAL_TYPE(locn)) {
 		case MR_LONG_LVAL_TYPE_R:
 			if (MR_print_locn) {
-				printf("r%d", locn_num);
+				printf("closure r%d\n", locn_num);
 			}
 			if (locn_num <= closure->MR_closure_num_hidden_args) {
-				value = closure->MR_closure_hidden_args(locn_num);
+				value = closure->
+					MR_closure_hidden_args(locn_num);
 				*succeeded = TRUE;
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_F:
 			if (MR_print_locn) {
-				printf("f%d", locn_num);
+				printf("closure f%d\n", locn_num);
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_STACKVAR:
 			if (MR_print_locn) {
-				printf("stackvar%d", locn_num);
+				printf("closure stackvar%d\n", locn_num);
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_FRAMEVAR:
 			if (MR_print_locn) {
-				printf("framevar%d", locn_num);
+				printf("closure framevar%d\n", locn_num);
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_SUCCIP:
 			if (MR_print_locn) {
-				printf("succip");
+				printf("closure succip\n");
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_MAXFR:
 			if (MR_print_locn) {
-				printf("maxfr");
+				printf("closure maxfr\n");
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_CURFR:
 			if (MR_print_locn) {
-				printf("curfr");
+				printf("closure curfr\n");
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_HP:
 			if (MR_print_locn) {
-				printf("hp");
+				printf("closure hp\n");
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_SP:
 			if (MR_print_locn) {
-				printf("sp");
+				printf("closure sp\n");
 			}
 			break;
 
@@ -254,7 +261,7 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 			offset = MR_LONG_LVAL_INDIRECT_OFFSET(locn_num);
 			sublocn = MR_LONG_LVAL_INDIRECT_BASE_LVAL(locn_num);
 			if (MR_print_locn) {
-				printf("offset %d from ", offset);
+				printf("closure offset %d from ", offset);
 			}
 			baseaddr = MR_lookup_closure_long_lval(sublocn,
 					closure, succeeded);
@@ -268,13 +275,13 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 
 		case MR_LONG_LVAL_TYPE_UNKNOWN:
 			if (MR_print_locn) {
-				printf("unknown");
+				printf("closure unknown\n");
 			}
 			break;
 
 		default:
 			if (MR_print_locn) {
-				printf("DEFAULT");
+				printf("closure DEFAULT\n");
 			}
 			break;
 	}
@@ -299,7 +306,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 	switch (MR_LONG_LVAL_TYPE(locn)) {
 		case MR_LONG_LVAL_TYPE_R:
 			if (MR_print_locn) {
-				printf("r%d", locn_num);
+				printf("long r%d\n", locn_num);
 			}
 			if (saved_regs != NULL) {
 				value = MR_saved_reg(saved_regs, locn_num);
@@ -309,13 +316,13 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 
 		case MR_LONG_LVAL_TYPE_F:
 			if (MR_print_locn) {
-				printf("f%d", locn_num);
+				printf("long f%d\n", locn_num);
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_STACKVAR:
 			if (MR_print_locn) {
-				printf("stackvar%d", locn_num);
+				printf("long stackvar%d\n", locn_num);
 			}
 			value = MR_based_stackvar(base_sp, locn_num);
 			*succeeded = TRUE;
@@ -323,7 +330,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 
 		case MR_LONG_LVAL_TYPE_FRAMEVAR:
 			if (MR_print_locn) {
-				printf("framevar%d", locn_num);
+				printf("long framevar%d\n", locn_num);
 			}
 			value = MR_based_framevar(base_curfr, locn_num);
 			*succeeded = TRUE;
@@ -331,31 +338,31 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 
 		case MR_LONG_LVAL_TYPE_SUCCIP:
 			if (MR_print_locn) {
-				printf("succip");
+				printf("long succip\n");
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_MAXFR:
 			if (MR_print_locn) {
-				printf("maxfr");
+				printf("long maxfr\n");
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_CURFR:
 			if (MR_print_locn) {
-				printf("curfr");
+				printf("long curfr\n");
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_HP:
 			if (MR_print_locn) {
-				printf("hp");
+				printf("long hp\n");
 			}
 			break;
 
 		case MR_LONG_LVAL_TYPE_SP:
 			if (MR_print_locn) {
-				printf("sp");
+				printf("long sp\n");
 			}
 			break;
 
@@ -363,7 +370,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 			offset = MR_LONG_LVAL_INDIRECT_OFFSET(locn_num);
 			sublocn = MR_LONG_LVAL_INDIRECT_BASE_LVAL(locn_num);
 			if (MR_print_locn) {
-				printf("offset %d from ", offset);
+				printf("long offset %d from ", offset);
 			}
 			baseaddr = MR_lookup_long_lval_base(sublocn,
 					saved_regs, base_sp, base_curfr,
@@ -378,13 +385,13 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 
 		case MR_LONG_LVAL_TYPE_UNKNOWN:
 			if (MR_print_locn) {
-				printf("unknown");
+				printf("long unknown\n");
 			}
 			break;
 
 		default:
 			if (MR_print_locn) {
-				printf("DEFAULT");
+				printf("long DEFAULT\n");
 			}
 			break;
 	}
@@ -414,7 +421,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 	switch (MR_SHORT_LVAL_TYPE(locn)) {
 		case MR_SHORT_LVAL_TYPE_R:
 			if (MR_print_locn) {
-				printf("r%d", locn_num);
+				printf("short r%d\n", locn_num);
 			}
 			if (saved_regs != NULL) {
 				value = MR_saved_reg(saved_regs, locn_num);
@@ -424,7 +431,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 
 		case MR_SHORT_LVAL_TYPE_STACKVAR:
 			if (MR_print_locn) {
-				printf("stackvar%d", locn_num);
+				printf("short stackvar%d\n", locn_num);
 			}
 			value = MR_based_stackvar(base_sp, locn_num);
 			*succeeded = TRUE;
@@ -432,7 +439,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 
 		case MR_SHORT_LVAL_TYPE_FRAMEVAR:
 			if (MR_print_locn) {
-				printf("framevar%d", locn_num);
+				printf("short framevar%d\n", locn_num);
 			}
 			value = MR_based_framevar(base_curfr, locn_num);
 			*succeeded = TRUE;
@@ -442,45 +449,42 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 			switch (locn_num) {
 				case MR_LONG_LVAL_TYPE_SUCCIP:
 					if (MR_print_locn) {
-						printf("succip");
+						printf("short succip\n");
 					}
 					break;
 
 				case MR_LONG_LVAL_TYPE_MAXFR:
 					if (MR_print_locn) {
-						printf("maxfr");
+						printf("short maxfr\n");
 					}
 					break;
 
 				case MR_LONG_LVAL_TYPE_CURFR:
 					if (MR_print_locn) {
-						printf("curfr");
+						printf("short curfr\n");
 					}
 					break;
 
 				case MR_LONG_LVAL_TYPE_HP:
 					if (MR_print_locn) {
-						printf("hp");
+						printf("short hp\n");
 					}
 					break;
 
 				case MR_LONG_LVAL_TYPE_SP:
 					if (MR_print_locn) {
-						printf("sp");
+						printf("short sp\n");
 					}
 					break;
 
 				default:
 					if (MR_print_locn) {
-						printf("DEFAULT");
+						printf("short spec DEFAULT\n");
 					}
 			}
 
 		default:
-			if (MR_print_locn) {
-				printf("DEFAULT");
-			}
-			break;
+			MR_fatal_error("MR_lookup_short_lval_base: bad type");
 	}
 
 	return value;
@@ -508,10 +512,18 @@ MR_get_type_and_value_base(const MR_Label_Layout *label_layout, int i,
 	*type_info = MR_create_type_info(type_params, pseudo_type_info);
 
 	if (i < MR_long_desc_var_count(label_layout)) {
+		if (MR_print_locn) {
+			printf("looking up long lval\n");
+		}
+
 		*value = MR_lookup_long_lval_base(
 			MR_long_desc_var_locn(label_layout, i),
 			saved_regs, base_sp, base_curfr, &succeeded);
 	} else {
+		if (MR_print_locn) {
+			printf("looking up short lval\n");
+		}
+
 		*value = MR_lookup_short_lval_base(
 			MR_short_desc_var_locn(label_layout, i),
 			saved_regs, base_sp, base_curfr, &succeeded);

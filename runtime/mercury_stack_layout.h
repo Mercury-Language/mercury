@@ -373,7 +373,8 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 		(&MR_long_desc_var_locn((sll), MR_long_desc_var_count(sll)))
 #define	MR_short_desc_var_locn(sll, i)					    \
 		(((MR_uint_least8_t *)					    \
-			MR_end_of_long_desc_var_locns(sll))[(i)])
+			MR_end_of_long_desc_var_locns(sll))		    \
+		 		[((i) - MR_long_desc_var_count(sll))])
 
 /*
 ** Define a stack layout for an internal label.

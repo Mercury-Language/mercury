@@ -35,13 +35,13 @@ NONRETRY_PROGS = \
 	implied_instance		\
 	interpreter			\
 	loopcheck			\
+	lval_desc_array			\
 	multi_parameter			\
 	nondet_stack			\
 	output_term_dep			\
 	polymorphic_output		\
 	resume_typeinfos		\
 	shallow
-
 
 # The following tests are disabled, since currently they get some spurious
 # failures if readline support is enabled:
@@ -207,6 +207,10 @@ implied_instance.out: implied_instance implied_instance.inp
 interpreter.out: interpreter interpreter.inp
 	$(MDB) ./interpreter interpreter.m < interpreter.inp \
 		> interpreter.out 2>&1
+
+lval_desc_array.out: lval_desc_array lval_desc_array.inp
+	$(MDB) ./lval_desc_array < lval_desc_array.inp \
+		> lval_desc_array.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
