@@ -736,9 +736,25 @@ unify_gen__aliased_vars_set_location_2([Var | Vars], [Type | Types],
 		code_info__acquire_reg_for_var(Var, Reg),
 		code_info__set_var_reference_location(Var, Reg),
 		code_info__produce_variable(LHSVar, Code0, RVal),
-		{ Code1 = node(
-			[assign(Reg, mem_addr(heap_ref(RVal, Tag, FieldNum))) -
-				"place reference in reg"]) },
+		code_info__get_globals(Globals),
+		{ globals__get_gc_method(Globals, GCMethod) },
+		{ GCMethod = conservative ->
+			% For the conservative GC, we need to zero
+			% uninstantiated fields so the GC doesn't think they
+			% are pointers.
+			ZeroCode = node([
+				assign(field(yes(Tag), RVal, 
+					const(int_const(FieldNum))),
+					const(int_const(0)))
+					- "zero uninstantiated field"
+				])
+		;
+			ZeroCode = empty
+		},
+		{ Code1 = tree(ZeroCode, node([
+			assign(Reg, mem_addr(heap_ref(RVal, Tag, FieldNum)))
+				- "place reference in reg"
+			])) },
 		{ Code2 = tree(Code0, Code1) }
 	;
 		{ Code2 = empty }
