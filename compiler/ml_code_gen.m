@@ -1650,26 +1650,10 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 
 	%
 	% Generate code fragments to obtain and release the global lock
-	% (this is used for ensuring thread safety in a concurrent
-	% implementation)
-	% XXX we should only generate these if the `parallel' option
-	% was enabled
 	%
-	=(MLDSGenInfo),
 	{ thread_safe(Attributes, ThreadSafe) },
-	{ ThreadSafe = thread_safe ->
-		ObtainLock = "",
-		ReleaseLock = ""
-	;
-		ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo),
-		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_name(PredInfo, Name),
-		llds_out__quote_c_string(Name, MangledName),
-		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
-			MangledName, """);\n"], ObtainLock),
-		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
-			MangledName, """);\n"], ReleaseLock)
-	},
+	ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
+		ObtainLock, ReleaseLock),
 
 	%
 	% Put it all together
@@ -1805,29 +1789,10 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 
 	%
 	% Generate code fragments to obtain and release the global lock
-	% (this is used for ensuring thread safety in a concurrent
-	% implementation)
 	%
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-	{ module_info_globals(ModuleInfo, Globals) },
-	{ globals__lookup_bool_option(Globals, parallel, Parallel) },
 	{ thread_safe(Attributes, ThreadSafe) },
-	{
-		Parallel = no,
-		ThreadSafe = not_thread_safe
-	->
-		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_name(PredInfo, Name),
-		llds_out__quote_c_string(Name, MangledName),
-		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
-			MangledName, """);\n"], ObtainLock),
-		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
-			MangledName, """);\n"], ReleaseLock)
-	;
-		ObtainLock = "",
-		ReleaseLock = ""
-	},
+	ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
+		ObtainLock, ReleaseLock),
 
 	%
 	% Put it all together
@@ -1882,6 +1847,36 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 		mlds__make_context(Context)) },
 	{ MLDS_Statements = [C_Code_Statement] },
 	{ MLDS_Decls = [] }.
+
+	% Generate code fragments to obtain and release the global lock
+	% (this is used for ensuring thread safety in a concurrent
+	% implementation)
+	%
+:- pred ml_gen_obtain_release_global_lock(thread_safe, pred_id,
+		string, string, ml_gen_info, ml_gen_info).
+:- mode ml_gen_obtain_release_global_lock(in, in, out, out, in, out) is det.
+
+ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
+		ObtainLock, ReleaseLock) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_bool_option(Globals, parallel, Parallel) },
+	{
+		Parallel = yes,
+		ThreadSafe = not_thread_safe
+	->
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_name(PredInfo, Name),
+		llds_out__quote_c_string(Name, MangledName),
+		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
+			MangledName, """);\n"], ObtainLock),
+		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
+			MangledName, """);\n"], ReleaseLock)
+	;
+		ObtainLock = "",
+		ReleaseLock = ""
+	}.
 
 %---------------------------------------------------------------------------%
 
