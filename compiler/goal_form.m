@@ -27,21 +27,27 @@
 %
 
 	% Succeeds if the goal cannot loop forever.
+	%
 :- pred goal_cannot_loop(module_info::in, hlds_goal::in) is semidet.
 	
 	% Succeeds if the goal can loop forever.
+	%
 :- pred goal_can_loop(module_info::in, hlds_goal::in) is semidet.
 
 	% Succeeds if the goal cannot throw an exception.
+	%
 :- pred goal_cannot_throw(module_info::in, hlds_goal::in) is semidet.
 
 	% Succeeds if the goal can throw an exception.
+	%
 :- pred goal_can_throw(module_info::in, hlds_goal::in) is semidet.
 
 	% Succeeds if the goal cannot loop forever or throw an exception.
+	%
 :- pred goal_cannot_loop_or_throw(module_info::in, hlds_goal::in) is semidet.
 
 	% Succeeds if the goal can loop forever or throw an exception.
+	%
 :- pred goal_can_loop_or_throw(module_info::in, hlds_goal::in) is semidet.
 
 %
@@ -50,64 +56,66 @@
 %
 
 	% Succeeds if the goal cannot loop forever or throw an exception.
+	%
 :- pred goal_cannot_loop_or_throw(hlds_goal::in) is semidet.
 
 	% Succeed if the goal can loop forever or throw an exception.
+	%
 :- pred goal_can_loop_or_throw(hlds_goal::in) is semidet.
 
 	% contains_only_builtins(G) is true if G is a leaf procedure,
-	% i.e. control does not leave G to call another procedure, even if
-	% that procedure is a complicated unification.
-
+	% i.e. control does not leave G to call another procedure, even
+	% if that procedure is a complicated unification.
+	%
 :- pred contains_only_builtins(hlds_goal::in) is semidet.
 
 :- pred contains_only_builtins_expr(hlds_goal_expr::in) is semidet.
 
 :- pred contains_only_builtins_list(list(hlds_goal)::in) is semidet.
 
-	% goal_is_flat(Goal) is true if Goal does not contain
-	% any branched structures (ie if-then-else or disjunctions or
+	% goal_is_flat(Goal) is true if Goal does not contain any
+	% branched structures (ie if-then-else or disjunctions or
 	% switches.)
+	%
 :- pred goal_is_flat(hlds_goal::in) is semidet.
 
-	% Determine whether a goal might allocate some heap space,
-	% i.e. whether it contains any construction unifications
-	% or predicate calls.  BEWARE that this predicate is only
-	% an approximation, used to decide whether or not to try to
-	% reclaim the heap space; currently it fails even for some
-	% goals which do allocate heap space, such as construction
-	% of boxed constants.
-
+	% Determine whether a goal might allocate some heap space, i.e.
+	% whether it contains any construction unifications or predicate
+	% calls.  BEWARE that this predicate is only an approximation,
+	% used to decide whether or not to try to reclaim the heap
+	% space; currently it fails even for some goals which do
+	% allocate heap space, such as construction of boxed constants.
+	%
 :- pred goal_may_allocate_heap(hlds_goal::in) is semidet.
 :- pred goal_list_may_allocate_heap(list(hlds_goal)::in) is semidet.
 
 	% Succeed if execution of the given goal cannot encounter a context
-	% that causes any variable to be flushed to its stack slot.
-	% If such a goal needs a resume point, and that resume point cannot
-	% be backtracked to once control leaves the goal, then the only entry
+	% that causes any variable to be flushed to its stack slot.  If such a
+	% goal needs a resume point, and that resume point cannot be
+	% backtracked to once control leaves the goal, then the only entry
 	% point we need for the resume point is the one with the resume
 	% variables in their original locations.
-
+	%
 :- pred cannot_stack_flush(hlds_goal::in) is semidet.
 
 	% Succeed if execution of the given goal cannot encounter a context
 	% that causes any variable to be flushed to its stack slot or to a
 	% register.
-
+	%
 :- pred cannot_flush(hlds_goal::in) is semidet.
 
-	% Succeed if the given goal cannot fail before encountering a context
-	% that forces all variables to be flushed to their stack slots.
-	% If such a goal needs a resume point, the only entry point we need
-	% is the stack entry point.
-
+	% Succeed if the given goal cannot fail before encountering a
+	% context that forces all variables to be flushed to their stack
+	% slots.  If such a goal needs a resume point, the only entry
+	% point we need is the stack entry point.
+	%
 :- pred cannot_fail_before_stack_flush(hlds_goal::in) is semidet.
 
-	% count_recursive_calls(Goal, PredId, ProcId, Min, Max)
-	% Given that we are in predicate PredId and procedure ProcId,
-	% return the minimum and maximum number of recursive calls that
-	% an execution of Goal may encounter.
-
+	% count_recursive_calls(Goal, PredId, ProcId, Min, Max). Given
+	% that we are in predicate PredId and procedure ProcId, return
+	% the minimum and maximum number of recursive calls that an
+	% execution of Goal may encounter.
+	%
 :- pred count_recursive_calls(hlds_goal::in, pred_id::in, proc_id::in,
 	int::out, int::out) is det.
 
@@ -117,13 +125,13 @@
 :- implementation.
 
 :- import_module hlds__hlds_data.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__term_util.
 
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%
@@ -132,7 +140,7 @@ goal_cannot_loop(ModuleInfo, Goal) :-
 	goal_cannot_loop_aux(yes(ModuleInfo), Goal).
 
 goal_can_loop(ModuleInfo, Goal) :-
-	\+ goal_cannot_loop(ModuleInfo, Goal).
+	not goal_cannot_loop(ModuleInfo, Goal).
 
 goal_cannot_throw(ModuleInfo, Goal) :-
 	goal_cannot_throw_aux(yes(ModuleInfo), Goal).
@@ -178,13 +186,21 @@ goal_cannot_loop_expr(MaybeModuleInfo, not(Goal)) :-
 	goal_cannot_loop_aux(MaybeModuleInfo, Goal).
 goal_cannot_loop_expr(MaybeModuleInfo, scope(_, Goal)) :-
 	goal_cannot_loop_aux(MaybeModuleInfo, Goal).
-goal_cannot_loop_expr(MaybeModuleInfo,
-		if_then_else(_Vars, Cond, Then, Else)) :-
+goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
+	Goal = if_then_else(_Vars, Cond, Then, Else),
 	goal_cannot_loop_aux(MaybeModuleInfo, Cond),
 	goal_cannot_loop_aux(MaybeModuleInfo, Then),
 	goal_cannot_loop_aux(MaybeModuleInfo, Else).
-goal_cannot_loop_expr(MaybeModuleInfo,
-		call(PredId, ProcId, _, _, _, _)) :-
+goal_cannot_loop_expr(_MaybeModuleInfo, Goal) :-
+	Goal = foreign_proc(Attributes, _, _, _, _, _),
+	(
+		terminates(Attributes) = terminates
+	;
+		terminates(Attributes) = depends_on_mercury_calls,
+		may_call_mercury(Attributes) = will_not_call_mercury
+	).
+goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
+	Goal = call(PredId, ProcId, _, _, _, _),
 	MaybeModuleInfo = yes(ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
@@ -209,7 +225,9 @@ goal_cannot_throw(ModuleInfo, Goal) :-
 :- pred goal_cannot_throw_aux(maybe(module_info)::in,
 		hlds_goal::in) is semidet.	
 
-goal_cannot_throw_aux(MaybeModuleInfo, GoalExpr - _) :-
+goal_cannot_throw_aux(MaybeModuleInfo, GoalExpr - GoalInfo) :-
+	goal_info_get_determinism(GoalInfo, Determinism),
+	not Determinism = erroneous,
 	goal_cannot_throw_expr(MaybeModuleInfo, GoalExpr).
 
 :- pred goal_cannot_throw_expr(maybe(module_info)::in,
@@ -228,12 +246,22 @@ goal_cannot_throw_expr(MaybeModuleInfo, not(Goal)) :-
 	goal_cannot_throw_aux(MaybeModuleInfo, Goal).
 goal_cannot_throw_expr(MaybeModuleInfo, scope(_, Goal)) :-
 	goal_cannot_throw_aux(MaybeModuleInfo, Goal).
-goal_cannot_throw_expr(MaybeModuleInfo, if_then_else(_, Cond, Then, Else)) :-
+goal_cannot_throw_expr(MaybeModuleInfo, Goal) :-
+	Goal = if_then_else(_, Cond, Then, Else),
 	goal_cannot_throw_aux(MaybeModuleInfo, Cond),
 	goal_cannot_throw_aux(MaybeModuleInfo, Then),
 	goal_cannot_throw_aux(MaybeModuleInfo, Else).
-goal_cannot_loop_expr(MaybeModuleInfo,
-		call(PredId, ProcId, _, _, _, _)) :-
+goal_cannot_throw_expr(_MaybeModuleInfo, Goal) :-
+	Goal = foreign_proc(Attributes, _, _, _, _, _),
+	ExceptionStatus = may_throw_exception(Attributes),
+	( 
+		ExceptionStatus = will_not_throw_exception
+	;
+		ExceptionStatus = default_exception_behaviour,
+		may_call_mercury(Attributes) = will_not_call_mercury	
+	).	
+goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
+	Goal = call(PredId, ProcId, _, _, _, _),
 	MaybeModuleInfo = yes(ModuleInfo),
 	module_info_exception_info(ModuleInfo, ExceptionInfo),
 	map.search(ExceptionInfo, proc(PredId, ProcId), will_not_throw).
@@ -541,7 +569,7 @@ count_recursive_calls_2(if_then_else(_, Cond, Then, Else), PredId, ProcId,
 	int__max(CTMax, EMax, Max).
 count_recursive_calls_2(shorthand(_), _, _, _, _) :-
 	% these should have been expanded out by now
-	error("count_recursive_calls_2: unexpected shorthand").
+	unexpected(this_file, "count_recursive_calls_2: unexpected shorthand").
 
 :- pred count_recursive_calls_conj(list(hlds_goal)::in,
 	pred_id::in, proc_id::in, int::in, int::in, int::out, int::out) is det.
@@ -573,20 +601,24 @@ count_recursive_calls_disj([Goal | Goals], PredId, ProcId, Min, Max) :-
 	int::out, int::out) is det.
 
 count_recursive_calls_cases([], _, _, _, _) :-
-	error("empty cases in count_recursive_calls_cases").
+	unexpected(this_file, "empty cases in count_recursive_calls_cases").
 count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
 		Min, Max) :-
 	( Cases = [] ->
-		count_recursive_calls(Goal, PredId, ProcId,
-			Min, Max)
+		count_recursive_calls(Goal, PredId, ProcId, Min, Max)
 	;
-		count_recursive_calls(Goal, PredId, ProcId,
-			Min0, Max0),
+		count_recursive_calls(Goal, PredId, ProcId, Min0, Max0),
 		count_recursive_calls_cases(Cases, PredId, ProcId,
 			Min1, Max1),
 		int__min(Min0, Min1, Min),
 		int__max(Max0, Max1, Max)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "goal_form.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module goal_form.
