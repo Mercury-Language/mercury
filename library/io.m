@@ -1229,6 +1229,13 @@ io__write(Term) -->
 :- mode io__write_univ(in, di, uo) is det.
 
 io__write_univ(Univ) -->
+	{ ops__max_priority(MaxPriority) },
+	io__write_univ(Univ, MaxPriority + 1).
+
+:- pred io__write_univ(univ, ops__priority, io__state, io__state).
+:- mode io__write_univ(in, in, di, uo) is det.
+
+io__write_univ(Univ, Priority) -->
 	%
 	% we need to special-case the builtin types:
 	%	int, char, float, string
@@ -1265,7 +1272,7 @@ io__write_univ(Univ) -->
 		{ varset__init(VarSet) },
 		term_io__write_term(VarSet, Term)
 	;
-		io__write_ordinary_term(Univ)
+		io__write_ordinary_term(Univ, Priority)
 	).
 
 :- pred io__write_univ_as_univ(univ, io__state, io__state).
@@ -1279,10 +1286,10 @@ io__write_univ_as_univ(Univ) -->
 	io__write_string(type_name(univ_type(Univ))),
 	io__write_string(")").
 
-:- pred io__write_ordinary_term(T, io__state, io__state).
-:- mode io__write_ordinary_term(in, di, uo) is det.
+:- pred io__write_ordinary_term(univ, ops__priority, io__state, io__state).
+:- mode io__write_ordinary_term(in, in, di, uo) is det.
 
-io__write_ordinary_term(Term) -->
+io__write_ordinary_term(Term, Priority) -->
 	{ expand(Term, Functor, _Arity, Args) },
 	io__get_op_table(OpTable),
 	(
@@ -1307,46 +1314,67 @@ io__write_ordinary_term(Term) -->
 		io__write_string(" }")
 	;
 		{ Args = [PrefixArg] },
-		{ ops__lookup_prefix_op(OpTable, Functor, _, _) }
+		{ ops__lookup_prefix_op(OpTable, Functor,
+			OpPriority, OpAssoc) }
 	->
-		io__write_char('('),
+		maybe_write_char('(', Priority, OpPriority),
 		term_io__quote_atom(Functor),
 		io__write_char(' '),
-		io__write_univ(PrefixArg),
-		io__write_char(')')
+		{ adjust_priority(OpPriority, OpAssoc, NewPriority) },
+		io__write_univ(PrefixArg, NewPriority),
+		maybe_write_char(')', Priority, OpPriority)
 	;
 		{ Args = [PostfixArg] },
-		{ ops__lookup_postfix_op(OpTable, Functor, _, _) }
+		{ ops__lookup_postfix_op(OpTable, Functor,
+			OpPriority, OpAssoc) }
 	->
-		io__write_char('('),
-		io__write_univ(PostfixArg),
+		maybe_write_char('(', Priority, OpPriority),
+		{ adjust_priority(OpPriority, OpAssoc, NewPriority) },
+		io__write_univ(PostfixArg, NewPriority),
 		io__write_char(' '),
 		term_io__quote_atom(Functor),
-		io__write_char(')')
+		maybe_write_char(')', Priority, OpPriority)
 	;
 		{ Args = [Arg1, Arg2] },
-		{ ops__lookup_infix_op(OpTable, Functor, _, _, _) }
+		{ ops__lookup_infix_op(OpTable, Functor, 
+			OpPriority, LeftAssoc, RightAssoc) }
 	->
-		io__write_char('('),
-		io__write_univ(Arg1),
+		maybe_write_char('(', Priority, OpPriority),
+		{ adjust_priority(OpPriority, LeftAssoc, LeftPriority) },
+		io__write_univ(Arg1, LeftPriority),
 		io__write_char(' '),
 		term_io__quote_atom(Functor),
 		io__write_char(' '),
-		io__write_univ(Arg2),
-		io__write_char(')')
+		{ adjust_priority(OpPriority, RightAssoc, RightPriority) },
+		io__write_univ(Arg2, RightPriority),
+		maybe_write_char(')', Priority, OpPriority)
 	;
 		{ Args = [Arg1, Arg2] },
-		{ ops__lookup_binary_prefix_op(OpTable, Functor, _, _, _) }
+		{ ops__lookup_binary_prefix_op(OpTable, Functor,
+			OpPriority, FirstAssoc, SecondAssoc) }
 	->
-		io__write_char('('),
+		maybe_write_char('(', Priority, OpPriority),
 		term_io__quote_atom(Functor),
 		io__write_char(' '),
-		io__write_univ(Arg1),
+		{ adjust_priority(OpPriority, FirstAssoc, FirstPriority) },
+		io__write_univ(Arg1, FirstPriority),
 		io__write_char(' '),
-		io__write_univ(Arg2),
-		io__write_char(')')
+		{ adjust_priority(OpPriority, SecondAssoc, SecondPriority) },
+		io__write_univ(Arg2, SecondPriority),
+		maybe_write_char(')', Priority, OpPriority)
 	;
-		term_io__quote_atom(Functor),
+		(
+			{ Args = [] },
+			{ ops__lookup_op(OpTable, Functor) },
+			{ ops__max_priority(MaxPriority) },
+			{ Priority =< MaxPriority }
+		->
+			io__write_char('('),
+			term_io__quote_atom(Functor),
+			io__write_char(')')
+		;
+			term_io__quote_atom(Functor)
+		),
 		(
 			{ Args = [X|Xs] }
 		->
@@ -1358,6 +1386,23 @@ io__write_ordinary_term(Term) -->
 			[]
 		)
 	).
+
+:- pred maybe_write_char(char, ops__priority, ops__priority,
+			io__state, io__state).
+:- mode maybe_write_char(in, in, in, di, uo) is det.
+
+maybe_write_char(Char, Priority, OpPriority) -->
+	( { OpPriority > Priority } ->
+		io__write_char(Char)
+	;
+		[]
+	).
+
+:- pred adjust_priority(ops__priority, ops__assoc, ops__priority).
+:- mode adjust_priority(in, in, out) is det.
+
+adjust_priority(Priority, y, Priority).
+adjust_priority(Priority, x, Priority - 1).
 
 :- pred io__write_list_tail(univ, io__state, io__state).
 :- mode io__write_list_tail(in, di, uo) is det.

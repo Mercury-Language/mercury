@@ -87,7 +87,7 @@
 
 :- implementation.
 :- import_module std_util, require.
-:- import_module parser, ops.
+:- import_module lexer, parser, ops.
 
 term_io__read_term(Result) -->
 	parser__read_term(Result).
@@ -140,10 +140,18 @@ term_io__write_term(VarSet, Term) -->
 				io__state, io__state).
 :- mode term_io__write_term_2(in, in, in, out, out, di, uo) is det.
 
-term_io__write_term_2(term__variable(Id), VarSet0, N0, VarSet, N) -->
+term_io__write_term_2(Term, VarSet0, N0, VarSet, N) -->
+	{ ops__max_priority(MaxPriority) },
+	term_io__write_term_3(Term, MaxPriority + 1, VarSet0, N0, VarSet, N).
+
+:- pred term_io__write_term_3(term, ops__priority, varset, int, varset, int,
+				io__state, io__state).
+:- mode term_io__write_term_3(in, in, in, in, out, out, di, uo) is det.
+
+term_io__write_term_3(term__variable(Id), _, VarSet0, N0, VarSet, N) -->
 	term_io__write_variable_2(Id, VarSet0, N0, VarSet, N).
-term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
-		-->
+term_io__write_term_3(term__functor(Functor, Args, _), Priority,
+			VarSet0, N0, VarSet, N) -->
 	io__get_op_table(OpTable),
 	(
 		{ Functor = term__atom(".") },
@@ -170,49 +178,77 @@ term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 	;
 		{ Args = [PrefixArg] },
 		{ Functor = term__atom(OpName) },
-		{ ops__lookup_prefix_op(OpTable, OpName, _, _) }
+		{ ops__lookup_prefix_op(OpTable, OpName,
+			OpPriority, OpAssoc) }
 	->
-		io__write_char('('),
+		maybe_write_char('(', Priority, OpPriority),
 		term_io__write_constant(Functor),
 		io__write_char(' '),
-		term_io__write_term_2(PrefixArg, VarSet0, N0, VarSet, N),
-		io__write_char(')')
+		{ adjust_priority(OpPriority, OpAssoc, NewPriority) },
+		term_io__write_term_3(PrefixArg, NewPriority,
+				VarSet0, N0, VarSet, N),
+		maybe_write_char(')', Priority, OpPriority)
 	;
 		{ Args = [PostfixArg] },
 		{ Functor = term__atom(OpName) },
-		{ ops__lookup_postfix_op(OpTable, OpName, _, _) }
+		{ ops__lookup_postfix_op(OpTable, OpName,
+			OpPriority, OpAssoc) }
 	->
-		io__write_char('('),
-		term_io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
+		maybe_write_char('(', Priority, OpPriority),
+		{ adjust_priority(OpPriority, OpAssoc, NewPriority) },
+		term_io__write_term_3(PostfixArg, NewPriority,
+				VarSet0, N0, VarSet, N),
 		io__write_char(' '),
 		term_io__write_constant(Functor),
-		io__write_char(')')
+		maybe_write_char(')', Priority, OpPriority)
 	;
 		{ Args = [Arg1, Arg2] },
 		{ Functor = term__atom(OpName) },
-		{ ops__lookup_infix_op(OpTable, OpName, _, _, _) }
+		{ ops__lookup_infix_op(OpTable, OpName,
+			OpPriority, LeftAssoc, RightAssoc) }
 	->
-		io__write_char('('),
-		term_io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
+		maybe_write_char('(', Priority, OpPriority),
+		{ adjust_priority(OpPriority, LeftAssoc, LeftPriority) },
+		term_io__write_term_3(Arg1, LeftPriority,
+				VarSet0, N0, VarSet1, N1),
 		io__write_char(' '),
 		term_io__write_constant(Functor),
 		io__write_char(' '),
-		term_io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
-		io__write_char(')')
+		{ adjust_priority(OpPriority, RightAssoc, RightPriority) },
+		term_io__write_term_3(Arg2, RightPriority,
+				VarSet1, N1, VarSet, N),
+		maybe_write_char(')', Priority, OpPriority)
 	;
 		{ Args = [Arg1, Arg2] },
 		{ Functor = term__atom(OpName) },
-		{ ops__lookup_binary_prefix_op(OpTable, OpName, _, _, _) }
+		{ ops__lookup_binary_prefix_op(OpTable, OpName,
+			OpPriority, FirstAssoc, SecondAssoc) }
 	->
-		io__write_char('('),
+		maybe_write_char('(', Priority, OpPriority),
 		term_io__write_constant(Functor),
 		io__write_char(' '),
-		term_io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
+		{ adjust_priority(OpPriority, FirstAssoc, FirstPriority) },
+		term_io__write_term_3(Arg1, FirstPriority,
+				VarSet0, N0, VarSet1, N1),
 		io__write_char(' '),
-		term_io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
-		io__write_char(')')
+		{ adjust_priority(OpPriority, SecondAssoc, SecondPriority) },
+		term_io__write_term_3(Arg2, SecondPriority,
+				VarSet1, N1, VarSet, N),
+		maybe_write_char(')', Priority, OpPriority)
 	;
-		term_io__write_constant(Functor),
+		(
+			{ Args = [] },
+			{ Functor = term__atom(Op) },
+			{ ops__lookup_op(OpTable, Op) },
+			{ ops__max_priority(MaxPriority) },
+			{ Priority =< MaxPriority }
+		->
+			io__write_char('('),
+			term_io__write_constant(Functor),
+			io__write_char(')')
+		;
+			term_io__write_constant(Functor)
+		),
 		(
 			{ Args = [X|Xs] }
 		->
@@ -225,6 +261,23 @@ term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 			  VarSet = VarSet0 }
 		)
 	).
+
+:- pred maybe_write_char(char, ops__priority, ops__priority,
+		io__state, io__state).
+:- mode maybe_write_char(in, in, in, di, uo) is det.
+
+maybe_write_char(Char, Priority, OpPriority) -->
+	( { OpPriority > Priority } ->
+		io__write_char(Char)
+	;
+		[]
+	).
+
+:- pred adjust_priority(ops__priority, ops__assoc, ops__priority).
+:- mode adjust_priority(in, in, out) is det.
+
+adjust_priority(Priority, y, Priority).
+adjust_priority(Priority, x, Priority - 1).
 
 :- pred term_io__write_list_tail(term, varset, int, varset, int,
 				io__state, io__state).
@@ -286,9 +339,22 @@ term_io__quote_char(C) -->
 
 term_io__quote_atom(S) -->
 	(
-		{ string__first_char(S, FirstChar, Rest) },
-		{ char__is_lower(FirstChar) },
-		{ string__is_alnum_or_underscore(Rest) }
+		% I didn't make these rules up: see ISO Prolog 6.4.2
+		(
+			{ string__first_char(S, FirstChar, Rest) },
+			{ char__is_lower(FirstChar) },
+			{ string__is_alnum_or_underscore(Rest) }
+		;
+			{ S = ";" }
+		;
+			{ S = "!" }
+		;
+			{ S = "," }
+		;
+			{ string__to_char_list(S, Chars) },
+			{ \+ (  list__member(Char, Chars),
+				\+ lexer__graphic_token_char(Char)) }
+		)
 	->
 		io__write_string(S)
 	;

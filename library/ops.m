@@ -69,6 +69,13 @@
 :- mode ops__op_specifier_to_class(in, out) is det.
 % :- mode ops__op_specifier_to_class(out, in) is semidet.
 
+	% Returns the highest priority number (the lowest is zero).
+	% Note that due to Prolog tradition, the priority numbers
+	% are backwards: higher numbers mean lower priority
+	% and lower numbers mean higher priority.  Sorry...
+:- pred ops__max_priority(ops__priority).
+:- mode ops__max_priority(out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -212,5 +219,7 @@ ops__op_table("~=", after, xfx, 700).		% NU-Prolog (*)
 %     future purpose
 
 ops__init_op_table(ops__table).
+
+ops__max_priority(1200).
 
 %-----------------------------------------------------------------------------%

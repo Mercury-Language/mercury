@@ -58,6 +58,16 @@
 %	Convert a token to a human-readable string describing the token.
 
 %-----------------------------------------------------------------------------%
+:- implementation.
+%-----------------------------------------------------------------------------%
+:- interface.
+
+	% lexer__graphic_token_char(Char): true iff `Char'
+	% is "graphic token char" (ISO Prolog 6.4.2).
+	% This is exported for use by term_io__quote_atom.
+:- pred lexer__graphic_token_char(character).
+:- mode lexer__graphic_token_char(in) is semidet.
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require.
@@ -232,9 +242,6 @@ lexer__special_token('|', ht_sep).
 lexer__special_token(',', comma).
 lexer__special_token(';', name(";")).
 lexer__special_token('!', name("!")).
-
-:- pred lexer__graphic_token_char(character).
-:- mode lexer__graphic_token_char(in) is semidet.
 
 lexer__graphic_token_char('#').
 lexer__graphic_token_char('$').
