@@ -21,7 +21,7 @@
 # Disable the option if you want to time the program externally,
 # since invoking the built-in timer many times can significantly
 # distort the results otherwise.
-# -DOWNTIMER
+-DOWNTIMER
 
 # Use this option only with gcc
 # Currently only supported for mips and sparc cpus.
