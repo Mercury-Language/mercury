@@ -673,6 +673,17 @@
 
 %-----------------------------------------------------------------------------%
 
+% returns a unique temporary filename.
+:- pred io__tmpnam(string, io__state, io__state).
+:- mode io__tmpnam(out, di, uo) is det.
+
+% deletes a file
+:- pred io__remove_file(string, io__res, io__state, io__state).
+:- mode io__remove_file(in, out, di, uo) is det.
+
+
+%-----------------------------------------------------------------------------%
+
 % Memory management predicates.
 
 	% Write some memory/time usage statistics to stdout.
@@ -2069,6 +2080,55 @@ void sys_init_io_stream_module(void) {
 :- pragma(c_code, io__putenv(VarAndValue::in), "
 	SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
 ").
+
+/*---------------------------------------------------------------------------*/
+%#include <stdio.h>
+:- pragma(c_code, io__tmpnam(FileName::out, IO0::di, IO::uo), "{
+	Word tmp;
+
+	incr_hp_atomic(tmp, (L_tmpnam + sizeof(Word)) / sizeof(Word));
+	if (tmpnam((char *)tmp) == NULL) {
+		fprintf(stderr,
+		  ""Mercury runtime: unable to create temporary filename\\n"");
+		exit(1);
+	}
+	FileName = (char *)tmp;
+	update_io(IO0, IO);
+}").
+
+/*---------------------------------------------------------------------------*/
+
+io__remove_file(FileName, Result, IO, IO) :-
+	io__remove_file_2(FileName, Res, ResString),
+	( Res < 0 ->
+		Result = error(ResString)
+	;
+		Result = ok
+	).
+
+
+:- pred io__remove_file_2(string, int, string).
+:- mode io__remove_file_2(in, out, out) is det.
+
+%#include <string.h>
+%#include <errno.h>
+%#include "prof.h" % for strerror
+:- pragma(c_code, io__remove_file_2(FileName::in, RetVal::out, RetStr::out), "{
+	Word tmp;
+	char *buf;
+
+	RetVal = remove(FileName);
+
+	if (RetVal < 0) {
+		buf = strerror(errno);
+		incr_hp_atomic(tmp,(strlen(buf)+sizeof(Word)) / sizeof(Word));
+		RetStr = (char *)tmp;
+		strcpy(RetStr, (char *)tmp);
+	} else {
+		RetStr = NULL;
+	}
+}").
+
 
 /*---------------------------------------------------------------------------*/
 
