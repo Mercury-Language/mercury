@@ -2270,6 +2270,15 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 		Result = error("free inst parameter in RHS of inst definition",
 				Body)
 	;
+	% check that the inst is a valid user-defined inst, i.e. that
+	% it does not have the form of one of the builtin insts
+		\+ (
+			convert_inst(Head, UserInst),
+			UserInst = defined_inst(user_inst(_, _))
+		)
+	->
+		Result = error("attempt to redefine builtin inst", Head)
+	;
 		% should improve the error message here
 
 		( %%% some [ConvertedBody]
