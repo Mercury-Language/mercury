@@ -68,7 +68,7 @@ TRANS_OPT_RESS = $(PROGS:%=%.trans_opt_res)
 
 #-----------------------------------------------------------------------------#
 
-MCFLAGS = --trans-intermod-opt $(EXTRA_MCFLAGS)
+MCFLAGS = --trans-intermod-opt
 
 MCTERMFLAGS = --enable-termination --term-single-arg 5 --term-norm simple
 MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
@@ -76,7 +76,7 @@ MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
 MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)
 
 $(trans_opts_subdir)%.trans_opt: %.m
-	$(MC) $(MCFLAGS) --make-trans-opt $(MCTRANSOPTFLAGS) $< \
+	$(MC) $(ALL_MCFLAGS) --make-trans-opt $(MCTRANSOPTFLAGS) $< \
 		> $*.trans_opt_err 2>&1
 
 %.trans_opt_res: %.trans_opt_exp $(trans_opts_subdir)%.trans_opt
