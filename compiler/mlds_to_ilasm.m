@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,10 +178,9 @@ generate_c_code(MLDS) -->
 	io__nl,
 	io__write_strings([
 		"#using <mscorlib.dll>\n",
-		"using namespace System;\n",
-		"#include ""mercury_cpp.h""\n",
-		"using namespace mercury;\n",
-		"#using ""mercury_cpp.dll""\n",
+		"#include ""mercury_mcpp.h""\n",
+		"#using ""mercury_mcpp.dll""\n",
+		"#using ""mercury_il.dll""\n",
 		"#using """, ModuleNameStr, ".dll""\n",
 		% XXX this supresses problems caused by references to 
 		% float.  If you don't do this, you'll get link errors.
@@ -449,6 +448,14 @@ write_managed_cpp_rval(const(RvalConst)) -->
 	write_managed_cpp_rval_const(RvalConst).
 write_managed_cpp_rval(unop(Unop, Rval)) -->
 	( 
+		{ Unop = std_unop(StdUnop) },
+		{ c_util__unary_prefix_op(StdUnop, UnopStr) }
+	->
+		io__write_string(UnopStr),
+		io__write_string("("),
+		write_managed_cpp_rval(Rval),
+		io__write_string(")")
+	;
 		{ Unop = cast(Type) }
 	->
 		io__write_string("("),
@@ -456,10 +463,24 @@ write_managed_cpp_rval(unop(Unop, Rval)) -->
 		io__write_string(") "),
 		write_managed_cpp_rval(Rval)
 	;
-		io__write_string(" /* unop rval -- unimplemented */ ")
+		io__write_string(" /* XXX box or unbox unop -- unimplemented */ "),
+		write_managed_cpp_rval(Rval)
 	).
-write_managed_cpp_rval(binop(_, _, _)) -->
-	io__write_string(" /* binop rval -- unimplemented */ ").
+write_managed_cpp_rval(binop(Binop, Rval1, Rval2)) -->
+	( 
+		{ c_util__binary_infix_op(Binop, BinopStr) }
+	->
+		io__write_string("("),
+		write_managed_cpp_rval(Rval1),
+		io__write_string(") "),
+		io__write_string(BinopStr),
+		io__write_string(" ("),
+		write_managed_cpp_rval(Rval2),
+		io__write_string(")")
+	;
+		io__write_string(" /* binop rval -- unimplemented */ ")
+	).
+
 write_managed_cpp_rval(mem_addr(_)) -->
 	io__write_string(" /* mem_addr rval -- unimplemented */ ").
 	
@@ -511,8 +532,14 @@ write_managed_cpp_lval(field(_, Rval, named_field(FieldId, _Type), _, _)) -->
 	{ FieldId = qual(_, FieldName) },
 	io__write_string(FieldName).
 
-write_managed_cpp_lval(field(_, _, offset(_), _, _)) -->
-	io__write_string(" /* offset field lval -- unimplemented */ ").
+write_managed_cpp_lval(field(_, Rval, offset(OffSet), _, _)) -->
+	io__write_string("("),
+	write_managed_cpp_rval(Rval),
+	io__write_string(")"),
+	io__write_string("["),
+	write_managed_cpp_rval(OffSet),
+	io__write_string("]").
+
 write_managed_cpp_lval(mem_ref(Rval, _)) -->
 	io__write_string("*"),
 	write_managed_cpp_rval(Rval).

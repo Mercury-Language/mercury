@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -833,6 +833,14 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_) - _,
 		proc_info_interface_determinism(ProcInfo, Detism),
 		( Detism = nondet ; Detism = multidet )
+	),
+
+	% don't inline foreign_code if we are generating IL
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_target(Globals, Target),
+	\+ (
+		Target = il,
+		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_) - _
 	),
 
 	% Don't inline memoed Aditi predicates.

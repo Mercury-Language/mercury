@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -453,22 +453,37 @@ is(X, X).
 :- pred int__to_float(int, float) is det.
 :- mode int__to_float(in, out) is det.
 */
-:- pragma c_code(int__to_float(IntVal::in, FloatVal::out),
+:- pragma foreign_code("C", int__to_float(IntVal::in, FloatVal::out),
 		will_not_call_mercury,
 "
 	FloatVal = IntVal;
 ").
+:- pragma foreign_code("MC++", int__to_float(IntVal::in, FloatVal::out),
+		will_not_call_mercury,
+"
+	FloatVal = (MR_Float) IntVal;
+").
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	#include <limits.h>
 
 	#define ML_BITS_PER_INT		(sizeof(MR_Integer) * CHAR_BIT)
 ").
 
+:- pragma foreign_decl("MC++", "
+	#include <limits.h>
 
-:- pragma c_code(int__max_int(Max::out),
+	// XXX this should work, but it would be nice to have a more robust
+	// technique that used the fact we map to System.Int32 in the compiler.
+
+	#define ML_BITS_PER_INT		(sizeof(MR_Integer) * CHAR_BIT)
+
+").
+
+
+:- pragma foreign_code("C", int__max_int(Max::out),
 		[will_not_call_mercury, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
 		Max = INT_MAX;
@@ -478,7 +493,7 @@ is(X, X).
 		MR_fatal_error(""Unable to figure out max integer size"");
 ").
 
-:- pragma c_code(int__min_int(Min::out),
+:- pragma foreign_code("C", int__min_int(Min::out),
 		[will_not_call_mercury, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
 		Min = INT_MIN;
@@ -488,20 +503,47 @@ is(X, X).
 		MR_fatal_error(""Unable to figure out min integer size"");
 ").
 
-:- pragma c_code(int__bits_per_int(Bits::out),
+:- pragma foreign_code("C", int__bits_per_int(Bits::out),
 		[will_not_call_mercury, thread_safe], "
 	Bits = ML_BITS_PER_INT;
 ").
 
-:- pragma c_code(int__quot_bits_per_int(Int::in) = (Div::out),
+:- pragma foreign_code("C", int__quot_bits_per_int(Int::in) = (Div::out),
 		[will_not_call_mercury, thread_safe], "
 	Div = Int / ML_BITS_PER_INT;
 ").
 
-:- pragma c_code(int__times_bits_per_int(Int::in) = (Result::out),
+:- pragma foreign_code("C", int__times_bits_per_int(Int::in) = (Result::out),
 		[will_not_call_mercury, thread_safe], "
 	Result = Int * ML_BITS_PER_INT;
 ").
+
+
+:- pragma foreign_code("MC++", int__max_int(Max::out),
+		[will_not_call_mercury, thread_safe], "
+	Max = System::Int32::MaxValue;
+").
+
+:- pragma foreign_code("MC++", int__min_int(Min::out),
+		[will_not_call_mercury, thread_safe], "
+	Min = System::Int32::MinValue;
+").
+
+:- pragma foreign_code("MC++", int__bits_per_int(Bits::out),
+		[will_not_call_mercury, thread_safe], "
+	Bits = ML_BITS_PER_INT;
+").
+
+:- pragma foreign_code("MC++", int__quot_bits_per_int(Int::in) = (Div::out),
+		[will_not_call_mercury, thread_safe], "
+	Div = Int / ML_BITS_PER_INT;
+").
+
+:- pragma foreign_code("MC++", int__times_bits_per_int(Int::in) = (Result::out),
+		[will_not_call_mercury, thread_safe], "
+	Result = Int * ML_BITS_PER_INT;
+").
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

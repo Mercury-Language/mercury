@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999,2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -38,7 +38,7 @@ garbage_collect -->
 
 :- pragma no_inline(garbage_collect/0).
 
-:- pragma c_code(garbage_collect, [will_not_call_mercury], "
+:- pragma foreign_code("C", garbage_collect, [will_not_call_mercury], "
 #ifdef CONSERVATIVE_GC
   #ifndef MR_HIGHLEVEL_CODE
 	/* clear out the stacks and registers before garbage collecting */
@@ -49,6 +49,9 @@ garbage_collect -->
 
 	GC_gcollect();
 #endif
+").
+:- pragma foreign_code("MC++", garbage_collect, [will_not_call_mercury], "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 %---------------------------------------------------------------------------%

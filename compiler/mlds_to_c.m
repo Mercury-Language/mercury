@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,7 +10,7 @@
 % TODO:
 %	- RTTI for debugging (module_layout, proc_layout, internal_layout)
 %	- trail ops
-%	- foreign language interfacing and inline target code
+%	- foreign language interfacing (trd: what does this mean?)
 %	- packages, classes and inheritance
 %	  (currently we just generate all classes as structs)
 

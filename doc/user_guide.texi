@@ -18,7 +18,7 @@
 @ifinfo
 This file documents the Mercury implementation.
 
-Copyright (C) 1995-2000 The University of Melbourne.
+Copyright (C) 1995-2001 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -524,6 +524,16 @@ The executable that invokes the C compiler.
 
 @item MGNUCFLAGS and EXTRA_MGNUCFLAGS
 Options to pass to the C compiler.
+
+@item MS_CLFLAGS and EXTRA_MS_CLFLAGS
+Options to pass to the Microsoft command line C++ compiler (if you are
+using it).
+
+@item MS_CL_NOASM 
+The option to control whether the Microsoft command line C++ compile
+will generate assemblies from managed C++ files.  Set to
+@samp{:noAssembly} to turn off assembly generation, leave empty to turn
+on assembly generation.  The default is to leave this variable empty.
 
 @item ML
 The executable that invokes the linker.

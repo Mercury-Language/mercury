@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -176,7 +176,8 @@
 				    	     out(try_all_nondet)) is cc_multi.
 
 % The functors in this type must be in the same order as the
-% enumeration constants in the C enum `ML_Determinism' defined below.
+% enumeration constants in the foreign language enums `ML_Determinism'
+% defined below.
 :- type determinism
 	--->	det
 	;	semidet
@@ -207,7 +208,7 @@
 % the C interface, since Mercury doesn't allow different code for different
 % modes.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 /* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
 #ifndef ML_DETERMINISM_GUARD
 #define ML_DETERMINISM_GUARD
@@ -229,56 +230,131 @@
 #endif
 ").
 
-:- pragma c_code(
+:- pragma foreign_code("C",
 	get_determinism(_Pred::pred(out) is det,
 			Det::out(bound(det))),
 	will_not_call_mercury,
 	"Det = ML_DET"
 ).
-:- pragma c_code(
+:- pragma foreign_code("C",
 	get_determinism(_Pred::pred(out) is semidet,
 			Det::out(bound(semidet))),
 	will_not_call_mercury,
 	"Det = ML_SEMIDET"
 ).
-:- pragma c_code(
+:- pragma foreign_code("C",
 	get_determinism(_Pred::pred(out) is cc_multi,
 			Det::out(bound(cc_multi))),
 	will_not_call_mercury,
 	"Det = ML_CC_MULTI"
 ).
-:- pragma c_code(
+:- pragma foreign_code("C",
 	get_determinism(_Pred::pred(out) is cc_nondet,
 			Det::out(bound(cc_nondet))),
 	will_not_call_mercury,
 	"Det = ML_CC_NONDET"
 ).
-:- pragma c_code(
+:- pragma foreign_code("C",
 	get_determinism(_Pred::pred(out) is multi,
 			Det::out(bound(multi))),
 	will_not_call_mercury,
 	"Det = ML_MULTI"
 ).
-:- pragma c_code(
+:- pragma foreign_code("C",
 	get_determinism(_Pred::pred(out) is nondet,
 			Det::out(bound(nondet))),
 	will_not_call_mercury,
 	"Det = ML_NONDET"
 ).
 
-:- pragma c_code(
+:- pragma foreign_code("C",
 	get_determinism_2(_Pred::pred(out, di, uo) is det,
 			Det::out(bound(det))),
 	will_not_call_mercury,
 	"Det = ML_DET"
 ).
 
-:- pragma c_code(
+:- pragma foreign_code("C",
 	get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
 			Det::out(bound(cc_multi))),
 	will_not_call_mercury,
 	"Det = ML_CC_MULTI"
 ).
+
+:- pragma foreign_decl("MC++", "
+/* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
+#ifndef ML_DETERMINISM_GUARD
+#define ML_DETERMINISM_GUARD
+
+	/*
+	** The enumeration constants in this enum must be in the same
+	** order as the functors in the Mercury type `determinism'
+	** defined above.
+	*/
+	typedef enum {
+		ML_DET,
+		ML_SEMIDET,
+		ML_CC_MULTI,
+		ML_CC_NONDET,
+		ML_MULTI,
+		ML_NONDET,
+		ML_ERRONEOUS,
+		ML_FAILURE
+	} ML_Determinism;
+#endif
+").
+
+:- pragma foreign_code("MC++",
+	get_determinism(_Pred::pred(out) is det,
+			Det::out(bound(det))),
+	will_not_call_mercury,
+	"MR_newenum(Det, ML_DET);"
+).
+:- pragma foreign_code("MC++",
+	get_determinism(_Pred::pred(out) is semidet,
+			Det::out(bound(semidet))),
+	will_not_call_mercury,
+	"MR_newenum(Det, ML_SEMIDET);"
+).
+:- pragma foreign_code("MC++",
+	get_determinism(_Pred::pred(out) is cc_multi,
+			Det::out(bound(cc_multi))),
+	will_not_call_mercury,
+	"MR_newenum(Det, ML_CC_MULTI);"
+).
+:- pragma foreign_code("MC++",
+	get_determinism(_Pred::pred(out) is cc_nondet,
+			Det::out(bound(cc_nondet))),
+	will_not_call_mercury,
+	"MR_newenum(Det, ML_CC_NONDET);"
+).
+:- pragma foreign_code("MC++",
+	get_determinism(_Pred::pred(out) is multi,
+			Det::out(bound(multi))),
+	will_not_call_mercury,
+	"MR_newenum(Det, ML_MULTI);"
+).
+:- pragma foreign_code("MC++",
+	get_determinism(_Pred::pred(out) is nondet,
+			Det::out(bound(nondet))),
+	will_not_call_mercury,
+	"MR_newenum(Det, ML_NONDET);"
+).
+
+:- pragma foreign_code("MC++",
+	get_determinism_2(_Pred::pred(out, di, uo) is det,
+			Det::out(bound(det))),
+	will_not_call_mercury,
+	"MR_newenum(Det, ML_DET);"
+).
+
+:- pragma foreign_code("MC++",
+	get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
+			Det::out(bound(cc_multi))),
+	will_not_call_mercury,
+	"MR_newenum(Det, ML_CC_MULTI);"
+).
+
 
 % These are not worth inlining, since they will
 % (presumably) not be called frequently, and so
@@ -432,11 +508,15 @@ very_unsafe_perform_io(Goal, Result) :-
 	impure consume_io_state(IOState).
 
 :- impure pred make_io_state(io__state::uo) is det.
-:- pragma c_code(make_io_state(_IO::uo),
+:- pragma foreign_code("C", make_io_state(_IO::uo),
+		[will_not_call_mercury, thread_safe], "").
+:- pragma foreign_code("MC++", make_io_state(_IO::uo),
 		[will_not_call_mercury, thread_safe], "").
 
 :- impure pred consume_io_state(io__state::di) is det.
-:- pragma c_code(consume_io_state(_IO::di),
+:- pragma foreign_code("C", consume_io_state(_IO::di),
+		[will_not_call_mercury, thread_safe], "").
+:- pragma foreign_code("MC++", consume_io_state(_IO::di),
 		[will_not_call_mercury, thread_safe], "").
 
 :- pred wrap_exception(univ::in, exception_result(T)::out) is det.
@@ -808,6 +888,68 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 
 #endif /* MR_HIGHLEVEL_CODE */
 ").
+
+/*
+
+XXX :- external stops us from using this
+
+:- pragma foreign_code("MC++", builtin_throw(_T::in), [will_not_call_mercury], "
+        mercury_exception *ex;
+
+        // XXX should look for string objects and set them as the message
+
+        if (false) {
+            ex = new mercury_exception;
+        } else {
+            ex = new mercury_exception(""hello"");
+        }
+
+        throw ex; 
+").
+
+:- pragma foreign_code("MC++", 
+	builtin_catch(_Pred::pred(out) is det,
+		_Handler::in(handler), _T::out), [will_not_call_mercury], "
+	MR_Runtime::SORRY(""foreign code for this function"");
+").
+:- pragma foreign_code("MC++", 
+	builtin_catch(_Pred::pred(out) is semidet,
+		_Handler::in(handler), _T::out), [will_not_call_mercury], "
+	MR_Runtime::SORRY(""foreign code for this function"");
+").
+:- pragma foreign_code("MC++", 
+	builtin_catch(_Pred::pred(out) is cc_multi,
+		_Handler::in(handler), _T::out), [will_not_call_mercury], "
+	MR_Runtime::SORRY(""foreign code for this function"");
+").
+:- pragma foreign_code("MC++", 
+	builtin_catch(_Pred::pred(out) is cc_nondet,
+		_Handler::in(handler), _T::out), [will_not_call_mercury], "
+	MR_Runtime::SORRY(""foreign code for this function"");
+").
+:- pragma foreign_code("MC++", 
+	builtin_catch(_Pred::pred(out) is multi,
+		_Handler::in(handler), _T::out), [will_not_call_mercury], 
+	local_vars(""),
+	first_code(""),
+	retry_code(""),
+	common_code("
+		MR_Runtime::SORRY(""foreign code for this function"");
+	")
+).
+:- pragma foreign_code("MC++", 
+	builtin_catch(_Pred::pred(out) is nondet,
+		_Handler::in(handler), _T::out), [will_not_call_mercury], 
+	local_vars(""),
+	first_code(""),
+	retry_code(""),
+	common_code("
+		MR_Runtime::SORRY(""foreign code for this function"");
+	")
+).
+
+*/
+
 
 /*********
 This causes problems because the LLDS back-end

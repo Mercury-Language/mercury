@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -162,9 +162,16 @@ builtin_compare_string(R, S1, S2) :-
 :- pred builtin_strcmp(int, string, string).
 :- mode builtin_strcmp(out, in, in) is det.
 
-:- pragma c_code(builtin_strcmp(Res::out, S1::in, S2::in),
+:- pragma foreign_code("C", builtin_strcmp(Res::out, S1::in, S2::in),
 	[will_not_call_mercury, thread_safe],
 	"Res = strcmp(S1, S2);").
+
+:- pragma foreign_code("MC++", builtin_strcmp(Res::out, S1::in, S2::in),
+	[will_not_call_mercury, thread_safe],
+"
+	Res = System::String::Compare(S1, S2);
+").
+	
 
 builtin_unify_float(F, F).
 
@@ -236,7 +243,7 @@ compare_error :-
 	error("internal error in compare/3").
 
 	% XXX These could be implemented more efficiently using
-	%     `pragma c_code' -- the implementation below does some
+	%     `pragma foreign_code' -- the implementation below does some
 	%     unnecessary memory allocatation.
 typed_unify(X, Y) :- univ(X) = univ(Y).
 typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
@@ -321,7 +328,7 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 
 	% The definitions for type_ctor_info/1 and type_info/1.
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
 #ifdef MR_HIGHLEVEL_CODE
 void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
@@ -435,32 +442,308 @@ void sys_init_type_info_module(void) {
 
 ").
 
-:- pragma c_code(type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-	TypeInfo::out), [will_not_call_mercury, thread_safe],
+
+:- pragma foreign_code("MC++", "
+
+static MR_TypeInfo MR_typeclass_info_type_info(
+	MR_TypeClassInfo tcinfo, int index)
+{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	return 0;
+}
+static MR_TypeInfo MR_typeclass_info_unconstrained_type_info(
+	MR_TypeClassInfo tcinfo, int index) 
+{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	return 0;
+}
+
+static MR_TypeClassInfo MR_typeclass_info_superclass_info(
+	MR_TypeClassInfo tcinfo, int index)
+{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	return 0;
+}
+
+static MR_TypeClassInfo MR_typeclass_info_arg_typeclass_info(
+	MR_TypeClassInfo tcinfo, int index) 
+{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	return 0;
+}
+
+").
+
+:- pragma foreign_code("MC++", "
+
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 1,
+	MR_TYPECTOR_REP_TYPEINFO) 
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
+	MR_TYPECTOR_REP_TYPEINFO) 
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 1,
+	MR_TYPECTOR_REP_TYPECLASSINFO) 
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
+	MR_TYPECTOR_REP_TYPECLASSINFO) 
+
+	// XXX These static constants are duplicated both here and in
+	// mercury_mcpp.cpp.
+
+	// This is because other library modules reference them
+	// from MC++ code (so they depend on the versions in the runtime to
+	// make the dependencies simple) whereas the compiler generates
+	// references to the ones here. 
+
+	// See runtime/mercury_mcpp.cpp for discussion of why we aren't using
+	// enums or const static ints here.
+
+static int MR_TYPECTOR_REP_ENUM 			= MR_TYPECTOR_REP_ENUM_val;
+static int MR_TYPECTOR_REP_ENUM_USEREQ 		= MR_TYPECTOR_REP_ENUM_USEREQ_val;
+static int MR_TYPECTOR_REP_DU				= MR_TYPECTOR_REP_DU_val;
+static int MR_TYPECTOR_REP_DU_USEREQ		= 3;
+static int MR_TYPECTOR_REP_NOTAG			= 4;
+static int MR_TYPECTOR_REP_NOTAG_USEREQ		= 5;
+static int MR_TYPECTOR_REP_EQUIV			= 6;
+static int MR_TYPECTOR_REP_EQUIV_VAR		= 7;
+static int MR_TYPECTOR_REP_INT		    	= 8;
+static int MR_TYPECTOR_REP_CHAR		    	= 9;
+static int MR_TYPECTOR_REP_FLOAT			=10;
+static int MR_TYPECTOR_REP_STRING			=11;
+static int MR_TYPECTOR_REP_PRED		    	=12;
+static int MR_TYPECTOR_REP_UNIV		    	=13;
+static int MR_TYPECTOR_REP_VOID		    	=14;
+static int MR_TYPECTOR_REP_C_POINTER		=15;
+static int MR_TYPECTOR_REP_TYPEINFO			=16;
+static int MR_TYPECTOR_REP_TYPECLASSINFO	=17;
+static int MR_TYPECTOR_REP_ARRAY			=18;
+static int MR_TYPECTOR_REP_SUCCIP			=19;
+static int MR_TYPECTOR_REP_HP				=20;
+static int MR_TYPECTOR_REP_CURFR			=21;
+static int MR_TYPECTOR_REP_MAXFR			=22;
+static int MR_TYPECTOR_REP_REDOFR			=23;
+static int MR_TYPECTOR_REP_REDOIP			=24;
+static int MR_TYPECTOR_REP_TRAIL_PTR		=25;
+static int MR_TYPECTOR_REP_TICKET			=26;
+static int MR_TYPECTOR_REP_NOTAG_GROUND		=27;
+static int MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ	=28;
+static int MR_TYPECTOR_REP_EQUIV_GROUND		=29;
+
+static int MR_SECTAG_NONE				= 0;
+static int MR_SECTAG_LOCAL				= 1;
+static int MR_SECTAG_REMOTE				= 2;
+
+
+static int
+__Unify____type_info_1_0(
+	MR_Word type_info, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""unify for type_info"");
+	return 0;
+}
+
+static int
+__Unify____typeclass_info_1_0(
+	MR_Word type_info, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""unify for typeclass_info"");
+	return 0;
+}
+
+static int
+__Unify____base_typeclass_info_1_0(
+	MR_Word type_info, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""unify for base_typeclass_info"");
+	return 0;
+}
+
+static int
+__Unify____type_ctor_info_1_0(
+	MR_Word type_info, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""unify for type_ctor_info"");
+	return 0;
+}
+
+static void
+__Compare____type_ctor_info_1_0(
+	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""compare for type_ctor_info"");
+}
+
+static void
+__Compare____type_info_1_0(
+	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""compare for type_info"");
+}
+
+static void
+__Compare____typeclass_info_1_0(
+	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""compare for typeclass_info"");
+}
+
+static void
+__Compare____base_typeclass_info_1_0(
+	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""compare for base_typeclass_info"");
+}
+
+static int
+do_unify__type_ctor_info_1_0(
+	MR_Word type_info, MR_Box x, MR_Box y)
+{
+	return mercury::private_builtin__c_code::__Unify____type_ctor_info_1_0(
+		type_info, 
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static int
+do_unify__type_info_1_0(
+	MR_Word type_info, MR_Box x, MR_Box y)
+{
+	return mercury::private_builtin__c_code::__Unify____type_info_1_0(
+		type_info,
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static int
+do_unify__typeclass_info_1_0(
+	MR_Word type_info, MR_Box x, MR_Box y)
+{
+	return mercury::private_builtin__c_code::__Unify____typeclass_info_1_0(
+		type_info, 
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static int
+do_unify__base_typeclass_info_1_0(
+	MR_Word type_info, MR_Box x, MR_Box y)
+{
+	return
+	mercury::private_builtin__c_code::__Unify____base_typeclass_info_1_0(
+		type_info,
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static void
+do_compare__type_ctor_info_1_0(
+	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
+{
+	mercury::private_builtin__c_code::__Compare____type_ctor_info_1_0(
+		type_info, result, 
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static void
+do_compare__type_info_1_0(
+	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
+{
+	mercury::private_builtin__c_code::__Compare____type_info_1_0(
+		type_info, result,
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static void
+do_compare__typeclass_info_1_0(
+	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
+{
+	mercury::private_builtin__c_code::__Compare____typeclass_info_1_0(
+		type_info, result,
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static void
+do_compare__base_typeclass_info_1_0(
+	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
+{
+	mercury::private_builtin__c_code::__Compare____base_typeclass_info_1_0(
+		type_info, result,
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static void init_runtime(void)
+{
+	mercury::runtime::Init::init_runtime();
+}
+
+").
+
+:- pragma foreign_code("C",
+	type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+		TypeInfo::out), [will_not_call_mercury, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
 ").
 
-:- pragma c_code(unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
-	Index::in, TypeInfo::out), [will_not_call_mercury, thread_safe],
+:- pragma foreign_code("C",
+	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+		Index::in, TypeInfo::out), [will_not_call_mercury, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_unconstrained_type_info(TypeClassInfo,
 			Index);
 ").
 
-:- pragma c_code(superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-	TypeClassInfo::out), [will_not_call_mercury, thread_safe],
+:- pragma foreign_code("C",
+	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+		TypeClassInfo::out), [will_not_call_mercury, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
 ").
 
-:- pragma c_code(instance_constraint_from_typeclass_info(TypeClassInfo0::in,
-        Index::in, TypeClassInfo::out), [will_not_call_mercury, thread_safe],
+:- pragma foreign_code("C",
+	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+		Index::in, TypeClassInfo::out),
+		[will_not_call_mercury, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
+
+:- pragma foreign_code("MC++",
+	type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+		TypeInfo::out), [will_not_call_mercury, thread_safe],
+"
+	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
+").
+
+:- pragma foreign_code("MC++",
+	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+		Index::in, TypeInfo::out), [will_not_call_mercury, thread_safe],
+"
+	TypeInfo = MR_typeclass_info_unconstrained_type_info(TypeClassInfo,
+			Index);
+").
+
+:- pragma foreign_code("MC++",
+	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+		TypeClassInfo::out), [will_not_call_mercury, thread_safe],
+"
+	TypeClassInfo =
+		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+").
+
+:- pragma foreign_code("MC++",
+	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+		Index::in, TypeClassInfo::out),
+		[will_not_call_mercury, thread_safe],
+"
+	TypeClassInfo =
+		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
+").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -604,6 +887,15 @@ unused :-
 		% the following is never executed
 		true
 	).
+
+:- pragma foreign_code("MC++", "
+
+static void free_heap_1_p_0(MR_Box X) 
+{ 
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+}
+
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
