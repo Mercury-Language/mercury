@@ -3403,23 +3403,28 @@ i.e.@: sets the counts for all depths to zero.
 @kindex dice (mdb command)
 Display a program dice on the screen.  
 @sp 1
-A dice is a comparison between some successful test runs of the program and a
-failing test run.  Before using the @samp{dice} command one or more passing
-execution summaries and one failing execution summary need to be generated.
-This can be done by compiling the program with deep tracing enabled (either by
-compiling in a .debug or .decldebug grade or with the @samp{--trace deep}
-or @samp{--trace rep} compiler options) and then running the program with
-the MERCURY_OPTIONS environment variable set to @samp{--trace-count}.  
-This will generate a file called @samp{.mercury_trace_counts} which contains a
-summary of the program's execution.  This summary is called a slice.  Copy the
-generated slice to a new file for each test case, to end up with some passing
-slices, say @samp{pass1}, @samp{pass2}, @samp{pass3}, etc. and a failing slice,
-say @samp{fail}.
+A dice is a comparison between
+some successful test runs of the program and a failing test run.
+Before using the @samp{dice} command one or more passing execution summaries
+and one failing execution summary need to be generated.
+This can be done by compiling the program with deep tracing enabled
+(either by compiling in a .debug or .decldebug grade
+or with the @samp{--trace deep} or @samp{--trace rep} compiler options)
+and then running the program
+with the MERCURY_OPTIONS environment variable set to @samp{--trace-count}.  
+This will generate a file called @samp{.mercury_trace_counts}
+which contains a summary of the program's execution.
+This summary is called a slice.
+Copy the generated slice to a new file for each test case,
+to end up with some passing slices,
+say @samp{pass1}, @samp{pass2}, @samp{pass3}, etc.
+and a failing slice, say @samp{fail}.
 @sp 1
-Once one or more passing slices and a failing slice have been generated the
-@samp{dice} command can be used to display a table of statistics comparing the
-passing test runs to the failing run.  Here is an example of a dice displayed
-in an mdb session:
+Once one or more passing slices
+and a failing slice have been generated the @samp{dice} command
+can be used to display a table of statistics
+comparing the passing test runs to the failing run.
+Here is an example of a dice displayed in an mdb session:
 @sp 1
 @example
 mdb> dice -f fail -p passes -s S -n 4
@@ -3430,13 +3435,14 @@ pred s.mrg/3-0   CALL       s.m:64      18 (3)    7      0.28
 pred s.mrg/3-0   EXIT       s.m:64      18 (3)    7      0.28
 @end example
 @sp 1
-This example tells us that the @samp{else} in @samp{s.m} on line 74 was 
-executed once in the failing test run, but never in the passing test runs, so
-this would be a good place to start looking for a bug.
+This example tells us that the @samp{else} in @samp{s.m} on line 74
+was executed once in the failing test run,
+but never in the passing test runs,
+so this would be a good place to start looking for a bug.
 @sp 1
 Each row in the table contains statistics
-about the execution of a separate goal in the program.  Six columns are
-displayed:
+about the execution of a separate goal in the program.
+Six columns are displayed:
 @sp 1
 @itemize @bullet
 @item @samp{Procedure}:
