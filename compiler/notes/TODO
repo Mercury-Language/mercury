@@ -78,7 +78,7 @@ general
 - optimization of various sorts
 
 - Combining heap pointer increments in straight-line code into
-  a single increment
+  a single increment (should be part of value number)
 
 - garbage collection
 
@@ -119,7 +119,7 @@ code generation:
 general
 -------
 
-- switch detection: handle multi-level indexing
+- switch detection: handle multi-level indexing (cse)
 
 - more work on module system, separate compilation, and the multiple
   specialization problem
