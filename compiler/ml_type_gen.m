@@ -599,15 +599,16 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 
 		% generate class members for the type_infos and typeclass_infos
 		% that hold information about existentially quantified
-		% type variables and type class constraints
+		% type variables and type class constraints.
+		% Note that the order of fields is as follows:
+		%	- first typeinfos (for unconstrained type variables)
+		%	- then typeclassinfos (for class constraints)
+		%	- finally the ordinary members
 		( ExistQTVars = [] ->
 			% optimize common case
 			ExtraMembers = [],
 			ArgNum2 = ArgNum0
 		;
-			list__map_foldl(ml_gen_typeclass_info_member(ModuleInfo,
-				Context), Constraints, TypeClassInfoMembers,
-				ArgNum0, ArgNum1),
 			constraint_list_get_tvars(Constraints,
 				ConstrainedTVars),
 			list__delete_elems(ExistQTVars, ConstrainedTVars,
@@ -615,8 +616,11 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 			list__map_foldl(
 				ml_gen_type_info_member(ModuleInfo, Context),
 				UnconstrainedTVars, TypeInfoMembers,
+				ArgNum0, ArgNum1),
+			list__map_foldl(ml_gen_typeclass_info_member(ModuleInfo,
+				Context), Constraints, TypeClassInfoMembers,
 				ArgNum1, ArgNum2),
-			list__append(TypeClassInfoMembers, TypeInfoMembers,
+			list__append(TypeInfoMembers, TypeClassInfoMembers,
 				ExtraMembers)
 		),
 
