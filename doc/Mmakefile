@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1999 The University of Melbourne.
+# Copyright (C) 1996-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -52,10 +52,13 @@ endif
 
 .SUFFIXES: .texi .dvi .ps .text
 
-.texi.dvi:
+%.dvi: %.texi
 	$(TEXI2DVI) $<
 
-.texi.text:
+%.ps: %.dvi
+	$(DVIPS) -f < $< > $@
+
+%.text: %.texi
 	$(MAKEINFO) --no-headers -o $@ $<
 
 %.html %_toc.html: %.texi
@@ -289,7 +292,7 @@ uninstall:
 # INSTALL_WEBPAGE_DIR).
 
 .PHONY: install_webpage
-install_webpage: library-chapters.texi split_html ps  install_dirs
+install_webpage: library-chapters.texi split_html ps install_dirs
 	cp *.ps $(INSTALL_WEBPAGE_DIR)
 	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
 		gzip -f -9 $$file ; \
