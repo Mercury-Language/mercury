@@ -188,6 +188,7 @@ long_option("c-include-directory",	c_include_directory).
 long_option("link",			link).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
 long_option("gcc-global-registers",	gcc_global_registers).
+long_option("mod-comments",		mod_comments).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),

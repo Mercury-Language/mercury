@@ -203,12 +203,13 @@ output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
 	output_instruction(Inst),
+	io__write_string("\n"),
 	globals__io_lookup_bool_option(mod_comments, PrintModComments),
 	(
 		{ Comment \= "" },
 		{ PrintModComments = yes }
 	->
-		io__write_string("\n\t\t/* "),
+		io__write_string("\t\t/* "),
 		io__write_string(Comment),
 		io__write_string(" */\n")
 	;
