@@ -1534,10 +1534,16 @@ intermod__write_type_spec_pragmas(ModuleInfo, PredId) -->
 	{ module_info_type_spec_info(ModuleInfo,
 		type_spec_info(_, _, _, PragmaMap)) },
 	( { multi_map__search(PragmaMap, PredId, TypeSpecPragmas) } ->
-		{ term__context_init(Context) },
-		list__foldl(lambda([Pragma::in, IO0::di, IO::uo] is det, (
-			mercury_output_item(pragma(Pragma), Context, IO0, IO)
-		)), TypeSpecPragmas)
+		list__foldl(
+		    ( pred(Pragma::in, di, uo) is det -->
+			( { Pragma = type_spec(_, _, _, _, _, _, _) } ->
+				{ AppendVarnums = yes },
+				mercury_output_pragma_type_spec(Pragma,
+					AppendVarnums)
+			;
+				{ error("intermod__write_type_spec_pragmas") }
+			)
+		    ), TypeSpecPragmas)
 	;
 		[]
 	).

@@ -452,11 +452,8 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 				ModeNum, UnusedArgs, Context, Module0, Module)
 		)
 	;
-		{ Pragma = type_spec(Name, SpecName, Arity, PorF,
-			MaybeModes, TypeSubst, VarSet) },
-		add_pragma_type_spec(Pragma, Name, SpecName, Arity, PorF,
-			MaybeModes, TypeSubst, VarSet,
-			Context, Module0, Module)
+		{ Pragma = type_spec(_, _, _, _, _, _, _) },
+		add_pragma_type_spec(Pragma, Context, Module0, Module)
 	;
 		% Handle pragma fact_table decls later on (when we process
 		% clauses).
@@ -876,15 +873,12 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_type_spec(pragma_type, sym_name, sym_name, arity,
-		maybe(pred_or_func), maybe(list(mode)), assoc_list(tvar, type),
-		tvarset, term__context, module_info, module_info,
-		io__state, io__state).
-:- mode add_pragma_type_spec(in, in, in, in, in, in, in,
-		in, in, in, out, di, uo) is det.
+:- pred add_pragma_type_spec(pragma_type, term__context,
+		module_info, module_info, io__state, io__state).
+:- mode add_pragma_type_spec(in(type_spec), in, in, out, di, uo) is det.
 
-add_pragma_type_spec(Pragma, SymName, SpecName, Arity, MaybePredOrFunc,
-		MaybeModes, SpecSubst, VarSet, Context, Module0, Module) -->
+add_pragma_type_spec(Pragma, Context, Module0, Module) -->
+	{ Pragma = type_spec(SymName, _, Arity, MaybePredOrFunc, _, _, _) },
 	{ module_info_get_predicate_table(Module0, Preds) },
 	(
 		{ MaybePredOrFunc = yes(PredOrFunc) ->
@@ -897,8 +891,7 @@ add_pragma_type_spec(Pragma, SymName, SpecName, Arity, MaybePredOrFunc,
 		},
 		{ PredIds \= [] }
 	->
-		list__foldl2(add_pragma_type_spec_2(Pragma, SymName, SpecName,
-			Arity, SpecSubst, MaybeModes, VarSet, Context),
+		list__foldl2(add_pragma_type_spec_2(Pragma, Context),
 			PredIds, Module0, Module)
 	;
 		undefined_pred_or_func_error(SymName, Arity, Context,
@@ -906,20 +899,18 @@ add_pragma_type_spec(Pragma, SymName, SpecName, Arity, MaybePredOrFunc,
 		{ module_info_incr_errors(Module0, Module) }
 	).
 
-:- pred add_pragma_type_spec_2(pragma_type, sym_name, sym_name, arity,
-	assoc_list(tvar, type), maybe(list(mode)), tvarset,
-	prog_context, pred_id, module_info, module_info, io__state, io__state).
-:- mode add_pragma_type_spec_2(in, in, in, in, in, in, in, in,
-	in, in, out, di, uo) is det.
+:- pred add_pragma_type_spec_2(pragma_type, prog_context, pred_id,
+		module_info, module_info, io__state, io__state).
+:- mode add_pragma_type_spec_2(in(type_spec), in, in, in, out, di, uo) is det.
 
-add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
-		Subst, MaybeModes, TVarSet0, Context, PredId,
-		ModuleInfo0, ModuleInfo) -->
+add_pragma_type_spec_2(Pragma0, Context, PredId, ModuleInfo0, ModuleInfo) -->
+	{ Pragma0 = type_spec(SymName, SpecName, Arity, _,
+			MaybeModes, Subst, TVarSet0) },
 	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
 	handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 		TVarSet, Types, ExistQVars, ClassContext, SubstOk,
 		ModuleInfo0, ModuleInfo1),
-	( { SubstOk = yes } ->
+	( { SubstOk = yes(RenamedSubst) } ->
 	    { pred_info_procedures(PredInfo0, Procs0) },
 	    handle_pragma_type_spec_modes(SymName, Arity, Context,
 	    	MaybeModes, ProcIds, Procs0, Procs, ModesOk,
@@ -1011,6 +1002,9 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 			SpecMap = SpecMap0
 		),
 
+		Pragma = type_spec(SymName, SpecName, Arity,
+				yes(PredOrFunc), MaybeModes,
+				map__to_assoc_list(RenamedSubst), TVarSet), 
 		multi_map__set(PragmaMap0, PredId, Pragma, PragmaMap),
 		TypeSpecInfo = type_spec_info(ProcsToSpec,
 			ForceVersions, SpecMap, PragmaMap),
@@ -1033,7 +1027,7 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 	% of the current implementation, so it only results in a warning.
 :- pred handle_pragma_type_spec_subst(prog_context, assoc_list(tvar, type),
 	tvarset, pred_info, tvarset, list(type), existq_tvars,
-	class_constraints, bool, module_info, module_info,
+	class_constraints, maybe(tsubst), module_info, module_info,
 	io__state, io__state).
 :- mode handle_pragma_type_spec_subst(in, in, in, in, out, out, out, out, out,
 		in, out, di, uo) is det.
@@ -1117,7 +1111,7 @@ handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 				TypeSubst, Types),
 			apply_rec_subst_to_constraints(TypeSubst,
 				ClassContext0, ClassContext),
-			SubstOk = yes,
+			SubstOk = yes(TypeSubst),
 			ModuleInfo = ModuleInfo0
 			}
 		    ;

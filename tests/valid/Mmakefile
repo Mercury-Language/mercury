@@ -84,6 +84,7 @@ OTHER_SOURCES= \
 	intermod_quote.m \
 	intermod_test.m \
 	intermod_typeclass.m \
+	intermod_type_spec.m \
 	intermod_user_equality.m \
 	intermod_user_equality_nested.m \
 	lambda_inference.m\
@@ -241,6 +242,8 @@ MCFLAGS-intermod_test		= --intermodule-optimization
 MCFLAGS-intermod_test2		= --intermodule-optimization
 MCFLAGS-intermod_typeclass	= --intermodule-optimization
 MCFLAGS-intermod_typeclass2	= --intermodule-optimization
+MCFLAGS-intermod_type_spec	= --intermodule-optimization
+MCFLAGS-intermod_type_spec2	= --intermodule-optimization
 MCFLAGS-intermod_user_equality	= --intermodule-optimization
 MCFLAGS-intermod_user_equality2	= --intermodule-optimization
 MCFLAGS-intermod_user_equality_nested	= --intermodule-optimization
