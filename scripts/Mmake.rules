@@ -377,6 +377,10 @@ ifeq ($(findstring il,$(GRADE)),il)
 .cpp.exe:
 	$(MS_CL) -CLR($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
 
+.cs.exe:
+	$(MS_CSC) /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
+		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
+
 endif # $(findstring il,$(GRADE)) != ""
 
 #-----------------------------------------------------------------------------#
