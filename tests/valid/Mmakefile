@@ -78,6 +78,7 @@ OTHER_SOURCES= \
 	shape_type.m \
 	simplify_bug.m \
 	soln_context.m \
+	some_switch.m \
 	stack_alloc.m \
 	subtype_switch.m \
 	switches.m \

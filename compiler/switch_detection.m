@@ -369,15 +369,12 @@ partition_disj(Goals0, Var, GoalInfo, Left, CasesList) :-
 
 partition_disj_trial([], _Var, Left, Left, Cases, Cases).
 partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
-	goal_to_conj_list(Goal0, ConjList0),
-	Goal0 = _ - GoalInfo,
 	map__init(Substitution),
-	find_bind_var_for_switch(ConjList0, Substitution, Var,
-			ConjList, _NewSubstitution, MaybeFunctor),
+	find_bind_var_for_switch(Goal0, Substitution, Var,
+			Goal, _NewSubstitution, MaybeFunctor),
 	(
 		MaybeFunctor = yes(Functor),
 		Left1 = Left0,
-		conj_list_to_goal(ConjList, GoalInfo, Goal),
 		( map__search(Cases0, Functor, DisjList0) ->
 			DisjList1 = [Goal | DisjList0],
 			map__det_update(Cases0, Functor, DisjList1, Cases1)
@@ -392,8 +389,10 @@ partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
 	),
 	partition_disj_trial(Goals, Var, Left1, Left, Cases1, Cases).
 
-	% find_bind_var_for_switch(Goals0, Subst0, Var, Goals, Subst,
-	%	MaybeFunctor):
+	% find_bind_var_for_switch(Goal0, Subst0, Var, Goal, Subst,
+	%		MaybeFunctor):
+	% conj_find_bind_var_for_switch(Goals0, Subst0, Var, Goals, Subst,
+	%		MaybeFunctor):
 	%	Searches through Goals0 looking for a deconstruction
 	%	unification with `Var'. If found, sets `MaybeFunctor'
 	% 	to `yes(Functor)', where Functor is the
@@ -403,25 +402,20 @@ partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
 	%	`MaybeFunctor' to `no', and computes `Subst' as the
 	%	resulting substitution from interpreting through the goal.
 
-:- pred find_bind_var_for_switch(list(hlds_goal), substitution, var,
-	list(hlds_goal), substitution, maybe(cons_id)).
+:- pred find_bind_var_for_switch(hlds_goal, substitution, var,
+	hlds_goal, substitution, maybe(cons_id)).
 :- mode find_bind_var_for_switch(in, in, in, out, out, out) is det.
 
-find_bind_var_for_switch([], Substitution, _Var, [], Substitution, no).
-find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
-		[Goal - GoalInfo | Goals], Substitution, MaybeFunctor) :-
-	( Goal0 = conj(SubGoals0) ->
-		find_bind_var_for_switch(SubGoals0, Substitution0, Var,
-			SubGoals, Substitution1, MaybeFunctor1),
-		Goal = conj(SubGoals),
-		( MaybeFunctor1 = yes(_) ->
-			Goals = Goals0,
-			Substitution = Substitution1,
-			MaybeFunctor = MaybeFunctor1
-		;
-			find_bind_var_for_switch(Goals0, Substitution1, Var,
-				Goals, Substitution, MaybeFunctor)
-		)
+find_bind_var_for_switch(Goal0 - GoalInfo, Substitution0, Var,
+		Goal - GoalInfo, Substitution, MaybeFunctor) :-
+	( Goal0 = some(Vars, SubGoal0) ->
+		find_bind_var_for_switch(SubGoal0, Substitution0, Var,
+			SubGoal, Substitution, MaybeFunctor),
+		Goal = some(Vars, SubGoal)
+	; Goal0 = conj(SubGoals0) ->
+		conj_find_bind_var_for_switch(SubGoals0, Substitution0, Var,
+			SubGoals, Substitution, MaybeFunctor),
+		Goal = conj(SubGoals)
 	; Goal0 = unify(A, B, C, UnifyInfo0, E) ->
 			% check whether the unification is a deconstruction
 			% unification on Var or a variable aliased to Var
@@ -440,26 +434,41 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 			UnifyInfo = deconstruct(UnifyVar, Functor, F, G,
 				cannot_fail),
 			Goal = unify(A, B, C, UnifyInfo, E),
-			Goals = Goals0,
 			Substitution = Substitution0
 		;
 			% otherwise abstractly interpret the unification
-			% and continue
+			MaybeFunctor = no,
 			Goal = Goal0,
 			( interpret_unify(A, B, Substitution0, Substitution1) ->
-				Substitution2 = Substitution1
+				Substitution = Substitution1
 			;
 				% the unification must fail - just ignore it
-				Substitution2 = Substitution0
-			),
-			find_bind_var_for_switch(Goals0, Substitution2, Var,
-				Goals, Substitution, MaybeFunctor)
+				Substitution = Substitution0
+			)
 		)
 	;
 		Goal = Goal0,
-		Goals = Goals0,
 		Substitution = Substitution0,
 		MaybeFunctor = no
+	).
+
+:- pred conj_find_bind_var_for_switch(list(hlds_goal), substitution, var,
+	list(hlds_goal), substitution, maybe(cons_id)).
+:- mode conj_find_bind_var_for_switch(in, in, in, out, out, out) is det.
+
+conj_find_bind_var_for_switch([], Substitution, _Var, [], Substitution, no).
+conj_find_bind_var_for_switch([Goal0 | Goals0], Substitution0, Var,
+		[Goal | Goals], Substitution, MaybeFunctor) :-
+	find_bind_var_for_switch(Goal0,
+		Substitution0, Var,
+		Goal, Substitution1, MaybeFunctor1),
+	( MaybeFunctor1 = yes(_) ->
+		Goals = Goals0,
+		Substitution = Substitution1,
+		MaybeFunctor = MaybeFunctor1
+	;
+		conj_find_bind_var_for_switch(Goals0, Substitution1, Var,
+			Goals, Substitution, MaybeFunctor)
 	).
 
 :- pred cases_to_switch(sorted_case_list, var, map(var, type), hlds_goal_info,
