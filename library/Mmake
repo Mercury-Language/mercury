@@ -24,7 +24,8 @@ MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=sp \
 MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS)`" \
 		msl
 
-MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mc
+MC	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --generate-code
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
 MGNUCFLAGS =	-I $(BOEHM_GC_DIR)
 MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
@@ -77,8 +78,8 @@ library.mods	: $(library.mods)
 tags		: $(library.srcs)
 	mtags $(library.srcs)
 
-library.stats : source_stats.awk $(library.srcs)
-	awk -f `vpath_find source_stats.awk` \
+library.stats : ../compiler/source_stats.awk $(library.srcs)
+	awk -f ../compiler/source_stats.awk \
 		`vpath_find $(library.srcs)` > $@
 	
 #-----------------------------------------------------------------------------#
