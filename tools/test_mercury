@@ -834,7 +834,7 @@ case $HOST in
 					asm_fast.gc.prof asm_fast.prof
 					asm_fast.gc.memprof asm_fast.gc.tr
 					asm_fast.gc.tr.debug
-					hlc.gc hlc.par.gc"
+					hlc.gc hlc.par.gc" ;;
 			*)	# We don't test none.gc.tr.debug
 				# because it wasn't installed,
 				# due to lcc 4.1 internal error (see above)
