@@ -41,6 +41,7 @@
 :- module transform_hlds__unused_args.
 
 %-------------------------------------------------------------------------------
+
 :- interface.
 
 :- import_module analysis.
@@ -62,6 +63,7 @@
 :- instance to_string(unused_args_answer).
 
 %-------------------------------------------------------------------------------
+
 :- implementation.
 
 :- import_module check_hlds__inst_match.
@@ -114,7 +116,14 @@
 	% Types and instances used by mmc_analysis.m.
 
 	% The list of unused arguments is in sorted order.
-:- type unused_args_answer ---> unused_args(list(int)).
+:- type unused_args_answer
+	--->	unused_args(
+			args	:: list(int)
+		).
+
+:- func get_unused_args(unused_args_answer) = list(int).
+
+get_unused_args(UnusedArgs) = UnusedArgs ^ args.
 
 :- instance analysis(unused_args_func_info, any_call, unused_args_answer)
 		where [
@@ -182,10 +191,10 @@ unused_args__process_module(!ModuleInfo, !IO) :-
 		UnusedArgInfo0, UnusedArgInfo),
 
 	map__keys(UnusedArgInfo, PredProcsToFix),
-
 	globals__io_lookup_bool_option(make_optimization_interface, MakeOpt,
 		!IO),
-	( MakeOpt = yes ->
+	(
+		MakeOpt = yes,
 		module_info_name(!.ModuleInfo, ModuleName),
 		module_name_to_file_name(ModuleName, ".opt.tmp", no,
 			OptFileName, !IO),
@@ -200,6 +209,7 @@ unused_args__process_module(!ModuleInfo, !IO) :-
 			MaybeOptFile = no
 		)
 	;
+		MakeOpt = no,
 		MaybeOptFile = no
 	),
 	globals__io_lookup_bool_option(warn_unused_args, DoWarn, !IO),
@@ -211,10 +221,11 @@ unused_args__process_module(!ModuleInfo, !IO) :-
 	;
 		true
 	),
-	( MaybeOptFile = yes(OptFile2) ->
+	(
+		MaybeOptFile = yes(OptFile2),
 		io__close_output(OptFile2, !IO)
 	;
-		true
+		MaybeOptFile = no
 	),
 	globals__io_lookup_bool_option(optimize_unused_args, DoFixup, !IO),
 	(
@@ -242,7 +253,7 @@ unused_args__process_module(!ModuleInfo, !IO) :-
 	% Initialisation section
 
 	% init_var_usage/4 -  set initial status of all args of local
- 	%	procs by examining the module_info.
+	%	procs by examining the module_info.
 	% PredProcList is the list of procedures to do the fixpoint
 	% iteration over.
 	% OptPredProcList is a list of procedures for which we got
@@ -263,13 +274,13 @@ init_var_usage(VarUsage, PredProcList, ProcCallInfo, !ModuleInfo, !IO) :-
 	% setup args for the whole module.
 :- pred setup_local_var_usage(list(pred_id)::in, unused_arg_info::in,
 	var_usage::in, var_usage::out, pred_proc_list::in, pred_proc_list::out,
-	proc_call_info::in, proc_call_info::out, module_info::in,
-	module_info::out, io::di, io::uo) is det.
+	proc_call_info::in, proc_call_info::out,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-setup_local_var_usage([], _, !VarUsage, !PredProcs,
-		!OptProcs, !ModuleInfo, !IO).
-setup_local_var_usage([PredId | PredIds], UnusedArgInfo,
-		!VarUsage, !PredProcList, !OptProcs, !ModuleInfo, !IO) :-
+setup_local_var_usage([], _, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
+		!IO).
+setup_local_var_usage([PredId | PredIds], UnusedArgInfo, !VarUsage,
+		!PredProcList, !OptProcs, !ModuleInfo, !IO) :-
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
 	(
 		% The builtins use all their arguments.
@@ -297,12 +308,12 @@ setup_local_var_usage([PredId | PredIds], UnusedArgInfo,
 	% setup args for a predicate
 :- pred setup_pred_args(pred_id::in, list(proc_id)::in, unused_arg_info::in,
 	var_usage::in, var_usage::out, pred_proc_list::in, pred_proc_list::out,
-	proc_call_info::in, proc_call_info::out, module_info::in,
-	module_info::out, io::di, io::uo) is det.
+	proc_call_info::in, proc_call_info::out,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 setup_pred_args(_, [], _, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo, !IO).
-setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage,
-		!PredProcs, !OptProcs, !ModuleInfo, !IO) :-
+setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage, !PredProcs,
+		!OptProcs, !ModuleInfo, !IO) :-
 	module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),
 	map__init(VarDep0),
@@ -329,10 +340,10 @@ setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage,
 		( MaybeBestResult = yes(_ - unused_args(UnusedArgs)) ->
 			proc_info_headvars(ProcInfo, HeadVars),
 			list__map(list__index1_det(HeadVars),
-					UnusedArgs, UnusedVars),
+				UnusedArgs, UnusedVars),
 			initialise_vardep(VarDep0, UnusedVars, VarDep),
 			!:VarUsage = map__set(!.VarUsage,
-					proc(PredId, ProcId), VarDep),
+				proc(PredId, ProcId), VarDep),
 			globals__io_lookup_bool_option(optimize_unused_args,
 				Optimize, !IO),
 			( Optimize = yes ->
@@ -376,7 +387,7 @@ setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage,
 		Info = traverse_info(!.ModuleInfo, VarTypes),
 		traverse_goal(Info, Goal, VarDep3, VarDep),
 		!:VarUsage = map__set(!.VarUsage,
-				proc(PredId, ProcId), VarDep),
+			proc(PredId, ProcId), VarDep),
 
 		!:PredProcs = [proc(PredId, ProcId) | !.PredProcs]
 	),
@@ -401,35 +412,33 @@ initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
 	% For example, if HeadVar1 has type list(T), then TypeInfo_for_T
 	% is used if HeadVar1 is used.
 :- pred setup_typeinfo_deps(list(prog_var)::in, map(prog_var, type)::in,
-			pred_proc_id::in, map(tvar, type_info_locn)::in,
-			var_dep::in, var_dep::out) is det.
+	pred_proc_id::in, map(tvar, type_info_locn)::in,
+	var_dep::in, var_dep::out) is det.
 
-setup_typeinfo_deps([], _, _, _, VarDep, VarDep).
-setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0,
-		VarDep) :-
+setup_typeinfo_deps([], _, _, _, !VarDep).
+setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, !VarDep) :-
 	map__lookup(VarTypeMap, Var, Type),
 	type_util__vars(Type, TVars),
 	list__map((pred(TVar::in, TypeInfoVar::out) is det :-
-			map__lookup(TVarMap, TVar, Locn),
-			type_info_locn_var(Locn, TypeInfoVar)
-		), TVars, TypeInfoVars),
+		map__lookup(TVarMap, TVar, Locn),
+		type_info_locn_var(Locn, TypeInfoVar)
+	), TVars, TypeInfoVars),
 	AddArgDependency =
 		(pred(TVar::in, VarDepA::in, VarDepB::out) is det :-
-			add_arg_dep(VarDepA, TVar, PredProcId, Var, VarDepB)
+			add_arg_dep(TVar, PredProcId, Var, VarDepA, VarDepB)
 		),
-	list__foldl(AddArgDependency, TypeInfoVars, VarDep0, VarDep1),
-	setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, TVarMap,
-		VarDep1, VarDep).
+	list__foldl(AddArgDependency, TypeInfoVars, !VarDep),
+	setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, TVarMap, !VarDep).
 
 	% Get output arguments for a procedure given the headvars and the
 	% argument modes, and set them as used.
 :- pred setup_output_args(module_info::in, proc_info::in,
-			var_dep::in, var_dep::out) is det.
+	var_dep::in, var_dep::out) is det.
 
-setup_output_args(ModuleInfo, ProcInfo, VarDep0, VarDep) :-
+setup_output_args(ModuleInfo, ProcInfo, !VarDep) :-
 	proc_info_instantiated_head_vars(ModuleInfo, ProcInfo,
 		ChangedInstHeadVars),
-	list__foldl(set_var_used, ChangedInstHeadVars, VarDep0, VarDep).
+	list__foldl(set_var_used, ChangedInstHeadVars, !VarDep).
 
 	% searches for the dependencies of a variable, succeeds if the variable
 	%	is definitely used
@@ -447,31 +456,29 @@ local_var_is_used(VarDep, Var) :-
 	\+ map__contains(VarDep, Var).
 
 		% add a list of aliases for a variable
-:- pred add_aliases(var_dep::in, prog_var::in, list(prog_var)::in,
-		var_dep::out) is det.
+:- pred add_aliases(prog_var::in, list(prog_var)::in,
+	var_dep::in, var_dep::out) is det.
 
-add_aliases(UseInf0, Var, Aliases, UseInf) :-
-	(
-		map__search(UseInf0, Var, VarInf0)
-	->
+add_aliases(Var, Aliases, !VarDep) :-
+	( map__search(!.VarDep, Var, VarInf0) ->
 		VarInf0 = unused(VarDep0, ArgDep),
 		set__insert_list(VarDep0, Aliases, VarDep),
 		VarInf = unused(VarDep, ArgDep),
-		map__det_update(UseInf0, Var, VarInf, UseInf)
+		map__det_update(!.VarDep, Var, VarInf, !:VarDep)
 	;
-		UseInf = UseInf0
+		true
 	).
 
-:- pred set_list_vars_used(var_dep::in, list(prog_var)::in,
-		var_dep::out) is det.
+:- pred set_list_vars_used(list(prog_var)::in, var_dep::in, var_dep::out)
+	is det.
 
-set_list_vars_used(UseInfo0, Vars, UseInfo) :-
-	map__delete_list(UseInfo0, Vars, UseInfo).
+set_list_vars_used(Vars, !VarDep) :-
+	map__delete_list(!.VarDep, Vars, !:VarDep).
 
 :- pred set_var_used(prog_var::in, var_dep::in, var_dep::out) is det.
 
-set_var_used(Var, UseInfo0, UseInfo) :-
-	map__delete(UseInfo0, Var, UseInfo).
+set_var_used(Var, !VarDep) :-
+	map__delete(!.VarDep, Var, !:VarDep).
 
 :- pred lookup_local_var(var_dep::in, prog_var::in, usage_info::out) is semidet.
 
@@ -489,119 +496,118 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 		).
 
 :- pred traverse_goal(traverse_info::in, hlds_goal_expr::in,
-				var_dep::in, var_dep::out) is det.
+	var_dep::in, var_dep::out) is det.
 
 % handle conjunction
-traverse_goal(Info, conj(Goals), UseInf0, UseInf) :-
-	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
+traverse_goal(Info, conj(Goals), !VarDep) :-
+	traverse_list_of_goals(Info, Goals, !VarDep).
 
 % handle parallel conjunction
-traverse_goal(Info, par_conj(Goals), UseInf0, UseInf) :-
-	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
+traverse_goal(Info, par_conj(Goals), !VarDep) :-
+	traverse_list_of_goals(Info, Goals, !VarDep).
 
 % handle disjunction
-traverse_goal(Info, disj(Goals), UseInf0, UseInf) :-
-	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
+traverse_goal(Info, disj(Goals), !VarDep) :-
+	traverse_list_of_goals(Info, Goals, !VarDep).
 
 % handle switch
-traverse_goal(Info, switch(Var, _, Cases), UseInf0, UseInf) :-
-	set_var_used(Var, UseInf0, UseInf1),
+traverse_goal(Info, switch(Var, _, Cases), !VarDep) :-
+	set_var_used(Var, !VarDep),
 	list_case_to_list_goal(Cases, Goals),
-	traverse_list_of_goals(Info, Goals, UseInf1, UseInf).
+	traverse_list_of_goals(Info, Goals, !VarDep).
 
 % handle predicate call
-traverse_goal(Info, call(PredId, ProcId, Args, _, _, _),
-						UseInf0, UseInf) :-
+traverse_goal(Info, call(PredId, ProcId, Args, _, _, _), !VarDep) :-
 	module_info_pred_proc_info(Info^module_info, PredId, ProcId, _Pred,
 		Proc),
 	proc_info_headvars(Proc, HeadVars),
 	add_pred_call_arg_dep(proc(PredId, ProcId), Args, HeadVars,
-		UseInf0, UseInf).
+		!VarDep).
 
 % handle if then else
 traverse_goal(Info, if_then_else(_, Cond - _, Then - _, Else - _),
-			UseInf0, UseInf) :-
-	traverse_goal(Info, Cond, UseInf0, UseInf1),
-	traverse_goal(Info, Then, UseInf1, UseInf2),
-	traverse_goal(Info, Else, UseInf2, UseInf).
+			!VarDep) :-
+	traverse_goal(Info, Cond, !VarDep),
+	traverse_goal(Info, Then, !VarDep),
+	traverse_goal(Info, Else, !VarDep).
 
 % handle negation
-traverse_goal(Info, not(Goal - _), UseInf0, UseInf) :-
-	traverse_goal(Info, Goal, UseInf0, UseInf).
+traverse_goal(Info, not(Goal - _), !VarDep) :-
+	traverse_goal(Info, Goal, !VarDep).
 
 % handle quantification
-traverse_goal(Info, some(_, _, Goal - _), UseInf0, UseInf) :-
-	traverse_goal(Info, Goal, UseInf0, UseInf).
+traverse_goal(Info, some(_, _, Goal - _), !VarDep) :-
+	traverse_goal(Info, Goal, !VarDep).
 
 % we assume that higher-order predicate calls use all variables involved
-traverse_goal(_, generic_call(GenericCall, Args, _, _), UseInf0, UseInf) :-
+traverse_goal(_, generic_call(GenericCall, Args, _, _), !VarDep) :-
 	goal_util__generic_call_vars(GenericCall, CallArgs),
-	set_list_vars_used(UseInf0, CallArgs, UseInf1),
-	set_list_vars_used(UseInf1, Args, UseInf).
+	set_list_vars_used(CallArgs, !VarDep),
+	set_list_vars_used(Args, !VarDep).
 
 % handle pragma foreign_proc(...) -
 % only those arguments which have names can be used in the foreign code.
 traverse_goal(_, foreign_proc(_, _, _, Args, ExtraArgs, _),
-		UseInf0, UseInf) :-
+		!VarDep) :-
 	ArgIsUsed = (pred(Arg::in, Var::out) is semidet :-
-			Arg = foreign_arg(Var, MaybeNameAndMode, _),
-			MaybeNameAndMode = yes(_)
-		),
+		Arg = foreign_arg(Var, MaybeNameAndMode, _),
+		MaybeNameAndMode = yes(_)
+	),
 	list__filter_map(ArgIsUsed, Args ++ ExtraArgs, UsedVars),
-	set_list_vars_used(UseInf0, UsedVars, UseInf).
+	set_list_vars_used(UsedVars, !VarDep).
 
 % cases to handle all the different types of unification
-traverse_goal(_, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
+traverse_goal(_, unify(_, _, _, simple_test(Var1, Var2),_), !VarDep)
 		:-
-	set_var_used(Var1, UseInf0, UseInf1),
-	set_var_used(Var2, UseInf1, UseInf).
+	set_var_used(Var1, !VarDep),
+	set_var_used(Var2, !VarDep).
 
-traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
-	( local_var_is_used(UseInf0, Var1) ->
+traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), !VarDep) :-
+	( local_var_is_used(!.VarDep, Var1) ->
 		% if Var1 used to instantiate an output argument, Var2 used
-		set_var_used(Var2, UseInf0, UseInf)
+		set_var_used(Var2, !VarDep)
 	;
-		add_aliases(UseInf0, Var2, [Var1], UseInf)
+		add_aliases(Var2, [Var1], !VarDep)
 	).
 
 traverse_goal(Info,
 		unify(Var1, _, _,
 			deconstruct(_, _, Args, Modes, CanFail, _), _),
-		UseInf0, UseInf) :-
+		!VarDep) :-
 	partition_deconstruct_args(Info, Args,
 		Modes, InputVars, OutputVars),
 		% The deconstructed variable is used if any of the
 		% variables, that the deconstruction binds are used.
-	add_aliases(UseInf0, Var1, OutputVars, UseInf1),
+	add_aliases(Var1, OutputVars, !VarDep),
 		% Treat a deconstruction that further instantiates its
 		% left arg as a partial construction.
-	add_construction_aliases(Var1, InputVars, UseInf1, UseInf2),
+	add_construction_aliases(Var1, InputVars, !VarDep),
 	(
 		CanFail = can_fail
 	->
 		% a deconstruction that can_fail uses its left arg
-		set_var_used(Var1, UseInf2, UseInf)
+		set_var_used(Var1, !VarDep)
 	;
-		UseInf = UseInf2
+		true
 	).
 
 traverse_goal(_, unify(Var1, _, _, construct(_, _, Args, _, _, _, _), _),
-					UseInf0, UseInf) :-
-	( local_var_is_used(UseInf0, Var1) ->
-		set_list_vars_used(UseInf0, Args, UseInf)
+		!VarDep) :-
+	( local_var_is_used(!.VarDep, Var1) ->
+		set_list_vars_used(Args, !VarDep)
 	;
-		add_construction_aliases(Var1, Args, UseInf0, UseInf)
+		add_construction_aliases(Var1, Args, !VarDep)
 	).
 
 	% These should be transformed into calls by polymorphism.m.
 traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _, _), _),
-		UseInf0, UseInf) :-
+		!VarDep) :-
 	% This is here to cover the case where unused arguments is called
 	% with --error-check-only and polymorphism has not been run.
 	% Complicated unifications should only be var-var.
 	( Rhs = var(RhsVar) ->
-		set_var_used(RhsVar, UseInf0, UseInf1),
-		set_var_used(Var, UseInf1, UseInf)
+		set_var_used(RhsVar, !VarDep),
+		set_var_used(Var, !VarDep)
 	;
 		error("complicated unifications should only be var-var")
 	).
@@ -612,47 +618,46 @@ traverse_goal(_, shorthand(_), _, _) :-
 
 	% add PredProc - HeadVar as an alias for the same element of Args.
 :- pred add_pred_call_arg_dep(pred_proc_id::in, list(prog_var)::in,
-		list(prog_var)::in, var_dep::in, var_dep::out) is det.
+	list(prog_var)::in, var_dep::in, var_dep::out) is det.
 
-add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds,
-					UseInf0, UseInf) :-
+add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds, !VarDep) :-
 	(
-		LocalArguments = [Arg | Args], HeadVarIds = [HeadVar | HeadVars]
+		LocalArguments = [Arg | Args],
+		HeadVarIds = [HeadVar | HeadVars]
 	->
-		add_arg_dep(UseInf0, Arg, PredProc, HeadVar, UseInf1),
-		add_pred_call_arg_dep(PredProc, Args, HeadVars,
-							UseInf1, UseInf)
+		add_arg_dep(Arg, PredProc, HeadVar, !VarDep),
+		add_pred_call_arg_dep(PredProc, Args, HeadVars, !VarDep)
 	;
-		LocalArguments = [], HeadVarIds = []
+		LocalArguments = [],
+		HeadVarIds = []
 	->
-		UseInf = UseInf0
+		true
 	;
 		error("add_pred_call_arg_dep: invalid call")
 	).
 
-:- pred add_arg_dep(var_dep::in, prog_var::in, pred_proc_id::in,
-					prog_var::in, var_dep::out) is det.
+:- pred add_arg_dep(prog_var::in, pred_proc_id::in, prog_var::in,
+	var_dep::in, var_dep::out) is det.
 
-add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
-	(
-		lookup_local_var(UseInf0, Var, VarUsage0)
-	->
+add_arg_dep(Var, PredProc, Arg, !VarDep) :-
+	( lookup_local_var(!.VarDep, Var, VarUsage0) ->
 		VarUsage0 = unused(VarDep, ArgDep0),
 		set__insert(ArgDep0, PredProc - Arg, ArgDep),
-		map__det_update(UseInf0, Var, unused(VarDep, ArgDep), UseInf)
+		map__det_update(!.VarDep, Var, unused(VarDep, ArgDep),
+			!:VarDep)
 	;
-		UseInf = UseInf0
+		true
 	).
 
 	% Partition the arguments to a deconstruction into inputs
 	% and outputs.
 :- pred partition_deconstruct_args(traverse_info::in, list(prog_var)::in,
-		list(uni_mode)::in, list(prog_var)::out,
-		list(prog_var)::out) is det.
+	list(uni_mode)::in, list(prog_var)::out, list(prog_var)::out) is det.
 
 partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
 	(
-		ArgVars = [Var | Vars], ArgModes = [Mode | Modes]
+		ArgVars = [Var | Vars],
+		ArgModes = [Mode | Modes]
 	->
 		partition_deconstruct_args(Info, Vars, Modes, InputVars1,
 			OutputVars1),
@@ -683,7 +688,8 @@ partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
 			OutputVars = [Var | OutputVars1]
 		)
 	;
-		ArgVars = [], ArgModes = []
+		ArgVars = [],
+		ArgModes = []
 	->
 		InputVars = [],
 		OutputVars = []
@@ -695,16 +701,16 @@ partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
 :- pred add_construction_aliases(prog_var::in, list(prog_var)::in,
 	var_dep::in, var_dep::out) is det.
 
-add_construction_aliases(_, [], !UseInf).
-add_construction_aliases(Alias, [Var | Vars], !UseInf) :-
-	( lookup_local_var(!.UseInf, Var, VarInf) ->
+add_construction_aliases(_, [], !VarDep).
+add_construction_aliases(Alias, [Var | Vars], !VarDep) :-
+	( lookup_local_var(!.VarDep, Var, VarInf) ->
 		VarInf = unused(VarDep0, ArgDep),
 		set__insert(VarDep0, Alias, VarDep),
-		map__set(!.UseInf, Var, unused(VarDep, ArgDep), !:UseInf)
+		map__set(!.VarDep, Var, unused(VarDep, ArgDep), !:VarDep)
 	;
 		true
 	),
-	add_construction_aliases(Alias, Vars, !UseInf).
+	add_construction_aliases(Alias, Vars, !VarDep).
 
 :- pred list_case_to_list_goal(list(case)::in, list(hlds_goal)::out) is det.
 
@@ -715,10 +721,10 @@ list_case_to_list_goal([case(_, Goal) | Cases], [Goal | Goals]) :-
 :- pred traverse_list_of_goals(traverse_info::in, list(hlds_goal)::in,
 	var_dep::in, var_dep::out) is det.
 
-traverse_list_of_goals(_, [], !UseInf).
-traverse_list_of_goals(Info, [Goal - _ | Goals], !UseInf) :-
-	traverse_goal(Info, Goal, !UseInf),
-	traverse_list_of_goals(Info, Goals, !UseInf).
+traverse_list_of_goals(_, [], !VarDep).
+traverse_list_of_goals(Info, [Goal - _ | Goals], !VarDep) :-
+	traverse_goal(Info, Goal, !VarDep),
+	traverse_list_of_goals(Info, Goals, !VarDep).
 
 %-------------------------------------------------------------------------------
 	% Analysis section - do the fixpoint iteration.
@@ -849,22 +855,23 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
 
 		globals__io_lookup_bool_option(intermodule_analysis,
 			Intermod, !IO),
-		( Intermod = yes ->
+		(
+			Intermod = yes,
 			module_info_analysis_info(!.ModuleInfo, AnalysisInfo0),
 			PredOrFunc = pred_info_is_pred_or_func(OrigPredInfo),
 			PredArity = pred_info_arity(OrigPredInfo),
 			ModuleId = module_name_to_module_id(PredModule),
 			FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
-					PredName, PredArity, ProcId),
+				PredName, PredArity, ProcId),
 			FuncInfo = unused_args_func_info(PredArity),
 
 			lookup_results(ModuleId, FuncId, FuncInfo,
-				IntermodResults0, AnalysisInfo0, AnalysisInfo1,
-				!IO),
-			IntermodResults1 = list__map(
-			    (func(any_call - unused_args(ResArgs)) = ResArgs),
-			    IntermodResults0),
-			( list__member(UnusedArgs, IntermodResults1) ->
+				IntermodResultsPairs `with_type`
+				assoc_list(any_call, unused_args_answer),
+				AnalysisInfo0, AnalysisInfo1, !IO),
+			IntermodResultsArgsLists = list__map(get_unused_args,
+				assoc_list__values(IntermodResultsPairs)),
+			( list__member(UnusedArgs, IntermodResultsArgsLists) ->
 				AnalysisInfo = AnalysisInfo1
 			;
 				analysis__record_result(ModuleId,
@@ -881,21 +888,24 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
 			% in the AnalysisInfo, so that modules which use
 			% those versions can be recompiled.
 			%
-			IntermodResults = list__filter(
-			    (pred(VersionUnusedArgs::in) is semidet :-
-				VersionUnusedArgs \= UnusedArgs,
+			FilterUnused = (pred(VersionUnused::in) is semidet :-
+				VersionUnused \= UnusedArgs,
 				set__subset(
-					sorted_list_to_set(VersionUnusedArgs),
-					sorted_list_to_set(UnusedArgs))
-				), IntermodResults1)
+					sorted_list_to_set(VersionUnused),
+					sorted_list_to_set(UnusedArgs)
+				)
+			),
+			IntermodResults = list__filter(FilterUnused,
+				IntermodResultsArgsLists)
 		;
-			IntermodResults0 = [],
+			Intermod = no,
+			IntermodResultsPairs = [],
 			IntermodResults = []
 		),
 		pred_info_import_status(OrigPredInfo, Status0),
 		(
 			Status0 = opt_imported,
-			IntermodResults0 = [_|_],
+			IntermodResultsPairs = [_ | _],
 			IntermodResults = []
 		->
 			% If this predicate is from a .opt file, and
@@ -1090,7 +1100,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
 	module_info::in, module_info::out) is det.
 
 make_imported_unused_args_pred_info(OptProc, UnusedArgs,
- 		!ProcCallInfo, !ModuleInfo) :-
+		!ProcCallInfo, !ModuleInfo) :-
 	OptProc = proc(PredId, ProcId),
 	module_info_pred_proc_info(!.ModuleInfo,
 		PredId, ProcId, PredInfo0, ProcInfo0),
@@ -1429,7 +1439,7 @@ fixup_unify(ModuleInfo, UnusedVars, Changed, Unify, Unify) :-
 			% to fix up the goal_info
 		CanFail = cannot_fail,
 		check_deconstruct_args(ModuleInfo, UnusedVars, ArgVars,
-						ArgModes, Changed, no)
+			ArgModes, Changed, no)
 	;
 		CanFail = can_fail,
 		Changed = no
@@ -1497,10 +1507,7 @@ fixup_goal_info(UnusedVars, !GoalInfo) :-
 output_warnings_and_pragmas(_, _, _, _, [], _, !IO).
 output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 		DoWarn, [proc(PredId, ProcId) | Rest], !.WarnedPredIds, !IO) :-
-	(
-		map__search(UnusedArgInfo, proc(PredId, ProcId),
-				UnusedArgs)
-	->
+	( map__search(UnusedArgInfo, proc(PredId, ProcId), UnusedArgs) ->
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		(
 			Name = pred_info_name(PredInfo),
@@ -1525,7 +1532,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 			\+ (
 				% don't warn for a specialized version
 				string__sub_string_search(Name, "__ho",
-						Position),
+					Position),
 				string__length(Name, Length),
 				IdLen = Length - Position - 4,
 				string__right(Name, IdLen, Id),
@@ -1681,4 +1688,3 @@ output_arg_list_2(Args, !IO) :-
 	;
 		error("output_arg_list_2 called with empty list")
 	).
-
