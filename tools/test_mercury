@@ -152,7 +152,7 @@ set -x	# trace execution
 cd $DIR || { false; exit 1; }
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
-	murlibobo|kryten)
+	murlibobo|kryten|mercury)
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
 		;;
