@@ -38,12 +38,14 @@
 
 %-----------------------------------------------------------------------------%
 
-	% XXX - These predicates should be command-line options.
-
-:- pred option_write_line_numbers.
-option_write_line_numbers :- fail.
-
 	% The following is a hard-coded hack.
+	% Mercury allows functor overloading, whereas Goedel
+	% only allows it if the functors are defined in different
+	% modules.  As a work-around, we can define types for
+	% which this is a problem in their own module.
+	% Currently we only do this for type "character".
+	% XXX This should be a command-line option.
+	% (Or we should work out a better solution.)
 
 :- pred option_handle_functor_overloading(string).
 :- mode option_handle_functor_overloading(input).
@@ -141,11 +143,8 @@ goedel_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 
 goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond), Context)
 		-->
-	( { option_write_line_numbers } ->
-		io__write_string("\n"),
-		prog_out__write_context(Context)
-	),
 	io__write_string("\n"),
+	maybe_write_line_number(Context),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
 
 goedel_output_item(mode(VarSet, PredName, Modes, _Det, _Cond), Context) -->
@@ -156,10 +155,7 @@ goedel_output_item(module_defn(_VarSet, _ModuleDefn), _Context) -->
 	[].
 
 goedel_output_item(clause(VarSet, PredName, Args, Body), Context) -->
-	( { option_write_line_numbers } ->
-		prog_out__write_context(Context),
-		io__write_string("\n")
-	),
+	maybe_write_line_number(Context),
 	goedel_output_clause(VarSet, PredName, Args, Body, Context).
 
 goedel_output_item(nothing, _) --> [].
@@ -254,10 +250,7 @@ goedel_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 			di, uo).
 
 goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet, Context) -->
-	( { option_write_line_numbers } ->
-		prog_out__write_context(Context),
-		io__write_string("\n")
-	),
+	maybe_write_line_number(Context),
 	{ length(Args, Arity) },
 	(if
 		{ Arity = 0 }
@@ -1044,6 +1037,19 @@ convert_var_name(Name, GoedelName) :-
 		string__append("v_", Name, GoedelName)
 	;
 		string__uncapitalize_first(Name, GoedelName)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_write_line_number(term__context, io__state, io__state).
+:- mode maybe_write_line_number(in, di, uo).
+
+maybe_write_line_number(Context) -->
+	lookup_option(line_numbers, bool(LineNumbers)),
+	( { LineNumbers = yes } ->
+		io__write_string("\t% "),
+		prog_out__write_context(Context),
+		io__write_string("\n")
 	).
 
 %-----------------------------------------------------------------------------%

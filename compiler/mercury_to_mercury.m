@@ -40,7 +40,6 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 		io__write_string(":- module ("),
 		io__write_constant(term_atom(ProgName)),
 		io__write_string(").\n"),
-		io__write_string(":- interface.\n"),
 		mercury_output_item_list(Items),
 		( { Verbose = yes } ->
 			io__write_string(StdErr, "% done\n")
@@ -934,18 +933,14 @@ strip_trailing_primes(Name0, Name, Num) :-
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_output_line_number(term__context, io__state, io__state).
-:- mode maybe_output_line_number(in, di, uo).
+:- mode maybe_output_line_number(in, di, uo) is det.
 
 maybe_output_line_number(Context) -->
-	( { mercury_option_write_line_numbers } ->
-		io__write_string("% "),
+	lookup_option(line_numbers, bool(LineNumbers)),
+	( { LineNumbers = yes } ->
+		io__write_string("\t% "),
 		prog_out__write_context(Context),
 		io__write_string("\n")
 	).
-
-	% XXX - This predicate should be a command-line option.
-
-:- pred mercury_option_write_line_numbers.
-mercury_option_write_line_numbers :- true.
 
 %-----------------------------------------------------------------------------%

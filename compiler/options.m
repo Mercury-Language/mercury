@@ -39,7 +39,8 @@
 			;	search_directories
 			;	convert_to_mercury
 			;	convert_to_goedel
-			;	help.
+			;	help
+			;	line_numbers.
 
 :- implementation.
 
@@ -56,7 +57,8 @@ option_defaults([
 	search_directories 	-	accumulating(["."]),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
-	help 			-	bool(no)
+	help 			-	bool(no),
+	line_numbers		-	bool(no)
 ]).
 
 short_option('v', 			verbose).
@@ -72,6 +74,7 @@ short_option('h', 			help).
 short_option('I', 			search_directories).
 short_option('M', 			convert_to_mercury).
 short_option('G', 			convert_to_goedel).
+short_option('l', 			line_numbers).
 
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
@@ -88,6 +91,7 @@ long_option("convert-to-Mercury", 	convert_to_mercury).
 long_option("convert-to-goedel", 	convert_to_goedel).
 long_option("convert-to-Goedel", 	convert_to_goedel).
 long_option("help",			help).
+long_option("line-numbers",		line_numbers).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -118,6 +122,9 @@ options_help -->
 	io__write_string("\t\tConvert to Mercury. Output to file `<module>.ugly'\n"),
 	io__write_string("\t\tThis option acts as a Mercury ugly-printer.\n"),
 	io__write_string("\t\tAs with -i, it disables type-checking, etc.\n"),
+	io__write_string("\t-l, --line-numbers\n"),
+	io__write_string("\t\tOutput line numbers in the generated code.\n"),
+	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
 	io__write_string("\t-h <n>, --heap-space <n>\n"),
 	io__write_string("\t\tPre-allocate <n> kilobytes of heap space.\n"),
 	io__write_string("\t\tUse this option to avoid NU-Prolog's\n"),
