@@ -449,7 +449,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, std_util, int, float, require.
+:- import_module bool, std_util, int, float, require, integer.
 
 :- pred string__to_int_list(string, list(int)).
 :- mode string__to_int_list(out, in) is det.
@@ -2115,6 +2115,18 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 %	string__substring(String, Start, Count, Substring):
 */
 
+string__substring(Str::in, Start::in, Count::in, SubStr::out) :-
+	End = min(Start + Count, string__length(Str)),
+	SubStr = string__from_char_list(strchars(Start, End, Str)).
+
+:- func strchars(int, int, string) = list(char).
+strchars(I, End, Str) =
+	( if ( I < 0 ; End =< I )
+		then []
+		else [string__index_det(Str, I) | 
+			strchars(I + 1, End, Str)]
+	).
+
 :- pragma foreign_proc("C",
 	string__substring(Str::in, Start::in, Count::in,
 		SubString::out),
@@ -2136,14 +2148,6 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 		SubString[Count] = '\\0';
 	}
 }").
-:- pragma foreign_proc("MC++",
-	string__substring(_Str::in, _Start::in, _Count::in,
-		_SubString::out),
-		[will_not_call_mercury, thread_safe],
-"{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
-}").
-
 
 /*
 :- pred string__unsafe_substring(string, int, int, string).
