@@ -326,9 +326,9 @@ operator notation, as in Prolog.
 Operators can also be formed by enclosing an variable or name between grave
 accents (backquotes).  Any variable or name may
 be used as an operator in this way.  If @var{fun} is a variable or name,
-then a term of the form @code{x `@var{fun}` y} is equivalent to 
-@code{@var{fun}(x,y)}.  The operator is treated as having the highest
-precedence possible and is left associative.
+then a term of the form @code{@var{X} `@var{fun}` @var{Y}} is equivalent to 
+@code{@var{fun}(@var{X}, @var{Y})}.  The operator is treated as having the
+highest precedence possible and is left associative.
 
 A higher-order term is a variable followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
