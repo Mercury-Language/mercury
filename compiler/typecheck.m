@@ -94,10 +94,6 @@
 %	then delete unused overloadings, and only then should we report
 %	ambiguity errors, if any overloading still remains.
 %
-% XXX	There seems to be a performance bug with the handling of
-%	typevarsets; during type inference, the typevarsets get bigger
-%	and bigger.
-%
 % Wish list:
 %
 %	we should handle equivalence types here
