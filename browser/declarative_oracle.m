@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,9 +22,9 @@
 % the user will not be asked the same question twice.
 %
 
-:- module declarative_oracle.
+:- module mdb__declarative_oracle.
 :- interface.
-:- import_module declarative_debugger.
+:- import_module mdb__declarative_debugger.
 :- import_module list, io.
 
 	% A response that the oracle gives to the caller.
@@ -57,7 +57,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module declarative_user, util.
+:- import_module mdb__declarative_user, mdb__util.
 :- import_module bool, std_util, map, set.
 
 query_oracle(Queries, Response, Oracle0, Oracle) -->

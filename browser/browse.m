@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 % authors: aet
 % stability: low
 
-:- module browse.
+:- module mdb__browse.
 
 :- interface.
 
@@ -47,7 +47,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module parse, util, frame.
+:- import_module mdb__parse, mdb__util, mdb__frame.
 :- import_module string, list, parser, require, std_util, int, char.
 
 %---------------------------------------------------------------------------%

@@ -4,24 +4,31 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-:- module browser_library.
+:- module mdb.
 
 :- interface.
 
-:- pred browser_library__version(string::out) is det.
+:- pred mdb__version(string::out) is det.
+
+	% These interface modules are used directly by the test programs
+	% or the libmer_trace library.
+:- include_module browse, help.
+:- include_module interactive_query.
+:- include_module debugger_interface, collect_lib.
+:- include_module declarative_debugger, declarative_execution.
 
 :- implementation.
 
-:- import_module browse, frame, help, parse, util.
-:- import_module debugger_interface.
-:- import_module declarative_debugger, declarative_oracle, declarative_user.
-:- import_module declarative_execution, declarative_analyser.
-:- import_module interactive_query, dl, name_mangle.
-:- import_module collect_lib.
+:- include_module frame, parse, util.
+:- include_module declarative_analyser, declarative_oracle, declarative_user.
+
+	% XXX these modules are more generally useful, but the
+	% dynamic linking library is not yet installed anywhere.
+:- include_module dl, name_mangle.
 
 % See library/library.m for why we implement this predicate this way.
 
-:- pragma c_code(browser_library__version(Version::out),
+:- pragma c_code(mdb__version(Version::out),
 		will_not_call_mercury, "
 	ConstString version_string = 
 		MR_VERSION "", configured for "" MR_FULLARCH;

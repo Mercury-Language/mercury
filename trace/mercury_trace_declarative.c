@@ -40,8 +40,8 @@
 #include "mercury_layout_util.h"
 #include "mercury_deep_copy.h"
 #include "mercury_string.h"
-#include "declarative_debugger.h"
-#include "declarative_execution.h"
+#include "mdb.declarative_debugger.h"
+#include "mdb.declarative_execution.h"
 #include "std_util.h"
 
 #include <errno.h>

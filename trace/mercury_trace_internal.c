@@ -26,7 +26,7 @@
 #include "mercury_array_macros.h"
 #include "mercury_getopt.h"
 
-#include "browse.h"
+#include "mdb.browse.h"
 
 #include <stdio.h>
 #include <stdlib.h>

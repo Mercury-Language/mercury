@@ -19,10 +19,10 @@
 % passed to diagnose a bug.  It does this by a simple top-down search.
 %
 
-:- module declarative_debugger.
+:- module mdb__declarative_debugger.
 :- interface.
 :- import_module io, list, bool, std_util.
-:- import_module declarative_execution.
+:- import_module mdb__declarative_execution.
 
 	% This type represents the possible truth values for nodes
 	% in the EDT.
@@ -86,7 +86,7 @@
 
 :- implementation.
 :- import_module require, int, char.
-:- import_module declarative_analyser, declarative_oracle.
+:- import_module mdb__declarative_analyser, mdb__declarative_oracle.
 
 :- type diagnoser_state(R)
 	--->	diagnoser(

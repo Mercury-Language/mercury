@@ -46,7 +46,7 @@
 % 	execution. When the end of the execution is reached, the last value of
 % 	the collecting variable is send to the debugger.
 
-:- module collect_lib.
+:- module mdb__collect_lib.
 :- interface.
 
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
@@ -54,7 +54,7 @@
 %------------------------------------------------------------------------------%
 :- implementation.
 :- import_module int, list, std_util, io, char.
-:- import_module dl.
+:- import_module mdb__dl.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 

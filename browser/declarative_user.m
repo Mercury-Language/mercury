@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,9 +12,9 @@
 % debugger queries from the user.
 %
 
-:- module declarative_user.
+:- module mdb__declarative_user.
 :- interface.
-:- import_module declarative_debugger.
+:- import_module mdb__declarative_debugger.
 :- import_module list, io.
 
 :- type user_response
@@ -43,7 +43,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module declarative_execution, util.
+:- import_module mdb__declarative_execution, mdb__util.
 :- import_module std_util, char, string, bool.
 
 :- type user_state

@@ -10,10 +10,10 @@
 % implements an analysis algorithm which finds bugs in such trees.
 %
 
-:- module declarative_analyser.
+:- module mdb__declarative_analyser.
 :- interface.
 :- import_module list.
-:- import_module declarative_debugger.
+:- import_module mdb__declarative_debugger.
 
 	% This typeclass defines how EDTs may be accessed by this module.
 	% An EDT is a tree of nodes, each of which contains a question

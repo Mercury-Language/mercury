@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,7 @@
 #include "mercury_deep_copy.h"
 #include "mercury_trace_util.h"
 #include "std_util.h"
-#include "help.h"
+#include "mdb.help.h"
 #include "io.h"
 #include <stdio.h>
 

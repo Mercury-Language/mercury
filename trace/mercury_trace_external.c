@@ -29,8 +29,8 @@
 #include "mercury_trace_browse.h"
 #include "mercury_trace_vars.h"
 
-#include "debugger_interface.h"
-#include "collect_lib.h"
+#include "mdb.debugger_interface.h"
+#include "mdb.collect_lib.h"
 #include "mercury_deep_copy.h"
 #include "std_util.h"
 

@@ -17,7 +17,7 @@
 :- mode main(di, uo) is det.
 
 :- implementation.
-:- import_module declarative_debugger, declarative_execution.
+:- import_module mdb, mdb__declarative_debugger, mdb__declarative_execution.
 :- import_module list, std_util, map, require.
 
 main -->

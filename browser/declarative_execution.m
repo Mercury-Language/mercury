@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,10 +12,10 @@
 % from this module.  The debugging front end analyses the structure
 % to produce a bug diagnosis.
 
-:- module declarative_execution.
+:- module mdb__declarative_execution.
 :- interface.
 :- import_module bool, list, std_util, string, io.
-:- import_module util.
+:- import_module mdb__util.
 
 	% This type represents a port in a stored event trace.
 	% The type R is the type of references to other nodes

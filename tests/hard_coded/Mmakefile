@@ -130,6 +130,7 @@ MCFLAGS-rnd		=	-O6
 MCFLAGS-type_spec	=	--user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all
 MCFLAGS-user_defined_equality	= --infer-all
+MCFLAGS-parse		=	--trace deep
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
@@ -147,6 +148,9 @@ GRADEFLAGS-integer_test		=	--gc conservative
 GRADEFLAGS-integer_test_init	=	--gc conservative
 GRADEFLAGS-rational_test 	=	--gc conservative
 GRADEFLAGS-rational_test_init	=	--gc conservative
+
+C2INITFLAGS-parse		= 	--trace
+MLFLAGS-parse			=	--trace --static
 
 # no_fully_strict is expected to fail (it calls error/1)
 # so we need to ignore the exit status (hence the leading `-')
