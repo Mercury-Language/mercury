@@ -30,38 +30,38 @@
 
 	% construct an empty varset.
 :- pred varset__init(varset).
-:- mode varset__init(output).
+:- mode varset__init(out).
 
 	% check whether a varset is empty.
 :- pred varset__is_empty(varset).
-:- mode varset__is_empty(input).
+:- mode varset__is_empty(in).
 
 	% create a new variable
 :- pred varset__new_var(varset, var, varset).
-:- mode varset__new_var(input, output, output).
+:- mode varset__new_var(in, out, out).
 
 	% return a list of all the variables in a varset
 :- pred varset__vars(varset, list(var)).
-:- mode varset__vars(input, output).
+:- mode varset__vars(in, out).
 
 	% set the name of a variable
 	% (if there is already a variable with the same name "Foo",
 	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
 	% an unused name is found.)
 :- pred varset__name_var(varset, var, string, varset).
-:- mode varset__name_var(input, input, input, output).
+:- mode varset__name_var(in, in, in, out).
 
 	% lookup the name of a variable
 :- pred varset__lookup_name(varset, var, string).
-:- mode varset__lookup_name(input, input, output).
+:- mode varset__lookup_name(in, in, out).
 
 	% bind a value to a variable
 :- pred varset__bind_var(varset, var, term, varset).
-:- mode varset__bind_var(input, input, input, output).
+:- mode varset__bind_var(in, in, in, out).
 
 	% lookup the value of a variable
 :- pred varset__lookup_var(varset, var, term).
-:- mode varset__lookup_var(input, input, output).
+:- mode varset__lookup_var(in, in, out).
 
 	% Combine two different varsets, renaming apart:
 	% varset__merge(VarSet0, NewVarSet, Terms0, VarSet, Terms) is
@@ -71,13 +71,13 @@
 	% (Any bindings in NewVarSet are ignored.)
 
 :- pred varset__merge(varset, varset, list(term), varset, list(term)).
-:- mode varset__merge(input, input, input, output, output).
+:- mode varset__merge(in, in, in, out, out).
 
 	% As above, except return the substitution directly
 	% rather than applying it to a list of terms.
 
 :- pred varset__merge_subst(varset, varset, varset, substitution).
-:- mode varset__merge_subst(input, input, input, output).
+:- mode varset__merge_subst(in, in, in, out).
 
 
 %-----------------------------------------------------------------------------%
@@ -117,7 +117,7 @@ varset__vars(varset(MaxId0,_,_), L) :-
 
 :- pred varset__vars_2(var_supply, var_supply, list(var),
 			list(var)).
-:- mode varset__vars_2(input, input, input, output).
+:- mode varset__vars_2(in, in, in, out).
 
 varset__vars_2(N, Max, L0, L) :-
 	(N = Max ->
@@ -185,8 +185,8 @@ varset__merge_subst(VarSet0, varset(MaxId, Names, Vals), VarSet, Subst) :-
 
 :- pred varset__merge_subst_2(var_supply, var_supply, map(var, string),
 	map(var, term), varset, substitution, varset, substitution).
-:- mode varset__merge_subst_2(input, input, input, input, input, input,
-	output, output).
+:- mode varset__merge_subst_2(in, in, in, in, in, in,
+	out, out).
 
 varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 	( N = Max ->
