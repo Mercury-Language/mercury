@@ -913,7 +913,7 @@ code_info__make_vars_live_2([V|Vs]) -->
 		{ error("I don't know where to put this variable") }
 	),
 	code_info__get_exprn_info(Exprn0),
-	{ code_exprn__set_var_location(V, Lval, Exprn0, Exprn) },
+	{ code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn),
 	code_info__make_vars_live_2(Vs).
 

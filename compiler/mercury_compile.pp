@@ -26,7 +26,7 @@
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
-:- import_module int, map, set, std_util, dir, bintree, term, varset, hlds.
+:- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
 :- import_module negation, call_graph.
 :- import_module common, require.
 
@@ -1737,18 +1737,13 @@ mercury_compile__report_sizes(ModuleInfo) -->
 :- mode mercury_compile__tree_stats(in, in, di, uo) is det.
 
 mercury_compile__tree_stats(Description, Tree) -->
-	{ bintree__count(Tree, Count) },
-	{ bintree__depth(Tree, Depth) },
-	{ bintree__branching_factor(Tree, Nodes, Branches) },
+	{ tree234__count(Tree, Count) },
+	%{ tree234__depth(Tree, Depth) },
 	io__write_string(Description),
 	io__write_string(": count = "),
 	io__write_int(Count),
-	io__write_string(", depth = "),
-	io__write_int(Depth),
-	io__write_string(", branching factor = "),
-	io__write_int(Branches),
-	io__write_string("/"),
-	io__write_int(Nodes),
+	%io__write_string(", depth = "),
+	%io__write_int(Depth),
 	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%

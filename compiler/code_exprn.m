@@ -81,6 +81,9 @@
 :- pred code_exprn__set_var_location(var, lval, exprn_info, exprn_info).
 :- mode code_exprn__set_var_location(in, in, in, out) is det.
 
+:- pred code_exprn__maybe_set_var_location(var, lval, exprn_info, exprn_info).
+:- mode code_exprn__maybe_set_var_location(in, in, in, out) is det.
+
 :- pred code_exprn__var_becomes_dead(var, exprn_info, exprn_info).
 :- mode code_exprn__var_becomes_dead(in, in, out) is det.
 
@@ -321,6 +324,15 @@ code_exprn__set_var_location(Var, Lval) -->
 		code_exprn__set_vars(Vars),
 		code_exprn__add_lval_reg_dependencies(Lval)
 	).
+
+%------------------------------------------------------------------------------%
+
+code_exprn__maybe_set_var_location(Var, Lval) -->
+	code_exprn__get_vars(Vars0),
+	{ set__singleton_set(Locs, lval(Lval)) },
+	{ map__set(Vars0, Var, evaled(Locs), Vars) },
+	code_exprn__set_vars(Vars),
+	code_exprn__add_lval_reg_dependencies(Lval).
 
 %------------------------------------------------------------------------------%
 

@@ -131,7 +131,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, string, require, std_util, bintree.
+:- import_module int, list, map, string, require, std_util, tree234.
 :- import_module varset, term, prog_util, type_util, code_util.
 :- import_module term_io, prog_out, hlds_out, mercury_to_mercury.
 :- import_module options, getopt, globals.
@@ -957,18 +957,13 @@ checkpoint_2(Msg, T0) -->
 :- mode checkpoint_tree_stats(in, in, di, uo) is det.
 
 checkpoint_tree_stats(Description, Tree) -->
-        { bintree__count(Tree, Count) },
-        { bintree__depth(Tree, Depth) },
-        { bintree__branching_factor(Tree, Nodes, Branches) },
+        { tree234__count(Tree, Count) },
+        %{ tree234__depth(Tree, Depth) },
         io__write_string(Description),
         io__write_string(": count = "),
         io__write_int(Count),
-        io__write_string(", depth = "),
-        io__write_int(Depth),
-        io__write_string(", branching factor = "),
-        io__write_int(Branches),
-        io__write_string("/"),
-        io__write_int(Nodes),
+        %io__write_string(", depth = "),
+        %io__write_int(Depth),
         io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
