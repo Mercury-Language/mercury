@@ -433,22 +433,22 @@ call_gen__call_comment(model_non,  "branch to nondet procedure").
 
 %---------------------------------------------------------------------------%
 
-call_gen__save_variables(Args, Code) -->
+call_gen__save_variables(OutArgs, Code) -->
 	code_info__get_known_variables(Variables0),
 	{ set__list_to_set(Variables0, Vars0) },
-	{ set__difference(Vars0, Args, Vars1) },
 	code_info__get_globals(Globals),
 	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
 	( 
 		{ TypeInfoLiveness = yes }
 	->
 		code_info__get_proc_info(ProcInfo),
-		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars1, 
+		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars0, 
 			TypeInfoVars) },
-		{ set__union(Vars1, TypeInfoVars, Vars) }
+		{ set__union(Vars0, TypeInfoVars, Vars1) }
 	;
-		{ Vars = Vars1 }
+		{ Vars1 = Vars0 }
 	),
+	{ set__difference(Vars1, OutArgs, Vars) },
 	{ set__to_sorted_list(Vars, Variables) },
 	call_gen__save_variables_2(Variables, Code).
 
