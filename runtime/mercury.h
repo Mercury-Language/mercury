@@ -43,7 +43,10 @@
   #include "mercury_regs.h"		/* for MR_hp */
   #include "mercury_engine.h"		/* for MR_fake_reg (needed by MR_hp) */
   #include "mercury_overflow.h"		/* for MR_heap_overflow_check() */
-  #include "mercury_accurate_gc.h"	/* for MR_garbage_collect() */
+  #ifdef MR_NATIVE_GC
+    #include "mercury_accurate_gc.h"	/* for MR_garbage_collect() */
+    #include "mercury_layout_util.h"	/* for MR_materialize_closure...() */
+  #endif
 #endif
 
 #if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_MPROF_PROFILE_TIME)

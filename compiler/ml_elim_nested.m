@@ -156,13 +156,9 @@
 %
 % XXX Accurate GC is still not yet fully implemented.
 % TODO:
-%	- fix problem with undeclared local vars for some test cases
-%	  (this seems to be due to the problems with higher-order code)
 %	- handle `pragma export'
-%	- support higher-order code: fix problems with tracing closures
-%	  (the MLDS back-end doesn't generate closure layouts)
-%	  and with tracing the wrapper functions generated for
-%	  higher-order code.
+%	- support higher-order code: fix the remaining problems with tracing
+%	  the wrapper functions generated for higher-order code.
 %	- support type classes: same issues as for higher-order code, I think
 %	- support --nondet-copy-out (see comment in flatten_nested_defn)
 %	- support --high-level-data (fixup_newobj_in_atomic_statement

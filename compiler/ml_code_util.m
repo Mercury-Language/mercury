@@ -528,6 +528,22 @@
 		maybe(mlds__statement), ml_gen_info, ml_gen_info).
 :- mode ml_gen_maybe_gc_trace_code(in, in, in, in, out, in, out) is det.
 
+	% ml_gen_maybe_gc_trace_code_with_typeinfo(Var, DeclType, TypeInfoRval,
+	%	Context, Code):
+	% This is the same as ml_gen_maybe_gc_trace_code//5,
+	% except that rather than passing ActualType,
+	% the caller constructs the type-info itself,
+	% and just passes the rval for it to this routine.
+	%
+	% This is used by ml_closure_gen.m to generate GC tracing code
+	% for the the local variables in closure wrapper functions.
+	%
+:- pred ml_gen_maybe_gc_trace_code_with_typeinfo(var_name, prog_type,
+		mlds__rval, prog_context, maybe(mlds__statement),
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_maybe_gc_trace_code_with_typeinfo(in, in, in, in, out, in, out)
+		is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Magic numbers relating to the representation of
@@ -2054,7 +2070,28 @@ ml_gen_maybe_gc_trace_code(VarName, Type, Context, Maybe_GC_TraceCode) -->
 	ml_gen_maybe_gc_trace_code(VarName, Type, Type, Context,
 		Maybe_GC_TraceCode).
 
-ml_gen_maybe_gc_trace_code(VarName, DeclType, ActualType0, Context,
+ml_gen_maybe_gc_trace_code(VarName, DeclType, ActualType, Context,
+		Maybe_GC_TraceCode) -->
+	{ HowToGetTypeInfo = construct_from_type(ActualType) },
+	ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo,
+		Context, Maybe_GC_TraceCode).
+
+ml_gen_maybe_gc_trace_code_with_typeinfo(VarName, DeclType, TypeInfoRval,
+		Context, Maybe_GC_TraceCode) -->
+	{ HowToGetTypeInfo = already_provided(TypeInfoRval) },
+	ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo,
+		Context, Maybe_GC_TraceCode).
+
+:- type how_to_get_type_info
+	--->	construct_from_type(prog_type)
+	;	already_provided(mlds__rval).
+
+:- pred ml_gen_maybe_gc_trace_code_2(var_name, prog_type, how_to_get_type_info,
+		prog_context, maybe(mlds__statement), ml_gen_info, ml_gen_info).
+:- mode ml_gen_maybe_gc_trace_code_2(in, in, in, in, out, in, out)
+		is det.
+
+ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo, Context,
 		Maybe_GC_TraceCode) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
@@ -2071,15 +2108,22 @@ ml_gen_maybe_gc_trace_code(VarName, DeclType, ActualType0, Context,
 			PredModule, PredName, PredArity) },
 		\+ { no_type_info_builtin(PredModule, PredName, PredArity) }
 	->
-		% We need to handle type_info/1 and typeclass_info/1 types
-		% specially, to avoid infinite recursion here...
-		{ trace_type_info_type(ActualType0, ActualType1) ->
-			ActualType = ActualType1
+		(
+			{ HowToGetTypeInfo = construct_from_type(ActualType0) },
+			% We need to handle type_info/1 and typeclass_info/1
+			% types specially, to avoid infinite recursion here...
+			{ trace_type_info_type(ActualType0, ActualType1) ->
+				ActualType = ActualType1
+			;
+				ActualType = ActualType0
+			},
+			ml_gen_gc_trace_code(VarName, DeclType, ActualType,
+				Context, GC_TraceCode)
 		;
-			ActualType = ActualType0
-		},
-		ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context,
-			GC_TraceCode),
+			{ HowToGetTypeInfo = already_provided(TypeInfoRval) },
+			ml_gen_trace_var(VarName, DeclType, TypeInfoRval,
+				Context, GC_TraceCode)
+		),
 		{ Maybe_GC_TraceCode = yes(GC_TraceCode) }
 	;
 		{ Maybe_GC_TraceCode = no }
@@ -2199,7 +2243,8 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode) -->
 		MLDS_TypeInfoStatement, MLDS_NewobjLocals) },
 
 	% Build MLDS code to trace the variable
-	ml_gen_trace_var(VarName, DeclType, TypeInfoVar, Context,
+	ml_gen_var(TypeInfoVar, TypeInfoLval),
+	ml_gen_trace_var(VarName, DeclType, lval(TypeInfoLval), Context,
 		MLDS_TraceStatement),
 
 	% Generate declarations for any type_info variables used.
@@ -2232,23 +2277,23 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode) -->
 		[MLDS_TypeInfoStatement] ++ [MLDS_TraceStatement],
 		Context) }.
 
+	% ml_gen_trace_var(VarName, DeclType, TypeInfo, Context, Code):
 	% Generate a call to `private_builtin__gc_trace'
 	% for the specified variable, given the variable's name, type,
-	% and the already-constructed type_info variable for that type.
+	% and the already-constructed type_info for that type.
 	%
-:- pred ml_gen_trace_var(var_name::in, prog_type::in, prog_var::in,
+:- pred ml_gen_trace_var(var_name::in, prog_type::in, mlds__rval::in,
 		prog_context::in, mlds__statement::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_trace_var(VarName, Type, TypeInfoVar, Context, MLDS_TraceStatement) -->
+ml_gen_trace_var(VarName, Type, TypeInfoRval, Context, MLDS_TraceStatement) -->
 	%
-	% Generate lvals for the Var and TypeInfoVar
+	% Generate the lval for Var
 	%
 	=(MLGenInfo),
 	{ ml_gen_info_get_module_info(MLGenInfo, ModuleInfo) },
 	{ MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type) },
 	ml_gen_var_lval(VarName, MLDS_Type, VarLval),
-	ml_gen_var(TypeInfoVar, TypeInfoLval),
 	%
 	% Generate the address of `private_builtin__gc_trace/1#0'
 	%
@@ -2267,12 +2312,12 @@ ml_gen_trace_var(VarName, Type, TypeInfoVar, Context, MLDS_TraceStatement) -->
 	{ FuncAddr = const(code_addr_const(proc(Proc, Signature))) },
 	%
 	% Generate the call
-	% `private_builtin__gc_trace(TypeInfoVar, (MR_C_Pointer) &Var);'.
+	% `private_builtin__gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
 	%
 	{ CastVarAddr = unop(cast(CPointerType), mem_addr(VarLval)) },
 	{ MLDS_TraceStatement = mlds__statement(
 		call(Signature, FuncAddr, no,	
-			[lval(TypeInfoLval), CastVarAddr], [], call
+			[TypeInfoRval, CastVarAddr], [], call
 		), mlds__make_context(Context)) }.
 
 	% Generate HLDS code to construct the type_info for this type.
