@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-1998 The University of Melbourne.
+** Copyright (C) 1996-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -156,7 +156,7 @@ void
 incr_hp_debug_msg(Word val, const Word *addr)
 {
 #ifdef CONSERVATIVE_GC
-	printf("allocated %ld words at 0x%p\n", (long) (Integer) val, addr);
+	printf("allocated %ld words at %lu\n", (unsigned long) val, addr);
 #else
 	printf("increment hp by %ld from ", (long) (Integer) val);
 	printheap(addr);
@@ -251,7 +251,7 @@ printint(Word n)
 void 
 printstring(const char *s)
 {
-	printf("string 0x%p %s\n", (const void *) s, s);
+	printf("string %p %s\n", (const void *) s, s);
 
 	return;
 }
@@ -260,49 +260,12 @@ void
 printheap(const Word *h)
 {
 #ifndef CONSERVATIVE_GC
-	printf("ptr 0x%p, offset %3ld words\n",
+	printf("ptr %p, offset %3ld words\n",
 		(const void *) h,
 		(long) (Integer) (h - MR_ENGINE(heap_zone)->min));
 #else
-	printf("ptr 0x%p\n",
+	printf("ptr %p\n",
 		(const void *) h);
-#endif
-	return;
-}
-
-void 
-printdetstack(const Word *s)
-{
-	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) s,
-		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min));
-	return;
-}
-
-void 
-printnondstack(const Word *s)
-{
-#ifndef	MR_DEBUG_NONDET_STACK
-	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) s,
-		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min));
-#else
-	if (s > MR_CONTEXT(nondetstack_zone)->min) {
-		printf("ptr 0x%p, offset %3ld words, procedure %s\n",
-			(const void *) s, 
-			(long) (Integer)
-				(s - MR_CONTEXT(nondetstack_zone)->min),
-			(const char *) s[PREDNM]);
-	} else {
-		/*
-		** This handles the case where the prevfr of the first frame
-		** is being printed.
-		*/
-		printf("ptr 0x%p, offset %3ld words\n",
-			(const void *) s, 
-			(long) (Integer)
-				(s - MR_CONTEXT(nondetstack_zone)->min));
-	}
 #endif
 	return;
 }
@@ -312,7 +275,7 @@ dumpframe(/* const */ Word *fr)
 {
 	reg	int	i;
 
-	printf("frame at ptr 0x%p, offset %3ld words\n",
+	printf("frame at ptr %p, offset %3ld words\n",
 		(const void *) fr, 
 		(long) (Integer) (fr - MR_CONTEXT(nondetstack_zone)->min));
 #ifdef	MR_DEBUG_NONDET_STACK
@@ -396,24 +359,93 @@ print_ordinary_regs(void)
 #endif /* defined(MR_DEBUG_GOTOS) */
 
 void 
+MR_printdetstackptr(const Word *s)
+{
+	MR_print_detstackptr(stdout, s);
+	return;
+}
+
+void 
+MR_print_detstackptr(FILE *fp, const Word *s)
+{
+	fprintf(fp, "det %3ld (%p)",
+		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min),
+		(const void *) s);
+	return;
+}
+
+void 
+printdetstack(const Word *s)
+{
+	printf("ptr %p, offset %3ld words\n",
+		(const void *) s,
+		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min));
+	return;
+}
+
+void 
+MR_printnondstackptr(const Word *s)
+{
+	MR_print_nondstackptr(stdout, s);
+	return;
+}
+
+void 
+MR_print_nondstackptr(FILE *fp, const Word *s)
+{
+	fprintf(fp, "non %3ld (%p)",
+		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min),
+		(const void *) s);
+	return;
+}
+
+void 
+printnondstack(const Word *s)
+{
+#ifndef	MR_DEBUG_NONDET_STACK
+	printf("ptr %p, offset %3ld words\n",
+		(const void *) s,
+		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min));
+#else
+	if (s > MR_CONTEXT(nondetstack_zone)->min) {
+		printf("ptr %p, offset %3ld words, procedure %s\n",
+			(const void *) s, 
+			(long) (Integer)
+				(s - MR_CONTEXT(nondetstack_zone)->min),
+			(const char *) s[PREDNM]);
+	} else {
+		/*
+		** This handles the case where the prevfr of the first frame
+		** is being printed.
+		*/
+		printf("ptr %p, offset %3ld words\n",
+			(const void *) s, 
+			(long) (Integer)
+				(s - MR_CONTEXT(nondetstack_zone)->min));
+	}
+#endif
+	return;
+}
+
+void 
 printlabel(/* const */ Code *w)
 {
 	MR_Internal	*internal;
 
 	internal = MR_lookup_internal_by_addr(w);
 	if (internal != NULL) {
-		printf("label %s (0x%p)\n", internal->i_name, w);
+		printf("label %s (%p)\n", internal->i_name, w);
 	} else {
 #ifdef	MR_DEBUG_GOTOS
 		MR_Entry	*entry;
 		entry = MR_prev_entry_by_addr(w);
 		if (entry->e_addr == w) {
-			printf("label %s (0x%p)\n", entry->e_name, w);
+			printf("label %s (%p)\n", entry->e_name, w);
 		} else {
-			printf("label UNKNOWN (0x%p)\n", w);
+			printf("label UNKNOWN (%p)\n", w);
 		}
 #else
-		printf("label UNKNOWN (0x%p)\n", w);
+		printf("label UNKNOWN (%p)\n", w);
 #endif	/* not MR_DEBUG_GOTOS */
 	}
 }

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -46,8 +46,6 @@ extern	void	reg_msg(void);
 extern	void	printint(Word n);
 extern	void	printstring(const char *s);
 extern	void	printheap(const Word *h);
-extern	void	printdetstack(const Word *s);
-extern	void	printnondstack(const Word *s);
 extern	void	dumpframe(/* const */ Word *);
 extern	void	dumpnondstack(void);
 extern	void	printlist(Word p);
@@ -55,6 +53,12 @@ extern	void	printframe(const char *);
 extern	void	printregs(const char *msg);
 #endif
 
+extern	void	printdetstack(const Word *s);
+extern	void	MR_printdetstackptr(const Word *s);
+extern	void	MR_print_detstackptr(FILE *fp, const Word *s);
+extern	void	printnondstack(const Word *s);
+extern	void	MR_printnondstackptr(const Word *s);
+extern	void	MR_print_nondstackptr(FILE *fp, const Word *s);
 extern	void	printlabel(/* const */ Code *w);
 
 #if __GNUC__

@@ -1226,11 +1226,16 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (streq(words[0], "stack_regs")) {
 		if (word_count == 1) {
-			fprintf(MR_mdb_out,
-				"sp = %p, curfr = %p, maxfr = %p\n",
-				MR_saved_sp(saved_regs),
-				MR_saved_curfr(saved_regs),
+			fprintf(MR_mdb_out, "sp = ");
+			MR_print_detstackptr(MR_mdb_out,
+				MR_saved_sp(saved_regs));
+			fprintf(MR_mdb_out, ", curfr = ");
+			MR_print_nondstackptr(MR_mdb_out,
+				MR_saved_curfr(saved_regs));
+			fprintf(MR_mdb_out, ", maxfr = ");
+			MR_print_nondstackptr(MR_mdb_out,
 				MR_saved_maxfr(saved_regs));
+			fprintf(MR_mdb_out, "\n");
 		} else {
 			MR_trace_usage("developer", "stack_regs");
 		}

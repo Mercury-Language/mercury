@@ -225,40 +225,48 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 	do_init_modules();
 
 	/*
-	** Change the >= below to > if you don't want the trace to include
-	** the bottom frame created by mercury_wrapper.c (whose redoip/redofr
-	** field can be hijacked by other code).
+	** The comparison operator in the condition of the while loop
+	** should be >= if you want the trace to include the bottom frame
+	** created by mercury_wrapper.c (whose redoip/redofr field can be
+	** hijacked by other code), and > if you don't want the bottom
+	** frame to be included.
 	*/
 
 	while (base_maxfr >= MR_nondet_stack_trace_bottom) {
 		frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
 		if (frame_size == MR_NONDET_TEMP_SIZE) {
-			fprintf(fp, "%p: nondet temp, %d words\n",
-				base_maxfr, frame_size);
+			MR_print_nondstackptr(fp, base_maxfr);
+			fprintf(fp, ": temp\n");
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
-			fprintf(fp, " redofr: %p\n",
-				MR_redofr_slot(base_maxfr));
+			fprintf(fp, " redofr: ");
+			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+			fprintf(fp, " \n");
 		} else if (frame_size == MR_DET_TEMP_SIZE) {
-			fprintf(fp, "%p: nondet temp, %d words\n",
-				base_maxfr, frame_size);
+			MR_print_nondstackptr(fp, base_maxfr);
+			fprintf(fp, ": temp\n");
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
-			fprintf(fp, " redofr: %p\n",
-				MR_redofr_slot(base_maxfr));
-			fprintf(fp, " detfr:  %p\n",
-				MR_detfr_slot(base_maxfr));
+			fprintf(fp, " redofr: ");
+			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+			fprintf(fp, " \n");
+			fprintf(fp, " detfr: ");
+			MR_print_detstackptr(fp, MR_detfr_slot(base_maxfr));
+			fprintf(fp, " \n");
 		} else {
-			fprintf(fp, "%p: ordinary, %d words\n",
-				base_maxfr, frame_size);
+			MR_print_nondstackptr(fp, base_maxfr);
+			fprintf(fp, ": ordinary, %d words\n",
+				frame_size);
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
-			fprintf(fp, " redofr: %p\n",
-				MR_redofr_slot(base_maxfr));
+			fprintf(fp, " redofr: ");
+			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+			fprintf(fp, " \n");
 			fprintf(fp, " succip: ");
 			printlabel(MR_succip_slot(base_maxfr));
-			fprintf(fp, " succfr: %p\n",
-				MR_succfr_slot(base_maxfr));
+			fprintf(fp, " succfr: ");
+			MR_print_nondstackptr(fp, MR_succfr_slot(base_maxfr));
+			fprintf(fp, " \n");
 		}
 
 		base_maxfr = MR_prevfr_slot(base_maxfr);
