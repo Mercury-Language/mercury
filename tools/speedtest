@@ -9,6 +9,7 @@ debug=false
 table_io=false
 size=false
 framesizefile=""
+zip=false
 
 while test $# -gt 0
 do
@@ -38,6 +39,9 @@ do
 	-s)
 		size=true ;;
 
+	-z)
+		zip=true ;;
+
 	-*)	echo "$0: unknown option \`$1'" 2>&1
 		echo $usage
 		exit 1 ;;
@@ -59,7 +63,10 @@ batch=$1
 root=`/bin/pwd`
 files=`ls batch/$batch.mercury_compile.*`
 
-trap 'gzip $root/batch/$batch.mercury_compile.*[0-9] > /dev/null 2>&1; exit 0' 0 1 2 3 15 
+if $zip
+then
+	trap 'gzip $root/batch/$batch.mercury_compile.*[0-9] > /dev/null 2>&1; exit 0' 0 1 2 3 15 
+fi
 
 if test -x /usr/ucb/echo
 then
@@ -129,7 +136,10 @@ do
 	done
 
 	cd $root
-	gzip $file
+	if $zip
+	then
+		gzip $file
+	fi
 done
 
 exit 0
