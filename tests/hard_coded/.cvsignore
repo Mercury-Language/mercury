@@ -32,3 +32,5 @@ ho_solns
 write_reg1
 ho_univ_to_type
 elim_special_pred
+name_mangling
+division_test
