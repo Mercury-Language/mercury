@@ -136,7 +136,8 @@ detect_switches_in_goal_2(disj(Goals0), GoalInfo, InstMap0, InstMapDelta,
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		detect_switches_in_disj(NonLocalsList, Goals0, GoalInfo,
-			InstMap0, InstMapDelta, VarTypes, ModuleInfo, [], Goal)
+			InstMap0, InstMapDelta, VarTypes,
+			NonLocalsList, ModuleInfo, [], Goal)
 	).
 
 detect_switches_in_goal_2(not(Goal0), _GoalInfo, InstMap0, _InstMapDelta,
@@ -178,12 +179,12 @@ detect_switches_in_goal_2(switch(Var, CanFail, Cases0), _, InstMap, _,
 	assoc_list(cons_id, list(hlds__goal))).
 
 :- pred detect_switches_in_disj(list(var), list(hlds__goal), hlds__goal_info,
-	instmap, instmap, map(var, type), module_info, list(again),
+	instmap, instmap, map(var, type), list(var), module_info, list(again),
 	hlds__goal_expr).
-:- mode detect_switches_in_disj(in, in, in, in, in, in, in, in, out) is det.
+:- mode detect_switches_in_disj(in, in, in, in, in, in, in, in, in, out) is det.
 
 detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap, InstMapDelta,
-		VarTypes, ModuleInfo, Again0, Goal) :-
+		VarTypes, AllVars, ModuleInfo, Again0, Goal) :-
 	% can we do at least a partial switch on this variable?
 	(
 		instmap_lookup_var(InstMap, Var, VarInst0),
@@ -198,15 +199,17 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap, InstMapDelta,
 				InstMap, ModuleInfo, Goal)
 		;
 			detect_switches_in_disj(Vars, Goals0, GoalInfo,
-				InstMap, InstMapDelta, VarTypes, ModuleInfo,
+				InstMap, InstMapDelta, VarTypes, AllVars,
+				ModuleInfo,
 				[again(Var, Left, CasesList) | Again0], Goal)
 		)
 	;
 		detect_switches_in_disj(Vars, Goals0, GoalInfo, InstMap,
-			InstMapDelta, VarTypes, ModuleInfo, Again0, Goal)
+			InstMapDelta, VarTypes, AllVars,
+			ModuleInfo, Again0, Goal)
 	).
-detect_switches_in_disj([], Goals0, GoalInfo, InstMap, _, VarTypes, ModuleInfo,
-		AgainList0, disj(Goals)) :-
+detect_switches_in_disj([], Goals0, GoalInfo, InstMap, InstMapDelta,
+		VarTypes, AllVars, ModuleInfo, AgainList0, disj(Goals)) :-
 	(
 		AgainList0 = [],
 		detect_sub_switches_in_disj(Goals0, InstMap, VarTypes,
@@ -217,8 +220,9 @@ detect_switches_in_disj([], Goals0, GoalInfo, InstMap, _, VarTypes, ModuleInfo,
 		BestAgain = again(Var, Left0, CasesList),
 		cases_to_switch(CasesList, Var, VarTypes, GoalInfo, InstMap,
 			ModuleInfo, SwitchGoal),
-		list__reverse(Left0, Left),
-		Goals = [SwitchGoal - GoalInfo | Left]
+		detect_switches_in_disj(AllVars, Left0, GoalInfo, InstMap,
+			InstMapDelta, VarTypes, AllVars, ModuleInfo, [], Left),
+		Goals = [SwitchGoal - GoalInfo, Left - GoalInfo]
 	).
 
 :- pred select_best_switch(list(again), again, again).
