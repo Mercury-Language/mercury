@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2002 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -718,11 +718,6 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 #endif
 ").		
 
-bounds_checks :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__bounds_checks").
-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
@@ -796,16 +791,6 @@ array__init(Size, Item, Array) :-
 	Array = null;
 ").
 
-array__init_2(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__init_2").
-
-array__make_empty_array(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__make_empty_array").
-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
@@ -833,12 +818,6 @@ array__make_empty_array(_) :-
 	/* Array not used */
 	Min = 0;
 ").
-
-:- pragma promise_pure(array__min/2).
-array__min(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__min").
 
 :- pragma promise_pure(array__max/2).
 :- pragma foreign_proc("C", 
@@ -869,11 +848,6 @@ array__min(_, _) :-
 		Max = -1;
 	}
 ").
-
-array__max(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__max").
 
 array__bounds(Array, Min, Max) :-
 	array__min(Array, Min),
@@ -910,12 +884,6 @@ array__bounds(Array, Min, Max) :-
 		Max = 0;
 	}
 ").
-
-:- pragma promise_pure(array__size/2).
-array__size(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__size").
 
 %-----------------------------------------------------------------------------%
 
@@ -976,12 +944,6 @@ array__lookup(Array, Index, Item) :-
 	Item = Array.GetValue(Index);
 }").
 
-:- pragma promise_pure(array__unsafe_lookup/3).
-array__unsafe_lookup(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__unsafe_lookup").
-
 %-----------------------------------------------------------------------------%
 
 array__set(Array0, Index, Item, Array) :-
@@ -1010,11 +972,6 @@ array__set(Array0, Index, Item, Array) :-
 	Array0.SetValue(Item, Index);	/* destructive update! */
 	Array = Array0;
 }").
-
-array__unsafe_set(_, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__unsafe_set").
 
 %-----------------------------------------------------------------------------%
 
@@ -1099,11 +1056,6 @@ ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
 	}
 ").
 
-array__resize(_, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__resize").
-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
@@ -1167,11 +1119,6 @@ array__shrink(Array0, Size, Array) :-
 	System.Array.Copy(Array0, Array, Size);
 ").
 
-array__shrink_2(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__shrink_2").
-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
@@ -1230,11 +1177,16 @@ ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 	System.Array.Copy(Array0, Array, Array0.Length); 
 ").
 
-:- pragma promise_pure(array__copy/2).
-array__copy(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("array__copy").
+:- pragma foreign_proc("C#",
+		array__copy(Array0::in, Array::array_uo),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+
+	// XXX we implement the same as ML_copy_array, which doesn't appear
+	// to deep copy the array elements
+	Array = System.Array.CreateInstance(
+			Array0.GetType().GetElementType(), Array0.Length);
+	System.Array.Copy(Array0, Array, Array0.Length); 
+").
 
 %-----------------------------------------------------------------------------%
 

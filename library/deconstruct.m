@@ -682,20 +682,6 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 		Success = 0
 	).
 
-univ_named_arg_dna(_Term::in, _Name::in, _Arg::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__univ_named_arg_dna/3").
-univ_named_arg_can(_Term::in, _Name::in, _Arg::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__univ_named_arg_can/3").
-univ_named_arg_idcc(_Term::in, _Name::in, _DummyUniv::in, _Argument::out,
-		_Success::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__univ_named_arg_idcc/3").
-
 %-----------------------------------------------------------------------------%
 
 :- pred deconstruct_dna(T::in, string::out, int::out, list(univ)::out) is det.
@@ -976,11 +962,6 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-get_notag_functor_info(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__get_notag_functor_info").
-
     % Given a value of an arbitrary type, succeed if its type is defined
     % as an equivalence type, and return a univ which bundles up the value
     % with the equivalent type. (I.e. this removes one layer of equivalence
@@ -1020,11 +1001,6 @@ get_notag_functor_info(_, _) :-
     }
 }").
 
-get_equiv_functor_info(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("get_equiv_functor_info").
-
     % Given a value of an arbitrary type, succeed if it is an enum type,
     % and return the integer value corresponding to the value.
 :- pred get_enum_functor_info(univ::in, int::out) is semidet.
@@ -1051,11 +1027,6 @@ get_equiv_functor_info(_, _) :-
             break;
     }
 }").
-
-get_enum_functor_info(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__get_enum_functor_info").
 
     % Given a value of an arbitrary type, succeed if it is a general du type
     % (i.e. non-enum, non-notag du type), and return the top function symbol's
@@ -1155,8 +1126,3 @@ get_enum_functor_info(_, _) :-
             break;
     }
 }").
-
-get_du_functor_info(_, _, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("get_du_functor_info").

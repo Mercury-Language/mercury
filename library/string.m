@@ -1794,11 +1794,6 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 	[will_not_call_mercury, promise_pure, thread_safe], "
 	SUCCESS_INDICATOR = MR_FALSE;
 ").
-using_sprintf :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("string__using_sprintf").
-		
 
 	% Construct a format string suitable to passing to sprintf.
 :- func make_format_sprintf(list(char), maybe(list(char)),
@@ -1865,10 +1860,6 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	MR_make_aligned_string(LengthModifier,
 		(MR_String) (MR_Word) MR_INTEGER_LENGTH_MODIFIER);
 }").
-int_length_modifer = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("int_length_modifer").
 
 
 	% Create a string from a float using the format string.
@@ -1882,10 +1873,6 @@ int_length_modifer = _ :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (double) Val);
 	MR_restore_transient_hp();
 }").
-native_format_float(_, _) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("native_format_float").
 
 	% Create a string from a int using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1898,10 +1885,6 @@ native_format_float(_, _) = _ :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
-native_format_int(_, _) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("native_format_int").
 
 	% Create a string from a string using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1912,10 +1895,6 @@ native_format_int(_, _) = _ :-
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 }").
-native_format_string(_, _) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("native_format_string").
 
 	% Create a string from a char using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1928,10 +1907,6 @@ native_format_string(_, _) = _ :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
-native_format_char(_, _) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("native_format_char").
 
 %-----------------------------------------------------------------------------%
 
@@ -2907,11 +2882,6 @@ max_precision = min_precision + 2.
 	FloatString = FloatVal.ToString(""R"");
 ").
 
-string__lowlevel_float_to_string(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("string__lowlevel_float_to_string").
-
 :- pragma export(string__to_float(in, out), "ML_string_to_float").
 :- pragma foreign_proc("C",
 	string__to_float(FloatString::in, FloatVal::out),
@@ -2949,11 +2919,6 @@ string__lowlevel_float_to_string(_, _) :-
 	    }
 	}
 }").
-
-string__to_float(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("string__to_float").
 
 /*-----------------------------------------------------------------------*/
 
@@ -3191,10 +3156,6 @@ string__set_char(Ch, Index, Str0, Str) :-
 		System::Convert::ToString(Ch), 
 		Str0->Substring(Index + 1));
 ").
-string__unsafe_set_char(_, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("string__unsafe_set_char").
 
 /*
 :- pred string__unsafe_set_char(char, int, string, string).
@@ -3479,11 +3440,6 @@ strchars(I, End, Str) =
 	SubString = Str->Substring(Start, Count);
 }").
 
-string__unsafe_substring(_, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("string__unsafe_substring").
-
 /*
 :- pred string__split(string, int, string, string).
 :- mode string__split(in, in, uo, uo) is det.
@@ -3702,12 +3658,6 @@ string__split(Str, Count, Left, Right) :-
 	Str = System::String::Concat(FirstStr, Rest);
 }").
 
-
-:- pragma promise_pure(string__first_char/3).
-string__first_char(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("string__first_char").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -93,18 +93,6 @@ extern void ML_report_full_memory_stats(void);
 #endif
 ").
 
-report_stats :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("report_stats").
-
-report_full_memory_stats :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("report_full_memory_stats").
-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("C", "
@@ -714,12 +702,6 @@ repeat(N) :-
 ").
 */
 
-get_user_cpu_miliseconds(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("get_user_cpu_miliseconds").
-
 /*
 ** To prevent the C compiler from optimizing the benchmark code
 ** away, we assign the benchmark output to a volatile global variable.
@@ -752,12 +734,6 @@ get_user_cpu_miliseconds(_) :-
 ").
 */
 
-do_nothing(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("benchmaring__do_nothing").
-
 %-----------------------------------------------------------------------------%
 
 %  Impure integer references.
@@ -774,11 +750,6 @@ do_nothing(_) :-
 	MR_incr_hp(Ref, 1);
 	* (MR_Integer *) Ref = X;
 ").
-new_int_reference(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("benchmarking__new_int_reference").
 
 :- impure pred incr_ref(int_reference::in) is det.
 incr_ref(Ref) :-
@@ -793,11 +764,6 @@ incr_ref(Ref) :-
 "
 	X = * (MR_Integer *) Ref;
 ").
-ref_value(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("benchmarking__ref_value").
 
 :- impure pred update_ref(int_reference::in, T::in) is det.
 :- pragma inline(update_ref/2).
@@ -805,10 +771,5 @@ ref_value(_, _) :-
 	update_ref(Ref::in, X::in), [will_not_call_mercury], "
 	* (MR_Integer *) Ref = X;
 ").
-update_ref(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("benchmarking__update_ref").
 
 %-----------------------------------------------------------------------------%

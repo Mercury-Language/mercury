@@ -267,11 +267,6 @@ store__init(S) :-
 :- pragma foreign_proc("C", store__do_init(_S0::uo),
 	[will_not_call_mercury, promise_pure], "").
 
-store__do_init(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("store__do_init").
-
 /* 
 Note -- the syntax for the operations on stores
 might be nicer if we used some new operators, e.g.
@@ -311,24 +306,9 @@ I wonder whether it is worth it?  Hmm, probably not.
 	S = S0;
 ").
 
-new_mutvar(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__new_mutvar") }.
-
 copy_mutvar(Mutvar, Copy) -->
 	get_mutvar(Mutvar, Value),
 	new_mutvar(Value, Copy).
-
-get_mutvar(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__get_mutvar") }.
-
-set_mutvar(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__set_mutvar") }.
 
 :- pred store__unsafe_new_uninitialized_mutvar(generic_mutvar(T, S),
 						S, S) <= store(S).
@@ -341,11 +321,6 @@ set_mutvar(_, _) -->
 	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
 	S = S0;
 ").
-
-unsafe_new_uninitialized_mutvar(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("unsafe_new_uninitialized_mutvar") }.
 
 store__new_cyclic_mutvar(Func, MutVar) -->
 	store__unsafe_new_uninitialized_mutvar(MutVar),
@@ -361,11 +336,6 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 	* (MR_Word *) Ref = Val;
 	S = S0;
 ").
-
-new_ref(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__new_ref") }.
 
 copy_ref_value(Ref, Val) -->
 	/* XXX need to deep-copy non-atomic types */
@@ -383,11 +353,6 @@ copy_ref_value(Ref, Val) -->
 	Val = * (MR_Word *) Ref;
 	S = S0;
 ").
-
-store__unsafe_ref_value(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__unsafe_ref_value") }.
 
 ref_functor(Ref, Functor, Arity) -->
 	unsafe_ref_value(Ref, Val),
@@ -503,31 +468,6 @@ ref_functor(Ref, Functor, Arity) -->
 	Val = * (MR_Word *) Ref;
 ").
 
-arg_ref(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__arg_ref") }.
-
-new_arg_ref(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__new_arg_ref") }.
-
-set_ref(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__set_ref") }.
-
-set_ref_value(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__set_ref_value") }.
-
-extract_ref_value(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("store__extract_ref_value").
-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
@@ -549,14 +489,4 @@ extract_ref_value(_, _, _) :-
 	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
-
-unsafe_arg_ref(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__unsafe_arg_ref") }.
-
-unsafe_new_arg_ref(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("store__unsafe_new_arg_ref") }.
 

@@ -317,11 +317,6 @@ do_compare__type_desc_0_0(
 	TypeInfo = TypeInfo_for_T;
 ").
 
-type_of(_) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("type_of").
-
 :- pragma foreign_proc("C", 
 	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
@@ -335,11 +330,6 @@ type_of(_) = _ :-
 "
 	TypeInfo_for_T = TypeInfo;
 ").
-
-has_type("dummy value", _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("has_type").
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
 :- pragma export(type_name(in) = out, "ML_type_name").
@@ -450,11 +440,6 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	TypeCtor = (MR_Word) MR_make_type_ctor_desc(type_info, type_ctor_info);
 }").
 
-type_ctor(_) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("type_ctor").
-
 :- pragma foreign_proc("C",
 	type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
@@ -525,11 +510,6 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	}
 }").
 
-make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("make_type/2 forward mode.").
-
 	/*
 	** This is the reverse mode of make_type: given a type,
 	** split it up into a type constructor and a list of
@@ -551,11 +531,6 @@ make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
 
 	MR_restore_transient_registers();
 }").
-
-make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("make_type/2 reverse mode").
 
 :- pragma foreign_proc("C",
 	type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,

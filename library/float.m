@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2002 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -258,11 +258,6 @@ X / Y = Z :-
 #endif
 ").
 
-domain_checks :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__domain_checks").
-
 %---------------------------------------------------------------------------%
 %
 % Conversion functions
@@ -283,10 +278,6 @@ float(Int) = Float :-
 "
 	Ceil = System.Convert.ToInt32(System.Math.Ceiling(X));
 ").
-float__ceiling_to_int(_) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__ceiling_to_int").
 
 	% float__floor_to_int(X) returns the
 	% largest integer not greater than X.
@@ -300,10 +291,6 @@ float__ceiling_to_int(_) = _ :-
 "
 	Floor = System.Convert.ToInt32(System.Math.Floor(X));
 ").
-float__floor_to_int(_) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__floor_to_int").
 
 	% float__round_to_int(X) returns the integer closest to X.
 	% If X has a fractional value of 0.5, it is rounded up.
@@ -317,10 +304,6 @@ float__floor_to_int(_) = _ :-
 "
 	Round = System.Convert.ToInt32(System.Math.Floor(X + 0.5));
 ").
-float__round_to_int(_) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__round_to_int").
 
 	% float__truncate_to_int(X) returns the integer closest
 	% to X such that |float__truncate_to_int(X)| =< |X|.
@@ -334,10 +317,6 @@ float__round_to_int(_) = _ :-
 "
 	Trunc = System.Convert.ToInt32(X);
 ").
-float__truncate_to_int(_) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__truncate_to_int").
 
 %---------------------------------------------------------------------------%
 %
@@ -433,10 +412,6 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 "
 	H = F.GetHashCode();
 ").
-float__hash(_) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__hash").
 
 %---------------------------------------------------------------------------%
 
@@ -456,10 +431,6 @@ is_nan_or_inf(Float) :-
 	call bool [mscorlib]System.Double::IsNaN(float64)
 	stloc 'succeeded'
 ").
-is_nan(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__is_nan").
 
 :- pragma promise_pure(is_inf/1).
 :- pragma foreign_proc(c, is_inf(Flt::in),
@@ -472,10 +443,6 @@ is_nan(_) :-
 	call bool [mscorlib]System.Double::IsInfinity(float64)
 	stloc 'succeeded'
 ").
-is_inf(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__is_inf").
 
 %---------------------------------------------------------------------------%
 %
@@ -523,10 +490,6 @@ is_inf(_) :-
 :- pragma foreign_proc("C#", float__max = (Max::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"Max = System.Double.MaxValue;").
-float__max = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__max").
 
 	% Minimum normalised floating-point number */
 :- pragma foreign_proc("C", float__min = (Min::out),
@@ -541,10 +504,6 @@ float__max = _ :-
 	% glibc header files); this is OK, because the ECMA specification
 	% nails down the representation of double as 64-bit IEEE.
 	"Min = 2.2250738585072014e-308;").
-float__min = _ :=
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__min").
 
 	% Smallest x such that x \= 1.0 + x
 :- pragma foreign_proc("C", float__epsilon = (Eps::out),
@@ -561,10 +520,6 @@ float__min = _ :=
 	% glibc header files); this is OK, because the ECMA specification
 	% nails down the representation of double as 64-bit IEEE.
 	"Eps = 2.2204460492503131e-16;").
-float__epsilon = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__epsilon").
 
 	% Radix of the floating-point representation.
 :- pragma foreign_proc("C", float__radix = (Radix::out),
@@ -576,10 +531,6 @@ float__epsilon = _ :-
 	% I think that implies that it must have Radix = 2.
 	% This is definitely right for x86, anyway.
 	"Radix = 2;").
-float__radix = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__radix").
 
 	% The number of base-radix digits in the mantissa.
 :- pragma foreign_proc("C", float__mantissa_digits = (MantDig::out),
@@ -589,10 +540,6 @@ float__radix = _ :-
 		[will_not_call_mercury, promise_pure, thread_safe],
 	% ECMA specifies that System.Double is 64-bit IEEE float
 	"MantDig = 53;").
-float__mantissa_digits = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__mantissa_digits").
 
 	% Minimum negative integer such that:
 	%	radix ** (min_exponent - 1)
@@ -604,10 +551,6 @@ float__mantissa_digits = _ :-
 		[will_not_call_mercury, promise_pure, thread_safe],
 	% ECMA specifies that System.Double is 64-bit IEEE float
 	"MinExp = -1021;").
-float__min_exponent = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__min_exponent").
 
 	% Maximum integer such that:
 	%	radix ** (max_exponent - 1)
@@ -619,10 +562,6 @@ float__min_exponent = _ :-
 		[will_not_call_mercury, promise_pure, thread_safe],
 	% ECMA specifies that System.Double is 64-bit IEEE float
 	"MaxExp = 1024;").
-float__max_exponent = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("float__max_exponent").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -1191,6 +1191,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX FIXME!!!
 		TypeCtorRep = reserved_addr,
 		Functor = "some_reserved_addr", 
 		Arity = 0,

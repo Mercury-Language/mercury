@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -471,13 +471,6 @@ char__lower_upper('z', 'Z').
 	SUCCESS_INDICATOR = (Character == Int);
 ").
 
-:- pragma promise_pure(char__to_int/2).
-char__to_int(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("char__to_int").
-
-
 % We used unsigned character codes, so the minimum character code
 % is always zero.
 
@@ -500,11 +493,6 @@ char__min_char_value(0).
 	Max = 0xffff;
 ").
 
-
-char__max_char_value(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("char__max_char_value").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1914,11 +1914,6 @@ io__input_stream_foldl2_io(Stream, Pred, T0, Res) -->
 	MR_update_io(IO0, IO);
 }").
 
-io__clear_err(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__clear_err") }.
-
 
 :- pred io__check_err(stream, io__res, io__state, io__state).
 :- mode io__check_err(in, out, di, uo) is det.
@@ -1962,11 +1957,6 @@ io__check_err(Stream, Res) -->
 	MR_update_io(IO0, IO);
 }").
 
-ferror(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("ferror") }.
-
 % io__make_err_msg(MessagePrefix, Message):
 %	`Message' is an error message obtained by looking up the
 %	message for the current value of errno and prepending
@@ -1988,11 +1978,6 @@ ferror(_, _, _) -->
 "{
 	Msg = System::String::Concat(Msg0, MR_io_exception->Message);
 }").
-
-make_err_msg(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__make_err_msg") }.
 
 
 %-----------------------------------------------------------------------------%
@@ -2052,12 +2037,6 @@ make_err_msg(_, _) -->
 	}
 	MR_update_io(IO0, IO);
 }").
-
-io__stream_file_size(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__stream_file_size") }.
-	
 
 io__file_modification_time(File, Result) -->
 	io__file_modification_time_2(File, Status, Msg, Time),
@@ -3219,16 +3198,6 @@ io__stream_name(Stream, Name) -->
 	MR_update_io(IO0, IO);
 ").
 
-io__get_stream_names(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__get_stream_names") }.
-
-io__set_stream_names(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_stream_names") }.
-
 :- pred io__delete_stream_name(io__stream, io__state, io__state).
 :- mode io__delete_stream_name(in, di, uo) is det.
 
@@ -3286,16 +3255,6 @@ io__insert_stream_name(Stream, Name) -->
 	MR_update_io(IOState0, IOState);
 ").
 
-io__set_globals(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_globals") }.
-
-io__get_globals(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__get_globals") }.
-
 io__progname_base(DefaultName, PrognameBase) -->
 	io__progname(DefaultName, Progname),
 	{ dir__basename(Progname, PrognameBase) }.
@@ -3336,11 +3295,6 @@ io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
 		MR_word_to_c_pointer(Stream));
 	Id = mf->id;
 ").
-
-io__get_stream_id(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("io__get_stream_id").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -4435,26 +4389,6 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 }").
 
-io__read_char_code(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__read_char_code") }.
-
-io__read_byte_val(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__read_byte_val") }.
-
-io__putback_char(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__putback_char") }.
-
-io__putback_byte(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__putback_byte") }.
-
 /* output predicates - with output to mercury_current_text_output */
 
 :- pragma foreign_proc("C", 
@@ -4618,43 +4552,8 @@ io__putback_byte(_, _) -->
 	MR_update_io(IO0, IO);
 ").
 
-io__write_string(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_string") }.
-
-io__write_char(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_char") }.
-
-io__write_int(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_int") }.
-
 io__write_float(Float) -->
 	io__write_string(string__float_to_string(Float)).
-
-io__write_byte(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_byte") }.
-
-io__write_bytes(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_bytes") }.
-
-io__flush_output -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__flush_output") }.
-
-io__flush_binary_output -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__flush_binary_output") }.
 
 /* moving about binary streams */
 
@@ -4707,16 +4606,6 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	}
 	MR_update_io(IO0, IO);
 }").
-
-io__seek_binary_2(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__seek_binary_2") }.
-
-io__binary_stream_offset(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__binary_stream_offset") }.
 
 /* output predicates - with output to the specified stream */
 
@@ -4899,43 +4788,8 @@ io__binary_stream_offset(_, _) -->
 	MR_update_io(IO0, IO);
 }").
 
-io__write_string(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_string") }.
-
-io__write_char(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_char") }.
-
-io__write_int(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_int") }.
-
 io__write_float(Stream, Float) -->
 	io__write_string(Stream, string__float_to_string(Float)).
-
-io__write_byte(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_byte") }.
-
-io__write_bytes(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__write_bytes") }.
-
-io__flush_output(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__flush_output") }.
-
-io__flush_binary_output(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__flush_binary_output") }.
 
 /* stream predicates */
 
@@ -5350,131 +5204,6 @@ io__flush_binary_output(_) -->
 	MR_update_io(IO0, IO);
 ").
 
-io__stdin_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__stdin_stream") }.
-
-io__stdout_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__stdout_stream") }.
-
-io__stderr_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__stderr_stream") }.
-
-io__stdin_binary_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__stdin_binary_stream") }.
-
-io__stdout_binary_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__stdout_binary_stream") }.
-
-io__input_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__input_stream") }.
-
-io__output_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__output_stream") }.
-
-io__binary_input_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__binary_input_stream") }.
-
-io__binary_output_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__binary_output_stream") }.
-
-io__get_line_number(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__get_line_number") }.
-
-io__get_line_number(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__get_line_number") }.
-
-io__set_line_number(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_line_number") }.
-
-io__set_line_number(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_line_number") }.
-
-io__get_output_line_number(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__get_output_line_number") }.
-	
-io__get_output_line_number(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__get_output_line_number") }.
-	
-io__set_output_line_number(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_output_line_number") }.
-	
-io__set_output_line_number(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_output_line_number") }.
-	
-io__current_input_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__current_input_stream") }.
-
-io__current_output_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__current_output_stream") }.
-
-io__current_binary_input_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__current_binary_input_stream") }.
-
-io__current_binary_output_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__current_binary_output_stream") }.
-
-io__set_input_stream(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_input_stream") }.
-
-io__set_output_stream(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_output_stream") }.
-
-io__set_binary_input_stream(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_binary_input_stream") }.
-
-io__set_binary_output_stream(_, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_binary_output_stream") }.
-
 /* stream open/close predicates */
 
 % io__do_open(File, Mode, ResultCode, Stream, IO0, IO1).
@@ -5527,16 +5256,6 @@ io__set_binary_output_stream(_, _) -->
 	MR_update_io(IO0, IO);
 ").
 
-io__do_open_text(_, _, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__do_open_text") }.
-
-io__do_open_binary(_, _, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__do_open_binary") }.
-
 io__close_input(Stream) -->
 	io__delete_stream_name(Stream),
 	io__close_stream(Stream).
@@ -5568,11 +5287,6 @@ io__close_binary_output(Stream) -->
 	mercury_close(mf);
 	MR_update_io(IO0, IO);
 ").
-
-io__close_stream(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__close_stream") }.
 
 /* miscellaneous predicates */
 
@@ -5779,26 +5493,6 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	}
 ").
 
-io__command_line_arguments(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__command_line_arguments") }.
-
-io__get_exit_status(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__get_exit_status") }.
-
-io__set_exit_status(_) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__set_exit_status") }.
-
-io__call_system_code(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__call_system_code") }.
-
 /*---------------------------------------------------------------------------*/
 
 /* io__getenv and io__setenv */
@@ -5825,13 +5519,6 @@ io__call_system_code(_, _, _) -->
 	Value = System.Environment.GetEnvironmentVariable(Var);
 	SUCCESS_INDICATOR = (Value != null);
 }").
-
-io__getenv(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("io__getenv").
-
 
 io__setenv(Var, Value) :-
 	impure io__putenv(Var ++ "=" ++ Value).
@@ -5872,12 +5559,6 @@ io__setenv(Var, Value) :-
 			StringToHGlobalAnsi(VarAndValue).ToPointer()); 
 	SUCCESS_INDICATOR = (putenv(c_string) == 0);
 ").
-
-io__putenv(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("io__putenv").
 
 /*---------------------------------------------------------------------------*/
 
@@ -6058,11 +5739,6 @@ io__make_temp(Dir, Prefix, Name) -->
 	}
 }").
 
-io__do_make_temp(_, _, _, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__do_make_temp") }.
-
 /*---------------------------------------------------------------------------*/
 
 :- pragma foreign_decl("C", "
@@ -6154,11 +5830,6 @@ io__remove_file(FileName, Result, IO0, IO) :-
 	}
 }").
 
-io__remove_file_2(_, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__remove_file_2") }.
-
 io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 	io__rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),
 	( Res \= 0 ->
@@ -6203,11 +5874,6 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 		RetStr = e.Message;
 	}
 }").
-
-io__rename_file_2(_, _, _, _) -->
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	{ private_builtin__sorry("io__rename_file_2") }.
 
 /*---------------------------------------------------------------------------*/
 

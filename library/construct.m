@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -188,11 +188,6 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     SUCCESS_INDICATOR = (S == NULL);
 ").
 
-null(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("construct__null").
-
 :- pred get_functor_2(type_desc__type_desc::in, int::in, string::out, int::out,
 	list(type_desc__type_desc)::out, list(string)::out) is semidet.
 
@@ -314,11 +309,6 @@ get_functor_2(TypeDesc, FunctorNumber,
     }
     SUCCESS_INDICATOR = success;
 }").
-
-get_functor_ordinal(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("construct__get_functor_ordinal").
 
 :- pragma foreign_proc("C", 
 	construct(TypeDesc::in, FunctorNumber::in, ArgList::in) = (Term::out),
@@ -528,11 +518,6 @@ get_functor_ordinal(_, _, _) :-
     SUCCESS_INDICATOR = success;
 }").
 
-construct(_, _, _) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("construct__construct").
-
 construct_tuple(Args) =
 	construct_tuple_2(Args,
 		list__map(univ_type, Args),
@@ -579,8 +564,3 @@ construct_tuple(Args) =
 	*/
 	MR_new_univ_on_hp(Term, type_info, new_data);
 }").
-
-construct_tuple_2(_, _, _) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("construct__construct_tuple_2").

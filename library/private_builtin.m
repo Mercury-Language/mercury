@@ -170,11 +170,6 @@ builtin_compare_string(R, S1, S2) :-
 	Res = System::String::Compare(S1, S2);
 ").
 
-builtin_strcmp(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	sorry("builtin_strcmp").
-	
 builtin_unify_float(F, F).
 
 builtin_compare_float(R, F1, F2) :-
@@ -678,26 +673,6 @@ static void init_runtime(void)
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
 
-type_info_from_typeclass_info(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	sorry("type_info_from_typeclass_info").
-
-unconstrained_type_info_from_typeclass_info(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	sorry("unconstrained_type_info_from_typeclass_info").
-
-superclass_from_typeclass_info(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	sorry("superclass_from_typeclass_info").
-
-instance_constraint_from_typeclass_info(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	sorry("instance_constraint_from_typeclass_info").
-
 %-----------------------------------------------------------------------------%
 
 	% This section of the module contains predicates that are used
@@ -733,36 +708,6 @@ instance_constraint_from_typeclass_info(_, _, _) :-
 	% N.B. interface continued below.
 
 :- implementation.
-
-% Default (Mercury) implementations.
-% These should be overridden by the appropriate foreign language implementation.
-store_ticket(_Ticket::out) :-
-	impure imp,
-	sorry("private_builtin__store_ticket/1").
-reset_ticket_undo(_Ticket::in) :-
-	impure imp,
-	sorry("private_builtin__reset_ticket_undo/1").
-reset_ticket_commit(_Ticket::in) :-
-	impure imp,
-	sorry("private_builtin__reset_ticket_commit/1").
-reset_ticket_solve(_Ticket::in) :-
-	impure imp,
-	sorry("private_builtin__reset_ticket_solve/1").
-mark_ticket_stack(_TicketCounter::out) :-
-	impure imp,
-	sorry("private_builtin__mark_ticket_stack/1").
-prune_tickets_to(_TicketCounter::in) :-
-	impure imp,
-	sorry("private_builtin__prune_tickets_to/1").
-/****
-% XXX we can't give default Mercury implementations for these,
-% because you can't write a mode-specific clause for a zero-arity
-% procedure.
-discard_ticket :-
-	sorry("private_builtin__discard_ticket/0").
-prune_ticket :-
-	sorry("private_builtin__prune_ticket/0").
-****/
 
 :- pragma foreign_proc("C", store_ticket(Ticket::out),
 	[will_not_call_mercury, thread_safe],
@@ -997,12 +942,6 @@ trailed_nondet_pragma_foreign_code :-
 	#include ""mercury_heap.h""	/* for MR_free_heap() */
 ").
 
-% default (Mercury) implementation for gc_trace/1
-% This should be overridden by the appropriate foreign language implementation.
-gc_trace(_::in) :-
-	impure imp,
-	sorry("private_builtin__gc_trace/1").
-
 :- pragma foreign_proc("C", gc_trace(Pointer::in),
 	[will_not_call_mercury, thread_safe],
 "
@@ -1018,24 +957,9 @@ gc_trace(_::in) :-
 #endif
 ").
 
-% default (Mercury) implementation for free_heap/1
-% This should be overridden by the appropriate foreign language implementation.
-free_heap(_::di) :-
-	impure imp,
-	sorry("private_builtin__free_heap/1").
-
 :- pragma foreign_proc("C", free_heap(Val::di),
 	[will_not_call_mercury, promise_pure, thread_safe],
 	"MR_free_heap((void *) Val);").
-
-% default (Mercury) implementations for mark_hp/1 and restore_hp/1.
-% This should be overridden by the appropriate foreign language implementation.
-mark_hp(_::out) :-
-	impure imp,
-	sorry("private_builtin__mark_hp/1").
-restore_hp(_::in) :-
-	impure imp,
-	sorry("private_builtin__restore_hp/1").
 
 :- pragma foreign_proc("C", mark_hp(SavedHeapPointer::out),
 	[will_not_call_mercury, thread_safe],
