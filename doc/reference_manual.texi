@@ -441,6 +441,7 @@ rem               xfx       400
 \/                yfx       500
 aditi_bottom_up   fx        500
 aditi_top_down    fx        500
+..                xfx       550
 :                 yfx       600
 :=                xfx       650
 =^                xfx       650

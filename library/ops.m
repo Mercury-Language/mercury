@@ -238,6 +238,7 @@ ops__mercury_arg_priority(_Table) = 1201.
 :- mode ops__op_table(in, in, out, out) is semidet.
 :- mode ops__op_table(in, out, out, out) is nondet.
 
+ops__op_table("..", after, xfx, 550).		% Mercury extension
 ops__op_table("*", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("**", after, xfy, 200).		% standard ISO Prolog
 ops__op_table("+", after, yfx, 500).		% standard ISO Prolog
