@@ -16,6 +16,7 @@ PROGS=	\
 	nondet_class_method \
 	operator_classname \
 	superclass_call \
+	test_default_func_mode \
 	typeclass_test_6
 
 # implied_instance_missing_constraint is not yet included as there is a bug
