@@ -340,6 +340,7 @@ The allowed declarations are:
 :- interface
 :- implementation
 :- import_module
+:- use_module
 :- external
 :- end_module
 @end example
@@ -2263,20 +2264,21 @@ The module may optionally end with an @code{end_module} declaration.
 @c ===> no
 
 If a module wishes to make use of entities exported by other modules,
-then it must explicitly import those modules
-using one or more @code{import_module} declarations.
-These declarations may occur
-either in the interface or the implementation section.
-If the imported entities are used in the interface section,
-then the corresponding @code{import_module} declaration must
-also be in the interface section.  If the imported entities are only
-used in the implementation section, the @code{import_module}
-declaration should be in the implementation section.
+then it must explicitly import those modules using one or more 
+@code{import_module} or @code{use_module} declarations.
+These declarations may occur either in the interface or the implementation 
+section. If the imported entities are used in the interface section,
+then the corresponding @code{import_module} or @code{use_module}
+declaration must also be in the interface section. If the imported 
+entities are only used in the implementation section, the 
+@code{import_module} or @code{use_module} declaration should be in 
+the implementation section.
 
 Declarations, predicate calls, types, modes and insts
 can be explicitly module qualified using the `:' operator,
 i.e. @code{module:name}. This is useful both for readability and
-for resolving name conflicts.
+for resolving name conflicts. Uses of entities imported using 
+@code{use_module} declarations @emph{must} be explicitly module qualified.
 
 Certain optimizations require information or source code for predicates
 defined in other modules to be as effective as possible. At the moment,
@@ -2766,11 +2768,7 @@ is a hint to the compiler that all calls to the predicate(s) or function(s)
 with name @var{Name} and arity @var{Arity} should be inlined.
 
 The current Mercury implementation is smart enough to inline many
-simple predicates even without this hint.  However, in the current
-Mercury implementation, cross-module inlining is not yet supported, so
-if a predicate for which there is an @samp{inline} pragma is called
-from a module other than the one it is defined in, the compiler will
-ignore the hint.
+simple predicates even without this hint.
 
 @node Preventing Inlining
 @section Preventing Inlining
