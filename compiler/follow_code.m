@@ -29,7 +29,8 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, det_analysis, mode_util, quantification.
+:- import_module hlds_goal, hlds_data, goal_util, mode_util.
+:- import_module det_analysis, quantification.
 :- import_module list, map, set.
 :- import_module term, require.
 
@@ -120,18 +121,18 @@ move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, R0, R) :-
 move_follow_code_in_goal_2(conj(Goals0), conj(Goals), Flags, R0, R) :-
 	move_follow_code_in_conj(Goals0, Goals, Flags, R0, R).
 
-move_follow_code_in_goal_2(disj(Goals0), disj(Goals), Flags, R0, R) :-
+move_follow_code_in_goal_2(disj(Goals0, FV), disj(Goals, FV), Flags, R0, R) :-
 	move_follow_code_in_disj(Goals0, Goals, Flags, R0, R).
 
 move_follow_code_in_goal_2(not(Goal0), not(Goal), Flags, R0, R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, R0, R).
 
-move_follow_code_in_goal_2(switch(Var, Det, Cases0),
-		switch(Var, Det, Cases), Flags, R0, R) :-
+move_follow_code_in_goal_2(switch(Var, Det, Cases0, FV),
+		switch(Var, Det, Cases, FV), Flags, R0, R) :-
 	move_follow_code_in_cases(Cases0, Cases, Flags, R0, R).
 
-move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-		if_then_else(Vars, Cond, Then, Else), Flags, R0, R) :-
+move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
+		if_then_else(Vars, Cond, Then, Else, FV), Flags, R0, R) :-
 	move_follow_code_in_goal(Cond0, Cond, Flags, R0, R1),
 	move_follow_code_in_goal(Then0, Then, Flags, R1, R2),
 	move_follow_code_in_goal(Else0, Else, Flags, R2, R).
@@ -194,7 +195,8 @@ move_follow_code_in_conj_2([Goal0 | Goals0], RevPrevGoals0, RevPrevGoals,
 	Flags = PushFollowCode - PushPrevCode,
 	(
 		PushFollowCode = yes,
-		move_follow_code_is_branched(Goal0),
+		Goal0 = GoalExpr0 - _,
+		goal_util__goal_is_branched(GoalExpr0),
 		move_follow_code_select(Goals0, FollowGoals, RestGoalsPrime),
 		FollowGoals \= [],
 		move_follow_code_move_goals(Goal0, FollowGoals, Goal1Prime)
@@ -253,18 +255,18 @@ move_follow_code_select([Goal|Goals], FollowGoals, RestGoals) :-
 
 move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 	(
-		Goal0 = switch(Var, Det, Cases0),
+		Goal0 = switch(Var, Det, Cases0, FV),
 		move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases),
-		Goal = switch(Var, Det, Cases)
+		Goal = switch(Var, Det, Cases, FV)
 	;
-		Goal0 = disj(Goals0),
+		Goal0 = disj(Goals0, FV),
 		move_follow_code_move_goals_disj(Goals0, FollowGoals, Goals),
-		Goal = disj(Goals)
+		Goal = disj(Goals, FV)
 	;
-		Goal0 = if_then_else(Vars, Cond, Then0, Else0),
+		Goal0 = if_then_else(Vars, Cond, Then0, Else0, FV),
 		conjoin_goal_and_goal_list(Then0, FollowGoals, Then),
 		conjoin_goal_and_goal_list(Else0, FollowGoals, Else),
-		Goal = if_then_else(Vars, Cond, Then, Else)
+		Goal = if_then_else(Vars, Cond, Then, Else, FV)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -326,17 +328,6 @@ check_follow_code_detism([_ - GoalInfo | Goals], CanFail0, MaxSolns0) :-
 	det_conjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns0),
 	det_conjunction_canfail(CanFail0, CanFail1, CanFail0),
 	check_follow_code_detism(Goals, CanFail0, MaxSolns0).
-
-%-----------------------------------------------------------------------------%
-
-	% See if the given goal has multiple paths through it.
-
-:- pred move_follow_code_is_branched(hlds__goal).
-:- mode move_follow_code_is_branched(in) is semidet.
-
-move_follow_code_is_branched(switch(_,_,_) - _GoalInfo).
-move_follow_code_is_branched(if_then_else(_,_,_,_) - _GoalInfo).
-move_follow_code_is_branched(disj(_) - _GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

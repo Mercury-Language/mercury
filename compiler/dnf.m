@@ -181,24 +181,24 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 			Goals, NewPredIds0, NewPredIds),
 		Goal = conj(Goals) - GoalInfo
 	;
-		GoalExpr0 = disj(Goals0),
+		GoalExpr0 = disj(Goals0, FV),
 		dnf__transform_disj(Goals0, InstMap0, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo, Base, 0, DnfInfo,
 			Goals, NewPredIds0, NewPredIds),
-		Goal = disj(Goals) - GoalInfo
+		Goal = disj(Goals, FV) - GoalInfo
 	;
-		GoalExpr0 = switch(Var, CanFail, Cases0),
+		GoalExpr0 = switch(Var, CanFail, Cases0, FV),
 		dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo, Base, 0, DnfInfo,
 			Cases, NewPredIds0, NewPredIds),
-		Goal = switch(Var, CanFail, Cases) - GoalInfo
+		Goal = switch(Var, CanFail, Cases, FV) - GoalInfo
 	;
-		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0, FV),
 		% XXX should handle nonempty Vars
 		dnf__transform_ite(Cond0, Then0, Else0, InstMap0,
 			MaybeNonAtomic, ModuleInfo0, ModuleInfo, Base, 0,
 			DnfInfo, Cond, Then, Else, NewPredIds0, NewPredIds),
-		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo
+		Goal = if_then_else(Vars, Cond, Then, Else, FV) - GoalInfo
 	;
 		GoalExpr0 = call(_, _, _, _, _, _, _),
 		ModuleInfo = ModuleInfo0,
@@ -424,13 +424,13 @@ dnf__is_considered_atomic_expr(GoalExpr, MaybeNonAtomic) :-
 
 dnf__is_atomic_expr(conj(_), no).
 dnf__is_atomic_expr(call(_, _, _, _, _, _, _), yes).
-dnf__is_atomic_expr(switch(_, _, _), no).
+dnf__is_atomic_expr(switch(_, _, _, _), no).
 dnf__is_atomic_expr(unify(_, _, _, _, _), yes).
-dnf__is_atomic_expr(disj(_), no).
+dnf__is_atomic_expr(disj(_, _), no).
 dnf__is_atomic_expr(not(_), no).
 dnf__is_atomic_expr(some(_, GoalExpr - _), IsAtomic) :-
 	dnf__is_atomic_expr(GoalExpr, IsAtomic).
-dnf__is_atomic_expr(if_then_else(_, _, _, _), no).
+dnf__is_atomic_expr(if_then_else(_, _, _, _, _), no).
 dnf__is_atomic_expr(pragma_c_code(_, _, _, _, _), yes).
 
 :- pred dnf__expr_free_of_nonatomic(hlds__goal_expr::in,
@@ -440,16 +440,16 @@ dnf__expr_free_of_nonatomic(conj(Goals), NonAtomic) :-
 	dnf__goals_free_of_nonatomic(Goals, NonAtomic).
 dnf__expr_free_of_nonatomic(call(PredId, ProcId, _, _, _, _, _), NonAtomic) :-
 	\+ set__member(proc(PredId, ProcId), NonAtomic).
-dnf__expr_free_of_nonatomic(switch(_, _, Cases), NonAtomic) :-
+dnf__expr_free_of_nonatomic(switch(_, _, Cases, _), NonAtomic) :-
 	dnf__cases_free_of_nonatomic(Cases, NonAtomic).
 dnf__expr_free_of_nonatomic(unify(_, _, _, _, _), _NonAtomic).
-dnf__expr_free_of_nonatomic(disj(Goals), NonAtomic) :-
+dnf__expr_free_of_nonatomic(disj(Goals, _), NonAtomic) :-
 	dnf__goals_free_of_nonatomic(Goals, NonAtomic).
 dnf__expr_free_of_nonatomic(not(Goal), NonAtomic) :-
 	dnf__goal_free_of_nonatomic(Goal, NonAtomic).
 dnf__expr_free_of_nonatomic(some(_, Goal), NonAtomic) :-
 	dnf__goal_free_of_nonatomic(Goal, NonAtomic).
-dnf__expr_free_of_nonatomic(if_then_else(_, Cond, Then, Else), NonAtomic) :-
+dnf__expr_free_of_nonatomic(if_then_else(_, Cond, Then, Else, _), NonAtomic) :-
 	dnf__goal_free_of_nonatomic(Cond, NonAtomic),
 	dnf__goal_free_of_nonatomic(Then, NonAtomic),
 	dnf__goal_free_of_nonatomic(Else, NonAtomic).

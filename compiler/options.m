@@ -106,6 +106,7 @@
 		;	reclaim_heap_on_nondet_failure
 		;	lazy_code
 		;	use_macro_for_redo_fail
+		;	branch_delay_slot
 		;	num_real_r_regs
 		;	num_real_temps
 		;	cc
@@ -296,6 +297,10 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	use_macro_for_redo_fail	-	bool(no),
+	branch_delay_slot	-	bool(no),
+					% the `mc' script may override the
+					% above default if configure says
+					% the machine has branch delay slots
 	num_real_r_regs		-	int(5),
 	num_real_temps		-	int(5),
 					% the `mc' script will override the
@@ -513,7 +518,9 @@ long_option("reclaim-heap-on-semidet-failure",
 long_option("reclaim-heap-on-nondet-failure",
 					reclaim_heap_on_nondet_failure).
 long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
+long_option("branch-delay-slot",	branch_delay_slot).
 long_option("num-real-r-regs",		num_real_r_regs).
+long_option("num-real-temps",		num_real_temps).
 long_option("cc",			cc).
 long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
@@ -660,7 +667,7 @@ set_opt_level(N, OptionTable0, OptionTable) :-
 enable_opt_levels(N0, N, OptionTable0, OptionTable) :-
 	( N0 > N ->
 		OptionTable = OptionTable0
-	; opt_level(N0, OptionSettingsList) ->
+	; opt_level(N0, OptionTable0, OptionSettingsList) ->
 		override_options(OptionSettingsList, OptionTable0,
 			OptionTable1),
 		N1 is N0 + 1,
@@ -691,7 +698,8 @@ opt_space([
 
 %-----------------------------------------------------------------------------%
 
-:- pred opt_level(int::in, list(pair(option, option_data))::out) is semidet.
+:- pred opt_level(int::in, option_table::in,
+	list(pair(option, option_data))::out) is semidet.
 
 % Optimization level -1:
 % Generate totally unoptimized code; turns off ALL optimizations that
@@ -702,7 +710,7 @@ opt_space([
 % Optimization level 0: aim to minimize overall compilation time.
 % XXX I just guessed.  We should run lots of experiments.
 
-opt_level(0, [
+opt_level(0, _, [
 	optimize		-	bool(yes),
 	optimize_repeat		-	int(1),
 	optimize_peep		-	bool(yes),
@@ -716,7 +724,7 @@ opt_level(0, [
 % Optimization level 1: apply optimizations which are cheap and
 % have a good payoff while still keeping compilation time small
 
-opt_level(1, [
+opt_level(1, _OptionTable, [
 	c_optimize		-	bool(yes),	% XXX we want `gcc -O1'
 	optimize_jumps		-	bool(yes),
 	optimize_labels		-	bool(yes),
@@ -727,12 +735,19 @@ opt_level(1, [
 	emit_c_loops		-	bool(yes)
 	% dups?
 ]).
+% This doesn't work at startup because the table is empty then
+%	map__lookup(OptionTable, branch_delay_slot, Option),
+%	( Option = bool(Configured) ->
+%		DelaySlot = Configured
+%	;
+%		error("configured value of branch-delay-slot is not boolean")
+%	).
 
 % Optimization level 2: apply optimizations which have a good
 % payoff relative to their cost; but include optimizations
 % which are more costly than with -O1
 
-opt_level(2, [
+opt_level(2, _, [
 	optimize_fulljumps	-	bool(yes),
 	optimize_repeat		-	int(3),
 	optimize_dups		-	bool(yes),
@@ -745,7 +760,7 @@ opt_level(2, [
 % Optimization level 3: apply optimizations which usually have a good
 % payoff even if they increase compilation time quite a bit
 
-opt_level(3, [
+opt_level(3, _, [
 	optimize_value_number	-	bool(yes),
 	optimize_dead_procs	-	bool(yes),
 %%%	optimize_copyprop	-	bool(yes),
@@ -760,7 +775,7 @@ opt_level(3, [
 
 % Currently this just enables pred_value_number
 
-opt_level(4, [
+opt_level(4, _, [
 	pred_value_number	-	bool(yes)
 ]).
 
@@ -769,7 +784,7 @@ opt_level(4, [
 
 % Currently this just runs a second pass of value numbering
 
-opt_level(5, [
+opt_level(5, _, [
 	optimize_repeat		-	int(5),
 	optimize_vnrepeat	-	int(2)
 ]).
@@ -782,7 +797,7 @@ opt_level(5, [
 % the compiler to put everything in the one C function and treat
 % calls to predicates in the same module as local.
 
-opt_level(6, [
+opt_level(6, _, [
 	procs_per_c_function	-	int(0)	% everything in one C function
 ]).
 
@@ -973,6 +988,9 @@ options_help -->
 		% The --bytes-per-word option is intended for use
 		% by the `mc' script; it is deliberately not documented.
 
+	io__write_string("\t--branch-delay-slot\t"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tAssume that branch instructions have a delay slot.\n"),
 	io__write_string("\t--num-real-r-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tAssume registers r1 up to r<n> are real machine registers.\n"),

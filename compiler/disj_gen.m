@@ -17,13 +17,13 @@
 
 :- import_module hlds_goal, llds, code_gen, code_info, code_util, std_util.
 
-:- pred disj_gen__generate_semi_disj(list(hlds__goal),
+:- pred disj_gen__generate_semi_disj(list(hlds__goal), follow_vars,
 					code_tree, code_info, code_info).
-:- mode disj_gen__generate_semi_disj(in, out, in, out) is det.
+:- mode disj_gen__generate_semi_disj(in, in, out, in, out) is det.
 
-:- pred disj_gen__generate_non_disj(list(hlds__goal),
+:- pred disj_gen__generate_non_disj(list(hlds__goal), follow_vars,
 					code_tree, code_info, code_info).
-:- mode disj_gen__generate_non_disj(in, out, in, out) is det.
+:- mode disj_gen__generate_non_disj(in, in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -33,18 +33,18 @@
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_semi_disj(Goals, Code) -->
+disj_gen__generate_semi_disj(Goals, FollowVars, Code) -->
 	( { Goals = [] } ->
 		code_info__generate_failure(Code)
 	;
-		disj_gen__generate_semi_disj_2(Goals, Code)
+		disj_gen__generate_semi_disj_2(Goals, FollowVars, Code)
 	).
 
-:- pred disj_gen__generate_semi_disj_2(list(hlds__goal),
+:- pred disj_gen__generate_semi_disj_2(list(hlds__goal), follow_vars,
 					code_tree, code_info, code_info).
-:- mode disj_gen__generate_semi_disj_2(in, out, in, out) is det.
+:- mode disj_gen__generate_semi_disj_2(in, in, out, in, out) is det.
 
-disj_gen__generate_semi_disj_2(Goals, Code) -->
+disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
 	code_info__generate_nondet_saves(SaveVarsCode),
 /****
 % This heap restore code only works for goals with no output variables.
@@ -129,7 +129,7 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_non_disj(Goals1, Code) -->
+disj_gen__generate_non_disj(Goals1, _FollowVars, Code) -->
 
 		% Sanity check
 	{ Goals1 = [] ->

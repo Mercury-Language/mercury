@@ -181,7 +181,7 @@ dead_proc_elim__traverse_goal(GoalExpr - _, Queue0, Queue, Needed0, Needed) :-
 	set(pred_proc_id), set(pred_proc_id)).
 :- mode dead_proc_elim__traverse_expr(in, in, out, in, out) is det.
 
-dead_proc_elim__traverse_expr(disj(Goals), Queue0, Queue, Needed0, Needed) :-
+dead_proc_elim__traverse_expr(disj(Goals, _), Queue0, Queue, Needed0, Needed) :-
 	dead_proc_elim__traverse_goals(Goals, Queue0, Queue, Needed0, Needed).
 dead_proc_elim__traverse_expr(conj(Goals), Queue0, Queue, Needed0, Needed) :-
 	dead_proc_elim__traverse_goals(Goals, Queue0, Queue, Needed0, Needed).
@@ -189,10 +189,10 @@ dead_proc_elim__traverse_expr(not(Goal), Queue0, Queue, Needed0, Needed) :-
 	dead_proc_elim__traverse_goal(Goal, Queue0, Queue, Needed0, Needed).
 dead_proc_elim__traverse_expr(some(_, Goal), Queue0, Queue, Needed0, Needed) :-
 	dead_proc_elim__traverse_goal(Goal, Queue0, Queue, Needed0, Needed).
-dead_proc_elim__traverse_expr(switch(_, _, Cases), Queue0, Queue,
+dead_proc_elim__traverse_expr(switch(_, _, Cases, _), Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__traverse_cases(Cases, Queue0, Queue, Needed0, Needed).
-dead_proc_elim__traverse_expr(if_then_else(_, Cond, Then, Else),
+dead_proc_elim__traverse_expr(if_then_else(_, Cond, Then, Else, _),
 		Queue0, Queue, Needed0, Needed) :-
 	dead_proc_elim__traverse_goal(Cond, Queue0, Queue1, Needed0, Needed1),
 	dead_proc_elim__traverse_goal(Then, Queue1, Queue2, Needed1, Needed2),

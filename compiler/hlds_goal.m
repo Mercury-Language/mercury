@@ -63,7 +63,10 @@
 			can_fail,	% whether or not the switch test itself
 					% can fail (i.e. whether or not it
 					% covers all the possible cases)
-			list(case)
+			list(case),
+			follow_vars	% advisory storage locations for
+					% placing variables at the end of
+					% each arm of the switch
 		)
 
 		% A unification.
@@ -87,7 +90,12 @@
 		% A disjunction.
 		% Note: disjunctions should be fully flattened.
 
-	;	disj(hlds__goals)
+	;	disj(
+			hlds__goals,
+			follow_vars	% advisory storage locations for
+					% placing variables at the end of
+					% each arm of the disjunction
+		)
 
 		% A negation
 	;	not(hlds__goal)
@@ -111,7 +119,10 @@
 					% variables <Vars>.
 			hlds__goal,	% The <Condition>
 			hlds__goal,	% The <Then> part
-			hlds__goal	% The <Else> part
+			hlds__goal,	% The <Else> part
+			follow_vars	% advisory storage locations for
+					% placing variables at the end of
+					% each arm of the ite
 		)
 	
 		% C code from a pragma(c_code, ...) decl.
@@ -619,7 +630,7 @@ goal_to_conj_list(Goal, ConjList) :-
 	% otherwise return the goal as a singleton list.
 
 goal_to_disj_list(Goal, DisjList) :-
-	( Goal = (disj(List) - _) ->
+	( Goal = (disj(List, _) - _) ->
 		DisjList = List
 	;
 		DisjList = [Goal]
@@ -642,17 +653,18 @@ conj_list_to_goal(ConjList, GoalInfo, Goal) :-
 	% otherwise return the disjunction of the conjuncts,
 	% with the specified goal_info.
 
-disj_list_to_goal(ConjList, GoalInfo, Goal) :-
-	( ConjList = [Goal0] ->
+disj_list_to_goal(DisjList, GoalInfo, Goal) :-
+	( DisjList = [Goal0] ->
 		Goal = Goal0
 	;
-		Goal = disj(ConjList) - GoalInfo
+		map__init(Empty),
+		Goal = disj(DisjList, Empty) - GoalInfo
 	).
 
 %-----------------------------------------------------------------------------%
 
 goal_is_atomic(conj([])).
-goal_is_atomic(disj([])).
+goal_is_atomic(disj([], _)).
 goal_is_atomic(call(_,_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
 goal_is_atomic(pragma_c_code(_,_,_,_,_)).

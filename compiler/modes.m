@@ -515,7 +515,7 @@ modecheck_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
 	),
 	mode_checkpoint(exit, "conj").
 
-modecheck_goal_2(disj(List0), GoalInfo0, disj(List)) -->
+modecheck_goal_2(disj(List0, FV), GoalInfo0, disj(List, FV)) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] },
@@ -527,7 +527,7 @@ modecheck_goal_2(disj(List0), GoalInfo0, disj(List)) -->
 	),
 	mode_checkpoint(exit, "disj").
 
-modecheck_goal_2(if_then_else(Vs, A0, B0, C0), GoalInfo0, Goal) -->
+modecheck_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "if-then-else"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ goal_get_nonlocals(B0, B_Vars) },
@@ -569,7 +569,7 @@ modecheck_goal_2(if_then_else(Vs, A0, B0, C0), GoalInfo0, Goal) -->
 		{ Goal = conj([not(some(Vs, A) - SomeA_GoalInfo) -
 				NotSomeA_GoalInfo, C]) }
 	;
-		{ Goal = if_then_else(Vs, A, B, C) }
+		{ Goal = if_then_else(Vs, A, B, C, FV) }
 	),
 	mode_checkpoint(exit, "if-then-else").
 
@@ -619,8 +619,8 @@ modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 
-modecheck_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
-		switch(Var, CanFail, Cases)) -->
+modecheck_goal_2(switch(Var, CanFail, Cases0, FV), GoalInfo0,
+		switch(Var, CanFail, Cases, FV)) -->
 	mode_checkpoint(enter, "switch"),
 	( { Cases0 = [] } ->
 		{ Cases = [] },

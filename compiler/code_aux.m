@@ -94,15 +94,15 @@ code_aux__contains_only_builtins(Goal - _GoalInfo) :-
 
 code_aux__contains_only_builtins_2(conj(Goals)) :-
 	code_aux__contains_only_builtins_list(Goals).
-code_aux__contains_only_builtins_2(disj(Goals)) :-
+code_aux__contains_only_builtins_2(disj(Goals, _)) :-
 	code_aux__contains_only_builtins_list(Goals).
-code_aux__contains_only_builtins_2(switch(_Var, _Category, Cases)) :-
+code_aux__contains_only_builtins_2(switch(_Var, _Category, Cases, _)) :-
 	code_aux__contains_only_builtins_cases(Cases).
 code_aux__contains_only_builtins_2(not(Goal)) :-
 	code_aux__contains_only_builtins(Goal).
 code_aux__contains_only_builtins_2(some(_Vars, Goal)) :-
 	code_aux__contains_only_builtins(Goal).
-code_aux__contains_only_builtins_2(if_then_else(_Vars, Cond, Then, Else)) :-
+code_aux__contains_only_builtins_2(if_then_else(_Vars, Cond, Then, Else, _)) :-
 	code_aux__contains_only_builtins(Cond),
 	code_aux__contains_only_builtins(Then),
 	code_aux__contains_only_builtins(Else).

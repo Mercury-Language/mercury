@@ -698,7 +698,7 @@ code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 		code_info__generate_det_commit(Commit),
 		{ Instr = tree(PreCommit, tree(GoalCode, Commit)) }
 	).
-code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
+code_gen__generate_det_goal_2(disj(_Goals, _FV), _GoalInfo, _Instr) -->
 	{ error("Disjunction cannot occur in deterministic code.") }.
 code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
 	code_gen__generate_negation_general(model_det, Goal, Instr).
@@ -713,31 +713,34 @@ code_gen__generate_det_goal_2(
 		code_info__set_succip_used(yes),
 		call_gen__generate_det_call(PredId, ProcId, Args, Instr)
 	).
-code_gen__generate_det_goal_2(switch(Var, CanFail, CaseList), GoalInfo, Instr) -->
+code_gen__generate_det_goal_2(switch(Var, CanFail, CaseList, FV), GoalInfo,
+		Instr) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
 		switch_gen__generate_switch(model_det, Var, CanFail,
-						CaseList, GoalInfo, Instr),
+			CaseList, FV, GoalInfo, Instr),
 		code_info__pop_store_map
 	;
-		switch_gen__generate_switch(model_det,
-				Var, CanFail, CaseList, GoalInfo, Instr)
+		switch_gen__generate_switch(model_det, Var, CanFail,
+			CaseList, FV, GoalInfo, Instr)
 	).
 code_gen__generate_det_goal_2(
-		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
+		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, FV),
 							GoalInfo, Instr) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
-		ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr),
+		ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal,
+			FV, Instr),
 		code_info__pop_store_map
 	;
-		ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr)
+		ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal,
+			FV, Instr)
 	).
 code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
 	(
@@ -968,16 +971,16 @@ code_gen__generate_semi_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
 		code_info__generate_semi_commit(Label, Commit),
 		{ Code = tree(PreCommit, tree(GoalCode, Commit)) }
 	).
-code_gen__generate_semi_goal_2(disj(Goals), GoalInfo, Code) -->
+code_gen__generate_semi_goal_2(disj(Goals, FV), GoalInfo, Code) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
-		disj_gen__generate_semi_disj(Goals, Code),
+		disj_gen__generate_semi_disj(Goals, FV, Code),
 		code_info__pop_store_map
 	;
-		disj_gen__generate_semi_disj(Goals, Code)
+		disj_gen__generate_semi_disj(Goals, FV, Code)
 	).
 code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
 	code_gen__generate_negation(Goal, Code).
@@ -992,31 +995,34 @@ code_gen__generate_semi_goal_2(
 		code_info__set_succip_used(yes),
 		call_gen__generate_semidet_call(PredId, ProcId, Args, Code)
 	).
-code_gen__generate_semi_goal_2(switch(Var, CanFail, CaseList), GoalInfo, Instr) -->
+code_gen__generate_semi_goal_2(switch(Var, CanFail, CaseList, FV), GoalInfo,
+		Instr) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
-		switch_gen__generate_switch(model_semi,
-				Var, CanFail, CaseList, GoalInfo, Instr),
+		switch_gen__generate_switch(model_semi, Var, CanFail,
+			CaseList, FV, GoalInfo, Instr),
 		code_info__pop_store_map
 	;
-		switch_gen__generate_switch(model_semi,
-					Var, CanFail, CaseList, GoalInfo, Instr)
+		switch_gen__generate_switch(model_semi, Var, CanFail,
+			CaseList, FV, GoalInfo, Instr)
 	).
 code_gen__generate_semi_goal_2(
-		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
+		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, FV),
 							GoalInfo, Instr) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
-		ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr),
+		ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal,
+			FV, Instr),
 		code_info__pop_store_map
 	;
-		ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr)
+		ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal,
+			FV, Instr)
 	).
 code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
 							_GoalInfo, Code) -->
@@ -1150,16 +1156,16 @@ code_gen__generate_non_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
 	{ Goal = _ - InnerGoalInfo },
 	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
 	code_gen__generate_goal(CodeModel, Goal, Code).
-code_gen__generate_non_goal_2(disj(Goals), GoalInfo, Code) -->
+code_gen__generate_non_goal_2(disj(Goals, FV), GoalInfo, Code) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
-		disj_gen__generate_non_disj(Goals, Code),
+		disj_gen__generate_non_disj(Goals, FV, Code),
 		code_info__pop_store_map
 	;
-		disj_gen__generate_non_disj(Goals, Code)
+		disj_gen__generate_non_disj(Goals, FV, Code)
 	).
 code_gen__generate_non_goal_2(not(_Goal), _GoalInfo, _Code) -->
 	{ error("Cannot have a nondet negation.") }.
@@ -1174,31 +1180,34 @@ code_gen__generate_non_goal_2(
 		code_info__set_succip_used(yes),
 		call_gen__generate_nondet_call(PredId, ProcId, Args, Code)
 	).
-code_gen__generate_non_goal_2(switch(Var, CanFail, CaseList), GoalInfo, Instr) -->
+code_gen__generate_non_goal_2(switch(Var, CanFail, CaseList, FV), GoalInfo,
+		Instr) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
-		switch_gen__generate_switch(model_non,
-				Var, CanFail, CaseList, GoalInfo, Instr),
+		switch_gen__generate_switch(model_non, Var, CanFail,
+			CaseList, FV, GoalInfo, Instr),
 		code_info__pop_store_map
 	;
-		switch_gen__generate_switch(model_non,
-				Var, CanFail, CaseList, GoalInfo, Instr)
+		switch_gen__generate_switch(model_non, Var, CanFail,
+			CaseList, FV, GoalInfo, Instr)
 	).
 code_gen__generate_non_goal_2(
-		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal),
+		if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, FV),
 							GoalInfo, Instr) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
 		{ StoreMap0 = yes(StoreMap) }
 	->
 		code_info__push_store_map(StoreMap),
-		ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr),
+		ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal,
+			FV, Instr),
 		code_info__pop_store_map
 	;
-		ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr)
+		ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal,
+			FV, Instr)
 	).
 code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
 							_GoalInfo, _Code) -->

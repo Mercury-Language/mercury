@@ -36,7 +36,7 @@
 %		- a type_assign_set which stores the set of possible
 %		  type assignments and is modified as we traverse through
 %		  the clause
-%	
+%
 %	3.  For accumulating type_assign_sets.  This is when we are
 %	    type-checking a single atomic construct (unification or
 %	    predicate), and we are iterating through all the
@@ -496,10 +496,11 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
 typecheck_goal_2(conj(List0), conj(List)) -->
 	checkpoint("conj"),
 	typecheck_goal_list(List0, List).
-typecheck_goal_2(disj(List0), disj(List)) -->
+typecheck_goal_2(disj(List0, FV), disj(List, FV)) -->
 	checkpoint("disj"),
 	typecheck_goal_list(List0, List).
-typecheck_goal_2(if_then_else(Vs, A0, B0, C0), if_then_else(Vs, A, B, C)) -->
+typecheck_goal_2(if_then_else(Vs, A0, B0, C0, FV),
+		if_then_else(Vs, A, B, C, FV)) -->
 	checkpoint("if"),
 	typecheck_goal(A0, A),
 	checkpoint("then"),
@@ -522,11 +523,10 @@ typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 	type_info_set_arg_num(0),
 	type_info_set_unify_context(UnifyContext),
 	typecheck_unification(A, B0, B).
-typecheck_goal_2(switch(_, _, _), _) -->
+typecheck_goal_2(switch(_, _, _, _), _) -->
 	{ error("unexpected switch") }.
 % no need to typecheck pragmas
 typecheck_goal_2(pragma_c_code(A,B,C,D,E), pragma_c_code(A,B,C,D,E)) --> []. 
-							   
 
 %-----------------------------------------------------------------------------%
 
@@ -650,7 +650,7 @@ typecheck_call_overloaded_pred(PredIdList, Args, TypeInfo0, TypeInfo) :-
 	%
 	typecheck_var_has_arg_type_list(Args, 0,
 				ArgsTypeAssignSet, TypeInfo0, TypeInfo).
-	
+
 :- pred get_overloaded_pred_arg_types(list(pred_id), pred_table,
 		type_assign_set, args_type_assign_set, args_type_assign_set).
 :- mode get_overloaded_pred_arg_types(in, in, in, in, out) is det.
@@ -1063,7 +1063,7 @@ checkpoint(Msg, T0, T) :-
 	globals__io_lookup_bool_option(debug_types, DoCheckPoint, I0, I1),
 	( DoCheckPoint = yes ->
 		checkpoint_2(Msg, T0, I1, I)
-	;	
+	;
 		I = I1
 	),
 	type_info_set_io_state(T0, I, T).
@@ -1228,7 +1228,7 @@ typecheck_unify_var_functor(Var, Functor, Args, TypeInfo0, TypeInfo) :-
 
 	% typecheck_unify_var_functor_get_ctors(TypeAssignSet, TypeInfo,
 	%	ConsDefns):
-	%	
+	%
 	% Iterate over all the different possible type assignments and
 	% constructor definitions.
 	% For each type assignment in `TypeAssignSet', and constructor
@@ -2902,6 +2902,6 @@ identical_types(Type1, Type2) :-
 	map__init(TypeSubst0),
 	type_unify(Type1, Type2, [], TypeSubst0, TypeSubst),
 	TypeSubst = TypeSubst0.
-	
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

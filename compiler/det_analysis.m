@@ -379,7 +379,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, MiscInfo,
 	% See how we should introduce the commit operator, if one is needed.
 
 	(
-		Goal1 = disj(Disjuncts),
+		Goal1 = disj(Disjuncts, FV),
 		Disjuncts \= [],
 		determinism_components(Detism, _, ExternalSolns),
 		ExternalSolns \= at_most_many
@@ -388,7 +388,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, MiscInfo,
 		% needs to get converted into an if-then-else or
 		% something similar
 		det_fixup_disj(Disjuncts, InternalDetism, OutputVars,
-			GoalInfo, InstMap0, MiscInfo, Goal, Msgs1, Msgs)
+			GoalInfo, FV, InstMap0, MiscInfo, Goal, Msgs1, Msgs)
 	;
 		Detism \= InternalDetism,
 		Goal1 \= some(_, _)
@@ -441,12 +441,12 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, MiscInfo,
 	%
 	% The second argument is the *internal* determinism of the disjunction.
 
-:- pred det_fixup_disj(list(hlds__goal), determinism, bool,
-		hlds__goal_info, instmap, misc_info, hlds__goal_expr,
-		list(det_msg), list(det_msg)).
-:- mode det_fixup_disj(in, in, in, in, in, in, out, in, out) is det.
+:- pred det_fixup_disj(list(hlds__goal), determinism, bool, hlds__goal_info,
+	follow_vars, instmap, misc_info, hlds__goal_expr,
+	list(det_msg), list(det_msg)).
+:- mode det_fixup_disj(in, in, in, in, in, in, in, out, in, out) is det.
 
-det_fixup_disj(Disjuncts, cc_multidet, OutputVars, GoalInfo, _, _,
+det_fixup_disj(Disjuncts, cc_multidet, OutputVars, GoalInfo, _, _, _,
 		Goal, Msgs0, Msgs) :-
 	( OutputVars = no ->
 		Msgs = [multidet_disj(GoalInfo, Disjuncts) | Msgs0]
@@ -456,7 +456,7 @@ det_fixup_disj(Disjuncts, cc_multidet, OutputVars, GoalInfo, _, _,
 	% Same considerations apply to GoalInfos as for det disjunctions
 	% below.
 	det_pick_no_fail_disjunct(Disjuncts, Goal - _).
-det_fixup_disj(Disjuncts, multidet, OutputVars, GoalInfo, _, _,
+det_fixup_disj(Disjuncts, multidet, OutputVars, GoalInfo, _, _, _,
 		Goal, Msgs0, Msgs) :-
 	( OutputVars = no ->
 		Msgs = [multidet_disj(GoalInfo, Disjuncts) | Msgs0]
@@ -466,11 +466,11 @@ det_fixup_disj(Disjuncts, multidet, OutputVars, GoalInfo, _, _,
 	% Same considerations apply to GoalInfos as for det disjunctions
 	% below.
 	det_pick_no_fail_disjunct(Disjuncts, Goal - _).
-det_fixup_disj(Disjuncts, cc_nondet, OutputVars, GoalInfo, _InstMap, _MiscInfo,
-		Goal, Msgs0, Msgs) :-
+det_fixup_disj(Disjuncts, cc_nondet, OutputVars, GoalInfo, FV,
+		_InstMap, _MiscInfo, Goal, Msgs0, Msgs) :-
 	Msgs = Msgs0,
 	( OutputVars = no ->
-		det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
+		det_disj_to_ite(Disjuncts, GoalInfo, FV, IfThenElse),
 		IfThenElse = Goal - _
 	;
 		% This is the case of a nondet disjunction in a
@@ -479,13 +479,13 @@ det_fixup_disj(Disjuncts, cc_nondet, OutputVars, GoalInfo, _InstMap, _MiscInfo,
 		% variables.  We just leave it as a model_semi disjunction;
 		% the code generator will generate similar code to what
 		% it would for an if-then-else.
-		Goal = disj(Disjuncts)
+		Goal = disj(Disjuncts, FV)
 	).
-det_fixup_disj(Disjuncts, nondet, OutputVars, GoalInfo, _InstMap, _MiscInfo,
-		Goal, Msgs0, Msgs) :-
+det_fixup_disj(Disjuncts, nondet, OutputVars, GoalInfo, FV,
+		_InstMap, _MiscInfo, Goal, Msgs0, Msgs) :-
 	Msgs = Msgs0,
 	( OutputVars = no ->
-		det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
+		det_disj_to_ite(Disjuncts, GoalInfo, FV, IfThenElse),
 		IfThenElse = Goal - _
 	;
 		% This is the case of a nondet disjunction in a
@@ -494,9 +494,9 @@ det_fixup_disj(Disjuncts, nondet, OutputVars, GoalInfo, _InstMap, _MiscInfo,
 		% variables.  We just leave it as a model_semi disjunction;
 		% the code generator will generate similar code to what
 		% it would for an if-then-else.
-		Goal = disj(Disjuncts)
+		Goal = disj(Disjuncts, FV)
 	).
-det_fixup_disj(Disjuncts, det, _OutputVars, GoalInfo, _, _, Goal,
+det_fixup_disj(Disjuncts, det, _OutputVars, GoalInfo, _, _, _, Goal,
 		Msgs0, Msgs) :-
 	% We are discarding the GoalInfo of the picked goal; we will
 	% replace it with the GoalInfo inferred for the disjunction
@@ -507,24 +507,24 @@ det_fixup_disj(Disjuncts, det, _OutputVars, GoalInfo, _, _, Goal,
 	% errors outside the disjunction.
 	Msgs = [det_disj(GoalInfo, Disjuncts) | Msgs0],
 	det_pick_no_fail_disjunct(Disjuncts, Goal - _).
-det_fixup_disj(Disjuncts, semidet, OutputVars, GoalInfo, _, _, Goal,
+det_fixup_disj(Disjuncts, semidet, OutputVars, GoalInfo, FV, _, _, Goal,
 		Msgs0, Msgs) :-
 	( OutputVars = yes ->
 		Msgs = [semidet_disj(GoalInfo, Disjuncts) | Msgs0]
 	;
 		Msgs = Msgs0
 	),
-	Goal = disj(Disjuncts).
-det_fixup_disj(Disjuncts, erroneous, _OutputVars, GoalInfo, _, _, Goal,
+	Goal = disj(Disjuncts, FV).
+det_fixup_disj(Disjuncts, erroneous, _OutputVars, GoalInfo, _, _, _, Goal,
 		Msgs0, Msgs) :-
 	% Same considerations apply to GoalInfos as for det disjunctions
 	% above.
 	Msgs = [zero_soln_disj(GoalInfo, Disjuncts) | Msgs0],
 	det_pick_no_fail_disjunct(Disjuncts, Goal - _).
-det_fixup_disj(Disjuncts, failure, _OutputVars, GoalInfo, _, _, Goal,
+det_fixup_disj(Disjuncts, failure, _OutputVars, GoalInfo, FV, _, _, Goal,
 		Msgs0, Msgs) :-
 	Msgs = [zero_soln_disj(GoalInfo, Disjuncts) | Msgs0],
-	Goal = disj(Disjuncts).
+	Goal = disj(Disjuncts, FV).
 
 :- pred det_pick_no_fail_disjunct(list(hlds__goal), hlds__goal).
 :- mode det_pick_no_fail_disjunct(in, out) is det.
@@ -541,9 +541,9 @@ det_pick_no_fail_disjunct([Goal0 | Goals0], Goal) :-
 		det_pick_no_fail_disjunct(Goals0, Goal)
 	).
 
-:- pred det_disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal).
-% :- mode det_disj_to_ite(di, in, uo) is det.
-:- mode det_disj_to_ite(in, in, out) is det.
+:- pred det_disj_to_ite(list(hlds__goal), hlds__goal_info, follow_vars,
+	hlds__goal).
+:- mode det_disj_to_ite(in, in, in, out) is det.
 
 	% det_disj_to_ite is used to transform disjunctions that occur
 	% in prunable contexts into if-then-elses.
@@ -562,8 +562,8 @@ det_pick_no_fail_disjunct([Goal0 | Goals0], Goal) :-
 	%		Disjunct3
 	%	).
 
-det_disj_to_ite([], GoalInfo, disj([]) - GoalInfo).
-det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
+det_disj_to_ite([], GoalInfo, FV, disj([], FV) - GoalInfo).
+det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, FV, Goal) :-
 	( Disjuncts = [] ->
 		Goal = Disjunct
 	;
@@ -576,7 +576,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 				reachable(InstMap1), InitGoalInfo),
 		Then = conj([]) - InitGoalInfo,
 
-		det_disj_to_ite(Disjuncts, GoalInfo, Rest),
+		det_disj_to_ite(Disjuncts, GoalInfo, FV, Rest),
 		Rest = _RestGoal - RestGoalInfo,
 
 		goal_info_get_nonlocals(CondGoalInfo, CondNonLocals),
@@ -596,7 +596,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 		goal_info_set_instmap_delta(NewGoalInfo0,
 					InstMapDelta, NewGoalInfo),
 
-		Goal = if_then_else([], Cond, Then, Rest) - NewGoalInfo
+		Goal = if_then_else([], Cond, Then, Rest, FV) - NewGoalInfo
 	).
 
 %-----------------------------------------------------------------------------%
@@ -640,7 +640,7 @@ det_infer_goal_2(conj(Goals0), GoalInfo0, InstMap0, SolnContext, MiscInfo, _, _,
 		)
 	).
 
-det_infer_goal_2(disj(Goals0), _, InstMap0, SolnContext, MiscInfo, _, _,
+det_infer_goal_2(disj(Goals0, FV), _, InstMap0, SolnContext, MiscInfo, _, _,
 		Goal, Detism, Msgs) :-
 	( Goals0 = [SingleGoal0] ->
 		% a singleton disjunction is equivalent to the goal itself
@@ -649,7 +649,7 @@ det_infer_goal_2(disj(Goals0), _, InstMap0, SolnContext, MiscInfo, _, _,
 	;
 		det_infer_disj(Goals0, InstMap0, SolnContext, MiscInfo,
 			can_fail, at_most_zero, Goals, Detism, Msgs),
-		Goal = disj(Goals)
+		Goal = disj(Goals, FV)
 	).
 
 	% The determinism of a switch is the worst of the determinism of each
@@ -657,9 +657,9 @@ det_infer_goal_2(disj(Goals0), _, InstMap0, SolnContext, MiscInfo, _, _,
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.m and handled via the SwitchCanFail field.
 
-det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), _, InstMap0, SolnContext,
-		MiscInfo, _, _,
-		switch(Var, SwitchCanFail, Cases), Detism, Msgs) :-
+det_infer_goal_2(switch(Var, SwitchCanFail, Cases0, FV), _,
+		InstMap0, SolnContext, MiscInfo, _, _,
+		switch(Var, SwitchCanFail, Cases, FV), Detism, Msgs) :-
 	det_infer_switch(Cases0, InstMap0, SolnContext, MiscInfo,
 		cannot_fail, at_most_zero, Cases, CasesDetism, Msgs),
 	determinism_components(CasesDetism, CasesCanFail, CasesSolns),
@@ -708,8 +708,8 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
 	),
 	det_infer_unify(U, UnifyDet).
 
-det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
-		SolnContext, MiscInfo, NonLocalVars, DeltaInstMap,
+det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo0,
+		InstMap0, SolnContext, MiscInfo, NonLocalVars, DeltaInstMap,
 		Goal, Detism, Msgs) :-
 
 	% We process the goal right-to-left, doing the `then' before
@@ -789,7 +789,7 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
 		%
 		% Finally combine the results from the three parts
 		%
-		Goal = if_then_else(Vars, Cond, Then, Else),
+		Goal = if_then_else(Vars, Cond, Then, Else, FV),
 		det_conjunction_maxsoln(CondSolns, ThenSolns, AllThenSolns),
 		det_switch_maxsoln(AllThenSolns, ElseSolns, Solns),
 		det_switch_canfail(ThenCanFail, ElseCanFail, CanFail),
@@ -817,13 +817,14 @@ det_infer_goal_2(not(Goal0), _, InstMap0, _SolnContext, MiscInfo, _, _, Goal,
 	;
 		MaybeDet = yes(Det),
 		(
-		% replace `not true' with `fail'
+			% replace `not true' with `fail'
 			Goal1 = conj([]) - _GoalInfo
 		->
-			Goal = disj([])
+			map__init(Empty),
+			Goal = disj([], Empty)
 		;
-		% replace `not fail' with `true'
-			Goal1 = disj([]) - _GoalInfo2
+			% replace `not fail' with `true'
+			Goal1 = disj([], _) - _GoalInfo2
 		->
 			Goal = conj([])
 		;

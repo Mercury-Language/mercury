@@ -132,25 +132,25 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 					Goals, ElimVars),
 		conj_list_to_goal(Goals, GoalInfo0, Goal)
 	;
-		GoalExpr0 = disj(Goals0),
+		GoalExpr0 = disj(Goals0, FV),
 		excess_assignments_in_disj(Goals0, ElimVars0, Goals, ElimVars),
-		Goal = disj(Goals) - GoalInfo0
+		Goal = disj(Goals, FV) - GoalInfo0
 	;
 		GoalExpr0 = not(NegGoal0),
 		excess_assignments_in_goal(NegGoal0, ElimVars0,
 						NegGoal, ElimVars),
 		Goal = not(NegGoal) - GoalInfo0
 	;
-		GoalExpr0 = switch(Var, CanFail, Cases0),
+		GoalExpr0 = switch(Var, CanFail, Cases0, FV),
 		excess_assignments_in_switch(Cases0, ElimVars0,
 						Cases, ElimVars),
-		Goal = switch(Var, CanFail, Cases) - GoalInfo0
+		Goal = switch(Var, CanFail, Cases, FV) - GoalInfo0
 	;
-		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0, FV),
 		excess_assignments_in_goal(Cond0, ElimVars0, Cond, ElimVars1),
 		excess_assignments_in_goal(Then0, ElimVars1, Then, ElimVars2),
 		excess_assignments_in_goal(Else0, ElimVars2, Else, ElimVars),
-		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
+		Goal = if_then_else(Vars, Cond, Then, Else, FV) - GoalInfo0
 	;
 		GoalExpr0 = some(Var, SubGoal0),
 		excess_assignments_in_goal(SubGoal0, ElimVars0,

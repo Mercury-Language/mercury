@@ -117,7 +117,8 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 		set__list_to_set(HeadVars, NonLocalVars),
 		goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo),
-		Goal = disj(GoalList) - GoalInfo
+		map__init(Empty),
+		Goal = disj(GoalList, Empty) - GoalInfo
 	),
 	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal, Proc).
 

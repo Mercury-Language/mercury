@@ -175,15 +175,15 @@ dependency_graph__add_arcs_in_goal_2(conj(Goals), Caller,
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(disj(Goals), Caller, 
+dependency_graph__add_arcs_in_goal_2(disj(Goals, _FV), Caller, 
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(switch(_Var, _Det, Cases),
+dependency_graph__add_arcs_in_goal_2(switch(_Var, _Det, Cases, _FV),
 					Caller, DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_cases(Cases, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(if_then_else(_Vars, Cond, Then, Else),
+dependency_graph__add_arcs_in_goal_2(if_then_else(_Vars, Cond, Then, Else, _FV),
 			Caller, DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Cond, Caller, DepGraph0, DepGraph1),
 	dependency_graph__add_arcs_in_goal(Then, Caller, DepGraph1, DepGraph2),

@@ -175,7 +175,7 @@ detect_live_vars_in_goal_2(conj(Goals0), _NondetLives, Liveness0, LiveSets0,
 	detect_live_vars_in_conj(Goals0, Liveness0, LiveSets0,
 		CodeModel, ModuleInfo, Liveness, LiveSets).
 
-detect_live_vars_in_goal_2(disj(Goals0), NondetLives, Liveness0, LiveSets0,
+detect_live_vars_in_goal_2(disj(Goals0, _), NondetLives, Liveness0, LiveSets0,
 		CodeModel, ModuleInfo, Liveness, LiveSets) :-
 		% All the currently live variables need to be saved
 		% on the stack at the start of a disjunction, since we
@@ -187,13 +187,13 @@ detect_live_vars_in_goal_2(disj(Goals0), NondetLives, Liveness0, LiveSets0,
 	detect_live_vars_in_disj(Goals0, Liveness0, LiveSets1,
 		CodeModel, ModuleInfo, Liveness, LiveSets).
 
-detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), _NondetLives, Liveness0,
-		LiveSets0, CodeModel, ModuleInfo,
-			Liveness, LiveSets) :-
+detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0, _),
+		_NondetLives, Liveness0, LiveSets0, CodeModel,
+			ModuleInfo, Liveness, LiveSets) :-
 	detect_live_vars_in_cases(Cases0, Liveness0, LiveSets0,
 		CodeModel, ModuleInfo, Liveness, LiveSets).
 
-detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0),
+detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0, _),
 		NondetLives, Liveness0, LiveSets0, CodeModel,
 			ModuleInfo, Liveness, LiveSets) :-
 	set__union(Liveness0, NondetLives, LiveVars),

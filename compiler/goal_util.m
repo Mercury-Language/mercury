@@ -55,6 +55,9 @@
 :- mode goal_util__create_variables(in, in, in, in, in, in, out, out, out)
 		is det.
 
+:- pred goal_util__goal_is_branched(hlds__goal_expr).
+:- mode goal_util__goal_is_branched(in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -157,20 +160,23 @@ goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo) :
 goal_util__name_apart_2(conj(Goals0), Must, Subn, conj(Goals)) :-
 	goal_util__name_apart_list(Goals0, Must, Subn, Goals).
 
-goal_util__name_apart_2(disj(Goals0), Must, Subn, disj(Goals)) :-
-	goal_util__name_apart_list(Goals0, Must, Subn, Goals).
+goal_util__name_apart_2(disj(Goals0, FV0), Must, Subn, disj(Goals, FV)) :-
+	goal_util__name_apart_list(Goals0, Must, Subn, Goals),
+	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
 
-goal_util__name_apart_2(switch(Var0, Det, Cases0), Must, Subn,
-						switch(Var, Det, Cases)) :-
+goal_util__name_apart_2(switch(Var0, Det, Cases0, FV0), Must, Subn,
+		switch(Var, Det, Cases, FV)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
-	goal_util__name_apart_cases(Cases0, Must, Subn, Cases).
+	goal_util__name_apart_cases(Cases0, Must, Subn, Cases),
+	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
 
-goal_util__name_apart_2(if_then_else(Vars0, Cond0, Then0, Else0), Must, Subn,
-				if_then_else(Vars, Cond, Then, Else)) :-
+goal_util__name_apart_2(if_then_else(Vars0, Cond0, Then0, Else0, FV0),
+		Must, Subn, if_then_else(Vars, Cond, Then, Else, FV)) :-
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Cond0, Must, Subn, Cond),
 	goal_util__rename_vars_in_goal(Then0, Must, Subn, Then),
-	goal_util__rename_vars_in_goal(Else0, Must, Subn, Else).
+	goal_util__rename_vars_in_goal(Else0, Must, Subn, Else),
+	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
 
 goal_util__name_apart_2(not(Goal0), Must, Subn, not(Goal)) :-
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
@@ -180,11 +186,11 @@ goal_util__name_apart_2(some(Vars0, Goal0), Must, Subn, some(Vars, Goal)) :-
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
 goal_util__name_apart_2(
-		call(PredId, ProcId, Args0, Builtin, Context, Sym, Follow0),
+		call(PredId, ProcId, Args0, Builtin, Context, Sym, FV0),
 		Must, Subn,
-		call(PredId, ProcId, Args, Builtin, Context, Sym, Follow)) :-
+		call(PredId, ProcId, Args, Builtin, Context, Sym, FV)) :-
 	goal_util__rename_var_list(Args0, Must, Subn, Args),
-	goal_util__rename_follow_vars(Follow0, Must, Subn, Follow).
+	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
 
 goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 		unify(TermL,TermR,Mode,Unify,Context)) :-
@@ -353,5 +359,11 @@ goal_util__name_apart_set(Vars0, Must, Subn, Vars) :-
 	set__to_sorted_list(Vars0, VarsList0),
 	goal_util__rename_var_list(VarsList0, Must, Subn, VarsList),
 	set__list_to_set(VarsList, Vars).
+
+%-----------------------------------------------------------------------------%
+
+goal_util__goal_is_branched(if_then_else(_, _, _, _, _)).
+goal_util__goal_is_branched(switch(_, _, _, _)).
+goal_util__goal_is_branched(disj(_, _)).
 
 %-----------------------------------------------------------------------------%

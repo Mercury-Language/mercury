@@ -261,11 +261,11 @@ traverse_goal(ModuleInfo, conj(Goals), UseInf0, UseInf) :-
 	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
 
 % handle disjunction
-traverse_goal(ModuleInfo, disj(Goals), UseInf0, UseInf) :-
+traverse_goal(ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
 	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
 
 % handle switch
-traverse_goal(ModuleInfo, switch(Var, _, Cases), UseInf0, UseInf) :-
+traverse_goal(ModuleInfo, switch(Var, _, Cases, _), UseInf0, UseInf) :-
 	map__delete(UseInf0, Var, UseInf1),
 	list_case_to_list_goal(Cases, Goals),
 	traverse_list_of_goals(ModuleInfo, Goals, UseInf1, UseInf).
@@ -279,7 +279,7 @@ traverse_goal(ModuleInfo, call(PredId, ProcId, Args, _, _, _, _),
 		UseInf0, UseInf).
 
 % handle if then else
-traverse_goal(ModuleInfo, if_then_else(_, Cond - _, Then - _, Else - _),
+traverse_goal(ModuleInfo, if_then_else(_, Cond - _, Then - _, Else - _, _),
 			UseInf0, UseInf) :-
 	traverse_goal(ModuleInfo, Cond, UseInf0, UseInf1),
 	traverse_goal(ModuleInfo, Then, UseInf1, UseInf2),
@@ -840,7 +840,7 @@ fixup_goal_expr(UnusedVars, ProcCallInfo, Changed,
 	fixup_conjuncts(UnusedVars, ProcCallInfo, no, Changed, Goals0, Goals).
 
 fixup_goal_expr(UnusedVars, ProcCallInfo, Changed,
-		disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo) :-
+		disj(Goals0, FV) - GoalInfo, disj(Goals, FV) - GoalInfo) :-
 	fixup_disjuncts(UnusedVars, ProcCallInfo, no, Changed, Goals0, Goals).
 
 fixup_goal_expr(UnusedVars, ProcCallInfo, Changed,
@@ -848,13 +848,13 @@ fixup_goal_expr(UnusedVars, ProcCallInfo, Changed,
 	fixup_goal(UnusedVars, ProcCallInfo, Changed, NegGoal0, NegGoal).
 
 fixup_goal_expr(UnusedVars, ProcCallInfo, Changed,
-		switch(Var, CanFail, Cases0) - GoalInfo,
-		switch(Var, CanFail, Cases) - GoalInfo) :-
+		switch(Var, CanFail, Cases0, FV) - GoalInfo,
+		switch(Var, CanFail, Cases, FV) - GoalInfo) :-
 	fixup_cases(UnusedVars, ProcCallInfo, no, Changed, Cases0, Cases).
 
 fixup_goal_expr(UnusedVars, ProcCallInfo, Changed,
-		if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo, 
-		if_then_else(Vars, Cond, Then, Else) - GoalInfo) :- 
+		if_then_else(Vars, Cond0, Then0, Else0, FV) - GoalInfo, 
+		if_then_else(Vars, Cond, Then, Else, FV) - GoalInfo) :- 
 	fixup_goal(UnusedVars, ProcCallInfo, Changed1, Cond0, Cond),
 	fixup_goal(UnusedVars, ProcCallInfo, Changed2, Then0, Then),
 	fixup_goal(UnusedVars, ProcCallInfo, Changed3, Else0, Else),

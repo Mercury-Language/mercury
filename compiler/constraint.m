@@ -144,19 +144,19 @@ constraint__propagate_goal_2(conj(Goals0), conj(Goals)) -->
 	constraint__propagate_conj(Goals0, Goals),
 	constraint__checkpoint(exit, "conj").
 
-constraint__propagate_goal_2(disj(Goals0), disj(Goals)) -->
+constraint__propagate_goal_2(disj(Goals0, FV), disj(Goals, FV)) -->
 	constraint__checkpoint(enter, "disj"),
 	constraint__propagate_disj(Goals0, Goals),
 	constraint__checkpoint(exit, "disj").
 
-constraint__propagate_goal_2(switch(Var, Det, Cases0),
-				switch(Var, Det, Cases)) -->
+constraint__propagate_goal_2(switch(Var, Det, Cases0, FV),
+				switch(Var, Det, Cases, FV)) -->
 	constraint__checkpoint(enter, "switch"),
 	constraint__propagate_cases(Cases0, Cases),
 	constraint__checkpoint(exit, "switch").
 
-constraint__propagate_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-			if_then_else(Vars, Cond, Then, Else)) -->
+constraint__propagate_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
+			if_then_else(Vars, Cond, Then, Else, FV)) -->
 	constraint__checkpoint(enter, "if_then_else"),
 	mode_info_dcg_get_instmap(InstMap0),
 	constraint__propagate_goal(Cond0, Cond),

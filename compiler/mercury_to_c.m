@@ -514,7 +514,8 @@ c_gen_goal(Goal - GoalInfo, Indent, CGenInfo0, CGenInfo) -->
 					io__state, io__state).
 :- mode c_gen_goal_2(in, in, in, out, di, uo) is det.
 
-c_gen_goal_2(switch(Var, _CanFail, CasesList), Indent, CGenInfo0, CGenInfo) -->
+c_gen_goal_2(switch(Var, _CanFail, CasesList, _), Indent,
+		CGenInfo0, CGenInfo) -->
 	{ sorry(7) },
 	io__write_string("/* "),
 	% c_gen_can_fail(CanFail), 
@@ -544,7 +545,7 @@ c_gen_goal_2(some(Vars, Goal), Indent, CGenInfo0, CGenInfo) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-c_gen_goal_2(if_then_else(_Vars, A, B, C), Indent, CGenInfo0, CGenInfo)
+c_gen_goal_2(if_then_else(_Vars, A, B, C, _), Indent, CGenInfo0, CGenInfo)
 		-->
 	% XXX need to handle nondet
 	{ c_gen_info_new_label(ElseLabel, CGenInfo0, CGenInfo1) },
@@ -570,7 +571,7 @@ c_gen_goal_2(if_then_else(_Vars, A, B, C), Indent, CGenInfo0, CGenInfo)
 	c_gen_indent(Indent),
 	io__write_string("/* else */\n"),
 	(
-		{ C = if_then_else(_, _, _, _) - _ }
+		{ C = if_then_else(_, _, _, _, _) - _ }
 	->
 		c_gen_goal(C, Indent, CGenInfo6, CGenInfo)
 	;
@@ -599,7 +600,7 @@ c_gen_goal_2(not(Goal), Indent, CGenInfo0, CGenInfo) -->
 c_gen_goal_2(conj(Goals), Indent, CGenInfo0, CGenInfo) -->
 	c_gen_conj(Goals, Indent, CGenInfo0, CGenInfo).
 
-c_gen_goal_2(disj(List), Indent, CGenInfo0, CGenInfo) -->
+c_gen_goal_2(disj(List, _), Indent, CGenInfo0, CGenInfo) -->
 	{ c_gen_info_get_code_model(CGenInfo0, CodeModel) },
 	( { CodeModel = model_non } ->
 		{ true }

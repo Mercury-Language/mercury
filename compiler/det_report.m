@@ -287,7 +287,7 @@ det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, Context, MiscInfo,
 		Diagnosed) -->
 	det_diagnose_conj(Goals, Desired, Context, MiscInfo, Diagnosed).
 
-det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, _Actual, SwitchContext,
+det_diagnose_goal_2(disj(Goals, _), GoalInfo, Desired, _Actual, SwitchContext,
 		MiscInfo, Diagnosed) -->
 	det_diagnose_disj(Goals, Desired, SwitchContext, MiscInfo, 0, Clauses,
 		Diagnosed1),
@@ -309,7 +309,7 @@ det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, _Actual, SwitchContext,
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.m and handled via the CanFail field.
 
-det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
+det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 		Desired, _Actual, SwitchContext, MiscInfo, Diagnosed) -->
 	(
 		{ SwitchCanFail = can_fail },
@@ -414,7 +414,7 @@ det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 		io__write_string(".\n")
 	).
 
-det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
+det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else, _), _GoalInfo,
 		Desired, _Actual, SwitchContext, MiscInfo, Diagnosed) -->
 	{
 		determinism_components(Desired, _DesiredCanFail, DesiredSolns),

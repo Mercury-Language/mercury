@@ -599,8 +599,8 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 					io__state, io__state).
 :- mode hlds_out__write_goal_2(in, in, in, in, di, uo) is det.
 
-hlds_out__write_goal_2(switch(Var, CanFail, CasesList), ModuleInfo, VarSet, Indent)
-		-->
+hlds_out__write_goal_2(switch(Var, CanFail, CasesList, _), ModuleInfo, VarSet,
+		Indent) -->
 	io__write_string("( % "),
 	hlds_out__write_can_fail(CanFail), 
 	io__write_string(" switch on `"),
@@ -627,8 +627,8 @@ hlds_out__write_goal_2(some(Vars, Goal), ModuleInfo, VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-hlds_out__write_goal_2(if_then_else(Vars, A, B, C), ModuleInfo, VarSet, Indent)
-		-->
+hlds_out__write_goal_2(if_then_else(Vars, A, B, C, _), ModuleInfo, VarSet,
+		Indent) -->
 	io__write_string("(if"),
 	hlds_out__write_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
@@ -643,7 +643,7 @@ hlds_out__write_goal_2(if_then_else(Vars, A, B, C), ModuleInfo, VarSet, Indent)
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	(
 		{ Verbose = no },
-		{ C = if_then_else(_, _, _, _) - _ }
+		{ C = if_then_else(_, _, _, _, _) - _ }
 	->
 		io__write_string(" "),
 		hlds_out__write_goal(C, ModuleInfo, VarSet, Indent)
@@ -682,7 +682,7 @@ hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent) -->
 		io__write_string("true")
 	).
 
-hlds_out__write_goal_2(disj(List), ModuleInfo, VarSet, Indent) -->
+hlds_out__write_goal_2(disj(List, _), ModuleInfo, VarSet, Indent) -->
 	( { List = [Goal | Goals] } ->
 		io__write_string("( % disjunction"),
 		{ Indent1 is Indent + 1 },

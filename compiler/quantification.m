@@ -180,11 +180,11 @@ implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some(Vars, Goal)) -->
 implicitly_quantify_goal_2(conj(List0), _, conj(List)) -->
 	implicitly_quantify_conj(List0, List).
 
-implicitly_quantify_goal_2(disj(Goals0), _, disj(Goals)) -->
+implicitly_quantify_goal_2(disj(Goals0, FV), _, disj(Goals, FV)) -->
 	implicitly_quantify_disj(Goals0, Goals).
 
-implicitly_quantify_goal_2(switch(Var, Det, Cases0), _,
-					switch(Var, Det, Cases)) -->
+implicitly_quantify_goal_2(switch(Var, Det, Cases0, FV), _,
+					switch(Var, Det, Cases, FV)) -->
 	implicitly_quantify_cases(Cases0, Cases),
 		% The switch variable is guaranteed to be non-local to the
 		% switch, since it has to be bound elsewhere, so we put it
@@ -207,8 +207,8 @@ implicitly_quantify_goal_2(not(Goal0), _, not(Goal)) -->
 	quantification__set_outside(OutsideVars),
 	quantification__set_quant_vars(QuantVars).
 
-implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0), Context,
-				if_then_else(Vars, Cond, Then, Else)) -->
+implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, FV),
+			Context, if_then_else(Vars, Cond, Then, Else, FV)) -->
 	quantification__get_quant_vars(QuantVars),
 	quantification__get_outside(OutsideVars),
 	{ set__list_to_set(Vars0, QVars) },
@@ -481,10 +481,10 @@ goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, Set) :-
 goal_vars_2(conj(Goals), Set0, Set) :-
 	goal_list_vars_2(Goals, Set0, Set).
 
-goal_vars_2(disj(Goals), Set0, Set) :-
+goal_vars_2(disj(Goals, _), Set0, Set) :-
 	goal_list_vars_2(Goals, Set0, Set).
 
-goal_vars_2(switch(Var, _Det, Cases), Set0, Set) :-
+goal_vars_2(switch(Var, _Det, Cases, _), Set0, Set) :-
 	set__insert(Set0, Var, Set1),
 	case_list_vars_2(Cases, Set1, Set).
 
@@ -496,7 +496,7 @@ goal_vars_2(some(Vars, Goal), Set0, Set) :-
 goal_vars_2(not(Goal - _GoalInfo), Set0, Set) :-
 	goal_vars_2(Goal, Set0, Set).
 
-goal_vars_2(if_then_else(Vars, A, B, C), Set0, Set) :-
+goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, Set) :-
 		% This code does the following:
 		%
 		% Set = Set0 + ( (vars(A) + vars(B)) \ Vars ) + vars(C)

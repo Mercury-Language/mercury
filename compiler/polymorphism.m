@@ -416,18 +416,19 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 
 polymorphism__process_goal_2(conj(Goals0), GoalInfo, conj(Goals) - GoalInfo) -->
 	polymorphism__process_goal_list(Goals0, Goals).
-polymorphism__process_goal_2(disj(Goals0), GoalInfo, disj(Goals) - GoalInfo) -->
+polymorphism__process_goal_2(disj(Goals0, FV), GoalInfo,
+		disj(Goals, FV) - GoalInfo) -->
 	polymorphism__process_goal_list(Goals0, Goals).
 polymorphism__process_goal_2(not(Goal0), GoalInfo, not(Goal) - GoalInfo) -->
 	polymorphism__process_goal(Goal0, Goal).
-polymorphism__process_goal_2(switch(Var, CanFail, Cases0), GoalInfo,
-				switch(Var, CanFail, Cases) - GoalInfo) -->
+polymorphism__process_goal_2(switch(Var, CanFail, Cases0, FV), GoalInfo,
+				switch(Var, CanFail, Cases, FV) - GoalInfo) -->
 	polymorphism__process_case_list(Cases0, Cases).
 polymorphism__process_goal_2(some(Vars, Goal0), GoalInfo,
 			some(Vars, Goal) - GoalInfo) -->
 	polymorphism__process_goal(Goal0, Goal).
-polymorphism__process_goal_2(if_then_else(Vars, A0, B0, C0), GoalInfo,
-			if_then_else(Vars, A, B, C) - GoalInfo) -->
+polymorphism__process_goal_2(if_then_else(Vars, A0, B0, C0, FV), GoalInfo,
+			if_then_else(Vars, A, B, C, FV) - GoalInfo) -->
 	polymorphism__process_goal(A0, A),
 	polymorphism__process_goal(B0, B),
 	polymorphism__process_goal(C0, C).

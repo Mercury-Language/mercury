@@ -5,6 +5,7 @@
 %-----------------------------------------------------------------------------%
 
 % Main author: conway.
+% Major modification by zs.
 
 % This module traverses the goal for every procedure, filling in the
 % follow_vars field for call(...) goals, and filling in the initial
@@ -143,58 +144,59 @@ find_follow_vars_in_goal(Goal0 - GoalInfo, ModuleInfo, FollowVars0,
 %-----------------------------------------------------------------------------%
 
 :- pred find_follow_vars_in_goal_2(hlds__goal_expr, module_info, follow_vars,
-					hlds__goal_expr, follow_vars).
+	hlds__goal_expr, follow_vars).
 :- mode find_follow_vars_in_goal_2(in, in, in, out, out) is det.
 
 find_follow_vars_in_goal_2(conj(Goals0), ModuleInfo, FollowVars0,
-						conj(Goals), FollowVars) :-
+		conj(Goals), FollowVars) :-
 	find_follow_vars_in_conj(Goals0, ModuleInfo, FollowVars0, Goals,
-			FollowVars).
+		FollowVars).
 
-find_follow_vars_in_goal_2(disj(Goals0), ModuleInfo, FollowVars0,
-						disj(Goals), FollowVars) :-
+find_follow_vars_in_goal_2(disj(Goals0, _), ModuleInfo, FollowVars0,
+		disj(Goals, FollowVars0), FollowVars) :-
 	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0, Goals,
-			FollowVars).
+		FollowVars).
 
 find_follow_vars_in_goal_2(not(Goal0), ModuleInfo, FollowVars0,
-						not(Goal), FollowVars) :-
+		not(Goal), FollowVars) :-
 	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
-			FollowVars).
+		FollowVars).
 
-find_follow_vars_in_goal_2(switch(Var, Det, Cases0), 
-		ModuleInfo, FollowVars0, switch(Var, Det, Cases), FollowVars) :-
+find_follow_vars_in_goal_2(switch(Var, Det, Cases0, _), ModuleInfo, FollowVars0,
+		switch(Var, Det, Cases, FollowVars0), FollowVars) :-
 	find_follow_vars_in_cases(Cases0, ModuleInfo, FollowVars0,
-			Cases, FollowVars).
+		Cases, FollowVars).
 
-find_follow_vars_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-			ModuleInfo, FollowVars0,
-			if_then_else(Vars, Cond, Then, Else), FollowVars) :-
+find_follow_vars_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, _),
+		ModuleInfo, FollowVars0,
+		if_then_else(Vars, Cond, Then, Else, FollowVars0),
+		FollowVars) :-
 	find_follow_vars_in_goal(Then0, ModuleInfo, FollowVars0, Then,
-			FollowVars1),
+		FollowVars1),
 	find_follow_vars_in_goal(Cond0, ModuleInfo, FollowVars1, Cond,
-			FollowVars),
+		FollowVars),
 		% To a first approximation, ignore the else branch.
 	find_follow_vars_in_goal(Else0, ModuleInfo, FollowVars0, Else,
 		_FollowVars1A).
 
 find_follow_vars_in_goal_2(some(Vars, Goal0), ModuleInfo, FollowVars0,
-						some(Vars, Goal), FollowVars) :-
+		some(Vars, Goal), FollowVars) :-
 	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
 		FollowVars).
 
 find_follow_vars_in_goal_2(call(A,B,C,D,E,F,_), ModuleInfo, FollowVars0,
-				call(A,B,C,D,E,F, FollowVars0), FollowVars) :-
+		call(A,B,C,D,E,F, FollowVars0), FollowVars) :-
 	(
 		hlds__is_builtin_is_inline(D)
 	->
 		FollowVars = FollowVars0
 	;
-		find_follow_vars_in_call(A, B, C, ModuleInfo,
-						FollowVars0, FollowVars)
+		find_follow_vars_in_call(A, B, C, ModuleInfo, FollowVars0,
+			FollowVars)
 	).
 
 find_follow_vars_in_goal_2(unify(A,B,C,D0,E), _ModuleInfo, FollowVars0,
-					unify(A,B,C,D,E), FollowVars) :-
+		unify(A,B,C,D,E), FollowVars) :-
 	(
 		B = var(BVar),
 		D0 = complicated_unify(Mode, CanFail, _F),
@@ -203,7 +205,7 @@ find_follow_vars_in_goal_2(unify(A,B,C,D0,E), _ModuleInfo, FollowVars0,
 		map__init(Follow0),
 		arg_info__unify_arg_info(CodeModel, ArgInfo),
 		find_follow_vars_in_call_2(ArgInfo, [A, BVar],
-						Follow0, FollowVars1)
+			Follow0, FollowVars1)
 	->
 		D = complicated_unify(Mode, CanFail, FollowVars0),
 		FollowVars = FollowVars1

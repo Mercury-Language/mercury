@@ -33,7 +33,7 @@
 middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	(
-		GoalExpr = switch(Var, cannot_fail, [Case1, Case2]),
+		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], _),
 		Case1 = case(ConsId1, Goal1),
 		Case2 = case(ConsId2, Goal2),
 		(
@@ -54,7 +54,7 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 			fail
 		)
 	;
-		GoalExpr = if_then_else(Vars, Cond, Then, Else),
+		GoalExpr = if_then_else(Vars, Cond, Then, Else, _),
 		(
 			code_aux__contains_only_builtins(Cond),
 			code_aux__contains_only_builtins(Then),

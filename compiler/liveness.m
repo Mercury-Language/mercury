@@ -184,8 +184,8 @@ detect_liveness_in_goal_2(conj(Goals0), Liveness0, ModuleInfo,
 		Liveness, conj(Goals)) :-
 	detect_liveness_in_conj(Goals0, Liveness0, ModuleInfo, Liveness, Goals).
 
-detect_liveness_in_goal_2(disj(Goals0), Liveness0, ModuleInfo,
-		Liveness, disj(Goals)) :-
+detect_liveness_in_goal_2(disj(Goals0, FV), Liveness0, ModuleInfo,
+		Liveness, disj(Goals, FV)) :-
 	set__init(Union0),
 	detect_liveness_in_disj(Goals0, Liveness0, ModuleInfo,
 							Union0, Union, Goals),
@@ -195,15 +195,16 @@ detect_liveness_in_goal_2(not(Goal0), Liveness0, ModuleInfo,
 		Liveness, not(Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(switch(Var, Det, Cases0), Liveness0,
-			ModuleInfo, Liveness, switch(Var, Det, Cases)) :-
+detect_liveness_in_goal_2(switch(Var, Det, Cases0, FV), Liveness0,
+		ModuleInfo, Liveness, switch(Var, Det, Cases, FV)) :-
 	set__init(Union0),
 	detect_liveness_in_cases(Cases0, Liveness0, ModuleInfo,
 							Union0, Union, Cases),
 	set__union(Liveness0, Union, Liveness).
 
-detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
-		M, Liveness, if_then_else(Vars, Cond, Then, Else)) :-
+detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
+		Liveness0, M, Liveness,
+		if_then_else(Vars, Cond, Then, Else, FV)) :-
 	detect_liveness_in_goal(Cond0, Liveness0, M, LivenessCond, Cond),
 	detect_liveness_in_goal(Then0, LivenessCond, M, LivenessThen, Then1),
 	detect_liveness_in_goal(Else0, Liveness0, M, LivenessElse, Else1),
@@ -326,48 +327,49 @@ detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, Goal) :-
 	% Here we process each of the different sorts of goals.
 
 :- pred detect_deadness_in_goal_2(hlds__goal_expr, liveness_info,
-				module_info, liveness_info, hlds__goal_expr).
+	module_info, liveness_info, hlds__goal_expr).
 :- mode detect_deadness_in_goal_2(in, in, in, out, out) is det.
 
-detect_deadness_in_goal_2(conj(Goals0), Deadness0, ModuleInfo,
-						Deadness, conj(Goals)) :-
-	detect_deadness_in_conj(Goals0, Deadness0,
-						ModuleInfo, Goals, Deadness).
+detect_deadness_in_goal_2(conj(Goals0), Deadness0, ModuleInfo, Deadness,
+		conj(Goals)) :-
+	detect_deadness_in_conj(Goals0, Deadness0, ModuleInfo,
+		Goals, Deadness).
 
-detect_deadness_in_goal_2(disj(Goals0), Deadness0,
-					ModuleInfo, Deadness, disj(Goals)) :-
+detect_deadness_in_goal_2(disj(Goals0, FV), Deadness0, ModuleInfo, Deadness,
+		disj(Goals, FV)) :-
 	set__init(Union0),
-	detect_deadness_in_disj(Goals0, Deadness0, ModuleInfo, Union0,
-								Union, Goals),
+	detect_deadness_in_disj(Goals0, Deadness0, ModuleInfo, Union0, Union,
+		Goals),
 	set__union(Deadness0, Union, Deadness).
 
-detect_deadness_in_goal_2(not(Goal0), Deadness0, ModuleInfo,
-		Deadness, not(Goal)) :-
+detect_deadness_in_goal_2(not(Goal0), Deadness0, ModuleInfo, Deadness,
+		not(Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, Deadness, Goal).
 
-detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Deadness0,
-		ModuleInfo, Deadness, if_then_else(Vars, Cond, Then, Else)) :-
+detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
+		Deadness0, ModuleInfo, Deadness,
+		if_then_else(Vars, Cond, Then, Else, FV)) :-
 	detect_deadness_in_goal(Then0, Deadness0, ModuleInfo,
-					DeadnessThen, Then1),
+		DeadnessThen, Then1),
 	detect_deadness_in_goal(Else0, Deadness0, ModuleInfo,
-					DeadnessElse, Else1),
+		DeadnessElse, Else1),
 	set__union(DeadnessThen, DeadnessElse, DeadnessThenElse),
 	detect_deadness_in_goal(Cond0, DeadnessThenElse, ModuleInfo,
-					Deadness, Cond),
+		Deadness, Cond),
 	set__difference(DeadnessElse, DeadnessThen, ResidueThen),
 	stuff_deadness_residue_into_goal(Then1, ResidueThen, Then),
 	set__difference(DeadnessThen, DeadnessElse, ResidueElse),
 	stuff_deadness_residue_into_goal(Else1, ResidueElse, Else).
 
-detect_deadness_in_goal_2(switch(Var, Det, Cases0), Deadness0,
-			ModuleInfo, Deadness, switch(Var, Det, Cases)) :-
+detect_deadness_in_goal_2(switch(Var, Det, Cases0, FV), Deadness0, ModuleInfo,
+		Deadness, switch(Var, Det, Cases, FV)) :-
 	set__init(Union0),
 	detect_deadness_in_cases(Var, Cases0, Deadness0, ModuleInfo, Union0,
-								Union, Cases),
+		Union, Cases),
 	set__union(Deadness0, Union, Deadness).
 
-detect_deadness_in_goal_2(some(Vars, Goal0), Deadness0, ModuleInfo,
-		Deadness, some(Vars, Goal)) :-
+detect_deadness_in_goal_2(some(Vars, Goal0), Deadness0, ModuleInfo, Deadness,
+		some(Vars, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, Deadness, Goal).
 
 detect_deadness_in_goal_2(call(A,B,C,D,E,F,G), Dn, _, Dn, call(A,B,C,D,E,F,G)).
@@ -539,7 +541,7 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 	goal_info_get_code_model(GoalInfo0, GoalModel),
 	(
 		GoalModel = model_non,
-		Goal0 = disj(_)
+		Goal0 = disj(_, _)
 	->
 		% If the goal is a nondet disj then all the variables
 		% that are live at the start of the disj will be
@@ -577,20 +579,20 @@ add_nondet_lives_to_goal_2(conj(Goals0), Liveness0, Extras0,
 	add_nondet_lives_to_conj(Goals0, Liveness0, Extras0,
 					Goals, Liveness, Extras).
 
-add_nondet_lives_to_goal_2(disj(Goals0), Liveness0, Extras0,
-				disj(Goals), Liveness, Extras) :-
+add_nondet_lives_to_goal_2(disj(Goals0, FV), Liveness0, Extras0,
+				disj(Goals, FV), Liveness, Extras) :-
 	ExtrasAcc = Extras0,
 	add_nondet_lives_to_disj(Goals0, Liveness0, Extras0,
 					Goals, Liveness, ExtrasAcc, Extras).
 
-add_nondet_lives_to_goal_2(switch(Var, CF, Goals0), Liveness0, Extras0,
-				switch(Var, CF, Goals), Liveness, Extras) :-
+add_nondet_lives_to_goal_2(switch(Var, CF, Goals0, FV), Liveness0, Extras0,
+				switch(Var, CF, Goals, FV), Liveness, Extras) :-
 	ExtrasAcc = Extras0,
 	add_nondet_lives_to_switch(Goals0, Liveness0, Extras0,
 					Goals, Liveness, ExtrasAcc, Extras).
 
-add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
-		Extras0, if_then_else(Vars, Cond, Then, Else),
+add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
+		Liveness0, Extras0, if_then_else(Vars, Cond, Then, Else, FV),
 							Liveness, Extras) :-
 	add_nondet_lives_to_goal(Cond0, Liveness0, Extras0,
 					Cond, Liveness1, Extras1),

@@ -45,8 +45,9 @@
 :- import_module hlds_goal, hlds_data, code_info.
 
 :- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
-	hlds__goal_info, code_tree, code_info, code_info).
-:- mode switch_gen__generate_switch(in, in, in, in, in, out, in, out) is det.
+	follow_vars, hlds__goal_info, code_tree, code_info, code_info).
+:- mode switch_gen__generate_switch(in, in, in, in, in, in, out, in, out)
+	is det.
 
 % These types are exported to dense_switch, string_switch and tag_switch.
 
@@ -73,8 +74,8 @@
 	% Choose which method to use to generate the switch.
 	% CanFail says whether the switch covers all cases.
 
-switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
-		Code) -->
+switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, _FollowVars,
+		GoalInfo, Code) -->
 	switch_gen__determine_category(CaseVar, SwitchCategory),
 	code_info__get_next_label(EndLabel),
 	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),

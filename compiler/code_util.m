@@ -262,11 +262,11 @@ code_util__goal_may_allocate_heap_2(not(Goal)) :-
 	code_util__goal_may_allocate_heap(Goal).
 code_util__goal_may_allocate_heap_2(conj(Goals)) :-
 	code_util__goal_list_may_allocate_heap(Goals).
-code_util__goal_may_allocate_heap_2(disj(Goals)) :-
+code_util__goal_may_allocate_heap_2(disj(Goals, _)) :-
 	code_util__goal_list_may_allocate_heap(Goals).
-code_util__goal_may_allocate_heap_2(switch(_Var, _Det, Cases)) :-
+code_util__goal_may_allocate_heap_2(switch(_Var, _Det, Cases, _)) :-
 	code_util__cases_may_allocate_heap(Cases).
-code_util__goal_may_allocate_heap_2(if_then_else(_Vars, A, B, C)) :-
+code_util__goal_may_allocate_heap_2(if_then_else(_Vars, A, B, C, _)) :-
 	(
 		code_util__goal_may_allocate_heap(A)
 	;	

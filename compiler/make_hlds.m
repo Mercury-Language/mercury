@@ -1362,11 +1362,11 @@ warn_singletons_in_goal_2(conj(Goals), _GoalInfo, QuantVars, VarSet,
 		PredCallId) -->
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId).
 
-warn_singletons_in_goal_2(disj(Goals), _GoalInfo, QuantVars, VarSet,
+warn_singletons_in_goal_2(disj(Goals, _), _GoalInfo, QuantVars, VarSet,
 		PredCallId) -->
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId).
 
-warn_singletons_in_goal_2(switch(_Var, _CanFail, Cases),
+warn_singletons_in_goal_2(switch(_Var, _CanFail, Cases, _),
 			_GoalInfo, QuantVars, VarSet, PredCallId) -->
 	warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId).
 
@@ -1391,7 +1391,7 @@ warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, QuantVars, VarSet,
 	{ set__insert_list(QuantVars, Vars, QuantVars1) },
 	warn_singletons_in_goal(SubGoal, QuantVars1, VarSet, PredCallId).
 
-warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else), GoalInfo,
+warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else, _), GoalInfo,
 				QuantVars, VarSet, PredCallId) -->
 	%
 	% warn if any quantified variables do not occur in the condition
@@ -1814,7 +1814,8 @@ transform_goal(Goal0 - Context, VarSet0, Subst, Goal1 - GoalInfo1, VarSet) :-
 			hlds__goal, varset).
 :- mode transform_goal_2(in, in, in, in, out, out) is det.
 
-transform_goal_2(fail, _, VarSet, _, disj([]) - GoalInfo, VarSet) :-
+transform_goal_2(fail, _, VarSet, _, disj([], Empty) - GoalInfo, VarSet) :-
+	map__init(Empty),
 	goal_info_init(GoalInfo).
 
 transform_goal_2(true, _, VarSet, _, conj([]) - GoalInfo, VarSet) :-
@@ -1833,11 +1834,12 @@ transform_goal_2(some(Vars0, Goal0), _, VarSet0, Subst,
 	goal_info_init(GoalInfo).
 
 transform_goal_2(if_then_else(Vars0, A0, B0, C0), _, VarSet0, Subst,
-		if_then_else(Vars, A, B, C) - GoalInfo, VarSet) :-
+		if_then_else(Vars, A, B, C, Empty) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(A0, VarSet0, Subst, A, VarSet1),
 	transform_goal(B0, VarSet1, Subst, B, VarSet2),
 	transform_goal(C0, VarSet2, Subst, C, VarSet),
+	map__init(Empty),
 	goal_info_init(GoalInfo).
 
 transform_goal_2(if_then(Vars0, A0, B0), Context, Subst, VarSet0,

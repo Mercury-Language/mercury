@@ -26,7 +26,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, options, globals, code_gen, code_exprn.
+:- import_module hlds_module, hlds_data, options, globals, code_gen.
 :- import_module map, tree, type_util, std_util, int, require.
 
 % where is the secondary tag (if any) for this primary tag value

@@ -504,7 +504,6 @@ unify_proc__generate_type_to_term_clauses(TypeBody, X, Term, Clauses) -->
 		{ Clauses = [clause([], Body, Context)] }
 	).
 
-
 %-----------------------------------------------------------------------------%
 
 /*
@@ -722,7 +721,8 @@ unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Goal) -->
 		Return_R) },
 
 	unify_proc__generate_compare_cases(Ctors, R, X, Y, Cases),
-	{ CasesGoal = disj(Cases) - GoalInfo },
+	{ map__init(Empty) },
+	{ CasesGoal = disj(Cases, Empty) - GoalInfo },
 
 	unify_proc__build_call("compare_error", [], Abort),
 
@@ -731,10 +731,9 @@ unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Goal) -->
 		Call_Y_Index, 
 		if_then_else([], Call_Less_Than, Return_Less_Than,
 		    if_then_else([], Call_Greater_Than, Return_Greater_Than,
-		        if_then_else([], CasesGoal, Return_R,
-		            Abort
-		        ) - GoalInfo
-		    ) - GoalInfo
+		        if_then_else([], CasesGoal, Return_R, Abort, Empty
+		        ) - GoalInfo, Empty
+		    ) - GoalInfo, Empty
 		) - GoalInfo
 	]) - GoalInfo }.
 
@@ -850,7 +849,8 @@ unify_proc__compare_args([X|Xs], [Y|Ys], R, Goal) -->
 			R, var(R1), Context, explicit, [], Return_R1) },
 		{ Condition = conj([Do_Comparison, Check_Not_Equal])
 					- GoalInfo },
-		{ Goal = if_then_else([], Condition, Return_R1, ElseCase)
+		{ map__init(Empty) },
+		{ Goal = if_then_else([], Condition, Return_R1, ElseCase, Empty)
 					- GoalInfo},
 		unify_proc__compare_args(Xs, Ys, R, ElseCase)
 	).
@@ -858,7 +858,6 @@ unify_proc__compare_args([], [_|_], _, _) -->
 	{ error("unify_proc__compare_args: length mismatch") }.
 unify_proc__compare_args([_|_], [], _, _) -->
 	{ error("unify_proc__compare_args: length mismatch") }.
-
 
 /*
 	For a type such as
@@ -908,7 +907,6 @@ unify_proc__compare_args([_|_], [], _, _) -->
 			X = tree(Key, Val, L, R)
 		).
 */
-
 
 :- pred unify_proc__generate_du_term_to_type_clauses(list(constructor),
 		var, var, list(clause), unify_proc_info, unify_proc_info).
@@ -965,7 +963,6 @@ unify_proc__generate_du_term_to_type_clauses([Ctor | Ctors], Term, X,
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) }.
 	
-
 :- pred unify_proc__generate_du_term_to_type_disjunctions(
 	list(constructor), var, var, var, term, term, term, term, term,
 	list(hlds__goal),
@@ -1014,7 +1011,6 @@ unify_proc__generate_du_term_to_type_disjunctions([Ctor | Ctors], V2, V4, X,
 		ConstType, TermType, TermListType, ContextType, StringType,
 		Goals).
 
-
 :- pred unify_proc__generate_du_term_to_type_recursive(
 	list(var), var, term__context, type, type,
 	list(hlds__goal), list(hlds__goal), unify_proc_info, unify_proc_info).
@@ -1045,7 +1041,6 @@ unify_proc__generate_du_term_to_type_recursive(
 	unify_proc__generate_du_term_to_type_recursive(
 		ArgVars, TermListVar, Context, TermType, TermListType,
 		TermGoals, Term_To_TypeGoals).
-
 
 /*
 	For a type such as
@@ -1102,12 +1097,10 @@ unify_proc__generate_du_term_to_type_recursive(
 		).
 */
 
-
 :- pred unify_proc__generate_du_type_to_term_clauses(list(constructor),
 		var, var, list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_du_type_to_term_clauses(in, in, in, out, in, out)
 									is det.
-
 
 unify_proc__generate_du_type_to_term_clauses([], _X, _Term, []) --> [].
 unify_proc__generate_du_type_to_term_clauses([Ctor | Ctors], X, Term,
@@ -1211,7 +1204,6 @@ unify_proc__generate_du_type_to_term_clauses([Ctor | Ctors], X, Term,
 
 	% Make clauses for other functors of type
 	unify_proc__generate_du_type_to_term_clauses(Ctors, X, Term, Clauses).
-
 
 :- pred unify_proc__generate_du_type_to_term_recursive_clauses(
 	list(var), var, term__context, type, type,

@@ -19,16 +19,16 @@
 :- import_module hlds_goal, llds, code_gen, code_info, code_util.
 
 :- pred ite_gen__generate_det_ite(hlds__goal, hlds__goal, hlds__goal,
-					code_tree, code_info, code_info).
-:- mode ite_gen__generate_det_ite(in, in, in, out, in, out) is det.
+	follow_vars, code_tree, code_info, code_info).
+:- mode ite_gen__generate_det_ite(in, in, in, in, out, in, out) is det.
 
 :- pred ite_gen__generate_semidet_ite(hlds__goal, hlds__goal, hlds__goal,
-					code_tree, code_info, code_info).
-:- mode ite_gen__generate_semidet_ite(in, in, in, out, in, out) is det.
+	follow_vars, code_tree, code_info, code_info).
+:- mode ite_gen__generate_semidet_ite(in, in, in, in, out, in, out) is det.
 
 :- pred ite_gen__generate_nondet_ite(hlds__goal, hlds__goal, hlds__goal,
-					code_tree, code_info, code_info).
-:- mode ite_gen__generate_nondet_ite(in, in, in, out, in, out) is det.
+	follow_vars, code_tree, code_info, code_info).
+:- mode ite_gen__generate_nondet_ite(in, in, in, in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -36,7 +36,7 @@
 :- import_module bool, set, tree, list, map, std_util, require.
 :- import_module options, globals.
 
-ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
+ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, _FollowVars, Instr) -->
 	code_info__get_globals(Options),
 	{ CondGoal = _Goal - CondGoalInfo },
 	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
@@ -117,7 +117,8 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 
 %---------------------------------------------------------------------------%
 
-ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
+ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, _FollowVars, Instr)
+		-->
 	code_info__get_globals(Options),
 	{ CondGoal = _Goal - CondGoalInfo },
 	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
@@ -192,7 +193,8 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 
 %---------------------------------------------------------------------------%
 
-ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
+ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, _FollowVars, Instr)
+		-->
 	code_info__get_globals(Options),
 	{ 
 		globals__lookup_bool_option(Options,
