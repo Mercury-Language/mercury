@@ -840,7 +840,7 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 #define	MR_PROC_NO_SLOT_COUNT		-1
 
 #ifdef	MR_STATIC_CODE_ADDRESSES
- #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		MR_STATIC(entry)
+ #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		MR_ENTRY(entry)
  #define	MR_INIT_PROC_LAYOUT_ADDR(entry)		do { } while (0)
 #else
  #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		((MR_Code *) NULL)

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2002 The University of Melbourne.
+** Copyright (C) 1999-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,6 +21,9 @@
 */
 
 #ifndef MR_NO_BACKWARDS_COMPAT
+
+#define	MR_STATIC(l)		MR_ENTRY(l)
+#define	MR_GOTO_STATIC(l)	MR_GOTO_ENTRY(l)
 
 /*
 ** bool, TRUE and FALSE appear in the generated code.

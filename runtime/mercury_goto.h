@@ -593,7 +593,6 @@
 	MR_make_entry_sl(MR_STRINGIFY(label), label, label)
 
     #define MR_ENTRY(label) 		(&label)
-    #define MR_STATIC(label) 		(&label)
 
     #ifndef MR_JUMP
     #define MR_JUMP(label)		MR_ASM_JUMP(label)
@@ -628,7 +627,6 @@
 	MR_make_entry_sl(MR_STRINGIFY(label), &&label, label);	\
 	MR_entry(label) = &&label
     #define MR_ENTRY(label) 		(MR_entry(label))
-    #define MR_STATIC(label) 		(MR_entry(label))
 
     #ifndef MR_JUMP
     #define MR_JUMP(label)		goto *(label)
@@ -668,7 +666,6 @@
 					MR_JUMP(label);			\
   				} while(0)
   #define MR_GOTO_ENTRY(label) 	MR_GOTO(MR_ENTRY(label))
-  #define MR_GOTO_STATIC(label)	MR_GOTO(MR_STATIC(label))
   #define MR_GOTO_LOCAL(label) 	MR_GOTO_LABEL(label)
   #define MR_GOTO_LABEL(label) 	do {					\
   					MR_debuggoto(MR_LABEL(label));	\
@@ -741,7 +738,6 @@
 		  				label, label)
 
   #define MR_ENTRY(label) 	((MR_Code *) (label))
-  #define MR_STATIC(label) 	((MR_Code *) (label))
   #define MR_LOCAL(label)	((MR_Code *) (label))
   #define MR_LABEL(label)	((MR_Code *) (label))
   /*
@@ -750,7 +746,6 @@
   */
   #define MR_GOTO(label)	return (label)
   #define MR_GOTO_ENTRY(label) 	MR_GOTO(MR_ENTRY(label))
-  #define MR_GOTO_STATIC(label) MR_GOTO(MR_STATIC(label))
   #define MR_GOTO_LOCAL(label) 	MR_GOTO(MR_LOCAL(label))
   #define MR_GOTO_LABEL(label) 	MR_GOTO(MR_LABEL(label))
 
