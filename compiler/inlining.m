@@ -136,9 +136,14 @@ inlining__inlining_in_goal_2(
         	pred_info_procedures(PredInfo, Procs),
         	map__lookup(Procs, ProcId, ProcInfo),
         	proc_info_goal(ProcInfo, CalledGoal),
-			% this heuristic could be improved
-		code_aux__contains_only_builtins(CalledGoal),
-		code_aux__goal_is_flat(CalledGoal)
+		(
+			pred_info_is_inlined(PredInfo)
+		;
+
+				% this heuristic could be improved
+			code_aux__contains_only_builtins(CalledGoal),
+			code_aux__goal_is_flat(CalledGoal)
+		)
 	->
 		proc_info_headvars(ProcInfo, HeadVars),
         	proc_info_variables(ProcInfo, PVarset),
@@ -320,9 +325,16 @@ inlining__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Subn,
 	inlining__rename_unify_rhs(TermR0, Subn, TermR),
 	inlining__rename_unify(Unify0, Subn, Unify).
 
-inlining__name_apart_2(pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
-		_Substn, 
-		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap)).
+inlining__name_apart_2(
+		pragma_c_code(C_Code, PredId, ProcId, Args0, ArgNameMap0),
+		Subn, 
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap)) :-
+	map__apply_to_list(Args0, Subn, Args),
+		% also update the arg/name map since the vars have changed
+	map__keys(ArgNameMap0, NArgs0),
+	map__values(ArgNameMap0, Names),
+	map__apply_to_list(NArgs0, Subn, NArgs),
+	map__from_corresponding_lists(NArgs, Names, ArgNameMap).
 
 %-----------------------------------------------------------------------------%
 

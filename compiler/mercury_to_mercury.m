@@ -162,14 +162,19 @@ mercury_output_item(clause(VarSet, PredName, Args, Body), Context) -->
 	maybe_output_line_number(Context),
 	mercury_output_clause(VarSet, PredName, Args, Body, Context).
 
-mercury_output_item(pragma(c_header_code(C_HeaderString)), Context) -->
+mercury_output_item(pragma(Pragma), Context) -->
 	maybe_output_line_number(Context),
-	mercury_output_pragma_c_header(C_HeaderString).
+	(
+		{ Pragma = c_header_code(C_HeaderString) },
+		mercury_output_pragma_c_header(C_HeaderString)
+	;
+		{ Pragma = c_code(Pred, Vars, VarSet, C_CodeString) }, 
+		mercury_output_pragma_c_code(Pred, Vars, VarSet, C_CodeString)
+	;
+		{ Pragma = inline(Pred, Arity) },
+		mercury_output_pragma_inline(Pred, Arity)
+	).
 
-mercury_output_item(pragma(c_code(Pred, Vars, VarSet, C_CodeString)), 
-		Context) --> 
-	maybe_output_line_number(Context),
-	mercury_output_pragma_c_code(Pred, Vars, VarSet, C_CodeString).
 
 mercury_output_item(nothing, _) --> [].
 
@@ -875,16 +880,15 @@ mercury_output_pragma_c_header(C_HeaderString) -->
 :- pred mercury_output_pragma_c_code(sym_name, list(pragma_var), varset,
 		string, io__state, io__state).
 :- mode mercury_output_pragma_c_code(in ,in, in, in, di, uo) is det.
-mercury_output_pragma_c_code(Pred ,Vars, VarSet, C_CodeString) -->
+mercury_output_pragma_c_code(PredName, Vars, VarSet, C_CodeString) -->
 	io__write_string(":- pragma(c_code, "),
-	{ unqualify_name(Pred, PredName) },
-	io__write_string(PredName),
+	mercury_output_sym_name(PredName),
 	io__write_string("("),
 	mercury_output_pragma_c_code_vars(Vars, VarSet),
 	io__write_string(")"),
-	io__write_string("\""),
+	io__write_string(", """),
 	io__write_string(C_CodeString),
-	io__write_string("\""),
+	io__write_string(""""),
 	io__write_string(").\n").
 	
 %-----------------------------------------------------------------------------%
@@ -907,6 +911,18 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
 		io__write_string(",")
 	),
 	mercury_output_pragma_c_code_vars(Vars, VarSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_pragma_inline(sym_name, int, io__state, io__state).
+:- mode mercury_output_pragma_inline(in, in, di, uo) is det.
+
+mercury_output_pragma_inline(PredName, Arity) -->
+	io__write_string(":- pragma(inline, "),
+	mercury_output_sym_name(PredName),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
 

@@ -1324,8 +1324,8 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
 			condition, term__context, clauses_info, import_status,
-			pred_info).
-:- mode pred_info_init(in, in, in, in, in, in, in, in, in, out) is det.
+			bool, pred_info).
+:- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, out) is det.
 
 :- pred pred_info_module(pred_info, module_name).
 :- mode pred_info_module(in, out) is det.
@@ -1384,6 +1384,12 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_set_typevarset(pred_info, tvarset, pred_info).
 :- mode pred_info_set_typevarset(in, in, out) is det.
 
+:- pred pred_info_is_inlined(pred_info).
+:- mode pred_info_is_inlined(in) is semidet.
+
+:- pred pred_info_set_inlined(pred_info, bool, pred_info).
+:- mode pred_info_set_inlined(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1424,21 +1430,24 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 			string,		% predicate name
 			arity,		% the arity of the pred
 			import_status,
-			tvarset		% names of type vars
+			tvarset,	% names of type vars
 					% in the predicate's type decl
 					% or in the variable type assignments
+			bool		% whether or not to automatically
+					% inline this pred
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
-		ClausesInfo, Status, PredInfo) :-
+		ClausesInfo, Status, Inline, PredInfo) :-
 	map__init(Procs),
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
-		Context, PredModuleName, PredName, Arity, Status, TypeVarSet).
+		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
+		Inline).
 
 pred_info_procids(PredInfo, ProcIds) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _),
+	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
@@ -1454,67 +1463,75 @@ pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	).
 
 pred_info_clauses_info(PredInfo, Clauses) :-
-	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K),
-	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K).
+	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L),
+	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, L).
 
 pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
-	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _, _).
+	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo) :-
-	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K),
-	PredInfo = predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J, K).
+	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L),
+	PredInfo = 
+		predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J, K, L).
 
 pred_info_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _).
 
 pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K),
-	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K).
+	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L),
+	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L).
 
 pred_info_context(PredInfo, Context) :-
-	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, _, _, _).
 
 pred_info_module(PredInfo, Module) :-
-	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, _).
 
 pred_info_name(PredInfo, PredName) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, _).
 
 pred_info_arity(PredInfo, Arity) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, _).
 
 pred_info_import_status(PredInfo, ImportStatus) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _).
 
 pred_info_is_imported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported, _, _).
 
 pred_info_is_pseudo_imported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_imported, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_imported, _, _).
 
 pred_info_is_exported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported, _, _).
 
 pred_info_is_pseudo_exported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_exported, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_exported, _, _).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L).
 
 pred_info_set_status(PredInfo0, Status, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, L).
 
 pred_info_typevarset(PredInfo, TypeVarSet) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _).
 
 pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L).
+
+pred_info_is_inlined(PredInfo) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, yes).
+
+pred_info_set_inlined(PredInfo0, Inlined, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, Inlined).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -143,15 +143,46 @@ add_item_decl(mode(VarSet, PredName, Modes, MaybeDet, Cond), Context, Status,
 
 add_item_decl(pragma(Pragma), Context, Status, Module0, Status,
 	Module) -->
-	{
-		Pragma  = c_header_code(C_Header),
-		module_add_c_header(C_Header, Context, Module0, Module)
+	(
+		{ Pragma  = c_header_code(C_Header) },
+		{ module_add_c_header(C_Header, Context, Module0, Module) }
 	;
 		% Handle pragma(c_code) decls later on (when we process
 		% clauses).
-		Pragma = c_code(_, _, _, _),
-		Module = Module0
-	}.
+		{ Pragma = c_code(_, _, _, _) },
+		{ Module = Module0 }
+	;
+		{ Pragma = inline(Pred, Arity) },
+		{ module_info_get_predicate_table(Module0, PredTable0) },
+		(
+			{ predicate_table_search_sym_arity(PredTable0, Pred, 
+				Arity, PredIds) }
+		->
+				% set the corresponding predicates' inline
+				% field in the pred_infos
+			{ predicate_table_get_preds(PredTable0, Preds0) },
+			{ pragma_inline_preds(Preds0, PredIds, Preds) },
+			{ predicate_table_set_preds(PredTable0, Preds, 
+				PredTable) },
+			{ module_info_set_predicate_table(Module0, PredTable, 
+				Module) }
+		;
+			io__stderr_stream(StdErr),
+			io__set_output_stream(StdErr, OldStream),
+			prog_out__write_context(Context),
+			io__write_strings(
+				["Warning: pragma(inline, ...) declaration ",
+				"for predicate\n"]),
+			prog_out__write_context(Context),
+			prog_out__write_sym_name(Pred),
+			io__write_char('/'),
+			io__write_int(Arity),
+			io__write_string(
+				" without preceding pred declaration.\n"),
+			io__set_output_stream(OldStream, _),
+			{ Module = Module0 }
+		)
+	).
 
 add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		Status, Module) -->
@@ -540,7 +571,7 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 		{ module_info_get_predicate_table(Module1, PredicateTable0) },
 		{ clauses_info_init(Arity, ClausesInfo) },
 		{ pred_info_init(ModuleName, PredName, Arity, TVarSet, Types,
-				Cond, Context, ClausesInfo, Status, 
+				Cond, Context, ClausesInfo, Status, no,
 				PredInfo0) },
 		(
 			{ \+ predicate_table_search_m_n_a(PredicateTable0,
@@ -656,7 +687,7 @@ add_special_pred_decl(SpecialPredId,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo0),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
-		Context, ClausesInfo0, Status, PredInfo0),
+		Context, ClausesInfo0, Status, no, PredInfo0),
 
 	add_new_proc(PredInfo0, Arity, ArgModes, yes(Det), Context,
 			PredInfo, _),
@@ -769,7 +800,7 @@ preds_add_implicit(PredicateTable0,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
-		Context, ClausesInfo, local, PredInfo),
+		Context, ClausesInfo, local, no, PredInfo),
 	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
 		\+ predicate_table_search_m_n_a(PredicateTable0,
@@ -1037,6 +1068,21 @@ pragma_get_var_names([], []).
 pragma_get_var_names([P|PragmaVars], [N|Names]) :-
         P = pragma_var(_Var, N, _Mode),
         pragma_get_var_names(PragmaVars, Names).
+
+%---------------------------------------------------------------------------%
+
+	% For each pred_id in the list, set the 'inlined' flag in the
+	% corresponding pred_info.
+:- pred pragma_inline_preds(pred_table, list(pred_id), pred_table).
+:- mode pragma_inline_preds(in, in, out) is det.
+
+pragma_inline_preds(PredTable, [], PredTable).
+pragma_inline_preds(PredTable0, [PredId|PredIds], PredTable) :-
+	map__lookup(PredTable0, PredId, PredInfo0),
+	pred_info_set_inlined(PredInfo0, yes, PredInfo),
+	map__set(PredTable0, PredId, PredInfo, PredTable1),
+	pragma_inline_preds(PredTable1, PredIds, PredTable).
+
 
 %---------------------------------------------------------------------------%
 
@@ -1446,7 +1492,7 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 
 clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars, 
 		C_Code, Context, ClausesInfo, HldsGoal) :-
-	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, _ClauseList0),
+	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, _ClauseList),
 	pragma_get_vars(PVars, Args0),
 	pragma_get_var_names(PVars, Names),
 

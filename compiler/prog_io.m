@@ -116,8 +116,10 @@
 
 :- type pragma --->		c_header_code(c_header_code)
 			;	c_code(sym_name, 
-					list(pragma_var), varset, c_code).
+					list(pragma_var), varset, c_code)
 				% PredName, Vars/Mode, VarNames, C Code
+			;	inline(sym_name, int).
+				% Predname, Arity
 
 :- type pragma_var    --->  pragma_var(var, string, mode).
 			  	% variable, name, mode
@@ -1666,7 +1668,7 @@ parse_pragma(VarSet, Pragma, Result) :-
 		Result = error("Expected string for C header code", HeaderTerm)
 	    )
 	;
-	    Result = error("pragma declaration has wrong arity for given type", 
+	    Result = error("wrong number of arguments in pragma(c_header_code, ...) declaration.", 
 		    PragmaType)
         )
     ; 
@@ -1693,17 +1695,50 @@ parse_pragma(VarSet, Pragma, Result) :-
 		    )
 		;
 		    Result = 
-			error("Expected string for inline C code", C_CodeTerm)
+			error("Expected string for C code", C_CodeTerm)
 		)
 	    ;
 		Result = error("Term is not a predicate", PredAndVarsTerm)
 	    )
 	;
-	    Result = error("pragma declaration has wrong arity for given type", 
+	    Result = error("wrong number of arguments in pragma(c_code, ...) declaration.", 
 		    PragmaType)
 	)
     ;
-    	Result = error("Unknown pragma type", PragmaType)
+       PragmaType = term__functor(term__atom("inline"),[], _)
+    ->
+       (
+       PragmaTerms = [PredAndArityTerm]
+       ->
+	    (
+                PredAndArityTerm = term__functor(term__atom("/"), 
+	    		[PredNameTerm, ArityTerm], _)
+	    ->
+		(
+		    (
+		    PredNameTerm = term__functor(term__atom(PredName), [], _),
+		    ArityTerm = term__functor(term__integer(Arity), [], _)
+		    )
+		->
+		    Result = 
+			ok(pragma(inline(unqualified(PredName), Arity)))
+		;
+	    	    Result = 
+		        error("Expected predname/arity for pragma(inline,...)",
+			PredAndArityTerm)
+		)
+	    ;
+	    	Result = error("Expected predname/arity for pragma(inline...)",
+			PredAndArityTerm)
+	    )
+	;
+	    Result = 
+	    	error(
+		"wrong number of arguments in pragma(inline, ...) declaration.",
+		PragmaType)
+       )
+    ;
+    	Result = error("Unknown pragma declaration type", PragmaType)
     ).
 
 %-----------------------------------------------------------------------------%

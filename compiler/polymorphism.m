@@ -593,7 +593,7 @@ polymorphism__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		clauses_info_init(Arity, ClausesInfo),
 		pred_info_init(ModuleName, PredName, Arity, TVarSet,
 			ArgTypes, Cond, LambdaContext, ClausesInfo, Status,
-			PredInfo0),
+			no, PredInfo0),
 
 		%	
 		% Create a single mode for the new predicate, and insert
