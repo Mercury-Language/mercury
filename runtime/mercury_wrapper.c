@@ -310,10 +310,11 @@ mercury_runtime_init(int argc, char **argv)
 
 	(*address_of_mercury_init_io)();
 
+#ifndef MR_HIGHLEVEL_CODE
 	/* start up the Mercury engine */
-#ifndef MR_THREAD_SAFE
+  #ifndef MR_THREAD_SAFE
 	init_thread(MR_use_now);
-#else
+  #else
 	{
 		int i;
 		init_thread_stuff();
@@ -322,7 +323,8 @@ mercury_runtime_init(int argc, char **argv)
 		for (i = 1 ; i < MR_num_threads ; i++)
 			create_thread(NULL);
 	}
-#endif
+  #endif /* ! MR_THREAD_SAFE */
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 	/* initialize profiling */
 	if (MR_profiling) MR_prof_init();
@@ -342,7 +344,9 @@ mercury_runtime_init(int argc, char **argv)
 	/* initialize the Mercury library */
 	(*MR_library_initializer)();
 
+#ifndef MR_HIGHLEVEL_CODE
 	save_context(&(MR_ENGINE(context)));
+#endif
 
 	/*
 	** Now the real tracing starts; undo any updates to the trace state
