@@ -795,7 +795,8 @@ parse_dcg_goal_2(term_functor(term_atom("[]"),[],_), VarSet0, N0, Var0,
 	Goal = unify(term_variable(Var0), term_variable(Var)).
 
 	% Non-empty list of terminals.  Append the DCG output arg
-	% to the list, and unify the result with the DCG input arg.
+	% as the new tail of the list, and unify the result with
+	% the DCG input arg.
 parse_dcg_goal_2(term_functor(term_atom("."),[X,Xs],C), VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	new_dcg_var(VarSet0, N0, VarSet, N, Var),
@@ -907,15 +908,15 @@ parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0, A, VarSet, N, Var) :-
 
 	% term_list_append_term(ListTerm, Term, Result):
 	% 	if ListTerm is a term representing a proper list, 
-	%	this predicate will append the single term Term
+	%	this predicate will append the term Term
 	%	onto the end of the list
 
 :- pred term_list_append_term(term, term, term).
 :- mode term_list_append_term(input, input, output).
 
 term_list_append_term(List0, Term, List) :-
-	( List0 = term_functor(term_atom("[]"), [], Context) ->
-		List = term_functor(term_atom("."), [Term, List0], Context)
+	( List0 = term_functor(term_atom("[]"), [], _Context) ->
+		List = Term
 	;
 		List0 = term_functor(term_atom("."), [Head, Tail0], Context2),
 		List = term_functor(term_atom("."), [Head, Tail], Context2),
