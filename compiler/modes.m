@@ -7,13 +7,16 @@
 % This file contains a mode-checker.
 % Still very incomplete.
 
-% XXX unifying `free' with `free' should be allowed if one of the variables
-% is dead.
+% XXX BUG! abstractly_unify_inst will go into an infinite loop
+% 	   when unifying two recursively defined insts.
+%	   We need to introduce compiler-generated recursive
+%	   insts in this case.
+
+% XXX we need to allow unification of free with free even when both
+%     *variables* are live, if one of the particular *sub-nodes* is 
+%     dead.
 
 % XXX break unifications into "micro-unifications"
-
-% (NB. One of the above two must be fixed to allow partially instantiated
-% data structures.)
 
 % XXX handle code which always fails or always loops.
 %	eg. currently the following code
@@ -810,26 +813,43 @@ modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 :- mode inst_gteq(in, in, in) is semidet.
 
 inst_gteq(InstA, InstB, ModuleInfo) :-
-	inst_expand(ModuleInfo, InstA, InstA2),
-	inst_expand(ModuleInfo, InstB, InstB2),
-	inst_gteq_2(InstA2, InstB2, ModuleInfo).
+	set__init(Expansions),
+	inst_gteq_2(InstA, InstB, ModuleInfo, Expansions).
 
-:- pred inst_gteq_2(inst, inst, module_info).
-:- mode inst_gteq_2(in, in, in) is semidet.
+:- type expansions == set(pair(inst)).
 
-:- inst_gteq_2(InstA, InstB, _) when InstA and InstB.	% Indexing.
+:- pred inst_gteq_2(inst, inst, module_info, expansions).
+:- mode inst_gteq_2(in, in, in, in) is semidet.
 
-	% inst_gteq_2(InstA, InstB, ModuleInfo) is true iff
+inst_gteq_2(InstA, InstB, ModuleInfo, Expansions) :-
+	ThisExpansion = InstA - InstB,
+	( set__member(ThisExpansion, Expansions) ->
+		true
+	;
+		inst_expand(ModuleInfo, InstA, InstA2),
+		inst_expand(ModuleInfo, InstB, InstB2),
+		set__insert(Expansions, ThisExpansion, Expansions2),
+		inst_gteq_3(InstA2, InstB2, ModuleInfo, Expansions2)
+	).
+
+:- pred inst_gteq_3(inst, inst, module_info, expansions).
+:- mode inst_gteq_3(in, in, in, in) is semidet.
+
+:- inst_gteq_3(InstA, InstB, _, _) when InstA and InstB.	% Indexing.
+
+	% inst_gteq_3(InstA, InstB, ModuleInfo, Expansions) is true iff
 	% `InstA' is at least as instantiated as `InstB'.
+	% To avoid infinite regress, we assume that inst_gteq is true
+	% for any pairs of insts which occur in Expansions.
 
-inst_gteq_2(free, free, _).
-inst_gteq_2(bound(_List), free, _).
-inst_gteq_2(bound(ListA), bound(ListB), ModuleInfo) :-
-	bound_inst_list_gteq(ListA, ListB, ModuleInfo).
-inst_gteq_2(bound(List), ground, ModuleInfo) :-
+inst_gteq_3(free, free, _, _).
+inst_gteq_3(bound(_List), free, _, _).
+inst_gteq_3(bound(ListA), bound(ListB), ModuleInfo, Expansions) :-
+	bound_inst_list_gteq(ListA, ListB, ModuleInfo, Expansions).
+inst_gteq_3(bound(List), ground, ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
-inst_gteq_2(ground, _, _).
-inst_gteq_2(abstract_inst(_Name, _Args), free, _).
+inst_gteq_3(ground, _, _, _).
+inst_gteq_3(abstract_inst(_Name, _Args), free, _, _).
 
 	% To make things consistent, we assume that if a bound(...)
 	% inst only specifies the insts for some of the constructors
@@ -838,22 +858,23 @@ inst_gteq_2(abstract_inst(_Name, _Args), free, _).
 	% The code here makes use of the fact that the bound_inst lists
 	% are sorted.
 
-:- pred bound_inst_list_gteq(list(bound_inst), list(bound_inst), module_info).
-:- mode bound_inst_list_gteq(in, in, in) is semidet.
+:- pred bound_inst_list_gteq(list(bound_inst), list(bound_inst), module_info,
+				expansions).
+:- mode bound_inst_list_gteq(in, in, in, in) is semidet.
 
-:- bound_inst_list_gteq(A, B, _) when A and B.	% Indexing
+:- bound_inst_list_gteq(A, B, _, _) when A and B.	% Indexing
 
-bound_inst_list_gteq([], _, _).
-bound_inst_list_gteq([X|Xs], [], ModuleInfo) :-
+bound_inst_list_gteq([], _, _, _).
+bound_inst_list_gteq([X|Xs], [], ModuleInfo, _) :-
 	bound_inst_list_is_ground([X|Xs], ModuleInfo).
-bound_inst_list_gteq([X|Xs], [Y|Ys], ModuleInfo) :-
+bound_inst_list_gteq([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 	X = functor(NameX, ArgsX),
 	Y = functor(NameY, ArgsY),
 	length(ArgsX, ArityX),
 	length(ArgsY, ArityY),
 	( NameX = NameY, ArityX = ArityY ->
-		inst_list_gteq(ArgsX, ArgsY, ModuleInfo),
-		bound_inst_list_gteq(Xs, Ys, ModuleInfo)
+		inst_list_gteq(ArgsX, ArgsY, ModuleInfo, Expansions),
+		bound_inst_list_gteq(Xs, Ys, ModuleInfo, Expansions)
 	;
 		( compare(<, X, Y) ->
 			% NameX/ArityX does not occur in [Y|Ys].
@@ -861,24 +882,24 @@ bound_inst_list_gteq([X|Xs], [Y|Ys], ModuleInfo) :-
 			% ArgsX must be ground.
 			inst_list_is_ground(ArgsX, ModuleInfo),
 			% We also nede to check that Xs is gteq [Y|Ys].
-			bound_inst_list_gteq(Xs, [Y|Ys], ModuleInfo)
+			bound_inst_list_gteq(Xs, [Y|Ys], ModuleInfo, Expansions)
 		;
 			% NameY/ArityY does not occur in [X|Xs].
 			% Hence [X|Xs] implicitly specifies "ground"
 			% for the args of NameY/ArityY, and hence is
 			% automatically gteq Y.  We just need to check
 			% that [X|Xs] is gteq Ys.
-			bound_inst_list_gteq([X|Xs], Ys, ModuleInfo)
+			bound_inst_list_gteq([X|Xs], Ys, ModuleInfo, Expansions)
 		)
 	).
 
-:- pred inst_list_gteq(list(inst), list(inst), module_info).
-:- mode inst_list_gteq(in, in, in) is semidet.
+:- pred inst_list_gteq(list(inst), list(inst), module_info, expansions).
+:- mode inst_list_gteq(in, in, in, in) is semidet.
 
-inst_list_gteq([], [], _).
-inst_list_gteq([X|Xs], [Y|Ys], ModuleInfo) :-
-	inst_gteq(X, Y, ModuleInfo),
-	inst_list_gteq(Xs, Ys, ModuleInfo).
+inst_list_gteq([], [], _, _).
+inst_list_gteq([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
+	inst_gteq_2(X, Y, ModuleInfo, Expansions),
+	inst_list_gteq(Xs, Ys, ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 
@@ -938,45 +959,58 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 :- mode inst_is_compat(in, in, in) is semidet.
 
 inst_is_compat(InstA, InstB, ModuleInfo) :-
-	inst_expand(ModuleInfo, InstA, InstA2),
-	inst_expand(ModuleInfo, InstB, InstB2),
-	inst_is_compat_2(InstA2, InstB2, ModuleInfo).
+	set__init(Expansions),
+	inst_is_compat_2(InstA, InstB, ModuleInfo, Expansions).
 
-:- pred inst_is_compat_2(inst, inst, module_info).
-:- mode inst_is_compat_2(in, in, in) is semidet.
+:- pred inst_is_compat_2(inst, inst, module_info, expansions).
+:- mode inst_is_compat_2(in, in, in, in) is semidet.
 
-inst_is_compat_2(free, free, _).
-inst_is_compat_2(bound(ListA), bound(ListB), ModuleInfo) :-
-	bound_inst_list_is_compat(ListA, ListB, ModuleInfo).
-inst_is_compat_2(ground, ground, _).
-inst_is_compat_2(abstract_inst(NameA, ArgsA), abstract_inst(NameB, ArgsB),
-		ModuleInfo) :-
+inst_is_compat_2(InstA, InstB, ModuleInfo, Expansions) :-
+	ThisExpansion = InstA - InstB,
+	( set__member(ThisExpansion, Expansions) ->
+		true
+	;
+		inst_expand(ModuleInfo, InstA, InstA2),
+		inst_expand(ModuleInfo, InstB, InstB2),
+		set__insert(Expansions, ThisExpansion, Expansions2),
+		inst_is_compat_3(InstA2, InstB2, ModuleInfo, Expansions2)
+	).
+
+:- pred inst_is_compat_3(inst, inst, module_info, expansions).
+:- mode inst_is_compat_3(in, in, in, in) is semidet.
+
+inst_is_compat_3(free, free, _, _).
+inst_is_compat_3(bound(ListA), bound(ListB), ModuleInfo, Expansions) :-
+	bound_inst_list_is_compat(ListA, ListB, ModuleInfo, Expansions).
+inst_is_compat_3(ground, ground, _, _).
+inst_is_compat_3(abstract_inst(NameA, ArgsA), abstract_inst(NameB, ArgsB),
+		ModuleInfo, Expansions) :-
 	NameA = NameB,
-	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo).
+	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo, Expansions).
 
+:- pred inst_is_compat_list(list(inst), list(inst), module_info, expansions).
+:- mode inst_is_compat_list(in, in, in, in) is semidet.
 
-:- pred inst_is_compat_list(list(inst), list(inst), module_info).
-:- mode inst_is_compat_list(in, in, in) is semidet.
-
-inst_is_compat_list([], [], _ModuleInfo).
-inst_is_compat_list([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo) :-
-	inst_is_compat(ArgA, ArgB, ModuleInfo),
-	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo).
+inst_is_compat_list([], [], _ModuleInfo, _).
+inst_is_compat_list([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo, Expansions) :-
+	inst_is_compat_2(ArgA, ArgB, ModuleInfo, Expansions),
+	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo, Expansions).
 
 :- pred bound_inst_list_is_compat(list(bound_inst), list(bound_inst),
-			module_info).
-:- mode bound_inst_list_is_compat(in, in, in) is semidet.
+			module_info, expansions).
+:- mode bound_inst_list_is_compat(in, in, in, in) is semidet.
 
-bound_inst_list_is_compat([], [], _).
-bound_inst_list_is_compat([X|Xs], [Y|Ys], ModuleInfo) :-
-	bound_inst_is_compat(X, Y, ModuleInfo),
-	bound_inst_list_is_compat(Xs, Ys, ModuleInfo).
+bound_inst_list_is_compat([], [], _, _).
+bound_inst_list_is_compat([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
+	bound_inst_is_compat(X, Y, ModuleInfo, Expansions),
+	bound_inst_list_is_compat(Xs, Ys, ModuleInfo, Expansions).
 
-:- pred bound_inst_is_compat(bound_inst, bound_inst, module_info).
-:- mode bound_inst_is_compat(in, in, in) is semidet.
+:- pred bound_inst_is_compat(bound_inst, bound_inst, module_info, expansions).
+:- mode bound_inst_is_compat(in, in, in, in) is semidet.
 
-bound_inst_is_compat(functor(Name, ArgsA), functor(Name, ArgsB), ModuleInfo) :-
-	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo).
+bound_inst_is_compat(functor(Name, ArgsA), functor(Name, ArgsB), ModuleInfo,
+		Expansions) :-
+	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 
@@ -2042,8 +2076,7 @@ mode_info_get_num_errors(mode_info(_,_,_,_,_,_,_,_,_,Errors,_), NumErrors) :-
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_set_errors(list(mode_error_info), mode_info, mode_info).
-:- mode mode_info_set_errors(list(mode_error_info), mode_info_di, mode_info_uo)
-	is det.
+:- mode mode_info_set_errors(in, mode_info_di, mode_info_uo) is det.
 
 mode_info_set_errors( Errors, mode_info(A,B,C,D,E,F,G,H,I,_,K), 
 			mode_info(A,B,C,D,E,F,G,H,I,Errors,K)).
