@@ -111,10 +111,14 @@ static	bool		MR_trace_type_is_ignored(
 static	int		MR_trace_compare_var_details(const void *arg1,
 				const void *arg2);
 static	const char *	MR_trace_browse_one_path(FILE *out,
-			MR_Var_Spec var_spec, char *path, MR_Browser browser,
-			bool must_be_unique);
+				MR_Var_Spec var_spec, char *path,
+				MR_Browser browser,
+				MR_Browse_Caller_Type caller,
+				MR_Browse_Format format, bool must_be_unique);
 static	char *		MR_trace_browse_var(FILE *out, MR_Var_Details *var,
-				char *path, MR_Browser browser);
+				char *path, MR_Browser browser,
+				MR_Browse_Caller_Type caller,
+				MR_Browse_Format format);
 static	const char *	MR_trace_bad_path(const char *path);
 static	int		MR_trace_print_var_name(FILE *out, MR_Var_Details *var);
 static	const char *	MR_trace_valid_var_number(int var_number);
@@ -644,6 +648,7 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
 
 const char *
 MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
+	MR_Browse_Caller_Type caller, MR_Browse_Format format,
 	bool must_be_unique)
 {
 	MR_Var_Spec	var_spec;
@@ -684,26 +689,28 @@ MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
 		var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
 		var_spec.MR_var_spec_number = n;
 		return MR_trace_browse_one_path(out, var_spec, path,
-			browser, must_be_unique);
+			browser, caller, format, must_be_unique);
 	} else {
 		var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
 		var_spec.MR_var_spec_name = word_spec;
 		return MR_trace_browse_one_path(out, var_spec, path,
-			browser, must_be_unique);
+			browser, caller, format, must_be_unique);
 	}
 }
 
 const char *
 MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
+	MR_Browse_Caller_Type caller, MR_Browse_Format format,
 	bool must_be_unique)
 {
 	return MR_trace_browse_one_path(out, var_spec, NULL, browser,
-		must_be_unique);
+		caller, format, must_be_unique);
 }
 
 static const char *
 MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
-	MR_Browser browser, bool must_be_unique)
+	MR_Browser browser, MR_Browse_Caller_Type caller,
+	MR_Browse_Format format, bool must_be_unique)
 {
 	int		i;
 	bool		found;
@@ -726,7 +733,7 @@ MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
 		varno = var_spec.MR_var_spec_number - 1;
 		bad_path = MR_trace_browse_var(out,
 				&MR_point.MR_point_vars[varno],
-				path, browser);
+				path, browser, caller, format);
 		if (bad_path != NULL) {
 			return MR_trace_bad_path(bad_path);
 		}
@@ -756,7 +763,7 @@ MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
 			do {
 				bad_path = MR_trace_browse_var(out,
 					&MR_point.MR_point_vars[i], path,
-					browser);
+					browser, caller, format);
 
 				if (bad_path == NULL) {
 					success_count++;
@@ -773,7 +780,7 @@ MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
 		} else {
 			bad_path = MR_trace_browse_var(out,
 				&MR_point.MR_point_vars[i], path,
-				browser);
+				browser, caller, format);
 			if (bad_path != NULL) {
 				return MR_trace_bad_path(bad_path);
 			}
@@ -806,7 +813,7 @@ MR_trace_bad_path(const char *path)
 }
 
 const char *
-MR_trace_browse_all(FILE *out, MR_Browser browser)
+MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
 {
 	int				i;
 
@@ -820,7 +827,7 @@ MR_trace_browse_all(FILE *out, MR_Browser browser)
 
 	for (i = 0; i < MR_point.MR_point_var_count; i++) {
 		(void) MR_trace_browse_var(out, &MR_point.MR_point_vars[i],
-			NULL, browser);
+			NULL, browser, MR_BROWSE_CALLER_PRINT_ALL, format);
 	}
 
 	return NULL;
@@ -832,7 +839,8 @@ extern	bool 	ML_arg(MR_TypeInfo term_type_info, MR_Word *term, int arg_index,
 
 static char *
 MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
-	MR_Browser browser)
+	MR_Browser browser, MR_Browse_Caller_Type caller,
+	MR_Browse_Format format)
 {
 	MR_TypeInfo	typeinfo;
 	MR_TypeInfo	new_typeinfo;
@@ -892,7 +900,7 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 		fflush(out);
 	}
 
-	(*browser)((MR_Word) typeinfo, *value);
+	(*browser)((MR_Word) typeinfo, *value, caller, format);
 	return NULL;
 }
 

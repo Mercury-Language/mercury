@@ -1460,6 +1460,7 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 	const char	*problem;
 
 	problem = MR_trace_browse_one(NULL, var_spec, MR_trace_browse_external,
+			MR_BROWSE_CALLER_BROWSE, MR_BROWSE_DEFAULT_FORMAT,
 			TRUE);
 
 	if (problem != NULL) {

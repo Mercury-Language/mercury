@@ -63,7 +63,8 @@
 
 :- interface.
 
-:- import_module io, list, string.
+:- import_module io, string, list.
+:- import_module mdb__browser_info.
 
 :- type command
 	--->	ls(path)
@@ -85,22 +86,6 @@
 	--->	root_rel(list(dir))
 	;	dot_rel(list(dir)).
 
-:- type dir
-	--->	parent
-	;	child(int).
-
-:- type setting
-	--->	depth(int)
-	;	size(int)
-	;	format(portray_format)
-	;	clipx(int)
-	;	clipy(int)
-	.
-
-:- type portray_format
-	--->	flat
-	;	pretty
-	;	verbose.
 
 % If the term browser is called from the external debugger, the term browser
 % commands are send through the socket via terms of type external_request.
@@ -113,13 +98,10 @@
 :- pred parse__read_command_external(command, io__state, io__state).
 :- mode parse__read_command_external(out, di, uo) is det.
 
-:- pred default_depth(int).
-:- mode default_depth(out) is det.
-
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module char, int, std_util.
+:- import_module list, char, int, std_util.
 :- import_module mdb__util.
 
 
@@ -290,16 +272,9 @@ start([Tok | Toks], Comm) :-
 		Comm = print
 	;
 		Tok = (<),
-		( Toks = [] ->
-			default_depth(DefaultDepth),
-			Comm = set(depth(DefaultDepth))
-		;
-			Toks = [num(Depth)],
-			Comm = set(depth(Depth))
-		)
+		Toks = [num(Depth)],
+		Comm = set(depth(Depth))
 	).
-
-default_depth(3).
 
 :- pred parse_path(list(token), path).
 :- mode parse_path(in, out) is semidet.
@@ -346,12 +321,12 @@ parse_setting([Tok | Toks], Setting) :-
 	; Tok = name("size") ->
 		Toks = [num(Size)],
 		Setting = size(Size)
-	; Tok = name("clipx") ->
+	; Tok = name("width") ->
 		Toks = [num(X)],
-		Setting = clipx(X)
-	; Tok = name("clipy") ->
+		Setting = width(X)
+	; Tok = name("lines") ->
 		Toks = [num(Y)],
-		Setting = clipy(Y)
+		Setting = lines(Y)
 	; Tok = name("format") ->
 		Toks = [Fmt],
 		( Fmt = name("flat") ->
@@ -434,12 +409,12 @@ show_setting(size(Size)) -->
 	io__write_string("size "),
 	io__write_int(Size),
 	io__nl.
-show_setting(clipx(X)) -->
-	io__write_string("clipx "),
+show_setting(width(X)) -->
+	io__write_string("width "),
 	io__write_int(X),
 	io__nl.
-show_setting(clipy(Y)) -->
-	io__write_string("clipy "),
+show_setting(lines(Y)) -->
+	io__write_string("lines "),
 	io__write_int(Y),
 	io__nl.
 show_setting(format(Fmt)) -->

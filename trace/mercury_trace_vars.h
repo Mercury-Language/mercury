@@ -38,8 +38,10 @@
 #include <stdio.h>
 #include "mercury_types.h"
 #include "mercury_stack_layout.h"
+#include "mercury_trace_browse.h"
 
-typedef	void	(*MR_Browser)(MR_Word type_info, MR_Word value);
+typedef	void	(*MR_Browser)(MR_Word type_info, MR_Word value,
+			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 
 typedef	enum {
 	MR_VAR_SPEC_NUMBER,
@@ -106,7 +108,9 @@ extern	const char	*MR_trace_headvar_num(int n, int *num);
 */
 
 extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
-				MR_Browser browser, bool must_be_unique);
+				MR_Browser browser,
+				MR_Browse_Caller_Type caller,
+				MR_Browse_Format format, bool must_be_unique);
 
 /*
 ** Print the (names and) values of the specified variables.
@@ -117,7 +121,9 @@ extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
 */
 
 extern	const char	*MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec,
-				MR_Browser browser, bool must_be_unique);
+				MR_Browser browser,
+				MR_Browse_Caller_Type caller,
+				MR_Browse_Format format, bool must_be_unique);
 
 /*
 ** Print the list of the names and values of all variables live at the current
@@ -126,6 +132,7 @@ extern	const char	*MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec,
 ** printed by calling the given browser function on them.
 */
 
-extern	const char 	*MR_trace_browse_all(FILE *out, MR_Browser browser);
+extern	const char 	*MR_trace_browse_all(FILE *out, MR_Browser browser,
+				MR_Browse_Format format);
 
 #endif	/* MERCURY_TRACE_VARS_H */

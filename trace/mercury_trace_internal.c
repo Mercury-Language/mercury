@@ -170,15 +170,24 @@ static	bool	MR_trace_options_detailed(bool *detailed, char ***words,
 			int *word_count, const char *cat, const char *item);
 static	bool	MR_trace_options_confirmed(bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
+static	bool	MR_trace_options_format(MR_Browse_Format *format,
+			char ***words, int *word_count, const char *cat,
+			const char *item);
+static	bool	MR_trace_options_param_set(MR_Bool *print_set,
+			MR_Bool *browse_set, MR_Bool *print_all_set,
+			MR_Bool *flat_format, MR_Bool *pretty_format,
+			MR_Bool *verbose_format, char ***words,
+			int *word_count, const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
 
 static	void	MR_trace_set_level_and_report(int ancestor_level,
 			bool detailed);
-static	void	MR_trace_print_var(MR_Word type_info, MR_Word value);
-static	void	MR_trace_browse_var(MR_Word type_info, MR_Word value);
+static	void	MR_trace_browse_internal(MR_Word type_info, MR_Word value,
+			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 static	const char *MR_trace_browse_exception(MR_Event_Info *event_info,
-		MR_Browser browser);
+			MR_Browser browser, MR_Browse_Caller_Type caller,
+			MR_Browse_Format format);
 
 static	const char *MR_trace_read_help_text(void);
 static	const char *MR_trace_parse_line(char *line,
@@ -416,23 +425,31 @@ MR_trace_set_level_and_report(int ancestor_level, bool detailed)
 }
 
 static void
-MR_trace_print_var(MR_Word type_info, MR_Word value)
+MR_trace_browse_internal(MR_Word type_info, MR_Word value,
+		MR_Browse_Caller_Type caller, MR_Browse_Format format)
 {
-	fprintf(MR_mdb_out, "\t");
-	fflush(MR_mdb_out);
-	/* XXX should use MR_mdb_out */
-	MR_trace_print(type_info, value);
-}
+	switch (caller) {
+		
+		case MR_BROWSE_CALLER_BROWSE:
+			MR_trace_browse(type_info, value, format);
+			break;
 
-static void
-MR_trace_browse_var(MR_Word type_info, MR_Word value)
-{
-	/* XXX should use MR_mdb_in and MR_mdb_out */
-	MR_trace_browse(type_info, value);
+		case MR_BROWSE_CALLER_PRINT:
+		case MR_BROWSE_CALLER_PRINT_ALL:
+			fprintf(MR_mdb_out, "\t");
+			fflush(MR_mdb_out);
+			MR_trace_print(type_info, value, caller, format);
+			break;
+
+		default:
+			MR_fatal_error("MR_trace_browse_internal:"
+					" unknown caller type");
+	}
 }
 
 static const char *
-MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser)
+MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
+		MR_Browse_Caller_Type caller, MR_Browse_Format format)
 {
 	MR_Word		type_info;
 	MR_Word		value;
@@ -450,7 +467,7 @@ MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser)
 	type_info = MR_field(MR_mktag(0), exception, UNIV_OFFSET_FOR_TYPEINFO);
 	value = MR_field(MR_mktag(0), exception, UNIV_OFFSET_FOR_DATA);
 
-	(*browser)(type_info, value);
+	(*browser)(type_info, value, caller, format);
 
 	return (const char *) NULL;
 }
@@ -957,18 +974,26 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("browsing", "vars");
 		}
 	} else if (streq(words[0], "print")) {
-		if (word_count == 2) {
+		MR_Browse_Format	format;
+
+		if (! MR_trace_options_format(&format, &words, &word_count,
+					"browsing", "print"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 2) {
 			const char	*problem;
 
 			if (streq(words[1], "*")) {
 				problem = MR_trace_browse_all(MR_mdb_out,
-					MR_trace_print_var);
+					MR_trace_browse_internal, format);
 			} else if (streq(words[1], "exception")) {
 				problem = MR_trace_browse_exception(event_info,
-					MR_trace_print_var);
+					MR_trace_browse_internal,
+					MR_BROWSE_CALLER_PRINT, format);
 			} else {
 				problem = MR_trace_parse_browse_one(MR_mdb_out,
-					words[1], MR_trace_print_var, FALSE);
+					words[1], MR_trace_browse_internal,
+					MR_BROWSE_CALLER_PRINT, format, FALSE);
 			}
 
 			if (problem != NULL) {
@@ -979,15 +1004,23 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("browsing", "print");
 		}
 	} else if (streq(words[0], "browse")) {
-		if (word_count == 2) {
+		MR_Browse_Format	format;
+
+		if (! MR_trace_options_format(&format, &words, &word_count,
+					"browsing", "browse"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 2) {
 			const char	*problem;
 
 			if (streq(words[1], "exception")) {
 				problem = MR_trace_browse_exception(event_info,
-					MR_trace_browse_var);
+					MR_trace_browse_internal,
+					MR_BROWSE_CALLER_BROWSE, format);
 			} else {
 				problem = MR_trace_parse_browse_one(NULL,
-					words[1], MR_trace_browse_var, TRUE);
+					words[1], MR_trace_browse_internal,
+					MR_BROWSE_CALLER_BROWSE, format, TRUE);
 			}
 
 			if (problem != NULL) {
@@ -1027,6 +1060,30 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_event_print_internal_report(event_info);
 		} else {
 			MR_trace_usage("browsing", "current");
+		}
+	} else if (streq(words[0], "set")) {
+		MR_Browse_Format	format;
+		MR_Bool			print_set;
+		MR_Bool			browse_set;
+		MR_Bool			print_all_set;
+		MR_Bool			flat_format;
+		MR_Bool			pretty_format;
+		MR_Bool			verbose_format;
+
+		if (! MR_trace_options_param_set(&print_set, &browse_set,
+				&print_all_set, &flat_format, &pretty_format,
+				&verbose_format, &words, &word_count,
+				"browsing", "set"))
+		{
+			; /* the usage message has already been printed */
+		}
+		else if (word_count != 3 ||
+				! MR_trace_set_browser_param(print_set,
+					browse_set, print_all_set, flat_format,
+					pretty_format, verbose_format,
+					words[1], words[2]))
+		{
+			MR_trace_usage("browsing", "set");
 		}
 	} else if (streq(words[0], "break")) {
 		MR_Proc_Spec	spec;
@@ -1684,9 +1741,11 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			fprintf(MR_mdb_out,
 				"current procedure has no body info\n");
 		} else {
-			MR_trace_print_var(
+			MR_trace_browse_internal(
 				(MR_Word) &mercury_data_mdb__program_representation__type_ctor_info_goal_rep_0,
-				entry->MR_sle_proc_rep);
+				entry->MR_sle_proc_rep,
+				MR_BROWSE_CALLER_PRINT,
+				MR_BROWSE_DEFAULT_FORMAT);
 		}
 #ifdef	MR_TRACE_HISTOGRAM
 	} else if (streq(words[0], "histogram_all")) {
@@ -2196,6 +2255,117 @@ MR_trace_options_ignore(bool *ignore_errors, char ***words, int *word_count,
 
 			case 'i':
 				*ignore_errors = TRUE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
+}
+
+static struct MR_option MR_trace_format_opts[] = 
+{
+	{ "flat",	FALSE,	NULL,	'f' },
+	{ "pretty",	FALSE,	NULL,	'p' },
+	{ "verbose",	FALSE,	NULL,	'v' },
+	{ NULL,		FALSE,	NULL,	0 }
+};
+
+static bool
+MR_trace_options_format(MR_Browse_Format *format, char ***words,
+	int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	*format = MR_BROWSE_DEFAULT_FORMAT;
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "fpv",
+			MR_trace_format_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'f':
+				*format = MR_BROWSE_FORMAT_FLAT;
+				break;
+
+			case 'p':
+				*format = MR_BROWSE_FORMAT_PRETTY;
+				break;
+
+			case 'v':
+				*format = MR_BROWSE_FORMAT_VERBOSE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
+}
+
+static struct MR_option MR_trace_param_set_opts[] = 
+{
+	{ "flat",	FALSE,	NULL,	'f' },
+	{ "pretty",	FALSE,	NULL,	'p' },
+	{ "verbose",	FALSE,	NULL,	'v' },
+	{ "print",	FALSE,	NULL,	'P' },
+	{ "browse",	FALSE,	NULL,	'B' },
+	{ "print-all",	FALSE,	NULL,	'A' },
+	{ NULL,		FALSE,	NULL,	0 }
+};
+
+static bool
+MR_trace_options_param_set(MR_Bool *print_set, MR_Bool *browse_set,
+	MR_Bool *print_all_set, MR_Bool *flat_format, MR_Bool *pretty_format,
+	MR_Bool *verbose_format, char ***words, int *word_count,
+	const char *cat, const char *item)
+{
+	int	c;
+
+	*print_set = FALSE;
+	*browse_set = FALSE;
+	*print_all_set = FALSE;
+	*flat_format = FALSE;
+	*pretty_format = FALSE;
+	*verbose_format = FALSE;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "PBAfpv",
+			MR_trace_param_set_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'f':
+				*flat_format = TRUE;
+				break;
+
+			case 'p':
+				*pretty_format = TRUE;
+				break;
+
+			case 'v':
+				*verbose_format = TRUE;
+				break;
+
+			case 'P':
+				*print_set = TRUE;
+				break;
+
+			case 'B':
+				*browse_set = TRUE;
+				break;
+
+			case 'A':
+				*print_all_set = TRUE;
 				break;
 
 			default:
@@ -2738,6 +2908,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "browsing", "down" },
 	{ "browsing", "level" },
 	{ "browsing", "current" },
+	{ "browsing", "set" },
 	{ "breakpoint", "break" },
 	{ "breakpoint", "enable" },
 	{ "breakpoint", "disable" },

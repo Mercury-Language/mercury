@@ -45,18 +45,19 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mdb__declarative_execution, mdb__browse, mdb__util.
+:- import_module mdb__browser_info, mdb__browse, mdb__util.
+:- import_module mdb__declarative_execution.
 :- import_module std_util, char, string, bool, int.
 
 :- type user_state
 	--->	user(
 			instr	:: io__input_stream,
 			outstr	:: io__output_stream,
-			browser	:: browser_state
+			browser	:: browser_persistent_state
 		).
 
 user_state_init(InStr, OutStr, User) :-
-	browse__init_state(Browser),
+	browser_info__init_persistent_state(Browser),
 	User = user(InStr, OutStr, Browser).
 
 %-----------------------------------------------------------------------------%
@@ -433,7 +434,7 @@ write_decl_atom_category(OutStr, function) -->
 
 print_decl_atom_arg(User, yes(Arg)) -->
 	io__write_string(User^outstr, "\t"),
-	browse__print(univ_value(Arg), User^outstr, User^browser).
+	browse__print(univ_value(Arg), User^outstr, print_all, User^browser).
 print_decl_atom_arg(User, no) -->
 	io__write_string(User^outstr, "\t_\n").
 

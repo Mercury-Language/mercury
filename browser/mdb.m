@@ -12,7 +12,7 @@
 
 	% These interface modules are used directly by the test programs
 	% or the libmer_trace library.
-:- include_module browse, help.
+:- include_module browser_info, browse, help.
 :- include_module interactive_query.
 :- include_module debugger_interface, collect_lib.
 :- include_module declarative_debugger, declarative_execution.

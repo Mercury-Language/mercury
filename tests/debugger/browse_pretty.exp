@@ -19,7 +19,7 @@ big(
       big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)), 
     .(1, .(2, .(3, .(4, .(5, .(6, [])))))), 
     small))
-browser> set clipx 131
+browser> set width 131
 browser> ls
 big(
   big(big(small, .(1, []), small), .(1, .(2, [])), small), 
@@ -28,7 +28,7 @@ big(
     big(small, .(1, .(2, .(3, .(4, [])))), big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)), 
     .(1, .(2, .(3, .(4, .(5, .(6, [])))))), 
     small))
-browser> set clipx 30
+browser> set width 30
 browser> ls
 big(
   big(
@@ -73,7 +73,7 @@ big(
               5, 
               .(6, [])))))), 
     small))
-browser> set clipx 10
+browser> set width 10
 browser> ls
 big(
   big(
@@ -136,7 +136,7 @@ big(
                 6, 
                 [])))))), 
     small))
-browser> set clipx 79
+browser> set width 79
 browser> set depth 3
 browser> ls
 big(
