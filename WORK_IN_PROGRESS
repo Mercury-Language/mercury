@@ -4,6 +4,12 @@ Work in progress
 The compiler contains some code for the following features,
 which are not yet completed:
 
+* Existential types.
+
+* Thread-safe engine.
+
+* Independent AND-parallelism.
+
 * We have added support for dynamic link libraries (DLLs) on Windows.
   This is not yet enabled by default because it has not yet been tested
   properly.
@@ -22,23 +28,10 @@ which are not yet completed:
 * We now allow programmers to give names to the arguments of constructor
   function symbols.  (Disabled, due to lack of a suitable operator.)
 
-* There are new options, `--make-transitive-optimization-interface' and 
-  `--transitive-intermodule-optimization' which allow the compiler to
-  create `<module>.trans_opt' files.  These files are similar to the
-  `<module>.opt' files, except `<module>.trans_opt' files may depend on
-  the information in other `<module>.trans_opt' files.  Currently the
-  files are correctly created and read in, but the dependencies are not
-  correctly maintained, so the information in the `<module>.trans_opt'
-  files may be incorrect.  For further details of what needs to be done,
-  see the beginning of the `trans_opt.m' file in the compiler directory.
-
 We also have some code that goes at least some part of the way towards
 implementing the features below.   However, for these features, the
 code has not yet been committed and thus is not part of the standard
 distribution.
 
-* Tabling/memoing of det and semidet predicates.
+* [Currently no features in this category.]
 
-* Support for Haskell-style type classes.
-
-* Support for heap profiling.
