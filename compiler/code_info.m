@@ -746,6 +746,19 @@ code_info__produce_variable_in_reg(Var, Code, Rval) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred code_info__produce_variable_in_reg_or_stack(var, code_tree, rval,
+						code_info, code_info).
+:- mode code_info__produce_variable_in_reg_or_stack(in, out, out, in, out)
+						is det.
+
+code_info__produce_variable_in_reg_or_stack(Var, Code, Rval) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__produce_var_in_reg_or_stack(Var, Rval, Code,
+		Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+%---------------------------------------------------------------------------%
+
 code_info__materialize_vars_in_rval(Rval0, Rval, Code) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__materialize_vars_in_rval(Rval0, Rval, Code,
@@ -1803,7 +1816,7 @@ code_info__produce_vars([], Map, empty) -->
 	{ map__init(Map) }.
 code_info__produce_vars([V | Vs], Map, Code) -->
 	code_info__produce_vars(Vs, Map0, Code0),
-	code_info__produce_variable_in_reg(V, Code1, Rval),
+	code_info__produce_variable_in_reg_or_stack(V, Code1, Rval),
 	{ set__singleton_set(Rvals, Rval) },
 	{ map__set(Map0, V, Rvals, Map) },
 	{ Code = tree(Code0, Code1) }.

@@ -99,6 +99,16 @@
 						exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg(in, out, out, in, out) is det.
 
+%	code_exprn__produce_var_in_reg_or_stack(Var, Rval, Code,
+%			ExprnInfo0, ExprnInfo)
+%		Produces a code fragment Code to evaluate Var and
+%		provide it as an Rval of the form lval(reg(_)),
+%		lval(stackvar(_)), or lval(framevar(_)).
+
+:- pred code_exprn__produce_var_in_reg_or_stack(var, rval, code_tree,
+						exprn_info, exprn_info).
+:- mode code_exprn__produce_var_in_reg_or_stack(in, out, out, in, out) is det.
+
 %	code_exprn__materialize_vars_in_rval(Rval0, Rval, Code, ExprnInfo0,
 %		ExprnInfo)
 %		Produces code to materialize any vars that occur in `Rval0'
@@ -1279,6 +1289,22 @@ code_exprn__produce_var_in_reg(Var, Rval, Code) -->
 	code_exprn__produce_var(Var, Rval0, Code0),
 	(
 		{ Rval0 = lval(reg(_)) }
+	->
+		{ Code = Code0 },
+		{ Rval = Rval0 }
+	;
+		code_exprn__get_spare_reg(Reg),
+		{ Lval = reg(Reg) },
+		code_exprn__place_var(Var, Lval, Code1),
+		{ Rval = lval(Lval) },
+		{ Code = tree(Code0, Code1) }
+	).
+
+code_exprn__produce_var_in_reg_or_stack(Var, Rval, Code) -->
+	code_exprn__produce_var(Var, Rval0, Code0),
+	(
+		{ Rval0 = lval(Loc) },
+		{ Loc = reg(_) ; Loc = stackvar(_) ; Loc = framevar(_) }
 	->
 		{ Code = Code0 },
 		{ Rval = Rval0 }
