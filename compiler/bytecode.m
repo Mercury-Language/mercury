@@ -886,7 +886,7 @@ byte_debug(endof_if,				"endof_if").
 byte_debug(enter_negation(_),			"enter_negation").
 byte_debug(endof_negation,			"enter_negation").
 byte_debug(enter_commit(_),			"enter_commit").
-byte_debug(endof_commit(_),			"enter_commit").
+byte_debug(endof_commit(_),			"endof_commit").
 byte_debug(assign(_, _),			"assign").
 byte_debug(test(_, _),				"test").
 byte_debug(construct(_, _, _),			"construct").
