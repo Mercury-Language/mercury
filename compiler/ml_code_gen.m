@@ -2134,7 +2134,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	ml_gen_pragma_c_decls(ArgList, ArgDeclsList),
+	ml_gen_pragma_c_decls(Lang, ArgList, ArgDeclsList),
 
 	%
 	% Generate definitions of the FAIL, SUCCEED, SUCCEED_LAST,
@@ -2156,12 +2156,12 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	%
 	% Generate code to set the values of the input variables.
 	%
-	ml_gen_pragma_c_input_arg_list(ArgList, AssignInputsList),
+	ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputsList),
 
 	%
 	% Generate code to assign the values of the output variables.
 	%
-	ml_gen_pragma_c_output_arg_list(ArgList, Context,
+	ml_gen_pragma_c_output_arg_list(Lang, ArgList, Context,
 		AssignOutputsList, ConvDecls, ConvStatements),
 
 	%
@@ -2521,6 +2521,9 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		C_Code, Context, MLDS_Decls, MLDS_Statements) -->
+
+	{ foreign_language(Attributes, Lang) },
+
 	%
 	% Combine all the information about the each arg
 	%
@@ -2530,17 +2533,17 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	ml_gen_pragma_c_decls(ArgList, ArgDeclsList),
+	ml_gen_pragma_c_decls(Lang, ArgList, ArgDeclsList),
 
 	%
 	% Generate code to set the values of the input variables.
 	%
-	ml_gen_pragma_c_input_arg_list(ArgList, AssignInputsList),
+	ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputsList),
 
 	%
 	% Generate code to assign the values of the output variables.
 	%
-	ml_gen_pragma_c_output_arg_list(ArgList, Context,
+	ml_gen_pragma_c_output_arg_list(Lang, ArgList, Context,
 		AssignOutputsList, ConvDecls, ConvStatements),
 
 	%
@@ -2710,40 +2713,31 @@ ml_make_c_arg_list(Vars, ArgDatas, Types, ArgList) :-
 %---------------------------------------------------------------------------%
 
 % ml_gen_pragma_c_decls generates C code to declare the arguments
-% for a `pragma c_code' declaration.
+% for a `pragma foreign_proc' declaration.
 %
-:- pred ml_gen_pragma_c_decls(list(ml_c_arg)::in,
+:- pred ml_gen_pragma_c_decls(foreign_language::in, list(ml_c_arg)::in,
 		list(target_code_component)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_decls([], []) --> [].
-ml_gen_pragma_c_decls([Arg|Args], [Decl|Decls]) -->
-	ml_gen_pragma_c_decl(Arg, Decl),
-	ml_gen_pragma_c_decls(Args, Decls).
+ml_gen_pragma_c_decls(_, [], []) --> [].
+ml_gen_pragma_c_decls(Lang, [Arg|Args], [Decl|Decls]) -->
+	ml_gen_pragma_c_decl(Lang, Arg, Decl),
+	ml_gen_pragma_c_decls(Lang, Args, Decls).
 
 % ml_gen_pragma_c_decl generates C code to declare an argument
-% of a `pragma c_code' declaration.
+% of a `pragma foreign_proc' declaration.
 %
-:- pred ml_gen_pragma_c_decl(ml_c_arg::in, target_code_component::out,
+:- pred ml_gen_pragma_c_decl(foreign_language::in,
+		ml_c_arg::in, target_code_component::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), Decl) -->
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-	{ module_info_globals(ModuleInfo, Globals) },
-	{ globals__get_target(Globals, Target) },
+ml_gen_pragma_c_decl(Lang, ml_c_arg(_Var, MaybeNameAndMode, Type),
+		Decl) -->
 	{
 		MaybeNameAndMode = yes(ArgName - _Mode),
 		\+ var_is_singleton(ArgName)
 	->
-		( 
-			type_util__var(Type, _),
-			Target = il
-		->
-			TypeString = "MR_Box"
-		;
-			export__type_to_type_string(Type, TypeString)
-		),
+		TypeString = foreign_type_to_type_string(Lang, Type),
 		string__format("\t%s %s;\n", [s(TypeString), s(ArgName)],
 			DeclString)
 	;
@@ -2752,6 +2746,17 @@ ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), Decl) -->
 		DeclString = ""
 	},
 	{ Decl = raw_target_code(DeclString, []) }.
+
+:- func foreign_type_to_type_string(foreign_language, prog_data__type) = string.
+foreign_type_to_type_string(Lang, Type) = TypeString :-
+	( 
+		type_util__var(Type, _),
+		Lang = managed_cplusplus
+	->
+		TypeString = "MR_Box"
+	;
+		export__type_to_type_string(Type, TypeString)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2772,22 +2777,23 @@ var_is_singleton(Name) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred ml_gen_pragma_c_input_arg_list(list(ml_c_arg)::in,
-		list(target_code_component)::out,
+:- pred ml_gen_pragma_c_input_arg_list(foreign_language::in,
+		list(ml_c_arg)::in, list(target_code_component)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_input_arg_list(ArgList, AssignInputs) -->
-	list__map_foldl(ml_gen_pragma_c_input_arg, ArgList, AssignInputsList),
+ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputs) -->
+	list__map_foldl(ml_gen_pragma_c_input_arg(Lang), ArgList,
+		AssignInputsList),
 	{ list__condense(AssignInputsList, AssignInputs) }.
 
-% ml_gen_pragma_c_input_arg generates C code to assign the value of an input
-% arg for a `pragma c_code' declaration.
+% ml_gen_pragma_c_input_arg generates C code to assign the value of an
+% input arg for a `pragma foreign_proc' declaration.
 %
-:- pred ml_gen_pragma_c_input_arg(ml_c_arg::in,
+:- pred ml_gen_pragma_c_input_arg(foreign_language::in, ml_c_arg::in,
 		list(target_code_component)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
+ml_gen_pragma_c_input_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		AssignInput) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
@@ -2813,25 +2819,25 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		{ module_info_globals(ModuleInfo, Globals) },
 		{ globals__lookup_bool_option(Globals, highlevel_data,
 			HighLevelData) },
-		{ globals__get_target(Globals, Target) },
 		{ HighLevelData = yes ->
 			% In general, the types used for the C interface
 			% are not the same as the types used by
 			% --high-level-data, so we always use a cast here.
 			% (Strictly speaking the cast is not needed for
 			% a few cases like `int', but it doesn't do any harm.)
-			export__type_to_type_string(OrigType, TypeString),
+			TypeString = foreign_type_to_type_string(Lang,
+				OrigType),
 			string__format("(%s)", [s(TypeString)], Cast)
 		;
 			% For --no-high-level-data, we only need to use
 			% a cast is for polymorphic types, which are
 			% `Word' in the C interface but `MR_Box' in the
 			% MLDS back-end.
-			% Except for --grade ilc, where polymorphic types
+			% Except for MC++, where polymorphic types
 			% are MR_Box.
 			( 
 				type_util__var(OrigType, _),
-				Target \= il
+				Lang \= managed_cplusplus
 			->
 				Cast = "(MR_Word) "
 			;
@@ -2852,31 +2858,33 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		{ AssignInput = [] }
 	).
 
-:- pred ml_gen_pragma_c_output_arg_list(list(ml_c_arg)::in, prog_context::in,
+:- pred ml_gen_pragma_c_output_arg_list(foreign_language::in,
+		list(ml_c_arg)::in, prog_context::in,
 		list(target_code_component)::out,
 		mlds__defns::out, mlds__statements::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_output_arg_list([], _, [], [], []) --> [].
-ml_gen_pragma_c_output_arg_list([C_Arg | C_Args], Context, Components,
-		ConvDecls, ConvStatements) -->
-	ml_gen_pragma_c_output_arg(C_Arg, Context, Components1,
+ml_gen_pragma_c_output_arg_list(_, [], _, [], [], []) --> [].
+ml_gen_pragma_c_output_arg_list(Lang, [C_Arg | C_Args], Context,
+		Components, ConvDecls, ConvStatements) -->
+	ml_gen_pragma_c_output_arg(Lang, C_Arg, Context, Components1,
 			ConvDecls1, ConvStatements1),
-	ml_gen_pragma_c_output_arg_list(C_Args, Context, Components2,
-			ConvDecls2, ConvStatements2),
+	ml_gen_pragma_c_output_arg_list(Lang, C_Args, Context,
+			Components2, ConvDecls2, ConvStatements2),
 	{ Components = list__append(Components1, Components2) },
 	{ ConvDecls = list__append(ConvDecls1, ConvDecls2) },
 	{ ConvStatements = list__append(ConvStatements1, ConvStatements2) }.
 
 % ml_gen_pragma_c_output_arg generates C code to assign the value of an output
-% arg for a `pragma c_code' declaration.
+% arg for a `pragma foreign_proc' declaration.
 %
-:- pred ml_gen_pragma_c_output_arg(ml_c_arg::in, prog_context::in,
+:- pred ml_gen_pragma_c_output_arg(foreign_language::in,
+		ml_c_arg::in, prog_context::in,
 		list(target_code_component)::out,
 		mlds__defns::out, mlds__statements::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
+ml_gen_pragma_c_output_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		Context, AssignOutput, ConvDecls, ConvOutputStatements) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
@@ -2904,7 +2912,8 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			% Note that we can't easily obtain the type string
 			% for the RHS of the assignment, so instead we
 			% cast the LHS.
-			export__type_to_type_string(OrigType, TypeString),
+			TypeString = foreign_type_to_type_string(Lang,
+				OrigType),
 			string__format("*(%s *)&", [s(TypeString)], LHS_Cast),
 			RHS_Cast = ""
 		;
