@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,6 +60,31 @@ static MR_RootList root_list = NULL;
 /* The last root on the list */
 static MR_RootList last_root = NULL;
 
+/*
+** Initialize the forwarding pointer bitmap (MR_has_forwarding_pointer[])
+** with all bits unset (zero).
+*/
+static void
+init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap)
+{
+    size_t			    heap_size_in_words;
+    size_t			    num_words_for_bitmap;
+    size_t			    num_bytes_for_bitmap;
+    static size_t		    prev_num_bytes_for_bitmap;
+
+    heap_size_in_words = old_heap->hardmax - old_heap->min;
+    num_words_for_bitmap = (heap_size_in_words + MR_WORDBITS - 1) / MR_WORDBITS;
+    num_bytes_for_bitmap = num_words_for_bitmap * sizeof(MR_Word);
+    if (MR_has_forwarding_pointer == NULL
+	|| num_bytes_for_bitmap > prev_num_bytes_for_bitmap)
+    {
+	MR_has_forwarding_pointer = MR_realloc(MR_has_forwarding_pointer,
+					num_bytes_for_bitmap);
+	prev_num_bytes_for_bitmap = num_bytes_for_bitmap;
+    }
+    memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
+}
+
 #ifdef MR_HIGHLEVEL_CODE
 
 /*
@@ -76,10 +101,6 @@ MR_garbage_collect(void)
 {
     MR_MemoryZone                   *old_heap, *new_heap;
     MR_Word                         *old_hp, *new_hp;
-    size_t			    heap_size_in_words;
-    size_t			    num_words_for_bitmap;
-    size_t			    num_bytes_for_bitmap;
-    static size_t		    prev_num_bytes_for_bitmap;
 
     old_heap = MR_ENGINE(MR_eng_heap_zone);
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
@@ -108,17 +129,7 @@ MR_garbage_collect(void)
     /*
     ** Initialize the forwarding pointer bitmap.
     */
-    heap_size_in_words = old_heap->hardmax - old_heap->min;
-    num_words_for_bitmap = (heap_size_in_words + MR_WORDBITS - 1) / MR_WORDBITS;
-    num_bytes_for_bitmap = num_words_for_bitmap * sizeof(MR_Word);
-    if (MR_has_forwarding_pointer == NULL
-	|| num_bytes_for_bitmap > prev_num_bytes_for_bitmap)
-    {
-	MR_has_forwarding_pointer = MR_realloc(MR_has_forwarding_pointer,
-					num_bytes_for_bitmap);
-	prev_num_bytes_for_bitmap = num_bytes_for_bitmap;
-    }
-    memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
+    init_forwarding_pointer_bitmap(old_heap);
 
     /*
     ** Swap the two heaps.
@@ -197,7 +208,7 @@ traverse_stack(struct MR_StackChain *stack_chain)
 	}
 }
 
-#else
+#else /* !MR_HIGHLEVEL_CODE */
 
 /*
 ** MR_schedule_agc:
@@ -344,7 +355,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 	** Replace the old succip with the address of the
 	** garbage collector.
 	*/
-	*saved_success_location = (Word) mercury__garbage_collect_0_0;
+	*saved_success_location = (MR_Word) mercury__garbage_collect_0_0;
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
 	fprintf(stderr, "Accurate GC scheduled.\n");
@@ -384,7 +395,10 @@ MR_END_MODULE
 **
 ** 	The main garbage collection routine.
 **
-**  (We use 4 space tabs here because of the depth of indentation).
+** This is the version for the LLDS back-end.  Beware that there is some
+** code duplication with the version for the MLDS back-end, which is above.
+**
+** (We use 4 space tabs here because of the depth of indentation).
 */
 static void
 garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer, 
@@ -424,6 +438,11 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     ** The new heap pointer starts at the bottom of the new heap.
     */
     MR_virtual_hp = new_heap->min;
+
+    /*
+    ** Initialize the forwarding pointer bitmap.
+    */
+    init_forwarding_pointer_bitmap(old_heap);
 
     /*
     ** Swap the two heaps.
@@ -466,6 +485,14 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     }
 
     /*
+    ** First, traverse the call stack.  This includes all of the det stack
+    ** and the success continuation frames on the nondet stack.  It does not
+    ** include the failure continuation frames on the nondet stack.
+    ** (We really only need to traverse the det stack here, but there's no
+    ** way to do that without traversing the success continuation frames of
+    ** the nondet stack too.)
+    */
+    /*
     ** For each stack frame ...
     */
     do {
@@ -475,7 +502,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 	int				short_var_count, long_var_count;
 
 	if (MR_agc_debug) {
-	    printlabel((MR_Code *) (Word) label->i_addr);
+	    MR_printlabel(stderr, (MR_Code *) (MR_Word) label->i_addr);
        	    fflush(NULL);
 	}
 
@@ -536,7 +563,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 		type = MR_LONG_LVAL_TYPE(location);
 		number = MR_LONG_LVAL_NUMBER(location);
 		if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
-			fatal_error("can only handle stackvars");
+			MR_fatal_error("can only handle stackvars");
 			}
 		
 		success_ip = (MR_Code *) MR_based_stackvar(stack_pointer, number);
@@ -566,8 +593,11 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     } while (label_layout != NULL); /* end for each stack frame... */
 
     /* 
-    ** New code for nondet.
-    ** XXX Will we need correct value of stack_pointer?
+    ** Next, traverse the whole of the nondet stack.
+    ** XXX Will we need correct value of stack_pointer (the pointer
+    **     to the det stack)?
+    **     Hopefully not, since I think that for nondet code, all values
+    **     should be saved on the nondet stack, not the det stack?
     */ 
     
     while (max_frame > MR_nondet_stack_trace_bottom) {
@@ -579,22 +609,23 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
 	if (frame_size == MR_NONDET_TEMP_SIZE) {
 	    if (MR_agc_debug) {
-		printlabel(MR_redoip_slot(max_frame));
+		MR_printlabel(stderr, MR_redoip_slot(max_frame));
 		fflush(NULL);
 	    }
 	} else if (frame_size == MR_DET_TEMP_SIZE) {
 	    if (MR_agc_debug) {
-		printlabel(MR_redoip_slot(max_frame));
+		MR_printlabel(stderr, MR_redoip_slot(max_frame));
 		fflush(NULL);
 	    }
 	    stack_pointer = MR_tmp_detfr_slot(max_frame); /* XXX ??? */
 	} else {
 	    if (MR_agc_debug) {
-		printlabel(MR_redoip_slot(max_frame));
+		MR_printlabel(stderr, MR_redoip_slot(max_frame));
 		fflush(NULL);
 	    }
 	}
 	label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
+	stack_pointer = NULL; /* XXX ??? */
 
 	if (label != NULL) {
 		int short_var_count, long_var_count;
@@ -657,7 +688,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         fprintf(stderr, "Clearing old heap:\n");
 
         {
-	    Word *tmp_hp;
+	    MR_Word *tmp_hp;
 
 	    for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
 		*tmp_hp = 0xDEADBEAF;

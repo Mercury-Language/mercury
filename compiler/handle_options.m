@@ -850,9 +850,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% `trace' stack layouts need `procid' stack layouts
 	option_implies(trace_stack_layout, procid_stack_layout, bool(yes)),
 
-	% --gc accurate for the LLDS back-end (not yet implemented...)
-	% requires `agc' stack layouts, typeinfo liveness, and
-	% needs hijacks and frameopt to be switched off.
+	% --gc accurate for the LLDS back-end requires `agc' stack layouts,
+	% typeinfo liveness, and needs hijacks, frameopt, and middle recursion
+	% optimization to be switched off.
+	% We also turn off optimization of stack slots for no_return calls,
+	% because that optimization does not preserve agc typeinfo liveness.
+	%
 	% For the MLDS back-end, `--gc accurate' requires just typeinfo
 	% liveness.
 	%
@@ -871,7 +874,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%      GC occurs. A better method would be to just allocate a
 	%      word of heap space at each choice point.
 	%
-	% XXX currently accurate GC also requires disabling the higher-order
+	% XXX for the MLDS back-end,
+	% accurate GC currently also requires disabling the higher-order
 	% specialization pass, since that pass creates procedures
 	% which don't respect left-to-right scoping of type_info parameters,
 	% i.e. in which a parameter X may have a type whose type_info var
@@ -883,11 +887,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(body_typeinfo_liveness, bool(yes)),
 		globals__io_set_option(allow_hijacks, bool(no)),
 		globals__io_set_option(optimize_frames, bool(no)),
+		globals__io_set_option(opt_no_return_calls, bool(no)),
+		globals__io_set_option(middle_rec, bool(no)),
 		globals__io_set_option(
 			reclaim_heap_on_semidet_failure, bool(no)),
 		globals__io_set_option(
 			reclaim_heap_on_nondet_failure, bool(no)),
-		globals__io_set_option(optimize_higher_order, bool(no))
+		option_implies(highlevel_code, optimize_higher_order, bool(no))
 	;
 		[]
 	),
