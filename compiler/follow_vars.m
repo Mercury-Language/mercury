@@ -157,6 +157,11 @@ find_follow_vars_in_goal_2(unify(A,B,C,D,E), ArgsMethod, _ModuleInfo,
 		arg_info__unify_arg_info(ArgsMethod, CodeModel, ArgInfo),
 		find_follow_vars_from_arginfo(ArgInfo, [A, BVar], FollowVars)
 	;
+		D = assign(LVar, RVar),
+		map__search(FollowVars0, LVar, DesiredLoc)
+	->
+		map__set(FollowVars0, RVar, DesiredLoc, FollowVars)
+	;
 		FollowVars = FollowVars0
 	).
 

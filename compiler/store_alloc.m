@@ -95,21 +95,21 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 		;
 			set__to_sorted_list(Liveness, LiveVarList)
 		),
-		store_alloc_allocate_storage(LiveVarList, 1, FollowVars,
+		store_alloc_allocate_storage(LiveVarList, FollowVars,
 			StoreMap),
 		Goal = disj(Disjuncts, StoreMap)
 	;
 		Goal1 = switch(Var, CanFail, Cases, FollowVars)
 	->
 		set__to_sorted_list(Liveness, LiveVarList),
-		store_alloc_allocate_storage(LiveVarList, 1, FollowVars,
+		store_alloc_allocate_storage(LiveVarList, FollowVars,
 			StoreMap),
 		Goal = switch(Var, CanFail, Cases, StoreMap)
 	;
 		Goal1 = if_then_else(Vars, Cond, Then, Else, FollowVars)
 	->
 		set__to_sorted_list(Liveness, LiveVarList),
-		store_alloc_allocate_storage(LiveVarList, 1, FollowVars,
+		store_alloc_allocate_storage(LiveVarList, FollowVars,
 			StoreMap),
 		Goal = if_then_else(Vars, Cond, Then, Else, StoreMap)
 	;
@@ -254,12 +254,35 @@ initial_liveness_2([Var - Mode | VarModes], ModuleInfo, Liveness0, Liveness) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_allocate_storage(list(var), int,
-	map(var, lval), map(var, lval)).
-:- mode store_alloc_allocate_storage(in, in, in, out) is det.
+:- pred store_alloc_allocate_storage(list(var), map(var, lval), map(var, lval)).
+:- mode store_alloc_allocate_storage(in, in, out) is det.
 
-store_alloc_allocate_storage([], _N, StoreMap, StoreMap).
-store_alloc_allocate_storage([Var | Vars], N0, StoreMap0, StoreMap) :-
+store_alloc_allocate_storage(LiveVars, FollowVars, StoreMap) :-
+	map__keys(FollowVars, FollowKeys),
+	store_alloc_remove_nonlive(FollowKeys, LiveVars, FollowVars, StoreMap0),
+	store_alloc_allocate_extras(LiveVars, 1, StoreMap0, StoreMap).
+
+:- pred store_alloc_remove_nonlive(list(var), list(var),
+	map(var, lval), map(var, lval)).
+:- mode store_alloc_remove_nonlive(in, in, in, out) is det.
+
+store_alloc_remove_nonlive([], LiveVars, StoreMap, StoreMap).
+store_alloc_remove_nonlive([Var | Vars], LiveVars, StoreMap0, StoreMap) :-
+	(
+		list__member(Var, LiveVars)
+	->
+		StoreMap1 = StoreMap0
+	;
+		map__delete(StoreMap0, Var, StoreMap1)
+	),
+	store_alloc_remove_nonlive(Vars, LiveVars, StoreMap1, StoreMap).
+
+:- pred store_alloc_allocate_extras(list(var), int,
+	map(var, lval), map(var, lval)).
+:- mode store_alloc_allocate_extras(in, in, in, out) is det.
+
+store_alloc_allocate_extras([], _N, StoreMap, StoreMap).
+store_alloc_allocate_extras([Var | Vars], N0, StoreMap0, StoreMap) :-
 	(
 		map__contains(StoreMap0, Var)
 	->
@@ -270,7 +293,7 @@ store_alloc_allocate_storage([Var | Vars], N0, StoreMap0, StoreMap) :-
 		next_free_reg(N0, Values, N1),
 		map__set(StoreMap0, Var, reg(r(N1)), StoreMap1)
 	),
-	store_alloc_allocate_storage(Vars, N1, StoreMap1, StoreMap).
+	store_alloc_allocate_extras(Vars, N1, StoreMap1, StoreMap).
 
 %-----------------------------------------------------------------------------%
 
