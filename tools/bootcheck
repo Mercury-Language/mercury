@@ -505,7 +505,7 @@ then
 	unset MMAKE_VPATH
 	unset MMAKE_DIR
 
-	if (cd stage2 && mmake $mmake_opts $jfactor all)
+	if (cd stage2 && mmake $mmake_opts MMAKEFLAGS=$jfactor all)
 	then
 		echo "building of stage 2 successful"
 	else
