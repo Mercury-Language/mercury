@@ -215,7 +215,9 @@ libmmc:		libmercury_compile.a mercury_compile_init.$O
 # But we want to make sure that the GCC back-end continues to compile,
 # even when the compiler was configured without the GCC back-end.
 # So we include the following rules, which tell Mmake to build the
-# dependencies for mlds_to_gcc and to build mlds_to_gcc.err and gcc.err.
+# dependencies for mlds_to_gcc and to build mlds_to_gcc.c and gcc.c.
+# (We used to just build mlds_to_gcc.err, but that caused bootstrapping problems
+# with the source distribution; using the .c files is little more robust.)
 
 .PHONY: depend
 depend:		mlds_to_gcc.depend
@@ -223,7 +225,10 @@ depend:		mlds_to_gcc.depend
 mlds_to_gcc.depend: regenerate_preprocessed_files
 
 .PHONY: mercury
-mercury:	mlds_to_gcc.err gcc.err
+mercury:	$(cs_subdir)mlds_to_gcc.c $(cs_subdir)gcc.c
+
+.PHONY: cs
+cs: 		$(cs_subdir)mlds_to_gcc.c $(cs_subdir)gcc.c
 
 #-----------------------------------------------------------------------------#
 
