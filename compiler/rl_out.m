@@ -965,7 +965,23 @@ rl_out__generate_instr(project(Output, Input, Cond0,
 		),
 
 		rl_out__generate_exprn(Cond0, OutputSchemaOffset, CondExprn),
+
+		%
+		% Initialise the other output relations.
+		%
 		{ assoc_list__keys(OtherOutputs, OtherOutputRels) },
+		list__map_foldl(
+		    (pred(TheOutput::in, RelInitCode::out, in, out) is det -->
+			rl_out__generate_instr(init(TheOutput) - "",
+				RelInitCode)
+		    ),
+		    OtherOutputRels, OtherOutputInitCodeList),
+		{ list__foldl(
+		    (pred(InitCode::in, Tree0::in, Tree::out) is det :-
+			Tree = tree(Tree0, InitCode)
+		    ),
+		    OtherOutputInitCodeList, empty, OtherOutputInitCode) },
+
 		{ list__map(rl__output_rel_relation,
 			OtherOutputRels, OtherOutputRelations ) },
 		rl_out__get_rel_var_list(OtherOutputRelations, VarListCode),
@@ -979,7 +995,8 @@ rl_out__generate_instr(project(Output, Input, Cond0,
 			tree(ExprnListCode,
 			node([rl_PROC_expr_list_nil])
 		))))) },
-		rl_out__generate_stream_instruction(Output, InstrCode, Code)
+		rl_out__generate_stream_instruction(Output, InstrCode, Code0),
+		{ Code = tree(OtherOutputInitCode, Code0) }
 	).
 rl_out__generate_instr(union(Output, Inputs, Type) - _, Code) -->
 	{ UnionCode = rl_PROC_union_sm },
@@ -1007,12 +1024,15 @@ rl_out__generate_instr(
 	{ InstrCode =
 		tree(node([
 			rl_PROC_uniondiff_btree,
-			rl_PROC_indexed_var(DiInputAddr, 0, IndexConst),
-			rl_PROC_setrel(UoOutputAddr, DiInputAddr)
+			rl_PROC_indexed_var(DiInputAddr, 0, IndexConst)
 		]),
 		StreamCode
 	) },
-	rl_out__generate_stream_instruction(Diff, InstrCode, Code).
+	rl_out__generate_stream_instruction(Diff, InstrCode, Code0),
+	{ Code =
+		tree(Code0,
+		node([rl_PROC_setrel(UoOutputAddr, DiInputAddr)])
+	) }.
 rl_out__generate_instr(sort(Output, Input, Attrs) - _, Code) -->
 	rl_out__generate_stream(Input, StreamCode),
 	rl_out_info_get_output_relation_schema(Output, OutputSchema),
