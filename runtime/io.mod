@@ -291,25 +291,63 @@ mercury__string__to_int_list_2_0:
 	}
 	proceed();
 
+/*-----------------------------------------------------------------------*/
+
 mercury__string__to_int_list_2_1:
 		/* mode (out, in) is det */
-	r1 = r2;
-	{ extern EntryPoint ENTRY(mercury__list__length_2_0);
-	  call(ENTRY(mercury__list__length_2_0),
-		LABEL(mercury__string__to_int_list_2_1_i1)); }
-mercury__string__to_int_list_2_1_i1:
-	r2 = (int)hp;
-	incr_hp(r1);
+/*
+** save int_list in r3;
+*/
+	r3 = r2;
+/*
+** loop to calculate list length + 4 in r4 using list in r2
+*/
+	r4 = 4;
+	GOTO_LABEL(mercury__string__to_int_list_2_1_i4);
+mercury__string__to_int_list_2_1_i3:
+	r2 = field(TAG_CONS, r2, 1);
+	r4 = ((int) r4 + 1);
+mercury__string__to_int_list_2_1_i4:
+	if (r2 != mkword(TAG_NIL, mkbody(0)))
+		GOTO_LABEL(mercury__string__to_int_list_2_1_i3);
+/*
+** allocate (length + 1) bytes of heap space for string
+** i.e. (length + 4) / 4 words
+*/
+	r1 = (int)hp;
+	incr_hp(r4 / 4);
+/*
+** loop to copy the characters from the int_list to the string
+*/
+	r4 = 0;
+	GOTO_LABEL(mercury__string__to_int_list_2_1_i5);
+mercury__string__to_int_list_2_1_i6:
+	((char *) r1) [r4] = (char) field(TAG_CONS, r3, 0);
+	r4 = ((int) r4 + 1);
+	r3 = field(TAG_CONS, r3, 1);
+mercury__string__to_int_list_2_1_i5:
+	if (r3 != mkword(TAG_NIL, mkbody(0)))
+		GOTO_LABEL(mercury__string__to_int_list_2_1_i6);
+/*
+** null terminate the string and return
+*/
+	((char *) r1) [r4] = '\0';
+	proceed();
+
+/*-----------------------------------------------------------------------*/
 
 mercury__string__to_int_list_2_2:
 		/* mode (in, in) is semidet */
-	incr_sp(1);
-	detstackvar(1) = r2;
+	incr_sp(2);
+	detstackvar(1) = (int) succip;
+	detstackvar(2) = r2;
 	r2 = r3;
 	localcall(mercury__string__to_int_list_2_1,
 		LABEL(mercury__string__to_int_list_2_2_i1));
 mercury__string__to_int_list_2_2_i1:
-	r1 = string_equal(r1, detstackvar(1));
+	r1 = string_equal(r1, detstackvar(2));
+	LVALUE_CAST(Word,succip) = (int) detstackvar(1);
+	decr_sp(1);
 	proceed();
 		
 /* XXX The following predicates have not yet been implemented! */
