@@ -401,6 +401,24 @@
 :- pred io__set_globals(univ, io__state, io__state).
 :- mode io__set_globals(in, di, uo) is det.
 
+% The following predicates provide an interface to the environment list.
+% Do not attempt to put spaces or '=' signs in the names of environment
+% variables, or bad things may result!
+
+:- pred io__get_environment_var(string, maybe(string), io__state, io__state).
+:- mode io__get_environment_var(in, out, di, uo) is det.
+	% First argument is the name of the environment variable.
+	% Returns yes(Value) if the variable was set (Value will
+	% be set to the value of the variable) and no if the
+	% variable was not set.
+
+:- pred io__set_environment_var(string, string, io__state, io__state).
+:- mode io__set_environment_var(in, in, di, uo) is det.
+	% First argument is the name of the environment variable,
+	% second argument is the value to be assigned to that
+	% variable.  Will abort if the system runs out of environment
+	% space.
+
 %-----------------------------------------------------------------------------%
 
 % Memory management predicates.
@@ -463,7 +481,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, dir.
+:- import_module map, dir, require.
 
 :- type io__state
 	---> 	io__state(
@@ -530,6 +548,19 @@
 %		Attempts to open a file for appending.
 %		Result is 0 for success, -1 for failure.
 
+:- pred io__getenv(string, string).
+:- mode io__getenv(in, out) is semidet.
+%	io__getenv(Var, Value).
+%		Gets the value Value associated with the environment
+%		variable Var.  Fails if the variable was not set.
+
+:- pred io__putenv(string).
+:- mode io__putenv(in) is semidet.
+%	io__putenv(VarString).
+%		If VarString is a string of the form "name=value",
+%		sets the environment variable name to the specified
+%		value.  Fails if the operation does not work.
+
 /* Many of these predicates are implemented using either non-logical
    NU-Prolog code in io.nu.nl, or C code in code/io.mod.
 */
@@ -568,6 +599,8 @@
 :- external(io__command_line_arguments/3).
 :- external(io__get_exit_status/3).
 :- external(io__set_exit_status/3).
+:- external(io__getenv/2).
+:- external(io__putenv/1).
 :- external(io__call_system_code/4).
 :- external(io__gc_call/3).
 :- external(io__preallocate_heap_space/3).
@@ -872,6 +905,31 @@ io__set_globals(Globals, io__state(A, B, C, _, E),
 io__progname_base(DefaultName, PrognameBase) -->
 	io__progname(DefaultName, Progname),
 	{ dir__basename(Progname, PrognameBase) }.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% environment interface predicates
+
+io__get_environment_var(Var, OptValue) -->
+	( { io__getenv(Var, Value) } ->
+	    { OptValue0 = yes(Value) }
+	;
+	    { OptValue0 = no }
+	),
+	{ OptValue = OptValue0 }.
+
+io__set_environment_var(Var, Value) -->
+	{ string__format("%s=%s", [s(Var), s(Value)], EnvString) },
+	( { io__putenv(EnvString) } ->
+	    []
+	;
+	    % XXX What is good behaviour here?
+
+	    { string__format("Could not set environment variable %s",
+				[s(Var)], Message) },
+	    { error(Message) }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
