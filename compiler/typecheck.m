@@ -1243,6 +1243,7 @@ check_undefined_types(Module, Module) -->
 	{ moduleinfo_types(Module, TypeDefns) },
 	{ map__keys(TypeDefns, TypeIds) },
 	find_undef_type_bodies(TypeIds, TypeDefns),
+	io__report_stats,
 	{ moduleinfo_preds(Module, Preds) },
 	{ moduleinfo_predids(Module, PredIds) },
 	find_undef_pred_types(PredIds, Preds, TypeDefns).
@@ -1507,6 +1508,9 @@ is_builtin_atomic_type(QualifiedName - 0) :-
 
 :- pred is_builtin_atomic_type_2(string).
 :- mode is_builtin_atomic_type_2(input).
+
+:- is_builtin_atomic_type_2([]) when ever.
+:- is_builtin_atomic_type_2([X|Xs]) when X.
 
 is_builtin_atomic_type_2("int").
 is_builtin_atomic_type_2("float").
