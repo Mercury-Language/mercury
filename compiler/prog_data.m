@@ -611,7 +611,7 @@
 			% one day we might allow types to take
 			% value parameters as well as type parameters.
 
-% type_defn/3 define above
+% type_defn/3 is defined above as a constructor for item/0
 
 :- type type_defn	
 	--->	du_type(sym_name, list(type_param), list(constructor),
