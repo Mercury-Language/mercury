@@ -134,11 +134,8 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% Grab the final instmap, compute the change in insts
 	% over this goal, and save that instmap_delta in the goal_info.
 	%
-	mode_info_get_instmap(ModeInfo, InstMap),
-	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals,
-		ModeInfo4, ModeInfo),
-	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
-	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo),
+	compute_goal_instmap_delta(InstMap0, GoalExpr,
+		GoalInfo0, GoalInfo, ModeInfo4, ModeInfo),
 
 	Goal = GoalExpr - GoalInfo.
 

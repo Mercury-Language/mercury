@@ -388,6 +388,8 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 					% type variables to variables
 					% where their type_info is
 					% stored.
+		bool,			% Does the goal need to be
+					% requantified?
 		bool			% Did we change the determinism
 					% of any subgoal?
 	).
@@ -417,23 +419,36 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_typeinfo_varmap(ProcInfo0, TypeInfoVarMap0),
 
+	Requantify0 = no,
 	DetChanged0 = no,
 
 	InlineInfo0 = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo0, UnivQTVars, Markers,
-		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DetChanged0),
+		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
+		Requantify0, DetChanged0),
 
 	inlining__inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
-	InlineInfo = inline_info(_, _, _, _, _, _, VarSet, VarTypes, TypeVarSet, 
-		TypeInfoVarMap, DetChanged),
+	InlineInfo = inline_info(_, _, _, _, _, _, VarSet, VarTypes,
+		TypeVarSet, TypeInfoVarMap, Requantify, DetChanged),
 
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
 
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
 	proc_info_set_typeinfo_varmap(ProcInfo2, TypeInfoVarMap, ProcInfo3),
-	proc_info_set_goal(ProcInfo3, Goal, ProcInfo),
+	proc_info_set_goal(ProcInfo3, Goal, ProcInfo4),
+
+	globals__io_get_globals(Globals, IoState0, IoState),
+	(
+		Requantify = yes,
+		body_should_use_typeinfo_liveness(PredInfo1, Globals,
+			TypeInfoLiveness),
+		requantify_proc(TypeInfoLiveness, ProcInfo4, ProcInfo)
+	;
+		Requantify = no,
+		ProcInfo = ProcInfo4
+	),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
@@ -444,13 +459,13 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		% then we re-run determinism analysis, because
 		% propagating the determinism information through
 		% the procedure may lead to more efficient code.
-	( DetChanged = yes,	
-		globals__io_get_globals(Globals, IoState0, IoState),
+	(
+		DetChanged = yes,	
 		det_infer_proc(PredId, ProcId, ModuleInfo1, ModuleInfo,
 			Globals, _, _, _)
-	; DetChanged = no,
-		ModuleInfo = ModuleInfo1,
-		IoState = IoState0
+	;
+		DetChanged = no,
+		ModuleInfo = ModuleInfo1
 	).
 
 %-----------------------------------------------------------------------------%
@@ -493,7 +508,8 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 
 	InlineInfo0 = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
-		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DetChanged0),
+		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
+		Requantify0, DetChanged0),
 
 	% should we inline this call?
 	(
@@ -518,6 +534,17 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 			TypeVarSet0, TypeVarSet, TypeInfoVarMap0, 
 			TypeInfoVarMap, Goal - GoalInfo),
 
+			%
+			% If some of the output variables are not used in
+			% the calling procedure, requantify the procedure.
+			%
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		( set__list_to_set(ArgVars) = NonLocals ->
+			Requantify = Requantify0
+		;
+			Requantify = yes
+		),
+
 			% If the inferred determinism of the called
 			% goal differs from the declared determinism,
 			% flag that we should re-run determinism analysis
@@ -536,11 +563,13 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		VarTypes = VarTypes0,
 		TypeVarSet = TypeVarSet0,
 		TypeInfoVarMap = TypeInfoVarMap0,
+		Requantify = Requantify0,
 		DetChanged = DetChanged0
 	),
 	InlineInfo = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
-		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DetChanged).
+		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap,
+		Requantify, DetChanged).
 
 inlining__inlining_in_goal(generic_call(A, B, C, D) - GoalInfo,
 		generic_call(A, B, C, D) - GoalInfo) --> [].
@@ -558,7 +587,7 @@ inlining__inlining_in_goal(bi_implication(_, _) - _, _) -->
 
 %-----------------------------------------------------------------------------%
 
-inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo, 
+inlining__do_inline_call(_, ArgVars, PredInfo, ProcInfo, 
 		VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet, 
 		TypeInfoVarMap0, TypeInfoVarMap, Goal) :-
 
@@ -610,6 +639,12 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 	map__apply_to_list(ArgVars, VarTypes0, ArgTypes),
 
 	pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
+
+	% Typechecking has already succeeded, so we don't need
+	% to check for binding of head type parameters.
+	% Also, existentially-typed head type parameters
+	% may be bound by inlining.
+	HeadTypeParams = [],
 	inlining__get_type_substitution(HeadTypes, ArgTypes, HeadTypeParams,
 		CalleeExistQVars, TypeSubn),
 

@@ -44,6 +44,7 @@ OTHER_SOURCES= \
 	complicated_unify.m \
 	constructor_arg_names.m \
 	dcg_test.m \
+	deforest_bug.m \
 	deforest_loop.m \
 	deforest_rerun_det.m \
 	det_condition.m \
@@ -214,6 +215,7 @@ MCFLAGS-base_relation		= --aditi
 MCFLAGS-base_relation2		= --aditi
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-context_anc		= --aditi
+MCFLAGS-deforest_bug		= -O3
 MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
 MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 MCFLAGS-double_vn		= -O4

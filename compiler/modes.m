@@ -253,6 +253,16 @@ a variable live if its value will be used later on in the computation.
 :- pred modecheck_functor_test(prog_var, cons_id, mode_info, mode_info).
 :- mode modecheck_functor_test(in, in, mode_info_di, mode_info_uo) is det.
 
+	% compute_goal_instmap_delta(InstMap0, Goal,
+	%	GoalInfo0, GoalInfo, ModeInfo0, ModeInfo).
+	%
+	% Work out the instmap_delta for a goal from
+	% the instmaps before and after the goal.
+:- pred compute_goal_instmap_delta(instmap, hlds_goal_expr,
+		hlds_goal_info, hlds_goal_info, mode_info, mode_info).
+:- mode compute_goal_instmap_delta(in, in, in, out,
+		mode_info_di, mode_info_uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 % The following predicates are used by modecheck_unify.m.
@@ -973,10 +983,21 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 
 	modecheck_goal_expr(Goal0, GoalInfo0, Goal, ModeInfo1, ModeInfo2),
 
-	mode_info_get_instmap(ModeInfo, InstMap),
-	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals,
-		ModeInfo2, ModeInfo),
-	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
+	compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo,
+		ModeInfo2, ModeInfo).
+
+compute_goal_instmap_delta(InstMap0, Goal,
+		GoalInfo0, GoalInfo, ModeInfo0, ModeInfo) :-
+	( Goal = conj([]) ->
+		instmap_delta_init_reachable(DeltaInstMap),
+		mode_info_set_instmap(InstMap0, ModeInfo0, ModeInfo)
+	;
+		mode_info_get_completed_nonlocals(GoalInfo0, NonLocals,
+			ModeInfo0, ModeInfo),
+		mode_info_get_instmap(ModeInfo, InstMap),
+		compute_instmap_delta(InstMap0, InstMap,
+			NonLocals, DeltaInstMap)
+	),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
 
 modecheck_goal_expr(conj(List0), GoalInfo0, Goal) -->
