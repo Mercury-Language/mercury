@@ -3058,6 +3058,12 @@ Output detailed debugging traces of Aditi-RL optimization
 (@pxref{Using Aditi}).
 @end ifset
 @c aditi
+
+@sp 1
+@item --debug-liveness <n>
+Output detailed debugging traces of the liveness analysis
+of the predicate with the given predicate id.
+
 @end table
 
 @node Output options

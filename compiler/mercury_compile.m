@@ -1448,7 +1448,8 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	),
 	write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
 		ModuleInfo3),
-	{ detect_liveness_proc(ProcInfo3, PredId, ModuleInfo3, ProcInfo4) },
+	detect_liveness_proc(PredId, ProcId, ModuleInfo3,
+		ProcInfo3, ProcInfo4),
 	write_proc_progress_message("% Allocating stack slots in ", PredId,
 		                ProcId, ModuleInfo3),
 	{ allocate_stack_slots_in_proc(ProcInfo4, PredId, ModuleInfo3,
@@ -2175,7 +2176,7 @@ mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing liveness...\n"),
 	maybe_flush_output(Verbose),
 	process_all_nonimported_nonaditi_procs(
-		update_proc_predid(detect_liveness_proc),
+		update_proc_io(detect_liveness_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).

@@ -77,6 +77,7 @@
 		;	debug_rl_gen
 		;	debug_rl_opt
 		;	debug_il_asm	% il_asm = IL generation via asm
+		;	debug_liveness
 	% Output options
 		;	make_short_interface
 		;	make_interface
@@ -488,7 +489,8 @@ option_defaults_2(verbosity_option, [
 	debug_pd		-	bool(no),
 	debug_rl_gen		-	bool(no),
 	debug_rl_opt		-	bool(no),
-	debug_il_asm		-	bool(no)
+	debug_il_asm		-	bool(no),
+	debug_liveness		-	int(-1)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -516,10 +518,7 @@ option_defaults_2(aux_output_option, [
 	trace_table_io		-	bool(no),
 	trace_table_io_states	-	bool(no),
 	suppress_trace		-	string(""),
-		% XXX delay_death should be enabled by default,
-		% but currently it is disabled because it is broken --
-		% it fails on tests/hard_coded/erroneous_liveness.m.
-	delay_death		-	bool(no),
+	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
@@ -890,6 +889,7 @@ long_option("debug-rl-opt",		debug_rl_opt).
 	% is executed.  It is a temporary measure until the IL debugging
 	% system built into .NET improves.
 long_option("debug-il-asm",		debug_il_asm).
+long_option("debug-liveness",		debug_liveness).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
@@ -1682,7 +1682,10 @@ options_help_verbosity -->
 		"--debug-rl-gen",
 		"\tOutput detailed debugging traces of Aditi-RL code generation.",
 		"--debug-rl-opt",
-		"\tOutput detailed debugging traces of Aditi-RL optimization."
+		"\tOutput detailed debugging traces of Aditi-RL optimization.",
+		"--debug-liveness <pred_id>",
+		"\tOutput detailed debugging traces of the liveness analysis",
+		"\tof the predicate with the given predicate id."
 	]).
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
