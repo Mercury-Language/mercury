@@ -37,6 +37,7 @@
 #
 # Environment variables: MERCURY_C_INCL_DIR, MERCURY_DEFAULT_GRADE.
 
+FULLARCH=@FULLARCH@
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
@@ -151,7 +152,7 @@ esac
 #
 
 ARCH_OPTS=""
-case @FULLARCH@ in
+case "$FULLARCH" in
 	i?86-*)
 		# on the 386, we need `-fno-omit-frame-pointer' and
 		# `-fno-builtin' to make global register variables work
@@ -172,6 +173,21 @@ LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
 				ARCH_OPTS="-non_shared -mno-abicalls"
 				AS_OPTS="-non_shared"
 			;;
+		esac
+		;;
+esac
+
+#
+# Kludge for gcc-2.6.3 bug on mips: if you use gcc global registers and -O2,
+# gcc 2.6.3 gets an internal error compiling library/int.c.
+# As a work-around, we compile that file with -O1.
+#
+case "$FULLARCH" in
+	mips*)
+		case "$*" in
+			*" int.c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1"
+				;;
 		esac
 		;;
 esac
