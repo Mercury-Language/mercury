@@ -278,7 +278,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	->
 		det__disj_to_ite(Disjuncts, GoalInfo0, Goal2),
 		implicitly_quantify_goal(Goal2 - GoalInfo0, NonLocalVars,
-			GoalPair3, _),
+			GoalPair3),
 		det_infer_goal(GoalPair3, InstMap0, MiscInfo,
 			Goal - GoalInfo1, _, NewDetism),
 		( Detism = NewDetism ->
