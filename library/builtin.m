@@ -313,7 +313,7 @@ const struct mercury_data___type_ctor_layout_hp_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_hp_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE))
+		mkbody(MR_TYPE_CTOR_LAYOUT_HP_VALUE))
 };
 
 	/* type_ctor_layout for `curfr' (only used by accurate gc) */
@@ -640,7 +640,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_succip_0_struct {
 	(const Word *) & mercury_data___type_ctor_functors_succip_0,
 	(const Word *) & mercury_data___type_ctor_layout_succip_0,
 	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""succip"", 4)
+	(const Word *) string_const(""succip"", 6)
 #endif
 };
 
@@ -669,7 +669,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_hp_0_struct {
 	(const Word *) & mercury_data___type_ctor_functors_hp_0,
 	(const Word *) & mercury_data___type_ctor_layout_hp_0,
 	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""hp"", 4)
+	(const Word *) string_const(""hp"", 2)
 #endif
 };
 
@@ -698,7 +698,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_curfr_0_struct {
 	(const Word *) & mercury_data___type_ctor_functors_curfr_0,
 	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
 	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""curfr"", 4)
+	(const Word *) string_const(""curfr"", 5)
 #endif
 };
 
@@ -727,7 +727,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_maxfr_0_struct {
 	(const Word *) & mercury_data___type_ctor_functors_maxfr_0,
 	(const Word *) & mercury_data___type_ctor_layout_maxfr_0,
 	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""maxfr"", 4)
+	(const Word *) string_const(""maxfr"", 5)
 #endif
 };
 
@@ -756,7 +756,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redoip_0_struct {
 	(const Word *) & mercury_data___type_ctor_functors_redoip_0,
 	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
 	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""redoip"", 4)
+	(const Word *) string_const(""redoip"", 6)
 #endif
 };
 
@@ -785,7 +785,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redofr_0_struct {
 	(const Word *) & mercury_data___type_ctor_functors_redofr_0,
 	(const Word *) & mercury_data___type_ctor_layout_redofr_0,
 	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""redofr"", 4)
+	(const Word *) string_const(""redofr"", 6)
 #endif
 };
 
