@@ -2612,10 +2612,18 @@ Set @samp{MERCURY_OPTIONS} to @samp{-h} for help.
 @sp 1
 @item MERCURY_C_INCL_DIR
 Directory for the C header files for the Mercury runtime system (@file{*.h}).
+This environment variable is used
+only to define the default value of MERCURY_ALL_C_INCL_DIRS,
+so if you define that environment variable separately,
+the value of MERCURY_C_INCL_DIR is ignored.
 
 @sp 1
-@item MERCURY_GC_INCL_DIR
-Directory for the C header files for the Mercury garbage collector (@file{*.h}).
+@item MERCURY_ALL_C_INCL_DIRS
+A list of options for the C compiler that specifies
+all the directories the C compiler should search for the C header files
+of the Mercury runtime system and garbage collector.
+The default value of this option is -I$MERCURY_C_INCL_DIR,
+since usually all these header files are installed in one directory.
 
 @sp 1
 @item MERCURY_INT_DIR
