@@ -369,7 +369,6 @@
 		;	reclaim_heap_on_failure
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
-		;	lazy_code
 		;	have_delay_slot
 		;	num_real_r_regs
 		;	num_real_f_regs
@@ -474,7 +473,6 @@
 		;	static_ground_terms
 		;	middle_rec
 		;	simple_neg
-		;	follow_vars
 		;	allow_hijacks
 	%	- MLDS
 		;	optimize_tailcalls
@@ -932,7 +930,6 @@ option_defaults_2(code_gen_option, [
 	low_level_debug		-	bool(no),
 	trad_passes		-	bool(yes),
 	polymorphism		-	bool(yes),
-	lazy_code		-	bool(no),
 	reclaim_heap_on_failure	-	bool_special,
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
@@ -1060,7 +1057,6 @@ option_defaults_2(optimization_option, [
 	static_ground_terms	-	bool(no),
 	middle_rec		-	bool(no),
 	simple_neg		-	bool(no),
-	follow_vars		-	bool(no),
 	allow_hijacks		-	bool(yes),
 % MLDS
 	optimize_tailcalls	- 	bool(no),
@@ -1551,7 +1547,6 @@ long_option("rtti-line-numbers",	rtti_line_numbers).
 long_option("low-level-debug",		low_level_debug).
 long_option("polymorphism",		polymorphism).
 long_option("trad-passes",		trad_passes).
-long_option("lazy-code",		lazy_code).
 long_option("reclaim-heap-on-failure",	reclaim_heap_on_failure).
 long_option("reclaim-heap-on-semidet-failure",
 					reclaim_heap_on_semidet_failure).
@@ -1701,7 +1696,6 @@ long_option("binary-switch-size",	binary_switch_size).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("middle-rec",		middle_rec).
 long_option("simple-neg",		simple_neg).
-long_option("follow-vars",		follow_vars).
 long_option("allow-hijacks",		allow_hijacks).
 
 % MLDS optimizations
@@ -2217,7 +2211,6 @@ opt_level(1, OptionTable, [
 	c_optimize		-	bool(yes),	% XXX we want `gcc -O1'
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(DelaySlot),
-	follow_vars		-	bool(yes),
 	middle_rec		-	bool(yes),
 	emit_c_loops		-	bool(yes),
 	optimize_tailcalls	-	bool(yes)
@@ -3562,9 +3555,7 @@ options_help_hlds_llds_optimization -->
 		"--no-middle-rec",
 		"\tDisable the middle recursion optimization.",
 		"--no-simple-neg",
-		"\tDon't generate simplified code for simple negations.",
-		"--no-follow-vars",
-		"\tDon't optimize the assignment of registers in branched goals."
+		"\tDon't generate simplified code for simple negations."
 %		"--no-allow-hijacks",
 %		"\tDo not generate code in which a procedure hijacks",
 %		"\ta nondet stack frame that possibly belongs to",

@@ -55,7 +55,6 @@
    :- include_module trace.
 
    :- include_module code_info.
-   :- include_module code_exprn.
    :- include_module exprn_aux.
    :- include_module code_aux. % XXX
    :- include_module continuation_info.

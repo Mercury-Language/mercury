@@ -422,8 +422,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% currently in r1 elsewhere, so that the C code can assign to
 	% SUCCESS_INDICATOR without clobbering anything important.
 	%
-	% With --no-lazy-code, the call to code_info__reserve_r1 will have
-	% reserved r1, ensuring that none of InArgs is placed there, and
+	% The call to code_info__reserve_r1 will have reserved r1,
+	% ensuring that none of InArgs is placed there, and
 	% code_info__clear_r1 just releases r1. This reservation of r1
 	% is not strictly necessary, as we generate assignments from
 	% the input registers to C variables before we invoke code that could

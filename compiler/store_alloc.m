@@ -63,11 +63,7 @@
 
 allocate_store_maps(RunType, ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, follow_vars, ApplyFollowVars),
-	(
-		RunType = final_allocation,
-		ApplyFollowVars = yes
-	->
+	( RunType = final_allocation ->
 		proc_info_goal(ProcInfo0, Goal0),
 
 		find_final_follow_vars(ProcInfo0,
@@ -94,10 +90,8 @@ allocate_store_maps(RunType, ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	),
 	arg_info__build_input_arg_list(ProcInfo0, InputArgLvals),
 	LastLocns0 = initial_last_locns(InputArgLvals),
-	globals__lookup_int_option(Globals, num_real_r_regs, NumRealRRegs),
 	proc_info_stack_slots(ProcInfo0, StackSlots),
-	StoreAllocInfo = store_alloc_info(ModuleInfo, ApplyFollowVars,
-		NumRealRRegs, StackSlots),
+	StoreAllocInfo = store_alloc_info(ModuleInfo, StackSlots),
 	store_alloc_in_goal(Goal2, Liveness0, ResumeVars0, LastLocns0,
 		StoreAllocInfo, Goal, _, _),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
@@ -114,10 +108,6 @@ initial_last_locns([Var - Lval | VarLvals]) =
 :- type store_alloc_info
 	--->	store_alloc_info(
 			module_info		:: module_info,
-			done_follow_vars	:: bool,
-						% was follow_vars run?
-			num_real_r_regs		:: int,
-						% the number of real r regs
 			stack_slots		:: stack_slots
 						% maps each var to its stack
 						% slot (if it has one)
@@ -427,25 +417,14 @@ store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0, StoreAllocInfo,
 	;
 		% We have not yet allocated a slot for this variable,
 		% which means it is not in the follow vars (if any).
-		StoreAllocInfo = store_alloc_info(_, FollowVars, NumRealRRegs,
-			StackSlots),
+		StoreAllocInfo = store_alloc_info(_, StackSlots),
 		(
 			map__search(StackSlots, Var, StackSlot),
-			\+ set__member(StackSlot, SeenLvals0),
-			(
-				FollowVars = yes
-				% If follow_vars was run, then the only
-				% reason why a var would not be in the
-				% follow_vars set is if it was supposed to
-				% be in its stack slot.
-			;
-				FollowVars = no,
-				% If follow_vars was not run, then we
-				% prefer to put the variable in a register,
-				% provided it is a real register.
-				next_free_reg(N0, SeenLvals0, TentativeReg),
-				TentativeReg =< NumRealRRegs
-			)
+			\+ set__member(StackSlot, SeenLvals0)
+			% Follow_vars was run, so the only
+			% reason why a var would not be in the
+			% follow_vars set is if it was supposed to
+			% be in its stack slot.
 		->
 			Locn = StackSlot,
 			N1 = N0

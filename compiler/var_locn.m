@@ -1630,8 +1630,7 @@ var_locn__select_preferred_reg(Var, CheckInUse, Avoid, Lval) -->
 % CheckInUse = yes. If all else fails, we get spare, unused register.
 % (Note that if the follow_vars pass has not been run, then all follow vars
 % maps will be empty, which would cause this predicate to try to put far too
-% many things in stack slots. This is why the --no-lazy-code option implies
-% --follow-vars.)
+% many things in stack slots.)
 
 :- pred var_locn__select_preferred_reg_or_stack(prog_var::in, lval::out,
 	var_locn_info::in, var_locn_info::out) is det.

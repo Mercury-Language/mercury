@@ -19,11 +19,11 @@
  
 % The current implementation works out whether or not it can do a lookup
 % switch by generating code for each case and looking to see that no code
-% got generated (ie only the exprn cache got modified) and that the output
-% variables of the switch are all constants. This is potentially quite in-
-% efficient because it does the work of generating code for the cases and
-% then may throw it away if a subsequent case generates actual code, or non
-% constant outputs.
+% got generated (i.e. only the code generation state got modified) and that
+% the output variables of the switch are all constants. This is potentially
+% quite inefficient because it does the work of generating code for the cases
+% and then may throw it away if a subsequent case generates actual code, or
+% non constant outputs.
 
 % A potential improvement would be to make a single array for each switch,
 % since putting the values produced for each tag value side-by-side in
@@ -256,9 +256,6 @@ lookup_switch__get_case_rvals([Var | Vars], [Rval | Rvals]) -->
 	% true iff Rval is a constant. This depends on the options governing
 	% nonlocal gotos, asm labels enabled, and static ground terms, etc.
 :- pred lookup_switch__rval_is_constant(rval::in, exprn_opts::in) is semidet.
-
-	% Based on code_exprn__rval_is_constant, but differs in
-	% that it doesn't happen with respect to the expression cache.
 
 lookup_switch__rval_is_constant(const(Const), ExprnOpts) :-
 	exprn_aux__const_is_constant(Const, ExprnOpts, yes).

@@ -1245,17 +1245,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 :- pred postprocess_options_lowlevel(io__state::di, io__state::uo) is det.
 
 postprocess_options_lowlevel -->
-		% --no-lazy-code assumes that const(_) rvals are really
-		% constant, and that create(_) rvals with constant arguments
-		% can be materialized in an assignable rval without further
-		% code. For float_consts, the former is true only if either
-		% static_ground_terms or unboxed_floats is true, and the latter
-		% cannot be true without static_ground_terms.
-	option_neg_implies(lazy_code, static_ground_terms, bool(yes)),
-
-		% --no-lazy-code requires --follow-vars for acceptable
-		% performance.
-	option_neg_implies(lazy_code, follow_vars, bool(yes)),
+		% The low level code generator assumes that const(_) rvals are
+		% really constant, and that create(_) rvals with constant
+		% arguments can be materialized in an assignable rval without
+		% further code. For float_consts, the former is true only if
+		% either static_ground_terms or unboxed_floats is true, and
+		% the latter cannot be true without static_ground_terms.
+	option_neg_implies(highlevel_code, static_ground_terms, bool(yes)),
 
 		% --optimize-saved-vars-cell requires --use-local-vars for
 		% acceptable performance.

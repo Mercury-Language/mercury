@@ -811,23 +811,15 @@ The last HLDS-to-HLDS transformation implements deep profiling
 		<dt> code_info.m
 			<dd>
 			The main data structure for the code generator.
-		<dt> code_exprn.m
-			<dd>
-			This defines the exprn_info type, which is 
-			a sub-component of the code_info data structure
-			which holds the information about
-			the contents of registers and
-			the values/locations of variables.
-			It implements lazy code generation.
-		<dt> exprn_aux.m
-			<dd>
-			Various preds which use exprn_info.
 		<dt> var_locn.m
 			<dd>
-			This defines the var_locn type, which is an alternative
-			to code_exprn; like code_exprn, it keeps track of
-			the values and locations of variables.
+			This defines the var_locn type, which is a
+			sub-component of the code_info data structure;
+			it keeps track of the values and locations of variables.
 			It implements eager code generation.
+		<dt> exprn_aux.m
+			<dd>
+			Various utility predicates.
 		<dt> code_util.m
 			<dd>
 			Some miscellaneous preds used for code generation.
@@ -1271,6 +1263,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2003-03-18 02:43:47 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2003-05-07 00:50:25 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

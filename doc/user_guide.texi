@@ -6129,12 +6129,6 @@ Disable the middle recursion optimization.
 @findex --simple-neg
 Don't generate simplified code for simple negations.
 
-@sp 1
-@item --no-follow-vars
-@findex --follow-vars
-@findex --no-follow-vars
-Don't optimize the assignment of registers in branched goals.
-
 @end table
 
 @node Low-level (LLDS -> LLDS) optimization options

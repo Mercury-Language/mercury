@@ -549,7 +549,7 @@
 	% alternative is set by the `mark_static_terms.m' pass,
 	% and is currently only used for the MLDS back-end
 	% (for the LLDS back-end, the same optimization is
-	% handled by code_exprn.m).
+	% handled by var_locn.m).
 	% The `reuse_cell' alternative is not yet used.
 :- type how_to_construct
 	--->	construct_statically(		% Use a statically initialized
