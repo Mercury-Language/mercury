@@ -27,6 +27,10 @@
 #include "mercury_trace_external.h"
 #include "mercury_trace_util.h"
 #include "mercury_layout_util.h"
+
+#include "debugger_interface.h"
+#include "std_util.h"
+
 #include <stdio.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -363,7 +367,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	Word		var;
 	Code		*jumpaddr = NULL;
 	MR_Event_Details	event_details;
-	char		*message;
+	const char	*message;
         bool		include_trace_data = TRUE;
 	const MR_Stack_Layout_Label *layout = event_info->MR_event_sll;
 	Unsigned	seqno = event_info->MR_call_seqno;
@@ -562,9 +566,13 @@ MR_output_current_slots(const MR_Stack_Layout_Label *layout,
 			seqno,
 			depth,
 			port,
+			(String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_name,
+			(String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_module,
+			(String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
+			(String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_arity,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
@@ -580,8 +588,11 @@ MR_output_current_slots(const MR_Stack_Layout_Label *layout,
 			depth,
 			port,
 			layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
+			(String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+			(String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+			(String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_name,
 			layout->MR_sll_entry->MR_sle_user.MR_user_arity,
 			layout->MR_sll_entry->MR_sle_user.MR_user_mode,
@@ -657,9 +668,13 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 			seqno,
 			depth,
 			port,
+			(String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_name,
+			(String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_module,
+			(String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
+			(String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_arity,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
@@ -676,14 +691,17 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 			depth,
 			port,
 			layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
+			(String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+			(String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+			(String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_name,
 			layout->MR_sll_entry->MR_sle_user.MR_user_arity,
 			layout->MR_sll_entry->MR_sle_user.MR_user_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			arguments,
-			(String) (Word) path,
+			(String) path,
 			search_data);
 		    );
 	}
