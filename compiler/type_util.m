@@ -262,6 +262,10 @@ type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
 type_id_is_hand_defined(qualified(PrivateBuiltin, "base_type_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
+type_id_is_hand_defined(qualified(PrivateBuiltin, "typeclass_info") - 1) :-
+	mercury_private_builtin_module(PrivateBuiltin).
+type_id_is_hand_defined(qualified(PrivateBuiltin, "base_typeclass_info") - 1) :-
+	mercury_private_builtin_module(PrivateBuiltin).
 
 %-----------------------------------------------------------------------------%
 

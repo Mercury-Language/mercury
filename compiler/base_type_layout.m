@@ -66,7 +66,8 @@
 % Tag 0 - 	CONST   Word = 9	- array
 % Tag 0 - 	CONST   Word = 10	- type_info
 % Tag 0 - 	CONST   Word = 11	- c_pointer
-% 			Words 12 - 1024 reserved for future use
+% Tag 0 - 	CONST   Word = 12	- type_class_info
+% 			Words 13 - 1024 reserved for future use
 % Tag 0 - 	CONST   Word = 1024+	- constant(s) 
 % 					  word is pointer to enum
 % 					  vector.

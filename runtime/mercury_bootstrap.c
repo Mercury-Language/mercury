@@ -22,24 +22,25 @@
 #include "mercury_imp.h"
 
 /*
-** Bootstrapping the hand-definition of private_builtin:type_info/1
+** Bootstrapping the hand-definition of private_builtin:typeclass_info/1
+** and private_builtin:base_typeclass_info/1
 ** means that the stage 1 compiler has a compiler generated definition,
 ** while stage 2 doesn't.
 */
 
-Define_extern_entry(mercury____Unify___private_builtin__type_info_1_0);
-Define_extern_entry(mercury____Index___private_builtin__type_info_1_0);
-Define_extern_entry(mercury____Compare___private_builtin__type_info_1_0);
+Define_extern_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+Define_extern_entry(mercury____Index___private_builtin__typeclass_info_1_0);
+Define_extern_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 
 extern const struct
-	mercury_data_private_builtin__base_type_layout_type_info_1_struct 
-	mercury_data_private_builtin__base_type_layout_type_info_1;
+	mercury_data_private_builtin__base_type_layout_typeclass_info_1_struct 
+	mercury_data_private_builtin__base_type_layout_typeclass_info_1;
 extern const struct
-	mercury_data_private_builtin__base_type_functors_type_info_1_struct
-	mercury_data_private_builtin__base_type_functors_type_info_1;
+	mercury_data_private_builtin__base_type_functors_typeclass_info_1_struct
+	mercury_data_private_builtin__base_type_functors_typeclass_info_1;
 
 MR_STATIC_CODE_CONST struct
-mercury_data_private_builtin__base_type_info_type_info_1_struct {
+mercury_data_private_builtin__base_type_info_base_typeclass_info_1_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -48,89 +49,100 @@ mercury_data_private_builtin__base_type_info_type_info_1_struct {
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
-} mercury_data_private_builtin__base_type_info_type_info_1 = {
+} mercury_data_private_builtin__base_type_info_base_typeclass_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Unify___private_builtin__type_info_1_0)),
+		mercury____Unify___private_builtin__typeclass_info_1_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Index___private_builtin__type_info_1_0)),
+		mercury____Index___private_builtin__typeclass_info_1_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Compare___private_builtin__type_info_1_0)),
+		mercury____Compare___private_builtin__typeclass_info_1_0)),
 	(const Word *) &
-		mercury_data_private_builtin__base_type_layout_type_info_1,
+	    mercury_data_private_builtin__base_type_layout_typeclass_info_1,
 	(const Word *) &
-		mercury_data_private_builtin__base_type_functors_type_info_1,
+	    mercury_data_private_builtin__base_type_functors_typeclass_info_1,
 	(const Word *) string_const("private_builtin", 15),
-	(const Word *) string_const("type_info", 9)
+	(const Word *) string_const("base_typeclass_info", 19)
 };
 
 
-const struct mercury_data_private_builtin__base_type_layout_type_info_1_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_private_builtin__base_type_layout_type_info_1 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_TYPEINFO_VALUE))
-};
-
-const struct mercury_data_private_builtin__base_type_functors_type_info_1_struct {
+MR_STATIC_CODE_CONST struct
+mercury_data_private_builtin__base_type_info_typeclass_info_1_struct {
 	Integer f1;
-} mercury_data_private_builtin__base_type_functors_type_info_1 = {
+	Code *f2;
+	Code *f3;
+	Code *f4;
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+} mercury_data_private_builtin__base_type_info_typeclass_info_1 = {
+	((Integer) 1),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Unify___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Index___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Compare___private_builtin__typeclass_info_1_0)),
+	(const Word *) &
+	    mercury_data_private_builtin__base_type_layout_typeclass_info_1,
+	(const Word *) &
+	    mercury_data_private_builtin__base_type_functors_typeclass_info_1,
+	(const Word *) string_const("private_builtin", 15),
+	(const Word *) string_const("typeclass_info", 14)
+};
+
+
+const struct
+mercury_data_private_builtin__base_type_layout_typeclass_info_1_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_private_builtin__base_type_layout_typeclass_info_1 = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(MR_TYPELAYOUT_TYPECLASSINFO_VALUE))
+};
+
+const struct mercury_data_private_builtin__base_type_functors_typeclass_info_1_struct {
+	Integer f1;
+} mercury_data_private_builtin__base_type_functors_typeclass_info_1 = {
 	MR_TYPEFUNCTORS_SPECIAL
 };
 
 
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___private_builtin__type_info_1_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___private_builtin__type_info_1_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___private_builtin__type_info_1_0)
-BEGIN_MODULE(type_info_module)
-	init_entry_sl(mercury____Unify___private_builtin__type_info_1_0);
-	init_entry_sl(mercury____Index___private_builtin__type_info_1_0);
-	init_entry_sl(mercury____Compare___private_builtin__type_info_1_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(
+	mercury____Unify___private_builtin__typeclass_info_1_0)
+MR_MAKE_STACK_LAYOUT_ENTRY(
+	mercury____Index___private_builtin__typeclass_info_1_0)
+MR_MAKE_STACK_LAYOUT_ENTRY(
+	mercury____Compare___private_builtin__typeclass_info_1_0)
+BEGIN_MODULE(typeclass_info_module)
+	init_entry_sl(mercury____Unify___private_builtin__typeclass_info_1_0);
+	init_entry_sl(mercury____Index___private_builtin__typeclass_info_1_0);
+	init_entry_sl(mercury____Compare___private_builtin__typeclass_info_1_0);
 BEGIN_CODE
-Define_entry(mercury____Unify___private_builtin__type_info_1_0);
+Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 {
-	/*
-	** Unification for type_info.
-	**
-	** The two inputs are in the registers named by unify_input[12].
-	** The success/failure indication should go in unify_output.
-	*/
-	int comp;
-	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
-	restore_transient_registers();
-	unify_output = (comp == COMPARE_EQUAL);
-	proceed();
+	fatal_error("attempt to unify typeclass_info");
 }
 
-Define_entry(mercury____Index___private_builtin__type_info_1_0);
+Define_entry(mercury____Index___private_builtin__typeclass_info_1_0);
 	index_output = -1;
 	proceed();
 
-Define_entry(mercury____Compare___private_builtin__type_info_1_0);
+Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 {
-	/*
-	** Comparison for type_info:
-	**
-	** The two inputs are in the registers named by compare_input[12].
-	** The result should go in compare_output.
-	*/
-	int comp;
-	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
-	restore_transient_registers();
-	compare_output = comp;
-	proceed();
+	fatal_error("attempt to compare typeclass_info");
 }
 END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
-INIT sys_init_type_info_module
+INIT sys_init_typeclass_info_module
 */
-extern ModuleFunc type_info_module;
-void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_type_info_module(void) {
-	type_info_module();
+extern ModuleFunc typeclass_info_module;
+	/* suppress gcc -Wmissing-decl warning */
+void sys_init_typeclass_info_module(void);
+void sys_init_typeclass_info_module(void) {
+	typeclass_info_module();
 }
+
 
