@@ -154,6 +154,9 @@ vn__instr_cost(Uinstr, Cost) :-
 	;
 		Uinstr = decr_sp(_),
 		Cost = 0
+	;
+		Uinstr = pragma_c(_, _, _, _),
+		error("pragma_c found in vn_block_cost")
 	).
 
 vn__lval_cost(Lval, Cost) :-

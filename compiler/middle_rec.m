@@ -370,6 +370,9 @@ middle_rec__find_used_registers_instr(restore_hp(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_sp(_), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
+middle_rec__find_used_registers_instr(pragma_c(_, Ins, _, Outs), Used0, Used) :-
+	insert_pragma_c_input_registers(Ins, Used0, Used1),
+	insert_pragma_c_output_registers(Outs, Used1, Used).
 
 :- pred middle_rec__find_used_registers_lvals(list(lval), set(int), set(int)).
 :- mode middle_rec__find_used_registers_lvals(in, di, uo) is det.
@@ -439,3 +442,23 @@ middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals],
 		middle_rec__find_used_registers_rval(Rval, Used0, Used1)
 	),
 	middle_rec__find_used_registers_maybe_rvals(MaybeRvals, Used1, Used).
+
+:- pred insert_pragma_c_input_registers(list(pragma_c_input), 
+	set(int), set(int)).
+:- mode insert_pragma_c_input_registers(in, di, uo) is det.
+
+insert_pragma_c_input_registers([], Used, Used).
+insert_pragma_c_input_registers([Input|Inputs], Used0, Used) :-	
+	Input = pragma_c_input(_, _, Rval),
+	middle_rec__find_used_registers_rval(Rval, Used0, Used1),
+	insert_pragma_c_input_registers(Inputs, Used1, Used).
+
+:- pred insert_pragma_c_output_registers(list(pragma_c_output), 
+	set(int), set(int)).
+:- mode insert_pragma_c_output_registers(in, di, uo) is det.
+
+insert_pragma_c_output_registers([], Used, Used).
+insert_pragma_c_output_registers([Output|Outputs], Used0, Used) :-	
+	Output = pragma_c_output(Lval, _, _),
+	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
+	insert_pragma_c_output_registers(Outputs, Used1, Used).

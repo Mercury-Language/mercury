@@ -398,7 +398,16 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 
 				% An if-then-else.
 			;	if_then_else(list(var), hlds__goal,
-					hlds__goal, hlds__goal).
+					hlds__goal, hlds__goal)
+			
+				% Code from a pragma(c_code) decl.
+				% the c code, the corresponding pred_id and
+				% proc_id, the variables, and a map from the
+				% variable to the variable name (just to be
+				% sure that the original variable name is
+				% kept).
+			;	pragma_c_code(c_code, pred_id, proc_id, 
+					list(var), map(var, string)).
 
 	% Record whether a call is a builtin or not, and if so, which one.
 :- type is_builtin.
@@ -2030,6 +2039,7 @@ goal_is_atomic(conj([])).
 goal_is_atomic(disj([])).
 goal_is_atomic(call(_,_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
+goal_is_atomic(pragma_c_code(_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

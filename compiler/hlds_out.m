@@ -615,6 +615,25 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 	hlds_out__write_unification(Unification),
 	hlds_out__write_unify_rhs(B, ModuleInfo, VarSet, Indent).
 
+hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgNameMap), _, _, _) -->
+	{ map__values(ArgNameMap, Names) },
+	io__write_string("$pragma(c_code, ["),
+	hlds_out__write_string_list(Names),
+	io__write_string("], """),
+	io__write_string(C_Code),
+	io__write_string(""" )").
+
+:- pred hlds_out__write_string_list(list(string), io__state, io__state).
+:- mode hlds_out__write_string_list(in, di, uo) is det.
+
+hlds_out__write_string_list([]) --> [].
+hlds_out__write_string_list([Name]) -->
+	io__write_string(Name).
+hlds_out__write_string_list([Name1, Name2|Names]) -->
+	io__write_string(Name1),
+	io__write_string(", "),
+	hlds_out__write_string_list([Name2|Names]).
+
 :- pred hlds_out__write_unification(unification, io__state, io__state).
 :- mode hlds_out__write_unification(in, di, uo) is det.
 

@@ -810,6 +810,9 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		% handled specially
 		Uinstr0 = decr_sp(_),
 		Need = no
+	;
+		Uinstr0 = pragma_c(_, _, _, _),
+		Need = no
 	).
 
 opt_util__filter_out_labels([], []).
@@ -918,6 +921,7 @@ opt_util__can_instr_branch_away(mark_hp(_), no).
 opt_util__can_instr_branch_away(restore_hp(_), no).
 opt_util__can_instr_branch_away(incr_sp(_), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
+opt_util__can_instr_branch_away(pragma_c(_, _, _, _), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
 opt_util__can_instr_fall_through(livevals(_), yes).
@@ -937,6 +941,7 @@ opt_util__can_instr_fall_through(mark_hp(_), yes).
 opt_util__can_instr_fall_through(restore_hp(_), yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
+opt_util__can_instr_fall_through(pragma_c(_, _, _, _), yes).
 
 :- pred opt_util__can_use_livevals(instr, bool).
 :- mode opt_util__can_use_livevals(in, out) is det.
@@ -959,6 +964,7 @@ opt_util__can_use_livevals(mark_hp(_), no).
 opt_util__can_use_livevals(restore_hp(_), no).
 opt_util__can_use_livevals(incr_sp(_), no).
 opt_util__can_use_livevals(decr_sp(_), no).
+opt_util__can_use_livevals(pragma_c(_, _, _, _), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
 
@@ -996,6 +1002,7 @@ opt_util__instr_labels_2(mark_hp(_), [], []).
 opt_util__instr_labels_2(restore_hp(_), [], []).
 opt_util__instr_labels_2(incr_sp(_), [], []).
 opt_util__instr_labels_2(decr_sp(_), [], []).
+opt_util__instr_labels_2(pragma_c(_, _, _, _), [], []).
 
 :- pred opt_util__instr_rvals_and_lvals(instr, list(rval), list(lval)).
 :- mode opt_util__instr_rvals_and_lvals(in, out, out) is det.
@@ -1021,6 +1028,27 @@ opt_util__instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(restore_hp(Rval), [Rval], []).
 opt_util__instr_rvals_and_lvals(incr_sp(_), [], []).
 opt_util__instr_rvals_and_lvals(decr_sp(_), [], []).
+opt_util__instr_rvals_and_lvals(pragma_c(_, In, _, Out), Rvals, Lvals) :-
+	pragma_c_inputs_get_rvals(In, Rvals),
+	pragma_c_outputs_get_lvals(Out, Lvals).
+
+	% extract the rvals from the pragma_c_input
+:- pred pragma_c_inputs_get_rvals(list(pragma_c_input), list(rval)).
+:- mode pragma_c_inputs_get_rvals(in, out) is det.
+
+pragma_c_inputs_get_rvals([], []).
+pragma_c_inputs_get_rvals([I|Inputs], [R|Rvals]) :-
+	I = pragma_c_input(_Name, _Type, R),
+	pragma_c_inputs_get_rvals(Inputs, Rvals).
+
+	% extract the lvals from the pragma_c_output
+:- pred pragma_c_outputs_get_lvals(list(pragma_c_output), list(lval)).
+:- mode pragma_c_outputs_get_lvals(in, out) is det.
+
+pragma_c_outputs_get_lvals([], []).
+pragma_c_outputs_get_lvals([O|Outputs], [L|Lvals]) :-
+	O = pragma_c_output(L, _Type, _Name),
+	pragma_c_outputs_get_lvals(Outputs, Lvals).
 
 % determine all the rvals and lvals referenced by a list of instructions
 
@@ -1085,6 +1113,7 @@ opt_util__count_temps_instr(restore_hp(Rval), N0, N) :-
 	opt_util__count_temps_rval(Rval, N0, N).
 opt_util__count_temps_instr(incr_sp(_), N, N).
 opt_util__count_temps_instr(decr_sp(_), N, N).
+opt_util__count_temps_instr(pragma_c(_, _, _, _), N, N).
 
 :- pred opt_util__count_temps_lval(lval, int, int).
 :- mode opt_util__count_temps_lval(in, in, out) is det.

@@ -212,6 +212,12 @@ find_follow_vars_in_goal_2(unify(A,B,C,D0,E), _ModuleInfo, FollowVars0,
 		FollowVars = FollowVars0
 	).
 
+find_follow_vars_in_goal_2(
+	pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+	_ModuleInfo, FollowVars, 
+	pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), FollowVars).
+	
+
 %-----------------------------------------------------------------------------%
 
 :- pred find_follow_vars_in_call(pred_id, proc_id, list(var), module_info,

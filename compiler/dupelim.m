@@ -176,6 +176,7 @@ dupelim__replace_labels_instr(restore_hp(Rval0), Replmap, restore_hp(Rval)) :-
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_instr(incr_sp(Size), _, incr_sp(Size)).
 dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
+dupelim__replace_labels_instr(pragma_c(A,B,C,D), _, pragma_c(A,B,C,D)).
 
 :- pred dupelim__replace_labels_lval(lval, map(label, label), lval).
 % :- mode dupelim__replace_labels_lval(di, in, uo) is det.

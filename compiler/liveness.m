@@ -226,6 +226,9 @@ detect_liveness_in_goal_2(call(A,B,C,D,E,F,G), L, _, L, call(A,B,C,D,E,F,G)).
 
 detect_liveness_in_goal_2(unify(A,B,C,D,E), L, _, L, unify(A,B,C,D,E)).
 
+detect_liveness_in_goal_2(pragma_c_code(A,B,C,D,E), L, _, L, 
+		pragma_c_code(A,B,C,D,E)).
+
 %-----------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_conj(list(hlds__goal), set(var), module_info,
@@ -369,6 +372,9 @@ detect_deadness_in_goal_2(some(Vars, Goal0), Deadness0, ModuleInfo,
 detect_deadness_in_goal_2(call(A,B,C,D,E,F,G), Dn, _, Dn, call(A,B,C,D,E,F,G)).
 
 detect_deadness_in_goal_2(unify(A,B,C,D,E), Dn, _, Dn, unify(A,B,C,D,E)).
+
+detect_deadness_in_goal_2(pragma_c_code(A,B,C,D,E), Dn, _, Dn, 
+		pragma_c_code(A,B,C,D,E)).
 
 %-----------------------------------------------------------------------------%
 
@@ -626,6 +632,10 @@ add_nondet_lives_to_goal_2(call(A,B,C,D,E,F,G), Liveness, _, Extras,
 
 add_nondet_lives_to_goal_2(unify(A,B,C,D,E), Liveness, _, Extras,
 				unify(A,B,C,D,E), Liveness, Extras).
+
+add_nondet_lives_to_goal_2(pragma_c_code(A,B,C,D,E), Liveness, _, Extras,
+				pragma_c_code(A,B,C,D,E), Liveness, Extras).
+
 
 :- pred add_nondet_lives_to_conj(list(hlds__goal), set(var), set(var),
 				list(hlds__goal), set(var), set(var)).

@@ -165,6 +165,8 @@ detect_switches_in_goal_2(switch(Var, CanFail, Cases0), _, InstMap, _,
 		VarTypes, ModuleInfo, switch(Var, CanFail, Cases)) :-
 	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases).
 
+detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E), _, _, _, _, _,
+		pragma_c_code(A,B,C,D,E)).
 %-----------------------------------------------------------------------------%
 
 	% This is the interesting bit - we've found a non-empty

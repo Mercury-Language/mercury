@@ -166,6 +166,11 @@ mercury_output_item(pragma(c_header_code(C_HeaderString)), Context) -->
 	maybe_output_line_number(Context),
 	mercury_output_pragma_c_header(C_HeaderString).
 
+mercury_output_item(pragma(c_code(Pred, Vars, VarSet, C_CodeString)), 
+		Context) --> 
+	maybe_output_line_number(Context),
+	mercury_output_pragma_c_code(Pred, Vars, VarSet, C_CodeString).
+
 mercury_output_item(nothing, _) --> [].
 
 %-----------------------------------------------------------------------------%
@@ -853,6 +858,7 @@ mercury_output_some(Vars, VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
+	% Output the given c_header_code declaration
 :- pred mercury_output_pragma_c_header(string, io__state, io__state).
 :- mode mercury_output_pragma_c_header(in, di, uo) is det.
 
@@ -862,6 +868,45 @@ mercury_output_pragma_c_header(C_HeaderString) -->
 	io__write_string(C_HeaderString),
 	io__write_string(""""),
 	io__write_string(").\n").
+
+%-----------------------------------------------------------------------------%
+
+	% Output the given pragma(c_code, ...) declaration
+:- pred mercury_output_pragma_c_code(sym_name, list(pragma_var), varset,
+		string, io__state, io__state).
+:- mode mercury_output_pragma_c_code(in ,in, in, in, di, uo) is det.
+mercury_output_pragma_c_code(Pred ,Vars, VarSet, C_CodeString) -->
+	io__write_string(":- pragma(c_code, "),
+	{ unqualify_name(Pred, PredName) },
+	io__write_string(PredName),
+	io__write_string("("),
+	mercury_output_pragma_c_code_vars(Vars, VarSet),
+	io__write_string(")"),
+	io__write_string("\""),
+	io__write_string(C_CodeString),
+	io__write_string("\""),
+	io__write_string(").\n").
+	
+%-----------------------------------------------------------------------------%
+
+	% Output the varnames of the pragma vars
+:- pred mercury_output_pragma_c_code_vars(list(pragma_var), varset,
+		io__state, io__state).
+:- mode mercury_output_pragma_c_code_vars(in, in, di, uo) is det.
+
+mercury_output_pragma_c_code_vars([], _) --> [].
+mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
+	{ V = pragma_var(_Var, VarName, Mode) },
+	io__write_string(VarName),
+	io__write_string(" :: "),
+	mercury_output_mode(Mode, VarSet),
+	(	{ Vars = [] }
+	->
+		[]
+	;
+		io__write_string(",")
+	),
+	mercury_output_pragma_c_code_vars(Vars, VarSet).
 
 %-----------------------------------------------------------------------------%
 

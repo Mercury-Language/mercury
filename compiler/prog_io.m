@@ -59,7 +59,7 @@
 
 :- module prog_io.
 :- interface.
-:- import_module string, int, list, varset, term, std_util.
+:- import_module string, int, list, varset, term, std_util, require.
 :- import_module globals, options.
 
 %-----------------------------------------------------------------------------%
@@ -114,9 +114,18 @@
 			;	erroneous
 			;	failure.
 
-:- type pragma --->	c_header_code(c_header_code).
+:- type pragma --->		c_header_code(c_header_code)
+			;	c_code(sym_name, 
+					list(pragma_var), varset, c_code).
+				% PredName, Vars/Mode, VarNames, C Code
+
+:- type pragma_var    --->  pragma_var(var, string, mode).
+			  	% variable, name, mode
+				% we explicitly store the name because we
+				% need the real name in code_gen
 
 :- type c_header_code == string.
+:- type c_code == string.
 
 %-----------------------------------------------------------------------------%
 
@@ -1501,8 +1510,8 @@ process_decl(_ModuleName0, VarSet, "end_module", [ModuleName], Result) :-
 process_decl(_ModuleName, _VarSet, "when", [_Goal, _Cond], Result) :-
 	Result = ok(nothing).
 
-process_decl(_ModuleName, _VarSet, "pragma", Pragma, Result):-
-	parse_pragma(Pragma, Result).
+process_decl(_ModuleName, VarSet, "pragma", Pragma, Result):-
+	parse_pragma(VarSet, Pragma, Result).
 
 :- pred update_module_name(maybe1(item), string, string).
 :- mode update_module_name(in, in, out) is det.
@@ -1644,18 +1653,107 @@ parse_mode_decl_pred_2(_ModuleName, error(Term, Reason), _, _, _,
 
 
 %-----------------------------------------------------------------------------%
-	% parse the pragma declaration. (At the moment, the only pragma supported
-	% is c_header_code). It fails if the pragma could not be parsed.
-	% XXX Should probably make this det.
-:- pred parse_pragma(list(term), maybe1(item)).
-:- mode parse_pragma(in, out) is semidet.
+	% parse the pragma declaration. (At the moment, the only pragmas 
+	% supported are c_header_code and c_code). It fails if the arguments
+	% to the declaration were empty (ie. a pragma dec. with arity 0).
+:- pred parse_pragma(varset, list(term), maybe1(item)).
+:- mode parse_pragma(in, in, out) is semidet.
 
-parse_pragma(Pragma, Result) :-
-	Pragma = [PragmaType | PragmaTerms],
-	PragmaType = term__functor(term__atom("c_header_code"),[], _Context0),
-	PragmaTerms = [HeaderTerm],
-	HeaderTerm = term__functor(term__string(HeaderCode), [], _Context),
-	Result = ok(pragma(c_header_code(HeaderCode))).
+parse_pragma(VarSet, Pragma, Result) :-
+    Pragma = [PragmaType | PragmaTerms],
+    (
+       	PragmaType = term__functor(term__atom("c_header_code"),[], _) 
+    ->
+    	(
+       	    PragmaTerms = [HeaderTerm]
+        ->
+	    (
+    	        HeaderTerm = term__functor(term__string(HeaderCode), [], _)
+	    ->
+	        Result = ok(pragma(c_header_code(HeaderCode)))
+	    ;
+		Result = error("Expected string for C header code", HeaderTerm)
+	    )
+	;
+	    Result = error("pragma declaration has wrong arity for given type", 
+		    PragmaType)
+        )
+    ; 
+    	PragmaType = term__functor(term__atom("c_code"),[], _) 
+    ->
+	(
+    	PragmaTerms = [PredAndVarsTerm, C_CodeTerm]
+	->
+	    (
+    	        PredAndVarsTerm =term__functor(term__atom(PredName), VarList, _)
+	    ->
+		(
+                    C_CodeTerm = term__functor(term__string(C_Code), [], _)
+		->
+	                parse_pragma_c_code_varlist(VarSet, 
+				VarList, PragmaVars, Error),
+		    (
+			Error = no,
+    	                Result = ok(pragma(c_code(unqualified(PredName), 
+				PragmaVars, VarSet, C_Code)))
+		    ;
+			Error = yes(ErrorMessage),
+			Result = error(ErrorMessage, PredAndVarsTerm)
+		    )
+		;
+		    Result = 
+			error("Expected string for inline C code", C_CodeTerm)
+		)
+	    ;
+		Result = error("Term is not a predicate", PredAndVarsTerm)
+	    )
+	;
+	    Result = error("pragma declaration has wrong arity for given type", 
+		    PragmaType)
+	)
+    ;
+    	Result = error("Unknown pragma type", PragmaType)
+    ).
+
+%-----------------------------------------------------------------------------%
+	% parse the variable list in the pragma c code declaration.
+	% The final argument is 'no' for no error, or 'yes(ErrorMessage)'.
+:- pred parse_pragma_c_code_varlist(varset, list(term), list(pragma_var), 
+	maybe(string)).
+:- mode parse_pragma_c_code_varlist(in, in, out, out) is det.
+
+parse_pragma_c_code_varlist(_, [], [], no).
+parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
+	(
+		V = term__functor(term__atom("::"), [VarTerm, ModeTerm], _),
+		VarTerm = term__variable(Var)
+	->
+		(
+		
+			varset__lookup_name(VarSet, Var, VarName)
+		->
+			(
+				convert_mode(ModeTerm, Mode)
+			->
+				P = (pragma_var(Var, VarName, Mode)),
+				parse_pragma_c_code_varlist(VarSet, 
+					Vars, PragmaVars0, Error),
+				PragmaVars = [P|PragmaVars0]
+			;
+				PragmaVars = [],
+				Error = yes("Unknown mode in pragma(c_code, ...")
+			)
+		;
+			% if the variable wasn't in the varset it must be an
+			% underscore variable.
+			PragmaVars = [],	% return any old junk for that.
+			Error = yes(
+				"Used anonymous variable in pragma(c_code, ...)")
+		)
+	;
+		PragmaVars = [],	% return any old junk in PragmaVars
+		Error = yes("Arguments not in form 'Var :: mode'")
+	).
 
 %-----------------------------------------------------------------------------%
 

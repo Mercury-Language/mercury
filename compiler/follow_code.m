@@ -142,6 +142,11 @@ move_follow_code_in_goal_2(call(A,B,C,D,E,F,G), call(A,B,C,D,E,F,G), _, R, R).
 
 move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
 
+move_follow_code_in_goal_2(
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+		_, R, R).
+
 %-----------------------------------------------------------------------------%
 
 :- pred move_follow_code_in_disj(list(hlds__goal), list(hlds__goal),

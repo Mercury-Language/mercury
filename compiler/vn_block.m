@@ -279,6 +279,10 @@ vn__handle_instr(decr_sp(N),
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
 	vn__new_ctrl_node(vn_decr_sp(N),
 		Livemap, VnTables0, VnTables, Liveset0, Liveset, Tuple0, Tuple).
+vn__handle_instr(pragma_c(_, _, _, _),
+		_Livemap, VnTables, VnTables,
+		Liveset, Liveset, SeenIncr, SeenIncr, Tuple, Tuple) :-
+	error("value numbering not supported for pragma_c").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -747,6 +751,7 @@ vn__is_ctrl_instr(mark_hp(_), yes).
 vn__is_ctrl_instr(restore_hp(_), yes).
 vn__is_ctrl_instr(incr_sp(_), yes).
 vn__is_ctrl_instr(decr_sp(_), yes).
+vn__is_ctrl_instr(pragma_c(_, _, _, _), no).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

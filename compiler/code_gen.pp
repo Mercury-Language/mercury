@@ -752,7 +752,146 @@ code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
 		{ error("generate_det_goal_2: cannot have det simple_test") }
 	).
 
+code_gen__generate_det_goal_2(
+		pragma_c_code(C_Code, PredId, ModeId, Args, ArgNameMap),
+		_GoalInfo, Instr) -->
+
+	% First we need to get a list of input and output arguments
+	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
+	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgModes) },
+	{ pragma_select_in_args(ArgModes, InArgs) },
+	{ pragma_select_out_args(ArgModes, OutArgs) },
+
+% The code generated for pragma_c_code is of the following form:
+%
+% {
+%	<declaration of one local variable for each arg>
+%	<assignment of input values from registers to local variables>
+%	<the c code itself>
+%	<assignment of the output values from local variables to registers>
+% }
+%
+	make_pragma_decls(Args, ArgNameMap, Decls),
+	get_pragma_input_vars(InArgs, ArgNameMap, Inputs, Code),
+	pragma_acquire_regs(OutArgs, Regs),
+	place_pragma_output_args_in_regs(OutArgs, ArgNameMap, Regs, Outputs),
+	{ Instr0 = node([pragma_c(Decls, Inputs, C_Code, Outputs) - 
+			"Pragma C inclusion"]) },
+	{ Instr = tree(Code, Instr0) }.
+
 %---------------------------------------------------------------------------%
+
+% pragma_select_out_args returns the list of variables which are outputs for
+% a procedure
+
+:- pred pragma_select_out_args(assoc_list(var, arg_info), list(var)).
+:- mode pragma_select_out_args(in, out) is det.
+
+pragma_select_out_args([], []).
+pragma_select_out_args([V - arg_info(_Loc, Mode)|Rest], Out) :-
+        pragma_select_out_args(Rest, Out0),
+        (
+                Mode = top_out
+        ->
+                Out = [V|Out0]
+        ;
+                Out = Out0
+        ).
+
+%---------------------------------------------------------------------------%
+
+% pragma_select_in_args returns the list of variables which are inputs for
+% a procedure
+
+:- pred pragma_select_in_args(assoc_list(var, arg_info), list(var)).
+:- mode pragma_select_in_args(in, out) is det.
+
+pragma_select_in_args([], []).
+pragma_select_in_args([V - arg_info(_Loc, Mode)|Rest], In) :-
+        pragma_select_in_args(Rest, In0),
+        (
+                Mode = top_in
+        ->
+		In = [V|In0]
+        ;
+                In = In0
+        ).
+
+%---------------------------------------------------------------------------%
+
+% make_pragma_decls fills returns the list of pragma_decls for the pragma_c
+% data structure in the llds. It is essentially a list of pairs of type and
+% variable name (so that declarations of the form "Type Name;" can be made.
+
+:- pred make_pragma_decls(list(var), map(var, string), 
+			list(pragma_c_decl), code_info, code_info).
+:- mode make_pragma_decls(in, in, out, in, out) is det.
+
+make_pragma_decls([], _, []) --> [].
+make_pragma_decls([A|Args], ArgNameMap, [D|Decls]) -->
+	{ map__lookup(ArgNameMap, A, Name) },
+	code_info__variable_type(A, Type),
+	{ D = pragma_c_decl(Type, Name) },
+	make_pragma_decls(Args, ArgNameMap, Decls).
+
+%---------------------------------------------------------------------------%
+
+% get_pragma_input_vars returns a list of pragma_c_inputs for the pragma_c
+% data structure in the llds. It is essentially a list of the input variables,
+% and the corresponding rvals assigned to those (C) variables.
+
+:- pred get_pragma_input_vars(list(var), map(var, string), list(pragma_c_input),
+			code_tree, code_info, code_info).
+:- mode get_pragma_input_vars(in, in, out, out, in, out) is det.
+
+get_pragma_input_vars([], _, [], empty) --> [].
+get_pragma_input_vars([A|Args], ArgNameMap, [I|Inputs], Code) -->
+	{ map__lookup(ArgNameMap, A, Name) },
+	code_info__variable_type(A, Type),
+	code_info__produce_variable(A, Code0, Rval),
+	{ I = pragma_c_input(Name, Type, Rval) },
+	get_pragma_input_vars(Args, ArgNameMap, Inputs, Code1),
+	{ Code = tree(Code0, Code1) }.
+
+%---------------------------------------------------------------------------%
+
+% pragma_acquire_regs acquires a list of registers in which to place each
+% of the given variables.
+
+:- pred pragma_acquire_regs(list(var), list(reg), code_info, code_info).
+:- mode pragma_acquire_regs(in, out, in, out) is det.
+
+pragma_acquire_regs([], []) --> [].
+pragma_acquire_regs([_V|Vars], [Reg|Regs]) -->
+	code_info__acquire_reg(Reg),
+	pragma_acquire_regs(Vars, Regs).
+
+%---------------------------------------------------------------------------%
+
+% place_pragma_output_args_in_regs returns a list of pragma_c_outputs, which
+% are pairs of names of output registers and (C) variables which hold the
+% output value.
+
+:- pred place_pragma_output_args_in_regs(list(var), map(var, string),
+			list(reg), list(pragma_c_output), code_info, code_info).
+:- mode place_pragma_output_args_in_regs(in, in, in, out, in, out) is det.
+
+place_pragma_output_args_in_regs([], _, [], []) --> [].
+place_pragma_output_args_in_regs([_X|_Xs], _, [], []) --> 
+	{ error("place_pragma_output_args_in_regs: list length mismatch") }.
+place_pragma_output_args_in_regs([], _, [_X|_Xs], []) -->
+	{ error("place_pragma_output_args_in_regs: list length mismatch") }.
+place_pragma_output_args_in_regs([A|Args], ArgNameMap, [Reg|Regs], 
+		[O|Outputs]) -->
+	{ map__lookup(ArgNameMap, A, Name) },
+	code_info__variable_type(A, Type),
+	code_info__release_reg(Reg),
+	code_info__set_var_location(A, reg(Reg)),
+	{ O = pragma_c_output(reg(Reg), Type, Name) },
+	place_pragma_output_args_in_regs(Args, ArgNameMap, Regs, Outputs).
+
+%---------------------------------------------------------------------------%
+
 
 :- pred code_gen__generate_semi_goal_2(hlds__goal_expr, hlds__goal_info,
 					code_tree, code_info, code_info).
@@ -854,6 +993,8 @@ code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
 		)
 	).
 
+code_gen__generate_semi_goal_2(pragma_c_code(_, _, _, _, _), _, _) -->
+	{ error("code_gen__generate_semi_goal_2: pragma_c_code treated as semidet") }.
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1010,6 +1151,8 @@ code_gen__generate_non_goal_2(
 code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
 							_GoalInfo, _Code) -->
 	{ error("Cannot have a nondet unification.") }.
+code_gen__generate_non_goal_2(pragma_c_code(_, _, _, _, __), _, _) -->
+	{ error("code_gen__generate_non_goal_2: pragma_c_code treated as nondet") }.
 
 %---------------------------------------------------------------------------%
 

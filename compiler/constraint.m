@@ -180,6 +180,13 @@ constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
 	constraint__checkpoint(enter, "unify"),
 	constraint__checkpoint(exit, "unify").
 
+
+constraint__propagate_goal_2(
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap)) -->
+	constraint__checkpoint(enter, "pragma_c_code"),
+	constraint__checkpoint(exit, "pragma_c_code").
+
 %-----------------------------------------------------------------------------%
 
 :- pred constraint__propagate_disj(list(hlds__goal), list(hlds__goal),

@@ -333,6 +333,11 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap, FDS,
 			;
 				error("decr_sp in frameopt__build_sets")
 			)
+		;
+			Uinstr0 = pragma_c(_, _, _, _),
+			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+				FDS, [], SetupFrame0, SetupSuccip0,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		)
 	).
 
@@ -855,6 +860,14 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 		;
 			Uinstr0 = decr_sp(_),
 			error("decr_sp in frameopt__doit")
+		;
+			Uinstr0 = pragma_c(_, _, _, _),
+			frameopt__doit(Instrs0, FrameSize,
+				[], SetupFrame0, SetupSuccip0,
+				FrameSet, SuccipSet, Livemap, TeardownMap,
+				InsertMap0, InsertMap, ProcLabel,
+				FDS, N0, N, Instrs1),
+			Instrs = [Instr0 | Instrs1]
 		)
 	).
 

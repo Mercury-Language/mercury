@@ -205,6 +205,9 @@ store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, Follow0, _ModuleInfo,
 		Follow = Follow0
 	).
 
+store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E), Liveness, Follow, _ModInfo,
+		pragma_c_code(A, B, C, D, E), Liveness, Follow, no).
+
 %-----------------------------------------------------------------------------%
 
 :- pred store_alloc_in_conj(list(hlds__goal), liveness_info, follow_vars,

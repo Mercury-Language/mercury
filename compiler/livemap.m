@@ -255,6 +255,12 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
+	;
+		Uinstr0 = pragma_c(_, _, _, _),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		Ccode = yes
 	).
 
 :- pred livemap__look_for_livevals(list(instruction), list(instruction),

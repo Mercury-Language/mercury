@@ -248,10 +248,12 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 	    pred_info_typevarset(PredInfo0, TypeVarSet0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
-	    ( Clauses0 = [] ->
-		report_error_no_clauses(PredId, PredInfo0, ModuleInfo,
-			IOState0, IOState),
-		MaybePredInfo = no
+	    ( 
+		Clauses0 = [] 
+	    ->
+	        report_error_no_clauses(PredId, PredInfo0, ModuleInfo,
+		    IOState0, IOState),
+	        MaybePredInfo = no
 	    ;
 		write_progress_message("% Type-checking predicate ",
 			PredId, ModuleInfo, IOState0, IOState1),
@@ -528,6 +530,9 @@ typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 	typecheck_unification(A, B0, B).
 typecheck_goal_2(switch(_, _, _), _) -->
 	{ error("unexpected switch") }.
+% no need to typecheck pragmas
+typecheck_goal_2(pragma_c_code(A,B,C,D,E), pragma_c_code(A,B,C,D,E)) --> []. 
+							   
 
 %-----------------------------------------------------------------------------%
 

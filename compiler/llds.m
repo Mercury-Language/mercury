@@ -121,8 +121,24 @@
 	;	incr_sp(int)
 			% Increment the det stack pointer.
 
-	;	decr_sp(int).
+	;	decr_sp(int)
 			% Decrement the det stack pointer.
+
+	;	pragma_c(list(pragma_c_decl), list(pragma_c_input), string, 
+			list(pragma_c_output)).
+			% The local variable decs, placing the inputs in the
+			% variables, the c code, and where to
+			% find the outputs for pragma(c_code, ... ) decs.
+
+
+:- type pragma_c_decl	--->	pragma_c_decl(type, string).
+				% Type name, variable name.
+:- type pragma_c_input	--->	pragma_c_input(string, type, rval).
+				% variable name, type, variable value.
+:- type pragma_c_output   --->	pragma_c_output(lval, type, string).
+				% where to put the output val, type and name 
+				% of variable containing the output val
+
 
 :- type liveinfo	--->	live_lvalue(lval, shape_num).
 
@@ -435,15 +451,25 @@ output_c_module(c_module(ModuleName, Procedures)) -->
 	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
 
+	% output_c_header_include_lines reverses the list of c header lines
+	% and passes them to output_c_header_include_lines_2 which outputs them.
+	% The list must be reversed since they are inserted in reverse order
 :- pred output_c_header_include_lines(list(string), io__state, io__state).
 :- mode output_c_header_include_lines(in, di, uo) is det.
 
-output_c_header_include_lines([]) --> 
+output_c_header_include_lines(Headers) -->
+	{ list__reverse(Headers, RevHeaders) },
+	output_c_header_include_lines_2(RevHeaders).
+
+:- pred output_c_header_include_lines_2(list(string), io__state, io__state).
+:- mode output_c_header_include_lines_2(in, di, uo) is det.
+
+output_c_header_include_lines_2([]) --> 
 	[].
-output_c_header_include_lines([H|Hs]) -->
+output_c_header_include_lines_2([H|Hs]) -->
 	io__write_string(H),
 	io__write_string("\n"),
-	output_c_header_include_lines(Hs).
+	output_c_header_include_lines_2(Hs).
 
 :- pred output_c_label_decl_list(list(label), io__state, io__state).
 :- mode output_c_label_decl_list(in, di, uo) is det.
@@ -928,6 +954,93 @@ output_instruction(decr_sp(N), _) -->
 	io__write_string("decr_sp("),
 	io__write_int(N),
 	io__write_string(");").
+
+	% The code we produce for pragma(c_code, ...) is in the form
+	% {
+	%	<declaration of one local variables for each one in the proc>
+	%	<assignment of the input regs to the corresponding locals>
+	%	<the c code itself>
+	%	<assignment to the output regs of the corresponding locals>
+	% }
+	%
+output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs), _) -->
+	io__write_string("\t{\n"),
+	output_pragma_decls(Decls),
+	output_pragma_inputs(Inputs),
+	io__write_string("\t\t"),
+	io__write_string(C_Code),
+	io__write_string("\n"),
+	output_pragma_outputs(Outputs),
+	io__write_string("\n\t}\n").
+
+	% Output the local variable declarations at the top of the 
+	% pragma_c_code code.
+:- pred output_pragma_decls(list(pragma_c_decl), io__state, io__state).
+:- mode output_pragma_decls(in, di, uo) is det.
+
+output_pragma_decls([]) --> [].
+output_pragma_decls([D|Decls]) -->
+	{ D = pragma_c_decl(Type, VarName) },
+		% Apart from special cases, the local variables are Words
+        { Type = term__functor(term__atom("int"), [], _) ->
+                VarType = "Integer"
+        ; Type = term__functor(term__atom("float"), [], _) ->
+                VarType = "Float"
+        ;
+                VarType = "Word"
+        },
+	io__write_string("\t\t"),
+	io__write_string(VarType),
+	io__write_string("\t"),
+	io__write_string(VarName),
+	io__write_string(";\n"),
+	output_pragma_decls(Decls).
+
+	% Output the input variable assignments at the top of the 
+	% pragma_c_code code.
+:- pred output_pragma_inputs(list(pragma_c_input), io__state, io__state).
+:- mode output_pragma_inputs(in, di, uo) is det.
+
+output_pragma_inputs([]) --> [].
+output_pragma_inputs([I|Inputs]) -->
+	{ I = pragma_c_input(VarName, Type, Rval) },
+	io__write_string("\t\t"),
+	io__write_string(VarName),
+	io__write_string(" = "),
+	(
+        	{ Type = term__functor(term__atom("float"), [], _) }
+	->
+		io__write_string("word_to_float("),
+		output_rval(Rval),
+		io__write_string(")")
+	;
+		output_rval(Rval)
+	),
+	io__write_string(";\n"),
+	output_pragma_inputs(Inputs).
+
+	% Output the output variable assignments at the bottom of the
+	% pragma_c_code
+:- pred output_pragma_outputs(list(pragma_c_output), io__state, io__state).
+:- mode output_pragma_outputs(in, di, uo) is det.
+
+output_pragma_outputs([]) --> [].
+output_pragma_outputs([O|Outputs]) --> 
+	{ O = pragma_c_output(Lval, Type, VarName) },
+	io__write_string("\t\t"),
+	output_lval(Lval),
+	io__write_string(" = "),
+	(
+        	{ Type = term__functor(term__atom("float"), [], _) }
+	->
+		io__write_string("float_to_word("),
+		io__write_string(VarName),
+		io__write_string(")")
+	;
+		io__write_string(VarName)
+	),
+	io__write_string(";\n"),
+	output_pragma_outputs(Outputs).
 
 :- pred output_livevals(list(lval), io__state, io__state).
 :- mode output_livevals(in, di, uo) is det.

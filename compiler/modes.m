@@ -510,7 +510,30 @@ modecheck_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
 	),
 	mode_checkpoint(exit, "switch").
 
-	% given the right-hand-side of a unification, return a list of
+	% to modecheck a pragma_c_code, we just modecheck the proc for 
+	% which it is the goal.
+modecheck_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args0, ArgNameMap), 
+		GoalInfo, Goal) -->
+	mode_checkpoint(enter, "pragma_c_code"),
+	=(ModeInfo0),
+	{ mode_info_get_preds(ModeInfo0, Preds) },
+	{ map__lookup(Preds, PredId, PredInfo) },
+	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_arity(PredInfo, Arity) },
+
+	=(ModeInfo1),
+	mode_info_set_call_context(call(unqualified(PredName)/Arity)),
+	
+	=(ModeInfo2),
+	modecheck_call_pred(PredId, Args0, _Mode, Args, ExtraGoals),
+	{ Pragma = pragma_c_code(C_Code, PredId, ProcId, Args0, ArgNameMap) },
+	{ handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
+				ModeInfo1, ModeInfo2, Goal) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "pragma_c_code").
+
+
+ 	% given the right-hand-side of a unification, return a list of
 	% the potentially non-local variables of that unification.
 
 :- pred unify_rhs_vars(unify_rhs, list(var)).

@@ -53,6 +53,8 @@ value_number__main(Instrs0, Instrs) -->
 		{ Ccode = no },
 		vn__procedure(Instrs0, Livemap, Instrs)
 	;
+		% Don't perform value numbering if there is a c_code or a 
+		% pragma_c in the instructions.
 		{ Ccode = yes },
 		{ Instrs = Instrs0 }
 	).
@@ -1107,6 +1109,7 @@ vn__boundary_instr(mark_hp(_), no).
 vn__boundary_instr(restore_hp(_), no).
 vn__boundary_instr(incr_sp(_), yes).
 vn__boundary_instr(decr_sp(_), yes).
+vn__boundary_instr(pragma_c(_, _, _, _), yes).
 
 %-----------------------------------------------------------------------------%
 

@@ -426,6 +426,14 @@ polymorphism__process_goal_2(if_then_else(Vars, A0, B0, C0), GoalInfo,
 	polymorphism__process_goal(B0, B),
 	polymorphism__process_goal(C0, C).
 
+polymorphism__process_goal_2(
+			pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap),
+			GoalInfo, 
+			pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap)
+				- GoalInfo
+			) -->
+	[].
+
 :- pred polymorphism__process_goal_list(list(hlds__goal), list(hlds__goal),
 					poly_info, poly_info).
 :- mode polymorphism__process_goal_list(in, out, in, out) is det.

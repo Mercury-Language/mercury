@@ -728,6 +728,11 @@ opt_debug__dump_instr(decr_sp(Size), Str) :-
 	string__int_to_string(Size, S_str),
 	string__append_list(["decr_sp(", S_str, ")"], Str).
 
+% XXX  should probably give more info than this
+opt_debug__dump_instr(pragma_c(_, _, Code, _), Str) :-
+	string__append_list(["pragma_c(", Code, ")"], Str).
+
+
 opt_debug__dump_fullinstr(Uinstr - Comment, Str) :-
 	opt_debug__dump_instr(Uinstr, U_str),
 	string__append_list([U_str, " - ", Comment, "\n"], Str).

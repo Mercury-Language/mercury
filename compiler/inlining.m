@@ -160,6 +160,12 @@ inlining__inlining_in_goal_2(
 inlining__inlining_in_goal_2(unify(A,B,C,D,E), Varset, VarTypes, _,
 					unify(A,B,C,D,E), Varset, VarTypes).
 
+inlining__inlining_in_goal_2(
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+		Varset, VarTypes, _, 
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+		Varset, VarTypes).
+
 %-----------------------------------------------------------------------------%
 
 :- pred inlining__inlining_in_disj(list(hlds__goal), varset, map(var, type),
@@ -313,6 +319,10 @@ inlining__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Subn,
 	inlining__rename_var(TermL0, Subn, TermL),
 	inlining__rename_unify_rhs(TermR0, Subn, TermR),
 	inlining__rename_unify(Unify0, Subn, Unify).
+
+inlining__name_apart_2(pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+		_Substn, 
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap)).
 
 %-----------------------------------------------------------------------------%
 

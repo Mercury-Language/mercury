@@ -558,6 +558,11 @@ det_infer_goal_2(some(Vars, Goal0), _, InstMap0, MiscInfo, _, _,
 			some(Vars, Goal), Det) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
 
+	% pragma_c_code must be deterministic.
+det_infer_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+		_, _, _, _, _, 
+		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), det).
+
 %-----------------------------------------------------------------------------%
 
 :- pred det_infer_conj(list(hlds__goal), instmap, misc_info,
@@ -1135,6 +1140,20 @@ det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
 	},
 	det_diagnose_goal(Goal, InternalDesired, SwitchContext, MiscInfo,
 		Diagnosed).
+
+det_diagnose_goal_2(pragma_c_code(_, _, _, _, _), GoalInfo, Desired, 
+		_, _, _, yes) -->
+	{ goal_info_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("  Determinism declaration not satisfied. Desired \n"),
+	prog_out__write_context(Context),
+	io__write_string("  determinism is "),
+	hlds_out__write_determinism(Desired),
+	io__write_string(".\n"),
+	prog_out__write_context(Context),
+	io__write_string("  pragma(c_code, ...) declarations only allowed\n"),
+	prog_out__write_context(Context),
+	io__write_string("  for deterministic modes.\n").
 
 %-----------------------------------------------------------------------------%
 
