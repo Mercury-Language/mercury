@@ -9481,6 +9481,9 @@ colon(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
 			!:SInfo = !.SInfo `with_updated_svar` StateVar
 		;
 		  	Var = StateVar,
+			% Set up a dummy mapping: there's no point
+			% in mentioning this error twice.
+			!:SInfo = ( !.SInfo ^ colon ^ elem(StateVar) := Var ),
 			( !.SInfo ^ external_dot `contains` StateVar ->
 				PError = report_illegal_state_var_update
 			;
