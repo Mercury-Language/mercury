@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-1998, 2000-2002 The University of Melbourne.
+# Copyright (C) 1994-1998, 2000-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -44,6 +44,9 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		--c-flag-to-name-object-file \"@OBJFILE_OPT@\" \
 		--object-file-extension \".@OBJ_SUFFIX@\" \
 		--pic-object-file-extension \".@EXT_FOR_PIC_OBJECTS@\" \
+		--executable-file-extension \"@EXT_FOR_EXE@\" \
+		--shared-library-extension \".@EXT_FOR_SHARED_LIB@\" \
+		--library-extension \".@LIB_SUFFIX@\"
 		--create-archive-command \"@AR@\" \
 		--create-archive-command-output-flag \"@AR_LIBFILE_OPT@\" \
 		--create-archive-command-flags \"@ARFLAGS@\" \
