@@ -84,6 +84,7 @@ how to build and debug Mercury programs.
                     program performance
 * Invocation::      List of options for the Mercury compiler
 * Environment::     Environment variables used by the compiler and utilities
+* C compilers::     How to use a C compiler other than GNU C
 @end menu
 @end ifinfo
 
@@ -1494,6 +1495,42 @@ Filename of the Mercury Interpreter.
 Filename of the program to create the @file{*_init.c} file.
 
 @end table
+
+@node C compilers
+@chapter Using a different C compiler
+
+The Mercury compiler takes special advantage of certain extensions
+provided by GNU C to generate much more efficient code.  We therefore
+recommend that you use GNU C for compiling Mercury programs.
+However, if for some reason you wish to use another compiler,
+it is possible to do so.  Here's what you need to do.
+
+@itemize @bullet
+@item You must specify the name of the new compiler. 
+You can do this either by setting the @samp{MERCURY_C_COMPILER}
+environment variable, by adding a line
+@samp{MGNUC=MERCURY_C_COMPILER=@dots{} mgnuc} to your @samp{Mmake} file,
+or by using the @samp{--cc} option to @samp{mc}.
+You may need to specify some option(s) to the C compiler
+to ensure that it uses an ANSI preprocessor (e.g. if you
+are using the DEC Alpha/OSF 3.2 C compiler, you would need to
+pass @samp{--cc="cc -std"} to @samp{mc} so that it will pass the
+@samp{-std} option to @samp{cc}).
+
+@item
+You must use the grade @samp{none} or @samp{none.gc}. 
+You can specify the grade in one of three ways: by setting the
+@samp{MERCURY_DEFAULT_GRADE} environment variable, by adding a line
+@samp{GRADE=@dots{}} to your @samp{Mmake} file, or by using the
+@samp{--grade} option to @samp{mc}.  (You will also need to install
+those grades of the Mercury library, if you have not already done so.)
+
+@item
+If your compiler is particularly strict in
+enforcing ANSI compliance, you may also need to compile the Mercury
+code with @samp{--no-static-ground-terms}.
+
+@end itemize
 
 @contents
 @bye
