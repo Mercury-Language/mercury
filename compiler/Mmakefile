@@ -182,6 +182,7 @@ PP_DATE_FILES = $(PREPROCESSED_MODULES:%=$(dates_subdir)%.pp_date)
 # Force regeneration of the preprocessed modules.
 # This is necessary if the setting of `INCLUDE_ADITI_OUTPUT' has changed.
 regenerate_preprocessed_files:
+	-[ -d ./$(dates_subdir) ] || mkdir -p ./$(dates_subdir)
 	touch $(PREPROCESSED_FILES)
 	$(MMAKE) $(PREPROCESSED_M_FILES)
 
