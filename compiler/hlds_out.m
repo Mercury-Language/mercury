@@ -697,9 +697,19 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	( { string__contains_char(Verbose, 'C') } ->
 		% Information about predicates is dumped if 'C'
 		% suboption is on.
-		mercury_output_pred_type(TVarSet, ExistQVars,
+		(
+			{ PredOrFunc = predicate },
+			mercury_output_pred_type(TVarSet, ExistQVars,
 				qualified(Module, PredName),
 				ArgTypes, no, Purity, ClassContext, Context)
+		;
+			{ PredOrFunc = function },
+			{ pred_args_to_func_args(ArgTypes, FuncArgTypes,
+				FuncRetType) },
+			mercury_output_func_type(TVarSet, ExistQVars,
+				qualified(Module, PredName), FuncArgTypes,
+				FuncRetType, no, Purity, ClassContext, Context)
+		)
 	;
 		[]
 	),
@@ -2797,9 +2807,21 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 
 	hlds_out__write_indent(Indent),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ varset__init(ModeVarSet) },
-	mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName),
-			HeadModes, DeclaredDeterminism, ModeContext),
+	( 
+		{ PredOrFunc = predicate },
+		mercury_output_pred_mode_decl(ModeVarSet,
+			unqualified(PredName), HeadModes,
+			DeclaredDeterminism, ModeContext)
+	;
+		{ PredOrFunc = function },
+		{ pred_args_to_func_args(HeadModes, FuncHeadModes,
+			RetHeadMode) },
+		mercury_output_func_mode_decl(ModeVarSet,
+			unqualified(PredName), FuncHeadModes, RetHeadMode,
+			DeclaredDeterminism, ModeContext)
+	),
 
 	( { MaybeArgLives = yes(ArgLives) } ->
 		hlds_out__write_indent(Indent),
@@ -2821,7 +2843,6 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		hlds_out__write_stack_slots(Indent, StackSlots, VarSet,
 			AppendVarnums),
 		hlds_out__write_indent(Indent),
-		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadVars, PredOrFunc),
 		io__write_string(" :-\n"),
