@@ -761,18 +761,30 @@
 %-----------------------------------------------------------------------------%
 
 	%
-	% An lval represents a data location or variable that can be used
-	% as the target of an assignment.
-	%
-	% XXX this probably needs work
+	% A field_id represents some data within an object
 	%
 
-:- type field_id == mlds__fully_qualified_name(field_name).
+:- type field_id 
+	--->		% offset(N) represents the field
+			% at offset N Words.
+	 	offset(mlds__rval)
+	;		% named_field(Name) represents the field
+			% with the specified name.
+		named_field(mlds__fully_qualified_name(field_name))
+	.
+
 :- type field_name == string.
 
+	%
+	% An mlds__var represents a variable or constant.
+	%
 :- type mlds__var == mlds__fully_qualified_name(mlds__var_name).
 :- type mlds__var_name == string.
 
+	%
+	% An lval represents a data location or variable that can be used
+	% as the target of an assignment.
+	%
 :- type mlds__lval 
 
 	%

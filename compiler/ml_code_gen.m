@@ -427,19 +427,19 @@
 %	- code generation for det, semidet, and nondet predicates:
 %		- conjunctions
 %		- disjunctions
+%		- negation
 %		- if-then-else
 %		- predicate calls
 %		- unifications
 %			- assignment
 %			- simple tests
-%			- construction of constants
+%			- constructions
 %			- deconstructions
 %		- switches
 % TODO:
 %	- commits
 %	- c_code pragmas
-%	- construction of compound terms
-%	- XXX construct/deconstruct/complicated unifications
+%	- no_tag types
 %	- construction of closures, and higher-order calls
 %	- class method calls
 %	- type declarations for user-defined types
@@ -472,7 +472,8 @@
 			    % and `code_util__cons_id_to_tag'.
 :- import_module goal_util.
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, special_pred.
-:- import_module builtin_ops, passes_aux, type_util, mode_util.
+:- import_module hlds_out, builtin_ops, passes_aux, type_util, mode_util.
+:- import_module prog_util.
 
 :- import_module string, int, varset, term.
 :- import_module list, assoc_list, map, set, stack.
@@ -632,8 +633,13 @@ ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, Defns0, Defns) :-
 	%
 :- func ml_gen_proc_decl_flags(module_info, pred_id, proc_id)
 		= mlds__decl_flags.
-ml_gen_proc_decl_flags(_ModuleInfo, _PredId, _ProcId) = MLDS_DeclFlags :-
-	Access = public, % XXX we should do better than that
+ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = MLDS_DeclFlags :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	( procedure_is_exported(PredInfo, ProcId) ->
+		Access = public
+	;
+		Access = private
+	),
 	PerInstance = per_instance,
 	Virtuality = non_virtual,
 	Finality = overridable,
@@ -1050,7 +1056,7 @@ ml_gen_arg_list(Vars, Types, Modes, InputRvals, OutputLvals) -->
 			% exclude arguments of type io__state etc.
 			{ InputRvals = InputRvals1 },
 			{ OutputLvals = OutputLvals1 }
-		; { mode_is_input(ModuleInfo, Mode) } ->
+		; { mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) } ->
 			{ InputRvals = [lval(VarLval) | InputRvals1] },
 			{ OutputLvals = OutputLvals1 }
 	/************
@@ -1769,7 +1775,7 @@ ml_gen_label_func(FuncLabel, Context, Statement, Func) -->
 	%
 :- func ml_gen_label_func_decl_flags = mlds__decl_flags.
 ml_gen_label_func_decl_flags = MLDS_DeclFlags :-
-	Access = public, % XXX we should do better than that
+	Access = private,
 	PerInstance = per_instance,
 	Virtuality = non_virtual,
 	Finality = overridable,
@@ -1892,12 +1898,25 @@ ml_gen_disj([First | Rest], CodeModel, Context,
 :- mode ml_gen_unification(in, in, in, out, out, in, out) is det.
 
 ml_gen_unification(assign(Var1, Var2), CodeModel, Context,
-		[], [MLDS_Statement]) -->
+		[], MLDS_Statements) -->
 	{ require(unify(CodeModel, model_det),
 		"ml_code_gen: assign not det") },
-	ml_gen_var(Var1, Var1Lval),
-	ml_gen_var(Var2, Var2Lval),
-	{ MLDS_Statement = ml_gen_assign(Var1Lval, lval(Var2Lval), Context) }.
+	(
+		%
+		% skip dummy argument types, since they will not have
+		% been declared
+		%
+		ml_variable_type(Var1, Type),
+		{ type_util__is_dummy_argument_type(Type) }
+	->
+		{ MLDS_Statements = [] }
+	;
+		ml_gen_var(Var1, Var1Lval),
+		ml_gen_var(Var2, Var2Lval),
+		{ MLDS_Statement = ml_gen_assign(Var1Lval, lval(Var2Lval),
+			Context) },
+		{ MLDS_Statements = [MLDS_Statement] }
+	).
 
 ml_gen_unification(simple_test(Var1, Var2), CodeModel, Context,
 		[], [MLDS_Statement]) -->
@@ -1976,15 +1995,15 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, Context,
 	%
 	% generate code to construct the specified representation
 	%
-	ml_gen_construct_rep(Tag, Var, Args, ArgModes, Context,
+	ml_gen_construct_rep(Tag, ConsId, Var, Args, ArgModes, Context,
 			MLDS_Decls, MLDS_Statements).
 
-:- pred ml_gen_construct_rep(cons_tag, prog_var, prog_vars, list(uni_mode),
-		prog_context, mlds__defns, mlds__statements,
+:- pred ml_gen_construct_rep(cons_tag, cons_id, prog_var, prog_vars,
+		list(uni_mode), prog_context, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_construct_rep(in, in, in, in, in, out, out, in, out) is det.
+:- mode ml_gen_construct_rep(in, in, in, in, in, in, out, out, in, out) is det.
 
-ml_gen_construct_rep(string_constant(String), Var, Args, _ArgModes, Context,
+ml_gen_construct_rep(string_constant(String), _, Var, Args, _ArgModes, Context,
 		[], [MLDS_Statement]) -->
 	( { Args = [] } ->
 		[]
@@ -1994,7 +2013,7 @@ ml_gen_construct_rep(string_constant(String), Var, Args, _ArgModes, Context,
 	ml_gen_var(Var, VarLval),
 	{ MLDS_Statement = ml_gen_assign(VarLval, const(string_const(String)),
 		Context) }.
-ml_gen_construct_rep(int_constant(Int), Var, Args, _ArgModes, Context,
+ml_gen_construct_rep(int_constant(Int), _, Var, Args, _ArgModes, Context,
 		[], [MLDS_Statement]) -->
 	( { Args = [] } ->
 		[]
@@ -2004,7 +2023,7 @@ ml_gen_construct_rep(int_constant(Int), Var, Args, _ArgModes, Context,
 	ml_gen_var(Var, VarLval),
 	{ MLDS_Statement = ml_gen_assign(VarLval, const(int_const(Int)),
 		Context) }.
-ml_gen_construct_rep(float_constant(Float), Var, Args, _ArgModes, Context,
+ml_gen_construct_rep(float_constant(Float), _, Var, Args, _ArgModes, Context,
 		[], [MLDS_Statement]) -->
 	( { Args = [] } ->
 		[]
@@ -2015,7 +2034,7 @@ ml_gen_construct_rep(float_constant(Float), Var, Args, _ArgModes, Context,
 	{ MLDS_Statement = ml_gen_assign(VarLval, const(float_const(Float)),
 		Context) }.
 
-ml_gen_construct_rep(no_tag, _Var, Args, Modes, _Context,
+ml_gen_construct_rep(no_tag, _ConsId, _Var, Args, Modes, _Context,
 		_MLDS_Decls, _MLDS_Statements) -->
 	( { Args = [_Arg], Modes = [_Mode] } ->
 		{ sorry("no_tag types") }
@@ -2028,47 +2047,17 @@ ml_gen_construct_rep(no_tag, _Var, Args, Modes, _Context,
 		{ error("ml_code_gen: no_tag: arity != 1") }
 	).
 
-ml_gen_construct_rep(unshared_tag(_UnsharedTag), _Var, _Args, _ArgModes,
-		_Context, _MLDS_Decls, _MLDS_Statements) -->
-	{ sorry("compound data structures (unshared_tag)") }.
-/****
-	=(Info),
-	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	code_info__get_next_cell_number(CellNo),
-	ml_variable_types(Args, ArgTypes),
-	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
-		RVals) },
-	{ Code = empty },
-	code_info__variable_type(Var, VarType),
-	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
-	% XXX Later we will need to worry about
-	% whether the cell must be unique or not.
-	{ Expr = create(UnsharedTag, RVals, uniform(no), can_be_either,
-		CellNo, VarTypeMsg) },
-****/
+ml_gen_construct_rep(unshared_tag(Tag), ConsId, Var, Args, ArgModes,
+		Context, MLDS_Decls, MLDS_Statements) -->
+	ml_gen_new_object(Tag, no, ConsId, Var, Args, ArgModes, Context,
+		MLDS_Decls, MLDS_Statements).
+ml_gen_construct_rep(shared_remote_tag(Tag, SecondaryTag), ConsId, Var, Args,
+		ArgModes, Context, MLDS_Decls, MLDS_Statements) -->
+	ml_gen_new_object(Tag, yes(SecondaryTag), ConsId, Var, Args, ArgModes,
+		Context, MLDS_Decls, MLDS_Statements).
 
-ml_gen_construct_rep(shared_remote_tag(_Bits0, _Num0), _Var, _Args, _ArgModes,
-		_Context, _MLDS_Decls, _MLDS_Statements) -->
-	{ sorry("compound data structures (shared_remote_tag)") }.
-/****
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_next_cell_number(CellNo),
-	unify_gen__var_types(Args, ArgTypes),
-	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
-		RVals0) },
-		% the first field holds the secondary tag
-	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
-	{ Code = empty },
-	code_info__variable_type(Var, VarType),
-	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
-	% XXX Later we will need to worry about
-	% whether the cell must be unique or not.
-	{ Expr = create(Bits0, RVals, uniform(no), can_be_either,
-		CellNo, VarTypeMsg) },
-	code_info__cache_expression(Var, Expr).
-****/
-ml_gen_construct_rep(shared_local_tag(Bits1, Num1), Var, Args, _ArgModes,
-		Context, [], [MLDS_Statement]) -->
+ml_gen_construct_rep(shared_local_tag(Bits1, Num1), _ConsId, Var, Args,
+		_ArgModes, Context, [], [MLDS_Statement]) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -2080,7 +2069,7 @@ ml_gen_construct_rep(shared_local_tag(Bits1, Num1), Var, Args, _ArgModes,
 		Context) }.
 
 ml_gen_construct_rep(type_ctor_info_constant(ModuleName, TypeName, TypeArity),
-		Var, Args, _ArgModes, Context,
+		_ConsId, Var, Args, _ArgModes, Context,
 		[], [MLDS_Statement]) -->
 	( { Args = [] } ->
 		[]
@@ -2094,7 +2083,7 @@ ml_gen_construct_rep(type_ctor_info_constant(ModuleName, TypeName, TypeArity),
 	{ MLDS_Statement = ml_gen_assign(VarLval, 
 		const(data_addr_const(DataAddr)), Context) }.
 ml_gen_construct_rep(base_typeclass_info_constant(ModuleName, ClassId,
-			Instance), Var, Args, _ArgModes, Context,
+			Instance), _ConsId, Var, Args, _ArgModes, Context,
 		[], [MLDS_Statement]) -->
 	( { Args = [] } ->
 		[]
@@ -2108,8 +2097,8 @@ ml_gen_construct_rep(base_typeclass_info_constant(ModuleName, ClassId,
 	{ MLDS_Statement = ml_gen_assign(VarLval, 
 		const(data_addr_const(DataAddr)), Context) }.
 
-ml_gen_construct_rep(tabling_pointer_constant(PredId, ProcId), Var,
-		Args, _ArgModes, Context, [], [MLDS_Statement]) -->
+ml_gen_construct_rep(tabling_pointer_constant(PredId, ProcId), _ConsId,
+		Var, Args, _ArgModes, Context, [], [MLDS_Statement]) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -2126,8 +2115,8 @@ ml_gen_construct_rep(tabling_pointer_constant(PredId, ProcId), Var,
 	{ MLDS_Statement = ml_gen_assign(VarLval, 
 		const(data_addr_const(DataAddr)), Context) }.
 
-ml_gen_construct_rep(code_addr_constant(PredId, ProcId), Var,
-		Args, _ArgModes, Context, [], [MLDS_Statement]) -->
+ml_gen_construct_rep(code_addr_constant(PredId, ProcId), _ConsId,
+		Var, Args, _ArgModes, Context, [], [MLDS_Statement]) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -2137,8 +2126,8 @@ ml_gen_construct_rep(code_addr_constant(PredId, ProcId), Var,
 	ml_gen_proc_addr_rval(PredId, ProcId, ProcAddrRval),
 	{ MLDS_Statement = ml_gen_assign(VarLval, ProcAddrRval, Context) }.
 
-ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _Var,
-		_Args, _ArgModes, _Context, [], [_MLDS_Statement]) -->
+ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _ConsId,
+		_Var, _Args, _ArgModes, _Context, [], [_MLDS_Statement]) -->
 	% This constructs a closure.
 	% The representation of closures for the LLDS backend is defined in
 	% runtime/mercury_ho_call.h.
@@ -2202,6 +2191,126 @@ ml_cons_id_to_tag(ConsId, Type, Tag) -->
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ code_util__cons_id_to_tag(ConsId, Type, ModuleInfo, Tag) }.
 
+:- pred ml_gen_new_object(mlds__tag, maybe(int), cons_id, prog_var, prog_vars,
+		list(uni_mode), prog_context, mlds__defns, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_new_object(in, in, in, in, in, in, in, out, out, in, out)
+		is det.
+
+ml_gen_new_object(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
+		Context, MLDS_Decls, MLDS_Statements) -->
+	%
+	% Determine the variable's type and lval,
+	% and determine the constructor name and the tag to use.
+	%
+	ml_variable_type(Var, Type),
+	{ MLDS_Type = mercury_type_to_mlds_type(Type) },
+	ml_gen_var(Var, Lval),
+	ml_cons_name(ConsId, CtorName),
+	{ Tag = 0 ->
+		MaybeTag = no
+	;
+		MaybeTag = yes(Tag)
+	},
+
+	%
+	% Generate rvals for the arguments
+	%
+	ml_gen_var_list(ArgVars, ArgLvals),
+	ml_variable_types(ArgVars, ArgTypes),
+	{ MLDS_ArgTypes0 = list__map(mercury_type_to_mlds_type, ArgTypes) },
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ ml_gen_cons_args(ArgLvals, ArgTypes, ArgModes, ModuleInfo,
+		ArgRvals0) },
+
+	% 
+	% If there is a secondary tag, it goes in the first field
+	%
+	{ MaybeSecondaryTag = yes(SecondaryTag) ->
+		SecondaryTagRval = const(int_const(SecondaryTag)),
+		SecondaryTagType = mlds__int_type,
+		ArgRvals = [SecondaryTagRval | ArgRvals0],
+		MLDS_ArgTypes = [SecondaryTagType | MLDS_ArgTypes0]
+	;
+		ArgRvals = ArgRvals0,
+		MLDS_ArgTypes = MLDS_ArgTypes0
+	},
+
+	%
+	% Compute the number of bytes to allocate
+	%
+	{ list__length(ArgRvals, NumArgs) },
+	{ SizeInWordsRval = const(int_const(NumArgs)) },
+	{ SizeOfWordRval = ml_sizeof_word_rval },
+	{ SizeInBytesRval = binop((*), SizeInWordsRval, SizeOfWordRval) },
+	
+	%
+	% Now put it all together.
+	%
+	{ MakeNewObject = new_object(Lval, MaybeTag, MLDS_Type,
+		yes(SizeInBytesRval), yes(CtorName), ArgRvals,
+		MLDS_ArgTypes) },
+	{ MLDS_Stmt = atomic(MakeNewObject) },
+	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
+		mlds__make_context(Context)) },
+	{ MLDS_Statements = [MLDS_Statement] },
+	{ MLDS_Decls = [] }.
+
+:- pred ml_cons_name(cons_id, ctor_name, ml_gen_info, ml_gen_info).
+:- mode ml_cons_name(in, out, in, out) is det.
+
+ml_cons_name(ConsId, ConsName) -->
+	{ hlds_out__cons_id_to_string(ConsId, ConsName) }.
+
+	% Return an rval for the `SIZEOF_WORD' constant.
+	% This constant is supposed to be defined by the Mercury library.
+	% It holds `sizeof(Word)'.  (Using this constant allows us to avoid
+	% hard-coding the word size without having to add support for
+	% `sizeof' to MLDS.)
+	%
+:- func ml_sizeof_word_rval = mlds__rval.
+ml_sizeof_word_rval = SizeofWordRval :-
+	mercury_private_builtin_module(PrivateBuiltin),
+	MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
+	SizeofWordRval = lval(var(qual(MLDS_Module, "SIZEOF_WORD"))).
+
+:- pred ml_gen_cons_args(list(mlds__lval), list(prog_data__type),
+		list(uni_mode), module_info, list(mlds__rval)).
+:- mode ml_gen_cons_args(in, in, in, in, out) is det.
+
+ml_gen_cons_args(Lvals, Types, Modes, ModuleInfo, Rvals) :-
+	( ml_gen_cons_args_2(Lvals, Types, Modes, ModuleInfo, Rvals0) ->
+		Rvals = Rvals0
+	;
+		error("ml_gen_cons_args: length mismatch")
+	).
+
+	% Create a list of rvals for the arguments
+	% for a construction unification.  For each argument which
+	% is input to the construction unification, we produce the
+	% corresponding lval, but if the argument is free,
+	% we just produce `0', meaning initialize that field to a
+	% null value.  (XXX perhaps we should have a special `null' rval.)
+
+:- pred ml_gen_cons_args_2(list(mlds__lval), list(prog_data__type),
+		list(uni_mode), module_info, list(mlds__rval)).
+:- mode ml_gen_cons_args_2(in, in, in, in, out) is semidet.
+
+ml_gen_cons_args_2([], [], [], _, []).
+ml_gen_cons_args_2([Lval|Lvals], [Type|Types], [UniMode|UniModes],
+			ModuleInfo, [Rval|Rvals]) :-
+	UniMode = ((_LI - RI) -> (_LF - RF)),
+	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
+		Rval = lval(Lval)
+	;
+		% XXX perhaps we should have a special `null' rval.
+		Rval = const(int_const(0))
+	),
+	ml_gen_cons_args_2(Lvals, Types, UniModes, ModuleInfo, Rvals).
+
+%-----------------------------------------------------------------------------%
+
 	% Generate a deterministic deconstruction. In a deterministic
 	% deconstruction, we know the value of the tag, so we don't
 	% need to generate a test.
@@ -2218,7 +2327,7 @@ ml_cons_id_to_tag(ConsId, Type, Tag) -->
 %		A2 = arg(X, f, 2);
 %		...
 
-ml_gen_det_deconstruct(Var, ConsId, _Args, _Modes, _Context,
+ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	{ MLDS_Decls = [] },
 	ml_variable_type(Var, Type),
@@ -2253,14 +2362,6 @@ ml_gen_det_deconstruct(Var, ConsId, _Args, _Modes, _Context,
 		% XXX not yet implemented
 		{ Tag = no_tag },
 		{ sorry("compound terms (no_tag deconstruct)") }
-	;
-		% XXX not yet implemented
-		{ Tag = unshared_tag(_) },
-		{ sorry("compound terms (unshared_tag deconstruct)") }
-	;
-		% XXX not yet implemented
-		{ Tag = shared_remote_tag(_, _) },
-		{ sorry("compound terms (shared_remote_tag deconstruct)") }
 /****
 	;
 		{ Tag = no_tag },
@@ -2272,30 +2373,120 @@ ml_gen_det_deconstruct(Var, ConsId, _Args, _Modes, _Context,
 		;
 			{ error("ml_code_gen: no_tag: arity != 1") }
 		)
+****/
 	;
 		{ Tag = unshared_tag(UnsharedTag) },
-		{ Rval = var(Var) },
-		% XXX FIXME
-		{ ml_gen_make_fields_and_argvars(Args, Rval, 0, UnsharedTag,
-			Fields, ArgVars) },
+		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
-		% XXX FIXME
-		ml_gen_unify_args(Fields, ArgVars, Modes, ArgTypes,
-			MLDS_Statements)
+		ml_gen_unify_args(Args, Modes, ArgTypes,
+			VarLval, 0, UnsharedTag, Context, MLDS_Statements)
 	;
-		{ Tag = shared_remote_tag(Bits0, _Num0) },
-		{ Rval = var(Var) },
-		% XXX FIXME
-		{ ml_gen_make_fields_and_argvars(Args, Rval, 1,
-			Bits0, Fields, ArgVars) },
+		{ Tag = shared_remote_tag(PrimaryTag, _SecondaryTag) },
+		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
-		% XXX FIXME
-		ml_gen_unify_args(Fields, ArgVars, Modes, ArgTypes,
-			MLDS_Statements)
-****/
+		ml_gen_unify_args(Args, Modes, ArgTypes,
+			VarLval, 1, PrimaryTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_local_tag(_Bits1, _Num1) },
 		{ MLDS_Statements = [] } % if this is det, then nothing happens
+	).
+
+:- pred ml_gen_unify_args(prog_vars, list(uni_mode), list(prog_data__type),
+		mlds__lval, int, mlds__tag, prog_context,
+		mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_unify_args(in, in, in, in, in, in, in, out, in, out) is det.
+
+ml_gen_unify_args(Args, Modes, ArgTypes, VarLval, ArgNum, PrimaryTag, Context,
+		MLDS_Statements) -->
+	(
+		ml_gen_unify_args_2(Args, Modes, ArgTypes,
+			VarLval, ArgNum, PrimaryTag, Context,
+			[], MLDS_Statements0)
+	->
+		{ MLDS_Statements = MLDS_Statements0 }
+	;
+		{ error("ml_gen_unify_args: length mismatch") }
+	).
+
+:- pred ml_gen_unify_args_2(prog_vars, list(uni_mode), list(prog_data__type),
+		mlds__lval, int, mlds__tag, prog_context,
+		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, out, in, out)
+		is semidet.
+
+ml_gen_unify_args_2([], [], [], _, _, _, _, Statements, Statements) --> [].
+ml_gen_unify_args_2([Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
+			VarLval, ArgNum, PrimaryTag, Context,
+			MLDS_Statements0, MLDS_Statements) -->
+	{ ArgNum1 = ArgNum + 1 },
+	ml_gen_unify_args_2(Args, Modes, ArgTypes, VarLval, ArgNum1,
+		PrimaryTag, Context, MLDS_Statements0, MLDS_Statements1),
+	ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag,
+		Context, MLDS_Statements1, MLDS_Statements).
+
+:- pred ml_gen_unify_arg(prog_var, uni_mode, prog_data__type,
+		mlds__lval, int, mlds__tag, prog_context,
+		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, out, in, out)
+		is det.
+
+ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag, Context,
+		MLDS_Statements0, MLDS_Statements) -->
+	%
+	% Generate lvals for the LHS and the RHS
+	%
+	{ FieldId = offset(const(int_const(ArgNum))) },
+	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId) },
+	ml_gen_var(Arg, ArgLval),
+
+	%
+	% Figure out the direction of data-flow from the mode,
+	% and generate code accordingly
+	%
+	{ Mode = ((LI - RI) -> (LF - RF)) },
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode) },
+	{ mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode) },
+	(
+		% skip dummy argument types, since they will not have
+		% been declared
+		{ type_util__is_dummy_argument_type(ArgType) }
+	->
+		{ MLDS_Statements = MLDS_Statements0 }
+	;
+		% both input: it's a test unification
+		{ LeftMode = top_in },
+		{ RightMode = top_in }
+	->
+		% This shouldn't happen, since mode analysis should
+		% avoid creating any tests in the arguments
+		% of a construction or deconstruction unification.
+		{ error("test in arg of [de]construction") }
+	;
+		% input - output: it's an assignment to the RHS
+		{ LeftMode = top_in },
+		{ RightMode = top_out }
+	->
+		{ MLDS_Statement = ml_gen_assign(ArgLval, lval(FieldLval),
+			Context) },
+		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
+	;
+		% output - input: it's an assignment to the LHS
+		{ LeftMode = top_out },
+		{ RightMode = top_in }
+	->
+		{ MLDS_Statement = ml_gen_assign(FieldLval, lval(ArgLval),
+			Context) },
+		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
+	;
+		% unused - unused: the unification has no effect
+		{ LeftMode = top_unused },
+		{ RightMode = top_unused }
+	->
+		{ MLDS_Statements = MLDS_Statements0 }
+	;
+		{ error("unify_gen__generate_sub_unify: some strange unify") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2324,14 +2515,23 @@ ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 		TagTestExpression),
+	ml_gen_set_success(TagTestExpression, Context, SetTagTestResult),
 	ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
 		GetArgsDecls, GetArgsStatements),
-	{ GetArgs = ml_gen_block(GetArgsDecls, GetArgsStatements, Context) },
-	{ IfStmt = if_then_else(TagTestExpression, GetArgs, no) },
-	{ IfStatement = mlds__statement(IfStmt,
-		mlds__make_context(Context)) },
-	{ MLDS_Decls = TagTestDecls },
-	{ MLDS_Statements = list__append(TagTestStatements, [IfStatement]) }.
+	{ GetArgsDecls = [], GetArgsStatements = [] ->
+		MLDS_Decls = TagTestDecls,
+		MLDS_Statements = list__append(TagTestStatements,
+			[SetTagTestResult])
+	;
+		GetArgs = ml_gen_block(GetArgsDecls, GetArgsStatements,
+			Context),
+		IfStmt = if_then_else(TagTestExpression, GetArgs, no),
+		IfStatement = mlds__statement(IfStmt,
+			mlds__make_context(Context)),
+		MLDS_Decls = TagTestDecls,
+		MLDS_Statements = list__append(TagTestStatements,
+			[SetTagTestResult, IfStatement])
+	}.
 
 	% ml_gen_tag_test_rval(Var, ConsId, Defns, Statements, Expression):
 	%	Generate code to perform a tag test.
@@ -2389,19 +2589,13 @@ ml_gen_tag_test_rval(tabling_pointer_constant(_, _), _) = _ :-
 ml_gen_tag_test_rval(no_tag, _Rval) = const(true).
 ml_gen_tag_test_rval(unshared_tag(UnsharedTag), Rval) =
 	binop(eq, unop(tag, Rval), unop(mktag, const(int_const(UnsharedTag)))).
-ml_gen_tag_test_rval(shared_remote_tag(_, _), _) = _ :-
-	% XXX not yet implemented
-	sorry("compound terms (shared_remote_tag tag test)").
-/***
-This doesn't work because the MLDS doesn't have an appropriate `field' rval.
 ml_gen_tag_test_rval(shared_remote_tag(Bits, Num), Rval) =
 	binop(and,
 		binop(eq,	unop(tag, Rval),
 				unop(mktag, const(int_const(Bits)))), 
 		binop(eq,	lval(field(yes(Bits), Rval,
-					const(int_const(0)))),
+					offset(const(int_const(0))))),
 				const(int_const(Num)))).
-***/
 ml_gen_tag_test_rval(shared_local_tag(Bits, Num), Rval) =
 	binop(eq, Rval, mkword(Bits, unop(mkbody, const(int_const(Num))))).
 
@@ -2804,21 +2998,21 @@ ml_gen_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 	% return a list containing only those variables which have
 	% an output mode.
 	%
-:- func select_output_vars(module_info, list(prog_var), list(mode)) =
-		list(prog_var).
+:- func select_output_vars(module_info, list(prog_var), list(mode),
+		map(prog_var, prog_data__type)) = list(prog_var).
 
-select_output_vars(ModuleInfo, HeadVars, HeadModes) = OutputVars :-
+select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
 	( HeadVars = [], HeadModes = [] ->
 		OutputVars = []
 	; HeadVars = [Var|Vars], HeadModes = [Mode|Modes] ->
-		% XXX should we instead use mode_to_arg_mode here?
-		( mode_is_output(ModuleInfo, Mode) ->
+		map__lookup(VarTypes, Var, Type),
+		( \+ mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) ->
 			OutputVars1 = select_output_vars(ModuleInfo,
-					Vars, Modes),
+					Vars, Modes, VarTypes),
 			OutputVars = [Var | OutputVars1]
 		;
 			OutputVars = select_output_vars(ModuleInfo,
-					Vars, Modes)
+					Vars, Modes, VarTypes)
 		)
 	;
 		error("select_output_vars: length mismatch")
@@ -2865,7 +3059,7 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet,
 
 ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet, FuncArg) :-
 	MLDS_Type = mercury_type_to_mlds_type(Type),
-	( mode_is_output(ModuleInfo, Mode) ->
+	( \+ mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) ->
 		MLDS_ArgType = mlds__ptr_type(MLDS_Type)
 	;
 		MLDS_ArgType = MLDS_Type
@@ -2991,7 +3185,8 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_argmodes(ProcInfo, HeadModes),
-	OutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes),
+	OutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
+		VarTypes),
 	FuncLabelCounter = 0,
 	stack__init(SuccContStack),
 	MLDSGenInfo = ml_gen_info(

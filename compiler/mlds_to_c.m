@@ -849,12 +849,14 @@ mlds_output_atomic_stmt(Indent, new_object(Target,
 	mlds_indent(Indent),
 	mlds_output_lval(Target),
 	io__write_string(" = "),
-	( { MaybeTag = yes(Tag) } ->
-		io__write_string("MR_mkword("),
+	( { MaybeTag = yes(Tag0) } ->
+		{ Tag = Tag0 },
+		io__write_string("(Word) MR_mkword("),
 		mlds_output_tag(Tag),
 		io__write_string(", "),
 		{ EndMkword = ")" }
 	;
+		{ Tag = 0 },
 		{ EndMkword = "" }
 	),
 	io__write_string("MR_new_object("),
@@ -868,21 +870,16 @@ mlds_output_atomic_stmt(Indent, new_object(Target,
 	),
 	io__write_string(", "),
 	( { MaybeCtorName = yes(CtorName) } ->
-		io__write_string(CtorName)
+		io__write_char('"'),
+		c_util__output_quoted_string(CtorName),
+		io__write_char('"')
 	;
 		io__write_string("NULL")
 	),
 	io__write_string(")"),
 	io__write_string(EndMkword),
 	io__write_string(";\n"),
-	%
-	% XXX we should handle the constructor arguments / initializer
-	%
-	( { Args = [], ArgTypes = [] } ->
-		[]
-	;
-		{ error("mlds_output_atomic_stmt: new_object initializer") }
-	).
+	mlds_output_init_args(Args, ArgTypes, 0, Target, Tag, Indent).
 
 mlds_output_atomic_stmt(Indent, mark_hp(Lval)) -->
 	mlds_indent(Indent),
@@ -915,6 +912,29 @@ mlds_output_atomic_stmt(_Indent, target_code(_TargetLang, _CodeString)) -->
 			% that does not have any non-local flow of control.
 */
 
+:- pred mlds_output_init_args(list(rval), list(mlds__type), int, mlds__lval,
+		tag, int, io__state, io__state).
+:- mode mlds_output_init_args(in, in, in, in, in, in, di, uo) is det.
+
+mlds_output_init_args([_|_], [], _, _, _, _) -->
+	{ error("mlds_output_init_args: length mismatch") }.
+mlds_output_init_args([], [_|_], _, _, _, _) -->
+	{ error("mlds_output_init_args: length mismatch") }.
+mlds_output_init_args([], [], _, _, _, _) --> [].
+mlds_output_init_args([Arg|Args], [_ArgType|ArgTypes], ArgNum, Target, Tag,
+		Indent) -->
+	mlds_indent(Indent),
+	io__write_string("MR_field("),
+	mlds_output_tag(Tag),
+	io__write_string(", "),
+	mlds_output_lval(Target),
+	io__write_string(", "),
+	io__write_int(ArgNum),
+	io__write_string(") = "),
+	mlds_output_rval(Arg),
+	io__write_string(";\n"),
+	mlds_output_init_args(Args, ArgTypes, ArgNum + 1, Target, Tag, Indent).
+
 %-----------------------------------------------------------------------------%
 %
 % Code to output expressions
@@ -923,8 +943,34 @@ mlds_output_atomic_stmt(_Indent, target_code(_TargetLang, _CodeString)) -->
 :- pred mlds_output_lval(mlds__lval, io__state, io__state).
 :- mode mlds_output_lval(in, di, uo) is det.
 
-mlds_output_lval(field(_MaybeTag, _Rval, _FieldId)) -->
-	{ error("mlds.m: sorry, not yet implemented: field") }.
+mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval))) -->
+	( { MaybeTag = yes(Tag) } ->
+		io__write_string("MR_field("),
+		mlds_output_tag(Tag),
+		io__write_string(", ")
+	;
+		io__write_string("MR_mask_field(")
+	),
+	mlds_output_rval(Rval),
+	io__write_string(", "),
+	mlds_output_rval(OffsetRval),
+	io__write_string(")").
+mlds_output_lval(field(MaybeTag, Rval, named_field(FieldId))) -->
+	( { MaybeTag = yes(0) } ->
+		mlds_output_rval(Rval)
+	;
+		( { MaybeTag = yes(Tag) } ->
+			io__write_string("MR_body("),
+			mlds_output_tag(Tag),
+			io__write_string(", ")
+		;
+			io__write_string("MR_strip_tag(")
+		),
+		mlds_output_rval(Rval),
+		io__write_string(")")
+	),
+	io__write_string("->"),
+	mlds_output_fully_qualified_name(FieldId, io__write_string).
 mlds_output_lval(mem_ref(Rval)) -->
 	io__write_string("*"),
 	mlds_output_bracketed_rval(Rval).
@@ -935,9 +981,18 @@ mlds_output_lval(var(VarName)) -->
 :- mode mlds_output_bracketed_rval(in, di, uo) is det.
 
 mlds_output_bracketed_rval(Rval) -->
-	io__write_char('('),
-	mlds_output_rval(Rval),
-	io__write_char(')').
+	(
+		% if it's just a variable name, then we don't need parentheses
+		{ Rval = lval(var(_))
+		; Rval = const(code_addr_const(_))
+		}
+	->
+		mlds_output_rval(Rval)
+	;
+		io__write_char('('),
+		mlds_output_rval(Rval),
+		io__write_char(')')
+	).
 
 :- pred mlds_output_rval(mlds__rval, io__state, io__state).
 :- mode mlds_output_rval(in, di, uo) is det.
@@ -968,7 +1023,7 @@ mlds_output_rval(lval(Lval)) -->
 ****/
 
 mlds_output_rval(mkword(Tag, Rval)) -->
-	io__write_string("MR_mkword("),
+	io__write_string("(Word) MR_mkword("),
 	mlds_output_tag(Tag),
 	io__write_string(", "),
 	mlds_output_rval(Rval),
