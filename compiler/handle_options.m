@@ -575,6 +575,11 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		bool(yes)),
 	option_implies(intermod_unused_args, optimize_unused_args, bool(yes)),
 
+	% --introduce-accumulators implies --excess-assign and
+	% --common-struct.
+	option_implies(introduce_accumulators, excess_assign, bool(yes)),
+	option_implies(introduce_accumulators, common_struct, bool(yes)),
+
 	% Don't do the unused_args optimization when making the
 	% optimization interface.
 	option_implies(make_optimization_interface, optimize_unused_args,
