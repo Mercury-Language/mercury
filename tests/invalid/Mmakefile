@@ -8,13 +8,20 @@ include ../Mmake.common
 #-----------------------------------------------------------------------------#
 
 # Note: multi-module tests (including tests of nested modules)
-# also need to be listed below, in the .depend list, as well as here.
+# need to be listed separately from single-module tests, since
+# we need to make dependencies only for multimodule tests.
 
-SOURCES= \
+MULTIMODULE_SOURCES= \
 	aditi_errors.m \
 	aditi_state_errors.m \
 	aditi_update_errors.m \
 	aditi_update_mode_errors.m \
+	imported_mode.m \
+	partial_implied_mode.m \
+	test_nested.m \
+	undef_mod_qual.m
+
+SINGLEMODULE_SOURCES= \
 	any_mode.m \
 	assert_in_interface.m \
 	bigtest.m \
@@ -36,7 +43,6 @@ SOURCES= \
 	ho_type_mode_bug.m \
 	ho_unique_error.m \
 	impure_method_impl.m \
-	imported_mode.m \
 	inline_conflict.m \
 	invalid_main.m \
 	inst_list_dup.m \
@@ -52,7 +58,6 @@ SOURCES= \
 	not_a_switch.m \
 	nullary_ho_func_error.m \
 	occurs.m \
-	partial_implied_mode.m \
 	polymorphic_unification.m \
 	pragma_c_code_and_clauses1.m \
 	pragma_c_code_and_clauses2.m \
@@ -67,7 +72,6 @@ SOURCES= \
 	spurious_mode_error.m \
 	tc_err1.m \
 	tc_err2.m \
-	test_nested.m \
 	tricky_assert1.m \
 	type_inf_loop.m \
 	type_loop.m \
@@ -85,9 +89,9 @@ SOURCES= \
 	type_spec.m \
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
+	undef_mod_qual.m \
 	undef_mode.m \
 	undef_mode_and_no_clauses.m \
-	undef_mod_qual.m \
 	undef_symbol.m \
 	undef_type.m \
 	unify_mode_error.m \
@@ -95,6 +99,8 @@ SOURCES= \
 	uniq_neg.m \
 	uu_type.m \
 	vars_in_wrong_places.m
+
+SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 
 # we do not yet pass the following tests:
 #	parent.undeclared_child.m (just not yet implemented)
@@ -124,8 +130,8 @@ MCFLAGS-typeclass_mode =	--infer-all
 # easiest just to do that step.
 MCFLAGS-nested_impl_in_int =	--generate-dependencies
 
-DEPS=		$(SOURCES:%.m=%.dep)
-DEPENDS=	$(SOURCES:%.m=%.depend)
+MULTIMODULE_DEPENDS=	$(MULTIMODULE_SOURCES:%.m=%.depend)
+
 ERRS=		$(SOURCES:%.m=%.err)
 ERR_RESS=	$(SOURCES:%.m=%.err_res)
 
@@ -147,16 +153,7 @@ check:	$(ERRS) $(ERR_RESS)
 
 errs:	$(ERRS)
 
-# We only need to make the dependencies for test cases consisting of
-# multiple modules; currently the following are the only such cases.
-depend: aditi_errors.depend \
-	aditi_state_errors.depend \
-	aditi_update_errors.depend \
-	aditi_update_mode_errors.depend \
-	imported_mode.depend \
-	partial_implied_mode.depend \
-	test_nested.depend \
-	undef_mod_qual.depend
+depend:	$(MULTIMODULE_DEPENDS)
 
 clean_local:
 	rm -f *.err *.err_res
