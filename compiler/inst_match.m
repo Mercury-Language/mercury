@@ -570,8 +570,8 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 			InstTable3),
 		module_info_set_insts(ModuleInfo2, InstTable3, ModuleInfo)
 	),
-		% avoid expanding recursive insts where possible
-	( Inst0 = bound(_, _) ->
+		% avoid expanding recursive insts
+	( inst_contains_instname(Inst0, ModuleInfo, merge_inst(InstA, InstB)) ->
 		Inst = defined_inst(merge_inst(InstA, InstB))
 	;		
 		Inst = Inst0
@@ -747,8 +747,8 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, ModuleInfo0,
 		inst_table_set_unify_insts(InstTable2, UnifyInsts, InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
 	),
-		% avoid expanding recursive insts where possible
-	( Inst0 = bound(_, _) ->
+		% avoid expanding recursive insts
+	( inst_contains_instname(Inst0, ModuleInfo, ThisInstPair) ->
 		Inst = defined_inst(ThisInstPair)
 	;		
 		Inst = Inst0
@@ -1224,8 +1224,8 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 			InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
 	),
-		% avoid expanding recursive insts where possible
-	( GroundInst = bound(_, _) ->
+		% avoid expanding recursive insts
+	( inst_contains_instname(GroundInst, ModuleInfo, GroundInstKey) ->
 		Inst = defined_inst(GroundInstKey)
 	;		
 		Inst = GroundInst
@@ -1334,8 +1334,8 @@ make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 			InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
 	),
-		% avoid expanding recursive insts where possible
-	( SharedInst = bound(_, _) ->
+		% avoid expanding recursive insts
+	( inst_contains_instname(SharedInst, ModuleInfo, InstName) ->
 		Inst = defined_inst(InstName)
 	;		
 		Inst = SharedInst
@@ -1424,8 +1424,8 @@ make_mostly_uniq_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 			InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
 	),
-		% avoid expanding recursive insts where possible
-	( NondetLiveInst = bound(_, _) ->
+		% avoid expanding recursive insts
+	( inst_contains_instname(NondetLiveInst, ModuleInfo, InstName) ->
 		Inst = defined_inst(InstName)
 	;		
 		Inst = NondetLiveInst
@@ -1575,5 +1575,44 @@ abstractly_unify_inst_list_lives([X|Xs], [Y|Ys], [Live|Lives], Real,
 			Z, _Det, ModuleInfo1),
 	abstractly_unify_inst_list_lives(Xs, Ys, Lives, Real, ModuleInfo1,
 			Zs, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred inst_contains_instname(inst, module_info, inst_name).
+:- mode inst_contains_instname(in, in, in) is semidet.
+
+inst_contains_instname(defined_inst(InstName1), ModuleInfo, InstName) :-
+	(
+		InstName = InstName1
+	;
+		inst_lookup(ModuleInfo, InstName1, Inst1),
+		inst_contains_instname(Inst1, ModuleInfo, InstName)
+	).
+inst_contains_instname(bound(_Uniq, ArgInsts), ModuleInfo, InstName) :-
+	bound_inst_list_contains_instname(ArgInsts, ModuleInfo, InstName).
+
+:- pred bound_inst_list_contains_instname(list(bound_inst), module_info,
+						inst_name).
+:- mode bound_inst_list_contains_instname(in, in, in) is semidet.
+
+bound_inst_list_contains_instname([BoundInst|BoundInsts], ModuleInfo,
+		InstName) :-
+	BoundInst = functor(_Functor, ArgInsts),
+	(
+		inst_list_contains_instname(ArgInsts, ModuleInfo, InstName)
+	;
+		bound_inst_list_contains_instname(BoundInsts, ModuleInfo,
+			InstName)
+	).
+
+:- pred inst_list_contains_instname(list(inst), module_info, inst_name).
+:- mode inst_list_contains_instname(in, in, in) is semidet.
+
+inst_list_contains_instname([Inst|Insts], ModuleInfo, InstName) :-
+	(
+		inst_contains_instname(Inst, ModuleInfo, InstName)
+	;
+		inst_list_contains_instname(Insts, ModuleInfo, InstName)
+	).
 
 %-----------------------------------------------------------------------------%
