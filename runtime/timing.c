@@ -1,5 +1,6 @@
 /*---------------------------------------------------------------------------*/
 /* I hacked this from toplev.c in the gcc source - fjh. */
+/* forther hacked for Solaris 2 by zs
 /*---------------------------------------------------------------------------*/
 
 #include "timing.h"
@@ -23,8 +24,10 @@ You should have received a copy of the GNU General Public License
 along with GNU CC; see the file COPYING.  If not, write to
 the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-#define USG
-
+#ifdef __sparc
+#include <sys/times.h>
+#include <limits.h>
+#else
 #ifdef USG
 #undef FLOAT
 #include <sys/param.h>
@@ -37,8 +40,6 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #ifndef VMS
 #include <sys/time.h>
 #include <sys/resource.h>
-#ifdef sparc
-#include <sys/rusage.h>
 #endif
 #endif
 #endif
@@ -47,6 +48,9 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 int get_run_time (void)
 {
+#ifdef __sparc
+  struct tms tms;
+#else
 #ifdef USG
   struct tms tms;
 #else
@@ -62,7 +66,12 @@ int get_run_time (void)
     } vms_times;
 #endif
 #endif
+#endif
 
+#ifdef __sparc
+  times (&tms);
+  return (tms.tms_utime /* + tms.tms_stime */) * (1000000 / _sysconf(3));
+#else
 #ifdef USG
   times (&tms);
   return (tms.tms_utime /* + tms.tms_stime */) * (1000000 / HZ);
@@ -74,6 +83,7 @@ int get_run_time (void)
 #else /* VMS */
   times (&vms_times);
   return (vms_times.proc_user_time /* + vms_times.proc_system_time */) * 10000;
+#endif
 #endif
 #endif
 }

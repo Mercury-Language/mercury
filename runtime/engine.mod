@@ -27,10 +27,6 @@ Word	*nondstackmax;
 
 #endif
 
-/* debugging options */
-
-bool	debugflag[MAXFLAG];
-
 /* label table */
 
 int	cur_entry = 0;
@@ -39,6 +35,8 @@ Label	entries[MAXLABELS];
 /* misc. */
 
 char	scratchbuf[256];
+
+extern	bool	check_space;
 
 /*---------------------------------------------------------------------------*/
 
@@ -213,6 +211,7 @@ engine_done:
 	** was actually used.
 	*/
 
+	if (check_space)
 	{
 		int low = 0, high = LOCALS_SIZE;
 		int used_low, used_high;
