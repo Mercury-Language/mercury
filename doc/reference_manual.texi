@@ -733,7 +733,7 @@ if they are different disjuncts of the same disjunction,
 or if one is the ``else'' part of an if-then-else
 and the other goal is either the ``then'' part or the condition
 of the if-then-else,
-or if they are the goals of disjoint (distinct and non-overlaping)
+or if they are the goals of disjoint (distinct and non-overlapping)
 lambda expressions.
 
 If a variable occurs in a negated context
