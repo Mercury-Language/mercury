@@ -2352,6 +2352,11 @@ The number of alternatives in a try-chain switch
 must be at least this number (default: 3).
 
 @sp 1
+@item --binary-switch-size @var{size}
+The number of alternatives in a binary search switch
+must be at least this number (default: 4).
+
+@sp 1
 @item --no-middle-rec
 Disable the middle recursion optimization.
 

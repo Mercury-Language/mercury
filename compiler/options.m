@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,6 +215,7 @@
 		;	  string_switch_size
 		;	  tag_switch_size
 		;	  try_switch_size
+		;	  binary_switch_size
 		;	static_ground_terms
 		;	middle_rec
 		;	simple_neg
@@ -491,6 +492,7 @@ option_defaults_2(optimization_option, [
 	string_switch_size	-	int(8),
 	tag_switch_size		-	int(3),
 	try_switch_size		-	int(3),
+	binary_switch_size	-	int(4),
 	static_ground_terms	-	bool(no),
 	middle_rec		-	bool(no),
 	simple_neg		-	bool(no),
@@ -785,6 +787,7 @@ long_option("lookup-switch-size",	lookup_switch_size).
 long_option("string-switch-size",	string_switch_size).
 long_option("tag-switch-size",		tag_switch_size).
 long_option("try-switch-size",		try_switch_size).
+long_option("binary-switch-size",	binary_switch_size).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("middle-rec",		middle_rec).
 long_option("simple_neg",		simple_neg).
@@ -1657,6 +1660,9 @@ options_help_hlds_llds_optimization -->
 	io__write_string("\t--try-switch-size <n>\n"),
 	io__write_string("\t\tThe number of alternatives in a try/retry chain switch\n"),
 	io__write_string("\t\tmust be at least this number (default: 3).\n"),
+	io__write_string("\t--binary-switch-size <n>\n"),
+	io__write_string("\t\tThe number of alternatives in a binary search switch\n"),
+	io__write_string("\t\tmust be at least this number (default: 4).\n"),
 	io__write_string("\t--no-static-ground-terms\n"),
 	io__write_string("\t\tDisable the optimization of constructing constant ground terms\n"),
 	io__write_string("\t\tat compile time and storing them as static constants.\n"),

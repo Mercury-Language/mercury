@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,7 +27,8 @@
 
 :- import_module hlds_module, hlds_pred, hlds_data, code_gen, trace.
 :- import_module options, globals, type_util, prog_data.
-:- import_module assoc_list, bool, map, tree, int, require, std_util, term.
+:- import_module assoc_list, map, tree, bool, int, string.
+:- import_module require, std_util, term.
 
 % where is the secondary tag (if any) for this primary tag value
 :- type stag_loc	--->	none ; local ; remote.
@@ -52,11 +53,11 @@
 	% symbol can be eliminated by a failed primary tag test, this reduces
 	% the expected the number of comparisons required before finding the
 	% code corresponding to the actual value of the switch variable.
-	% We also get a speedup compared to non-tag tests by extracting
+	% We also get a speedup compared to non-tag switches by extracting
 	% the primary and secondary tags once instead of repeatedly for
 	% each functor test.
 	%
-	% We have three methods we can use for generating the code for the
+	% We have four methods we can use for generating the code for the
 	% switches on both primary and secondary tags.
 	%
 	% 1. try-me-else chains have the form
@@ -93,19 +94,56 @@
 	%		goto end
 	%		...
 	%
-	% Note that for a det switch with two tag values, try-me-else chains
-	% and and try chains are equivalent.
+	% 4. binary search switches have the form
 	%
+	%		if (tag(var)) > 1) goto L23
+	%		if (tag(var)) != 0) goto L1
+	%		code for tag 0
+	%		goto end
+	%	L1:	code for tag 1
+	%		goto end
+	%	L23:	if (tag(var)) != 2) goto L3
+	%		code for tag 2
+	%		goto end
+	%	L3:	code for tag 3
+	%		goto end
+	%
+	% Note that for a det switch with two tag values, try-me-else chains
+	% and try chains are equivalent.
+
 	% Which method is best depends on the number of possible tag values,
-	% the costs of taken jumps and table lookups on the given architecture
-	% and on the frequency with which the various alternatives are taken.
+	% on the costs of taken/untaken branches and table lookups on the given
+	% architecture, and on the frequency with which the various
+	% alternatives are taken.
 	%
 	% While the first two are in principle known at compile time,
 	% the third is not. Nevertheless, for switches on primary tags
 	% we can use the heuristic that the more secondary tags assigned to
-	% a primary tag, the more likely that switch variable will have that
-	% primary tag at runtime.
+	% a primary tag, the more likely that the switch variable will have
+	% that primary tag at runtime.
 	%
+	% Try chains are good for switches with small numbers of alternatives
+	% on architectures where untaken branches are cheaper than taken
+	% branches.
+	%
+	% Try-me-else chains are good for switches with very small numbers of
+	% alternatives on architectures where taken branches are cheaper than
+	% untaken branches (which are rare these days).
+	%
+	% Jump tables are good for switches with large numbers of alternatives.
+	% The cost of jumping through a jump table is relatively high, since
+	% it involves a memory access and an indirect branch (which most
+	% current architectures do not handle well), but this cost is
+	% independent of the number of alternatives.
+	%
+	% Binary search switches are good for switches where the number of
+	% alternatives is large enough for the reduced expected number of
+	% branches executed to overcome the extra overhead of the subtraction
+	% required for some conditional branches (compared to try chains
+	% and try-me-else chains), but not large enough to make the
+	% expected cost of the expected number of comparisons exceed the
+	% expected cost of a jump table lookup and dispatch.
+
 	% For try-me-else chains, we want tag1 to be the most frequent case,
 	% tag 2 the next most frequent case, etc.
 	%
@@ -124,8 +162,19 @@
 	% edge in that no goto is needed to reach the code following the
 	% switch. If there is no code following the switch (which happens
 	% very frequently), then even this advantage is nullified.
+	%
+	% For binary search switches, we want the case of the most frequently
+	% occurring tag to be the first, since this code is reached with no
+	% taken branches and ends with an unconditional branch, whereas
+	% reaching the code of the other cases requires at least one taken
+	% *conditional* branch. In general, at each binary decision we
+	% want the more frequently reached cases to be in the half that
+	% immediately follows the if statement implementing the decision.
 
-:- type switch_method	--->	try_me_else_chain ; try_chain ; jump_table.
+:- type switch_method	--->	try_me_else_chain
+			;	try_chain
+			;	jump_table
+			;	binary_search.
 
 tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 		-->
@@ -148,9 +197,13 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 		DenseSwitchSize) },
 	{ globals__lookup_int_option(Globals, try_switch_size,
 		TrySwitchSize) },
-	( { PtagsUsed > DenseSwitchSize } ->
+	{ globals__lookup_int_option(Globals, binary_switch_size,
+		BinarySwitchSize) },
+	( { PtagsUsed >= DenseSwitchSize } ->
 		{ PrimaryMethod = jump_table }
-	; { PtagsUsed > TrySwitchSize } ->
+	; { PtagsUsed >= BinarySwitchSize } ->
+		{ PrimaryMethod = binary_search }
+	; { PtagsUsed >= TrySwitchSize } ->
 		{ PrimaryMethod = try_chain }
 	;
 		{ PrimaryMethod = try_me_else_chain }
@@ -193,8 +246,8 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 		PtagRval = unop(tag, VarRval)
 	},
 
-	% we generate FailCode and EndCode here because the last case within
-	% a primary tag may not be the last case overall
+	% We generate FailCode and EndCode here because the last case within
+	% a primary tag may not be the last case overall.
 
 	code_info__get_next_label(FailLabel),
 	{ FailLabelCode = node([
@@ -215,6 +268,19 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 	{ EndCode = node([label(EndLabel) - "end of tag switch"]) },
 
 	(
+		{ PrimaryMethod = binary_search },
+		{ tag_switch__order_ptags_by_value(0, MaxPrimary, PtagCaseMap,
+			PtagCaseList) },
+		tag_switch__generate_primary_binary_search(PtagCaseList,
+			0, MaxPrimary, PtagRval, VarRval, CodeModel, CanFail,
+			StoreMap, EndLabel, FailLabel, PtagCountMap,
+			no, MaybeFinalCodeInfo, CasesCode),
+		( { MaybeFinalCodeInfo = yes(FinalCodeInfo) } ->
+			code_info__slap_code_info(FinalCodeInfo)
+		;
+			{ error("binary search switch has no useful cases") }
+		)
+	;
 		{ PrimaryMethod = jump_table },
 		{ tag_switch__order_ptags_by_value(0, MaxPrimary, PtagCaseMap,
 			PtagCaseList) },
@@ -475,6 +541,106 @@ tag_switch__generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary,
 
 %-----------------------------------------------------------------------------%
 
+	% Generate the cases for a primary tag using a binary search.
+	% This invocation looks after primary tag values in the range
+	% MinPtag to MaxPtag (including both boundary values).
+
+:- pred tag_switch__generate_primary_binary_search(ptag_case_list, int, int,
+	rval, rval, code_model, can_fail, store_map, label, label,
+	ptag_count_map, maybe(code_info), maybe(code_info),
+	code_tree, code_info, code_info).
+:- mode tag_switch__generate_primary_binary_search(in, in, in,
+	in, in, in, in, in, in, in, in, in, out, out, in, out) is det.
+
+tag_switch__generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag,
+		PtagRval, VarRval, CodeModel, CanFail, StoreMap,
+		EndLabel, FailLabel, PtagCountMap,
+		MaybeFinalCodeInfo0, MaybeFinalCodeInfo, Code) -->
+	( { MinPtag = MaxPtag } ->
+		{ CurPrimary = MinPtag },
+		( { PtagGroups = [] } ->
+			% there is no code for this tag
+			(
+				{ CanFail = can_fail },
+				{ string__int_to_string(CurPrimary, PtagStr) },
+				{ string__append("no code for ptag ", PtagStr,
+					Comment) },
+				{ Code = node([
+					goto(label(FailLabel)) -
+						Comment
+				]) }
+			;
+				{ CanFail = cannot_fail },
+				{ Code = empty }
+			),
+			{ MaybeFinalCodeInfo = MaybeFinalCodeInfo0 }
+		; { PtagGroups = [CurPrimary - PrimaryInfo] } ->
+			{ PrimaryInfo = StagLoc - StagGoalMap },
+			{ map__lookup(PtagCountMap, CurPrimary, CountInfo) },
+			{ CountInfo = StagLoc1 - MaxSecondary },
+			{ StagLoc = StagLoc1 ->
+				true
+			;
+				error("secondary tag locations differ in generate_primary_jump_table")
+			},
+			tag_switch__generate_primary_tag_code(
+				StagGoalMap, CurPrimary, MaxSecondary,
+				StagLoc, VarRval, CodeModel,
+				StoreMap, EndLabel, FailLabel, Code),
+			code_info__grab_code_info(CodeInfo),
+			{ MaybeFinalCodeInfo = yes(CodeInfo) }
+		;
+			{ error("caselist not singleton or empty when binary search ends") }
+		)
+	;
+		{ LowRangeEnd is (MinPtag + MaxPtag) // 2 },
+		{ HighRangeStart is LowRangeEnd + 1 },
+		{ InLowGroup = lambda([PtagGroup::in] is semidet, (
+			PtagGroup = Ptag - _,
+			Ptag =< LowRangeEnd
+		)) },
+		{ list__filter(InLowGroup, PtagGroups, LowGroups, HighGroups) },
+		code_info__get_next_label(NewLabel),
+		{ string__int_to_string(MinPtag, LowStartStr) },
+		{ string__int_to_string(LowRangeEnd, LowEndStr) },
+		{ string__int_to_string(HighRangeStart, HighStartStr) },
+		{ string__int_to_string(MaxPtag, HighEndStr) },
+		{ string__append_list(["fallthrough for ptags ",
+			LowStartStr, " to ", LowEndStr], IfComment) },
+		{ string__append_list(["code for ptags ", HighStartStr,
+			" to ", HighEndStr], LabelComment) },
+		{ LowRangeEndConst = const(int_const(LowRangeEnd)) },
+		{ TestRval = binop(>, PtagRval, LowRangeEndConst) },
+		{ IfCode = node([
+			if_val(TestRval, label(NewLabel)) -
+				IfComment
+		]) },
+		{ LabelCode = node([
+			label(NewLabel) -
+				LabelComment
+		]) },
+
+		code_info__grab_code_info(CodeInfo),
+		tag_switch__generate_primary_binary_search(LowGroups,
+			MinPtag, LowRangeEnd, PtagRval, VarRval, CodeModel,
+			CanFail, StoreMap, EndLabel, FailLabel, PtagCountMap,
+			MaybeFinalCodeInfo0, MaybeFinalCodeInfo1, LowRangeCode),
+		code_info__slap_code_info(CodeInfo),
+		tag_switch__generate_primary_binary_search(HighGroups,
+			HighRangeStart, MaxPtag, PtagRval, VarRval, CodeModel,
+			CanFail, StoreMap, EndLabel, FailLabel, PtagCountMap,
+			MaybeFinalCodeInfo1, MaybeFinalCodeInfo, HighRangeCode),
+
+		{ Code =
+			tree(IfCode,
+			tree(LowRangeCode,
+			tree(LabelCode,
+			     HighRangeCode)))
+		}
+	).
+
+%-----------------------------------------------------------------------------%
+
 	% Generate the code corresponding to a primary tag.
 	% If this primary tag has secondary tags, decide whether we should
 	% use a jump table to implement the secondary switch.
@@ -525,11 +691,15 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 		code_info__get_globals(Globals),
 		{ globals__lookup_int_option(Globals, dense_switch_size,
 			DenseSwitchSize) },
+		{ globals__lookup_int_option(Globals, binary_switch_size,
+			BinarySwitchSize) },
 		{ globals__lookup_int_option(Globals, try_switch_size,
 			TrySwitchSize) },
-		{ MaxSecondary > DenseSwitchSize ->
+		{ MaxSecondary >= DenseSwitchSize ->
 			SecondaryMethod = jump_table
-		; MaxSecondary > TrySwitchSize ->
+		; MaxSecondary >= BinarySwitchSize ->
+			SecondaryMethod = binary_search
+		; MaxSecondary >= TrySwitchSize ->
 			SecondaryMethod = try_chain
 		;
 			SecondaryMethod = try_me_else_chain
@@ -592,6 +762,17 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 					"switch on secondary tag"
 			]) },
 			{ Code = tree(SwitchCode, CasesCode) }
+		;
+			{ SecondaryMethod = binary_search },
+			tag_switch__generate_secondary_binary_search(GoalList,
+				0, MaxSecondary, StagRval, CodeModel, CanFail,
+				StoreMap, EndLabel, FailLabel,
+				no, MaybeFinalCodeInfo, Code),
+			( { MaybeFinalCodeInfo = yes(FinalCodeInfo) } ->
+				code_info__slap_code_info(FinalCodeInfo)
+			;
+				{ error("binary search switch has no useful cases") }
+			)
 		;
 			{ SecondaryMethod = try_chain },
 			tag_switch__generate_secondary_try_chain(GoalList,
@@ -841,6 +1022,110 @@ tag_switch__generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
 				Code),
 			{ Labels = [FailLabel | OtherLabels] }
 		)
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Generate the cases for a secondary tag using a binary search.
+	% This invocation looks after secondary tag values in the range
+	% MinPtag to MaxPtag (including both boundary values).
+
+:- pred tag_switch__generate_secondary_binary_search(stag_goal_list, int, int,
+	rval, code_model, can_fail, store_map, label, label,
+	maybe(code_info), maybe(code_info),
+	code_tree, code_info, code_info).
+:- mode tag_switch__generate_secondary_binary_search(in, in, in,
+	in, in, in, in, in, in, in, out, out, in, out) is det.
+
+tag_switch__generate_secondary_binary_search(StagGoals, MinStag, MaxStag,
+		StagRval, CodeModel, CanFail, StoreMap, EndLabel, FailLabel,
+		MaybeFinalCodeInfo0, MaybeFinalCodeInfo, Code) -->
+	( { MinStag = MaxStag } ->
+		{ CurSec = MinStag },
+		( { StagGoals = [] } ->
+			% there is no code for this tag
+			(
+				{ CanFail = can_fail },
+				{ string__int_to_string(CurSec, StagStr) },
+				{ string__append("no code for ptag ", StagStr,
+					Comment) },
+				{ Code = node([
+					goto(label(FailLabel)) -
+						Comment
+				]) }
+			;
+				{ CanFail = cannot_fail },
+				{ Code = empty }
+			),
+			{ MaybeFinalCodeInfo = MaybeFinalCodeInfo0 }
+		; { StagGoals = [CurSec - Goal] } ->
+			code_info__get_maybe_trace_info(MaybeTraceInfo),
+			( { MaybeTraceInfo = yes(TraceInfo) } ->
+				{ Goal = _ - GoalInfo },
+				{ goal_info_get_goal_path(GoalInfo, Path) },
+				trace__generate_event_code(switch(Path),
+					TraceInfo, TraceCode)
+			;
+				{ TraceCode = empty }
+			),
+			code_gen__generate_goal(CodeModel, Goal, GoalCode),
+			code_info__generate_branch_end(CodeModel, StoreMap,
+				SaveCode),
+			{ Code =
+				tree(TraceCode,
+				tree(GoalCode,
+				     SaveCode))
+			},
+			code_info__grab_code_info(CodeInfo),
+			{ MaybeFinalCodeInfo = yes(CodeInfo) }
+		;
+			{ error("goallist not singleton or empty when binary search ends") }
+		)
+	;
+		{ LowRangeEnd is (MinStag + MaxStag) // 2 },
+		{ HighRangeStart is LowRangeEnd + 1 },
+		{ InLowGroup = lambda([StagGoal::in] is semidet, (
+			StagGoal = Stag - _,
+			Stag =< LowRangeEnd
+		)) },
+		{ list__filter(InLowGroup, StagGoals, LowGoals, HighGoals) },
+		code_info__get_next_label(NewLabel),
+		{ string__int_to_string(MinStag, LowStartStr) },
+		{ string__int_to_string(LowRangeEnd, LowEndStr) },
+		{ string__int_to_string(HighRangeStart, HighStartStr) },
+		{ string__int_to_string(MaxStag, HighEndStr) },
+		{ string__append_list(["fallthrough for stags ",
+			LowStartStr, " to ", LowEndStr], IfComment) },
+		{ string__append_list(["code for stags ", HighStartStr,
+			" to ", HighEndStr], LabelComment) },
+		{ LowRangeEndConst = const(int_const(LowRangeEnd)) },
+		{ TestRval = binop(>, StagRval, LowRangeEndConst) },
+		{ IfCode = node([
+			if_val(TestRval, label(NewLabel)) -
+				IfComment
+		]) },
+		{ LabelCode = node([
+			label(NewLabel) -
+				LabelComment
+		]) },
+
+		code_info__grab_code_info(CodeInfo),
+		tag_switch__generate_secondary_binary_search(LowGoals,
+			MinStag, LowRangeEnd, StagRval, CodeModel,
+			CanFail, StoreMap, EndLabel, FailLabel,
+			MaybeFinalCodeInfo0, MaybeFinalCodeInfo1, LowRangeCode),
+		code_info__slap_code_info(CodeInfo),
+		tag_switch__generate_secondary_binary_search(HighGoals,
+			HighRangeStart, MaxStag, StagRval, CodeModel,
+			CanFail, StoreMap, EndLabel, FailLabel,
+			MaybeFinalCodeInfo1, MaybeFinalCodeInfo, HighRangeCode),
+
+		{ Code =
+			tree(IfCode,
+			tree(LowRangeCode,
+			tree(LabelCode,
+			     HighRangeCode)))
+		}
 	).
 
 %-----------------------------------------------------------------------------%
