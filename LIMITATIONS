@@ -10,6 +10,8 @@ are the following:
 * Higher-order predicates terms can have at most 3 uncurried arguments :-(
   (although they can have any number of curried arguments).
 
+* call/N will not allow input arguments after any output arguments.
+
 * The compiler does not yet use structure reuse or compile-time
   garbage collection to exploit unique modes :-(
 
