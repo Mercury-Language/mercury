@@ -114,25 +114,28 @@ peephole__nonrepeat_opts(Options, Instructions0, Instructions) :-
 	% Then traverse the instruction list, short-circuiting jump sequences.
 
 :- type jumpmap == map(label, instruction).
+:- type procmap == map(label, list(instruction)).
 
 :- pred peephole__short_circuit(list(instruction), list(instruction), bool).
 :- mode peephole__short_circuit(in, out, out) is det.
 
-peephole__short_circuit(Instructions0, Instructions, Mod) :-
+peephole__short_circuit(Instrs0, Instrs, Mod) :-
 	map__init(Jumpmap0),
-	peephole__jumpopt_build_jumpmap(Instructions0, Jumpmap0, Jumpmap),
-	peephole__jumpopt_instr_list(Instructions0, Jumpmap, Instructions, Mod).
+	map__init(Procmap0),
+	peephole__jumpopt_build_maps(Instrs0, Jumpmap0, Jumpmap,
+		Procmap0, Procmap),
+	peephole__jumpopt_instr_list(Instrs0, Jumpmap, Procmap, Instrs, Mod).
 
-:- pred peephole__jumpopt_build_jumpmap(list(instruction), jumpmap, jumpmap).
-:- mode peephole__jumpopt_build_jumpmap(in, di, uo) is det.
+:- pred peephole__jumpopt_build_maps(list(instruction), jumpmap, jumpmap,
+	procmap, procmap).
+:- mode peephole__jumpopt_build_maps(in, di, uo, di, uo) is det.
 
-peephole__jumpopt_build_jumpmap([], Jumpmap, Jumpmap).
-peephole__jumpopt_build_jumpmap([Instr - _Comment|Instructions],
-		Jumpmap0, Jumpmap) :-
+peephole__jumpopt_build_maps([], Jumpmap, Jumpmap, Procmap, Procmap).
+peephole__jumpopt_build_maps([Instr - _Comment|Instrs],
+		Jumpmap0, Jumpmap, Procmap0, Procmap) :-
 	( Instr = label(Label) ->
-		peephole__skip_comments(Instructions, Instructions1),
-		(
-			Instructions1 = [Nextinstr | _],
+		peephole__skip_comments(Instrs, Instrs1),
+		( Instrs1 = [Nextinstr | _] ->
 			% write('label '),
 			% write(Label),
 			% write(' maps to '),
@@ -140,21 +143,31 @@ peephole__jumpopt_build_jumpmap([Instr - _Comment|Instructions],
 			% nl,
 			map__set(Jumpmap0, Label, Nextinstr, Jumpmap1)
 		;
-			Instructions1 = [],
 			Jumpmap1 = Jumpmap0
+		),
+		( peephole__is_proceed_next(Instrs, Between) ->
+			% write('label '),
+			% write(Label),
+			% write(' is followed by proceed '),
+			% nl,
+			map__set(Procmap0, Label, Between, Procmap1)
+		;
+			Procmap1 = Procmap0
 		)
 	;
-		Jumpmap1 = Jumpmap0
+		Jumpmap1 = Jumpmap0,
+		Procmap1 = Procmap0
 	),
-	peephole__jumpopt_build_jumpmap(Instructions, Jumpmap1, Jumpmap).
+	peephole__jumpopt_build_maps(Instrs, Jumpmap1, Jumpmap,
+		Procmap1, Procmap).
 
 :- pred peephole__jumpopt_instr_list(list(instruction),
-	map(label, instruction), list(instruction), bool).
-:- mode peephole__jumpopt_instr_list(in, in, out, out) is det.
+	jumpmap, procmap, list(instruction), bool).
+:- mode peephole__jumpopt_instr_list(in, in, in, out, out) is det.
 
-peephole__jumpopt_instr_list([], _Jumpmap, [], no).
-peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
-		[Instr|Moreinstr], Mod) :-
+peephole__jumpopt_instr_list([], _Jumpmap, _Procmap, [], no).
+peephole__jumpopt_instr_list([Instr0|Moreinstrs0], Jumpmap, Procmap,
+		Instrs, Mod) :-
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	( Uinstr0 = call(Proc, Retlabel) ->
@@ -162,10 +175,10 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = Instr0,
+			Newinstrs = [Instr0],
 			Mod0 = no
 		;
-			Instr = call(Proc, Destlabel) - Redirect,
+			Newinstrs = [call(Proc, Destlabel) - Redirect],
 			Mod0 = yes
 		)
 	; Uinstr0 = entrycall(Proc, Retlabel) ->
@@ -173,10 +186,10 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = Instr0,
+			Newinstrs = [Instr0],
 			Mod0 = no
 		;
-			Instr = entrycall(Proc, Destlabel) - Redirect,
+			Newinstrs = [entrycall(Proc, Destlabel) - Redirect],
 			Mod0 = yes
 		)
 	; Uinstr0 = unicall(Unilabel, Retlabel) ->
@@ -184,18 +197,21 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = Instr0,
+			Newinstrs = [Instr0],
 			Mod0 = no
 		;
-			Instr = unicall(Unilabel, Destlabel) - Redirect,
+			Newinstrs = [unicall(Unilabel, Destlabel) - Redirect],
 			Mod0 = yes
 		)
 	; Uinstr0 = goto(Targetlabel) ->
-		( Moreinstr0 = [label(Targetlabel) - _|_] ->
+		( Moreinstrs0 = [label(Targetlabel) - _|_] ->
 			% eliminating the goto (by the local peephole pass)
 			% is better than shortcircuiting it here
-			Instr = Instr0,
+			Newinstrs = [Instr0],
 			Mod0 = no
+		; map__search(Procmap, Targetlabel, Between) ->
+			list__append(Between, [proceed - "shortcircuit"], Newinstrs),
+			Mod0 = yes
 		;
 			map__lookup(Jumpmap, Targetlabel, Targetinstr),
 			peephole__jumpopt_final_dest(Targetlabel, Targetinstr,
@@ -205,23 +221,25 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 				Comment0, Shorted),
 			code_util__can_instr_fall_through(Udestinstr, Canfallthrough),
 			( Canfallthrough = no ->
-				Instr = Udestinstr - Shorted,
+				Newinstrs = [Udestinstr - Shorted],
 				Mod0 = yes
 			;
 				( Targetlabel = Destlabel ->
-					Instr = Instr0,
+					Newinstrs = [Instr0],
 					Mod0 = no
 				;
-					Instr = goto(Destlabel) - Shorted,
+					Newinstrs = [goto(Destlabel) - Shorted],
 					Mod0 = yes
 				)
 			)
 		)
 	;
-		Instr = Instr0,
+		Newinstrs = [Instr0],
 		Mod0 = no
 	),
-	peephole__jumpopt_instr_list(Moreinstr0, Jumpmap, Moreinstr, Mod1),
+	peephole__jumpopt_instr_list(Moreinstrs0, Jumpmap, Procmap,
+		Moreinstrs, Mod1),
+	list__append(Newinstrs, Moreinstrs, Instrs),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no
 	;
@@ -314,21 +332,27 @@ peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions, Mod) :-
 
 	% A `call' followed by a `proceed' can be replaced with a `tailcall'.
 	%
+	%					succip = ...
+	%					decr_sp(X)
 	%	call(Foo, &&ret);		tailcall(Foo)
-	%       <comments,labels>		<comments,labels>
+	%       <comments, labels>		<comments, labels>
 	%     ret:			=>    ret:
-	%       <comments,labels>		<comments,labels>
+	%       <comments, labels>		<comments, labels>
+	%	succip = ...			succip = ...
+	%       <comments, labels>		<comments, labels>
+	%	decr_sp(X)			decr_sp(X)
+	%       <comments, labels>		<comments, labels>
 	%	proceed				proceed
 	%
-	% Note that we can't delete the `ret: proceed', since `ret'
-	% might be branched to from elsewhere. If it isn't, label
-	% elimination will get rid of it later.
+	% Note that we can't delete the return label and the following
+	% code, since the label might be branched to from elsewhere.
+	% If it isn't, label elimination will get rid of it later.
 
 peephole__opt_instr_2(call(CodeAddress, ContLabel), Comment, Instrs0, Instrs) :-
 	peephole__is_this_label_next(ContLabel, Instrs0, Instrs1),
-	peephole__skip_comments_labels(Instrs1, Instrs2),
-	Instrs2 = [proceed - _ | _],
-	Instrs = [tailcall(CodeAddress) - Comment | Instrs0 ].
+	peephole__is_proceed_next(Instrs1, Instrs_to_proceed),
+	list__append(Instrs_to_proceed,
+		[tailcall(CodeAddress) - Comment | Instrs0], Instrs).
 
 	% if a `mkframe' is followed by a `modframe', with the instructions
 	% in between containing only straight-line code, we can delete the
@@ -593,7 +617,7 @@ peephole__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 	).
 
 	% Check whether the named label follows without any intervening code.
-	% If yes, return code after label.
+	% If yes, return the instructions after the label.
 
 :- pred peephole__is_this_label_next(label, list(instruction),
 	list(instruction)).
@@ -613,6 +637,25 @@ peephole__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 	;
 		fail
 	).
+
+	% Is a proceed instruction in the instruction list, possibly preceded
+	% by a restoration of succip and a det stack frame removal? If yes,
+	% return the instructions up to the proceed.
+
+:- pred peephole__is_proceed_next(list(instruction), list(instruction)).
+:- mode peephole__is_proceed_next(in, out) is semidet.
+
+peephole__is_proceed_next(Instrs0, Instrs_between) :-
+	peephole__skip_comments_labels(Instrs0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	Instr1 = assign(succip, lval(stackvar(_))) - _,
+	peephole__skip_comments_labels(Instrs2, Instrs3),
+	Instrs3 = [Instr3 | Instrs4],
+	Instr3 = decr_sp(_) - _,
+	peephole__skip_comments_labels(Instrs4, Instrs5),
+	Instrs5 = [Instr5 | _],
+	Instr5 = proceed - _,
+	Instrs_between = [Instr1, Instr3].
 
 :- end_module peephole.
 
