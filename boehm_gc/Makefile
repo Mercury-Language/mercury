@@ -49,7 +49,7 @@ AS=../scripts/mgnuc --grade $(GRADE) --assemble
 CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
 	$(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
-# profiling was enabled.
+# profiling was enabled (see comments in runtime/mercury_prof_mem.h for why).
 # We need $(CFLAGS_FOR_PIC) because we might be building a shared library.
 
 # Setjmp_test may yield overly optimistic results when compiled
@@ -440,7 +440,7 @@ gctest: test.o gc.a $(UTILS)
 # If an optimized setjmp_test generates a segmentation fault,
 # odds are your compiler is broken.  Gctest may still work.
 # Try compiling setjmp_t.c unoptimized.
-setjmp_test: $(srcdir)/setjmp_t.c $(srcdir)/gc.h $(UTILS)
+setjmp_test: $(srcdir)/setjmp_t.c $(srcdir)/gc.h
 	$(CC) $(CFLAGS) -o setjmp_test $(srcdir)/setjmp_t.c
 
 test:  KandRtest cord/cordtest

@@ -279,6 +279,8 @@ esac
 case $profile_time in
 	true)		PROF_TIME_OPTS="-DPROFILE_TIME" ;;
 	false)		PROF_TIME_OPTS="-DNO_SIGNALS" ;;
+			# We pass -DNO_SIGNALS unless profiling is enabled.
+			# See comments in runtime/mercury_prof_mem.h for why.
 esac
 
 case $profile_calls in

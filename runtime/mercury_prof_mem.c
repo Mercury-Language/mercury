@@ -12,7 +12,11 @@
 ** This module is needed to get around the problem that when a signal occurs
 ** it may be in a malloc.  The handling routine may also do a malloc which 
 ** stuffs up the internal state of malloc and cause a seg fault.
-** To avoid this problem, we use our own version of malloc() which
+** If we're using the conservative GC, that doesn't cause a problem,
+** since the Boehm et al collector is signal safe if compiled without
+** -DNO_SIGNALS, which we do for profiling grades.  But if we're not
+** using the conservative GC, then the handler will need to call malloc().
+** To minimize this problem, we use our own version of malloc() which
 ** allocates memory in large chunks, reducing the chance of this
 ** problem occurring.
 */
@@ -71,6 +75,11 @@ MR_prof_malloc(size_t size)
 
 	/* Here we waste a bit of space but hopefully not to much */
 	if (mem_left < size) {
+		/*
+		** XXX For the conservative GC, it would be better to
+		** allocate this memory with GC_malloc_atomic_uncollectable(),
+		** so that the collector doesn't scan it.
+		*/
 		next = MR_GC_malloc(MEMORY_BLOCK * size);
 		mem_left = MEMORY_BLOCK * size;
 	}
