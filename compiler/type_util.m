@@ -325,7 +325,8 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	(
 		type_to_type_id(VarType, TypeId, TypeArgs),
 		module_info_ctors(ModuleInfo, Ctors),
-		map__lookup(Ctors, ConsId, ConsDefns),
+		% will fail for builtin cons_ids.
+		map__search(Ctors, ConsId, ConsDefns),
 		CorrectCons = lambda([ConsDefn::in] is semidet, (
 				ConsDefn = hlds__cons_defn(_, TypeId, _)
 			)),
