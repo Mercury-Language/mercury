@@ -50,8 +50,7 @@
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
 	is det.
 
-:- pred globals__lookup_bool_option(globals, option, bool).
-:- mode globals__lookup_bool_option(in, in, out) is det.
+:- pred globals__lookup_bool_option(globals::in, option::in, bool::out) is det.
 :- pred globals__lookup_int_option(globals::in, option::in, int::out) is det.
 :- pred globals__lookup_string_option(globals::in, option::in, string::out)
 	is det.
@@ -75,16 +74,12 @@
 :- pred globals__io_set_option(option::in, option_data::in,
 	io::di, io::uo) is det.
 
-:- pred globals__io_lookup_bool_option(option, bool, io, io).
-:- mode globals__io_lookup_bool_option(in, out, di, uo) is det.
-:- mode globals__io_lookup_bool_option(in, in, di, uo) is semidet. % implied
-
+:- pred globals__io_lookup_bool_option(option::in, bool::out, io::di, io::uo)
+	is det.
 :- pred globals__io_lookup_int_option(option::in, int::out,
 	io::di, io::uo) is det.
-
 :- pred globals__io_lookup_string_option(option::in, string::out,
 	io::di, io::uo) is det.
-
 :- pred globals__io_lookup_accumulating_option(option::in, list(string)::out,
 	io::di, io::uo) is det.
 
