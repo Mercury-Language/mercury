@@ -72,6 +72,7 @@ member(Element, List, SubList) :-
 system(Command, Status) :-
 	atom_chars(Com, Command),
 	( sicstus3 ->
+		use_module(library(system), []),
 		system:system(Com, Status)
 	;
 		unix(system(Com, Status))
