@@ -511,8 +511,9 @@ assign_index_numbers_2([X0|Xs0], IndexMap0, N0, IndexMap) :-
 
 profiling_init(Profiling) :-
 	map__init(InfoMap),
-	rbtree__init(CallTree),
-	rbtree__init(FlatTree),
+	rbtree__init(EmptyTree),
+	CallTree = EmptyTree,
+	FlatTree = EmptyTree,
 	Profiling = profiling(InfoMap, CallTree, FlatTree).
 
 checked_float_divide(A, B, C) :-
