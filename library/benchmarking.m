@@ -593,12 +593,19 @@ Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 	** framevar(3): the number of solutions found so far.
 	** framevar(4): the time at entry to the first iteration.
 	** framevar(5): the saved heap pointer
+	** framevar(6): the saved trail pointer (if trailing enabled)
 	**
 	** We must make that the closure is called at least once,
 	** otherwise the count we return isn't valid.
 	*/
 
-	mkframe(""benchmark_nondet"", 6,
+#ifdef MR_USE_TRAIL
+  #define NONDET_STACK_SLOTS 7
+#else
+  #define NONDET_STACK_SLOTS 6
+#endif
+
+	mkframe(""benchmark_nondet"", NONDET_STACK_SLOTS,
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0_i2));
 
 	framevar(0) = r3;
@@ -612,6 +619,9 @@ Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 
 	framevar(3) = 0;
 	mark_hp(framevar(5));
+#ifdef MR_USE_TRAIL
+	framevar(6) = MR_trail_ptr;
+#endif
 	framevar(4) = MR_get_user_cpu_miliseconds();
 
 	/* call the higher-order pred closure that we were passed in r3 */
@@ -640,6 +650,10 @@ Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 
 	/* we can now reclaim memory by resetting the heap pointer */
 	restore_hp(framevar(5));
+#ifdef MR_USE_TRAIL
+	/* ... and the trail pointer */
+	MR_trail_ptr = framevar(6);
+#endif
 
 	/* are there any other iterations? */
 	if (framevar(2) > 0) {
@@ -659,6 +673,9 @@ Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 	count_output = framevar(3);
 	time_output = MR_get_user_cpu_miliseconds() - framevar(4);
 	succeed_discard();
+
+#undef NONDET_STACK_SLOTS
+
 END_MODULE
 
 Define_extern_entry(mercury__benchmarking__benchmark_det_5_0);
@@ -682,12 +699,22 @@ Define_entry(mercury__benchmarking__benchmark_det_5_0);
 	** detstackvar(4): the time at entry to the first iteration.
 	** detstackvar(5): the saved heap pointer
 	** detstackvar(6): the return address.
+	** detstackvar(7): the saved trail pointer (if trailing enabled)
 	**
 	** We must make that the closure is called at least once,
 	** otherwise the count we return isn't valid.
 	*/
 
-	incr_sp(6);
+#ifdef MR_USE_TRAIL
+  #define DET_STACK_SLOTS 7
+#else
+  #define DET_STACK_SLOTS 6
+#endif
+
+	incr_sp(DET_STACK_SLOTS);
+#ifdef MR_USE_TRAIL
+	detstackvar(7) = MR_trail_ptr;
+#endif
 	detstackvar(6) = (Word) succip;
 	mark_hp(detstackvar(5));
 
@@ -721,6 +748,11 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 	/* are there any other iterations? */
 	if (detstackvar(3) > 0) {
 		/* yes, so set up the call just like last time */
+#ifdef MR_USE_TRAIL
+		/* Restore the trail... */
+		MR_untrail_to(detstackvar(7), MR_undo);
+		MR_trail_ptr = detstackvar(7);
+#endif
 		restore_hp(detstackvar(5));
 		r1 = detstackvar(1);
 		r2 = (Word) 1;
@@ -735,8 +767,11 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 	soln_output = r1; /* the closure *always* returns its output in r1 */
 	time_output = MR_get_user_cpu_miliseconds() - detstackvar(4);
 	succip = (Word *) detstackvar(6);
-	decr_sp(6);
+	decr_sp(DET_STACK_SLOTS);
 	proceed();
+
+#undef DET_STACK_SLOTS
+
 END_MODULE
 
 void mercury_benchmarking_init_benchmark(void); /* suppress gcc warning */
