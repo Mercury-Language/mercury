@@ -384,9 +384,29 @@ parser__parse_simple_term_2(name(Atom), Context, Prec, Term) -->
 		{ Term = ok(term__functor(term__atom(Atom), [], TermContext)) }
 	).
 
-parser__parse_simple_term_2(variable(VarName), _, _, Term) -->
+parser__parse_simple_term_2(variable(VarName), Context, _, Term) -->
 	parser__add_var(VarName, Var),
-	{ Term = ok(term__variable(Var)) }.
+	%
+	% As an extension to ISO Prolog syntax,
+	% we check for the syntax "Var(Args)", and parse it
+	% as the term ''(Var, Args).  The aim of this extension
+	% is to provide a nicer syntax for higher-order stuff.
+	%
+	( parser__get_token(open_ct) ->
+		parser__get_term_context(Context, TermContext),
+		parser__parse_args(Args0),
+		(	{ Args0 = ok(Args) },
+			{ Term = ok(term__functor(term__atom(""),
+				[term__variable(Var) | Args],
+				TermContext)) }
+		;
+			% propagate error upwards
+			{ Args0 = error(Message, Tokens) },
+			{ Term = error(Message, Tokens) }
+		)
+	;
+		{ Term = ok(term__variable(Var)) }
+	).
 
 parser__parse_simple_term_2(integer(Int), Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
