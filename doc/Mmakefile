@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2003 The University of Melbourne.
+# Copyright (C) 1996-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -278,7 +278,8 @@ library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 		esac;							\
 	done > library-chapters.texi_pp
 
-library.dvi library_toc.html library_1.html mercury_library.info: \
+library.dvi library_toc.html library_1.html mercury_library.info \
+		mercury_library.html mercury_library/index.html: \
 	library-menu.texi_pp library-chapters.texi_pp
 
 #-----------------------------------------------------------------------------#
