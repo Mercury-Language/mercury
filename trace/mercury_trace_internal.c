@@ -882,15 +882,20 @@ MR_trace_internal_create_mdb_window(void)
 		MR_setup_signal_no_restart(SIGALRM,
 			MR_trace_internal_alarm_handler, MR_FALSE,
 			"error setting up alarm handler");
+		MR_got_alarm = MR_FALSE;
 		alarm(10);	/* 10 second timeout */
 		while (1) {
 			char c;
 			int status;
 			status = read(slave_fd, &c, 1);
 			if (status == -1) {
-				if (errno != EINTR || MR_got_alarm) {
+				if (MR_got_alarm) {
+					MR_mdb_warning(
+					    "timeout starting mdb window");
+					goto parent_error;
+				} else if (!MR_is_eintr(errno)) {
 					MR_mdb_perror(
-					"error reading from mdb window");
+					    "error reading from mdb window");
 					goto parent_error;
 				}
 			} else if (status == 0 || c == '\n') {
@@ -973,7 +978,7 @@ MR_trace_internal_kill_mdb_window(void)
 		if (status != -1) {
 			do {
 				status = wait(NULL);
-				if (status == -1 && errno != EINTR) {
+				if (status == -1 && !MR_is_eintr(errno)) {
 					break;
 				}
 			} while (status != MR_mdb_window_pid);

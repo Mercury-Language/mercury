@@ -354,7 +354,7 @@ call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 			Status = child_status;
 			break;
 		    } else if (wait_status == -1) {
-			if (errno == EINTR) {
+			if (MR_is_eintr(errno)) {
 			    if (MC_signalled) {
 				/*
 				** A normally fatal signal has been received,

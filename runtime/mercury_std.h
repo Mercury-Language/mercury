@@ -17,6 +17,7 @@
 #ifndef IN_GCC
   #include <ctype.h>	/* for isalnum(), etc. */
 #else
+#include <errno.h>
   /*
   ** When building compiler/gcc.m, we #include GCC back-end
   ** header files that include libiberty's "safe-ctype.h",
@@ -78,6 +79,14 @@ typedef	char		MR_small_bool;
   #define MR_assert(ASSERTION)	assert(ASSERTION)
 #else
   #define MR_assert(ASSERTION)	((void)0)
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+#ifdef EINTR
+  #define MR_is_eintr(x)	((x) == EINTR)
+#else
+  #define MR_is_eintr(x)	MR_FALSE
 #endif
 
 /*---------------------------------------------------------------------------*/
