@@ -1,11 +1,15 @@
-:- module queens_lib.
+:- module interactive.
 
 :- interface.
 
-:- import_module io.
+:- import_module io, list.
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is cc_multi.
+
+	% exported for use with interactive queries in the debugger
+:- pred qperm(list(T), list(T)).
+:- mode qperm(in, out) is nondet.
 
 :- implementation.
 
@@ -23,9 +27,6 @@ main -->
 
 :- pred queen(list(int), list(int)).
 :- mode queen(in, out) is nondet.
-
-:- pred qperm(list(T), list(T)).
-:- mode qperm(in, out) is nondet.
 
 :- pred qdelete(T, list(T), list(T)).
 :- mode qdelete(out, in, out) is nondet.
