@@ -79,7 +79,7 @@ MCTRANSOPTFLAGS = --enable-termination --term-single-arg 5 --term-norm simple
 
 #-----------------------------------------------------------------------------#
 
-depend:
+depend: $(DEPENDS)
 
 trans_opts: $(TRANS_OPTS)
 
