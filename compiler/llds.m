@@ -45,10 +45,10 @@
 			;	const(integer)		% integer constants
 			;	binop(operator,rval,rval).
 
-:- type operator	--->	+
-			;	-
-			;	*
-			;	/.
+:- type operator	--->	(+)
+			;	(-)
+			;	(*)
+			;	(/).
 
 :- type reg		--->	r(integer)		% integer regs
 			;	succip
@@ -332,14 +332,9 @@ output_lval(field(Tag, Reg, FieldNum)) -->
 :- pred output_operator(operator, io__state, io__state).
 :- mode output_operator(input, di, do).
 
-output_operator(+) -->
-	io__write_string("+").
-output_operator(-) -->
-	io__write_string("-").
-output_operator(*) -->
-	io__write_string("*").
-output_operator(/) -->
-	io__write_string("/").
+output_operator(Op) -->
+	io__write_string(Op).
+
 %-----------------------------------------------------------------------------%
 
 :- pred clause_num_to_string(int::i, string::o).
