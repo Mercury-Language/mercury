@@ -17,7 +17,6 @@
 #include	"imp.h"
 #include	"timing.h"
 #include	"getopt.h"
-#include	"io_rt.h"
 #include	"init.h"
 #include	"prof.h"
 #include	<ctype.h>
@@ -61,6 +60,27 @@ const char *	progname;
 int		mercury_argc;	/* not counting progname or debug options */
 char **		mercury_argv;
 int		mercury_exit_status = 0;
+
+/*
+** The Mercury runtime calls run/0 in the Mercury library, and the Mercury
+** library calls main/2 in the user's program.  The Mercury runtime also calls
+** init_gc() and init_modules() which are in the automatically generated
+** C init file, and mercury_init_io(), which is in the Mercury library.
+**
+** But to enable Quickstart of shared libraries on Irix 5,
+** we need to make sure that we don't have any undefined
+** external references when building the shared libraries.
+** Hence the statically linked init file saves the addresses of those
+** procedures in the following global variables.
+*/
+void (*address_of_mercury_init_io)(void);
+void (*address_of_init_modules)(void);
+#ifdef CONSERVATIVE_GC
+void (*address_of_init_gc)(void);
+#endif
+Code *library_entry_point;	/* normally io:run/0 (mercury__io__run_0_0) */
+Code *program_entry_point;	/* normally main/2 (mercury__main_2_0) */
+
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
@@ -131,7 +151,7 @@ int mercury_main(int argc, char **argv)
 	prof_init_time_profile();
 #endif
 
-	mercury_init_io();
+	(*address_of_mercury_init_io)();
 
 	/* execute the selected entry point */
 	init_engine();
@@ -457,7 +477,23 @@ process_options(int argc, char **argv)
 					exit(1);
 				}
 
-				entry_point = which_label->e_addr;
+				library_entry_point = which_label->e_addr;
+
+				break;
+		}
+		case 'm': {
+				Label *which_label;
+
+				which_label = lookup_label_name(optarg);
+				if (which_label == NULL)
+				{
+					fprintf(stderr,
+			"Mercury runtime: label name `%s' unknown\n",
+						optarg);
+					exit(1);
+				}
+
+				program_entry_point = which_label->e_addr;
 
 				break;
 		}
@@ -509,7 +545,7 @@ static void usage(void)
 {
 	printf("Mercury runtime usage:\n"
 		"MERCURY_OPTIONS=\"[-hclt] [-d[abcdghs]] [-[sz][hdn]#]\n"
-		"                 [-p#] [-r#] [-1#] [-2#] [-3#] [-w name]\"\n"
+	"                 [-p#] [-r#] [-1#] [-2#] [-3#] [-w name] [-m name]\"\n"
 		"-h \t\tprint this usage message\n"
 		"-c \t\tcheck cross-function stack usage\n"
 		"-l \t\tprint all labels\n"
@@ -534,6 +570,7 @@ static void usage(void)
 		"-zn<n> \t\tallocate n kb for the nondet stack redzone\n"
 		"-p<n> \t\tprimary cache size in (k)bytes\n"
 		"-r<n> \t\trepeat n times\n"
+	"-m<name> \tcall I/O predicate with given name (default: main/2)\n"
 		"-w<name> \tcall predicate with given name\n"
 		"-1<x> \t\tinitialize register r1 with value x\n"
 		"-2<x> \t\tinitialize register r2 with value x\n"
@@ -659,10 +696,10 @@ do_interpreter:
 	push(maxfr);
 	mkframe("interpreter", 1, LABEL(global_fail));
 
-	if (entry_point == NULL) {
-		fatal_error("no entry point supplied\n");
+	if (library_entry_point == NULL) {
+		fatal_error("no library entry point supplied");
 	}
-	call(entry_point, LABEL(global_success), LABEL(do_interpreter));
+	call(library_entry_point, LABEL(global_success), LABEL(do_interpreter));
 
 global_success:
 #ifndef	SPEED
