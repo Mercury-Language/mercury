@@ -615,8 +615,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         }
 
         if (arg_num > 0) {
-            MR_ensure_big_enough(arg_num, arg, MR_Word,
-                MR_INIT_ARG_COUNT);
+            MR_ensure_big_enough(arg_num, arg, MR_Word, MR_INIT_ARG_COUNT);
             args[arg_num] = arg_value;
         } else {
             MR_fatal_error("illegal location for input argument");
