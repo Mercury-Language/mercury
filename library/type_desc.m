@@ -555,9 +555,10 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	** a new type with the specified arguments.
 	*/
 
+:- pragma promise_pure(make_type/2).
 :- pragma foreign_proc("C", 
 	make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
+	[will_not_call_mercury, thread_safe],
 "{
 	MR_TypeCtorDesc type_ctor_desc;
 	MR_TypeCtorInfo type_ctor_info;
@@ -591,7 +592,6 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	}
 }").
 
-:- pragma promise_pure(make_type/2).
 make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
 	private_builtin__sorry("make_type/2 forward mode.").
 
@@ -603,7 +603,7 @@ make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
 
 :- pragma foreign_proc("C", 
 	make_type(TypeCtorDesc::out, ArgTypes::out) = (TypeDesc::in),
-	[will_not_call_mercury, thread_safe, promise_pure],
+	[will_not_call_mercury, thread_safe],
 "{
 	MR_TypeCtorDesc type_ctor_desc;
 	MR_TypeInfo	type_info;
