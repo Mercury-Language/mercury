@@ -33,7 +33,7 @@ Options:
 	#     supported.
 	#--target il:
 	#	Compile via IL, rather than going via C or assembler.
-Help="$Help\
+Help="$Help
 	-s, --save-makefile:
 		Save the generated makefile to \`Mmake.makefile'.
 		This is useful for tracking down syntax errors in
