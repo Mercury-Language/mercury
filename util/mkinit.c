@@ -192,7 +192,7 @@ static	void output_sub_init_functions(void);
 static	void output_main_init_function(void);
 static	void output_main(void);
 static	void process_file(char *filename);
-static	void process_m_file(char *filename);
+static	void process_c_file(char *filename);
 static	void process_init_file(const char *filename);
 static	void output_init_function(const char *func_name);
 static	int getline(FILE *file, char *line, int line_max);
