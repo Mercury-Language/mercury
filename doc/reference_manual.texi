@@ -929,7 +929,7 @@ corresponding to the standard notions of inputs and outputs:
 @end example
 
 Prolog fans who want to use the symbols @samp{+} and @samp{-}
-can do so by simply by defining them using a mode declaration:
+can do so by simply defining them using a mode declaration:
 
 @example
 :- mode (+) :: in.
