@@ -233,9 +233,9 @@ partition_disj_2([], _Var, Cases, Cases).
 partition_disj_2([Goal0 | Goals], Var, Cases0, Cases) :-
 	goal_to_conj_list(Goal0, ConjList0),
 	Goal0 = _ - GoalInfo,
-	%%% map__init(Substitution),
-	find_unify_var_functor(ConjList0, Var, Functor, %%% ArgVars,
-				ConjList), % may fail
+	map__init(Substitution),
+	find_bind_var(ConjList0, Var, Substitution,
+			Functor, ConjList), % may fail
 	conj_list_to_goal(ConjList, GoalInfo, Goal),
 	( map__search(Cases0, Functor, DisjList0) ->
 		DisjList1 = [Goal | DisjList0]
@@ -245,6 +245,7 @@ partition_disj_2([Goal0 | Goals], Var, Cases0, Cases) :-
 	map__set(Cases0, Functor, DisjList1, Cases1),
 	partition_disj_2(Goals, Var, Cases1, Cases).
 
+
 	% find_unify_var_functor(Goals0, Var, ConsId, Goals):
 	%	Searches through Goals0 looking for a deconstruction
 	%	unification with `Var'.  If successful, returns the
@@ -252,25 +253,34 @@ partition_disj_2([Goal0 | Goals], Var, Cases0, Cases) :-
 	%	sets `Goals' to be `Goals0' with that deconstruction
 	%	unification made deterministic.
 
-:- pred find_unify_var_functor(list(hlds__goal), var, cons_id,
-				list(hlds__goal)).
-:- mode find_unify_var_functor(in, in, out, out) is semidet.
+:- pred find_bind_var(list(hlds__goal), var, substitution, cons_id, 
+                       list(hlds__goal)).
+:- mode find_bind_var(in, in, in, out, out) is semidet.
 
-find_unify_var_functor([Goal0 - GoalInfo | Goals0], Var, Functor,
-		[Goal - GoalInfo | Goals]) :-
+find_bind_var([Goal0 - GoalInfo | Goals0], Var, Substitution0,
+		Functor, [Goal - GoalInfo | Goals]) :-
+		% fail if the next goal is not a unification
 	( Goal0 = unify(A, B, C, UnifyInfo0, E) ->
-		( UnifyInfo0 = deconstruct(Var, Functor0, F, G, _Det) ->
+			 % otherwise abstractly interpret the unification
+		term__unify(A, B, Substitution0, Substitution),
+			% check whether the var was bound
+		term__apply_rec_substitution(term__variable(Var), Substitution,
+			Term),
+		(
+			Term = term__functor(_Name, _Args, _Context),
+			UnifyInfo0 = deconstruct(Var1, Functor0, F, G, _Det)
+		->
 			Functor = Functor0,
 				% The deconstruction unification now becomes
 				% deterministic, since the test will get
 				% carried out in the switch.
-			UnifyInfo = deconstruct(Var, Functor, F, G,
+			UnifyInfo = deconstruct(Var1, Functor0, F, G,
 					deterministic),
 			Goal = unify(A, B, C, UnifyInfo, E),
 			Goals = Goals0
 		;
 			Goal = Goal0,
-			find_unify_var_functor(Goals0, Var, Functor, Goals)
+			find_bind_var(Goals0, Var, Substitution, Functor, Goals)
 		)
 	;
 		fail
