@@ -26,12 +26,12 @@ Options:
 		Specify which version of the standard Mercury libraries to
 		link with:
 			--mercury-libs shared
-				Link with the shared Mercury libraries (*.so),
+				Link with the shared libraries (*.so),
 				if possible, otherwise with the static ones.
 			--mercury-libs static
-				Link with the static Mercury libraries (*.a).
+				Link with the static libraries (*.a).
 			--mercury-libs none
-				Don't link in the Mercury libraries.
+				Don't link in the Mercury standard libraries.
 	-shared, --shared
 		Similar to \`--mercury-libs shared', but applies to all
 		libraries, not just the standard Mercury libraries.
@@ -47,7 +47,7 @@ Options:
 		Don't pipe the output of the linker through the Mercury
 		demangler.
 	-g, --no-strip
-		Do not strip debugging information
+		Do not strip debugging information.
 	-s <grade>, --grade <grade>
 		Specify which grade of the Mercury library to link with.
 		(The default grade is determined by ``configure'.)"
@@ -79,16 +79,7 @@ case $FULLARCH in
 		strip=true
 		;;
 esac
-case $FULLARCH in
-	i?86-*-linux*)
-		# shared libraries are not the default on Linux
-		# -- see README.Linux
-		mercury_libs=static
-		;;
-	*)
-		mercury_libs=shared
-		;;
-esac
+mercury_libs=default
 demangle=true
 GRADE=$DEFAULT_GRADE
 MAYBE_STATIC_OPT=""
@@ -137,14 +128,14 @@ EOF
 		shift ;;
 	--mercury-libs)
 		case "$2" in
-			shared|static|none)
+			shared|static|none|default)
 				mercury_libs="$2"
 				shift; shift ;;
 			*)
 				progname=`basename $0`
 				cat 1>&2 << EOF
-$progname: Error: parameter to \`--mercury-libs' option should be
-$progname:   either \`shared', \`static', or \`none', not \`$2'.
+$progname: Error: parameter to \`--mercury-libs' option should be either
+$progname:   \`shared', \`static', \`none', or \`default', not \`$2'.
 $progname: Try `$0 --help' for help.
 EOF
 				exit 1
@@ -153,7 +144,7 @@ EOF
 		;;
 	-shared|--shared)
 		MAYBE_STATIC_OPT=""
-		case $mercury_libs in static)
+		case $mercury_libs in static|default)
 			mercury_libs=shared ;;
 		esac
 		shift
@@ -173,7 +164,7 @@ EOF
 			MAYBE_STATIC_OPT=-static
 			;;
 		esac
-		case $mercury_libs in shared)
+		case $mercury_libs in shared|default)
 			mercury_libs=static ;;
 		esac
 		shift
@@ -198,6 +189,20 @@ EOF
 		break ;;
     esac
 done
+
+case $mercury_libs in default)
+	mercury_libs=shared
+	case $FULLARCH in i?86-*-linux*)
+		# shared libraries are not the default on Linux
+		# -- see README.Linux
+		case $make_shared_lib in false)
+			mercury_libs=static
+			;;
+		esac
+		;;
+	esac
+	;;
+esac
 
 case "$GRADE" in
 	*.gc.prof*)
