@@ -1328,7 +1328,11 @@ opt_level(2, _, [
 % when we have fixed that bug.
 	optimize_duplicate_calls -	bool(yes),
 ****/
-	simple_neg		-	bool(yes)
+	simple_neg		-	bool(yes),
+
+	optimize_rl		-	bool(yes),
+	optimize_rl_index	-	bool(yes),
+	detect_rl_streams	-	bool(yes)
 ]).
 
 % Optimization level 3: apply optimizations which usually have a good
@@ -1500,13 +1504,11 @@ options_help_verbosity -->
 		"\tdifferent types of tracing messages.",
 		"--debug-pd",
 		"\tOutput detailed debugging traces of the partial",
-		"\tdeduction and deforestation process."
-/***** ADITI is not yet useful 
+		"\tdeduction and deforestation process.",
 		"--debug-rl-gen",
 		"\tOutput detailed debugging traces of Aditi-RL code generation.",
 		"--debug-rl-opt",
 		"\tOutput detailed debugging traces of Aditi-RL optimization."
-*****/
 	]).
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
@@ -1562,11 +1564,9 @@ options_help_output -->
 		"-c, --compile-only",
 		"\tGenerate C code in `<module>.c' and object code in `<module>.o'",
 		"\tbut do not attempt to link the named modules.",
-/***** ADITI is not yet useful.
-		"--aditi-only"),
+		"--aditi-only",
 		"\tWrite Aditi-RL bytecode to `<module>.rlo' and",
 		"\tdo not compile to C.",
-*****/
 		"--output-grade-string",
 		"\tCompute the grade of the library to link with based on",
 		"\tthe command line options, and print it to the standard",
@@ -1639,8 +1639,7 @@ options_help_aux_output -->
 		"\tWith `--dump-hlds', include extra detail in the dump.",
 		"\tEach type of detail is included in the dump if its",
 		"\tcorresponding letter occurs in the option argument",
-		"\t(see the Mercury User's Guide for details)."
-/***** ADITI is not yet useful.
+		"\t(see the Mercury User's Guide for details).",
 		"--dump-rl",
 		"\tOutput a human readable form of the compiler's internal",
 		"\trepresentation of the generated Aditi-RL code to",
@@ -1655,7 +1654,6 @@ options_help_aux_output -->
 		"\trelations to `<module>.derived_schema'.",
 		"\tA schema string is a representation of the types",
 		"\tof a relation."
-*****/
 	]).
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
@@ -2231,25 +2229,25 @@ options_help_llds_llds_optimization -->
 :- pred options_help_rl_rl_optimization(io__state::di, io__state::uo) is det.
 
 options_help_rl_rl_optimization -->
-	[].
-/***** ADITI is not yet useful
 	io__write_string("\n    Aditi-RL optimizations:\n"),
 	write_tabbed_lines([
 		"--optimize-rl",
 		"\tEnable the optimizations of Aditi-RL procedures",
 		"\tdescribed below.",
-		"--optimize-rl-cse",
-		"\tOptimize common subexpressions in Aditi-RL procedures.",
 		"\t--optimize-rl-invariants",
 		"\tOptimize loop invariants in Aditi-RL procedures.",
 		"\t--optimize-rl-index",
-		"\tUse indexing to optimize access to relations in Aditi-RL".
+		"\tUse indexing to optimize access to relations in Aditi-RL",
 		"\tprocedures.",
 		"\t--detect-rl-streams",
 		"\tDetect cases where intermediate results in Aditi-RL",
 		"\tprocedures do not need to be materialised."
+		/*
+		% This option is not yet used.
+		"--optimize-rl-cse",
+		"\tOptimize common subexpressions in Aditi-RL procedures.",
+		*/
 	]).
-*****/
 
 :- pred options_help_output_optimization(io__state::di, io__state::uo) is det.
 
@@ -2334,8 +2332,7 @@ options_help_misc -->
 		"\tfile name from the standard input. Repeat this until EOF",
 		"\tis reached. (This allows a program or user to interactively",
 		"\tcompile several modules without the overhead of process",
-		"\tcreation for each one.)"
-/***** ADITI is not yet useful.
+		"\tcreation for each one.)",
 		"--aditi",
 		"\tEnable Aditi compilation. You need to enable this",
 		"\toption if you are making use of the Aditi deductive",
@@ -2347,8 +2344,7 @@ options_help_misc -->
 		"\tpredicates, and is also used for security checks.",
 		"\tDefaults to the value of the `USER' environment",
 		"\tvariable. If `$USER' is not set, `--aditi-user'",
-		"\tdefaults to the string ""guest"".".
-*****/
+		"\tdefaults to the string ""guest""."
 	]).
 
 :- pred write_tabbed_lines(list(string), io__state, io__state).
