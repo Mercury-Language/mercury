@@ -167,7 +167,8 @@
 % e.g.
 %	- optimize away temporary variables
 %	- put stack_chain and/or heap pointer in global register variables
-%	- avoid linking stack chain unnecessarily?
+%	- move termination conditions (check for base case)
+%	  outside of stack frame setup & GC check where possible
 %
 %-----------------------------------------------------------------------------%
 %
@@ -442,14 +443,26 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 			LocalStatics),
 
 
-		%
-		% When hoisting nested functions,
-		% if there were no nested functions, then we just
-		% hoist the local static constants
-		%
 		(
+			%
+			% When hoisting nested functions,
+			% if there were no nested functions, then we just
+			% hoist the local static constants
+			%
 			Action = hoist_nested_funcs,
 			NestedFuncs0 = []
+		->
+			FuncBody = FuncBody1,
+			HoistedDefns = HoistedStatics
+		;
+			%
+			% Likewise, when doing accurate GC,
+			% if there were no local variables (or arguments)
+			% that contained pointers, then we don't need to
+			% chain a stack frame for this function.
+			%
+			Action = chain_gc_stack_frames,
+			Locals = []
 		->
 			FuncBody = FuncBody1,
 			HoistedDefns = HoistedStatics
@@ -717,6 +730,19 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
 	%	struct <EnvClassName> env;
 	%	struct <EnvClassName> *env_ptr;
 	%	env_ptr = &env;
+	%
+	% For accurate GC, we do something similar, but with a few differences:
+	%
+	%	struct <EnvClassName> {
+	%		/* these fixed fields match `struct MR_StackChain' */
+	%		void *prev;
+	%		void (*trace)(...);
+	%		<LocalVars>
+	%	};
+	%	struct <EnvClassName> env = { stack_chain, foo_trace };
+	%	struct <EnvClassName> *env_ptr;
+	%	env_ptr = &env;
+	%	stack_chain = env_ptr;
 	%
 :- pred ml_create_env(action, mlds__class_name, mlds__type, list(mlds__defn),
 		mlds__context, mlds_module_name, mlds__entity_name, globals,
@@ -1341,8 +1367,9 @@ flatten_statement(Statement0, Statement) -->
 flatten_stmt(Stmt0, Stmt) -->
 	(
 		{ Stmt0 = block(Defns0, Statements0) },
-		flatten_nested_defns(Defns0, Statements0, Defns),
-		flatten_statements(Statements0, Statements),
+		flatten_nested_defns(Defns0, Statements0, Defns,
+			InitStatements),
+		flatten_statements(InitStatements ++ Statements0, Statements),
 		{ Stmt = block(Defns, Statements) }
 	;
 		{ Stmt0 = while(Rval0, Statement0, Once) },
@@ -1481,23 +1508,32 @@ save_and_restore_stack_chain(Stmt0, Stmt, ElimInfo0, ElimInfo) :-
 %	Hoist out nested function definitions, and any local variables
 %	that need to go in the environment struct (e.g. because they are
 %	referenced by nested functions), storing them both in the elim_info.
+%	Convert initializers for local variables that need to go in the
+%	environment struct into assignment statements.
+%	Return the remaining (non-hoisted) definitions,
+% 	the list of assignment statements, and the updated elim_info.
 %
 
 :- pred flatten_nested_defns(mlds__defns, mlds__statements, mlds__defns,
-		elim_info, elim_info).
-:- mode flatten_nested_defns(in, in, out, in, out) is det.
+		mlds__statements, elim_info, elim_info).
+:- mode flatten_nested_defns(in, in, out, out, in, out) is det.
 
-flatten_nested_defns([], _, []) --> [].
-flatten_nested_defns([Defn0 | Defns0], FollowingStatements, Defns) -->
-	flatten_nested_defn(Defn0, Defns0, FollowingStatements, Defns1),
-	flatten_nested_defns(Defns0, FollowingStatements, Defns2),
-	{ Defns = list__append(Defns1, Defns2) }.
+flatten_nested_defns([], _, [], []) --> [].
+flatten_nested_defns([Defn0 | Defns0], FollowingStatements, Defns,
+		InitStatements) -->
+	flatten_nested_defn(Defn0, Defns0, FollowingStatements,
+		Defns1, InitStatements1),
+	flatten_nested_defns(Defns0, FollowingStatements,
+		Defns2, InitStatements2),
+	{ Defns = Defns1 ++ Defns2 },
+	{ InitStatements = InitStatements1 ++ InitStatements2 }.
 
 :- pred flatten_nested_defn(mlds__defn, mlds__defns, mlds__statements,
-		mlds__defns, elim_info, elim_info).
-:- mode flatten_nested_defn(in, in, in, out, in, out) is det.
+		mlds__defns, mlds__statements, elim_info, elim_info).
+:- mode flatten_nested_defn(in, in, in, out, out, in, out) is det.
 
-flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
+flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
+		Defns, InitStatements) -->
 	{ Defn0 = mlds__defn(Name, Context, Flags0, DefnBody0) },
 	(
 		{ DefnBody0 = mlds__function(PredProcId, Params, FuncBody0,
@@ -1579,9 +1615,10 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 			{ Defns = [] }
 		;
 			{ Defns = [Defn] }
-		)
+		),
+		{ InitStatements = [] }
 	;
-		{ DefnBody0 = mlds__data(Type, Init, MaybeGCTraceCode0) },
+		{ DefnBody0 = mlds__data(Type, Init0, MaybeGCTraceCode0) },
 		%
 		% for local variable definitions, if they are
 		% referenced by any nested functions, then
@@ -1589,31 +1626,54 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 		%
 		=(ElimInfo),
 		(
-			(
-				% For IL and Java, we need to hoist all
-				% static constants out to the top level,
-				% so that they can be initialized in the
-				% class constructor.
-				% To keep things consistent (and reduce
-				% the testing burden), we do the same for
-				% the other back-ends too.
-				{ ml_decl_is_static_const(Defn0) }
-			;
-				{ Name = data(var(VarName)) },
-				{ ml_should_add_local_data(ElimInfo,
-					VarName, MaybeGCTraceCode0,
-					FollowingDefns, FollowingStatements) }
-			)
+			% For IL and Java, we need to hoist all
+			% static constants out to the top level,
+			% so that they can be initialized in the
+			% class constructor.
+			% To keep things consistent (and reduce
+			% the testing burden), we do the same for
+			% the other back-ends too.
+			{ ml_decl_is_static_const(Defn0) }
 		->
 			elim_info_add_and_flatten_local_data(Defn0),
+			{ Defns = [] },
+			{ InitStatements = [] }
+		;
+			% Hoist ordinary local variables
+			{ Name = data(var(VarName)) },
+			{ ml_should_add_local_data(ElimInfo,
+				VarName, MaybeGCTraceCode0,
+				FollowingDefns, FollowingStatements) }
+		->
+			% we need to strip out the initializer (if any)
+			% and convert it into an assignment statement,
+			% since this local variable is going to become
+			% a field, and fields can have initializers.
+			( { Init0 = init_obj(Rval) } ->
+				{ Init1 = no_initializer },
+				{ DefnBody1 = mlds__data(Type, Init1,
+					MaybeGCTraceCode0) },
+				{ Defn1 = mlds__defn(Name, Context, Flags0,
+					DefnBody1) },
+				{ VarLval = var(qual(ElimInfo ^ module_name,
+					VarName), Type) },
+				{ InitStatements = [mlds__statement(
+					atomic(assign(VarLval, Rval)),
+					Context)] }
+			;
+				{ Defn1 = Defn0 },
+				{ InitStatements = [] }
+			),
+			elim_info_add_and_flatten_local_data(Defn1),
 			{ Defns = [] }
 		;
+			fixup_initializer(Init0, Init),
 			flatten_maybe_statement(MaybeGCTraceCode0,
 				MaybeGCTraceCode),
 			{ DefnBody = mlds__data(Type, Init, MaybeGCTraceCode) },
 			{ Defn = mlds__defn(Name, Context, Flags0, DefnBody) },
-
-			{ Defns = [Defn] }
+			{ Defns = [Defn] },
+			{ InitStatements = [] }
 		)
 	;
 		{ DefnBody0 = mlds__class(_) },
@@ -1624,7 +1684,8 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 		% but currently ml_code_gen.m doesn't generate
 		% any of these, so it doesn't matter what we do
 		%
-		{ Defns = [Defn0] }
+		{ Defns = [Defn0] },
+		{ InitStatements = [] }
 	).
 
 	%
@@ -1723,6 +1784,7 @@ elim_info_add_and_flatten_local_data(Defn0) -->
 %-----------------------------------------------------------------------------%
 
 %
+% fixup_initializer:
 % fixup_atomic_stmt:
 % fixup_case_cond:
 % fixup_trail_op:
@@ -1734,6 +1796,18 @@ elim_info_add_and_flatten_local_data(Defn0) -->
 %	Recursively process the specified construct, calling fixup_var on
 %	every variable inside it.
 %
+
+:- pred fixup_initializer(mlds__initializer, mlds__initializer,
+		elim_info, elim_info).
+:- mode fixup_initializer(in, out, in, out) is det.
+
+fixup_initializer(no_initializer, no_initializer) --> [].
+fixup_initializer(init_obj(Rval0), init_obj(Rval)) -->
+	fixup_rval(Rval0, Rval).
+fixup_initializer(init_struct(Members0), init_struct(Members)) -->
+	list__map_foldl(fixup_initializer, Members0, Members).
+fixup_initializer(init_array(Elements0), init_array(Elements)) -->
+	list__map_foldl(fixup_initializer, Elements0, Elements).
 
 :- pred fixup_atomic_stmt(mlds__atomic_statement, mlds__atomic_statement,
 		elim_info, elim_info).
@@ -1762,8 +1836,9 @@ fixup_atomic_stmt(inline_target_code(Lang, Components0),
 		inline_target_code(Lang, Components)) -->
 	list__map_foldl(fixup_target_code_component,
 		Components0, Components).
-fixup_atomic_stmt(outline_foreign_proc(Lang, Lvals, Code),
-		outline_foreign_proc(Lang, Lvals, Code)) --> [].
+fixup_atomic_stmt(outline_foreign_proc(Lang, Lvals0, Code),
+		outline_foreign_proc(Lang, Lvals, Code)) -->
+	list__map_foldl(fixup_lval, Lvals0, Lvals).
 
 :- pred fixup_case_cond(mlds__case_match_cond, mlds__case_match_cond,
 		elim_info, elim_info).
@@ -2129,206 +2204,6 @@ cases_contains_defn(Cases, Defn) :-
 % default_contains_defn(default_is_unreachable, _) :- fail.
 default_contains_defn(default_case(Statement), Defn) :-
 	statement_contains_defn(Statement, Defn).
-
-%-----------------------------------------------------------------------------%
-
-%
-% defns_contains_var:
-% defn_contains_var:
-% defn_body_contains_var:
-% function_body_contains_var:
-% statements_contains_var:
-% statement_contains_var:
-% trail_op_contains_var:
-% atomic_stmt_contains_var:
-%	Succeeds iff the specified construct contains a reference to
-%	the specified variable.
-%
-
-:- pred defns_contains_var(mlds__defns, mlds__var).
-:- mode defns_contains_var(in, in) is semidet.
-
-defns_contains_var(Defns, Name) :-
-	list__member(Defn, Defns),
-	defn_contains_var(Defn, Name).
-
-:- pred defn_contains_var(mlds__defn, mlds__var).
-:- mode defn_contains_var(in, in) is semidet.
-
-defn_contains_var(mlds__defn(_Name, _Context, _Flags, DefnBody), Name) :-
-	defn_body_contains_var(DefnBody, Name).
-
-:- pred defn_body_contains_var(mlds__entity_defn, mlds__var).
-:- mode defn_body_contains_var(in, in) is semidet.
-
-	% XXX Should we include variables in the GC_TraceCode field here?
-defn_body_contains_var(mlds__data(_Type, Initializer, _GC_TraceCode), Name) :-
-	initializer_contains_var(Initializer, Name).
-defn_body_contains_var(mlds__function(_PredProcId, _Params, FunctionBody,
-		_Attrs), Name) :-
-	function_body_contains_var(FunctionBody, Name).
-defn_body_contains_var(mlds__class(ClassDefn), Name) :-
-	ClassDefn = mlds__class_defn(_Kind, _Imports, _Inherits, _Implements,
-		CtorDefns, FieldDefns),
-	( defns_contains_var(FieldDefns, Name)
-	; defns_contains_var(CtorDefns, Name)
-	).
-
-:- pred maybe_statement_contains_var(maybe(mlds__statement), mlds__var).
-:- mode maybe_statement_contains_var(in, in) is semidet.
-
-% maybe_statement_contains_var(no, _) :- fail.
-maybe_statement_contains_var(yes(Statement), Name) :-
-	statement_contains_var(Statement, Name).
-
-:- pred function_body_contains_var(function_body, mlds__var).
-:- mode function_body_contains_var(in, in) is semidet.
-
-% function_body_contains_var(external, _) :- fail.
-function_body_contains_var(defined_here(Statement), Name) :-
-	statement_contains_var(Statement, Name).
-	
-:- pred statements_contains_var(mlds__statements, mlds__var).
-:- mode statements_contains_var(in, in) is semidet.
-
-statements_contains_var(Statements, Name) :-
-	list__member(Statement, Statements),
-	statement_contains_var(Statement, Name).
-
-:- pred statement_contains_var(mlds__statement, mlds__var).
-:- mode statement_contains_var(in, in) is semidet.
-
-statement_contains_var(Statement, Name) :-
-	Statement = mlds__statement(Stmt, _Context),
-	stmt_contains_var(Stmt, Name).
-
-:- pred stmt_contains_var(mlds__stmt, mlds__var).
-:- mode stmt_contains_var(in, in) is semidet.
-
-stmt_contains_var(Stmt, Name) :-
-	(
-		Stmt = block(Defns, Statements),
-		( defns_contains_var(Defns, Name)
-		; statements_contains_var(Statements, Name)
-		)
-	;
-		Stmt = while(Rval, Statement, _Once),
-		( rval_contains_var(Rval, Name)
-		; statement_contains_var(Statement, Name)
-		)
-	;
-		Stmt = if_then_else(Cond, Then, MaybeElse),
-		( rval_contains_var(Cond, Name)
-		; statement_contains_var(Then, Name)
-		; maybe_statement_contains_var(MaybeElse, Name)
-		)
-	;
-		Stmt = switch(_Type, Val, _Range, Cases, Default),
-		( rval_contains_var(Val, Name)
-		; cases_contains_var(Cases, Name)
-		; default_contains_var(Default, Name)
-		)
-	;
-		Stmt = label(_Label),
-		fail
-	;
-		Stmt = goto(_),
-		fail
-	;
-		Stmt = computed_goto(Rval, _Labels),
-		rval_contains_var(Rval, Name)
-	;
-		Stmt = call(_Sig, Func, Obj, Args, RetLvals, _TailCall),
-		( rval_contains_var(Func, Name)
-		; maybe_rval_contains_var(Obj, Name)
-		; rvals_contains_var(Args, Name)
-		; lvals_contains_var(RetLvals, Name)
-		)
-	;
-		Stmt = return(Rvals),
-		rvals_contains_var(Rvals, Name)
-	;
-		Stmt = do_commit(Ref),
-		rval_contains_var(Ref, Name)
-	;
-		Stmt = try_commit(Ref, Statement, Handler),
-		( lval_contains_var(Ref, Name)
-		; statement_contains_var(Statement, Name)
-		; statement_contains_var(Handler, Name)
-		)
-	;
-		Stmt = atomic(AtomicStmt),
-		atomic_stmt_contains_var(AtomicStmt, Name)
-	).
-
-:- pred cases_contains_var(list(mlds__switch_case), mlds__var).
-:- mode cases_contains_var(in, in) is semidet.
-
-cases_contains_var(Cases, Name) :-
-	list__member(Case, Cases),
-	Case = _MatchConds - Statement,
-	statement_contains_var(Statement, Name).
-
-:- pred default_contains_var(mlds__switch_default, mlds__var).
-:- mode default_contains_var(in, in) is semidet.
-
-% default_contains_var(default_do_nothing, _) :- fail.
-% default_contains_var(default_is_unreachable, _) :- fail.
-default_contains_var(default_case(Statement), Name) :-
-	statement_contains_var(Statement, Name).
-
-:- pred atomic_stmt_contains_var(mlds__atomic_statement, mlds__var).
-:- mode atomic_stmt_contains_var(in, in) is semidet.
-
-% atomic_stmt_contains_var(comment(_), _Name) :- fail.
-atomic_stmt_contains_var(assign(Lval, Rval), Name) :-
-	( lval_contains_var(Lval, Name)
-	; rval_contains_var(Rval, Name)
-	).
-atomic_stmt_contains_var(new_object(Target, _MaybeTag, _HasSecTag, _Type,
-		_MaybeSize, _MaybeCtorName, Args, _ArgTypes), Name) :-
-	( lval_contains_var(Target, Name)
-	; rvals_contains_var(Args, Name)
-	).
-% atomic_stmt_contains_var(gc_check, _) :- fail.
-atomic_stmt_contains_var(mark_hp(Lval), Name) :-
-	lval_contains_var(Lval, Name).
-atomic_stmt_contains_var(restore_hp(Rval), Name) :-
-	rval_contains_var(Rval, Name).
-atomic_stmt_contains_var(trail_op(TrailOp), Name) :-
-	trail_op_contains_var(TrailOp, Name).
-atomic_stmt_contains_var(inline_target_code(_Lang, Components), Name) :-
-	list__member(Component, Components),
-	target_code_component_contains_var(Component, Name).
-
-:- pred trail_op_contains_var(trail_op, mlds__var).
-:- mode trail_op_contains_var(in, in) is semidet.
-
-trail_op_contains_var(store_ticket(Lval), Name) :-
-	lval_contains_var(Lval, Name).
-trail_op_contains_var(reset_ticket(Rval, _Reason), Name) :-
-	rval_contains_var(Rval, Name).
-% trail_op_contains_var(discard_ticket, _Name) :- fail.
-% trail_op_contains_var(prune_ticket, _Name) :- fail.
-trail_op_contains_var(mark_ticket_stack(Lval), Name) :-
-	lval_contains_var(Lval, Name).
-trail_op_contains_var(prune_tickets_to(Rval), Name) :-
-	rval_contains_var(Rval, Name).
-
-:- pred target_code_component_contains_var(target_code_component, mlds__var).
-:- mode target_code_component_contains_var(in, in) is semidet.
-
-%target_code_component_contains_var(raw_target_code(_Code), _Name) :-
-%	fail.
-%target_code_component_contains_var(user_target_code(_Code, _Context), _Name) :- 
-%	fail.
-target_code_component_contains_var(target_code_input(Rval), Name) :-
-	rval_contains_var(Rval, Name).
-target_code_component_contains_var(target_code_output(Lval), Name) :-
-	lval_contains_var(Lval, Name).
-target_code_component_contains_var(name(EntityName), VarName) :-
-	EntityName = qual(ModuleName, data(var(UnqualVarName))),
-	VarName = qual(ModuleName, UnqualVarName).
 
 %-----------------------------------------------------------------------------%
 

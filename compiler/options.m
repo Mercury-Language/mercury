@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -414,6 +414,7 @@
 	%	- MLDS
 		;	optimize_tailcalls
 		;	optimize_initializations
+		;	eliminate_local_vars
 	%	- LLDS
 		;	common_data
 		;	optimize	% also used for MLDS->MLDS optimizations
@@ -864,6 +865,7 @@ option_defaults_2(optimization_option, [
 % MLDS
 	optimize_tailcalls	- 	bool(no),
 	optimize_initializations - 	bool(no),
+	eliminate_local_vars	- 	bool(no),
 % LLDS
 	common_data		-	bool(no),
 	optimize		-	bool(no),
@@ -1097,9 +1099,11 @@ long_option("line-numbers",		line_numbers).
 long_option("auto-comments",		auto_comments).
 long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
+long_option("hlds-dump",		dump_hlds).
 long_option("dump-hlds-alias",		dump_hlds_alias).
 long_option("dump-hlds-options",	dump_hlds_options).
 long_option("dump-mlds",		dump_mlds).
+long_option("mlds-dump",		dump_mlds).
 long_option("dump-rl",			dump_rl).
 long_option("dump-rl-bytecode",		dump_rl_bytecode).
 long_option("sign-assembly",		sign_assembly).
@@ -1361,6 +1365,7 @@ long_option("optimize-tailcalls",	optimize_tailcalls).
 long_option("optimise-tailcalls",	optimize_tailcalls).
 long_option("optimize-initializations",	optimize_initializations).
 long_option("optimise-initializations",	optimize_initializations).
+long_option("eliminate-local-vars",	eliminate_local_vars).
 
 % LLDS optimizations
 long_option("common-data",		common_data).
@@ -1777,12 +1782,15 @@ opt_level(4, _, [
 % Currently this enables the search for construction unifications that can be
 % delayed past failing computations, allows more passes of the low-level
 % optimizations, and increases the inlining thresholds still further.
+% We also enable eliminate_local_vars only at this level,
+% because that pass is implemented pretty inefficiently.
 
 opt_level(5, _, [
 	optimize_repeat		-	int(5),
 	delay_construct		-	bool(yes),
 	inline_compound_threshold -	int(100),
-	higher_order_size_limit -	int(40)
+	higher_order_size_limit -	int(40),
+	eliminate_local_vars	-	bool(yes)
 ]).
 
 % Optimization level 6: apply optimizations which may have any
@@ -1799,6 +1807,32 @@ opt_level(6, _, [
 	inline_alloc		-	bool(yes),
 	use_macro_for_redo_fail	-	bool(yes)
 ]).
+
+% The following optimization options are not enabled at any level:
+%
+% 	checked_nondet_tailcalls:
+%		This is deliberate, because the transformation
+%		might make code run slower.
+%
+% 	constraint_propagation:
+%		I think this is deliberate, because the transformation
+%		might make code run slower?
+%
+%	prev_code:
+%		Not useful?
+%
+%	unneeded_code:
+%	type_specialization:
+%	optimize_rl_invariant:
+%		XXX why not?
+%
+%	introduce_accumulators:
+%		XXX Disabled until a bug in extras/trailed_update/var.m
+%		is resolved.
+%
+%	optimize_rl_cse:
+%	optimize_constructor_last_call:
+%		Not implemented yet.
 
 %-----------------------------------------------------------------------------%
 
@@ -2888,7 +2922,10 @@ options_help_mlds_mlds_optimization -->
 		"--no-optimize-initializations",
 		"\tLeave initializations of local variables as",
 		"\tassignment statements, rather than converting such",
-		"\tassignment statements into initializers."
+		"\tassignment statements into initializers.",
+		"--eliminate-local-vars",
+		"\tEliminate local variables with known values, where possible,",
+		"\tby replacing occurrences of such variables with their values."
 	]).
 
 

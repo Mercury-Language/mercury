@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3247,6 +3247,10 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS10, "10", "rtti"),
 
+	% Detection of tail calls needs to occur before the
+	% chain_gc_stack_frame pass of ml_elim_nested,
+	% because we need to unlink the stack frame from the
+	% stack chain before tail calls.
 	globals__io_lookup_bool_option(optimize_tailcalls, OptimizeTailCalls),
 	( { OptimizeTailCalls = yes } ->
 		maybe_write_string(Verbose, 
@@ -3258,6 +3262,29 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	),
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS20, "20", "tailcalls"),
+
+	% run the ml_optimize pass before ml_elim_nested,
+	% so that we eliminate as many local variables as possible
+	% before the ml_elim_nested transformations.
+	% However, we don't want to do tail call elimination at
+	% this point, because that would result in loops
+	% with no call to MR_GC_check().
+	% So we explicitly disable that here.
+	globals__io_lookup_bool_option(optimize, Optimize),
+	( { Optimize = yes } ->
+		globals__io_set_option(optimize_tailcalls, bool(no)),
+
+		maybe_write_string(Verbose, "% Optimizing MLDS...\n"),
+		ml_optimize__optimize(MLDS20, MLDS25),
+		maybe_write_string(Verbose, "% done.\n"),
+
+		globals__io_set_option(optimize_tailcalls,
+			bool(OptimizeTailCalls))
+	;
+		{ MLDS25 = MLDS20 }
+	),
+	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS25, "25", "optimize1"),
 
 	%
 	% Note that we call ml_elim_nested twice --
@@ -3275,10 +3302,10 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	( { GC = accurate } ->
 		maybe_write_string(Verbose,
 			"% Threading GC stack frames...\n"),
-		ml_elim_nested(chain_gc_stack_frames, MLDS20, MLDS30),
+		ml_elim_nested(chain_gc_stack_frames, MLDS25, MLDS30),
 		maybe_write_string(Verbose, "% done.\n")
 	;
-		{ MLDS30 = MLDS20 }
+		{ MLDS30 = MLDS25 }
 	),
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS30, "30", "gc_frames"),
@@ -3295,16 +3322,19 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS35, "35", "nested_funcs"),
 
-	globals__io_lookup_bool_option(optimize, Optimize),
+	% run the ml_optimize pass again after ml_elim_nested,
+	% to do tail call elimination.  (It may also help pick
+	% up some additional optimization opportunities for the
+	% other optimizations in this pass.)
 	( { Optimize = yes } ->
-		maybe_write_string(Verbose, "% Optimizing MLDS...\n"),
+		maybe_write_string(Verbose, "% Optimizing MLDS again...\n"),
 		ml_optimize__optimize(MLDS35, MLDS40),
 		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ MLDS40 = MLDS35 }
 	),
 	maybe_report_stats(Stats),
-	mercury_compile__maybe_dump_mlds(MLDS40, "40", "optimize"),
+	mercury_compile__maybe_dump_mlds(MLDS40, "40", "optimize2"),
 
 	{ MLDS = MLDS40 },
 	mercury_compile__maybe_dump_mlds(MLDS, "99", "final").

@@ -5135,6 +5135,11 @@ by turning self-tailcalls into loops.
 Leave initializations of local variables as assignment statements,
 rather than converting such assignments statements into initializers.
 
+@item --eliminate-local-variables
+@findex --no-eliminate-local-variables
+@findex --eliminate-local-variables
+Eliminate local variables with known values, where possible,
+by replacing occurrences of such variables with their values.
 @end table
 
 @node Medium-level (HLDS -> LLDS) optimization options

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,6 +46,11 @@
 
 :- pred stmt_contains_statement(mlds__stmt, mlds__statement).
 :- mode stmt_contains_statement(in, out) is nondet.
+
+	% succeeds iff this statement contains a reference to the
+	% specified variable
+:- pred statement_contains_var(mlds__statement, mlds__var).
+:- mode statement_contains_var(in, in) is semidet.
 
 :- pred has_foreign_languages(mlds__statement, list(foreign_language)).
 :- mode has_foreign_languages(in, out) is det.
@@ -94,6 +99,16 @@
 	% field in its decl_flags.
 :- pred defn_is_public(mlds__defn).
 :- mode defn_is_public(in) is semidet.
+
+	% Succeeds iff these definitions contains a reference to
+	% the specified variable.
+:- pred defns_contains_var(mlds__defns, mlds__var).
+:- mode defns_contains_var(in, in) is semidet.
+
+	% Succeeds iff this definition contains a reference to
+	% the specified variable.
+:- pred defn_contains_var(mlds__defn, mlds__var).
+:- mode defn_contains_var(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -184,6 +199,11 @@ can_optimize_tailcall(Name, Call) :-
 % routines that deal with statements
 %
 
+% statement_contains_statement:
+% statements_contains_statement:
+% maybe_statement_contains_statement:
+%	nondeterministically generates sub-statements from statements.
+
 statements_contains_statement(Statements, SubStatement) :-
 	list__member(Statement, Statements),
 	statement_contains_statement(Statement, SubStatement).
@@ -264,6 +284,161 @@ default_contains_statement(default_is_unreachable, _) :- fail.
 default_contains_statement(default_case(Statement), SubStatement) :-
 	statement_contains_statement(Statement, SubStatement).
 
+% statements_contains_var:
+% maybe_statement_contains_var:
+% statement_contains_var:
+% trail_op_contains_var:
+% atomic_stmt_contains_var:
+%	Succeeds iff the specified construct contains a reference to
+%	the specified variable.
+
+:- pred statements_contains_var(mlds__statements, mlds__var).
+:- mode statements_contains_var(in, in) is semidet.
+
+statements_contains_var(Statements, Name) :-
+	list__member(Statement, Statements),
+	statement_contains_var(Statement, Name).
+
+:- pred maybe_statement_contains_var(maybe(mlds__statement), mlds__var).
+:- mode maybe_statement_contains_var(in, in) is semidet.
+
+% maybe_statement_contains_var(no, _) :- fail.
+maybe_statement_contains_var(yes(Statement), Name) :-
+	statement_contains_var(Statement, Name).
+
+
+statement_contains_var(Statement, Name) :-
+	Statement = mlds__statement(Stmt, _Context),
+	stmt_contains_var(Stmt, Name).
+
+:- pred stmt_contains_var(mlds__stmt, mlds__var).
+:- mode stmt_contains_var(in, in) is semidet.
+
+stmt_contains_var(Stmt, Name) :-
+	(
+		Stmt = block(Defns, Statements),
+		( defns_contains_var(Defns, Name)
+		; statements_contains_var(Statements, Name)
+		)
+	;
+		Stmt = while(Rval, Statement, _Once),
+		( rval_contains_var(Rval, Name)
+		; statement_contains_var(Statement, Name)
+		)
+	;
+		Stmt = if_then_else(Cond, Then, MaybeElse),
+		( rval_contains_var(Cond, Name)
+		; statement_contains_var(Then, Name)
+		; maybe_statement_contains_var(MaybeElse, Name)
+		)
+	;
+		Stmt = switch(_Type, Val, _Range, Cases, Default),
+		( rval_contains_var(Val, Name)
+		; cases_contains_var(Cases, Name)
+		; default_contains_var(Default, Name)
+		)
+	;
+		Stmt = label(_Label),
+		fail
+	;
+		Stmt = goto(_),
+		fail
+	;
+		Stmt = computed_goto(Rval, _Labels),
+		rval_contains_var(Rval, Name)
+	;
+		Stmt = call(_Sig, Func, Obj, Args, RetLvals, _TailCall),
+		( rval_contains_var(Func, Name)
+		; maybe_rval_contains_var(Obj, Name)
+		; rvals_contains_var(Args, Name)
+		; lvals_contains_var(RetLvals, Name)
+		)
+	;
+		Stmt = return(Rvals),
+		rvals_contains_var(Rvals, Name)
+	;
+		Stmt = do_commit(Ref),
+		rval_contains_var(Ref, Name)
+	;
+		Stmt = try_commit(Ref, Statement, Handler),
+		( lval_contains_var(Ref, Name)
+		; statement_contains_var(Statement, Name)
+		; statement_contains_var(Handler, Name)
+		)
+	;
+		Stmt = atomic(AtomicStmt),
+		atomic_stmt_contains_var(AtomicStmt, Name)
+	).
+
+:- pred cases_contains_var(list(mlds__switch_case), mlds__var).
+:- mode cases_contains_var(in, in) is semidet.
+
+cases_contains_var(Cases, Name) :-
+	list__member(Case, Cases),
+	Case = _MatchConds - Statement,
+	statement_contains_var(Statement, Name).
+
+:- pred default_contains_var(mlds__switch_default, mlds__var).
+:- mode default_contains_var(in, in) is semidet.
+
+% default_contains_var(default_do_nothing, _) :- fail.
+% default_contains_var(default_is_unreachable, _) :- fail.
+default_contains_var(default_case(Statement), Name) :-
+	statement_contains_var(Statement, Name).
+
+:- pred atomic_stmt_contains_var(mlds__atomic_statement, mlds__var).
+:- mode atomic_stmt_contains_var(in, in) is semidet.
+
+% atomic_stmt_contains_var(comment(_), _Name) :- fail.
+atomic_stmt_contains_var(assign(Lval, Rval), Name) :-
+	( lval_contains_var(Lval, Name)
+	; rval_contains_var(Rval, Name)
+	).
+atomic_stmt_contains_var(new_object(Target, _MaybeTag, _HasSecTag, _Type,
+		_MaybeSize, _MaybeCtorName, Args, _ArgTypes), Name) :-
+	( lval_contains_var(Target, Name)
+	; rvals_contains_var(Args, Name)
+	).
+% atomic_stmt_contains_var(gc_check, _) :- fail.
+atomic_stmt_contains_var(mark_hp(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+atomic_stmt_contains_var(restore_hp(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+atomic_stmt_contains_var(trail_op(TrailOp), Name) :-
+	trail_op_contains_var(TrailOp, Name).
+atomic_stmt_contains_var(inline_target_code(_Lang, Components), Name) :-
+	list__member(Component, Components),
+	target_code_component_contains_var(Component, Name).
+
+:- pred trail_op_contains_var(trail_op, mlds__var).
+:- mode trail_op_contains_var(in, in) is semidet.
+
+trail_op_contains_var(store_ticket(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+trail_op_contains_var(reset_ticket(Rval, _Reason), Name) :-
+	rval_contains_var(Rval, Name).
+% trail_op_contains_var(discard_ticket, _Name) :- fail.
+% trail_op_contains_var(prune_ticket, _Name) :- fail.
+trail_op_contains_var(mark_ticket_stack(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+trail_op_contains_var(prune_tickets_to(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+
+:- pred target_code_component_contains_var(target_code_component, mlds__var).
+:- mode target_code_component_contains_var(in, in) is semidet.
+
+%target_code_component_contains_var(raw_target_code(_Code), _Name) :-
+%	fail.
+%target_code_component_contains_var(user_target_code(_Code, _Context), _Name) :- 
+%	fail.
+target_code_component_contains_var(target_code_input(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+target_code_component_contains_var(target_code_output(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+target_code_component_contains_var(name(EntityName), VarName) :-
+	EntityName = qual(ModuleName, data(var(UnqualVarName))),
+	VarName = qual(ModuleName, UnqualVarName).
+
 has_foreign_languages(Statement, Langs) :-
 	GetTargetCode = (pred(Lang::out) is nondet :-
 		statement_contains_statement(Statement, SubStatement),
@@ -319,6 +494,43 @@ defn_is_public(Defn) :-
 	Defn = mlds__defn(_Name, _Context, Flags, _Body),
 	access(Flags) = public.
 
+% defns_contains_var:
+% defn_contains_var:
+% defn_body_contains_var:
+% function_body_contains_var:
+%	Succeeds iff the specified construct contains a reference to
+%	the specified variable.
+%
+defns_contains_var(Defns, Name) :-
+	list__member(Defn, Defns),
+	defn_contains_var(Defn, Name).
+
+defn_contains_var(mlds__defn(_Name, _Context, _Flags, DefnBody), Name) :-
+	defn_body_contains_var(DefnBody, Name).
+
+:- pred defn_body_contains_var(mlds__entity_defn, mlds__var).
+:- mode defn_body_contains_var(in, in) is semidet.
+
+	% XXX Should we include variables in the GC_TraceCode field here?
+defn_body_contains_var(mlds__data(_Type, Initializer, _GC_TraceCode), Name) :-
+	initializer_contains_var(Initializer, Name).
+defn_body_contains_var(mlds__function(_PredProcId, _Params, FunctionBody,
+		_Attrs), Name) :-
+	function_body_contains_var(FunctionBody, Name).
+defn_body_contains_var(mlds__class(ClassDefn), Name) :-
+	ClassDefn = mlds__class_defn(_Kind, _Imports, _Inherits, _Implements,
+		CtorDefns, FieldDefns),
+	( defns_contains_var(FieldDefns, Name)
+	; defns_contains_var(CtorDefns, Name)
+	).
+
+:- pred function_body_contains_var(function_body, mlds__var).
+:- mode function_body_contains_var(in, in) is semidet.
+
+% function_body_contains_var(external, _) :- fail.
+function_body_contains_var(defined_here(Statement), Name) :-
+	statement_contains_var(Statement, Name).
+	
 %-----------------------------------------------------------------------------%
 %
 % routines that deal with lvals/rvals
