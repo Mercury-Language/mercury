@@ -200,8 +200,11 @@
 %-----------------------------------------------------------------------------%
 
 	% Version numbers for items in a single module.
-:- type version_numbers == pair(item_version_numbers,
-				instance_version_numbers).
+:- type version_numbers
+	---> version_numbers(
+		item_version_numbers,
+		instance_version_numbers
+	).
 
 	% The constructors set should always be empty -
 	% constructors are never imported separately.

@@ -211,14 +211,16 @@ recompilation_usage__write_usage_file_2(ModuleInfo, NestedSubModules,
 			% XXX We don't yet record all uses of items
 			% from these modules in polymorphism.m, etc.
 			\+ { any_mercury_builtin_module(ModuleName) },
-			{ map__search(RecompInfo ^ version_numbers, ModuleName,
-				ModuleItemVersions - ModuleInstanceVersions) }
+			{ map__search(RecompInfo ^ version_numbers,
+				ModuleName, ModuleVersions) }
 		->
 			%
 			% Select out from the version numbers of all items
 			% in the imported module the ones which are used.
 			%
 
+			{ ModuleVersions = version_numbers(ModuleItemVersions,
+						ModuleInstanceVersions) },
 			{ ModuleUsedItemVersions = map_ids(
 				(func(ItemType, Ids0) = Ids :-
 					ModuleItemNames = extract_ids(
@@ -240,8 +242,9 @@ recompilation_usage__write_usage_file_2(ModuleInfo, NestedSubModules,
 			},
 
 			io__write_string(" => "),
-			{ ModuleUsedVersionNumbers = ModuleUsedItemVersions
-						- ModuleUsedInstanceVersions },
+			{ ModuleUsedVersionNumbers =
+				version_numbers(ModuleUsedItemVersions,
+						ModuleUsedInstanceVersions) },
 			recompilation_version__write_version_numbers(
 				ModuleUsedVersionNumbers),
 			io__write_string(".\n")

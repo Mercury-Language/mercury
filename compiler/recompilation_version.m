@@ -37,7 +37,7 @@
 :- import_module assoc_list, bool, list, map, require, string.
 
 recompilation_version__compute_version_numbers(SourceFileTime, Items,
-		MaybeOldItems, ItemVersionNumbers - InstanceVersionNumbers) :-
+		MaybeOldItems, version_numbers(ItemVersionNumbers, InstanceVersionNumbers)) :-
 	recompilation_version__gather_items(Items,
 		GatheredItems, InstanceItems),
 	(
@@ -46,8 +46,8 @@ recompilation_version__compute_version_numbers(SourceFileTime, Items,
 		VersionNumberItem = module_defn(_,
 			version_numbers(_, OldVersionNumbers)) - _
 	->
-		OldVersionNumbers = OldItemVersionNumbers
-					- OldInstanceVersionNumbers,
+		OldVersionNumbers = version_numbers(OldItemVersionNumbers,
+					OldInstanceVersionNumbers),
 		recompilation_version__gather_items(OldItems, GatheredOldItems,
 			OldInstanceItems)
 	;
@@ -472,7 +472,7 @@ items_are_unchanged([Item - _ | Items1], [Item - _ | Items2]) :-
 %-----------------------------------------------------------------------------%
 
 recompilation_version__write_version_numbers(
-		VersionNumbers - InstanceVersionNumbers) -->
+		version_numbers(VersionNumbers, InstanceVersionNumbers)) -->
 	{ VersionNumbersList = list__filter_map(
 		(func(ItemType) = (ItemType - ItemVersions) is semidet :-
 			ItemVersions = extract_ids(VersionNumbers, ItemType),
@@ -543,9 +543,11 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
 		VersionNumbersTermList, Result0),
 	(
 		Result0 = ok(List),
-		VersionNumbers0 = init_item_id_set(map__init) - map__init,
+		VersionNumbers0 = version_numbers(init_item_id_set(map__init),
+						map__init),
 		VersionNumbers = list__foldl(
-		    (func(VNResult, VNs0 - Instances0) = VNs - Instances :-
+		    (func(VNResult, version_numbers(VNs0, Instances0)) =
+		    		version_numbers(VNs, Instances) :-
 			( 
 				VNResult = items(ItemType, ItemVNs),
 				VNs = update_ids(VNs0, ItemType, ItemVNs),

@@ -715,10 +715,10 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
 		throw(recompile_exception(Reason, Info0))
 	},
 
-	{ UsedVersionNumbers = UsedItemVersionNumbers
-				- UsedInstanceVersionNumbers },
-	{ NewVersionNumbers = NewItemVersionNumbers
-				- NewInstanceVersionNumbers },
+	{ UsedVersionNumbers = version_numbers(UsedItemVersionNumbers,
+				UsedInstanceVersionNumbers) },
+	{ NewVersionNumbers = version_numbers(NewItemVersionNumbers,
+				NewInstanceVersionNumbers) },
 
 	%
 	% Check whether any of the items which were used have changed.
