@@ -254,6 +254,7 @@ ln -s $root/util .
 ln -s $root/profiler .
 ln -s $root/conf* .
 rm -f config*.log
+/bin/rm -f Mmake*
 cp $root/stage2.ok/Mmake* .
 cp $root/stage2.ok/so_locations .
 cd $root
@@ -270,9 +271,6 @@ then
 		exit 1
 	fi
 fi
-
-/bin/rm -f stage3/Mmake*
-cp $root/stage2.ok/Mmake* stage3
 
 if test "$alldirs" = ""
 then
