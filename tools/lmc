@@ -63,7 +63,7 @@ INIT_FLAGS="--trace-init-file $WORKSPACE/browser/mer_browser.init --init-file $W
 
 if test "$MMC_CDEBUG" != ""
 then
-	CDEBUG_FLAGS="--link-flags -g --cflags -g"
+	CDEBUG_FLAGS="--target-debug"
 else
 	CDEBUG_FLAGS=""
 fi
