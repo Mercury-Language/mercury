@@ -1687,12 +1687,6 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 
 mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 	( 
-		type_to_ctor_and_args(Type, TypeCtor, [ElemType]),
-		TypeCtor = qualified(unqualified("array"), "array") - 1
-	->
-		MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
-		MLDSType = mlds__mercury_array_type(MLDSElemType)
-	;
 		type_to_ctor_and_args(Type, TypeCtor, _),
 		module_info_types(ModuleInfo, Types),
 		map__search(Types, TypeCtor, TypeDefn),
@@ -1740,6 +1734,12 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 			)
 		),
 		MLDSType = mlds__foreign_type(ForeignType)
+	;
+		type_to_ctor_and_args(Type, TypeCtor, [ElemType]),
+		TypeCtor = qualified(unqualified("array"), "array") - 1
+	->
+		MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
+		MLDSType = mlds__mercury_array_type(MLDSElemType)
 	;
 		classify_type(Type, ModuleInfo, Category),
 		ExportedType = to_exported_type(ModuleInfo, Type),
