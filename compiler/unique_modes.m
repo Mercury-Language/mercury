@@ -392,18 +392,24 @@ unique_modes__check_goal_2(disj(List0, FV), GoalInfo0, disj(List, FV)) -->
 		{ List = [] },
 		mode_info_set_instmap(unreachable)
 	;
-		%
-		% Mark all the variables which are nondet-live at the
-		% start of the disjunction and whose inst is `unique'
-		% as instead being only `mostly_unique'.
-		%
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-		mode_info_add_live_vars(NonLocals),
-		make_all_nondet_live_vars_mostly_uniq,
-		mode_info_remove_live_vars(NonLocals),
+		{ goal_info_get_code_model(GoalInfo0, CodeModel) },
+		% does this disjunction create a choice point?
+		( { CodeModel = model_non } ->
+			%
+			% Mark all the variables which are nondet-live at the
+			% start of the disjunction and whose inst is `unique'
+			% as instead being only `mostly_unique'.
+			%
+			mode_info_add_live_vars(NonLocals),
+			make_all_nondet_live_vars_mostly_uniq,
+			mode_info_remove_live_vars(NonLocals)
+		;
+			[]
+		),
 
 		%
-		% Now just modecheck each disjunction in turn, and then
+		% Now just modecheck each disjunct in turn, and then
 		% merge the resulting instmaps.
 		%
 		unique_modes__check_disj(List0, List, InstMapList),

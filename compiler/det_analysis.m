@@ -328,7 +328,17 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	% See how we should introduce the commit operator, if one is needed.
 
 	(
+		% do we need a commit?
 		Detism \= InternalDetism,
+
+		% for disjunctions, we want to use a semidet
+		% or cc_nondet disjunction which avoids creating a
+		% choice point at all, rather than wrapping a
+		% some [] around a nondet disj, which would
+		% create a choice point and then prune it.
+		Goal1 \= disj(_, _),	
+
+		% do we already have a commit?
 		Goal1 \= some(_, _)
 	->
 		% a commit needed - we must introduce an explicit `some'
