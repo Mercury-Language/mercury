@@ -123,6 +123,26 @@
 #define MR_PASTE7(a,b,c,d,e,f,g)	MR_PASTE7_2(a,b,c,d,e,f,g)
 #define MR_PASTE7_2(a,b,c,d,e,f,g)	a##b##c##d##e##f##g
 
+/*
+** MR_CHECK_EXPR_TYPE(expr, type):
+** This macro checks that the given expression has a type
+** which is compatible with (assignable to) the specified type,
+** forcing a compile error if it does not.
+** It does not evaluate the expression.
+** Note that the specified type must be a complete type,
+** i.e. it must not be a pointer to a struct which has
+** not been defined.
+**
+** This macro is useful for defining type-safe function-like macros.
+**
+** The implementation of this macro looks like it dereferences
+** a null pointer, but because that code is inside sizeof(), it will
+** not get executed; the compiler will instead just check that it is
+** type-correct.
+*/
+#define MR_CHECK_EXPR_TYPE(expr, type) \
+	((void) sizeof(*(type *)NULL = (expr)))
+
 /*---------------------------------------------------------------------------*/
 
 #endif /* not MERCURY_STD_H */

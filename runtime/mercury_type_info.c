@@ -79,7 +79,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 
 	arg_num = (Unsigned) pseudo_type_info;
 
-	if (MR_TYPE_VARIABLE_IS_UNIV_QUANT(arg_num)) {
+	if (MR_TYPE_VARIABLE_IS_UNIV_QUANT(pseudo_type_info)) {
 		/*
 		** This is a universally quantified type variable.
 		*/

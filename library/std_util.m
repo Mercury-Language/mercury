@@ -1212,6 +1212,7 @@ void sys_init_unify_univ_module(void) {
 ** values of type `private_builtin:type_info' (this representation is
 ** documented in compiler/polymorphism.m). Some parts of the library
 ** (e.g. the gc initialization code) depend on this.
+** The C type corresponding to these Mercury types is `MR_TypeInfo'.
 **
 ** Values of type `std_util:type_ctor_desc' are not guaranteed to be
 ** represented the same way as values of type `private_builtin:type_ctor_info'.
@@ -1220,58 +1221,80 @@ void sys_init_unify_univ_module(void) {
 ** containing a pointer to the type_ctor_info for pred/0 or func/0 and an
 ** arity, we have a single small encoded integer. This integer is double
 ** the arity, plus zero or one; plus zero encodes a predicate, plus one encodes
-** a function.
+** a function.  The maximum arity that can be encoded is given by
+** MR_MAX_HO_ARITY (see below).
+** The C type corresponding to std_util:type_ctor_desc is `MR_TypeCtorInfo'.
+*/
+
+/*
+** Declare the MR_TypeCtorDesc ADT.
 **
-** The maximum arity that can be encoded should be set to twice the maximum
-** number of general purpose registers, since an predicate or function having
-** more arguments that this would run out of registers when passing the input
-** arguments, or the output arguments, or both.
-**
-** XXX This scheme does not properly handle the type_desc for the type
-** private_builtin:type_info, since that type also has a variable arity
-** (and because the current implementation lies about the arity).
-**
-** Note that MR_TypeCtorDesc is declared as a pointer to a dummy structure
-** only in order to allow the C compiler to catch errors in which things other
+** Note that `struct MR_TypeCtorDesc_Struct' is deliberately left undefined.
+** MR_TypeCtorDesc is declared as a pointer to a dummy structure only
+** in order to allow the C compiler to catch errors in which things other
 ** than MR_TypeCtorDescs are given as arguments to macros that depend on their
 ** arguments being MR_TypeCtorDescs. The actual value is either a small integer
 ** or a pointer to a MR_TypeCtorInfo_Struct structure, as described above.
 */
+typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 
-typedef struct {
-    Unsigned    type_ctor_desc_dummy_field;
-} *MR_TypeCtorDesc;
-
+/*
+** The maximum arity that can be encoded should be set to twice the maximum
+** number of general purpose registers, since an predicate or function having
+** more arguments that this would run out of registers when passing the input
+** arguments, or the output arguments, or both.
+*/
 #define MR_MAX_HO_ARITY         (2 * MAX_VIRTUAL_REG)
 
-#define MR_TYPECTOR_DESC_UNSIGNED(T)                                    \
-        ( (Unsigned) &(T)->type_ctor_desc_dummy_field )
-#define MR_TYPECTOR_DESC_GET_FIRST_ORDER_TYPE_CTOR_INFO(T)              \
-        ( (MR_TypeCtorInfo) &(T)->type_ctor_desc_dummy_field )
-
-#define MR_TYPECTOR_DESC_IS_HIGHER_ORDER(T)                             \
-        ( MR_TYPECTOR_DESC_UNSIGNED(T) <= (2 * MR_MAX_HO_ARITY + 1) )
+/*
+** Constructors for the MR_TypeCtorDesc ADT
+*/
 #define MR_TYPECTOR_DESC_MAKE_PRED(Arity)                               \
         ( (MR_TypeCtorDesc) ((Arity) * 2) )
 #define MR_TYPECTOR_DESC_MAKE_FUNC(Arity)                               \
         ( (MR_TypeCtorDesc) ((Arity) * 2 + 1) )
 #define MR_TYPECTOR_DESC_MAKE_FIRST_ORDER(type_ctor_info)               \
-        ( (MR_TypeCtorDesc) &type_ctor_info->arity )
+        ( MR_CHECK_EXPR_TYPE(type_ctor_info, MR_TypeCtorInfo),		\
+	  (MR_TypeCtorDesc) type_ctor_info )
+
+/*
+** Access macros for the MR_TypeCtor ADT.
+**
+** The MR_TYPECTOR_DESC_GET_HOT_* macros should only be called if
+** MR_TYPECTOR_DESC_IS_HIGHER_ORDER() returns true.
+** The MR_TYPECTOR_DESC_GET_FIRST_ORDER_TYPE_CTOR_INFO() macro
+** should only be called if MR_TYPECTOR_DESC_IS_HIGHER_ORDER() returns false.
+*/
+#define MR_TYPECTOR_DESC_IS_HIGHER_ORDER(T)                             \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
+          (Unsigned) (T) <= (2 * MR_MAX_HO_ARITY + 1) )
+#define MR_TYPECTOR_DESC_GET_FIRST_ORDER_TYPE_CTOR_INFO(T)              \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
+	  (MR_TypeCtorInfo) (T) )
 #define MR_TYPECTOR_DESC_GET_HOT_ARITY(T)                               \
-        ( MR_TYPECTOR_DESC_UNSIGNED(T) / 2 )
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
+          (Unsigned) (T) / 2 )
 #define MR_TYPECTOR_DESC_GET_HOT_NAME(T)                                \
-        ((ConstString) ((MR_TYPECTOR_DESC_UNSIGNED(T) % 2 != 0)         \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
+          (ConstString) (((Unsigned) (T) % 2 != 0)         		\
                 ? ""func""                                              \
                 : ""pred"" ))
 #define MR_TYPECTOR_DESC_GET_HOT_MODULE_NAME(T)                         \
-        ((ConstString) ""builtin"")
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
+          (ConstString) ""builtin"" )
 #define MR_TYPECTOR_DESC_GET_HOT_TYPE_CTOR_INFO(T)                      \
-        ((MR_TYPECTOR_DESC_UNSIGNED(T) % 2 != 0)      			\
-                ? (MR_TypeCtorInfo) (Word)				\
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
+          ((Unsigned) (T) % 2 != 0)      				\
+                ? (MR_TypeCtorInfo)					\
 			&mercury_data___type_ctor_info_func_0           \
-                : (MR_TypeCtorInfo) (Word)				\
+                : (MR_TypeCtorInfo)					\
 			&mercury_data___type_ctor_info_pred_0 )
 
+/*---------------------------------------------------------------------------*/
+
+/*
+** Macros dealing with the MR_TypeCtorInfo type.
+*/
 #define MR_TYPE_CTOR_INFO_HO_PRED                                       \
         ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_pred_0)
 #define MR_TYPE_CTOR_INFO_HO_FUNC                                       \
@@ -1286,6 +1309,8 @@ typedef struct {
 #endif
 
 ").
+
+%-----------------------------------------------------------------------------%
 
 :- pragma c_header_code("
 
@@ -1330,7 +1355,7 @@ extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 ").
 
 	% A type_ctor_desc is really just a subtype of type_desc,
-	% but we should hide this from users as it is an implementation
+	% but we hide this from users, since it is an implementation
 	% detail.
 :- type type_ctor_desc == type_desc.
 
@@ -1808,7 +1833,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 switch (functor_desc->MR_du_functor_sectag_locn) {
                 case MR_SECTAG_LOCAL:
                     new_data = (Word) MR_mkword(ptag,
-                        MR_mkbody(functor_desc->MR_du_functor_secondary));
+                        MR_mkbody((Word) functor_desc->MR_du_functor_secondary));
                     break;
 
                 case MR_SECTAG_REMOTE:

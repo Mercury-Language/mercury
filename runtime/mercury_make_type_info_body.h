@@ -44,7 +44,9 @@ exist_func(const MR_TypeInfoParams type_info_params,
 		expanded_type_info = MR_get_arg_type_info(type_info_params, 
 			pseudo_type_info, data_value, functor_desc);
 
-		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(expanded_type_info)) {
+		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(
+			(MR_PseudoTypeInfo) expanded_type_info))
+		{
 			fatal_error(exist_func_string
 				": unbound type variable");
 		}
@@ -84,7 +86,9 @@ exist_func(const MR_TypeInfoParams type_info_params,
 				data_value, functor_desc
 				MAYBE_PASS_ALLOC_ARG);
 
-		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(expanded_type_info)) {
+		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(
+			(MR_PseudoTypeInfo) expanded_type_info))
+		{
 			fatal_error(exist_func_string
 				": unbound type variable");
 		}

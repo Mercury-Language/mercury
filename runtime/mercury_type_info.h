@@ -147,26 +147,41 @@ struct MR_PseudoTypeInfo_Almost_Struct {
 ** A MR_TypeInfoParams array serves this purpose. Because type variables
 ** start at one, MR_TypeInfoParams arrays also start at one.
 */
-
 typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define MR_PSEUDOTYPEINFO_EXIST_VAR_BASE    512
 #define MR_PSEUDOTYPEINFO_MAX_VAR           1024
 
+/*
+** Macros for accessing pseudo_type_infos.
+**
+** The MR_TYPE_VARIABLE_* macros should only be called if
+** MR_PSEUDO_TYPEINFO_IS_VARIABLE() returns TRUE.
+*/
+
 #define MR_PSEUDO_TYPEINFO_IS_VARIABLE(T)                           \
-    ( (Unsigned) T <= MR_PSEUDOTYPEINFO_MAX_VAR )
+    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),		    \
+      (Unsigned) (T) <= MR_PSEUDOTYPEINFO_MAX_VAR )
 
 #define MR_TYPE_VARIABLE_IS_EXIST_QUANT(T)                          \
-    ( (Word) (T) > MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
+    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),		    \
+      (Word) (T) > MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
 #define MR_TYPE_VARIABLE_IS_UNIV_QUANT(T)                           \
-    ( (Word) (T) <= MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
+    ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),		    \
+      (Word) (T) <= MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
 
+/*
+** This macro converts a pseudo_type_info to a type_info.
+** It should only be called if the pseudo_type_info is ground,
+** i.e. contains no type variables.
+*/
 #define MR_pseudo_type_info_is_ground(pseudo_type_info)             \
-    ((MR_TypeInfo) &pseudo_type_info->MR_pti_type_ctor_info)
+    ( MR_CHECK_EXPR_TYPE((pseudo_type_info), MR_PseudoTypeInfo),    \
+      (MR_TypeInfo) (pseudo_type_info) )			    \
 
-    /*
-    ** Macros for retrieving things from type_infos and pseudo_type_infos.
-    */
+/*
+** Macros for retrieving things from type_infos and pseudo_type_infos.
+*/
 
 #define MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)                   \
     (((type_info)->MR_ti_type_ctor_info != NULL)                    \
@@ -191,9 +206,9 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info)           \
     ((MR_TypeInfoParams) &(type_info)->MR_ti_type_ctor_info)
 
-    /*
-    ** Macros for creating type_infos.
-    */
+/*
+** Macros for creating type_infos.
+*/
 
 #define MR_first_order_type_info_size(arity)                        \
     (1 + (arity))
