@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: mercury-compile.m.
+% File: eliza.m.
 % Main author: bromage.
 
 %-----------------------------------------------------------------------------%
