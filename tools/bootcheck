@@ -41,6 +41,17 @@ fi
 
 root=`/bin/pwd`
 
+# the stage 1 compiler is copied to allow it to be worked on
+# in parallel with the bootcheck itself.
+
+[ -d stage1 ] || mkdir stage1
+
+cp $root/compiler/mercury_compile stage1
+MERCURY_COMPILER=$root/stage1/mercury_compile
+export MERCURY_COMPILER
+MERCURY_INT_DIR=$root/stage2/library
+export MERCURY_INT_DIR
+
 # .pp files are not necessary
 
 [ -d stage2 ] || mkdir stage2
@@ -57,11 +68,7 @@ ln -s $root/runtime stage2/runtime
 ln -s $root/scripts stage2/scripts
 ln -s $root/util stage2/util
 ln -s $root/Mmake* stage2
-
-MERCURY_COMPILER=$root/compiler/mercury_compile
-export MERCURY_COMPILER
-MERCURY_INT_DIR=$root/stage2/library
-export MERCURY_INT_DIR
+ln -s $root/conf* stage2
 
 if (cd stage2 ; mmake $mmake_opts depend)
 then
@@ -122,27 +129,28 @@ else
 	exit 1
 fi
 
+MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
+export MERCURY_COMPILER
+MERCURY_INT_DIR=$root/stage3/library
+export MERCURY_INT_DIR
+
 # .pp files are not necessary
 
 [ -d stage3 ] || mkdir stage3
 /bin/rm -fr stage3/*
 mkdir stage3/compiler
 mkdir stage3/library
-ln -s $root/compiler/*.m stage3/compiler
-ln -s $root/compiler/Mmake* stage3/compiler
-ln -s $root/library/*.m stage3/library
-ln -s $root/library/Mmake* stage3/library
+ln -s $root/stage2/compiler/*.m stage3/compiler
+ln -s $root/stage2/compiler/Mmake* stage3/compiler
+ln -s $root/stage2/library/*.m stage3/library
+ln -s $root/stage2/library/Mmake* stage3/library
 ln -s $root/boehm_gc stage3/boehm_gc
 ln -s $root/doc stage3/doc
 ln -s $root/runtime stage3/runtime
 ln -s $root/scripts stage3/scripts
 ln -s $root/util stage3/util
 ln -s $root/Mmake* stage3
-
-MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
-export MERCURY_COMPILER
-MERCURY_INT_DIR=$root/stage3/library
-export MERCURY_INT_DIR
+ln -s $root/conf* stage3
 
 if (cd stage3 ; mmake $mmake_opts depend)
 then
