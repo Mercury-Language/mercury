@@ -511,41 +511,21 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 	intermod_info_get_var_types(VarTypes),
 	(
 		%
-		% Is it a module-qualified function call?
+		% Is it a function call?
 		%
-		{ Functor0 = cons(qualified(FuncModule, FuncName), Arity) },
-		{ predicate_table_search_func_m_n_a(PredTable,
-				FuncModule, FuncName, Arity, PredIds) }
+		{ Functor0 = cons(FuncName, Arity) },
+		{ predicate_table_search_func_sym_arity(PredTable,
+				FuncName, Arity, PredIds) },
+		{ list__append(Vars, [LVar], FuncArgs) },
+		{ map__apply_to_list(FuncArgs, VarTypes, FuncArgTypes) },
+		{ typecheck__find_matching_pred_id(PredIds, ModuleInfo,
+			TVarSet, FuncArgTypes, PredId, QualifiedFuncName) }
 	->
 		%
-		% Yes, it is a module-qualified function call.
-		% Make sure that the called function will be exported.
-		%
-		( { PredIds = [PredId] } ->
-			intermod_info_add_proc(PredId, DoWrite)
-		;
-			% there should be at most one function
-			% with a given module, name, and arity
-			{ error("intermod.m: func_m_n_a not unique") }
-		),
-		{ Functor = Functor0 }
-	;
-		%
-		% Is it an unqualified function call?
-		%
-		{ Functor0 = cons(unqualified(FuncName), Arity) },
-		{ predicate_table_search_func_name_arity(PredTable,
-				FuncName, Arity, PredIds) }
-	->
-		%
-		% Yes, it is an unqualified function call.
+		% Yes, it is a function call.
 		% Module-qualify it.
 		% Make sure that the called function will be exported.
 		%
-		{ list__append(Vars, [LVar], FuncArgs) },
-		{ typecheck__resolve_overloading(ModuleInfo,
-			FuncArgs, VarTypes, TVarSet, PredIds,
-			QualifiedFuncName, PredId) },
 		{ Functor = cons(QualifiedFuncName, Arity) },
 		intermod_info_add_proc(PredId, DoWrite)
 	;
@@ -563,7 +543,7 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 		% Make sure that the predicate/function is exported.
 		%
 		{ map__apply_to_list(Vars, VarTypes, Types) },
-		{ list__append(PredArgTypes, Types, ArgTypes) },
+		{ list__append(Types, PredArgTypes, ArgTypes) },
 		{ get_pred_id_and_proc_id(PredName, PredOrFunc,
 			TVarSet, ArgTypes, ModuleInfo, PredId, _ProcId) },
 		intermod_info_add_proc(PredId, DoWrite),
