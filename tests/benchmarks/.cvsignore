@@ -1,3 +1,10 @@
 *.c *.nux *.nux.save *.exp *.out *.res
 deriv deriv2 nrev poly primes qsort queens tak query cqueens crypt
+poly.*.memprof.mprof
+poly.*.memprof.CallPair
+poly.*.memprof.MemoryWords
+poly.*.memprof.MemoryCells
+poly.*.memprof.Decl
+Prof.MemoryWords Prof.MemoryCells
+.allres
 CLEAN
