@@ -660,20 +660,26 @@ case "$host" in
 		PIC_O=o
 		SO=so
 		;;
-	mips-sgi-irix5.*)
-		LINK_SHARED_OBJ="ld -shared"
-		PIC=
-		PIC_O=o
-		# shared libraries only work for reg.gc or none.gc
-		if test "$GRADE" = reg.gc || test "$GRADE" = none.gc; then
-			AC_MSG_RESULT(yes)
-			SO=so
-		else
-			SO=a
-			AC_MSG_RESULT(no)
-			AC_MSG_RESULT(Read README.IRIX-5)
-		fi
-		;;
+#
+#	Shared libraries are currently not enabled for IRIX 5, since
+#	it turns out that despite what it says in boehm_gc/README,
+#	the conservative garbage collector doesn't work with shared
+#	libraries on IRIX 5.
+#
+#	mips-sgi-irix5.*)
+#		LINK_SHARED_OBJ="ld -shared"
+#		PIC=
+#		PIC_O=o
+#		# shared libraries only work for reg.gc or none.gc
+#		if test "$GRADE" = reg.gc || test "$GRADE" = none.gc; then
+#			AC_MSG_RESULT(yes)
+#			SO=so
+#		else
+#			SO=a
+#			AC_MSG_RESULT(no)
+#			AC_MSG_RESULT(Read README.IRIX-5)
+#		fi
+#		;;
 	*)
 		AC_MSG_RESULT(no)
 		LINK_SHARED_OBJ="$CC"
