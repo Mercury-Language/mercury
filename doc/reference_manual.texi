@@ -2561,6 +2561,8 @@ There are several uses for @code{pragma} declarations:
                                         Mercury and C.
 * Using C pointers::                    Maintaining a reference to C data
                                         structures in Mercury code.
+* Memory management::                   Caveats about passing dynamically
+					allocated memory to or from C.
 @end menu
 
 The Mercury distribution includes a number of examples of the
@@ -2813,11 +2815,8 @@ list_empty()            /* create an empty list */
 list_cons(head,tail)    /* construct a list with the given head and tail */
 @end example
 
-The @samp{list_cons} macro should only be used in C code called
-using the @samp{will_not_call_mercury} calling convention.
-@c XXX I am not sure about this - zs
-
-@c XXX we need a more extensive discussion on memory allocation here
+Note that the use of these macros is subject to some caveats
+(@pxref{Memory management}).
 
 @node Using C pointers
 @subsection Using C pointers
@@ -2857,6 +2856,44 @@ between C functions which are called from Mercury.  For example:
         may_call_mercury,
         "Structure = perform_calculation(Value, Structure0);").
 @end example
+
+@node Memory management
+@subsection Memory management
+
+Passing pointers to dynamically-allocated memory from Mercury to code
+written in other languages, or vice versa, is in general
+implementation-dependent.
+
+The current Mercury implementation supports two different methods of memory
+management: conservative garbage collection, or no garbage collection.
+(With the latter method, heap storage is reclaimed only on backtracking.)
+
+Conservative garbage collection makes inter-language calls simplest.
+When using conservative garbage collection, heap storage is reclaimed
+automatically.  Pointers to dynamically-allocated memory can be passed
+to and from C without taking any special precautions.
+
+When using no garbage collection, you must be careful not to retain
+pointers to memory on the Mercury heap after Mercury has backtracked
+to before the point where that memory was allocated.
+You must also avoid the use of the macros
+@code{list_empty()} and @code{list_cons()}.
+(The reason for this is that they may access Mercury's @samp{hp} register,
+which might not be valid in C code.  Using them in the bodies of
+procedures defined using @samp{pragma c_code} with
+@samp{will_not_call_mercury} would probably work, but we don't advise it.)
+Instead, you can write Mercury functions to perform these actions
+and use @samp{pragma export} to access them from C.
+This alternative method also works with conservative garbage collection.
+
+Future Mercury implementations may use non-conservative methods
+of garbage collection.  For such implementations, it will be necessary
+to explicitly register pointers passed to C with the garbage collector.
+The mechanism for doing this has not yet been decided on.
+It would be desirable to provide a single memory management interface
+for use when interfacing with other languages that can work for all
+methods of memory management, but more implementation experience is
+needed before we can formulate such an interface.
 
 @node Inlining
 @section Inlining
