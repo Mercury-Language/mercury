@@ -113,6 +113,7 @@ CFILES		= 	\
 			mercury_agc_debug.c	\
 			mercury_bootstrap.c	\
 			mercury_context.c	\
+			mercury_debug.c		\
 			mercury_deep_copy.c	\
 			mercury_dlist.c		\
 			mercury_dummy.c		\

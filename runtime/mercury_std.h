@@ -119,6 +119,16 @@
 
 /*---------------------------------------------------------------------------*/
 
+/* A macro for declaring functions that never return */
+
+#if __GNUC__
+  #define NO_RETURN __attribute__((noreturn))
+#else
+  #define NO_RETURN
+#endif
+
+/*---------------------------------------------------------------------------*/
+
 /*
 ** C preprocessor tricks.
 */

@@ -12,7 +12,7 @@
 #ifndef MERCURY_ARRAY_MACROS_H
 #define MERCURY_ARRAY_MACROS_H
 
-#include	"mercury_misc.h"	/* for MR_memcpy */
+#include	"mercury_reg_workarounds.h"	/* for MR_memcpy */
 
 /*
 ** This macro defines a safe way to perform assignment between

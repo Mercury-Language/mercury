@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,6 +12,7 @@
 
 #include "mercury_conf.h"
 #include "mercury_reg_workarounds.h"
+#include <stdlib.h>
 
 #ifdef	MR_CAN_DO_PENDING_IO
 
@@ -26,3 +27,17 @@ MR_fd_zero(fd_set *fdset)
 }
 
 #endif /* MR_CAN_DO_PENDING_IO */
+
+/*
+** See the header file for documentation on why we need this function.
+*/
+
+void
+MR_memcpy(void *dest, const void *src, size_t nbytes)
+{
+	char		*d = (char *) dest;
+	const char	*s = (const char *) src;
+
+	while (nbytes-- > 0)
+		*d++ = *s++;
+}

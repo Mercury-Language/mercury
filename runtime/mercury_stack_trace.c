@@ -12,6 +12,7 @@
 
 #include "mercury_imp.h"
 #include "mercury_stack_trace.h"
+#include "mercury_debug.h"
 #include <stdio.h>
 
 static	void	MR_dump_stack_record_init(bool include_contexts);

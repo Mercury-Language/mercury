@@ -18,6 +18,7 @@
 #include "mercury_types.h"
 #include "mercury_type_info.h"
 #include "mercury_float.h"
+#include "mercury_reg_workarounds.h"
 
 #ifndef CONSERVATIVE_GC
   #include "mercury_deep_copy.h"
