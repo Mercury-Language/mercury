@@ -1136,7 +1136,7 @@ infer_determinism_pass_2([proc_stream(ProcID, Stream) | ProcStreams],
 	io__close_output(Stream),
 	{ make_command_string(string__format(
 		"sort -o %s %s && cut -d'~' -f1 %s | sort -cu >/dev/null 2>&1",
-		[s(FileName), s(FileName), s(FileName)], double, Command) },
+		[s(FileName), s(FileName), s(FileName)]), double, Command) },
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Invoking system command `"),
 	maybe_write_string(Verbose, Command),
