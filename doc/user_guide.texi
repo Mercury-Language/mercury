@@ -398,13 +398,10 @@ For more information, see the NU-Prolog documentation.
 By default the debugger only displays the top levels of terms;
 you can use the @samp{|} command to enter an interactive term browser.
 (Within the term browser, type @samp{h.} for help.)
-@c XXX the following is not yet implemented
-@ignore
 Also note that in the debugger, we use a version of @code{error/1}
 which fails rather than aborting after printing the "Software Error:" message.
 This makes debugging easier,
 but will of course change the behaviour after an error occurs.
-@end ignore
 
 @node Using SICStus
 @section Using SICStus Prolog
@@ -423,6 +420,12 @@ The command to use is just
 @example
 sicstus_conv @var{module}.m
 @end example
+
+By default, @samp{msc} compiles files to machine code using
+SICStus Prolog's @samp{fastcode} mode. If space is more important
+than speed, you can use the @samp{--mode compactcode} option,
+which instructs @code{msc} to use SICStus Prolog's @samp{compactcode}
+mode, which compiles files to a bytecode format.
 
 @node Prolog hazards
 @section Hazards of using Prolog
