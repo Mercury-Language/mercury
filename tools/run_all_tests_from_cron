@@ -57,9 +57,10 @@ export PATH
 CVSROOT=/home/staff/zs/imp
 export CVSROOT
 
+tmpscript=/tmp/test_mercury$$
 cd /home/mercury/public/test_mercury/scripts;
 cvs checkout mercury/tools/test_mercury
-cp mercury/tools/test_mercury /tmp/test_mercury$$
+cp mercury/tools/test_mercury $tmpscript
 
 #-----------------------------------------------------------------------------#
 
@@ -68,13 +69,13 @@ echo run_test $HOST
 mv -f $tm_dir/logs/test_mercury_$HOST.out $tm_dir/logs/old 2>/dev/null
 
 tmpfile=/tmp/run_test$$
-trap 'rm -f $tmpfile; exit 1' 1 2 3 13 15
+trap 'rm -f $tmpfile $tmpscript; exit 1' 1 2 3 13 15
 {
 echo Subject: Mercury auto-test on $HOST
 echo
 logfile=$tm_dir/logs/test_mercury_$HOST.out
 
-if nice -5 sh /tmp/test_mercury$$ $HOST $ARCH $FULLARCH \
+if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH \
 		> $logfile 2>&1
 then
 	echo test passed
@@ -102,20 +103,21 @@ fi
 # NB we can't just pipe into $mail, because $mail times out while
 # waiting for the message.  So we need to use a temp file.
 $mail fjh < $tmpfile
-rm -f $tmpfile
+rm -f $tmpfile $tmpscript
 
 #-----------------------------------------------------------------------------#
 
 case $HOST in murlibobo)
+	tmpscript=/tmp/install_webpage$$
+
 	cd /home/mercury/public/test_mercury/scripts;
 	cvs checkout mercury/tools/install_webpage
-	cp mercury/tools/install_webpage /tmp/install_webpage$$
+	cp mercury/tools/install_webpage $tmpscript
 
-	tmpfile=/tmp/install_webpage$$
-	trap 'rm -f $tmpfile; exit 1' 1 2 3 13 15
+	trap 'rm -f $tmpscript; exit 1' 1 2 3 13 15
 
-	/tmp/install_webpage$$
-	rm -f $tmpfile
+	$tmpscript
+	rm -f $tmpscript
 	;;
 esac
 
