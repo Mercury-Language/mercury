@@ -168,7 +168,7 @@ output_c_file_init(BaseName, Modules) -->
 		io__write_string("\n"),
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
-		io__write_string("#include ""imp.h""\n"),
+		io__write_string("#include ""mercury_imp.h""\n"),
 		io__write_string("\n"),
 		output_c_module_init_list(BaseName, Modules),
 		io__told
@@ -212,7 +212,7 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles)
 			io__write_string("ENDINIT\n"),
 			io__write_string("*/\n\n")
 		),
-		io__write_string("#include ""imp.h""\n"),
+		io__write_string("#include ""mercury_imp.h""\n"),
 		output_c_header_include_lines(C_HeaderLines),
 		io__write_string("\n"),
 		{ gather_c_file_labels(Modules, Labels) },
