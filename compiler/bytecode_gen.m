@@ -353,7 +353,7 @@ bytecode_gen__call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
-	module_info_pred_info(ModuleInfo, PredId, PredTable),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	bytecode_gen__get_is_func(PredInfo, IsFunc),
 
 	call_gen__input_arg_locs(ArgVarsInfos, InputArgs),
@@ -666,7 +666,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			predicate_id(ModuleInfo, PredId,
 				ModuleName, PredName, Arity),
 
-			module_info_pred_info(ModuleInfo, PredId, PredTable),
+			module_info_pred_info(ModuleInfo, PredId, PredInfo),
 			bytecode_gen__get_is_func(PredInfo, IsFunc),
 				
 			proc_id_to_int(ProcId, ProcInt),
