@@ -949,7 +949,6 @@ Define_extern_entry(mercury____Type_To_Term___std_util__univ_0_0);
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
 Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
-Declare_label(mercury____Compare___std_util__type_info_0_0_i1);
 Define_extern_entry(mercury____Term_To_Type___std_util__type_info_0_0);
 Define_extern_entry(mercury____Type_To_Term___std_util__type_info_0_0);
 
@@ -964,7 +963,6 @@ BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Unify___std_util__type_info_0_0);
 	init_entry(mercury____Index___std_util__type_info_0_0);
 	init_entry(mercury____Compare___std_util__type_info_0_0);
-	init_label(mercury____Compare___std_util__type_info_0_0_i1);
 	init_entry(mercury____Term_To_Type___std_util__type_info_0_0);
 	init_entry(mercury____Type_To_Term___std_util__type_info_0_0);
 BEGIN_CODE
