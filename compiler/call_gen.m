@@ -624,22 +624,27 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 	(
 		{ CodeModel = model_semi }
 	->
+		{ FirstArg = 2 }
+	;
+		{ FirstArg = 1 }
+	),
+	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
+	call_gen__rebuild_registers(OutArguments),
+	(
+		{ CodeModel = model_semi }
+	->
 		code_info__generate_failure(FailCode),
 		code_info__get_next_label(ContLab),
 		{ CheckReturnCode = tree(node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
 				"Test for success"
 			]), tree(FailCode, node([ label(ContLab) - "" ]))) },
-		{ CallCode = tree(TryCallCode, CheckReturnCode) },
-		{ FirstArg = 2 }
+		{ CallCode = tree(TryCallCode, CheckReturnCode) }
 	;
-		{ CallCode = TryCallCode },
-		{ FirstArg = 1 }
+		{ CallCode = TryCallCode }
 	),
 	{ Code = tree(tree(SaveCode, tree(ImmediateCode, VarCode)),
-		tree(SetupCode, CallCode)) },
-	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
-	call_gen__rebuild_registers(OutArguments).
+		tree(SetupCode, CallCode)) }.
 
 %---------------------------------------------------------------------------%
 
