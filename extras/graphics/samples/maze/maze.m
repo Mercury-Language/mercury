@@ -2,6 +2,8 @@
 % file: maze.m
 % author: conway, June 1997
 %
+% This source file is hereby placed in the public domain. -conway (the author).
+%
 % maze is a 2D maze generator. It uses a 'perfect' algorithm that was posted
 % to rec.games.programmer by Kent Quirk. The algorithm is 'perfect' in the
 % sense that there is a single path between any two cells in the maze; every

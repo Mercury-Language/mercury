@@ -3,6 +3,8 @@
 % file: ultra_sub.m
 % author: conway.
 %
+% This source file is hereby placed in the public domain. -conway (the author).
+%
 % 'ultra_sub' is an extended version of zs' 'sub' command. The idea is that
 % it takes a pattern, a template and some strings, and matches the strings
 % against the patter, binding some variables in the process. Then it

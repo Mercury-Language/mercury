@@ -4,6 +4,8 @@
 % main author: conway.
 % data: August 1996
 %
+% This source file is hereby placed in the public domain. -conway (the author).
+%
 % This module provides a predicate for performing the Fast Fourier Transfrom
 % (fft) on a list of complex numbers. The list must be a power of 2 in length
 % (ie 4, 8, 16, ... elements).
