@@ -6,7 +6,7 @@ eval "exec perl -S $0 $*"
     if $running_under_some_shell;
 
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-1998 The University of Melbourne.
+# Copyright (C) 1994-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -294,12 +294,10 @@ while ($#ARGV >= 0)
 
 	# skip declarations which are not definitions
 	next unless (
-	    # pred, func, typeclass and instance declarations are always
-	    # definitions
+	    # pred, func, and typeclass declarations are always definitions
 	    $decl eq "pred" ||
 	    $decl eq "func" ||
 	    $decl eq "typeclass" ||
-	    $decl eq "instance"  ||
 
 	    # if it doesn't end in a `.' (i.e if it doesn't fit on one line),
 	    # then it's probably a definition
@@ -347,7 +345,7 @@ while ($#ARGV >= 0)
 		    $body =~ s/[^;]*;[ \t]*//;
 
 		    if ($body =~ /^[ \t]*$/) {
-			$_ = <srcfile>;
+			$_ = <srcfile> || last;
 			chop;
 			$body = $_;
 		    }
@@ -366,7 +364,7 @@ while ($#ARGV >= 0)
 		}
 		    
 		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
-		$_ = <srcfile>;
+		$_ = <srcfile> || last;
 		chop;
 		$body = $_;
 	    }
@@ -379,7 +377,7 @@ while ($#ARGV >= 0)
 		    $body =~ s/^.*\b(pred|func)[ \t]*//;
 
 		    if ($body =~ /^[ \t]*$/) {
-		    	$_ = <srcfile>;
+		    	$_ = <srcfile> || last;
 		    	chop;
 		    	$body = $_;
 		    }
@@ -390,9 +388,9 @@ while ($#ARGV >= 0)
 		    do output_name();
 		}
 
-		last if $_ =~ /\]/;
+		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
 
-		$_ = <srcfile>;
+		$_ = <srcfile> || last;
 		chop;
 		$body = $_;
 	    }
@@ -404,7 +402,7 @@ while ($#ARGV >= 0)
 		    $body =~ s/.*\b(pred\(|func\()//;
 
 		    if ($body =~ /^[ \t]*$/) {
-		    	$_ = <srcfile>;
+		    	$_ = <srcfile> || last;
 		    	chop;
 		    	$body = $_;
 		    }
@@ -415,9 +413,9 @@ while ($#ARGV >= 0)
 		    do output_name();
 		}
 
-		last if $_ =~ /\]/;
+		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
 
-		$_ = <srcfile>;
+		$_ = <srcfile> || last;
 		chop;
 		$body = $_;
 	    }
