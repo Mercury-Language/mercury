@@ -219,14 +219,12 @@ partition_disj_2([Goal | Goals], Var, Cases0, Cases) :-
 :- mode find_unify_var_functor(in, in, out) is semidet.
 
 find_unify_var_functor([Goal - _GoalInfo | Goals], Var, Functor) :-
-	( Goal = unify(term__variable(Var0), term__functor(Name, Args, _),
+	( Goal = unify(term__variable(Var), term__functor(Name, Args, _),
 			_, _, _) ->
-		Var = Var0,
 		list__length(Args, Arity),
 		make_functor_cons_id(Name, Arity, Functor)
-	; Goal = unify(term__functor(Name, Args, _), term__variable(Var0),
+	; Goal = unify(term__functor(Name, Args, _), term__variable(Var),
 			_, _, _) ->
-		Var = Var0,
 		list__length(Args, Arity),
 		make_functor_cons_id(Name, Arity, Functor)
 	; Goal = unify(_, _, _, _, _) ->

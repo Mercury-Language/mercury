@@ -230,7 +230,8 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 	{ ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_var_types(Indent, VarSet, VarTypes, TVarSet),
 	hlds_out__write_clauses(Indent, PredId, VarSet, HeadVars, Clauses),
-	hlds_out__write_procs(Indent, PredId, Imported, ProcTable).
+	hlds_out__write_procs(Indent, PredId, Imported, ProcTable),
+	io__write_string("\n").
 
 :- pred hlds_out__write_clauses(int, pred_id, varset, list(var), list(clause),
 				io__state, io__state).
@@ -571,24 +572,21 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, VarTypes, TypeVarSet)
 
 hlds_out__write_types(Indent, _X) -->
 	hlds_out__write_indent(Indent),
-	% XXX
-	io__write_string("\n").
+	io__write_string("% types (sorry, output of types not implemented)\n").
 
 :- pred hlds_out__write_insts(int, inst_table, io__state, io__state).
 :- mode hlds_out__write_insts(in, in, in, out).
 
 hlds_out__write_insts(Indent, _X) -->
 	hlds_out__write_indent(Indent),
-	% XXX
-	io__write_string("\n").
+	io__write_string("% insts (sorry, output of insts not implemented)\n").
 
 :- pred hlds_out__write_modes(int, mode_table, io__state, io__state).
 :- mode hlds_out__write_modes(in, in, in, out).
 
 hlds_out__write_modes(Indent, _X) -->
 	hlds_out__write_indent(Indent),
-	% XXX
-	io__write_string("\n").
+	io__write_string("% modes (sorry, output of modes not implemented)\n").
 
 :- pred hlds_out__write_mode_list(int, list(mode), io__state, io__state).
 :- mode hlds_out__write_mode_list(in, in, in, out).

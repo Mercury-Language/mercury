@@ -163,6 +163,35 @@
 :- pred mode_info_set_delay_info(delay_info, mode_info, mode_info).
 :- mode mode_info_set_delay_info(in, mode_info_di, mode_info_uo) is det.
 
+:- inst uniq_mode_info	=	bound_unique(
+					mode_info(
+						ground_unique, ground,
+						ground, ground, ground, ground,
+						ground, ground, ground, ground,
+						ground
+					)
+				).
+
+:- mode mode_info_uo :: free -> uniq_mode_info.
+:- mode mode_info_ui :: uniq_mode_info -> uniq_mode_info.
+:- mode mode_info_di :: uniq_mode_info -> dead.
+
+	% Some fiddly modes used when we want to extract
+	% the io_state from a mode_info struct and then put it back again.
+
+:- inst mode_info_no_io	=	bound_unique(
+					mode_info(
+						dead, ground,
+						ground, ground, ground, ground,
+						ground, ground, ground, ground,
+						ground
+					)
+				).
+
+:- mode mode_info_get_io_state	:: uniq_mode_info -> mode_info_no_io.
+:- mode mode_info_no_io		:: mode_info_no_io -> mode_info_no_io.
+:- mode mode_info_set_io_state	:: mode_info_no_io -> dead.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -194,35 +223,6 @@
 	% The normal inst of a mode_info struct: ground, with
 	% the io_state and the struct itself unique, but with
 	% multiple references allowed for the other parts.
-
-:- inst uniq_mode_info	=	bound_unique(
-					mode_info(
-						ground_unique, ground,
-						ground, ground, ground, ground,
-						ground, ground, ground, ground,
-						ground
-					)
-				).
-
-:- mode mode_info_uo :: free -> uniq_mode_info.
-:- mode mode_info_ui :: uniq_mode_info -> uniq_mode_info.
-:- mode mode_info_di :: uniq_mode_info -> dead.
-
-	% Some fiddly modes used when we want to extract
-	% the io_state from a mode_info struct and then put it back again.
-
-:- inst mode_info_no_io	=	bound_unique(
-					mode_info(
-						dead, ground,
-						ground, ground, ground, ground,
-						ground, ground, ground, ground,
-						ground
-					)
-				).
-
-:- mode mode_info_get_io_state	:: uniq_mode_info -> mode_info_no_io.
-:- mode mode_info_no_io		:: mode_info_no_io -> mode_info_no_io.
-:- mode mode_info_set_io_state	:: mode_info_no_io -> dead.
 
 %-----------------------------------------------------------------------------%
 
