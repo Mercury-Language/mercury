@@ -25,7 +25,7 @@ else
 	PROGS0=$(STRING_FORMAT_PROGS)
 endif
 
-	# On solaris 5.7 string_format_o fails because of a buggy
+	# On solaris 5.{7,8} string_format_o fails because of a buggy
 	# sprintf implementation.
 SOLARIS_FAILURES=string_format_o
 
@@ -33,8 +33,8 @@ SOLARIS_FAILURES=string_format_o
 	# the denormal floats aren't being printed correctly.
 OSF1_FAILURES=string_format_e string_format_f string_format_g
 
-UNAME=$(shell uname -r -s)
-ifneq "$(findstring SunOS 5.7,$(UNAME))" ""
+UNAME:=$(shell uname -r -s)
+ifeq "$(filter-out SunOS 5.7 5.8,$(UNAME))" ""
 	PROGS=$(filter-out $(SOLARIS_FAILURES),$(PROGS0))
 else
   ifneq "$(findstring OSF1 V5.1,$(UNAME))" ""

@@ -72,9 +72,21 @@ EXCEPTION_PROGS = \
 		unused_arg_determinism
 
 ifneq "$(findstring profdeep,$(GRADE))" ""
-	PROGS = $(ORDINARY_PROGS)
+	PROGS0 = $(ORDINARY_PROGS)
 else
-	PROGS = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
+	PROGS0 = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
+endif
+
+	# On Dec OSF 5.1 the floating point tests of
+	# string_format_special_floats fail because the OS throws an
+	# exception when calculating both Inf and Nan.
+OSF1_FAILURES=string_format_special_floats
+
+UNAME:=$(shell uname -r -s)
+ifneq "$(findstring OSF1 V5.1,$(UNAME))" ""
+	PROGS=$(filter-out $(OSF1_FAILURES),$(PROGS0))
+else
+	PROGS=$(PROGS0)
 endif
 
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
