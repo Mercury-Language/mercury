@@ -116,6 +116,7 @@ ORDINARY_PROGS=	\
 	no_inline \
 	no_inline_builtins \
 	no_warn_singleton \
+	nonascii \
 	nondet_ctrl_vn \
 	nondet_copy_out \
 	nullary_ho_func \
@@ -477,6 +478,14 @@ $(SPLIT_PROGS:%=%.split.realclean): %.split.realclean: %.realclean ;
 mapped_module.depend: Mercury.modules
 
 #-----------------------------------------------------------------------------#
+
+nonascii.out:	nonascii.data
+
+nonascii.data:	nonascii_gen
+	nonascii_gen > nonascii.data
+
+nonascii_gen:	nonascii_gen.c
+	$(CC) nonascii_gen.c -o nonascii_gen
 
 # no_fully_strict is expected to fail (it calls error/1).
 # We also need to pipe the output through sed to avoid hard-coding
