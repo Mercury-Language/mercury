@@ -619,7 +619,13 @@ output_proc_layout_var_names(ProcLabel, VarNames, MaxVarNum,
 	output_layout_name_storage_type_name(proc_layout_var_names(ProcLabel),
 		yes),
 	io__write_string(" = {\n"),
-	list__foldl(output_number_in_vector, VarNames),
+	( { VarNames = [] } ->
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array.
+		io__write_string("\t0\n")
+	;
+		list__foldl(output_number_in_vector, VarNames)
+	),
 	io__write_string("};\n"),
 	{ decl_set_insert(DeclSet0, data_addr(
 		layout_addr(proc_layout_var_names(ProcLabel))), DeclSet) }.
@@ -764,9 +770,15 @@ output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
 	io__write_string("\n"),
 	output_layout_name_storage_type_name(VectorName, yes),
 	io__write_string(" = {\n"),
-	list__foldl(
-		output_layout_name_in_vector("(const MR_Proc_Layout *)\n\t&"),
-		ProcLayoutNames),
+	( { ProcLayoutNames = [] } ->
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array.
+		io__write_string("\tNULL\n")
+	;
+		list__foldl(output_layout_name_in_vector(
+					"(const MR_Proc_Layout *)\n\t&"),
+				ProcLayoutNames)
+	),
 	io__write_string("};\n"),
 	{ decl_set_insert(DeclSet1, data_addr(layout_addr(VectorName)),
 		DeclSet) }.
@@ -832,7 +844,13 @@ output_file_layout_vector_data_defn(ModuleName, FileLayoutNames, VectorName,
 	io__write_string("\n"),
 	output_layout_name_storage_type_name(VectorName, yes),
 	io__write_string(" = {\n"),
-	list__foldl(output_layout_name_in_vector("&"), FileLayoutNames),
+	( { FileLayoutNames = [] } ->
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array.
+		io__write_string("\tNULL\n")
+	;
+		list__foldl(output_layout_name_in_vector("&"), FileLayoutNames)
+	),
 	io__write_string("};\n"),
 	{ decl_set_insert(DeclSet1, data_addr(layout_addr(VectorName)),
 		DeclSet) }.
@@ -892,7 +910,13 @@ output_file_layout_line_number_vector_defn(ModuleName, FileNum, LineNumbers,
 	io__write_string("\n"),
 	output_layout_name_storage_type_name(LayoutName, yes),
 	io__write_string(" = {\n"),
-	list__foldl(output_number_in_vector, LineNumbers),
+	( { LineNumbers = [] } ->
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array.
+		io__write_string("\t0\n")
+	;
+		list__foldl(output_number_in_vector, LineNumbers)
+	),
 	io__write_string("};\n"),
 	{ decl_set_insert(DeclSet0, data_addr(layout_addr(LayoutName)),
 		DeclSet) }.
@@ -907,9 +931,15 @@ output_file_layout_label_layout_vector_defn(ModuleName, FileNum, LabelAddrs,
 	io__write_string("\n"),
 	output_layout_name_storage_type_name(LayoutName, yes),
 	io__write_string(" = {\n"),
-	list__foldl(
-		output_data_addr_in_vector("(const MR_Label_Layout *)\n\t&"),
-		LabelAddrs),
+	( { LabelAddrs = [] } ->
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array.
+		io__write_string("\tNULL\n")
+	;
+		list__foldl(output_data_addr_in_vector(
+				"(const MR_Label_Layout *)\n\t&"),
+			LabelAddrs)
+	),
 	io__write_string("};\n"),
 	{ decl_set_insert(DeclSet0, data_addr(layout_addr(LayoutName)),
 		DeclSet) }.
