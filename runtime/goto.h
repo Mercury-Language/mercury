@@ -177,8 +177,9 @@
   /* Define the type of a module initialization function */
   typedef Code * ModuleFunc(void);
 
-  #define BEGIN_MODULE(module_name)	MODULE_STATIC_OR_EXTERN \
-					Code* module_name(void) {
+  #define BEGIN_MODULE(module_name)	\
+		MODULE_STATIC_OR_EXTERN Code* module_name(void); \
+		MODULE_STATIC_OR_EXTERN Code* module_name(void) {
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 
