@@ -318,8 +318,8 @@ option_defaults_2(compilation_model_option, [
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
-	args			-	string("simple"),
-	type_info		-	string("one-cell"),
+	args			-	string("compact"),
+	type_info		-	string("default"),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).

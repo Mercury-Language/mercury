@@ -1634,6 +1634,20 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		ConstraintsOpt = ""
 	},
+	globals__io_get_args_method(ArgsMethod),
+	{ ArgsMethod = compact ->
+		ArgsOpt = "-DCOMPACT_ARGS "
+	;
+		ArgsOpt = ""
+	},
+	globals__io_get_type_info_method(TypeInfoMethod),
+	{ TypeInfoMethod = one_cell,
+		TypeInfoOpt = "-DONE_CELL_TYPE_INFO "
+	; TypeInfoMethod = shared_one_or_two_cell,
+		TypeInfoOpt = "-DSHARED_ONE_OR_TWO_CELL_TYPEINFO "
+	; TypeInfoMethod = one_or_two_cell,
+		TypeInfoOpt = "-DONE_OR_TWO_CELL_TYPEINFO "
+	},
 	globals__io_lookup_bool_option(c_optimize, C_optimize),
 	{ C_optimize = yes, Debug = no ->
 		( CompilerType = gcc ->
@@ -1673,7 +1687,8 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		ConstraintsOpt, InlineAllocOpt, WarningOpt, CFLAGS,
+		ConstraintsOpt, ArgsOpt, TypeInfoOpt,
+		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
