@@ -261,7 +261,7 @@ build_target_2(ModuleName, process_module(ModuleTask), _Imports,
 		[]
 	).
 
-build_target_2(ModuleName, target_code_to_object_code,
+build_target_2(ModuleName, target_code_to_object_code(PIC),
 		Imports, _, ErrorStream, Succeeded, Info0, Info) -->
 	get_target_code_to_object_code_foreign_files(ModuleName,
 		ForeignCodeFiles, Info0, Info),
@@ -269,9 +269,9 @@ build_target_2(ModuleName, target_code_to_object_code,
 
 	{ CompileTargetCode =
 	    (pred(Succeeded1::out, di, uo) is det -->
-		build_object_code(ModuleName, CompilationTarget,
+		build_object_code(ModuleName, CompilationTarget, PIC,
 			ErrorStream, Imports, Succeeded0),
-		list__map_foldl(compile_foreign_code_file(ErrorStream),
+		list__map_foldl(compile_foreign_code_file(ErrorStream, PIC),
 			ForeignCodeFiles, ForeignCodeSucceeded),
 		{
 			Succeeded0 = yes,
@@ -289,37 +289,40 @@ build_target_2(ModuleName, target_code_to_object_code,
 	call_in_forked_process(CompileTargetCode,
 		CompileTargetCode, Succeeded).
 
-:- pred build_object_code(module_name::in, compilation_target::in,
+:- pred build_object_code(module_name::in, compilation_target::in, pic::in,
 	io__output_stream::in, module_imports::in, bool::out,
 	io__state::di, io__state::uo) is det.
 
-build_object_code(ModuleName, c, ErrorStream, _Imports, Succeeded) -->
-	compile_target_code__compile_c_file(ErrorStream, ModuleName, Succeeded).
-build_object_code(ModuleName, asm, ErrorStream, _Imports, Succeeded) -->
-	compile_target_code__assemble(ErrorStream, ModuleName, Succeeded).
-build_object_code(ModuleName, java, ErrorStream, _Imports, Succeeded) -->
-	compile_target_code__compile_java_file(ErrorStream, ModuleName, Succeeded).
-build_object_code(ModuleName, il, ErrorStream, Imports, Succeeded) -->
+build_object_code(ModuleName, c, PIC, ErrorStream, _Imports, Succeeded) -->
+	compile_target_code__compile_c_file(ErrorStream, PIC, ModuleName,
+		Succeeded).
+build_object_code(ModuleName, asm, PIC, ErrorStream, _Imports, Succeeded) -->
+	compile_target_code__assemble(ErrorStream, PIC, ModuleName,
+		Succeeded).
+build_object_code(ModuleName, java, _, ErrorStream, _Imports, Succeeded) -->
+	compile_target_code__compile_java_file(ErrorStream,
+		ModuleName, Succeeded).
+build_object_code(ModuleName, il, _, ErrorStream, Imports, Succeeded) -->
 	compile_target_code__il_assemble(ErrorStream, ModuleName,
 		Imports ^ has_main, Succeeded).
 
-:- pred compile_foreign_code_file(io__output_stream::in, foreign_code_file::in,
-		bool::out, io__state::di, io__state::uo) is det.
+:- pred compile_foreign_code_file(io__output_stream::in, pic::in,
+	foreign_code_file::in, bool::out, io__state::di, io__state::uo) is det.
 
-compile_foreign_code_file(ErrorStream, foreign_code_file(c, CFile, ObjFile),
-		Succeeded) -->
-	compile_target_code__compile_c_file(ErrorStream,
+compile_foreign_code_file(ErrorStream, PIC,
+		foreign_code_file(c, CFile, ObjFile), Succeeded) -->
+	compile_target_code__compile_c_file(ErrorStream, PIC,
 		CFile, ObjFile, Succeeded).
-compile_foreign_code_file(ErrorStream, foreign_code_file(il, ILFile, DLLFile),
-		Succeeded) -->
+compile_foreign_code_file(ErrorStream, _,
+		foreign_code_file(il, ILFile, DLLFile), Succeeded) -->
 	compile_target_code__il_assemble(ErrorStream, ILFile, DLLFile,
 		no_main, Succeeded).
-compile_foreign_code_file(ErrorStream,
+compile_foreign_code_file(ErrorStream, _,
 		foreign_code_file(managed_cplusplus, MCPPFile, DLLFile),
 		Succeeded) -->
 	compile_target_code__compile_managed_cplusplus_file(ErrorStream,
 		MCPPFile, DLLFile, Succeeded).
-compile_foreign_code_file(ErrorStream,
+compile_foreign_code_file(ErrorStream, _,
 		foreign_code_file(csharp, CSharpFile, DLLFile),
 		Succeeded) -->
 	compile_target_code__compile_csharp_file(ErrorStream,
@@ -419,14 +422,14 @@ compilation_task(_, c_code) = process_module(compile_to_target_code) -
 					["--compile-to-c"].
 compilation_task(_, il_code) = process_module(compile_to_target_code) -
 					["--il-only"].
-compilation_task(_, il_asm) = target_code_to_object_code - [].
+compilation_task(_, il_asm) = target_code_to_object_code(non_pic) - [].
 compilation_task(_, java_code) = process_module(compile_to_target_code) -
 					["--java-only"].
 compilation_task(_, asm_code(PIC)) =
 		process_module(compile_to_target_code) - 
 			( PIC = pic -> ["--pic"] ; [] ).
 compilation_task(Globals, object_code(PIC)) =
-			target_code_to_object_code - Flags :-
+			target_code_to_object_code(PIC) - Flags :-
 		globals__get_target(Globals, Target),
 		( PIC = pic ->
 			Flags = ( Target = asm -> ["--pic"] ; ["--pic-reg"] )
@@ -575,7 +578,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 	{ TouchedFileNames = list__condense([ForeignCodeFiles,
 					TimestampFileNames]) }.
 
-touched_files(TargetFile, target_code_to_object_code,
+touched_files(TargetFile, target_code_to_object_code(_),
 		[TargetFile], ForeignObjectFiles, Info0, Info) -->
 	{ TargetFile = ModuleName - _ },
 	get_target_code_to_object_code_foreign_files(ModuleName,

@@ -383,7 +383,7 @@ compile_using_gcc_backend(FirstFileOrModule, CallBack, ModulesToLink) -->
 		( { Result = ok, TargetCodeOnly = no } ->
 			io__output_stream(OutputStream),
 			compile_target_code__assemble(OutputStream,
-				ModuleName, _AssembleOK)
+				non_pic, ModuleName, _AssembleOK)
 		;
 			[]
 		)
@@ -1176,8 +1176,9 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 						yes, CCode_O_File),
 					io__output_stream(OutputStream),
 					compile_target_code__compile_c_file(
-						OutputStream, CCode_C_File,
-						CCode_O_File, _CompileOK),
+						OutputStream, non_pic,
+						CCode_C_File, CCode_O_File,
+						_CompileOK),
 					% add this object file to the list
 					% of extra object files to link in
 					globals__io_lookup_accumulating_option(
@@ -1204,7 +1205,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 					O_File),
 				io__output_stream(OutputStream),
 				compile_target_code__compile_c_file(
-					OutputStream, C_File, O_File,
+					OutputStream, non_pic, C_File, O_File,
 					_CompileOK)
 			)
 		    ;
@@ -3376,7 +3377,7 @@ mercury_compile__c_to_obj(ErrorStream, ModuleName, NumChunks, Succeeded) -->
 		globals__io_lookup_string_option(object_file_extension, Obj),
 		module_name_to_file_name(ModuleName, ".c", no, C_File),
 		module_name_to_file_name(ModuleName, Obj, yes, O_File),
-		compile_target_code__compile_c_file(ErrorStream,
+		compile_target_code__compile_c_file(ErrorStream, non_pic,
 			C_File, O_File, Succeeded)
 	).
 

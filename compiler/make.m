@@ -115,7 +115,10 @@
 
 :- type compilation_task_type
 	--->	process_module(module_compilation_task_type)
-	;	target_code_to_object_code	
+
+			% The `pic' argument is only used for
+			% `--target c' and `--target asm'.
+	;	target_code_to_object_code(pic)
 	.
 
 :- type module_compilation_task_type
@@ -144,15 +147,6 @@
 	;	java_code
 	;	asm_code(pic)
 	;	object_code(pic)
-	.
-
-	% Are we generating position indepedent code (for use in a
-	% shared library)? On some architectures, pic and non-pic
-	% code is incompatible, so we need to generate `.o' and `.pic_o'
-	% files.
-:- type pic
-	--->	pic
-	;	non_pic
 	.
 
 % :- type linked_target_type in mercury_compile.m.
