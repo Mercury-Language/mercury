@@ -91,7 +91,7 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveVars0, ModuleInfo,
 					Liveness, LiveVars) :-
 	goal_info_pre_delta_liveness(GoalInfo, PreDelta),
 	PreDelta = PreBirths - PreDeaths,
-	goal_info_pre_delta_liveness(GoalInfo, PostDelta),
+	goal_info_post_delta_liveness(GoalInfo, PostDelta),
 	PostDelta = PostBirths - PostDeaths,
 	set__difference(Liveness0,  PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),

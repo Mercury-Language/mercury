@@ -100,7 +100,7 @@ detect_liveness_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 					Liveness, Goal - GoalInfo) :-
 	goal_info_pre_delta_liveness(GoalInfo0, PreDelta0),
-	goal_info_pre_delta_liveness(GoalInfo0, PostDelta0),
+	goal_info_post_delta_liveness(GoalInfo0, PostDelta0),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	PreDelta0 = _PreBirths0 - PreDeaths,
 	PostDelta0 = PostBirths0 - PostDeaths,
