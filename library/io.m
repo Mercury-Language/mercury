@@ -61,40 +61,8 @@
 
 :- type io__binary_stream.
 
-:- type stream_mode	--->	input
-			;	output
-			;	append.
-
-:- type stream_content	--->	text
-			;	binary
-			;	preopen.
-
-:- type stream_source	--->	file(string)	% the file name
-			;	stdin
-			;	stdout
-			;	stderr.
-
-:- type stream_info
-	--->	stream(
-			stream_id		:: int,
-			stream_mode		:: stream_mode,
-			stream_content		:: stream_content,
-			stream_source		:: stream_source
-		).
-
-:- type maybe_stream_info
-	--->	stream(
-			maybe_stream_id		:: int,
-			maybe_stream_mode	:: stream_mode,
-			maybe_stream_content	:: stream_content,
-			maybe_stream_source	:: stream_source
-		)
-	;	unknown_stream.
-
 	% a unique identifier for an IO stream
 :- type io__stream_id.
-
-:- type io__stream_db ==	map(io__stream_id, stream_info).
 
 	% Various types used for the result from the access predicates
 
@@ -1119,35 +1087,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% Predicates for managing the stream info database.
-
-:- pred io__get_stream_db(io__stream_db::out, io__state::di, io__state::uo)
-	is det.
-% Retrieves the database mapping streams to the information we have
-% about those streams.
-
-:- func io__input_stream_info(io__stream_db, io__input_stream)
-	= io__maybe_stream_info.
-%	Returns the information associated with the specified input
-%	stream in the given stream database.
-
-:- func io__output_stream_info(io__stream_db, io__output_stream)
-	= io__maybe_stream_info.
-%	Returns the information associated with the specified output
-%	stream in the given stream database.
-
-:- func io__binary_input_stream_info(io__stream_db, io__binary_input_stream)
-	= io__maybe_stream_info.
-%	Returns the information associated with the specified binary input
-%	stream in the given stream database.
-
-:- func io__binary_output_stream_info(io__stream_db, io__binary_output_stream)
-	= io__maybe_stream_info.
-%	Returns the information associated with the specified binary output
-%	stream in the given stream database.
-
-%-----------------------------------------------------------------------------%
-
 % Global state predicates.
 
 :- pred io__progname(string, string, io__state, io__state).
@@ -1464,6 +1403,7 @@
 	% (You need to compile with memory profiling enabled.)
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 :- implementation.
 
 % Everything below here is not intended to be part of the public interface,
@@ -1472,7 +1412,9 @@
 %-----------------------------------------------------------------------------%
 :- interface.
 
+%
 % For use by dir.m:
+%
 
 	% A system-dependent error indication.
 	% For C, this is the value of errno.
@@ -1535,7 +1477,9 @@
 % Succeeds if io__file_id is implemented on this platform.
 :- pred io__have_file_ids is semidet.
 
+%
 % For use by term_io.m:
+%
 
 :- import_module ops.
 
@@ -1545,7 +1489,70 @@
 :- pred io__set_op_table(ops__table, io__state, io__state).
 :- mode io__set_op_table(di, di, uo) is det.
 
+%
 % For use by browser/browse.m:
+%
+
+% Types and predicates for managing the stream info database.
+
+:- type io__stream_db ==	map(io__stream_id, stream_info).
+
+:- type stream_info
+	--->	stream(
+			stream_id		:: int,
+			stream_mode		:: stream_mode,
+			stream_content		:: stream_content,
+			stream_source		:: stream_source
+		).
+
+:- type maybe_stream_info
+	--->	stream(
+			maybe_stream_id		:: int,
+			maybe_stream_mode	:: stream_mode,
+			maybe_stream_content	:: stream_content,
+			maybe_stream_source	:: stream_source
+		)
+	;	unknown_stream.
+
+:- type stream_mode	--->	input
+			;	output
+			;	append.
+
+:- type stream_content	--->	text
+			;	binary
+			;	preopen.
+
+:- type stream_source	--->	file(string)	% the file name
+			;	stdin
+			;	stdout
+			;	stderr.
+
+:- pred io__get_stream_db(io__stream_db::out, io__state::di, io__state::uo)
+	is det.
+% Retrieves the database mapping streams to the information we have
+% about those streams.
+
+:- func io__input_stream_info(io__stream_db, io__input_stream)
+	= io__maybe_stream_info.
+%	Returns the information associated with the specified input
+%	stream in the given stream database.
+
+:- func io__output_stream_info(io__stream_db, io__output_stream)
+	= io__maybe_stream_info.
+%	Returns the information associated with the specified output
+%	stream in the given stream database.
+
+:- func io__binary_input_stream_info(io__stream_db, io__binary_input_stream)
+	= io__maybe_stream_info.
+%	Returns the information associated with the specified binary input
+%	stream in the given stream database.
+
+:- func io__binary_output_stream_info(io__stream_db, io__binary_output_stream)
+	= io__maybe_stream_info.
+%	Returns the information associated with the specified binary output
+%	stream in the given stream database.
+
+% Predicates for writing out univs
 
 :- pred io__write_univ(univ, io__state, io__state).
 :- mode io__write_univ(in, di, uo) is det.
@@ -1560,7 +1567,9 @@
 :- mode io__write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__write_univ(in, in, in, di, uo) is cc_multi.
 
+%
 % For use by extras/aditi/aditi.m
+%
 
 	% This is the same as io__read_from_string, except that an integer
 	% is allowed where a character is expected. This is needed because
@@ -1571,7 +1580,9 @@
 :- mode io__read_from_string_with_int_instead_of_char(in, in, in,
 			out, in, out) is det.
 
+%
 % For use by compiler/process_util.m:
+%
 
 	% Interpret the child process exit status returned by
 	% system() or wait().
