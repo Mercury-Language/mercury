@@ -620,7 +620,7 @@ fullname_tag=`echo $fullname | tr . _`
 	mv mercury/mercury-$version.$fullarch.tar.gz \
 		$UNSTABLE/mercury-$version.$fullname.tar.gz &&
 	:
-	echo "test_mercury tagging stable rotd, starting at `date`" 1>&2 &&
+	echo "test_mercury tagging unstable rotd, starting at `date`" 1>&2 &&
 	cvs rtag -d unstable-rotd-$fullname_tag mercury clpr tests &&
 	cvs tag unstable-rotd-$fullname_tag mercury tests &&
 	echo "test_mercury tagging unstable rotd, finished at `date`" 1>&2
