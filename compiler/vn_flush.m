@@ -60,7 +60,6 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 		{ Node = node_shared(Vn) },
 		vn__flush_shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
 			Templocs0, Templocs, Instrs)
-
 	;
 		{ Node = node_lval(Vnlval) },
 		vn__flush_lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,

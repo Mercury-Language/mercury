@@ -88,22 +88,9 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		detect_switches_in_pred(PredId, PredInfo2,
 			ModuleInfo2, ModuleInfo3),
 
-		% XXX this test could be very expensive!
-		( { ModuleInfo0 = ModuleInfo3 } ->
-			maybe_write_string(Verbose,
-				"% Repeating cse is futile\n"),
-			{ ModuleInfo = ModuleInfo3 }
-		;
-			% maybe_write_string(Verbose,
-			% 	"% Repeating cse detection.\n"),
-			% { module_info_preds(ModuleInfo3, PredTable3) },
-			% { map__lookup(PredTable3, PredId, PredInfo3) },
-			% detect_cse_in_pred(PredId, PredInfo3,
-			% 	ModuleInfo3, ModuleInfo)
-			maybe_write_string(Verbose,
-				"% Would repeat cse detection.\n"),
-			{ ModuleInfo = ModuleInfo3 }
-		)
+		{ module_info_preds(ModuleInfo3, PredTable3) },
+		{ map__lookup(PredTable3, PredId, PredInfo3) },
+		detect_cse_in_pred(PredId, PredInfo3, ModuleInfo3, ModuleInfo)
 	).
 
 :- pred detect_cse_in_procs(list(proc_id), pred_id, bool, bool,

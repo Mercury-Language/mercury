@@ -326,17 +326,13 @@ peephole__match(mkframe(Descr, Slots, Redoip1), Comment,
 	%	<straightline instrs>		<straightline instrs>
 	%	modframe(Redoip2)
 
-/*******
-XXX
-This doesn't work if the straight-line instructions are "mkframe"
-or "modframe", or "assign(redoip(...), ...)" etc.
 	% If a modframe(do_fail) is followed by straight-line instructions
 	% except possibly for if_val with do_fail or do_redo as target,
-	% until a goto to do_succeed(no), then we can discard the nondet
-	% stack frame early.
-********/
+	% until a goto to do_succeed(no), and if the nondet stack linkages
+	% are not touched by the straight-line instructions, then we can
+	% discard the nondet stack frame early.
 
-peephole__match(modframe(_Redoip), Comment,
+peephole__match(modframe(Redoip), Comment,
 		_Procmap, _Forkmap, Instrs0, Instrs) :-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
@@ -345,10 +341,6 @@ peephole__match(modframe(_Redoip), Comment,
 		list__append(Skipped, Rest, Instrs1),
 		Instrs = [modframe(Redoip2) - Comment | Instrs1]
 	;
-/*******
-XXX
-This doesn't work if the straight-line instructions are "mkframe"
-or "modframe", or "assign(redoip(...), ...)" etc.
 		Redoip = do_fail,
 		opt_util__straight_alternative(Instrs0, Between, After)
 	->
@@ -356,7 +348,6 @@ or "modframe", or "assign(redoip(...), ...)" etc.
 			[goto(do_succeed(yes), do_succeed(yes)) -
 			"early discard"], After], Instrs)
 	;
-*******/
 		fail
 	).
 

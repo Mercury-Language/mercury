@@ -606,16 +606,15 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 			% cons_id ought to include the module prefix, so
 			% that we could use predicate_table__search_m_n_a to 
 			% prevent this from happening
-			error("code_info__cons_id_to_tag: ambiguous pred")
+			string__append("code_info__cons_id_to_tag: ambiguous pred ", Name, Msg),
+			error(Msg)
 		    )
 		;
 		    % the type-checker should ensure that this never happens
 		    error("code_info__cons_id_to_tag: invalid pred")
 		}
 	;
-			%
 			% Use the type to determine the type_id
-			%
 		{ type_to_type_id(Type, TypeId0, _) ->
 			TypeId = TypeId0
 		;
@@ -623,10 +622,8 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 			error("code_info__cons_id_to_tag: invalid type")
 		},
 
-			%
 			% Given the type_id, lookup up the constructor tag
 			% table for that type
-			%
 		code_info__get_module_info(ModuleInfo),
 		{ module_info_types(ModuleInfo, TypeTable) },
 		{ map__lookup(TypeTable, TypeId, TypeDefn) },

@@ -79,8 +79,7 @@ detect_switches_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo0,
-		Goal),
+	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo0, Goal),
 
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
@@ -136,7 +135,7 @@ detect_switches_in_goal_2(disj(Goals0), GoalInfo, InstMap0, InstMapDelta,
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		detect_switches_in_disj(NonLocalsList, Goals0, GoalInfo,
-			InstMap0, InstMapDelta, VarTypes, ModuleInfo, Goal)
+			InstMap0, InstMapDelta, VarTypes, ModuleInfo, [], Goal)
 	).
 
 detect_switches_in_goal_2(not(Goal0), _GoalInfo, InstMap0, _InstMapDelta,
@@ -170,43 +169,84 @@ detect_switches_in_goal_2(switch(Var, CanFail, Cases0), _, InstMap, _,
 	% of that disjunction. Now for each non-local variable, we
 	% check whether there is a partition of the disjuncts such that
 	% each group of disjunctions can only succeed if the variable
-	% is bound to a different functor. If not, we check whether
-	% all the alternatives match the variable against the same
-	% functor.
+	% is bound to a different functor.
+
+:- type cases == map(cons_id, list(hlds__goal)).
+:- type again ---> again(var, list(hlds__goal),
+	assoc_list(cons_id, list(hlds__goal))).
 
 :- pred detect_switches_in_disj(list(var), list(hlds__goal), hlds__goal_info,
-	instmap, instmap, map(var, type), module_info, hlds__goal_expr).
-:- mode detect_switches_in_disj(in, in, in, in, in, in, in, out) is det.
+	instmap, instmap, map(var, type), module_info, list(again),
+	hlds__goal_expr).
+:- mode detect_switches_in_disj(in, in, in, in, in, in, in, in, out) is det.
 
-detect_switches_in_disj([], Goals0, _, InstMap, _, VarTypes, ModuleInfo,
-		disj(Goals)) :-
-	detect_switches_in_disj_2(Goals0, InstMap, VarTypes, ModuleInfo, Goals).
-
-detect_switches_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap, InstMapDelta,
-		VarTypes, ModuleInfo, Goal) :-
-	instmap_lookup_var(InstMap, Var, VarInst0),
+detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap, InstMapDelta,
+		VarTypes, ModuleInfo, Again0, Goal) :-
+	% can we do at least a partial switch on this variable?
 	(
+		instmap_lookup_var(InstMap, Var, VarInst0),
 		inst_is_bound(ModuleInfo, VarInst0),
-		partition_disj(Goals0, Var, GoalInfo0, VarTypes, ModuleInfo,
-			Cases0, CanFail)
+		partition_disj(Goals0, Var, Left, CasesList)
 	->
-		detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo,
-			Cases),
-		Goal = switch(Var, CanFail, Cases)
+		% are there any disjuncts that are not part of the switch?
+		(
+			Left = []
+		->
+			cases_to_switch(CasesList, Var, VarTypes, GoalInfo,
+				InstMap, ModuleInfo, Goal)
+		;
+			detect_switches_in_disj(Vars, Goals0, GoalInfo,
+				InstMap, InstMapDelta, VarTypes, ModuleInfo,
+				[again(Var, Left, CasesList) | Again0], Goal)
+		)
 	;
-		detect_switches_in_disj(Vars, Goals0, GoalInfo0,
-			InstMap, InstMapDelta, VarTypes, ModuleInfo, Goal)
+		detect_switches_in_disj(Vars, Goals0, GoalInfo, InstMap,
+			InstMapDelta, VarTypes, ModuleInfo, Again0, Goal)
+	).
+detect_switches_in_disj([], Goals0, GoalInfo, InstMap, _, VarTypes, ModuleInfo,
+		AgainList0, disj(Goals)) :-
+	(
+		AgainList0 = [],
+		detect_sub_switches_in_disj(Goals0, InstMap, VarTypes,
+			ModuleInfo, Goals)
+	;
+		AgainList0 = [Again | AgainList1],
+		select_best_switch(AgainList1, Again, BestAgain),
+		BestAgain = again(Var, Left0, CasesList),
+		cases_to_switch(CasesList, Var, VarTypes, GoalInfo, InstMap,
+			ModuleInfo, SwitchGoal),
+		list__reverse(Left0, Left),
+		Goals = [SwitchGoal - GoalInfo | Left]
 	).
 
-:- pred detect_switches_in_disj_2(list(hlds__goal), instmap, map(var, type),
-	module_info, list(hlds__goal)).
-:- mode detect_switches_in_disj_2(in, in, in, in, out) is det.
+:- pred select_best_switch(list(again), again, again).
+:- mode select_best_switch(in, in, out) is det.
 
-detect_switches_in_disj_2([], _InstMap, _VarTypes, _ModuleInfo, []).
-detect_switches_in_disj_2([Goal0 | Goals0], InstMap, VarTypes, ModuleInfo,
+select_best_switch([], BestAgain, BestAgain).
+select_best_switch([Again | AgainList], BestAgain0, BestAgain) :-
+	(
+		Again = again(_, _, CasesList),
+		BestAgain0 = again(_, _, BestCasesList),
+		list__length(CasesList, Length),
+		list__length(BestCasesList, BestLength),
+		Length < BestLength
+	->
+		BestAgain1 = BestAgain0
+	;
+		BestAgain1 = Again
+	),
+	select_best_switch(AgainList, BestAgain1, BestAgain).
+
+:- pred detect_sub_switches_in_disj(list(hlds__goal), instmap, map(var, type),
+	module_info, list(hlds__goal)).
+:- mode detect_sub_switches_in_disj(in, in, in, in, out) is det.
+
+detect_sub_switches_in_disj([], _InstMap, _VarTypes, _ModuleInfo, []).
+detect_sub_switches_in_disj([Goal0 | Goals0], InstMap, VarTypes, ModuleInfo,
 		[Goal | Goals]) :-
 	detect_switches_in_goal(Goal0, InstMap, VarTypes, ModuleInfo, Goal),
-	detect_switches_in_disj_2(Goals0, InstMap, VarTypes, ModuleInfo, Goals).
+	detect_sub_switches_in_disj(Goals0, InstMap, VarTypes, ModuleInfo,
+		Goals).
 
 :- pred detect_switches_in_cases(list(case), instmap, map(var, type),
 	module_info, list(case)).
@@ -234,10 +274,10 @@ detect_switches_in_conj([Goal0 | Goals0], InstMap0, VarTypes, ModuleInfo,
 %-----------------------------------------------------------------------------%
 
 	% partition_disj(Goals, Var, GoalInfo, VarTypes, ModuleInfo,
-	%			Cases, CanFail):
+	%	Left, Cases):
 	% Attempts to partition the disjunction `Goals' into a switch on `Var'.
-	% If successful, returns the resulting `Cases', and returns an
-	% indication of the completeness of the switch in CanFail.
+	% If at least partially successful, returns the resulting `Cases', with
+	% any disjunction goals not fitting into the switch in Left.
 
 	% Given the list of goals in a disjunction, and an input variable
 	% to switch on, we attempt to partition the goals into a switch.
@@ -246,45 +286,43 @@ detect_switches_in_conj([Goal0 | Goals0], InstMap0, VarTypes, ModuleInfo,
 	% We partition the goals by abstractly interpreting the unifications
 	% at the start of each disjunction, to build up a substitution.
 
-:- type cases == map(cons_id, list(hlds__goal)).
+:- pred partition_disj(list(hlds__goal), var, 
+	list(hlds__goal), assoc_list(cons_id, list(hlds__goal))).
+:- mode partition_disj(in, in, out, out) is semidet.
 
-:- pred partition_disj(list(hlds__goal), var, hlds__goal_info, map(var, type),
-		module_info, list(case), can_fail).
-:- mode partition_disj(in, in, in, in, in, out, out) is semidet.
-
-partition_disj(Goals0, Var, GoalInfo, VarTypes, ModuleInfo, CaseList, Fail) :-
+partition_disj(Goals0, Var, Left, CasesAssocList) :-
 	map__init(Cases0),
-	partition_disj_2(Goals0, Var, Cases0, Cases),
+	partition_disj_trial(Goals0, Var, [], Left, Cases0, Cases),
 	map__to_assoc_list(Cases, CasesAssocList),
-	CasesAssocList = [_,_|_],	% there must be more than one case
-	map__lookup(VarTypes, Var, Type),
-	(
-		switch_covers_all_cases(CasesAssocList, Type,  ModuleInfo)
-	->
-		Fail = cannot_fail
-	;
-		Fail = can_fail
-	),
-	fix_case_list(CasesAssocList, GoalInfo, CaseList).
+	CasesAssocList = [_,_|_].	% there must be more than one case
 
-:- pred partition_disj_2(list(hlds__goal), var, cases, cases).
-:- mode partition_disj_2(in, in, in, out) is semidet.
+:- pred partition_disj_trial(list(hlds__goal), var,
+	list(hlds__goal), list(hlds__goal), cases, cases).
+:- mode partition_disj_trial(in, in, di, uo, di, uo) is det.
 
-partition_disj_2([], _Var, Cases, Cases).
-partition_disj_2([Goal0 | Goals], Var, Cases0, Cases) :-
+partition_disj_trial([], _Var, Left, Left, Cases, Cases).
+partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
 	goal_to_conj_list(Goal0, ConjList0),
 	Goal0 = _ - GoalInfo,
 	map__init(Substitution),
 	find_bind_var_for_switch(ConjList0, Substitution, Var,
-			ConjList, _NewSubstitution, yes(Functor)),
-	conj_list_to_goal(ConjList, GoalInfo, Goal),
-	( map__search(Cases0, Functor, DisjList0) ->
-		DisjList1 = [Goal | DisjList0]
+			ConjList, _NewSubstitution, MaybeFunctor),
+	(
+		MaybeFunctor = yes(Functor),
+		Left1 = Left0,
+		conj_list_to_goal(ConjList, GoalInfo, Goal),
+		( map__search(Cases0, Functor, DisjList0) ->
+			DisjList1 = [Goal | DisjList0]
+		;
+			DisjList1 = [Goal]
+		),
+		map__set(Cases0, Functor, DisjList1, Cases1)
 	;
-		DisjList1 = [Goal]
+		MaybeFunctor = no,
+		Left1 = [Goal0 | Left0],
+		Cases1 = Cases0
 	),
-	map__set(Cases0, Functor, DisjList1, Cases1),
-	partition_disj_2(Goals, Var, Cases1, Cases).
+	partition_disj_trial(Goals, Var, Left1, Left, Cases1, Cases).
 
 	% find_bind_var_for_switch(Goals0, Subst0, Var, Goals, Subst,
 	%	MaybeFunctor):
@@ -352,10 +390,27 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 		MaybeFunctor = no
 	).
 
+:- pred cases_to_switch(assoc_list(cons_id, list(hlds__goal)), var,
+	map(var, type), hlds__goal_info, instmap, module_info, hlds__goal_expr).
+:- mode cases_to_switch(di, in, in, in, in, in, uo) is det.
+
+cases_to_switch(CasesList, Var, VarTypes, GoalInfo, InstMap, ModuleInfo,
+		Goal) :-
+	map__lookup(VarTypes, Var, Type),
+	( switch_covers_all_cases(CasesList, Type, ModuleInfo) ->
+		CanFail = cannot_fail
+	;
+		CanFail = can_fail
+	),
+	fix_case_list(CasesList, GoalInfo, Cases0),
+	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases),
+	Goal = switch(Var, CanFail, Cases).
+
 	% check whether a switch handles all the possible
 	% constants/functors for the type
 
-:- pred switch_covers_all_cases(list(_Cases), type, module_info).
+:- pred switch_covers_all_cases(assoc_list(cons_id, list(hlds__goal)),
+	type, module_info).
 :- mode switch_covers_all_cases(in, in, in) is semidet.
 
 switch_covers_all_cases(CasesList, Type, _ModuleInfo) :-

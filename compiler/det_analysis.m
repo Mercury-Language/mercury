@@ -305,10 +305,9 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		GoalInfo2),
 	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
 
-
 :- pred det__disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal_expr).
 :- mode det__disj_to_ite(di, in, uo) is det.
-	%
+
 	% det_disj_to_ite is used to transform disjunctions that occur
 	% in prunable contexts into if-then-elses.
 	% For example, it would transform
@@ -324,7 +323,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	%	;
 	%		Disjunct3
 	%	).
-	%
+
 det__disj_to_ite([], _, disj([])).
 det__disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 	( Disjuncts = [] ->
@@ -425,6 +424,7 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 			NonLocalVars, DeltaInstMap, Goal, Detism)
 /***********
 % The following optimization is not semantically valid - fjh.
+% That depends on your view of semantics - zs.
 	; CondSolns = at_most_zero ->
 		% Optimize away the condition and the `then' part.
 		% XXX We could give a warning if the condition
@@ -471,6 +471,7 @@ det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _, Goal, Det) :-
 	).
 /*************
 % The following optimizations are not semantically valid - fjh.
+% That depends on your view of semantics - zs.
 	determinism_components(NegDet, NegCanFail, NegSolns),
 	( NegCanFail = cannot_fail, NegDet \= erroneous ->
 		Goal = disj([])

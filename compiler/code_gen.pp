@@ -377,7 +377,7 @@ code_gen__generate_det_goal_2(conj(Goals), _GoalInfo, Instr) -->
 code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 	code_gen__generate_det_goal(Goal, Instr).
 code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
-	{ error("Disjuction cannot occur in deterministic code.") }.
+	{ error("Disjunction cannot occur in deterministic code.") }.
 code_gen__generate_det_goal_2(not(_), _GoalInfo, _Instr) -->
 	{ error("Negation cannot occur in deterministic code.") }.
 code_gen__generate_det_goal_2(

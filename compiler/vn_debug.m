@@ -20,6 +20,9 @@
 :- pred vn__livemap_msg(livemap, io__state, io__state).
 :- mode vn__livemap_msg(in, di, uo) is det.
 
+:- pred vn__fragment_msg(instr, io__state, io__state).
+:- mode vn__fragment_msg(in, di, uo) is det.
+
 :- pred vn__parallel_msg(parallel, io__state, io__state).
 :- mode vn__parallel_msg(in, di, uo) is det.
 
@@ -73,6 +76,17 @@ vn__livemap_msg(Livemap) -->
 		{ opt_debug__dump_livemap(Livemap, L_str) },
 		io__write_string("\n\nLivemap:\n\n"),
 		io__write_string(L_str)
+	;
+		{ Flag = no }
+	).
+
+vn__fragment_msg(Instr) -->
+	vn__flush_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		io__write_string("in vn__optimize_fragment starting at\n"),
+		output_instruction(Instr),
+		io__write_string("\n")
 	;
 		{ Flag = no }
 	).

@@ -112,7 +112,8 @@
 :- mode opt_util__is_forkproceed_next(in, in, out) is semidet.
 
  	% Does the following code consist of straighline instructions
-	% except possibly if_val(..., dofail), and then a succeed?
+	% that do not modify nondet frame linkages, plus possibly
+	% if_val(..., dofail), and then a succeed?
 	% If yes, then return all the instructions up to the succeed,
 	% and all the following instructions.
 
@@ -467,7 +468,18 @@ opt_util__straight_alternative_2([Instr0 | Instrs0], Between0, Between,
 	Instr0 = Uinstr0 - _,
 	(
 		(
-			opt_util__can_instr_branch_away(Uinstr0, no)
+			opt_util__can_instr_branch_away(Uinstr0, no),
+			\+ (
+				Uinstr0 = mkframe(_, _, _)
+			;
+				Uinstr0 = modframe(_)
+			;
+				Uinstr0 = assign(redoip(_), _)
+			;
+				Uinstr0 = assign(succfr(_), _)
+			;
+				Uinstr0 = assign(prevfr(_), _)
+			)
 		;
 			Uinstr0 = if_val(_, CodeAddr),
 			( CodeAddr = do_fail ; CodeAddr = do_redo )
