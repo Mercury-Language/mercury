@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -144,6 +144,7 @@ void MR_trace_display(MR_trace_port port, MR_trace_code_model model, int seqno,
 {
 	int	i;
 
+	fflush(stdout);
 	fprintf(stderr, "%8d: %6d %2d ", MR_trace_event_number, seqno, depth);
 
 	for (i = 0; i < depth; i++) {
