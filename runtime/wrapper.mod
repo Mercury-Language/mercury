@@ -355,7 +355,7 @@ static void
 process_options(int argc, char **argv)
 {
 	int c;
-	while ((c = getopt(argc, argv, "acd:hlp:r:s:tw:xz:1:2:3:")) != EOF)
+	while ((c = getopt(argc, argv, "acd:hLlp:r:s:tw:xz:1:2:3:")) != EOF)
 	{
 		switch (c)
 		{
@@ -415,6 +415,9 @@ process_options(int argc, char **argv)
 				break;
 
 		case 'h':	usage();
+				break;
+
+		case 'L': 	do_init_modules();
 				break;
 
 		case 'l': {
@@ -566,6 +569,7 @@ static void usage(void)
 		"-h \t\tprint this usage message\n"
 		"-c \t\tcheck cross-function stack usage\n"
 		"-l \t\tprint all labels\n"
+		"-L \t\tcheck for duplicate labels\n"
 		"-t \t\tuse own timer\n"
 		"-x \t\tdisable garbage collection\n"
 		"-dg \t\tdebug gotos\n"
