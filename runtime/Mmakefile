@@ -281,7 +281,7 @@ install_dirs:
 .PHONY: install_headers
 install_headers: $(HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
 	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
-	chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
+	-chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 .PHONY: install_init
