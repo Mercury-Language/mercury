@@ -201,7 +201,7 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
             break;
 
         case MR_TYPECTOR_REP_EQUIV: 
-            new_data = copy_arg(NULL, data_ptr, type_info, NULL,
+            new_data = copy_arg(NULL, data_ptr, NULL, type_info,
                 (const Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE((Word *)
                         entry_value), lower_limit, upper_limit);
             break;
