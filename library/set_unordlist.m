@@ -249,7 +249,8 @@ set_unordlist__remove_least(Set0, E, Set) :-
 	set_unordlist__to_sorted_list(Set0, [E|Set]).
 
 set_unordlist__union(Set0, Set1, Set) :-
-	list__append(Set1, Set0, Set).
+	list__append(Set1, Set0, Set2),
+	list__sort_and_remove_dups(Set2, Set).
 
 set_unordlist__power_union(PS, S) :-
 	set_unordlist__to_sorted_list(PS, SL),
