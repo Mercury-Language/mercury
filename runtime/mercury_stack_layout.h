@@ -33,6 +33,8 @@
 #include "mercury_std.h"			/* for MR_VARIABLE_SIZED */
 #include "mercury_tags.h"
 #include "mercury_type_info.h"			/* for MR_PseudoTypeInfo */
+#include "mercury_tabling.h"			/* for MR_TableNodeUnion,
+					           needed for MR_TrieNode */
 
 /*-------------------------------------------------------------------------*/
 /*
