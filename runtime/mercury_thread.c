@@ -125,15 +125,13 @@ destroy_thread(void *eng0)
 }
 #endif
 
-#ifdef	MR_THREAD_SAFE
+#if defined(MR_THREAD_SAFE) && defined(MR_DEBUG_THREADS)
 void
 MR_mutex_lock(MercuryLock *lock, const char *from)
 {
 	int err;
 
-#ifdef MR_DEBUG_THREADS
 	fprintf(stderr, "%d locking on %p (%s)\n", pthread_self(), lock, from);
-#endif
 	err = pthread_mutex_lock(lock);
 	assert(err == 0);
 }
@@ -143,10 +141,8 @@ MR_mutex_unlock(MercuryLock *lock, const char *from)
 {
 	int err;
 
-#ifdef MR_DEBUG_THREADS
 	fprintf(stderr, "%d unlocking on %p (%s)\n",
 		pthread_self(), lock, from);
-#endif
 	err = pthread_mutex_unlock(lock);
 	assert(err == 0);
 }
@@ -156,9 +152,7 @@ MR_cond_signal(MercuryCond *cond)
 {
 	int err;
 
-#ifdef MR_DEBUG_THREADS
 	fprintf(stderr, "%d signaling %p\n", pthread_self(), cond);
-#endif
 	err = pthread_cond_broadcast(cond);
 	assert(err == 0);
 }
@@ -168,9 +162,7 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
 {
 	int err;
 
-#ifdef MR_DEBUG_THREADS
 	fprintf(stderr, "%d waiting on %p (%p)\n", pthread_self(), cond, lock);
-#endif
 	err = pthread_cond_wait(cond, lock);
 	assert(err == 0);
 }
