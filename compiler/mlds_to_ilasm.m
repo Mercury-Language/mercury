@@ -80,7 +80,7 @@ output_foreign_file(MLDS, ForeignLang) -->
 		is det.
 
 handle_foreign_lang(managed_cplusplus, "__c_code.cpp", output_mcpp_code).
-handle_foreign_lang(csharp, "__csharp_code.cpp", output_csharp_code).
+handle_foreign_lang(csharp, "__csharp_code.cs", output_csharp_code).
 handle_foreign_lang(c, _, _) :-
 	sorry(this_file, "language C foreign code not supported").
 
