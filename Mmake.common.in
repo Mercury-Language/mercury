@@ -193,6 +193,7 @@ INFO=@INFO@
 TEXI2DVI=@TEXI2DVI@
 DVIPS=@DVIPS@
 MAKEINFO=@MAKEINFO@
+LYNX=@LYNX@
 PERL=@PERL@
 
 #-----------------------------------------------------------------------------#

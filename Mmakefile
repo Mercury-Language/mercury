@@ -264,7 +264,11 @@ README: .README.in VERSION
 INSTALL: .INSTALL.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
 
+ifeq ("$(LYNX)","")
+TEXT_TO_HTML = cat
+else
 TEXT_TO_HTML = TERM=vt100 lynx -dump
+endif
 
 WORK_IN_PROGRESS: compiler/notes/work_in_progress.html
 	$(TEXT_TO_HTML) compiler/notes/work_in_progress.html > WORK_IN_PROGRESS
