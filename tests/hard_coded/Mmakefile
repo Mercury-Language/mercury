@@ -467,12 +467,19 @@ endif
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
 # The same is true for deep profiling grades and `mmc --make'.
-ifeq "$(findstring yes,$(MMAKE_USE_MMC_MAKE))$(filter hl% il% java%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+#
+# --split-c-files also doesn't work on MacOS X.
+#
+ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
+  ifeq "$(findstring yes,$(MMAKE_USE_MMC_MAKE))$(filter hl% il% java%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	SPLIT_PROGS = mapped_module split_c_files
-else
+  else
 	SPLIT_PROGS =
+  endif
+else
+  	SPLIT_PROGS =
 endif
-
+  
 #-----------------------------------------------------------------------------#
 
 TESTS = $(PROGS) $(SPLIT_PROGS:%=%.split)
