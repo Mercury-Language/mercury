@@ -407,7 +407,7 @@ search_for_file_returning_dir(Dirs, FileName, R) -->
 
 search_for_file_returning_dir([], AllDirs, FileName, error(Msg)) -->
 	{ Msg = append_list(["cannot find `", FileName, "' in directories ",
-			string__join_list(", ", AllDirs), "."]) }.
+			string__join_list(", ", AllDirs)]) }.
 search_for_file_returning_dir([Dir | Dirs], AllDirs, FileName, R) -->
 	{ dir__this_directory(Dir) ->
 		ThisFileName = FileName
