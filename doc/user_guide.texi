@@ -862,9 +862,10 @@ each word as tag bits (default: low).
 
 @sp 1
 @item --num-tag-bits @var{n}
-Use @var{n} tag bits.  This is only used with @samp{--tags high}.
-With @samp{--tags low}, the number of tag bits to use is determined
-by the auto-configuration script.
+Use @var{n} tag bits.  This option is required if you specify
+@samp{--tags high}.
+With @samp{--tags low}, the default number of tag bits to use
+is determined by the auto-configuration script.
 
 @sp 1
 @item --cc @var{compiler-name}
