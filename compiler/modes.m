@@ -1149,9 +1149,10 @@ modecheck_call_pred_2([], _PredId, _Procs, ArgVars, WaitingVars,
 			0, ArgVars, [] - [], ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap),
 	get_var_insts(ArgVars, InstMap, ArgInsts),
+	mode_info_set_call_arg_context(0, ModeInfo0, ModeInfo1),
 	mode_info_error(WaitingVars,
 		mode_error_no_matching_mode(ArgVars, ArgInsts),
-		ModeInfo0, ModeInfo).
+		ModeInfo1, ModeInfo).
 	
 modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 			TheProcId, ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-
