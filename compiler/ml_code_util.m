@@ -932,8 +932,7 @@ ml_gen_label_func(FuncLabel, FuncParams, Context, Statement, Func) -->
 	%
 :- func ml_gen_label_func_decl_flags = mlds__decl_flags.
 ml_gen_label_func_decl_flags = MLDS_DeclFlags :-
-	Access = private,  % XXX if we're using nested functions,
-			   % this should be `local' rather than `private'
+	Access = local,
 	PerInstance = per_instance,
 	Virtuality = non_virtual,
 	Finality = overridable,

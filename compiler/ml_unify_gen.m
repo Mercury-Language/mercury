@@ -757,9 +757,10 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 
 ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Statement, Func) -->
 	ml_gen_label_func(FuncLabel, FuncParams, Context, Statement, Func0),
-	{ Func0 = mlds__defn(Name, Ctxt, DeclFlags, Defn) },
-	{ Func = mlds__defn(Name, Ctxt, set_per_instance(DeclFlags, one_copy),
-			Defn) }.
+	{ Func0 = mlds__defn(Name, Ctxt, DeclFlags0, Defn) },
+	{ DeclFlags1 = set_per_instance(DeclFlags0, one_copy) },
+	{ DeclFlags = set_access(DeclFlags1, private) },
+	{ Func = mlds__defn(Name, Ctxt, DeclFlags, Defn) }.
 
 :- func ml_gen_wrapper_head_var_names(int, int) = list(mlds__var_name).
 ml_gen_wrapper_head_var_names(Num, Max) = Names :-
