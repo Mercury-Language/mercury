@@ -290,8 +290,8 @@ mercury_data_array__type_ctor_info_array_1 = {
 	MR_TYPECTOR_REP_ARRAY,
 	(Word *) &mercury_data_array__type_ctor_functors_array_1,
 	(Word *) &mercury_data_array__type_ctor_layout_array_1,
-	string_const(""array"", 5),
-	string_const(""array"", 5),
+	MR_string_const(""array"", 5),
+	MR_string_const(""array"", 5),
 	MR_RTTI_VERSION
 };
 

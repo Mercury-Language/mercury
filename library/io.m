@@ -2719,7 +2719,7 @@ mercury_io_error(MercuryFile* mf, const char *format, ...)
 
 	/* copy the error message to a Mercury string */
 	restore_registers(); /* for MR_hp */
-	make_aligned_string(message_as_mercury_string, message);
+	MR_make_aligned_string(message_as_mercury_string, message);
 	save_registers(); /* for MR_hp */
 
 	/* call some Mercury code to throw the exception */
@@ -3212,7 +3212,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		   it should be of type `ConstString' (const char *),
 		   but fixing that requires a fair bit of work
 		   on the compiler.  */
-		make_aligned_string(LVALUE_CAST(ConstString, PrognameOut),
+		MR_make_aligned_string(LVALUE_CAST(ConstString, PrognameOut),
 			progname);
 	} else {
 		PrognameOut = DefaultProgname;

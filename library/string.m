@@ -1813,7 +1813,8 @@ string__special_precision_and_width(-1).
 	Word tmp;
 	if (Start < 0) Start = 0;
 	if (Count <= 0) {
-		make_aligned_string(LVALUE_CAST(ConstString, SubString), """");
+		MR_make_aligned_string(LVALUE_CAST(ConstString, SubString),
+			"""");
 	} else {
 		len = strlen(Str);
 		if (Start > len) Start = len;
@@ -1862,7 +1863,7 @@ string__special_precision_and_width(-1).
 	Integer len;
 	Word tmp;
 	if (Count <= 0) {
-		make_aligned_string(LVALUE_CAST(ConstString, Left), """");
+		MR_make_aligned_string(LVALUE_CAST(ConstString, Left), """");
 		Right = Str;
 	} else {
 		len = strlen(Str);

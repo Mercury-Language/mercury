@@ -517,8 +517,8 @@ mercury_data___type_ctor_info_int_0 = {
 	MR_TYPECTOR_REP_INT,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_int_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_int_0,
-	string_const(""builtin"", 7),
-	string_const(""int"", 3),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""int"", 3),
 	MR_RTTI_VERSION
 };
 
@@ -536,8 +536,8 @@ mercury_data___type_ctor_info_character_0 = {
 	MR_TYPECTOR_REP_CHAR,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_character_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_character_0,
-	string_const(""builtin"", 7),
-	string_const(""character"", 9),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""character"", 9),
 	MR_RTTI_VERSION
 };
 
@@ -555,8 +555,8 @@ mercury_data___type_ctor_info_string_0 = {
 	MR_TYPECTOR_REP_STRING,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_string_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_string_0,
-	string_const(""builtin"", 7),
-	string_const(""string"", 6),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""string"", 6),
 	MR_RTTI_VERSION
 };
 
@@ -574,8 +574,8 @@ mercury_data___type_ctor_info_float_0 = {
 	MR_TYPECTOR_REP_FLOAT,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_float_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_float_0,
-	string_const(""builtin"", 7),
-	string_const(""float"", 5),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""float"", 5),
 	MR_RTTI_VERSION
 };
 
@@ -591,8 +591,8 @@ mercury_data___type_ctor_info_void_0 = {
 	MR_TYPECTOR_REP_VOID,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_void_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_void_0,
-	string_const(""builtin"", 7),
-	string_const(""void"", 4),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""void"", 4),
 	MR_RTTI_VERSION
 };
 
@@ -610,8 +610,8 @@ mercury_data___type_ctor_info_succip_0 = {
 	MR_TYPECTOR_REP_SUCCIP,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_succip_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_succip_0,
-	string_const(""builtin"", 7),
-	string_const(""succip"", 6),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""succip"", 6),
 	MR_RTTI_VERSION
 };
 
@@ -627,8 +627,8 @@ mercury_data___type_ctor_info_hp_0 = {
 	MR_TYPECTOR_REP_HP,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_hp_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_hp_0,
-	string_const(""builtin"", 7),
-	string_const(""hp"", 2),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""hp"", 2),
 	MR_RTTI_VERSION
 };
 
@@ -644,8 +644,8 @@ mercury_data___type_ctor_info_curfr_0 = {
 	MR_TYPECTOR_REP_CURFR,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_curfr_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_curfr_0,
-	string_const(""builtin"", 7),
-	string_const(""curfr"", 5),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""curfr"", 5),
 	MR_RTTI_VERSION
 };
 
@@ -661,8 +661,8 @@ mercury_data___type_ctor_info_maxfr_0 = {
 	MR_TYPECTOR_REP_MAXFR,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_maxfr_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_maxfr_0,
-	string_const(""builtin"", 7),
-	string_const(""maxfr"", 5),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""maxfr"", 5),
 	MR_RTTI_VERSION
 };
 
@@ -678,8 +678,8 @@ mercury_data___type_ctor_info_redofr_0 = {
 	MR_TYPECTOR_REP_REDOFR,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_redofr_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_redofr_0,
-	string_const(""builtin"", 7),
-	string_const(""redofr"", 6),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""redofr"", 6),
 	MR_RTTI_VERSION
 };
 
@@ -695,8 +695,8 @@ mercury_data___type_ctor_info_redoip_0 = {
 	MR_TYPECTOR_REP_REDOIP,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_redoip_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_redoip_0,
-	string_const(""builtin"", 7),
-	string_const(""redoip"", 6),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""redoip"", 6),
 	MR_RTTI_VERSION
 };
 
@@ -714,8 +714,8 @@ mercury_data___type_ctor_info_trail_ptr_0 = {
 	MR_TYPECTOR_REP_TRAIL_PTR,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_trail_ptr_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_trail_ptr_0,
-	string_const(""builtin"", 7),
-	string_const(""trail_ptr"", 9),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""trail_ptr"", 9),
 	MR_RTTI_VERSION
 };
 
@@ -731,8 +731,8 @@ mercury_data___type_ctor_info_ticket_0 = {
 	MR_TYPECTOR_REP_TICKET,
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_ticket_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_ticket_0,
-	string_const(""builtin"", 7),
-	string_const(""ticket"", 6),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""ticket"", 6),
 	MR_RTTI_VERSION
 };
 
@@ -894,8 +894,8 @@ mercury_data_builtin__type_ctor_info_c_pointer_0 = {
 	MR_TYPECTOR_REP_C_POINTER,
 	(MR_TypeCtorFunctors) &mercury_data_builtin__type_ctor_functors_c_pointer_0,
 	(MR_TypeCtorLayout) &mercury_data_builtin__type_ctor_layout_c_pointer_0,
-	string_const(""builtin"", 7),
-	string_const(""c_pointer"", 9),
+	MR_string_const(""builtin"", 7),
+	MR_string_const(""c_pointer"", 9),
 	MR_RTTI_VERSION
 };
 
@@ -922,9 +922,9 @@ Define_entry(mercury____Index___builtin__c_pointer_0_0);
 	proceed();
 
 Define_entry(mercury____Compare___builtin__c_pointer_0_0);
-	r1 = (r1 == r2 ? COMPARE_EQUAL :
-			  r1 < r2 ? COMPARE_LESS :
-			  COMPARE_GREATER);
+	r1 = (r1 == r2 ? MR_COMPARE_EQUAL :
+			  r1 < r2 ? MR_COMPARE_LESS :
+			  MR_COMPARE_GREATER);
 	proceed();
 
 END_MODULE

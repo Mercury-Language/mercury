@@ -979,7 +979,7 @@ det_univ_to_type(Univ, X) :-
 	save_transient_registers();
 	comp = MR_compare_type_info(univ_type_info, TypeInfo_for_T);
 	restore_transient_registers();
-	if (comp == COMPARE_EQUAL) {
+	if (comp == MR_COMPARE_EQUAL) {
 		Type = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
 		SUCCESS_INDICATOR = TRUE;
 	} else {
@@ -1020,8 +1020,8 @@ mercury_data_std_util__type_ctor_info_univ_0 = {
 	MR_TYPECTOR_REP_UNIV,
 	(Word *) &mercury_data_std_util__type_ctor_functors_univ_0,
 	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
-	string_const(""std_util"", 8),
-	string_const(""univ"", 4),
+	MR_string_const(""std_util"", 8),
+	MR_string_const(""univ"", 4),
 	MR_RTTI_VERSION
 };
 
@@ -1117,7 +1117,7 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	save_transient_registers();
 	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
-	if (comp != COMPARE_EQUAL) {
+	if (comp != MR_COMPARE_EQUAL) {
 		r1 = FALSE;
 		proceed();
 	}
@@ -1162,7 +1162,7 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	save_transient_registers();
 	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
-	if (comp != COMPARE_EQUAL) {
+	if (comp != MR_COMPARE_EQUAL) {
 		r1 = comp;
 		proceed();
 	}
@@ -1195,7 +1195,7 @@ Define_entry(mercury____Unify___std_util__type_info_0_0);
 	save_transient_registers();
 	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	r1 = (comp == COMPARE_EQUAL);
+	r1 = (comp == MR_COMPARE_EQUAL);
 	proceed();
 }
 
@@ -1581,7 +1581,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 		*/
 
 	if (success) {
-		make_aligned_string(FunctorName, (String) (Word) 
+		MR_make_aligned_string(FunctorName, (String) (Word) 
 				info.functor_name);
 		Arity = info.arity;
 		save_transient_registers();
@@ -1846,7 +1846,7 @@ ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
 			(Word *) type_info, (Word *) arg_vector[i]);
 
 		comp = MR_compare_type_info(list_arg_type_info, arg_type_info);
-		if (comp != COMPARE_EQUAL) {
+		if (comp != MR_COMPARE_EQUAL) {
 			return FALSE;
 		}
 		arg_list = MR_list_tail(arg_list);
@@ -2243,7 +2243,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	        MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(functor_descriptor);
 	
                 if (info->need_functor) {
-                    make_aligned_string(info->functor, 
+                    MR_make_aligned_string(info->functor, 
                         MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
                         functor_descriptor));
                 }
@@ -2281,7 +2281,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	    	functor_descriptor);
 	
             if (info->need_functor) {
-                make_aligned_string(info->functor, 
+                MR_make_aligned_string(info->functor, 
                     MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
                     functor_descriptor));
             }
@@ -2394,7 +2394,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_PRED:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<predicate>>"");
+                MR_make_aligned_string(info->functor, ""<<predicate>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2420,7 +2420,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_C_POINTER:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<c_pointer>>"");
+                MR_make_aligned_string(info->functor, ""<<c_pointer>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2429,7 +2429,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_TYPEINFO:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<typeinfo>>"");
+                MR_make_aligned_string(info->functor, ""<<typeinfo>>"");
             }
 	    /* XXX should we return the arguments here? */
             info->argument_vector = NULL;
@@ -2439,7 +2439,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<typeclassinfo>>"");
+                MR_make_aligned_string(info->functor, ""<<typeclassinfo>>"");
             }
 	    /* XXX should we return the arguments here? */
             info->argument_vector = NULL;
@@ -2449,7 +2449,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_ARRAY:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<array>>"");
+                MR_make_aligned_string(info->functor, ""<<array>>"");
             }
 	    /* XXX should we return the arguments here? */
             info->argument_vector = NULL;
@@ -2459,7 +2459,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_SUCCIP:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<succip>>"");
+                MR_make_aligned_string(info->functor, ""<<succip>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2468,7 +2468,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_HP:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<hp>>"");
+                MR_make_aligned_string(info->functor, ""<<hp>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2477,7 +2477,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_CURFR:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<curfr>>"");
+                MR_make_aligned_string(info->functor, ""<<curfr>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2486,7 +2486,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_MAXFR:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<maxfr>>"");
+                MR_make_aligned_string(info->functor, ""<<maxfr>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2495,7 +2495,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_REDOFR:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<redofr>>"");
+                MR_make_aligned_string(info->functor, ""<<redofr>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2504,7 +2504,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_REDOIP:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<redoip>>"");
+                MR_make_aligned_string(info->functor, ""<<redoip>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2513,7 +2513,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_TRAIL_PTR:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<trail_ptr>>"");
+                MR_make_aligned_string(info->functor, ""<<trail_ptr>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2522,7 +2522,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
         case MR_TYPECTOR_REP_TICKET:
             if (info->need_functor) {
-                make_aligned_string(info->functor, ""<<ticket>>"");
+                MR_make_aligned_string(info->functor, ""<<ticket>>"");
             }
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
@@ -2626,7 +2626,8 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 	}
 
 		/* Copy functor onto the heap */
-	make_aligned_string(LVALUE_CAST(ConstString, Functor), info.functor);
+	MR_make_aligned_string(LVALUE_CAST(ConstString, Functor),
+		info.functor);
 
 	Arity = info.arity;
 }").
@@ -2653,7 +2654,7 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 		/* compare the actual type with the expected type */
 		comparison_result =
 			MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT);
-		success = (comparison_result == COMPARE_EQUAL);
+		success = (comparison_result == MR_COMPARE_EQUAL);
 
 		if (success) {
 			Argument = *argument_ptr;
@@ -2746,7 +2747,8 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	}
 
 		/* Get functor */
-	make_aligned_string(LVALUE_CAST(ConstString, Functor), info.functor);
+	MR_make_aligned_string(LVALUE_CAST(ConstString, Functor),
+		info.functor);
 
 		/* Get arity */
 	Arity = info.arity;

@@ -327,7 +327,7 @@ ref_functor(Ref, Functor, Arity) -->
 	}
 
 	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
-		COMPARE_EQUAL)
+		MR_COMPARE_EQUAL)
 	{
 		fatal_error(""store__arg_ref: argument has wrong type"");
 	}
@@ -353,7 +353,7 @@ ref_functor(Ref, Functor, Arity) -->
 	}
 
 	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
-		COMPARE_EQUAL)
+		MR_COMPARE_EQUAL)
 	{
 	      fatal_error(""store__new_arg_ref: argument has wrong type"");
 	}
