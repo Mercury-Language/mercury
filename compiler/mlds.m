@@ -47,6 +47,8 @@
 % Mercury module names map directly to MLDS package names, except that
 % modules in the Mercury standard library map get a `mercury' prefix,
 % e.g. `mercury.builtin', `mercury.io', `mercury.std_util', etc.
+% [Rationale: omitting the `mercury' prefix would lead to namespace
+% pollution in the generated target language code.]
 
 % 2. Procedure names
 %
@@ -80,9 +82,21 @@
 % With the `--copy-out' option, arguments with top_out modes will be returned
 % by value.  This requires the target language to support multiple return
 % values.  The MLDS->target code generator can of course handle that by mapping
-% functions with multiple return values into functions that return a struct.
+% functions with multiple return values into functions that return a struct,
+% array, or tuple.
 % With the `--nondet-copy-out' option, arguments for nondet procedures with
 % top_out modes will be passed as arguments to the continuation.
+%
+% [Rationale: this mapping is designed to be as simple as possible,
+% and to map as naturally to the target language as possible.
+% The complication with the `--copy-out' and `--nondet-copy-out'
+% options is needed to cater to different target languages.
+% Some target languages (e.g. C) fully support pass-by-reference,
+% and then it is most consistent to use it everywhere.
+% Some (e.g. IL) support pass-by-reference, but don't allow references
+% to be stored in the environment structs needed for continuations,
+% and so can't use pass-by-reference for nondet procedures.
+% Others (e.g. Java) don't support pass-by-reference at all.]
 
 % 4. Variables
 %
@@ -129,8 +143,19 @@
 
 % 7.  Data constructors.
 %
-% [XXX Not yet documented or implemented]
-% [XXX Also need to think about equivalence types and no_tag types]
+% With --high-level-data, Mercury data constructors normally get mapped to
+% MLDS types nested within the MLDS type for the Mercury data type to which
+% the constructors belong.  There are some exceptions; see ml_type_gen.m
+% for full details.  The MLDS type name includes the constructor arity.
+% [Rationale: Mercury allows data constructors to be overloaded on
+% their result type within a single module, and also allows them
+% to be overloaded on arity within a single type.  Nesting resolves
+% the first problem, and keeping the arity in the MLDS type name
+% resolves the second.]
+% XXX There is a problem in the Java back-end with Mercury types for which
+% the constructor name is the same as the type name.
+%
+% XXX Also need to think about equivalence types and no_tag types.
 
 % 8.  Insts and modes
 %
