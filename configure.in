@@ -1195,7 +1195,7 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 save_CC="$CC"
 save_LIBRARY_PATH="$LIBRARY_PATH"
 CFLAGS_FOR_REGS=
-CFLAGS_FOR_GOTOS=-fno-defer-pop -fno-function-cse -fno-gcse
+CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse -fno-gcse"
 case "$host" in
 	mips-sgi-irix5.*)
 		CC="$CC -non_shared -mno-abicalls"
