@@ -23,6 +23,9 @@ Options:
 
 targetopt=""
 jfactor=""
+
+# Run multiple jobs when doing `mmake realclean' for faster cleanup over NFS.
+rm_jfactor="-j10"
 flagsopt=""
 mgnucflagsopt=""
 cflagsopt=""
