@@ -280,7 +280,7 @@ report_determinism_error(PredId, ModeId, ModuleInfo) -->
 	{ map__lookup(ProcTable, ModeId, ProcInfo) },
 	{ procinfo_context(ProcInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("Error: determinism declaration not satisfied.").
+	io__write_string("Error: determinism declaration not satisfied.\n").
 
 :- pred report_determinism_warning(pred_id, proc_id, module_info,
 				io__state, io__state).
@@ -293,7 +293,9 @@ report_determinism_warning(PredId, ModeId, ModuleInfo) -->
 	{ map__lookup(ProcTable, ModeId, ProcInfo) },
 	{ procinfo_context(ProcInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("Warning: determinism declaration could be stricter.").
+	io__write_string(
+		"Warning: determinism declaration could be stricter.\n"
+	).
 
 %-----------------------------------------------------------------------------%
 

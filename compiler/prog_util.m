@@ -86,6 +86,10 @@ goedel_replace_all_eqv_types([Item - Context | Items0], ItemList0, ItemList) :-
 goedel_replace_eqv_type_list([], _, _, _, _, []).
 goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
 				Body, [Item - Context| Items]) :-
+	% Attempting to replace an equivalence type can cause
+	% quite a bit of memory allocation.  If it turns out that
+	% we don't need to replace anything, then we fail so that
+	% we can quickly reclaim this memory.
 	(
 		%some [Item1]
 		goedel_replace_eqv_type(Item0, VarSet, Name, Args, Body, Item1)
@@ -170,17 +174,20 @@ goedel_replace_eqv_type_type(term_variable(V), _Name, _Args, _Body, Found,
 		term_variable(V), Found).
 goedel_replace_eqv_type_type(term_functor(F, TArgs0, Context), Name, Args,
 		Body, Found0, Type, Found) :- 
+	goedel_replace_eqv_type_uu(TArgs0, Name, Args, Body, Found0,
+		TArgs1, Found1),
 	(	
 		F = term_atom(Name),
-		same_length(TArgs0, Args)
+		same_length(TArgs1, Args)
 	->
 		type_param_to_var_list(Args, Args2),
-		term__substitute_corresponding(Args2, TArgs0, Body, Type),
+		term__substitute_corresponding(Args2, TArgs1, Body, Type),
 		Found = yes
 	;
-		goedel_replace_eqv_type_uu(TArgs0, Name, Args, Body, Found0,
-			TArgs, Found),
-		Type = term_functor(F, TArgs, Context)
+		% XXX could we improve efficiency here by reclaiming
+		% garbage (or avoiding allocating it in the first place)?
+		Found = Found1,
+		Type = term_functor(F, TArgs1, Context)
 	).
 
 :- pred type_param_to_var_list(list(type_param), list(var)).

@@ -84,9 +84,15 @@ a local variable, then report the error.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+% :- import_module string, list, stack, map.
+% :- import_module require, std_util.
+% :- import_module varset, term, prog_out, hlds_out, mode_util.
+% :- import_module globals, options, mercury_to_mercury.
+
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
 :- import_module mode_util.
 :- import_module globals, options, mercury_to_mercury, hlds_out.
+:- import_module stack.
 
 %-----------------------------------------------------------------------------%
 
@@ -434,16 +440,82 @@ instmap_lookup_arg_list([Arg|Args], InstMap, [Inst|Insts]) :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX we don't reorder conjunctions yet
-
 :- pred modecheck_conj_list(list(hlds__goal), list(hlds__goal),
 				modeinfo, modeinfo).
 :- mode modecheck_conj_list(in, in, modeinfo_di, modeinfo_uo) is det.
 
-modecheck_conj_list([], []) --> [].
-modecheck_conj_list([Goal0 | Goals0], [Goal | Goals]) -->
-	modecheck_goal(Goal0, Goal),
-	modecheck_conj_list(Goals0, Goals).
+modecheck_conj_list(Goals0, Goals, ModeInfo0, ModeInfo) :-
+	modeinfo_get_delay_info(ModeInfo0, DelayInfo0),
+	delay_info_enter_conj(DelayInfo0, DelayInfo1),
+	modeinfo_set_delay_info(ModeInfo0, DelayInfo1, ModeInfo1),
+
+	modeinfo_get_errors(ModeInfo1, OldErrors),
+	modeinfo_set_errors(ModeInfo1, [], ModeInfo2),
+
+	modecheck_conj_list_2(Goals0, Goals, ModeInfo2, ModeInfo3),
+
+	modeinfo_get_errors(ModeInfo3, NewErrors),
+	append(OldErrors, NewErrors, Errors),
+	modeinfo_set_errors(ModeInfo3, Errors, ModeInfo4),
+
+	modeinfo_get_delay_info(ModeInfo4, DelayInfo4),
+	delay_info_leave_conj(DelayInfo4, DelayedGoals, DelayInfo5),
+	modeinfo_set_delay_info(ModeInfo4, DelayInfo5, ModeInfo5),
+
+	( DelayedGoals = [] ->
+		ModeInfo = ModeInfo5
+	;
+		get_all_waiting_vars(DelayedGoals, Vars0),
+		sort(Vars0, Vars),	% eliminate duplicates
+		modeinfo_error(Vars, mode_error_conj(DelayedGoals),
+			ModeInfo5, ModeInfo)
+	).
+
+:- pred modecheck_conj_list_2(list(hlds__goal), list(hlds__goal),
+				modeinfo, modeinfo).
+:- mode modecheck_conj_list_2(in, in, modeinfo_di, modeinfo_uo) is det.
+
+modecheck_conj_list_2([], [], ModeInfo, ModeInfo).
+modecheck_conj_list_2([Goal0 | Goals0], Goals, ModeInfo0, ModeInfo) :-
+	modecheck_goal(Goal0, Goal, ModeInfo0, ModeInfo1),
+	modeinfo_get_errors(ModeInfo1, Errors),
+	( Errors = [] ->
+		Goals = [Goal | Goals1],
+		modeinfo_get_delay_info(ModeInfo1, DelayInfo0),
+		( delay_info_wakeup_goal(DelayInfo0, WokenGoal, DelayInfo) ->
+			modeinfo_set_delay_info(ModeInfo1, DelayInfo,
+				ModeInfo2),
+			modecheck_conj_list_2([WokenGoal | Goals0], Goals1,
+				ModeInfo2, ModeInfo)
+		;
+			modecheck_conj_list_2(Goals0, Goals1,
+				ModeInfo1, ModeInfo)
+		)
+	;
+		Errors = [ mode_error_info(Vars, _, _, _) | _],
+		modeinfo_get_delay_info(ModeInfo0, DelayInfo0),
+		delay_info_delay_goal(DelayInfo0, Vars, Goal0, DelayInfo),
+		modeinfo_set_delay_info(ModeInfo0, DelayInfo, ModeInfoB1),
+		modecheck_conj_list_2(Goals0, Goals, ModeInfoB1, ModeInfo)
+	).
+
+	% Given an association list of Vars - Goals,
+	% combine all the Vars together into a single list.
+
+:- pred get_all_waiting_vars(assoc_list(list(var), hlds__goal), list(var)).
+:- mode get_all_waiting_vars(in, out).
+
+get_all_waiting_vars([], []).
+get_all_waiting_vars([Vars - _Goal | Rest], List) :-
+	append(Vars, List0, List),
+	get_all_waiting_vars(Rest, List0).
+
+	% Schedule a conjunction.
+	% If it's empty, then there is nothing to do.
+	% For non-empty conjunctions, we attempt to schedule the first
+	% goal in the conjunction.  If successful, we wakeup a newly
+	% pending goal (if any), and if not, we delay the goal.  Then we
+	% continue attempting to schedule all the rest of the goals.
 
 %-----------------------------------------------------------------------------%
 
@@ -702,9 +774,11 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 		modeinfo_error([Var], mode_error_bind_var(Var, Inst0, Inst),
 				ModeInfo0, ModeInfo)
 	;
-		% XXX bind var
 		map__set(InstMap0, Var, Inst, InstMap),
-		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
+		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo1),
+		modeinfo_get_delay_info(ModeInfo1, DelayInfo0),
+		delay_info_bind_var(DelayInfo0, Var, DelayInfo),
+		modeinfo_set_delay_info(ModeInfo1, DelayInfo, ModeInfo)
 	).
 
 :- pred inst_is_compat(inst, inst, module_info).
@@ -815,24 +889,19 @@ modecheck_unification(term_variable(X), term_variable(Y), Modes, Unification,
 	modeinfo_get_instmap(ModeInfo0, InstMap0),
 	instmap_lookup_var(InstMap0, X, InstX),
 	instmap_lookup_var(InstMap0, Y, InstY),
-	( abstractly_unify_inst(InstX, InstY, ModuleInfo, Inst) ->
-		modeinfo_get_instmap(ModeInfo0, InstMap0),
-		% XXX bind var
-		map__set(InstMap0, X, Inst, InstMap1),
-		map__set(InstMap1, Y, Inst, InstMap),
-		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
+	( abstractly_unify_inst(InstX, InstY, ModuleInfo, UnifyInst) ->
+		Inst = UnifyInst,
+		ModeInfo1 = ModeInfo0
 	;
 		modeinfo_error( [X, Y],
 				mode_error_unify_var_var(X, Y, InstX, InstY),
 					ModeInfo0, ModeInfo1),
 			% If we get an error, set the inst to ground
 			% to suppress follow-on errors
-		Inst = ground,
-		modeinfo_get_instmap(ModeInfo1, InstMap0),
-		map__set(InstMap0, X, Inst, InstMap1),
-		map__set(InstMap1, Y, Inst, InstMap),
-		modeinfo_set_instmap(InstMap, ModeInfo1, ModeInfo)
+		Inst = ground
 	),
+	modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
+	modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo),
 	ModeX = (InstX -> Inst),
 	ModeY = (InstY -> Inst),
 	Modes = ModeX - ModeY,
@@ -849,24 +918,24 @@ modecheck_unification(term_variable(X), term_functor(Name, Args, _),
 		% could just use abstractly_unify_inst(InstX, InstY, ...)
 		% but this is a little bit faster
 		abstractly_unify_inst_functor(InstX, Name, InstArgs, ModuleInfo,
-			Inst)
+			UnifyInst)
 	->
-		modeinfo_get_instmap(ModeInfo0, InstMap0),
-		map__set(InstMap0, X, Inst, InstMap1),
-		bind_args(Inst, Args, InstMap1, InstMap),
-		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
+		Inst = UnifyInst,
+		ModeInfo1 = ModeInfo0
 	;
 		term_list_to_var_list(Args, ArgVars),
 		modeinfo_error(
 			[X | ArgVars],
 			mode_error_unify_var_functor(X, Name, Args,
 							InstX, InstArgs),
-			ModeInfo0, ModeInfo
+			ModeInfo0, ModeInfo1
 		),
 			% If we get an error, set the inst to ground
-			% to suppress follow-on errors XXX fix this properly
+			% to avoid cascading errors
 		Inst = ground
 	),
+	modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
+	bind_args(Inst, Args, ModeInfo2, ModeInfo),
 	ModeX = (InstX -> Inst),
 	ModeY = (InstY -> Inst),
 	Mode = ModeX - ModeY,
@@ -885,38 +954,38 @@ modecheck_unification(term_functor(_, _, _), term_functor(_, _, _),
 
 %-----------------------------------------------------------------------------%
 
-:- pred bind_args(inst, list(term), instmap, instmap).
-:- mode bind_args(in, in, in, out) is det.
+:- pred bind_args(inst, list(term), modeinfo, modeinfo).
+:- mode bind_args(in, in, modeinfo_di, modeinfo_uo) is det.
 
-bind_args(ground, Args, InstMap0, InstMap) :-
-	ground_args(Args, InstMap0, InstMap).
-bind_args(bound(List), Args, InstMap0, InstMap) :-
-	( List = [] ->
+bind_args(ground, Args) -->
+	ground_args(Args).
+bind_args(bound(List), Args) -->
+	( { List = [] } ->
 		% the code is unreachable - in an attempt to avoid spurious
 		% mode errors, we ground the arguments
-		ground_args(Args, InstMap0, InstMap)
+		ground_args(Args)
 	;
-		List = [functor(_, InstList)],
-		bind_args_2(Args, InstList, InstMap0, InstMap)
+		{ List = [functor(_, InstList)] },
+		bind_args_2(Args, InstList)
 	).
 
-:- pred bind_args_2(list(term), list(inst), instmap, instmap).
-:- mode bind_args_2(in, in, in, out).
+:- pred bind_args_2(list(term), list(inst), modeinfo, modeinfo).
+:- mode bind_args_2(in, in, modeinfo_di, modeinfo_uo).
 
-bind_args_2([], [], InstMap, InstMap).
-bind_args_2([Arg | Args], [Inst | Insts], InstMap0, InstMap) :-
-	Arg = term_variable(Var),
-	map__set(InstMap0, Var, Inst, InstMap1),
-	bind_args_2(Args, Insts, InstMap1, InstMap).
+bind_args_2([], []) --> [].
+bind_args_2([Arg | Args], [Inst | Insts]) -->
+	{ Arg = term_variable(Var) },
+	modecheck_set_var_inst(Var, Inst),
+	bind_args_2(Args, Insts).
 
-:- pred ground_args(list(term), instmap, instmap).
-:- mode ground_args(in, in, out).
+:- pred ground_args(list(term), modeinfo, modeinfo).
+:- mode ground_args(in, modeinfo_di, modeinfo_uo).
 
-ground_args([], InstMap, InstMap).
-ground_args([Arg | Args], InstMap0, InstMap) :-
-	Arg = term_variable(Var),
-	map__set(InstMap0, Var, ground, InstMap1),
-	ground_args(Args, InstMap1, InstMap).
+ground_args([]) --> [].
+ground_args([Arg | Args]) -->
+	{ Arg = term_variable(Var) },
+	modecheck_set_var_inst(Var, ground),
+	ground_args(Args).
 
 %-----------------------------------------------------------------------------%
 
@@ -984,11 +1053,13 @@ abstractly_unify_inst(InstA, InstB, ModuleInfo, Inst) :-
 :- mode abstractly_unify_inst_2(in, in, in, out) is semidet.
 
 abstractly_unify_inst_2(free,		free,		_, _) :- fail.
-abstractly_unify_inst_2(free,		bound(List),	_, bound(List)). % XXX
+abstractly_unify_inst_2(free,		bound(List),	M, bound(List)) :-
+	bound_inst_list_is_ground(List, M).	% maybe too strict
 abstractly_unify_inst_2(free,		ground,		_, ground).
 abstractly_unify_inst_2(free,		abstract_inst(_,_), _, _) :- fail.
 	
-abstractly_unify_inst_2(bound(List),	free,		_, bound(List)). % XXX
+abstractly_unify_inst_2(bound(List),	free,		M, bound(List)) :-
+	bound_inst_list_is_ground(List, M).	% maybe too strict
 abstractly_unify_inst_2(bound(ListX),	bound(ListY),	M, bound(List)) :-
 	abstractly_unify_bound_inst_list(ListX, ListY, M, List).
 abstractly_unify_inst_2(bound(_),	ground,		_, ground).
@@ -1740,9 +1811,15 @@ modeinfo_var_is_locked_2([Set | Sets], Var) :-
 	).
 
 :- pred modeinfo_get_delay_info(modeinfo, delay_info).
-:- mode modeinfo_get_delay_info(in, out) is det.
+:- mode modeinfo_get_delay_info(modeinfo_no_io, out) is det.
 
 modeinfo_get_delay_info(modeinfo(_,_,_,_,_,_,_,_,DelayInfo,_), DelayInfo).
+
+:- pred modeinfo_set_delay_info(modeinfo, delay_info, modeinfo).
+:- mode modeinfo_set_delay_info(modeinfo_di, in, modeinfo_uo) is det.
+
+modeinfo_set_delay_info(modeinfo(A,B,C,D,E,F,G,H,_,J), DelayInfo,
+			modeinfo(A,B,C,D,E,F,G,H,DelayInfo,J)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1757,33 +1834,221 @@ modeinfo_get_delay_info(modeinfo(_,_,_,_,_,_,_,_,DelayInfo,_), DelayInfo).
 					% the current conjunction depth,
 					% i.e. the number of nested conjunctions
 					% which are currently active
-			list(map(seq_num, delayed_goal)),
+			stack(map(seq_num, pair(list(var), hlds__goal))),
 					% DelayedGoalStack:
 					% for each nested conjunction,
 					% we store a collection of delayed goals
 					% associated with that conjunction,
 					% indexed by sequence number
-			map(var, assoc_list(depth_num, list(seq_num))),
-					% WaitingGoals:
+			waiting_goals_table,
+					% WaitingGoalsTable:
 					% for each variable, we keep track of
 					% all the goals which are waiting on
 					% that variable
-			map(depth_num, list(seq_num)),
-					% PendingGoals:
+			pending_goals_table,
+					% PendingGoalsTable:
 					% when a variable gets bound, we
 					% mark all the goals which are waiting
 					% on that variable as ready to be
 					% reawakened at the next opportunity
-			map(depth_num, seq_num)
-					% NextSeqNums:
+			stack(seq_num)
+					% SeqNumsStack:
 					% For each nested conjunction, the
 					% next available sequence number.
 		).
 
+:- type waiting_goals_table == map(var, waiting_goals).
+	% Used to store the collection of goals waiting on a variable.
+:- type waiting_goals == map(goal_num, list(var)).
+	% For each goal, we store all the variables that it is waiting on.
+
+:- type pending_goals_table == map(depth_num, list(seq_num)).
+	
+:- type goal_num == pair(depth_num, seq_num).
 :- type depth_num == int.
 :- type seq_num == int.
-:- type delayed_goal == hlds__goal.	% XXX problem
-% :- type delayed_goal ---> delayed_goal(hlds__goal, ...).
+
+%-----------------------------------------------------------------------------%
+
+	% Initialize the delay info structure in preparation for
+	% mode analysis of a goal.
+
+:- pred delay_info_init(delay_info).
+:- mode delay_info_init(out) is det.
+
+delay_info_init(DelayInfo) :-
+	CurrentDepth = 0,
+	stack__init(DelayedGoalStack),
+	map__init(WaitingGoalsTable),
+	map__init(PendingGoals),
+	stack__init(NextSeqNums),
+	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable, PendingGoals, NextSeqNums).
+
+%-----------------------------------------------------------------------------%
+
+:- pred delay_info_enter_conj(delay_info, delay_info).
+:- mode delay_info_enter_conj(in, out) is det.
+
+delay_info_enter_conj(DelayInfo0, DelayInfo) :-
+	DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
+				WaitingGoalsTable, PendingGoals, NextSeqNums0),
+	map__init(DelayedGoals),
+	stack__push(DelayedGoalStack0, DelayedGoals, DelayedGoalStack),
+	stack__push(NextSeqNums0, 0, NextSeqNums),
+	CurrentDepth is CurrentDepth0 + 1,
+	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable, PendingGoals, NextSeqNums).
+
+%-----------------------------------------------------------------------------%
+
+:- pred delay_info_leave_conj(delay_info, assoc_list(list(var), hlds__goal),
+				delay_info).
+:- mode delay_info_leave_conj(in, out, out) is det.
+
+delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
+	DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
+				WaitingGoalsTable, PendingGoals, NextSeqNums0),
+	stack__pop(DelayedGoalStack0, DelayedGoals, DelayedGoalStack),
+	stack__pop(NextSeqNums0, _, NextSeqNums),
+	CurrentDepth is CurrentDepth0 - 1,
+	map__values(DelayedGoals, DelayedGoalsList),
+	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable, PendingGoals, NextSeqNums).
+
+%-----------------------------------------------------------------------------%
+
+:- pred delay_info_delay_goal(delay_info, list(var), hlds__goal, delay_info).
+:- mode delay_info_delay_goal(in, in, in, out) is det.
+
+delay_info_delay_goal(DelayInfo0, Vars, Goal, DelayInfo) :-
+	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0,
+				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
+
+		% Get the next sequence number
+	stack__pop(NextSeqNums0, SeqNum, NextSeqNums1),
+	NextSeq is SeqNum + 1,
+	stack__push(NextSeqNums1, NextSeq, NextSeqNums),
+
+		% Store the goal in the delayed goal stack
+	stack__pop(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
+	map__set(DelayedGoals0, SeqNum, Vars - Goal, DelayedGoals),
+	stack__push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
+
+		% Store indexes to the goal in the waiting goals table
+	GoalNum = CurrentDepth - SeqNum,
+	add_waiting_vars(Vars, GoalNum, Vars, WaitingGoalsTable0,
+				WaitingGoalsTable),
+	
+	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable, PendingGoals, NextSeqNums).
+
+:- pred add_waiting_vars(list(var), goal_num, list(var), waiting_goals_table,
+				waiting_goals_table).
+:- mode add_waiting_vars(in, in, in, in, out).
+
+add_waiting_vars([], _, _, WaitingGoalsTable, WaitingGoalsTable).
+add_waiting_vars([Var | Vars], Goal, AllVars, WaitingGoalsTable0,
+			WaitingGoalsTable) :-
+	(
+		map__search(WaitingGoalsTable0, Var, WaitingGoals0)
+	->
+		WaitingGoals1 = WaitingGoals0
+	;
+		map__init(WaitingGoals1)
+	),
+	map__set(WaitingGoals1, Goal, AllVars, WaitingGoals),
+	map__set(WaitingGoalsTable0, Var, WaitingGoals, WaitingGoalsTable1),
+	add_waiting_vars(Vars, Goal, AllVars, WaitingGoalsTable1,
+		WaitingGoalsTable).
+
+%-----------------------------------------------------------------------------%
+
+	% Whenever we bind a variable, we also check to see whether
+	% we need to wake up some goals.  If so, we remove those
+	% goals from the waiting goals table and add them to the pending
+	% goals table.  They will be woken up next time we get back
+	% to their conjunction.
+
+:- pred delay_info_bind_var(delay_info, var, delay_info).
+:- mode delay_info_bind_var(in, in, out) is det.
+
+delay_info_bind_var(DelayInfo0, Var, DelayInfo) :-
+	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable0, PendingGoals0, NextSeqNums),
+	(
+		map__search(WaitingGoalsTable0, Var, GoalsWaitingOnVar)
+	->
+		map__keys(GoalsWaitingOnVar, Keys),
+		add_pending_goals(Keys, Var, GoalsWaitingOnVar,
+				PendingGoals0, PendingGoals,
+				WaitingGoalsTable0, WaitingGoalsTable1),
+		map__delete(WaitingGoalsTable1, Var, WaitingGoalsTable),
+		DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable, PendingGoals, NextSeqNums)
+	;
+		DelayInfo = DelayInfo0
+	).
+
+	% Add a collection of goals, identified by depth_num and seq_num
+	% (depth of nested conjunction and sequence number within conjunction),
+	% to the collection of pending goals.
+	
+:- pred add_pending_goals(list(goal_num), var, map(goal_num, list(var)),
+			pending_goals_table, pending_goals_table,
+			waiting_goals_table, waiting_goals_table).
+:- mode add_pending_goals(in, in, in, in, out, in, out) is det.
+
+add_pending_goals([], _Var, _WaitingVarsTable,
+			PendingGoals, PendingGoals,
+			WaitingGoals, WaitingGoals).
+add_pending_goals([Depth - SeqNum | Rest], Var, WaitingVarsTable,
+			PendingGoals0, PendingGoals,
+			WaitingGoals0, WaitingGoals) :-
+
+		% remove any other indexes to the goal from the waiting
+		% goals table
+	GoalNum = Depth - SeqNum,
+	map__lookup(WaitingVarsTable, GoalNum, WaitingVars),
+	delete_waiting_vars(WaitingVars, Var, GoalNum, WaitingGoals0,
+			WaitingGoals1),
+
+		% add the goal to the pending goals table
+	( map__search(PendingGoals0, Depth, PendingSeqNums0) ->
+		% XXX should use a queue
+		append(PendingSeqNums0, [SeqNum], PendingSeqNums)
+	;
+		PendingSeqNums = [SeqNum]
+	),
+	map__set(PendingGoals0, Depth, PendingSeqNums, PendingGoals1),
+
+		% do the same for the rest of the pending goals
+	add_pending_goals(Rest, Var, WaitingVarsTable,
+		PendingGoals1, PendingGoals,
+		WaitingGoals1, WaitingGoals).
+
+	% Since we're about to move this goal from the waiting goal table
+	% to the pending table, we need to delete all the other indexes to it
+	% in the waiting goal table, so that we don't attempt to wake
+	% it up twice.
+
+:- pred delete_waiting_vars(list(var), var, goal_num,
+				waiting_goals_table, waiting_goals_table).
+:- mode delete_waiting_vars(in, in, in, in, out) is det.
+
+delete_waiting_vars([], _, _, WaitingGoalTables, WaitingGoalTables).
+delete_waiting_vars([Var | Vars], ThisVar, GoalNum, WaitingGoalsTable0,
+				WaitingGoalsTable) :-
+	( Var = ThisVar ->
+		WaitingGoalsTable1 = WaitingGoalsTable0
+	;
+		map__lookup(WaitingGoalsTable0, Var, WaitingGoals0),
+		map__delete(WaitingGoals0, GoalNum, WaitingGoals),
+		map__set(WaitingGoalsTable0, Var, WaitingGoals,
+			WaitingGoalsTable1)
+	),
+	delete_waiting_vars(Vars, ThisVar, GoalNum, WaitingGoalsTable1,
+				WaitingGoalsTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -1799,68 +2064,21 @@ modeinfo_get_delay_info(modeinfo(_,_,_,_,_,_,_,_,DelayInfo,_), DelayInfo).
 delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
 	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0, WaitingGoals,
 				PendingGoalsTable0, NextSeqNums),
+
+		% is there a goal in the current conjunction which is pending?
 	map__search(PendingGoalsTable0, CurrentDepth, PendingGoals0),
+
+		% if so, remove it from the pending goals table,
+		% remove it from the delayed goals stack, and return it
 	PendingGoals0 = [SeqNum | PendingGoals],
 	map__set(PendingGoalsTable0, CurrentDepth, PendingGoals,
 			PendingGoalsTable),
-	DelayedGoalStack0 = [DelayedGoals0|StackRest],
-	map__lookup(DelayedGoals0, SeqNum, Goal),
+	stack__pop(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
+	map__lookup(DelayedGoals0, SeqNum, _Vars - Goal),
 	map__delete(DelayedGoals0, SeqNum, DelayedGoals),
-	DelayedGoalStack = [DelayedGoals | StackRest],
+	stack__push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack, WaitingGoals,
 				PendingGoalsTable, NextSeqNums).
-
-%-----------------------------------------------------------------------------%
-
-:- pred delay_info_bind_var(delay_info, var, delay_info).
-:- mode delay_info_bind_var(in, in, out) is det.
-
-delay_info_bind_var(DelayInfo0, Var, DelayInfo) :-
-	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack,
-				WaitingGoalsTable0, PendingGoals0, NextSeqNums),
-	map__search(WaitingGoalsTable0, Var, GoalsWaitingOnVar),
-	add_pending_goals(GoalsWaitingOnVar, PendingGoals0, PendingGoals),
-	map__delete(WaitingGoalsTable0, Var, WaitingGoalsTable),
-	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
-				WaitingGoalsTable, PendingGoals, NextSeqNums).
-
-%-----------------------------------------------------------------------------%
-
-	% Add a collection of goals, identified by depth_num and seq_num
-	% (depth of nested conjunction and sequence number within conjunction),
-	% to the collection of pending goals.
-	
-:- pred add_pending_goals(assoc_list(depth_num, list(seq_num)),
-			map(depth_num, list(seq_num)),
-			map(depth_num, list(seq_num))).
-:- mode add_pending_goals(in, in, out) is det.
-
-add_pending_goals([], PendingGoals, PendingGoals).
-add_pending_goals([Depth - SeqNums | Rest], PendingGoals0, PendingGoals) :-
-	( map__search(PendingGoals0, Depth, PendingSeqNums0) ->
-		append(PendingSeqNums0, SeqNums, PendingSeqNums)
-	;
-		PendingSeqNums = SeqNums
-	),
-	map__set(PendingGoals0, Depth, PendingSeqNums, PendingGoals1),
-	add_pending_goals(Rest, PendingGoals1, PendingGoals).
-
-%-----------------------------------------------------------------------------%
-
-	% Initialize the delay info structure in preparation for
-	% mode analysis of a goal.
-
-:- pred delay_info_init(delay_info).
-:- mode delay_info_init(out) is det.
-
-delay_info_init(DelayInfo) :-
-	CurrentDepth = 0,
-	DelayedGoalStack = [],
-	map__init(WaitingGoalsTable),
-	map__init(PendingGoals),
-	map__init(NextSeqNums),
-	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
-				WaitingGoalsTable, PendingGoals, NextSeqNums).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1930,9 +2148,12 @@ modecheck_report_errors(ModeInfo0, ModeInfo) :-
 	;	mode_error_unify_var_var(var, var, inst, inst)
 			% attempt to unify two free variables
 	;	mode_error_unify_var_functor(var, const, list(term),
-							inst, list(inst)).
+							inst, list(inst))
 			% attempt to unify a free var with a functor containing
 			% free arguments
+	;	mode_error_conj(assoc_list(list(var), hlds__goal)).
+			% a conjunction contains one or more unscheduleable
+			% goals
 
 %-----------------------------------------------------------------------------%
 
@@ -1955,6 +2176,38 @@ report_mode_error(mode_error_unify_var_functor(Var, Name, Args, Inst,
 			ArgInsts), ModeInfo) -->
 	report_mode_error_unify_var_functor(ModeInfo, Var, Name, Args, Inst,
 			ArgInsts).
+report_mode_error(mode_error_conj(Errors), ModeInfo) -->
+	report_mode_error_conj(ModeInfo, Errors).
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_mode_error_conj(modeinfo, assoc_list(list(var), hlds__goal),
+				io__state, io__state).
+:- mode report_mode_error_conj(modeinfo_no_io, in, di, uo).
+
+report_mode_error_conj(ModeInfo, Errors) -->
+	{ modeinfo_get_context(ModeInfo, Context) },
+	{ modeinfo_get_varset(ModeInfo, VarSet) },
+	modeinfo_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error in conjunction.\n"),
+	prog_out__write_context(Context),
+	io__write_string("Floundered goals were:\n"),
+	report_mode_error_conj_2(Errors, VarSet, Context).
+
+:- pred report_mode_error_conj_2(assoc_list(list(var), hlds__goal),
+				varset, term__context, io__state, io__state).
+:- mode report_mode_error_conj_2(in, in, in, di, uo).
+
+report_mode_error_conj_2([], _, _) --> [].
+report_mode_error_conj_2([Vars - Goal | Rest], VarSet, Context) -->
+	prog_out__write_context(Context),
+	io__write_string("  waiting on { "),
+	mercury_output_vars(Vars, VarSet),
+	io__write_string(" } :\n"),
+	mercury_output_hlds_goal(Goal, VarSet, 0),
+	io__write_string(".\n"),
+	report_mode_error_conj_2(Rest, VarSet, Context).
 
 %-----------------------------------------------------------------------------%
 
@@ -2170,6 +2423,9 @@ mode_context_init(uninitialized).
 
 :- pred write_mode_context(mode_context, term__context, io__state, io__state).
 :- mode write_mode_context(in, in, di, uo).
+
+write_mode_context(uninitialized, _Context) -->
+	[].
 
 write_mode_context(call(PredId, _ArgNum), Context) -->
 	prog_out__write_context(Context),

@@ -25,6 +25,16 @@
 :- pred mercury_output_mode_list(list(mode), varset, io__state, io__state).
 :- mode mercury_output_mode_list(in, in, di, uo).
 
+	% output a comma-separated list of variables
+
+:- pred mercury_output_vars(list(var), varset, io__state, io__state).
+:- mode mercury_output_vars(input, input, di, uo).
+
+:- import_module hlds.
+
+:- pred mercury_output_hlds_goal(hlds__goal, varset, int, io__state, io__state).
+:- mode mercury_output_hlds_goal(input, input, input, di, uo).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -641,6 +651,211 @@ mercury_output_some(Vars, VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
+mercury_output_hlds_goal(Goal - GoalInfo, VarSet, Indent) -->
+		% debugging aid
+	{ goalinfo_get_nonlocals(GoalInfo, NonLocalsSet) },
+	{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
+	io__write_string("% nonlocals: "),
+	mercury_output_vars(NonLocalsList, VarSet),
+	mercury_output_newline(Indent),
+
+	mercury_output_hlds_goal_2(Goal, VarSet, Indent).
+
+:- pred mercury_output_hlds_goal_2(hlds__goal_expr, varset, int,
+					io__state, io__state).
+:- mode mercury_output_hlds_goal_2(input, input, input, di, uo).
+
+mercury_output_hlds_goal_2(switch(Var, CasesList, _), VarSet, Indent) -->
+	io__write_string("( % switch on `"),
+	mercury_output_var(Var, VarSet),
+	io__write_string("'"),
+	{ Indent1 is Indent + 1 },
+	mercury_output_newline(Indent1),
+	( { CasesList = [Case | Cases] } ->
+		mercury_output_hlds_case(Case, Var, VarSet, Indent1),
+		mercury_output_hlds_cases(Cases, Var, VarSet, Indent1)
+	;
+		io__write_string("fail")
+	),
+	mercury_output_newline(Indent),
+	io__write_string(")").
+
+mercury_output_hlds_goal_2(some(Vars, Goal), VarSet, Indent) -->
+	( { Vars = [] } ->
+		mercury_output_hlds_goal(Goal, VarSet, Indent)
+	;
+		io__write_string("(some ["),
+		mercury_output_vars(Vars, VarSet),
+		io__write_string("] "),
+		{ Indent1 is Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_hlds_goal(Goal, VarSet, Indent1),
+		mercury_output_newline(Indent),
+		io__write_string(")")
+	).
+
+mercury_output_hlds_goal_2(all(Vars, Goal), VarSet, Indent) -->
+	( { Vars = [] } ->
+		mercury_output_hlds_goal(Goal, VarSet, Indent)
+	;
+		io__write_string("(all ["),
+		mercury_output_vars(Vars, VarSet),
+		io__write_string("] "),
+		{ Indent1 is Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_hlds_goal(Goal, VarSet, Indent1),
+		mercury_output_newline(Indent),
+		io__write_string(")")
+	).
+
+mercury_output_hlds_goal_2(if_then_else(Vars, A, B, C), VarSet, Indent) -->
+	io__write_string("(if"),
+	mercury_output_hlds_some(Vars, VarSet),
+	{ Indent1 is Indent + 1 },
+	mercury_output_newline(Indent1),
+	mercury_output_hlds_goal(A, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string("then"),
+	mercury_output_newline(Indent1),
+	mercury_output_hlds_goal(B, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string("else"),
+	mercury_output_newline(Indent1),
+	mercury_output_hlds_goal(C, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string(")").
+
+mercury_output_hlds_goal_2(not(Vars, Goal), VarSet, Indent) -->
+	io__write_string("(\+"),
+	mercury_output_hlds_some(Vars, VarSet),
+	{ Indent1 is Indent + 1 },
+	mercury_output_newline(Indent1),
+	mercury_output_hlds_goal(Goal, VarSet, Indent),
+	mercury_output_newline(Indent),
+	io__write_string(")").
+
+mercury_output_hlds_goal_2(conj(List), VarSet, Indent) -->
+	( { List = [Goal | Goals] } ->
+		io__write_string("("),
+		{ Indent1 is Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_hlds_goal(Goal, VarSet, Indent1),
+		mercury_output_hlds_conj(Goals, VarSet, Indent),
+		mercury_output_newline(Indent),
+		io__write_string(")")
+	;
+		io__write_string("true")
+	).
+
+mercury_output_hlds_goal_2(disj(List), VarSet, Indent) -->
+	( { List = [Goal | Goals] } ->
+		io__write_string("("),
+		{ Indent1 is Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_hlds_goal(Goal, VarSet, Indent1),
+		mercury_output_hlds_disj(Goals, VarSet, Indent),
+		mercury_output_newline(Indent),
+		io__write_string(")")
+	;
+		io__write_string("fail")
+	).
+
+mercury_output_hlds_goal_2(call(PredId, _ProcId, Args, _), VarSet, Indent) -->
+	mercury_output_hlds_call(PredId, Args, VarSet, Indent).
+
+mercury_output_hlds_goal_2(unify(A, B, _, _, _), VarSet, _Indent) -->
+	mercury_output_term(A, VarSet),
+	io__write_string(" = "),
+	mercury_output_term(B, VarSet).
+
+:- pred mercury_output_hlds_call(pred_id, list(term), varset, int,
+				io__state, io__state).
+:- mode mercury_output_hlds_call(input, input, input, input, di, uo).
+
+mercury_output_hlds_call(PredId, Args, VarSet, _Indent) -->
+		% XXX module name
+	{ predicate_name(PredId, PredName) },
+	{ term__context_init(0, Context) },
+	mercury_output_term(term_functor(term_atom(PredName), Args, Context),
+				VarSet).
+
+:- pred mercury_output_hlds_conj(list(hlds__goal), varset, int,
+				io__state, io__state).
+:- mode mercury_output_hlds_conj(input, input, input, di, uo).
+
+mercury_output_hlds_conj(GoalList, VarSet, Indent) -->
+	(
+		{ GoalList = [Goal | Goals] }
+	->
+		io__write_string(","),
+		{ Indent1 is Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_hlds_goal(Goal, VarSet, Indent1),
+		mercury_output_hlds_conj(Goals, VarSet, Indent)
+	;
+		[]
+	).
+
+:- pred mercury_output_hlds_disj(list(hlds__goal), varset, int,
+				io__state, io__state).
+:- mode mercury_output_hlds_disj(input, input, input, di, uo).
+
+mercury_output_hlds_disj(GoalList, VarSet, Indent) -->
+	(
+		{ GoalList = [Goal | Goals] }
+	->
+		mercury_output_newline(Indent),
+		io__write_string(";"),
+		{ Indent1 is Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_hlds_goal(Goal, VarSet, Indent1),
+		mercury_output_hlds_disj(Goals, VarSet, Indent)
+	;
+		[]
+	).
+
+:- pred mercury_output_hlds_case(case, var, varset, int,
+				io__state, io__state).
+:- mode mercury_output_hlds_case(input, input, input, input, di, uo).
+
+mercury_output_hlds_case(case(ConsId, ArgVars, Goal), Var, VarSet, Indent) -->
+	{ term_list_to_var_list(Args, ArgVars) },
+	{ make_functor_cons_id(Name, _, ConsId) },
+	{ term__context_init(0, Context) },
+	mercury_output_var(Var, VarSet),
+	io__write_string(" = "),
+	mercury_output_term(term_functor(Name, Args, Context), VarSet),
+	io__write_string(","),
+	mercury_output_newline(Indent),
+	mercury_output_hlds_goal(Goal, VarSet, Indent).
+
+:- pred mercury_output_hlds_cases(list(case), var, varset, int,
+				io__state, io__state).
+:- mode mercury_output_hlds_cases(input, input, input, input, di, uo).
+
+mercury_output_hlds_cases(CasesList, Var, VarSet, Indent) -->
+	(
+		{ CasesList = [Case | Cases] }
+	->
+		mercury_output_newline(Indent),
+		io__write_string(";"),
+		{ Indent1 is Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_hlds_case(Case, Var, VarSet, Indent1),
+		mercury_output_hlds_cases(Cases, Var, VarSet, Indent)
+	;
+		[]
+	).
+
+:- pred mercury_output_hlds_some(list(var), varset, io__state, io__state).
+:- mode mercury_output_hlds_some(input, input, di, uo).
+
+	% quantification is all implicit by the time we get to the hlds.
+
+mercury_output_hlds_some(_Vars, _VarSet) --> [].
+
+%-----------------------------------------------------------------------------%
+
 :- pred mercury_output_newline(int, io__state, io__state).
 :- mode mercury_output_newline(input, di, uo).
 
@@ -750,9 +965,6 @@ mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
 	).
 
 	% output a comma-separated list of variables
-
-:- pred mercury_output_vars(list(var), varset, io__state, io__state).
-:- mode mercury_output_vars(input, input, di, uo).
 
 mercury_output_vars([], _VarSet) --> [].
 mercury_output_vars([Var | Vars], VarSet) -->

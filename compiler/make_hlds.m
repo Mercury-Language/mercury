@@ -1081,7 +1081,7 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, OutsideVars,
 
 implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars,
 			   some(Vars, Goal), NonLocals) :-
-	set__remove_list(OutsideVars, Vars, OutsideVars1),
+	set__insert_list(OutsideVars, Vars, OutsideVars1),
 	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
 	set__remove_list(NonLocals0, Vars, NonLocals).
 
@@ -1099,7 +1099,7 @@ implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars, Goal, NonLocals) :-
 
 implicitly_quantify_goal_2(all(Vars, Goal0), OutsideVars,
 			   all(Vars, Goal), NonLocals) :-
-	set__remove_list(OutsideVars, Vars, OutsideVars1),
+	set__insert_list(OutsideVars, Vars, OutsideVars1),
 	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
 	set__remove_list(NonLocals0, Vars, NonLocals).
 
@@ -1113,20 +1113,22 @@ implicitly_quantify_goal_2(disj(Goals0), OutsideVars,
 
 implicitly_quantify_goal_2(not(Vars, Goal0), OutsideVars,
 		    not(Vars, Goal), NonLocals) :-
-	set__remove_list(OutsideVars, Vars, OutsideVars1),
+	set__insert_list(OutsideVars, Vars, OutsideVars1),
 	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
 	set__remove_list(NonLocals0, Vars, NonLocals).
 
 implicitly_quantify_goal_2(if_then_else(Vars, A0, B0, C0), OutsideVars,
 		if_then_else(Vars, A, B, C), NonLocals) :-
+	set__insert_list(OutsideVars, Vars, OutsideVars0),
 	goal_vars(B0, VarsB),
-	set__union(OutsideVars, VarsB, OutsideVars1),
+	set__union(OutsideVars0, VarsB, OutsideVars1),
 	implicitly_quantify_goal(A0, OutsideVars1, A, NonLocalsA),
 	set__union(OutsideVars, NonLocalsA, OutsideVars2),
 	implicitly_quantify_goal(B0, OutsideVars2, B, NonLocalsB),
 	implicitly_quantify_goal(C0, OutsideVars, C, NonLocalsC),
 	set__union(NonLocalsA, NonLocalsB, NonLocalsSuccess),
-	set__union(NonLocalsSuccess, NonLocalsC, NonLocals).
+	set__union(NonLocalsSuccess, NonLocalsC, NonLocalsIfThenElse),
+	set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocals).
 
 implicitly_quantify_goal_2(call(PredId, ModeId, HeadArgs, Builtin), OutsideVars,
 		call(PredId, ModeId, HeadArgs, Builtin), NonLocalVars) :-
@@ -1166,7 +1168,8 @@ implicitly_quantify_conj_2([Goal0 | Goals0],
 	set__union(OutsideVars, NonLocalVars1, OutsideVars2),
 	implicitly_quantify_conj_2(Goals0, FollowingVarsList, OutsideVars2,
 				Goals, NonLocalVars2),
-	set__union(NonLocalVars1, NonLocalVars2, NonLocalVars).
+	set__union(NonLocalVars1, NonLocalVars2, NonLocalVarsConj),
+	set__intersect(NonLocalVarsConj, OutsideVars, NonLocalVars).
 
 /********** OLD
 implicitly_quantify_conj([], _, [], NonLocalVars) :-
