@@ -3021,7 +3021,11 @@ mercury_close(MercuryFile* mf)
 		** Doing this ensures that future accesses to the file
 		** will fail nicely.
 		*/
-		*mf = MR_closed_stream;
+		/*
+		** gcc 2.95.2 barfs on `*mf = MR_closed_stream;'
+		** so we use MR_memcpy() instead.
+		*/
+		MR_memcpy(mf, &MR_closed_stream, sizeof(*mf));
 
 /*
 ** XXX it would be nice to have an autoconf check
