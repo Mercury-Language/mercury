@@ -5,7 +5,7 @@
 */
 
 /*
-** This module defines the MemoryZone data structure and operations
+** This module defines the MR_MemoryZone data structure and operations
 ** for managing the memory zones.
 **
 ** The offset of each zone can be supplied to allow us to control how
@@ -175,21 +175,21 @@ memalign(size_t unit, size_t size)
 
 /*---------------------------------------------------------------------------*/
 
-MR_Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
+MR_Word		MR_virtual_reg_map[MR_MAX_REAL_REG] = MR_VIRTUAL_REG_MAP_BODY;
 
-unsigned long	num_uses[MAX_RN];
+unsigned long	MR_num_uses[MR_MAX_RN];
 
 #define MAX_ZONES	16
 
-static MemoryZone *used_memory_zones = NULL;
-static MemoryZone *free_memory_zones = NULL;
+static MR_MemoryZone *used_memory_zones = NULL;
+static MR_MemoryZone *free_memory_zones = NULL;
 #ifdef	MR_THREAD_SAFE
   static MercuryLock *free_memory_zones_lock;
 #endif
 
-static void		init_offsets(void);
-static MemoryZone	*get_zone(void);
-static void		unget_zone(MemoryZone *zone);
+static void		MR_init_offsets(void);
+static MR_MemoryZone	*MR_get_zone(void);
+static void		MR_unget_zone(MR_MemoryZone *zone);
 
 	/*
 	** We manage the handing out of offets through the cache by
@@ -206,7 +206,7 @@ static	int		offset_counter;
 size_t	next_offset(void);
 
 void
-init_zones()
+MR_init_zones()
 {
 
 #ifdef  MR_THREAD_SAFE
@@ -214,11 +214,11 @@ init_zones()
 	pthread_mutex_init(free_memory_zones_lock, MR_MUTEX_ATTR);
 #endif
 
-	init_offsets();
+	MR_init_offsets();
 }
 
 static void 
-init_offsets()
+MR_init_offsets()
 {
 	int i;
 	size_t fake_reg_offset;
@@ -227,20 +227,20 @@ init_offsets()
 
 	offset_vector = MR_GC_NEW_ARRAY(size_t, CACHE_SLICES - 1);
 
-	fake_reg_offset = (MR_Unsigned) MR_fake_reg % pcache_size;
+	fake_reg_offset = (MR_Unsigned) MR_fake_reg % MR_pcache_size;
 
 	for (i = 0; i < CACHE_SLICES - 1; i++) {
 		offset_vector[i] =
-			(fake_reg_offset + pcache_size * i / CACHE_SLICES)
-			% pcache_size;
+			(fake_reg_offset + MR_pcache_size * i / CACHE_SLICES)
+			% MR_pcache_size;
 	}
 } /* end init_offsets() */
 
 
-static MemoryZone *
-get_zone(void)
+static MR_MemoryZone *
+MR_get_zone(void)
 {
-	MemoryZone *zone;
+	MR_MemoryZone *zone;
 
 	/*
 	** unlink the first zone on the free-list,
@@ -248,7 +248,7 @@ get_zone(void)
 	*/
 	MR_LOCK(free_memory_zones_lock, "get_zone");
 	if (free_memory_zones == NULL) {
-		zone = MR_GC_NEW(MemoryZone);
+		zone = MR_GC_NEW(MR_MemoryZone);
 	} else {
 		zone = free_memory_zones;
 		free_memory_zones = free_memory_zones->next;
@@ -266,9 +266,9 @@ get_zone(void)
 /* this function is not currently used */
 
 static void 
-unget_zone(MemoryZone *zone)
+MR_unget_zone(MR_MemoryZone *zone)
 {
-	MemoryZone *prev, *tmp;
+	MR_MemoryZone *prev, *tmp;
 
 	/*
 	** Find the zone on the used list, and unlink it from
@@ -307,7 +307,7 @@ unget_zone(MemoryZone *zone)
 ** allocate more offsets across them.
 */
 size_t	
-next_offset(void)
+MR_next_offset(void)
 {
 	size_t offset;
 
@@ -318,10 +318,10 @@ next_offset(void)
 	return offset;
 }
 
-MemoryZone *
-create_zone(const char *name, int id, size_t size,
-		size_t offset, size_t redsize,
-		bool ((*handler)(MR_Word *addr, MemoryZone *zone, void *context)))
+MR_MemoryZone *
+MR_create_zone(const char *name, int id, size_t size,
+	size_t offset, size_t redsize,
+	bool ((*handler)(MR_Word *addr, MR_MemoryZone *zone, void *context)))
 {
 	MR_Word		*base;
 	size_t		total_size;
@@ -334,34 +334,35 @@ create_zone(const char *name, int id, size_t size,
 		**			 mprotect is being used)
 		*/
 #ifdef	MR_PROTECTPAGE
-	total_size = size + 2 * unit;
+	total_size = size + 2 * MR_unit;
 #else
-	total_size = size + unit;
+	total_size = size + MR_unit;
 #endif
 
-	base = (MR_Word *) memalign(unit, total_size);
+	base = (MR_Word *) memalign(MR_unit, total_size);
 	if (base == NULL) {
 		char buf[2560];
 		sprintf(buf, "unable allocate memory zone: %s#%d", name, id);
 		MR_fatal_error(buf);
 	}
 
-	return construct_zone(name, id, base, size, offset, redsize, handler);
-} /* end create_zone() */
+	return MR_construct_zone(name, id, base, size, offset,
+		redsize, handler);
+} /* end MR_create_zone() */
 
-MemoryZone *
-construct_zone(const char *name, int id, MR_Word *base,
-		size_t size, size_t offset, size_t redsize,
-		ZoneHandler handler)
+MR_MemoryZone *
+MR_construct_zone(const char *name, int id, MR_Word *base,
+	size_t size, size_t offset, size_t redsize,
+	MR_ZoneHandler handler)
 {
-	MemoryZone	*zone;
+	MR_MemoryZone	*zone;
 	size_t		total_size;
 
 	if (base == NULL) {
 		MR_fatal_error("construct_zone called with NULL pointer");
 	}
 
-	zone = get_zone();
+	zone = MR_get_zone();
 
 	zone->name = name;
 	zone->id = id;
@@ -373,7 +374,7 @@ construct_zone(const char *name, int id, MR_Word *base,
 	zone->bottom = base;
 
 #ifdef 	MR_PROTECTPAGE
-	total_size = size + unit;
+	total_size = size + MR_unit;
 #else
 	total_size = size;
 #endif	/* MR_PROTECTPAGE */
@@ -389,9 +390,10 @@ construct_zone(const char *name, int id, MR_Word *base,
 	*/
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
 	zone->redzone_base = zone->redzone = (MR_Word *)
-			round_up((MR_Unsigned)base + size - redsize, unit);
+			MR_round_up((MR_Unsigned)base + size - redsize,
+				MR_unit);
 	if (MR_protect_pages((char *)zone->redzone,
-			redsize + unit, MY_PROT) < 0)
+			redsize + MR_unit, MY_PROT) < 0)
 	{
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d redzone\n"
@@ -405,8 +407,9 @@ construct_zone(const char *name, int id, MR_Word *base,
 	** setup the hardzone
 	*/
 #if	defined(MR_PROTECTPAGE)
-	zone->hardmax = (MR_Word *) round_up((MR_Unsigned)zone->top - unit, unit);
-	if (MR_protect_pages((char *)zone->hardmax, unit, MY_PROT) < 0) {
+	zone->hardmax = (MR_Word *) MR_round_up(
+			(MR_Unsigned)zone->top - MR_unit, MR_unit);
+	if (MR_protect_pages((char *)zone->hardmax, MR_unit, MY_PROT) < 0) {
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d hardmax\n"
 			"base=%p, hardmax=%p top=%p",
@@ -418,10 +421,10 @@ construct_zone(const char *name, int id, MR_Word *base,
 
 
 	return zone;
-} /* end construct_zone() */
+} /* end MR_construct_zone() */
 
 void 
-reset_redzone(MemoryZone *zone)
+MR_reset_redzone(MR_MemoryZone *zone)
 {
 #ifdef	MR_CHECK_OVERFLOW_VIA_MPROTECT
 	zone->redzone = zone->redzone_base;
@@ -437,28 +440,28 @@ reset_redzone(MemoryZone *zone)
 #endif	/* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 }
 
-MemoryZone *
-get_used_memory_zones(void)
+MR_MemoryZone *
+MR_get_used_memory_zones(void)
 {
 	return used_memory_zones;
 }
 
 void
-debug_memory(void)
+MR_debug_memory(void)
 {
-	MemoryZone	*zone;
+	MR_MemoryZone	*zone;
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "pcache_size  = %lu (0x%lx)\n",
-		(unsigned long) pcache_size, (unsigned long) pcache_size);
+		(unsigned long) MR_pcache_size, (unsigned long) MR_pcache_size);
 	fprintf(stderr, "page_size    = %lu (0x%lx)\n",
-		(unsigned long) page_size, (unsigned long) page_size);
+		(unsigned long) MR_page_size, (unsigned long) MR_page_size);
 	fprintf(stderr, "unit         = %lu (0x%lx)\n",
-		(unsigned long) unit, (unsigned long) unit);
+		(unsigned long) MR_unit, (unsigned long) MR_unit);
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "fake_reg       = %p (offset %ld)\n",
-		(void *) MR_fake_reg, (long) MR_fake_reg & (unit-1));
+		(void *) MR_fake_reg, (long) MR_fake_reg & (MR_unit-1));
 	fprintf(stderr, "\n");
 
 	for (zone = used_memory_zones; zone; zone = zone->next)
@@ -489,4 +492,3 @@ debug_memory(void)
 		fprintf(stderr, "\n");
 	}
 }
-

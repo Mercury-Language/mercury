@@ -11,21 +11,21 @@
 
 #include "mercury_conf.h"
 #include "mercury_types.h"	/* for `MR_Code *' */
-#include "mercury_debug.h"	/* for debuggoto() */
-#include "mercury_label.h"	/* for insert_{entry,internal}_label() */
-#include "mercury_dummy.h"	/* for dummy_identify_function() */
+#include "mercury_debug.h"	/* for MR_debuggoto() */
+#include "mercury_label.h"	/* for MR_insert_{entry,internal}_label() */
+#include "mercury_dummy.h"	/* for MR_dummy_identify_function() */
 
-#define paste(a,b) a##b
-#define stringify(string) #string
-#define entry(label) paste(_entry_,label)
-#define skip(label) paste(skip_,label)
+#define MR_paste(a,b) a##b
+#define MR_stringify(string) #string
+#define MR_entry(label) MR_paste(_entry_,label)
+#define MR_skip(label) MR_paste(skip_,label)
 
-#define MR_ENTRY_LAYOUT(label)	  (const MR_Stack_Layout_Entry *) (MR_Word) \
-					&(paste(mercury_data__layout__,label))
-#define MR_INTERNAL_LAYOUT(label) (const MR_Stack_Layout_Label *) (MR_Word) \
-					&(paste(mercury_data__layout__,label))
-
-#define MR_init_entry(label)	init_entry(label)
+#define MR_ENTRY_LAYOUT(label)	  	(const MR_Stack_Layout_Entry *)	\
+					(MR_Word) 			\
+				&(MR_paste(mercury_data__layout__,label))
+#define MR_INTERNAL_LAYOUT(label) 	(const MR_Stack_Layout_Label *)	\
+					(MR_Word)			\
+				&(MR_paste(mercury_data__layout__,label))
 
 /*
 ** Passing the name of a label to MR_insert_{internal,entry}_label
@@ -58,28 +58,28 @@
 ** a layout structure, use the _sl variant.
 */
 
-#define make_label_ai(n, a, l)		MR_insert_internal(n, a, NULL)
-#define make_label_sl(n, a, l)		MR_insert_internal(n, a, \
-						MR_INTERNAL_LAYOUT(l))
+#define MR_make_label_ai(n, a, l)		MR_insert_internal(n, a, NULL)
+#define MR_make_label_sl(n, a, l)		MR_insert_internal(n, a, \
+							MR_INTERNAL_LAYOUT(l))
 
-#define make_local_ai(n, a, l)		MR_insert_entry(n, a, NULL)
-#define make_local_sl(n, a, l)		MR_insert_entry(n, a, \
-						MR_ENTRY_LAYOUT(l))
+#define MR_make_local_ai(n, a, l)		MR_insert_entry(n, a, NULL)
+#define MR_make_local_sl(n, a, l)		MR_insert_entry(n, a, \
+							MR_ENTRY_LAYOUT(l))
 
-#define make_entry_ai(n, a, l)		MR_insert_entry(n, a, NULL)
-#define make_entry_sl(n, a, l)		MR_insert_entry(n, a, \
-						MR_ENTRY_LAYOUT(l))
+#define MR_make_entry_ai(n, a, l)		MR_insert_entry(n, a, NULL)
+#define MR_make_entry_sl(n, a, l)		MR_insert_entry(n, a, \
+							MR_ENTRY_LAYOUT(l))
 
 #if defined(MR_INSERT_LABELS)
-  #define make_label(n, a, l)		make_label_ai(n, a, l)
+  #define MR_make_label(n, a, l)		MR_make_label_ai(n, a, l)
 #else
-  #define make_label(n, a, l)		/* nothing */
+  #define MR_make_label(n, a, l)		/* nothing */
 #endif
 
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
-  #define make_local(n, a, l)		make_local_ai(n, a, l)
+  #define MR_make_local(n, a, l)		MR_make_local_ai(n, a, l)
 #else 
-  #define make_local(n, a, l)		/* nothing */
+  #define MR_make_local(n, a, l)		/* nothing */
 #endif
 
 /*
@@ -91,9 +91,9 @@
 ** `need_to_init_entries' predicate in compiler/mlds_to_c.m.
 */
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
-  #define make_entry(n, a, l)		make_entry_ai(n, a, l)
+  #define MR_make_entry(n, a, l)		MR_make_entry_ai(n, a, l)
 #else
-  #define make_entry(n, a, l)		/* nothing */
+  #define MR_make_entry(n, a, l)		/* nothing */
 #endif
 
 #ifdef SPLIT_C_FILES
@@ -115,7 +115,7 @@
   ** to the address we are jumping to, so that we can use an `ldgp'
   ** instruction on entry to the procedure to set up the right gp value.
   */
-  #define ASM_JUMP(address)				\
+  #define MR_ASM_JUMP(address)				\
 	__asm__("bis %0, %0, $27\n\t" 			\
 		: : "r"(address) : "$27");		\
 	goto *(address)
@@ -129,14 +129,14 @@
   ** on entry to a procedure, we need to load the $gp register
   ** with the correct value relative to the current address in $27
   */
-  #define INLINE_ASM_FIXUP_REGS				\
+  #define MR_INLINE_ASM_FIXUP_REGS				\
   	"	ldgp $gp, 0($27)\n" : : : "memory"
 
   /*
   ** on fall-thru, we need to skip the ldgp instruction
   */
-  #define ASM_FALLTHROUGH(label) \
-  	goto skip(label);
+  #define MR_ASM_FALLTHROUGH(label) \
+  	goto MR_skip(label);
 
 #elif defined(__i386__) || defined(__mc68000__)
 
@@ -165,12 +165,12 @@
   ** I know this is awful.  It wasn't _my_ idea to use non-local gotos ;-)
   */
   #if defined(__i386__)
-    #define ASM_JUMP(label)				\
+    #define MR_ASM_JUMP(label)				\
   	{ register int stack_pointer __asm__("esp");	\
   	__asm__("" : : "g"(stack_pointer)); }		\
   	goto *(label)
   #elif defined(__mc68000__)
-    #define ASM_JUMP(label)				\
+    #define MR_ASM_JUMP(label)				\
   	{ register int stack_pointer __asm__("sp");	\
   	__asm__("" : : "g"(stack_pointer)); }		\
   	goto *(label)
@@ -180,7 +180,7 @@
   ** That hack above needs to be done for all non-local jumps,
   ** even if we're not using assembler labels.
   */
-  #define JUMP(label)		ASM_JUMP(label)
+  #define MR_JUMP(label)	MR_ASM_JUMP(label)
 
   /*
   ** If we're using position-independent code on i386, then we need to
@@ -216,7 +216,7 @@
     */
     #if defined(__i386__)
 
-      #define INLINE_ASM_FIXUP_REGS     			\
+      #define MR_INLINE_ASM_FIXUP_REGS     			\
     	"	call 0f\n"     					\
     	"0:\n"       						\
     	"	popl %%ebx\n"     				\
@@ -237,21 +237,21 @@
 	**  <Roman.Hodek@informatik.uni-erlangen.de>
 	*/ 
 
-      #define INLINE_ASM_FIXUP_REGS \
+      #define MR_INLINE_ASM_FIXUP_REGS \
         "       lea (%%pc,_GLOBAL_OFFSET_TABLE_@GOTPC),%%a5\n" : : : "memory"
 
     #endif
 
     /*
-    ** It is safe to fall through into INLINE_ASM_FIXUP_REGS,
+    ** It is safe to fall through into MR_INLINE_ASM_FIXUP_REGS,
     ** but it might be more efficient to branch past it.
     ** We should really measure both ways and find out which is
     ** better... for the moment, we just fall through, since
     ** that keeps the code smaller.
     */
     #if 0
-      #define ASM_FALLTHROUGH(label) \
-  	goto skip(label);
+      #define MR_ASM_FALLTHROUGH(label) \
+  	goto MR_skip(label);
     #endif
 
   #endif /* PIC */
@@ -262,8 +262,8 @@
   ** Hence the `.type' directive below.
   */
   #ifdef __ELF__
-    #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
-	"	.type _entry_" stringify(label) ",@function\n"
+    #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+	"	.type _entry_" MR_stringify(label) ",@function\n"
   #endif
 
 #elif defined (__sparc)
@@ -293,7 +293,7 @@
     ** instruction, and `0b' means the label `0:' before the current
     ** instruction.
     */
-    #define INLINE_ASM_FIXUP_REGS     				\
+    #define MR_INLINE_ASM_FIXUP_REGS     			\
     	"0:\n"     						\
     	"	call 1f\n"     					\
     	"	nop\n"     					\
@@ -305,15 +305,15 @@
     		: : : "%l7", "%o7", "memory"
 
     /*
-    ** It is safe to fall through into INLINE_ASM_FIXUP_REGS,
+    ** It is safe to fall through into MR_INLINE_ASM_FIXUP_REGS,
     ** but it might be more efficient to branch past it.
     ** We should really measure both ways and find out which is
     ** better... for the moment, we just fall through, since
     ** that keeps the code smaller.
     */
     #if 0
-      #define ASM_FALLTHROUGH(label) \
-  	goto skip(label);
+      #define MR_ASM_FALLTHROUGH(label) \
+  	goto MR_skip(label);
     #endif
 
   #endif /* PIC */
@@ -325,8 +325,8 @@
   ** Hence the `.type' directive below.
   */
   #ifndef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
-    #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
-	"	.type _entry_" stringify(label) ",#function\n"
+    #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+	"	.type _entry_" MR_stringify(label) ",#function\n"
   #endif
 
 #endif
@@ -334,67 +334,65 @@
 /* for other architectures, these macros have default definitions */
 
 /*
-** INLINE_ASM_FIXUP_REGS is used to fix up the value of
-** any registers after an ASM_JUMP to an entry point, if necessary.
+** MR_INLINE_ASM_FIXUP_REGS is used to fix up the value of
+** any registers after an MR_ASM_JUMP to an entry point, if necessary.
 ** It is an assembler string, possibly followed by `: : : <clobbers>'
 ** where <clobbers> is an indication to gcc of what gets clobbered.
 */
-#ifdef INLINE_ASM_FIXUP_REGS
-  #define ASM_FIXUP_REGS				\
+#ifdef MR_INLINE_ASM_FIXUP_REGS
+  #define MR_ASM_FIXUP_REGS				\
 	__asm__ __volatile__(				\
-		INLINE_ASM_FIXUP_REGS			\
+		MR_INLINE_ASM_FIXUP_REGS		\
 	);
-  #define NEED_ASM_FIXUP_REGS
 #else
-  #define ASM_FIXUP_REGS
-  #define INLINE_ASM_FIXUP_REGS
-  #undef  NEED_ASM_FIXUP_REGS
+  #define MR_ASM_FIXUP_REGS
+  #define MR_INLINE_ASM_FIXUP_REGS
 #endif
 
 /*
-** ASM_FALLTHROUGH is executed when falling through into an entry point.
-** It may call `goto skip(label)' if it wishes to skip past the
-** label and the INLINE_ASM_FIXUP_REGS code.
+** MR_ASM_FALLTHROUGH is executed when falling through into an entry point.
+** It may call `goto MR_skip(label)' if it wishes to skip past the
+** label and the MR_INLINE_ASM_FIXUP_REGS code.
 */
-#ifndef ASM_FALLTHROUGH
-#define ASM_FALLTHROUGH(label)
+#ifndef MR_ASM_FALLTHROUGH
+#define MR_ASM_FALLTHROUGH(label)
 #endif
 
 /*
-** INLINE_ASM_GLOBALIZE_LABEL is an assembler string to
+** MR_INLINE_ASM_GLOBALIZE_LABEL is an assembler string to
 ** declare an entry label as global.  The following definition
 ** using `.globl' should work with the GNU assembler and
 ** with most Unix assemblers.
 */
-#ifndef INLINE_ASM_GLOBALIZE_LABEL
-#define INLINE_ASM_GLOBALIZE_LABEL(label) \
-	"	.globl _entry_" stringify(label) "\n"
+#ifndef MR_INLINE_ASM_GLOBALIZE_LABEL
+#define MR_INLINE_ASM_GLOBALIZE_LABEL(label) \
+	"	.globl _entry_" MR_stringify(label) "\n"
 #endif
 
 /*
-** INLINE_ASM_ENTRY_LABEL_TYPE is an assembler string to
+** MR_INLINE_ASM_ENTRY_LABEL_TYPE is an assembler string to
 ** declare the "type" of a label as function (i.e. code), not data,
 ** if this is needed.
 */
-#ifndef INLINE_ASM_ENTRY_LABEL_TYPE
-#define INLINE_ASM_ENTRY_LABEL_TYPE(label)
+#ifndef MR_INLINE_ASM_ENTRY_LABEL_TYPE
+#define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)
 #endif
 
 /*
-** INLINE_ASM_ENTRY_LABEL is an assembler string to
+** MR_INLINE_ASM_ENTRY_LABEL is an assembler string to
 ** define an assembler entry label.
 */
-#ifndef INLINE_ASM_ENTRY_LABEL
-#define INLINE_ASM_ENTRY_LABEL(label)	\
-	"_entry_" stringify(label) ":\n"
+#ifndef MR_INLINE_ASM_ENTRY_LABEL
+#define MR_INLINE_ASM_ENTRY_LABEL(label)	\
+	"_entry_" MR_stringify(label) ":\n"
 #endif
 
 /*
-** ASM_JUMP is used to jump to an entry point defined with
-** ASM_ENTRY, ASM_STATIC_ENTRY, or ASM_LOCAL_ENTRY.
+** MR_ASM_JUMP is used to jump to an entry point defined with
+** MR_ASM_ENTRY, MR_ASM_STATIC_ENTRY, or MR_ASM_LOCAL_ENTRY.
 */
-#ifndef ASM_JUMP
-#define ASM_JUMP(address)	goto *(address)
+#ifndef MR_ASM_JUMP
+#define MR_ASM_JUMP(address)	goto *(address)
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -404,52 +402,52 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** ASM_ENTRY is used to declare an external entry point
+** MR_ASM_ENTRY is used to declare an external entry point
 ** using a (global) assembler label.
 */
-#define ASM_ENTRY(label) 				\
-	ASM_FALLTHROUGH(label)				\
-  	entry(label):					\
+#define MR_ASM_ENTRY(label) 				\
+	MR_ASM_FALLTHROUGH(label)			\
+  	MR_entry(label):				\
 	__asm__ __volatile__(				\
-		INLINE_ASM_GLOBALIZE_LABEL(label)	\
-		INLINE_ASM_ENTRY_LABEL_TYPE(label)	\
-		INLINE_ASM_ENTRY_LABEL(label)		\
-		INLINE_ASM_FIXUP_REGS			\
+		MR_INLINE_ASM_GLOBALIZE_LABEL(label)	\
+		MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)	\
+		MR_INLINE_ASM_ENTRY_LABEL(label)	\
+		MR_INLINE_ASM_FIXUP_REGS		\
 	);						\
-	skip(label): ;
+	MR_skip(label): ;
 
 /*
-** ASM_STATIC_ENTRY is the same as ASM_ENTRY,
+** MR_ASM_STATIC_ENTRY is the same as MR_ASM_ENTRY,
 ** except that its scope is local to a C file, rather than global.
-** Note that even static entry points must do INLINE_ASM_FIXUP_REGS,
+** Note that even static entry points must do MR_INLINE_ASM_FIXUP_REGS,
 ** since although there won't be any direct calls to them from another
 ** C file, their address may be taken and so there may be indirect
 ** calls.
 */
-#define ASM_STATIC_ENTRY(label) 			\
-	ASM_FALLTHROUGH(label)				\
-  	entry(label):					\
+#define MR_ASM_STATIC_ENTRY(label) 			\
+	MR_ASM_FALLTHROUGH(label)			\
+  	MR_entry(label):				\
 	__asm__ __volatile__(				\
-		INLINE_ASM_ENTRY_LABEL_TYPE(label)	\
-		INLINE_ASM_ENTRY_LABEL(label)		\
-		INLINE_ASM_FIXUP_REGS			\
+		MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)	\
+		MR_INLINE_ASM_ENTRY_LABEL(label)	\
+		MR_INLINE_ASM_FIXUP_REGS		\
 	);						\
-	skip(label): ;
+	MR_skip(label): ;
 
 /*
-** ASM_LOCAL_ENTRY is the same as ASM_ENTRY,
-** except that its scope is local to a BEGIN_MODULE...END_MODULE
+** MR_ASM_LOCAL_ENTRY is the same as MR_ASM_ENTRY,
+** except that its scope is local to a MR_BEGIN_MODULE...MR_END_MODULE
 ** block, rather than being global.
-** Note that even local entry points must do INLINE_ASM_FIXUP_REGS, since
+** Note that even local entry points must do MR_INLINE_ASM_FIXUP_REGS, since
 ** although there won't be any direct calls to them from another
 ** C file, their address may be taken and so there may be indirect
 ** calls.
 */
-#define ASM_LOCAL_ENTRY(label) 				\
-	ASM_FALLTHROUGH(label)				\
-  	entry(label):					\
-  	ASM_FIXUP_REGS					\
-	skip(label): ;
+#define MR_ASM_LOCAL_ENTRY(label) 			\
+	MR_ASM_FALLTHROUGH(label)			\
+  	MR_entry(label):				\
+  	MR_ASM_FIXUP_REGS				\
+	MR_skip(label): ;
 
 /*---------------------------------------------------------------------------*/
 
@@ -460,7 +458,7 @@
   #endif
 
   /* Define the type of a module initialization function */
-  typedef void ModuleFunc(void);
+  typedef void MR_ModuleFunc(void);
 
   /* The following macro expands to a dummy assembler statement which
   ** contains no code, but which tells gcc that it uses the specified
@@ -470,7 +468,7 @@
   ** address' to suppress optimization, but this way is better because
   ** it doesn't generate any code.)
   */
-  #define PRETEND_ADDRESS_IS_USED(address)		\
+  #define MR_PRETEND_ADDRESS_IS_USED(address)		\
 	__asm__ __volatile__("" : : "g"(address))
   /*
   Explanation:
@@ -493,153 +491,159 @@
   ** analysis for delay slot scheduling may think that global
   ** register variables which are only assigned to in the function
   ** cannot be live, when in fact they really are).
-  ** That is what the two occurrences of the PRETEND_ADDRESS_IS_USED
+  ** That is what the two occurrences of the MR_PRETEND_ADDRESS_IS_USED
   ** macro are for.
   ** For versions of gcc later than egcs 1.1.2 (which corresponds to gcc 2.91,
   ** according to __GNUC_MINOR__), and in particular for gcc 2.95,
   ** we also need to include at least one `goto *' with an unknown
   ** target, so that gcc doesn't optimize away all the labels
   ** because it thinks they are unreachable.
-  ** The dummy_identify_function() function just returns the address
-  ** passed to it, so `goto *dummy_identify_function(&& dummy_label); dummy_label:'
-  ** is the same as `goto dummy_label; label:', i.e. it just falls through.
-  ** For older versions of gcc, we don't do this, since it adds significantly
-  ** to the code size.
+  ** The MR_dummy_identify_function() function just returns the address
+  ** passed to it, so `goto *MR_dummy_identify_function(&& dummy_label);
+  ** dummy_label:' is the same as `goto dummy_label; label:', i.e. it just
+  ** falls through. For older versions of gcc, we don't do this, since it
+  ** adds significantly to the code size.
   */
   #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 91)
     /* gcc version > egcs 1.1.2 */
-    #define BEGIN_MODULE(module_name)					\
+    #define MR_BEGIN_MODULE(module_name)				\
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void);		\
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void) {		\
-		PRETEND_ADDRESS_IS_USED(module_name);			\
-		PRETEND_ADDRESS_IS_USED(&&paste(module_name,_dummy_label)); \
-		goto *dummy_identify_function(				\
-			&&paste(module_name,_dummy_label));		\
-		paste(module_name,_dummy_label):			\
+		MR_PRETEND_ADDRESS_IS_USED(module_name);		\
+		MR_PRETEND_ADDRESS_IS_USED(				\
+			&&MR_paste(module_name,_dummy_label));		\
+		goto *MR_dummy_identify_function(			\
+			&&MR_paste(module_name,_dummy_label));		\
+		MR_paste(module_name,_dummy_label):			\
 		{
   #else /* gcc version <= egcs 1.1.2 */
-    #define BEGIN_MODULE(module_name)					\
+    #define MR_BEGIN_MODULE(module_name)				\
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void);		\
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void) {		\
-		PRETEND_ADDRESS_IS_USED(module_name);			\
-		PRETEND_ADDRESS_IS_USED(&&paste(module_name,_dummy_label)); \
-		paste(module_name,_dummy_label):			\
+		MR_PRETEND_ADDRESS_IS_USED(module_name);		\
+		MR_PRETEND_ADDRESS_IS_USED(				\
+			&&MR_paste(module_name,_dummy_label));		\
+		MR_paste(module_name,_dummy_label):			\
 		{
   #endif /* gcc version <= egcs 1.1.2 */
-  /* initialization code for module goes between BEGIN_MODULE and BEGIN_CODE */
-  #define BEGIN_CODE } return; {
-  /* body of module goes between BEGIN_CODE and END_MODULE */
-  #define END_MODULE } }
+  /* initialization code for module goes between MR_BEGIN_MODULE */
+  /* and MR_BEGIN_CODE */
+  #define MR_BEGIN_CODE } return; {
+  /* body of module goes between MR_BEGIN_CODE and MR_END_MODULE */
+  #define MR_END_MODULE } }
 
 
   #if defined(USE_ASM_LABELS)
-    #define Declare_entry(label)	\
-	extern void label(void) __asm__("_entry_" stringify(label))
-    #define Declare_static(label)	\
-	static void label(void) __asm__("_entry_" stringify(label))
-    #define Define_extern_entry(label)	Declare_entry(label)
-    #define Define_entry(label)		\
-		ASM_ENTRY(label)	\
-	}				\
-	label:				\
-	PRETEND_ADDRESS_IS_USED(&&entry(label));	\
+    #define MR_declare_entry(label)		\
+	extern void label(void) __asm__("_entry_" MR_stringify(label))
+    #define MR_declare_static(label)		\
+	static void label(void) __asm__("_entry_" MR_stringify(label))
+    #define MR_define_extern_entry(label)	MR_declare_entry(label)
+    #define MR_define_entry(label)		\
+		MR_ASM_ENTRY(label)		\
+	}					\
+	label:					\
+	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));	\
 	{
-    #define Define_static(label)	\
-		ASM_STATIC_ENTRY(label) \
-	}				\
-	label:				\
-	PRETEND_ADDRESS_IS_USED(&&entry(label));	\
+    #define MR_define_static(label)		\
+		MR_ASM_STATIC_ENTRY(label) 	\
+	}					\
+	label:					\
+	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));	\
 	{
     /*
-    ** The PRETEND_ADDRESS_IS_USED macro is necessary to 
+    ** The MR_PRETEND_ADDRESS_IS_USED macro is necessary to 
     ** prevent an over-zealous gcc from optimizing away `label'
     ** and the code that followed. 
     */
-    #define init_entry(label)	\
-	PRETEND_ADDRESS_IS_USED(&&label); \
-	make_entry(stringify(label), label, label)
-    #define init_entry_ai(label)	\
-	PRETEND_ADDRESS_IS_USED(&&label); \
-	make_entry_ai(stringify(label), label, label)
-    #define init_entry_sl(label)	\
-	PRETEND_ADDRESS_IS_USED(&&label); \
-	make_entry_sl(stringify(label), label, label)
+    #define MR_init_entry(label)	\
+	MR_PRETEND_ADDRESS_IS_USED(&&label); \
+	MR_make_entry(MR_stringify(label), label, label)
+    #define MR_init_entry_ai(label)	\
+	MR_PRETEND_ADDRESS_IS_USED(&&label); \
+	MR_make_entry_ai(MR_stringify(label), label, label)
+    #define MR_init_entry_sl(label)	\
+	MR_PRETEND_ADDRESS_IS_USED(&&label); \
+	MR_make_entry_sl(MR_stringify(label), label, label)
 
-    #define ENTRY(label) 	(&label)
-    #define STATIC(label) 	(&label)
+    #define MR_ENTRY(label) 		(&label)
+    #define MR_STATIC(label) 		(&label)
 
-    #ifndef JUMP
-    #define JUMP(label)		ASM_JUMP(label)
+    #ifndef MR_JUMP
+    #define MR_JUMP(label)		MR_ASM_JUMP(label)
     #endif
 
   #else
     /* !defined(USE_ASM_LABELS) */
 
-    #define Declare_entry(label)	extern MR_Code * entry(label)
-    #define Declare_static(label)	static MR_Code * entry(label)
-    #define Define_extern_entry(label)	MR_Code * entry(label)
-    #define Define_entry(label)	\
+    #define MR_declare_entry(label)	extern MR_Code * MR_entry(label)
+    #define MR_declare_static(label)	static MR_Code * MR_entry(label)
+    #define MR_define_extern_entry(label) MR_Code * MR_entry(label)
+    #define MR_define_entry(label)	\
 	}	\
-	entry(label): \
+	MR_entry(label): \
 	label:	\
 	{
-    #define Define_static(label)	\
+    #define MR_define_static(label)	\
 	}	\
-	entry(label): \
+	MR_entry(label): \
 	label:	\
 	{
-    #define init_entry(label)	\
-	make_entry(stringify(label), &&label, label);	\
-	entry(label) = &&label
-    #define init_entry_ai(label)	\
-	make_entry_ai(stringify(label), &&label, label);	\
-	entry(label) = &&label
-    #define init_entry_sl(label)	\
-	make_entry_sl(stringify(label), &&label, label);	\
-	entry(label) = &&label
-    #define ENTRY(label) 	(entry(label))
-    #define STATIC(label) 	(entry(label))
+    #define MR_init_entry(label)	\
+	MR_make_entry(MR_stringify(label), &&label, label);	\
+	MR_entry(label) = &&label
+    #define MR_init_entry_ai(label)	\
+	MR_make_entry_ai(MR_stringify(label), &&label, label);	\
+	MR_entry(label) = &&label
+    #define MR_init_entry_sl(label)	\
+	MR_make_entry_sl(MR_stringify(label), &&label, label);	\
+	MR_entry(label) = &&label
+    #define MR_ENTRY(label) 		(MR_entry(label))
+    #define MR_STATIC(label) 		(MR_entry(label))
 
-    #ifndef JUMP
-    #define JUMP(label)		goto *(label)
+    #ifndef MR_JUMP
+    #define MR_JUMP(label)		goto *(label)
     #endif
 
   #endif /* !defined(USE_ASM_LABELS) */
 
-  #define Declare_local(label)	/* no declaration required */
-  #define Define_local(label)	\
-  		ASM_LOCAL_ENTRY(label)	\
+  #define MR_declare_local(label)	/* no declaration required */
+  #define MR_define_local(label)	\
+  		MR_ASM_LOCAL_ENTRY(label)	\
 	}	\
 	label:	\
 	{
-  #define init_local(label)	\
-  	make_local(stringify(label), &&entry(label), label)
-  #define init_local_ai(label)	\
-  	make_local_ai(stringify(label), &&entry(label), label)
-  #define init_local_sl(label)	\
-  	make_local_sl(stringify(label), &&entry(label), label)
-  #define Define_label(label)	Define_local(label)
-  #define Declare_label(label)	/* no declaration required */
-  #define init_label(label)	\
-	make_label(stringify(label), &&entry(label), label)
-  #define init_label_ai(label)	\
-	make_label_ai(stringify(label), &&entry(label), label)
-  #define init_label_sl(label)	\
-	make_label_sl(stringify(label), &&entry(label), label)
+  #define MR_init_local(label)	\
+  	MR_make_local(MR_stringify(label), &&MR_entry(label), label)
+  #define MR_init_local_ai(label)	\
+  	MR_make_local_ai(MR_stringify(label), &&MR_entry(label), label)
+  #define MR_init_local_sl(label)	\
+  	MR_make_local_sl(MR_stringify(label), &&MR_entry(label), label)
+  #define MR_define_label(label)	MR_define_local(label)
+  #define MR_declare_label(label)	/* no declaration required */
+  #define MR_init_label(label)	\
+	MR_make_label(MR_stringify(label), &&MR_entry(label), label)
+  #define MR_init_label_ai(label)	\
+	MR_make_label_ai(MR_stringify(label), &&MR_entry(label), label)
+  #define MR_init_label_sl(label)	\
+	MR_make_label_sl(MR_stringify(label), &&MR_entry(label), label)
 
-  #define LOCAL(label)		(&&entry(label))
-  #define LABEL(label)		(&&entry(label))
-  #define GOTO(label)		do { debuggoto(label); JUMP(label); } while(0)
-  #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
-  #define GOTO_STATIC(label) 	GOTO(STATIC(label))
-  #define GOTO_LOCAL(label) 	GOTO_LABEL(label)
-  #define GOTO_LABEL(label) 	do {					\
-  					debuggoto(LABEL(label));	\
+  #define MR_LOCAL(label)	(&&MR_entry(label))
+  #define MR_LABEL(label)	(&&MR_entry(label))
+  #define MR_GOTO(label)	do {					\
+	  				MR_debuggoto(label);		\
+					MR_JUMP(label);			\
+  				} while(0)
+  #define MR_GOTO_ENTRY(label) 	MR_GOTO(MR_ENTRY(label))
+  #define MR_GOTO_STATIC(label)	MR_GOTO(MR_STATIC(label))
+  #define MR_GOTO_LOCAL(label) 	MR_GOTO_LABEL(label)
+  #define MR_GOTO_LABEL(label) 	do {					\
+  					MR_debuggoto(MR_LABEL(label));	\
 					goto label;			\
 				} while(0)
 
   /*
-  ** GOTO_LABEL(label) is the same as GOTO(LABEL(label)) except
+  ** MR_GOTO_LABEL(label) is the same as MR_GOTO(MR_LABEL(label)) except
   ** that it may allow gcc to generate slightly better code
   */
 
@@ -647,71 +651,81 @@
   /* !defined(USE_GCC_NONLOCAL_GOTOS) */
 
   /* Define the type of a module initialization function */
-  typedef MR_Code * ModuleFunc(void);
+  typedef MR_Code * MR_ModuleFunc(void);
 
-  #define BEGIN_MODULE(module_name)	\
+  #define MR_BEGIN_MODULE(module_name)	\
 	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void); \
 	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void) {
-  #define BEGIN_CODE			return 0;
-  #define END_MODULE			}
+  #define MR_BEGIN_CODE			return 0;
+  #define MR_END_MODULE			}
 
-  #define Declare_entry(label)		extern MR_Code *label(void)
-  #define Declare_static(label)		static MR_Code *label(void)
-  #define Define_extern_entry(label)	MR_Code *label(void)
-  #define Define_entry(label)		\
-		GOTO_LABEL(label);	\
-	}				\
+  #define MR_declare_entry(label)		extern MR_Code *label(void)
+  #define MR_declare_static(label)		static MR_Code *label(void)
+  #define MR_define_extern_entry(label)		MR_Code *label(void)
+  #define MR_define_entry(label)		\
+		MR_GOTO_LABEL(label);		\
+	}					\
 	MR_Code* label(void) {
-  #define Define_static(label)		\
-		GOTO_LABEL(label);	\
+  #define MR_define_static(label)		\
+		MR_GOTO_LABEL(label);		\
+	}					\
+	static MR_Code* label(void) {
+  #define MR_init_entry(label)		MR_make_entry(MR_stringify(label),    \
+		  				label, label)
+  #define MR_init_entry_ai(label)	MR_make_entry_ai(MR_stringify(label), \
+		  				label, label)
+  #define MR_init_entry_sl(label)	MR_make_entry_sl(MR_stringify(label), \
+		  				label, label)
+
+  #define MR_declare_local(label)	static MR_Code *label(void)
+  #define MR_define_local(label)	\
+		MR_GOTO_LABEL(label);	\
 	}				\
 	static MR_Code* label(void) {
-  #define init_entry(label)	make_entry(stringify(label), label, label)
-  #define init_entry_ai(label)	make_entry_ai(stringify(label), label, label)
-  #define init_entry_sl(label)	make_entry_sl(stringify(label), label, label)
+  #define MR_init_local(label)		MR_make_local(MR_stringify(label),    \
+		  				label, label)
+  #define MR_init_local_ai(label)	MR_make_local_ai(MR_stringify(label), \
+		  				label, label)
+  #define MR_init_local_sl(label)	MR_make_local_sl(MR_stringify(label), \
+		  				label, label)
 
-  #define Declare_local(label)	static MR_Code *label(void)
-  #define Define_local(label)		\
-		GOTO_LABEL(label);	\
+  #define MR_declare_label(label)	static MR_Code *label(void)
+  #define MR_define_label(label)	\
+		MR_GOTO_LABEL(label);	\
 	}				\
 	static MR_Code* label(void) {
-  #define init_local(label)	make_local(stringify(label), label, label)
-  #define init_local_ai(label)	make_local_ai(stringify(label), label, label)
-  #define init_local_sl(label)	make_local_sl(stringify(label), label, label)
+  #define MR_init_label(label)		MR_make_label(MR_stringify(label),    \
+		  				label, label)
+  #define MR_init_label_ai(label)	MR_make_label_ai(MR_stringify(label), \
+		  				label, label)
+  #define MR_init_label_sl(label)	MR_make_label_sl(MR_stringify(label), \
+		  				label, label)
 
-  #define Declare_label(label)	static MR_Code *label(void)
-  #define Define_label(label)		\
-		GOTO_LABEL(label);	\
-	}				\
-	static MR_Code* label(void) {
-  #define init_label(label)	make_label(stringify(label), label, label)
-  #define init_label_ai(label)	make_label_ai(stringify(label), label, label)
-  #define init_label_sl(label)	make_label_sl(stringify(label), label, label)
-
-  #define ENTRY(label) 		((MR_Code *) (label))
-  #define STATIC(label) 	((MR_Code *) (label))
-  #define LOCAL(label)		((MR_Code *) (label))
-  #define LABEL(label)		((MR_Code *) (label))
+  #define MR_ENTRY(label) 	((MR_Code *) (label))
+  #define MR_STATIC(label) 	((MR_Code *) (label))
+  #define MR_LOCAL(label)	((MR_Code *) (label))
+  #define MR_LABEL(label)	((MR_Code *) (label))
   /*
-  ** The call to debuggoto() is in the driver function in mercury_engine.c,
-  ** which is why the following definitions have no debuggoto().
+  ** The call to MR_debuggoto() is in the driver function in mercury_engine.c,
+  ** which is why the following definitions have no MR_debuggoto().
   */
-  #define GOTO(label)		return (label)
-  #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
-  #define GOTO_STATIC(label) 	GOTO(STATIC(label))
-  #define GOTO_LOCAL(label) 	GOTO(LOCAL(label))
-  #define GOTO_LABEL(label) 	GOTO(LABEL(label))
+  #define MR_GOTO(label)	return (label)
+  #define MR_GOTO_ENTRY(label) 	MR_GOTO(MR_ENTRY(label))
+  #define MR_GOTO_STATIC(label) MR_GOTO(MR_STATIC(label))
+  #define MR_GOTO_LOCAL(label) 	MR_GOTO(MR_LOCAL(label))
+  #define MR_GOTO_LABEL(label) 	MR_GOTO(MR_LABEL(label))
 
 #endif /* !defined(USE_GCC_NONLOCAL_GOTOS) */
 
 /* definitions for computed gotos */
 
-#define COMPUTED_GOTO(val, labels) 			\
-	{ static MR_Code *jump_table[] = {			\
-		labels					\
-	  };						\
-	  GOTO(jump_table[val]);			\
+#define MR_COMPUTED_GOTO(val, labels) 			\
+	{						\
+		static MR_Code *jump_table[] = {	\
+			labels				\
+		};					\
+	  	MR_GOTO(jump_table[val]);		\
 	}
-#define AND ,	/* used to separate the labels */
+#define MR_AND ,	/* used to separate the labels */
 
 #endif /* not MERCURY_GOTO_H */

@@ -107,7 +107,7 @@ MR_print_gen_stack_entry(FILE *fp, MR_Integer i)
 void
 MR_commit_mark(void)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	MR_cut_stack[MR_cut_next].frame = MR_maxfr;
 	MR_cut_stack[MR_cut_next].gen_next = MR_gen_next;
@@ -120,7 +120,7 @@ MR_commit_mark(void)
 	}
 #endif
 
-	save_transient_registers();
+	MR_save_transient_registers();
 }
 
 void
@@ -148,7 +148,7 @@ MR_commit_cut(void)
 					(long) MR_cut_next,
 					(long) MR_cut_stack[MR_cut_next].
 						gen_next);
-				fatal_error("GEN_NEXT ASSERTION FAILURE");
+				MR_fatal_error("GEN_NEXT ASSERTION FAILURE");
 			}
 		}
 	}

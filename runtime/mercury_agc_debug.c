@@ -18,7 +18,7 @@
 /*
 ** Function prototypes.
 */
-static	void	dump_long_value(MR_Long_Lval locn, MemoryZone *heap_zone,
+static	void	dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 			MR_Word * stack_pointer, MR_Word *current_frame,
 			bool do_regs);
 static	void	dump_short_value(MR_Short_Lval locn, MemoryZone *heap_zone,
@@ -35,7 +35,7 @@ void
 MR_agc_dump_roots(MR_RootList roots)
 {
 #ifdef NATIVE_GC
-	MR_Word	saved_regs[MAX_FAKE_REG];
+	MR_Word	saved_regs[MR_MAX_FAKE_REG];
 
 	fflush(NULL);
 	fprintf(stderr, "Dumping roots\n");
@@ -50,8 +50,8 @@ MR_agc_dump_roots(MR_RootList roots)
 		** call Mercury soon, and we don't want it messing with
 		** the saved registers).
 		*/
-		restore_registers();
-		MR_copy_regs_to_saved_regs(MAX_FAKE_REG, saved_regs);
+		MR_restore_registers();
+		MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG, saved_regs);
 
 		MR_hp = MR_ENGINE(debug_heap_zone->min);
 		MR_virtual_hp = MR_ENGINE(debug_heap_zone->min);
@@ -61,8 +61,8 @@ MR_agc_dump_roots(MR_RootList roots)
 		fflush(NULL);
 		fprintf(stderr, "\n");
 
-		MR_copy_saved_regs_to_regs(MAX_FAKE_REG, saved_regs);
-		save_registers();
+		MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG, saved_regs);
+		MR_save_registers();
 		roots = roots->next;
 	}
   #endif /* MR_DEBUG_AGC_PRINT_VARS */
@@ -160,11 +160,11 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 }
 
 void
-MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
+MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame)
 {
 #ifdef NATIVE_GC
-	MR_Word saved_regs[MAX_FAKE_REG];
+	MR_Word saved_regs[MR_MAX_FAKE_REG];
 	int i, short_var_count, long_var_count;
 	const MR_Stack_Layout_Vars *vars;
 	MR_Word *type_params, type_info, value;
@@ -206,7 +206,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 			type = MR_LONG_LVAL_TYPE(location);
 			number = MR_LONG_LVAL_NUMBER(location);
 			if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
-				fatal_error("can only handle stackvars");
+				MR_fatal_error("can only handle stackvars");
 			}
 			                                
 			success_ip = (MR_Code *) 
@@ -236,7 +236,7 @@ dump_live_variables(const MR_Stack_Layout_Label *layout,
 	MR_TypeInfo type_info;
 	MR_Word value;
 	MR_TypeInfoParams type_params;
-        MR_Word saved_regs[MAX_FAKE_REG];
+        MR_Word saved_regs[MR_MAX_FAKE_REG];
         MR_Word *current_regs;
 
 	vars = &(layout->MR_sll_var_info);
@@ -250,7 +250,7 @@ dump_live_variables(const MR_Stack_Layout_Label *layout,
 	** not live yet for any call except the top one.
 	*/
 	restore_registers();
-	MR_copy_regs_to_saved_regs(MAX_FAKE_REG, saved_regs);
+	MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG, saved_regs);
 	if (top_frame) {
 		current_regs = saved_regs;
 	} else {
@@ -322,13 +322,13 @@ dump_live_variables(const MR_Stack_Layout_Label *layout,
 	}
 
 
-	MR_copy_saved_regs_to_regs(MAX_FAKE_REG, saved_regs);
+	MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG, saved_regs);
 	save_registers();
 	free(type_params);
 }
 
 static void
-dump_long_value(MR_Long_Lval locn, MemoryZone *heap_zone, 
+dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone, 
 	MR_Word *stack_pointer, MR_Word *current_frame, bool do_regs)
 {
 #ifdef NATIVE_GC
@@ -341,7 +341,7 @@ dump_long_value(MR_Long_Lval locn, MemoryZone *heap_zone,
 	switch (MR_LONG_LVAL_TYPE(locn)) {
 		case MR_LONG_LVAL_TYPE_R:
 			if (do_regs) {
-				value = virtual_reg(locn_num);
+				value = MR_virtual_reg(locn_num);
 				have_value = TRUE;
 				fprintf(stderr, "r%d\t", locn_num);
 			} else {

@@ -247,7 +247,7 @@ I wonder whether it is worth it?  Hmm, probably not.
 :- pragma c_code(new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
+	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
 	* (MR_Word *) Mutvar = Val;
 	S = S0;
 ").
@@ -273,7 +273,7 @@ I wonder whether it is worth it?  Hmm, probably not.
 :- pragma c_code(unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
+	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
 	S = S0;
 ").
 
@@ -287,7 +287,7 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 :- pragma c_code(new_ref(Val::di, Ref::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""store:ref/2"");
+	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""store:ref/2"");
 	* (MR_Word *) Ref = Val;
 	S = S0;
 ").
@@ -335,7 +335,7 @@ ref_functor(Ref, Functor, Arity) -->
 	type_info = (MR_TypeInfo) TypeInfo_for_T;
 	exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 
 	if (!ML_arg(type_info, (MR_Word *) Ref, ArgNum,
 			&arg_type_info, &arg_ref))
@@ -350,7 +350,7 @@ ref_functor(Ref, Functor, Arity) -->
 		MR_fatal_error(""store__arg_ref: argument has wrong type"");
 	}
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	ArgRef = (MR_Word) arg_ref;
 	S = S0;
@@ -367,7 +367,7 @@ ref_functor(Ref, Functor, Arity) -->
 	type_info = (MR_TypeInfo) TypeInfo_for_T;
 	exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 
 	if (!ML_arg(type_info, (MR_Word *) &Val, ArgNum,
 			&arg_type_info, &arg_ref))
@@ -383,7 +383,7 @@ ref_functor(Ref, Functor, Arity) -->
 			""store__new_arg_ref: argument has wrong type"");
 	}
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/*
 	** For no_tag types, the argument may have the same address as the
@@ -393,7 +393,7 @@ ref_functor(Ref, Functor, Arity) -->
 	*/
 
 	if (arg_ref == &Val) {
-		incr_hp_msg(ArgRef, 1, MR_PROC_LABEL, ""store:ref/2"");
+		MR_incr_hp_msg(ArgRef, 1, MR_PROC_LABEL, ""store:ref/2"");
 		* (MR_Word *) ArgRef = Val;
 	} else {
 		ArgRef = (MR_Word) arg_ref;

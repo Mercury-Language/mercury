@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997, 1999 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997, 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,17 +12,17 @@
 ** that gcc can't inline it. Similarly for the two pointers.
 */
 
-void	*volatile global_pointer;
-void	*volatile global_pointer_2;
+void	*volatile MR_global_pointer;
+void	*volatile MR_global_pointer_2;
 
 void
-dummy_function_call(void)
+MR_dummy_function_call(void)
 {
 	return;
 }
 
 void *
-dummy_identify_function(void *p)
+MR_dummy_identify_function(void *p)
 {
 	return p;
 }

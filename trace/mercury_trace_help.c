@@ -65,16 +65,16 @@ const char *
 MR_trace_add_item(const char *category, const char *item, int slot,
 	const char *text)
 {
-	MR_Word	path;
-	char	*category_on_heap;
-	const char *result;
+	MR_Word		path;
+	char		*category_on_heap;
+	const char 	*result;
 
 	MR_trace_help_ensure_init();
 
 	MR_TRACE_USE_HP(
 		MR_make_aligned_string_copy(category_on_heap, category);
 		path = MR_list_empty();
-		path = MR_list_cons(category_on_heap, path);
+		path = MR_list_cons((MR_Word) category_on_heap, path);
 	);
 
 	return MR_trace_help_add_node(path, item, slot, text);
@@ -150,8 +150,8 @@ MR_trace_help_cat_item(const char *category, const char *item)
 		MR_make_aligned_string_copy(category_on_heap, category);
 		MR_make_aligned_string_copy(item_on_heap, item);
 		path = MR_list_empty();
-		path = MR_list_cons(item_on_heap, path);
-		path = MR_list_cons(category_on_heap, path);
+		path = MR_list_cons((MR_Word) item_on_heap, path);
+		path = MR_list_cons((MR_Word) category_on_heap, path);
 	);
 
 	MR_TRACE_CALL_MERCURY(

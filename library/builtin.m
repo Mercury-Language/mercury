@@ -311,7 +311,7 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(ticket, 0, MR_TYPECTOR_REP_TICKET);
 /*
 INIT sys_init_builtin_types_module
 */
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc builtin_types_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc builtin_types_module;
 extern void mercury__private_builtin__init(void);
 
 void sys_init_builtin_types_module(void); /* suppress gcc warning */
@@ -381,14 +381,14 @@ void sys_init_builtin_types_module(void) {
 Using `pragma c_code' doesn't work, due to the lack of support for
 aliasing, and in particular the lack of support for `ui' modes.
 :- pragma c_code(copy(Value::ui, Copy::uo), "
-	save_transient_registers();
+	MR_save_transient_registers();
 	Copy = deep_copy(&Value, TypeInfo_for_T, NULL, NULL);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 ").
 :- pragma c_code(copy(Value::in, Copy::uo), "
-	save_transient_registers();
+	MR_save_transient_registers();
 	Copy = deep_copy(&Value, TypeInfo_for_T, NULL, NULL);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 ").
 *************/
 
@@ -430,44 +430,44 @@ void sys_init_copy_module(void)
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
-Define_extern_entry(mercury__copy_2_0);
-Define_extern_entry(mercury__copy_2_1);
+MR_define_extern_entry(mercury__copy_2_0);
+MR_define_extern_entry(mercury__copy_2_1);
 
-BEGIN_MODULE(copy_module)
-	init_entry(mercury__copy_2_0);
-	init_entry(mercury__copy_2_1);
-BEGIN_CODE
+MR_BEGIN_MODULE(copy_module)
+	MR_init_entry(mercury__copy_2_0);
+	MR_init_entry(mercury__copy_2_1);
+MR_BEGIN_CODE
 
 #ifdef PROFILE_CALLS
-  #define fallthru(target, caller) { tailcall((target), (caller)); }
+  #define fallthru(target, caller) { MR_tailcall((target), (caller)); }
 #else
   #define fallthru(target, caller)
 #endif
 
-Define_entry(mercury__copy_2_0);
-fallthru(ENTRY(mercury__copy_2_1), ENTRY(mercury__copy_2_0))
-Define_entry(mercury__copy_2_1);
+MR_define_entry(mercury__copy_2_0);
+fallthru(MR_ENTRY(mercury__copy_2_1), MR_ENTRY(mercury__copy_2_0))
+MR_define_entry(mercury__copy_2_1);
 {
 	MR_Word value, copy, type_info;
 
 	type_info = r1;
 	value = r2;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 	copy = deep_copy(&value, (MR_TypeInfo) type_info, NULL, NULL);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	r1 = copy;
-	proceed();
+	MR_proceed();
 }
-END_MODULE
+MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 
 /*
 INIT sys_init_copy_module
 */
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc copy_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc copy_module;
 void sys_init_copy_module(void);
 	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_copy_module(void) {
@@ -493,12 +493,16 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,
 	mercury____Unify___builtin__c_pointer_0_0,
 	mercury____Compare___builtin__c_pointer_0_0);
 
-BEGIN_MODULE(unify_c_pointer_module)
-	init_entry(mercury____Unify___builtin__c_pointer_0_0);
-	init_entry(mercury____Compare___builtin__c_pointer_0_0);
+MR_declare_entry(mercury____Unify___builtin__c_pointer_0_0);
+MR_declare_entry(mercury____Index___builtin__c_pointer_0_0);
+MR_declare_entry(mercury____Compare___builtin__c_pointer_0_0);
 
-BEGIN_CODE
-Define_entry(mercury____Unify___builtin__c_pointer_0_0);
+MR_BEGIN_MODULE(unify_c_pointer_module)
+	MR_init_entry(mercury____Unify___builtin__c_pointer_0_0);
+	MR_init_entry(mercury____Compare___builtin__c_pointer_0_0);
+
+MR_BEGIN_CODE
+MR_define_entry(mercury____Unify___builtin__c_pointer_0_0);
 	/*
 	** For c_pointer, we assume that equality and comparison
 	** can be based on object identity (i.e. using address comparisons).
@@ -507,15 +511,15 @@ Define_entry(mercury____Unify___builtin__c_pointer_0_0);
 	** However, it might not be correct in general...
 	*/
 	r1 = (r1 == r2);
-	proceed();
+	MR_proceed();
 
-Define_entry(mercury____Compare___builtin__c_pointer_0_0);
+MR_define_entry(mercury____Compare___builtin__c_pointer_0_0);
 	r1 = (r1 == r2 ? MR_COMPARE_EQUAL :
 			  r1 < r2 ? MR_COMPARE_LESS :
 			  MR_COMPARE_GREATER);
-	proceed();
+	MR_proceed();
 
-END_MODULE
+MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
@@ -523,7 +527,7 @@ INIT sys_init_unify_c_pointer_module
 */
 
 
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc unify_c_pointer_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc unify_c_pointer_module;
 void sys_init_unify_c_pointer_module(void);
 	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_unify_c_pointer_module(void) {

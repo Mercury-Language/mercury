@@ -195,7 +195,7 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 		}
 
 		if (MR_port_is_interface(port)) {
-			restore_transient_registers();
+			MR_restore_transient_registers();
 			base_sp = MR_sp;
 			base_curfr = MR_curfr;
 			parent = MR_find_nth_ancestor(layout, 1,

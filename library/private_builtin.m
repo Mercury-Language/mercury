@@ -347,13 +347,13 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, base_typeclass_info, 1,
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
 	MR_TYPECTOR_REP_TYPECLASSINFO);
 
-BEGIN_MODULE(type_info_module)
-	init_entry(mercury____Unify___private_builtin__type_info_1_0);
-	init_entry(mercury____Compare___private_builtin__type_info_1_0);
-	init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
-	init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
-BEGIN_CODE
-Define_entry(mercury____Unify___private_builtin__type_info_1_0);
+MR_BEGIN_MODULE(type_info_module)
+	MR_init_entry(mercury____Unify___private_builtin__type_info_1_0);
+	MR_init_entry(mercury____Compare___private_builtin__type_info_1_0);
+	MR_init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+	MR_init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+MR_BEGIN_CODE
+MR_define_entry(mercury____Unify___private_builtin__type_info_1_0);
 {
 	/*
 	** Unification for type_info.
@@ -363,14 +363,14 @@ Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 	*/
 	int	comp;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 	r1 = (comp == MR_COMPARE_EQUAL);
-	proceed();
+	MR_proceed();
 }
 
-Define_entry(mercury____Compare___private_builtin__type_info_1_0);
+MR_define_entry(mercury____Compare___private_builtin__type_info_1_0);
 {
 	/*
 	** Comparison for type_info:
@@ -380,29 +380,29 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	*/
 	int	comp;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 	r1 = comp;
-	proceed();
+	MR_proceed();
 }
 
-Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+MR_define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 {
 	MR_fatal_error(""attempt to unify typeclass_info"");
 }
 
-Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+MR_define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 {
 	MR_fatal_error(""attempt to compare typeclass_info"");
 }
-END_MODULE
+MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
 INIT sys_init_type_info_module
 */
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc type_info_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc type_info_module;
 void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_type_info_module(void) {
 	type_info_module();

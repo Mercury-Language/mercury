@@ -878,7 +878,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 		&mercury_data___type_ctor_info_float_0);
 #else
 	MR_TABLE_SAVE_ANSWER(table, Offset,
-		float_to_word(F),
+		MR_float_to_word(F),
 		&mercury_data___type_ctor_info_float_0);
 #endif
 ").
@@ -923,7 +923,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 #ifdef MR_HIGHLEVEL_CODE
 	F = MR_unbox_float(MR_TABLE_GET_ANSWER(table, Offset));
 #else
-	F = word_to_float(MR_TABLE_GET_ANSWER(table, Offset));
+	F = MR_word_to_float(MR_TABLE_GET_ANSWER(table, Offset));
 #endif
 ").
 

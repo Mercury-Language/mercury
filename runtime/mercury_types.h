@@ -99,10 +99,10 @@ typedef void (*MR_Cont) (void *);	/* for --no-gcc-nested-functions */
 #ifndef MR_HIGHLEVEL_CODE
   /*
   ** semidet predicates indicate success or failure by leaving nonzero or zero
-  ** respectively in register r1
+  ** respectively in register MR_r1
   ** (should this #define go in some other header file?)
   */
-  #define SUCCESS_INDICATOR r1
+  #define SUCCESS_INDICATOR MR_r1
 #endif
 
 /*

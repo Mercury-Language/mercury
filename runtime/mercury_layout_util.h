@@ -14,7 +14,7 @@
 
 /*
 ** These two functions copy the register state to and from the provided
-** saved_regs array, which should have room for MAX_FAKE_REG MR_Words.
+** saved_regs array, which should have room for MR_MAX_FAKE_REG MR_Words.
 */
 
 extern	void	MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs);
@@ -80,12 +80,14 @@ extern	int	MR_get_register_number_short(MR_Short_Lval locn);
 extern	MR_Word	MR_lookup_long_lval(MR_Long_Lval locn,
 			MR_Word *saved_regs, bool *succeeded);
 extern	MR_Word	MR_lookup_long_lval_base(MR_Long_Lval locn,
-			MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
+			MR_Word *saved_regs, MR_Word *base_sp,
+			MR_Word *base_curfr,
 			bool *succeeded);
 extern	MR_Word	MR_lookup_short_lval(MR_Short_Lval locn,
 			MR_Word *saved_regs, bool *succeeded);
 extern	MR_Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
-			MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
+			MR_Word *saved_regs, MR_Word *base_sp,
+			MR_Word *base_curfr,
 			bool *succeeded);
 
 /*
@@ -125,8 +127,9 @@ extern	bool	MR_get_type(const MR_Stack_Layout_Vars *vars, int var,
 			MR_Word *saved_regs, MR_TypeInfo *type_params,
 			MR_TypeInfo *type_info);
 extern	bool	MR_get_type_base(const MR_Stack_Layout_Vars *vars, int var,
-			MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
-			MR_TypeInfo *type_params, MR_TypeInfo *type_info);
+			MR_Word *saved_regs, MR_Word *base_sp,
+			MR_Word *base_curfr, MR_TypeInfo *type_params,
+			MR_TypeInfo *type_info);
 
 /*
 ** MR_write_variable:

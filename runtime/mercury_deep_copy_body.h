@@ -15,16 +15,20 @@
 /*
 ** Prototypes.
 */
-static  MR_Word        copy_arg(maybeconst MR_Word *parent_data_ptr,
-                        maybeconst MR_Word *data_ptr,
-                        const MR_DuFunctorDesc *functor_descriptor,
-                        const MR_TypeInfoParams type_params,
-                        const MR_PseudoTypeInfo arg_pseudotype_info,
-                        const MR_Word *lower_limit, const MR_Word *upper_limit);
-static  MR_TypeInfo copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
-                        const MR_Word *lower_limit, const MR_Word *upper_limit);
-static  MR_Word        copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
-                        const MR_Word *lower_limit, const MR_Word *upper_limit);
+
+static  MR_Word         copy_arg(maybeconst MR_Word *parent_data_ptr,
+                            maybeconst MR_Word *data_ptr,
+                            const MR_DuFunctorDesc *functor_descriptor,
+                            const MR_TypeInfoParams type_params,
+                            const MR_PseudoTypeInfo arg_pseudotype_info,
+                            const MR_Word *lower_limit,
+                            const MR_Word *upper_limit);
+static  MR_TypeInfo     copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
+                            const MR_Word *lower_limit,
+                            const MR_Word *upper_limit);
+static  MR_Word         copy_typeclass_info(maybeconst MR_Word
+                            *typeclass_info_ptr, const MR_Word *lower_limit,
+                            const MR_Word *upper_limit);
 
 MR_Word
 copy(maybeconst MR_Word *data_ptr, MR_TypeInfo type_info,
@@ -113,7 +117,7 @@ try_again:
 **                      cell_size += num_ti_plain + num_tci;
 **                  }
 **
-**                  incr_saved_hp(new_data, cell_size);
+**                  MR_incr_saved_hp(new_data, cell_size);
 **
 **                  if (ptag_layout->MR_sectag_locn == MR_SECTAG_NONE) {
 **                      cur_slot = 0;
@@ -241,12 +245,12 @@ try_again:
                     cell_size = 1 + arity;
                     if (exist_info != NULL) {
                         MR_DC_setup_exist_info
-                        incr_saved_hp(new_data, cell_size);
+                        MR_incr_saved_hp(new_data, cell_size);
                         MR_field(0, new_data, 0) = sectag;
                         cur_slot = 1;
                         MR_DC_copy_exist_info
                     } else {
-                        incr_saved_hp(new_data, cell_size);
+                        MR_incr_saved_hp(new_data, cell_size);
                         MR_field(0, new_data, 0) = sectag;
                         cur_slot = 1;
                     }
@@ -274,11 +278,11 @@ try_again:
                     cell_size = arity;
                     if (exist_info != NULL) {
                         MR_DC_setup_exist_info
-                        incr_saved_hp(new_data, cell_size);
+                        MR_incr_saved_hp(new_data, cell_size);
                         cur_slot = 0;
                         MR_DC_copy_exist_info
                     } else {
-                        incr_saved_hp(new_data, cell_size);
+                        MR_incr_saved_hp(new_data, cell_size);
                         cur_slot = 0;
                     }
                     MR_DC_copy_plain_args
@@ -348,9 +352,9 @@ try_again:
                 data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
                 if (in_range(data_value)) {
-                    restore_transient_hp();
-                    new_data = float_to_word(word_to_float(data));
-                    save_transient_hp();
+                    MR_restore_transient_hp();
+                    new_data = MR_float_to_word(MR_word_to_float(data));
+                    MR_save_transient_hp();
                     leave_forwarding_pointer(data_ptr, new_data);
                 } else {
                     new_data = data;
@@ -371,7 +375,7 @@ try_again:
             */
 
             if (in_range((MR_Word *) data)) {
-                incr_saved_hp_atomic(new_data,
+                MR_incr_saved_hp_atomic(new_data,
                     (strlen((MR_String) data) + sizeof(MR_Word)) / 
 		    	sizeof(MR_Word));
                 strcpy((MR_String) new_data, (MR_String) data);
@@ -412,7 +416,8 @@ try_again:
                 args = old_closure->MR_closure_num_hidden_args;
 
                 /* create new closure */
-                incr_saved_hp(LVALUE_CAST(MR_Word, new_closure), args + 3);
+                MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_closure),
+			args + 3);
 
                 /* copy the fixed fields */
                 new_closure->MR_closure_layout = closure_layout;
@@ -441,7 +446,7 @@ try_again:
                 new_data = (MR_Word) new_closure;
                 leave_forwarding_pointer(data_ptr, new_data);
 	    } else if (in_traverse_range(data_value)) {
-		fatal_error("sorry, unimplemented: traversal of closures");
+		MR_fatal_error("sorry, unimplemented: traversal of closures");
             } else {
                 new_data = data;
                 found_forwarding_pointer(data);
@@ -467,7 +472,7 @@ try_again:
                         new_data = (MR_Word) NULL;
                 } else {
                         /* allocate space for the new tuple */
-                        incr_saved_hp(new_data, arity);
+                        MR_incr_saved_hp(new_data, arity);
                         new_data_ptr = (MR_Word *) new_data;
 
                         arg_typeinfo_vector =
@@ -499,7 +504,7 @@ try_again:
                 MR_Word *new_data_ptr;
 
                 /* allocate space for a univ */
-                incr_saved_hp(new_data, 2);
+                MR_incr_saved_hp(new_data, 2);
                 new_data_ptr = (MR_Word *) new_data;
                 /*
                 ** Copy the fields across.
@@ -565,7 +570,7 @@ try_again:
                 leave_forwarding_pointer(data_ptr, new_data);
             } else if (in_traverse_range(data_value)) {
                 MR_ArrayType *old_array;
-                Integer array_size;
+                MR_Integer array_size;
 
                 old_array = (MR_ArrayType *) data_value;
                 array_size = old_array->size;
@@ -715,14 +720,14 @@ copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
             arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
             type_info_args =
                 MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info);
-            incr_saved_hp(LVALUE_CAST(MR_Word, new_type_info_arena),
+            MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_type_info_arena),
                 MR_higher_order_type_info_size(arity));
             MR_fill_in_higher_order_type_info(new_type_info_arena,
                 type_ctor_info, arity, new_type_info_args);
         } else {
             arity = type_ctor_info->arity;
             type_info_args = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
-            incr_saved_hp(LVALUE_CAST(MR_Word, new_type_info_arena),
+            MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_type_info_arena),
                 MR_first_order_type_info_size(arity));
             MR_fill_in_first_order_type_info(new_type_info_arena,
                 type_ctor_info, new_type_info_args);
@@ -769,7 +774,7 @@ copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
 		- num_instance_constraints;
         num_super = MR_typeclass_info_num_superclasses(typeclass_info);
         num_arg_typeinfos = MR_typeclass_info_num_type_infos(typeclass_info);
-        incr_saved_hp(LVALUE_CAST(MR_Word, new_typeclass_info),
+        MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_typeclass_info),
             num_instance_constraints + num_super + num_arg_typeinfos + 1);
 
         new_typeclass_info[0] = (MR_Word) base_typeclass_info;

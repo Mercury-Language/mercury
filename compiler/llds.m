@@ -895,7 +895,7 @@
 	;	code_addr_const(code_addr)
 	;	data_addr_const(data_addr)
 	;	label_entry(label).
-			% the address of the label (uses ENTRY macro).
+			% the address of the label (uses MR_ENTRY macro).
 
 :- type data_addr
 	--->	data_addr(module_name, data_name)

@@ -19,13 +19,16 @@
 /*
 ** Function prototypes.
 */
-static	void	garbage_collect(MR_Code *saved_success, MR_Word *stack_pointer,
+static	void	garbage_collect(MR_Code *saved_success,
+			MR_Word *stack_pointer,
 			MR_Word *max_frame, MR_Word *current_frame);
 static	void	garbage_collect_roots(void);
 static	void	copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
-		bool copy_regs, MR_Word *stack_pointer, MR_Word *current_frame);
+			bool copy_regs, MR_Word *stack_pointer,
+			MR_Word *current_frame);
 static	void	copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
-		bool copy_regs, MR_Word *stack_pointer, MR_Word *current_frame);
+			bool copy_regs, MR_Word *stack_pointer,
+			MR_Word *current_frame);
 
 /*
 ** Global variables (only used in this module, however).
@@ -158,7 +161,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 	if (MR_DETISM_DET_STACK(determinism)) {
 
 		if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
-			fatal_error("can only handle stackvars");
+			MR_fatal_error("can only handle stackvars");
 		}
 
 		/*
@@ -170,7 +173,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 	} else {
 		/*
 		** XXX we don't support nondet stack frames yet.
-		fatal_error("cannot schedule in nondet stack frame");
+		MR_fatal_error("cannot schedule in nondet stack frame");
 		*/
 
 		saved_success_location = &MR_based_framevar(curfr_at_signal,
@@ -210,15 +213,15 @@ Define_entry(mercury__garbage_collect_0_0);
         /* record that the collector is running */
 	gc_running = TRUE;
 
-	save_registers();
+	MR_save_registers();
 	garbage_collect(saved_success, MR_sp, MR_maxfr, MR_curfr);
-	restore_registers();
+	MR_restore_registers();
 	gc_scheduled = FALSE;
 	gc_running = FALSE;
 
 	MR_succip = saved_success;
-	proceed();
-	fatal_error("Unreachable code reached");
+	MR_proceed();
+	MR_fatal_error("Unreachable code reached");
 
 END_MODULE
 
@@ -239,16 +242,16 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     int                             i, count;
     const MR_Stack_Layout_Label     *internal_layout;
     const MR_Stack_Layout_Vars      *vars;
-    MemoryZone                      *old_heap, *new_heap;
+    MR_MemoryZone                   *old_heap, *new_heap;
     MR_TypeInfoParams               type_params;
     bool                            succeeded;
     bool                            top_frame = TRUE;
     MR_MemoryList                   allocated_memory_cells = NULL;
-    MR_Word                            *old_hp, *new_hp;
+    MR_Word                         *old_hp, *new_hp;
     MR_Stack_Layout_Entry           *entry_layout;
-    MR_Word                            *first_stack_pointer,
-    					*first_current_frame,
-    					*first_max_frame;
+    MR_Word                         *first_stack_pointer;
+    MR_Word                         *first_current_frame,
+    MR_Word                         *first_max_frame;
 
     old_heap = MR_ENGINE(heap_zone);
     new_heap = MR_ENGINE(heap_zone2);
@@ -275,7 +278,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     ** Swap the two heaps.
     */
     {
-        MemoryZone *tmp;
+        MR_MemoryZone *tmp;
 
         tmp = MR_ENGINE(heap_zone2);
         MR_ENGINE(heap_zone2) = MR_ENGINE(heap_zone);
@@ -402,7 +405,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
             (MR_Word **) &stack_pointer, &current_frame, &problem);
 
         if (result == STEP_ERROR_BEFORE || result == STEP_ERROR_AFTER) {
-            fatal_error(problem);
+            MR_fatal_error(problem);
         } 
 */
 
@@ -557,8 +560,8 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 ** 	Copies a value in a register or stack frame,
 ** 	replacing the original with the new copy.
 **
-** 	The copying is done using agc_deep_copy, which is
-** 	the accurate GC version of deep_copy (it leaves
+** 	The copying is done using MR_agc_deep_copy, which is
+** 	the accurate GC version of MR_deep_copy (it leaves
 ** 	forwarding pointers in the old copy of the data, if
 ** 	it is on the old heap).
 */
@@ -572,8 +575,8 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 	switch (MR_LONG_LVAL_TYPE(locn)) {
 		case MR_LONG_LVAL_TYPE_R:
 			if (copy_regs) {
-				virtual_reg(locn_num) = agc_deep_copy(
-					&virtual_reg(locn_num), type_info,
+				MR_virtual_reg(locn_num) = agc_deep_copy(
+					&MR_virtual_reg(locn_num), type_info,
 					MR_ENGINE(heap_zone2->min),
 					MR_ENGINE(heap_zone2->hardmax));
 			}
@@ -584,7 +587,7 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 
 		case MR_LONG_LVAL_TYPE_STACKVAR:
 			MR_based_stackvar(stack_pointer, locn_num) =
-				agc_deep_copy(&MR_based_stackvar(
+				MR_agc_deep_copy(&MR_based_stackvar(
 						stack_pointer,locn_num),
 					type_info, MR_ENGINE(heap_zone2->min),
 					MR_ENGINE(heap_zone2->hardmax));
@@ -592,7 +595,7 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 
 		case MR_LONG_LVAL_TYPE_FRAMEVAR:
 			MR_based_framevar(current_frame, locn_num) =
-				agc_deep_copy(
+				MR_agc_deep_copy(
 				&MR_based_framevar(current_frame, locn_num),
 				type_info,
 				MR_ENGINE(heap_zone2->min),
@@ -622,7 +625,7 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 			break;
 
 		default:
-			fatal_error("Unknown MR_Long_Lval_Type in copy_long_value");
+			MR_fatal_error("Unknown MR_Long_Lval_Type in copy_long_value");
 			break;
 	}
 }
@@ -682,7 +685,7 @@ garbage_collect_roots(void)
 	MR_RootList current = root_list;
 
 	while (current != NULL) {
-		*current->root = agc_deep_copy(current->root,
+		*current->root = MR_agc_deep_copy(current->root,
 			current->type_info, MR_ENGINE(heap_zone2->min), 
 			MR_ENGINE(heap_zone2->hardmax));
 		current = current->next;

@@ -40,7 +40,8 @@
 ** 	using `:- external'.
 */
 
-extern	void	MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
+extern	void	MR_dump_stack(MR_Code *success_pointer,
+			MR_Word *det_stack_pointer,
 			MR_Word *current_frame, bool include_trace_data);
 
 /*
@@ -57,7 +58,7 @@ extern	void	MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 */
 
 typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
-				const MR_Stack_Layout_Entry * proc_layout,
+				const MR_Stack_Layout_Entry *proc_layout,
 				int count, int level,
 				MR_Word *base_sp, MR_Word * base_curfr,
 				const char *filename, int linenumber,
@@ -65,7 +66,8 @@ typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
 
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				const MR_Stack_Layout_Label *label_layout,
-				MR_Word *det_stack_pointer, MR_Word *current_frame,
+				MR_Word *det_stack_pointer,
+				MR_Word *current_frame,
 				bool include_trace_data,
 				bool include_contexts,
 				MR_Print_Stack_Record print_stack_record);
@@ -77,7 +79,8 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 **	The value of maxfr should be in *base_maxfr.
 */
 
-extern	void	MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr);
+extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
+			MR_Word *base_maxfr);
 
 /*
 ** MR_find_nth_ancestor:

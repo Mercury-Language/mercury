@@ -69,7 +69,8 @@ extern	void		MR_do_init_label_tables(void);
   extern MR_Entry	*MR_prev_entry_by_addr(const MR_Code *addr);
 #endif	/* MR_NEED_ENTRY_LABEL_ARRAY */
 
-extern	void		MR_insert_internal_label(const char *name, MR_Code *addr,
+extern	void		MR_insert_internal_label(const char *name,
+				MR_Code *addr,
 				const MR_Stack_Layout_Label *label_layout);
 extern	MR_Internal	*MR_lookup_internal_by_addr(const MR_Code *addr);
 extern	void		MR_process_all_internal_labels(void f(const void *));

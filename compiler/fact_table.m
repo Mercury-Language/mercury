@@ -686,7 +686,7 @@ write_fact_table_struct([Info | Infos], I, Context, StructContents, Result) -->
 			StructContents1, Result),
 		{
 			IsOutput = yes,
-			string__format("\tFloat V_%d;\n", [i(I)], 
+			string__format("\tMR_Float V_%d;\n", [i(I)], 
 				StructContents0),
 			string__append(StructContents0, StructContents1, 
 				StructContents)
@@ -2527,18 +2527,18 @@ generate_multidet_code(PredName, PragmaVars, ProcID, ArgTypes,
 
 	ExtraCodeTemplate = "
 
-Define_extern_entry(%s);
-Declare_label(%s_i1);
+MR_define_extern_entry(%s);
+MR_declare_label(%s_i1);
 
-BEGIN_MODULE(%s_module)
-	init_entry(%s);
-	init_label(%s_i1);
-BEGIN_CODE
-Define_entry(%s);
-	MR_mkframe(""%s/%d"", 1, LABEL(%s_i1));
+MR_BEGIN_MODULE(%s_module)
+	MR_init_entry(%s);
+	MR_init_label(%s_i1);
+MR_BEGIN_CODE
+MR_define_entry(%s);
+	MR_mkframe(""%s/%d"", 1, MR_LABEL(%s_i1));
 	MR_framevar(1) = (MR_Integer) 0;
-	GOTO(LABEL(%s_i1));
-Define_label(%s_i1);
+	MR_GOTO(MR_LABEL(%s_i1));
+MR_define_label(%s_i1);
 	if (MR_framevar(1) >= %s) MR_fail();
 	{
 		/* declare argument vars */
@@ -2551,9 +2551,9 @@ Define_label(%s_i1);
 	}
 	MR_framevar(1)++;
 	MR_succeed();
-END_MODULE
+MR_END_MODULE
 
-extern ModuleFunc %s_module;
+extern MR_ModuleFunc %s_module;
 
 /*
 INIT sys_init_%s_module
@@ -2614,8 +2614,8 @@ generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 	MR_maxfr = MR_prevfr_slot(MR_curfr);
 	MR_curfr = MR_succfr_slot(MR_curfr);
 	{
-		Declare_entry(%s);
-		GOTO(ENTRY(%s));
+		MR_declare_entry(%s);
+		MR_GOTO(MR_ENTRY(%s));
 	}
 	",
 
@@ -3000,8 +3000,7 @@ generate_fact_lookup_code(PredName, [pragma_var(_, VarName, Mode)|PragmaVars],
 		    % Unique modes need to allow destructive update so we
 		    % need to make a copy of the string on the heap.
 		    Template = 
-"		incr_hp_atomic(tmp, (strlen(%s) + sizeof(MR_Word))
-			/ sizeof(MR_Word));
+"		MR_incr_hp_atomic(tmp, (strlen(%s) + sizeof(MR_Word)) / sizeof(MR_Word));
 		%s = (MR_String) tmp;
 		strcpy(%s, %s);
 ",
@@ -3041,15 +3040,15 @@ generate_primary_nondet_code(PredName, PragmaVars, ProcID, ArgTypes,
 
 	ExtraCodeTemplate = "
 
-Define_extern_entry(%s);
-Declare_label(%s_i1);
+MR_define_extern_entry(%s);
+MR_declare_label(%s_i1);
 
-	BEGIN_MODULE(%s_module)
-	init_entry(%s);
-	init_label(%s_i1);
-BEGIN_CODE
-Define_entry(%s);
-	MR_mkframe(""%s/%d"", %d, LABEL(%s_i1));
+MR_BEGIN_MODULE(%s_module)
+	MR_init_entry(%s);
+	MR_init_label(%s_i1);
+MR_BEGIN_CODE
+MR_define_entry(%s);
+	MR_mkframe(""%s/%d"", %d, MR_LABEL(%s_i1));
 	{
 		/* create argument vars */
 %s
@@ -3071,7 +3070,7 @@ Define_entry(%s);
 	failure_code_%s:
 		MR_fail();
 	}
-Define_label(%s_i1);
+MR_define_label(%s_i1);
 	if (MR_framevar(1) >= %s) 
 		MR_fail();
 	{
@@ -3091,9 +3090,9 @@ Define_label(%s_i1);
 	}
 	MR_framevar(1)++;
 	MR_succeed();
-END_MODULE
+MR_END_MODULE
 
-extern ModuleFunc %s_module;
+extern MR_ModuleFunc %s_module;
 
 /*
 INIT sys_init_%s_module
@@ -3341,15 +3340,15 @@ generate_secondary_nondet_code(PredName, PragmaVars, ProcID, ArgTypes,
 
 	ExtraCodeTemplate = "
 
-Define_extern_entry(%s);
-Declare_label(%s_i1);
+MR_define_extern_entry(%s);
+MR_declare_label(%s_i1);
 
-BEGIN_MODULE(%s_module)
-	init_entry(%s);
-	init_label(%s_i1);
-BEGIN_CODE
-Define_entry(%s);
-	MR_mkframe(""%s/%d"", 4, LABEL(%s_i1));
+MR_BEGIN_MODULE(%s_module)
+	MR_init_entry(%s);
+	MR_init_label(%s_i1);
+MR_BEGIN_CODE
+MR_define_entry(%s);
+	MR_mkframe(""%s/%d"", 4, MR_LABEL(%s_i1));
 	{
 		/* create argument vars */
 %s
@@ -3373,7 +3372,7 @@ Define_entry(%s);
 	failure_code_%s:
 		MR_fail();
 	}
-Define_label(%s_i1);
+MR_define_label(%s_i1);
 	{
 		/* create argument vars */
 %s
@@ -3408,9 +3407,9 @@ Define_label(%s_i1);
 	failure_code_%s:
 		MR_fail();
 	}
-END_MODULE
+MR_END_MODULE
 
-extern ModuleFunc %s_module;
+extern MR_ModuleFunc %s_module;
 
 /*
 INIT sys_init_%s_module

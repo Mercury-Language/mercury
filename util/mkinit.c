@@ -47,7 +47,7 @@ typedef struct String_List_struct {
 
 /* --- global variables --- */
 
-static const char *progname = NULL;
+static const char *MR_progname = NULL;
 
 /* options and arguments, set by parse_options() */
 static const char *entry_point = "mercury__main_2_0";
@@ -119,7 +119,7 @@ static const char mercury_funcs[] =
 	"#ifdef MR_HIGHLEVEL_CODE\n"
 	"  extern void %s(void);\n"
 	"#else\n"
-	"  Declare_entry(%s);\n"
+	"  MR_declare_entry(%s);\n"
 	"#endif\n"
 	"\n"
 	"#if defined(USE_DLLS)\n"
@@ -163,13 +163,13 @@ static const char mercury_funcs[] =
 	"  #endif\n"
 	"#endif\n"
 	"\n"
-	"	address_of_mercury_init_io = mercury_init_io;\n"
-	"	address_of_init_modules = init_modules;\n"
-	"	address_of_init_modules_type_tables = init_modules_type_tables;\n"
-	"	address_of_init_modules_debugger = init_modules_debugger;\n"
+	"	MR_address_of_mercury_init_io = mercury_init_io;\n"
+	"	MR_address_of_init_modules = init_modules;\n"
+	"	MR_address_of_init_modules_type_tables = init_modules_type_tables;\n"
+	"	MR_address_of_init_modules_debugger = init_modules_debugger;\n"
 	"	MR_address_of_do_load_aditi_rl_code = %s;\n"
 	"#ifdef CONSERVATIVE_GC\n"
-	"	address_of_init_gc = init_gc;\n"
+	"	MR_address_of_init_gc = init_gc;\n"
 	"#endif\n"
 	"	MR_library_initializer = ML_io_init_state;\n"
 	"	MR_library_finalizer = ML_io_finalize_state;\n"
@@ -204,9 +204,9 @@ static const char mercury_funcs[] =
 	"	do_init_modules();\n"
 	"#endif\n"
 	"#ifdef MR_HIGHLEVEL_CODE\n"
-	"	program_entry_point = %s;\n"
+	"	MR_program_entry_point = %s;\n"
 	"#else\n"
-	"	program_entry_point = ENTRY(%s);\n"
+	"	MR_program_entry_point = MR_ENTRY(%s);\n"
 	"#endif\n"
 	"\n"
 	"	mercury_runtime_init(argc, argv);\n"
@@ -316,7 +316,7 @@ int
 main(int argc, char **argv)
 {
 	int	num_bunches;
-	progname = argv[0];
+	MR_progname = argv[0];
 
 	parse_options(argc, argv);
 
@@ -627,7 +627,7 @@ process_file(const char *filename, int *num_bunches_ptr,
 	} else {
 		fprintf(stderr,
 			"%s: filename `%s' must end in `.c' or `.init'\n",
-			progname, filename);
+			MR_progname, filename);
 		num_errors++;
 	}
 }
@@ -727,7 +727,7 @@ process_init_file(const char *filename, int *num_bunches_ptr,
 	cfile = fopen(filename, "r");
 	if (cfile == NULL) {
 		fprintf(stderr, "%s: error opening file `%s': %s\n",
-			progname, filename, strerror(errno));
+			MR_progname, filename, strerror(errno));
 		num_errors++;
 		return;
 	}

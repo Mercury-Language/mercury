@@ -82,15 +82,15 @@ typedef	MR_int_least16_t	MR_Determinism;
 ** the word depends on the location type:
 **
 **  Locn		Tag	Rest
-**  r(Num)		 0	Num (register number)
-**  f(Num)		 1	Num (register number)
-**  stackvar(Num)	 2	Num (stack slot number)
-**  framevar(Num)	 3	Num (stack slot number)
-**  succip		 4
-**  maxfr		 5
-**  curfr		 6
-**  hp			 7
-**  sp			 8
+**  MR_r(Num)		 0	Num (register number)
+**  MR_f(Num)		 1	Num (register number)
+**  MR_stackvar(Num)	 2	Num (stack slot number)
+**  MR_framevar(Num)	 3	Num (stack slot number)
+**  MR_succip		 4
+**  MR_maxfr		 5
+**  MR_curfr		 6
+**  MR_hp		 7
+**  MR_sp		 8
 **  indirect(Base, N)	 9	See below
 **  unknown		10	(The location is not known)
 **
@@ -162,9 +162,9 @@ typedef enum {
 ** depends on the location type:
 **
 **  Locn		Tag	Rest
-**  r(Num)		 0	Num (register number)
-**  stackvar(Num)	 1	Num (stack slot number)
-**  framevar(Num)	 2	Num (stack slot number)
+**  MR_r(Num)		 0	Num (register number)
+**  MR_stackvar(Num)	 1	Num (stack slot number)
+**  MR_framevar(Num)	 2	Num (stack slot number)
 **  special reg		 3	MR_Long_Lval_Type
 **
 ** This data is generated in stack_layout__represent_locn_as_byte,
@@ -427,7 +427,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 #define	MR_ENTRY_NO_SLOT_COUNT		-1
 
 #ifdef	MR_STATIC_CODE_ADDRESSES
- #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		STATIC(entry)
+ #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		MR_STATIC(entry)
  #define	MR_INIT_PROC_LAYOUT_ADDR(entry)		do { } while (0)
 #else
  #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		((MR_Code *) NULL)
@@ -435,7 +435,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 		do {							\
 			((MR_Stack_Layout_Entry *) &			\
 			mercury_data__layout__##entry)			\
-				->MR_sle_code_addr = ENTRY(entry);	\
+				->MR_sle_code_addr = MR_ENTRY(entry);	\
 		} while (0)
 #endif
 

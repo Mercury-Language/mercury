@@ -88,7 +88,7 @@ extern void ML_report_full_memory_stats(void);
 #include <stdlib.h>
 #include ""mercury_prof_mem.h""
 #include ""mercury_heap_profile.h""
-#include ""mercury_wrapper.h""		/* for time_at_last_stat */
+#include ""mercury_wrapper.h""		/* for MR_time_at_last_stat */
 
 #ifdef PROFILE_MEMORY
 
@@ -155,8 +155,8 @@ ML_report_stats(void)
 	** Print timing and stack usage information
 	*/
 
-	time_at_prev_stat = time_at_last_stat;
-	time_at_last_stat = MR_get_user_cpu_miliseconds();
+	time_at_prev_stat = MR_time_at_last_stat;
+	MR_time_at_last_stat = MR_get_user_cpu_miliseconds();
 
 #ifndef MR_HIGHLEVEL_CODE
 	eng = MR_get_engine();
@@ -165,7 +165,7 @@ ML_report_stats(void)
 	fprintf(stderr, 
 		""[Time: +%.3fs, %.3fs,"",
 		(time_at_last_stat - time_at_prev_stat) / 1000.0,
-		(time_at_last_stat - time_at_start) / 1000.0
+		(time_at_last_stat - MR_time_at_start) / 1000.0
 	);
 
 #ifndef MR_HIGHLEVEL_CODE
@@ -637,7 +637,7 @@ repeat(N) :-
 :- impure pred new_int_reference(int::in, int_reference::out) is det.
 :- pragma inline(new_int_reference/2).
 :- pragma c_code(new_int_reference(X::in, Ref::out), will_not_call_mercury, "
-	incr_hp(Ref, 1);
+	MR_incr_hp(Ref, 1);
 	* (MR_Integer *) Ref = X;
 ").
 

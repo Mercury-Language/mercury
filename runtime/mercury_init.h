@@ -77,7 +77,7 @@ extern	int	mercury_terminate(void);
 */
 
 #include "mercury_regs.h"	/* must come before system headers */
-#include "mercury_goto.h"	/* for Declare_entry */
+#include "mercury_goto.h"	/* for MR_declare_entry */
 #include "mercury_types.h"	/* for `MR_Word' */
 #include "mercury_wrapper.h"	/* for do_init_modules,
 				   mercury_runtime_init(),
@@ -134,13 +134,16 @@ extern	void	ML_DI_output_current_nth_var(MR_Word, MR_Word);
 		/* output_current_nth_var/3 */
 extern	void	ML_DI_output_current_live_var_names(MR_Word, MR_Word, MR_Word);
 		/* output_current_live_var_names/5 */
-extern	void	ML_DI_output_current_slots(MR_Integer, MR_Integer, MR_Integer, MR_Word,
-		MR_String, MR_String, MR_Integer, MR_Integer, MR_Integer, MR_String, MR_Word);
+extern	void	ML_DI_output_current_slots(MR_Integer, MR_Integer, MR_Integer,
+			MR_Word, MR_String, MR_String, MR_Integer, MR_Integer,
+			MR_Integer, MR_String, MR_Word);
 		/* output_current_slots/13 */
-extern	bool	ML_DI_found_match(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String,
-		MR_String, MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_Word);
+extern	bool	ML_DI_found_match(MR_Integer, MR_Integer, MR_Integer, MR_Word,
+			MR_String, MR_String, MR_Integer, MR_Integer,
+			MR_Integer, MR_Word, MR_String, MR_Word);
 		/* found_match/12 */
-extern	void	ML_DI_read_request_from_socket(MR_Word, MR_Word *, MR_Integer *);
+extern	void	ML_DI_read_request_from_socket(MR_Word, MR_Word *,
+			MR_Integer *);
 extern	MR_Integer	ML_DI_get_var_number(MR_Word);
 
 /* in library/std_util.m  */

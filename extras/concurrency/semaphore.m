@@ -84,7 +84,8 @@
 	MR_Word sem_mem;
 	ME_Semaphore	*sem;
 
-	incr_hp(sem_mem, round_up(sizeof(ME_Semaphore), sizeof(MR_Word)));
+	MR_incr_hp(sem_mem,
+		MR_round_up(sizeof(ME_Semaphore), sizeof(MR_Word)));
 	sem = (ME_Semaphore *) sem_mem;
 	sem->count = 0;
 #ifndef MR_HIGHLEVEL_CODE
@@ -152,21 +153,21 @@
 		ctxt = sem->suspended;
 		sem->suspended = ctxt->next;
 		MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
-		schedule(ctxt);
+		MR_schedule(ctxt);
 			/* yield() */
-		save_context(MR_ENGINE(this_context));
+		MR_save_context(MR_ENGINE(this_context));
 		MR_ENGINE(this_context)->resume = &&signal_skip_to_the_end_1;
-		schedule(MR_ENGINE(this_context));
-		runnext();
+		MR_schedule(MR_ENGINE(this_context));
+		MR_runnext();
 signal_skip_to_the_end_1:
 	} else {
 		sem->count++;
 		MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
 			/* yield() */
-		save_context(MR_ENGINE(this_context));
+		MR_save_context(MR_ENGINE(this_context));
 		MR_ENGINE(this_context)->resume = &&signal_skip_to_the_end_2;
-		schedule(MR_ENGINE(this_context));
-		runnext();
+		MR_schedule(MR_ENGINE(this_context));
+		MR_runnext();
 signal_skip_to_the_end_2:
 	}
 #else
@@ -198,12 +199,12 @@ signal_skip_to_the_end_2:
 		sem->count--;
 		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
 	} else {
-		save_context(MR_ENGINE(this_context));
+		MR_save_context(MR_ENGINE(this_context));
 		MR_ENGINE(this_context)->resume = &&wait_skip_to_the_end;
 		MR_ENGINE(this_context)->next = sem->suspended;
 		sem->suspended = MR_ENGINE(this_context);
 		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
-		runnext();
+		MR_runnext();
 wait_skip_to_the_end:
 	}
 #else

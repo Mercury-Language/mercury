@@ -9,11 +9,10 @@
 
 #include <stdio.h>
 
-
 MR_Word 
-get_reg(int num)
+MR_get_reg(int num)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
  	switch (num) {
 
 	case 1:  return r1;
@@ -55,46 +54,46 @@ get_reg(int num)
 	fprintf(stderr, "register %d out of range in get_reg\n", num);
 	abort();
 	return 0;
-} /* end get_reg() */
+} /* end MR_get_reg() */
 
 MR_Word 
-set_reg(int num, MR_Word val)
+MR_set_reg(int num, MR_Word val)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
  	switch (num) {
 
-	case 1:  r1  = val; save_transient_registers(); return val;
-	case 2:  r2  = val; save_transient_registers(); return val;
-	case 3:  r3  = val; save_transient_registers(); return val;
-	case 4:  r4  = val; save_transient_registers(); return val;
-	case 5:  r5  = val; save_transient_registers(); return val;
-	case 6:  r6  = val; save_transient_registers(); return val;
-	case 7:  r7  = val; save_transient_registers(); return val;
-	case 8:  r8  = val; save_transient_registers(); return val;
-	case 9:  r9  = val; save_transient_registers(); return val;
-	case 10: r10 = val; save_transient_registers(); return val;
-	case 11: r11 = val; save_transient_registers(); return val;
-	case 12: r12 = val; save_transient_registers(); return val;
-	case 13: r13 = val; save_transient_registers(); return val;
-	case 14: r14 = val; save_transient_registers(); return val;
-	case 15: r15 = val; save_transient_registers(); return val;
-	case 16: r16 = val; save_transient_registers(); return val;
-	case 17: r17 = val; save_transient_registers(); return val;
-	case 18: r18 = val; save_transient_registers(); return val;
-	case 19: r19 = val; save_transient_registers(); return val;
-	case 20: r20 = val; save_transient_registers(); return val;
-	case 21: r21 = val; save_transient_registers(); return val;
-	case 22: r22 = val; save_transient_registers(); return val;
-	case 23: r23 = val; save_transient_registers(); return val;
-	case 24: r24 = val; save_transient_registers(); return val;
-	case 25: r25 = val; save_transient_registers(); return val;
-	case 26: r26 = val; save_transient_registers(); return val;
-	case 27: r27 = val; save_transient_registers(); return val;
-	case 28: r28 = val; save_transient_registers(); return val;
-	case 29: r29 = val; save_transient_registers(); return val;
-	case 30: r30 = val; save_transient_registers(); return val;
-	case 31: r31 = val; save_transient_registers(); return val;
-	case 32: r32 = val; save_transient_registers(); return val;
+	case 1:  r1  = val; MR_save_transient_registers(); return val;
+	case 2:  r2  = val; MR_save_transient_registers(); return val;
+	case 3:  r3  = val; MR_save_transient_registers(); return val;
+	case 4:  r4  = val; MR_save_transient_registers(); return val;
+	case 5:  r5  = val; MR_save_transient_registers(); return val;
+	case 6:  r6  = val; MR_save_transient_registers(); return val;
+	case 7:  r7  = val; MR_save_transient_registers(); return val;
+	case 8:  r8  = val; MR_save_transient_registers(); return val;
+	case 9:  r9  = val; MR_save_transient_registers(); return val;
+	case 10: r10 = val; MR_save_transient_registers(); return val;
+	case 11: r11 = val; MR_save_transient_registers(); return val;
+	case 12: r12 = val; MR_save_transient_registers(); return val;
+	case 13: r13 = val; MR_save_transient_registers(); return val;
+	case 14: r14 = val; MR_save_transient_registers(); return val;
+	case 15: r15 = val; MR_save_transient_registers(); return val;
+	case 16: r16 = val; MR_save_transient_registers(); return val;
+	case 17: r17 = val; MR_save_transient_registers(); return val;
+	case 18: r18 = val; MR_save_transient_registers(); return val;
+	case 19: r19 = val; MR_save_transient_registers(); return val;
+	case 20: r20 = val; MR_save_transient_registers(); return val;
+	case 21: r21 = val; MR_save_transient_registers(); return val;
+	case 22: r22 = val; MR_save_transient_registers(); return val;
+	case 23: r23 = val; MR_save_transient_registers(); return val;
+	case 24: r24 = val; MR_save_transient_registers(); return val;
+	case 25: r25 = val; MR_save_transient_registers(); return val;
+	case 26: r26 = val; MR_save_transient_registers(); return val;
+	case 27: r27 = val; MR_save_transient_registers(); return val;
+	case 28: r28 = val; MR_save_transient_registers(); return val;
+	case 29: r29 = val; MR_save_transient_registers(); return val;
+	case 30: r30 = val; MR_save_transient_registers(); return val;
+	case 31: r31 = val; MR_save_transient_registers(); return val;
+	case 32: r32 = val; MR_save_transient_registers(); return val;
 
 	}
 
@@ -102,5 +101,4 @@ set_reg(int num, MR_Word val)
 	fprintf(stderr, "register %d out of range in set_reg\n", num);
 	abort();
 	return 0;
-} /* end set_reg() */
-
+} /* end MR_set_reg() */

@@ -119,7 +119,8 @@ MR_insert_entry_label(const char *name, MR_Code *addr,
 		entry_array = realloc(entry_array, 
 				entry_array_size * sizeof(MR_Entry));
 		if (entry_array == NULL) {
-			fatal_error("run out of memory for entry label array");
+			MR_fatal_error(
+				"run out of memory for entry label array");
 		}
 	}
 

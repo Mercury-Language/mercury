@@ -493,7 +493,8 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			LayoutAddrStr),
 		string__append_list([
 			FillThreeSlots, "\n",
-			"\t\t", RedoLayoutStr, " = (MR_Word) (const MR_Word *) &",
+			"\t\t", RedoLayoutStr,
+			" = (MR_Word) (const MR_Word *) &",
 			LayoutAddrStr, ";"
 		], FillFourSlots),
 		MaybeLayoutLabel = yes(RedoLayoutLabel)
@@ -754,9 +755,9 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
 	llds_out__get_label(Label, yes, LabelStr),
 	DeclStmt = "\t\tCode *MR_jumpaddr;\n",
-	SaveStmt = "\t\tsave_transient_registers();\n",
-	RestoreStmt = "\t\trestore_transient_registers();\n",
-	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);"
+	SaveStmt = "\t\tMR_save_transient_registers();\n",
+	RestoreStmt = "\t\tMR_restore_transient_registers();\n",
+	GotoStmt = "\t\tif (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);"
 	},
 	{ string__append_list([
 		"\t\tMR_jumpaddr = MR_trace(\n",

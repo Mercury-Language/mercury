@@ -337,10 +337,10 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 Define_extern_entry(MR_do_trace_redo_fail_shallow);
 Define_extern_entry(MR_do_trace_redo_fail_deep);
 
-BEGIN_MODULE(MR_trace_labels_module)
-	init_entry_ai(MR_do_trace_redo_fail_shallow);
-	init_entry_ai(MR_do_trace_redo_fail_deep);
-BEGIN_CODE
+MR_BEGIN_MODULE(MR_trace_labels_module)
+	MR_init_entry_ai(MR_do_trace_redo_fail_shallow);
+	MR_init_entry_ai(MR_do_trace_redo_fail_deep);
+MR_BEGIN_CODE
 
 Define_entry(MR_do_trace_redo_fail_shallow);
 	/*
@@ -350,12 +350,12 @@ Define_entry(MR_do_trace_redo_fail_shallow);
 	if (MR_redo_fromfull_framevar(MR_redofr_slot(MR_curfr)))
 	{
 		MR_Code	*MR_jumpaddr;
-		save_transient_registers();
+		MR_save_transient_registers();
 		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
 			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
-		restore_transient_registers();
+		MR_restore_transient_registers();
 		if (MR_jumpaddr != NULL) {
-			GOTO(MR_jumpaddr);
+			MR_GOTO(MR_jumpaddr);
 		}
 	}
 	MR_fail();
@@ -376,17 +376,17 @@ Define_entry(MR_do_trace_redo_fail_deep);
 	*/
 	{
 		MR_Code	*MR_jumpaddr;
-		save_transient_registers();
+		MR_save_transient_registers();
 		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
 			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
-		restore_transient_registers();
+		MR_restore_transient_registers();
 		if (MR_jumpaddr != NULL) {
-			GOTO(MR_jumpaddr);
+			MR_GOTO(MR_jumpaddr);
 		}
 	}
 	MR_fail();
 
-END_MODULE
+MR_END_MODULE
 
 void mercury_sys_init_trace(void); /* suppress gcc warning */
 void mercury_sys_init_trace(void) {

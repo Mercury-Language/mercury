@@ -30,22 +30,21 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 ** being executed when a profiling interrupt occurs.
 */
 
-#define MR_set_prof_current_proc(target)	set_prof_current_proc(target)
 #ifdef PROFILE_TIME
-  #define set_prof_current_proc(target)		\
+  #define MR_set_prof_current_proc(target)		\
 		(MR_prof_current_proc = (target))
-  #define update_prof_current_proc(target)	\
+  #define MR_update_prof_current_proc(target)		\
 		(MR_prof_current_proc = (target))	
 #else
-  #define set_prof_current_proc(target)		((void)0)
-  #define update_prof_current_proc(target)	((void)0)
+  #define MR_set_prof_current_proc(target)		((void)0)
+  #define MR_update_prof_current_proc(target)		((void)0)
 #endif
-
 
 /*
 ** This variable holds the address of the calling procedure
 ** for a call to do_call_closure or do_call_class_method.
 */
+
 #ifdef PROFILE_CALLS
   extern MR_Code *	MR_prof_ho_caller_proc;
 #endif
@@ -57,13 +56,13 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 #endif
 
 /*
-** The PROFILE() macro is used (by mercury_calls.h) to record each call.
+** The MR_PROFILE() macro is used (by mercury_calls.h) to record each call.
 */
 
 #ifdef	PROFILE_CALLS
-  #define PROFILE(callee, caller) MR_prof_call_profile((callee), (caller))
+  #define MR_PROFILE(callee, caller) MR_prof_call_profile((callee), (caller))
 #else
-  #define PROFILE(callee, caller) ((void)0)
+  #define MR_PROFILE(callee, caller) ((void)0)
 #endif
 
 #ifdef PROFILE_CALLS

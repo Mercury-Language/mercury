@@ -1408,7 +1408,7 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 		}
 	}
 	if (Res == 0) {
-		incr_hp_atomic_msg(LVALUE_CAST(MR_Word, RetString),
+		MR_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, RetString),
 			ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
 			MR_PROC_LABEL, ""string:string/0"");
 		memcpy(RetString, read_buffer, i * sizeof(MR_Char));
@@ -1620,7 +1620,7 @@ io__check_err(Stream, Res) -->
 :- pragma c_code(io__alloc_buffer(Size::in, Buffer::uo),
 		[will_not_call_mercury, thread_safe],
 "{
-	incr_hp_atomic_msg(Buffer,
+	MR_incr_hp_atomic_msg(Buffer,
 		(Size * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 			/ sizeof(MR_Word),
 		MR_PROC_LABEL, ""io:buffer/0"");
@@ -1639,7 +1639,7 @@ io__check_err(Stream, Res) -->
 #else
 	if (buffer0 + OldSize == (MR_Char *) MR_hp) {
 		MR_Word next;
-		incr_hp_atomic_msg(next, 
+		MR_incr_hp_atomic_msg(next, 
 		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 		   	/ sizeof(MR_Word),
 		   MR_PROC_LABEL,
@@ -1648,7 +1648,7 @@ io__check_err(Stream, Res) -->
 	    	buffer = buffer0;
 	} else {
 		/* just have to alloc and copy */
-		incr_hp_atomic_msg(Buffer,
+		MR_incr_hp_atomic_msg(Buffer,
 		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 		   	/ sizeof(MR_Word),
 		   MR_PROC_LABEL, ""io:buffer/0"");
@@ -2872,9 +2872,9 @@ mercury_io_error(MercuryFile* mf, const char *format, ...)
 	va_end(args);
 
 	/* copy the error message to a Mercury string */
-	restore_registers(); /* for MR_hp */
+	MR_restore_registers(); /* for MR_hp */
 	MR_make_aligned_string_copy(message_as_mercury_string, message);
-	save_registers(); /* for MR_hp */
+	MR_save_registers(); /* for MR_hp */
 
 	/* call some Mercury code to throw the exception */
 	ML_throw_io_error((MR_String) message_as_mercury_string);
@@ -3533,7 +3533,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		** on the compiler.
 		*/
 		MR_make_aligned_string(
-			LVALUE_CAST(MR_ConstString, PrognameOut),
+			MR_LVALUE_CAST(MR_ConstString, PrognameOut),
 			progname);
 	} else {
 		PrognameOut = DefaultProgname;
@@ -3694,7 +3694,7 @@ io__make_temp(Dir, Prefix, Name) -->
 
 	len = strlen(Dir) + 1 + 5 + 3 + 1 + 3 + 1;
 		/* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
-	incr_hp_atomic_msg(LVALUE_CAST(MR_Word, FileName),
+	MR_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, FileName),
 		(len + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
 	if (ML_io_tempnam_counter == 0) {
@@ -3746,7 +3746,7 @@ io__make_temp(Dir, Prefix, Name) -->
 ** This is defined as a macro rather than a C function
 ** to avoid worrying about the `hp' register being
 ** invalidated by the function call.
-** It also needs to be a macro because incr_hp_atomic_msg()
+** It also needs to be a macro because MR_incr_hp_atomic_msg()
 ** stringizes the procname argument.
 */
 #define ML_maybe_make_err_msg(was_error, msg, procname, error_msg)	\\
@@ -3758,7 +3758,7 @@ io__make_temp(Dir, Prefix, Name) -->
 		if (was_error) {					\\
 			errno_msg = strerror(errno);			\\
 			total_len = strlen(msg) + strlen(errno_msg);	\\
-			incr_hp_atomic_msg(tmp,				\\
+			MR_incr_hp_atomic_msg(tmp,			\\
 				(total_len + sizeof(MR_Word))		\\
 					/ sizeof(MR_Word),		\\
 				procname,				\\

@@ -56,7 +56,7 @@
 ** BEWARE: this may modify `hp', so it must only be called from
 ** places where `hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
-** save/restore_transient_hp().
+** MR_{save/restore}_transient_hp().
 **
 ** Algorithm: if the string is aligned, just set ptr equal to it.
 ** Otherwise, allocate space on the heap and copy the C string to
@@ -79,7 +79,7 @@
 ** BEWARE: this may modify `hp', so it must only be called from
 ** places where `hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
-** save/restore_transient_hp().
+** MR_{save/restore}_transient_hp().
 */
 #define MR_make_aligned_string_copy(ptr, string) 			\
 	do {								\
@@ -104,7 +104,7 @@
 ** BEWARE: this may modify `hp', so it must only be called from
 ** places where `hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
-** save/restore_transient_hp().
+** MR_{save/restore}_transient_hp().
 */
 #define MR_allocate_aligned_string_msg(ptr, len, proclabel)		\
 	do {								\
@@ -176,7 +176,7 @@ int	MR_hash_string(MR_Word);
 **
 ** BEWARE: this may modify the saved copy of `hp', so it must only be
 ** called from places where the saved copy of `hp' is valid.
-** You will generally need to call save/restore_transient_hp()
+** You will generally need to call MR_{save/restore}_transient_hp()
 ** before/after calling this function.
 */
 MR_String MR_make_string(MR_Code *proclabel, const char *fmt, ...);

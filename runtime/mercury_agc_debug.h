@@ -14,7 +14,7 @@
 
 #include "mercury_types.h"		/* for MR_Word */
 #include "mercury_label.h"		/* for MR_Internal */
-#include "mercury_memory_zones.h"	/* for MemoryZone */
+#include "mercury_memory_zones.h"	/* for MR_MemoryZone */
 #include "mercury_accurate_gc.h"	/* for MR_RootList */
 
 /*---------------------------------------------------------------------------*/
@@ -28,8 +28,9 @@
 ** 	which the data is stored upon. 
 */
 
-extern	void	MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone
-		*heap_zone, MR_Word *stack_pointer, MR_Word *current_frame);
+extern	void	MR_agc_dump_stack_frames(MR_Internal *label,
+			MR_MemoryZone *heap_zone,
+			MR_Word *stack_pointer, MR_Word *current_frame);
 
 /*
 ** MR_agc_dump_nondet_stack_frames:
@@ -40,8 +41,8 @@ extern	void	MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone
 ** 	which the data is stored upon. 
 */
 extern	void	MR_agc_dump_nondet_stack_frames(MR_Internal *label,
-			MemoryZone *heap_zone, Word *stack_pointer,
-			Word *current_frame, Word *max_frame);
+			MR_MemoryZone *heap_zone, MR_Word *stack_pointer,
+			MR_Word *current_frame, MR_Word *max_frame);
 
 /*
 ** MR_agc_dump_roots:

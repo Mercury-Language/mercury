@@ -918,7 +918,7 @@ MR_trace_throw(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 		entry_layout = return_label_layout->MR_sll_entry;
 		if (!MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)
 		    && MR_redoip_slot(current_frame) ==
-			ENTRY(exception_handler_do_fail))
+			MR_ENTRY(exception_handler_do_fail))
 		{
 			return NULL;
 		}
@@ -944,10 +944,10 @@ MR_trace_throw(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 			WARNING(problem);
 			return NULL;
 		}
-		restore_transient_registers();
+		MR_restore_transient_registers();
 		MR_sp = det_stack_pointer;
 		MR_curfr = current_frame;
-		save_transient_registers();
+		MR_save_transient_registers();
 	}
 	return NULL;
 }
@@ -968,28 +968,28 @@ MR_trace_throw(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 	MR_solutions_heap_zone = swap_heaps_temp_hp_zone;		\\
 }
 
-Define_extern_entry(mercury__exception__builtin_catch_3_0); /* det */
-Define_extern_entry(mercury__exception__builtin_catch_3_1); /* semidet */
-Define_extern_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
-Define_extern_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
-Define_extern_entry(mercury__exception__builtin_catch_3_4); /* multi */
-Define_extern_entry(mercury__exception__builtin_catch_3_5); /* nondet */
+MR_define_extern_entry(mercury__exception__builtin_catch_3_0); /* det */
+MR_define_extern_entry(mercury__exception__builtin_catch_3_1); /* semidet */
+MR_define_extern_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
+MR_define_extern_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
+MR_define_extern_entry(mercury__exception__builtin_catch_3_4); /* multi */
+MR_define_extern_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 
-Define_extern_entry(mercury__exception__builtin_throw_1_0);
+MR_define_extern_entry(mercury__exception__builtin_throw_1_0);
 
 /* the following is defined in runtime/mercury_ho_call.c */
-Declare_entry(mercury__do_call_closure);
+MR_declare_entry(mercury__do_call_closure);
 
 /* the following is defined in runtime/mercury_trace_base.c */
-Declare_entry(MR_do_trace_redo_fail);
+MR_declare_entry(MR_do_trace_redo_fail);
 
-Declare_label(mercury__exception__builtin_catch_3_2_i2);
-Declare_label(mercury__exception__builtin_catch_3_3_i2);
-Declare_label(mercury__exception__builtin_catch_3_5_i2);
+MR_declare_label(mercury__exception__builtin_catch_3_2_i2);
+MR_declare_label(mercury__exception__builtin_catch_3_3_i2);
+MR_declare_label(mercury__exception__builtin_catch_3_5_i2);
 #ifdef MR_USE_TRAIL
-  Declare_label(mercury__exception__builtin_catch_3_5_i3);
+  MR_declare_label(mercury__exception__builtin_catch_3_5_i3);
 #endif
-Declare_label(mercury__exception__builtin_throw_1_0_i1);
+MR_declare_label(mercury__exception__builtin_throw_1_0_i1);
 
 #define BUILTIN_THROW_STACK_SIZE 1
 
@@ -1033,22 +1033,22 @@ MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 2);
   MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 3);
 #endif
 
-BEGIN_MODULE(exceptions_module)
-	init_entry(mercury__exception__builtin_catch_3_0);
-	init_entry(mercury__exception__builtin_catch_3_1);
-	init_entry_sl(mercury__exception__builtin_catch_3_2);
-	init_entry_sl(mercury__exception__builtin_catch_3_3);
-	init_entry(mercury__exception__builtin_catch_3_4);
-	init_entry_sl(mercury__exception__builtin_catch_3_5);
-	init_label_sl(mercury__exception__builtin_catch_3_2_i2);
-	init_label_sl(mercury__exception__builtin_catch_3_3_i2);
-	init_label_sl(mercury__exception__builtin_catch_3_5_i2);
+MR_BEGIN_MODULE(exceptions_module)
+	MR_init_entry(mercury__exception__builtin_catch_3_0);
+	MR_init_entry(mercury__exception__builtin_catch_3_1);
+	MR_init_entry_sl(mercury__exception__builtin_catch_3_2);
+	MR_init_entry_sl(mercury__exception__builtin_catch_3_3);
+	MR_init_entry(mercury__exception__builtin_catch_3_4);
+	MR_init_entry_sl(mercury__exception__builtin_catch_3_5);
+	MR_init_label_sl(mercury__exception__builtin_catch_3_2_i2);
+	MR_init_label_sl(mercury__exception__builtin_catch_3_3_i2);
+	MR_init_label_sl(mercury__exception__builtin_catch_3_5_i2);
 #ifdef MR_USE_TRAIL
-	init_label(mercury__exception__builtin_catch_3_5_i3);
+	MR_init_label(mercury__exception__builtin_catch_3_5_i3);
 #endif
-	init_entry(mercury__exception__builtin_throw_1_0);
-	init_label(mercury__exception__builtin_throw_1_0_i1);
-BEGIN_CODE
+	MR_init_entry(mercury__exception__builtin_throw_1_0);
+	MR_init_label(mercury__exception__builtin_throw_1_0_i1);
+MR_BEGIN_CODE
 
 /*
 ** builtin_catch(Goal, Handler, Result)
@@ -1061,20 +1061,20 @@ BEGIN_CODE
 ** the Goal to execute in r2 and the Handler in r3.
 ** On exit, we should put Result in r1.
 */
-Define_entry(mercury__exception__builtin_catch_3_0); /* det */
+MR_define_entry(mercury__exception__builtin_catch_3_0); /* det */
 #ifdef PROFILE_CALLS
 {
-	tailcall(ENTRY(mercury__exception__builtin_catch_3_2), 
-		ENTRY(mercury__exception__builtin_catch_3_0));
+	MR_tailcall(MR_ENTRY(mercury__exception__builtin_catch_3_2), 
+		MR_ENTRY(mercury__exception__builtin_catch_3_0));
 }
 #endif
-Define_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
+MR_define_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
 	/*
 	** Create an exception handler entry on the nondet stack.
 	** (Register r3 holds the Handler closure.)
 	*/
 	MR_create_exception_handler(""builtin_catch/3 [model_det]"",
-		MR_MODEL_DET_HANDLER, r3, ENTRY(do_fail));
+		MR_MODEL_DET_HANDLER, r3, MR_ENTRY(do_fail));
 	
 	/*
 	** Now call `Goal(Result)'.
@@ -1082,12 +1082,13 @@ Define_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
 	r1 = r2;	/* The Goal to call */
 	r2 = 0;		/* Zero additional input arguments */
 	r3 = 1;		/* One output argument */
-	call(ENTRY(mercury__do_call_closure), 
-		LABEL(mercury__exception__builtin_catch_3_2_i2),
-		ENTRY(mercury__exception__builtin_catch_3_2));
+	MR_call(MR_ENTRY(mercury__do_call_closure), 
+		MR_LABEL(mercury__exception__builtin_catch_3_2_i2),
+		MR_ENTRY(mercury__exception__builtin_catch_3_2));
 		
-Define_label(mercury__exception__builtin_catch_3_2_i2);
-	update_prof_current_proc(LABEL(mercury__exception__builtin_catch_3_2));
+MR_define_label(mercury__exception__builtin_catch_3_2_i2);
+	MR_update_prof_current_proc(
+		MR_LABEL(mercury__exception__builtin_catch_3_2));
 	/*
 	** On exit from mercury__do_call_closure, Result is in r1
 	**
@@ -1111,20 +1112,20 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 ** the Goal to execute in r2 and the Handler in r3,
 ** and on exit, we should put Result in r2.
 */
-Define_entry(mercury__exception__builtin_catch_3_1); /* semidet */
+MR_define_entry(mercury__exception__builtin_catch_3_1); /* semidet */
 #ifdef PROFILE_CALLS
 {
-	tailcall(ENTRY(mercury__exception__builtin_catch_3_3), 
-		ENTRY(mercury__exception__builtin_catch_3_1));
+	MR_tailcall(MR_ENTRY(mercury__exception__builtin_catch_3_3), 
+		MR_ENTRY(mercury__exception__builtin_catch_3_1));
 }
 #endif
-Define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
+MR_define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 	/*
 	** Create an exception handler entry on the nondet stack.
 	** (Register r3 holds the Handler closure.)
 	*/
 	MR_create_exception_handler(""builtin_catch/3 [model_semi]"",
-		MR_MODEL_SEMI_HANDLER, r3, ENTRY(do_fail));
+		MR_MODEL_SEMI_HANDLER, r3, MR_ENTRY(do_fail));
 	
 	/*
 	** Now call `Goal(Result)'.
@@ -1132,12 +1133,13 @@ Define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 	r1 = r2;	/* The Goal to call */
 	r2 = 0;		/* Zero additional input arguments */
 	r3 = 1;		/* One output argument */
-	call(ENTRY(mercury__do_call_closure), 
-		LABEL(mercury__exception__builtin_catch_3_3_i2),
-		ENTRY(mercury__exception__builtin_catch_3_3));
+	MR_call(MR_ENTRY(mercury__do_call_closure), 
+		MR_LABEL(mercury__exception__builtin_catch_3_3_i2),
+		MR_ENTRY(mercury__exception__builtin_catch_3_3));
 		
-Define_label(mercury__exception__builtin_catch_3_3_i2);
-	update_prof_current_proc(LABEL(mercury__exception__builtin_catch_3_3));
+MR_define_label(mercury__exception__builtin_catch_3_3_i2);
+	MR_update_prof_current_proc(
+		MR_LABEL(mercury__exception__builtin_catch_3_3));
 	/*
 	** On exit from do_call_semidet_closure, the success/failure
 	** indicator is in r1, and Result is in r2.
@@ -1166,14 +1168,14 @@ Define_label(mercury__exception__builtin_catch_3_3_i2);
 ** the Goal to execute in r2 and the Handler in r3.
 ** On exit, we should put Result in r1.
 */
-Define_entry(mercury__exception__builtin_catch_3_4); /* multi */
+MR_define_entry(mercury__exception__builtin_catch_3_4); /* multi */
 #ifdef PROFILE_CALLS
 {
-	tailcall(ENTRY(mercury__exception__builtin_catch_3_5), 
-		ENTRY(mercury__exception__builtin_catch_3_4));
+	MR_tailcall(MR_ENTRY(mercury__exception__builtin_catch_3_5), 
+		MR_ENTRY(mercury__exception__builtin_catch_3_4));
 }
 #endif
-Define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
+MR_define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 	/*
 	** Create an exception handler entry on the nondet stack.
 	** (Register r3 holds the Handler closure.)
@@ -1181,10 +1183,10 @@ Define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 #ifdef MR_USE_TRAIL
 	MR_create_exception_handler(""builtin_catch/3 [model_nondet]"",
 		MR_MODEL_NON_HANDLER, r3,
-		LABEL(mercury__exception__builtin_catch_3_5_i3));
+		MR_LABEL(mercury__exception__builtin_catch_3_5_i3));
 #else
 	MR_create_exception_handler(""builtin_catch/3 [model_nondet]"",
-		MR_MODEL_NON_HANDLER, r3, ENTRY(do_fail));
+		MR_MODEL_NON_HANDLER, r3, MR_ENTRY(do_fail));
 #endif
 	
 
@@ -1194,12 +1196,13 @@ Define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 	r1 = r2;	/* the Goal to call */
 	r2 = 0;		/* Zero additional input arguments */
 	r3 = 1;		/* One output argument */
-	call(ENTRY(mercury__do_call_closure), 
-		LABEL(mercury__exception__builtin_catch_3_5_i2),
-		ENTRY(mercury__exception__builtin_catch_3_5));
-		
-Define_label(mercury__exception__builtin_catch_3_5_i2);
-	update_prof_current_proc(LABEL(mercury__exception__builtin_catch_3_5));
+	MR_call(MR_ENTRY(mercury__do_call_closure), 
+		MR_LABEL(mercury__exception__builtin_catch_3_5_i2),
+		MR_ENTRY(mercury__exception__builtin_catch_3_5));
+
+MR_define_label(mercury__exception__builtin_catch_3_5_i2);
+	MR_update_prof_current_proc(
+		MR_LABEL(mercury__exception__builtin_catch_3_5));
 	/*
 	** On exit from do_call_nondet_closure, Result is in r1
 	**
@@ -1211,7 +1214,7 @@ Define_label(mercury__exception__builtin_catch_3_5_i2);
 	MR_succeed();
 
 #ifdef MR_USE_TRAIL
-Define_label(mercury__exception__builtin_catch_3_5_i3);
+MR_define_label(mercury__exception__builtin_catch_3_5_i3);
 	MR_discard_ticket();
 	MR_fail();
 #endif
@@ -1227,7 +1230,7 @@ Define_label(mercury__exception__builtin_catch_3_5_i3);
 **
 ** On entry, we have Exception in r1.
 */
-Define_entry(mercury__exception__builtin_throw_1_0);
+MR_define_entry(mercury__exception__builtin_throw_1_0);
 {
 	MR_Word exception = r1;
 	MR_Word handler;
@@ -1241,10 +1244,10 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	if (MR_trace_enabled) {
 		MR_Code *MR_jumpaddr;
 		MR_trace_set_exception_value(exception);
-		save_transient_registers();
+		MR_save_transient_registers();
 		MR_jumpaddr = MR_trace_throw(MR_succip, MR_sp, MR_curfr);
-		restore_transient_registers();
-		if (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);
+		MR_restore_transient_registers();
+		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);
 	}
 
 	/*
@@ -1258,7 +1261,9 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** behind.
 	*/
 	orig_curfr = MR_curfr;
-	while (MR_redoip_slot(MR_curfr) != ENTRY(exception_handler_do_fail)) {
+	while (MR_redoip_slot(MR_curfr)
+			!= MR_ENTRY(exception_handler_do_fail))
+	{
 		MR_curfr = MR_succfr_slot(MR_curfr);
 		if (MR_curfr < MR_CONTEXT(nondetstack_zone)->min) {
 			MR_Word *save_succip;
@@ -1270,7 +1275,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 			** and then terminate execution.
 			**
 			** We need to save the registers to the fake_reg
-			** array using save_registers() before calling
+			** array using MR_save_registers() before calling
 			** ML_report_uncaught_exception, since that is
 			** Mercury code and the C->Mercury interface expects
 			** the registers to be saved.
@@ -1279,14 +1284,14 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 			** may clobber MR_succip (and also the Mercury
 			** registers r1, r2, r3, etc., but for those we don't
 			** care, since we don't use them).
-			** Note that the save_registers() alone is not
+			** Note that the MR_save_registers() alone is not
 			** sufficient since the Mercury code may clobber the
 			** copy of MR_succip in the fake_reg.
 			*/
 			MR_curfr = orig_curfr;
 			fflush(stdout);
 			save_succip = MR_succip;
-			save_registers();
+			MR_save_registers();
 			ML_report_uncaught_exception(exception);
 			MR_succip = save_succip;
 			MR_trace_report(stderr);
@@ -1370,12 +1375,12 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	*/
 	assert(MR_EXCEPTION_FRAMEVARS->heap_ptr <=
 		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
-	save_transient_registers();
+	MR_save_transient_registers();
 	exception = deep_copy(&exception,
 		(MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
 		MR_EXCEPTION_FRAMEVARS->heap_ptr,
 		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/* switch back to the ordinary heap */
 	swap_heaps();
@@ -1387,11 +1392,11 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	/* deep_copy the exception back to the ordinary heap */
 	assert(MR_EXCEPTION_FRAMEVARS->solns_heap_ptr <=
 		MR_solutions_heap_zone->top);
-	save_transient_registers();
+	MR_save_transient_registers();
 	exception = deep_copy(&exception,
 		(MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
 		saved_solns_heap_ptr, MR_solutions_heap_zone->top);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/* reset the solutions heap */
 	assert(MR_EXCEPTION_FRAMEVARS->solns_heap_ptr <= saved_solns_heap_ptr);
@@ -1442,7 +1447,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 #endif
 
 		MR_ENGINE(e_exception) = (MR_Word *) exception;
-		save_registers();
+		MR_save_registers();
 		longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
 	}
 
@@ -1459,28 +1464,29 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** If the catch was semidet, we need to set the success indicator
 	** r1 to TRUE and return the result in r2; otherwise, we return
 	** the result in r1, which is where mercury__do_call_closure puts it,
-	** so we can to a tailcall.
+	** so we can do a tailcall.
 	*/
 	if (catch_code_model != MR_MODEL_SEMI_HANDLER) {
-		tailcall(ENTRY(mercury__do_call_closure), 
-			ENTRY(mercury__exception__builtin_throw_1_0));
+		MR_tailcall(MR_ENTRY(mercury__do_call_closure), 
+			MR_ENTRY(mercury__exception__builtin_throw_1_0));
 	}
 	MR_incr_sp_push_msg(1, ""builtin_throw/1"");
 	MR_stackvar(1) = (MR_Word) MR_succip;
-	call(ENTRY(mercury__do_call_closure), 
-		LABEL(mercury__exception__builtin_throw_1_0_i1),
-		ENTRY(mercury__exception__builtin_throw_1_0));
+	MR_call(MR_ENTRY(mercury__do_call_closure), 
+		MR_LABEL(mercury__exception__builtin_throw_1_0_i1),
+		MR_ENTRY(mercury__exception__builtin_throw_1_0));
 }
-Define_label(mercury__exception__builtin_throw_1_0_i1);
-	update_prof_current_proc(LABEL(mercury__exception__builtin_throw_1_0));
+MR_define_label(mercury__exception__builtin_throw_1_0_i1);
+	MR_update_prof_current_proc(
+		MR_LABEL(mercury__exception__builtin_throw_1_0));
 	/* we've just returned from mercury__do_call_closure */
 	r2 = r1;
 	r1 = TRUE;
 	MR_succip = (MR_Code *) MR_stackvar(1);
 	MR_decr_sp_pop_msg(1);
-	proceed(); /* return to the caller of `builtin_catch' */
+	MR_proceed(); /* return to the caller of `builtin_catch' */
 
-END_MODULE
+MR_END_MODULE
 
 
 /* Ensure that the initialization code for the above module gets run. */

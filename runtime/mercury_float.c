@@ -7,8 +7,8 @@
 #include	"mercury_imp.h"
 
 /*
-** The function `hash_float()' is used by the library predicate `float__hash'
-** and also for hashing floats for `pragma fact_table' indexing.
+** The function `MR_hash_float()' is used by the library predicate
+** `float__hash' and also for hashing floats for `pragma fact_table' indexing.
 ** It computes a non-negative MR_Integer hash value for a MR_Float.
 ** The exact hash function used depend on the relative sizes of MR_Float and
 ** MR_Integer.
@@ -23,7 +23,7 @@ union MR_Float_Integer {
 };
 
 MR_Integer
-hash_float(MR_Float f)
+MR_hash_float(MR_Float f)
 {
 	union MR_Float_Integer fi;
 	size_t i;

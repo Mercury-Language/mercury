@@ -85,7 +85,7 @@
 ** At the moment, we use variable length arrays that are indexed by
 ** closure argument numbers or by type parameter numbers. We therefore
 ** use a default MR_VARIABLE_SIZED value that is at least as big as
-** both MAX_VIRTUAL_REG and MR_PSEUDOTYPEINFO_MAX_VAR.
+** both MR_MAX_VIRTUAL_REG and MR_PSEUDOTYPEINFO_MAX_VAR.
 */
 
 #if __STDC_VERSION__ >= 199901	/* January 1999 */

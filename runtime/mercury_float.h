@@ -20,32 +20,35 @@ typedef double MR_Float;
 
 #ifdef BOXED_FLOAT 
 
-#define word_to_float(w) (*(MR_Float *)(w))
+#define MR_word_to_float(w) 	(* (MR_Float *) (w))
 
-#define FLOAT_WORDS ((sizeof(MR_Float) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
+#define MR_FLOAT_WORDS 		((sizeof(MR_Float) + sizeof(MR_Word) - 1) \
+					/ sizeof(MR_Word))
 
 #ifdef CONSERVATIVE_GC
-#define float_to_word(f) ( \
-		hp_alloc_atomic(FLOAT_WORDS), \
-		*(MR_Float *)(void *)(MR_hp - FLOAT_WORDS) = (f), \
-		/* return */ (MR_Word) (MR_hp - FLOAT_WORDS) \
+#define MR_float_to_word(f) ( \
+		MR_hp_alloc_atomic(MR_FLOAT_WORDS), \
+		* (MR_Float *) (void *) (MR_hp - MR_FLOAT_WORDS) = (f), \
+		/* return */ (MR_Word) (MR_hp - MR_FLOAT_WORDS) \
 	)
 #else
-/* we need to ensure that what we allocated on the heap is properly
-   aligned */
-#define float_to_word(f) ( \
-		( (MR_Word)MR_hp & (sizeof(MR_Float) - 1) ? \
-			hp_alloc_atomic(1) : (void)0 ), \
-		hp_alloc_atomic(FLOAT_WORDS), \
-		*(MR_Float *)(void *)(MR_hp - FLOAT_WORDS) = (f), \
-		/* return */ (MR_Word) (MR_hp - FLOAT_WORDS) \
+/*
+** we need to ensure that what we allocated on the heap is properly
+** aligned
+*/
+#define MR_float_to_word(f) ( \
+		( (MR_Word) MR_hp & (sizeof(MR_Float) - 1) ? \
+			MR_hp_alloc_atomic(1) : (void)0 ), \
+		MR_hp_alloc_atomic(MR_FLOAT_WORDS), \
+		* (MR_Float *) (void *)(MR_hp - MR_FLOAT_WORDS) = (f), \
+		/* return */ (MR_Word) (MR_hp - MR_FLOAT_WORDS) \
 	)
 #endif
 
 #ifdef __GNUC__
-#define float_const(f) ({ static const MR_Float d = f; (MR_Word)&d; })
+#define MR_float_const(f) ({ static const MR_Float d = f; (MR_Word) &d; })
 #else
-#define float_const(f) float_to_word(f)	/* inefficient */
+#define MR_float_const(f) MR_float_to_word(f)	/* inefficient */
 #endif
 
 #else /* not BOXED_FLOAT */
@@ -57,25 +60,27 @@ union MR_Float_Word {
 	MR_Word w;
 };
 
-#define float_const(f) float_to_word(f)
+#define MR_float_const(f) MR_float_to_word(f)
 
 #ifdef __GNUC__
 
 /* GNU C allows you to cast to a union type */
-#define float_to_word(f) (__extension__ ((union MR_Float_Word)(MR_Float)(f)).w)
-#define word_to_float(w) (__extension__ ((union MR_Float_Word)(MR_Word)(w)).f)
+#define MR_float_to_word(f) (__extension__ \
+				((union MR_Float_Word)(MR_Float)(f)).w)
+#define MR_word_to_float(w) (__extension__ \
+				((union MR_Float_Word)(MR_Word)(w)).f)
 
 #else /* not __GNUC__ */
 
-static MR_Word float_to_word(MR_Float f)
+static MR_Word MR_float_to_word(MR_Float f)
 	{ union MR_Float_Word tmp; tmp.f = f; return tmp.w; }
-static MR_Float word_to_float(MR_Word w)
+static MR_Float MR_word_to_float(MR_Word w)
 	{ union MR_Float_Word tmp; tmp.w = w; return tmp.f; }
 
 #endif /* not __GNUC__ */
 
 #endif /* not BOXED_FLOAT */
 
-MR_Integer hash_float(MR_Float);
+MR_Integer MR_hash_float(MR_Float);
 
 #endif /* not MERCURY_FLOAT_H */

@@ -350,32 +350,32 @@ mercury__array____Compare____array_1_0(
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
-Declare_entry(mercury__array__array_equal_2_0);
-Declare_entry(mercury__array__array_compare_3_0);
+MR_declare_entry(mercury__array__array_equal_2_0);
+MR_declare_entry(mercury__array__array_compare_3_0);
 
-BEGIN_MODULE(array_module_builtins)
-	init_entry(mercury____Unify___array__array_1_0);
-	init_entry(mercury____Compare___array__array_1_0);
-BEGIN_CODE
+MR_BEGIN_MODULE(array_module_builtins)
+	MR_init_entry(mercury____Unify___array__array_1_0);
+	MR_init_entry(mercury____Compare___array__array_1_0);
+MR_BEGIN_CODE
 
-Define_entry(mercury____Unify___array__array_1_0);
+MR_define_entry(mercury____Unify___array__array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__array__array_equal_2_0),
-		ENTRY(mercury____Unify___array__array_1_0));
+	MR_tailcall(MR_ENTRY(mercury__array__array_equal_2_0),
+		MR_ENTRY(mercury____Unify___array__array_1_0));
 
-Define_entry(mercury____Compare___array__array_1_0);
+MR_define_entry(mercury____Compare___array__array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__array__array_compare_3_0),
-		ENTRY(mercury____Compare___array__array_1_0));
+	MR_tailcall(MR_ENTRY(mercury__array__array_compare_3_0),
+		MR_ENTRY(mercury____Compare___array__array_1_0));
 
-END_MODULE
+MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
 INIT sys_init_array_module_builtins
 */
 
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc array_module_builtins;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc array_module_builtins;
 
 void sys_init_array_module_builtins(void);
 		/* suppress gcc -Wmissing-decl warning */

@@ -91,7 +91,7 @@
 #define	MR_list_tail(list)	MR_field(MR_TAG_CONS, (list), 1)
 #define	MR_list_empty()		((MR_Word) MR_mkword(MR_TAG_NIL, MR_mkbody(0)))
 #define	MR_list_cons(head,tail)	((MR_Word) MR_mkword(MR_TAG_CONS, \
-					create2((head),(tail))))
+					MR_create2((head),(tail))))
 #define	MR_list_empty_msg(proclabel)	\
 				((MR_Word) MR_mkword(MR_TAG_NIL, MR_mkbody(0)))
 #define	MR_list_cons_msg(head,tail,proclabel) \
@@ -106,9 +106,9 @@
 #define	MR_list_head(list)	MR_field(MR_mktag(0), (list), 1)
 #define	MR_list_tail(list)	MR_field(MR_mktag(0), (list), 2)
 #define	MR_list_empty()		((MR_Word) MR_mkword(MR_mktag(0), \
-					create1(MR_RAW_TAG_NIL)))
+					MR_create1(MR_RAW_TAG_NIL)))
 #define	MR_list_cons(head,tail)	((MR_Word) MR_mkword(MR_mktag(0), \
-					create3(MR_RAW_TAG_CONS, \
+					MR_create3(MR_RAW_TAG_CONS, \
 						(head), (tail))))
 #define	MR_list_empty_msg(proclabel) \
 				((MR_Word) MR_mkword(MR_mktag(0), \

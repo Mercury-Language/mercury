@@ -112,7 +112,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% For each exported procedure, produce a C function.
 	% The code we generate is in the form
 	%
-	% Declare_entry(<label of called proc>); /* or Declare_static */
+	% MR_declare_entry(<label of called proc>); /* or MR_declare_static */
 	%
 	% #if SEMIDET
 	%   bool
@@ -125,8 +125,8 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%			MR_Word *Mercury__Argument2...)
 	%			/* Word for input, Word* for output */
 	% {
-	% #if NUM_REAL_REGS > 0
-	%	MR_Word c_regs[NUM_REAL_REGS];
+	% #if MR_NUM_REAL_REGS > 0
+	%	MR_Word c_regs[MR_NUM_REAL_REGS];
 	% #endif
 	% #if FUNCTION
 	%	MR_Word retval;
@@ -136,7 +136,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% #endif 
 	%
 	%		/* save the registers that our C caller may be using */
-	%	save_regs_to_mem(c_regs);
+	%	MR_save_regs_to_mem(c_regs);
 	%
 	%		/* 
 	%		** start a new Mercury engine inside this POSIX 
@@ -156,21 +156,21 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%		** multi-threaded init_thread (above) takes care
 	%		** of making a new engine if required.
 	%		*/
-	%	restore_registers();
+	%	MR_restore_registers();
 	%	<copy input arguments from Mercury__Arguments into registers>
 	%		/* save the registers which may be clobbered      */
 	%		/* by the C function call MR_call_engine().       */
-	%	save_transient_registers();
+	%	MR_save_transient_registers();
 	%
-	%	(void) MR_call_engine(ENTRY(<label of called proc>), FALSE);
+	%	(void) MR_call_engine(MR_ENTRY(<label of called proc>), FALSE);
 	%
 	%		/* restore the registers which may have been      */
 	%		/* clobbered by the return from the C function    */
 	%		/* MR_call_engine()				  */
-	%	restore_transient_registers();
+	%	MR_restore_transient_registers();
 	% #if SEMIDET
 	%	if (!r1) {
-	%		restore_regs_from_mem(c_regs);
+	%		MR_restore_regs_from_mem(c_regs);
 	%		return FALSE;
 	%	}
 	% #elif FUNCTION
@@ -182,7 +182,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% 		finalize_thread_engine();
 	% 	}
 	% #endif 
-	%	restore_regs_from_mem(c_regs);
+	%	MR_restore_regs_from_mem(c_regs);
 	% #if SEMIDET
 	%	return TRUE;
 	% #elif FUNCTION
@@ -214,24 +214,24 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\n",
 				C_RetType, "\n", 
 				C_Function, "(", ArgDecls, ")\n{\n",
-				"#if NUM_REAL_REGS > 0\n",
-				"\tMR_Word c_regs[NUM_REAL_REGS];\n",
+				"#if MR_NUM_REAL_REGS > 0\n",
+				"\tMR_Word c_regs[MR_NUM_REAL_REGS];\n",
 				"#endif\n",
 				"#if MR_THREAD_SAFE\n",
 				"\tMR_Bool must_finalize_engine;\n", 
 				"#endif\n",
 				MaybeDeclareRetval,
 				"\n",
-				"\tsave_regs_to_mem(c_regs);\n", 
+				"\tMR_save_regs_to_mem(c_regs);\n", 
 				"#if MR_THREAD_SAFE\n",
 				"\tmust_finalize_engine = init_thread(MR_use_now);\n", 
 				"#endif\n",
-				"\trestore_registers();\n", 
+				"\tMR_restore_registers();\n", 
 				InputArgs,
-				"\tsave_transient_registers();\n",
-				"\t(void) MR_call_engine(ENTRY(",
+				"\tMR_save_transient_registers();\n",
+				"\t(void) MR_call_engine(MR_ENTRY(",
 					ProcLabelString, "), FALSE);\n",
-				"\trestore_transient_registers();\n",
+				"\tMR_restore_transient_registers();\n",
 				MaybeFail,
 				OutputArgs,
 				"#if MR_THREAD_SAFE\n",
@@ -239,7 +239,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\t\t finalize_thread_engine();\n", 
 				"\t}\n", 
 				"#endif\n",
-				"\trestore_regs_from_mem(c_regs);\n", 
+				"\tMR_restore_regs_from_mem(c_regs);\n", 
 				MaybeSucceed,
 				"}\n\n"],
 				Code),
@@ -273,9 +273,9 @@ get_export_info(Preds, PredId, ProcId, HowToDeclareLabel, C_RetType,
 		; status_defined_in_this_module(Status, no)
 		)
 	->
-		HowToDeclareLabel = "Declare_entry"
+		HowToDeclareLabel = "MR_declare_entry"
 	;
-		HowToDeclareLabel = "Declare_static"
+		HowToDeclareLabel = "MR_declare_static"
 	),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_procedures(PredInfo, ProcTable),
@@ -324,7 +324,7 @@ get_export_info(Preds, PredId, ProcId, HowToDeclareLabel, C_RetType,
 		MaybeDeclareRetval = "",
 		string__append_list([
 			"\tif (!r1) {\n",
-			"\t\trestore_regs_from_mem(c_regs);\n",
+			"\t\tMR_restore_regs_from_mem(c_regs);\n",
 			"\treturn FALSE;\n",
 			"\t}\n"
 				], MaybeFail),

@@ -877,15 +877,15 @@ struct MR_TypeCtorInfo_Struct {
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)                   \
-    Declare_entry(u);                                                   \
-    Declare_entry(c);                                                   \
+    MR_declare_entry(u);                                                \
+    MR_declare_entry(c);                                                \
     MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct                  \
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)      \
         a,                                                              \
-        MR_MAYBE_STATIC_CODE(ENTRY(u)),                                 \
-        MR_MAYBE_STATIC_CODE(ENTRY(u)),                                 \
-        MR_MAYBE_STATIC_CODE(ENTRY(c)),                                 \
+        MR_MAYBE_STATIC_CODE(MR_ENTRY(u)),                              \
+        MR_MAYBE_STATIC_CODE(MR_ENTRY(u)),                              \
+        MR_MAYBE_STATIC_CODE(MR_ENTRY(c)),                              \
         cr,                                                             \
         NULL,                                                           \
         NULL,                                                           \
@@ -954,23 +954,23 @@ struct MR_TypeCtorInfo_Struct {
 
   #define   MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T)            		\
   do {                                                      		\
-    (B).unify_pred = ENTRY(mercury__builtin_unify##T##2_0);		\
-    (B).new_unify_pred = ENTRY(mercury__builtin_unify##T##2_0);		\
-    (B).compare_pred = ENTRY(mercury__builtin_compare##T##3_0);		\
+    (B).unify_pred = MR_ENTRY(mercury__builtin_unify##T##2_0);      \
+    (B).new_unify_pred = MR_ENTRY(mercury__builtin_unify##T##2_0);  \
+    (B).compare_pred = MR_ENTRY(mercury__builtin_compare##T##3_0);  \
   } while (0)
 
-  #define   MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)          \
-  do {                                                      \
-    (B).unify_pred = ENTRY(P);                              \
-    (B).new_unify_pred = ENTRY(P);                          \
-    (B).compare_pred = ENTRY(P);                            \
+  #define   MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)                  \
+  do {                                                              \
+    (B).unify_pred = MR_ENTRY(P);                                   \
+    (B).new_unify_pred = MR_ENTRY(P);                               \
+    (B).compare_pred = MR_ENTRY(P);                                 \
   } while (0)
 
-  #define   MR_INIT_TYPE_CTOR_INFO(B, T)                    \
-  do {                                                      \
-    (B).unify_pred = ENTRY(mercury____##Unify##___##T);     \
-    (B).new_unify_pred = ENTRY(mercury____##Unify##___##T); \
-    (B).compare_pred = ENTRY(mercury____##Compare##___##T); \
+  #define   MR_INIT_TYPE_CTOR_INFO(B, T)                            \
+  do {                                                              \
+    (B).unify_pred = MR_ENTRY(mercury____##Unify##___##T);          \
+    (B).new_unify_pred = MR_ENTRY(mercury____##Unify##___##T);      \
+    (B).compare_pred = MR_ENTRY(mercury____##Compare##___##T);      \
   } while (0)
 
 #else   /* MR_STATIC_CODE_ADDRESSES */
@@ -1052,8 +1052,8 @@ extern  MR_TypeInfo MR_collapse_equivalences(MR_TypeInfo type_info);
 **
 ** The two functions differ in how they allocate memory. MR_create_type_info
 ** allocates memory for a new type_info on the Mercury heap. Since this
-** may modify MR_hp, you need to wrap save_transient_hp() and
-** restore_transient_hp() around calls to MR_create_type_info.
+** may modify MR_hp, you need to wrap MR_save_transient_hp() and
+** MR_restore_transient_hp() around calls to MR_create_type_info.
 ** MR_make_type_info allocates memory using MR_GC_malloc, and inserts
 ** the address of the cells allocated into the list of allocations
 ** represented by its last argument; it is the caller's responsibility

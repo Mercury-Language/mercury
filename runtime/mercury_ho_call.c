@@ -63,29 +63,29 @@ static	MR_Word	MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 ** These are the real implementations of higher order calls and method calls.
 */
 
-Define_extern_entry(mercury__do_call_closure);
-Define_extern_entry(mercury__do_call_class_method);
+MR_define_extern_entry(mercury__do_call_closure);
+MR_define_extern_entry(mercury__do_call_class_method);
 
 /*
 ** These are the real implementations of unify and compare.
 */
 
-Define_extern_entry(mercury__unify_2_0);
-Define_extern_entry(mercury__compare_3_0);
-Define_extern_entry(mercury__compare_3_1);
-Define_extern_entry(mercury__compare_3_2);
-Define_extern_entry(mercury__compare_3_3);
-Declare_label(mercury__compare_3_0_i1);
+MR_define_extern_entry(mercury__unify_2_0);
+MR_define_extern_entry(mercury__compare_3_0);
+MR_define_extern_entry(mercury__compare_3_1);
+MR_define_extern_entry(mercury__compare_3_2);
+MR_define_extern_entry(mercury__compare_3_3);
+MR_declare_label(mercury__compare_3_0_i1);
 
-BEGIN_MODULE(call_module)
-	init_entry_ai(mercury__do_call_closure);
-	init_entry_ai(mercury__do_call_class_method);
-	init_entry_ai(mercury__unify_2_0);
-	init_entry_ai(mercury__compare_3_0);
-	init_entry_ai(mercury__compare_3_1);
-	init_entry_ai(mercury__compare_3_2);
-	init_entry_ai(mercury__compare_3_3);
-BEGIN_CODE
+MR_BEGIN_MODULE(call_module)
+	MR_init_entry_ai(mercury__do_call_closure);
+	MR_init_entry_ai(mercury__do_call_class_method);
+	MR_init_entry_ai(mercury__unify_2_0);
+	MR_init_entry_ai(mercury__compare_3_0);
+	MR_init_entry_ai(mercury__compare_3_1);
+	MR_init_entry_ai(mercury__compare_3_2);
+	MR_init_entry_ai(mercury__compare_3_3);
+MR_BEGIN_CODE
 
 /*
 ** Note: this routine gets ignored for profiling.
@@ -93,7 +93,7 @@ BEGIN_CODE
 ** rather than call().  See comment in output_call in
 ** compiler/llds_out for explanation.
 */
-Define_entry(mercury__do_call_closure);
+MR_define_entry(mercury__do_call_closure);
 {
 	MR_Closure	*closure;
 	int		num_extra_args;	/* # of args provided by our caller */
@@ -104,34 +104,34 @@ Define_entry(mercury__do_call_closure);
 	num_extra_args = r2;
 	num_hidden_args = closure->MR_closure_num_hidden_args;
 
-	save_registers();
+	MR_save_registers();
 
 	if (num_hidden_args < MR_HO_CALL_INPUTS) {
 		/* copy to the left, from the left */
 		for (i = 1; i <= num_extra_args; i++) {
-			virtual_reg(i + num_hidden_args) =
-				virtual_reg(i + MR_HO_CALL_INPUTS);
+			MR_virtual_reg(i + num_hidden_args) =
+				MR_virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
 	} else if (num_hidden_args > MR_HO_CALL_INPUTS) {
 		/* copy to the right, from the right */
 		for (i = num_extra_args; i > 0; i--) {
-			virtual_reg(i + num_hidden_args) =
-				virtual_reg(i + MR_HO_CALL_INPUTS);
+			MR_virtual_reg(i + num_hidden_args) =
+				MR_virtual_reg(i + MR_HO_CALL_INPUTS);
 		}
 	} /* else the new args are in the right place */
 
 	for (i = 1; i <= num_hidden_args; i++) {
-		virtual_reg(i) = closure->MR_closure_hidden_args(i);
+		MR_virtual_reg(i) = closure->MR_closure_hidden_args(i);
 	}
 
-	restore_registers();
+	MR_restore_registers();
 
 	/*
 	** Note that we pass MR_prof_ho_caller_proc rather than
-	** LABEL(do_call_closure), so that the call gets recorded
+	** MR_LABEL(do_call_closure), so that the call gets recorded
 	** as having come from our caller.
 	*/
-	tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
+	MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
 }
 
 	/*
@@ -148,7 +148,7 @@ Define_entry(mercury__do_call_closure);
 ** rather than call().  See comment in output_call in
 ** compiler/llds_out for explanation.
 */
-Define_entry(mercury__do_call_class_method);
+MR_define_entry(mercury__do_call_class_method);
 {
 	MR_Code 	*destination;
 	int	num_in_args;
@@ -161,35 +161,38 @@ Define_entry(mercury__do_call_class_method);
 
 	num_in_args = r3; /* number of input args */
 
-	save_registers();
+	MR_save_registers();
 
 	if (num_extra_instance_args < MR_CLASS_METHOD_CALL_INPUTS) {
 		/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i + num_extra_instance_args) =
-				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
+			MR_virtual_reg(i + num_extra_instance_args) =
+				MR_virtual_reg(i +
+					MR_CLASS_METHOD_CALL_INPUTS);
 		}
 	} else if (num_extra_instance_args > MR_CLASS_METHOD_CALL_INPUTS) {
 		/* copy to the right, from the right */
 		for (i = num_in_args; i > 0; i--) {
-			virtual_reg(i + num_extra_instance_args) =
-				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
+			MR_virtual_reg(i + num_extra_instance_args) =
+				MR_virtual_reg(i +
+					MR_CLASS_METHOD_CALL_INPUTS);
 		}
 	} /* else the new args are in the right place */
 
 	for (i = num_extra_instance_args; i > 0; i--) {
-		virtual_reg(i) = 
-			MR_typeclass_info_arg_typeclass_info(virtual_reg(1),i);
+		MR_virtual_reg(i) = 
+			MR_typeclass_info_arg_typeclass_info(MR_virtual_reg(1),
+				i);
 	}
 
-	restore_registers();
+	MR_restore_registers();
 
 	/*
 	** Note that we pass MR_prof_ho_caller_proc rather than
-	** LABEL(do_call_class_method), so that the call gets recorded
+	** MR_LABEL(do_call_class_method), so that the call gets recorded
 	** as having come from our caller.
 	*/
-	tailcall(destination, MR_prof_ho_caller_proc);
+	MR_tailcall(destination, MR_prof_ho_caller_proc);
 }
 
 /*
@@ -197,7 +200,7 @@ Define_entry(mercury__do_call_class_method);
 ** in the mode `unify(in, in, in) is semidet'.
 */
 
-Define_entry(mercury__unify_2_0);
+MR_define_entry(mercury__unify_2_0);
 {
 
 #define	DECLARE_LOCALS							\
@@ -222,7 +225,7 @@ Define_entry(mercury__unify_2_0);
 	} while(0)
 
 #define	tailcall_user_pred()						\
-	tailcall(type_ctor_info->unify_pred, LABEL(mercury__unify_2_0))
+	MR_tailcall(type_ctor_info->unify_pred, MR_LABEL(mercury__unify_2_0))
 
 #define	start_label		unify_start
 #define	call_user_code_label	call_unify_in_proc
@@ -249,25 +252,25 @@ Define_entry(mercury__unify_2_0);
 ** (The additional entry points replace either or both "in"s with "ui"s.)
 */
 
-Define_entry(mercury__compare_3_0);
+MR_define_entry(mercury__compare_3_0);
 #ifdef PROFILE_CALLS
 {
-	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_0));
+	MR_tailcall(MR_ENTRY(mercury__compare_3_3), MR_LABEL(mercury__compare_3_0));
 }
 #endif
-Define_entry(mercury__compare_3_1);
+MR_define_entry(mercury__compare_3_1);
 #ifdef PROFILE_CALLS
 {
-	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_1));
+	MR_tailcall(MR_ENTRY(mercury__compare_3_3), MR_LABEL(mercury__compare_3_1));
 }
 #endif
-Define_entry(mercury__compare_3_2);
+MR_define_entry(mercury__compare_3_2);
 #ifdef PROFILE_CALLS
 {
-	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_2));
+	MR_tailcall(MR_ENTRY(mercury__compare_3_3), MR_LABEL(mercury__compare_3_2));
 }
 #endif
-Define_entry(mercury__compare_3_3);
+MR_define_entry(mercury__compare_3_3);
 {
 
 #define	DECLARE_LOCALS							\
@@ -292,7 +295,8 @@ Define_entry(mercury__compare_3_3);
 	} while(0)
 
 #define	tailcall_user_pred()						\
-	tailcall(type_ctor_info->compare_pred, LABEL(mercury__compare_3_3))
+	MR_tailcall(type_ctor_info->compare_pred,			\
+		MR_LABEL(mercury__compare_3_3))
 
 #define	start_label		compare_start
 #define	call_user_code_label	call_compare_in_proc
@@ -313,7 +317,7 @@ Define_entry(mercury__compare_3_3);
 #undef	select_compare_code
 
 }
-END_MODULE
+MR_END_MODULE
 
 static MR_Word
 MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
@@ -332,9 +336,9 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #define	tailcall_user_pred()						\
 	do {								\
-		save_transient_registers();				\
+		MR_save_transient_registers();				\
 		(void) MR_call_engine(type_ctor_info->unify_pred, FALSE);\
-		restore_transient_registers();				\
+		MR_restore_transient_registers();			\
 		return (r1);						\
 	} while (0)
 
@@ -372,9 +376,9 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #define	tailcall_user_pred()						\
 	do {								\
-		save_transient_registers();				\
+		MR_save_transient_registers();				\
 		(void) MR_call_engine(type_ctor_info->compare_pred, FALSE);\
-		restore_transient_registers();				\
+		MR_restore_transient_registers();			\
 		return (r1);						\
 	} while (0)
 

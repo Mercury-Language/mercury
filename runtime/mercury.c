@@ -17,7 +17,7 @@
 #include "mercury.h"
 #include "mercury_type_info.h"	/* for MR_TYPECTOR_REP* */
 #include "mercury_misc.h"	/* for MR_fatal_error() */
-#include "mercury_heap.h"	/* for create[1-3]() prototypes */
+#include "mercury_heap.h"	/* for MR_create[1-3]() prototypes */
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -943,7 +943,7 @@ mercury__private_builtin__do_compare__base_typeclass_info_1_0(
 /* provide definitions for functions declared `extern inline' */
 
 MR_Word
-create1(MR_Word w1) 
+MR_create1(MR_Word w1) 
 {
 	MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
 		1 * sizeof(MR_Word), "create1");
@@ -952,7 +952,7 @@ create1(MR_Word w1)
 }
 
 MR_Word
-create2(MR_Word w1, MR_Word w2) 
+MR_create2(MR_Word w1, MR_Word w2) 
 {
 	MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
 		2 * sizeof(MR_Word), "create2");
@@ -962,7 +962,7 @@ create2(MR_Word w1, MR_Word w2)
 }
 
 MR_Word
-create3(MR_Word w1, MR_Word w2, MR_Word w3) 
+MR_create3(MR_Word w1, MR_Word w2, MR_Word w3) 
 {
 	MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
 		3 * sizeof(MR_Word), "create3");

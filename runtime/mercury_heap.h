@@ -21,10 +21,10 @@
 
   #include "gc.h"
 
-  #define tag_incr_hp_n(dest, tag, count) \
+  #define MR_tag_incr_hp_n(dest, tag, count) \
 	((dest) = (MR_Word) MR_mkword((tag), \
 			(MR_Word) GC_MALLOC((count) * sizeof(MR_Word))))
-  #define tag_incr_hp_atomic(dest, tag, count) \
+  #define MR_tag_incr_hp_atomic(dest, tag, count) \
 	((dest) = (MR_Word) MR_mkword((tag), \
 			(MR_Word) GC_MALLOC_ATOMIC((count) * sizeof(MR_Word))))
 
@@ -59,55 +59,56 @@
     #endif
 
     #include "gc_inl.h"
-    #define tag_incr_hp(dest, tag, count) 				\
+    #define MR_tag_incr_hp(dest, tag, count) 				\
 	( __builtin_constant_p(count) && (count) < 16 			\
 	? ({ 	void * temp; 						\
 		/* if size > 1, round up to an even number of words */	\
-		MR_Word num_words = ((count) == 1 ? 1 : 2 * (((count) + 1) / 2));\
+		MR_Word num_words = ((count) == 1 ? 1 :			\
+			2 * (((count) + 1) / 2));			\
 		GC_MALLOC_WORDS(temp, num_words);			\
-		(dest) = (MR_Word) MR_mkword((tag), temp);			\
+		(dest) = (MR_Word) MR_mkword((tag), temp);		\
 	  })								\
-	: tag_incr_hp_n((dest), (tag), (count))				\
+	: MR_tag_incr_hp_n((dest), (tag), (count))			\
 	)
 
   #else /* not INLINE_ALLOC */
 
-    #define tag_incr_hp(dest, tag, count) \
-	tag_incr_hp_n((dest), (tag), (count))
+    #define MR_tag_incr_hp(dest, tag, count) \
+	MR_tag_incr_hp_n((dest), (tag), (count))
 
   #endif /* not INLINE_ALLOC */
 
-  #define mark_hp(dest)		((void)0)
-  #define restore_hp(src)	((void)0)
+  #define MR_mark_hp(dest)		((void)0)
+  #define MR_restore_hp(src)		((void)0)
 
 			/* we use `MR_hp' as a convenient temporary here */
-  #define hp_alloc(count) (						\
-		incr_hp(LVALUE_CAST(MR_Word, MR_hp), (count)),		\
+  #define MR_hp_alloc(count) (						\
+		MR_incr_hp(MR_LVALUE_CAST(MR_Word, MR_hp), (count)),	\
 		MR_hp += (count),					\
-		(void)0							\
+		(void) 0						\
 	)
-  #define hp_alloc_atomic(count) (					\
-		incr_hp_atomic(LVALUE_CAST(MR_Word, MR_hp), (count)), 	\
+  #define MR_hp_alloc_atomic(count) (					\
+		MR_incr_hp_atomic(MR_LVALUE_CAST(MR_Word, MR_hp), (count)),\
 		MR_hp += (count),					\
-		(void)0							\
+		(void) 0						\
 	)
 
   #define MR_free_heap(ptr)	GC_FREE((ptr))
 
 #else /* not CONSERVATIVE_GC */
 
-  #define tag_incr_hp(dest, tag, count) 			\
-	(							\
-		(dest) = (MR_Word) MR_mkword(tag, (MR_Word) MR_hp),	\
-		debugincrhp(count, MR_hp),			\
-		MR_hp += (count),				\
-		heap_overflow_check(),				\
-		(void)0						\
-	)
-  #define tag_incr_hp_atomic(dest, tag, count) \
-	tag_incr_hp((dest), (tag), (count))
+  #define	MR_tag_incr_hp(dest, tag, count) 			\
+		(							\
+			(dest) = (MR_Word) MR_mkword(tag, (MR_Word) MR_hp),\
+			MR_debugincrhp(count, MR_hp),			\
+			MR_hp += (count),				\
+			heap_overflow_check(),				\
+			(void) 0					\
+		)
+  #define MR_tag_incr_hp_atomic(dest, tag, count) 			\
+		MR_tag_incr_hp((dest), (tag), (count))
 
-  #define mark_hp(dest)		((dest) = (MR_Word) MR_hp)
+  #define MR_mark_hp(dest)		((dest) = (MR_Word) MR_hp)
 
   /*
   ** When restoring MR_hp, we must make sure that we don't truncate the heap
@@ -115,91 +116,96 @@
   ** min_heap_reclamation_point. See the comments in mercury_context.h next to
   ** the set_min_heap_reclamation_point() macro.
   */
-  #define	restore_hp(src)	(					\
-  			LVALUE_CAST(MR_Word, MR_hp) = (src),		\
-  			(void)0						\
+  #define	MR_restore_hp(src)	(				\
+  			MR_LVALUE_CAST(MR_Word, MR_hp) = (src),		\
+  			(void) 0					\
   		)
 
   /*
-  #define	restore_hp(src)	(					\
-  			LVALUE_CAST(MR_Word, MR_hp) =			\
+  #define	MR_restore_hp(src)	(				\
+  			MR_LVALUE_CAST(MR_Word, MR_hp) =		\
   			  ( (MR_Word) MR_min_hp_rec < (src) ?		\
   			  (src) : (MR_Word) MR_min_hp_rec ),		\
-  			(void)0						\
+  			(void) 0					\
   		)
   */
   
-  #define hp_alloc(count)  	 incr_hp(LVALUE_CAST(MR_Word, MR_hp), count)
-  #define hp_alloc_atomic(count) incr_hp_atomic(LVALUE_CAST(MR_Word, MR_hp), count)
+  #define MR_hp_alloc(count)  	 	MR_incr_hp(			\
+		  			MR_LVALUE_CAST(MR_Word, MR_hp), count)
+  #define MR_hp_alloc_atomic(count)	MR_incr_hp_atomic(		\
+		  			MR_LVALUE_CAST(MR_Word, MR_hp), count)
 
-  #define MR_free_heap(ptr)	((void)0)
+  #define MR_free_heap(ptr)		((void) 0)
   
 #endif /* not CONSERVATIVE_GC */
   
 #ifdef	PROFILE_MEMORY
   #define MR_maybe_record_allocation(count, proclabel, type)		\
-	MR_record_allocation((count), ENTRY(proclabel), 		\
+	MR_record_allocation((count), MR_ENTRY(proclabel), 		\
 		MR_STRINGIFY(proclabel), (type))
 #else
   #define MR_maybe_record_allocation(count, proclabel, type)		\
   	((void) 0)
 #endif
   	
-#define tag_incr_hp_msg(dest, tag, count, proclabel, type)		\
+#define MR_tag_incr_hp_msg(dest, tag, count, proclabel, type)		\
 	(								\
 		MR_maybe_record_allocation((count), proclabel, (type)),	\
-		tag_incr_hp((dest), (tag), (count))			\
+		MR_tag_incr_hp((dest), (tag), (count))			\
 	)
-#define tag_incr_hp_atomic_msg(dest, tag, count, proclabel, type) 	\
+#define MR_tag_incr_hp_atomic_msg(dest, tag, count, proclabel, type) 	\
 	(								\
 		MR_maybe_record_allocation((count), proclabel, (type)),	\
-		tag_incr_hp_atomic((dest), (tag), (count))		\
+		MR_tag_incr_hp_atomic((dest), (tag), (count))		\
 	)
 
 /*
-** The incr_hp*() macros are defined in terms of the tag_incr_hp*() macros.
-** Note: the `proclabel' argument is not parenthesized, since it must
+** The MR_incr_hp*() macros are defined in terms of the MR_tag_incr_hp*()
+** macros. Note: the `proclabel' argument is not parenthesized, since it must
 ** be a label name; we may need to prefix `_entry_' in front of it,
 ** which wouldn't work if it was parenthesized.
 */
-#define	incr_hp(dest, count) \
-		tag_incr_hp((dest), MR_mktag(0), (count))
-#define	incr_hp_msg(dest, count, proclabel, type) \
-		tag_incr_hp_msg((dest), MR_mktag(0), (count), \
+#define	MR_incr_hp(dest, count) \
+		MR_tag_incr_hp((dest), MR_mktag(0), (count))
+#define	MR_incr_hp_msg(dest, count, proclabel, type) \
+		MR_tag_incr_hp_msg((dest), MR_mktag(0), (count), \
 			proclabel, (type))
-#define	incr_hp_atomic(dest, count) \
-		tag_incr_hp_atomic((dest), MR_mktag(0), (count))
-#define	incr_hp_atomic_msg(dest, count, proclabel, type) \
-		tag_incr_hp_atomic_msg((dest), MR_mktag(0), (count), \
+#define	MR_incr_hp_atomic(dest, count) \
+		MR_tag_incr_hp_atomic((dest), MR_mktag(0), (count))
+#define	MR_incr_hp_atomic_msg(dest, count, proclabel, type) \
+		MR_tag_incr_hp_atomic_msg((dest), MR_mktag(0), (count), \
 			proclabel, (type))
 
 #ifdef MR_HIGHLEVEL_CODE
 
-MR_EXTERN_INLINE MR_Word create1(MR_Word w1);
-MR_EXTERN_INLINE MR_Word create2(MR_Word w1, MR_Word w2);
-MR_EXTERN_INLINE MR_Word create3(MR_Word w1, MR_Word w2, MR_Word w3) ;
+MR_EXTERN_INLINE MR_Word MR_create1(MR_Word w1);
+MR_EXTERN_INLINE MR_Word MR_create2(MR_Word w1, MR_Word w2);
+MR_EXTERN_INLINE MR_Word MR_create3(MR_Word w1, MR_Word w2, MR_Word w3) ;
 
 MR_EXTERN_INLINE MR_Word
-create1(MR_Word w1) 
+MR_create1(MR_Word w1) 
 {
-	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 1 * sizeof(MR_Word), "create1");
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 1 * sizeof(MR_Word),
+			"create1");
 	p[0] = w1;
 	return (MR_Word) p;
 }
 
 MR_EXTERN_INLINE MR_Word
-create2(MR_Word w1, MR_Word w2) 
+MR_create2(MR_Word w1, MR_Word w2) 
 {
-	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word), "create2");
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word),
+			"create2");
 	p[0] = w1;
 	p[1] = w2;
 	return (MR_Word) p;
 }
 
 MR_EXTERN_INLINE MR_Word
-create3(MR_Word w1, MR_Word w2, MR_Word w3) 
+MR_create3(MR_Word w1, MR_Word w2, MR_Word w3) 
 {
-	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 3 * sizeof(MR_Word), "create3");
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 3 * sizeof(MR_Word),
+			"create3");
 	p[0] = w1;
 	p[1] = w2;
 	p[2] = w3;
@@ -207,11 +213,11 @@ create3(MR_Word w1, MR_Word w2, MR_Word w3)
 }
 
 #define MR_create1_msg(w1, proclabel, type) \
-	create1((w1))
+	MR_create1((w1))
 #define MR_create2_msg(w1, w2, proclabel, type)	\
-	create2((w1), (w2))
+	MR_create2((w1), (w2))
 #define MR_create3_msg(w1, w2, w3, proclabel, type) \
-	create3((w1), (w2), (w3))
+	MR_create3((w1), (w2), (w3))
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
@@ -222,28 +228,28 @@ create3(MR_Word w1, MR_Word w2, MR_Word w3)
 */
 
 /* used only by hand-written code not by the automatically generated code */
-#define create1(w1)						\
+#define MR_create1(w1)						\
 	(							\
-		hp_alloc(1),					\
+		MR_hp_alloc(1),					\
 		MR_hp[-1] = (MR_Word) (w1),			\
-		debugcr1(MR_hp[-1], MR_hp),			\
+		MR_debugcr1(MR_hp[-1], MR_hp),			\
 		/* return */ (MR_Word) (MR_hp - 1)			\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
-#define create2(w1, w2)						\
+#define MR_create2(w1, w2)						\
 	(							\
-		hp_alloc(2),					\
+		MR_hp_alloc(2),					\
 		MR_hp[-2] = (MR_Word) (w1),			\
 		MR_hp[-1] = (MR_Word) (w2),			\
-		debugcr2(MR_hp[-2], MR_hp[-1], MR_hp),		\
+		MR_debugcr2(MR_hp[-2], MR_hp[-1], MR_hp),		\
 		/* return */ (MR_Word) (MR_hp - 2)			\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
-#define create3(w1, w2, w3)					\
+#define MR_create3(w1, w2, w3)					\
 	(							\
-		hp_alloc(3),					\
+		MR_hp_alloc(3),					\
 		MR_hp[-3] = (MR_Word) (w1),			\
 		MR_hp[-2] = (MR_Word) (w2),			\
 		MR_hp[-1] = (MR_Word) (w3),			\
@@ -254,32 +260,32 @@ create3(MR_Word w1, MR_Word w2, MR_Word w3)
 #define MR_create1_msg(w1,proclabel,type)				\
 	(								\
 		MR_maybe_record_allocation(1, proclabel, (type)),	\
-		hp_alloc(1),						\
+		MR_hp_alloc(1),						\
 		MR_hp[-1] = (MR_Word) (w1),				\
-		debugcr1(MR_hp[-1], MR_hp),				\
-		/* return */ (MR_Word) (MR_hp - 1)				\
+		MR_debugcr1(MR_hp[-1], MR_hp),				\
+		/* return */ (MR_Word) (MR_hp - 1)			\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
 #define MR_create2_msg(w1, w2, proclabel, type)				\
 	(								\
 		MR_maybe_record_allocation(2, proclabel, (type)),	\
-		hp_alloc(2),						\
+		MR_hp_alloc(2),						\
 		MR_hp[-2] = (MR_Word) (w1),				\
 		MR_hp[-1] = (MR_Word) (w2),				\
-		debugcr2(MR_hp[-2], MR_hp[-1], MR_hp),			\
-		/* return */ (MR_Word) (MR_hp - 2)				\
+		MR_debugcr2(MR_hp[-2], MR_hp[-1], MR_hp),		\
+		/* return */ (MR_Word) (MR_hp - 2)			\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
 #define MR_create3_msg(w1, w2, w3, proclabel, type)			\
 	(								\
 		MR_maybe_record_allocation(3, proclabel, (type)),	\
-		hp_alloc(3),						\
+		MR_hp_alloc(3),						\
 		MR_hp[-3] = (MR_Word) (w1),				\
 		MR_hp[-2] = (MR_Word) (w2),				\
 		MR_hp[-1] = (MR_Word) (w3),				\
-		/* return */ (MR_Word) (MR_hp - 3)				\
+		/* return */ (MR_Word) (MR_hp - 3)			\
 	)
 
 #endif /* ! MR_HIGHLEVEL_CODE */
@@ -288,22 +294,22 @@ create3(MR_Word w1, MR_Word w2, MR_Word w3)
 ** Indended for use in handwritten C code where the Mercury registers
 ** may have been clobbered due to C function calls (eg, on the SPARC due
 ** to sliding register windows).
-** Remember to save_transient_hp() before calls to such code, and
-** restore_transient_hp() after.
+** Remember to MR_save_transient_hp() before calls to such code, and
+** MR_restore_transient_hp() after.
 */
 
-#define incr_saved_hp(A, B)					\
+#define MR_incr_saved_hp(A, B)					\
 	do { 							\
-		restore_transient_hp();				\
-		incr_hp((A), (B));				\
-		save_transient_hp();				\
+		MR_restore_transient_hp();			\
+		MR_incr_hp((A), (B));				\
+		MR_save_transient_hp();				\
 	} while (0)
 
-#define incr_saved_hp_atomic(A, B) 				\
+#define MR_incr_saved_hp_atomic(A, B) 				\
 	do { 							\
-		restore_transient_hp();				\
-		incr_hp_atomic((A), (B));			\
-		save_transient_hp();				\
+		MR_restore_transient_hp();			\
+		MR_incr_hp_atomic((A), (B));			\
+		MR_save_transient_hp();				\
 	} while (0)
 
 #endif /* not MERCURY_HEAP_H */

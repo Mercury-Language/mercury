@@ -24,10 +24,10 @@ bool	MR_exit_now;
 #ifdef MR_THREAD_SAFE
 
 static void *
-create_thread_2(void *goal);
+MR_create_thread_2(void *goal);
 
 MercuryThread *
-create_thread(MR_ThreadGoal *goal)
+MR_create_thread(MR_ThreadGoal *goal)
 {
 	MercuryThread *thread;
 	pthread_attr_t attrs;
@@ -35,7 +35,8 @@ create_thread(MR_ThreadGoal *goal)
 
 	thread = MR_GC_NEW(MercuryThread);
 	pthread_attr_init(&attrs);
-	err = pthread_create(thread, &attrs, create_thread_2, (void *) goal);
+	err = pthread_create(thread, &attrs, MR_create_thread_2,
+		(void *) goal);
 
 #if 0
 	fprintf(stderr, "pthread_create returned %d (errno = %d)\n",
@@ -49,16 +50,16 @@ create_thread(MR_ThreadGoal *goal)
 }
 
 static void *
-create_thread_2(void *goal0)
+MR_create_thread_2(void *goal0)
 {
 	MR_ThreadGoal *goal;
 
 	goal = (MR_ThreadGoal *) goal0;
 	if (goal != NULL) {
-		init_thread(MR_use_now);
+		MR_init_thread(MR_use_now);
 		(goal->func)(goal->arg);
 	} else {
-		init_thread(MR_use_later);
+		MR_init_thread(MR_use_later);
 	}
 
 	return NULL;
@@ -67,7 +68,7 @@ create_thread_2(void *goal0)
 #endif /* MR_THREAD_SAFE */
 
 MR_Bool
-init_thread(MR_when_to_use when_to_use)
+MR_init_thread(MR_when_to_use when_to_use)
 {
 	MercuryEngine *eng;
 
@@ -81,23 +82,23 @@ init_thread(MR_when_to_use when_to_use)
 		return FALSE;
 	}
 #endif
-	eng = create_engine();
+	eng = MR_create_engine();
 
 #ifdef MR_THREAD_SAFE
 	pthread_setspecific(MR_engine_base_key, eng);
-	restore_registers();
+	MR_restore_registers();
   #ifdef MR_ENGINE_BASE_REGISTER
 	MR_engine_base = eng;
   #endif
 #else
 	MR_memcpy(&MR_engine_base, eng,
 		sizeof(MercuryEngine));
-	restore_registers();
+	MR_restore_registers();
 #endif
-	load_engine_regs(MR_cur_engine());
-	load_context(MR_ENGINE(this_context));
+	MR_load_engine_regs(MR_cur_engine());
+	MR_load_context(MR_ENGINE(this_context));
 
-	save_registers();
+	MR_save_registers();
 
 #ifdef	MR_THREAD_SAFE
 	MR_ENGINE(owner_thread) = pthread_self();
@@ -105,9 +106,9 @@ init_thread(MR_when_to_use when_to_use)
 
 	switch (when_to_use) {
 		case MR_use_later :
-			(void) MR_call_engine(ENTRY(do_runnext), FALSE);
+			(void) MR_call_engine(MR_ENTRY(do_runnext), FALSE);
 
-			destroy_engine(eng);
+			MR_destroy_engine(eng);
 			return FALSE;
 
 		case MR_use_now :
@@ -122,7 +123,7 @@ init_thread(MR_when_to_use when_to_use)
 ** Release resources associated with this thread.
 */
 void
-finalize_thread_engine(void)
+MR_finalize_thread_engine(void)
 {
 #ifdef MR_THREAD_SAFE
 	MercuryEngine *eng;
@@ -133,21 +134,24 @@ finalize_thread_engine(void)
 	** XXX calling destroy_engine(eng) here appears to segfault.
 	** This should probably be investigated and fixed.
 	*/
-	finalize_engine(eng);
+	MR_finalize_engine(eng);
 #endif
 }
 
 #ifdef	MR_THREAD_SAFE
+
 void
-destroy_thread(void *eng0)
+MR_destroy_thread(void *eng0)
 {
 	MercuryEngine *eng = eng0;
-	destroy_engine(eng);
+	MR_destroy_engine(eng);
 	pthread_exit(0);
 }
+
 #endif
 
 #if defined(MR_THREAD_SAFE) && defined(MR_DEBUG_THREADS)
+
 void
 MR_mutex_lock(MercuryLock *lock, const char *from)
 {
@@ -188,5 +192,5 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
 	err = pthread_cond_wait(cond, lock);
 	assert(err == 0);
 }
-#endif
 
+#endif

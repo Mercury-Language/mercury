@@ -20,17 +20,17 @@
 
 #ifdef MR_USE_TRAIL
 
-MemoryZone	*MR_trail_zone;
-MR_TrailEntry	*MR_trail_ptr_var;
-MR_Unsigned	MR_ticket_counter_var = 1;
-MR_Unsigned	MR_ticket_high_water_var = 1;
+MR_MR_MemoryZone	*MR_trail_zone;
+MR_TrailEntry		*MR_trail_ptr_var;
+MR_Unsigned		MR_ticket_counter_var = 1;
+MR_Unsigned		MR_ticket_high_water_var = 1;
 
 void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 {
     MR_TrailEntry *tr_ptr;
     /* not needed, since MR_trail_ptr is never a real reg: */
-    /* restore_transient_registers(); */
+    /* MR_restore_transient_registers(); */
     tr_ptr = MR_trail_ptr;
 
     switch (reason) {
@@ -70,11 +70,11 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 	    }
 	    MR_trail_ptr = tr_ptr;
 	    /* not needed, since MR_trail_ptr is never a real reg: */
-	    /* save_transient_registers(); */
+	    /* MR_save_transient_registers(); */
 	    break;
 	
 	default:
-	    fatal_error("unknown MR_untrail_reason");
+	    MR_fatal_error("unknown MR_untrail_reason");
     }
 }
 

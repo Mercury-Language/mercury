@@ -113,7 +113,7 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 	MR_Trace_Port	port;
 
 	/* in case MR_sp or MR_curfr is transient */
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
 	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
@@ -338,7 +338,7 @@ MR_trace_interrupt(const MR_Stack_Layout_Label *layout)
 	}
 
 	/* in case MR_sp or MR_curfr is transient */
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
 		seqno = (MR_Unsigned) MR_call_num_stackvar(MR_sp);
@@ -427,7 +427,8 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	** For the treatment of MR_global_hp, see the top of this file.
 	*/
 
-	restore_transient_registers(); /* in case MR_global_hp is transient */
+		/* in case MR_global_hp is transient */
+	MR_restore_transient_registers();
 	MR_saved_global_hp(saved_regs) = MR_global_hp;
 	MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);
 	return jumpaddr;
@@ -661,7 +662,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	}
 
 	for (i = 1; i < arg_max; i++) {
-		saved_reg(saved_regs, i) = args[i];
+		MR_saved_reg(saved_regs, i) = args[i];
 	}
 
 	event_info->MR_max_mr_num = max(event_info->MR_max_mr_num, arg_max);

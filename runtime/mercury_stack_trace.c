@@ -242,7 +242,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr)
 			MR_print_nondstackptr(fp, base_maxfr);
 			fprintf(fp, ": temp\n");
 			fprintf(fp, " redoip: ");
-			printlabel(MR_redoip_slot(base_maxfr));
+			MR_printlabel(fp, MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: ");
 			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
 			fprintf(fp, " \n");
@@ -250,7 +250,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr)
 			MR_print_nondstackptr(fp, base_maxfr);
 			fprintf(fp, ": temp\n");
 			fprintf(fp, " redoip: ");
-			printlabel(MR_redoip_slot(base_maxfr));
+			MR_printlabel(fp, MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: ");
 			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
 			fprintf(fp, " \n");
@@ -262,12 +262,12 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr)
 			fprintf(fp, ": ordinary, %d words\n",
 				frame_size);
 			fprintf(fp, " redoip: ");
-			printlabel(MR_redoip_slot(base_maxfr));
+			MR_printlabel(fp, MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: ");
 			MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
 			fprintf(fp, " \n");
 			fprintf(fp, " succip: ");
-			printlabel(MR_succip_slot(base_maxfr));
+			MR_printlabel(fp, MR_succip_slot(base_maxfr));
 			fprintf(fp, " succfr: ");
 			MR_print_nondstackptr(fp, MR_succfr_slot(base_maxfr));
 			fprintf(fp, " \n");

@@ -883,11 +883,11 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
   #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,			\\
   		OldVar, NewVal, TypeInfo_for_T)				\\
   	do {								\\
-		save_transient_hp();					\\
+		MR_save_transient_hp();					\\
 		NewVal = deep_copy(&OldVal, (MR_TypeInfo) TypeInfo_for_T,\\
 				(const MR_Word *) SolutionsHeapPtr,	\\
 				MR_ENGINE(solutions_heap_zone)->top);	\\
-		restore_transient_hp();					\\
+		MR_restore_transient_hp();				\\
 	} while (0)
 #endif
 
@@ -962,12 +962,12 @@ XXX `ui' modes don't work yet
 :- pragma inline(new_mutvar/2).
 :- pragma c_code(new_mutvar(X::in, Ref::out), will_not_call_mercury,
 "
-	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
+	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
 	*(MR_Word *) Ref = X;
 ").
 :- pragma c_code(new_mutvar(X::di, Ref::uo), will_not_call_mercury,
 "
-	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
+	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
 	*(MR_Word *) Ref = X;
 ").
 
@@ -1079,7 +1079,7 @@ det_univ_to_type(Univ, X) :-
 */
 
 #include ""mercury_type_info.h""
-#include ""mercury_heap.h""	/* for incr_hp_msg() etc. */
+#include ""mercury_heap.h""	/* for MR_incr_hp_msg() etc. */
 #include ""mercury_misc.h""	/* for MR_fatal_error() */
 #include ""mercury_string.h""	/* for MR_make_aligned_string() */
 
@@ -1095,11 +1095,11 @@ det_univ_to_type(Univ, X) :-
 	% of the type_info for this type, and then store the input argument
 	% in the second field.
 :- pragma c_code(type_to_univ(Value::di, Univ::uo), will_not_call_mercury, "
-    incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+    MR_incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
     MR_define_univ_fields(Univ, TypeInfo_for_T, Value);
 ").
 :- pragma c_code(type_to_univ(Value::in, Univ::out), will_not_call_mercury, "
-    incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+    MR_incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
     MR_define_univ_fields(Univ, TypeInfo_for_T, Value);
 ").
 
@@ -1112,10 +1112,10 @@ det_univ_to_type(Univ, X) :-
 	int	    comp;
 
 	univ_type_info = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	save_transient_registers();
+	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) univ_type_info,
 		(MR_TypeInfo) TypeInfo_for_T);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 	if (comp == MR_COMPARE_EQUAL) {
 		Value = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
 		SUCCESS_INDICATOR = TRUE;
@@ -1142,7 +1142,7 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, univ, 0,
 
 #ifndef	COMPACT_ARGS
 
-Declare_label(mercury____Compare___std_util__univ_0_0_i1);
+MR_declare_label(mercury____Compare___std_util__univ_0_0_i1);
 
 MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
 	MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
@@ -1151,16 +1151,16 @@ MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
 
 #endif
 
-Define_extern_entry(mercury____Unify___std_util__type_desc_0_0);
-Define_extern_entry(mercury____Compare___std_util__type_desc_0_0);
+MR_define_extern_entry(mercury____Unify___std_util__type_desc_0_0);
+MR_define_extern_entry(mercury____Compare___std_util__type_desc_0_0);
 
-BEGIN_MODULE(unify_univ_module)
-	init_entry(mercury____Unify___std_util__univ_0_0);
-	init_entry(mercury____Compare___std_util__univ_0_0);
-	init_entry(mercury____Unify___std_util__type_desc_0_0);
-	init_entry(mercury____Compare___std_util__type_desc_0_0);
-BEGIN_CODE
-Define_entry(mercury____Unify___std_util__univ_0_0);
+MR_BEGIN_MODULE(unify_univ_module)
+	MR_init_entry(mercury____Unify___std_util__univ_0_0);
+	MR_init_entry(mercury____Compare___std_util__univ_0_0);
+	MR_init_entry(mercury____Unify___std_util__type_desc_0_0);
+	MR_init_entry(mercury____Compare___std_util__type_desc_0_0);
+MR_BEGIN_CODE
+MR_define_entry(mercury____Unify___std_util__univ_0_0);
 {
 	/*
 	** Unification for univ.
@@ -1176,13 +1176,13 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	/* First check the type_infos compare equal */
 	typeinfo1 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
 	typeinfo2 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
-	save_transient_registers();
+	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) typeinfo1,
 		(MR_TypeInfo) typeinfo2);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 	if (comp != MR_COMPARE_EQUAL) {
 		r1 = FALSE;
-		proceed();
+		MR_proceed();
 	}
 
 	/*
@@ -1193,13 +1193,13 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	r2 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
 	r3 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	{
-		Declare_entry(mercury__unify_2_0);
-		tailcall(ENTRY(mercury__unify_2_0),
-			LABEL(mercury____Unify___std_util__univ_0_0));
+		MR_declare_entry(mercury__unify_2_0);
+		MR_tailcall(MR_ENTRY(mercury__unify_2_0),
+			MR_LABEL(mercury____Unify___std_util__univ_0_0));
 	}
 }
 
-Define_entry(mercury____Compare___std_util__univ_0_0);
+MR_define_entry(mercury____Compare___std_util__univ_0_0);
 {
 	/*
 	** Comparison for univ:
@@ -1215,13 +1215,13 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	/* First compare the type_infos */
 	typeinfo1 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
 	typeinfo2 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
-	save_transient_registers();
+	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) typeinfo1,
 		(MR_TypeInfo) typeinfo2);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 	if (comp != MR_COMPARE_EQUAL) {
 		r1 = comp;
-		proceed();
+		MR_proceed();
 	}
 
 	/*
@@ -1233,47 +1233,47 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	r2 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
 	r3 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	{
-		Declare_entry(mercury__compare_3_0);
-		tailcall(ENTRY(mercury__compare_3_0),
-			LABEL(mercury____Compare___std_util__univ_0_0));
+		MR_declare_entry(mercury__compare_3_0);
+		MR_tailcall(MR_ENTRY(mercury__compare_3_0),
+			MR_LABEL(mercury____Compare___std_util__univ_0_0));
 	}
 }
 
-Define_entry(mercury____Unify___std_util__type_desc_0_0);
+MR_define_entry(mercury____Unify___std_util__type_desc_0_0);
 {
 	/*
 	** Unification for type_desc.
 	*/
 	int	comp;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 	r1 = (comp == MR_COMPARE_EQUAL);
-	proceed();
+	MR_proceed();
 }
 
-Define_entry(mercury____Compare___std_util__type_desc_0_0);
+MR_define_entry(mercury____Compare___std_util__type_desc_0_0);
 {
 	/*
 	** Comparison for type_desc.
 	*/
 	int	comp;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 	r1 = comp;
-	proceed();
+	MR_proceed();
 }
 
-END_MODULE
+MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
 INIT sys_init_unify_univ_module
 */
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc unify_univ_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc unify_univ_module;
 void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_unify_univ_module(void) {
 	unify_univ_module();
@@ -1351,7 +1351,7 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 ** type_ctor_info pointers. This still allows higher-order terms with
 ** 1024 arguments, which is more than ../LIMITATIONS promises.
 */
-#define MR_MAX_VARIABLE_ARITY         MAX_VIRTUAL_REG
+#define MR_MAX_VARIABLE_ARITY         MR_MAX_VIRTUAL_REG
 
 /*
 ** Constructors for the MR_TypeCtorDesc ADT
@@ -1467,10 +1467,10 @@ extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 	** probably isn't very important anyway.
 	*/
 #if 0
-	save_transient_registers();
+	MR_save_transient_registers();
 	TypeInfo = (MR_Word) MR_collapse_equivalences(
 		(MR_TypeInfo) TypeInfo_for_T);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 #endif
 
 }
@@ -1563,9 +1563,9 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	MR_TypeCtorInfo type_ctor_info;
 	MR_TypeInfo	type_info;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 	type_info = MR_collapse_equivalences((MR_TypeInfo) TypeInfo);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
@@ -1617,7 +1617,7 @@ ML_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)
 }
 
 /*
-** You need to wrap save/restore_transient_registers() around
+** You need to wrap MR_{save/restore}_transient_registers() around
 ** calls to this function.
 */
 
@@ -1656,13 +1656,13 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	MR_TypeCtorDesc type_ctor_desc;
 	MR_TypeInfo	type_info;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 
 	type_info = (MR_TypeInfo) TypeDesc;
 	ML_type_ctor_and_args(type_info, TRUE, &type_ctor_desc, &ArgTypes);
 	TypeCtorDesc = (MR_Word) type_ctor_desc;
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 }
 ").
 
@@ -1702,9 +1702,10 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	if (list_length != arity) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
-		save_transient_registers();
-		TypeDesc = (MR_Word) ML_make_type(arity, type_ctor_desc, ArgTypes);
-		restore_transient_registers();
+		MR_save_transient_registers();
+		TypeDesc = (MR_Word) ML_make_type(arity, type_ctor_desc,
+			ArgTypes);
+		MR_restore_transient_registers();
 		SUCCESS_INDICATOR = TRUE;
 	}
 }
@@ -1722,13 +1723,13 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	MR_TypeCtorDesc type_ctor_desc;
 	MR_TypeInfo	type_info;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 
 	type_info = (MR_TypeInfo) TypeDesc;
 	ML_type_ctor_and_args(type_info, FALSE, &type_ctor_desc, &ArgTypes);
 	TypeCtorDesc = (MR_Word) type_ctor_desc;
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 }
 ").
 
@@ -1769,9 +1770,9 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 :- pragma c_code(num_functors(TypeInfo::in) = (Functors::out),
 	will_not_call_mercury, "
 {
-	save_transient_registers();
+	MR_save_transient_registers();
 	Functors = ML_get_num_functors((MR_TypeInfo) TypeInfo);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 }
 ").
 
@@ -1792,10 +1793,10 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         ** type and if the functor number is in range, we
         ** succeed.
         */
-    save_transient_registers();
+    MR_save_transient_registers();
     success = ML_get_functors_check_range(FunctorNumber,
                 type_info, &construct_info);
-    restore_transient_registers();
+    MR_restore_transient_registers();
 
         /*
         ** Get the functor name and arity, construct the list
@@ -1811,17 +1812,17 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         if (MR_TYPE_CTOR_INFO_IS_TUPLE(
                         MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
         {
-            save_transient_registers();
+            MR_save_transient_registers();
             TypeInfoList = ML_type_params_vector_to_list(Arity,
                     MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info));
-            restore_transient_registers();
+            MR_restore_transient_registers();
         } else {
-            save_transient_registers();
+            MR_save_transient_registers();
             TypeInfoList = ML_pseudo_type_info_vector_to_type_info_list(
                 arity,
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 construct_info.arg_pseudo_type_infos);
-            restore_transient_registers();
+            MR_restore_transient_registers();
         }
     }
     SUCCESS_INDICATOR = success;
@@ -1843,10 +1844,10 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         ** type and if the functor number is in range, we
         ** succeed.
         */
-    save_transient_registers();
+    MR_save_transient_registers();
     success = ML_get_functors_check_range(FunctorNumber, type_info,
         &construct_info);
-    restore_transient_registers();
+    MR_restore_transient_registers();
 
     if (success) {
         switch (construct_info.type_ctor_rep) {
@@ -1895,12 +1896,12 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         ** Check range of FunctorNum, get info for this
         ** functor.
         */
-    save_transient_registers();
+    MR_save_transient_registers();
     success =
         ML_get_functors_check_range(FunctorNumber, type_info, &construct_info)
         && ML_typecheck_arguments(type_info, construct_info.arity, ArgList,
                 construct_info.arg_pseudo_type_infos);
-    restore_transient_registers();
+    MR_restore_transient_registers();
 
         /*
         ** Build the new term in `new_data'.
@@ -1964,7 +1965,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 case MR_SECTAG_REMOTE:
                     arity = functor_desc->MR_du_functor_orig_arity;
 
-                    tag_incr_hp_msg(new_data, ptag, arity + 1,
+                    MR_tag_incr_hp_msg(new_data, ptag, arity + 1,
                         MR_PROC_LABEL, ""<created by std_util:construct/3>"");
 
                     MR_field(ptag, new_data, 0) =
@@ -1981,7 +1982,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 case MR_SECTAG_NONE:
                     arity = functor_desc->MR_du_functor_orig_arity;
 
-                    tag_incr_hp_msg(new_data, ptag, arity,
+                    MR_tag_incr_hp_msg(new_data, ptag, arity,
                         MR_PROC_LABEL, ""<created by std_util:construct/3>"");
 
                     for (i = 0; i < arity; i++) {
@@ -2010,7 +2011,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 if (arity == 0) {
                     new_data = (MR_Word) NULL;
                 } else {
-                    incr_hp_msg(new_data, arity, MR_PROC_LABEL,
+                    MR_incr_hp_msg(new_data, arity, MR_PROC_LABEL,
                             ""<created by std_util:construct/3>"");
             
                     arg_list = ArgList;
@@ -2037,7 +2038,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         ** Create a univ.
         */
 
-        incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+        MR_incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
         MR_define_univ_fields(Term, type_info, new_data);
     }
 
@@ -2064,10 +2065,10 @@ construct_tuple(Args) =
 	/*
 	** Construct a type_info for the tuple.
 	*/
-	save_transient_registers();
+	MR_save_transient_registers();
 	type_info = ML_make_type(Arity, MR_TYPECTOR_DESC_MAKE_TUPLE(Arity),
 			ArgTypes);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/*
 	** Create the tuple.
@@ -2075,7 +2076,7 @@ construct_tuple(Args) =
 	if (Arity == 0) {
 		new_data = (MR_Word) NULL;
 	} else {
-		incr_hp_msg(new_data, Arity, MR_PROC_LABEL,
+		MR_incr_hp_msg(new_data, Arity, MR_PROC_LABEL,
 			""<created by std_util:construct_tuple/1>"");
 		for (i = 0; i < Arity; i++) {
 			arg_value = MR_field(MR_mktag(0), MR_list_head(Args),
@@ -2088,7 +2089,7 @@ construct_tuple(Args) =
 	/*
 	** Create a univ.
 	*/
-	incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+	MR_incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
 	MR_define_univ_fields(Term, type_info, new_data);
 }
 ").
@@ -2351,11 +2352,11 @@ ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
         type_ctor_info = MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(
             type_ctor_desc);
 
-        restore_transient_registers();
-        incr_hp_atomic_msg(LVALUE_CAST(MR_Word, new_type_info_arena),
+        MR_restore_transient_registers();
+        MR_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, new_type_info_arena),
             MR_higher_order_type_info_size(arity),
             ""mercury__std_util__ML_make_type"", ""type_info"");
-        save_transient_registers();
+        MR_save_transient_registers();
         MR_fill_in_higher_order_type_info(new_type_info_arena,
             type_ctor_info, arity, new_type_info_args);
     } else {
@@ -2366,11 +2367,11 @@ ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
             return (MR_TypeInfo) type_ctor_info;
         }
 
-        restore_transient_registers();
-        incr_hp_atomic_msg(LVALUE_CAST(MR_Word, new_type_info_arena),
+        MR_restore_transient_registers();
+        MR_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, new_type_info_arena),
             MR_first_order_type_info_size(arity),
             ""mercury__std_util__ML_make_type"", ""type_info"");
-        save_transient_registers();
+        MR_save_transient_registers();
         MR_fill_in_first_order_type_info(new_type_info_arena,
             type_ctor_info, new_type_info_args);
     }
@@ -2423,7 +2424,7 @@ ML_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
     MR_TypeInfo arg_type;
     MR_Word     type_info_list;
 
-    restore_transient_registers();
+    MR_restore_transient_registers();
     type_info_list = MR_list_empty();
 
     while (arity > 0) {
@@ -2431,7 +2432,7 @@ ML_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
 		type_info_list);
 	--arity;
     }
-    save_transient_registers();
+    MR_save_transient_registers();
 
     return type_info_list;
 }
@@ -2454,27 +2455,27 @@ ML_pseudo_type_info_vector_to_type_info_list(int arity,
     MR_TypeInfo arg_type;
     MR_Word     type_info_list;
 
-    restore_transient_registers();
+    MR_restore_transient_registers();
     type_info_list = MR_list_empty();
 
     while (--arity >= 0) {
             /* Get the argument type_info */
 
             /* Fill in any polymorphic pseudo type_infos */
-        save_transient_registers();
+        MR_save_transient_registers();
         arg_type = MR_create_type_info(type_params,
             arg_pseudo_type_infos[arity]);
-        restore_transient_registers();
+        MR_restore_transient_registers();
 
             /* Look past any equivalences */
-        save_transient_registers();
+        MR_save_transient_registers();
         arg_type = MR_collapse_equivalences(arg_type);
-        restore_transient_registers();
+        MR_restore_transient_registers();
 
             /* Join the argument to the front of the list */
         type_info_list = MR_list_cons((MR_Word) arg_type, type_info_list);
     }
-    save_transient_registers();
+    MR_save_transient_registers();
 
     return type_info_list;
 }
@@ -2650,12 +2651,12 @@ extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
 **  ML_expand increments the heap pointer, however, on
 **  some platforms the register windows mean that transient
 **  Mercury registers may be lost. Before calling ML_expand,
-**  call save_transient_registers(), and afterwards, call
-**  restore_transient_registers().
+**  call MR_save_transient_registers(), and afterwards, call
+**  MR_restore_transient_registers().
 **
 **  If writing a C function that calls deep_copy, make sure you
-**  document that around your function, save_transient_registers()
-**  restore_transient_registers() need to be used.
+**  document that around your function, MR_save_transient_registers()
+**  MR_restore_transient_registers() need to be used.
 **
 **  If you change this code you will also have reflect any changes in
 **  runtime/mercury_deep_copy_body.h and runtime/mercury_tabling.c
@@ -2850,7 +2851,7 @@ ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data_word = *data_word_ptr;
                 sprintf(buf, ""%ld"", (long) data_word);
-                incr_saved_hp_atomic(LVALUE_CAST(MR_Word, str),
+                MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
                     (strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word));
                 strcpy(str, buf);
                 expand_info->functor = str;
@@ -2869,7 +2870,7 @@ ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 char    *str;
 
                 data_word = *data_word_ptr;
-                incr_saved_hp_atomic(LVALUE_CAST(MR_Word, str),
+                MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
                     (3 + sizeof(MR_Word)) / sizeof(MR_Word));
                     sprintf(str, ""\'%c\'"", (char) data_word);
                 expand_info->functor = str;
@@ -2888,9 +2889,9 @@ ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 char        *str;
 
                 data_word = *data_word_ptr;
-                f = word_to_float(data_word);
+                f = MR_word_to_float(data_word);
                 sprintf(buf, ""%#.15g"", f);
-                incr_saved_hp_atomic(LVALUE_CAST(MR_Word, str),
+                MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
                     (strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word));
                 strcpy(str, buf);
                 expand_info->functor = str;
@@ -2908,7 +2909,7 @@ ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 char    *str;
 
                 data_word = *data_word_ptr;
-                incr_saved_hp_atomic(LVALUE_CAST(MR_Word, str),
+                MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
                     (strlen((MR_String) data_word) + 2 + sizeof(MR_Word))
                     / sizeof(MR_Word));
                 sprintf(str, ""%c%s%c"", '""', (MR_String) data_word, '""');
@@ -3175,9 +3176,9 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     expand_info.need_functor = TRUE;
     expand_info.need_args = FALSE;
 
-    save_transient_registers();
+    MR_save_transient_registers();
     ML_expand(type_info, &Term, &expand_info);
-    restore_transient_registers();
+    MR_restore_transient_registers();
 
         /*
         ** Check for attempts to deconstruct a non-canonical type:
@@ -3193,7 +3194,7 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     }
 
         /* Copy functor onto the heap */
-    MR_make_aligned_string(LVALUE_CAST(MR_ConstString, Functor),
+    MR_make_aligned_string(MR_LVALUE_CAST(MR_ConstString, Functor),
         expand_info.functor);
 
     Arity = expand_info.arity;
@@ -3217,7 +3218,7 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     type_info = (MR_TypeInfo) TypeInfo_for_T;
     exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
-    save_transient_registers();
+    MR_save_transient_registers();
     success = ML_arg(type_info, &Term, ArgumentIndex,
         &arg_type_info, &argument_ptr);
 
@@ -3232,7 +3233,7 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
         }
     }
 
-    restore_transient_registers();
+    MR_restore_transient_registers();
     SUCCESS_INDICATOR = success;
 }").
 
@@ -3246,14 +3247,14 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
 
     type_info = (MR_TypeInfo) TypeInfo_for_T;
 
-    save_transient_registers();
+    MR_save_transient_registers();
     success = ML_arg(type_info, &Term, ArgumentIndex,
         &arg_type_info, &argument_ptr);
-    restore_transient_registers();
+    MR_restore_transient_registers();
 
     if (success) {
         /* Allocate enough room for a univ */
-        incr_hp_msg(ArgumentUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+        MR_incr_hp_msg(ArgumentUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
         MR_define_univ_fields(ArgumentUniv, arg_type_info, *argument_ptr);
     }
 
@@ -3295,9 +3296,9 @@ det_argument(Type, ArgumentIndex) = Argument :-
     expand_info.need_functor = TRUE;
     expand_info.need_args = TRUE;
 
-    save_transient_registers();
+    MR_save_transient_registers();
     ML_expand(type_info, &Term, &expand_info);
-    restore_transient_registers();
+    MR_restore_transient_registers();
 
         /*
         ** Check for attempts to deconstruct a non-canonical type:
@@ -3313,7 +3314,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
     }
 
         /* Get functor */
-    MR_make_aligned_string(LVALUE_CAST(MR_ConstString, Functor),
+    MR_make_aligned_string(MR_LVALUE_CAST(MR_ConstString, Functor),
         expand_info.functor);
 
         /* Get arity */
@@ -3326,7 +3327,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
     while (--i >= 0) {
 
             /* Create an argument on the heap */
-        incr_hp_msg(Argument, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+        MR_incr_hp_msg(Argument, 2, MR_PROC_LABEL, ""std_util:univ/0"");
         MR_define_univ_fields(Argument,
             expand_info.arg_type_infos[i],
             expand_info.arg_values[i + expand_info.num_extra_args]);
@@ -3392,7 +3393,7 @@ get_functor_info(Univ, FunctorInfo) :-
             functor_desc = type_ctor_info->type_functors.functors_notag;
             exp_type_info = MR_pseudo_type_info_is_ground(
                 functor_desc->MR_notag_functor_arg_type);
-            incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+            MR_incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
             MR_define_univ_fields(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
@@ -3403,7 +3404,7 @@ get_functor_info(Univ, FunctorInfo) :-
             exp_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 functor_desc->MR_notag_functor_arg_type);
-            incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+            MR_incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
             MR_define_univ_fields(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
@@ -3434,7 +3435,7 @@ get_functor_info(Univ, FunctorInfo) :-
         case MR_TYPECTOR_REP_EQUIV:
             exp_type_info = MR_pseudo_type_info_is_ground(
                 type_ctor_info->type_layout.layout_equiv);
-            incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+            MR_incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
             MR_define_univ_fields(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
@@ -3443,7 +3444,7 @@ get_functor_info(Univ, FunctorInfo) :-
             exp_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 type_ctor_info->type_layout.layout_equiv);
-            incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+            MR_incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
             MR_define_univ_fields(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
@@ -3555,7 +3556,7 @@ get_functor_info(Univ, FunctorInfo) :-
                                 functor_desc->MR_du_functor_arg_types[i]);
                         }
 
-                        incr_hp_msg(arg, 2, MR_PROC_LABEL,
+                        MR_incr_hp_msg(arg, 2, MR_PROC_LABEL,
                             ""std_util:univ/0"");
                         MR_define_univ_fields(arg,
                             arg_type_info, arg_vector[i]);

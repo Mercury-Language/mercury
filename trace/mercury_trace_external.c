@@ -1158,7 +1158,8 @@ MR_trace_make_var_names_list(void)
 		}
 
 		MR_TRACE_USE_HP(
-			var_names_list = MR_list_cons(name, var_names_list);
+			var_names_list = MR_list_cons((MR_Word) name,
+				var_names_list);
 		);
 	}
 
@@ -1180,7 +1181,7 @@ MR_trace_make_type_list(void)
 	int		var_count;
 	int		i;
 	MR_TypeInfo	type_info;
-	MR_String		type_info_string;
+	MR_String	type_info_string;
 	MR_Word		type_list;
 
 	var_count = MR_trace_var_count();
@@ -1199,7 +1200,8 @@ MR_trace_make_type_list(void)
 			type_info_string = ML_type_name((MR_Word) type_info);
 		);
 	        MR_TRACE_USE_HP(
-			type_list = MR_list_cons(type_info_string, type_list);
+			type_list = MR_list_cons((MR_Word) type_info_string,
+				type_list);
 	        );
 	}
 

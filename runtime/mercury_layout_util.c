@@ -27,16 +27,16 @@ MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs)
 	**
 	** The call to MR_trace will clobber the transient registers
 	** on architectures that have them. The compiler generated code
-	** will therefore call save_transient_registers to save the transient
-	** registers in the fake_reg array. We here restore them to the
-	** real registers, save them with the other registers back in
+	** will therefore call MR_save_transient_registers to save the
+	** transient registers in the fake_reg array. We here restore them
+	** to the real registers, save them with the other registers back in
 	** fake_reg, and then copy all fake_reg entries to saved_regs.
 	*/
 
 	int i;
 
-	restore_transient_registers();
-	save_registers();
+	MR_restore_transient_registers();
+	MR_save_registers();
 
 	for (i = 0; i <= max_mr_num; i++) {
 		saved_regs[i] = MR_fake_reg[i];
@@ -48,8 +48,8 @@ MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs)
 {
 	/*
 	** We execute the converse procedure to MR_copy_regs_to_saved_regs.
-	** The save_transient_registers is there so that a call to the
-	** restore_transient_registers macro after MR_trace will do the
+	** The MR_save_transient_registers is there so that a call to the
+	** MR_restore_transient_registers macro after MR_trace will do the
 	** right thing.
 	*/
 
@@ -59,8 +59,8 @@ MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs)
 		MR_fake_reg[i] = saved_regs[i];
 	}
 
-	restore_registers();
-	save_transient_registers();
+	MR_restore_registers();
+	MR_save_transient_registers();
 }
 
 MR_TypeInfoParams
@@ -77,7 +77,7 @@ MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 {
 	MR_TypeInfoParams	type_params;
 	bool			succeeded;
-	MR_Integer			count;
+	MR_Integer		count;
 	int			i;
 
 	if (vars->MR_slvs_tvars != NULL) {
@@ -158,7 +158,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 				printf("r%d", locn_num);
 			}
 			if (saved_regs != NULL) {
-				value = saved_reg(saved_regs, locn_num);
+				value = MR_saved_reg(saved_regs, locn_num);
 				*succeeded = TRUE;
 			}
 			break;
@@ -273,7 +273,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 				printf("r%d", locn_num);
 			}
 			if (saved_regs != NULL) {
-				value = saved_reg(saved_regs, locn_num);
+				value = MR_saved_reg(saved_regs, locn_num);
 				*succeeded = TRUE;
 			}
 			break;

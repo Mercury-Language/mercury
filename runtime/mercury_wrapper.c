@@ -51,33 +51,33 @@ ENDINIT
 /* size of data areas (including redzones), in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
 #ifdef MR_DEBUG_AGC_SMALL_HEAP
-  size_t	heap_size =      	   52;
+  size_t	MR_heap_size =			  52;
 #else
-  size_t	heap_size =		 4096;
+  size_t	MR_heap_size =			4096;
 #endif
-size_t		detstack_size =  	 4096;
-size_t		nondstack_size =  	  128;
-size_t		solutions_heap_size =	 1024;
-size_t		global_heap_size =	 1024;
-size_t		trail_size =		  128;
-size_t		debug_heap_size =	 4096;
-size_t		generatorstack_size =  	   32;
-size_t		cutstack_size =  	   32;
+size_t		MR_detstack_size =		4096;
+size_t		MR_nondstack_size = 		 128;
+size_t		MR_solutions_heap_size =	1024;
+size_t		MR_global_heap_size =		1024;
+size_t		MR_trail_size =			 128;
+size_t		MR_debug_heap_size =		4096;
+size_t		MR_generatorstack_size =	  32;
+size_t		MR_cutstack_size =		  32;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
-size_t		heap_zone_size =	   16;
-size_t		detstack_zone_size =	   16;
-size_t		nondstack_zone_size =	   16;
-size_t		solutions_heap_zone_size = 16;
-size_t		global_heap_zone_size =	   16;
-size_t		trail_zone_size =	   16;
-size_t		debug_heap_zone_size =	   16;
-size_t		generatorstack_zone_size = 16;
-size_t		cutstack_zone_size =	   16;
+size_t		MR_heap_zone_size =		  16;
+size_t		MR_detstack_zone_size =		  16;
+size_t		MR_nondstack_zone_size =	  16;
+size_t		MR_solutions_heap_zone_size =	  16;
+size_t		MR_global_heap_zone_size =	  16;
+size_t		MR_trail_zone_size =		  16;
+size_t		MR_debug_heap_zone_size =	  16;
+size_t		MR_generatorstack_zone_size =	  16;
+size_t		MR_cutstack_zone_size =		  16;
 
 /* primary cache size to optimize for, in bytes */
-size_t		pcache_size =	         8192;
+size_t		MR_pcache_size =	        8192;
 
 /* file names for mdb's debugger I/O streams */
 const char	*MR_mdb_in_filename = NULL;
@@ -86,7 +86,7 @@ const char	*MR_mdb_err_filename = NULL;
 
 /* other options */
 
-bool		check_space = FALSE;
+bool		MR_check_space = FALSE;
 
 static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
@@ -95,15 +95,15 @@ static	int	repeats = 1;
 unsigned	MR_num_threads = 1;
 
 /* timing */
-int		time_at_last_stat;
-int		time_at_start;
-static	int	time_at_finish;
+int		MR_time_at_last_stat;
+int		MR_time_at_start;
+static	int	MR_time_at_finish;
 
 /* time profiling */
 enum MR_TimeProfileMethod
 		MR_time_profile_method = MR_profile_user_plus_system_time;
 
-const char *	progname;
+const char *	MR_progname;
 int		mercury_argc;	/* not counting progname */
 char **		mercury_argv;
 int		mercury_exit_status = 0;
@@ -165,10 +165,10 @@ MR_TypeStat	MR_type_stat_c_compare;
 ** where `->' means "depends on", i.e. "references a symbol of".
 */
 
-void	(*address_of_mercury_init_io)(void);
-void	(*address_of_init_modules)(void);
-void	(*address_of_init_modules_type_tables)(void);
-void	(*address_of_init_modules_debugger)(void);
+void	(*MR_address_of_mercury_init_io)(void);
+void	(*MR_address_of_init_modules)(void);
+void	(*MR_address_of_init_modules_type_tables)(void);
+void	(*MR_address_of_init_modules_debugger)(void);
 
 int	(*MR_address_of_do_load_aditi_rl_code)(void);
 
@@ -181,14 +181,14 @@ void	(*MR_address_of_trace_final_external)(void);
 #endif
 
 #ifdef CONSERVATIVE_GC
-void	(*address_of_init_gc)(void);
+void	(*MR_address_of_init_gc)(void);
 #endif
 
 #ifdef MR_HIGHLEVEL_CODE
-void	(*program_entry_point)(void);
+void	(*MR_program_entry_point)(void);
 		/* normally main_2_p_0 (main/2) */
 #else
-MR_Code	*program_entry_point;
+MR_Code	*MR_program_entry_point;
 		/* normally mercury__main_2_0 (main/2) */
 #endif
 
@@ -203,11 +203,13 @@ void	(*MR_io_stdin_stream)(MR_Word *);
 void	(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
 void	(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
 
-void	(*MR_DI_output_current_ptr)(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String,
-		MR_String, MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_Word, MR_Word);
+void	(*MR_DI_output_current_ptr)(MR_Integer, MR_Integer, MR_Integer,
+		MR_Word, MR_String, MR_String, MR_Integer, MR_Integer,
+		MR_Integer, MR_Word, MR_String, MR_Word, MR_Word);
 		/* normally ML_DI_output_current (output_current/13) */
-bool	(*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_String,
-		MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_Word);
+bool	(*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
+		MR_String, MR_String, MR_Integer, MR_Integer, MR_Integer,
+		MR_Word, MR_String, MR_Word);
 		/* normally ML_DI_found_match (output_current/12) */
 void	(*MR_DI_read_request_from_socket)(MR_Word, MR_Word *, MR_Integer *);
 
@@ -251,7 +253,7 @@ static	void	MR_print_one_type_ctor_stat(FILE *fp, const char *op,
 #ifdef MR_HIGHLEVEL_CODE
   static void do_interpreter(void);
 #else
-  Declare_entry(do_interpreter);
+  MR_declare_entry(do_interpreter);
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -261,8 +263,8 @@ mercury_runtime_init(int argc, char **argv)
 {
 	bool	saved_trace_enabled;
 
-#if NUM_REAL_REGS > 0
-	MR_Word c_regs[NUM_REAL_REGS];
+#if MR_NUM_REAL_REGS > 0
+	MR_Word c_regs[MR_NUM_REAL_REGS];
 #endif
 
 	/*
@@ -271,7 +273,7 @@ mercury_runtime_init(int argc, char **argv)
 	** and we need to preserve them, because they're callee-save,
 	** and our caller may need them ;-)
 	*/
-	save_regs_to_mem(c_regs);
+	MR_save_regs_to_mem(c_regs);
 
 #if defined(MR_LOWLEVEL_DEBUG) || defined(MR_TABLE_DEBUG)
 	/*
@@ -311,20 +313,20 @@ mercury_runtime_init(int argc, char **argv)
 	do_init_modules();
 #endif
 
-	(*address_of_mercury_init_io)();
+	(*MR_address_of_mercury_init_io)();
 
 #ifndef MR_HIGHLEVEL_CODE
 	/* start up the Mercury engine */
   #ifndef MR_THREAD_SAFE
-	init_thread(MR_use_now);
+	MR_init_thread(MR_use_now);
   #else
 	{
 		int i;
-		init_thread_stuff();
-		init_thread(MR_use_now);
+		MR_init_thread_stuff();
+		MR_init_thread(MR_use_now);
 		MR_exit_now = FALSE;
 		for (i = 1 ; i < MR_num_threads ; i++)
-			create_thread(NULL);
+			MR_create_thread(NULL);
 	}
   #endif /* ! MR_THREAD_SAFE */
 #endif /* ! MR_HIGHLEVEL_CODE */
@@ -333,14 +335,14 @@ mercury_runtime_init(int argc, char **argv)
 	if (MR_profiling) MR_prof_init();
 
 	/*
-	** We need to call save_registers(), since we're about to
+	** We need to call MR_save_registers(), since we're about to
 	** call a C->Mercury interface function, and the C->Mercury
 	** interface convention expects them to be saved.  And before we
-	** can do that, we need to call restore_transient_registers(),
+	** can do that, we need to call MR_restore_transient_registers(),
 	** since we've just returned from a C call.
 	*/
-	restore_transient_registers();
-	save_registers();
+	MR_restore_transient_registers();
+	MR_save_registers();
 
 	MR_trace_init();
 
@@ -348,7 +350,7 @@ mercury_runtime_init(int argc, char **argv)
 	(*MR_library_initializer)();
 
 #ifndef MR_HIGHLEVEL_CODE
-	save_context(&(MR_ENGINE(context)));
+	MR_save_context(&(MR_ENGINE(context)));
 #endif
 
 	/*
@@ -361,7 +363,7 @@ mercury_runtime_init(int argc, char **argv)
 	** Restore the callee-save registers before returning,
 	** since they may be used by the C code that called us.
 	*/
-	restore_regs_from_mem(c_regs);
+	MR_restore_regs_from_mem(c_regs);
 
 } /* end runtime_mercury_init() */
 
@@ -393,7 +395,7 @@ MR_init_conservative_GC(void)
 	** (This is to work around a Solaris 2.X (X <= 4) linker bug,
 	** and also to support Windows DLLs using gnu-win32.)
 	*/
-	(*address_of_init_gc)();
+	(*MR_address_of_init_gc)();
 
 	/*
 	** Double-check that the garbage collector knows about
@@ -419,7 +421,7 @@ do_init_modules(void)
 	static	bool	done = FALSE;
 
 	if (! done) {
-		(*address_of_init_modules)();
+		(*MR_address_of_init_modules)();
 		MR_close_prof_decl_file();
 		done = TRUE;
 	}
@@ -431,7 +433,7 @@ do_init_modules_type_tables(void)
 	static	bool	done = FALSE;
 
 	if (! done) {
-		(*address_of_init_modules_type_tables)();
+		(*MR_address_of_init_modules_type_tables)();
 		done = TRUE;
 
 		/*
@@ -450,7 +452,7 @@ do_init_modules_debugger(void)
 	static	bool	done = FALSE;
 
 	if (! done) {
-		(*address_of_init_modules_debugger)();
+		(*MR_address_of_init_modules_debugger)();
 		done = TRUE;
 	}
 }
@@ -672,56 +674,56 @@ process_options(int argc, char **argv)
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			heap_size = size;
+			MR_heap_size = size;
 			break;
 
 		case MR_DETSTACK_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			detstack_size = size;
+			MR_detstack_size = size;
 			break;
 
 		case MR_NONDETSTACK_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			nondstack_size = size;
+			MR_nondstack_size = size;
 			break;
 
 		case MR_TRAIL_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			trail_size = size;
+			MR_trail_size = size;
 			break;
 
 		case MR_HEAP_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			heap_zone_size = size;
+			MR_heap_zone_size = size;
 			break;
 
 		case MR_DETSTACK_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			detstack_zone_size = size;
+			MR_detstack_zone_size = size;
 			break;
 
 		case MR_NONDETSTACK_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			nondstack_zone_size = size;
+			MR_nondstack_zone_size = size;
 			break;
 
 		case MR_TRAIL_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			trail_zone_size = size;
+			MR_trail_zone_size = size;
 			break;
 
 		case 'i':
@@ -751,14 +753,14 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'c':
-			check_space = TRUE;
+			MR_check_space = TRUE;
 			break;
 
 		case 'C':
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
-			pcache_size = size * 1024;
+			MR_pcache_size = size * 1024;
 
 			break;
 
@@ -918,8 +920,8 @@ usage(void)
 void 
 mercury_runtime_main(void)
 {
-#if NUM_REAL_REGS > 0
-	MR_Word c_regs[NUM_REAL_REGS];
+#if MR_NUM_REAL_REGS > 0
+	MR_Word c_regs[MR_NUM_REAL_REGS];
 #endif
 
 #if defined(MR_LOWLEVEL_DEBUG) && defined(USE_GCC_NONLOCAL_GOTOS)
@@ -956,8 +958,8 @@ mercury_runtime_main(void)
 	** Save the C callee-save registers
 	** and restore the Mercury registers
 	*/
-	save_regs_to_mem(c_regs);
-	restore_registers();
+	MR_save_regs_to_mem(c_regs);
+	MR_restore_registers();
 
 #if defined(MR_LOWLEVEL_DEBUG) && defined(USE_GCC_NONLOCAL_GOTOS)
 	/*
@@ -967,7 +969,7 @@ mercury_runtime_main(void)
 	** that it still contains only this value
 	*/
 
-	global_pointer_2 = safety_buffer;	/* defeat optimization */
+	MR_global_pointer_2 = safety_buffer;	/* defeat optimization */
 	memset(safety_buffer, MAGIC_MARKER_2, SAFETY_BUFFER_SIZE);
 #endif
 
@@ -979,21 +981,21 @@ mercury_runtime_main(void)
 	MR_CONTEXT(nondetstack_zone)->max = MR_CONTEXT(nondetstack_zone)->min;
 #endif
 
-	time_at_start = MR_get_user_cpu_miliseconds();
-	time_at_last_stat = time_at_start;
+	MR_time_at_start = MR_get_user_cpu_miliseconds();
+	MR_time_at_last_stat = MR_time_at_start;
 
 	for (repcounter = 0; repcounter < repeats; repcounter++) {
 #ifdef MR_HIGHLEVEL_CODE
 		do_interpreter();
 #else
-		debugmsg0("About to call engine\n");
-		(void) MR_call_engine(ENTRY(do_interpreter), FALSE);
-		debugmsg0("Returning from MR_call_engine()\n");
+		MR_debugmsg0("About to call engine\n");
+		(void) MR_call_engine(MR_ENTRY(do_interpreter), FALSE);
+		MR_debugmsg0("Returning from MR_call_engine()\n");
 #endif
 	}
 
         if (use_own_timer) {
-		time_at_finish = MR_get_user_cpu_miliseconds();
+		MR_time_at_finish = MR_get_user_cpu_miliseconds();
 	}
 
 #if defined(USE_GCC_NONLOCAL_GOTOS) && defined(MR_LOWLEVEL_DEBUG)
@@ -1006,7 +1008,7 @@ mercury_runtime_main(void)
 #endif
 
 	if (MR_detaildebug) {
-		debugregs("after final call");
+		MR_debugregs("after final call");
 	}
 
 #ifdef MR_LOWLEVEL_DEBUG
@@ -1033,7 +1035,8 @@ mercury_runtime_main(void)
 
         if (use_own_timer) {
 		printf("%8.3fu ",
-			((double) (time_at_finish - time_at_start)) / 1000);
+			((double) (MR_time_at_finish - MR_time_at_start))
+				/ 1000);
 	}
 
 #ifdef	MR_TYPE_CTOR_STATS
@@ -1045,8 +1048,8 @@ mercury_runtime_main(void)
 	** restore the C callee-save registers before returning,
 	** since they may be used by the C code that called us.
 	*/
-	save_registers();
-	restore_regs_from_mem(c_regs);
+	MR_save_registers();
+	MR_restore_regs_from_mem(c_regs);
 
 #ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
 	}
@@ -1157,7 +1160,7 @@ print_register_usage_counts(void)
 	int	i;
 
 	printf("register usage counts:\n");
-	for (i = 0; i < MAX_RN; i++) {
+	for (i = 0; i < MR_MAX_RN; i++) {
 		if (1 <= i && i <= ORD_RN) {
 			printf("r%d", i);
 		} else {
@@ -1217,14 +1220,14 @@ print_register_usage_counts(void)
 			}
 		}
 
-		printf("\t%lu\n", num_uses[i]);
+		printf("\t%lu\n", MR_num_uses[i]);
 	} /* end for */
 } /* end print_register_usage_counts() */
 #endif
 
 #ifdef MR_HIGHLEVEL_CODE
 
-void
+static void
 do_interpreter(void)
 {
   #ifdef  PROFILE_TIME
@@ -1241,71 +1244,77 @@ do_interpreter(void)
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
-Define_extern_entry(do_interpreter);
-Declare_label(global_success);
-Declare_label(global_fail);
-Declare_label(all_done);
+MR_define_extern_entry(do_interpreter);
+MR_declare_label(global_success);
+MR_declare_label(global_fail);
+MR_declare_label(all_done);
 
-BEGIN_MODULE(interpreter_module)
-	init_entry_ai(do_interpreter);
-	init_label_ai(global_success);
-	init_label_ai(global_fail);
-	init_label_ai(all_done);
-BEGIN_CODE
+MR_BEGIN_MODULE(interpreter_module)
+	MR_init_entry_ai(do_interpreter);
+	MR_init_label_ai(global_success);
+	MR_init_label_ai(global_fail);
+	MR_init_label_ai(all_done);
+MR_BEGIN_CODE
 
-Define_entry(do_interpreter);
+MR_define_entry(do_interpreter);
 	MR_incr_sp(4);
 	MR_stackvar(1) = (MR_Word) MR_hp;
 	MR_stackvar(2) = (MR_Word) MR_succip;
 	MR_stackvar(3) = (MR_Word) MR_maxfr;
 	MR_stackvar(4) = (MR_Word) MR_curfr;
 
-	MR_mkframe("interpreter", 1, LABEL(global_fail));
+	MR_mkframe("interpreter", 1, MR_LABEL(global_fail));
 
 	MR_nondet_stack_trace_bottom = MR_maxfr;
-	MR_stack_trace_bottom = LABEL(global_success);
+	MR_stack_trace_bottom = MR_LABEL(global_success);
 
 	if (program_entry_point == NULL) {
 		MR_fatal_error("no program entry point supplied");
 	}
 
 #ifdef  PROFILE_TIME
-	set_prof_current_proc(program_entry_point);
-	if (MR_profiling) MR_prof_turn_on_time_profiling();
-#endif
-
-	noprof_call(program_entry_point, LABEL(global_success));
-
-Define_label(global_success);
-#ifdef	MR_LOWLEVEL_DEBUG
-	if (MR_finaldebug) {
-		save_transient_registers();
-		printregs("global succeeded");
-		if (MR_detaildebug)
-			dumpnondstack();
+	MR_set_prof_current_proc(program_entry_point);
+	if (MR_profiling) {
+		MR_prof_turn_on_time_profiling();
 	}
 #endif
 
-	if (benchmark_all_solns)
+	noprof_call(program_entry_point, MR_LABEL(global_success));
+
+MR_define_label(global_success);
+#ifdef	MR_LOWLEVEL_DEBUG
+	if (MR_finaldebug) {
+		MR_save_transient_registers();
+		MR_printregs("global succeeded");
+		if (MR_detaildebug)
+			MR_dumpnondstack();
+	}
+#endif
+
+	if (benchmark_all_solns) {
 		MR_redo();
-	else
-		GOTO_LABEL(all_done);
+	} else {
+		MR_GOTO_LABEL(all_done);
+	}
 
-Define_label(global_fail);
+MR_define_label(global_fail);
 #ifdef	MR_LOWLEVEL_DEBUG
 	if (MR_finaldebug) {
-		save_transient_registers();
-		printregs("global failed");
+		MR_save_transient_registers();
+		MR_printregs("global failed");
 
-		if (MR_detaildebug)
-			dumpnondstack();
+		if (MR_detaildebug) {
+			MR_dumpnondstack();
+		}
 	}
 #endif
 
-Define_label(all_done);
+MR_define_label(all_done);
 
 #ifdef  PROFILE_TIME
-	if (MR_profiling) MR_prof_turn_off_time_profiling();
+	if (MR_profiling) {
+		MR_prof_turn_off_time_profiling();
+	}
 #endif
 
 	MR_hp     = (MR_Word *) MR_stackvar(1);
@@ -1316,16 +1325,16 @@ Define_label(all_done);
 
 #ifdef MR_LOWLEVEL_DEBUG
 	if (MR_finaldebug && MR_detaildebug) {
-		save_transient_registers();
-		printregs("after popping...");
+		MR_save_transient_registers();
+		MR_printregs("after popping...");
 	}
 #endif
 
-	proceed();
+	MR_proceed();
 #ifndef	USE_GCC_NONLOCAL_GOTOS
 	return 0;
 #endif
-END_MODULE
+MR_END_MODULE
 
 #endif
 
@@ -1334,8 +1343,8 @@ END_MODULE
 int
 mercury_runtime_terminate(void)
 {
-#if NUM_REAL_REGS > 0
-	MR_Word c_regs[NUM_REAL_REGS];
+#if MR_NUM_REAL_REGS > 0
+	MR_Word c_regs[MR_NUM_REAL_REGS];
 #endif
 	/*
 	** Save the callee-save registers; we're going to start using them
@@ -1343,7 +1352,7 @@ mercury_runtime_terminate(void)
 	** and we need to preserve them, because they're callee-save,
 	** and our caller may need them.
 	*/
-	save_regs_to_mem(c_regs);
+	MR_save_regs_to_mem(c_regs);
 
 	MR_trace_end();
 
@@ -1353,11 +1362,13 @@ mercury_runtime_terminate(void)
 	** Restore the registers before calling MR_trace_final()  
 	** as MR_trace_final() expect them to be valid.
 	*/
-	restore_registers(); 
+	MR_restore_registers(); 
 
 	MR_trace_final();
 
-	if (MR_profiling) MR_prof_finish();
+	if (MR_profiling) {
+		MR_prof_finish();
+	}
 
 #ifndef MR_HIGHLEVEL_CODE
   #ifdef MR_THREAD_SAFE
@@ -1366,13 +1377,13 @@ mercury_runtime_terminate(void)
   #endif
 #endif
 
-	terminate_engine();
+	MR_terminate_engine();
 
 	/*
 	** Restore the callee-save registers before returning,
 	** since they may be used by the C code that called us.
 	*/
-	restore_regs_from_mem(c_regs);
+	MR_restore_regs_from_mem(c_regs);
 
 	return mercury_exit_status;
 }

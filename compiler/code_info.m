@@ -1759,11 +1759,11 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 			% inside MR_commit_{mark,cut}.
 			Components = [
 				pragma_c_raw_code(
-					"\tsave_transient_registers();\n"),
+					"\tMR_save_transient_registers();\n"),
 				pragma_c_raw_code(
 					"\tMR_commit_mark();\n"),
 				pragma_c_raw_code(
-					"\trestore_transient_registers();\n")
+					"\tMR_restore_transient_registers();\n")
 			],
 			MarkCode = node([
 				pragma_c([], Components, will_not_call_mercury,

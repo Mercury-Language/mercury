@@ -65,9 +65,11 @@ extern	int	MR_load_aditi_rl_code(void);
 */
 
 #ifdef MR_HIGHLEVEL_CODE
-extern	void		(*program_entry_point)(void); /* normally main_2_p_0 */
+extern	void		(*MR_program_entry_point)(void);
+			/* normally main_2_p_0 */
 #else
-extern	MR_Code 		*program_entry_point; /* normally mercury__main_2_0; */
+extern	MR_Code 	*MR_program_entry_point;
+			/* normally mercury__main_2_0; */
 #endif
 
 extern	void		(*MR_library_initializer)(void);
@@ -79,13 +81,13 @@ extern	void		(*MR_io_stdin_stream)(MR_Word *);
 extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
 extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
 
-extern	void		(*address_of_mercury_init_io)(void);
-extern	void		(*address_of_init_modules)(void);
-extern	void		(*address_of_init_modules_type_tables)(void);
-extern	void		(*address_of_init_modules_debugger)(void);
+extern	void		(*MR_address_of_mercury_init_io)(void);
+extern	void		(*MR_address_of_init_modules)(void);
+extern	void		(*MR_address_of_init_modules_type_tables)(void);
+extern	void		(*MR_address_of_init_modules_debugger)(void);
 
 #ifdef CONSERVATIVE_GC
-extern	void		(*address_of_init_gc)(void);
+extern	void		(*MR_address_of_init_gc)(void);
 #endif
 
 extern	int		(*MR_address_of_do_load_aditi_rl_code)(void);
@@ -153,36 +155,36 @@ extern	void		(*MR_address_of_trace_interrupt_handler)(void);
 */
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
-extern	void		do_init_modules(void);
-extern	void		do_init_modules_type_tables(void);
-extern	void		do_init_modules_debugger(void);
+extern	void		MR_do_init_modules(void);
+extern	void		MR_do_init_modules_type_tables(void);
+extern	void		MR_do_init_modules_debugger(void);
 
-extern	const char	*progname;
+extern	const char	*MR_progname;
 extern	int		mercury_argc;
 extern	char		**mercury_argv;
 extern	int		mercury_exit_status;
 
 /* sizes of the data areas, *including* the red zone size */
-extern	size_t		heap_size;
-extern	size_t		detstack_size;
-extern	size_t		nondstack_size;
-extern	size_t		solutions_heap_size;
-extern	size_t		trail_size;
-extern	size_t		global_heap_size;
-extern	size_t		debug_heap_size;
-extern	size_t		generatorstack_size;
-extern	size_t		cutstack_size;
+extern	size_t		MR_heap_size;
+extern	size_t		MR_detstack_size;
+extern	size_t		MR_nondstack_size;
+extern	size_t		MR_solutions_heap_size;
+extern	size_t		MR_trail_size;
+extern	size_t		MR_global_heap_size;
+extern	size_t		MR_debug_heap_size;
+extern	size_t		MR_generatorstack_size;
+extern	size_t		MR_cutstack_size;
 
 /* sizes of the red zones */
-extern	size_t		heap_zone_size;
-extern	size_t		detstack_zone_size;
-extern	size_t		nondstack_zone_size;
-extern	size_t		solutions_heap_zone_size;
-extern	size_t		trail_zone_size;
-extern	size_t		global_heap_zone_size;
-extern	size_t		debug_heap_zone_size;
-extern	size_t		generatorstack_zone_size;
-extern	size_t		cutstack_zone_size;
+extern	size_t		MR_heap_zone_size;
+extern	size_t		MR_detstack_zone_size;
+extern	size_t		MR_nondstack_zone_size;
+extern	size_t		MR_solutions_heap_zone_size;
+extern	size_t		MR_trail_zone_size;
+extern	size_t		MR_global_heap_zone_size;
+extern	size_t		MR_debug_heap_zone_size;
+extern	size_t		MR_generatorstack_zone_size;
+extern	size_t		MR_cutstack_zone_size;
 
 /* file names for the mdb debugging streams */
 extern	const char	*MR_mdb_in_filename;
@@ -190,13 +192,13 @@ extern	const char	*MR_mdb_out_filename;
 extern	const char	*MR_mdb_err_filename;
 
 /* size of the primary cache */
-extern	size_t		pcache_size;
+extern	size_t		MR_pcache_size;
 
-extern	bool		check_space;
+extern	bool		MR_check_space;
 
 /* timing */
-extern	int		time_at_start;
-extern	int		time_at_last_stat;
+extern	int		MR_time_at_start;
+extern	int		MR_time_at_last_stat;
 
 /* time profiling */
 enum MR_TimeProfileMethod {
