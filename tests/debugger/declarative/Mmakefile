@@ -3,6 +3,7 @@
 main_target:	check
 
 include ../../Mmake.common
+-include ../../Mmake.params
 
 RM_C=:
 

@@ -3,6 +3,7 @@
 main_target: all
 
 include ../Mmake.common
+-include ../Mmake.params
 
 #-----------------------------------------------------------------------------#
 

@@ -3,6 +3,7 @@
 main_target: check
 
 include ../Mmake.common
+-include ../Mmake.params
 
 MCFLAGS-pretty_print_test = --no-line-numbers
 

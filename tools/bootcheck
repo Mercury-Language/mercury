@@ -60,6 +60,9 @@ Options:
 	-3, --keep-stage-3
 		Don't rebuild the stage 3 directory from scratch after
 		building stage 1.  Instead use the existing stage 3 directory.
+	--test-params
+		When executing the test suite, use the stage 2 Mmake.params
+		file.
 	--stop-after-stage-2
 		Stop after building stage 2, even if it is successful.
 	--use-subdirs
@@ -76,6 +79,7 @@ runtests=true
 do_bootcheck=true
 grade=
 test_grade=
+test_params=false
 copy_runtime=false
 copy_boehm_gc=false
 copy_profiler=false
@@ -154,6 +158,9 @@ while [ $# -gt 0 ]; do
 
 	-3|--keep-stage-3)
 		keep_stage_3=true ;;
+
+	--test-params)
+		test_params=true ;;
 
 	--stop-after-stage-2)
 		stop_after_stage_2=true ;;
@@ -743,6 +750,14 @@ then
 
 	if test "$test_status" = 0
 	then
+		if $test_params
+		then
+			cp $root/stage2/Mmake.params ${tests_prefix}tests
+		else
+			/bin/rm ${tests_prefix}tests/Mmake.params \
+				> /dev/null 2>&1
+		fi
+
 		cp $root/doc/mdb_command_test.inp ${tests_prefix}tests/debugger
 		if test "$testdirs" = ""
 		then

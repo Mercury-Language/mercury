@@ -10,6 +10,7 @@
 MAIN_TARGET = check
 
 include ../../Mmake.common
+-include ../../Mmake.params
 
 PROGS = test_exceptions.m test_uncaught_exception.m test_exceptions_func.m
 #
