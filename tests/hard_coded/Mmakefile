@@ -60,6 +60,7 @@ PROGS=	\
 	qual_is_test \
 	remove_file \
 	reorder_di \
+	rev_arith \
 	reverse_arith \
 	rnd \
 	string_alignment \
