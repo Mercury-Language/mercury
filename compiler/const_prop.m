@@ -195,11 +195,13 @@ evaluate_builtin_tri("int", "//", 2, X, Y, Z, Y, int_const(YVal)) :-
 evaluate_builtin_tri("int", "mod", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	YVal \= 0,
 	ZVal is XVal mod YVal.
 
 evaluate_builtin_tri("int", "rem", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	YVal \= 0,
 	ZVal is XVal rem YVal.
 
 evaluate_builtin_tri("int", "unchecked_left_shift",
