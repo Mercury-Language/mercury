@@ -14,6 +14,7 @@ Changes to the Mercury language:
 * User-defined equality and comparison predicates for a type are now
   required to be defined in the same module as the type.
 * Experimental support for user-defined constrained types has been added.
+* We now support the use of `..' as an infix operator.
 
 Changes to the Mercury standard library:
 * We've added several new modules: cord, for sequences with O(1) consing and
@@ -115,6 +116,12 @@ Changes to the Mercury language:
 
   For details, see the "Higher-order impurity" section of the "Impurity"
   chapter of the Mercury Language Reference Manual.
+
+* `..' is now accepted as an infix operator.  That means a list of
+  successive integers can now be written as X .. Y.  For example:
+
+	1 .. 5 = [1, 2, 3, 4, 5]
+
 
 Changes to the Mercury standard library:
 

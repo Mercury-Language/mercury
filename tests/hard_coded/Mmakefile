@@ -103,6 +103,7 @@ ORDINARY_PROGS=	\
 	intermod_type_qual \
 	int_fold_up_down \
 	join_list \
+	list_series_int \
 	loop_inv_test \
 	loop_inv_test1 \
 	mapped_module \
