@@ -41,7 +41,7 @@ case $# in
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
-		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
+		--num-real-temps "$NUM_REAL_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
 		--bits-per-word "$BITS_PER_WORD" \
 		--bytes-per-word "$BYTES_PER_WORD" \
@@ -52,7 +52,7 @@ case $# in
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
-		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
+		--num-real-temps "$NUM_REAL_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
 		--bits-per-word "$BITS_PER_WORD" \
 		--bytes-per-word "$BYTES_PER_WORD" \
