@@ -2142,7 +2142,7 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 				ModuleInfo0) } 
 		->
 			prog_out__write_context(Context),
-			io__write_string("Sorry, not impemented: `pragma "),
+			io__write_string("Sorry, not implemented: `pragma "),
 			io__write_string(EvalMethodS),
 			io__write_string("'\n"),
 			prog_out__write_context(Context),
