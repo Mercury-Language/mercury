@@ -34,6 +34,7 @@ ORDINARY_PROGS=	\
 	deep_copy \
 	deep_copy_bug \
 	deep_copy_exist \
+	deforest_cc_bug \
 	det_in_semidet_cntxt \
 	division_test \
 	dupcall_types_bug \
@@ -236,6 +237,7 @@ MCFLAGS-checked_nondet_tailcall	=	--checked-nondet-tailcalls
 MCFLAGS-bigtest		=	--intermodule-optimization -O3
 MCFLAGS-constraint	=	--constraint-propagation --enable-termination
 MCFLAGS-constraint_order =	--constraint-propagation --enable-termination
+MCFLAGS-deforest_cc_bug =	--deforestation
 MCFLAGS-lp		=	--intermodule-optimization -O3
 MCFLAGS-boyer		=	--infer-all
 MCFLAGS-func_test	=	--infer-all

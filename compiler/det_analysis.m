@@ -249,10 +249,20 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		% context or not.  Currently we only assume so if
 		% the predicate has an explicit determinism declaration
 		% that says so.
+	det_get_soln_context(Detism0, OldInferredSolnContext),
 	proc_info_declared_determinism(Proc0, MaybeDeclaredDetism),
 	( MaybeDeclaredDetism = yes(DeclaredDetism) ->
-		det_get_soln_context(DeclaredDetism, SolnContext)
+		det_get_soln_context(DeclaredDetism, DeclaredSolnContext)
 	;	
+		DeclaredSolnContext = all_solns
+	),
+	(
+		( DeclaredSolnContext = first_soln
+		; OldInferredSolnContext = first_soln
+		)
+	->
+		SolnContext = first_soln
+	;
 		SolnContext = all_solns
 	),
 

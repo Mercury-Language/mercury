@@ -132,9 +132,17 @@ deforestation(ModuleInfo0, ModuleInfo, IO0, IO) :-
 reset_inferred_proc_determinism(PredProcId, ModuleInfo0, ModuleInfo) :-
 	module_info_pred_proc_info(ModuleInfo0, PredProcId,
 		PredInfo, ProcInfo0),
-	proc_info_set_inferred_determinism(ProcInfo0, erroneous, ProcInfo),
-	module_info_set_pred_proc_info(ModuleInfo0, PredProcId,
-		PredInfo, ProcInfo, ModuleInfo).
+	proc_info_inferred_determinism(ProcInfo0, Detism0),
+	( determinism_components(Detism0, _, at_most_many_cc) ->
+		% `cc_multi' or `cc_nondet' determinisms are never inferred,
+		% so resetting the determinism would cause determinism errors.
+		ModuleInfo = ModuleInfo0
+	;	
+		proc_info_set_inferred_determinism(ProcInfo0, erroneous,
+			ProcInfo),
+		module_info_set_pred_proc_info(ModuleInfo0, PredProcId,
+			PredInfo, ProcInfo, ModuleInfo)
+	).
 
 :- pred proc_arg_info_init(map(pred_proc_id, pd_proc_arg_info)::out) is det.
 
