@@ -60,8 +60,12 @@ syn match   mercuryStringFmt    +\\[abfnrtv]\|\\x[0-9a-fA-F]*\\\|%[-+# *.0-9]*[d
 syn region  mercuryClauseHead   start=+^[a-zA-Z]+ end=+=\|:-\|\.\s*$\|-->+                    contains=mercuryComment,mercuryCComment,mercuryAtom,mercuryString
 syn region  mercuryCComment     start=+/\*+ end=+\*/+                                         contains=mercuryToDo
 if !exists("mercury_no_highlight_overlong") || !mercury_no_highlight_overlong
-  syn match   mercuryFirst80 +^.\{80}+                                                          contains=ALL
-  syn match   mercuryTooLong +^.\{81,}+                                                         contains=mercuryFirst80
+  " The complicated regexp here matches an 80-column string,
+  " with proper treatment of tabs (assuming the tab size is 8):
+  " each row consists of 10 columns, and each column consists of either 8
+  " non-tab characters, or 0-7 non-tab characters followed by a tab.
+  syn match   mercuryFirst80 +^\([^	]\{8}\|[^	]\{0,7}	\)\{10}+                                contains=ALL
+  syn match   mercuryTooLong +^\([^	]\{8}\|[^	]\{0,7}	\)\{10}..*+                             contains=mercuryFirst80
 endif
 
 syn sync fromstart
