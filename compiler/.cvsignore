@@ -11,7 +11,7 @@
 *.date
 *.date3
 *.used
-aditi_backend rl_file.m rl_out.m
+aditi_backend.m rl_file.m rl_out.m
 maybe_mlds_to_gcc.m
 *.pp_date
 mercury_compile.stats
