@@ -4517,18 +4517,18 @@ report_error_no_clauses(PredId, PredInfo, ModuleInfo) -->
 report_warning_too_much_overloading(TypeCheckInfo) -->
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	{ make_pred_id_preamble(TypeCheckInfo, Preamble) },
-	{ SmallWarning = [ Preamble,
-				"warning: highly ambiguous overloading." ] },
+	{ SmallWarning = [ fixed(Preamble),
+			words("warning: highly ambiguous overloading.") ] },
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
-		{ VerboseWarning = [ "This may cause type-checking to be very",
-					"slow. It may also make your code",
-					"difficult to understand." ] },
-		{ list__append(SmallWarning, VerboseWarning, Warning0) }
+		{ VerboseWarning = [
+			words("This may cause type-checking to be very"),
+			words("slow. It may also make your code"),
+			words("difficult to understand.") ] },
+		{ list__append(SmallWarning, VerboseWarning, Warning) }
 	;
-		{ Warning0 = SmallWarning }
+		{ Warning = SmallWarning }
 	),
-	{ error_util__list_to_pieces(Warning0, Warning) },
 	error_util__report_warning(Context, 0, Warning).
 
 %-----------------------------------------------------------------------------%

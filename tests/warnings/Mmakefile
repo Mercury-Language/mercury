@@ -10,6 +10,7 @@ COMPILE_PROGS=	\
 	arg_order_rearrangment
 
 ERRORCHECK_PROGS= \
+	ambiguous_overloading \
 	det_infer_warning \
 	double_underscore \
 	duplicate_call \
