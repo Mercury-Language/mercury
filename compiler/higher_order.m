@@ -1078,7 +1078,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo) -->
 	ProcInfo0 =^ proc_info,
 	( 
 		{ Goal0 = unify(_, _, UniMode, Unify0, Context) },
-		{ Unify0 = construct(LVar, ConsId0, Args0, UniModes,
+		{ Unify0 = construct(LVar, ConsId0, Args0, _,
 				HowToConstruct, CellIsUnique, MaybeExprn) },
 		{ ConsId0 = pred_const(PredId, ProcId, EvalMethod) },
 		{ map__contains(NewPreds, proc(PredId, ProcId)) },
@@ -1121,6 +1121,20 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo) -->
 			;
 				error("maybe_specialize_pred_const")	
 			},
+
+			{ module_info_pred_proc_info(ModuleInfo,
+				NewPredId, NewProcId, _, NewCalleeProcInfo) },
+			{ proc_info_argmodes(NewCalleeProcInfo,
+				NewCalleeArgModes) },
+			{	list__take(list__length(NewArgs),
+					NewCalleeArgModes, CurriedArgModes0)
+			->
+				CurriedArgModes = CurriedArgModes0
+			;
+				error("maybe_specialize_pred_const")
+			},
+			{ mode_util__modes_to_uni_modes(CurriedArgModes,
+				CurriedArgModes, ModuleInfo, UniModes) },
 				
 			% The dummy arguments can't be used anywhere.
 			ProcInfo2 =^ proc_info,
