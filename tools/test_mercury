@@ -240,10 +240,13 @@ case $status in
     0)
 	: if we get this far, then it worked.
 	date >> /home/mercury/public/test_mercury/logs/successful_tests.$HOST
-	cd $DIR
-	version=`mmake version`
-	cp mercury-$version.tar.gz mercury-$version-stable.tar.gz 
-
+	case $HOST in murlibobo)
+		cd $DIR/mercury
+		version=`mmake version`
+		cd $DIR
+		cp mercury-$version.tar.gz mercury-$version-stable.tar.gz 
+		;;
+	esac
 	true
 	exit 0
 	;;
