@@ -682,7 +682,7 @@ string__combine_hash(H0, X, H) :-
 
 string__format( Fstring, Poly_list, Ostring ) :-
 	(
-		string__length(Fstring, 0)
+		Fstring = ""
 	->
 		Fstring = Ostring
 	;
@@ -700,11 +700,11 @@ string__format( Fstring, Poly_list, Ostring ) :-
 string__format_2( [], _, "").
 string__format_2( [Achar|As], Vars_in, Ostring) :-
 	(
-	Achar = '%'
+		Achar = '%'
 	->	
 		(
-		string__format_top_convert_variable(As, As_out, Vars_in, 
-				Vars_out, String_1)
+			string__format_top_convert_variable(As, As_out,
+				Vars_in, Vars_out, String_1)
 		->
 			string__format_2(As_out, Vars_out, String_2),
 			string__append(String_1, String_2, Ostring)
@@ -725,8 +725,7 @@ string__format_2( [Achar|As], Vars_in, Ostring) :-
 %			Out string)
 %		Return a string of the formatted variable.
 %
-string__format_top_convert_variable(['%'|Bs], Bs, [], [], Out_string) :-
-	Out_string is "%".
+string__format_top_convert_variable(['%'|Bs], Bs, [], [], "%").
 string__format_top_convert_variable( F_chars_in, F_chars_out, 
 			[Var_in|Vars_l_in], Vars_out, Out_string ) :-
 	string__format_takewhile1( F_chars_in, [Conv_char_0|F_chars_out],
@@ -1108,11 +1107,12 @@ string__format_calc_exp(F, Fstring, Precision, Exp) :-
 :- mode string__format_calc_prec(in, out, in) is det.
 string__format_calc_prec(Istring, Ostring, Precision) :-
 	(string__default_precision_and_width(Precision) ->
-		Prec is 6
+		Prec = 6
 	;
-		Prec is Precision),
+		Prec = Precision
+	),
 	(
-	string__find_index( Istring, '.', 1, Index)
+	string__find_index( Istring, '.', Index)
 	->
 		Spa is Prec + Index + 1
 	;
@@ -1132,7 +1132,7 @@ string__format_calc_prec(Istring, Ostring, Precision) :-
 	->
 		Space is Spa - 1
 	;
-		Space is Spa
+		Space = Spa
 	),
 	string__split(Mstring, Space, Ostring, _).
 
@@ -1141,22 +1141,34 @@ string__format_calc_prec(Istring, Ostring, Precision) :-
 %	string__find_index is a funky little predicate to find the first
 %	occourance of a particular character in a string.
 %
-:- pred string__find_index( string, char, int, int).
-:- mode string__find_index( in, in, in, out) is semidet.
-string__find_index( A, Ch, Check, Ret) :-
-	string__length(A, Len),
-	Len < Check
+:- pred string__find_index( string, char, int).
+:- mode string__find_index( in, in, out) is semidet.
+string__find_index([], _C, _Index) :- fail.
+string__find_index([X|Xs], C, Index) :-
+	(
+		X = C
 	->
-		fail
+		Index = 1
 	;
-	string__index(A, Check, Ch)
-	->
-		Ret = Check
-	;
-		Check2 is Check + 1,
-		string__find_index( A, Ch, Check2, Ret)
-	.
-
+		string__find_index(Xs, C, Index0),
+		Index is Index0 + 1
+	).
+%
+%string__find_index( A, Ch, Check, Ret) :-
+%	(
+%		string__length(A, Len),
+%		Len < Check
+%	->
+%		fail
+%	;
+%		string__index(A, Check, Ch)
+%	->
+%		Ret = Check
+%	;
+%		Check2 is Check + 1,
+%		string__find_index( A, Ch, Check2, Ret)
+%	).
+%
 
 
 
