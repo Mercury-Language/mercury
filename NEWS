@@ -1,7 +1,21 @@
 NEWS for Mercury release 0.6
 ----------------------------
 
-* We now provide some support for functional syntax.
+* We now provide preliminary support for type and mode inference.
+  
+  The `:- pred' and `:- mode' declarations are now optional for
+  predicates that are local to a module; the compiler will infer
+  the types and modes automatically.
+
+  This support is not yet complete -- there are a number of known problems --
+  but it is nevertheless a useful tool.
+
+  Note that omitting type and mode declarations can significantly
+  reduce the quality of the compiler's error messages; if you have
+  trouble understanding an error message, then it is a good idea to add
+  explicit type and mode declarations.
+
+* We now support functional syntax.
 
   Functions can be declared with `:- func' declarations,
   and defined using equations or conditional equations,
@@ -81,7 +95,10 @@ NEWS for Mercury release 0.6
 * We have added some new compiler options to simplify the choice of which
   optimization options to enable.
 
-  - You can now use `-O<n>' to select an optimization level between 0 and 5.
+  - You can now use `-O<n>' to select an optimization level between -1 and 6.
+    The default level is `-O2'; if you want to minimize compilation
+    time, compile with `-O0', which disables all optimizations except those
+    that actually improve overall compilation speed.
 
   - You can now use `--optimize-space' to select optimization for space,
     instead of optimization for time (which is the default).
@@ -99,13 +116,13 @@ NEWS for Mercury release 0.6
     the compiler introduces type_info arguments which are often unused.
     This optimization is enabled by the `--optimize-unused-args' option.
 
-  - The --inlining option now governs the settings of three separate options.
-    One, --inline-simple, reproduces the previous behavior of --inlining:
+  - The `--inlining' option now governs the settings of three separate options.
+    One, `--inline-simple', reproduces the previous behavior of `--inlining':
     it inlines procedures whose definition is simple (e.g. a conjunction of
-    builtins). Another, --inline-single-use, tells the compiler to inline
+    builtins). Another, `--inline-single-use', tells the compiler to inline
     all procedures that are called exactly once. The compiler can also
     inline procedures called more than once as long as they are not too
-    big; the argument of the option --inline-threshold sets a limit
+    big; the argument of the option `--inline-threshold' sets a limit
     on the size of the procedure definition (roughly in terms of the number
     of logical connectives it has) multiplied by the number of calls to
     the predicate.
@@ -146,18 +163,18 @@ NEWS for Mercury release 0.6
     sequence retrieves the value, this other code sequence will be
     reoptimized taking this into account.
 
-* We now support a C-to-Mercury interface. (ie. we allow C to call Mercury).
-  This is achieved by the pragma(export, ...) declaration. There is the 
-  restriction that the program must start in Mercury, but the C code that is
-  called may itself call Mercury.
-  ( XXX We don't handle strings and floats properly).
+* We now support a C-to-Mercury interface, ie. we allow C code to call
+  Mercury predicates, using a new `pragma export' declaration.
+  (XXX This is not yet documented.  There is however a fairly detailed
+  and reasonably well-documented example in the
+  samples/c_interface/c_calls_mercury directory.)
 
-* Some work has been done on integrating constraints into the language. It is
-  fairly untested, but works on a simple interface with CLP(R). In a compilation
-  grade ending in .cnstr, eg. asm_fast.gc.cnstr, macros are emitted into the
-  generated code to allow a solver to backtrack. These are defined in
-  runtime/mercury_solver_backtrack.h. This should be more complete in a future
-  release.
+* Some work has been done on integrating constraints into the language.
+  It is fairly untested, but works on a simple interface with CLP(R).
+  In a compilation grade ending in `.cnstr', eg. `asm_fast.gc.cnstr',
+  macros are emitted into the generated code to allow a solver to
+  backtrack.  These are defined in runtime/mercury_solver_backtrack.h.
+  This should be more complete in a future release.
 
 * We have added a little bit of inline assembler code for the Alpha so
   that we can support the use of gcc non-local gotos and asm labels.
