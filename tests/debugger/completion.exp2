@@ -1,0 +1,105 @@
+       1:      1  1 CALL pred completion:main/2-0 (det) completion.m:13
+mdb> echo on
+echo on
+Command echo enabled.
+mdb> 
+?                  down               maxdepth           return
+P                  e                  mindepth           s
+alias              echo               mmc_options        save
+all_regs           enable             modules            scope
+b                  exception          next               scroll
+break              excp               nondet_stack       set
+browse             f                  p                  source
+c                  finish             print              stack
+cc_query           forward            print_optionals    stack_regs
+context            g                  printlevel         step
+continue           goto               proc_stats         table_io
+current            h                  procedures         unalias
+d                  help               query              up
+delete             ignore             quit               v
+disable            io_query           r                  vars
+document           label_stats        register           view
+document_category  level              retry              
+mdb> h
+h     help  
+mdb> help v
+vars  view  
+mdb> help vars 
+help vars 
+vars
+     Prints the names of all the known variables in the current
+     environment, together with an ordinal number for each variable.
+
+
+mdb> p --flat 
+*           --pretty    -f          -v          exception   
+--flat      --verbose   -p          HeadVar__1  goal        
+mdb> p --flat HeadVar__1 
+p --flat HeadVar__1 
+       HeadVar__1             	state('<<c_pointer>>')
+mdb> sta
+stack       stack_regs  
+mdb> stack --detailed 
+stack --detailed 
+   0       1       1    1 pred completion:main/2-0 (det) (completion.m:13) (empty)
+mdb> proc
+proc_stats  procedures  
+mdb> procedures compl
+completion            completion:sub2       
+completion:sub1       completion:sub2:sub3  
+mdb> procedures completion:
+completion:sub1       completion:sub2       completion:sub2:sub3
+mdb> procedures completion:sub1
+procedures completion:sub1
+Registering debuggable procedures... done.
+There are 4 debuggable modules, with a total of 7 procedures.
+List of procedures in module `completion:sub1'
+
+pred completion:sub1:zp/1-0 (det)
+func completion:sub1:z1/0-0 (det)
+mdb> set --flat format pretty 
+set --flat format pretty 
+mdb> unalias excp 
+unalias excp 
+Alias `excp' removed.
+mdb> b z
+z      z1     z2     zabc3  zp     zz     
+mdb> b zabc3 
+b zabc3 
+ 0: + stop  interface func completion:sub2:sub3:zabc3/0-0 (det)
+mdb> b pred*
+pred*completion:            pred*completion:sub2:sub3:
+pred*completion:sub1:       pred*main
+pred*completion:sub2:       pred*zp
+mdb> b pred*zp 
+b pred*zp 
+ 1: + stop  interface pred completion:sub1:zp/1-0 (det)
+mdb> b compl
+completion:            completion:sub2:       
+completion:sub1:       completion:sub2:sub3:  
+mdb> b completion:s
+completion:sub1:       completion:sub2:       completion:sub2:sub3:
+mdb> b completion:sub1
+completion:sub1:z1  completion:sub1:zp  
+mdb> b completion:sub1:z1
+b completion:sub1:z1
+ 2: + stop  interface func completion:sub1:z1/0-0 (det)
+mdb> b compl
+completion:            completion:sub2:       
+completion:sub1:       completion:sub2:sub3:  
+mdb> b completion:s
+completion:sub1:       completion:sub2:       completion:sub2:sub3:
+mdb> b completion:sub2
+completion:sub2:       completion:sub2:sub3:  
+mdb> b completion:sub2:sub3:zabc3 
+b completion:sub2:sub3:zabc3 
+ 3: + stop  interface func completion:sub2:sub3:zabc3/0-0 (det)
+mdb> 2d
+2d                  2disable            2document_category
+2delete             2document           2down
+mdb> 2delete 
+2delete 
+ 2: E stop  interface func completion:sub1:z1/0-0 (det)
+mdb> c
+c
+ok
