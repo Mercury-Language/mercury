@@ -230,7 +230,7 @@ endif
 $(cs_subdir)%.c : $(c_dates_subdir)%.c_date
 	@:
 
-$(cs_subdir)%.c_date : %.m
+$(c_dates_subdir)%.c_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $< > $*.err 2>&1
 
 # Aditi-RL back-end
