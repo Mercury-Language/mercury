@@ -63,6 +63,16 @@ PIC_O			= @PIC_O@
 # LINK_SHARED_OBJ  	= gcc -G	# for Solaris
 LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 
+# Set INSTALL_NUPROLOG to `install_nuprolog' if you have NU-Prolog
+# and want use it for debugging Mercury programs.
+# Otherwise, leave it blank.
+INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
+
+# Set INSTALL_SICSTUS to `install_sicstus' if you have SICStus Prolog
+# and want use it for debugging Mercury programs.
+# Otherwise, leave it blank.
+INSTALL_SICSTUS		= @INSTALL_SICSTUS@
+
 # You should not need to modify anything below here
 
 #-----------------------------------------------------------------------------#
@@ -97,6 +107,7 @@ SYS_CS = \
 
 #-----------------------------------------------------------------------------#
 
+# The Mmake.params file can be used to override definitions in this file
 -include $(MERCURY_DIR)/Mmake.params
 
 #-----------------------------------------------------------------------------#
