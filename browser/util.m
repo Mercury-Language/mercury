@@ -100,7 +100,6 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 	[will_not_call_mercury],
 	"
 		char		*line;
-		char		*mercury_string;
 		MercuryFile	*mdb_in = (MercuryFile *) MdbIn;
 		MercuryFile	*mdb_out = (MercuryFile *) MdbOut;
 
@@ -115,9 +114,8 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 		if (line == NULL) {
 			SUCCESS_INDICATOR = FALSE;
 		} else {
-			MR_make_aligned_string_copy(mercury_string, line);
-			free(line);
-			Line = (String) mercury_string;
+			MR_make_aligned_string_copy(Line, line);
+			MR_free(line);
 			SUCCESS_INDICATOR = TRUE;
 		}
 	"
@@ -133,7 +131,6 @@ util__trace_get_command(Prompt, Result) -->
 	[will_not_call_mercury],
 	"
 		char		*line;
-		char		*mercury_string;
 		MercuryFile	*mdb_in = (MercuryFile *) MdbIn;
 		MercuryFile	*mdb_out = (MercuryFile *) MdbOut;
 
@@ -146,9 +143,8 @@ util__trace_get_command(Prompt, Result) -->
 			/* not reached */
 		}
 
-		MR_make_aligned_string_copy(mercury_string, line);
-		free(line);
-		Line = (String) mercury_string;
+		MR_make_aligned_string_copy(Line, line);
+		MR_free(line);
 
 		State = State0;
 	"

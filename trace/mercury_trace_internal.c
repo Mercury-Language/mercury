@@ -2289,6 +2289,14 @@ MR_trace_source_from_open_file(FILE *fp)
 	MR_trace_internal_interacting = FALSE;
 }
 
+/*
+** Call MR_trace_getline to get the next line of input, then do some
+** further processing.  If the input has reached EOF, return the command
+** "quit".  If the line contains multiple commands then split it and
+** only return the first one.  The command is returned in a MR_malloc'd
+** buffer.
+*/
+
 char *
 MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 {
@@ -2301,7 +2309,7 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 		/*
 		** We got an EOF.
 		** We arrange things so we don't have to treat this case
-		** specially in the command interpreter below.
+		** specially in the command interpreter.
 		*/
 		line = MR_copy_string("quit");
 	}
@@ -2309,7 +2317,7 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 	if ((semicolon = strchr(line, ';')) != NULL) {
 		/*
 		** The line contains at least two commands.
-		** Execute only the first command now; put the others
+		** Return only the first command now; put the others
 		** back in the input to be processed later.
 		*/
 		*semicolon = '\0';
