@@ -28,3 +28,19 @@ string__float_to_string(Float, String) :-
 	sformat("~f", [Float], String).
 
 %-----------------------------------------------------------------------------%
+
+string__index(String, Int, Char) :-
+	list__index0(String, Int, Code),
+	char_to_int(Char, Code).
+
+%-----------------------------------------------------------------------------%
+
+string__append(A, B, C) :-
+	list__append(A, B, C).
+
+%-----------------------------------------------------------------------------%
+
+string__length(String, Length) :-
+	list__length(String, Length).
+
+%-----------------------------------------------------------------------------%

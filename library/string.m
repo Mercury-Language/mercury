@@ -228,10 +228,7 @@ string__base_string_to_int_2(Base, String, Int0, Int) :-
 		Int = Int0
 	).
 
-string__index(String, Int, Char) :-
-	string__to_int_list(String, CodeList),
-	list__index0(CodeList, Int, Code),
-	char_to_int(Char, Code).
+:- external(string__index/3).
 
 string__index_det(String, Int, Char) :-
 	( string__index(String, Int, Char0) ->
@@ -269,15 +266,8 @@ string__substring(String, Start, Count, Substring) :-
 	string__right(String, Start, Right),
 	string__left(Right, Count, Substring).
 
-string__length(String, Length) :-
-	string__to_int_list(String, List),
-	list__length(List, Length).
-
-string__append(A, B, C) :-
-	string__to_int_list(A, LA),
-	string__to_int_list(B, LB),
-	string__to_int_list(C, LC),
-	list__append(LA, LB, LC).
+:- external(string__length/2).
+:- external(string__append/3).
 
 string__remove_suffix(A, B, C) :-
 	string__to_int_list(A, LA),
