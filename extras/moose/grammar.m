@@ -184,6 +184,9 @@ term_to_prod(functor(Atom, Args, Ctxt), Prod) :-
 		Prod = (Left; Right)
 	; Atom = atom("{}"), Args = [Goal] ->
 		Prod = action(Goal)
+	; Atom = atom("{}"), Args = [Goal | Goals] ->
+		foldl((pred(G::in, Left::in, (Left, action(G))::out) is det),
+			Goals, action(Goal), Prod)
 	; Atom = atom("[]"), Args = [] ->
 		Prod = []
 	; Atom = atom("."), Args = [Head, Tail] ->
