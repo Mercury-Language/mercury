@@ -1,6 +1,9 @@
 
 The shell scripts use the following environment variables.
 
+	MERCURY_C_INCL_DIR
+		Directory for the Mercury C header files (*.h)
+
 	MERCURY_INT_DIR
 		Directory for the Mercury library interface
 		files (*.int *.int2)
