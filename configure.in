@@ -262,6 +262,16 @@ if test "$HAVE_SYS_TIME_H" = 1; then
 	AC_DEFINE(HAVE_SYS_TIME)
 fi
 #-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/times.h, HAVE_SYS_TIMES_H=1)
+if test "$HAVE_SYS_TIMES_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TIMES_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/types.h, HAVE_SYS_TYPES_H=1)
+if test "$HAVE_SYS_TYPES_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TYPES_H)
+fi
+#-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/stat.h, HAVE_SYS_STAT_H=1)
 if test "$HAVE_SYS_STAT_H" = 1; then
 	AC_DEFINE(HAVE_SYS_STAT_H)
@@ -2028,6 +2038,39 @@ FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
+
+#-----------------------------------------------------------------------------#
+#
+# Check for the POSIX struct tms and times() function.
+# This is used for the time__times procedure in library/times.m.
+#
+AC_MSG_CHECKING(for struct tms and times function)
+AC_CACHE_VAL(mercury_cv_have_posix_times,
+AC_TRY_LINK([
+	#include <sys/types.h>
+	#include <sys/times.h>
+],[
+	struct tms t;
+	long Ut, St, CUt, CSt;
+	long Ret;
+
+	Ret = (long) times(&t);
+
+	Ut = (long) t.tms_utime;
+	St = (long) t.tms_stime;
+	CUt = (long) t.tms_cutime;
+	CSt = (long) t.tms_cstime;
+],[mercury_cv_have_posix_times=yes],[mercury_cv_have_posix_times=no]))
+
+#
+# figure out whether the test succeeded
+#
+if test "$mercury_cv_have_posix_times" = yes; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_HAVE_POSIX_TIMES)
+else
+	AC_MSG_RESULT(no)
+fi
 
 #-----------------------------------------------------------------------------#
 #

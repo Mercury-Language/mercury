@@ -73,6 +73,12 @@ Changes to the Mercury standard library:
   However, many of the operations in the standard library still handle
   errors by aborting execution rather than by throwing exceptions.
 
+* There's a new standard library module `time'.
+
+  The `time' module provides an interface to the ANSI/ISO C <time.h>
+  functions, and to the POSIX times() function.  Thanks to Tomas By
+  for contributing the original version of this module.
+
 * There's a new standard library module `gc', for controlling the
   garbage collector.
 

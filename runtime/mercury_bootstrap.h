@@ -27,6 +27,11 @@
 #define	COMPARE_LESS		MR_COMPARE_LESS
 #define	COMPARE_GREATER		MR_COMPARE_GREATER
 
+#define make_aligned_string_copy(a,b)	MR_make_aligned_string_copy((a),(b))
+#define make_aligned_string(a,b)	MR_make_aligned_string((a),(b))
+#define string_equal(a,b)		MR_string_equal((a),(b))
+#define string_const(a,b)		MR_string_const((a),(b))
+
 /*
 ** The list manipulation macros are available for use by ordinary Mercury
 ** programmers. People may have written code using these macros before their

@@ -101,6 +101,8 @@
 **	HAVE_SYS_PARAM		we have <sys/param.h>
 **	HAVE_SYS_WAIT		we have <sys/wait.h>
 **	HAVE_SYS_STAT_H		we have <sys/stat.h>
+**	HAVE_SYS_TYPES_H	we have <sys/types.h>
+**	HAVE_SYS_TIMES_H	we have <sys/times.h>
 **	HAVE_DLFCN_H		we have <dlfcn.h>
 */
 #undef	HAVE_SYS_SIGINFO
@@ -111,7 +113,15 @@
 #undef	HAVE_SYS_PARAM
 #undef	HAVE_SYS_WAIT
 #undef	HAVE_SYS_STAT_H
+#undef	HAVE_SYS_TIMES_H
+#undef	HAVE_SYS_TYPES_H
 #undef	HAVE_DLFCN_H
+
+/*
+** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
+** `struct tms' struct and times() function.
+*/
+#undef MR_HAVE_POSIX_TIMES
 
 /*
 ** The following macros are defined iff the corresponding type
