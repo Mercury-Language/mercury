@@ -21,9 +21,24 @@
 %	add a command-line option to output line number comments
 %	preserve the comments in the original source code.
 
-:- module('mercury_to_goedel').
-:- import_module io, prog_io, prog_out.
-:- export_pred main_predicate.
+%-----------------------------------------------------------------------------%
+
+:- module mercury_to_goedel.
+:- interface.
+
+	% A stupid hack - but don't remove this line. fjh.
+:- import_module int, char, prog_io, prog_out.
+
+:- import_module list, string, io.
+
+:- pred main_predicate(list(string), io__state, io__state).
+:- mode main_predicate(input, di, uo).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module prog_io, prog_out.
+% :- import_module hlds.	% for unqualify_name/2.
 
 %-----------------------------------------------------------------------------%
 
@@ -41,9 +56,6 @@ option_handle_functor_overloading("character").
 
 %-----------------------------------------------------------------------------%
 	% Validate command line arguments
-
-:- pred main_predicate(list(string), io__state, io__state).
-:- mode main_predicate(input, di, uo).
 
 main_predicate([]) --> usage.
 main_predicate([_]) --> usage.
@@ -73,7 +85,7 @@ process_files(Progname, Files) -->
 
 :- pred process_files_2(list(string), string, list(item_and_context),
 			io__state, io__state).
-:- mode process_files_2(input, input, di, uo).
+:- mode process_files_2(input, input, input, di, uo).
 process_files_2([], Progname, Items) -->
 	convert_to_goedel(Progname, Items).
 process_files_2([File | Files], Progname, Items0) -->
@@ -243,7 +255,7 @@ goedel_replace_eqv_type_defn(abstract_type(_TName, _TArgs),
 	fail.
 
 :- pred goedel_replace_eqv_type_uu(list(type), string, list(type_param),
-					type, yes_or_no, list(type), yes_or_no).
+					type, bool, list(type), bool).
 :- mode goedel_replace_eqv_type_uu(input, input, input, input, input,
 					output, output).
 
@@ -253,7 +265,7 @@ goedel_replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
 	goedel_replace_eqv_type_uu(Ts0, Name, Args, Body, Found1, Ts, Found).
 
 :- pred goedel_replace_eqv_type_du(list(constructor), string, list(type_param),
-				type, yes_or_no, list(constructor), yes_or_no).
+				type, bool, list(constructor), bool).
 :- mode goedel_replace_eqv_type_du(input, input, input, input, input,
 					output, output).
 
@@ -263,7 +275,7 @@ goedel_replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
 	goedel_replace_eqv_type_du(Ts0, Name, Args, Body, Found1, Ts, Found).
 
 :- pred goedel_replace_eqv_type_ctor(constructor, string, list(type_param),
-				type, yes_or_no, constructor, yes_or_no).
+				type, bool, constructor, bool).
 :- mode goedel_replace_eqv_type_ctor(input, input, input, input, input,
 					output, output).
 
@@ -273,7 +285,7 @@ goedel_replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
 		Targs, Found).
 
 :- pred goedel_replace_eqv_type_type(type, string, list(type_param),
-				type, yes_or_no, type, yes_or_no).
+				type, bool, type, bool).
 :- mode goedel_replace_eqv_type_type(input, input, input, input, input,
 					output, output).
 
@@ -294,7 +306,7 @@ goedel_replace_eqv_type_type(term_functor(F, TArgs0, Context), Name, Args,
 		Type = term_functor(F, TArgs, Context)
 	).
 
-:- pred type_param_to_var_list(list(type_param), list(variable)).
+:- pred type_param_to_var_list(list(type_param), list(var)).
 :- mode type_param_to_var_list(input, output).
 
 type_param_to_var_list([], []).
@@ -302,13 +314,13 @@ type_param_to_var_list([T | Ts], [V | Vs]) :-
 	type_param_to_var(T, V),
 	type_param_to_var_list(Ts, Vs).
 
-:- pred type_param_to_var(type_param, variable).
+:- pred type_param_to_var(type_param, var).
 :- mode type_param_to_var(input, output).
 
 type_param_to_var(term_variable(V), V).
 
 :- pred goedel_replace_eqv_type_pred(list(type_and_mode), string,
-	list(type_param), type, yes_or_no, list(type_and_mode), yes_or_no).
+	list(type_param), type, bool, list(type_and_mode), bool).
 :- mode goedel_replace_eqv_type_pred(input, input, input, input, input,
 					output, output).
 
@@ -319,7 +331,7 @@ goedel_replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
 	goedel_replace_eqv_type_pred(TMs0, Name, Args, Body, Found1,
 					TMs, Found).
 :- pred goedel_replace_eqv_type_tm(type_and_mode, string, list(type_param),
-				type, yes_or_no, type_and_mode, yes_or_no).
+				type, bool, type_and_mode, bool).
 :- mode goedel_replace_eqv_type_tm(input, input, input, input, input,
 					output, output).
 
@@ -360,6 +372,9 @@ goedel_output_item_list([Item - Context | Items]) -->
 	goedel_output_item_list(Items).
 
 %-----------------------------------------------------------------------------%
+
+:- pred goedel_output_item(item, term__context, io__state, io__state).
+:- mode goedel_output_item(input, input, di, uo).
 
 	% dispatch on the different types of items
 
@@ -418,14 +433,14 @@ goedel_output_mode_defn(_VarSet, _ModeDefn, _Context) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_type_defn(varset, hlds__type_defn, term__context,
+:- pred goedel_output_type_defn(varset, type_defn, term__context,
 			io__state, io__state).
 :- mode goedel_output_type_defn(input, input, input, di, uo).
 
 goedel_output_type_defn(VarSet, TypeDefn, Context) -->
 	goedel_output_type_defn_2(TypeDefn, VarSet, Context).
 
-:- pred goedel_output_type_defn_2(hlds__type_defn, varset, term__context,
+:- pred goedel_output_type_defn_2(type_defn, varset, term__context,
 			io__state, io__state).
 :- mode goedel_output_type_defn_2(input, input, input, di, uo).
 
@@ -1149,6 +1164,9 @@ convert_functor_name(Name, GoedelName) :-
 	;
 		convert_to_valid_functor_name(Name, GoedelName)
 	).
+
+:- pred valid_functor_tail(string).
+:- mode valid_functor_tail(input).
 
 valid_functor_tail(String) :-
 	( string__first_char(String, Char, Rest) ->

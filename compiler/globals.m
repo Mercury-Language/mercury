@@ -12,7 +12,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module options.
+:- import_module options, getopt.
 
 :- type globals.
 
@@ -20,9 +20,13 @@
 
 :- pred globals__get_options(globals::in, option_table::out).
 
+:- pred lookup_option(option::in, option_data::out,
+			io__state::di, io__state::uo).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module map, std_util.
 
 	% currently the only global data is the option table
 
@@ -31,5 +35,13 @@
 globals__init(Globals, Globals).
 
 globals__get_options(Globals, Globals).
+
+%-----------------------------------------------------------------------------%
+
+lookup_option(Option, OptionData) -->
+	io__get_globals(UnivGlobals),
+	{ univ_to_type(UnivGlobals, Globals) },
+	{ globals__get_options(Globals, OptionTable) },
+	{ map__search(OptionTable, Option, OptionData) }.
 
 %-----------------------------------------------------------------------------%

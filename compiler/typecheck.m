@@ -143,25 +143,32 @@
 
 :- implementation.
 :- import_module list, map, varset, prog_out, string, require, std_util.
+:- import_module options, getopt, globals.
 
 %-----------------------------------------------------------------------------%
 
 	% XXX need to pass FoundError to all steps
 
 typecheck(Module0, Module, FoundError) -->
+	lookup_option(very_verbose, bool(VeryVerbose)),
+	lookup_option(verbose, bool(Verbose)),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
-	{ report_stats }, 
-	io__write_string("% Checking for undefined types...\n"),
-	{ report_stats }, 
+	maybe_report_stats(VeryVerbose),
+
+	maybe_write_string(Verbose, "% Checking for undefined types...\n"),
 	check_undefined_types(Module0, Module1),
-	{ report_stats }, 
-	io__write_string("% Checking for circularly defined types...\n"),
+	maybe_report_stats(VeryVerbose),
+
+	maybe_write_string(Verbose,
+		"% Checking for circular type definitions...\n"),
 	check_circular_types(Module1, Module2),
-	{ report_stats }, 
-	io__write_string("% Type-checking clauses...\n"),
+	maybe_report_stats(VeryVerbose),
+
+	maybe_write_string(Verbose, "% Type-checking clauses...\n"),
 	check_pred_types(Module2, Module, FoundError),
-	{ report_stats },
+	maybe_report_stats(VeryVerbose),
+
 	io__set_output_stream(OldStream, _).
 
 %-----------------------------------------------------------------------------%
@@ -193,10 +200,14 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	( { Clauses0 = [] } ->
 		[]
 	;
-		io__write_string("% Type-checking predicate "),
-		write_pred_id(PredId),
-		io__write_string("\n")
-		    %%% { report_stats }
+		lookup_option(very_verbose, bool(VeryVerbose)),
+		( { VeryVerbose = yes } ->
+			io__write_string("% Type-checking predicate "),
+			write_pred_id(PredId),
+			io__write_string("\n")
+		;
+			[]
+		)
 	),
 	typecheck_clause_list(Clauses0, PredId, TypeVarSet, ArgTypes,
 		ModuleInfo0, Error0, Clauses, Error1),
@@ -1721,12 +1732,18 @@ report_error_unif(PredId, Context, VarSet, X, Y, TypeAssignSet) -->
 :- mode write_type_assign_set_msg(input, input, di, uo).
 
 write_type_assign_set_msg(TypeAssignSet, VarSet) -->
-	( { TypeAssignSet = [_] } ->
-	    io__write_string("\tThe partial type assignment was:\n")
+	lookup_option(very_verbose, bool(VeryVerbose)),
+	( { VeryVerbose = yes } ->
+		( { TypeAssignSet = [_] } ->
+		    io__write_string("\tThe partial type assignment was:\n")
+		;
+		    io__write_string(
+			"\tThe possible partial type assignments were:\n")
+		),
+		write_type_assign_set(TypeAssignSet, VarSet)
 	;
-	    io__write_string("\tThe possible partial type assignments were:\n")
-	),
-	write_type_assign_set(TypeAssignSet, VarSet).
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -183,6 +183,11 @@
 :- pred io__set_globals(univ, io__state, io__state).
 :- mode io__set_globals(input, di, uo).
 
+	% Write some memory/time usage statistics to stdout.
+
+:- pred io__report_stats(io__state, io__state).
+:- mode io__report_stats(di, uo).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -259,6 +264,11 @@ io__stdin_stream(user_input) --> [].
 io__stdout_stream(user_output) --> [].
 
 io__stderr_stream(user_error) --> [].
+
+%-----------------------------------------------------------------------------%
+
+io__report_stats -->
+	{ report_stats }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
