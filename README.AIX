@@ -32,9 +32,8 @@ in resolving them.
 
 The last version of Mercury which was known to work on AIX was
 Mercury 0.6 -- actually a version just prior to 0.6, namely
-the 30Apr1996 development snapshot (the source for this version
-and a binary distribution of this version for AIX are still
-available from <ftp://turiel.cs.mu.oz.au/pub/mercury/old-releases>).
+the 30Apr1996 development snapshot (the sources for this version
+are still available from our CVS repository).
 That version was verified to work on AIX 4.1.3 using GNU C 2.7.2.
 For that version, following the steps above would result in
 an error message from the assembler, so the following additional
