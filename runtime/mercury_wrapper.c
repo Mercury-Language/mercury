@@ -1448,6 +1448,15 @@ print_register_usage_counts(void)
 static void
 MR_do_interpreter(void)
 {
+  #if !defined(MR_CONSERVATIVE_GC) && !defined(MR_NATIVE_GC)
+	/*
+	** Save the heap pointer here and restore it at the end
+	** of this function, so that you can run benchmarks in
+	** a loop in grade `hlc' without running out of memory.
+	*/
+	MR_Word *saved_hp = MR_hp;
+  #endif
+	
   #ifdef  MR_MPROF_PROFILE_TIME
 	if (MR_profiling) {
 		MR_prof_turn_on_time_profiling();
@@ -1494,6 +1503,10 @@ MR_do_interpreter(void)
 	if (MR_profiling)  {
 		MR_prof_turn_off_time_profiling();
 	}
+  #endif
+
+  #if !defined(CONSERVATIVE_GC) && !defined(NATIVE_GC)
+	MR_hp = saved_hp;
   #endif
 }
 
