@@ -936,7 +936,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, dir, term, term_io, varset, require, time, array.
+:- import_module map, dir, term, term_io, varset, require, benchmarking, array.
 :- import_module int, std_util.
 
 :- type io__state
