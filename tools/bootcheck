@@ -32,7 +32,7 @@ Options:
 		and trust that these are compatible with the given grade.
 		Implies -r -g.
 	-g, --copy-boehm-gc
-		Copy the bohem_gc directory instead of linking it.
+		Copy the boehm_gc directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
 	-r, --copy-runtime
