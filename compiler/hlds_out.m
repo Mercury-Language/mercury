@@ -427,7 +427,8 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 
 hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_module(PredInfo, Module) },
-	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
+	{ pred_info_arg_types(PredInfo, _, ArgTypes) },
+	{ pred_info_typevarset(PredInfo, TVarSet) },
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ pred_info_context(PredInfo, Context) },
