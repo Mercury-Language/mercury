@@ -189,8 +189,7 @@ MR_trace_real(const MR_Label_Layout *layout)
 			}
 			
 			port = (MR_Trace_Port) layout->MR_sll_port;
-			path = layout->MR_sll_entry->MR_sle_module_layout
-				->MR_ml_string_table + layout->MR_sll_goal_path;
+			path = MR_label_goal_path(layout);
 			MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, 
 				saved_regs);
 			MR_trace_init_point_vars(layout, saved_regs, port,
@@ -441,8 +440,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	event_info.MR_call_depth = depth;
 	event_info.MR_trace_port = port;
 	event_info.MR_event_sll = layout;
-	event_info.MR_event_path = layout->MR_sll_entry->MR_sle_module_layout
-			->MR_ml_string_table + layout->MR_sll_goal_path;
+	event_info.MR_event_path = MR_label_goal_path(layout);
 
 	max_r_num = layout->MR_sll_entry->MR_sle_max_r_num;
 	if (max_r_num + MR_NUM_SPECIAL_REG > MR_MAX_SPECIAL_REG_MR) {
