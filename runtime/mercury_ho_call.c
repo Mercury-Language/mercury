@@ -415,6 +415,12 @@ MR_define_entry(mercury__do_call_closure);
 	int		num_hidden_args;/* # of args hidden in the closure  */
 	int		i;
 
+	/*
+	** These assignments to local variables allow the values
+	** of the relevant registers to be printed in gdb without
+	** worrying about which machine registers, if any, hold them.
+	*/
+
 	closure = (MR_Closure *) MR_r1;
 	num_extra_args = MR_r2;
 	num_hidden_args = closure->MR_closure_num_hidden_args;
@@ -465,29 +471,40 @@ MR_define_entry(mercury__do_call_closure);
 */
 MR_define_entry(mercury__do_call_class_method);
 {
+	MR_Word		type_class_info;
+	MR_Integer	method_index;
+	MR_Integer	num_input_args;
 	MR_Code 	*destination;
-	int	num_in_args;
-	int	num_extra_instance_args;
+	MR_Integer	num_extra_instance_args;
 	int	i;
 
-	destination = MR_typeclass_info_class_method(MR_r1, MR_r2);
-	num_extra_instance_args = 
-		(int) MR_typeclass_info_num_extra_instance_args(MR_r1);
+	/*
+	** These assignments to local variables allow the values
+	** of the relevant registers to be printed in gdb without
+	** worrying about which machine registers, if any, hold them.
+	*/
 
-	num_in_args = MR_r3; /* number of input args */
+	type_class_info = MR_r1;
+	method_index = (MR_Integer) MR_r2;
+	num_input_args = MR_r3;
+
+	destination = MR_typeclass_info_class_method(type_class_info,
+		method_index);
+	num_extra_instance_args = (MR_Integer)
+		MR_typeclass_info_num_extra_instance_args(type_class_info);
 
 	MR_save_registers();
 
 	if (num_extra_instance_args < MR_CLASS_METHOD_CALL_INPUTS) {
 		/* copy to the left, from the left */
-		for (i = 1; i <= num_in_args; i++) {
+		for (i = 1; i <= num_input_args; i++) {
 			MR_virtual_reg(i + num_extra_instance_args) =
 				MR_virtual_reg(i +
 					MR_CLASS_METHOD_CALL_INPUTS);
 		}
 	} else if (num_extra_instance_args > MR_CLASS_METHOD_CALL_INPUTS) {
 		/* copy to the right, from the right */
-		for (i = num_in_args; i > 0; i--) {
+		for (i = num_input_args; i > 0; i--) {
 			MR_virtual_reg(i + num_extra_instance_args) =
 				MR_virtual_reg(i +
 					MR_CLASS_METHOD_CALL_INPUTS);
