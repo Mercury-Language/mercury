@@ -49,6 +49,9 @@ PROGS=	\
 	tuple_instance \
 	typeclass_exist_method \
 	typeclass_exist_method_2 \
+	typeclass_order_bug \
+	typeclass_order_bug2 \
+	typeclass_order_bug3 \
 	typeclass_test_5 \
 	typeclass_test_6 \
 	type_spec \
