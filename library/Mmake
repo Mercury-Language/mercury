@@ -114,9 +114,9 @@ libmercury.a : $(library.os)
 
 libmercury.so : $(library.pic_os)
 	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os) \
-		-L$(RUNTIME_DIR) -lmer ` \
+		-L$(RUNTIME_DIR) -lmer -L$(BOEHM_GC_DIR) ` \
 		case "$(GRADE)" in \
-			*.gc*) echo "-L$(BOEHM_GC_DIR) -lgc" ;; \
+			*.gc*) echo "-lgc" ;; \
 		esac \
 		` $(SHARED_LIBS)
 
