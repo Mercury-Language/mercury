@@ -1435,6 +1435,13 @@ The libraries for each configuration and grade should
 be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
 
 @sp 1
+@item MERCURY_NONSHARED_LIB_DIR
+For IRIX 5, this environment variable can be used to specify a
+directory containing a version of libgcc.a which has been compiled with
+@samp{-mno-abicalls}.  See the file @samp{README.IRIX-5} in the Mercury
+source distribution.
+
+@sp 1
 @item MERCURY_MOD_LIB_DIR
 The directory containing the .init files in the Mercury library.
 They are used to create the initialization file @file{*_init.c}.

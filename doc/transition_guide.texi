@@ -444,7 +444,7 @@ which is faster than a chain of if-then-elses.
 @node Accumulators
 @chapter Accumulators and Difference lists
 
-Mercury does not allow the kind of aliasing that is used
+Mercury does not in general allow the kind of aliasing that is used
 in difference lists. Prolog programs using difference lists fall
 in to two categories --- programs whose data flow is ``left-to-right'',
 or can be made left-to-right by reordering conjunctions (the
@@ -455,10 +455,35 @@ those that contain circular dataflow.
 Programs which do not contain circular dataflow do not cause any trouble
 in Mercury, although the implicit reordering can sometimes mean that programs
 which are tail recursive in Prolog are not tail recursive in Mercury.
-If this causes efficiency problems, or if the program contains
-circular data flow, then a different solution must be adopted.
+For example, here is a difference-list implementation of quick-sort in Prolog:
 
-One way to translate such programs
+@example
+qsort(L0, L) :- qsort_2(L0, L - []).
+
+qsort_2([], R - R).
+qsort_2([X|L], R0 - R) :-
+	partition(L, X, L1, L2),
+	qsort_2(L1, R0 - R1),
+	R1 = [X|R2],
+	qsort_2(L2, R2 - R).
+@end example
+
+Due to an unfortunate limitation of the current Mercury implementation
+(partially instantiated modes don't yet work correctly),
+you need to replace all the @samp{-} symbols with commas.
+However, once this is done, and once you have added the appropriate
+declarations, Mercury has no trouble with this code.  Although
+the Prolog code is written in a way that traverses the input list left-to-right,
+appending elements to the tail of a difference list to produce the
+output, Mercury will in fact reorder the code so that it traverses
+the input list right-to-left and constructs the output list bottom-up
+rather than top-down.  In this particular case, the reordered code is still
+tail recursive - but it is tail-recursive on the first recursive call,
+not the second one!
+
+If the occaisional loss of tail recursion causes efficiency problems,
+or if the program contains circular data flow, then a different
+solution must be adopted.  One way to translate such programs
 is to transform the difference list into an accumulator.
 Instead of appending elements to the end of a difference list by
 binding the tail pointer, you simply insert elements onto the

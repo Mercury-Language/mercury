@@ -189,6 +189,15 @@ lookup(Map, Key, Value) :-
         ).
 @end example
 
+@item
+@emph{``I keep getting a link error @samp{undefined symbol init_gc}.  Why?''}
+@sp 1
+
+If you are using @samp{mmake} to recompile your program, and you are
+overriding the default grade (e.g. by setting @samp{GRADE=asm_fast} in your
+@samp{Mmake} file), you must make sure that you do @samp{mmake clean} every
+time you change grades.
+
 @end enumerate
 
 @node Unimplemented
@@ -211,7 +220,7 @@ This limitation will go away in the future.
 @item
 @emph{I'm getting an error from the C compiler:}
 @example
-foo.c:45: constant is not computable at load time
+foo.c:45: initializer is not computable at load time
 @end example
 @sp 1
 
