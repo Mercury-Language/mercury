@@ -24,10 +24,10 @@
 :- mode random__init(in, uo).
 
 :- pred random__random(int, random__supply, random__supply).
-:- mode random__random(out, ui, uo).
+:- mode random__random(out, di, uo).
 
 :- pred random__randmax(int, random__supply, random__supply).
-:- mode random__randmax(out, ui, uo).
+:- mode random__randmax(out, di, uo).
 
 :- pred random__test(int, int, list(int), int).
 :- mode random__test(in, in, out, out).
