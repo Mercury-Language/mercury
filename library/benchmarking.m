@@ -694,7 +694,7 @@ Define_entry(mercury__benchmarking__benchmark_det_5_0);
 
 Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 	update_prof_current_proc(
-		LABEL(mercury__benchmarking__benchmark_nondet_5_0));
+		LABEL(mercury__benchmarking__benchmark_det_5_0));
 
 	/* mark current iteration completed */
 	detstackvar(3) = detstackvar(3) - 1;
