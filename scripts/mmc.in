@@ -35,6 +35,18 @@ HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
 HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
 DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
 
+# XXX Temporary hack for bootstrapping purposes
+case "`$MC --cflags-for-threads 2>&1`" in
+	*"unrecognized option"*)
+		# This value will get overridden by
+		# the later setting of --cflags-for-regs, so
+		# it will just get ignored
+		THREADS_OPT="--cflags-for-regs"
+		;;
+	*)
+		THREADS_OPT="--cflags-for-threads"
+esac
+
 # The default optimization level should be after
 # all the options that describe the machine configuration.
 
@@ -42,9 +54,9 @@ case $# in
 	0) exec $MC \
 		$MERC_ALL_MC_C_INCL_DIRS \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
+		$THREADS_OPT "$CFLAGS_FOR_THREADS" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
-		--cflags-for-threads "$CFLAGS_FOR_THREADS" \
 		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
 		--object-file-extension "$OBJECT_FILE_EXTENSION" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
@@ -60,9 +72,9 @@ case $# in
 	*) exec $MC \
 		$MERC_ALL_MC_C_INCL_DIRS \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
+		$THREADS_OPT "$CFLAGS_FOR_THREADS" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
-		--cflags-for-threads "$CFLAGS_FOR_THREADS" \
 		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
 		--object-file-extension "$OBJECT_FILE_EXTENSION" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
