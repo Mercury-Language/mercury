@@ -474,6 +474,8 @@ exprn_aux__lval_code_addrs(succfr(Rval), CodeAddrs) :-
 	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
 exprn_aux__lval_code_addrs(redoip(Rval), CodeAddrs) :-
 	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
+exprn_aux__lval_code_addrs(succip(Rval), CodeAddrs) :-
+	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
 exprn_aux__lval_code_addrs(hp, []).
 exprn_aux__lval_code_addrs(sp, []).
 exprn_aux__lval_code_addrs(field(_Tag, Rval1, Rval2), CodeAddrs) :-

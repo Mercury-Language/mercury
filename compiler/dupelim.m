@@ -187,6 +187,8 @@ dupelim__replace_labels_lval(framevar(N), _, framevar(N)).
 dupelim__replace_labels_lval(succip, _, succip).
 dupelim__replace_labels_lval(maxfr, _, maxfr).
 dupelim__replace_labels_lval(curfr, _, curfr).
+dupelim__replace_labels_lval(succip(Rval0), Replmap, succip(Rval)) :-
+	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_lval(redoip(Rval0), Replmap, redoip(Rval)) :-
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_lval(succfr(Rval0), Replmap, succfr(Rval)) :-

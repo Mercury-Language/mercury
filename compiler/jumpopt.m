@@ -191,21 +191,23 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				goto(Proc) - Redirect], NewInstrs),
 			Mod0 = yes
 		;
-%			CallModel = nondet(yes),
-%			map__search(Succmap, RetLabel, BetweenIncl),
-%			BetweenIncl = [livevals(_) - _, goto(_) - _],
-%			PrevInstr = livevals(Livevals) 
-%		->
-%			NewInstrs = [
-%				assign(maxfr, lval(prevfr(lval(curfr))))
-%					- "discard this frame",
-%				assign(curfr, lval(succfr(lval(curfr))))
-%					- "setup return from tailcall",
-%				livevals(Livevals) - "",
-%				goto(Proc) - Redirect
-%			],
-%			Mod0 = yes
-%		;
+			CallModel = nondet(yes),
+			map__search(Succmap, RetLabel, BetweenIncl),
+			BetweenIncl = [livevals(_) - _, goto(_) - _],
+			PrevInstr = livevals(Livevals) 
+		->
+			NewInstrs = [
+				assign(maxfr, lval(prevfr(lval(curfr))))
+					- "discard this frame",
+				assign(succip, lval(succip(lval(curfr))))
+					- "setup PC on return from tailcall",
+				assign(curfr, lval(succfr(lval(curfr))))
+					- "setup curfr on return from tailcall",
+				livevals(Livevals) - "",
+				goto(Proc) - Redirect
+			],
+			Mod0 = yes
+		;
 			map__search(Instrmap, RetLabel, RetInstr)
 		->
 			jumpopt__final_dest(RetLabel, RetInstr, Instrmap,

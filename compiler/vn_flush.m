@@ -936,6 +936,12 @@ vn__flush_access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 			Templocs0, Templocs, AccessInstrs),
 		Lval = redoip(Rval)
 	;
+		Vnlval = vn_succip(Vn1),
+		vn__flush_vn(Vn1, [src_access(Vnlval) | Srcs], Forbidden, Rval,
+			VnTables0, VnTables,
+			Templocs0, Templocs, AccessInstrs),
+		Lval = succip(Rval)
+	;
 		Vnlval = vn_hp,
 		Lval = hp,
 		VnTables = VnTables0,

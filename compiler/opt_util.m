@@ -622,6 +622,8 @@ opt_util__lval_refers_stackvars(prevfr(Rval), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(redoip(Rval), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers).
+opt_util__lval_refers_stackvars(succip(Rval), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(hp, no).
 opt_util__lval_refers_stackvars(sp, no).
 opt_util__lval_refers_stackvars(field(_, Rval, FieldNum), Refers) :-
@@ -1198,6 +1200,7 @@ opt_util__touches_nondet_ctrl_lval(curfr, yes).
 opt_util__touches_nondet_ctrl_lval(succfr(_), yes).
 opt_util__touches_nondet_ctrl_lval(prevfr(_), yes).
 opt_util__touches_nondet_ctrl_lval(redoip(_), yes).
+opt_util__touches_nondet_ctrl_lval(succip(_), yes).
 opt_util__touches_nondet_ctrl_lval(hp, no).
 opt_util__touches_nondet_ctrl_lval(sp, no).
 opt_util__touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
@@ -1233,6 +1236,7 @@ opt_util__lval_access_rvals(succip, []).
 opt_util__lval_access_rvals(maxfr, []).
 opt_util__lval_access_rvals(curfr, []).
 opt_util__lval_access_rvals(redoip(Rval), [Rval]).
+opt_util__lval_access_rvals(succip(Rval), [Rval]).
 opt_util__lval_access_rvals(prevfr(Rval), [Rval]).
 opt_util__lval_access_rvals(succfr(Rval), [Rval]).
 opt_util__lval_access_rvals(hp, []).

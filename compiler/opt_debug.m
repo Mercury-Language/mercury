@@ -432,6 +432,9 @@ opt_debug__dump_vnlval(vn_succfr(V), Str) :-
 opt_debug__dump_vnlval(vn_redoip(V), Str) :-
 	string__int_to_string(V, V_str),
 	string__append_list(["vn_redoip(", V_str, ")"], Str).
+opt_debug__dump_vnlval(vn_succip(V), Str) :-
+	string__int_to_string(V, V_str),
+	string__append_list(["vn_succip(", V_str, ")"], Str).
 opt_debug__dump_vnlval(vn_hp, Str) :-
 	string__append_list(["vn_hp"], Str).
 opt_debug__dump_vnlval(vn_sp, Str) :-
@@ -497,6 +500,9 @@ opt_debug__dump_lval(prevfr(R), Str) :-
 opt_debug__dump_lval(redoip(R), Str) :-
 	opt_debug__dump_rval(R, R_str),
 	string__append_list(["redoip(", R_str, ")"], Str).
+opt_debug__dump_lval(succip(R), Str) :-
+	opt_debug__dump_rval(R, R_str),
+	string__append_list(["succip(", R_str, ")"], Str).
 opt_debug__dump_lval(hp, Str) :-
 	string__append_list(["hp"], Str).
 opt_debug__dump_lval(sp, Str) :-

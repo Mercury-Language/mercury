@@ -44,6 +44,7 @@ vn__find_specials(vn_succip, [vn_succip]).
 vn__find_specials(vn_maxfr, [vn_maxfr]).
 vn__find_specials(vn_curfr, [vn_curfr]).
 vn__find_specials(vn_redoip(Vn), [vn_redoip(Vn)]).
+vn__find_specials(vn_succip(Vn), [vn_succip(Vn)]).
 vn__find_specials(vn_succfr(Vn), [vn_succfr(Vn)]).
 vn__find_specials(vn_prevfr(Vn), [vn_prevfr(Vn)]).
 vn__find_specials(vn_hp, [vn_hp]).
@@ -541,6 +542,7 @@ vn__no_access_lval_to_vnlval(succip,		yes(vn_succip)).
 vn__no_access_lval_to_vnlval(maxfr,		yes(vn_maxfr)).
 vn__no_access_lval_to_vnlval(curfr,		yes(vn_curfr)).
 vn__no_access_lval_to_vnlval(redoip(_),		no).
+vn__no_access_lval_to_vnlval(succip(_),		no).
 vn__no_access_lval_to_vnlval(prevfr(_),		no).
 vn__no_access_lval_to_vnlval(succfr(_),		no).
 vn__no_access_lval_to_vnlval(hp,		yes(vn_hp)).
@@ -559,6 +561,7 @@ vn__no_access_vnlval_to_lval(vn_curfr,		yes(curfr)).
 vn__no_access_vnlval_to_lval(vn_succfr(_),	no).
 vn__no_access_vnlval_to_lval(vn_prevfr(_),	no).
 vn__no_access_vnlval_to_lval(vn_redoip(_),	no).
+vn__no_access_vnlval_to_lval(vn_succip(_),	no).
 vn__no_access_vnlval_to_lval(vn_hp,		yes(hp)).
 vn__no_access_vnlval_to_lval(vn_sp,		yes(sp)).
 vn__no_access_vnlval_to_lval(vn_field(_, _, _), no).
@@ -574,6 +577,7 @@ vn__vnlval_access_vns(vn_curfr, []).
 vn__vnlval_access_vns(vn_succfr(Vn), [Vn]).
 vn__vnlval_access_vns(vn_prevfr(Vn), [Vn]).
 vn__vnlval_access_vns(vn_redoip(Vn), [Vn]).
+vn__vnlval_access_vns(vn_succip(Vn), [Vn]).
 vn__vnlval_access_vns(vn_hp, []).
 vn__vnlval_access_vns(vn_sp, []).
 vn__vnlval_access_vns(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
@@ -596,6 +600,7 @@ vn__find_sub_vns_vnlval(vn_curfr, []).
 vn__find_sub_vns_vnlval(vn_succfr(Vn), [Vn]).
 vn__find_sub_vns_vnlval(vn_prevfr(Vn), [Vn]).
 vn__find_sub_vns_vnlval(vn_redoip(Vn), [Vn]).
+vn__find_sub_vns_vnlval(vn_succip(Vn), [Vn]).
 vn__find_sub_vns_vnlval(vn_hp, []).
 vn__find_sub_vns_vnlval(vn_sp, []).
 vn__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
@@ -736,6 +741,7 @@ vn__classify_loc_cost(vn_curfr, 0).
 vn__classify_loc_cost(vn_succfr(_), 1).
 vn__classify_loc_cost(vn_prevfr(_), 1).
 vn__classify_loc_cost(vn_redoip(_), 1).
+vn__classify_loc_cost(vn_succip(_), 1).
 vn__classify_loc_cost(vn_hp, 0).
 vn__classify_loc_cost(vn_sp, 0).
 vn__classify_loc_cost(vn_field(_, _, _), 2).

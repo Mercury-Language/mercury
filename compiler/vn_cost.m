@@ -169,11 +169,21 @@ vn__lval_cost(Lval, Cost) :-
 		Lval = framevar(_),
 		Cost = StackrefCost
 	;
-		Lval = succfr(_),
-		Cost = StackrefCost
+		Lval = succfr(Rval1),
+		vn__rval_cost(Rval1, RvalCost1),
+		Cost is RvalCost1 + StackrefCost
 	;
-		Lval = prevfr(_),
-		Cost = StackrefCost
+		Lval = prevfr(Rval1),
+		vn__rval_cost(Rval1, RvalCost1),
+		Cost is RvalCost1 + StackrefCost
+	;
+		Lval = redoip(Rval1),
+		vn__rval_cost(Rval1, RvalCost1),
+		Cost is RvalCost1 + StackrefCost
+	;
+		Lval = succip(Rval1),
+		vn__rval_cost(Rval1, RvalCost1),
+		Cost is RvalCost1 + StackrefCost
 	;
 		Lval = succip,
 		Cost = 0
@@ -183,10 +193,6 @@ vn__lval_cost(Lval, Cost) :-
 	;
 		Lval = curfr,
 		Cost = 0
-	;
-		Lval = redoip(Rval1),
-		vn__rval_cost(Rval1, RvalCost1),
-		Cost is RvalCost1 + StackrefCost
 	;
 		Lval = hp,
 		Cost = 0

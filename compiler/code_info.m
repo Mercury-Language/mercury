@@ -2059,6 +2059,7 @@ code_info__get_shape_num(curfr, curfr).
 code_info__get_shape_num(succfr(_), succfr).	
 code_info__get_shape_num(prevfr(_), prevfr).	
 code_info__get_shape_num(redoip(_), redoip). 
+code_info__get_shape_num(succip(_), succip). 	% XXX Tyson, is this correct?
 code_info__get_shape_num(sp, sp).
 code_info__get_shape_num(lvar(_), unwanted).
 code_info__get_shape_num(field(_, _, _), unwanted).

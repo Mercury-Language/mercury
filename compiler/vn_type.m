@@ -26,6 +26,7 @@
 			;	vn_succfr(vn)
 			;	vn_prevfr(vn)
 			;	vn_redoip(vn)
+			;	vn_succip(vn)
 			;	vn_hp
 			;	vn_sp
 			;	vn_field(tag, vn, vn)		% lval

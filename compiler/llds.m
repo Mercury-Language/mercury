@@ -132,6 +132,8 @@
 			;	succip		% det return address
 			;	maxfr		% top of nondet stack
 			;	curfr		% nondet stack frame pointer
+			;	succip(rval)	% the succip of the named
+						% nondet stack frame
 			;	redoip(rval)	% the redoip of the named
 						% nondet stack frame
 			;	succfr(rval)	
@@ -1024,6 +1026,8 @@ output_lval_decls(prevfr(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, DeclSet0, DeclSet).
 output_lval_decls(redoip(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, DeclSet0, DeclSet).
+output_lval_decls(succip(Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, DeclSet0, DeclSet).
 output_lval_decls(hp, DeclSet, DeclSet) --> [].
 output_lval_decls(sp, DeclSet, DeclSet) --> [].
 output_lval_decls(lvar(_), DeclSet, DeclSet) --> [].
@@ -1555,6 +1559,10 @@ output_lval(redoip(Rval)) -->
 	io__write_string("LVALUE_CAST(Word,bt_redoip("),
 	output_rval(Rval),
 	io__write_string("))").
+output_lval(succip(Rval)) -->
+	io__write_string("LVALUE_CAST(Word,bt_succip("),
+	output_rval(Rval),
+	io__write_string("))").
 output_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string("field("),
 	output_tag(Tag),
@@ -1616,6 +1624,10 @@ output_rval_lval(prevfr(Rval)) -->
 	io__write_string(")").
 output_rval_lval(redoip(Rval)) -->
 	io__write_string("(Integer) bt_redoip("),
+	output_rval(Rval),
+	io__write_string(")").
+output_rval_lval(succip(Rval)) -->
+	io__write_string("(Integer) bt_succip("),
 	output_rval(Rval),
 	io__write_string(")").
 output_rval_lval(field(Tag, Rval, FieldNum)) -->
