@@ -30,7 +30,7 @@
 # -Wenum-clash 		is for C++ only
 # -Wunused		causes various spurious warnings
 
-C_INCL_DIR=${MERCURY_C_INCL_DIR:-@LIBDIR@/inc}
+C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 
 CHECK_OPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow

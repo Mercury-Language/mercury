@@ -11,9 +11,9 @@
 #
 # Use `msc -h' for help.
 
-sp_builtin_pl=${MERCURY_SP_BUILTIN:-@LIBDIR@/sicstus/sp_builtin.pl}
+sp_builtin_pl=${MERCURY_SP_BUILTIN=@LIBDIR@/sicstus/sp_builtin.pl}
 sicstus_compile=\
-${MERCURY_SICSTUS_COMPILER:-@LIBDIR@/sicstus/@FULLARCH@/sicstus_compile}
+${MERCURY_SICSTUS_COMPILER=@LIBDIR@/sicstus/@FULLARCH@/sicstus_compile}
 
 help=false
 compile_mode=fastcode
@@ -101,5 +101,5 @@ for file in "$@"; do
 	' $file > $tmp.pl
 	$sicstus_compile $compile_mode $tmp.pl
 	rm $tmp.pl 
-	mv $tmp.ql ${target:-"$rootname.ql"}
+	mv $tmp.ql ${target="$rootname.ql"}
 done

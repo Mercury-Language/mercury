@@ -14,8 +14,8 @@
 #
 # Environment variables: MERCURY_LIB_DIR, MERCURY_LIB_OBJS
 
-NULIBDIR=${MERCURY_LIB_DIR:-@LIBDIR@/nuprolog/@FULLARCH@}
-LIBRARY_OBJS=${MERCURY_LIB_OBJS:-`cd $NULIBDIR; echo *.no`}
+NULIBDIR=${MERCURY_LIB_DIR=@LIBDIR@/nuprolog/@FULLARCH@}
+LIBRARY_OBJS=${MERCURY_LIB_OBJS=`cd $NULIBDIR; echo *.no`}
 
 options=
 verbose=false

@@ -14,6 +14,6 @@
 # Environment variables: MERCURY_SICSTUS_INTERPRETER
 
 INTERPRETER=\
-${MERCURY_SICSTUS_INTERPRETER:-@LIBDIR@/sicstus/@FULLARCH@/library.sicstus}
+${MERCURY_SICSTUS_INTERPRETER=@LIBDIR@/sicstus/@FULLARCH@/library.sicstus}
 
 exec $INTERPRETER "$@"

@@ -13,8 +13,8 @@
 #
 # Environment variables: MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS.
 
-MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR:-@LIBDIR@/modules}
-MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS:-@LIBDIR@/modules/*}
+MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
+MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS=@LIBDIR@/modules/*}
 
 # maximum number of calls to put in a single function
 calls_per_func=50

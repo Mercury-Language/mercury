@@ -13,7 +13,7 @@
 #
 # Environment variables: MERCURY_NC_BUILTIN
 
-nc_builtin_nl=${MERCURY_NC_BUILTIN:-@LIBDIR@/nuprolog/nc_builtin.nl}
+nc_builtin_nl=${MERCURY_NC_BUILTIN=@LIBDIR@/nuprolog/nc_builtin.nl}
 
 options=
 
@@ -58,5 +58,5 @@ for file in "$@"; do
 	fi
 	nc -c $options $tmp.nl
 	rm $tmp.nl $tmp.ns
-	mv $tmp.no ${target:-"$rootname.no"}
+	mv $tmp.no ${target="$rootname.no"}
 done

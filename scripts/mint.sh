@@ -9,7 +9,7 @@
 #
 # Usage: mint module-name ...
 
-INTDIR=${MERCURY_INT_DIR:-@LIBDIR@/ints}
+INTDIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
 
 exit_status=0
 
@@ -23,7 +23,7 @@ for arg in "$@"; do
 	module="`basename $arg .nl`"
 	file="$INTDIR/$module.int"
 	if [ -r "$file" ]; then
-		${PAGER:-more} "$file"
+		${PAGER=more} "$file"
 	else
 		echo "`basename $0`: no interface file for \`$module'." 1>&2
 		exit_status=1

@@ -18,9 +18,9 @@
 #	-o, --output
 # Environment variables: MERCURY_SP_LIB_DIR, MERCURY_SP_LIB_OBJS
 
-SP=${MERCURY_SICSTUS_PROLOG:-@LIBDIR@/sicstus/@FULLARCH@/library.sicstus.debug}
-SPLIBDIR=${MERCURY_SP_LIB_DIR:-@LIBDIR@/sicstus/@FULLARCH@}
-LIBRARY_OBJS=${MERCURY_SP_LIB_OBJS:-`cd $SPLIBDIR; echo *.ql`}
+SP=${MERCURY_SICSTUS_PROLOG=@LIBDIR@/sicstus/@FULLARCH@/library.sicstus.debug}
+SPLIBDIR=${MERCURY_SP_LIB_DIR=@LIBDIR@/sicstus/@FULLARCH@}
+LIBRARY_OBJS=${MERCURY_SP_LIB_OBJS=`cd $SPLIBDIR; echo *.ql`}
 
 verbose=false
 debug=false

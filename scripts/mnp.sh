@@ -13,6 +13,6 @@
 #
 # Environment variables: MERCURY_INTERPRETER
 
-INTERPRETER=${MERCURY_INTERPRETER:-@LIBDIR@/nuprolog/@FULLARCH@/library.nu}
+INTERPRETER=${MERCURY_INTERPRETER=@LIBDIR@/nuprolog/@FULLARCH@/library.nu}
 
 exec $INTERPRETER "$@"

@@ -19,7 +19,7 @@
 #
 # Environment variables: MERCURY_C_LIB_DIR
 
-LIBDIR=${MERCURY_C_LIB_DIR:-@LIBDIR@/lib}
+LIBDIR=${MERCURY_C_LIB_DIR=@LIBDIR@/lib}
 verbose=false
 GRADE=asm_fast.gc
 
@@ -81,7 +81,7 @@ case "`hostname`" in
 	kryten.cs.mu.OZ.AU)
 		GCC=/usr/local/bin/gcc ;;
 	*)
-		GCC=${GCC:-gcc}
+		GCC=${GCC=gcc}
 esac
 
 if $verbose; then

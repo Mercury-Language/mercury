@@ -11,10 +11,10 @@
 #
 #-----------------------------------------------------------------------------#
 
-MAKE=${MMAKE_MAKE:-make}
-MMAKE_VARS=${MMAKE_VARS:-@LIBDIR@/mmake/Mmake.vars}
-MMAKE_RULES=${MMAKE_RULES:-@LIBDIR@/mmake/Mmake.rules}
-MERCURY_INT_DIR=${MERCURY_INT_DIR:-@LIBDIR@/ints}
+MAKE=${MMAKE_MAKE=make}
+MMAKE_VARS=${MMAKE_VARS=@LIBDIR@/mmake/Mmake.vars}
+MMAKE_RULES=${MMAKE_RULES=@LIBDIR@/mmake/Mmake.rules}
+MERCURY_INT_DIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
 
 MMAKE=$0
 verbose=false
