@@ -70,8 +70,8 @@
 % proc_id.  (This is used by unique_modes.m.)
 
 :- pred unify_proc__request_proc(pred_id::in, list(mode)::in, inst_varset::in,
-maybe(list(is_live))::in, maybe(determinism)::in, prog_context::in,
-module_info::in, proc_id::out, module_info::out) is det.
+	maybe(list(is_live))::in, maybe(determinism)::in, prog_context::in,
+	module_info::in, proc_id::out, module_info::out) is det.
 
 % unify_proc__add_lazily_generated_unify_pred(TypeId,
 	%	UnifyPredId_for_Type, ModuleInfo0, ModuleInfo).
