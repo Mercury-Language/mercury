@@ -488,6 +488,8 @@ qualify_inst_name(unify_inst(_, _, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(ground_inst(_, _, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
+qualify_inst_name(any_inst(_, _, _, _), _, _, _) -->
+	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(shared_inst(_), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(mostly_uniq_inst(_), _, _, _) -->

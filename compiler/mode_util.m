@@ -441,6 +441,15 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 		;
 			Inst = defined_inst(InstName)
 		)
+	; InstName = any_inst(_, _, _, _),
+		module_info_insts(ModuleInfo, InstTable),
+		inst_table_get_any_insts(InstTable, AnyInstTable),
+		map__lookup(AnyInstTable, InstName, MaybeInst),
+		( MaybeInst = known(Inst0, _) ->
+			Inst = Inst0
+		;
+			Inst = defined_inst(InstName)
+		)
 	; InstName = shared_inst(SharedInstName),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_shared_insts(InstTable, SharedInstTable),
@@ -978,6 +987,9 @@ inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,
 	inst_apply_substitution(InstB0, Subst, InstB).
 inst_name_apply_substitution(ground_inst(Inst0, IsLive, Uniq, Real), Subst,
 				ground_inst(Inst, IsLive, Uniq, Real)) :-
+	inst_name_apply_substitution(Inst0, Subst, Inst).
+inst_name_apply_substitution(any_inst(Inst0, IsLive, Uniq, Real), Subst,
+				any_inst(Inst, IsLive, Uniq, Real)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
 inst_name_apply_substitution(shared_inst(InstName0), Subst,
 				shared_inst(InstName)) :-
