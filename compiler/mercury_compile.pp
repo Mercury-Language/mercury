@@ -146,6 +146,8 @@ process_module_2(ModuleName) -->
 
 	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax),
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
+	globals__io_lookup_bool_option(make_short_interface,
+							MakeShortInterface),
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
 	globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
 	( { Error = fatal } ->
@@ -153,6 +155,9 @@ process_module_2(ModuleName) -->
 	; { Error = yes, HaltSyntax = yes } ->
 		[]
 	; { MakeInterface = yes } ->
+		make_interface(ModuleName, Items0)
+	; { MakeShortInterface = yes } ->
+		% temporary, until my other changes can be committed - stayl
 		make_interface(ModuleName, Items0)
 	; { ConvertToMercury = yes } ->
 		{ string__append(ModuleName, ".ugly", OutputFileName) },

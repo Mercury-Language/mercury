@@ -52,6 +52,8 @@ handle_options(MaybeError, Args, Link) -->
 		globals__io_lookup_bool_option(generate_dependencies,
 			GenerateDependencies),
 		globals__io_lookup_bool_option(make_interface, MakeInterface),
+		globals__io_lookup_bool_option(make_short_interface,
+						MakeShortInterface),
 		globals__io_lookup_bool_option(convert_to_mercury,
 			ConvertToMercury),
 		globals__io_lookup_bool_option(convert_to_goedel,
@@ -60,7 +62,8 @@ handle_options(MaybeError, Args, Link) -->
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		globals__io_lookup_bool_option(compile_to_c, CompileToC),
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
-		{ bool__or_list([GenerateDependencies, MakeInterface,
+		{ bool__or_list([GenerateDependencies,
+			MakeInterface, MakeShortInterface,
 			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
 			ErrorcheckOnly, CompileToC, CompileOnly], NotLink) },
 		{ bool__not(NotLink, Link) }

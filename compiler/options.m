@@ -53,6 +53,7 @@
 		;	debug_opt
 		;	debug_vn
 	% Output options
+		;	make_short_interface
 		;	make_interface
 		;	generate_dependencies
 		;	convert_to_mercury
@@ -236,6 +237,7 @@ option_defaults_2(verbosity_option, [
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
 	generate_dependencies	-	bool(no),
+	make_short_interface	-	bool(no),
 	make_interface		-	bool(no),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
@@ -470,6 +472,7 @@ long_option("debug-vn",			debug_vn).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
+long_option("make-short-interface",	make_short_interface).
 long_option("make-interface",		make_interface).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury). 
@@ -929,7 +932,9 @@ options_help_output -->
 	io__write_string("\t\tand all of its dependencies to `<module>.dep'.\n"),
 	io__write_string("\t-i, --make-interface\n"),
 	io__write_string("\t\tWrite the module interface to `<module>.int'.\n"),
-	io__write_string("\t\tAlso write the short interface to `<module>.int2'.\n"),
+	io__write_string("\t\tThis option should only be used by mmake.\n"),
+	io__write_string("\t--make-short-interface\n"),
+	io__write_string("\t\tWrite the short interface to `<module>.int2'.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'.\n"),
 	io__write_string("\t\tNote that some Mercury language constructs cannot\n"),
