@@ -64,7 +64,7 @@ Is this a bug? yes
 mdb> continue
       30:      3  2 REDO pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> finish
-      31:      3  2 FAIL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
+      36:      3  2 FAIL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> dd
 Call p(2, _)
 Solutions:
@@ -73,6 +73,6 @@ Complete? no
 Found partially uncovered atom:
 p(2, _)
 Is this a bug? yes
-      31:      3  2 FAIL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
+      36:      3  2 FAIL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> continue
 no
