@@ -129,6 +129,7 @@
 	% occurred in the uniq_array.
 :- pred uniq_array__to_list(uniq_array(T), list(T)).
 :- mode uniq_array__to_list(uniq_array_ui, out) is det.
+:- mode uniq_array__to_list(in, out) is det.
 
 	% uniq_array__fetch_items takes a uniq_array and a lower and upper
 	% index, and places those items in the uniq_array between these
