@@ -115,13 +115,18 @@ echo linking stage 2... 1>&2
 cd stage2
 mkdir compiler
 cd compiler
-ln -s $root/compiler/*.m .
+# Break up the links into several chunks.
+# This is needed to cope with small limits on the size of argument vectors.
+ln -s $root/compiler/[a-h]*.m .
+ln -s $root/compiler/[i-s]*.m .
+ln -s $root/compiler/[t-z]*.m .
 cp $root/compiler/Mmake* .
 cd $root/stage2
 mkdir library
 cd library
-ln -s $root/library/*.m .
-ln -s $root/library/*.nl .
+ln -s $root/library/[a-l]*.m .
+ln -s $root/library/[m-z]*.m .
+# ln -s $root/library/*.nl .
 cp $root/library/Mmake* .
 ln -s $root/library/library.init .
 cd $root/stage2
@@ -220,13 +225,18 @@ set +x
 cd stage3
 mkdir compiler
 cd compiler
-ln -s $root/compiler/*.m .
+# Break up the links into several chunks.
+# This is needed to cope with small limits on the size of argument vectors.
+ln -s $root/compiler/[a-h]*.m .
+ln -s $root/compiler/[i-s]*.m .
+ln -s $root/compiler/[t-z]*.m .
 cp $root/compiler/Mmake* .
 cd $root/stage3
 mkdir library
 cd library
-ln -s $root/library/*.m .
-ln -s $root/library/*.nl .
+ln -s $root/library/[a-l]*.m .
+ln -s $root/library/[m-z]*.m .
+# ln -s $root/library/*.nl .
 cp $root/library/Mmake* .
 ln -s $root/library/library.init .
 cd $root/stage3

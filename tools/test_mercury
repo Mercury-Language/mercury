@@ -105,7 +105,7 @@ cd $DIR || { false; exit 1; }
 cvs checkout mercury tests || { false; exit 1; }
 [ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
 
-: bootstrap the compiler up to stage 3 and check the results match
+: bootstrap the compiler up to stage 3 and check that the results match
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
 cd mercury || { false; exit 1; }
