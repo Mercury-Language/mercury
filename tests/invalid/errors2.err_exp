@@ -11,6 +11,13 @@ errors2.m:070:   warning: variable `Y' occurs only once in this scope.
 errors2.m:071: In clause for predicate `errors2:type_error_7/0':
 errors2.m:071:   warning: variables `Z, A, B' occur only once in this scope.
 errors2.m:007: Error: no clauses for predicate `errors2:bind_type_param/2'
+errors2.m:018: In clause for predicate `errors2:unresolved_polymorphism/0':
+errors2.m:018:   warning: unresolved polymorphism.
+errors2.m:018:   The variables with unbound types were:
+errors2.m:018:       V_2 :: TypeParam
+errors2.m:018:       Arg :: TypeParam
+errors2.m:018:   The unbound type variable(s) will be implicitly
+errors2.m:018:   bound to the builtin type `void'.
 errors2.m:023: Error: no clauses for predicate `errors2:produce_string/1'
 errors2.m:025: Error: no clauses for predicate `errors2:expect_int/1'
 errors2.m:031: In clause for predicate `errors2:type_error/0':

@@ -11,8 +11,6 @@ bind_type_param(Argument) :-
 
 %-----------------------------------------------------------------------------%
 
-% NOT an error.
-
 :- pred unresolved_polymorphism.
 
 unresolved_polymorphism :-
