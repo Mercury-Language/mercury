@@ -565,7 +565,7 @@
 
 :- type maybe_arg
 	--->	some [T] arg(T)
-	;	no.
+	;	no_arg.
 
 	% functor, argument and deconstruct and their variants take any type
 	% (including univ), and return representation information for that type.

@@ -297,7 +297,7 @@ arg_cc(Term, Index, MaybeArg) :-
 	( MaybeUniv = yes(Univ),
 		MaybeArg = 'new arg'(univ_value(Univ))
 	; MaybeUniv = no,
-		MaybeArg = std_util__no
+		MaybeArg = std_util__no_arg
 	).
 
 named_arg(Term, NonCanon, Name, Argument) :-
