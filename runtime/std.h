@@ -16,10 +16,12 @@
 #define	bool		char
 #endif
 
-#define	IGNORE		(void)
-
+#ifndef max
 #define	max(a, b)	((a) > (b) ? (a) : (b))
+#endif
+#ifndef min
 #define	min(a, b)	((a) < (b) ? (a) : (b))
+#endif
 
 #ifdef SLOWSTRCMP
 #define streq(s1, s2)		(strcmp(s1, s2) == 0)
@@ -58,14 +60,6 @@
 #ifndef	FALSE
 #define	FALSE		0
 #endif
-
-#undef	CTRL
-/* CTRL() macro was not ANSI complaint */
-#define	CONTROL(c)	(c & 037)
-#define	BELL		'\007'
-#define	ESC		'\033'
-
-typedef	void	*Cast;
 
 extern	void	*newmem(size_t);
 extern	void	oldmem(void *);

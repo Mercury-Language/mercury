@@ -1,20 +1,24 @@
 #ifndef TAGS_H
 #define TAGS_H
 
+#include <limits.h>
+
 /* DEFINITIONS FOR WORD LAYOUT */
 
-#define	WORDBITS	32
+#define	WORDBITS	(CHAR_BIT * WORDSIZE)
+#ifndef TAGBITS
 #define	TAGBITS		2
+#endif
 
 #ifdef	HIGHTAGS
 
 #define	mktag(t)	((t) << (WORDBITS - TAGBITS))
-#define	unmktag(w)	((unsigned) (w) >> (WORDBITS - TAGBITS))
-#define	tag(w)		((w) & ~(((unsigned) (~0) >> TAGBITS)))
+#define	unmktag(w)	((Word) (w) >> (WORDBITS - TAGBITS))
+#define	tag(w)		((w) & ~(((Word) (~0) >> TAGBITS)))
 #define mkbody(i)	(i)
 #define unmkbody(w)	(w)
-#define	body(w, t)	((w) & ((unsigned) (~0) >> TAGBITS)
-#define	mkword(t, p)	((uint)(t) + (uint)(p))
+#define	body(w, t)	((w) & ((Word) (~0) >> TAGBITS)
+#define	mkword(t, p)	((Word)(t) + (Word)(p))
 #define	field(t, p, i)	((Word *) body((p), (t)))[i]
 
 #else
@@ -23,15 +27,10 @@
 #define	unmktag(w)	(w)
 #define	tag(w)		((w) & ((1 << TAGBITS) - 1))
 #define mkbody(i)	((i) << TAGBITS)
-#define unmkbody(w)	((unsigned) (w) >> TAGBITS)
+#define unmkbody(w)	((Word) (w) >> TAGBITS)
 #define	body(w, t)	((w) - (t))
-#define	mkword(t, p)	((uint)(t) + (uint)(p))
+#define	mkword(t, p)	((Word)(t) + (Word)(p))
 #define	field(t, p, i)	((Word *) body((p), (t)))[i]
-
-/* 
-#define	field(t, p, i)	(* (((Word *) body((p), (t))) + (i)))
-old def	field(t, p, i)	(* (Word *) (body((p), (t)) + (i) * WORDSIZE))
-*/
 
 #endif
 

@@ -66,7 +66,7 @@ List *list_addhead(List *list, void *data)
 **	Add some data to the tail of a list.
 */
 
-List *list_addtail(List *list, Cast data)
+List *list_addtail(List *list, void *data)
 {
 	reg	List	*item;
 

@@ -16,7 +16,10 @@
 /* GENERAL DEFINITIONS */
 
 typedef	uint	Word;
+typedef int	Integer;
 typedef void	Code;		/* should be `typedef function_t Code' */
+
+/* Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*) */
 
 #define	WORDSIZE	sizeof(Word)
 
@@ -227,9 +230,10 @@ extern	int	hash_string(const char *);
 
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
-#define	incr_hp(n)	(					\
-				debugincrhp(n, hp),		\
-				hp += (n),			\
+#define	incr_hp(dest,count)	(				\
+				(dest) = (Word)hp,		\
+				debugincrhp(count, hp),		\
+				hp += (count),			\
 				heap_overflow_check(),		\
 				(void)0				\
 			)

@@ -314,8 +314,7 @@ mercury__string__to_int_list_2_1_i4:
 ** allocate (length + 1) bytes of heap space for string
 ** i.e. (length + 4) / 4 words
 */
-	r1 = (int)hp;
-	incr_hp(r4 / 4);
+	incr_hp(r1, r4 / 4);
 /*
 ** loop to copy the characters from the int_list to the string
 */
