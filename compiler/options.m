@@ -340,7 +340,9 @@
 		;	library_extension
 		;	executable_file_extension
 		;	create_archive_command
+		;	create_archive_command_output_flag
 		;	create_archive_command_flags
+		;	ranlib_command
 
 		;	java_compiler
 		;	java_flags
@@ -777,9 +779,12 @@ option_defaults_2(code_gen_option, [
 	library_extension -		string(".a"),
 	executable_file_extension -	string(""),
 	create_archive_command -	string("ar"),
+	create_archive_command_output_flag -
+					string(""),
 	create_archive_command_flags -	accumulating([]), % "cr"
+	ranlib_command -		string(""),
 					% the `mmc' script will override the
-					% above seven defaults with a value
+					% above nine defaults with a value
 					% determined at configuration time
 
 	java_compiler		-	string("javac"),
@@ -1228,7 +1233,11 @@ long_option("shared-library-extension",	shared_library_extension).
 long_option("library-extension",	library_extension).
 long_option("executable-file-extension", executable_file_extension).
 long_option("create-archive-command",	create_archive_command).
+long_option("create-archive-command-output-flag",
+					create_archive_command_output_flag).
 long_option("create-archive-command-flags", create_archive_command_flags).
+long_option("ranlib-command",
+					ranlib_command).
 
 long_option("java-compiler",		java_compiler).
 long_option("javac",			java_compiler).
