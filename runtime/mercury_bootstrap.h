@@ -84,7 +84,12 @@ typedef MR_Unsigned 		Unsigned;
 typedef MR_UnsignedChar 	UnsignedChar;
 typedef MR_String 		String;
 typedef MR_ConstString 		ConstString;
-typedef MR_Bool 		Bool;
+/*
+** MR_Bool is the C representation for the Mercury type bool__bool.
+** For ordinary booleans, use MR_bool in mercury_std.h.
+*/
+typedef MR_intptr_t		MR_Bool;
+typedef MR_Bool			Bool;
 
 /*
 ** The list manipulation macros are available for use by ordinary Mercury

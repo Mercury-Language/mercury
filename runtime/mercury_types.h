@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -57,11 +57,6 @@ typedef signed char			MR_int_least8_t;
 typedef	MR_uintptr_t		MR_Word;
 typedef	MR_intptr_t		MR_Integer;
 typedef	MR_uintptr_t		MR_Unsigned;
-/*
-** MR_Bool is the C representation for the Mercury type bool__bool.
-** For ordinary booleans, use MR_bool in mercury_std.h.
-*/
-typedef	MR_intptr_t		MR_Bool;
 
 /*
 ** Convert a size in bytes to a size in words, rounding up if necessary.
