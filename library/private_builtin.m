@@ -1152,6 +1152,16 @@ trailed_nondet_pragma_foreign_code :-
 
 :- implementation.
 
+/*
+** These routines are defined in C in ways which may make it not obvious
+** to the Mercury compiler that they are worth inlining.
+**
+** (Note: it's probably not worth inlining gc_trace/1...)
+*/
+:- pragma inline(free_heap/1).
+:- pragma inline(mark_hp/1).
+:- pragma inline(restore_hp/1).
+
 :- pragma foreign_decl("C", "
 	#include ""mercury_heap.h""	/* for MR_free_heap() */
 ").
