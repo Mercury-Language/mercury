@@ -1,12 +1,11 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 The University of Melbourne.
+% Copyright (C) 1995-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % Main author: bromage
 % Simplified by Marnix Klooster <marnix@worldonline.nl>
-% Last changed 22 October 1996
 
 % This module contains types common to the modules lcss and diffs.
 
@@ -15,7 +14,7 @@
 :- module lcsstype.
 
 :- interface.
-:- import_module std_util.
+:- import_module std_util, list.
 
 
 	% A pos is a non-negative number representing a position in a

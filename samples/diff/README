@@ -60,3 +60,26 @@ Marnix
 --
 Marnix Klooster
 marnix@worldonline.nl
+
+---------------------------------
+
+The version which appears here is a re-hacked version of Marnix Klooster
+hacked version of my original.  Special thanks to him for making my code
+a lot more maintainable than it originally was.  :-)
+
+The changes from the previous version:
+
+	- Bug fix which was causing it to bomb out if the two
+	  files were identical.
+
+	- Changed indenting so it more closely matches the Mercury
+	  compiler coding standard.
+
+	- Update to use unique arrays (now called array.m).
+
+	- Various minor documentation tweaks.
+
+Oh, and it still runs in nowhere near the speed of GNU diff.
+
+Andrew Bromage  28 Jul 1997
+

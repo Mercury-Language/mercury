@@ -1,12 +1,11 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 The University of Melbourne.
+% Copyright (C) 1995-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % Main author: bromage
 % Simplified by Marnix Klooster <marnix@worldonline.nl>
-% Last changed 22 October 1996
 
 % Something very similar to the standard diff utility.  Sort of.  :-)
 
@@ -71,37 +70,37 @@ main_2(no, []) -->
 	usage_error("missing operand").
 main_2(no, [Fname1 | Rest]) -->
 	( { Rest = [Fname2 | _] },
-	    ( { Fname1 = Fname2 } ->
+		( { Fname1 = Fname2 } ->
 		% There are no differences between identical files.
-	    	[]
-	    ;
-		% If either file is "-", simply use standard input.
-		% (Note: Both can't be "-" since that was dealt with
-		% in the previous case.)
-	        ( { Fname1 = "-" } ->
-	    	    file__read_input(Contents1),
-	    	    file__read_file(Fname2, Contents2)
-	    	; { Fname2 = "-" } ->
-	    	    file__read_file(Fname1, Contents1),
-	    	    file__read_input(Contents2)
-	    	;
-		% Otherwise read the files normally.
-	    	    file__read_file(Fname1, Contents1),
-	    	    file__read_file(Fname2, Contents2)
-	    	),
-		% Now do the diff.
-		( { Contents1 = ok(File1), Contents2 = ok(File2) } ->
-		    diff__do_diff(File1, File2)
-		; { Contents1 = error(Msg) } ->
-		    usage_io_error(Msg)
-		; { Contents2 = error(Msg) } ->
-		    usage_io_error(Msg)
+			[]
 		;
-		    { error("main2") }
+			% If either file is "-", simply use standard input.
+			% (Note: Both can't be "-" since that was dealt with
+			% in the previous case.)
+			( { Fname1 = "-" } ->
+				file__read_input(Contents1),
+				file__read_file(Fname2, Contents2)
+			; { Fname2 = "-" } ->
+				file__read_file(Fname1, Contents1),
+				file__read_input(Contents2)
+			;
+			% Otherwise read the files normally.
+				file__read_file(Fname1, Contents1),
+				file__read_file(Fname2, Contents2)
+			),
+			% Now do the diff.
+			( { Contents1 = ok(File1), Contents2 = ok(File2) } ->
+				diff__do_diff(File1, File2)
+			; { Contents1 = error(Msg) } ->
+				usage_io_error(Msg)
+			; { Contents2 = error(Msg) } ->
+				usage_io_error(Msg)
+			;
+				{ error("main2") }
+			)
 		)
-	    )
 	; { Rest = [] },
-	    usage_error("missing operand")
+		usage_error("missing operand")
 	).
 
 %-----------------------------------------------------------------------------%

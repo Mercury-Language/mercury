@@ -1,12 +1,11 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 The University of Melbourne.
+% Copyright (C) 1995-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % Main author: bromage
 % Simplified by Marnix Klooster <marnix@worldonline.nl>
-% Last changed 22 October 1996
 
 % This module contains the predicates to convert an lcss to a diff,
 % and to display diffs.
@@ -41,7 +40,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, std_util, int, list.
+:- import_module require, std_util, int, list, char.
 
 	% A segment is a pair of positions.  Numbering items from 0,
 	% segment P-Q stands for items P up to, but not including, Q.
@@ -79,17 +78,17 @@ diffs__to_diff2(X, Y, [X2 - Y2 | Lcss], Diff) :-
 	 XNext is X2 + 1, YNext is Y2 + 1,
 	 diffs__to_diff2(XNext, YNext, Lcss, Diff1),
 	 ( X = X2 ->
-	     ( Y = Y2 ->
-	 	 Diff = Diff1
-	     ;
-		 Diff = [add(X,Y - Y2) | Diff1]
-	     )
+		 ( Y = Y2 ->
+	 	 	Diff = Diff1
+		 ;
+		 	Diff = [add(X,Y - Y2) | Diff1]
+		 )
 	 ;
-	     ( Y = Y2 ->
-		 Diff = [delete(X - X2,Y) | Diff1]
-	     ;
-		 Diff = [change(X - X2,Y - Y2) | Diff1]
-	     )
+		 ( Y = Y2 ->
+		 	Diff = [delete(X - X2,Y) | Diff1]
+		 ;
+		 	Diff = [change(X - X2,Y - Y2) | Diff1]
+		 )
 	 ).
 
 %-----------------------------------------------------------------------------%
@@ -100,16 +99,16 @@ diffs__to_diff2(X, Y, [X2 - Y2 | Lcss], Diff) :-
 diffs__display_diff(_, _, []) --> { true }.
 diffs__display_diff(File1, File2, [SingDiff | Diff]) -->
 	( { SingDiff = add(X, Y1 - Y2) },
-	    diffs__write_command(X - X, 'a', Y1 - Y2),
-	    diffs__show_file(File2, "> ", Y1 - Y2)
+		diffs__write_command(X - X, 'a', Y1 - Y2),
+		diffs__show_file(File2, "> ", Y1 - Y2)
 	; { SingDiff = delete(X1 - X2, Y) },
-	    diffs__write_command(X1 - X2, 'd', Y - Y),
-	    diffs__show_file(File1, "< ", X1 - X2)
+		diffs__write_command(X1 - X2, 'd', Y - Y),
+		diffs__show_file(File1, "< ", X1 - X2)
 	; { SingDiff = change(X1 - X2, Y1 - Y2) },
-	    diffs__write_command(X1 - X2, 'c', Y1 - Y2),
-	    diffs__show_file(File1, "< ", X1 - X2),
-	    io__write_string("---\n"),
-	    diffs__show_file(File2, "> ", Y1 - Y2)
+		diffs__write_command(X1 - X2, 'c', Y1 - Y2),
+		diffs__show_file(File1, "< ", X1 - X2),
+		io__write_string("---\n"),
+		diffs__show_file(File2, "> ", Y1 - Y2)
 	),
 	diffs__display_diff(File1, File2, Diff).
 
@@ -121,21 +120,21 @@ diffs__display_diff(File1, File2, [SingDiff | Diff]) -->
 :- mode diffs__write_command(in, in, in, di, uo) is det.
 diffs__write_command(X - X2, C, Y - Y2) -->
 	{ X1 is X + 1 },
-	( { X1 >= X2 } ->    % either empty or singleton segment
-	    io__write_int(X2)
+	( { X1 >= X2 } ->	% either empty or singleton segment
+		io__write_int(X2)
 	;
-	    io__write_int(X1),
-	    io__write_char(','),
-	    io__write_int(X2)
+		io__write_int(X1),
+		io__write_char(','),
+		io__write_int(X2)
 	),
 	io__write_char(C),
 	{ Y1 is Y + 1 },
-	( { Y1 >= Y2 } ->    % either empty or singleton segment
-	    io__write_int(Y2)
+	( { Y1 >= Y2 } ->	% either empty or singleton segment
+		io__write_int(Y2)
 	;
-	    io__write_int(Y1),
-	    io__write_char(','),
-	    io__write_int(Y2)
+		io__write_int(Y1),
+		io__write_char(','),
+		io__write_int(Y2)
 	),
 	io__write_char('\n').
 
@@ -143,18 +142,18 @@ diffs__write_command(X - X2, C, Y - Y2) -->
 diffs__display_diff_rcs(_File1, _File2, []) --> { true }.
 diffs__display_diff_rcs(File1, File2, [Cmd | Diff]) -->
 	( { Cmd = add(X, Y1 - Y2) },
-	    { Y is Y2 - Y1 },
-	    diffs__write_command_rcs('a', X, Y),
-	    diffs__show_file(File2, "", Y1 - Y2)
+		{ Y is Y2 - Y1 },
+		diffs__write_command_rcs('a', X, Y),
+		diffs__show_file(File2, "", Y1 - Y2)
 	; { Cmd = delete(X1 - X2, _Y) },
-	    { X is X2 - X1 },
-	    diffs__write_command_rcs('d', X1, X)
+		{ X is X2 - X1 },
+		diffs__write_command_rcs('d', X1, X)
 	; { Cmd = change(X1 - X2, Y1 - Y2) },
-	    { X is X2 - X1 },
-	    { Y is Y2 - Y1 },
-	    diffs__write_command_rcs('d', X1, X),
-	    diffs__write_command_rcs('a', X1, Y),
-	    diffs__show_file(File2, "", Y1 - Y2)
+		{ X is X2 - X1 },
+		{ Y is Y2 - Y1 },
+		diffs__write_command_rcs('d', X1, X),
+		diffs__write_command_rcs('a', X1, Y),
+		diffs__show_file(File2, "", Y1 - Y2)
 	),
 	diffs__display_diff_rcs(File1, File2, Diff).
 
@@ -181,15 +180,15 @@ diffs__write_command_rcs(C, X, Y) -->
 :- mode diffs__show_file(in, in, in, di, uo) is det.
 diffs__show_file(File, Prefix, Low - High) -->
 	( { Low < High } ->
-	    ( { file__get_line(File, Low, Line) } ->
-		{ Low1 is Low + 1 },
-		io__write_strings([Prefix, Line]),
-		diffs__show_file(File, Prefix, Low1 - High)
-	    ;
-		{ error("diffs_show_file: file ended prematurely") }
-	    )
+		( { file__get_line(File, Low, Line) } ->
+			{ Low1 is Low + 1 },
+			io__write_strings([Prefix, Line]),
+			diffs__show_file(File, Prefix, Low1 - High)
+		;
+			{ error("diffs_show_file: file ended prematurely") }
+		)
 	;
-	    { true }
+		{ true }
 	).
 
 %-----------------------------------------------------------------------------%

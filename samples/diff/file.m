@@ -1,12 +1,11 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 The University of Melbourne.
+% Copyright (C) 1995-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % Main author: bromage
 % Simplified by Marnix Klooster <marnix@worldonline.nl>
-% Last changed 22 October 1996
 
 % This module provides file input.  One can read a file entirely,
 % select a single line from a read file, get the number of lines
@@ -60,11 +59,11 @@
 file__read_file(FileName, Contents) -->
 	io__open_input(FileName, Res),
 	( { Res = ok(InputStream) },
-	    file__read_stream(InputStream, Contents0),
-	    io__close_input(InputStream),
-	    { Contents = ok(Contents0) }
+		file__read_stream(InputStream, Contents0),
+		io__close_input(InputStream),
+		{ Contents = ok(Contents0) }
 	; { Res = error(Error) },
-	    { Contents = error(Error) }
+		{ Contents = error(Error) }
 	).
 
 	% Get the input stream, then read from it.
@@ -74,31 +73,28 @@ file__read_input(ok(Contents)) -->
 
 	% file__read_stream is the "real" file reader.
 :- pred file__read_stream(io__input_stream, file, io__state, io__state).
-:- mode file__read_stream(in, out, di, uo) is det.
+:- mode file__read_stream(in, array_uo, di, uo) is det.
 file__read_stream(Stream, File) -->
-	file__read_stream2(Stream, 0, _, File).
+	file__read_stream2(Stream, 0, File).
 
 	% Given a Stream from which LinesIn lines have already been
 	% read, fill File[LinesIn] to File[LinesOut-1] with the rest
 	% of the lines.  LinesOut is the number of lines in the file.
 	% (Note that line numbering starts at zero.)
-:- pred file__read_stream2(io__input_stream, int, int, file,
-		io__state, io__state).
-:- mode file__read_stream2(in, in, out, out, di, uo) is det.
-file__read_stream2(Stream, LinesIn, LinesOut, File) -->
+:- pred file__read_stream2(io__input_stream, int, file, io__state, io__state).
+:- mode file__read_stream2(in, in, array_uo, di, uo) is det.
+file__read_stream2(Stream, LineNo, File) -->
 	io__read_line(Stream, Res),
 	( { Res = eof },
-            { LinesOut = LinesIn },
-	    { LinesOut1 is LinesOut - 1 },
-	    { array__init(0, LinesOut1, "", File) }
+		{ array__init(LineNo, "", File) }
 	; { Res = ok(Line) },
-	    { string__from_char_list(Line, Line1) },
-            { LinesIn1 is LinesIn + 1 },
-	    file__read_stream2(Stream, LinesIn1, LinesOut, File1),
-	    { array__set(File1, LinesIn, Line1, File) }
+		{ string__from_char_list(Line, Line1) },
+		{ LineNo1 is LineNo + 1 },
+		file__read_stream2(Stream, LineNo1, File1),
+		{ array__set(File1, LineNo, Line1, File) }
 	; { Res = error(Error) },
-	    { io__error_message(Error, Msg) },
-	    { error(Msg) }
+		{ io__error_message(Error, Msg) },
+		{ error(Msg) }
 	).
 
 %-----------------------------------------------------------------------------%

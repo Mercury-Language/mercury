@@ -1,12 +1,11 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 The University of Melbourne.
+% Copyright (C) 1995-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % Main author: bromage
 % Simplified by Marnix Klooster <marnix@worldonline.nl>
-% Last changed 22 October 1996
 
 % The only predicate exported from this module is given two lists, and
 % it generates a 'longest common subsequence.'  A 'common subsequence'
@@ -40,7 +39,7 @@
 :- import_module lcsstype.
 
 :- pred lcss__find_lcss(list(A) :: in, list(A) :: in, int :: in, int :: in,
-                        lcss :: out) is det.
+			lcss :: out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -68,9 +67,9 @@ lcss__show_lcss([X - Y | Lcss]) -->
 	% Find a longest common subsequence.  The algorithm
 	% used is very similar to that in:
 	%
-	%     Hunt & Szymanski, "A fast algorithm for computing
-	%     longest common subsequences", CACM 20:5, pp 350--353,
-	%     1977.
+	%	Hunt & Szymanski, "A fast algorithm for computing
+	%	longest common subsequences", CACM 20:5, pp 350--353,
+	%	1977.
 
 	% The essence of the algorithm is simple.  A 'match' is pair
 	% I-J so that List1[I]=List2[J].  For every length (>=0) it
@@ -102,9 +101,12 @@ lcss__find_lcss(List1, List2, L1, L2, Lcss) :-
 	% The consequence is that build_thresh and build_lcss need a
 	% value representing 'infinity'; previously we could use the
 	% length of the first list for this.  Now we use length of
-	% the longest list.
+	% the longest list plus one.  The reason for the plus one is
+	% that it should be greater than any other threshold, and
+	% on identical files, thresholds may get as large as L1=L2.
 
-	int__max(L1, L2, Inf),
+	int__max(L1, L2, Inf0),
+	Inf is Inf0 + 1,
 
 	% The original version uses arrays of the same length as the
 	% longest list.  But it is sufficient to use the length of the
@@ -138,11 +140,13 @@ lcss__build_matchlist(List1, List2, MatchList) :-
 	% First, invert List2.  The inverted list is a
 	% mapping from strings to lists of integers where
 	% a given string maps to the list of strings in List2
-	% which match that string.
+	% which match that string, in reverse order.  (The
+	% reversal is for efficiency reasons.)
 
 	lcss__build_match_map(0, List2, Map),
 
-	% Now match each line in List1 with those in List2.
+	% Now match each line in List1 with those in List2,
+	% reversing the matches as we go.
 
 	lcss__match_map_to_matchlist(List1, Map, MatchList).
 
@@ -154,9 +158,9 @@ lcss__build_match_map(N, [S | Ss], MapOut) :-
 	N1 is N + 1,
 	lcss__build_match_map(N1, Ss, MapIn),
 	( map__search(MapIn, S, Ns0) ->
-	    list__append(Ns0, [N], Ns1)
+		Ns1 = [N | Ns0]
 	;
-	    Ns1 = [ N ]
+		Ns1 = [ N ]
 	),
 	map__set(MapIn, S, Ns1, MapOut).
 
@@ -167,9 +171,9 @@ lcss__match_map_to_matchlist([], _, []).
 lcss__match_map_to_matchlist([S | Ss], Map, [M | Ms]) :-
 	lcss__match_map_to_matchlist(Ss, Map, Ms),
 	( map__search(Map, S, Ns0) ->
-	    M = Ns0
+		list__reverse(Ns0, M)
 	;
-	    M = []
+		M = []
 	).
 
 %-----------------------------------------------------------------------------%
@@ -184,13 +188,19 @@ lcss__match_map_to_matchlist([S | Ss], Map, [M | Ms]) :-
 
 :- pred lcss__build_thresh(int, list(list(int)), int,
 		array(int), array(lcss)).
-:- mode lcss__build_thresh(in, in, in, out, out) is det.
+:- mode lcss__build_thresh(in, in, in, array_uo, array_uo) is det.
 lcss__build_thresh(N, MatchList, Inf, Thresh, Link) :-
 
 	% Initialize Thresh and Link.
-	array__init(0, N, Inf, Thresh0),      % Thresh[0..N] := Inf
-	array__set(Thresh0, 0, -1, Thresh1),  % Thresh[0] := -1
-	array__init(0, N, [], Link1),         % Link[0..N] := []
+
+	N1 is N + 1,	% Why this size?  Suppose we have two identical
+			% files of length N.  Then the links will be
+			% [], [0-0], [0-0,1-1], ... [0-0..N-N], which
+			% makes N+1 links in total.
+
+	array__init(N1, Inf, Thresh0),		% Thresh[0..N] := Inf
+	array__set(Thresh0, 0, -1, Thresh1),	% Thresh[0] := -1
+	array__init(N1, [], Link1),		% Link[0..N] := []
 
 	% Process all matches in Matchlist in lexicographical order.
 	lcss__build_thresh2(N, 0, MatchList, Thresh1, Link1, Thresh, Link).
@@ -199,7 +209,8 @@ lcss__build_thresh(N, MatchList, Inf, Thresh, Link) :-
 :- pred lcss__build_thresh2(int, int, list(list(int)),
 		array(int), array(lcss),
 		array(int), array(lcss)).
-:- mode lcss__build_thresh2(in, in, in, in, in, out, out) is det.
+:- mode lcss__build_thresh2(in, in, in,
+		array_di, array_di, array_uo, array_uo) is det.
 lcss__build_thresh2(_N, _I, [], Thresh0, Link0, Thresh0, Link0).
 lcss__build_thresh2(N, I, [Matches | MatchRest], Thresh0, Link0,
 						Thresh1, Link1) :-
@@ -212,7 +223,8 @@ lcss__build_thresh2(N, I, [Matches | MatchRest], Thresh0, Link0,
 :- pred lcss__build_thresh3(int, int, list(int),
 		array(int), array(lcss),
 	 	array(int), array(lcss)).
-:- mode lcss__build_thresh3(in, in, in, in, in, out, out) is det.
+:- mode lcss__build_thresh3(in, in, in,
+		array_di, array_di, array_uo, array_uo) is det.
 lcss__build_thresh3(_, _, [], Thresh, Link, Thresh, Link).
 lcss__build_thresh3(N, I, [ J | Js ], Thresh0, Link0, Thresh1, Link1) :-
 
@@ -228,16 +240,16 @@ lcss__build_thresh3(N, I, [ J | Js ], Thresh0, Link0, Thresh1, Link1) :-
 
 	array__lookup(Thresh0, K, ThreshK),
 	( J < ThreshK ->
+		% Yes, so make this match part of a new entry, by
+		% doing Link[K] := [I-J | Link[K-1]]
 
-	    % Yes, so make this match part of a new entry, by
-	    % doing Link[K] := [I-J | Link[K-1]]
-	    K1 is K - 1,
-	    array__set(Thresh0, K, J, Thresh2),
-	    array__lookup(Link0, K1, LinkK1),
-	    array__set(Link0, K, [I - J | LinkK1], Link2)
+		K1 is K - 1,
+		array__set(Thresh0, K, J, Thresh2),
+		array__lookup(Link0, K1, LinkK1),
+		array__set(Link0, K, [I - J | LinkK1], Link2)
 	;
-	    % Otherwise forget it.
-	    Link0 = Link2, Thresh0 = Thresh2
+		% Otherwise forget it.
+		Link0 = Link2, Thresh0 = Thresh2
 	),
 
 	% Process the remaining matches that have I as their first
@@ -253,18 +265,18 @@ lcss__build_thresh3(N, I, [ J | Js ], Thresh0, Link0, Thresh1, Link1) :-
 lcss__build_thresh4(Lo, Hi, J, K, Thresh) :-
 	Width is Hi - Lo,
 	( Width < 1 ->
-	    error("lcss__build_thresh4")
+		error("lcss__build_thresh4")
 	; Width = 1 ->
-	    K = Hi
+		K = Hi
 	;
-	    % Use the middle element of the range.
-	    Mid is (Lo + Hi) // 2,
-	    array__lookup(Thresh, Mid, ThreshMid),
-	    ( ThreshMid < J ->
-		lcss__build_thresh4(Mid, Hi, J, K, Thresh)
-	    ;
-		lcss__build_thresh4(Lo, Mid, J, K, Thresh)
-	    )
+		% Use the middle element of the range.
+		Mid is (Lo + Hi) // 2,
+		array__lookup(Thresh, Mid, ThreshMid),
+		( ThreshMid < J ->
+			lcss__build_thresh4(Mid, Hi, J, K, Thresh)
+		;
+			lcss__build_thresh4(Lo, Mid, J, K, Thresh)
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -298,10 +310,10 @@ lcss__build_lcss(N, Inf, Thresh, Link, L1, L2, Lcss) :-
 :- mode lcss__build_lcss2(in, in, in, out) is det.
 lcss__build_lcss2(N, Inf, Thresh, K) :-
 	( array__lookup(Thresh, N, Inf) ->
-	    N1 is N - 1,
-	    lcss__build_lcss2(N1, Inf, Thresh, K)
+		N1 is N - 1,
+		lcss__build_lcss2(N1, Inf, Thresh, K)
 	;
-	    K = N
+		K = N
 	).
 
 %-----------------------------------------------------------------------------%
