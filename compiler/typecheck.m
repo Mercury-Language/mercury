@@ -4,7 +4,6 @@
 % Main author: fjh.
 %
 % This file contains a type-checker.
-% It still has a few bugs.
 % 
 % The predicates in this module are named as follows:
 % 
@@ -135,7 +134,7 @@
 
 :- implementation.
 :- import_module list, map, string, require, std_util.
-:- import_module varset, prog_util, prog_out, hlds_out.
+:- import_module varset, prog_util, prog_out, hlds_out, mercury_to_mercury.
 :- import_module options, getopt, globals.
 
 %-----------------------------------------------------------------------------%
