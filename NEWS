@@ -26,8 +26,11 @@ Changes to the Mercury compiler:
   with `mmc --make'.
 
 Changes to the Mercury standard library:
-* We've added two new modules: cord, for sequences with O(1) consing and
-  concatenation, and array2d, for two-dimensional arrays.
+* We've added several new modules: cord, for sequences with O(1) consing and
+  concatenation, array2d, for two-dimensional arrays, and version_array,
+  version_array2d, version_bitmap, version_hash_table, and version_store,
+  implementing non-unique versions of these types supporting O(1) access for
+  non-persistent use.
 * New procedures have been added to many of the existing standard library
   modules.  Most notably, these include procedures for creating
   directories and symbolic links, for checking file types and file

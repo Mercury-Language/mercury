@@ -91,6 +91,12 @@
 :- import_module tree234.
 :- import_module type_desc.
 :- import_module varset.
+:- import_module version_array.
+:- import_module version_array2d.
+:- import_module version_bitmap.
+:- import_module version_hash_table.
+:- import_module version_store.
+:- import_module version_types.
 
 % The modules intended for Mercury system implementors.
 :- import_module private_builtin.
