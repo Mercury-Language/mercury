@@ -445,6 +445,12 @@ modecheck_goal_2(call(PredId, _, Args, Builtin), _,
 	mode_info_set_call_context(call(PredId)),
 	modecheck_call_pred(PredId, Args, Mode),
 	mode_info_unset_call_context,
+	mode_info_never_succeeds(PredId, Mode, Result),
+	( { Result = yes } ->
+		mode_info_set_instmap(unreachable)
+	;
+		[]
+	),
 	mode_checkpoint(exit, "call").
 
 modecheck_goal_2(unify(A, B, _, _, UnifyContext), _,
@@ -455,8 +461,33 @@ modecheck_goal_2(unify(A, B, _, _, UnifyContext), _,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 
+	% Return Result = yes if the called predicate never succeeds.
+
+:- pred mode_info_never_succeeds(pred_id, proc_id, bool, mode_info, mode_info).
+:- mode mode_info_never_succeeds(in, in, out, mode_info_di, mode_info_uo)
+	is det.
+
+mode_info_never_succeeds(PredId, ProcId, Result, ModeInfo, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_procedures(PredInfo, Procs),
+	map__lookup(Procs, ProcId, ProcInfo),
+	proc_info_declared_determinism(ProcInfo, DeclaredDeterminism),
+	determinism_never_succeeds(DeclaredDeterminism, Result).
+
+:- pred determinism_never_succeeds(determinism, bool).
+:- mode determinism_never_succeeds(in, out) is det.
+
+determinism_never_succeeds(erroneous, yes).
+determinism_never_succeeds(failure, yes).
+determinism_never_succeeds(det, no).
+determinism_never_succeeds(semidet, no).
+determinism_never_succeeds(nondet, no).
+determinism_never_succeeds(unspecified, no).
+
 :- pred goal_get_nonlocals(hlds__goal, set(var)).
-:- mode goal_get_nonlocals(in, out).
+:- mode goal_get_nonlocals(in, out) is det.
 
 goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals).
@@ -3036,11 +3067,11 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	mercury_output_vars(Vars, VarSet),
 	io__write_string("'\n"),
 	prog_out__write_context(Context),
-	io__write_string("have insts `"),
+	io__write_string("  have insts `"),
 	mercury_output_inst_list(Insts, InstVarSet),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
-	io__write_string("which does not match any of the modes for `"),
+	io__write_string("  which does not match any of the modes for `"),
 	{ mode_info_get_mode_context(ModeInfo, call(PredId, _)) },
 	hlds_out__write_pred_id(PredId),
 	io__write_string("'.\n").

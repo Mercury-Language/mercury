@@ -483,6 +483,10 @@ mercury_output_det(semidet) -->
 	io__write_string("semidet").
 mercury_output_det(nondet) -->
 	io__write_string("nondet").
+mercury_output_det(failure) -->
+	io__write_string("failure").
+mercury_output_det(erroneous) -->
+	io__write_string("erroneous").
 
 :- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
 :- mode mercury_output_bracketed_sym_name(in, di, uo) is det.

@@ -63,10 +63,10 @@
 % Higher-order predicate modes.
 % This needs to be builtin - the following is just a temporary hack.
 
-:- mode pred_call :: input.
-:- mode pred_call(_, _) :: input.
-:- mode pred_call(_, _, _, _) :: input.
-:- mode pred_call(_, _, _, _, _, _) :: input.
+:- mode pred_call :: output.
+:- mode pred_call(_, _) :: output.
+:- mode pred_call(_, _, _, _) :: output.
+:- mode pred_call(_, _, _, _, _, _) :: output.
 
 %-----------------------------------------------------------------------------%
 

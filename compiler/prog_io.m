@@ -98,6 +98,8 @@
 :- type determinism	--->	det
 			;	semidet
 			;	nondet
+			;	erroneous
+			;	failure
 			;	unspecified.
 
 %-----------------------------------------------------------------------------%
@@ -1144,7 +1146,12 @@ parse_type_decl_type(term__functor(term__atom("=="),[H,B],_), Condition, R) :-
 parse_type_decl_pred(VarSet, Pred, R) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, Determinism),
-	process_pred(VarSet, Body2, Determinism, Condition, R).
+	( Determinism = ok(Determinism1) ->
+		process_pred(VarSet, Body2, Determinism1, Condition, R)
+	;
+		% just pass the error up
+		R = Determinism
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1170,7 +1177,12 @@ parse_type_decl_rule(VarSet, Rule, R) :-
 parse_mode_decl_pred(VarSet, Pred, R) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, Determinism),
-	process_mode(VarSet, Body2, Determinism, Condition, R).
+	( Determinism = ok(Determinism1) ->
+		process_mode(VarSet, Body2, Determinism1, Condition, R)
+	;
+		% just pass the error up
+		R = Determinism
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1179,7 +1191,7 @@ parse_mode_decl_pred(VarSet, Pred, R) :-
 	% and binds Term to the other part of Term0. If Term0 does not
 	% contain a determinism, then Determinism is bound to `unspecified'.
 
-:- pred get_determinism(term, term, determinism).
+:- pred get_determinism(term, term, maybe(determinism)).
 :- mode get_determinism(in, out, out).
 get_determinism(B, Body, Determinism) :-
 	( %%% some [Body1, Determinism1, Context]
@@ -1194,14 +1206,13 @@ get_determinism(B, Body, Determinism) :-
 			standard_det(Determinism2, Determinism3)
 		    )
 		->
-			Determinism = Determinism3
+			Determinism = ok(Determinism3)
 		;
-			% XXX should report a syntax error!!
-			Determinism = unspecified
+			Determinism = error("invalid category", Determinism2)
 		)
 	;
 		Body = B,
-		Determinism = unspecified
+		Determinism = ok(unspecified)
 	).
 
 :- pred standard_det(string, determinism).
@@ -1209,6 +1220,8 @@ get_determinism(B, Body, Determinism) :-
 standard_det("det", det).
 standard_det("nondet", nondet).
 standard_det("semidet", semidet).
+standard_det("erroneous", erroneous).
+standard_det("failure", failure).
 
 %-----------------------------------------------------------------------------%
 

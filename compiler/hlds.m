@@ -569,7 +569,7 @@ module_info_incr_errors(ModuleInfo0, ModuleInfo) :-
 module_info_incr_warnings(ModuleInfo0, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns0),
-	Warns0 is Warns + 1,
+	Warns is Warns0 + 1,
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
@@ -708,7 +708,7 @@ pred_info_is_imported(PredInfo) :-
 :- mode proc_info_init(in, in, in, out).
 
 :- pred determinism_to_category(determinism, category).
-:- mode determinism_to_category(in, out).
+:- mode determinism_to_category(in, out) is det.
 
 :- pred proc_info_declared_determinism(proc_info, determinism).
 :- mode proc_info_declared_determinism(in, out).
@@ -771,10 +771,16 @@ proc_info_init(Modes, Det, MContext, NewProc) :-
 		ClauseBody, MContext, CallInfo, Category, ArgInfo
 	).
 
+	% This predicate (and the types it operates on) are
+	% misnamed.  It should be category_to_determinism.
+
 determinism_to_category(det, deterministic).
 determinism_to_category(semidet, semideterministic).
 determinism_to_category(nondet, nondeterministic).
-	% The inferred determinism gets initialized to `deterministic'.
+determinism_to_category(erroneous, deterministic).
+determinism_to_category(failure, semideterministic).
+	% If the source code doesn't specify any determinism annotation,
+	% inferred determinism gets initialized to `deterministic'.
 	% This is what `det_analysis.nl' wants.  If it turns out
 	% that the procedure wasn't deterministic, then det_analysis.nl
 	% provide the correct inferred determinism for it.

@@ -18,7 +18,7 @@
 ****/
 
 :- pred error(string).
-:- mode error(in).
+:- mode error(in) is erroneous.
 
 %	error(Message).
 %		Abort with error message.
