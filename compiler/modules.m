@@ -4747,6 +4747,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
+		"ifneq ($(EXT_FOR_SHARED_LIB),$A)\n",
 		SharedLibFileName, " : $(", MakeVarName, ".cs_or_ss) ",
 			"$(", MakeVarName, ".pic_os) ",
 			All_MLPicObjsString, " ", All_MLLibsDepString, "\n",
@@ -4754,7 +4755,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"-- ", InstallNameOpt, " $(ALL_LD_LIBFLAGS) -o ", 
 			SharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".pic_os) ", All_MLPicObjsString,
-			" $(ALL_MLLIBS)\n\n"
+			" $(ALL_MLLIBS)\n",
+		"endif\n\n"
 	]),
 
 	io__write_strings(DepStream, [
