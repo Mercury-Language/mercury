@@ -142,7 +142,13 @@ map__set(Map0, K, V, Map) :-
 :- pred map__keys(map(K, _V), list(K)).
 :- mode map__keys(input, output).
 map__keys(Map, KeyList) :-
-	findall(K, assoc_list_member(K - _, Map), KeyList).
+	map__keys_2(Map, [], KeyList).
+
+:- pred map__keys_2(map(K, _V), list(K), list(K)).
+:- mode map__keys_2(input, input, output).
+map__keys_2([], Keys, Keys).
+map__keys_2([Key - _ | Rest], Keys0, Keys) :-
+	map__keys_2(Rest, [Key | Keys0], Keys).
 
 %-----------------------------------------------------------------------------%
 
