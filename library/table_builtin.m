@@ -380,13 +380,13 @@ table_memo_fill_answer_block_shortcut(_) :-
 table_memo_get_answer_block(_, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_memo_get_answer_block").
 
 table_memo_get_answer_block_shortcut(_) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_memo_get_answer_block_shortcut").
 
 %-----------------------------------------------------------------------------%
@@ -685,7 +685,7 @@ table_mm_return_all_shortcut(_) :-
 table_mm_get_answer_table(_, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_mm_get_answer_table").
 
 table_mm_create_answer_block(_, _, _) :-
@@ -1089,37 +1089,37 @@ table_save_any_answer(_, _, _) :-
 table_restore_int_answer(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_restore_int_answer").
 
 table_restore_char_answer(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_restore_char_answer").
 
 table_restore_string_answer(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_restore_string_answer").
 
 table_restore_float_answer(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_restore_float_answer").
 
 table_restore_io_state_answer(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_restore_io_state_answer").
 
 table_restore_any_answer(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	impure private_builtin__semip,
+	semipure private_builtin__semip,
 	private_builtin__sorry("table_restore_any_answer").
 
 table_report_statistics :-
