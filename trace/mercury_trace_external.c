@@ -401,6 +401,8 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	Word		modules_list;
 	static String	MR_mmc_options;
 
+	MR_trace_enabled = FALSE;
+
         /*
         ** These globals can be overwritten when we call Mercury code,
         ** such as the code in browser/debugger_interface.m.
@@ -668,6 +670,8 @@ done:
 	MR_trace_call_seqno = event_details.MR_call_seqno;
 	MR_trace_call_depth = event_details.MR_call_depth;
 	MR_trace_event_number = event_details.MR_event_number;
+
+	MR_trace_enabled = TRUE;
 
 	return jumpaddr;
 }
