@@ -353,7 +353,17 @@ try_again:
 
                 if (in_range(data_value)) {
                     MR_restore_transient_hp();
+#ifdef MR_HIGHLEVEL_CODE
+		    /*
+		    ** We can't use MR_float_to_word, since it uses
+		    ** MR_hp, which in grade hlc.par.gc will be a
+		    ** reference to thread-local storage that we haven't
+		    ** allocated.
+		    */
+                    new_data = MR_box_float(MR_unbox_float(data));
+#else
                     new_data = MR_float_to_word(MR_word_to_float(data));
+#endif
                     MR_save_transient_hp();
                     leave_forwarding_pointer(data_ptr, new_data);
                 } else {
