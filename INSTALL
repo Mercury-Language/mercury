@@ -22,8 +22,8 @@
 # It's advisable to redirect the output into a file, just in case
 # anything should go wrong.
 
-sh configure
-make
+sh configure &&
+make &&
 make install
 
 # Fine-tuning:
@@ -52,7 +52,6 @@ make install
 #
 #	   Efficiency will be much improved if Mercury can use gcc global
 #	   register variables.  Currently these are supported for mips,
-#	   sparc, alpha, and maybe soon for i386 (see runtime/regs.h and
-#	   runtime/machdeps/*).  If you want to use Mercury on some other
-#	   CPU, contact us and we'll add support for gcc global registers
-#	   for that CPU.
+#	   sparc, alpha, i386 (see runtime/regs.h and runtime/machdeps/*). 
+#	   If you want to use Mercury on some other CPU, contact us and
+#	   we'll add support for gcc global registers for that CPU.
