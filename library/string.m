@@ -1670,9 +1670,14 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 }").
 
 :- pragma foreign_proc("MC++",
-	string__to_float(_FloatString::in, _FloatVal::out),
+	string__to_float(FloatString::in, FloatVal::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	SUCCESS_INDICATOR = TRUE;
+	try {
+	    FloatVal = System::Convert::ToDouble(FloatString);
+	} catch (System::InvalidCastException *e) {
+	     SUCCESS_INDICATOR = FALSE;
+	}
 }").
 
 /*-----------------------------------------------------------------------*/
