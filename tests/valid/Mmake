@@ -82,6 +82,7 @@ SOURCES= \
 #	determinism.m
 #	mode_merge_insts.m
 
+DEPS =	$(SOURCES:%.m=%.depend)
 OBJS =	$(SOURCES:%.m=%.o)
 NOS =	$(SOURCES:%.m=%.no)
 PROGS =	$(SOURCES:%.m=%)
@@ -124,7 +125,7 @@ check:	objs
 
 objs:	$(OBJS)
 
-depend:
+depend: $(DEPS)
 
 printtests:
 	@echo $(PROGS)
