@@ -17,3 +17,71 @@ Five dashes, five f's and five dots: -----fffff.....
 aaa|1111111|  1,300,000.00
 b  |       |      9,999.00
 cc |    333|123,456,789.99
+
+Wrapped string:
+*aaaaaaaaa
+aaaaaaaaaa
+a* bbbbb
+bbb b
+ccccc c c
+c cccc c c
+c c ccccc
+ccc cccc c
+ccc ccc
+ccc
+*ddddddddd
+dddddddddd
+dddddddddd
+dddddddddd
+dddddddddd
+ddddd* eee
+Wrapped string with hyphens:
+*aaaaaaaa-
+aaaaaaaaa-
+aaa* bbbbb
+bbb b
+ccccc c c
+c cccc c c
+c c ccccc
+ccc cccc c
+ccc ccc
+ccc
+*dddddddd-
+ddddddddd-
+ddddddddd-
+ddddddddd-
+ddddddddd-
+ddddddddd-
+d* eee
+Wrapped string with dots:
+*a...
+aa...
+aa...
+a*
+bbbbb
+bbb b
+ccccc
+c c c
+cccc
+c c c
+c
+ccccc
+ccc
+cccc
+c ccc
+ccc
+ccc
+*d...
+dd...
+dd...
+dd...
+dd...
+dd...
+dd...
+d*
+eee
+Wrapped string where seperator is too long:
+wh
+at
+ev
+er

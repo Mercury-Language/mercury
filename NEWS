@@ -1,3 +1,8 @@
+NEWS since the 0.12.0 fork:
+----------------------------------
+
+* We have added string.word_wrap/2.
+
 NEWS since Mercury release 0.11.0:
 ----------------------------------
 

@@ -670,19 +670,11 @@
 :- pred string__format(string::in, list(string__poly_type)::in, string::out)
 	is det.
 
-%------------------------------------------------------------------------------%
-
 :- type string__poly_type
 	--->	f(float)
 	;	i(int)
 	;	s(string)
 	;	c(char).
-
-%-----------------------------------------------------------------------------%
-
-:- type justified_column
-	--->	left(list(string))
-	;	right(list(string)).
 
 	% format_table(Columns, Separator) = Table
 	% format_table/2 takes a list of columns and a column separator
@@ -702,6 +694,27 @@
 	% ccc * 333
 	%
 :- func string__format_table(list(justified_column), string) = string.
+
+:- type justified_column
+	--->	left(list(string))
+	;	right(list(string)).
+
+	% word_wrap(Str, N) = Wrapped.
+	% Wrapped is Str with newlines inserted between words so that at most 
+	% N characters appear on a line and each line contains as many
+	% whole words as possible.  If any one word exceeds N characters in 
+	% length then it will be broken over two (or more) lines. 
+ 	% Sequences of whitespace characters are replaced by a single space.
+	%
+:- func string__word_wrap(string, int) = string.
+	
+	% word_wrap(Str, N, WordSeperator) = Wrapped.
+	% word_wrap/3 is like word_wrap/2, except that words that need to be
+	% broken up over multiple lines have WordSeperator inserted between
+	% each piece.  If the length of WordSeperator is greater that or equal 
+	% to N, then no seperator is used.
+	%
+:- func string__word_wrap(string, int, string) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -4714,6 +4727,120 @@ max_str_length(Str, PrevMaxLen, MaxLen, PrevMaxStr, MaxStr) :-
 
 %-----------------------------------------------------------------------------%
 
+string__word_wrap(Str, N) = string__word_wrap(Str, N, "").
+
+string__word_wrap(Str, N, WordSep) = Wrapped :-
+	Words = string.words(char.is_whitespace, Str),
+	SepLen = string.length(WordSep),
+	( SepLen < N ->
+		string.word_wrap_2(Words, WordSep, SepLen, 1, N, [], Wrapped)
+	;
+		string.word_wrap_2(Words, "", 0, 1, N, [], Wrapped)
+	).
+
+:- pred word_wrap_2(list(string)::in, string::in, int::in, int::in, int::in, 
+	list(string)::in, string::out) is det.
+
+word_wrap_2([], _, _, _, _, RevStrs, 
+	string.join_list("", list.reverse(RevStrs))).
+
+	% Col is the column where the next character should be written if there
+	% is space for a whole word.
+word_wrap_2([Word | Words], WordSep, SepLen, Col, N, Prev, Wrapped) :-
+	WordLen = string.length(Word),
+	(
+		% We are on the first column and the length of the word
+		% is less than the line length.
+		Col = 1, WordLen < N
+	->
+		NewCol = Col + WordLen,
+		WrappedRev = [Word | Prev],
+		NewWords = Words
+	;
+		% The word takes up the whole line.
+		Col = 1, WordLen = N
+	->
+		%
+		% We only put a newline if there are more words to follow.
+		%
+		NewCol = 1,
+		( 
+			Words = [],
+			WrappedRev = [Word | Prev]
+		; 
+			Words = [_ | _],
+			WrappedRev = ["\n", Word | Prev]
+		),
+		NewWords = Words
+	;
+		% If we add a space and the current word to the line we'll
+		% still be within the line length limit.
+		Col + WordLen < N
+	->
+		NewCol = Col + WordLen + 1,
+		WrappedRev = [Word, " " | Prev],
+		NewWords = Words
+	;
+		% Adding the word and a space takes us to the end of the
+		% line exactly.
+		Col + WordLen = N
+	->
+		%
+		% We only put a newline if there are more words to follow.
+		%
+		NewCol = 1,
+		( 
+			Words = [],
+			WrappedRev = [Word, " " | Prev]
+		; 
+			Words = [_ | _],
+			WrappedRev = ["\n", Word, " " | Prev]
+		),
+		NewWords = Words
+	;
+		%
+		% Adding the word would take us over the line limit.
+		%
+		(
+			Col = 1
+		->
+			%
+			% Break up words that are too big to fit on a line.
+			%
+			RevPieces = break_up_string_reverse(Word, N - SepLen, 
+				[]),
+			(
+				RevPieces = [LastPiece | Rest]
+			;
+				RevPieces = [],
+				error("string__word_wrap_2: no pieces")
+			),
+			RestWithSep = list.map(func(S) = S ++ WordSep ++ "\n", 
+				Rest),
+			NewCol = 1,
+			WrappedRev = list.append(RestWithSep, Prev),
+			NewWords = [LastPiece | Words]
+		;
+			NewCol = 1,
+			WrappedRev = ["\n" | Prev],
+			NewWords = [Word | Words]
+		)
+	),
+	word_wrap_2(NewWords, WordSep, SepLen, NewCol, N, WrappedRev, Wrapped).
+
+:- func break_up_string_reverse(string, int, list(string)) = list(string).
+
+break_up_string_reverse(Str, N, Prev) = Strs :-
+	(
+		string.length(Str) =< N
+	->
+		Strs = [Str | Prev]
+	;
+		string.split(Str, N, Left, Right),
+		Strs = break_up_string_reverse(Right, N, [Left | Prev])
+	).
+
+%-----------------------------------------------------------------------------%
 :- end_module string.
 
 %------------------------------------------------------------------------------%

@@ -62,6 +62,33 @@ test(X, Y) -->
 		right(["1111111", "", "333"]), right(["1,300,000.00", 
 		"9,999.00", "123,456,789.99"])], "|") ++ "\n" },
 	write_string(Table),
+	{ Wrapped = string.word_wrap("*aaaaaaaaaaaaaaaaaaaa*  bbbbb bbb  b\t"
+		++ " ccccc c c c   cccc c c c c ccccc ccc cccc c  ccc ccc ccc "
+		++ "*dddddddddddddddddddddddddddddddddddddddddddddddddddddd*"
+		++ "                                                    eee",
+		10) },
+	{ WrappedHyphen = 
+		string.word_wrap("*aaaaaaaaaaaaaaaaaaaa*  bbbbb bbb  b\t"
+		++ " ccccc c c c   cccc c c c c ccccc ccc cccc c  ccc ccc ccc "
+		++ "*dddddddddddddddddddddddddddddddddddddddddddddddddddddd*"
+		++ "                                                    eee",
+		10, "-") },
+	{ WrappedDots = 
+		string.word_wrap("*aaaaaa*  bbbbb bbb  b\t"
+		++ " ccccc c c c   cccc c c c c ccccc ccc cccc c  ccc ccc ccc "
+		++ "*dddddddddddddd*"
+		++ "                                                    eee",
+		5, "...") },
+	{ SepTooLong = 
+		string.word_wrap("whatever", 2, "...") },
+	write_string("\nWrapped string:\n"),
+	write_string(Wrapped),
+	write_string("\nWrapped string with hyphens:\n"),
+	write_string(WrappedHyphen),
+	write_string("\nWrapped string with dots:\n"),
+	write_string(WrappedDots),
+	write_string("\nWrapped string where seperator is too long:\n"),
+	write_string(SepTooLong),
 	[].
 
 :- pred write_message(string, string, io__state, io__state).
