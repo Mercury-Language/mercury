@@ -19,6 +19,11 @@ mdb*.h
 mdb*.mh
 mdb*.mih
 mer_browser.init
+mer_browser.dv
+mer_browser.mh
+mer_mdbcomp.init
+mer_mdbcomp.dv
+mer_mdbcomp.mh
 Mercury
 mdb.dv
 browse_test.dv

@@ -34,3 +34,6 @@ Mercury
 libmer_std.lib
 *.mh
 *.mih
+*.java
+*.class
+*.jar
