@@ -134,7 +134,7 @@ mmake_test () {
 		# The `-k' option to mmake avoids differences in the output
 		# when using parallel mmakes.
 		#
-		eval mmake -k $mmakeopts $main_module > $failing_make_output 2>&1
+		eval mmake $mmakeopts -k $main_module > $failing_make_output 2>&1
 		;;
 	    false)
 		eval mmake $mmakeopts $main_module
