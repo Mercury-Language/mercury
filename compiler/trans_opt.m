@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,29 +15,18 @@
 % other .trans_opt files introduces the possibility of circular
 % dependencies occuring. These circular dependencies would occur if the
 % data in A.trans_opt depended on the data in B.trans_opt being correct,
-% and vice-versa.  Before .trans_opt files can be used safely, a system
-% will need to be implemented to ensure that circular dependencies cannot
-% occur.  The best way to do this has not yet been decided upon, but here
-% are some possibilities:
-% 1 - Have mmc <module>.depend output a .order file.  This file would
-%     contain a list of all the modules in the current program, sorted
-%     topologically.  As a result, any module may import a .trans_opt file
-%     from another module if and only if that other module appears after
-%     the current module in the .order file.  This solution has the
-%     advantage that it is quite simple to implement (in fact Simon Taylor
-%     has already implemented it).  Unfortunatly, it has some problems.
-%     Firstly, when module dependencies change, the .order file is not
-%     modified until mmc <module>.depend is run again.  Secondly, some
-%     modules are only imported for types.  It would be better if these
-%     dependencies were not considered, but this would make it quite
-%     difficult to create the .order file. Thirdly, it is not clear how to
-%     handle the situation where one module is used by two different
-%     programs, and if the dependencies of that module changes between when
-%     mmc <module>.depend is run on each program.
+% and vice-versa.  
 %
-% 2 - Have a system where the dependencies can be modified each time 
-%     compiler is run.  This causes all sorts of problems when considering
-%     the effect of parallel makes.
+% The following system is used to ensure that circular dependencies cannot
+% occur:
+% 	When mmake <module>.depend is run, mmc calculates a suitable
+% 	ordering.  This ordering is then used to create each of the .d
+% 	files.  This allows make to ensure that all necessary trans_opt
+% 	files are up to date before creating any other trans_opt files.
+% 	This same information is used by mmc to decide which trans_opt
+% 	files may be imported when creating another .trans_opt file.  By
+% 	observing the ordering decided upon when mmake module.depend was
+% 	run, any circularities which may have been created are avoided.
 %
 % This module writes out the interface for transitive intermodule optimization.
 % The .trans_opt file includes:
@@ -72,11 +61,13 @@
 :- pred trans_opt__write_optfile(module_info, io__state, io__state).
 :- mode trans_opt__write_optfile(in, di, uo) is det.
 
-	% Add the items from the .trans_opt files of imported modules to
-	% the items for this module.
-:- pred trans_opt__grab_optfiles(module_imports, module_imports, bool,
-				io__state, io__state).
-:- mode trans_opt__grab_optfiles(in, out, out, di, uo) is det.
+	% trans_opt__grab_optfiles(ModuleImports0, ModuleList, ModuleImports, 
+	% 	Error, IO0, IO).
+	% Add the items from each of the modules in ModuleList.trans_opt to
+	% the items in ModuleImports.
+:- pred trans_opt__grab_optfiles(module_imports, list(string), 
+	module_imports, bool, io__state, io__state).
+:- mode trans_opt__grab_optfiles(in, in, out, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -183,17 +174,20 @@ trans_opt__write_procs([ProcId | ProcIds], PredId, PredInfo) -->
 %-----------------------------------------------------------------------------%
 	% Read in and process the transitive optimization interfaces.
 
-trans_opt__grab_optfiles(Module0, Module, FoundError) -->
+trans_opt__grab_optfiles(Module0, TransOptDeps, Module, FoundError) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Reading .trans_opt files..\n"),
+	maybe_flush_output(Verbose),
 	{ Module0 = module_imports(ModuleName, DirectImports0,
 		IndirectImports0, Items0, _) },
-	{ list__sort_and_remove_dups(DirectImports0, Imports) },
-	read_trans_opt_files(Imports, [], OptItems, no, FoundError),
+	read_trans_opt_files(TransOptDeps, [], OptItems, no, FoundError),
 	{ term__context_init(Context) },
 	{ varset__init(Varset) },
 	{ OptDefn = module_defn(Varset, opt_imported) - Context },
 	{ list__append(Items0, [ OptDefn | OptItems ], Items) },
 	{ Module = module_imports(ModuleName, DirectImports0, 
-		IndirectImports0, Items, no) }.
+		IndirectImports0, Items, no) },
+	maybe_write_string(Verbose, "% Done.\n").
 
 :- pred read_trans_opt_files(list(module_name), item_list,
 	item_list, bool, bool, io__state, io__state).

@@ -200,18 +200,20 @@ process_module_2(ModuleName) -->
 :- mode mercury_compile(in, in, di, uo) is det.
 
 mercury_compile(Module, FactDeps) -->
-	{ Module = module_imports(ModuleName, _, _, _, _) },
-	mercury_compile__pre_hlds_pass(Module, FactDeps, HLDS1, UndefTypes,
-						UndefModes, Errors1), !,
+	globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
+	globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
+	{ bool__or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile) },
+	% If we are only typechecking or error checking, then we should not
+	% modify any files, this includes writing to .d files.
+	mercury_compile__pre_hlds_pass(Module, FactDeps, DontWriteDFile,
+		HLDS1, UndefTypes, UndefModes, Errors1), !,
 	mercury_compile__frontend_pass(HLDS1, HLDS20, UndefTypes,
-						UndefModes, Errors2), !,
+		UndefModes, Errors2), !,
 	( { Errors1 = no }, { Errors2 = no } ->
 	    globals__io_lookup_bool_option(verbose, Verbose),
 	    globals__io_lookup_bool_option(statistics, Stats),
 	    mercury_compile__maybe_write_dependency_graph(HLDS20,
 		Verbose, Stats, HLDS21),
-	    globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
-	    globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	    globals__io_lookup_bool_option(make_optimization_interface,
 		MakeOptInt),
 	    globals__io_lookup_bool_option(make_transitive_opt_interface,
@@ -229,6 +231,7 @@ mercury_compile(Module, FactDeps) -->
 	    ; { MakeTransOptInt = yes } ->
 	    	mercury_compile__output_trans_opt_file(HLDS21)
 	    ;
+		{ Module = module_imports(ModuleName, _, _, _, _) },
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50), !,
@@ -258,21 +261,33 @@ mercury_compile(Module, FactDeps) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__pre_hlds_pass(module_imports, list(string),
-		module_info, bool, bool, bool, io__state, io__state).
-:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out,
+		bool, module_info, bool, bool, bool, io__state, io__state).
+:- mode mercury_compile__pre_hlds_pass(in, in, in, out, out, out, out,
 		di, uo) is det.
 
-mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
-		UndefModes, FoundError) -->
+mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, DontWriteDFile,
+		HLDS1, UndefTypes, UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
 	{ ModuleImports0 = module_imports(Module, LongDeps, ShortDeps, _, _) },
-	write_dependency_file(Module, LongDeps, ShortDeps, FactDeps), !,
+	
+
+	( { DontWriteDFile = yes } ->
+		% The only time the TransOptDeps are required is when
+		% creating the .trans_opt file.  If DontWriteDFile is yes,
+		% then error check only or type-check only is enabled, so
+		% we cant be creating the .trans_opt file.
+		{ MaybeTransOptDeps = no }
+	;
+		maybe_read_dependency_file(Module, MaybeTransOptDeps), !,
+		write_dependency_file(Module, LongDeps, ShortDeps, FactDeps, 
+			MaybeTransOptDeps), !
+	),
 
 	% Errors in .opt and .trans_opt files result in software errors.
 	mercury_compile__maybe_grab_optfiles(ModuleImports0, Verbose,
-				 ModuleImports1, IntermodError), !,
+		MaybeTransOptDeps, ModuleImports1, IntermodError), !,
 
 	{ ModuleImports1 = module_imports(_, _, _, Items1, _) },
 	mercury_compile__module_qualify_items(Items1, Items2, Module, Verbose,
@@ -321,14 +336,18 @@ mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose,
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__maybe_grab_optfiles(module_imports, bool,
-	 module_imports, bool, io__state, io__state).
-:- mode mercury_compile__maybe_grab_optfiles(in, in, out, out, di, uo) is det.
+	 maybe(list(string)), module_imports, bool, io__state, io__state).
+:- mode mercury_compile__maybe_grab_optfiles(in, in, in, out, out, 
+	di, uo) is det.
 
-mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports, Error) -->
+mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, 
+		Imports, Error) -->
 	globals__io_lookup_bool_option(intermodule_optimization, UseOptInt),
 	globals__io_lookup_bool_option(make_optimization_interface,
 						MakeOptInt),
 	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
+	globals__io_lookup_bool_option(make_transitive_opt_interface,
+		MakeTransOptInt),
 	( { UseOptInt = yes, MakeOptInt = no } ->
 		maybe_write_string(Verbose, "% Reading .opt files...\n"),
 		maybe_flush_output(Verbose),
@@ -338,15 +357,45 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports, Error) -->
 		{ Imports1 = Imports0 },
 		{ Error1 = no }
 	),
-	( { TransOpt = yes } ->
-		maybe_write_string(Verbose, "% Reading .trans_opt files..\n"),
-		maybe_flush_output(Verbose),
-		trans_opt__grab_optfiles(Imports1, Imports, Error2),
-		maybe_write_string(Verbose, "% Done.\n")
+	( { MakeTransOptInt = yes } ->
+		( { MaybeTransOptDeps = yes(TransOptDeps) } ->
+			% When creating the trans_opt file, only import the
+			% trans_opt files which are lower in the ordering.
+			trans_opt__grab_optfiles(Imports1, TransOptDeps, 
+				Imports, Error2)
+		;
+			{ Imports = Imports1 },
+			{ Error2 = no },
+			{ Imports = module_imports(ModuleName, _, _, _, _) },
+			globals__io_lookup_bool_option(
+				warn_missing_trans_opt_deps,
+				WarnNoTransOptDeps),
+			( { WarnNoTransOptDeps = yes } ->
+				io__write_strings([
+				    "Warning: Cannot read dependencies for `",
+				    ModuleName, ".trans_opt'.\n",
+				    "  run `mmake main_module.depend' ",
+				    "to remake the dependencies\n"])
+			;
+				[]
+			)
+		)
 	;
-		{ Imports = Imports1 },
-		{ Error2 = no }
+		( { TransOpt = yes } ->
+			% If transitive optimization is enabled, but we are
+			% not creating the trans opt file, then import the
+			% trans_opt files for all the modules that are
+			% imported (or used).
+			{ Imports0 = module_imports(_Module, DirectImports, 
+				_IndirectImports, _Items, _) },
+			trans_opt__grab_optfiles(Imports1, DirectImports,
+				Imports, Error2)
+		;
+			{ Imports = Imports1 },
+			{ Error2 = no }
+		)
 	),
+
 	{ bool__or(Error1, Error2, Error) }.
 
 :- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -247,16 +247,16 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
-	% --verbose-check-termination implies --check-termination
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
-	% --check-termination implies --enable-termination
 	option_implies(check_termination, termination, bool(yes)),
+	option_implies(make_transitive_opt_interface, transitive_optimization,
+		bool(yes)),
+	option_implies(transitive_optimization, intermodule_optimization,
+		bool(yes)),
+	option_implies(very_verbose, verbose, bool(yes)),
 
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
-
-	% --very-verbose implies --verbose
-	option_implies(very_verbose, verbose, bool(yes)),
 
 	% -D all is really -D "abcdefghijklmnopqrstuvwxyz"
 	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
@@ -652,7 +652,7 @@ usage -->
  	io__write_strings(StdErr,
 			["Mercury Compiler, version ", Version, "\n"]),
  	io__write_string(StdErr,
-			"Copyright (C) 1993-1997 The University of Melbourne\n"),
+			"Copyright (C) 1993-1998 The University of Melbourne\n"),
 	io__write_string(StdErr, "Usage: "),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " [<options>] <module(s)>\n"),
@@ -664,7 +664,7 @@ long_usage -->
 	io__progname_base("mercury_compile", ProgName),
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1993-1997 The University of Melbourne\n"),
+ 	io__write_string("Copyright (C) 1993-1998 The University of Melbourne\n"),
 	io__write_string("Usage: "),
 	io__write_string(ProgName),
 	io__write_string(" [<options>] <module(s)>\n"),

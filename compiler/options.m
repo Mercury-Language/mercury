@@ -55,6 +55,7 @@
 		;	warn_unused_args
 		;	warn_interface_imports
 		;	warn_missing_opt_files
+		;	warn_missing_trans_opt_deps
 		;	warn_non_stratification
 		;	warn_simple_code
 		;	warn_duplicate_calls
@@ -303,6 +304,7 @@ option_defaults_2(warning_option, [
 	warn_interface_imports	-	bool(yes),
 	warn_non_stratification -	bool(no),
 	warn_missing_opt_files  -	bool(yes),
+	warn_missing_trans_opt_deps  -	bool(yes),
 	warn_simple_code	-	bool(yes),
 	warn_duplicate_calls	-	bool(no),
 	warn_missing_module_name -	bool(yes),
@@ -593,6 +595,7 @@ long_option("warn-unused-args",		warn_unused_args).
 long_option("warn-interface-imports",	warn_interface_imports).
 long_option("warn-non-stratification",	warn_non_stratification).
 long_option("warn-missing-opt-files",	warn_missing_opt_files).
+long_option("warn-missing-trans-opt-deps",	warn_missing_trans_opt_deps).
 long_option("warn-simple-code",		warn_simple_code).
 long_option("warn-duplicate-calls",	warn_duplicate_calls).
 long_option("warn-missing-module-name",	warn_missing_module_name).
@@ -918,6 +921,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_nothing_exported	-	bool(Enable),
 			warn_interface_imports	-	bool(Enable),
 			warn_missing_opt_files	-	bool(Enable),
+			warn_missing_trans_opt_deps -	bool(Enable),
 			warn_simple_code	-	bool(Enable),
 			warn_missing_module_name -	bool(Enable),
 			warn_wrong_module_name	-	bool(Enable)
@@ -1153,8 +1157,14 @@ options_help_warning -->
 	io__write_string("\t--warn-interface-imports\n"),
 	io__write_string("\t\tWarn about modules imported in the interface, but\n"),
 	io__write_string("\t\twhich are not used in the interface.\n"),
-	io__write_string("\t--warn-missing-opt-files\n"),
-	io__write_string("\t\tWarn about `.opt' files which cannot be opened.\n"),
+	io__write_string("\t--no-warn-missing-opt-files\n"),
+	io__write_string("\t\tDisable warnings about `.opt' files which cannot be opened.\n"),
+	io__write_string("\t--no-warn-missing-trans-opt-deps\n"),
+	io__write_string("\t\tDisable warnings produced when the information required\n"),
+	io__write_string("\t\tto allow `.trans_opt' files to be read when creating other\n"),
+	io__write_string("\t\t`.trans_opt' files has been lost.  The information can be\n"),
+	io__write_string("\t\trecreated by running `mmake <mainmodule>.depend'\n"),
+
 	io__write_string("\t--warn-non-stratification\n"),
 	io__write_string("\t\tWarn about possible non-stratification in the module.\n"),
 	io__write_string("\t\tNon-stratification occurs when a predicate/function can call\n"),
@@ -1216,7 +1226,6 @@ options_help_output -->
 	io__write_string("\t\tOutput the strongly connected components of the module\n"),
 	io__write_string("\t\tdependency graph in top-down order to `<module>.order'.\n"),
 	io__write_string("\t\tImplies --generate-dependencies.\n"),
-
 	io__write_string("\t-i, --make-int, --make-interface\n"),
 	io__write_string("\t\tWrite the module interface to `<module>.int',\n"),
 	io__write_string("\t\tand write the short interface to `<module>.int2'\n"),
@@ -1228,10 +1237,10 @@ options_help_output -->
 	io__write_string("\t\tWrite inter-module optimization information to\n"),
 	io__write_string("\t\t`<module>.opt'.\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
-%	io__write_string("\t--make-transitive-optimization-interface\n"),
-%	io__write_string("\t--make-trans-opt\n"),
-%	io__write_string("\t\tOutput transitive optimization information\n"),
-%	io__write_string("\t\tinto the <module>.trans_opt file.\n"),
+	io__write_string("\t--make-trans-opt\n"),
+	io__write_string("\t--make-transitive-optimization-interface\n"),
+	io__write_string("\t\tOutput transitive optimization information\n"),
+	io__write_string("\t\tinto the `<module>.trans_opt' file.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'.\n"),
 	io__write_string("\t\tNote that some Mercury language constructs cannot\n"),
@@ -1545,10 +1554,10 @@ options_help_optimization -->
 	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
 	io__write_string("\t\tthe code for predicates imported from other modules.\n"),
 	io__write_string("\t\tThis option must be set throughout the compilation process.\n"),
-%	io__write_string("\t--trans-intermod-opt\n"),
-%	io__write_string("\t--transitive-intermodule-optimization\n"),
-%	io__write_string("\t\tImport the transitive intermodule optimization data.\n"),
-%	io__write_string("\t\tThis data is imported from <module>.trans_opt files.\n"),
+	io__write_string("\t--trans-intermod-opt\n"),
+	io__write_string("\t--transitive-intermodule-optimization\n"),
+	io__write_string("\t\tImport the transitive intermodule optimization data.\n"),
+	io__write_string("\t\tThis data is imported from `<module>.trans_opt' files.\n"),
 	io__write_string("\t--enable-term, --enable-termination\n"),
 	io__write_string("\t\tAnalyse each predicate to discover if it terminates.\n"),
 	io__write_string("\t--chk-term, --check-term, --check-termination\n"),

@@ -136,9 +136,9 @@ Files ending in @file{.opt} are
 interface files used in inter-module optimization,
 and are created using the @samp{--make-optimization-interface}
 (or @samp{--make-opt-int}) option.
-@c Files ending in @file{.trans_opt} are interface files used in
-@c transitive inter-module optimization, and are created using the
-@c @samp{--make-transitive-optimization-interface} option.
+Files ending in @file{.trans_opt} are interface files used in
+transitive inter-module optimization, and are created using the
+@samp{--make-transitive-optimization-interface} option.
 
 Since the interface of a module changes less often than its implementation,
 the @file{.int}, @file{.int2}, @file{.int3}, and @file{.opt}
@@ -219,13 +219,13 @@ then you also need to create the optimization interface files.
 mmc --make-opt-int @var{module1}.m @var{module2}.m ...
 @end example
 
-@c If you are going to compile with @samp{--transitive-intermodule-optimization}
-@c enabled, then you also need to create the transitive optimization files.
+If you are going to compile with @samp{--transitive-intermodule-optimization}
+enabled, then you also need to create the transitive optimization files.
 
-@c @example
-@c mmc -make-trans-opt @var{module1}.m @var{module2}.m ...
-@c @end example
-@c
+@example
+mmc --make-trans-opt @var{module1}.m @var{module2}.m ...
+@end example
+
 Given that you have made all the interface files,
 one way to create an executable for a multi-module program
 is to compile all the modules at the same time
@@ -808,7 +808,7 @@ Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
 removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
 @samp{.opt}, @samp{.optdate}, @samp{.date3},
-@c @samp{.trans_opt}, @samp{.trans_optdate},
+@samp{.trans_opt}, @samp{.trans_optdate},
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}},
@@ -1572,16 +1572,16 @@ Write the unqualified version of the short interface to
 Write information used for inter-module optimization to
 @file{@var{module}.opt}.
 
-@c @sp 1
-@c @item --make-transitive-optimization-interface
-@c @itemx --make-trans-opt
-@c Write the @file{@var{module}.trans_opt} file.  This file is used to store
-@c information used for inter-module optimization. The information is read
-@c in when the compiler is invoked with the @samp{--transitive-optimization}
-@c option.  The file is called ``transitive'' because a
-@c @file{@var{module}.trans_opt} file may depend on other
-@c @file{@var{module}.trans_opt} files.
-@c
+@sp 1
+@item --make-trans-opt
+@itemx --make-transitive-optimization-interface
+Write the @file{@var{module}.trans_opt} file.  This file is used to store
+information used for inter-module optimization. The information is read
+in when the compiler is invoked with the @samp{--transitive-optimization}
+option.  The file is called ``transitive'' because a
+@file{@var{module}.trans_opt} file may depend on other
+@file{@var{module}.trans_opt} files.
+
 @sp 1
 @item -G
 @itemx --convert-to-goedel
@@ -2118,19 +2118,19 @@ and turn off optimizations that significantly increase code size.
 Perform inlining and higher-order specialization of the code for
 predicates or functions imported from other modules.
 
-@c @sp 1
-@c @item --transitive-intermodule-optimization
-@c @item --trans-intermod-opt
-@c Use the information stored in other @file{@var{module}.trans_opt} files
-@c to make intermodule optimizations.  The @file{@var{module}.trans_opt} is
-@c different to the @file{@var{module}.opt} as @file{@var{module}.trans_opt}
-@c files may depend on other @file{@var{module}.trans_opt} files.
-@c @file{@var{module}.opt} files may only depend on the
-@c @file{@var{module}.m} file.
-@c
 @sp 1
-@itemx --enable-term
-@item --enable-termination
+@item --trans-intermod-opt
+@itemx --transitive-intermodule-optimization
+Use the information stored in other @file{@var{module}.trans_opt} files
+to make intermodule optimizations.  The @file{@var{module}.trans_opt} is
+different to the @file{@var{module}.opt} as @file{@var{module}.trans_opt}
+files may depend on other @file{@var{module}.trans_opt} files.
+@file{@var{module}.opt} files may only depend on the
+@file{@var{module}.m} file.
+
+@sp 1
+@item --enable-term
+@itemx --enable-termination
 Enable termination analysis.  Termination analysis analyses each mode of
 each predicate to see whether it terminates.  @samp{pragma terminates},
 @samp{pragma does_not_terminate} and @samp{pragma check_termination}
