@@ -44,6 +44,9 @@
 				io__state, io__state).
 :- mode hlds_out__write_unify_context(in, in, di, uo) is det.
 
+:- pred hlds_out__write_category(category, io__state, io__state).
+:- mode hlds_out__write_category(in, di, uo).
+
 %-----------------------------------------------------------------------------%
 
 	% print out an entire hlds structure.
@@ -795,9 +798,6 @@ hlds_out__write_vartypes(Indent, X) -->
 	hlds_out__write_indent(Indent),
 	io__write_anything(X),
 	io__write_string("\n").
-
-:- pred hlds_out__write_category(category, io__state, io__state).
-:- mode hlds_out__write_category(in, di, uo).
 
 hlds_out__write_category(deterministic) -->
 	io__write_string("det").

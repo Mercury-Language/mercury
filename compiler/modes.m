@@ -287,6 +287,7 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 	InstMap0 = reachable(InstMapping0),
 		% initially, only the head variables are live
 	set__list_to_set(HeadVars, LiveVars),
+	proc_info_set_liveness_info(ProcInfo0, LiveVars, ProcInfo1),
 	mode_info_init(IOState0, ModuleInfo, PredId, ProcId, Context, LiveVars,
 			InstMap0, ModeInfo0),
 	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
@@ -294,7 +295,7 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 	modecheck_report_errors(ModeInfo2, ModeInfo),
 	mode_info_get_num_errors(ModeInfo, NumErrors),
 	mode_info_get_io_state(ModeInfo, IOState),
-	proc_info_set_goal(ProcInfo0, Body, ProcInfo).
+	proc_info_set_goal(ProcInfo1, Body, ProcInfo).
 
 :- pred modecheck_final_insts(list(var), list(mode), mode_info, mode_info).
 :- mode modecheck_final_insts(in, in, in, out).
@@ -360,14 +361,32 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 	%%% mode_info_set_context(ModeInfo0, Context, ModeInfo1)
 		%
 		% modecheck the goal, and then store the changes in
-		% instantiation of the non-local vars in the goal's goal_info.
+		% instantiation of the non-local vars and the changes
+		% in liveness in the goal's goal_info.
 		%
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	mode_info_get_vars_instmap(ModeInfo0, NonLocals, InstMap0),
+	mode_info_get_liveness(ModeInfo0, Liveness0),
 	modecheck_goal_2(Goal0, NonLocals, Goal, ModeInfo0, ModeInfo),
+		%
+		% save the changes in instantiation of the non-local vars
+		%
 	mode_info_get_vars_instmap(ModeInfo, NonLocals, InstMap),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
-	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
+	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo1),
+		%
+		% save the changes in liveness
+		%
+	mode_info_get_liveness(ModeInfo, Liveness),
+	compute_liveness_delta(Liveness0, Liveness, DeltaLiveness),
+	goal_info_set_delta_liveness(GoalInfo1, DeltaLiveness, GoalInfo).
+
+:- pred compute_liveness_delta(set(var), set(var), delta_liveness).
+:- mode compute_liveness_delta(in, in, out) is det.
+
+compute_liveness_delta(Liveness0, Liveness, Births - Deaths) :-
+	set__difference(Liveness0, Liveness, Deaths),
+	set__difference(Liveness, Liveness0, Births).
 
 :- pred modecheck_goal_2(hlds__goal_expr, set(var), hlds__goal_expr,
 			mode_info, mode_info).

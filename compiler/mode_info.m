@@ -378,6 +378,20 @@ mode_info_var_is_live(mode_info(_,_,_,_,_,_,_,_,_,_,LiveVarsList), Var,
 		Result = dead
 	).
 
+:- pred mode_info_get_liveness(mode_info, set(var)).
+:- mode mode_info_get_liveness(in, out) is det.
+
+mode_info_get_liveness(mode_info(_,_,_,_,_,_,_,_,_,_,LiveVarsList), LiveVars) :-
+	set__init(LiveVars0),
+	mode_info_get_liveness_2(LiveVarsList, LiveVars0, LiveVars).
+
+:- pred mode_info_get_liveness_2(list(set(var)), set(var), set(var)).
+:- mode mode_info_get_liveness_2(in, in, out) is det.
+mode_info_get_liveness_2([], LiveVars, LiveVars).
+mode_info_get_liveness_2([LiveVarsSet | LiveVarsList], LiveVars0, LiveVars) :-
+	set__union(LiveVars0, LiveVarsSet, LiveVars1),
+	mode_info_get_liveness_2(LiveVarsList, LiveVars1, LiveVars).
+
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_varset(mode_info, varset).

@@ -3,8 +3,7 @@
 
 % det_analysis.nl - the determinism analysis pass.
 
-% Main author: conway.
-% (Hacked somewhat by fjh ;-)
+% Main authors: conway, fjh.
 
 % This pass has three components:
 %	o Segregate the procedures into those that have determinism
@@ -44,7 +43,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, set, prog_io, prog_out, std_util.
+:- import_module list, map, set, prog_io, prog_out, hlds_out, std_util.
 :- import_module globals, options, io.
 
 %-----------------------------------------------------------------------------%
@@ -266,31 +265,41 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
 	;
 		{ max_category(DeclaredCategory, InferredCategory, Category) },
 		( { Category = DeclaredCategory } ->
-			report_determinism_warning(PredId, ModeId, ModuleInfo)
+			report_determinism_warning(PredId, ModeId,
+				Category, DeclaredCategory, ModuleInfo)
 		;
-			report_determinism_error(PredId, ModeId, ModuleInfo)
+			report_determinism_error(PredId, ModeId,
+				Category, DeclaredCategory, ModuleInfo)
 		)
 	),
 	global_checking_pass_2(Rest, ModuleInfo).
 
-:- pred report_determinism_error(pred_id, proc_id, module_info,
-				io__state, io__state).
-:- mode report_determinism_error(in, in, in, di, uo).
+:- pred report_determinism_error(pred_id, proc_id, category, category,
+				module_info, io__state, io__state).
+:- mode report_determinism_error(in, in, in, in, in, di, uo).
 
-report_determinism_error(PredId, ModeId, ModuleInfo) -->
+report_determinism_error(PredId, ModeId, Category, DeclaredCategory,
+		ModuleInfo) -->
 	{ module_info_preds(ModuleInfo, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ map__lookup(ProcTable, ModeId, ProcInfo) },
 	{ proc_info_context(ProcInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("Error: determinism declaration not satisfied.\n").
+	io__write_string("Error: determinism declaration not satisfied.\n"),
+	prog_out__write_context(Context),
+	io__write_string("  Declared `"),
+	hlds_out__write_category(DeclaredCategory),
+	io__write_string("', inferred `"),
+	hlds_out__write_category(Category),
+	io__write_string("'.\n").
 
-:- pred report_determinism_warning(pred_id, proc_id, module_info,
-				io__state, io__state).
-:- mode report_determinism_warning(in, in, in, di, uo).
+:- pred report_determinism_warning(pred_id, proc_id, category, category,
+				module_info, io__state, io__state).
+:- mode report_determinism_warning(in, in, in, in, in, di, uo).
 
-report_determinism_warning(PredId, ModeId, ModuleInfo) -->
+report_determinism_warning(PredId, ModeId, Category, DeclaredCategory,
+		ModuleInfo) -->
 	{ module_info_preds(ModuleInfo, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, ProcTable) },
@@ -299,7 +308,13 @@ report_determinism_warning(PredId, ModeId, ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string(
 		"Warning: determinism declaration could be stricter.\n"
-	).
+	),
+	prog_out__write_context(Context),
+	io__write_string("  Declared `"),
+	hlds_out__write_category(DeclaredCategory),
+	io__write_string("', inferred `"),
+	hlds_out__write_category(Category),
+	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -480,6 +495,9 @@ det_infer_unify(assign(_, _), _MiscInfo, deterministic).
 det_infer_unify(construct(_, _, _, _), _MiscInfo, deterministic).
 
 	% XXX - This is deterministic if the type only has one constructor.
+	% XXX - or if the variable is known to be already bound
+	% to the appropriate functor.
+
 det_infer_unify(deconstruct(_, _, _, _), _MiscInfo, semideterministic).
 
 det_infer_unify(simple_test(_, _), _MiscInfo, semideterministic).
