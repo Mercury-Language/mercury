@@ -402,6 +402,21 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".cs = "),
+	write_dependencies_list(Modules, ".c", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".os = "),
+	write_dependencies_list(Modules, ".o", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".ss = "),
+	write_dependencies_list(Modules, ".s", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".errs = "),
 	write_dependencies_list(Modules, ".err", DepStream),
 	io__write_string(DepStream, "\n"),
