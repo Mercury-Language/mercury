@@ -380,7 +380,7 @@ determines which predicate or function the fact belongs to;
 the predicate or function must have been declared
 in a preceding @samp{pred} or @samp{func} declaration in this module.
 The arguments of the head must be valid data-terms.
-A fact is equivalent to a rule whole body is @samp{true}.
+A fact is equivalent to a rule whose body is @samp{true}.
 
 @node Rules
 @section Rules
