@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -405,7 +405,7 @@
 	if (X < -1.0 || X > 1.0) {
 	    mercury_domain_error(""math__acos"");
 	}
-	ACos = asin(X);
+	ACos = acos(X);
 ").
 
 %
