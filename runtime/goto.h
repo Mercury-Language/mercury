@@ -215,9 +215,9 @@
     	"	call 1f\n"     					\
     	"	nop\n"     					\
     	"1:\n"       						\
-	"	sethi %hi(_GLOBAL_OFFSET_TABLE_-(0b-.)),%l7\n"	\
-	"	or %l7,%lo(_GLOBAL_OFFSET_TABLE_-(0b-.)),%l7\n"	\
-	"	add %l7,%o7,%l7\n"				\
+	"	sethi %%hi(_GLOBAL_OFFSET_TABLE_-(0b-.)),%%l7\n"	\
+	"	or %%l7,%%lo(_GLOBAL_OFFSET_TABLE_-(0b-.)),%%l7\n"	\
+	"	add %%l7,%%o7,%%l7\n"				\
 		/* tell gcc we clobber l7, o7, and memory */	\
     		: : : "%l7", "%o7", "memory"
 
