@@ -206,6 +206,10 @@ Define_extern_entry(mercury____TypeToTerm___uniq_array__uniq_array_1_0);
 
 #ifdef  SHARED_ONE_OR_TWO_CELL_TYPE_INFO
 
+	/* This isn't really an integer, but we don't yet have a way of
+	 * describing C types.
+	 */
+
 Word * mercury_data_uniq_array__base_type_layout_uniq_array_1[] = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_INT_VALUE))

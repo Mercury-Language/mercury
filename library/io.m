@@ -1722,7 +1722,8 @@ Word * mercury_data_io__base_type_layout_io__stream_0b[] = {
 Word * mercury_data_io__base_type_layout_io__stream_0a[] = {
 	(Word *) ((Integer) 2),
 	(Word *) ((Integer) mercury_data_io__base_type_layout_io__stream_0b),
-	(Word *) ((Integer) mercury_data_io__base_type_layout_io__stream_0b)
+	(Word *) ((Integer) mercury_data_io__base_type_layout_io__stream_0b),
+	(Word *) string_const(""io__stream"", 10)
 };
 
 Word * mercury_data_io__base_type_layout_io__stream_0[] = {
