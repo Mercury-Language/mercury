@@ -49,119 +49,245 @@
 
 #if defined(__alpha__)
 
-  /* when doing a jump, we need to set $27, the "procedure value" register,
-     to the address we are jumping to, so that we can use an `ldgp'
-     instruction in ASM_ENTRY to set up the right gp value.
+  /* We need special handling for the "global pointer" (gp) register. */
+
+  /*
+  ** When doing a jump, we need to set $27, the "procedure value" register,
+  ** to the address we are jumping to, so that we can use an `ldgp'
+  ** instruction on entry to the procedure to set up the right gp value.
   */
   #define ASM_JUMP(address)				\
 	__asm__("bis %0, %0, $27\n\t" 			\
 		: : "r"(address) : "$27");		\
 	goto *(address)
-	/* Explanation:
-		Move `address' to register $27
-		Jump to `address'
+	/*
+	** Explanation:
+	**	Move `address' to register $27,
+	**	jump to `address'.
 	*/
 
-  /* on entry to a procedure, we need to load the $gp register
-     with the correct value relative to the current address in $27 */
-  #define ASM_ENTRY(label) \
-	/* on fall-thru, we need to skip the ldgp instruction */ \
-  	goto skip(label);				\
-	entry(label):					\
-	__asm__ __volatile__ (				\
-		".globl entry_" stringify(label) "\n"	\
-		"entry_" stringify(label) ":\n\t" 	\
-		"ldgp $gp, 0($27)"			\
-		: : : "memory"				\
-	);						\
-	skip(label):
-  /* even static entry points must fix up the $gp register, since
-     although there won't be any direct calls to them from another
-     C file, their address may be taken and so there may be indirect
-     calls */
-  #define ASM_STATIC_ENTRY(label) \
-	/* on fall-thru, we need to skip the ldgp instruction */ \
-  	goto skip(label);				\
-	entry(label):					\
-	__asm__ __volatile__ (				\
-		"entry_" stringify(label) ":\n\t" 	\
-		"ldgp $gp, 0($27)"			\
-		: : : "memory"				\
-	);						\
-	skip(label):
-  /* even local entry points must fix up the $gp register, since
-     although there won't be any direct calls to them from another
-     C file, their address may be taken and so there may be indirect
-     calls */
-  #define ASM_LOCAL_ENTRY(label) \
-	/* on fall-thru, we need to skip the ldgp instruction */ \
-  	goto skip(label);				\
-	entry(label):					\
-	__asm__ __volatile__ (				\
-		"ldgp $gp, 0($27)"			\
-		: : : "memory"				\
-	);						\
-	skip(label):
-#else
+  /*
+  ** on entry to a procedure, we need to load the $gp register
+  ** with the correct value relative to the current address in $27
+  */
+  #define INLINE_ASM_FIXUP_REGS				\
+  	"	ldgp $gp, 0($27)\n" : : : "memory"
 
-  #ifdef __i386__
-    /*
-    ** The following hack works around a stack leak on the i386.
-    ** The problem is that gcc pushes function parameters onto
-    ** the stack when calling C functions such as GC_malloc(),
-    ** and only restores the stack pointer in the epilogue.
-    ** With non-local gotos, we jump out of the function without
-    ** executing its epilogue, so the stack pointer never gets
-    ** restored.  The result is a memory leak; for example,
-    ** `mc --generate-dependencies mercury_compile' exceeds the
-    ** Slackware Linux default stack space limit of 8M.
-    **
-    ** GNU C has an option `-fno-defer-pop' which is supposed to
-    ** avoid this sort of thing, but it doesn't work for our
-    ** code using non-local gotos.
-    **
-    ** We work around this using the dummy assembler code below, which
-    ** pretends to use the stack pointer, forcing gcc to flush any updates
-    ** of the stack pointer immediately, rather than deferring them until
-    ** the function epilogue.
-    **
-    ** I know this is awful.  It wasn't _my_ idea to use non-local gotos ;-)
-    */
-    #define ASM_JUMP(label)				\
+  /*
+  ** on fall-thru, we need to skip the ldgp instruction
+  */
+  #define ASM_FALLTHROUGH(label) \
+  	goto skip(label);
+
+#elif defined(__i386__)
+
+  /*
+  ** The following hack works around a stack leak on the i386.
+  ** The problem is that gcc pushes function parameters onto
+  ** the stack when calling C functions such as GC_malloc(),
+  ** and only restores the stack pointer in the epilogue.
+  ** With non-local gotos, we jump out of the function without
+  ** executing its epilogue, so the stack pointer never gets
+  ** restored.  The result is a memory leak; for example,
+  ** `mc --generate-dependencies mercury_compile' exceeds the
+  ** Slackware Linux default stack space limit of 8M.
+  **
+  ** GNU C has an option `-fno-defer-pop' which is supposed to
+  ** avoid this sort of thing, but it doesn't work for our
+  ** code using non-local gotos.
+  **
+  ** We work around this using the dummy assembler code below, which
+  ** pretends to use the stack pointer, forcing gcc to flush any updates
+  ** of the stack pointer immediately, rather than deferring them until
+  ** the function epilogue.
+  **
+  ** I know this is awful.  It wasn't _my_ idea to use non-local gotos ;-)
+  */
+  #define ASM_JUMP(label)				\
   	{ register int stack_pointer __asm__("esp");	\
   	__asm__("" : : "g"(stack_pointer)); }		\
   	goto *(label)
-  #else
-    #define ASM_JUMP(label)				\
-  	goto *(label)
+
+  /*
+  ** That hack above needs to be done for all non-local jumps,
+  ** even if we're not using assembler labels.
+  */
+  #define JUMP(label)		ASM_JUMP(label)
+
+  /*
+  ** If we're using position-independent code on i386, then we need to
+  ** set up the correct value of the GOT register (ebx).
+  */
+
+  #if (defined(__pic__) || defined(__PIC__)) && !defined(PIC)
+    #define PIC 1
   #endif
 
-#ifdef __sparc
+  #if PIC
+
+    /*
+    ** At each entry point, where we may have been jump to from
+    ** code in a difference C file, we need to set up `ebx'. 
+    ** We do this by pushing the IP register using a `call'
+    ** instruction whose target is the very next label.
+    ** We then pop this off the stack into `ebx', and
+    ** then use the value obtained to compute the correct
+    ** value of `ebx' by doing something with _GLOBAL_OFFSET_TABLE_
+    ** (I don't understand the details exactly, this code is
+    ** basically copied from the output of `gcc -fpic -S'.)
+    ** Note that `0f' means the label `0:' following the current
+    ** instruction, and `0b' means the label `0:' before the current
+    ** instruction.
+    */
+    #define INLINE_ASM_FIXUP_REGS     				\
+    	"	call 0f\n"     					\
+    	"0:\n"       						\
+    	"	popl %%ebx\n"     				\
+    	"	addl $_GLOBAL_OFFSET_TABLE_+[.-0b],%%ebx\n\t"	\
+    		: : : "memory"
+
+    /*
+    ** It is safe to fall through into INLINE_ASM_FIXUP_REGS,
+    ** but it might be more efficient to branch past it.
+    ** We should really measure both ways and find out which is
+    ** better... for the moment, we just fall through, since
+    ** that keeps the code smaller.
+    */
+    #if 0
+      #define ASM_FALLTHROUGH(label) \
+  	goto skip(label);
+    #endif
+
+  #endif /* PIC */
+
+  /* For Linux-ELF shared libraries, we need to declare that the type of labels
+     is @function (i.e. code, not data), otherwise the dynamic linker seems
+     to get confused, and we end up jumping into the data section.
+     Hence the `.type' directive below.
+  */
+  #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+	"	.type entry_" stringify(label) ",@function\n"
+
+#elif defined (__sparc)
+
   /* For Solaris 5.5.1, we need to declare that the type of labels is
      #function (i.e. code, not data), otherwise the dynamic linker seems
      to get confused, and we end up jumping into the data section.
-     Hence the `.type' directive below. */
-  #define ASM_ENTRY(label) 				\
-  	entry(label):					\
-	__asm__(".globl entry_" stringify(label) "\n\t"	\
-		".type entry_" stringify(label) ",#function\n\t" \
-		"entry_" stringify(label) ":" 		\
-		);
+     Hence the `.type' directive below.
+  */
+  #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+	"	.type entry_" stringify(label) ",#function\n"
+
+#endif
+
+/* for other architectures, these macros have default definitions */
+
+/*
+** INLINE_ASM_FIXUP_REGS is used to fix up the value of
+** any registers after an ASM_JUMP to an entry point, if necessary.
+** It is an assembler string, possibly followed by `: : : <clobbers>'
+** where <clobbers> is an indication to gcc of what gets clobbered.
+*/
+#ifdef INLINE_ASM_FIXUP_REGS
+#define ASM_FIXUP_REGS					\
+	__asm__ __volatile__(				\
+		INLINE_ASM_FIXUP_REGS			\
+	);
 #else
-  #define ASM_ENTRY(label) 				\
-  	entry(label):					\
-	__asm__(".globl entry_" stringify(label) "\n\t"	\
-		"entry_" stringify(label) ":" 		\
-		);
+#define ASM_FIXUP_REGS
+#define INLINE_ASM_FIXUP_REGS
 #endif
-  #define ASM_STATIC_ENTRY(label) 			\
-  	entry(label):					\
-	__asm__ (					\
-		"entry_" stringify(label) ":" 		\
-		);
-  #define ASM_LOCAL_ENTRY(label) 			\
-  	entry(label): ;
+
+/*
+** ASM_FALLTHROUGH is executed when falling through into an entry point.
+** It may call `goto skip(label)' if it wishes to skip past the
+** label and the INLINE_ASM_FIXUP_REGS code.
+*/
+#ifndef ASM_FALLTHROUGH
+#define ASM_FALLTHROUGH(label)
 #endif
+
+/*
+** INLINE_ASM_GLOBALIZE_LABEL is an assembler string to
+** declare an entry label as global.  The following definition
+** using `.globl' should work with the GNU assembler and
+** with most Unix assemblers.
+*/
+#ifndef INLINE_ASM_GLOBALIZE_LABEL
+#define INLINE_ASM_GLOBALIZE_LABEL(label) \
+	"	.globl entry_" stringify(label) "\n"
+#endif
+
+/*
+** INLINE_ASM_ENTRY_LABEL is an assembler string to
+** define an assembler entry label.
+*/
+#ifndef INLINE_ASM_ENTRY_LABEL
+#define INLINE_ASM_ENTRY_LABEL(label)	\
+	"entry_" stringify(label) ":\n"
+#endif
+
+/*
+** ASM_JUMP is used to jump to an entry point defined with
+** ASM_ENTRY, ASM_STATIC_ENTRY, or ASM_LOCAL_ENTRY.
+*/
+#ifndef ASM_JUMP
+#define ASM_JUMP(address)	goto *(address)
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/* The code from here on should be architecture-independent. */
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** ASM_ENTRY is used to declare an external entry point
+** using a (global) assembler label.
+*/
+#define ASM_ENTRY(label) 				\
+	ASM_FALLTHROUGH(label)				\
+  	entry(label):					\
+	__asm__ __volatile__(				\
+		INLINE_ASM_GLOBALIZE_LABEL(label)	\
+		INLINE_ASM_ENTRY_LABEL_TYPE(label)	\
+		INLINE_ASM_ENTRY_LABEL(label)		\
+		INLINE_ASM_FIXUP_REGS			\
+	);						\
+	skip(label): ;
+
+/*
+** ASM_STATIC_ENTRY is the same as ASM_ENTRY,
+** except that its scope is local to a C file, rather than global.
+** Note that even static entry points must do INLINE_ASM_FIXUP_REGS,
+** since although there won't be any direct calls to them from another
+** C file, their address may be taken and so there may be indirect
+** calls.
+*/
+#define ASM_STATIC_ENTRY(label) 			\
+	ASM_FALLTHROUGH(label)				\
+  	entry(label):					\
+	__asm__ __volatile__(				\
+		INLINE_ASM_ENTRY_LABEL_TYPE(label)	\
+		INLINE_ASM_ENTRY_LABEL(label)		\
+		INLINE_ASM_FIXUP_REGS			\
+	);						\
+	skip(label): ;
+
+/*
+** ASM_LOCAL_ENTRY is the same as ASM_ENTRY,
+** except that its scope is local to a BEGIN_MODULE...END_MODULE
+** block, rather than being global.
+** Note that even local entry points must do INLINE_ASM_FIXUP_REGS, since
+** although there won't be any direct calls to them from another
+** C file, their address may be taken and so there may be indirect
+** calls.
+*/
+#define ASM_LOCAL_ENTRY(label) 				\
+	ASM_FALLTHROUGH(label)				\
+  	entry(label):					\
+  	ASM_FIXUP_REGS					\
+	skip(label): ;
 
 /*---------------------------------------------------------------------------*/
 
@@ -251,7 +377,9 @@
     #define ENTRY(label) 	(&label)
     #define STATIC(label) 	(&label)
 
+    #ifndef JUMP
     #define JUMP(label)		ASM_JUMP(label)
+    #endif
 
   #else
     /* !defined(USE_ASM_LABELS) */
@@ -275,14 +403,11 @@
     #define ENTRY(label) 	(entry(label))
     #define STATIC(label) 	(entry(label))
 
-    #ifdef __i386__
-      /* see comment in definition of ASM_JUMP */
-      #define JUMP(label)		ASM_JUMP(label)
-    #else
-      #define JUMP(label)		goto *(label)
+    #ifndef JUMP(label)
+    #define JUMP(label)		goto *(label)
     #endif
 
-  #endif
+  #endif /* !defined(USE_ASM_LABELS) */
 
   #define Declare_local(label)	/* no declaration required */
   #define Define_local(label)	\
@@ -358,7 +483,7 @@
   #define GOTO_LOCAL(label) 	GOTO(LOCAL(label))
   #define GOTO_LABEL(label) 	GOTO(LABEL(label))
 
-#endif
+#endif /* !defined(USE_GCC_NONLOCAL_GOTOS) */
 
 /* DEFINITIONS FOR COMPUTED GOTOS */
 
