@@ -1039,23 +1039,3 @@ list__merge_and_remove_dups(P, [H1|T1], [H2|T2], L) :-
 
 
 %-----------------------------------------------------------------------------%
-
-:- interface.
-
-	% list__apply(Cs, Bs) takes a list of closures with one
-	% output argument Cs, and calls the closures, returning
-	% the resulting bindings in Bs.
-:- pred list__apply(list(pred(T)), list(T)).
-:- mode list__apply(list_skel_in(pred(out) is det), out) is det.
-:- mode list__apply(list_skel_in(pred(out) is semidet), out) is semidet.
-:- mode list__apply(list_skel_in(pred(out) is multi), out) is multi.
-:- mode list__apply(list_skel_in(pred(out) is nondet), out) is nondet.
-
-:- implementation.
-
-list__apply([], []).
-list__apply([C|Cs], [B|Bs]) :-
-	call(C, B),
-	list__apply(Cs, Bs).
-
-%-----------------------------------------------------------------------------%
