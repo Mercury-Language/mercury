@@ -125,6 +125,7 @@ TMPDIR=${TMPDIR=/tmp}
 # use sockets. The name of the needed libraries is determined by autoconf
 # and passed through this variable.
 SOCKET_LIBRARY="@SOCKET_LIBRARY@"
+NSL_LIBRARY="@NSL_LIBRARY@"
 
 # Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
 DL_LIBRARY="@DL_LIBRARY@"
@@ -428,7 +429,7 @@ esac
 
 case $trace in
 	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME"
-		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $DL_LIBRARY \
+		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY \
 			$READLINE_LIBRARIES"
 		TRACE_STATIC_LIBS="\
 			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \

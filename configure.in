@@ -2083,10 +2083,15 @@ fi
 AC_CHECK_LIB(socket, socket, SOCKET_LIBRARY=-lsocket, SOCKET_LIBRARY="")
 
 #
+# check whether we need -lnsl
+#
+AC_CHECK_LIB(nsl, inet_addr, NSL_LIBRARY=-lnsl, NSL_LIBRARY="")
+
+#
 # temporarily add -lsocket to LIBS, for use by TRY_LINK
 #
 save_LIBS="$LIBS"
-LIBS="$LIBS $SOCKET_LIBRARY"
+LIBS="$LIBS $SOCKET_LIBRARY $NSL_LIBRARY"
 
 #
 # use TRY_LINK to see whether we can use sockets
@@ -2290,9 +2295,11 @@ else
 
 	# don't link with the socket library if we're not going to use it
 	SOCKET_LIBRARY=
+	NSL_LIBRARY=
 fi
 
 AC_SUBST(SOCKET_LIBRARY)
+AC_SUBST(NSL_LIBRARY)
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
