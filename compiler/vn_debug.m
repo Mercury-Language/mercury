@@ -227,7 +227,7 @@ vn__livemap_msg_flag(no).
 vn__order_sink_msg_flag(no).
 vn__order_msg_flag(no).
 vn__order_map_msg_flag(no).
-vn__order_cost_msg_flag(yes).
+vn__order_cost_msg_flag(no).
 vn__flush_msg_flag(no).
 
 %-----------------------------------------------------------------------------%

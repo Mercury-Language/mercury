@@ -265,13 +265,12 @@ jumpopt__short_labels([Label0 | Labels0], Instrmap, [Label | Labels], Mod) :-
 
 jumpopt__final_dest(SrcLabel, SrcInstr, Instrmap, DestLabel, DestInstr) :-
 	(
-		SrcInstr = goto(label(TargetLabel)) - Comment,
-		map__search(Instrmap, TargetLabel, TargetInstr)
-	->
-		jumpopt__final_dest(TargetLabel, TargetInstr,
-			Instrmap, DestLabel, DestInstr)
-	;
-		SrcInstr = label(TargetLabel) - Comment,
+		SrcInstr = SrcUinstr - _Comment,
+		(
+			SrcUinstr = goto(label(TargetLabel))
+		;
+			SrcUinstr = label(TargetLabel)
+		),
 		map__search(Instrmap, TargetLabel, TargetInstr)
 	->
 		jumpopt__final_dest(TargetLabel, TargetInstr,

@@ -135,7 +135,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 	% nl,
 	(
 		frameopt__detstack_teardown([Instr0 | Instrs0],
-			FrameSize, _Teardown, _Tail, After)
+			FrameSize, _Tail, _Teardown, _Goto, After)
 	->
 		frameopt__build_sets(After, FrameSize, yes, no, no,
 			FrameSet0, FrameSet, SuccipSet0, SuccipSet)
@@ -296,7 +296,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize,
 			Use = no,
 			set__is_member(Label, FrameSet0, no),
 			frameopt__detstack_teardown(Instrs0,
-				FrameSize, _Teardown, _Tail, After)
+				FrameSize, _Tail, _Teardown, _Goto, After)
 		->
 			% If we get here, then generate_if will be move the
 			% stack teardown code before the if, since the stack
@@ -463,14 +463,12 @@ frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
 	(
 		Instr0 = label(Label) - _,
 		frameopt__detstack_teardown(Instrs0,
-			FrameSize, _Teardown, Tail, After)
+			FrameSize, Tail, _Teardown, Goto, After)
 	->
 		N1 is N0 + 1,
 		NewLabel = local(ProcLabel, N0),
-		Extra1 = [
-			label(NewLabel) - "non-teardown parallel label"
-			| Tail
-		],
+		NewLabelInstr = label(NewLabel) - "non-teardown parallel label",
+		list__condense([[NewLabelInstr], Tail, [Goto]], Extra1),
 		map__set(TeardownMap0, Label, NewLabel, TeardownMap1),
 		frameopt__dup_teardown_labels(After, FrameSize,
 			TeardownMap1, TeardownMap, ProcLabel, N1, N, Extra2),
@@ -492,15 +490,16 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 		FrameSet, SuccipSet, TeardownMap, ProcLabel, N0, N, Instrs) :-
 	(
 		frameopt__detstack_teardown([Instr0 | Instrs0],
-			FrameSize, Teardown, Tail, After)
+			FrameSize, Tail, Teardown, Goto, After)
 	->
 		frameopt__doit(After, FrameSize, yes, no, no,
 			FrameSet, SuccipSet, TeardownMap,
 			ProcLabel, N0, N, Instrs1),
 		( SetupFrame0 = yes ->
-			list__condense([Teardown, Tail, Instrs1], Instrs)
+			list__condense([Tail, Teardown, [Goto], Instrs1],
+				Instrs)
 		;
-			list__append(Tail, Instrs1, Instrs)
+			list__condense([Tail, [Goto], Instrs1], Instrs)
 		)
 	;
 		Instr0 = Uinstr0 - Comment,
@@ -693,7 +692,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		frameopt__label_without_frame(Label,
 			FrameSet, TeardownMap, Label1),
 		frameopt__detstack_teardown(Instrs0,
-			FrameSize, Teardown, Tail, After)
+			FrameSize, Tail, Teardown, Goto, After)
 	->
 		( Label1 = Label ->
 			Instr1 = Instr0
@@ -705,7 +704,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		frameopt__doit(After, FrameSize, yes, no, no,
 			FrameSet, SuccipSet, TeardownMap,
 			ProcLabel, N0, N, Instrs1),
-		list__condense([Teardown, [Instr1], Tail, Instrs1],
+		list__condense([Teardown, [Instr1], Tail, [Goto], Instrs1],
 			Instrs)
 	;
 		% If both continuations require a stack frame, set it up
@@ -716,7 +715,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		\+ frameopt__label_without_frame(Label,
 			FrameSet, TeardownMap, _),
 		opt_util__block_refers_stackvars(Instrs0, yes),
-		\+ frameopt__detstack_teardown(Instrs0, FrameSize, _, _, _)
+		\+ frameopt__detstack_teardown(Instrs0, FrameSize, _, _, _, _)
 	->
 		frameopt__generate_setup(SetupFrame0, yes,
 			SetupSuccip0, yes, FrameSize, SetupCode),
@@ -789,7 +788,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		(
 			opt_util__block_refers_stackvars(Instrs0, yes),
 			\+ frameopt__detstack_teardown(Instrs0, FrameSize,
-				_, _, _)
+				_, _, _, _)
 		->
 			SetupFrame2 = yes,
 			SetupSuccip2 = yes,
@@ -955,29 +954,29 @@ frameopt__detstack_setup_2([Instr0 | Instrs0], FrameSize, Instrs) :-
 	% Is the following code a teardown of a det stack frame, including
 	% possibly a semidet assignment to r1 and a proceed or tailcall?
 	% Return the teardown instructions, the non-stack instructions
-	% (possible assignment to r1 and the branch away), and the instructions
+	% (possible assignment to r1 etc), the branch away and the instructions
 	% remaining after that.
 
 	% We are looking for the teardown components in any order, since
 	% value numbering may change the original order.
 
 :- pred frameopt__detstack_teardown(list(instruction), int,
-	list(instruction), list(instruction), list(instruction)).
-:- mode frameopt__detstack_teardown(in, in, out, out, out) is semidet.
+	list(instruction), list(instruction), instruction, list(instruction)).
+:- mode frameopt__detstack_teardown(in, in, out, out, out, out) is semidet.
 
-frameopt__detstack_teardown(Instrs0, FrameSize, Teardown, Tail, Remain) :-
+frameopt__detstack_teardown(Instrs0, FrameSize, Tail, Teardown, Goto, Remain) :-
 	frameopt__detstack_teardown_2(Instrs0, FrameSize, [], [], [],
-		Teardown, Tail, Remain).
+		Tail, Teardown, Goto, Remain).
 
 :- pred frameopt__detstack_teardown_2(list(instruction), int,
 	list(instruction), list(instruction), list(instruction),
-	list(instruction), list(instruction), list(instruction)).
-:- mode frameopt__detstack_teardown_2(in, in, in, in, in, out, out, out)
+	list(instruction), list(instruction), instruction, list(instruction)).
+:- mode frameopt__detstack_teardown_2(in, in, in, in, in, out, out, out, out)
 	is semidet.
 
 frameopt__detstack_teardown_2(Instrs0, FrameSize,
 		SeenSuccip0, SeenDecrsp0, SeenExtra0,
-		Teardown, Tail, Remain) :-
+		Tail, Teardown, Goto, Remain) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = Uinstr1 - _,
@@ -992,14 +991,14 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 			SeenSuccip1 = [Instr1],
 			frameopt__detstack_teardown_2(Instrs2, FrameSize,
 				SeenSuccip1, SeenDecrsp0, SeenExtra0,
-				Teardown, Tail, Remain)
+				Tail, Teardown, Goto, Remain)
 		;
 			opt_util__lval_refers_stackvars(Lval, no),
 			opt_util__rval_refers_stackvars(Rval, no),
 			list__append(SeenExtra0, [Instr1], SeenExtra1),
 			frameopt__detstack_teardown_2(Instrs2, FrameSize,
 				SeenSuccip0, SeenDecrsp0, SeenExtra1,
-				Teardown, Tail, Remain)
+				Tail, Teardown, Goto, Remain)
 		)
 	;
 		Uinstr1 = decr_sp(FrameSize),
@@ -1007,12 +1006,13 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 		SeenDecrsp1 = [Instr1],
 		frameopt__detstack_teardown_2(Instrs2, FrameSize,
 			SeenSuccip0, SeenDecrsp1, SeenExtra0,
-			Teardown, Tail, Remain)
+			Tail, Teardown, Goto, Remain)
 	;
 		Uinstr1 = goto(_),
 		SeenDecrsp0 = [_],
 		list__append(SeenSuccip0, SeenDecrsp0, Teardown),
-		list__append(SeenExtra0, [Instr1], Tail),
+		Tail = SeenExtra0,
+		Goto = Instr1,
 		Remain = Instrs2
 	).
 

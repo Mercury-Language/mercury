@@ -259,7 +259,11 @@ generate_category_code(ModuleInfo, ModuleInfoNew, PredId, ProcId,
 
 generate_category_code_2(deterministic, Goal, Instrs, Used) -->
 		% generate the code for the body of the clause
-	( middle_rec__match_det(Goal, Switch) ->
+	(
+		code_info__get_globals(Globals),
+		{ globals__lookup_bool_option(Globals, middle_rec, yes) },
+		middle_rec__match_det(Goal, Switch)
+	->
 		middle_rec__gen_det(Switch, Instrs),
 		{ Used = no }
 	;

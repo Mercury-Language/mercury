@@ -96,6 +96,7 @@
 		;	dense_switch_size
 		;	string_switch_size
 		;	tag_switch_size
+		;	middle_rec
 		;	inlining
 		;	common_subexpression
 		;	c_optimize
@@ -201,6 +202,7 @@ option_defaults_2(optimization_option, [
 	dense_switch_size	-	int(4),
 	string_switch_size	-	int(8),
 	tag_switch_size		-	int(8),
+	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
 	common_subexpression	-	bool(no)
 ]).
@@ -304,6 +306,7 @@ long_option("req-density",		req_density).
 long_option("dense-switch_size",	dense_switch_size).
 long_option("string-switch_size",	string_switch_size).
 long_option("tag-switch-size",		tag_switch_size).
+long_option("middle-rec",		middle_rec).
 long_option("inlining",			inlining).
 long_option("common-subexpression",	common_subexpression).
 
@@ -452,11 +455,13 @@ options_help -->
 	io__write_string("\t\tmust have at least this many entries\n"),
 	io__write_string("\t--tag-switch-size\n"),
 	io__write_string("\t\tThe number of alternatives in a tag switch\n"),
-	io__write_string("\t\tmust exceed this number\n"),
-	io__write_string("\t--no-common-subexpression\n"),
-	io__write_string("\t\tDisable common subexpression optimisation.\n"),
+	io__write_string("\t\tmust be at least this number\n"),
+	io__write_string("\t--no-middle-rec\n"),
+	io__write_string("\t\tDisable the middle recursion optimization.\n"),
 	io__write_string("\t--no-inlining\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
+	io__write_string("\t--no-common-subexpression\n"),
+	io__write_string("\t\tDisable common subexpression optimisation.\n"),
 	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 
