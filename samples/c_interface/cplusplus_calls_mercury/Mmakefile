@@ -32,19 +32,16 @@ MLFLAGS=-g
 
 # tell the Mercury linker to link in cpp_main.o
 MLOBJS=cpp_main.o
+MLLIBS=-lstdc++
 
 #-----------------------------------------------------------------------------#
 
 # we also need to add header file dependencies
-cpp_main.o: cpp_main.h mercury_lib.h
+cpp_main.o: cpp_main.h mercury_lib.mh
 cpp_main_int.o: cpp_main.h
 
-# to make mercury_lib.h, just compile mercury_lib.m;
-# the Mercury compiler will create mercury_lib.h as a side-effect.
-mercury_lib.h: mercury_lib.o
-
-# make sure that `mmake clean' removes cpp_main.o and mercury_lib.h
+# make sure that `mmake clean' removes cpp_main.o
 clean_local:
-	rm -f cpp_main.o mercury_lib.h
+	rm -f cpp_main.o
 
 #-----------------------------------------------------------------------------#
