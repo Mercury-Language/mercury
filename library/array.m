@@ -747,22 +747,19 @@ ML_make_array(MR_Integer size, MR_Word item)
 	Array = (MR_Word) ML_make_array(0, 0);
 ").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 		array__init(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-		// XXX still need to do init
-	Array = (MR_Word) System::Array::CreateInstance(Item->GetType(), Size);
+	Array = System.Array.CreateInstance(Item.GetType(), Size);
+	for (int i = 0; i < Size; i++) {
+		Array.SetValue(Item, i);
+	}
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__make_empty_array(Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-		// XXX this is inefficient.
-	Array = (MR_Word) 
-		System::Array::CreateInstance(
-			(new System::Object)->GetType(), 0);
+        mercury.runtime.Errors.SORRY(""foreign code for this predicate"");
 ").
 
 
@@ -781,17 +778,15 @@ ML_make_array(MR_Integer size, MR_Word item)
 	Min = 0;
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__min(Array::array_ui, Min::out),
 		[will_not_call_mercury, thread_safe], "
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
 	/* Array not used */
 	Min = 0;
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 		array__min(Array::in, Min::out),
 		[will_not_call_mercury, thread_safe], "
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
 	/* Array not used */
 	Min = 0;
 ").
@@ -806,17 +801,15 @@ ML_make_array(MR_Integer size, MR_Word item)
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 		array__max(Array::array_ui, Max::out), 
 		[will_not_call_mercury, thread_safe], "
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-	Max = Array->get_Length() - 1;
+	Max = Array.Length - 1;
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__max(Array::in, Max::out), 
 		[will_not_call_mercury, thread_safe], "
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-	Max = Array->get_Length() - 1;
+	Max = Array.Length - 1;
 ").
 
 
@@ -837,17 +830,15 @@ array__bounds(Array, Min, Max) :-
 	Max = ((MR_ArrayType *)Array)->size;
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__size(Array::array_ui, Max::out),
 		[will_not_call_mercury, thread_safe], "
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-	Max = Array->get_Length() - 1;
+	Max = Array.Length;
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__size(Array::in, Max::out),
 		[will_not_call_mercury, thread_safe], "
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-	Max = Array->get_Length() - 1;
+	Max = Array.Length;
 ").
 
 
@@ -900,17 +891,15 @@ array__slow_set(Array0, Index, Item, Array) :-
 	Item = array->elements[Index];
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__lookup(Array::array_ui, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-	Item = dynamic_cast<MR_Word>(Array->GetValue(Index));
+	Item = Array.GetValue(Index);
 }").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__lookup(Array::in, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
-	Item = dynamic_cast<MR_Word>(Array->GetValue(Index));
+	Item = Array.GetValue(Index);
 }").
 
 
@@ -931,13 +920,12 @@ array__slow_set(Array0, Index, Item, Array) :-
 	Array = Array0;
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "{
-	Array0->SetValue(Item, Index);	/* destructive update! */
+	Array0.SetValue(Item, Index);	/* destructive update! */
 	Array = Array0;
-        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
 }").
 
 
@@ -989,10 +977,10 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 	Array = (MR_Word) ML_resize_array(
 				(MR_ArrayType *) Array0, Size, Item);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__resize(_Array0::array_di, _Size::in, _Item::in,
 		_Array::array_uo), [will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
 
 
@@ -1041,10 +1029,10 @@ ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 	Array = (MR_Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__shrink(_Array0::array_di, _Size::in, _Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
 
 
@@ -1093,19 +1081,19 @@ ML_copy_array(MR_ArrayType *old_array)
 	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__copy(Array0::array_ui, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 		// XXX need to deep copy it
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	Array = Array0;
 
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		array__copy(Array0::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 		// XXX need to deep copy it
 	Array = Array0;
 ").

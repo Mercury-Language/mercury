@@ -259,8 +259,8 @@ $(os_subdir)%.dll : %.cpp
 	rm -f $*.obj
 
 $(os_subdir)%.dll : %.cs
-	csc /t:library /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
-		$(CSHARP_ASSEMBLY_REFS-$*) $<
+	$(MS_CSC) /t:library /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
+		$(CSHARP_ASSEMBLY_REFS-$*) $(ALL_MS_CSCFLAGS) $<
 
 $(os_subdir)%.dll : %.il
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
@@ -368,8 +368,8 @@ ifeq ($(findstring il,$(GRADE)),il)
 	rm -f $*.obj
 
 .cs.dll:
-	csc /t:library /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
-		$(CSHARP_ASSEMBLY_REFS-$*) $<
+	$(MS_CSC) /t:library /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
+		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
 
 .cpp.exe:
 	$(MS_CL) -CLR($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
