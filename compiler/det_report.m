@@ -6,6 +6,8 @@
 
 % det_report.m - reporting of determinism errors and warnings.
 
+% XXX all warnings should be disable-able.  Many of the warnings here aren't.
+
 % author: zs.
 
 %-----------------------------------------------------------------------------%
@@ -656,43 +658,43 @@ det_report_msgs([Msg | Msgs]) -->
 det_report_msg(multidet_disj(GoalInfo, Disjuncts0)) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("The disjunction with arms on lines "),
+	io__write_string("Warning: the disjunction with arms on lines "),
 	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
 	det_report_context_lines(Disjuncts, yes),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("has no outputs, but can succeed more than once.\n").
+	io__write_string("  has no outputs, but can succeed more than once.\n").
 det_report_msg(det_disj(GoalInfo, Disjuncts0)) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("The disjunction with arms on lines "),
+	io__write_string("Warning: the disjunction with arms on lines "),
 	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
 	det_report_context_lines(Disjuncts, yes),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("will succeed exactly once.\n").
+	io__write_string("  will succeed exactly once.\n").
 det_report_msg(semidet_disj(GoalInfo, Disjuncts0)) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("The disjunction with arms on lines "),
+	io__write_string("Warning: the disjunction with arms on lines "),
 	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
 	det_report_context_lines(Disjuncts, yes),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("is semidet, yet it has an output.\n").
+	io__write_string("  is semidet, yet it has an output.\n").
 det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0)) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("The disjunction with arms on lines "),
+	io__write_string("Warning: the disjunction with arms on lines "),
 	{ det_report_sort_context_lines(Disjuncts0, Disjuncts) },
 	det_report_context_lines(Disjuncts, yes),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("cannot succeed.\n").
+	io__write_string("  cannot succeed.\n").
 det_report_msg(zero_soln_disjunct(GoalInfo)) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("This disjunct will never have any solutions.\n").
+	io__write_string("Warning: this disjunct will never have any solutions.\n").
 
 %-----------------------------------------------------------------------------%
 
