@@ -150,7 +150,7 @@ and also in compiler/llds.m, and are also documented below.
 <h2> Trail tickets </h2>
 
 At any point where we create a choice point, i.e. a point to which we may want
-to backtrack to (including exception handlers, and if debugging is enabled,
+to backtrack (including exception handlers, and if debugging is enabled,
 all procedure prologues [to handle the debugger retry command]), or where we
 are about to start a goal for which we may want to do a soft or hard commit,
 the code must allocate a trail ticket, using the MR_store_ticket() macro.
@@ -164,9 +164,11 @@ then it must call MR_mark_ticket_stack().
 
 Whenever we backtrack, or whenever we do a hard or soft commit,
 the code must call MR_reset_ticket(), passing it the trail pointer
-value the was saved by MR_store_ticket(), together with the appropriate
+value that was saved by MR_store_ticket(), together with the appropriate
 MR_trail_reason.  This will walk the trail, applying all the trail
-entries.  In addition, if the ticket will no longer be used,
+entries from the top of the trail down to the given pointer,
+most recently added entries first.
+In addition, if the ticket will no longer be used,
 it should then be pruned or discarded (see below).
 
 <p>
@@ -180,9 +182,9 @@ tickets allocated since the corresponding call to MR_mark_ticket_stack().
 <p>
 
 Whenever we backtrack, the code must "discard" the trail tickets that have
-allocated since the choice point was created,
+been allocated since the choice point was created,
 using either MR_discard_ticket(), which discards the most recently
-allocated ticket, or MR_discard_tickets_to(), which prunes all the
+allocated ticket, or MR_discard_tickets_to(), which discards all the
 tickets allocated since the corresponding call to MR_mark_ticket_stack().
 
 <p>
@@ -232,6 +234,6 @@ tickets allocated since the corresponding call to MR_mark_ticket_stack().
 <!-------------------------->
 <hr>
 <!-------------------------->
-Last update was $Date: 2000-03-20 05:26:56 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-03-22 14:45:04 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>

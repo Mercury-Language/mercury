@@ -5091,10 +5091,10 @@ it is reserved for future use.
 
 Typically if the @var{untrail_func} is called with @var{reason} being
 @samp{MR_undo}, @samp{MR_exception}, or @samp{MR_retry}, then it should undo
-the effects of the update(s) specified by @var{value}, and the free any
+the effects of the update(s) specified by @var{value}, and then free any
 resources associated with that trail entry.  If it is called with @var{reason}
-being @samp{MR_commit} or @samp{MR_solve}, then it not undo the update(s);
-instead, it may check for floundering (see the next section).
+being @samp{MR_commit} or @samp{MR_solve}, then it should not undo the
+update(s); instead, it may check for floundering (see the next section).
 In the @samp{MR_commit} case it may, in some cases, be possible to
 also free resources associated with the trail entry.
 If it is called with anything else (such as @samp{MR_gc}),

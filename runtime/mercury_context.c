@@ -153,7 +153,8 @@ init_context(MR_Context *c)
 			default_handler);
 	}
 	c->context_trail_ptr = (MR_TrailEntry *) c->trail_zone->min;
-	c->context_ticket_counter = 0;
+	c->context_ticket_counter = 1;
+	c->context_ticket_high_water = 1;
 #endif
 
 	c->context_hp = NULL;
