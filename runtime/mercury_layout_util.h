@@ -8,8 +8,9 @@
 #define	MERCURY_LAYOUT_UTIL_H
 
 #include "mercury_std.h"
-#include "mercury_types.h"
-#include "mercury_stack_layout.h"
+#include "mercury_types.h"		/* for Word, etc. */
+#include "mercury_stack_layout.h"	/* for MR_Stack_Layout_Vars, etc. */
+#include "mercury_type_info.h"		/* for MR_TypeInfoParams, etc. */
 
 /*
 ** These two functions copy the register state to and from the provided

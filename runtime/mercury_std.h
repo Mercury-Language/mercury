@@ -101,6 +101,24 @@
 
 /*---------------------------------------------------------------------------*/
 
+/* Macros for inlining */
+
+#if defined(__GNUC__) 
+  /* GNU C */
+  #define MR_INLINE __inline__
+  #define MR_EXTERN_INLINE extern __inline__
+#elif defined(__cplusplus) || __STDC_VERSION__ >= 199901
+  /* C++ or C99 */
+  #define MR_INLINE inline
+  #define MR_EXTERN_INLINE extern inline
+#else
+  /* C89 */
+  #define MR_INLINE static
+  #define MR_EXTERN_INLINE static
+#endif
+
+/*---------------------------------------------------------------------------*/
+
 /*
 ** C preprocessor tricks.
 */

@@ -922,10 +922,23 @@ struct MR_TypeCtorInfo_Struct {
 
 /*---------------------------------------------------------------------------*/
 
-#define MR_TYPE_CTOR_INFO_HO_PRED                                       \
+#ifdef MR_HIGHLEVEL_CODE
+  extern const struct MR_TypeCtorInfo_Struct 
+        mercury__builtin__builtin__type_ctor_info_pred_0,
+        mercury__builtin__builtin__type_ctor_info_func_0;
+  #define MR_TYPE_CTOR_INFO_HO_PRED                                     \
+        (&mercury__builtin__builtin__type_ctor_info_pred_0)
+  #define MR_TYPE_CTOR_INFO_HO_FUNC                                     \
+        (&mercury__builtin__builtin__type_ctor_info_func_0)
+#else
+  MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
+  MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
+  #define MR_TYPE_CTOR_INFO_HO_PRED                                     \
         ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_pred_0)
-#define MR_TYPE_CTOR_INFO_HO_FUNC                                       \
+  #define MR_TYPE_CTOR_INFO_HO_FUNC                                     \
         ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_func_0)
+#endif
+
 #define MR_TYPE_CTOR_INFO_IS_HO_PRED(T)                                 \
         (T == MR_TYPE_CTOR_INFO_HO_PRED)
 #define MR_TYPE_CTOR_INFO_IS_HO_FUNC(T)                                 \

@@ -1277,10 +1277,22 @@ ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
 	ml_gen_generic_call(GenericCall, Vars, Modes, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, _PredName),
+ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	(
-		{ BuiltinState = not_builtin }
+		{
+			BuiltinState = not_builtin
+		;
+			% For the MLDS back-end, we can't treat
+			% private_builtin:unsafe_type_cast as an
+			% inline builtin, since the code that
+			% builtin_ops__translate_builtin generates
+			% for it is not type-correct.  Instead,
+			% we treat it as an ordinary polymorphic
+			% procedure; ml_gen_call will then generate
+			% the proper type conversions automatically.
+			PredName = qualified(_, "unsafe_type_cast")
+		}
 	->
 		ml_gen_var_list(ArgVars, ArgLvals),
 		=(MLDSGenInfo),

@@ -12,6 +12,10 @@
 #include "mercury_types.h"		/* for `Word' */
 #include "mercury_context.h"		/* for min_heap_reclamation_point() */
 #include "mercury_heap_profile.h"	/* for MR_record_allocation() */
+#include "mercury_std.h"		/* for MR_EXTERN_INLINE */
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.h"			/* for MR_new_object() */
+#endif
 
 #ifdef CONSERVATIVE_GC
 

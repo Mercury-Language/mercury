@@ -26,8 +26,12 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 
 #-----------------------------------------------------------------------------#
 
+# All the headers in $(HDRS) should be syntactically well-formed
+# header files, unlike the headers in $(BODY_HDRS).
+
 #		  keep this list in alphabetical order, please
 HDRS		=	\
+			mercury.h		\
 			mercury_accurate_gc.h	\
 			mercury_agc_debug.h	\
 			mercury_array_macros.h	\
@@ -38,7 +42,6 @@ HDRS		=	\
 			mercury_context.h	\
 			mercury_debug.h		\
 			mercury_deep_copy.h	\
-			mercury_deep_copy_body.h \
 			mercury_dummy.h		\
 			mercury_dlist.h		\
 		  	mercury_engine.h	\
@@ -55,7 +58,6 @@ HDRS		=	\
 			mercury_label.h		\
 			mercury_layout_util.h	\
 			mercury_library_types.h	\
-			mercury_make_type_info_body.h	\
 			mercury_memory.h	\
 			mercury_memory_zones.h	\
 			mercury_memory_handlers.h	\
@@ -81,12 +83,18 @@ HDRS		=	\
 			mercury_trail.h		\
 			mercury_types.h		\
 			mercury_type_info.h	\
-			mercury_unify_compare_body.h	\
 			mercury_wrapper.h	\
 			$(LIB_DLL_H)
 
-# Note that $(LIB_GLOBALS_H) cannot be part of $(HDR), since it depends on
-# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a, and $(OBJ) : $(HDR) would create a
+# The headers in $(BODY_HDRS) do not have to be syntactically well-formed.
+
+BODY_HDRS	=	\
+			mercury_deep_copy_body.h \
+			mercury_make_type_info_body.h	\
+			mercury_unify_compare_body.h
+
+# Note that $(LIB_GLOBALS_H) cannot be part of $(HDRS), since it depends on
+# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a, and $(OBJ) : $(HDRS) would create a
 # circular dependency.
 
 MACHHDRS	= 	machdeps/no_regs.h	\
@@ -100,6 +108,7 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 
 #		  keep this list in alphabetical order, please
 CFILES		= 	\
+			mercury.c		\
 			mercury_accurate_gc.c	\
 			mercury_agc_debug.c	\
 			mercury_bootstrap.c	\
@@ -182,7 +191,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-$(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
+$(OBJS) $(PIC_OBJS): $(HDRS) $(BODY_HDRS) $(MACHHDRS)
 
 #-----------------------------------------------------------------------------#
 
@@ -215,8 +224,8 @@ mercury_conf.h: mercury_conf.h.date
 .PHONY: cs
 cs: $(CFILES)
 
-tags: $(CFILES) $(HDRS)
-	ctags $(CFILES) $(HDRS)
+tags: $(CFILES) $(HDRS) $(BODY_HDRS)
+	ctags $(CFILES) $(HDRS) $(BODY_HDRS)
 
 #-----------------------------------------------------------------------------#
 #
@@ -282,8 +291,8 @@ install_dirs:
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 
 .PHONY: install_headers
-install_headers: $(HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
-	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
+install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
+	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
 	-chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 

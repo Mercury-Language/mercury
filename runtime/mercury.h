@@ -261,18 +261,6 @@ extern	Word	mercury__private_builtin__dummy_var;
   		((MR_Word) (type *) GC_MALLOC(size)) 
 #endif
 
-/* this should probably go in mercury_std.h */
-#if defined(__GNUC__) 
-  #define MR_INLINE __inline__
-  #define MR_EXTERN_INLINE extern __inline__
-#elif defined(__cplusplus) || __STDC_VERSION__ >= 199901
-  #define MR_INLINE inline
-  #define MR_EXTERN_INLINE extern inline
-#else
-  #define MR_INLINE static
-  #define MR_EXTERN_INLINE static
-#endif
-
 /*
 ** Code to box/unbox floats
 **
@@ -300,13 +288,26 @@ MR_box_float(MR_Float f) {
   #define MR_unbox_float(ptr) (*(MR_Float *)ptr)
 #endif
 
+#ifdef MR_AVOID_MACROS
+  MR_EXTERN_INLINE void mercury__private_builtin__unsafe_type_cast_2_p_0(
+  	MR_Box src, MR_Box *dest);
+
+  MR_EXTERN_INLINE void mercury__private_builtin__unsafe_type_cast_2_p_0(
+  	MR_Box src, MR_Box *dest)
+  {
+  	*dest = src;
+  }
+#else
+  #define mercury__private_builtin__unsafe_type_cast_2_p_0(src, dest) \
+	(*(dest) = (src))
+#endif
+
 /*-----------------------------------------------------------------------------*/
 /*
 ** Function declarations
 */
 
 bool mercury__builtin__unify_2_p_0(Word type_info, MR_Box, MR_Box);
-void mercury__builtin__index_2_p_3(Word type_info, MR_Box, Integer *);
 void mercury__builtin__compare_3_p_0(Word type_info, Word *, MR_Box, MR_Box);
 void mercury__builtin__compare_3_p_1(Word type_info, Word *, MR_Box, MR_Box);
 void mercury__builtin__compare_3_p_2(Word type_info, Word *, MR_Box, MR_Box);

@@ -390,8 +390,10 @@ void sys_init_type_info_module(void) {
 	% that sometimes have calls to them emitted by the compiler.
 
 	% unsafe_type_cast/2 is used internally by the compiler. Bad things
-	% will happen if this is used in programs. It has no definition,
+	% will happen if this is used in programs.
+	% With the LLDS back-end, it has no definition,
 	% since for efficiency the code generator treats it as a builtin.
+	% With the MLDS back-end, it is defined in runtime/mercury.h.
 
 :- pred unsafe_type_cast(T1, T2).
 :- mode unsafe_type_cast(in, out) is det.
@@ -399,6 +401,8 @@ void sys_init_type_info_module(void) {
 :- pred unused is det.
 
 :- implementation.
+
+:- external(unsafe_type_cast/2).
 
 unused :-
 	( semidet_succeed ->
@@ -1249,7 +1253,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	table = (MR_TrieNode) T;
 #ifdef MR_HIGHLEVEL_CODE
 	MR_TABLE_SAVE_ANSWER(table, Offset,
-		MR_box_float(F),
+		(Word) MR_box_float(F),
 		&mercury_data___type_ctor_info_float_0);
 #else
 	MR_TABLE_SAVE_ANSWER(table, Offset,

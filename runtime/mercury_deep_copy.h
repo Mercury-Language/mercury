@@ -10,6 +10,7 @@
 #define	MERCURY_DEEP_COPY_H
 
 #include "mercury_types.h"	/* for `Word' */
+#include "mercury_type_info.h"	/* for `MR_TypeInfo' */
 
 /*
 ** deep_copy:

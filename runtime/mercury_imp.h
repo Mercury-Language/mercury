@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998 The University of Melbourne.
+** Copyright (C) 1993-1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,6 +37,10 @@
 #endif
 
 #include	"mercury_regs.h"	/* must come before system headers */
+
+#ifdef MR_HIGHLEVEL_CODE
+  #include	"mercury.h"
+#endif
 
 #include	"mercury_std.h"
 #include	"mercury_debug.h"

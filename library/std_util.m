@@ -1285,28 +1285,10 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 #define MR_TYPECTOR_DESC_GET_HOT_TYPE_CTOR_INFO(T)                      \
         ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
           ((Unsigned) (T) % 2 != 0)      				\
-                ? (MR_TypeCtorInfo)					\
-			&mercury_data___type_ctor_info_func_0           \
-                : (MR_TypeCtorInfo)					\
-			&mercury_data___type_ctor_info_pred_0 )
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** Macros dealing with the MR_TypeCtorInfo type.
-*/
-#define MR_TYPE_CTOR_INFO_HO_PRED                                       \
-        ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_pred_0)
-#define MR_TYPE_CTOR_INFO_HO_FUNC                                       \
-        ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_func_0)
-#define MR_TYPE_CTOR_INFO_IS_HO_PRED(T)                                 \
-        (T == MR_TYPE_CTOR_INFO_HO_PRED)
-#define MR_TYPE_CTOR_INFO_IS_HO_FUNC(T)                                 \
-        (T == MR_TYPE_CTOR_INFO_HO_FUNC)
-#define MR_TYPE_CTOR_INFO_IS_HO(T)                                      \
-        (MR_TYPE_CTOR_INFO_IS_HO_FUNC(T) || MR_TYPE_CTOR_INFO_IS_HO_PRED(T))
-
-#endif
+                ? MR_TYPE_CTOR_INFO_HO_FUNC				\
+                : MR_TYPE_CTOR_INFO_HO_PRED )
+		
+#endif /* ML_TYPECTORDESC_GUARD */
 
 ").
 
@@ -1474,13 +1456,6 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 
 extern	MR_TypeCtorDesc ML_make_type_ctor_desc(MR_TypeInfo type_info,
 				MR_TypeCtorInfo type_ctor_info);
-
-	/*
-	** Several predicates use these (the MR_TYPE_CTOR_INFO_IS_HO_*
-	** macros need access to these addresses).
-	*/
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
 ").
 
