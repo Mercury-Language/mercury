@@ -16,8 +16,8 @@ INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
 
 LIB_FILES	= bin doc html inc ints lib mdb/mdb_doc modules
 
-UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
-		  $(INSTALL_PREFIX)/bin/mdemangle \
+UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
+		  $(INSTALL_PREFIX)/bin/mdemangle$(EXT_FOR_EXE) \
 		  $(INSTALL_PREFIX)/bin/mtags \
 		  $(INSTALL_PREFIX)/bin/mprof_merge_runs
 
