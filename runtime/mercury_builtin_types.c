@@ -149,7 +149,7 @@ mercury__builtin____Unify____void_0_0(MR_Void x, MR_Void y)
 {
 	MR_fatal_error("called unify/2 for `void' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -165,7 +165,7 @@ mercury__private_builtin____Unify____heap_pointer_0_0(MR_Heap_Pointer x,
 	MR_fatal_error(
 		"called unify/2 for `private_builtin.heap_pointer' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -180,7 +180,7 @@ mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y)
 {
 	MR_fatal_error("called unify/2 for `func' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -188,7 +188,7 @@ mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y)
 {
 	MR_fatal_error("called unify/2 for `pred' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -196,7 +196,7 @@ mercury__builtin____Unify____tuple_0_0(MR_Tuple x, MR_Tuple y)
 {
 	MR_fatal_error("called unify/2 for `tuple' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -237,7 +237,7 @@ mercury__private_builtin____Unify____typeclass_info_1_0(
 {
 	MR_fatal_error("called unify/2 for `typeclass_info' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -247,7 +247,7 @@ mercury__private_builtin____Unify____base_typeclass_info_1_0(
 {
 	MR_SORRY("unify for base_typeclass_info");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -326,8 +326,7 @@ void MR_CALL
 mercury__private_builtin____Compare____ref_1_0(MR_Mercury_Type_Info type_info,
 	MR_Comparison_Result *result, MR_Reference x, MR_Reference y)
 {
-	MR_fatal_error(
-		"called compare/3 for `private_builtin.ref' type");
+	MR_fatal_error("called compare/3 for `private_builtin.ref' type");
 }
 
 void MR_CALL
@@ -439,7 +438,7 @@ mercury__builtin__do_unify__void_0_0(MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called unify/2 for `void' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -469,7 +468,7 @@ mercury__builtin__do_unify__func_0_0(MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called unify/2 for `func' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -477,7 +476,7 @@ mercury__builtin__do_unify__pred_0_0(MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called unify/2 for `pred' type");
 
-    return MR_TRUE;
+	return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -602,8 +601,7 @@ mercury__private_builtin__do_compare__ref_1_0(
 	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Box x, MR_Box y)
 {
-	MR_fatal_error(
-		"called compare/3 for `private_builtin.ref' type");
+	MR_fatal_error("called compare/3 for `private_builtin.ref' type");
 }
 
 void MR_CALL
