@@ -9,7 +9,7 @@
 #ifndef MERCURY_FLOAT_H
 #define MERCURY_FLOAT_H
 
-#include "conf.h"		/* for BOXED_FLOAT */
+#include "mercury_conf.h"	/* for BOXED_FLOAT */
 #include "mercury_types.h"	/* for `Word' */
 
 #ifdef USE_SINGLE_PREC_FLOAT
@@ -27,17 +27,17 @@ typedef double Float;
 #ifdef CONSERVATIVE_GC
 #define float_to_word(f) ( \
 		hp_alloc(FLOAT_WORDS), \
-		*(Float *)(void *)(hp - FLOAT_WORDS) = (f), \
-		/* return */ (Word) (hp - FLOAT_WORDS) \
+		*(Float *)(void *)(MR_hp - FLOAT_WORDS) = (f), \
+		/* return */ (Word) (MR_hp - FLOAT_WORDS) \
 	)
 #else
 /* we need to ensure that what we allocated on the heap is properly
    aligned */
 #define float_to_word(f) ( \
-		( (Word)hp & (sizeof(Float) - 1) ? hp_alloc(1) : (void)0 ), \
+		( (Word)MR_hp & (sizeof(Float) - 1) ? hp_alloc(1) : (void)0 ), \
 		hp_alloc(FLOAT_WORDS), \
-		*(Float *)(void *)(hp - FLOAT_WORDS) = (f), \
-		/* return */ (Word) (hp - FLOAT_WORDS) \
+		*(Float *)(void *)(MR_hp - FLOAT_WORDS) = (f), \
+		/* return */ (Word) (MR_hp - FLOAT_WORDS) \
 	)
 #endif
 

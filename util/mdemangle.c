@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "std.h"
+#include "mercury_std.h"
 
 static void demangle(char *name);
 static bool check_for_suffix(char *start, char *position, const char *suffix,
@@ -129,6 +129,7 @@ demangle(char *name)
 	bool higher_order = FALSE; /* has this proc been specialized */
 	int internal = -1;
 	int lambda_line = 0;
+	int lambda_seq_number = 0;
 	char *lambda_pred_name = NULL;
 	const char *lambda_kind = NULL;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX, LAMBDA } category;
@@ -321,6 +322,15 @@ demangle(char *name)
 			lambda_line = lambda_line * 10 + (*start - '0');
 			start++;
 		}
+		if (!cut_at_double_underscore(&start, end)) {
+			goto wrong_format;
+		}
+		lambda_seq_number = 0;
+		while (start < end && isdigit(*start)) {
+			lambda_seq_number = lambda_seq_number * 10 +
+				(*start - '0');
+			start++;
+		}
 	}
 
 	/*
@@ -341,8 +351,9 @@ demangle(char *name)
 			module, start, arity);
 		break;
 	case LAMBDA:
-		printf("%s goal from '%s' line %d",
-			lambda_kind, lambda_pred_name, lambda_line);
+		printf("%s goal (#%d) from '%s' in module '%s' line %d",
+			lambda_kind, lambda_seq_number,
+			lambda_pred_name, module, lambda_line);
 		break;
 	default:
 		if (*module == '\0') {

@@ -36,7 +36,7 @@
 # define __GC
 # include <stddef.h>
 
-#if defined(USE_DLLS)
+#if defined(__CYGWIN32__) && !defined(GC_DEFINE_DLL)
 #include "libgc_dll.h"
 #endif
 
@@ -84,7 +84,7 @@ GC_API GC_word GC_gc_no;/* Counter incremented per collection.  	*/
 
 /* Public R/W variables */
 
-GC_API void * (*GC_oom_fn) GC_PROTO((size_t bytes_requested));
+GC_API GC_PTR (*GC_oom_fn) GC_PROTO((size_t bytes_requested));
 			/* When there is insufficient memory to satisfy */
 			/* an allocation request, we return		*/
 			/* (*GC_oom_fn)().  By default this just	*/
@@ -209,6 +209,13 @@ GC_API int GC_expand_hp GC_PROTO((size_t number_of_bytes));
 /* especially on systems that don't handle running out of memory well.	*/
 /* n == 0 ==> unbounded.  This is the default.				*/
 GC_API void GC_set_max_heap_size GC_PROTO((GC_word n));
+
+/* Inform the collector that a certain section of statically allocated	*/
+/* memory contains no pointers to garbage collected memory.  Thus it 	*/
+/* need not be scanned.  This is sometimes important if the application */
+/* maps large read/write files into the address space, which could be	*/
+/* mistaken for dynamic library data segments on some systems.		*/
+GC_API void GC_exclude_static_roots GC_PROTO((GC_PTR start, GC_PTR finish));
 
 /* Clear the set of root segments.  Wizards only. */
 GC_API void GC_clear_roots GC_PROTO((void));
@@ -600,6 +607,19 @@ GC_API void (*GC_is_visible_print_proc)
   int GC_thr_continue(thread_t target_thread);
   void * GC_dlopen(const char *path, int mode);
 
+# ifdef _SOLARIS_PTHREADS
+#   include <pthread.h>
+    extern int GC_pthread_create(pthread_t *new_thread,
+    			         const pthread_attr_t *attr,
+          			 void * (*thread_execp)(void *), void *arg);
+    extern int GC_pthread_join(pthread_t wait_for, void **status);
+
+#   undef thread_t
+
+#   define pthread_join GC_pthread_join
+#   define pthread_create GC_pthread_create
+#endif
+
 # define thr_create GC_thr_create
 # define thr_join GC_thr_join
 # define thr_suspend GC_thr_suspend
@@ -607,6 +627,7 @@ GC_API void (*GC_is_visible_print_proc)
 # define dlopen GC_dlopen
 
 # endif /* SOLARIS_THREADS */
+
 
 #ifdef IRIX_THREADS
 /* We treat these similarly. */
@@ -622,6 +643,7 @@ GC_API void (*GC_is_visible_print_proc)
 # define pthread_create GC_pthread_create
 # define pthread_sigmask GC_pthread_sigmask
 # define pthread_join GC_pthread_join
+
 #endif /* IRIX_THREADS */
 
 #if defined(SOLARIS_THREADS) || defined(IRIX_THREADS)
@@ -631,6 +653,7 @@ GC_API void (*GC_is_visible_print_proc)
 GC_PTR GC_malloc_many(size_t lb);
 #define GC_NEXT(p) (*(GC_PTR *)(p)) 	/* Retrieve the next element	*/
 					/* in returned list.		*/
+extern void GC_thr_init();	/* Needed for Solaris/X86	*/
 
 #endif /* SOLARIS_THREADS */
 
@@ -644,18 +667,28 @@ GC_PTR GC_malloc_many(size_t lb);
 #   define GC_INIT() { extern end, etext; \
 		       extern void GC_noop(void *, void *); \
 		       GC_noop(&end, &etext); }
-/*
- * Similarly GC_INIT() is also required for gnu-win32 DLLs.
- * I don't know any other method for figuring out the start and
- * end of the main program's global data from inside a DLL.
- */
-#elif defined(__CYGWIN32__)
-#   define GC_INIT() { \
-		extern int _bss_start__, _data_end__; \
-		GC_add_roots((void *)&_bss_start__, (void *)&_data_end__); \
-    }
 #else
+# if defined(__CYGWIN32__)
+    /*
+     * Similarly gnu-win32 DLLs need explicit initialization.
+     * (We can't use DATASTART and DATAEND here, because gc_private.h
+     * may not have been included.)
+     */
+#   define GC_INIT() { \
+               extern int _bss_start__, _data_end__; \
+               GC_add_roots((void *)&_bss_start__, (void *)&_data_end__); \
+    }
+# else
 #   define GC_INIT()
+# endif
+#endif
+
+#ifdef __WATCOMC__
+  /* Ivan Demakov: Programs compiled by Watcom C with -5r option
+   * crash without this declaration
+   * HB: Could this go into gc_priv.h?
+   */
+  void GC_noop(void*, ...);
 #endif
 
 #ifdef __cplusplus

@@ -24,7 +24,8 @@ extern	int	MR_trace_call_seqno;
 extern	int	MR_trace_call_depth;
 
 typedef	enum {
-	MR_PORT_CALL, MR_PORT_EXIT, MR_PORT_FAIL
+	MR_PORT_CALL, MR_PORT_EXIT, MR_PORT_FAIL,
+	MR_PORT_THEN, MR_PORT_ELSE, MR_PORT_DISJ, MR_PORT_SWITCH
 } MR_trace_port;
 
 typedef	enum {
@@ -40,5 +41,16 @@ extern	void	MR_trace(
 	const char *,		/* predicate name */
 	int,			/* predicate arity */
 	int);			/* mode number within predicate */
+
+extern	void	MR_trace_path(
+	MR_trace_port,
+	MR_trace_code_model,
+	int,			/* call sequence number */
+	int,			/* call depth */
+	const char *,		/* module name */
+	const char *,		/* predicate name */
+	int,			/* predicate arity */
+	int,			/* mode number within predicate */
+	const char *);		/* path to event goal within procedure */
 
 #endif /* MERCURY_TRACE_H */

@@ -9,15 +9,21 @@
 ** call the C standard library
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-
 #ifndef REG	/* the register to test */
 #error "regtest.c must be compiled with -DREG=\"<register name>\""
 #endif
 
 register unsigned r __asm__(REG);
+
+/*
+** Any #includes must come *after* the global register variable declaration,
+** because some systems define inline functions in header files, and gcc
+** requires that global register variable declarations precede all
+** function definitions.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 
 FILE *f;
 

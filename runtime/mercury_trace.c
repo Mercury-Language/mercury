@@ -12,7 +12,7 @@
 ** available from http://www.irisa.fr/lande/ducasse.
 */
 
-#include "imp.h"
+#include "mercury_imp.h"
 #include "mercury_trace.h"
 #include <stdio.h>
 
@@ -45,6 +45,9 @@ MR_trace(MR_trace_port port, MR_trace_code_model model, int seqno, int depth,
 		case MR_PORT_FAIL:
 			fprintf(stderr, "FAIL ");
 			break;
+
+		default:
+			fatal_error("MR_trace called with inappropriate port");
 	}
 
 	switch (model)
@@ -63,4 +66,60 @@ MR_trace(MR_trace_port port, MR_trace_code_model model, int seqno, int depth,
 	}
 
 	fprintf(stderr, "%s:%s/%d-%d\n", modulename, predname, arity, modenum);
+}
+
+void
+MR_trace_path(MR_trace_port port, MR_trace_code_model model,
+	int seqno, int depth,
+	const char *modulename, const char *predname, int arity, int modenum,
+	const char *path)
+{
+	int	i;
+
+	fprintf(stderr, "%4d %2d ", seqno, depth);
+
+	for (i = 0; i < depth; i++)
+	{
+		putc(' ', stderr);
+	}
+
+	switch (port)
+	{
+		case MR_PORT_THEN:
+			fprintf(stderr, "THEN ");
+			break;
+
+		case MR_PORT_ELSE:
+			fprintf(stderr, "ELSE ");
+			break;
+
+		case MR_PORT_DISJ:
+			fprintf(stderr, "DISJ ");
+			break;
+
+		case MR_PORT_SWITCH:
+			fprintf(stderr, "SWTC ");
+			break;
+
+		default:
+			fatal_error("MR_trace_path called with inappropriate port");
+	}
+
+	switch (model)
+	{
+		case MR_MODEL_DET:
+			fprintf(stderr, "DET  ");
+			break;
+
+		case MR_MODEL_SEMI:
+			fprintf(stderr, "SEMI ");
+			break;
+
+		case MR_MODEL_NON:
+			fprintf(stderr, "NON  ");
+			break;
+	}
+
+	fprintf(stderr, "%s:%s/%d-%d %s\n",
+		modulename, predname, arity, modenum, path);
 }

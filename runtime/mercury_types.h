@@ -12,7 +12,7 @@
 #ifndef MERCURY_TYPES_H
 #define MERCURY_TYPES_H
 
-#include "conf.h"
+#include "mercury_conf.h"
 
 /* 
 ** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*)
@@ -43,7 +43,7 @@ typedef void			Code;	/* code addresses are `void *' */
 /* continuation function type, for --high-level-C option */
 typedef void (*Cont) (void);
 
-/* spinlocks -- see spinlock.h */
+/* spinlocks -- see mercury_spinlock.h */
 typedef Word	SpinLock;
 
 /*

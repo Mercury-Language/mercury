@@ -24,8 +24,8 @@
 #include	<ctype.h>
 #include	<errno.h>
 #include	"getopt.h"
-#include	"conf.h"
-#include	"std.h"
+#include	"mercury_conf.h"
+#include	"mercury_std.h"
 
 /* --- adjustable limits --- */
 #define	MAXCALLS	40	/* maximum number of calls per function */
@@ -59,7 +59,7 @@ static const char header2[] =
 	"*/\n"
 	"\n"
 	"#include <stddef.h>\n"
-	"#include \"init.h\"\n"
+	"#include \"mercury_init.h\"\n"
 	"\n"
 	"/*\n"
 	"** Work around a bug in the Solaris 2.X (X<=4) linker;\n"

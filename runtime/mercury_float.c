@@ -4,7 +4,7 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include	"imp.h"
+#include	"mercury_imp.h"
 
 /*
 ** The function `hash_float()' is used by the library predicate `float__hash'

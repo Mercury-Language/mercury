@@ -14,7 +14,7 @@
 #ifndef MERCURY_TRAIL_H
 #define MERCURY_TRAIL_H
 
-#include "memory.h"
+#include "mercury_memory.h"
 
 #ifdef MR_USE_TRAIL
   #define MR_IF_USE_TRAIL(x) x
@@ -287,7 +287,7 @@ typedef struct {
 extern MemoryZone *MR_trail_zone;
 
 /* Pointer to the current top of the Mercury trail */
-/* N.B. Use `MR_trail_ptr', defined in regorder.h, not `MR_trail_ptr_var'. */
+/* N.B. Use `MR_trail_ptr', defined in mercury_regorder.h, not `MR_trail_ptr_var'. */
 extern MR_TrailEntry *MR_trail_ptr_var;
 
 /*
@@ -295,7 +295,7 @@ extern MR_TrailEntry *MR_trail_ptr_var;
 ** point (including semidet choice points, e.g. in an if-then-else)
 ** and decremented whenever we remove one.
 **
-** N.B.  Use `MR_ticket_counter', defined in regorder,h,
+** N.B.  Use `MR_ticket_counter', defined in mercury_regorder.h,
 ** not `MR_ticket_counter_var'.
 */
 extern Unsigned MR_ticket_counter_var;

@@ -11,7 +11,7 @@
 
 #include <string.h>	/* for strcmp() etc. */
 
-#include "heap.h"	/* for incr_hp_atomic */
+#include "mercury_heap.h"	/* for incr_hp_atomic */
 
 
 /*
