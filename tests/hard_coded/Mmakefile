@@ -111,6 +111,9 @@ PROGS=	\
 	write \
 	write_reg1
 
+SPLIT_PROGS = \
+	split_c_files
+
 # we do no pass the following tests
 #	var_not_found -- "sorry, not implemented" in polymorphism.m.
 
@@ -129,6 +132,7 @@ MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
+MCFLAGS-split_c_files	=	--trace deep
 MCFLAGS-type_spec	=	--user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all
 MCFLAGS-user_defined_equality	= --infer-all
@@ -154,6 +158,9 @@ GRADEFLAGS-rational_test_init	=	--gc conservative
 C2INITFLAGS-parse		= 	--trace
 MLFLAGS-parse			=	--trace --static
 
+C2INITFLAGS-split-c-files	= 	--trace
+MLFLAGS-split-c-files		=	--trace
+
 # no_fully_strict is expected to fail (it calls error/1)
 # so we need to ignore the exit status (hence the leading `-')
 no_fully_strict.out: no_fully_strict
@@ -161,15 +168,15 @@ no_fully_strict.out: no_fully_strict
 
 #-----------------------------------------------------------------------------#
 
-DEPS=	$(PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
-RESS=	$(PROGS:%=%.res)
+DEPS=	$(PROGS:%=%.dep) $(SPLIT_PROGS:%=%.dep)
+DEPENDS=$(PROGS:%=%.depend) $(SPLIT_PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out) $(SPLIT_PROGS:%=%.split.out)
+RESS=	$(PROGS:%=%.res) $(SPLIT_PROGS:%=%.split.res)
 
 dep_local:	$(DEPS)
 depend_local:	$(DEPENDS)
 check_local:	$(OUTS) $(RESS)
-all_local:	$(PROGS)
+all_local:	$(PROGS) $(SPLIT_PROGS:%=%.split)
 
 #-----------------------------------------------------------------------------#
 

@@ -384,9 +384,11 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			FillThreeSlots, "\n",
 			"\t\t", RedoLayoutStr, " = (Word) (const Word *) &",
 			LayoutAddrStr, ";"
-		], FillFourSlots)
+		], FillFourSlots),
+		MaybeFixedLabel = yes(RedoLayoutLabel)
 	;
-		FillFourSlots = FillThreeSlots
+		FillFourSlots = FillThreeSlots,
+		MaybeFixedLabel = no
 	),
 	(
 		% This could be done by generating proper LLDS instead of C.
@@ -423,7 +425,7 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	),
 	TraceCode = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt)],
-			will_not_call_mercury, no, no, yes) - ""
+			will_not_call_mercury, MaybeFixedLabel, no, yes) - ""
 	])
 	}.
 

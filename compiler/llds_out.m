@@ -1012,16 +1012,7 @@ output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet) -->
 	% Declare the stack layout entry for this label, if needed.
 	%
 	( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-		{ Label = local(_, _) ->
-			DataName = internal_layout(Label)
-		;
-			DataName = proc_layout(Label)
-		},
-		{ ProcLabel = get_proc_label(Label) },
-		{ ModuleName = get_defining_module_name(ProcLabel) },
-		{ DataAddr = data_addr(ModuleName, DataName) },
-		output_data_addr_decls(DataAddr, "", "", 0, _,
-			DeclSet0, DeclSet1)
+		output_stack_layout_decl(Label, DeclSet0, DeclSet1)
 	;
 		{ DeclSet1 = DeclSet0 }
 	),
@@ -1055,6 +1046,21 @@ output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet) -->
 	{ decl_set_insert(DeclSet1, code_addr(label(Label)), DeclSet) },
 	output_label(Label),
 	io__write_string(");\n").
+
+:- pred output_stack_layout_decl(label, decl_set, decl_set,
+		io__state, io__state).
+:- mode output_stack_layout_decl(in, in, out, di, uo) is det.
+
+output_stack_layout_decl(Label, DeclSet0, DeclSet) -->
+	{ Label = local(_, _) ->
+		DataName = internal_layout(Label)
+	;
+		DataName = proc_layout(Label)
+	},
+	{ ProcLabel = get_proc_label(Label) },
+	{ ModuleName = get_defining_module_name(ProcLabel) },
+	{ DataAddr = data_addr(ModuleName, DataName) },
+	output_data_addr_decls(DataAddr, "", "", 0, _, DeclSet0, DeclSet).
 
 :- func get_proc_label(label) = proc_label.
 get_proc_label(exported(ProcLabel)) = ProcLabel.
@@ -1393,8 +1399,21 @@ output_instruction_decls(prune_tickets_to(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(pragma_c(_, Comps, _, _, _, _), DeclSet0, DeclSet) -->
-	output_pragma_c_component_list_decls(Comps, DeclSet0, DeclSet).
+output_instruction_decls(pragma_c(_, Comps, _, MaybeFixedLabel, _, _),
+		DeclSet0, DeclSet) -->
+	% For some reason, the pragma_c code that trace.m
+	% generates in procedure prologues when debugging
+	% is enabled may refer to the redo label layout info,
+	% even though the corresponding redo label does not
+	% exist.  In that case, we need declare the label
+	% layout info here, otherwise the generated code
+	% won't compile with --split-files.
+	( { MaybeFixedLabel = yes(Label) } ->
+		output_stack_layout_decl(Label, DeclSet0, DeclSet1)
+	;
+		{ DeclSet1 = DeclSet0 }
+	),
+	output_pragma_c_component_list_decls(Comps, DeclSet1, DeclSet).
 output_instruction_decls(init_sync_term(Lval, _), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(fork(Child, Parent, _), DeclSet0, DeclSet) -->
