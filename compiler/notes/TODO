@@ -81,6 +81,8 @@ general
 
 - garbage collection
 
+- issue a warning if the only use of an argument is in a recursive call
+
 mercury_to_goedel.nl
 --------------------
 
