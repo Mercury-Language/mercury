@@ -102,7 +102,7 @@ $keep_stage_2 || /bin/rm -fr stage2/*
 mkdir stage2/compiler
 mkdir stage2/library
 ln -s $root/compiler/*.m stage2/compiler
-ln -s $root/compiler/*.m.in stage2/compiler
+# ln -s $root/compiler/*.m.in stage2/compiler
 ln -s $root/compiler/Mmake* stage2/compiler
 ln -s $root/library/*.m stage2/library
 # ln -s $root/library/*.m.in stage2/library
@@ -172,7 +172,7 @@ $keep_stage_3 || /bin/rm -fr stage3/*
 mkdir stage3/compiler
 mkdir stage3/library
 ln -s $root/stage2/compiler/*.m stage3/compiler
-ln -s $root/stage2/compiler/*.m.in stage3/compiler
+# ln -s $root/stage2/compiler/*.m.in stage3/compiler
 ln -s $root/stage2/compiler/Mmake* stage3/compiler
 ln -s $root/stage2/library/*.m stage3/library
 # ln -s $root/stage2/library/*.m.in stage3/library
