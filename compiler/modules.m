@@ -4477,7 +4477,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		for ext in int int2 int3", Int0Str, OptStr,
 				TransOptStr, DepStr, "; do \\
 			dir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\
-			rm -f ""$$dir""; \\
+			rm -rf ""$$dir""; \\
 			$(LN_S) .. ""$$dir"" || { \\
 				{ [ -d ""$$dir"" ] || \\
 					$(INSTALL_MKDIR) ""$$dir""; } && \\
@@ -4518,7 +4518,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		# `$(INSTALL)'.
 		for ext in ", OptStr, TransOptStr, "; do \\
 			dir=""$(INSTALL_GRADE_INT_DIR)/Mercury/$${ext}s""; \\
-			rm -f ""$$dir""; \\
+			rm -rf ""$$dir""; \\
 			$(LN_S) .. ""$$dir"" || { \\
 				{ [ -d ""$$dir"" ] || \\
 					$(INSTALL_MKDIR) ""$$dir""; } && \\
@@ -4574,7 +4574,7 @@ else
 		# The following is needed to support the `--use-subdirs' option
 		# We try using `$(LN_S)', but if that fails, then we just use
 		# `$(INSTALL)'.
-		rm -f $(INSTALL_GRADE_INC_SUBDIR)
+		rm -rf $(INSTALL_GRADE_INC_SUBDIR)
 		$(LN_S) .. $(INSTALL_GRADE_INC_SUBDIR) || { \\
 			{ [ -d $(INSTALL_GRADE_INC_SUBDIR) ] || \\
 				$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_SUBDIR); \\
@@ -4582,7 +4582,7 @@ else
 			$(INSTALL) $(INSTALL_GRADE_INC_DIR)/*.mih \\
 				$(INSTALL_GRADE_INC_SUBDIR); \\
 		} || exit 1
-		rm -f $(INSTALL_INT_DIR)/Mercury/mihs
+		rm -rf $(INSTALL_INT_DIR)/Mercury/mihs
 		$(LN_S) .. $(INSTALL_INT_DIR)/Mercury/mihs || { \\
 			{ [ -d $(INSTALL_INT_DIR)/Mercury/mihs ] || \\
 				$(INSTALL_MKDIR) \\
