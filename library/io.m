@@ -4206,6 +4206,7 @@ mercury_close(MercuryFile* mf)
 		/*
 		** The memory for these streams is allocated statically,
 		** so there is nothing to free.
+		*/
 	} else {
   		/*
 		** For the accurate GC or no GC cases,
