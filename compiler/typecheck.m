@@ -146,6 +146,7 @@ typecheck(Module0, Module, FoundError) -->
 	{ report_stats }, 
 	io__write_string("Type-checking clauses...\n"),
 	check_pred_types(Module2, Module, FoundError),
+	{ require(ground(Module), "internal error 5") },
 	{ report_stats },
 	[].
 
@@ -294,32 +295,32 @@ typecheck_goal(Goal - _GoalInfo, TypeInfo0, TypeInfo) :-
 :- mode typecheck_goal_2(input, typeinfo_di, typeinfo_uo).
 
 typecheck_goal_2(conj(List)) -->
-	checkpoint("conj"),
+	%%% checkpoint("conj"),
 	typecheck_goal_list(List).
 typecheck_goal_2(disj(List)) -->
-	checkpoint("disj"),
+	%%% checkpoint("disj"),
 	typecheck_goal_list(List).
 typecheck_goal_2(if_then_else(_Vs, A, B, C)) -->
-	checkpoint("if"),
+	%%% checkpoint("if"),
 	typecheck_goal(A),
-	checkpoint("then"),
+	%%% checkpoint("then"),
 	typecheck_goal(B),
-	checkpoint("else"),
+	%%% checkpoint("else"),
 	typecheck_goal(C).
 typecheck_goal_2(not(_Vs, A)) -->
-	checkpoint("not"),
+	%%% checkpoint("not"),
 	typecheck_goal(A).
 typecheck_goal_2(some(_Vs, G)) -->
-	checkpoint("some"),
+	%%% checkpoint("some"),
 	typecheck_goal(G).
 typecheck_goal_2(all(_Vs, G)) -->
-	checkpoint("all"),
+	%%% checkpoint("all"),
 	typecheck_goal(G).
 typecheck_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
-	checkpoint("call"),
+	%%% checkpoint("call"),
 	typecheck_call_pred(PredId, Args).
 typecheck_goal_2(unify(A, B, _Mode, _Info)) -->
-	checkpoint("unify"),
+	%%% checkpoint("unify"),
 	typecheck_unification(A, B).
 
 %-----------------------------------------------------------------------------%
@@ -342,19 +343,27 @@ typecheck_goal_list([Goal | Goals]) -->
 typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 		% look up the called predicate's arg types
 	typeinfo_get_preds(TypeInfo0, Preds),
-	(if some [PredInfo]
+	( % if some [PredInfo]
 		map__search(Preds, PredId, PredInfo)
-	then
+	->
 		predinfo_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
+
 			% rename apart the type variables in called
 			% predicate's arg types
-		rename_apart(TypeInfo0, PredTypeVarSet, PredArgTypes0,
-				TypeInfo1, PredArgTypes),
+			% (optimize for the common case of
+			% a non-polymorphic predicate)
+		( varset__is_empty(PredTypeVarSet) ->
+			PredArgTypes = PredArgTypes0,
+			TypeInfo1 = TypeInfo0
+		;
+			rename_apart(TypeInfo0, PredTypeVarSet, PredArgTypes0,
+					TypeInfo1, PredArgTypes)
+		),
 			% unify the types of the call arguments with the
 			% called predicates' arg types
 		typecheck_term_has_type_list(Args, PredArgTypes, TypeInfo1,
 				TypeInfo)
-	else
+	;
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		typeinfo_get_predid(TypeInfo0, CallingPredId),
 		typeinfo_get_context(TypeInfo0, Context),
@@ -446,10 +455,10 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 	typeinfo_get_varset(TypeInfo0, VarSet),
 	typecheck_var_has_type_2(TypeAssignSet0, VarId, Type, [],
 		TypeAssignSet),
-	(if
+	(
 		TypeAssignSet = [],
 		(not TypeAssignSet0 = [])
-	then
+	->
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		typeinfo_get_context(TypeInfo0, Context),
 		typeinfo_get_predid(TypeInfo0, PredId),
@@ -459,7 +468,7 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, true, TypeInfo2),
 		typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo)
-	else
+	;
 		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
 	).
 
@@ -847,7 +856,7 @@ type_assign_unify_term(term_functor(Functor, Args, _), term_variable(Y),
 type_assign_unify_term(term_variable(Y), term_functor(F, As, _), TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 	type_assign_unify_term(term_functor(F, As, _), term_variable(Y),
-		TypeInfo, TypeAssign0, TypeAssignSet0, TypeAssignSet).
+		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet).
 	
 type_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
 		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet) :-
@@ -932,16 +941,33 @@ get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo, ConsType, ArgTypes,
 
 	ConsDefn = hlds__cons_defn(ArgTypes0, TypeId, Context),
 
-	typeinfo_get_types(TypeInfo, Types),
-	map__search(Types, TypeId, TypeDefn),
-	TypeDefn = hlds__type_defn(ConsTypeVarSet, ConsTypeParams, _, _, _),
+	( is_builtin_type(TypeId) ->
+		% XXX assumes arity = 0
+		varset__init(ConsTypeVarSet),
+		ConsTypeParams = []
+	;
+		typeinfo_get_types(TypeInfo, Types),
+		map__search(Types, TypeId, TypeDefn),
+		TypeDefn = hlds__type_defn(ConsTypeVarSet, ConsTypeParams,
+						_, _, _)
+	),
 
 	TypeId = QualifiedName - _Arity,
 	unqualify_name(QualifiedName, Name),
 	ConsType0 = term_functor(term_atom(Name), ConsTypeParams, Context),
 
-	type_assign_rename_apart(TypeAssign0, ConsTypeVarSet,
-		[ConsType0 | ArgTypes0], TypeAssign, [ConsType | ArgTypes]).
+	% Rename apart the type vars in the type of the constructor
+	% and the types of it's arguments.
+	% (Optimize the common case of a non-polymorphic type)
+	(ConsTypeParams = [] ->
+		ConsType = ConsType0,
+		ArgTypes = ArgTypes0,
+		TypeAssign = TypeAssign0
+	;
+		type_assign_rename_apart(TypeAssign0, ConsTypeVarSet,
+			[ConsType0 | ArgTypes0],
+			TypeAssign, [ConsType | ArgTypes])
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1119,7 +1145,7 @@ find_undef_pred_types([PredId | PredIds], Preds, TypeDefns) -->
 find_undef_type_bodies([], _) --> [].
 find_undef_type_bodies([TypeId | TypeIds], TypeDefns) -->
 	{ map__search(TypeDefns, TypeId, HLDS_TypeDefn) },
-		% XXX abstract hlds__type_defn/4
+		% XXX abstract hlds__type_defn/5
 	{ HLDS_TypeDefn = hlds__type_defn(_, _, TypeBody, _, _) },
 	find_undef_type_body(TypeBody, type(TypeId), TypeDefns),
 	find_undef_type_bodies(TypeIds, TypeDefns).
@@ -1176,13 +1202,13 @@ find_undef_type(term_variable(_), _ErrorContext, _TypeDefns) --> [].
 find_undef_type(term_functor(F, As, _), ErrorContext, TypeDefns) -->
 	{ length(As, Arity) },
 	{ make_type_id(F, Arity, TypeId) },
-	(if
+	(
 		{ not map__contains(TypeDefns, TypeId), 
 		  not is_builtin_type(TypeId)
 		}
-	then
+	->
 		report_undef_type(TypeId, ErrorContext)
-	else
+	;
 		[]
 	),
 	find_undef_type_list(As, ErrorContext, TypeDefns).
@@ -1456,8 +1482,8 @@ typeinfo_get_ctor_list(TypeInfo, Functor, Arity, ConsDefnList) :-
 		ConsDefnList1 = []
 	),
 	(
-		 Arity = 0,
-		 builtin_type(Functor, BuiltInType)
+		Arity = 0,
+		builtin_type(Functor, BuiltInType)
 	->
 		term__context_init("<builtin>", 0, Context),
 		TypeId = unqualified(BuiltInType) - 0,
@@ -1627,7 +1653,7 @@ write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet)
 :- mode write_type_b(input, input, input, di, uo).
 
 write_type_b(Type, TypeVarSet, TypeBindings) -->
-	{ term__apply_substitution(Type, TypeBindings, Type2) },
+	{ term__apply_rec_substitution(Type, TypeBindings, Type2) },
 	io__write_term(TypeVarSet, Type2).
 
 %-----------------------------------------------------------------------------%

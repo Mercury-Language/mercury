@@ -82,7 +82,7 @@ process_files_2([File | Files], Progname, Items0) -->
 	io__write_string(StdErr, File),
 	io__write_string(StdErr, "..."),
 	io__flush_output(StdErr),
-	io__gc_call(prog_io__read_program(File, Result)),
+	io__gc_call(prog_io__read_module(File, Result)),
 	process_files_3(Result, Files, Progname, Items0).
 
 :- pred process_files_3(maybe_program, list(string), string,

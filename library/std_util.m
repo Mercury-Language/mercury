@@ -11,6 +11,12 @@
 :- module std_util.
 :- interface.
 
+:- pred T \= T.
+:- mode input \= input.
+
+:- pred T ~= T.
+:- mode input ~= input.
+
 % Unlike most languages, we use `yes' and `no' as boolean constants
 % rather than `true' and `false'.  This is to avoid confusion
 % with the predicates `true' and `fail'.
@@ -38,6 +44,8 @@
 /*
 :- external("NU-Prolog", gc_call/1).
 :- external("NU-Prolog", report_stats/0).
+:- external("NU-Prolog", (\=)/2).
+:- external("NU-Prolog", (~=)/2).
 */
 
 :- end_module std_util.

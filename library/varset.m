@@ -9,6 +9,8 @@
 % as ground terms, so it might help to think of them as "variable ids"
 % rather than variables.)
 % Associated with each id there can be both a name and a value (binding).
+% [But at the moment, the rest of the code is only using varsets to store
+% names, not values.]
 %
 % Currently ids are implemented as integers and bindings as maps,
 % but we should re-implement this using addresses as ids (if and
@@ -28,9 +30,13 @@
 :- type var_id.
 :- type varset.
 
-	% initialize a varset
+	% construct an empty varset.
 :- pred varset__init(varset).
 :- mode varset__init(output).
+
+	% check whether a varset is empty.
+:- pred varset__is_empty(varset).
+:- mode varset__is_empty(input).
 
 	% create a new variable
 :- pred varset__new_var(varset, var_id, varset).
@@ -60,6 +66,7 @@
 	% true iff VarSet is the varset that results from joining
 	% VarSet0 to a suitably renamed version of NewVarSet,
 	% and Terms is Terms0 renamed accordingly.
+	% (Any bindings in NewVarSet are ignored.)
 
 :- pred varset__merge(varset, varset, list(term), varset, list(term)).
 :- mode varset__merge(input, input, input, output, output).
@@ -78,6 +85,10 @@
 varset__init(varset(0,Names,Vals)) :-
 	map__init(Names),
 	map__init(Vals).
+
+%-----------------------------------------------------------------------------%
+
+varset__is_empty(varset(0,_,_)).
 
 %-----------------------------------------------------------------------------%
 
@@ -123,20 +134,28 @@ varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 	% This also has the same efficiency problem because it
 	% calls varset__name_var.
 
+	% We scan through the second varset, introducing a fresh
+	% variable into the first varset for each var in the
+	% second, and building up a substitution which maps
+	% the variables in the second varset into the corresponding
+	% fresh variable in the first varset.  We then apply
+	% this substition to the list of terms.
+
 varset__merge(VarSet0, varset(MaxId, Names, Vals), TermList0,
 		VarSet, TermList) :-
-	varset__merge_2(0, MaxId, Names, Vals, VarSet0, TermList0,
-				VarSet, TermList).
+	map__init(Subst0),
+	varset__merge_2(0, MaxId, Names, Vals, VarSet0, Subst0, VarSet, Subst),
+	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
 :- pred varset__merge_2(var_id, var_id, map(var_id, string), map(var_id, term),
-			varset, list(term), varset, list(term)).
+			varset, substitution, varset, substitution).
 :- mode varset__merge_2(input, input, input, input, input, input,
 			output, output).
 
-varset__merge_2(N, Max, Names, Vals, VarSet0, TermList0, VarSet, TermList) :-
+varset__merge_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 	( N = Max ->
 		VarSet = VarSet0,
-		TermList = TermList0
+		Subst0 = Subst
 	;
 		varset__new_var(VarSet0, VarId, VarSet1),
 		(if some [Name]
@@ -146,11 +165,10 @@ varset__merge_2(N, Max, Names, Vals, VarSet0, TermList0, VarSet, TermList) :-
 		else
 			VarSet2 = VarSet1
 		),
-		term__substitute_list(TermList0, N, term_variable(VarId),
-				TermList1),
+		map__insert(Subst0, N, term_variable(VarId), Subst1),
 		N1 is N + 1,
-		varset__merge_2(N1, Max, Names, Vals, VarSet2, TermList1,
-				VarSet, TermList)
+		varset__merge_2(N1, Max, Names, Vals, VarSet2, Subst1,
+				VarSet, Subst)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -199,7 +199,7 @@
 			;	use(sym_list).
 :- type sym_list	--->	sym(list(sym_specifier))
 			;	pred(list(pred_specifier))
-			;	cons(list(pred_specifier))
+			;	cons(list(cons_specifier))
 			;	op(list(op_specifier))
 			;	adt(list(sym_name_specifier))
 	 		;	type(list(sym_name_specifier))
@@ -273,7 +273,7 @@
 % and then reverse them afterwards.  (Using difference lists would require
 % late-input modes.)
 
-prog_io__read_module(Module, Error, Messages, Prog) -->
+prog_io__read_module(Module, Error, Messages, Items) -->
 	% io__op(1199, fx, "rule"),
 	% io__op(1179, xfy, "--->"),		% XXX should be automatic
 	{ string__append(Module, ".nl", FileName) },
@@ -285,8 +285,7 @@ prog_io__read_module(Module, Error, Messages, Prog) -->
 		  reverse(RevMessages, Messages0),
 		  reverse(RevItems, Items0),
 		  check_begin_module(Messages0, Items0, Error0, EndModule,
-				     Messages, Items, Error),
-		  Prog = module(Module, Items)
+				     Messages, Items, Error)
 		},
 		io__seen
 	else
@@ -298,7 +297,7 @@ prog_io__read_module(Module, Error, Messages, Prog) -->
 		  dummy_term(Term),
 		  Messages = [Message - Term],
 		  Error = yes,
-		  Prog = module(Module, [])
+		  Items = []
 		}
 	).
 
@@ -427,8 +426,8 @@ read_all_items(Messages, Items, Error) -->
 	% implementation unless the compiler is smart enough to inline
 	% read_items_loop_2.
 
-:- pred read_items_loop(message_list, list(item), bool, message_list,
-			list(item), bool, io__state, io__state).
+:- pred read_items_loop(message_list, item_list, bool, message_list,
+			item_list, bool, io__state, io__state).
 :- mode read_items_loop(input, input, input, output, output, output, di, uo).
 
 read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
@@ -437,8 +436,8 @@ read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_items_loop_2(maybe_item_or_eof, message_list, list(item),
-	bool, message_list, list(item), bool, io__state, io__state).
+:- pred read_items_loop_2(maybe_item_or_eof, message_list, item_list,
+	bool, message_list, item_list, bool, io__state, io__state).
 :- mode read_items_loop_2(input, input, input, input,
 			output, output, output, di, uo).
 
@@ -549,9 +548,9 @@ parse_item(VarSet, Term, Result) :-
 			Body = term_functor(term_atom("true"), [], TheContext)
 		),
 		parse_goal(Body, Body2),
-		parse_qualified_term(Head, "clause head", R),
-		process_clause(R, VarSet, Body2, R2),
-		add_context(R2, TheContext, Result)
+		parse_qualified_term(Head, "clause head", R2),
+		process_clause(R2, VarSet, Body2, R3),
+		add_context(R3, TheContext, Result)
 	).
 
 :- pred add_context(maybe(item), term__context, maybe_item_and_context).
@@ -632,7 +631,7 @@ parse_goal_2( term_functor(term_atom("else"),[
 	parse_goal(C0, C).
 parse_goal_2( term_functor(term_atom("not"), [A0], _), not([],A) ) :-
 	parse_goal(A0, A).
-parse_goal_2( term_functor(term_atom("\+"), [A0], _), not([],A) ) :-
+parse_goal_2( term_functor(term_atom("\\+"), [A0], _), not([],A) ) :-
 	parse_goal(A0, A).
 parse_goal_2( term_functor(term_atom("all"),[Vars0,A0],_),all(Vars,A) ):-
 	term__vars(Vars0, Vars),
@@ -887,11 +886,13 @@ parse_mode_decl_pred(VarSet, Pred, R) :-
 	process_mode(VarSet, Body2, Determinism, Condition, R).
 
 %-----------------------------------------------------------------------------%
+
 	% get_determinism(Term0, Term, Determinism) binds Determinism
-	% to a representation of the 'where' condition of Term0, if any,
+	% to a representation of the determinism condition of Term0, if any,
 	% and binds Term to the other part of Term0. If Term0 does not
-	% contain a condition, then Determinism is bound to true.
-:- pred get_determinism(term, term, condition).
+	% contain a determinism, then Determinism is bound to `unspecified'.
+
+:- pred get_determinism(term, term, determinism).
 :- mode get_determinism(input, output, output).
 get_determinism(B, Body, Determinism) :-
 	(if some [Body1, Determinism1, Context]
@@ -922,10 +923,12 @@ standard_det("nondet", nondet).
 standard_det("semidet", semidet).
 
 %-----------------------------------------------------------------------------%
+
 	% get_condition(Term0, Term, Condition) binds Condition
 	% to a representation of the 'where' condition of Term0, if any,
 	% and binds Term to the other part of Term0. If Term0 does not
 	% contain a condition, then Condition is bound to true.
+
 :- pred get_condition(term, term, condition).
 :- mode get_condition(input, output, output).
 get_condition(B, Body, Condition) :-
@@ -1039,7 +1042,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 	% check that all the head args are variables
 	(if	some [Arg] (
 			member(Arg, Args),
-			all [Var] Arg ~= term_variable(Var)
+			all [Var] Arg \= term_variable(Var)
 		)
 	then
 		Result = error("Type parameters must be variables", Arg)
@@ -1059,7 +1062,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 		)
 	then
 		Result = error("Free type parameter in RHS of type definition",
-				Var2)
+				Body)
 	else
 		Result = ok(Name, Args)
 	).
@@ -1100,7 +1103,7 @@ convert_constructor(Term, Result) :-
 	else
 		Term2 = Term
 	),
-	parse_qualified_term(Term2, "constructor definition", ok(F, As)),
+	parse_qualified_term(Term2, "", ok(F, As)),
 	convert_type_list(As, ArgTypes),
 	Result = F - ArgTypes.
 
@@ -1251,7 +1254,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head args are variables
 	(if	some [Arg] (
 			member(Arg, Args),
-			all [Var] Arg ~= term_variable(Var)
+			all [Var] Arg \= term_variable(Var)
 		)
 	then
 		Result = error("Inst parameters must be variables", Arg)
@@ -1272,7 +1275,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 		)
 	then
 		Result = error("Free inst parameter in RHS of inst definition",
-				Var2)
+				Body)
 	else
 		% should improve the error message here
 
@@ -1295,7 +1298,7 @@ convert_inst_list([H0|T0], [H|T]) :-
 :- pred convert_inst(term, inst).
 :- mode convert_inst(input, output).
 convert_inst(term_variable(V), inst_var(V)).
-convert_inst(term_functor(Name, Args0, _), Result) :-
+convert_inst(term_functor(Name, Args0, Context), Result) :-
 	(if Name = term_atom("free"), Args0 = [] then
 		Result = free
 	else
@@ -1307,8 +1310,10 @@ convert_inst(term_functor(Name, Args0, _), Result) :-
 		convert_bound_inst_list(List, Functors),
 		Result = bound(Functors)
 	else
-		convert_inst_list(Args0, Args),
-		Result = user_defined_inst(Name, Args)
+		parse_qualified_term(term_functor(Name, Args0, Context),
+			"", ok(QualifiedName, Args1)),
+		convert_inst_list(Args1, Args),
+		Result = user_defined_inst(QualifiedName, Args)
 	).
 
 :- pred convert_bound_inst_list(list(term), list(bound_inst)).
@@ -1364,7 +1369,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head args are variables
 	(if	some [Arg] (
 			member(Arg, Args),
-			all [Var] Arg ~= term_variable(Var)
+			all [Var] Arg \= term_variable(Var)
 		)
 	then
 		Result = error("Mode parameters must be variables", Arg)
@@ -1385,7 +1390,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 		)
 	then
 		Result = error("Free inst parameter in RHS of mode definition",
-				Var2)
+				Body)
 	else
 		% should improve the error message here
 
@@ -1755,7 +1760,7 @@ parse_op_spec_list(Term, Result) :-
 	parse_op_spec_list_2(List, R),
 	process_op_spec_list(R, Result).
 
-:- pred parse_op_spec_list_2(list(term), maybe(list(sym_name_specifier))).
+:- pred parse_op_spec_list_2(list(term), maybe(list(op_specifier))).
 :- mode parse_op_spec_list_2(input, output).
 parse_op_spec_list_2([], ok([])).
 parse_op_spec_list_2(X.Xs, Result) :-
@@ -1948,8 +1953,8 @@ parse_predicate_specifier(Term, Result) :-
     (if some [X, Y, Context]
 	Term = term_functor(term_atom("/"), [X,Y], Context)
     then
-	parse_symbol_name_specifier(Term, TermResult),
-        process_arity_predicate_specifier(TermResult, Result)
+	parse_symbol_name_specifier(Term, NameResult),
+        process_arity_predicate_specifier(NameResult, Result)
     else
 	parse_qualified_term(Term, "predicate specifier", TermResult),
 	process_typed_predicate_specifier(TermResult, Result)
@@ -1982,8 +1987,8 @@ parse_arg_types_specifier(Term, Result) :-
     (if some [X, Y, Context]
 	Term = term_functor(term_atom("/"), [X,Y], Context)
     then
-	parse_symbol_name_specifier(Term, TermResult),
-        process_arity_predicate_specifier(TermResult, Result)
+	parse_symbol_name_specifier(Term, NameResult),
+        process_arity_predicate_specifier(NameResult, Result)
     else
 	parse_qualified_term(Term, "constructor specifier", TermResult),
 	process_typed_predicate_specifier(TermResult, Result)
@@ -2144,17 +2149,17 @@ parse_symbol_name(Term, Result) :-
 % convert a module definition to a program item,
 % propagating errors upwards
 
-:- pred process_import(maybe(module_defn), varset, maybe(item)).
+:- pred process_import(maybe(sym_list), varset, maybe(item)).
 :- mode process_import(input, input, output).
 process_import(ok(X), VarSet, ok(module_defn(VarSet, import(X)))).
 process_import(error(Msg, Term), _, error(Msg, Term)).
 
-:- pred process_use(maybe(module_defn), varset, maybe(item)).
+:- pred process_use(maybe(sym_list), varset, maybe(item)).
 :- mode process_use(input, input, output).
 process_use(ok(X), VarSet, ok(module_defn(VarSet, use(X)))).
 process_use(error(Msg, Term), _, error(Msg, Term)).
 
-:- pred process_export(maybe(module_defn), varset, maybe(item)).
+:- pred process_export(maybe(sym_list), varset, maybe(item)).
 :- mode process_export(input, input, output).
 process_export(ok(X), VarSet, ok(module_defn(VarSet, export(X)))).
 process_export(error(Msg, Term), _, error(Msg, Term)).

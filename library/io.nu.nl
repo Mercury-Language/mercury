@@ -52,7 +52,7 @@ io__call_2(Goal, Solutions, IOState) :-
 		write(user_error, F),
 		write(user_error, '/'),
 		write(user_error, N),
-		write(user_error, '." failed.\n'),
+		write(user_error, '\' failed.\n'),
 		abort
 	; Solutions = [SingleSolution - IOState0] ->
 		Goal = SingleSolution,
@@ -63,7 +63,7 @@ io__call_2(Goal, Solutions, IOState) :-
 		write(user_error, F),
 		write(user_error, '/'),
 		write(user_error, N),
-		write(user_error, '." not deterministic.\n'),
+		write(user_error, '\' not deterministic.\n'),
 		abort
 	).
 

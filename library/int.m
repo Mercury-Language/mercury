@@ -10,6 +10,18 @@
 
 :- interface.
 
+:- pred (int < int).
+:- mode (input < input).
+
+:- pred (int =< int).
+:- mode (input =< input).
+
+:- pred (int >= int).
+:- mode (input >= input).
+
+:- pred (int > int).
+:- mode (input > input).
+
 :- pred int__abs(int, int).
 :- mode int__abs(input, output).
 
@@ -30,7 +42,11 @@
 :- implementation.
 
 /*
-:- external("NU-Prolog", is/2).
+:- external("NU-Prolog", (is)/2).
+:- external("NU-Prolog", (<)/2).
+:- external("NU-Prolog", (=<)/2).
+:- external("NU-Prolog", (>)/2).
+:- external("NU-Prolog", (>=)/2).
 */
 
 int__abs(I0, I) :-

@@ -39,6 +39,13 @@
 %		True if Term contains Var. (On backtracking returns all the 
 %		variables contained in Term.)
 
+:- pred term__contains_var_list(list(term), variable).
+:- mode term__contains_var_list(input, input) is semidet.
+:- mode term__contains_var_list(input, output) is nondet.
+%	term__contains_var_list(TermList, Var)
+%		True if TermList contains Var. (On backtracking returns all the 
+%		variables contained in Term.)
+
 :- type substitution == map(variable, term).
 
 :- pred term__unify(term, term, substitution, substitution).
@@ -55,20 +62,32 @@
 
 :- pred term__substitute_list(list(term), variable, term, list(term)).
 :- mode term__substitute_list(input, input, input, output).
-%		as above, except for a list of terms rather than
-%		a single term
+%		as above, except for a list of terms rather than a single term
 
 :- pred term__substitute_corresponding(list(variable), list(term), term, term).
 :- mode term__substitute_corresponding(input, input, input, output).
 %       term__substitute_corresponding(Vars, Repls, Term0, Term).
 %		replace all occurrences of variables in Vars with
-%		the correspond term in Repls (which should be the
+%		the corresponding term in Repls (which should be the
 %		same length as Vars!), and return the result in Term.
+
+:- pred term__apply_rec_substitution(term, substitution, term).
+:- mode term__apply_rec_substitution(input, input, output) is det.
+%	term__apply_rec_substitution(Term0, Substitution, Term) :
+%		recursively apply substitution to Term0 until
+%		no more substitions can be applied, and then
+%		return the result in Term.
 
 :- pred term__apply_substitution(term, substitution, term).
 :- mode term__apply_substitution(input, input, output) is det.
 %	term__apply_substitution(Term0, Substitution, Term) :
 %		apply substitution to Term0 and return the result in Term.
+
+:- pred term__apply_substitution_to_list(list(term), substitution, list(term)).
+:- mode term__apply_substitution_to_list(input, input, output).
+%	term__apply_substitution_to_list(TermList0, Substitution, TermList) :
+%		as above, except for a list of terms rather than a single term
+
 
 :- pred term__occurs(term, variable, substitution).
 :- mode term__occurs(input, input, input).
@@ -136,10 +155,6 @@ term__vars_2_list(T.Ts, Vs0, Vs) :-
 term__contains_var(term_variable(V), V).
 term__contains_var(term_functor(_, Args, _), V) :-
 	term__contains_var_list(Args, V).
-
-:- pred term__contains_var_list(list(term), variable).
-:- mode term__contains_var_list(input, input) is semidet.
-:- mode term__contains_var_list(input, output) is nondet.
 
 term__contains_var_list(T._, V) :-
 	term__contains_var(T, V).
@@ -356,10 +371,44 @@ term__substitute_list([Term0 | Terms0], Var, Replacement, [Term | Terms]) :-
 	term__substitute(Term0, Var, Replacement, Term),
 	term__substitute_list(Terms0, Var, Replacement, Terms).
 
-term__substitute_corresponding([], [], Term, Term).
-term__substitute_corresponding([S | Ss], [R | Rs], Term0, Term) :-
-	term__substitute(Term0, S, R, Term1),
-	term__substitute_corresponding(Ss, Rs, Term1, Term).
+term__substitute_corresponding(Ss, Rs, Term0, Term) :-
+	map__init(Subst0),
+	term__substitute_corresponding_2(Ss, Rs, Subst0, Subst),
+	term__apply_substitution(Term0, Subst, Term).
+
+:- pred term__substitute_corresponding_2(list(variable), list(term),
+					substitution, substitution).
+:- mode term__substitute_corresponding_2(input, input, input, output).
+
+term__substitute_corresponding_2([], [], Subst, Subst).
+term__substitute_corresponding_2([S | Ss], [R | Rs], Subst0, Subst) :-
+	map__insert(Subst0, S, R, Subst1),
+	term__substitute_corresponding_2(Ss, Rs, Subst1, Subst).
+
+%-----------------------------------------------------------------------------%
+
+term__apply_rec_substitution(term_variable(Var), Substitution, Term) :-
+	(if some [Replacement]
+		map__search(Substitution, Var, Replacement)
+	then
+		% recursively apply the substition to the replacement
+		term__apply_rec_substitution(Replacement, Substitution, Term)
+	else
+		Term = term_variable(Var)
+	).
+term__apply_rec_substitution(term_functor(Name, Args0, Context), Substitution,
+		 term_functor(Name, Args, Context)) :-
+	term__apply_rec_substitution_to_list(Args0, Substitution, Args).
+
+:- pred term__apply_rec_substitution_to_list(list(term), substitution,
+						list(term)).
+:- mode term__apply_rec_substitution_to_list(input, input, output).
+
+term__apply_rec_substitution_to_list([], _Substitution, []).
+term__apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
+		[Term | Terms]) :-
+	term__apply_rec_substitution(Term0, Substitution, Term),
+	term__apply_rec_substitution_to_list(Terms0, Substitution, Terms).
 
 %-----------------------------------------------------------------------------%
 
@@ -367,17 +416,13 @@ term__apply_substitution(term_variable(Var), Substitution, Term) :-
 	(if some [Replacement]
 		map__search(Substitution, Var, Replacement)
 	then
-		% recursively apply the substition to the replacement
-		term__apply_substitution(Replacement, Substitution, Term)
+		Term = Replacement
 	else
 		Term = term_variable(Var)
 	).
 term__apply_substitution(term_functor(Name, Args0, Context), Substitution,
 		 term_functor(Name, Args, Context)) :-
 	term__apply_substitution_to_list(Args0, Substitution, Args).
-
-:- pred term__apply_substitution_to_list(list(term), substitution, list(term)).
-:- mode term__apply_substitution_to_list(input, input, output).
 
 term__apply_substitution_to_list([], _Substitution, []).
 term__apply_substitution_to_list([Term0 | Terms0], Substitution,

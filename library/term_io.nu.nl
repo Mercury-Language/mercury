@@ -66,7 +66,7 @@ convert_tokens(Tok0.Toks0, Toks) :-
 	Tok0 = Val.Type,
 	( Type = atom, Val = '[]' ->
 		magic_string_atom(String),
-		Toks = [String.atom, '('.atom, ''.atom, ')'.atom | Toks1]
+		Toks = [String.atom, '('.atom, "".string, ')'.atom | Toks1]
 	; Type = string ->
 		magic_string_atom(String),
 		Toks = [String.atom, '('.atom, Tok0, ')'.atom | Toks1]

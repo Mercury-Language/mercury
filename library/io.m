@@ -151,6 +151,10 @@
 %	(as per NU-Prolog lineCount/1).
 
 % XXX The type and mode of io__gc_call/3 are a bit tricky.
+% For the moment, just disable type-checking here.
+
+:- pred io__gc_call(_, io__state, io__state).
+
 % :- pred io__gc_call(pred(M, io__state::di, io__state::uo) :: M,
 %			io__state::di, io__state::uo).
 %	io__gc_call(Goal, IO0, IO1).

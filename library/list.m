@@ -45,6 +45,9 @@
 :- mode same_length(input_list_skel, output_list_skel).
 :- mode same_length(output_list_skel, input_list_skel).
 
+:- pred reverse(list(T), list(T)).
+:- mode reverse(input, output).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -54,6 +57,7 @@
 :- external("NU-Prolog", member/2).
 :- external("NU-Prolog", member/3).
 :- external("NU-Prolog", length/2).
+:- external("NU-Prolog", reverse/2).
 */
 
 condense([], []).
