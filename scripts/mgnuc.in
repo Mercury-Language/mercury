@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2001 The University of Melbourne.
+# Copyright (C) 1995-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -158,12 +158,12 @@ while : ; do
 		;;
 
 	--split-c-files)
-		SPLIT_OPTS=-DSPLIT_C_FILES ;;
+		SPLIT_OPTS=-DMR_SPLIT_C_FILES ;;
 	--no-split-c-files)
 		SPLIT_OPTS= ;;
 
 	--inline-alloc)
-		INLINE_ALLOC_OPTS="-DINLINE_ALLOC -DSILENT" ;;
+		INLINE_ALLOC_OPTS="-DMR_INLINE_ALLOC -DSILENT" ;;
 	--no-inline-alloc)
 		INLINE_ALLOC_OPTS="" ;;
 
@@ -254,17 +254,17 @@ case $gcc_nested_functions in
 esac
 
 case $asm_labels in
-	true)		ASM_OPTS="-DUSE_ASM_LABELS" ;;
+	true)		ASM_OPTS="-DMR_USE_ASM_LABELS" ;;
 	false)		ASM_OPTS="" ;;
 esac
 
 case $non_local_gotos in
-	true)		GOTO_OPTS="-DUSE_GCC_NONLOCAL_GOTOS" ;;
+	true)		GOTO_OPTS="-DMR_USE_GCC_NONLOCAL_GOTOS" ;;
 	false)		GOTO_OPTS="" ;;
 esac
 
 case $global_regs in
-	true)		REG_OPTS="-DUSE_GCC_GLOBAL_REGISTERS" ;;
+	true)		REG_OPTS="-DMR_USE_GCC_GLOBAL_REGISTERS" ;;
 	false)		REG_OPTS="" ;;
 esac
 
@@ -283,8 +283,8 @@ case $thread_safe in
 esac
 
 case $gc_method in
-	accurate)	GC_OPTS="-DNATIVE_GC" ;;
-	conservative)	GC_OPTS="-DCONSERVATIVE_GC" ;;
+	accurate)	GC_OPTS="-DMR_NATIVE_GC" ;;
+	conservative)	GC_OPTS="-DMR_CONSERVATIVE_GC" ;;
 	none)		GC_OPTS="" ;;
 esac
 
@@ -336,7 +336,7 @@ case $use_minimal_model in
 esac
 
 case $pic_reg in
-	true)		PICREG_OPTS="-DPIC_REG" ;;
+	true)		PICREG_OPTS="-DMR_PIC_REG" ;;
 	false)		PICREG_OPTS="" ;;
 esac
 

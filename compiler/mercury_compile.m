@@ -3547,7 +3547,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	 	(func(C_INCL) = ["-I", C_INCL, " "]), C_Incl_Dirs))) },
 	globals__io_lookup_bool_option(split_c_files, Split_C_Files),
 	{ Split_C_Files = yes ->
-		SplitOpt = "-DSPLIT_C_FILES "
+		SplitOpt = "-DMR_SPLIT_C_FILES "
 	;
 		SplitOpt = ""
 	},
@@ -3574,14 +3574,14 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	( { GCC_Regs = yes } ->
 		globals__io_lookup_string_option(cflags_for_regs,
 			CFLAGS_FOR_REGS),
-		{ RegOpt = "-DUSE_GCC_GLOBAL_REGISTERS " }
+		{ RegOpt = "-DMR_USE_GCC_GLOBAL_REGISTERS " }
 	;
 		{ CFLAGS_FOR_REGS = "" },
 		{ RegOpt = "" }
 	),
 	globals__io_lookup_bool_option(gcc_non_local_gotos, GCC_Gotos),
 	( { GCC_Gotos = yes } ->
-		{ GotoOpt = "-DUSE_GCC_NONLOCAL_GOTOS " },
+		{ GotoOpt = "-DMR_USE_GCC_NONLOCAL_GOTOS " },
 		globals__io_lookup_string_option(cflags_for_gotos,
 			CFLAGS_FOR_GOTOS)
 	;
@@ -3590,7 +3590,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	),
 	globals__io_lookup_bool_option(asm_labels, ASM_Labels),
 	{ ASM_Labels = yes ->
-		AsmOpt = "-DUSE_ASM_LABELS "
+		AsmOpt = "-DMR_USE_ASM_LABELS "
 	;
 		AsmOpt = ""
 	},
@@ -3603,9 +3603,9 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	),
 	globals__io_get_gc_method(GC_Method),
 	{ GC_Method = conservative ->
-		GC_Opt = "-DCONSERVATIVE_GC "
+		GC_Opt = "-DMR_CONSERVATIVE_GC "
 	; GC_Method = accurate ->
-		GC_Opt = "-DNATIVE_GC "
+		GC_Opt = "-DMR_NATIVE_GC "
 	;
 		GC_Opt = ""
 	},
@@ -3635,20 +3635,20 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	},
 	globals__io_lookup_bool_option(pic_reg, PIC_Reg),
 	{ PIC_Reg = yes ->
-		PIC_Reg_Opt = "-DPIC_REG "
+		PIC_Reg_Opt = "-DMR_PIC_REG "
 	;
 		PIC_Reg_Opt = ""
 	},
 	globals__io_get_tags_method(Tags_Method),
 	{ Tags_Method = high ->
-		TagsOpt = "-DHIGHTAGS "
+		TagsOpt = "-DMR_HIGHTAGS "
 	;
 		TagsOpt = ""
 	},
 	globals__io_lookup_int_option(num_tag_bits, NumTagBits),
 	{ string__int_to_string(NumTagBits, NumTagBitsString) },
 	{ string__append_list(
-		["-DTAGBITS=", NumTagBitsString, " "], NumTagBitsOpt) },
+		["-DMR_TAGBITS=", NumTagBitsString, " "], NumTagBitsOpt) },
 	globals__io_lookup_bool_option(require_tracing, RequireTracing),
 	{ RequireTracing = yes ->
 		RequireTracingOpt = "-DMR_REQUIRE_TRACING "
@@ -3694,7 +3694,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->
-		TypeLayoutOpt = "-DNO_TYPE_LAYOUT "
+		TypeLayoutOpt = "-DMR_NO_TYPE_LAYOUT "
 	;
 		TypeLayoutOpt = ""
 	},
@@ -3712,7 +3712,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	},
 	globals__io_lookup_bool_option(inline_alloc, InlineAlloc),
 	{ InlineAlloc = yes ->
-		InlineAllocOpt = "-DINLINE_ALLOC -DSILENT "
+		InlineAllocOpt = "-DMR_INLINE_ALLOC -DSILENT "
 	;
 		InlineAllocOpt = ""
 	},
