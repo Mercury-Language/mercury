@@ -438,7 +438,7 @@ void
 MR_proc_layout_stats(FILE *fp)
 {
 	const MR_Module_Layout		*module_layout;
-	const MR_Stack_Layout_Entry	*proc_layout;
+	const MR_Proc_Layout		*proc_layout;
 	int				module_num, proc_num;
 	MR_Determinism			detism;
 	int				total;
