@@ -648,6 +648,9 @@
 		;	shlib_linker_rpath_separator
 		;	linker_allow_undefined_flag
 		;	linker_error_undefined_flag
+		;	shlib_linker_use_install_name
+		;	shlib_linker_install_name_flag
+		;	shlib_linker_install_name_path
 
 	% Build system options
 		;	make
@@ -1270,7 +1273,10 @@ option_defaults_2(link_option, [
 	shlib_linker_rpath_flag -	string("-Wl,-rpath"),
 	shlib_linker_rpath_separator -	string(" -Wl,-rpath"),
 	linker_allow_undefined_flag -	string(""),
-	linker_error_undefined_flag -	string("-Wl,-no-undefined")
+	linker_error_undefined_flag -	string("-Wl,-no-undefined"),
+	shlib_linker_use_install_name - bool(no),
+	shlib_linker_install_name_flag - string("-install_name "),
+	shlib_linker_install_name_path - string("$(INSTALL_MERC_LIB_DIR)")
 ]).
 option_defaults_2(build_system_option, [
 		% Build System Options
@@ -1939,6 +1945,9 @@ long_option("shlib-linker-rpath-flag",	shlib_linker_rpath_flag).
 long_option("shlib-linker-rpath-separator", shlib_linker_rpath_separator).
 long_option("linker-allow-undefined-flag", linker_allow_undefined_flag).
 long_option("linker-error-undefined-flag", linker_error_undefined_flag).
+long_option("shlib-linker-use-install-name", shlib_linker_use_install_name).
+long_option("shlib-linker-install-name-flag", shlib_linker_install_name_flag).
+long_option("shlib-linker-install-name-path", shlib_linker_install_name_path).
 
 % build system options
 long_option("make",			make).
@@ -3932,6 +3941,11 @@ options_help_link -->
 		"-R <directory>, --runtime-library-directory <directory>",
 		"\tAppend <directory> to the list of directories in which",
 		"\tto search for shared libraries at runtime.",
+		"--shlib-linker-install-name-path <directory>",
+		"\tSpecify the path where a shared library will be installed.",
+		"\tThis option is useful on systems where the runtime search",
+		"\tpath is obtained from the shared library and not via the",
+		"\t-R option above (such as Mac OS X).",
 		"-l <library>, --library <library>",
 		"\tLink with the specified library.",
 		"--link-object <object-file>",
@@ -4014,6 +4028,8 @@ options_help_link -->
 		% --shlib-linker-rpath-flag, --shlib-linker-rpath-separator,
 		% --linker-allow-undefined-flag and
 		% --linker-error-undefined-flag,
+		% --shlib-linker-install-name-flag,
+		% --shlib-linker-use-install-name,
 		% options are reserved for use by the `Mercury.config' file;
 		% they are deliberately not documented.
 	]).

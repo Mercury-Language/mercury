@@ -759,6 +759,15 @@
 
 :- pred get_env_classpath(string::out, io::di, io::uo) is det.
 
+	% get_install_name_option(FileName, Option, !IO):
+	%	Get the option string for setting the install-name of the
+	%	shared library FileName.
+	%	This is only used for systems which support the install-name
+	%	option for shared libraries (such as Darwin).
+	
+:- pred get_install_name_option(string::in, string::out, io::di, io::uo) 
+	is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -956,11 +965,13 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
 			; Ext = ".a"
 			; Ext = ".$A"
 			; Ext = ".so"
+			; Ext = ".dylib"
 			; Ext = ".$(EXT_FOR_SHARED_LIB)"
 			; Ext = ".jar"
 			; Ext = ".split.a"
 			; Ext = ".split.$A"
 			; Ext = ".split.so"
+			; Ext = ".split.dylib"
 			; Ext = ".split.$(EXT_FOR_SHARED_LIB)"
 			; Ext = ".init"
 					% mercury_update_interface
@@ -4756,11 +4767,24 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName),
 	module_name_to_lib_file_name("lib", ModuleName, ".$A", yes,
 		LibFileName),
-	module_name_to_lib_file_name("lib", ModuleName, ".so", yes,
-		SharedLibFileName),
+	module_name_to_lib_file_name("lib", ModuleName, 
+		".$(EXT_FOR_SHARED_LIB)", yes, SharedLibFileName),
 	module_name_to_lib_file_name("lib", ModuleName,
 		".$(EXT_FOR_SHARED_LIB)", no, MaybeSharedLibFileName),
 	module_name_to_file_name(ModuleName, ".jar", no, JarFileName),
+
+	%
+	% Set up the installed name for shared libraries.
+	%
+	globals.io_lookup_bool_option(shlib_linker_use_install_name,
+		UseInstallName),
+	(
+		{ UseInstallName = yes }
+	->
+		get_install_name_option(SharedLibFileName, InstallNameOpt)
+	;
+		{ InstallNameOpt = "" }
+	),
 
 	{ AllInts = [
 		"$(", MakeVarName, ".ints) ",
@@ -4805,7 +4829,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"$(", MakeVarName, ".pic_os) ",
 			All_MLPicObjsString, " ", All_MLLibsDepString, "\n",
 		"\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
-			"-- $(ALL_LD_LIBFLAGS) -o ", SharedLibFileName, " \\\n",
+			"-- ", InstallNameOpt, " $(ALL_LD_LIBFLAGS) -o ", 
+			SharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".pic_os) ", All_MLPicObjsString,
 			" $(ALL_MLLIBS)\n\n"
 	]),
@@ -7219,4 +7244,17 @@ get_env_classpath(Classpath, !IO) :-
 		)
 	).
 
+%-----------------------------------------------------------------------------%
+
+get_install_name_option(OutputFileName, InstallNameOpt, !IO) :-
+	globals.io_lookup_string_option(
+		shlib_linker_install_name_flag, 
+		InstallNameFlag, !IO),
+	globals.io_lookup_string_option(
+		shlib_linker_install_name_path, 
+		InstallNamePath, !IO),
+		dir.directory_separator(Slash),
+	InstallNameOpt = InstallNameFlag++InstallNamePath++
+		char_to_string(Slash)++OutputFileName.
+		
 %-----------------------------------------------------------------------------%

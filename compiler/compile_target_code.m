@@ -1222,7 +1222,10 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
 		%
 		% Set up the runtime library path.
 		%
+		globals__io_lookup_bool_option(shlib_linker_use_install_name,
+			UseInstallName, !IO),
 		(
+			UseInstallName = no,
 			SharedLibExt \= LibExt,
 			( Linkage = "shared"
 			; LinkTargetType = shared_library
@@ -1244,6 +1247,19 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
 			)
 		;
 			RpathOpts = ""
+		),
+				
+		%
+		% Set up the installed name for shared libraries.
+		%
+		(
+			UseInstallName = yes,
+			LinkTargetType = shared_library
+		->
+			get_install_name_option(OutputFileName, InstallNameOpt,
+				!IO)
+		;
+			InstallNameOpt = ""
 		),
 
 		globals__io_get_trace_level(TraceLevel, !IO),
@@ -1290,9 +1306,9 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
 				ThreadOpts, " ", TraceOpts, " ",
 				" -o ", OutputFileName, " ", Objects, " ",
 				LinkOptSep, " ", LinkLibraryDirectories, " ",
-				RpathOpts, " ", DebugOpts, " ", LDFlags, " ",
-				LinkLibraries, " ", MercuryStdLibs, " ",
-				SystemLibs],
+				RpathOpts, " ", InstallNameOpt, " ", DebugOpts,
+				" ", LDFlags, " ", LinkLibraries, " ",
+				MercuryStdLibs, " ", SystemLibs],
 				LinkCmd),
 
 			globals__io_lookup_bool_option(demangle, Demangle,
