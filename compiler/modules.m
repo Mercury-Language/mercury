@@ -3557,8 +3557,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"$(", MakeVarName, ".os) ",
 			InitObjFileName, " ", All_MLObjsString, " ",
 			All_MLLibsDepString, "\n",
-		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
-			ExeFileName, " ", InitObjFileName, " \\\n",
+		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) ",
+			"-o ", ExeFileName, " ", InitObjFileName, " \\\n",
 		"\t	$(", MakeVarName, ".os) ", All_MLObjsString,
 			" $(ALL_MLLIBS)\n"]
 	},
@@ -3583,8 +3583,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		SplitExeFileName, " : ", SplitLibFileName, " ",
 			InitObjFileName, " ", All_MLLibsDepString, "\n",
-		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
-			SplitExeFileName, " ", InitObjFileName, " \\\n",
+		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) ",
+			"-o ", SplitExeFileName, " ", InitObjFileName, " \\\n",
 		"\t	", SplitLibFileName, " $(ALL_MLLIBS)\n\n"
 	]),
 
@@ -3652,7 +3652,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"$(", MakeVarName, ".pic_os) ",
 			All_MLPicObjsString, " ", All_MLLibsDepString, "\n",
 		"\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
-			"-o ", SharedLibFileName, " \\\n",
+			"-- $(ALL_LD_LIBFLAGS) -o ", SharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".pic_os) ", All_MLPicObjsString,
 			" $(ALL_MLLIBS)\n\n"
 	]),

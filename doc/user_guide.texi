@@ -633,6 +633,11 @@ The executable that invokes the C compiler.
 @item MGNUCFLAGS and EXTRA_MGNUCFLAGS
 @vindex MGNUCFLAGS
 @vindex EXTRA_MGNUCFLAGS
+Options to pass to the mgnuc script.
+
+@item CFLAGS and EXTRA_CFLAGS
+@vindex CFLAGS
+@vindex EXTRA_CFLAGS
 Options to pass to the C compiler.
 
 @item MS_CLFLAGS and EXTRA_MS_CLFLAGS
@@ -655,9 +660,24 @@ The executable that invokes the linker.
 @item MLFLAGS and EXTRA_MLFLAGS
 @vindex MLFLAGS
 @vindex EXTRA_MLFLAGS
-Options to pass to the linker and the c2init program.
+Options to pass to the ml and c2init scripts.
 (Note that compilation model options should be
 specified in @code{GRADEFLAGS}, not in @code{MLFLAGS}.)
+
+@item LDFLAGS and EXTRA_LDFLAGS
+@vindex LDFLAGS
+@vindex EXTRA_LDFLAGS
+Options to pass to the command used by the ml script to link
+executables (use @code{ml --print-link-command} to find out
+what command is used, usually the C compiler).
+
+@item LD_LIBFLAGS and EXTRA_LD_LIBFLAGS
+@vindex LD_LIBFLAGS
+@vindex EXTRA_LD_LIBFLAGS
+Options to pass to the command used to by the ml script to link
+shared libraries (use @code{ml --print-shared-lib-link-command}
+to find out what command is used, usually the C compiler
+or the system linker, depending on the platform).
 
 @item MLLIBS and EXTRA_MLLIBS
 @vindex MLLIBS

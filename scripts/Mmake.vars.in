@@ -119,7 +119,7 @@ EXTRA_MCSFLAGS	= $(EXTRA_MCFLAGS)
 #
 MGNUC		= mgnuc
 ALL_MGNUCFLAGS	= $(MGNUCFLAGS) $(EXTRA_MGNUCFLAGS) $(TARGET_MGNUCFLAGS) \
-		  $(LIB_MGNUCFLAGS) $(ALL_CFLAGS)
+		  $(LIB_MGNUCFLAGS) -- $(ALL_CFLAGS)
 MGNUCFLAGS	=
 EXTRA_MGNUCFLAGS =
 LIB_MGNUCFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
@@ -170,8 +170,7 @@ EXTRA_MS_CSCFLAGS =
 LIB_MS_CSCFLAGS	= 
 
 C2INIT		= c2init
-# c2init and ml take the same arguments.
-ALL_C2INITFLAGS = $(ALL_MLFLAGS)
+ALL_C2INITFLAGS = $(C2INIT_AND_MLFLAGS)
 C2INITFLAGS	=
 EXTRA_C2INITFLAGS =
 LIB_C2INITFLAGS	= $(patsubst %,--init-file-directory %,$(EXTRA_INIT_DIRS))
@@ -182,15 +181,27 @@ C2INITARGS	=
 EXTRA_C2INITARGS =
 LIB_C2INITARGS	= $(patsubst %,%.init,$(ALL_EXTRA_LIBRARIES))
 
-ML		= ml
-ALL_MLFLAGS	= $(MLFLAGS) $(C2INITFLAGS) \
+# c2init and ml take the same arguments.
+C2INIT_AND_MLFLAGS = $(MLFLAGS) $(C2INITFLAGS) \
 			$(EXTRA_MLFLAGS) $(EXTRA_C2INITFLAGS) \
 			$(TARGET_MLFLAGS) $(TARGET_C2INITFLAGS) \
 			$(LIB_MLFLAGS) $(LIB_C2INITFLAGS)
-MLFLAGS		= $(EXTRA_MLFLAGS)
+
+ML		= ml
+ALL_MLFLAGS	= $(C2INIT_AND_MLFLAGS)
+MLFLAGS		=
 EXTRA_MLFLAGS	=
 LIB_MLFLAGS	= $(patsubst %,-R%,$(EXTRA_C_LIB_DIRS)) \
 		  $(patsubst %,-L%,$(EXTRA_C_LIB_DIRS))
+
+ALL_LDFLAGS	= $(LDFLAGS) $(EXTRA_LDFLAGS) $(TARGET_LDFLAGS)
+LDFLAGS		=
+EXTRA_LDFLAGS	=
+
+# Flags to use when linking a shared library.
+ALL_LD_LIBFLAGS	= $(LD_LIBFLAGS) $(EXTRA_LD_LIBFLAGS) $(TARGET_LD_LIBFLAGS)
+LD_LIBFLAGS		=
+EXTRA_LD_LIBFLAGS	=
 
 ALL_MLOBJS	= $(MLOBJS) $(EXTRA_MLOBJS) $(TARGET_MLOBJS)
 MLOBJS		=
@@ -354,6 +365,16 @@ TARGET_MLFLAGS = \
 		$(origin MLFLAGS-$(patsubst %_init.c,%,$@))))
 maybe-target-MLFLAGS- = $(MLFLAGS-$(patsubst %_init.c,%,$@))
 maybe-target-MLFLAGS-undefined =
+
+TARGET_LDFLAGS = \
+  $(maybe-target-LDFLAGS-$(findstring undefined,$(origin LDFLAGS-$@)))
+maybe-target-LDFLAGS- = $(LDFLAGS-$@)
+maybe-target-LDFLAGS-undefined =
+
+TARGET_LD_LIBFLAGS = \
+  $(maybe-target-LD_LIBFLAGS-$(findstring undefined,$(origin LD_LIBFLAGS-$@)))
+maybe-target-LD_LIBFLAGS- = $(LD_LIBFLAGS-$@)
+maybe-target-LD_LIBFLAGS-undefined =
 
 TARGET_MLOBJS = \
   $(maybe-target-MLOBJS-$(findstring undefined,$(origin MLOBJS-$@)))

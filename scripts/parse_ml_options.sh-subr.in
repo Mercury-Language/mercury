@@ -43,6 +43,8 @@ user_shlib_dirs=""
 use_thread_libs=false
 print_grade=false
 print_gc_grade=false
+print_link_command=false
+print_shared_lib_link_command=false
 
 # initialize c2init options
 maxcalls=40	# maximum number of calls to put in a single function
@@ -87,6 +89,10 @@ Diagnostics options:
 		Compute the base name of the garbage collection library to
 		link with based on the command line options, print it to the
 		standard output, and then exit (don't actually link anything).
+	--print-link-command
+		Print the command used to link executables.
+	--print-shared-lib-link-command
+		Print the command used to link shared libraries.
 
 Dynamic/static linking options:
 	--mercury-libs {shared, static, none}
@@ -346,6 +352,18 @@ EOF
 		;;
 	--no-print-gc-grade)
 		print_gc_grade=false
+		;;
+	--print-link-command)
+		print_link_command=true
+		;;
+	--no-print-link-command)
+		print_link_command=false
+		;;
+	--print-shared-lib-link-command)
+		print_shared_lib_link_command=true
+		;;
+	--no-print-shared-lib-link-command)
+		print_shared_lib_link_command=false
 		;;
 
 	#
