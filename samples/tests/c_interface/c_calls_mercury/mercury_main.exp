@@ -1,0 +1,15 @@
+In Mercury main, about to call c_main...
+In c_main().
+foo_test(42) returns TRUE
+foo_test(43) returns FALSE
+one_foo(&value) gives value = 42
+foo_list() = [42, 53, 197]
+bar(100) = 101
+bar_test(100, 101) returns TRUE
+bar_test(100, 200) returns FALSE
+bar_inverse(&value, 101) gives value = 100
+bar_inverse(&value, 200) gives value = 199
+baz(1, &value) returns TRUE with value = 9
+baz(100, &value) returns FALSE
+Returning from c_main()...
+Back in Mercury main.

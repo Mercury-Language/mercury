@@ -1,0 +1,17 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+PROGS=  all_solutions	\
+	one_solution	\
+	some_solutions
+TESTS=
+
+EXTRA_FILES=
+
+include Mmake.thisdir
+include $(DEPTH)/Mmake.common
+include $(DEPTH)/Mmake.common.samples
+
+
+#-----------------------------------------------------------------------------#

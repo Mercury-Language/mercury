@@ -1,0 +1,14 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+PROGS=short_example 
+TESTS=
+
+EXTRA_FILES=
+
+include Mmake.thisdir
+include $(DEPTH)/Mmake.common
+include $(DEPTH)/Mmake.common.samples
+
+#-----------------------------------------------------------------------------#

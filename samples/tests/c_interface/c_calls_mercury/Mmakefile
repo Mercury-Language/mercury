@@ -1,0 +1,29 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+PROGS=mercury_main
+TESTS=
+
+EXTRA_FILES=c_main.c c_main.h
+
+include Mmake.thisdir
+include $(DEPTH)/Mmake.common
+include $(DEPTH)/Mmake.common.samples
+
+#-----------------------------------------------------------------------------#
+
+include $(SOURCEDIR)/Mmakefile
+
+# Add a few dependencies so that it copies the source
+# files correctly.
+mercury_lib.o: mercury_lib.m
+mercury_main.depend: c_main_int.m
+c_main_int.o: c_main.h
+
+clean_local: clean_2
+
+clean_2:
+	rm -f *.h *.c *.m mercury_lib.*
+
+#-----------------------------------------------------------------------------#

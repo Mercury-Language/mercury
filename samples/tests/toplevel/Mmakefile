@@ -1,0 +1,20 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+PROGS=	calculator \
+	cat \
+	e \
+	eliza \
+	expand_terms \
+	hello \
+	interpreter \
+	sort \
+	ultra_sub 
+TESTS=
+
+include Mmake.thisdir
+include $(DEPTH)/Mmake.common
+include $(DEPTH)/Mmake.common.samples
+
+#-----------------------------------------------------------------------------#

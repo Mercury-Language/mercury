@@ -1,0 +1,78 @@
+
+#-----------------------------------------------------------------------------#
+
+SOURCEDIR=$(DEPTH)/../$(THISDIR)
+
+%.m: $(SOURCEDIR)/%.m 
+	cp $(SOURCEDIR)/$@ .
+
+SOURCEDIR_EXTRA_FILES=	$(EXTRA_FILES:%=$(SOURCEDIR)/%)
+
+#-----------------------------------------------------------------------------#
+
+SRCS=	$(PROGS:%=%.m) 
+DEPS=	$(PROGS:%=%.dep)
+DEPENDS=$(PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out) $(TESTS:%=%.out)
+RESS=	$(PROGS:%=%.res) $(TESTS:%=%.res)
+
+dep_local:	$(DEPS)
+depend_local:	extra_files $(SRCS) $(DEPENDS)
+check_local:	$(OUTS) $(RESS)
+all_local:	$(PROGS) $(TESTS)
+
+clean_local:	clean_srcs clean_extra_files
+
+clean_srcs:
+	rm -f $(SRCS)
+
+clean_extra_files:
+	rm -f $(EXTRA_FILES)
+
+extra_files: $(SOURCEDIR_EXTRA_FILES)
+	-{ [ -n "$(SOURCEDIR_EXTRA_FILES)" ] && cp $(SOURCEDIR_EXTRA_FILES) . || true ; }
+
+#-----------------------------------------------------------------------------#
+
+realclean:
+	rm -f $(SRCS) $(EXTRA_FILES)
+
+SUBDIRS = 
+
+ifeq ($(SUBDIRS),"")
+
+dep_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
+	done
+
+depend_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
+	done
+
+check_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
+	done
+
+all_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
+	done
+
+clean_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
+	done
+
+realclean_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
+	done
+
+else
+
+endif
+
+#-----------------------------------------------------------------------------#
