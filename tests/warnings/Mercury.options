@@ -34,9 +34,10 @@ MCFLAGS-simple_code		= --common-struct
 MCFLAGS-infinite_recursion	= --excess-assign --common-struct
 
 MCFLAGS-warn_stubs		= --allow-stubs --warn-unused-args
-	
-	# Conflicting termination pragmas won't show up unless we 
-	# perform termination analysis.
+
+	# For tests that involve the termination analysis we need
+	# to make sure that it is enabled otherwise the tests will fail.
 MCFLAGS-pragma_term_conflict = --enable-termination
+MCFLAGS-term_indirect_warning = --check-termination
 
 MCFLAGS-warn_dead_procs 	= --warn-dead-procs --infer-all

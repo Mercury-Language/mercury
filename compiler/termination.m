@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001, 2003 The University of Melbourne.
+% Copyright (C) 1997-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -451,14 +451,15 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 		) },
 		{ list__filter(IsNonImported, SCC, NonImportedPPIds) },
 		{ NonImportedPPIds = [_ | _] },
-
-		% Only output warnings of non-termination for
-		% direct errors, unless verbose errors are
-		% enabled.  Direct errors are errors where the
-		% compiler analysed the code and was not able to
-		% prove termination.  Indirect warnings are
-		% created when code is used/called which the
-		% compiler was unable to analyse/prove termination of.  
+		
+		% Only output warnings of non-termination for direct
+		% errors.  If there are no direct errors then output
+		% the indirect errors - this is better than giving
+		% no reason at all.  If verbose errors is enabled then
+		% output both sorts of error.
+		% (See term_errors.m for details of direct and indirect
+		%  errors).
+		
 		{ VerboseErrors = yes ->
 			PrintErrors = Errors
 		; NormalErrors = yes ->
@@ -466,7 +467,13 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 				ContextError = _Context - Error,
 				\+ indirect_error(Error)
 			),
-			list__filter(IsNonSimple, Errors, PrintErrors)
+			list__filter(IsNonSimple, Errors, PrintErrors0),
+				% If there were no direct errors then use
+				% the indirect errors. 
+			( if 	PrintErrors0 = []
+			  then	PrintErrors = Errors
+			  else	PrintErrors = PrintErrors0
+			)  
 		;
 			fail
 		}

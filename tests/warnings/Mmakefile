@@ -7,6 +7,7 @@ THIS_DIR = warnings
 COMPILE_PROGS=	\
 	arg_order_rearrangment \
 	pragma_term_conflict \
+	term_indirect_warning \
 	warn_dead_procs
 
 ERRORCHECK_PROGS= \
