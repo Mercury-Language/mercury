@@ -187,6 +187,10 @@ while ($ARGV = shift) {
 	#	  but does NOT start with "aux"
 	#	- it matches the same pattern followed by "_input"
 	#
+	# A label is considered a local entry point if
+	#	- it matches <letters and underlines><underline><digits>_l
+	#	  but does NOT start with "aux"
+	#
         if ($label =~ /^do_/ ||
 	    ($label =~ /^([a-zA-Z0-9_]+)_([0-9]+)$/ && ! ($label =~ /^aux/)) ||
 	    ($label =~ /^([a-zA-Z0-9_]+)_([0-9]+)_input$/ && ! ($label =~ /^aux/)))
@@ -196,11 +200,18 @@ while ($ARGV = shift) {
 	    $gnudecl .= "Code *entry_$label;\n";
 	    $gnuinit .= "\tentry_$label = &&$label;\n";
         }
+        else {
+	if ($label =~ /^([a-zA-Z0-9_]+)_([0-9]+)_l$/ && ! ($label =~ /^aux/))
+        {
+	    $init .= "\tmakelocalentry(\"$label\", LABEL($label));\n";
+            $decl .= "static Code *$label(void);\n";
+	}
         else
         {
             $init .= "\tmakelabel(\"$label\", LABEL($label));\n";
             $decl .= "static Code *$label(void);\n";
         }
+	}
     }
     $code .= $save;
   }
