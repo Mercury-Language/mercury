@@ -226,7 +226,7 @@ bintree__fixup(Left, Right, Tree) :-
 	;
 		Right = empty
 	->
-		Tree = Right
+		Tree = Left
 	;
 		bintree__right_depth(Left, LD),
 		bintree__left_depth(Right, RD),
