@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -32,14 +32,13 @@ opium_command(
 	parameters	: [],
 	message		:
 "Retrieves the source code of a Mercury procedure or a Mercury type \
-ProcOrType defined in the module Module and unifies it in Listing. \
-Module can be either a library or a user defined module.\
+`ProcOrType' defined in the module `Module', and unifies it with `Listing'. \
+`Module' can be either a library or a user defined module.\
 \n\
 Note: to be able to retrieve library procedures or types with \
-listing/3, you need to have the source of the Mercury library somewhere \
-and you need \
-to make sure that the environment variable LIB_MERCURY has been set correctly \
-to the path of the Mercury library in the sh script morphine. \
+`listing/3', you need to have the source of the Mercury libraries somewhere \
+and you need to make sure that the environment variable `LIB_MERCURY' has \
+been set correctly to the path of the Mercury libraries in the `morphine' script. \
 "
 	).
 
@@ -61,16 +60,16 @@ opium_command(
 	implementation	: listing_Op,
 	parameters	: [],
 	message		:
-"listing/2 is the same command as listing/3 except it prints the listing \
-of the code on the standard output.\n\
+"Predicate `listing/2' is the same command as `listing/3' except it prints \
+the listing of the code on the standard output.\n\
 \n\
 Example:\n\
-1 - listing(foo, bar/3, List) unify List with the list of terms defining \
-the Mercury predicate bar/3. \n\
-2 - listing(\"~/dir/foo\", bar) will display all the predicates bar/n defined \
-in the module foo which is in \"~/dir/\" directory. \n\
-3 - listing(io, io__read/3) will display the source of the Mercury library \
-predicate io__read/3 defined in the Mercury module io.\n\
+1 - `listing(foo, bar/3, List)' unifies `List' with the list of terms defining \
+the Mercury predicate `bar/3'. \n\
+2 - `listing(\"~/dir/foo\", bar)'  displays all the predicates with functor \
+`bar' defined in the module `foo' which is in `~/dir/' directory. \n\
+3 - `listing(io, io__read/3)' displays the source of the Mercury library \
+predicate `io__read/3' defined in the Mercury module `io'.\n\
 "
 	).
 
@@ -261,7 +260,7 @@ opium_command(
 	implementation	: listing_hlds_Op,
 	parameters	: [],
 	message		:
-"See listing_hlds/2."
+"See `listing_hlds/2'."
 	).
 
 listing_hlds_Op(Module, Name, Listing) :-
@@ -281,10 +280,11 @@ opium_command(
 	parameters	: [],
 	message		:
 
-"listing_hlds/2 and listing_hlds/3 are the same commands as listing/2 and \
-listing/3 except they will list the HLDS procedures instead of the source code. \
-To be able to list such HLDS code, you need to compile your module with \
-\"-dfinal\" option.\
+"Predicates `listing_hlds/2' and `listing_hlds/3' are the same commands as \
+`listing/2' and `listing/3' except they will list the intermediate code \
+(or HLDS code for High Level Data Structure) of procedures instead \
+of their source code. To be able to list such HLDS code, you need to \
+compile your module with `-dfinal' option.\
 "
 	).
 
@@ -305,10 +305,9 @@ opium_command(
 	implementation	: listing_current_procedure_Op,
 	parameters	: [],
 	message		:
-"listing_current_procedure/0 prints the source code of the current procedure \
-on the user window. If the current procedure is defined in a file that is not \
-in the current directory, you need to specify the path of this file with \
-listing_current_procedure/1.\
+"Lists the source code of the current procedure. If the current procedure \
+is defined in a file that is not in the current directory, you can specify \
+the path of this file with `listing_current_procedure/1'.\
 ").
 
 
@@ -330,8 +329,9 @@ opium_command(
 	implementation	: listing_current_procedure_Op,
 	parameters	: [],
 	message		:
-"listing_current_procedure/1 is the same as listing_current_procedure/0 \
-except you specify the path of the module of the current procedure.\
+"Predicate `listing_current_procedure/1' is the same as \
+`listing_current_procedure/0' except you specify the path of the module of \
+the current procedure.\
 ").
 
 % :- pred listing_current_procedure(atom).
@@ -347,9 +347,8 @@ opium_type(
 	name		: is_mercury_proc_or_type,
 	implementation	: is_mercury_proc_or_type_Op,
 	message		:
-"Type which succeeds if its argument is of the form Name or \
-Name/Arity, where Name is an atom and Arity an integer.\
-").
+"Succeeds for terms of the form `atom' or `atom/integer'."
+).
 
 
 is_mercury_proc_or_type_Op(Name/Arity) :-
@@ -420,7 +419,7 @@ opium_type(
 	name		: is_atom_or_string,
 	implementation	: is_atom_or_string_Op,
 	message		: 
-"Type which succeed for an atom or a string."
+"Succeed for atoms or strings."
 	).
 
 is_atom_or_string_Op(X) :- atom(X), !.

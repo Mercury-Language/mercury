@@ -1,5 +1,6 @@
 %--------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+%
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -73,7 +74,7 @@ opium_command(
 	implementation	: re_init_morphine_Op,
 	parameters	: [],
 	message		:
-'Re-initializes Morphine. This command migth be useful if Morphine is broken.\
+'Re-initializes Morphine. This command might be useful if Morphine is broken.\
 '
 	).
 
@@ -97,13 +98,12 @@ opium_command(
 	implementation	: run_Op,
 	parameters	: [],
 	message		:
-'Executes a Mercury program from Morphine. \n\
+"Executes a Mercury program from Morphine. \n\
 \n\
-Example:  \
-run(hello) will run the Mercury program hello under the control of Morphine .\
-run(\"./cat filename\") will run \
-the Mercury program \"cat\" that takes \"filename\" as argument.\
-'
+Example: `run(hello)' executes the Mercury program `hello' under the control \
+of Morphine. `run(\"./cat filename\")' executes the Mercury program `cat' \
+that takes `filename' as argument.\
+"
 	).
 
 % :- pred run_Op(atom).
@@ -173,7 +173,7 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: decompose_path_call_and_args_Op,
 	message		:
-"Split a Mercury program call into its path, call and arguments list."
+"Splits a Mercury program call into its path, call, and arguments list."
 	).
 
 
@@ -278,9 +278,9 @@ opium_type(
 	name		: is_mercury_program_call,
 	implementation	: is_mercury_program_call_Op,
 	message		: 
-"Type which succeeds for terms or strings of the form: \
+"Succeeds for terms or strings of the form: \
 `path/programcall arg1 arg2 ...' or `path/programcall(arg1, arg2, ...)'. \
-It is intended to check the argument of run/1.\n\
+It is intended to check the argument of `run/1'.\n\
 \n\
 Examples:  `run(foo)', `run(\"foo\")', `run(\"./cat file\")', \
 `run(./cat(file))', `run(\"../dir/cat file1 file2\")', \
@@ -508,10 +508,8 @@ opium_command(
 	implementation	: goto_Op,
 	parameters	: [],
 	message		:
-'Moves forwards the trace pointer to the event with chronological \
-event number Chrono. If the current event number is larger than Chrono, \
-it fails.\
-').
+"Moves forwards the trace pointer to the event with chronological event \
+number `Chrono'. Fails if the current event number is larger than `Chrono'.").
 
 %:- pred goto(integer).
 %:- mode goto(in) is semidet.
@@ -538,8 +536,8 @@ opium_parameter(
 	default		: [unix],
 	commands	: [run, rerun],
 	message		: 
-"Parameter which tells which domain is used by the socket communication \
-betwenn the two processes.\
+"Specifies which domain is used by the socket communication \
+between the two processes.\
 "
 	).
 
@@ -552,10 +550,10 @@ opium_parameter(
 	default		: [""],
 	commands	: [run, rerun],
 	message		: 
-"Parameter which specifies the command used to fork a new window to execute the \
-Mercury program in. By default, no other window is used (\"\"). \
-For example, if one want to execute a Mercury program within a xterm window, \
-one just need to use the command: \
+"Specifies the command used to fork a new window to execute the \
+Mercury program in. By default, no other window is used. \
+For example, if one wants to execute a Mercury program within a xterm window, \
+one just needs to use the command: \
 `set_parameter(window_command, [\"xterm -e \"])'.\
 "
 	).
@@ -572,8 +570,8 @@ opium_command(
 	implementation	: no_window_Op,
 	parameters	: [window_command],
 	message		:
-"Set the `window_command' parameter to \"\" (its default value). \
-The Mercury program executes in the same window as Morphine."
+"Sets the `window_command' parameter to `\"\"' (its default value). \
+The Mercury program then executes in the same window as Morphine."
 	).
 
 no_window_Op :-
@@ -590,9 +588,8 @@ opium_command(
 	implementation	: use_xterm_Op,
 	parameters	: [window_command],
 	message		:
-"Set the `window_command' parameter to \"xterm -e \", which make the Mercury \
-executes in a new xterm window; the program's Input/Output will go to that \
-window and the Morphine's Input/Output will go to the current terminal."
+"Sets the `window_command' parameter to `\"xterm -e \"', which makes the Mercury \
+program executes in a new xterm window."
 	).
 
 use_xterm_Op :-
@@ -609,7 +606,7 @@ opium_command(
 	implementation	: use_gdb_Op,
 	parameters	: [window_command],
 	message		:
-"Set the `window_command' parameter to \"xterm -e gdb \". This is to be able \
+"Sets the `window_command' parameter to `\"xterm -e gdb \"'. This is to be able \
 to use both gdb and Morphine. Note that to use gdb, you will need to compile \
 your mercury program with the option `--c-debug'."
 	).

@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -25,9 +25,11 @@ patch_opium_files(FileName) :-
 		exists(OPIUM_LIGTH_DIR),
 		!
 	;
-		print("\n*** You need ECLiPSe 4.1 or later, sorry...\n"),
-		print("(In particular, you need eclipse_misc.tgz)\n"),
-		print("You can download it at http://www.icparc.ic.ac.uk/eclipse/\n"),
+		print("\n*** You need to install eclipse_misc.tgz."),
+		print("\n*** You can download it at http://www.icparc.ic.ac.uk/eclipse/"),
+		print("\n*** and then de-tar it in your eclipse directory.\n"),
+		print("\n*** If it still does not work, it probably means"),
+		print("\n*** that you need ECLiPSe 4.1 or later.\n"),
 		abort
 	),
 	concat_string([FileNameStr, ".op"], File),

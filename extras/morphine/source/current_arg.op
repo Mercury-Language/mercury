@@ -19,14 +19,14 @@ opium_primitive(
 	implementation	: current_arg_Op,
 	message		:
 "Gets or checks the values of the currently live arguments of the current \
-event. It will unify non-live arguments with the atom '-'.\n\
+event.  Unifies non-live arguments with the atom '-'.\n\
 Example: if the first argument of the current procedure is 2, the second is \
-[4, 6] and the third is not live, current_arg(Arg) will unify Arg with the \
-list [2, [4, 6], -].\n\
+`[4, 6]' and the third is not live, `current_arg(Arg)' unifies `Arg' with the \
+list `[2, [4, 6], -]'.\n\
 \n\
 If you do not want to retrieve an argument (because it is very big for \
-example), you can use the atom '-': for example, current_arg([X, -, -]) will \
-only retrieve the first argument."
+example), you can use the atom '-': for example, `current_arg([X, -, -])' \
+only retrieves the first argument of the current procedure."
 	).
 
 current_arg_Op(Arg) :-
@@ -121,8 +121,8 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: current_arg_names_Op,
 	message		:
-"Gets or checks the list of the names of the current procedure arguments. \
-Unify non-live arguments with the atom '-'."
+"Gets or checks the list of names of the current procedure arguments. \
+Unifies non-live arguments with the atom '-'."
 	).
 
 current_arg_names_Op(ListArgNames) :-
@@ -155,8 +155,8 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: current_arg_types_Op,
 	message		:
-"Gets or checks the list of the arguments types of the current procedure. \
-Unify non-live arguments with the atom '-'"
+"Gets or checks the list of arguments types of the current procedure. \
+Unifies non-live arguments types with the atom '-'."
 	).
 
 current_arg_types_Op(ListArgTypes) :-
@@ -196,7 +196,7 @@ variables.\n\
 \n\
 (*) We say that a variable is live at a given point of the execution if it has \
 been instantiated and if the result of that instantiation is still available \
-(which is not the case for for destructively updated variables).\
+(which is not the case for destructively updated variables).\
 "
 	).
 
@@ -299,7 +299,7 @@ synthetise_list_univ_and_list_string2(X, [Name | TailName],
 	        X = [_| TailArg],
 	        Arg = 'error',
 	        write("\n***** Can't retrieve that type of argument. "),
-	        write("This is a bug in Morphine...\n")
+	        write("This is probably a bug in Morphine...\n")
 	 ),
 	synthetise_list_univ_and_list_string2(TailArg, TailName, TailType,
 	     ListArgLeft),
@@ -330,22 +330,22 @@ opium_command(
 	implementation	: current_live_var_Op,
 	parameters	: [],
 	message		:
-'Gets or checks the name, the value and the type of the currently live \
-variables. VarId can be a string representing the variable name or, if it is \
+"Gets or checks the name, the value and the type of the currently live \
+variables. `VarId' can be a string representing the variable name or, if it is \
 an argument of the current procedure, an integer representing the rank the \
 argument.\n\
 Example: \
-current_live_var("HeadVar__3", VarValue, _Type) (or equivalently \
-current_live_var(3, VarValue, _Type)) binds VarValue with the \
+`current_live_var(\"HeadVar__3\", VarValue, _Type)' (or equivalently \
+`current_live_var(3, VarValue, _Type)') binds `VarValue' with the \
 current value of the third argument of the current predicate if it exists \
 and if it is live, fails otherwise. \
 You can get all the live variables by querying \
-current_live_var(VarId, VarValue, VarType) and typing \";\" at the prompt to \
+`current_live_var(VarId, VarValue, VarType)' and typing `;' at the prompt to \
 search for other solutions. \
-You can also get the list of all the currently live variables of type int \
+You can also get the list of all the currently live variables of type `int' \
 with the Morphine query \
-setof((Name, Value), current_live_var(Name, Value, int), List).\
-'
+`setof((Name, Value), current_live_var(Name, Value, int), List)'.\
+"
 	).
 
 
@@ -412,8 +412,8 @@ opium_primitive(
 	implementation	: current_live_var_names_and_types_Op,
 	message		:
 "Gets or checks the list of names and types of the currently live variables. \
-Each live variable is represented by the term \
-live_var_names_and_types(VariableName, TypeOfTheVariable).\
+Each live variable is a term of the form \
+`live_var_names_and_types(VariableName, TypeOfTheVariable)'.\
 "
 	).
 
@@ -461,9 +461,8 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: current_live_var_names_and_types_Op,
 	message		:
-"current_live_var_names_and_types/0 gets and displays the live variable names \
-and types. You can change this display by customizing the procedure \
-display_list_var_names.\
+"Gets and displays the live variable names and types. You can change this \
+display by customizing the procedure `display_list_var_names/0'.\
 "
 	).
 

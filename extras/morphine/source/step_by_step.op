@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -29,9 +29,9 @@ opium_command(
 	implementation	: next_Op,
 	parameters	: [traced_ports],
 	message		:
-"Command which moves forward to the next trace event according to the \
-``traced_ports'' parameter. This is the same command as step/0 (``next'' is \
-the name used in Opium (The Prolog version of Morphine), ``step'' is the name \
+"Moves forward to the next trace event according to the \
+`traced_ports' parameter. This is the same command as `step/0' (`next/0' is \
+the name used in Opium (The Prolog version of Morphine), `step' is the name \
 used in the internal Mercury debugger mdb)."
 	).
  
@@ -46,7 +46,7 @@ opium_command(
 	implementation	: next_Op,
 	parameters	: [traced_ports],
 	message		:
-"See next/0."
+"See `next/0'."
 	).
 
 next_Op :- 
@@ -78,7 +78,7 @@ opium_command(
 	implementation	: det_next_Op,
 	parameters	: [traced_ports],
 	message		:
-"See det_next/0."
+"See `det_next/0'."
 	).
 
 det_next_Op :- 
@@ -97,8 +97,7 @@ opium_command(
 	implementation	: next_Op,
 	parameters	: [traced_ports],
 	message		:
-"Command which prints the N next trace events according to the ``traced_ports'' \
-parameter."
+"Prints `N' next trace events according to the `traced_ports' parameter."
 	).
 
 opium_command(
@@ -111,7 +110,7 @@ opium_command(
 	implementation	: next_Op,
 	parameters	: [traced_ports],
 	message		:
-"See next/1."
+"See `next/1'."
 	).
 
 next_Op(N) :-
@@ -136,11 +135,11 @@ opium_command(
 	implementation	: skip_Op,
 	parameters	: [],
 	message		:
-"Command which makes the execution continuing until it reaches a final port \
-(exit or fail) of the goal to which the current event refers. If the current \
-port is already final, it acts like a step/0.\n\
-It is the same command as skip/0 (``skip'' is the name used in the Prolog \
-version of Opium, ``finish'' is the name used in the internal Mercury \
+"Makes the execution continuing until it reaches a final port \
+(`exit' or `fail') of the goal to which the current event refers. If the current \
+port is already final, it acts like `step/0'.\n\
+It is the same command as `skip/0' (`skip' is the name used in the Prolog \
+version of Opium, `finish' is the name used in the internal Mercury \
 debugger)."
 ).
 
@@ -184,8 +183,8 @@ opium_parameter(
 				switch, disj, first, later]],
 	commands	: [next],
 	message		: 
-"Parameter which tells which events (w.r.t. ports) are to be traced by \
-commands ``next'' and ``step''."
+"Specifies which events (w.r.t. ports) are to be traced by \
+commands `next' and `step'."
 	).
 
 

@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -15,7 +15,7 @@ opium_type(
 	name		: is_port,
 	implementation	: is_port_Op,
 	message		:
-"Type which succeeds for a Mercury Port. Mercury ports are call (or 'CALL'), \
+"Succeeds for a Mercury Port. Mercury ports are call (or 'CALL'), \
 exit (or 'EXIT'), fail (or 'FAIL'), redo (or 'REDO'), then (or 'THEN'), \
 else (or 'ELSE'), disj (or 'DISJ'), switch (or 'SWITCH' or 'SWTC'), \
 first (or 'FIRST' or 'FRST'), later (or 'LATER' or 'LATR'), \
@@ -29,7 +29,7 @@ opium_type(
 	name		: is_port_or_var,
 	implementation	: is_port_or_var_Op,
 	message		:
-"Type which succeeds for a Mercury port or a variable (See is_port/1).\
+"Succeeds for a Mercury port or a variable (See `is_port/1').\
 ").
 is_port_or_var_Op(X) :-
 	var(X), !
@@ -41,7 +41,7 @@ opium_type(
 	name		: is_list_of_ports,
 	implementation	: is_list_of_ports_Op,
 	message		:
-"Type which succeeds for a sublist of ['CALL', 'EXIT', 'REDO', 'FAIL', 'THEN',\
+"Succeeds for a sublist of ['CALL', 'EXIT', 'REDO', 'FAIL', 'THEN',\
  'ELSE', 'DISJ', 'SWITCH', 'SWTC', 'FIRST', 'FRST', 'LATER', 'LATR', 'EXCP', \
 'EXCEPTION', \
 call, exit, fail, redo, cond, then, else, disj, switch, first, later, exception, \
@@ -69,7 +69,7 @@ opium_type(
 	name		: is_port_attribute,
 	implementation	: is_port_attribute_Op,
 	message		:
-"Type which succeeds for a port, a negated port (not('CALL')), a list of \
+"Succeeds for a port, a negated port (not('CALL')), a list of \
 ports, '-' or a variable.\
 ").
 
@@ -95,7 +95,7 @@ opium_type(
 	name		: is_goal_path,
 	implementation	: is_goal_path_Op,
 	message		: 
-"Type which succeeds for list of atoms of the form '?','e', 't', '~', 'q', \
+"Succeeds for list of atoms of the form '?','e', 't', '~', 'q', \
 'ci', 'si', 'di' where i is an integer > 0."
 	).
 
@@ -133,8 +133,7 @@ opium_type(
 	name		: is_goal_path_or_var,
 	implementation	: is_goal_path_or_var_Op,
 	message		:
-"Type which succeeds for a Mercury goal path or a variable (See is_goal_path/1).\
-").
+"Succeeds for a Mercury goal path or a variable (See `is_goal_path/1').").
 
 is_goal_path_or_var_Op(X) :-
 	var(X), !
@@ -157,9 +156,8 @@ opium_type(
 	name		: is_goal_path_attribute,
 	implementation	: is_goal_path_attribute_Op,
 	message		:
-"Type which succeeds for a goal path, a negated goal path, a list of \
-goal path, '-' or a variable.\
-").
+"Succeeds for a goal path, a negated goal path, a list of goal path, '-' or \
+a variable.").
 
 
 is_goal_path_attribute_Op(Attribute) :-
@@ -184,9 +182,9 @@ opium_type(
 	name		: is_atom_attribute,
 	implementation	: is_atom_attribute_Op,
 	message		:
-"Type which succeeds for an atom, a negated atoms, a list of atom, a variable \
-or '-'. It is intended to check proc_name def_module and \
-decl_module attributes.\
+"Succeeds for an atom, a negated atoms, a list of atom, a variable \
+or '-'. It is intended to check `proc_name' `def_module' and \
+`decl_module' attributes.\
 ").
 
 
@@ -211,8 +209,7 @@ opium_type(
 	name		: is_proc_type,
 	implementation	: is_proc_type_Op,
 	message		:
-"Type which succeeds for the atoms predicate and function. \
-").
+"Succeeds for the atoms `predicate' and `function'.").
 
 is_proc_type_Op(X) :-
 	member(X, [predicate, function]).
@@ -223,9 +220,8 @@ opium_type(
 	name		: is_proc_type_attribute,
 	implementation	: is_proc_type_attribute_Op,
 	message		:
-"Type which succeeds for pred or func, not(pred) or not(func), \
-a list of atoms pred or func, '-' or a variable.\
-").
+"Succeeds for pred or func, not(pred) or not(func), \
+a list of atoms pred or func, '-' or a variable.").
 
 
 is_proc_type_attribute_Op(Attribute) :-
@@ -250,7 +246,7 @@ opium_type(
 	name		: is_det_marker,
 	implementation	: is_det_marker_Op,
 	message		:
-"Type which succeeds for a Mercury determinism marker. Mercury determinism are \
+"Succeeds for a Mercury determinism marker. Mercury determinism are \
 det (or 'DET'), semidet (or 'SEMI'), nondet (or 'NON'), multidet (or 'MUL'), \
 cc_nondet (or 'CCNON'), cc_multidet (or 'CCMUL'), failure (or 'FAIL') and \
 erroneous (or 'ERR'). \
@@ -263,7 +259,7 @@ opium_type(
 	name		: is_det_marker_or_var,
 	implementation	: is_det_marker_or_var_Op,
 	message		:
-"Type which succeeds for a Mercury determinism markers or a variable.\
+"Succeeds for a Mercury determinism markers or a variable.\
 ").
 
 is_det_marker_or_var_Op(X) :-
@@ -276,10 +272,10 @@ opium_type(
 	name		: is_list_of_dets,
 	implementation	: is_list_of_dets_Op,
 	message		:
-"Type which succeeds for a sublist of [det, semidet, nondet, multidet,\
+"Succeeds for a sublist of [det, semidet, nondet, multidet,\
  cc_nondet, cc_multidet, failure, erroneous, 'DET', 'SEMI', 'NON', 'MUL', \
 'ERR', 'FAIL', 'CCNON', 'CCMUL'] \
-(the determinism marker in capital letters are the one use in mdb, the \
+(the determinism markers in capital letters are the ones used in mdb, the \
 internal Mercury debugger).\
 ").
 
@@ -297,7 +293,7 @@ opium_type(
 	name		: is_det_marker_attribute,
 	implementation	: is_det_marker_attribute_Op,
 	message		:
-"Type which succeeds for a Mercury determinism marker, a negated  determinism \
+"Succeeds for a Mercury determinism marker, a negated  determinism \
 (not(nondet)), a list of determinism markers, '-' or a variable.\
 ").
 
@@ -325,12 +321,11 @@ opium_type(
 	implementation	: is_proc_Op,
 	message		:
 
-"Type which succeeds for terms of the form \
-[ProcType+][Module:]ProcName[/Arity][-ModeNum] where terms betwenn square \
-bracquets are optional, ProcType has type is_proc_type_attribute/1, \
-Module and  ProcName have type is_atom_attribute/1, Arity and ModeNum have \
-type is_integer_attribute/1.\
-").
+"Succeeds for terms of the form \
+`[ProcType+][Module:]ProcName[/Arity][-ModeNum]' where terms betwenn square \
+bracquets are optional, `ProcType' has type `is_proc_type_attribute/1', \
+`Module' and `ProcName' have type `is_atom_attribute/1', `Arity' and `ModeNum' \
+have `type is_integer_attribute/1'.").
 
 
 is_proc_Op(Proc) :-
@@ -439,7 +434,7 @@ opium_type(
 	name		: is_proc_or_var,
 	implementation	: is_proc_or_var_Op,
 	message		:
-"Type which succeeds for a Mercury procedure or a variable.\
+"Succeeds for a Mercury procedure or a variable.\
 ").
 is_proc_or_var_Op(X) :-
 	var(X), !
@@ -451,7 +446,7 @@ opium_type(
 	name		: is_arg_attribute,
 	implementation	: is_arg_attribute_Op,
 	message		:
-"For the time being, you can't perform filtering on arguments i.e. you can \
+"For the time being, you can't perform filtering on arguments, i.e., you can \
 only have variables or '-' for that attribute.\
 ").
 is_arg_attribute_Op(Attribute) :-
@@ -463,7 +458,7 @@ opium_type(
 	name		: is_integer_attribute,
 	implementation	: is_integer_attribute_Op,
 	message		:
-"Type which succeeds for an integer, a negated integer (not 6), a list of \
+"Succeeds for an integer, a negated integer (not 6), a list of \
  integers ([3, 5, 9]), an interval ('3..11'), a variable or '-'.\
 "
 	).
@@ -507,7 +502,7 @@ opium_type(
 	name		: is_string_attribute,
 	implementation	: is_string_attribute_Op,
 	message		:
-"Type which succeeds for a string, a negated string (not \"foo\"), a list of \
+"Succeeds for a string, a negated string (not \"foo\"), a list of \
  strings, a variable or '-'.\
 ").
 is_string_attribute_Op(Attribute) :-
@@ -546,9 +541,8 @@ opium_command(
 	implementation	: list_attribute_aliases_op,
 	parameters	: [],
 	message		:
-"List the available aliases for the different Mercury event attributes \
-(fget/1 and current/1).\
-").
+"Lists the available aliases for the different Mercury event attributes \
+(`fget/1' and `current/1').").
 
 list_attribute_aliases_op :-
 	findall(X, is_alias_for(chrono, X), Lchrono),
@@ -656,7 +650,7 @@ is_alias_for(goal_path, goal_path).
 is_alias_for(goal_path, gp).
 
 
-% XXX Those one are not hanled in fget yet.
+% XXX Those ones are not hanled in fget yet.
 is_alias_for(args, arguments).
 is_alias_for(args, args).
 is_alias_for(args, arg).

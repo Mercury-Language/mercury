@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -32,7 +32,7 @@ opium_command(
 	message		:
 "Prints the current trace event according to the value of the \
 display parameters. The name of the printed attributes can be get with the \
-command print_displayed_attributes/0.\
+command `print_displayed_attributes/0'.\
 "
 	).
 
@@ -108,7 +108,7 @@ opium_command(
 	parameters	: [indent_display, attribute_display, arg_undisplay, 
 				list_display, term_display],
 	message		:
-"Prints the names of the attributes displayed by print_event/0.\
+"Prints the names of the attributes displayed by `print_event/0'.\
 "
 	).
 
@@ -183,7 +183,7 @@ opium_command(
 	parameters	: [indent_display, attribute_display, arg_undisplay, 
 				list_display, term_display],
 	message		:
-"Prints the names of the attributes printed by print_full_event/0."
+"Prints the names of the attributes printed by `print_full_event/0'."
 	).
 
 % :- pred print_full_displayed_attributes_Op is det.
@@ -219,7 +219,7 @@ opium_command(
 	implementation	: indent_Op,
 	parameters	: [indent_display],
 	message		:
- "Sets relative indentation on/off. If a tracing process is \
+"Sets relative indentation on/off. If a tracing process is \
 on, it sets the depth at which the indentation has to start to the \
 current depth. Otherwise the starting depth is 1.\
 "
@@ -247,7 +247,7 @@ opium_command(
 	parameters	: [indent_display],
 	message		:
 "Sets the indentation on and sets the depth at which the \
-indentation has to start to Depth.\
+indentation has to start to `Depth'.\
 "
 	).
 
@@ -265,10 +265,10 @@ opium_procedure(
 	implementation	: write_indent_Op,
 	parameters	: [indent_display],
 	message		:
- "Procedure which displays an indentation -- if indentation is on -- \
+"Displays an indentation -- if indentation is on -- \
 according to the current depth and the indentation starting depth. If \
-IndentFlag is on, it prints N times IndentValue, where N is  \
-CurrDepth - IndentDepth if this is positive, 1 otherwise.\
+`IndentFlag' is set to `on', it prints `N' times `IndentValue', where `N' is \
+`CurrDepth - IndentDepth' if this is positive, 1 otherwise.\
 "
 	).
 
@@ -311,13 +311,11 @@ opium_procedure(
 	implementation	: write_attribute_Op,
 	parameters	: [attribute_display],
 	message		:
- "Procedure which displays an attribute of the trace line. AttributeName is \
+"Displays an attribute of the trace line. `AttributeName' is \
 a member of the following list: [chrono, call, depth, port, proc_type, \
 decl_module, def_module, arity, mode_number, args, deter, goal_path, \
-non_arg_var]. \
-To customize the way arguments are displayed, you should rather modify \
-write_arg.\
-"
+non_arg_var]. To customize the way arguments are displayed, you should \
+rather modify `write_arg/1'."
 	).
 
 %:- pred write_attribute_Op(atom, atom).
@@ -443,9 +441,9 @@ opium_procedure(
 	implementation	: write_arg_attribute_Op,
 	parameters	: [attribute_display],
 	message		:
- "Procedure which displays the arguments of the trace event when the \
-current procedure is Module:Name/Arity-ModeNum. If only the nth argument \
-of a procedure needs a special treatment, you should customize write_arg/1.\
+"Displays the arguments of the trace event when the \
+current procedure is `Module:Name/Arity-ModeNum'. If only the nth argument \
+of a procedure needs a special treatment, you should customize `write_arg/1'.\
 "
 	).
 
@@ -526,8 +524,7 @@ opium_procedure(
 	parameters	: [arguments_display, arg_undisplay, term_display, 
 				list_display],
 	message		:
-"Procedure which displays the Nth argument of procedure Procedure in \
-DeclModule.\
+"Displays the nth argument of procedure `Procedure' in `DeclModule'.\
 "
 	).
 
@@ -554,7 +551,7 @@ opium_procedure(
 	implementation	: write_arg_Op,
 	parameters	: [term_display, list_display],
 	message		:
-"Procedure which prints an argument.\
+"Prints procedure arguments.\
 "
 	).
 
@@ -589,8 +586,7 @@ opium_procedure(
 	implementation	: write_term_Op,
 	parameters	: [term_display],
 	message		:
-"Procedure which displays a structured term, taking into account the \
-term_display parameter.\
+"Displays a structured term, taking into account the `term_display' parameter.\
 "
 	).
 
@@ -911,8 +907,7 @@ opium_procedure(
 	implementation	: write_list_Op,
 	parameters	: [list_display],
 	message		:
-"Procedure which displays a list, taking into account the list_display \
-parameter.\
+"Displays a list, taking into account the `list_display' parameter.\
 "
 	).
 
@@ -1106,8 +1101,7 @@ opium_procedure(
 	implementation	: write_ersatz_Op,
 	parameters	: [],
 	message		:
-"Procedure which writes \"...\" as a replacement for the hidden parts of the \
-arguments.\
+"Writes `...' as a replacement for the hidden parts of the arguments.\
 "
 	).
 
@@ -1123,8 +1117,7 @@ opium_procedure(
 	implementation	: write_comma_Op,
 	parameters	: [],
 	message		:
-"Procedure which writes \", \".\
-"
+"Writes `, '."
 	).
 
 write_comma_Op :- 
@@ -1192,10 +1185,9 @@ opium_parameter(
 	default		: [normal],
 	commands	: [write_arg],
 	message		: 
-"Parameter which tells how arguments shall be displayed. If Type is \
-\"simple\", \
-then arguments are displayed without taking the list_display and term_display \
-parameters into account.\
+"Specifies how arguments shall be displayed. If `Type' is set to `simple', \
+then arguments are displayed without taking the `list_display' and \
+`term_display' parameters into account.\
 "
 	).
 
@@ -1209,10 +1201,10 @@ opium_parameter(
 	default		: [normal, 0],
 	commands	: [select_list_display, write_list],
 	message		: 
-"Parameter which tells how lists shall be displayed. If Type is \"normal\", \
-lists are displayed in the standard Prolog way. If Type is \"nest\", \
-the nested lists are displayed only till level Range (included). If Type is \
-\"truncate\", only the first Range elements of the lists are displayed.\
+"Specifies how lists shall be displayed. If `Type' is set to `normal', \
+lists are displayed in the standard Prolog way. If `Type' is set to `nest', \
+the nested lists are displayed only till level `Range' (included). If `Type' is \
+set to `truncate', only the first `Range' elements of the lists are displayed.\
 "
 ).
 
@@ -1226,11 +1218,11 @@ opium_parameter(
 	default		: [normal, 0],
 	commands	: [write_term],
 	message		: 
-"Parameter which tells how structured terms shall be displayed. If Type is \
-\"normal\", terms are displayed in the standard Prolog way. If Type is \
-\"nest\", \
-the nested terms are displayed only till level Range (included). If Type is \
-\"truncate\", only the first Range elements of the term are displayed.\
+"Specifies how structured terms shall be displayed. If `Type' is set to \
+`normal', terms are displayed in the standard Prolog way. If `Type' is \
+set to `nest', the nested terms are displayed only till level `Range' \
+(included). If `Type' is set to `truncate', only the first `Range' elements \
+of the term are displayed.\
 "
 	).
 
@@ -1244,8 +1236,7 @@ opium_parameter(
 	default		: [on, ' ', 1],
 	commands	: [print_event, write_indent],
 	message		: 
-"Paramater which tells whether indentation is \"on\" or \"off\", what has \
-to be \
+"Specifies whether indentation is `on' or `off', what has to be \
 printed as indentation value, and at which depth the indentation has to be \
 started.\
 " 
@@ -1261,7 +1252,7 @@ opium_parameter(
 	default		: [30],
 	commands	: [write_indent],
 	message		: 
-"Parameter which tells up to which depth the trace events shall be indented.\
+"Specifies up to which depth the trace events shall be indented.\
 "
 	).
 
@@ -1275,8 +1266,8 @@ opium_parameter(
 	default		: nodefault,
 	commands	: [write_arg],
 	message		: 
-"Parameter which tells which arguments of which predicates have to be NOT \
-displayed. There must be one \"arg_undisplay\" clause for each argument which \
+"Specifies which arguments of which predicates have to be not \
+displayed. There must be one `arg_undisplay' clause for each argument which \
 shall not be displayed.\
 "
 	).
@@ -1305,8 +1296,7 @@ opium_procedure(
 	implementation	: read_input_Op,
 	parameters	: [],
 	message		:
-"Procedure which reads an input from within the current input stream \
-of Morphine.\
+"Reads an input from within the current input stream of Morphine.\
 "
 	).
 
@@ -1327,10 +1317,10 @@ opium_command(
 	implementation	: toggle_Op,
 	parameters	: [],
 	message		:
-"Toggles attribute display of print_event command. \n\
-For example, if attribute decl_module is off, you can type \
-\"toggle(decl_module)\" to switch it on. You can list all the attributes \
-you can toggle thanks to list_attribute_aliases/0 command.\
+"Toggles attribute display of `print_event/1' command. \n\
+For example, if attribute `decl_module' is off, you can type \
+`toggle(decl_module)' to switch it on. You can list all the attributes \
+you can toggle thanks to `list_attribute_aliases/0'.\
 "
 	).
 
@@ -1528,7 +1518,7 @@ opium_procedure(
 	implementation	: display_stack_Op,
 	parameters	: [],
 	message		:
-"Procedure that displays the ancestors stack."
+"Displays the ancestors stack."
 	).
 
 display_stack_Op([level(Level) | Tail]) :-
@@ -1578,8 +1568,8 @@ opium_procedure(
 	implementation	: display_list_var_names_Op,
 	parameters	: [],
 	message		:
-"Display the names of the currently live variables given by \
-current_live_var_names_and_types/1.\
+"Displays the names of the currently live variables given by \
+`current_live_var_names_and_types/1'.\
 "
 	).
 

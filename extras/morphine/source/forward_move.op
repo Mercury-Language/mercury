@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -31,18 +31,18 @@ opium_command(
 	parameters	: [],
 	message		:
 "Moves forwards through the execution until the first event that satisfy the \
-list of constraints specified in AttributeConstraints (*). \
-AttributeConstraints can be either a conjunction of attribute constraints, \
-separated by \"and\" (fget(AC1 and AC2 and ...))  or a list of constraints \
-(fget([AC1, AC2, ...])). \n\
+list of constraints specified in `AttributeConstraints' (*). \
+`AttributeConstraints' can be either a conjunction of attribute constraints, \
+separated by `and' (`fget(AC1 and AC2 and ...)')  or a list of constraints \
+(`fget([AC1, AC2, ...])'). \n\
  \n\
-The different attributes for fget are :  \n\
+The different attributes of `fget/1' are:  \n\
 chrono: \n\
     chronological event number of the event, \n\
 call: \n\
     call event number of the event, \n\
 depth: \n\
-    depth in the proof three (number of ancestors - 1) of the event, \n\
+    depth in the proof tree (number of ancestors - 1) of the event, \n\
 port: \n\
     type of the event, \n\
 proc_type: \n\
@@ -58,32 +58,28 @@ arity: \n\
 mode_number: \n\
     procedure mode number, \n\
 proc: \n\
-    procedure ([proc_type->][decl_module:](name[/arity][-mode_number]) where \
+    procedure (`[proc_type->][decl_module:](name[/arity][-mode_number]') where \
 only the attribute name is mandatory), \n\
 det: \n\
     procedure determinism, \n\
 goal_path: \n\
     goal path of the call of the procedure.\n\
 \n\
-(*) An attribute constraint is a term of the form \"AttributeAlias = Term\" \
-where  \
-AttributeAlias is an alias of a Mercury event attribute and Term can be: \n\
-an exact value    (attribute = ground_term), \n\
-a negated value   (attribute = not(ground_term)), \n\
-a list of values  (attribute = [ground_term1, ground_term2, ... ]), \n\
+(*) An attribute constraint is a term of the form `Attribute = Term' \
+where `Attribute' is a Mercury event attribute and `Term' can be: \n\
+an exact value    (attribute = <ground term>), \n\
+a negated value   (attribute = not(<ground term>)), \n\
+a list of values  (attribute = [<ground term>, <ground term>, ... ]), \n\
 and for integer attributes (chrono, call, depth, arity), \n\
-an interval       (attribute = bottom..up). \n\
+an interval       (attribute = <integer>..<integer>). \n\
 Each attribute has a list of possible aliases that you can list with the \
-command list_alias_attributes/0.\n\
+command `list_alias_attributes/0'.\n\
 \n\
-Example: the Morphine goal fget(chrono = [20, 789] and depth = 3..6 and \
-proc = foo/2)  \
-will make the execution move forwards until the first event \
+Example: the Morphine goal `fget(chrono = [20, 789] and depth = 3..6 and \
+proc = foo/2)' will make the execution move forwards until the first event \
 which chronological event number is 20 or 789, depth is 3, 4, 5 or 6, \
-procedure name is foo and arity is 2. \
-You can also use a list as an argument of fget: \
-fget([chrono=[20, 789], depth = 3..6, proc = foo/2]) will have the \
-same effect as the previous goal.\
+procedure name is `foo' and arity is 2. An alternative syntax is to use a list \
+as an argument of `fget': `fget([chrono=[20, 789], depth = 3..6, proc = foo/2])'.\
 "
 	).
 
@@ -291,8 +287,7 @@ opium_command(
 	implementation	: det_fget_Op,
 	parameters	: [],
 	message		:
-"It is the deterministic version of fget/1.\
-"
+"It is the deterministic version of `fget/1'."
 	).
 
 det_fget_Op(List) :-
@@ -902,16 +897,16 @@ opium_command(
 "Restarts execution at the call port of the current goal.\
 \n\
 The command will fail unless the values of all the input arguments are \
-available at the current port. (The compiler will keep the values of the input \
+lives at the current port. The compiler will keep the values of the input \
 arguments of traced procedures as long as possible, but it cannot keep them \
-beyond the point where they are destructively updated.) \n\
+beyond the point where they are destructively updated. \n\
 \n\
-The debugger can perform a retry only from an exit or fail port; only at these \
-ports does the debugger have enough information to figure out how to reset the \
-stacks. If the debugger is not at such a port when a retry command is given, \
-the debugger will continue forward execution until it reaches an exit or fail \
-port of the call to be retried before it performs the retry. This may require \
-a noticeable amount of time. \
+The debugger can perform a `retry' only from `exit' and `fail' ports; only at \
+these ports does the debugger have enough information to figure out how to \
+reset the stacks. If the debugger is not at such a port when a `retry' command \
+is invoked, the debugger continues forward the execution until it reaches an \
+`exit' or a `fail' port of the call to be retried, and then performs the \
+`retry'. This may require a noticeable amount of time. \
 "
 	).
 

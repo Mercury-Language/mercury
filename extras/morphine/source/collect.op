@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -9,50 +9,59 @@
 % This file implements the collect command.
 %
 % There are several things to do in order to be able to execute a 
-% collect/1 command:
+% `collect/1' command:
 % 1) create a file that will that contain the definition of collected_type, 
-%	initialize/1 and filter/4,
-% 2) generate `collect.m' from this file (generate_collect/1),
-% 3) compile collect.m (compile_collect/0),
-% 4) dynamically link it with the current execution (dyn_link_collect/2).
-% 5) run the command (run_command/1).
+%	`initialize/1' and `filter/4',
+% 2) generate `collect.m' from this file (`generate_collect/1'),
+% 3) compile `collect.m' (`compile_collect/0'),
+% 4) dynamically link it with the current execution (`dyn_link_collect/2').
+% 5) run the command (`run_command/1').
 
 opium_scenario(
 	name		: collect,
 	files		: [collect],
 	scenarios	: [],
 	message		:
-"Scenario that implements the collect/2 monitoring command that collects \
+"Scenario that implements the `collect/2' monitoring command that collects \
 runtime information from Mercury program executions. It is intended to let \
 users easily implement their own monitors with acceptable performances.\n\
 \n\
 To use it, users just need to define 4 things in a file, using the Mercury \
-syntax:\n\
-	(1) a `collected_type' which is the type of the collecting  \n\
+syntax.\n\
+	(1) A `collected_type' which is the type of the collecting  \n\
 	   variable that will contain the result of the monitoring\n\
 	   activity.\n\
-	(2) The predicate initialize/1 which initializes this collecting \n\
-	   variable. initialize/1 should follow the \n\
+	(2) A predicate `initialize/1' which initializes this collecting \n\
+	   variable. Predicate `initialize/1' should respect the \n\
 	   following declarations:\n\
 		:- pred initialize(collected_type).\n\
 		:- mode initialize(out) is det.\n\
-	(3) The predicate filter/4 which updates the collecting variable \n\
-	   at each execution event. filter/4 also outputs a variable that  \n\
+	(3) A predicate `filter/4' which updates the collecting variable at \n\
+	   each execution event. The fourth argument of `filter/4' \n\
 	   indicates whether to stop collecting. If this variable is set to \n\
 	   `stop', the collect process stops; if it is set to `continue', it \n\
 	   continues. If this variable is always set to `continue', the \n\
-	   collecting will process until the last event is reached. filter/4 \n\
-	   should follow the following declarations:\n\
+	   collecting processes until the last event is reached. `filter/4' \n\
+	   should respect the following declarations:\n\
 		:- pred filter(event, collected_type, collected_type, \n\
 			stop_or_continue).\n\
 		:- mode filter(in, acc_in, acc_out, out) is det.\n\
-	   where `acc_in' and `acc_out' have `in' and `out' respectively\n\
-	   as default values.\n\
-	(4) And optionally the mode definition of `acc_in' and `acc_out'\n\
-	   in one want to override their default values.\n\
+	   where modes `acc\_in' and `acc\_out' are equivalent to\n\
+	   `in' and `out' respectively by default.\n\
+	(4) And optionally, a mode definition for `acc_in' and `acc_out'\n\
+	   if one wants to override their default values.\n\
 \n\
-The event type is defined as follows (for more detail about the meaning of \
-each event attributes, please refer to the Reference Manual):\n\
+Then, this file is used to generate the Mercury module `collect.m', \
+which is compiled and dynamically linked with the current execution. \
+When a `collect' request is made from the external debugger, a variable \
+of type `collected_type' is first initialized (with `initialize/1') and \
+then updated (with `filter/4') for all the remaining events of the \
+execution. When the fourth argument of `filter/4' is equal to `stop', or when \
+the end of the execution is reached, the last value of \
+the collecting variable is send to Morphine.\n\
+\n\
+The event type is defined as follows (for more details about the meaning of \
+each event attributes, please refer to the morphine Reference Manual):\n\
 \n\
 :- type event ---> \n\
 	event(\n\
@@ -126,21 +135,11 @@ Here are functions that eases the access to event attributes:\n\
 (*) To be able to retrieve arguments, you to need to have the opium parameter \n\
 `collect_arg' set to yes (`man collect_arg.' for more details).\n\
 \n\
-Then, this file is used to generate the Mercury module `collect.m', \
-which is compiled and dynamically linked with the current execution. \
-When a `collect' request is made from the external debugger, a variable \
-of type collected_type is first initialized (with initialize/1) and \
-then updated (with filter/4) for all the events of the remaining \
-execution. When the fourth argument of filter is equal to yes, or when \
-the end of the execution is reached, the last value of \
-the collecting variable is send to Morphine.\n\
-\n\
-collect/2 can be seen as fold/4 meta-predicate except that (1) the \
-initialization and the updating of the accumulator is done via Mercury \
-predicates defined in a separate file (2) it does not take a list as \
-argument but operates on the fly on a list of events (3) we can stop \
-the process at anytime thanks the fourth argument of filter\4."
-	).
+Predicate `collect/2' can be seen as a `foldl/4' operator except that \
+it does not take a list as argument but operates on the fly on a list \
+of events; and we can stop the process at anytime thanks the fourth \
+argument of `filter/4'."
+).
 
 %------------------------------------------------------------------------------%
 opium_command(
@@ -153,12 +152,13 @@ opium_command(
 	implementation	: collect_Op,
 	parameters	: [collect_arg],
 	message		:
-"If File contains the implementation of the Mercury predicates initialize/1 \
-and filter/4, collect(File, Result) calls filter/4 with each event of the \
-execution and an accumulator initialized by initialize/1, and returns the \
-final value in Result. The fourth argument of filter is a flag that is set \
-to `continue' or `stop' depending if you want to continue or stop the \
-monitoring process; this useful if one want to be able to stop the monitoring \
+"If  File  contains  the  implementation of  the  Mercury  predicates \
+`initialize/1' and `filter/4',  `collect(File, Result)' calls `filter/4'  \
+with each remaining event of the  current execution and an accumulator \
+initialized by  `initialize/1', and returns the final  value in `Result'. \
+The fourth argument of filter is  a flag that is set to `continue' or \
+`stop'  depending if  you want  to  continue or  stop the  monitoring \
+process; this  useful if one wants  to be able to  stop the monitoring \
 process before the last event is reached.\n\
 \n\
 Here is an example of a simple monitor that counts calls.\n\
@@ -176,8 +176,8 @@ If a file `count_call' contains the following statements:\n\
 			AccOut = AccIn\n\
 		).\n\
 '\n\
-Then the command `collect(count_call, Result)' will unify Result with the \
-number of calls that occur during the program execution.\
+Then the goal `run(queens), collect(count_call, Result)' will unify `Result' \
+with the number of calls occurring during the execution of `queens' program.\
 "
 	).
 
@@ -221,8 +221,8 @@ opium_parameter(
 	default		: [no],
 	commands	: [collect],
 	message		: 
-"Parameter which tells whether it is possible to use arguments/1 within \
-collect:filter/4. If you do not use arguments, it is better to set this \
+"Specifies whether or not it is possible to use `arguments/1' within \
+`collect:filter/4'. If you do not use arguments, it is better to set this \
 parameter to `no' since when arguments are very big, it might slow down \
 the execution of collect a lot."
 	).
@@ -236,7 +236,7 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: compile_collect_Op,
 	message		:
-"Compile the module `collect.m'."
+"Compiles the module `collect.m'."
 	).
 
 compile_collect_Op :-
@@ -291,9 +291,8 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: generate_collect_Op,
 	message		:
-"Generates a Mercury module named `collect.m' from file File; File should \
-contain the definition of the accumulator type (collected_type), \
-initialize/1 and filter/4 predicates."
+"Generates a Mercury module named `collect.m' from file `File'; `File' should \
+contain the definition of `collected_type', `initialize/1', and `filter/4'."
 	).
 
 generate_collect_Op(File) :-
@@ -374,7 +373,7 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: dyn_link_collect_Op,
 	message		:
-"Dynamically links the collect module with the currently run program."
+"Dynamically links the collect module with the current execution."
 	).
 
 dyn_link_collect_Op(File, FileSo) :-
@@ -389,7 +388,7 @@ dyn_link_collect_Op(File, FileSo) :-
 		!
 	;
 		write("Can't find `collect.m'; you should "),
-		write("use generate_collect/1 primitive before.\n"),
+		write("use `generate_collect/1' primitive before.\n"),
 		fail
 	),
 	send_message_to_socket(link_collect("\"./collect.so\"")),
@@ -432,9 +431,8 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: run_collect_Op,
 	message		:
-"Executes the collect command provided that collect.m has been correctly, \
-generated, compiled and dynamically linked with the current program \
-execution."
+"Executes the collect command provided that `collect.m' has been correctly \
+generated, compiled, and dynamically linked with the current execution."
 	).
 
 run_collect_Op(Result) :-
@@ -478,9 +476,9 @@ run_collect_Op(Result) :-
 		!
 	;
 		CollectLinked == collect_not_linked,
-		print("You can't call run_collect/1; "),
+		print("You can't call `run_collect/1'; "),
 		print("The collect module has not been linked with "),
-		print("the current execution (cf dyn_link_collect/2).\n"),
+		print("the current execution (cf `dyn_link_collect/2').\n"),
 		!,
 		fail
 	;

@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -24,21 +24,20 @@ opium_command(
 	parameters	: [],
 	message		:
 "Gets or checks the values of the event attributes specified in \
-AttributesConjunctOrList. AttributesConjunctOrList is a conjunction or a list \
-of terms of the form attribute = Value. \n\
-If Value is a free variable, it is unified with the current value of the \
-attribute. \
-If Value is a ground term, the current value of the attribute is retrieved and \
-checked against Value.\n\
+`AttributesConjunctOrList'. `AttributesConjunctOrList' is a conjunction or a list \
+of terms of the form `attribute = Value'. \n\
+If `Value' is a free variable, it is unified with the current value of the \
+attribute. If `Value' is a ground term, the current value of the attribute \
+is retrieved and checked against `Value'.\n\
 \n\
-The different attributes for current/1 are :  \n\
+The different attributes of `current/1' are:  \n\
  \n\
 chrono: \n\
     chronological event number of the event, \n\
 call: \n\
     call event number of the event, \n\
 depth: \n\
-    depth in the proof three (number of ancestors - 1) of the event, \n\
+    depth in the proof tree (number of ancestors - 1) of the event, \n\
 port: \n\
     type of the event, \n\
 proc_type: \n\
@@ -84,12 +83,12 @@ event is 3. \
 current(args = [Arg1, -, -]) will unify Arg1 with the first argument of the \
 current procedure if is live. \n\
  \n\
-(*) non lived arguments are unified with '-' and if you do not want to retrieve \
-all the arguments (because one of them is very big for example), \
-you can use the atom '-': for example, current(arg = [X, -, -]) will only \
-retrieve \
-the first argument. Note that current(arg = [X, _, _] will have the same \
-behaviour, but arguments will be retrieved through the socket."
+(*) Non lived arguments are unified with `-'. Moreover, if you do not want \
+to retrieve all the arguments (because one of them is very big for example), \
+you can use the atom `-': for example, `current(arg = [X, -, -])' only \
+retrieves the first argument. Note that `current(arg = [X, _, _])' produces the \
+same result, except arguments are effectively retrieved, which can take \
+some times."
 	).
 
 current_Op(ListOrConj) :-
@@ -130,8 +129,7 @@ opium_primitive(
 	abbrev		: _,
 	implementation	: current_attributes_Op,
 	message		:
-"current_attributes/12 retrieves all the event attributes except the argument \
-attributes."
+"Retrieves all the event attributes except the argument attributes."
 	).
 
 % :- pred current_attributes(atom, ..., atom).
@@ -486,13 +484,13 @@ opium_type(
 	name		: is_list_or_conj_of_attributes_current,
 	implementation	: is_list_or_conj_of_attributes_current_Op,
 	message		: 
-"Type which succeeds for list or conjunctions of terms of the form: \
-\"AttributeAlias = Term\", where  AttributeAlias is an alias of a Mercury \
-event attribute and Term is a variable or a possible \
-value for the corresponding attribute.\n\
+"Succeeds for list or conjunctions of terms of the form: \
+`Attribute = Term', where  `Attribute' is a Mercury event attribute (or an \
+alias of it) and `Term' is a term, e.g., a variable or a possible \
+value for the attribute.\n\
 Example:\n\
-current(name = Name and decl_module = module1), current([port = call, name = \
-Name]).\
+`current(name = Name and decl_module = module1), current([port = call, name = \
+Name])'.\
 "
 	).
 

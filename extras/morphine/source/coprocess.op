@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -155,7 +155,7 @@ opium_procedure(
 	implementation	: morphine_write_debug_Op,
 	parameters	: [debug_morphine],
 	message		:
-'This procedure is used to print information to debug Morphine.'
+'Prints additional information to debug Morphine.'
 	).
 
 morphine_write_debug_Op(X) :-
@@ -172,7 +172,7 @@ opium_procedure(
 	implementation	: morphine_write_debug_Op,
 	parameters	: [debug_morphine],
 	message		:
-'This procedure is used to print information to debug Morphine.'
+'Prints additional information to debug Morphine.'
 	).
 
 morphine_write_debug_Op(Stream, X) :-
@@ -190,7 +190,7 @@ opium_procedure(
 	implementation	: morphine_printf_debug_Op,
 	parameters	: [debug_morphine],
 	message		:
-'This procedure is used to print information to debug Morphine.'
+'Prints additional information to debug Morphine.'
 	).
 
 morphine_printf_debug_Op(Format, X) :-
@@ -207,7 +207,7 @@ opium_procedure(
 	implementation	: morphine_printf_debug_Op,
 	parameters	: [debug_morphine],
 	message		:
-'This procedure is used to print information to debug Morphine.'
+'Prints additional information to debug Morphine.'
 	).
 
 morphine_printf_debug_Op(Stream, Format, X) :-
