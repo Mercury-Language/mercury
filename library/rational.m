@@ -31,9 +31,6 @@
 :- pred rational:'>='(rational, rational).
 :- mode rational:'>='(in, in) is semidet.
 
-:- pred rational:'='(rational, rational).
-:- mode rational:'='(in, in) is semidet.
-
 
 :- func rational(int, int) = rational.
 
@@ -121,8 +118,8 @@ rational:'-'(r(Num, Den)) = r(-Num, Den).
 rational:'+'(r(An, Ad), r(Bn, Bd)) =
 	rational_norm(An*CA + Bn*CB, M) :-
 	M = lcm(Ad, Bd),
-	CA = M / Ad,
-	CB = M / Bd.
+	CA = M // Ad,
+	CB = M // Bd.
 
 rational:'-'(R1, R2) =
 	R1 + (-R2).
