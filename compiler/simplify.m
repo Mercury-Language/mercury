@@ -516,7 +516,7 @@ simplify__goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info) :-
 	;
 		%
 		% Conjunctions that cannot produce solutions may nevertheless
-		% contain nondet and multidet goals. If this happens, the
+		% contain nondet and multi goals. If this happens, the
 		% conjunction is put inside a `some' to appease the code
 		% generator.
 		%
@@ -771,7 +771,7 @@ simplify__goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
 simplify__goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
 	Goal0 = unify(LT0, RT0, M, U0, C),
 	(
-		% A unification of the form X = X can safely be
+		% A unification of the form X = X can be safely
 		% optimised away.
 
 		RT0 = var(LT0)
@@ -793,8 +793,7 @@ simplify__goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
 		% Don't attempt to pass structs into lambda_goals,
 		% since that could change the curried non-locals of the
 		% lambda_goal, and that would be difficult to fix up.
-		common_info_init(Common2),
-		simplify_info_set_common_info(Common2, !Info),
+		simplify_info_set_common_info(common_info_init, !Info),
 
 		% Don't attempt to pass structs out of lambda_goals.
 		simplify__goal(LambdaGoal0, LambdaGoal, !Info),
@@ -1673,18 +1672,17 @@ simplify__nested_somes_2(CanRemove0, KeepThisCommit0, Vars0, Goal0,
 	simplify_info::in, simplify_info::out)  is det.
 
 simplify__maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo,
-		Goal1, Goal, GoalInfo, Info0, Info) :-
+		Goal1, Goal, GoalInfo, !Info) :-
 	(
 		goal_info_get_determinism(InnerGoalInfo, Det),
 		goal_info_get_determinism(OuterGoalInfo, Det)
 	->
 		Goal = Goal1,
-		GoalInfo = InnerGoalInfo,
-		Info = Info0
+		GoalInfo = InnerGoalInfo
 	;
 		Goal = some([], can_remove, Goal1 - InnerGoalInfo),
 		GoalInfo = OuterGoalInfo,
-		simplify_info_set_rerun_det(Info0, Info)
+		simplify_info_set_rerun_det(!Info)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1719,7 +1717,8 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, !Info) :-
 			;
 				Goal1 = _ - GoalInfo1,
 				goal_info_get_determinism(GoalInfo1, Detism1),
-				determinism_components(Detism1, _, at_most_zero)
+				determinism_components(Detism1, _,
+					at_most_zero)
 			)
 		->
 			simplify__conjoin_goal_and_rev_goal_list(Goal1,
@@ -2234,28 +2233,26 @@ simplify__contains_multisoln_goal(Goals) :-
 		typeclass_info_varmap	:: typeclass_info_varmap
 	).
 
-simplify_info_init(DetInfo, Simplifications0, InstMap,
-		VarSet, InstVarSet, TVarMap, TCVarMap, Info) :-
-	common_info_init(CommonInfo),
+simplify_info_init(DetInfo, Simplifications0, InstMap, VarSet, InstVarSet,
+		TVarMap, TCVarMap, Info) :-
 	set__init(Msgs),
 	set__list_to_set(Simplifications0, Simplifications),
-	Info = simplify_info(DetInfo, Msgs, Simplifications, CommonInfo,
+	Info = simplify_info(DetInfo, Msgs, Simplifications, common_info_init,
 		InstMap, VarSet, InstVarSet, no, no, no, 0, 0,
 		TVarMap, TCVarMap).
 
 	% Reinitialise the simplify_info before reprocessing a goal.
 :- pred simplify_info_reinit(set(simplification)::in, instmap::in,
-		simplify_info::in, simplify_info::out) is det.
+	simplify_info::in, simplify_info::out) is det.
 
-simplify_info_reinit(Simplifications, InstMap0) -->
-	{ common_info_init(Common) },
-	^simplifications := Simplifications,
-	^common_info := Common,
-	^instmap := InstMap0,
-	^requantify := no,
-	^recompute_atomic := no,
-	^rerun_det := no,
-	^lambdas := 0.
+simplify_info_reinit(Simplifications, InstMap0, !Info) :-
+	!:Info = !.Info ^ simplifications := Simplifications,
+	!:Info = !.Info ^ common_info := common_info_init,
+	!:Info = !.Info ^ instmap := InstMap0,
+	!:Info = !.Info ^ requantify := no,
+	!:Info = !.Info ^ recompute_atomic := no,
+	!:Info = !.Info ^ rerun_det := no,
+	!:Info = !.Info ^ lambdas := 0.
 
 	% exported for common.m
 :- interface.
