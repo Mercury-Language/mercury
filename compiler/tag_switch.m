@@ -74,7 +74,7 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) },
-	{ tag_switch__get_ptag_count_s(Type, ModuleInfo,
+	{ tag_switch__get_ptag_counts(Type, ModuleInfo,
 		MaxPrimary, TagCountMap) },
 	{ map__to_assoc_list(TagCountMap, TagCountList) },
 	{ map__init(TagCaseMap0) },
@@ -520,14 +520,14 @@ tag_switch__generate_secondary_tag_table(CaseList, CurSecondary, MaxSecondary,
 	% Find out how many secondary tags share each primary tag
 	% of the given variable.
 
-:- pred tag_switch__get_ptag_count_s(type, module_info, int, ptag_count_map).
-:- mode tag_switch__get_ptag_count_s(in, in, out, out) is det.
+:- pred tag_switch__get_ptag_counts(type, module_info, int, ptag_count_map).
+:- mode tag_switch__get_ptag_counts(in, in, out, out) is det.
 
-tag_switch__get_ptag_count_s(Type, ModuleInfo, MaxPrimary, TagCountMap) :-
+tag_switch__get_ptag_counts(Type, ModuleInfo, MaxPrimary, TagCountMap) :-
 	( type_to_type_id(Type, TypeIdPrime, _) ->
 		TypeId = TypeIdPrime
 	;
-		error("unknown type in tag_switch__get_ptag_count_s")
+		error("unknown type in tag_switch__get_ptag_counts")
 	),
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeId, TypeDefn),
@@ -536,18 +536,18 @@ tag_switch__get_ptag_count_s(Type, ModuleInfo, MaxPrimary, TagCountMap) :-
 		map__to_assoc_list(ConsTable, ConsList),
 		tag_switch__cons_list_to_tag_list(ConsList, TagList)
 	;
-		error("non-du type in tag_switch__get_ptag_count_s")
+		error("non-du type in tag_switch__get_ptag_counts")
 	),
 	map__init(TagCountMap0),
-	tag_switch__get_ptag_count_s_2(TagList, -1, MaxPrimary,
+	tag_switch__get_ptag_counts_2(TagList, -1, MaxPrimary,
 		TagCountMap0, TagCountMap).
 
-:- pred tag_switch__get_ptag_count_s_2(list(cons_tag), int, int,
+:- pred tag_switch__get_ptag_counts_2(list(cons_tag), int, int,
 	ptag_count_map, ptag_count_map).
-:- mode tag_switch__get_ptag_count_s_2(in, in, out, in, out) is det.
+:- mode tag_switch__get_ptag_counts_2(in, in, out, in, out) is det.
 
-tag_switch__get_ptag_count_s_2([], Max, Max, TagCountMap, TagCountMap).
-tag_switch__get_ptag_count_s_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
+tag_switch__get_ptag_counts_2([], Max, Max, TagCountMap, TagCountMap).
+tag_switch__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 		TagCountMap0, TagCountMap) :-
 	( ConsTag = simple_tag(Primary) ->
 		int__max(MaxPrimary0, Primary, MaxPrimary1),
@@ -590,9 +590,9 @@ tag_switch__get_ptag_count_s_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 				TagCountMap1)
 		)
 	;
-		error("non-du tag in tag_switch__get_ptag_count_s_2")
+		error("non-du tag in tag_switch__get_ptag_counts_2")
 	),
-	tag_switch__get_ptag_count_s_2(TagList, MaxPrimary1, MaxPrimary,
+	tag_switch__get_ptag_counts_2(TagList, MaxPrimary1, MaxPrimary,
 		TagCountMap1, TagCountMap).
 
 %-----------------------------------------------------------------------------%
