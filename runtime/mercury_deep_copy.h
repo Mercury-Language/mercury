@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -58,6 +58,12 @@
 **	save_transient_registers()/restore_transient_registers()
 **	need to be used.
 **
+**	Deep copy does not preserve sharing of subterms.  Each
+**	subterm is copied in full, except for data items that are
+**	stored outside the heap. 
+**	XXX For some applications, sharing is useful.  For others we
+**	want a copy that is completely unique.  We should modify
+**	deep_copy to do both.
 */
 
 Word deep_copy(Word data, Word *type_info, Word *lower_limit, 

@@ -16,6 +16,7 @@ ENDINIT
 
 #include	"mercury_engine.h"
 #include	"mercury_memory_zones.h"	/* for create_zone() */
+#include	"mercury_memory_handlers.h"	/* for default_handler() */
 
 #include	"mercury_dummy.h"
 

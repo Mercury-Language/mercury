@@ -63,33 +63,6 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             new_data = data;	/* just a copy of the actual item */
         break;
 
-        case MR_DATAREP_SIMPLE: {
-            int arity, i;
-	    Word *argument_vector, *type_info_vector;
-            argument_vector = data_value;
-
-                /* If the argument vector is in range, copy the arguments */
-            if (in_range(argument_vector)) {
-                arity = entry_value[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
-                type_info_vector = entry_value + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
-
-                    /* allocate space for new args. */
-                incr_saved_hp(new_data, arity);
-
-                    /* copy arguments */
-                for (i = 0; i < arity; i++) {
-                    field(0, new_data, i) = deep_copy_arg(argument_vector[i],
-                        type_info, (Word *) type_info_vector[i], lower_limit,
-                        upper_limit);
-                }
-                    /* tag this pointer */
-                new_data = (Word) mkword(data_tag, new_data);
-            } else {
-                new_data = data;
-            }
-            break;
-        }
-
         case MR_DATAREP_COMPLICATED: {
             Word secondary_tag;
             Word *new_entry;
@@ -126,8 +99,35 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             } else {
                 new_data = data;
             }
-        }
             break;
+        }
+
+        case MR_DATAREP_SIMPLE: {
+            int arity, i;
+	    Word *argument_vector, *type_info_vector;
+            argument_vector = data_value;
+
+                /* If the argument vector is in range, copy the arguments */
+            if (in_range(argument_vector)) {
+                arity = entry_value[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
+                type_info_vector = entry_value + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
+
+                    /* allocate space for new args. */
+                incr_saved_hp(new_data, arity);
+
+                    /* copy arguments */
+                for (i = 0; i < arity; i++) {
+                    field(0, new_data, i) = deep_copy_arg(argument_vector[i],
+                        type_info, (Word *) type_info_vector[i], lower_limit,
+                        upper_limit);
+                }
+                    /* tag this pointer */
+                new_data = (Word) mkword(data_tag, new_data);
+            } else {
+                new_data = data;
+            }
+            break;
+        }
 
         case MR_DATAREP_NOTAG:
             new_data = deep_copy_arg(data, type_info, 
@@ -285,13 +285,10 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             }
             break;
             
-        case MR_DATAREP_UNKNOWN:
-            fatal_error("Unknown layout type in deep copy");
-            break;
-
+        case MR_DATAREP_UNKNOWN: /* fallthru */
         default:
             fatal_error("Unknown layout type in deep copy");
-        break;
+            break;
     }
 
     return new_data;
