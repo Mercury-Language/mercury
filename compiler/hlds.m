@@ -354,60 +354,112 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 
 :- type hlds__goal	== pair(hlds__goal_expr, hlds__goal_info).
 
-:- type hlds__goal_expr	--->
-				% A conjunction.
-				% Note: conjunctions must be fully flattened.
-				conj(hlds__goals)
+:- type hlds__goal_expr
+		% A conjunction.
+		% Note: conjunctions must be fully flattened before
+		% mode analysis.  As a general rule, it is a good idea
+		% to keep them flattened.
+	--->	conj(hlds__goals)
 
-				% A predicate call.
-				% Initially only the sym_name and arguments
-				% are filled in. Type analysis fills in the
-				% pred_id. Mode analysis fills in the
-				% proc_id and the is_builtin field.
-				% `follow_vars.m' fills in
-				% the follow_vars field.
-			;	call(pred_id, proc_id, list(var), is_builtin,
-					maybe(call_unify_context), sym_name,
-					follow_vars)
+		% A predicate call.
+		% Initially only the sym_name and arguments
+		% are filled in. Type analysis fills in the
+		% pred_id. Mode analysis fills in the
+		% proc_id and the is_builtin field.
+		% `follow_vars.m' fills in
+		% the follow_vars field.
+	;	call(
+			pred_id,	% which predicate are we calling?
+			proc_id,	% which mode of the predicate?
+			list(var),	% the list of argument variables
+			is_builtin,	% is the predicate builtin, and
+					% do we generate inline code for it?
+			maybe(call_unify_context),
+					% was this predicate call originally
+					% a unification?  If so, we store the
+					% context of the unification.
+			sym_name,	% the name/arity of the predicate
+			follow_vars	% advisory storage locations for
+					% placing variables when generating
+					% the code that follows this call
+					% (used so we can generate more
+					% efficient code by putting variables
+					% in the place they will be needed)
+		)
 
-				% Deterministic disjunctions are converted
-				% into case statements by the switch
-				% detection pass.
-				% Variable, local determinism, cases
-			;	switch(var, can_fail, list(case))
+		% Deterministic disjunctions are converted
+		% into case statements by the switch
+		% detection pass.
+	;	switch(
+			var,		% the variable we are switching on
+			can_fail,	% whether or not the switch test itself
+					% can fail (i.e. whether or not it
+					% covers all the possible cases)
+			list(case)
+		)
 
-				% A unification.
-				% Initially only the terms and the context
-				% are known. Mode analysis fills in the
-				% missing information.
-			;	unify(var, unify_rhs, unify_mode, unification,
-								unify_context)
-				% A disjunction.
-				% Note: disjunctions must be fully flattened.
-			;	disj(hlds__goals)
+		% A unification.
+		% Initially only the terms and the context
+		% are known. Mode analysis fills in the
+		% missing information.
+	;	unify(
+			var,		% the variable on the left hand side
+					% of the unification
+			unify_rhs,	% whatever is on the right hand side
+					% of the unification
+			unify_mode,	% the mode of the unification
+			unification,	% this field says what category of
+					% unification it is, and contains
+					% information specific to each category
+			unify_context	% the location of the unification
+					% in the original source code
+					% (for use in error messages)
+		)
 
-				% A negation
-			;	not(hlds__goal)
+		% A disjunction.
+		% Note: disjunctions should be fully flattened.
+	;	disj(hlds__goals)
 
-				% An explicit quantification.
-				% Quantification is stored in the goal_info,
-				% so these get ignored (except to recompute
-				% the goal_info quantification).
-				% `all Vs' gets converted to `not some Vs not'.
-			;	some(list(var), hlds__goal)
+		% A negation
+	;	not(hlds__goal)
 
-				% An if-then-else.
-			;	if_then_else(list(var), hlds__goal,
-					hlds__goal, hlds__goal)
-			
-				% Code from a pragma(c_code) decl.
-				% the c code, the corresponding pred_id and
-				% proc_id, the variables, and a map from the
-				% variable to the variable name (just to be
-				% sure that the original variable name is
-				% kept).
-			;	pragma_c_code(c_code, pred_id, proc_id, 
-					list(var), map(var, string)).
+		% An explicit quantification.
+		% Quantification information is stored in the `non_locals'
+		% field of the goal_info, so these get ignored
+		% (except to recompute the goal_info quantification).
+		% `all Vs' gets converted to `not some Vs not'.
+	;	some(list(var), hlds__goal)
+
+		% An if-then-else,
+		% `if some <Vars> <Condition> then <Then> else <Else>'.
+		% The scope of the locally existentially quantified variables
+		% <Vars> is over the <Condition> and the <Then> part, 
+		% but not the <Else> part.
+	;	if_then_else(
+			list(var),	% The locally existentially quantified
+					% variables <Vars>.
+			hlds__goal,	% The <Condition>
+			hlds__goal,	% The <Then> part
+			hlds__goal	% The <Else> part
+		)
+	
+		% Inline C code from a pragma(c_code) decl.
+	;	pragma_c_code(
+			c_code,		% The C code to do the work
+			pred_id,	% The called predicate
+			proc_id, 	% The mode of the predicate
+			list(var),	% The (Mercury) argument variables
+			map(var, string)
+				%  A map from the (Mercury) argument
+				%  variables to the C variable names used
+				%  in the C code.  If a variable in the
+				%  argument list does not occur in this
+				%  map, it means that it is not used by
+				%  the C code.  (In particular, the
+				%  type_info variables introduced by
+				%  polymorphism.m will not occur in this
+				%  map.)
+		).
 
 	% Record whether a call is a builtin or not, and if so, which one.
 :- type is_builtin.
