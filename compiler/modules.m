@@ -7042,8 +7042,8 @@ maybe_strip_import_decls(!Items) :-
 			(pred((ThisItem - _)::in) is semidet :-
 				\+ (
 					ThisItem = module_defn(_, Defn),
-					( Defn = imported(_)
-					; Defn = used(_)
+					( Defn = import(_)
+					; Defn = use(_)
 					)
 				)
 			), !Items)
