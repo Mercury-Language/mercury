@@ -457,9 +457,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), PredInfo0, PredInfo) :-
 	RunPostTypeCheck = no,
 	PurityInfo0 = purity_info(ModuleInfo, RunPostTypeCheck,
 		PredInfo0, VarTypes0, VarSet0, []),
-	InClosure = no,
-	compute_goal_purity(Goal0, Goal, InClosure, Bodypurity,
-		PurityInfo0, PurityInfo),
+	compute_goal_purity(Goal0, Goal, Bodypurity, PurityInfo0, PurityInfo),
 	PurityInfo = purity_info(_, _, PredInfo1, VarTypes, VarSet, _),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
@@ -531,7 +529,7 @@ compute_purity(_, [], [], _, Purity, Purity) --> [].
 compute_purity(GoalType, [Clause0|Clauses0], [Clause|Clauses], ProcIds,
 		Purity0, Purity) -->
 	{ Clause0 = clause(Ids, Body0 - Info0, Lang, Context) },
-	compute_expr_purity(Body0, Body, Info0, no, Bodypurity0),
+	compute_expr_purity(Body0, Body, Info0, Bodypurity0),
 	% If this clause doesn't apply to all modes of this procedure,
 	% i.e. the procedure has different clauses for different modes,
 	% then we must treat it as impure.
@@ -569,17 +567,17 @@ applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
 	).
 
 :- pred compute_expr_purity(hlds_goal_expr, hlds_goal_expr,
-	hlds_goal_info, bool, purity, purity_info, purity_info).
-:- mode compute_expr_purity(in, out, in, in, out, in, out) is det.
+	hlds_goal_info, purity, purity_info, purity_info).
+:- mode compute_expr_purity(in, out, in, out, in, out) is det.
 
-compute_expr_purity(conj(Goals0), conj(Goals), _, InClosure, Purity) -->
-	compute_goals_purity(Goals0, Goals, InClosure, pure, Purity).
+compute_expr_purity(conj(Goals0), conj(Goals), _, Purity) -->
+	compute_goals_purity(Goals0, Goals, pure, Purity).
 compute_expr_purity(par_conj(Goals0), par_conj(Goals), _,
-		InClosure, Purity) -->
-	compute_goals_purity(Goals0, Goals, InClosure, pure, Purity).
+		Purity) -->
+	compute_goals_purity(Goals0, Goals, pure, Purity).
 compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 		call(PredId,ProcId,Vars,BIState,UContext,Name),
-		GoalInfo, InClosure, ActualPurity) -->
+		GoalInfo, ActualPurity) -->
 	RunPostTypecheck =^ run_post_typecheck,
 	PredInfo =^ pred_info,
 	ModuleInfo =^ module_info,
@@ -596,10 +594,10 @@ compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 	{ goal_info_get_context(GoalInfo, CallContext) },
 
 	perform_goal_purity_checks(CallContext, PredId,
-		DeclaredPurity, InClosure, ActualPurity).
+		DeclaredPurity, ActualPurity).
 
 compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
-		GoalExpr, GoalInfo, _InClosure, Purity) -->
+		GoalExpr, GoalInfo, Purity) -->
 	(
 		{ GenericCall0 = higher_order(_, Purity, _, _) },
 		{ GoalExpr = generic_call(GenericCall0, Args, Modes0, Det) }
@@ -636,10 +634,9 @@ compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
 		{ GoalExpr = generic_call(GenericCall, Args, Modes, Det) }
 	).
 compute_expr_purity(switch(Var, Canfail, Cases0),
-		switch(Var, Canfail, Cases), _, InClosure, Purity) -->
-	compute_cases_purity(Cases0, Cases, InClosure, pure, Purity).
-compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
-		ActualPurity) -->
+		switch(Var, Canfail, Cases), _, Purity) -->
+	compute_cases_purity(Cases0, Cases, pure, Purity).
+compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity) -->
 	{ Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext) },
 	(
 		{ RHS0 = lambda_goal(LambdaPurity, F, EvalMethod,
@@ -647,7 +644,7 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
 	->
 		{ RHS = lambda_goal(LambdaPurity, F, EvalMethod,
 			modes_are_ok, H, Vars, Modes, K, Goal - Info0) },
-		compute_expr_purity(Goal0, Goal, Info0, yes, GoalPurity),
+		compute_expr_purity(Goal0, Goal, Info0, GoalPurity),
 		check_closure_purity(GoalInfo, LambdaPurity, GoalPurity),
 
 		VarTypes =^ vartypes,
@@ -714,40 +711,38 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
 				Var, Args, ActualPurity),
 			{ Goal = Goal1 }
 		;
-			compute_goal_purity(Goal1, Goal,
-				InClosure, ActualPurity)
+			compute_goal_purity(Goal1, Goal, ActualPurity)
 		),
 		{ Goal = GoalExpr - _ }
 	;
 		{ GoalExpr = Unif0 },
 		{ ActualPurity = pure }
 	).
-compute_expr_purity(disj(Goals0), disj(Goals), _, InClosure, Purity) -->
-	compute_goals_purity(Goals0, Goals, InClosure, pure, Purity).
-compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, InClosure, Purity) -->
+compute_expr_purity(disj(Goals0), disj(Goals), _, Purity) -->
+	compute_goals_purity(Goals0, Goals, pure, Purity).
+compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, Purity) -->
 	%
 	% eliminate double negation
 	%
 	{ negate_goal(Goal0, GoalInfo0, NotGoal0) },
 	( { NotGoal0 = not(Goal1) - _GoalInfo1 } ->
-		compute_goal_purity(Goal1, Goal, InClosure, Purity),
+		compute_goal_purity(Goal1, Goal, Purity),
 		{ NotGoal = not(Goal) }
 	;
-		compute_goal_purity(NotGoal0, NotGoal1, InClosure, Purity),
+		compute_goal_purity(NotGoal0, NotGoal1, Purity),
 		{ NotGoal1 = NotGoal - _ }
 	).
 compute_expr_purity(some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal),
-		_, InClosure, Purity) -->
-	compute_goal_purity(Goal0, Goal, InClosure, Purity).
+		_, Purity) -->
+	compute_goal_purity(Goal0, Goal, Purity).
 compute_expr_purity(if_then_else(Vars, Cond0, Then0, Else0),
-		if_then_else(Vars, Cond, Then, Else), _,
-		InClosure, Purity) -->
-	compute_goal_purity(Cond0, Cond, InClosure, Purity1),
-	compute_goal_purity(Then0, Then, InClosure, Purity2),
-	compute_goal_purity(Else0, Else, InClosure, Purity3),
+		if_then_else(Vars, Cond, Then, Else), _, Purity) -->
+	compute_goal_purity(Cond0, Cond, Purity1),
+	compute_goal_purity(Then0, Then, Purity2),
+	compute_goal_purity(Else0, Else, Purity3),
 	{ worst_purity(Purity1, Purity2, Purity12) },
 	{ worst_purity(Purity12, Purity3, Purity) }.
-compute_expr_purity(ForeignProc0, ForeignProc, _, _, Purity) -->
+compute_expr_purity(ForeignProc0, ForeignProc, _, Purity) -->
 	{ ForeignProc0 = foreign_proc(_, _, _, _, _, _, _) },
 	{ Attributes = ForeignProc0 ^ foreign_attr },
 	{ PredId = ForeignProc0 ^ foreign_pred_id },
@@ -767,7 +762,7 @@ compute_expr_purity(ForeignProc0, ForeignProc, _, _, Purity) -->
 		Purity = AttributesPurity
 	}.
 
-compute_expr_purity(shorthand(_), _, _, _, _) -->
+compute_expr_purity(shorthand(_), _, _, _) -->
 	% these should have been expanded out by now
 	{ error("compute_expr_purity: unexpected shorthand") }.
 
@@ -910,12 +905,10 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 	%
 	% ActualPurity: The inferred purity of the goal
 	% DeclaredPurity: The declared purity of the goal
-	% InClosure: Is this a goal inside a closure?
 :- pred perform_goal_purity_checks(prog_context::in, pred_id::in, purity::in,
-	bool::in, purity::out, purity_info::in, purity_info::out) is det.
+	purity::out, purity_info::in, purity_info::out) is det.
 
-perform_goal_purity_checks(Context, PredId, DeclaredPurity,
-		_InClosure, ActualPurity) -->
+perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity) -->
 	ModuleInfo =^ module_info,
 	PredInfo =^ pred_info,
 	{ module_info_pred_info(ModuleInfo, PredId, CalleePredInfo) },
@@ -959,11 +952,11 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity,
 	).
 
 :- pred compute_goal_purity(hlds_goal, hlds_goal,
-		bool, purity, purity_info, purity_info).
-:- mode compute_goal_purity(in, out, in, out, in, out) is det.
+		purity, purity_info, purity_info).
+:- mode compute_goal_purity(in, out, out, in, out) is det.
 
-compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, InClosure, Purity) -->
-	compute_expr_purity(Goal0, Goal, GoalInfo0, InClosure, Purity),
+compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity) -->
+	compute_expr_purity(Goal0, Goal, GoalInfo0, Purity),
 	{ add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo) }.
 
 
@@ -972,29 +965,27 @@ compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, InClosure, Purity) -->
 %  the same code for both
 
 :- pred compute_goals_purity(list(hlds_goal), list(hlds_goal),
-	bool, purity, purity, purity_info, purity_info).
-:- mode compute_goals_purity(in, out, in, in, out, in, out) is det.
+	purity, purity, purity_info, purity_info).
+:- mode compute_goals_purity(in, out, in, out, in, out) is det.
 
-compute_goals_purity([], [], _, Purity, Purity) --> [].
-compute_goals_purity([Goal0|Goals0], [Goal|Goals], InClosure,
-		Purity0, Purity) -->
-	compute_goal_purity(Goal0, Goal, InClosure, Purity1),
+compute_goals_purity([], [], Purity, Purity) --> [].
+compute_goals_purity([Goal0|Goals0], [Goal|Goals], Purity0, Purity) -->
+	compute_goal_purity(Goal0, Goal, Purity1),
 	{ worst_purity(Purity0, Purity1, Purity2) },
-	compute_goals_purity(Goals0, Goals, InClosure, Purity2, Purity).
+	compute_goals_purity(Goals0, Goals, Purity2, Purity).
 
 
 
 :- pred compute_cases_purity(list(case), list(case),
-	bool, purity, purity, purity_info, purity_info).
-:- mode compute_cases_purity(in, out, in, in, out, in, out) is det.
+	purity, purity, purity_info, purity_info).
+:- mode compute_cases_purity(in, out, in, out, in, out) is det.
 
-compute_cases_purity([], [], _,
-		Purity, Purity) --> [].
+compute_cases_purity([], [], Purity, Purity) --> [].
 compute_cases_purity([case(Ctor,Goal0)|Goals0], [case(Ctor,Goal)|Goals],
-		InClosure, Purity0, Purity) -->
-	compute_goal_purity(Goal0, Goal, InClosure, Purity1),
+		Purity0, Purity) -->
+	compute_goal_purity(Goal0, Goal, Purity1),
 	{ worst_purity(Purity0, Purity1, Purity2) },
-	compute_cases_purity(Goals0, Goals, InClosure, Purity2, Purity).
+	compute_cases_purity(Goals0, Goals, Purity2, Purity).
 
 	% Make sure lambda expressions introduced by the compiler
 	% have the correct mode for their `aditi__state' arguments.
