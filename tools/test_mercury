@@ -257,6 +257,8 @@ cd .. || { false; exit 1; }
     cd ../.. || status=1
 ### esac
 
+date >> /home/mercury/public/test_mercury/logs/install.$HOST
+
 echo "test_mercury starting to create distribution at `date`" 1>&2
 
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
