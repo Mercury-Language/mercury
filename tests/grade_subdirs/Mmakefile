@@ -28,4 +28,6 @@ MCFLAGS += --use-grade-subdirs
 
 %.runtest: %.res ;
 
+hello.out: libhello
+
 #-----------------------------------------------------------------------------#

@@ -935,30 +935,25 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 
 	maybe_write_string(Verbose, "% Linking...\n"),
 	( { LinkTargetType = static_library } ->
-	    	globals__io_lookup_string_option(library_extension, LibExt),
-		module_name_to_lib_file_name("lib", ModuleName, LibExt,
-			yes, LibName),
-		create_archive(ErrorStream, LibName, ObjectsList, ArCmdOK),
-		maybe_report_stats(Stats),
-		( { ArCmdOK = no } ->
-			{ Succeeded = no }
-		;
-			{ Succeeded = yes }
-		)
+	    	globals__io_lookup_string_option(library_extension, Ext),
+		module_name_to_lib_file_name("lib", ModuleName, Ext,
+			yes, OutputFileName),
+		create_archive(ErrorStream, OutputFileName, ObjectsList,
+			LinkSucceeded)
 	;
 		( { LinkTargetType = shared_library } ->
 			{ SharedLibOpt = "--make-shared-lib " },
 			{ LDFlagsOpt = ld_libflags },
 			globals__io_lookup_string_option(
-				shared_library_extension, SharedLibExt),
+				shared_library_extension, Ext),
 			module_name_to_lib_file_name("lib", ModuleName,
-				SharedLibExt, yes, OutputFileName)
+				Ext, yes, OutputFileName)
 		;
 			{ SharedLibOpt = "" },
 			{ LDFlagsOpt = ld_flags },
 			globals__io_lookup_string_option(
-				executable_file_extension, ExeExt),
-			module_name_to_file_name(ModuleName, ExeExt,
+				executable_file_extension, Ext),
+			module_name_to_file_name(ModuleName, Ext,
 				yes, OutputFileName)
 		),
 		globals__io_lookup_bool_option(target_debug, Target_Debug),
@@ -995,29 +990,34 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 			LDFlags, " ", LinkLibraries],
 			LinkCmd) },
 		invoke_shell_command(ErrorStream, verbose_commands,
-			LinkCmd, LinkSucceeded),
-		maybe_report_stats(Stats),
-		globals__io_lookup_bool_option(use_grade_subdirs,
-			UseGradeSubdirs),
-		(
-			{ LinkSucceeded = yes },
-			{ UseGradeSubdirs = yes }
-		->
-			% Link/copy the executable into the user's directory.
-			globals__io_set_option(use_subdirs, bool(no)),
-			globals__io_set_option(use_grade_subdirs, bool(no)),
-			module_name_to_file_name(ModuleName, "",
-				no, UserDirExeName),
-			globals__io_set_option(use_subdirs, bool(yes)),
-			globals__io_set_option(use_grade_subdirs, bool(yes)),
-
-			io__set_output_stream(ErrorStream, OutputStream),
-			make_symlink_or_copy_file(OutputFileName,
-				UserDirExeName, Succeeded),
-			io__set_output_stream(OutputStream, _)
+			LinkCmd, LinkSucceeded)
+	),
+	maybe_report_stats(Stats),
+	globals__io_lookup_bool_option(use_grade_subdirs,
+		UseGradeSubdirs),
+	(
+		{ LinkSucceeded = yes },
+		{ UseGradeSubdirs = yes }
+	->
+		% Link/copy the executable into the user's directory.
+		globals__io_set_option(use_subdirs, bool(no)),
+		globals__io_set_option(use_grade_subdirs, bool(no)),
+		( { LinkTargetType = executable } ->
+			module_name_to_file_name(ModuleName, Ext,
+				no, UserDirFileName)
 		;
-			{ Succeeded = LinkSucceeded }
-		)
+			module_name_to_lib_file_name("lib", ModuleName, Ext,
+				no, UserDirFileName)
+		),
+		globals__io_set_option(use_subdirs, bool(yes)),
+		globals__io_set_option(use_grade_subdirs, bool(yes)),
+
+		io__set_output_stream(ErrorStream, OutputStream),
+		make_symlink_or_copy_file(OutputFileName,
+			UserDirFileName, Succeeded),
+		io__set_output_stream(OutputStream, _)
+	;
+		{ Succeeded = LinkSucceeded }
 	).
 
 :- pred create_archive(io__output_stream, file_name, list(file_name),
