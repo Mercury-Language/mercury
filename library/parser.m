@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 1995-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -44,11 +44,13 @@
 
 	% parser__read_term(Result):
 	%	Reads a Mercury term from the current input stream.
+	%
 :- pred parser__read_term(read_term(T)::out, io::di, io::uo) is det.
 
 	% parser__read_term_with_op_table(Result):
 	%	Reads a term from the current input stream, using the
 	%	given op_table to interpret the operators.
+	%
 :- pred parser__read_term_with_op_table(Ops::in, read_term(T)::out,
 	io::di, io::uo) is det <= op_table(Ops).
 
@@ -58,16 +60,18 @@
 	%	this is used in constructing the term__contexts in the read
 	%	term. This interface is used to support the `:- pragma
 	%	source_file' directive.
+	%
 :- pred parser__read_term(string::in, read_term(T)::out, io::di, io::uo)
 	is det.
 
 	% parser__read_term_with_op_table(Ops, FileName, Result):
 	%	As above but using the given op_table.
+	%
 :- pred parser__read_term_with_op_table(Ops::in, string::in, read_term(T)::out,
 	io::di, io::uo) is det <= op_table(Ops).
 
 %-----------------------------------------------------------------------------%
-	%
+
 	% parser__read_term_from_string/{4,6}:
 	%	Parses terms from a string.
 
@@ -81,35 +85,41 @@
 	% string at which to start parsing.
 
 	% parser__read_term_from_string(FileName, String, EndPos, Term).
+	%
 :- pred parser__read_term_from_string(string::in, string::in, posn::out,
 	read_term(T)::out) is det.
 
 	% parser__read_term_from_string_with_op_table(Ops, FileName,
 	%	String, EndPos, Term).
+	%
 :- pred parser__read_term_from_string_with_op_table(Ops::in, string::in,
 	string::in, posn::out, read_term(T)::out) is det <= op_table(Ops).
 
 	% parser__read_term_from_string(FileName, String, MaxOffset, StartPos,
 	%	EndPos, Term).
+	%
 :- pred parser__read_term_from_string(string::in, string::in, int::in,
 	posn::in, posn::out, read_term(T)::out) is det.
 
 	% parser__read_term_from_string_with_op_table(Ops, FileName, String,
 	%	MaxOffset, StartPos, EndPos, Term).
+	%
 :- pred parser__read_term_from_string_with_op_table(Ops::in, string::in,
 	string::in, int::in, posn::in, posn::out, read_term(T)::out) is det
 	<= op_table(Ops).
 
 %-----------------------------------------------------------------------------%
-	%
+
 	% parser__parse_tokens/{3,4}:
 	%	Parses a list of tokens.
 
 	% parser__parse_tokens(FileName, TokenList, Result):
+	%
 :- pred parser__parse_tokens(string::in, token_list::in, read_term(T)::out)
 	is det.
 
 	% parser__parse_tokens(FileName, TokenList, Result):
+	%
 :- pred parser__parse_tokens_with_op_table(Ops::in, string::in,
 	token_list::in, read_term(T)::out) is det <= op_table(Ops).
 

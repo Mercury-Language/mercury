@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -60,6 +60,15 @@
 :- func flip(bitmap, int) = bitmap.
 :- mode flip(bitmap_di, in) = bitmap_uo is det.
 
+:- pred set(int, bitmap, bitmap).
+:- mode set(in, bitmap_di, bitmap_uo) is det.
+
+:- pred clear(int, bitmap, bitmap).
+:- mode clear(in, bitmap_di, bitmap_uo) is det.
+
+:- pred flip(int, bitmap, bitmap).
+:- mode flip(in, bitmap_di, bitmap_uo) is det.
+
     % Unsafe versions of the above: if the index is out of range
     % then behaviour is undefined and bad things are likely to happen.
     %
@@ -71,6 +80,15 @@
 
 :- func unsafe_flip(bitmap, int) = bitmap.
 :- mode unsafe_flip(bitmap_di, in) = bitmap_uo is det.
+
+:- pred unsafe_set(int, bitmap, bitmap).
+:- mode unsafe_set(in, bitmap_di, bitmap_uo) is det.
+
+:- pred unsafe_clear(int, bitmap, bitmap).
+:- mode unsafe_clear(in, bitmap_di, bitmap_uo) is det.
+
+:- pred unsafe_flip(int, bitmap, bitmap).
+:- mode unsafe_flip(in, bitmap_di, bitmap_uo) is det.
 
     % is_set(BM, I) and is_clear(BM, I) succeed iff bit I in BM
     % is set or clear respectively.
@@ -241,6 +259,12 @@ flip(BM, I) =
       else throw(software_error("bitmap__flip: out of range"))
     ).
 
+set(I, BM, set(BM, I)).
+
+clear(I, BM, clear(BM, I)).
+
+flip(I, BM, flip(BM, I)).
+
 % ---------------------------------------------------------------------------- %
 
 unsafe_set(BM, I) =
@@ -251,6 +275,12 @@ unsafe_clear(BM, I) =
 
 unsafe_flip(BM, I) =
     BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) `xor` bitmask(I).
+
+unsafe_set(I, BM, unsafe_set(BM, I)).
+
+unsafe_clear(I, BM, unsafe_clear(BM, I)).
+
+unsafe_flip(I, BM, unsafe_flip(BM, I)).
 
 % ---------------------------------------------------------------------------- %
 

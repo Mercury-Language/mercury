@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -23,6 +23,7 @@
 	% graph(Node, Arc) represents a directed graph with information of
 	% type Node associated with each node, and information of type Arc
 	% associated with each arc.
+	%
 :- type graph(N, A).
 
 :- type node(N).
@@ -31,6 +32,7 @@
 
 	% Lots of graphs don't need to store anything in the arcs so here's
 	% a type equivalence that only has `real' information in the nodes.
+	%
 :- type graph(N)	== graph(N, unit).
 
 :- type arc		== arc(unit).
@@ -41,6 +43,7 @@
 	% it is possible for a graph to contain no nodes or arcs
 	% and still fail to unify with the binding of Graph from
 	% graph__init.)
+	%
 :- pred graph__init(graph(N, A)).
 :- mode graph__init(out) is det.
 
@@ -55,6 +58,7 @@
 	% same information stored in them.
 	%
 	% This operation is O(lgN) for a graph containing N nodes.
+	%
 :- pred graph__set_node(graph(N, A), N, node(N), graph(N, A)).
 :- mode graph__set_node(in, in, out, out) is det.
 
@@ -65,11 +69,13 @@
 	% This operation is O(N) for a graph containing N nodes since
 	% this predicate has to check that the node data isn't in an
 	% existing node.
+	%
 :- pred graph__insert_node(graph(N, A), N, node(N), graph(N, A)).
 :- mode graph__insert_node(in, in, out, out) is semidet.
 
 	% graph__det_insert_node/4 is like graph__insert_node, except
 	% that if the insertion would fail, it calls error/1.
+	%
 :- pred graph__det_insert_node(graph(N, A), N, node(N), graph(N, A)).
 :- mode graph__det_insert_node(in, in, out, out) is det.
 
@@ -79,6 +85,7 @@
 	%
 	% This operation is O(lgN) for the first solution for a graph
 	% containing N nodes.
+	%
 :- pred graph__search_node(graph(N, A), N, node(N)).
 :- mode graph__search_node(in, in, out) is nondet.
 
@@ -88,6 +95,7 @@
 	% Nodes will of course be empty if there are no matching nodes.)
 	%
 	% This operation is O(NlgN) for a graph containing N nodes.
+	%
 :- pred graph__find_matching_nodes(graph(N, A), N, set(node(N))).
 :- mode graph__find_matching_nodes(in, in, out) is det.
 
@@ -97,6 +105,7 @@
 	% Node and returns the information NodeInfo stored in Node.
 	%
 	% This operation is O(lgN) for a graph containing N nodes.
+	%
 :- pred graph__node_contents(graph(N, A), node(N), N).
 :- mode graph__node_contents(in, in, out) is det.
 
@@ -107,12 +116,14 @@
 	% (directly - not transitively) from Node.
 	%
 	% This operation is O(NlgN) for a graph containing N nodes.
+	%
 :- pred graph__successors(graph(N, A), node(N), set(node(N))).
 :- mode graph__successors(in, in, out) is det.
 
 :- func graph__successors(graph(N, A), node(N)) = set(node(N)).
 
 	% graph__nodes(Graph, Nodes) binds Nodes to the set of nodes in Graph.
+	%
 :- pred graph__nodes(graph(N, A), set(node(N))).
 :- mode graph__nodes(in, out) is det.
 
@@ -126,6 +137,7 @@
 	% no effect.
 	%
 	% This operation is O(lgN+lgM) for a graph with N nodes and M arcs.
+	%
 :- pred graph__set_edge(graph(N, A), node(N), node(N), A,
 						arc(A), graph(N, A)).
 :- mode graph__set_edge(in, in, in, in, out, out) is det.
@@ -133,12 +145,14 @@
 	% graph__insert_edge/6 is the same as graph__set_edge/6 except that
 	% if an identical arc already exists in the graph the operation fails.
 	% This is O(N) for a graph with N edges between the two nodes.
+	%
 :- pred graph__insert_edge(graph(N, A), node(N), node(N), A,
 						arc(A), graph(N, A)).
 :- mode graph__insert_edge(in, in, in, in, out, out) is semidet.
 
 	% graph__det_insert_edge/6 is like graph__insert_edge except
 	% than instead of failing, it calls error/1.
+	%
 :- pred graph__det_insert_edge(graph(N, A), node(N), node(N), A,
 						arc(A), graph(N, A)).
 :- mode graph__det_insert_edge(in, in, in, in, out, out) is det.
@@ -146,6 +160,7 @@
 	% graph__arc_contents(Graph, Arc, Start, End, ArcInfo) takes a
 	% graph Graph and an arc Arc and returns the start and end nodes
 	% and the information stored in that arc.
+	%
 :- pred graph__arc_contents(graph(N, A), arc(A), node(N), node(N), A).
 :- mode graph__arc_contents(in, in, out, out, out) is det.
 
@@ -153,6 +168,7 @@
 	% from the node Start to the node End in Graph that goes through
 	% the sequence of arcs Arcs.
 	% The algorithm will return paths containing at most one cycle.
+	%
 :- pred graph__path(graph(N, A), node(N), node(N), list(arc(A))).
 :- mode graph__path(in, in, in, out) is nondet.
 :- mode graph__path(in, in, out, out) is nondet.

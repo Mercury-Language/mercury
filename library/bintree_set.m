@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %--------------------------------------------------------------------------%
@@ -7,7 +7,7 @@
 :- module bintree_set.
 
 % Main authors: fjh.
-% Stability: medium.
+% Stability: medium (obsolete).
 
 % This file provides an alternate implementation of the `set' ADT
 % defined in module `set'.  See that file for comments about the semantics

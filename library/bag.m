@@ -42,6 +42,7 @@
 
 	% Make a bag from a list.
 	%
+:- func bag__bag(list(T)) = bag(T).
 :- pred bag__from_list(list(T)::in, bag(T)::out) is det.
 :- func bag__from_list(list(T)) = bag(T).
 
@@ -75,6 +76,7 @@
 	%
 :- pred bag__to_set_without_duplicates(bag(T)::in, set(T)::out) is det.
 :- func bag__to_set_without_duplicates(bag(T)) = set(T).
+:- func bag__to_set(bag(T)) = set(T).
 
 	% Remove one occurrence of a particular value from a bag.
 	% Fail if the item does not exist in the bag.
@@ -549,3 +551,7 @@ bag__intersect(B1, B2) = B3 :-
 
 bag__least_upper_bound(B1, B2) = B3 :-
 	bag__least_upper_bound(B1, B2, B3).
+
+bag__bag(Xs) = bag__from_list(Xs).
+
+bag__to_set(B) = bag__to_set_without_duplicates(B).

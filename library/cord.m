@@ -26,7 +26,8 @@
 
 :- interface.
 
-:- import_module list, int.
+:- import_module int.
+:- import_module list.
 
     % Cords that contain the same members in the same order will not
     % necessarily have the same representation and will, therefore,

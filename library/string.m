@@ -127,7 +127,7 @@
 :- pred string__int_to_base_string(int, int, string).
 :- mode string__int_to_base_string(in, in, uo) is det.
 
-	% Convert an float to a string.
+	% Convert a float to a string.
 	% In the current implementation the resulting float will be in the
 	% form that it was printed using the format string "%#.<prec>g".
 	% <prec> will be in the range p to (p+2)
@@ -3353,7 +3353,7 @@ string__length(Str0, Len) :-
 	copy(Str0, Str),
 	string__length_2(Str, 0, Len).
 
-:- pred string__length_2(string::in, int::di, int::uo) is det.
+:- pred string__length_2(string::in, int::in, int::out) is det.
 
 string__length_2(Str, Index, Length) :-
 	( string__index(Str, Index, _) ->

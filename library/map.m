@@ -71,34 +71,42 @@
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next higher key instead.
 	% Fails if there is no key with the given or higher value.
+	%
 :- pred map__upper_bound_search(map(K, V)::in, K::in, K::out, V::out)
 	is semidet.
 
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next higher key instead.
 	% Aborts if there is no key with the given or higher value.
+	%
 :- pred map__upper_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
 
 	% Return the largest key in the map, if there is one.
+	%
 :- func map__max_key(map(K,V)) = K is semidet.
 
 	% Return the smallest key in the map, if there is one.
+	%
 :- func map__min_key(map(K,V)) = K is semidet.
 
 	% Search map for data.
+	%
 :- pred map__inverse_search(map(K, V)::in, V::in, K::out) is nondet.
 
 	% Insert a new key and corresponding value into a map.
 	% Fail if the key already exists.
+	%
 :- pred map__insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is semidet.
 :- func map__insert(map(K, V), K, V) = map(K, V) is semidet.
 
 	% Insert a new key and corresponding value into a map.
 	% Abort if the key already exists.
+	%
 :- pred map__det_insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 :- func map__det_insert(map(K, V), K, V) = map(K, V).
 
 	% Apply map__det_insert to key - value pairs from corresponding lists.
+	%
 :- pred map__det_insert_from_corresponding_lists(map(K, V)::in, list(K)::in,
 	list(V)::in, map(K, V)::out) is det.
 
@@ -106,12 +114,14 @@
 	= map(K, V).
 
 	% Apply map__det_insert to key - value pairs from the assoc_lists.
+	%
 :- pred map__det_insert_from_assoc_list(map(K, V)::in, assoc_list(K, V)::in,
 	map(K, V)::out) is det.
 :- func map__det_insert_from_assoc_list(map(K, V), assoc_list(K, V))
 	= map(K, V).
 
 	% Apply map__set to key - value pairs from corresponding lists.
+	%
 :- pred map__set_from_corresponding_lists(map(K, V)::in, list(K)::in,
 	list(V)::in, map(K, V)::out) is det.
 :- func map__set_from_corresponding_lists(map(K, V), list(K), list(V))

@@ -29,6 +29,7 @@
 
 		% Check whether a string is the name of an infix operator,
 		% and if it is, return its precedence and associativity.
+		%
 	pred ops__lookup_infix_op(Table::in, string::in, ops__priority::out,
 		ops__assoc::out, ops__assoc::out) is semidet,
 
@@ -36,30 +37,36 @@
 		% where `Op' is a variable or a name and `X' and `Y'
 		% are terms. If operator terms are included in `Table',
 		% return their precedence and associativity.
+		%
 	pred ops__lookup_operator_term(Table::in, ops__priority::out,
 		ops__assoc::out, ops__assoc::out) is semidet,
 
 		% Check whether a string is the name of a prefix operator,
 		% and if it is, return its precedence and associativity.
+		%
 	pred ops__lookup_prefix_op(Table::in, string::in,
 		ops__priority::out, ops__assoc::out) is semidet,
 
 		% Check whether a string is the name of a binary prefix
 		% operator, and if it is, return its precedence and
 		% associativity.
+		%
 	pred ops__lookup_binary_prefix_op(Table::in, string::in,
 		ops__priority::out, ops__assoc::out, ops__assoc::out)
 		is semidet,
 		
 		% Check whether a string is the name of a postfix operator,
 		% and if it is, return its precedence and associativity.
+		%
 	pred ops__lookup_postfix_op(Table::in, string::in, ops__priority::out,
 		ops__assoc::out) is semidet,
 
 		% Check whether a string is the name of an operator
+		%
 	pred ops__lookup_op(Table::in, string::in) is semidet,
 
 		% Returns the highest priority number (the lowest is zero).
+		%
 	func ops__max_priority(Table) = ops__priority,
 
 		% The maximum priority of an operator appearing
@@ -69,6 +76,7 @@
 		% This will generally be the precedence of `,/2' less one.
 		% If `,/2' does not appear in the op_table,
 		% `ops__max_priority' plus one may be a reasonable value.
+		%
 	func ops__arg_priority(Table) = ops__priority
 ].
 
@@ -77,6 +85,7 @@
 	% The table of Mercury operators.
 	% See the "Builtin Operators" section of the "Syntax" chapter
 	% of the Mercury Language Reference Manual for details.
+	%
 :- type ops__mercury_op_table.
 :- instance ops__op_table(ops__mercury_op_table).
 
@@ -90,6 +99,7 @@
 	% would parse as `(2 * X) + Y'.
 	%
 	% The lowest priority is 0.
+	%
 :- type ops__priority == int.
 
 %-----------------------------------------------------------------------------%
@@ -103,6 +113,7 @@
 	% lower or equal to that of the operator.
 	% For example, `yfx' indicates a left-associative infix operator,
 	% while `xfy' indicates a right-associative infix operator.
+	%
 :- type ops__specifier
 	--->	fx ; fy ; xf ; yf ; xfx ; yfx ; xfy ; fxx ; fxy ; fyx.
 
@@ -117,6 +128,7 @@
 
 	% convert an ops__specifer (e.g. `xfy') to an ops__class
 	% (e.g. `infix(x, y)').
+	%
 :- pred ops__op_specifier_to_class(ops__specifier::in, ops__class::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -133,14 +145,6 @@
 	%
 
 :- type ops__table == ops__mercury_op_table.
-
-	% create an op_table with the standard Mercury operators.
-:- pred ops__init_op_table(ops__table).
-:- mode ops__init_op_table(uo) is det.
-:- pragma obsolete(ops__init_op_table/1).
-
-:- func ops__init_op_table = ops__table.
-:- pragma obsolete(ops__init_op_table/0).
 
 %-----------------------------------------------------------------------------%
 
@@ -341,8 +345,5 @@ ops__op_table("!:", before, fx, 40).		% Mercury extension
 
 % (*) means that the operator is not useful in Mercury
 %     and is provided only for compatibility.
-
-ops__init_op_table(ops__mercury_op_table).
-ops__init_op_table = ops__mercury_op_table.
 
 %-----------------------------------------------------------------------------%

@@ -176,9 +176,13 @@
 :- pred rbtree__assoc_list_to_rbtree(assoc_list(K, V)::in, rbtree(K, V)::out) 
 	is det.
 
+:- func rbtree__from_assoc_list(assoc_list(K, V)) = rbtree(K, V).
+
 :- func rbtree__rbtree_to_assoc_list(rbtree(K, V)) = assoc_list(K, V).
 :- pred rbtree__rbtree_to_assoc_list(rbtree(K, V)::in, assoc_list(K, V)::out)
 	is det.
+
+:- func rbtree__to_assoc_list(rbtree(K, V)) = assoc_list(K, V).
 
 :- func rbtree__foldl(func(K, V, T) = T, rbtree(K, V), T) = T.
 :- pred rbtree__foldl(pred(K, V, T, T), rbtree(K, V), T, T).
@@ -1141,6 +1145,10 @@ rbtree__map_values(F, T1) = T2 :-
 	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
 	rbtree__map_values(P, T1, T2).
 
-%------------------------------------------------------------------------------%
+rbtree__from_assoc_list(AList) = rbtree__assoc_list_to_rbtree(AList).
+
+rbtree__to_assoc_list(T) = rbtree__rbtree_to_assoc_list(T).
+
+%-----------------------------------------------------------------------------%
 :- end_module rbtree.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

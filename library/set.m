@@ -20,15 +20,21 @@
 
 :- type set(T).
 
+	% `set__init(Set)' is true iff `Set' is an empty set.
+	%
+:- pred set__init(set(T)::uo) is det.
+:- func set__init = set(T).
+
 	% `set__list_to_set(List, Set)' is true iff `Set' is the set
 	% containing only the members of `List'.
 	%
 :- pred set__list_to_set(list(T)::in, set(T)::out) is det.
 :- func set__list_to_set(list(T)) = set(T).
 
-	% A synonym for set.list_to_set/1.
+	% Synonyms for set.list_to_set/1.
 	%
 :- func set__from_list(list(T)) = set(T).
+:- func set__set(list(T)) = set(T).
 
 	% `set__sorted_list_to_set(List, Set)' is true iff `Set' is the set
 	% containing only the members of `List'.  `List' must be sorted
@@ -47,11 +53,6 @@
 	%
 :- pred set__to_sorted_list(set(T)::in, list(T)::out) is det.
 :- func set__to_sorted_list(set(T)) = list(T).
-
-	% `set__init(Set)' is true iff `Set' is an empty set.
-	%
-:- pred set__init(set(T)::uo) is det.
-:- func set__init = set(T).
 
 	% `set__singleton_set(Set, Elem)' is true iff `Set' is the set
 	% containing just the single element `Elem'.
@@ -317,6 +318,8 @@ set__list_to_set(List, Set) :-
 	set_ordlist__list_to_set(List, Set).
 
 set__from_list(List) = set_ordlist__from_list(List).
+
+set__set(List) = set_ordlist__from_list(List).
 
 set__sorted_list_to_set(List, Set) :-
 	set_ordlist__sorted_list_to_set(List, Set).

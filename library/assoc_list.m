@@ -60,6 +60,15 @@
 	%
 :- pred assoc_list__search(assoc_list(K, V)::in, K::in, V::out) is semidet.
 
+	% An alternative version of assoc_list__search.
+	%
+:- func assoc_list(K, V) ^ elem(K)     = V is semidet.
+
+	% An alternative version of assoc_list__search that throws an
+	% exception if the key in question does not appear in the assoc_list.
+	%
+:- func assoc_list(K, V) ^ det_elem(K) = V is det.
+
 	% Find the first element of the association list that matches
 	% the given key. Return the associated value, and the original
 	% list with the selected element removed.
@@ -163,3 +172,13 @@ assoc_list__map_values(_F, []) = [].
 assoc_list__map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
 	V = apply(F, K, V0),
 	KVs = assoc_list__map_values(F, KVs0).
+
+AL ^ elem(K) = V :-
+	assoc_list__search(AL, K, V).
+
+AL ^ det_elem(K) = V :-
+	( if   assoc_list__search(AL, K, V0)
+	  then V = V0
+	  else report_lookup_error("assoc_list__det_elem: key not found", K)
+	).
+

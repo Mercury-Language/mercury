@@ -2,7 +2,7 @@
 % array2d.m
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 The University of Melbourne.
+% Copyright (C) 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,7 +39,6 @@
 
 
 
-
     % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs a array2d
     % of size M * N, with the special case that bounds(array2d([]), 0, 0).
     %
@@ -47,6 +46,11 @@
     %
 :- func array2d(list(list(T))) = array2d(T).
 :- mode array2d(in           ) = array2d_uo is det.
+
+    % A synonym for the above.
+    %
+:- func from_lists(list(list(T))) = array2d(T).
+:- mode from_lists(in           ) = array2d_uo is det.
 
     % new(M, N, X) = array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
     % where each XIJ = X.  An exception is thrown if M < 0 or N < 0.
@@ -80,11 +84,21 @@
 :- func ( array2d(T) ^ elem(int, int) := T  ) = array2d(T).
 :- mode ( array2d_di ^ elem(in,  in)  := in ) = array2d_uo is det.
 
+    % Pred version of the above.
+    %
+:- pred set(int, int, T,  array2d(T), array2d(T)).
+:- mode set(in,  in,  in, array2d_di, array2d_uo) is det.
+
     % T ^ unsafe_elem(I, J) := X is the same as T ^ elem(I, J) := X except
     % that behaviour is undefined if not in_bounds(T, I, J).
     %
 :- func ( array2d(T) ^ unsafe_elem(int, int) := T  ) = array2d(T).
 :- mode ( array2d_di ^ unsafe_elem(in,  in)  := in ) = array2d_uo is det.
+
+    % Pred version of the above.
+    %
+:- pred unsafe_set(int, int, T,  array2d(T), array2d(T)).
+:- mode unsafe_set(in,  in,  in, array2d_di, array2d_uo) is det.
 
     % bounds(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), M, N)
     %
@@ -104,7 +118,7 @@
     %
 :- func lists(array2d(T)) = list(list(T)).
 :- mode lists(array2d_ui) = out is det.
-:- mode lists(in      ) = out is det.
+:- mode lists(in        ) = out is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -131,6 +145,9 @@ array2d(Xss @ [Xs | _]) = T :-
           then  array2d(M, N, A)
           else  func_error("array2d.array2d/1: non-rectangular list of lists")
         ).
+
+
+from_lists(Xss) = array2d(Xss).
 
 %-----------------------------------------------------------------------------%
 
@@ -170,10 +187,16 @@ array2d(_M, N, A) ^ unsafe_elem(I, J) = A ^ elem(I * N + J).
       else  func_error("array2d.'elem :=': indices out of bounds")
     ).
 
+
+set(I, J, X, A, A ^ elem(I, J) := X).
+
 %-----------------------------------------------------------------------------%
 
 ( array2d(M, N, A) ^ unsafe_elem(I, J) := X ) = 
     array2d(M, N, A ^ elem(I * N + J) := X).
+
+
+unsafe_set(I, J, X, A, A ^ unsafe_elem(I, J) := X).
 
 %-----------------------------------------------------------------------------%
 

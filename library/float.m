@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2004 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,14 +53,17 @@
 %
 
 	% addition
+	%
 :- func float + float = float.
 :- mode in    + in    = uo  is det.
 
 	% subtraction
+	%
 :- func float - float = float.
 :- mode in    - in    = uo  is det.
 
 	% multiplication
+	%
 :- func float * float = float.
 :- mode in    * in    = uo  is det.
 
@@ -68,19 +71,23 @@
 	% Throws a `math__domain_error' exception if the right
 	% operand is zero. See the comments at the top of math.m
 	% to find out how to disable this check.
+	%
 :- func float / float = float.
 :- mode in    / in    = uo  is det.
 
 	% unchecked_quotient(X, Y) is the same as X / Y, but the
 	% behaviour is undefined if the right operand is zero.
+	%
 :- func unchecked_quotient(float, float) = float.
 :- mode unchecked_quotient(in, in)    = uo  is det.
 
 	% unary plus
+	%
 :- func + float = float.
 :- mode + in    = uo  is det.
 
 	% unary minus
+	%
 :- func - float = float.
 :- mode - in    = uo  is det.
 
@@ -88,43 +95,39 @@
 % Comparison predicates
 %
 
-	% less than
-:- pred <(float, float).
-:- mode <(in, in) is semidet.
-
-	% greater than
-:- pred >(float, float).
-:- mode >(in, in) is semidet.
-
-	% less than or equal
-:- pred =<(float, float).
-:- mode =<(in, in) is semidet.
-
-	% greater than or equal
-:- pred >=(float, float).
-:- mode >=(in, in) is semidet.
+	% less than, greater than, less than or equal, greater than or equal.
+	%
+:- pred (float::in)  < (float::in) is semidet.
+:- pred (float::in) =< (float::in) is semidet.
+:- pred (float::in) >= (float::in) is semidet.
+:- pred (float::in) >  (float::in) is semidet.
 
 %
 % Conversion functions
 %
 
 	% Convert int to float
+	%
 :- func float(int) = float.
 
 	% ceiling_to_int(X) returns the
 	% smallest integer not less than X.
+	%
 :- func ceiling_to_int(float) = int.
 
 	% floor_to_int(X) returns the
 	% largest integer not greater than X.
+	%
 :- func floor_to_int(float) = int.
 
 	% round_to_int(X) returns the integer closest to X.
 	% If X has a fractional value of 0.5, it is rounded up.
+	%
 :- func round_to_int(float) = int.
 
 	% truncate_to_int(X) returns 
 	% the integer closest to X such that |truncate_to_int(X)| =< |X|.
+	%
 :- func truncate_to_int(float) = int.
 
 %
@@ -132,30 +135,38 @@
 %
 
 	% absolute value
+	%
 :- func abs(float) = float.
 
 	% maximum
+	%
 :- func max(float, float) = float.
 
 	% minimum
+	%
 :- func min(float, float) = float.
 
 	% pow(Base, Exponent) returns Base raised to the power Exponent.
 	% Fewer domain restrictions than math__pow: works for negative Base,
 	% and float__pow(B, 0) = 1.0 for all B, even B=0.0.
 	% Only pow(0, <negative>) throws a `math__domain_error' exception.
+	%
 :- func pow(float, int) = float.
 
 	% Compute a non-negative integer hash value for a float.
+	%
 :- func hash(float) = int.
 
 	% Is the float point number not a number or infinite?
+	%
 :- pred is_nan_or_inf(float::in) is semidet.
 
 	% Is the floating point number not a number?
+	%
 :- pred is_nan(float::in) is semidet.
 
 	% Is the floating point number infinite?
+	%
 :- pred is_inf(float::in) is semidet.
 
 %
@@ -179,6 +190,7 @@
 	% consecutive floating point numbers.
 	%
 	% epsilon = radix ** (1 - mantissa_digits)
+	%
 :- func float__epsilon = float.
 
 	% Radix of the floating-point representation.
