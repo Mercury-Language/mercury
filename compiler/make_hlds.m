@@ -4542,19 +4542,12 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, IsAssertion,
 	{ term__apply_substitution_to_list(Args0, Subst, Args) },
 	{ map__init(Empty) },
 		
-		%
-		% Currently every variable in an assertion must be
-		% explicitly quantified, as it has not been determined
-		% what the correct implicit quantification should be for
-		% assertions.
-		% Also the head variables of an assertion will always be
+		% The head variables of an assertion will always be
 		% variables, so it is unecessary to insert unifications.
-		%
 	(
 		{ IsAssertion = yes }
 	->
-		report_implicit_quant_errs(Goal1, Args, VarSet1,
-				Context, Module0, Module),
+		{ Module = Module0 },
 		{ VarSet2 = VarSet1 },
 		{ Goal2 = Goal1 },
 		{ Info = Info0 }
@@ -4565,54 +4558,6 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, IsAssertion,
 	),
 	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
 				Goal, VarSet, _, Warnings) }.
-
-	%
-	% report_implicit_quant_errs(G, A, VS, C, M0, M)
-	%
-	% Given a goal, G, which has not yet undergone the
-	% insert_arg_unifications transformation and the list of args, A,
-	% report any variable that isn't explicitly quantified.
-	%
-:- pred report_implicit_quant_errs(hlds_goal::in, list(prog_term)::in,
-		prog_varset::in, prog_context::in, module_info::in,
-		module_info::out, io__state::di, io__state::uo) is det.
-
-report_implicit_quant_errs(Goal, Args, VarSet, Context,
-		Module0, Module) -->
-	{ quantification__goal_vars(Goal, Unquantified) },
-	{ set__to_sorted_list(Unquantified, ProblemVars0) },
-
-		% The Args are implicitly universally
-		% quantified.
-	{ term__term_list_to_var_list(Args, ArgVars) },
-	{ list__delete_elems(ProblemVars0, ArgVars, ProblemVars) },
-
-	{ list__length(ProblemVars, L) },
-	(
-		{ L > 0 }
-	->
-		prog_out__write_context(Context),
-		(
-			{ L = 1 }
-		->
-			io__write_string("Error: the variable `")
-		;
-			io__write_string("Error: the variables `")
-		),
-		io__write_list(ProblemVars, ",", write_var(VarSet)),
-		io__write_string("' were not explicitly quantified.\n"),
-		{ module_info_incr_errors(Module0, Module) }
-	;
-		{ Module = Module0 }
-	).
-
-
-	% Allow use of term_io__write_variable in io__write_list
-:- pred write_var(prog_varset::in, prog_var::in,
-		io__state::di, io__state::uo) is det.
-
-write_var(VarSet, Var) -->
-	term_io__write_variable(Var, VarSet).
 
 %-----------------------------------------------------------------------------%
 
