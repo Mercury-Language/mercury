@@ -247,7 +247,7 @@ case $status in 0)
 		 	MMAKEFLAGS=$PARALLEL \
 		) || status=1
 		;;
-	kryten)
+	kryten|murlibobo)
 		mmake install MMAKEFLAGS=$PARALLEL || status=1
 		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
 			|| status=1
@@ -360,7 +360,7 @@ cd ..
 
 : test the CLPR interface
 case $HOST in
-	kryten)
+	kryten|murlibobo)
 		(cd mercury/extras/clpr &&
 		 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
 		 mmake depend	$PARALLEL MMAKEFLAGS=$PARALLEL &&
