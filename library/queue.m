@@ -5,8 +5,7 @@
 % Main author: fjh.
 
 % This file contains a `queue' ADT.
-% The current implementation is a naive version using a list.
-% The predicate queue_put/3 is O(N) in the current implementation.
+% this implementation is in terms of a list pair.
 
 %--------------------------------------------------------------------------%
 
@@ -20,6 +19,12 @@
 
 :- pred queue__init(queue(T)).
 :- mode queue__init(out) is det.
+
+	% 'queue_equal(Q1, Q2)' is true iff Q1 and Q2 contain the same
+	% elements in the same order.
+
+:- pred queue__equal(queue(T), queue(T)).
+:- mode queue__equal(in, in) is semidet.
 
 	% `queue__is_empty(Queue)' is true iff `Queue' is an empty queue.
 
@@ -65,24 +70,34 @@
 
 :- implementation.
 
-:- import_module list.
+:- import_module list, std_util.
 
-:- type queue(T) == list(T).
+:- type queue(T) == pair(list(T), list(T)).
 
-queue__init([]).
+queue__init([] - []).
 
-queue__is_empty([]).
+queue__equal(On0 - Off0, On1 - Off1) :-
+	reverse(On0, On0R),
+	append(Off0, On0R, Q0),
+	reverse(On1, On1R),
+	append(Off1, On1R, Q1),
+	Q0 = Q1.
+
+queue__is_empty([] - []).
 
 queue__is_full(_) :- fail.
 
-queue__put(Queue0, Elem, Queue) :-
-	append(Queue0, [Elem], Queue).
+queue__put(On0 - Off, Elem, (Elem.On0) - Off).
 
-queue__first([Elem | _], Elem).
+queue__first(_On - (Elem._Off), Elem).
 
-queue__get([Elem | Queue], Elem, Queue).
+queue__get(On - (Elem.Off), Elem, On - Off).
+queue__get(On - [], Elem, [] - Off) :-
+	reverse(On, Elem.Off).
 
-queue__length(Queue, Depth) :-
-	length(Queue, Depth).
+queue__length(On - Off, Depth) :-
+	length(On, DOn),
+	length(Off, DOff),
+	Depth is DOn + DOff.
 
 %--------------------------------------------------------------------------%
