@@ -102,9 +102,9 @@ C_INCL_DIRS =	-I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
 C_INCL_DIRS +=	-I$(RUNTIME_DIR)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
-C_INCL_DIRS +=	-I$(LIBRARY_DIR)
+C_INCL_DIRS +=	-I$(LIBRARY_DIR) -I$(LIBRARY_DIR)/$(mihs_subdir)
 ifneq ($(LINK_STDLIB_ONLY),yes)
-C_INCL_DIRS +=	-I$(BROWSER_DIR) -I$(TRACE_DIR)
+C_INCL_DIRS +=	-I$(BROWSER_DIR) -I$(BROWSER_DIR)/$(mihs_subdir) -I$(TRACE_DIR)
 endif
 endif
 endif

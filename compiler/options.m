@@ -552,6 +552,7 @@
 		;	options_files
 		;	options_search_directories
 		;	use_subdirs
+		;	use_grade_subdirs
 
 	% Miscellaneous Options
 		;	search_directories
@@ -1094,6 +1095,7 @@ option_defaults_2(build_system_option, [
 	options_files		-	accumulating(["Mercury.options"]),
 	options_search_directories -	accumulating(["."]),
 	use_subdirs		-	bool(no),
+	use_grade_subdirs	-	bool(no),
 	search_directories 	-	accumulating(["."]),
 	intermod_directories	-	accumulating([]),
 	use_search_directories_for_intermod
@@ -1674,6 +1676,7 @@ long_option("libgrade",			libgrades).
 long_option("options-file",		options_files).
 long_option("options-search-directory", options_search_directories).
 long_option("use-subdirs",		use_subdirs).	
+long_option("use-grade-subdirs",	use_grade_subdirs).	
 long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
@@ -3470,6 +3473,13 @@ options_help_build_system -->
 		"--use-subdirs",
 		"\tGenerate intermediate files in a `Mercury' subdirectory,",
 		"\trather than generating them in the current directory."
+
+		% `--use-grade-subdirs' is not documented because it
+		% is only intended for use in library installation
+		% with `mmc --make' (it doesn't work at all with Mmake).
+		% Documenting it would require documenting (and setting
+		% in stone) the layout of the `Mercury' directory, which
+		% is probably a bad idea.
 	]).
 
 :- pred options_help_misc(io__state::di, io__state::uo) is det.

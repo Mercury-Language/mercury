@@ -169,7 +169,7 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 	%
 	% Check that the target files exist.
 	%
-	list__map_foldl2(get_target_timestamp, TouchedTargetFiles,
+	list__map_foldl2(get_target_timestamp(no), TouchedTargetFiles,
 			TargetTimestamps, Info1, Info2),
 	(
 		{ MakeDepsSuccess = no }
@@ -198,7 +198,7 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 		{ MaybeOldestTimestamp = list__foldl(find_oldest_timestamp, 
 			TouchedFileTimestamps, MaybeOldestTimestamp0) },
 
-		get_file_name(TargetFile, TargetFileName, Info4, Info5),
+		get_file_name(no, TargetFile, TargetFileName, Info4, Info5),
 		check_dependencies(TargetFileName,
 			MaybeOldestTimestamp, DepFilesToMake,
 			DepsResult, Info5, Info)
@@ -404,7 +404,7 @@ record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
 		MakeInfo = MakeInfo0 ^ file_timestamps :=
 			map__delete(MakeInfo0 ^ file_timestamps, TouchedFile)
 	    ) },
-	list__map_foldl2(get_file_name, TouchedTargetFiles,
+	list__map_foldl2(get_file_name(no), TouchedTargetFiles,
 		TouchedTargetFileNames, Info2, Info3),
 	{ list__foldl(DeleteTimestamp, TouchedTargetFileNames, Info3, Info4) },
 	{ list__foldl(DeleteTimestamp, OtherTouchedFiles, Info4, Info) }.
@@ -687,10 +687,10 @@ external_foreign_code_files(Imports, ForeignFiles) -->
 	->
 		module_name_to_file_name(
 			foreign_language_module_name(ModuleName, c), ".c",
-			no, CCodeFileName),
+			yes, CCodeFileName),
 		module_name_to_file_name(
 			foreign_language_module_name(ModuleName, c), ObjExt,
-			no, ObjFileName),
+			yes, ObjFileName),
 		{ ForeignFiles0 =
 			[foreign_code_file(c, CCodeFileName, ObjFileName) ] }
 	;
@@ -734,9 +734,9 @@ external_foreign_code_files_for_il(ModuleName, Language,
 					Language) },
 		{ ForeignExt = foreign_language_file_extension(Language) }
 	->
-		module_name_to_file_name(ForeignModuleName, ForeignExt, no, 
+		module_name_to_file_name(ForeignModuleName, ForeignExt, yes, 
 			ForeignFileName),
-		module_name_to_file_name(ForeignModuleName, ".dll", no, 
+		module_name_to_file_name(ForeignModuleName, ".dll", yes, 
 			ForeignDLLFileName),
 		{ ForeignFiles = [foreign_code_file(Language, ForeignFileName,
 					ForeignDLLFileName)] }

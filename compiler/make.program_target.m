@@ -359,20 +359,13 @@ make_misc_target(MainModuleName - TargetType, Succeeded, Info0, Info) -->
 	(
 		{ TargetType = clean },
 		{ Succeeded = yes },
-		list__foldl2(make_clean, AllModules, Info3, Info)
+		list__foldl2(make_module_clean, AllModules, Info3, Info4),
+		remove_init_files(MainModuleName, Info4, Info)
 	;
 		{ TargetType = realclean },	
 		{ Succeeded = yes },
-		list__foldl2(make_realclean, AllModules, Info3, Info4),
-		globals__io_lookup_string_option(executable_file_extension,
-			ExeExt),
-		globals__io_lookup_string_option(library_extension, LibExt),
-		globals__io_lookup_string_option(shared_library_extension,
-			SharedLibExt),
-
-		list__foldl2(remove_file(MainModuleName),
-			[ExeExt, LibExt, SharedLibExt, "_init.c", "_init.o"],
-			Info4, Info)
+		make_main_module_realclean(MainModuleName, Info3, Info4),
+		list__foldl2(make_module_realclean, AllModules, Info4, Info)
 	;
 		{ TargetType = build_all(ModuleTargetType) },
 		get_target_modules(ModuleTargetType, AllModules,
@@ -399,7 +392,7 @@ make_misc_target(MainModuleName - TargetType, Succeeded, Info0, Info) -->
 			Intermod),
 		{ Intermod = yes ->
 			OptFiles = make_dependency_list(AllModules,
-					long_interface)
+					intermodule_interface)
 		;
 			OptFiles = []
 		},
@@ -435,14 +428,432 @@ make_misc_target(MainModuleName - TargetType, Succeeded, Info0, Info) -->
 		)
 	;
 		{ TargetType = install_library },
-		{ Succeeded = no },
-		{ error("sorry, not implemented: mmc --make module.install") }
+		make_misc_target(MainModuleName - build_library,
+			LibSucceeded, Info3, Info4),
+		( { LibSucceeded = yes } ->
+			install_library(MainModuleName, Succeeded, Info4, Info)
+		;
+		    { Info = Info4 },
+		    { Succeeded = no }
+		)
 	).
 
-:- pred make_clean(module_name::in, make_info::in, make_info::out,
+%-----------------------------------------------------------------------------%
+
+:- pred install_library(module_name::in, bool::out,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
+install_library(MainModuleName, Succeeded, Info0, Info) -->
+    find_reachable_local_modules(MainModuleName, DepsSuccess,
+		AllModules0, Info0, Info1),
+    { AllModules = set__to_sorted_list(AllModules0) },
+    make_install_dirs(DirSucceeded, LinkSucceeded),
+    ( { DepsSuccess = yes, DirSucceeded = yes } ->
+	globals__io_lookup_string_option(install_prefix, Prefix),
+
+	{ ModulesDir = Prefix/"lib"/"mercury"/"modules" },
+	module_name_to_file_name(MainModuleName, ".init", no, InitFileName),
+	install_file(InitFileName, ModulesDir, InitSucceded),
+
+        list__map_foldl2(install_ints_and_headers(LinkSucceeded), AllModules,
+		IntsSucceeded, Info1, Info2),
+
+	globals__io_get_globals(Globals),
+	{ compute_grade(Globals, Grade) },
+        install_library_grade_files(LinkSucceeded, Grade, MainModuleName,
+		AllModules, GradeSucceeded, Info2, Info3),
+	(
+		{ InitSucceded = yes },
+		{ bool__and_list(IntsSucceeded) = yes },
+		{ GradeSucceeded = yes }
+	->
+		% XXX With Mmake, LIBGRADES is target-specific.
+        	globals__io_lookup_accumulating_option(libgrades, LibGrades),
+		globals__io_lookup_bool_option(keep_going, KeepGoing),
+        	foldl2_maybe_stop_at_error(KeepGoing,
+			install_library_grade(LinkSucceeded,
+				MainModuleName, AllModules),
+			LibGrades, Succeeded, Info3, Info)
+    	;
+		{ Info = Info3 },
+		{ Succeeded = no }
+    	)
+    ;
+        { Info = Info1 },
+        { Succeeded = no }
+    ).
+
+:- pred install_ints_and_headers(bool::in, module_name::in, bool::out,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
+install_ints_and_headers(SubdirLinkSucceeded, ModuleName,
+		Succeeded, Info0, Info) -->
+    get_module_dependencies(ModuleName, MaybeImports, Info0, Info),
+    (
+	{ MaybeImports = yes(Imports) },
+	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
+	{ Intermod = yes ->
+		% `.int0' files are imported by `.opt' files.
+		Exts =
+		    ( Imports ^ children \= [] -> ["int0", "opt"] ; ["opt"] )
+	;
+		Exts = []
+	},
+
+	globals__io_lookup_string_option(install_prefix, Prefix),
+	{ LibDir = Prefix/"lib"/"mercury" },
+	list__map_foldl(
+		install_subdir_file(SubdirLinkSucceeded,
+			LibDir/"ints", ModuleName),
+		["int", "int2", "int3", "module_dep" | Exts],
+		Results),
+
+	globals__io_get_target(Target),
+	(
+		% `.mh' files are only generated for modules containing
+		% `:- pragma export' declarations.
+		{ Target = c ; Target = asm },
+		{ Imports ^ contains_foreign_export = contains_foreign_export }
+	->
+		install_subdir_file(SubdirLinkSucceeded, LibDir/"inc",
+			ModuleName, "mh", HeaderSucceded1),
+
+		% This is needed so that the file will be
+		% found in Mmake's VPATH.
+		install_subdir_file(SubdirLinkSucceeded, LibDir/"ints",
+			ModuleName, "mh", HeaderSucceded2),
+
+		{ HeaderSucceded = HeaderSucceded1 `and` HeaderSucceded2 }
+	;
+		{ HeaderSucceded = yes }
+	),
+	{ Succeeded = bool__and_list([HeaderSucceded | Results]) }
+    ;
+    	{ MaybeImports = no },
+	{ Succeeded = no }
+    ).
+
+:- pred install_library_grade(bool::in, module_name::in, list(module_name)::in,
+	string::in, bool::out, make_info::in, make_info::out,
+	io__state::di, io__state::uo) is det.
+
+install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade,
+		Succeeded, Info0, Info) -->
+	%
+	% Building the library in the new grade is done in a separate
+	% process to make it easier to stop and clean up on an interrupt.
+	%
+	{ Cleanup = make_grade_clean(ModuleName, AllModules) },
+	build_with_check_for_interrupt(
+	    (pred(GradeSuccess::out, MInfo::in, MInfo::out, di, uo) is det -->
+		call_in_forked_process(
+		    (pred(GradeSuccess0::out, di, uo) is det -->
+			install_library_grade_2(LinkSucceeded0,
+			    Grade, ModuleName, AllModules,
+			    MInfo, GradeSuccess0)
+		    ), GradeSuccess)
+	    ), Cleanup, Succeeded, Info0, Info).
+
+:- pred install_library_grade_2(bool::in, string::in, module_name::in,
+		list(module_name)::in, make_info::in,
+		bool::out, io__state::di, io__state::uo) is det.
+
+install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
+		Info0, Succeeded) -->
+	globals__io_get_globals(Globals),
+
+	%
+	% Set up so that grade-dependent files for the current grade
+	% don't overwrite the files for the default grade.
+	%
+	{ OptionArgs0 = Info0 ^ option_args },
+	{ OptionArgs = OptionArgs0 ++
+			["--grade", Grade, "--use-grade-subdirs"] },
+
+	verbose_msg(
+		(pred(di, uo) is det -->
+			io__write_string("Installing grade "),
+			io__write_string(Grade),
+			io__nl
+		)),
+
+	lookup_mmc_options(Info0 ^ options_variables, MaybeMCFlags),
+	(
+		{ MaybeMCFlags = yes(MCFlags) },
+		handle_options(MCFlags ++ OptionArgs, OptionsError, _, _, _)
+	;
+		{ MaybeMCFlags = no },
+		% Errors should have been caught before.
+		{ error("install_library_grade: bad DEFAULT_MCFLAGS") }
+	),
+
+	( 
+		{ OptionsError = yes(OptionsMessage) },
+		usage_error(OptionsMessage),
+		{ Succeeded = no }
+	;
+		{ OptionsError = no },
+		%
+		% Remove the grade-dependent targets from the status map
+		% (we need to rebuild them in the new grade).
+		%
+		{ StatusMap0 = Info0 ^ dependency_status },
+		{ StatusMap = map__from_assoc_list(list__filter(
+			(pred((File - _)::in) is semidet :-
+			    \+ (
+				File = target(_ - Target),
+				target_is_grade_or_arch_dependent(Target)
+			    )
+			), 
+			map__to_assoc_list(StatusMap0))) },
+		{ Info1 = (Info0 ^ dependency_status := StatusMap)
+				^ option_args := OptionArgs },
+
+		make_misc_target(ModuleName - build_library,
+			LibSucceeded, Info1, Info2),
+		( { LibSucceeded = yes } ->
+			install_library_grade_files(LinkSucceeded0,
+				Grade, ModuleName, AllModules,
+				Succeeded, Info2, Info3),
+
+			make_grade_clean(ModuleName, AllModules,
+				Info3, _)
+		;
+			{ Succeeded = no }
+		)
+	),
+	globals__io_set_globals(unsafe_promise_unique(Globals)).
+
+	% Install the `.a', `.so, `.opt' and `.mih' files
+	% for the current grade.
+:- pred install_library_grade_files(bool::in, string::in, module_name::in,
+	list(module_name)::in, bool::out, make_info::in, make_info::out,
+	io__state::di, io__state::uo) is det.
+
+install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
+		Succeeded, Info0, Info) -->
+    make_grade_install_dirs(Grade, DirResult, LinkSucceeded1),
+    { LinkSucceeded = LinkSucceeded0 `and` LinkSucceeded1 },
+    ( { DirResult = yes } ->
+	linked_target_file_name(ModuleName, static_library, LibFileName),
+	linked_target_file_name(ModuleName, shared_library, SharedLibFileName),
+
+	globals__io_lookup_string_option(install_prefix, Prefix),
+	globals__io_lookup_string_option(fullarch, FullArch),
+	{ GradeLibDir = Prefix/"lib"/"mercury"/"lib"/Grade/FullArch },
+
+	install_file(LibFileName, GradeLibDir, LibSucceded),
+	install_file(SharedLibFileName, GradeLibDir, SharedLibSucceded),
+
+	list__map_foldl2(install_grade_ints_and_headers(LinkSucceeded, Grade),
+		AllModules, IntsHeadersSucceded, Info0, Info),
+	{ Succeeded = bool__and_list(
+		[LibSucceded, SharedLibSucceded | IntsHeadersSucceded]) }
+    ;
+	{ Succeeded = no },
+    	{ Info = Info0 }
+    ).
+
+	% Install the `.opt' and `.mih' files for the current grade.
+:- pred install_grade_ints_and_headers(bool::in, string::in, module_name::in,
+		bool::out, make_info::in, make_info::out,
 		io__state::di, io__state::uo) is det.
 
-make_clean(ModuleName, Info0, Info) -->
+install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName,
+		Succeeded, Info0, Info) -->
+    get_module_dependencies(ModuleName, MaybeImports, Info0, Info),
+    (
+	{ MaybeImports = yes(Imports) },
+	globals__io_lookup_string_option(install_prefix, Prefix),
+	globals__io_lookup_string_option(fullarch, FullArch),
+	{ LibDir = Prefix/"lib"/"mercury" },
+
+	globals__io_get_target(Target),
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	(
+		{ Target = c, HighLevelCode = yes
+		; Target = asm,
+			Imports ^ foreign_code = contains_foreign_code(_) 
+		}
+	->
+		{ GradeIncDir = LibDir/"lib"/Grade/FullArch/"inc" },
+		install_subdir_file(LinkSucceeded, GradeIncDir,
+			ModuleName, "mih", HeaderSucceded1),
+
+		% This is needed so that the file will be
+		% found in Mmake's VPATH.
+		{ IntDir = LibDir/"int" },
+		install_subdir_file(LinkSucceeded, IntDir,
+			ModuleName, "mih", HeaderSucceded2),
+
+		{ HeaderSucceded = HeaderSucceded1 `and` HeaderSucceded2 }
+	;
+		{ HeaderSucceded = yes }
+	),
+
+	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
+	( { Intermod = yes } ->
+		{ GradeIntDir = LibDir/"ints"/Grade },
+		install_subdir_file(LinkSucceeded, GradeIntDir,
+			ModuleName, "opt", OptSucceded)
+	;
+		{ OptSucceded = yes }
+	),
+	{ Succeeded = HeaderSucceded `and` OptSucceded }
+    ;
+	{ MaybeImports = no },
+	{ Succeeded = no }
+    ).
+
+	% Install a file in the given directory, and in
+	% directory/Mercury/exts if the symlinks for the
+	% subdirectories couldn't be created (e.g. on Windows).
+:- pred install_subdir_file(bool::in, dir_name::in, module_name::in,
+	string::in, bool::out, io__state::di, io__state::uo) is det.
+
+install_subdir_file(SubdirLinkSucceeded, InstallDir,
+		ModuleName, Ext, Succeeded) -->
+	module_name_to_file_name(ModuleName, "." ++ Ext, no, FileName),
+	install_file(FileName, InstallDir, Succeeded1),
+	( { SubdirLinkSucceeded = no } ->
+		install_file(FileName, InstallDir/"Mercury"/(Ext ++ "s"),
+			Succeeded2),
+		{ Succeeded = Succeeded1 `and` Succeeded2 }
+	;
+		{ Succeeded = Succeeded1 }
+	).
+
+:- pred install_file(file_name::in, dir_name::in, bool::out,
+		io__state::di, io__state::uo) is det.
+
+install_file(FileName, InstallDir, Succeeded) -->
+	verbose_msg(
+		(pred(di, uo) is det -->
+			io__write_string("Installing file "),
+			io__write_string(FileName),
+			io__write_string(" in "),
+			io__write_string(InstallDir),
+			io__nl
+		)),
+	globals__io_lookup_string_option(install_command, InstallCommand),
+	{ Command = string__join_list("	",
+		quote_args([InstallCommand, FileName, InstallDir])) },
+	io__output_stream(OutputStream),
+	invoke_shell_command(OutputStream, verbose, Command, Succeeded).
+
+:- pred make_install_dirs(bool::out, bool::out,
+		io__state::di, io__state::uo) is det.
+
+make_install_dirs(Result, LinkResult) -->
+	globals__io_lookup_string_option(install_prefix, Prefix),
+	{ LibDir = Prefix/"lib"/"mercury" },
+	make_directory(LibDir/"inc", Result1),
+	make_directory(LibDir/"modules", Result2),
+
+	{ IntsSubdir = LibDir/"ints"/"Mercury" },
+	make_directory(IntsSubdir, Result3),
+
+	{ Result4 = Result1 `and` Result2 `and` Result3 },
+
+	{ Subdirs = ["int", "int2", "int3",
+			"opt", "trans_opt", "module_dep"] },
+	list__map_foldl(make_install_symlink(IntsSubdir),
+		Subdirs, LinkResults),
+	{ LinkResult = bool__and_list(LinkResults) },
+	( { LinkResult = yes } ->
+		{ Result = Result4 }
+	;
+		list__map_foldl(
+		    (pred(Ext::in, MkDirResult::out, di, uo) is det -->
+		    	make_directory(IntsSubdir/(Ext ++ "s"), MkDirResult)
+		    ), Subdirs, MkDirResults),
+		{ Result = bool__and_list([Result4 | MkDirResults]) }
+	).
+
+:- pred make_grade_install_dirs(string::in, bool::out, bool::out,
+		io__state::di, io__state::uo) is det.
+
+make_grade_install_dirs(Grade, Result, LinkResult) -->
+	globals__io_lookup_string_option(install_prefix, Prefix),
+	globals__io_lookup_string_option(fullarch, FullArch),
+	{ LibDir = Prefix/"lib"/"mercury" },
+
+	{ GradeIntsSubdir = LibDir/"ints"/Grade/"Mercury" },
+	make_directory(GradeIntsSubdir, Result1),
+
+	{ GradeIncSubdir = LibDir/"lib"/Grade/FullArch/"inc"/"Mercury" },
+	make_directory(GradeIncSubdir, Result2),
+
+	{ Result3 = Result1 `and` Result2 },
+
+	make_install_symlink(GradeIncSubdir, "mih", LinkResult0),
+	list__map_foldl(make_install_symlink(GradeIntsSubdir),
+		["opt", "trans_opt"], LinkResults),
+	{ LinkResult = bool__and_list([LinkResult0 | LinkResults]) },
+	( { LinkResult = yes } ->
+		{ Result = Result3 }
+	;
+		make_directory(GradeIncSubdir/"mih", Result4),
+		list__map_foldl(
+		    (pred(Ext::in, MkDirResult::out, di, uo) is det -->
+		    	make_directory(GradeIntsSubdir/(Ext ++ "s"),
+				MkDirResult)
+		    ), ["opt", "trans_opt"], MkDirResults),
+		{ Result = bool__and_list([Result3, Result4 | MkDirResults]) }
+	).
+
+:- pred make_install_symlink(string::in, string::in, bool::out,
+		io__state::di, io__state::uo) is det.
+
+make_install_symlink(Subdir, Ext, Result) -->
+	{ LinkName = Subdir/(Ext ++ "s") },
+	make_symlink("..", LinkName, Result).
+
+:- pred make_symlink(string::in, string::in, bool::out,
+		io__state::di, io__state::uo) is det.
+
+make_symlink(LinkTarget, LinkName, Result) -->
+	io__output_stream(ErrorStream),
+	{ string__format("rm -f %s && ln -s %s %s",
+		[s(LinkName), s(LinkTarget), s(LinkName)], Command) },
+	invoke_shell_command(ErrorStream, verbose, Command, Result).
+
+%-----------------------------------------------------------------------------%
+
+	% Clean up grade-dependent files.
+:- pred make_grade_clean(module_name::in, list(module_name)::in,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
+make_grade_clean(ModuleName, AllModules, Info0, Info) -->
+	make_main_module_realclean(ModuleName, Info0, Info1),
+	list__foldl2(make_module_clean, AllModules, Info1, Info).
+
+:- pred make_main_module_realclean(module_name::in,
+		make_info::in, make_info::out,
+		io__state::di, io__state::uo) is det.
+
+make_main_module_realclean(ModuleName, Info0, Info) -->
+	linked_target_file_name(ModuleName, executable, ExeFileName),
+	linked_target_file_name(ModuleName, static_library, LibFileName),
+	linked_target_file_name(ModuleName, shared_library, SharedLibFileName),
+	list__foldl2(remove_file,
+		[ExeFileName, LibFileName, SharedLibFileName],
+		Info0, Info1),
+	remove_file(ModuleName, ".init", Info1, Info2),
+	remove_init_files(ModuleName, Info2, Info).
+
+:- pred remove_init_files(module_name::in, make_info::in, make_info::out,
+		io__state::di, io__state::uo) is det.
+
+remove_init_files(ModuleName, Info0, Info) -->
+	globals__io_lookup_string_option(object_file_extension, ObjExt),
+	list__foldl2(remove_file(ModuleName), ["_init.c", "_init" ++ ObjExt],
+		Info0, Info).
+
+:- pred make_module_clean(module_name::in, make_info::in, make_info::out,
+		io__state::di, io__state::uo) is det.
+
+make_module_clean(ModuleName, Info0, Info) -->
 	list__foldl2(remove_target_file(ModuleName),
 		[errors, c_code, c_header(mih),
 		object_code(pic), object_code(non_pic),
@@ -451,10 +862,8 @@ make_clean(ModuleName, Info0, Info) -->
 		],
 		Info0, Info1),
 
-	globals__io_lookup_string_option(object_file_extension, ObjExt),
 	list__foldl2(remove_file(ModuleName),
-		["_init.c", "_init" ++ ObjExt, ".used", ".prof",
-		".derived_schema", ".base_schema"],
+		[".used", ".prof", ".derived_schema", ".base_schema"],
 		Info1, Info2),
 
 	get_module_dependencies(ModuleName, MaybeImports, Info2, Info3),
@@ -474,23 +883,17 @@ make_clean(ModuleName, Info0, Info) -->
 		{ Info = Info3 }
 	).
 
-:- pred make_realclean(module_name::in, make_info::in, make_info::out,
+:- pred make_module_realclean(module_name::in, make_info::in, make_info::out,
 		io__state::di, io__state::uo) is det.
 
-make_realclean(ModuleName, Info0, Info) -->
-	make_clean(ModuleName, Info0, Info1),
+make_module_realclean(ModuleName, Info0, Info) -->
+	make_module_clean(ModuleName, Info0, Info1),
 	list__foldl2(remove_target_file(ModuleName),
 		[private_interface, long_interface, short_interface,
 		unqualified_short_interface, intermodule_interface,
 		aditi_code, c_header(mh)
 		],
 		Info1, Info2),
-	remove_file(ModuleName, module_dep_file_extension, Info2, Info3),
-	linked_target_file_name(ModuleName, executable, ExeFileName),
-	linked_target_file_name(ModuleName, static_library, LibFileName),
-	linked_target_file_name(ModuleName, shared_library, SharedLibFileName),
-	list__foldl2(remove_file,
-		[ExeFileName, LibFileName, SharedLibFileName],
-		Info3, Info).
+	remove_file(ModuleName, module_dep_file_extension, Info2, Info).
 
 %-----------------------------------------------------------------------------%

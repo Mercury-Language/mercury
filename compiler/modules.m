@@ -61,8 +61,8 @@
 	%
 	%	Currently we use the convention that the module
 	%	`foo:bar:baz' should be named `foo.bar.baz.m',
-	%	but eventually we will also allow other file
-	%	naming conventions.
+	%	and allow other naming conventions with the
+	% 	`-f' option.
 	%
 	%	Note that this predicate is also used to create
 	%	some "phony" Makefile targets that do not have
@@ -71,6 +71,30 @@
 :- pred module_name_to_file_name(module_name, string, bool, file_name,
 				io__state, io__state).
 :- mode module_name_to_file_name(in, in, in, out, di, uo) is det.
+
+	% module_name_to_search_file_name(Module, Extension, FileName):
+	% 
+	%	As above, but for a file which might be in an installed
+	% 	library, not the current directory.
+	%
+	%	With `--use-grade-subdirs', the current directory's `.mih'
+	%	files are in `Mercury/<grade>/<arch>/Mercury/mihs', and those
+	%	for installed libraries are in
+	%	`<prefix>/lib/mercury/lib/<grade>/<arch>/inc/Mercury/mihs'.
+	%
+	%	handle_options.m sets up the `--c-include-directory' options
+	%	so that the name `<module>.mih' should be used in a context
+	%	which requires searching for the `.mih files, for example
+	%	in a C file.
+	%
+	%	module_name_to_file_name would return
+	%	`Mercury/<grade>/<arch>/Mercury/mihs/<module>.mihs',
+	%	which would be used when writing or removing the
+	%	`.mih' file.
+	%
+:- pred module_name_to_search_file_name(module_name, string, file_name,
+				io__state, io__state).
+:- mode module_name_to_search_file_name(in, in, out, di, uo) is det.
 
 	% module_name_to_lib_file_name(Prefix, Module, Extension, MkDir,
 	%		FileName):
@@ -118,6 +142,10 @@
 	% 
 :- pred file_name_to_module_name(file_name, module_name).
 :- mode file_name_to_module_name(in, out) is det.
+
+	% convert a module name to a file name stem (e.g. foo.bar.baz).
+:- pred module_name_to_file_name(module_name, file_name).
+:- mode module_name_to_file_name(in, out) is det.
 
 	% Convert a module name to something that is suitable
 	% for use as a variable name in makefiles.
@@ -650,9 +678,12 @@
 :- pred update_interface(string, io__state, io__state).
 :- mode update_interface(in, di, uo) is det.
 
-	% make_directory(Dir)
+	% make_directory(Dir, Succeeded)
 	%
 	% Make the directory Dir and all its parents.
+:- pred make_directory(string, bool, io__state, io__state).
+:- mode make_directory(in, out, di, uo) is det.
+
 :- pred make_directory(string, io__state, io__state).
 :- mode make_directory(in, di, uo) is det.
 
@@ -678,7 +709,7 @@
 :- implementation.
 :- import_module ll_backend__llds_out, hlds__passes_aux, parse_tree__prog_out.
 :- import_module parse_tree__prog_util, parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_io_util, libs__options.
+:- import_module parse_tree__prog_io_util, libs__options, libs__handle_options.
 :- import_module parse_tree__source_file_map.
 :- import_module parse_tree__module_qual, backend_libs__foreign.
 :- import_module recompilation__version.
@@ -760,7 +791,17 @@ mercury_std_library_module("tree234").
 mercury_std_library_module("type_desc").
 mercury_std_library_module("varset").
 
+module_name_to_search_file_name(ModuleName, Ext, FileName) -->
+	module_name_to_file_name(ModuleName, Ext, yes, no, FileName).
+
 module_name_to_file_name(ModuleName, Ext, MkDir, FileName) -->
+	module_name_to_file_name(ModuleName, Ext, no, MkDir, FileName).
+
+:- pred module_name_to_file_name(module_name, string, bool, bool, file_name,
+				io__state, io__state).
+:- mode module_name_to_file_name(in, in, in, in, out, di, uo) is det.
+
+module_name_to_file_name(ModuleName, Ext, Search, MkDir, FileName) -->
 	( { Ext = ".m" } ->
 		% Look up the module in the module->file mapping.
 		source_file_map__lookup_module_source_file(ModuleName,
@@ -769,13 +810,14 @@ module_name_to_file_name(ModuleName, Ext, MkDir, FileName) -->
 		{ prog_out__sym_name_to_string(ModuleName,
 			".", BaseFileName) },
 		{ string__append_list([BaseFileName, Ext], BaseName) },
-		choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName)
+		choose_file_name(ModuleName, BaseName, Ext,
+			Search, MkDir, FileName)
 	).
 
 module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName) -->
 	{ prog_out__sym_name_to_string(ModuleName, ".", BaseFileName) },
 	{ string__append_list([Prefix, BaseFileName, Ext], BaseName) },
-	choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName).
+	choose_file_name(ModuleName, BaseName, Ext, no, MkDir, FileName).
 
 fact_table_file_name(ModuleName, FactTableFileName, Ext, FileName) -->
 	extra_link_obj_file_name(ModuleName, FactTableFileName, Ext, FileName).
@@ -789,15 +831,34 @@ fact_table_file_name(ModuleName, FactTableFileName, Ext, FileName) -->
 :- mode extra_link_obj_file_name(in, in, in, out, di, uo) is det.
 extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, FileName) -->
 	{ string__append(ExtraLinkObjName, Ext, BaseName) },
-	choose_file_name(ModuleName, BaseName, Ext, no, FileName).
+	choose_file_name(ModuleName, BaseName, Ext, no, no, FileName).
 
-:- pred choose_file_name(module_name, string, string, bool, file_name,
+:- pred choose_file_name(module_name, string, string, bool, bool, file_name,
 			io__state, io__state).
-:- mode choose_file_name(in, in, in, in, out, di, uo) is det.
+:- mode choose_file_name(in, in, in, in, in, out, di, uo) is det.
 
-choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
+choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName) -->
 	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
-	( { UseSubdirs = no } ->
+	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
+	globals__io_get_globals(Globals),
+	(
+		{
+			UseSubdirs = no
+		;
+			%
+			% If we're searching for (rather than writing)
+			% a `.mih' file, use the plain file name.
+			% This is so that searches for files in installed
+			% libraries will work.  `--c-include-directory' is
+			% set so that searches for files in the current
+			% directory will work.
+			%
+			Search = yes,
+			( Ext = ".mih"
+			; Ext = ".mih.tmp"
+			)
+		}
+	->
 		{ FileName = BaseName }
 	;
 		%
@@ -806,6 +867,10 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		% output files intended for use by the user,
 		% and phony Mmake targets names go in the current directory
 		%
+		\+ {
+			UseGradeSubdirs = yes,
+			file_is_arch_or_grade_dependent(Globals, Ext)
+		},
 		{
 			% executable files
 			( Ext = ""
@@ -939,20 +1004,16 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		->
 			string__append(ExtName, "s", SubDirName)
 		;
+			Ext = ""
+		->
+			SubDirName = "bin"
+		;
 			string__append_list(["unknown extension `", Ext, "'"],
 				ErrorMsg),
 			error(ErrorMsg)
 		},
-		{ dir__directory_separator(SlashChar) },
-		{ string__char_to_string(SlashChar, Slash) },
-		{ string__append_list(["Mercury", Slash, SubDirName],
-			DirName) },
-		( { MkDir = yes } ->
-			make_directory(DirName)
-		;
-			[]
-		),
-		{ string__append_list([DirName, Slash, BaseName], FileName) }
+		make_file_name(SubDirName, Search, MkDir,
+			BaseName, Ext, FileName)
 	).
 
 module_name_to_split_c_file_name(ModuleName, Num, Ext, FileName) -->
@@ -973,18 +1034,126 @@ module_name_to_split_c_file_pattern(ModuleName, Ext, Pattern) -->
 file_name_to_module_name(FileName, ModuleName) :-
 	string_to_sym_name(FileName, ".", ModuleName).
 
+module_name_to_file_name(ModuleName, FileName) :-
+	prog_out__sym_name_to_string(ModuleName, ".", FileName).
+
 module_name_to_make_var_name(ModuleName, MakeVarName) :-
 	prog_out__sym_name_to_string(ModuleName, ".", MakeVarName).
 
 make_directory(DirName) -->
+	make_directory(DirName, _Result).
+
+make_directory(DirName, Result) -->
 	( { dir__this_directory(DirName) } ->
-		[]
+		{ Result = yes }
 	;
-		{ make_command_string(string__format(
-			"[ -d %s ] || mkdir -p %s",
-			[s(DirName), s(DirName)]), forward, Command) },
-		io__call_system(Command, _Result)
+		{ string__format("[ -d %s ] || mkdir -p %s",
+			[s(DirName), s(DirName)], Command) },
+		io__output_stream(ErrorStream),
+		invoke_shell_command(ErrorStream, verbose, Command, Result)
 	).
+
+:- pred make_file_name(dir_name, bool, bool, file_name, string,
+		file_name, io__state, io__state).
+:- mode make_file_name(in, in, in, in, in, out, di, uo) is det.
+
+make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName) -->
+	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
+	globals__io_lookup_string_option(fullarch, FullArch),
+	globals__io_get_globals(Globals),
+	{
+		UseGradeSubdirs = yes,
+		file_is_arch_or_grade_dependent(Globals, Ext),
+
+		%
+		% If we're searching for (rather than writing) the file,
+		% just search in Mercury/<ext>s. This is so that searches
+		% for files in installed libraries work.
+		% `--intermod-directories' is set so this will work.
+		%
+		\+ (
+			Search = yes,
+			( Ext = ".opt"
+			; Ext = ".trans_opt"
+			)
+		)
+	->
+		grade_directory_component(Globals, Grade),
+
+		% The extra "Mercury" is needed so we can use
+		% `--intermod-directory Mercury/<grade>/<fullarch>' and
+		% `--c-include Mercury/<grade>/<fullarch>' to find
+		% the local `.opt' and `.mih' files without messing
+		% up the search for the files for installed libraries.
+		DirName =  "Mercury"/Grade/FullArch/"Mercury"/SubDirName
+	;
+		DirName = "Mercury"/SubDirName
+	},
+	( { MkDir = yes } ->
+		make_directory(DirName)
+	;
+		[]
+	),
+	{ FileName = DirName/BaseName }.
+
+:- pred file_is_arch_or_grade_dependent(globals, string).
+:- mode file_is_arch_or_grade_dependent(in, in) is semidet.
+
+file_is_arch_or_grade_dependent(_, Ext) :-
+	file_is_arch_or_grade_dependent_2(Ext).
+file_is_arch_or_grade_dependent(Globals, Ext0) :-
+	string__append(Ext, ".tmp", Ext0), % for mercury_update_interface.
+	file_is_arch_or_grade_dependent(Globals, Ext).
+file_is_arch_or_grade_dependent(Globals, Ext) :-
+	globals__lookup_string_option(Globals, executable_file_extension, Ext).
+file_is_arch_or_grade_dependent(Globals, Ext) :-
+	globals__lookup_string_option(Globals, object_file_extension, ObjExt),
+	( Ext = ObjExt
+	; Ext = "_init" ++ ObjExt
+	).
+file_is_arch_or_grade_dependent(Globals, Ext) :-
+	globals__lookup_string_option(Globals, pic_object_file_extension, Ext).
+file_is_arch_or_grade_dependent(Globals, Ext) :-
+	globals__lookup_string_option(Globals, library_extension, LibExt),
+	( Ext = LibExt
+	; Ext = ".split" ++ LibExt
+	).
+file_is_arch_or_grade_dependent(Globals, Ext) :-
+	globals__lookup_string_option(Globals, shared_library_extension, Ext).
+
+:- pred file_is_arch_or_grade_dependent_2(string).
+:- mode file_is_arch_or_grade_dependent_2(in) is semidet.
+
+	% The `.used' file isn't grade dependent itself, but it contains
+	% information collected while compiling a grade-dependent
+	% `.c', `il', etc file.
+file_is_arch_or_grade_dependent_2(".used").
+file_is_arch_or_grade_dependent_2(".opt").
+file_is_arch_or_grade_dependent_2(".optdate").
+file_is_arch_or_grade_dependent_2(".trans_opt").
+file_is_arch_or_grade_dependent_2(".trans_opt_date").
+file_is_arch_or_grade_dependent_2(".mih").
+file_is_arch_or_grade_dependent_2(".c").
+file_is_arch_or_grade_dependent_2(".c_date").
+file_is_arch_or_grade_dependent_2(".s").
+file_is_arch_or_grade_dependent_2(".s_date").
+file_is_arch_or_grade_dependent_2(".pic_s").
+file_is_arch_or_grade_dependent_2(".pic_s_date").
+file_is_arch_or_grade_dependent_2(".il").
+file_is_arch_or_grade_dependent_2(".il_date").
+file_is_arch_or_grade_dependent_2(".java").
+file_is_arch_or_grade_dependent_2(".java_date").
+file_is_arch_or_grade_dependent_2(".class").
+file_is_arch_or_grade_dependent_2(".dir").
+file_is_arch_or_grade_dependent_2(".num_split").
+file_is_arch_or_grade_dependent_2(".dll").
+file_is_arch_or_grade_dependent_2(".$A").
+file_is_arch_or_grade_dependent_2(".a").
+file_is_arch_or_grade_dependent_2(".split.$A").
+file_is_arch_or_grade_dependent_2(".split.a").
+file_is_arch_or_grade_dependent_2(".split").
+file_is_arch_or_grade_dependent_2("_init.c").
+file_is_arch_or_grade_dependent_2("_init.$O").
 
 %-----------------------------------------------------------------------------%
 
@@ -2274,8 +2443,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		%
 		have_source_file_map(HaveMap),
 		{ HaveMap = yes,
-			prog_out__sym_name_to_string(
-				SourceFileModuleName, ".", ModuleArg)
+			module_name_to_file_name(SourceFileModuleName,
+				ModuleArg)
 		; HaveMap = no,
 			ModuleArg = SourceFileName
 		},
@@ -2377,7 +2546,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			% Also add the variable ILASM_KEYFLAG-<module> which
 			% is used to build the command line for ilasm.
 		( { Target = il, SignAssembly = yes } ->
-			{ prog_out__sym_name_to_string(ModuleName, ".",
+			{ module_name_to_make_var_name(ModuleName,
 					ModuleNameString) },
 			module_name_to_file_name(ModuleName, ".il",
 					no, IlFileName),
@@ -2601,8 +2770,8 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps, ForeignLang)
 			ModuleName, ForeignLang) },
 		{ ForeignExt = foreign_language_file_extension(ForeignLang) }
 	->
-		module_name_to_file_name(ForeignModuleName, "", no,
-			ForeignModuleNameString),
+		{ module_name_to_make_var_name(ForeignModuleName,
+			ForeignModuleNameString) },
 		module_name_to_file_name(ForeignModuleName, ForeignExt, no,
 			ForeignFileName),
 		module_name_to_file_name(ModuleName, ".il", no, IlFileName),
@@ -2658,7 +2827,7 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps, ForeignLang)
 	module_name::in, string::in, io__state::di, io__state::uo) is det.
 
 write_subdirs_shorthand_rule(DepStream, ModuleName, Ext) -->
-	{ prog_out__sym_name_to_string(ModuleName, ".", ModuleStr) },
+	{ module_name_to_file_name(ModuleName, ModuleStr) },
 	module_name_to_file_name(ModuleName, Ext, no, Target),
 	{ ShorthandTarget = ModuleStr ++ Ext },
 	io__write_string(DepStream, ".PHONY: "),
@@ -2853,7 +3022,7 @@ get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, OptDeps) -->
 	),
 	{ is_bool(Found) },
 	( { Found = no } ->
-		module_name_to_file_name(Dep, Suffix, no, OptName),
+		module_name_to_search_file_name(Dep, Suffix, OptName),
 		search_for_file(IntermodDirs, OptName, Result2),
 		( { Result2 = ok(_) } ->
 			{ OptDeps = [Dep | OptDeps1] },
@@ -4963,7 +5132,12 @@ read_mod_ignore_errors(ModuleName, Extension, Descr, Search, ReturnTimestamp,
 read_mod_2(IgnoreErrors, ModuleName,
 		Extension, Descr, Search, MaybeOldTimestamp,
 		ReturnTimestamp, Items, Error, FileName, MaybeTimestamp) -->
-	module_name_to_file_name(ModuleName, Extension, no, FileName0),
+	( { Search = yes } ->
+		module_name_to_search_file_name(ModuleName,
+			Extension, FileName0)
+	;
+		module_name_to_file_name(ModuleName, Extension, no, FileName0)
+	),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose, "% "),
 	maybe_write_string(VeryVerbose, Descr),

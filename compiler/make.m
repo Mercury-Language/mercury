@@ -373,9 +373,10 @@ target_file(Globals, FileName, ModuleName, TargetType) :-
 			ModuleNameStr = ModuleNameStr0,
 			TargetType0 = misc_target(realclean)
 		;
-			Suffix = ".install"
+			Suffix = ".install",
+			string__append("lib", ModuleNameStr1, ModuleNameStr0)
 		->
-			ModuleNameStr = ModuleNameStr0,
+			ModuleNameStr = ModuleNameStr1,
 			TargetType0 = misc_target(install_library)
 		;
 			fail

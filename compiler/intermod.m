@@ -2179,7 +2179,7 @@ read_optimization_interfaces(Transitive, ModuleName,
 	maybe_write_string(VeryVerbose, "'...\n"),
 	maybe_flush_output(VeryVerbose),
 
-	module_name_to_file_name(ModuleToRead, ".opt", no, FileName),
+	module_name_to_search_file_name(ModuleToRead, ".opt", FileName),
 	prog_io__read_opt_file(FileName, ModuleToRead,
 			ModuleError, Messages, OptItems),
 	update_error_status(opt, FileName, ModuleError, Messages,

@@ -92,12 +92,21 @@
 	maybe_error(timestamp)::out, make_info::in, make_info::out,
 	io__state::di, io__state::uo) is det.
 
+	% get_target_timestamp(Search, TargetFile, Timestamp)
+	%
 	% Find the timestamp for the given target file.
-:- pred get_target_timestamp(target_file::in, maybe_error(timestamp)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	% `Search' should be `yes' if the file could be part of an
+	% installed library.
+:- pred get_target_timestamp(bool::in, target_file::in,
+	maybe_error(timestamp)::out, make_info::in, make_info::out,
+	io__state::di, io__state::uo) is det.
 
+	% get_file_name(Search, TargetFile, FileName).
+	%
 	% Compute a file name for the given target file.
-:- pred get_file_name(target_file::in, file_name::out,
+	% `Search' should be `yes' if the file could be part of an
+	% installed library.
+:- pred get_file_name(bool::in, target_file::in, file_name::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
 	% Find the timestamp of the first file matching the given
@@ -147,6 +156,8 @@
 	% Find the extension for the timestamp file for the
 	% given target type, if one exists.
 :- func timestamp_extension(globals, module_target_type) = string is semidet.
+
+:- pred target_is_grade_or_arch_dependent(module_target_type::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 	% Debugging, verbose and error messages.
@@ -279,9 +290,12 @@ build_with_module_options(ModuleName, ExtraOptions,
 		% --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS
 		% from the environment (DEFAULT_MCFLAGS is included in
 		% OptionArgs) and generation of `.d' files.
+		% --use-subdirs is needed because the code to install
+		% libraries uses `--use-grade-subdirs' and assumes the
+		% interface files were built with `--use-subdirs'.
 		{ AllOptionArgs = list__condense([
 		    ["--invoked-by-mmc-make" | OptionArgs],
-		    Info0 ^ option_args, ExtraOptions]) },
+		    Info0 ^ option_args, ExtraOptions, ["--use-subdirs"]]) },
 		handle_options(AllOptionArgs, OptionsError, _, _, _),
 		(
 			{ OptionsError = yes(OptionsMessage) },
@@ -420,7 +434,7 @@ get_dependency_timestamp(file(FileName, MaybeOption), MaybeTimestamp,
 	),
 	get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, Info0, Info).
 get_dependency_timestamp(target(Target), MaybeTimestamp, Info0, Info) -->
-	get_target_timestamp(Target, MaybeTimestamp0, Info0, Info),
+	get_target_timestamp(yes, Target, MaybeTimestamp0, Info0, Info),
 	{ Target = _ - c_header(mih), MaybeTimestamp0 = ok(_) ->
 		% Don't rebuild the `.o' file if an irrelevant part of a
 		% `.mih' file has changed. If a relevant part of a `.mih'
@@ -432,9 +446,14 @@ get_dependency_timestamp(target(Target), MaybeTimestamp, Info0, Info) -->
 		MaybeTimestamp = MaybeTimestamp0
 	}.
 
-get_target_timestamp(ModuleName - FileType, MaybeTimestamp, Info0, Info) -->
-	get_file_name(ModuleName - FileType, FileName, Info0, Info1),
-	get_search_directories(FileType, SearchDirs),
+get_target_timestamp(Search, ModuleName - FileType, MaybeTimestamp,
+		Info0, Info) -->
+	get_file_name(Search, ModuleName - FileType, FileName, Info0, Info1),
+	( { Search = yes } ->
+		get_search_directories(FileType, SearchDirs)
+	;
+		{ SearchDirs = [dir__this_directory] }
+	),
 	get_file_timestamp(SearchDirs, FileName, MaybeTimestamp0,
 		Info1, Info2),
 	(
@@ -464,7 +483,7 @@ get_target_timestamp(ModuleName - FileType, MaybeTimestamp, Info0, Info) -->
 		{ Info = Info2 }
 	).
 
-get_file_name(ModuleName - FileType, FileName, Info0, Info) -->
+get_file_name(Search, ModuleName - FileType, FileName, Info0, Info) -->
 	( { FileType = source } -> 
 		%
 		% In some cases the module name won't match the file
@@ -486,8 +505,14 @@ get_file_name(ModuleName - FileType, FileName, Info0, Info) -->
 	;
 		{ Info = Info0 },
 		globals__io_get_globals(Globals),
-		module_name_to_file_name(ModuleName,
-			target_extension(Globals, FileType), no, FileName)
+		{ Ext = target_extension(Globals, FileType) },
+		( { Search = yes } ->
+			module_name_to_search_file_name(ModuleName,
+				Ext, FileName)
+		;
+			module_name_to_file_name(ModuleName,
+				Ext, no, FileName)
+		)
 	).
 
 get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, Info0, Info) -->
@@ -643,6 +668,29 @@ search_for_file_type(il_asm) = no.
 search_for_file_type(java_code) = no.
 search_for_file_type(asm_code(_)) = no.
 search_for_file_type(object_code(_)) = no.
+
+target_is_grade_or_arch_dependent(Target) :-
+	target_is_grade_or_arch_dependent(Target, yes).
+
+:- pred target_is_grade_or_arch_dependent(module_target_type::in,
+		bool::out) is det.
+
+target_is_grade_or_arch_dependent(source, no).
+target_is_grade_or_arch_dependent(errors, no).
+target_is_grade_or_arch_dependent(private_interface, no).
+target_is_grade_or_arch_dependent(long_interface, no).
+target_is_grade_or_arch_dependent(short_interface, no).
+target_is_grade_or_arch_dependent(unqualified_short_interface, no).
+target_is_grade_or_arch_dependent(intermodule_interface, yes).
+target_is_grade_or_arch_dependent(aditi_code, no).
+target_is_grade_or_arch_dependent(c_header(mh), no).
+target_is_grade_or_arch_dependent(c_header(mih), yes).
+target_is_grade_or_arch_dependent(c_code, yes).
+target_is_grade_or_arch_dependent(il_code, yes).
+target_is_grade_or_arch_dependent(il_asm, yes).
+target_is_grade_or_arch_dependent(java_code, yes).
+target_is_grade_or_arch_dependent(asm_code(_), yes).
+target_is_grade_or_arch_dependent(object_code(_), yes).
 
 %-----------------------------------------------------------------------------%
 

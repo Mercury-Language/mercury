@@ -368,7 +368,7 @@ compile_using_gcc_backend(FirstFileOrModule, CallBack, ModulesToLink) -->
 		{ file_name_to_module_name(Module, ModuleName) },
 		globals__io_lookup_bool_option(pic, Pic),
 		{ AsmExt = (Pic = yes -> ".pic_s" ; ".s") },
-		module_name_to_file_name(ModuleName, AsmExt, no,
+		module_name_to_file_name(ModuleName, AsmExt, yes,
 			AsmFile),
 		(
 			{ ModuleName \= FirstModuleName }
@@ -922,7 +922,7 @@ halt_at_module_error(HaltSyntax, some_module_errors) :- HaltSyntax = yes.
 :- mode module_to_link(in, out, di, uo) is det.
 
 module_to_link(ModuleName - _Items, ModuleToLink) -->
-	module_name_to_file_name(ModuleName, "", no, ModuleToLink).
+	{ module_name_to_file_name(ModuleName, ModuleToLink) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1684,8 +1684,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 			{ UpdateStatus = yes }
 		; { UseOptFiles = yes } ->
 			{ module_info_name(HLDS0, ModuleName) },
-			module_name_to_file_name(ModuleName,
-				".opt", no, OptName),
+			module_name_to_search_file_name(ModuleName,
+				".opt", OptName),
 			search_for_file(IntermodDirs, OptName, Found),
 			( { Found = ok(_) } ->
 				{ UpdateStatus = yes },
@@ -3338,8 +3338,8 @@ make_foreign_import_header_code(
 		Include) -->
 	(
 		{ Lang = c },
-		module_name_to_file_name(ModuleName, ".mh",
-			no, HeaderFileName),
+		module_name_to_search_file_name(ModuleName, ".mh",
+			HeaderFileName),
 		{ string__append_list(
 			["#include """, HeaderFileName, """\n"],
 			IncludeString) },

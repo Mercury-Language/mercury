@@ -61,6 +61,10 @@
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
+	% Produce the grade component of grade-specific
+	% installation directories.
+:- pred grade_directory_component(globals::in, string::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -447,6 +451,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	option_implies(make, compile_only, bool(yes)),
 	option_implies(make, target_code_only, bool(yes)),
 
+	% This is needed for library installation (the library grades
+	% are built using `--use-grade-subdirs', and assume that
+	% the interface files were built using `--use-subdirs').
+	option_implies(make, use_subdirs, bool(yes)),
+	option_implies(invoked_by_mmc_make, use_subdirs, bool(yes)),
+
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
 	option_implies(check_termination, warn_missing_trans_opt_files,
@@ -536,6 +546,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% --rebuild is just like --make but always rebuilds the files
 	% without checking timestamps.
 	option_implies(rebuild, make, bool(yes)),
+
+	option_implies(use_grade_subdirs, use_subdirs, bool(yes)),
 
 	% --make handles creation of the module dependencies itself,
 	% and they don't need to be recreated when compiling to C.
@@ -899,31 +911,24 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%
 	globals__io_lookup_accumulating_option(mercury_library_directories,
 		MercuryLibDirs),
+	globals__io_lookup_string_option(fullarch, FullArch),
+	globals__io_get_globals(Globals),
+	{ grade_directory_component(Globals, GradeString) },
 	(
 		{ MercuryLibDirs = [_|_] },
-		globals__io_lookup_string_option(fullarch, FullArch),
-		globals__io_get_globals(Globals),
-		{ compute_grade(Globals, GradeString) },
 		{ ExtraLinkLibDirs = list__map(
-				(func(MercuryLibDir) =
-					dir__make_path_name(MercuryLibDir,
-					dir__make_path_name("lib",
-					dir__make_path_name(GradeString,
-					FullArch)))
-				), MercuryLibDirs) },
+			(func(MercuryLibDir) =
+				MercuryLibDir/"lib"/GradeString/FullArch
+			), MercuryLibDirs) },
 		globals__io_lookup_accumulating_option(
 			link_library_directories, LinkLibDirs),
 		globals__io_set_option(link_library_directories,
 			accumulating(LinkLibDirs ++ ExtraLinkLibDirs)),
 
 		{ ExtraCIncludeDirs = list__map(
-				(func(MercuryLibDir) =
-					dir__make_path_name(MercuryLibDir,
-					dir__make_path_name("lib",
-					dir__make_path_name(GradeString,
-					dir__make_path_name(FullArch,
-					"inc"))))
-				), MercuryLibDirs) },
+			(func(MercuryLibDir) =
+				MercuryLibDir/"lib"/GradeString/FullArch/"inc"
+			), MercuryLibDirs) },
 		globals__io_lookup_accumulating_option(c_include_directory,
 			CIncludeDirs),
 		globals__io_set_option(c_include_directory,
@@ -947,6 +952,57 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			accumulating(IntermodDirs))
 	;
 		[]
+	),
+
+	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
+	( { UseGradeSubdirs = yes } ->
+		%
+		% With `--use-grade-subdirs', `.opt', `.trans_opt' and
+		% `.mih' files are placed in a directory named
+		% `Mercury/<grade>/<fullarch>/Mercury/<ext>s'.
+		% When searching for a `.opt' file, module_name_to_file_name
+		% produces `Mercury/<ext>/<module>.ext' so that searches
+		% for installed files work, so we need to add
+		% `--intermod-directory Mercury/<grade>/<fullarch>'
+		% to find the `.opt' files in the current directory.
+		%
+		globals__io_lookup_accumulating_option(intermod_directories,
+			IntermodDirs1),
+		{ GradeSubdirIntermodDirs =
+			["Mercury"/GradeString/FullArch |
+			list__filter(isnt(unify(dir__this_directory)),
+				IntermodDirs1)] },
+		globals__io_set_option(intermod_directories,
+			accumulating(GradeSubdirIntermodDirs))
+	;
+		[]
+	),
+
+	%
+	% When searching for a header (.mh or .mih) file,
+	% module_name_to_file_name uses the plain header
+	% name, so we need to add the full path to the
+	% header files in the current directory.
+	%
+	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
+	(
+		{ UseGradeSubdirs = yes ->
+			MihsSubdir = 
+				"Mercury"/GradeString/FullArch/"Mercury"/"mihs"
+		; UseSubdirs = yes ->
+			MihsSubdir = "Mercury"/"mihs"
+		;
+			fail
+		}
+	->	
+		globals__io_lookup_accumulating_option(c_include_directory,
+			CIncludeDirs1),
+		{ SubdirCIncludeDirs =
+			[dir__this_directory, MihsSubdir | CIncludeDirs1] },
+		globals__io_set_option(c_include_directory,
+			accumulating(SubdirCIncludeDirs))
+	;	
+		[]	
 	),
 
 	% --use-opt-files implies --no-warn-missing-opt-files since
@@ -1233,6 +1289,25 @@ add_option_list(CompOpts, Opts0, Opts) :-
 		Opt = Option - Data,
 		map__set(Opts1, Option, Data, Opts2)
 	)), CompOpts, Opts0, Opts).
+
+grade_directory_component(Globals, Grade) :-
+	compute_grade(Globals, Grade0),
+
+	%
+	% Strip out the `.picreg' part of the grade -- `.picreg' is
+	% implied by the file names (.pic_o vs .o, `.a' vs `.so').
+	%
+	(
+		string__sub_string_search(Grade0,
+			".picreg", PicRegIndex),
+		string__split(Grade0, PicRegIndex,
+			LeftPart, RightPart0),
+		string__append(".picreg", RightPart, RightPart0)
+	->
+		Grade = LeftPart ++ RightPart
+	;
+		Grade = Grade0
+	).
 
 compute_grade(Globals, Grade) :-
 	globals__get_options(Globals, Options),

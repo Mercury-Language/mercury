@@ -838,8 +838,7 @@ significant part of the functionality of Mmake, using mmc's
 
 The advantages of the @samp{mmc --make} over Mmake are that there
 is no @samp{mmake depend} step and the dependencies are more accurate.
-Library installation (@pxref{Libraries}) and parallel builds are not
-yet supported.
+Parallel builds are not yet supported.
 
 The Mmake variables above can be used by @samp{mmc --make} if they
 are set in a file called @file{Mercury.options}. The @file{Mercury.options}

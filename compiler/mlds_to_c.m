@@ -191,7 +191,7 @@ mlds_output_src_import(_Indent, Import) -->
 		unexpected(this_file, "foreign import in C backend")
 	},
 
-	module_name_to_file_name(ModuleName, HeaderExt, no, HeaderFile),
+	module_name_to_search_file_name(ModuleName, HeaderExt, HeaderFile),
 	io__write_strings(["#include """, HeaderFile, """\n"]).
 
 

@@ -290,8 +290,8 @@ do_write_module_dep_file(Imports) -->
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
 read_module_dependencies(RebuildDeps, ModuleName, Info0, Info) -->
-    module_name_to_file_name(ModuleName, module_dep_file_extension,
-    	no, ModuleDepFile),
+    module_name_to_search_file_name(ModuleName, module_dep_file_extension,
+		ModuleDepFile),
     globals__io_lookup_accumulating_option(search_directories, SearchDirs),
     io__input_stream(OldInputStream),
     search_for_file_returning_dir(SearchDirs, ModuleDepFile, SearchResult),
@@ -454,10 +454,10 @@ read_module_dependencies(RebuildDeps, ModuleName, Info0, Info) -->
 
 read_module_dependencies_remake(RebuildDeps, ModuleName, Msg, Info0, Info) -->
 	( { RebuildDeps = yes } ->
-		module_name_to_file_name(ModuleName,
-			module_dep_file_extension, no, ModuleDepsFile),
 		debug_msg(
 		    (pred(di, uo) is det -->
+			module_name_to_file_name(ModuleName,
+				module_dep_file_extension, no, ModuleDepsFile),
 			io__write_string("Error reading file `"),
 			io__write_string(ModuleDepsFile),
 			io__write_string("rebuilding: "),

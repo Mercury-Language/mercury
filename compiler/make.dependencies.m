@@ -884,7 +884,8 @@ dependency_status(target(Target) @ Dep, Status, Info0, Info) -->
 		% considered to be up-to-date if they
 		% exist.
 		%
-		get_target_timestamp(Target, MaybeTimestamp, Info1, Info2),
+		get_target_timestamp(yes, Target,
+			MaybeTimestamp, Info1, Info2),
 		(
 		    { MaybeTimestamp = ok(_) },
 		    { Status = up_to_date }
