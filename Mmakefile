@@ -363,12 +363,20 @@ install_grades: scripts dep_library dep_browser
 		        prof= \
 		        ;; \
 	        esac; \
+	        case "$$grade" in \
+	            *.debug*) \
+		        c_debug=-g \
+		        ;; \
+		    *) \
+		        c_debug= \
+		        ;; \
+	        esac; \
 	        ( cd boehm_gc && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade PROF=$$prof install_lib ) && \
 		( cd runtime && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
 		( cd library && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade EXTRA_MGNUCFLAGS=$$c_debug install_library ) && \
 		( cd browser && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
 		( cd trace && \
