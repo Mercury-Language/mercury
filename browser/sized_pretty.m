@@ -223,18 +223,21 @@
 		% that could fit in that space.
 	func maximum_functors(T, MeasureParams) = int,
 
-		% given a term, it's arity, and a limit, this method decides
-		% the partial limit that each of the argument should be
-		% given. It's arguments in order are term, measure parameter(s),
-		% limit, arity, a flag (once the limit for the subterms 
-		% is determined the subterms are flagged with this limit), size 
-		% of the Functor, partial limit, adjusted limit, adjusted 
-		% measure parameter(s).
-		% Also a term is not deconstructed unless it has enough space
-		% to print functor and the functors of it's arguments.
-		% If the bool is `yes', we check that there is enough space to 
-		% print the functor and the functors of its arguments before 
-		% deconstructing the term. 
+		% Given a term, its arity, and a limit, this method decides
+		% the partial limit that each of the arguments should be
+		% given. Its arguments in order are:
+		%	- the term to print,
+		%	- measure parameter(s),
+		%	- measurement of the available space,
+		% 	- arity of the principal functor of the term,
+		%	- a boolean which hints that the size of the principal
+		%	  functors of arguments should be checked before
+		%	  analyzing the term,
+		%	- size of the principal functor of the term,
+		%	- maybe an initial estimate of the measurement for
+		%	  each argument,
+		%	- adjusted measurement of available space,
+		%	- adjusted measure parameter(s).
 	pred measured_split(univ::in, MeasureParams::in, T::in, int::in,
 	     bool::in, T::out, maybe(T)::out, T::out, MeasureParams::out) is det
 		
@@ -293,14 +296,15 @@ first_pass(Univ, Params, Limit, Size) :-
 				Functor, Arity, UnivArgs)
 	->
 		measured_split(Univ, Params, Limit, Arity, yes, FunctorSize, 
-						Flag, NewLimit, NewParams),
-		( (Arity \= 0, Flag = no) ->
+					MaybeInitArgLimit, NewLimit, NewParams),
+		( (Arity \= 0, MaybeInitArgLimit = no) ->
 			Exact0 = no
 		;
 			Exact0 = yes
 		),
-		annotate_args_with_size(UnivArgs, Flag, NewParams, NewLimit, 
-			FunctorSize, SoFar, Exact0, Exact, MaybeArgSizes),
+		annotate_args_with_size(UnivArgs, MaybeInitArgLimit, NewParams,
+			NewLimit, FunctorSize, SoFar, Exact0, Exact,
+			MaybeArgSizes),
 		(
 			Exact = no,
 			Size = at_least(Univ, SoFar,
@@ -321,19 +325,19 @@ first_pass(Univ, Params, Limit, Size) :-
 	MeasureParams).
 
 annotate_args_with_size([], _, _, _, SoFar, SoFar, Exact, Exact, []).
-annotate_args_with_size([Arg | Args], Flag, Params, Limit,
+annotate_args_with_size([Arg | Args], MaybeInitArgLimit, Params, Limit,
 		SoFar0, SoFar, Exact0, Exact,
-		[MaybeFlaggedSize | MaybeFlaggedSizes]) :-
+		[MaybeArgSize | MaybeArgSizes]) :-
 	(
-		Flag = yes(ArgLimit),
+		MaybeInitArgLimit = yes(InitArgLimit),
 		( compare_measures(SoFar0, Limit) = (>) ->
-			AppliedArgLimit = ArgLimit
+			AppliedArgLimit = InitArgLimit
 		;
-			AppliedArgLimit = max_measure(ArgLimit,
+			AppliedArgLimit = max_measure(InitArgLimit,
 				subtract_measures(Limit, SoFar0, Params))
 		),
 		first_pass(Arg, Params, AppliedArgLimit, Size),
-		MaybeFlaggedSize = yes(ArgLimit - Size),
+		MaybeArgSize = yes(InitArgLimit - Size),
 		extract_size_from_annotation(Size) = ArgSize,
 		SoFar1 = add_measures(SoFar0, ArgSize, Params),
 		(
@@ -344,8 +348,8 @@ annotate_args_with_size([Arg | Args], Flag, Params, Limit,
 			Exact1 = no
 		)
 	;
-		Flag = no,
-		MaybeFlaggedSize = no,
+		MaybeInitArgLimit = no,
+		MaybeArgSize = no,
 		SoFar1 = SoFar0,
 		Exact1 = Exact0
 	),
@@ -354,8 +358,8 @@ annotate_args_with_size([Arg | Args], Flag, Params, Limit,
 	;
 		Exact2 = Exact1
 	),
-	annotate_args_with_size(Args, Flag, Params, Limit, SoFar1, SoFar, 
-		Exact2, Exact, MaybeFlaggedSizes).
+	annotate_args_with_size(Args, MaybeInitArgLimit, Params, Limit,
+		SoFar1, SoFar, Exact2, Exact, MaybeArgSizes).
 
 %---------------------------------------------------------------------------%
 
@@ -392,19 +396,17 @@ second_pass(OldSizeTerm, Params, Limit, NewSizeTerm) :-
 	;
     		OldSizeTerm = at_least(Univ, _Size, deconstructed(Functor, 
 			Arity,MaybeArgs)),
-		measured_split(Univ, Params, Limit, Arity, yes, FSize, Flag,
-			NewLimit, NewParams),
-		( if Flag = yes(X) then
-	    		ArgLimit = X,
-	    		check_args(NewParams, MaybeArgs, ArgLimit, Passed, 
+		measured_split(Univ, Params, Limit, Arity, yes, FSize,
+			MaybeInitLimit, NewLimit, NewParams),
+		( if MaybeInitLimit = yes(InitLimit) then
+	    		check_args(NewParams, MaybeArgs, InitLimit, Passed, 
 				FSize, Used),
 			LeftOver = add_measures(subtract_measures(NewLimit, 
 			  	Used, Params), FSize, Params),
 	    		measured_split(Univ, Params, LeftOver, Arity - Passed, 
-				no, _, Flag2, _, _),
-	    		( if Flag2 = yes(Y) then
-	        		SplitLimit = Y,
-	        		process_args(NewParams, MaybeArgs, ArgLimit, 
+				no, _, MaybeSplitLimit, _, _),
+	    		( if MaybeSplitLimit = yes(SplitLimit) then
+	        		process_args(NewParams, MaybeArgs, InitLimit,
 					SplitLimit, NewArgs, NewSize0),
 				NewSize = add_measures(FSize, NewSize0, 
 					NewParams),
@@ -423,7 +425,7 @@ second_pass(OldSizeTerm, Params, Limit, NewSizeTerm) :-
 					not_deconstructed)
 	    		)
 		else
-	    	NewSizeTerm = at_least(Univ, FSize, not_deconstructed)
+			NewSizeTerm = at_least(Univ, FSize, not_deconstructed)
 		)
 	).
 	
@@ -594,15 +596,15 @@ zero_functor_count = functor_count(0).
 	functor_count::out, no_measure_params::out) is det.
 
 functor_count_split(_, Params, functor_count(Limit), Arity, _, functor_count(1),
-		Flag, functor_count(Limit), Params) :-
+		MaybeArgLimit, functor_count(Limit), Params) :-
 	( Arity = 0 ->
-		Flag = no
+		MaybeArgLimit = no
 	;
 		( Limit =< (Arity + 1) ->			
-			Flag = no
+			MaybeArgLimit = no
 		;
 			RoundUp = (Limit + Arity - 1) // Arity,
-			Flag = yes(functor_count(RoundUp))
+			MaybeArgLimit = yes(functor_count(RoundUp))
 		)
 	).
 
@@ -662,7 +664,9 @@ zero_char_count = char_count(0).
 	char_count::out, no_measure_params::out) is det.
 
 char_count_split(Univ, Params, char_count(Limit), Arity, Check, 
-		char_count(FunctorSize), Flag, char_count(Limit), Params) :-
+		char_count(FunctorSize), MaybeArgLimit, char_count(Limit),
+		Params) :-
+
 	deconstruct(univ_value(Univ), Functor, _, Args),
 	( Check = yes ->
 		get_arg_length(Args, TotalLength, _)
@@ -671,13 +675,13 @@ char_count_split(Univ, Params, char_count(Limit), Arity, Check,
 	),
 	FunctorSize = string__length(Functor) + 2*(Arity),
 	( Arity = 0 ->
-		Flag = no
+		MaybeArgLimit = no
 	;
 		( Limit =< (FunctorSize + TotalLength) ->
-			Flag = no
+			MaybeArgLimit = no
 		;
 			RoundUp = (Limit + Arity - FunctorSize) // Arity,
-			Flag = yes(char_count(RoundUp))
+			MaybeArgLimit = yes(char_count(RoundUp))
 		)
 	).
 
@@ -822,7 +826,7 @@ zero_size_count = character_count(0).
 	size_count::out, measure_params::out) is det.
 
 size_count_split(Univ, Params, Limit, Arity, Check, FunctorSize, 
-		Flag, NewLimit, NewParams) :-
+		MaybeArgLimit, NewLimit, NewParams) :-
 	% LineWidth is length of the line in which the functor is printed.
 	Params = measure_params(LineWidth),
     	deconstruct(univ_value(Univ), Functor, ActualArity, Args),
@@ -837,7 +841,7 @@ size_count_split(Univ, Params, Limit, Arity, Check, FunctorSize,
     	( 
 		Arity = 0 
 	->
-		Flag = no,
+		MaybeArgLimit = no,
     		FunctorSize = character_count(FSize),
 		NewLimit = Limit,
 		NewParams = Params
@@ -852,7 +856,7 @@ size_count_split(Univ, Params, Limit, Arity, Check, FunctorSize,
 			(LineWidth - 2) >= MaxLength
 		->
 			Line = (LineLimit - 1) // Arity,
-			Flag = yes(line_count(Line)),
+			MaybeArgLimit = yes(line_count(Line)),
 			FunctorSize = line_count(1),
 	    		NewLimit = Limit,
 	    		NewParams = measure_params(LineWidth - 2)
@@ -866,7 +870,7 @@ size_count_split(Univ, Params, Limit, Arity, Check, FunctorSize,
 		->
 	    		% "Arity - 1" is for rounding up.
 			Char = (LineWidth - 3 - FSize + Arity - 1) // Arity ,
-	    		Flag = yes(character_count(Char)),
+	    		MaybeArgLimit = yes(character_count(Char)),
 	    		FunctorSize = character_count(FSize),
 	    		NewLimit = character_count(LineWidth - 3),
 	    		NewParams = Params
@@ -875,12 +879,12 @@ size_count_split(Univ, Params, Limit, Arity, Check, FunctorSize,
 			CharLimit >= (FSize + TotalLength)
 		->
 	   		Char = (CharLimit - FSize + Arity - 1) // Arity,
-	   		Flag = yes(character_count(Char)),
+	   		MaybeArgLimit = yes(character_count(Char)),
 	   		FunctorSize = character_count(FSize),
 	   		NewLimit = Limit,
 	   		NewParams = Params
 		;
-	   		Flag = no,
+	   		MaybeArgLimit = no,
 			% If a term is not deconstructed, it is printed as
 			% "functor/Arity". The "+ 2" accounts for that.
 	   		FunctorSize = 
