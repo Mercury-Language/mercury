@@ -308,11 +308,13 @@ allocate_live_vars(Vars, LiveVars, Category, CallInfo0, CallInfo) :-
 	set__difference(KeySet, LiveVars, ReuseSet), % Slots for dead vars
 	set__to_sorted_list(Vars, VarList),
 	set__to_sorted_list(ReuseSet, ReuseList0),
-	remove_invalid_reuse_slots(ReuseList0, LiveVars, CallInfo0, ReuseList),
+	remove_invalid_reuse_slots(ReuseList0, LiveVars, CallInfo0, ReuseList1),
+	set__list_to_set(ReuseList1, TmpSet),
+	set__to_sorted_list(TmpSet, ReuseList),
 	allocate_live_vars_2(VarList, ReuseList, LiveVars, Category,
 							CallInfo0, CallInfo).
 
-:- pred allocate_live_vars_2(list(var), list(var), set(var), category,
+:- pred allocate_live_vars_2(list(var), list(lval), set(var), category,
 					map(var, lval), map(var, lval)).
 :- mode allocate_live_vars_2(in, in, in, in, in, out) is det.
 
@@ -364,7 +366,7 @@ allocate_live_vars_2([V|Vs], [R|Rs], Live, Category, CallInfo0, CallInfo) :-
 		Rs1 = [R|Rs]
 	;
 		% V had no slot yet, so try reusing an old one.
-		map__lookup(CallInfo0, R, Slot),
+		Slot = R,
 		Rs1 = Rs
 	),
 	map__set(CallInfo0, V, Slot, CallInfo1),
@@ -373,7 +375,7 @@ allocate_live_vars_2([V|Vs], [R|Rs], Live, Category, CallInfo0, CallInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred remove_invalid_reuse_slots(list(var), set(var),
-						map(var, lval), list(var)).
+						map(var, lval), list(lval)).
 :- mode remove_invalid_reuse_slots(in, in, in, out) is det.
 
 remove_invalid_reuse_slots([], _Live, _CallInfo, []).
@@ -388,7 +390,7 @@ remove_invalid_reuse_slots([V|Vs], Live, CallInfo, Ws) :-
 		remove_invalid_reuse_slots(Vs, Live, CallInfo, Ws)
 	;
 		remove_invalid_reuse_slots(Vs, Live, CallInfo, Ws0),
-		Ws = [V|Ws0]
+		Ws = [Slot|Ws0]
 	).
 
 %-----------------------------------------------------------------------------%
