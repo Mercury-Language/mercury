@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,6 +37,8 @@
 :- pred tree__tree_of_lists_is_empty(tree(list(T))).
 :- mode tree__tree_of_lists_is_empty(in) is semidet.
 
+:- func tree__map(func(T) = U, tree(T)) = tree(U).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -73,5 +75,12 @@ tree__tree_of_lists_is_empty(node([])).
 tree__tree_of_lists_is_empty(tree(L, R)) :-
 	tree__tree_of_lists_is_empty(L),
 	tree__tree_of_lists_is_empty(R).
+
+%-----------------------------------------------------------------------------%
+
+tree__map(_F, empty) = empty.
+tree__map(F, node(T)) = node(F(T)).
+tree__map(F, tree(L, R)) = tree(tree__map(F, L), tree__map(F, R)).
+
 
 %-----------------------------------------------------------------------------%

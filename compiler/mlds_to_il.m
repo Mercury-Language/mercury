@@ -870,21 +870,6 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 		)
 	),
 
-		% If this is main, add the entrypoint, set a flag, and
-		% call the initialization instructions in the cctor of
-		% this module.
-	(
-		{ Name = function(PredLabel, _ProcId, MaybeSeqNum, _PredId) },
-		{ PredLabel = pred(predicate, no, "main", 2, model_det, no) },
-		{ MaybeSeqNum = no }
-	->
-		{ EntryPoint = [entrypoint] },
-		il_info_add_init_instructions(runtime_initialization_instrs),
-		^ has_main := yes
-	;
-		{ EntryPoint = [] }
-	),
-
 		% Need to insert a ret for functions returning
 		% void (MLDS doesn't).
 	{ Returns = [] ->
@@ -896,7 +881,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 		% Retrieve the locals, put them in the enclosing
 		% scope.
 	il_info_get_locals_list(Locals),
-	{ InstrsTree = tree__list([
+	{ InstrsTree2 = tree__list([
 		context_node(Context),
 		node(CtorInstrs),
 		context_node(Context),
@@ -906,6 +891,80 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 		instr_node(end_block(scope(Locals), BlockId))
 		])
 	},
+
+		% If this is main, add the entrypoint, set a flag,
+		% wrap the code in an exception handler and call the
+		% initialization instructions in the cctor of this
+		% module.
+	(
+		{ Name = function(PredLabel, _ProcId, MaybeSeqNum, _PredId) },
+		{ PredLabel = pred(predicate, no, "main", 2, model_det, no) },
+		{ MaybeSeqNum = no }
+	->
+		{ EntryPoint = [entrypoint] },
+		il_info_add_init_instructions(runtime_initialization_instrs),
+		^ has_main := yes,
+
+		il_info_get_next_block_id(TryBlockId),
+		il_info_make_next_label(DoneLabel),
+
+			% Replace all the returns with leave
+			% instructions as a side effect this means that
+			% we can no longer have any tail calls so
+			% replace them with nops.
+		{ RenameRets = (func(I) = 
+			(if (I = ret) then
+				leave(label_target(DoneLabel))
+			else if (I = tailcall) then
+				nop
+			else
+				I
+			)
+		)},
+		{ RenameNode = (func(N) = list__map(RenameRets, N)) },
+
+		{ ExceptionClassName = structured_name("mscorlib",
+				["System", "Exception"]) },
+
+		{ ConsoleWriteName = class_member_name(structured_name(
+				"mscorlib", ["System", "Console"]),
+				id("Write")) },
+		{ WriteString = methoddef(call_conv(no, default),
+					void, ConsoleWriteName,
+					[il_string_type]) },
+		{ WriteObject = methoddef(call_conv(no, default),
+					void, ConsoleWriteName,
+					[il_generic_type]) },
+
+			% Wrap an exception handler around the main
+			% code.  This allows us to debug programs
+			% remotely without a window popping up asking
+			% how you wish to debug.  Pressing the cancel
+			% button on this window is a bit difficult
+			% remotely.
+		{ InstrsTree = tree__list([
+				instr_node(start_block(try, TryBlockId)),
+				tree__map(RenameNode, InstrsTree2),
+				instr_node(leave(label_target(DoneLabel))),
+				instr_node(end_block(try, TryBlockId)),
+
+				instr_node(start_block(
+						catch(ExceptionClassName),
+						TryBlockId)),
+				instr_node(ldstr("\nException Caught: \n")),
+				instr_node(call(WriteString)),
+				instr_node(call(WriteObject)),
+				instr_node(leave(label_target(DoneLabel))),
+				instr_node(end_block(catch(ExceptionClassName),
+						TryBlockId)),
+
+				instr_node(label(DoneLabel)),
+				instr_node(ret)
+			]) }
+	;
+		{ EntryPoint = [] },
+		{ InstrsTree = InstrsTree2 }
+	),
 
 		% Generate the entire method contents.
 	DebugIlAsm =^ debug_il_asm,
