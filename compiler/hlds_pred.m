@@ -623,6 +623,9 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- pred proc_info_get_used_typeinfos_setwise(proc_info, set(var), set(var)).
 :- mode proc_info_get_used_typeinfos_setwise(in, in, out) is det.
 
+:- pred proc_info_ensure_unique_names(proc_info, proc_info).
+:- mode proc_info_ensure_unique_names(in, out) is det.
+
 :- implementation.
 
 :- type proc_info
@@ -917,6 +920,13 @@ proc_info_get_used_typeinfos_2(ProcInfo, [Var | Vars1], TypeInfoVars) :-
 	;
 		error("proc_info_get_used_typeinfos_2: var not found in typemap")
 	).
+
+proc_info_ensure_unique_names(ProcInfo0, ProcInfo) :-
+	proc_info_vartypes(ProcInfo0, VarTypes),
+	map__keys(VarTypes, AllVars),
+	proc_info_variables(ProcInfo0, VarSet0),
+	varset__ensure_unique_names(AllVars, "p", VarSet0, VarSet),
+	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 

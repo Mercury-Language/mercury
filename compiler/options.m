@@ -64,10 +64,12 @@
 		;	compile_to_c
 		;	compile_only
 	% Auxiliary output options
+		;	generate_bytecode
+		;	generate_prolog
+		;	prolog_dialect
 		;	line_numbers
 		;	auto_comments
 		;	show_dependency_graph
-		;	generate_bytecode
 		;	dump_hlds
 		;	verbose_dump_hlds
 	% Language semantics options
@@ -142,6 +144,7 @@
 		;	constraint_propagation
 		;	optimize_unused_args
 		;	optimize_higher_order
+		;	optimize_constructor_recursion
 		;	excess_assign
 		;	follow_code
 		;	prev_code
@@ -257,10 +260,12 @@ option_defaults_2(output_option, [
 ]).
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
-	show_dependency_graph	-	bool(no),
 	generate_bytecode	-	bool(no),
+	generate_prolog		-	bool(no),
+	prolog_dialect		-	string("default"),
 	line_numbers		-	bool(no),
 	auto_comments		-	bool(no),
+	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
 	verbose_dump_hlds	-	bool(no)
 ]).
@@ -375,6 +380,7 @@ option_defaults_2(optimization_option, [
 	follow_code		-	bool(no),
 	optimize_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
+	optimize_constructor_recursion - bool(no),
 	optimize_dead_procs	-	bool(no),
 	intermodule_optimization -	bool(no),
 
@@ -505,10 +511,13 @@ long_option("compile-to-C",		compile_to_c).
 long_option("compile-only",		compile_only).
 
 % aux output options
-long_option("auto-comments",		auto_comments).
-long_option("line-numbers",		line_numbers).
-long_option("show-dependency-graph",	show_dependency_graph).
 long_option("generate-bytecode",	generate_bytecode).
+long_option("generate-prolog",		generate_prolog).
+long_option("generate-Prolog",		generate_prolog).
+long_option("prolog-dialect",		prolog_dialect).
+long_option("line-numbers",		line_numbers).
+long_option("auto-comments",		auto_comments).
+long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
 long_option("verbose-dump-hlds",	verbose_dump_hlds).
 
@@ -564,7 +573,7 @@ long_option("num-real-r-regs",		num_real_r_regs).
 long_option("num-real-f-regs",		num_real_f_regs).
 long_option("num-real-r-temps",		num_real_r_temps).
 long_option("num-real-f-temps",		num_real_f_temps).
-long_option("num-real-temps",		num_real_r_temps).
+long_option("num-real-temps",		num_real_r_temps).	% obsolete
 long_option("cc",			cc).
 long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
@@ -597,6 +606,8 @@ long_option("optimize-unused-args",	optimize_unused_args).
 long_option("optimise-unused-args",	optimize_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
+long_option("optimise-constructor-recursion",	optimize_constructor_recursion).
+long_option("optimize-constructor-recursion",	optimize_constructor_recursion).
 long_option("optimize-dead-procs",	optimize_dead_procs).
 long_option("optimise-dead-procs",	optimize_dead_procs).
 long_option("intermodule-optimization", intermodule_optimization).
@@ -999,13 +1010,17 @@ options_help_aux_output -->
 	io__write_string("\n Auxiliary Output Options:\n"),
 	io__write_string("\t--generate-bytecode\n"),
 	io__write_string("\t\tOutput a bytecode form of the module for debugging.\n"),
+	io__write_string("\t--generate-prolog\n"),
+	io__write_string("\t\tConvert the program to Prolog. Output to file `<module>.pl'.\n"),
+	io__write_string("\t--prolog-dialect {sicstus,nu}\n"),
+	io__write_string("\t\tTarget the named dialect if generating Prolog code.\n"),
+	io__write_string("\t-l, --line-numbers\n"),
+	io__write_string("\t\tOutput line numbers in the generated code.\n"),
+	io__write_string("\t\tOnly works with the -G and -P options.\n"),
 	io__write_string("\t--auto-comments\n"),
 	io__write_string("\t\tOutput comments in the `<module>.c' file.\n"),
 	io__write_string("\t\t(The code may be easier to understand if you also\n"),
 	io__write_string("\t\tuse the `--no-llds-optimize' option.)\n"),
-	io__write_string("\t-l, --line-numbers\n"),
-	io__write_string("\t\tOutput line numbers in the generated code.\n"),
-	io__write_string("\t\tOnly works with the -G and -P options.\n"),
 	io__write_string("\t--show-dependency-graph\n"),
 	io__write_string("\t\tWrite out the dependency graph to `<module>.dependency_graph'.\n"),
 	io__write_string("\t-d <n>, --dump-hlds <stage number or name>\n"),
@@ -1247,6 +1262,9 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
 	io__write_string("\t--no-optimize-higher-order\n"),
 	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
+	io__write_string("\t--optimize-constructor recursion\n"),
+	io__write_string("\t\tEnable the optimization of tail recursion modulo\n"),
+	io__write_string("\t\tconstructor application.\n"),
 	io__write_string("\t--intermodule-optimization\n"),
 	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
 	io__write_string("\t\tthe code for predicates imported from other modules.\n"),

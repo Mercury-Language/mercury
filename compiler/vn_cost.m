@@ -173,13 +173,40 @@ vn_cost__lval_cost(Lval, Params, Cost) :-
 	(
 		Lval = reg(Reg),
 		(
-			Reg = r(Regno),
-			vn_type__real_r_regs(Params, MaxRealRegno),
-			Regno =< MaxRealRegno
-		->
-			Cost = 0
+			Reg = r(RegRno),
+			vn_type__real_r_regs(Params, MaxRealRegRno),
+			( RegRno =< MaxRealRegRno ->
+				Cost = 0
+			;
+				vn_type__costof_stackref(Params, Cost)
+			)
 		;
-			vn_type__costof_stackref(Params, Cost)
+			Reg = f(RegFno),
+			vn_type__real_f_regs(Params, MaxRealRegFno),
+			( RegFno =< MaxRealRegFno ->
+				Cost = 0
+			;
+				vn_type__costof_stackref(Params, Cost)
+			)
+		)
+	;
+		Lval = temp(TempReg),
+		(
+			TempReg = r(TempRno),
+			vn_type__real_r_temps(Params, MaxRealTempRno),
+			( TempRno =< MaxRealTempRno ->
+				Cost = 0
+			;
+				vn_type__costof_stackref(Params, Cost)
+			)
+		;
+			TempReg = f(TempFno),
+			vn_type__real_f_temps(Params, MaxRealTempFno),
+			( TempFno =< MaxRealTempFno ->
+				Cost = 0
+			;
+				vn_type__costof_stackref(Params, Cost)
+			)
 		)
 	;
 		Lval = stackvar(_),
@@ -233,23 +260,6 @@ vn_cost__lval_cost(Lval, Params, Cost) :-
 	;
 		Lval = lvar(_),
 		error("lvar found in lval_cost")
-	;
-		Lval = temp(TempReg),
-		(
-			TempReg = r(TempRno),
-			vn_type__real_r_temps(Params, MaxRealTempRno),
-			TempRno =< MaxRealTempRno
-		->
-			Cost = 0
-		;
-			TempReg = f(TempFno),
-			vn_type__real_f_temps(Params, MaxRealTempFno),
-			TempFno =< MaxRealTempFno
-		->
-			Cost = 0
-		;
-			vn_type__costof_stackref(Params, Cost)
-		)
 	).
 
 vn_cost__rval_cost(Rval, Params, Cost) :-

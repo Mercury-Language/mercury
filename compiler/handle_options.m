@@ -114,15 +114,26 @@ postprocess_options(ok(OptionTable0), Error) -->
                         { convert_args_method(ArgsMethodStr, ArgsMethod) }
                     ->
                         { map__lookup(OptionTable, type_info,
-			    TypeInfoMethod0) },
+                            TypeInfoMethod0) },
                         (
                             { TypeInfoMethod0 = string(TypeInfoMethodStr) },
                             { convert_type_info_method(TypeInfoMethodStr,
-				OptionTable, TypeInfoMethod) }
+                                OptionTable, TypeInfoMethod) }
                         ->
-                            postprocess_options_2(OptionTable, GC_Method,
-                                TagsMethod, ArgsMethod, TypeInfoMethod),
-                            { Error = no }
+                            { map__lookup(OptionTable, prolog_dialect,
+                                PrologDialect0) },
+                            (
+                                { PrologDialect0 = string(PrologDialectStr) },
+                                { convert_prolog_dialect(PrologDialectStr,
+                                    PrologDialect) }
+                            ->
+                                postprocess_options_2(OptionTable, GC_Method,
+                                    TagsMethod, ArgsMethod, TypeInfoMethod,
+                                    PrologDialect),
+                                { Error = no }
+                            ;
+                                { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
+                            )
                         ;
                             { Error = yes("Invalid type-info option (must be `one-cell', `one-or-two-cell', `shared-one-or-two-cell' or `default')") }
                         )
@@ -140,11 +151,11 @@ postprocess_options(ok(OptionTable0), Error) -->
         ).
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method, args_method,
-	type_info_method, io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, di, uo) is det.
+	type_info_method, prolog_dialect, io__state, io__state).
+:- mode postprocess_options_2(in, in, in, in, in, in, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod) -->
+		TypeInfoMethod, PrologDialect) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
 	->
@@ -155,7 +166,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	{ copy(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod),
+		TypeInfoMethod, PrologDialect),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->

@@ -18,7 +18,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type task --->	update_proc(pred(
+:- type task(T)	--->	update_proc(pred(
 				proc_info, module_info, proc_info))
 		;	update_proc_error(pred(
 				pred_id, proc_id, module_info,
@@ -26,19 +26,29 @@
 				io__state, io__state))
 		;	update_module(pred(
 				proc_info, proc_info,
-				module_info, module_info)).
+				module_info, module_info))
+		;	update_module_cookie(pred(
+				pred_id, proc_id, proc_info, proc_info,
+				T, T, module_info, module_info),
+				T).
 
 :- inst task =	bound(( update_proc(pred(in, in, out) is det)
 		;	update_proc_error(pred(in, in, in, in, out, out, out,
 				di, uo) is det)
 		;	update_module(pred(in, out, in, out) is det)
+		;	update_module_cookie(pred(in, in, in, out, in, out,
+				in, out) is det, ground)
 		)).
 
 :- mode task ::	task -> task.
 
-:- pred process_all_nonimported_procs(task, module_info, module_info,
+:- pred process_all_nonimported_procs(task(T), module_info, module_info,
 	io__state, io__state).
 :- mode process_all_nonimported_procs(task, in, out, di, uo) is det.
+
+:- pred process_all_nonimported_procs(task(T), task(T),
+	module_info, module_info, io__state, io__state).
+:- mode process_all_nonimported_procs(task, out(task), in, out, di, uo) is det.
 
 :- pred write_pred_progress_message(string::in, pred_id::in, module_info::in,
 	io__state::di, io__state::uo) is det.
@@ -68,32 +78,39 @@
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	process__nonimported_procs_in_preds(PredIds, Task,
+	process__nonimported_procs_in_preds(PredIds, Task, _,
 		ModuleInfo0, ModuleInfo).
 
-:- pred process__nonimported_procs_in_preds(list(pred_id), task,
-	module_info, module_info, io__state, io__state).
-:- mode process__nonimported_procs_in_preds(in, task, in, out, di, uo) is det.
+process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
+	{ module_info_predids(ModuleInfo0, PredIds) },
+	process__nonimported_procs_in_preds(PredIds, Task0, Task,
+		ModuleInfo0, ModuleInfo).
 
-process__nonimported_procs_in_preds([], _, ModuleInfo, ModuleInfo) --> [].
-process__nonimported_procs_in_preds([PredId | PredIds], Task,
+:- pred process__nonimported_procs_in_preds(list(pred_id), task(T), task(T),
+	module_info, module_info, io__state, io__state).
+:- mode process__nonimported_procs_in_preds(in, task, out(task), in, out,
+	di, uo) is det.
+
+process__nonimported_procs_in_preds([], Task, Task, ModuleInfo, ModuleInfo)
+		--> [].
+process__nonimported_procs_in_preds([PredId | PredIds], Task0, Task,
 		ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	process__nonimported_procs(ProcIds, PredId, Task,
+	process__nonimported_procs(ProcIds, PredId, Task0, Task1,
 		ModuleInfo0, ModuleInfo1),
-	process__nonimported_procs_in_preds(PredIds, Task,
+	process__nonimported_procs_in_preds(PredIds, Task1, Task,
 		ModuleInfo1, ModuleInfo).
 
-:- pred process__nonimported_procs(list(proc_id), pred_id, task,
+:- pred process__nonimported_procs(list(proc_id), pred_id, task(T), task(T),
 	module_info, module_info, io__state, io__state).
-:- mode process__nonimported_procs(in, in, task, in, out, di, uo)
+:- mode process__nonimported_procs(in, in, task, out(task), in, out, di, uo)
 	is det.
 
-process__nonimported_procs([], _PredId, _Task,
+process__nonimported_procs([], _PredId, Task, Task,
 		ModuleInfo, ModuleInfo, State, State).
-process__nonimported_procs([ProcId | ProcIds], PredId, Task,
+process__nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		ModuleInfo0, ModuleInfo, State0, State) :-
 
 	module_info_preds(ModuleInfo0, Preds0),
@@ -102,20 +119,23 @@ process__nonimported_procs([ProcId | ProcIds], PredId, Task,
 	map__lookup(Procs0, ProcId, Proc0),
 
 	(
-		Task = update_module(Closure),
+		Task0 = update_module(Closure),
 		call(Closure, Proc0, Proc, ModuleInfo0, ModuleInfo8),
+		Task1 = Task0,
 		State9 = State0
 	;
-		Task = update_proc(Closure),
+		Task0 = update_proc(Closure),
 		call(Closure, Proc0, ModuleInfo0, Proc),
 		ModuleInfo8 = ModuleInfo0,
+		Task1 = Task0,
 		State9 = State0
 	;
-		Task = update_proc_error(Closure),
+		Task0 = update_proc_error(Closure),
 		call(Closure, PredId, ProcId, ModuleInfo0,
 			Proc0, Proc, WarnCnt, ErrCnt, State0, State1),
 		globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn,
 			State1, State9),
+		Task1 = Task0,
 		(
 			(
 				ErrCnt > 0
@@ -128,6 +148,12 @@ process__nonimported_procs([ProcId | ProcIds], PredId, Task,
 		;
 			ModuleInfo8 = ModuleInfo0
 		)
+	;
+		Task0 = update_module_cookie(Closure, Cookie0),
+		call(Closure, PredId, ProcId, Proc0, Proc,
+			Cookie0, Cookie1, ModuleInfo0, ModuleInfo8),
+		Task1 = update_module_cookie(Closure, Cookie1),
+		State9 = State0
 	),
 
 	map__set(Procs0, ProcId, Proc, Procs),
@@ -135,7 +161,7 @@ process__nonimported_procs([ProcId | ProcIds], PredId, Task,
 	map__set(Preds0, PredId, Pred, Preds),
 	module_info_set_preds(ModuleInfo8, Preds, ModuleInfo9),
 
-	process__nonimported_procs(ProcIds, PredId, Task,
+	process__nonimported_procs(ProcIds, PredId, Task1, Task,
 		ModuleInfo9, ModuleInfo, State9, State).
 
 write_pred_progress_message(Message, PredId, ModuleInfo) -->

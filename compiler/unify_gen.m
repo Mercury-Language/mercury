@@ -25,39 +25,37 @@
 	% Generate code for an assignment unification.
 	% (currently implemented as a cached assignment).
 :- pred unify_gen__generate_assignment(var, var, code_tree,
-							code_info, code_info).
+	code_info, code_info).
 :- mode unify_gen__generate_assignment(in, in, out, in, out) is det.
 
 	% Generate a construction unification
 :- pred unify_gen__generate_construction(var, cons_id,
-				list(var), list(uni_mode),
-					code_tree, code_info, code_info).
+	list(var), list(uni_mode), code_tree, code_info, code_info).
 :- mode unify_gen__generate_construction(in, in, in, in, out, in, out) is det.
 
 :- pred unify_gen__generate_det_deconstruction(var, cons_id,
-				list(var), list(uni_mode),
-					code_tree, code_info, code_info).
+	list(var), list(uni_mode), code_tree, code_info, code_info).
 :- mode unify_gen__generate_det_deconstruction(in, in, in, in, out,
-							in, out) is det.
+	in, out) is det.
 
 :- pred unify_gen__generate_semi_deconstruction(var, cons_id,
-				list(var), list(uni_mode),
-					code_tree, code_info, code_info).
-:- mode unify_gen__generate_semi_deconstruction(in, in, in, in, out,
-							in, out) is det.
+	list(var), list(uni_mode), code_tree, code_info, code_info).
+:- mode unify_gen__generate_semi_deconstruction(in, in, in, in, out, in, out)
+	is det.
 
 :- pred unify_gen__generate_test(var, var, code_tree, code_info, code_info).
 :- mode unify_gen__generate_test(in, in, out, in, out) is det.
 
 :- pred unify_gen__generate_tag_test(var, cons_id, label, code_tree,
-						code_info, code_info).
+	code_info, code_info).
 :- mode unify_gen__generate_tag_test(in, in, out, out, in, out) is det.
 
 :- pred unify_gen__generate_tag_rval(var, cons_id, rval, code_tree,
-						code_info, code_info).
+	code_info, code_info).
 :- mode unify_gen__generate_tag_rval(in, in, out, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds_module, hlds_pred, prog_data.
@@ -467,8 +465,8 @@ unify_gen__generate_cons_args_2([Var|Vars], ModuleInfo, [UniMode | UniModes],
 	% a term with variables.
 
 unify_gen__make_fields_and_argvars([], _, _, _, [], []).
-unify_gen__make_fields_and_argvars([Var|Vars], Rval, Field0, TagNum,
-							[F|Fs], [A|As]) :-
+unify_gen__make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
+		[F | Fs], [A | As]) :-
 	F = lval(field(TagNum, Rval, const(int_const(Field0)))),
 	A = ref(Var),
 	Field1 is Field0 + 1,
@@ -481,7 +479,7 @@ unify_gen__make_fields_and_argvars([Var|Vars], Rval, Field0, TagNum,
 	% need to generate a test.
 
 	% Deconstructions are generated semi-eagerly. Any test sub-
-	% unifications are generate eagerly (they _must_ be), but
+	% unifications are generated eagerly (they _must_ be), but
 	% assignment unifications are cached.
 
 unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
@@ -516,20 +514,18 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 		)
 	;
 		{ Tag = simple_tag(SimpleTag) },
-		code_info__produce_variable(Var, CodeA, Rval),
+		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 0,
-						SimpleTag, Fields, ArgVars) },
+			SimpleTag, Fields, ArgVars) },
 		unify_gen__generate_det_unify_args(Fields, ArgVars,
-								Modes, CodeB),
-		{ Code = tree(CodeA, CodeB) }
+			Modes, Code)
 	;
 		{ Tag = complicated_tag(Bits0, _Num0) },
-		code_info__produce_variable(Var, CodeA, Rval),
+		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 1,
-						Bits0, Fields, ArgVars) },
+			Bits0, Fields, ArgVars) },
 		unify_gen__generate_det_unify_args(Fields, ArgVars,
-								Modes, CodeB),
-		{ Code = tree(CodeA, CodeB) }
+			Modes, Code)
 	;
 		{ Tag = complicated_constant_tag(_Bits1, _Num1) },
 		{ Code = empty } % if this is det, then nothing happens

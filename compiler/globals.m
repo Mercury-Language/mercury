@@ -40,6 +40,11 @@
 	;	one_or_two_cell
 	;	shared_one_or_two_cell.
 
+:- type prolog_dialect
+	--->	default
+	;	nu
+	;	sicstus.
+
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
@@ -49,12 +54,15 @@
 :- pred convert_type_info_method(string::in, option_table::in,
 	type_info_method::out) is semidet.
 
+:- pred convert_prolog_dialect(string::in, prolog_dialect::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for the `globals' structure.
 
 :- pred globals__init(option_table::di, gc_method::di, tags_method::di,
-	args_method::di, type_info_method::di, globals::uo) is det.
+	args_method::di, type_info_method::di, prolog_dialect::di, globals::uo)
+	is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
@@ -62,6 +70,7 @@
 :- pred globals__get_args_method(globals::in, args_method::out) is det.
 :- pred globals__get_type_info_method(globals::in, type_info_method::out)
 	is det.
+:- pred globals__get_prolog_dialect(globals::in, prolog_dialect::out) is det.
 
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
 	is det.
@@ -72,6 +81,8 @@
 :- pred globals__set_args_method(globals::in, args_method::in, globals::out)
 	is det.
 :- pred globals__set_type_info_method(globals::in, type_info_method::in,
+	globals::out) is det.
+:- pred globals__set_prolog_dialect(globals::in, prolog_dialect::in,
 	globals::out) is det.
 
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
@@ -92,8 +103,8 @@
 	% io__state using io__set_globals and io__get_globals.
 
 :- pred globals__io_init(option_table::di, gc_method::in, tags_method::in,
-	args_method::in, type_info_method::in, io__state::di, io__state::uo)
-	is det.
+	args_method::in, type_info_method::in, prolog_dialect::in,
+	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_gc_method(gc_method::out,
 	io__state::di, io__state::uo) is det.
@@ -105,6 +116,9 @@
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_type_info_method(type_info_method::out,
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_get_prolog_dialect(prolog_dialect::out,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_globals(globals::out, io__state::di, io__state::uo)
@@ -181,6 +195,20 @@ convert_type_info_method("default", OptionTable, Method) :-
 		Method = one_cell
 	).
 
+convert_prolog_dialect("default", default).
+convert_prolog_dialect("nu", nu).
+convert_prolog_dialect("NU", nu).
+convert_prolog_dialect("nuprolog", nu).
+convert_prolog_dialect("NUprolog", nu).
+convert_prolog_dialect("nu-prolog", nu).
+convert_prolog_dialect("NU-Prolog", nu).
+convert_prolog_dialect("sicstus", sicstus).
+convert_prolog_dialect("Sicstus", sicstus).
+convert_prolog_dialect("SICStus", sicstus).
+convert_prolog_dialect("sicstus-prolog", sicstus).
+convert_prolog_dialect("Sicstus-Prolog", sicstus).
+convert_prolog_dialect("SICStus-Prolog", sicstus).
+
 %-----------------------------------------------------------------------------%
 
 :- type globals
@@ -189,29 +217,36 @@ convert_type_info_method("default", OptionTable, Method) :-
 			gc_method,
 			tags_method,
 			args_method,
-			type_info_method
+			type_info_method,
+			prolog_dialect
 		).
 
-globals__init(Options, GC_Method, TagsMethod, ArgsMethod, TypeInfoMethod,
-	globals(Options, GC_Method, TagsMethod, ArgsMethod, TypeInfoMethod)).
+globals__init(Options, GC_Method, TagsMethod, ArgsMethod,
+		TypeInfoMethod, PrologDialect,
+	globals(Options, GC_Method, TagsMethod, ArgsMethod,
+		TypeInfoMethod, PrologDialect)).
 
-globals__get_options(globals(Options, _, _, _, _), Options).
-globals__get_gc_method(globals(_, GC_Method, _, _, _), GC_Method).
-globals__get_tags_method(globals(_, _, TagsMethod, _, _), TagsMethod).
-globals__get_args_method(globals(_, _, _, ArgsMethod, _), ArgsMethod).
-globals__get_type_info_method(globals(_, _, _, _, TypeInfoMethod),
+globals__get_options(globals(Options, _, _, _, _, _), Options).
+globals__get_gc_method(globals(_, GC_Method, _, _, _, _), GC_Method).
+globals__get_tags_method(globals(_, _, TagsMethod, _, _, _), TagsMethod).
+globals__get_args_method(globals(_, _, _, ArgsMethod, _, _), ArgsMethod).
+globals__get_type_info_method(globals(_, _, _, _, TypeInfoMethod, _),
 	TypeInfoMethod).
+globals__get_prolog_dialect(globals(_, _, _, _, _, PrologDialect),
+	PrologDialect).
 
-globals__set_options(globals(_, B, C, D, E), Options,
-	globals(Options, B, C, D, E)).
-globals__set_gc_method(globals(A, _, C, D, E), GC_Method,
-	globals(A, GC_Method, C, D, E)).
-globals__set_tags_method(globals(A, B, _, D, E), TagsMethod,
-	globals(A, B, TagsMethod, D, E)).
-globals__set_args_method(globals(A, B, C, _, E), ArgsMethod,
-	globals(A, B, C, ArgsMethod, E)).
-globals__set_type_info_method(globals(A, B, C, D, _), TypeInfoMethod,
-	globals(A, B, C, D, TypeInfoMethod)).
+globals__set_options(globals(_, B, C, D, E, F), Options,
+	globals(Options, B, C, D, E, F)).
+globals__set_gc_method(globals(A, _, C, D, E, F), GC_Method,
+	globals(A, GC_Method, C, D, E, F)).
+globals__set_tags_method(globals(A, B, _, D, E, F), TagsMethod,
+	globals(A, B, TagsMethod, D, E, F)).
+globals__set_args_method(globals(A, B, C, _, E, F), ArgsMethod,
+	globals(A, B, C, ArgsMethod, E, F)).
+globals__set_type_info_method(globals(A, B, C, D, _, F), TypeInfoMethod,
+	globals(A, B, C, D, TypeInfoMethod, F)).
+globals__set_prolog_dialect(globals(A, B, C, D, E, _), PrologDialect,
+	globals(A, B, C, D, E, PrologDialect)).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),
@@ -254,13 +289,15 @@ globals__lookup_accumulating_option(Globals, Option, Value) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-globals__io_init(Options, GC_Method, TagsMethod, ArgsMethod, TypeInfoMethod) -->
+globals__io_init(Options, GC_Method, TagsMethod, ArgsMethod,
+		TypeInfoMethod, PrologDialect) -->
 	{ copy(GC_Method, GC_Method1) },
 	{ copy(TagsMethod, TagsMethod1) },
 	{ copy(ArgsMethod, ArgsMethod1) },
 	{ copy(TypeInfoMethod, TypeInfoMethod1) },
+	{ copy(PrologDialect, PrologDialect1) },
 	{ globals__init(Options, GC_Method1, TagsMethod1, ArgsMethod1,
-		TypeInfoMethod1, Globals) },
+		TypeInfoMethod1, PrologDialect1, Globals) },
 	globals__io_set_globals(Globals).
 
 globals__io_get_gc_method(GC_Method) -->
@@ -278,6 +315,10 @@ globals__io_get_args_method(ArgsMethod) -->
 globals__io_get_type_info_method(TypeInfoMethod) -->
 	globals__io_get_globals(Globals),
 	{ globals__get_type_info_method(Globals, TypeInfoMethod) }.
+
+globals__io_get_prolog_dialect(PrologDIalect) -->
+	globals__io_get_globals(Globals),
+	{ globals__get_prolog_dialect(Globals, PrologDIalect) }.
 
 globals__io_get_globals(Globals) -->
 	io__get_globals(UnivGlobals),
