@@ -95,7 +95,7 @@ do
 
 		if test -s Deep.data
 		then
-			mv Deep.data ../batch/`basename $file .gz`.run$count
+			mv Deep.data ../batch/Deep.data.`basename $file .gz`.run$count
 		fi
 
 		count=`expr $count + 1`
