@@ -176,6 +176,24 @@ ORDINARY_PROGS=	\
 	write_reg1 \
 	write_reg2
 
+# Tests of the C#, MC++, and IL foreign language interfaces only
+# work in IL grades
+ifeq "$(filter il%,$(GRADE))" ""
+	DOTNET_PROGS =
+else
+	DOTNET_PROGS = \
+		csharp_test
+endif
+
+# Tests of the Java foreign language interface only
+# work in IL grades
+ifeq "$(filter java%,$(GRADE))" ""
+	JAVA_PROGS =
+else
+	JAVA_PROGS = \
+		java_test
+endif
+
 # Fact tables current only work in the C grades.
 ifeq "$(filter il% java%,$(GRADE))" ""
 FACTT_PROGS= \
@@ -230,8 +248,6 @@ endif
 # XXX var_not_found -- mode error in automatically generated unification
 #		predicate.  This test uses partially instantiated modes,
 #		which are not yet fully supported.
-#
-# XXX csharp_test doesn't work yet (not even in il* grades)
 #
 # XXX needs_init doesn't work yet in profiling grades.
 #
@@ -329,16 +345,17 @@ ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	endif
 endif
 
-# We currently don't do any testing in grade java on this directory.
+# We currently don't do any testing in grade java on this directory,
+# except for java_test.m.
 ifneq "$(findstring java,$(GRADE))" ""
-	PROGS =
+	PROGS = $(JAVA_PROGS)
 else
 	PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 		$(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
 		$(CHAR_REP_PROGS) $(BROKEN_FOR_PROFDEEP)  \
-		$(FACTT_PROGS)
+		$(FACTT_PROGS) $(DOTNET_PROGS) $(JAVA_PROGS)
 endif
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),

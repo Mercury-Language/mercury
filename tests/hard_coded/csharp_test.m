@@ -23,7 +23,8 @@ main -->
 
 :- pragma(foreign_proc, "C#",
 	csharp_write_string(Message::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	// a C sharp procedure
+	Console.WriteLine(Message);
 ").

@@ -1635,7 +1635,7 @@ The arguments of constructor definitions may be labelled.
 These labels cause the compiler to generate functions which can
 be used to conveniently select and update fields of a term
 in a manner independent of the definition of the type
-(@pxref{Field access functions}). A labelled argument is of the
+(@pxref{Field access functions}). A labelled argument has the
 form @w{@code{@var{fieldname} :: @var{Type}}}. It is an error for
 two fields in the same module to have the same label.
 
@@ -4645,7 +4645,7 @@ Mercury allows a type class constraint to appear as part of a predicate or
 function's type signature.  This constrains the values that can be taken
 by type variables in the signature to belong to particular type classes.
 
-A type class constraint is of the form:
+A type class constraint has the form:
 
 @example
         <= @var{Typeclass}(@var{Type}, @dots{}), @dots{}
@@ -5572,6 +5572,7 @@ to the foreign language's parameter passing convention.
 @menu
 * C data passing conventions ::
 * IL and C# data passing conventions ::
+* Java data passing conventions ::
 @end menu
 
 @node C data passing conventions
@@ -5632,10 +5633,69 @@ and the function result has an output mode,
 then the IL function should return the Mercury function result value.
 Otherwise the function result is appended as an extra argument.
 Arguments of type @samp{io__state} or @samp{store__store(_)} are not
-passed at all;
-that's because these types represent mutable state, and in IL
-modifications to mutable state are done via side effects,
-rather than argument passing.
+passed or returned at all.
+(The reason for this is that these types represent mutable state,
+and in IL modifications to mutable state are done via side effects,
+rather than argument passing.)
+
+@node Java data passing conventions
+@subsection Java data passing conventions
+
+The Mercury types @code{int}, @code{float}, @code{char},
+and @code{string} are mapped to the Java types 
+@code{int}, @code{double}, @code{char} and
+@code{java.lang.String} respectively.
+
+Mercury variables whose type is a type variable will be passed as
+@code{java.lang.Object}.
+Mercury array types are mapped to Java array types.
+When compiling with @samp{--no-high-level-data}, all other Mercury variables
+are passed as @code{java.lang.Object[]}.
+When compiling with @samp{--high-level-data},
+Mercury variables whose type is a Mercury discriminated union type
+will be passed as a Java type whose type name is determined from
+the Mercury type name (ignoring any type parameters) followed by
+an underscore and then the type arity,
+expressed as a decimal integer.
+Mercury module qualifiers are converted to Java namespace qualifiers.
+For example the Mercury type @samp{foo__bar__baz/1} will be passed as the Java
+type @samp{foo.bar.baz_1}.
+Note an extra namespace qualifier, @samp{mercury}, will be prepended to the
+beginning of names residing in the Mercury standard library.
+Mercury variables whose type is a Mercury equivalence type
+will be passed as the representation of the right hand side of the
+equivalence type.
+
+This mapping is subject to change and you should try to avoid writing
+code that relies heavily upon a particular representation of Mercury
+terms.
+
+Mercury arguments declared with input modes are passed by value to the
+corresponding Java function.  If the Mercury procedure is a function
+whose result has an input mode, then the Mercury function result is
+appended to the list of input parameters, so that the Mercury function
+result becomes the last parameter to the corresponding Java function.
+
+The result of the Java function will be a sequence comprised of
+the outputs of the Mercury procedure.  If the Mercury procedure's
+determinism indicates that it can fail, then its first output will
+be a @samp{boolean} success indicator, with a @samp{true} value
+denoting success and a @samp{false} value denoting failure. The
+remaining outputs will be the subsequence of the Mercury procedure's
+arguments and function result (if any) that have output modes.            
+ 
+If the sequence has length zero then the return type of the
+Java function is @samp{void}.
+If the sequence has length one then the return type of the
+Java function is the type of the item in question.
+Otherwise, the Java function will return an array of type
+@samp{java.lang.Object[]}.
+                                                                                
+Arguments of type @samp{io__state} or @samp{store__store(_)} are not
+passed or returned at all.
+(The reason for this is that these types represent mutable state,
+and in Java modifications to mutable state are done via side effects,
+rather than argument passing.)
 
 @c -----------------------------------------------------------------------
 
@@ -5746,8 +5806,8 @@ tells the implementation that @file{@var{ImportedModule}.mh} must be built
 before the object file for the module containing the
 @samp{pragma foreign_import_module} declaration.
 
-A cycle of @samp{pragma foreign_import_module}, where the language is either
-@samp{"MC++"} or @samp{"C#"}, is not permitted.
+A cycle of @samp{pragma foreign_import_module}, where the language is
+@samp{"MC++"}, @samp{"C#"}, or @samp{"Java"}, is not permitted.
 
 @node Adding foreign definitions
 @section Adding foreign definitions
@@ -5775,10 +5835,13 @@ foreign language and occur in the same Mercury module.
 @node Language specific bindings
 @section Language specific bindings
 
+@c Please keep this menu in alphabetical order
+
 @menu
 * Interfacing with C 		:: How to write code to interface with C
 * Interfacing with C# 		:: How to write code to interface with C#
 * Interfacing with IL 		:: How to write code to interface with IL
+* Interfacing with Java 	:: How to write code to interface with Java
 * Interfacing with Managed C++ 	:: How to write code to interface with
   				   Managed C++
 @end menu
@@ -5800,11 +5863,14 @@ Use the string @code{"C"} to set the foreign language to C.
 
 @item @samp{C#}
 Use the string @code{"C#"} to set the foreign language to C#.
-
+      
 @item @samp{IL}
 Use the string @code{"IL"} to set the foreign language to IL.
 IL (sometimes also known as CIL or MSIL) is the Intermediate Language
 for the .NET Common Language Runtime.
+
+@item @samp{Java}
+Use the string @code{"Java"} to set the foreign language to Java.
 
 @item @samp{Managed C++}
 Use the string @code{"MC++"} to set the foreign language to Managed C++.
@@ -5844,7 +5910,7 @@ declared a label, inlining it in this way could result in an error due
 to the same label being defined twice inside a single C function.
 
 C code in a @code{pragma foreign_proc} declaration
-for any procedure whose determinism indicates that it could fail
+for any procedure whose determinism indicates that it can fail
 must assign a truth value to the macro @samp{SUCCESS_INDICATOR}.
 For example:
 
@@ -5867,8 +5933,8 @@ should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the C code.  If the procedure
-succeeds, the C code must set the values of all output arguments
-before returning.  If the procedure fails, the C code need only
+succeeds, the C code must set the values of all output arguments.
+If the procedure fails, the C code need only
 set @code{SUCCESS_INDICATOR} to false (zero).
 
 @node Using pragma foreign_decl for C
@@ -5950,10 +6016,10 @@ Such code is copied verbatim into the generated C file.
 @node Using pragma foreign_type for C
 @subsubsection Using pragma foreign_type for C
 
-The C @samp{pragma foreign_type} declaration is of the form:
+A C @samp{pragma foreign_type} declaration has the form:
 
 @example
-:- pragma foreign_type(c, @var{MercuryTypeName}, @var{CForeignType}).
+:- pragma foreign_type("C", @var{MercuryTypeName}, @var{CForeignType}).
 @end example
 
 The @var{CForeignType} can be any C type name that obeys the following
@@ -5965,10 +6031,8 @@ type, that no part of the type name is required after the variable name.
 @samp{void (*)(void)}.  However, it would be OK to use a typedef name
 which was defined as a function pointer type.)
 
-@c XXX No point documenting this until `--gc accurate'
-@c     is officially supported.
-@c With @samp{--gc accurate}, foreign_types which are C pointer types
-@c must not point to the Mercury heap.
+@strong{With @samp{--gc accurate}, foreign_types which are C pointer types
+must not point to the Mercury heap.}
 
 If the @var{MercuryTypeName} is the type of a parameter of a procedure
 defined using @samp{pragma foreign_proc},
@@ -6021,9 +6085,9 @@ for mapping Mercury types to C# types are described in
 @ref{IL and C# data passing conventions}.
 
 C# code in a @code{pragma foreign_proc} declaration
-for any procedure whose determinism indicates that it could fail
-must assign a value of type bool to the variable @samp{SUCCESS_INDICATOR}.
-For example:
+for any procedure whose determinism indicates that it can fail
+must assign a value of type @samp{bool} to the variable
+@samp{SUCCESS_INDICATOR}.  For example:
 
 @example
 :- pred string__contains_char(string, character).
@@ -6041,8 +6105,8 @@ should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the C# code.  If the procedure
-succeeds, the C# code must set the values of all output arguments
-before returning.  If the procedure fails, the C# code need only
+succeeds, the C# code must set the values of all output arguments.
+If the procedure fails, the C# code need only
 set @code{SUCCESS_INDICATOR} to false.
 
 @node Using pragma foreign_decl for C#
@@ -6060,7 +6124,7 @@ For example:
 	using System;
 ").
 :- pred hello(io__state::di, io__state::uo) is det.
-:- pragma foreign_decl("C#",
+:- pragma foreign_proc("C#",
 	hello(_IO0::di, _IO::uo),
 	[will_not_call_mercury],
 "
@@ -6112,10 +6176,10 @@ For example:
 @node Using pragma foreign_type for IL
 @subsubsection Using pragma foreign_type for IL
 
-The IL @samp{pragma foreign_type} declaration is of the form:
+The IL @samp{pragma foreign_type} declaration has the form:
 
 @example
-:- pragma foreign_type(il, @var{MercuryTypeName}, @var{DotNetForeignType}).
+:- pragma foreign_type("IL", @var{MercuryTypeName}, @var{DotNetForeignType}).
 @end example
 
 If the @var{MercuryTypeName} is the type of a parameter of a procedure
@@ -6148,9 +6212,11 @@ For example:
 
 @example
 :- type xmldoc.
-:- pragma foreign_type(il, xmldoc, "class [System.Xml]System.Xml.XmlDocument").
+:- pragma foreign_type("IL", xmldoc,
+	"class [System.Xml]System.Xml.XmlDocument").
 :- type int32.
-:- pragma foreign_type(il, int32, "valuetype [mscorlib]System.Int32").
+:- pragma foreign_type("IL", int32,
+	"valuetype [mscorlib]System.Int32").
 @end example
 
 ensures that on the .NET CLR backend the Mercury type @samp{xmldoc} is
@@ -6182,7 +6248,7 @@ The stack must be empty at the end of the IL code.
 
 @example
 :- pred add(int::in, int::in, int::out) det.
-:- pragma foreign_proc("il", add(X::in, Y::in, Z::out), [max_stack_size(2)], "
+:- pragma foreign_proc("IL", add(X::in, Y::in, Z::out), [max_stack_size(2)], "
 	ldloc X
 	ldloc Y
 	add
@@ -6190,19 +6256,19 @@ The stack must be empty at the end of the IL code.
 ").
 @end example
 
-IL code for procedures whose determinism indicates they could fail 
+IL code for procedures whose determinism indicates they can fail 
 is currently not supported.
 
 @c XXX document how semidet works -- but get it working first.
 @c
 @c The IL code in a @code{pragma foreign_proc} declaration
-@c for any procedure whose determinism indicates that it could fail
+@c for any procedure whose determinism indicates that it can fail
 @c must assign a truth value to the local variable @samp{SUCCESS_INDICATOR}.
 @c For example:
 @c
 @c @example
 @c :- pred same(int::in, int::in) is semidet.
-@c :- pragma foreign_proc("il", same(X::in, Y::in), [max_stack_size(2)], "
+@c :- pragma foreign_proc("IL", same(X::in, Y::in), [max_stack_size(2)], "
 @c 	ldloc X
 @c 	ldloc Y
 @c 	ceq
@@ -6212,8 +6278,7 @@ is currently not supported.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the IL code.  If the procedure
-succeeds, the IL code must set the values of all output arguments
-before returning. 
+succeeds, the IL code must set the values of all output arguments.
 
 @c If the procedure fails, the IL code need only
 @c set @code{success} to false (zero).
@@ -6232,6 +6297,143 @@ Runtime types as specified in @ref{IL and C# data passing conventions}.
 
 @samp{pragma foreign_code} is currently not supported for IL.
 @c XXX
+
+@c ----------------------------------------------------------------------------
+
+@node Interfacing with Java
+@subsection Interfacing with Java
+
+@menu
+* Using pragma foreign_type for Java :: Declaring Java types in Mercury
+* Using pragma foreign_proc for Java :: Calling Java code from Mercury
+* Using pragma foreign_decl for Java :: Including Java declarations in Mercury
+* Using pragma foreign_code for Java :: Including Java code in Mercury
+@end menu
+
+@node Using pragma foreign_type for Java
+@subsubsection Using pragma foreign_type for Java
+
+A Java @samp{pragma foreign_type} declaration has the form:
+
+@example
+:- pragma foreign_type("Java", @var{MercuryTypeName}, @var{JavaType}).
+@end example
+
+The @var{JavaType} can be any accessible Java type.
+
+The effect of this declaration is that Mercury values of type
+@var{MercuryTypeName} will be passed to and from Java foreign_procs
+as having type @var{JavaType}.
+
+@c XXX `pragma export' not supported yet for Java
+@c Furthermore, any Mercury procedure exported with @samp{pragma export}
+@c will use @var{JavaType} as the type for any
+@c parameters whose Mercury type is @var{MercuryTypeName}.
+
+@node Using pragma foreign_proc for Java
+@subsubsection Using pragma foreign_proc for Java
+
+The Java code from Java pragma foreign_proc declarations will be placed in
+the bodies of static member functions of an automatically-generated Java class.
+Since such Java code will become part of a static member function,
+it must not refer to the @samp{this} keyword.
+It may however refer to static member variables or static member
+functions declared with @samp{pragma foreign_code}.
+
+The input and output variables for a Java @samp{pragma foreign_proc} will
+have Java types corresponding to their Mercury types.  The exact rules
+for mapping Mercury types to Java types are described in
+@ref{Java data passing conventions}.
+
+The Java code in a @code{pragma foreign_proc} declaration
+for a procedure whose determinism indicates that it can fail
+must assign a value of type @samp{boolean} to the variable
+@samp{succeeded}.  For example:
+
+@example
+:- pred string__contains_char(string, character).
+:- mode string__contains_char(in, in) is semidet.
+
+:- pragma foreign_proc("Java",
+	string__contains_char(Str::in, Ch::in),
+        [will_not_call_mercury, promise_pure],
+        "succeeded = (Str.IndexOf(Ch) != -1);").
+@end example
+
+@noindent
+Java code for procedures whose determinism indicates that they cannot fail
+should not refer to the @code{succeeded} variable.
+
+Arguments whose mode is input will have their values set by the
+Mercury implementation on entry to the Java code.
+With our current implementation, the Java code must set the values
+of all output variables, even if the procedure fails
+(i.e. sets the @samp{succeeded} variable to @code{false}).
+@c If the procedure
+@c succeeds, the Java code must set the values of all output arguments
+@c If the procedure fails, the Java code need only
+@c set the @code{succeeded} variable to false.
+
+@node Using pragma foreign_decl for Java
+@subsubsection Using pragma foreign_decl for Java
+
+@samp{pragma foreign_decl} declarations for Java can be used to provide
+any top-level Java declarations (e.g.@: @samp{import} declarations
+or auxiliary class definitions) which are needed by Java code in
+@samp{pragma foreign_proc} declarations in that module.
+
+For example:
+
+@example
+:- pragma foreign_decl("Java", "
+import javax.swing.*;
+import java.awt.*;
+
+class MyApplet extends JApplet @{
+    public void init() @{
+        JLabel label = new JLabel(""Hello, world"");
+        label.setHorizontalAlignment(JLabel.CENTER);
+        getContentPane().add(label);
+    @}
+@}
+").
+:- pred hello(io__state::di, io__state::uo) is det.
+:- pragma foreign_proc("Java",
+	hello(_IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	MyApplet app = new MyApplet();
+	// ...
+").
+@end example
+
+@node Using pragma foreign_code for Java
+@subsubsection Using pragma foreign_code for Java
+
+The Java code from @samp{pragma foreign_proc} declarations for Java will be
+placed in the bodies of static member functions of an
+automatically-generated Java class.  @samp{pragma foreign_code}
+can be used to define additional members of this automatically-generated
+class, which can then be referenced by @samp{pragma foreign_proc}
+declarations for Java from that module.
+
+For example:
+
+@example
+:- pragma foreign_code("Java", "
+	static int counter = 0;
+").
+
+:- impure pred incr_counter is det.
+:- pragma foreign_proc("Java", incr_counter,
+	[will_not_call_mercury], "counter++;").
+
+:- semipure func get_counter = int.
+:- pragma foreign_proc("Java",
+	get_counter = (Result::out),
+	[will_not_call_mercury, promise_semipure],
+	"Result = counter;").
+@end example
 
 @c ----------------------------------------------------------------------------
 
@@ -6271,9 +6473,9 @@ for mapping Mercury types to IL (@pxref{IL and C# data passing conventions})
 and the rules relating IL types to MC++ types.
 
 MC++ code in a @code{pragma foreign_proc} declaration
-for any procedure whose determinism indicates that it could fail
-must assign a value of type bool to the variable @samp{SUCCESS_INDICATOR}.
-For example:
+for any procedure whose determinism indicates that it can fail
+must assign a value of type @samp{bool} to the variable
+@samp{SUCCESS_INDICATOR}.  For example:
 
 @example
 :- pred string__contains_char(string, character).
@@ -6290,8 +6492,8 @@ should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the MC++ code.  If the procedure
-succeeds, the MC++ code must set the values of all output arguments
-before returning.  If the procedure fails, the MC++ code need only
+succeeds, the MC++ code must set the values of all output arguments.
+If the procedure fails, the MC++ code need only
 set @code{SUCCESS_INDICATOR} to false.
 
 @node Using pragma foreign_decl for MC++
@@ -6515,7 +6717,7 @@ This allows the compiler to use a slightly more efficient calling convention.
 then the behaviour is undefined --- your program may misbehave or crash.)
 
 The C code in a @code{pragma c_code} declaration
-for any procedure whose determinism indicates that it could fail
+for any procedure whose determinism indicates that it can fail
 must assign a truth value to the macro @samp{SUCCESS_INDICATOR}.
 For example:
 
@@ -6537,8 +6739,8 @@ should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the C code.  If the procedure
-succeeds, the C code must set the values of all output arguments
-before returning.  If the procedure fails, the C code need only
+succeeds, the C code must set the values of all output arguments.
+If the procedure fails, the C code need only
 set @code{SUCCESS_INDICATOR} to false (zero).
 
 @node Nondet pragma c_code
@@ -6875,9 +7077,9 @@ the function result has an output mode, then the C interface
 function will return the Mercury function result value.
 Otherwise the function result is appended as an extra argument.
 Arguments of type @samp{io__state} or @samp{store__store(_)}
-are not passed at all; that's because these types represent mutable state,
-and in C modifications to mutable state are done via side effects,
-rather than argument passing.
+are not passed at all.  (The reason for this is that these types
+represent mutable state, and in C modifications to mutable state
+are done via side effects, rather than argument passing.)
 
 Calling polymorphically typed Mercury procedures from C is a little bit
 more difficult than calling ordinary (monomorphically typed) Mercury procedures.
@@ -6987,10 +7189,10 @@ and the function result has an output mode,
 then the C function should return the Mercury function result value.
 Otherwise the function result is appended as an extra argument.
 Arguments of type @samp{io__state} or @samp{store__store(_)} are not
-passed at all;
-that's because these types represent mutable state,
+passed at all.
+(The reason for this is that these types represent mutable state,
 and in C modifications to mutable state are done via side effects,
-rather than argument passing.
+rather than argument passing.)
 
 @c XXX foreign type should be documented here.
 
@@ -7984,6 +8186,8 @@ when the called type class methods are simple enough to be inlined.
 The University of Melbourne Mercury compiler performs user-requested type
 specializations when invoked with @samp{--user-guided-type-specialization},
 which is enabled at optimization level @samp{-O2} or higher.
+However, for the Java back-end, user-requested type specializations
+are ignored.
 
 @node Obsolescence
 @section Obsolescence
@@ -8056,35 +8260,6 @@ idea to use @samp{pragma source_file} and @samp{#@var{line}} directives
 to reset the source file name and line number to point back to the
 generated file for the automatically generated text, as in the above
 example.
-
-@c * Interfacing::                 Pragmas can be used to ease interfacing
-@c                                 with other languages.
-
-@c @node Interfacing
-@c @section Interfacing
-@c 
-@c A declaration of the form
-@c 
-@c @example
-@c :- pragma foreign_type(xmldoc, 'System__Xml__XmlDocument', il("System.Xml")).
-@c @end example
-@c 
-@c ensures that on the IL backend the mercury type @samp{xmldoc} is
-@c represented by the backend as a @samp{System.Xml.XmlDocument}.  This
-@c avoids the need to marshall values when interfacing with libraries
-@c written in other languages.  The following example shows how to do this
-@c interfacing.
-@c 
-@c @example
-@c :- pred loadxml(string::in, xmldoc::di, xmldoc::uo) is det.
-@c 
-@c :- pragma foreign_proc("C#", load(String::in, XML0::di, XML::uo),
-@c         [will_not_call_mercury],
-@c "
-@c     XML0.LoadXml(String);
-@c     XML = XML0;
-@c ").
-@c @end example
 
 @node Implementation-dependent extensions
 @chapter Implementation-dependent extensions
