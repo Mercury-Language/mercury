@@ -46,7 +46,9 @@ without reference to the module's implementation section.
 
 Each predicate other than trivial access predicates should have
 a short comment describing what the predicate is supposed to do,
-and what the meaning of the arguments is.
+and what the meaning of the arguments is.  Ideally this description
+should also note any conditions under which the predicate can fail
+or throw an exception.
 
 <p>
 
@@ -187,6 +189,10 @@ if --optimize-constant-propagation is enabled (i.e. at -O3 or higher).
 
 <p>
 
+Predicates that have only one mode should use predmode declarations
+rather than having a separate mode declaration.
+
+<p>
 If-then-elses should always be parenthesized,
 except that an if-then-else that occurs as the else
 part of another if-then-else doesn't need to be parenthesized.
@@ -362,6 +368,40 @@ can also be used to indicate divisions into major sections.
 Note that these dividing lines should not exceed the 79 character limit
 (see above).
 
+<h2> Standard Library Predicates </h2>
+
+The descriptive comment for any predicate or function that occurs in
+the interface of a standard library module must be positioned above
+the predicate/function declaration.  It should be formatted like
+the following example: 
+
+<pre>
+
+		% Description of predicate foo.
+		%
+	:- pred foo(...
+	:- mode foo(...
+</pre>
+
+A group of related predicate, mode and function declarations may be grouped
+together under a single description provided that it is formatted as above. 
+
+For example
+
+<pre>
+	
+		% Insert a new key and corresponding value into a map.
+		% Fail if the key already exists.
+		%
+	:- pred map.insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
+	:- func map.insert(map(K, V), K, V) = map(K, V).
+
+</pre>
+
+The reason for using this particular style is that the reference manual for
+the standard library is automatically generated from the module interfaces
+and we want, as much as is possible, to maintain a uniform appearance.
+
 <h2> Testing </h2>
 
 <p>
@@ -402,6 +442,6 @@ contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2004-01-12 12:06:31 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2004-04-05 13:45:51 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>
