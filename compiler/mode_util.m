@@ -194,6 +194,11 @@
 :- pred get_arg_lives(list(mode), module_info, list(is_live)).
 :- mode get_arg_lives(in, in, out) is det.
 
+	% Predicate to make error messages more readable by stripping
+	% "mercury_builtin" module qualifiers from modes.
+:- pred strip_builtin_qualifiers_from_mode_list(list(mode)::in,
+						list(mode)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1373,5 +1378,95 @@ get_arg_lives([Mode|Modes], ModuleInfo, [IsLive|IsLives]) :-
 		IsLive = live
 	),
 	get_arg_lives(Modes, ModuleInfo, IsLives).
+
+%-----------------------------------------------------------------------------%
+
+	% 
+	% Predicates to make error messages more readable by stripping
+	% "mercury_builtin" module qualifiers from modes and insts.
+	% The interesting part is strip_builtin_qualifier_from_sym_name;
+	% the rest is basically just recursive traversals.
+	%
+
+strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
+	list__map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
+
+:- pred strip_builtin_qualifiers_from_mode((mode)::in, (mode)::out) is det.
+
+strip_builtin_qualifiers_from_mode(Initial0 -> Final0, Initial -> Final) :-
+	strip_builtin_qualifiers_from_inst(Initial0, Initial),
+	strip_builtin_qualifiers_from_inst(Final0, Final).
+
+strip_builtin_qualifiers_from_mode(user_defined_mode(SymName0, Insts0),
+				user_defined_mode(SymName, Insts)) :-
+	strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
+	strip_builtin_qualifier_from_sym_name(SymName0, SymName).
+
+:- pred strip_builtin_qualifier_from_sym_name(sym_name::in,
+						sym_name::out) is det.
+
+strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
+	( SymName0 = qualified("mercury_builtin", Name) ->
+		SymName = unqualified(Name)
+	;
+		SymName = SymName0
+	).
+
+:- pred strip_builtin_qualifiers_from_inst_list(list(inst)::in,
+						list(inst)::out) is det.
+strip_builtin_qualifiers_from_inst_list(Insts0, Insts) :-
+	list__map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
+
+:- pred strip_builtin_qualifiers_from_inst((inst)::in, (inst)::out) is det.
+
+strip_builtin_qualifiers_from_inst(inst_var(V), inst_var(V)).
+strip_builtin_qualifiers_from_inst(not_reached, not_reached).
+strip_builtin_qualifiers_from_inst(free, free).
+strip_builtin_qualifiers_from_inst(free(Type), free(Type)).
+strip_builtin_qualifiers_from_inst(any(Uniq), any(Uniq)).
+strip_builtin_qualifiers_from_inst(ground(Uniq, Pred0), ground(Uniq, Pred)) :-
+	strip_builtin_qualifiers_from_pred_inst(Pred0, Pred).
+strip_builtin_qualifiers_from_inst(bound(Uniq, BoundInsts0),
+					bound(Uniq, BoundInsts)) :-
+	strip_builtin_qualifiers_from_bound_inst_list(BoundInsts0, BoundInsts).
+strip_builtin_qualifiers_from_inst(defined_inst(Name0), defined_inst(Name)) :-
+	strip_builtin_qualifiers_from_inst_name(Name0, Name).
+strip_builtin_qualifiers_from_inst(abstract_inst(Name0, Args0),
+				abstract_inst(Name, Args)) :-
+	strip_builtin_qualifier_from_sym_name(Name0, Name),
+	strip_builtin_qualifiers_from_inst_list(Args0, Args).
+
+:- pred strip_builtin_qualifiers_from_bound_inst_list(list(bound_inst)::in,
+					list(bound_inst)::out) is det.
+strip_builtin_qualifiers_from_bound_inst_list(Insts0, Insts) :-
+	list__map(strip_builtin_qualifiers_from_bound_inst, Insts0, Insts).
+
+:- pred strip_builtin_qualifiers_from_bound_inst(bound_inst::in,
+					bound_inst::out) is det.
+strip_builtin_qualifiers_from_bound_inst(BoundInst0, BoundInst) :-
+	BoundInst0 = functor(ConsId, Insts0),
+	BoundInst = functor(ConsId, Insts),
+	list__map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
+
+:- pred strip_builtin_qualifiers_from_inst_name(inst_name::in, inst_name::out)
+	is det.
+strip_builtin_qualifiers_from_inst_name(InstName0, InstName) :-
+	( InstName0 = user_inst(SymName0, Insts0) ->
+		strip_builtin_qualifier_from_sym_name(SymName0, SymName),
+		strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
+		InstName = user_inst(SymName, Insts)
+	;
+		% for the compiler-generated insts, don't bother.
+		InstName = InstName0
+	).
+
+:- pred strip_builtin_qualifiers_from_pred_inst(maybe(pred_inst_info)::in,
+					maybe(pred_inst_info)::out) is det.
+
+strip_builtin_qualifiers_from_pred_inst(no, no).
+strip_builtin_qualifiers_from_pred_inst(yes(Pred0), yes(Pred)) :-
+	Pred0 = pred_inst_info(Uniq, Modes0, Det),
+	Pred = pred_inst_info(Uniq, Modes, Det),
+	strip_builtin_qualifiers_from_mode_list(Modes0, Modes).
 
 %-----------------------------------------------------------------------------%

@@ -67,9 +67,29 @@
 :- pred hlds_out__pred_or_func_to_str(pred_or_func, string).
 :- mode hlds_out__pred_or_func_to_str(in, out) is det.
 
+	% hlds_out__write_unify_context/5 writes out a message such as
+	%	foo.m:123:   in argument 3 of functor `foo/5':
+	% 	foo.m:123:   in unification of `X' and `blah':
+	% based on the unify_context and term__context.
+	%
 :- pred hlds_out__write_unify_context(unify_context, term__context,
 				io__state, io__state).
 :- mode hlds_out__write_unify_context(in, in, di, uo) is det.
+
+	% hlds_out__write_unify_context_first/6 is the
+	% same as above, except that it also takes and returns a bool
+	% which specifies whether this is the start of a sentence.
+	% If the first argument is `yes', then
+	% it means this is the first line of an error message, so
+	% the message starts with a capital letter, e.g.
+	%	foo.m:123:   In argument 3 of functor `foo/5':
+	% 	foo.m:123:   in unification of `X' and `blah':
+	% The bool returned as the fourth argument will be `no' unless nothing
+	% was printed out, in which case it will be the same as the first arg.
+	%
+:- pred hlds_out__write_unify_context(bool, unify_context, term__context,
+						bool, io__state, io__state).
+:- mode hlds_out__write_unify_context(in, in, in, out, di, uo) is det.
 
 :- pred hlds_out__write_determinism(determinism, io__state, io__state).
 :- mode hlds_out__write_determinism(in, di, uo) is det.
@@ -226,45 +246,56 @@ hlds_out__pred_or_func_to_str(function, "func").
 
 %-----------------------------------------------------------------------------%
 
-hlds_out__write_unify_context(unify_context(MainContext, RevSubContexts),
-		Context) -->
-	hlds_out__write_unify_main_context(MainContext, Context),
+hlds_out__write_unify_context(UnifyContext, Context) -->
+	hlds_out__write_unify_context(no, UnifyContext, Context, _).
+
+hlds_out__write_unify_context(First0,
+		unify_context(MainContext, RevSubContexts), Context, First) -->
+	hlds_out__write_unify_main_context(First0, MainContext, Context,
+			First1),
 	{ list__reverse(RevSubContexts, SubContexts) },
-	hlds_out__write_unify_sub_contexts(SubContexts, Context).
+	hlds_out__write_unify_sub_contexts(First1, SubContexts, Context, First).
 
-:- pred hlds_out__write_unify_main_context(unify_main_context, term__context,
-						io__state, io__state).
-:- mode hlds_out__write_unify_main_context(in, in, di, uo) is det.
+:- pred hlds_out__write_unify_main_context(bool, unify_main_context,
+		term__context, bool, io__state, io__state).
+:- mode hlds_out__write_unify_main_context(in, in, in, out, di, uo) is det.
 
-hlds_out__write_unify_main_context(explicit, _) -->
+hlds_out__write_unify_main_context(First, explicit, _, First) -->
 	[].
-hlds_out__write_unify_main_context(head(ArgNum), Context) -->
-	prog_out__write_context(Context),
-	io__write_string("  in argument "),
-	io__write_int(ArgNum),
+hlds_out__write_unify_main_context(First, head(ArgNum), Context, no) -->
+	hlds_out__write_in_argument(First, ArgNum, Context),
 	io__write_string(" of clause head:\n").
-hlds_out__write_unify_main_context(call(PredId, ArgNum), Context) -->
-	prog_out__write_context(Context),
-	io__write_string("  in argument "),
-	io__write_int(ArgNum),
+hlds_out__write_unify_main_context(First, call(PredId, ArgNum), Context, no) -->
+	hlds_out__write_in_argument(First, ArgNum, Context),
 	io__write_string(" of call to predicate `"),
 	hlds_out__write_pred_call_id(PredId),
 	io__write_string("':\n").
 
-:- pred hlds_out__write_unify_sub_contexts(unify_sub_contexts, term__context,
-				io__state, io__state).
-:- mode hlds_out__write_unify_sub_contexts(in, in, di, uo) is det.
+:- pred hlds_out__write_unify_sub_contexts(bool, unify_sub_contexts,
+				term__context, bool, io__state, io__state).
+:- mode hlds_out__write_unify_sub_contexts(in, in, in, out, di, uo) is det.
 
-hlds_out__write_unify_sub_contexts([], _) -->
-	[].
-hlds_out__write_unify_sub_contexts([ConsId - ArgNum | SubContexts], Context) -->
-	prog_out__write_context(Context),
-	io__write_string("  in argument "),
-	io__write_int(ArgNum),
+hlds_out__write_unify_sub_contexts(First, [], _, First) --> [].
+hlds_out__write_unify_sub_contexts(First0, [ConsId - ArgNum | SubContexts],
+		Context, First) -->
+	hlds_out__write_in_argument(First0, ArgNum, Context),
 	io__write_string(" of functor `"),
 	hlds_out__write_cons_id(ConsId),
 	io__write_string("':\n"),
-	hlds_out__write_unify_sub_contexts(SubContexts, Context).
+	hlds_out__write_unify_sub_contexts(no, SubContexts, Context, First).
+
+:- pred hlds_out__write_in_argument(bool, int, term__context,
+					io__state, io__state).
+:- mode hlds_out__write_in_argument(in, in, in, di, uo) is det.
+
+hlds_out__write_in_argument(First, ArgNum, Context) -->
+	prog_out__write_context(Context),
+	( { First = yes } ->
+		io__write_string("  In argument ")
+	;
+		io__write_string("  in argument ")
+	),
+	io__write_int(ArgNum).
 
 %-----------------------------------------------------------------------------%
 

@@ -110,7 +110,7 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 				warn_det_decls_too_lax,
 				ShouldIssueWarning),
 			( { ShouldIssueWarning = yes } ->
-				{ Message = "  Warning: determinism declaration could be tighter.\n" },
+				{ Message = "  warning: determinism declaration could be tighter.\n" },
 				report_determinism_problem(PredId,
 					ProcId, ModuleInfo0, Message,
 					DeclaredDetism, InferredDetism)
@@ -121,7 +121,7 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 		;
 			{ Cmp = tighter },
 			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
-			{ Message = "  Error: determinism declaration not satisfied.\n" },
+			{ Message = "  error: determinism declaration not satisfied.\n" },
 			report_determinism_problem(PredId,
 				ProcId, ModuleInfo1, Message,
 				DeclaredDetism, InferredDetism),
@@ -437,14 +437,16 @@ det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 	{ goal_info_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, _DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, _ActualSolns) },
-	det_report_unify_context(Context, UnifyContext, DetInfo, LT, RT),
+	{ First = yes, Last = yes },
+	det_report_unify_context(First, Last, Context, UnifyContext, DetInfo,
+				LT, RT),
 	(
 		{ DesiredCanFail = cannot_fail },
 		{ ActualCanFail = can_fail }
 	->
-		io__write_string("can fail.\n")
+		io__write_string(" can fail.\n")
 	;
-		io__write_string("has unknown determinism problem;\n"),
+		io__write_string(" has unknown determinism problem;\n"),
 		prog_out__write_context(Context),
 		io__write_string("  desired determinism is "),
 		hlds_out__write_determinism(Desired),
@@ -630,36 +632,86 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 :- mode det_report_call_context(in, in, in, in, in, di, uo) is det.
 
 det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
-	(
-		{ CallUnifyContext = yes(call_unify_context(LT, RT, UC)) },
-		det_report_unify_context(Context, UC, DetInfo, LT, RT)
+	{ det_info_get_module_info(DetInfo, ModuleInfo) },
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	%
+	% if the error was in a call to __Unify__ (i.e. in the unification
+	% itself), then don't print out the predicate name, just print
+	% out the context.  If it wasn't, then print them both out.
+	% (The latter can happen if there is a determinism error in a
+	% function call inside some unification.)
+	%
+	( { PredName = "__Unify__" } ->
+		(
+			{ CallUnifyContext = yes(
+					call_unify_context(LT, RT, UC)) },
+			{ First = yes, Last = yes },
+			det_report_unify_context(First, Last,
+				Context, UC, DetInfo, LT, RT),
+			io__write_string(" ")
+		;
+			% this shouldn't happen; every call to __Unify__
+			% should have a unify_context
+			{ CallUnifyContext = no },
+			prog_out__write_context(Context),
+			io__write_string(
+	"  Some wierd unification (or explicit call to `__Unify__'?) ")
+		)
 	;
-		{ CallUnifyContext = no },
-		{ det_info_get_module_info(DetInfo, ModuleInfo) },
-		{ module_info_preds(ModuleInfo, PredTable) },
-		{ predicate_name(ModuleInfo, PredId, PredName) },
-		{ map__lookup(PredTable, PredId, PredInfo) },
+		(
+			{ CallUnifyContext = yes(
+					call_unify_context(LT, RT, UC)) },
+			{ First = yes, Last = no },
+			det_report_unify_context(First, Last,
+				Context, UC, DetInfo, LT, RT),
+			io__write_string(":\n")
+		;
+			{ CallUnifyContext = no }
+		),
 		{ pred_info_procedures(PredInfo, ProcTable) },
 		{ map__lookup(ProcTable, ModeId, ProcInfo) },
 		{ proc_info_argmodes(ProcInfo, ArgModes) },
 		prog_out__write_context(Context),
-		io__write_string("  Call to `"),
-		det_report_pred_name_mode(PredName, ArgModes),
+		io__write_string("  call to `"),
+		det_report_pred_name_mode(PredOrFunc, PredName, ArgModes),
 		io__write_string("' ")
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_report_unify_context(term__context, unify_context,
-	det_info, var, unify_rhs, io__state, io__state).
-:- mode det_report_unify_context(in, in, in, in, in, di, uo) is det.
+% det_report_unify_context prints out information about the context of an
+% error, i.e. where the error occurred.
+% The first two arguments are boolean flags that specify whether this is
+% the first part of a sentence (in which case we start the error message
+% with a capital letter) and whether it is the last part (in which case we
+% omit the word "in" on the final "... in unification ...").
 
-det_report_unify_context(Context, UnifyContext, DetInfo, LT, RT) -->
-	hlds_out__write_unify_context(UnifyContext, Context),
+:- pred det_report_unify_context(bool, bool, term__context, unify_context,
+	det_info, var, unify_rhs, io__state, io__state).
+:- mode det_report_unify_context(in, in, in, in, in, in, in, di, uo) is det.
+
+det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
+		-->
+	hlds_out__write_unify_context(First0, UnifyContext, Context, First),
 	prog_out__write_context(Context),
 	{ det_get_proc_info(DetInfo, ProcInfo) },
 	{ proc_info_variables(ProcInfo, Varset) },
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
+	( { First = yes } ->
+		( { Last = yes } ->
+			io__write_string("  Unification ")
+		;
+			io__write_string("  In unification ")
+		)
+	;
+		( { Last = yes } ->
+			io__write_string("  unification ")
+		;
+			io__write_string("  in unification ")
+		)
+	),
 	(
 		{ varset__search_name(Varset, LT, _) }
 	->
@@ -667,19 +719,19 @@ det_report_unify_context(Context, UnifyContext, DetInfo, LT, RT) -->
 			{ RT = var(RV) },
 			\+ { varset__search_name(Varset, RV, _) }
 		->
-			io__write_string("  unification with `"),
+			io__write_string("with `"),
 			mercury_output_var(LT, Varset)
 		;
-			io__write_string("  unification of `"),
+			io__write_string("of `"),
 			mercury_output_var(LT, Varset),
 			io__write_string("' and `"),
 			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3)
 		)
 	;
-		io__write_string("  unification with `"),
+		io__write_string("with `"),
 		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3)
 	),
-	io__write_string("' ").
+	io__write_string("'").
 
 %-----------------------------------------------------------------------------%
 
@@ -692,6 +744,7 @@ det_report_pred_proc_id(ModuleInfo, PredId, ProcId, Context) -->
 		PredInfo, ProcInfo) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_arity(PredInfo, Arity) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ proc_info_context(ProcInfo, Context) },
 	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 
@@ -708,22 +761,40 @@ det_report_pred_proc_id(ModuleInfo, PredId, ProcId, Context) -->
 
 	prog_out__write_context(Context),
 	io__write_string("In `"),
-	det_report_pred_name_mode(PredName, ArgModes),
+	det_report_pred_name_mode(PredOrFunc, PredName, ArgModes),
 	io__write_string("':\n").
 
-:- pred det_report_pred_name_mode(string, list((mode)), io__state, io__state).
-:- mode det_report_pred_name_mode(in, in, di, uo) is det.
+:- pred det_report_pred_name_mode(pred_or_func, string, list((mode)),
+				io__state, io__state).
+:- mode det_report_pred_name_mode(in, in, in, di, uo) is det.
 
-det_report_pred_name_mode(PredName, ArgModes) -->
+det_report_pred_name_mode(predicate, PredName, ArgModes) -->
 	io__write_string(PredName),
 	( { ArgModes \= [] } ->
 		{ varset__init(InstVarSet) },	% XXX inst var names
 		io__write_string("("),
-		mercury_output_mode_list(ArgModes, InstVarSet),
+		{ strip_builtin_qualifiers_from_mode_list(ArgModes,
+								ArgModes1) },
+		mercury_output_mode_list(ArgModes1, InstVarSet),
 		io__write_string(")")
 	;
 		[]
 	).
+
+det_report_pred_name_mode(function, FuncName, ArgModes) -->
+	{ varset__init(InstVarSet) },	% XXX inst var names
+	{ strip_builtin_qualifiers_from_mode_list(ArgModes, ArgModes1) },
+	{ pred_args_to_func_args(ArgModes1, FuncArgModes, FuncRetMode) },
+	io__write_string(FuncName),
+	( { FuncArgModes \= [] } ->
+		io__write_string("("),
+		mercury_output_mode_list(FuncArgModes, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	),
+	io__write_string(" = "),
+	mercury_output_mode(FuncRetMode, InstVarSet).
 
 %-----------------------------------------------------------------------------%
 

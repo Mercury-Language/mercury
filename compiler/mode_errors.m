@@ -140,7 +140,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_out.
-:- import_module mode_info, prog_out, mercury_to_mercury.
+:- import_module mode_info, mode_util, prog_out, mercury_to_mercury.
 :- import_module options, globals.
 :- import_module bool, int, list, map, io, term, term_io, varset.
 :- import_module std_util, require.
@@ -864,35 +864,6 @@ write_mode_inference_message(PredInfo, ProcInfo) -->
 		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
 		mercury_output_func_mode_decl(VarSet, Name, ArgModes, RetMode,
 				MaybeDet, Context)
-	).
-
-
-	% 
-	% Predicates to make error messages more readable by stripping
-	% "mercury_builtin" module qualifiers from modes.
-	%
-
-:- pred strip_builtin_qualifiers_from_mode_list(list(mode)::in,
-						list(mode)::out) is det.
-
-strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
-	list__map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
-
-:- pred strip_builtin_qualifiers_from_mode((mode)::in, (mode)::out) is det.
-
-strip_builtin_qualifiers_from_mode(Inst1 -> Inst2, Inst1 -> Inst2).
-strip_builtin_qualifiers_from_mode(user_defined_mode(SymName0, Insts),
-				user_defined_mode(SymName, Insts)) :-
-	strip_builtin_qualifier_from_sym_name(SymName0, SymName).
-
-:- pred strip_builtin_qualifier_from_sym_name(sym_name::in,
-						sym_name::out) is det.
-
-strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
-	( SymName0 = qualified("mercury_builtin", Name) ->
-		SymName = unqualified(Name)
-	;
-		SymName = SymName0
 	).
 
 %-----------------------------------------------------------------------------%
