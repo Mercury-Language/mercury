@@ -226,7 +226,7 @@ install_boehm_gc_grades:
 		rm -rf tmp_dir && \
 		mkdir tmp_dir && \
 		(mv -f *.o *.pic_o *.a *.so tmp_dir || true) && \
-		$(SUBDIR_MMAKE) GRADE=$(GRADE).prof PROF=.prof install \
+		$(SUBDIR_MMAKE) GRADE=$(GRADE).prof PROF=_prof install \
 			|| exit 1; \
 		rm -f *.o *.pic_o *.a *.so; \
 		(mv tmp_dir/* . || true) \
