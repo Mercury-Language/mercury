@@ -92,7 +92,7 @@ unify_gen__generate_construction(Var, Tag, Args, Modes, Code) -->
 :- mode unify_gen__generate_cons_args(in, out) is det.
 
 unify_gen__generate_cons_args([], []).
-unify_gen__generate_cons_args([Var|Vars], [var(Var)|RVals]) :-
+unify_gen__generate_cons_args([_Var|Vars], [unused|RVals]) :-
 	unify_gen__generate_cons_args(Vars, RVals).
 
 %---------------------------------------------------------------------------%

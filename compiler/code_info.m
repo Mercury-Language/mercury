@@ -503,18 +503,20 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 	;
 		{ VarStat = cashed(Exprn, target(TargetReg1)) }
 	->
-		code_info__generate_expression(Exprn, TargetReg1, Code0),
-			% Mark the target register.
-		code_info__add_lvalue_to_variable(TargetReg1, Var),
-			% Assemble the code
 		(
 			{ not TargetReg = TargetReg1 }
 		->
+			code_info__generate_expression(Exprn,
+							TargetReg1, Code0),
+				% Mark the target register.
+			code_info__add_lvalue_to_variable(TargetReg1, Var),
+				% Assemble the code
 			code_info__make_assignment_comment(Var,
 							TargetReg, Comment),
 			{ Code1 = [assign(TargetReg, lval(TargetReg1)) -
 								Comment] }
 		;
+			{ Code0 = [] },
 			{ Code1 = [] }
 		),
 		{ list__append(Code0, Code1, Code) }
@@ -1124,6 +1126,16 @@ code_info__variable_dependencies(Var, cashed(Exprn, _), V0, V) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred code_info__expressions_dependencies(var, list(rval),
+				variable_info, variable_info,
+						code_info, code_info).
+:- mode code_info__expressions_dependencies(in, in, in, out, in, out) is det.
+
+code_info__expressions_dependencies(_Var, [], V, V) --> [].
+code_info__expressions_dependencies(Var, [R|Rs], V0, V) -->
+	code_info__expression_dependencies(Var, R, V0, V1),
+	code_info__expressions_dependencies(Var, Rs, V1, V).
+
 :- pred code_info__expression_dependencies(var, rval,
 				variable_info, variable_info,
 						code_info, code_info).
@@ -1146,6 +1158,8 @@ code_info__expression_dependencies(Var, binop(_, E0, E1), V0, V) -->
 	code_info__expression_dependencies(Var, E1, V1, V).
 code_info__expression_dependencies(Var, field(_, Rval,_), V0, V) -->
 	code_info__expression_dependencies(Var, Rval, V0, V).
+code_info__expression_dependencies(Var, create(_Tag, Rvals), V0, V) -->
+	code_info__expressions_dependencies(Var, Rvals, V0, V).
 code_info__expression_dependencies(_Var, iconst(_), V, V) --> [].
 code_info__expression_dependencies(_Var, sconst(_), V, V) --> [].
 

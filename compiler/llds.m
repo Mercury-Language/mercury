@@ -60,7 +60,7 @@
 			;	hp
 			;	sp
 			;	field(tag, lval, int)
-			;	ref(var).
+			;	lvar(var).
 
 :- type rval		--->	lval(lval)
 			;	var(var)
@@ -68,7 +68,7 @@
 			;	mkword(tag, rval)
 			;	iconst(int)		% integer constants
 			;	sconst(string)		% string constants
-			;       field(int, rval, int)
+			;       field(tag, rval, int)
 			;	binop(operator, rval, rval)
 			;	true
 			;	false
@@ -450,8 +450,8 @@ output_lval(stackvar(N)) -->
 	io__write_string("detstackvar("),
 	io__write_int(N),
 	io__write_string(")").
-output_lval(ref(_)) -->
-	{ error("References unimplemented") }.
+output_lval(lvar(_)) -->
+	{ error("Illegal to output an lvar") }.
 
 %-----------------------------------------------------------------------------%
 
