@@ -66,12 +66,10 @@ Define_extern_entry(mercury__do_call_closure);
 Define_extern_entry(mercury__do_call_class_method);
 
 /*
-** These are the real implementations of unify, index and compare.
+** These are the real implementations of unify and compare.
 */
 
 Define_extern_entry(mercury__unify_2_0);
-Define_extern_entry(mercury__index_2_0);
-Declare_label(mercury__index_2_0_i1);
 Define_extern_entry(mercury__compare_3_0);
 Define_extern_entry(mercury__compare_3_1);
 Define_extern_entry(mercury__compare_3_2);
@@ -82,7 +80,6 @@ BEGIN_MODULE(call_module)
 	init_entry_ai(mercury__do_call_closure);
 	init_entry_ai(mercury__do_call_class_method);
 	init_entry_ai(mercury__unify_2_0);
-	init_entry_ai(mercury__index_2_0);
 	init_entry_ai(mercury__compare_3_0);
 	init_entry_ai(mercury__compare_3_1);
 	init_entry_ai(mercury__compare_3_2);
@@ -221,153 +218,6 @@ Define_entry(mercury__unify_2_0);
 #undef  type_stat_struct
 #undef  attempt_msg
 
-}
-
-/*
-** mercury__index_2_0 is called as `index(TypeInfo, X, Index)'
-** in the mode `index(in, in, out) is det'.
-**
-** We call the type-specific index routine as
-** `IndexPred(...ArgTypeInfos..., X, Index)' is det.
-** The ArgTypeInfo and X arguments are input, while the Index argument
-** is output.
-*/
-
-Define_entry(mercury__index_2_0);
-{
-    MR_TypeInfo     type_info;
-    MR_TypeCtorInfo type_ctor_info;
-    Word            x;
-
-    type_info = (MR_TypeInfo) r1;
-    x = r2;
-
-    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-
-#ifdef  MR_TYPE_CTOR_STATS
-    MR_register_type_ctor_stat(&MR_type_stat_mer_index, type_ctor_info);
-#endif
-
-    switch (type_ctor_info->type_ctor_rep) {
-
-            /*
-            ** For notag and equiv types, we should probably
-            ** set type_info to refer to the appropriate type
-            ** and then goto start. However, the code that we
-            ** have here now works, even though it could be
-            ** improved.
-            */
-
-        case MR_TYPECTOR_REP_ENUM_USEREQ:
-        case MR_TYPECTOR_REP_DU:
-        case MR_TYPECTOR_REP_DU_USEREQ:
-        case MR_TYPECTOR_REP_NOTAG:
-        case MR_TYPECTOR_REP_NOTAG_USEREQ:
-        case MR_TYPECTOR_REP_NOTAG_GROUND:
-        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-        case MR_TYPECTOR_REP_EQUIV:
-        case MR_TYPECTOR_REP_EQUIV_GROUND:
-        case MR_TYPECTOR_REP_EQUIV_VAR:
-        case MR_TYPECTOR_REP_ARRAY:
-
-            /*
-            ** We call the type-specific unify routine as
-            ** `IndexPred(...ArgTypeInfos..., X, Index)' is det.
-            ** The ArgTypeInfo arguments are input, and are passed
-            ** in r1, r2, ... rN. The X argument is also input
-            ** and is passed in rN+1. The index is output in r1.
-            **
-            ** We specialize the case where the type_ctor arity
-            ** is zero, since in this case we don't need the loop.
-            ** We could also specialize other arities; 1 and 2
-            ** may be worthwhile.
-            */
-
-            if (type_ctor_info->arity == 0) {
-                r1 = x;
-            }
-#ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
-            else if (type_ctor_info->arity == 1) {
-                Word    *args_base;
-
-                args_base = (Word *)
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
-                r1 = args_base[1];
-                r2 = x;
-            }
-#endif
-#ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
-            else if (type_ctor_info->arity == 2) {
-                Word    *args_base;
-
-                args_base = (Word *)
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
-                r1 = args_base[1];
-                r2 = args_base[2];
-                r3 = x;
-            }
-#endif
-            else {
-                int     i;
-                int     type_arity;
-                Word    *args_base;
-
-                type_arity = type_ctor_info->arity;
-                args_base = (Word *)
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
-                save_registers();
-
-                /* IndexPred(...ArgTypeInfos..., X, Index) */
-                for (i = 1; i <= type_arity; i++) {
-                    virtual_reg(i) = args_base[i];
-                }
-                virtual_reg(type_arity + 1) = x;
-
-                restore_registers();
-            }
-
-            tailcall(type_ctor_info->index_pred,
-                LABEL(mercury__index_2_0));
-
-        case MR_TYPECTOR_REP_ENUM:
-        case MR_TYPECTOR_REP_INT:
-        case MR_TYPECTOR_REP_CHAR:
-            r1 = x;
-            proceed();
-
-        case MR_TYPECTOR_REP_FLOAT:
-            fatal_error("attempt to index a float");
-
-        case MR_TYPECTOR_REP_STRING:
-            fatal_error("attempt to index a string");
-            proceed();
-
-        case MR_TYPECTOR_REP_UNIV:
-            fatal_error("attempt to index a term of type `univ'");
-
-        case MR_TYPECTOR_REP_C_POINTER:
-            r1 = x;
-            proceed();
-
-        case MR_TYPECTOR_REP_TYPEINFO:
-            fatal_error("attempt to index a type_info");
-
-        case MR_TYPECTOR_REP_VOID:
-            fatal_error("attempt to index a term of type `void'");
-
-        case MR_TYPECTOR_REP_PRED:
-            fatal_error("attempt to index a higher-order term");
-
-        case MR_TYPECTOR_REP_TYPECLASSINFO:
-            fatal_error("attempt to index a typeclass_info");
-
-        case MR_TYPECTOR_REP_UNKNOWN:
-            fatal_error("attempt to index a term of unknown type");
-
-        default:
-            fatal_error("attempt to index a term "
-                    "of unknown representation");
-    }
 }
 
 /*

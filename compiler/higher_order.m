@@ -1596,7 +1596,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args,
 
 %-------------------------------------------------------------------------------
 
-	% Succeed if the called pred is "unify", "compare" or "index" and
+	% Succeed if the called pred is "unify" or "compare" and
 	% is specializable, returning a specialized goal.
 :- pred specialize_special_pred(pred_id::in, proc_id::in, list(prog_var)::in,
 	maybe(call_unify_context)::in, bool::in, hlds_goal_expr::out,

@@ -99,22 +99,23 @@
 	% special predicates (compare/3, index/3, unify, etc.)
 
 :- pred unify_proc__generate_clause_info(special_pred_id, type,
-			hlds_type_body, prog_context, module_info,
-			clauses_info).
+	hlds_type_body, prog_context, module_info, clauses_info).
 :- mode unify_proc__generate_clause_info(in, in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module tree, map, queue, int, string, require, assoc_list.
 
+:- import_module globals, options.
 :- import_module code_util, code_info, type_util.
 :- import_module mercury_to_mercury, hlds_out.
-:- import_module make_hlds, prog_util, prog_out, inst_match.
+:- import_module make_hlds, polymorphism, prog_util, prog_out.
 :- import_module quantification, clause_to_proc, term, varset.
-:- import_module globals, options, modes, mode_util, (inst).
+:- import_module modes, mode_util, inst_match, instmap, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
+
+:- import_module tree, map, set, queue, int, string, require, assoc_list.
 
 	% We keep track of all the complicated unification procs we need
 	% by storing them in the proc_requests structure.
@@ -483,12 +484,10 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 			Context, Clauses, VarTypeInfo1, VarTypeInfo)
 	; SpecialPredId = index, Args = [X, Index] ->
 		unify_proc__generate_index_clauses(TypeBody,
-			X, Index, Context, Clauses, VarTypeInfo1,
-			VarTypeInfo)
+			X, Index, Context, Clauses, VarTypeInfo1, VarTypeInfo)
 	; SpecialPredId = compare, Args = [Res, X, Y] ->
-		unify_proc__generate_compare_clauses(TypeBody, Res,
-			X, Y, Context, Clauses, VarTypeInfo1,
-			VarTypeInfo)
+		unify_proc__generate_compare_clauses(Type, TypeBody,
+			Res, X, Y, Context, Clauses, VarTypeInfo1, VarTypeInfo)
 	;
 		error("unknown special pred")
 	),
@@ -605,20 +604,15 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 		)
 	;
 		{ TypeBody = eqv_type(_Type) },
-		% We should check whether _Type is a type variable,
-		% an abstract type or a concrete type.
-		% If it is type variable, then we should generate the same code
-		% we generate now. If it is an abstract type, we should call
-		% its index procedure directly; if it is a concrete type,
-		% we should generate the body of its index procedure
-		% inline here.
+		% The only place that the index predicate for a type can ever
+		% be called from is the compare predicate for that type.
+		% However, the compare predicate for an equivalence type
+		% never calls the index predicate for that type; it calls
+		% the compare predicate of the expanded type instead.
 		%
-		% XXX Somebody should document here what the later stages
-		% of the compiler do to prevent an infinite recursion here.
-		{ ArgVars = [X, Index] },
-		unify_proc__build_call("index", ArgVars, Context, Goal),
-		unify_proc__quantify_clause_body(ArgVars, Goal, Context,
-			Clauses)
+		% Therefore the clause body we are generating should never be
+		% invoked.
+		{ error("trying to create index proc for eqv type") }
 	;
 		{ TypeBody = uu_type(_) },
 		{ error("trying to create index proc for uu type") }
@@ -627,13 +621,12 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 		{ error("trying to create index proc for abstract type") }
 	).
 
-:- pred unify_proc__generate_compare_clauses(hlds_type_body, prog_var, prog_var,
-	prog_var, prog_context, list(clause), unify_proc_info, unify_proc_info).
-:- mode unify_proc__generate_compare_clauses(in, in, in, in, in, out, in, out)
-	is det.
+:- pred unify_proc__generate_compare_clauses((type)::in, hlds_type_body::in,
+	prog_var::in, prog_var::in, prog_var::in, prog_context::in,
+	list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Context, Clauses)
-		-->
+unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
+		Clauses) -->
 	(
 		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred) },
 		( { MaybeEqPred = yes(_) } ->
@@ -668,7 +661,7 @@ unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Context, Clauses)
 			unify_proc__quantify_clause_body(ArgVars, Goal,
 				Context, Clauses)
 		;
-			unify_proc__generate_du_compare_clauses(Ctors,
+			unify_proc__generate_du_compare_clauses(Type, Ctors,
 				Res, H1, H2, Context, Clauses)
 		)
 	;
@@ -840,8 +833,8 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
    	we want to generate code
 
 		compare(Res, X, Y) :-
-			index(X, X_Index),	% Call_X_Index
-			index(Y, Y_Index),	% Call_Y_Index
+			__Index__(X, X_Index),	% Call_X_Index
+			__Index__(Y, Y_Index),	% Call_Y_Index
 			( X_Index < Y_Index ->	% Call_Less_Than
 				Res = (<)	% Return_Less_Than
 			; X_Index > Y_Index ->	% Call_Greater_Than
@@ -870,19 +863,19 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 			).
 */
 
-:- pred unify_proc__generate_du_compare_clauses(
-		list(constructor), prog_var, prog_var, prog_var, prog_context,
-		list(clause), unify_proc_info, unify_proc_info).
-:- mode unify_proc__generate_du_compare_clauses(in, in, in, in, in,
-			out, in, out) is det.
+:- pred unify_proc__generate_du_compare_clauses((type)::in,
+	list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
+	prog_context::in, list(clause)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, Context, [Clause]) -->
+unify_proc__generate_du_compare_clauses(Type, Ctors, Res, X, Y, Context,
+		[Clause]) -->
 	( { Ctors = [SingleCtor] } ->
 		unify_proc__generate_compare_case(SingleCtor, Res, X, Y,
 			Context, Goal)
 	;
-		unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y,
-			Context, Goal)
+		unify_proc__generate_du_compare_clauses_2(Type, Ctors, Res,
+			X, Y, Context, Goal)
 	),
 	{ ArgVars = [Res, X, Y] },
 	unify_proc__info_get_varset(Varset0),
@@ -893,13 +886,13 @@ unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, Context, [Clause]) -->
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) }.
 
-:- pred unify_proc__generate_du_compare_clauses_2(
-		list(constructor), prog_var, prog_var, prog_var, prog_context,
-		hlds_goal, unify_proc_info, unify_proc_info).
-:- mode unify_proc__generate_du_compare_clauses_2(in, in, in, in, in,
-		out, in, out) is det.
+:- pred unify_proc__generate_du_compare_clauses_2((type)::in,
+	list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
+	prog_context::in, hlds_goal::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Context, Goal) -->
+unify_proc__generate_du_compare_clauses_2(Type, Ctors, Res, X, Y, Context,
+		Goal) -->
 	{ IntType = int_type },
 	{ mercury_public_builtin_module(MercuryBuiltin) },
 	{ construct_type(qualified(MercuryBuiltin, "comparison_result") - 0,
@@ -909,16 +902,19 @@ unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Context, Goal) -->
 	unify_proc__info_new_var(ResType, R),
 
 	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context,
-		GoalInfo) },
+	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 
-	unify_proc__build_call("index", [X, X_Index], Context, Call_X_Index),
-
-	unify_proc__build_call("index", [Y, Y_Index], Context, Call_Y_Index),
+	{ instmap_delta_from_assoc_list([X_Index - ground(shared, no)],
+		X_InstmapDelta) },
+	unify_proc__build_specific_call(Type, index, [X, X_Index],
+		X_InstmapDelta, det, Context, Call_X_Index),
+	{ instmap_delta_from_assoc_list([Y_Index - ground(shared, no)],
+		Y_InstmapDelta) },
+	unify_proc__build_specific_call(Type, index, [Y, Y_Index],
+		Y_InstmapDelta, det, Context, Call_Y_Index),
 
 	unify_proc__build_call("builtin_int_lt", [X_Index, Y_Index], Context,
 		Call_Less_Than),
-
 	unify_proc__build_call("builtin_int_gt", [X_Index, Y_Index], Context,
 		Call_Greater_Than),
 
@@ -1137,9 +1133,9 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	},
 	{
 		predicate_table_search_pred_m_n_a(PredicateTable,
-			MercuryBuiltin, Name, Arity, [PredId])
+			MercuryBuiltin, Name, Arity, [PredIdPrime])
 	->
-		IndexPredId = PredId
+		PredId = PredIdPrime
 	;
 		prog_out__sym_name_to_string(qualified(MercuryBuiltin, Name),
 			QualName),
@@ -1150,12 +1146,40 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 			ErrorMessage),
 		error(ErrorMessage)
 	},
-	{ hlds_pred__initial_proc_id(ModeId) },
-	{ Call = call(IndexPredId, ModeId, ArgVars, not_builtin,
+	{ hlds_pred__initial_proc_id(ProcId) },
+	{ Call = call(PredId, ProcId, ArgVars, not_builtin,
 			no, qualified(MercuryBuiltin, Name)) },
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 	{ Goal = Call - GoalInfo }.
+
+:- pred unify_proc__build_specific_call((type)::in, special_pred_id::in,
+	list(prog_var)::in, instmap_delta::in, determinism::in,
+	prog_context::in, hlds_goal::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+
+unify_proc__build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta,
+		Detism, Context, Goal) -->
+	unify_proc__info_get_module_info(ModuleInfo),
+	{
+		polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
+			PredName, PredId, ProcId)
+	->
+		GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no,
+			PredName),
+		set__list_to_set(ArgVars, NonLocals),
+		goal_info_init(NonLocals, InstmapDelta, Detism, GoalInfo0),
+		goal_info_set_context(GoalInfo0, Context, GoalInfo),
+		Goal = GoalExpr - GoalInfo
+	;
+			% unify_proc__build_specific_call is only ever used
+			% to build calls to special preds for a type in the
+			% bodies of other special preds for that same type.
+			% If the special preds for a type are built in the
+			% right order (index before compare), the lookup
+			% should never fail.
+		error("unify_proc__build_specific_call: lookup failed")
+	}.
 
 %-----------------------------------------------------------------------------%
 

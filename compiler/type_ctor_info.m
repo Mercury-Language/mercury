@@ -119,47 +119,30 @@ type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 	module_info_get_special_pred_map(ModuleInfo, SpecMap),
 	globals__lookup_bool_option(Globals, special_preds, SpecialPreds),
 	(
-		SpecialPreds = yes,
-
+		(
+			SpecialPreds = yes
+		;
+			SpecialPreds = no,
+			hlds_data__get_type_defn_body(TypeDefn, Body),
+			Body = du_type(_, _, _, yes(_UserDefinedEquality))
+		)
+	->
 		map__lookup(SpecMap, unify - TypeId, UnifyPredId),
 		special_pred_mode_num(unify, UnifyProcInt),
 		proc_id_to_int(UnifyProcId, UnifyProcInt),
 		MaybeUnify = yes(proc(UnifyPredId, UnifyProcId)),
-
-		map__lookup(SpecMap, index - TypeId, IndexPredId),
-		special_pred_mode_num(index, IndexProcInt),
-		proc_id_to_int(IndexProcId, IndexProcInt),
-		MaybeIndex = yes(proc(IndexPredId, IndexProcId)),
 
 		map__lookup(SpecMap, compare - TypeId, ComparePredId),
 		special_pred_mode_num(compare, CompareProcInt),
 		proc_id_to_int(CompareProcId, CompareProcInt),
 		MaybeCompare = yes(proc(ComparePredId, CompareProcId))
 	;
-		SpecialPreds = no,
-		hlds_data__get_type_defn_body(TypeDefn, Body),
-		( Body = du_type(_, _, _, yes(_UserDefinedEquality)) ->
-			map__lookup(SpecMap, unify - TypeId, UnifyPredId),
-			special_pred_mode_num(unify, UnifyProcInt),
-			proc_id_to_int(UnifyProcId, UnifyProcInt),
-			MaybeUnify = yes(proc(UnifyPredId, UnifyProcId)),
-
-			MaybeIndex = no,
-
-			map__lookup(SpecMap, compare - TypeId, ComparePredId),
-			special_pred_mode_num(compare, CompareProcInt),
-			proc_id_to_int(CompareProcId, CompareProcInt),
-			MaybeCompare = yes(proc(ComparePredId, CompareProcId))
-		;
-			MaybeUnify = no,
-			MaybeIndex = no,
-			MaybeCompare = no
-		)
+		MaybeUnify = no,
+		MaybeCompare = no
 	),
 	TypeCtorGenInfo = type_ctor_gen_info(TypeId, ModuleName,
 		TypeName, TypeArity, Status, TypeDefn,
-		MaybeUnify, MaybeIndex, MaybeCompare,
-		no, no, no).
+		MaybeUnify, MaybeCompare, no, no, no).
 
 %---------------------------------------------------------------------------%
 
@@ -197,10 +180,9 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 		ModuleInfo, TypeCtorData, TypeCtorTables) :-
 	TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName, TypeName,
 		TypeArity, _Status, HldsDefn,
-		MaybeUnify, MaybeIndex, MaybeCompare,
+		MaybeUnify, MaybeCompare,
 		MaybeSolver, MaybeInit, MaybePretty),
 	type_ctor_info__make_pred_addr(MaybeUnify,   ModuleInfo, Unify),
-	type_ctor_info__make_pred_addr(MaybeIndex,   ModuleInfo, Index),
 	type_ctor_info__make_pred_addr(MaybeCompare, ModuleInfo, Compare),
 	type_ctor_info__make_pred_addr(MaybeSolver,  ModuleInfo, Solver),
 	type_ctor_info__make_pred_addr(MaybeInit,    ModuleInfo, Init),
@@ -226,7 +208,7 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 	),
 	Version = type_ctor_info_rtti_version,
 	RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity),
-	TypeCtorData = type_ctor_info(RttiTypeId, Unify, Index, Compare,
+	TypeCtorData = type_ctor_info(RttiTypeId, Unify, Compare,
 		TypeCtorRep, Solver, Init, Version, NumPtags, NumFunctors,
 		MaybeFunctors, MaybeLayout, no, Pretty).
 

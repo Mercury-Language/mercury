@@ -743,14 +743,15 @@ typedef union {
     ** type constructor.  One of these is generated for every
     ** `:- type' declaration.
     **
-    ** The offsets of the fields in this structure must match the
-    ** offset macros defines near the top of this file.
+    ** The unify_pred field will soon migrate to the slot now occupied by
+    ** the new_unify_pred field. In the near future, the two slots will
+    ** contain the same data.
     */
 
 struct MR_TypeCtorInfo_Struct {
     Integer             arity;
     Code                *unify_pred;
-    Code                *index_pred;
+    Code                *new_unify_pred;
     Code                *compare_pred;
     MR_TypeCtorRep      type_ctor_rep;
     Code                *solver_pred;
@@ -777,7 +778,7 @@ struct MR_TypeCtorInfo_Struct {
 ** structures for builtin and special types.
 */
 
-#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, cm, n, a, cr, u, i, c) \
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, cm, n, a, cr, u, c)    \
     Declare_entry(u);                                                   \
     Declare_entry(i);                                                   \
     Declare_entry(c);                                                   \
@@ -785,7 +786,7 @@ struct MR_TypeCtorInfo_Struct {
     MR_PASTE6(mercury_data_, cm, __type_ctor_info_, n, _, a) = {        \
         a,                                                              \
         MR_MAYBE_STATIC_CODE(ENTRY(u)),                                 \
-        MR_MAYBE_STATIC_CODE(ENTRY(i)),                                 \
+        MR_MAYBE_STATIC_CODE(ENTRY(u)),                                 \
         MR_MAYBE_STATIC_CODE(ENTRY(c)),                                 \
         cr,                                                             \
         NULL,                                                           \
@@ -799,18 +800,16 @@ struct MR_TypeCtorInfo_Struct {
         -1                                                              \
     }
 
-#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(m, n, a, cr, u, i, c) \
-    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, m, n, a, cr, u, i, c)
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(m, n, a, cr, u, c)        \
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, m, n, a, cr, u, c)
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(m, n, a, cr)           \
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, m, n, a, cr,       \
         MR_PASTE7(mercury____Unify___, m, __, n, _, a, _0),     \
-        MR_PASTE7(mercury____Index___, m, __, n, _, a, _0),     \
         MR_PASTE7(mercury____Compare___, m, __, n, _, a, _0))
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(n, a, cr)       \
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , n, a, cr,  \
-        mercury__unused_0_0,                                    \
         mercury__unused_0_0,                                    \
         mercury__unused_0_0)
 
@@ -858,21 +857,21 @@ struct MR_TypeCtorInfo_Struct {
   #define   MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T)            		\
   do {                                                      		\
     (B).unify_pred = ENTRY(mercury__builtin_unify##T##2_0);		\
-    (B).index_pred = ENTRY(mercury__builtin_index##T##2_0);		\
+    (B).new_unify_pred = ENTRY(mercury__builtin_unify##T##2_0);		\
     (B).compare_pred = ENTRY(mercury__builtin_compare##T##3_0);		\
   } while (0)
 
   #define   MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)          \
   do {                                                      \
     (B).unify_pred = ENTRY(P);                              \
-    (B).index_pred = ENTRY(P);                              \
+    (B).new_unify_pred = ENTRY(P);                          \
     (B).compare_pred = ENTRY(P);                            \
   } while (0)
 
   #define   MR_INIT_TYPE_CTOR_INFO(B, T)                    \
   do {                                                      \
     (B).unify_pred = ENTRY(mercury____##Unify##___##T);     \
-    (B).index_pred = ENTRY(mercury____##Index##___##T);     \
+    (B).new_unify_pred = ENTRY(mercury____##Unify##___##T); \
     (B).compare_pred = ENTRY(mercury____##Compare##___##T); \
   } while (0)
 

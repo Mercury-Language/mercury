@@ -175,10 +175,9 @@
 :- mode compare(uo, in, ui) is det.
 :- mode compare(uo, in, in) is det.
 
-	% index(X, N): if X is a discriminated union type, this is
-	% true iff the top-level functor of X is the (N-1)th functor in its
-	% type.  If X is of type int, then it is true iff N = X.
-	% Otherwise, it is true iff N = -1.
+	% This predicate is obsolete. It is required only while bootstrapping
+	% the change that deletes references to it by compiler-generated
+	% compare and index predicates.
 :- pred index(T::in, int::out) is det.
 
 % In addition, the following predicate-like constructs are builtin:
@@ -244,25 +243,21 @@ promise_only_solution(Pred) = OutVal :-
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , int, 0,
 	MR_TYPECTOR_REP_INT,
 	mercury__builtin_unify_int_2_0,
-	mercury__builtin_index_int_2_0,
 	mercury__builtin_compare_int_3_0);
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , character, 0,
 	MR_TYPECTOR_REP_CHAR,
 	mercury__builtin_unify_character_2_0,
-	mercury__builtin_index_character_2_0,
 	mercury__builtin_compare_character_3_0);
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , string, 0,
 	MR_TYPECTOR_REP_STRING,
 	mercury__builtin_unify_string_2_0,
-	mercury__builtin_index_string_2_0,
 	mercury__builtin_compare_string_3_0);
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , float, 0,
 	MR_TYPECTOR_REP_FLOAT,
 	mercury__builtin_unify_float_2_0,
-	mercury__builtin_index_float_2_0,
 	mercury__builtin_compare_float_3_0);
 
 	/* 
@@ -273,12 +268,10 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , float, 0,
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , func, 0,
 	MR_TYPECTOR_REP_PRED,
 	mercury__builtin_unify_pred_2_0,
-	mercury__builtin_index_pred_2_0,
 	mercury__builtin_compare_pred_3_0);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , pred, 0,
 	MR_TYPECTOR_REP_PRED,
 	mercury__builtin_unify_pred_2_0,
-	mercury__builtin_index_pred_2_0,
 	mercury__builtin_compare_pred_3_0);
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(void, 0, MR_TYPECTOR_REP_VOID);
@@ -475,7 +468,6 @@ void sys_init_copy_module(void) {
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,
 	MR_TYPECTOR_REP_C_POINTER,
 	mercury____Unify___builtin__c_pointer_0_0,
-	mercury____Index___builtin__c_pointer_0_0,
 	mercury____Compare___builtin__c_pointer_0_0);
 
 BEGIN_MODULE(unify_c_pointer_module)

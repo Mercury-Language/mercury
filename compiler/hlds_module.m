@@ -63,7 +63,6 @@
 			import_status,	% of the type
 			hlds_type_defn,	% defn of type
 			maybe(pred_proc_id),	% unify, if not eliminated
-			maybe(pred_proc_id),	% index, if not eliminated
 			maybe(pred_proc_id),	% compare, if not eliminated
 			maybe(pred_proc_id),	% solver, if relevant
 			maybe(pred_proc_id),	% init, if relevant

@@ -291,7 +291,6 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, type_ctor_info, 1,
 	MR_TYPECTOR_REP_TYPEINFO,
 	mercury____Unify___private_builtin__type_info_1_0,
-	mercury____Index___private_builtin__type_info_1_0,
 	mercury____Compare___private_builtin__type_info_1_0);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
 	MR_TYPECTOR_REP_TYPEINFO);
@@ -299,7 +298,6 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, base_typeclass_info, 1,
 	MR_TYPECTOR_REP_TYPECLASSINFO,
 	mercury____Unify___private_builtin__typeclass_info_1_0,
-	mercury____Index___private_builtin__typeclass_info_1_0,
 	mercury____Compare___private_builtin__typeclass_info_1_0);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
 	MR_TYPECTOR_REP_TYPECLASSINFO);

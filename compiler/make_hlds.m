@@ -2727,9 +2727,27 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 	hlds_type_body, prog_context, import_status, module_info).
 :- mode add_special_preds(in, in, in, in, in, in, in, out) is det.
 
+	% The only place that the index predicate for a type can ever
+	% be called from is the compare predicate for that type.
+	% However, the compare predicate for an equivalence type
+	% never calls the index predicate for that type; it calls
+	% the compare predicate of the expanded type instead.
+	% We therefore do not generate index predicates for equivalence types.
+	%
+	% When we see an abstract type declaration, we do not declare an index
+	% predicate for that type, since the type definition may later define
+	% the type as an equivalence type. If the type does turn out to need
+	% an index predicate, its declaration will be generated together with
+	% its implementation.
+	%
+	% We also do not declare index predicates for types with hand defined
+	% RTTI, since such types do not have index predicates.
+	%
+	% What we do here for uu types does not matter much, since such types
+	% are not yet supported.
+
 add_special_preds(Module0, TVarSet, Type, TypeId,
 			Body, Context, Status, Module) :-
-	special_pred_list(SpecialPredIds),
 	(
 		(
 			Body = abstract_type
@@ -2739,9 +2757,15 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 			type_id_has_hand_defined_rtti(TypeId)
 		)
 	->
+		SpecialPredIds = [unify, compare],
 		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
 			Type, TypeId, Body, Context, Status, Module)
 	;
+		( Body = eqv_type(_) ->
+			SpecialPredIds = [unify, compare]
+		;
+			SpecialPredIds = [unify, index, compare]
+		),
 		add_special_pred_list(SpecialPredIds, Module0, TVarSet,
 			Type, TypeId, Body, Context, Status, Module)
 	).
@@ -2853,7 +2877,7 @@ add_special_pred_for_real(SpecialPredId,
 		PredInfo1 = PredInfo0
 	),
 	unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody,
-				Context, Module1, ClausesInfo),
+		Context, Module1, ClausesInfo),
 	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module1, Preds, Module).

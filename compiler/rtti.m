@@ -282,7 +282,6 @@
 
 			rtti_type_id,		% identifies the type ctor
 			maybe(code_addr),	% unify
-			maybe(code_addr),	% index
 			maybe(code_addr),	% compare
 			type_ctor_rep,
 			maybe(code_addr),	% solver

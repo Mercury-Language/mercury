@@ -177,7 +177,7 @@ dead_proc_elim__initialize_base_gen_infos([], Queue, Queue, Needed, Needed).
 dead_proc_elim__initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
 		Queue0, Queue, Needed0, Needed) :-
 	TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName, TypeName,
-		Arity, _Status, _HldsDefn, _Unify, _Compare, _Index,
+		Arity, _Status, _HldsDefn, _Unify, _Compare,
 		_Solver, _Init, _Pretty),
 	(
 		% XXX: We'd like to do this, but there are problems.
@@ -333,17 +333,16 @@ dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
 	(
 		TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName,
 			TypeName, TypeArity, _Status, _HldsDefn,
-			MaybeUnify, MaybeIndex, MaybeCompare,
+			MaybeUnify, MaybeCompare,
 			MaybeSolver, MaybeInit, MaybePretty)
 	->
 		Refs0 = [],
 		dead_proc_elim__maybe_add_ref(MaybeUnify,   Refs0, Refs1),
-		dead_proc_elim__maybe_add_ref(MaybeIndex,   Refs1, Refs2),
-		dead_proc_elim__maybe_add_ref(MaybeCompare, Refs2, Refs3),
-		dead_proc_elim__maybe_add_ref(MaybeSolver,  Refs3, Refs4),
-		dead_proc_elim__maybe_add_ref(MaybeInit,    Refs4, Refs5),
-		dead_proc_elim__maybe_add_ref(MaybePretty,  Refs5, Refs6),
-		Refs = Refs6
+		dead_proc_elim__maybe_add_ref(MaybeCompare, Refs1, Refs2),
+		dead_proc_elim__maybe_add_ref(MaybeSolver,  Refs2, Refs3),
+		dead_proc_elim__maybe_add_ref(MaybeInit,    Refs3, Refs4),
+		dead_proc_elim__maybe_add_ref(MaybePretty,  Refs4, Refs5),
+		Refs = Refs5
 	;
 		dead_proc_elim__find_base_gen_info(ModuleName, TypeName,
 			TypeArity, TypeCtorGenInfos, Refs)
@@ -674,7 +673,7 @@ dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 		TypeCtorGenInfos1),
 	TypeCtorGenInfo0 = type_ctor_gen_info(TypeId, ModuleName,
 		TypeName, Arity, Status, HldsDefn,
-		_MaybeUnify, _MaybeIndex, _MaybeCompare,
+		_MaybeUnify, _MaybeCompare,
 		_MaybeSolver, _MaybeInit, _MaybePretty),
 	(
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
@@ -684,7 +683,7 @@ dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 	;
 		NeuteredTypeCtorGenInfo = type_ctor_gen_info(TypeId,
 			ModuleName, TypeName, Arity, Status, HldsDefn,
-			no, no, no, no, no, no),
+			no, no, no, no, no),
 		TypeCtorGenInfos = [NeuteredTypeCtorGenInfo |
 			TypeCtorGenInfos1]
 	).

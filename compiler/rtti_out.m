@@ -237,11 +237,11 @@ output_rtti_data_defn(du_ptag_ordered_table(RttiTypeId, PtagLayouts),
 	io__write_string(" = {\n"),
 	output_ptag_layout_defns(PtagLayouts, RttiTypeId),
 	io__write_string("\n};\n").
-output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Index, Compare,
+output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
 		CtorRep, Solver, Init, Version, NumPtags, NumFunctors,
 		FunctorsInfo, LayoutInfo, _MaybeHashCons, _Prettyprinter),
 		DeclSet0, DeclSet) -->
-	{ MaybeCodeAddrs = [Unify, Index, Compare, Solver, Init] },
+	{ MaybeCodeAddrs = [Unify, Compare, Solver, Init] },
 	{ list__filter_map(pred(yes(CA)::in, CA::out) is semidet,
 		MaybeCodeAddrs, CodeAddrs) },
 	output_code_addrs_decls(CodeAddrs, "", "", 0, _, DeclSet0, DeclSet1),
@@ -256,7 +256,7 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Index, Compare,
 	io__write_string(",\n\t"),
 	output_maybe_static_code_addr(Unify),
 	io__write_string(",\n\t"),
-	output_maybe_static_code_addr(Index),
+	output_maybe_static_code_addr(Unify),
 	io__write_string(",\n\t"),
 	output_maybe_static_code_addr(Compare),
 	io__write_string(",\n\t"),
@@ -482,7 +482,7 @@ rtti_data_to_name(du_stag_ordered_table(RttiTypeId, Ptag, _),
 	RttiTypeId, du_stag_ordered_table(Ptag)).
 rtti_data_to_name(du_ptag_ordered_table(RttiTypeId, _),
 	RttiTypeId, du_ptag_ordered_table).
-rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_,_),
+rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_),
 	RttiTypeId, type_ctor_info).
 rtti_data_to_name(pseudo_type_info(PseudoTypeInfo), RttiTypeId,
 		pseudo_type_info(PseudoTypeInfo)) :-
@@ -575,7 +575,7 @@ output_rtti_type_decl(RttiName) -->
 rtti_out__init_rtti_data_if_nec(Data) -->
 	(
 		{ Data = type_ctor_info(RttiTypeId,
-			_,_,_,_,_,_,_,_,_,_,_,_,_) }
+			_,_,_,_,_,_,_,_,_,_,_,_) }
 	->
 		io__write_string("\t\tMR_INIT_TYPE_CTOR_INFO(\n\t\t"),
 		output_rtti_addr(RttiTypeId, type_ctor_info),
