@@ -2589,6 +2589,31 @@ add_dep(ModuleRelKey, Dep, Relation0, Relation) :-
 	relation__add_element(Relation0, Dep, DepRelKey, Relation1),
 	relation__add(Relation1, ModuleRelKey, DepRelKey, Relation).
 
+% check if a module is a top-level module, a nested sub-module,
+% or a separate sub-module.
+%
+:- type submodule_kind
+	--->	toplevel
+	;	nested_submodule
+	;	separate_submodule.
+
+:- func get_submodule_kind(module_name, deps_map) = submodule_kind.
+get_submodule_kind(ModuleName, DepsMap) = Kind :-
+	get_ancestors(ModuleName, Ancestors),
+	( list__last(Ancestors, Parent) ->
+		map__lookup(DepsMap, ModuleName, deps(_, ModuleImports)),
+		map__lookup(DepsMap, Parent, deps(_, ParentImports)),
+		ModuleFileName = ModuleImports ^ source_file_name,
+		ParentFileName = ParentImports ^ source_file_name,
+		( ModuleFileName = ParentFileName ->
+			Kind = nested_submodule
+		;
+			Kind = separate_submodule
+		)
+	;
+		Kind = toplevel
+	).
+
 %-----------------------------------------------------------------------------%
 
 	% Write out the `.dv' file, using the information collected in the
@@ -2711,8 +2736,21 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".os = "),
-	write_compact_dependencies_list(Modules, "$(os_subdir)", ".$O",
-					Basis, DepStream),
+	% for --target asm, we only generate separate object files
+	% for top-level modules and separate sub-modules, not for
+	% nested sub-modules.
+	{ IsNested = (pred(Mod::in) is semidet :-
+		get_submodule_kind(Mod, DepsMap) = nested_submodule) },
+	(
+		{ Target = asm },
+		{ list__filter(IsNested, Modules, NestedModules, MainModules) },
+		{ NestedModules \= [] }
+	->
+		write_dependencies_list(MainModules, ".$O", DepStream)
+	;
+		write_compact_dependencies_list(Modules, "$(os_subdir)",
+			".$O", Basis, DepStream)
+	),
 	write_extra_link_dependencies_list(ExtraLinkObjs, ".$O", DepStream),
 	io__write_string(DepStream, "\n"),
 
