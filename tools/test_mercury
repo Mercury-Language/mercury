@@ -41,6 +41,12 @@ umask 002
 # Stop looping tests after 5 minutes of CPU time.
 ulimit -S -t 300
 
+# Allow tests to use up to about 250 Mb of memory
+# (Most of it should build fine with 128 Mb,
+# but building the --split-c-files versions of
+# the libraries needs more, at least for dec-alpha-osf*.)
+ulimit -S -d 250000
+
 # Host to use to build the release of the day.
 ROTD_HOST=earth
 
