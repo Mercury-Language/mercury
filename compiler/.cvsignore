@@ -20,3 +20,4 @@ mercury_compile.dv
 Mercury
 *.ilk
 *.pdb
+*.*_date

@@ -23,3 +23,4 @@ mdb.init
 *.ilk
 *.pdb
 libmer_browser.lib
+*.*_date

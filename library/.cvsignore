@@ -27,3 +27,4 @@ Mercury
 *__c_code.cpp
 *.dll
 libmer_std.lib
+*.*_date
