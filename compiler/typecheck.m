@@ -352,7 +352,15 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 			clauses_info_set_vartypes(ClausesInfo0, VarTypes,
 				ClausesInfo),
 			pred_info_set_clauses_info(PredInfo0, ClausesInfo,
-				PredInfo),
+				PredInfo1),
+				% We also need to set the head_type_params
+				% field to indicate that all the existentially
+				% quantified tvars in the head of this
+				% pred are indeed bound by this predicate.
+			term__vars_list(ArgTypes0,
+				HeadVarsIncludingExistentials),
+			pred_info_set_head_type_params(PredInfo1,
+				HeadVarsIncludingExistentials, PredInfo),
 			Error = no,
 			Changed = no
 		;

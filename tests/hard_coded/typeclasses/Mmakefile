@@ -28,6 +28,7 @@ TYPECLASS_PROGS=	\
 	operator_classname \
 	superclass_call \
 	test_default_func_mode \
+	typeclass_exist_method \
 	typeclass_test_5 \
 	typeclass_test_6 \
 	use_abstract_instance
