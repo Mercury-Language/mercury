@@ -965,6 +965,13 @@ parse_pragma_type(ModuleName, "promise_pure", PragmaTerms, ErrorTerm,
 			Pragma = promise_pure(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
+parse_pragma_type(ModuleName, "promise_semipure", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
+	parse_simple_pragma(ModuleName, "promise_semipure",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = promise_semipure(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
 parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 	_VarSet, Result) :-
     (

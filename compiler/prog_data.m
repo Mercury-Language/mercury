@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -245,6 +245,9 @@
 			% Tabling type, Predname, Arity, PredOrFunc?, Mode?
 	
 	;	promise_pure(sym_name, arity)
+			% Predname, Arity
+
+	;	promise_semipure(sym_name, arity)
 			% Predname, Arity
 
 	;	termination_info(pred_or_func, sym_name, list(mode),

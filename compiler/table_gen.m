@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -381,7 +381,8 @@ table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 
 	pred_info_procedures(PredInfo1, ProcTable1),
 	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
+	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo2),
+	repuritycheck_proc(Module2, proc(PredId, ProcId), PredInfo2, PredInfo),
 	module_info_preds(Module2, PredTable1),
 	map__det_update(PredTable1, PredId, PredInfo, PredTable),
 	module_info_set_preds(Module2, PredTable, Module).
@@ -961,7 +962,12 @@ generate_simple_lookup_goal(Vars, PredId, ProcId, Context, VarTypes0, VarTypes,
 	goal_info_get_features(GoalInfo0, Features0),
 	set__insert(Features0, call_table_gen, Features),
 	goal_info_set_features(GoalInfo0, Features, GoalInfo),
-	Goal = GoalEx - GoalInfo.
+
+	% We need to wrap the conjunction in a `some' which cannot be removed
+	% to make sure the `call_table_gen' marker doesn't get removed by
+	% any of the optimization passes (e.g. simplify.m flattening
+	% conjunctions).
+	Goal = some([], cannot_remove, GoalEx - GoalInfo0) - GoalInfo.
 
 :- pred generate_non_lookup_goal(list(prog_var)::in, pred_id::in, proc_id::in,
 	term__context::in, map(prog_var, type)::in, map(prog_var, type)::out,
@@ -992,7 +998,12 @@ generate_non_lookup_goal(Vars, PredId, ProcId, Context, VarTypes0, VarTypes,
 	goal_info_get_features(GoalInfo0, Features0),
 	set__insert(Features0, call_table_gen, Features),
 	goal_info_set_features(GoalInfo0, Features, GoalInfo),
-	Goal = GoalEx - GoalInfo.
+
+	% We need to wrap the conjunction in a `some' which cannot be removed
+	% to make sure the `call_table_gen' marker doesn't get removed by
+	% any of the optimization passes (e.g. simplify.m flattening
+	% conjunctions).
+	Goal = some([], cannot_remove, GoalEx - GoalInfo) - GoalInfo.
 
 :- pred generate_lookup_goals(list(prog_var)::in, term__context::in,
 	prog_var::in, prog_var::out,
@@ -1427,7 +1438,7 @@ generate_loop_error_goal(TableInfo, Context, VarTypes0, VarTypes,
 	gen_string_construction("MessageS", Message, VarTypes0, VarTypes,
 		VarSet0, VarSet, MessageVar, MessageConsGoal),
 	generate_call("table_loopcheck_error", [MessageVar], erroneous,
-		yes(impure), [], ModuleInfo, Context, CallGoal),
+		no, [], ModuleInfo, Context, CallGoal),
 
 	GoalEx = conj([MessageConsGoal, CallGoal]),
 	set__init(NonLocals),

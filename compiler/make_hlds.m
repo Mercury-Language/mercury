@@ -517,6 +517,10 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		add_pred_marker(Module0, "promise_pure", Name, Arity,
 			ImportStatus, Context, promised_pure, [], Module)
 	;
+		{ Pragma = promise_semipure(Name, Arity) },
+		add_pred_marker(Module0, "promise_semipure", Name, Arity,
+			ImportStatus, Context, promised_semipure, [], Module)
+	;
 		{ Pragma = termination_info(PredOrFunc, SymName, ModeList, 
 			MaybeArgSizeInfo, MaybeTerminationInfo) },
 		add_pragma_termination_info(PredOrFunc, SymName, ModeList,

@@ -111,13 +111,13 @@ mdb> continue
 mdb> continue
      101:     32  5 CALL pred retry:fib/2-0 (det)
 mdb> step
-     102:     32  5 ELSE pred retry:fib/2-0 (det) c3;e;
+     102:     32  5 ELSE pred retry:fib/2-0 (det) c2;e;
 mdb> retry 2
       93:     30  3 CALL pred retry:fib/2-0 (det)
 mdb> print *
        HeadVar__1             	14
 mdb> next
-      94:     30  3 ELSE pred retry:fib/2-0 (det) c3;e;
+      94:     30  3 ELSE pred retry:fib/2-0 (det) c2;e;
 mdb> retry 1
       89:     29  2 CALL pred retry:fib/2-0 (det)
 mdb> finish

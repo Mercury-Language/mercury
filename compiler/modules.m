@@ -1039,6 +1039,7 @@ pragma_allowed_in_interface(source_file(_), yes).
 pragma_allowed_in_interface(fact_table(_, _, _), no).
 pragma_allowed_in_interface(tabled(_, _, _, _, _), no).
 pragma_allowed_in_interface(promise_pure(_, _), no).
+pragma_allowed_in_interface(promise_semipure(_, _), no).
 pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
 pragma_allowed_in_interface(type_spec(_, _, _, _, _, _, _), yes).
 pragma_allowed_in_interface(termination_info(_, _, _, _, _), yes).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 :- module post_typecheck.
 :- interface.
 :- import_module hlds_data, hlds_goal, hlds_module, hlds_pred, prog_data.
-:- import_module list, io, bool.
+:- import_module list, io, bool, std_util.
 
 	% check_type_bindings(PredId, PredInfo, ModuleInfo, ReportErrors):
 	%
@@ -70,18 +70,26 @@
 :- pred post_typecheck__finish_aditi_builtin(module_info, pred_info,
 		list(prog_var), term__context, aditi_builtin, aditi_builtin,
 		simple_call_id, simple_call_id, list(mode),
-		io__state, io__state).
+		maybe(aditi_builtin_error)).
 :- mode post_typecheck__finish_aditi_builtin(in, in, in, in,
-		in, out, in, out, out, di, uo) is det.
+		in, out, in, out, out, out) is det.
+
+:- type aditi_builtin_error
+	--->	aditi_update_of_derived_relation(prog_context,
+			aditi_builtin, simple_call_id).
+
+:- pred report_aditi_builtin_error(aditi_builtin_error, io__state, io__state).
+:- mode report_aditi_builtin_error(in, di, uo) is det.
 
 	% Work out whether a var-functor unification is actually a function
 	% call. If so, replace the unification goal with a call.
 	%
 :- pred post_typecheck__resolve_unify_functor(prog_var, cons_id,
 		list(prog_var), unify_mode, unification, unify_context,
-		hlds_goal_info, module_info, pred_info, pred_info, hlds_goal).
+		hlds_goal_info, module_info, pred_info, pred_info,
+		vartypes, vartypes, prog_varset, prog_varset, hlds_goal).
 :- mode post_typecheck__resolve_unify_functor(in, in, in, in, in, in,
-		in, in, in, out, out) is det.
+		in, in, in, out, in, out, in, out, out) is det.
 
 	% Do the stuff needed to initialize the pred_infos and proc_infos
 	% so that a pred is ready for running polymorphism and then
@@ -129,7 +137,7 @@
 :- import_module mercury_to_mercury, prog_out, hlds_out, type_util.
 :- import_module globals, options.
 
-:- import_module map, set, assoc_list, bool, std_util, term, require, int.
+:- import_module map, set, assoc_list, term, require, int.
 :- import_module string, varset.
 
 %-----------------------------------------------------------------------------%
@@ -400,13 +408,14 @@ post_typecheck__resolve_pred_overloading(PredId0, Args0, CallerPredInfo,
 %-----------------------------------------------------------------------------%
 
 post_typecheck__finish_aditi_builtin(_, _, _, _, aditi_call(_, _, _, _),
-		_, _, _, _) -->
+               _, _, _, _, _) :-
 	% These are only added by magic.m.
-	{ error("post_typecheck__finish_aditi_builtin: aditi_call") }.
+	error("post_typecheck__finish_aditi_builtin: aditi_call").
+
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		aditi_tuple_insert_delete(InsertDelete, PredId0), Builtin,
 		PredOrFunc - SymName0/Arity, InsertCallId,
-		Modes, IO0, IO) :-
+		Modes, MaybeError) :-
 	% make_hlds.m checks the arity, so this is guaranteed to succeed.
 	get_state_args_det(Args, OtherArgs, _, _),
 
@@ -420,7 +429,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 
 	module_info_pred_info(ModuleInfo, PredId, RelationPredInfo),
 	check_base_relation(Context, RelationPredInfo,
-		Builtin, InsertCallId, IO0, IO),
+		Builtin, InsertCallId, MaybeError),
 
 	% `aditi_insert' calls do not use the `aditi_state' argument
 	% in the tuple to insert, so set its mode to `unused'.
@@ -433,7 +442,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		Builtin0, Builtin, PredOrFunc - SymName0/Arity,
-		UpdateCallId, Modes, IO0, IO) :-
+		UpdateCallId, Modes, MaybeError) :-
 	Builtin0 = aditi_insert_delete_modify(InsertDelMod, PredId0, Syntax),
 	UnchangedArgTypes = (pred(X::in, X::out) is det),
 	(
@@ -467,7 +476,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 
 	module_info_pred_info(ModuleInfo, PredId, RelationPredInfo),
 	check_base_relation(Context, RelationPredInfo,
-		Builtin, UpdateCallId, IO0, IO),
+		Builtin, UpdateCallId, MaybeError),
 
 	pred_info_arg_types(RelationPredInfo, ArgTypes),
 	post_typecheck__insert_delete_modify_closure_info(InsertDelMod,
@@ -584,26 +593,29 @@ aditi_builtin_modes(Mode, AditiStateMode, [ArgType | ArgTypes],
 	% Report an error if a predicate modified by an Aditi builtin
 	% is not a base relation.
 :- pred check_base_relation(prog_context, pred_info, aditi_builtin,
-		simple_call_id, io__state, io__state).
-:- mode check_base_relation(in, in, in, in, di, uo) is det.
+	simple_call_id, maybe(aditi_builtin_error)).
+:- mode check_base_relation(in, in, in, in, out) is det.
 
-check_base_relation(Context, PredInfo, Builtin, CallId) -->
-	( { hlds_pred__pred_info_is_base_relation(PredInfo) } ->
-		[]
+check_base_relation(Context, PredInfo, Builtin, CallId, MaybeError) :-
+	( hlds_pred__pred_info_is_base_relation(PredInfo) ->
+		MaybeError = no
 	;
-		io__set_exit_status(1),
-		prog_out__write_context(Context),
-		io__write_string("In "),
-		hlds_out__write_call_id(
-			generic_call(aditi_builtin(Builtin, CallId))
-		),
-		io__write_string(":\n"),
-		prog_out__write_context(Context),
-		io__write_string("  error: the modified "),
-		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-		hlds_out__write_pred_or_func(PredOrFunc),
-		io__write_string(" is not a base relation.\n")
+		MaybeError = yes(aditi_update_of_derived_relation(Context,
+					Builtin, CallId))
 	).
+
+report_aditi_builtin_error(
+		aditi_update_of_derived_relation(Context, Builtin, CallId)) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("In "),
+	hlds_out__write_call_id(generic_call(aditi_builtin(Builtin, CallId))),
+	io__write_string(":\n"),
+	prog_out__write_context(Context),
+	io__write_string("  error: the modified "),
+	{ CallId = PredOrFunc - _ },
+	hlds_out__write_pred_or_func(PredOrFunc),
+	io__write_string(" is not a base relation.\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -951,10 +963,8 @@ report_aditi_pragma(PredInfo, ErrorPieces) :-
 
 post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		Unification0, UnifyContext, GoalInfo0,
-		ModuleInfo0, PredInfo0, PredInfo, Goal) :-
-
-        pred_info_clauses_info(PredInfo0, ClausesInfo),
-        clauses_info_vartypes(ClausesInfo, VarTypes0),
+		ModuleInfo0, PredInfo0, PredInfo, VarTypes0, VarTypes,
+		VarSet0, VarSet, Goal) :-
 
 	map__lookup(VarTypes0, X0, TypeOfX),
 	list__length(ArgVars0, Arity),
@@ -983,6 +993,8 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			ArgVars, Modes, Det),
 
 		PredInfo = PredInfo0,
+		VarTypes = VarTypes0,
+		VarSet = VarSet0,
 		Goal = HOCall - GoalInfo0
 	;
 		%
@@ -1042,6 +1054,8 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			yes(FuncCallUnifyContext), QualifiedFuncName),
 
 		PredInfo = PredInfo0,
+		VarTypes = VarTypes0,
+		VarSet = VarSet0,
 		Goal = FuncCall - GoalInfo0
 	;
 		%
@@ -1071,7 +1085,8 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			ConsId0, TypeOfX, ArgTypes0)
 	->
 		post_typecheck__finish_field_access_function(ModuleInfo0,
-			PredInfo0, PredInfo, AccessType, FieldName,
+			PredInfo0, PredInfo, VarTypes0, VarTypes,
+			VarSet0, VarSet, AccessType, FieldName,
 			UnifyContext, X0, ArgVars0, GoalInfo0, Goal)
 	;
 		%
@@ -1079,6 +1094,8 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% we leave alone
 		%
 		PredInfo = PredInfo0,
+		VarTypes = VarTypes0,
+		VarSet = VarSet0,
 		Goal = unify(X0, functor(ConsId0, ArgVars0), Mode0,
 				Unification0, UnifyContext) - GoalInfo0
 	).
@@ -1118,53 +1135,58 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
 	% shouldn't be too much worse than if the goals were special cases.
 	%
 :- pred post_typecheck__finish_field_access_function(module_info, pred_info,
-		pred_info, field_access_type, ctor_field_name,
+		pred_info, vartypes, vartypes, prog_varset, prog_varset,
+		field_access_type, ctor_field_name,
 		unify_context, prog_var, list(prog_var),
 		hlds_goal_info, hlds_goal).
-:- mode post_typecheck__finish_field_access_function(in, in, out, in, in,
-		in, in, in, in, out) is det.
+:- mode post_typecheck__finish_field_access_function(in, in, out, in, out,
+		in, out, in, in, in, in, in, in, out) is det.
 
 post_typecheck__finish_field_access_function(ModuleInfo, PredInfo0, PredInfo,
-		AccessType, FieldName, UnifyContext,
-		Var, Args, GoalInfo, GoalExpr - GoalInfo) :-
+		VarTypes0, VarTypes, VarSet0, VarSet, AccessType, FieldName,
+		UnifyContext, Var, Args, GoalInfo, GoalExpr - GoalInfo) :-
 	(
 		AccessType = get,
 		field_extraction_function_args(Args, TermVar),
 		post_typecheck__translate_get_function(ModuleInfo,
-			PredInfo0, PredInfo, FieldName, UnifyContext,
+			PredInfo0, PredInfo, VarTypes0, VarTypes,
+			VarSet0, VarSet, FieldName, UnifyContext,
 			Var, TermVar, GoalInfo, GoalExpr)
 	;
 		AccessType = set,
 		field_update_function_args(Args, TermInputVar, FieldVar),
 		post_typecheck__translate_set_function(ModuleInfo,
-			PredInfo0, PredInfo, FieldName, UnifyContext,
+			PredInfo0, PredInfo, VarTypes0, VarTypes,
+			VarSet0, VarSet, FieldName, UnifyContext,
 			FieldVar, TermInputVar, Var,
 			GoalInfo, GoalExpr)
 	).
 
 :- pred post_typecheck__translate_get_function(module_info,
-		pred_info, pred_info, ctor_field_name, unify_context, prog_var,
-		prog_var, hlds_goal_info, hlds_goal_expr).
-:- mode post_typecheck__translate_get_function(in, in, out,
+		pred_info, pred_info, vartypes, vartypes,
+		prog_varset, prog_varset, ctor_field_name,
+		unify_context, prog_var, prog_var,
+		hlds_goal_info, hlds_goal_expr).
+:- mode post_typecheck__translate_get_function(in, in, out, in, out, in, out,
 		in, in, in, in, in, out) is det.
 
 post_typecheck__translate_get_function(ModuleInfo, PredInfo0, PredInfo,
-		FieldName, UnifyContext, FieldVar, TermInputVar,
-		OldGoalInfo, GoalExpr) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+		VarTypes0, VarTypes, VarSet0, VarSet, FieldName, UnifyContext,
+		FieldVar, TermInputVar, OldGoalInfo, GoalExpr) :-
 	map__lookup(VarTypes0, TermInputVar, TermType),
 	get_constructor_containing_field(ModuleInfo, TermType, FieldName,
 		ConsId, FieldNumber),
 
 	get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId,
-		TermType, ArgTypes, _, PredInfo0, PredInfo1),
+		TermType, ArgTypes, _, PredInfo0, PredInfo),
 
 	split_list_at_index(FieldNumber, ArgTypes,
 		TypesBeforeField, _, TypesAfterField),
 
-	make_new_vars(TypesBeforeField, VarsBeforeField, PredInfo1, PredInfo2),
-	make_new_vars(TypesAfterField, VarsAfterField, PredInfo2, PredInfo),
+	make_new_vars(TypesBeforeField, VarsBeforeField,
+		VarTypes0, VarTypes1, VarSet0, VarSet1),
+	make_new_vars(TypesAfterField, VarsAfterField,
+		VarTypes1, VarTypes, VarSet1, VarSet),
 
 	list__append(VarsBeforeField, [FieldVar | VarsAfterField], ArgVars),
 
@@ -1176,30 +1198,32 @@ post_typecheck__translate_get_function(ModuleInfo, PredInfo0, PredInfo,
 	FunctorGoal = GoalExpr - _.
 
 :- pred post_typecheck__translate_set_function(module_info,
-		pred_info, pred_info, ctor_field_name, unify_context, prog_var,
-		prog_var, prog_var, hlds_goal_info, hlds_goal_expr).
-:- mode post_typecheck__translate_set_function(in, in, out,
+		pred_info, pred_info, vartypes, vartypes,
+		prog_varset, prog_varset, ctor_field_name, unify_context,
+		prog_var, prog_var, prog_var, hlds_goal_info, hlds_goal_expr).
+:- mode post_typecheck__translate_set_function(in, in, out, in, out, in, out,
 		in, in, in, in, in, in, out) is det.
 
 post_typecheck__translate_set_function(ModuleInfo, PredInfo0, PredInfo,
-		FieldName, UnifyContext, FieldVar, TermInputVar, TermOutputVar,
-		OldGoalInfo, Goal) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+		VarTypes0, VarTypes, VarSet0, VarSet, FieldName, UnifyContext,
+		FieldVar, TermInputVar, TermOutputVar, OldGoalInfo, Goal) :-
 	map__lookup(VarTypes0, TermInputVar, TermType),
 
 	get_constructor_containing_field(ModuleInfo, TermType, FieldName,
 		ConsId0, FieldNumber),
 
 	get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId0,
-		TermType, ArgTypes, ExistQVars, PredInfo0, PredInfo1),
+		TermType, ArgTypes, ExistQVars, PredInfo0, PredInfo),
 
 	split_list_at_index(FieldNumber, ArgTypes,
 		TypesBeforeField, TermFieldType, TypesAfterField),
 
-	make_new_vars(TypesBeforeField, VarsBeforeField, PredInfo1, PredInfo2),
-	make_new_var(TermFieldType, SingletonFieldVar, PredInfo2, PredInfo3),
-	make_new_vars(TypesAfterField, VarsAfterField, PredInfo3, PredInfo),
+	make_new_vars(TypesBeforeField, VarsBeforeField, VarTypes0, VarTypes1,
+		VarSet0, VarSet1),
+	make_new_var(TermFieldType, SingletonFieldVar, VarTypes1, VarTypes2,
+		VarSet1, VarSet2),
+	make_new_vars(TypesAfterField, VarsAfterField, VarTypes2, VarTypes,
+		VarSet2, VarSet),
 
 	%
 	% Build a goal to deconstruct the input.
@@ -1393,33 +1417,23 @@ create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo), 
 	Goal = GoalExpr0 - GoalInfo.
 
-:- pred make_new_vars(list(type), list(prog_var), pred_info, pred_info).
-:- mode make_new_vars(in, out, in, out) is det.
+:- pred make_new_vars(list(type), list(prog_var), vartypes, vartypes,
+		prog_varset, prog_varset).
+:- mode make_new_vars(in, out, in, out, in, out) is det.
 
-make_new_vars(Types, Vars, PredInfo0, PredInfo) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	clauses_info_varset(ClausesInfo0, VarSet0),
-	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+make_new_vars(Types, Vars, VarTypes0, VarTypes, VarSet0, VarSet) :-
 	list__length(Types, NumVars),
 	varset__new_vars(VarSet0, NumVars, Vars, VarSet),
 	map__det_insert_from_corresponding_lists(VarTypes0,
-		Vars, Types, VarTypes),
-	clauses_info_set_varset(ClausesInfo0, VarSet, ClausesInfo1),
-	clauses_info_set_vartypes(ClausesInfo1, VarTypes, ClausesInfo),
-	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
+		Vars, Types, VarTypes).
 
-:- pred make_new_var((type), prog_var, pred_info, pred_info).
-:- mode make_new_var(in, out, in, out) is det.
+:- pred make_new_var((type), prog_var, vartypes, vartypes,
+		prog_varset, prog_varset).
+:- mode make_new_var(in, out, in, out, in, out) is det.
 
-make_new_var(Type, Var, PredInfo0, PredInfo) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	clauses_info_varset(ClausesInfo0, VarSet0),
-	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+make_new_var(Type, Var, VarTypes0, VarTypes, VarSet0, VarSet) :-
 	varset__new_var(VarSet0, Var, VarSet),
-	map__det_insert(VarTypes0, Var, Type, VarTypes),
-	clauses_info_set_varset(ClausesInfo0, VarSet, ClausesInfo1),
-	clauses_info_set_vartypes(ClausesInfo1, VarTypes, ClausesInfo),
-	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
+	map__det_insert(VarTypes0, Var, Type, VarTypes).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

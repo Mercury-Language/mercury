@@ -431,6 +431,10 @@ mercury_output_item(pragma(Pragma), Context) -->
 		mercury_output_pragma_decl(Pred, Arity, predicate,
 					   "promise_pure")
 	;
+		{ Pragma = promise_semipure(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, predicate,
+					   "promise_semipure")
+	;
 		{ Pragma = termination_info(PredOrFunc, PredName, 
 			ModeList, MaybePragmaArgSizeInfo,
 			MaybePragmaTerminationInfo) },

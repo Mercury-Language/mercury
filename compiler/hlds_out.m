@@ -881,6 +881,7 @@ hlds_out__marker_name(named_class_instance_method,
 hlds_out__marker_name((impure), "impure").
 hlds_out__marker_name((semipure), "semipure").
 hlds_out__marker_name(promised_pure, "promise_pure").
+hlds_out__marker_name(promised_semipure, "promise_semipure").
 hlds_out__marker_name(terminates, "terminates").
 hlds_out__marker_name(check_termination, "check_termination").
 hlds_out__marker_name(does_not_terminate, "does_not_terminate").

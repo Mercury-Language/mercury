@@ -1697,6 +1697,7 @@ intermod__should_output_marker(psn, yes).
 intermod__should_output_marker(supp_magic, yes).
 intermod__should_output_marker(context, yes).
 intermod__should_output_marker(promised_pure, yes).
+intermod__should_output_marker(promised_semipure, yes).
 intermod__should_output_marker(terminates, yes).
 intermod__should_output_marker(does_not_terminate, yes).
 	% Termination should only be checked in the defining module.

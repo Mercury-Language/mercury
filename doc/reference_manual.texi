@@ -5846,20 +5846,23 @@ Because the inferred purity of the predicate is calculated from the
 declared purity of the calls it executes,  the lowest purity bound is
 propagated up from callee to caller through the program.
 
-However, some predicates which call impure or semipure predicates are
-themselves pure. 
-The only way for the programmer to stop the propagation of impurity is
-to explicitly promise that a predicate or function is pure.
+In some cases the impurity of a predicate's body is an implementation
+detail which should not be exposed to callers. These predicates are
+pure or semipure even though they call impure or semipure predicates.
+The only way for the programmer to stop the propagation of impurity is to
+explicitly promise that the predicate or function is pure or semipure.
 
-Of course, the Mercury compiler cannot verify that a predicate is pure,
-so it is the programmer's responsibility to ensure this.  If a predicate
-is promised pure and is not, the behaviour of the program is undefined.
+Of course, the Mercury compiler cannot verify that the predicate's
+purity matches the promise, so it is the programmer's responsibility
+to ensure this.  If a predicate is promised pure or semipure and is not,
+the behaviour of the program is undefined.
 
-The programmer may promise that a predicate is pure using the
-@code{promise_pure} pragma:
+The programmer may promise that a predicate or function is pure or semipure
+using the @code{promise_pure} and @code{promise_semipure} pragmas:
 
 @example
 :- pragma promise_pure(@var{Name}/@var{Arity}).
+:- pragma promise_semipure(@var{Name}/@var{Arity}).
 @end example
 
 

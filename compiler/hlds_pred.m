@@ -421,6 +421,10 @@
 	;	promised_pure	% Requests that calls to this predicate be
 				% transformed as usual, despite any impure
 				% or semipure markers present.
+	;	promised_semipure
+				% Requests that calls to this predicate be
+				% treated as semipure, despite any impure
+				% calls in the body.
 
 				% The terminates and does_not_terminate
 				% pragmas are kept as markers to ensure
@@ -735,8 +739,8 @@
 :- pred pred_info_get_purity(pred_info, purity).
 :- mode pred_info_get_purity(in, out) is det.
 
-:- pred pred_info_get_promised_pure(pred_info, bool).
-:- mode pred_info_get_promised_pure(in, out) is det.
+:- pred pred_info_get_promised_purity(pred_info, purity).
+:- mode pred_info_get_promised_purity(in, out) is det.
 
 :- pred purity_to_markers(purity, pred_markers).
 :- mode purity_to_markers(in, out) is det.
@@ -1135,20 +1139,22 @@ pred_info_requested_no_inlining(PredInfo0) :-
 
 pred_info_get_purity(PredInfo0, Purity) :-
 	pred_info_get_markers(PredInfo0, Markers),
-	(   check_marker(Markers, (impure)) ->
+	( check_marker(Markers, (impure)) ->
 		Purity = (impure)
-	;   check_marker(Markers, (semipure)) ->
+	; check_marker(Markers, (semipure)) ->
 		Purity = (semipure)
 	;
 		Purity = pure
 	).
 
-pred_info_get_promised_pure(PredInfo0, Promised) :-
+pred_info_get_promised_purity(PredInfo0, PromisedPurity) :-
 	pred_info_get_markers(PredInfo0, Markers),
-	(   check_marker(Markers, promised_pure) ->
-		Promised = yes
+	( check_marker(Markers, promised_pure) ->
+		PromisedPurity = pure
+	; check_marker(Markers, promised_semipure) ->
+		PromisedPurity = (semipure)
 	;
-		Promised = no
+		PromisedPurity = (impure)
 	).
 
 purity_to_markers(pure, []).

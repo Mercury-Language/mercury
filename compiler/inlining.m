@@ -84,7 +84,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
-:- import_module io, list, map.
+:- import_module bool, io, list, map.
 
 :- pred inlining(module_info, module_info, io__state, io__state).
 :- mode inlining(in, out, di, uo) is det.
@@ -133,6 +133,14 @@
 :- mode inlining__rename_goal(in, in, in, in, out,
 		in, in, out, out, in, out) is det.
 
+	% inlining__can_inline_proc(PredId, ProcId, BuiltinState,
+	% 	InlinePromisedPure, CallingPredMarkers, ModuleInfo).
+	%
+	% Determine whether a predicate can be inlined.
+:- pred inlining__can_inline_proc(pred_id, proc_id, builtin_state,
+		bool, pred_markers, module_info).
+:- mode inlining__can_inline_proc(in, in, in, in, in, in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -144,13 +152,13 @@
 % HLDS modules
 :- import_module hlds_data, type_util, mode_util, goal_util, det_analysis.
 :- import_module quantification, code_aux, dead_proc_elim, dependency_graph.
-:- import_module passes_aux.
+:- import_module passes_aux, purity.
 
 % Misc
 :- import_module globals, options.
 
 % Standard library modules
-:- import_module bool, int, list, assoc_list, set, std_util, require.
+:- import_module int, list, assoc_list, set, std_util, require.
 :- import_module term, varset.
 
 %-----------------------------------------------------------------------------%
@@ -398,8 +406,10 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		bool,			% Did we do any inlining in the proc?
 		bool,			% Does the goal need to be
 					% requantified?
-		bool			% Did we change the determinism
+		bool,			% Did we change the determinism
 					% of any subgoal?
+		bool			% Did we change the purity of
+					% any subgoal.
 	).
 
 :- pred inlining__in_predproc(pred_proc_id, set(pred_proc_id), inline_params,
@@ -430,17 +440,18 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	DidInlining0 = no,
 	Requantify0 = no,
 	DetChanged0 = no,
+	PurityChanged0 = no,
 
 	InlineInfo0 = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo0, UnivQTVars, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
-		DidInlining0, Requantify0, DetChanged0),
+		DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
 	inlining__inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
 	InlineInfo = inline_info(_, _, _, _, _, _, VarSet, VarTypes,
 		TypeVarSet, TypeInfoVarMap, DidInlining, Requantify,
-		DetChanged),
+		DetChanged, PurityChanged),
 
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
 
@@ -469,7 +480,17 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
+	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo2),
+
+	(
+		PurityChanged = yes,
+		repuritycheck_proc(ModuleInfo1, PredProcId,
+			PredInfo2, PredInfo)
+	;
+		PurityChanged = no,
+		PredInfo = PredInfo2
+	),
+
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 
@@ -527,7 +548,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 	InlineInfo0 = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
-		DidInlining0, Requantify0, DetChanged0),
+		DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
 	% should we inline this call?
 	(
@@ -563,6 +584,17 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 			Requantify = yes
 		),
 
+		pred_info_get_markers(PredInfo, CalleeMarkers),
+		(
+			( check_marker(CalleeMarkers, promised_pure)
+			; check_marker(CalleeMarkers, promised_semipure)
+			)
+		->
+			PurityChanged = yes
+		;
+			PurityChanged = PurityChanged0
+		),
+			
 			% If the inferred determinism of the called
 			% goal differs from the declared determinism,
 			% flag that we should re-run determinism analysis
@@ -584,12 +616,13 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		TypeInfoVarMap = TypeInfoVarMap0,
 		DidInlining = DidInlining0,
 		Requantify = Requantify0,
-		DetChanged = DetChanged0
+		DetChanged = DetChanged0,
+		PurityChanged = PurityChanged0
 	),
 	InlineInfo = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DidInlining,
-		Requantify, DetChanged).
+		Requantify, DetChanged, PurityChanged).
 
 inlining__inlining_in_goal(generic_call(A, B, C, D) - GoalInfo,
 		generic_call(A, B, C, D) - GoalInfo) --> [].
@@ -793,19 +826,48 @@ inlining__inlining_in_conj([Goal0 | Goals0], Goals) -->
 
 inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		InlinedProcs, CallingPredMarkers, ModuleInfo) :-
+	InlinePromisedPure = yes,
+	inlining__can_inline_proc(PredId, ProcId, BuiltinState,
+		HighLevelCode, InlinePromisedPure,
+		CallingPredMarkers, ModuleInfo),
+
+
+	% OK, we could inline it - but should we?  Apply our heuristic.
+
+	(
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_requested_inlining(PredInfo)
+	;
+		set__member(proc(PredId, ProcId), InlinedProcs)
+	).
+
+inlining__can_inline_proc(PredId, ProcId, BuiltinState, InlinePromisedPure,
+		CallingPredMarkers, ModuleInfo) :-
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode), 
+	inlining__can_inline_proc(PredId, ProcId, BuiltinState,
+		HighLevelCode, InlinePromisedPure,
+		CallingPredMarkers, ModuleInfo).
+
+:- pred inlining__can_inline_proc(pred_id, proc_id, builtin_state, bool,
+		bool, pred_markers, module_info).
+:- mode inlining__can_inline_proc(in, in, in, in, in, in, in) is semidet.
+
+inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
+		InlinePromisedPure, CallingPredMarkers, ModuleInfo) :-
 
 	% don't inline builtins, the code generator will handle them
-
 	BuiltinState = not_builtin,
-
-	% don't try to inline imported predicates, since we don't
-	% have the code for them.
 
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, 
 		ProcInfo),
+
+	% don't try to inline imported predicates, since we don't
+	% have the code for them.
 	\+ pred_info_is_imported(PredInfo),
-		% this next line catches the case of locally defined
-		% unification predicates for imported types.
+
+	% this next line catches the case of locally defined
+	% unification predicates for imported types.
 	\+ (
 		pred_info_is_pseudo_imported(PredInfo),
 		hlds_pred__in_in_unification_proc_id(ProcId)
@@ -816,12 +878,10 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	% using any of the other methods because the code generator for
 	% the methods can only handle whole procedures not code 
 	% fragments.
-
 	proc_info_eval_method(ProcInfo, eval_normal),
 	
-	% don't inlining anything we have been specifically requested
+	% Don't inlining anything we have been specifically requested
 	% not to inline.
-
 	\+ pred_info_requested_no_inlining(PredInfo),
 
 	% For the LLDS back-end,
@@ -835,8 +895,8 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		( Detism = nondet ; Detism = multidet )
 	),
 
-	% only inline foreign_code if it is appropriate for
-	% the target language
+	% Only inline foreign_code if it is appropriate for
+	% the target language.
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
 	(
@@ -857,19 +917,24 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	% since this could result in joins being performed by
 	% backtracking rather than by more efficient methods in
 	% the database.
-
 	pred_info_get_markers(PredInfo, CalledPredMarkers),
 	\+ (
 		\+ check_marker(CallingPredMarkers, aditi),
 		check_marker(CalledPredMarkers, aditi)
 	),
-
-	% OK, we could inline it - but should we?  Apply our heuristic.
-
+	
 	(
-		pred_info_requested_inlining(PredInfo)
+		InlinePromisedPure = yes
 	;
-		set__member(proc(PredId, ProcId), InlinedProcs)
+		%
+		% For some optimizations (such as deforestation)
+		% we don't want to inline predicates which are
+		% promised pure because the extra impurity propagated
+		% through the goal will defeat any attempts at
+		% optimization.
+		%
+		InlinePromisedPure = no,
+		pred_info_get_promised_purity(PredInfo, (impure))
 	).
 
 	% Succeed iff it is appropriate to inline `pragma foreign_code'
