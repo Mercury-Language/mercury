@@ -138,7 +138,7 @@
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules, tree.
 :- import_module prog_data, prog_out, prog_util, llds_out.
-:- import_module rtti, type_util, code_model, foreign.
+:- import_module pseudo_type_info, rtti, type_util, code_model, foreign.
 
 :- import_module ilasm, il_peephole.
 :- import_module ml_util, ml_code_util, error_util.
@@ -3217,8 +3217,15 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 		SymName = qualified(qualified(unqualified("mercury"),
 			LibModuleName0), wrapper_class_name),
 		(
-			DataName = rtti(rtti_type_id(_, Name, Arity),
-				_RttiName),
+			DataName = rtti(RttiTypeId, RttiName),
+			RttiTypeId = rtti_type_id(_, Name, Arity),
+
+			% Only the type_ctor_infos for the following
+			% RTTI names are defined in MC++.
+			( RttiName = type_ctor_info
+			; RttiName = pseudo_type_info(PseudoTypeInfo),
+				PseudoTypeInfo = type_ctor_info(RttiTypeId)
+			),
 			( LibModuleName0 = "builtin",
 				( 
 				  Name = "int", Arity = 0 
