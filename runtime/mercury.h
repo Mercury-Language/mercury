@@ -27,6 +27,7 @@
 #include "mercury_std.h"
 #include "mercury_type_info.h"
 #include "mercury_ho_call.h"	/* for the `MR_Closure' type */
+#include "mercury_bootstrap.h"
 
 #ifdef CONSERVATIVE_GC
   #include "gc.h"
