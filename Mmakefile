@@ -299,7 +299,7 @@ tar: $(GENERATED_DOCS)
 	+cd browser && $(SUBDIR_MMAKE) all-ints cs $(BROWSER_LIB_NAME).init tags
 	+cd trace && $(SUBDIR_MMAKE) cs
 	+cd analysis && $(SUBDIR_MMAKE) depend
-	+cd analysis && $(SUBDIR_MMAKE) cs tags
+	+cd analysis && $(SUBDIR_MMAKE) all-ints cs tags
 	+cd compiler && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) cs tags
 	+cd profiler && $(SUBDIR_MMAKE) depend
