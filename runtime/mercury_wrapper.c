@@ -1226,7 +1226,7 @@ print_register_usage_counts(void)
 #ifdef MR_HIGHLEVEL_CODE
 
 static void
-do_interpreter(void)
+MR_do_interpreter(void)
 {
   #ifdef  PROFILE_TIME
 	if (MR_profiling) MR_prof_turn_on_time_profiling();
