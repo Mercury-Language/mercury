@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -910,22 +910,22 @@ XXX :- external stops us from using this
 :- pragma foreign_code("MC++", 
 	builtin_catch(_Pred::pred(out) is det,
 		_Handler::in(handler), _T::out), [will_not_call_mercury], "
-	MR_Runtime::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 :- pragma foreign_code("MC++", 
 	builtin_catch(_Pred::pred(out) is semidet,
 		_Handler::in(handler), _T::out), [will_not_call_mercury], "
-	MR_Runtime::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 :- pragma foreign_code("MC++", 
 	builtin_catch(_Pred::pred(out) is cc_multi,
 		_Handler::in(handler), _T::out), [will_not_call_mercury], "
-	MR_Runtime::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 :- pragma foreign_code("MC++", 
 	builtin_catch(_Pred::pred(out) is cc_nondet,
 		_Handler::in(handler), _T::out), [will_not_call_mercury], "
-	MR_Runtime::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 :- pragma foreign_code("MC++", 
 	builtin_catch(_Pred::pred(out) is multi,
@@ -934,7 +934,7 @@ XXX :- external stops us from using this
 	first_code(""),
 	retry_code(""),
 	common_code("
-		MR_Runtime::SORRY(""foreign code for this function"");
+		mercury::runtime::Errors::SORRY(""foreign code for this function"");
 	")
 ).
 :- pragma foreign_code("MC++", 
@@ -944,7 +944,7 @@ XXX :- external stops us from using this
 	first_code(""),
 	retry_code(""),
 	common_code("
-		MR_Runtime::SORRY(""foreign code for this function"");
+		mercury::runtime::Errors::SORRY(""foreign code for this function"");
 	")
 ).
 
