@@ -197,7 +197,11 @@ number 101.
 
 @item string
 A string is a sequence of characters enclosed in double quotes (@code{"}).
-Strings may contain backslash escapes.  @samp{\a} stands for ``alert''
+Within a string, two adjacent double quotes stand for a single double quote.
+For example, the string @samp{ """" } is a string of length one, containing
+a single double quote: the outermost pair of double quotes encloses the
+string, and the innermost pair stand for a single double quote.
+Strings may also contain backslash escapes.  @samp{\a} stands for ``alert''
 (a beep character), @samp{\b} for backspace, @samp{\r} for carriage-return,
 @samp{\f} for form-feed, @samp{\t} for tab, @samp{\n} for newline,
 @samp{\v} for vertical-tab.  An escaped backslash, single-quote, or
@@ -216,7 +220,9 @@ source line.  (String literals may also contain embedded newlines.)
 A name is either an unquoted name or a quoted name.
 An unquoted name is a lowercase letter followed by zero or more letters,
 underscores, and digits.  A quoted name is any sequence of zero or more
-characters enclosed in single quotes (@code{'}).  Quoted names can contain
+characters enclosed in single quotes (@code{'}). 
+Within a quoted name, two adjacent single quotes stand for a single
+single quote.  Quoted names can also contain
 backslash escapes of the same form as for strings.
 
 @item variable
@@ -3674,7 +3680,7 @@ then it must take appropriate steps to prevent this.
 University of Melbourne Mercury implementation protects
 @samp{not_thread_safe} code using a mutex:
 C code that is not thread-safe has code inserted around it to obtain
-and release a mutex.  All non-thread-safe C code shares a single mutex.]
+and release a mutex.  All non-thread-safe C code shares a single mutex.)
 @c XXX this can cause deadlocks if not_thread_safe C code calls
 @c     Mercury which calls C
 
