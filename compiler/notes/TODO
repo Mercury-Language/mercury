@@ -50,15 +50,12 @@ general
 - other specializations, e.g. if argument is known to be bound to
   f(X,Y), then just pass X and Y in registers
 
-- warn about predicates with no clauses (requires improvements in the
-  module system handling).
-
-- warn about predicates with no modes.
-
 - handle abstract insts in the same way abstract types are handled (a research
   issue)
 
-- improve efficiency of implicit quantification
+- improve efficiency of the implicit quantification pass (currently O(N^2))
+
+- improve efficiency of the module import handling (currently O(N^2))
 
 - renaming apart of different occurences
   of the same variable; warning about variables which occur in
