@@ -774,6 +774,8 @@ vn__is_const_expr(Vn, Vn_tables) :-
 	; Vnrval = vn_binop(_, Vn1, Vn2) ->
 		vn__is_const_expr(Vn1, Vn_tables),
 		vn__is_const_expr(Vn2, Vn_tables)
+	;
+		fail
 	).
 
 %-----------------------------------------------------------------------------%
