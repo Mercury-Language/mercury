@@ -209,6 +209,9 @@ MR_init_memory(void)
 	if (MR_global_heap_zone_size >= MR_global_heap_size) {
 		MR_global_heap_zone_size = MR_unit;
 	}
+	if (MR_heap_margin_size >= MR_heap_size) {
+		MR_heap_margin_size = MR_unit;
+	}
 #endif
 
 	if (MR_detstack_zone_size >= MR_detstack_size) {
