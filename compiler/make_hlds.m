@@ -4543,7 +4543,7 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, IsAssertion,
 	{ map__init(Empty) },
 		
 		% The head variables of an assertion will always be
-		% variables, so it is unecessary to insert unifications.
+		% variables, so it is unnecessary to insert unifications.
 	(
 		{ IsAssertion = yes }
 	->
