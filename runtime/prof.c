@@ -1,5 +1,7 @@
 /*
 **      Profiling module
+**
+**	Main Author : petdr
 */
 
 #include 	"debug.h"

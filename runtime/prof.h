@@ -1,5 +1,7 @@
 /*
 **      Definitions for the profiling module
+**
+**	Main Author : petdr
 */
 
 #ifndef PROF_H

@@ -254,7 +254,7 @@ mercury__unify_2_0:
 
 	restore_registers();
 
-	tailcall(unify_pred);
+	tailcall(unify_pred, LABEL(mercury__unify_2_0));
 }
 
 END_MODULE

@@ -102,6 +102,7 @@ void call_engine(Code *entry_point)
 #endif
 
 #ifdef USE_PROFILING
+call_engine_label:
 {
 	/* ensure that we only make the label once */
 	static bool prof_initialized = FALSE;
@@ -111,7 +112,6 @@ void call_engine(Code *entry_point)
 		prof_initialized = TRUE;
 	}
 }
-call_engine_label:
 #endif
 
 	/*
@@ -136,7 +136,7 @@ call_engine_label:
 	/*
 	** Now just call the entry point
 	*/
-	call(entry_point, LABEL(engine_done), LABEL(engine_done));
+	call(entry_point, LABEL(engine_done), LABEL(call_engine_label));
 
 engine_done:
 	/*

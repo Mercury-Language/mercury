@@ -25,4 +25,4 @@
 # -DMEASURE_REGISTER_USAGE -DSPEED
 
 # Use this option if you want to include profiling information.
-# -DUSE_PROFILING
+#-DUSE_PROFILING

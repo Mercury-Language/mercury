@@ -215,14 +215,32 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 			call(ENTRY(do_solutions), succ_cont); 	\
 		} while (0)
 
-#define	localtailcall(label)					\
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
+#define	callentry(procname, succ_cont)				\
+			do {					\
+				extern EntryPoint ENTRY(procname); \
+				call(ENTRY(procname), succ_cont); \
+			} while (0)
+
+#define	localtailcall(label, current_label)			\
 			do {					\
 				debugtailcall(LABEL(label));	\
+				PROFILE(LABEL(label), (current_label)); \
 				GOTO_LABEL(label);		\
 			} while (0)
-#define	tailcall(proc)	do {					\
+#define	tailcall(proc, current_label)	do {			\
 				debugtailcall(proc);		\
+				PROFILE((proc), (current_label)); \
 				GOTO(proc);			\
+			} while (0)
+
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
+#define	tailcallentry(procname, current_label)			\
+			do {					\
+				extern EntryPoint ENTRY(procname); \
+				tailcall(ENTRY(procname), (current_label)); \
 			} while (0)
 
 #define	proceed()	do {					\
