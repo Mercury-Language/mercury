@@ -327,7 +327,6 @@ static	void	MR_insert_line_at_tail(const char *line);
 static	void	MR_trace_event_print_internal_report(
 			MR_Event_Info *event_info);
 
-static	const MR_Trace_Command_Info	MR_trace_valid_command_list[];
 static	const MR_Trace_Command_Info	*MR_trace_valid_command(
 						const char *command);
 
