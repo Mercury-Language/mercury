@@ -2947,6 +2947,9 @@ mercury_compile__c_to_obj_list(ModuleName, Chunk, NumChunks, Succeeded) -->
 					io__state, io__state).
 :- mode mercury_compile__single_c_to_obj(in, in, out, di, uo) is det.
 
+% WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
+% Any changes there may also require changes here, and vice versa.
+
 mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_string_option(c_flag_to_name_object_file,
@@ -3137,12 +3140,20 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		InlineAllocOpt = ""
 	},
 	{ CompilerType = gcc ->
-		% if --inline-alloc is enabled, don't enable missing-prototype
-		% warnings, since gc_inline.h is missing lots of prototypes
+		% We don't enable `-Wpointer-arith', because it causes
+		% too many complaints in system header files.
+		% This is fixed in gcc 3.0, though, so at some
+		% point we should re-enable this.
+		%
+		% If --inline-alloc is enabled, don't enable missing-prototype
+		% warnings, since gc_inline.h is missing lots of prototypes.
+		%
+		% For a full list of the other gcc warnings that we don't
+		% enable, and why, see scripts/mgnuc.in.
 		( InlineAlloc = yes ->
-			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized "
+			WarningOpt = "-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized "
 		;
-			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes "
+			WarningOpt = "-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes "
 		)
 	; CompilerType = lcc ->
 		WarningOpt = "-w "
