@@ -154,11 +154,11 @@ libmer.so: $(PIC_OBJS)
 runtime.init: $(ORIG_CS)
 	cat `vpath_find $(ORIG_CS)` | grep '^INIT ' > runtime.init
 
-conf.h.date: $(MERCURY_DIR)/config.status conf.h.in
-	CONFIG_FILES= CONFIG_HEADERS=conf.h $(MERCURY_DIR)/config.status
-	echo datestamp > conf.h.date
+mercury_conf.h.date: $(MERCURY_DIR)/config.status mercury_conf.h.in
+	CONFIG_FILES= CONFIG_HEADERS=mercury_conf.h $(MERCURY_DIR)/config.status
+	echo datestamp > mercury_conf.h.date
 
-conf.h: conf.h.date
+mercury_conf.h: mercury_conf.h.date
 	@true
 
 .PHONY: cs
