@@ -92,6 +92,7 @@ ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
 	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
+	-[ -d Mercury/date3s ] || mkdir Mercury/date3s
 	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
 endif
 
