@@ -357,11 +357,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%	  pointers.
 	%   - store nondet environments on the heap
 	%         Because Java has no way of allocating structs on the stack.
-	%   - not optimizing tailcalls
-	%         XXX Optimized tailcalls currently cause compilation errors
-	%             in the Java back-end because javac is unwilling to
-	%             compile unreachable code they generate.
-	%	      For this reason they have been disabled.
 	%   - no static ground terms
 	%         XXX Previously static ground terms used to not work with
 	%             --high-level-data.  But this has been (mostly?) fixed now.
@@ -377,7 +372,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(gcc_nested_functions, bool(no)),
 		globals__io_set_option(nondet_copy_out, bool(yes)),
 		globals__io_set_option(det_copy_out, bool(yes)),
-		globals__io_set_option(optimize_tailcalls, bool(no)),
 		globals__io_set_option(num_tag_bits, int(0)),
 		globals__io_set_option(static_ground_terms, bool(no)),
 		globals__io_set_option(put_nondet_env_on_heap, bool(yes))

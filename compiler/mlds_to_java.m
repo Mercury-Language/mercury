@@ -19,12 +19,12 @@
 %	higher order functions
 %	multidet and nondet predicates
 %	test tests/benchmarks/*.m
+%	generate optimized tailcalls
 % TODO: 
 %	General code cleanup
 %	handle static ground terms
 %	RTTI (requires static ground terms)
 %	generate names of classes etc. correctly (mostly same as IL backend)
-%	generate optimized tailcalls
 %
 %	handle foreign code written in Java
 %	handle foreign code written in C 
@@ -33,6 +33,15 @@
 %       To avoid namespace conflicts all Java names must be fully qualified.
 %	e.g. The classname `String' must be qualified as `java.lang.String'
 %	     to avoid conflicting with `mercury.String'.
+%
+%	There is currently some code threaded through the output predicates
+%	(usually a variable called `ExitMethods') which keeps track of, and
+%	removes unreachable code. Ideally this would be done as an MLDS->MLDS
+%	transformation, preferably in a seperate module. Unfortunately this
+%	is not possible due to the fact that the back-end generates `break'
+%	statements for cases in switches as they are output, meaning that we
+%	can't remove them in a pass over the MLDS. 
+%
 %-----------------------------------------------------------------------------%
 
 :- module mlds_to_java.
@@ -67,7 +76,7 @@
 :- import_module builtin_ops.
 :- import_module prog_data, prog_out, type_util, error_util.
 
-:- import_module bool, int, string, library, list.
+:- import_module bool, int, string, library, list, set.
 :- import_module assoc_list, term, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -339,16 +348,16 @@ output_java_src_file(Indent, MLDS) -->
 	{ find_pointer_addressed_methods(Defns0, [], CodeAddrs0) },
 	{ CodeAddrs = list__sort_and_remove_dups(CodeAddrs0) },
 	%
-	% Output transformed MLDS as Java source.  
-	%
-	output_src_start(Indent, ModuleName, Imports, Defns1), 
-	%
 	% Create wrappers in MLDS for all pointer addressed methods.
 	% 
 	{ generate_code_addr_wrappers(Indent + 1, CodeAddrs, [], 
 			WrapperDefns) },
-	{ Defns1 = WrapperDefns ++ Defns0 }, 
-	{ list__filter(defn_is_rtti_data, Defns1, _RttiDefns, NonRttiDefns) },
+	{ Defns = WrapperDefns ++ Defns0 }, 
+	%
+	% Output transformed MLDS as Java source.  
+	%
+	output_src_start(Indent, ModuleName, Imports, Defns), 
+	{ list__filter(defn_is_rtti_data, Defns, _RttiDefns, NonRttiDefns) },
 	% XXX Need to output RTTI data at this point.
 	{ CtorData = none },  % Not a constructor.
 	output_defns(Indent + 1, MLDS_ModuleName, CtorData, NonRttiDefns),
@@ -1376,7 +1385,7 @@ output_func(Indent, Name, CtorData, Context, Signature, MaybeBody)
 		indent_line(Context, Indent),
 		io__write_string("{\n"),
 		{ FuncInfo = func_info(Name, Signature) },
-		output_statement(Indent + 1, FuncInfo, Body),
+		output_statement(Indent + 1, FuncInfo, Body, _ExitMethods),
 		indent_line(Context, Indent),
 		io__write_string("}\n")	% end the function
 	).
@@ -1780,33 +1789,73 @@ maybe_output_comment(Comment) -->
 % Code to output statements
 %
 
+	% These types are used by many of the output_stmt style predicates to
+	% return information about the statement's control flow,
+	% i.e. about the different ways in which the statement can exit.
+	% In general we only output the current statement if the previous 
+	% statement could complete normally (fall through).
+	% We keep a set of exit methods since some statements (like an
+	% if-then-else) could potentially break, and also fall through. 
+:- type exit_methods == set__set(exit_method).
+
+:- type exit_method
+	--->	can_break
+	;	can_continue
+	;	can_return
+	;	can_throw
+	;	can_fall_through	% Where the instruction can complete
+					% normally and execution can continue
+					% with the following statement.
+	.
+
+
 :- type func_info
 	--->	func_info(mlds__qualified_entity_name, mlds__func_params).
 
 :- pred output_statements(indent, func_info, list(mlds__statement),
+		exit_methods, io__state, io__state).
+:- mode output_statements(in, in, in, out, di, uo) is det.
+
+output_statements(_, _, [], set__make_singleton_set(can_fall_through)) --> [].
+output_statements(Indent, FuncInfo, [Statement|Statements], ExitMethods) -->
+	output_statement(Indent, FuncInfo, Statement, StmtExitMethods),
+	( { set__member(can_fall_through, StmtExitMethods) } ->
+		output_statements(Indent, FuncInfo, Statements,
+				StmtsExitMethods),
+		{ ExitMethods0 = StmtExitMethods `set__union`
+				StmtsExitMethods },
+		( { set__member(can_fall_through, StmtsExitMethods) } ->
+			{ ExitMethods = ExitMethods0 }
+		;
+			% If the last statement could not complete normally
+			% the current block can no longer complete normally.
+			{ ExitMethods = ExitMethods0 `set__delete`
+					can_fall_through }
+		)
+	;
+		% Don't output any more statements from the current list since
+		% the preceeding statement cannot complete.
+		{ ExitMethods = StmtExitMethods }
+	).
+
+:- pred output_statement(indent, func_info, mlds__statement, exit_methods,
 		io__state, io__state).
-:- mode output_statements(in, in, in, di, uo) is det.
+:- mode output_statement(in, in, in, out, di, uo) is det.
 
-output_statements(Indent, FuncInfo, Statements) -->
-	list__foldl(output_statement(Indent, FuncInfo),
-			Statements).
-
-:- pred output_statement(indent, func_info, mlds__statement,
-		io__state, io__state).
-:- mode output_statement(in, in, in, di, uo) is det.
-
-output_statement(Indent, FuncInfo, mlds__statement(Statement, Context)) -->
+output_statement(Indent, FuncInfo, mlds__statement(Statement, Context),
+		ExitMethods) -->
 	output_context(Context),
-	output_stmt(Indent, FuncInfo, Statement, Context).
+	output_stmt(Indent, FuncInfo, Statement, Context, ExitMethods).
 
-:- pred output_stmt(indent, func_info, mlds__stmt, mlds__context,
+:- pred output_stmt(indent, func_info, mlds__stmt, mlds__context, exit_methods,
 		io__state, io__state).
-:- mode output_stmt(in, in, in, in, di, uo) is det.
+:- mode output_stmt(in, in, in, in, out, di, uo) is det.
 
 	%
 	% sequence
 	%
-output_stmt(Indent, FuncInfo, block(Defns, Statements), Context) -->
+output_stmt(Indent, FuncInfo, block(Defns, Statements), Context,
+		ExitMethods) -->
 	indent_line(Indent),
 	io__write_string("{\n"),
 	( { Defns \= [] } ->
@@ -1818,33 +1867,73 @@ output_stmt(Indent, FuncInfo, block(Defns, Statements), Context) -->
 	;
 		[]
 	),
-	output_statements(Indent + 1, FuncInfo, Statements),
+	output_statements(Indent + 1, FuncInfo, Statements, ExitMethods),
 	indent_line(Context, Indent),
 	io__write_string("}\n").
 
 	%
 	% iteration
 	%
-output_stmt(Indent, FuncInfo, while(Cond, Statement, no), _) -->
+output_stmt(Indent, FuncInfo, while(Cond, Statement, no), _, ExitMethods) -->
 	indent_line(Indent),
 	io__write_string("while ("),
 	output_rval(Cond),
 	io__write_string(")\n"),
-	output_statement(Indent + 1, FuncInfo, Statement).
-output_stmt(Indent, FuncInfo, while(Cond, Statement, yes), Context) -->
+	% The contained statement is reachable iff the while statement is 
+	% reachable and the condition expression is not a constant expression
+	% whose value is false.
+	( { Cond = const(false) } ->
+		indent_line(Indent),
+		io__write_string("{  /* Unreachable code */  }\n"),
+		{ ExitMethods = set__make_singleton_set(can_fall_through) }
+	;	
+		output_statement(Indent + 1, FuncInfo, Statement,
+				StmtExitMethods),
+		{ ExitMethods = while_exit_methods(Cond, StmtExitMethods) }
+	).
+output_stmt(Indent, FuncInfo, while(Cond, Statement, yes), Context, 
+		ExitMethods) -->
 	indent_line(Indent),
 	io__write_string("do\n"),
-	output_statement(Indent + 1, FuncInfo, Statement),
+	output_statement(Indent + 1, FuncInfo, Statement, StmtExitMethods),
 	indent_line(Context, Indent),
 	io__write_string("while ("),
 	output_rval(Cond),
-	io__write_string(");\n").
+	io__write_string(");\n"),
+	{ ExitMethods = while_exit_methods(Cond, StmtExitMethods) }.
+
+
+	% Returns a set of exit_methods that describes whether the while 
+	% statement can complete normally.
+:- func while_exit_methods(mlds__rval, exit_methods) = exit_methods.
+:- mode while_exit_methods(in, in) = out is det.
+
+while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
+	% A while statement cannot complete normally if its condition
+	% expression is a constant expression with value true, and it
+	% doesn't contain a reachable break statement that exits the
+	% while statement.
+	(
+		% XXX This is not a sufficient way of testing for a Java 
+		%     "constant expression", though determining these
+		%     accurately is a little difficult to do here.
+		Cond = mlds__const(mlds__true),
+		not set__member(can_break, BlockExitMethods)
+	->
+		% Cannot complete normally
+		ExitMethods0 = BlockExitMethods `set__delete` can_fall_through
+	;
+		ExitMethods0 = BlockExitMethods `set__insert` can_fall_through
+	),
+	ExitMethods = (ExitMethods0 `set__delete` can_continue)
+				    `set__delete` can_break.
+
 
 	%
 	% selection (if-then-else)
 	%
 output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
-		Context) -->
+		Context, ExitMethods) -->
 	%
 	% we need to take care to avoid problems caused by the
 	% dangling else ambiguity
@@ -1876,53 +1965,66 @@ output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
 	io__write_string("if ("),
 	output_rval(Cond),
 	io__write_string(")\n"),
-	output_statement(Indent + 1, FuncInfo, Then),
+	output_statement(Indent + 1, FuncInfo, Then, ThenExitMethods),
 	( { MaybeElse = yes(Else) } ->
 		indent_line(Context, Indent),
 		io__write_string("else\n"),
-		output_statement(Indent + 1, FuncInfo, Else)
+		output_statement(Indent + 1, FuncInfo, Else, ElseExitMethods),
+		% An if-then-else statement can complete normally iff the 
+		% then-statement can complete normally or the else-statement
+		% can complete normally.
+		{ ExitMethods = ThenExitMethods `set__union` ElseExitMethods }
 	;
-		[]
+		% An if-then statement can complete normally iff it is 
+		% reachable.
+		{ ExitMethods = ThenExitMethods `set__union` 
+				set__make_singleton_set(can_fall_through) }
 	).
-
+	
+	
 
 	%
 	% selection (switch)
 	%
 output_stmt(Indent, FuncInfo, switch(_Type, Val, _Range, Cases, Default),
-		Context) -->
+		Context, ExitMethods) -->
 	indent_line(Context, Indent),
 	io__write_string("switch ("),
 	output_rval_maybe_with_enum(Val),
 	io__write_string(") {\n"),
-	list__foldl(output_switch_case(Indent + 1, FuncInfo, Context), Cases),
-	output_switch_default(Indent + 1, FuncInfo, Context, Default),
+	output_switch_cases(Indent + 1, FuncInfo, Context, Cases, Default,
+			ExitMethods),
 	indent_line(Context, Indent),
 	io__write_string("}\n").
-	
+
+
 	%
 	% transfer of control
 	% 
-output_stmt(_Indent, _FuncInfo, label(_LabelName), _Context) --> 
+output_stmt(_Indent, _FuncInfo, label(_LabelName), _Context, _ExitMethods) --> 
 	{ unexpected(this_file, 
 		"output_stmt: labels not supported in Java.") }.
-output_stmt(_Indent, _FuncInfo, goto(label(_LabelName)), _Context) --> 
+output_stmt(_Indent, _FuncInfo, goto(label(_LabelName)), _Context,
+		_ExitMethods) --> 
 	{ unexpected(this_file,
 		"output_stmt: gotos not supported in Java.") }.
-output_stmt(Indent, _FuncInfo, goto(break), _Context) --> 
+output_stmt(Indent, _FuncInfo, goto(break), _Context, ExitMethods) --> 
 	indent_line(Indent),
-	io__write_string("break;\n").
-output_stmt(Indent, _FuncInfo, goto(continue), _Context) --> 
+	io__write_string("break;\n"),
+	{ ExitMethods = set__make_singleton_set(can_break) }.
+output_stmt(Indent, _FuncInfo, goto(continue), _Context, ExitMethods) --> 
 	indent_line(Indent),
-	io__write_string("continue;\n").
-output_stmt(_Indent, _FuncInfo, computed_goto(_Expr, _Labels), _Context) --> 
+	io__write_string("continue;\n"),
+	{ ExitMethods = set__make_singleton_set(can_continue) }.
+output_stmt(_Indent, _FuncInfo, computed_goto(_Expr, _Labels), _Context,
+		_ExitMethods) --> 
 	{ unexpected(this_file, 
 		"output_stmt: computed gotos not supported in Java.") }.
 	
 	%
 	% function call/return
 	%
-output_stmt(Indent, CallerFuncInfo, Call, Context) -->
+output_stmt(Indent, CallerFuncInfo, Call, Context, ExitMethods) -->
 	{ Call = call(Signature, FuncRval, MaybeObject, CallArgs,
 		Results, _IsTailCall) },
 	{ CallerFuncInfo = func_info(_Name, _Params) },
@@ -2046,7 +2148,8 @@ output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	% ),
 	%
 	indent_line(Indent),
-	io__write_string("}\n").
+	io__write_string("}\n"),
+	{ ExitMethods = set__make_singleton_set(can_fall_through) }.
 
 
 :- pred output_args_as_array(list(mlds__rval), list(mlds__type),
@@ -2078,7 +2181,7 @@ output_boxed_args([CallArg|CallArgs], [CallArgType|CallArgTypes]) -->
 	).
 
 
-output_stmt(Indent, FuncInfo, return(Results0), _Context) -->
+output_stmt(Indent, FuncInfo, return(Results0), _Context, ExitMethods) -->
 	%
 	% XXX It's not right to just remove the dummy variables like this,
 	%     but currently they do not seem to be included in the ReturnTypes
@@ -2093,7 +2196,8 @@ output_stmt(Indent, FuncInfo, return(Results0), _Context) -->
 	% 
 	{ Results = remove_dummy_vars(Results0) },
 	( { Results = [] } ->
-		[]
+		indent_line(Indent),
+		io__write_string("return;\n")
 	; { Results = [Rval] } ->
 		indent_line(Indent),
 		io__write_string("return "),
@@ -2109,23 +2213,26 @@ output_stmt(Indent, FuncInfo, return(Results0), _Context) -->
 			(pred((Type - Result)::in, di, uo) is det -->
 				output_boxed_rval(Type, Result))),
 		io__write_string("};\n")
-	).
+	),
+	{ ExitMethods = set__make_singleton_set(can_return) }.
 
-output_stmt(Indent, _FuncInfo, do_commit(Ref), _) -->
+output_stmt(Indent, _FuncInfo, do_commit(Ref), _, ExitMethods) -->
 	indent_line(Indent),
 	output_rval(Ref),
 	io__write_string(" = new mercury.runtime.Commit();\n"),
 	indent_line(Indent),
 	io__write_string("throw "),
 	output_rval(Ref),
-	io__write_string(";\n").
+	io__write_string(";\n"),
+	{ ExitMethods = set__make_singleton_set(can_throw) }.
 
-output_stmt(Indent, FuncInfo, try_commit(_Ref, Stmt, Handler), _) -->
+output_stmt(Indent, FuncInfo, try_commit(_Ref, Stmt, Handler), _,
+		ExitMethods) -->
 	indent_line(Indent),
 	io__write_string("try\n"),
 	indent_line(Indent),
 	io__write_string("{\n"),
-	output_statement(Indent + 1, FuncInfo, Stmt),
+	output_statement(Indent + 1, FuncInfo, Stmt, TryExitMethods0),
 	indent_line(Indent),
 	io__write_string("}\n"),
 	indent_line(Indent),
@@ -2133,9 +2240,11 @@ output_stmt(Indent, FuncInfo, try_commit(_Ref, Stmt, Handler), _) -->
 	indent_line(Indent),
 	io__write_string("{\n"),
 	indent_line(Indent + 1),
-	output_statement(Indent + 1, FuncInfo, Handler),
+	output_statement(Indent + 1, FuncInfo, Handler, CatchExitMethods),
 	indent_line(Indent),
-	io__write_string("}\n").
+	io__write_string("}\n"),
+	{ ExitMethods = (TryExitMethods0 `set__delete` can_throw)
+				         `set__union`  CatchExitMethods }.
 
 
 
@@ -2212,16 +2321,44 @@ output_unboxed_result(Type, ResultIndex) -->
 % Extra code for outputting switch statements
 %
 
-:- pred output_switch_case(indent, func_info, mlds__context,
-		mlds__switch_case, io__state, io__state).
-:- mode output_switch_case(in, in, in, in, di, uo) is det.
+:- pred output_switch_cases(indent, func_info, mlds__context,
+		list(mlds__switch_case), mlds__switch_default, exit_methods,
+		io__state, io__state).
+:- mode output_switch_cases(in, in, in, in, in, out, di, uo) is det.
 
-output_switch_case(Indent, FuncInfo, Context, Case) -->
+output_switch_cases(Indent, FuncInfo, Context, [], Default, ExitMethods) -->
+	output_switch_default(Indent, FuncInfo, Context, Default, ExitMethods).
+output_switch_cases(Indent, FuncInfo, Context, [Case|Cases], Default,
+		ExitMethods) -->
+	output_switch_case(Indent, FuncInfo, Context, Case, CaseExitMethods0),
+	output_switch_cases(Indent, FuncInfo, Context, Cases, Default, 
+			CasesExitMethods),
+	( { set__member(can_break, CaseExitMethods0) } ->
+		{ CaseExitMethods = (CaseExitMethods0 `set__delete` can_break)
+				`set__insert` can_fall_through }
+	;
+		{ CaseExitMethods = CaseExitMethods0 }
+	),
+	{ ExitMethods = CaseExitMethods `set__union` CasesExitMethods }.
+
+
+:- pred output_switch_case(indent, func_info, mlds__context,
+		mlds__switch_case, exit_methods, io__state, io__state).
+:- mode output_switch_case(in, in, in, in, out, di, uo) is det.
+
+output_switch_case(Indent, FuncInfo, Context, Case, ExitMethods) -->
 	{ Case = (Conds - Statement) },
 	list__foldl(output_case_cond(Indent, Context), Conds),
-	output_statement(Indent + 1, FuncInfo, Statement),
-	indent_line(Context, Indent + 1),
-	io__write_string("break;\n").
+	output_statement(Indent + 1, FuncInfo, Statement, StmtExitMethods),
+	( { set__member(can_fall_through, StmtExitMethods) } ->
+		indent_line(Context, Indent + 1),
+		io__write_string("break;\n"),
+		{ ExitMethods = (StmtExitMethods `set__insert` can_break)
+				`set__delete` can_fall_through }
+	;
+		% Don't output `break' since it would be unreachable.
+		{ ExitMethods = StmtExitMethods }
+	).
 
 :- pred output_case_cond(indent, mlds__context, mlds__case_match_cond, 
 		io__state, io__state).
@@ -2237,20 +2374,24 @@ output_case_cond(_Indent, _Context, match_range(_, _)) -->
 		"output_case_cond: cannot match ranges in Java cases") }.
 
 :- pred output_switch_default(indent, func_info, mlds__context,
-		mlds__switch_default, io__state, io__state).
-:- mode output_switch_default(in, in, in, in, di, uo) is det.
+		mlds__switch_default, exit_methods, io__state, io__state).
+:- mode output_switch_default(in, in, in, in, out, di, uo) is det.
 
-output_switch_default(_Indent, _FuncInfo, _Context, default_do_nothing) --> 
-	[].
-output_switch_default(Indent, FuncInfo, Context, default_case(Statement)) -->
+output_switch_default(_Indent, _FuncInfo, _Context, default_do_nothing,
+		ExitMethods) -->
+	{ ExitMethods = set__make_singleton_set(can_fall_through) }.
+output_switch_default(Indent, FuncInfo, Context, default_case(Statement),
+		ExitMethods) -->
 	indent_line(Context, Indent),
 	io__write_string("default:\n"),
-	output_statement(Indent + 1, FuncInfo, Statement).
-output_switch_default(Indent, _FuncInfo, Context, default_is_unreachable) -->
+	output_statement(Indent + 1, FuncInfo, Statement, ExitMethods).
+output_switch_default(Indent, _FuncInfo, Context, default_is_unreachable,
+		ExitMethods) -->
 	indent_line(Context, Indent),
 	io__write_string("default: /*NOTREACHED*/\n"), 
 	indent_line(Context, Indent + 1),
-	io__write_string("throw new mercury.runtime.UnreachableDefault();\n").
+	io__write_string("throw new mercury.runtime.UnreachableDefault();\n"),
+	{ ExitMethods = set__make_singleton_set(can_throw) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -2264,8 +2405,10 @@ output_switch_default(Indent, _FuncInfo, Context, default_is_unreachable) -->
 	%
 	% atomic statements
 	%
-output_stmt(Indent, FuncInfo, atomic(AtomicStatement), Context) -->
-	output_atomic_stmt(Indent, FuncInfo, AtomicStatement, Context).
+output_stmt(Indent, FuncInfo, atomic(AtomicStatement), Context,
+		ExitMethods) -->
+	output_atomic_stmt(Indent, FuncInfo, AtomicStatement, Context),
+	{ ExitMethods = set__make_singleton_set(can_fall_through) }.
 
 :- pred output_atomic_stmt(indent, func_info,
 		mlds__atomic_statement, mlds__context, io__state, io__state).
