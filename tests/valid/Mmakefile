@@ -292,9 +292,11 @@ MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5
 MCFLAGS-zero_arity		= --infer-modes
 
-# XXX mmake should automatically handle this dependency.
-intermod_nested_module2.date: intermod_nested_module2.date0
-intermod_user_equality_nested2.date: intermod_user_equality_nested2.date0
+# XXX mmake should automatically handle these two dependencies.
+$(dates_subdir)intermod_nested_module2.date: \
+	$(date0s_subdir)intermod_nested_module2.date0
+$(dates_subdir)intermod_user_equality_nested2.date: \
+	$(date0s_subdir)intermod_user_equality_nested2.date0
 
 check:	objs
 
