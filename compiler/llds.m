@@ -57,6 +57,7 @@
 
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots
+			;	framevar(int)	% nondet stack slots
 			;	succip
 			;	hp
 			;	sp

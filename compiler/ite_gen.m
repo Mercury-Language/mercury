@@ -25,9 +25,10 @@
 
 ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__get_next_label(ElseLab),
-	code_info__set_fall_through(ElseLab),
+	code_info__set_failure_cont(ElseLab),
 		% generate the semi-deterministc test goal
 	code_gen__generate_semi_goal(CondGoal, TestCode),
+	code_info__unset_failure_cont,
 	code_info__grab_code_info(CodeInfo),
 	code_gen__generate_forced_det_goal(ThenGoal, ThenGoalCode),
 		% generate code that executes the then condition
@@ -56,12 +57,11 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 %---------------------------------------------------------------------------%
 
 ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
-	code_info__get_fall_through(FallThrough),
 	code_info__get_next_label(ElseLab),
-	code_info__set_fall_through(ElseLab),
+	code_info__push_failure_cont(ElseLab),
 		% generate the semi-deterministc test goal
 	code_gen__generate_semi_goal(CondGoal, CondCode),
-	code_info__set_fall_through(FallThrough),
+	code_info__pop_failure_cont(_),
 	code_info__grab_code_info(CodeInfo),
 	code_gen__generate_forced_semi_goal(ThenGoal, ThenGoalCode),
 	code_info__slap_code_info(CodeInfo),

@@ -85,7 +85,7 @@ call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__clear_reserved_registers,
 	call_gen__setup_call(Args, Arguments, CodeB),
 	code_info__get_next_label(ReturnLabel),
-	code_info__get_fall_through(FallThrough),
+	code_info__get_failure_cont(FallThrough),
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
 	(
@@ -216,7 +216,7 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 		code_info__get_variable_register(X, XLval),
 		code_info__flush_variable(Y, CodeY),
 		code_info__get_variable_register(Y, YLval),
-		code_info__get_fall_through(FallThrough),
+		code_info__get_failure_cont(FallThrough),
 		{ CodeT = node([
 			if_not_val(binop(Op, lval(XLval), lval(YLval)),
 								FallThrough) -

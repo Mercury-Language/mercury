@@ -61,8 +61,9 @@ switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
 	code_info__get_next_label(ElseLab),
 	code_info__grab_code_info(CodeInfo),
-	code_info__set_fall_through(ElseLab),
+	code_info__set_failure_cont(ElseLab),
 	unify_gen__generate_tag_test(Var, Cons, TestCode),
+	code_info__unset_failure_cont,
 		% generate the case as a deterministic goal
 	code_gen__generate_forced_det_goal(Goal, ThisCode),
 	{ ElseLabel = node([
@@ -102,7 +103,7 @@ switch_gen__generate_semi_switch(CaseVar, Cases, Instr) -->
 	% tag which was not covered by one of the cases. It is followed
 	% by the end of switch label to which the cases branch.
 switch_gen__generate_semi_cases([], _Var, _Lval, EndLabel, Code) -->
-	code_info__get_fall_through(FallThrough),
+	code_info__get_failure_cont(FallThrough),
 	{ Code = node([
 		goto(FallThrough) - "fail",
 		label(EndLabel) - "End of switch"
@@ -114,10 +115,9 @@ switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
 	code_info__grab_code_info(CodeInfo),
 	code_info__get_next_label(ElseLab),
-	code_info__get_fall_through(FallThrough),
-	code_info__set_fall_through(ElseLab),
+	code_info__push_failure_cont(ElseLab),
 	unify_gen__generate_tag_test(Var, Cons, TestCode),
-	code_info__set_fall_through(FallThrough),
+	code_info__pop_failure_cont(_),
 		% generate the case as a semi-deterministc goal
 	code_gen__generate_forced_semi_goal(Goal, ThisCode),
 	{ ElseLabel = node([

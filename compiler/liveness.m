@@ -99,22 +99,30 @@ detect_liveness_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 
 detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 					Liveness, Goal - GoalInfo) :-
-	goal_info_pre_delta_liveness(GoalInfo0, Delta0),
+	goal_info_pre_delta_liveness(GoalInfo0, PreDelta0),
+	goal_info_pre_delta_liveness(GoalInfo0, PostDelta0),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
-	Delta0 = _Births0 - Deaths,
+	PreDelta0 = _PreBirths0 - PreDeaths,
+	PostDelta0 = PostBirths0 - PostDeaths,
 	(
 		detect_liveness_is_atomic(Goal0)
 	->
-		set__difference(NonLocals, Liveness0, Births),
-		set__union(Liveness0, Births, Liveness),
-		Goal = Goal0
+		set__difference(NonLocals, Liveness0, PreBirths),
+		set__union(Liveness0, PreBirths, Liveness),
+		Goal = Goal0,
+		PostDelta = PostDelta0
 	;
 		set__union(Liveness0, NonLocals, Liveness),
-		set__init(Births),
-		detect_liveness_in_goal_2(Goal0, Liveness0, ModuleInfo, Goal)
+		set__init(PreBirths),
+		detect_liveness_in_goal_2(Goal0, Liveness0,
+						ModuleInfo, Liveness1, Goal),
+		set__difference(NonLocals, Liveness1, PostBirths1),
+		set__union(PostBirths0, PostBirths1, PostBirths),
+		PostDelta = PostBirths - PostDeaths
 	),
-	Delta = Births - Deaths,
-	goal_info_set_pre_delta_liveness(GoalInfo0, Delta, GoalInfo).
+	PreDelta = PreBirths - PreDeaths,
+	goal_info_set_pre_delta_liveness(GoalInfo0, PreDelta, GoalInfo1),
+	goal_info_set_post_delta_liveness(GoalInfo1, PostDelta, GoalInfo).
 
 :- pred detect_liveness_in_goal(hlds__goal, liveness_info, module_info,
 				hlds__goal).
@@ -128,57 +136,74 @@ detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Goal) :-
 %-----------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_goal_2(hlds__goal_expr, liveness_info,
-					module_info, hlds__goal_expr).
-:- mode detect_liveness_in_goal_2(in, in, in, out) is det.
+				module_info, liveness_info, hlds__goal_expr).
+:- mode detect_liveness_in_goal_2(in, in, in, out, out) is det.
 
-detect_liveness_in_goal_2(conj(Goals0), Liveness, ModuleInfo,
-		conj(Goals)) :-
-	detect_liveness_in_conj(Goals0, Liveness, ModuleInfo, Goals).
+detect_liveness_in_goal_2(conj(Goals0), Liveness0, ModuleInfo,
+		Liveness, conj(Goals)) :-
+	detect_liveness_in_conj(Goals0, Liveness0, ModuleInfo, Liveness, Goals).
 
-detect_liveness_in_goal_2(disj(Goals0), Liveness, ModuleInfo,
-		disj(Goals)) :-
-	set__init(Union),
-	detect_liveness_in_disj(Goals0, Liveness, ModuleInfo, Union, _, Goals).
+detect_liveness_in_goal_2(disj(Goals0), Liveness0, ModuleInfo,
+		Liveness, disj(Goals)) :-
+	set__init(Union0),
+	detect_liveness_in_disj(Goals0, Liveness0, ModuleInfo,
+							Union0, Union, Goals),
+	set__union(Liveness0, Union, Liveness).
 
-detect_liveness_in_goal_2(not(Vars, Goal0), Liveness, ModuleInfo,
-		not(Vars, Goal)) :- % XXX is this quite correct?
+detect_liveness_in_goal_2(not(Vars, Goal0), Liveness0, ModuleInfo,
+		Liveness, not(Vars, Goal)) :- % XXX is this quite correct?
 			% where q:- not(p(X)), r(X). and p does not
 			% bind X.
-	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Goal).
+	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(switch(Var, Cases0), Liveness,
-				ModuleInfo, switch(Var, Cases)) :-
-	set__init(Union),
-	detect_liveness_in_cases(Cases0, Liveness, ModuleInfo, Union, _, Cases).
+detect_liveness_in_goal_2(switch(Var, Cases0), Liveness0,
+				ModuleInfo, Liveness, switch(Var, Cases)) :-
+	set__init(Union0),
+	detect_liveness_in_cases(Cases0, Liveness0, ModuleInfo,
+							Union0, Union, Cases),
+	set__union(Liveness0, Union, Liveness).
 
 detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
-		ModuleInfo, if_then_else(Vars, Cond, Then, Else)) :-
+		ModuleInfo, Liveness, if_then_else(Vars, Cond, Then, Else)) :-
 	detect_liveness_in_goal(Cond0, Liveness0, ModuleInfo, Liveness1, Cond),
 	detect_liveness_in_goal(Then0, Liveness1, ModuleInfo, Liveness2, Then1),
 	detect_liveness_in_goal(Else0, Liveness0, ModuleInfo, Liveness3, Else1),
 	set__difference(Liveness3, Liveness2, Residue0),
 	stuff_liveness_residue_into_goal(Then1, Residue0, Then),
 	set__difference(Liveness2, Liveness3, Residue1),
-	stuff_liveness_residue_into_goal(Else1, Residue1, Else).
+	stuff_liveness_residue_into_goal(Else1, Residue1, Else),
+	set__union(Liveness2, Liveness3, Liveness).
 
-detect_liveness_in_goal_2(some(Vars, Goal0), Liveness, ModuleInfo,
-		some(Vars, Goal)) :-
-	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Goal).
+detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, ModuleInfo,
+		Liveness, some(Vars, Goal)) :-
+	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(call(A,B,C,D,E,F), _, _, call(A,B,C,D,E,F)).
+detect_liveness_in_goal_2(call(A,B,C,D,E,F), L, _, L, call(A,B,C,D,E,F)).
 
-detect_liveness_in_goal_2(unify(A,B,C,D,E), _, _, unify(A,B,C,D,E)).
+detect_liveness_in_goal_2(unify(A,B,C,D,E), L, _, L, unify(A,B,C,D,E)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_conj(list(hlds__goal), set(var), module_info,
-							list(hlds__goal)).
-:- mode detect_liveness_in_conj(in, in, in, out) is det.
+						set(var), list(hlds__goal)).
+:- mode detect_liveness_in_conj(in, in, in, out, out) is det.
 
-detect_liveness_in_conj([], _Liveness, _ModuleInfo, []).
-detect_liveness_in_conj([Goal0|Goals0], Liveness, ModuleInfo, [Goal|Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Liveness1, Goal),
-	detect_liveness_in_conj(Goals0, Liveness1, ModuleInfo, Goals).
+detect_liveness_in_conj([], Liveness, _ModuleInfo, Liveness, []).
+detect_liveness_in_conj([Goal0|Goals0], Liveness0,
+					ModuleInfo, Liveness, [Goal|Goals]) :-
+	(
+		Goal0 = _ - GoalInfo,
+		goal_info_get_instmap_delta(GoalInfo, unreachable)
+	->
+		Goal = Goal0,
+		Goals = Goals0,
+		Liveness = Liveness0
+	;
+		detect_liveness_in_goal(Goal0, Liveness0,
+						ModuleInfo, Liveness1, Goal),
+		detect_liveness_in_conj(Goals0, Liveness1,
+						ModuleInfo, Liveness, Goals)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -221,25 +246,32 @@ detect_liveness_in_cases([case(Cons, Goal0)|Goals0], Liveness, ModuleInfo,
 
 detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, ModuleInfo,
 					Deadness, Goal - GoalInfo) :-
-	goal_info_post_delta_liveness(GoalInfo0, Delta0),
+	goal_info_post_delta_liveness(GoalInfo0, PostDelta0),
+	goal_info_pre_delta_liveness(GoalInfo0, PreDelta0),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
-	Delta0 = Births - _Deaths0,
+	PostDelta0 = PostBirths - _PostDeaths0,
+	PreDelta0 = PreBirths - _PreDeaths0,
 	(
 		detect_liveness_is_atomic(Goal0)
 	->
-		set__difference(NonLocals, Deadness0, Deaths),
-		set__union(Deadness0, Deaths, Deadness),
-		Goal = Goal0
+		set__difference(NonLocals, Deadness0, PostDeaths),
+		set__union(Deadness0, PostDeaths, Deadness),
+		Goal = Goal0,
+		PreDelta = PreDelta0
 	;
 		set__union(Deadness0, NonLocals, Deadness),
-		set__init(Deaths),
-		detect_deadness_in_goal_2(Goal0, Deadness0, ModuleInfo, Goal)
+		set__init(PostDeaths),
+		detect_deadness_in_goal_2(Goal0, Deadness0,
+						ModuleInfo, Deadness1, Goal),
+		set__difference(Deadness, Deadness1, PreDeaths),
+		PreDelta = PreBirths - PreDeaths
 	),
-	Delta = Births - Deaths,
-	goal_info_set_post_delta_liveness(GoalInfo0, Delta, GoalInfo).
+	PostDelta = PostBirths - PostDeaths,
+	goal_info_set_post_delta_liveness(GoalInfo0, PostDelta, GoalInfo1),
+	goal_info_set_pre_delta_liveness(GoalInfo1, PreDelta, GoalInfo).
 
 :- pred detect_deadness_in_goal(hlds__goal, liveness_info, module_info,
-								hlds__goal).
+						hlds__goal).
 :- mode detect_deadness_in_goal(in, in, in, out) is det.
 
 detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, Goal) :-
@@ -248,45 +280,50 @@ detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, Goal) :-
 	% Here we process each of the different sorts of goals.
 
 :- pred detect_deadness_in_goal_2(hlds__goal_expr, liveness_info,
-					module_info, hlds__goal_expr).
-:- mode detect_deadness_in_goal_2(in, in, in, out) is det.
+				module_info, liveness_info, hlds__goal_expr).
+:- mode detect_deadness_in_goal_2(in, in, in, out, out) is det.
 
-detect_deadness_in_goal_2(conj(Goals0), Deadness, ModuleInfo, conj(Goals)) :-
-	detect_deadness_in_conj(Goals0, Deadness, ModuleInfo, Goals, _).
+detect_deadness_in_goal_2(conj(Goals0), Deadness0, ModuleInfo,
+						Deadness, conj(Goals)) :-
+	detect_deadness_in_conj(Goals0, Deadness0,
+						ModuleInfo, Goals, Deadness).
 
-detect_deadness_in_goal_2(disj(Goals0), Deadness, ModuleInfo, disj(Goals)) :-
+detect_deadness_in_goal_2(disj(Goals0), Deadness0,
+					ModuleInfo, Deadness, disj(Goals)) :-
 	set__init(Union0),
-	detect_deadness_in_disj(Goals0, Deadness, ModuleInfo, Union0,
-								_, Goals).
+	detect_deadness_in_disj(Goals0, Deadness0, ModuleInfo, Union0,
+								Union, Goals),
+	set__union(Deadness0, Union, Deadness).
 
-detect_deadness_in_goal_2(not(Vars, Goal0), Deadness, ModuleInfo,
-		not(Vars, Goal)) :-
-	detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, Goal).
+detect_deadness_in_goal_2(not(Vars, Goal0), Deadness0, ModuleInfo,
+		Deadness, not(Vars, Goal)) :-
+	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, Deadness, Goal).
 
 detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Deadness0,
-		ModuleInfo, if_then_else(Vars, Cond, Then, Else)) :-
+		ModuleInfo, Deadness, if_then_else(Vars, Cond, Then, Else)) :-
 	detect_deadness_in_goal(Then0, Deadness0, ModuleInfo, Deadness1, Then1),
 	detect_deadness_in_goal(Else0, Deadness0, ModuleInfo, Deadness2, Else1),
 	set__union(Deadness1, Deadness2, Deadness3),
-	detect_deadness_in_goal(Cond0, Deadness3, ModuleInfo, Cond),
+	detect_deadness_in_goal(Cond0, Deadness3, ModuleInfo, Deadness, Cond),
 	set__difference(Deadness2, Deadness1, Residue0),
 	stuff_deadness_residue_into_goal(Then1, Residue0, Then),
 	set__difference(Deadness1, Deadness2, Residue1),
 	stuff_deadness_residue_into_goal(Else1, Residue1, Else).
 
-detect_deadness_in_goal_2(switch(Var, Cases0), Deadness,
-				ModuleInfo, switch(Var, Cases)) :-
+detect_deadness_in_goal_2(switch(Var, Cases0), Deadness0,
+				ModuleInfo, Deadness, switch(Var, Cases)) :-
 	set__init(Union0),
-	detect_deadness_in_cases(Cases0, Deadness, ModuleInfo, Union0,
-								_, Cases).
+	detect_deadness_in_cases(Cases0, Deadness0, ModuleInfo, Union0,
+								Union, Cases),
+	set__union(Deadness0, Union, Deadness).
 	
-detect_deadness_in_goal_2(some(Vars, Goal0), Deadness, ModuleInfo,
-		some(Vars, Goal)) :-
-	detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, Goal).
+detect_deadness_in_goal_2(some(Vars, Goal0), Deadness0, ModuleInfo,
+		Deadness, some(Vars, Goal)) :-
+	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, Deadness, Goal).
 
-detect_deadness_in_goal_2(call(A,B,C,D,E,F), _, _, call(A,B,C,D,E,F)).
+detect_deadness_in_goal_2(call(A,B,C,D,E,F), Dn, _, Dn, call(A,B,C,D,E,F)).
 
-detect_deadness_in_goal_2(unify(A,B,C,D,E), _, _, unify(A,B,C,D,E)).
+detect_deadness_in_goal_2(unify(A,B,C,D,E), Dn, _, Dn, unify(A,B,C,D,E)).
 
 %-----------------------------------------------------------------------------%
 
@@ -297,9 +334,19 @@ detect_deadness_in_goal_2(unify(A,B,C,D,E), _, _, unify(A,B,C,D,E)).
 detect_deadness_in_conj([], Deadness, _ModuleInfo, [], Deadness).
 detect_deadness_in_conj([Goal0|Goals0], Deadness0, ModuleInfo,
 						[Goal|Goals], Deadness) :-
-	detect_deadness_in_conj(Goals0, Deadness0, ModuleInfo,
-						Goals, Deadness1),
-	detect_deadness_in_goal(Goal0, Deadness1, ModuleInfo, Deadness, Goal).
+	(
+		Goal0 = _ - GoalInfo,
+		goal_info_get_instmap_delta(GoalInfo, unreachable)
+	->
+		Goal = Goal0,
+		Goals = Goals0,
+		set__init(Deadness)
+	;
+		detect_deadness_in_conj(Goals0, Deadness0, ModuleInfo,
+							Goals, Deadness1),
+		detect_deadness_in_goal(Goal0, Deadness1,
+					ModuleInfo, Deadness, Goal)
+	).
 
 %-----------------------------------------------------------------------------%
 

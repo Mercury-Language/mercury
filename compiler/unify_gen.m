@@ -79,7 +79,7 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 	code_info__flush_variable(VarB, Code1),
 	code_info__get_variable_register(VarB, RegB),
 	{ CodeA = tree(Code0, Code1) },
-	code_info__get_fall_through(FallThrough),
+	code_info__get_failure_cont(FallThrough),
 	{ CodeB = node([
 		test(lval(RegA), lval(RegB), FallThrough) - "Test for equality"
 	]) },
@@ -90,7 +90,7 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 unify_gen__generate_tag_test(Var, ConsId, Code) -->
         code_info__flush_variable(Var, VarCode),
 	code_info__get_variable_register(Var, Lval),
-	code_info__get_fall_through(Fail),
+	code_info__get_failure_cont(Fail),
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
 	{ unify_gen__generate_tag_test_2(Tag, Lval, Fail, TestCode) },
 	{ Code = tree(VarCode, TestCode) }.
@@ -439,7 +439,7 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 unify_gen__generate_sub_test(UnivalX, UnivalY, Code) -->
 	unify_gen__evaluate_uni_val(UnivalX, LvalX, CodeX),
 	unify_gen__evaluate_uni_val(UnivalY, LvalY, CodeY),
-	code_info__get_fall_through(FallThrough),
+	code_info__get_failure_cont(FallThrough),
 	{ Code = tree(CodeX, tree(CodeY,
 		node([test(lval(LvalX), lval(LvalY), FallThrough) -
 				"simple test in [de]construction"])

@@ -22,7 +22,7 @@
 %---------------------------------------------------------------------------%
 
 disj_gen__generate_semi_disj(Goals, GoalsCode) -->
-	code_info__get_fall_through(FallThrough),
+	code_info__get_failure_cont(FallThrough),
 	code_info__get_next_label(EndLabel),
 	disj_gen__generate_semi_cases(Goals, FallThrough, EndLabel, GoalsCode),
 	code_info__remake_code_info.
@@ -40,7 +40,7 @@ disj_gen__generate_semi_cases([Goal|Goals], FallThrough,
 						EndLabel, GoalsCode) -->
 	code_info__grab_code_info(CodeInfo),
 	code_info__get_next_label(ElseLab),
-	code_info__set_fall_through(ElseLab),
+	code_info__set_failure_cont(ElseLab),
 		% generate the case as a semi-deterministc goal
 	code_gen__generate_forced_semi_goal(Goal, ThisCode),
 	{ ElseLabel = node([
