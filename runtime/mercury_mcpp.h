@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2000-2001 The University of Melbourne.
+// Copyright (C) 2000-2002 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -166,7 +166,9 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
     MR_STRUCT_INIT(MR_PASTE5(mercury_data_, __type_ctor_info_, n, _, a) = {)   \
     MR_CLASS_INIT(MR_PASTE4(type_ctor_init_, n, _, a))   		\
 	MR_BOX_INT(a),							\
-	MR_MAYBE_STATIC_CODE(n##_unify),				\
+	MR_RTTI_VERSION,						\
+	MR_TYPECTOR_REP(cr),						\
+	MR_BOX_INT(-1),							\
 	MR_MAYBE_STATIC_CODE(n##_unify),				\
 	MR_MAYBE_STATIC_CODE(n##_compare),				\
 	MR_TYPECTOR_REP(cr),						\
@@ -175,8 +177,6 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 	MR_string_const(MR_STRINGIFY(m), sizeof(MR_STRINGIFY(m))-1),	\
 	MR_string_const(MR_STRINGIFY(n), sizeof(MR_STRINGIFY(n))-1),	\
 	MR_RTTI_VERSION,						\
-	NULL,								\
-	NULL,								\
 	MR_BOX_INT(-1),							\
 	MR_BOX_INT(-1)							\
     MR_STRUCT_INIT_END(})						\

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -994,15 +994,20 @@ pseudotypeinfo_max_var = 1024.
 
 	enum type_ctor_info_field_nums {
 		type_ctor_arity 	= 0,
-		type_ctor_unify_pred 	= 1,
-		type_ctor_compare_pred	= 3,
-		type_ctor_rep		= 4,
-		type_ctor_module_name	= 7,
-		type_ctor_name		= 8,
-		type_functors		= 10,
-		type_layout		= 11,
-		type_ctor_num_functors	= 12,
-		type_ctor_num_ptags	= 13
+		// type_ctor_version	= 1,
+		type_ctor_rep		= 2,
+		type_ctor_num_ptags	= 3,
+		type_ctor_unify_pred 	= 4,
+		type_ctor_compare_pred	= 5,
+		// 6
+		// 7
+		// 8
+		type_ctor_module_name	= 9,
+		type_ctor_name		= 10,
+		// 11
+		type_functors		= 12,
+		type_layout		= 13,
+		type_ctor_num_functors	= 14
 	}
 
 	enum ptag_layout_field_nums {
