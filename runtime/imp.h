@@ -177,6 +177,7 @@ typedef void (*Cont) (void);
 typedef char Char;	/* we may eventually move to using wchar_t */
 
 typedef Char *String;
+typedef const Char *ConstString;
 
 #define string_const(string, len) ((Word)string)
 #define string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
@@ -187,12 +188,13 @@ typedef Char *String;
 ** on the heap.
 */
 #define make_aligned_string(ptr, string) \
-	( ((Word)string & (sizeof(Word) - 1)) ? (ptr) = (string) : \
-		incr_hp_atomic((ptr), strlen(string) + sizeof(Word) / \
-			sizeof(Word)), \
-		strcpy((ptr), (string)) ); 
-
-
+	( tag((Word)string) != 0 ? 					\
+		(incr_hp_atomic(LVALUE_CAST(Word, (ptr)), 		\
+		    (strlen(string) + sizeof(Word)) / sizeof(Word)),	\
+		strcpy((ptr), (string)))				\
+	: 								\
+		((ptr) = (string))					\
+	)
 
 /*
 ** Note that hash_string is also defined in library/string.m.
