@@ -33,7 +33,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, instmap, (inst).
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
 :- import_module type_util, options, prog_data, quantification, (lambda).
-:- import_module mercury_to_mercury.
+:- import_module mercury_to_mercury, inst_match.
 
 :- import_module assoc_list, bool, char, int, list, map, require, set.
 :- import_module std_util, string, varset, term.
@@ -1107,7 +1107,9 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 		%
 		( 
 			mode_get_insts(ModuleInfo, LVarMode,
-				LVarInitialInst, _LVarFinalInst),
+				LVarInitialInst0, _LVarFinalInst),
+			inst_expand(ModuleInfo, LVarInitialInst0,
+				LVarInitialInst),
 			LVarInitialInst = ground(_, yes(LVarPredInstInfo))
 		->
 			LVarPredInstInfo = pred_inst_info(_, LVarArgModes0, _),
