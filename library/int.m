@@ -11,25 +11,25 @@
 :- interface.
 
 :- pred (int < int).
-:- mode (input < input).
+:- mode ((in) < (in)).
 
 :- pred (int =< int).
-:- mode (input =< input).
+:- mode ((in) =< (in)).
 
 :- pred (int >= int).
-:- mode (input >= input).
+:- mode ((in) >= (in)).
 
 :- pred (int > int).
-:- mode (input > input).
+:- mode ((in) > (in)).
 
 :- pred int__abs(int, int).
-:- mode int__abs(input, output).
+:- mode int__abs((in), out).
 
 :- pred int__max(int, int, int).
-:- mode int__max(input, input, output).
+:- mode int__max((in), (in), out).
 
 :- pred int__min(int, int, int).
-:- mode int__min(input, input, output).
+:- mode int__min((in), (in), out).
 
 /*
 
@@ -43,7 +43,7 @@
 			;	(int__expr mod int__expr)
 			;	(int__expr // int__expr).
 
-:- pred is(int :: output, int__expr :: input) is det.
+:- pred is(int :: out, int__expr :: (in)) is det.
 
 */
 
@@ -53,7 +53,7 @@
 			;	(int mod int)
 			;	(int // int).
 
-:- pred is(int :: output, int__simple_expr :: input) is det.
+:- pred is(int :: out, int__simple_expr :: (in)) is det.
 
 :- implementation.
 
