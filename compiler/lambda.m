@@ -230,7 +230,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		Var = Var0,
 		UniModes = UniModes0
 	;
-		error("polymorphism__transform_lambda: wierd unification")
+		error("polymorphism__transform_lambda: weird unification")
 	),
 
 	% Optimize a special case: replace

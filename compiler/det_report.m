@@ -682,7 +682,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 			{ CallUnifyContext = no },
 			prog_out__write_context(Context),
 			io__write_string(
-	"  Some wierd unification (or explicit call to `__Unify__'?) ")
+	"  Some weird unification (or explicit call to `__Unify__'?) ")
 		)
 	;
 		(
