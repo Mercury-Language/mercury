@@ -109,7 +109,7 @@ detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 
 		( { VeryVerbose = yes } ->
 			io__write_string("% Repeating common deconstruction detection for "),
-			hlds_out__write_pred_id(ModuleInfo0, PredId),
+			hlds_out__write_pred_id(ModuleInfo3, PredId),
 			io__write_string("\n")
 		;
 			[]
