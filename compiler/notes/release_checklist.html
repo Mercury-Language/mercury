@@ -1,0 +1,83 @@
+<html>
+<head>
+<title>
+	Mercury Coding Standard for the Mercury Project
+</title>
+</head>
+
+<body
+	bgcolor="#ffffff"
+	text="#000000"
+>
+
+<hr>
+<!-------------------------->
+
+This file contains a checklist of the steps that must be
+taken when releasing a new version of Mercury.
+
+<hr>
+<!-------------------------->
+
+<ol>
+<li> Update the version number in
+	<ul>
+	<li> README
+	<li> INSTALL (various places)
+	<li> Mmake
+	<li> bindist/Mmake
+	<li> configure.in
+	<li> library/library.m
+	</ul>
+    and update the NEWS, RELEASE_NOTES, and HISTORY files. 
+    The RELEASE_NOTES file should include the contents of the NEWS file.
+    The HISTORY file should include the NEWS files from previous releases.
+
+<li>  Checkout a fresh copy, and do
+
+	<pre>
+	touch Mmake.params &&
+	autoconf &&
+	mercury_cv_low_tag_bits=2 \
+	mercury_cv_bits_per_word=32 \
+	mercury_cv_unboxed_floats=no \
+	sh configure --prefix=$INSTALL_DIR &&
+	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar
+	</pre>
+	
+	<p>
+
+    This step should be done automatically by tools/test_mercury every night,
+    so you should be able to just grab the mercury-latest-stable.tar.gz
+    file from /home/mercury/public/testing/test_dirs/murlibobo.
+
+<li>  Test it on lots of architectures. <br>
+
+	<p>
+    Make sure you test that all the programs in the `samples' directory
+    work.
+
+<li>  Build binary distributions for those architectures.
+
+<li>  Copy the gzipped tar files to ~fjh/www_public/mercury, and
+    to the turiel ftp site ftp://turiel.cs.mu.oz.au/pub/mercury.
+    Email kostis@cs.sunysb.edu (Konstantinos Sagonas) to tell him
+    to make copies of it on ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
+    respectively. <br>
+    The mirror on ftp://ftp.csd.uu.se/pub/Mercury is automated.
+
+<li>  Email mercury-announce@cs.mu.oz.au and cross-post announcement to
+    comp.lang.misc, comp.lang.prolog, comp.lang.functional, comp.object.logic,
+    and for major releases also to comp.compilers and gnu.announce.
+
+<li>  Update the Mercury WWW home page (/local/dept/www/mercury/mercury.html).
+
+</ol>
+
+
+<hr>
+<!-------------------------->
+
+Last update was $Date: 1997-04-03 05:17:42 $ by $Author: aet $@cs.mu.oz.au. <br>
+</body>
+</html>
