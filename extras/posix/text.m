@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -90,7 +90,7 @@
 	** ME_words(amt) returns the number of words necessary to
 	** to store `amt' bytes.
 	*/
-	#define ME_words(x)	(((x) + sizeof(Word) - 1) / sizeof(Word))
+	#define ME_words(x)	(((x) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
 ").
 
 %------------------------------------------------------------------------------%
@@ -115,11 +115,11 @@ text_2([C|Cs], N, Text0, Text) :-
 :- pragma c_code(create(Len::in, Val::in, Txt::uo),
 		[will_not_call_mercury, thread_safe], "{
 	ME_Text *txtptr;
-	Word	tmp;
+	MR_Word	tmp;
 	int	i;
 
-	incr_hp(Txt, ME_words(sizeof(ME_Text)));
-	incr_hp_atomic(tmp, ME_words(Len));
+	MR_incr_hp(Txt, ME_words(sizeof(ME_Text)));
+	MR_incr_hp_atomic(tmp, ME_words(Len));
 	txtptr = (ME_Text *) Txt;
 	txtptr->len = Len;
 	txtptr->data = (char *) tmp;
@@ -209,7 +209,7 @@ text_2([C|Cs], N, Text0, Text) :-
 
 	Text1 = Text0;
 
-	incr_hp(Text2, ME_words(sizeof(ME_Text)));
+	MR_incr_hp(Text2, ME_words(sizeof(ME_Text)));
 	txtptr2 = (ME_Text *) Text2;
 	txtptr2->len = txtptr1->len - Where;
 	txtptr2->data = txtptr1->data + Where;

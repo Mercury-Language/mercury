@@ -46,22 +46,22 @@
 
 :- pragma c_code(global__new(Thing::in, Glob::out, IO0::di, IO::uo),
 		will_not_call_mercury, "{
-	Word *tmp;
-	incr_hp((Word) tmp, 1);
+	MR_Word *tmp;
+	MR_incr_hp((MR_Word) tmp, 1);
 	*tmp = Thing;
-	Glob = (Word) tmp;
+	Glob = (MR_Word) tmp;
 	IO = IO0;
 }").
 
 :- pragma c_code(global__get(Glob::in, Thing::out, IO0::di, IO::uo),
 		will_not_call_mercury, "{
-	Thing = *(Word *) Glob;
+	Thing = * (MR_Word *) Glob;
 	IO = IO0;
 }").
 
 :- pragma c_code(global__set(Glob::in, Thing::in, IO0::di, IO::uo),
 		will_not_call_mercury, "{
-	*((Word *) Glob) = Thing;
+	* ((MR_Word *) Glob) = Thing;
 	IO = IO0;
 }").
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1998,2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -117,7 +117,7 @@ int *tclDummyMathPtr = (int *) matherr;
 ").
 
 :- pragma c_header_code("
-	extern Word mtcltk_mercury_initializer;
+	extern MR_Word mtcltk_mercury_initializer;
 	char *mtcltk_strdup(const char *str);
 ").
 
@@ -128,20 +128,20 @@ int *tclDummyMathPtr = (int *) matherr;
 :- pragma c_code(mtcltk__main(Closure::pred(in, di, uo) is det, Args::in,
 		IO0::di, IO::uo), may_call_mercury, "
 {
-    Word l;
-    int argc, i;
-    char **argv;
+    MR_Word l;
+    int     argc, i;
+    char    **argv;
 
     /*
     ** convert arguments from a list of strings to an array of strings
     */
     argc = 0;
-    for(l = Args; l != list_empty(); l = list_tail(l))
+    for(l = Args; l != MR_list_empty(); l = MR_list_tail(l))
 	argc++;
-    incr_hp(LVALUE_CAST(Word, argv), argc + 1);
+    MR_incr_hp(LVALUE_CAST(Word, argv), argc + 1);
 
     for(i = 0, l = Args; l != list_empty(); l = list_tail(l), i++)
-	argv[i] = (char *) list_head(l);
+	argv[i] = (char *) MR_list_head(l);
     argv[i] = NULL;
 
     mtcltk_mercury_initializer = Closure;
@@ -226,14 +226,15 @@ Tcl_AppInit(Tcl_Interp *interp)
 :- pragma c_code("
 char *mtcltk_strdup(const char *str)
 {
-	Word newstr;
+	MR_Word newstr;
 
 	assert(str);
-	incr_hp_atomic(newstr, (strlen(str)+sizeof(Word))/sizeof(Word));
+	MR_incr_hp_atomic(newstr, (strlen(str) + sizeof(MR_Word))
+                / sizeof(MR_Word));
 	assert(newstr);
-	strcpy((char *)newstr, str);
+	strcpy((char *) newstr, str);
 
-	return (char *)newstr;
+	return (char *) newstr;
 }
 ").
 
@@ -261,17 +262,17 @@ call_mercury_closure(Closure, Interp, Args, Status, Result) -->
 int mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
 		 int argc, char *argv[])
 {
-	Word status;
-	Word args;
-	int i;
+	MR_Word	status;
+	MR_Word	args;
+	int	i;
 
 	/* convert the array of strings into a Mercury list of strings */
-	args = list_empty();
+	args = MR_list_empty();
 	for (i = argc - 1; i >= 0; i--) {
-		args = list_cons(mtcltk_strdup(argv[i]), args);
+		args = MR_list_cons(mtcltk_strdup(argv[i]), args);
 	}
 
-	mtcltk_call_mercury_closure((Word) clientData, (Word) interp,
+	mtcltk_call_mercury_closure((MR_Word) clientData, (MR_Word) interp,
 		args, &status, &interp->result);
 /*
 	fprintf(stderr, ""mercury result: `%s'\n"", interp->result);

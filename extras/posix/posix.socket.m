@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -153,7 +153,7 @@ mksockaddr_struct(inet(Port, Addr), Ptr, Len) :-
 		[will_not_call_mercury, thread_safe], "{
 	struct sockaddr_in *ptr;
 
-	incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(Word)));
+	MR_incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
 	ptr = (struct sockaddr_in *) Ptr;
 
 	memset(ptr, 0, sizeof(struct sockaddr_in));
@@ -226,7 +226,7 @@ accept(Fd, Result) -->
 	struct sockaddr_in *ptr;
 	int	len = sizeof(struct sockaddr_in);
 
-	incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(Word)));
+	MR_incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
 	ptr = (struct sockaddr_in *) Ptr;
 
 	NewFd = accept(Fd, ptr, &len);
@@ -243,7 +243,7 @@ accept(Fd, Result) -->
 	ptr = (struct sockaddr_in *) Ptr;
 
 	if (ptr->sin_family == AF_INET) {
-		incr_hp(Ptr, 2);
+		MR_incr_hp(Ptr, 2);
 		field(MR_mktag(0), Ptr, 0) = ntohs(ptr->sin_port);
 		field(MR_mktag(0), Ptr, 1) = ptr->sin_addr.s_addr;
 	} else {

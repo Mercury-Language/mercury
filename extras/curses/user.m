@@ -550,11 +550,11 @@ update_data([C|Cs], Y, X, Xmax, Data0, Data) :-
 :- mode set_root(in, di, uo) is det.
 
 :- pragma c_header_code("
-	extern Word	curse_root;
+	extern MR_Word	curse_root;
 ").
 
 :- pragma c_code("
-	Word		curse_root;
+	MR_Word		curse_root;
 ").
 
 :- pragma c_code(get_root(W::out, IO0::di, IO::uo),
@@ -599,11 +599,11 @@ set_win(Win, Window) -->
 :- pred set_cursor(cursor::in, io__state::di, io__state::uo) is det.
 
 :- pragma c_header_code("
-	extern Word	curse_cursor;
+	extern MR_Word	curse_cursor;
 ").
 
 :- pragma c_code("
-	Word		curse_cursor;
+	MR_Word		curse_cursor;
 ").
 
 :- pragma c_code(get_cursor(C::out, I0::di, I::uo),
@@ -631,11 +631,11 @@ set_win(Win, Window) -->
 :- pred set_curse_store(curse_store::di, io__state::di, io__state::uo) is det.
 
 :- pragma c_header_code("
-	extern Word	curse_store;
+	extern MR_Word	curse_store;
 ").
 
 :- pragma c_code("
-	Word		curse_store;
+	MR_Word		curse_store;
 ").
 
 :- pragma c_code(init_curse_store(C::uo),

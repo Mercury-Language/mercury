@@ -50,19 +50,19 @@
 		[will_not_call_mercury, thread_safe], "{
 #ifndef MR_HIGHLEVEL_CODE
 	MR_Context	*ctxt;
-	ctxt = create_context();
+	ctxt = MR_create_context();
 	ctxt->resume = &&spawn_call_back_to_mercury_cc_multi;
 		/* Store the closure on the top of the new context's stack. */
 	*(ctxt->context_sp) = Goal;
 	ctxt->next = NULL;
-	schedule(ctxt);
+	MR_schedule(ctxt);
 	if (0) {
 spawn_call_back_to_mercury_cc_multi:
-		save_registers();
+		MR_save_registers();
 			/* Get the closure from the top of the stack */
-		call_back_to_mercury_cc_multi(*((Word *)MR_sp));
-		destroy_context(MR_ENGINE(this_context));
-		runnext();
+		call_back_to_mercury_cc_multi(*((MR_Word *)MR_sp));
+		MR_destroy_context(MR_ENGINE(this_context));
+		MR_runnext();
 	}
 #else
 	ME_create_thread(ME_thread_wrapper, (void *) Goal);
@@ -75,10 +75,10 @@ spawn_call_back_to_mercury_cc_multi:
 		[will_not_call_mercury, thread_safe], "{
 		/* yield() */
 #ifndef MR_HIGHLEVEL_CODE
-	save_context(MR_ENGINE(this_context));
+	MR_save_context(MR_ENGINE(this_context));
 	MR_ENGINE(this_context)->resume = &&yield_skip_to_the_end;
-	schedule(MR_ENGINE(this_context));
-	runnext();
+	MR_schedule(MR_ENGINE(this_context));
+	MR_runnext();
 yield_skip_to_the_end:
 #endif
 	IO = IO0;
