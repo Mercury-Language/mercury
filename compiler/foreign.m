@@ -24,81 +24,40 @@
 :- import_module libs__globals.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 
 :- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
 :- import_module string.
-:- import_module term.
 
-:- type foreign_decl_info 		== list(foreign_decl_code).
-					% in reverse order
-:- type foreign_body_info		== list(foreign_body_code).
-					% in reverse order
-
-:- type foreign_decl_code
-	--->	foreign_decl_code(
-			foreign_language,
-			foreign_decl_is_local,
-			string,
-			prog_context
-		).
-
-:- type foreign_body_code
-	--->	foreign_body_code(
-			foreign_language,
-			string,
-			prog_context
-		).
-
-:- type foreign_export_defns == list(foreign_export).
-:- type foreign_export_decls
-	--->	foreign_export_decls(
-			foreign_decl_info,
-			list(foreign_export_decl)
-		).
-
-:- type foreign_export_decl
-	--->	foreign_export_decl(
-			foreign_language,	% language of the export
-			string,			% return type
-			string,			% function name
-			string			% argument declarations
-		).
-
-	% Some code from a `pragma foreign_code' declaration that is not
-	% associated with a given procedure.
-:- type user_foreign_code
-	--->	user_foreign_code(
-			foreign_language,	% language of this code
-			string,			% code
-			term__context		% source code location
-		).
-
-	% the code for `pragma export' is generated directly as strings
-	% by export.m.
-:- type foreign_export	==	string.
+%-----------------------------------------------------------------------------%
 
 	% A type which is used to determine the string representation of a
 	% mercury type for various foreign languages.
+	%
 :- type exported_type.
 
 	% Given a type which is not defined as a foreign type, get the
 	% exported_type representation of that type.
+	%
 :- func non_foreign_type((type)) = exported_type.
 
 	% Does the foreign_type_body contain a definition usable
 	% when compiling to the given target.
+	%
 :- pred have_foreign_type_for_backend(compilation_target::in,
 	foreign_type_body::in, bool::out) is det.
 
 	% Given an arbitary mercury type, get the exported_type representation
 	% of that type on the current backend.
+	%
 :- func to_exported_type(module_info, (type)) = exported_type.
 
 	% Does the implementation of the given foreign type body on
 	% the current backend use a user-defined comparison predicate.
+	%
 :- func foreign_type_body_has_user_defined_eq_comp_pred(module_info,
 	foreign_type_body) = unify_compare is semidet.
 
@@ -106,6 +65,7 @@
 	% a foreign_type_body, return the name of the foreign language type
 	% the identity of any user-defined unify/compare predicates, and the
 	% assertions applicable to that backend.
+	%
 :- pred foreign_type_body_to_exported_type(module_info::in,
 	foreign_type_body::in, sym_name::out, maybe(unify_compare)::out,
 	list(foreign_type_assertion)::out) is det.
@@ -113,24 +73,28 @@
 	% Given the exported_type representation for a type, determine
 	% whether or not it is a foreign type, and if yes, return the foreign
 	% type's assertions.
+	%
 :- func is_foreign_type(exported_type) = maybe(list(foreign_type_assertion)).
 
 	% Given a representation of a type, determine the string which
 	% corresponds to that type in the specified foreign language,
 	% for use with foreign language interfacing (`pragma export' or
 	% `pragma foreign_proc').
+	%
 :- func to_type_string(foreign_language, exported_type) = string.
 :- func to_type_string(foreign_language, module_info, (type)) = string.
 
 	% Filter the decls for the given foreign language.
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
+	%
 :- pred filter_decls(foreign_language::in, foreign_decl_info::in,
 	foreign_decl_info::out, foreign_decl_info::out) is det.
 
 	% Filter the module imports for the given foreign language.
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
+	%
 :- pred filter_imports(foreign_language::in,
 	foreign_import_module_info::in, foreign_import_module_info::out,
 	foreign_import_module_info::out) is det.
@@ -138,6 +102,7 @@
 	% Filter the bodys for the given foreign language.
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
+	%
 :- pred filter_bodys(foreign_language::in, foreign_body_info::in,
 	foreign_body_info::out, foreign_body_info::out) is det.
 
@@ -152,6 +117,7 @@
 	% code.
 	% XXX This implementation is currently incomplete, so in future
 	% this interface may change.
+	%
 :- pred extrude_pragma_implementation(list(foreign_language)::in,
 	list(pragma_var)::in, sym_name::in, pred_or_func::in, prog_context::in,
 	module_info::in, module_info::out,
@@ -174,6 +140,7 @@
 
 	% The name of the #define which can be used to guard declarations with
 	% to prevent entities being declared twice.
+	%
 :- func decl_guard(sym_name) = string.
 
 %-----------------------------------------------------------------------------%
@@ -192,7 +159,6 @@
 :- import_module libs__globals.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
-:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.

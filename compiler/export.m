@@ -18,10 +18,10 @@
 
 :- interface.
 
-:- import_module backend_libs__foreign.
 :- import_module hlds__hlds_module.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 
 :- import_module io.
 

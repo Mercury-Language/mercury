@@ -22,8 +22,6 @@
 :- interface.
 
 :- import_module analysis.
-:- import_module backend_libs.
-:- import_module backend_libs__foreign.
 :- import_module check_hlds__unify_proc.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_pred.
@@ -32,6 +30,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module recompilation.
 
 :- import_module list.

@@ -18,7 +18,7 @@
 % profiler/demangle.m, util/mdemangle.c and compiler/name_mangle.m.
  
 % Main authors: trd, dgj.
-% These code was originally part of the foreign module and was moved here.
+% This code was originally part of the foreign module and was moved here.
 
 %-----------------------------------------------------------------------------%
 
@@ -31,6 +31,61 @@
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
+:- import_module list.
+:- import_module string.
+:- import_module term.
+
+%-----------------------------------------------------------------------------%
+
+:- type foreign_decl_info 		== list(foreign_decl_code).
+					% in reverse order
+:- type foreign_body_info		== list(foreign_body_code).
+					% in reverse order
+
+:- type foreign_decl_code
+	--->	foreign_decl_code(
+			foreign_language,
+			foreign_decl_is_local,
+			string,
+			prog_context
+		).
+
+:- type foreign_body_code
+	--->	foreign_body_code(
+			foreign_language,
+			string,
+			prog_context
+		).
+
+:- type foreign_export_defns == list(foreign_export).
+:- type foreign_export_decls
+	--->	foreign_export_decls(
+			foreign_decl_info,
+			list(foreign_export_decl)
+		).
+
+:- type foreign_export_decl
+	--->	foreign_export_decl(
+			foreign_language,	% language of the export
+			string,			% return type
+			string,			% function name
+			string			% argument declarations
+		).
+	
+	% Some code from a `pragma foreign_code' declaration that is not
+	% associated with a given procedure.
+	%
+:- type user_foreign_code
+	--->	user_foreign_code(
+			foreign_language,	% language of this code
+			string,			% code
+			term__context		% source code location
+		).
+
+	% the code for `pragma export' is generated directly as strings
+	% by export.m.
+	%
+:- type foreign_export	==	string.
 
 %-----------------------------------------------------------------------------%
 
@@ -137,8 +192,6 @@
 
 :- import_module char.
 :- import_module int.
-:- import_module list.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

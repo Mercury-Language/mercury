@@ -338,6 +338,7 @@
 :- import_module libs__globals.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 
 :- import_module bool.
 :- import_module list.

@@ -17,7 +17,6 @@
 :- interface.
 
 :- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__foreign.
 :- import_module backend_libs__rtti.
 :- import_module hlds__code_model.
 :- import_module hlds__hlds_goal.
@@ -27,6 +26,7 @@
 :- import_module ll_backend__layout.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 
 :- import_module bool.
 :- import_module list.
