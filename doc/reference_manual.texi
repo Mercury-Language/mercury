@@ -115,7 +115,7 @@ To facilitate programming-in-the-large, to allow separate compilation,
 and to support encapsulation, Mercury has a simple module system.
 Mercury's standard library has a variety of pre-defined modules
 for common programming tasks;
-see the Mercury Library Reference manual.
+see the Mercury Library Reference Manual.
 
 @node Syntax, Types, Introduction, Top
 @chapter Syntax
@@ -1308,7 +1308,8 @@ get([Elem | Queue], Elem, Queue).
 Mercury has a standard library which includes modules for
 lists, stacks, queues, priority queues, sets, bags (multi-sets),
 maps (dictionaries), random number generation, input/output
-and filename and directory handling.
+and filename and directory handling. 
+See the Mercury Library Reference Manual for details.
 
 @node Semantics,, Modules, Top
 @chapter Semantics
