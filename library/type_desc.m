@@ -175,114 +175,118 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_ctor_desc, 0,
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0, 
 	MR_TYPECTOR_REP_TYPEDESC)
 
-static int MR_compare_type_info(MR_TypeInfo_0 t1, MR_TypeInfo_0 t2) {
-	MR_ComparisonResult res;
+").
+:- pragma foreign_code("C#", "
 
-	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
-		&res, t1, t2);
+/* XXX These macros need to be defined in C#
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_ctor_desc, 0, 
+//	MR_TYPECTOR_REP_TYPECTORDESC)
+public static object[] __type_ctor_info_type_ctor_desc_0;
+public static object[] type_desc__type_ctor_info_type_ctor_desc_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0, 
+//	MR_TYPECTOR_REP_TYPEDESC)
+public static object[] __type_ctor_info_type_desc_0;
+public static object[] type_desc__type_ctor_info_type_desc_0;
+*/
+
+
+public static int MR_compare_type_info(object[] t1, object[] t2) {
+	object[] res = null;
+
+	mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
+		ref res, t1, t2);
 /*
 #ifdef MR_HIGHLEVEL_DATA
-	return res->data_tag;
+	return res-> data_tag;
 #else
 */
-	return System::Convert::ToInt32(res[0]);
+	return System.Convert.ToInt32(res[0]);
 // #endif
 }
 
-static void
+public static void
 __Compare____type_ctor_desc_0_0(
-	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
+	ref object[] result, object[] x, object[] y)
 {
-	mercury::runtime::Errors::SORRY(
-		S""foreign code for comparing type_ctor_descs"");
+	mercury.runtime.Errors.SORRY(
+		""foreign code for comparing type_ctor_descs"");
 }
 
-static MR_bool
-__Unify____type_ctor_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
+public static bool
+__Unify____type_ctor_desc_0_0(object[] x, object[] y)
 {
-	mercury::runtime::Errors::SORRY(
-		S""foreign code for unifying type_ctor_descs"");
-	return 0;
+	mercury.runtime.Errors.SORRY(
+		""foreign code for unifying type_ctor_descs"");
+	return false;
 }
 
-static void
+public static void
 special___Compare___type_ctor_desc_0_0(
-	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
+	ref object[] result, object[] x, object[] y)
 {
-	mercury::runtime::Errors::SORRY(
-		S""foreign code for comparing type_ctor_descs"");
+	mercury.runtime.Errors.SORRY(
+		""foreign code for comparing type_ctor_descs"");
 }
 
-static MR_bool
-special___Unify___type_ctor_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
+public static bool
+special___Unify___type_ctor_desc_0_0(object[] x, object[] y)
 {
-	mercury::runtime::Errors::SORRY(
-		S""foreign code for unifying type_ctor_descs"");
-	return 0;
+	mercury.runtime.Errors.SORRY(
+		""foreign code for unifying type_ctor_descs"");
+	return false;
 }
 
-static MR_bool
-do_unify__type_ctor_desc_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__type_ctor_desc_0_0(object x, object y)
 {
-	return mercury::type_desc__cpp_code::mercury_code::__Unify____type_ctor_desc_0_0(
-		dynamic_cast<MR_TypeInfo_0>(x),
-		dynamic_cast<MR_TypeInfo_0>(y));
+	return __Unify____type_ctor_desc_0_0((object[]) x, (object[]) y);
 }
 
-static void
-do_compare__type_ctor_desc_0_0(
-	MR_ComparisonResult *result, MR_Box x, MR_Box y)
+public static void
+do_compare__type_ctor_desc_0_0(ref object[] result, object x, object y)
 {
-	mercury::type_desc__cpp_code::mercury_code::__Compare____type_ctor_desc_0_0(
-		result,
-		dynamic_cast<MR_TypeInfo_0>(x),
-		dynamic_cast<MR_TypeInfo_0>(y));
+	__Compare____type_ctor_desc_0_0(ref result, (object[]) x, (object[]) y);
 }
 
-static void
-__Compare____type_desc_0_0(
-	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
+public static void
+__Compare____type_desc_0_0(ref object[] result, object[] x, object[] y)
 {
-	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
-		result, x, y);
+	mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
+		ref result, x, y);
 }
 
-static MR_bool
-__Unify____type_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
+public static bool
+__Unify____type_desc_0_0(object[] x, object[] y)
 {
-	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
+	return (MR_compare_type_info(x, y) == 0);
 }
 
-static void
+public static void
 special___Compare___type_desc_0_0(
-	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
+	ref object[] result, object[] x, object[] y)
 {
-	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
-		result, x, y);
+	mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
+		ref result, x, y);
 }
 
-static MR_bool
-special___Unify___type_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
+public static bool
+special___Unify___type_desc_0_0(object[] x, object[] y)
 {
-	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
+	return (MR_compare_type_info(x, y) == 0);
 }
 
-static MR_bool
-do_unify__type_desc_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__type_desc_0_0(object x, object y)
 {
-	return mercury::type_desc__cpp_code::mercury_code::__Unify____type_desc_0_0(
-		dynamic_cast<MR_TypeInfo_0>(x),
-		dynamic_cast<MR_TypeInfo_0>(y));
+	return __Unify____type_desc_0_0((object[]) x, (object[]) y);
 }
 
-static void
+public static void
 do_compare__type_desc_0_0(
-	MR_ComparisonResult *result, MR_Box x, MR_Box y)
+	ref object[] result, object x, object y)
 {
-	mercury::type_desc__cpp_code::mercury_code::__Compare____type_desc_0_0(
-		result,
-		dynamic_cast<MR_TypeInfo_0>(x),
-		dynamic_cast<MR_TypeInfo_0>(y));
+	__Compare____type_desc_0_0(ref result, (object[]) x, (object[]) y);
 }
 
 ").

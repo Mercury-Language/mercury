@@ -457,38 +457,31 @@ call_rtti_generic_unify(X, Y) :-
 call_rtti_generic_compare(Res, X, Y) :-
 	rtti_implementation__generic_compare(Res, X, Y).
 
-:- pragma foreign_decl("MC++", "
-#using ""builtin__csharp_code.dll""
-").
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
-static void compare_3(MR_TypeInfo TypeInfo_for_T,
-		MR_Ref(MR_ComparisonResult) Res, 
-		MR_Box X, MR_Box Y) 
+public static void compare_3(object[] TypeInfo_for_T,
+		ref object[] Res, object X, object Y) 
 {
-	mercury::builtin::mercury_code::call_rtti_generic_compare_3(
-			TypeInfo_for_T, Res, X, Y);
+	mercury.builtin.mercury_code.call_rtti_generic_compare_3(
+			TypeInfo_for_T, ref Res, X, Y);
 }
 
-static void compare_3_m1(MR_TypeInfo TypeInfo_for_T,
-		MR_Ref(MR_ComparisonResult) Res, 
-		MR_Box X, MR_Box Y) 
+public static void compare_3_m1(object[] TypeInfo_for_T,
+		ref object[] Res, object X, object Y) 
 {
-	compare_3(TypeInfo_for_T, Res, X, Y);
+	compare_3(TypeInfo_for_T, ref Res, X, Y);
 }
 
-static void compare_3_m2(MR_TypeInfo TypeInfo_for_T,
-		MR_Ref(MR_ComparisonResult) Res, 
-		MR_Box X, MR_Box Y) 
+public static void compare_3_m2(object[] TypeInfo_for_T,
+		ref object[] Res, object X, object Y) 
 {
-	compare_3(TypeInfo_for_T, Res, X, Y);
+	compare_3(TypeInfo_for_T, ref Res, X, Y);
 }
 
-static void compare_3_m3(MR_TypeInfo TypeInfo_for_T,
-		MR_Ref(MR_ComparisonResult) Res, 
-		MR_Box X, MR_Box Y) 
+public static void compare_3_m3(object[] TypeInfo_for_T,
+		ref object[] Res, object X, object Y) 
 {
-	compare_3(TypeInfo_for_T, Res, X, Y);
+	compare_3(TypeInfo_for_T, ref Res, X, Y);
 }
 ").
 
@@ -547,18 +540,18 @@ public static void deep_copy_fields(
 
 ").
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
-static MR_bool unify_2_p(MR_TypeInfo ti, MR_Box X, MR_Box Y) 
+public static bool unify_2_p(object[] ti, object X, object Y) 
 {
-	return mercury::builtin::mercury_code::call_rtti_generic_unify_2_p(
+	return mercury.builtin.mercury_code.call_rtti_generic_unify_2_p(
 			ti, X, Y);
 }
 
 ").
 
 :- pragma foreign_code("MC++", "
-	
+
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, int, 0, MR_TYPECTOR_REP_INT) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, character, 0, MR_TYPECTOR_REP_CHAR) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, string, 0, MR_TYPECTOR_REP_STRING) 
@@ -570,155 +563,215 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, func, 0, MR_TYPECTOR_REP_FUNC)
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, pred, 0, MR_TYPECTOR_REP_PRED) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE) 
 
-static MR_bool
-__Unify____int_0_0(MR_Integer x, MR_Integer y)
+").
+:- pragma foreign_code("C#", "
+	
+/* XXX these macros need to be defined in C#
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, int, 0, MR_TYPECTOR_REP_INT) 
+public static object[] __type_ctor_info_int_0;
+public static object[] builtin__type_ctor_info_int_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, character, 0, MR_TYPECTOR_REP_CHAR) 
+public static object[] __type_ctor_info_character_0;
+public static object[] builtin__type_ctor_info_character_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, string, 0, MR_TYPECTOR_REP_STRING) 
+public static object[] __type_ctor_info_string_0;
+public static object[] builtin__type_ctor_info_string_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, c_pointer, 0,
+// 						MR_TYPECTOR_REP_C_POINTER) 
+public static object[] __type_ctor_info_c_pointer_0;
+public static object[] builtin__type_ctor_info_c_pointer_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, void, 0, MR_TYPECTOR_REP_VOID) 
+public static object[] __type_ctor_info_void_0;
+public static object[] builtin__type_ctor_info_void_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, float, 0, MR_TYPECTOR_REP_FLOAT) 
+public static object[] __type_ctor_info_float_0;
+public static object[] builtin__type_ctor_info_float_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, func, 0, MR_TYPECTOR_REP_FUNC) 
+public static object[] __type_ctor_info_func_0;
+public static object[] builtin__type_ctor_info_func_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, pred, 0, MR_TYPECTOR_REP_PRED) 
+public static object[] __type_ctor_info_pred_0;
+public static object[] builtin__type_ctor_info_pred_0;
+
+// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE) 
+public static object[] __type_ctor_info_tuple_0;
+public static object[] builtin__type_ctor_info_tuple_0;
+*/
+
+public static bool
+__Unify____int_0_0(int x, int y)
 {
 	return x == y;
 }
 
-static MR_bool
-__Unify____string_0_0(MR_String x, MR_String y)
+public static bool
+__Unify____string_0_0(string x, string y)
 {
-	return System::String::Equals(x, y);
+	return System.String.Equals(x, y);
 }
 
-static MR_bool
-__Unify____character_0_0(MR_Char x, MR_Char y)
+public static bool
+__Unify____character_0_0(char x, char y)
 {
 	return x == y;
 }
 
-static MR_bool
-__Unify____float_0_0(MR_Float x, MR_Float y)
+public static bool
+__Unify____float_0_0(double x, double y)
 {
 	/* XXX what should this function do when x and y are both NaNs? */
 	return x == y;
 }
 
-static MR_bool
-__Unify____void_0_0(MR_Word x, MR_Word y)
+public static bool
+__Unify____void_0_0(object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for type `void'"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for type `void'"");
+	return false;
 }
 
-static MR_bool
-__Unify____c_pointer_0_0(MR_Word x, MR_Word y)
+public static bool
+__Unify____c_pointer_0_0(object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for type `c_pointer'"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for type `c_pointer'"");
+	return false;
 }
 
-static MR_bool
-__Unify____func_0_0(MR_Word x, MR_Word y)
+public static bool
+__Unify____func_0_0(object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for `func' type"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for `func' type"");
+	return false;
 }
 
-static MR_bool
-__Unify____pred_0_0(MR_Word x, MR_Word y)
+public static bool
+__Unify____pred_0_0(object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for `pred' type"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for `pred' type"");
+	return false;
 }
 
-static MR_bool
-__Unify____tuple_0_0(MR_Word x, MR_Word y)
+public static bool
+__Unify____tuple_0_0(object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for `tuple' type"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for `tuple' type"");
+	return false;
 }
 
-static void
-__Compare____int_0_0(
-	MR_Word_Ref result, MR_Integer x, MR_Integer y)
+public static void
+__Compare____int_0_0(ref object[] result, int x, int y)
 {
-	int r = (x > y ? MR_COMPARE_GREATER :
-		x == y ? MR_COMPARE_EQUAL :
-		MR_COMPARE_LESS);
-	MR_newenum(*result, r);
+	int r;
+	if (x > y) {
+		r = 2;
+	} else if (x == y) {
+		r = 0;
+	} else {
+		r = 1;
+	}
+	result = mercury.runtime.LowLevelData.make_enum(r);
 }
 
-static void
-__Compare____float_0_0(
-	MR_Word_Ref result, MR_Float x, MR_Float y)
+public static void
+__Compare____float_0_0(ref object[] result, double x, double y)
 {
 	/* XXX what should this function do when x and y are both NaNs? */
-	int r = (x > y ? MR_COMPARE_GREATER :
-		x == y ? MR_COMPARE_EQUAL :
-		x < y ? MR_COMPARE_LESS :
-		(mercury::runtime::Errors::fatal_error(
-			S""incomparable floats in compare/3""),
-			MR_COMPARE_EQUAL)); 
-	MR_newenum(*result, r);
+	int r;
+	if (x > y) {
+		r = 2;
+	} else if (x == y) {
+		r = 0;
+	} else if (x < y) {
+		r = 1;
+	} else {
+		mercury.runtime.Errors.fatal_error(
+			""incomparable floats in compare/3"");
+		r = -1;
+	}
+	result = mercury.runtime.LowLevelData.make_enum(r);
 }
 
 
-static void
-__Compare____string_0_0(MR_Word_Ref result,
-	MR_String x, MR_String y)
+public static void
+__Compare____string_0_0(ref object[] result, string x, string y)
 {
-	int res = System::String::Compare(x, y);
-	int r = (res > 0 ? MR_COMPARE_GREATER :
-		res == 0 ? MR_COMPARE_EQUAL :
-		MR_COMPARE_LESS);
-	MR_newenum(*result, r);
+	int r;
+	int res = System.String.Compare(x, y);
+	if (res > 0) {
+		r = 2;
+	} else if (res == 0) {
+		r = 0;
+	} else {
+		r = 1;
+	}
+	result = mercury.runtime.LowLevelData.make_enum(r);
 }
 
-static void
+public static void
 __Compare____character_0_0(
-	MR_Word_Ref result, MR_Char x, MR_Char y)
+	ref object[] result, char x, char y)
 {
-	int r = (x > y ? MR_COMPARE_GREATER :
-		x == y ? MR_COMPARE_EQUAL :
-		MR_COMPARE_LESS);
-	MR_newenum(*result, r);
+	int r;
+	if (x > y) {
+		r = 2;
+	} else if (x == y) {
+		r = 0;
+	} else {
+		r = 1;
+	}
+	result = mercury.runtime.LowLevelData.make_enum(r);
 }
 
-static void
-__Compare____void_0_0(MR_Word_Ref result,
-	MR_Word x, MR_Word y)
+public static void
+__Compare____void_0_0(ref object[] result,
+	object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for type `void'"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for type `void'"");
 }
 
-static void
+public static void
 __Compare____c_pointer_0_0(
-	MR_Word_Ref result, MR_Word x, MR_Word y)
+	ref object[] result, object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for type `c_pointer'"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for type `c_pointer'"");
 }
 
-static void
-__Compare____func_0_0(MR_Word_Ref result,
-	MR_Word x, MR_Word y)
+public static void
+__Compare____func_0_0(ref object[] result,
+	object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for `func' type"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for `func' type"");
 }
 
-static void
-__Compare____pred_0_0(MR_Word_Ref result,
-	MR_Word x, MR_Word y)
+public static void
+__Compare____pred_0_0(ref object[] result,
+	object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for `pred' type"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for `pred' type"");
 }
 
-static void
-__Compare____tuple_0_0(MR_Word_Ref result,
-	MR_Word x, MR_Word y)
+public static void
+__Compare____tuple_0_0(ref object[] result,
+	object[] x, object[] y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for `pred' type"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for `pred' type"");
 }
 
 /*
@@ -726,76 +779,72 @@ __Compare____tuple_0_0(MR_Word_Ref result,
 ** These are just wrappers which call the unboxed version.
 */
 
-static MR_bool
-do_unify__int_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__int_0_0(object x, object y)
 {
-	return mercury::builtin__cpp_code::mercury_code::__Unify____int_0_0(
-		System::Convert::ToInt32(x), 
-		System::Convert::ToInt32(y)); 
+	return __Unify____int_0_0(
+		System.Convert.ToInt32(x), 
+		System.Convert.ToInt32(y)); 
 }
 
-static MR_bool
-do_unify__string_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__string_0_0(object x, object y)
 {
-	return mercury::builtin__cpp_code::mercury_code::__Unify____string_0_0(
-		dynamic_cast<MR_String>(x), 
-		dynamic_cast<MR_String>(y));
+	return __Unify____string_0_0((string) x, (string) y);
 }
 
-static MR_bool
-do_unify__float_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__float_0_0(object x, object y)
 {
-	return mercury::builtin__cpp_code::mercury_code::__Unify____float_0_0(
-		System::Convert::ToDouble(x), 
-		System::Convert::ToDouble(y)); 
+	return __Unify____float_0_0(
+		System.Convert.ToDouble(x), 
+		System.Convert.ToDouble(y)); 
 }
 
-static MR_bool
-do_unify__character_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__character_0_0(object x, object y)
 {
-	return mercury::builtin__cpp_code::mercury_code::__Unify____character_0_0(
-		System::Convert::ToChar(x), 
-		System::Convert::ToChar(y)); 
+	return __Unify____character_0_0(
+		System.Convert.ToChar(x), 
+		System.Convert.ToChar(y)); 
 }
 
-static MR_bool
-do_unify__void_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__void_0_0(object x, object y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for type `void'"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for type `void'"");
+	return false;
 }
 
-static MR_bool
-do_unify__c_pointer_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__c_pointer_0_0(object x, object y)
 {
-	return mercury::builtin__cpp_code::mercury_code::__Unify____c_pointer_0_0(
-		dynamic_cast<MR_Word>(x), 
-		dynamic_cast<MR_Word>(y)); 
+	return __Unify____c_pointer_0_0((object[]) x, (object[]) y); 
 }
 
-static MR_bool
-do_unify__func_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__func_0_0(object x, object y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for `func' type"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for `func' type"");
+	return false;
 }
 
-static MR_bool
-do_unify__pred_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__pred_0_0(object x, object y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for `pred' type"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for `pred' type"");
+	return false;
 }
 
-static MR_bool
-do_unify__tuple_0_0(MR_Box x, MR_Box y)
+public static bool
+do_unify__tuple_0_0(object x, object y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called unify for `tuple' type"");
-	return 0;
+	mercury.runtime.Errors.fatal_error(
+		""called unify for `tuple' type"");
+	return false;
 }
 
 /*
@@ -803,76 +852,70 @@ do_unify__tuple_0_0(MR_Box x, MR_Box y)
 ** These are just wrappers which call the unboxed version.
 */
 
-static void
-do_compare__int_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
+public static void
+do_compare__int_0_0(ref object[] result, object x, object y)
 {
-	mercury::builtin__cpp_code::mercury_code::__Compare____int_0_0(result,
-		System::Convert::ToInt32(x), 
-		System::Convert::ToInt32(y)); 
+	__Compare____int_0_0(ref result,
+		System.Convert.ToInt32(x), 
+		System.Convert.ToInt32(y)); 
 }
 
-static void
-do_compare__string_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
+public static void
+do_compare__string_0_0(ref object[] result, object x, object y)
 {
-	mercury::builtin__cpp_code::mercury_code::__Compare____string_0_0(result,
-		dynamic_cast<MR_String>(x),
-		dynamic_cast<MR_String>(y));
+	__Compare____string_0_0(ref result, (string) x, (string) y);
 }
 
-static void
-do_compare__float_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
+public static void
+do_compare__float_0_0(ref object[] result, object x, object y)
 {
-	mercury::builtin__cpp_code::mercury_code::__Compare____float_0_0(result,
-		System::Convert::ToDouble(x), 
-		System::Convert::ToDouble(y)); 
+	__Compare____float_0_0(ref result,
+		System.Convert.ToDouble(x), 
+		System.Convert.ToDouble(y)); 
 }
 
-static void
+public static void
 do_compare__character_0_0(
-	MR_Word_Ref result, MR_Box x, MR_Box y)
+	ref object[] result, object x, object y)
 {
-	mercury::builtin__cpp_code::mercury_code::__Compare____character_0_0(
-		result, 
-		System::Convert::ToChar(x), 
-		System::Convert::ToChar(y)); 
+	__Compare____character_0_0(ref result, 
+		System.Convert.ToChar(x), 
+		System.Convert.ToChar(y)); 
 }
 
-static void
-do_compare__void_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
+public static void
+do_compare__void_0_0(ref object[] result, object x, object y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for type `void'"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for type `void'"");
 }
 
-static void
+public static void
 do_compare__c_pointer_0_0(
-	MR_Word_Ref result, MR_Box x, MR_Box y)
+	ref object[] result, object x, object y)
 {
-	mercury::builtin__cpp_code::mercury_code::__Compare____c_pointer_0_0(
-		result, 
-		dynamic_cast<MR_Word>(x),
-		dynamic_cast<MR_Word>(y));
+	__Compare____c_pointer_0_0(ref result, (object[]) x, (object[]) y);
 }
 
-static void
-do_compare__func_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
+public static void
+do_compare__func_0_0(ref object[] result, object x, object y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for func type"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for func type"");
 }
 
-static void
-do_compare__pred_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
+public static void
+do_compare__pred_0_0(ref object[] result, object x, object y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for pred type"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for pred type"");
 }
 
-static void
-do_compare__tuple_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
+public static void
+do_compare__tuple_0_0(ref object[] result, object x, object y)
 {
-	mercury::runtime::Errors::fatal_error(
-		S""called compare/3 for tuple type"");
+	mercury.runtime.Errors.fatal_error(
+		""called compare/3 for tuple type"");
 }
 
 ").

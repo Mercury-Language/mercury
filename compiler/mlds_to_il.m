@@ -3274,7 +3274,7 @@ predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 	% either a compiler-generated static,
 	% or possibly a handwritten RTTI reference or a
 	% reference to some hand-written code in the
-	% modulename__cpp_code class.
+	% modulename__csharp_code.mercury_code class.
 
 :- func make_static_fieldref(il_data_rep, mlds__var, mlds__type)
 	 = fieldref.
@@ -3345,7 +3345,7 @@ mangle_foreign_code_module(ModuleName0, Lang, ModuleName) :-
 :- mode mangle_dataname_module(in, in, out) is det.
 
 mangle_dataname_module(no, ModuleName0, ModuleName) :-
-	mangle_foreign_code_module(ModuleName0, managed_cplusplus, ModuleName).
+	mangle_foreign_code_module(ModuleName0, csharp, ModuleName).
 
 mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 	(
