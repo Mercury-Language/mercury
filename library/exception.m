@@ -950,11 +950,13 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** Note that we need to save/restore the hp register, if it
 	** is transient, before/after calling deep_copy().
 	*/
-	assert(FRAMEVARS->heap_ptr <= MR_EXCEPTION_FRAMEVARS->heap_zone->top);
+	assert(MR_EXCEPTION_FRAMEVARS->heap_ptr <=
+		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
 	save_transient_registers();
 	exception = deep_copy((Word *) exception,
 		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
-		FRAMEVARS->heap_ptr, MR_EXCEPTION_FRAMEVARS->heap_zone->top);
+		MR_EXCEPTION_FRAMEVARS->heap_ptr,
+		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
 	restore_transient_registers();
 
 	/* switch back to the ordinary heap */
