@@ -191,7 +191,8 @@ endif
 
 mercury_compile$(EXT_FOR_EXE): $(MC_PROG)$(EXT_FOR_EXE)
 	rm -f mercury_compile$(EXT_FOR_EXE)
-	$(LN) $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE)
+	$(LN) $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE) || \
+		cp $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE)
 ifeq ($(findstring il,$(GRADE)),il)        
 	# set the stack size to 100M -- the default of 1M is too low
 	-editbin /nologo /stack:100000000 mercury_compile$(EXT_FOR_EXE)
@@ -204,7 +205,8 @@ libmercury_compile.a: lib$(MC_PROG).a
 
 mercury_compile_init.$O: $(MC_PROG)_init.$O
 	rm -f mercury_compile_init.$O
-	$(LN) $(MC_PROG)_init.$O mercury_compile_init.$O
+	$(LN) $(MC_PROG)_init.$O mercury_compile_init.$O || \
+		cp $(MC_PROG)_init.$O mercury_compile_init.$O
 
 #-----------------------------------------------------------------------------#
 
