@@ -176,6 +176,12 @@ typecheck_to_fixpoint(PredIds, Module0, Module, FoundError) -->
 		{ Module = Module1 },
 		{ FoundError = FoundError1 }
 	;
+		globals__io_lookup_bool_option(debug_types, DebugTypes),
+		( { DebugTypes = yes } ->
+			write_inference_messages(PredIds, Module1)
+		;
+			[]
+		),
 		typecheck_to_fixpoint(PredIds, Module1, Module, FoundError)
 	).
 
@@ -306,7 +312,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 			map__apply_to_list(HeadVars, VarTypes, ArgTypes),
 			pred_info_set_arg_types(PredInfo1, TypeVarSet,
 				ArgTypes, PredInfo),
-			( identical_types_list(ArgTypes0, ArgTypes) ->
+			( identical_up_to_renaming(ArgTypes0, ArgTypes) ->
 				Changed = no
 			;
 				Changed = yes
@@ -2327,13 +2333,9 @@ write_inference_message(PredInfo) -->
 		mercury_output_pred_type(VarSet, Name, Types, MaybeDet,
 			Context)
 	;	{ PredOrFunc = function },
-		( { list__reverse(Types, [RetType|RevArgTypes]) } ->
-			{ list__reverse(RevArgTypes, ArgTypes) },
-			mercury_output_func_type(VarSet, Name, ArgTypes,
-				RetType, MaybeDet, Context)
-		;
-			{ error("write_inference_message: function with no return type") }
-		)
+		{ pred_args_to_func_args(Types, ArgTypes, RetType) },
+		mercury_output_func_type(VarSet, Name, ArgTypes,
+			RetType, MaybeDet, Context)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -3298,13 +3300,15 @@ identical_types(Type1, Type2) :-
 	type_unify(Type1, Type2, [], TypeSubst0, TypeSubst),
 	TypeSubst = TypeSubst0.
 
-:- pred identical_types_list(list(type), list(type)).
-:- mode identical_types_list(in, in) is semidet.
+	% Check whether two lists of types are identical up to renaming.
 
-identical_types_list([], []).
-identical_types_list([T1|T1s], [T2|T2s]) :-
-	identical_types(T1, T2),
-	identical_types_list(T1s, T2s).
+:- pred identical_up_to_renaming(list(type), list(type)).
+:- mode identical_up_to_renaming(in, in) is semidet.
+
+identical_up_to_renaming(TypesList1, TypesList2) :-
+	% They are identical up to renaming if they each subsume each other.
+	type_list_subsumes(TypesList1, TypesList2, _),
+	type_list_subsumes(TypesList2, TypesList1, _).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
