@@ -6,6 +6,10 @@
 . ../../handle_options
 . ../../startup
 
+# XXX we need to disable parallel make, because parallel make is currently
+# not supported when using nested modules.
+jfactor=
+
 mmake $jfactor depend || exit 1
 eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
 checkstatus=$?
