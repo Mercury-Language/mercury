@@ -615,8 +615,47 @@ directory.
 
 @end table
 
-The variables used by the builtin rules are defined in
-@file{@var{prefix}/lib/mercury/mmake/Mmake.vars}.
+The variables used by the builtin rules (and their default values) are
+defined in @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}, however
+these may be overridden by user @samp{Mmake} files. Some of the more
+useful variables are:
+
+@table @code
+
+@item MC
+The executable that invokes the Mercury compiler.
+
+@item MCFLAGS and EXTRA_MCFLAGS
+Flags to pass to the Mercury compiler.
+
+@item MGNUC
+The executable that invokes the C compiler.
+
+@item MGNUCFLAGS and EXTRA_MGNUCFLAGS
+Flags to pass to the C compiler.
+
+@item ML
+The executable that invokes the linker.
+
+@item MLFLAGS and EXTRA_MLFLAGS
+Flags to pass to the linker.
+
+@end table
+
+Other variables also exist - see
+@file{@var{prefix}/lib/mercury/mmake/Mmake.vars} for a complete list. 
+
+If you wish to temporarily change the flags passed to an executable,
+rather than setting the various @samp{FLAGS} variables directly, one can
+supply a @samp{EXTRA_} variable. When defining a @samp{FLAGS} option
+directly (in your own @samp{Mmake} file), it is recommended you include
+the @samp{EXTRA_} version at the end. This is particularly intended for
+use where a shell script needs to call mmake and add an extra parameter,
+without interfering with the flag settings in the @samp{Mmake} file.
+
+@example
+MCFLAGS = -O6 $(EXTRA_MCFLAGS)
+@end example
 
 Note that since Mmake is built on top of Make or GNU Make,
 you can make use of the features supported by the underlying Make.

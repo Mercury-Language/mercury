@@ -29,7 +29,7 @@ MCD		= $(MC) --generate-dependencies
 MCI		= $(MC) --make-interface
 MCSI		= $(MC) --make-short-interface
 MCOI		= $(MC) --make-optimization-interface
-MCFLAGS		=
+MCFLAGS		= $(EXTRA_MCFLAGS)
 MCIFLAGS	= $(MCFLAGS)
 MCSIFLAGS	= $(MCFLAGS)
 MCOIFLAGS	= $(MCFLAGS)
@@ -42,27 +42,27 @@ MCSFLAGS	= $(MCFLAGS)
 # the options which should be passed to them.
 #
 MOD2C		= mod2c
-MOD2CFLAGS	= 
+MOD2CFLAGS	= $(EXTRA_MOD2CFLAGS)
 MOD2H		= mod2h
-MOD2HFLAGS	= 
+MOD2HFLAGS	= $(EXTRA_MOD2HFLAGS)
 C2INIT		= c2init
-C2INITFLAGS	=
+C2INITFLAGS	= $(EXTRA_C2INITFLAGS)
 MGNUC		= mgnuc
-MGNUCFLAGS	=
+MGNUCFLAGS	= $(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS) 
 ML		= ml
-MLFLAGS		=
+MLFLAGS		= $(EXTRA_MLFLAGS)
 MNC		= mnc
-MNCFLAGS	=
+MNCFLAGS	= $(EXTRA_MNCFLAGS)
 MNL		= mnl
-MNLFLAGS	=
+MNLFLAGS	= $(EXTRA_MNLFLAGS)
 MNP		= mnp
-MNPFLAGS	=
+MNPFLAGS	= $(EXTRA_MNPFLAGS)
 MSC		= msc
-MSCFLAGS	=
+MSCFLAGS	= $(EXTRA_MSCFLAGS)
 MSL		= msl
-MSLFLAGS	=
+MSLFLAGS	= $(EXTRA_MSLFLAGS)
 MSP		= msp
-MSPFLAGS	=
+MSPFLAGS	= $(EXTRA_MSPFLAGS)
 
 # $(CFLAGS_FOR_PIC) is passed to the C compiler when creating `.pic_o' files
 # (We use `.pic_o' as the extension for `.o' files that must have
