@@ -1,0 +1,7 @@
+sub("Hello, World!",  0,  5) = "Hello"
+sub("Hello, World!",  0, 50) = "Hello, World!"
+sub("Hello, World!",  0, -5) = ""
+sub("Hello, World!", -5, 12) = "Hello, World"
+sub("Hello, World!", -5, 50) = "Hello, World!"
+sub("Hello, World!",  7,  0) = ""
+sub("Hello, World!", 50, 10) = ""
