@@ -2966,8 +2966,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"\tdone\n\n"
 		])
 	;
-		# for non-MLDS grades, we don't need to install the header
-		# files, so this rule does nothing
+		% for non-MLDS grades, we don't need to install the header
+		% files, so this rule does nothing
 		io__write_strings(DepStream, [
 			"\t\n\n"
 		])
