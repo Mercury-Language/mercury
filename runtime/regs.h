@@ -130,6 +130,17 @@
 		fake_reg[virtual_reg_map[(n) - 1]])
 
 /*
+** get_reg() and set_reg() provide a different way of addressing
+** the registers; unlike virtual_reg(), you don't need to wrap them
+** inside save_registers()/restore_regs() to copy the real regs to/from
+** the fake_reg, so they may perhaps be more efficient if you are just
+** getting or setting one or two registers?
+** Currently they're buggy for n>32 and are not used except for debugging.
+*/
+extern	Word	get_reg(int);
+extern	Word	set_reg(int, Word);
+
+/*
 ** the following macros define a mapping from registers to indices into the
 ** num_uses array used for counting register usage
 **
@@ -145,12 +156,5 @@
 #define	CF_RN	(ORD_RN + 3)
 #define	MF_RN	(ORD_RN + 4)
 #define MAX_RN	(ORD_RN + 5)
-
-#include <stdio.h>		/* for `FILE' */
-#include "dlist.h"		/* for `List' */
-
-extern	Word	get_reg(int);
-extern	Word	set_reg(int, Word);
-
 
 #endif /* not REGS_H */

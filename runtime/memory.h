@@ -110,9 +110,9 @@ struct MEMORY_ZONE {
 	Word	*redzone;	/* beginning of the current redzone */
 	Word	*hardmax;	/* last page of the zone which can't be
 				   unprotected */
-#ifdef	HAVE_SIGINFO
+  #ifdef HAVE_SIGINFO
 	ZoneHandler *handler;   /* handler for page faults in the redzone */
-#endif	/* HAVE_SIGINFO */
+  #endif /* HAVE_SIGINFO */
 #endif	/* HAVE_MPROTECT */
 };
 

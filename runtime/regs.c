@@ -4,8 +4,10 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include	"imp.h"
-#include	"regs.h"
+#include "imp.h"
+#include "regs.h"
+
+#include <stdio.h>
 
 
 Word 

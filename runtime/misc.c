@@ -9,6 +9,8 @@
 #include	"regs.h"
 #include	"misc.h"
 
+#include	<stdio.h>
+
 /*--------------------------------------------------------------------*/
 
 static void print_ordinary_regs(void);
