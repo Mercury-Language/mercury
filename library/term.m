@@ -288,11 +288,14 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 			term__unify(BindingOfX, BindingOfY, Bindings0, Bindings)
 		;
 			% Y is a variable which hasn't been bound yet
-			( BindingOfX = term_variable(Y) ->
+			term__apply_rec_substitution(BindingOfX, Bindings0,
+				SubstBindingOfX),
+			( SubstBindingOfX = term_variable(Y) ->
 			 	Bindings = Bindings0
 			;
-				\+ term__occurs(BindingOfX, Y, Bindings0),
-				map__set(Bindings0, Y, BindingOfX, Bindings)
+				\+ term__occurs(SubstBindingOfX, Y, Bindings0),
+				map__set(Bindings0, Y, SubstBindingOfX,
+					Bindings)
 			)
 		)
 	;
@@ -300,11 +303,14 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 			map__search(Bindings0, Y, BindingOfY2)
 		->
 			% X is a variable which hasn't been bound yet
-			( BindingOfY2 = term_variable(X) ->
+			term__apply_rec_substitution(BindingOfY2, Bindings0,
+				SubstBindingOfY2),
+			( SubstBindingOfY2 = term_variable(X) ->
 				Bindings = Bindings0
 			;
-				\+ term__occurs(BindingOfY2, X, Bindings0),
-				map__set(Bindings0, X, BindingOfY2, Bindings)
+				\+ term__occurs(SubstBindingOfY2, X, Bindings0),
+				map__set(Bindings0, X, SubstBindingOfY2,
+					Bindings)
 			)
 		;
 			% both X and Y are unbound variables -

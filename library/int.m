@@ -40,7 +40,8 @@
 :- type int__expr_2	--->	(int__expr + int__expr)
 			;	(int__expr * int__expr)
 			;	(int__expr - int__expr)
-			;	(int__expr / int__expr).
+			;	(int__expr mod int__expr)
+			;	(int__expr // int__expr).
 
 :- pred is(int :: output, int__expr :: input) is det.
 

@@ -1005,26 +1005,30 @@ type_unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 			% unify the types they are bound to
 			type_unify(BindingOfX, BindingOfY, Bindings0, Bindings)
 		;
-			% XXX bug
+			term__apply_rec_substitution(BindingOfX,
+				Bindings0, SubstBindingOfX),
 			% Y is a type variable which hasn't been bound yet
-			( BindingOfX = term_variable(Y) ->
+			( SubstBindingOfX = term_variable(Y) ->
 				Bindings = Bindings0
 			;
-				\+ term__occurs(BindingOfX, Y, Bindings0),
-				map__set(Bindings0, Y, BindingOfX, Bindings)
+				\+ term__occurs(SubstBindingOfX, Y, Bindings0),
+				map__set(Bindings0, Y, SubstBindingOfX,
+					Bindings)
 			)
 		)
 	;
 		( %%% if some [BindingOfY2]
 			map__search(Bindings0, Y, BindingOfY2)
 		->
-			% XXX bug
+			term__apply_rec_substitution(BindingOfY2,
+				Bindings0, SubstBindingOfY2),
 			% X is a type variable which hasn't been bound yet
-			( BindingOfY2 = term_variable(X) ->
+			( SubstBindingOfY2 = term_variable(X) ->
 				Bindings = Bindings0
 			;
-				\+ term__occurs(BindingOfY2, X, Bindings0),
-				map__set(Bindings0, X, BindingOfY2, Bindings)
+				\+ term__occurs(SubstBindingOfY2, X, Bindings0),
+				map__set(Bindings0, X, SubstBindingOfY2,
+					Bindings)
 			)
 		;
 			% both X and Y are unbound type variables -
