@@ -87,7 +87,7 @@ static void init_registers(void)
 {
 	hp = heapmin;					
 	sp = detstackmin;					
-	maxfr = curfr = childfr = nondstackmin;		
+	maxfr = curfr = nondstackmin;		
 							
 	/* set up a buffer zone */			
 	succip = ENTRY(do_not_reached);			
@@ -189,6 +189,7 @@ engine_done:
 	** Save any registers which will get clobbered by the normal
 	** C function call / return mechanism
 	*/
+
 	save_registers();
 
 	/*
@@ -202,6 +203,7 @@ engine_done:
 	**
 	** It might perhaps be cleaner or more robust to just longjmp() out.
 	*/
+
 	dummy_function_call();
 	debugmsg1("in label `engine_done', locals at %p\n", locals);
 
@@ -210,6 +212,7 @@ engine_done:
 	** Check how much of the space we reserved for local variables
 	** was actually used.
 	*/
+
 	{
 		int low = 0, high = LOCALS_SIZE;
 		int used_low, used_high;
@@ -244,6 +247,7 @@ engine_done:
 */
 
 #include <setjmp.h>
+
 static jmp_buf *engine_jmp_buf;
 
 static Code * engine_done(void)
@@ -273,6 +277,7 @@ void call_engine(Code *entry_point)
 	** This is so "C calls Prolog which calls C which calls Prolog" etc.
 	** will work.
 	*/
+
 	prev_jmp_buf = engine_jmp_buf;
 	engine_jmp_buf = &curr_jmp_buf;
 
@@ -281,6 +286,7 @@ void call_engine(Code *entry_point)
 	** On return, restore the saved value of engine_jmp_buf and then
 	** exit.
 	*/
+
 	if (setjmp(curr_jmp_buf)) {
 	    debugmsg0("...caught longjmp\n");
 	    engine_jmp_buf = prev_jmp_buf;
@@ -291,9 +297,11 @@ void call_engine(Code *entry_point)
 	** Start up the actual engine.
 	** The loop is unrolled a bit for efficiency.
 	*/
+
 	fp = engine_init_registers;
 	fp = (*fp)();
 	fp = entry_point;
+
 	for(;;) {
 		fp = (*fp)();
 		fp = (*fp)();

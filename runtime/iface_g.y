@@ -10,7 +10,7 @@ YYREPL	YY	yy
 
 #ifndef	lint
 static const char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.6 1993-12-18 04:11:31 fjh Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.7 1993-12-31 10:11:14 zs Exp $";
 #endif
 
 #include	<ctype.h>
@@ -39,7 +39,7 @@ extern	void	yyerror(const char *);
 %token		DEBUG NODEBUG
 %token		DETTOKEN NONDETTOKEN HEAPTOKEN CALLTOKEN
 %token		GOTOTOKEN FINALTOKEN DETAILTOKEN ALLTOKEN
-%token		PRINTREGS DUMPFRAME DUMPCPSTACK
+%token		PRINTREGS DUMPFRAME DUMPNONDSTACK
 %token		TAG BODY FIELD
 %token		SETREG GETREG SETMEM GETMEM
 %token		CREATE PUSH POP
@@ -107,7 +107,7 @@ line	:	RESET
 			action = Null;
 			dumpframe(curfr);
 		}
-	|	DUMPCPSTACK
+	|	DUMPNONDSTACK
 		{
 			action = Null;
 			dumpnondstack();

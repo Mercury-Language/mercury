@@ -419,7 +419,6 @@ void printregs(const char *msg)
 	printf("%-9s", "succip:");  printlabel(succip);
 	printf("%-9s", "curfr:");   printnondstack(curfr);
 	printf("%-9s", "maxfr:");   printnondstack(maxfr);
-	printf("%-9s", "childfr:"); printnondstack(maxfr);
 	printf("%-9s", "hp:");      printheap(hp);
 	printf("%-9s", "sp:");      printdetstack(sp);
 

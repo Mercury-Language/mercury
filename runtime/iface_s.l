@@ -166,7 +166,7 @@ yykwinit(void)
 	mkkwentry("all", ALLTOKEN);
 	mkkwentry("printregs", PRINTREGS);
 	mkkwentry("dumpframe", DUMPFRAME);
-	mkkwentry("dumpnondet", DUMPCPSTACK);
+	mkkwentry("dumpnondet", DUMPNONDSTACK);
 	mkkwentry("tag", TAG);
 	mkkwentry("body", BODY);
 	mkkwentry("field", FIELD);

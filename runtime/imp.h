@@ -305,12 +305,15 @@ extern	Word	*nondstackmin;
 				nondstack_overflow_check();	\
 			} while (0)
 
-#define	modframe(redoip)	do {				\
+#define	modframe(redoip)					\
+			do {					\
 				curredoip = redoip;		\
-				debugmodframe();			\
+				debugmodframe();		\
 			} while (0)
 
 #define	succeed()	do {					\
+				reg	Word	*childfr;	\
+								\
 				debugsucceed();			\
 				childfr = curfr;		\
 				curfr = cursuccfr;		\
@@ -319,6 +322,8 @@ extern	Word	*nondstackmin;
 
 #define	succeed_discard()					\
 			do {					\
+				reg	Word	*childfr;	\
+								\
 				debugsucceeddiscard();		\
 				childfr = curfr;		\
 				maxfr = curprevfr;		\
