@@ -31,9 +31,10 @@ DEBUGGER_PROGS=	\
 	loopcheck			\
 	mdb_command_test		\
 	multi_parameter			\
+	polymorphic_output		\
 	queens				\
-	shallow				\
-	polymorphic_output
+	resume_typeinfos		\
+	shallow
 
 # The following tests are disabled, since currently they get some spurious
 # failures if readline support is enabled:
@@ -156,6 +157,11 @@ multi_parameter.out: multi_parameter multi_parameter.inp
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
+
+resume_typeinfos.out: resume_typeinfos resume_typeinfos.inp
+	$(MDB) ./resume_typeinfos < resume_typeinfos.inp 2>&1 | \
+		sed 's/resume_typeinfos.m:[0-9]*/resume_typeinfos.m:NNNN/g' \
+		> resume_typeinfos.out 2>&1
 
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
