@@ -156,7 +156,7 @@
 
 :- pred decl_set_init(decl_set::out) is det.
 
-:- pred decl_set_insert(decl_set::in, decl_id::in, decl_set::out) is det.
+:- pred decl_set_insert(decl_id::in, decl_set::in, decl_set::out) is det.
 
 :- pred decl_set_is_member(decl_id::in, decl_set::in) is semidet.
 
@@ -212,7 +212,7 @@
 decl_set_init(DeclSet) :-
 	map__init(DeclSet).
 
-decl_set_insert(DeclSet0, DeclId, DeclSet) :-
+decl_set_insert(DeclId, DeclSet0, DeclSet) :-
 	map__set(DeclSet0, DeclId, unit, DeclSet).
 
 decl_set_is_member(DeclId, DeclSet) :-
@@ -814,7 +814,7 @@ output_c_data_type_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	{ DeclId = data_addr(data_addr(ModuleName, VarName)) },
 	output_const_term_decl(ArgVals, ArgTypes, DeclId, ExportedFromFile,
 		yes, yes, no, "", "", 0, _),
-	{ decl_set_insert(DeclSet0, DeclId, DeclSet) }.
+	{ decl_set_insert(DeclId, DeclSet0, DeclSet) }.
 output_c_data_type_def(rtti_data(RttiData), DeclSet0, DeclSet) -->
 	output_rtti_data_decl(RttiData, DeclSet0, DeclSet).
 output_c_data_type_def(layout_data(LayoutData), DeclSet0, DeclSet) -->
@@ -871,7 +871,7 @@ output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
 	output_tabling_pointer_var_name(ProcLabel),
 	io__write_string(" = { 0 };\n"),
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
-	{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) }.
+	{ decl_set_insert(data_addr(DataAddr), DeclSet0, DeclSet) }.
 
 :- pred output_comp_gen_c_data_list(list(comp_gen_c_data)::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
@@ -920,7 +920,7 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	{ DeclId = data_addr(data_addr(ModuleName, VarName)) },
 	output_const_term_decl(ArgVals, ArgTypes, DeclId, ExportedFromFile,
 		no, yes, yes, "", "", 0, _),
-	{ decl_set_insert(DeclSet1, DeclId, DeclSet) }.
+	{ decl_set_insert(DeclId, DeclSet1, DeclSet) }.
 output_comp_gen_c_data(rtti_data(RttiData), DeclSet0, DeclSet) -->
 	output_rtti_data_defn(RttiData, DeclSet0, DeclSet).
 output_comp_gen_c_data(layout_data(LayoutData), DeclSet0, DeclSet) -->
@@ -1049,7 +1049,7 @@ output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet) -->
 		{ Label = local(_, _) },
 		io__write_string("MR_declare_label(")
 	),
-	{ decl_set_insert(DeclSet1, code_addr(label(Label)), DeclSet) },
+	{ decl_set_insert(code_addr(label(Label)), DeclSet1, DeclSet) },
 	output_label(Label),
 	io__write_string(");\n").
 
@@ -1352,8 +1352,8 @@ output_instruction_decls(mkframe(FrameInfo, FailureContinuation), _,
 			io__write_string(StructFields)
 		),
 		io__write_string("\n};\n"),
-		{ decl_set_insert(DeclSet0, pragma_c_struct(StructName),
-			DeclSet1) }
+		{ decl_set_insert(pragma_c_struct(StructName),
+			DeclSet0, DeclSet1) }
 	;
 		{ DeclSet1 = DeclSet0 }
 	),
@@ -2136,8 +2136,8 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 				{ N = N0 },
 				{ DeclSet = DeclSet0 }
 			;
-				{ decl_set_insert(DeclSet0, FloatLabel,
-					DeclSet) },
+				{ decl_set_insert(FloatLabel,
+					DeclSet0, DeclSet) },
 				{ FloatString = c_util__make_float_literal(
 					FloatVal) },
 				output_indent(FirstIndent, LaterIndent, N0),
@@ -2186,7 +2186,7 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 			{ N = N2 },
 			{ DeclSet = DeclSet2 }
 		;
-			{ decl_set_insert(DeclSet2, FloatLabel, DeclSet) },
+			{ decl_set_insert(FloatLabel, DeclSet2, DeclSet) },
 			output_indent(FirstIndent, LaterIndent, N2),
 			{ N = N2 + 1 },
 			io__write_string("static const "),
@@ -2223,7 +2223,7 @@ output_rval_decls(
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ decl_set_insert(DeclSet0, CreateLabel, DeclSet1) },
+		{ decl_set_insert(CreateLabel, DeclSet0, DeclSet1) },
 		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent,
 			N0, N1, DeclSet1, DeclSet),
 		output_const_term_decl(ArgVals, CreateArgTypes, CreateLabel,
@@ -2770,7 +2770,7 @@ output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ decl_set_insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
+		{ decl_set_insert(code_addr(CodeAddress), DeclSet0, DeclSet) },
 		need_code_addr_decls(CodeAddress, NeedDecl),
 		( { NeedDecl = yes } ->
 			output_indent(FirstIndent, LaterIndent, N0),
@@ -2892,7 +2892,7 @@ output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, N0, N,
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) },
+		{ decl_set_insert(data_addr(DataAddr), DeclSet0, DeclSet) },
 		output_data_addr_decls_2(DataAddr,
 			FirstIndent, LaterIndent, N0, N)
 	).

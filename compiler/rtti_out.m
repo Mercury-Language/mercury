@@ -969,7 +969,7 @@ output_generic_rtti_data_decl(RttiTypeCtor, RttiName, DeclSet0, DeclSet) -->
 	output_rtti_addr_storage_type_name(RttiTypeCtor, RttiName, no),
 	io__write_string(";\n"),
 	{ DataAddr = rtti_addr(RttiTypeCtor, RttiName) },
-	{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) }.
+	{ decl_set_insert(data_addr(DataAddr), DeclSet0, DeclSet) }.
 
 :- pred output_generic_rtti_data_defn_start(rtti_type_ctor::in, rtti_name::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
@@ -979,7 +979,7 @@ output_generic_rtti_data_defn_start(RttiTypeCtor, RttiName, DeclSet0, DeclSet)
 	io__write_string("\n"),
 	output_rtti_addr_storage_type_name(RttiTypeCtor, RttiName, yes),
 	{ DataAddr = rtti_addr(RttiTypeCtor, RttiName) },
-	{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) }.
+	{ decl_set_insert(data_addr(DataAddr), DeclSet0, DeclSet) }.
 
 output_rtti_addr_storage_type_name(RttiTypeCtor, RttiName, BeingDefined) -->
 	output_rtti_name_storage_type_name(
