@@ -1480,7 +1480,7 @@ rl_out__generate_compare_exprn(Spec, Schema, ExprnNum) -->
 rl_out__generate_key_range(Range, RangeExprn) -->
 	rl_out_info_get_module_info(ModuleInfo),
 	{ rl_exprn__generate_key_range(ModuleInfo, Range, ExprnCode,
-		NumParams, Output1Schema, Output2Schema, TermDepth) },
+		NumParams, Output1Schema, Output2Schema, TermDepth, Decls) },
 	rl_out__schema_to_string(Output1Schema, Output1SchemaOffset),
 	rl_out__schema_to_string(Output2Schema, Output2SchemaOffset),
 
@@ -1490,7 +1490,7 @@ rl_out__generate_key_range(Range, RangeExprn) -->
 	{ StackSize is TermDepth * 2 + 10 },
 	rl_out__package_exprn(ExprnCode, NumParams, generate2,
 		Output1SchemaOffset, Output2SchemaOffset, StackSize,
-		[], RangeExprn).
+		Decls, RangeExprn).
 	
 :- pred rl_out__package_exprn(list(bytecode)::in, int::in, exprn_mode::in,
 		int::in, int::in, int::in, list(type)::in, int::out,

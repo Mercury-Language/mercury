@@ -63,7 +63,7 @@
 	% bounds for a B-tree access.
 :- pred rl_exprn__generate_key_range(module_info::in, key_range::in,
 	list(bytecode)::out, int::out, list(type)::out, list(type)::out,
-	int::out) is det.
+	int::out, list(type)::out) is det.
 
 	% Generate an expression for a join/project/subtract condition.
 :- pred rl_exprn__generate(module_info::in, rl_goal::in, list(bytecode)::out,
@@ -143,7 +143,8 @@ rl_exprn__generate_compare_instrs(Types, Attr - Dir, Code0, Code) :-
 
 rl_exprn__generate_key_range(ModuleInfo,
 		key_range(LowerBound, UpperBound, MaybeArgTypes, KeyTypes),
-		Code, NumParams, Output1Schema, Output2Schema, MaxDepth) :-
+		Code, NumParams, Output1Schema, Output2Schema,
+		MaxDepth, Decls) :-
 	( MaybeArgTypes = yes(_) ->
 		NumParams = 1
 	;
@@ -158,20 +159,13 @@ rl_exprn__generate_key_range(ModuleInfo,
 	rl_exprn__generate_bound(ModuleInfo, MaybeArgTypes, KeyTypes,
 		two, UpperBound, UpperBoundCode, Output2Schema,
 		MaxDepth1, Info1, Info2),
+	ProjectCode = tree(LowerBoundCode, UpperBoundCode),
 	int__max(MaxDepth0, MaxDepth1, MaxDepth),
-	rl_exprn__generate_init_fragment(InitCode, Info2, Info),
-	rl_exprn_info_get_consts(Consts - _, Info, _),
-	map__to_assoc_list(Consts, ConstsAL),
-	assoc_list__reverse_members(ConstsAL, ConstsLA0),
-	list__sort(ConstsLA0, ConstsLA),
-	list__map(rl_exprn__generate_const_decl, ConstsLA, ConstCode),
-	CodeTree =
-		tree(node(ConstCode),
-		tree(InitCode,
-		tree(node([rl_PROC_expr_frag(3)]),
-		tree(LowerBoundCode,
-		UpperBoundCode
-	)))),
+
+	rl_exprn__generate_decls(ConstCode, InitCode, Decls, Info2, _Info),
+
+	rl_exprn__generate_fragments(ConstCode, InitCode, empty,
+		empty, ProjectCode, empty, CodeTree),
 	tree__flatten(CodeTree, Code0),
 	list__condense(Code0, Code).
 
@@ -425,19 +419,11 @@ rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
 
 	{ 
 		CanFail = can_fail,
-		EvalCode0 =
+		EvalCode =
 			tree(InputCode,
 			GoalCode
 		),
-		rl_exprn__resolve_addresses(EvalCode0, EvalCode1),
-		EvalCode = tree(node([rl_PROC_expr_frag(2)]), EvalCode1),
-		( OutputCode = empty ->
-			ProjectCode = empty	
-		;
-			ProjectCode =
-				tree(node([rl_PROC_expr_frag(3)]),
-				OutputCode)
-		)
+		ProjectCode = OutputCode
 	;
 		CanFail = cannot_fail,
 		% For projections, the eval fragment is not run.
@@ -447,48 +433,66 @@ rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
 			tree(GoalCode,
 			OutputCode
 		)),
-		rl_exprn__resolve_addresses(ProjectCode0, ProjectCode1),
-		ProjectCode = tree(node([rl_PROC_expr_frag(3)]), ProjectCode1)
+		rl_exprn__resolve_addresses(ProjectCode0, ProjectCode)
 	},
 
 	% Need to do the init code last, since it also needs to define
 	% the rule constants for the other fragments.
-	rl_exprn__generate_init_fragment(InitCode),
+	rl_exprn__generate_decls(ConstCode, InitCode, Decls),
+
+	{ rl_exprn__generate_fragments(ConstCode, InitCode,
+		empty, EvalCode, ProjectCode, empty, Code0) },
+			
+	{ CodeTree =
+		tree(ConstCode,
+		tree(Code0,
+		node([rl_PROC_expr_end])
+	)) },
+	{ tree__flatten(CodeTree, CodeLists) },
+	{ list__condense(CodeLists, Code) }.
+
+:- pred rl_exprn__generate_fragments(byte_tree::in, byte_tree::in,
+		byte_tree::in, byte_tree::in, byte_tree::in, byte_tree::in,
+		byte_tree::out) is det.
+
+rl_exprn__generate_fragments(DeclCode, InitCode, GroupInitCode,
+		EvalCode, ProjectCode, CleanupCode, Code) :-
+	list__foldl(
+		(pred(FragAndCode::in, Tree0::in, Tree::out) is det :-
+			FragAndCode = FragNo - FragCode0,
+			( tree__tree_of_lists_is_empty(FragCode0) ->
+				Tree = Tree0
+			;
+				rl_exprn__resolve_addresses(FragCode0,
+					FragCode),
+				Tree =
+					tree(Tree0, 
+					tree(node([rl_PROC_expr_frag(FragNo)]),
+					FragCode
+				))
+			)
+		),
+		[0 - InitCode, 1 - GroupInitCode, 2 - EvalCode,
+			3 - ProjectCode, 4 - CleanupCode],
+		empty, Code0),
+	Code = tree(DeclCode, Code0).
+
+:- pred rl_exprn__generate_decls(byte_tree::out, byte_tree::out,
+		list(type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__generate_decls(node(ConstCode), node(RuleCodes), VarTypes) -->
+	rl_exprn_info_get_rules(Rules - _),
+	{ map__to_assoc_list(Rules, RulesAL) },
+	{ assoc_list__reverse_members(RulesAL, RulesLA0) },
+	{ list__sort(RulesLA0, RulesLA) },
+	list__map_foldl(rl_exprn__generate_rule, RulesLA, RuleCodes),
 
 	rl_exprn_info_get_consts(Consts - _),
 	{ map__to_assoc_list(Consts, ConstsAL) },
 	{ assoc_list__reverse_members(ConstsAL, ConstsLA0) },
 	{ list__sort(ConstsLA0, ConstsLA) },
 	{ list__map(rl_exprn__generate_const_decl, ConstsLA, ConstCode) },
-	rl_exprn_info_get_decls(Decls),
-
-	{ CodeTree = 
-		tree(node(ConstCode),
-		tree(InitCode,
-		tree(EvalCode,
-		tree(ProjectCode,
-		node([rl_PROC_expr_end])
-	)))) },
-	{ tree__flatten(CodeTree, CodeLists) },
-	{ list__condense(CodeLists, Code) }.
-
-:- pred rl_exprn__generate_init_fragment(byte_tree::out,
-		rl_exprn_info::in, rl_exprn_info::out) is det.
-
-rl_exprn__generate_init_fragment(Code) -->
-	rl_exprn_info_get_rules(Rules - _),
-	{ map__to_assoc_list(Rules, RulesAL) },
-	{ assoc_list__reverse_members(RulesAL, RulesLA0) },
-	{ list__sort(RulesLA0, RulesLA) },
-	list__map_foldl(rl_exprn__generate_rule, RulesLA, RuleCodes),
-	( { RuleCodes = [] } ->
-		{ Code = empty }
-	;
-		{ Code = 
-			tree(node([rl_PROC_expr_frag(0)]),
-			node(RuleCodes)
-		) }
-	).
+	rl_exprn_info_get_decls(VarTypes).
 
 :- pred rl_exprn__generate_const_decl(pair(int, rl_const)::in, 
 		bytecode::out) is det.
@@ -1411,7 +1415,7 @@ rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 	% Initialise the accumulator and group-by variables.
 	%
 	rl_exprn__aggregate_init(ComputeInitial, GrpByReg, GrpByType, 
-		NonGrpByType, AccReg, AccType, InitCode),
+		NonGrpByType, AccReg, AccType, InitCode0, GroupInitCode),
 
 	%
 	% Generate a test to check whether the current tuple is
@@ -1425,28 +1429,22 @@ rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 	%
 	rl_exprn__aggregate_update(UpdateAcc, GrpByReg, GrpByType,
 		NonGrpByType, AccReg, AccType, UpdateCode),	
-	{ EvalCode0 = tree(TestCode, UpdateCode) },
-	{ rl_exprn__resolve_addresses(EvalCode0, EvalCode1) },
-	{ EvalCode = tree(node([rl_PROC_expr_frag(2)]), EvalCode1) },
+	{ EvalCode = tree(TestCode, UpdateCode) },
 
 	%
 	% Create the output tuple.
 	%
-
 	rl_exprn__assign(output_field(0), reg(GrpByReg),
 		GrpByType, GrpByOutputCode), 
 	rl_exprn__assign(output_field(1), reg(AccReg),
 		AccType, AccOutputCode),
+	{ ProjectCode = tree(GrpByOutputCode, AccOutputCode) },
 
-	rl_exprn_info_get_decls(Decls),
+	rl_exprn__generate_decls(ConstCode, DeclCode, Decls),
 
-	{ AggCode0 =
-		tree(InitCode,
-		tree(EvalCode,
-		tree(node([rl_PROC_expr_frag(3)]),
-		tree(GrpByOutputCode,
-		AccOutputCode
-	)))) },
+	{ InitCode = tree(DeclCode, InitCode0) },
+	{ rl_exprn__generate_fragments(ConstCode, InitCode, GroupInitCode,
+		EvalCode, ProjectCode, empty, AggCode0) },
 	{ tree__flatten(AggCode0, AggCode1) },
 	{ list__condense(AggCode1, AggCode) }.
 			
@@ -1455,11 +1453,11 @@ rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 	% Generate code to initialise the accumulator for a group and
 	% put the group-by variable in a known place.
 :- pred rl_exprn__aggregate_init(pred_proc_id::in, reg_id::in, (type)::in,
-		(type)::in, reg_id::in, (type)::in, byte_tree::out, 
-		rl_exprn_info::in, rl_exprn_info::out) is det.
+	(type)::in, reg_id::in, (type)::in, byte_tree::out, byte_tree::out,
+	rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__aggregate_init(ComputeClosure, GrpByReg, GrpByType, NonGrpByType,
-		AccReg, AccType, InitCode) -->
+		AccReg, AccType, InitCode, GroupInitCode) -->
 
 	% Put the group-by value for this group in its place.
 	rl_exprn__assign(reg(GrpByReg), input_field(one, 0),
@@ -1486,29 +1484,16 @@ rl_exprn__aggregate_init(ComputeClosure, GrpByReg, GrpByType, NonGrpByType,
 		% If the initial accumulator is constant, it can be
 		% computed once in the init fragment, rather than
 		% once per group.
-		rl_exprn__resolve_addresses(AccCode0, AccCode),
-		InitCode =
-			tree(node([rl_PROC_expr_frag(0)]),
-			tree(AccCode,
-			tree(node([rl_PROC_expr_frag(1)]),
-			tree(GrpByAssign,
-			AccAssign
-		))))
+		InitCode = AccCode0,
+		GroupInitCode = tree(GrpByAssign, AccAssign)
 	;
-		InitCode0 =
+		InitCode = empty,
+		GroupInitCode =
 			tree(GrpByAssign,
 			tree(NonGrpByAssign,
 			tree(AccCode0,
 			AccAssign
-		))),
-
-		% If the initial accumulator is not constant, it must be
-		% computed in the group init fragment.
-		rl_exprn__resolve_addresses(InitCode0, InitCode1),
-		InitCode =
-			tree(node([rl_PROC_expr_frag(1)]),
-			InitCode1
-		)
+		)))
 	}.
 
 %-----------------------------------------------------------------------------%
