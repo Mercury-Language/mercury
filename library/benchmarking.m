@@ -155,7 +155,7 @@ ML_report_stats(void)
 	eng = MR_get_engine();
 
 	fprintf(stderr, 
-		""[Time: +%.3fs, %.3fs, D Stack: %.3fk, ND Stack: %.3fk, "",
+		""[Time: +%.3fs, %.3fs, D Stack: %.3fk, ND Stack: %.3fk,"",
 		(time_at_last_stat - time_at_prev_stat) / 1000.0,
 		(time_at_last_stat - time_at_start) / 1000.0,
 		((char *) sp - (char *)
@@ -164,13 +164,21 @@ ML_report_stats(void)
 			eng->context.nondetstack_zone->min) / 1024.0
 	);
 
+#ifdef MR_USE_TRAIL
+	fprintf(stderr,
+		"" Trail: %.3fk,"",
+		((char *) MR_trail_ptr - (char *)
+			eng->context.trail_zone->min) / 1024.0
+	);
+#endif
+
 	/*
 	** Print heap usage information.
 	*/
 
 #ifdef CONSERVATIVE_GC
 	fprintf(stderr, 
-		""#GCs: %lu,\\n""
+		""\\n#GCs: %lu, ""
 		""Heap used since last GC: %.3fk, Total used: %.3fk"",
 		(unsigned long) GC_gc_no,
 		GC_get_bytes_since_gc() / 1024.0,
@@ -178,7 +186,7 @@ ML_report_stats(void)
 	);
 #else
 	fprintf(stderr, 
-		""Heap: %.3fk]\\n"",
+		""\\nHeap: %.3fk"",
 		((char *) hp - (char *) eng->heap_zone->min) / 1024.0
 	);
 #endif
