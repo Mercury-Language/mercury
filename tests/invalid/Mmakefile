@@ -40,8 +40,6 @@ SOURCES= \
 	prog_io_erroneous.m \
 	qual_basic_test2.m \
 	qualified_cons_id2.m \
-	sub_b.m \
-	sub_c.m \
 	test_nested.m \
 	type_inf_loop.m \
 	type_loop.m \
@@ -51,6 +49,7 @@ SOURCES= \
 	typeclass_test_3.m \
 	typeclass_test_4.m \
 	typeclass_test_5.m \
+	typeclass_test_7.m \
 	types.m	\
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
@@ -60,10 +59,10 @@ SOURCES= \
 	vars_in_wrong_places.m
 
 # we do not yet pass the following tests:
-#	parent.undeclared_child.m
+#	parent.undeclared_child.m (just not yet implemented)
+#	sub_b.m and sub_c.m (bug with dependencies & nested modules)
 #	freefree.m 	(need bromage's aliasing stuff)
 #	no_exports.m	(this is really a WISHLIST item)
-#	typeclass_test_7.m (the fix is on the `existential_types' cvs branch)
 #
 # we do a very bad job on the following tests:
 #	typeclass_test_4.m (awful error message)
