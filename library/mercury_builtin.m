@@ -311,8 +311,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- external(copy/2).
-
 :- external(unify/2).
 :- external(index/2).
 :- external(compare/3).
@@ -391,7 +389,8 @@ builtin_type_to_term_float(
 :- pred builtin_strcmp(int, string, string).
 :- mode builtin_strcmp(out, in, in) is det.
 
-:- external(builtin_strcmp/3).
+:- pragma(c_code, builtin_strcmp(Res::out, S1::in, S2::in),
+	"Res = strcmp(S1, S2);").
 
 builtin_unify_pred(_Pred1, _Pred2) :-
 	% suppress determinism warning
@@ -417,6 +416,41 @@ compare_error :-
 	error("internal error in compare/3").
 
 term__context_init(term__context("", 0)).
+
+%-----------------------------------------------------------------------------%
+
+/* copy/2
+	:- pred copy(T, T).
+	:- mode copy(ui, uo) is det.
+	:- mode copy(in, uo) is det.
+*/
+
+	% XXX note that this is *not* deep copy, and so it is unsafe!
+
+/* This doesn't work, due to the lack of support for aliasing.
+:- pragma(c_code, copy(X::ui, Y::uo), "Y = X;").
+:- pragma(c_code, copy(X::in, Y::uo), "Y = X;").
+*/
+
+:- external(copy/2).
+:- pragma(c_header_code, "
+Define_extern_entry(mercury__copy_2_0);
+Define_extern_entry(mercury__copy_2_1);
+
+BEGIN_MODULE(copy_module)
+	init_entry(mercury__copy_2_0);
+	init_entry(mercury__copy_2_1);
+BEGIN_CODE
+
+Define_entry(mercury__copy_2_0);
+Define_entry(mercury__copy_2_1);
+	r3 = r2;
+	proceed();
+
+END_MODULE
+").
+
+%-----------------------------------------------------------------------------%
 
 % The type c_pointer can be used by predicates which use the C interface.
 :- type c_pointer == int.

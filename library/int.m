@@ -42,7 +42,7 @@
 :- mode int__min(in, in, out) is det.
 
 :- pred int__to_float(int, float) is det.
-:- mode int__to_float(in ,out) is det.
+:- mode int__to_float(in, out) is det.
 
 :- pred int__pow(int, int, int).
 :- mode int__pow(in, in, out) is det.
@@ -192,10 +192,6 @@ int__min(X, Y, Min) :-
 		Min = Y
 	).
 
-
-:- external(int__to_float/2).
-
-
 int__pow(Val, Exp, Result) :-
 	( Exp < 0 ->
 		error("int__pow: negative exponent")
@@ -244,5 +240,15 @@ builtin_unary_minus(X, Y) :-
 	Y is 0 - X.
 
 builtin_unary_plus(X, X).
+
+%-----------------------------------------------------------------------------%
+
+/*
+:- pred int__to_float(int, float) is det.
+:- mode int__to_float(in, out) is det.
+*/
+:- pragma(c_code, int__to_float(IntVal::in, FloatVal::out), "
+	FloatVal = IntVal;
+").
 
 %-----------------------------------------------------------------------------%

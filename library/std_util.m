@@ -34,12 +34,12 @@
 
 :- type univ.
 
-:- pred type_to_univ(_T, univ).
+:- pred type_to_univ(T, univ).
 :- mode type_to_univ(di, uo) is det.
 :- mode type_to_univ(in, out) is det.
 :- mode type_to_univ(out, in) is semidet.
 
-:- pred univ_to_type(univ, _T).
+:- pred univ_to_type(univ, T).
 :- mode univ_to_type(in, out) is semidet.
 :- mode univ_to_type(out, in) is det.
 
@@ -99,11 +99,6 @@
 
 :- import_module require, set.
 
-:- external(report_stats/0).
-:- external(type_to_univ/2).
-:- external(semidet_fail/0).
-:- external(semidet_succeed/0).
-
 :- pred builtin_solutions(pred(T), set(T)).
 :- mode builtin_solutions(pred(out) is multi, out) is det.
 :- mode builtin_solutions(pred(out) is nondet, out) is det.
@@ -114,5 +109,232 @@ solutions(Pred, List) :-
 	set__to_sorted_list(Set, List).
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
+
+%-----------------------------------------------------------------------------%
+
+% semidet_succeed and semidet_fail, implemented using the C interface
+% to make sure that the compiler doesn't issue any determinism warnings
+% for them.
+
+:- pragma(c_code, semidet_succeed, "SUCCESS_INDICATOR = TRUE;").
+:- pragma(c_code, semidet_fail,    "SUCCESS_INDICATOR = FALSE;").
+
+/*---------------------------------------------------------------------------*/
+
+:- pragma(c_code, report_stats, "
+#ifdef CONSERVATIVE_GC
+	fprintf(stderr, 
+		""[D Stack: %.3fk, ND Stack: %.3fk, #GCs: %lu,\\n""
+		""Heap used since last GC: %.3fk, Total used: %.3fk]\\n"",
+		((char *)sp - (char *)detstackmin) / 1000.0,
+		((char *)maxfr - (char *)nondstackmin) / 1000.0,
+		(unsigned long) GC_gc_no,
+		GC_get_bytes_since_gc() / 1000.0,
+		GC_get_heap_size() / 1000.0
+	);
+#else
+	fprintf(stderr, 
+		""[Heap: %.3fk, D Stack: %.3fk, ND Stack: %.3fk]\\n"",
+		((char *)hp - (char *)heapmin) / 1000.0,
+		((char *)sp - (char *)detstackmin) / 1000.0,
+		((char *)maxfr - (char *)nondstackmin) / 1000.0
+	);
+#endif
+").
+
+/*---------------------------------------------------------------------------*/
+
+:- pragma(c_header_code, "
+
+#include ""type_info.h""
+
+#define COMPARE_EQUAL 0
+#define COMPARE_LESS 1
+#define COMPARE_GREATER 2
+
+Declare_entry(mercury__unify_2_0);
+Declare_entry(mercury__compare_3_0);
+Declare_entry(mercury__index_3_0);
+Declare_entry(mercury__term_to_type_2_0);
+Declare_entry(mercury__type_to_term_2_0);
+
+/* Compare two type_info structures, using an arbitrary ordering
+   (based on the addresses of the unification predicates).
+*/
+
+static int
+compare_type_info(Word type_info_1, Word type_info_2)
+{
+	int i, num_arg_types, comp;
+	Word unify_pred_1, unify_pred_2;
+
+	/* First compare the addresses of the unify preds in the type_infos */
+	unify_pred_1 = field(mktag(0), type_info_1, OFFSET_FOR_UNIFY_PRED);
+	unify_pred_2 = field(mktag(0), type_info_2, OFFSET_FOR_UNIFY_PRED);
+	if (unify_pred_1 < unify_pred_2) {
+		return COMPARE_LESS;
+	}
+	if (unify_pred_1 > unify_pred_2) {
+		return COMPARE_GREATER;
+	}
+	/* If the addresses of the unify preds are equal, we don't need to
+	   compare the arity of the types - they must be the same.
+	   But we need to recursively compare the argument types, if any.
+	*/
+	num_arg_types = field(mktag(0), type_info_1, OFFSET_FOR_COUNT);
+	for (i = 0; i < num_arg_types; i++) {
+		Word arg_type_info_1 = field(mktag(0), type_info_1,
+					OFFSET_FOR_ARG_TYPE_INFOS + i);
+		Word arg_type_info_2 = field(mktag(0), type_info_2,
+					OFFSET_FOR_ARG_TYPE_INFOS + i);
+		comp = compare_type_info(arg_type_info_1, arg_type_info_2);
+		if (comp != COMPARE_EQUAL) return comp;
+	}
+	return COMPARE_EQUAL;
+}
+
+").
+
+:- pragma(c_header_code, "
+/*
+	`univ' is represented as a two word structure.
+	The first word contains the address of a type_info for the type.
+	The second word contains the data.
+*/
+#define UNIV_OFFSET_FOR_TYPEINFO 0
+#define UNIV_OFFSET_FOR_DATA 1
+
+").
+
+/*
+	:- pred type_to_univ(T, univ).
+	:- mode type_to_univ(di, uo) is det.
+	:- mode type_to_univ(in, out) is det.
+	:- mode type_to_univ(out, in) is semidet.
+*/
+	/*
+	 *  Forward mode - convert from type to univ.
+	 *  Allocate heap space, set the first field to contain the address
+	 *  of the type_info for this type, and then store the input argument
+	 *  in the second field.
+	 */
+:- pragma(c_code, type_to_univ(Type::di, Univ::uo), "
+	incr_hp(Univ, 2);
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = TypeInfo_for_T;
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = Type;
+").
+:- pragma(c_code, type_to_univ(Type::in, Univ::out), "
+	incr_hp(Univ, 2);
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = TypeInfo_for_T;
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = Type;
+").
+
+	/*
+	 *  Backward mode - convert from univ to type.
+	 *  We check that type_infos compare equal.
+	 *  The variable `TypeInfo_for_T' used in the C code
+	 *  is the compiler-introduced type-info variable.
+	 */
+:- pragma(c_code, type_to_univ(Type::out, Univ::in), "{
+	Word univ_type_info = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+	if (compare_type_info(univ_type_info, TypeInfo_for_T) == COMPARE_EQUAL)
+	{
+		Type = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+		SUCCESS_INDICATOR = TRUE;
+	} else {
+		SUCCESS_INDICATOR = FALSE;
+	}
+}").
+
+:- pragma(c_header_code, "
+
+Define_extern_entry(mercury____Unify___univ_0_0);
+Define_extern_entry(mercury____Compare___univ_0_0);
+Declare_label(mercury____Compare___univ_0_0_i1);
+Define_extern_entry(mercury____Index___univ_0_0);
+Define_extern_entry(mercury____Type_To_Term___univ_0_0);
+Define_extern_entry(mercury____Term_To_Type___univ_0_0);
+
+BEGIN_MODULE(unify_univ_module)
+	init_entry(mercury____Unify___univ_0_0);
+	init_entry(mercury____Compare___univ_0_0);
+	init_label(mercury____Compare___univ_0_0_i1);
+	init_entry(mercury____Index___univ_0_0);
+	init_entry(mercury____Type_To_Term___univ_0_0);
+	init_entry(mercury____Term_To_Type___univ_0_0);
+BEGIN_CODE
+Define_entry(mercury____Unify___univ_0_0);
+	/*
+	 * Unification for univ.
+	 *
+	 * On entry, r2 & r3 contain the `univ' values to be unified.
+	 * On exit, r1 will contain the success/failure indication.
+	 */
+
+	/*
+	 * First check the type_infos compare equal
+	 */
+	r1 = field(mktag(0), r2, UNIV_OFFSET_FOR_TYPEINFO);
+	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_TYPEINFO);
+	if (compare_type_info(r1, r4) != COMPARE_EQUAL)
+	{
+		r1 = FALSE;
+		proceed();
+	}
+
+	/*
+	 * Then invoke the generic unification predicate on the
+	 * unwrapped args
+	 */
+	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_DATA);
+	r3 = field(mktag(0), r2, UNIV_OFFSET_FOR_DATA);
+	r2 = r1;
+	tailcall(ENTRY(mercury__unify_2_0), LABEL(mercury____Unify___univ_0_0));
+
+Define_entry(mercury____Compare___univ_0_0);
+	/* Comparison for univ:
+	 * On entry, r2 & r3 contain the `univ' values to be unified.
+	 * On exit, r1 will contain the result of the comparison.
+	 */
+
+	/*
+	** First compare the types
+	*/
+	r1 = field(mktag(0), r2, UNIV_OFFSET_FOR_TYPEINFO);
+	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_TYPEINFO);
+	r1 = compare_type_info(r1, r4);
+	if (r1 != COMPARE_EQUAL) {
+		proceed();
+	}
+	/*
+	** If the types are the same, then invoke the generic compare/3
+	** predicate on the unwrapped args.
+	*/
+	r1 = r4; /* set up the type_info */
+	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_DATA);
+	r3 = field(mktag(0), r2, UNIV_OFFSET_FOR_DATA);
+	call(ENTRY(mercury__compare_3_0),
+		LABEL(mercury____Compare___univ_0_0_i1),
+		LABEL(mercury____Compare___univ_0_0));
+Define_label(mercury____Compare___univ_0_0_i1);
+	/* shuffle the return value into the right register */
+	r1 = r2;
+	proceed();
+
+Define_entry(mercury____Index___univ_0_0);
+	r2 = -1;
+	proceed();
+
+Define_entry(mercury____Term_To_Type___univ_0_0);
+	/* don't know what to put here. */
+	fatal_error(""cannot convert univ type to term"");
+
+Define_entry(mercury____Type_To_Term___univ_0_0);
+	/* don't know what to put here. */
+	fatal_error(""cannot convert type univ to term"");
+
+END_MODULE
+
+").
 
 %-----------------------------------------------------------------------------%

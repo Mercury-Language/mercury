@@ -94,11 +94,34 @@ float__pow( X, Exp, Ans) :-
 	).
 
 %---------------------------------------------------------------------------%
-% The following system constants are defined in math_rt.mod
 
-:- external(float__max/1).
-:- external(float__min/1).
-:- external(float__epsilon/1).
+%
+% System constants from <float.h>, implemented using the C interface
+%
+
+:- pragma(c_header_code, "
+
+	#include <float.h>
+
+	#if defined USE_SINGLE_PREC_FLOAT
+		#define	MERCURY_FLOAT_MAX	FLT_MAX
+		#define	MERCURY_FLOAT_MIN	FLT_MIN
+		#define	MERCURY_FLOAT_EPSILON	FLT_EPSILON
+	#else
+		#define	MERCURY_FLOAT_MAX	DBL_MAX
+		#define	MERCURY_FLOAT_MIN	DBL_MIN
+		#define	MERCURY_FLOAT_EPSILON	DBL_EPSILON
+	#endif
+").
+
+	% Maximum floating-point number
+:- pragma(c_code, float__max(Max::out), "Max = MERCURY_FLOAT_MAX;").
+
+	% Minimum normalised floating-point number */
+:- pragma(c_code, float__min(Min::out), "Min = MERCURY_FLOAT_MIN;").
+
+	% Smallest x such that x \= 1.0 + x
+:- pragma(c_code, float__epsilon(Eps::out), "Eps = MERCURY_FLOAT_EPSILON;").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

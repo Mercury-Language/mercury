@@ -35,8 +35,6 @@
 
 :- implementation.
 
-:- external(error/1).
-
 require(Goal, Message) :-
 	( call(Goal) ->
 		true
@@ -45,6 +43,19 @@ require(Goal, Message) :-
 		fail
 	).
 
+%-----------------------------------------------------------------------------%
+
+/* error/1, from require.m */
+
+:- pragma(c_code, error(Message::in), "
+	fflush(stdout);
+	fprintf(stderr, ""Software error: %s\\n"", Message);
+	exit(1);
+#ifndef USE_GCC_NONLOCAL_GOTOS
+	return 0;	/* suppress some dumb warnings */
+#endif
+").
+
 :- end_module require.
 
-%-----------------------------------------------------------------------------%
+/*---------------------------------------------------------------------------*/

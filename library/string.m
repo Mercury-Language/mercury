@@ -25,9 +25,9 @@
 	% An empty string has length zero.
 
 :- pred string__append(string, string, string).
-:- mode string__append(in, in, out) is det.
 :- mode string__append(in, in, in) is semidet.	% implied
 :- mode string__append(in, out, in) is semidet.
+:- mode string__append(in, in, out) is det.
 :- mode string__append(out, out, in) is multidet.
 %	Append two strings together.
 %
@@ -217,7 +217,7 @@
 
 :- pred string__append_list(list(string), string).
 :- mode string__append_list(in, out) is det.
-:- mode string__append_list(out, in) is nondet.
+:- mode string__append_list(out, in) is multidet.
 %	Append a list of strings together.
 
 :- pred string__hash(string, int).
@@ -315,21 +315,8 @@
 :- import_module bool.
 
 :- pred string__to_int_list(string, list(int)).
-:- mode string__to_int_list(in, out) is det.
 :- mode string__to_int_list(out, in) is det.
-:- mode string__to_int_list(in, in) is semidet. % implied
-
-:- external(string__float_to_string/2).
-	% Changing the implementation of string__float_to_string/2 _may_
-	% break string__format.
-:- external(string__to_float/2).
-:- external(string__to_int_list/2).
-:- external(string__index/3).
-:- external(string__length/2).
-:- external(string__append/3).
-:- external(string__split/4).
-:- external(string__first_char/3).
-
+:- mode string__to_int_list(in, out) is det.
 
 string__replace(String, SubString0, SubString1, StringOut) :-
 	string__to_char_list(String, CharList),
@@ -1523,8 +1510,334 @@ string__default_precision_and_width(-6).
 :- mode string__special_precision_and_width(out) is det.
 string__special_precision_and_width(-1).
 
+%-----------------------------------------------------------------------------%
 
+% The remaining routines are implemented using the C interface.
+
+%-----------------------------------------------------------------------------%
+
+	% Beware that the implementation of string__format depends
+	% on the details of what string__float_to_string/2 outputs.
+
+:- pragma(c_code, string__float_to_string(FloatVal::in, FloatString::out), "{
+	char buf[500];
+	Word tmp;
+	sprintf(buf, ""%g"", FloatVal);
+	incr_hp_atomic(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word));
+	FloatString = (char *)tmp;
+	strcpy(FloatString, buf);
+}").
+
+:- pragma(c_code, string__to_float(FloatString::in, FloatVal::out), "{
+	/* use a temporary, since we can't don't know whether FloatVal
+	   is a double or float */
+	double tmp;
+	SUCCESS_INDICATOR = (sscanf(FloatString, ""%lf"", &tmp) == 1);
+		/* TRUE if sscanf succeeds, FALSE otherwise */
+	FloatVal = tmp;
+}").
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__to_int_list(string, list(int)).
+:- mode string__to_int_list(in, out) is det.
+:- mode string__to_int_list(out, in) is det.
+*/
+
+:- pragma(c_code, string__to_int_list(Str::in, IntList::out), "{
+	char *p = Str + strlen(Str);
+	IntList = list_empty();
+	while (--p >= Str) {
+		IntList = list_cons(*p, IntList);
+	}
+}").
+
+:- pragma(c_code, string__to_int_list(Str::out, IntList::in), "{
+		/* mode (out, in) is det */
+	Word int_list_ptr;
+	Word size;
+	Word str_ptr;
+/*
+** loop to calculate list length + sizeof(Word) in `size' using list in
+** `int_list_ptr'
+*/
+	size = sizeof(Word);
+	int_list_ptr = IntList;
+	while (!list_is_empty(int_list_ptr)) {
+		size++;
+		int_list_ptr = list_tail(int_list_ptr);
+	}
+/*
+** allocate (length + 1) bytes of heap space for string
+** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
+*/
+	incr_hp_atomic(str_ptr, size / sizeof(Word));
+	Str = (char *) str_ptr;
+/*
+** loop to copy the characters from the int_list to the string
+*/
+	size = 0;
+	int_list_ptr = IntList;
+	while (!list_is_empty(int_list_ptr)) {
+		Str[size++] = (char) list_head(int_list_ptr);
+		int_list_ptr = list_tail(int_list_ptr);
+	}
+/*
+** null terminate the string
+*/
+	Str[size] = '\\0';
+}").
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__index(string, int, character).
+:- mode string__index(in, in, out) is semidet.
+*/
+:- pragma(c_code, string__index(Str::in, Index::in, Ch::out), "
+	if ((Word) Index >= strlen(Str)) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		SUCCESS_INDICATOR = TRUE;
+		Ch = Str[Index];
+	}
+").
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__length(string, int).
+:- mode string__length(in, out) is det.
+*/
+:- pragma(c_code, string__length(Str::in, Length::out), "
+	Length = strlen(Str);
+").
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__append(string, string, string).
+:- mode string__append(in, in, in) is semidet.	% implied
+:- mode string__append(in, out, in) is semidet.
+:- mode string__append(in, in, out) is det.
+:- mode string__append(out, out, in) is multidet.
+*/
+
+/*
+:- mode string__append(in, in, in) is semidet.
+*/
+:- pragma(c_code, string__append(S1::in, S2::in, S3::in), "{
+	size_t len_1 = strlen(S1);
+	SUCCESS_INDICATOR = (
+		strncmp(S1, S3, len_1) == 0 &&
+		strcmp(S2, S3 + len_1) == 0
+	);
+}").
+
+/*
+:- mode string__append(in, out, in) is semidet.
+*/
+:- pragma(c_code, string__append(S1::in, S2::out, S3::in), "{
+	Word tmp;
+	size_t len_1, len_2, len_3;
+
+	len_1 = strlen(S1);
+	if (strncmp(S1, S3, len_1) != 0) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		len_3 = strlen(S3);
+		len_2 = len_3 - len_1;
+		incr_hp_atomic(tmp, (len_2 + sizeof(Word)) / sizeof(Word));
+		S2 = (char *) tmp;
+		strcpy(S2, S3 + len_1);
+		SUCCESS_INDICATOR = TRUE;
+	}
+}").
+
+/*
+:- mode string__append(in, in, out) is det.
+*/
+:- pragma(c_code, string__append(S1::in, S2::in, S3::out), "{
+	size_t len_1, len_2;
+	Word tmp;
+	len_1 = strlen(S1);
+	len_2 = strlen(S2);
+	incr_hp_atomic(tmp, (len_1 + len_2 + sizeof(Word)) / sizeof(Word));
+	S3 = (char *) tmp;
+	strcpy(S3, S1);
+	strcpy(S3 + len_1, S2);
+}").
+
+:- pragma(c_header_code, "
+
+Define_extern_entry(mercury__string__append_3_3_xx);
+Declare_label(mercury__string__append_3_3_xx_i1);
+
+BEGIN_MODULE(string_append_module)
+	init_entry(mercury__string__append_3_3_xx);
+	init_label(mercury__string__append_3_3_xx_i1);
+BEGIN_CODE
+Define_entry(mercury__string__append_3_3_xx);
+	mkframe(""string__append/3"", 4,
+		LABEL(mercury__string__append_3_3_xx_i1));
+	mark_hp(framevar(0));
+	framevar(1) = r3;
+	framevar(2) = strlen((char *)r3);
+	framevar(3) = 0;
+Define_label(mercury__string__append_3_3_xx_i1);
+	{ String s3;
+	  size_t s3_len;
+	  size_t count;
+	  restore_hp(framevar(0));
+	  s3 = (String) framevar(1);
+	  s3_len = framevar(2);
+	  count = framevar(3);
+	  if (count > s3_len) {
+		modframe(ENTRY(do_fail));
+		fail();
+	  }
+	  incr_hp_atomic(r1, (count + sizeof(Word)) / sizeof(Word));
+	  memcpy((char *)r1, s3, count);
+	  ((char *)r1)[count] = '\\0';
+	  incr_hp_atomic(r2, (s3_len - count + sizeof(Word)) / sizeof(Word));
+	  strcpy((char *)r2, s3 + count);
+	  framevar(3) = count + 1;
+	  succeed();
+	}
+END_MODULE
+
+").
+
+/*
+:- mode string__append(out, out, in) is multidet.
+*/
+:- pragma(c_code, string__append(S1::out, S2::out, S3::in), "
+	/* S1, S2, S3 assumed to be passed via r1, r2, r3 */
+	/* The pragma_c_code will generate a mkframe();
+	   we need to pop off that frame before jumping to the hand-coded
+	   fragment above.
+	*/
+	maxfr = curprevfr;
+	curfr = cursuccfr;
+	GOTO(ENTRY(mercury__string__append_3_3_xx));
+").
+
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__split(string, int, string, string).
+:- mode string__split(in, in, out, out) is det.
+%	string__split(String, Count, LeftSubstring, RightSubstring):
+%	`LeftSubstring' is the left-most `Count' characters of `String',
+%	and `RightSubstring' is the remainder of `String'.
+%	(If `Count' is out of the range [0, length of `String'], it is
+%	treated as if it were the nearest end-point of that range.)
+*/
+
+:- pragma(c_code, string__split(Str::in, Count::in, Left::out, Right::out), "{
+	Integer len;
+	Word tmp;
+	if (Count <= 0) {
+		/* XXX need to guarantee alignment of strings */
+		Left = (String) """";
+		Right = Str;
+	} else {
+		len = strlen(Str);
+		if (Count > len) Count = len;
+		incr_hp_atomic(tmp, (Count + sizeof(Word)) / sizeof(Word));
+		Left = (char *) tmp;
+		memcpy(Left, Str, Count);
+		Left[Count] = '\\0';
+		incr_hp_atomic(tmp,
+			(len - Count + sizeof(Word)) / sizeof(Word));
+		Right = (char *) tmp;
+		strcpy(Right, Str + Count);
+	}
+}").
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__first_char(string, character, string).
+:- mode string__first_char(in, in, in) is semidet.	% implied
+:- mode string__first_char(in, out, in) is semidet.	% implied
+:- mode string__first_char(in, in, out) is semidet.	% implied
+:- mode string__first_char(in, out, out) is semidet.
+:- mode string__first_char(out, in, in) is det.
+%	string__first_char(String, Char, Rest) is true iff
+%		Char is the first character of String, and Rest is the
+%		remainder.
+*/
+
+/*
+:- mode string__first_char(in, in, in) is semidet.	% implied
+*/
+:- pragma(c_code, string__first_char(Str::in, First::in, Rest::in), "
+	SUCCESS_INDICATOR = (
+		Str[0] == First &&
+		First != '\\0' &&
+		strcmp(Str + 1, Rest) == 0
+	);
+").
+
+/*
+:- mode string__first_char(in, out, in) is semidet.	% implied
+*/
+:- pragma(c_code, string__first_char(Str::in, First::out, Rest::in), "
+	First = Str[0];
+	SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + 1, Rest) == 0);
+").
+
+/*
+:- mode string__first_char(in, in, out) is semidet.	% implied
+*/
+:- pragma(c_code, string__first_char(Str::in, First::in, Rest::out), "{
+	Word tmp;
+	if (Str[0] != First || First == '\\0') {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		Str++;
+		incr_hp_atomic(tmp,
+			(strlen(Str) + sizeof(Word)) / sizeof(Word));
+		Rest = (char *) tmp;
+		strcpy(Rest, Str);
+		SUCCESS_INDICATOR = TRUE;
+	}
+}").
+
+/*
+:- mode string__first_char(in, out, out) is semidet.
+*/
+:- pragma(c_code, string__first_char(Str::in, First::out, Rest::out), "{
+	Word tmp;
+	First = Str[0];
+	if (First == '\\0') {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		Str++;
+		incr_hp_atomic(tmp,
+			(strlen(Str) + sizeof(Word)) / sizeof(Word));
+		Rest = (char *) tmp;
+		strcpy(Rest, Str);
+		SUCCESS_INDICATOR = TRUE;
+	}
+}").
+
+/*
+:- mode string__first_char(out, in, in) is det.
+*/
+:- pragma(c_code, string__first_char(Str::out, First::in, Rest::in), "{
+	size_t len = strlen(Rest) + 1;
+	Word tmp;
+	incr_hp_atomic(tmp, (len + sizeof(Word)) / sizeof(Word));
+	Str = (char *) tmp;
+	Str[0] = First;
+	strcpy(Str + 1, Rest);
+}").
 
 :- end_module string.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

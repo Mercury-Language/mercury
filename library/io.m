@@ -6,17 +6,15 @@
 %
 % File: io.m.
 % Main author: fjh.
-% Stability: medium to high (but see the caveats about unique modes below).
+% Stability: medium to high.
 %
 % This file encapsulates all the file I/O.
 % We implement a purely logical I/O system using non-logical I/O primitives
 % of the underlying system (C or Prolog).
-% The logicalness is enforced at compile time by using unique modes.
-% (Except that we haven't implemented that yet.  So instead it's checked at
-% runtime.  Except that those checks prevent doing a `redo' in the debugger.
-% So we don't check at all.  Oh well.  Just don't write any programs that
-% depend on it, because they *WILL* break!)
-% Late news: unique mode checking is now implemented - well, mostly ;-).
+% The logicalness is ensured by passing around a ``state-of-the-world''
+% argument using unique modes.  The compiler will check that the state
+% of the world argument is properly single-threaded, and will also check
+% to ensure that you don't attempt to backtrack over any I/O.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -389,17 +387,18 @@
 %		Reads a single byte from the current binary input
 %		stream and returns it in the bottom 8 bits of an integer.
 
+:- pred io__read_byte(io__binary_input_stream, io__result(int),
+				io__state, io__state).
+:- mode io__read_byte(in, out, di, uo) is det.
+%		Reads a single byte from the specified binary input
+%		stream and returns it in the bottom 8 bits of an integer.
+
 :- pred io__putback_byte(int, io__state, io__state).
 :- mode io__putback_byte(in, di, uo) is det.
 %		Un-reads a byte from the current binary input stream.
 %		You can put back as many bytes as you like.
 %		You can even put back something that you didn't actually read.
 %		The byte is taken from the bottom 8 bits of an integer.
-
-:- pred io__read_byte(io__binary_input_stream, io__result(int),
-				io__state, io__state).
-:- mode io__read_byte(in, out, di, uo) is det.
-%		Reads a single byte from specified stream.
 
 :- pred io__putback_byte(io__binary_input_stream, int, io__state, io__state).
 :- mode io__putback_byte(in, in, di, uo) is det.
@@ -639,11 +638,13 @@
 :- pred io__preallocate_heap_space(int, io__state, io__state).
 :- mode io__preallocate_heap_space(in, di, uo) is det.
 
+/*** no longer supported, sorry
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
 :- mode io__gc_call(pred(di, uo) is det, di, uo) is det.
 %	io__gc_call(Goal, IO0, IO1).
 %		Execute Goal, passing IO0, and IO1, and
 %		collect any garbage created during it's execution.
+***/
 
 %-----------------------------------------------------------------------------%
 
@@ -735,45 +736,11 @@
 %		Invokes the operating system shell with the specified
 %		Command.  Returns Status = -1 on failure.
 
-:- pred io__do_open_input(string, int, io__input_stream, io__state, io__state).
-:- mode io__do_open_input(in, out, out, di, uo) is det.
-%	io__do_open_input(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for input.
-%		Result is 0 for success, -1 for failure.
-
-:- pred io__do_open_output(string, int, io__output_stream, io__state,
-							io__state).
-:- mode io__do_open_output(in, out, out, di, uo) is det.
-%	io__do_open_output(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for output.
-%		Result is 0 for success, -1 for failure.
-
-:- pred io__do_open_append(string, int, io__output_stream, io__state,
-							io__state).
-:- mode io__do_open_append(in, out, out, di, uo) is det.
-%	io__do_open_append(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for appending.
-%		Result is 0 for success, -1 for failure.
-
-:- pred io__do_open_binary_input(string, int, io__binary_input_stream, io__state, io__state).
-:- mode io__do_open_binary_input(in, out, out, di, uo) is det.
-
-%	io__do_open_binary_input(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for binary input.
-%		Result is 0 for success, -1 for failure.
-
-:- pred io__do_open_binary_output(string, int, io__binary_output_stream,
-					io__state, io__state).
-:- mode io__do_open_binary_output(in, out, out, di, uo) is det.
-%	io__do_open_binary_output(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for binary output.
-%		Result is 0 for success, -1 for failure.
-
-:- pred io__do_open_binary_append(string, int, io__binary_output_stream,
-					io__state, io__state).
-:- mode io__do_open_binary_append(in, out, out, di, uo) is det.
-%	io__do_open_binary_append(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for binary appending.
+:- pred io__do_open(string, string, int, io__input_stream,
+			io__state, io__state).
+:- mode io__do_open(in, in, out, out, di, uo) is det.
+%	io__do_open(File, Mode, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file in the specified mode.
 %		Result is 0 for success, -1 for failure.
 
 :- pred io__getenv(string, string).
@@ -788,62 +755,6 @@
 %		If VarString is a string of the form "name=value",
 %		sets the environment variable name to the specified
 %		value.  Fails if the operation does not work.
-
-/* Many of these predicates are implemented using either non-logical
-   NU-Prolog code in io.nu.nl, or C code in code/io.mod.
-*/
-
-:- external(io__progname/4).
-:- external(io__read_char_code/4).
-:- external(io__putback_char/4).
-:- external(io__write_char/3).
-:- external(io__write_char/4).
-:- external(io__write_int/3).
-:- external(io__write_int/4).
-:- external(io__write_string/3).
-:- external(io__write_string/4).
-:- external(io__write_float/3).
-:- external(io__write_float/4).
-:- external(io__flush_output/2).
-:- external(io__flush_output/3).
-:- external(io__stdin_stream/3).
-:- external(io__stdout_stream/3).
-:- external(io__stderr_stream/3).
-:- external(io__stdin_binary_stream/3).
-:- external(io__stdout_binary_stream/3).
-:- external(io__input_stream/3).
-:- external(io__output_stream/3).
-:- external(io__set_input_stream/4).
-:- external(io__set_output_stream/4).
-:- external(io__do_open_input/5).
-:- external(io__do_open_output/5).
-:- external(io__do_open_append/5).
-:- external(io__close_input/3).
-:- external(io__close_output/3).
-:- external(io__putback_byte/4).
-:- external(io__write_byte/3).
-:- external(io__write_byte/4).
-:- external(io__flush_binary_output/2).
-:- external(io__flush_binary_output/3).
-:- external(io__binary_input_stream/3).
-:- external(io__binary_output_stream/3).
-:- external(io__set_binary_input_stream/4).
-:- external(io__set_binary_output_stream/4).
-:- external(io__do_open_binary_input/5).
-:- external(io__do_open_binary_output/5).
-:- external(io__do_open_binary_append/5).
-:- external(io__close_binary_input/3).
-:- external(io__close_binary_output/3).
-:- external(io__get_line_number/3).
-:- external(io__get_line_number/4).
-:- external(io__command_line_arguments/3).
-:- external(io__get_exit_status/3).
-:- external(io__set_exit_status/3).
-:- external(io__getenv/2).
-:- external(io__putenv/1).
-:- external(io__call_system_code/4).
-:- external(io__gc_call/3).
-:- external(io__preallocate_heap_space/3).
 
 %-----------------------------------------------------------------------------%
 
@@ -1070,7 +981,7 @@ io__write_anything(Stream, X) -->
 % stream predicates
 
 io__open_input(FileName, Result) -->
-	io__do_open_input(FileName, Result0, NewStream),
+	io__do_open(FileName, "r", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -1080,7 +991,7 @@ io__open_input(FileName, Result) -->
 	).
 
 io__open_output(FileName, Result) -->
-	io__do_open_output(FileName, Result0, NewStream),
+	io__do_open(FileName, "w", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -1090,7 +1001,7 @@ io__open_output(FileName, Result) -->
 	).
 
 io__open_append(FileName, Result) -->
-	io__do_open_append(FileName, Result0, NewStream),
+	io__do_open(FileName, "a", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -1100,7 +1011,7 @@ io__open_append(FileName, Result) -->
 	).
 
 io__open_binary_input(FileName, Result) -->
-	io__do_open_binary_input(FileName, Result0, NewStream),
+	io__do_open(FileName, "rb", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -1110,7 +1021,7 @@ io__open_binary_input(FileName, Result) -->
 	).
 
 io__open_binary_output(FileName, Result) -->
-	io__do_open_binary_output(FileName, Result0, NewStream),
+	io__do_open(FileName, "wb", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -1120,7 +1031,7 @@ io__open_binary_output(FileName, Result) -->
 	).
 
 io__open_binary_append(FileName, Result) -->
-	io__do_open_binary_append(FileName, Result0, NewStream),
+	io__do_open(FileName, "ab", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -1381,3 +1292,575 @@ io__set_op_table(OpTable,	io__state(A, B, _, D, E),
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+/*
+** The remaining predicates are implemented using the C interface.
+** They are also implemented for NU-Prolog in `io.nu.nl'.
+*/
+
+:- pragma(c_header_code, "
+
+#include ""io_rt.h""
+#include ""wrapper.h""
+
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+/*
+** Mercury files are not quite the same as C stdio FILEs,
+** because we keep track of a little bit more information.
+*/
+
+typedef struct mercury_file {
+	FILE *file;
+	int line_number;
+} MercuryFile;
+
+MercuryFile mercury_stdin = { NULL, 0 };
+MercuryFile mercury_stdout = { NULL, 0 };
+MercuryFile mercury_stderr = { NULL, 0 };
+MercuryFile *mercury_current_text_input = &mercury_stdin;
+MercuryFile *mercury_current_text_output = &mercury_stdout;
+MercuryFile *mercury_current_binary_input = &mercury_stdin;
+MercuryFile *mercury_current_binary_output = &mercury_stdout;
+
+#define initial_external_state()	0	/* some random number */
+#define update_io(r_src, r_dest)	((r_dest) = (r_src))
+#define final_io_state(r)		((void)0)
+
+#define COMPARE_EQUAL 0
+#define COMPARE_LESS 1
+#define COMPARE_GREATER 2
+
+void
+mercury_init_io(void)
+{
+	mercury_stdin.file = stdin;
+	mercury_stdout.file = stdout;
+	mercury_stderr.file = stderr;
+}
+
+static MercuryFile*
+mercury_open(const char *filename, const char *type)
+{
+	MercuryFile *mf;
+	FILE *f;
+	
+	f = fopen(filename, type);
+	if (!f) return NULL;
+	mf = make(MercuryFile);
+	mf->file = f;
+	mf->line_number = 1;
+	return mf;
+}
+
+static int
+mercury_output_error(MercuryFile* mf)
+{
+	fprintf(stderr,
+		""Mercury runtime: error writing to output file: %s\\n"",
+		strerror(errno));
+	exit(1);
+}
+
+static void
+mercury_print_string(MercuryFile* mf, const char *s)
+{
+	if (fprintf(mf->file, ""%s"", s) < 0) {
+		mercury_output_error(mf);
+	}
+	while (*s) {
+		if (*s++ == '\\n') {
+			mf->line_number++;
+		}
+	}
+}
+
+static int
+mercury_getc(MercuryFile* mf)
+{
+	int c = getc(mf->file);
+	if (c == '\\n') {
+		mf->line_number++;
+	}
+	return c;
+}
+
+static void
+mercury_close(MercuryFile* mf)
+{
+	if (mf != &mercury_stdin &&
+	    mf != &mercury_stdout &&
+	    mf != &mercury_stderr)
+	{
+		if (fclose(mf->file) < 0) {
+			fprintf(stderr,
+				""Mercury runtime: error closing file: %s\\n"",
+				strerror(errno));
+			exit(1);
+		}
+		oldmem(mf);
+	}
+}
+
+/*
+** io__run_0_0 calls io__init_state_2_0 and main_2_0.
+** But to enable Quickstart of shared libraries on Irix 5,
+** we need to make sure that we don't have any undefined
+** external references when building the shared library.
+** Hence the statically linked init file saves the addresses of those
+** procedures in the following global variables.
+*/
+void (*address_of_init_modules)(void);
+#ifdef CONSERVATIVE_GC
+void (*address_of_init_gc)(void);
+#endif
+Code *address_of_io__init_state_2_0;
+Code *address_of_main_2_0;
+Code *entry_point;	/* normally io__run_0_0 */
+
+"). % end pragma(c_header_code).
+
+:- pragma(c_header_code, "
+
+Define_extern_entry(mercury__io__run_0_0);
+Declare_label(mercury__io__run_0_0_i1);
+Declare_label(mercury__io__run_0_0_i2);
+
+BEGIN_MODULE(io_run_module)
+	init_entry(mercury__io__run_0_0);
+	init_label(mercury__io__run_0_0_i1);
+	init_label(mercury__io__run_0_0_i2);
+BEGIN_CODE
+Define_entry(mercury__io__run_0_0);
+        mkframe(""mercury__io__run_0_0"", 0, ENTRY(do_fail));
+	r1 = initial_external_state();
+	call(address_of_io__init_state_2_0,
+		LABEL(mercury__io__run_0_0_i1),
+		LABEL(mercury__io__run_0_0));
+Define_label(mercury__io__run_0_0_i1);
+	r1 = r2;
+	call(address_of_main_2_0,
+		LABEL(mercury__io__run_0_0_i2),
+		LABEL(mercury__io__run_0_0));
+Define_label(mercury__io__run_0_0_i2);
+	final_io_state(r2);
+	succeed();
+END_MODULE
+").
+
+/* input predicates */
+
+:- pragma(c_code, io__read_char_code(File::in, CharCode::out, IO0::di, IO::uo),
+"
+	CharCode = mercury_getc((MercuryFile*)File);
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__putback_char(File::in, Character::in, IO0::di, IO::uo),
+"{
+	MercuryFile* mf = (MercuryFile *)File;
+	if (Character == '\\n') {
+		mf->line_number--;
+	}
+	/* XXX should work even if ungetc() fails */
+	if (ungetc(Character, mf->file) == EOF) {
+		fatal_error(""io__putback_char: ungetc failed"");
+	}
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__putback_byte(File::in, Character::in, IO0::di, IO::uo),
+"{
+	MercuryFile* mf = (MercuryFile *)File;
+	/* XXX should work even if ungetc() fails */
+	if (ungetc(Character, mf->file) == EOF) {
+		fatal_error(""io__putback_byte: ungetc failed"");
+	}
+	update_io(IO0, IO);
+}").
+
+/* output predicates - with output to mercury_current_text_output */
+
+:- pragma(c_code, io__write_string(Message::in, IO0::di, IO::uo), "
+	mercury_print_string(mercury_current_text_output, Message);
+	update_io(IO0, IO);
+").
+
+		% XXX need to test this with gcc-2.7.0 on i386;
+		% might trigger gcc internal error
+:- pragma(c_code, io__write_char(Character::in, IO0::di, IO::uo), "
+	if (putc(Character, mercury_current_text_output->file) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
+	if (Character == '\\n') {
+		mercury_current_text_output->line_number++;
+	}
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__write_int(Val::in, IO0::di, IO::uo), "
+	if (fprintf(mercury_current_text_output->file, ""%ld"", (long) Val) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__write_float(Val::in, IO0::di, IO::uo), "
+	if (fprintf(mercury_current_text_output->file, ""%f"", Val) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__write_byte(Byte::in, IO0::di, IO::uo), "
+	/* XXX  Beware of a gcc internal error for gcc-2.7.0 on i386. */
+	if (putc(Byte, mercury_current_binary_output->file) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__flush_output(IO0::di, IO::uo), "
+	if (fflush(mercury_current_text_output->file) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__flush_binary_output(IO0::di, IO::uo), "
+	if (fflush(mercury_current_binary_output->file) < 0) {
+		mercury_output_error(mercury_current_binary_output);
+	}
+	update_io(IO0, IO);
+").
+
+/* output predicates - with output to the specified stream */
+
+:- pragma(c_code, io__write_string(Stream::in, Message::in, IO0::di, IO::uo),
+"{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	mercury_print_string(stream, Message);
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
+"{
+	/* XXX  Beware of a gcc internal error for gcc-2.7.0 on i386. */
+	MercuryFile *stream = (MercuryFile *) Stream;
+	if (putc(Character, stream->file) < 0) {
+		mercury_output_error(stream);
+	}
+	if (Character == '\\n') {
+		stream->line_number++;
+	}
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__write_int(Stream::in, Val::in, IO0::di, IO::uo), "{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	if (fprintf(stream->file, ""%ld"", (long) Val) < 0) {
+		mercury_output_error(stream);
+	}
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__write_float(Stream::in, Val::in, IO0::di, IO::uo), "{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	if (fprintf(stream->file, ""%f"", Val) < 0) {
+		mercury_output_error(stream);
+	}
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo), "{
+	/* XXX  Beware of a gcc internal error for gcc-2.7.0 on i386. */
+	MercuryFile *stream = (MercuryFile *) Stream;
+	if (putc(Byte, stream->file) < 0) {
+		mercury_output_error(stream);
+	}
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__flush_output(Stream::in, IO0::di, IO::uo), "{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	if (fflush(stream->file) < 0) {
+		mercury_output_error(stream);
+	}
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__flush_binary_output(Stream::in, IO0::di, IO::uo), "{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	if (fflush(stream->file) < 0) {
+		mercury_output_error(stream);
+	}
+	update_io(IO0, IO);
+}").
+
+/* stream predicates */
+
+:- pragma(c_header_code, "
+
+Define_extern_entry(mercury____Unify___io__stream_0_0);
+Define_extern_entry(mercury____Compare___io__stream_0_0);
+Declare_label(mercury____Compare___io__stream_0_0_i1);
+Define_extern_entry(mercury____Index___io__stream_0_0);
+Define_extern_entry(mercury____Type_To_Term___io__stream_0_0);
+Define_extern_entry(mercury____Term_To_Type___io__stream_0_0);
+
+BEGIN_MODULE(io_stream_module)
+	init_entry(mercury____Unify___io__stream_0_0);
+	init_entry(mercury____Compare___io__stream_0_0);
+	init_label(mercury____Compare___io__stream_0_0_i1);
+	init_entry(mercury____Index___io__stream_0_0);
+	init_entry(mercury____Type_To_Term___io__stream_0_0);
+	init_entry(mercury____Term_To_Type___io__stream_0_0);
+BEGIN_CODE
+
+Define_entry(mercury____Unify___io__stream_0_0);
+	r1 = ((MercuryFile*) r2 == (MercuryFile *)r3);
+	proceed();
+
+Define_entry(mercury____Compare___io__stream_0_0);
+	r1 = ((r2 < r3) ? COMPARE_LESS :
+	      (r2 > r3) ? COMPARE_GREATER :
+			  COMPARE_EQUAL);
+	proceed();
+
+Define_entry(mercury____Index___io__stream_0_0);
+	r2 = -1;
+	proceed();
+
+Define_entry(mercury____Term_To_Type___io__stream_0_0);
+	/* don't know what to put here. */
+	fatal_error(""cannot convert term to type io__stream"");
+
+Define_entry(mercury____Type_To_Term___io__stream_0_0);
+	/* don't know what to put here. */
+	fatal_error(""cannot covert type io__stream to term"");
+
+END_MODULE
+").
+
+:- pragma(c_code, io__stdin_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) &mercury_stdin;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__stdout_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) &mercury_stdout;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__stderr_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) &mercury_stderr;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__stdin_binary_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) &mercury_stdin;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__stdout_binary_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) &mercury_stdout;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__input_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) mercury_current_text_input;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__output_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) mercury_current_text_output;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__binary_input_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) mercury_current_binary_input;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__binary_output_stream(Stream::out, IO0::di, IO::uo), "
+	Stream = (Word) mercury_current_binary_output;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__get_line_number(LineNum::out, IO0::di, IO::uo), "
+	LineNum = mercury_current_text_input->line_number;
+	update_io(IO0, IO);
+").
+	
+:- pragma(c_code,
+	io__get_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
+"{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	LineNum = stream->line_number;
+	update_io(IO0, IO);
+}").
+	
+% io__set_input_stream(NewStream, OldStream, IO0, IO1)
+%	Changes the current input stream to the stream specified.
+%	Returns the previous stream.
+:- pragma(c_code,
+	io__set_input_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
+"
+	OutStream = (Word) mercury_current_text_input;
+	mercury_current_text_input = (MercuryFile*) NewStream;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code,
+	io__set_output_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
+"
+	OutStream = (Word) mercury_current_text_output;
+	mercury_current_text_output = (MercuryFile*) NewStream;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code,
+	io__set_binary_input_stream(NewStream::in, OutStream::out,
+					IO0::di, IO::uo),
+"
+	OutStream = (Word) mercury_current_binary_input;
+	mercury_current_binary_input = (MercuryFile*) NewStream;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code,
+	io__set_binary_output_stream(NewStream::in, OutStream::out,
+					IO0::di, IO::uo),
+"
+	OutStream = (Word) mercury_current_binary_output;
+	mercury_current_binary_output = (MercuryFile*) NewStream;
+	update_io(IO0, IO);
+").
+
+/* stream open/close predicates */
+
+% io__do_open(File, Mode, ResultCode, Stream, IO0, IO1).
+%	Attempts to open a file in the specified mode.
+%	ResultCode is 0 for success, -1 for failure.
+:- pragma(c_code,
+	io__do_open(FileName::in, Mode::in, ResultCode::out,
+			Stream::out, IO0::di, IO::uo),
+"
+	Stream = (Word) mercury_open(FileName, Mode);
+	ResultCode = (Stream ? 0 : -1);
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__close_input(Stream::in, IO0::di, IO::uo), "
+	mercury_close((MercuryFile*)Stream);
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__close_output(Stream::in, IO0::di, IO::uo), "
+	mercury_close((MercuryFile*)Stream);
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__close_binary_input(Stream::in, IO0::di, IO::uo), "
+	mercury_close((MercuryFile*)Stream);
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__close_binary_output(Stream::in, IO0::di, IO::uo), "
+	mercury_close((MercuryFile*)Stream);
+	update_io(IO0, IO);
+").
+
+/* miscellaneous predicates */
+
+:- pragma(c_code,
+	io__progname(DefaultProgname::in, Progname::out, IO0::di, IO::uo),
+"
+	/*
+	** XXX need to guarantee alignment of strings
+	** (in this case, the string `progname')
+	*/
+	Progname = (progname ? progname : DefaultProgname);
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__command_line_arguments(Args::out, IO0::di, IO::uo), "
+	/* convert mercury_argv from a vector to a list */
+	{ char **p = mercury_argv + mercury_argc;
+	  Args = list_empty();
+	  while (--p >= mercury_argv) {
+		Args = list_cons((Word)*p, Args);
+	  }
+	}
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__get_exit_status(ExitStatus::out, IO0::di, IO::uo), "
+	ExitStatus = mercury_exit_status;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__set_exit_status(ExitStatus::in, IO0::di, IO::uo), "
+	mercury_exit_status = ExitStatus;
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code, io__preallocate_heap_space(_HeapSpace::in, IO0::di, IO::uo),
+"
+	/* don't do anything - preallocate_heap_space was just a
+	   hack for NU-Prolog */
+	update_io(IO0, IO);
+").
+
+:- pragma(c_code,
+	io__call_system_code(Command::in, Status::out, IO0::di, IO::uo),
+"
+	Status = system(Command);
+	update_io(IO0, IO);
+").
+
+/*---------------------------------------------------------------------------*/
+
+/* io__getenv and io__putenv, from io.m */
+
+:- pragma(c_code, io__getenv(Var::in, Value::out), "{
+	Value = getenv(Var);
+	SUCCESS_INDICATOR == (Value != 0);
+}").
+
+:- pragma(c_code, io__putenv(VarAndValue::in), "
+	SUCCESS_INDICATOR = (putenv(VarAndValue) != 0);
+").
+
+/*---------------------------------------------------------------------------*/
+
+:- pragma(c_header_code, "
+
+Define_extern_entry(mercury____Unify___io__external_state_0_0);
+Define_extern_entry(mercury____Compare___io__external_state_0_0);
+Declare_label(mercury____Compare___io__external_state_0_0_i1);
+Define_extern_entry(mercury____Index___io__external_state_0_0);
+Define_extern_entry(mercury____Type_To_Term___io__external_state_0_0);
+Define_extern_entry(mercury____Term_To_Type___io__external_state_0_0);
+
+BEGIN_MODULE(unify_external_state_module)
+	init_entry(mercury____Unify___io__external_state_0_0);
+	init_entry(mercury____Compare___io__external_state_0_0);
+	init_entry(mercury____Index___io__external_state_0_0);
+	init_entry(mercury____Type_To_Term___io__external_state_0_0);
+	init_entry(mercury____Term_To_Type___io__external_state_0_0);
+BEGIN_CODE
+
+Define_entry(mercury____Unify___io__external_state_0_0);
+Define_entry(mercury____Compare___io__external_state_0_0);
+Define_entry(mercury____Index___io__external_state_0_0);
+Define_entry(mercury____Term_To_Type___io__external_state_0_0);
+Define_entry(mercury____Type_To_Term___io__external_state_0_0);
+	/* the unique mode system should prevent these */
+	fatal_error(""cannot unify/compare/index/term_to_type/type_to_term io__external_state"");
+
+END_MODULE
+
+").
