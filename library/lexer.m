@@ -64,7 +64,7 @@ lexer__get_token_list(Tokens) -->
 	lexer__get_token(Token, Context),
 	( { Token = eof } ->
 		{ Tokens = [] }
-	; { Token = end ; Token = error(_) } ->
+	; { Token = end ; Token = error(_) ; Token = io_error(_) } ->
 		{ Tokens = [Token - Context] }
 	;
 		{ Tokens = [Token - Context | Tokens1] },
