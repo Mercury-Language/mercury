@@ -1199,124 +1199,143 @@ warn_overlap([Warn|Warns], VarSet, PredCallId) -->
 maybe_warn_singletons(VarSet, PredCallId, Body) -->
 	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
-		warn_singletons_in_goal(Body, VarSet, PredCallId)
+		{ set__init(QuantVars) },
+		warn_singletons_in_goal(Body, QuantVars, VarSet, PredCallId)
 	;	
 		[]
 	).
 
-:- pred warn_singletons_in_goal(hlds__goal, varset, pred_call_id,
+:- pred warn_singletons_in_goal(hlds__goal, set(var), varset, pred_call_id,
 				io__state, io__state).
-:- mode warn_singletons_in_goal(in, in, in, di, uo) is det.
+:- mode warn_singletons_in_goal(in, in, in, in, di, uo) is det.
 
-warn_singletons_in_goal(Goal - GoalInfo, VarSet, PredCallId) -->
-	warn_singletons_in_goal_2(Goal, GoalInfo, VarSet, PredCallId).
+warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId) -->
+	warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet,
+		PredCallId).
 
-:- pred warn_singletons_in_goal_2(hlds__goal_expr, hlds__goal_info,
+:- pred warn_singletons_in_goal_2(hlds__goal_expr, hlds__goal_info, set(var),
 				varset, pred_call_id, io__state, io__state).
-:- mode warn_singletons_in_goal_2(in, in, in, in, di, uo) is det.
+:- mode warn_singletons_in_goal_2(in, in, in, in, in, di, uo) is det.
 
-warn_singletons_in_goal_2(conj(Goals), _GoalInfo, VarSet, PredCallId) -->
-	warn_singletons_in_goal_list(Goals, VarSet, PredCallId).
+warn_singletons_in_goal_2(conj(Goals), _GoalInfo, QuantVars, VarSet,
+		PredCallId) -->
+	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId).
 
-warn_singletons_in_goal_2(disj(Goals), _GoalInfo, VarSet, PredCallId) -->
-	warn_singletons_in_goal_list(Goals, VarSet, PredCallId).
+warn_singletons_in_goal_2(disj(Goals), _GoalInfo, QuantVars, VarSet,
+		PredCallId) -->
+	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId).
 
 warn_singletons_in_goal_2(switch(_Var, _CanFail, Cases),
-			_GoalInfo, VarSet, PredCallId) -->
-	warn_singletons_in_cases(Cases, VarSet, PredCallId).
+			_GoalInfo, QuantVars, VarSet, PredCallId) -->
+	warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId).
 
-warn_singletons_in_goal_2(not(Goal), _GoalInfo, VarSet, PredCallId) -->
-	warn_singletons_in_goal(Goal, VarSet, PredCallId).
+warn_singletons_in_goal_2(not(Goal), _GoalInfo, QuantVars, VarSet, PredCallId)
+		-->
+	warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId).
 
-warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, VarSet, PredCallId) -->
+warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, QuantVars, VarSet,
+		PredCallId) -->
 	%
 	% warn if any quantified variables occur only in the quantifier
 	%
-	{ SubGoal = _ - SubGoalInfo },
-	{ goal_info_get_nonlocals(SubGoalInfo, SubNonLocals) },
-	{ goal_info_context(GoalInfo, Context) },
-	warn_singletons(Vars, SubNonLocals, VarSet, Context, PredCallId),
-
-	warn_singletons_in_goal(SubGoal, VarSet, PredCallId).
+	( { Vars \= [] } ->
+		{ goal_vars(SubGoal, SubGoalVars) },
+		{ goal_info_context(GoalInfo, Context) },
+		{ set__init(EmptySet) },
+		warn_singletons(Vars, EmptySet, SubGoalVars, VarSet, Context,
+			PredCallId)
+	;
+		[]
+	),
+	{ set__insert_list(QuantVars, Vars, QuantVars1) },
+	warn_singletons_in_goal(SubGoal, QuantVars1, VarSet, PredCallId).
 
 warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else), GoalInfo,
-				VarSet, PredCallId) -->
+				QuantVars, VarSet, PredCallId) -->
 	%
 	% warn if any quantified variables do not occur in the condition
 	% or the "then" part of the if-then-else
 	%
-	{ Cond = _ - CondGoalInfo },
-	{ Then = _ - ThenGoalInfo },
-	{ goal_info_get_nonlocals(CondGoalInfo, CondNonLocals) },
-	{ goal_info_get_nonlocals(ThenGoalInfo, ThenNonLocals) },
-	{ set__union(CondNonLocals, ThenNonLocals, CondThenNonLocals) },
-	{ goal_info_context(GoalInfo, Context) },
-	warn_singletons(Vars, CondThenNonLocals, VarSet, Context, PredCallId),
+	( { Vars \= [] } ->
+		{ goal_vars(Cond, CondVars) },
+		{ goal_vars(Then, ThenVars) },
+		{ set__union(CondVars, ThenVars, CondThenVars) },
+		{ goal_info_context(GoalInfo, Context) },
+		{ set__init(EmptySet) },
+		warn_singletons(Vars, EmptySet, CondThenVars, VarSet,
+			Context, PredCallId)
+	;
+		[]
+	),
 
-	warn_singletons_in_goal(Cond, VarSet, PredCallId),
-	warn_singletons_in_goal(Then, VarSet, PredCallId),
-	warn_singletons_in_goal(Else, VarSet, PredCallId).
+	{ set__insert_list(QuantVars, Vars, QuantVars1) },
+	warn_singletons_in_goal(Cond, QuantVars1, VarSet, PredCallId),
+	warn_singletons_in_goal(Then, QuantVars1, VarSet, PredCallId),
+	warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId).
 
 warn_singletons_in_goal_2(call(_, _, Args, _, _, _, _),
-			GoalInfo, VarSet, PredCallId) -->
+			GoalInfo, QuantVars, VarSet, PredCallId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_context(GoalInfo, Context) },
-	warn_singletons(Args, NonLocals, VarSet, Context, PredCallId).
+	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
+		PredCallId).
 
 warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
-			GoalInfo, VarSet, PredCallId) -->
-	warn_singletons_in_unify(Var, RHS, GoalInfo, VarSet, PredCallId).
+			GoalInfo, QuantVars, VarSet, PredCallId) -->
+	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
+		PredCallId).
 
 warn_singletons_in_goal_2(pragma_c_code(C_Code,_,_,Args,ArgNameMap), 
-		GoalInfo, _, PredCallId) --> 
+		GoalInfo, _QuantVars, _VarSet, PredCallId) --> 
 	{ goal_info_context(GoalInfo, Context) },
 	warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap, Context, 
 		PredCallId).
 
-:- pred warn_singletons_in_goal_list(list(hlds__goal), varset, pred_call_id,
+:- pred warn_singletons_in_goal_list(list(hlds__goal), set(var), varset,
+				pred_call_id, io__state, io__state).
+:- mode warn_singletons_in_goal_list(in, in, in, in, di, uo) is det.
+
+warn_singletons_in_goal_list([], _, _, _) --> [].
+warn_singletons_in_goal_list([Goal|Goals], QuantVars, VarSet, CallPredId) -->
+	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId),
+	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, CallPredId).
+
+:- pred warn_singletons_in_cases(list(case), set(var), varset, pred_call_id,
 					io__state, io__state).
-:- mode warn_singletons_in_goal_list(in, in, in, di, uo) is det.
+:- mode warn_singletons_in_cases(in, in, in, in, di, uo) is det.
 
-warn_singletons_in_goal_list([], _, _) --> [].
-warn_singletons_in_goal_list([Goal|Goals], VarSet, CallPredId) -->
-	warn_singletons_in_goal(Goal, VarSet, CallPredId),
-	warn_singletons_in_goal_list(Goals, VarSet, CallPredId).
-
-:- pred warn_singletons_in_cases(list(case), varset, pred_call_id,
-					io__state, io__state).
-:- mode warn_singletons_in_cases(in, in, in, di, uo) is det.
-
-warn_singletons_in_cases([], _, _) --> [].
-warn_singletons_in_cases([Case|Cases], VarSet, CallPredId) -->
+warn_singletons_in_cases([], _, _, _) --> [].
+warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId) -->
 	{ Case = case(_ConsId, Goal) },
-	warn_singletons_in_goal(Goal, VarSet, CallPredId),
-	warn_singletons_in_cases(Cases, VarSet, CallPredId).
+	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId),
+	warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId).
 
-:- pred warn_singletons_in_unify(var, unify_rhs, hlds__goal_info, varset,
-			pred_call_id, io__state, io__state).
-:- mode warn_singletons_in_unify(in, in, in, in, in, di, uo) is det.
+:- pred warn_singletons_in_unify(var, unify_rhs, hlds__goal_info, set(var),
+			varset, pred_call_id, io__state, io__state).
+:- mode warn_singletons_in_unify(in, in, in, in, in, in, di, uo) is det.
 
-warn_singletons_in_unify(X, var(Y), GoalInfo, VarSet, CallPredId) -->
+warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_context(GoalInfo, Context) },
-	warn_singletons([X, Y], NonLocals, VarSet,
+	warn_singletons([X, Y], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
-warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, VarSet,
+warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
 				CallPredId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_context(GoalInfo, Context) },
-	warn_singletons([X | Vars], NonLocals, VarSet, Context, CallPredId).
+	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
+			Context, CallPredId).
 
 warn_singletons_in_unify(X, lambda_goal(LambdaVars, _Modes, _Det, LambdaGoal),
-				GoalInfo, VarSet, CallPredId) -->
+				GoalInfo, QuantVars, VarSet, CallPredId) -->
 	%
 	% warn if any lambda-quantified variables occur only in the quantifier
 	%
 	{ LambdaGoal = _ - LambdaGoalInfo },
 	{ goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals) },
 	{ goal_info_context(GoalInfo, Context) },
-	warn_singletons(LambdaVars, LambdaNonLocals, VarSet,
+	warn_singletons(LambdaVars, LambdaNonLocals, QuantVars, VarSet,
 			Context, CallPredId),
 
 	%
@@ -1324,12 +1343,12 @@ warn_singletons_in_unify(X, lambda_goal(LambdaVars, _Modes, _Det, LambdaGoal),
 	% is singleton
 	%
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	warn_singletons([X], NonLocals, VarSet, Context, CallPredId),
+	warn_singletons([X], NonLocals, QuantVars, VarSet, Context, CallPredId),
 
 	%
 	% warn if the lambda-goal contains singletons
 	%
-	warn_singletons_in_goal(LambdaGoal, VarSet, CallPredId).
+	warn_singletons_in_goal(LambdaGoal, QuantVars, VarSet, CallPredId).
 
 %-----------------------------------------------------------------------------%
 
@@ -1468,28 +1487,34 @@ write_string_list([X|Xs]) -->
 
 %-----------------------------------------------------------------------------%
 
-	% warn_singletons(Vars, NonLocals, ...):
+	% warn_singletons(Vars, NonLocals, QuantVars, ...):
 	% 	Warn if any of the non-underscore variables in Vars don't
-	%	occur in NonLocals, or if any of the underscore variables
-	%	in vars do occur in NonLocals.
+	%	occur in NonLocals and don't have the same name as any variable
+	%	in QuantVars, or if any of the underscore variables
+	%	in Vars do occur in NonLocals.
 
-:- pred warn_singletons(list(var), set(var), varset, term_context,
+:- pred warn_singletons(list(var), set(var), set(var), varset, term_context,
 			pred_call_id, io__state, io__state).
-:- mode warn_singletons(in, in, in, in, in, di, uo) is det.
+:- mode warn_singletons(in, in, in, in, in, in, di, uo) is det.
 
-warn_singletons(GoalVars, NonLocals, VarSet, Context, PredCallId) -->
+warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
 	io__stderr_stream(StdErr),
 
 	% find all the variables in the goal that don't occur outside the
-	% goal (i.e. are singleton) and have a variable name that doesn't
-	% start with "_" or "DCG_".
+	% goal (i.e. are singleton), have a variable name that doesn't
+	% start with "_" or "DCG_", and don't have the same name as any
+	% variable in QuantVars (i.e. weren't explicitly quantified).
 	
 	{ solutions(lambda([Var::out] is nondet, (
 		  	list__member(Var, GoalVars),
 			\+ set__member(Var, NonLocals),
 			varset__lookup_name(VarSet, Var, Name),
 			\+ string__prefix(Name, "_"),
-			\+ string__prefix(Name, "DCG_")
+			\+ string__prefix(Name, "DCG_"),
+			\+ (	
+				set__member(QuantVar, QuantVars),
+				varset__lookup_name(VarSet, QuantVar, Name)
+			)
 		)), SingletonVars) },
 
 	% if there were any such variables, issue a warning
