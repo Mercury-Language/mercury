@@ -73,3 +73,10 @@ entry_mercury__copy__ho7__ua1_2_0
 	mangled name with unused args
 mercury__f_33_95_95_117_97_49_48_48_48_48_2_0
 <predicate '!'/2 mode 0 (minus unused args)>
+
+	some tests of symbols that should not be demangled
+	(this is a regression test: previous versions of mdemangle
+	seg faulted for this case)
+mercury_data_foo
+mercury_data_foo
+
