@@ -35,100 +35,90 @@
 :- type varset	==	varset(generic).
 
 	% construct an empty varset.
-:- pred varset__init(varset(T)).
-:- mode varset__init(out) is det.
+:- pred varset__init(varset(T)::out) is det.
 
 :- func varset__init = varset(T).
 
 	% check whether a varset is empty.
-:- pred varset__is_empty(varset(T)).
-:- mode varset__is_empty(in) is semidet.
+:- pred varset__is_empty(varset(T)::in) is semidet.
 
 	% create a new variable
-:- pred varset__new_var(varset(T), var(T), varset(T)).
-:- mode varset__new_var(in, out, out) is det.
+:- pred varset__new_var(varset(T)::in, var(T)::out, varset(T)::out) is det.
 
 	% create a new named variable
-:- pred varset__new_named_var(varset(T), string, var(T), varset(T)).
-:- mode varset__new_named_var(in, in, out, out) is det.
+:- pred varset__new_named_var(varset(T)::in, string::in, var(T)::out,
+	varset(T)::out) is det.
 
 	% create a new named variable with a unique (w.r.t. the
 	% varset) number appended to the name.
-:- pred varset__new_uniquely_named_var(varset(T), string, var(T), varset(T)).
-:- mode varset__new_uniquely_named_var(in, in, out, out) is det.
+:- pred varset__new_uniquely_named_var(varset(T)::in, string::in, var(T)::out,
+	varset(T)::out) is det.
 
 	% create a new variable, and maybe give it a name
-:- pred varset__new_maybe_named_var(varset(T), maybe(string),
-	var(T), varset(T)).
-:- mode varset__new_maybe_named_var(in, in, out, out) is det.
+:- pred varset__new_maybe_named_var(varset(T)::in, maybe(string)::in,
+	var(T)::out, varset(T)::out) is det.
 
 	% create multiple new variables
-:- pred varset__new_vars(varset(T), int, list(var(T)), varset(T)).
-:- mode varset__new_vars(in, in, out, out) is det.
+:- pred varset__new_vars(varset(T)::in, int::in, list(var(T))::out,
+	varset(T)::out) is det.
 
 	% delete the name and value for a variable
-:- pred varset__delete_var(varset(T), var(T), varset(T)).
-:- mode varset__delete_var(in, in, out) is det.
+:- pred varset__delete_var(varset(T)::in, var(T)::in, varset(T)::out) is det.
 
 :- func varset__delete_var(varset(T), var(T)) = varset(T).
 
 	% delete the names and values for a list of variables
-:- pred varset__delete_vars(varset(T), list(var(T)), varset(T)).
-:- mode varset__delete_vars(in, in, out) is det.
+:- pred varset__delete_vars(varset(T)::in, list(var(T))::in, varset(T)::out)
+	is det.
 
 :- func varset__delete_vars(varset(T), list(var(T))) = varset(T).
 
 	% return a list of all the variables in a varset
-:- pred varset__vars(varset(T), list(var(T))).
-:- mode varset__vars(in, out) is det.
+:- pred varset__vars(varset(T)::in, list(var(T))::out) is det.
 
 :- func varset__vars(varset(T)) = list(var(T)).
 
 	% set the name of a variable
-:- pred varset__name_var(varset(T), var(T), string, varset(T)).
-:- mode varset__name_var(in, in, in, out) is det.
+:- pred varset__name_var(varset(T)::in, var(T)::in, string::in, varset(T)::out)
+	is det.
 
 :- func varset__name_var(varset(T), var(T), string) = varset(T).
 
 	% lookup the name of a variable;
 	% create one if it doesn't have one using V_ as a prefix
-:- pred varset__lookup_name(varset(T), var(T), string).
-:- mode varset__lookup_name(in, in, out) is det.
+:- pred varset__lookup_name(varset(T)::in, var(T)::in, string::out) is det.
 
 :- func varset__lookup_name(varset(T), var(T)) = string.
 
 	% lookup the name of a variable;
 	% create one if it doesn't have one using the specified prefix
-:- pred varset__lookup_name(varset(T), var(T), string, string).
-:- mode varset__lookup_name(in, in, in, out) is det.
+:- pred varset__lookup_name(varset(T)::in, var(T)::in, string::in, string::out)
+	is det.
 
 :- func varset__lookup_name(varset(T), var(T), string) = string.
 
 	% lookup the name of a variable;
 	% fail if it doesn't have one
-:- pred varset__search_name(varset(T), var(T), string).
-:- mode varset__search_name(in, in, out) is semidet.
+:- pred varset__search_name(varset(T)::in, var(T)::in, string::out) is semidet.
 
 	% bind a value to a variable
 	% (will overwrite any existing binding).
-:- pred varset__bind_var(varset(T), var(T), term(T), varset(T)).
-:- mode varset__bind_var(in, in, in, out) is det.
+:- pred varset__bind_var(varset(T)::in, var(T)::in, term(T)::in,
+	varset(T)::out) is det.
 
 :- func varset__bind_var(varset(T), var(T), term(T)) = varset(T).
 
 	% bind a set of terms to a set of variables.
-:- pred varset__bind_vars(varset(T), substitution(T), varset(T)).
-:- mode varset__bind_vars(in, in, out) is det.
+:- pred varset__bind_vars(varset(T)::in, substitution(T)::in, varset(T)::out)
+	is det.
 
 :- func varset__bind_vars(varset(T), substitution(T)) = varset(T).
 
 	% lookup the value of a variable
-:- pred varset__search_var(varset(T), var(T), term(T)).
-:- mode varset__search_var(in, in, out) is semidet.
+:- pred varset__search_var(varset(T)::in, var(T)::in, term(T)::out) is semidet.
 
 	% get the bindings for all the bound variables.
-:- pred varset__lookup_vars(varset(T), substitution(T)).
-:- mode varset__lookup_vars(in, out) is det.
+:- pred varset__lookup_vars(varset(T)::in, substitution(T)::out) is det.
 
 :- func varset__lookup_vars(varset(T)) = substitution(T).
 
@@ -140,44 +130,40 @@
 	% Subst is a substitution which maps the variables in NewVarSet
 	% into the corresponding fresh variable in VarSet.
 
-:- pred varset__merge_subst(varset(T), varset(T), varset(T), substitution(T)).
-:- mode varset__merge_subst(in, in, out, out) is det.
+:- pred varset__merge_subst(varset(T)::in, varset(T)::in, varset(T)::out,
+	substitution(T)::out) is det.
 
 	% varset__merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
 	% As varset__merge_subst, except instead of returning the substitution,
 	% this predicate applies it to the given list of terms.
 
-:- pred varset__merge(varset(T), varset(T), list(term(T)),
-		varset(T), list(term(T))).
-:- mode varset__merge(in, in, in, out, out) is det.
+:- pred varset__merge(varset(T)::in, varset(T)::in, list(term(T))::in,
+	varset(T)::out, list(term(T))::out) is det.
 
 	% Same as varset__merge_subst, except that the names of variables
 	% in NewVarSet are not included in the final varset.
 	% This is useful if varset__create_name_var_map needs
 	% to be used on the resulting varset.
 
-:- pred varset__merge_subst_without_names(varset(T),
-		varset(T), varset(T), substitution(T)).
-:- mode varset__merge_subst_without_names(in, in, out, out) is det.
+:- pred varset__merge_subst_without_names(varset(T)::in,
+	varset(T)::in, varset(T)::out, substitution(T)::out) is det.
 
 	% Same as varset__merge, except that the names of variables
 	% in NewVarSet are not included in the final varset.
 	% This is useful if varset__create_name_var_map needs
 	% to be used on the resulting varset.
 
-:- pred varset__merge_without_names(varset(T), varset(T), list(term(T)),
-		varset(T), list(term(T))).
-:- mode varset__merge_without_names(in, in, in, out, out) is det.
+:- pred varset__merge_without_names(varset(T)::in, varset(T)::in,
+	list(term(T))::in, varset(T)::out, list(term(T))::out) is det.
 
 	% get the bindings for all the bound variables.
-:- pred varset__get_bindings(varset(T), substitution(T)).
-:- mode varset__get_bindings(in, out) is det.
+:- pred varset__get_bindings(varset(T)::in, substitution(T)::out) is det.
 
 :- func varset__get_bindings(varset(T)) = substitution(T).
 
 	% set the bindings for all the bound variables.
-:- pred varset__set_bindings(varset(T), substitution(T), varset(T)).
-:- mode varset__set_bindings(in, in, out) is det.
+:- pred varset__set_bindings(varset(T)::in, substitution(T)::in,
+	varset(T)::out) is det.
 
 :- func varset__set_bindings(varset(T), substitution(T)) = varset(T).
 
@@ -186,16 +172,16 @@
 	% shared by more than one variable. Therefore this predicate
 	% is only really useful if it is already known that no two
 	% variables share the same name.
-:- pred varset__create_name_var_map(varset(T), map(string, var(T))).
-:- mode varset__create_name_var_map(in, out) is det.
+:- pred varset__create_name_var_map(varset(T)::in, map(string, var(T))::out)
+	is det.
 
 :- func varset__create_name_var_map(varset(T)) = map(string, var(T)).
 
 	% Return an association list giving the name of each variable.
 	% Every variable has an entry in the returned association list,
 	% even if it shares its name with another variable.
-:- pred varset__var_name_list(varset(T), assoc_list(var(T), string)).
-:- mode varset__var_name_list(in, out) is det.
+:- pred varset__var_name_list(varset(T)::in, assoc_list(var(T), string)::out)
+	is det.
 
 :- func varset__var_name_list(varset(T)) = assoc_list(var(T), string).
 
@@ -204,17 +190,15 @@
 	% return another varset in which every variable has a unique name.
 	% If necessary, names will have suffixes added on the end;
 	% the second argument gives the suffix to use.
-:- pred varset__ensure_unique_names(list(var(T)),
-		string, varset(T), varset(T)).
-:- mode varset__ensure_unique_names(in, in, in, out) is det.
+:- pred varset__ensure_unique_names(list(var(T))::in,
+	string::in, varset(T)::in, varset(T)::out) is det.
 
-:- func varset__ensure_unique_names(list(var(T)),
-		string, varset(T)) = varset(T).
+:- func varset__ensure_unique_names(list(var(T)), string, varset(T))
+	= varset(T).
 
 	% Given a varset and a set of variables, remove the names
 	% and values of any other variables stored in the varset.
-:- pred varset__select(varset(T), set(var(T)), varset(T)).
-:- mode varset__select(in, in, out) is det.
+:- pred varset__select(varset(T)::in, set(var(T))::in, varset(T)::out) is det.
 
 :- func varset__select(varset(T), set(var(T))) = varset(T).
 
@@ -223,35 +207,35 @@
 	% Also return a substitution mapping the selected variables in the
 	% original varset into variables in the new varset. The relative
 	% ordering of variables in the original varset is maintained.
-:- pred varset__squash(varset(T), list(var(T)),
-		varset(T), map(var(T), var(T))).
-:- mode varset__squash(in, in, out, out) is det.
+:- pred varset__squash(varset(T)::in, list(var(T))::in,
+	varset(T)::out, map(var(T), var(T))::out) is det.
 
 	% Coerce the types of the variables in a varset.
-:- pred varset__coerce(varset(T), varset(U)).
-:- mode varset__coerce(in, out) is det.
+:- pred varset__coerce(varset(T)::in, varset(U)::out) is det.
 
 :- func varset__coerce(varset(T)) = varset(U).
 
 :- implementation.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module bool, int, list, map, assoc_list.
 :- import_module set, require, string.
 
 :- type varset(T)	--->	varset(
-					var_supply(T),
-					map(var(T), string),
-					map(var(T), term(T))
+					var_supply	:: var_supply(T),
+					var_names	:: map(var(T), string),
+					var_values	:: map(var(T), term(T))
 				).
 
 %-----------------------------------------------------------------------------%
 
-varset__init(varset(VarSupply, Names, Vals)) :-
+varset__init(varset(VarSupply, Names, Values)) :-
 	term__init_var_supply(VarSupply),
 	map__init(Names),
-	map__init(Vals).
+	map__init(Values).
 
 %-----------------------------------------------------------------------------%
 
@@ -260,23 +244,24 @@ varset__is_empty(varset(VarSupply, _, _)) :-
 
 %-----------------------------------------------------------------------------%
 
-varset__new_var(varset(MaxId0, Names, Vals), Var,
-		varset(MaxId, Names, Vals)) :-
-	term__create_var(MaxId0, Var, MaxId).
+varset__new_var(VarSet0, Var, VarSet) :-
+	MaxId0 = VarSet0 ^ var_supply,
+	term__create_var(MaxId0, Var, MaxId),
+	VarSet = VarSet0 ^ var_supply := MaxId.
 
-varset__new_named_var(varset(MaxId0, Names0, Vals), Name, Var,
-		varset(MaxId, Names, Vals)) :-
+varset__new_named_var(varset(MaxId0, Names0, Values), Name, Var,
+		varset(MaxId, Names, Values)) :-
 	term__create_var(MaxId0, Var, MaxId),
 	map__set(Names0, Var, Name, Names).
 
-varset__new_uniquely_named_var(varset(MaxId0, Names0, Vals), Name, Var,
-		varset(MaxId, Names, Vals)) :-
+varset__new_uniquely_named_var(varset(MaxId0, Names0, Values), Name, Var,
+		varset(MaxId, Names, Values)) :-
 	term__create_var(MaxId0, Var, MaxId),
 	N = term__var_id(Var),
 	map__set(Names0, Var, string__format("%s_%d", [s(Name), i(N)]), Names).
 
-varset__new_maybe_named_var(varset(MaxId0, Names0, Vals), MaybeName, Var,
-		varset(MaxId, Names, Vals)) :-
+varset__new_maybe_named_var(varset(MaxId0, Names0, Values), MaybeName, Var,
+		varset(MaxId, Names, Values)) :-
 	term__create_var(MaxId0, Var, MaxId),
 	(
 		MaybeName = no,
@@ -286,74 +271,69 @@ varset__new_maybe_named_var(varset(MaxId0, Names0, Vals), MaybeName, Var,
 		map__set(Names0, Var, Name, Names)
 	).
 
-varset__new_vars(Varset0, NumVars, NewVars, Varset) :-
-	varset__new_vars_2(Varset0, NumVars, [], NewVars, Varset).
+varset__new_vars(VarSet0, NumVars, NewVars, VarSet) :-
+	varset__new_vars_2(VarSet0, NumVars, [], NewVars, VarSet).
 
-:- pred varset__new_vars_2(varset(T), int, list(var(T)),
-		list(var(T)), varset(T)).
-:- mode varset__new_vars_2(in, in, in, out, out) is det.
+:- pred varset__new_vars_2(varset(T)::in, int::in, list(var(T))::in,
+	list(var(T))::out, varset(T)::out) is det.
 
-varset__new_vars_2(Varset0, NumVars, NewVars0, NewVars, Varset) :-
-	(
-		NumVars > 0
-	->
+varset__new_vars_2(VarSet0, NumVars, NewVars0, NewVars, VarSet) :-
+	( NumVars > 0 ->
 		NumVars1 = NumVars - 1,
-		varset__new_var(Varset0, Var, Varset1),
-		varset__new_vars_2(Varset1, NumVars1, [Var | NewVars0],
-							NewVars, Varset)
-	;
-		NumVars = 0
-	->
+		varset__new_var(VarSet0, Var, VarSet1),
+		varset__new_vars_2(VarSet1, NumVars1, [Var | NewVars0],
+			NewVars, VarSet)
+	; NumVars = 0 ->
 		NewVars = NewVars0,
-		Varset = Varset0
+		VarSet = VarSet0
 	;
 		error("varset__new_vars - invalid call")
 	).
 		
 %-----------------------------------------------------------------------------%
 
-varset__delete_var(varset(MaxId, Names0, Vals0), Var,
-		varset(MaxId, Names, Vals)) :-
+varset__delete_var(varset(MaxId, Names0, Values0), Var,
+		varset(MaxId, Names, Values)) :-
 	map__delete(Names0, Var, Names),
-	map__delete(Vals0, Var, Vals).
+	map__delete(Values0, Var, Values).
 
 %-----------------------------------------------------------------------------%
 
-varset__delete_vars(Varset, [], Varset).
-varset__delete_vars(Varset0, [Var | Vars], Varset) :-
-	varset__delete_var(Varset0, Var, Varset1),
-	varset__delete_vars(Varset1, Vars, Varset).
+varset__delete_vars(VarSet, [], VarSet).
+varset__delete_vars(VarSet0, [Var | Vars], VarSet) :-
+	varset__delete_var(VarSet0, Var, VarSet1),
+	varset__delete_vars(VarSet1, Vars, VarSet).
 
 %-----------------------------------------------------------------------------%
 
-varset__vars(varset(MaxId0, _, _), L) :-
-	term__init_var_supply(V0),
-	varset__vars_2(V0, MaxId0, [], L1),
-	list__reverse(L1, L).
+varset__vars(VarSet0, Vars) :-
+	MaxId0 = VarSet0 ^ var_supply,
+	term__init_var_supply(N0),
+	RevVars = varset__vars_2(N0, MaxId0, []),
+	list__reverse(RevVars, Vars).
 
-:- pred varset__vars_2(var_supply(T), var_supply(T), list(var(T)),
-			list(var(T))).
-:- mode varset__vars_2(in, in, in, out) is det.
+:- func varset__vars_2(var_supply(T), var_supply(T), list(var(T)))
+	= list(var(T)).
 
-varset__vars_2(N, Max, L0, L) :-
-	(N = Max ->
-		L = L0
+varset__vars_2(N, Max, RevVars0) = RevVars :-
+	( N = Max ->
+		RevVars = RevVars0
 	;
-		term__create_var(N, V, N1),
-		varset__vars_2(N1, Max, [V|L0], L)
+		term__create_var(N, Var, N1),
+		RevVars = varset__vars_2(N1, Max, [Var | RevVars0])
 	).
 
 %-----------------------------------------------------------------------------%
 
 varset__name_var(VarSet0, Id, Name, VarSet) :-
-	VarSet0 = varset(MaxId, Names0, Vals),
+	Names0 = VarSet0 ^ var_names,
 	map__set(Names0, Id, Name, Names),
-	VarSet = varset(MaxId, Names, Vals).
+	VarSet = VarSet0 ^ var_names := Names.
 
 %-----------------------------------------------------------------------------%
 
-varset__lookup_name(Varset, Id, Name) :-
-	( varset__search_name(Varset, Id, Name0) ->
+varset__lookup_name(VarSet, Id, Name) :-
+	( varset__search_name(VarSet, Id, Name0) ->
 		Name = Name0
 	;
 		term__var_to_int(Id, VarNum),
@@ -361,8 +341,8 @@ varset__lookup_name(Varset, Id, Name) :-
 		string__append("V_", NumStr, Name)
 	).
 
-varset__lookup_name(Varset, Id, Prefix, Name) :-
-	( varset__search_name(Varset, Id, Name0) ->
+varset__lookup_name(VarSet, Id, Prefix, Name) :-
+	( varset__search_name(VarSet, Id, Name0) ->
 		Name = Name0
 	;
 		term__var_to_int(Id, VarNum),
@@ -373,53 +353,54 @@ varset__lookup_name(Varset, Id, Prefix, Name) :-
 varset__search_name(varset(_, Names, _), Id, Name) :-
 	map__search(Names, Id, Name0),
 	Name = Name0.
-/* This part is useful during debugging when you need to
-   be able to distinguish different variables with the same name.
-	(
-		map__member(Names, Id1, Name0),
-		Id1 \= Id
-	->
-		term__var_to_int(Id, Int),
-		string__format("%s__%d",[s(Name0),i(Int)], Name)
-	;
-		Name = Name0
-	).
-*/
+% This part is useful during debugging when you need to
+% be able to distinguish different variables with the same name.
+%	(
+%		map__member(Names, Id1, Name0),
+%		Id1 \= Id
+%	->
+%		term__var_to_int(Id, Int),
+%		string__format("%s__%d",[s(Name0),i(Int)], Name)
+%	;
+%		Name = Name0
+%	).
 
 %-----------------------------------------------------------------------------%
 
-varset__bind_var(varset(MaxId, Names, Vals0), Id, Val,
-		varset(MaxId, Names, Vals)) :-
-	map__set(Vals0, Id, Val, Vals).
+varset__bind_var(VarSet0, Id, Val, VarSet) :-
+	Values0 = VarSet0 ^ var_values,
+	map__set(Values0, Id, Val, Values),
+	VarSet = VarSet0 ^ var_values := Values.
 
 %-----------------------------------------------------------------------------%
 
-varset__bind_vars(Varset0, Subst, Varset) :-
+varset__bind_vars(VarSet0, Subst, VarSet) :-
 	map__to_assoc_list(Subst, VarTermList),
-	varset__bind_vars_2(VarTermList, Varset0, Varset).
+	varset__bind_vars_2(VarTermList, VarSet0, VarSet).
 
-:- pred varset__bind_vars_2(assoc_list(var(T), term(T)), varset(T), varset(T)).
-:- mode varset__bind_vars_2(in, in, out) is det.
+:- pred varset__bind_vars_2(assoc_list(var(T), term(T))::in, varset(T)::in,
+	varset(T)::out) is det.
 
-varset__bind_vars_2([], Varset, Varset).
-varset__bind_vars_2([V - T | Rest], Varset0, Varset) :-
-	varset__bind_var(Varset0, V, T, Varset1),
-	varset__bind_vars_2(Rest, Varset1, Varset).
-
-%-----------------------------------------------------------------------------%
-
-varset__search_var(varset(_, _, Vals), Id, Val) :-
-	map__search(Vals, Id, Val).
+varset__bind_vars_2([], VarSet, VarSet).
+varset__bind_vars_2([V - T | Rest], VarSet0, VarSet) :-
+	varset__bind_var(VarSet0, V, T, VarSet1),
+	varset__bind_vars_2(Rest, VarSet1, VarSet).
 
 %-----------------------------------------------------------------------------%
 
-varset__lookup_vars(varset(_, _, Subst), Subst).
+varset__search_var(VarSet, Id, Val) :-
+	Values = VarSet ^ var_values,
+	map__search(Values, Id, Val).
 
 %-----------------------------------------------------------------------------%
 
-varset__get_bindings(varset(_, _, Subst), Subst).
+varset__lookup_vars(VarSet, VarSet ^ var_values).
 
-varset__set_bindings(varset(C, N, _), S, varset(C, N, S)).
+%-----------------------------------------------------------------------------%
+
+varset__get_bindings(VarSet, VarSet ^ var_values).
+
+varset__set_bindings(VarSet, Values, VarSet ^ var_values := Values).
 
 %-----------------------------------------------------------------------------%
 
@@ -430,97 +411,88 @@ varset__set_bindings(varset(C, N, _), S, varset(C, N, S)).
 	% fresh variable in the first varset.  We then apply
 	% this substitution to the list of terms.
 
-varset__merge(VarSet0, VarSet1, TermList0, VarSet, TermList) :-
+varset__merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
 	IncludeNames = yes,
-	varset__merge_subst(IncludeNames, VarSet0, VarSet1, VarSet, Subst),
+	varset__merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst),
 	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
-varset__merge_without_names(VarSet0, VarSet1, TermList0, VarSet, TermList) :-
+varset__merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
 	IncludeNames = no,
-	varset__merge_subst(IncludeNames,
-		VarSet0, VarSet1, VarSet, Subst),
+	varset__merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst),
 	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
-varset__merge_subst(VarSet0, varset(MaxId, Names, Vals),
-			VarSet, Subst) :-
+varset__merge_subst(VarSetA, VarSetB, VarSet, Subst) :-
 	IncludeNames = yes,	
-	varset__merge_subst(IncludeNames, VarSet0, varset(MaxId, Names, Vals),
-			VarSet, Subst).
+	varset__merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
 
-varset__merge_subst_without_names(VarSet0, varset(MaxId, Names, Vals),
-			VarSet, Subst) :-
+varset__merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
 	IncludeNames = no,	
-	varset__merge_subst(IncludeNames, VarSet0, varset(MaxId, Names, Vals),
-			VarSet, Subst).
+	varset__merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst).
 
-:- pred varset__merge_subst(bool, varset(T), varset(T), varset(T),
-		substitution(T)).
-:- mode varset__merge_subst(in, in, in, out, out) is det.
+:- pred varset__merge_subst(bool::in, varset(T)::in, varset(T)::in,
+	varset(T)::out, substitution(T)::out) is det.
 
-varset__merge_subst(IncludeNames, VarSet0, varset(MaxId, Names, Vals),
-			VarSet, Subst) :-
+varset__merge_subst(IncludeNames, VarSetA, VarSetB, VarSet, Subst) :-
+	VarSetB = varset(MaxId, Names, Values),
 	term__init_var_supply(N),
 	map__init(Subst0),
-	varset__merge_subst_2(IncludeNames, N, MaxId, Names, Vals,
-			VarSet0, Subst0, VarSet, Subst).
+	varset__merge_subst_2(IncludeNames, N, MaxId, Names, Values,
+		VarSetA, VarSet, Subst0, Subst).
 
-:- pred varset__merge_subst_2(bool, var_supply(T),
-	var_supply(T), map(var(T), string),
-	map(var(T), term(T)), varset(T), substitution(T),
-	varset(T), substitution(T)).
-:- mode varset__merge_subst_2(in, in, in, in, in, in, in, out, out) is det.
+:- pred varset__merge_subst_2(bool::in, var_supply(T)::in,
+	var_supply(T)::in, map(var(T), string)::in,
+	map(var(T), term(T))::in, varset(T)::in, varset(T)::out,
+	substitution(T)::in, substitution(T)::out) is det.
 
-varset__merge_subst_2(IncludeNames, N, Max, Names, Vals,
-		VarSet0, Subst0, VarSet, Subst) :-
+varset__merge_subst_2(IncludeNames, N, Max, Names, Values, !VarSet, !Subst) :-
 	( N = Max ->
-		VarSet = VarSet0,
-		Subst0 = Subst
+		true
 	;
-		varset__new_var(VarSet0, VarId, VarSet1),
+		varset__new_var(!.VarSet, VarId, !:VarSet),
 		term__create_var(N, VarN, N1),
 		(
 			IncludeNames = yes,
 			map__search(Names, VarN, Name)
 		->
-			varset__name_var(VarSet1, VarId, Name, VarSet2)
+			varset__name_var(!.VarSet, VarId, Name, !:VarSet)
 		;
-			VarSet2 = VarSet1
+			true
 		),
-		map__set(Subst0, VarN, term__variable(VarId), Subst1),
-		varset__merge_subst_2(IncludeNames, N1, Max, Names,
-				Vals, VarSet2, Subst1, VarSet, Subst)
+		map__set(!.Subst, VarN, term__variable(VarId), !:Subst),
+		varset__merge_subst_2(IncludeNames, N1, Max, Names, Values,
+			!VarSet, !Subst)
 	).
 
 %-----------------------------------------------------------------------------%
 
-varset__create_name_var_map(varset(_, VarNameIndex, _), NameVarIndex) :-
-	map__keys(VarNameIndex, Vars),
-	map__values(VarNameIndex, Names),
-	map__from_corresponding_lists(Names, Vars, NameVarIndex).
+varset__create_name_var_map(VarSet, NameVars) :-
+	VarNames = VarSet ^ var_names,
+	map__keys(VarNames, Vars),
+	map__values(VarNames, Names),
+	map__from_corresponding_lists(Names, Vars, NameVars).
 
 %-----------------------------------------------------------------------------%
 
-varset__var_name_list(varset(_, VarNameIndex, _), VarNameList) :-
-	map__to_assoc_list(VarNameIndex, VarNameList).
+varset__var_name_list(VarSet, VarNameList) :-
+	VarNames = VarSet ^ var_names,
+	map__to_assoc_list(VarNames, VarNameList).
 
 %-----------------------------------------------------------------------------%
 
-varset__ensure_unique_names(AllVars, Suffix,
-		varset(Supply, VarNameMap0, Values),
-		varset(Supply, VarNameMap, Values)) :-
-	set__init(UsedNames),
-	map__init(VarNameMap1),
-	varset__ensure_unique_names_2(AllVars, Suffix, UsedNames, VarNameMap0,
-		VarNameMap1, VarNameMap).
+varset__ensure_unique_names(AllVars, Suffix, VarSet0, VarSet) :-
+	VarNames0 = VarSet0 ^ var_names,
+	varset__ensure_unique_names_2(AllVars, Suffix, set__init, VarNames0,
+		map__init, VarNames),
+	VarSet = VarSet0 ^ var_names := VarNames.
 
-:- pred varset__ensure_unique_names_2(list(var(T)), string, set(string),
-	map(var(T), string), map(var(T), string), map(var(T), string)).
-:- mode varset__ensure_unique_names_2(in, in, in, in, in, out) is det.
+:- pred varset__ensure_unique_names_2(list(var(T))::in, string::in,
+	set(string)::in, map(var(T), string)::in, map(var(T), string)::in,
+	map(var(T), string)::out) is det.
 
-varset__ensure_unique_names_2([], _, _, _, VarNameMap, VarNameMap).
-varset__ensure_unique_names_2([Var | Vars], Suffix, UsedNames0,
-		OldVarNameMap, VarNameMap0, VarNameMap) :-
-	( map__search(OldVarNameMap, Var, OldName) ->
+varset__ensure_unique_names_2([], _, _, _, VarNames, VarNames).
+varset__ensure_unique_names_2([Var | Vars], Suffix, UsedNames0, OldVarNames,
+		VarNames0, VarNames) :-
+	( map__search(OldVarNames, Var, OldName) ->
 		( set__member(OldName, UsedNames0) ->
 			term__var_to_int(Var, VarNum),
 			string__int_to_string(VarNum, NumStr),
@@ -534,19 +506,19 @@ varset__ensure_unique_names_2([Var | Vars], Suffix, UsedNames0,
 		string__int_to_string(VarNum, NumStr),
 		string__append("Var_", NumStr, TrialName)
 	),
-	varset__ensure_unique_names_3(TrialName, Suffix, UsedNames0, FinalName),
+	append_suffix_until_unique(TrialName, Suffix, UsedNames0, FinalName),
 	set__insert(UsedNames0, FinalName, UsedNames1),
-	map__det_insert(VarNameMap0, Var, FinalName, VarNameMap1),
-	varset__ensure_unique_names_2(Vars, Suffix, UsedNames1, OldVarNameMap,
-		VarNameMap1, VarNameMap).
+	map__det_insert(VarNames0, Var, FinalName, VarNames1),
+	varset__ensure_unique_names_2(Vars, Suffix, UsedNames1, OldVarNames,
+		VarNames1, VarNames).
 
-:- pred varset__ensure_unique_names_3(string, string, set(string), string).
-:- mode varset__ensure_unique_names_3(in, in, in, out) is det.
+:- pred append_suffix_until_unique(string::in, string::in, set(string)::in,
+	string::out) is det.
 
-varset__ensure_unique_names_3(Trial0, Suffix, UsedNames, Final) :-
+append_suffix_until_unique(Trial0, Suffix, UsedNames, Final) :-
 	( set__member(Trial0, UsedNames) ->
 		string__append(Trial0, Suffix, Trial1),
-		varset__ensure_unique_names_3(Trial1, Suffix, UsedNames, Final)
+		append_suffix_until_unique(Trial1, Suffix, UsedNames, Final)
 	;
 		Final = Trial0
 	).
@@ -583,9 +555,8 @@ varset__squash(OldVarSet, KeptVars, NewVarSet, Subst) :-
 	map__from_corresponding_lists(KeptVars, NewVars, Subst),
 	copy_var_names(VarNames, Subst, NewVarSet1, NewVarSet).
 
-:- pred copy_var_names(assoc_list(var(T), string), map(var(T), var(T)),
-		varset(T), varset(T)).
-:- mode copy_var_names(in, in, in, out) is det.
+:- pred copy_var_names(assoc_list(var(T), string)::in, map(var(T), var(T))::in,
+	varset(T)::in, varset(T)::out) is det.
 
 copy_var_names([], _Subst, NewVarSet, NewVarSet).
 copy_var_names([OldVar - Name | Rest], Subst, NewVarSet0, NewVarSet) :-
@@ -659,4 +630,3 @@ varset__select(VS1, S) = VS2 :-
 
 varset__coerce(VS1) = VS2 :-
 	varset__coerce(VS1, VS2).
-
