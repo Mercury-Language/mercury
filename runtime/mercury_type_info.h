@@ -90,17 +90,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    ( assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__COMPACT) \
-    || assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__REP))
-
-#ifdef  MR_BOOTSTRAP_TYPE_CTOR_REP
-  #define MR_TypeCtorInfo_Struct  MR_NewTypeCtorInfo_Struct
-#else
-  #define MR_TypeCtorInfo_Struct  MR_OldTypeCtorInfo_Struct
-#endif
-
-typedef const struct MR_NewTypeCtorInfo_Struct             *MR_NewTypeCtorInfo;
-typedef const struct MR_OldTypeCtorInfo_Struct             *MR_OldTypeCtorInfo;
+    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__REP)
 
 /*---------------------------------------------------------------------------*/
 
@@ -537,11 +527,7 @@ typedef enum {
 ** value.
 */
 
-#ifdef  MR_BOOTSTRAP_TYPE_CTOR_REP
-  typedef MR_int_least16_t  MR_TypeCtorRepInt;
-#else
-  typedef MR_int_least8_t   MR_TypeCtorRepInt;
-#endif
+typedef MR_int_least16_t  MR_TypeCtorRepInt;
 
 /*
 ** This macro is intended to be used for the initialization of an array
@@ -967,32 +953,12 @@ typedef union {
     ** files listed at the top of this file, as well as in the macros below.
     */
 
-struct MR_OldTypeCtorInfo_Struct {
-    MR_Integer          MR_type_ctor_arity;
-    MR_int_least8_t     MR_type_ctor_version;
-    MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
-    MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
-    MR_ProcAddr         MR_type_ctor_unify_pred;
-    MR_ProcAddr         MR_type_ctor_compare_pred;
-    MR_ConstString      MR_type_ctor_module_name;
-    MR_ConstString      MR_type_ctor_name;
-    MR_TypeFunctors     MR_type_ctor_functors;
-    MR_TypeLayout       MR_type_ctor_layout;
-    MR_int_least32_t    MR_type_ctor_num_functors;
-
-/*
-** The following fields will be added later, once we can exploit them:
-**  union MR_TableNode_Union    **type_std_table;
-**  MR_ProcAddr         prettyprinter;
-*/
-};
-
 /*
 ** The type of the MR_type_ctor_rep_CAST_ME field should be returned
 ** to MR_TypeCtorRepInt when bootstrapping is complete.
 */
 
-struct MR_NewTypeCtorInfo_Struct {
+struct MR_TypeCtorInfo_Struct {
     MR_Integer          MR_type_ctor_arity;
     MR_int_least8_t     MR_type_ctor_version;
     MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
@@ -1013,15 +979,10 @@ struct MR_NewTypeCtorInfo_Struct {
 };
 
 #define MR_type_ctor_rep(tci)                                               \
-    ((MR_TypeCtorRep)                                                       \
-    ((tci)->MR_type_ctor_version == MR_RTTI_VERSION__REP) ?                 \
-        (((MR_NewTypeCtorInfo) (tci))->MR_type_ctor_rep_CAST_ME) :          \
-        (((MR_OldTypeCtorInfo) (tci))->MR_type_ctor_rep_CAST_ME))
+    ((MR_TypeCtorRep) ((tci)->MR_type_ctor_rep_CAST_ME))
 
 #define MR_type_ctor_num_ptags(tci)                                         \
-    (((tci)->MR_type_ctor_version == MR_RTTI_VERSION__REP) ?                \
-        (((MR_NewTypeCtorInfo) (tci))->MR_type_ctor_num_ptags) :            \
-        (((MR_OldTypeCtorInfo) (tci))->MR_type_ctor_num_ptags))
+    ((tci)->MR_type_ctor_num_ptags)
 
 #define MR_type_ctor_module_name(tci)                                       \
     ((tci)->MR_type_ctor_module_name)
