@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998,2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,10 +50,10 @@
 
 :- implementation.
 
-:- import_module list, char.
+:- import_module bool, list, char.
 :- import_module require.
 
-:- import_module demangle.
+:- import_module demangle, options.
 
 %-----------------------------------------------------------------------------%
 
@@ -93,12 +93,19 @@ maybe_read_label_addr(MaybeLabelAddr) -->
 
 
 maybe_read_label_name(MaybeLabelName) -->
+	globals__io_lookup_bool_option(demangle, Demangle),
 	io__read_word(WordResult),
 	(
 		{ WordResult = ok(CharList0) },
-		{ string__from_char_list(CharList0, LabelName0) },
-		{ demangle(LabelName0, LabelName) },
-		{ MaybeLabelName = yes(LabelName) }
+		{ string__from_char_list(CharList0, MangledLabelName) },
+		(
+			{ Demangle = yes },
+			{ demangle(MangledLabelName, LabelName) },
+			{ MaybeLabelName = yes(LabelName) }
+		;
+			{ Demangle = no },
+			{ MaybeLabelName = yes(MangledLabelName) }
+		)
 	;
 		{ WordResult = eof },
 		{ MaybeLabelName = no }
@@ -145,11 +152,18 @@ read_label_addr(LabelAddr) -->
 %-----------------------------------------------------------------------------%
 
 read_label_name(LabelName) -->
+	globals__io_lookup_bool_option(demangle, Demangle),
 	io__read_word(WordResult),
 	(
 		{ WordResult = ok(CharList0) },
-		{ string__from_char_list(CharList0, LabelName0) },
-		{ demangle(LabelName0, LabelName) }
+		{ string__from_char_list(CharList0, MangledLabelName) },
+		(
+			{ Demangle = yes },
+			{ demangle(MangledLabelName, LabelName) }
+		;
+			{ Demangle = no },
+			{ LabelName = MangledLabelName }
+		)
 	;
 		{ WordResult = eof },
 		{ error("read_label_name: EOF reached") }

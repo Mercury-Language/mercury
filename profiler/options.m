@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997,2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,6 +31,7 @@
 		;	pairfile
 		;	declfile
 		;	libraryfile
+		;	demangle
 	% Miscellaneous Options
 		;	help.
 
@@ -75,6 +76,7 @@ option_default(countfile,		string("Prof.Counts")).
 option_default(pairfile,		string("Prof.CallPair")).
 option_default(declfile,		string("Prof.Decl")).
 option_default(libraryfile,		string("")).
+option_default(demangle,		bool(yes)).
 
 	% Miscellaneous Options
 option_default(help,		bool(no)).
@@ -99,6 +101,7 @@ long_option("call-pair-file",		pairfile).
 long_option("call-graph",		call_graph).
 long_option("count-file",		countfile).
 long_option("declaration-file",		declfile).
+long_option("demangle",			demangle).
 long_option("help",			help).
 long_option("library-callgraph",	help).
 long_option("profile",			profile).
@@ -166,6 +169,8 @@ options_help -->
 	io__write_string("\t-L <file>, --library-callgraph <file>\n"),
 	io__write_string("\t\tName of the file which contains the call graph for\n"),
 	io__write_string("\t\tthe library modules.\n"),
+	io__write_string("\t--no-demangle\n"),
+	io__write_string("\t\tOuput the unmangled predicate and function names.\n"),
 
 
 	io__write_string("\nVerbosity Options:\n"),
