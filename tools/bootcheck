@@ -89,7 +89,7 @@ root=`/bin/pwd`
 
 [ -d stage1 ] || mkdir stage1
 
-cp $root/compiler/mercury_compile stage1
+cp compiler/mercury_compile stage1
 MERCURY_COMPILER=$root/stage1/mercury_compile
 export MERCURY_COMPILER
 MERCURY_INT_DIR=$root/stage2/library
@@ -99,24 +99,29 @@ export MERCURY_INT_DIR
 
 [ -d stage2 ] || mkdir stage2
 $keep_stage_2 || /bin/rm -fr stage2/*
-mkdir stage2/compiler
-mkdir stage2/library
-ln -s $root/compiler/*.m stage2/compiler
-# ln -s $root/compiler/*.m.in stage2/compiler
-ln -s $root/compiler/Mmake* stage2/compiler
-ln -s $root/library/*.m stage2/library
-# ln -s $root/library/*.m.in stage2/library
-ln -s $root/library/*.nl stage2/library
-ln -s $root/library/Mmake* stage2/library
-ln -s $root/library/library.init stage2/library
-ln -s $root/boehm_gc stage2/boehm_gc
-ln -s $root/doc stage2/doc
-ln -s $root/runtime stage2/runtime
-ln -s $root/scripts stage2/scripts
-ln -s $root/util stage2/util
-ln -s $root/profiler stage2/profiler
-ln -s $root/Mmake* stage2
-ln -s $root/conf* stage2
+cd stage2
+mkdir compiler
+cd compiler
+ln -s ../../compiler/*.m .
+ln -s ../../compiler/Mmake* .
+cd ..
+mkdir library
+cd library
+ln -s ../../library/*.m .
+ln -s ../../library/*.nl .
+ln -s ../../library/Mmake* .
+ln -s ../../library/library.init .
+cd ..
+ln -s ../boehm_gc .
+ln -s ../doc .
+ln -s ../runtime .
+ln -s ../scripts .
+ln -s ../util .
+ln -s ../profiler .
+ln -s ../Mmake* .
+ln -s ../conf* .
+rm -f config*.log
+cd ..
 
 if (cd stage2 ; mmake $mmake_opts depend)
 then
@@ -169,24 +174,29 @@ export MERCURY_INT_DIR
 
 [ -d stage3 ] || mkdir stage3
 $keep_stage_3 || /bin/rm -fr stage3/*
-mkdir stage3/compiler
-mkdir stage3/library
-ln -s $root/stage2/compiler/*.m stage3/compiler
-# ln -s $root/stage2/compiler/*.m.in stage3/compiler
-ln -s $root/stage2/compiler/Mmake* stage3/compiler
-ln -s $root/stage2/library/*.m stage3/library
-# ln -s $root/stage2/library/*.m.in stage3/library
-ln -s $root/stage2/library/*.nl stage3/library
-ln -s $root/stage2/library/Mmake* stage3/library
-ln -s $root/stage2/library/library.init stage3/library
-ln -s $root/stage2/boehm_gc stage3/boehm_gc
-ln -s $root/stage2/doc stage3/doc
-ln -s $root/stage2/runtime stage3/runtime
-ln -s $root/stage2/scripts stage3/scripts
-ln -s $root/stage2/util stage3/util
-ln -s $root/stage2/profiler stage3/profiler
-ln -s $root/stage2/Mmake* stage3
-ln -s $root/stage2/conf* stage3
+cd stage3
+mkdir compiler
+cd compiler
+ln -s ../../compiler/*.m .
+ln -s ../../compiler/Mmake* .
+cd ..
+mkdir library
+cd library
+ln -s ../../library/*.m .
+ln -s ../../library/*.nl .
+ln -s ../../library/Mmake* .
+ln -s ../../library/library.init .
+cd ..
+ln -s ../boehm_gc .
+ln -s ../doc .
+ln -s ../runtime .
+ln -s ../scripts .
+ln -s ../util .
+ln -s ../profiler .
+ln -s ../Mmake* .
+ln -s ../conf* .
+rm -f config*.log
+cd ..
 
 if (cd stage3 ; mmake $mmake_opts depend)
 then
