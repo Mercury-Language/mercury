@@ -1,6 +1,6 @@
 % ---------------------------------------------------------------------------- %
 % bitmap.m
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
+% Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
 % Thu Feb  1 14:38:31 GMT 2001
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
 %
@@ -115,7 +115,7 @@
     % Set operations; the second argument is altered in all cases.
     %
 :- func complement(bitmap) = bitmap.
-:- mode complement(bitmap_ui) = bitmap_uo is det.
+:- mode complement(bitmap_di) = bitmap_uo is det.
 
 :- func union(bitmap, bitmap) = bitmap.
 :- mode union(bitmap_ui, bitmap_di) = bitmap_uo is det.
