@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -186,6 +186,13 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     SUCCESS_INDICATOR = (S == null);
+").
+
+:- pragma foreign_proc("Java",
+    null(S::in),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    succeeded = (S == null);
 ").
 
 :- pred get_functor_2(type_desc__type_desc::in, int::in, string::out, int::out,
