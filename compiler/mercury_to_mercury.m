@@ -453,9 +453,13 @@ mercury_output_structured_inst(ground(Uniq, MaybePredInfo), Indent, VarSet)
 		;
 			{ PredOrFunc = function },
 			{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
-			io__write_string("(func("),
-			mercury_output_mode_list(ArgModes, VarSet),
-			io__write_string(") = "),
+			( { Modes = [] } ->
+				io__write_string("((func) = ")
+			;
+				io__write_string("(func("),
+				mercury_output_mode_list(ArgModes, VarSet),
+				io__write_string(") = ")
+			),
 			mercury_output_mode(RetMode, VarSet),
 			io__write_string(" is "),
 			mercury_output_det(Det),

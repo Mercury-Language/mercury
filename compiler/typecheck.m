@@ -2174,7 +2174,7 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 	Functor = cons(unqualified(ApplyName), _),
 	( ApplyName = "apply" ; ApplyName = "" ),
-	Arity >= 2,
+	Arity >= 1,
 	Arity1 is Arity - 1,
 	higher_order_func_type(Arity1, TypeVarSet, FuncType, ArgTypes, RetType),
 	ConsTypeInfos = [cons_type_info(TypeVarSet, RetType,
@@ -3523,7 +3523,7 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 			[]
 		)
 	;
-		{ PredName = unqualified("apply"), Arity >= 2 }
+		{ PredName = unqualified("apply"), Arity >= 1 }
 	->
 		report_error_apply_instead_of_pred(TypeCheckInfo)
 	;

@@ -119,7 +119,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		HowToCheckGoal \= check_unique_modes,
 		ConsId0 = cons(unqualified(ApplyName), _),
 		( ApplyName = "apply" ; ApplyName = "" ),
-		Arity >= 2,
+		Arity >= 1,
 		ArgVars0 = [FuncVar | FuncArgVars]
 	->
 		%
