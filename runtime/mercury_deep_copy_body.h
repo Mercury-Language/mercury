@@ -749,7 +749,11 @@ copy_type_info(MR_TypeInfo type_info,
         }
 
         /* compute how many words to reserve for the forwarding pointer */
-        forwarding_pointer_size = (use_forwarding_pointers() ? 1 : 0);
+#ifdef MR_NATIVE_GC
+        forwarding_pointer_size = 1;
+#else
+        forwarding_pointer_size = 0;
+#endif
 
         if (MR_type_ctor_has_variable_arity(type_ctor_info)) {
             arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
@@ -811,7 +815,11 @@ copy_typeclass_info(MR_Word typeclass_info_param,
         base_typeclass_info = (MR_Word *) *typeclass_info;
 
         /* compute how many words to reserve for the forwarding pointer */
-        forwarding_pointer_size = (use_forwarding_pointers() ? 1 : 0);
+#ifdef MR_NATIVE_GC
+        forwarding_pointer_size = 1;
+#else
+        forwarding_pointer_size = 0;
+#endif
 
         num_instance_constraints =
             MR_typeclass_info_num_instance_constraints(typeclass_info);

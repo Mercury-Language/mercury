@@ -40,9 +40,6 @@
 #undef  copy_typeclass_info
 #define copy_typeclass_info	MR_deep_copy_typeclass_info
 
-#undef  use_forwarding_pointers
-#define use_forwarding_pointers() MR_FALSE
-
 #undef  if_forwarding_pointer
 #define if_forwarding_pointer(Data, ACTION)
 
@@ -81,9 +78,6 @@
 #else
   #define FORWARD_DEBUG_MSG(Msg, Data) ((void)0)
 #endif
-
-#undef  use_forwarding_pointers
-#define use_forwarding_pointers() MR_TRUE
 
 /*
 ** This points to a bitmap, which is used to record which objects
