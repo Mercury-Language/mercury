@@ -174,7 +174,8 @@ MR_trace_real(const MR_Label_Layout *layout)
 			MR_Word		*saved_regs = event_info.MR_saved_regs;
 			int		max_r_num;
 			const char	*path;
-			bool    	stop_collecting = FALSE;
+			bool		stop_collecting = FALSE;
+			int		lineno = 0;
 
 			max_r_num = layout->MR_sll_entry->MR_sle_max_r_num;
 			if (max_r_num + MR_NUM_SPECIAL_REG > 
@@ -193,8 +194,11 @@ MR_trace_real(const MR_Label_Layout *layout)
 			MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, 
 				saved_regs);
 			MR_trace_init_point_vars(layout, saved_regs, port);
+
+			lineno = MR_get_line_number(saved_regs, layout, port);
+
 			MR_COLLECT_filter(MR_trace_ctrl.MR_filter_ptr, seqno,
-				depth, port, layout, path, &stop_collecting);
+				depth, port, layout, path, lineno, &stop_collecting);
 			MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, 
 				saved_regs);
 			if (stop_collecting) {

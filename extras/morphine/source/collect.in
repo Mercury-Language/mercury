@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes.
 
 :- module collect.
 
@@ -15,10 +15,10 @@
 :- pred filter(event_number, call_number, depth_number, trace_port_type,
         pred_or_func, declared_module_name, defined_module_name, proc_name,
         arity, mode_number, arguments, determinism, goal_path_string,
-        collected_type, collected_type, char).
+        line_number, collected_type, collected_type, char).
 
-:- mode filter(in, in, in, in, in, in, in, in, in, in, in, in, in, acc_in, acc_out, out)
-        is det.
+:- mode filter(in, in, in, in, in, in, in, in, in, in, in, in, in, in, 
+	acc_in, acc_out, out) is det.
 
 :- pred send_collect_result(collected_type, io__output_stream, io__state,
 	io__state).  
@@ -30,7 +30,7 @@
 :- implementation.
 
 :- pragma export(initialize(out), "ML_COLLECT_initialize").
-:- pragma export(filter(in, in, in, in, in, in, in, in, in, in, in, in, in,
+:- pragma export(filter(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	acc_in, acc_out, out), "ML_COLLECT_filter").
 :- pragma export(send_collect_result(in, in, di, uo), 
 	"ML_COLLECT_send_collect_result").
@@ -86,6 +86,8 @@
 	
 :- type goal_path_string == string.
 
+:- type line_number == int.
+
 :- type procedure ---> 
 	proc(pred_or_func, declared_module_name, proc_name, arity, mode_number).
 
@@ -105,7 +107,8 @@
 		mode_number,
 		arguments,
 		determinism,
-		goal_path_string).
+		goal_path_string,
+		line_number).
 
 :- func chrono(event::in) = (event_number::out) is det.
 :- func call(event::in) = (call_number::out) is det.
@@ -120,6 +123,7 @@
 :- func proc(event::in) = (procedure::out) is det.
 :- func determinism(event::in) = (determinism::out) is det.
 :- func goal_path(event::in) = (goal_path_string::out) is det.
+:- func line_number(event::in) = (line_number::out) is det.
 :- func arguments(event::in) = (arguments::out) is det.
 
 :- pragma inline(chrono/1).
@@ -134,50 +138,54 @@
 :- pragma inline(proc_mode_number/1).
 :- pragma inline(determinism/1).
 :- pragma inline(goal_path/1).
+:- pragma inline(line_number/1).
 :- pragma inline(arguments/1).
 
 chrono(Event) = Chrono :-
-	Event = event(Chrono, _, _, _, _, _, _, _, _, _, _, _, _).
+	Event = event(Chrono, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 call(Event) = Call :-
-	Event = event(_, Call, _, _, _, _, _, _, _, _, _, _, _).
+	Event = event(_, Call, _, _, _, _, _, _, _, _, _, _, _, _).
 
 depth(Event) = Depth :-
-	Event = event(_, _, Depth, _, _, _, _, _, _, _, _, _, _).
+	Event = event(_, _, Depth, _, _, _, _, _, _, _, _, _, _, _).
 
 port(Event) = Port :-
-	Event = event(_, _, _, Port, _, _, _, _, _, _, _, _, _).
+	Event = event(_, _, _, Port, _, _, _, _, _, _, _, _, _, _).
 
 proc_type(Event) = ProcType :-
-	Event = event(_, _, _, _, ProcType, _, _, _, _, _, _, _, _).
+	Event = event(_, _, _, _, ProcType, _, _, _, _, _, _, _, _, _).
 
 decl_module(Event) = DeclModule :-
-	Event = event(_, _, _, _, _, DeclModule, _, _, _, _, _, _, _).
+	Event = event(_, _, _, _, _, DeclModule, _, _, _, _, _, _, _, _).
 
 def_module(Event) = DefModule :-
-	Event = event(_, _, _, _, _, _, DefModule, _, _, _, _, _, _).
+	Event = event(_, _, _, _, _, _, DefModule, _, _, _, _, _, _, _).
 
 proc_name(Event) = ProcName :-
-	Event = event(_, _, _, _, _, _, _, ProcName, _, _, _, _, _).
+	Event = event(_, _, _, _, _, _, _, ProcName, _, _, _, _, _, _).
 
 proc_arity(Event) = ProcArity :-
-	Event = event(_, _, _, _, _, _, _, _, ProcArity, _, _, _, _).
+	Event = event(_, _, _, _, _, _, _, _, ProcArity, _, _, _, _, _).
 
 proc_mode_number(Event) = ModeNumber :-
-	Event = event(_, _, _, _, _, _, _, _, _, ModeNumber, _, _, _).
+	Event = event(_, _, _, _, _, _, _, _, _, ModeNumber, _, _, _, _).
 
 proc(Event) = (proc(ProcType, DeclModule, Name, Arity, ModeNum)) :-
 	Event = event(_, _, _, _, ProcType, DeclModule, _, Name, Arity,
-			ModeNum, _, _, _).
+			ModeNum, _, _, _, _).
 
 arguments(Event) = ListArg :-
-	Event = event(_, _, _, _, _, _, _, _, _, _, ListArg, _, _).
+	Event = event(_, _, _, _, _, _, _, _, _, _, ListArg, _, _, _).
 
 determinism(Event) = Determinism :-
-	Event = event(_, _, _, _, _, _, _, _, _, _, _, Determinism, _).
+	Event = event(_, _, _, _, _, _, _, _, _, _, _, Determinism, _, _).
 
 goal_path(Event) = GoalPath :-
-	Event = event(_, _, _, _, _, _, _, _, _, _, _, _, GoalPath).
+	Event = event(_, _, _, _, _, _, _, _, _, _, _, _, GoalPath, _).
+
+line_number(Event) = LineNumber :-
+	Event = event(_, _, _, _, _, _, _, _, _, _, _, _, _, LineNumber).
 
 
 % Type of the fourth argument of filter/4 which tells whether to stop collecting
@@ -188,10 +196,10 @@ goal_path(Event) = GoalPath :-
 
 filter(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc, DeclModuleName,
 		DefModuleName, PredName, Arity, ModeNum, Arguments, Determinism, 
-		Path, AccIn, AccOut, Char) :- 
+		Path, LN, AccIn, AccOut, Char) :- 
 	filter(event(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
 		DeclModuleName, DefModuleName, PredName, Arity, ModeNum,
-		Arguments, Determinism, Path), AccIn, AccOut, StopOrContinue),
+		Arguments, Determinism, Path, LN), AccIn, AccOut, StopOrContinue),
 	(
 		StopOrContinue = continue,
 		Char = 'n'

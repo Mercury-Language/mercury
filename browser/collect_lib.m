@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,7 @@
 %		   variable that will contain the result of the monitoring
 %		   activity.
 %		2) The predicate initialize/1 which initializes the 
-%		   collecting variable. initialize/1 should have the
+%		   collecting variable. initialize/1 should respect the
 %		   following declarations:
 %			:- pred initialize(collected_type).
 %			:- mode initialize(out) is det.
@@ -30,7 +30,7 @@
 %		   stops; if it is set to `continue', it continues. If this  
 %		   variable is always set to `continue', the collecting will 
 %		   process until the last event is reached. filter/4 should 
-%		   follow the following declarations:
+%		   respect the following declarations:
 %			:- pred filter(event, collected_type, collected_type,
 %				stop_or_continue).
 %			:- mode filter(in, di, uo, out) is det.
@@ -91,7 +91,7 @@ link_collect(ObjectFile, Filter, Initialize, SendResult, GetCollectType,
 		{ MaybeHandle = ok(Handle) },
  		%
  		% Look up the address of the C functions corresponding to the 
-		% initialize/1 and filter/14 predicates in the collect module.
+		% initialize/1 and filter/15 predicates in the collect module.
  		%
 		dl__sym(Handle, "ML_COLLECT_initialize", MaybeInitialize),
 		dl__sym(Handle, "ML_COLLECT_filter", MaybeFilter),

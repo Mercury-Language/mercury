@@ -191,8 +191,8 @@ typedef enum {
 
 typedef void (*MR_FilterFuncPtr)(MR_Integer, MR_Integer,
 	MR_Integer, MR_Word, MR_Word, MR_String, MR_String, MR_String,
-	MR_Integer, MR_Integer, MR_Word, MR_Integer, MR_String, MR_Word,
-	MR_Word *, MR_Char *);
+	MR_Integer, MR_Integer, MR_Word, MR_Integer, MR_String, MR_Integer,
+	MR_Word, MR_Word *, MR_Char *);
 
 typedef struct {
 	MR_Trace_Cmd_Type	MR_trace_cmd;	

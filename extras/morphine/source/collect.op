@@ -76,7 +76,8 @@ each event attributes, please refer to the morphine Reference Manual):\n\
 		arity,\n\
 		mode_number,\n\
 		determinism,\n\
-		goal_path_string).\n\
+		goal_path_string,\n\
+	        line_number).\n\
 \n\
 :- type event_number == int.\n\
 :- type call_number == int.\n\
@@ -107,6 +108,7 @@ each event attributes, please refer to the morphine Reference Manual):\n\
 :- type mode_number == int.\n\
 :- type determinism == int. \n\
 :- type goal_path_string == string.\n\
+:- type line_number == int.\n\
 :- type procedure ---> proc(\n\
 	pred_or_func, \n\
 	declarated_module_name, \n\
@@ -130,6 +132,7 @@ Here are functions that eases the access to event attributes:\n\
 :- func proc(event::in) = (procedure::out) is det.\n\
 :- func determinism(event::in) = (determinism::out) is det.\n\
 :- func goal_path(event::in) = (goal_path_string::out) is det.\n\
+:- func line_number(event::in) = (line_number::out) is det.\n\
 :- func arguments(event::in) = (arguments::out) is det. (*)\n\
 \n\
 (*) To be able to retrieve arguments, you to need to have the opium parameter \n\
