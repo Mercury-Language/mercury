@@ -160,7 +160,7 @@
 
 :- implementation.
 
-:- import_module require, std_util.
+:- import_module bintree_set, require, std_util.
 
 list__nth_member_search([X | Xs], Y, N) :-
 	( X = Y ->
@@ -351,6 +351,29 @@ list__partition([Head|Tail], Partition, Low, High) :-
 		High = [Head|High1]
 	).
 
+
+list__remove_dups(Xs, Ys) :-
+	bintree_set__init(Zs0),
+	list__remove_dups_2(Xs, Zs0, Ys).
+
+:- pred list__remove_dups_2(list(T), bintree_set(T), list(T)).
+:- mode list__remove_dups_2(in, in, out) is det.
+
+list__remove_dups_2([], _SoFar, []).
+list__remove_dups_2([X|Xs], SoFar0, Zs) :-
+	(
+		bintree_set__member(X, SoFar0)
+	->
+		list__remove_dups_2(Xs, SoFar0, Zs)
+	;
+		bintree_set__insert(SoFar0, X, SoFar),
+		list__remove_dups_2(Xs, SoFar, Ys),
+		Zs = [X|Ys]
+	).
+
+/*
+	% This implementation of list__remove_dups
+	% only works for sorted lists.
 list__remove_dups([], []).
 list__remove_dups([X|Xs], L) :-
 	list__remove_dups_2(Xs, X, L).
@@ -366,6 +389,7 @@ list__remove_dups_2([X1|Xs], X0, L) :-
 		L = [X0 | L0],
 		list__remove_dups_2(Xs, X1, L0)
 	).
+*/
 
 list__zip([], Bs, Bs).
 list__zip([A|As], Bs, [A|Cs]) :-

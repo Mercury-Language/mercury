@@ -188,7 +188,7 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 	% equality predicate for each polymorphic type in the predicate's
 	% type declaration
 	term__vars_list(ArgTypes, HeadTypeVars0),
-	list__sort(HeadTypeVars0, HeadTypeVars), % remove duplicates
+	list__remove_dups(HeadTypeVars0, HeadTypeVars), % remove duplicates
 	polymorphism__make_head_vars(HeadTypeVars, ArgTypeVarSet,
 					VarSet0, VarTypes0,
 				ExtraHeadVars, VarSet1, VarTypes1),
@@ -388,7 +388,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 		ExtraVars = [],
 		Info = Info0
 	;
-		list__sort(PredTypeVars0, PredTypeVars), % eliminate duplicates
+		list__remove_dups(PredTypeVars0, PredTypeVars), % eliminate duplicates
 		map__apply_to_list(ArgVars0, VarTypes0, ActualArgTypes),
 		map__keys(TypeInfoMap, HeadTypeVars),
 		map__init(TypeSubst0),
