@@ -42,6 +42,7 @@ PROGS=		array_test \
 		float_test \
 		frameopt_mkframe_bug \
 		higher_order \
+		integer_test \
 		intermod_type \
 		liveness \
 		liveness2 \

@@ -12,3 +12,4 @@ array_test prune_switch
 common_type_cast
 mode_inf
 intermod_type
+integer_test
