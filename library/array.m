@@ -382,9 +382,14 @@
 :- pragma export(array_equal(in, in), "ML_array_equal").
 
 array_equal(Array1, Array2) :-
-	array__size(Array1, Size),
-	array__size(Array2, Size),
-	array__equal_elements(0, Size, Array1, Array2).
+	( if
+		array__size(Array1, Size),
+		array__size(Array2, Size)
+	then
+		array__equal_elements(0, Size, Array1, Array2)
+	else
+		fail
+	).
 
 :- pred array__equal_elements(int, int, array(T), array(T)).
 :- mode array__equal_elements(in, in, in, in) is semidet.
@@ -656,16 +661,25 @@ array__in_bounds(Array, Index) :-
 	Min =< Index, Index =< Max.
 
 array__semidet_lookup(Array, Index, Item) :-
-	array__in_bounds(Array, Index),
-	array__lookup(Array, Index, Item).
+	( if array__in_bounds(Array, Index) then
+		array__unsafe_lookup(Array, Index, Item)
+	else
+		fail
+	).
 
 array__semidet_set(Array0, Index, Item, Array) :-
-	array__in_bounds(Array0, Index),
-	array__set(Array0, Index, Item, Array).
+	( if array__in_bounds(Array0, Index) then
+		array__unsafe_set(Array0, Index, Item, Array)
+	else
+		fail
+	).
 
 array__semidet_slow_set(Array0, Index, Item, Array) :-
-	array__in_bounds(Array0, Index),
-	array__slow_set(Array0, Index, Item, Array).
+	( if array__in_bounds(Array0, Index) then
+		array__slow_set(Array0, Index, Item, Array)
+	else
+		fail
+	).
 
 array__slow_set(Array0, Index, Item, Array) :-
 	array__copy(Array0, Array1),
