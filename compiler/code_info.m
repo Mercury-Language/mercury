@@ -1368,7 +1368,7 @@ code_info__lval_contains(field(_, Rval0, Rval1), Lval) :-
 	).
 
 :- pred code_info__rval_contains(rval, lval).
-:- mode code_info__rval_contains(in ,in) is semidet.
+:- mode code_info__rval_contains(in, in) is semidet.
 
 code_info__rval_contains(lval(Lval0), Lval1) :-
 	code_info__lval_contains(Lval0, Lval1).
@@ -2075,6 +2075,9 @@ code_info__generate_nondet_saves_2([Var - StackThing|VarSlots], Code) -->
 
 %---------------------------------------------------------------------------%
 
+		% Generate code to swap the contents of
+		% the register out of the way
+
 :- pred code_info__swap_out_reg(reg, code_tree, code_info, code_info).
 :- mode code_info__swap_out_reg(in, out, in, out) is det.
 
@@ -2083,12 +2086,12 @@ code_info__swap_out_reg(Reg, Code) -->
 	(
 		{ map__search(Registers, Reg, RegContents) }
 	->
-			% Generate code to swap the contents of
-			% the register out of the way
-		code_info__shuffle_registers_2(Reg, [], RegContents, Code)
+		{ Contents = RegContents }
 	;
-		{ Code = empty }
-	).
+		{ set__init(NoVars) },
+		{ Contents = vars(NoVars) }
+	),
+	code_info__shuffle_registers_2(Reg, [], Contents, Code).
 
 %---------------------------------------------------------------------------%
 
