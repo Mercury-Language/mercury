@@ -17,7 +17,7 @@
 :- interface.
 :- import_module bool, io, std_util, list, set, term, string, int, float.
 :- import_module library.
-:- import_module tree, shapes.
+:- import_module tree, shapes, export.
 
 %-----------------------------------------------------------------------------%
 
@@ -43,15 +43,24 @@
 			string,			% module name
 			list(c_procedure) 	% code
 		)
+
 		% some C code from a pragma(c_code) declaration
 	;	c_code(
 			string,			% C code
 			term__context		% source code location
+		)
+
+		% Code from pragma(export, ...) decls.
+	;	c_export(
+			list(c_export)		
 		).
 
 :- type c_procedure	--->	c_procedure(string, int, llds__proc_id,
 						list(instruction)).
 			%	predicate name, arity, mode, code
+
+:- type c_export	==	string.
+
 :- type llds__proc_id == int.
 
 :- type code_tree	==	tree(list(instruction)).
@@ -322,6 +331,11 @@
 :- pred output_proc_label(proc_label, io__state, io__state).
 :- mode output_proc_label(in, di, uo) is det.
 
+	% Get a proc label string (used by procs which are exported to C).
+
+:- pred get_proc_label(proc_label, string).
+:- mode get_proc_label(in, out) is det.
+
 	% Mangle an arbitrary name into a C identifier
 
 :- pred llds__name_mangle(string, string).
@@ -344,7 +358,7 @@ output_c_file(C_File) -->
 		output_c_file_init(BaseName, Modules),
 		output_c_file_list(Modules, 1, BaseName, C_HeaderInfo)
 	;
-		output_single_c_file(C_File)
+		output_single_c_file(C_File, no)
 	).
 
 :- pred make_directory(string, io__state, io__state).
@@ -361,9 +375,8 @@ make_directory(DirName) -->
 
 output_c_file_list([], _, _, _) --> [].
 output_c_file_list([Module|Modules], Num, BaseName, C_HeaderLines) -->
-	{ string__format("%s.dir/%s_%03d", [s(BaseName), s(BaseName), i(Num)],
-		NewName) },
-	output_single_c_file(c_file(NewName, C_HeaderLines, [Module])),
+	output_single_c_file(c_file(BaseName, C_HeaderLines, [Module]),
+		yes(Num)),
 	{ Num1 is Num + 1 },
 	output_c_file_list(Modules, Num1, BaseName, C_HeaderLines).
 
@@ -390,7 +403,6 @@ output_c_file_init(BaseName, Modules) -->
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
 		io__write_string("#include ""imp.h""\n"),
-		io__write_string("\n"),
 		output_c_module_init_list(BaseName, Modules),
 		io__told
 	;
@@ -403,11 +415,17 @@ output_c_file_init(BaseName, Modules) -->
 		io__set_exit_status(1)
 	).
 
-:- pred output_single_c_file(c_file, io__state, io__state).
-:- mode output_single_c_file(in, di, uo) is det.
+:- pred output_single_c_file(c_file, maybe(int), io__state, io__state).
+:- mode output_single_c_file(in, in, di, uo) is det.
 
-output_single_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
-	{ string__append(BaseName, ".c", FileName) },
+output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles) 
+		-->
+	( { SplitFiles = yes(Num) } ->
+		{ string__format("%s.dir/%s_%03d.c", [s(BaseName), s(BaseName), 
+			i(Num)], FileName) }
+	;
+		{ string__append(BaseName, ".c", FileName) }
+	),
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
@@ -417,8 +435,7 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
 			["/*\n** Automatically generated from `", BaseName,
 			".m' by the\n** Mercury compiler, version ", Version,
 			".  Do not edit.\n*/\n"]),
-		globals__io_lookup_bool_option(split_c_files, SplitFiles),
-		( { SplitFiles = yes } ->
+		( { SplitFiles = yes(_) } ->
 			[]
 		;
 			io__write_string("/*\n"),
@@ -430,9 +447,9 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
 		),
 		io__write_string("#include ""imp.h""\n"),
 		output_c_header_include_lines(C_HeaderLines),
-		output_c_module_list(Modules),
+		output_c_module_list(Modules, BaseName),
 		io__write_string("\n"),
-		( { SplitFiles = yes } ->
+		( { SplitFiles = yes(_) } ->
 			[]
 		;
 			output_c_module_init_list(BaseName, Modules)
@@ -481,6 +498,8 @@ output_c_module_init_list(BaseName, Modules) -->
 :- mode output_c_module_init_list_2(in, in, in, in, in, out, di, uo) is det.
 
 output_c_module_init_list_2([], _, _, _, InitFunc, InitFunc) --> [].
+output_c_module_init_list_2([c_export(_) | Ms], A, B, C, D, E) -->
+	output_c_module_init_list_2(Ms, A, B, C, D, E).
 output_c_module_init_list_2([c_code(_, _) | Ms], A, B, C, D, E) -->
 	output_c_module_init_list_2(Ms, A, B, C, D, E).
 output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
@@ -554,18 +573,18 @@ output_module_name(ModuleName0) -->
 	{ llds__name_mangle(ModuleName0, ModuleName) },
 	io__write_string(ModuleName).
 
-:- pred output_c_module_list(list(c_module), io__state, io__state).
-:- mode output_c_module_list(in, di, uo) is det.
+:- pred output_c_module_list(list(c_module), string, io__state, io__state).
+:- mode output_c_module_list(in, in, di, uo) is det.
 
-output_c_module_list([]) --> [].
-output_c_module_list([M|Ms]) -->
-	output_c_module(M),
-	output_c_module_list(Ms).
+output_c_module_list([], _) --> [].
+output_c_module_list([M|Ms], BaseName) -->
+	output_c_module(M, BaseName),
+	output_c_module_list(Ms, BaseName).
 
-:- pred output_c_module(c_module, io__state, io__state).
-:- mode output_c_module(in, di, uo) is det.
+:- pred output_c_module(c_module, string, io__state, io__state).
+:- mode output_c_module(in, in, di, uo) is det.
 
-output_c_module(c_code(C_Code, Context)) -->
+output_c_module(c_code(C_Code, Context), _) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
@@ -577,7 +596,7 @@ output_c_module(c_code(C_Code, Context)) -->
 	io__write_string(C_Code),
 	io__write_string("\n").
 
-output_c_module(c_module(ModuleName, Procedures)) -->
+output_c_module(c_module(ModuleName, Procedures), _) -->
 	{ gather_labels(Procedures, Labels) },
 	io__write_string("\n"),
 	output_c_label_decl_list(Labels),
@@ -592,6 +611,24 @@ output_c_module(c_module(ModuleName, Procedures)) -->
 	globals__io_lookup_bool_option(emit_c_loops, EmitCLoops),
 	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
+
+output_c_module(c_export(PragmaExports), BaseName) -->
+	(
+		{ PragmaExports = [_|_] }
+	->
+		globals__io_lookup_bool_option(split_c_files, SplitFiles),
+		( { SplitFiles = yes } ->
+			io__write_strings(
+				["#include ""../", BaseName, ".h""\n"])
+		;
+			io__write_strings(["#include """, BaseName, ".h""\n"])
+		),
+		output_exported_c_functions(PragmaExports)
+	;
+		% Don't spit out a #include if there are no pragma(export,...)s
+		[]	
+	).
+
 
 	% output_c_header_include_lines reverses the list of c header lines
 	% and passes them to output_c_header_include_lines_2 which outputs them.
@@ -622,6 +659,14 @@ output_c_header_include_lines_2([Code - Context|Hs]) -->
 	io__write_string(Code),
 	io__write_string("\n"),
 	output_c_header_include_lines_2(Hs).
+
+
+:- pred output_exported_c_functions(list(string), io__state, io__state).
+:- mode output_exported_c_functions(in, di, uo) is det.
+output_exported_c_functions([]) --> [].
+output_exported_c_functions([F|Fs]) -->
+	io__write_string(F),
+	output_exported_c_functions(Fs).
 
 :- pred output_c_label_decl_list(list(label), io__state, io__state).
 :- mode output_c_label_decl_list(in, di, uo) is det.
@@ -1161,17 +1206,7 @@ output_pragma_decls([]) --> [].
 output_pragma_decls([D|Decls]) -->
 	{ D = pragma_c_decl(Type, VarName) },
 		% Apart from special cases, the local variables are Words
-        { Type = term__functor(term__atom("int"), [], _) ->
-                VarType = "Integer"
-        ; Type = term__functor(term__atom("float"), [], _) ->
-                VarType = "Float"
-        ; Type = term__functor(term__atom("string"), [], _) ->
-                VarType = "String"
-        ; Type = term__functor(term__atom("character"), [], _) ->
-                VarType = "Char"
-        ;
-                VarType = "Word"
-        },
+	{ export__term_to_type_string(Type, VarType) },
 	io__write_string("\t\t"),
 	io__write_string(VarType),
 	io__write_string("\t"),
@@ -1774,25 +1809,28 @@ output_label(local(ProcLabel, Num)) -->
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)
 	io__write_int(Num).
 
-output_proc_label(proc(Module, Pred, Arity, ModeNum0)) -->
-	llds__output_label_name(Module, Pred, Arity),
-	io__write_string("_"),
-	io__write_int(Arity),
-	io__write_string("_"),
-	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
-	io__write_int(ModeNum).
+output_proc_label(ProcLabel) -->
+	{ get_proc_label(ProcLabel, ProcLabelString) },
+	io__write_string(ProcLabelString).
 
-output_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
-				ModeNum0)) -->
-	llds__output_label_name(Module, PredName, TypeArity),
-	io__write_string("_"),
-	{ llds__name_mangle(TypeName0, TypeName) },
-	io__write_string(TypeName),
-	io__write_string("_"),
-	io__write_int(TypeArity),
-	io__write_string("_"),
-	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
-	io__write_int(ModeNum).
+get_proc_label(proc(Module, Pred, Arity, ModeNum0),ProcLabelString) :-
+	get_label_name(Module, Pred, Arity, LabelName),
+	string__int_to_string(Arity, ArityString),
+	ModeNum is ModeNum0 mod 10000,		% strip off the priority
+	string__int_to_string(ModeNum, ModeNumString),
+	string__append_list([LabelName, "_", ArityString, "_", ModeNumString], 
+		ProcLabelString).
+
+get_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
+				ModeNum0), ProcLabelString) :-
+	get_label_name(Module, PredName, TypeArity, LabelName),
+	llds__name_mangle(TypeName0, TypeName),
+	string__int_to_string(TypeArity, TypeArityString),
+	ModeNum is ModeNum0 mod 10000,		% strip off the priority
+	string__int_to_string(ModeNum, ModeNumString),
+	string__append_list( [LabelName, "_", TypeName, 
+		"_", TypeArityString, "_", ModeNumString], 
+		ProcLabelString).
 
 
 %	llds__output_label_name/5 writes a name to standard out.  Depending
@@ -1801,47 +1839,50 @@ output_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
 
 :- pred llds__output_label_name(string, string, int, io__state, io__state).
 :- mode llds__output_label_name(in, in, in, di, uo) is det.
-llds__output_label_name(Module0, Name0, Arity) -->
-	output_label_prefix,
+llds__output_label_name(Module, Name, Arity) -->
+	{ get_label_name(Module, Name, Arity, LabelName) },
+	io__write_string(LabelName).
+
+:- pred get_label_name(string, string, int, string).
+:- mode get_label_name(in, in, in, out) is det.
+get_label_name(Module0, Name0, Arity, LabelName) :-
+	get_label_prefix(Prefix),
 	(
 		( 
-			{ Module0 = "mercury_builtin" }
+			Module0 = "mercury_builtin"
 		;
-			{ Name0 = "main" },
-			{ Arity = 2 }
+			Name0 = "main",
+			Arity = 2
 		;
-			{ string__append("__", _, Name0) }
+			string__append("__", _, Name0)
 		)
 		% The conditions above define which labels are printed without
 		% module qualification.  XXX Changes to runtime/* are necessary
 		% to allow `mercury_builtin' labels to be qualified/
 		% overloaded.
 	->
-		{ llds__name_mangle(Name0, Name) }
+		llds__name_mangle(Name0, Name),
+		string__append(Prefix, Name, LabelName)
 	;
-		{ string__append(Module0, "__", UnderscoresModule) },
-		( { string__append(UnderscoresModule, Name1, Name0) } ->
-			{ Name2 = Name1 }
+		string__append(Module0, "__", UnderscoresModule),
+		( string__append(UnderscoresModule, Name1, Name0) ->
+		 Name2 = Name1
 		;
-			{ Name2 = Name0 }
+			Name2 = Name0
 		),
-		{ llds__name_mangle(Module0, Module) },
-		{ llds__name_mangle(Name2, Name) },
-		io__write_string(Module),
-		io__write_string("__")
-	),
-	io__write_string(Name).
+		llds__name_mangle(Module0, Module),
+		llds__name_mangle(Name2, Name),
+		string__append_list([Prefix, Module, "__", Name], LabelName)
+	).
 
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.
 
-:- pred output_label_prefix(io__state, io__state).
-:- mode output_label_prefix(di, uo) is det.
+:- pred get_label_prefix(string).
+:- mode get_label_prefix(out) is det.
 
-output_label_prefix -->
-	io__write_string("mercury"),
-	io__write_string("__").
+get_label_prefix("mercury__"). 
 
 :- pred output_reg(reg, io__state, io__state).
 :- mode output_reg(in, di, uo) is det.

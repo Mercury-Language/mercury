@@ -106,6 +106,8 @@ garbage_out__create_cont_list([M |Ms], C_List) :-
 	  list__append(C, Cs, C_List)
 	; M = c_code(_, _),
 	  C_List = Cs
+	; M = c_export(_),
+	  C_List = Cs
 	).
 
 %-----------------------------------------------------------------------------%
