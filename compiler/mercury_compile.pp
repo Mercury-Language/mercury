@@ -27,7 +27,7 @@
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
 :- import_module int, map, set, std_util, dir, bintree, term, varset, hlds.
-:- import_module implication, negation, call_graph.
+:- import_module negation, call_graph.
 :- import_module common, require.
 
 
@@ -1105,11 +1105,10 @@ mercury_compile(module(Module, ShortDeps, LongDeps, Items0,
 		FoundSyntaxError)) -->
 	write_dependency_file(Module, ShortDeps, LongDeps),
 
-	implication__transform_operators(Items0, Items1),
-	negation__transform(Items1, Items2),
-	mercury_compile__expand_equiv_types(Items2, Items3),
+	negation__transform(Items0, Items1),
+	mercury_compile__expand_equiv_types(Items1, Items),
 
-	mercury_compile__make_hlds(Module, Items3, HLDS0, FoundSemanticError),
+	mercury_compile__make_hlds(Module, Items, HLDS0, FoundSemanticError),
 	mercury_compile__maybe_dump_hlds(HLDS0, "0", "initial"),
 
 #if NU_PROLOG

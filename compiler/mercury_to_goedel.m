@@ -18,7 +18,6 @@
 %	indent `ELSE IF' properly
 % 	translate mode declarations into delay declarations;
 %	translate Mercury's module system declarations into Goedel;
-%	add a command-line option to output line number comments
 %	preserve the comments in the original source code.
 
 %-----------------------------------------------------------------------------%
@@ -390,7 +389,7 @@ goedel_output_clause(VarSet, PredName, Args, Body, Context) -->
 	goedel_output_term(term__functor(term__atom(PredName2), Args, Context),
 			VarSet),
 	(
-		{ Body = true }
+		{ Body = true - Context }
 	->
 		[]
 	;
@@ -402,21 +401,27 @@ goedel_output_clause(VarSet, PredName, Args, Body, Context) -->
 :- pred goedel_output_goal(goal, varset, int, io__state, io__state).
 :- mode goedel_output_goal(in, in, in, di, uo) is det.
 
-goedel_output_goal(fail, _, _) -->
+goedel_output_goal(Goal - _Context, VarSet, Indent) -->
+	goedel_output_goal_2(Goal, VarSet, Indent).
+
+:- pred goedel_output_goal_2(goal_expr, varset, int, io__state, io__state).
+:- mode goedel_output_goal_2(in, in, in, di, uo) is det.
+
+goedel_output_goal_2(fail, _, _) -->
 	io__write_string("False").
 
-goedel_output_goal(true, _, _) -->
+goedel_output_goal_2(true, _, _) -->
 	io__write_string("True").
 
 	% Implication and equivalence should have been transformed out
 	% by now
-goedel_output_goal(implies(_G1,_G2), _VarSet, _Indent) -->
+goedel_output_goal_2(implies(_G1,_G2), _VarSet, _Indent) -->
 	{ error("mercury_to_goedel: implies/2 in goedel_output_goal")}.
 
-goedel_output_goal(equivalent(_G1,_G2), _VarSet, _Indent) -->
+goedel_output_goal_2(equivalent(_G1,_G2), _VarSet, _Indent) -->
 	{ error("mercury_to_goedel: equivalent/2 in goedel_output_goal")}.
 
-goedel_output_goal(some(Vars, Goal), VarSet, Indent) -->
+goedel_output_goal_2(some(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
 		goedel_output_goal(Goal, VarSet, Indent)
 	;
@@ -430,7 +435,7 @@ goedel_output_goal(some(Vars, Goal), VarSet, Indent) -->
 		io__write_string(")")
 	).
 
-goedel_output_goal(all(Vars, Goal), VarSet, Indent) -->
+goedel_output_goal_2(all(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
 		goedel_output_goal(Goal, VarSet, Indent)
 	;
@@ -444,7 +449,7 @@ goedel_output_goal(all(Vars, Goal), VarSet, Indent) -->
 		io__write_string(")")
 	).
 
-goedel_output_goal(if_then_else(Vars, A, B, C), VarSet, Indent) -->
+goedel_output_goal_2(if_then_else(Vars, A, B, C), VarSet, Indent) -->
 	io__write_string("(IF"),
 	goedel_output_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
@@ -461,7 +466,7 @@ goedel_output_goal(if_then_else(Vars, A, B, C), VarSet, Indent) -->
 	goedel_output_newline(Indent),
 	io__write_string(")").
 
-goedel_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
+goedel_output_goal_2(if_then(Vars, A, B), VarSet, Indent) -->
 	io__write_string("(IF"),
 	goedel_output_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
@@ -474,7 +479,7 @@ goedel_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
 	goedel_output_newline(Indent),
 	io__write_string(")").
 
-goedel_output_goal(not(Goal), VarSet, Indent) -->
+goedel_output_goal_2(not(Goal), VarSet, Indent) -->
 	io__write_string("(~"),
 	{ Indent1 is Indent + 1 },
 	goedel_output_newline(Indent1),
@@ -482,13 +487,13 @@ goedel_output_goal(not(Goal), VarSet, Indent) -->
 	goedel_output_newline(Indent),
 	io__write_string(")").
 
-goedel_output_goal((A,B), VarSet, Indent) -->
+goedel_output_goal_2((A,B), VarSet, Indent) -->
 	goedel_output_goal(A, VarSet, Indent),
 	io__write_string(" &"),
 	goedel_output_newline(Indent),
 	goedel_output_goal(B, VarSet, Indent).
 
-goedel_output_goal((A;B), VarSet, Indent) -->
+goedel_output_goal_2((A;B), VarSet, Indent) -->
 	io__write_string("("),
 	{ Indent1 is Indent + 1 },
 	goedel_output_newline(Indent1),
@@ -497,10 +502,10 @@ goedel_output_goal((A;B), VarSet, Indent) -->
 	goedel_output_newline(Indent),
 	io__write_string(")").
 
-goedel_output_goal(call(Term), VarSet, Indent) -->
+goedel_output_goal_2(call(Term), VarSet, Indent) -->
 	goedel_output_call(Term, VarSet, Indent).
 
-goedel_output_goal(unify(A, B), VarSet, _Indent) -->
+goedel_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	goedel_output_term(A, VarSet),
 	io__write_string(" = "),
 	goedel_output_term(B, VarSet).
@@ -510,18 +515,9 @@ goedel_output_goal(unify(A, B), VarSet, _Indent) -->
 
 goedel_output_call(term__variable(Var), VarSet, _Indent) -->
 	goedel_output_var(Var, VarSet).
-goedel_output_call(term__functor(Functor, Args, Context), VarSet, Indent) -->
+
+goedel_output_call(term__functor(Functor, Args, _Context), VarSet, _Indent) -->
 	(
-		{ Functor = term__atom("require"),
-		  Args = [Cond, Message]
-		}
-	->
-		% output `if Cond then true else error(Msg)'
-		{ parse_goal(Cond, VarSet, CondGoal, VarSet2) },
-		goedel_output_goal(if_then_else([], CondGoal, true,
-			call(term__functor(term__atom("error"), [Message],
-			Context))), VarSet2, Indent)
-	;
 		{ Args = [Arg1, Arg2],
 		  Functor = term__atom("is")
 		}
@@ -565,7 +561,7 @@ goedel_output_disj(Goal, VarSet, Indent) -->
 	{ Indent1 is Indent + 1 },
 	goedel_output_newline(Indent1),
 	(
-		{ Goal = (A;B) }
+		{ Goal = (A;B) - _Context }
 	->
 		goedel_output_goal(A, VarSet, Indent1),
 		goedel_output_disj(B, VarSet, Indent)

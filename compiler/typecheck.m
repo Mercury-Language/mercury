@@ -460,16 +460,18 @@ END JUNK ***************************/
 :- mode typecheck_goal(in, out, type_info_di, type_info_uo) is det.
 
 typecheck_goal(Goal0 - GoalInfo, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
-		% XXX prog_io.nl and make_hlds.nl don't set up the
-		%     goal_info context, so we have to just use the clause
-		%     context.
-	% { goal_info_context(GoalInfo, Context) },
-	% type_info_set_context(Context),
+	goal_info_context(GoalInfo, Context),
+	term__context_init(EmptyContext),
+	( Context = EmptyContext ->
+		TypeInfo1 = TypeInfo0
+	;
+		type_info_set_context(Context, TypeInfo0, TypeInfo1)
+	),
 
 		% type-check the goal
-	typecheck_goal_2(Goal0, Goal, TypeInfo0, TypeInfo1),
+	typecheck_goal_2(Goal0, Goal, TypeInfo1, TypeInfo2),
 
-	check_warn_too_much_overloading(TypeInfo1, TypeInfo).
+	check_warn_too_much_overloading(TypeInfo2, TypeInfo).
 	
 :- pred typecheck_goal_2(hlds__goal_expr, hlds__goal_expr,
 				type_info, type_info).

@@ -35,7 +35,7 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.
-:- import_module code_util, unify_proc, type_util, implication.
+:- import_module code_util, unify_proc, type_util.
 
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
@@ -918,38 +918,44 @@ delete_all([X | Xs], Y, L, Found) :-
 :- pred vars_in_goal(goal, list(var), list(var)).
 :- mode vars_in_goal(in, in, out) is det.
 
-vars_in_goal(true) --> [].
-vars_in_goal(fail) --> [].
-vars_in_goal((A,B)) -->
+vars_in_goal(Goal - _Context) -->
+	vars_in_goal_2(Goal).
+
+:- pred vars_in_goal_2(goal_expr, list(var), list(var)).
+:- mode vars_in_goal_2(in, in, out) is det.
+
+vars_in_goal_2(true) --> [].
+vars_in_goal_2(fail) --> [].
+vars_in_goal_2((A,B)) -->
 	vars_in_goal(A),
 	vars_in_goal(B).
-vars_in_goal((A;B)) -->
+vars_in_goal_2((A;B)) -->
 	vars_in_goal(A),
 	vars_in_goal(B).
-vars_in_goal(not(G)) -->
+vars_in_goal_2(not(G)) -->
 	vars_in_goal(G).
-vars_in_goal(some(Vs, G)) -->
+vars_in_goal_2(some(Vs, G)) -->
 	list__append(Vs),
 	vars_in_goal(G).
-vars_in_goal(all(Vs, G)) -->
+vars_in_goal_2(all(Vs, G)) -->
 	list__append(Vs),
 	vars_in_goal(G).
-vars_in_goal(implies(A,B)) -->
+vars_in_goal_2(implies(A,B)) -->
 	vars_in_goal(A),
 	vars_in_goal(B).
-vars_in_goal(equivalent(A,B)) -->
+vars_in_goal_2(equivalent(A,B)) -->
 	vars_in_goal(A),
 	vars_in_goal(B).
-vars_in_goal(unify(A, B)) -->
+vars_in_goal_2(unify(A, B)) -->
 	vars_in_term(A),
 	vars_in_term(B).
-vars_in_goal(call(Term)) -->
+vars_in_goal_2(call(Term)) -->
 	vars_in_term(Term).
-vars_in_goal(if_then(Vars,A,B)) -->
+vars_in_goal_2(if_then(Vars,A,B)) -->
 	list__append(Vars),
 	vars_in_goal(A),
 	vars_in_goal(B).
-vars_in_goal(if_then_else(Vars,A,B,C)) -->
+vars_in_goal_2(if_then_else(Vars,A,B,C)) -->
 	list__append(Vars),
 	vars_in_goal(A),
 	vars_in_goal(B),
@@ -1009,28 +1015,35 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
 :- pred transform_goal(goal, varset, substitution, hlds__goal, varset).
 :- mode transform_goal(in, in, in, out, out) is det.
 
-transform_goal(fail, VarSet, _, disj([]) - GoalInfo, VarSet) :-
+transform_goal(Goal0 - Context, VarSet0, Subst, Goal1 - GoalInfo1, VarSet) :-
+	transform_goal_2(Goal0, VarSet0, Subst, Goal1 - GoalInfo0, VarSet),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo1).
+
+:- pred transform_goal_2(goal_expr, varset, substitution, hlds__goal, varset).
+:- mode transform_goal_2(in, in, in, out, out) is det.
+
+transform_goal_2(fail, VarSet, _, disj([]) - GoalInfo, VarSet) :-
 	goal_info_init(GoalInfo).
 
-transform_goal(true, VarSet, _, conj([]) - GoalInfo, VarSet) :-
+transform_goal_2(true, VarSet, _, conj([]) - GoalInfo, VarSet) :-
 	goal_info_init(GoalInfo).
 
 	% Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
 
-transform_goal(all(Vars0, Goal0), VarSet0, Subst,
+transform_goal_2(all(Vars0, Goal0), VarSet0, Subst,
 		not(some(Vars, not(Goal) - GoalInfo) - GoalInfo) - GoalInfo,
 		VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal(some(Vars0, Goal0), VarSet0, Subst,
+transform_goal_2(some(Vars0, Goal0), VarSet0, Subst,
 		some(Vars, Goal) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
+transform_goal_2(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
 		if_then_else(Vars, A, B, C) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(A0, VarSet0, Subst, A, VarSet1),
@@ -1038,42 +1051,48 @@ transform_goal(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
 	transform_goal(C0, VarSet2, Subst, C, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal(if_then(Vars0, A0, B0), Subst, VarSet0, Goal, VarSet) :-
-	transform_goal(if_then_else(Vars0, A0, B0, true), Subst, VarSet0,
-		Goal, VarSet).
+transform_goal_2(if_then(Vars0, A0, B0), Subst, VarSet0, Goal, VarSet) :-
+	term__context_init(Context),
+	transform_goal_2(if_then_else(Vars0, A0, B0, true - Context),
+			Subst, VarSet0, Goal, VarSet).
 
-transform_goal(not(A0), VarSet0, Subst,
+transform_goal_2(not(A0), VarSet0, Subst,
 		not(A) - GoalInfo, VarSet) :-
 	transform_goal(A0, VarSet0, Subst, A, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal((A0,B0), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2((A0,B0), VarSet0, Subst, Goal, VarSet) :-
 	get_conj(B0, Subst, [], VarSet0, L0, VarSet1),
 	get_conj(A0, Subst, L0, VarSet1, L, VarSet),
 	goal_info_init(GoalInfo),
 	conj_list_to_goal(L, GoalInfo, Goal).
 
-transform_goal((A0;B0), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2((A0;B0), VarSet0, Subst, Goal, VarSet) :-
 	get_disj(B0, Subst, [], VarSet0, L0, VarSet1),
 	get_disj(A0, Subst, L0, VarSet1, L, VarSet),
 	goal_info_init(GoalInfo),
 	disj_list_to_goal(L, GoalInfo, Goal).
 
-transform_goal(implies(Goal0,Goal1), VarSet0, Subst, Goal, VarSet) :-
-	implication__expand_implication(Goal0, Goal1, TransformedGoal),
-	transform_goal(TransformedGoal, VarSet0, Subst, Goal, VarSet).
+transform_goal_2(implies(P, Q), VarSet0, Subst, Goal, VarSet) :-
+		% `P => Q' is defined as `not (P, not Q)'
+	term__context_init(Context),
+	TransformedGoal = not( (P, not(Q) - Context) - Context ),
+	transform_goal_2(TransformedGoal, VarSet0, Subst, Goal, VarSet).
 
-transform_goal(equivalent(Goal0,Goal1), VarSet0, Subst,	Goal, VarSet) :-
-	implication__expand_equivalence(Goal0, Goal1, TransformedGoal),
-	transform_goal(TransformedGoal, VarSet0, Subst, Goal, VarSet).
+transform_goal_2(equivalent(P, Q), VarSet0, Subst, Goal, VarSet) :-
+		% `P <=> Q' is defined as `(P => Q), (Q => P)'
+	term__context_init(Context),
+	TransformedGoal = (implies(P, Q) - Context, implies(Q, P) - Context),
+	transform_goal_2(TransformedGoal, VarSet0, Subst, Goal, VarSet).
 
-transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
-
-	% As a special case, transform `A \= B' into `not (A = B)'.
+transform_goal_2(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 
 	( Goal0 = term__functor(term__atom("\\="), [LHS, RHS], _Context) ->
-		transform_goal(not(unify(LHS, RHS)), VarSet0, Subst, Goal,
-			VarSet)
+
+			% `LHS \= RHS' is defined as `not (RHS = RHS)'
+		term__context_init(Context),
+		transform_goal_2(not(unify(LHS, RHS) - Context), VarSet0,
+				Subst, Goal, VarSet)
 	;
 		% fill unused slots with any old junk 
 		ModeId = 0,
@@ -1111,7 +1130,7 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 			Goal2, VarSet1, Goal, VarSet)
 	).
 
-transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 	term__apply_substitution(A0, Subst, A),
 	term__apply_substitution(B0, Subst, B),
 	unravel_unification(A, B, explicit, [], VarSet0, Goal, VarSet).
@@ -1404,8 +1423,7 @@ substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
 
 get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet) :-
 	(
-		%some [A,B]
-		Goal = (A,B)
+		Goal = (A,B) - _Context
 	->
 		get_conj(B, Subst, Conj0, VarSet0, Conj1, VarSet1),
 		get_conj(A, Subst, Conj1, VarSet1, Conj, VarSet)
@@ -1425,8 +1443,7 @@ get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet) :-
 
 get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 	(
-		%some [A,B]
-		Goal = (A;B)
+		Goal = (A;B) - _Context
 	->
 		get_disj(B, Subst, Disj0, VarSet0, Disj1, VarSet1),
 		get_disj(A, Subst, Disj1, VarSet1, Disj, VarSet)

@@ -59,6 +59,9 @@ negation__transform(Items_In, Items_Out) -->
 :- pred negation__transform_goal(goal, goal).
 :- mode negation__transform_goal(in, out) is det.
 
+:- pred negation__transform_goal_2(goal_expr, goal_expr).
+:- mode negation__transform_goal_2(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 % LOCAL PREDICATE IMPLEMENTATIONS:
 %-----------------------------------------------------------------------------%
@@ -104,7 +107,15 @@ negation__transform_item(Item_In, Item_Out) :-
 
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 	% negation__transform_goal/2
+	% Pushes negations inwards.
+	% Just calls negation__transform_goal_2, passing the context
+	% through unchanged.
 	
+negation__transform_goal(Goal_In - Context, Goal_Out - Context) :-
+	negation__transform_goal_2(Goal_In, Goal_Out).
+
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+	% negation__transform_goal_2/2
 	% Pushes negations inwards.
 	% This the predicate that actually does the work!
 	% All implication operators should have been removed by
@@ -113,12 +124,12 @@ negation__transform_item(Item_In, Item_Out) :-
 
 % The transformations we actually want...
 
-negation__transform_goal(not(Goal), Goal_Out) :-
+negation__transform_goal_2(not(Goal), Goal_Out) :-
 	(
 	% Eliminate double negatives
-		Goal = not(Goal1)
+		Goal = not(Goal1 - _) - _
 	->
-		negation__transform_goal(Goal1, Goal_Out)
+		negation__transform_goal_2(Goal1, Goal_Out)
 	;
 
 	% A sort of pseudo-de Morgan transformation, these
@@ -130,7 +141,7 @@ negation__transform_goal(not(Goal), Goal_Out) :-
 	
 % clip from here --------------------------------------
 	% (1)   ~(~P ^ ~Q) ----> (P v Q)
-		Goal = (not(P), not(Q))
+		Goal = (not(P) - _, not(Q) - _) - _
 	->
 		(
 		negation__transform_goal(P, P1),
@@ -140,7 +151,7 @@ negation__transform_goal(not(Goal), Goal_Out) :-
 	;
 	% (2)   ~(~P v ~Q) ----> (P ^ Q)
 
-		Goal = (not(P); not(Q))
+		Goal = (not(P) - _; not(Q) - _) - _
 	->
 		(
 		negation__transform_goal(P, P1),
@@ -151,6 +162,7 @@ negation__transform_goal(not(Goal), Goal_Out) :-
 % to here ---------------------------------------------
 
 %	% Apply De Morgan's rule over a conjunction
+%	% (Don't do this, it would cause mode errors!)
 %		Goal = (P, Q)
 %	->
 %		(
@@ -160,19 +172,19 @@ negation__transform_goal(not(Goal), Goal_Out) :-
 %		)
 %	;
 	% Apply De Morgan's rule over a disjunction
-		Goal = (P ; Q)
+		Goal = (P ; Q) - C
 	->
 		(
-		negation__transform_goal(not(P), Not_P),
-		negation__transform_goal(not(Q), Not_Q),
-		Goal_Out = (Not_P , Not_Q)
+		negation__transform_goal_2(not(P), Not_P),
+		negation__transform_goal_2(not(Q), Not_Q),
+		Goal_Out = (Not_P - C, Not_Q - C)
 		)
 	;
 	% No other applicable cases so just apply the
 	% transformation recursively
 		(
-		negation__transform_goal(Goal, Goal1),
-		Goal_Out = not(Goal1)
+		negation__transform_goal(Goal, Goal2),
+		Goal_Out = not(Goal2)
 		)
 	).
 
@@ -180,60 +192,60 @@ negation__transform_goal(not(Goal), Goal_Out) :-
 % These forms should have already been eliminated!
 
 	% Implication
-negation__transform_goal(implies(_P, _Q), _Goal_Out) :-
+negation__transform_goal_2(implies(_P, _Q), _Goal_Out) :-
 	error("implication encountered when transforming negation").
 
 	% Equivalence
-negation__transform_goal(equivalent(_P, _Q), _Goal_Out) :-
+negation__transform_goal_2(equivalent(_P, _Q), _Goal_Out) :-
 	error("equivalence encountered when transforming negation").
 
 	% Universal Quantification
-negation__transform_goal(all(_Vars, _P), _Goal_Out) :-
+negation__transform_goal_2(all(_Vars, _P), _Goal_Out) :-
 	error("'all' encountered when transforming negation").
 
 % These forms do not need to be transformed themselves, they
 % just continue to transform recursively...
 
 	% Existential Quantification
-negation__transform_goal(some(Vars, P), Goal_Out) :-
+negation__transform_goal_2(some(Vars, P), Goal_Out) :-
 	negation__transform_goal(P, P1),
 	Goal_Out = some(Vars, P1).
 
 	% Conjunction
-negation__transform_goal((P, Q), Goal_Out) :-
+negation__transform_goal_2((P, Q), Goal_Out) :-
 	negation__transform_goal(P, P1),
 	negation__transform_goal(Q, Q1),
 	Goal_Out = (P1, Q1).
 
 	% Disjunction
-negation__transform_goal((P; Q), Goal_Out) :-
+negation__transform_goal_2((P; Q), Goal_Out) :-
 	negation__transform_goal(P, P1),
 	negation__transform_goal(Q, Q1),
 	Goal_Out = (P1; Q1).
 
 	% If-Then
-negation__transform_goal(if_then(Vars, P, Q), Goal_Out) :-
+negation__transform_goal_2(if_then(Vars, P, Q), Goal_Out) :-
 	negation__transform_goal(P, P1),
 	negation__transform_goal(Q, Q1),
 	Goal_Out = if_then(Vars, P1, Q1).
 
 	% If-Then-Else
-negation__transform_goal(if_then_else(Vars, P, Q, R), Goal_Out) :-
+negation__transform_goal_2(if_then_else(Vars, P, Q, R), Goal_Out) :-
 	negation__transform_goal(P, P1),
 	negation__transform_goal(Q, Q1),
 	negation__transform_goal(R, R1),
 	Goal_Out = if_then_else(Vars, P1, Q1, R1).
 
 	% Truth
-negation__transform_goal(true, true).
+negation__transform_goal_2(true, true).
 
 	% Falsehood
-negation__transform_goal(fail, fail).
+negation__transform_goal_2(fail, fail).
 
 	% Call
-negation__transform_goal(call(Term), call(Term)).
+negation__transform_goal_2(call(Term), call(Term)).
 
 	% Unify
-negation__transform_goal(unify(Term1, Term2), unify(Term1, Term2)).
+negation__transform_goal_2(unify(Term1, Term2), unify(Term1, Term2)).
 
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %

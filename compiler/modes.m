@@ -421,16 +421,21 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 		%
 		% store the current context in the mode_info
 		%
-	%%% goal_info_get_context(GoalInfo0, Context),
-	%%% mode_info_set_context(ModeInfo0, Context, ModeInfo1)
+	goal_info_context(GoalInfo0, Context),
+	term__context_init(EmptyContext),
+	( Context = EmptyContext ->
+		ModeInfo1 = ModeInfo0
+	;
+		mode_info_set_context(Context, ModeInfo0, ModeInfo1)
+	),
 		%
 		% modecheck the goal, and then store the changes in
 		% instantiation of the non-local vars and the changes
 		% in liveness in the goal's goal_info.
 		%
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
-	mode_info_get_vars_instmap(ModeInfo0, NonLocals, InstMap0),
-	modecheck_goal_2(Goal0, NonLocals, Goal, ModeInfo0, ModeInfo),
+	mode_info_get_vars_instmap(ModeInfo1, NonLocals, InstMap0),
+	modecheck_goal_2(Goal0, NonLocals, Goal, ModeInfo1, ModeInfo),
 		%
 		% save the changes in instantiation of the non-local vars
 		%

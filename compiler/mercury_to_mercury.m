@@ -579,7 +579,7 @@ mercury_output_clause(VarSet, PredName, Args, Body, Context) -->
 	mercury_output_term(term__functor(term__atom(PredName2), Args, Context),
 			VarSet),
 	(
-		{ Body = true }
+		{ Body = true - _Context }
 	->
 		[]
 	;
@@ -591,22 +591,28 @@ mercury_output_clause(VarSet, PredName, Args, Body, Context) -->
 :- pred mercury_output_goal(goal, varset, int, io__state, io__state).
 :- mode mercury_output_goal(in, in, in, di, uo) is det.
 
-mercury_output_goal(fail, _, _) -->
+mercury_output_goal(Goal - _Context, VarSet, Indent) -->
+	mercury_output_goal_2(Goal, VarSet, Indent).
+
+:- pred mercury_output_goal_2(goal_expr, varset, int, io__state, io__state).
+:- mode mercury_output_goal_2(in, in, in, di, uo) is det.
+
+mercury_output_goal_2(fail, _, _) -->
 	io__write_string("fail").
 
-mercury_output_goal(true, _, _) -->
+mercury_output_goal_2(true, _, _) -->
 	io__write_string("true").
 
 	% Implication and equivalence should have been transformed out
 	% by now
-mercury_output_goal(implies(_G1,_G2), _VarSet, _Indent) -->
+mercury_output_goal_2(implies(_G1,_G2), _VarSet, _Indent) -->
 	{ error("mercury_to_mercury: implies/2 in mercury_output_goal")}.
 
-mercury_output_goal(equivalent(_G1,_G2), _VarSet, _Indent) -->
+mercury_output_goal_2(equivalent(_G1,_G2), _VarSet, _Indent) -->
 	{ error("mercury_to_mercury: equivalent/2 in mercury_output_goal")}.
 
 
-mercury_output_goal(some(Vars, Goal), VarSet, Indent) -->
+mercury_output_goal_2(some(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
 		mercury_output_goal(Goal, VarSet, Indent)
 	;
@@ -620,7 +626,7 @@ mercury_output_goal(some(Vars, Goal), VarSet, Indent) -->
 		io__write_string(")")
 	).
 
-mercury_output_goal(all(Vars, Goal), VarSet, Indent) -->
+mercury_output_goal_2(all(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
 		mercury_output_goal(Goal, VarSet, Indent)
 	;
@@ -634,7 +640,7 @@ mercury_output_goal(all(Vars, Goal), VarSet, Indent) -->
 		io__write_string(")")
 	).
 
-mercury_output_goal(if_then_else(Vars, A, B, C), VarSet, Indent) -->
+mercury_output_goal_2(if_then_else(Vars, A, B, C), VarSet, Indent) -->
 	io__write_string("(if"),
 	mercury_output_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
@@ -651,7 +657,7 @@ mercury_output_goal(if_then_else(Vars, A, B, C), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-mercury_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
+mercury_output_goal_2(if_then(Vars, A, B), VarSet, Indent) -->
 	io__write_string("(if"),
 	mercury_output_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
@@ -664,7 +670,7 @@ mercury_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-mercury_output_goal(not(Goal), VarSet, Indent) -->
+mercury_output_goal_2(not(Goal), VarSet, Indent) -->
 	io__write_string("\\+ ("),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
@@ -672,13 +678,13 @@ mercury_output_goal(not(Goal), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-mercury_output_goal((A,B), VarSet, Indent) -->
+mercury_output_goal_2((A,B), VarSet, Indent) -->
 	mercury_output_goal(A, VarSet, Indent),
 	io__write_string(","),
 	mercury_output_newline(Indent),
 	mercury_output_goal(B, VarSet, Indent).
 
-mercury_output_goal((A;B), VarSet, Indent) -->
+mercury_output_goal_2((A;B), VarSet, Indent) -->
 	io__write_string("("),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
@@ -687,10 +693,10 @@ mercury_output_goal((A;B), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-mercury_output_goal(call(Term), VarSet, Indent) -->
+mercury_output_goal_2(call(Term), VarSet, Indent) -->
 	mercury_output_call(Term, VarSet, Indent).
 
-mercury_output_goal(unify(A, B), VarSet, _Indent) -->
+mercury_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	mercury_output_term(A, VarSet),
 	io__write_string(" = "),
 	mercury_output_term(B, VarSet).
@@ -710,7 +716,7 @@ mercury_output_disj(Goal, VarSet, Indent) -->
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
 	(
-		{ Goal = (A;B) }
+		{ Goal = (A;B) - _Context }
 	->
 		mercury_output_goal(A, VarSet, Indent1),
 		mercury_output_disj(B, VarSet, Indent)
