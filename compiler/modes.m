@@ -1668,8 +1668,14 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 	mode_info_get_var_types(ModeInfo0, VarTypes0),
 	map__lookup(VarTypes0, X0, TypeOfX),
 	(
+		% check if variable has a higher-order pred type
 		TypeOfX = term__functor(term__atom("pred"), PredArgTypes, _),
-		Name = term__atom(PName)
+		Name = term__atom(PName),
+		% but in case we are redoing mode analysis, make sure
+		% we don't mess with the address constants for type_info
+		% fields created by polymorphism.m
+		Unification0 \= construct(_, address_const(_, _), _, _),
+		Unification0 \= deconstruct(_, address_const(_, _), _, _, _)
 	->
 		%
 		% Create the new lambda-quantified variables

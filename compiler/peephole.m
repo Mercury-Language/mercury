@@ -86,7 +86,7 @@ peephole__build_forkmap([Instr - _Comment|Instrs], Succmap,
 	peephole__build_forkmap(Instrs, Succmap, Forkmap1, Forkmap).
 
 	% We zip down to the end of the instruction list, and start attempting
-	% to optimize instruction sequences.  As long as we can continue
+	% to optimize instruction sequences. As long as we can continue
 	% optimizing the instruction sequence, we keep doing so;
 	% when we find a sequence we can't optimize, we back up try
 	% to optimize the sequence starting with the previous instruction.
@@ -151,16 +151,16 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap, TeardownMap,
 	%					decr_sp(N)
 	%	livevals(T1, L1)		livevals(T1, L1)
 	%	call(Foo, &&ret);		tailcall(Foo)
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	...				...
 	%     ret:			=>    ret:
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	succip = ...			succip = ...
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	decr_sp(N)			decr_sp(N)
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	livevals(T2, L2)		livevals(T2, L2)
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	proceed				proceed
 	%
 	% Note that we can't delete the return label and the following
@@ -175,30 +175,30 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap, TeardownMap,
 	%					decr_sp(N)
 	%	livevals(T1, L1)		livevals(T1, L1)
 	%	call(Foo, &&ret);		tailcall(Foo)
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	...				...
 	%     ret:			=>    ret:
-	%       if_val(not(r1), &&fail)		if_val(not(r1), &&fail)
-	%       <comments, labels>		<comments, labels>
+	%	if_val(not(r1), &&fail)		if_val(not(r1), &&fail)
+	%	<comments, labels>		<comments, labels>
 	%	succip = ...			succip = ...
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	decr_sp(N)			decr_sp(N)
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	r1 = TRUE			r1 = TRUE
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	livevals(T2, L2)		livevals(T2, L2)
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	proceed				proceed
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%     fail:			      fail:
 	%	succip = ...			succip = ...
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	decr_sp(N)			decr_sp(N)
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	r1 = FALSE			r1 = FALSE
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	livevals(T2, L2)		livevals(T2, L2)
-	%       <comments, labels>		<comments, labels>
+	%	<comments, labels>		<comments, labels>
 	%	proceed				proceed
 
 peephole__match(livevals(Livevals), Comment, Procmap, Forkmap, _,
@@ -402,14 +402,14 @@ peephole__match(incr_sp(N), _, _, _, _, Instrs0, Instrs) :-
 	%	decr_sp N 	=>	<...>
 	%	incr_sp N
 
-peephole__match(decr_sp(N), _, _, _, _TeardownMap, Instrs0, Instrs) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	Instrs1 = [incr_sp(N) - _ | Instrs].
-% XXX should be restored when proven OK
-% peephole__match(decr_sp(N), _, _, _, TeardownMap, Instrs0, Instrs) :-
-% 	peephole_decr(N, TeardownMap, Instrs0, Instrs).
+% peephole__match(decr_sp(N), _, _, _, _TeardownMap, Instrs0, Instrs) :-
+% 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+% 	Instrs1 = [incr_sp(N) - _ | Instrs].
 
-peephole__match(assign(Lval, Rval), Comment, _Procmap, _Forkmap, _TeardownMap,
+peephole__match(decr_sp(N), _, _, _, TeardownMap, Instrs0, Instrs) :-
+	peephole_decr(N, TeardownMap, Instrs0, Instrs).
+
+peephole__match(assign(Lval, Rval), Comment, Procmap, Forkmap, TeardownMap,
 		Instrs0, Instrs) :-
 	Lval = succip,
 	Rval = lval(stackvar(N)),
@@ -420,10 +420,8 @@ peephole__match(assign(Lval, Rval), Comment, _Procmap, _Forkmap, _TeardownMap,
 	Instrs3 = [Instr3 | Instrs4],
 	Instr3 = assign(stackvar(0), lval(succip)) - _,
 	Instr0 = assign(Lval, Rval) - Comment,
-	Instrs = [Instr0, Instr1 | Instrs4].
-% XXX should be restored when proven OK
-%	peephole__optimize([Instr0, Instr1 | Instrs4], Instrs,
-%		Procmap, Forkmap, TeardownMap, _).
+	peephole__optimize([Instr0, Instr1 | Instrs4], Instrs,
+		Procmap, Forkmap, TeardownMap, _).
 
 :- pred peephole_decr(int, bimap(label, label),
 	list(instruction), list(instruction)).
