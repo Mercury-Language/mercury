@@ -116,5 +116,3 @@ MCFLAGS	= --no-infer-all --halt-at-warn $(EXTRA_MCFLAGS)
 -include $(MERCURY_DIR)/Mmake.params
 
 #-----------------------------------------------------------------------------#
-
-MCFLAGS	= --no-infer-all --halt-at-warn $(EXTRA_MCFLAGS)
