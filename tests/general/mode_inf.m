@@ -1,11 +1,12 @@
 :- module mode_inf.
 :- interface.
-:- use_module(io).
+:- use_module io.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- use_module((array, int, std_util)).
+:- import_module int, std_util.
+:- use_module array.
 
 main -->
 	{ solutions(lambda([X::out] is multi, do_some_stuff(X)), L) },
