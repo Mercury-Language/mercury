@@ -36,6 +36,13 @@ Changes to the Mercury language:
   information, see the "Impurity" chapter of the Mercury Language
   Reference Manual.
 
+* We've removed the undocumented operators `export_adt', `export_cons',
+  `export_module', `export_op', `export_pred', `export_sym', `export_type',
+  `import_adt', `import_cons', `import_op', `import_pred', `import_sym',
+  `import_type' `use_adt', `use_cons', `use_op', `use_pred', `use_sym'
+  and `use_type'. These operators were reserved for module system
+  extensions which are unlikely to be implemented.
+
 Changes to the Mercury standard library:
 * As mentioned above, the constructor for lists has changed from './2'
   to `[|]/2'. This change affects the behaviour of the term manipulation
@@ -84,6 +91,9 @@ Changes to the Mercury standard library:
   a value stored in a term of type `std_util__maybe'.
 
 * We've added a predicate version of `set__fold'.
+
+* We've added function versions of `ops__init_op_table'
+  and `ops__max_priority'.
 
 * We've added some functions to the term_io module to return printable
   representations of term components as strings.

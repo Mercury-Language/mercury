@@ -18,6 +18,68 @@
 :- module ops.
 :- interface.
 
+:- type ops__table.
+
+	% create an ops_table with the standard Mercury operators.
+:- pred ops__init_op_table(ops__table).
+:- mode ops__init_op_table(uo) is det.
+
+:- func ops__init_op_table = ops__table.
+
+	% check whether a string is the name of an infix operator,
+	% and if it is, return its precedence and associativity.
+:- pred ops__lookup_infix_op(ops__table, string, ops__priority,
+					ops__assoc, ops__assoc).
+:- mode ops__lookup_infix_op(in, in, out, out, out) is semidet.
+
+	% check whether a string is the name of a prefix operator,
+	% and if it is, return its precedence and associativity.
+:- pred ops__lookup_prefix_op(ops__table, string, ops__priority, ops__assoc).
+:- mode ops__lookup_prefix_op(in, in, out, out) is semidet.
+
+	% check whether a string is the name of a binary prefix operator,
+	% and if it is, return its precedence and associativity.
+:- pred ops__lookup_binary_prefix_op(ops__table, string,
+					ops__priority, ops__assoc, ops__assoc).
+:- mode ops__lookup_binary_prefix_op(in, in, out, out, out) is semidet.
+		
+	% check whether a string is the name of a postfix operator,
+	% and if it is, return its precedence and associativity.
+:- pred ops__lookup_postfix_op(ops__table, string, ops__priority, ops__assoc).
+:- mode ops__lookup_postfix_op(in, in, out, out) is semidet.
+
+	% check whether a string is the name of an operator
+:- pred ops__lookup_op(ops__table, string).
+:- mode ops__lookup_op(in, in) is semidet.
+
+	% Returns the highest priority number (the lowest is zero).
+	% Note that due to Prolog tradition, the priority numbers
+	% are backwards: higher numbers mean lower priority
+	% and lower numbers mean higher priority.  Sorry...
+:- func ops__max_priority = ops__priority.
+
+:- pred ops__max_priority(ops__priority).
+:- mode ops__max_priority(out) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% Operators with a low "priority" bind more tightly than those
+	% with a high "priority". For example, given that `+' has
+	% priority 500 and `*' has priority 400, the term `2 * X + Y'
+	% would parse as `(2 * X) + Y'.
+:- type ops__priority == int.
+
+%-----------------------------------------------------------------------------%
+
+	% An ops__specifier describes what structure terms
+	% constructed with an operator are allowed to take.
+	% `f' represents the operator and `x' and `y' represent arguments.
+	% `x' represents an argument whose priority must be
+	% strictly lower that that of the operator.
+	% `y' represents an argument whose priority is
+	% lower or equal to that of the operator.
+	% For example, `yfx' indicates a left-associative infix operator,
+	% while `xfy' indicates a right-associative infix operator.
 :- type ops__specifier
 	--->	fx ; fy ; xf ; yf ; xfx ; yfx ; xfy ; fxx ; fxy ; fyx.
 
@@ -30,53 +92,11 @@
 	;	binary_prefix(ops__assoc, ops__assoc)
 	;	postfix(ops__assoc).
 
-:- type ops__table.
-
-:- type ops__priority == int.
-
-	% create an ops_table with the standard Mercury operators.
-:- pred ops__init_op_table(ops__table).
-:- mode ops__init_op_table(uo) is det.
-
-:- func ops__init_op_table = ops__table.
-
-	% check whether a string is the name of an infix operator,
-	% and if it is, return its precedence and associativity.
-:- pred ops__lookup_infix_op(ops__table, string, int, ops__assoc, ops__assoc).
-:- mode ops__lookup_infix_op(in, in, out, out, out) is semidet.
-
-	% check whether a string is the name of a prefix operator,
-	% and if it is, return its precedence and associativity.
-:- pred ops__lookup_prefix_op(ops__table, string, int, ops__assoc).
-:- mode ops__lookup_prefix_op(in, in, out, out) is semidet.
-
-	% check whether a string is the name of a binary prefix operator,
-	% and if it is, return its precedence and associativity.
-:- pred ops__lookup_binary_prefix_op(ops__table, string,
-					int, ops__assoc, ops__assoc).
-:- mode ops__lookup_binary_prefix_op(in, in, out, out, out) is semidet.
-		
-	% check whether a string is the name of a postfix operator,
-	% and if it is, return its precedence and associativity.
-:- pred ops__lookup_postfix_op(ops__table, string, int, ops__assoc).
-:- mode ops__lookup_postfix_op(in, in, out, out) is semidet.
-
-	% check whether a string is the name of an operator
-:- pred ops__lookup_op(ops__table, string).
-:- mode ops__lookup_op(in, in) is semidet.
-
 	% convert an ops__specifer (e.g. `xfy') to an ops__class
 	% (e.g. `infix(x, y)').
 :- pred ops__op_specifier_to_class(ops__specifier, ops__class).
 :- mode ops__op_specifier_to_class(in, out) is det.
 % :- mode ops__op_specifier_to_class(out, in) is semidet.
-
-	% Returns the highest priority number (the lowest is zero).
-	% Note that due to Prolog tradition, the priority numbers
-	% are backwards: higher numbers mean lower priority
-	% and lower numbers mean higher priority.  Sorry...
-:- pred ops__max_priority(ops__priority).
-:- mode ops__max_priority(out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -84,6 +104,10 @@
 
 :- type ops__table ---> ops__table.	% XXX
 
+	% ops__category is used to index the op_table so that
+	% lookups are semidet rather than nondet.
+	% Prefix and binary_prefix operators have ops__category `before'.
+	% Infix and postfix operators have ops__category `after'.
 :- type ops__category ---> before ; after.
 
 ops__op_specifier_to_class(fx, prefix(x)).
@@ -185,23 +209,10 @@ ops__op_table("and", after, xfy, 720).		% NU-Prolog extension
 ops__op_table("div", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("else", after, xfy, 1170).	% Mercury/NU-Prolog extension
 ops__op_table("end_module", before, fx, 1199).	% Mercury extension
-ops__op_table("export_adt", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("export_cons", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("export_module", before, fx, 1199). % Mercury extension (NYI)
-ops__op_table("export_op", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("export_pred", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("export_sym", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("export_type", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("func", before, fx, 800).		% Mercury extension
 ops__op_table("if", before, fx, 1160).		% Mercury/NU-Prolog extension
-ops__op_table("import_adt", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("import_cons", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("import_module", before, fx, 1199). % Mercury extension
 ops__op_table("include_module", before, fx, 1199). % Mercury extension
-ops__op_table("import_op", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("import_pred", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("import_sym", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("import_type", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("impure", before, fy, 800).	% Mercury extension
 ops__op_table("inst", before, fx, 1199).	% Mercury extension
 ops__op_table("instance", before, fx, 1199).	% Mercury extension
@@ -222,13 +233,7 @@ ops__op_table("some", before, fxy, 950).	% Mercury/NU-Prolog extension
 ops__op_table("then", after, xfx, 1150).	% Mercury/NU-Prolog extension
 ops__op_table("type", before, fx, 1180).	% Mercury extension
 ops__op_table("typeclass", before, fx, 1199).	% Mercury extension
-ops__op_table("use_adt", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("use_cons", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("use_module", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("use_op", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("use_pred", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("use_sym", before, fx, 1199).	% Mercury extension (NYI)
-ops__op_table("use_type", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("use_module", before, fx, 1199).	% Mercury extension
 ops__op_table("when", after, xfx, 900).		% NU-Prolog extension (*)
 ops__op_table("where", after, xfx, 1175).	% NU-Prolog extension (*)
 ops__op_table("~", before, fy, 900).		% Goedel (*)
@@ -242,6 +247,7 @@ ops__op_table("~=", after, xfx, 700).		% NU-Prolog (*)
 ops__init_op_table(ops__table).
 ops__init_op_table = ops__table.
 
-ops__max_priority(1200).
+ops__max_priority(ops__max_priority).
+ops__max_priority = 1200.
 
 %-----------------------------------------------------------------------------%

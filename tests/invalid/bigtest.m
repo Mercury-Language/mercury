@@ -1,6 +1,6 @@
-:- export_sym list/1, append/3, member.
-:- export_pred append/3, member.
-:- export_type list/1, bag.
+:- export_sym((list/1, append/3, member)).
+:- export_pred((append/3, member)).
+:- export_type((list/1, bag)).
 
 fact.
 rule :- fact.
