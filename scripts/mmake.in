@@ -66,8 +66,11 @@ MKTEMP=@MKTEMP@
 MMAKE=$0
 verbose=false
 save_makefile=false
-use_subdirs=${MMAKE_USE_SUBDIRS=`
-	if [ -d Mercury ]; then echo yes; else echo no; fi`}
+if [ -d Mercury ]; then
+	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
+else
+	use_subdirs=${MMAKE_USE_SUBDIRS=no}
+fi
 
 while [ $# -gt 0 ]; do
 	case "$1" in
