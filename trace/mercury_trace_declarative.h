@@ -11,6 +11,8 @@
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
 
+#ifdef MR_USE_DECLARATIVE_DEBUGGER
+
 /*
 ** When in declarative debugging mode, the internal debugger calls
 ** MR_trace_decl_debug for each event.  
@@ -43,4 +45,5 @@ typedef MR_Word MR_Trace_Node;
 #define MR_TRACE_STATUS_FAILED		(MR_Word) 1
 #define MR_TRACE_STATUS_UNDECIDED	(MR_Word) 2
 
+#endif  /* MR_USE_DECLARATIVE_DEBUGGER */
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */
