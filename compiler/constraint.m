@@ -26,7 +26,7 @@
 :- import_module bool, list, map, set, std_util, assoc_list, string.
 :- import_module varset, term, require.
 
-:- import_module mode_util, code_aux, prog_io.
+:- import_module mode_util, passes_aux, code_aux, prog_io.
 :- import_module delay_info, mode_info, inst_match, modes.
 :- import_module transform, options, globals.
 :- import_module mercury_to_mercury, hlds_out, dependency_graph.

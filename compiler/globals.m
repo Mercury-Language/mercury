@@ -31,30 +31,35 @@
 	;	low
 	;	high.
 
+:- type args_method
+	--->	old
+	;	compact.
+
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
+
+:- pred convert_args_method(string::in, args_method::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for the `globals' structure.
 
 :- pred globals__init(option_table::di, gc_method::di, tags_method::di,
-			globals::uo) is det.
+	args_method::di, globals::uo) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
+:- pred globals__get_gc_method(globals::in, gc_method::out) is det.
+:- pred globals__get_tags_method(globals::in, tags_method::out) is det.
+:- pred globals__get_args_method(globals::in, args_method::out) is det.
 
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
 	is det.
-
-:- pred globals__get_gc_method(globals::in, gc_method::out) is det.
-
 :- pred globals__set_gc_method(globals::in, gc_method::in, globals::out)
 	is det.
-
-:- pred globals__get_tags_method(globals::in, tags_method::out) is det.
-
 :- pred globals__set_tags_method(globals::in, tags_method::in, globals::out)
+	is det.
+:- pred globals__set_args_method(globals::in, args_method::in, globals::out)
 	is det.
 
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
@@ -67,7 +72,7 @@
 :- pred globals__lookup_string_option(globals::in, option::in, string::out)
 	is det.
 :- pred globals__lookup_accumulating_option(globals::in, option::in,
-		list(string)::out) is det.
+	list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -75,13 +80,16 @@
 	% io__state using io__set_globals and io__get_globals.
 
 :- pred globals__io_init(option_table::di, gc_method::in, tags_method::in,
-			io__state::di, io__state::uo) is det.
+	args_method::in, io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_gc_method(gc_method::out,
-				io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_tags_method(tags_method::out,
-				io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_get_args_method(args_method::out,
+	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_globals(globals::out, io__state::di, io__state::uo)
 	is det.
@@ -90,23 +98,23 @@
 	is det.
 
 :- pred globals__io_lookup_option(option::in, option_data::out,
-			io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_set_option(option::in, option_data::in,
-			io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_lookup_bool_option(option, bool, io__state, io__state).
 :- mode globals__io_lookup_bool_option(in, out, di, uo) is det.
 :- mode globals__io_lookup_bool_option(in, in, di, uo) is semidet. % implied
 
 :- pred globals__io_lookup_int_option(option::in, int::out,
-			io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_lookup_string_option(option::in, string::out,
-			io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_lookup_accumulating_option(option::in, list(string)::out,
-			io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -124,30 +132,35 @@ convert_tags_method("none", none).
 convert_tags_method("low", low).
 convert_tags_method("high", high).
 
+convert_args_method("old", old).
+convert_args_method("compact", compact).
+
 %-----------------------------------------------------------------------------%
 
 :- type globals
 	--->	globals(
 			option_table,
 			gc_method,
-			tags_method
+			tags_method,
+			args_method
 		).
 
-globals__init(Options, GC_Method, Tags_Method,
-	globals(Options, GC_Method, Tags_Method)).
+globals__init(Options, GC_Method, TagsMethod, ArgsMethod,
+	globals(Options, GC_Method, TagsMethod, ArgsMethod)).
 
-globals__get_options(globals(Options, _, _), Options).
+globals__get_options(globals(Options, _, _, _), Options).
+globals__get_gc_method(globals(_, GC_Method, _, _), GC_Method).
+globals__get_tags_method(globals(_, _, TagsMethod, _), TagsMethod).
+globals__get_args_method(globals(_, _, _, ArgsMethod), ArgsMethod).
 
-globals__set_options(globals(_, B, C), Options, globals(Options, B, C)).
-
-globals__get_gc_method(globals(_, GC_Method, _), GC_Method).
-
-globals__set_gc_method(globals(A, _, C), GC_Method, globals(A, GC_Method, C)).
-
-globals__get_tags_method(globals(_, _, Tags_Method), Tags_Method).
-
-globals__set_tags_method(globals(A, B, _), Tags_Method,
-	globals(A, B, Tags_Method)).
+globals__set_options(globals(_, B, C, D), Options,
+	globals(Options, B, C, D)).
+globals__set_gc_method(globals(A, _, C, D), GC_Method,
+	globals(A, GC_Method, C, D)).
+globals__set_tags_method(globals(A, B, _, D), TagsMethod,
+	globals(A, B, TagsMethod, D)).
+globals__set_args_method(globals(A, B, C, _), ArgsMethod,
+	globals(A, B, C, ArgsMethod)).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),
@@ -190,10 +203,12 @@ globals__lookup_accumulating_option(Globals, Option, Value) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-globals__io_init(Options, GC_Method, Tags_Method) -->
+globals__io_init(Options, GC_Method, TagsMethod, ArgsMethod) -->
 	{ copy(GC_Method, GC_Method1) },
-	{ copy(Tags_Method, Tags_Method1) },
-	{ globals__init(Options, GC_Method1, Tags_Method1, Globals) },
+	{ copy(TagsMethod, TagsMethod1) },
+	{ copy(ArgsMethod, ArgsMethod1) },
+	{ globals__init(Options, GC_Method1, TagsMethod1, ArgsMethod1,
+		Globals) },
 	globals__io_set_globals(Globals).
 
 globals__io_get_gc_method(GC_Method) -->
@@ -203,6 +218,10 @@ globals__io_get_gc_method(GC_Method) -->
 globals__io_get_tags_method(Tags_Method) -->
 	globals__io_get_globals(Globals),
 	{ globals__get_tags_method(Globals, Tags_Method) }.
+
+globals__io_get_args_method(ArgsMethod) -->
+	globals__io_get_globals(Globals),
+	{ globals__get_args_method(Globals, ArgsMethod) }.
 
 globals__io_get_globals(Globals) -->
 	io__get_globals(UnivGlobals),

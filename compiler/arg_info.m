@@ -22,13 +22,10 @@
 
 :- module arg_info.
 :- interface. 
-:- import_module hlds, llds.
+:- import_module hlds, llds, globals.
 
-:- pred generate_arg_info(module_info, module_info).
-:- mode generate_arg_info(in, out) is det.
-
-:- pred make_arg_infos(proc_info, module_info, proc_info).
-:- mode make_arg_infos(in, in, out) is det.
+:- pred generate_arg_info(module_info, args_method, module_info).
+:- mode generate_arg_info(in, in, out) is det.
 
 :- pred arg_info__unify_arg_info(code_model, list(arg_info)).
 :- mode arg_info__unify_arg_info(in, out) is det.
@@ -43,41 +40,45 @@
 
 	% This whole section just traverses the module structure.
 
-generate_arg_info(ModuleInfo0, ModuleInfo) :-
+generate_arg_info(ModuleInfo0, Method, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, Preds),
 	map__keys(Preds, PredIds),
-	generate_pred_arg_info(PredIds, ModuleInfo0, ModuleInfo).
+	generate_pred_arg_info(PredIds, Method, ModuleInfo0, ModuleInfo).
 
-:- pred generate_pred_arg_info(list(pred_id), module_info, module_info).
-:- mode generate_pred_arg_info(in, in, out) is det.
+:- pred generate_pred_arg_info(list(pred_id), args_method,
+	module_info, module_info).
+:- mode generate_pred_arg_info(in, in, in, out) is det.
 
-generate_pred_arg_info([], ModuleInfo, ModuleInfo).
-generate_pred_arg_info([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
+generate_pred_arg_info([], _Method, ModuleInfo, ModuleInfo).
+generate_pred_arg_info([PredId | PredIds], Method, ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procids(PredInfo, ProcIds),
-	generate_proc_arg_info(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
-	generate_pred_arg_info(PredIds, ModuleInfo1, ModuleInfo).
+	generate_proc_arg_info(PredId, ProcIds, Method,
+		ModuleInfo0, ModuleInfo1),
+	generate_pred_arg_info(PredIds, Method, ModuleInfo1, ModuleInfo).
 
-:- pred generate_proc_arg_info(pred_id, list(proc_id),
-				module_info, module_info).
-:- mode generate_proc_arg_info(in, in, in, out) is det.
+:- pred generate_proc_arg_info(pred_id, list(proc_id), args_method,
+	module_info, module_info).
+:- mode generate_proc_arg_info(in, in, in, in, out) is det.
 
-generate_proc_arg_info(_PredId, [], ModuleInfo, ModuleInfo).
-generate_proc_arg_info(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
+generate_proc_arg_info(_PredId, [], _Method, ModuleInfo, ModuleInfo).
+generate_proc_arg_info(PredId, [ProcId | ProcIds], Method,
+		ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	make_arg_infos(ProcInfo0, ModuleInfo0, ProcInfo),
+	make_arg_infos(ProcInfo0, Method, ModuleInfo0, ProcInfo),
 
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
 
-	generate_proc_arg_info(PredId, ProcIds, ModuleInfo1, ModuleInfo).
+	generate_proc_arg_info(PredId, ProcIds, Method,
+		ModuleInfo1, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -90,23 +91,32 @@ generate_proc_arg_info(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 	% first register is reserved for the result and hence the arguments
 	% start at register number 2.
 
-make_arg_infos(ProcInfo0, ModuleInfo, ProcInfo) :-
+:- pred make_arg_infos(proc_info, args_method, module_info, proc_info).
+:- mode make_arg_infos(in, in, in, out) is det.
+
+make_arg_infos(ProcInfo0, Method, ModuleInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo0, ArgModes),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
 	( CodeModel = model_semi ->
-		StartingRegister = 2
+		StartReg = 2
 	;
-		StartingRegister = 1
+		StartReg = 1
 	),
-	make_arg_infos_list(ArgModes, StartingRegister, ModuleInfo, ArgInfo),
+	(
+		Method = old,
+		make_arg_infos_list(ArgModes, StartReg, ModuleInfo, ArgInfo)
+	;
+		Method = compact,
+		make_arg_infos_compact_list(ArgModes, StartReg, StartReg,
+			ModuleInfo, ArgInfo)
+	),
 	proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo).
 
 :- pred make_arg_infos_list(list(mode), int, module_info, list(arg_info)).
 :- mode make_arg_infos_list(in, in, in, out) is det.
 
 make_arg_infos_list([], _, _, []).
-make_arg_infos_list([Mode | Modes], RegNum, ModuleInfo,
-			[ArgInfo | ArgInfos]) :-
+make_arg_infos_list([Mode | Modes], Reg0, ModuleInfo, [ArgInfo | ArgInfos]) :-
 	( mode_is_input(ModuleInfo, Mode) ->
 		ArgMode = top_in
 	; mode_is_output(ModuleInfo, Mode) ->
@@ -114,9 +124,39 @@ make_arg_infos_list([Mode | Modes], RegNum, ModuleInfo,
 	;
 		ArgMode = top_unused
 	),
-	ArgInfo = arg_info(RegNum, ArgMode),
-	RegNum1 is RegNum + 1,
-	make_arg_infos_list(Modes, RegNum1, ModuleInfo, ArgInfos).
+	ArgInfo = arg_info(Reg0, ArgMode),
+	Reg1 is Reg0 + 1,
+	make_arg_infos_list(Modes, Reg1, ModuleInfo, ArgInfos).
+
+:- pred make_arg_infos_compact_list(list(mode), int, int,
+	module_info, list(arg_info)).
+:- mode make_arg_infos_compact_list(in, in, in, in, out) is det.
+
+make_arg_infos_compact_list([], _, _, _, []).
+make_arg_infos_compact_list([Mode | Modes], InReg0, OutReg0, ModuleInfo,
+		[ArgInfo | ArgInfos]) :-
+	( mode_is_input(ModuleInfo, Mode) ->
+		ArgMode = top_in,
+		ArgReg = InReg0,
+		InReg1 is InReg0 + 1,
+		OutReg1 = OutReg0
+	; mode_is_output(ModuleInfo, Mode) ->
+		ArgMode = top_out,
+		ArgReg = OutReg0,
+		InReg1 = InReg0,
+		OutReg1 is OutReg0 + 1
+	;
+		% Allocate unused regs as if they were outputs.
+		% We must allocate them a register, and the choice
+		% should not matter since unused args should be rare.
+		ArgMode = top_unused,
+		ArgReg = OutReg0,
+		InReg1 = InReg0,
+		OutReg1 is OutReg0 + 1
+	),
+	ArgInfo = arg_info(ArgReg, ArgMode),
+	make_arg_infos_compact_list(Modes, InReg1, OutReg1,
+		ModuleInfo, ArgInfos).
 
 %---------------------------------------------------------------------------%
 

@@ -9,7 +9,7 @@
 
 % This defines the stuff necessary so that getopt.m
 % can parse the command-line options.
-% When we implement higher-order preds, this and 
+% When we implement higher-order preds, this and
 % getopt.m should be rewritten to use them.
 % Currently the interface dependencies are very hairy.
 
@@ -27,27 +27,9 @@
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(option::out, option_data::out) is nondet.
 
-:- type option_table == option_table(option).
-
-	% XXX these predicates are obsolete - use the versions in getopt
-	% instead
-:- pred options__lookup_bool_option(option_table, option, bool).
-:- mode options__lookup_bool_option(in, in, out) is det.
-
-:- pred options__lookup_int_option(option_table, option, int).
-:- mode options__lookup_int_option(in, in, out) is det.
-
-:- pred options__lookup_string_option(option_table, option, string).
-:- mode options__lookup_string_option(in, in, out) is det.
-
 :- pred options_help(io__state::di, io__state::uo) is det.
 
-% A couple of misc utilities
-
-:- pred maybe_report_stats(bool::in, io__state::di, io__state::uo) is det.
-:- pred maybe_write_string(bool::input, string::input,
-			io__state::di, io__state::uo) is det.
-:- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
+:- type option_table == option_table(option).
 
 :- type option	
 	% Warning options
@@ -56,9 +38,10 @@
 		;	warn_missing_det_decls
 		;	warn_det_decls_too_lax
 		;	warn_nothing_exported
+		;	warn_unused_args
 		;	inhibit_warnings
 		;	halt_at_warn
-		;	warn_unused_args
+		;	halt_at_syntax_errors
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -111,6 +94,7 @@
 		;	prev_code
 		;	follow_code
 		;	follow_vars
+		;	args
 		;	gc
 		;	cc
 		;	cflags
@@ -157,6 +141,7 @@
 		;	procs_per_c_function
 		;	split_c_files
 		;	constraint_propagation
+		;	opt_level
 	% Miscellaneous Options
 		;	builtin_module
 		;	heap_space
@@ -185,14 +170,15 @@ option_defaults(Option, Default) :-
 
 option_defaults_2(warning_option, [
 		% Warning Options
-	inhibit_warnings	-	bool(no),
-	halt_at_warn		-	bool(no),
 	warn_singleton_vars	-	bool(yes),
 	warn_overlapping_scopes	-	bool(yes),
 	warn_missing_det_decls	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
 	warn_nothing_exported	-	bool(yes),
-	warn_unused_args	-	bool(no)
+	warn_unused_args	-	bool(no),
+	inhibit_warnings	-	bool(no),
+	halt_at_warn		-	bool(no),
+	halt_at_syntax_errors	-	bool(no)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -238,6 +224,7 @@ option_defaults_2(code_gen_option, [
 	prev_code		-	bool(no),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
+	args			-	string("old"),
 	lazy_code		-	bool(yes),
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
@@ -295,6 +282,8 @@ option_defaults_2(optimization_option, [
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
+	optimize_unused_args	-	bool(yes),
+	optimize_higher_order	-	bool(yes),
 	optimize_repeat		-	int(3),
 	optimize_vnrepeat	-	int(1),
 	pred_value_number	-	bool(no),
@@ -313,9 +302,7 @@ option_defaults_2(optimization_option, [
 	procs_per_c_function	-	int(1),
 	split_c_files		-	bool(no),
 	constraint_propagation	-	bool(no),
-	optimize_unused_args	-	bool(yes),
-	optimize_higher_order	-	bool(yes),
-	constraint_propagation	-	bool(no)
+	opt_level		-	int_special
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
@@ -390,6 +377,7 @@ long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("warn-unused-args",		warn_unused_args).
 long_option("inhibit-warnings",		inhibit_warnings).
 long_option("halt-at-warn",		halt_at_warn).
+long_option("halt-at-syntax-errors",	halt_at_syntax_errors).
 long_option("typecheck-only",		typecheck_only).
 long_option("errorcheck-only",		errorcheck_only).
 long_option("debug-types",		debug_types).
@@ -401,6 +389,7 @@ long_option("excess-assign",		excess_assign).
 long_option("prev-code",		prev_code).
 long_option("follow-code",		follow_code).
 long_option("follow-vars",		follow_vars).
+long_option("args",			args).
 long_option("lazy-code",		lazy_code).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
@@ -477,22 +466,27 @@ long_option("split-C-files",		split_c_files).
 long_option("procs-per-c-function",	procs_per_c_function).
 long_option("procs-per-C-function",	procs_per_c_function).
 long_option("constraint-propagation",	constraint_propagation).
+long_option("opt-level",		opt_level).
 long_option("optimize-unused-args",	optimize_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
+
+:- pred special_handler(option, special_data, option_table, option_table).
+:- mode special_handler(in, in, in, out) is semidet.
+
+special_handler(opt_level, int(N), OptionTable0, OptionTable) :-
+	( N > 3 ->
+		map__set(OptionTable0, optimize_value_number,
+			bool(yes), OptionTable)
+	;
+		map__set(OptionTable0, optimize_value_number,
+			bool(no), OptionTable)
+	).
 
 options_help -->
 	io__write_string("\t-?, -h, --help\n"),
 	io__write_string("\t\tPrint this usage message.\n"),
 
 	io__write_string("\nWarning Options:\n"),
-	io__write_string("\t-w, --inhibit-warnings\n"),
-	io__write_string("\t\tDisable all warning messages.\n"),
-	io__write_string("\t--halt_at_warn\n"),
-	io__write_string("\t\tThis option causes the compiler to treat all \n"),
-	io__write_string("\t\twarnings as if they were errors.  This means that\n"),
-	io__write_string("\t\tif any warning is issued, the compiler will not\n"),
-	io__write_string("\t\tgenerate code --- instead, it will return a\n"),
-	io__write_string("\t\tnon-zero exit status.\n"),
 	io__write_string("\t--no-warn-singleton-variables\n"),
 	io__write_string("\t\tDon't warn about variables which only occur once.\n"),
 	io__write_string("\t--no-warn-overlapping-scopes\n"),
@@ -508,6 +502,17 @@ options_help -->
 	io__write_string("\t--warn-unused-args\n"),
 	io__write_string("\t\tWarn about predicate arguments which are not used.\n"),
 
+	io__write_string("\t-w, --inhibit-warnings\n"),
+	io__write_string("\t\tDisable all warning messages.\n"),
+	io__write_string("\t--halt-at-warn\n"),
+	io__write_string("\t\tThis option causes the compiler to treat all \n"),
+	io__write_string("\t\twarnings as if they were errors.  This means that\n"),
+	io__write_string("\t\tif any warning is issued, the compiler will not\n"),
+	io__write_string("\t\tgenerate code --- instead, it will return a\n"),
+	io__write_string("\t\tnon-zero exit status.\n"),
+	io__write_string("\t--halt-at-syntax-errors\n"),
+	io__write_string("\t\tThis option causes the compiler to halt if it finds\n"),
+	io__write_string("\t\tany syntax errors in the program.\n"),
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),
 	io__write_string("\t\tOutput progress messages at each stage in the compilation.\n"),
@@ -670,6 +675,8 @@ options_help -->
 	io__write_string("\t\tDon't migrate into the end of branched goals.\n"),
 	io__write_string("\t--no-follow-vars\n"),
 	io__write_string("\t\tDon't optimise the assignment of registers in branched goals.\n"),
+	io__write_string("\t--args {old, compact}\n"),
+	io__write_string("\t\tUse the specified argument convention.\n"),
 	io__write_string("\t--no-reclaim-heap-on-nondet-failure\n"),
 	io__write_string("\t\tDon't reclaim heap on backtracking in nondet code.\n"),
 	io__write_string("\t--no-reclaim-heap-on-semidet-failure\n"),
@@ -778,8 +785,10 @@ options_help -->
 	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
 	io__write_string("\t--no-optimize-higher-order\n"),
 	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
-	io__write_string("\t-O-, --no-c-optimize\n"),
+	io__write_string("\t-O-, -no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
+	io__write_string("\t--opt-level <n>\n"),
+	io__write_string("\t\tSet optimization level to <n>.\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),
 	% io__write_string("\t-H <n>, --heap-space <n>\n"),
@@ -793,42 +802,6 @@ options_help -->
 	io__write_string("\t\tUse `<builtin>' instead of `mercury_builtin' as the \n\t\tmodule which always gets automatically imported.\n"),
 	io__write_string("\t-I <dir>, --search-directory <dir>\n"),
 	io__write_string("\t\tAdd <dir> to the list of directories to be searched for \n\t\timported modules.\n").
-
-maybe_report_stats(yes) --> io__report_stats.
-maybe_report_stats(no) --> [].
-
-maybe_write_string(yes, String) --> io__write_string(String).
-maybe_write_string(no, _) --> [].
-
-maybe_flush_output(yes) --> io__flush_output.
-maybe_flush_output(no) --> [].
-
-options__lookup_bool_option(OptionTable, Opt, Val) :-
-	(
-		map__lookup(OptionTable, Opt, bool(Val0))
-	->
-		Val = Val0
-	;
-		error("Expected bool option and didn't get one.")
-	).
-
-options__lookup_int_option(OptionTable, Opt, Val) :-
-	(
-		map__lookup(OptionTable, Opt, int(Val0))
-	->
-		Val = Val0
-	;
-		error("Expected int option and didn't get one.")
-	).
-
-options__lookup_string_option(OptionTable, Opt, Val) :-
-	(
-		map__lookup(OptionTable, Opt, string(Val0))
-	->
-		Val = Val0
-	;
-		error("Expected string option and didn't get one.")
-	).
 
 :- end_module options.
 

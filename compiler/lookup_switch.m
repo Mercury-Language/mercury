@@ -72,7 +72,7 @@
 
 :- import_module set, code_gen, type_util, map, tree, int, std_util, require.
 :- import_module dense_switch, bool, assoc_list, globals, options, mode_util.
-:- import_module prog_io.
+:- import_module getopt, prog_io.
 
 :- pred lookup_switch__bits_per_word(int::out) is det.
 
@@ -96,7 +96,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 		% one - no static ground terms, no lookup switch.
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
-	{ options__lookup_bool_option(Options, static_ground_terms, yes) },
+	{ getopt__lookup_bool_option(Options, static_ground_terms, yes) },
 	{
 		% We want to generate a lookup switch for any switch
 		% that is dense enough - we don't care how many cases
@@ -243,9 +243,9 @@ lookup_switch__get_case_rvals([Var|Vars], [Rval|Rvals]) -->
 	{ lookup_switch__code_is_empty(Code) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
-	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
-	{ options__lookup_bool_option(Options, asm_labels, ASM) },
-	{ options__lookup_bool_option(Options, static_ground_terms, SGT) },
+	{ getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
+	{ getopt__lookup_bool_option(Options, asm_labels, ASM) },
+	{ getopt__lookup_bool_option(Options, static_ground_terms, SGT) },
 	{ lookup_switch__rval_is_constant(Rval, NLG, ASM, SGT) },
 	lookup_switch__get_case_rvals(Vars, Rvals).
 

@@ -9,8 +9,7 @@
 
 % This is the top-level of the Mercury compiler.
 
-% This module parses the command-line options, and then invokes the
-% different passes of the compiler as appropriate.
+% This module invokes the different passes of the compiler as appropriate.
 
 %-----------------------------------------------------------------------------%
 
@@ -19,11 +18,6 @@
 :- import_module bool, string, io.
 
 :- pred main(io__state::di, io__state::uo) is det.
-
-:- pred report_error(string::in, io__state::di, io__state::uo) is det.
-
-:- pred mercury_compile__invoke_system_command(string::in, bool::out,
-					io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -35,8 +29,8 @@
 :- import_module library, getopt, term, varset.
 
 	% the main compiler passes (in order of execution)
-:- import_module prog_io, modules, make_hlds, hlds, undef_types, typecheck.
-:- import_module undef_modes, modes.
+:- import_module handle_options, prog_io, modules, make_hlds, hlds.
+:- import_module undef_types, typecheck, undef_modes, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module (lambda), polymorphism, higher_order, inlining, common.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
@@ -47,346 +41,49 @@
 :- import_module prog_util, hlds_out, dependency_graph.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module garbage_out, shapes.
-:- import_module options, globals.
+:- import_module options, globals, passes_aux.
 
 %-----------------------------------------------------------------------------%
 
 main -->
-	io__command_line_arguments(Args0),
-	{ OptionOps = option_ops(short_option, long_option, option_defaults) },
-	{ getopt__process_options(OptionOps, Args0, Args, Result0) },
-	postprocess_options(Result0, Result), 
-	main_2(Result, Args).
-
-% Convert string-valued options into the appropriate enumeration types,
-% and process implications among the options (i.e. situations where setting
-% one option implies setting/unsetting another one).
-
-:- pred postprocess_options(maybe_option_table(option), maybe(string),
-	io__state, io__state).
-:- mode postprocess_options(in, out, di, uo) is det.
-
-postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
-postprocess_options(ok(OptionTable0), Error) -->
-	{ map__lookup(OptionTable0, grade, GradeOpt) },
-	(   
-		{ GradeOpt = string(GradeString) },
-		{ convert_grade_option(GradeString, OptionTable0,
-			OptionTable) }
-	->
-		{ map__lookup(OptionTable, gc, GC_Method0) },
-		(
-			{ GC_Method0 = string(GC_Method_String) },
-			{ convert_gc_method(GC_Method_String, GC_Method) }
-		->
-			{ map__lookup(OptionTable, tags, Tags_Method0) },
-			( 
-				{ Tags_Method0 = string(Tags_Method_String) },
-				{ convert_tags_method(Tags_Method_String,
-					Tags_Method) }
-			->
-				postprocess_options_2(OptionTable,
-					GC_Method, Tags_Method),
-				{ Error = no }
-			;
-				{ Error = yes("Invalid tags option (must be `none', `low' or `high')") }
-			)
-		;
-			{ Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
-		)
-	;
-		{ Error = yes("Invalid grade option") }
-	).
-
-:- pred postprocess_options_2(option_table, gc_method, tags_method,
-				io__state, io__state).
-:- mode postprocess_options_2(in, in, in, di, uo) is det.
-
-postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
-	% work around for NU-Prolog problems
-	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
-	->
-		io__preallocate_heap_space(HeapSpace)
-	;
-		[]
-	),
-
-	{ copy(OptionTable, OptionTable1) }, % XXX
-	globals__io_init(OptionTable1, GC_Method, Tags_Method),
-
-	% --gc conservative implies --no-reclaim-heap-*
-	( { GC_Method = conservative } ->
-		globals__io_set_option(
-			reclaim_heap_on_semidet_failure, bool(no)
-		),
-		globals__io_set_option(
-			reclaim_heap_on_nondet_failure, bool(no)
-		)
-	;
-		[]
-	),
-
-	% --tags none implies --num-tag-bits 0.
-	( { Tags_Method = none } ->
-		{ NumTagBits0 = 0 }
-	;
-		globals__io_lookup_int_option(num_tag_bits, NumTagBits0)
-	),
-
-	% if --tags low but --num-tag-bits not specified, 
-	% use the autoconf-determined value for --num-tag-bits
-	% (the autoconf-determined value is passed from the `mc' script
-	% using the undocumented --conf-low-tag-bits option)
-	(
-		{ Tags_Method = low },
-		{ NumTagBits0 = -1 }
-	->
-		globals__io_lookup_int_option(conf_low_tag_bits, NumTagBits1)
-	;	
-		{ NumTagBits1 = NumTagBits0 }
-	),
-
-	% if --num-tag-bits negative or unspecified, issue a warning
-	% and assume --num-tag-bits 0
-	( { NumTagBits1 < 0 } ->
-		io__progname_base("mercury_compile", ProgName),
-		io__stderr_stream(StdErr),
-		report_warning(ProgName),
-		report_warning(": warning: --num-tag-bits invalid or unspecified\n"),
-		io__write_string(StdErr, ProgName),
-		report_warning(": using --num-tag-bits 0 (tags disabled)\n"),
-		{ NumTagBits = 0 }
-	;
-		{ NumTagBits = NumTagBits1 }
-	),
-
-	globals__io_set_option(num_tag_bits, int(NumTagBits)),
-
-	% --very-verbose implies --verbose
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	( { VeryVerbose = yes } ->
-		globals__io_set_option(verbose, bool(yes))
-	;	
-		[]
-	),
-
-	% --dump-hlds and --statistics require compilation by phases
-	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	( { DumpStages \= [] ; Statistics = yes } ->
-		globals__io_set_option(trad_passes, bool(no))
-	;
-		[]
-	),
-
-	% -w (--inhibit-warnings) disables all warnings
-	globals__io_lookup_bool_option(inhibit_warnings, InhibitWarnings),
-	( { InhibitWarnings = yes } ->
-		globals__io_set_option(warn_singleton_vars, bool(no)),
-		globals__io_set_option(warn_overlapping_scopes, bool(no)),
-		globals__io_set_option(warn_missing_det_decls, bool(no)),
-		globals__io_set_option(warn_det_decls_too_lax, bool(no)),
-		globals__io_set_option(warn_nothing_exported, bool(no))
-	;
-		[]
-	).
-
-:- pred convert_grade_option(string::in, option_table::in, option_table::out)
-	is semidet.
-
-convert_grade_option(Grade0) -->
-	( { string__remove_suffix(Grade0, ".prof", Grade1) } ->
-		{ Grade2 = Grade1 },
-		set_bool_opt(profiling, yes)
-	;
-		{ Grade2 = Grade0 },
-		set_bool_opt(profiling, no)
-	),
-	( { string__remove_suffix(Grade2, ".gc", Grade3) } ->
-		{ Grade = Grade3 },
-		{ GC = conservative }
-	;
-		{ Grade = Grade2 },
-		{ GC = none }
-	),
-	% Set the type of gc that the grade option implies.
-	% 'accurate' is not set in the grade, so we don't override it here.
-	( get_string_opt(gc, "accurate") ->
-		[]
-	; { GC = conservative } ->
-		set_string_opt(gc, "conservative")
-	;
-		set_string_opt(gc, "none")
-	),
-	convert_grade_option_2(Grade).
-
-:- pred convert_grade_option_2(string::in, option_table::in, option_table::out)
-	is semidet.
-
-convert_grade_option_2("asm_fast") -->
-	set_bool_opt(debug, no),
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, yes),
-	set_bool_opt(asm_labels, yes).
-convert_grade_option_2("fast") -->
-	set_bool_opt(debug, no),
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, yes),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("asm_jump") -->
-	set_bool_opt(debug, no),
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, yes).
-convert_grade_option_2("jump") -->
-	set_bool_opt(debug, no),
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("reg") -->
-	set_bool_opt(debug, no),
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, yes),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("none") -->
-	set_bool_opt(debug, yes),
-	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("debug") -->
-	set_bool_opt(debug, yes),
-	set_bool_opt(c_optimize, no),
-	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, no).
-
-:- pred set_bool_opt(option, bool, option_table, option_table).
-:- mode set_bool_opt(in, in, in, out) is det.
-
-set_bool_opt(Option, Value, OptionTable0, OptionTable) :-
-	map__set(OptionTable0, Option, bool(Value), OptionTable).
-
-:- pred set_string_opt(option, string, option_table, option_table).
-:- mode set_string_opt(in, in, in, out) is det.
-
-set_string_opt(Option, Value, OptionTable0, OptionTable) :-
-	map__set(OptionTable0, Option, string(Value), OptionTable).
-
-:- pred get_string_opt(option, string, option_table, option_table).
-:- mode get_string_opt(in, in, in, out) is semidet.
-
-get_string_opt(Option, Value, OptionTable, OptionTable) :-
-	map__lookup(OptionTable, Option, string(Value)).
-
-	% Display error message and then usage message
-:- pred usage_error(string::in, io__state::di, io__state::uo) is det.
-usage_error(ErrorMessage) -->
-	io__progname_base("mercury_compile", ProgName),
-	io__stderr_stream(StdErr),
-	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, ": "),
-	io__write_string(StdErr, ErrorMessage),
-	io__write_string(StdErr, "\n"),
-	io__set_exit_status(1),
-	usage.
-
-report_error(ErrorMessage) -->
-	io__write_string("Error: "),
-	io__write_string(ErrorMessage),
-	io__write_string("\n"),
-	io__set_exit_status(1).
-
-	% Display usage message
-:- pred usage(io__state::di, io__state::uo) is det.
-usage -->
-	io__progname_base("mercury_compile", ProgName),
-	io__stderr_stream(StdErr),
-	{ library__version(Version) },
- 	io__write_strings(StdErr,
-			["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string(StdErr,
-			"Copyright (C) 1995 University of Melbourne\n"),
-	io__write_string(StdErr, "Usage: "),
-	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, " [<options>] <module(s)>\n"),
-	io__write_string(StdErr, "Use `"),
-	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, " --help' for more information.\n").
-
-:- pred long_usage(io__state::di, io__state::uo) is det.
-long_usage -->
-	io__progname_base("mercury_compile", ProgName),
-	{ library__version(Version) },
- 	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1995 University of Melbourne\n"),
-	io__write_string("Usage: "),
-	io__write_string(ProgName),
-	io__write_string(" [<options>] <module(s)>\n"),
-	io__write_string("Options:\n"),
-	options_help.
+	handle_options(MaybeError, Args, Link),
+	main_2(MaybeError, Args, Link).
 
 %-----------------------------------------------------------------------------%
 
-:- pred main_2(maybe(string), list(string), io__state, io__state).
-:- mode main_2(in, in, di, uo) is det.
+:- pred main_2(maybe(string), list(string), bool, io__state, io__state).
+:- mode main_2(in, in, in, di, uo) is det.
 
-main_2(yes(ErrorMessage), _) -->
+main_2(yes(ErrorMessage), _, _) -->
 	usage_error(ErrorMessage).
-main_2(no, Args) -->
+main_2(no, Args, Link) -->
 	globals__io_lookup_bool_option(help, Help),
 	( { Help = yes } ->
 		long_usage
 	; { Args = [] } ->
 		usage
-        ;
+	;
 		{ strip_module_suffixes(Args, ModuleNames) },
 		process_module_list(ModuleNames),
-		globals__io_lookup_bool_option(generate_dependencies,
-			GenerateDependencies),
-		globals__io_lookup_bool_option(make_interface, MakeInterface),
-		globals__io_lookup_bool_option(convert_to_mercury,
-			ConvertToMercury),
-		globals__io_lookup_bool_option(convert_to_goedel,
-			ConvertToGoedel),
-		globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
-		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
-		globals__io_lookup_bool_option(compile_to_c, CompileToC),
-		globals__io_lookup_bool_option(compile_only, CompileOnly),
-		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 		io__get_exit_status(ExitStatus),
-		%
-		% If we encountered any errors, but the user didn't enable the
-		% `-E' (`--verbose-errors') option, give them a hint.
-		%
-		( { ExitStatus \= 0 }, { VerboseErrors = no } ->
-			io__write_string(
-			  "For more information, try recompiling with `-E'.\n"
+		( { ExitStatus = 0 } ->
+			( { Link = yes } ->
+				mercury_compile__link_module_list(ModuleNames)
+			;
+				[]
 			)
 		;
-			[]
-		),
-		(
-			{
-				GenerateDependencies = no,
-				MakeInterface = no,
-				ConvertToMercury = no,
-				ConvertToGoedel = no,
-				TypecheckOnly = no,
-				ErrorcheckOnly = no,
-				CompileToC = no,
-				CompileOnly = no,
-				ExitStatus = 0
-			}
-		->
-			mercury_compile__link_module_list(ModuleNames)
-		;
-			[]
+			% If we found some errors, but the user didn't enable
+			% the `-E' (`--verbose-errors') option, give them a
+			% hint about it.
+
+			globals__io_lookup_bool_option(verbose_errors,
+				VerboseErrors),
+			( { VerboseErrors = no } ->
+				io__write_string("For more information, try recompiling with `-E'.\n")
+			;
+				[]
+			)
 		)
 	).
 
@@ -446,10 +143,13 @@ process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 
+	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax),
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
 	globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
 	( { Error = fatal } ->
+		[]
+	; { Error = yes, HaltSyntax = yes } ->
 		[]
 	; { MakeInterface = yes } ->
 		make_interface(ModuleName, Items0)
@@ -880,7 +580,7 @@ mercury_compile__backend_pass_by_phases(_, _, _) -->
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS21, "21", "store_map"),
 
-	mercury_compile__maybe_report_sizes(HLDS21),
+	maybe_report_sizes(HLDS21),
 
 #if NU_PROLOG
 	{ putprop(mc, mc, HLDS21), fail }.
@@ -1340,7 +1040,8 @@ mercury_compile__map_args_to_regs(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Mapping args to regs..."),
 	maybe_flush_output(Verbose),
-	{ generate_arg_info(HLDS0, HLDS) },
+	globals__io_get_args_method(Args),
+	{ generate_arg_info(HLDS0, Args, HLDS) },
 	maybe_write_string(Verbose, " done.\n").
 
 :- pred mercury_compile__maybe_migrate_followcode(module_info, module_info,
@@ -1453,7 +1154,7 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 	mercury_compile__output_llds(ModuleName, LLDS3),
 	maybe_report_stats(Statistics),
 
-	mercury_compile__maybe_find_abstr_exports(HLDS16, HLDS17), 
+	mercury_compile__maybe_find_abstr_exports(HLDS16, HLDS17),
 	maybe_report_stats(Statistics),
 
 	{ module_info_shape_info(HLDS17, Shape_Info) },
@@ -1555,7 +1256,7 @@ mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS) -->
 		[]
 	).
 
-:- pred mercury_compile__maybe_find_abstr_exports(module_info, module_info, 
+:- pred mercury_compile__maybe_find_abstr_exports(module_info, module_info,
 	io__state, io__state).
 :- mode mercury_compile__maybe_find_abstr_exports(in, out, di, uo) is det.
 mercury_compile__maybe_find_abstr_exports(HLDS0, HLDS) -->
@@ -1596,7 +1297,7 @@ mercury_compile__gen_hlds(DumpFile, HLDS) -->
 		maybe_report_stats(Statistics)
 	;
 		maybe_write_string(Verbose, "\n"),
-		{ string__append_list( ["can't open file `",
+		{ string__append_list(["can't open file `",
 			DumpFile, "' for output."], ErrorMessage) },
 		report_error(ErrorMessage)
 	).
@@ -1748,7 +1449,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
 		OptimizeOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
-	mercury_compile__invoke_system_command(Command, Succeeded),
+	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file.")
 	;
@@ -1783,7 +1484,7 @@ mercury_compile__link_module_list(Modules) -->
 	        [" && ranlib ", OutputFileBase, ".a"],
 		MakeLibCmdList) },
 	    { string__append_list(MakeLibCmdList, MakeLibCmd) },
-	    mercury_compile__invoke_system_command(MakeLibCmd, MakeLibCmdOK),
+	    invoke_system_command(MakeLibCmd, MakeLibCmdOK),
 	    { Objects = [OutputFileBase, ".a"] }
         ;
 	    { MakeLibCmdOK = yes },
@@ -1798,7 +1499,7 @@ mercury_compile__link_module_list(Modules) -->
 	    { join_module_list(Modules, ".m ", ["> ", C_Init_Base, ".c"],
 				MkInitCmd0) },
 	    { string__append_list(["c2init " | MkInitCmd0], MkInitCmd) },
-	    mercury_compile__invoke_system_command(MkInitCmd, MkInitOK),
+	    invoke_system_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Statistics),
 	    ( { MkInitOK = no } ->
 		report_error("creation of init file failed.")
@@ -1819,7 +1520,7 @@ mercury_compile__link_module_list(Modules) -->
 			LinkFlags, " ",
 			OutputFileBase, "_init.o " | Objects],
 			LinkCmd) },
-		    mercury_compile__invoke_system_command(LinkCmd, LinkCmdOK),
+		    invoke_system_command(LinkCmd, LinkCmdOK),
 		    maybe_report_stats(Statistics),
 		    ( { LinkCmdOK = no } ->
 			report_error("link failed.")
@@ -1840,60 +1541,6 @@ join_module_list([Module0 | Modules0], Separator, Terminator,
 	join_module_list(Modules0, Separator, Terminator, Rest).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-mercury_compile__invoke_system_command(Command, Succeeded) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Invoking system command `"),
-	maybe_write_string(Verbose, Command),
-	maybe_write_string(Verbose, "'...\n"),
-	io__call_system(Command, Result),
-	( { Result = ok(0) } ->
-		maybe_write_string(Verbose, "% done.\n"),
-		{ Succeeded = yes }
-	; { Result = ok(_) } ->
-		report_error("system command returned non-zero exit status."),
-		{ Succeeded = no }
-	;	
-		report_error("unable to invoke system command."),
-		{ Succeeded = no }
-	).
-
-:- pred mercury_compile__maybe_report_sizes(module_info, io__state, io__state).
-:- mode mercury_compile__maybe_report_sizes(in, di, uo) is det.
-
-mercury_compile__maybe_report_sizes(HLDS) -->
-	globals__io_lookup_bool_option(statistics, Statistics),
-	( { Statistics = yes } ->
-		mercury_compile__report_sizes(HLDS)
-	;
-		[]
-	).
-
-:- pred mercury_compile__report_sizes(module_info, io__state, io__state).
-:- mode mercury_compile__report_sizes(in, di, uo) is det.
-
-mercury_compile__report_sizes(ModuleInfo) -->
-	{ module_info_preds(ModuleInfo, Preds) },
-	mercury_compile__tree_stats("Pred table", Preds),
-	{ module_info_types(ModuleInfo, Types) },
-	mercury_compile__tree_stats("Type table", Types),
-	{ module_info_ctors(ModuleInfo, Ctors) },
-	mercury_compile__tree_stats("Constructor table", Ctors).
-
-:- pred mercury_compile__tree_stats(string, map(_K, _V), io__state, io__state).
-:- mode mercury_compile__tree_stats(in, in, di, uo) is det.
-
-mercury_compile__tree_stats(Description, Tree) -->
-	{ tree234__count(Tree, Count) },
-	%{ tree234__depth(Tree, Depth) },
-	io__write_string(Description),
-	io__write_string(": count = "),
-	io__write_int(Count),
-	%io__write_string(", depth = "),
-	%io__write_int(Depth),
-	io__write_string("\n").
-
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__maybe_dump_hlds(module_info, string, string,
@@ -1934,7 +1581,7 @@ mercury_compile__dump_hlds(DumpFile, HLDS) -->
 		maybe_report_stats(Statistics)
 	;
 		maybe_write_string(Verbose, "\n"),
-		{ string__append_list( ["can't open file `",
+		{ string__append_list(["can't open file `",
 			DumpFile, "' for output."], ErrorMessage) },
 		report_error(ErrorMessage)
 	).

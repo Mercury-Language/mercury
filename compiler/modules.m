@@ -73,8 +73,7 @@
 
 :- implementation.
 :- import_module bool, set, map, term, varset, dir, std_util, library.
-:- import_module globals, options, prog_out, mercury_to_mercury.
-:- import_module mercury_compile.
+:- import_module globals, options, passes_aux, prog_out, mercury_to_mercury.
 
 make_interface(ModuleName, Items0) -->
 	{ get_interface(Items0, InterfaceItems0) },
@@ -175,7 +174,7 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 		{ Command = "mercury_update_interface " }
 	),
 	{ string__append(Command, OutputFileName, ShellCommand) },
-	mercury_compile__invoke_system_command(ShellCommand, Succeeded),
+	invoke_system_command(ShellCommand, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem updating interface files.")
 	;

@@ -78,7 +78,7 @@
 
 :- import_module bool, list, map, set, std_util, require.
 
-:- import_module det_report, prog_io, mode_util, globals, options.
+:- import_module det_report, prog_io, mode_util, globals, options, passes_aux.
 
 %-----------------------------------------------------------------------------%
 

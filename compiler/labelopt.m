@@ -27,8 +27,8 @@
 
 	% Build up a set showing which labels are branched to.
 
-:- pred labelopt__build_usemap(list(instruction), set(label)).
-:- mode labelopt__build_usemap(in, out) is det.
+:- pred labelopt__build_useset(list(instruction), set(label)).
+:- mode labelopt__build_useset(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -38,8 +38,8 @@
 :- import_module std_util.
 
 labelopt__main(Instrs0, Final, Instrs, Mod) :-
-	labelopt__build_usemap(Instrs0, Usemap),
-	labelopt__instr_list(Instrs0, yes, Usemap, Instrs1, Mod),
+	labelopt__build_useset(Instrs0, Useset),
+	labelopt__instr_list(Instrs0, yes, Useset, Instrs1, Mod),
 	( Final = yes, Mod = yes ->
 		labelopt__main(Instrs1, Final, Instrs, _)
 	;
@@ -48,45 +48,45 @@ labelopt__main(Instrs0, Final, Instrs, Mod) :-
 
 %-----------------------------------------------------------------------------%
 
-labelopt__build_usemap(Instrs, Usemap) :-
-	set__init(Usemap0),
-	labelopt__build_usemap_2(Instrs, Usemap0, Usemap).
+labelopt__build_useset(Instrs, Useset) :-
+	set__init(Useset0),
+	labelopt__build_useset_2(Instrs, Useset0, Useset).
 
-:- pred labelopt__build_usemap_2(list(instruction), set(label), set(label)).
-:- mode labelopt__build_usemap_2(in, di, uo) is det.
+:- pred labelopt__build_useset_2(list(instruction), set(label), set(label)).
+:- mode labelopt__build_useset_2(in, di, uo) is det.
 
-labelopt__build_usemap_2([], Usemap, Usemap).
-labelopt__build_usemap_2([Instr | Instructions], Usemap0, Usemap) :-
+labelopt__build_useset_2([], Useset, Useset).
+labelopt__build_useset_2([Instr | Instructions], Useset0, Useset) :-
 	Instr = Uinstr - _Comment,
 	opt_util__instr_labels(Uinstr, Labels, CodeAddresses),
-	labelopt__label_list_build_usemap(Labels, Usemap0, Usemap1),
-	labelopt__code_addr_list_build_usemap(CodeAddresses, Usemap1, Usemap2),
-	labelopt__build_usemap_2(Instructions, Usemap2, Usemap).
+	labelopt__label_list_build_useset(Labels, Useset0, Useset1),
+	labelopt__code_addr_list_build_useset(CodeAddresses, Useset1, Useset2),
+	labelopt__build_useset_2(Instructions, Useset2, Useset).
 
 	% We are not interested in code addresses that are not labels.
 
-:- pred labelopt__code_addr_list_build_usemap(list(code_addr),
+:- pred labelopt__code_addr_list_build_useset(list(code_addr),
 	set(label), set(label)).
-:- mode labelopt__code_addr_list_build_usemap(in, di, uo) is det.
+:- mode labelopt__code_addr_list_build_useset(in, di, uo) is det.
 
-labelopt__code_addr_list_build_usemap([], Usemap, Usemap).
-labelopt__code_addr_list_build_usemap([Code_addr | Rest], Usemap0, Usemap) :-
+labelopt__code_addr_list_build_useset([], Useset, Useset).
+labelopt__code_addr_list_build_useset([Code_addr | Rest], Useset0, Useset) :-
 	( Code_addr = label(Label) ->
 		copy(Label, Label1),
-		set__insert(Usemap0, Label1, Usemap1)
+		set__insert(Useset0, Label1, Useset1)
 	;
-		Usemap1 = Usemap0
+		Useset1 = Useset0
 	),
-	labelopt__code_addr_list_build_usemap(Rest, Usemap1, Usemap).
+	labelopt__code_addr_list_build_useset(Rest, Useset1, Useset).
 
-:- pred labelopt__label_list_build_usemap(list(label), set(label), set(label)).
-:- mode labelopt__label_list_build_usemap(in, di, uo) is det.
+:- pred labelopt__label_list_build_useset(list(label), set(label), set(label)).
+:- mode labelopt__label_list_build_useset(in, di, uo) is det.
 
-labelopt__label_list_build_usemap([], Usemap, Usemap).
-labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
+labelopt__label_list_build_useset([], Useset, Useset).
+labelopt__label_list_build_useset([Label | Labels], Useset0, Useset) :-
 	copy(Label, Label1),
-	set__insert(Usemap0, Label1, Usemap1),
-	labelopt__label_list_build_usemap(Labels, Usemap1, Usemap).
+	set__insert(Useset0, Label1, Useset1),
+	labelopt__label_list_build_useset(Labels, Useset1, Useset).
 
 %-----------------------------------------------------------------------------%
 
@@ -100,15 +100,15 @@ labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
 	list(instruction), bool).
 :- mode labelopt__instr_list(in, in, in, out, out) is det.
 
-labelopt__instr_list([], _Fallthrough, _Usemap, [], no).
+labelopt__instr_list([], _Fallthrough, _Useset, [], no).
 labelopt__instr_list([Instr0 | MoreInstrs0],
-		Fallthrough, Usemap, MoreInstrs, Mod) :-
+		Fallthrough, Useset, MoreInstrs, Mod) :-
 	Instr0 = Uinstr0 - _Comment,
 	( Uinstr0 = label(Label) ->
 		(
 			( Label = exported(_)
 			; Label = local(_)
-			; set__member(Label, Usemap)
+			; set__member(Label, Useset)
 			)
 		->
 			ReplInstrs = [Instr0],
@@ -133,7 +133,7 @@ labelopt__instr_list([Instr0 | MoreInstrs0],
 			Fallthrough1 = no
 		)
 	),
-	labelopt__instr_list(MoreInstrs0, Fallthrough1, Usemap,
+	labelopt__instr_list(MoreInstrs0, Fallthrough1, Useset,
 		MoreInstrs1, Mod1),
 	list__append(ReplInstrs, MoreInstrs1, MoreInstrs),
 	( Mod0 = no, Mod1 = no ->

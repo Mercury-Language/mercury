@@ -25,7 +25,7 @@
 
 :- implementation.
 :- import_module std_util, map, list, term, varset.
-:- import_module globals, options.
+:- import_module globals, options, passes_aux.
 :- import_module prog_out, prog_util, hlds_out, type_util, mercury_to_mercury.
 
 check_undefined_types(Module, Module, FoundError) -->

@@ -54,7 +54,7 @@
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.
 :- import_module code_util, unify_proc, special_pred, type_util.
-:- import_module mercury_to_mercury.
+:- import_module mercury_to_mercury, passes_aux.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
