@@ -223,7 +223,7 @@ case $HOST in
 	ender)
 		# Test out these options, to make sure they continue
 		# to work
-		CONFIG_OPTS="--enable-hlc-grades \
+		CONFIG_OPTS="--enable-all-hlc-grades \
 			--enable-new-mercuryfile-struct" ;;
 	*)	
 		CONFIG_OPTS="" ;;
