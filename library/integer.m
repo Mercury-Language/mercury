@@ -130,7 +130,10 @@
 
 :- func integer \/ integer = integer.
 
+:- func integer `xor` integer = integer.
+
 :- func integer ^ integer = integer.
+:- pragma obsolete(('^')/2).
 
 :- func \ integer = integer.
 
@@ -259,7 +262,7 @@ X1 \/ X2 =
         big_or(X1, X2)
     ).
 
-X1 ^ X2 = 
+X1 `xor` X2 = 
     (
         big_isnegative(X1) ->
             (
@@ -274,6 +277,8 @@ X1 ^ X2 =
     ;
         big_xor(X1, X2)
     ).
+
+X1 ^ X2 = X1 `xor` X2.
 
 \ X = big_neg(big_plus(X, integer__one)).
 
