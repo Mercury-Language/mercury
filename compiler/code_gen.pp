@@ -764,8 +764,20 @@ code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
 
 code_gen__generate_det_goal_2(
 		pragma_c_code(C_Code, PredId, ModeId, Args, ArgNameMap),
-		_GoalInfo, Instr) -->
+		GoalInfo, Instr) -->
+	code_gen__generate_pragma_c_code(model_det, C_Code, PredId, ModeId,
+		Args, ArgNameMap, GoalInfo, Instr).
 
+%---------------------------------------------------------------------------%
+
+:- pred code_gen__generate_pragma_c_code(code_model, string, pred_id,
+		proc_id, list(var), map(var, string), hlds__goal_info,
+		code_tree, code_info, code_info).
+:- mode code_gen__generate_pragma_c_code(in, in, in, in, in, in, in, out,
+		in, out) is det.
+
+code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
+			ArgNameMap, _GoalInfo, Instr) -->
 	% First we need to get a list of input and output arguments
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgModes) },
@@ -782,12 +794,26 @@ code_gen__generate_det_goal_2(
 % }
 %
 	make_pragma_decls(Args, ArgNameMap, Decls),
-	get_pragma_input_vars(InArgs, ArgNameMap, Inputs, Code),
+	get_pragma_input_vars(InArgs, ArgNameMap, Inputs, InputVarsCode),
+	( { CodeModel = model_semi } ->
+		code_info__get_next_label(SkipLab),
+		code_info__grab_code_info(CodeInfo),
+		code_info__generate_failure(FailCode),
+		code_info__slap_code_info(CodeInfo),
+		{ CheckFailureCode = tree(node([
+			if_val(lval(reg(r(1))), label(SkipLab)) -
+				"Test for success of pragma_c_code"
+			]), tree(FailCode, node([ label(SkipLab) - "" ])))
+		}
+	;
+		{ CheckFailureCode = empty }
+	),
 	pragma_acquire_regs(OutArgs, Regs),
 	place_pragma_output_args_in_regs(OutArgs, ArgNameMap, Regs, Outputs),
-	{ Instr0 = node([pragma_c(Decls, Inputs, C_Code, Outputs) - 
+	% { goal_info__context(GoalInfo, Context) },
+	{ PragmaCode = node([pragma_c(Decls, Inputs, C_Code, Outputs) - 
 			"Pragma C inclusion"]) },
-	{ Instr = tree(Code, Instr0) }.
+	{ Instr = tree(InputVarsCode, tree(PragmaCode, CheckFailureCode)) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1015,8 +1041,12 @@ code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
 		)
 	).
 
-code_gen__generate_semi_goal_2(pragma_c_code(_, _, _, _, _), _, _) -->
-	{ error("code_gen__generate_semi_goal_2: pragma_c_code treated as semidet") }.
+code_gen__generate_semi_goal_2(
+		pragma_c_code(C_Code, PredId, ModeId, Args, ArgNameMap),
+		GoalInfo, Instr) -->
+	code_gen__generate_pragma_c_code(model_semi, C_Code, PredId, ModeId,
+		Args, ArgNameMap, GoalInfo, Instr).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1168,8 +1198,8 @@ code_gen__generate_non_goal_2(
 code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
 							_GoalInfo, _Code) -->
 	{ error("Cannot have a nondet unification.") }.
-code_gen__generate_non_goal_2(pragma_c_code(_, _, _, _, __), _, _) -->
-	{ error("code_gen__generate_non_goal_2: pragma_c_code treated as nondet") }.
+code_gen__generate_non_goal_2(pragma_c_code(A, B, C, D, E), F, G) -->
+	code_gen__generate_det_goal_2(pragma_c_code(A, B, C, D, E), F, G).
 
 %---------------------------------------------------------------------------%
 
