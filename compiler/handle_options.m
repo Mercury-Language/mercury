@@ -283,6 +283,13 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
+	% --gc accurate requires stack layouts.
+	( { GC_Method = accurate } ->
+		globals__io_set_option(stack_layout, bool(yes)) 
+	;
+		[]
+	),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -558,9 +565,7 @@ convert_grade_option(Grade0) -->
 	% 'accurate' is now set in the grade, so we can override it here.
 	( 
 		{ GC = accurate }, 
-		set_string_opt(gc, "accurate"), 
-			% we need stack layouts for accurate gc
-		set_bool_opt(stack_layout, yes) 
+		set_string_opt(gc, "accurate")
 	; 
 		{ GC = conservative },
 		set_string_opt(gc, "conservative")
