@@ -57,7 +57,8 @@ static	MR_Trace_Cmd_Info	MR_trace_ctrl = {
 	0,	/* stop event */
 	MR_PRINT_LEVEL_SOME,
 	FALSE,	/* not strict */
-	TRUE	/* must check */
+	TRUE,	/* must check */
+	NULL    /* pointer to filter/4 for collect queries */
 };
 
 MR_Code 		*MR_trace_real(const MR_Label_Layout *layout);
@@ -166,6 +167,44 @@ MR_trace_real(const MR_Label_Layout *layout)
 #endif	/* MR_TRACE_HISTOGRAM */
 
 	switch (MR_trace_ctrl.MR_trace_cmd) {
+		case MR_CMD_COLLECT:
+		  {
+		        MR_Event_Info	event_info;
+			Word		*saved_regs = event_info.MR_saved_regs;
+			int		max_r_num;
+			const char	*path;
+			bool    	stop_collecting = FALSE;
+
+			max_r_num = layout->MR_sll_entry->MR_sle_max_r_num;
+			if (max_r_num + MR_NUM_SPECIAL_REG > 
+					MR_MAX_SPECIAL_REG_MR) 
+			{
+				event_info.MR_max_mr_num = 
+					max_r_num + MR_NUM_SPECIAL_REG;
+			} else {
+				event_info.MR_max_mr_num = 
+					MR_MAX_SPECIAL_REG_MR;
+			}
+			
+			port = (MR_Trace_Port) layout->MR_sll_port;
+			path = layout->MR_sll_entry->MR_sle_module_layout
+				->MR_ml_string_table + layout->MR_sll_goal_path;
+			MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, 
+				saved_regs);
+			MR_trace_init_point_vars(layout, saved_regs, port);
+			MR_COLLECT_filter(MR_trace_ctrl.MR_filter_ptr, seqno,
+				depth, port, layout, path, &stop_collecting);
+			MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, 
+				saved_regs);
+			if (stop_collecting) {
+				MR_trace_ctrl.MR_trace_cmd = MR_CMD_GOTO;
+				return MR_trace_event(&MR_trace_ctrl, TRUE,
+                                               layout, port, seqno, depth);
+			}
+
+			goto check_stop_print;
+		  }	
+
 		case MR_CMD_GOTO:
 			if (MR_trace_event_number >=
 					MR_trace_ctrl.MR_trace_stop_event)

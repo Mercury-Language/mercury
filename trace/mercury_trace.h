@@ -129,6 +129,10 @@ extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
 ** MR_trace_cmd says what mode the tracer is in, i.e. how events should be
 ** treated.
 **
+** If MR_trace_cmd == MR_CMD_COLLECT, the event handler calls MR_COLLECT_filter()
+** until the end of the execution is reached or until the `stop_collecting'
+** variable is set to TRUE. It is the tracer mode after a `collect' request.
+**
 ** If MR_trace_cmd == MR_CMD_GOTO, the event handler will stop at the next
 ** event whose event number is equal to or greater than MR_trace_stop_event.
 **
@@ -162,6 +166,7 @@ extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
 */
 
 typedef enum {
+	MR_CMD_COLLECT,
 	MR_CMD_GOTO,
 	MR_CMD_NEXT,
 	MR_CMD_FINISH,
@@ -179,6 +184,15 @@ typedef enum {
 	MR_PRINT_LEVEL_SOME,	/* events matching an active spy point     */
 	MR_PRINT_LEVEL_ALL	/* all events                              */
 } MR_Trace_Print_Level;
+
+/*
+** Type of pointers to filter/4 procedures for collect request
+*/
+
+typedef void (*MR_FilterFuncPtr)(MR_Integer, MR_Integer,
+	MR_Integer, MR_Word, MR_Word, MR_String, MR_String, MR_String,
+	MR_Integer, MR_Integer, MR_Word, MR_Integer, MR_String, MR_Word,
+	MR_Word *, MR_Char *);
 
 typedef struct {
 	MR_Trace_Cmd_Type	MR_trace_cmd;	
@@ -202,7 +216,14 @@ typedef struct {
 				** MR_trace_print_level != MR_PRINT_LEVEL_NONE
 				*/
 	bool			MR_trace_must_check;
+
+				/*
+				** The MR_filter_ptr field points to the filter/4
+				** procedure during a collect request
+				*/
+	MR_FilterFuncPtr	MR_filter_ptr;
 } MR_Trace_Cmd_Info;
+
 
 #define	MR_port_is_final(port)		((port) == MR_PORT_EXIT || \
 					 (port) == MR_PORT_FAIL || \
