@@ -32,7 +32,7 @@ Changes to the Mercury implementation:
 * There's a version of the new back-end which generates code
   for Microsoft's new .NET system.
 * There's a version of the new back-end which compiles directly
-  to to assembler, using the GCC back-end.
+  to assembler, using the GCC back-end.
 * Various improvements to `mtags'.
 
 DETAILED LISTING
@@ -295,6 +295,8 @@ Changes to the Mercury implementation:
   So far we have only tested it on i686-pc-linux-gnu (Intel x86-based
   PCs running Linux).  But in theory it should work fine on other
   platforms too.
+
+  For details see <http://www.cs.mu.oz.au/mercury/download/gcc-backend.html>.
 
 * The old back-end now generates faster code at low optimization levels.
 
