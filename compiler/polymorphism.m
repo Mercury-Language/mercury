@@ -1757,6 +1757,10 @@ polymorphism__c_code_add_typeinfos_2([TVar|TVars], TypeVarSet, Mode, Impl,
 :- mode foreign_code_does_not_use_variable(in, in) is semidet.
 
 foreign_code_does_not_use_variable(Impl, VarName) :-
+		% XXX This test is temporarily turned off, as it causes
+		% the compiler to abort when compiling
+		% stage2/browser/declarative_execution.m
+	semidet_fail,
 	(
 		Impl = ordinary(ForeignBody, _),
 		\+ string__sub_string_search(ForeignBody,
