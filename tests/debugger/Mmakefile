@@ -297,7 +297,7 @@ existential_type_classes.out: existential_type_classes \
 		> existential_type_classes.out
 
 exported_eqv_type.out: exported_eqv_type exported_eqv_type.inp
-	$(MDB) ./exported_eqv_type < exported_eqv_type.inp > exported_eqv_type.out 2>&1
+	$(MDB_STD) ./exported_eqv_type < exported_eqv_type.inp > exported_eqv_type.out 2>&1
 
 field_names.out: field_names field_names.inp
 	$(MDB) ./field_names < field_names.inp > field_names.out 2>&1
