@@ -196,10 +196,10 @@ rename_apart(NewVarSet, Terms0, Terms, VarSet0, VarSet) :-
 
 unify(term__variable(X), term__variable(Y), VarSet0, VarSet) :-
 	(
-		varset__lookup_var(VarSet0, X, BindingOfX)
+		varset__search_var(VarSet0, X, BindingOfX)
 	->
 		(
-			varset__lookup_var(VarSet0, Y, BindingOfY)
+			varset__search_var(VarSet0, Y, BindingOfY)
 		->
 			% both X and Y already have VarSet - just
 			% unify the terms they are bound to
@@ -218,7 +218,7 @@ unify(term__variable(X), term__variable(Y), VarSet0, VarSet) :-
 		)
 	;
 		(
-			varset__lookup_var(VarSet0, Y, BindingOfY2)
+			varset__search_var(VarSet0, Y, BindingOfY2)
 		->
 			% X is a variable which hasn't been bound yet
 			apply_rec_substitution(BindingOfY2, VarSet0,
@@ -244,7 +244,7 @@ unify(term__variable(X), term__variable(Y), VarSet0, VarSet) :-
 
 unify(term__variable(X), term__functor(F, As, C), VarSet0, VarSet) :-
 	(
-		varset__lookup_var(VarSet0, X, BindingOfX)
+		varset__search_var(VarSet0, X, BindingOfX)
 	->
 		unify(BindingOfX, term__functor(F, As, C), VarSet0,
 			VarSet)
@@ -255,7 +255,7 @@ unify(term__variable(X), term__functor(F, As, C), VarSet0, VarSet) :-
 
 unify(term__functor(F, As, C), term__variable(X), VarSet0, VarSet) :-
 	(
-		varset__lookup_var(VarSet0, X, BindingOfX)
+		varset__search_var(VarSet0, X, BindingOfX)
 	->
 		unify(term__functor(F, As, C), BindingOfX, VarSet0,
 			VarSet)
@@ -287,7 +287,7 @@ unify_list([X | Xs], [Y | Ys]) -->
 occurs(term__variable(X), Y, VarSet) :-
 	X = Y
 	;
-	varset__lookup_var(VarSet, X, BindingOfX),
+	varset__search_var(VarSet, X, BindingOfX),
 	occurs(BindingOfX, Y, VarSet).
 occurs(term__functor(_F, As, _), Y, VarSet) :-
 	occurs_list(As, Y, VarSet).
@@ -312,7 +312,7 @@ occurs_list([Term | Terms], Y, VarSet) :-
 
 apply_rec_substitution(term__variable(Var), VarSet, Term) :-
 	(
-		varset__lookup_var(VarSet, Var, Replacement)
+		varset__search_var(VarSet, Var, Replacement)
 	->
 		% recursively apply the substition to the replacement
 		apply_rec_substitution(Replacement, VarSet, Term)
