@@ -237,7 +237,7 @@ long_usage -->
 %-----------------------------------------------------------------------------%
 
 	% Process a list of module names.
-	% Remove any `.nl' extension extension before processing
+	% Remove any `.nl' or `.m' extension extension before processing
 	% the module name.
 
 :- pred strip_module_suffixes(list(string), list(string)).
@@ -289,8 +289,15 @@ process_module(Module) -->
 process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Parsing...\n"),
-	io__gc_call(read_mod(ModuleName, ".nl", "Reading module", Items0,
-			Error)),
+	io__gc_call(read_mod_ignore_errors(ModuleName, ".m", "Reading module",
+			_ItemsM, ErrorM)),
+	( { ErrorM = fatal } ->
+		io__gc_call(read_mod(ModuleName, ".nl", "Reading module",
+				Items0, Error))
+	;
+		io__gc_call(read_mod(ModuleName, ".m", "Reading module",
+				Items0, Error))
+	),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 
@@ -491,6 +498,11 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".qls = "),
+	write_dependencies_list(Modules, ".ql", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".cs = "),
 	write_dependencies_list(Modules, ".c", DepStream),
 	io__write_string(DepStream, "\n"),
@@ -565,6 +577,36 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".nos)\n\n"),
 
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nu.debug : $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nos)\n"),
+	io__write_string(DepStream, "\t$(MNL) --debug $(MNLFLAGS) -o "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nu.debug $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".nos)\n\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".sicstus : $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".qls)\n"),
+	io__write_string(DepStream, "\t$(MSL) $(MSLFLAGS) -o "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".sicstus $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".qls)\n\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".sicstus.debug : $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".sls)\n"),
+	io__write_string(DepStream, "\t$(MSL) --debug $(MSLFLAGS) -o "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".sicstus.debug $("),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".qls)\n\n"),
+
 	io__write_string(DepStream, "clean_progs: clean_"),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, "\n\n"),
@@ -596,7 +638,8 @@ generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
 	%
 	% If the module hadn't been processed yet, compute it's
 	% transitive dependencies (we already know it's primary dependencies),
-	% output a line for this module to the dependency file,
+	% output a line for this module to the dependency file
+	% (if the file exists),
 	% add it's imports to the list of dependencies we need to
 	% generate, and mark it as having been processed.
 	%
@@ -605,7 +648,11 @@ generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
 			deps(yes, Error, IntDeps, ImplDeps), DepsMap2) },
 		transitive_dependencies(IntDeps, DepsMap2, SecondaryDeps,
 			DepsMap),
-		write_dependency_file(Module, ImplDeps, SecondaryDeps),
+		( { Error \= fatal } ->
+			write_dependency_file(Module, ImplDeps, SecondaryDeps)
+		;
+			[]
+		),
 		{ list__append(ImplDeps, Modules, Modules2) }
 	;
 		{ DepsMap = DepsMap1 },
@@ -703,8 +750,15 @@ lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
 :- mode read_dependencies(in, out, out, out, di, uo) is det.
 
 read_dependencies(Module, InterfaceDeps, ImplementationDeps, Error) -->
-	io__gc_call(read_mod_ignore_errors(Module, ".nl",
-			"Getting dependencies for module", Items, Error)),
+	io__gc_call(read_mod_ignore_errors(Module, ".m",
+			"Getting dependencies for module", ItemsM, ErrorM)),
+	( { ErrorM = fatal } ->
+		io__gc_call(read_mod_ignore_errors(Module, ".nl",
+			"Getting dependencies for module", Items, Error))
+	;
+		{ Error = ErrorM },
+		{ Items = ItemsM }
+	),
 	{ get_dependencies(Items, ImplementationDeps0) },
 	{ get_interface(Items, InterfaceItems) },
 	{ get_dependencies(InterfaceItems, InterfaceDeps) },
@@ -752,14 +806,14 @@ check_for_clauses_in_interface([Item0 | Items0], Items) -->
 
 read_mod(ModuleName, Extension, Descr, Items, Error) -->
 	{ dir__basename(ModuleName, Module) },
+	{ string__append(ModuleName, Extension, FileName) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose, "% "),
 	maybe_write_string(VeryVerbose, Descr),
 	maybe_write_string(VeryVerbose, " `"),
-	maybe_write_string(VeryVerbose, Module),
+	maybe_write_string(VeryVerbose, FileName),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
-	{ string__append(ModuleName, Extension, FileName) },
 	prog_io__read_module(FileName, Module, Error, Messages, Items),
 	( { Error = fatal } ->
 		maybe_write_string(VeryVerbose, "fatal error(s).\n"),
@@ -1756,7 +1810,8 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	},
 	globals__io_lookup_int_option(num_tag_bits, NumTagBits),
 	{ string__int_to_string(NumTagBits, NumTagBitsString) },
-	{ string__append("-DTAGBITS=", NumTagBitsString, NumTagBitsOpt) },
+	{ string__append_list(
+		["-DTAGBITS=", NumTagBitsString, " "], NumTagBitsOpt) },
 	globals__io_lookup_bool_option(debug, Debug),
 	{ Debug = yes ->
 		DebugOpt = "-g "
