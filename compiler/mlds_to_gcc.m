@@ -218,13 +218,13 @@ gen_init_fn_defns(MLDS_ModuleName, GlobalInfo0, GlobalInfo) -->
 	{ Name = export(FuncName) },
 	{ map__init(SymbolTable) },
 	{ map__init(LabelTable) },
-	{ FuncInfo = func_info(GlobalInfo,
+	{ DefnInfo = defn_info(GlobalInfo,
 		qual(MLDS_ModuleName, Name),
 		SymbolTable, LabelTable) },
 	{ term__context_init(Context) },
 	{ FuncBody = mlds__statement(block([], []), mlds__make_context(Context)) },
 	gcc__start_function(GCC_FuncDecl),
-	gen_statement(FuncInfo, FuncBody),
+	gen_statement(DefnInfo, FuncBody),
 	gcc__end_function.
 
 :- func init_fn_name(mlds_module_name, string) = string.
@@ -545,13 +545,13 @@ gen_defns(ModuleName, [Defn | Defns], GlobalInfo0, GlobalInfo) -->
 	% Handle MLDS definitions that are nested inside a
 	% function definition (or inside a block within a function),
 	% and which are hence local to that function.
-:- pred build_local_defns(mlds__defns, func_info, mlds_module_name, 
+:- pred build_local_defns(mlds__defns, defn_info, mlds_module_name, 
 		symbol_table, symbol_table, io__state, io__state).
 :- mode build_local_defns(in, in, in, in, out, di, uo) is det.
 
 build_local_defns([], _, _, SymbolTable, SymbolTable) --> [].
-build_local_defns([Defn|Defns], FuncInfo, ModuleName, SymbolTable0, SymbolTable) -->
-	build_local_defn(Defn, FuncInfo, ModuleName, GCC_Defn),
+build_local_defns([Defn|Defns], DefnInfo, ModuleName, SymbolTable0, SymbolTable) -->
+	build_local_defn(Defn, DefnInfo, ModuleName, GCC_Defn),
 	% Insert the variable definition into our symbol table.
 	% The MLDS code that the MLDS code generator generates should
 	% not have any shadowing of parameters or local variables by
@@ -561,7 +561,7 @@ build_local_defns([Defn|Defns], FuncInfo, ModuleName, SymbolTable0, SymbolTable)
 	{ Defn = mlds__defn(Name, _, _, _) },
 	{ SymbolTable1 = map__det_insert(SymbolTable0,
 		qual(ModuleName, Name), GCC_Defn) },
-	build_local_defns(Defns, FuncInfo, ModuleName, SymbolTable1, SymbolTable).
+	build_local_defns(Defns, DefnInfo, ModuleName, SymbolTable1, SymbolTable).
 
 	% Handle MLDS definitions that are nested inside a type, 
 	% i.e. fields of that type.
@@ -596,13 +596,13 @@ gen_defn(ModuleName, Defn, GlobalInfo0, GlobalInfo) -->
 	gen_defn_body(qual(ModuleName, Name), Context, Flags, DefnBody,
 		GlobalInfo0, GlobalInfo).
 
-:- pred build_local_defn(mlds__defn, func_info, mlds_module_name, gcc__var_decl,
-		io__state, io__state).
+:- pred build_local_defn(mlds__defn, defn_info, mlds_module_name,
+		gcc__var_decl, io__state, io__state).
 :- mode build_local_defn(in, in, in, out, di, uo) is det.
 
-build_local_defn(Defn, FuncInfo, ModuleName, GCC_Defn) -->
+build_local_defn(Defn, DefnInfo, ModuleName, GCC_Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
-	build_local_defn_body(qual(ModuleName, Name), FuncInfo, Context, Flags,
+	build_local_defn_body(qual(ModuleName, Name), DefnInfo, Context, Flags,
 		DefnBody, GCC_Defn).
 
 :- pred build_field_defn(mlds__defn, mlds_module_name, global_info,
@@ -622,18 +622,14 @@ build_field_defn(Defn, ModuleName, GlobalInfo, GCC_Defn) -->
 gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer) },
-		% build_initializer expects a func_info,
-		% so we construct one here.  The name func_info is a
-		% bit misleading since here it is holding information
-		% about the global variable declaration.
 		{ LocalVars = map__init },
 		{ LabelTable = map__init },
-		{ FuncInfo = func_info(GlobalInfo0, Name, LocalVars,
+		{ DefnInfo = defn_info(GlobalInfo0, Name, LocalVars,
 			LabelTable) },
 		{ GCC_Name = build_qualified_name(Name) },
 		build_type(Type, initializer_array_size(Initializer),
 			GlobalInfo0, GCC_Type),
-		build_initializer(Initializer, GCC_Type, FuncInfo,
+		build_initializer(Initializer, GCC_Type, DefnInfo,
 			GCC_Initializer),
 		gcc__build_global_var_decl(GCC_Name, GCC_Type, GCC_Initializer,
 			GCC_Defn),
@@ -655,15 +651,15 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 			GlobalInfo0, GlobalInfo)
 	).
 
-:- pred build_local_defn_body(mlds__qualified_entity_name, func_info,
+:- pred build_local_defn_body(mlds__qualified_entity_name, defn_info,
 		mlds__context, mlds__decl_flags, mlds__entity_defn,
 		gcc__var_decl, io__state, io__state).
 :- mode build_local_defn_body(in, in, in, in, in, out, di, uo) is det.
 
-build_local_defn_body(Name, FuncInfo, _Context, Flags, DefnBody, GCC_Defn) -->
+build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer) },
-		build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn),
+		build_local_data_defn(Name, Type, Initializer, DefnInfo, GCC_Defn),
 		add_var_decl_flags(Flags, GCC_Defn)
 	;
 		{ DefnBody = mlds__function(_, _, _) },
@@ -955,13 +951,13 @@ add_func_abstractness_flag(concrete, _GCC_Defn) -->
 	% function definition (or inside a block within a function),
 	% and which is hence local to that function.
 :- pred build_local_data_defn(mlds__qualified_entity_name, mlds__type,
-		mlds__initializer, func_info, gcc__var_decl,
+		mlds__initializer, defn_info, gcc__var_decl,
 		io__state, io__state).
 :- mode build_local_data_defn(in, in, in, in, out, di, uo) is det.
 
-build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn) -->
+build_local_data_defn(Name, Type, Initializer, DefnInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer),
-		FuncInfo ^ global_info, GCC_Type),
+		DefnInfo ^ global_info, GCC_Type),
 	{ Name = qual(_ModuleName, UnqualName) },
 	( { UnqualName = data(var(VarName)) } ->
 		gcc__build_local_var_decl(VarName, GCC_Type, GCC_Defn)
@@ -974,7 +970,7 @@ build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn) -->
 	( { Initializer = no_initializer } ->
 		[]
 	;
-		build_initializer(Initializer, GCC_Type, FuncInfo, GCC_Expr),
+		build_initializer(Initializer, GCC_Type, DefnInfo, GCC_Expr),
 		gcc__gen_assign(gcc__var_expr(GCC_Defn), GCC_Expr)
 	).
 
@@ -1001,60 +997,60 @@ build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn) -->
 		{ sorry(this_file, "build_field_data_defn: initializer") }
 	).
 
-:- pred build_initializer(mlds__initializer, gcc__type, func_info,
+:- pred build_initializer(mlds__initializer, gcc__type, defn_info,
 		gcc__expr, io__state, io__state) is det.
 :- mode build_initializer(in, in, in, out, di, uo) is det.
 
-build_initializer(Initializer, GCC_Type, FuncInfo, GCC_Expr) -->
+build_initializer(Initializer, GCC_Type, DefnInfo, GCC_Expr) -->
 	(
 		{ Initializer = no_initializer },
 		{ unexpected(this_file, "no_initializer (build_initializer)") }
 	;
 		{ Initializer = init_obj(Rval) },
-		build_rval(Rval, FuncInfo, GCC_Expr)
+		build_rval(Rval, DefnInfo, GCC_Expr)
 	;
 		{ Initializer = init_struct(InitList) },
 		gcc__get_struct_field_decls(GCC_Type, GCC_FieldDecls),
-		build_struct_initializer(InitList, GCC_FieldDecls, FuncInfo,
+		build_struct_initializer(InitList, GCC_FieldDecls, DefnInfo,
 			GCC_InitList),
 		gcc__build_initializer_expr(GCC_InitList, GCC_Type, GCC_Expr)
 	;
 		{ Initializer = init_array(InitList) },
 		gcc__get_array_elem_type(GCC_Type, GCC_ElemType),
-		build_array_initializer(InitList, GCC_ElemType, 0, FuncInfo,
+		build_array_initializer(InitList, GCC_ElemType, 0, DefnInfo,
 			GCC_InitList),
 		gcc__build_initializer_expr(GCC_InitList, GCC_Type, GCC_Expr)
 	).
 
 :- pred build_array_initializer(list(mlds__initializer), gcc__type, int,
-		func_info, gcc__init_list, io__state, io__state) is det.
+		defn_info, gcc__init_list, io__state, io__state) is det.
 :- mode build_array_initializer(in, in, in, in, out, di, uo) is det.
 
 build_array_initializer([], _, _, _, GCC_InitList) -->
 	gcc__empty_init_list(GCC_InitList).
-build_array_initializer([Init | Inits], GCC_ElemType, Index, FuncInfo,
+build_array_initializer([Init | Inits], GCC_ElemType, Index, DefnInfo,
 		GCC_InitList) -->
 	gcc__array_elem_initializer(Index, GCC_InitIndex),
-	build_initializer(Init, GCC_ElemType, FuncInfo, GCC_InitValue),
-	build_array_initializer(Inits, GCC_ElemType, Index + 1, FuncInfo,
+	build_initializer(Init, GCC_ElemType, DefnInfo, GCC_InitValue),
+	build_array_initializer(Inits, GCC_ElemType, Index + 1, DefnInfo,
 		GCC_InitList0),
 	gcc__cons_init_list(GCC_InitIndex, GCC_InitValue,
 		GCC_InitList0, GCC_InitList).
 
 :- pred build_struct_initializer(list(mlds__initializer), gcc__field_decls,
-		func_info, gcc__init_list, io__state, io__state) is det.
+		defn_info, gcc__init_list, io__state, io__state) is det.
 :- mode build_struct_initializer(in, in, in, out, di, uo) is det.
 
 build_struct_initializer([], _, _, GCC_InitList) -->
 	gcc__empty_init_list(GCC_InitList).
-build_struct_initializer([Init | Inits], GCC_FieldDecls, FuncInfo,
+build_struct_initializer([Init | Inits], GCC_FieldDecls, DefnInfo,
 		GCC_InitList) -->
 	gcc__next_field_decl(GCC_FieldDecls, GCC_ThisFieldDecl,
 		GCC_RemainingFieldDecls),
 	gcc__struct_field_initializer(GCC_ThisFieldDecl, GCC_InitField),
 	gcc__field_type(GCC_ThisFieldDecl, GCC_ThisFieldType),
-	build_initializer(Init, GCC_ThisFieldType, FuncInfo, GCC_InitValue),
-	build_struct_initializer(Inits, GCC_RemainingFieldDecls, FuncInfo,
+	build_initializer(Init, GCC_ThisFieldType, DefnInfo, GCC_InitValue),
+	build_struct_initializer(Inits, GCC_RemainingFieldDecls, DefnInfo,
 		GCC_InitList0),
 	gcc__cons_init_list(GCC_InitField, GCC_InitValue, GCC_InitList0,
 		GCC_InitList).
@@ -1267,12 +1263,12 @@ gen_func(Name, Context, Flags, Signature, MaybeBody,
 			FuncDecl, SymbolTable),
 		add_func_decl_flags(Flags, FuncDecl),
 		build_label_table(Body, LabelTable),
-		{ FuncInfo = func_info(GlobalInfo,
+		{ DefnInfo = defn_info(GlobalInfo,
 			Name, SymbolTable, LabelTable) },
 		set_context(Context),
 		gcc__start_function(FuncDecl),
 		% mlds_maybe_output_time_profile_instr(Context, Name)
-		gen_statement(FuncInfo, Body),
+		gen_statement(DefnInfo, Body),
 		set_context(Context),
 		gcc__end_function
 	).
@@ -1681,6 +1677,11 @@ initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
 % The types constructed here should be the same as the types
 % defined in runtime/mercury_type_info.h for the C back-end.
 % See that file for documentation on these types.
+
+% XXX We should consider avoiding the code duplication, by
+% generating the relevant parts of runtime/mercury_type_info.h
+% automatically, from a Mercury data structure describing the
+% types.  The same Mercury data structure could be used here.
 
 % XXX it would be more efficient to construct these types once,
 % at initialization time, rather than every time they are used.
@@ -2110,14 +2111,10 @@ fixup_pseudo_type_info(PseudoTypeInfo0) = PseudoTypeInfo :-
 % to GCC field declarations.
 :- type field_table == map(mlds__fully_qualified_name(field_name), gcc__field_decl).
 
-% The func_info holds information used while generating code
-% inside a function.
-% The name is a bit of a misnomer, since we also use this while
-% generating initializers for global variable.
-% So it should perhaps be called something like
-% func_or_global_var_info (ugh).
-:- type func_info
-	--->	func_info(
+% The defn_info holds information used while generating code
+% inside a function, or in the initializers for a global variable.
+:- type defn_info
+	--->	defn_info(
 			global_info :: global_info,
 			func_name :: mlds__qualified_entity_name,
 			local_vars :: symbol_table,
@@ -2141,99 +2138,99 @@ fixup_pseudo_type_info(PseudoTypeInfo0) = PseudoTypeInfo :-
 % Code to output statements
 %
 
-:- pred gen_statements(func_info, list(mlds__statement),
+:- pred gen_statements(defn_info, list(mlds__statement),
 		io__state, io__state).
 :- mode gen_statements(in, in, di, uo) is det.
 
-gen_statements(FuncInfo, Statements) -->
-	list__foldl(gen_statement(FuncInfo), Statements).
+gen_statements(DefnInfo, Statements) -->
+	list__foldl(gen_statement(DefnInfo), Statements).
 
-:- pred gen_statement(func_info, mlds__statement,
+:- pred gen_statement(defn_info, mlds__statement,
 		io__state, io__state).
 :- mode gen_statement(in, in, di, uo) is det.
 
-gen_statement(FuncInfo, mlds__statement(Statement, Context)) -->
+gen_statement(DefnInfo, mlds__statement(Statement, Context)) -->
 	gen_context(Context),
-	gen_stmt(FuncInfo, Statement, Context).
+	gen_stmt(DefnInfo, Statement, Context).
 
-:- pred gen_stmt(func_info, mlds__stmt, mlds__context,
+:- pred gen_stmt(defn_info, mlds__stmt, mlds__context,
 		io__state, io__state).
 :- mode gen_stmt(in, in, in, di, uo) is det.
 
 	%
 	% sequence
 	%
-gen_stmt(FuncInfo0, block(Defns, Statements), _Context) -->
+gen_stmt(DefnInfo0, block(Defns, Statements), _Context) -->
 	gcc__start_block,
-	{ FuncName = FuncInfo0 ^ func_name },
+	{ FuncName = DefnInfo0 ^ func_name },
 	{ FuncName = qual(ModuleName, _) },
-	{ SymbolTable0 = FuncInfo0 ^ local_vars },
-	build_local_defns(Defns, FuncInfo0, ModuleName, SymbolTable0, SymbolTable),
-	{ FuncInfo = FuncInfo0 ^ local_vars := SymbolTable },
-	gen_statements(FuncInfo, Statements),
+	{ SymbolTable0 = DefnInfo0 ^ local_vars },
+	build_local_defns(Defns, DefnInfo0, ModuleName, SymbolTable0, SymbolTable),
+	{ DefnInfo = DefnInfo0 ^ local_vars := SymbolTable },
+	gen_statements(DefnInfo, Statements),
 	gcc__end_block.
 
 	%
 	% iteration
 	%
-gen_stmt(FuncInfo, while(Cond, Statement, AtLeastOneIteration), _Context) -->
+gen_stmt(DefnInfo, while(Cond, Statement, AtLeastOneIteration), _Context) -->
 	gcc__gen_start_loop(Loop),
-	build_rval(Cond, FuncInfo, GCC_Cond),
+	build_rval(Cond, DefnInfo, GCC_Cond),
 	(
 		{ AtLeastOneIteration = yes },
 		% generate the test at the end of the loop
-		gen_statement(FuncInfo, Statement),
+		gen_statement(DefnInfo, Statement),
 		gcc__gen_exit_loop_if_false(Loop, GCC_Cond)
 	;
 		{ AtLeastOneIteration = no },
 		% generate the test at the start of the loop
 		gcc__gen_exit_loop_if_false(Loop, GCC_Cond),
-		gen_statement(FuncInfo, Statement)
+		gen_statement(DefnInfo, Statement)
 	),
 	gcc__gen_end_loop.
 
 	%
 	% selection (see also computed_goto)
 	%
-gen_stmt(FuncInfo, if_then_else(Cond, Then, MaybeElse), _Context) -->
-	build_rval(Cond, FuncInfo, GCC_Cond),
+gen_stmt(DefnInfo, if_then_else(Cond, Then, MaybeElse), _Context) -->
+	build_rval(Cond, DefnInfo, GCC_Cond),
 	gcc__gen_start_cond(GCC_Cond),
-	gen_statement(FuncInfo, Then),
+	gen_statement(DefnInfo, Then),
 	(
 		{ MaybeElse = no }
 	;
 		{ MaybeElse = yes(Else) },
 		gcc__gen_start_else,
-		gen_statement(FuncInfo, Else)
+		gen_statement(DefnInfo, Else)
 	),
 	gcc__gen_end_cond.
-gen_stmt(FuncInfo, switch(Type, Val, Range, Cases, Default), _) -->
-	build_type(Type, FuncInfo ^ global_info, GCC_Type),
+gen_stmt(DefnInfo, switch(Type, Val, Range, Cases, Default), _) -->
+	build_type(Type, DefnInfo ^ global_info, GCC_Type),
 	( { Range = range(Min, Max) } ->
 		gcc__build_range_type(GCC_Type, Min, Max, GCC_RangeType)
 	;
 		{ GCC_RangeType = GCC_Type }
 	),
-	build_rval(Val, FuncInfo, GCC_Expr),
+	build_rval(Val, DefnInfo, GCC_Expr),
 	gcc__gen_start_switch(GCC_Expr, GCC_RangeType),
 	% we put the default case first, so that if it is unreachable,
 	% it will get merged in with the first case.
-	gen_default(FuncInfo, Default),
-	gen_cases(FuncInfo, Cases),
+	gen_default(DefnInfo, Default),
+	gen_cases(DefnInfo, Cases),
 	gcc__gen_end_switch(GCC_Expr).
 
 	%
 	% transfer of control
 	%
-gen_stmt(FuncInfo, label(LabelName), _) -->
-	{ LabelTable = FuncInfo ^ label_table },
+gen_stmt(DefnInfo, label(LabelName), _) -->
+	{ LabelTable = DefnInfo ^ label_table },
 	{ GCC_Label = map__lookup(LabelTable, LabelName) },
 	gcc__gen_label(GCC_Label).
-gen_stmt(FuncInfo, goto(LabelName), _) -->
-	{ LabelTable = FuncInfo ^ label_table },
+gen_stmt(DefnInfo, goto(LabelName), _) -->
+	{ LabelTable = DefnInfo ^ label_table },
 	{ GCC_Label = map__lookup(LabelTable, LabelName) },
 	gcc__gen_goto(GCC_Label).
-gen_stmt(_FuncInfo, computed_goto(_Expr, _Labels), _) -->
+gen_stmt(_DefnInfo, computed_goto(_Expr, _Labels), _) -->
 	% XXX not yet implemented
 	% but we set target_supports_computed_goto to no
 	% for this target, so we shouldn't get any
@@ -2242,32 +2239,32 @@ gen_stmt(_FuncInfo, computed_goto(_Expr, _Labels), _) -->
 	%
 	% function call/return
 	%
-gen_stmt(FuncInfo, Call, _) -->
+gen_stmt(DefnInfo, Call, _) -->
 	{ Call = call(_Signature, FuncRval, MaybeObject, CallArgs,
 		Results, IsTailCall) },
 	{ require(unify(MaybeObject, no), this_file ++ ": method call") },
-	build_args(CallArgs, FuncInfo, GCC_ArgList),
-	build_rval(FuncRval, FuncInfo, GCC_FuncRval),
+	build_args(CallArgs, DefnInfo, GCC_ArgList),
+	build_rval(FuncRval, DefnInfo, GCC_FuncRval),
 	% XXX GCC currently ignores the tail call boolean
 	{ IsTailCallBool = (IsTailCall = tail_call -> yes ; no) },
 	gcc__build_call_expr(GCC_FuncRval, GCC_ArgList, IsTailCallBool,
 		GCC_Call),
 	( { Results = [ResultLval] } ->
-		build_lval(ResultLval, FuncInfo, GCC_ResultExpr),
+		build_lval(ResultLval, DefnInfo, GCC_ResultExpr),
 		gcc__gen_assign(GCC_ResultExpr, GCC_Call)
 	; { Results = [] } ->
 		gcc__gen_expr_stmt(GCC_Call)
 	;
 		{ sorry(this_file, "call with multiple outputs") }
 	).
-gen_stmt(FuncInfo, return(Results), _) -->
+gen_stmt(DefnInfo, return(Results), _) -->
 	( { Results = [] } ->
 		% XXX Not yet implemented
 		% These are not generated by the current MLDS code
 		% generator, so I didn't bother to implement them.
 		{ sorry(this_file, "gen_stmt: return without return value") }
 	; { Results = [Rval] } ->
-		build_rval(Rval, FuncInfo, Expr),
+		build_rval(Rval, DefnInfo, Expr),
 		gcc__gen_return(Expr)
 	;
 		{ sorry(this_file, "gen_stmt: multiple return values") }
@@ -2276,7 +2273,7 @@ gen_stmt(FuncInfo, return(Results), _) -->
 	%
 	% commits
 	%
-gen_stmt(FuncInfo, do_commit(Ref), _Context) -->
+gen_stmt(DefnInfo, do_commit(Ref), _Context) -->
 	% generate `__builtin_longjmp(&<Ref>, 1);'
 	{ Ref = lval(RefLval0) ->
 		RefLval = RefLval0
@@ -2284,9 +2281,9 @@ gen_stmt(FuncInfo, do_commit(Ref), _Context) -->
 		unexpected(this_file, "non-lval argument to do_commit")
 	},
 	build_call(gcc__longjmp_func_decl, [mem_addr(RefLval), const(int_const(1))],
-		FuncInfo, GCC_CallLongjmp),
+		DefnInfo, GCC_CallLongjmp),
 	gcc__gen_expr_stmt(GCC_CallLongjmp).
-gen_stmt(FuncInfo, try_commit(Ref, Stmt, Handler), _) -->
+gen_stmt(DefnInfo, try_commit(Ref, Stmt, Handler), _) -->
 	%
 	% Generate the following:
 	%
@@ -2295,15 +2292,15 @@ gen_stmt(FuncInfo, try_commit(Ref, Stmt, Handler), _) -->
 	%       else
 	%               <Handler>
 	%
-	build_call(gcc__setjmp_func_decl, [mem_addr(Ref)], FuncInfo,
+	build_call(gcc__setjmp_func_decl, [mem_addr(Ref)], DefnInfo,
 		GCC_CallSetjmp),
 	gcc__build_int(0, GCC_Zero),
 	gcc__build_binop(gcc__eq_expr, gcc__boolean_type_node,
 		GCC_CallSetjmp, GCC_Zero, GCC_SetjmpEqZero),
 	gcc__gen_start_cond(GCC_SetjmpEqZero),
-	gen_statement(FuncInfo, Stmt),
+	gen_statement(DefnInfo, Stmt),
 	gcc__gen_start_else,
-	gen_statement(FuncInfo, Handler),
+	gen_statement(DefnInfo, Handler),
 	gcc__gen_end_cond.
 
 	%
@@ -2314,8 +2311,8 @@ gen_stmt(FuncInfo, try_commit(Ref, Stmt, Handler), _) -->
 	%
 	% atomic statements
 	%
-gen_stmt(FuncInfo, atomic(AtomicStatement), Context) -->
-	gen_atomic_stmt(FuncInfo, AtomicStatement, Context).
+gen_stmt(DefnInfo, atomic(AtomicStatement), Context) -->
+	gen_atomic_stmt(DefnInfo, AtomicStatement, Context).
 
 %-----------------------------------------------------------------------------%
 
@@ -2323,27 +2320,27 @@ gen_stmt(FuncInfo, atomic(AtomicStatement), Context) -->
 % Extra code for outputting switch statements
 %
 
-:- pred gen_cases(func_info::in, mlds__switch_cases::in,
+:- pred gen_cases(defn_info::in, mlds__switch_cases::in,
 		io__state::di, io__state::uo) is det.
-gen_cases(FuncInfo, Cases) -->
-	list__foldl(gen_case(FuncInfo), Cases).
+gen_cases(DefnInfo, Cases) -->
+	list__foldl(gen_case(DefnInfo), Cases).
 
-:- pred gen_case(func_info::in, mlds__switch_case::in,
+:- pred gen_case(defn_info::in, mlds__switch_case::in,
 		io__state::di, io__state::uo) is det.
-gen_case(FuncInfo, MatchConds - Code) -->
-	list__foldl(gen_case_label(FuncInfo), MatchConds),
-	gen_statement(FuncInfo, Code),
+gen_case(DefnInfo, MatchConds - Code) -->
+	list__foldl(gen_case_label(DefnInfo), MatchConds),
+	gen_statement(DefnInfo, Code),
 	gcc__gen_break.
 
-:- pred gen_case_label(func_info::in, mlds__case_match_cond::in,
+:- pred gen_case_label(defn_info::in, mlds__case_match_cond::in,
 		io__state::di, io__state::uo) is det.
-gen_case_label(FuncInfo, match_value(Val)) -->
-	build_rval(Val, FuncInfo, GCC_Val),
+gen_case_label(DefnInfo, match_value(Val)) -->
+	build_rval(Val, DefnInfo, GCC_Val),
 	gcc__build_unnamed_label(Label),
 	gcc__gen_case_label(GCC_Val, Label).
-gen_case_label(FuncInfo, match_range(Min, Max)) -->
-	build_rval(Min, FuncInfo, _GCC_Min),
-	build_rval(Max, FuncInfo, _GCC_Max),
+gen_case_label(DefnInfo, match_range(Min, Max)) -->
+	build_rval(Min, DefnInfo, _GCC_Min),
+	build_rval(Max, DefnInfo, _GCC_Max),
 	gcc__build_unnamed_label(_Label),
 	% the following is not yet implemented
 	% (would be easy to do, but not needed so far, since
@@ -2351,7 +2348,7 @@ gen_case_label(FuncInfo, match_range(Min, Max)) -->
 	%%% gcc__gen_case_range_label(GCC_Min, GCC_Max, Label).
 	{ sorry(this_file, "match_range") }.
 
-:- pred gen_default(func_info::in, mlds__switch_default::in,
+:- pred gen_default(defn_info::in, mlds__switch_default::in,
 		io__state::di, io__state::uo) is det.
 gen_default(_, default_do_nothing) --> [].
 gen_default(_, default_is_unreachable) -->
@@ -2361,10 +2358,10 @@ gen_default(_, default_is_unreachable) -->
 	% default_do_nothing.
 	gcc__build_unnamed_label(Label),
 	gcc__gen_default_case_label(Label).
-gen_default(FuncInfo, default_case(Statement)) -->
+gen_default(DefnInfo, default_case(Statement)) -->
 	gcc__build_unnamed_label(Label),
 	gcc__gen_default_case_label(Label),
-	gen_statement(FuncInfo, Statement),
+	gen_statement(DefnInfo, Statement),
 	gcc__gen_break.
 
 %-----------------------------------------------------------------------------%
@@ -2461,14 +2458,14 @@ mlds_maybe_output_time_profile_instr(Context, Indent, Name) -->
 % atomic statements
 %
 
-:- pred gen_atomic_stmt(func_info,
+:- pred gen_atomic_stmt(defn_info,
 		mlds__atomic_statement, mlds__context, io__state, io__state).
 :- mode gen_atomic_stmt(in, in, in, di, uo) is det.
 
 	%
 	% comments
 	%
-gen_atomic_stmt(_FuncInfo, comment(_Comment), _) -->
+gen_atomic_stmt(_DefnInfo, comment(_Comment), _) -->
 	% For now, we just ignore the comments.
 	% XXX Does gcc provide some way of inserting
 	% comments into the generated assembler?
@@ -2477,22 +2474,22 @@ gen_atomic_stmt(_FuncInfo, comment(_Comment), _) -->
 	%
 	% assignment
 	%
-gen_atomic_stmt(FuncInfo, assign(Lval, Rval), _) -->
-	build_lval(Lval, FuncInfo, GCC_Lval),
-	build_rval(Rval, FuncInfo, GCC_Rval),
+gen_atomic_stmt(DefnInfo, assign(Lval, Rval), _) -->
+	build_lval(Lval, DefnInfo, GCC_Lval),
+	build_rval(Rval, DefnInfo, GCC_Rval),
 	gcc__gen_assign(GCC_Lval, GCC_Rval).
 
 	%
 	% heap management
 	%
-gen_atomic_stmt(_FuncInfo, delete_object(_Lval), _) -->
+gen_atomic_stmt(_DefnInfo, delete_object(_Lval), _) -->
 	% XXX not yet implemented
 	% we should generate a call to GC_free()
 	% (would be easy to do, but not needed so far, since
 	% these are not generated by the current MLDS code generator)
 	{ sorry(this_file, "delete_object") }.
 
-gen_atomic_stmt(FuncInfo, NewObject, Context) -->
+gen_atomic_stmt(DefnInfo, NewObject, Context) -->
 	{ NewObject = new_object(Target, MaybeTag, Type, MaybeSize,
 		_MaybeCtorName, Args, ArgTypes) },
 
@@ -2532,10 +2529,10 @@ gen_atomic_stmt(FuncInfo, NewObject, Context) -->
 	%
 
 	% generate `GC_malloc(SizeInBytes)'
-	build_call(gcc__alloc_func_decl, [SizeInBytes], FuncInfo, GCC_Call),
+	build_call(gcc__alloc_func_decl, [SizeInBytes], DefnInfo, GCC_Call),
 
 	% cast the result to (Type)
-	build_type(Type, FuncInfo ^ global_info, GCC_Type),
+	build_type(Type, DefnInfo ^ global_info, GCC_Type),
 	gcc__convert_type(GCC_Call, GCC_Type, GCC_CastCall),
 
 	% add a tag to the pointer, if necessary
@@ -2550,25 +2547,25 @@ gen_atomic_stmt(FuncInfo, NewObject, Context) -->
 	),
 
 	% assign it to Target
-	build_lval(Target, FuncInfo, GCC_Target),
+	build_lval(Target, DefnInfo, GCC_Target),
 	gcc__gen_assign(GCC_Target, GCC_TaggedCastCall),
 	
 	%
 	% Initialize the fields.
 	%
 	gen_init_args(Args, ArgTypes, Context, 0, Target, Type, Tag,
-		FuncInfo).
+		DefnInfo).
 
-gen_atomic_stmt(_FuncInfo, mark_hp(_Lval), _) -->
+gen_atomic_stmt(_DefnInfo, mark_hp(_Lval), _) -->
 	{ sorry(this_file, "mark_hp") }.
 
-gen_atomic_stmt(_FuncInfo, restore_hp(_Rval), _) -->
+gen_atomic_stmt(_DefnInfo, restore_hp(_Rval), _) -->
 	{ sorry(this_file, "restore_hp") }.
 
 	%
 	% trail management
 	%
-gen_atomic_stmt(_FuncInfo, trail_op(_TrailOp), _) -->
+gen_atomic_stmt(_DefnInfo, trail_op(_TrailOp), _) -->
 	% Currently trail ops are implemented via calls to
 	% impure predicates implemented in C, rather than as
 	% MLDS trail ops, so this should never be reached.
@@ -2585,7 +2582,7 @@ gen_atomic_stmt(_FuncInfo, trail_op(_TrailOp), _) -->
 	%
 	% foreign language interfacing
 	%
-gen_atomic_stmt(_FuncInfo, target_code(_TargetLang, _Components),
+gen_atomic_stmt(_DefnInfo, target_code(_TargetLang, _Components),
 		_Context) -->
 	% XXX we should support inserting inline asm code fragments
 	{ sorry(this_file, "target_code (for `--target asm')") }.
@@ -2595,7 +2592,7 @@ gen_atomic_stmt(_FuncInfo, target_code(_TargetLang, _Components),
 	% of an object allocated with a new_object MLDS instruction.
 	%
 :- pred gen_init_args(list(mlds__rval), list(mlds__type), mlds__context, int,
-		mlds__lval, mlds__type, mlds__tag, func_info,
+		mlds__lval, mlds__type, mlds__tag, defn_info,
 		io__state, io__state).
 :- mode gen_init_args(in, in, in, in, in, in, in, in, di, uo) is det.
 
@@ -2605,7 +2602,7 @@ gen_init_args([], [_|_], _, _, _, _, _, _) -->
 	{ error("gen_init_args: length mismatch") }.
 gen_init_args([], [], _, _, _, _, _, _) --> [].
 gen_init_args([Arg | Args], [ArgType | ArgTypes], Context,
-		ArgNum, Target, Type, Tag, FuncInfo) -->
+		ArgNum, Target, Type, Tag, DefnInfo) -->
 	%
 	% Currently all fields of new_object instructions are
 	% represented as MR_Box, so we need to box them if necessary.
@@ -2613,22 +2610,22 @@ gen_init_args([Arg | Args], [ArgType | ArgTypes], Context,
 	{ Lval = field(yes(Tag), lval(Target),
 		offset(const(int_const(ArgNum))), mlds__generic_type, Type) },
 	{ Rval = unop(box(ArgType), Arg) },
-	build_lval(Lval, FuncInfo, GCC_Lval),
-	build_rval(Rval, FuncInfo, GCC_Rval),
+	build_lval(Lval, DefnInfo, GCC_Lval),
+	build_rval(Rval, DefnInfo, GCC_Rval),
 	gcc__gen_assign(GCC_Lval, GCC_Rval),
 	gen_init_args(Args, ArgTypes, Context,
-			ArgNum + 1, Target, Type, Tag, FuncInfo).
+			ArgNum + 1, Target, Type, Tag, DefnInfo).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output expressions
 %
 
-:- pred build_lval(mlds__lval, func_info, gcc__expr, io__state, io__state).
+:- pred build_lval(mlds__lval, defn_info, gcc__expr, io__state, io__state).
 :- mode build_lval(in, in, out, di, uo) is det.
 
 build_lval(field(MaybeTag, Rval, offset(OffsetRval),
-		FieldType, _ClassType), FuncInfo, GCC_FieldRef) -->
+		FieldType, _ClassType), DefnInfo, GCC_FieldRef) -->
 	% sanity check (copied from mlds_to_c.m)
 	(
 		{ FieldType = mlds__generic_type
@@ -2643,7 +2640,7 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	),
 
 	% generate the tagged pointer whose field we want to extract
-	build_rval(Rval, FuncInfo, GCC_TaggedPointer),
+	build_rval(Rval, DefnInfo, GCC_TaggedPointer),
 
 	% subtract or mask out the tag
 	( { MaybeTag = yes(Tag) } ->
@@ -2658,7 +2655,7 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	),
 
 	% add the appropriate offset
-	build_rval(OffsetRval, FuncInfo, GCC_OffsetInWords),
+	build_rval(OffsetRval, DefnInfo, GCC_OffsetInWords),
 	globals__io_lookup_int_option(bytes_per_word, BytesPerWord),
 	gcc__build_int(BytesPerWord, GCC_BytesPerWord),
 	gcc__build_binop(gcc__mult_expr, 'MR_intptr_t',
@@ -2667,7 +2664,7 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 		GCC_Pointer, GCC_OffsetInBytes, GCC_FieldPointer0),
 
 	% cast the pointer to the right type (XXX is this necessary?)
-	build_type(FieldType, FuncInfo ^ global_info, GCC_FieldType),
+	build_type(FieldType, DefnInfo ^ global_info, GCC_FieldType),
 	gcc__build_pointer_type(GCC_FieldType, GCC_FieldPointerType),
 	gcc__convert_type(GCC_FieldPointer0, GCC_FieldPointerType,
 		GCC_FieldPointer),
@@ -2676,9 +2673,9 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	gcc__build_pointer_deref(GCC_FieldPointer, GCC_FieldRef).
 
 build_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
-		_FieldType, _PtrType), FuncInfo, GCC_Expr) -->
+		_FieldType, _PtrType), DefnInfo, GCC_Expr) -->
 	% generate the tagged pointer whose field we want to extract
-	build_rval(PtrRval, FuncInfo, GCC_TaggedPointer),
+	build_rval(PtrRval, DefnInfo, GCC_TaggedPointer),
 
 	% subtract or mask out the tag
 	( { MaybeTag = yes(Tag) } ->
@@ -2693,7 +2690,7 @@ build_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
 	),
 
 	% cast the pointer to the right type
-	build_type(CtorType, FuncInfo ^ global_info, GCC_CtorType),
+	build_type(CtorType, DefnInfo ^ global_info, GCC_CtorType),
 	gcc__build_pointer_type(GCC_CtorType, GCC_PointerType),
 	gcc__convert_type(GCC_Pointer, GCC_PointerType,
 		GCC_CastPointer),
@@ -2702,18 +2699,18 @@ build_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
 	gcc__build_pointer_deref(GCC_CastPointer, GCC_ObjectRef),
 
 	% extract the right field
-	{ TypeTable = FuncInfo ^ global_info ^ type_table },
+	{ TypeTable = DefnInfo ^ global_info ^ type_table },
 	{ TypeName = get_class_type_name(CtorType) },
 	{ gcc_type_info(_, FieldTable) = map__lookup(TypeTable, TypeName) },
 	{ GCC_FieldDecl = map__lookup(FieldTable, FieldName) },
 	gcc__build_component_ref(GCC_ObjectRef, GCC_FieldDecl,
 		GCC_Expr).
 
-build_lval(mem_ref(PointerRval, _Type), FuncInfo, Expr) -->
-	build_rval(PointerRval, FuncInfo, PointerExpr),
+build_lval(mem_ref(PointerRval, _Type), DefnInfo, Expr) -->
+	build_rval(PointerRval, DefnInfo, PointerExpr),
 	gcc__build_pointer_deref(PointerExpr, Expr).
 
-build_lval(var(qual(ModuleName, VarName)), FuncInfo, Expr) -->
+build_lval(var(qual(ModuleName, VarName)), DefnInfo, Expr) -->
 	%
 	% Look up the variable in the symbol table.
 	% We try the symbol table for local vars first,
@@ -2723,11 +2720,11 @@ build_lval(var(qual(ModuleName, VarName)), FuncInfo, Expr) -->
 	%
 	{ Name = qual(ModuleName, data(var(VarName))) },
 	( 
-		{ map__search(FuncInfo ^ local_vars, Name, LocalVarDecl) }
+		{ map__search(DefnInfo ^ local_vars, Name, LocalVarDecl) }
 	->
 		{ Expr = gcc__var_expr(LocalVarDecl) }
 	;
-		{ map__search(FuncInfo ^ global_info ^ global_vars,
+		{ map__search(DefnInfo ^ global_info ^ global_vars,
 			Name, GlobalVarDecl) }
 	->
 		{ Expr = gcc__var_expr(GlobalVarDecl) }
@@ -2760,61 +2757,61 @@ get_class_type_name(Type) = Name :-
 		unexpected(this_file, "non-class_type in get_type_name")
 	).
 
-:- pred build_rval(mlds__rval, func_info, gcc__expr, io__state, io__state).
+:- pred build_rval(mlds__rval, defn_info, gcc__expr, io__state, io__state).
 :- mode build_rval(in, in, out, di, uo) is det.
 
-build_rval(lval(Lval), FuncInfo, Expr) -->
-	build_lval(Lval, FuncInfo, Expr).
+build_rval(lval(Lval), DefnInfo, Expr) -->
+	build_lval(Lval, DefnInfo, Expr).
 
-build_rval(mkword(Tag, Arg), FuncInfo, Expr) -->
+build_rval(mkword(Tag, Arg), DefnInfo, Expr) -->
 	gcc__build_int(Tag, GCC_Tag),
-	build_rval(Arg, FuncInfo, GCC_Arg),
+	build_rval(Arg, DefnInfo, GCC_Arg),
 	gcc__build_binop(gcc__plus_expr, gcc__ptr_type_node,
 		GCC_Arg, GCC_Tag, Expr).
 
-build_rval(const(Const), FuncInfo, Expr) -->
-	build_rval_const(Const, FuncInfo ^ global_info, Expr).
+build_rval(const(Const), DefnInfo, Expr) -->
+	build_rval_const(Const, DefnInfo ^ global_info, Expr).
 
-build_rval(unop(Op, Rval), FuncInfo, Expr) -->
-	build_unop(Op, Rval, FuncInfo, Expr).
+build_rval(unop(Op, Rval), DefnInfo, Expr) -->
+	build_unop(Op, Rval, DefnInfo, Expr).
 
-build_rval(binop(Op, Rval1, Rval2), FuncInfo, Expr) -->
-	build_std_binop(Op, Rval1, Rval2, FuncInfo, Expr).
+build_rval(binop(Op, Rval1, Rval2), DefnInfo, Expr) -->
+	build_std_binop(Op, Rval1, Rval2, DefnInfo, Expr).
 
-build_rval(mem_addr(Lval), FuncInfo, AddrExpr) -->
-	build_lval(Lval, FuncInfo, Expr),
+build_rval(mem_addr(Lval), DefnInfo, AddrExpr) -->
+	build_lval(Lval, DefnInfo, Expr),
 	gcc__build_addr_expr(Expr, AddrExpr).
 
-:- pred build_unop(mlds__unary_op, mlds__rval, func_info, gcc__expr,
+:- pred build_unop(mlds__unary_op, mlds__rval, defn_info, gcc__expr,
 		io__state, io__state).
 :- mode build_unop(in, in, in, out, di, uo) is det.
 	
-build_unop(cast(Type), Rval, FuncInfo, GCC_Expr) -->
-	build_cast_rval(Type, Rval, FuncInfo, GCC_Expr).
-build_unop(box(Type), Rval, FuncInfo, GCC_Expr) -->
+build_unop(cast(Type), Rval, DefnInfo, GCC_Expr) -->
+	build_cast_rval(Type, Rval, DefnInfo, GCC_Expr).
+build_unop(box(Type), Rval, DefnInfo, GCC_Expr) -->
 	(
 		{ type_is_float(Type) }
 	->
-		build_call(gcc__box_float_func_decl, [Rval], FuncInfo,
+		build_call(gcc__box_float_func_decl, [Rval], DefnInfo,
 			GCC_Expr)
 	;
-		build_cast_rval(mlds__generic_type, Rval, FuncInfo, GCC_Expr)
+		build_cast_rval(mlds__generic_type, Rval, DefnInfo, GCC_Expr)
 	).
-build_unop(unbox(Type), Rval, FuncInfo, GCC_Expr) -->
+build_unop(unbox(Type), Rval, DefnInfo, GCC_Expr) -->
 	(
 		{ type_is_float(Type) }
 	->
 		% Generate `*(MR_Float *)<Rval>'
-		build_rval(Rval, FuncInfo, GCC_Pointer),
+		build_rval(Rval, DefnInfo, GCC_Pointer),
 		gcc__build_pointer_type('MR_Float', FloatPointerType),
 		gcc__convert_type(GCC_Pointer, FloatPointerType,
 			GCC_CastPointer),
 		gcc__build_pointer_deref(GCC_CastPointer, GCC_Expr)
 	;
-		build_cast_rval(Type, Rval, FuncInfo, GCC_Expr)
+		build_cast_rval(Type, Rval, DefnInfo, GCC_Expr)
 	).
-build_unop(std_unop(Unop), Exprn, FuncInfo, GCC_Expr) -->
-	build_std_unop(Unop, Exprn, FuncInfo, GCC_Expr).
+build_unop(std_unop(Unop), Exprn, DefnInfo, GCC_Expr) -->
+	build_std_unop(Unop, Exprn, DefnInfo, GCC_Expr).
 
 :- pred type_is_float(mlds__type::in) is semidet.
 type_is_float(Type) :-
@@ -2823,21 +2820,21 @@ type_is_float(Type) :-
 	; Type = mlds__native_float_type
 	).
 
-:- pred build_cast_rval(mlds__type, mlds__rval, func_info, gcc__expr,
+:- pred build_cast_rval(mlds__type, mlds__rval, defn_info, gcc__expr,
 		io__state, io__state).
 :- mode build_cast_rval(in, in, in, out, di, uo) is det.
 	
-build_cast_rval(Type, Rval, FuncInfo, GCC_Expr) -->
-	build_rval(Rval, FuncInfo, GCC_Rval),
-	build_type(Type, FuncInfo ^ global_info, GCC_Type),
+build_cast_rval(Type, Rval, DefnInfo, GCC_Expr) -->
+	build_rval(Rval, DefnInfo, GCC_Rval),
+	build_type(Type, DefnInfo ^ global_info, GCC_Type),
 	gcc__convert_type(GCC_Rval, GCC_Type, GCC_Expr).
 
-:- pred build_std_unop(builtin_ops__unary_op, mlds__rval, func_info,
+:- pred build_std_unop(builtin_ops__unary_op, mlds__rval, defn_info,
 		gcc__expr, io__state, io__state).
 :- mode build_std_unop(in, in, in, out, di, uo) is det.
 	
-build_std_unop(UnaryOp, Arg, FuncInfo, Expr) -->
-	build_rval(Arg, FuncInfo, GCC_Arg),
+build_std_unop(UnaryOp, Arg, DefnInfo, Expr) -->
+	build_rval(Arg, DefnInfo, GCC_Arg),
 	build_unop_expr(UnaryOp, GCC_Arg, Expr).
 
 :- pred build_unop_expr(builtin_ops__unary_op, gcc__expr, gcc__expr,
@@ -2884,16 +2881,16 @@ build_unop_expr((not), Arg, Expr) -->
 	gcc__build_unop(gcc__truth_not_expr, gcc__boolean_type_node, Arg, Expr).
 
 :- pred build_std_binop(builtin_ops__binary_op, mlds__rval, mlds__rval,
-		func_info, gcc__expr, io__state, io__state).
+		defn_info, gcc__expr, io__state, io__state).
 :- mode build_std_binop(in, in, in, in, out, di, uo) is det.
 	
-build_std_binop(BinaryOp, Arg1, Arg2, FuncInfo, Expr) -->
+build_std_binop(BinaryOp, Arg1, Arg2, DefnInfo, Expr) -->
 	( { string_compare_op(BinaryOp, CorrespondingIntOp) } ->
 		%
 		% treat string comparison operators specially:
 		% convert "X `str_OP` Y" into "strcmp(X, Y) `OP` 0"
 		%
-		build_call(gcc__strcmp_func_decl, [Arg1, Arg2], FuncInfo,
+		build_call(gcc__strcmp_func_decl, [Arg1, Arg2], DefnInfo,
 			GCC_Call),
 		gcc__build_int(0, Zero),
 		gcc__build_binop(CorrespondingIntOp, gcc__boolean_type_node,
@@ -2902,8 +2899,8 @@ build_std_binop(BinaryOp, Arg1, Arg2, FuncInfo, Expr) -->
 		%
 		% the usual case: just build a gcc tree node for the expr.
 		%
-		build_rval(Arg1, FuncInfo, GCC_Arg1),
-		build_rval(Arg2, FuncInfo, GCC_Arg2),
+		build_rval(Arg1, DefnInfo, GCC_Arg1),
+		build_rval(Arg2, DefnInfo, GCC_Arg2),
 		{ convert_binary_op(BinaryOp, GCC_BinaryOp, GCC_ResultType) },
 		gcc__build_binop(GCC_BinaryOp, GCC_ResultType,
 			GCC_Arg1, GCC_Arg2, Expr)
@@ -2965,23 +2962,23 @@ convert_binary_op(float_gt,	gcc__gt_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_le,	gcc__le_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_ge,	gcc__ge_expr,	     gcc__boolean_type_node).
 
-:- pred build_call(gcc__func_decl::in, list(mlds__rval)::in, func_info::in,
+:- pred build_call(gcc__func_decl::in, list(mlds__rval)::in, defn_info::in,
 		gcc__expr::out, io__state::di, io__state::uo) is det.
-build_call(FuncDecl, ArgList, FuncInfo, GCC_Call) -->
+build_call(FuncDecl, ArgList, DefnInfo, GCC_Call) -->
 	gcc__build_func_addr_expr(FuncDecl, FuncExpr),
-	build_args(ArgList, FuncInfo, GCC_ArgList),
+	build_args(ArgList, DefnInfo, GCC_ArgList),
 	{ IsTailCall = no },
 	gcc__build_call_expr(FuncExpr, GCC_ArgList, IsTailCall, GCC_Call).
 
-:- pred build_args(list(mlds__rval), func_info, gcc__arg_list,
+:- pred build_args(list(mlds__rval), defn_info, gcc__arg_list,
 		io__state, io__state).
 :- mode build_args(in, in, out, di, uo) is det.
 
-build_args([], _FuncInfo, EmptyArgList) -->
+build_args([], _DefnInfo, EmptyArgList) -->
 	gcc__empty_arg_list(EmptyArgList).
-build_args([Arg|Args], FuncInfo, GCC_ArgList) -->
-	build_rval(Arg, FuncInfo, GCC_Expr),
-	build_args(Args, FuncInfo, GCC_ArgList0),
+build_args([Arg|Args], DefnInfo, GCC_ArgList) -->
+	build_rval(Arg, DefnInfo, GCC_Expr),
+	build_args(Args, DefnInfo, GCC_ArgList0),
 	gcc__cons_arg_list(GCC_Expr, GCC_ArgList0, GCC_ArgList).
 
 %-----------------------------------------------------------------------------%

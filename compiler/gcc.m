@@ -17,9 +17,13 @@
 % source-language-independent back-end.)
 %
 % Note that we want to keep this code as simple as possible.
-% Anything complicated, which might require changes for new versions
+% Any complicated C code, which might require changes for new versions
 % of gcc, should go in gcc/mercury/mercury-gcc.c rather than in
-% inline C code here.
+% inline C code here.  That way, the GCC developers (who know C,
+% but probably don't know Mercury) can help maintain it.
+% 
+% For symmetry, any complicated Mercury code should probably go in
+% mlds_to_gcc.m rather than here, although that is not so important.
 %
 % This module makes no attempt to be a *complete* interface to the
 % gcc back-end; we only define interfaces to those parts of the gcc
@@ -32,6 +36,10 @@
 % <http://gcc.gnu.org/readings.html>, in particular
 % "Writing a Compiler Front End to GCC" by Joachim Nadler
 % and Tim Josling <tej@melbpc.org.au>.
+%
+% Many of the procedures here which are implemented using
+% stuff defined by the gcc back-end are documented better
+% in the comments in the gcc source code.
 %
 % QUOTES
 %
@@ -208,7 +216,13 @@
 		io__state, io__state).
 :- mode build_function_decl(in, in, in, in, in, out, di, uo) is det.
 
-	% Declarations for builtin functions
+	% Declarations for builtin functions.
+	%
+	% Note that some of these are quite Mercury-specific;
+	% they are defined by C part of the Mercury front-end,
+	% in gcc/mercury/mercury-gcc.c.  (XXX We might want to
+	% consider moving these to a separate module, to make
+	% this module more language-independant.)
 :- func alloc_func_decl = gcc__func_decl.	% GC_malloc()
 :- func strcmp_func_decl = gcc__func_decl.	% strcmp()
 :- func hash_string_func_decl = gcc__func_decl.	% MR_hash_string()
@@ -271,6 +285,7 @@
 %
 
 % GCC tree_codes for operators
+% See gcc/tree.def for documentation on these.
 :- type gcc__op.
 
 :- func plus_expr  = gcc__op.		% +
@@ -427,8 +442,8 @@
 :- pred empty_init_list(gcc__init_list, io__state, io__state).
 :- mode empty_init_list(out, di, uo) is det.
 
-:- pred cons_init_list(gcc__init_elem, gcc__expr, gcc__init_list, gcc__init_list,
-		io__state, io__state).
+:- pred cons_init_list(gcc__init_elem, gcc__expr, gcc__init_list,
+		gcc__init_list, io__state, io__state).
 :- mode cons_init_list(in, in, in, out, di, uo) is det.
 
 	% build an expression for an array or structure initializer
@@ -1162,7 +1177,11 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 	Expr = (MR_Word) build(CONSTRUCTOR, (tree) Type, NULL_TREE,
 		(tree) InitList);
 #if 0
-	/* XXX do we need this? */
+	/* XXX do we need this?
+	** Are MLDS initializers only used for static initializers?
+	** Does GCC require initializers for static variables to be
+	** marked with TREE_STATIC() = 1?
+	*/
 	TREE_STATIC ((tree) Expr) = 1;
 #endif
 ").
