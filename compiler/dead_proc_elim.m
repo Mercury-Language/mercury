@@ -440,7 +440,7 @@ dead_proc_elim__eliminate(ModuleInfo0, Needed0, ModuleInfo, State0, State) :-
 	module_info_base_gen_infos(ModuleInfo2, BaseGenInfos0),
 	dead_proc_elim__eliminate_base_gen_infos(BaseGenInfos0, Needed,
 		BaseGenInfos),
-	module_info_set_base_gen_infos(ModuleInfo1, BaseGenInfos, ModuleInfo).
+	module_info_set_base_gen_infos(ModuleInfo2, BaseGenInfos, ModuleInfo).
 
 
 		% eliminate any unused procedures for this pred
