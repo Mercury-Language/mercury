@@ -23,7 +23,8 @@ VPATH=.
 MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" \
 		$(SCRIPTS_DIR)/mnc
 MNL	=	MERCURY_NU_LIB_DIR=. \
-	MERCURY_NU_LIB_OBJS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
+		MERCURY_NU_LIB_OBJS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
+		MERCURY_NU_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_NOS)" \
 		$(SCRIPTS_DIR)/mnl -v
 
 MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
@@ -31,6 +32,7 @@ MSL	=	MERCURY_SP_LIB_DIR=. \
 		MERCURY_SICSTUS_PROLOG=./sicstus_saved_state \
 		MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql \
 				$(library.qls) $(NU_LIBRARY_QLS) portray.ql`" \
+		MERCURY_SP_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_QLS)" \
 		$(SCRIPTS_DIR)/msl
 
 MCD	=	MERCURY_INT_DIR=. \
@@ -57,9 +59,12 @@ MTAGS	=	$(SCRIPTS_DIR)/mtags
 NU_LIBRARY_NOS = \
 	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
 	int.nu.no float.nu.no char.nu.no mercury_builtin.nu.no
+NU_OVERRIDING_LIBRARY_NOS = map.nu.no
+
 NU_LIBRARY_QLS = \
 	io.nu.ql require.nu.ql std_util.nu.ql string.nu.ql term_io.nu.ql \
 	int.nu.ql float.nu.ql char.nu.ql mercury_builtin.nu.ql sp_lib.ql
+NU_OVERRIDING_LIBRARY_QLS = map.nu.ql
 
 #-----------------------------------------------------------------------------#
 
@@ -73,7 +78,7 @@ mercury : ints opts libmercury
 
 .PHONY: nuprolog
 nuprolog : ints library.nu library.nu.debug $(library.nos) $(NU_LIBRARY_NOS) \
-			nc_builtin.nl
+			$(NU_OVERRIDING_LIBRARY_NOS) nc_builtin.nl
 
 .PHONY: sicstus
 sicstus : ints sicstus_compile library.sicstus.debug
@@ -147,15 +152,16 @@ library.init: library.dep
 # automatic dependencies assume that the library
 # isn't part of the application, but in this case it is.
 
-library.nu library.nu.debug: $(NU_LIBRARY_NOS)
-library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS)
+library.nu library.nu.debug: $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS)
+library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS)
 
 library.nu.debug: error.no debug.no portray.no
 library.sicstus library.sicstus.debug: portray.ql
 
-sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) portray.ql: sicstus_compile
+sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS) portray.ql: sicstus_compile
 
-$(library.nos) $(NU_LIBRARY_NOS) error.no debug.no portray.no: nc_builtin.nl
+$(library.nos) $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS) error.no \
+	debug.no portray.no: nc_builtin.nl
 
 #-----------------------------------------------------------------------------#
 
@@ -249,11 +255,13 @@ install_nuprolog: install_library_nu install_interpreter_nu
 
 .PHONY: install_library_nu
 install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
+			$(NU_OVERRIDING_LIBRARY_NOS) \
 			error.no debug.no portray.no nc_builtin.nl
 	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
 	cp `vpath_find nc_builtin.nl` $(INSTALL_NU_DIR)
 	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
 	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) \
+		$(NU_OVERRIDING_LIBRARY_NOS) \
 		error.no debug.no portray.no` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu

@@ -177,7 +177,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- import_module tree234.
+:- import_module tree234, string.
 
 :- type map(K,V)	==	tree234(K,V).
 
@@ -212,7 +212,17 @@ map__lookup(Map, K, V) :-
 	( tree234__search(Map, K, V1) ->
 		V = V1
 	;
-		error("map__lookup: key not found")
+		KeyType = type_name(type_of(K)),
+		ValueType = type_name(type_of(V)),
+		string__append_list(
+			["map__lookup: key not found\n",
+			"\tKey Type: ",
+			KeyType,
+			"\n\tValue Type: ",
+			ValueType
+			],
+			ErrorString),
+		error(ErrorString)
 	).
 
 map__insert(Map0, K, V, Map) :-

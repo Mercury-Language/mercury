@@ -17,6 +17,7 @@
 
 NULIBDIR=${MERCURY_NU_LIB_DIR=@LIBDIR@/nuprolog/@FULLARCH@}
 LIBRARY_OBJS=${MERCURY_NU_LIB_OBJS=" `cd $NULIBDIR; echo *.no` "}
+OVERRIDING_LIBRARY_OBJS=${MERCURY_NU_OVERRIDING_LIB_OBJS=""}
 debug_objs="portray.no debug.no error.no"
 
 options=
@@ -46,13 +47,24 @@ while true; do
 done
 
 objlist=
-for obj in $LIBRARY_OBJS; do
-	if echo "" "$@" "$debug_objs " | grep " $obj " > /dev/null; then
+for obj in $LIBRARY_OBJS 'kludge for broken shells'; do
+	if [ "$obj" = 'kludge for broken shells' ]; then
+		true
+	elif echo "" "$@" "$debug_objs " | grep " $obj " > /dev/null; then
 		true
 	else
 		objlist="$objlist $NULIBDIR/$obj"
 	fi
 done
+overriding_objlist=
+for obj in $OVERRIDING_LIBRARY_OBJS 'kludge for broken shells'; do
+	if [ "$obj" = 'kludge for broken shells' ]; then
+		true
+	else
+		overriding_objlist="$overriding_objlist $NULIBDIR/$obj"
+	fi
+done
+
 if $debug; then
 	for obj in $debug_objs; do
 		if echo "" "$@" "" | grep " $obj " > /dev/null; then
@@ -64,9 +76,9 @@ if $debug; then
 fi
 
 if $verbose; then
-	echo nc $options $objlist "$@"
+	echo nc $options $objlist "$@" $overriding_objlist
 fi
 case $# in
-	0) exec nc $options $objlist ;;
-	*) exec nc $options $objlist "$@" ;;
+	0) exec nc $options $objlist $overriding_objlist ;;
+	*) exec nc $options $objlist "$@" $overriding_objlist ;;
 esac
