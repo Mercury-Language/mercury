@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,9 +61,10 @@
 string_portray_list(F, L) = string_portray_list(F, "[", ", ", "]", L).
 
 string_portray_list(F, Pre, In, Post, L) = S :-
-	list__map(pred(I::in, F(I)::out) is det, L, SL),
+	list__map((pred(I::in, O::out) is det :- O = F(I)), L, SL),
 	list__length(SL, N),
 	list__duplicate(N - 1, In, InL),
 	list__append(InL, [Post], InL1),
 	list__zip(SL, InL1, SL1),
 	string__append_list([Pre|SL1], S).
+

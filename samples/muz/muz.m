@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,7 +102,7 @@ main -->
 :- mode main(in, in, di, uo) is det.
 main(Option_Table, AL) -->
 	{Flags0 = get_flags(Option_Table),
-	P0 = (pred(I::in, I-Flags0::out) is det),
+	P0 = (pred(I::in, IF::out) is det :- IF = I - Flags0),
 	list__map(P0, AL, AL1),
 	MToolkit = toolkit(Flags0),
 	( MToolkit = no,
@@ -212,7 +212,8 @@ processFile(Filename, Abbrev, F0, F, P0-ST0, P) -->
 				zcheck(F2, Spec, Status1, D, D1),
 				{(Status1=yes(TSpec1), P0=finish(_, TSpec0)) ->
 					G = generating_logic(F2),
-					HoP = (pred(TP::in, TP-G::out) is det),
+					HoP = (pred(TP::in, TPG::out) is det :-
+						TPG = TP - G),
 					list__map(HoP, TSpec1, TSpec2),
 					list__append(TSpec0, TSpec2, TSpec),
 					P1 = finish(D1, TSpec)
