@@ -106,34 +106,33 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 	->
 	    % XXX we should issue a warning; this syntax is deprecated.
 	    % Result = error("pragma c_code doesn't say whether it can call mercury", PredAndVarsTerm)
-	    MayCallMercury = will_not_call_mercury,
+		    % may_call_mercury is a conservative default.
+	    default_attributes(Attributes),
 	    (
 		C_CodeTerm = term__functor(term__string(C_Code), [], Context)
 	    ->
-	        parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm,
+	        parse_pragma_c_code(ModuleName, Attributes, PredAndVarsTerm,
 	    	    ordinary(C_Code, yes(Context)), VarSet, Result)
 	    ;
 		Result = error("invalid `:- pragma c_code' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury', and a string for C code",
 		    C_CodeTerm)
 	    )
 	;
-    	    PragmaTerms = [PredAndVarsTerm, MayCallMercuryTerm, C_CodeTerm]
+    	    PragmaTerms = [PredAndVarsTerm, FlagsTerm, C_CodeTerm]
 	->
 	    (
 		C_CodeTerm = term__functor(term__string(C_Code), [], Context)
 	    ->
-	        ( parse_may_call_mercury(MayCallMercuryTerm, MayCallMercury) ->
-	            parse_pragma_c_code(ModuleName, MayCallMercury,
-		    	PredAndVarsTerm, ordinary(C_Code, yes(Context)),
-			VarSet, Result)
-	        ; parse_may_call_mercury(PredAndVarsTerm, MayCallMercury) ->
+		( parse_pragma_c_code_attributes_term(FlagsTerm, Flags) ->
+	            parse_pragma_c_code(ModuleName, Flags, PredAndVarsTerm,
+			ordinary(C_Code, yes(Context)), VarSet, Result)
+	        ; parse_pragma_c_code_attributes_term(PredAndVarsTerm, Flags) ->
 		    % XXX we should issue a warning; this syntax is deprecated
-	            parse_pragma_c_code(ModuleName, MayCallMercury,
-		        MayCallMercuryTerm, ordinary(C_Code, yes(Context)),
-			VarSet, Result)
+	            parse_pragma_c_code(ModuleName, Flags, FlagsTerm,
+			ordinary(C_Code, yes(Context)), VarSet, Result)
 	        ;
-		    Result = error("invalid second argument in `:- pragma c_code' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury'",
-			MayCallMercuryTerm)
+		    Result = error("invalid second argument in `:- pragma c_code' declaration -- expecting a C code attribute or list of attributes'",
+			FlagsTerm)
 		)
 	    ;
 		Result = error("invalid third argument in `:- pragma c_code' declaration -- expecting string for C code",
@@ -141,23 +140,23 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 	    )
 	;
 	    (
-    	        PragmaTerms = [PredAndVarsTerm, MayCallMercuryTerm,
+    	        PragmaTerms = [PredAndVarsTerm, FlagsTerm,
 		    FieldsTerm, FirstTerm, LaterTerm],
 		term__context_init(DummyContext),
 		SharedTerm = term__functor(term__atom("common_code"),
 			[term__functor(term__string(""), [], DummyContext)],
 			DummyContext)
 	    ;
-    	        PragmaTerms = [PredAndVarsTerm, MayCallMercuryTerm,
+    	        PragmaTerms = [PredAndVarsTerm, FlagsTerm,
 		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm]
 	    )
 	->
-	    ( parse_may_call_mercury(MayCallMercuryTerm, MayCallMercury) ->
+	    ( parse_pragma_c_code_attributes_term(FlagsTerm, Flags) ->
 	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields, FieldsContext) ->
 	            ( parse_pragma_keyword("first_code", FirstTerm, First, FirstContext) ->
 	                ( parse_pragma_keyword("retry_code", LaterTerm, Later, LaterContext) ->
 	                    ( parse_pragma_keyword("shared_code", SharedTerm, Shared, SharedContext) ->
-	        	        parse_pragma_c_code(ModuleName, MayCallMercury,
+	        	        parse_pragma_c_code(ModuleName, Flags,
 				    PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
 				    	First, yes(FirstContext),
@@ -165,7 +164,7 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 					share, Shared, yes(SharedContext)),
 				    VarSet, Result)
 		            ; parse_pragma_keyword("duplicated_code", SharedTerm, Shared, SharedContext) ->
-	        	        parse_pragma_c_code(ModuleName, MayCallMercury,
+	        	        parse_pragma_c_code(ModuleName, Flags,
 				    PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
 				    	First, yes(FirstContext),
@@ -173,7 +172,7 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 					duplicate, Shared, yes(SharedContext)),
 				    VarSet, Result)
 		            ; parse_pragma_keyword("common_code", SharedTerm, Shared, SharedContext) ->
-	        	        parse_pragma_c_code(ModuleName, MayCallMercury,
+	        	        parse_pragma_c_code(ModuleName, Flags,
 				    PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
 				    	First, yes(FirstContext),
@@ -197,8 +196,8 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 			FieldsTerm)
 		)
 	    ;
-		Result = error("invalid second argument in `:- pragma c_code' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury'",
-			MayCallMercuryTerm)
+		Result = error("invalid second argument in `:- pragma c_code' declaration -- expecting pragma c_code attribute or list of attributes'",
+			FlagsTerm)
 	    )
 	;
 	    Result = error(
@@ -209,7 +208,7 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 parse_pragma_type(ModuleName, "import", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-
        (
-	    PragmaTerms = [PredAndModesTerm, MayCallMercuryTerm,
+	    PragmaTerms = [PredAndModesTerm, FlagsTerm,
 			C_FunctionTerm]
        ->
 	    (
@@ -231,21 +230,21 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			->
 			    list__append(ArgModes, [RetMode], Modes),
 			    (
-				parse_may_call_mercury(MayCallMercuryTerm,
-					MayCallMercury)
+				parse_pragma_c_code_attributes_term(FlagsTerm,
+					Flags)
 			    ->
 			    	inst_table_init(InstTable),
 			    	ArgumentModes = argument_modes(InstTable,
 					Modes),
 			        Result = ok(pragma(import(FuncName, function,
-				    ArgumentModes, MayCallMercury, C_Function)))
+				    ArgumentModes, Flags, C_Function)))
 			    ;
-				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury'",
-					MayCallMercuryTerm)
+				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting C code attribute or list of attributes'",
+					FlagsTerm)
 			    )
 			;
 	   		    Result = error(
-"expected pragma import(FuncName(ModeList) = Mode, MayCallMercury, C_Function)",
+"expected pragma import(FuncName(ModeList) = Mode, Attributes, C_Function)",
 				PredAndModesTerm)
 			)
 		    ;
@@ -262,21 +261,21 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 		    	    convert_mode_list(ModeTerms, Modes)
 			->
 			    (
-				parse_may_call_mercury(MayCallMercuryTerm,
-					MayCallMercury)
+				parse_pragma_c_code_attributes_term(FlagsTerm,
+					Flags)
 			    ->
 			    	inst_table_init(InstTable),
 			    	ArgumentModes = argument_modes(InstTable,
 					Modes),
 			        Result = ok(pragma(import(PredName, predicate,
-				    ArgumentModes, MayCallMercury, C_Function)))
+				    ArgumentModes, Flags, C_Function)))
 			    ;
-				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury'",
-					MayCallMercuryTerm)
+				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting C code attribute or list of attributes'",
+					FlagsTerm)
 			    )
 			;
 	   		    Result = error(
-"expected pragma import(PredName(ModeList), MayCallMercury, C_Function)",
+"expected pragma import(PredName(ModeList), Attributes, C_Function)",
 				PredAndModesTerm)
 			)
 		    ;
@@ -286,13 +285,13 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 		)
 	    ;
 	    	Result = error(
-"expected pragma import(PredName(ModeList), MayCallMercury, C_Function)",
+"expected pragma import(PredName(ModeList), Attributes, C_Function)",
 		     PredAndModesTerm)
 	    )
 	;
 	    PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
 	->
-	    MayCallMercury = may_call_mercury,
+	    default_attributes(Attributes),
 	    (
 		PredAndModesTerm = term__functor(_, _, _),
 		C_FunctionTerm = term__functor(term__string(C_Function), [], _)
@@ -315,7 +314,7 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			    ArgumentModes = argument_modes(InstTable,
 					Modes),
 			    Result = ok(pragma(import(FuncName, function,
-				    ArgumentModes, MayCallMercury, C_Function)))
+				    ArgumentModes, Attributes, C_Function)))
 			;
 	   		    Result = error(
 "expected pragma import(FuncName(ModeList) = Mode, C_Function)",
@@ -338,7 +337,7 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			    ArgumentModes = argument_modes(InstTable,
 					Modes),
 			    Result = ok(pragma(import(PredName, predicate,
-				    ArgumentModes, MayCallMercury, C_Function)))
+				    ArgumentModes, Attributes, C_Function)))
 			;
 	   		    Result = error(
 	"expected pragma import(PredName(ModeList), C_Function)",
@@ -700,6 +699,75 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 	Term = term__functor(term__atom(ExpectedKeyword), [Arg], _),
 	Arg = term__functor(term__string(StringArg), [], StartContext).
 
+%-----------------------------------------------------------------------------%
+
+:- type collected_pragma_c_code_attribute
+	--->	may_call_mercury(may_call_mercury)
+	;	thread_safe(thread_safe)
+	.
+
+:- pred parse_pragma_c_code_attributes_term(term, pragma_c_code_attributes).
+:- mode parse_pragma_c_code_attributes_term(in, out) is semidet.
+
+parse_pragma_c_code_attributes_term(Term, Attributes) :-
+	default_attributes(Attributes0),
+	parse_pragma_c_code_attributes_term0(Term, AttrList),
+	( list__member(may_call_mercury(will_not_call_mercury), AttrList) ->
+		( list__member(may_call_mercury(may_call_mercury), AttrList) ->
+			% XXX an error message would be nice
+			fail
+		;
+			set_may_call_mercury(Attributes0,
+				will_not_call_mercury, Attributes1)
+		)
+	;
+		Attributes1 = Attributes0
+	),
+	( list__member(thread_safe(thread_safe), AttrList) ->
+		( list__member(thread_safe(not_thread_safe), AttrList) ->
+			% XXX an error message would be nice
+			fail
+		;
+			set_thread_safe(Attributes1, thread_safe, Attributes)
+		)
+	;
+		Attributes = Attributes1
+	).
+
+:- pred parse_pragma_c_code_attributes_term0(term,
+		list(collected_pragma_c_code_attribute)).
+:- mode parse_pragma_c_code_attributes_term0(in, out) is semidet.
+
+parse_pragma_c_code_attributes_term0(Term, Flags) :-
+	(
+		parse_single_pragma_c_code_attribute(Term, Flag)
+	->
+		Flags = [Flag]
+	;
+		(
+			Term = term__functor(term__atom("[]"), [], _),
+			Flags = []
+		;
+			Term = term__functor(term__atom("."), [Hd, Tl], _),
+			Flags = [Flag|Flags0],
+			parse_single_pragma_c_code_attribute(Hd, Flag),
+			parse_pragma_c_code_attributes_term0(Tl, Flags0)
+		)
+	).
+
+:- pred parse_single_pragma_c_code_attribute(term,
+		collected_pragma_c_code_attribute).
+:- mode parse_single_pragma_c_code_attribute(in, out) is semidet.
+
+parse_single_pragma_c_code_attribute(Term, Flag) :-
+	( parse_may_call_mercury(Term, MayCallMercury) ->
+		Flag = may_call_mercury(MayCallMercury)
+	; parse_threadsafe(Term, ThreadSafe) ->
+		Flag = thread_safe(ThreadSafe)
+	;
+		fail
+	).
+
 :- pred parse_may_call_mercury(term, may_call_mercury).
 :- mode parse_may_call_mercury(in, out) is semidet.
 
@@ -712,13 +780,21 @@ parse_may_call_mercury(term__functor(term__atom("may_call_mercury"), [], _),
 parse_may_call_mercury(term__functor(term__atom("will_not_call_mercury"), [],
 	_), will_not_call_mercury).
 
+:- pred parse_threadsafe(term, thread_safe).
+:- mode parse_threadsafe(in, out) is semidet.
+
+parse_threadsafe(term__functor(term__atom("thread_safe"), [], _),
+	thread_safe).
+parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
+	not_thread_safe).
+
 % parse a pragma c_code declaration
 
-:- pred parse_pragma_c_code(module_name, may_call_mercury, term,
+:- pred parse_pragma_c_code(module_name, pragma_c_code_attributes, term,
 	pragma_c_code_impl, varset, maybe1(item)).
 :- mode parse_pragma_c_code(in, in, in, in, in, out) is det.
 
-parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm0, PragmaImpl,
+parse_pragma_c_code(ModuleName, Flags, PredAndVarsTerm0, PragmaImpl,
 	VarSet, Result) :-
     (
 	PredAndVarsTerm0 = term__functor(Const, Terms0, _)
@@ -753,7 +829,7 @@ parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm0, PragmaImpl,
 	    parse_pragma_c_code_varlist(VarSet, VarList, PragmaVars, Error),
 	    (
 		Error = no,
-		Result = ok(pragma(c_code(MayCallMercury, PredName,
+		Result = ok(pragma(c_code(Flags, PredName,
 		    PredOrFunc, PragmaVars, VarSet, PragmaImpl)))
 	    ;
 		Error = yes(ErrorMessage),

@@ -80,9 +80,9 @@
 		io__state, io__state).
 :- mode mercury_output_pragma_decl(in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_pragma_c_code(may_call_mercury, sym_name, pred_or_func,
-		list(pragma_var), varset, pragma_c_code_impl, inst_table,
-		io__state, io__state).
+:- pred mercury_output_pragma_c_code(pragma_c_code_attributes, sym_name,
+		pred_or_func, list(pragma_var), varset, pragma_c_code_impl,
+		inst_table, io__state, io__state).
 :- mode mercury_output_pragma_c_code(in, in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
@@ -323,16 +323,16 @@ mercury_output_item(pragma(Pragma), Context, InstTable) -->
 		{ Pragma = c_code(Code) }, 
 		mercury_output_pragma_c_body_code(Code)
 	;
-		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars,
+		{ Pragma = c_code(Attributes, Pred, PredOrFunc, Vars,
 			VarSet, PragmaCode) }, 
-		mercury_output_pragma_c_code(MayCallMercury, Pred, PredOrFunc, 
+		mercury_output_pragma_c_code(Attributes, Pred, PredOrFunc, 
 			Vars, VarSet, PragmaCode, InstTable)
 	;
-		{ Pragma = import(Pred, PredOrFunc, Modes, MayCallMercury,
+		{ Pragma = import(Pred, PredOrFunc, Modes, Attributes,
 			C_Function) },
 		{ Modes = argument_modes(ArgInstTable, ArgModes) },
 		mercury_output_pragma_import(Pred, PredOrFunc, ArgModes,
-			MayCallMercury, C_Function, ArgInstTable)
+			Attributes, C_Function, ArgInstTable)
 	;
 		{ Pragma = export(Pred, PredOrFunc, Modes, C_Function) },
 		{ Modes = argument_modes(ArgInstTable, ArgModes) },
@@ -2119,7 +2119,7 @@ mercury_output_pragma_c_body_code(C_CodeString) -->
 %-----------------------------------------------------------------------------%
 
 	% Output the given pragma c_code declaration
-mercury_output_pragma_c_code(MayCallMercury, PredName, PredOrFunc, Vars0,
+mercury_output_pragma_c_code(Attributes, PredName, PredOrFunc, Vars0,
 		VarSet, PragmaCode, InstTable) -->
 	io__write_string(":- pragma c_code("),
 	mercury_output_sym_name(PredName),
@@ -2148,13 +2148,9 @@ mercury_output_pragma_c_code(MayCallMercury, PredName, PredOrFunc, Vars0,
 			InstTable),
 		io__write_string(")")
 	),
-	(
-		{ MayCallMercury = may_call_mercury },
-		io__write_string(", may_call_mercury, ")
-	; 
-		{ MayCallMercury = will_not_call_mercury },
-		io__write_string(", will_not_call_mercury, ")
-	),
+	io__write_string(", "),
+	mercury_output_pragma_c_attributes(Attributes),
+	io__write_string(", "),
 	(
 		{ PragmaCode = ordinary(C_Code, _) },
 		mercury_output_c_code_string(C_Code)
@@ -2246,10 +2242,10 @@ mercury_output_pragma_decl(PredName, Arity, PredOrFunc, PragmaName) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_pragma_import(sym_name, pred_or_func, list(mode),
-	may_call_mercury, string, inst_table, io__state, io__state).
+	pragma_c_code_attributes, string, inst_table, io__state, io__state).
 :- mode mercury_output_pragma_import(in, in, in, in, in, in, di, uo) is det.
 
-mercury_output_pragma_import(Name, PredOrFunc, ModeList, MayCallMercury,
+mercury_output_pragma_import(Name, PredOrFunc, ModeList, Attributes,
 		C_Function, InstTable) -->
 	{ varset__init(Varset) }, % the varset isn't really used.
 	io__write_string(":- pragma import("),
@@ -2267,13 +2263,9 @@ mercury_output_pragma_import(Name, PredOrFunc, ModeList, MayCallMercury,
 		mercury_output_mode_list(ModeList, Varset, InstTable),
 		io__write_string(")")
 	),
-	(
-		{ MayCallMercury = may_call_mercury },
-		io__write_string(", may_call_mercury, ")
-	; 
-		{ MayCallMercury = will_not_call_mercury },
-		io__write_string(", will_not_call_mercury, ")
-	),
+	io__write_string(", "),
+	mercury_output_pragma_c_attributes(Attributes),
+	io__write_string(", "),
 	io__write_string(C_Function),
 	io__write_string(").\n").
 
@@ -2337,6 +2329,32 @@ mercury_output_tabs(Indent) -->
 		{ Indent1 is Indent - 1 },
 		mercury_output_tabs(Indent1)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_pragma_c_attributes(pragma_c_code_attributes,
+		io__state, io__state).
+:- mode mercury_output_pragma_c_attributes(in, di, uo) is det.
+
+mercury_output_pragma_c_attributes(Attributes) -->
+	io__write_string("["),
+	{ may_call_mercury(Attributes, MayCallMercury) },
+	(
+		{ MayCallMercury = may_call_mercury },
+		io__write_string("may_call_mercury, ")
+	;
+		{ MayCallMercury = will_not_call_mercury },
+		io__write_string("will_not_call_mercury, ")
+	),
+	{ thread_safe(Attributes, ThreadSafe) },
+	(
+		{ ThreadSafe = not_thread_safe },
+		io__write_string("not_thread_safe")
+	;
+		{ ThreadSafe = thread_safe },
+		io__write_string("thread_safe")
+	),
+	io__write_string("]").
 
 %-----------------------------------------------------------------------------%
 

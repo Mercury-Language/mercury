@@ -1490,7 +1490,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			SplitCObj0FileName, " : ",
 				SourceFileName, "\n",
 			"\trm -rf ", DirFileName, "\n",
-			"\t$(MCS) $(GRADEFLAGS) $(MCSFLAGS) ",
+			"\t$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) ",
 				SourceFileName, "\n"
 		]),
 
@@ -1521,32 +1521,36 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			io__write_strings(DepStream, [
 				"\n",
 				Date0FileName, " : ", SourceFileName, "\n",
-				"\t$(MCPI) $(MCPIFLAGS) $<\n",
+				"\t$(MCPI) $(ALL_MCPIFLAGS) $<\n",
 				DateFileName, " : ", SourceFileName, "\n",
-				"\t$(MCI) $(MCIFLAGS) $<\n",
+				"\t$(MCI) $(ALL_MCIFLAGS) $<\n",
 				Date3FileName, " : ", SourceFileName, "\n",
-				"\t$(MCSI) $(MCSIFLAGS) $<\n",
+				"\t$(MCSI) $(ALL_MCSIFLAGS) $<\n",
 				OptDateFileName, " : ", SourceFileName, "\n",
-				"\t$(MCOI) $(MCOIFLAGS) $<\n",
+				"\t$(MCOI) $(ALL_MCOIFLAGS) $<\n",
 				TransOptDateFileName, " : ", SourceFileName,
 					"\n",
-				"\t$(MCTOI) $(MCTOIFLAGS) $<\n",
+				"\t$(MCTOI) $(ALL_MCTOIFLAGS) $<\n",
 				CFileName, " : ", SourceFileName, "\n",
 				"\trm -f ", CFileName, "\n",
-				"\t$(MCG) $(GRADEFLAGS) $(MCGFLAGS) $< ",
-					"> ", ErrFileName, " 2>&1\n",
+				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
+					"$< > ", ErrFileName, " 2>&1\n",
 				"ifneq ($(RM_C),:)\n",
 				ObjFileName, " : ", SourceFileName, "\n",
-				"\t$(MMAKE_MAKE_CMD) $(MFLAGS) GRADEFLAGS=",
-					"""$(GRADEFLAGS)"" ", CFileName, "\n",
-				"\t$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c ",
-					CFileName, " -o $@\n",
+				"\t$(MMAKE_MAKE_CMD) $(MFLAGS) ",
+					"ALL_GRADEFLAGS=""$(ALL_GRADEFLAGS)"" ",
+					CFileName, "\n",
+				"\t$(MGNUC) $(ALL_GRADEFLAGS) ",
+					"$(ALL_MGNUCFLAGS) -c ", CFileName,
+					" -o $@\n",
 				"\t$(RM_C) ", CFileName, "\n",
 				PicObjFileName, " : ", SourceFileName, "\n",
-				"\t$(MMAKE_MAKE_CMD) $(MFLAGS) GRADEFLAGS=",
-					"""$(GRADEFLAGS)"" ", CFileName, "\n",
-				"\t$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) ",
-					"$(CFLAGS_FOR_PIC) \\\n",
+				"\t$(MMAKE_MAKE_CMD) $(MFLAGS) ",
+					"ALL_GRADEFLAGS=""$(ALL_GRADEFLAGS)"" ",
+					CFileName, "\n",
+				"\t$(MGNUC) $(ALL_GRADEFLAGS) ",
+					"$(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) ",
+					"\\\n",
 				"\t\t-c ", CFileName, " -o $@\n",
 				"endif # RM_C != :\n"
 			])
@@ -2348,9 +2352,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"MLOBJS_DEPS += ", ExeFileName, "\n",
 		ExeFileName, " : $(", MakeVarName, ".os) ",
 			InitObjFileName, "\n",
-		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ExeFileName, " ",
-		InitObjFileName, " \\\n",
-		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(MLLIBS)\n\n"
+		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
+			ExeFileName, " ", InitObjFileName, " \\\n",
+		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(ALL_MLLIBS)\n\n"
 	]),
 
 	module_name_to_file_name(SourceModuleName, ".split", yes,
@@ -2358,21 +2362,21 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(ModuleName, ".split.a", yes, SplitLibFileName),
 	io__write_strings(DepStream, [
 		SplitExeFileName, " : ", SplitLibFileName, " ",
-				InitObjFileName, "\n",
-		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", SplitExeFileName,
-			" ", InitObjFileName, " \\\n",
-		"\t	", SplitLibFileName, " $(MLLIBS)\n\n"
+			InitObjFileName, "\n",
+		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
+			SplitExeFileName, " ", InitObjFileName, " \\\n",
+		"\t	", SplitLibFileName, " $(ALL_MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
 		"MLOBJS_DEPS += ", SplitLibFileName, "\n",
 		SplitLibFileName, " : $(", MakeVarName, ".dir_os)\n",
 		"\trm -f ", SplitLibFileName, "\n",
-		"\t$(AR) $(ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
+		"\t$(AR) $(ALL_ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
 		"\tfor dir in $(", MakeVarName, ".dirs); do \\\n",
 		"\t	$(AR) q ", SplitLibFileName, " $$dir/*.o; \\\n",
 		"\tdone\n",
-		"\t$(RANLIB) $(RANLIBFLAGS) ", SplitLibFileName, "\n\n"
+		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
 	]),
 
 	module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName),
@@ -2395,18 +2399,19 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		"MLPICOBJS_DEPS += ", SharedLibFileName, "\n",
 		SharedLibFileName, " : $(", MakeVarName, ".pic_os)\n",
-		"\t$(ML) --make-shared-lib $(GRADEFLAGS) $(MLFLAGS) -o ",
-			SharedLibFileName, " \\\n",
-		"\t\t$(", MakeVarName, ".pic_os) $(MLPICOBJS) $(MLLIBS)\n\n"
+		"\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
+			"-o ", SharedLibFileName, " \\\n",
+		"\t\t$(", MakeVarName, ".pic_os) $(MLPICOBJS) ",
+			"$(ALL_MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
 		"MLOBJS_DEPS += ", LibFileName, "\n",
 		LibFileName, " : $(", MakeVarName, ".os)\n",
 		"\trm -f ", LibFileName, "\n",
-		"\t$(AR) $(ARFLAGS) ", LibFileName, " ",
+		"\t$(AR) $(ALL_ARFLAGS) ", LibFileName, " ",
 			"$(", MakeVarName, ".os) $(MLOBJS)\n",
-		"\t$(RANLIB) $(RANLIBFLAGS) ", LibFileName, "\n\n"
+		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", LibFileName, "\n\n"
 	]),
 
 	module_name_to_file_name(ModuleName, ".dep", no, DepFileName),
@@ -2419,7 +2424,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		InitCFileName, " : ", DepFileName, "\n",
-		"\t$(C2INIT) $(C2INITFLAGS) $(", MakeVarName, ".cs) > ",
+		"\t$(C2INIT) $(ALL_C2INITFLAGS) $(", MakeVarName, ".cs) > ",
 			InitCFileName, "\n\n"
 	]),
 
@@ -2428,12 +2433,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 						NU_DebugExeFileName),
 	io__write_strings(DepStream, [
 		NU_ExeFileName, " : $(", MakeVarName, ".nos)\n",
-		"\t$(MNL) $(MNLFLAGS) -o ", NU_ExeFileName, " ",
+		"\t$(MNL) $(ALL_MNLFLAGS) -o ", NU_ExeFileName, " ",
 			"$(", MakeVarName, ".nos)\n\n",
 
 		NU_DebugExeFileName, " : $(", MakeVarName, ".nos)\n",
-		"\t$(MNL) --debug $(MNLFLAGS) -o ", NU_DebugExeFileName, " ",
-			"$(", MakeVarName, ".nos)\n\n"
+		"\t$(MNL) --debug $(ALL_MNLFLAGS) -o ", NU_DebugExeFileName,
+			" $(", MakeVarName, ".nos)\n\n"
 	]),
 
 	module_name_to_file_name(SourceModuleName, ".sicstus", yes,
@@ -2442,11 +2447,11 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 						SicstusDebugExeFileName),
 	io__write_strings(DepStream, [
 		SicstusExeFileName, " : $(", MakeVarName, ".qls)\n",
-		"\t$(MSL) $(MSLFLAGS) -o ", SicstusExeFileName, " ",
+		"\t$(MSL) $(ALL_MSLFLAGS) -o ", SicstusExeFileName, " ",
 			"$(", MakeVarName, ".qls)\n\n",
 
 		SicstusDebugExeFileName, " : $(", MakeVarName, ".qls)\n",
-		"\t$(MSL) --debug $(MSLFLAGS) -o ", SicstusDebugExeFileName,
+		"\t$(MSL) --debug $(ALL_MSLFLAGS) -o ", SicstusDebugExeFileName,
 			" $(", MakeVarName, ".qls)\n\n"
 	]),
 

@@ -1057,16 +1057,16 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 					X = pragma_c_code(_,_,_,_,_,_,_) - _
 				)),
 				Goals, [CCodeGoal]) },
-			{ CCodeGoal = pragma_c_code(MayCallMercury,
+			{ CCodeGoal = pragma_c_code(Attributes,
 				_, _, Vars, ArgNames, _, PragmaCode) - _ }
 		;
-			{ Goal = pragma_c_code(MayCallMercury,
+			{ Goal = pragma_c_code(Attributes,
 				_, _, Vars, ArgNames, _, PragmaCode) - _ }
 		)
 	->	
 		{ ArgNames = pragma_c_code_arg_info(_, Names) },
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
-			PragmaCode, MayCallMercury, Vars, Varset, Names,
+			PragmaCode, Attributes, Vars, Varset, Names,
 			SymName, InstTable)
 	;
 		{ error("intermod__write_c_code called with non c_code goal") }
@@ -1075,14 +1075,14 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 				Clauses, Procs, InstTable).
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
-		pred_or_func::in, pragma_c_code_impl::in, may_call_mercury::in,
-		list(var)::in, varset::in, list(maybe(pair(string, mode)))::in,
-		sym_name::in, inst_table::in, io__state::di, io__state::uo)
-		is det.
+		pred_or_func::in, pragma_c_code_impl::in,
+		pragma_c_code_attributes::in, list(var)::in, varset::in,
+		list(maybe(pair(string, mode)))::in, sym_name::in,
+		inst_table::in, io__state::di, io__state::uo) is det.
 
 intermod__write_c_clauses(_, [], _, _, _, _, _, _, _, _) --> [].
 intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
-		PragmaImpl, MayCallMercury, Vars, Varset0, Names, SymName,
+		PragmaImpl, Attributes, Vars, Varset0, Names, SymName,
 		InstTable) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
@@ -1091,10 +1091,10 @@ intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
 	( { MaybeArgModes = yes(argument_modes(_ArgIKT, ArgModes)) } ->
 		{ get_pragma_c_code_vars(Vars, Names, Varset0, ArgModes,
 			Varset, PragmaVars) },
-		mercury_output_pragma_c_code(MayCallMercury, SymName,
+		mercury_output_pragma_c_code(Attributes, SymName,
 			PredOrFunc, PragmaVars, Varset, PragmaImpl, InstTable),
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
-			PragmaImpl, MayCallMercury, Vars, Varset, Names,
+			PragmaImpl, Attributes, Vars, Varset, Names,
 			SymName, InstTable)
 	;
 		{ error("intermod__write_c_clauses: no mode declaration") }

@@ -105,9 +105,11 @@
 
 	;	c_code(string)
 
-	;	c_code(may_call_mercury, sym_name, pred_or_func,
+	;	c_code(pragma_c_code_attributes, sym_name, pred_or_func,
 			list(pragma_var), varset, pragma_c_code_impl)
-			% Whether or not the C code may call Mercury,
+			% Set of C code attributes, eg.:
+			%	whether or not the C code may call Mercury,
+			%	whether or not the C code is thread-safe
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, C Code Implementation Info
 
@@ -126,9 +128,11 @@
 			% C function name.
 
 	;	import(sym_name, pred_or_func, argument_modes,
-			may_call_mercury, string)
+			pragma_c_code_attributes, string)
 			% Predname, Predicate/function, Modes,
-			% whether or not the C function may call Mercury,
+			% Set of C code attributes, eg.:
+			%	whether or not the C code may call Mercury,
+			%	whether or not the C code is thread-safe
 			% C function name.
 
 	;	source_file(string)
@@ -299,6 +303,27 @@
 
 :- type instance_interface ==	list(instance_method).
 
+		% an abstract type for representing a set of
+		% `pragma_c_code_attribute's.
+:- type pragma_c_code_attributes.
+
+:- pred default_attributes(pragma_c_code_attributes).
+:- mode default_attributes(out) is det.
+
+:- pred may_call_mercury(pragma_c_code_attributes, may_call_mercury).
+:- mode may_call_mercury(in, out) is det.
+
+:- pred set_may_call_mercury(pragma_c_code_attributes, may_call_mercury,
+		pragma_c_code_attributes).
+:- mode set_may_call_mercury(in, in, out) is det.
+
+:- pred thread_safe(pragma_c_code_attributes, thread_safe).
+:- mode thread_safe(in, out) is det.
+
+:- pred set_thread_safe(pragma_c_code_attributes, thread_safe,
+		pragma_c_code_attributes).
+:- mode set_thread_safe(in, in, out) is det.
+
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another
 	% more efficient one for the case when we know that the C code will
@@ -306,6 +331,13 @@
 :- type may_call_mercury
 	--->	may_call_mercury
 	;	will_not_call_mercury.
+
+	% If thread_safe execution is enabled, then we need to put a mutex
+	% around the C code for each `pragma c_code' declaration, unless
+	% it's declared to be thread_safe.
+:- type thread_safe
+	--->	not_thread_safe
+	;	thread_safe.
 
 :- type pragma_var    
 	--->	pragma_var(var, string, mode).
@@ -603,3 +635,39 @@
 	;	may_be_unqualified.
 
 %-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module int.
+
+:- type pragma_c_code_attributes == int.
+
+default_attributes(0).
+
+% bit 1	:	may_call_mercury / will_not_call_mercury
+% bit 2 :	not_thread_safe / thread_safe
+
+may_call_mercury(Attrs, MayCallMercury) :-
+	( Attrs /\ 0x01 \= 0 ->
+		MayCallMercury = will_not_call_mercury
+	;
+		MayCallMercury = may_call_mercury
+	).
+
+thread_safe(Attrs, ThreadSafe) :-
+	( Attrs /\ 0x02 \= 0 ->
+		ThreadSafe = thread_safe
+	;
+		ThreadSafe = not_thread_safe
+	).
+
+set_may_call_mercury(Attrs0, may_call_mercury, Attrs) :-
+	Attrs = Attrs0 /\ (\ 0x01).
+set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs) :-
+	Attrs = Attrs0 \/ 0x01.
+
+set_thread_safe(Attrs0, not_thread_safe, Attrs) :-
+	Attrs = Attrs0 /\ (\ 0x02).
+set_thread_safe(Attrs0, thread_safe, Attrs) :-
+	Attrs = Attrs0 \/ 0x02.
+

@@ -380,7 +380,7 @@ build_live_sets_in_goal_2(unify(_,_,_,D,_), Liveness, ResumeVars0, LiveSets0,
 		LiveSets = LiveSets0
 	).
 
-build_live_sets_in_goal_2(pragma_c_code(MayCallMercury, PredId, ProcId,
+build_live_sets_in_goal_2(pragma_c_code(Attributes, PredId, ProcId,
 		Args, _, _, _), Liveness, ResumeVars0, LiveSets0,
 		GoalInfo, ModuleInfo, ProcInfo,
 		Liveness, ResumeVars, LiveSets) :-
@@ -394,7 +394,7 @@ build_live_sets_in_goal_2(pragma_c_code(MayCallMercury, PredId, ProcId,
 		% won't clobber the registers.
 
 		CodeModel \= model_non,
-		MayCallMercury = will_not_call_mercury
+		may_call_mercury(Attributes, will_not_call_mercury)
 	->
 		ResumeVars = ResumeVars0,
 		LiveSets = LiveSets0

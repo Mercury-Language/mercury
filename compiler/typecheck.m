@@ -598,9 +598,14 @@ restrict_to_head_vars_2(ClassConstraints, HeadTypeVars, HeadClassConstraints,
 :- mode is_head_class_constraint(in, in) is semidet.
 
 is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
-	not (
+	% SICStus does not allow the following syntax
+	% all [TVar] (
+	% 	term__contains_var_list(Types, TVar) =>
+	% 		list__member(TVar, HeadTypeVars)
+	% ).
+	\+ (
 		term__contains_var_list(Types, TVar),
-		not list__member(TVar, HeadTypeVars)
+		\+ list__member(TVar, HeadTypeVars)
 	).
 
 % Check whether the argument types, type quantifiers, and type constraints
@@ -1278,10 +1283,14 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
 		;
 			term__apply_rec_substitution_to_list(PredExistQTypes0,
 				TypeSubst, PredExistQTypes),
-			not (
+			% SICStus doesn't allow the following syntax
+			% all [T] (list__member(T, PredExistQTypes) => 
+			% 		type_util__var(T, _))
+			\+ (
 				list__member(T, PredExistQTypes),
-				not type_util__var(T, _)
+				\+ type_util__var(T, _)
 			)
+
 			% it might make sense to also check that
 			% the type substitution did not bind any
 			% existentially typed variables to universally 
@@ -3576,12 +3585,21 @@ find_first(Pred, [X|Xs], Result) :-
 :- pred check_satisfiability(list(class_constraint), head_type_params).
 :- mode check_satisfiability(in, in) is semidet.
 
-check_satisfiability([], _HeadTypeParams).
-check_satisfiability([constraint(_ClassName, Types) | Constraints],
-		HeadTypeParams) :-
-	term__contains_var_list(Types, TVar),
-	not list__member(TVar, HeadTypeParams),
-	check_satisfiability(Constraints, HeadTypeParams).
+check_satisfiability(Constraints, HeadTypeParams) :-
+	% SICStus doesn't allow the following syntax
+	% all [C] list__member(C, Constraints) => (
+	% 	C = constraint(_ClassName, Types),
+	% 	term__contains_var_list(Types, TVar),
+	% 	not list__member(TVar, HeadTypeParams)
+	% ).
+	\+ (
+		list__member(C, Constraints),
+		\+ (
+			C = constraint(_ClassName, Types),
+			term__contains_var_list(Types, TVar),
+			\+ list__member(TVar, HeadTypeParams)
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 

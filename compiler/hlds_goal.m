@@ -154,9 +154,7 @@
 		% C code from a pragma c_code(...) decl.
 
 	;	pragma_c_code(
-			may_call_mercury,
-					% Can the C code recursively
-					% invoke Mercury code?
+			pragma_c_code_attributes,
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(var),	% The (Mercury) argument variables

@@ -807,13 +807,13 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
 			Code)
 	).
-code_gen__generate_goal_2(pragma_c_code(MayCallMercury, PredId, ProcId,
-		Args, ArgNames, OrigArgTypes, PragmaImpl),
-		GoalInfo, CodeModel, Code) -->
+code_gen__generate_goal_2(pragma_c_code(Attributes,
+		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
+		GoalInfo, CodeModel, Instr) -->
 	{ ArgNames = pragma_c_code_arg_info(_InstTable, Names) },
-	pragma_c_gen__generate_pragma_c_code(CodeModel, MayCallMercury,
-		PredId, ProcId, Args, Names, OrigArgTypes, GoalInfo,
-		PragmaImpl, Code).
+	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
+		PredId, ModeId, Args, Names, OrigArgTypes, GoalInfo,
+		PragmaCode, Instr).
 
 %---------------------------------------------------------------------------%
 

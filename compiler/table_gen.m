@@ -640,7 +640,9 @@ generate_get_table_goals(VarTypes0, VarTypes, VarSet0, VarSet, _InstTable,
 	get_table_var_type(TableVarType),
 	
 	inst_table_init(ArgInstTable),
-	GoalEx = pragma_c_code(will_not_call_mercury, PredId, ProcId,
+	default_attributes(Attrs0),
+	set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs),
+	GoalEx = pragma_c_code(Attrs, PredId, ProcId,
 			[TableVar], pragma_c_code_arg_info(ArgInstTable, 
 				[yes("MC_table_var" - TableVarMode)]), 
 			[TableVarType], ordinary( 
@@ -650,8 +652,7 @@ generate_get_table_goals(VarTypes0, VarTypes, VarSet0, VarSet, _InstTable,
 	}
 ", 
 		no)), 
-	
-	
+
 	set__singleton_set(NonLocals, TableVar),
 	instmap_delta_from_assoc_list([TableVar - TableVarInst],
 		InstMapDelta),

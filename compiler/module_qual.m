@@ -688,8 +688,8 @@ qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes),
 qualify_pragma(inline(A, B), inline(A, B), Info, Info) --> [].
 qualify_pragma(no_inline(A, B), no_inline(A, B), Info, Info) --> [].
 qualify_pragma(obsolete(A, B), obsolete(A, B), Info, Info) --> [].
-qualify_pragma(import(Name, PredOrFunc, Modes0, MayCallMercury, CFunc),
-		import(Name, PredOrFunc, Modes, MayCallMercury, CFunc),
+qualify_pragma(import(Name, PredOrFunc, Modes0, Attributes, CFunc),
+		import(Name, PredOrFunc, Modes, Attributes, CFunc),
 		Info0, Info) -->
 	{ Modes0 = argument_modes(InstTable, ArgModes0) },
 	qualify_mode_list(ArgModes0, ArgModes, Info0, Info),

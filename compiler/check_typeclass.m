@@ -508,23 +508,25 @@ apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
 	sym_name).
 :- mode make_introduced_pred_name(in, in, in, in, out) is det.
 
-make_introduced_pred_name(ClassId, MethodName, _PredArity, 
+make_introduced_pred_name(ClassId, MethodName, PredArity, 
 		InstanceTypes, PredName) :-
 	ClassId = class_id(ClassName, _ClassArity),
-	prog_out__sym_name_to_string(ClassName, ClassNameString),
-	prog_out__sym_name_to_string(MethodName, MethodNameString),
+	prog_out__sym_name_to_string(ClassName, "__", ClassNameString),
+	prog_out__sym_name_to_string(MethodName, "__", MethodNameString),
 		% Perhaps we should include the pred arity in this mangled
 		% string?
-	% string__int_to_string(PredArity, PredArityString),
+	string__int_to_string(PredArity, PredArityString),
 	base_typeclass_info__make_instance_string(InstanceTypes, 
 		InstanceString),
 	string__append_list(
-		["Introduced predicate for ",
+		["Introduced_pred_for_",
 		ClassNameString,
-		"(",
+		"__",
 		InstanceString,
-		") method ",
-		MethodNameString
+		"____",
+		MethodNameString,
+		"_",
+		PredArityString
 		], 
 		PredNameString),
 	PredName = unqualified(PredNameString).

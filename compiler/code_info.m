@@ -284,7 +284,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		Hijack = not_allowed
 	),
 	DummyFailInfo = fail_info(ResumePoints, resume_point_unknown,
-		may_be_different, Hijack),
+		may_be_different, not_inside_non_condition, Hijack),
 	set__init(AvailSlots),
 	map__init(TempsInUse),
 	set__init(Zombies),
@@ -776,7 +776,7 @@ code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo) -->
 
 code_info__current_resume_point_vars(ResumeVars) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePointStack, _, _, _) },
+	{ FailInfo = fail_info(ResumePointStack, _, _, _, _) },
 	{ stack__top_det(ResumePointStack, ResumePointInfo) },
 	{ code_info__pick_first_resume_point(ResumePointInfo, ResumeMap, _) },
 	{ map__keys(ResumeMap, ResumeMapVarList) },
@@ -907,8 +907,10 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 			% branched structure with is valid for all branches.
 		code_info__get_fail_info(FailInfo0, EndCodeInfo0, _),
 		code_info__get_fail_info(FailInfo1, EndCodeInfo1, _),
-		FailInfo0 = fail_info(_, ResumeKnown0, CurfrMaxfr0, Hijack0),
-		FailInfo1 = fail_info(R, ResumeKnown1, CurfrMaxfr1, Hijack1),
+		FailInfo0 = fail_info(_, ResumeKnown0, CurfrMaxfr0,
+			CondEnv0, Hijack0),
+		FailInfo1 = fail_info(R, ResumeKnown1, CurfrMaxfr1,
+			CondEnv1, Hijack1),
 		(
 			ResumeKnown0 = resume_point_known,
 			ResumeKnown1 = resume_point_known
@@ -933,7 +935,10 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 		;
 			Hijack = not_allowed
 		),
-		FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr, Hijack),
+		require(unify(CondEnv0, CondEnv1),
+			"some but not all branches inside a non condition"),
+		FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr,
+			CondEnv0, Hijack),
 		code_info__set_fail_info(FailInfo, EndCodeInfo1, EndCodeInfo)
 	},
 	{ MaybeEnd = yes(branch_end_info(EndCodeInfo)) }.
@@ -1176,6 +1181,7 @@ code_info__fixup_lval(V - store_info(ref, L), V - reference(L)).
 			stack(resume_point_info),
 			resume_point_known,
 			curfr_vs_maxfr,
+			condition_env,
 			hijack_allowed
 		).
 
@@ -1208,6 +1214,9 @@ code_info__fixup_lval(V - store_info(ref, L), V - reference(L)).
 :- type curfr_vs_maxfr		--->	must_be_equal
 				;	may_be_different.
 
+:- type condition_env		--->	inside_non_condition
+				;	not_inside_non_condition.
+
 :- type hijack_allowed		--->	allowed
 				;	not_allowed.
 
@@ -1230,7 +1239,7 @@ code_info__fixup_lval(V - store_info(ref, L), V - reference(L)).
 
 code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, Allow) },
+	{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, CondEnv, Allow) },
 	(
 		{ CodeModel \= model_non }
 	->
@@ -1240,7 +1249,7 @@ code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
 				- ""
 		]) }
 	;
-		{ Allow = not_allowed }
+		{ Allow = not_allowed ; CondEnv = inside_non_condition }
 	->
 		{ HijackInfo = disj_temp_frame },
 		code_info__create_temp_frame(do_fail,
@@ -1283,8 +1292,9 @@ code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
 	).
 
 code_info__undo_disj_hijack(HijackInfo, Code) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, _) },
+	code_info__get_fail_info(FailInfo0),
+	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		CondEnv, Allow) },
 	(
 		{ HijackInfo = disj_no_hijack },
 		{ Code = empty }
@@ -1328,6 +1338,18 @@ code_info__undo_disj_hijack(HijackInfo, Code) -->
 			assign(redofr(lval(maxfr)), lval(RedofrSlot))
 				- "restore redofr for full disj hijack"
 		]) }
+	),
+	(
+			% HijackInfo \= disj_no_hijack if and only if
+			% the disjunction is model_non.
+		{ HijackInfo \= disj_no_hijack },
+		{ CondEnv = inside_non_condition }
+	->
+		{ FailInfo = fail_info(ResumePoints, resume_point_unknown,
+			CurfrMaxfr, CondEnv, Allow) },
+		code_info__set_fail_info(FailInfo)
+	;
+		[]
 	).
 
 %---------------------------------------------------------------------------%
@@ -1335,7 +1357,7 @@ code_info__undo_disj_hijack(HijackInfo, Code) -->
 :- type ite_hijack_info
 	--->	ite_info(
 			resume_point_known,
-			hijack_allowed,
+			condition_env,
 			ite_hijack_type
 		).
 
@@ -1361,7 +1383,7 @@ code_info__undo_disj_hijack(HijackInfo, Code) -->
 
 code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, Allow) },
+	{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, CondEnv, Allow) },
 	(
 		{ EffCodeModel \= model_non }
 	->
@@ -1371,7 +1393,7 @@ code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code) -->
 				- ""
 		]) }
 	;
-		{ Allow = not_allowed }
+		{ Allow = not_allowed ; CondEnv = inside_non_condition }
 	->
 		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
 		{ HijackType = ite_temp_frame(MaxfrSlot) },
@@ -1423,15 +1445,19 @@ code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code) -->
 				- "prepare for full ite hijack"
 		]) }
 	),
-	{ HijackInfo = ite_info(ResumeKnown, Allow, HijackType) },
-	code_info__disallow_hijack.
+	{ HijackInfo = ite_info(ResumeKnown, CondEnv, HijackType) },
+	( { EffCodeModel = model_non } ->
+		code_info__inside_non_condition
+	;
+		[]
+	).
 
 code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
 	code_info__get_fail_info(FailInfo0),
 	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr,
-		_) },
+		_, Allow) },
 	{ stack__pop_det(ResumePoints0, _, ResumePoints) },
-	{ HijackInfo = ite_info(ResumeKnown1, Allow1, HijackType) },
+	{ HijackInfo = ite_info(ResumeKnown1, OldCondEnv, HijackType) },
 	{
 		HijackType = ite_no_hijack,
 		ThenCode = empty,
@@ -1498,7 +1524,7 @@ code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
 		ResumeKnown = resume_point_unknown
 	},
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		Allow1) },
+		OldCondEnv, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%
@@ -1550,7 +1576,7 @@ code_info__make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
 
 code_info__prepare_for_det_commit(DetCommitInfo, Code) -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(_, _, CurfrMaxfr, _) },
+	{ FailInfo0 = fail_info(_, _, CurfrMaxfr, _, _) },
 	(
 		{ CurfrMaxfr = may_be_different },
 		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
@@ -1621,17 +1647,18 @@ code_info__generate_det_commit(DetCommitInfo, Code) -->
 code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 	code_info__get_fail_info(FailInfo0),
 	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
-		Allow) },
+		CondEnv, Allow) },
 	{ stack__top_det(ResumePoints0, TopResumePoint) },
 	code_info__clone_resume_point(TopResumePoint, NewResumePoint),
 	{ stack__push(ResumePoints0, NewResumePoint, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, Allow) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		CondEnv, Allow) },
 	code_info__set_fail_info(FailInfo),
 
 	{ code_info__pick_stack_resume_point(NewResumePoint, _, StackLabel) },
 	{ StackLabelConst = const(code_addr_const(StackLabel)) },
 	(
-		{ Allow = not_allowed }
+		{ Allow = not_allowed ; CondEnv = inside_non_condition }
 	->
 		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
 		{ HijackInfo = commit_temp_frame(MaxfrSlot) },
@@ -1705,7 +1732,7 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 		{ FailureUndoCode = SuccessUndoCode }
 	;
 		{ HijackInfo = commit_quarter_hijack },
-		{ FailInfo = fail_info(ResumePoints, _, _, _) },
+		{ FailInfo = fail_info(ResumePoints, _, _, _, _) },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
 		{ code_info__pick_stack_resume_point(TopResumePoint,
 			_, StackLabel) },
@@ -1785,13 +1812,14 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__disallow_hijack(code_info::in, code_info::out) is det.
+:- pred code_info__inside_non_condition(code_info::in, code_info::out) is det.
 
-code_info__disallow_hijack -->
+code_info__inside_non_condition -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, _) },
+	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		_, Allow) },
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		not_allowed) },
+		inside_non_condition, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 :- pred code_info__create_temp_frame(code_addr::in, string::in, code_tree::out,
@@ -1809,9 +1837,9 @@ code_info__create_temp_frame(Redoip, Comment, Code) -->
 			- Comment
 	]) },
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, _, Allow) },
+	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, _, CondEnv, Allow) },
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, may_be_different,
-		Allow) },
+		CondEnv, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%
@@ -1819,7 +1847,7 @@ code_info__create_temp_frame(Redoip, Comment, Code) -->
 code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 	code_info__get_fail_info(FailInfo0),
 	{ FailInfo0 = fail_info(ResumePoints0, _ResumeKnown, CurfrMaxfr,
-		Allow) },
+		CondEnv, Allow) },
 
 	{ stack__top(ResumePoints0, OldResumePoint) ->
 		code_info__pick_first_resume_point(OldResumePoint, OldMap, _),
@@ -1836,7 +1864,7 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 
 	{ stack__push(ResumePoints0, ResumePoint, ResumePoints) },
 	{ FailInfo = fail_info(ResumePoints, resume_point_known, CurfrMaxfr,
-		Allow) },
+		CondEnv, Allow) },
 	code_info__set_fail_info(FailInfo),
 	( { CodeModel = model_non } ->
 		{ code_info__pick_stack_resume_point(ResumePoint,
@@ -1854,28 +1882,28 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 
 code_info__top_resume_point(ResumePoint) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, _, _, _) },
+	{ FailInfo = fail_info(ResumePoints, _, _, _, _) },
 	{ stack__top_det(ResumePoints, ResumePoint) }.
 
 code_info__set_resume_point_to_unknown -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, _, CurfrMaxfr, Allow) },
+	{ FailInfo0 = fail_info(ResumePoints, _, CurfrMaxfr, CondEnv, Allow) },
 	{ FailInfo = fail_info(ResumePoints, resume_point_unknown,
-		CurfrMaxfr, Allow) },
+		CurfrMaxfr, CondEnv, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 code_info__set_resume_point_and_frame_to_unknown -->
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, _, _, Allow) },
+	{ FailInfo0 = fail_info(ResumePoints, _, _, CondEnv, Allow) },
 	{ FailInfo = fail_info(ResumePoints, resume_point_unknown,
-		may_be_different, Allow) },
+		may_be_different, CondEnv, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_failure(Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
 	(
 		{ ResumeKnown = resume_point_known },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
@@ -1902,7 +1930,7 @@ code_info__generate_failure(Code) -->
 
 code_info__fail_if_rval_is_false(Rval0, Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
 	(
 		{ ResumeKnown = resume_point_known },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
@@ -1956,13 +1984,13 @@ code_info__fail_if_rval_is_false(Rval0, Code) -->
 
 code_info__failure_is_direct_branch(CodeAddr) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, resume_point_known, _, _) },
+	{ FailInfo = fail_info(ResumePoints, resume_point_known, _, _, _) },
 	{ stack__top(ResumePoints, TopResumePoint) },
 	code_info__pick_matching_resume_addr(TopResumePoint, CodeAddr).
 
 code_info__may_use_nondet_tailcall(MayTailCall) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _) },
+	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
 	(
 		{ ResumeKnown = resume_point_known },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
@@ -2100,7 +2128,7 @@ code_info__produce_vars_2([V | Vs], Map, Code) -->
 
 code_info__flush_resume_vars_to_stack(Code) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePointStack, _, _, _) },
+	{ FailInfo = fail_info(ResumePointStack, _, _, _, _) },
 	{ stack__top_det(ResumePointStack, ResumePoint) },
 	{ code_info__pick_stack_resume_point(ResumePoint, StackMap, _) },
 	{ map__to_assoc_list(StackMap, StackLocs) },
@@ -2150,8 +2178,9 @@ code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
 	{ stack__init(ResumeStack0) },
 	{ stack__push(ResumeStack0, ResumePoint, ResumeStack) },
 	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(_, _, _, Allow) },
-	{ FailInfo = fail_info(ResumeStack, ResumeKnown, CurfrMaxfr, Allow) },
+	{ FailInfo0 = fail_info(_, _, _, _, Allow) },
+	{ FailInfo = fail_info(ResumeStack, ResumeKnown, CurfrMaxfr,
+		not_inside_non_condition, Allow) },
 	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%

@@ -26,8 +26,8 @@
 :- import_module list, std_util, term.
 
 :- pred pragma_c_gen__generate_pragma_c_code(code_model::in,
-	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
-	list(maybe(pair(string, mode)))::in, list(type)::in,
+	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
+	list(var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
 	hlds_goal_info::in, pragma_c_code_impl::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
@@ -277,19 +277,19 @@
 %	and thus we do not have a sure test of whether the code fragments
 %	invoke the macros.
 
-pragma_c_gen__generate_pragma_c_code(CodeModel, MayCallMercury,
+pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, _GoalInfo,
 		PragmaImpl, Code) -->
 	(
 		{ PragmaImpl = ordinary(C_Code, Context) },
-		pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
+		pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 			C_Code, Context, Code)
 	;
 		{ PragmaImpl = nondet(
 			Fields, FieldsContext, First, FirstContext,
 			Later, LaterContext, Treat, Shared, SharedContext) },
-		pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
+		pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 			Fields, FieldsContext, First, FirstContext,
 			Later, LaterContext, Treat, Shared, SharedContext,
@@ -299,14 +299,21 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, MayCallMercury,
 %---------------------------------------------------------------------------%
 
 :- pred pragma_c_gen__ordinary_pragma_c_code(code_model::in,
-	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
-	list(maybe(pair(string, mode)))::in, list(type)::in,
+	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
+	list(var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
 	string::in, maybe(term__context)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
+pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		C_Code, Context, Code) -->
+	
+	%
+	% Extract the attributes
+	%
+	{ may_call_mercury(Attributes, MayCallMercury) },
+	{ thread_safe(Attributes, ThreadSafe) },
+
 	%
 	% First we need to get a list of input and output arguments
 	%
@@ -373,6 +380,19 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
 	},
 
 	%
+	% Code fragments to obtain and release the global lock
+	%
+	{ ThreadSafe = thread_safe ->
+		ObtainLock = pragma_c_raw_code(""),
+		ReleaseLock = pragma_c_raw_code("")
+	;
+		ObtainLock =
+			pragma_c_raw_code("\tMR_OBTAIN_GLOBAL_C_LOCK();\n"),
+		ReleaseLock =
+			pragma_c_raw_code("\tMR_RELEASE_GLOBAL_C_LOCK();\n")
+	},
+
+	%
 	% <The C code itself>
 	%
 	{ C_Code_Comp = pragma_c_user_code(Context, C_Code) },
@@ -426,8 +446,9 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
 	%
 	% join all the components of the pragma_c together
 	%
-	{ Components = [InputComp, SaveRegsComp, C_Code_Comp,
-			CheckR1_Comp, RestoreRegsComp, OutputComp] },
+	{ Components = [InputComp, SaveRegsComp, ObtainLock, C_Code_Comp,
+			CheckR1_Comp, ReleaseLock, RestoreRegsComp,
+			OutputComp] },
 	{ PragmaCCode = node([
 		pragma_c(Decls, Components, MayCallMercury, MaybeFailLabel, no)
 			- "Pragma C inclusion"
@@ -473,20 +494,24 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
 %---------------------------------------------------------------------------%
 
 :- pred pragma_c_gen__nondet_pragma_c_code(code_model::in,
-	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
-	list(maybe(pair(string, mode)))::in, list(type)::in,
+	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
+	list(var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
 	string::in, maybe(term__context)::in,
 	string::in, maybe(term__context)::in,
 	string::in, maybe(term__context)::in, pragma_shared_code_treatment::in,
 	string::in, maybe(term__context)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
+pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		_Fields, _FieldsContext, First, FirstContext,
 		Later, LaterContext, Treat, Shared, SharedContext, Code) -->
 	{ require(unify(CodeModel, model_non),
 		"inappropriate code model for nondet pragma C code") },
+	%
+	% Extract the may_call_mercury attribute
+	%
+	{ may_call_mercury(Attributes, MayCallMercury) },
 	% First we need to get a list of input and output arguments
 	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos),
 	{ make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args) },
