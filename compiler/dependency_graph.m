@@ -73,41 +73,19 @@ dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) :-
 	hlds__dependency_info_set_dependency_graph(DepInfo0, DepGraph,
 				DepInfo1),
 	relation__atsort(DepGraph, DepOrd0),
-	dependency_graph__list_set_to_list_list(ModuleInfo0, DepOrd0,
-				[], DepOrd),
+	dependency_graph__sets_to_lists(DepOrd0, [], DepOrd),
 	hlds__dependency_info_set_dependency_ordering(DepInfo1, DepOrd,
 				DepInfo),
 	module_info_set_dependency_info(ModuleInfo0, DepInfo, ModuleInfo).
 
-:- pred dependency_graph__list_set_to_list_list(module_info,
-			list(set(pred_proc_id)),
+:- pred dependency_graph__sets_to_lists( list(set(pred_proc_id)),
 			list(list(pred_proc_id)), list(list(pred_proc_id))).
-:- mode dependency_graph__list_set_to_list_list(in, in, in, out) is det.
-dependency_graph__list_set_to_list_list(_ModuleInfo, [], Xs, Xs).
-dependency_graph__list_set_to_list_list(ModuleInfo, [X | Xs], Ys, Zs) :-
-	set__to_sorted_list(X, Y0),
-	dependency_graph__remove_imported_preds(ModuleInfo, Y0, Y),
-	( Y = [] ->
-	    Ys1 = Ys
-	;
-	    Ys1 = [Y | Ys]
-	),
-	dependency_graph__list_set_to_list_list(ModuleInfo, Xs, Ys1, Zs).
+:- mode dependency_graph__sets_to_lists(in, in, out) is det.
 
-:- pred dependency_graph__remove_imported_preds(module_info,
-			list(pred_proc_id), list(pred_proc_id)).
-:- mode dependency_graph__remove_imported_preds(in, in, out) is det.
-dependency_graph__remove_imported_preds(_ModuleInfo, [], []).
-dependency_graph__remove_imported_preds(ModuleInfo,
-			[proc(PredId, ProcId) | Rest], PredsOut) :-
-	module_info_preds(ModuleInfo, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	( pred_info_is_imported(PredInfo) ->
-	    PredsOut = Rest1
-	;
-	    PredsOut = [proc(PredId, ProcId) | Rest1]
-	),
-	dependency_graph__remove_imported_preds(ModuleInfo, Rest, Rest1).
+dependency_graph__sets_to_lists([], Xs, Xs).
+dependency_graph__sets_to_lists([X | Xs], Ys, Zs) :-
+	set__to_sorted_list(X, Y),
+	dependency_graph__sets_to_lists(Xs, [Y|Ys], Zs).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -121,9 +99,18 @@ dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo,
                                         DepGraph0, DepGraph) :-
         module_info_preds(ModuleInfo, PredTable),
         map__lookup(PredTable, PredId, PredInfo),
-        pred_info_procids(PredInfo, ProcIds),
-        dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
-                DepGraph0, DepGraph1),
+	(
+		% Don't bother adding nodes (or arcs) for predicates
+		% which which are imported (ie we don't have any `clauses'
+		% for).
+		pred_info_is_imported(PredInfo)
+	->
+		DepGraph1 = DepGraph0
+	;
+		pred_info_procids(PredInfo, ProcIds),
+		dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
+			DepGraph0, DepGraph1)
+	),
         dependency_graph__add_pred_nodes(PredIds, ModuleInfo, DepGraph1, DepGraph).
 
 :- pred dependency_graph__add_proc_nodes(list(proc_id), pred_id, module_info,
@@ -237,13 +224,20 @@ dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _, _),
 	(
 		hlds__is_builtin_is_inline(Builtin)
 	->
-		DepGraph1 = DepGraph0
+		DepGraph = DepGraph0
 	;
-		relation__lookup_element(DepGraph0, proc(PredId, ProcId),
-				Callee),
-		relation__add(DepGraph0, Caller, Callee, DepGraph1)
-	),
-	DepGraph1 = DepGraph.
+		(
+			% If the node isn't in the relation, then
+			% we didn't insert it because is was imported,
+			% and we don't consider it.
+			relation__search_element(DepGraph0,
+				proc(PredId, ProcId), Callee)
+		->
+			relation__add(DepGraph0, Caller, Callee, DepGraph)
+		;
+			DepGraph = DepGraph0
+		)
+	).
 
 dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 				DepGraph0, DepGraph) :-
@@ -304,12 +298,28 @@ dependency_graph__add_arcs_in_cons(float_const(_), _Caller,
 				DepGraph, DepGraph).
 dependency_graph__add_arcs_in_cons(pred_const(Pred, Proc), Caller,
 				DepGraph0, DepGraph) :-
-        relation__lookup_element(DepGraph0, proc(Pred, Proc), Callee),
-	relation__add(DepGraph0, Caller, Callee, DepGraph).
+	(
+			% If the node isn't in the relation, then
+			% we didn't insert it because is was imported,
+			% and we don't consider it.
+		relation__search_element(DepGraph0, proc(Pred, Proc), Callee)
+	->
+		relation__add(DepGraph0, Caller, Callee, DepGraph)
+	;
+		DepGraph = DepGraph0
+	).
 dependency_graph__add_arcs_in_cons(code_addr_const(Pred, Proc), Caller,
 				DepGraph0, DepGraph) :-
-        relation__lookup_element(DepGraph0, proc(Pred, Proc), Callee),
-	relation__add(DepGraph0, Caller, Callee, DepGraph).
+	(
+			% If the node isn't in the relation, then
+			% we didn't insert it because is was imported,
+			% and we don't consider it.
+		relation__search_element(DepGraph0, proc(Pred, Proc), Callee)
+	->
+		relation__add(DepGraph0, Caller, Callee, DepGraph)
+	;
+		DepGraph = DepGraph0
+	).
 dependency_graph__add_arcs_in_cons(base_type_info_const(_, _, _), _Caller,
 				DepGraph, DepGraph).
 
