@@ -344,6 +344,27 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 			{ Goal = call(PredId, ProcId, ArgVars, IsBuiltin,
 				yes(CallContext), SymName, Follow) - GoalInfo }
 
+		; { Type = term_functor(term_atom("pred"), _, _) } ->
+			{ SymName = unqualified("builtin_unify_pred") },
+			{ ArgVars = [XVar, YVar] },
+			{ module_info_get_predicate_table(ModuleInfo,
+				PredicateTable) },
+			{
+				predicate_table_search_m_n_a(PredicateTable,
+				    "mercury_builtin", "builtin_unify_pred", 2,
+				    [PredId0])
+			->
+				PredId = PredId0
+			;
+				error("can't locate builtin_unify_pred/2")
+			},
+			{ ProcId = 0 },
+			{ hlds__is_builtin_make_builtin(no, no, IsBuiltin) },
+			{ CallContext = call_unify_context(XVar, Y, Context) },
+			{ Call = call(PredId, ProcId, ArgVars, IsBuiltin,
+				yes(CallContext), SymName, Follow) },
+			polymorphism__process_goal_2(Call, GoalInfo, Goal)
+			
 		; { type_to_type_id(Type, TypeId, _) } ->
 
 			% Convert other complicated unifications into

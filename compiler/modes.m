@@ -2182,8 +2182,8 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det, VarTypes,
 			Unification = complicated_unify(UniMode, CanFail,
 				Follow),
 			(
-				Type = term_functor(term_atom("pred"), _, _),
-
+				Type = term_functor(term_atom("pred"), _, _)
+			->
 				% we do not want to report this as an error
 				% if it occurs in a compiler-generated
 				% predicate - instead, we delay the error
@@ -2191,13 +2191,15 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det, VarTypes,
 				% the compiler-generated predicate gets called
 				mode_info_get_predid(ModeInfo0, PredId),
 				module_info_pred_info(ModuleInfo0, PredId,
-					PredInfo),
-				\+ code_util__compiler_generated(PredInfo)
-			->
-				set__init(WaitingVars),
-				mode_info_error(WaitingVars,
-					mode_error_unify_pred,
-					ModeInfo0, ModeInfo)
+						PredInfo),
+				( code_util__compiler_generated(PredInfo) ->
+					ModeInfo = ModeInfo0
+				;
+					set__init(WaitingVars),
+					mode_info_error(WaitingVars,
+						mode_error_unify_pred,
+						ModeInfo0, ModeInfo)
+				)
 			;
 				type_to_type_id(Type, TypeId, _)
 			->
