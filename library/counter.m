@@ -25,6 +25,9 @@
 	% will be the integer N.
 :- pred counter__init(int::in, counter::out) is det.
 
+	% A function version of counter__init/2.
+:- func counter__init(int) = counter.
+
 	% counter__allocate(N, Counter0, Counter) takes a counter, and
 	% returns (a) the next integer to be allocated from that counter,
 	% and (b) the updated state of the counter.
@@ -36,6 +39,8 @@
 
 :- type counter ---> counter(int).
 
-counter__init(N, counter(N)).
+counter__init(N) = counter(N).
+
+counter__init(N, counter__init(N)).
 
 counter__allocate(N, counter(N), counter(N + 1)).
