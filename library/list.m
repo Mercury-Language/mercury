@@ -417,7 +417,7 @@
 	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
 	% with an accumulator (with the initial value of Start) on
 	% each element of InList (working left-to-right) to transform
-	% InList into OutList.  The final value of the acumulator is
+	% InList into OutList.  The final value of the accumulator is
 	% returned in End.
 :- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
 :- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
@@ -499,7 +499,6 @@
 	list(X), list(X), list(X)).
 :- mode list__merge_and_remove_dups(pred(in, in, out) is det,
 	in, in, out) is det.
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
