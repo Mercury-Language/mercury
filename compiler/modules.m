@@ -2793,6 +2793,40 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".hs = "),
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	( { HighLevelCode = yes } ->
+		( { Target = asm } ->
+			% For the `--target asm' back-end, we only
+			% generate `.h' files for modules that
+			% contain C code
+			write_dependencies_list(
+				modules_that_need_headers(Modules, DepsMap),
+				".h", DepStream)
+		; { Target = c } ->
+			% For the `--target c' MLDS back-end, we
+			% generate `.h' files for every module
+			write_compact_dependencies_list(Modules, "", ".h",
+					Basis, DepStream)
+		;
+			% For the IL and Java targets, currently we don't
+			% generate `.h' files at all; although perhaps
+			% we should...
+			[]
+		)
+	;
+		% For the LLDS back-end, we don't use `.h' files at all
+		[]
+	),
+	io__write_string(DepStream, "\n"),
+
+	% The `<module>.all_hs' variable is like `<module>.hs' except
+	% that it contains header files for all the modules, regardless
+	% of the grade or --target option.  It is used by the rule for
+	% `mmake realclean', which should remove anything that could have
+	% been automatically generated, even if the grade or --target option
+	% has changed.
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".all_hs = "),
 	write_compact_dependencies_list(Modules, "", ".h", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
@@ -3195,7 +3229,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".opts)\n",
 		"\t-rm -f $(", MakeVarName, ".trans_opts)\n",
 		"\t-rm -f $(", MakeVarName, ".ds)\n",
-		"\t-rm -f $(", MakeVarName, ".hs)\n",
+		"\t-rm -f $(", MakeVarName, ".all_hs)\n",
 		"\t-rm -f $(", MakeVarName, ".rlos)\n"
 	]),
 	io__write_strings(DepStream, [
@@ -3239,6 +3273,22 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 
 %-----------------------------------------------------------------------------%
 
+	% Find out which modules we need to generate C header files for,
+	% assuming we're compiling with `--target asm'.
+:- func modules_that_need_headers(list(module_name), deps_map)  =
+		list(module_name).
+
+modules_that_need_headers(Modules, DepsMap) =
+	list__filter(module_needs_header(DepsMap), Modules).
+
+	% Succeed iff we need to generate a C header file for the specified
+	% module, assuming we're compiling with `--target asm'.
+:- pred module_needs_header(deps_map::in, module_name::in) is semidet.
+
+module_needs_header(DepsMap, Module) :-
+	map__lookup(DepsMap, Module, deps(_, ModuleImports)),
+	ModuleImports ^ foreign_code = contains_foreign_code.
+
 	% get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) },
 	% Find any extra .$O files that should be linked into the executable.
 	% These include fact table object files and object files for foreign
@@ -3248,7 +3298,8 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 :- mode get_extra_link_objects(in, in, in, out) is det.
 
 get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) :-
-	get_extra_link_objects_2(Modules, DepsMap, Target, [], ExtraLinkObjs).
+	get_extra_link_objects_2(Modules, DepsMap, Target, [], ExtraLinkObjs0),
+	list__reverse(ExtraLinkObjs0, ExtraLinkObjs).
 
 :- pred get_extra_link_objects_2(list(module_name), deps_map,
 		compilation_target, assoc_list(file_name, module_name),
