@@ -117,7 +117,7 @@ map__is_empty(M) :-
 	bintree__init(M).
 
 map__contains(Map, K) :-
-	some [V] map__search(Map, K, V).
+	map__search(Map, K, _).
 
 map__search(Map, K, V) :-
 	bintree__search(Map, K, V).
