@@ -84,6 +84,7 @@ extern void ML_report_full_memory_stats(void);
 :- pragma c_code("
 
 #include <stdio.h>
+#include <stdlib.h>
 #include ""mercury_prof_mem.h""
 #include ""mercury_heap_profile.h""
 
@@ -356,11 +357,21 @@ ML_insert_into_table(const ML_memprof_report_entry *new_entry,
 	*/
 	if (slot < table_size) {
 		int i;
+#if 0
+/*
+** The following code is disabled because it causes gcc (2.7.2) internal
+** errors (``fixed or forbidden register spilled'') on x86 machines when
+** using gcc global register variables.
+*/
 		for (i = table_size - 1; i > slot; i--) {
 			table[i] = table[i - 1];
 		}
-
 		table[slot] = *new_entry;
+#else
+		memmove(&table[slot + 1], &table[slot],
+			(table_size - slot - 1) * sizeof(*table));
+		memcpy(&table[slot], new_entry, sizeof(*table));
+#endif
 
 		if (next_slot < table_size) {
 			next_slot++;
