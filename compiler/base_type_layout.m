@@ -28,13 +28,13 @@
 % following modules must also be examined to see whether they need to
 % be updated. 
 %
-% library:	std_util.m		- functor, arg, expand
+% library:	std_util.m		- functor, arg, expand,
+% 					  solutions
 % 		uniq_array.m		- uniq_array type
 % 		io.m			- io__stream type
 % 		mercury_builtin.m	- builtin types
 %
 % runtime:	type_info.h		- defines layout macros
-% 		solutions.mod		- defines a list layout
 % 		deep_copy.{c,h}		- deep_copy
 % 		
 % Any module that uses base_type_layouts should register itself here.
