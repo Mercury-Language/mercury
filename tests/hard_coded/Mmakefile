@@ -48,6 +48,7 @@ PROGS=	\
 	nullary_ho_func \
 	pragma_c_code \
 	pragma_inline \
+	pragma_import \
 	purity \
 	qual_adv_test \
 	qual_basic_test \

@@ -158,6 +158,8 @@ stored in the io__state, using the type globals defined in globals.m.
 
 	make_hlds.m transforms the code into superhomogeneous form,
 	and at the same time converts the parse tree into the HLDS.
+	It converts `pragma import' and `pragma c_code' declarations
+	into clauses with HLDS `pragma_c_code' instructions for bodies.
 	make_hlds.m also calls make_tags.m which chooses the data
 	representation for each discriminated union type by
 	assigning tags to each functor.
@@ -799,6 +801,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-01-08 06:13:22 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-01-09 11:53:06 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
