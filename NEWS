@@ -11,7 +11,7 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 * Exception handling support is now part of the standard library.
-* There's two new standard library modules `time' and `gc'.
+* There are two new standard library modules `time' and `gc'.
 * We've added function versions of many of the predicates in the
   Mercury standard library.
 
