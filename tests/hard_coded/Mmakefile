@@ -73,6 +73,7 @@ ORDINARY_PROGS=	\
 	merge_and_remove_dups \
 	minint_bug \
 	mode_choice \
+	multi_map_test \
 	myset_test \
 	name_mangling \
 	no_fully_strict \
