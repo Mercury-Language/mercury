@@ -1,5 +1,9 @@
 README.MS-Windows
+README.DotNet
 .INSTALL.in
+.hal_trunk_sync_tag
 config.sub
 config.guess
 NEWS
+BUGS
+WORK_IN_PROGRESS
