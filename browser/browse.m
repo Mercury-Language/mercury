@@ -690,10 +690,10 @@ default_state(State) -->
 	{ DummyObject = "" },
 	{ type_to_univ(DummyObject, Univ) },
 	{ default_depth(DefaultDepth) },
-	io__stderr_stream(StdErr),
+	io__stdout_stream(StdOut),
 	io__stdin_stream(StdIn),
 	{ State = browser_state(Univ, 3, DefaultDepth, [], verbose, 79, 25,
-		StdIn, StdErr) }.
+		StdIn, StdOut) }.
 
 	% This is simply used to provide a variable of the type
 	% browser_state.
