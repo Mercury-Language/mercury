@@ -747,7 +747,7 @@ handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
 		set__list_to_set(Args, NewArgVars),
 		set__difference(NewArgVars, OldArgVars, IntroducedVars),
 		set__union(NonLocals0, IntroducedVars, OutsideVars),
-		set__intersect(NewArgVars, OutsideVars, NonLocals),
+		set__intersect(OutsideVars, NewArgVars, NonLocals),
 		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 
 		% compute the instmap delta for the main goal
