@@ -28,7 +28,7 @@ mercury_data___base_type_layout_float_0
 
 	a mangled name
 entry_mercury__f_cut_0_0
-<predicate 'cut'/0 mode 0>
+<predicate '!'/0 mode 0>
 
 	a compare predicate
 entry_mercury____Compare___mercury_builtin__comparison_result_0_0

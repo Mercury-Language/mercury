@@ -13,6 +13,12 @@
 ** A mercury symbol demangler.
 ** This is used to convert error messages from the linker back
 ** into a form that users can understand.
+**
+** This is implemented in C to minimize startup time and memory usage.
+**
+** BEWARE:
+** This code is duplicated in profiler/demangle.m and profiler/mdemangle.m.
+** Any changes here will need to be duplicated there and vice versa.
 */
 
 #include <ctype.h>
@@ -25,6 +31,7 @@ static void demangle(char *name);
 static bool check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2);
 static char *fix_mangled_ascii(char *str, char **end);
+static bool fix_mangled_special_case(char *str, char **end);
 static bool cut_at_double_underscore(char **str, char *end);
 static bool cut_trailing_integer(char *str, char **end, int *num);
 static bool cut_trailing_underscore_integer(char *str, char **end, int *num);
@@ -73,10 +80,6 @@ main(int argc, char **argv)
 /*
 ** demangle() - convert a mangled Mercury identifier into 
 ** human-readable form and then print it to stdout
-**
-** Sorry, the following code is still fairly awful.
-** It ought to be rewritten in a language with
-** better string-handling facilities than C!
 */
 
 static void 
@@ -499,17 +502,13 @@ cut_at_double_underscore(char **start, char *end)
 	/*
 	** The compiler changes all names starting with `f_' so that
 	** they start with `f__' instead, and uses names starting with
-	** `f_' for mangled names which are sequences of decimal
+	** `f_' for mangled names which are either descriptions (such
+	** as `f_greater_than' for `>') or sequences of decimal
 	** reprententations of ASCII codes separated by underscores.
 	** If the name starts with `f__', we must change it back to
 	** start with `f_'.  Otherwise, if it starts with `f_' we must
-	** convert the list of ASCII codes back into an identifier.
-	** 
-	** XXX Note: some symbols are special cased - eg `!' becomes
-	** `f_cut', we should probably translate these special cases
-	** back (see llds_out.m for the special cases). Presently, just
-	** the `f_' will be removed, which still leaves them quite
-	** readable.
+	** convert the mnemonic or list of ASCII codes back into an
+	** identifier.
 	*/
 
 static char *
@@ -517,10 +516,30 @@ fix_mangled_ascii(char *str, char **real_end)
 {
 	char *end = *real_end;
 
+	/*
+	** If it starts with `f__', replace that with `f_'.
+	*/
 	if (strncmp(str, "f__" , 3) == 0) {
 		str++;
 		*str = 'f';
-	} else if (strncmp(str, "f_", 2) == 0) {
+		return str;
+	}
+
+	/*
+	** If it starts with `f_' followed by a mnemonic description,
+	** then replace that with its unmangled version
+	*/
+	if (strncmp(str, "f_", 2) == 0 &&
+		fix_mangled_special_case(str, real_end))
+	{
+		return str;
+	}
+
+	/*
+	** Otherwise, if it starts with `f_' we must convert the list of
+	** ASCII codes back into an identifier.
+	*/
+	if (strncmp(str, "f_", 2) == 0) {
 		char buf[1000];
 		char *num = str + 2;
 		int count = 0;
@@ -546,6 +565,59 @@ fix_mangled_ascii(char *str, char **real_end)
 	return str;
 }
 
+static bool
+fix_mangled_special_case(char *str, char **real_end)
+{
+	static const struct {
+		const char *mangled_name;
+		const char *unmangled_name;
+	} translations[] = {
+		/*
+		** Beware: we assume that the unmangled name is always
+		** shorter than the mangled name.
+		*/
+		{ "f_not_equal", "\\=" },
+		{ "f_greater_or_equal", ">=" },
+		{ "f_less_or_equal", "=<" },
+		{ "f_equal", "=" },
+		{ "f_less_than", "<" },
+		{ "f_greater_than", ">" },
+		{ "f_plus", "+" },
+		{ "f_times", "*" },
+		{ "f_minus", "-" },
+		{ "f_slash", "/" },
+		{ "f_comma", "," },
+		{ "f_semicolon", ";" },
+		{ "f_cut", "!" }
+	};
+	const int num_translations =
+		sizeof(translations) / sizeof(translations[0]);
+
+	int i;
+
+	/*
+	** check for the special cases listed in the table above.
+	*/
+	for (i = 0; i < num_translations; i++) {
+		const char *mangled = translations[i].mangled_name;
+		size_t mangled_len = strlen(mangled);
+		if (strncmp(str, mangled, mangled_len) == 0) {
+			const char *unmangled = translations[i].unmangled_name;
+			size_t unmangled_len = strlen(unmangled);
+			size_t leftover_len = strlen(str) - mangled_len;
+
+			assert(unmangled_len <= mangled_len);
+
+			strcpy(str, unmangled);
+			memmove(str + unmangled_len, str + mangled_len,
+				leftover_len + 1);
+
+			*real_end = str + unmangled_len + leftover_len;
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
 
 static bool 
 check_for_suffix(char *start, char *position, const char *suffix,
