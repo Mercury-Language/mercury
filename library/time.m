@@ -287,7 +287,7 @@ Define_label(mercury__time__benchmark_det_5_0_i1);
 	soln_output = r1; /* the closure *always* returns its output in r1 */
 	time_output = get_run_time() - detstackvar(4);
 	succip = (Word *) detstackvar(6);
-	decr_sp(5);
+	decr_sp(6);
 	proceed();
 END_MODULE
 
