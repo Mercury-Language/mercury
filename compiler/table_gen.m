@@ -9,7 +9,7 @@
 % This module transforms HLDS code to implement loop detection, memoing,
 % minimal model evaluation, or I/O idempotence. The transformation involves
 % adding calls to predicates defined in library/table_builtin.m and in
-% runtime/mercury_tabling.c.
+% runtime/mercury_minimal_model.c.
 %
 % The loop detection transformation adds code to a procedure that allows
 % early detection of infinite loops. If such loops are detected the program
