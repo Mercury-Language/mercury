@@ -195,7 +195,7 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 	; Uinstr0 = computed_goto(Index, LabelList0) ->
 		jumpopt__short_labels(LabelList0, Instrmap, LabelList, Mod0),
 		( Mod0 = yes ->
-			string__append(Comment0, " (some shortciruits)",
+			string__append(Comment0, " (some shortcircuits)",
 				Shorted),
 			Newinstrs = [computed_goto(Index, LabelList) - Shorted]
 		;
