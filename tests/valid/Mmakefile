@@ -166,6 +166,7 @@ OTHER_SOURCES= \
 	tricky_ite.m \
 	two_pragma_c_codes.m \
 	two_way_unif.m \
+	typeclass_inlining_bug.m \
 	type_inf_ambig_test.m \
 	unbound_inst_var.m \
 	unbound_tvar_in_lambda.m \
