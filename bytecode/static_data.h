@@ -1,12 +1,25 @@
+
 /*
- *	$Id: static_data.h,v 1.1 1997-02-13 06:00:17 aet Exp $
- *
- *	Copyright: The University of Melbourne, 1996
- */
+** Copyright (C) 1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+**
+** $Id: static_data.h,v 1.2 1997-03-25 03:09:15 aet Exp $
+*/
+
 
 #if	! defined(STATIC_DATA_H)
 #define	STATIC_DATA_H
 
+/*
+ *	XXX: We should also have:
+ *		- Strings area to store all embedded strings
+ *		in the byte stream. This should have appropriate
+ *		connections to the code area, stack and heap so we
+ *		can, for instance, look up predicate names from
+ *		the code area, and lookup constructor names from
+ *		the heap.
+ */
 
 /*
  *	XXX: We have an arbitrary maximum size for the table
@@ -40,6 +53,5 @@ typedef struct Module_Info {
 	Pred_info		*pred_tab; /* Use as an array of Pred_infos */
 	Address			module_entry;
 } Module_Info;
-
 
 #endif	/* STATIC_DATA_H */

@@ -1,14 +1,30 @@
+
 /*
- *	$Id: util.h,v 1.4 1997-02-01 09:22:13 aet Exp $
- *
- *	Copyright: The University of Melbourne, 1996
- */
+** Copyright (C) 1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+**
+** $Id: util.h,v 1.5 1997-03-25 03:10:28 aet Exp $
+*/
+
 
 #if	! defined(UTIL_H)
 #define	UTIL_H
 
 typedef int
 	Bool;
+
+typedef unsigned char
+	uchar;
+
+typedef unsigned short
+	ushort;
+
+typedef unsigned long
+	ulong;
+
+typedef unsigned int
+	uint;
 
 /* 
  * XXX: For some bizzare reason TRUE and FALSE are often defined by the C
@@ -34,22 +50,29 @@ typedef int
  */
 #if	defined(DEBUGGING)
 #define	XXXdebug(msg, fmt, val) \
-	{ fprintf(stderr, "%s: %s = %" #fmt "\n", msg, #val, val); }
+	do { \
+		fprintf(stderr, "%s: %s = %" #fmt "\n", msg, #val, val); \
+	} while(0)
 #else
-#define	XXXdebug(msg, fmt, val)	{}
+#define	XXXdebug(msg, fmt, val)	do {} while(0)
 #endif	/* DEBUGGING */
 
 void
 util_init(void);
 
 void
-util_error(char* message);
+util_error(char *fmt, ...);
 
 void
 fatal(char* message);
 
+/*
+ * Don't use strdup. See comment in util.c
+ */
+#if	0
 char*
 strdup(char *str);
+#endif	/* 0 */
 
 
 #endif	/* UTIL_H */

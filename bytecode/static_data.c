@@ -1,8 +1,11 @@
+
 /*
- *	$Id: static_data.c,v 1.1 1997-02-13 05:59:19 aet Exp $
- *
- *	Copyright: The University of Melbourne, 1996
- */
+** Copyright (C) 1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+**
+** $Id: static_data.c,v 1.2 1997-03-25 03:09:07 aet Exp $
+*/
 
 /* Imports */
 #include	<stdlib.h>
@@ -19,7 +22,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: static_data.c,v 1.1 1997-02-13 05:59:19 aet Exp $";
+rcs_id[]	= "$Id: static_data.c,v 1.2 1997-03-25 03:09:07 aet Exp $";
 
 /* Implementation */
 
