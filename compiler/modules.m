@@ -1552,25 +1552,44 @@ generate_dependencies(Module) -->
 			ModuleString, "'."], Message) },
 		report_error(Message)
 	;
-		globals__io_lookup_accumulating_option(intermod_directories, 
-			IntermodDirs),
 		generate_dependencies_write_dep_file(Module, DepsMap),
+
+		%
+		% compute the interface deps relation and
+		% the implementation deps relation from the deps map
+		%
 		{ relation__init(IntDepsRel0) },
 		{ relation__init(ImplDepsRel0) },
 		{ map__values(DepsMap, DepsList) },
 		{ deps_list_to_deps_rel(DepsList, DepsMap, 
-			IntDepsRel0, _IntDepsRel, ImplDepsRel0, ImplDepsRel) },
+			IntDepsRel0, IntDepsRel, ImplDepsRel0, ImplDepsRel) },
+
+		%
+		% compute the trans-opt deps ordering, by doing an
+		% approximate topological sort of the implementation deps,
+		% and then finding the subset of those for which of those
+		% we have (or can make) trans-opt files.
+		%
 		{ relation__atsort(ImplDepsRel, ImplDepsOrdering0) },
 		maybe_output_module_order(Module, ImplDepsOrdering0),
 		{ list__map(set__to_sorted_list, ImplDepsOrdering0, 
 			ImplDepsOrdering) },
 		{ list__condense(ImplDepsOrdering, TransOptDepsOrdering0) },
+		globals__io_lookup_accumulating_option(intermod_directories, 
+			IntermodDirs),
 		get_opt_deps(TransOptDepsOrdering0, IntermodDirs, ".trans_opt",
 			TransOptDepsOrdering),
-		% XXX using ImplDepsOrdering here is wrong.
-		% IntDeps is to little, ImplDeps is too much.
-		% (Better too much than too little, though.)
-		generate_dependencies_write_d_files(ImplDepsOrdering,
+
+		%
+		% compute the indirect dependencies: they are equal to the
+		% composition of the implementation dependencies
+		% with the transitive closure of the interface dependencies.
+		%
+		{ relation__tc(IntDepsRel, TransIntDepsRel) },
+		{ relation__compose(ImplDepsRel, TransIntDepsRel,
+			IndirectDepsRel) },
+
+		generate_dependencies_write_d_files(DepsList, IndirectDepsRel,
 			TransOptDepsOrdering, DepsMap)
 	).
 
@@ -1605,41 +1624,46 @@ write_module_scc(Stream, SCC0) -->
 	{ set__to_sorted_list(SCC0, SCC) },
 	io__write_list(Stream, SCC, "\n", prog_out__write_sym_name).
 
-% generate_dependencies_write_d_files(Sccs, TransOptOrder, DepsMap, IO0, IO).
+
+% generate_dependencies_write_d_files(Modules, IntDepsRel, TransOptOrder,
+%	DepsMap, IO0, IO):
 %		This predicate writes out the .d files for all the modules
-%		in the Sccs list.  
-%		Sccs is a list of lists of modules.  Each list of
-%		modules represents a set of strongly connected components
-%		of the module call graph.  
+%		in the Modules list.  
+%		IntDepsRel gives the interface dependency relation
+%		(computed from the DepsMap).
 %		TransOptOrder gives the ordering that is used to determine
 %		which other modules the .trans_opt files may depend on.
-:- pred generate_dependencies_write_d_files(list(list(module_name))::in, 
-	list(module_name)::in, deps_map::in,
+:- pred generate_dependencies_write_d_files(list(deps)::in, 
+	relation(module_name)::in, list(module_name)::in, deps_map::in, 
 	io__state::di, io__state::uo) is det.
-generate_dependencies_write_d_files([], _, _) --> [].
-generate_dependencies_write_d_files([Scc | Sccs], TransOptOrder, DepsMap) --> 
-	{ list__condense([Scc | Sccs], TransDeps) },
-	generate_dependencies_write_d_files_2(Scc, TransDeps, TransOptOrder,
-		DepsMap),
-	generate_dependencies_write_d_files(Sccs, TransOptOrder, DepsMap).
+generate_dependencies_write_d_files([], _, _TransOptOrder, _DepsMap) --> [].
+generate_dependencies_write_d_files([Dep | Deps],
+		IndirectDepsRel0, TransOptOrder, DepsMap) --> 
+	{ Dep = deps(_, Module0) },
 
-:- pred generate_dependencies_write_d_files_2(list(module_name)::in, 
-	list(module_name)::in, list(module_name)::in, deps_map::in, 
-	io__state::di, io__state::uo) is det.
-generate_dependencies_write_d_files_2([], _, _TransOptOrder, _DepsMap) --> [].
-generate_dependencies_write_d_files_2([ModuleName | ModuleNames],
-		TransIntDeps, TransOptOrder, DepsMap) --> 
-	{ map__lookup(DepsMap, ModuleName, deps(_, ModuleImports0)) },
-	{ module_imports_get_error(ModuleImports0, Error) },
-	
+	%
+	% Look up the indirect dependencies for this module
+	% from the indirect dependencies relation, and save
+	% them in the module_imports structure.
+	%
+	{ module_imports_get_module_name(Module0, ModuleName) },
+	{ relation__add_element(IndirectDepsRel0, ModuleName, ModuleKey,
+		IndirectDepsRel) },
+	{ relation__lookup_from(IndirectDepsRel, ModuleKey,
+		IndirectDepsKeysSet) },
+	{ set__to_sorted_list(IndirectDepsKeysSet, IndirectDepsKeys) },
+	{ list__map(relation__lookup_key(IndirectDepsRel), IndirectDepsKeys,
+		IndirectDeps) },
+	{ module_imports_set_indirect_deps(Module0, IndirectDeps, Module) },
+
 	%
 	% Compute the trans-opt dependencies for this module.
 	% To avoid the possibility of cycles, each module is
 	% only allowed to depend on modules that occur later
 	% than it in the TransOptOrder.
 	%
-	{ FindModule = lambda([Module::in] is semidet, (
-		ModuleName \= Module )) },
+	{ FindModule = lambda([OtherModule::in] is semidet, (
+		ModuleName \= OtherModule )) },
 	{ list__takewhile(FindModule, TransOptOrder, _, TransOptDeps0) },
 	( { TransOptDeps0 = [ _ | TransOptDeps1 ] } ->
 		% The module was found in the list
@@ -1652,15 +1676,13 @@ generate_dependencies_write_d_files_2([ModuleName | ModuleNames],
 	% Note that even if a fatal error occured for one of the files that
 	% the current Module depends on, a .d file is still produced, even
 	% though it probably contains incorrect information.
+	{ module_imports_get_error(Module, Error) },
 	( { Error \= fatal } ->
-		% Set the transitive interface dependencies for this module
-		{ module_imports_set_indirect_deps(ModuleImports0, TransIntDeps,
-			ModuleImports) },
-		write_dependency_file(ModuleImports, yes(TransOptDeps))
+		write_dependency_file(Module, yes(TransOptDeps))
 	;
 		[]
 	),
-	generate_dependencies_write_d_files_2(ModuleNames, TransIntDeps,
+	generate_dependencies_write_d_files(Deps, IndirectDepsRel,
 		TransOptOrder, DepsMap).
 
 % This is the data structure we use to record the dependencies.
