@@ -55,9 +55,9 @@ case $target in asm|il|java)
 esac
 
 #
-# --target Java implies --high-level-data
+# --target IL or Java implies --high-level-data
 #
-case $target in java)
+case $target in il|java)
 	highlevel_data=true ;;
 esac
 

@@ -331,6 +331,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	%   - high-level code
 	%	  Because only the MLDS back-end supports
 	%	  compiling to IL, not the LLDS back-end.
+	%   - high-level data
+	%	  Because it is more efficient,
+	%	  and better for interoperability.
+	%	  (In theory --low-level-data should work too,
+	%	  but there's no reason to bother supporting it.)
 	%   - turning off nested functions
 	%	  Because IL doesn't support nested functions.
 	%   - using copy-out for nondet output arguments
@@ -375,6 +380,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		globals__io_set_option(reclaim_heap_on_semidet_failure,
 			bool(no)),
 		globals__io_set_option(highlevel_code, bool(yes)),
+		globals__io_set_option(highlevel_data, bool(yes)),
 		globals__io_set_option(gcc_nested_functions, bool(no)),
 		globals__io_set_option(nondet_copy_out, bool(yes)),
 		globals__io_set_option(num_tag_bits, int(0)),
