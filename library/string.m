@@ -1888,7 +1888,9 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	native_format_string(FormatStr::in, Val::in) = (Str::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
+	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+	MR_restore_transient_hp();
 }").
 
 	% Create a string from a char using the format string.
