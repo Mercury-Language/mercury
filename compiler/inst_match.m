@@ -658,7 +658,7 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 	;
 			% insert ThisInstPair into the table with value
 			%`unknown' 
-		map__insert(MergeInstTable0, ThisInstPair, unknown,
+		map__det_insert(MergeInstTable0, ThisInstPair, unknown,
 			MergeInstTable1),
 		inst_table_set_merge_insts(InstTable0, MergeInstTable1,
 			InstTable1),
@@ -670,7 +670,7 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_merge_insts(InstTable2, MergeInstTable2),
-		map__set(MergeInstTable2, ThisInstPair, known(Inst0),
+		map__det_update(MergeInstTable2, ThisInstPair, known(Inst0),
 			MergeInstTable3),
 		inst_table_set_merge_insts(InstTable2, MergeInstTable3,
 			InstTable3),
@@ -920,7 +920,8 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, ModuleInfo0,
 	;
 			% insert ThisInstPair into the table with value
 			% `unknown' 
-		map__set(UnifyInsts0, ThisInstPair, unknown, UnifyInsts1),
+		map__det_insert(UnifyInsts0, ThisInstPair, unknown,
+			UnifyInsts1),
 		inst_table_set_unify_insts(InstTable0, UnifyInsts1, InstTable1),
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
 			% unify the insts
@@ -931,7 +932,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, ModuleInfo0,
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_unify_insts(InstTable2, UnifyInsts2),
-		map__set(UnifyInsts2, ThisInstPair, known(Inst0, Det),
+		map__det_update(UnifyInsts2, ThisInstPair, known(Inst0, Det),
 			UnifyInsts),
 		inst_table_set_unify_insts(InstTable2, UnifyInsts, InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
@@ -1440,7 +1441,8 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 	;
 		% insert the inst name in the ground_inst table, with
 		% value `unknown' for the moment
-		map__set(GroundInsts0, GroundInstKey, unknown, GroundInsts1),
+		map__det_insert(GroundInsts0, GroundInstKey, unknown,
+			GroundInsts1),
 		inst_table_set_ground_insts(InstTable0, GroundInsts1,
 			InstTable1),
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
@@ -1457,7 +1459,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 		% table
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_ground_insts(InstTable2, GroundInsts2),
-		map__set(GroundInsts2, GroundInstKey, known(GroundInst),
+		map__det_update(GroundInsts2, GroundInstKey, known(GroundInst),
 			GroundInsts),
 		inst_table_set_ground_insts(InstTable2, GroundInsts,
 			InstTable),
@@ -1557,7 +1559,7 @@ make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 	;
 		% insert the inst name in the shared_inst table, with
 		% value `unknown' for the moment
-		map__set(SharedInsts0, InstName, unknown, SharedInsts1),
+		map__det_insert(SharedInsts0, InstName, unknown, SharedInsts1),
 		inst_table_set_shared_insts(InstTable0, SharedInsts1,
 			InstTable1),
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
@@ -1573,7 +1575,7 @@ make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 		% table
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_shared_insts(InstTable2, SharedInsts2),
-		map__set(SharedInsts2, InstName, known(SharedInst),
+		map__det_update(SharedInsts2, InstName, known(SharedInst),
 			SharedInsts),
 		inst_table_set_shared_insts(InstTable2, SharedInsts,
 			InstTable),
@@ -1648,7 +1650,8 @@ make_mostly_uniq_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 	;
 		% insert the inst name in the mostly_uniq_inst table, with
 		% value `unknown' for the moment
-		map__set(NondetLiveInsts0, InstName, unknown, NondetLiveInsts1),
+		map__det_insert(NondetLiveInsts0, InstName, unknown,
+			NondetLiveInsts1),
 		inst_table_set_mostly_uniq_insts(InstTable0, NondetLiveInsts1,
 			InstTable1),
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
@@ -1665,8 +1668,8 @@ make_mostly_uniq_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 		% mostly_uniq_inst table
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
-		map__set(NondetLiveInsts2, InstName, known(NondetLiveInst),
-			NondetLiveInsts),
+		map__det_update(NondetLiveInsts2, InstName,
+			known(NondetLiveInst), NondetLiveInsts),
 		inst_table_set_mostly_uniq_insts(InstTable2, NondetLiveInsts,
 			InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
