@@ -70,6 +70,7 @@ ORDINARY_PROGS=	\
 	impure_prune \
 	integer_test \
 	intermod_c_code \
+	intermod_multimode_main \
 	merge_and_remove_dups \
 	minint_bug \
 	mode_choice \
@@ -124,7 +125,15 @@ ORDINARY_PROGS=	\
 	write_reg1 \
 	write_reg2
 
+# We do not pass the following tests at all:
+#
+# XXX var_not_found -- mode error in automatically generated unification
+#		predicate.  This test uses partially instantiated modes,
+#		which are not yet fully supported.
+#
 # XXX csharp_test doesn't work yet (not even in il* grades)
+
+# The following tests are passed only in some grades:
 #
 # XXX copy_pred does not work in the hl* grades (e.g. hlc.gc),
 # because the MLDS back-end doesn't generate the closure layout
@@ -162,11 +171,6 @@ SPLIT_PROGS = split_c_files
 else
 SPLIT_PROGS =
 endif
-
-# we do not pass the following tests
-#	var_not_found -- mode error in automatically generated unification
-#		predicate.  This test uses partially instantiated modes,
-#		which are not yet fully support.
 
 #-----------------------------------------------------------------------------#
 

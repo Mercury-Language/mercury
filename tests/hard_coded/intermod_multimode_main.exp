@@ -1,0 +1,14 @@
+func0 = out
+func1(in) = out
+func1(out) = out
+func2(in, in) = out
+func2(in, out) = out
+func2(out, in) = out
+func2(out, out) = out
+test0
+test1(in)
+test1(out)
+test2(in, in)
+test2(in, out)
+test2(out, in)
+test2(out, out)
