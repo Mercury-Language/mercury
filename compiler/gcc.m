@@ -401,7 +401,8 @@
 :- mode cons_init_list(in, in, in, out, di, uo) is det.
 
 	% build an expression for an array or structure initializer
-:- pred build_initializer_expr(gcc__init_list, gcc__type, gcc__expr, io__state, io__state).
+:- pred build_initializer_expr(gcc__init_list, gcc__type, gcc__expr,
+		io__state, io__state).
 :- mode build_initializer_expr(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -617,8 +618,9 @@
 "
 	/* XXX Move this code to `mercury-gcc.c'. */
 	/* XXX Do we need to check that NumElems fits in a HOST_WIDE_INT?  */
-	HOST_WIDE_INT max = (NumElems == 0 ? 0 : (HOST_WIDE_INT) NumElems - 1);
-	tree index_type = build_index_type (build_int_2 (max, 0));
+	HOST_WIDE_INT max = (HOST_WIDE_INT) NumElems - (HOST_WIDE_INT) 1;
+	tree index_type = build_index_type (build_int_2 (max, 
+		(max < 0 ? -1 : 0)));
 	ArrayType = (MR_Word) build_array_type((tree) ElemType, index_type);
 ").
 
@@ -626,7 +628,8 @@
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	RangeType = (MR_Word) build_range_type((tree) Type,
-			build_int_2 (Min, 0), build_int_2 (Max, 0));
+			build_int_2 (Min, (Min < 0 ? -1 : 0)),
+			build_int_2 (Max, (Max < 0 ? -1 : 0)));
 ").
 
 :- type gcc__param_types == gcc__tree.
@@ -1103,6 +1106,10 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 "
 	Expr = (MR_Word) build(CONSTRUCTOR, (tree) Type, NULL_TREE,
 		(tree) InitList);
+#if 0
+	/* XXX do we need this? */
+	TREE_STATIC ((tree) Expr) = 1;
+#endif
 ").
 
 %-----------------------------------------------------------------------------%
