@@ -147,7 +147,7 @@ add_item_decl(pragma(Pragma), Context, Status, Module0, Status,
 		{ Pragma  = c_header_code(C_Header) },
 		{ module_add_c_header(C_Header, Context, Module0, Module) }
 	;
-		% Handle pragma(c_code) decls later on (when we process
+		% Handle pragma(c_code, ...) decls later on (when we process
 		% clauses).
 		{ Pragma = c_code(_, _, _, _) },
 		{ Module = Module0 }
@@ -571,7 +571,7 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 		{ module_info_get_predicate_table(Module1, PredicateTable0) },
 		{ clauses_info_init(Arity, ClausesInfo) },
 		{ pred_info_init(ModuleName, PredName, Arity, TVarSet, Types,
-				Cond, Context, ClausesInfo, Status, no,
+				Cond, Context, ClausesInfo, Status, no, none,	
 				PredInfo0) },
 		(
 			{ \+ predicate_table_search_m_n_a(PredicateTable0,
@@ -687,7 +687,7 @@ add_special_pred_decl(SpecialPredId,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo0),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
-		Context, ClausesInfo0, Status, no, PredInfo0),
+		Context, ClausesInfo0, Status, no, none, PredInfo0),
 
 	add_new_proc(PredInfo0, Arity, ArgModes, yes(Det), Context,
 			PredInfo, _),
@@ -800,7 +800,7 @@ preds_add_implicit(PredicateTable0,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
-		Context, ClausesInfo, local, no, PredInfo),
+		Context, ClausesInfo, local, no, none, PredInfo),
 	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
 		\+ predicate_table_search_m_n_a(PredicateTable0,
@@ -913,13 +913,27 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		clause_for_imported_pred_error(PredName, Arity, Context)
 	;
+		{ pred_info_get_goal_type(PredInfo0, pragmas) }
+	->
+		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
+		prog_out__write_context(Context),
+		io__write_string("Error: clause for pred `"),
+		io__write_string(PName),
+		io__write_string("/"),
+		io__write_int(Arity),
+		io__write_string("'\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  with pragma(c_code, ...) declaration preceding.\n")
+	;
 		{
 		pred_info_clauses_info(PredInfo0, Clauses0), 
 		pred_info_procedures(PredInfo0, Procs),
 		map__keys(Procs, ModeIds),
 		clauses_info_add_clause(Clauses0, ModeIds, ClauseVarSet, Args,
 				Body, Context, Goal, VarSet, Clauses, Warnings),
-		pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo),
+		pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo1),
+		pred_info_set_goal_type(PredInfo1, clauses, PredInfo),
 		map__set(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
 			PredicateTable),
@@ -1003,6 +1017,19 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code0, Context,
 		io__write_string("/"),
 		io__write_int(Arity),
 		io__write_string("'.\n")
+	;	
+		{ pred_info_get_goal_type(PredInfo0, clauses) }
+	->
+		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
+		prog_out__write_context(Context),
+		io__write_string("Error: pragma(c_code, ...) declaration "),
+		io__write_string("for pred `"),
+		io__write_string(PName),
+		io__write_string("/"),
+		io__write_int(Arity),
+		io__write_string("'\n"),
+		prog_out__write_context(Context),
+		io__write_string("  with clauses preceding.\n")
 	;
 		% add the pragma declaration to the proc_info for this procedure
 		{ pred_info_procedures(PredInfo0, Procs) },
@@ -1017,6 +1044,8 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code0, Context,
 					ProcId, VarSet, PVars, C_Code, Context, 
 					Clauses, Goal) },
 			{ pred_info_set_clauses_info(PredInfo0, Clauses, 
+					PredInfo1) },
+			{ pred_info_set_goal_type(PredInfo1, pragmas, 
 					PredInfo) },
 			{ map__set(Preds0, PredId, PredInfo, Preds) },
 			{ predicate_table_set_preds(PredicateTable0, Preds, 
@@ -1316,19 +1345,19 @@ warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap,
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
-		io__write_string("In pragma(c_code, ...) for predicate `"),
-		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string("':\n"),
-		prog_out__write_context(Context),
 		( { SingletonVars = [_] } ->
-			io__write_string("  Warning: variable `"),
+			io__write_string("Warning: variable `"),
 			write_string_list(SingletonVars),
-			io__write_string("' do not occur in C code.\n")
+			io__write_string("' does not occur in C code\n")
 		;
-			io__write_string("  Warning: variables `"),
+			io__write_string("Warning: variables `"),
 			write_string_list(SingletonVars),
-			io__write_string("' do not occur in C code.\n")
+			io__write_string("' do not occur in C code\n")
 		),
+		prog_out__write_context(Context),
+		io__write_string("  in pragma(c_code, ...) for predicate `"),
+		hlds_out__write_pred_call_id(PredCallId),
+		io__write_string("'.\n"),
 		io__set_output_stream(OldStream, _)
 	).
 
@@ -1357,6 +1386,8 @@ warn_singletons_in_pragma_c_code_2(C_CodeList, [Arg|Args], ArgNameMap,
 
 %-----------------------------------------------------------------------------%
 
+	% c_code_to_name_list(Code, List) is true iff List is a list of the 
+	% identifiers used in the C code in Code.
 :- pred c_code_to_name_list(string, list(string)).
 :- mode c_code_to_name_list(in, out) is det.
 
@@ -1372,6 +1403,7 @@ c_code_to_name_list_2(C_Code, List) :-
 	(
 		NameCharList = []
 	->
+		% no names left
 		List = []
 	;
 		c_code_to_name_list_2(TheRest, Names),
@@ -1390,6 +1422,8 @@ get_first_c_name([C|CodeChars], NameCharList, TheRest) :-
 		get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
 		NameCharList = [C|NameCharList0]
 	;
+			% strip off any characters in the C code which 
+			% don't form part of an identifier.
 		get_first_c_name(CodeChars, NameCharList, TheRest)
 	).
 	
@@ -1401,9 +1435,11 @@ get_first_c_name_in_word([C|CodeChars], NameCharList, TheRest) :-
 	(
 		char__is_alnum_or_underscore(C)
 	->
+			% There are more characters in the word
 		get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
 		NameCharList = [C|NameCharList0]
 	;
+			% The word is finished
 		NameCharList = [],
 		TheRest = CodeChars
 	).
@@ -1542,7 +1578,7 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 
 clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars, 
 		C_Code, Context, ClausesInfo, HldsGoal) :-
-	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, _ClauseList),
+	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, ClauseList),
 	pragma_get_vars(PVars, Args0),
 	pragma_get_var_names(PVars, Names),
 
@@ -1554,7 +1590,8 @@ clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars,
 
 		% build the pragma_c_code
 	map__from_corresponding_lists(Args, Names, ArgNameMap),
-	goal_info_init(GoalInfo),
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	HldsGoal0 = pragma_c_code(C_Code, PredId, ModeId, Args, ArgNameMap) - 
 		GoalInfo, 
 
@@ -1565,7 +1602,8 @@ clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars,
 	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet2, Empty,
 		HldsGoal, VarSet, _, _Warnings),
 	NewClause = clause([ModeId], HldsGoal, Context),
-	ClausesInfo =  clauses_info(VarSet, VarTypes, HeadVars, [NewClause]).
+	ClausesInfo =  clauses_info(VarSet, VarTypes, HeadVars, 
+		[NewClause|ClauseList]).
 
 %-----------------------------------------------------------------------------
 

@@ -53,6 +53,11 @@
 
 :- type pred_proc_id	==	pair(pred_id, proc_id).
 
+	% the type of goals that have been given for a pred.
+:- type goal_type 	--->	pragmas		% pragma(c_code, ...)
+			;	clauses		
+			;	none.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -443,7 +448,7 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 			hlds__goal	% The <Else> part
 		)
 	
-		% Inline C code from a pragma(c_code) decl.
+		% C code from a pragma(c_code, ...) decl.
 	;	pragma_c_code(
 			c_code,		% The C code to do the work
 			pred_id,	% The called predicate
@@ -1583,8 +1588,8 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
 			condition, term__context, clauses_info, import_status,
-			bool, pred_info).
-:- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, out) is det.
+			bool, goal_type, pred_info).
+:- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, out) is det.
 
 :- pred pred_info_module(pred_info, module_name).
 :- mode pred_info_module(in, out) is det.
@@ -1659,6 +1664,12 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_set_inlined(pred_info, bool, pred_info).
 :- mode pred_info_set_inlined(in, in, out) is det.
 
+:- pred pred_info_get_goal_type(pred_info, goal_type).
+:- mode pred_info_get_goal_type(in, out) is det.
+
+:- pred pred_info_set_goal_type(pred_info, goal_type, pred_info).
+:- mode pred_info_set_goal_type(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1702,21 +1713,24 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 			tvarset,	% names of type vars
 					% in the predicate's type decl
 					% or in the variable type assignments
-			bool		% whether or not to automatically
+			bool,		% whether or not to automatically
 					% inline this pred
+			goal_type	% whether the goals seen so far for
+					% this pred are clauses, 
+					% pragma(c_code, ...) decs, or none
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
-		ClausesInfo, Status, Inline, PredInfo) :-
+		ClausesInfo, Status, Inline, GoalType, PredInfo) :-
 	map__init(Procs),
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
-		Inline).
+		Inline, GoalType).
 
 pred_info_procids(PredInfo, ProcIds) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _),
+	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
@@ -1732,75 +1746,86 @@ pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	).
 
 pred_info_clauses_info(PredInfo, Clauses) :-
-	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L),
-	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, L).
+	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M),
+	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, L, M).
 
 pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
-	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _, _, _).
+	PredInfo = predicate(TypeVars, ArgTypes, 
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo) :-
-	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L),
+	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M),
 	PredInfo = 
-		predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J, K, L).
+		predicate(TypeVarSet, ArgTypes, 
+			C, D, E, F, G, H, I, J, K, L, M).
 
 pred_info_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, _).
 
 pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L),
-	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L).
+	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M),
+	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L, M).
 
 pred_info_context(PredInfo, Context) :-
-	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, _, _, _, _).
 
 pred_info_module(PredInfo, Module) :-
-	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, _, _).
 
 pred_info_name(PredInfo, PredName) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, _, _).
 
 pred_info_arity(PredInfo, Arity) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, _, _).
 
 pred_info_import_status(PredInfo, ImportStatus) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _).
 
 pred_info_is_imported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported, _, _, _).
 
 pred_info_is_pseudo_imported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_imported, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_imported, 
+		_, _, _).
 
 pred_info_is_exported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported, _, _, _).
 
 pred_info_is_pseudo_exported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_exported, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_exported, 
+		_, _, _).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M).
 
 pred_info_set_status(PredInfo0, Status, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, L).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, L, M).
 
 pred_info_typevarset(PredInfo, TypeVarSet) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _, _).
 
 pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M).
 
 pred_info_is_inlined(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, yes).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, yes, _).
 
 pred_info_set_inlined(PredInfo0, Inlined, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, Inlined).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, Inlined, M).
+
+pred_info_get_goal_type(PredInfo, GoalType) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, GoalType).
+
+pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, GoalType).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

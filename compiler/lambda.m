@@ -314,7 +314,7 @@ XXX this optimization temporarily disabled, see comment above
 		clauses_info_init(Arity, ClausesInfo),
 		pred_info_init(ModuleName, PredName, Arity, TVarSet,
 			ArgTypes, Cond, LambdaContext, ClausesInfo, Status,
-			no, PredInfo0),
+			no, none, PredInfo0),
 
 		%	
 		% Create a single mode for the new predicate, and insert
