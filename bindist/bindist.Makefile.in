@@ -65,8 +65,10 @@ install_lib:
 	# from the tar file will fail; we therefore ignore any errors
 	# in those two steps.
 	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && {		\
-		tar -xf $$LIB_TAR_FILE $(LIB_NUPROLOG_PARTS);		\
-		tar -xf $$LIB_TAR_FILE $(LIB_SICSTUS_PARTS);		\
+		[ -n "$(LIB_NUPROLOG_PARTS)" ] &&			\
+			tar -xf $$LIB_TAR_FILE $(LIB_NUPROLOG_PARTS);	\
+		[ -n "$(LIB_SICSTUS_PARTS)" ] &&			\
+			tar -xf $$LIB_TAR_FILE $(LIB_SICSTUS_PARTS);	\
 		tar -xf $$LIB_TAR_FILE $(LIB_PARTS);			\
 	}
 	gzip lib.tar # tidy up
