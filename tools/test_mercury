@@ -116,6 +116,11 @@ cd mercury || { false; exit 1; }
 # else
 	echo 'MC = ../scripts/mc' > Mmake.params
 	echo 'MCFLAGS = -O2' >> Mmake.params
+
+	# work around a bug in gcc 2.7.2.1
+	case $HOST in
+		kryten)		echo 'EXTRA_CFLAGS = -O1' >> Mmake.params ;;
+	esac
 # fi
 
 autoconf || { false; exit 1; }
