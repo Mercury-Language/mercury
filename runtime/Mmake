@@ -29,7 +29,8 @@ HDRS		= access.h aux.h conf.h dlist.h debug.h dummy.h engine.h \
 
 MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h \
-		  machdeps/alpha_regs.h machdeps/pa_regs.h
+		  machdeps/alpha_regs.h machdeps/pa_regs.h \
+		  machdeps/rs6000_regs.h
 MODS		= engine.mod wrapper.mod call.mod solutions.mod
 MOD_CS		= engine.c wrapper.c call.c solutions.c
 MOD_OS		= $(MOD_CS:.c=.o)
