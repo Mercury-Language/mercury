@@ -9,13 +9,13 @@
 MAIN_TARGET=lib
 
 MERCURY_DIR=..
-include ../Mmake.common
+include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
 CFLAGS		= -I$(MERCURY_DIR)/runtime -I $(MERCURY_DIR)/boehm_gc -g \
 		  $(PROFFLAGS)
-MGNUC		= MERCURY_C_INCL_DIR=. ../scripts/mgnuc
+MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= --no-ansi $(CFLAGS)
 
 #-----------------------------------------------------------------------------#
@@ -55,13 +55,13 @@ libmer.a: $(OBJS)
 	$(RANLIB) libmer.a
 
 libmer.so: $(PIC_OBJS)
-	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)
+	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS) -L$(BOEHM_GC) -lgc
 
 runtime.init: $(MOD_CS)
 	cat $(MOD_CS) | grep '^INIT ' > runtime.init
 
-conf.h.date: ../config.status conf.h.in
-	cd ..; CONFIG_FILES= CONFIG_HEADERS=runtime/conf.h ./config.status
+conf.h.date: $(MERCURY_DIR)/config.status conf.h.in
+	CONFIG_FILES= CONFIG_HEADERS=conf.h $(MERCURY_DIR)/config.status
 	echo datestamp > conf.h.date
 
 conf.h: conf.h.date
