@@ -1,25 +1,27 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA.
+% Copyright (C) 1999 INRIA/INSA de Rennes.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file License in the Morphine distribution.
 % 
 % Author : Erwan Jahier <jahier@irisa.fr>
 %
-% This is the first file to be loaded when Opium-M is run.
-% It is called from the Opium-M script.
+% This is the first file to be loaded when Morphine is run.
+% It is called from the morphine script.
 
 
 %------------------------------------------------------------------------------%
-% re-definition of opium_answer/2
+% re-definition of morphine_answer/2
 % defined in ~/sepia/workdir/sepia/pl/boot_bips.pl
 
-opium_answer(_, yes).
-opium_answer(_, no) :-
+morphine_answer(_, yes).
+morphine_answer(_, no) :-
         write(toplevel_output, 'no.\n').
-opium_answer(_, no_answer) :-
+morphine_answer(_, no_answer) :-
         write(toplevel_output, 'no (more) solution.\n').
-opium_answer(_, last_yes).
-opium_answer(_, last_answer) :-
+morphine_answer(_, last_yes).
+morphine_answer(_, last_answer) :-
         write(toplevel_output, '\n').
-opium_answer(_, more_answers) :-
+morphine_answer(_, more_answers) :-
         write(toplevel_output, '     More? (;) '),
         flush(toplevel_output),
         tyi(toplevel_input, C),
@@ -32,19 +34,19 @@ opium_answer(_, more_answers) :-
 		flush(toplevel_output)
 	).
 
-:- set_error_handler(156, opium_answer/2).
+:- set_error_handler(156, morphine_answer/2).
 
 
 %------------------------------------------------------------------------------%
-% Load Opium-M.
-:- getenv('MERCURY_OPIUM_DIR', Dir),
+% Load Morphine.
+:- getenv('MERCURY_MORPHINE_DIR', Dir),
 	append_strings(Dir, "/source/load_scenario.pl", MakeFile),
 	compile(MakeFile).
 
-% Initialise the Opium-M session
-:- init_opium_session.
+% Initialise the Morphine session
+:- init_morphine_session.
 
-:- set_flag(toplevel_module, 'Opium-M').
+:- set_flag(toplevel_module, morphine).
 
 %------------------------------------------------------------------------------%
 

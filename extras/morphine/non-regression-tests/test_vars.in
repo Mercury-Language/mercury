@@ -1,3 +1,4 @@
+write("\nCopyright (C) 1999 INRIA/INSA de Rennes."),
 write("\n**************************************************"),
 	write("\n**** Testing test_vars.m...\n"),
 	run(test_vars),

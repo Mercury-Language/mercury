@@ -1,7 +1,7 @@
+% Copyright (C) 1999 INRIA/INSA de Rennes.
 
-
-The software Morphine in its 0.2 release of November 1999, hereinafter referred
-to as « the software » has been designed and produced by Erwan Jahier and
+The software Morphine in its 0.2 release of December 1999, hereinafter referred
+to as " the software " has been designed and produced by Erwan Jahier and
 Mireille Ducassé, researchers of the LANDE project, a research project of the
 National Computer and Automatics Institute - INRIA - Rennes Research Unit.
 
@@ -10,7 +10,7 @@ National Computer and Automatics Institute - INRIA - Rennes Research Unit.
 	Rocquencourt
 	78153 Le Chesnay Cedex.
 
-	INSA
+	INSA de Rennes
 	20, Av. des buttes de Coësmes 
 	Campus de Beaulieu,
 	F-35043 Rennes Cedex.
@@ -20,41 +20,17 @@ The software has been registered at the Agency for the Protection of Programmes
 
 This Software is a copyright INRIA/INSA - 1999.
 
-INRIA/INSA holds all the ownership rights on the Software. The scientific community
-is asked to use the SOFTWARE in order to test and evaluate it.
+The files of the Software may only be copied under the terms of the GNU Library
+General Public License - see the Licence file in the Morphine distribution.
 
-INRIA/INSA freely grants the right to use the Software. Any use or reproduction of
-this Software to obtain profit or for commercial ends being subject to
-obtaining the prior express authorisation of INRIA/INSA.
-
-INRIA/INSA authorises any reproduction of this Software
-
-- in limits defined in clauses 9 and 10 of the Berne agreement for the
-  protection of literary and artistic works respectively specify in their
-  paragraphs 2 and 3 authorising only the reproduction and quoting of works on
-  the condition that :
- 
-- "this reproduction does not adversely affect the normal exploitation of the
-  work or cause any unjustified prejudice to the legitimate interests of the
-  author".
-
-- "that the quotations given by way of illustration and/or tuition conform to
-  the proper uses and that it mentions the source and name of the author if
-  this name features in the source",
-
-- under the condition that this file is included with any reproduction.
- 
- Any commercial use made without obtaining the prior express agreement of
- INRIA/INSA would therefore constitute a fraudulent imitation.
-
-the Software being currently developed, INRIA/INSA is assuming no liability, and
+The Software being currently developed, INRIA/INSA is assuming no liability, and
 should not be responsible, in any manner or any case, for any direct or
 indirect damages sustained by the user.
  
 
 
 %------------------------------------------------------------------------------%
-Le logiciel Morphine dans sa version 0.2 (novembre 1999), ci-après dénommé "Le
+Le logiciel Morphine dans sa version 0.2 (décembre 1999), ci-après dénommé "Le
 LOGICIEL", a été conçu et réalisé par Erwan Jahier et Mireille Ducassé,
 chercheurs du projet LANDE, projet de recherche de l'Institut National de
 Recherche en Informatique et en Automatique - INRIA - Unité de Recherche de
@@ -65,7 +41,7 @@ Rennes.
 	Rocquencourt
 	78153 Le Chesnay Cedex.
 
-	INSA
+	INSA de Rennes
 	20, Av. des buttes de Coësmes 
 	Campus de Beaulieu,
 	F-35043 Rennes Cedex.
@@ -75,31 +51,9 @@ sous le numéro XXX
 
 Ce Logiciel est couvert par le copyright  INRIA/INSA - 1999.
 
-L'INRIA/INSA détient tous les droits de propriété sur le LOGICIEL, il souhaite que
-la communauté scientifique l'utilise afin de le tester et de l'évaluer.
-
-L'INRIA/INSA donne gracieusement le droit d'utiliser ce Logiciel. Toute utilisation
-dans un but lucratif ou a des fins commerciales est interdite sauf autorisation
-expresse et préalable de l'INRIA/INSA.
- 
-L'INRIA/INSA autorise toute reproduction de ce Logiciel :
-
-- dans les limites définies aux articles 9 et 10 de la convention de Berne pour
-  la protection des oeuvres littéraires et artistiques pris respectivement dans
-  leurs alinéas 2 et 3, c'est-à-dire à condition :
-
-- " qu'une telle reproduction ne porte pas atteinte à l'exploitation normale de
-  l'oeuvre, ni ne cause un préjudice injustifié aux intérêts légitimes de
-  
-- " que les citations à titre d'illustration et/ou d'un enseignement soient
-  conformes aux bons usages et qu'il soit fait mention de la source et du nom
-  de l'auteur, si ce nom figure dans la source",
-         
-- à condition que toute reproduction soit accompagnée du présent fichier.
-
-Toute utilisation hors des limites précisées ci-dessus et réalisée sans
-l'accord expresse préalable de l'INRIA/INSA constituerait donc le délit de
-contrefaçon.
+Les fichier de ce logiciel peuvent être copiés seulement sous les termes de la
+license "GNU Library General Public License" - voir le fichier Licence dans la
+distribution de Morphine.
 
 Le LOGICIEL étant un produit en cours de développement, l'INRIA/INSA ne saurait
 assurer aucune responsabilité et notamment en aucune manière et en aucun cas,

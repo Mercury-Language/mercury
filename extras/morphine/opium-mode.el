@@ -1,5 +1,5 @@
 ;------------------------------------------------------------------------------;
-; Copyright (C) 1999 INRIA/INSA.
+; Copyright (C) 1999 INRIA/INSA de Rennes.
 ; 
 ; Author : Mireille Ducassé <ducasse@irisa.fr>
 ;

@@ -1,44 +1,46 @@
-# Copyright (C) 1999 INRIA/INSA.
+* Morphine is a Copyright (C) 1999 INRIA/INSA de Rennes, under the GNU/GPL Licence.
 
-* Opium-M, a trace analysis system for Mercury
+				-o-
+
+* Morphine, a trace analysis system for Mercury
 
 Program execution traces given by traditional debuggers provide programmers
 with useful pieces of information. However, using them requires to analyse by
-hand huge amounts of information. Opium-M is connected to the traditional
+hand huge amounts of information. Morphine is connected to the traditional
 tracer of Mercury; it allows execution trace analyses to be automated. It
 provides a relational trace query language based on Prolog which enables users
-to specify precisely what they want to see in the trace. Opium-M, then,
+to specify precisely what they want to see in the trace. Morphine, then,
 automatically filters out information irrelevant for the users.
 
-Opium-M provides users a langage to write their own debugging primitives
+Morphine provides users a langage to write their own debugging primitives
 (Prolog + 2 primitives connected to the Mercury trace system) and their own
 monitors (see the `collect' command).
 
 				-o-
 
-* Opium-M installation
+* Morphine installation
 
-To install Opium-M, you just need to:
+To install Morphine, you just need to:
 
-1) Run the script `INSTALL-OPIUM-M' (that creates the `Opium-M' script in 
-   the `opium_m/scripts/' directory).
-2) Add directories ` opium_m/scripts/' and `opium_m/bin/' in your `PATH' 
+1) Run the script `INSTALL-MORPHINE' (that creates the `morphine' script in 
+   the `morphine/scripts/' directory).
+2) Add directories ` morphine/scripts/' and `morphine/bin/' in your `PATH' 
    environment variable. Make sure that the executables `mmc' and `eclipse' 
    are also accessible from your `PATH'. 
 
 
-Note that Opium-M requires ECLiPSe, a Prolog system which is free to
+Note that Morphine requires ECLiPSe, a Prolog system which is free to
 universities and non-profit research institutions. You can download it at
 `http://www.icparc.ic.ac.uk/eclipse/'. Also make sure that the package
 eclipse_misc.tgz has been downloaded (i.e. if there exists a directory named
-`lib_pd' in the ECLiPSe installation directory); Opium-M needs it.
+`lib_pd' in the ECLiPSe installation directory); Morphine needs it.
 
-Opium-M does not require Mercury to be installed, but you might also want to
+Morphine does not require Mercury to be installed, but you might also want to
 install it ;-)
 
 				-o-
 
-* The current release of Opium-M has been tested with the following 
+* The current release of Morphine has been tested with the following 
   configurations: 
 
 o Architectures: sparc/Solaris2.[5,6,7] and i686/Linux kernel 2.0
@@ -47,7 +49,7 @@ o Mercury: later than 1999-15-10 release of the day.
 
 				-o-
 
-For more information about Opium-M, you can have a look at the Opium-M
+For more information about Morphine, you can have a look at the Morphine
 web site:
 
 http://www.irisa.fr/lande/jahier/download.html

@@ -1,5 +1,7 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA.
+% Copyright (C) 1999 INRIA/INSA de Rennes.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file License in the Morphine distribution.
 % 
 % Author : Erwan Jahier
 % File   : collect.op
@@ -154,7 +156,10 @@ opium_command(
 "If File contains the implementation of the Mercury predicates initialize/1 \
 and filter/4, collect(File, Result) calls filter/4 with each event of the \
 execution and an accumulator initialized by initialize/1, and returns the \
-final value in Result.\n\
+final value in Result. The fourth argument of filter is a flag that is set \
+to `continue' or `stop' depending if you want to continue or stop the \
+monitoring process; this useful if one want to be able to stop the monitoring \
+process before the last event is reached.\n\
 \n\
 Here is an example of a simple monitor that counts calls.\n\
 If a file `count_call' contains the following statements:\n\

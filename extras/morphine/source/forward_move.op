@@ -1,5 +1,7 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA.
+% Copyright (C) 1999 INRIA/INSA de Rennes.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file License in the Morphine distribution.
 % 
 % Author : Erwan Jahier
 % File   : forward_move.op
