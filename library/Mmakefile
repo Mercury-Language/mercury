@@ -210,7 +210,7 @@ DEBUG_MS_ILASMFLAGS=
 #DEBUG_MS_CSCFLAGS=/debug
 
 	# -AI sets the assembly search path (just like -I for assemblies)
-MS_CLFLAGS  =	-AI`cygpath -w $(RUNTIME_DIR)` -I`cygpath -w $(RUNTIME_DIR)` $(DEBUG_MS_CLFLAGS)
+MS_CLFLAGS  =	-AI`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` -I`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` $(DEBUG_MS_CLFLAGS)
 MS_CL_NOASM=:noAssembly
 MS_CSCFLAGS=/t:module $(DEBUG_MS_CSCFLAGS)
 MS_ILASMFLAGS=$(DEBUG_MS_ILASMFLAGS)
