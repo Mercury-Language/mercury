@@ -20,12 +20,13 @@ SOURCES= \
 	followcode_det_problem.m \
 	headvar_not_found.m \
 	higher_order.m \
-	higher_order2.m\
-	higher_order3.m\
+	higher_order2.m \
+	higher_order3.m \
 	implied_mode.m \
 	indexing.m \
 	lambda_inference.m\
-	lambda_type.m\
+	lambda_type.m \
+	lambda_quant.m \
 	loop.m \
 	loop_in_disj.m \
 	multidet_prune1.m \
