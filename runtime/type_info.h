@@ -16,45 +16,30 @@
 ** SHARED_ONE_OR_TWO_CELL_TYPE_INFO may be defined as well.
 */
 
-#ifdef	DEFAULT_TYPE_INFO
-  /* shared_one_or_two_cell if addresses are constants; otherwise one_cell */
-  #ifdef		USE_GCC_NONLOCAL_GOTOS
-    #ifdef		USE_ASM_LABELS
-      #define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-      #define		ONE_OR_TWO_CELL_TYPE_INFO
-      #undef		ONE_CELL_TYPE_INFO
-    #else
-      #undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-      #undef		ONE_OR_TWO_CELL_TYPE_INFO
-      #define		ONE_CELL_TYPE_INFO
-    #endif
-  #else
-    #define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-    #define		ONE_OR_TWO_CELL_TYPE_INFO
-    #undef		ONE_CELL_TYPE_INFO
-  #endif
-#else
-  #ifdef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+#if defined(SHARED_ONE_OR_TWO_CELL_TYPE_INFO)
     /* #define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO */
     #define		ONE_OR_TWO_CELL_TYPE_INFO
     #undef		ONE_CELL_TYPE_INFO
-  #else
-    #ifdef		ONE_OR_TWO_CELL_TYPE_INFO
-      #undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-      /* #define	ONE_OR_TWO_CELL_TYPE_INFO */
-      #undef		ONE_CELL_TYPE_INFO
+#elif defined(ONE_OR_TWO_CELL_TYPE_INFO)
+    #undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+    /* #define		ONE_OR_TWO_CELL_TYPE_INFO */
+    #undef		ONE_CELL_TYPE_INFO
+#elif defined(ONE_CELL_TYPE_INFO)
+    #undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+    #undef		ONE_OR_TWO_CELL_TYPE_INFO
+    /* #define		ONE_CELL_TYPE_INFO */
+#else
+    /* use the default type_info representation: */
+    /* shared_one_or_two_cell if addresses are constants, otherwise one_cell */
+    #if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)
+	#undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+	#undef		ONE_OR_TWO_CELL_TYPE_INFO
+	#define		ONE_CELL_TYPE_INFO
     #else
-      #ifdef		ONE_CELL_TYPE_INFO
-        #undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-        #undef		ONE_OR_TWO_CELL_TYPE_INFO
-        /* #define	ONE_CELL_TYPE_INFO */
-      #else
-        #undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-        #undef		ONE_OR_TWO_CELL_TYPE_INFO
-        #define		ONE_CELL_TYPE_INFO
-      #endif
+	#define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+	#define		ONE_OR_TWO_CELL_TYPE_INFO
+	#undef		ONE_CELL_TYPE_INFO
     #endif
-  #endif
 #endif
 
 /*
