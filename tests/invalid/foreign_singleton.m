@@ -18,7 +18,7 @@ main -->
 
 :- pred f(int::out, io::di, io::uo) is det.
 
-:- pragma foreign_proc("C", f(X::out, _IO0::di, _IO::uo),
+:- pragma foreign_proc("C", f(X::out, IO0::di, _IO::uo),
         [will_not_call_mercury, promise_pure], "
     X = 5;
 ").
@@ -29,7 +29,7 @@ f(X) --> [].
 
 g(X) --> [].
 
-:- pragma foreign_proc("C", g(X::out, _IO0::di, _IO::uo),
+:- pragma foreign_proc("C", g(X::out, IO0::di, _IO::uo),
         [will_not_call_mercury, promise_pure], "
     X = 5;
 ").

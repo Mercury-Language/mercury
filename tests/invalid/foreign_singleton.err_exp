@@ -1,5 +1,9 @@
+foreign_singleton.m:021: In the C code for predicate `foreign_singleton:f/3':
+foreign_singleton.m:021:   warning: variable `IO0' does not occur in the C code.
 foreign_singleton.m:026: In clause for predicate `foreign_singleton:f/3':
 foreign_singleton.m:026:   warning: variable `X' occurs only once in this scope.
 foreign_singleton.m:030: In clause for predicate `foreign_singleton:g/3':
 foreign_singleton.m:030:   warning: variable `X' occurs only once in this scope.
+foreign_singleton.m:032: In the C code for predicate `foreign_singleton:g/3':
+foreign_singleton.m:032:   warning: variable `IO0' does not occur in the C code.
 For more information, try recompiling with `-E'.
