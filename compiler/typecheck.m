@@ -247,7 +247,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 		    IOState0, IOState),
 	        MaybePredInfo = no
 	    ;
-		write_progress_message("% Type-checking predicate ",
+		write_progress_message("% Type-checking ",
 			PredId, ModuleInfo, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
 		type_info_init(IOState1, ModuleInfo, PredId,
@@ -2769,11 +2769,9 @@ write_context_and_pred_id(TypeInfo) -->
 	{ type_info_get_context(TypeInfo, Context) },
 	{ type_info_get_predid(TypeInfo, PredId) },
 	prog_out__write_context(Context),
-	io__write_string("In clause for predicate `"),
-	%%% XXX perhaps should also write a module qualifier here or in 
-	%%% XXX the following call?
+	io__write_string("In clause for "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string("':\n").
+	io__write_string(":\n").
 
 %-----------------------------------------------------------------------------%
 

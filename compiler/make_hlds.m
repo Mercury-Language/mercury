@@ -236,9 +236,7 @@ add_pred_marker(Module0, PragmaName, Pred, Arity, Context, Markers, Module) -->
 			", ...) declaration ",
 			"for predicate\n"]),
 		prog_out__write_context(Context),
-		prog_out__write_sym_name(Pred),
-		io__write_char('/'),
-		io__write_int(Arity),
+		hlds_out__write_pred_call_id(Pred/Arity),
 		io__write_string(
 			" without preceding pred declaration.\n"),
 		io__set_output_stream(OldStream, _),
@@ -963,7 +961,7 @@ module_add_pred_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body,
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		{ list__length(Args, Arity) },
-		io__write_string("% Processing clause for pred `"),
+		io__write_string("% Processing clause for predicate `"),
 		hlds_out__write_pred_call_id(PredName/Arity),
 		io__write_string("'...\n")
 	;
@@ -981,7 +979,7 @@ module_add_func_clause(ModuleInfo0, ClauseVarSet, FuncName, Args0, Result, Body,
 		% print out a progress message
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
-		io__write_string("% Processing clause for func `"),
+		io__write_string("% Processing clause for function `"),
 		{ list__length(Args0, Arity) },
 		hlds_out__write_pred_call_id(FuncName/Arity),
 		io__write_string("'...\n")
@@ -1033,10 +1031,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 	->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: clause for pred `"),
-		io__write_string(PName),
-		io__write_string("/"),
-		io__write_int(Arity),
+		io__write_string("Error: clause for predicate `"),
+		hlds_out__write_pred_call_id(PredName/Arity),
 		io__write_string("'\n"),
 		prog_out__write_context(Context),
 		io__write_string(
@@ -1101,9 +1097,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 		{ VeryVerbose = yes } 
 	->
 		io__write_string("% Processing pragma (c_code) for pred `"),
-		io__write_string(PName),
-		io__write_string("/"),
-		io__write_int(Arity),
+		hlds_out__write_pred_call_id(PredName/Arity),
 		io__write_string("'...\n")
 	;
 		[]
@@ -1140,9 +1134,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 		prog_out__write_context(Context),
 		io__write_string("Error: pragma(c_code, ...) declaration "),
 		io__write_string("for imported pred `"),
-		io__write_string(PName),
-		io__write_string("/"),
-		io__write_int(Arity),
+		hlds_out__write_pred_call_id(PredName/Arity),
 		io__write_string("'.\n")
 	;	
 		{ pred_info_get_goal_type(PredInfo0, clauses) }
@@ -1151,9 +1143,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 		prog_out__write_context(Context),
 		io__write_string("Error: pragma(c_code, ...) declaration "),
 		io__write_string("for pred `"),
-		io__write_string(PName),
-		io__write_string("/"),
-		io__write_int(Arity),
+		hlds_out__write_pred_call_id(PredName/Arity),
 		io__write_string("'\n"),
 		prog_out__write_context(Context),
 		io__write_string("  with clauses preceding.\n")

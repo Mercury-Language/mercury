@@ -73,7 +73,7 @@ unique_modes__check_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
 	( { ProcIds \= [] } ->
-		write_progress_message("% Unique-mode-checking predicate ",
+		write_progress_message("% Unique-mode-checking ",
 			PredId, ModuleInfo0)
 	;
 		[]

@@ -138,24 +138,32 @@ hlds_out__write_cons_id(address_const(_PredId, _ProcId)) -->
 	io__write_string("<address>").
 
 hlds_out__write_pred_id(ModuleInfo, PredId) -->
-	% XXX module name
-	%%% { predicate_module(ModuleInfo, PredId, Module) },
-	%%% io__write_string(Module),
-	%%% io__write_string(":"),
-	{ predicate_name(ModuleInfo, PredId, Name) },
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_module(PredInfo, Module) },
+	{ pred_info_name(PredInfo, Name) },
+	{ pred_info_arity(PredInfo, Arity) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	( { PredOrFunc = function }, !,
+		io__write_string("function"),
+		{ OrigArity is Arity - 1 }
+	; { PredOrFunc = predicate },
+		io__write_string("predicate"),
+		{ OrigArity = Arity }
+	),
+	io__write_string(" `"),
+	io__write_string(Module),
+	io__write_string(":"),
 	( { string__append("__", _, Name) } ->
-		{ module_info_preds(ModuleInfo, Preds) },
-		{ map__lookup(Preds, PredId, PredInfo) },
 		{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
 		{ term__context_init(Context) },
 		mercury_output_term(term__functor(term__atom(Name),
 				ArgTypes, Context), TVarSet)
 	;
-		{ predicate_arity(ModuleInfo, PredId, Arity) },
 		io__write_string(Name),
 		io__write_string("/"),
-		io__write_int(Arity)
-	).
+		io__write_int(OrigArity)
+	),
+	io__write_string("'").
 
 hlds_out__write_pred_call_id(Name / Arity) -->
 	( { Name = qualified(ModuleName, _) } ->
