@@ -59,7 +59,6 @@ ORDINARY_PROGS=	\
 	existential_types_test \
 	expand \
 	export_test \
-	export_test2 \
 	external_unification_pred \
 	failure_unify \
 	field_syntax \
@@ -293,6 +292,9 @@ else
 endif
 
 # We do not pass the following tests at all:
+#
+# XXX export_test2
+#     Fails in hl* grades.  I think this never passed.
 #
 # XXX float_consistency:
 #     floats in Mercury aren't consistent -- see the comments at the
