@@ -63,7 +63,8 @@
 	%	Generate the per-program makefile dependencies (`.dep') file
 	%	for a program whose top-level module is `ModuleName'.
 	%	This involes first transitively reading in all imported
-	%	modules.
+	%	modules.  While we're at it, we also save the per-module
+	%	makefile dependency (`.d') files for all those modules.
 	%
 :- pred generate_dependencies(string, io__state, io__state).
 :- mode generate_dependencies(in, di, uo) is det.
@@ -160,7 +161,15 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 	{ string__append(ModuleName, Suffix, OutputFileName) },
 	{ string__append(OutputFileName, ".tmp", TmpOutputFileName) },
 	{ dir__basename(ModuleName, BaseModuleName) },
-	convert_to_mercury(BaseModuleName, TmpOutputFileName, InterfaceItems),
+
+		% we need to add a `:- interface' declaration at the start
+		% of the item list
+	{ varset__init(VarSet) },
+	{ term__context_init(ModuleName, 0, Context) },
+	{ InterfaceDeclaration = module_defn(VarSet, interface) - Context },
+	{ InterfaceItems1 = [InterfaceDeclaration | InterfaceItems] },
+
+	convert_to_mercury(BaseModuleName, TmpOutputFileName, InterfaceItems1),
 
 		% invoke the shell script `mercury_update_interface'
 		% to update <Module>.int from <Module>.int.tmp if
@@ -243,8 +252,11 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 	maybe_flush_output(Verbose),
 	io__open_output(DependencyFileName, Result),
 	( { Result = ok(DepStream) } ->
-		{ list__sort_and_remove_dups(LongDeps0, LongDeps) },
-		{ list__sort_and_remove_dups(ShortDeps0, ShortDeps) },
+		{ list__sort_and_remove_dups(LongDeps0, LongDeps1) },
+		{ list__delete_all(LongDeps1, ModuleName, LongDeps) },
+		{ list__sort_and_remove_dups(ShortDeps0, ShortDeps1) },
+		{ list__delete_elems(ShortDeps1, LongDeps, ShortDeps2) },
+		{ list__delete_all(ShortDeps2, ModuleName, ShortDeps) },
 
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".c "),
@@ -269,14 +281,24 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 %-----------------------------------------------------------------------------%
 
 generate_dependencies(Module) -->
+	%
+	% first, build up a map of the dependencies (writing `.d' files as
+	% we go)
+	%
 	{ map__init(DepsMap0) },
 	generate_deps_map([Module], DepsMap0, DepsMap),
+	%
+	% check whether we couldn't read the main `.m' file
+	%
 	{ map__lookup(DepsMap, Module, deps(_, Error, _, _)) },
 	( { Error = fatal } ->
 	    { string__append_list(["fatal error reading module `",
 				Module, "'."], Message) },
 	    report_error(Message)
 	;
+	    %
+	    % now, write the `.dep' file
+	    %
 	    { string__append(Module, ".dep", DepFileName) },
 	    globals__io_lookup_bool_option(verbose, Verbose),
 	    maybe_write_string(Verbose, "% Creating auto-dependency file `"),
@@ -294,6 +316,9 @@ generate_dependencies(Module) -->
 	    )
 	).
 
+% This is the data structure we use to record the dependencies.
+% We keep a map from module name to information about the module.
+
 :- type deps_map == map(string, deps).
 :- type deps
 	---> deps(
@@ -303,6 +328,8 @@ generate_dependencies(Module) -->
 		list(string)	% implementation dependencies
 	).
 
+% This is the predicate which creates the above data structure.
+
 :- pred generate_deps_map(list(string), deps_map, deps_map,
 			io__state, io__state).
 :- mode generate_deps_map(in, in, out, di, uo) is det.
@@ -311,12 +338,12 @@ generate_deps_map([], DepsMap, DepsMap) --> [].
 generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 		% Look up the module's dependencies, and determine whether
 		% it has been processed yet.
-	lookup_dependencies(Module, DepsMap0, Done, Error, ImplDeps, IntDeps,
+	lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps,
 				DepsMap1),
 		% If the module hadn't been processed yet, compute its
 		% transitive dependencies (we already know its primary ones),
-		% (1) output a line for this module to the dependency file
-		% (if the file exists), (2) add its imports to the list of
+		% (1) output this module's dependencies to its `.d' file
+		% (if the `.m' file exists), (2) add its imports to the list of
 		% dependencies we need to generate, and (3) mark it as having
 		% been processed.
 	( { Done = no } ->
@@ -338,7 +365,8 @@ generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 	generate_deps_map(Modules2, DepsMap3, DepsMap).
 
 
-% write out the `.dep' file
+% Write out the `.dep' file, using the information collected in the
+% deps_map data structure.
 
 :- pred generate_dep_file(string, deps_map, io__output_stream,
 			io__state, io__state).
@@ -556,7 +584,7 @@ transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Deps, DepsMap)
 	;
 		{ set__insert(Deps0, Module, Deps1) },
 		lookup_dependencies(Module, DepsMap0,
-					_, _, IntDeps, _, DepsMap1),
+					_, _, IntDeps, _ImplDeps, DepsMap1),
 		{ list__append(IntDeps, Modules0, Modules1) }
 	),
 	transitive_dependencies_2(Modules1, Deps1, DepsMap1, Deps, DepsMap).
@@ -584,7 +612,7 @@ lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
 		{ ImplDeps = ImplDeps0 },
 		{ DepsMap = DepsMap0 }
 	;
-		read_dependencies(Module, ImplDeps, IntDeps, Error),
+		read_dependencies(Module, IntDeps, ImplDeps, Error),
 		{ map__set(DepsMap0, Module, deps(no, Error, IntDeps, ImplDeps),
 			DepsMap) },
 		{ Done = no }
@@ -598,7 +626,13 @@ lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
 
 read_dependencies(Module, InterfaceDeps, ImplementationDeps, Error) -->
 	io__gc_call(read_mod_ignore_errors(Module, ".m",
-			"Getting dependencies for module", Items, Error)),
+			"Getting dependencies for module", Items0, Error)),
+	( { Items0 = [], Error = fatal } ->
+		io__gc_call(read_mod_ignore_errors(Module, ".int",
+		    "Getting dependencies for module interface", Items, _Error))
+	;
+		{ Items = Items0 }
+	),
 	{ get_dependencies(Items, ImplementationDeps0) },
 	{ get_interface(Items, InterfaceItems) },
 	{ get_dependencies(InterfaceItems, InterfaceDeps) },
@@ -709,8 +743,18 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 	;
 		io__gc_call(
 			read_mod_interface(Import,
-				"Reading interface for module", Items1, Error1)
+				"Reading interface for module",
+				LongIntItems1, Error1)
 		),
+		% strip off the `:- interface' declaration at the start, if any
+		{
+			LongIntItems1 = [ FirstItem | LongIntItems2 ],
+			FirstItem = module_defn(_, interface) - _
+		->
+			Items1 = LongIntItems2
+		;
+			Items1 = LongIntItems1
+		},
 		{ ( Error1 \= no ->
 			Error2 = yes
 		;
@@ -757,13 +801,22 @@ process_module_short_interfaces([Import | Imports], Module0, Module) -->
 		io__gc_call(
 			read_mod_short_interface(Import,
 				"Reading short interface for module",
-					Items1, Error1)
+					ShortIntItems1, Error1)
 		),
-		{ ( Error1 \= no ->
+		% strip off the `:- interface' declaration at the start, if any
+		{
+			ShortIntItems1 = [ FirstItem | ShortIntItems2 ],
+			FirstItem = module_defn(_, interface) - _
+		->
+			Items1 = ShortIntItems2
+		;
+			Items1 = ShortIntItems1
+		},
+		{ Error1 \= no ->
 			Error2 = yes
 		;
 			Error2 = Error0
-		) },
+		},
 
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics),
