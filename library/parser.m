@@ -23,10 +23,6 @@
 % precedences.  It uses `lexer__get_token_list' to read a list of tokens.
 % It uses the routines in module `ops' to look up operator precedences.
 %
-% Efficiency could be improved - the way prefix and binary prefix
-% operators are handled could potentially cause parts of the input
-% to be parsed many times over.
-%
 %-----------------------------------------------------------------------------%
 
 :- module parser.
