@@ -975,7 +975,7 @@ modecheck_unification(term_variable(X), term_variable(Y), Modes, Unification,
 	( abstractly_unify_inst(InstX, InstY, ModuleInfo, Inst) ->
 		modeinfo_get_instmap(ModeInfo0, InstMap0),
 		map__set(InstMap0, X, Inst, InstMap1),
-		map__set(InstMap1, X, Inst, InstMap),
+		map__set(InstMap1, Y, Inst, InstMap),
 		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
 	;
 		modeinfo_get_io_state(ModeInfo0, IOState0),
