@@ -1558,6 +1558,11 @@ Enable dead predicate elimination.
 @item --excess-assign
 Remove excess assignment unifications.
 
+@sp 1
+@item --optimize-saved-vars
+Reorder goals to minimize the number of variables
+that have to be saved across calls.
+
 @c @sp 1
 @c @item --no-specialize
 @c Disable the specialization of procedures.
