@@ -6,6 +6,10 @@
 
 :- implementation.
 
+:- pragma foreign_decl("C", "
+#include ""mercury_string.h""
+").
+
 main -->
 	( { test1("foo", T0, T0b) } ->
 		print("T0: "), print(T0), nl,
@@ -57,7 +61,8 @@ main -->
 	
 :- pragma promise_pure(test1/3).
 :- pragma c_code(test1(_A::in, B::out, C::out), will_not_call_mercury, "
-	B = C = ""test1(in, out, out)"";
+	MR_make_aligned_string_copy(B, ""test1(in, out, out)"");
+	C = B;
 	SUCCESS_INDICATOR = MR_TRUE;
 ").
 test1(_A::in, B::out, C::out) :-
@@ -65,7 +70,7 @@ test1(_A::in, B::out, C::out) :-
 	B = "test1(in, out, out)".
 
 :- pragma c_code(test1(_A::in, _B::in, C::out), will_not_call_mercury, "
-	C = ""test1(in, in, out)"";
+	MR_make_aligned_string_copy(C, ""test1(in, in, out)"");
 	SUCCESS_INDICATOR = MR_TRUE;
 "). 
 test1(_A::in, _B::in, C::out) :-
@@ -80,13 +85,13 @@ test1(_A::in, _B::in, C::out) :-
 
 :- pragma promise_pure(test2/2).
 :- pragma c_code(test2(_A::in, B::out), will_not_call_mercury, "
-	B = ""test2(in, out)"";
+	MR_make_aligned_string_copy(B, ""test2(in, out)"");
 ").
 test2(_A::in, B::out) :-
 	B = "test2(in, out)".
 
 :- pragma c_code(test2(_A::di, B::uo), will_not_call_mercury, "
-	B = ""test2(di, uo)"";
+	MR_make_aligned_string_copy(B, ""test2(di, uo)"");
 ").
 test2(_A::di, B::uo) :-
 	B = "test2(di, uo)".
@@ -124,14 +129,14 @@ test2(_A::di, B::uo) :-
 
 :- pragma promise_pure(test3/2).
 :- pragma c_code(test3(_A::in(any), B::out), will_not_call_mercury, "
-	B = ""test3(in(any), out)"";
+	MR_make_aligned_string_copy(B, ""test3(in(any), out)"");
 ").
 test3(_A::in(any), B::out) :-
 	B = "test3(in(any), out)".
 
 :- pragma c_code(test3(A::out(any), B::out), will_not_call_mercury, "
 	A = NULL;
-	B = ""test3(out(any), out)"";
+	MR_make_aligned_string_copy(B, ""test3(out(any), out)"");
 ").
 test3(A::out(any), B::out) :-
 	mkany(A),
@@ -145,16 +150,16 @@ test3(A::out(any), B::out) :-
 
 :- pragma promise_pure(test4/3).
 :- pragma c_code(test4(_A::in, B::out, C::out), will_not_call_mercury, "
-	B = """";
-	C = ""test4(in, out, out)"";
+	MR_make_aligned_string_copy(B, """");
+	MR_make_aligned_string_copy(C, ""test4(in, out, out)"");
 ").
 test4(_A::in, B::out, C::out) :-
 	B = "",
 	C = "test4(in, out, out)".
 
 :- pragma c_code(test4(A::out, _B::in, C::out), will_not_call_mercury, "
-	A = """";
-	C = ""test4(out, in, out)"";
+	MR_make_aligned_string_copy(A, """");
+	MR_make_aligned_string_copy(C, ""test4(out, in, out)"");
 ").
 test4(A::out, _B::in, C::out) :-
 	A = "",
@@ -172,14 +177,14 @@ test4(A::out, _B::in, C::out) :-
 
 :- pragma promise_pure(test5/3).
 :- pragma c_code(test5(_A::in(a), _B::in(ab), C::out), will_not_call_mercury, "
-	C = ""test5(in(a), in(ab), out)"";
+	MR_make_aligned_string_copy(C, ""test5(in(a), in(ab), out)"");
 ").
 test5(_A::in(a), _B::in(ab), C::out) :-
 	C = "test5(in(a), in(ab), out)".
 	
 
 :- pragma c_code(test5(_A::in(ab), _B::in(b), C::out), will_not_call_mercury, "
-	C = ""test5(in(ab), in(b), out)"";
+	MR_make_aligned_string_copy(C, ""test5(in(ab), in(b), out)"");
 ").
 test5(_A::in(ab), _B::in(b), C::out) :-
 	C = "test5(in(ab), in(b), out)".
