@@ -89,14 +89,14 @@
 
 :- interface.
 :- inst uniq_tree234(K,V) =
-	unique(
+	unique((
 		empty
 	;	two(K, V, uniq_tree234(K, V), uniq_tree234(K, V))
 	;	three(K, V, K, V, uniq_tree234(K, V), uniq_tree234(K, V),
 			uniq_tree234(K, V))
 	;	four(K, V, K, V, K, V, uniq_tree234(K, V), uniq_tree234(K, V),
 			uniq_tree234(K, V), uniq_tree234(K, V))
-	).
+	)).
 
 :- mode di_tree234(K, V) :: uniq_tree234(K, V) -> dead.
 :- mode di_tree234       :: uniq_tree234(ground, ground) -> dead.
