@@ -608,6 +608,8 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 
 :- interface.
 
+:- func map__init = map(K, V).
+
 :- func map__lookup(map(K,V), K) = V.
 
 :- func map__det_insert(map(K,V), K, V) = map(K,V).
@@ -671,6 +673,9 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 % ---------------------------------------------------------------------------- %
 
 :- implementation.
+
+map__init = M :-
+	map__init(M).
 
 map__lookup(M, K) = V :-
 	map__lookup(M, K, V).
