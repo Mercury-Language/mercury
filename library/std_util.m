@@ -676,9 +676,10 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	update_prof_current_proc(
 		LABEL(mercury__std_util__builtin_aggregate_4_0));
 {
-	Word copied_solution;
+	Word copied_solution, solution;
 
 	/* we found a solution (in r1) */
+	solution = r1;
 
 #ifdef MR_USE_TRAIL
 	/* check for outstanding delayed goals (``floundering'') */
@@ -694,7 +695,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	** is transient, before/after calling deep_copy().
 	*/
 	save_transient_registers();
-	copied_solution = deep_copy(r1, (Word *) element_type_info_fv,
+	copied_solution = deep_copy(&solution, (Word *) element_type_info_fv,
 			(Word *) saved_hp_fv,
 			MR_ENGINE(solutions_heap_zone)->top);
 	restore_transient_registers();
@@ -749,7 +750,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	** is transient, before/after calling deep_copy().
 	**/
 	save_transient_registers();
-	copied_collection = deep_copy(sofar_fv,
+	copied_collection = deep_copy(&sofar_fv,
 		    (Word *) collection_type_info_fv,
 		    (Word *) saved_solhp_fv,
 		    MR_ENGINE(solutions_heap_zone)->top);
