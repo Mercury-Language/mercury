@@ -56,6 +56,7 @@ ORDINARY_PROGS=	\
 		state_vars_typeclasses \
 		string_foldl_substring \
 		string_foldr_substring \
+		string_format_special_floats \
 		string_format_test \
 		string_format_test_2 \
 		string_format_test_3 \

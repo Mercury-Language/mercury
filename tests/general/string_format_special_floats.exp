@@ -1,0 +1,11 @@
+Infinity:
+                  %e: success
+                  %e: success
+                  %f: success
+                  %f: success
+                  %g: success
+                  %g: success
+Not a number:
+                  %e: success
+                  %f: success
+                  %g: success
