@@ -16,8 +16,8 @@ include $(MERCURY_DIR)/Mmake.common
 
 SCRIPTS = mmake mc mod2c c2init mgnuc ml mprof mint \
 	  sicstus_conv mtags vpath_find mercury_update_interface
-NUPROLOG_SCRIPTS = mcn mnc mnl mnp
-SICSTUS_SCRIPTS = mcs msc msl msp
+NUPROLOG_SCRIPTS = mnc mnl mnp
+SICSTUS_SCRIPTS = msc msl msp
 
 #-----------------------------------------------------------------------------#
 
