@@ -161,8 +161,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 			frameopt__build_sets(Instrs0, FrameSize, yes, no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
-			% XXX zs, check this
-			Uinstr0 = call_closure(_, ReturnAddr),
+			Uinstr0 = call_closure(_, ReturnAddr, _),
 			frameopt__targeting_code_addr(ReturnAddr,
 				yes, FrameSet0, FrameSet1),
 			frameopt__targeting_code_addr(ReturnAddr,
@@ -439,8 +438,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 				ProcLabel, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
-			% XXX zs, check this
-			Uinstr0 = call_closure(_, _),
+			Uinstr0 = call_closure(_, _, _),
 			frameopt__generate_setup(SetupFrame0, yes,
 				SetupSuccip0, yes, FrameSize, SetupCode),
 			frameopt__doit(Instrs0, FrameSize, yes, no, no,

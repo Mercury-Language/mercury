@@ -442,7 +442,7 @@ call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_return_livevals(list(arg_loc), list(live_lvalue),
+:- pred call_gen__generate_return_livevals(list(arg_loc), list(liveinfo),
 						code_info, code_info).
 :- mode call_gen__generate_return_livevals(in, out, in, out) is det.
 
@@ -453,7 +453,7 @@ call_gen__generate_return_livevals(OutputArgs, LiveVals) -->
 %---------------------------------------------------------------------------%
 
 :- pred call_gen__insert_arg_livelvals(list(arg_loc),
-					list(live_lvalue), list(live_lvalue)).
+					list(liveinfo), list(liveinfo)).
 :- mode call_gen__insert_arg_livelvals(in, in, out) is det.
 
 call_gen__insert_arg_livelvals([], LiveVals, LiveVals).

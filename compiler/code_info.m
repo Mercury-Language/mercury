@@ -336,7 +336,7 @@
 						code_info, code_info).
 :- mode code_info__generate_stack_livevals(out, in, out) is det.
 
-:- pred code_info__generate_stack_livelvals(list(live_lvalue),
+:- pred code_info__generate_stack_livelvals(list(liveinfo),
 						code_info, code_info).
 :- mode code_info__generate_stack_livelvals(out, in, out) is det.
 
@@ -2668,7 +2668,7 @@ code_info__generate_stack_livelvals(LiveVals) -->
 	{ bintree_set__to_sorted_list(LiveVals0, LiveVals1) },
 	{ code_info__livevals_to_livelvals(LiveVals1, LiveVals) }.
 
-:- pred code_info__livevals_to_livelvals(list(lval), list(live_lvalue)).
+:- pred code_info__livevals_to_livelvals(list(lval), list(liveinfo)).
 :- mode code_info__livevals_to_livelvals(in, out) is det.
 
 code_info__livevals_to_livelvals([], []).

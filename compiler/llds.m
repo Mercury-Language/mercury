@@ -34,7 +34,7 @@
 	;	livevals(bool, bintree_set(lval))
 			% A list of which registers and stack locations
 			% are currently live; the bool is true if this is
-			% at the end of an extended basic block
+			% at the end of an extended basic block.
 
 	;	block(int, list(instruction))
 			% a list of instructions that make use of
@@ -44,11 +44,11 @@
 			% Assign the value specified by rval to the location
 			% specified by lval
 
-	;	call(code_addr, code_addr, list(live_lvalue)) 
+	;	call(code_addr, code_addr, list(liveinfo)) 
 			% call(Target, Continuation) is the same as
 			% succip = Continuation; goto(Target)
 
-	;	call_closure(bool, code_addr) 
+	;	call_closure(bool, code_addr, list(liveinfo))
 			% setup the arguments and branch to a higher
 			% order call. The closure is in r1.
 
@@ -87,6 +87,9 @@
 	;	decr_sp(int).
 			% decrement the det stack pointer
 
+:- type liveinfo	--->	live_lvalue(lval, int).
+				% XXX this tuple will need shape information
+
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots
 			;	framevar(int)	% nondet stack slots
@@ -99,10 +102,6 @@
 			;	field(tag, rval, rval)
 			;	lvar(var)
 			;	temp(int).	% only inside blocks
-
-:- type live_lvalue	--->
-		live_lvalue(lval, int).
-			% XXX this tuple will need shape information
 
 :- type rval		--->	lval(lval)
 			;	var(var)
@@ -128,6 +127,12 @@
 			   value_number__make_live
 			*/
 
+:- type rval_const	--->	true
+			;	false
+			;	int_const(int)
+			;	string_const(string)
+			;	pred_const(code_addr).
+
 :- type unary_op	--->	mktag
 			;	tag
 			;	unmktag
@@ -138,12 +143,6 @@
 			;	hash_string
 			;	bitwise_complement
 			;	not.
-
-:- type rval_const	--->	true
-			;	false
-			;	int_const(int)
-			;	string_const(string)
-			;	pred_const(code_addr).
 
 :- type binary_op	--->	(+)	% integer arithmetic
 			;	(-)
@@ -365,11 +364,12 @@ output_instruction(call(Target, Continuation, LiveVals)) -->
 	io__write_string(" }\n/*\n"),
 	output_gc_livevals(LiveVals).
 
-output_instruction(call_closure(IsSemidet, Continuation)) -->
+output_instruction(call_closure(IsSemidet, Continuation, LiveVals)) -->
 	io__write_string("\t{ "),
 	output_code_addr_decls(Continuation),
 	output_call_closure(IsSemidet, Continuation),
-	io__write_string(" }").
+	io__write_string(" }\n/*\n"),
+	output_gc_livevals(LiveVals).
 
 output_instruction(c_code(C_Code_String)) -->
 	io__write_string("\t"),
@@ -444,7 +444,7 @@ output_livevals([Lval|Lvals]) -->
 	io__write_string("\n"),
 	output_livevals(Lvals).
 
-:- pred output_gc_livevals(list(live_lvalue), io__state, io__state).
+:- pred output_gc_livevals(list(liveinfo), io__state, io__state).
 :- mode output_gc_livevals(in, di, uo) is det.
 
 output_gc_livevals([]) -->
@@ -607,12 +607,12 @@ output_goto(label(Label)) -->
 		io__write_string("));")
 	).
 
-:- pred output_call(code_addr, code_addr, io__state, io__state).
-:- mode output_call(in, in, di, uo) is det.
-
 	% Note that we also do some optimization here by
 	% outputting `localcall' rather than `call' for
 	% calls to local labels.
+
+:- pred output_call(code_addr, code_addr, io__state, io__state).
+:- mode output_call(in, in, di, uo) is det.
 
 output_call(Target, Continuation) -->
 	( { Target = label(Label) } ->
@@ -631,10 +631,6 @@ output_call(Target, Continuation) -->
 
 :- pred output_call_closure(bool, code_addr, io__state, io__state).
 :- mode output_call_closure(in, in, di, uo) is det.
-
-	% Note that we also do some optimization here by
-	% outputting `localcall' rather than `call' for
-	% calls to local labels.
 
 output_call_closure(IsSemidet, Continuation) -->
 	(
