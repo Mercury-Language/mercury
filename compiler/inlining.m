@@ -88,6 +88,9 @@
 :- pred inlining(module_info, module_info, io__state, io__state).
 :- mode inlining(in, out, di, uo) is det.
 
+:- pred inlining__is_simple_clause_list(list(clause), int).
+:- mode inlining__is_simple_clause_list(in, in) is semidet.
+
 :- pred inlining__is_simple_goal(hlds_goal, int).
 :- mode inlining__is_simple_goal(in, in) is semidet.
 
@@ -283,6 +286,22 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 
 	% this heuristic is used for both local and intermodule inlining
 
+inlining__is_simple_clause_list(Clauses, SimpleThreshold) :-
+	clause_list_size(Clauses, Size),
+	(
+		Size < SimpleThreshold
+	;
+		Clauses = [clause(_, Goal, _)],
+		Size < SimpleThreshold * 3,
+		%
+		% For flat goals, we are more likely to be able to
+		% optimize stuff away, so we use a higher threshold.
+		% XXX this should be a separate option, we shouldn't
+		% hardcode the number `3' (which is just a guess).
+		%
+		inlining__is_flat_simple_goal(Goal)
+	).
+		
 inlining__is_simple_goal(CalledGoal, SimpleThreshold) :-
 	goal_size(CalledGoal, Size),
 	(

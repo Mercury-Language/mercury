@@ -114,6 +114,10 @@
 :- pred goals_size(list(hlds_goal), int).
 :- mode goals_size(in, out) is det.
 
+	% Return an indication of the size of the list of clauses.
+:- pred clause_list_size(list(clause), int).
+:- mode clause_list_size(in, out) is det.
+
 	% Test whether the goal calls the given procedure.
 :- pred goal_calls(hlds_goal, pred_proc_id).
 :- mode goal_calls(in, in) is semidet.
@@ -670,6 +674,21 @@ goals_size([Goal | Goals], Size) :-
 	goal_size(Goal, Size1),
 	goals_size(Goals, Size2),
 	Size is Size1 + Size2.
+
+clause_list_size(Clauses, GoalSize) :-
+	GetClauseSize =
+		(pred(Clause::in, Size0::in, Size::out) is det :-
+			Clause = clause(_, ClauseGoal, _),
+			goal_size(ClauseGoal, ClauseSize),
+			Size = Size0 + ClauseSize
+		),
+	list__foldl(GetClauseSize, Clauses, 0, GoalSize0),
+	( Clauses = [_] ->
+		GoalSize = GoalSize0
+	;
+		% Add one for the disjunction.
+		GoalSize = GoalSize0 + 1
+	).
 
 :- pred cases_size(list(case), int).
 :- mode cases_size(in, out) is det.

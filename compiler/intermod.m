@@ -99,8 +99,11 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 		globals__io_lookup_int_option(
 			intermod_inline_simple_threshold, Threshold),
 		globals__io_lookup_bool_option(deforestation, Deforestation),
+		globals__io_lookup_int_option(higher_order_size_limit,
+			HigherOrderSizeLimit),
 		{ intermod__gather_preds(PredIds, yes, Threshold,
-			Deforestation, IntermodInfo0, IntermodInfo1) },
+			HigherOrderSizeLimit, Deforestation,
+			IntermodInfo0, IntermodInfo1) },
 		{ intermod__gather_abstract_exported_types(IntermodInfo1,
 				IntermodInfo2) },
 		{ intermod_info_get_pred_decls(PredDeclsSet,
@@ -162,11 +165,11 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 	% Predicates to gather stuff to output to .opt file.
 
 :- pred intermod__gather_preds(list(pred_id)::in, bool::in, int::in,
-		bool::in, intermod_info::in, intermod_info::out) is det.
+	int::in, bool::in, intermod_info::in, intermod_info::out) is det.
 
-intermod__gather_preds([], _CollectTypes, _, _) --> [].
+intermod__gather_preds([], _CollectTypes, _, _, _) --> [].
 intermod__gather_preds([PredId | PredIds], CollectTypes,
-		InlineThreshold, Deforestation) -->
+		InlineThreshold, HigherOrderSizeLimit, Deforestation) -->
 	intermod_info_get_module_info(ModuleInfo0),
 	{ module_info_preds(ModuleInfo0, PredTable0) },
 	{ map__lookup(PredTable0, PredId, PredInfo0) },
@@ -174,8 +177,8 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
 	(
 		{ intermod__should_be_processed(PredId, PredInfo0,
-				TypeSpecForcePreds, InlineThreshold,
-				Deforestation, ModuleInfo0) }
+			TypeSpecForcePreds, InlineThreshold,
+			HigherOrderSizeLimit, Deforestation, ModuleInfo0) }
 	->
 		=(IntermodInfo0),
 		{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
@@ -222,15 +225,16 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 		[]
 	),
 	intermod__gather_preds(PredIds, CollectTypes,
-		InlineThreshold, Deforestation).
+		InlineThreshold, HigherOrderSizeLimit, Deforestation).
 
 
 :- pred intermod__should_be_processed(pred_id::in, pred_info::in,
-		set(pred_id)::in, int::in, bool::in,
+		set(pred_id)::in, int::in, int::in, bool::in,
 		module_info::in) is semidet.
 
 intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
-		InlineThreshold, Deforestation, ModuleInfo) :-
+		InlineThreshold, HigherOrderSizeLimit,
+		Deforestation, ModuleInfo) :-
 	%
 	% note: we can't include exported_to_submodules predicates in
 	% the `.opt' file, for reasons explained in the comments for
@@ -238,40 +242,45 @@ intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
 	%
 	pred_info_is_exported(PredInfo),
 	(
+		pred_info_clauses_info(PredInfo, ClauseInfo),
+		clauses_info_clauses(ClauseInfo, Clauses),
+
 		pred_info_procids(PredInfo, [ProcId | _ProcIds]),
 		pred_info_procedures(PredInfo, Procs),
 		map__lookup(Procs, ProcId, ProcInfo),
-		proc_info_goal(ProcInfo, Goal),
-		(
-			% Don't export builtins since they will be
-			% recreated in the importing module anyway.
-			\+ code_util__compiler_generated(PredInfo),
-			\+ code_util__predinfo_is_builtin(PredInfo),
 
-			% These will be recreated in the importing module.
-			\+ set__member(PredId, TypeSpecForcePreds),
-			(
-				inlining__is_simple_goal(Goal, InlineThreshold),
-				pred_info_get_markers(PredInfo, Markers),
-				\+ check_marker(Markers, no_inline),
-				proc_info_eval_method(ProcInfo, eval_normal)
-			;
-				pred_info_requested_inlining(PredInfo)
-			;
-				has_ho_input(ModuleInfo, ProcInfo)
-			;
-				Deforestation = yes,
-				% Double the inline-threshold since
-				% goals we want to deforest will have at
-				% least two disjuncts. This allows one
-				% simple goal in each disjunct.  The
-				% disjunction adds one to the goal size,
-				% hence the `+1'.
-				DeforestThreshold is InlineThreshold * 2 + 1,
-				inlining__is_simple_goal(Goal,
-					DeforestThreshold),
-				goal_is_deforestable(PredId, Goal)
-			)
+		% Don't export builtins since they will be
+		% recreated in the importing module anyway.
+		\+ code_util__compiler_generated(PredInfo),
+		\+ code_util__predinfo_is_builtin(PredInfo),
+
+		% These will be recreated in the importing module.
+		\+ set__member(PredId, TypeSpecForcePreds),
+
+		(
+			inlining__is_simple_clause_list(Clauses,
+				InlineThreshold),
+			pred_info_get_markers(PredInfo, Markers),
+			\+ check_marker(Markers, no_inline),
+			proc_info_eval_method(ProcInfo, eval_normal)
+		;
+			pred_info_requested_inlining(PredInfo)
+		;
+			has_ho_input(ModuleInfo, ProcInfo),
+			clause_list_size(Clauses, GoalSize),
+			GoalSize =< HigherOrderSizeLimit
+		;
+			Deforestation = yes,
+			% Double the inline-threshold since
+			% goals we want to deforest will have at
+			% least two disjuncts. This allows one
+			% simple goal in each disjunct.  The
+			% disjunction adds one to the goal size,
+			% hence the `+1'.
+			DeforestThreshold is InlineThreshold * 2 + 1,
+			inlining__is_simple_clause_list(Clauses,
+				DeforestThreshold),
+			clause_list_is_deforestable(PredId, Clauses)
 		)
 	;
 		% assertions that are in the interface should always get
@@ -320,11 +329,26 @@ check_for_ho_input_args(ModuleInfo, [HeadVar | HeadVars],
 
 	% Rough guess: a goal is deforestable if it contains a single
 	% top-level branched goal and is recursive.
-:- pred goal_is_deforestable(pred_id::in, hlds_goal::in) is semidet.
+:- pred clause_list_is_deforestable(pred_id::in, list(clause)::in) is semidet.
 
-goal_is_deforestable(PredId, Goal)  :-
-	goal_calls_pred_id(Goal, PredId),
-	goal_to_conj_list(Goal, GoalList),
+clause_list_is_deforestable(PredId, Clauses)  :-
+	some [Clause1] (
+		list__member(Clause1, Clauses),
+		Clause1 = clause(_, Goal1, _),
+		goal_calls_pred_id(Goal1, PredId)
+	),
+	(
+		Clauses = [_, _ | _]
+	;
+		Clauses = [Clause2],
+		Clause2 = clause(_, Goal2, _),
+		goal_to_conj_list(Goal2, GoalList),
+		goal_contains_one_branched_goal(GoalList)
+	).
+
+:- pred goal_contains_one_branched_goal(list(hlds_goal)::in) is semidet.
+
+goal_contains_one_branched_goal(GoalList) :-
 	goal_contains_one_branched_goal(GoalList, no).
 
 :- pred goal_contains_one_branched_goal(list(hlds_goal)::in,
@@ -1442,7 +1466,9 @@ intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 	globals__lookup_int_option(Globals, intermod_inline_simple_threshold, 
 			Threshold),
 	globals__lookup_bool_option(Globals, deforestation, Deforestation),
-	intermod__gather_preds(PredIds, yes, Threshold,
+	globals__lookup_int_option(Globals, higher_order_size_limit,
+		HigherOrderSizeLimit),
+	intermod__gather_preds(PredIds, yes, Threshold, HigherOrderSizeLimit,
 		Deforestation, Info0, Info1),
 	intermod__gather_abstract_exported_types(Info1, Info),
 	do_adjust_pred_import_status(Info, Module0, Module),
