@@ -1117,7 +1117,9 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 :- type live_info	--->	live_info(
 					module_info,
 					proc_info,
-					bool,
+					bool,		% Do we use typeinfo
+							% liveness for this
+							% proc?
 					map(var, type),
 					varset
 				).
