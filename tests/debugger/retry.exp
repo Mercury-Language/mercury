@@ -113,13 +113,13 @@ mdb> continue
 mdb> continue
      E20:    C13  5 CALL pred retry.fib/2-0 (det)
 mdb> step
-     E21:    C13  5 COND pred retry.fib/2-0 (det) c2;e;e;c2;?;
+     E21:    C13  5 COND pred retry.fib/2-0 (det) c3;e;e;c2;?;
 mdb> retry 2
      E18:    C11  3 CALL pred retry.fib/2-0 (det)
 mdb> print *
        N (arg 1)              	14
 mdb> next
-     E22:    C11  3 COND pred retry.fib/2-0 (det) c2;e;e;c2;?;
+     E22:    C11  3 COND pred retry.fib/2-0 (det) c3;e;e;c2;?;
 mdb> retry 1
      E17:    C10  2 CALL pred retry.fib/2-0 (det)
 mdb> finish -n

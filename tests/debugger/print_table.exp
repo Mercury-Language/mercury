@@ -212,7 +212,7 @@ mdb> table r
 memo table for pred print_table.r/2-0 (det):
 end of table (0 entries)
 mdb> s
-     E15:     C8  2 COND pred print_table.r/2-0 (det) c2;e;e;c2;?;
+     E15:     C8  2 COND pred print_table.r/2-0 (det) c3;e;e;c2;?;
 mdb> table r
 memo table for pred print_table.r/2-0 (det):
 <3>: working

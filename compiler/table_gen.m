@@ -327,16 +327,15 @@ table_gen__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo,
 	io__state::uo) is det.
 
 table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
-		ModuleInfo0, ModuleInfo, S0, S) :-
+		!ModuleInfo, !IO) :-
 	proc_info_eval_method(ProcInfo0, EvalMethod),
 	( eval_method_requires_tabling_transform(EvalMethod) = yes ->
 		table_gen__transform_proc(EvalMethod, PredId, ProcId,
-			ProcInfo0, PredInfo0, ModuleInfo0, ModuleInfo),
-		S = S0
+			ProcInfo0, _, PredInfo0, _, !ModuleInfo)
 	;
-		module_info_globals(ModuleInfo0, Globals),
+		module_info_globals(!.ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, trace_table_io, yes),
-		proc_info_has_io_state_pair(ModuleInfo0, ProcInfo0,
+		proc_info_has_io_state_pair(!.ModuleInfo, ProcInfo0,
 			_InArgNum, _OutArgNum)
 	->
 % XXX We can't include this sanity checking code, because it fails on
@@ -357,23 +356,20 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 		globals__lookup_bool_option(Globals, trace_table_io_require,
 			Require),
 		proc_info_goal(ProcInfo0, BodyGoal),
-		predicate_module(ModuleInfo0, PredId, PredModuleName),
+		predicate_module(!.ModuleInfo, PredId, PredModuleName),
 		should_io_procedure_be_transformed(TransformAll, Require,
 			BodyGoal, PredModuleName, AnnotationIsMissing,
 			TransformPrimitive),
 		(
 			AnnotationIsMissing = yes,
-			report_missing_tabled_for_io(ModuleInfo0, PredInfo0,
-				PredId, ProcId, S0, S),
-			module_info_incr_errors(ModuleInfo0, ModuleInfo1)
+			report_missing_tabled_for_io(!.ModuleInfo, PredInfo0,
+				PredId, ProcId, !IO),
+			module_info_incr_errors(!ModuleInfo)
 		;
-			AnnotationIsMissing = no,
-			ModuleInfo1 = ModuleInfo0,
-			S = S0
+			AnnotationIsMissing = no
 		),
 		(
-			TransformPrimitive = no,
-			ModuleInfo = ModuleInfo0
+			TransformPrimitive = no
 		;
 			TransformPrimitive = yes(Unitize),
 			globals__lookup_bool_option(Globals,
@@ -390,12 +386,11 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 			proc_info_set_eval_method(ProcInfo0, TableIoMethod,
 				ProcInfo1),
 			table_gen__transform_proc(TableIoMethod,
-				PredId, ProcId, ProcInfo1, PredInfo0,
-				ModuleInfo1, ModuleInfo)
+				PredId, ProcId, ProcInfo1, _, PredInfo0, _,
+				!ModuleInfo)
 		)
 	;
-		ModuleInfo = ModuleInfo0,
-		S = S0
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -506,25 +501,25 @@ report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) -->
 %-----------------------------------------------------------------------------%
 
 :- pred table_gen__transform_proc(eval_method::in, pred_id::in, proc_id::in,
-	proc_info::in, pred_info::in, module_info::in, module_info::out)
-	is det.
+	proc_info::in, proc_info::out, pred_info::in, pred_info::out,
+	module_info::in, module_info::out) is det.
 
-table_gen__transform_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
-		ModuleInfo0, ModuleInfo) :-
-	table_info_init(ModuleInfo0, PredId, ProcId, PredInfo0, ProcInfo0,
+table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
+		!ModuleInfo) :-
+	table_info_init(!.ModuleInfo, PredId, ProcId, !.PredInfo, !.ProcInfo,
 		TableInfo0),
 
 	% grab the appropriate fields from the pred_info and proc_info
-	proc_info_interface_determinism(ProcInfo0, Detism),
+	proc_info_interface_determinism(!.ProcInfo, Detism),
 	determinism_to_code_model(Detism, CodeModel),
-	proc_info_headvars(ProcInfo0, HeadVars),
-	proc_info_varset(ProcInfo0, VarSet0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_goal(ProcInfo0, OrigGoal),
-	proc_info_argmodes(ProcInfo0, ArgModes),
+	proc_info_headvars(!.ProcInfo, HeadVars),
+	proc_info_varset(!.ProcInfo, VarSet0),
+	proc_info_vartypes(!.ProcInfo, VarTypes0),
+	proc_info_goal(!.ProcInfo, OrigGoal),
+	proc_info_argmodes(!.ProcInfo, ArgModes),
 
 	( EvalMethod = eval_table_io(Decl, Unitize) ->
-		module_info_globals(ModuleInfo0, Globals),
+		module_info_globals(!.ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, trace_table_io_states,
 			TableIoStates),
 		table_gen__create_new_io_goal(OrigGoal, Decl, Unitize,
@@ -559,38 +554,39 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 		MaybeProcTableInfo = yes(ProcTableInfo)
 	),
 
-	table_info_extract(TableInfo, ModuleInfo1, _, _, PredInfo1, ProcInfo1),
+	table_info_extract(TableInfo, !:ModuleInfo, _, _,
+		!:PredInfo, !:ProcInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	% and save in the module info
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
-	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
-	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
-	proc_info_set_call_table_tip(ProcInfo4, MaybeCallTableTip, ProcInfo5),
-	proc_info_set_maybe_proc_table_info(ProcInfo5, MaybeProcTableInfo,
-		ProcInfo6),
+	proc_info_set_goal(!.ProcInfo, Goal, !:ProcInfo),
+	proc_info_set_varset(!.ProcInfo, VarSet, !:ProcInfo),
+	proc_info_set_vartypes(!.ProcInfo, VarTypes, !:ProcInfo),
+	proc_info_set_call_table_tip(!.ProcInfo, MaybeCallTableTip,
+		!:ProcInfo),
+	proc_info_set_maybe_proc_table_info(!.ProcInfo, MaybeProcTableInfo,
+		!:ProcInfo),
 
 	% Some of the instmap_deltas generated in this module
 	% are pretty dodgy (especially those for if-then-elses), so
 	% recompute them here.
 
 	RecomputeAtomic = no,
-	recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo6, ProcInfo,
-		ModuleInfo1, ModuleInfo2),
+	recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo,
+		!ModuleInfo),
 
-	pred_info_procedures(PredInfo1, ProcTable1),
-	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo2),
+	pred_info_procedures(!.PredInfo, ProcTable1),
+	map__det_update(ProcTable1, ProcId, !.ProcInfo, ProcTable),
+	pred_info_set_procedures(!.PredInfo, ProcTable, !:PredInfo),
 
 	%
 	% The transformation doesn't pay attention to the purity
 	% of compound goals, so recompute the purity here.
 	%
-	repuritycheck_proc(ModuleInfo2, proc(PredId, ProcId), PredInfo2,
-		PredInfo),
-	module_info_preds(ModuleInfo2, PredTable1),
-	map__det_update(PredTable1, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo2, PredTable, ModuleInfo).
+	repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
+	module_info_preds(!.ModuleInfo, PredTable1),
+	map__det_update(PredTable1, PredId, !.PredInfo, PredTable),
+	module_info_set_preds(!.ModuleInfo, PredTable, !:ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -798,7 +794,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 
 table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		HeadVars, HeadVarModes, !VarTypes, !VarSet, !TableInfo,
-		TableVar, Goal, ProcTableInfo) :-
+		TableTipVar, Goal, ProcTableInfo) :-
 	% even if the original goal doesn't use all of the headvars,
 	% the code generated by the tabling transformation does,
 	% so we need to compute the nonlocals from the headvars rather
@@ -813,17 +809,18 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	get_input_output_vars(HeadVars, HeadVarModes, ModuleInfo, InputVars,
 		OutputVars),
 
-	generate_simple_lookup_goal(InputVars, PredId, ProcId, Context,
-		!VarTypes, !VarSet, !TableInfo, TableVar, LookUpGoal, Steps),
-	generate_call("table_simple_is_complete", [TableVar], semidet,
+	generate_simple_call_table_lookup_goal(InputVars, PredId, ProcId,
+		Context, !VarTypes, !VarSet, !TableInfo, TableTipVar,
+		LookUpGoal, Steps),
+	generate_call("table_simple_is_complete", [TableTipVar], semidet,
 		yes(semipure), [], ModuleInfo, Context, CompleteCheckGoal),
 	allocate_slot_numbers(OutputVars, 0, NumberedOutputVars),
 	list__length(NumberedOutputVars, BlockSize),
-	generate_save_goal(NumberedOutputVars, TableVar, BlockSize,
+	generate_save_goal(NumberedOutputVars, TableTipVar, BlockSize,
 		Context, !VarTypes, !VarSet, !TableInfo, SaveAnsGoal0),
-	generate_simple_restore_goal(NumberedOutputVars, TableVar,
+	generate_simple_restore_goal(NumberedOutputVars, TableTipVar,
 		ModuleInfo, Context, !VarTypes, !VarSet, RestoreAnsGoal0),
-	generate_call("table_simple_mark_as_inactive", [TableVar], det,
+	generate_call("table_simple_mark_as_inactive", [TableTipVar], det,
 		yes(impure), [], ModuleInfo, Context, MarkAsInactiveGoal),
 	generate_loop_error_goal(!.TableInfo, Context, infinite_recursion_msg,
 		!VarTypes, !VarSet, LoopErrorGoal),
@@ -838,7 +835,7 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		RestoreAnsGoal = RestoreAnsGoal0
 	),
 
-	set__insert(OrigNonLocals, TableVar, GenAnsNonLocals),
+	set__insert(OrigNonLocals, TableTipVar, GenAnsNonLocals),
 
 	( EvalMethod = eval_loop_check ->
 		SaveAnsGoal = MarkAsInactiveGoal
@@ -849,9 +846,9 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
     "table_gen__create_new_det_goal: unsupported evaluation model")
 	),
 
-	generate_call("table_simple_is_active", [TableVar], semidet,
+	generate_call("table_simple_is_active", [TableTipVar], semidet,
 		yes(semipure), [], ModuleInfo, Context, ActiveCheckGoal),
-	generate_call("table_simple_mark_as_active", [TableVar], det,
+	generate_call("table_simple_mark_as_active", [TableTipVar], det,
 		yes(impure), [], ModuleInfo, Context, MarkAsActiveGoal),
 
 	NoLoopGenAnsGoalEx = conj([MarkAsActiveGoal, OrigGoal, SaveAnsGoal]),
@@ -909,7 +906,7 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 
 table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		HeadVars, HeadVarModes, !VarTypes, !VarSet, !TableInfo,
-		TableVar, Goal, ProcTableInfo) :-
+		TableTipVar, Goal, ProcTableInfo) :-
 	% even if the original goal doesn't use all of the headvars,
 	% the code generated by the tabling transformation does,
 	% so we need to compute the nonlocals from the headvars rather
@@ -923,27 +920,28 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	get_input_output_vars(HeadVars, HeadVarModes, ModuleInfo, InputVars,
 		OutputVars),
 
-	generate_simple_lookup_goal(InputVars, PredId, ProcId, Context,
-		!VarTypes, !VarSet, !TableInfo, TableVar, LookUpGoal, Steps),
-	generate_call("table_simple_is_complete", [TableVar], semidet,
+	generate_simple_call_table_lookup_goal(InputVars, PredId, ProcId,
+		Context, !VarTypes, !VarSet, !TableInfo, TableTipVar,
+		LookUpGoal, Steps),
+	generate_call("table_simple_is_complete", [TableTipVar], semidet,
 		yes(semipure), [], ModuleInfo, Context, CompleteCheckGoal),
 	allocate_slot_numbers(OutputVars, 0, NumberedOutputVars),
 	list__length(NumberedOutputVars, BlockSize),
-	generate_save_goal(NumberedOutputVars, TableVar, BlockSize,
+	generate_save_goal(NumberedOutputVars, TableTipVar, BlockSize,
 		Context, !VarTypes, !VarSet, !TableInfo, SaveAnsGoal0),
-	generate_simple_restore_goal(NumberedOutputVars, TableVar,
+	generate_simple_restore_goal(NumberedOutputVars, TableTipVar,
 		ModuleInfo, Context, !VarTypes, !VarSet, RestoreTrueAnsGoal),
 	generate_loop_error_goal(!.TableInfo, Context, infinite_recursion_msg,
 		!VarTypes, !VarSet, LoopErrorGoal),
-	generate_call("table_simple_mark_as_failed", [TableVar],
+	generate_call("table_simple_mark_as_failed", [TableTipVar],
 		det, yes(impure), [], ModuleInfo, Context, MarkAsFailedGoal0),
 	append_fail(MarkAsFailedGoal0, MarkAsFailedGoal),
-	generate_call("table_simple_has_succeeded", [TableVar], semidet,
+	generate_call("table_simple_has_succeeded", [TableTipVar], semidet,
 		yes(semipure), [], ModuleInfo, Context, HasSucceededCheckGoal),
-	generate_call("table_simple_mark_as_inactive", [TableVar],
+	generate_call("table_simple_mark_as_inactive", [TableTipVar],
 		det, yes(impure), [], ModuleInfo, Context, MarkAsInactiveGoal),
 
-	set__insert(OrigNonLocals, TableVar, GenAnsNonLocals),
+	set__insert(OrigNonLocals, TableTipVar, GenAnsNonLocals),
 
 	(
 		(
@@ -957,11 +955,11 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		;
 			SaveAnsGoal = SaveAnsGoal0
 		),
-		generate_call("table_simple_is_active", [TableVar], semidet,
-			yes(semipure), [], ModuleInfo, Context,
+		generate_call("table_simple_is_active", [TableTipVar],
+			semidet, yes(semipure), [], ModuleInfo, Context,
 			ActiveCheckGoal),
-		generate_call("table_simple_mark_as_active", [TableVar], det,
-			yes(impure), [], ModuleInfo, Context,
+		generate_call("table_simple_mark_as_active", [TableTipVar],
+			det, yes(impure), [], ModuleInfo, Context,
 			MarkAsActiveGoal),
 
 		NoLoopGenAnsGoalEx = conj([MarkAsActiveGoal, OrigGoal]),
@@ -990,11 +988,11 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		EvalMethod = eval_minimal
 	->
 		SaveAnsGoal = SaveAnsGoal0,
-		generate_call("table_simple_is_inactive", [TableVar], semidet,
-			yes(semipure), [], ModuleInfo, Context,
+		generate_call("table_simple_is_inactive", [TableTipVar],
+			semidet, yes(semipure), [], ModuleInfo, Context,
 			InactiveCheckGoal),
-		generate_call("table_simple_mark_as_active", [TableVar], det,
-			yes(impure), [], ModuleInfo, Context,
+		generate_call("table_simple_mark_as_active", [TableTipVar],
+			det, yes(impure), [], ModuleInfo, Context,
 			MarkAsActiveGoal),
 		GenTrueAnsGoalEx = conj([InactiveCheckGoal,
 			MarkAsActiveGoal, OrigGoal]),
@@ -1029,7 +1027,7 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	;
 		RestAnsGoalEx =
 			conj([HasSucceededCheckGoal, RestoreTrueAnsGoal]),
-		set__singleton_set(RestNonLocals0, TableVar),
+		set__singleton_set(RestNonLocals0, TableTipVar),
 		set__insert_list(RestNonLocals0, OutputVars, RestNonLocals),
 		create_instmap_delta([HasSucceededCheckGoal,
 			RestoreTrueAnsGoal], RestInstMapDelta0),
@@ -1086,7 +1084,7 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 
 table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		HeadVars, HeadVarModes, !VarTypes, !VarSet, !TableInfo,
-		TableVar, Goal, ProcTableInfo) :-
+		TableTipVar, Goal, ProcTableInfo) :-
 	% even if the original goal doesn't use all of the headvars,
 	% the code generated by the tabling transformation does,
 	% so we need to compute the nonlocals from the headvars rather
@@ -1101,20 +1099,21 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		OutputVars),
 	allocate_slot_numbers(OutputVars, 0, NumberedOutputVars),
 	list__length(NumberedOutputVars, BlockSize),
-	generate_non_lookup_goal(InputVars, PredId, ProcId, Context,
-		!VarTypes, !VarSet, !TableInfo, TableVar, LookUpGoal, Steps),
+	generate_non_call_table_lookup_goal(InputVars, PredId, ProcId, Context,
+		!VarTypes, !VarSet, !TableInfo, TableTipVar, SubgoalVar,
+		LookUpGoal, Steps),
 	generate_new_table_var("Status", status_type, !VarTypes, !VarSet,
 		StatusVar),
-	generate_call("table_subgoal_status", [TableVar, StatusVar], det,
+	generate_call("table_subgoal_status", [SubgoalVar, StatusVar], det,
 		yes(semipure), [StatusVar - ground(unique, none)],
 		ModuleInfo, Context, StatusGoal),
-	generate_non_save_goal(NumberedOutputVars, TableVar, BlockSize,
+	generate_non_save_goal(NumberedOutputVars, SubgoalVar, BlockSize,
 		Context, !VarTypes, !VarSet, !TableInfo, SaveAnsGoal),
-	generate_restore_all_goal(Detism, NumberedOutputVars, TableVar,
+	generate_restore_all_goal(Detism, NumberedOutputVars, SubgoalVar,
 		ModuleInfo, Context, !VarTypes, !VarSet, RestoreAllAnsGoal),
 	generate_loop_error_goal(!.TableInfo, Context, infinite_recursion_msg,
 		!VarTypes, !VarSet, LoopErrorGoal),
-	generate_call("table_nondet_mark_as_active", [TableVar], det,
+	generate_call("table_nondet_mark_as_active", [SubgoalVar], det,
 		yes(impure), [], ModuleInfo, Context, MarkAsActiveGoal),
 	true_goal(TrueGoal),
 	(
@@ -1132,7 +1131,7 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		CompleteGoal = LoopInternalErrorGoal
 	;
 		EvalMethod = eval_minimal,
-		generate_suspend_goal(NumberedOutputVars, TableVar,
+		generate_suspend_goal(NumberedOutputVars, SubgoalVar,
 			ModuleInfo, Context, !VarTypes, !VarSet, SuspendGoal),
 		AfterOrigGoal = SaveAnsGoal,
 		ActiveGoal = SuspendGoal,
@@ -1145,7 +1144,7 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		error("table_gen__create_new_non_goal: normal")
 	),
 	MainEx = conj([MarkAsActiveGoal, OrigGoal, AfterOrigGoal]),
-	set__insert(OrigNonLocals, TableVar, MainNonLocals),
+	set__insert(OrigNonLocals, SubgoalVar, MainNonLocals),
 	create_instmap_delta([MarkAsActiveGoal, OrigGoal, SaveAnsGoal],
 		MainIMD0),
 	instmap_delta_restrict(MainIMD0, MainNonLocals, MainIMD),
@@ -1154,7 +1153,7 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	goal_info_add_feature(MainGoalInfo0, hide_debug_event, MainGoalInfo),
 	MainGoal = MainEx - MainGoalInfo,
 	( EvalMethod = eval_minimal ->
-		generate_call("table_nondet_resume", [TableVar], det,
+		generate_call("table_nondet_resume", [SubgoalVar], det,
 			yes(impure), [], ModuleInfo, Context, ResumeGoal0),
 		append_fail(ResumeGoal0, ResumeGoal),
 		InactiveEx = disj([MainGoal, ResumeGoal]),
@@ -1224,87 +1223,119 @@ generate_get_table_goal(PredId, ProcId, !VarTypes, !VarSet, PredTableVar,
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_simple_lookup_goal(list(prog_var)::in,
+:- pred generate_simple_call_table_lookup_goal(list(prog_var)::in,
 	pred_id::in, proc_id::in, term__context::in,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	prog_var::out, hlds_goal::out, list(table_trie_step)::out) is det.
 
-generate_simple_lookup_goal(Vars, PredId, ProcId, Context, !VarTypes, !VarSet,
-		!TableInfo, TableVar, Goal, Steps) :-
+generate_simple_call_table_lookup_goal(Vars, PredId, ProcId, Context,
+		!VarTypes, !VarSet, !TableInfo, TableTipVar, Goal, Steps) :-
 	generate_get_table_goal(PredId, ProcId, !VarTypes, !VarSet,
-		PredTableVar, GetTableGoal),
-	generate_lookup_goals(Vars, Context, PredTableVar, TableVar,
-		!VarTypes, !VarSet, !TableInfo, LookupGoals, Steps),
-	GoalEx = conj([GetTableGoal | LookupGoals]),
-	set__singleton_set(NonLocals0, TableVar),
+		PredTableVar, GetTableGoal0),
+	(
+		Vars = [],
+		Steps = [],
+		TableTipVar = PredTableVar,
+		attach_call_table_tip(GetTableGoal0, GetTableGoal),
+		LookupGoals = []
+	;
+		Vars = [FirstVar | LaterVars],
+		GetTableGoal = GetTableGoal0,
+		generate_call_table_lookup_goals(FirstVar, LaterVars, Context,
+			PredTableVar, TableTipVar, !VarTypes, !VarSet,
+			!TableInfo, LookupGoals, Steps)
+	),
+	GoalExpr = conj([GetTableGoal | LookupGoals]),
+	set__singleton_set(NonLocals0, TableTipVar),
 	set__insert_list(NonLocals0, Vars, NonLocals),
-	instmap_delta_from_assoc_list([], InstMapDelta),
+	instmap_delta_from_assoc_list([TableTipVar - ground(unique, none)],
+		InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, impure, Context,
-		GoalInfo0),
-	goal_info_get_features(GoalInfo0, Features0),
-	set__insert(Features0, call_table_gen, Features),
-	goal_info_set_features(GoalInfo0, Features, GoalInfo),
+		GoalInfo),
+	Goal = GoalExpr - GoalInfo.
 
-	% We need to wrap the conjunction in a `some' which cannot be removed
-	% to make sure the `call_table_gen' marker doesn't get removed by
-	% any of the optimization passes (e.g. simplify.m flattening
-	% conjunctions).
-	Goal = some([], cannot_remove, GoalEx - GoalInfo0) - GoalInfo.
-
-:- pred generate_non_lookup_goal(list(prog_var)::in, pred_id::in, proc_id::in,
-	term__context::in, map(prog_var, type)::in, map(prog_var, type)::out,
+:- pred generate_non_call_table_lookup_goal(list(prog_var)::in,
+	pred_id::in, proc_id::in, term__context::in,
+	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
-	prog_var::out, hlds_goal::out, list(table_trie_step)::out) is det.
+	prog_var::out, prog_var::out, hlds_goal::out,
+	list(table_trie_step)::out) is det.
 
-generate_non_lookup_goal(Vars, PredId, ProcId, Context, !VarTypes, !VarSet,
-		!TableInfo, SubgoalVar, Goal, Steps) :-
+generate_non_call_table_lookup_goal(Vars, PredId, ProcId, Context, !VarTypes,
+		!VarSet, !TableInfo, TableTipVar, SubgoalVar, Goal, Steps) :-
+	generate_simple_call_table_lookup_goal(Vars, PredId, ProcId, Context,
+		!VarTypes, !VarSet, !TableInfo, TableTipVar, LookupGoal,
+		Steps),
 	ModuleInfo = !.TableInfo ^ table_module_info,
-	generate_get_table_goal(PredId, ProcId, !VarTypes,
-		!VarSet, PredTableVar, GetTableGoal),
-	generate_lookup_goals(Vars, Context, PredTableVar, TableNodeVar,
-		!VarTypes, !VarSet, !TableInfo, LookupGoals, Steps),
 	generate_new_table_var("SubgoalVar", subgoal_type, !VarTypes, !VarSet,
 		SubgoalVar),
-	generate_call("table_nondet_setup", [TableNodeVar, SubgoalVar],
+	generate_call("table_nondet_setup", [TableTipVar, SubgoalVar],
 		det, yes(impure), [SubgoalVar - ground(unique, none)],
 		ModuleInfo, Context, SetupGoal),
-
-	list__append([GetTableGoal | LookupGoals], [SetupGoal], Goals),
-	GoalEx = conj(Goals),
+	GoalExpr = conj([LookupGoal, SetupGoal]),
 	set__singleton_set(NonLocals0, SubgoalVar),
 	set__insert_list(NonLocals0, Vars, NonLocals),
-	create_instmap_delta(Goals, InstMapDelta0),
-	instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
+	instmap_delta_from_assoc_list([SubgoalVar - ground(unique, none)],
+		InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, impure, Context,
-		GoalInfo0),
-	goal_info_get_features(GoalInfo0, Features0),
-	set__insert(Features0, call_table_gen, Features),
-	goal_info_set_features(GoalInfo0, Features, GoalInfo),
+		GoalInfo),
+	Goal = GoalExpr - GoalInfo.
 
-	% We need to wrap the conjunction in a `some' which cannot be removed
-	% to make sure the `call_table_gen' marker doesn't get removed by
-	% any of the optimization passes (e.g. simplify.m flattening
-	% conjunctions).
-	Goal = some([], cannot_remove, GoalEx - GoalInfo) - GoalInfo.
-
-:- pred generate_lookup_goals(list(prog_var)::in, term__context::in,
-	prog_var::in, prog_var::out,
+:- pred generate_call_table_lookup_goals(prog_var::in, list(prog_var)::in,
+	term__context::in, prog_var::in, prog_var::out,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	list(hlds_goal)::out, list(table_trie_step)::out) is det.
 
-generate_lookup_goals([], _, TableVar, TableVar, !VarTypes, !VarSet,
-		!TableInfo, [], []).
-generate_lookup_goals([Var | Rest], Context, TableVar0, TableVar, !VarTypes,
-		!VarSet, !TableInfo, [Goal | RestGoals], [Step | Steps]) :-
+generate_call_table_lookup_goals(Var, Vars, Context, TableVar0, TableTipVar,
+		!VarTypes, !VarSet, !TableInfo, [Goal | RestGoals],
+		[Step | Steps]) :-
 	ModuleInfo = !.TableInfo ^ table_module_info,
 	map__lookup(!.VarTypes, Var, VarType),
 	classify_type(VarType, ModuleInfo, TypeCat),
 	gen_lookup_call_for_type(TypeCat, VarType, TableVar0, Var, Context,
-		!VarTypes, !VarSet, !TableInfo, TableVar1, Goal, Step),
-	generate_lookup_goals(Rest, Context, TableVar1, TableVar,
-		!VarTypes, !VarSet, !TableInfo, RestGoals, Steps).
+		!VarTypes, !VarSet, !TableInfo, TableVar1, Goal0, Step),
+	(
+		Vars = [],
+		TableTipVar = TableVar1,
+		attach_call_table_tip(Goal0, Goal),
+		RestGoals = [],
+		Steps = []
+	;
+		Vars = [FirstVar | LaterVars],
+		Goal = Goal0,
+		generate_call_table_lookup_goals(FirstVar, LaterVars,
+			Context, TableVar1, TableTipVar, !VarTypes, !VarSet,
+			!TableInfo, RestGoals, Steps)
+	).
+
+:- pred attach_call_table_tip(hlds_goal::in, hlds_goal::out) is det.
+
+attach_call_table_tip(GoalExpr - GoalInfo0, GoalExpr - GoalInfo) :-
+	goal_info_get_features(GoalInfo0, Features0),
+	set__insert(Features0, call_table_gen, Features),
+	goal_info_set_features(GoalInfo0, Features, GoalInfo).
+
+:- pred generate_answer_table_lookup_goals(list(prog_var)::in,
+	term__context::in, prog_var::in, prog_var::out,
+	map(prog_var, type)::in, map(prog_var, type)::out,
+	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
+	list(hlds_goal)::out) is det.
+
+generate_answer_table_lookup_goals([], _Context, TableVar, TableVar,
+		!VarTypes, !VarSet, !TableInfo, []).
+generate_answer_table_lookup_goals([Var | Vars], Context, TableVar0,
+		TableTipVar, !VarTypes, !VarSet, !TableInfo,
+		[Goal | RestGoals]) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	map__lookup(!.VarTypes, Var, VarType),
+	classify_type(VarType, ModuleInfo, TypeCat),
+	gen_lookup_call_for_type(TypeCat, VarType, TableVar0, Var, Context,
+		!VarTypes, !VarSet, !TableInfo, TableVar1, Goal, _),
+	generate_answer_table_lookup_goals(Vars, Context,
+		TableVar1, TableTipVar, !VarTypes, !VarSet,
+		!TableInfo, RestGoals).
 
 :- pred gen_lookup_call_for_type(builtin_type::in, (type)::in,
 	prog_var::in, prog_var::in, term__context::in,
@@ -1439,9 +1470,9 @@ generate_non_save_goal(NumberedOutputVars, TableVar, BlockSize, Context,
 		det, yes(impure), [AnsTableVar0 - ground(unique, none)],
 		ModuleInfo, Context, GetAnsTableGoal),
 	assoc_list__keys(NumberedOutputVars, OutputVars),
-	generate_lookup_goals(OutputVars, Context,
+	generate_answer_table_lookup_goals(OutputVars, Context,
 		AnsTableVar0, AnsTableVar1, !VarTypes, !VarSet, !TableInfo,
-		LookupAnsGoals, _),
+		LookupAnsGoals),
 	generate_call("table_nondet_answer_is_not_duplicate", [AnsTableVar1],
 		semidet, yes(impure), [], ModuleInfo, Context,
 		DuplicateCheckGoal),
