@@ -476,7 +476,10 @@ LIBGRADES		= @LIBGRADES@
 
 #-----------------------------------------------------------------------------#
 
-OBJFILE_OPT="@OBJFILE_OPT@"
+# We need to use $(empty_string) here to prevent Make from truncating
+# any trailing spaces in @OBJFILE_OPT@
+empty_string=
+OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
 
 O=@OBJ_SUFFIX@
 A=@LIB_SUFFIX@
