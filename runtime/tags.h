@@ -12,8 +12,14 @@
 /* DEFINITIONS FOR WORD LAYOUT */
 
 #define	WORDBITS	(CHAR_BIT * sizeof(Word))
+
+/* TAGBITS specifies the number of bits in each word that we can use for tags */
 #ifndef TAGBITS
-#define	TAGBITS		2
+#ifdef HIGHTAGS
+#error "HIGHTAGS defined but TAGBITS undefined"
+#else
+#define	TAGBITS		LOW_TAG_BITS
+#endif
 #endif
 
 #if TAGBITS > 0 && defined(HIGHTAGS) && defined(CONSERVATIVE_GC)
