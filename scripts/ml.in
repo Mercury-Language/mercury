@@ -260,8 +260,10 @@ esac
 use_msvcrt=@USE_MSVCRT@
 if test $use_msvcrt = "yes"; then
 	MSVCRT_OPTS="/MD" # enable linking with the MS Visual C runtime
+	NODEFAULTLIB_FLAG="/nodefaultlib:libc"
 else
 	MSVCRT_OPTS=""
+	NODEFAULTLIB_FLAG=""
 fi
 
 case $make_shared_lib in
@@ -374,7 +376,7 @@ case "$MKFIFO" in
 esac
 
 LINKER_PRE_FLAGS="$MSVCRT_OPTS $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
-LINKER_POST_FLAGS="@LINK_OPT_SEP@ $DEBUG_FLAG $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
+LINKER_POST_FLAGS="@LINK_OPT_SEP@ $NODEFAULTLIB_FLAG $DEBUG_FLAG $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
 
 case $verbose in
     true)
