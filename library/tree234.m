@@ -292,6 +292,16 @@ tree234__lookup(T, K, V) :-
 
 %------------------------------------------------------------------------------%
 
+% tree234__insert is implemented using the simple top-down
+% approach described in eg Sedgwick which splits 4 nodes into
+% two 2 nodes on the downward traversal of the tree as we
+% search for the right place to insert the new key-value pair.
+% We know we have the right place if the subtrees of the node
+% are empty (in which case we expand the node - which will always
+% work because we already split 4 nodes into 2 nodes), or if the
+% tree itself is empty.
+% This algorithm is O(lgN).
+
 tree234__insert(empty, K, V, two(K, V, empty, empty)).
 
 tree234__insert(two(K0, V0, T0, T1), K, V, Tree) :-
@@ -429,6 +439,9 @@ tree234__insert(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V, Tree) :-
 	tree234__insert(T4, K, V, Tree).
 
 %------------------------------------------------------------------------------%
+
+% tree234__set uses the same algorithm as used for tree234__insert,
+% except that instead of failing for equal keys, we replace the value.
 
 tree234__set(empty, K, V, two(K, V, empty, empty)).
 
@@ -722,6 +735,13 @@ tree234__remove_smallest(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 	).
 
 %------------------------------------------------------------------------------%
+
+% tree234__glue(A, B, C) is true iff C is a 234-tree which is the
+% same as the 234-tree A with the 234-tree B attatched to the right-most
+% node. It is used when removing a node from the a tree to glue the two
+% resulting fragments together.
+% XXX a better algorithm could be devised that leaves the tree more
+% balanced (this algorithm is not the *proper* way to join 2 234 trees).
 
 :- pred tree234__glue(tree234(K, V), tree234(K, V), tree234(K, V)).
 :- mode tree234__glue(in, in, out) is det.
