@@ -841,20 +841,36 @@ base_type_layout__handle_comp_const([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
 
 	% For simple tags:
 	%
-	% Tag 1, with a pointer to an array containing:
-	%	N - the arity of this functor 
-	%	N pseudo-typeinfos (of the arguments)
-	%	- a string constant (the name of the functor)
-	%	- tag information
+	% Tag 1, with a pointer to a simple vector.
 
 :- pred base_type_layout__handle_simple(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
 :- mode base_type_layout__handle_simple(in, in, out, out) is det.
 
-base_type_layout__handle_simple([], _, _, _) :-
+base_type_layout__handle_simple(ConsList, LayoutInfo0, LayoutInfo, Rval) :-
+	base_type_layout__simple_vector(ConsList, LayoutInfo0, LayoutInfo1,
+		EndRvals),
+	base_type_layout__get_next_label(LayoutInfo1, NextLabel),
+	base_type_layout__incr_next_label(LayoutInfo1, LayoutInfo),
+	base_type_layout__tag_value(simple, Tag),
+	base_type_layout__encode_create(LayoutInfo, Tag, EndRvals, no, 
+		NextLabel, Rval).
+
+	% Create a simple vector.
+	%
+	%	N - the arity of this functor 
+	%	N pseudo-typeinfos (of the arguments)
+	%	- a string constant (the name of the functor)
+	%	- tag information
+
+:- pred base_type_layout__simple_vector(list(pair(cons_id, cons_tag)), 
+	layout_info, layout_info, list(maybe(rval))).
+:- mode base_type_layout__simple_vector(in, in, out, out) is det.
+
+base_type_layout__simple_vector([], _, _, _) :-
 	error("base_type_layout: no constructors for simple tag").
-base_type_layout__handle_simple([ConsId - ConsTag | _], LayoutInfo0, 
-		LayoutInfo, Rval) :-
+base_type_layout__simple_vector([ConsId - ConsTag | _], LayoutInfo0, 
+		LayoutInfo, EndRvals) :-
 	( 
 		ConsId = cons(SymName, _Arity)
 	->
@@ -863,20 +879,14 @@ base_type_layout__handle_simple([ConsId - ConsTag | _], LayoutInfo0,
 		error("base_type_layout: simple tag with no constructor")
 	),
 	base_type_layout__get_cons_args(LayoutInfo0, ConsId, ConsArgs),
-	base_type_layout__get_next_label(LayoutInfo0, NextLabel),
-	base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo1),
 	list__length(ConsArgs, NumArgs),
 	base_type_layout__generate_pseudo_type_infos(ConsArgs, 
-		LayoutInfo1, LayoutInfo2, PseudoTypeInfos),
-	base_type_layout__encode_cons_tag(ConsTag, ConsTagRvals, LayoutInfo2,
+		LayoutInfo0, LayoutInfo1, PseudoTypeInfos),
+	base_type_layout__encode_cons_tag(ConsTag, ConsTagRvals, LayoutInfo1,
 		LayoutInfo),
-	list__append(PseudoTypeInfos, 
+	list__append([yes(const(int_const(NumArgs))) | PseudoTypeInfos], 
 		[yes(const(string_const(ConsString))) | ConsTagRvals], 
-		EndRvals),
-	base_type_layout__tag_value(simple, Tag),
-	base_type_layout__encode_create(LayoutInfo, Tag, 
-		[yes(const(int_const(NumArgs))) | EndRvals], no, NextLabel, 
-		Rval).
+		EndRvals).
 
 
 	% For complicated tags:
@@ -1006,10 +1016,16 @@ base_type_layout__functors_du(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 	list__foldr(
 		lambda([ConsPair::in, Acc::in, NewAcc::out] is det, (
 			Acc = Rvals0 - LayoutInfoA,
-			base_type_layout__handle_simple([ConsPair], LayoutInfoA,
-				LayoutInfoB, Rval1),
-			list__append(Rval1, Rvals0, Rvals1),
-			NewAcc = Rvals1 - LayoutInfoB)),
+			base_type_layout__simple_vector([ConsPair], LayoutInfoA,
+				LayoutInfoB, VectorRvalList),
+			base_type_layout__get_next_label(LayoutInfoB,
+				NextLabel),
+			base_type_layout__incr_next_label(LayoutInfoB,
+				LayoutInfoC),
+			VectorRval = yes(create(0, VectorRvalList, no, 
+				NextLabel)),
+			Rvals1 = [VectorRval | Rvals0],
+			NewAcc = Rvals1 - LayoutInfoC)),
 		ConsList, [] - LayoutInfo0, VectorRvals - LayoutInfo),
 	Rvals = [DuIndicatorRval, LengthRval | VectorRvals].
 
