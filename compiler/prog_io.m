@@ -583,12 +583,25 @@ parse_goal(Term, Goal) :-
 parse_goal_2(term_functor(term_atom("true"),[],_), true).
 parse_goal_2(term_functor(term_atom("fail"),[],_), fail).
 parse_goal_2(term_functor(term_atom("="),[A,B],_), unify(A,B)).
+parse_goal_2(term_functor(term_atom("->"),[A0,B0],_), if_then(Vars,A,B)) :-
+	parse_some_vars_goal(A0, Vars, A),
+	parse_goal(B0, B).
 parse_goal_2(term_functor(term_atom(","),[A0,B0],_), (A,B)) :-
 	parse_goal(A0, A),
 	parse_goal(B0, B).
-parse_goal_2(term_functor(term_atom(";"),[A0,B0],_), (A;B)) :-
-	parse_goal(A0, A),
-	parse_goal(B0, B).
+parse_goal_2(term_functor(term_atom(";"),[A0,B0],_), R) :-
+	(if some [X0, Y0, Context]
+		A0 = term_functor(term_atom("->"), [X0,Y0], Context)
+	then
+		parse_some_vars_goal(X0, Vars, X),
+		parse_goal(Y0, Y),
+		parse_goal(B0, B),
+		R = if_then_else(Vars, X, Y, B)
+	else
+		parse_goal(A0, A),
+		parse_goal(B0, B),
+		R = (A;B)
+	).
 parse_goal_2(term_functor(term_atom("if"),
 		[term_functor(term_atom("then"),[A0,B0],_)],_),
 		if_then(Vars,A,B)) :-
@@ -607,6 +620,9 @@ parse_goal_2( term_functor(term_atom("else"),[
 parse_goal_2( term_functor(term_atom("not"), [A0], _), not([],A) ) :-
 	parse_goal(A0, A).
 parse_goal_2( term_functor(term_atom("all"),[Vars0,A0],_),all(Vars,A) ):-
+	term_vars(Vars0, Vars),
+	parse_goal(A0, A).
+parse_goal_2( term_functor(term_atom("some"),[Vars0,A0],_),some(Vars,A) ):-
 	term_vars(Vars0, Vars),
 	parse_goal(A0, A).
 
