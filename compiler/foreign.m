@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -218,6 +218,8 @@
 	% The name of the #define which can be used to guard declarations with
 	% to prevent entities being declared twice.
 :- func decl_guard(sym_name) = string.
+
+:- func foreign_type_language(foreign_language_type) = foreign_language.
 
 :- implementation.
 
@@ -836,6 +838,12 @@ handle_std_library(CurrentModule, ModuleName0) = ModuleName :-
 decl_guard(ModuleName) = UppercaseModuleName ++ "_DECL_GUARD" :-
 	MangledModuleName = sym_name_mangle(ModuleName),
 	string__to_upper(MangledModuleName, UppercaseModuleName).
+
+%-----------------------------------------------------------------------------%
+
+foreign_type_language(il(_)) = il.
+foreign_type_language(c(_)) = c.
+foreign_type_language(java(_)) = java.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1377,7 +1377,7 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
 	% possible. Then write out the .int and .int2 files.
 make_interface(SourceFileName, SourceFileModuleName, ModuleName,
 		MaybeTimestamp, Items0) -->
-	{ get_interface(yes, Items0, InterfaceItems0) },
+	{ get_interface(ModuleName, yes, Items0, InterfaceItems0) },
 		% 
 		% Get the .int3 files for imported modules
 		%
@@ -1437,7 +1437,7 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
 	% This qualifies everything as much as it can given the
 	% information in the current module and writes out the .int3 file.
 make_short_interface(SourceFileName, ModuleName, Items0) -->
-	{ get_interface(no, Items0, InterfaceItems0) },
+	{ get_interface(ModuleName, no, Items0, InterfaceItems0) },
 		% assertions are also stripped since they should
 		% only be written to .opt files,
 	{ strip_assertions(InterfaceItems0, InterfaceItems1) },
@@ -1555,12 +1555,13 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
 		), !.ImplTypesMap, ImplItems0, ImplItems1),
 
 	IntItems = [make_pseudo_decl(interface) | IntItems0],
+
 	maybe_strip_import_decls(ImplItems1, ImplItems2),
 	( ImplItems2 = [] ->
 		Items = IntItems
 	;
 		Items = IntItems ++
-				[make_pseudo_decl(implementation) | ImplItems2]
+			[make_pseudo_decl(implementation) | ImplItems2]
 	)
     ).
 
@@ -1696,7 +1697,7 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 % header file, which currently we don't.
 
 pragma_allowed_in_interface(foreign_decl(_, _), no).
-pragma_allowed_in_interface(foreign_import_module(_, _), no).
+pragma_allowed_in_interface(foreign_import_module(_, _), yes).
 pragma_allowed_in_interface(foreign_code(_, _), no).
 pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _), no).
 pragma_allowed_in_interface(inline(_, _), no).
@@ -1737,7 +1738,7 @@ check_for_no_exports(Items, ModuleName) -->
 	( { ExportWarning = no } ->
 		[]
 	;
-		{ get_interface(no, Items, InterfaceItems) },
+		{ get_interface(ModuleName, no, Items, InterfaceItems) },
 		check_int_for_no_exports(InterfaceItems, ModuleName)
 	).
 
@@ -2056,7 +2057,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 			ImpUsedModules0, ImpUsedModules),
 
 	{ get_fact_table_dependencies(Items0, FactDeps) },
-	{ get_interface_and_implementation(no, Items0,
+	{ get_interface_and_implementation(ModuleName, no, Items0,
 		InterfaceItems, ImplItems) },
 	{ get_children(InterfaceItems, PublicChildren) },
 	{ MaybeTimestamp = yes(Timestamp) ->
@@ -2297,12 +2298,13 @@ find_read_module(ReadModules, ModuleName, Suffix, ReturnTimestamp,
 :- mode init_module_imports(in, in, in, in, in, in, in, in, out) is det.
 
 init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
-		Items, PublicChildren, NestedChildren, FactDeps,
+		Items0, PublicChildren, NestedChildren, FactDeps,
 		MaybeTimestamps, Module) :-
+	maybe_add_foreign_import_module(ModuleName, Items0, Items),
 	Module = module_imports(SourceFileName, SourceFileModuleName,
 		ModuleName, [], [], [], [], [], PublicChildren,
-		NestedChildren, FactDeps, unknown, [], no_foreign_export,
-		Items, no_module_errors,
+		NestedChildren, FactDeps, unknown, [],
+		no_foreign_export, Items, no_module_errors,
 		MaybeTimestamps, no_main, dir__this_directory).
 
 module_imports_get_source_file_name(Module, Module ^ source_file_name).
@@ -2987,7 +2989,18 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			ForeignImports = ForeignImports0
 		; ContainsForeignCode = unknown,
 			get_item_list_foreign_code(Globals, Items,
-				LangSet, ForeignImports, _)
+				LangSet, ForeignImports1, _),
+			% If we're generating the `.dep' file
+			% ForeignImports0 will contain a conservative
+			% approximation to the set of foreign imports
+			% needed which will include imports required
+			% by imported modules.
+			ForeignImports =
+				( ForeignImports0 = [] ->
+					ForeignImports1
+				;
+					ForeignImports0
+				)
 		; ContainsForeignCode = no_foreign_code,
 			set__init(LangSet),
 			ForeignImports = ForeignImports0
@@ -3750,14 +3763,15 @@ generate_dependencies_write_d_files([], _, _, _, _, _, _) --> [].
 generate_dependencies_write_d_files([Dep | Deps],
 		IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
 		TransOptOrder, DepsMap) --> 
-	{ Dep = deps(_, Module0) },
+    some [!Module] (
+	{ Dep = deps(_, !:Module) },
 
 	%
 	% Look up the interface/implementation/indirect dependencies
 	% for this module from the respective dependency relations,
 	% and save them in the module_imports structure.
 	%
-	{ module_imports_get_module_name(Module0, ModuleName) },
+	{ module_imports_get_module_name(!.Module, ModuleName) },
 	{ get_dependencies_from_relation(IndirectOptDepsRel, ModuleName,
 			IndirectOptDeps) },
 	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
@@ -3776,10 +3790,24 @@ generate_dependencies_write_d_files([Dep | Deps],
 		get_dependencies_from_relation(IndirectDepsRel,
 			ModuleName, IndirectDeps)
 	},
+
+	globals__io_get_target(Target),
+	{ Target = c, Lang = c
+	; Target = asm, Lang = c
+	; Target = java, Lang = java
+	; Target = il, Lang = il
+	},
+	% Assume we need the `.mh' files for all imported
+	% modules (we will if they define foreign types).
+	{ ForeignImports = list__map(
+		(func(ThisDep) = foreign_import_module(Lang,
+					ThisDep, term__context_init)),
+		IndirectOptDeps) },
+	{ !:Module = !.Module ^ foreign_import_module_info := ForeignImports },
 	
-	{ module_imports_set_int_deps(Module0, IntDeps, Module1) },
-	{ module_imports_set_impl_deps(Module1, ImplDeps, Module2) },
-	{ module_imports_set_indirect_deps(Module2, IndirectDeps, Module) },
+	{ module_imports_set_int_deps(!.Module, IntDeps, !:Module) },
+	{ module_imports_set_impl_deps(!.Module, ImplDeps, !:Module) },
+	{ module_imports_set_indirect_deps(!.Module, IndirectDeps, !:Module) },
 
 	%
 	% Compute the trans-opt dependencies for this module.
@@ -3802,16 +3830,17 @@ generate_dependencies_write_d_files([Dep | Deps],
 	% Note that even if a fatal error occured for one of the files that
 	% the current Module depends on, a .d file is still produced, even
 	% though it probably contains incorrect information.
-	{ module_imports_get_error(Module, Error) },
+	{ module_imports_get_error(!.Module, Error) },
 	( { Error \= fatal_module_errors } ->
-		write_dependency_file(Module,
+		write_dependency_file(!.Module,
 			set__list_to_set(IndirectOptDeps), yes(TransOptDeps))
 	;
 		[]
 	),
 	generate_dependencies_write_d_files(Deps,
 		IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
-		TransOptOrder, DepsMap).
+		TransOptOrder, DepsMap)
+    ).
 
 :- pred get_dependencies_from_relation(deps_rel, module_name,
 		list(module_name)).
@@ -3911,7 +3940,7 @@ deps_list_to_deps_rel([Deps | DepsList], DepsMap,
 		relation__add_element(IntRel0, ModuleName, IntModuleKey,
 			IntRel1),
 		add_int_deps(IntModuleKey, ModuleImports, IntRel1, IntRel2),
-		list__foldl(add_parent_impl_deps(DepsMap, IntModuleKey),
+		add_parent_impl_deps_list(DepsMap, IntModuleKey,
 				ParentDeps, IntRel2, IntRel3),
 
 		%
@@ -3927,7 +3956,7 @@ deps_list_to_deps_rel([Deps | DepsList], DepsMap,
 		relation__add_element(ImplRel0, ModuleName, ImplModuleKey,
 			ImplRel1),
 		add_impl_deps(ImplModuleKey, ModuleImports, ImplRel1, ImplRel2),
-		list__foldl(add_parent_impl_deps(DepsMap, ImplModuleKey),
+		add_parent_impl_deps_list(DepsMap, ImplModuleKey,
 				ParentDeps, ImplRel2, ImplRel3)
 	;
 		IntRel3 = IntRel0,
@@ -3970,6 +3999,13 @@ add_impl_deps(ModuleKey, ModuleImports, Rel0, Rel) :-
 add_parent_impl_deps(DepsMap, ModuleKey, Parent, Rel0, Rel) :-
 	map__lookup(DepsMap, Parent, deps(_, ParentModuleImports)),
 	add_impl_deps(ModuleKey, ParentModuleImports, Rel0, Rel).
+
+:- pred add_parent_impl_deps_list(deps_map, relation_key, list(module_name),
+			deps_rel, deps_rel).
+:- mode add_parent_impl_deps_list(in, in, in, in, out) is det.
+
+add_parent_impl_deps_list(DepsMap, ModuleKey, Parents, !Rel) :-
+	list__foldl(add_parent_impl_deps(DepsMap, ModuleKey), Parents, !Rel).
 
 % add a single dependency to a relation
 %
@@ -5590,7 +5626,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
 		ImplUseDeps0, ImplUseDeps),
 	list__append(ImplImportDeps, ImplUseDeps, ImplementationDeps),
 
-	get_interface(no, Items, InterfaceItems),
+	get_interface(ModuleName, no, Items, InterfaceItems),
 	get_dependencies(InterfaceItems, InterfaceImportDeps0,
 		InterfaceUseDeps0),
 	add_implicit_imports(InterfaceItems, Globals,
@@ -5614,7 +5650,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
 	get_fact_table_dependencies(Items, FactTableDeps),
 
 	% Figure out whether the items contain foreign code.
-	get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
+	get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports0,
 		ContainsPragmaExport),
 	ContainsForeignCode =
 		(if 
@@ -5625,6 +5661,16 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
 			no_foreign_code
 		),
 
+	% If this module contains `:- pragma export' or
+	% `:- pragma foreign_type' declarations, importing modules
+	% may need to import its `.mh' file.
+	get_foreign_self_imports(Items, SelfImportLangs),
+	ForeignSelfImports = list__map(
+		(func(Lang) = foreign_import_module(Lang, ModuleName,
+				term__context_init)),
+		SelfImportLangs),
+	ForeignImports = ForeignSelfImports ++ ForeignImports0,
+	
 	%
 	% Work out whether the items contain main/2.
 	%
@@ -6680,26 +6726,50 @@ report_error_duplicate_module_decl(ModuleName - Context) -->
 	% and `:- implementation'.
 	% The bodies of instance definitions are removed because
 	% the instance methods have not yet been module qualified.
-:- pred get_interface(bool, item_list, item_list).
-:- mode get_interface(in, in, out) is det.
+:- pred get_interface(module_name, bool, item_list, item_list).
+:- mode get_interface(in, in, in, out) is det.
 
-get_interface(IncludeImplTypes, Items0, Items) :-
+get_interface(ModuleName, IncludeImplTypes, Items0, Items) :-
 	AddToImpl = (func(_, ImplItems) = ImplItems),
-	get_interface_and_implementation_2(IncludeImplTypes, Items0, no,
-		[], RevItems, AddToImpl, unit, _),
-	list__reverse(RevItems, Items).
+	get_interface_and_implementation_2(IncludeImplTypes,
+		Items0, no, [], RevItems, AddToImpl, unit, _),
+	list__reverse(RevItems, Items1),
+	maybe_add_foreign_import_module(ModuleName, Items1, Items).
 
-:- pred get_interface_and_implementation(bool,
+:- pred get_interface_and_implementation(module_name, bool,
 		item_list, item_list, item_list).
-:- mode get_interface_and_implementation(in, in, out, out) is det.
+:- mode get_interface_and_implementation(in, in, in, out, out) is det.
 
-get_interface_and_implementation(IncludeImplTypes, Items0, InterfaceItems,
-		ImplementationItems) :-
+get_interface_and_implementation(ModuleName, IncludeImplTypes,
+		Items0, InterfaceItems, ImplementationItems) :-
 	AddToImpl = (func(ImplItem, ImplItems) = [ImplItem | ImplItems]),
 	get_interface_and_implementation_2(IncludeImplTypes, Items0, no,
 		[], RevIntItems, AddToImpl, [], RevImplItems),
-	list__reverse(RevIntItems, InterfaceItems),
-	list__reverse(RevImplItems, ImplementationItems).
+	list__reverse(RevIntItems, InterfaceItems0),
+	list__reverse(RevImplItems, ImplementationItems),
+	maybe_add_foreign_import_module(ModuleName,
+		InterfaceItems0, InterfaceItems).
+
+:- pred maybe_add_foreign_import_module(module_name, item_list, item_list).
+:- mode maybe_add_foreign_import_module(in, in, out) is det.
+
+maybe_add_foreign_import_module(ModuleName, Items0, Items) :-
+	get_foreign_self_imports(Items0, Langs),
+	Imports = list__map(
+		(func(Lang) = pragma(foreign_import_module(Lang,
+				ModuleName)) - term__context_init),
+		Langs),
+	Items = Imports ++ Items0.
+
+:- pred get_foreign_self_imports(item_list, list(foreign_language)).
+:- mode get_foreign_self_imports(in, out) is det.
+
+get_foreign_self_imports(Items, Langs) :-
+	solutions(
+		(pred(Lang::out) is nondet :-
+			list__member(Item - _, Items),
+			item_needs_foreign_imports(Item, Lang)
+		), Langs).
 
 :- pred get_interface_and_implementation_2(bool, item_list, bool,
 	item_list, item_list, func(item_and_context, T) = T, T, T).
@@ -6801,29 +6871,6 @@ get_short_interface(Items0, Kind, Items) :-
 	list__reverse(RevItems, Items1),
 	maybe_strip_import_decls(Items1, Items).
 
-:- pred maybe_strip_import_decls(item_list, item_list).
-:- mode maybe_strip_import_decls(in, out) is det.
-
-maybe_strip_import_decls(Items0, Items) :-
-	(
-		some [Item] (
-			list__member(Item - _, Items0),
-			item_needs_imports(Item) = yes
-		)
-	->
-		Items = list__filter(
-			(pred((ThisItem - _)::in) is semidet :-
-				\+ (
-					ThisItem  = module_defn(_, Defn),
-					( Defn = imported(_)
-					; Defn = used(_)
-					)
-				)
-			), Items0)
-	;
-		Items = Items0
-	).
-
 :- pred get_short_interface_2(item_list, short_interface_kind,
 		item_list, item_list).
 :- mode get_short_interface_2(in, in, in, out) is det.
@@ -6850,6 +6897,7 @@ include_in_short_interface(inst_defn(_, _, _, _, _)).
 include_in_short_interface(mode_defn(_, _, _, _, _)).
 include_in_short_interface(module_defn(_, _)).
 include_in_short_interface(instance(_, _, _, _, _, _)).
+include_in_short_interface(pragma(foreign_import_module(_, _))).
 
 	% Could this item use items from imported modules.
 :- func item_needs_imports(item) = bool.
@@ -6881,6 +6929,17 @@ item_needs_imports(instance(_, _, _, _, _, _)) = yes.
 item_needs_imports(promise(_, _, _, _)) = yes.
 item_needs_imports(nothing(_)) = no.
 
+:- pred item_needs_foreign_imports(item, foreign_language).
+:- mode item_needs_foreign_imports(in, out) is semidet.
+
+item_needs_foreign_imports(Item @ type_defn(_, _, _, _, _), Lang) :-
+	Item ^ td_ctor_defn = foreign_type(ForeignType, _),
+	Lang = foreign_type_language(ForeignType).
+item_needs_foreign_imports(pragma(foreign_decl(Lang, _)), Lang).
+item_needs_foreign_imports(pragma(foreign_code(Lang, _)), Lang).
+item_needs_foreign_imports(pragma(foreign_proc(Attrs, _, _, _, _, _)),
+		foreign_language(Attrs)).
+
 :- pred include_in_int_file_implementation(item).
 :- mode include_in_int_file_implementation(in) is semidet.
 
@@ -6893,6 +6952,7 @@ include_in_int_file_implementation(module_defn(_, Defn)) :-
 	% Since these constructors are abstractly exported,
 	% we won't need the local instance declarations. 
 include_in_int_file_implementation(typeclass(_, _, _, _, _)).
+include_in_int_file_implementation(pragma(foreign_import_module(_, _))).
 
 :- pred make_abstract_defn(item, short_interface_kind, item).
 :- mode make_abstract_defn(in, in, out) is semidet.
@@ -6967,6 +7027,42 @@ make_abstract_instance(Item0, Item) :-
 	Body = abstract,
 	Item = instance(Constraints, Class, ClassTypes, Body, TVarSet,
 		ModName).
+
+:- pred maybe_strip_import_decls(item_list, item_list).
+:- mode maybe_strip_import_decls(in, out) is det.
+
+maybe_strip_import_decls(!Items) :-
+	(
+		\+ (some [Item] (
+			list__member(Item - _, !.Items),
+			item_needs_imports(Item) = yes
+		))
+	->
+		list__filter(
+			(pred((ThisItem - _)::in) is semidet :-
+				\+ (
+					ThisItem = module_defn(_, Defn),
+					( Defn = imported(_)
+					; Defn = used(_)
+					)
+				)
+			), !Items)
+	;
+		true
+	),
+	(
+		\+ (some [Item] (
+			list__member(Item - _, !.Items),
+			item_needs_foreign_imports(Item, _)
+		))
+	->
+		list__filter(
+			(pred((ThisItem - _)::in) is semidet :-
+				ThisItem \= pragma(foreign_import_module(_, _))
+			), !Items)
+	;
+		true
+	).
 
 %-----------------------------------------------------------------------------%
 

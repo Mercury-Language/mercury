@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -547,6 +547,25 @@ foreign_imports(ModuleName, Success, Modules, Info0, Info) -->
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.	
 
 find_module_foreign_imports(Languages, ModuleName,
+		Success, ForeignModules, Info0, Info) -->
+	find_transitive_implementation_imports(ModuleName, Success0,
+		ImportedModules, Info0, Info1),
+	( { Success0 = yes } ->
+		foldl3_maybe_stop_at_error(Info1 ^ keep_going,
+			union_deps(find_module_foreign_imports_2(Languages)),
+			[ModuleName | to_sorted_list(ImportedModules)],
+			Success, set__init, ForeignModules, Info1, Info)
+	;
+		{ Success = no },
+		{ ForeignModules = set__init },
+		{ Info = Info1 }
+	).
+		
+:- pred find_module_foreign_imports_2(set(foreign_language)::in,
+	module_name::in, bool::out, set(module_name)::out,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.	
+
+find_module_foreign_imports_2(Languages, ModuleName,
 		Success, ForeignModules, Info0, Info) -->
 	get_module_dependencies(ModuleName, MaybeImports, Info0, Info),
 	{

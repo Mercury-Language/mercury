@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3596,26 +3596,11 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 	foreign__filter_decls(UseForeignLanguage, ForeignDecls, 
 		WantedForeignDecls, _OtherDecls),
 	foreign__filter_imports(UseForeignLanguage, ForeignImports, 
-		WantedForeignImports0, _OtherImports),
+		WantedForeignImports, _OtherImports),
 	foreign__filter_bodys(UseForeignLanguage, ForeignBodyCode,
 		WantedForeignBodys, _OtherBodys),
 	export__get_foreign_export_decls(HLDS, Foreign_ExportDecls),
 	export__get_foreign_export_defns(HLDS, Foreign_ExportDefns),
-
-	% If this module contains `:- pragma export' declarations,
-	% add a "#include <module>.h" declaration.
-	% XXX pragma export is only supported for C.
-	Foreign_ExportDecls = foreign_export_decls(_, ExportDecls),
-	( UseForeignLanguage = c, ExportDecls \= [] ->
-		% We put the new include at the end since the list is
-		% stored in reverse, and we want this include to come
-		% first.
-		Import = foreign_import_module(c, ModuleName,
-				term__context_init),
-		WantedForeignImports = WantedForeignImports0 ++ [Import]
-	;
-		WantedForeignImports = WantedForeignImports0
-	),
 
 	Foreign_InterfaceInfo = foreign_interface_info(ModuleName,
 		WantedForeignDecls, WantedForeignImports,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1059,6 +1059,9 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, !Info) :-
 				have_foreign_type_for_backend(Target,
 					ForeignTypeBody0, yes)
 			->
+				% The header code must be written since
+				% it could be used by the foreign type.
+				intermod_info_set_write_header(!Info),
 				intermod__resolve_foreign_type_body_overloading(
 					ModuleInfo, TypeCtor, ForeignTypeBody0,
 					ForeignTypeBody, !Info),
@@ -1078,6 +1081,9 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, !Info) :-
 			TypeBody0 = foreign_type(ForeignTypeBody0,
 				IsSolverType)
 		->
+			% The header code must be written since
+			% it could be used by the foreign type.
+			intermod_info_set_write_header(!Info),
 			intermod__resolve_foreign_type_body_overloading(
 				ModuleInfo, TypeCtor,
 				ForeignTypeBody0, ForeignTypeBody, !Info),
@@ -1260,37 +1266,9 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 	globals__io_lookup_string_option(dump_hlds_options, VerboseDump),
 	globals__io_set_option(dump_hlds_options, string("")),
 	( { WriteHeader = yes } ->
-		{ module_info_get_foreign_decl(ModuleInfo, RevForeignDecls) },
-		{ module_info_get_pragma_exported_procs(ModuleInfo,
-				PragmaExportedProcs) },
 		{ module_info_get_foreign_import_module(ModuleInfo,
 			RevForeignImports) },
-		{ ForeignImports0 = list__reverse(RevForeignImports) },
-
-		%
-		% If this module contains `:- pragma export' or
-		% `:- pragma foreign_decl' declarations,
-		% they may be referred to by the C code we are writing
-		% to the `.opt' file, so write the implicit
-		% `:- pragma foreign_import_module("C", ModuleName).' 
-		% to the `.opt' file.
-		%
-		% XXX Currently we only handle procedures
-		% exported to C.
-		{
-			% Check that the  import could contain anything.
-			( PragmaExportedProcs \= []
-			; RevForeignDecls \= []
-			)
-		->
-			module_info_name(ModuleInfo, ModuleName),
-			ForeignImportThisModule = foreign_import_module(c,
-				ModuleName, term__context_init),
-			ForeignImports =
-				[ForeignImportThisModule | ForeignImports0]
-		;
-			ForeignImports = ForeignImports0
-		},
+		{ ForeignImports = list__reverse(RevForeignImports) },
 
 		list__foldl(
 		    (pred(ForeignImport::in, di, uo) is det -->
