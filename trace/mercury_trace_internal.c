@@ -857,7 +857,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 
 			if (MR_spy_point_next == 0) {
 				fprintf(MR_mdb_out,
-					"There no break points yet.\n");
+					"There are no break points yet.\n");
 			}
 		} else {
 			MR_trace_usage("breakpoint", "enable");
@@ -880,7 +880,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 
 			if (MR_spy_point_next == 0) {
 				fprintf(MR_mdb_err,
-					"There no break points yet.\n");
+					"There are no break points yet.\n");
 			}
 		} else {
 			MR_trace_usage("breakpoint", "disable");
