@@ -2677,7 +2677,7 @@ io__tmpnam(Name) -->
 	if (tmp  == NULL) {
 		fatal_error(""unable to create temporary filename"");
 	}
-	incr_saved_hp_atomic(LVALUE_CAST(Word *,FileName),
+	incr_hp_atomic(LVALUE_CAST(Word *,FileName),
 		(strlen(tmp) + sizeof(Word)) / sizeof(Word));
 	strcpy(FileName, tmp);
 	free(tmp);
@@ -2695,7 +2695,7 @@ io__tmpnam(Name) -->
 	struct stat buf;
 
 	len = strlen(Dir) + 1+ 5 + 3 + 1; /* Dir + / + Prefix + counter + \\0 */
-	incr_saved_hp_atomic(LVALUE_CAST(Word *,FileName),
+	incr_hp_atomic(LVALUE_CAST(Word *,FileName),
 		(len + sizeof(Word)) / sizeof(Word));
 	if (ML_io_tempnam_counter == 0)
 		ML_io_tempnam_counter = getpid();
