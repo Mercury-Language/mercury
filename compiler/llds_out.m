@@ -2597,7 +2597,8 @@ need_code_addr_decls(do_fail, NeedDecl) -->
 		{ UseMacro = no },
 		{ NeedDecl = yes }
 	).
-need_code_addr_decls(do_trace_redo_fail, yes) --> [].
+need_code_addr_decls(do_trace_redo_fail_shallow, yes) --> [].
+need_code_addr_decls(do_trace_redo_fail_deep, yes) --> [].
 need_code_addr_decls(do_call_closure, yes) --> [].
 need_code_addr_decls(do_call_class_method, yes) --> [].
 need_code_addr_decls(do_det_aditi_call, yes) --> [].
@@ -2641,8 +2642,10 @@ output_code_addr_decls(do_fail) -->
 		io__write_string("do_fail"),
 		io__write_string(");\n")
 	).
-output_code_addr_decls(do_trace_redo_fail) -->
-	io__write_string("Declare_entry(MR_do_trace_redo_fail);\n").
+output_code_addr_decls(do_trace_redo_fail_shallow) -->
+	io__write_string("Declare_entry(MR_do_trace_redo_fail_shallow);\n").
+output_code_addr_decls(do_trace_redo_fail_deep) -->
+	io__write_string("Declare_entry(MR_do_trace_redo_fail_deep);\n").
 output_code_addr_decls(do_call_closure) -->
 	io__write_string("Declare_entry(mercury__do_call_closure);\n").
 output_code_addr_decls(do_call_class_method) -->
@@ -2866,8 +2869,10 @@ output_goto(do_fail, _) -->
 		{ UseMacro = no },
 		io__write_string("GOTO(ENTRY(do_fail));\n")
 	).
-output_goto(do_trace_redo_fail, _) -->
-	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail));\n").
+output_goto(do_trace_redo_fail_shallow, _) -->
+	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_shallow));\n").
+output_goto(do_trace_redo_fail_deep, _) -->
+	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_deep));\n").
 output_goto(do_call_closure, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(mercury__do_call_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -2972,8 +2977,10 @@ output_code_addr(do_redo) -->
 	io__write_string("ENTRY(do_redo)").
 output_code_addr(do_fail) -->
 	io__write_string("ENTRY(do_fail)").
-output_code_addr(do_trace_redo_fail) -->
-	io__write_string("ENTRY(MR_do_trace_redo_fail)").
+output_code_addr(do_trace_redo_fail_shallow) -->
+	io__write_string("ENTRY(MR_do_trace_redo_fail_shallow)").
+output_code_addr(do_trace_redo_fail_deep) -->
+	io__write_string("ENTRY(MR_do_trace_redo_fail_deep)").
 output_code_addr(do_call_closure) -->
 	io__write_string("ENTRY(mercury__do_call_closure)").
 output_code_addr(do_call_class_method) -->

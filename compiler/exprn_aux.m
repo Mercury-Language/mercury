@@ -155,7 +155,8 @@ exprn_aux__addr_is_constant(succip, _, no).
 exprn_aux__addr_is_constant(do_succeed(_), _, no).
 exprn_aux__addr_is_constant(do_redo, _, no).
 exprn_aux__addr_is_constant(do_fail, _, no).
-exprn_aux__addr_is_constant(do_trace_redo_fail, _, no).
+exprn_aux__addr_is_constant(do_trace_redo_fail_shallow, _, no).
+exprn_aux__addr_is_constant(do_trace_redo_fail_deep, _, no).
 exprn_aux__addr_is_constant(do_call_closure, _, no).
 exprn_aux__addr_is_constant(do_call_class_method, _, no).
 exprn_aux__addr_is_constant(do_det_aditi_call, _, no).

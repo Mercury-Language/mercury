@@ -1281,7 +1281,8 @@ opt_util__livevals_addr(succip, yes).
 opt_util__livevals_addr(do_succeed(_), yes).
 opt_util__livevals_addr(do_redo, no).
 opt_util__livevals_addr(do_fail, no).
-opt_util__livevals_addr(do_trace_redo_fail, no).
+opt_util__livevals_addr(do_trace_redo_fail_shallow, no).
+opt_util__livevals_addr(do_trace_redo_fail_deep, no).
 opt_util__livevals_addr(do_call_closure, yes).
 opt_util__livevals_addr(do_call_class_method, yes).
 opt_util__livevals_addr(do_det_aditi_call, yes).
