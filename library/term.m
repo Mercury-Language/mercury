@@ -142,7 +142,7 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 		else
 			% Y is a variable which hasn't been bound yet
 			not term__occurs(BindingOfX, Y, Bindings0),
-			map__set(Bindings0, Y, BindingOfX, Bindings),
+			map__set(Bindings0, Y, BindingOfX, Bindings)
 		)
 	else
 		(if some [TypeY]
@@ -150,11 +150,12 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 		then
 			% X is a variable which hasn't been bound yet
 			not term__occurs(BindingOfY, X, Bindings0),
-			map__set(Bindings0, X, BindingOfY, Bindings),
+			map__set(Bindings0, X, BindingOfY, Bindings)
 		else
 			% both X and Y are unbound variables -
 			% bind one to the other
-			(if X = Y then
+			(if X = Y
+			then
 				true
 			else
 				map__set(Bindings0, X, term_variable(Y),
