@@ -134,16 +134,6 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 	mercury__std_util__std_util__type_ctor_info_univ_0);
 
 /*
-** The compiler used to generate references to this constant.
-** XXX This should only be needed for bootstrapping now.
-*/
-#ifdef MR_AVOID_MACROS
-  enum { mercury__private_builtin__SIZEOF_WORD = sizeof(MR_Word) };
-#else
-  #define mercury__private_builtin__SIZEOF_WORD sizeof(MR_Word)
-#endif
-
-/*
 ** When generating code which passes an io__state or a store__store
 ** to a polymorphic procedure, or which does a higher-order call
 ** that passes one of these, then we need to generate a reference to
