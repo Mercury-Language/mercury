@@ -101,6 +101,8 @@
 		;	infer_modes
 		;	infer_det
 		;	infer_all
+		;	type_inference_iteration_limit
+		;	mode_inference_iteration_limit
 	% Compilation Model options
 		;	grade
 		;	gcc_non_local_gotos
@@ -336,7 +338,9 @@ option_defaults_2(language_semantics_option, [
 	infer_types		-	bool(no),
 	infer_modes		-	bool(no),
 	infer_det		-	bool(yes),
-	infer_all		-	bool_special
+	infer_all		-	bool_special,
+	type_inference_iteration_limit	-	int(60),
+	mode_inference_iteration_limit	-	int(30)
 ]).
 option_defaults_2(compilation_model_option, [
 		% Compilation model options (ones that affect binary
@@ -631,6 +635,10 @@ long_option("infer-types",		infer_types).
 long_option("infer-modes",		infer_modes).
 long_option("infer-determinism",	infer_det).
 long_option("infer-det",		infer_det).
+long_option("type-inference-iteration-limit",
+					type_inference_iteration_limit).
+long_option("mode-inference-iteration-limit",
+					mode_inference_iteration_limit).
 
 % compilation model options
 long_option("grade",			grade).
@@ -1249,7 +1257,12 @@ options_help_semantics -->
 
 	io__write_string("\t--no-infer-det, --no-infer-determinism\n"),
 	io__write_string("\t\tIf there is no determinism declaration for a procedure,\n"),
-	io__write_string("\t\tdon't try to infer the determinism, just report an error.\n").
+	io__write_string("\t\tdon't try to infer the determinism, just report an error.\n"),
+	io__write_string("\t--type-inference-iteration-limit <n>\n"),
+	io__write_string("\t\tPerform at most <n> passes of type inference (default: 60).\n"),
+	io__write_string("\t--mode-inference-iteration-limit <n>\n"),
+	io__write_string("\t\tPerform at most <n> passes of mode inference (default: 30).\n").
+
 
 :- pred options_help_compilation_model(io__state::di, io__state::uo) is det.
 

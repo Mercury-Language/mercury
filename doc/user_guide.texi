@@ -1680,6 +1680,13 @@ try to infer the modes, rather than just reporting an error.
 If there is no determinism declaration for a procedure,
 don't try to infer the determinism, just report an error.
 
+@sp 1
+@item --type-inference-iteration-limit @var{n}
+Perform at most @var{n} passes of mode inference (default: 60).
+
+@sp 1
+@item --mode-inference-iteration-limit @var{n}
+Perform at most @var{n} passes of mode inference (default: 30).
 @end table
 
 @node Compilation model options

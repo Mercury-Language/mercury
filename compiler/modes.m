@@ -303,7 +303,8 @@ modecheck(Module0, Module, UnsafeToContinue) -->
 
 check_pred_modes(ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	{ MaxIterations = 30 }, % XXX FIXME should be command-line option
+	globals__io_lookup_int_option(mode_inference_iteration_limit,
+		MaxIterations),
 	modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0,
 					ModuleInfo1, UnsafeToContinue),
 	write_mode_inference_messages(PredIds, ModuleInfo1),
@@ -349,8 +350,15 @@ modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0,
 
 report_max_iterations_exceeded -->
 	io__set_exit_status(1),
-	io__write_string("Mode analysis iteration limit exceeded.\n").
-	% XXX FIXME add verbose_errors message
+	io__write_strings([
+	   "Mode analysis iteration limit exceeded.\n",
+	   "You may need to declare the modes explicitly, or use the\n",
+	   "`--mode-inference-iteration-limit' option to increase the limit.\n"
+	]),
+	globals__io_lookup_int_option(mode_inference_iteration_limit,
+		MaxIterations),
+	io__format("(The current limit is %d iterations.)\n",
+		[i(MaxIterations)]).
 
 :- pred modecheck_pred_modes_2(list(pred_id), module_info, module_info,
 			bool, bool, int, int, io__state, io__state).

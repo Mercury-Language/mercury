@@ -194,17 +194,21 @@ typecheck(Module0, Module, ModeError, FoundError) -->
 
 check_pred_types(Module0, Module, ModeError, FoundError) -->
 	{ module_info_predids(Module0, PredIds) },
-	typecheck_to_fixpoint(PredIds, Module0, Module, ModeError, FoundError),
+	globals__io_lookup_int_option(type_inference_iteration_limit,
+		MaxIterations),
+	typecheck_to_fixpoint(MaxIterations, PredIds, Module0,
+		Module, ModeError, FoundError),
 	write_inference_messages(PredIds, Module).
 
 	% Repeatedly typecheck the code for a group of predicates
 	% until a fixpoint is reached, or until some errors are detected.
 
-:- pred typecheck_to_fixpoint(list(pred_id), module_info, module_info, 
+:- pred typecheck_to_fixpoint(int, list(pred_id), module_info, module_info, 
 		bool, bool, io__state, io__state).
-:- mode typecheck_to_fixpoint(in, in, out, in, out, di, uo) is det.
+:- mode typecheck_to_fixpoint(in, in, in, out, in, out, di, uo) is det.
 
-typecheck_to_fixpoint(PredIds, Module0, Module, ModeError, FoundError) -->
+typecheck_to_fixpoint(NumIterations, PredIds, Module0, Module, ModeError,
+		FoundError) -->
 	typecheck_pred_types_2(PredIds, Module0, Module1,
 		ModeError, no, FoundError1, no, Changed),
 	( { Changed = no ; FoundError1 = yes } ->
@@ -217,9 +221,32 @@ typecheck_to_fixpoint(PredIds, Module0, Module, ModeError, FoundError) -->
 		;
 			[]
 		),
-		typecheck_to_fixpoint(PredIds, Module1, Module,
-			ModeError, FoundError)
+		{ NumIterations1 = NumIterations - 1 },
+		( { NumIterations1 > 0 } ->
+			typecheck_to_fixpoint(NumIterations1, PredIds, Module1,
+				Module, ModeError, FoundError)
+		;
+			typecheck_report_max_iterations_exceeded,
+			{ Module = Module1 },
+			{ FoundError = yes }
+		)
 	).
+
+:- pred typecheck_report_max_iterations_exceeded(io__state, io__state).
+:- mode typecheck_report_max_iterations_exceeded(di, uo) is det.
+
+typecheck_report_max_iterations_exceeded -->
+	io__set_exit_status(1),
+	io__write_strings([
+	   "Type inference iteration limit exceeded.\n",
+	   "This probably indicates that your program has a type error.\n",
+	   "You should declare the types explicitly.\n"
+	]),
+	globals__io_lookup_int_option(type_inference_iteration_limit,
+		MaxIterations),
+	io__format("(The current limit is %d iterations.  You can use the\n",
+		[i(MaxIterations)]),
+	io__write_string("`--type-inference-iteration-limit' option to increase the limit).\n").
 
 %-----------------------------------------------------------------------------%
 
