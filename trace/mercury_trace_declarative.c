@@ -261,7 +261,7 @@ static	MR_Trace_Node
 MR_trace_node_first_disj(MR_Trace_Node node);
 
 static	MR_Trace_Node
-MR_trace_step_left_in_context(MR_Trace_Node node);
+MR_trace_step_left_in_contour(MR_Trace_Node node);
 
 static	MR_Trace_Node
 MR_trace_find_prev_contour(MR_Trace_Node node);
@@ -517,7 +517,7 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 	while (MR_trace_node_port(next) != MR_PORT_EXIT
 		|| MR_trace_node_seqno(next) != event_info->MR_call_seqno)
 	{
-		next = MR_trace_step_left_in_context(next);
+		next = MR_trace_step_left_in_contour(next);
 	}
 	MR_decl_checkpoint_match(next);
 
@@ -608,7 +608,7 @@ MR_trace_decl_then(MR_Event_Info *event_info, MR_Trace_Node prev)
 	next = prev;
 	while (!MR_trace_matching_cond(path, next))
 	{
-		next = MR_trace_step_left_in_context(next);
+		next = MR_trace_step_left_in_contour(next);
 	}
 	cond = next;
 	MR_decl_checkpoint_match(cond);
@@ -644,7 +644,7 @@ MR_trace_decl_else(MR_Event_Info *event_info, MR_Trace_Node prev)
 		next = prev;
 		while (!MR_trace_matching_cond(path, next))
 		{
-			next = MR_trace_step_left_in_context(next);
+			next = MR_trace_step_left_in_contour(next);
 		}
 		cond = next;
 	}
@@ -694,7 +694,7 @@ MR_trace_decl_neg_success(MR_Event_Info *event_info, MR_Trace_Node prev)
 		next = prev;
 		while (!MR_trace_matching_neg(path, next))
 		{
-			next = MR_trace_step_left_in_context(next);
+			next = MR_trace_step_left_in_contour(next);
 		}
 		nege = next;
 	}
@@ -717,12 +717,12 @@ MR_trace_decl_neg_failure(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Trace_Node		next;
 
 	/*
-	** Search through current context for a matching NEGE event.
+	** Search through current contour for a matching NEGE event.
 	*/
 	next = prev;
 	while (!MR_trace_matching_neg(event_info->MR_event_path, next))
 	{
-		next = MR_trace_step_left_in_context(next);
+		next = MR_trace_step_left_in_contour(next);
 	}
 	MR_decl_checkpoint_match(next);
 	
@@ -774,7 +774,7 @@ MR_trace_decl_disj(MR_Event_Info *event_info, MR_Trace_Node prev)
 		next = MR_trace_find_prev_contour(prev);
 		while (!MR_trace_matching_disj(path, next))
 		{
-			next = MR_trace_step_left_in_context(next);
+			next = MR_trace_step_left_in_contour(next);
 		}
 		MR_decl_checkpoint_match(next);
 
@@ -857,7 +857,7 @@ MR_trace_matching_call(MR_Trace_Node node)
 	next = node;
 	while (MR_trace_node_port(next) != MR_PORT_CALL)
 	{
-		next = MR_trace_step_left_in_context(next);
+		next = MR_trace_step_left_in_contour(next);
 	}
 	return next;
 }
@@ -1375,7 +1375,7 @@ MR_trace_node_first_disj(MR_Trace_Node node)
 }
 
 static	MR_Trace_Node
-MR_trace_step_left_in_context(MR_Trace_Node node)
+MR_trace_step_left_in_contour(MR_Trace_Node node)
 {
 	MR_Trace_Node		next;
 
@@ -1383,7 +1383,7 @@ MR_trace_step_left_in_context(MR_Trace_Node node)
 
 	MR_trace_node_store++;
 	MR_TRACE_CALL_MERCURY(
-		next = (MR_Trace_Node) MR_DD_step_left_in_context(
+		next = (MR_Trace_Node) MR_DD_step_left_in_contour(
 						MR_trace_node_store, node);
 	);
 	return next;

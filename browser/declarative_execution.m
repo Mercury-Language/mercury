@@ -504,20 +504,20 @@ trace_node_first_disj(first_disj(_, _), NULL) :-
 trace_node_first_disj(later_disj(_, _, FirstDisj), FirstDisj).	
 
 	% Given any node in an annotated trace, find the most recent
-	% node in the same context which has not been backtracked over,
-	% skipping negations, conditions, the bodies of calls, and
-	% alternative disjuncts.  Return the NULL reference if there
-	% is no such node (eg. if we are at the start of a negation,
-	% condition, or call).
+	% node in the same contour (ie. the last node which has not been
+	% backtracked over, skipping negations, conditions, the bodies
+	% of calls, and alternative disjuncts).  Return the NULL reference
+	% if there is no such node (eg. if we are at the start of a
+	% negation, condition, or call).
 	%
-:- func step_left_in_context(trace_node_store, trace_node(trace_node_id))
+:- func step_left_in_contour(trace_node_store, trace_node(trace_node_id))
 		= trace_node_id.
-:- pragma export(step_left_in_context(in, in) = out,
-		"MR_DD_step_left_in_context").
+:- pragma export(step_left_in_contour(in, in) = out,
+		"MR_DD_step_left_in_contour").
 
-step_left_in_context(_, call(_, _, _, _, _, _)) = _ :-
-	error("step_left_in_context: unexpected CALL node").
-step_left_in_context(_, cond(Prec, _, Status)) = Node :-
+step_left_in_contour(_, call(_, _, _, _, _, _)) = _ :-
+	error("step_left_in_contour: unexpected CALL node").
+step_left_in_contour(_, cond(Prec, _, Status)) = Node :-
 	(
 		Status = succeeded
 	->
@@ -525,24 +525,24 @@ step_left_in_context(_, cond(Prec, _, Status)) = Node :-
 	;
 		null_trace_node_id(Node)
 	).
-step_left_in_context(_, neg(_, _, _)) = _ :-
-	error("step_left_in_context: unexpected NEGE node").
-step_left_in_context(Store, exit(_, Call, _, _, _)) = Prec :-
+step_left_in_contour(_, neg(_, _, _)) = _ :-
+	error("step_left_in_contour: unexpected NEGE node").
+step_left_in_contour(Store, exit(_, Call, _, _, _)) = Prec :-
 	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
-step_left_in_context(Store, fail(_, Call, _, _)) = Prec :-
+step_left_in_contour(Store, fail(_, Call, _, _)) = Prec :-
 	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
-step_left_in_context(_, redo(_, _)) = _ :-
-	error("step_left_in_context: unexpected REDO node").
-step_left_in_context(_, switch(Prec, _)) = Prec.
-step_left_in_context(_, first_disj(Prec, _)) = Prec.
-step_left_in_context(Store, later_disj(_, _, FirstDisj)) = Prec :-
+step_left_in_contour(_, redo(_, _)) = _ :-
+	error("step_left_in_contour: unexpected REDO node").
+step_left_in_contour(_, switch(Prec, _)) = Prec.
+step_left_in_contour(_, first_disj(Prec, _)) = Prec.
+step_left_in_contour(Store, later_disj(_, _, FirstDisj)) = Prec :-
 	first_disj_node_from_id(Store, FirstDisj, first_disj(Prec, _)).
-step_left_in_context(_, then(Prec, _)) = Prec.
-step_left_in_context(Store, else(_, Cond)) = Prec :-
+step_left_in_contour(_, then(Prec, _)) = Prec.
+step_left_in_contour(Store, else(_, Cond)) = Prec :-
 	cond_node_from_id(Store, Cond, cond(Prec, _, _)).
-step_left_in_context(Store, neg_succ(_, Neg)) = Prec :-
+step_left_in_contour(Store, neg_succ(_, Neg)) = Prec :-
 	neg_node_from_id(Store, Neg, neg(Prec, _, _)).
-step_left_in_context(Store, neg_fail(_, Neg)) = Prec :-
+step_left_in_contour(Store, neg_fail(_, Neg)) = Prec :-
 	neg_node_from_id(Store, Neg, neg(Prec, _, _)).
 
 	% Given any node in an annotated trace, find a node in
