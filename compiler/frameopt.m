@@ -13,13 +13,14 @@
 :- module frameopt.
 
 :- interface.
-:- import_module llds, list.
+:- import_module llds, list, map, bimap.
 
 	% Delay the construction of det stack frames as long as possible,
 	% in order to avoid the construction in as many cases as possible.
 
-:- pred frameopt__main(list(instruction), list(instruction), bool).
-:- mode frameopt__main(in, out, out) is det.
+:- pred frameopt__main(list(instruction), list(instruction),
+	bimap(label, label), bool).
+:- mode frameopt__main(in, out, out, out) is det.
 
 	% Find out if succip is ever restored.
 
@@ -37,7 +38,7 @@
 
 :- implementation.
 
-:- import_module livemap, opt_util, code_util.
+:- import_module peephole, livemap, opt_util, code_util.
 :- import_module map, bintree_set, set, int, string, require, std_util.
 
 	% The first part of this code steps over the procedure prolog.
@@ -52,12 +53,16 @@
 	% would otherwise have to set up a stack frame just so that it can be
 	% destroyed can now branch to the parallel code sequence instead.
 
+	% We return the map between nonteardown/teardown labels for use in
+	% peepholing. Caution: this information is valid only until the next
+	% invocation of labelopt.
+
 	% At the end, after another round of the other optimizations (including
 	% peepholes that may eliminate decr_sp/incr_sp pairs) we test whether
 	% the procedure ever restores succip; if not, we delete any speculative
 	% saves we introduced.
 
-frameopt__main(Instrs0, Instrs, Mod) :-
+frameopt__main(Instrs0, Instrs, TeardownMap, Mod) :-
 	opt_util__gather_comments(Instrs0, Comment1, Instrs1),
 	(
 		Instrs1 = [Instr1prime | Instrs2prime],
@@ -86,7 +91,7 @@ frameopt__main(Instrs0, Instrs, Mod) :-
 		frameopt__repeat_build_sets(Body0, FrameSize, Livemap,
 			FrameSet0, FrameSet, SuccipSet0, SuccipSet),
 		opt_util__new_label_no(Instrs0, 1000, N0),
-		map__init(TeardownMap0),
+		bimap__init(TeardownMap0),
 		frameopt__dup_teardown_labels(Body0, FrameSize,
 			TeardownMap0, TeardownMap, ProcLabel, N0, N1, Extra),
 		map__init(InsertMap0),
@@ -106,6 +111,7 @@ frameopt__main(Instrs0, Instrs, Mod) :-
 		)
 	;
 		Instrs = Instrs0,
+		bimap__init(TeardownMap),
 		Mod = no
 	).
 
@@ -556,7 +562,7 @@ frameopt__setup_liveval_use(Label, Livemap, Set0, Set) :-
 %-----------------------------------------------------------------------------%
 
 :- pred frameopt__dup_teardown_labels(list(instruction),
-	int, map(label, label), map(label, label),
+	int, bimap(label, label), bimap(label, label),
 	proc_label, int, int, list(instruction)).
 :- mode frameopt__dup_teardown_labels(in, in, in, out, in, in, out, out) is det.
 
@@ -573,7 +579,7 @@ frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
 		NewLabel = local(ProcLabel, N0, local),
 		NewLabelInstr = label(NewLabel) - "non-teardown parallel label",
 		list__condense([[NewLabelInstr], Tail, Goto], Extra1),
-		map__set(TeardownMap0, Label, NewLabel, TeardownMap1),
+		bimap__set(TeardownMap0, Label, NewLabel, TeardownMap1),
 		frameopt__dup_teardown_labels(After, FrameSize,
 			TeardownMap1, TeardownMap, ProcLabel, N1, N, Extra2),
 		list__append(Extra1, Extra2, Extra)
@@ -587,7 +593,7 @@ frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
 :- type insertmap ==	map(label, map(list(instruction), label)).
 
 :- pred frameopt__doit(list(instruction), int, bool, bool, bool,
-	set(label), set(label), livemap, map(label, label),
+	set(label), set(label), livemap, bimap(label, label),
 	insertmap, insertmap, proc_label, int, int, list(instruction)).
 % :- mode frameopt__doit(in, in, in, in, in, in, in, in, in, di, uo,
 % 	in, in, out, out) is det.
@@ -799,7 +805,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 %-----------------------------------------------------------------------------%
 
 :- pred frameopt__generate_if(rval, code_addr, string, list(instruction), int,
-	bool, bool, bool, set(label), set(label), livemap, map(label, label),
+	bool, bool, bool, set(label), set(label), livemap, bimap(label, label),
 	insertmap, insertmap, proc_label, int, int, list(instruction)).
 % :- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in, in, in,
 % 	di, uo, in, in, out, out) is det.
@@ -892,7 +898,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 			% for the target label
 			CodeAddr = label(Label),
 			SetupFrame1 = no,
-			map__search(TeardownMap, Label, Label1)
+			bimap__search(TeardownMap, Label, Label1)
 		->
 			string__append(Comment, " (teardown redirect)",
 				Comment1),
@@ -971,13 +977,13 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 	% For a given label, return a label (the same or another) that
 	% does the same things and does not need or want a frame on arrival.
 
-:- pred frameopt__label_without_frame(label, set(label), map(label, label),
+:- pred frameopt__label_without_frame(label, set(label), bimap(label, label),
 	label).
 :- mode frameopt__label_without_frame(in, in, in, out) is semidet.
 
 frameopt__label_without_frame(Label0, FrameSet, TeardownMap, Label) :-
 	( set__member(Label0, FrameSet) ->
-		map__search(TeardownMap, Label0, Label)
+		bimap__search(TeardownMap, Label0, Label)
 	;
 		Label = Label0
 	).
@@ -1038,7 +1044,7 @@ frameopt__generate_setup(SetupFrame0, SetupFrame, SetupSuccip0, SetupSuccip,
 	% and branch to the real label through this code.
 
 :- pred frameopt__generate_labels(list(label), bool, bool, int,
-	set(label), set(label), map(label, label),
+	set(label), set(label), bimap(label, label),
 	proc_label, int, int, list(label), list(instruction)).
 :- mode frameopt__generate_labels(in, in, in, in, in, in, in,
 	in, in, out, out, out) is det.
@@ -1052,7 +1058,7 @@ frameopt__generate_labels([Label | Labels], SetupFrame0, SetupSuccip0,
 		ProcLabel, N0, N1, NewLabels, SetupCodes1),
 	(
 		SetupFrame0 = no,
-		map__search(TeardownMap, Label, TeardownLabel)
+		bimap__search(TeardownMap, Label, TeardownLabel)
 	->
 		N = N1,
 		NewLabel = TeardownLabel,

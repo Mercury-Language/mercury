@@ -125,6 +125,17 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 % :- mode vn__real_uses(di, uo, in) is semidet.
 :- mode vn__real_uses(in, out, in) is semidet.
 
+	% Choose the cheapest location from a given list of locations.
+	% Access time is the only consideration. There are three cost levels:
+	% registers and temporaries; stackvars and framevars; fields.
+	% Fail only if the input list is empty.
+
+:- pred vn__choose_cheapest_loc(list(vnlval), vnlval).
+:- mode vn__choose_cheapest_loc(in, out) is semidet.
+
+:- pred vn__classify_loc_cost(vnlval, int).
+:- mode vn__classify_loc_cost(in, out) is det.
+
 :- implementation.
 
 %-----------------------------------------------------------------------------%
@@ -374,6 +385,86 @@ vn__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			fail
 		)
 	;
+		Binop = (>=),
+		(
+			Vn1 = Vn2
+		->
+			Vnrval = vn_const(true),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;
+		Binop = (<=),
+		(
+			Vn1 = Vn2
+		->
+			Vnrval = vn_const(true),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;
+		Binop = (>),
+		(
+			Vn1 = Vn2
+		->
+			Vnrval = vn_const(false),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;
+		Binop = (<),
+		(
+			Vn1 = Vn2
+		->
+			Vnrval = vn_const(false),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;
+		Binop = (str_ge),
+		(
+			Vn1 = Vn2
+		->
+			Vnrval = vn_const(true),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;
+		Binop = (str_le),
+		(
+			Vn1 = Vn2
+		->
+			Vnrval = vn_const(true),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;
+		Binop = (str_gt),
+		(
+			Vn1 = Vn2
+		->
+			Vnrval = vn_const(false),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;
+		Binop = (str_lt),
+		(
+			Vn1 = Vn2
+		->
+			Vnrval = vn_const(false),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;
 		Binop = (and),
 		( Vnrval1 = vn_const(true) ->
 			Vnrval = Vnrval2,
@@ -590,8 +681,18 @@ vn__real_uses([Use0 | Uses0], Uses, VnTables) :-
 		(
 			vn__search_desired_value(Vnlval, Vn, VnTables),
 			vn__search_current_value(Vnlval, Vn, VnTables),
-			vn__search_uses(Vn, AccessUses, VnTables),
-			vn__real_uses(AccessUses, [], VnTables)
+			( vn__search_uses(Vn, AccessUses, VnTables) ->
+				(
+					vn__real_uses(AccessUses, [], VnTables)
+				;
+					vn__search_current_locs(Vn, Locs,
+						VnTables),
+					vn__choose_cheapest_loc(Locs, Loc),
+					vn__classify_loc_cost(Loc, 0)
+				)
+			;
+				true
+			)
 		->
 			Uses = Uses1
 		;
@@ -600,6 +701,45 @@ vn__real_uses([Use0 | Uses0], Uses, VnTables) :-
 	;
 		Uses = [Use0 | Uses1]
 	).
+
+vn__choose_cheapest_loc(Locs, BestLoc) :-
+	vn__choose_cheapest_loc_2(Locs, no, no, BestLoc).
+
+:- pred vn__choose_cheapest_loc_2(list(vnlval), maybe(vnlval), maybe(vnlval),
+	vnlval).
+:- mode vn__choose_cheapest_loc_2(in, in, in, out) is semidet.
+
+vn__choose_cheapest_loc_2([Loc | Locs], Stack0, Heap0, BestLoc) :-
+	vn__classify_loc_cost(Loc, Cost),
+	( Cost = 0 ->
+		BestLoc = Loc
+	; Cost = 1 ->
+		vn__choose_cheapest_loc_2(Locs, yes(Loc), Heap0, BestLoc)
+	;
+		vn__choose_cheapest_loc_2(Locs, Stack0, yes(Loc), BestLoc)
+	).
+vn__choose_cheapest_loc_2([], Stack0, Heap0, BestLoc) :-
+	( Stack0 = yes(Stack) ->
+		BestLoc = Stack
+	; Heap0 = yes(Heap) ->
+		BestLoc = Heap
+	;
+		fail
+	).
+
+vn__classify_loc_cost(vn_reg(_), 0).
+vn__classify_loc_cost(vn_stackvar(_), 1).
+vn__classify_loc_cost(vn_framevar(_), 1).
+vn__classify_loc_cost(vn_succip, 0).
+vn__classify_loc_cost(vn_maxfr, 0).
+vn__classify_loc_cost(vn_curfr, 0).
+vn__classify_loc_cost(vn_succfr(_), 1).
+vn__classify_loc_cost(vn_prevfr(_), 1).
+vn__classify_loc_cost(vn_redoip(_), 1).
+vn__classify_loc_cost(vn_hp, 0).
+vn__classify_loc_cost(vn_sp, 0).
+vn__classify_loc_cost(vn_field(_, _, _), 2).
+vn__classify_loc_cost(vn_temp(_), 0).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

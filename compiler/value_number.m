@@ -41,7 +41,7 @@
 :- import_module vn_table, vn_block, vn_order, vn_flush.
 :- import_module vn_temploc, vn_cost, vn_debug, vn_util.
 :- import_module globals, options, peephole, livemap, opt_util, opt_debug.
-:- import_module set, map, bintree_set, require, int, string, std_util.
+:- import_module set, map, bimap, require, int, string, std_util.
 
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
@@ -175,7 +175,8 @@ vn__optimize_fragment_2(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -
 		{ vn__push_incr_sp_forw(Instrs3, Instrs4) },
 		{ vn__push_livevals_back(Instrs4, Instrs5) },
 		{ vn__convert_back_modframe(Instrs5, Instrs6) },
-		{ peephole__main(Instrs6, Instrs7, _) },
+		{ bimap__init(TeardownMap) },
+		{ peephole__main(Instrs6, Instrs7, TeardownMap, _) },
 
 		vn__cost_header_msg("original code sequence"),
 		vn__block_cost(Instrs0, yes, OrigCost),
@@ -454,7 +455,6 @@ vn__verify_tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 	;
 		Instr = assign(Lval, Rval),
 		vn__verify_tags_lval(Lval, NoDeref0),
-		vn__verify_tags_rval(Rval, NoDeref0),
 		(
 			set__member(lval(Lval), NoDeref0),
 			Rval = lval(_)
@@ -466,12 +466,16 @@ vn__verify_tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		(
 			set__member(lval(Lval), Tested0)
 		->
-			vn__verify_tags_cond(Rval, NoDeref1, NoDeref,
+			vn__verify_tags_cond(Rval, NoDeref1, NoDeref2,
 				Tested0, Tested)
 		;
-			NoDeref = NoDeref1,
+			NoDeref2 = NoDeref1,
 			Tested = Tested0
-		)
+		),
+		% Lval on the right hand side refers to the old value;
+		% the new value is the one that should not be tested.
+		set__delete(NoDeref2, lval(Lval), NoDeref),
+		vn__verify_tags_rval(Rval, NoDeref)
 	;
 		Instr = call(_, _, _, _),
 		NoDeref = NoDeref0,

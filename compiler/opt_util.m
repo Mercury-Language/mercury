@@ -239,6 +239,8 @@
 	% any stackvars or branch away. If not, return the instructions up to
 	% the decr_sp. A restoration of succip from the bottom stack slot
 	% is allowed; this instruction is not returned in the output.
+	% The same thing applies to assignments to detstackvars; these are
+	% not useful if we throw away the stack frame.
 
 :- pred opt_util__no_stackvars_til_decr_sp(list(instruction), int,
 	list(instruction), list(instruction)).
@@ -273,13 +275,13 @@
 
 	% See whether an rval is free of references to a given lval.
 
-:- pred opt_util__rvals_free_of_lval(list(rval), lval).
-:- mode opt_util__rvals_free_of_lval(in, in) is semidet.
+:- pred opt_util__rval_free_of_lval(rval, lval).
+:- mode opt_util__rval_free_of_lval(in, in) is semidet.
 
 	% See whether a list of rvals is free of references to a given lval.
 
-:- pred opt_util__rval_free_of_lval(rval, lval).
-:- mode opt_util__rval_free_of_lval(in, in) is semidet.
+:- pred opt_util__rvals_free_of_lval(list(rval), lval).
+:- mode opt_util__rvals_free_of_lval(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -666,6 +668,13 @@ opt_util__no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize,
 	;
 		Uinstr0 = assign(Lval, Rval),
 		(
+% XXX turn this back on when possible
+%			Lval = stackvar(_),
+%			opt_util__rval_refers_stackvars(Rval, no)
+%		->
+%			opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
+%				Between, Remain)
+%		;
 			Lval = succip,
 			Rval = lval(stackvar(FrameSize)),
 			opt_util__skip_comments(Instrs0, Instrs1),
@@ -812,6 +821,10 @@ opt_util__filter_out_bad_livevals([Instr0 | Instrs0], Instrs) :-
 		Instr0 = livevals(_) - _,
 		Instrs1 = [Uinstr1 - _ | _],
 		opt_util__can_use_livevals(Uinstr1, no)
+% XXX should be restored when proven OK
+%		opt_util__skip_comments(Instrs1, Instrs2),
+%		Instrs2 = [Uinstr2 - _ | _],
+%		opt_util__can_use_livevals(Uinstr2, no)
 	->
 		Instrs = Instrs1
 	;

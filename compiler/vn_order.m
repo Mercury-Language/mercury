@@ -410,13 +410,13 @@ vn__use_sink_before_redef(Sink, VnTables, Liveset,
 		{ vn__find_access_users(Uses, VnTables, Succmap0, Users2) },
 		{ list__append(Users1, Users2, Users) },
 
-		vn__add_users(Users, Sink, VnTables, Liveset,
+		vn__add_users(Users, Sink, Vnlval, VnTables, Liveset,
 			Succmap0, Succmap1, Predmap0, Predmap1),
 		(
 			{ vn__search_desired_value(Vnlval, Vn, VnTables) },
 			{ map__search(Succmap1, node_shared(Vn), _) }
 		->
-			vn__add_users(Users, node_shared(Vn),
+			vn__add_users(Users, node_shared(Vn), Vnlval,
 				VnTables, Liveset,
 				Succmap1, Succmap, Predmap1, Predmap)
 		;
@@ -464,39 +464,53 @@ vn__find_access_users([Src | Srcs], VnTables, Succmap, Users) :-
 		Users = Users1
 	).
 
-:- pred vn__add_users(list(vn_node), vn_node, vn_tables, vnlvalset,
+:- pred vn__add_users(list(vn_node), vn_node, vnlval, vn_tables, vnlvalset,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	io__state, io__state).
-% :- mode vn__add_users(in, in, in, in, di, uo, di, uo, di, uo) is det.
-:- mode vn__add_users(in, in, in, in, in, out, in, out, di, uo) is det.
+% :- mode vn__add_users(in, in, in, in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__add_users(in, in, in, in, in, in, out, in, out, di, uo) is det.
 
-vn__add_users([], _, _, _, Succmap, Succmap, Predmap, Predmap) --> [].
-vn__add_users([User | Users], Sink, VnTables, Liveset,
+vn__add_users([], _, _, _, _, Succmap, Succmap, Predmap, Predmap) --> [].
+vn__add_users([User | Users], Sink, Vnlval, VnTables, Liveset,
 		Succmap0, Succmap, Predmap0, Predmap) -->
-	vn__add_user(User, Sink, VnTables, Liveset,
+	vn__add_user(User, Sink, Vnlval, VnTables, Liveset,
 		Succmap0, Succmap1, Predmap0, Predmap1),
-	vn__add_users(Users, Sink, VnTables, Liveset,
+	vn__add_users(Users, Sink, Vnlval, VnTables, Liveset,
 		Succmap1, Succmap, Predmap1, Predmap).
 
-:- pred vn__add_user(vn_node, vn_node, vn_tables, vnlvalset,
+:- pred vn__add_user(vn_node, vn_node, vnlval, vn_tables, vnlvalset,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	io__state, io__state).
-% :- mode vn__add_user(in, in, in, in, di, uo, di, uo, di, uo) is det.
-:- mode vn__add_user(in, in, in, in, in, out, in, out, di, uo) is det.
+% :- mode vn__add_user(in, in, in, in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__add_user(in, in, in, in, in, in, out, in, out, di, uo) is det.
 
-vn__add_user(User, Sink, VnTables, Liveset,
+vn__add_user(User, Sink, Vnlval, VnTables, Liveset,
 		Succmap0, Succmap, Predmap0, Predmap) -->
-	vn__order_link_msg(User, Sink, yes),
-	{ vn__add_link(User, Sink, Succmap0, Succmap1, Predmap0, Predmap1) },
 	(
-		{ User = node_shared(Vn) }
+		{
+			User = node_lval(Vnlval)
+		;
+			User = node_shared(UserVn),
+			vn__lookup_desired_value(Vnlval, UserVn,
+				"vn__add_user", VnTables)
+		}
 	->
-		{ vn__get_vnlval_vn_list(VnTables, VnlvalVns) }, 
-		vn__add_aliases(VnlvalVns, Vn, Sink, Liveset,
-			Succmap1, Succmap, Predmap1, Predmap)
+		{ Succmap = Succmap0 },
+		{ Predmap = Predmap0 }
 	;
-		{ Succmap = Succmap1 },
-		{ Predmap = Predmap1 }
+		vn__order_link_msg(User, Sink, yes),
+		{ vn__add_link(User, Sink,
+			Succmap0, Succmap1, Predmap0, Predmap1) },
+		(
+			{ User = node_shared(Vn) }
+		->
+			{ vn__get_vnlval_vn_list(VnTables, VnlvalVns) }, 
+			vn__add_aliases(VnlvalVns, Vn, Sink, Liveset,
+				Succmap1, Succmap, Predmap1, Predmap)
+		;
+			{ Succmap = Succmap1 },
+			{ Predmap = Predmap1 }
+		)
 	).
 
 :- pred vn__add_aliases(assoc_list(vnlval, vn), vn, vn_node, vnlvalset,

@@ -27,10 +27,9 @@
 
 :- implementation.
 
-:- import_module list, globals, opt_util.
-
 :- import_module jumpopt, labelopt, dupelim, frameopt, peephole, value_number.
-:- import_module int, std_util.
+:- import_module globals, opt_util, opt_debug.
+:- import_module list, map, bimap, int, std_util.
 
 optimize__main([], []) --> [].
 optimize__main([Proc0|Procs0], [Proc|Procs]) -->
@@ -67,11 +66,12 @@ optimize__repeat(Iter0, DoVn, Instrs0, Instrs) -->
 	(
 		{ Iter0 > 0 }
 	->
-		optimize__repeated(Instrs0, DoVn, no, Instrs1, Mod),
+		{ bimap__init(TeardownMap) },
+		optimize__repeated(Instrs0, DoVn, no, TeardownMap,
+			Instrs1, Mod),
 		( { Mod = yes } ->
 			{ Iter1 is Iter0 - 1 },
-			optimize__repeat(Iter1, DoVn, Instrs1,
-				Instrs)
+			optimize__repeat(Iter1, DoVn, Instrs1, Instrs)
 		;
 			{ Instrs = Instrs1 }
 		)
@@ -83,10 +83,10 @@ optimize__repeat(Iter0, DoVn, Instrs0, Instrs) -->
 	% to create more opportunities for use of the tailcall macro.
 
 :- pred optimize__repeated(list(instruction), bool, bool,
-	list(instruction), bool, io__state, io__state).
-:- mode optimize__repeated(in, in, in, out, out, di, uo) is det.
+	bimap(label, label), list(instruction), bool, io__state, io__state).
+:- mode optimize__repeated(in, in, in, in, out, out, di, uo) is det.
 
-optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
+optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	{ opt_util__find_first_label(Instrs0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
@@ -114,8 +114,7 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ jumpopt__main(Instrs1, FullJumpopt, Final,
-			Instrs2, Mod1) }
+		{ jumpopt__main(Instrs1, FullJumpopt, Final, Instrs2, Mod1) }
 	;
 		{ Instrs2 = Instrs1 },
 		{ Mod1 = no }
@@ -129,7 +128,7 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ peephole__main(Instrs2, Instrs3, Mod2) }
+		{ peephole__main(Instrs2, Instrs3, TeardownMap, Mod2) }
 	;
 		{ Instrs3 = Instrs2 },
 		{ Mod2 = no }
@@ -143,7 +142,7 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ labelopt__main(Instrs3, Instrs4, Mod3) }
+		{ labelopt__main(Instrs3, Final, Instrs4, Mod3) }
 	;
 		{ Instrs4 = Instrs3 },
 		{ Mod3 = no }
@@ -197,10 +196,19 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 		;
 			[]
 		),
-		{ frameopt__main(Instrs0, Instrs1, Mod1) }
+		{ frameopt__main(Instrs0, Instrs1, TeardownMap, Mod1) }
 	;
 		{ Instrs1 = Instrs0 },
+		{ bimap__init(TeardownMap) },
 		{ Mod1 = no }
+	),
+	globals__io_lookup_bool_option(optimize_peep, Peephole),
+	( { FrameOpt = yes, Peephole = yes } ->
+		% get rid of useless incr_sp/decr_sp pairs
+		{ bimap__init(Empty1) },
+		{ peephole__main(Instrs1, Instrs2, Empty1, _) }
+	;
+		{ Instrs2 = Instrs1 }
 	),
 	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
 	( { ValueNumber = yes } ->
@@ -211,24 +219,24 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 		;
 			[]
 		),
-		{ value_number__post_main(Instrs1, Instrs2) }
+		{ value_number__post_main(Instrs2, Instrs3) }
 	;
-		{ Instrs2 = Instrs1 }
+		{ Instrs3 = Instrs2 }
 	),
 	( { FrameOpt = yes ; ValueNumber = yes } ->
-		optimize__repeated(Instrs2, no, yes,
-			Instrs3, RepMod),
-		globals__io_lookup_bool_option(optimize_peep, Peephole),
+		optimize__repeated(Instrs3, no, yes, TeardownMap,
+			Instrs4, RepMod),
 		( { RepMod = yes, FrameOpt = yes, Peephole = yes } ->
-			{ peephole__main(Instrs3, Instrs4, _) }
+			{ bimap__init(Empty2) },
+			{ peephole__main(Instrs4, Instrs5, Empty2, _) }
 		;
-			{ Instrs4 = Instrs3 }
+			{ Instrs5 = Instrs4 }
 		),
 		( { frameopt__is_succip_restored(Instrs4) } ->
-			{ Instrs = Instrs4 }
+			{ Instrs = Instrs5 }
 		;
-			{ frameopt__dont_save_succip(Instrs4, Instrs) }
+			{ frameopt__dont_save_succip(Instrs5, Instrs) }
 		)
 	;
-		{ Instrs = Instrs2 }
+		{ Instrs = Instrs3 }
 	).

@@ -131,6 +131,9 @@
 :- pred opt_debug__dump_labels(list(label), string).
 :- mode opt_debug__dump_labels(in, out) is det.
 
+:- pred opt_debug__dump_label_pairs(list(pair(label)), string).
+:- mode opt_debug__dump_label_pairs(in, out) is det.
+
 :- pred opt_debug__dump_proclabel(proc_label, string).
 :- mode opt_debug__dump_proclabel(in, out) is det.
 
@@ -624,6 +627,13 @@ opt_debug__dump_labels([Label | Labels], Str) :-
 	opt_debug__dump_label(Label, L_str),
 	opt_debug__dump_labels(Labels, L2_str),
 	string__append_list([" ", L_str, L2_str], Str).
+
+opt_debug__dump_label_pairs([], "").
+opt_debug__dump_label_pairs([L1 - L2 | Labels], Str) :-
+	opt_debug__dump_label(L1, L1_str),
+	opt_debug__dump_label(L2, L2_str),
+	opt_debug__dump_label_pairs(Labels, L_str),
+	string__append_list([" ", L1_str, "-", L2_str, L_str], Str).
 
 opt_debug__dump_proclabel(proc(Module, Pred, Arity, Mode), Str) :-
 	string__int_to_string(Arity, A_str),

@@ -21,8 +21,8 @@
 	% If the instruction before the label branches away, we also
 	% remove the instruction block following the label.
 
-:- pred labelopt__main(list(instruction), list(instruction), bool).
-:- mode labelopt__main(in, out, out) is det.
+:- pred labelopt__main(list(instruction), bool, list(instruction), bool).
+:- mode labelopt__main(in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -32,10 +32,15 @@
 
 :- type usemap == bintree_set(label).
 
-labelopt__main(Instructions0, Instructions, Mod) :-
+labelopt__main(Instrs0, _Final, Instrs, Mod) :-
 	bintree_set__init(Usemap0),
-	labelopt__build_usemap(Instructions0, Usemap0, Usemap),
-	labelopt__instr_list(Instructions0, yes, Usemap, Instructions, Mod).
+	labelopt__build_usemap(Instrs0, Usemap0, Usemap),
+	labelopt__instr_list(Instrs0, yes, Usemap, Instrs1, Mod),
+	( Final = yes, Mod = yes ->
+		labelopt__main(Instrs1, Final, Instrs, _)
+	;
+		Instrs = Instrs1
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -14,23 +14,23 @@
 
 :- interface.
 
-:- import_module list, llds.
+:- import_module list, llds, map, bimap.
 
-:- pred peephole__main(list(instruction), list(instruction), bool).
-:- mode peephole__main(in, out, out) is det.
+:- pred peephole__main(list(instruction), list(instruction),
+	bimap(label, label), bool).
+:- mode peephole__main(in, out, in, out) is det.
 
 :- implementation.
 
-:- import_module code_util, opt_util, map, string, std_util.
+:- import_module code_util, opt_util, opt_debug, map, string, std_util.
 
-peephole__main(Instrs0, Instrs, Mod) :-
+peephole__main(Instrs0, Instrs, TeardownMap, Mod) :-
 	map__init(Procmap0),
 	map__init(Succmap0),
-	peephole__build_procmaps(Instrs0, Procmap0, Procmap,
-		Succmap0, Succmap),
+	peephole__build_procmaps(Instrs0, Procmap0, Procmap, Succmap0, Succmap),
 	map__init(Forkmap0),
 	peephole__build_forkmap(Instrs0, Succmap, Forkmap0, Forkmap),
-	peephole__optimize(Instrs0, Instrs, Procmap, Forkmap, Mod).
+	peephole__optimize(Instrs0, Instrs, Procmap, Forkmap, TeardownMap, Mod).
 
 	% Build two maps, one for deterministic proceeds and one for
 	% semideterministic proceeds. If a label is followed by code
@@ -92,15 +92,15 @@ peephole__build_forkmap([Instr - _Comment|Instrs], Succmap,
 	% to optimize the sequence starting with the previous instruction.
 
 :- pred peephole__optimize(list(instruction), list(instruction),
-	tailmap, tailmap, bool).
-:- mode peephole__optimize(in, out, in, in, out) is det.
+	tailmap, tailmap, bimap(label, label), bool).
+:- mode peephole__optimize(in, out, in, in, in, out) is det.
 
-peephole__optimize([], [], _, _, no).
-peephole__optimize([Instr0 - Comment|Instructions0], Instructions,
-		Procmap, Forkmap, Mod) :-
+peephole__optimize([], [], _, _, _, no).
+peephole__optimize([Instr0 - Comment | Instructions0], Instructions,
+		Procmap, Forkmap, TeardownMap, Mod) :-
 	peephole__optimize(Instructions0, Instructions1,
-		Procmap, Forkmap, Mod0),
-	peephole__opt_instr(Instr0, Comment, Procmap, Forkmap,
+		Procmap, Forkmap, TeardownMap, Mod0),
+	peephole__opt_instr(Instr0, Comment, Procmap, Forkmap, TeardownMap,
 		Instructions1, Instructions, Mod1),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no
@@ -112,19 +112,19 @@ peephole__optimize([Instr0 - Comment|Instructions0], Instructions,
 	% If successful, try it again.
 
 :- pred peephole__opt_instr(instr, string, tailmap, tailmap,
-	list(instruction), list(instruction), bool).
-:- mode peephole__opt_instr(in, in, in, in, in, out, out) is det.
+	bimap(label, label), list(instruction), list(instruction), bool).
+:- mode peephole__opt_instr(in, in, in, in, in, in, out, out) is det.
 
-peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
+peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap, TeardownMap,
 		Instructions0, Instructions, Mod) :-
 	(
 		opt_util__skip_comments(Instructions0, Instructions1),
-		peephole__match(Instr0, Comment0, Procmap, Forkmap,
+		peephole__match(Instr0, Comment0, Procmap, Forkmap, TeardownMap,
 			Instructions1, Instructions2)
 	->
 		( Instructions2 = [Instr2 - Comment2 | Instructions3] ->
 			peephole__opt_instr(Instr2, Comment2, Procmap, Forkmap,
-				Instructions3, Instructions, _)
+				TeardownMap, Instructions3, Instructions, _)
 		;
 			Instructions = Instructions2
 		),
@@ -136,9 +136,14 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
 
 	% Look for code patterns that can be optimized, and optimize them.
 
-:- pred peephole__match(instr, string, tailmap, tailmap,
+:- pred peephole__match(instr, string, tailmap, tailmap, bimap(label, label),
 	list(instruction), list(instruction)).
-:- mode peephole__match(in, in, in, in, in, out) is semidet.
+:- mode peephole__match(in, in, in, in, in, in, out) is semidet.
+
+% peephole__match(block(N, Block0), Comment, Procmap, Forkmap, TeardownMap,
+% 		Instrs0, Instrs) :-
+% 	peephole__optimize(Block0, Block, Procmap, Forkmap, TeardownMap, _),
+% 	Instrs = [block(N, Block) - Comment | Instrs0].
 
 	% A `call' followed by a `proceed' can be replaced with a `tailcall'.
 	%
@@ -196,7 +201,7 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
 	%       <comments, labels>		<comments, labels>
 	%	proceed				proceed
 
-peephole__match(livevals(Livevals), Comment, Procmap, Forkmap,
+peephole__match(livevals(Livevals), Comment, Procmap, Forkmap, _,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [call(CodeAddress, label(ContLabel), Caller, _LiveVals)
@@ -225,8 +230,7 @@ peephole__match(livevals(Livevals), Comment, Procmap, Forkmap,
 	%	<comments, labels>	=>	<comments, labels>
 	%     next:			      next:
 
-peephole__match(goto(label(Label), _Caller), _Comment, _Procmap, _Forkmap,
-		Instrs0, Instrs) :-
+peephole__match(goto(label(Label), _Caller), _, _, _, _, Instrs0, Instrs) :-
 	opt_util__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
 
@@ -250,7 +254,7 @@ peephole__match(goto(label(Label), _Caller), _Comment, _Procmap, _Forkmap,
 	%	<comments, labels>	      next:
 	%     next:
 
-peephole__match(if_val(Rval, label(Target)), Comment, _Procmap, _Forkmap,
+peephole__match(if_val(Rval, label(Target)), Comment, _, _, _,
 		Instrs0, Instrs) :-
 	( opt_util__is_const_condition(Rval, Taken) ->
 		(
@@ -299,8 +303,8 @@ peephole__match(if_val(Rval, label(Target)), Comment, _Procmap, _Forkmap,
 	% These two patterns are mutually exclusive because if_val is not
 	% straigh-line code.
 
-peephole__match(mkframe(Descr, Slots, Redoip1), Comment,
-		_Procmap, _Forkmap, Instrs0, Instrs) :-
+peephole__match(mkframe(Descr, Slots, Redoip1), Comment, _, _, _,
+		Instrs0, Instrs) :-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
@@ -352,8 +356,7 @@ peephole__match(mkframe(Descr, Slots, Redoip1), Comment,
 	% are not touched by the straight-line instructions, then we can
 	% discard the nondet stack frame early.
 
-peephole__match(modframe(Redoip), Comment,
-		_Procmap, _Forkmap, Instrs0, Instrs) :-
+peephole__match(modframe(Redoip), Comment, _, _, _, Instrs0, Instrs) :-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
@@ -375,7 +378,8 @@ peephole__match(modframe(Redoip), Comment,
 
 	% If a decr_sp follows an incr_sp of the same amount, with the code
 	% in between not referencing the stack, except possibly for a
-	% restoration of succip, then the two cancel out.
+	% restoration of succip, then the two cancel out. Assignments to
+	% stack slots are allowed and are thrown away.
 	%
 	%	incr_sp N
 	%	<...>		=>	<...>
@@ -386,7 +390,7 @@ peephole__match(modframe(Redoip), Comment,
 	%	succip = detstackvar(N)
 	%	decr_sp N
 
-peephole__match(incr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
+peephole__match(incr_sp(N), _, _, _, _, Instrs0, Instrs) :-
 	opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain),
 	list__append(Between, Remain, Instrs).
 
@@ -398,11 +402,15 @@ peephole__match(incr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
 	%	decr_sp N 	=>	<...>
 	%	incr_sp N
 
-peephole__match(decr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
+peephole__match(decr_sp(N), _, _, _, TeardownMap, Instrs0, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [incr_sp(N) - _ | Instrs].
+% XXX should be restored when proven OK
+% peephole__match(decr_sp(N), _, _, _, TeardownMap, Instrs0, Instrs) :-
+% 	peephole_decr(N, TeardownMap, Instrs0, Instrs).
 
-peephole__match(assign(Lval, Rval), Comment, _, _, Instrs0, Instrs) :-
+peephole__match(assign(Lval, Rval), Comment, _Procmap, _Forkmap, _TeardownMap,
+		Instrs0, Instrs) :-
 	Lval = succip,
 	Rval = lval(stackvar(N)),
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
@@ -413,3 +421,47 @@ peephole__match(assign(Lval, Rval), Comment, _, _, Instrs0, Instrs) :-
 	Instr3 = assign(stackvar(0), lval(succip)) - _,
 	Instr0 = assign(Lval, Rval) - Comment,
 	Instrs = [Instr0, Instr1 | Instrs4].
+% XXX should be restored when proven OK
+%	peephole__optimize([Instr0, Instr1 | Instrs4], Instrs,
+%		Procmap, Forkmap, TeardownMap, _).
+
+:- pred peephole_decr(int, bimap(label, label),
+	list(instruction), list(instruction)).
+:- mode peephole_decr(in, in, in, out) is semidet.
+
+peephole_decr(N, TeardownMap, Instrs0, Instrs) :-
+	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	Instr1 = Uinstr1 - Comment1,
+	(
+		Uinstr1 = incr_sp(N),
+		Instrs = Instrs2
+	;
+		Uinstr1 = if_val(Cond, Addr),
+		Addr = label(Label),
+		bimap__search(TeardownMap, OrigLabel, Label),
+		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		string__append(Comment1, " (original)", NewComment),
+		NewInstr = if_val(Cond, label(OrigLabel)) - NewComment,
+		Instrs = [NewInstr | TailInstrs]
+	;
+		Uinstr1 = assign(Lval, Rval),
+		opt_util__lval_refers_stackvars(Lval, no),
+		opt_util__rval_refers_stackvars(Rval, no),
+		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		Instrs = [Instr1 | TailInstrs]
+	;
+		Uinstr1 = incr_hp(Lval, _Tag, Rval),
+		opt_util__lval_refers_stackvars(Lval, no),
+		opt_util__rval_refers_stackvars(Rval, no),
+		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		Instrs = [Instr1 | TailInstrs]
+	;
+		Uinstr1 = comment(_),
+		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		Instrs = [Instr1 | TailInstrs]
+	;
+		Uinstr1 = livevals(_),
+		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		Instrs = [Instr1 | TailInstrs]
+	).
