@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2001 The University of Melbourne.
+** Copyright (C) 1999-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -878,6 +878,10 @@ MR_OUTLINE_DEFN(
 	}
 )
 
+#endif /* MR_AVOID_MACROS || !__GNUC__ */
+
+#if defined(MR_AVOID_MACROS)
+
 MR_OUTLINE_DEFN(
 	MR_Float
 	MR_unbox_float(MR_Box b)
@@ -887,7 +891,7 @@ MR_OUTLINE_DEFN(
 	}
 )
 
-#endif /* MR_AVOID_MACROS || !__GNUC__ */
+#endif /* MR_AVOID_MACROS */
 
 /*
 ** This is exactly the same as MR_box_float(), except that
