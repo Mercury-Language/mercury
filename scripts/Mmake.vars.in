@@ -239,7 +239,7 @@ MS_CL_LIBS	=
 
 # MERCURY_STDLIB_DIR should be set by the `mmake' script.
 MERC_C_INCL_DIR = $(MERCURY_STDLIB_DIR)/inc
-MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/$(GRADE)/@FULLARCH@
+MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/$(GRADESTRING)/@FULLARCH@
 
 # MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
 # into bytecode.
