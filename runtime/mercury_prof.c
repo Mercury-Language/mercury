@@ -375,6 +375,7 @@ print_memory_node(FILE *words_fptr, FILE *cells_fptr, MR_memprof_record *node)
 {
 	if (node != NULL) {
 		MR_Dword cells, words;
+		double	 cells_double, words_double;
 
 		cells = node->counter.cells_at_period_start;
 		words = node->counter.words_at_period_start;
@@ -384,15 +385,13 @@ print_memory_node(FILE *words_fptr, FILE *cells_fptr, MR_memprof_record *node)
 		MR_add_two_dwords(words,
 			node->counter.words_since_period_start);
 
-		if (cells.high_word || words.high_word) {
-			fprintf(stderr, "Mercury runtime: memory profile "
-				"counter for `%s' overflowed\n",
-				node->name);
-		}
-		fprintf(words_fptr, "%ld %lu\n",
-			(long) node->addr, words.low_word);
-		fprintf(cells_fptr, "%ld %lu\n",
-			(long) node->addr, cells.low_word);
+		MR_convert_dword_to_double(words, words_double);
+		MR_convert_dword_to_double(cells, cells_double);
+
+		fprintf(words_fptr, "%ld %.0f\n",
+			(long) node->addr, words_double);
+		fprintf(cells_fptr, "%ld %.0f\n",
+			(long) node->addr, cells_double);
 
 		print_memory_node(words_fptr, cells_fptr, node->left);
 		print_memory_node(words_fptr, cells_fptr, node->right);
