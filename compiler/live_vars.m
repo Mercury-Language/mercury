@@ -29,7 +29,7 @@
 :- implementation.
 
 :- import_module llds, arg_info, prog_data, hlds_goal, hlds_data, mode_util.
-:- import_module globals, graph_colour, instmap.
+:- import_module code_aux, globals, graph_colour, instmap.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module int, term, require.
 
@@ -161,7 +161,11 @@ detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0, _),
 		NondetLives, Liveness0, LiveSets0, _CodeModel,
 			ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	set__union(Liveness0, NondetLives, LiveVars),
-	set__insert(LiveSets0, LiveVars, LiveSets0A),
+	( code_aux__contains_only_builtins(Cond0) ->
+		LiveSets0A = LiveSets0
+	;
+		set__insert(LiveSets0, LiveVars, LiveSets0A)
+	),
 	detect_live_vars_in_goal(Cond0, Liveness0, LiveSets0A,
 		ModuleInfo, ProcInfo, Liveness1, LiveSets1),
 	detect_live_vars_in_goal(Then0, Liveness1, LiveSets1,

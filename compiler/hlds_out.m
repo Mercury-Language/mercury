@@ -835,9 +835,21 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _),
 		% XXX we should print more info here
 	hlds_out__write_functor(term__atom("call"), [PredVar|ArgVars], VarSet).
 
-hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName),
-				_ModuleInfo, VarSet, _Indent, _TypeQual) -->
+hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, Builtin, _, PredName),
+				_ModuleInfo, VarSet, Indent, _TypeQual) -->
 		% XXX we should print more info here
+	( { hlds__is_builtin_is_internal(Builtin) } ->
+		io__write_string("% internal"),
+		mercury_output_newline(Indent)
+	;
+		[]
+	),
+	( { hlds__is_builtin_is_inline(Builtin) } ->
+		io__write_string("% inline"),
+		mercury_output_newline(Indent)
+	;
+		[]
+	),
 	(
 		{ PredName = qualified(ModuleName, Name) },
 		hlds_out__write_qualified_functor(ModuleName, term__atom(Name),

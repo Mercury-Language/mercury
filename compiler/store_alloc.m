@@ -266,8 +266,6 @@ store_alloc_allocate_storage(LiveVars, FollowVars, StoreMap) :-
 	map(var, lval), map(var, lval)).
 :- mode store_alloc_remove_nonlive(in, in, in, out) is det.
 
-/*###269 [cc] In clause for predicate `store_alloc:store_alloc_remove_nonlive/4':%%%*/
-/*###269 [cc] Warning: variable `LiveVars' occurs only once in this scope.%%%*/
 store_alloc_remove_nonlive([], _LiveVars, StoreMap, StoreMap).
 store_alloc_remove_nonlive([Var | Vars], LiveVars, StoreMap0, StoreMap) :-
 	(
