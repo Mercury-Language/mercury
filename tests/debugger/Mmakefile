@@ -78,9 +78,9 @@ exception_vars.out: exception_vars exception_vars.inp
 	if $(MDB) ./exception_vars < exception_vars.inp		\
 		> exception_vars.out 2>&1;			\
 	then							\
-		true;						\
-	else							\
 		false;						\
+	else							\
+		true;						\
 	fi
 
 existential_type_classes.out: existential_type_classes \
