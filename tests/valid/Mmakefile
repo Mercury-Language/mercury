@@ -28,12 +28,15 @@ TYPECLASS_SOURCES= \
 
 ADITI_SOURCES= \
 	aditi_error_bug.m \
-	aditi_query.m \
 	aditi_update.m \
 	base_relation.m \
 	base_relation2.m \
 	context_anc.m \
 	ite_to_disj.m
+
+	# This test does not produce a `.c' file.
+RLO_SOURCES= \
+	aditi_query.m
 
 OTHER_SOURCES= \
 	common_struct_bug.m \
@@ -183,7 +186,7 @@ else
 endif
 
 DEPS =	$(SOURCES:%.m=%.depend)
-OBJS =	$(SOURCES:%.m=$(os_subdir)%.$O)
+OBJS =	$(SOURCES:%.m=$(os_subdir)%.$O) $(RLO_SOURCES:%.m=$(rlos_subdir)%.rlo)
 PROGS =	$(SOURCES:%.m=%)
 
 all:	objs
