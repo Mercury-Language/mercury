@@ -167,7 +167,7 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 
 % construct_name:
 %	When more then one predicate maps to the same address.  This predicate
-%	will build a string of all the different names seperated by 'or's.
+%	will build a string of all the different names separated by 'or's.
 :- pred construct_name(list(string), string).
 :- mode construct_name(in, out) is det.
 
