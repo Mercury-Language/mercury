@@ -42,13 +42,21 @@ endif
 # We need to substitute all spaces with colons for the VPATH to work.
 # Getting a space to be recognised as the first argument of the subst
 # function is problematic; hence the `$(nullstring)' hack.
+# As VPATH uses colon as the seperator we also need to convert all the
+# directories into cygwin unix format if they are in windows format.
 # XXX Note that directory names with spaces in them (e.g. under Windows)
 # will cause problems for the VPATH settings below, as well as every
 # occurrence of $(patsubst ...), since GNU Make does not respect quotes.
+UNIX_MERCURY_EXTRA_INT_DIRS = $(foreach dir, $(MERCURY_EXTRA_INT_DIRS),\
+				$(shell @CYGPATHU@ "$(dir)"))
+UNIX_MERC_INT_DIR = $(shell @CYGPATHU@ "$(MERC_INT_DIR)")
+UNIX_MERCURY_EXTRA_INIT_DIRS = $(foreach dir, $(MERCURY_EXTRA_INIT_DIRS),\
+				$(shell @CYGPATHU@ "$(dir)"))
+
 nullstring	=
 MMAKE_VPATH	= $(subst $(nullstring) ,:,$(strip \
-			$(MERCURY_EXTRA_INT_DIRS) $(MERC_INT_DIR)\
-			$(MERCURY_EXTRA_INIT_DIRS)))
+			$(UNIX_MERCURY_EXTRA_INT_DIRS) $(UNIX_MERC_INT_DIR)\
+			$(UNIX_MERCURY_EXTRA_INIT_DIRS)))
 VPATH		= $(MMAKE_VPATH) # do not remove the `:' from this comment!!!
 #			 the above comment works around a misfeature of
 #			 autoconf which causes it to delete assignments to

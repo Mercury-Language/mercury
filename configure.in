@@ -109,6 +109,9 @@ esac
 # path to Windows format, with '/' as the directory
 # separator).
 AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+AC_CHECK_PROG(CYGPATHU, cygpath, cygpath -u, echo)
+
+AC_SUBST(CYGPATHU)
 
 PREFIX="`$CYGPATH $PREFIX`"
 LIBDIR="`$CYGPATH $PREFIX/lib/mercury`"
