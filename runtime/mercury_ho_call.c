@@ -476,7 +476,7 @@ MR_define_entry(mercury__do_call_class_method);
 	MR_Integer	num_input_args;
 	MR_Code 	*destination;
 	MR_Integer	num_extra_instance_args;
-	int	i;
+	int		i;
 
 	/*
 	** These assignments to local variables allow the values
