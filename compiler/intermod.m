@@ -184,8 +184,44 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 :- pred intermod__gather_preds(list(pred_id)::in, bool::in, int::in,
 	int::in, bool::in, intermod_info::in, intermod_info::out) is det.
 
-intermod__gather_preds([], _CollectTypes, _, _, _) --> [].
-intermod__gather_preds([PredId | PredIds], CollectTypes,
+intermod__gather_preds(AllPredIds, CollectTypes,
+		InlineThreshold, HigherOrderSizeLimit, Deforestation) -->
+	% first gather exported preds
+	{ ProcessLocalPreds = no },
+	intermod__gather_pred_list(AllPredIds, ProcessLocalPreds,
+		CollectTypes, InlineThreshold, HigherOrderSizeLimit,
+		Deforestation),
+
+	% then gather preds used by exported preds (recursively)
+	{ set__init(ExtraExportedPreds0) },
+	intermod__gather_preds_2(ExtraExportedPreds0, CollectTypes,
+		InlineThreshold, HigherOrderSizeLimit, Deforestation).
+
+:- pred intermod__gather_preds_2(set(pred_id)::in, bool::in, int::in,
+	int::in, bool::in, intermod_info::in, intermod_info::out) is det.
+
+intermod__gather_preds_2(ExtraExportedPreds0, CollectTypes,
+		InlineThreshold, HigherOrderSizeLimit, Deforestation) -->
+	intermod_info_get_pred_decls(ExtraExportedPreds),
+	{ NewlyExportedPreds = set__to_sorted_list(
+		ExtraExportedPreds `set__difference` ExtraExportedPreds0) },
+	( { NewlyExportedPreds = [] } ->
+		[]
+	;
+		{ ProcessLocalPreds = yes },
+		intermod__gather_pred_list(NewlyExportedPreds,
+			ProcessLocalPreds, CollectTypes,
+			InlineThreshold, HigherOrderSizeLimit, Deforestation),
+		intermod__gather_preds_2(ExtraExportedPreds, CollectTypes,
+			InlineThreshold, HigherOrderSizeLimit, Deforestation)
+	).
+
+:- pred intermod__gather_pred_list(list(pred_id)::in, bool::in, bool::in,
+	int::in, int::in, bool::in, intermod_info::in, intermod_info::out)
+	is det.
+
+intermod__gather_pred_list([], _, _, _, _, _) --> [].
+intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 		InlineThreshold, HigherOrderSizeLimit, Deforestation) -->
 	intermod_info_get_module_info(ModuleInfo0),
 	{ module_info_preds(ModuleInfo0, PredTable0) },
@@ -193,8 +229,8 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	{ module_info_type_spec_info(ModuleInfo0, TypeSpecInfo) },
 	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
 	(
-		{ intermod__should_be_processed(PredId, PredInfo0,
-			TypeSpecForcePreds, InlineThreshold,
+		{ intermod__should_be_processed(ProcessLocalPreds, PredId,
+			PredInfo0, TypeSpecForcePreds, InlineThreshold,
 			HigherOrderSizeLimit, Deforestation, ModuleInfo0) }
 	->
 		=(IntermodInfo0),
@@ -233,23 +269,29 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	;
 		[]
 	),
-	intermod__gather_preds(PredIds, CollectTypes,
+	intermod__gather_pred_list(PredIds, ProcessLocalPreds, CollectTypes,
 		InlineThreshold, HigherOrderSizeLimit, Deforestation).
 
 
-:- pred intermod__should_be_processed(pred_id::in, pred_info::in,
+:- pred intermod__should_be_processed(bool::in, pred_id::in, pred_info::in,
 		set(pred_id)::in, int::in, int::in, bool::in,
 		module_info::in) is semidet.
 
-intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
-		InlineThreshold, HigherOrderSizeLimit,
+intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
+		TypeSpecForcePreds, InlineThreshold, HigherOrderSizeLimit,
 		Deforestation, ModuleInfo) :-
 	%
 	% note: we can't include exported_to_submodules predicates in
 	% the `.opt' file, for reasons explained in the comments for
 	% intermod__add_proc
 	%
-	pred_info_is_exported(PredInfo),
+	(
+		ProcessLocalPreds = no,
+		pred_info_is_exported(PredInfo)
+	;
+		ProcessLocalPreds = yes,
+		pred_info_import_status(PredInfo, local)
+	),
 	(
 		pred_info_clauses_info(PredInfo, ClauseInfo),
 		clauses_info_clauses(ClauseInfo, Clauses),

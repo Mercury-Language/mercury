@@ -1446,7 +1446,8 @@ opt_level(4, _, [
 	lazy_code		-	bool(yes),
 	optimize_value_number	-	bool(yes),
 	inline_simple_threshold	-	int(8),
-	inline_compound_threshold -	int(20)
+	inline_compound_threshold -	int(20),
+	higher_order_size_limit -	int(30)
 ]).
 
 % Optimization level 5: apply optimizations which may have some
@@ -1459,7 +1460,8 @@ opt_level(5, _, [
 	pred_value_number	-	bool(yes),
 	optimize_repeat		-	int(5),
 	optimize_vnrepeat	-	int(2),
-	inline_compound_threshold -	int(100)
+	inline_compound_threshold -	int(100),
+	higher_order_size_limit -	int(40)
 ]).
 
 % Optimization level 6: apply optimizations which may have any
