@@ -127,7 +127,10 @@ array__search(Array, Index, Item) :-
 		array__search_2(Array, Index, Item)
 	).
 
-array__search_2(node(Item), Index, Item).
+:- pred array__search_2(array(T), int, T).
+:- mode array__search_2(input, input, output).
+
+array__search_2(node(Item), _Index, Item).
 array__search_2(two(Low, High, Left, Right), Index, Item) :-
 	Size is High - Low,
 	Half is Size // 2,
@@ -156,7 +159,7 @@ array__search_2(three(Low, High, Left, Middle, Right), Index, Item) :-
 		array__search_2(Right, Index, Item)
 	).
 
-array__set(node(_), Index, Item, node(Item)).
+array__set(node(_), _Index, Item, node(Item)).
 array__set(two(Low, High, Left, Right), Index, Item, A) :-
 	Size is High - Low,
 	Half is Size // 2,
