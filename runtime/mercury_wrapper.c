@@ -127,7 +127,7 @@ bool		MR_profiling = TRUE;
 ** Hence the statically linked init file saves the addresses of those
 ** procedures in the following global variables.
 ** This ensures that there are no cyclic dependencies;
-** the order is user program -> library -> runtime -> gc,
+** the order is user program -> trace -> browser -> library -> runtime -> gc,
 ** where `->' means "depends on", i.e. "references a symbol of".
 */
 
