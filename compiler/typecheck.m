@@ -543,8 +543,6 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 
 typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 	list__length(Args, Arity),
-	unqualify_name(PredName, Name),
-
 	PredCallId = PredName/Arity,
 	type_info_set_called_predid(TypeInfo0, PredCallId, TypeInfo1),
 
