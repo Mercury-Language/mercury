@@ -1329,7 +1329,7 @@ mlds_export_to_mlds_defn(
 		% XXX should we look for tail calls?
 	CallStatement = statement(
 		call(Signature, CodeRval, no, ArgRvals, ReturnLvals,
-			call), Context),
+			ordinary_call), Context),
 	ReturnStatement = statement(return(ReturnRvals), Context),
 
 	Statement = statement(mlds__block(ReturnVarDecls,
@@ -1563,7 +1563,7 @@ statement_to_il(statement(atomic(Atomic), Context), Instrs) -->
 	atomic_statement_to_il(Atomic, AtomicInstrs),
 	{ Instrs = tree(context_node(Context), AtomicInstrs) }.
 
-statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail), 
+statement_to_il(statement(call(Sig, Function, _This, Args, Returns, CallKind), 
 		Context), Instrs) -->
 	VerifiableCode =^ verifiable_code,
 	ByRefTailCalls =^ il_byref_tailcalls,
@@ -1574,7 +1574,7 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 	CallerSig =^ signature,
 	{ CallerSig = signature(_, CallerReturnParam, _) },
 	(
-		{ IsTail = tail_call },
+		{ CallKind = tail_call ; CallKind = no_return_call },
 		% if --verifiable-code is enabled,
 		% and the arguments contain one or more byrefs,
 		% then don't emit the "tail." prefix,

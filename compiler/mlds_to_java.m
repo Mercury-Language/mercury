@@ -762,7 +762,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
 		CallRetLvals = [ReturnLval]
 	),
 	Call = mlds__call(OrigFuncSignature, CallRval, no, CallArgs,
-			CallRetLvals, call),
+			CallRetLvals, ordinary_call),
 	CallStatement = mlds__statement(Call, Context),
 	%
 	% Create a return statement that returns the result of the call to the

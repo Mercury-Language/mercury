@@ -49,7 +49,8 @@
 % any backend support for them.
 %
 % Note that ml_call_gen.m will also mark calls to procedures with determinism
-% `erroneous' as tail calls when it generates them.
+% `erroneous' as `no_return_call's (a special case of tail calls)
+% when it generates them.
 
 %-----------------------------------------------------------------------------%
 
@@ -274,11 +275,12 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
 		Stmt0 = computed_goto(_, _),
 		Stmt = Stmt0
 	;
-		Stmt0 = call(Sig, Func, Obj, Args, ReturnLvals, _TailCall0),
+		Stmt0 = call(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
 		%
 		% check if we can mark this call as a tail call
 		%
 		(
+			CallKind0 = ordinary_call,
 			%
 			% we must be in a tail position
 			%
@@ -297,9 +299,9 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
 			check_rvals(Args, Locals)
 		->
 			% mark this call as a tail call
-			TailCall = tail_call,
+			CallKind = tail_call,
 			Stmt = call(Sig, Func, Obj, Args, ReturnLvals,
-					TailCall)
+					CallKind)
 		;
 			% leave this call unchanged
 			Stmt = Stmt0
@@ -606,8 +608,8 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
 	% nondeterministically find a non-tail call
 	statement_contains_statement(Statement, SubStatement),
 	SubStatement = mlds__statement(SubStmt, Context),
-	SubStmt = call(_CallSig, Func, _This, _Args, _RetVals, IsTailCall),
-	IsTailCall = call,
+	SubStmt = call(_CallSig, Func, _This, _Args, _RetVals, CallKind),
+	CallKind = ordinary_call,
 	% check if this call is a directly recursive call
 	Func = const(code_addr_const(CodeAddr)),
 	( CodeAddr = proc(QualProcLabel, _Sig), MaybeSeqNum = no

@@ -917,7 +917,7 @@
 			list(mlds__rval),	% ordinary function arguments
 			list(mlds__lval),	% places to store the
 						% function return value(s)
-			is_tail_call		% indicates whether this
+			call_kind		% indicates whether this
 						% call is a tail call
 		)
 
@@ -1075,9 +1075,24 @@ XXX Full exception handling support is not yet implemented.
 % Extra info for calls
 %
 
-:- type is_tail_call
-	--->	tail_call	% a tail call
-	;	call		% just an ordinary call
+	% The `call_kind' type indicates whether a call is a tail call
+	% and whether the call is know to never return.
+	%
+	% Marking a call as a tail_call is intended as a hint to
+	% the target language that this call can be implemented
+	% by removing the caller's stack frame and jumping to the
+	% destination, rather than a normal call.
+	% However, the target code generator need not obey this hint;
+	% it is permitted for the target code generator to ignore the
+	% hint and generate code which does not remove the caller's
+	% stack frame and/or which falls through to the following
+	% statement.
+	% 
+:- type call_kind
+	--->	no_return_call	% a call that never returns
+				% (this is a special case of a tail call)
+	;	tail_call	% a tail call
+	;	ordinary_call	% just an ordinary call
 	.
 
 %-----------------------------------------------------------------------------%

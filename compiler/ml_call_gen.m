@@ -451,14 +451,15 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
 	% build the MLDS call statement
 	%
 	% if the called procedure has determinism `erroneous'
-	% then it's always safe to make this call a tail call.
+	% then mark it as never returning
+	% (this will ensure that it gets treated as a tail call)
 	{ Detism = erroneous ->
-		CallOrTailcall = tail_call
+		CallKind = no_return_call
 	;
-		CallOrTailcall = call
+		CallKind = ordinary_call
 	},
 	{ MLDS_Stmt = call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
-			CallOrTailcall) },
+			CallKind) },
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 			mlds__make_context(Context)) },
 	{ MLDS_Statements = [MLDS_Statement] }.

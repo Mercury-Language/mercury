@@ -2223,14 +2223,9 @@ add_unchain_stack_to_stmt(Stmt0, Context, Stmt) -->
 		{ Stmt0 = computed_goto(_Rval, _Labels) },
 		{ Stmt = Stmt0 }
 	;
-		{ Stmt0 = call(_Sig, _Func, _Obj, _Args, _RetLvals, TailCall) },
-		( { TailCall = tail_call } ->
-			=(ElimInfo),
-			{ Stmt = prepend_unchain_frame(Stmt0, Context,
-				ElimInfo) }
-		;
-			{ Stmt = Stmt0 }
-		)
+		{ Stmt0 = call(_Sig, _Func, _Obj, _Args, RetLvals, CallKind) },
+		add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context,
+			Stmt)
 	;
 		{ Stmt0 = return(_Rvals) },
 		=(ElimInfo),
@@ -2245,6 +2240,36 @@ add_unchain_stack_to_stmt(Stmt0, Context, Stmt) -->
 		{ Stmt = try_commit(Ref, Statement, Handler) }
 	;
 		{ Stmt0 = atomic(_AtomicStmt0) },
+		{ Stmt = Stmt0 }
+	).
+
+:- pred add_unchain_stack_to_call(mlds__stmt, list(mlds__lval),
+		mlds__call_kind, mlds__context, mlds__stmt,
+		elim_info, elim_info).
+:- mode add_unchain_stack_to_call(in, in, in, in, out, in, out) is det.
+add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt) -->
+	(
+		{ CallKind = no_return_call },
+		% For no-return calls, we just unchain the stack
+		% frame before the call.
+		=(ElimInfo),
+		{ Stmt = prepend_unchain_frame(Stmt0, Context, ElimInfo) }
+	;
+		{ CallKind = tail_call },
+		% For tail calls, we unchain the stack frame before the call,
+		% and then we insert a return statement after the call.
+		% The return statement is needed ensure that the code doesn't
+		% fall through (past the tail call) and then try to unchain
+		% the already-unchained stack frame.
+		=(ElimInfo),
+		{ UnchainFrame = ml_gen_unchain_frame(Context, ElimInfo) },
+		{ Statement0 = mlds__statement(Stmt0, Context) },
+		{ RetRvals = list__map(func(Rval) = lval(Rval), RetLvals) },
+		{ RetStmt = return(RetRvals) },
+		{ RetStatement = mlds__statement(RetStmt, Context) },
+		{ Stmt = block([], [UnchainFrame, Statement0, RetStatement]) }
+	;
+		{ CallKind = ordinary_call },
 		{ Stmt = Stmt0 }
 	).
 

@@ -2216,7 +2216,8 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	% the call -- see below.
 	%
 	% Note that it's only safe to add such a return statement if
-	% the calling procedure has the same argument types as the callee.
+	% the calling procedure has the same return types as the callee,
+	% or if the calling procedure has no return value.
 	% (Calls where the types are different can be marked as tail calls
 	% if they are known to never return.)
 	%
@@ -2224,7 +2225,7 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	{ Signature = mlds__func_signature(_, RetTypes) },
 	{ CallerSignature = mlds__func_signature(_, CallerRetTypes) },
 	(
-		{ IsTailCall = tail_call },
+		{ IsTailCall = tail_call ; IsTailCall = no_return_call },
 		{ Results \= [] },
 		{ RetTypes = CallerRetTypes }
 	->
@@ -2253,9 +2254,8 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	io__write_string(");\n"),
 
 	(
-		{ IsTailCall = tail_call },
-		{ Results = [] },
-		{ RetTypes = CallerRetTypes }
+		{ IsTailCall = tail_call ; IsTailCall = no_return_call },
+		{ CallerRetTypes = [] }
 	->
 		mlds_indent(Context, Indent + 1),
 		io__write_string("return;\n")

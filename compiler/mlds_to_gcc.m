@@ -2489,14 +2489,22 @@ gen_stmt(_DefnInfo, computed_goto(_Expr, _Labels), _) -->
 	%
 gen_stmt(DefnInfo, Call, _) -->
 	{ Call = call(_Signature, FuncRval, MaybeObject, CallArgs,
-		Results, IsTailCall) },
+		Results, CallKind) },
 	{ require(unify(MaybeObject, no), this_file ++ ": method call") },
 	build_args(CallArgs, DefnInfo, GCC_ArgList),
 	build_rval(FuncRval, DefnInfo, GCC_FuncRval),
+	{
+		CallKind = no_return_call,
+		IsTailCall = yes
+	;
+		CallKind = tail_call,
+		IsTailCall = yes
+	;
+		CallKind = ordinary_call,
+		IsTailCall = no
+	},
 	% XXX GCC currently ignores the tail call boolean
-	{ IsTailCallBool = (IsTailCall = tail_call -> yes ; no) },
-	gcc__build_call_expr(GCC_FuncRval, GCC_ArgList, IsTailCallBool,
-		GCC_Call),
+	gcc__build_call_expr(GCC_FuncRval, GCC_ArgList, IsTailCall, GCC_Call),
 	( { Results = [ResultLval] } ->
 		build_lval(ResultLval, DefnInfo, GCC_ResultExpr),
 		gcc__gen_assign(GCC_ResultExpr, GCC_Call)

@@ -1928,9 +1928,9 @@ ml_gen_call_current_success_cont(Context, MLDS_Statement) -->
 	{ Signature = mlds__func_signature(ArgTypes, RetTypes) },
 	{ ObjectRval = no },
 	{ RetLvals = [] },
-	{ CallOrTailcall = call },
+	{ CallKind = ordinary_call },
 	{ MLDS_Stmt = call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
-			CallOrTailcall) },
+			CallKind) },
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 			mlds__make_context(Context)) }.
 
@@ -1959,7 +1959,7 @@ ml_gen_call_current_success_cont_indirectly(Context, MLDS_Statement) -->
 	{ Signature = mlds__func_signature(ArgTypes, RetTypes) },
 	{ ObjectRval = no },
 	{ RetLvals = [] },
-	{ CallOrTailcall = call },
+	{ CallKind = ordinary_call },
 
 	{ MLDS_Context = mlds__make_context(Context) },
 	=(MLDSGenInfo),
@@ -1997,7 +1997,7 @@ ml_gen_call_current_success_cont_indirectly(Context, MLDS_Statement) -->
 			Rets) },
 
 	{ InnerMLDS_Stmt = call(Signature, InnerFuncRval, ObjectRval, 
-			InnerArgRvals, RetLvals, CallOrTailcall) },
+			InnerArgRvals, RetLvals, CallKind) },
 	{ InnerMLDS_Statement = statement(InnerMLDS_Stmt, MLDS_Context) },
 
 	ml_gen_label_func(1, InnerFuncParams, Context, 
@@ -2019,7 +2019,7 @@ ml_gen_call_current_success_cont_indirectly(Context, MLDS_Statement) -->
 
 		% Put it inside a block where we call it.
 		MLDS_Stmt = call(ProxySignature, ProxyFuncRval, ObjectRval,
-			ProxyArgRvals, RetLvals, CallOrTailcall),
+			ProxyArgRvals, RetLvals, CallKind),
 		MLDS_Statement = mlds__statement(
 			block([Defn], [statement(MLDS_Stmt, MLDS_Context)]), 
 			MLDS_Context)
@@ -2317,7 +2317,7 @@ ml_gen_trace_var(VarName, Type, TypeInfoRval, Context, MLDS_TraceStatement) -->
 	{ CastVarAddr = unop(cast(CPointerType), mem_addr(VarLval)) },
 	{ MLDS_TraceStatement = mlds__statement(
 		call(Signature, FuncAddr, no,	
-			[TypeInfoRval, CastVarAddr], [], call
+			[TypeInfoRval, CastVarAddr], [], ordinary_call
 		), mlds__make_context(Context)) }.
 
 	% Generate HLDS code to construct the type_info for this type.

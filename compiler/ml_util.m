@@ -162,11 +162,11 @@ defns_contain_main(Defns) :-
 
 can_optimize_tailcall(Name, Call) :-
 	Call = call(_Signature, FuncRval, MaybeObject, _CallArgs,
-		_Results, IsTailCall),
+		_Results, CallKind),
 	%
 	% check if this call can be optimized as a tail call
 	%
-	IsTailCall = tail_call,
+	( CallKind = tail_call ; CallKind = no_return_call ),
 
 	%
 	% check if the callee adddress is the same as
