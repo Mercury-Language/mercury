@@ -266,6 +266,15 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
 		TermNorm, TraceLevel, TraceSuppress),
 
+	% Using the MSVC compiler implies that we must use a maximum jump
+	% table size of 512 to avoid a fixed limit in the compiler.
+	globals__io_lookup_string_option(cc, CC),
+	( { string__sub_string_search(string__to_lower(CC), "cl", _) } ->
+		globals__io_set_option(max_jump_table_size, int(512))
+	;
+		[]
+	),
+
 	% Conservative GC implies --no-reclaim-heap-*
 	( { gc_is_conservative(GC_Method) = yes } ->
 		globals__io_set_option(

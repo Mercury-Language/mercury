@@ -82,12 +82,3 @@ This avoids the problem that
 fails.
 
 -----------------------------------------------------------------------------
-
-NONE.* GRADES
-
-The following flag needs to be passed to the compiler, when compiling
-in the none.* grades to avoid a limitation in the C compiler.
-
---max-jump-table-size 512
-
------------------------------------------------------------------------------
