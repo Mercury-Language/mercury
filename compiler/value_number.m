@@ -153,13 +153,28 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 				yes, AllocSet, BreakSet, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		)
-	; Uinstr0 = assign(curfr, _) ->
+	;
+		Uinstr0 = assign(Target, _),
+		(
+			Target = curfr
+		;
+			Target = maxfr
+		;
+			Target = redoip(_)
+		;
+			Target = succip(_)
+		;
+			Target = prevfr(_)
+		;
+			Target = succfr(_)
+		)
+	->
 		N1 is N0 + 1,
 		BeforeLabel = local(ProcLabel, N0),
-		BeforeInstr = label(BeforeLabel) - "vn curfr before label",
+		BeforeInstr = label(BeforeLabel) - "vn stack ctrl before label",
 		N2 is N1 + 1,
 		AfterLabel = local(ProcLabel, N1),
-		AfterInstr = label(AfterLabel) - "vn curfr after label",
+		AfterInstr = label(AfterLabel) - "vn stack ctrl after label",
 		value_number__prepare_for_vn(Instrs0, ProcLabel,
 			yes, AllocSet, BreakSet0, N2, N, Instrs1),
 		set__insert(BreakSet0, BeforeLabel, BreakSet1),
