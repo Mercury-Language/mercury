@@ -102,10 +102,30 @@
 :- mode char__is_hex_digit(in) is semidet.
 	% True iff the character is a hexadecimal digit (0-9, a-f, A-F).
 
+:- pred char__digit_to_int(char, int).
+:- mode char__digit_to_int(in, out) is semidet.
+	% Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
+	% Returns the character's value as a digit (0-9 or 10-35).
+
+:- pred char__int_to_digit(int, char).
+:- mode char__int_to_digit(in, out) is semidet.
+:- mode char__int_to_digit(out, in) is semidet.
+	% char__int_to_uppercase_digit(Int, DigitChar):
+	% True iff `Int' is an integer in the range 0-35 and
+	% `DigitChar' is a decimal digit or uppercase letter
+	% whose value as a digit is `Int'.
+
+:- pred char__det_int_to_digit(int, char).
+:- mode char__det_int_to_digit(in, out) is det.
+	% Returns a decimal digit or uppercase letter corresponding to the
+	% value.
+	% Calls error/1 if the integer is not in the range 0-35.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module require.
 
 char__is_whitespace(' ').
 char__is_whitespace('\t').
@@ -297,6 +317,59 @@ char__is_hex_digit('C').
 char__is_hex_digit('D').
 char__is_hex_digit('E').
 char__is_hex_digit('F').
+
+%-----------------------------------------------------------------------------%
+
+char__det_int_to_digit(Int, Digit) :-
+	( char__int_to_digit(Int, Digit1) ->
+		Digit = Digit1
+	;
+		error("char__int_to_digit failed")
+	).
+
+char__int_to_digit(0, '0').
+char__int_to_digit(1, '1').
+char__int_to_digit(2, '2').
+char__int_to_digit(3, '3').
+char__int_to_digit(4, '4').
+char__int_to_digit(5, '5').
+char__int_to_digit(6, '6').
+char__int_to_digit(7, '7').
+char__int_to_digit(8, '8').
+char__int_to_digit(9, '9').
+char__int_to_digit(10, 'A').
+char__int_to_digit(11, 'B').
+char__int_to_digit(12, 'C').
+char__int_to_digit(13, 'D').
+char__int_to_digit(14, 'E').
+char__int_to_digit(15, 'F').
+char__int_to_digit(16, 'G').
+char__int_to_digit(17, 'H').
+char__int_to_digit(18, 'I').
+char__int_to_digit(19, 'J').
+char__int_to_digit(20, 'K').
+char__int_to_digit(21, 'L').
+char__int_to_digit(22, 'M').
+char__int_to_digit(23, 'N').
+char__int_to_digit(24, 'O').
+char__int_to_digit(25, 'P').
+char__int_to_digit(26, 'Q').
+char__int_to_digit(27, 'R').
+char__int_to_digit(28, 'S').
+char__int_to_digit(29, 'T').
+char__int_to_digit(30, 'U').
+char__int_to_digit(31, 'V').
+char__int_to_digit(32, 'W').
+char__int_to_digit(33, 'X').
+char__int_to_digit(34, 'Y').
+char__int_to_digit(35, 'Z').
+
+char__digit_to_int(Digit, Int) :-
+	( char__lower_upper(Digit, Upper) ->
+		char__int_to_digit(Int, Upper)
+	;
+		char__int_to_digit(Int, Digit)
+	).
 
 %-----------------------------------------------------------------------------%
 

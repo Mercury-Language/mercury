@@ -117,6 +117,11 @@
 	% XXX second mode should be det too
 	% (but this turns out to be tricky to implement)
 
+:- pred string__from_rev_char_list(list(character), string).
+:- mode string__from_rev_char_list(in, out) is det.
+%	Same as string__from_char_list, except that it reverses the order
+%	of the characters.
+
 :- pred string__to_int(string, int).
 :- mode string__to_int(in, out) is semidet.
 % 	Convert a string to an int.  The string must contain only digits,
@@ -412,12 +417,11 @@ string__base_string_to_int(Base, String, Int) :-
 :- mode string__base_string_to_int_2(in, in, in, out) is semidet.
 
 string__base_string_to_int_2(Base, String, Int0, Int) :-
-	( string__first_char(String, Char, String1) ->
-		char__to_upper(Char, UpperChar),
-		string__digit_to_char(Digit, UpperChar),
-		Digit < Base,
+	( string__first_char(String, DigitChar, String1) ->
+		char__digit_to_int(DigitChar, DigitValue),
+		DigitValue < Base,
 		Int1 is Base * Int0,
-		Int2 is Int1 + Digit,
+		Int2 is Int1 + DigitValue,
 		string__base_string_to_int_2(Base, String1, Int2, Int) 
 	;
 		Int = Int0
@@ -490,69 +494,16 @@ string__int_to_base_string_2(N, Base, Str) :-
 	(
 		N < Base
 	->
-		string__digit_to_char_det(N, DigitChar),
+		char__det_int_to_digit(N, DigitChar),
 		string__char_to_string(DigitChar, Str)
 	;
 		N10 is N mod Base,
 		N1 is N // Base,
-		string__digit_to_char_det(N10, DigitChar),
+		char__det_int_to_digit(N10, DigitChar),
 		string__char_to_string(DigitChar, DigitString),
 		string__int_to_base_string_2(N1, Base, Str1),
 		string__append(Str1, DigitString, Str)
 	).
-
-:- pred string__digit_to_char_det(int, character).
-:- mode string__digit_to_char_det(in, out) is det.
-
-string__digit_to_char_det(Digit, Char) :-
-	( string__digit_to_char(Digit, Char0) ->
-		Char = Char0
-	;
-		error("string__digit_to_char failed")
-	).
-
-% Simple-minded, but extremely portable.
-
-:- pred string__digit_to_char(int, character).
-:- mode string__digit_to_char(in, out) is semidet.
-:- mode string__digit_to_char(out, in) is semidet.
-
-string__digit_to_char(0, '0').
-string__digit_to_char(1, '1').
-string__digit_to_char(2, '2').
-string__digit_to_char(3, '3').
-string__digit_to_char(4, '4').
-string__digit_to_char(5, '5').
-string__digit_to_char(6, '6').
-string__digit_to_char(7, '7').
-string__digit_to_char(8, '8').
-string__digit_to_char(9, '9').
-string__digit_to_char(10, 'A').
-string__digit_to_char(11, 'B').
-string__digit_to_char(12, 'C').
-string__digit_to_char(13, 'D').
-string__digit_to_char(14, 'E').
-string__digit_to_char(15, 'F').
-string__digit_to_char(16, 'G').
-string__digit_to_char(17, 'H').
-string__digit_to_char(18, 'I').
-string__digit_to_char(19, 'J').
-string__digit_to_char(20, 'K').
-string__digit_to_char(21, 'L').
-string__digit_to_char(22, 'M').
-string__digit_to_char(23, 'N').
-string__digit_to_char(24, 'O').
-string__digit_to_char(25, 'P').
-string__digit_to_char(26, 'Q').
-string__digit_to_char(27, 'R').
-string__digit_to_char(28, 'S').
-string__digit_to_char(29, 'T').
-string__digit_to_char(30, 'U').
-string__digit_to_char(31, 'V').
-string__digit_to_char(32, 'W').
-string__digit_to_char(33, 'X').
-string__digit_to_char(34, 'Y').
-string__digit_to_char(35, 'Z').
 
 % NB: it would be more efficient to do this directly (using pragma c_code)
 string__to_char_list(String, CharList) :-
@@ -563,6 +514,50 @@ string__to_char_list(String, CharList) :-
 string__from_char_list(CharList, String) :-
 	string__char_list_to_int_list(CharList, IntList),
 	string__to_int_list(String, IntList).
+
+%
+% We could implement from_rev_char_list using list__reverse and from_char_list,
+% but the optimized implementation in C below is there for efficiency since
+% it improves the overall speed of parsing by about 7%.
+%
+:- pragma(c_code, string__from_rev_char_list(Chars::in, Str::out), "
+{
+	Word list_ptr;
+	Word size, len;
+	Word str_ptr;
+/*
+** loop to calculate list length + sizeof(Word) in `size' using list in
+** `list_ptr' and separately count the length of the string
+*/
+	size = sizeof(Word);
+	len = 1;
+	list_ptr = Chars;
+	while (!list_is_empty(list_ptr)) {
+		size++;
+		len++;
+		list_ptr = list_tail(list_ptr);
+	}
+/*
+** allocate (length + 1) bytes of heap space for string
+** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
+*/
+	incr_hp_atomic(str_ptr, size / sizeof(Word));
+	Str = (char *) str_ptr;
+/*
+** set size to be the offset of the end of the string
+** (ie the \\0) and null terminate the string.
+*/
+	Str[--len] = '\\0';
+/*
+** loop to copy the characters from the list_ptr to the string
+** in reverse order.
+*/
+	list_ptr = Chars;
+	while (!list_is_empty(list_ptr)) {
+		Str[--len] = (char) list_head(list_ptr);
+		list_ptr = list_tail(list_ptr);
+	}
+}").
 
 :- pred string__int_list_to_char_list(list(int), list(character)).
 :- mode string__int_list_to_char_list(in, out) is det.

@@ -987,52 +987,7 @@ lexer__rev_char_list_to_float(RevChars, Token) :-
 :- pred lexer__rev_char_list_to_string(list(character), string).
 :- mode lexer__rev_char_list_to_string(in, out) is det.
 
-% lexer__rev_char_list_to_string was originally implemented like this:
-%
-%lexer__rev_char_list_to_string(RevChars, String) :-
-%       list__reverse(RevChars, Chars),
-%       string__from_char_list(Chars, String).
-%
-% The optimized implementation in C below is there for efficiency since
-% it improves the overall speed of parsing by about 7%.
-
-:- pragma(c_code, lexer__rev_char_list_to_string(Chars::in, Str::out), "
-{
-	Word list_ptr;
-	Word size, len;
-	Word str_ptr;
-/*
-** loop to calculate list length + sizeof(Word) in `size' using list in
-** `list_ptr' and separately count the length of the string
-*/
-	size = sizeof(Word);
-	len = 1;
-	list_ptr = Chars;
-	while (!list_is_empty(list_ptr)) {
-		size++;
-		len++;
-		list_ptr = list_tail(list_ptr);
-	}
-/*
-** allocate (length + 1) bytes of heap space for string
-** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
-*/
-	incr_hp_atomic(str_ptr, size / sizeof(Word));
-	Str = (char *) str_ptr;
-/*
-** set size to be the offset of the end of the string
-** (ie the \\0) and null terminate the string.
-*/
-	Str[--len] = '\\0';
-/*
-** loop to copy the characters from the list_ptr to the string
-** in reverse order.
-*/
-	list_ptr = Chars;
-	while (!list_is_empty(list_ptr)) {
-		Str[--len] = (char) list_head(list_ptr);
-		list_ptr = list_tail(list_ptr);
-	}
-}").
+lexer__rev_char_list_to_string(RevChars, String) :-
+       string__from_rev_char_list(RevChars, String).
 
 %-----------------------------------------------------------------------------%
