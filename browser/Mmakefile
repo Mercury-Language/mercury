@@ -39,9 +39,8 @@ MERCURY_MAIN_LIB_MODULES=$(BROWSER_LIB_NAME) $(MDBCOMP_LIB_NAME)
 MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES) browse_test declarative_test
 
 DEPENDS =	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
-INTS =		$(patsubst %,%.int,$(MERCURY_MAIN_MODULES))
-INT3S =		$(patsubst %,%.int3,$(MERCURY_MAIN_MODULES))
-
+INTS_TARGETS =	$(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
+INT3S_TARGETS =	$(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
 LIBS =		$(patsubst %,lib%,$(MERCURY_MAIN_LIB_MODULES))
 CHECKS =	$(patsubst %,%.check,$(MERCURY_MAIN_LIB_MODULES))
 
@@ -141,10 +140,10 @@ check:	$(CHECKS)
 all-ints: ints int3s
 
 .PHONY: ints 
-ints:	$(INTS)
+ints:	$(INTS_TARGETS)
 
 .PHONY: int3s 
-int3s:	$(INT3S)
+int3s:	$(INT3S_TARGETS)
 
 #-----------------------------------------------------------------------------#
 
