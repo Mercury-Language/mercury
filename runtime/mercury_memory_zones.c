@@ -198,7 +198,7 @@ static MR_MemoryZone	*MR_get_zone(void);
 static void		MR_unget_zone(MR_MemoryZone *zone);
 
 	/*
-	** We manage the handing out of offets through the cache by
+	** We manage the handing out of offsets through the cache by
 	** computing the offsets once and storing them in an array
 	** (in shared memory if necessary). We then maintain a global
 	** counter used to index the array which we increment (modulo
