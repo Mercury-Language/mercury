@@ -22,7 +22,7 @@
 
 :- implementation.
 
-:- import_module char, list, string, std_util, map, require.
+:- import_module char, list, string, std_util, map, assoc_list, require.
 
 %-----------------------------------------------------------------------------%
 
