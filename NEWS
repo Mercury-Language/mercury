@@ -91,7 +91,6 @@ Changes to the Mercury implementation:
 
   The new back-end is not yet as mature or complete as the old back-end.
   It does not yet support the following standard Mercury features:
-  	- `pragma export'
   	- abstractly exported equivalence types defined as `float'
 	- the `in = in' mode of unification for certain standard library
 	  types such as arrays and `univ'
