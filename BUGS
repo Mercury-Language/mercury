@@ -60,24 +60,13 @@ it tries to compute the 64-bit bitmap table entries using 32-bit ints,
 which overflow.
 
 -----------------------------------------------------------------------------
-Subject: Det stack overflow in profiler
+Subject: map__lookup failed in profiler
 Date: Tue, 7 May 1996 11:58:08 +1000 (EST)
 
-I am getting the following error message in the profiler.  The profiler is
-compiled with profiling turned on.
-
---------------------
-murlibobo 11:49 profiler (1)>lmprof -P Bug2Prof.CallPair -D Bug2Prof.Decl -C Bug2Prof.Counts | & l
-
-Warning address 6337336 not found!  Ignoring address and continuing computation
-
-Mercury runtime: det stack overflow
-PC at signal: 4832692096 (1200d0780)
---------------------
-
-[This problem only occurs when profiling programs using shared
-libraries on the Alpha; a work-around is to compile with -static.]
-
+When profiling programs that have been compiled on the Alpha using
+shared libraries, the profiler will abort with a "Software Error:
+map__lookup failed" message.  The work-around is to link with
+`--static'.
 
 -----------------------------------------------------------------------------
 Subject: nit in error msg
