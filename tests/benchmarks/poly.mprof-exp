@@ -83,83 +83,85 @@ index   %mem    self descendents  called+self    name           index
 
                 0.00       39.05       1/1           <predicate 'main'/2 mode 0> [1]
 [2]     99.9    0.00       39.05       1         <predicate poly:'main3'/3 mode 0> [2] 
-                0.00        0.00       5/2307        <predicate io:'write_string'/3 mode 0> [23]
+                0.00        0.00       5/2307        <predicate io:'write_string'/3 mode 0> [24]
                 0.00       39.05       1/1           <predicate poly:'main1'/1 mode 0> [3]
-                0.00        0.00       1/66          <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19]
+                0.00        0.00       1/66          <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [20]
 
 -----------------------------------------------
 
                 0.00       39.05       1/1           <predicate poly:'main3'/3 mode 0> [2]
 [3]     99.9    0.00       39.05       1         <predicate poly:'main1'/1 mode 0> [3] 
-                0.00        0.00       2/3433        <predicate poly:'poly_add'/3 mode 0>  <cycle 4> [9]
-                0.00       39.01       1/1           <predicate poly:'poly_exp'/3 mode 0> [4]
+                0.00        0.00       2/5           <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 5> [16]
+                0.00        0.00       1/3           <predicate poly:'poly_exp'/3 mode 0>  <cycle 3> [19]
 
 -----------------------------------------------
 
-                                       5             <predicate poly:'poly_exp'/3 mode 0> [4]
-                0.00       39.01       1/1           <predicate poly:'main1'/1 mode 0> [3]
-[4]     99.8    0.00       39.01       1+5      <predicate poly:'poly_exp'/3 mode 0> [4] 
-                0.00        0.00       5/3930        <predicate poly:'poly_mul'/3 mode 0>  <cycle 3> [8]
-                                       5             <predicate poly:'poly_exp'/3 mode 0> [4]
+                                       1             <deforestation procedure (#0) from poly:'poly_exp' line 224>  <cycle 3> [4]
+                                       2             <predicate poly:'poly_exp'/3 mode 0>  <cycle 3> [19]
+[4]     99.8    0.00       39.01       2+1      <deforestation procedure (#0) from poly:'poly_exp' line 224>  <cycle 3> [4] 
+                0.00        0.00       5/3930        <predicate poly:'poly_mul'/3 mode 0>  <cycle 4> [8]
+                                       2             <predicate poly:'poly_exp'/3 mode 0>  <cycle 3> [19]
+                                       1             <deforestation procedure (#0) from poly:'poly_exp' line 224>  <cycle 3> [4]
 
 -----------------------------------------------
 
-                                     932             <predicate poly:'term_mul'/3 mode 0>  <cycle 3> [5]
-                                     283             <predicate poly:'poly_mul'/3 mode 0>  <cycle 3> [8]
-[5]     48.2    0.00       18.85     283+932    <predicate poly:'term_mul'/3 mode 0>  <cycle 3> [5] 
-               10.32       10.32     932/1355        <predicate poly:'term_add'/3 mode 0>  <cycle 4> [6]
-                                     932             <predicate poly:'single_term_mul'/3 mode 0>  <cycle 3> [7]
-                                     932             <predicate poly:'term_mul'/3 mode 0>  <cycle 3> [5]
+                                     932             <predicate poly:'term_mul'/3 mode 0>  <cycle 4> [5]
+                                     283             <predicate poly:'poly_mul'/3 mode 0>  <cycle 4> [8]
+[5]     57.7    3.72       22.57     283+932    <predicate poly:'term_mul'/3 mode 0>  <cycle 4> [5] 
+               10.32       10.32     932/1355        <predicate poly:'term_add'/3 mode 0>  <cycle 5> [6]
+                                     932             <predicate poly:'poly_mul'/3 mode 0>  <cycle 4> [8]
+                                     932             <predicate poly:'single_term_mul'/3 mode 0>  <cycle 4> [7]
+                                     932             <predicate poly:'term_mul'/3 mode 0>  <cycle 4> [5]
 
 -----------------------------------------------
 
-                                    4077             <predicate poly:'term_add'/3 mode 0>  <cycle 4> [6]
-                                     423             <predicate poly:'poly_add'/3 mode 0>  <cycle 4> [9]
-               15.01       15.01     932/1355        <predicate poly:'term_mul'/3 mode 0>  <cycle 3> [5]
-[6]     38.4   15.01       15.01    1355+4077   <predicate poly:'term_add'/3 mode 0>  <cycle 4> [6] 
-                                    3428             <predicate poly:'poly_add'/3 mode 0>  <cycle 4> [9]
-                                    4077             <predicate poly:'term_add'/3 mode 0>  <cycle 4> [6]
+                                    4077             <predicate poly:'term_add'/3 mode 0>  <cycle 5> [6]
+                                     423             <predicate poly:'poly_add'/3 mode 0>  <cycle 5> [9]
+               15.01       15.01     932/1355        <predicate poly:'term_mul'/3 mode 0>  <cycle 4> [5]
+[6]     38.4   15.01       15.01    1355+4077   <predicate poly:'term_add'/3 mode 0>  <cycle 5> [6] 
+                                    3428             <predicate poly:'poly_add'/3 mode 0>  <cycle 5> [9]
+                                    4077             <predicate poly:'term_add'/3 mode 0>  <cycle 5> [6]
 
 -----------------------------------------------
 
-                                    3129             <predicate poly:'single_term_mul'/3 mode 0>  <cycle 3> [7]
-                                     932             <predicate poly:'term_mul'/3 mode 0>  <cycle 3> [5]
-[7]     32.0   12.51       12.51     932+3129   <predicate poly:'single_term_mul'/3 mode 0>  <cycle 3> [7] 
-                                    3129             <predicate poly:'poly_mul'/3 mode 0>  <cycle 3> [8]
-                                    3129             <predicate poly:'single_term_mul'/3 mode 0>  <cycle 3> [7]
+                                    2197             <predicate poly:'single_term_mul'/3 mode 0>  <cycle 4> [7]
+                                     932             <predicate poly:'term_mul'/3 mode 0>  <cycle 4> [5]
+[7]     22.4    8.78        8.78     932+2197   <predicate poly:'single_term_mul'/3 mode 0>  <cycle 4> [7] 
+                                    2197             <predicate poly:'poly_mul'/3 mode 0>  <cycle 4> [8]
+                                    2197             <predicate poly:'single_term_mul'/3 mode 0>  <cycle 4> [7]
 
 -----------------------------------------------
 
-                                     796             <predicate poly:'mul_through'/3 mode 0>  <cycle 3> [10]
-                                    3129             <predicate poly:'single_term_mul'/3 mode 0>  <cycle 3> [7]
-                4.46        4.46       5/3930        <predicate poly:'poly_exp'/3 mode 0> [4]
-[8]     11.4    4.46        4.46    3930         <predicate poly:'poly_mul'/3 mode 0>  <cycle 3> [8] 
-                                     251             <predicate poly:'mul_through'/3 mode 0>  <cycle 3> [10]
-                                     283             <predicate poly:'term_mul'/3 mode 0>  <cycle 3> [5]
+                                     796             <predicate poly:'mul_through'/3 mode 0>  <cycle 4> [10]
+                                    2197             <predicate poly:'single_term_mul'/3 mode 0>  <cycle 4> [7]
+                                     932             <predicate poly:'term_mul'/3 mode 0>  <cycle 4> [5]
+                4.46        4.46       5/3930        <deforestation procedure (#0) from poly:'poly_exp' line 224>  <cycle 3> [4]
+[8]     11.4    4.46        4.46    3930         <predicate poly:'poly_mul'/3 mode 0>  <cycle 4> [8] 
+                                     251             <predicate poly:'mul_through'/3 mode 0>  <cycle 4> [10]
+                                     283             <predicate poly:'term_mul'/3 mode 0>  <cycle 4> [5]
 
 -----------------------------------------------
 
-                                       3             <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 4> [16]
-                                    3428             <predicate poly:'term_add'/3 mode 0>  <cycle 4> [6]
-                3.86        3.86       2/3433        <predicate poly:'main1'/1 mode 0> [3]
-[9]      9.8    3.86        3.86    3433         <predicate poly:'poly_add'/3 mode 0>  <cycle 4> [9] 
-                                       5             <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 4> [16]
-                                     423             <predicate poly:'term_add'/3 mode 0>  <cycle 4> [6]
+                                       3             <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 5> [16]
+                                    3428             <predicate poly:'term_add'/3 mode 0>  <cycle 5> [6]
+[9]      9.8    3.85        3.85    3431         <predicate poly:'poly_add'/3 mode 0>  <cycle 5> [9] 
+                                       3             <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 5> [16]
+                                     423             <predicate poly:'term_add'/3 mode 0>  <cycle 5> [6]
 
 -----------------------------------------------
 
-                                     796             <predicate poly:'mul_through'/3 mode 0>  <cycle 3> [10]
-                                     251             <predicate poly:'poly_mul'/3 mode 0>  <cycle 3> [8]
-[10]     8.1    3.18        3.18     251+796    <predicate poly:'mul_through'/3 mode 0>  <cycle 3> [10] 
-                                     796             <predicate poly:'poly_mul'/3 mode 0>  <cycle 3> [8]
-                                     796             <predicate poly:'mul_through'/3 mode 0>  <cycle 3> [10]
+                                     796             <predicate poly:'mul_through'/3 mode 0>  <cycle 4> [10]
+                                     251             <predicate poly:'poly_mul'/3 mode 0>  <cycle 4> [8]
+[10]     8.1    3.18        3.18     251+796    <predicate poly:'mul_through'/3 mode 0>  <cycle 4> [10] 
+                                     796             <predicate poly:'poly_mul'/3 mode 0>  <cycle 4> [8]
+                                     796             <predicate poly:'mul_through'/3 mode 0>  <cycle 4> [10]
 
 -----------------------------------------------
 
                                                      <spontaneous>
 [11]     0.0    0.00        0.02       0         <predicate io:'init_state'/2 mode 0> [11] 
                 0.00        0.02       1/1           <predicate io:'insert_std_stream_names'/2 mode 0> [12]
-                0.00        0.00       1/1           <predicate tree234:'init'/1 mode 0> [26]
+                0.00        0.00       1/1           <predicate tree234:'init'/1 mode 0> [27]
 
 -----------------------------------------------
 
@@ -188,80 +190,88 @@ index   %mem    self descendents  called+self    name           index
 
 -----------------------------------------------
 
-                                       5             <predicate poly:'poly_add'/3 mode 0>  <cycle 4> [9]
-[16]     0.0    0.02        0.02       5         <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 4> [16] 
-                                       3             <predicate poly:'poly_add'/3 mode 0>  <cycle 4> [9]
+                                       3             <predicate poly:'poly_add'/3 mode 0>  <cycle 5> [9]
+                0.02        0.02       2/5           <predicate poly:'main1'/1 mode 0> [3]
+[16]     0.0    0.02        0.02       5         <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 5> [16] 
+                                       3             <predicate poly:'poly_add'/3 mode 0>  <cycle 5> [9]
 
 -----------------------------------------------
 
                 0.01        0.01       1/1           <predicate tree234:'set'/4 mode 1 (minus unused args)> [14]
 [17]     0.0    0.01        0.01       1         <predicate tree234:'set3'/4 mode 1 (minus unused args)> [17] 
-                0.00        0.00       2/3           <predicate 'compare'/3 mode 3> [27]
+                0.00        0.00       2/3           <predicate 'compare'/3 mode 3> [28]
 
 -----------------------------------------------
 
                 0.00        0.00       1/1           <predicate tree234:'set'/4 mode 1 (minus unused args)> [14]
 [18]     0.0    0.00        0.00       1         <predicate tree234:'set2'/4 mode 1 (minus unused args)> [18] 
-                0.00        0.00       1/3           <predicate 'compare'/3 mode 3> [27]
+                0.00        0.00       1/3           <predicate 'compare'/3 mode 3> [28]
 
 -----------------------------------------------
 
-                                      65             <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21]
+                                       2             <deforestation procedure (#0) from poly:'poly_exp' line 224>  <cycle 3> [4]
+                0.00        0.00       1/3           <predicate poly:'main1'/1 mode 0> [3]
+[19]     0.0    0.00        0.00       3         <predicate poly:'poly_exp'/3 mode 0>  <cycle 3> [19] 
+                                       2             <deforestation procedure (#0) from poly:'poly_exp' line 224>  <cycle 3> [4]
+
+-----------------------------------------------
+
+                                      65             <predicate poly:'print_term'/3 mode 0>  <cycle 2> [22]
                 0.00        0.00       1/66          <predicate poly:'main3'/3 mode 0> [2]
-[19]     0.0    0.00        0.00      66         <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19] 
-                0.00        0.00     132/2307        <predicate io:'write_string'/3 mode 0> [23]
-                                      66             <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20]
+[20]     0.0    0.00        0.00      66         <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [20] 
+                0.00        0.00     132/2307        <predicate io:'write_string'/3 mode 0> [24]
+                                      66             <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [21]
 
 -----------------------------------------------
 
-                                      66             <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19]
-[20]     0.0    0.00        0.00      66         <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20] 
-                0.00        0.00     285/2307        <predicate io:'write_string'/3 mode 0> [23]
-                                     351             <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21]
+                                      66             <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [20]
+[21]     0.0    0.00        0.00      66         <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [21] 
+                0.00        0.00     285/2307        <predicate io:'write_string'/3 mode 0> [24]
+                                     351             <predicate poly:'print_term'/3 mode 0>  <cycle 2> [22]
 
 -----------------------------------------------
 
-                                     351             <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20]
-[21]     0.0    0.00        0.00     351         <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21] 
-                0.00        0.00     637/637         <predicate io:'write_int'/3 mode 0> [24]
-                0.00        0.00    1885/2307        <predicate io:'write_string'/3 mode 0> [23]
-                                      65             <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19]
+                                     351             <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [21]
+[22]     0.0    0.00        0.00     351         <predicate poly:'print_term'/3 mode 0>  <cycle 2> [22] 
+                0.00        0.00     637/637         <predicate io:'write_int'/3 mode 0> [25]
+                0.00        0.00    1885/2307        <predicate io:'write_string'/3 mode 0> [24]
+                                      65             <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [20]
 
 -----------------------------------------------
 
-                0.00        0.00       3/3           <predicate 'compare'/3 mode 3> [27]
-[22]     0.0    0.00        0.00       3         <compare/3 predicate for type builtin:'c_pointer'/0> [22] 
+                0.00        0.00       3/3           <predicate 'compare'/3 mode 3> [28]
+[23]     0.0    0.00        0.00       3         <compare/3 predicate for type builtin:'c_pointer'/0> [23] 
 
 -----------------------------------------------
 
                 0.00        0.00       5/2307        <predicate poly:'main3'/3 mode 0> [2]
-                0.00        0.00    1885/2307        <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21]
-                0.00        0.00     132/2307        <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19]
-                0.00        0.00     285/2307        <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20]
-[23]     0.0    0.00        0.00    2307         <predicate io:'write_string'/3 mode 0> [23] 
+                0.00        0.00    1885/2307        <predicate poly:'print_term'/3 mode 0>  <cycle 2> [22]
+                0.00        0.00     132/2307        <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [20]
+                0.00        0.00     285/2307        <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [21]
+[24]     0.0    0.00        0.00    2307         <predicate io:'write_string'/3 mode 0> [24] 
 
 -----------------------------------------------
 
-                0.00        0.00     637/637         <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21]
-[24]     0.0    0.00        0.00     637         <predicate io:'write_int'/3 mode 0> [24] 
+                0.00        0.00     637/637         <predicate poly:'print_term'/3 mode 0>  <cycle 2> [22]
+[25]     0.0    0.00        0.00     637         <predicate io:'write_int'/3 mode 0> [25] 
 
 -----------------------------------------------
 
-                0.00        0.00       1/1           <predicate tree234:'init'/1 mode 0> [26]
-[25]     0.0    0.00        0.00       1         <predicate tree234:'init'/1 mode 0 (minus unused args)> [25] 
+                0.00        0.00       1/1           <predicate tree234:'init'/1 mode 0> [27]
+[26]     0.0    0.00        0.00       1         <predicate tree234:'init'/1 mode 0 (minus unused args)> [26] 
 
 -----------------------------------------------
 
                 0.00        0.00       1/1           <predicate io:'init_state'/2 mode 0> [11]
-[26]     0.0    0.00        0.00       1         <predicate tree234:'init'/1 mode 0> [26] 
-                0.00        0.00       1/1           <predicate tree234:'init'/1 mode 0 (minus unused args)> [25]
+[27]     0.0    0.00        0.00       1         <predicate tree234:'init'/1 mode 0> [27] 
+                0.00        0.00       1/1           <predicate tree234:'init'/1 mode 0 (minus unused args)> [26]
 
 -----------------------------------------------
 
                 0.00        0.00       1/3           <predicate tree234:'set2'/4 mode 1 (minus unused args)> [18]
                 0.00        0.00       2/3           <predicate tree234:'set3'/4 mode 1 (minus unused args)> [17]
-[27]     0.0    0.00        0.00       3         <predicate 'compare'/3 mode 3> [27] 
-                0.00        0.00       3/3           <compare/3 predicate for type builtin:'c_pointer'/0> [22]
+[28]     0.0    0.00        0.00       3         <predicate 'compare'/3 mode 3> [28] 
+                0.00        0.00       3/3           <compare/3 predicate for type builtin:'c_pointer'/0> [23]
 
 -----------------------------------------------
 
@@ -289,31 +299,32 @@ name		the name of the procedure followed by its index number.
 
    %  cumulative    self              self    total
   mem    k-words  k-words    calls wds/call wds/call name
- 38.4      15.01    15.01     5432     2.76     2.76 <predicate poly:'term_add'/3 mode 0>  <cycle 4> [6] 
- 32.0      27.52    12.51     4061     3.08     3.08 <predicate poly:'single_term_mul'/3 mode 0>  <cycle 3> [7] 
- 11.4      31.99     4.46     3930     1.13     1.13 <predicate poly:'poly_mul'/3 mode 0>  <cycle 3> [8] 
-  9.8      35.85     3.86     3433     1.12     1.12 <predicate poly:'poly_add'/3 mode 0>  <cycle 4> [9] 
-  8.1      39.03     3.18     1047     3.04     3.04 <predicate poly:'mul_through'/3 mode 0>  <cycle 3> [10] 
-  0.0      39.05     0.02        5     4.00     4.00 <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 4> [16] 
+ 38.4      15.01    15.01     5432     2.76     2.76 <predicate poly:'term_add'/3 mode 0>  <cycle 5> [6] 
+ 22.4      23.79     8.78     3129     2.80     2.80 <predicate poly:'single_term_mul'/3 mode 0>  <cycle 4> [7] 
+ 11.4      28.26     4.46     3930     1.13     1.13 <predicate poly:'poly_mul'/3 mode 0>  <cycle 4> [8] 
+  9.8      32.11     3.85     3431     1.12     1.12 <predicate poly:'poly_add'/3 mode 0>  <cycle 5> [9] 
+  9.5      35.84     3.72     1215     3.06    18.57 <predicate poly:'term_mul'/3 mode 0>  <cycle 4> [5] 
+  8.1      39.03     3.18     1047     3.04     3.04 <predicate poly:'mul_through'/3 mode 0>  <cycle 4> [10] 
+  0.0      39.05     0.02        5     4.00     4.00 <predicate poly:'add_to_order_zero_term'/3 mode 0>  <cycle 5> [16] 
   0.0      39.06     0.01        1    10.00    10.00 <predicate tree234:'set3'/4 mode 1 (minus unused args)> [17] 
-  0.0      39.07     0.00        1     7.00     7.00 <predicate tree234:'set2'/4 mode 1 (minus unused args)> [18] 
+  0.0      39.06     0.00        1     7.00     7.00 <predicate tree234:'set2'/4 mode 1 (minus unused args)> [18] 
   0.0      39.07     0.00        3     1.33     7.00 <predicate tree234:'set'/4 mode 1 (minus unused args)> [14] 
-  0.0      39.07     0.00     2307     0.00     0.00 <predicate io:'write_string'/3 mode 0> [23] 
-  0.0      39.07     0.00      637     0.00     0.00 <predicate io:'write_int'/3 mode 0> [24] 
-  0.0      39.07     0.00      351     0.00     0.00 <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21] 
-  0.0      39.07     0.00     1215     0.00    15.51 <predicate poly:'term_mul'/3 mode 0>  <cycle 3> [5] 
-  0.0      39.07     0.00       66     0.00     0.00 <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19] 
-  0.0      39.07     0.00       66     0.00     0.00 <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20] 
-  0.0      39.07     0.00        3     0.00     0.00 <compare/3 predicate for type builtin:'c_pointer'/0> [22] 
+  0.0      39.07     0.00        1     2.00 39053.00 <predicate poly:'main1'/1 mode 0> [3] 
+  0.0      39.07     0.00     2307     0.00     0.00 <predicate io:'write_string'/3 mode 0> [24] 
+  0.0      39.07     0.00      637     0.00     0.00 <predicate io:'write_int'/3 mode 0> [25] 
+  0.0      39.07     0.00      351     0.00     0.00 <predicate poly:'print_term'/3 mode 0>  <cycle 2> [22] 
+  0.0      39.07     0.00       66     0.00     0.00 <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [20] 
+  0.0      39.07     0.00       66     0.00     0.00 <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [21] 
+  0.0      39.07     0.00        3     0.00     0.00 <predicate poly:'poly_exp'/3 mode 0>  <cycle 3> [19] 
+  0.0      39.07     0.00        3     0.00     0.00 <compare/3 predicate for type builtin:'c_pointer'/0> [23] 
   0.0      39.07     0.00        3     0.00     7.00 <predicate map:'set'/4 mode 1> [13] 
   0.0      39.07     0.00        3     0.00     7.00 <predicate tree234:'set'/4 mode 1> [15] 
-  0.0      39.07     0.00        3     0.00     0.00 <predicate 'compare'/3 mode 3> [27] 
-  0.0      39.07     0.00        1     0.00 39055.00 <predicate poly:'main3'/3 mode 0> [2] 
-  0.0      39.07     0.00        1     0.00 39055.00 <predicate poly:'main1'/1 mode 0> [3] 
-  0.0      39.07     0.00        6     0.00  6502.42 <predicate poly:'poly_exp'/3 mode 0> [4] 
+  0.0      39.07     0.00        3     0.00     0.00 <predicate 'compare'/3 mode 3> [28] 
+  0.0      39.07     0.00        3     0.00 13003.51 <deforestation procedure (#0) from poly:'poly_exp' line 224>  <cycle 3> [4] 
+  0.0      39.07     0.00        1     0.00 39053.00 <predicate poly:'main3'/3 mode 0> [2] 
   0.0      39.07     0.00        1     0.00    21.00 <predicate io:'insert_std_stream_names'/2 mode 0> [12] 
-  0.0      39.07     0.00        1     0.00     0.00 <predicate tree234:'init'/1 mode 0 (minus unused args)> [25] 
-  0.0      39.07     0.00        1     0.00     0.00 <predicate tree234:'init'/1 mode 0> [26] 
+  0.0      39.07     0.00        1     0.00     0.00 <predicate tree234:'init'/1 mode 0 (minus unused args)> [26] 
+  0.0      39.07     0.00        1     0.00     0.00 <predicate tree234:'init'/1 mode 0> [27] 
   0.0      39.07     0.00        0     0.00     0.00 <predicate 'main'/2 mode 0> [1] 
   0.0      39.07     0.00        0     0.00     0.00 <predicate io:'init_state'/2 mode 0> [11] 
 
@@ -321,29 +332,30 @@ name		the name of the procedure followed by its index number.
 
 alphabetic listing:
 
-[22]	<compare/3 predicate for type builtin:'c_pointer'/0>
-[27]	<predicate 'compare'/3 mode 3>
+[23]	<compare/3 predicate for type builtin:'c_pointer'/0>
+[4]	<deforestation procedure (#0) from poly:'poly_exp' line 224>
+[28]	<predicate 'compare'/3 mode 3>
 [1]	<predicate 'main'/2 mode 0>   
 [11]	<predicate io:'init_state'/2 mode 0>
 [12]	<predicate io:'insert_std_stream_names'/2 mode 0>
-[24]	<predicate io:'write_int'/3 mode 0>
-[23]	<predicate io:'write_string'/3 mode 0>
+[25]	<predicate io:'write_int'/3 mode 0>
+[24]	<predicate io:'write_string'/3 mode 0>
 [13]	<predicate map:'set'/4 mode 1>
 [16]	<predicate poly:'add_to_order_zero_term'/3 mode 0>
 [3]	<predicate poly:'main1'/1 mode 0>
 [2]	<predicate poly:'main3'/3 mode 0>
 [10]	<predicate poly:'mul_through'/3 mode 0>
 [9]	<predicate poly:'poly_add'/3 mode 0>
-[4]	<predicate poly:'poly_exp'/3 mode 0>
+[19]	<predicate poly:'poly_exp'/3 mode 0>
 [8]	<predicate poly:'poly_mul'/3 mode 0>
-[21]	<predicate poly:'print_term'/3 mode 0>
-[19]	<predicate poly:'print_terms'/3 mode 0>
-[20]	<predicate poly:'print_terms_2'/3 mode 0>
+[22]	<predicate poly:'print_term'/3 mode 0>
+[20]	<predicate poly:'print_terms'/3 mode 0>
+[21]	<predicate poly:'print_terms_2'/3 mode 0>
 [7]	<predicate poly:'single_term_mul'/3 mode 0>
 [6]	<predicate poly:'term_add'/3 mode 0>
 [5]	<predicate poly:'term_mul'/3 mode 0>
-[25]	<predicate tree234:'init'/1 mode 0 (minus unused args)>
-[26]	<predicate tree234:'init'/1 mode 0>
+[26]	<predicate tree234:'init'/1 mode 0 (minus unused args)>
+[27]	<predicate tree234:'init'/1 mode 0>
 [14]	<predicate tree234:'set'/4 mode 1 (minus unused args)>
 [15]	<predicate tree234:'set'/4 mode 1>
 [18]	<predicate tree234:'set2'/4 mode 1 (minus unused args)>
