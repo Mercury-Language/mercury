@@ -4,8 +4,8 @@
 % file pqueue.nl - implements a priority queue.
 %
 % A qpueue is a priority queue DDT with the smallest element at the root.
-%
-% stability?
+% It takes keys and values to provide a dictionary type function, and
+% is not guarenteed to be stable. XXX this should be fixed.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -18,18 +18,27 @@
 
 :- type pqueue(_K, _V).
 
+	% Create an empty priority queue
 :- pred pqueue__init(pqueue(_K, _V)).
 :- mode pqueue__init(out).
 
+	% Insert a value V with key K into a priority queue
+	% and return the new priority queue.
 :- pred pqueue__insert(pqueue(K, V), K, V, pqueue(K, V)).
 :- mode pqueue__insert(in, in, in, out).
 
+	% Remove the smallest item from the priority queue.
 :- pred pqueue__remove(pqueue(K, V), K, V, pqueue(K, V)).
 :- mode pqueue__remove(in, out, out, out).
 
+	% Extract all the items from a priority queue by
+	% repeated removal, and place them in an associative
+	% list.
 :- pred pqueue__to_assoc_list(pqueue(K, V), assoc_list(K, V)).
 :- mode pqueue__to_assoc_list(in, out).
 
+	% Insert all the key-value pairs in an association list
+	% into a priority queue.
 :- pred pqueue__assoc_list_to_pqueue(assoc_list(K, V), pqueue(K, V)).
 :- mode pqueue__assoc_list_to_pqueue(in, out).
 
