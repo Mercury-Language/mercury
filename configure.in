@@ -1841,10 +1841,10 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
 SHARED_LIBS='`gcc -print-libgcc-file-name` -lm -lc'
-EXE_RPATH_OPT="-Wl-rpath,"
-EXE_RPATH_SEP=" -Wl-rpath,"
-SHLIB_RPATH_OPT="-Wl-rpath,"
-SHLIB_RPATH_SEP=" -Wl-rpath,"
+EXE_RPATH_OPT="-Wl-rpath -Wl"
+EXE_RPATH_SEP=" -Wl-rpath -Wl"
+SHLIB_RPATH_OPT="-Wl-rpath -Wl"
+SHLIB_RPATH_SEP=" -Wl-rpath -Wl"
 CFLAGS_FOR_PIC="-fpic -DPIC"
 EXT_FOR_PIC_OBJECTS=pic_o
 EXT_FOR_SHARED_LIB=a
@@ -1925,9 +1925,9 @@ case "$host" in
 		LINK_SHARED_OBJ_SH="gcc -shared \
 		-Wl-O3 -Wl-update_registry -Wl\$(SO_LOCATIONS_DIR)so_locations"
 		ERROR_UNDEFINED="-Wl-error_unresolved"
-		EXE_RPATH_OPT="-Wl-rpath,"
+		EXE_RPATH_OPT="-Wl-rpath -Wl"
 		EXE_RPATH_SEP=":"
-		SHLIB_RPATH_OPT="-Wl-rpath,"
+		SHLIB_RPATH_OPT="-Wl-rpath -Wl"
 		SHLIB_RPATH_SEP=":"
 		EXT_FOR_SHARED_LIB=so
 		# -fpic not needed on Alpha/OSF, since it is the default
@@ -1942,7 +1942,7 @@ case "$host" in
 			-update_registry \${SO_LOCATIONS_DIR}so_locations \
 			-quickstart_info -rdata_shared"
 		ERROR_UNDEFINED="-no_unresolved"
-		EXE_RPATH_OPT="-Wl-rpath,"
+		EXE_RPATH_OPT="-Wl-rpath -Wl"
 		EXE_RPATH_SEP=":"
 		SHLIB_RPATH_OPT="-rpath "
 		SHLIB_RPATH_SEP=":"
