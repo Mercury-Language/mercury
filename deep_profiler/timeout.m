@@ -166,9 +166,9 @@ MP_maybe_print_cleanup_files(const char *msg)
 	int	i;
 
 	if (MP_print_cleanup_files) {
-		fprintf(stderr, ""\n%s cleanup files:\n"", msg);
+		fprintf(stderr, ""\\n%s cleanup files:\\n"", msg);
 		for (i = 0; i < MP_cleanup_file_next; i++) {
-			fprintf(stderr, ""%i %s\n"", i, MP_cleanup_files[i]);
+			fprintf(stderr, ""%i %s\\n"", i, MP_cleanup_files[i]);
 		}
 	}
 }
@@ -264,7 +264,7 @@ MP_delete_cleanup_files_and_exit_failure(const char *signal_name)
 #ifdef	MP_DEBUG_MDPROF_SIGNAL
 	fp = fopen(""/tmp/mdprof_signal"", ""w"");
 	if (fp != NULL) {
-		fprintf(fp, ""%s\n"", signal_name);
+		fprintf(fp, ""%s\\n"", signal_name);
 		(void) fclose(fp);
 	}
 #endif
