@@ -163,10 +163,17 @@ detect_live_vars_in_goal_2(
 		set__union(NewLiveVars, LiveVars0, LiveVars)
 	).
 
-detect_live_vars_in_goal_2(unify(_,_,_,_,_), Liveness, LiveVars,
-				_ModuleInfo, Liveness, LiveVars).
-	% This works even for complicated unifications, since
-	% complicated unifications don't have any top_out parameters.
+detect_live_vars_in_goal_2(unify(_,_,_,D,_), Liveness, LiveVars0,
+					_ModuleInfo, Liveness, LiveVars) :-
+	(
+		D = complicated_unify(_, _, _)
+	->
+			% we have to save all live variables
+			% across complicated unifications.
+		set__union(Liveness, LiveVars0, LiveVars)
+	;
+		LiveVars = LiveVars0
+	).
 
 %-----------------------------------------------------------------------------%
 

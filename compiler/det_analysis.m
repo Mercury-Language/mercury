@@ -550,7 +550,7 @@ det_infer_unify(deconstruct(_, _, _, _, Det), _MiscInfo, Det).
 
 det_infer_unify(simple_test(_, _), _MiscInfo, semideterministic).
 
-det_infer_unify(complicated_unify(_, Det), _MiscInfo, Det).
+det_infer_unify(complicated_unify(_, Det, _), _MiscInfo, Det).
 
 :- pred det_infer_switch(list(case), misc_info, list(case), category).
 :- mode det_infer_switch(in, in, out, out) is det.

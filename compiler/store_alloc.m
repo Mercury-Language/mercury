@@ -162,8 +162,15 @@ store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _Follow0, _ModuleInfo,
 				call(A, B, C, D, E, F), Liveness, Follow) :-
 	Follow = F.
 
-store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, Follow, _ModuleInfo,
-					unify(A,B,C,D,E), Liveness, Follow).
+store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, Follow0, _ModuleInfo,
+					unify(A,B,C,D,E), Liveness, Follow) :-
+	(
+		D = complicated_unify(_, _, F)
+	->
+		Follow = F
+	;
+		Follow = Follow0
+	).
 
 %-----------------------------------------------------------------------------%
 

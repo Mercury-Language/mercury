@@ -32,7 +32,7 @@
 :- implementation.
 :- import_module list, map, set, std_util.
 :- import_module mode_util, term, require.
-:- import_module code_util, quantification.
+:- import_module code_util, quantification, arg_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -183,9 +183,23 @@ find_follow_vars_in_goal_2(call(A,B,C,D,E,_F), ModuleInfo, FollowVars0,
 						FollowVars0, FollowVars)
 	).
 
-	% XXX complicated unifies?
-find_follow_vars_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, FollowVars,
-					unify(A,B,C,D,E), FollowVars).
+find_follow_vars_in_goal_2(unify(A,B,C,D0,E), _ModuleInfo, FollowVars0,
+					unify(A,B,C,D,E), FollowVars) :-
+	(
+		A = term__variable(Var1),
+		B = term__variable(Var2),
+		D0 = complicated_unify(Mode, Det, _F),
+		map__init(Follow0),
+		arg_info__unify_arg_info(Det, ArgInfo),
+		find_follow_vars_in_call_2(ArgInfo, [Var1, Var2],
+						Follow0, FollowVars1)
+	->
+		D = complicated_unify(Mode, Det, FollowVars0),
+		FollowVars = FollowVars1
+	;
+		D = D0,
+		FollowVars = FollowVars0
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -201,7 +215,9 @@ find_follow_vars_in_call(PredId, ProcId, Args0, ModuleInfo, _Follow, Follow) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	term__vars_list(Args0, Args),
 	map__init(Follow0),
-	( find_follow_vars_in_call_2(ArgInfo, Args, Follow0, Follow1) ->
+	(
+		find_follow_vars_in_call_2(ArgInfo, Args, Follow0, Follow1)
+	->
 		Follow = Follow1
 	;
 		error("find_follow_vars_in_call: failed")

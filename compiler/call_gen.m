@@ -285,10 +285,10 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	;
 		{ error("type_to_type_id failed") }
 	),
+	code_info__request_unify(VarTypeId, UniMode),
 	code_info__get_requests(Requests),
 	{ unify_proc__lookup_num(Requests, VarTypeId, UniMode, ModeNum) },
 	{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum, Label) },
-	code_info__request_unify(VarTypeId, UniMode),
 	{ CodeC = node([
 		unicall(Label, ReturnLabel) - "branch to unification proc",
 		label(ReturnLabel) - "Continuation label"

@@ -2116,8 +2116,9 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, VarTypes,
 		Determinism = deterministic,
 		mode_get_insts(ModuleInfo, ModeX, IX, FX),
 		mode_get_insts(ModuleInfo, ModeY, IY, FY),
+		map__init(Follow),
 		Unification = complicated_unify((IX - IY) -> (FX - FY),
-				Determinism)
+				Determinism, Follow)
 	).
 
 :- pred categorize_unify_var_functor(mode, list(mode), var, const,
