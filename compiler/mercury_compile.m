@@ -416,11 +416,12 @@ compile(SourceFileName, ModuleName - Items) -->
 :- mode mercury_compile(in, di, uo) is det.
 
 mercury_compile(Module) -->
+	{ module_imports_get_module_name(Module, ModuleName) },
+	% If we are only typechecking or error checking, then we should not
+	% modify any files, this includes writing to .d files.
 	globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
 	globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	{ bool__or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile) },
-	% If we are only typechecking or error checking, then we should not
-	% modify any files, this includes writing to .d files.
 	mercury_compile__pre_hlds_pass(Module, DontWriteDFile,
 		HLDS1, QualInfo, UndefTypes, UndefModes, Errors1),
 	mercury_compile__frontend_pass(HLDS1, QualInfo, UndefTypes,
@@ -458,7 +459,6 @@ mercury_compile(Module) -->
 	    ; { MakeTransOptInt = yes } ->
 	    	mercury_compile__output_trans_opt_file(HLDS21)
 	    ;
-		{ module_imports_get_module_name(Module, ModuleName) },
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50),
