@@ -384,7 +384,9 @@ calculate_max_stack_2([I | Instrs], Current, Max) =
 :- func get_stack_difference(ilds__instr) = int.
 get_stack_difference(end_block(_, _)) 				= 0.
 get_stack_difference(comment(_)) 				= 0.
-get_stack_difference(start_block(_, _)) 			= 0.
+get_stack_difference(start_block(scope(_), _)) 			= 0.
+get_stack_difference(start_block(try, _)) 			= 0.
+get_stack_difference(start_block(catch(_), _)) 			= 1.
 get_stack_difference(context(_, _)) 				= 0.
 get_stack_difference(label(_Label)) 				= 0. 
 
