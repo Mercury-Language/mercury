@@ -996,7 +996,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	will_not_call_mercury,
 "
 #ifndef CONSERVATIVE_GC
-	MR_sol_hp = SolutionsHeapPtr;
+	MR_sol_hp = (MR_Word *) SolutionsHeapPtr;
 #endif
 ").
 
