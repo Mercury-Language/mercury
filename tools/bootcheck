@@ -286,9 +286,7 @@ then
 	ln -s $root/compiler/[a-h]*.m .
 	ln -s $root/compiler/[i-s]*.m .
 	ln -s $root/compiler/[t-z]*.m .
-	# Make sure rl_out.m and rl_file.m are recreated with
-	# the value of INCLUDE_ADITI_OUTPUT in Mmake.stage.params.
-	cp $root/compiler/*.pp .
+	ln -s $root/compiler/*.pp .	
 
 	cp $root/compiler/Mmake* .
 	cd $root/stage2
@@ -489,9 +487,7 @@ then
 	ln -s $root/compiler/[a-h]*.m .
 	ln -s $root/compiler/[i-s]*.m .
 	ln -s $root/compiler/[t-z]*.m .
-	# Make sure rl_out.m and rl_file.m are recreated with
-	# the value of INCLUDE_ADITI_OUTPUT in Mmake.stage.params.
-	cp $root/compiler/*.pp .
+	ln -s $root/compiler/*.pp .	
 
 	cp $root/compiler/Mmake* .
 	cd $root/stage3

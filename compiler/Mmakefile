@@ -54,29 +54,51 @@ MTAGSFLAGS =
 #-----------------------------------------------------------------------------#
 
 # Rules for preprocessing `.pp' files.
+# `.pp_date' files are used as timestamps as for interface files.
 
 ifeq ($(INCLUDE_ADITI_OUTPUT),yes)
 
 # Remove the #if line and everything between the #else and #endif lines.
-%.m: %.pp
-	@-[ ! -f $@ ] || chmod +w $@
+$(dates_subdir)%.pp_date: %.pp
+	m_file=$(<:.pp=.m); \
+	[ ! -f $$m_file ] || chmod +w $$m_file; \
 	sed	-e '/^#if *INCLUDE_ADITI_OUTPUT/s/.*//' \
 		-e '/^#else/,/^#endif/s/.*//' \
-		$< > $@
-	@-chmod -w $@
+		$< > $$m_file.tmp; \
+	mercury_update_interface -v $$m_file; \
+	touch $@; \
+	chmod -w $$m_file
 
 else
 
 # Remove everything between the #if line and the #else line,
 # and the #endif line.
-%.m: %.pp
-	@-[ ! -f $@ ] || chmod +w $@
+$(dates_subdir)%.pp_date: %.pp
+	m_file=$(<:.pp=.m); \
+	[ ! -f $$m_file ] || chmod +w $$m_file; \
 	sed	-e '/^#if *INCLUDE_ADITI_OUTPUT/,/^#else/s/.*//' \
 		-e '/^#endif/s/.*//' \
-		$< > $@
-	@-chmod -w $@
+		$< > $$m_file.tmp; \
+	mercury_update_interface -v $$m_file; \
+	touch $@; \
+	chmod -w $$m_file
 
 endif
+
+PREPROCESSED_MODULES = rl_file rl_out
+PREPROCESSED_FILES = $(PREPROCESSED_MODULES:%=%.pp)
+PREPROCESSED_M_FILES = $(PREPROCESSED_MODULES:%=%.m)
+PP_DATE_FILES = $(PREPROCESSED_MODULES:%=$(dates_subdir)%.pp_date)
+
+# Force regeneration of the preprocessed modules.
+# This is necessary if the setting of `INCLUDE_ADITI_OUTPUT' has changed.
+regenerate_preprocessed_files:
+	touch $(PREPROCESSED_FILES)
+	$(MMAKE) $(PREPROCESSED_M_FILES)
+
+# The `.m' files for the preprocessed modules depend on the `.pp_date' files.
+$(PREPROCESSED_M_FILES): %.m: $(dates_subdir)%.pp_date
+	@:
 
 #-----------------------------------------------------------------------------#
 
@@ -87,9 +109,7 @@ endif
 .PHONY: depend
 depend:		mercury_compile.depend
 
-# we need to make sure the .pp files get converted to .m before
-# we do the make depend
-mercury_compile.depend: rl_file.m rl_out.m
+mercury_compile.depend: regenerate_preprocessed_files
 
 .PHONY: all
 all:		mercury
@@ -151,7 +171,7 @@ clean:
 	done
 
 realclean:
-	rm -f tags mercury_compile.stats
+	rm -f tags mercury_compile.stats $(PP_DATE_FILES)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

@@ -186,6 +186,9 @@ LIBRARY_INTERMODULE = yes
 # To disable the Aditi support, put `INCLUDE_ADITI_OUTPUT = no'
 # in Mmake.stage.params. Do not put this into Mmake.params - we still
 # want to check that the Aditi code compiles after any changes.
+# `mmake depend' must be run in any compiler directories affected by
+# the changed value (tools/bootcheck will do this automatically for
+# the stage2 and stage3 directories). 
 INCLUDE_ADITI_OUTPUT = yes
 
 #-----------------------------------------------------------------------------#
