@@ -1411,7 +1411,7 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 		convert_constructors(ModuleName, Body, Constrs)
 	->
 		% check that all type variables in the body
-		% are either explicitly existentally quantified
+		% are either explicitly existentially quantified
 		% or occur in the head.
 		(
 			list__member(Ctor, Constrs),
@@ -1451,7 +1451,7 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 			\+ term__contains_var_list(CtorArgTypes, Var)
 		->
 			Result = error(
-		"type variable does not occur in arguments of constructor",
+"type variable in existential quantifier does not occur in arguments of constructor",
 					Body)
 		% check that all type variables in existential constraints
 		% occur in the existential quantifiers
@@ -1465,8 +1465,8 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 			Ctor = ctor(ExistQVars, Constraints, _CtorName,
 					_CtorArgs),
 			list__member(Constraint, Constraints),
-			Constraint = constraint(_Name, Args),
-			term__contains_var_list(Args, Var),
+			Constraint = constraint(_Name, ConstraintArgs),
+			term__contains_var_list(ConstraintArgs, Var),
 			\+ list__member(Var, ExistQVars)
 		->
 			Result = error("type variables in class constraints introduced with `=>' must be explicitly existentially quantified using `some'",

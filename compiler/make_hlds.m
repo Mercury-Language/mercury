@@ -2536,17 +2536,19 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
 add_new_pred(Module0, TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 		ClassContext, Markers0, Context, Status, NeedQual,
 		PredOrFunc, Module) -->
-	{ module_info_name(Module0, ModuleName) },
+	check_tvars_in_constraints(ClassContext, Types, TVarSet,
+		PredOrFunc, PredName, Context, Module0, Module1),
+
+	{ module_info_name(Module1, ModuleName) },
 	{ list__length(Types, Arity) },
 	(
 		{ PredName = unqualified(_PName) },
-		{ module_info_incr_errors(Module0, Module) },
+		{ module_info_incr_errors(Module1, Module) },
 		unqualified_pred_error(PredName, Arity, Context)
 		% All predicate names passed into this predicate should have 
 		% been qualified by prog_io.m, when they were first read.
 	;
 		{ PredName = qualified(MNameOfPred, PName) },
-		{ Module1 = Module0 },
 		{ module_info_get_predicate_table(Module1, PredicateTable0) },
 		{ clauses_info_init(Arity, ClausesInfo) },
 		{ map__init(Proofs) },
@@ -2609,6 +2611,101 @@ add_new_pred(Module0, TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 		)
 	).
 
+%-----------------------------------------------------------------------------%
+
+	%
+	% check for type variables which occur in the the class constraints,
+	% but which don't occur in the predicate argument types
+	%
+:- pred check_tvars_in_constraints(class_constraints, list(type), tvarset,
+		pred_or_func, sym_name, prog_context,
+		module_info, module_info, io__state, io__state).
+:- mode check_tvars_in_constraints(in, in, in, in, in, in,
+		in, out, di, uo) is det.
+
+check_tvars_in_constraints(ClassContext, ArgTypes, TVarSet,
+		PredOrFunc, PredName, Context, Module0, Module) -->
+	{ solutions(constrained_tvar_not_in_arg_types(ClassContext, ArgTypes),
+		UnboundTVars) },
+	( { UnboundTVars = [] } ->
+		{ Module = Module0 }
+	;
+		{ module_info_incr_errors(Module0, Module) },
+		report_unbound_tvars_in_class_context(UnboundTVars, ArgTypes,
+			TVarSet, PredOrFunc, PredName, Context)
+	).
+
+:- pred constrained_tvar_not_in_arg_types(class_constraints, list(type), tvar).
+:- mode constrained_tvar_not_in_arg_types(in, in, out) is nondet.
+
+constrained_tvar_not_in_arg_types(ClassContext, ArgTypes, TVar) :-
+	ClassContext = constraints(UnivCs, ExistCs),
+	( Constraints = UnivCs ; Constraints = ExistCs ),
+	type_util__constraint_list_get_tvars(Constraints, TVars),
+	list__member(TVar, TVars),
+	\+ term__contains_var_list(ArgTypes, TVar).
+
+:- pred report_unbound_tvars_in_class_context(list(tvar), list(type), tvarset,
+		pred_or_func, sym_name, prog_context,
+		io__state, io__state).
+:- mode report_unbound_tvars_in_class_context(in, in, in, in, in, in,
+		di, uo) is det.
+
+/*
+The error message is intended to look like this:
+
+very_long_module_name:001: In declaration for function `very_long_function/2':
+very_long_module_name:001:   error in type class constraints: type variables
+very_long_module_name:001:   `T1, T2, T3' occur only in the constraints,
+very_long_module_name:001:   not in the function's argument or result types.
+
+very_long_module_name:002: In declaration for predicate `very_long_predicate/3':
+very_long_module_name:002:   error in type class constraints: type variable
+very_long_module_name:002:   `T' occurs only in the constraints,
+very_long_module_name:002:   not in the predicate's argument types.
+*/
+
+report_unbound_tvars_in_class_context(UnboundTVars, ArgTypes, TVarSet,
+		PredOrFunc, PredName, Context) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("In declaration for "),
+	{ list__length(ArgTypes, Arity) },
+	hlds_out__write_simple_call_id(PredOrFunc, PredName, Arity),
+	io__write_string(":\n"),
+	prog_out__write_context(Context),
+	io__write_string("  error in type class constraints: "),
+	(
+		{ UnboundTVars = [] },
+		{ error("report_unbound_tvars_in_class_context: no type vars") }
+	;
+		{ UnboundTVars = [SingleTVar] },
+		io__write_string("type variable\n"),
+		prog_out__write_context(Context),
+		io__write_string("  `"),
+		mercury_output_var(SingleTVar, TVarSet, no),
+		io__write_string("' occurs ")
+	;
+		{ UnboundTVars = [_, _ | _] },
+		io__write_string("type variables\n"),
+		prog_out__write_context(Context),
+		io__write_string("  `"),
+		mercury_output_vars(UnboundTVars, TVarSet, no),
+		io__write_string("' occur ")
+	),
+	io__write_string("only in the constraints,\n"),
+	prog_out__write_context(Context),
+	io__write_string("  not in the "),
+	(
+		{ PredOrFunc = predicate },
+		io__write_string("predicate's argument types.\n")
+	;
+		{ PredOrFunc = function },
+		io__write_string("function's argument or result types.\n")
+	).
+
+%-----------------------------------------------------------------------------%
+	
 :- pred maybe_check_field_access_function(sym_name, arity, import_status,
 		prog_context, module_info, io__state, io__state).
 :- mode maybe_check_field_access_function(in, in, in, in, in, di, uo) is det.

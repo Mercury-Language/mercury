@@ -88,6 +88,7 @@ SINGLEMODULE_SOURCES= \
 	types.m	\
 	type_spec.m \
 	unbound_inst_var.m \
+	unbound_type_vars.m \
 	undef_lambda_mode.m \
 	undef_mod_qual.m \
 	undef_mode.m \
