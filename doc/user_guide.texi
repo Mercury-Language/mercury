@@ -3532,7 +3532,10 @@ Specify which C compiler to use.
 
 @sp 1
 @item --c-include-directory @var{dir}
-Specify the directory containing the Mercury C header files.
+Append @var{dir} to the list of directories to be searched for
+C header files.  Note that if you want to override this list, rather than
+append to it, then you can set the @samp{MERCURY_MC_ALL_C_INCL_DIRS}
+environment variable to a sequence of @samp{--c-include-directory} options.
 
 @sp 1
 @item --cflags @var{options}
@@ -4158,8 +4161,9 @@ The default grade to use if no @samp{--grade} option is specified.
 @item MERCURY_C_INCL_DIR
 Directory for the C header files for the Mercury runtime system (@file{*.h}).
 This environment variable is used
-only to define the default value of MERCURY_ALL_C_INCL_DIRS,
-so if you define that environment variable separately,
+only to define the default values of MERCURY_ALL_C_INCL_DIRS
+and MERCURY_ALL_MC_INCL_DIRS,
+so if you define those environment variables separately,
 the value of MERCURY_C_INCL_DIR is ignored.
 
 @sp 1
@@ -4167,8 +4171,23 @@ the value of MERCURY_C_INCL_DIR is ignored.
 A list of options for the C compiler that specifies
 all the directories the C compiler should search for the C header files
 of the Mercury runtime system and garbage collector.
-The default value of this option is -I$MERCURY_C_INCL_DIR,
+The default value of this option is @samp{-I$MERCURY_C_INCL_DIR},
 since usually all these header files are installed in one directory.
+This environment variable is used by @samp{mgnuc};
+it should generally be kept in sync with
+@code{MERCURY_ALL_MC_C_INCL_DIRS}, which is used by @samp{mmc}.
+
+@sp 1
+@item MERCURY_ALL_MC_C_INCL_DIRS
+A list of options for mmc that specifies
+all the directories it should search for the C header files
+of the Mercury runtime system and garbage collector.
+The default value of this option is
+@samp{--c-include-directory $MERCURY_C_INCL_DIR},
+since usually all these header files are installed in one directory.
+This environment variable is used by @samp{mmc};
+it should generally be kept in sync with
+@code{MERCURY_ALL_C_INCL_DIRS}, which is used by @samp{mgnuc}.
 
 @sp 1
 @item MERCURY_INT_DIR
@@ -4181,8 +4200,8 @@ Filename of the Mercury `nc'-compatibility file (nc_builtin.nl).
 
 @sp 1
 @item MERCURY_C_LIB_DIR
-Base directory containing the Mercury libraries (@file{libmer.a} and
-possibly @file{libmer.so}) for each configuration and grade.
+Base directory containing the Mercury libraries (@file{libmer_*.a} and
+possibly @file{libmer_*.so}) for each configuration and grade.
 The libraries for each configuration and grade should
 be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
 

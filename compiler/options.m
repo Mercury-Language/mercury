@@ -590,7 +590,7 @@ option_defaults_2(code_gen_option, [
 					% above two defaults with values
 					% determined at configuration time
 	c_debug			-	bool(no),
-	c_include_directory	-	string(""),
+	c_include_directory	-	accumulating([]),
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
@@ -1940,7 +1940,12 @@ options_help_code_generation -->
 		"--cc <compiler-name>",
 		"\tSpecify which C compiler to use.",
 		"--c-include-directory <dir>",
-		"\tSpecify the directory containing the Mercury C header files.",
+		"\tAppend <dir> to the list of directories to be searched for",
+		"\tC header files.  Note that if you want to override",
+		"\tthis list, rather than append to it, then you can set the",
+		"\t`MERCURY_MC_ALL_C_INCL_DIRS' environment variable to a",
+		"\tsequence of `--c-include-directory' options.",
+
 		"--cflags <options>",
 		"\tSpecify options to be passed to the C compiler.",
 		% The --cflags-for-regs and --cflags-for-gotos options
@@ -2312,7 +2317,8 @@ options_help_misc -->
 	io__write_string("\nMiscellaneous Options:\n"),
 	write_tabbed_lines([
 		"-I <dir>, --search-directory <dir>",
-		"\tAdd <dir> to the list of directories to be searched for \n\t\timported modules.",
+		"\tAppend <dir> to the list of directories to be searched for",
+		"\timported modules.",
 		"--intermod-directory <dir>",
 		"\tAdd <dir> to the list of directories to be",
 		"\tsearched for `.opt' files.",
