@@ -436,13 +436,20 @@ endif
 
 # Static linking doesn't work on Solaris in debug grades
 # ('-ldl' doesn't work with static linking).
+#
+# Static linking (aginst the system libraries) doesn't
+# work on MacOS X because the static versions of the
+# libraries are not installed by default.
+#
 STATIC_LINK_PROGS =
-ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
+ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
+  ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	# The `parse' test also links with the debug libraries,
 	# so it only works in LLDS grades.
 	ifeq "$(filter hl% java% il%,$(GRADE))" ""
 		STATIC_LINK_PROGS = parse
 	endif
+  endif
 endif
 
 # We currently test only a limited selection in grade java on this directory.
