@@ -631,13 +631,13 @@ wday_name(N) = Name :-
 
 :- pred wday_name(int::in, string::out) is semidet.
 
-wday_name(0, "Mon").
-wday_name(1, "Tue").
-wday_name(2, "Wed").
-wday_name(3, "Thu").
-wday_name(4, "Fri").
-wday_name(5, "Sat").
-wday_name(6, "Sun").
+wday_name(0, "Sun").
+wday_name(1, "Mon").
+wday_name(2, "Tue").
+wday_name(3, "Wed").
+wday_name(4, "Thu").
+wday_name(5, "Fri").
+wday_name(6, "Sat").
 
 :- func mon_name(int) = string.
 
