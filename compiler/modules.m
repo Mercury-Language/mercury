@@ -561,7 +561,6 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".clean"
 		; Ext = ".clean_nu"
 		; Ext = ".clean_sicstus"
-		; Ext = ".change_clean"
 		; Ext = ".realclean"
 		; Ext = ".depend"
 		; Ext = ".check"
@@ -2653,6 +2652,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n"
 	]),
 
+
+	%
+	% If you change the clean targets below, please also update the
+	% documentation in doc/user_guide.texi.
+	%
+
 	module_name_to_file_name(SourceModuleName, ".clean", no,
 				CleanTargetName),
 	io__write_strings(DepStream, [
@@ -2667,8 +2672,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".os) ", InitObjFileName, "\n",
 		"\t-rm -f $(", MakeVarName, ".pic_os) ", InitPicObjFileName,
 									"\n",
-		"\t-rm -f $(", MakeVarName, ".trans_opt_dates)\n",
-		"\t-rm -f $(", MakeVarName, ".trans_opts)\n",
 		"\t-rm -f $(", MakeVarName, ".profs)\n",
 		"\t-rm -f $(", MakeVarName, ".nos)\n",
 		"\t-rm -f $(", MakeVarName, ".qls)\n",
@@ -2677,29 +2680,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_string(DepStream, "\n"),
-
-	module_name_to_file_name(SourceModuleName, ".change_clean", no,
-			ChangeCleanTargetName),
-	io__write_strings(DepStream, [
-		".PHONY : ", ChangeCleanTargetName, "\n",
-		ChangeCleanTargetName, " :\n",
-		"\t-rm -f $(", MakeVarName, ".cs) ", InitCFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".ss) ", InitAsmFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".os) ", InitObjFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".pic_os) ", InitPicObjFileName,
-									"\n",
-		"\t-rm -f $(", MakeVarName, ".hs)\n",
-		"\t-rm -f $(", MakeVarName, ".ds)\n",
-		"\t-rm -f ",
-			ExeFileName, " ",
-			SplitExeFileName, " ",
-			SplitLibFileName, " ",
-			InitFileName, " ",
-			LibFileName, " ",
-			SharedLibFileName, " ",
-			DepFileName, " ",
-			DvFileName, "\n\n"
-	]),
 
 	module_name_to_file_name(SourceModuleName, ".realclean", no,
 			RealCleanTargetName),
@@ -2713,10 +2693,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".date0s)\n",
 		"\t-rm -f $(", MakeVarName, ".date3s)\n",
 		"\t-rm -f $(", MakeVarName, ".optdates)\n",
+		"\t-rm -f $(", MakeVarName, ".trans_opt_dates)\n",
 		"\t-rm -f $(", MakeVarName, ".ints)\n",
 		"\t-rm -f $(", MakeVarName, ".int0s)\n",
 		"\t-rm -f $(", MakeVarName, ".int3s)\n",
 		"\t-rm -f $(", MakeVarName, ".opts)\n",
+		"\t-rm -f $(", MakeVarName, ".trans_opts)\n",
 		"\t-rm -f $(", MakeVarName, ".ds)\n",
 		"\t-rm -f $(", MakeVarName, ".hs)\n",
 		"\t-rm -f $(", MakeVarName, ".rlos)\n"

@@ -396,6 +396,8 @@ Creates the files @file{@var{main-module}.dep} and
 @file{@var{main-module}.dv} from @file{@var{main-module}.m}
 and the modules it imports.
 This step must be performed first.
+It is also required whenever you wish to change the level of
+inter-module optimization performed (@pxref{Overall optimization options}).
 
 @item @var{main-module}.ints
 Ensure that the interface files for @var{main-module}
@@ -430,16 +432,17 @@ Removes the automatically generated files
 that contain the compiled code of the program
 and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
-@samp{.no}, @samp{.ql}, and @samp{.err} files
+@samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql},
+@ifset aditi
+@samp{.schema},
+@end ifset
+and @samp{.err} files
 belonging to the named @var{main-module} or its imported modules.
-
-@item @var{main-module}.change_clean
-Removes files that need updating when changing compilation model
-(@pxref{Compilation model options}) or
-when enabling inter-module optimization.
-Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
-@samp{.dep}, @samp{.dv} and executable files belonging to the named
-@var{main-module} or its imported modules.
+Use this target whenever you wish to change compilation model
+(@pxref{Compilation model options}).
+This target is also recommended whenever you wish to change the level
+of inter-module optimization performed (@pxref{Overall optimization
+options}) in addition to the mandatory @var{main-module}.depend.
 
 @item @var{main-module}.realclean
 Removes all the automatically generated files.
@@ -451,26 +454,42 @@ removes the @samp{.int}, @samp{.int0}, @samp{.int2},
 @ifset aditi
 @samp{.rlo},
 @end ifset
-@samp{.d}, @samp{.dep} and @samp{.dv}
+@samp{.h} and @samp{.d} files
 belonging to one of the modules of the program,
-and also the various possible executables for the program ---
+and also the various possible executables, libraries and dependency files
+for the program as a whole ---
 @samp{@var{main-module}},
+@samp{@var{main-module}.split},
 @samp{@var{main-module}.nu},
 @samp{@var{main-module}.nu.save},
 @samp{@var{main-module}.nu.debug},
 @samp{@var{main-module}.nu.debug.save},
-@samp{@var{main-module}.sicstus}, and
-@samp{@var{main-module}.sicstus.debug}.
+@samp{@var{main-module}.sicstus},
+@samp{@var{main-module}.sicstus.debug},
+@samp{lib@var{main-module}.a},
+@samp{lib@var{main-module}.so},
+@samp{@var{main-module}.split.a},
+@samp{@var{main-module}.init},
+@samp{@var{main-module}.dep}
+and
+@samp{@var{main-module}.dv}.
 
 @item clean
 This makes @samp{@var{main-module}.clean} for every @var{main-module}
 for which there is a @file{@var{main-module}.dep} file in the current
-directory.
+directory, as well as deleting the profiling files
+@samp{Prof.CallPair},
+@samp{Prof.Counts},
+@samp{Prof.Decl},
+@samp{Prof.MemWords}
+and
+@samp{Prof.MemCells}.
 
 @item realclean
 This makes @samp{@var{main-module}.realclean} for every @var{main-module}
 for which there is a @file{@var{main-module}.dep} file in the current
-directory.
+directory, as well as deleting the profiling files as per the @samp{clean}
+target.
 
 @end table
 

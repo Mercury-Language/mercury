@@ -298,7 +298,7 @@ $(MLPICOBJS_DEPS) : $(MLPICOBJS)
 # automatically generated `.d' files.
 #
 
-.PHONY: clean realclean change_clean clean_nu clean_sicstus clean_prof_files
+.PHONY: clean realclean clean_nu clean_sicstus clean_prof_files
 
 clean_prof_files:
 	-rm -f Prof.CallPair Prof.Counts Prof.Decl Prof.MemWords Prof.MemCells
