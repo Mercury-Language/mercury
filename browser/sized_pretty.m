@@ -49,7 +49,7 @@
 %		     small
 %                    )).
 %
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 18, Line(s) = 16
 %
 % big(
@@ -69,7 +69,7 @@
 %     "Level 2", 
 %     small))
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 16, Line(s) = 16
 % 
 % big(
@@ -83,7 +83,7 @@
 %     "Level 2", 
 %     small))
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 50, Line(s) = 4
 % 
 % big(
@@ -91,7 +91,7 @@
 %  "Level 1", 
 %   big(big/3, "Level 2", small))
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 56, Line(s) = 4
 % 
 % big(
@@ -99,12 +99,12 @@
 %   "Level 1", 
 %   big(big(small, "Level 3", small), "Level 2", small))
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 30, Line(s) = 5
 % 
 % big(big/3, "Level 1", big/3)
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 33, Line(s) = 5
 % 
 % big(
@@ -112,12 +112,12 @@
 %   "Level 1", 
 %   big(big/3, "Level 2", small))
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 75, Line(s) = 1
 % 
 % big(big(big/3, "Level 2", small), "Level 1", big(big/3, "Level 2", small))
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 20, Line(s) = 10
 % 
 % big(
@@ -131,7 +131,7 @@
 %     "Level 2", 
 %     small))
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 40, Line(s) = 10
 % 
 % big(
@@ -145,17 +145,17 @@
 %     "Level 2", 
 %     small))
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 29, Line(s) = 1
 % 
 % big(big/3, "Level 1", big/3)
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Width = 20, Line(s) = 1
 % 
 % big/3
 % 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb__sized_pretty.
 
@@ -168,7 +168,7 @@
 	% The Limit is number of lines.
 :- pred univ_to_string_line(univ::in, int::in, int::in, string::out) is det.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -240,7 +240,7 @@
 		
 ].
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% When the space (to print the term) is given in number of lines there
 	% is an inital check that has to be done. This is due to the fact that
 	% size_count_split assumes that every term is part of a bigger term and
@@ -265,7 +265,7 @@ univ_to_string_line(Univ, LineWidth, Lines, String) :-
 	Doc = to_doc_sized(AnnotTerm),
 	String = pprint__to_string(LineWidth, Doc).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% first_pass gives an idea of how much space each term takes
 	% In this pass the space is unevenly distributed. First come first
 	% served. And once the space runs out, the term is not deconstructed
@@ -280,7 +280,7 @@ annotate_with_size(Univ, Params, Limit, Size2) :-
 	first_pass(Univ, Params, Limit, Size1),
 	second_pass(Size1, Params, Limit, Size2).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	
 :- pred first_pass(univ::in, MeasureParams::in, T::in,
 	size_annotated_term(T)::out) is det
@@ -313,7 +313,7 @@ first_pass(Univ, Params, Limit, Size) :-
 		Size = at_least(Univ, zero_measure, not_deconstructed)
 	).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% annotating the arguments.
 :- pred annotate_args_with_size(list(univ)::in, maybe(T)::in,
 	MeasureParams::in, T::in, T::in, T::out, bool::in, bool::out, 
@@ -357,21 +357,21 @@ annotate_args_with_size([Arg | Args], Flag, Params, Limit,
 	annotate_args_with_size(Args, Flag, Params, Limit, SoFar1, SoFar, 
 		Exact2, Exact, MaybeFlaggedSizes).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func extract_size_from_annotation(size_annotated_term(T)) = T.
 
 extract_size_from_annotation(exact(_, Size, _, _, _)) = Size.
 extract_size_from_annotation(at_least(_, Size, _)) = Size.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func extract_univ_from_annotation(size_annotated_term(T)) = univ.
 
 extract_univ_from_annotation(exact(Univ, _, _, _, _)) = Univ.
 extract_univ_from_annotation(at_least(Univ, _, _)) = Univ.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% This predicate basically ensures that the arguments that
 	% take up smaller "Space" than their fair share is fully
 	% printed and the rest the Space is shared equally between
@@ -427,7 +427,7 @@ second_pass(OldSizeTerm, Params, Limit, NewSizeTerm) :-
 		)
 	).
 	
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% Given a list of size annotated terms(ie arguments) and a
 	% Limit, this predicate returns the values "Passed" and 
 	% "Used". Where "Passed" represents the number of terms that
@@ -458,7 +458,7 @@ check_args(Params, [HeadArg | Rest], ArgLimit, Passed, Used0, Used) :-
     	else
 		check_args(Params, Rest, ArgLimit, Passed, Used0, Used).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% This predicate accepts a list of size annotated terms(paired
 	% with a flag) and returns a list of the same type. This new
 	% list would consist of the same number of terms as the other
@@ -500,7 +500,7 @@ process_args(Params, [HeadArg | Rest], ArgLimit, SplitLimit,
     	),
     	process_args(Params, Rest, ArgLimit, SplitLimit, NewRest, RestSize).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% checking if an size-annotated arg is an exact type (fully represented)
 :- func check_if_exact(maybe(pair(T, size_annotated_term(T)))) = bool.
 
@@ -514,7 +514,7 @@ check_if_exact(yes(_ - Term)) = Result:-
 		Result = no
 	).	
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% A function to convert a size annotated term to a 'doc' type,
 	% a type defined in pprint.m.
 :- func to_doc_sized(size_annotated_term(T)) = doc.
@@ -529,7 +529,7 @@ to_doc_sized(at_least(_, _, deconstructed(Functor, Arity, MaybeArgs))) = Doc :-
 to_doc_sized(exact(_, _, Functor, Arity, MaybeArgs)) = Doc :-
 	Doc = to_doc_sized_2(Functor, Arity, MaybeArgs).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% Assumes that every argument must be on a different line
 	% or all of them should be on the same line.
 :- func to_doc_sized_2(string, int, size_annotated_args(T)) = doc.
@@ -546,14 +546,14 @@ to_doc_sized_2(Functor, Arity, [HeadArg|Tail]) = Doc :-
         	Doc = text(Functor) `<>` text("/") `<>` poly(i(Arity))
     	).
 	
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func handle_arg(maybe(pair(T,size_annotated_term(T)))) = doc.
 
 handle_arg(yes(_ - Arg_Term)) = to_doc_sized(Arg_Term). 
 handle_arg(no) = nil.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% functor_count is a representation where the size of a term
 	% is measured by the number of function symbols.
 
@@ -620,7 +620,7 @@ functor_count_split(_, Params, functor_count(Limit), Arity, _, functor_count(1),
 ].
 
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% char_count is a representation where the size of a term is
 	% measured by the number of characters.
 
@@ -694,7 +694,7 @@ char_count_split(Univ, Params, char_count(Limit), Arity, Check,
         pred(measured_split/9) is char_count_split
 ].
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% size_count is representation where the size of a term is
 	% measured by number of lines or number of characters.
 
@@ -903,7 +903,7 @@ size_count_split(Univ, Params, Limit, Arity, Check, FunctorSize,
 	pred(measured_split/9) is size_count_split
 ].
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 	% This predicate determines how many characters it will take
 	% to print the functors of the arguments. Also determines the
 	% length of biggest functor.
@@ -929,4 +929,4 @@ get_arg_length([HeadUniv | Rest], TotalLength, MaxLength) :-
 	int__max((Length + Correction), RestMaxLength, MaxLength),
 	get_arg_length(Rest, RestTotalLength, RestMaxLength).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
