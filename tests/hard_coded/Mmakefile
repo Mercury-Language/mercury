@@ -241,7 +241,7 @@ PROGS = $(ORDINARY_PROGS) $(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
 # because it hasn't yet been implemented yet.
 # The same is true for deep profiling grades and `mmc --make'.
 # The modules in SPLIT_PROGS should also be in ORDINARY_PROGS above.
-ifeq "$(findstring yes,$(MMAKE_USE_MMC_MAKE))$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+ifeq "$(findstring yes,$(MMAKE_USE_MMC_MAKE))$(filter hl% il% java%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	SPLIT_PROGS = mapped_module split_c_files
 else
 	SPLIT_PROGS =
