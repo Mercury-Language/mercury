@@ -99,6 +99,7 @@ PROGS=	\
 	term_io_test \
 	tim_qual1 \
 	type_spec \
+	user_defined_equality \
 	write \
 	write_reg1
 
@@ -121,6 +122,7 @@ MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-rnd		=	-O6
 MCFLAGS-type_spec	=	--user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all
+MCFLAGS-user_defined_equality	= --infer-all
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked

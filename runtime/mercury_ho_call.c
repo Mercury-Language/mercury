@@ -8,9 +8,14 @@ ENDINIT
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#define	MR_UNIFY_COMPARE_BY_CTOR_REP
+/*
+XXX currently the MR_UNIFY_COMPARE_BY_CTOR_REP code is broken;
+it fails the tests/hard_coded/user_defined_equality.m test case.
+So for now it is disabled.
+#define MR_UNIFY_COMPARE_BY_CTOR_REP	
 #define	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
 #define	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
+*/
 
 /*
 ** This module provides much of the functionality for doing higher order
