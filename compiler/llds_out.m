@@ -3074,16 +3074,9 @@ output_label_as_code_addr(exported(ProcLabel)) -->
 	output_label(exported(ProcLabel)),
 	io__write_string(")").
 output_label_as_code_addr(local(ProcLabel)) -->
-	globals__io_lookup_bool_option(split_c_files, SplitFiles),
-	( { SplitFiles = no } ->
-		io__write_string("MR_STATIC("),
-		output_label(local(ProcLabel)),
-		io__write_string(")")
-	;
-		io__write_string("MR_ENTRY("),
-		output_label(local(ProcLabel)),
-		io__write_string(")")
-	).
+	io__write_string("MR_ENTRY("),
+	output_label(local(ProcLabel)),
+	io__write_string(")").
 output_label_as_code_addr(c_local(ProcLabel)) -->
 	io__write_string("MR_LABEL("),
 	output_label(c_local(ProcLabel)),
