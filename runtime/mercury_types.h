@@ -29,11 +29,11 @@ typedef void			Code;	/* code addresses are `void *' */
 ** XXX: We should also check for IEEE-754 compliance.
 */
 
-#if	FLOAT_IS_64_BIT
+#if	MR_FLOAT_IS_64_BIT
 	typedef	float			Float64;
-#elif	DOUBLE_IS_64_BIT
+#elif	MR_DOUBLE_IS_64_BIT
 	typedef	double			Float64;
-#elif	LONG_DOUBLE_IS_64_BIT
+#elif	MR_LONG_DOUBLE_IS_64_BIT
 	typedef	long double		Float64;
 #else
 	#error	For Mercury bytecode, we require 64-bit IEEE-754 floating point

@@ -776,9 +776,9 @@ AC_CACHE_VAL(mercury_cv_float_is_64_bit,
 )
 AC_MSG_RESULT($mercury_cv_float_is_64_bit)
 if test "$mercury_cv_float_is_64_bit" = yes; then
-	AC_DEFINE(FLOAT_IS_64_BIT)
+	AC_DEFINE(MR_FLOAT_IS_64_BIT)
 fi
-AC_SUBST(FLOAT_IS_64_BIT)
+AC_SUBST(MR_FLOAT_IS_64_BIT)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether double is 64-bit)
 AC_CACHE_VAL(mercury_cv_double_is_64_bit,
@@ -790,15 +790,15 @@ AC_CACHE_VAL(mercury_cv_double_is_64_bit,
 		else
 			exit(1);
 	}],
-	[mercury_double_is_64_bit=yes],
-	[mercury_double_is_64_bit=no],
-	[mercury_double_is_64_bit=no])
+	[mercury_cv_double_is_64_bit=yes],
+	[mercury_cv_double_is_64_bit=no],
+	[mercury_cv_double_is_64_bit=no])
 )
-AC_MSG_RESULT($mercury_double_is_64_bit)
-if test "$mercury_double_is_64_bit" = yes; then
-	AC_DEFINE(DOUBLE_IS_64_BIT)
+AC_MSG_RESULT($mercury_cv_double_is_64_bit)
+if test "$mercury_cv_double_is_64_bit" = yes; then
+	AC_DEFINE(MR_DOUBLE_IS_64_BIT)
 fi
-AC_SUBST(DOUBLE_IS_64_BIT)
+AC_SUBST(MR_DOUBLE_IS_64_BIT)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether long double is 64-bit)
 AC_CACHE_VAL(mercury_cv_long_double_is_64_bit,
@@ -816,9 +816,9 @@ AC_CACHE_VAL(mercury_cv_long_double_is_64_bit,
 )
 AC_MSG_RESULT($mercury_cv_long_double_is_64_bit)
 if test "$mercury_cv_long_double_is_64_bit" = yes; then
-	AC_DEFINE(LONG_DOUBLE_IS_64_BIT)
+	AC_DEFINE(MR_LONG_DOUBLE_IS_64_BIT)
 fi
-AC_SUBST(LONG_DOUBLE_IS_64_BIT)
+AC_SUBST(MR_LONG_DOUBLE_IS_64_BIT)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether architecture is big-endian)
 AC_CACHE_VAL(mercury_cv_is_bigender,
@@ -840,9 +840,9 @@ AC_CACHE_VAL(mercury_cv_is_bigender,
 )
 AC_MSG_RESULT($mercury_cv_is_bigender)
 if test "$mercury_cv_is_bigender" = yes; then
-	AC_DEFINE(BIG_ENDIAN)
+	AC_DEFINE(MR_BIG_ENDIAN)
 fi
-AC_SUBST(BIG_ENDIAN)
+AC_SUBST(MR_BIG_ENDIAN)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether architecture is little-endian)
 AC_CACHE_VAL(mercury_cv_is_littleender,
@@ -864,9 +864,9 @@ AC_CACHE_VAL(mercury_cv_is_littleender,
 )
 AC_MSG_RESULT($mercury_cv_is_littleender)
 if test "$mercury_cv_is_littleender" = yes; then
-	AC_DEFINE(LITTLE_ENDIAN)
+	AC_DEFINE(MR_LITTLE_ENDIAN)
 fi
-AC_SUBST(LITTLE_ENDIAN)
+AC_SUBST(MR_LITTLE_ENDIAN)
 #-----------------------------------------------------------------------------#
 #
 # For Irix 5, gcc labels don't work with shared libraries,
