@@ -319,12 +319,12 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% Y = f(X) where the top node of Y is output,
 				% written as Y := f(X).
 				construct(var, cons_id, list(var),
-								list(arg_mode))
+								list(uni_mode))
 
 				% Y = f(X) where the top node of Y is input,
 				% written Y == f(X).
 			;	deconstruct(var, cons_id, list(var),
-								list(arg_mode))
+								list(uni_mode))
 
 				% Y = X where the top node of Y is output,
 				% written Y := X.
@@ -341,7 +341,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% using out-of-line call to  a compiler
 				% generated unification predicate for that
 				% type & mode.
-			;	complicated_unify(unify_mode, term, term).
+			;	complicated_unify(uni_mode, term, term).
 
 :- type unify_context	--->	unify_context(
 					unify_main_context,
@@ -373,6 +373,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	).
 
 :- type unify_mode	==	pair(mode, mode).
+
+:- type uni_mode	--->	pair(inst) -> pair(inst).
 
 %-----------------------------------------------------------------------------%
 

@@ -1983,7 +1983,9 @@ categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
 	->
 		Unification = simple_test(X, Y)
 	;
-		Unification = complicated_unify(ModeX - ModeY,
+		ModeX = (IX -> FX),
+		ModeY = (IY -> FY),
+		Unification = complicated_unify((IX - IY) -> (FX - FY),
 				term__variable(X), term__variable(Y))
 	).
 
@@ -1996,8 +1998,11 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, Args, ModuleInfo,
 	list__length(Args, Arity),
 	make_functor_cons_id(Name, Arity, ConsId),
 	term_list_to_var_list(Args, ArgVars),
-	mode_util__modes_to_arg_modes(ArgModes0, ModuleInfo, ArgModes),
-	( mode_is_output(ModuleInfo, ModeX) ->
+	mode_util__modes_to_uni_modes(ModeX, ArgModes0,
+						ModuleInfo, ArgModes),
+	(
+		mode_is_output(ModuleInfo, ModeX)
+	->
 		Unification = construct(X, ConsId, ArgVars, ArgModes)
 	; 
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes)

@@ -30,6 +30,7 @@
 :- type instr		--->	comment(string)
 			;	assign(lval, rval)
 			;	call(code_addr, label)  % pred, continuation
+			;	unicall(unilabel, label)  % pred, continuation
 			;	tailcall(code_addr)
 			;	proceed
 			;	succeed
@@ -58,7 +59,8 @@
 			;	succip
 			;	hp
 			;	sp
-			;	field(tag, lval, int).
+			;	field(tag, lval, int)
+			;	ref(var).
 
 :- type rval		--->	lval(lval)
 			;	var(var)
@@ -96,6 +98,8 @@
 				%	 module, predicate, arity, mode #
 			;	label(string, string, int, int, int).
 				% module, predicate, arity, mode #, #
+
+:- type unilabel	--->	unilabel(string, string, string).
 
 :- type tag		==	int.
 
@@ -224,18 +228,18 @@ output_instruction(call(local(Label), ContLabel)) -->
 	output_label(ContLabel),
 	io__write_string("));").
 
-	% XXX we need to do something with the module name and arity.
-output_instruction(call(nonlocal(_Module, Pred, Arity, Mode), ContLabel)) -->
+output_instruction(unicall(Label, ContLabel)) -->
 	io__write_string("\t"),
-	io__write_string("callentry("),
-	io__write_string(Pred),
-	io__write_string("_"),
-	io__write_int(Arity),
-	io__write_string("_"),
-	io__write_int(Mode),
+	io__write_string("call(LABEL("),
+	output_unilabel(Label),
 	io__write_string("), LABEL("),
 	output_label(ContLabel),
 	io__write_string("));").
+
+	% XXX we need to do something with the module name and arity.
+output_instruction(call(nonlocal(_Module, _Pred, _Arity, _Mode),
+							_ContLabel)) -->
+	{ error("Non-local calls not implemented") }.
 	
 output_instruction(tailcall(local(Label))) -->
 	io__write_string("\t"),
@@ -334,6 +338,17 @@ output_label(label(_Module, Pred, Arity, Mode, Num)) -->
 	io__write_string("_"),
 	io__write_int(Num).
 
+:- pred output_unilabel(unilabel, io__state, io__state).
+:- mode output_unilabel(in, di, uo).
+
+output_unilabel(unilabel(_Module, LeftStr, RightStr)) -->
+	%%% io__write_string(Module),
+	io__write_string("mercury"),
+	io__write_string("__"),
+	io__write_string(LeftStr),
+	io__write_string("_"),
+	io__write_string(RightStr).
+
 :- pred output_reg(reg, io__state, io__state).
 :- mode output_reg(in, di, uo).
 
@@ -425,6 +440,8 @@ output_lval(stackvar(N)) -->
 	io__write_string("detstackvar("),
 	io__write_int(N),
 	io__write_string(")").
+output_lval(ref(_)) -->
+	{ error("References unimplemented") }.
 
 %-----------------------------------------------------------------------------%
 

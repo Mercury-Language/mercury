@@ -19,8 +19,9 @@
 :- pred mode_is_output(module_info, mode).
 :- mode mode_is_output(in, in) is semidet.
 
-:- pred mode_util__modes_to_arg_modes(list(mode), module_info, list(arg_mode)).
-:- mode mode_util__modes_to_arg_modes(in, in, out) is det.
+:- pred mode_util__modes_to_uni_modes(mode, list(mode), module_info,
+							list(uni_mode)).
+:- mode mode_util__modes_to_uni_modes(in, in, in, out) is det.
 
 :- pred inst_is_ground(module_info, inst).
 :- mode inst_is_ground(in, in) is semidet.
@@ -93,20 +94,12 @@ mode_is_output(ModuleInfo, Mode) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_util__modes_to_arg_modes([], _ModuleInfo, []).
-mode_util__modes_to_arg_modes([M|Ms], ModuleInfo, [A|As]) :-
-	(
-		mode_is_input(ModuleInfo, M)
-	->
-		A = top_in
-	;
-		mode_is_output(ModuleInfo, M)
-	->
-		A = top_out
-	;
-		A = top_unused
-	),
-	mode_util__modes_to_arg_modes(Ms, ModuleInfo, As).
+mode_util__modes_to_uni_modes(_X, [], _ModuleInfo, []).
+mode_util__modes_to_uni_modes(X, [M|Ms], ModuleInfo, [A|As]) :-
+	X = (Initial0 -> Final0),
+	M = (Initial1 -> Final1),
+	A = ((Initial0 - Initial1) -> (Final0 - Final1)),
+	mode_util__modes_to_uni_modes(X, Ms, ModuleInfo, As).
 
 %-----------------------------------------------------------------------------%
 
