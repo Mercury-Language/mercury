@@ -94,6 +94,7 @@ Mercury code typically has a very different style to most Prolog code.
 * FailLoops::       Failure Driven Loops, Assert and Retract
 * Commits::         Cuts
 * Accumulators::    Accumulators and Difference lists
+* Determinism::     Determinism
 @c * Problems::        Common Problems
 @end menu
 
@@ -428,7 +429,7 @@ can implement an indexed disjunction (which we call a @emph{switch})
 using a jump table or a hash table,
 which is faster than a chain of if-then-elses.
 
-@node Accumulators,, Commits, Top
+@node Accumulators, Determinism, Commits, Top
 @section Accumulators and Difference lists
 
 Mercury does not allow the kind of aliasing that is used
@@ -450,5 +451,64 @@ in the complexity of an operation (insertions into a long queue,
 for example) and in these situations an alternative solution should
 be sought (in the case of queues, the Mercury library uses the
 pair of lists proposed by Richard O'Keefe).
+
+@node Determinism,, Accumulators, Top
+@section Determinism
+
+The Mercury language requires that the determinism of all predicates
+exported by a module be declared. The determinism of predicates that
+are local to a module may either be declared or infered. By default,
+the compiler issues a warning message where such declarations are
+omitted.
+
+Determinism inference is undecidable in general, so it is possible
+to write programs that are deterministic, and have the compiler
+fail to prove the fact. The most important aspect of this problem
+is that the Mercury compiler only detects the clauses of a predicate
+(or the arms of a disjunction, in the general case) to be mutually
+exclusive (and hence deterministic) if they are distinguished by the
+unification of a variable (possibly renamed) with distinct functors
+in the different clauses (or disjuncts), so long as the unifications
+take place before the first call in the clause (or disjunct).
+In these cases, the Mercury compiler generates a @emph{switch} (see
+the earlier section on indexing).
+If a switch has a branch for every functor on the type of the switching
+variable, then the switch cannot fail (though one or more of its arms
+may do so). 
+
+The Mercury compiler does not do any range checking of integers, so
+code such as:
+
+@example
+factorial(0, 1).
+factorial(N, F) :-
+    N > 0,
+    N1 is N - 1,
+    factorial(N1, F1),
+    F is F1 * N.
+@end example
+
+@noindent
+would be infered ``nondeterministic''. The compiler would infer that
+the two clauses are not mutually exclusive because it does not know
+about the semantics of @code{>/2}, and it would infer that
+the predicate as a whole could fail because the call to @code{>/2}
+can fail.
+
+The best way to rewrite this predicate would be:
+
+@example
+:- pred factorial(int, int).
+:- mode factorial(int, int) is det.
+
+factorial(N, F) :-
+    ( N =< 0 ->
+        F = 1
+    ;
+        N1 is N - 1,
+        factorial(N1, F1),
+        F is F1 * N
+    ).
+@end example
 
 @bye
