@@ -136,6 +136,9 @@
 :- pred llds_out__make_rl_data_name(module_name, string).
 :- mode llds_out__make_rl_data_name(in, out) is det.
 
+:- pred llds_out__trace_port_to_string(trace_port, string).
+:- mode llds_out__trace_port_to_string(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -643,6 +646,7 @@ output_c_data_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	output_const_term_decl(ArgVals, ArgTypes, DataAddr, ExportedFromFile, 
 			yes, yes, no, "", "", 0, _),
 	{ decl_set_insert(DeclSet0, DataAddr, DeclSet) }.
+output_c_data_def(trace_call_info(_, _, _, _), DeclSet, DeclSet) --> [].
 
 :- pred output_comp_gen_c_module_list(list(comp_gen_c_module)::in,
 	set_bbbtree(label)::in, decl_set::in, decl_set::out,
@@ -743,6 +747,37 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	output_const_term_decl(ArgVals, ArgTypes, DataAddr, ExportedFromFile,
 		no, yes, yes, "", "", 0, _),
 	{ decl_set_insert(DeclSet1, DataAddr, DeclSet) }.
+output_comp_gen_c_data(trace_call_info(Label, Path, MaxRegInUse, Port),
+		DeclSet0, DeclSet) -->
+	io__write_string("static MR_Trace_Call_Info\nmercury_data__tci__"),
+	output_label(Label),
+	io__write_string(" = {\n\t(const MR_Stack_Layout_Label *)\n"),
+	io__write_string("\t&mercury_data__layout__"),
+	output_label(Label),
+	io__write_string(",\n\t"""),
+	io__write_string(Path),
+	io__write_string(""", "),
+	io__write_int(MaxRegInUse),
+	io__write_string(", "),
+	{ llds_out__trace_port_to_string(Port, PortStr) },
+	io__write_string(PortStr),
+	io__write_string(" };\n"),
+	% Global data structures that hold trace call info
+	% are only ever referred to from calls to MR_trace_struct.
+	% We could add a new kind of data_addr that represents these
+	% structures so that we could put that data_addr inside DeclSet,
+	% but that would require significant extra there for no benefit.
+	{ DeclSet = DeclSet0 }.
+
+llds_out__trace_port_to_string(call, "MR_PORT_CALL").
+llds_out__trace_port_to_string(exit, "MR_PORT_EXIT").
+llds_out__trace_port_to_string(fail, "MR_PORT_FAIL").
+llds_out__trace_port_to_string(ite_then, "MR_PORT_THEN").
+llds_out__trace_port_to_string(ite_else, "MR_PORT_ELSE").
+llds_out__trace_port_to_string(switch,   "MR_PORT_SWITCH").
+llds_out__trace_port_to_string(disj,     "MR_PORT_DISJ").
+llds_out__trace_port_to_string(nondet_pragma_first, "MR_PORT_PRAGMA_FIRST").
+llds_out__trace_port_to_string(nondet_pragma_later, "MR_PORT_PRAGMA_LATER").
 
 :- pred output_user_c_code_list(list(user_c_code)::in,
 	io__state::di, io__state::uo) is det.

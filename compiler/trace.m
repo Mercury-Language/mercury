@@ -54,6 +54,7 @@
 	% call MR_trace. The redo port is not on this list, because for that
 	% port the code that calls MR_trace is not in compiler-generated code,
 	% but in the runtime system.  Likewise for the exception port.
+	% (The same comment applies to the type `trace_port' in llds.m.)
 :- type external_trace_port
 	--->	call
 	;	exit
@@ -145,19 +146,6 @@
 :- import_module continuation_info, type_util, llds_out, tree, varset.
 :- import_module (inst), instmap, inst_match, mode_util, options.
 :- import_module list, bool, int, string, map, std_util, require.
-
-	% The redo port is not included in this type; see the comment
-	% on the type external_trace_port above.
-:- type trace_port
-	--->	call
-	;	exit
-	;	fail
-	;	ite_then
-	;	ite_else
-	;	switch
-	;	disj
-	;	nondet_pragma_first
-	;	nondet_pragma_later.
 
 	% Information specific to a trace port.
 :- type trace_port_info
@@ -493,6 +481,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 	trace__produce_vars(LiveVars, VarSet, InstMap, TvarSet0, TvarSet,
 		VarInfoList, ProduceCode),
 	code_info__max_reg_in_use(MaxReg),
+	code_info__get_globals(Globals),
 	code_info__variable_locations(VarLocs),
 	code_info__get_proc_info(ProcInfo),
 	{
@@ -502,21 +491,38 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 	set__list_to_set(VarInfoList, VarInfoSet),
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
 	llds_out__get_label(Label, yes, LabelStr),
-	Quote = """",
-	Comma = ", ",
-	trace__port_to_string(Port, PortStr),
 	DeclStmt = "\t\tCode *MR_jumpaddr;\n",
 	SaveStmt = "\t\tsave_transient_registers();\n",
 	RestoreStmt = "\t\trestore_transient_registers();\n",
-	string__int_to_string(MaxReg, MaxRegStr),
-	string__append_list([
-		"\t\tMR_jumpaddr = MR_trace(\n",
-		"\t\t\t(const MR_Stack_Layout_Label *)\n",
-		"\t\t\t&mercury_data__layout__", LabelStr, Comma, "\n",
-		"\t\t\t", PortStr, Comma, Quote, PathStr, Quote, Comma,
-		MaxRegStr, ");\n"],
-		CallStmt),
 	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);",
+	globals__lookup_bool_option(Globals, call_trace_struct,
+		CallTraceStruct)
+	},
+	( { CallTraceStruct = yes } ->
+		{ string__append_list([
+			"\t\tMR_jumpaddr = MR_trace_struct(\n",
+			"\t\t\t&mercury_data__tci__", LabelStr, ");\n"],
+			CallStmt) },
+		{ TraceCallInfo = trace_call_info(Label, PathStr,
+			MaxReg, Port) },
+		code_info__add_non_common_static_data(TraceCallInfo)
+	;
+		{
+		Quote = """",
+		Comma = ", ",
+		llds_out__trace_port_to_string(Port, PortStr),
+		string__int_to_string(MaxReg, MaxRegStr),
+		string__append_list([
+			"\t\tMR_jumpaddr = MR_trace(\n",
+			"\t\t\t(const MR_Stack_Layout_Label *)\n",
+			"\t\t\t&mercury_data__layout__", LabelStr, Comma, "\n",
+			"\t\t\t", PortStr, Comma, Quote, PathStr, Quote, Comma,
+			MaxRegStr, ");\n"],
+			CallStmt)
+		}
+	),
+	code_info__add_trace_layout_for_label(Label, LayoutLabelInfo),
+	{
 	string__append_list([DeclStmt, SaveStmt, CallStmt, RestoreStmt,
 		GotoStmt], TraceStmt),
 	TraceCode =
@@ -535,8 +541,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 				- ""
 		]),
 	Code = tree(ProduceCode, TraceCode)
-	},
-	code_info__add_trace_layout_for_label(Label, LayoutLabelInfo).
+	}.
 
 trace__maybe_setup_redo_event(TraceInfo, Code) :-
 	TraceInfo = trace_info(_, _, _, TraceRedo),
@@ -599,18 +604,6 @@ trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],
 	).
 
 %-----------------------------------------------------------------------------%
-
-:- pred trace__port_to_string(trace_port::in, string::out) is det.
-
-trace__port_to_string(call, "MR_PORT_CALL").
-trace__port_to_string(exit, "MR_PORT_EXIT").
-trace__port_to_string(fail, "MR_PORT_FAIL").
-trace__port_to_string(ite_then, "MR_PORT_THEN").
-trace__port_to_string(ite_else, "MR_PORT_ELSE").
-trace__port_to_string(switch,   "MR_PORT_SWITCH").
-trace__port_to_string(disj,     "MR_PORT_DISJ").
-trace__port_to_string(nondet_pragma_first, "MR_PORT_PRAGMA_FIRST").
-trace__port_to_string(nondet_pragma_later, "MR_PORT_PRAGMA_LATER").
 
 :- pred trace__code_model_to_string(code_model::in, string::out) is det.
 

@@ -103,12 +103,86 @@ int		MR_trace_histogram_hwm  = 0;
 #endif
 
 Code *
+MR_trace_struct(const MR_Trace_Call_Info *trace_call_info)
+{
+	/*
+	** You can change the 0 to 1 in the #if if you suspect that
+	** MR_trace and MR_trace_struct have diverged.
+	*/
+
+#if 0
+
+	return MR_trace(trace_call_info->MR_trace_sll,
+		trace_call_info->MR_trace_port,
+		trace_call_info->MR_trace_path,
+		trace_call_info->MR_trace_max_r_num);
+
+#else
+
+	const MR_Stack_Layout_Label	*layout;
+	Integer				maybe_from_full;
+	Unsigned			seqno;
+	Unsigned			depth;
+
+	/*
+	** WARNING WARNING WARNING
+	**
+	** The code of this function is duplicated from MR_trace,
+	** modulo references to the arguments. Any changes here
+	** must also be done there as well.
+	**
+	** This duplication is for efficiency.
+	*/
+
+	if (! MR_trace_enabled) {
+		return NULL;
+	}
+
+	/* in case MR_sp or MR_curfr is transient */
+	restore_transient_registers();
+
+	layout = trace_call_info->MR_trace_sll;
+	maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
+	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
+		if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {
+			return NULL;
+		}
+
+		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
+		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
+	} else {
+		if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {
+			return NULL;
+		}
+
+		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
+		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
+	}
+
+	return (*MR_trace_func_ptr)(layout, trace_call_info->MR_trace_port,
+			seqno, depth, trace_call_info->MR_trace_path,
+			trace_call_info->MR_trace_max_r_num);
+
+#endif
+}
+
+Code *
 MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	const char * path, int max_mr_num)
+	const char * path, int max_r_num)
 {
 	Integer		maybe_from_full;
 	Unsigned	seqno;
 	Unsigned	depth;
+
+	/*
+	** WARNING WARNING WARNING
+	**
+	** The code of this function is duplicated in MR_trace_struct,
+	** modulo references to the arguments. Any changes here
+	** must also be done there as well.
+	**
+	** This duplication is for efficiency.
+	*/
 
 	if (! MR_trace_enabled) {
 		return NULL;
@@ -135,7 +209,7 @@ MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 	}
 
 	return (*MR_trace_func_ptr)(layout, port, seqno, depth,
-			path, max_mr_num);
+			path, max_r_num);
 }
 
 static void
@@ -155,7 +229,7 @@ MR_tracing_not_enabled(void)
 
 Code *
 MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	Unsigned seqno, Unsigned depth, const char * path, int max_mr_num)
+	Unsigned seqno, Unsigned depth, const char * path, int max_r_num)
 {
 	MR_tracing_not_enabled();
 	/*NOTREACHED*/
@@ -285,6 +359,22 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 
 #endif	/* MR_TRACE_HISTOGRAM */
 
+/*
+** This structure is only used by MR_do_trace_redo_fail.
+** Every call to MR_trace_struct from MR_do_trace_redo_fail will set the
+** label layout field to the value it finds in the stack slot reserved
+** for this purpose. The other three fields ("", 0, and MR_PORT_REDO)
+** are the same for all calls to MR_trace_struct from here.
+*/
+
+static	MR_Trace_Call_Info	MR_retry_trace_call_info =
+					{
+						NULL,
+						"",
+						0,
+						MR_PORT_REDO
+					};
+
 Define_extern_entry(MR_do_trace_redo_fail);
 
 BEGIN_MODULE(MR_trace_labels_module)
@@ -306,13 +396,16 @@ Define_entry(MR_do_trace_redo_fail);
 	** the code in extras/exceptions/exception.m similarly.
 	*/
 	{
-		Code *MR_jumpaddr;
+		Code	*MR_jumpaddr;
+		MR_retry_trace_call_info.MR_trace_sll = 
+			(const MR_Stack_Layout_Label *)
+			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr));
 		save_transient_registers();
-		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
-			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)),
-			MR_PORT_REDO, "", 0);
+		MR_jumpaddr = MR_trace_struct(&MR_retry_trace_call_info);
 		restore_transient_registers();
-		if (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);
+		if (MR_jumpaddr != NULL) {
+			GOTO(MR_jumpaddr);
+		}
 	}
 	fail();
 

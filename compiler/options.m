@@ -189,6 +189,7 @@
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
 		;	lazy_code
+		;	call_trace_struct
 		;	have_delay_slot
 		;	num_real_r_regs
 		;	num_real_f_regs
@@ -495,6 +496,7 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_failure	-	bool_special,
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
+	call_trace_struct		-	bool(no),
 	have_delay_slot		-	bool(no),
 					% the `mmc' script may override the
 					% above default if configure says
@@ -842,6 +844,7 @@ long_option("reclaim-heap-on-semidet-failure",
 					reclaim_heap_on_semidet_failure).
 long_option("reclaim-heap-on-nondet-failure",
 					reclaim_heap_on_nondet_failure).
+long_option("call-trace-struct",	call_trace_struct).
 long_option("branch-delay-slot",	have_delay_slot).
 long_option("have-delay-slot",		have_delay_slot).
 long_option("num-real-r-regs",		num_real_r_regs).
@@ -1813,6 +1816,10 @@ options_help_code_generation -->
 		"\tDon't reclaim heap on backtracking in semidet code.",
 		"--no-reclaim-heap-on-failure",
 		"\tCombines the effect of the two options above.",
+
+		"--call-trace-struct\t\t(This option is not for general use.)",
+		"\tPass information to the tracing system in one struct.",
+
 		"--cc <compiler-name>",
 		"\tSpecify which C compiler to use.",
 		"--c-include-directory <dir>",

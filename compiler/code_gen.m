@@ -237,10 +237,13 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 			MaybeSuccipSlot, MaybeTraceCallLabel,
 			TraceSlotInfo, ForceProcId, InternalMap),
 		global_data_add_new_proc_layout(GlobalData0,
-			proc(PredId, ProcId), ProcLayout, GlobalData)
+			proc(PredId, ProcId), ProcLayout, GlobalData1)
 	;
-		GlobalData = GlobalData0
+		GlobalData1 = GlobalData0
 	),
+	code_info__get_non_common_static_data(NonCommonStatics, CodeInfo, _),
+	global_data_add_new_non_common_static_datas(GlobalData1,
+		NonCommonStatics, GlobalData),
 
 	predicate_name(ModuleInfo, PredId, Name),
 	predicate_arity(ModuleInfo, PredId, Arity),

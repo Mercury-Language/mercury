@@ -3091,6 +3091,11 @@ Don't reclaim heap on backtracking in semidet code.
 Combines the effect of the two options above.
 
 @sp 1
+@item @code{--call-trace-struct}
+(This option is not intended for general use.)
+Pass information to the tracing system in one struct.
+
+@sp 1
 @item --cc @var{compiler-name}
 Specify which C compiler to use.
 

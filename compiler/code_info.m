@@ -129,9 +129,19 @@
 :- pred code_info__get_succip_used(bool, code_info, code_info).
 :- mode code_info__get_succip_used(out, in, out) is det.
 
+		% Get the label layout information created by tracing
+		% during code generation.
 :- pred code_info__get_layout_info(map(label, internal_layout_info), 
 	code_info, code_info).
 :- mode code_info__get_layout_info(out, in, out) is det.
+
+		% Get the global static data structures that have
+		% been created during code generation and which do
+		% not have to be scanned by llds_common, since they
+		% have no common parts by construction.
+:- pred code_info__get_non_common_static_data(list(comp_gen_c_data),
+	code_info, code_info).
+:- mode code_info__get_non_common_static_data(out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -194,6 +204,10 @@
 :- pred code_info__set_temp_content_map(map(lval, slot_contents),
 	code_info, code_info).
 :- mode code_info__set_temp_content_map(in, in, out) is det.
+
+:- pred code_info__set_non_common_static_data(list(comp_gen_c_data),
+	code_info, code_info).
+:- mode code_info__set_non_common_static_data(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -262,7 +276,7 @@
 		int,		% The maximum number of extra
 				% temporary stackslots that have been
 				% used during the procedure.
-		map(lval, slot_contents)
+		map(lval, slot_contents),
 				% The temporary locations that have ever been
 				% used on the stack, and what they contain.
 				% Once we have used a stack slot to store
@@ -273,6 +287,10 @@
 				% which would make it impossible to describe
 				% to gc what the slot contains after the end
 				% of the branched control structure.
+		list(comp_gen_c_data)
+				% Static data structures created for this
+				% procedure which do not need to be scanned
+				% by llds_common.
 	).
 
 %---------------------------------------------------------------------------%
@@ -331,7 +349,8 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 		SaveSuccip,
 		LayoutMap,
 		0,
-		TempContentMap
+		TempContentMap,
+		[]
 	),
 	code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
 		MaybeFailVars, TraceSlotInfo, CodeInfo0, CodeInfo1),
@@ -359,163 +378,173 @@ code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
 
 code_info__get_globals(SA, CI, CI) :-
 	CI  = code_info(SA, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_module_info(SB, CI, CI) :-
 	CI  = code_info(_, SB, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_pred_id(SC, CI, CI) :-
 	CI  = code_info(_, _, SC, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_proc_id(SD, CI, CI) :-
 	CI  = code_info(_, _, _, SD, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_proc_info(SE, CI, CI) :-
 	CI  = code_info(_, _, _, _, SE, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_varset(SF, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, SF, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_var_slot_count(SG, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, SG, _,
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_maybe_trace_info(SH, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, SH,
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_forward_live_vars(LA, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		LA, _, _, _, _, _, _, _, _, _, _, _).
+		LA, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_instmap(LB, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, LB, _, _, _, _, _, _, _, _, _, _).
+		_, LB, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_zombies(LC, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, LC, _, _, _, _, _, _, _, _, _).
+		_, _, LC, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_exprn_info(LD, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, LD, _, _, _, _, _, _, _, _).
+		_, _, _, LD, _, _, _, _, _, _, _, _, _).
 
 code_info__get_temps_in_use(LE, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, LE, _, _, _, _, _, _, _).
+		_, _, _, _, LE, _, _, _, _, _, _, _, _).
 
 code_info__get_fail_info(LF, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, LF, _, _, _, _, _, _).
+		_, _, _, _, _, LF, _, _, _, _, _, _, _).
 
 code_info__get_label_count(PA, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, PA, _, _, _, _, _).
+		_, _, _, _, _, _, PA, _, _, _, _, _, _).
 
 code_info__get_cell_count(PB, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, PB, _, _, _, _).
+		_, _, _, _, _, _, _, PB, _, _, _, _, _).
 
 code_info__get_succip_used(PC, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, PC, _, _, _).
+		_, _, _, _, _, _, _, _, PC, _, _, _, _).
 
 code_info__get_layout_info(PD, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, PD, _, _).
+		_, _, _, _, _, _, _, _, _, PD, _, _, _).
 
 code_info__get_max_temp_slot_count(PE, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, PE, _).
+		_, _, _, _, _, _, _, _, _, _, PE, _, _).
 
 code_info__get_temp_content_map(PF, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, PF).
+		_, _, _, _, _, _, _, _, _, _, _, PF, _).
+
+code_info__get_non_common_static_data(PG, CI, CI) :-
+	CI  = code_info(_, _, _, _, _, _, _, _,
+		_, _, _, _, _, _, _, _, _, _, _, _, PG).
 
 %---------------------------------------------------------------------------%
 
 code_info__set_maybe_trace_info(SH, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, _,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_forward_live_vars(LA, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		_,  LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF),
+		_,  LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_instmap(LB, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, _,  LC, LD, LE, LF, PA, PB, PC, PD, PE, PF),
+		LA, _,  LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_zombies(LC, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, _,  LD, LE, LF, PA, PB, PC, PD, PE, PF),
+		LA, LB, _,  LD, LE, LF, PA, PB, PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_exprn_info(LD, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, _,  LE, LF, PA, PB, PC, PD, PE, PF),
+		LA, LB, LC, _,  LE, LF, PA, PB, PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_temps_in_use(LE, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, _,  LF, PA, PB, PC, PD, PE, PF),
+		LA, LB, LC, LD, _,  LF, PA, PB, PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_fail_info(LF, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, _,  PA, PB, PC, PD, PE, PF),
+		LA, LB, LC, LD, LE, _,  PA, PB, PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_label_count(PA, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, _,  PB, PC, PD, PE, PF),
+		LA, LB, LC, LD, LE, LF, _,  PB, PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_cell_count(PB, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, _,  PC, PD, PE, PF),
+		LA, LB, LC, LD, LE, LF, PA, _,  PC, PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_succip_used(PC, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, _,  PD, PE, PF),
+		LA, LB, LC, LD, LE, LF, PA, PB, _,  PD, PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_layout_info(PD, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, _,  PE, PF),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, _,  PE, PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_max_temp_slot_count(PE, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, _,  PF),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, _,  PF, PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__set_temp_content_map(PF, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, _ ),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, _ , PG),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+
+code_info__set_non_common_static_data(PG, CI0, CI) :-
+	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, _ ),
+	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -633,6 +662,10 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 :- pred code_info__add_gc_layout_for_label(label, layout_label_info,
 	code_info, code_info).
 :- mode code_info__add_gc_layout_for_label(in, in, in, out) is det.
+
+:- pred code_info__add_non_common_static_data(comp_gen_c_data,
+	code_info, code_info).
+:- mode code_info__add_non_common_static_data(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -846,6 +879,11 @@ code_info__get_active_temps_data(Temps) -->
 	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
 	{ map__to_assoc_list(TempsInUseContentMap, Temps) }.
 
+code_info__add_non_common_static_data(NonCommonData) -->
+	code_info__get_non_common_static_data(NonCommonDatas0),
+	code_info__set_non_common_static_data(
+		[NonCommonData | NonCommonDatas0]).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -894,11 +932,11 @@ code_info__remember_position(position_info(C), C, C).
 code_info__reset_to_position(position_info(PosCI), CurCI, NextCI) :-
 		% The static fields in PosCI and CurCI should be identical.
 	PosCI  = code_info(_,  _,  _,  _,  _,  _,  _,  _, 
-		LA, LB, LC, LD, LE, LF, _,  _,  _,  _,  _,  _ ),
+		LA, LB, LC, LD, LE, LF, _,  _,  _,  _,  _,  _,  _ ),
 	CurCI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		_,  _,  _,  _,  _,  _,  PA, PB, PC, PD, PE, PF),
+		_,  _,  _,  _,  _,  _,  PA, PB, PC, PD, PE, PF, PG),
 	NextCI = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
 
 code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 	code_info__get_exprn_info(Exprn0),
