@@ -3201,7 +3201,7 @@ code_info__get_live_value_type(trace_data, unwanted).
 	% hold the succip.
 	%
 	% Nondet stack frames also have the local variables above the
-	% temporaries, but contain several fixed frames on top, and the
+	% temporaries, but contain several fixed slots on top, and the
 	% saved succip is stored in one of these.
 	%
 	% For both kinds of stack frames, the slots holding variables
