@@ -454,7 +454,10 @@
 	% and in incr_hp instructions) is a small integer.
 :- type tag	==	int.
 
-	% 
+	% We categorize the data types used in the LLDS into
+	% a small number of categories, for purposes such as
+	% choosing the right sort of register for a given value
+	% to avoid unnecessary boxing/unboxing of floats.
 :- type llds_type
 	--->	bool
 	;	integer
@@ -463,22 +466,22 @@
 	;	word.	% anything whose size is a word
 			% may really be integer, unsigned, or pointer
 
-	% given a non-var rval, figure out it's type
+	% given a non-var rval, figure out its type
 :- pred llds__rval_type(rval::in, llds_type::out) is det.
 
-	% given a non-var lval, figure out it's type
+	% given a non-var lval, figure out its type
 :- pred llds__lval_type(lval::in, llds_type::out) is det.
 
-	% given a constant, figure out it's type
+	% given a constant, figure out its type
 :- pred llds__const_type(rval_const::in, llds_type::out) is det.
 
-	% given a unary operator, figure out it's return type
+	% given a unary operator, figure out its return type
 :- pred llds__unop_return_type(unary_op::in, llds_type::out) is det.
 
-	% given a binary operator, figure out it's return type
+	% given a binary operator, figure out its return type
 :- pred llds__binop_return_type(binary_op::in, llds_type::out) is det.
 
-	% given a register, figure out it's type
+	% given a register, figure out its type
 :- pred llds__register_type(reg::in, llds_type::out) is det.
 
 :- implementation.
@@ -493,8 +496,8 @@ llds__lval_type(hp, word).		% really `Word*'
 llds__lval_type(sp, word).		% really `Word*'
 llds__lval_type(temp(TempReg), Type) :-
 	llds__register_type(TempReg, Type).
-llds__lval_type(stackvar(_), word).	% really `Word*'
-llds__lval_type(framevar(_), word).	% really `Word*'
+llds__lval_type(stackvar(_), word).
+llds__lval_type(framevar(_), word).
 llds__lval_type(succip(_), word).	% really `Code*'
 llds__lval_type(redoip(_), word).	% really `Code*'
 llds__lval_type(succfr(_), word).	% really `Word*'

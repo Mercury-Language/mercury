@@ -46,10 +46,10 @@
 			% these rvals do not have vnrval parallels
 			%	var(var)
 
-	% given a vnlval, figure out it's type
+	% given a vnlval, figure out its type
 :- pred vn_type__vnlval_type(vnlval::in, llds_type::out) is det.
 
-	% given a vnrval, figure out it's type
+	% given a vnrval, figure out its type
 :- pred vn_type__vnrval_type(vnrval::in, llds_type::out) is det.
 
 :- type vn_src		--->	src_ctrl(int)
@@ -188,8 +188,8 @@ vn_type__vnlval_type(vn_hp, word).		% really `Word*'
 vn_type__vnlval_type(vn_sp, word).		% really `Word*'
 vn_type__vnlval_type(vn_temp(TempReg), Type) :-
 	llds__register_type(TempReg, Type).
-vn_type__vnlval_type(vn_stackvar(_), word).	% really `Word*'
-vn_type__vnlval_type(vn_framevar(_), word).	% really `Word*'
+vn_type__vnlval_type(vn_stackvar(_), word).
+vn_type__vnlval_type(vn_framevar(_), word).
 vn_type__vnlval_type(vn_succip(_), word).	% really `Code*'
 vn_type__vnlval_type(vn_redoip(_), word).	% really `Code*'
 vn_type__vnlval_type(vn_succfr(_), word).	% really `Word*'
