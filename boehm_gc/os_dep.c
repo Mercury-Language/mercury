@@ -1652,11 +1652,15 @@ void GC_dirty_init()
 #     else
       	sigaction(SIGSEGV, &act, &oldact);
 #     endif
-      if (oldact.sa_flags & SA_SIGINFO) {
-          GC_old_segv_handler = (SIG_PF)(oldact.sa_sigaction);
-      } else {
+#     ifdef IRIX5
           GC_old_segv_handler = oldact.sa_handler;
-      }
+#     else
+          if (oldact.sa_flags & SA_SIGINFO) {
+              GC_old_segv_handler = (SIG_PF)(oldact.sa_sigaction);
+          } else {
+              GC_old_segv_handler = oldact.sa_handler;
+          }
+#     endif
       if (GC_old_segv_handler == SIG_IGN) {
 	     GC_err_printf0("Previously ignored segmentation violation!?");
 	     GC_old_segv_handler = SIG_DFL;
