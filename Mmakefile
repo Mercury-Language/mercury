@@ -104,7 +104,7 @@ scripts:
 
 .PHONY: boehm_gc
 boehm_gc: scripts
-	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`
+	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
 	cd boehm_gc && $(SUBDIR_MMAKE) GC_GRADE=$$gc_grade
 
 .PHONY: runtime
@@ -296,7 +296,7 @@ install_trace: trace
 
 .PHONY: install_boehm_gc
 install_boehm_gc: boehm_gc
-	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`
+	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
 	cd boehm_gc && $(SUBDIR_MMAKE) install GC_GRADE=$$gc_grade
 
 .PHONY: install_library
@@ -344,7 +344,7 @@ install_grades: scripts
 	#
 	for grade in x $(LIBGRADES); do \
 	    if [ "$$grade" != "x" ]; then \
-	    	gc_grade=`scripts/ml --grade $$grade --print-gc-grade`
+	    	gc_grade=`scripts/ml --grade $$grade --print-gc-grade`; \
 	        ( cd boehm_gc && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade GC_GRADE=$$gc_grade \
 		  	install_lib ) && \
