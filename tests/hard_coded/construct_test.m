@@ -35,7 +35,7 @@
 			zop(float, float).
 
 :- type poly(A, B)	--->	poly_one(A) ; poly_two(B) ; 
-				poly_three(B, A, poly(B, A));
+				poly_three(B, poly3_field2 :: A, poly(B, A));
 				poly_four(A, B).
 
 :- type no_tag		---> 	qwerty(qwerty_field :: int).
