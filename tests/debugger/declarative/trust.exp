@@ -67,6 +67,8 @@ mdb> untrust 4
 mdb: no such trusted object
 mdb> untrust 99
 mdb: no such trusted object
+mdb> untrust 5
+mdb> untrust 6
 mdb> step
       E2:     C2 CALL pred trust.dostuff/2-0 (cc_multi)
 mdb> finish
@@ -74,6 +76,12 @@ mdb> finish
 mdb> dd
 dostuff(w("aaabbb"), '=')
 Valid? n
+w_cmp('=', w("aaB"), w("aAB"))
+Valid? trust
+concat(w("aaa"), w("bbb"), w("aaabbb"))
+Valid? trust module
+IntroducedFrom__pred__w_cmp__15__1(w("aaB"), w("aAB"), '=')
+Valid? trust module
 Found incorrect contour:
 dostuff(w("aaabbb"), '=')
 Is this a bug? y

@@ -26,9 +26,14 @@ untrust 4
 trusted
 untrust 4
 untrust 99
+untrust 5
+untrust 6
 step
 finish
 dd
 n
+trust
+trust module
+trust module
 y
 continue

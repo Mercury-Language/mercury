@@ -3767,6 +3767,17 @@ Answer that the assertion is wrong.
 @sp 1
 @item inadmissible
 Answer that the call is inadmissible.
+@sp 1
+@item trust
+Answer that the predicate or function the question is about does not contain
+any bugs.  However predicates or functions called by this predicate/function
+may contain bugs.  The debugger will not ask you further questions about the
+predicate or function in the current question.
+@sp 1
+@item trust module
+Answer that the module the current question relates to does not contain any
+bugs.  No more questions about any predicates or functions from this module
+will be asked.
 @item skip
 Skip this question and ask a different one if possible.
 @sp 1
@@ -3982,7 +3993,7 @@ debugger will never ask questions about trusted predicates or functions.  It
 is a good idea to trust standard library modules imported by a program being 
 debugged.
 
-The declarative debugger must be told which predicates/functions it can trust
+The declarative debugger can be told which predicates/functions it can trust
 before the @samp{dd} command is given.  This is done using the @samp{trust}, 
 @samp{trusted} and @samp{untrust} commands at the mdb prompt (see 
 @ref{Declarative debugging mdb commands} for details on how to use these 
@@ -3992,6 +4003,13 @@ Trust commands may be placed in the @samp{.mdbrc} file which contains default
 settings for mdb (see @ref{Mercury debugger invocation}).  Trusted
 predicates will also be exported with a @samp{save} command (see 
 @ref{Miscellaneous commands}).
+
+During the declarative debugging session the user may tell the declarative
+debugger to trust the predicate or function in the current question.
+Alternatively the user may tell the declarative debugger to trust all the
+predicates and functions in the same module as the predicate or function in the
+currect question.  See the @samp{trust} command in 
+@ref{Declarative debugging commands}.
 
 @c ----------------------------------------------------------------------------
 

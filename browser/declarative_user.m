@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,6 +27,8 @@
 
 :- type user_response(T)
 	--->	user_answer(decl_question(T), decl_answer(T))
+	;	trust_predicate(decl_question(T))
+	;	trust_module(decl_question(T))
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
@@ -190,6 +192,14 @@ handle_command(set(MaybeOptionTable, Setting), UserQuestion, Response, !User,
 		io.write_string(Msg++"\n", !IO)
 	),
 	query_user(UserQuestion, Response, !User, !IO).
+
+handle_command(trust_predicate, UserQuestion, trust_predicate(Question), 
+		!User, !IO) :-
+	Question = get_decl_question(UserQuestion).
+
+handle_command(trust_module, UserQuestion, trust_module(Question), 
+		!User, !IO) :-
+	Question = get_decl_question(UserQuestion).
 
 handle_command(browse_io(ActionNum), UserQuestion, Response, 
 		!User, !IO) :-
@@ -500,6 +510,9 @@ reverse_and_append([A | As], Bs, Cs) :-
 					% this point.
 	;	set(maybe_option_table(setting_option), setting) 
 					% Set a browser option.
+	;	trust_predicate		% Trust the predicate being asked 
+					% about.
+	;	trust_module		% Trust the module being asked about.
 	;	abort			% Abort this diagnosis session.
 	;	help			% Request help before answering.
 	;	empty_command		% User just pressed return.
@@ -516,6 +529,13 @@ user_help_message(User) -->
 		"\tn\tno\t\tthe node is incorrect\n",
 		"\ti\tinadmissible\tthe input arguments are out of range\n",
 		"\ts\tskip\t\tskip this question\n",
+		"\tt [module]\ttrust [module]\tTrust the predicate/function ",
+		"about\n",
+		"\t\twhich the current question is being asked.  If the word\n",
+		"\t\t`module' is given as an argument then trust all the\n",
+		"\t\tpredicates/functions in the same module as the\n",
+		"\t\tpredicate/function about which the current question is\n",
+		"\t\tbeing asked.\n",
 		"\tb [<n>]\tbrowse [<n>]\tbrowse the atom, or its nth argument\n",
 		"\tb io <n>\tbrowse io <n>\tbrowse the atom's nth I/O action\n",
 		"\tp <n>\tprint <n>\tprint the nth argument of the atom\n",
@@ -600,6 +620,8 @@ cmd_handler("browse",	browse_arg_cmd).
 cmd_handler("p",	print_arg_cmd).
 cmd_handler("print",	print_arg_cmd).
 cmd_handler("set",	set_arg_cmd).
+cmd_handler("t",	trust_arg_cmd).
+cmd_handler("trust",	trust_arg_cmd).
 
 :- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
 	is semidet.
@@ -628,6 +650,11 @@ print_arg_cmd(["io", Arg]) = print_io(From, To) :-
 set_arg_cmd(ArgWords) = set(MaybeOptionTable, Setting) :-
 	ArgWords \= [],
 	parse.parse(["set" | ArgWords], set(MaybeOptionTable, Setting)).
+
+:- func trust_arg_cmd(list(string)::in) = (user_command::out) is semidet.
+
+trust_arg_cmd([]) = trust_predicate.
+trust_arg_cmd(["module"]) = trust_module.
 
 string_to_range(Arg, From, To) :-
 	( string__to_int(Arg, Num) ->

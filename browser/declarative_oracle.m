@@ -171,6 +171,20 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
 				^ kb_current := Current)
 				^ kb_revised := Revised
 	;
+		UserResponse = trust_predicate(Question),
+		Atom = get_decl_question_atom(Question),
+		add_trusted_pred_or_func(Atom ^ proc_layout, !Oracle),
+		OracleResponse = oracle_answer(
+			ignore(get_decl_question_node(Question)))
+	;
+		UserResponse = trust_module(Question),
+		Atom = get_decl_question_atom(Question),
+		ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
+		get_pred_attributes(ProcId, Module, _, _, _),
+		add_trusted_module(Module, !Oracle),
+		OracleResponse = oracle_answer(
+			ignore(get_decl_question_node(Question)))
+	;
 		UserResponse = exit_diagnosis(Node),
 		OracleResponse = exit_diagnosis(Node)
 	;
