@@ -68,6 +68,18 @@ Options:
 	--use-subdirs
 		Assume intermediate files are built in subdirectories.
 		(Same as the \`--use-subdirs' option to mmake and mmc.)
+	--type-stats TYPE_STATS_FILE_NAME
+		Collect statistics about the builtin operations (unify, index
+		and compare) performed on various types. The argument of this
+		option should give the absolute pathname of the file in which
+		the runtime has been configured to accumulate statistics. The
+		statistics derived from the creation of the stage 3 compiler
+		will be put TYPE_STATS_FILE_NAME.stage3.$$, while the
+		statistics derived from the execution of the test suite will
+		be put into TYPE_STATS_FILE_NAME.tests.$$. Both filenames will
+		be reported in the output of bootcheck, to allow the statistics
+		files to be matched with the bootcheck that created them.
+
 "
 
 testdirs=""
@@ -91,6 +103,7 @@ if [ -d compiler/Mercury ]; then
 else
 	use_subdirs=${MMAKE_USE_SUBDIRS=no}
 fi
+type_stats=""
 
 # If you change these, you will also need to change scripts/ml.in,
 # scripts/c2init.in, Mmake.common.in, tools/binary, tools/binary_step
@@ -169,6 +182,9 @@ while [ $# -gt 0 ]; do
 		use_subdirs=yes ;;
 	--no-use-subdirs)
 		use_subdirs=no ;;
+
+	--type-stats)
+		type_stats="$2"; shift ;;
 
 	--)	
 		shift; break ;;
@@ -554,6 +570,18 @@ then
 	# Use the new mmake to build stage 3
 	MMAKE=$MMAKE_DIR/mmake
 
+	if test "$type_stats" != ""
+	then
+		# Start collecting statistics from stage 3 with a clean slate,
+		# while making sure that the existing stats are not lost.
+		# Note: we do not have to go to any great lengths to restore
+		# the old stats if bootcheck fails, since the save files
+		# can easily be recovered outside bootcheck.
+
+		cat "$type_stats" >> "$type_stats".save.$$
+		cp /dev/null "$type_stats"
+	fi
+
 	if (cd stage3 && $MMAKE $mmake_opts depend_library depend_browser \
 		depend_compiler)
 	then
@@ -627,6 +655,13 @@ then
 			echo "building of stage 3 compiler not successful"
 			exit 1
 		fi
+	fi
+
+	if test "$type_stats" != ""
+	then
+		echo "Saving stage 3 stats in $type_stats.stage3.$$"
+		mv "$type_stats" "$type_stats".stage3.$$
+		cp /dev/null "$type_stats"
 	fi
 
 	diff_status=0
@@ -771,10 +806,22 @@ then
 			done
 		fi
 		test_status=$?
+
+		if test "$type_stats" != ""
+		then
+			echo "Saving test suite stats in $type_stats.test.$$"
+			mv "$type_stats" "$type_stats".test.$$
+		fi
+
 		cd $root
 	fi
 else
 	test_status=0
+fi
+
+if test "$type_stats" != ""
+then
+	mv "$type_stats".save.$$ "$type_stats"
 fi
 
 echo "finishing at `date`"
