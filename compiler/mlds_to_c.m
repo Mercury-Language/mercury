@@ -2410,7 +2410,7 @@ mlds_output_atomic_stmt(Indent, _FuncInfo, mark_hp(Lval), _) -->
 
 mlds_output_atomic_stmt(Indent, _FuncInfo, restore_hp(Rval), _) -->
 	mlds_indent(Indent),
-	io__write_string("MR_mark_hp("),
+	io__write_string("MR_restore_hp("),
 	mlds_output_rval(Rval),
 	io__write_string(");\n").
 
@@ -2787,11 +2787,11 @@ mlds_output_binop(Op, X, Y) -->
 		)
 	->
 		io__write_string("("),
-		mlds_output_bracketed_rval(X), % XXX as float
+		mlds_output_bracketed_rval(X),
 		io__write_string(" "),
 		io__write_string(OpStr),
 		io__write_string(" "),
-		mlds_output_bracketed_rval(Y), % XXX as float
+		mlds_output_bracketed_rval(Y),
 		io__write_string(")")
 	;
 /****
