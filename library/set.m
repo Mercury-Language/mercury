@@ -5,7 +5,7 @@
 %---------------------------------------------------------------------------%
 
 % File: set.m.
-% Main authors: benyi.
+% Main authors: conway, fjh, benyi.
 
 % This file just calls the equivalent predicates in set_unordlist.
 

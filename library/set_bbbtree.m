@@ -698,7 +698,7 @@ set_bbbtree__to_sorted_list2(empty, List, List).
 
 set_bbbtree__to_sorted_list2(tree(V, _N, L, R), Acc, List) :-
 	set_bbbtree__to_sorted_list2(R, Acc, List0),
-	set_bbbtree__to_sorted_list2(L, V.List0, List).
+	set_bbbtree__to_sorted_list2(L, [V|List0], List).
 
 %------------------------------------------------------------------------------%
 
