@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -52,7 +52,7 @@
 
 /*
 ** This type must match the definition of classify_request in
-** library/debugger_interface.m.
+** browser/debugger_interface.m.
 */
 
 typedef enum {
