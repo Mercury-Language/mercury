@@ -60,11 +60,20 @@ new_dcg_var(VarSet0, N0, VarSet, N, DCG_0_Var) :-
 :- mode parse_dcg_goal(in, in, in, in, out, out, out, out) is det.
 
 parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
+	% first, figure out the context for the goal
 	(
-		Term = term__functor(term__atom(Functor), Args0, Context)
+		Term = term__functor(_, _, Context)
+	;
+		Term = term__variable(_),
+		term__context_init(Context)
+	),
+	% next, parse it
+	(
+		sym_name_and_args(Term, SymName, Args0)
 	->
 		% First check for the special cases:
 		(
+			SymName = unqualified(Functor),
 			parse_dcg_goal_2(Functor, Args0, Context,
 					VarSet0, N0, Var0,
 					Goal1, VarSet1, N1, Var1)
@@ -79,37 +88,18 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 			% goal, and append the DCG argument pair to the
 			% non-terminal's argument list.
 			new_dcg_var(VarSet0, N0, VarSet, N, Var),
-			(
-				Functor = ":" ,
-				Args0 = [term__functor(term__atom(ModuleName),
-						[], _), 
-					term__functor(term__atom(PredName),
-						Args_of_pred0, _)]
-			->
-				Pred = qualified(ModuleName, PredName),
-				Args1 = Args_of_pred0
-			;
-				Pred = unqualified(Functor),
-				Args1 = Args0
-			),
-			list__append(Args1,
+			list__append(Args0,
 				[term__variable(Var0), term__variable(Var)],
 				Args),
-			Goal = call(Pred, Args) - Context
+			Goal = call(SymName, Args) - Context
 		)
 	;
 		% A call to a free variable, or to a number or string.
 		% Just translate it into a call to call/3 - the typechecker
 		% will catch calls to numbers and strings.
-		(
-			Term = term__functor(_, _, CallContext)
-		;
-			Term = term__variable(_),
-			term__context_init(CallContext)
-		),
 		new_dcg_var(VarSet0, N0, VarSet, N, Var),
 		Goal = call(unqualified("call"), [Term, term__variable(Var0),
-				term__variable(Var)]) - CallContext
+				term__variable(Var)]) - Context
 	).
 
 	% parse_dcg_goal_2(Functor, Args, Context, VarSet0, N0, Var0,

@@ -65,6 +65,14 @@
 	%	(or if Args is empty, one of
 	%		Name
 	%		Module:Name)
+	%	For backwards compatibility, we allow `__'
+	%	as an alternative to `:'.
+
+	% sym_name_and_args takes a term and returns a sym_name and a list of
+	% argument terms.
+	% It fals if the input is not valid syntax for a QualifiedTerm.
+:- pred sym_name_and_args(term, sym_name, list(term)).
+:- mode sym_name_and_args(in, out, out) is semidet.
 
 	% parse_qualified_term takes a term and an error message,
 	% and returns a sym_name and a list of argument terms.
@@ -76,7 +84,8 @@
 	% parse_qualified_term takes a default module name and a term,
 	% and returns a sym_name and a list of argument terms.
 	% Returns an error on ill-formed input or a module qualifier that
-	% doesn't match the DefaultModName, if DefaultModName is not "".
+	% doesn't match the DefaultModName, if DefaultModName is not ""
+	% and not "mercury_builtin".
 	% parse_qualified_term/3 calls parse_qualified_term/4, and is 
 	% used when no default module name exists.
 
@@ -88,7 +97,7 @@
 :- implementation.
 
 :- import_module hlds_data.
-:- import_module string, std_util.
+:- import_module int, string, std_util.
 
 	% Parse a goal.
 	%
@@ -96,6 +105,13 @@
 	% in either the type-checker or parser anyway.
 
 parse_goal(Term, VarSet0, Goal, VarSet) :-
+	% first, get the goal context
+	(
+		Term = term__functor(_, _, Context)
+	;
+		Term = term__variable(_),
+		term__context_init(Context)
+	),
 	% We just check if it matches the appropriate pattern
 	% for one of the builtins.  If it doesn't match any of the
 	% builtins, then it's just a predicate call.
@@ -110,32 +126,14 @@ parse_goal(Term, VarSet0, Goal, VarSet) :-
 		% it's not a builtin
 		(
 			% check for predicate calls
-			Term = term__functor(term__atom(Name), Terms, Context)
+			sym_name_and_args(Term, SymName, Args)
 		->
 			VarSet = VarSet0,
-			% check for module qualification
-			(
-				Name = ":",
-				Terms = [term__functor(term__atom(ModuleName),
-						[], _), 
-					term__functor(term__atom(PredName),
-						Args, _)]
-			->
-				Goal = call(qualified(ModuleName, 
-					PredName), Args) - Context
-			;
-				Goal = call(unqualified(Name), Terms) - Context
-			)
+			Goal = call(SymName, Args) - Context
 		;
 		% A call to a free variable, or to a number or string.
 		% Just translate it into a call to call/1 - the typechecker
 		% will catch calls to numbers and strings.
-			(
-				Term = term__functor(_, _, Context)
-			;
-				Term = term__variable(_),
-				term__context_init(Context)
-			),
 			Goal = call(unqualified("call"), [Term]) - Context,
 			VarSet = VarSet0
 		)
@@ -321,6 +319,9 @@ parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
 
 %-----------------------------------------------------------------------------%
 
+sym_name_and_args(Term, SymName, Args) :-
+	parse_qualified_term(Term, "", ok(SymName, Args)).
+
 parse_qualified_term(Term, Msg, Result) :-
 	parse_qualified_term("", Term, Msg, Result).
 
@@ -336,7 +337,10 @@ parse_qualified_term(DefaultModName, Term, Msg, Result) :-
                 ModuleTerm = term__functor(term__atom(Module), [], _Context3)
 	    ->
 		(
-		    ( Module = DefaultModName ; DefaultModName = "")
+		    ( Module = DefaultModName
+		    ; DefaultModName = ""
+		    ; DefaultModName = "mercury_builtin"
+		    )
 		->
 		    Result = ok(qualified(Module, Name), Args)
 		;
@@ -350,14 +354,37 @@ parse_qualified_term(DefaultModName, Term, Msg, Result) :-
 	)
     ;
         ( 
-            Term = term__functor(term__atom(Name2), Args2, _Context4)
+            Term = term__functor(term__atom(Name), Args, _Context4)
         ->
 	    (
+/**********
+Don't allow `__' as an alternative to `:',
+because we don't yet support qualification of constructors,
+e.g. `term__variable(_)'.
+		string__sub_string_search(Name, "__", LeftLength),
+		LeftLength > 0
+	    ->
+		string__left(Name, LeftLength, Module),
+		string__length(Name, NameLength),
+		RightLength is NameLength - LeftLength - 2,
+		string__right(Name, RightLength, Name2),
+		(
+		    ( Module = DefaultModName
+		    ; DefaultModName = ""
+		    ; DefaultModName = "mercury_builtin"
+		    )
+		->
+		    Result = ok(qualified(Module, Name2), Args)
+		;
+		    Result = error("module qualifier (name before `__') in definition does not match preceding `:- module' declaration", Term)
+		)
+	    ;
+**********/
 		DefaultModName = ""
 	    ->
-            	Result = ok(unqualified(Name2), Args2)
+            	Result = ok(unqualified(Name), Args)
 	    ;
-		Result = ok(qualified(DefaultModName, Name2), Args2)
+		Result = ok(qualified(DefaultModName, Name), Args)
 	    )
         ;
 	    string__append("atom expected in ", Msg, ErrorMsg),

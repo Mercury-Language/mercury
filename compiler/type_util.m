@@ -154,7 +154,7 @@
 
 :- implementation.
 :- import_module bool, list, term, require, map, std_util.
-:- import_module prog_io, prog_util.
+:- import_module prog_io, prog_io_goal, prog_util.
 
 type_util__type_id_module(_ModuleInfo, qualified(ModuleName, _) -_, ModuleName).
 type_util__type_id_module(_ModuleInfo, unqualified(_) - _, "").
@@ -246,21 +246,11 @@ type_is_enumeration(Type, ModuleInfo) :-
 	IsEnum = yes.
 
 type_to_type_id(Type, SymName - Arity, Args) :-
-	Type = term__functor(term__atom(Atom), Args0, _),
-	(
-		Atom = ":", Args0 = [ModuleTerm, TypeAndArgsTerm]
-	->
-		ModuleTerm = term__functor(term__atom(ModuleName), [], _),
-		TypeAndArgsTerm = term__functor(term__atom(TypeName), Args1, _),
-		SymName = qualified(ModuleName, TypeName)
-	;
-		SymName = unqualified(Atom),
-		Args1 = Args0
-	),
+	sym_name_and_args(Type, SymName, Args1),
 
-		% higher order types may have representations where
-		% their arguments don't directly correspond to the
-		% arguments of the term.
+	% higher order types may have representations where
+	% their arguments don't directly correspond to the
+	% arguments of the term.
 	(
 		type_is_higher_order(Type, _, PredArgTypes) 
 	->

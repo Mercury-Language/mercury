@@ -1785,6 +1785,9 @@ make_name_specifier(Name, name(Name)).
 %		Module:Name
 %			Matches symbols with the specified name exported
 %			by the specified module.
+%
+%	We [will one day] also allow the syntax `Module__Name'
+%	as an alternative for `Module:Name'.
 
 :- pred parse_symbol_name(string, term, maybe1(sym_name)).
 :- mode parse_symbol_name(in, in, out) is det.
@@ -1807,15 +1810,32 @@ parse_symbol_name(DefaultModName, Term, Result) :-
 	)
     ;
         ( 
-            Term = term__functor(term__atom(Name2), [], _Context3)
+            Term = term__functor(term__atom(Name), [], _Context3)
         ->
+/********
+Don't allow `__' as an alternative to `:', because
+we don't yet support qualification on constructors (e.g. term__variable).
 	    (
-		DefaultModName = ""
+		string__sub_string_search(Name, "__", LeftLength),
+		LeftLength > 0
 	    ->
-		Result = ok(unqualified(Name2))
+		string__left(Name, LeftLength, Module),
+		string__length(Name, NameLength),
+		RightLength is NameLength - LeftLength - 2,
+		string__right(Name, RightLength, Name2),
+		Result = ok(qualified(Module, Name2))
 	    ;
-		Result = ok(qualified(DefaultModName, Name2))
+********/
+	        (
+		    DefaultModName = ""
+	        ->
+		    Result = ok(unqualified(Name))
+	        ;
+		    Result = ok(qualified(DefaultModName, Name))
+	        )
+/********
 	    )
+********/
         ;
             Result = error("symbol name specifier expected", Term)
         )
