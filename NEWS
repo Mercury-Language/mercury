@@ -182,7 +182,6 @@ Changes to the Mercury implementation:
   `--intermodule-optimization' enabled and you must also
   define the C macro ML_OMIT_ARRAY_BOUNDS_CHECKS (e.g. by using
   `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile). 
-  [XXX we also need to fix problems with intermodule inlining heuristics.]
 
 * Domain checking for higher mathematical operations can now be disabled.
 
