@@ -229,7 +229,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, require.
+:- import_module map, require, exprn_aux.
 
 opt_util__gather_comments(Instrs0, Comments, Instrs) :-
 	(
@@ -744,25 +744,80 @@ opt_util__can_instr_fall_through(restore_hp(_), yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
 
-opt_util__instr_labels(comment(_), [], []).
-opt_util__instr_labels(livevals(_), [], []).
-opt_util__instr_labels(block(_, Instrs), Labels, CodeAddrs) :-
+% determine all the labels and code_addresses that are referenced by Instr
+
+opt_util__instr_labels(Instr, Labels, CodeAddrs) :-
+	opt_util__instr_labels_2(Instr, Labels, CodeAddrs1),
+	opt_util__instr_rvals_and_lvals(Instr, Rvals, Lvals),
+	exprn_aux__rval_list_code_addrs(Rvals, CodeAddrs2),
+	exprn_aux__lval_list_code_addrs(Lvals, CodeAddrs3),
+	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs12),
+	list__append(CodeAddrs12, CodeAddrs3, CodeAddrs).
+
+:- pred opt_util__instr_labels_2(instr, list(label), list(code_addr)).
+:- mode opt_util__instr_labels_2(in, out, out) is det.
+
+% determine all the labels and code_addresses that are directly
+% referenced by an instruction (not counting ones referenced indirectly
+% via rvals or lvals)
+
+opt_util__instr_labels_2(comment(_), [], []).
+opt_util__instr_labels_2(livevals(_), [], []).
+opt_util__instr_labels_2(block(_, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_labels(Instrs, Labels, CodeAddrs).
-opt_util__instr_labels(assign(_,_), [], []).
-opt_util__instr_labels(call(Target, Ret, _, _), [], [Target, Ret]).
-opt_util__instr_labels(call_closure(_, Ret, _), [], [Ret]).
-opt_util__instr_labels(mkframe(_, _, Addr), [], [Addr]).
-opt_util__instr_labels(modframe(Addr), [], [Addr]).
-opt_util__instr_labels(label(_), [], []).
-opt_util__instr_labels(goto(Addr, _), [], [Addr]).
-opt_util__instr_labels(computed_goto(_, Labels), Labels, []).
-opt_util__instr_labels(c_code(_), [], []).
-opt_util__instr_labels(if_val(_, Addr), [], [Addr]).
-opt_util__instr_labels(incr_hp(_, _, _), [], []).
-opt_util__instr_labels(mark_hp(_), [], []).
-opt_util__instr_labels(restore_hp(_), [], []).
-opt_util__instr_labels(incr_sp(_), [], []).
-opt_util__instr_labels(decr_sp(_), [], []).
+opt_util__instr_labels_2(assign(_,_), [], []).
+opt_util__instr_labels_2(call(Target, Ret, _, _), [], [Target, Ret]).
+opt_util__instr_labels_2(call_closure(_, Ret, _), [], [Ret]).
+opt_util__instr_labels_2(mkframe(_, _, Addr), [], [Addr]).
+opt_util__instr_labels_2(modframe(Addr), [], [Addr]).
+opt_util__instr_labels_2(label(_), [], []).
+opt_util__instr_labels_2(goto(Addr, _), [], [Addr]).
+opt_util__instr_labels_2(computed_goto(_, Labels), Labels, []).
+opt_util__instr_labels_2(c_code(_), [], []).
+opt_util__instr_labels_2(if_val(_, Addr), [], [Addr]).
+opt_util__instr_labels_2(incr_hp(_, _, _), [], []).
+opt_util__instr_labels_2(mark_hp(_), [], []).
+opt_util__instr_labels_2(restore_hp(_), [], []).
+opt_util__instr_labels_2(incr_sp(_), [], []).
+opt_util__instr_labels_2(decr_sp(_), [], []).
+
+:- pred opt_util__instr_rvals_and_lvals(instr, list(rval), list(lval)).
+:- mode opt_util__instr_rvals_and_lvals(in, out, out) is det.
+
+% determine all the rvals and lvals referenced by an instruction
+
+opt_util__instr_rvals_and_lvals(comment(_), [], []).
+opt_util__instr_rvals_and_lvals(livevals(_), [], []).
+opt_util__instr_rvals_and_lvals(block(_, Instrs), Labels, CodeAddrs) :-
+	opt_util__instr_list_rvals_and_lvals(Instrs, Labels, CodeAddrs).
+opt_util__instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
+opt_util__instr_rvals_and_lvals(call(_, _, _, _), [], []).
+opt_util__instr_rvals_and_lvals(call_closure(_, _, _), [], []).
+opt_util__instr_rvals_and_lvals(mkframe(_, _, _), [], []).
+opt_util__instr_rvals_and_lvals(modframe(_), [], []).
+opt_util__instr_rvals_and_lvals(label(_), [], []).
+opt_util__instr_rvals_and_lvals(goto(_, _), [], []).
+opt_util__instr_rvals_and_lvals(computed_goto(Rval, _), [Rval], []).
+opt_util__instr_rvals_and_lvals(c_code(_), [], []).
+opt_util__instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
+opt_util__instr_rvals_and_lvals(incr_hp(Lval, _, Rval), [Rval], [Lval]).
+opt_util__instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
+opt_util__instr_rvals_and_lvals(restore_hp(Rval), [Rval], []).
+opt_util__instr_rvals_and_lvals(incr_sp(_), [], []).
+opt_util__instr_rvals_and_lvals(decr_sp(_), [], []).
+
+% determine all the rvals and lvals referenced by a list of instructions
+
+:- pred opt_util__instr_list_rvals_and_lvals(list(pair(instr, string)),
+						list(rval), list(lval)).
+:- mode opt_util__instr_list_rvals_and_lvals(in, out, out) is det.
+
+opt_util__instr_list_rvals_and_lvals([], [], []).
+opt_util__instr_list_rvals_and_lvals([Instr - _|Instrs], Rvals, Lvals) :-
+	opt_util__instr_rvals_and_lvals(Instr, Rvals0, Lvals0),
+	opt_util__instr_list_rvals_and_lvals(Instrs, Rvals1, Lvals1),
+	list__append(Rvals0, Rvals1, Rvals),
+	list__append(Lvals0, Lvals1, Lvals).
 
 opt_util__instr_list_labels([], [], []).
 opt_util__instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
