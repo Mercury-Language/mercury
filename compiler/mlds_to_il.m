@@ -2570,14 +2570,37 @@ il_system_namespace_name = "System".
 :- pred mlds_to_il__generate_extern_assembly(mlds__imports, list(decl)).
 :- mode mlds_to_il__generate_extern_assembly(in, out) is det.
 
-mlds_to_il__generate_extern_assembly(Imports, Decls) :-
+mlds_to_il__generate_extern_assembly(Imports, AllDecls) :-
 	Gen = (pred(Import::in, Decl::out) is semidet :-
 		ClassName = mlds_module_name_to_class_name(Import),
 		ClassName = structured_name(Assembly, _),
+		not (Assembly = "mercury"),
 		Decl = extern_assembly(Assembly, [])
 	),
 	list__filter_map(Gen, Imports, Decls0),
-	list__sort_and_remove_dups(Decls0, Decls).
+	list__sort_and_remove_dups(Decls0, Decls),
+	AllDecls = [
+		extern_assembly("mercury", [
+			version(0, 0, 0, 0),
+			public_key_token([
+				int8(0x22), int8(0x8C), int8(0x16), int8(0x7D),
+				int8(0x12), int8(0xAA), int8(0x0B), int8(0x0B)
+			])
+		]),
+		extern_assembly("mscorlib", [
+			version(1, 0, 2411, 0),
+			public_key_token([
+				int8(0xb7), int8(0x7a), int8(0x5c), int8(0x56),
+				int8(0x19), int8(0x34), int8(0xE0), int8(0x89)
+			]),
+			hash([
+				int8(0xb0), int8(0x73), int8(0xf2), int8(0x4c),
+				int8(0x14), int8(0x39), int8(0x0a), int8(0x35),
+				int8(0x25), int8(0xea), int8(0x45), int8(0x0f),
+				int8(0x60), int8(0x58), int8(0xc3), int8(0x84),
+				int8(0xe0), int8(0x3b), int8(0xe0), int8(0x95)
+			])
+		]) | Decls].
 
 %-----------------------------------------------------------------------------
 
