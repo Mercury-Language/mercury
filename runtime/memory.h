@@ -8,8 +8,10 @@
 #define NUM_SPECIAL_REG 5	/* succip, sp, hp, maxfr, curfr */
 
 /* this can be changed at will */
-#define MAX_VIRTUAL_REG	1024	/* r(33) .. r(1024) */
+#define MAX_VIRTUAL_REG	1024
 
+/* allocate enough fake_regs to hold both the special regs and all
+   the virtual registers */
 #define MAX_FAKE_REG	(NUM_SPECIAL_REG + MAX_VIRTUAL_REG)
 				/* mr0 .. mr36, mr(37) ... mr(1028) */
 
