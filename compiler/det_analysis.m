@@ -230,7 +230,7 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 		% This is needed to prevent loops on p :- not(p).
 	determinism_components(Detism0, CanFail0, MaxSoln0),
 	determinism_components(Detism1, CanFail1, MaxSoln1),
-	det_conjunction_canfail(CanFail0, CanFail1, CanFail),
+	det_switch_canfail(CanFail0, CanFail1, CanFail),
 	det_switch_maxsoln(MaxSoln0, MaxSoln1, MaxSoln),
 	determinism_components(Detism, CanFail, MaxSoln),
 
