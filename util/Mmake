@@ -4,7 +4,7 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# Mmake - Mmake file for the Mercury util library
+# Mmake - Mmake file for the Mercury utilities directory
 
 MAIN_TARGET=all
 
