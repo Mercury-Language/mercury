@@ -192,7 +192,7 @@
 /* Most of these predicates are implemented using non-logical NU-Prolog code
    in io.nu.nl. */
 
-:- type io__state	---> 	io__state(io__stream_names, io__state_2).
+:- type io__state	---> 	io__state(io__stream_names, univ, io__state_2).
 
 :- type io__stream_names ==	map(io__stream, string).
 
@@ -245,7 +245,7 @@ io__flush_output -->
 	io__flush_output(Stream).
 
 io__stream_name(Stream, Name, IOState, IOState) :-
-	IOState = io__state(StreamNames, _),
+	IOState = io__state(StreamNames, _, _),
 	( map__search(StreamNames, Stream, Name1) ->
 		Name = Name1
 	;
