@@ -38,7 +38,11 @@ echo '#include <stddef.h>';
 echo '#include "init.h"';
 echo "";
 echo "Declare_entry($defentry);";
+echo "#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)";
+echo "Code *default_entry;";
+echo "#else";
 echo "Code *default_entry = ENTRY($defentry);";
+echo "#endif";
 echo "";
 for mod in $modules; do
 	echo "extern void $mod(void);";
