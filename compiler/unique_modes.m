@@ -398,14 +398,15 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	%
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
-	=(ModeInfo),
-	{ select_live_vars(NonLocalsList, ModeInfo, LiveNonLocals) },
+	=(ModeInfo0),
+	{ select_live_vars(NonLocalsList, ModeInfo0, LiveNonLocals) },
 	make_var_list_mostly_uniq(LiveNonLocals),
 	%
 	% But nothing is forward-live for the negated goal, since
 	% if the goal succeeds then execution will immediately backtrack.
 	% So we need to set the live variables set to empty here.
 	%
+	=(ModeInfo),
 	{ mode_info_get_live_vars(ModeInfo, LiveVars0) },
 	mode_info_set_live_vars([]),
 	%
