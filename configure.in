@@ -2312,6 +2312,9 @@ if test "$BOOTSTRAP_MC" != "" ; then
         case $c_file in
         */'*.c')
             ;;
+        */*_init.c)
+            to_keep="$to_keep $c_file"
+            ;;
         *)
             sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch
             if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
