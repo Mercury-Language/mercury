@@ -58,8 +58,8 @@
 :- pred vn__search_assigned_vn(vnrval, vn, vn_tables).
 :- mode vn__search_assigned_vn(in, out, in) is semidet.
 
-:- pred vn__search_definition(vn, vnrval, vn_tables).
-:- mode vn__search_definition(in, out, in) is semidet.
+:- pred vn__search_defn(vn, vnrval, vn_tables).
+:- mode vn__search_defn(in, out, in) is semidet.
 
 :- pred vn__search_uses(vn, list(vn_src), vn_tables).
 :- mode vn__search_uses(in, out, in) is semidet.
@@ -210,7 +210,7 @@ vn__search_assigned_vn(Vnrval, Vn, VnTables) :-
 		_Vn_to_locs_table, _Loc_to_vn_table),
 	map__search(Rval_to_vn_table, Vnrval, Vn).
 
-vn__search_definition(Vn, Vnrval, VnTables) :-
+vn__search_defn(Vn, Vnrval, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		Vn_to_rval_table, _Vn_to_uses_table,

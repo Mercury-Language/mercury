@@ -266,7 +266,6 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
-	% XXX zs: this "no" was "unspecified", which I suspect is wrong.
 	mercury_output_pred_type(TVarSet, unqualified(PredName), ArgTypes,
 		no, Context),
 	{ pred_info_is_imported(PredInfo) ->

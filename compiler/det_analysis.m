@@ -45,8 +45,8 @@
 
 :- implementation.
 :- import_module list, map, set, prog_io, prog_out, hlds_out, std_util.
-:- import_module globals, options, io, mercury_to_mercury, varset.
-:- import_module mode_util, inst_match.
+:- import_module globals, options, io, mercury_to_mercury, varset, int.
+:- import_module type_util, mode_util, inst_match, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -190,11 +190,11 @@ global_analysis_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 
 global_analysis_single_pass(ModuleInfo, [], Changed, ModuleInfo, Changed).
 global_analysis_single_pass(ModuleInfo0, [PredId - PredMode|PredProcs], State0,
-		ModuleInfo, State) :-
+			ModuleInfo, State) :-
 	det_infer_proc(ModuleInfo0, PredId, PredMode, State0,
-			ModuleInfo1, State1),
+		ModuleInfo1, State1),
 	global_analysis_single_pass(ModuleInfo1, PredProcs, State1,
-			ModuleInfo, State).
+		ModuleInfo, State).
 
 %-----------------------------------------------------------------------------%
 
@@ -212,7 +212,6 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 	map__lookup(Procs0, PredMode, Proc0),
 
 		% Remember the old inferred determinism of this procedure
-		% XXX zs: make sure this is initailzed right
 	proc_info_inferred_determinism(Proc0, Detism0),
 
 		% Infer the determinism of the goal
@@ -277,6 +276,8 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		GoalInfo1),
 	goal_info_set_determinism(GoalInfo1, Detism, GoalInfo).
 
+%-----------------------------------------------------------------------------%
+
 :- pred det_infer_goal_2(hlds__goal_expr, instmap, misc_info, set(var),
 				instmap_delta, hlds__goal_expr, determinism).
 :- mode det_infer_goal_2(in, in, in, in, in, out, out) is det.
@@ -307,10 +308,10 @@ det_infer_goal_2(disj(Goals0), InstMap0, MiscInfo, _, _, disj(Goals), Detism) :-
 			can_fail, at_most_zero, Goals, Detism)
 	).
 
-	% the determinism of a switch is the worst of the determinism of each of
-	% the cases. Also, if only a subset of the constructors are handled,
+	% the determinism of a switch is the worst of the determinism of each
+	% of the cases. Also, if only a subset of the constructors are handled,
 	% then it is semideterministic or worse - this is determined
-	% in switch_detection.m and handled via the LocalDet field.
+	% in switch_detection.m and handled via the SwitchCanFail field.
 
 det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), InstMap0, MiscInfo, _, _,
 		switch(Var, SwitchCanFail, Cases), Detism) :-
@@ -331,9 +332,8 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), InstMap0, MiscInfo, _, _,
 	% compilation becomes a bottleneck before worrying about
 	% this.
 
-det_infer_goal_2(call(PredId, ModeId, Args, BuiltIn, Name, Follow),
-						_, MiscInfo, _, _,
-		call(PredId, ModeId, Args, BuiltIn, Name, Follow), Detism) :-
+det_infer_goal_2(call(PredId, ModeId, A, B, N, F), _, MiscInfo, _, _,
+		call(PredId, ModeId, A, B, N, F), Detism) :-
 	det_lookup_detism(MiscInfo, PredId, ModeId, Detism).
 
 	% unifications are either deterministic or semideterministic.
@@ -347,8 +347,7 @@ det_infer_goal_2(unify(LT, RT, M, U, C), _, MiscInfo, _, _,
 	% Answer: yes, probably, but it's not a high priority.
 
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
-		NonLocalVars, DeltaInstMap,
-		Goal, Detism) :-
+		NonLocalVars, DeltaInstMap, Goal, Detism) :-
 	det_infer_goal(Cond0, InstMap0, MiscInfo, Cond, InstMap1, CondDetism),
 	determinism_components(CondDetism, CondCanFail, CondSolns),
 	( CondCanFail = cannot_fail ->
@@ -387,17 +386,32 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 	% a negation to further instantiate any non-local variable. Such
 	% errors will be reported by the mode analysis.
 	%
-	% Question: should we warn about and/or optimize the negation of a
-	% deterministic goal (which will always fail) here?
+	% Question: should we warn about the negation of goals that either
+	% cannot succeed or cannot fail?
 	% Answer: yes, probably, but it's not a high priority.
 
-det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _,
-		not(Goal), Det) :-
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, _Det1),
-	Det = semidet.
+det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _, Goal, Det) :-
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal1, _InstMap, NegDet),
+	determinism_components(NegDet, NegCanFail, NegSolns),
+	( NegCanFail = cannot_fail ->
+		Goal = disj([]),
+		Det = failure
+	; NegSolns = at_most_zero ->
+		Goal = conj([]),
+		Det = det
+	;
+		Goal = not(Goal1),
+		Det = semidet
+	).
 
 	% explicit quantification isn't important, since we've already
-	% stored the _information about variable scope in the goal_info.
+	% stored the information about variable scope in the goal_info.
+
+det_infer_goal_2(some(Vars, Goal0), InstMap0, MiscInfo, _, _,
+			some(Vars, Goal), Det) :-
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
+
+%-----------------------------------------------------------------------------%
 
 :- pred det_infer_conj(list(hlds__goal), instmap, misc_info,
 	can_fail, soln_count, list(hlds__goal), determinism).
@@ -423,13 +437,19 @@ det_infer_conj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
 det_infer_disj([], _InstMap0, _MiscInfo, CanFail, MaxSolns, [], Detism) :-
 	determinism_components(Detism, CanFail, MaxSolns).
 det_infer_disj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
-		[Goal | Goals], Detism) :-
+		Goals, Detism) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism1),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
-	det_disjunction_canfail(CanFail0, CanFail1, CanFail2),
-	det_disjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
-	det_infer_disj(Goals0, InstMap0, MiscInfo, CanFail2, MaxSolns2,
-		Goals, Detism).
+	( MaxSolns1 = at_most_zero ->
+		det_infer_disj(Goals0, InstMap0, MiscInfo, CanFail0, MaxSolns0,
+			Goals, Detism)
+	;
+		det_disjunction_canfail(CanFail0, CanFail1, CanFail2),
+		det_disjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
+		det_infer_disj(Goals0, InstMap0, MiscInfo, CanFail2, MaxSolns2,
+			Goals1, Detism),
+		Goals = [Goal | Goals1]
+	).
 
 :- pred det_infer_switch(list(case), instmap, misc_info,
 	can_fail, soln_count, list(case), determinism).
@@ -455,10 +475,6 @@ det_infer_switch([Case0 | Cases0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
 :- pred det_infer_unify(unification, misc_info, determinism).
 :- mode det_infer_unify(in, in, out) is det.
 
-det_infer_unify(assign(_, _), _MiscInfo, det).
-
-det_infer_unify(construct(_, _, _, _), _MiscInfo, det).
-
 	% Deconstruction unifications are deterministic if the type
 	% only has one constructor, or if the variable is known to be
 	% already bound to the appropriate functor.
@@ -471,80 +487,11 @@ det_infer_unify(construct(_, _, _, _), _MiscInfo, det).
 
 det_infer_unify(deconstruct(_, _, _, _, CanFail), _MiscInfo, Detism) :-
 	determinism_components(Detism, CanFail, at_most_one).
-
+det_infer_unify(assign(_, _), _MiscInfo, det).
+det_infer_unify(construct(_, _, _, _), _MiscInfo, det).
 det_infer_unify(simple_test(_, _), _MiscInfo, semidet).
-
 det_infer_unify(complicated_unify(_, CanFail, _), _MiscInfo, Detism) :-
 	determinism_components(Detism, CanFail, at_most_one).
-
-det_infer_goal_2(some(Vars, Goal0), InstMap0, MiscInfo, _, _,
-			some(Vars, Goal), Det) :-
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
-
-%-----------------------------------------------------------------------------%
-
-	% det_lookup_detism(MiscInfo, PredId, ModeId, Category):
-	% 	Given the MiscInfo, and the PredId & ModeId of a procedure,
-	% 	look up the determinism of that procedure and return it
-	% 	in Category.
-
-:- pred det_lookup_detism(misc_info, pred_id, proc_id, determinism).
-:- mode det_lookup_detism(in, in, in, out) is det.
-
-det_lookup_detism(MiscInfo, PredId, ModeId, Detism) :-
-	MiscInfo = misc_info(ModuleInfo, _, _),
-	module_info_preds(ModuleInfo, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_procedures(PredInfo, ProcTable),
-	map__lookup(ProcTable, ModeId, ProcInfo),
-	proc_info_interface_determinism(ProcInfo, Detism).
-
-:- pred det_misc_get_proc_info(misc_info, proc_info).
-:- mode det_misc_get_proc_info(in, out) is det.
-
-det_misc_get_proc_info(MiscInfo, ProcInfo) :-
-	MiscInfo = misc_info(ModuleInfo, PredId, ModeId),
-	module_info_preds(ModuleInfo, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_procedures(PredInfo, ProcTable),
-	map__lookup(ProcTable, ModeId, ProcInfo).
-
-% :- pred det_lookup_var_typedefn(module_info, proc_info, var, hlds__type_defn).
-% :- mode det_lookup_var_typedefn(in, in, in, out) is det.
-% 
-% det_lookup_var_typedefn(ModuleInfo, ProcInfo, Var, TypeDefn) :-
-%	proc_info_vartypes(ProcInfo, VarTypes),
-%	map__lookup(VarTypes, Var, Type),
-%	type_to_type_id(Type, TypeId, _),
-%	module_info_types(ModuleInfo, TypeTable),
-%	map__lookup(TypeTable, TypeId, TypeDefn).
-
-:- pred no_output_vars(set(var), instmap, instmap_delta, misc_info).
-:- mode no_output_vars(in, in, in, in) is semidet.
-
-no_output_vars(_, _, unreachable, _).
-no_output_vars(Vars, InstMap0, reachable(InstMapDelta), MiscInfo) :-
-	set__to_sorted_list(Vars, VarList),
-	MiscInfo = misc_info(ModuleInfo, _, _),
-	no_output_vars_2(VarList, InstMap0, InstMapDelta, ModuleInfo).
-
-:- pred no_output_vars_2(list(var), instmap, instmapping, module_info).
-:- mode no_output_vars_2(in, in, in, in) is semidet.
-
-no_output_vars_2([], _, _, _).
-no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
-	( map__search(InstMapDelta, Var, Inst) ->
-		% The instmap delta contains the variable, but the variable may
-		% still not be output, if the change is just an increase in
-		% information rather than an increase in instantiatedness.
-		% We use `inst_matches_final' to check that the new inst
-		% has only added information, not bound anything.
-		instmap_lookup_var(InstMap0, Var, Inst0),
-		inst_matches_final(Inst, Inst0, ModuleInfo)
-	;
-		true
-	),
-	no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -630,12 +577,12 @@ global_checking_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 global_checking_pass_2([], ModuleInfo, ModuleInfo) --> [].
 global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 	{
-	  module_info_preds(ModuleInfo0, PredTable),
-	  map__lookup(PredTable, PredId, PredInfo),
-	  pred_info_procedures(PredInfo, ProcTable),
-	  map__lookup(ProcTable, ModeId, ProcInfo),
-	  proc_info_declared_determinism(ProcInfo, MaybeDetism),
-	  proc_info_inferred_determinism(ProcInfo, InferredDetism)
+		module_info_preds(ModuleInfo0, PredTable),
+		map__lookup(PredTable, PredId, PredInfo),
+		pred_info_procedures(PredInfo, ProcTable),
+		map__lookup(ProcTable, ModeId, ProcInfo),
+		proc_info_declared_determinism(ProcInfo, MaybeDetism),
+		proc_info_inferred_determinism(ProcInfo, InferredDetism)
 	},
 	(
 		{ MaybeDetism = no },
@@ -662,14 +609,15 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 			{ ModuleInfo1 = ModuleInfo0 }
 		;
 			{ Cmp = tighter },
+			{ module_info_incr_errors(ModuleInfo0,
+				ModuleInfo1) },
 			{ Message = "  Error: determinism declaration not satisfied.\n" },
 			report_determinism_problem(PredId,
-				ModeId, ModuleInfo0, Message,
+				ModeId, ModuleInfo1, Message,
 				DeclaredDetism, InferredDetism),
-			{ module_info_incr_errors(ModuleInfo0,
-				ModuleInfo1) }
-			% XXX The error messages should say _why_
-			% a determinism declaration is wrong.
+			{ proc_info_goal(ProcInfo, Goal) },
+			{ MiscInfo = misc_info(ModuleInfo1, PredId, ModeId) },
+			det_diagnose_goal(Goal, DeclaredDetism, MiscInfo)
 		)
 	),
 	global_checking_pass_2(Rest, ModuleInfo1, ModuleInfo).
@@ -690,15 +638,7 @@ report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
 
 	prog_out__write_context(Context),
 	io__write_string("In `"),
-	io__write_string(PredName),
-	( { ArgModes \= [] } ->
-		{ varset__init(InstVarSet) },	% XXX inst var names
-		io__write_string("("),
-		mercury_output_mode_list(ArgModes, InstVarSet),
-		io__write_string(")")
-	;
-		[]
-	),
+	det_report_pred_name_mode(PredName, ArgModes),
 	io__write_string("':\n"),
 
 	prog_out__write_context(Context),
@@ -754,5 +694,327 @@ compare_solncounts(at_most_one,  at_most_many, tighter).
 compare_solncounts(at_most_many, at_most_zero, looser).
 compare_solncounts(at_most_many, at_most_one,  looser).
 compare_solncounts(at_most_many, at_most_many, sameas).
+
+%-----------------------------------------------------------------------------%
+
+	% The given goal should have determinism Desired, but doesn't.
+	% Find out what is wrong and print a report of the cause.
+
+:- pred det_diagnose_goal(hlds__goal, determinism, misc_info,
+	io__state, io__state).
+:- mode det_diagnose_goal(in, in, in, di, uo) is det.
+
+det_diagnose_goal(Goal - GoalInfo, Desired, MiscInfo) -->
+	{ goal_info_get_determinism(GoalInfo, External) },
+	( { Desired = External } ->
+		[]
+	;
+		{ goal_info_get_internal_determinism(GoalInfo, Internal) },
+		{ External = Internal ->
+			Desired1 = Desired
+		;
+			determinism_components(Desired, CanFail, _),
+			determinism_components(Desired1, CanFail, at_most_many)
+		},
+		det_diagnose_goal_2(Goal, GoalInfo, Desired1, Internal,
+			MiscInfo)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred det_diagnose_goal_2(hlds__goal_expr, hlds__goal_info,
+	determinism, determinism, misc_info, io__state, io__state).
+:- mode det_diagnose_goal_2(in, in, in, in, in, di, uo) is det.
+
+det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, MiscInfo) -->
+	det_diagnose_conj(Goals, Desired, MiscInfo).
+
+det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, _Actual, MiscInfo) -->
+	det_diagnose_disj(Goals, Desired, MiscInfo, 0, Clauses),
+	{ determinism_components(Desired, _, DesSolns) },
+	(
+		{ DesSolns \= at_most_many },
+		{ Clauses > 1 }
+	->
+		{ goal_info_context(GoalInfo, Context) },
+		prog_out__write_context(Context),
+		io__write_string("disjunction has multiple clauses with solutions\n")
+	;
+		[]
+	).
+
+	% the determinism of a switch is the worst of the determinism of each of
+	% the cases. Also, if only a subset of the constructors are handled,
+	% then it is semideterministic or worse - this is determined
+	% in switch_detection.m and handled via the LocalDet field.
+
+det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
+		Desired, _Actual, MiscInfo) -->
+	(
+		{ SwitchCanFail = can_fail },
+		{ determinism_components(Desired, cannot_fail, _) }
+	->
+		{ goal_info_context(GoalInfo, Context) },
+		prog_out__write_context(Context),
+		{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
+		{ proc_info_variables(ProcInfo, Varset) },
+		{ MiscInfo = misc_info(ModuleInfo, _, _) },
+		{ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) },
+		{ TypeDefn = hlds__type_defn(_, _, TypeBody, _, _) },
+		( { TypeBody = du_type(_, ConsTable, _) } ->
+			{ map__keys(ConsTable, ConsIds) },
+			{ det_diagnose_missing_consids(ConsIds, Cases,
+				Missing) },
+			io__write_string("the switch on "),
+			mercury_output_var(Var, Varset),
+			io__write_string(" does not cover "),
+			det_output_consid_list(Missing, yes),
+			io__write_string("\n")
+		;
+			io__write_string("the switch on "),
+			mercury_output_var(Var, Varset),
+			io__write_string(" can fail\n")
+		)
+	;
+		[]
+	),
+	det_diagnose_switch(Cases, Desired, MiscInfo).
+
+det_diagnose_goal_2(call(PredId, ModeId, _, _, _, _), GoalInfo,
+		Desired, Actual, misc_info(ModuleInfo, _, _)) -->
+	{ goal_info_context(GoalInfo, Context) },
+	{ module_info_preds(ModuleInfo, PredTable) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
+	{ map__lookup(PredTable, PredId, PredInfo) },
+	{ pred_info_procedures(PredInfo, ProcTable) },
+	{ map__lookup(ProcTable, ModeId, ProcInfo) },
+	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
+	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
+	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
+	( { CmpCanFail = tighter } ->
+		prog_out__write_context(Context),
+		io__write_string("call to "),
+		det_report_pred_name_mode(PredName, ArgModes),
+		io__write_string(" can fail\n")
+	;
+		[]
+	),
+	{ compare_solncounts(DesiredSolns, ActualSolns, CmpSolns) },
+	( { CmpSolns = tighter } ->
+		prog_out__write_context(Context),
+		io__write_string("call to "),
+		det_report_pred_name_mode(PredName, ArgModes),
+		io__write_string(" can succeed"),
+		( { DesiredSolns = at_most_one } ->
+			io__write_string(" more than once\n")
+		;
+			[]
+		),
+		io__write_string("\n")
+	;
+		[]
+	).
+
+det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
+		Desired, Actual, MiscInfo) -->
+	{ goal_info_context(GoalInfo, Context) },
+	{ determinism_components(Desired, DesiredCanFail, _DesiredSolns) },
+	{ determinism_components(Actual, ActualCanFail, _ActualSolns) },
+	(
+		{ DesiredCanFail = cannot_fail },
+		{ ActualCanFail = can_fail }
+	->
+		{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
+		{ proc_info_variables(ProcInfo, Varset) },
+		hlds_out__write_unify_context(UnifyContext, Context),
+		prog_out__write_context(Context),
+		io__write_string("unification of "),
+		mercury_output_term(LT, Varset),
+		io__write_string(" and "),
+		mercury_output_term(RT, Varset),
+		io__write_string(" can fail\n")
+	;
+		prog_out__write_context(Context),
+		io__write_string("unknown determinism failure involving a unification\n")
+	).
+
+det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
+		Desired, _Actual, MiscInfo) -->
+	{
+		determinism_components(Desired, _DesiredCanFail, DesiredSolns),
+		Cond = _CondGoal - CondInfo,
+		goal_info_get_determinism(CondInfo, CondDetism),
+		determinism_components(CondDetism, _CondCanFail, CondSolns)
+	},
+	(
+		{ CondSolns = at_most_many },
+		{ DesiredSolns \= at_most_many }
+	->
+		{ determinism_components(DesiredCond, can_fail, DesiredSolns) },
+		det_diagnose_goal(Cond, DesiredCond, MiscInfo)
+	;
+		[]
+	),
+	det_diagnose_goal(Then, Desired, MiscInfo),
+	det_diagnose_goal(Else, Desired, MiscInfo).
+
+det_diagnose_goal_2(not(_), GoalInfo, _, _, _) -->
+	{ goal_info_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("it should be impossible to get a determinism error\n"),
+	prog_out__write_context(Context),
+	io__write_string("with a negated goal that stays a negation\n").
+
+det_diagnose_goal_2(some(_Vars, Goal), _, Desired, _, MiscInfo) -->
+	det_diagnose_goal(Goal, Desired, MiscInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred det_diagnose_conj(list(hlds__goal), determinism, misc_info,
+	io__state, io__state).
+:- mode det_diagnose_conj(in, in, in, di, uo) is det.
+
+det_diagnose_conj([], _Desired, _MiscInfo) --> [].
+det_diagnose_conj([Goal | Goals], Desired, MiscInfo) -->
+	det_diagnose_goal(Goal, Desired, MiscInfo),
+	det_diagnose_conj(Goals, Desired, MiscInfo).
+
+:- pred det_diagnose_disj(list(hlds__goal), determinism, misc_info,
+	int, int, io__state, io__state).
+:- mode det_diagnose_disj(in, in, in, in, out, di, uo) is det.
+
+det_diagnose_disj([], _Desired, _MiscInfo, Clauses, Clauses) --> [].
+det_diagnose_disj([Goal | Goals], Desired, MiscInfo,
+		Clauses0, Clauses) -->
+	{ determinism_components(Desired, _, DesiredSolns) },
+	{ determinism_components(ClauseDesired, can_fail, DesiredSolns) },
+	det_diagnose_goal(Goal, ClauseDesired, MiscInfo),
+	{ Clauses1 is Clauses0 + 1 },
+	det_diagnose_disj(Goals, Desired, MiscInfo, Clauses1, Clauses).
+
+:- pred det_diagnose_switch(list(case), determinism, misc_info,
+	io__state, io__state).
+:- mode det_diagnose_switch(in, in, in, di, uo) is det.
+
+det_diagnose_switch([], _Desired, _MiscInfo) --> [].
+det_diagnose_switch([case(_, Goal) | Cases], Desired, MiscInfo) -->
+	det_diagnose_goal(Goal, Desired, MiscInfo),
+	det_diagnose_switch(Cases, Desired, MiscInfo).
+
+%-----------------------------------------------------------------------------%
+
+	% det_lookup_detism(MiscInfo, PredId, ModeId, Category):
+	% 	Given the MiscInfo, and the PredId & ModeId of a procedure,
+	% 	look up the determinism of that procedure and return it
+	% 	in Category.
+
+:- pred det_lookup_detism(misc_info, pred_id, proc_id, determinism).
+:- mode det_lookup_detism(in, in, in, out) is det.
+
+det_lookup_detism(MiscInfo, PredId, ModeId, Detism) :-
+	MiscInfo = misc_info(ModuleInfo, _, _),
+	module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	pred_info_procedures(PredInfo, ProcTable),
+	map__lookup(ProcTable, ModeId, ProcInfo),
+	proc_info_interface_determinism(ProcInfo, Detism).
+
+:- pred det_misc_get_proc_info(misc_info, proc_info).
+:- mode det_misc_get_proc_info(in, out) is det.
+
+det_misc_get_proc_info(MiscInfo, ProcInfo) :-
+	MiscInfo = misc_info(ModuleInfo, PredId, ModeId),
+	module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	pred_info_procedures(PredInfo, ProcTable),
+	map__lookup(ProcTable, ModeId, ProcInfo).
+
+:- pred det_lookup_var_type(module_info, proc_info, var, hlds__type_defn).
+:- mode det_lookup_var_type(in, in, in, out) is det.
+
+det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__lookup(VarTypes, Var, Type),
+	( type_to_type_id(Type, TypeIdPrime, _) ->
+		TypeId = TypeIdPrime
+	;
+		error("cannot lookup the type of a variable")
+	),
+	module_info_types(ModuleInfo, TypeTable),
+	map__lookup(TypeTable, TypeId, TypeDefn).
+
+:- pred no_output_vars(set(var), instmap, instmap_delta, misc_info).
+:- mode no_output_vars(in, in, in, in) is semidet.
+
+no_output_vars(_, _, unreachable, _).
+no_output_vars(Vars, InstMap0, reachable(InstMapDelta), MiscInfo) :-
+	set__to_sorted_list(Vars, VarList),
+	MiscInfo = misc_info(ModuleInfo, _, _),
+	no_output_vars_2(VarList, InstMap0, InstMapDelta, ModuleInfo).
+
+:- pred no_output_vars_2(list(var), instmap, instmapping, module_info).
+:- mode no_output_vars_2(in, in, in, in) is semidet.
+
+no_output_vars_2([], _, _, _).
+no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
+	( map__search(InstMapDelta, Var, Inst) ->
+		% The instmap delta contains the variable, but the variable may
+		% still not be output, if the change is just an increase in
+		% information rather than an increase in instantiatedness.
+		% We use `inst_matches_final' to check that the new inst
+		% has only added information, not bound anything.
+		instmap_lookup_var(InstMap0, Var, Inst0),
+		inst_matches_final(Inst, Inst0, ModuleInfo)
+	;
+		true
+	),
+	no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred det_report_pred_name_mode(string, list((mode)), io__state, io__state).
+:- mode det_report_pred_name_mode(in, in, di, uo) is det.
+
+det_report_pred_name_mode(PredName, ArgModes) -->
+	io__write_string(PredName),
+	( { ArgModes \= [] } ->
+		{ varset__init(InstVarSet) },	% XXX inst var names
+		io__write_string("("),
+		mercury_output_mode_list(ArgModes, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	).
+
+:- pred det_diagnose_missing_consids(list(cons_id), list(case), list(cons_id)).
+:- mode det_diagnose_missing_consids(in, in, out) is det.
+
+det_diagnose_missing_consids([], _, []).
+det_diagnose_missing_consids([ConsId | ConsIds], Cases, Missing) :-
+	det_diagnose_missing_consids(ConsIds, Cases, Missing0),
+	(
+		list__member(Case, Cases),
+		Case = case(ConsId, _)
+	->
+		Missing = Missing0
+	;
+		Missing = [ConsId | Missing0]
+	).
+
+:- pred det_output_consid_list(list(cons_id), bool, io__state, io__state).
+:- mode det_output_consid_list(in, in, di, uo) is det.
+
+det_output_consid_list([], _) --> [].
+det_output_consid_list([ConsId | ConsIds], First) -->
+	( { First = yes } ->
+		[]
+	; { ConsIds = [] } ->
+		io__write_string(" and ")
+	;
+		io__write_string(", ")
+	),
+	hlds_out__write_cons_id(ConsId),
+	det_output_consid_list(ConsIds, no).
 
 %-----------------------------------------------------------------------------%
