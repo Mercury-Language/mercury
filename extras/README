@@ -12,6 +12,10 @@ complex_numbers
 		A Mercury library package containing support for
 		complex and imaginary numbers.
 
+dynamic_linking
+		An interface to the C functions dlopen(), dlsym(), etc.
+		that are supported by most modern Unix systems.
+
 exceptions	A library module containing a (tentative)
 		exception handling interface for Mercury.
 
