@@ -188,7 +188,7 @@ install_headers: $(HDRS) $(MACHHDRS) $(LIBMER_GLOBALS_H)
 	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
 	cp `vpath_find $(HDRS) $(LIBMER_GLOBALS_H)` $(INSTALL_INC_DIR)
-	chmod u+w $(INSTALL_INC_DIR)/conf.h
+	chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 .PHONY: install_init
@@ -224,6 +224,6 @@ clean_mod_c:
 
 realclean:
 	rm -f libmer.a libmer.so runtime.init
-	rm -f conf.h conf.h.date
+	rm -f mercury_conf.h mercury_conf.h.date
 
 #-----------------------------------------------------------------------------#
