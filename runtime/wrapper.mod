@@ -613,9 +613,12 @@ void run_code(void)
 	if (memdebug)
 	{
 		printf("\n");
-		printf("max heap used:      %6d words\n", heapmax - heapmin);
-		printf("max detstack used:  %6d words\n", detstackmax - detstackmin);
-		printf("max nondstack used: %6d words\n", nondstackmax - nondstackmin);
+		printf("max heap used:      %6ld words\n",
+			(long) (heapmax - heapmin));
+		printf("max detstack used:  %6ld words\n",
+			(long)(detstackmax - detstackmin));
+		printf("max nondstack used: %6ld words\n",
+			(long) (nondstackmax - nondstackmin));
 	}
 #endif
 
