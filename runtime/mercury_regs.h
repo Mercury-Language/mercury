@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2002 The University of Melbourne.
+** Copyright (C) 1993-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -197,7 +197,7 @@
 ** The Mercury abstract machine registers layer
 */
 
-#ifdef MEASURE_REGISTER_USAGE
+#ifdef MR_MEASURE_REGISTER_USAGE
   #define MR_count_usage(num,reg)	MR_LVALUE_SEQ(MR_num_uses[num]++, reg)
 #else
   #define MR_count_usage(num,reg)	(reg)

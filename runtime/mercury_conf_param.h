@@ -271,7 +271,7 @@
 /*
 ** Profiling options:
 **
-** MEASURE_REGISTER_USAGE
+** MR_MEASURE_REGISTER_USAGE
 ** Enable this if you want to measure the number of times
 ** each register is used.  (Note that the measurement includes
 ** uses which occur inside debugging routines, so to get an accurate

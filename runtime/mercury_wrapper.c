@@ -341,7 +341,7 @@ static	void	process_environment_options(void);
 static	void	process_options(int argc, char **argv);
 static	void	usage(void);
 
-#ifdef MEASURE_REGISTER_USAGE
+#ifdef MR_MEASURE_REGISTER_USAGE
 static	void	print_register_usage_counts(void);
 #endif
 #ifdef MR_TYPE_CTOR_STATS
@@ -1429,7 +1429,7 @@ mercury_runtime_main(void)
 	}
 #endif
 
-#ifdef MEASURE_REGISTER_USAGE
+#ifdef MR_MEASURE_REGISTER_USAGE
 	printf("\n");
 	print_register_usage_counts();
 #endif
@@ -1558,7 +1558,7 @@ MR_print_one_type_ctor_stat(FILE *fp, const char *op, MR_TypeStat *type_stat)
 
 #endif
 
-#ifdef MEASURE_REGISTER_USAGE
+#ifdef MR_MEASURE_REGISTER_USAGE
 static void 
 print_register_usage_counts(void)
 {
