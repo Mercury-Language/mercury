@@ -1033,7 +1033,7 @@ atomic_statement_to_il(inline_target_code(_Lang, _Code), node(Instrs)) -->
 		^ method_foreign_lang := yes(managed_cplusplus),
 		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
 		{ ClassName = mlds_module_name_to_class_name(NewModuleName,
-				NewModuleName, no) },
+				NewModuleName, yes) },
 		signature(_, RetType, Params) =^ signature, 
 			% If there is a return value, put it in succeeded.
 			% XXX this is incorrect for functions, which might
