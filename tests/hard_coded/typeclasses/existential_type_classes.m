@@ -27,9 +27,14 @@
 
 	% my_univ_value(Univ):
 	%	returns the value of the object stored in Univ.
-:- some [T] func my_univ_value(univ) = T => fooable(T).
 
-:- some [T] func call_my_univ_value(univ) = T => fooable(T).
+:- type my_univ == c_pointer.
+
+:- func my_univ(T) = my_univ <= fooable(T).
+
+:- some [T] func my_univ_value(my_univ) = T => fooable(T).
+
+:- some [T] func call_my_univ_value(my_univ) = T => fooable(T).
 
 :- some [T] func my_exist_t = T => fooable(T).
 
@@ -44,8 +49,8 @@ main -->
 	do_foo("blah"),
 	do_foo(my_exist_t),
 	do_foo(call_my_exist_t),
-	do_foo(my_univ_value(univ(45))),
-	do_foo(call_my_univ_value(univ("something"))).
+	do_foo(my_univ_value(my_univ(45))),
+	do_foo(call_my_univ_value(my_univ("something"))).
 
 :- pred do_foo(T::in, io__state::di, state::uo) is det <= fooable(T).
 do_foo(X) -->
@@ -58,13 +63,15 @@ call_my_univ_value(Univ) = my_univ_value(Univ).
 
 my_exist_t = 43.
 
-/*
-XXX we don't yet support `pragma c_code' for existential type class constraints
 :- pragma c_code(my_univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
-	TypeInfo_for_T = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	Value = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
-	ClassInfo_1 = XXX;
+	TypeClassInfo_for_existential_type_classes__fooable_T =
+		field(mktag(0), Univ, 0);
+	Value = field(mktag(0), Univ, 1);
 ").
-*/
-my_univ_value(_Univ) = 44.
+:- pragma c_code(my_univ(Value::in) = (Univ::out), will_not_call_mercury, "
+	incr_hp(Univ, 2);
+	field(mktag(0), Univ, 0) = (Word)
+		TypeClassInfo_for_existential_type_classes__fooable_T;
+	field(mktag(0), Univ, 1) = (Word) Value;
 
+").
