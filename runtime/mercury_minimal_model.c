@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003 The University of Melbourne.
+** Copyright (C) 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -934,11 +934,9 @@ mercury__table_builtin__table_nondet_suspend_2_p_0(
 
 MR_define_extern_entry(MR_SUSPEND_ENTRY);
 MR_define_extern_entry(MR_RESUME_ENTRY);
-MR_MAKE_PROC_LAYOUT(MR_SUSPEND_ENTRY,
-    MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
+MR_MAKE_PROC_LAYOUT(MR_SUSPEND_ENTRY, MR_DETISM_NON, 0, -1,
     MR_PREDICATE, "table_builtin", "table_nondet_suspend", 2, 0);
-MR_MAKE_PROC_LAYOUT(MR_RESUME_ENTRY,
-    MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
+MR_MAKE_PROC_LAYOUT(MR_RESUME_ENTRY, MR_DETISM_NON, 0, -1,
     MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
 
 MR_BEGIN_MODULE(table_nondet_suspend_resume_module)
@@ -977,12 +975,10 @@ MR_declare_label(RESUME_LABEL(RestartPoint));
 
 MR_define_extern_entry(MR_table_nondet_commit);
 
-MR_MAKE_PROC_LAYOUT(MR_SUSPEND_ENTRY,
-    MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
+MR_MAKE_PROC_LAYOUT(MR_SUSPEND_ENTRY, MR_DETISM_NON, 0, -1,
     MR_PREDICATE, "table_builtin", "table_nondet_suspend", 2, 0);
 
-MR_MAKE_PROC_LAYOUT(MR_RESUME_ENTRY,
-    MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
+MR_MAKE_PROC_LAYOUT(MR_RESUME_ENTRY, MR_DETISM_NON, 0, -1,
     MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
     RESUME_LABEL(ChangeLoop), MR_RESUME_ENTRY);
@@ -1241,7 +1237,7 @@ MR_define_entry(MR_RESUME_ENTRY);
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("resume info succip ");
-            MR_print_label(stdout, MR_succip);
+            MR_printlabel(stdout, MR_succip);
         }
 #endif  /* MR_TABLE_DEBUG */
 

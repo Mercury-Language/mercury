@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-2003 The University of Melbourne.
+** Copyright (C) 1996-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -883,6 +883,12 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
 		} else {
 			fprintf(fp, "unnamed label %p", internal->i_addr);
 		}
+#ifdef	MR_DEBUG_LABEL_GOAL_PATHS
+		if (internal->i_layout != NULL) {
+			fprintf(fp, " <%s>",
+				MR_label_goal_path(internal->i_layout));
+		}
+#endif
 	} else {
 #ifdef	MR_NEED_ENTRY_LABEL_ARRAY
 		MR_Entry	*entry;

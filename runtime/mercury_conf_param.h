@@ -224,6 +224,11 @@
 ** 	converted back to a form in which they are usable by a developer.
 ** 	Implied by MR_TABLE_DEBUG and MR_DEBUG_RETRY.
 **
+** MR_DEBUG_LABEL_GOAL_PATHS
+** 	When printing label names, print the goal path of the label as well,
+** 	if this information is available.
+** 	Meaningful only if MR_DEBUG_LABEL_NAMES is defined.
+**
 ** MR_LOWLEVEL_ADDR_DEBUG
 ** 	Enables the printing of raw addresses in debugging output even for
 ** 	things (such as stack slots and labels) that can be identified by more
