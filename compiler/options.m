@@ -117,6 +117,7 @@
 		;	optimize_copyprop
 		;	optimize_value_number
 		;	optimize_frames
+		;	optimize_delay_slot
 		;	optimize_repeat
 		;	optimize_vnrepeat
 		;	pred_value_number
@@ -128,6 +129,7 @@
 		;	tag_switch_size
 		;	middle_rec
 		;	inlining
+		;	specialize
 		;	common_struct
 		;	common_goal
 		;	c_optimize
@@ -253,6 +255,7 @@ option_defaults_2(optimization_option, [
 	optimize_copyprop	-	bool(yes),
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
+	optimize_delay_slot	-	bool(yes),
 	optimize_repeat		-	int(3),
 	optimize_vnrepeat	-	int(1),
 	pred_value_number	-	bool(no),
@@ -264,6 +267,7 @@ option_defaults_2(optimization_option, [
 	tag_switch_size		-	int(4),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
+	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	common_goal		-	bool(yes),
 	procs_per_c_function	-	int(1),
@@ -390,6 +394,8 @@ long_option("optimize-value-number",	optimize_value_number).
 long_option("optimise-value-number",	optimize_value_number).
 long_option("optimize-frames",		optimize_frames).
 long_option("optimise-frames",		optimize_frames).
+long_option("optimize-delay-slot",	optimize_delay_slot).
+long_option("optimise-delay-slot",	optimize_delay_slot).
 long_option("optimize-repeat",		optimize_repeat).
 long_option("optimise-repeat",		optimize_repeat).
 long_option("optimize-vnrepeat",	optimize_vnrepeat).
@@ -404,6 +410,7 @@ long_option("string-switch_size",	string_switch_size).
 long_option("tag-switch-size",		tag_switch_size).
 long_option("middle-rec",		middle_rec).
 long_option("inlining",			inlining).
+long_option("specialize",		specialize).
 long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
 long_option("procs-per-c-function",	procs_per_c_function).
@@ -624,6 +631,8 @@ options_help -->
 	io__write_string("\t\tPerform value numbering on extended basic blocks.\n"),
 	io__write_string("\t--no-optimize-frames\n"),
 	io__write_string("\t\tDisable stack frame optimizations.\n"),
+	io__write_string("\t--no-optimize-delay-slot\n"),
+	io__write_string("\t\tDisable branch delay slot optimizations.\n"),
 	io__write_string("\t--optimize-repeat <n>\n"),
 	io__write_string("\t\tIterate most optimizations at most <n> times (default: 3).\n"),
 	io__write_string("\t--optimize-vnrepeat <n>\n"),
@@ -652,8 +661,10 @@ options_help -->
 	io__write_string("\t\tDisable the middle recursion optimization.\n"),
 	io__write_string("\t--no-inlining\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
-	% io__write_string("\t--common-struct\n"),
-	% io__write_string("\t\tEnable optimisation of common term structures.\n"),
+	% io__write_string("\t--no-specialize\n"),
+	% io__write_string("\t\tDisable the specialization of procedures.\n"),
+	io__write_string("\t--no-common-struct\n"),
+	io__write_string("\t\tDisable optimisation of common term structures.\n"),
 	io__write_string("\t--no-common-goal\n"),
 	io__write_string("\t\tDisable optimisation of common goals.\n"),
 	io__write_string("\t\tAt the moment this optimisation\n"),

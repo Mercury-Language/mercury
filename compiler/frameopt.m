@@ -19,8 +19,8 @@
 	% in order to avoid the construction in as many cases as possible.
 
 :- pred frameopt__main(list(instruction), list(instruction),
-	bimap(label, label), bool).
-:- mode frameopt__main(in, out, out, out) is det.
+	bool, bimap(label, label), bool).
+:- mode frameopt__main(in, out, in, out, out) is det.
 
 	% Find out if succip is ever restored.
 
@@ -62,7 +62,7 @@
 	% the procedure ever restores succip; if not, we delete any speculative
 	% saves we introduced.
 
-frameopt__main(Instrs0, Instrs, TeardownMap, Mod) :-
+frameopt__main(Instrs0, Instrs, FillDelaySlot, TeardownMap, Mod) :-
 	opt_util__gather_comments(Instrs0, Comment1, Instrs1),
 	(
 		Instrs1 = [Instr1prime | Instrs2prime],
@@ -89,7 +89,8 @@ frameopt__main(Instrs0, Instrs, TeardownMap, Mod) :-
 		set__init(FrameSet0),
 		set__init(SuccipSet0),
 		frameopt__repeat_build_sets(Body0, FrameSize, Livemap,
-			FrameSet0, FrameSet, SuccipSet0, SuccipSet),
+			FillDelaySlot, FrameSet0, FrameSet,
+			SuccipSet0, SuccipSet),
 		opt_util__new_label_no(Instrs0, 1000, N0),
 		bimap__init(TeardownMap0),
 		frameopt__dup_teardown_labels(Body0, FrameSize,
@@ -97,7 +98,8 @@ frameopt__main(Instrs0, Instrs, TeardownMap, Mod) :-
 		map__init(InsertMap0),
 		frameopt__doit(Body0, FrameSize, [], no, no,
 			FrameSet, SuccipSet, Livemap, TeardownMap,
-			InsertMap0, InsertMap, ProcLabel, N1, _, Body1),
+			InsertMap0, InsertMap, ProcLabel, FillDelaySlot,
+			N1, _, Body1),
 		frameopt__insert_late_setups(Body1, InsertMap, comment(""),
 			Body2),
 		list__append(Body2, Extra, Body3),
@@ -125,13 +127,13 @@ frameopt__main(Instrs0, Instrs, TeardownMap, Mod) :-
 	% reachable from this new action, we must repeat the basic step until
 	% we get a fixpoint.
 
-:- pred frameopt__repeat_build_sets(list(instruction), int, livemap,
+:- pred frameopt__repeat_build_sets(list(instruction), int, livemap, bool,
 	set(label), set(label), set(label), set(label)).
-:- mode frameopt__repeat_build_sets(in, in, in, in, out, in, out) is det.
+:- mode frameopt__repeat_build_sets(in, in, in, in, in, out, in, out) is det.
 
-frameopt__repeat_build_sets(Instrs0, FrameSize, Livemap,
+frameopt__repeat_build_sets(Instrs0, FrameSize, Livemap, FDS,
 		FrameSet0, FrameSet, SuccipSet0, SuccipSet) :-
-	frameopt__build_sets(Instrs0, FrameSize, Livemap, [], no, no,
+	frameopt__build_sets(Instrs0, FrameSize, Livemap, FDS, [], no, no,
 		FrameSet0, FrameSet1, SuccipSet0, SuccipSet1),
 	(
 		set__equal(FrameSet0, FrameSet1),
@@ -141,7 +143,7 @@ frameopt__repeat_build_sets(Instrs0, FrameSize, Livemap,
 		SuccipSet = SuccipSet1
 	;
 		frameopt__repeat_build_sets(Instrs0, FrameSize, Livemap,
-			FrameSet1, FrameSet, SuccipSet1, SuccipSet)
+			FDS, FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 	).
 
 	% For each label, find out whether succip has been saved and whether
@@ -151,32 +153,34 @@ frameopt__repeat_build_sets(Instrs0, FrameSize, Livemap,
 	% It is CRITICAL that the information gathered by build_sets
 	% be based on exactly the set of optimizations applied by doit.
 
-:- pred frameopt__build_sets(list(instruction), int, livemap, list(instruction),
-	bool, bool, set(label), set(label), set(label), set(label)).
-:- mode frameopt__build_sets(in, in, in, in, in, in, in, out, in, out) is det.
+:- pred frameopt__build_sets(list(instruction), int, livemap, bool,
+	list(instruction), bool, bool, set(label), set(label),
+	set(label), set(label)).
+:- mode frameopt__build_sets(in, in, in, in, in, in, in, in, out, in, out)
+	is det.
 
-frameopt__build_sets([], _, _, _, _, _,
+frameopt__build_sets([], _, _, _, _, _, _,
 		FrameSet, FrameSet, SuccipSet, SuccipSet).
-frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
+frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap, FDS,
 		PrevInstrs, SetupFrame0, SetupSuccip0,
 		FrameSet0, FrameSet, SuccipSet0, SuccipSet) :-
 	(
 		frameopt__detstack_teardown([Instr0 | Instrs0],
 			FrameSize, _Tail, _Teardown, _Goto, After)
 	->
-		frameopt__build_sets(After, FrameSize, Livemap, [], no, no,
+		frameopt__build_sets(After, FrameSize, Livemap, FDS, [], no, no,
 			FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 	;
 		Instr0 = Uinstr0 - _,
 		(
 			Uinstr0 = comment(_),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				PrevInstrs, SetupFrame0, SetupSuccip0,
+				FDS, PrevInstrs, SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
 			Uinstr0 = livevals(_),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				PrevInstrs, SetupFrame0, SetupSuccip0,
+				FDS, PrevInstrs, SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
 			% We assume that blocks always end with an instruction
@@ -185,10 +189,10 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			% invariant.
 			Uinstr0 = block(_, BlockInstrs),
 			frameopt__build_sets(BlockInstrs, FrameSize, Livemap,
-				PrevInstrs, SetupFrame0, SetupSuccip0,
+				FDS, PrevInstrs, SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet1, SuccipSet0, SuccipSet1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[Instr0], no, no,
+				FDS, [Instr0], no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
 			Uinstr0 = assign(Lval, Rval),
@@ -198,7 +202,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
-			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+			frameopt__build_sets(Instrs0, FrameSize, Livemap, FDS,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
@@ -208,7 +212,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__targeting_code_addr(ReturnAddr,
 				yes, SuccipSet0, SuccipSet1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], no, no,
+				FDS, [], no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
 			Uinstr0 = call_closure(_, ReturnAddr, _),
@@ -217,7 +221,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__targeting_code_addr(ReturnAddr,
 				yes, SuccipSet0, SuccipSet1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], no, no,
+				FDS, [], no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
 			Uinstr0 = mkframe(_, _, Target),
@@ -226,7 +230,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__targeting_code_addr(Target,
 				SetupSuccip0, SuccipSet0, SuccipSet1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[Instr0], SetupFrame0, SetupSuccip0,
+				FDS, [Instr0], SetupFrame0, SetupSuccip0,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
 			Uinstr0 = modframe(Target),
@@ -235,7 +239,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__targeting_code_addr(Target,
 				SetupSuccip0, SuccipSet0, SuccipSet1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[Instr0], SetupFrame0, SetupSuccip0,
+				FDS, [Instr0], SetupFrame0, SetupSuccip0,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
 			Uinstr0 = label(Label),
@@ -250,7 +254,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__setup_liveval_use(Label, Livemap,
 				SuccipSet1, SuccipSet2),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], SetupFrame1, SetupSuccip1,
+				FDS, [], SetupFrame1, SetupSuccip1,
 				FrameSet2, FrameSet, SuccipSet2, SuccipSet)
 		;
 			Uinstr0 = goto(Target),
@@ -259,7 +263,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__targeting_code_addr(Target,
 				SetupSuccip0, SuccipSet0, SuccipSet1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], no, no,
+				FDS, [], no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
 			Uinstr0 = computed_goto(_, Labels),
@@ -268,17 +272,18 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__targeting_labels(Labels,
 				SetupSuccip0, SuccipSet0, SuccipSet1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], no, no,
+				FDS, [], no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
 			Uinstr0 = c_code(_),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], SetupFrame0, SetupSuccip0,
+				FDS, [], SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
 			Uinstr0 = if_val(Rval, Target),
 			frameopt__setup_if(Rval, Target, Instrs0, FrameSize,
-				Livemap, PrevInstrs, SetupFrame0, SetupSuccip0,
+				Livemap, FDS, PrevInstrs,
+				SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
 			Uinstr0 = incr_hp(Lval, _, Size),
@@ -288,7 +293,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
-			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+			frameopt__build_sets(Instrs0, FrameSize, Livemap, FDS,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
@@ -297,7 +302,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
-			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+			frameopt__build_sets(Instrs0, FrameSize, Livemap, FDS,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
@@ -306,7 +311,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
-			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+			frameopt__build_sets(Instrs0, FrameSize, Livemap, FDS,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
@@ -321,7 +326,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 				% This can happen when jumpopt copies the
 				% procedure prolog from a tailcall.
 				frameopt__build_sets(Instrs2, FrameSize,
-					Livemap, PrevInstrs,
+					Livemap, FDS, PrevInstrs,
 					SetupFrame0, SetupSuccip0,
 					FrameSet0, FrameSet,
 					SuccipSet0, SuccipSet)
@@ -337,12 +342,12 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 	% taken in generate_if.
 
 :- pred frameopt__setup_if(rval, code_addr, list(instruction), int, livemap,
-	list(instruction), bool, bool, set(label), set(label),
+	bool, list(instruction), bool, bool, set(label), set(label),
 	set(label), set(label)).
-:- mode frameopt__setup_if(in, in, in, in, in, in, in, in, in, out, in, out)
+:- mode frameopt__setup_if(in, in, in, in, in, in, in, in, in, in, out, in, out)
 	is det.
 
-frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
+frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap, FillDelaySlot,
 		PrevInstrs, SetupFrame0, SetupSuccip0,
 		FrameSet0, FrameSet, SuccipSet0, SuccipSet) :-
 	(
@@ -359,7 +364,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 			% stack teardown code before the if, since the stack
 			% frame is not needed in either continuation.
 			frameopt__build_sets(After, FrameSize, Livemap,
-				[], no, no,
+				FillDelaySlot, [], no, no,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
 			SetupFrame0 = no,
@@ -371,7 +376,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 			% soon after the if in both continuations, so it is
 			% better to set up the frame before the if.
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], yes, yes,
+				FillDelaySlot, [], yes, yes,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
 			frameopt__setup_use(Use,
@@ -387,6 +392,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 			% since we now gather only "have" information,
 			% not "need" information.
 			(
+				FillDelaySlot = yes,
 				\+ frameopt__prev_instrs_fill_slot(Rval,
 					PrevInstrs),
 				frameopt__delay_slot(Instrs0, Rval, Label,
@@ -395,6 +401,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 				SetupSuccip1 = SetupSuccip1a,
 				Instrs1 = Instrs1Prime
 			;
+				FillDelaySlot = yes,
 				\+ frameopt__prev_instrs_fill_slot(Rval,
 					PrevInstrs),
 				SetupSuccip1a = no
@@ -410,7 +417,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 			frameopt__targeting_label(Label,
 				SetupSuccip1, SuccipSet0, SuccipSet1),
 			frameopt__build_sets(Instrs1, FrameSize, Livemap,
-				[], SetupFrame1, SetupSuccip1,
+				FillDelaySlot, [], SetupFrame1, SetupSuccip1,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		)
 	;
@@ -426,7 +433,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], SetupFrame1, SetupSuccip1,
+				FillDelaySlot, [], SetupFrame1, SetupSuccip1,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		)
 	;
@@ -442,7 +449,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], SetupFrame1, SetupSuccip1,
+				FillDelaySlot, [], SetupFrame1, SetupSuccip1,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		)
 	;
@@ -455,7 +462,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				[], SetupFrame1, SetupSuccip1,
+				FillDelaySlot, [], SetupFrame1, SetupSuccip1,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		)
 	).
@@ -638,23 +645,24 @@ frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
 
 :- pred frameopt__doit(list(instruction), int, list(instruction), bool, bool,
 	set(label), set(label), livemap, bimap(label, label),
-	insertmap, insertmap, proc_label, int, int, list(instruction)).
+	insertmap, insertmap, proc_label, bool, int, int, list(instruction)).
 % :- mode frameopt__doit(in, in, in, in, in, in, in, in, in, di, uo,
 % 	in, in, out, out) is det.
 :- mode frameopt__doit(in, in, in, in, in, in, in, in, in, in, out,
-	in, in, out, out) is det.
+	in, in, in, out, out) is det.
 
-frameopt__doit([], _, _, _, _, _, _, _, _, InsertMap, InsertMap, _, N, N, []).
+frameopt__doit([], _, _, _, _, _, _, _, _, InsMap, InsMap, _, _, N, N, []).
 frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 		SetupFrame0, SetupSuccip0, FrameSet, SuccipSet, Livemap,
-		TeardownMap, InsertMap0, InsertMap, ProcLabel, N0, N, Instrs) :-
+		TeardownMap, InsertMap0, InsertMap, ProcLabel,
+		FDS, N0, N, Instrs) :-
 	(
 		frameopt__detstack_teardown([Instr0 | Instrs0],
 			FrameSize, Tail, Teardown, Goto, After)
 	->
 		frameopt__doit(After, FrameSize, [], no, no,
 			FrameSet, SuccipSet, Livemap, TeardownMap,
-			InsertMap0, InsertMap, ProcLabel, N0, N, Instrs1),
+			InsertMap0, InsertMap, ProcLabel, FDS, N0, N, Instrs1),
 		( SetupFrame0 = yes ->
 			list__condense([Tail, Teardown, Goto, Instrs1], Instrs)
 		;
@@ -668,7 +676,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				PrevInstrs, SetupFrame0, SetupSuccip0,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		;
 			Uinstr0 = livevals(_),
@@ -676,7 +684,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				PrevInstrs, SetupFrame0, SetupSuccip0,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		;
 			Uinstr0 = block(Temps, BlockInstrs),
@@ -684,11 +692,11 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				PrevInstrs, SetupFrame0, SetupSuccip0,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap1, ProcLabel,
-				N0, N1, Instrs1),
+				FDS, N0, N1, Instrs1),
 			frameopt__doit(Instrs0, FrameSize, [Instr0], no, no,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap1, InsertMap, ProcLabel,
-				N1, N, Instrs2),
+				FDS, N1, N, Instrs2),
 			Instrs = [block(Temps, Instrs1) - Comment | Instrs2]
 		;
 			Uinstr0 = assign(Lval, Rval),
@@ -705,7 +713,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = call(_, _, _, _),
@@ -714,7 +722,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 			frameopt__doit(Instrs0, FrameSize, [], no, no,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = call_closure(_, _, _),
@@ -723,7 +731,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 			frameopt__doit(Instrs0, FrameSize, [], no, no,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = mkframe(_, _, _),
@@ -734,7 +742,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				[Instr0], SetupFrame0, SetupSuccip0,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		;
 			Uinstr0 = label(Label),
@@ -747,7 +755,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				[], SetupFrame1, SetupSuccip1,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = goto(TargetAddr),
@@ -764,7 +772,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 			frameopt__doit(Instrs0, FrameSize, [], no, no,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = computed_goto(Rval, Labels),
@@ -775,7 +783,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 			frameopt__doit(Instrs0, FrameSize, [], no, no,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N1, N, Instrs1),
+				FDS, N1, N, Instrs1),
 			list__condense([[computed_goto(Rval, NewLabels)
 				- Comment], SetupCodes, Instrs1], Instrs)
 		;
@@ -784,7 +792,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				[], SetupFrame0, SetupSuccip0,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		;
 			Uinstr0 = if_val(Rval, CodeAddr),
@@ -792,7 +800,8 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				FrameSize, PrevInstrs,
 				SetupFrame0, SetupSuccip0,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
-				InsertMap0, InsertMap, ProcLabel, N0, N, Instrs)
+				InsertMap0, InsertMap, ProcLabel,
+				FDS, N0, N, Instrs)
 		;
 			Uinstr0 = incr_hp(Lval, _, Size),
 			opt_util__lval_refers_stackvars(Lval, Use1),
@@ -808,7 +817,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = mark_hp(Lval),
@@ -823,7 +832,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = restore_hp(Rval),
@@ -838,7 +847,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap0, InsertMap, ProcLabel,
-				N0, N, Instrs1),
+				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = incr_sp(_),
@@ -854,16 +863,16 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 :- pred frameopt__generate_if(rval, code_addr, string, list(instruction), int,
 	list(instruction), bool, bool, set(label), set(label),
 	livemap, bimap(label, label), insertmap, insertmap,
-	proc_label, int, int, list(instruction)).
+	proc_label, bool, int, int, list(instruction)).
 % :- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in, in, in,
 % 	di, uo, in, in, out, out) is det.
 :- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in, in, in,
-	in, out, in, in, out, out) is det.
+	in, out, in, in, in, out, out) is det.
 
 frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		PrevInstrs, SetupFrame0, SetupSuccip0, FrameSet, SuccipSet,
 		Livemap, TeardownMap, InsertMap0, InsertMap, ProcLabel,
-		N0, N, Instrs) :-
+		FillDelaySlot, N0, N, Instrs) :-
 	Instr0 = if_val(Rval, CodeAddr) - Comment,
 	opt_util__rval_refers_stackvars(Rval, Use),
 	(
@@ -886,7 +895,8 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		),
 		frameopt__doit(After, FrameSize, [], no, no,
 			FrameSet, SuccipSet, Livemap, TeardownMap,
-			InsertMap0, InsertMap, ProcLabel, N0, N, Instrs1),
+			InsertMap0, InsertMap, ProcLabel, FillDelaySlot,
+			N0, N, Instrs1),
 		list__condense([Teardown, [Instr1], Tail, Goto, Instrs1],
 			Instrs)
 	;
@@ -904,7 +914,8 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 			SetupSuccip0, yes, FrameSize, SetupCode),
 		frameopt__doit(Instrs0, FrameSize, [], yes, yes,
 			FrameSet, SuccipSet, Livemap, TeardownMap,
-			InsertMap0, InsertMap, ProcLabel, N0, N, Instrs1),
+			InsertMap0, InsertMap, ProcLabel,
+			FillDelaySlot, N0, N, Instrs1),
 		list__condense([SetupCode, [Instr0], Instrs1], Instrs)
 	;
 		% set up a frame if needed for the condition
@@ -912,6 +923,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 			SetupFrame0, SetupFrame1,
 			SetupSuccip0, SetupSuccip1a),
 		(
+			FillDelaySlot = yes,
 			\+ frameopt__prev_instrs_fill_slot(Rval,
 				PrevInstrs),
 			CodeAddr = label(TargetLabel),
@@ -922,6 +934,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 			SetupSuccip1 = SetupSuccip1a,
 			Instrs1 = Instrs1Prime
 		;
+			FillDelaySlot = yes,
 			\+ frameopt__prev_instrs_fill_slot(Rval,
 				PrevInstrs),
 			SetupSuccip1a = no
@@ -1019,7 +1032,8 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		frameopt__doit(Instrs2, FrameSize,
 			[], SetupFrame2, SetupSuccip2,
 			FrameSet, SuccipSet, Livemap, TeardownMap,
-			InsertMap1, InsertMap, ProcLabel, N1, N, Instrs3),
+			InsertMap1, InsertMap, ProcLabel,
+			FillDelaySlot, N1, N, Instrs3),
 		list__condense([StartCode, IfCode, PostSetupCode, Instrs3],
 			Instrs)
 	).

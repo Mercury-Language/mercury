@@ -196,7 +196,8 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 		;
 			[]
 		),
-		{ frameopt__main(Instrs0, Instrs1, TeardownMap, _) }
+		globals__io_lookup_bool_option(optimize_delay_slot, DelaySlot),
+		{ frameopt__main(Instrs0, Instrs1, DelaySlot, TeardownMap, _) }
 	;
 		{ Instrs1 = Instrs0 },
 		{ bimap__init(TeardownMap) }
