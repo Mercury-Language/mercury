@@ -9,7 +9,6 @@ include ../Mmake.common
 PROGS=	\
 	ack \
 	append \
-	append2 \
 	arit_exp \
 	associative \
 	dds1_2 \
@@ -61,7 +60,6 @@ PROGS=	\
 	select \
 	subset \
 	sum \
-	triv_test \
 	vangelder
 
 DEPENDS = $(PROGS:%=%.depend)

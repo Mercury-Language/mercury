@@ -78,18 +78,14 @@
 :- implementation.
 
 :- import_module term_pass1, term_pass2, term_errors.
-:- import_module term_constr_pass1.
 :- import_module inst_match, passes_aux, options, globals.
 :- import_module hlds_data, hlds_goal, dependency_graph.
 :- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
 :- import_module mercury_to_mercury, varset, type_util, special_pred.
 :- import_module modules.
-:- import_module size_varset.
 
-:- import_module list, map, bimap, int, char, string, relation.
+:- import_module map, int, char, string, relation.
 :- import_module require, bag, set, term.
-:- import_module lp_rational, rat. 
-:- import_module polymorphism.
 
 %----------------------------------------------------------------------------%
 
@@ -111,10 +107,7 @@ termination__pass(Module0, Module) -->
 	{ module_info_ensure_dependency_info(Module1, Module2) },
 	{ module_info_dependency_info(Module2, DepInfo) },
 	{ hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs) },
-
-	{ size_varset__init(SizeVars) },
-	termination__process_all_sccs(SCCs, Module2, SizeVars, PassInfo, 
-								Module, _),
+	termination__process_all_sccs(SCCs, Module2, PassInfo, Module),
 
 	globals__io_lookup_bool_option(make_optimization_interface,
 		MakeOptInt),
@@ -142,58 +135,23 @@ set_functor_info(size_data_elems, Module, use_map(WeightMap)) :-
 %----------------------------------------------------------------------------%
 
 :- pred termination__process_all_sccs(list(list(pred_proc_id)), module_info,
-	size_varset, pass_info, module_info, size_varset, io__state, io__state).
-:- mode termination__process_all_sccs(in, in, in, in, out, out, di, uo) is det.
+	pass_info, module_info, io__state, io__state).
+:- mode termination__process_all_sccs(in, in, in, out, di, uo) is det.
 
-termination__process_all_sccs([], Module, SizeVars, _, Module, SizeVars) --> [].
-termination__process_all_sccs([SCC | SCCs], Module0, SizeVars0, PassInfo, 
-						Module, SizeVars) -->
-	termination__process_scc(SCC, Module0, SizeVars0, PassInfo, Module1,
-								SizeVars1),
-	termination__process_all_sccs(SCCs, Module1, SizeVars1, PassInfo, 
-							Module, SizeVars).
+termination__process_all_sccs([], Module, _, Module) --> [].
+termination__process_all_sccs([SCC | SCCs], Module0, PassInfo, Module) -->
+	termination__process_scc(SCC, Module0, PassInfo, Module1),
+	termination__process_all_sccs(SCCs, Module1, PassInfo, Module).
 
 	% For each SCC, we first find out the relationships among
 	% the sizes of the arguments of the procedures of the SCC,
 	% and then attempt to prove termination of the procedures.
 
-:- pred termination__process_scc(list(pred_proc_id), module_info, size_varset, 
-		pass_info, module_info, size_varset, io__state, io__state).
-:- mode termination__process_scc(in, in, in, in, out, out, di, uo) is det.
+:- pred termination__process_scc(list(pred_proc_id), module_info, pass_info,
+	module_info, io__state, io__state).
+:- mode termination__process_scc(in, in, in, out, di, uo) is det.
 
-termination__process_scc(SCC, Module0, SizeVars0, PassInfo, Module, SizeVars)-->
-	globals__io_lookup_bool_option(vanessa_termination, Vanessa),
-	( { Vanessa = yes } ->
-		termination__process_scc_vanessa(SCC, Module0, SizeVars0,
-					PassInfo, Module, SizeVars)
-	;
-		termination__process_scc_chris(SCC, Module0, PassInfo, Module),
-		{ SizeVars = SizeVars0 }
-	).
-
-:- pred termination__process_scc_vanessa(list(pred_proc_id), module_info,
-	size_varset, pass_info, module_info, size_varset, io__state, io__state).
-:- mode termination__process_scc_vanessa(in, in, in, in, out, out, di, uo) 
-									is det.
-
-termination__process_scc_vanessa(SCC, Module0, SizeVars0, PassInfo, Module,
-							SizeVars) -->
-	globals__io_lookup_int_option(benoy_widening, Benoy),
-	( { Benoy > 0 } ->
-		{ WideningInfo = widen_after_fixed_iterations(Benoy) }
-	;
-		{ WideningInfo = remove_parallel_constraints }
-	),
-
-	find_arg_sizes_in_scc(SCC, Module0, SizeVars0, PassInfo, WideningInfo, 
-					Module, SizeVars, _).
-	%#####?
-
-:- pred termination__process_scc_chris(list(pred_proc_id), module_info,
-	pass_info, module_info, io__state, io__state).
-:- mode termination__process_scc_chris(in, in, in, out, di, uo) is det.
-
-termination__process_scc_chris(SCC, Module0, PassInfo, Module) -->
+termination__process_scc(SCC, Module0, PassInfo, Module) -->
 	{ IsArgSizeKnown = lambda([PPId::in] is semidet, (
 		PPId = proc(PredId, ProcId),
 		module_info_pred_proc_info(Module0, PredId, ProcId,
@@ -423,14 +381,12 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	pred_info_procedures(PredInfo0, ProcTable0),
 	pred_info_get_markers(PredInfo0, Markers),
 	map__keys(ProcTable0, ProcIds),
-	globals__io_lookup_bool_option(vanessa_termination, Vanessa, State1,
-								State2),
 	( 
 		% It is possible for compiler generated/mercury builtin
 		% predicates to be imported or locally defined, so they
 		% must be covered here, separately.
 		set_compiler_gen_terminates(PredInfo0, ProcIds, PredId,
-				Module0, ProcTable0, Vanessa, ProcTable1)
+			Module0, ProcTable0, ProcTable1)
 	->
 		ProcTable2 = ProcTable1
 	;
@@ -475,20 +431,10 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 			change_procs_termination_info(ProcIds, no,
 				TerminationInfo, ProcTable0, ProcTable1)
 		),
-		%%### Check that this is OK.
-		( (Vanessa = yes ) ->
-			bimap__init(Map), % Should have a maybe(bimap) in
-					  % arg_size_info instead of doing
-					  % this?	
-			set__init(Zeros),
-			ArgSizeInfo = constraints([], Zeros, Map) 
-		;
-			ArgSizeInfo = infinite([Context - ArgSizeError])
-		),
 		ArgSizeError = imported_pred,
+		ArgSizeInfo = infinite([Context - ArgSizeError]),
 		change_procs_arg_size_info(ProcIds, no, ArgSizeInfo,
 			ProcTable1, ProcTable2)
-		
 	;
 %		( ImportStatus = abstract_imported
 %		; ImportStatus = abstract_exported
@@ -508,7 +454,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(Module0, PredTable, Module1),
-	check_preds(PredIds, Module1, Module, State2, State).
+	check_preds(PredIds, Module1, Module, State1, State).
 
 %----------------------------------------------------------------------------%
 
@@ -521,16 +467,16 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 % which might not terminate in the case of user-defined equality predicates.
 
 :- pred set_compiler_gen_terminates(pred_info, list(proc_id), pred_id,
-	module_info, proc_table, bool, proc_table).
-:- mode set_compiler_gen_terminates(in, in, in, in, in, in, out) is semidet.
+	module_info, proc_table, proc_table).
+:- mode set_compiler_gen_terminates(in, in, in, in, in, out) is semidet.
 
 set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module,
-		ProcTable0, Vanessa_termination, ProcTable) :-
+		ProcTable0, ProcTable) :-
 	(
 		code_util__predinfo_is_builtin(PredInfo)
 	->
 		set_builtin_terminates(ProcIds, PredId, PredInfo, Module,
-			ProcTable0, Vanessa_termination, ProcTable)
+			ProcTable0, ProcTable)
 	;
 		pred_info_name(PredInfo, Name),
 		pred_info_arity(PredInfo, Arity),
@@ -546,35 +492,29 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module,
 			special_pred_name_arity(SpecialPredId, _, Name, Arity)
 		)
 	->
-		set_generated_terminates(ProcIds, SpecialPredId, Module,
-			ProcTable0, Vanessa_termination, ProcTable)
+		set_generated_terminates(ProcIds, SpecialPredId,
+			ProcTable0, ProcTable)
 	;
 		fail
 	).
 
-:- pred set_generated_terminates(list(proc_id), special_pred_id, module_info,
-	proc_table, bool, proc_table).
-:- mode set_generated_terminates(in, in, in, in, in, out) is det.
+:- pred set_generated_terminates(list(proc_id), special_pred_id,
+	proc_table, proc_table).
+:- mode set_generated_terminates(in, in, in, out) is det.
 
-set_generated_terminates([], _, _, ProcTable, _, ProcTable).
-set_generated_terminates([ProcId | ProcIds], SpecialPredId, Module, 
-		ProcTable0, Vanessa_termination, ProcTable) :-
+set_generated_terminates([], _, ProcTable, ProcTable).
+set_generated_terminates([ProcId | ProcIds], SpecialPredId,
+		ProcTable0, ProcTable) :-
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 	proc_info_headvars(ProcInfo0, HeadVars),
-	( (Vanessa_termination = yes) ->
-		proc_info_vartypes(ProcInfo0, VarTypes),
-		special_pred_id_to_termination_v(SpecialPredId, HeadVars,
-					Module, VarTypes, ArgSize, Termination)
-	;
-		special_pred_id_to_termination(SpecialPredId, HeadVars,
-							ArgSize, Termination)
-	),
+	special_pred_id_to_termination(SpecialPredId, HeadVars,
+		ArgSize, Termination),
 	proc_info_set_maybe_arg_size_info(ProcInfo0, yes(ArgSize), ProcInfo1),
 	proc_info_set_maybe_termination_info(ProcInfo1, yes(Termination),
 		ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
-	set_generated_terminates(ProcIds, SpecialPredId, Module,
-		ProcTable1, Vanessa_termination, ProcTable).
+	set_generated_terminates(ProcIds, SpecialPredId,
+		ProcTable1, ProcTable).
 
 :- pred special_pred_id_to_termination(special_pred_id::in, 
 	list(var)::in, arg_size_info::out, termination_info::out) is det.
@@ -592,207 +532,35 @@ special_pred_id_to_termination(index, HeadVars, ArgSize, Termination) :-
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop.
 
-:- pred special_pred_id_to_termination_v(special_pred_id::in, 
-	list(var)::in, module_info::in, map(var,type)::in, arg_size_info::out, 
-					termination_info::out) is det.
-
-
-special_pred_id_to_termination_v(compare, HeadVars, Module, VarTypes, ArgSize, 
-							Termination) :-
-	bimap__init(VarToSizeVarMap0),
-	size_varset__init(SizeVarset0),
-	set__init(Zeros0),
-
-	list__length(HeadVars, Length),
-	NumToDrop is Length - 3,
-	( list__drop(NumToDrop, HeadVars, ZeroSizeHeadVars) ->
-		rename_vars(ZeroSizeHeadVars, ZeroSizeSizeVars, Module,VarTypes,
-				constr_info(VarToSizeVarMap0, SizeVarset0, 
-								Zeros0, []), 
-				constr_info(VarToSizeVarMap, _SizeVarset,
-								Zeros, _)),
-				% Last arg will just be non-negativity equations
-				% for the vars we are about to set to zero.
-				%#####Do we ever need the SizeVarset output?
-				% The ZeroSizeSizeVars will only be those with
-				% not-always-zero type.  Are there ever any?
-		list__map(make_zero_eqn, ZeroSizeSizeVars, ZeroEqns),
-		canonical_form(ZeroEqns, CanonicalZeroEqns),
-		list__sort(compare_eqns, CanonicalZeroEqns, SortedEqns),
-		ArgSize = constraints(SortedEqns, Zeros, VarToSizeVarMap),
-		Termination = cannot_loop
-	XXX No constraints.
-	;
-		error("Less than three arguments to compare")
-	).
-
-special_pred_id_to_termination_v(unify, HeadVars, Module, VarTypes, ArgSize, 
-								Termination) :-
-	bimap__init(VarToSizeVarMap0),
-	size_varset__init(SizeVarset0),
-	set__init(Zeros0), 
-
-	list__length(HeadVars, Length),
-	NumToDrop is Length - 2,
-	( list__drop(NumToDrop, HeadVars, TwoEqualHeadVars) ->
-		rename_vars(TwoEqualHeadVars, TwoEqualSizeVars, Module,VarTypes,
-				constr_info(VarToSizeVarMap0, SizeVarset0, 
-								Zeros0, []), 
-				constr_info(VarToSizeVarMap, _SizeVarset, 
-							Zeros, NonNegEqns)),
-		( TwoEqualSizeVars = [] ->
-			SortedEqns = []
-		;
-			make_equal_eqn(TwoEqualSizeVars, EqualEqn),
-			Eqns = [EqualEqn | NonNegEqns],
-			canonical_form(Eqns, CanonicalEqns),
-			list__sort(compare_eqns, CanonicalEqns, SortedEqns)
-		),
-		ArgSize = constraints(SortedEqns, Zeros, VarToSizeVarMap),
-		Termination = cannot_loop
-	;
-		error("Less than two arguments to unify")	
-	).
-
-special_pred_id_to_termination_v(index, HeadVars, Module, VarTypes, ArgSize, 
-								Termination) :-
-	bimap__init(VarToSizeVarMap0),
-	size_varset__init(SizeVarset0),
-	set__init(Zeros0),
-
-	list__length(HeadVars, Length),
-	NumToDrop is Length - 2,
-	( list__drop(NumToDrop, HeadVars, ZeroSizeHeadVars) ->
-		rename_vars(ZeroSizeHeadVars, ZeroSizeSizeVars, Module,VarTypes,
-				constr_info(VarToSizeVarMap0, SizeVarset0, 
-								Zeros0, []), 
-				constr_info(VarToSizeVarMap, _SizeVarset,
-								Zeros, _)),
-				% Last arg will just be non-negativity equations
-				% for the vars we are about to set to zero.
-		list__map(make_zero_eqn, ZeroSizeSizeVars, ZeroEqns),
-
-		NO Constraints.
-		%### These two are probably unnecessary, since there isn't
-		% going to be a second iteration on this.
-		canonical_form(ZeroEqns, CanonicalZeroEqns),
-		list__sort(compare_eqns, CanonicalZeroEqns, SortedEqns),
-
-		ArgSize = constraints(SortedEqns, Zeros, VarToSizeVarMap),
-		Termination = cannot_loop
-	;
-		error("Less than two arguments to index")
-	).
-	
-:- pred make_zero_eqn(size_var, equation).
-:- mode make_zero_eqn(in, out) is det.
-
-make_zero_eqn(SizeVar, eqn([SizeVar-one], (=), zero)).
-	
-:- pred make_equal_eqn(list(size_var), equation).
-:- mode make_equal_eqn(in, out) is det.
-
-make_equal_eqn([Var1,Var2], eqn([Var1-one, Var2-rat(-1,1)], (=), zero)).
-make_equal_eqn([], _) :-
-	error("Wrong number of variables passed to make_equal_eqn").
-make_equal_eqn([_], _) :-
-	error("Wrong number of variables passed to make_equal_eqn").
-make_equal_eqn([_,_,_|_], _) :-
-	error("Wrong number of variables passed to make_equal_eqn").
-
 % The list of proc_ids must refer to builtin predicates.  This predicate
 % sets the termination information of builtin predicates.
 
 :- pred set_builtin_terminates(list(proc_id), pred_id, pred_info, module_info, 
-	proc_table, bool, proc_table).
-:- mode set_builtin_terminates(in, in, in, in, in, in, out) is det.
+	proc_table, proc_table).
+:- mode set_builtin_terminates(in, in, in, in, in, out) is det.
 
-set_builtin_terminates([], _, _, _, ProcTable, _, ProcTable).
+set_builtin_terminates([], _, _, _, ProcTable, ProcTable).
 set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
-		ProcTable0, Vanessa_termination, ProcTable) :-
+		ProcTable0, ProcTable) :-
 	map__lookup(ProcTable0, ProcId, ProcInfo0), 
-	( (Vanessa_termination = yes) ->
+	( all_args_input_or_zero_size(Module, PredInfo, ProcInfo0) ->
+		% The size of the output arguments will all be 0,
+		% independent of the size of the input variables.
+		% UsedArgs should be set to yes([no, no, ...]).
 		proc_info_headvars(ProcInfo0, HeadVars),
-		proc_info_vartypes(ProcInfo0, VarTypes),
-
-
-		bimap__init(VarToSizeVarMap0),
-		size_varset__init(SizeVarset0),
-		set__init(Zeros0),
-		Constraint_info0 = constr_info(VarToSizeVarMap0, SizeVarset0,
-							Zeros0, []),
-
-		%### This is a work around while some preds have vars with
-		% no corresponding type in the VarTypes map.
-		pred_info_module(PredInfo, PredModule),
-		pred_info_name(PredInfo, PredName),
-		pred_info_arity(PredInfo, PredArity),
-		( polymorphism__no_type_info_builtin(PredModule, PredName, 
-								PredArity) ->
-			process_special_builtin(PredName, HeadVars,
-				Constraint_info0, constr_info(VarToSizeVarMap,
-				_SizeVarset, Zeros, EqualEqns)),
-			canonical_form(EqualEqns, CanonicalEqns)
-		;
-			
-			rename_vars(HeadVars, ZeroSizeSizeVars, Module, 
-				VarTypes, Constraint_info0, 
-				constr_info(VarToSizeVarMap, _SizeVarset, 
-								Zeros, _)),
-				% Last arg will just be non-negativity equations
-				% for the vars we are about to set to zero.
-			list__map(make_zero_eqn, ZeroSizeSizeVars, ZeroEqns),
-
-			%### These are probably unnecessary, since there isn't
-			% going to be a second iteration on this.
-			canonical_form(ZeroEqns, CanonicalEqns)
-		),
-		list__sort(compare_eqns, CanonicalEqns, SortedEqns),
-		ArgSizeInfo = yes(constraints(SortedEqns,Zeros,VarToSizeVarMap))
+		term_util__make_bool_list(HeadVars, [], UsedArgs),
+		ArgSizeInfo = yes(finite(0, UsedArgs))
 	;
-		( all_args_input_or_zero_size(Module, PredInfo, ProcInfo0) ->
-			% The size of the output arguments will all be 0,
-			% independent of the size of the input variables.
-			% UsedArgs should be set to yes([no, no, ...]).
-			proc_info_headvars(ProcInfo0, HeadVars),
-			term_util__make_bool_list(HeadVars, [], UsedArgs),
-			ArgSizeInfo = yes(finite(0, UsedArgs))
-		;
-			pred_info_context(PredInfo, Context),
-			Error = is_builtin(PredId),
-			ArgSizeInfo = yes(infinite([Context - Error]))
-		)
+		pred_info_context(PredInfo, Context),
+		Error = is_builtin(PredId),
+		ArgSizeInfo = yes(infinite([Context - Error]))
 	),
 	proc_info_set_maybe_arg_size_info(ProcInfo0, ArgSizeInfo, ProcInfo1),
 	proc_info_set_maybe_termination_info(ProcInfo1, yes(cannot_loop),
 		ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
 	set_builtin_terminates(ProcIds, PredId, PredInfo, Module,
-		ProcTable1, Vanessa_termination, ProcTable).
-
-
-:- pred process_special_builtin(string, list(var), constraint_info,
-							constraint_info).
-:- mode process_special_builtin(in, in, in, out) is det.
-process_special_builtin(PredName, HeadVars,
-				Constraint_info0, constr_info(VarToSizeVarMap,
-				SizeVarset, Zeros, AllEqns)) :-
-	%### Check the layout of this if_then_else.
-	( (HeadVars = [HVar1, HVar2], (PredName = "unsafe_type_cast" ; 
-					PredName = "unsafe_promise_unique")) ->
-		rename_var(HVar1, SizeVar1, Constraint_info0, Constraint_info1),
-		rename_var(HVar2, SizeVar2, Constraint_info1, Constraint_info2),
-		Constraint_info2 = constr_info(VarToSizeVarMap, SizeVarset, 
-								Zeros, Eqns),
-		EqualEqn = eqn([SizeVar1-one, SizeVar2-rat(-1,1)], (=), zero),
-		AllEqns = [EqualEqn | Eqns ]
-	;
-		error("Unrecognised predicate passed to 
-						process_special_builtin")
-	).
-	
-
-
+		ProcTable1, ProcTable).
 
 :- pred all_args_input_or_zero_size(module_info, pred_info, proc_info).
 :- mode all_args_input_or_zero_size(in, in, in) is semidet.
@@ -1009,11 +777,6 @@ termination__write_maybe_arg_size_info(MaybeArgSizeInfo, Verbose) -->
 		io__write_string(", "),
 		termination__write_used_args(UsedArgs),
 		io__write_string(")")
-	;
-		{ MaybeArgSizeInfo = yes(constraints(Constraints, _, _)) },
-		%#### Should the written constraints include a write-out of
-		% the mapping between vars?
-		termination__write_constraints(Constraints)
 	).
 
 :- pred termination__write_used_args(list(bool)::in,
@@ -1035,11 +798,6 @@ termination__write_used_args_2([ UsedArg | UsedArgs ]) -->
 	io__write_string(", "),
 	io__write(UsedArg),
 	termination__write_used_args_2(UsedArgs).
-
-:- pred termination__write_constraints(equations::in, io__state::di, 
-					io__state::uo) is det.
-termination__write_constraints(Constraints) -->
-	lp_rational__write_equations(Constraints).
 
 termination__write_maybe_termination_info(MaybeTerminationInfo, Verbose) -->
 	( 	

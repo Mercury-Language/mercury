@@ -6,12 +6,6 @@
 
 # Mmake - this is Mmake file for building the Mercury compiler 
 
-MCFLAGS-term_traversal2 = 
-MCFLAGS-term_constr_pass1 = 
-MCFLAGS-termination = 
-
-EXTRA_C2INITFLAGS = -i
-
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
