@@ -2512,13 +2512,12 @@ There are several uses for @code{pragma} declarations:
 @menu
 * C interface::                 The C interface allows C code to be called
                                 from Mercury code, and vice versa.
-* Inlining::                    Calls to Mercury predicates can be inlined
-                                by the compiler to improve efficiency.
-* Preventing Inlining::         Inlining can be avoided when undesirable.
+* Inlining::                    Pragmas can be used to suggest or prevent
+                                procedure inlining.
 @c * Tabling::                     Mercury predicates can be evaluated
 @c                                 using a three different forms of tabled
 @c                                 evaluation.
-
+@c
 * Obsolescence::		Library developers can declare old versions
 				of predicates or functions to be obsolete.
 * Source file name::		The @samp{source_file} pragma and
@@ -2774,11 +2773,8 @@ A declaration of the form
 is a hint to the compiler that all calls to the predicate(s) or function(s)
 with name @var{Name} and arity @var{Arity} should be inlined.
 
-The current Mercury implementation is smart enough to inline many
+The current Mercury implementation is smart enough to inline
 simple predicates even without this hint.
-
-@node Preventing Inlining
-@section Preventing Inlining
 
 A declaration of the form
 
