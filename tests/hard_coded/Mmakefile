@@ -154,6 +154,8 @@ ORDINARY_PROGS=	\
 	shift_test \
 	solve_quadratic \
 	solver_construction_init_test \
+	solver_disj_inits \
+	solver_ite_inits \
 	space \
 	stable_sort \
 	string_alignment \

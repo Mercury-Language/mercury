@@ -1110,17 +1110,23 @@ modecheck_goal_expr(par_conj(List0), GoalInfo0, par_conj(List), !ModeInfo,
 	instmap__unify(NonLocals, InstMapNonlocalList, !ModeInfo),
 	mode_checkpoint(exit, "par_conj", !ModeInfo, !IO).
 
-modecheck_goal_expr(disj(List0), GoalInfo0, Goal, !ModeInfo, !IO) :-
+modecheck_goal_expr(disj(Disjs0), GoalInfo0, Goal, !ModeInfo, !IO) :-
 	mode_checkpoint(enter, "disj", !ModeInfo, !IO),
-	( List0 = [] ->	% for efficiency, optimize common case
-		Goal = disj(List0),
+	( Disjs0 = [] ->	% for efficiency, optimize common case
+		Goal = disj(Disjs0),
 		instmap__init_unreachable(InstMap),
 		mode_info_set_instmap(InstMap, !ModeInfo)
 	;
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		modecheck_disj_list(List0, List, InstMapList, !ModeInfo, !IO),
+		modecheck_disj_list(Disjs0, Disjs1, InstMapList0,
+			!ModeInfo, !IO),
+		mode_info_get_var_types(!.ModeInfo, VarTypes),
+		handle_solver_vars_in_disjs(set__to_sorted_list(NonLocals),
+			VarTypes, Disjs1, Disjs2, InstMapList0, InstMapList,
+			!ModeInfo),
+		Disjs = flatten_disjs(Disjs2),
 		instmap__merge(NonLocals, InstMapList, disj, !ModeInfo),
-		disj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo)
+		disj_list_to_goal(Disjs, GoalInfo0, Goal - _GoalInfo)
 	),
 	mode_checkpoint(exit, "disj", !ModeInfo, !IO).
 
@@ -1141,18 +1147,23 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
 	mode_info_remove_live_vars(ThenVars, !ModeInfo),
 	mode_info_unlock_vars(if_then_else, NonLocals, !ModeInfo),
 	( instmap__is_reachable(InstMapCond) ->
-		modecheck_goal(Then0, Then, !ModeInfo, !IO),
-		mode_info_get_instmap(!.ModeInfo, InstMapThen)
+		modecheck_goal(Then0, Then1, !ModeInfo, !IO),
+		mode_info_get_instmap(!.ModeInfo, InstMapThen1)
 	;
 		% We should not mode-analyse the goal, since it is unreachable.
 		% Instead we optimize the goal away, so that later passes
 		% won't complain about it not having mode information.
-		true_goal(Then),
-		InstMapThen = InstMapCond
+		true_goal(Then1),
+		InstMapThen1 = InstMapCond
 	),
 	mode_info_set_instmap(InstMap0, !ModeInfo),
-	modecheck_goal(Else0, Else, !ModeInfo, !IO),
-	mode_info_get_instmap(!.ModeInfo, InstMapElse),
+	modecheck_goal(Else0, Else1, !ModeInfo, !IO),
+	mode_info_get_instmap(!.ModeInfo, InstMapElse1),
+	mode_info_get_var_types(!.ModeInfo, VarTypes),
+	handle_solver_vars_in_ite(set__to_sorted_list(NonLocals), VarTypes,
+		Then1, Then, Else1, Else,
+		InstMapThen1, InstMapThen, InstMapElse1, InstMapElse,
+		!ModeInfo),
 	mode_info_set_instmap(InstMap0, !ModeInfo),
 	instmap__merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
 		!ModeInfo),
@@ -1445,6 +1456,164 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
 	Goal  = Expr - GoalInfo,
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	handle_extra_goals_contexts(Goals0, Context, Goals).
+
+%-----------------------------------------------------------------------------%
+
+	% Ensure that any non-local solver var that is initialised in
+	% one disjunct is initialised in all disjuncts.
+	%
+:- pred handle_solver_vars_in_disjs(list(prog_var)::in,
+	map(prog_var, (type))::in, list(hlds_goal)::in, list(hlds_goal)::out,
+	list(instmap)::in, list(instmap)::out, mode_info::in, mode_info::out)
+	is det.
+
+handle_solver_vars_in_disjs(NonLocals, VarTypes, Disjs0, Disjs,
+		InstMaps0, InstMaps, !ModeInfo) :-
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+	EnsureInitialised =
+		solver_vars_that_must_be_initialised(NonLocals, VarTypes,
+		ModuleInfo, InstMaps0),
+	add_necessary_disj_init_calls(Disjs0, Disjs, InstMaps0, InstMaps,
+		EnsureInitialised, !ModeInfo).
+
+
+:- pred handle_solver_vars_in_ite(list(prog_var)::in,
+	map(prog_var, (type))::in,
+	hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
+	instmap::in, instmap::out, instmap::in, instmap::out, mode_info::in,
+	mode_info::out) is det.
+
+handle_solver_vars_in_ite(NonLocals, VarTypes,
+		Then0, Then, Else0, Else,
+		ThenInstMap0, ThenInstMap, ElseInstMap0, ElseInstMap,
+		!ModeInfo) :-
+
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+	EnsureInitialised =
+		solver_vars_that_must_be_initialised(NonLocals, VarTypes,
+		ModuleInfo, [ThenInstMap0, ElseInstMap0]),
+
+	ThenVarsToInit =
+		solver_vars_to_init(EnsureInitialised, ModuleInfo,
+		ThenInstMap0),
+	construct_initialisation_calls(ThenVarsToInit, ThenInitCalls,
+		!ModeInfo),
+	Then = append_init_calls_to_goal(ThenInitCalls, Then0),
+	ThenInstMap = set_vars_to_inst_any(ThenVarsToInit, ThenInstMap0),
+
+	ElseVarsToInit =
+		solver_vars_to_init(EnsureInitialised, ModuleInfo,
+		ElseInstMap0),
+	construct_initialisation_calls(ElseVarsToInit, ElseInitCalls,
+		!ModeInfo),
+	Else = append_init_calls_to_goal(ElseInitCalls, Else0),
+	ElseInstMap = set_vars_to_inst_any(ElseVarsToInit, ElseInstMap0).
+
+
+:- func solver_vars_that_must_be_initialised(list(prog_var),
+	map(prog_var, (type)), module_info, list(instmap)) = list(prog_var).
+
+solver_vars_that_must_be_initialised([], _VarTypes, _ModuleInfo, _InstMaps) =
+	[].
+
+solver_vars_that_must_be_initialised([Var | Vars], VarTypes, ModuleInfo,
+		InstMaps) =
+	( if
+		VarType = VarTypes ^ elem(Var),
+		type_util__type_is_solver_type(ModuleInfo, VarType),
+		list__member(InstMap, InstMaps),
+		instmap__lookup_var(InstMap, Var, Inst),
+		not inst_match__inst_is_free(ModuleInfo, Inst)
+	  then
+	  	[ Var | solver_vars_that_must_be_initialised(Vars, VarTypes,
+			ModuleInfo, InstMaps) ]
+	  else
+	  	solver_vars_that_must_be_initialised(Vars, VarTypes,
+			ModuleInfo, InstMaps)
+	).
+
+
+:- pred add_necessary_disj_init_calls(list(hlds_goal)::in,
+	list(hlds_goal)::out, list(instmap)::in, list(instmap)::out,
+	list(prog_var)::in, mode_info::in, mode_info::out) is det.
+
+add_necessary_disj_init_calls([], [], [], [], _EnsureInitialised, !ModeInfo).
+
+add_necessary_disj_init_calls([], _, [_ | _], _, _, _, _) :-
+	error("modes.add_necessary_init_calls: mismatched lists").
+
+add_necessary_disj_init_calls([_ | _], _, [], _, _, _, _) :-
+	error("modes.add_necessary_init_calls: mismatched lists").
+
+add_necessary_disj_init_calls([Goal0 | Goals0], [Goal | Goals],
+		[InstMap0 | InstMaps0], [InstMap | InstMaps],
+		EnsureInitialised, !ModeInfo) :-
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+	VarsToInit =
+		solver_vars_to_init(EnsureInitialised, ModuleInfo, InstMap0),
+	construct_initialisation_calls(VarsToInit, InitCalls, !ModeInfo),
+	Goal = append_init_calls_to_goal(InitCalls, Goal0),
+	InstMap = set_vars_to_inst_any(VarsToInit, InstMap0),
+	add_necessary_disj_init_calls(Goals0, Goals, InstMaps0, InstMaps,
+		EnsureInitialised, !ModeInfo).
+
+
+:- func append_init_calls_to_goal(list(hlds_goal), hlds_goal) = hlds_goal.
+
+append_init_calls_to_goal(InitCalls, Goal0) = Goal :-
+	Goal0 = GoalExpr - GoalInfo,
+	(
+		GoalExpr = disj(Disjs0)
+	->
+		Disjs = list__map(append_init_calls_to_goal(InitCalls),
+				Disjs0),
+		Goal  = disj(Disjs) - GoalInfo
+	;
+		goal_to_conj_list(Goal0, Conjs),
+		conj_list_to_goal(Conjs ++ InitCalls, GoalInfo, Goal)
+	).
+
+
+:- func flatten_disjs(list(hlds_goal)) = list(hlds_goal).
+
+flatten_disjs(Disjs) = list__foldr(flatten_disj, Disjs, []).
+
+
+:- func flatten_disj(hlds_goal, list(hlds_goal)) = list(hlds_goal).
+
+flatten_disj(Disj, Disjs0) = Disjs :-
+	(
+		Disj = disj(Disjs1) - _GoalInfo
+	->
+		Disjs = list__foldr(flatten_disj, Disjs1, Disjs0)
+	;
+		Disjs = [Disj | Disjs0]
+	).
+
+
+:- func solver_vars_to_init(list(prog_var), module_info, instmap) =
+	list(prog_var).
+
+solver_vars_to_init([], _ModuleInfo, _InstMap) = [].
+
+solver_vars_to_init([Var | Vars], ModuleInfo, InstMap) =
+	( if
+		instmap__lookup_var(InstMap, Var, Inst),
+		inst_match__inst_is_free(ModuleInfo, Inst)
+	  then
+	  	[Var | solver_vars_to_init(Vars, ModuleInfo, InstMap)]
+	  else
+	  	solver_vars_to_init(Vars, ModuleInfo, InstMap)
+	).
+
+
+:- func set_vars_to_inst_any(list(prog_var), instmap) = instmap.
+
+set_vars_to_inst_any([], InstMap) = InstMap.
+
+set_vars_to_inst_any([Var | Vars], InstMap0) = InstMap :-
+	instmap__set(InstMap0, Var, any_inst, InstMap1),
+	InstMap = set_vars_to_inst_any(Vars, InstMap1).
 
 %-----------------------------------------------------------------------------%
 
@@ -2190,20 +2359,14 @@ redelay_goals([DelayedGoal | DelayedGoals], DelayInfo0, DelayInfo) :-
 	io::di, io::uo) is det.
 
 modecheck_disj_list([], [], [], !ModeInfo, !IO).
-modecheck_disj_list([Goal0 | Goals0], Goals, [InstMap | InstMaps],
+modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps],
 		!ModeInfo, !IO) :-
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	modecheck_goal(Goal0, Goal, !ModeInfo, !IO),
 	mode_info_get_instmap(!.ModeInfo, InstMap),
 	mode_info_set_instmap(InstMap0, !ModeInfo),
-	modecheck_disj_list(Goals0, Goals1, InstMaps, !ModeInfo, !IO),
-	%
-	% If Goal is a nested disjunction,
-	% then merge it with the outer disjunction.
-	% If Goal is `fail', this will delete it.
-	%
-	goal_to_disj_list(Goal, DisjList),
-	list__append(DisjList, Goals1, Goals).
+	modecheck_disj_list(Goals0, Goals, InstMaps, !ModeInfo, !IO).
+
 
 :- pred modecheck_case_list(list(case)::in, prog_var::in, list(case)::out,
 	list(instmap)::out, mode_info::in, mode_info::out,

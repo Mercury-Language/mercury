@@ -458,7 +458,6 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO) :-
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
 	mode_info_get_how_to_check(!.ModeInfo, HowToCheckGoal),
-	mode_info_get_var_types(!.ModeInfo, VarTypes),
 
 	%
 	% Fully module qualify all cons_ids
@@ -492,6 +491,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		mode_info_var_is_live(!.ModeInfo, X, LiveX),
 		ExtraGoals0 = no_extra_goals
 	),
+
+	mode_info_get_var_types(!.ModeInfo, VarTypes),
 
 	(
 		% If we are allowed to insert solver type initialisation
