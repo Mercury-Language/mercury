@@ -249,17 +249,12 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		;
 			ModuleInfo2 = ModuleInfo1
 		),
-		join_error(Error0, Error1, Error2),
+		bool__or(Error0, Error1, Error2),
 		type_info_get_io_state(TypeInfo2, IOState2)
 	    )
 	),
 	typecheck_pred_types_2(PredIds, ModuleInfo2, Error2, ModuleInfo, Error,
 		IOState2, IOState).
-
-:- pred join_error(bool, bool, bool).
-:- mode join_error(in, in, out) is det.
-join_error(yes, _, yes).
-join_error(no, Error, Error).
 
 :- pred write_progress_message(pred_id, module_info, io__state, io__state).
 :- mode write_progress_message(in, in, di, uo) is det.
@@ -781,56 +776,8 @@ typecheck_term_has_type_list([Arg | Args], [Type | Types], N) -->
 typecheck_term_has_type(term__variable(Var), Type, TypeInfo0, TypeInfo) :-
 	typecheck_var_has_type(Var, Type, TypeInfo0, TypeInfo).
 
-typecheck_term_has_type(term__functor(F, As, _), Type, TypeInfo0, TypeInfo) :-
-	list__length(As, Arity),
-	type_info_get_ctor_list(TypeInfo0, F, Arity, ConsDefnList),
-	( ConsDefnList = [] ->
-	    type_info_get_io_state(TypeInfo0, IOState0),
-	    report_error_undef_cons(TypeInfo0, F, Arity, IOState0, IOState),
-	    type_info_set_io_state(TypeInfo0, IOState, TypeInfo1),
-	    type_info_set_found_error(TypeInfo1, yes, TypeInfo)
-	;
-	    type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
-	    typecheck_cons_has_type(TypeAssignSet0, ConsDefnList, As, Type,
-			TypeInfo0, [], TypeAssignSet),
-	    (
-		TypeAssignSet = [],
-		TypeAssignSet0 \= []
-	    ->
-		type_info_get_io_state(TypeInfo0, IOState0),
-		report_error_cons(TypeInfo0, F, ConsDefnList, As, Type,
-					TypeAssignSet0, IOState0, IOState),
-		type_info_set_io_state(TypeInfo0, IOState, TypeInfo1),
-		type_info_set_found_error(TypeInfo1, yes, TypeInfo)
-	    ;
-		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet,
-						TypeInfo)
-	    )
-	).
-
-%-----------------------------------------------------------------------------%
-
-	% Check that a constructor has the specified type
-	% and that the arguments of the constructor have the appropriate
-	% types for that constructor.
-	% We do this by iterating over all the possible current
-	% type assignments. 
-	% For each possible current type assignment, we produce a
-	% list of the possible resulting type assignments after
-	% we have unified the type of this constructor with
-	% the specified type.
-
-:- pred typecheck_cons_has_type(type_assign_set, list(cons_type_info),
-		list(term), type, type_info, type_assign_set, type_assign_set).
-:- mode typecheck_cons_has_type(in, in, in, in, type_info_ui, in, out) is det.
-
-typecheck_cons_has_type([], _, _, _, _) --> [].
-typecheck_cons_has_type([TypeAssign|TypeAssigns], ConsDefnList, Args, Type, 
-		TypeInfo) -->
-	type_assign_cons_has_type(ConsDefnList, TypeAssign, Args, Type,
-		TypeInfo),
-	typecheck_cons_has_type(TypeAssigns, ConsDefnList, Args, Type,
-		TypeInfo).
+typecheck_term_has_type(term__functor(_, _, _), _, _, _) :-
+	error("typecheck_term_has_type: unexpected functor").
 
 %-----------------------------------------------------------------------------%
 
@@ -2415,40 +2362,6 @@ write_call_context(Context, PredCallId, ArgNum, UnifyContext) -->
 		hlds_out__write_pred_call_id(PredCallId),
 		io__write_string("':\n")
 	).
-
-:- pred report_error_cons(type_info, const, list(cons_type_info), list(term),
-			type, type_assign_set, io__state, io__state).
-:- mode report_error_cons(type_info_no_io, in, in, in, in, in, di, uo) is det.
-
-report_error_cons(TypeInfo, Functor, ConsDefnList, Args, Type, TypeAssignSet)
-		-->
-	{ type_info_get_called_predid(TypeInfo, CalledPredId) },
-	{ type_info_get_arg_num(TypeInfo, ArgNum) },
-	{ type_info_get_varset(TypeInfo, VarSet) },
-	{ type_info_get_context(TypeInfo, Context) },
-	{ type_info_get_unify_context(TypeInfo, UnifyContext) },
-
-	write_context_and_pred_id(TypeInfo),
-	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
-	prog_out__write_context(Context),
-	io__write_string("  type error: term `"),
-	mercury_output_term(term__functor(Functor, Args, Context), VarSet),
-	io__write_string("'\n"),
-	prog_out__write_context(Context),
-	io__write_string("  does not have type `"),
-	write_type(Type),	% XXX type parameter names
-	io__write_string("'.\n"),
-
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	{ list__length(Args, Arity) },
-	write_functor_name(Functor, Arity),
-	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
-
-	{ term__term_list_to_var_list(Args, ArgVars) },
-	write_types_of_vars(ArgVars, VarSet, Context, TypeInfo, TypeAssignSet),
-
-	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
 %-----------------------------------------------------------------------------%
 
