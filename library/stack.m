@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997-1998 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,9 +30,8 @@
 :- mode stack__is_empty(in) is semidet.
 
 	% `stack__is_full(Stack)' is intended to be true iff `Stack'
-	% is a stack whose capacity is exhausted.  This
-	% implement allows arbitrary-sized stacks, so stack__is_full
-	% always fails.
+	% is a stack whose capacity is exhausted.  This implementation
+	% allows arbitrary-sized stacks, so stack__is_full always fails.
 
 :- pred stack__is_full(stack(_T)).
 :- mode stack__is_full(in) is semidet.
