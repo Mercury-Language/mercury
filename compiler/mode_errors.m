@@ -43,6 +43,9 @@
 			% the predicate variable in a higher-order predicate
 			% or function call didn't have a higher-order
 			% predicate or function inst of the appropriate arity
+	;	mode_error_var_is_live(var)
+			% call to a predicate which will clobber its argument,
+			% but the argument is still live
 	;	mode_error_var_has_inst(var, inst, inst)
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with one mode)
@@ -147,6 +150,8 @@ report_mode_error(mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
 		Arity), ModeInfo) -->
 	report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var,
 		Inst, Arity).
+report_mode_error(mode_error_var_is_live(Var), ModeInfo) -->
+	report_mode_error_var_is_live(ModeInfo, Var).
 report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_var_has_inst(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
@@ -402,6 +407,20 @@ report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
 		io__write_int(Arity1)
 	),
 	io__write_string(").\n").
+
+:- pred report_mode_error_var_is_live(mode_info, var, io__state, io__state).
+:- mode report_mode_error_var_is_live(mode_info_ui, in, di, uo) is det.
+
+report_mode_error_var_is_live(ModeInfo, Var) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  unique-mode error: the called procedure would clobber\n"),
+	prog_out__write_context(Context),
+	io__write_string("  its argument, but variable `"),
+	mercury_output_var(Var, VarSet),
+	io__write_string("' is still live.\n").
 
 :- pred report_mode_error_var_has_inst(mode_info, var, inst, inst,
 					io__state, io__state).

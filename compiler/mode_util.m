@@ -188,6 +188,12 @@
 :- pred propagate_type_info_inst(type, module_info, inst, inst).
 :- mode propagate_type_info_inst(in, in, in, out) is det.
 
+	% Given the mode of a predicate,
+	% work out which arguments are live (might be used again
+	% by the caller of that predicate) and which are dead.
+:- pred get_arg_lives(list(mode), module_info, list(is_live)).
+:- mode get_arg_lives(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1346,5 +1352,20 @@ merge_instmapping_delta_2([Var | Vars], MergeInstMapping, InstMapping0,
 	),
 	merge_instmapping_delta_2(Vars, MergeInstMapping, InstMapping1,
 				InstMapping, ModuleInfo1, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+	% Arguments with final inst `clobbered' are dead, any
+	% others are assumed to be live.
+
+get_arg_lives([], _, []).
+get_arg_lives([Mode|Modes], ModuleInfo, [IsLive|IsLives]) :-
+	mode_get_insts(ModuleInfo, Mode, _InitialInst, FinalInst),
+	( inst_is_clobbered(ModuleInfo, FinalInst) ->
+		IsLive = dead
+	;
+		IsLive = live
+	),
+	get_arg_lives(Modes, ModuleInfo, IsLives).
 
 %-----------------------------------------------------------------------------%

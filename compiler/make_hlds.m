@@ -34,9 +34,9 @@
 			unify_main_context, unify_sub_contexts, hlds__goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
 
-:- pred add_new_proc(pred_info, arity, list(mode), maybe(determinism),
-			term__context, pred_info, proc_id).
-:- mode add_new_proc(in, in, in, in, in, out, out) is det.
+:- pred add_new_proc(pred_info, arity, list(mode), maybe(list(is_live)),
+		maybe(determinism), term__context, pred_info, proc_id).
+:- mode add_new_proc(in, in, in, in, in, in, out, out) is det.
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
 
@@ -53,7 +53,7 @@
 :- import_module prog_util, prog_io, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.
-:- import_module code_util, unify_proc, special_pred, type_util.
+:- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
@@ -246,7 +246,7 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma  = c_header_code(C_Header) },
 		{ module_add_c_header(C_Header, Context, Module0, Module) }
 	;
-		% Handle pragma(c_code, ...) decls later on (when we process
+		% Handle pragma c_code decls later on (when we process
 		% clauses).
 		{ Pragma = c_code(_, _, _, _) },
 		{ Module = Module0 }
@@ -289,12 +289,12 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 					PragmaExportedProcs, Module) }
 			;
 				undefined_mode_error(Name, Arity, Context,
-					"pragma(export, ...) declaration"),
+					"`:- pragma export' declaration"),
 				{ module_info_incr_errors(Module0, Module) }
 			)
 		;
 			undefined_pred_or_func_error(Name, Arity, Context,
-				"pragma(export, ...) declaration"),
+				"`:- pragma export' declaration"),
 			{ module_info_incr_errors(Module0, Module) }
 		)
 	).
@@ -391,7 +391,7 @@ add_pred_marker(Module0, PragmaName, Name, Arity, Context, Markers, Module) -->
 			Module) }
 	;
 		{ string__append_list(
-			["pragma(", PragmaName, ", ...) declaration"],
+			["`:- pragma ", PragmaName, "' declaration"],
 			Description) },
 		undefined_pred_or_func_error(Name, Arity, Context,
 			Description),
@@ -836,8 +836,8 @@ add_special_pred_decl(SpecialPredId,
 	clauses_info_init(Arity, ClausesInfo0),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, no, none, predicate, PredInfo0),
-
-	add_new_proc(PredInfo0, Arity, ArgModes, yes(Det), Context,
+	ArgLives = no,
+	add_new_proc(PredInfo0, Arity, ArgModes, ArgLives, yes(Det), Context,
 			PredInfo, _),
 
 	module_info_get_predicate_table(Module0, PredicateTable0),
@@ -850,10 +850,12 @@ add_special_pred_decl(SpecialPredId,
 		SpecialPredMap),
 	module_info_set_special_pred_map(Module1, SpecialPredMap, Module).
 
-add_new_proc(PredInfo0, Arity, ArgModes, MaybeDet, Context, PredInfo, ModeId) :-
+add_new_proc(PredInfo0, Arity, ArgModes, MaybeArgLives, MaybeDet, Context,
+		PredInfo, ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	next_mode_id(Procs0, MaybeDet, ModeId),
-	proc_info_init(Arity, ArgModes, MaybeDet, Context, NewProc),
+	proc_info_init(Arity, ArgModes, MaybeArgLives, MaybeDet, Context,
+			NewProc),
 	map__set(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
@@ -928,7 +930,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		% add the mode declaration to the proc_info for this procedure.
 		% XXX we should check that this mode declaration
 		% isn't the same as an existing one
-	{ add_new_proc(PredInfo0, Arity, Modes, MaybeDet, MContext,
+	{ ArgLives = no },
+	{ add_new_proc(PredInfo0, Arity, Modes, ArgLives, MaybeDet, MContext,
 			PredInfo, _) },
 	{ map__set(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
@@ -1110,7 +1113,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		io__write_string("'\n"),
 		prog_out__write_context(Context),
 		io__write_string(
-			"  with pragma(c_code, ...) declaration preceding.\n")
+			"  with `:- pragma c_code' declaration preceding.\n")
 	;
 		{
 		pred_info_clauses_info(PredInfo0, Clauses0), 
@@ -1186,7 +1189,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 	( 
 		{ VeryVerbose = yes } 
 	->
-		io__write_string("% Processing pragma (c_code) for "),
+		io__write_string("% Processing `:- pragma c_code' for "),
 		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
 		io__write_string("...\n")
 	;
@@ -1221,7 +1224,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 	->
 		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: pragma(c_code, ...) declaration "),
+		io__write_string("Error: `:- pragma c_code' declaration "),
 		io__write_string("for imported "),
 		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
 		io__write_string(".\n")
@@ -1230,7 +1233,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 	->
 		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: pragma(c_code, ...) declaration "),
+		io__write_string("Error: `:- pragma c_code' declaration "),
 		io__write_string("for "),
 		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
 		io__write_string("\n"),
@@ -1263,7 +1266,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
-			io__write_string("Error: pragma(c_code, ...) "),
+			io__write_string("Error: `:- pragma c_code' "),
 			io__write_string("declaration for non-existent mode "),
 			io__write_string("for `"),
 			io__write_string(PName),
@@ -1605,7 +1608,7 @@ warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap,
 			io__write_string("' do not occur in C code\n")
 		),
 		prog_out__write_context(Context),
-		io__write_string("  in pragma(c_code, ...) for "),
+		io__write_string("  in `:- pragma c_code' for "),
 		hlds_out__write_call_id(predicate, PredCallId),
 		io__write_string(".\n"),
 		io__set_output_stream(OldStream, _)
@@ -1823,7 +1826,7 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 
 % Add the pragma_c_code goal to the clauses_info for this procedure.
 % To do so, we must also insert unifications between the variables in the
-% pragma(c_code, ...) dec and the head vars of the pred. Also return the
+% pragma c_code declaration and the head vars of the pred. Also return the
 % hlds__goal.
 
 :- pred clauses_info_add_pragma_c_code(clauses_info, pred_id, proc_id, varset, 

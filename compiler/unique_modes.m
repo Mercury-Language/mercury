@@ -126,6 +126,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	%
 	proc_info_headvars(ProcInfo0, Args),
 	proc_info_argmodes(ProcInfo0, ArgModes),
+	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
 	proc_info_goal(ProcInfo0, Goal0),
 
 /**************
@@ -165,8 +166,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Construct the initial set of live variables:
 	% initially, only the non-clobbered head variables are live
 	%
-	mode_list_get_final_insts(ArgModes, ModuleInfo0, ArgFinalInsts),
-	get_live_vars(Args, ArgFinalInsts, ModuleInfo0, LiveVarsList),
+	get_live_vars(Args, ArgLives, LiveVarsList),
 	set__list_to_set(LiveVarsList, LiveVars),
 
 	%
@@ -182,6 +182,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	%
 	% Check that the final insts of the head vars is OK
 	%
+	mode_list_get_final_insts(ArgModes, ModuleInfo0, ArgFinalInsts),
 	modecheck_final_insts(Args, ArgFinalInsts, ModeInfo1, ModeInfo2),
 
 	%
@@ -288,12 +289,12 @@ make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
 :- mode select_live_vars(in, mode_info_ui, out) is det.
 
 select_live_vars([], _, []).
-select_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
+select_live_vars([Var|Vars], ModeInfo, LiveVars) :-
 	( mode_info_var_is_live(ModeInfo, Var, live) ->
-		NondetLiveVars = [Var | NondetLiveVars1],
-		select_live_vars(Vars, ModeInfo, NondetLiveVars1)
+		LiveVars = [Var | LiveVars1],
+		select_live_vars(Vars, ModeInfo, LiveVars1)
 	;
-		select_live_vars(Vars, ModeInfo, NondetLiveVars)
+		select_live_vars(Vars, ModeInfo, LiveVars)
 	).
 
 :- pred select_nondet_live_vars(list(var), mode_info, list(var)).
@@ -387,7 +388,7 @@ unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
 
 unique_modes__check_goal_2(disj(List0, FV), GoalInfo0, disj(List, FV)) -->
 	mode_checkpoint(enter, "disj"),
-	( { List0 = [] } ->	% for efficiency, optimize common case
+	( { List0 = [] } ->
 		{ List = [] },
 		mode_info_set_instmap(unreachable)
 	;
@@ -419,7 +420,6 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal)
 	{ unique_modes__goal_get_nonlocals(C0, C_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
 	mode_info_lock_vars(NonLocals),
-	mode_info_add_live_vars(C_Vars),
 
 	%
 	% At this point, we should set the inst of any `unique'
@@ -431,6 +431,7 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal)
 	% The only case we need to set it to `mostly_unique' is
 	% if the condition would clobber it.
 	%
+	mode_info_add_live_vars(C_Vars),
 	=(ModeInfo),
 	{ set__to_sorted_list(A_Vars, A_Vars_List) },
 	{ select_live_vars(A_Vars_List, ModeInfo, A_Live_Vars) },
@@ -439,11 +440,11 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal)
 	{ select_changed_inst_vars(A_Live_Vars, A0_DeltaInstMap, ModeInfo,
 				ChangedVars) },
 	make_var_list_mostly_uniq(ChangedVars),
+	mode_info_remove_live_vars(C_Vars),
 
 	mode_info_add_live_vars(B_Vars),
 	unique_modes__check_goal(A0, A),
 	mode_info_remove_live_vars(B_Vars),
-	mode_info_remove_live_vars(C_Vars),
 	mode_info_unlock_vars(NonLocals),
 	% mode_info_dcg_get_instmap(InstMapA),
 	unique_modes__check_goal(B0, B),

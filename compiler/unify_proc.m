@@ -224,8 +224,9 @@ unify_proc__request_unify(UnifyId, Determinism, ModuleInfo0, ModuleInfo) :-
 		ArgModes = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
 		MaybeDet = yes(Determinism),
 		term__context_init(Context),
-		add_new_proc(PredInfo0, Arity, ArgModes, MaybeDet, Context,
-				PredInfo1, ProcId),
+		ArgLives = no,  % XXX ArgLives should be part of the UnifyId
+		add_new_proc(PredInfo0, Arity, ArgModes, ArgLives, MaybeDet,
+				Context, PredInfo1, ProcId),
 
 		%
 		% copy the clauses for the procedure from the pred_info to the

@@ -84,8 +84,10 @@ maybe_add_default_mode(PredInfo0, PredInfo) :-
 		list__append(FuncArgModes, [FuncRetMode], PredArgModes),
 		Determinism = det,
 		pred_info_context(PredInfo0, Context),
+		MaybePredArgLives = no,
 		add_new_proc(PredInfo0, PredArity, PredArgModes,
-			yes(Determinism), Context, PredInfo, _ProcId)
+			MaybePredArgLives, yes(Determinism), Context,
+			PredInfo, _ProcId)
 	;
 		PredInfo = PredInfo0
 	).

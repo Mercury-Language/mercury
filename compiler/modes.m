@@ -205,13 +205,20 @@ a variable live if its value will be used later on in the computation.
 :- pred unify_rhs_vars(unify_rhs, list(var)).
 :- mode unify_rhs_vars(in, out) is det.
 
-	% Given the head vars and the final insts of a predicate,
-	% work out which of those variables may be used again
-	% by the caller of that predicate (i.e. which variables
-	% did not have final inst `clobbered').
+	% Given a list of variables, and a list of livenesses,
+	% select the live variables.
 	%
-:- pred get_live_vars(list(var), list(inst), module_info, list(var)).
-:- mode get_live_vars(in, in, in, out) is det.
+:- pred get_live_vars(list(var), list(is_live), list(var)).
+:- mode get_live_vars(in, in, out) is det.
+
+	% Given a list of variables and a list of expected liveness, ensure
+	% that the inst of each variable satisfies the corresponding expected
+	% liveness.
+	%
+:- pred modecheck_var_list_is_live(list(var), list(is_live), int, mode_info,
+					mode_info).
+:- mode modecheck_var_list_is_live(in, in, in, mode_info_di, mode_info_uo)
+	is det.
 
 	% Given a list of variables and a list of initial insts, ensure
 	% that the inst of each variable matches the corresponding initial
@@ -466,15 +473,15 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 				ModuleInfo, ProcInfo, Changed, NumErrors,
 				IOState0, IOState) :-
 		% extract the useful fields in the proc_info
-	proc_info_goal(ProcInfo0, Body0),
-	proc_info_argmodes(ProcInfo0, ArgModes0),
 	proc_info_headvars(ProcInfo0, HeadVars),
+	proc_info_argmodes(ProcInfo0, ArgModes0),
+	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives0),
+	proc_info_goal(ProcInfo0, Body0),
 
 		% We use the context of the first clause, unless
 		% there weren't any clauses at all, in which case
 		% we use the context of the mode declaration.
-	module_info_preds(ModuleInfo0, Preds),
-	map__lookup(Preds, PredId, PredInfo),
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	ClausesInfo = clauses_info(_, _, _, ClauseList),
 	( ClauseList = [FirstClause | _] ->
@@ -499,13 +506,13 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	InstMap0 = reachable(InstMapping0),
 		% initially, only the non-clobbered head variables are live
 	mode_list_get_final_insts(ArgModes1, ModuleInfo0, ArgFinalInsts0),
-	get_live_vars(HeadVars, ArgFinalInsts0, ModuleInfo0, LiveVarsList),
+	get_live_vars(HeadVars, ArgLives0, LiveVarsList),
 	set__list_to_set(LiveVarsList, LiveVars),
 	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context, LiveVars,
 			InstMap0, ModeInfo0),
 	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
 	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo1, Changed0,
-				ArgFinalInsts, ModeInfo2, Changed),
+			ArgFinalInsts, ModeInfo2, Changed),
 	inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
 	modecheck_report_errors(ModeInfo2, ModeInfo),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
@@ -517,23 +524,6 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
 	proc_info_set_argmodes(ProcInfo3, ArgModes, ProcInfo).
-
-	% Given the head vars and the final insts of a predicate,
-	% work out which of those variables may be used again
-	% by the caller of that predicate (i.e. which variables
-	% did not have final inst `clobbered').
-
-get_live_vars([], [], _, []).
-get_live_vars([Var|Vars], [FinalInst|FinalInsts], ModuleInfo, LiveVars) :-
-	( inst_is_clobbered(ModuleInfo, FinalInst) ->
-		LiveVars = LiveVars0
-	;
-		LiveVars = [Var | LiveVars0]
-	),
-	get_live_vars(Vars, FinalInsts, ModuleInfo, LiveVars0).
-
-get_live_vars([_|_], [], _, _) :- error("get_live_vars: length mismatch").
-get_live_vars([], [_|_], _, _) :- error("get_live_vars: length mismatch").
 
 modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
 	modecheck_final_insts_2(HeadVars, ArgFinalInsts, ModeInfo0, no,
@@ -547,10 +537,11 @@ modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
 	% check that the final insts of the head vars matches their
 	% expected insts
 	%
-modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo0, Changed0,
-			ArgFinalInsts, ModeInfo, Changed) :-
+modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, Changed0,
+			FinalInsts, ModeInfo, Changed) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_instmap(ModeInfo0, InstMap),
+	get_var_insts(HeadVars, InstMap, VarFinalInsts1),
 
 	mode_info_get_predid(ModeInfo0, PredId),
 	mode_info_get_preds(ModeInfo0, Preds),
@@ -561,58 +552,91 @@ modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo0, Changed0,
 	;
 		InferModes = no
 	),
-	check_final_insts(HeadVars, ArgFinalInsts0, ArgFinalInsts1, InferModes,
-		1, InstMap, ModuleInfo, no, Changed1, ModeInfo0, ModeInfo),
-	( InferModes = yes, Changed1 = yes ->
-		normalise_insts(ArgFinalInsts1, ModuleInfo, ArgFinalInsts)
+	( InferModes = yes ->
+		normalise_insts(VarFinalInsts1, ModuleInfo, VarFinalInsts2),
+		%
+		% make sure we set the final insts of any variables which
+		% we assumed were dead to `clobbered'.
+		%
+		mode_info_get_procid(ModeInfo0, ProcId),
+		pred_info_procedures(PredInfo, Procs),
+		map__lookup(Procs, ProcId, ProcInfo),
+		proc_info_arglives(ProcInfo, ModuleInfo, ArgLives),
+		maybe_clobber_insts(VarFinalInsts2, ArgLives, FinalInsts),
+		check_final_insts(HeadVars, FinalInsts0, FinalInsts,
+			InferModes, 1, ModuleInfo, no, Changed1,
+			ModeInfo0, ModeInfo),
+		bool__or(Changed0, Changed1, Changed)
 	;
-		ArgFinalInsts = ArgFinalInsts0
-	),
-	bool__or(Changed0, Changed1, Changed).
+		check_final_insts(HeadVars, FinalInsts0, VarFinalInsts1,
+			InferModes, 1, ModuleInfo, no, _Changed1,
+			ModeInfo0, ModeInfo),
+		FinalInsts = FinalInsts0,
+		Changed = Changed0
+	).
 
-:- pred check_final_insts(list(var), list(inst), list(inst), bool, int, instmap,
+:- pred maybe_clobber_insts(list(inst), list(is_live), list(inst)).
+:- mode maybe_clobber_insts(in, in, out) is det.
+
+maybe_clobber_insts([], [_|_], _) :-
+	error("maybe_clobber_insts: length mismatch").
+maybe_clobber_insts([_|_], [], _) :-
+	error("maybe_clobber_insts: length mismatch").
+maybe_clobber_insts([], [], []).
+maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
+	( IsLive = dead ->
+		Inst = ground(clobbered, no)
+	;
+		Inst = Inst0
+	),
+	maybe_clobber_insts(Insts0, IsLives, Insts).
+
+:- pred check_final_insts(list(var), list(inst), list(inst), bool, int,
 				module_info, bool, bool, mode_info, mode_info).
-:- mode check_final_insts(in, in, out, in, in, in, in, in, out, mode_info_di,
+:- mode check_final_insts(in, in, in, in, in, in, in, out, mode_info_di,
 				mode_info_uo) is det.
 
-check_final_insts([], [_|_], _, _, _, _, _, _, _) -->
-	{ error("check_final_insts: length mismatch") }.
-check_final_insts([_|_], [], _, _, _, _, _, _, _) -->
-	{ error("check_final_insts: length mismatch") }.
-check_final_insts([], [], [], _, _, _, _, Changed, Changed) --> [].
-check_final_insts([Var | Vars], [Inst | Insts], [VarInst | VarInsts],
-		InferModes, ArgNum, InstMap, ModuleInfo, Changed0, Changed) -->
-	{ instmap_lookup_var(InstMap, Var, VarInst) },
-	( { inst_matches_final(VarInst, Inst, ModuleInfo) } ->
-		{ Changed1 = Changed0 }
-	;
-		{ Changed1 = yes },
-		( { InferModes = yes } ->
-			% if we're inferring the mode, then don't report
-			% an error, just set changed to yes to make sure
-			% that we will do another fixpoint pass
-			[]
+check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
+		Changed0, Changed) -->
+	( { Vars = [], Insts = [], VarInsts = [] } ->
+		{ Changed = Changed0 }
+	; { Vars = [Var|Vars1], Insts = [Inst|Insts1],
+	    VarInsts = [VarInst|VarInsts1] } ->
+		( { inst_matches_final(VarInst, Inst, ModuleInfo) } ->
+			{ Changed1 = Changed0 }
 		;
-			% XXX this might need to be reconsidered now we have
-			% unique modes
-			( { inst_matches_initial(VarInst, Inst, ModuleInfo) } ->
-				{ Reason = too_instantiated }
-			; { inst_matches_initial(Inst, VarInst, ModuleInfo) } ->
-				{ Reason = not_instantiated_enough }
+			{ Changed1 = yes },
+			( { InferModes = yes } ->
+				% if we're inferring the mode, then don't report
+				% an error, just set changed to yes to make sure
+				% that we will do another fixpoint pass
+				[]
 			;
-				% I don't think this can happen. 
-				% But just in case...
-				{ Reason = wrongly_instantiated }
-			),
-			{ set__init(WaitingVars) },
-			mode_info_error(WaitingVars,
-				mode_error_final_inst(ArgNum,
-				Var, VarInst, Inst, Reason))
-		)
-	),
-	{ ArgNum1 is ArgNum + 1 },
-	check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum1, InstMap,
-		ModuleInfo, Changed1, Changed).
+				% XXX this might need to be reconsidered now
+				% we have unique modes
+				( { inst_matches_initial(VarInst, Inst,
+				    ModuleInfo) } ->
+					{ Reason = too_instantiated }
+				; { inst_matches_initial(Inst, VarInst,
+				    ModuleInfo) } ->
+					{ Reason = not_instantiated_enough }
+				;
+					% I don't think this can happen. 
+					% But just in case...
+					{ Reason = wrongly_instantiated }
+				),
+				{ set__init(WaitingVars) },
+				mode_info_error(WaitingVars,
+					mode_error_final_inst(ArgNum,
+					Var, VarInst, Inst, Reason))
+			)
+		),
+		{ ArgNum1 is ArgNum + 1 },
+		check_final_insts(Vars1, Insts1, VarInsts1, InferModes, ArgNum1,
+			ModuleInfo, Changed1, Changed)
+	;
+		{ error("check_final_insts: length mismatch") }
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -689,13 +713,10 @@ modecheck_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "if-then-else"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ goal_get_nonlocals(B0, B_Vars) },
-	{ goal_get_nonlocals(C0, C_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
 	mode_info_lock_vars(NonLocals),
 	mode_info_add_live_vars(B_Vars),
-	mode_info_add_live_vars(C_Vars),
 	modecheck_goal(A0, A),
-	mode_info_remove_live_vars(C_Vars),
 	mode_info_remove_live_vars(B_Vars),
 	mode_info_unlock_vars(NonLocals),
 	mode_info_dcg_get_instmap(InstMapA),
@@ -712,8 +733,8 @@ modecheck_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal) -->
 		%	if some [Vs] A then B else C
 		% with
 		%	(not some [Vs] A), C
-		{ A = _A_Goal - A_GoalInfo },
-		{ goal_info_get_nonlocals(A_GoalInfo, A_Vars) },
+		{ goal_get_nonlocals(A, A_Vars) },
+		{ goal_get_nonlocals(C, C_Vars) },
 		{ set__union(NonLocals, C_Vars, OutsideVars) },
 		{ set__delete_list(OutsideVars, Vs, OutsideVars1) },
 		{ set__intersect(OutsideVars1, A_Vars, SomeA_NonLocals) },
@@ -1307,8 +1328,17 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 	->
 		Modes = Modes0,
 		Det = Det0,
+
 		%
-		% Next, check that `Args0' have insts which match the expected
+		% Check that `Args0' have livenesses which match the
+		% expected livenesses.
+		%
+		get_arg_lives(Modes, ModuleInfo0, ExpectedArgLives),
+		modecheck_var_list_is_live(Args0, ExpectedArgLives, 1,
+			ModeInfo0, ModeInfo1),
+
+		%
+		% Check that `Args0' have insts which match the expected
 		% initial insts, and set their new final insts (introducing
 		% extra unifications for implied modes, if necessary).
 		%
@@ -1319,14 +1349,14 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 	*********************/
 		mode_list_get_initial_insts(Modes, ModuleInfo0, InitialInsts),
 		modecheck_var_has_inst_list(Args0, InitialInsts, 1,
-					ModeInfo0, ModeInfo1),
+					ModeInfo1, ModeInfo2),
 		mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
 		modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
-			Args, ExtraGoals, ModeInfo1, ModeInfo2),
+			Args, ExtraGoals, ModeInfo2, ModeInfo3),
 		( determinism_components(Det, _, at_most_zero) ->
-			mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
+			mode_info_set_instmap(unreachable, ModeInfo3, ModeInfo)
 		;
-			ModeInfo = ModeInfo2
+			ModeInfo = ModeInfo3
 		)
 	;
 		% the error occurred in argument 1, i.e. the pred term
@@ -1379,6 +1409,15 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		TheProcId = ProcId,
 		map__lookup(Procs, ProcId, ProcInfo),
 		proc_info_argmodes(ProcInfo, ProcArgModes0),
+		proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
+
+		%
+		% Check that `ArgsVars0' have livenesses which match the
+		% expected livenesses.
+		%
+		modecheck_var_list_is_live(ArgVars0, ProcArgLives0, 0,
+					ModeInfo0, ModeInfo1),
+
 /*********************
 		% propagate type info into modes
 		mode_info_get_types_of_vars(ModeInfo0, ArgVars0, ArgTypes),
@@ -1386,18 +1425,24 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 			ProcArgModes0, ProcArgModes),
 *********************/
 		ProcArgModes = ProcArgModes0,
+
+		%
+		% Check that `ArgsVars0' have insts which match the expected
+		% initial insts, and set their new final insts (introducing
+		% extra unifications for implied modes, if necessary).
+		%
 		mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
 					InitialInsts),
 		modecheck_var_has_inst_list(ArgVars0, InitialInsts, 0,
-					ModeInfo0, ModeInfo1),
+					ModeInfo1, ModeInfo2),
 		mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 		modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
-			ArgVars, ExtraGoals, ModeInfo1, ModeInfo2),
-		mode_info_never_succeeds(ModeInfo2, PredId, ProcId, Result),
+			ArgVars, ExtraGoals, ModeInfo2, ModeInfo3),
+		mode_info_never_succeeds(ModeInfo3, PredId, ProcId, Result),
 		( Result = yes ->
-			mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
+			mode_info_set_instmap(unreachable, ModeInfo3, ModeInfo)
 		;
-			ModeInfo = ModeInfo2
+			ModeInfo = ModeInfo3
 		)
 	;
 			% set the current error list to empty (and
@@ -1437,9 +1482,10 @@ modecheck_call_pred_2([], PredId, _Procs, ArgVars, WaitingVars,
 	( list__member(request(infer_modes), Markers) ->
 		insert_new_mode(PredId, ArgVars, TheProcId,
 			ModeInfo0, ModeInfo1),
-		% We need to either set the final insts of the arg variables
-		% to not_reached, or just set the whole instmap to unreachable.
-		% We do the latter.
+		% we don't yet know the final insts for the newly created mode
+		% of the called predicate, so we set the instmap to unreachable,
+		% indicating that we have no information about the modes at this
+		% point in the computation.
 		mode_info_set_instmap(unreachable, ModeInfo1, ModeInfo)
 	;
 		TheProcId = 0, % dummy value
@@ -1454,10 +1500,12 @@ modecheck_call_pred_2([], PredId, _Procs, ArgVars, WaitingVars,
 modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 			TheProcId, ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-
 
-		% find the initial insts for this mode of the called pred
+		% find the initial insts and the final livenesses
+		% of the arguments for this mode of the called pred
 	map__lookup(Procs, ProcId, ProcInfo),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
+	proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
 /**************
 		% propagate the type information into the modes
 	mode_info_get_types_of_vars(ModeInfo0, ArgVars0, ArgTypes),
@@ -1467,11 +1515,17 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 	ProcArgModes = ProcArgModes0,
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 
+		% check whether the livenesses of the args matches their
+		% expected liveness
+	modecheck_var_list_is_live(ArgVars0, ProcArgLives0, 0,
+				ModeInfo0, ModeInfo1),
+
 		% check whether the insts of the args matches their expected
 		% initial insts
 	modecheck_var_has_inst_list(ArgVars0, InitialInsts, 0,
-				ModeInfo0, ModeInfo1),
-	mode_info_get_errors(ModeInfo1, Errors),
+				ModeInfo1, ModeInfo2),
+
+	mode_info_get_errors(ModeInfo2, Errors),
 	(
 			% if error(s) occured, keep trying with the other modes
 			% for the called pred
@@ -1479,22 +1533,22 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 	->
 		FirstError = mode_error_info(WaitingVars2, _, _, _),
 		set__union(WaitingVars, WaitingVars2, WaitingVars3),
-		mode_info_set_errors([], ModeInfo1, ModeInfo2),
+		mode_info_set_errors([], ModeInfo2, ModeInfo3),
 		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars0,
 				WaitingVars3, TheProcId, ArgVars, ExtraGoals,
-				ModeInfo2, ModeInfo)
+				ModeInfo3, ModeInfo)
 	;
 			% if there are no errors, then set their insts to the
 			% final insts specified in the mode for the called pred
 		mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 		modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
-				ArgVars, ExtraGoals, ModeInfo1, ModeInfo2),
+				ArgVars, ExtraGoals, ModeInfo2, ModeInfo3),
 		TheProcId = ProcId,
-		mode_info_never_succeeds(ModeInfo2, PredId, ProcId, Result),
+		mode_info_never_succeeds(ModeInfo3, PredId, ProcId, Result),
 		( Result = yes ->
-			mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
+			mode_info_set_instmap(unreachable, ModeInfo3, ModeInfo)
 		;
-			ModeInfo = ModeInfo2
+			ModeInfo = ModeInfo3
 		)
 	).
 
@@ -1505,6 +1559,40 @@ get_var_insts([], _, []).
 get_var_insts([Var | Vars], InstMap, [Inst | Insts]) :-
 	instmap_lookup_var(InstMap, Var, Inst),
 	get_var_insts(Vars, InstMap, Insts).
+
+:- pred get_var_insts_and_lives(list(var), mode_info,
+				list(inst), list(is_live)).
+:- mode get_var_insts_and_lives(in, mode_info_ui, out, out) is det.
+
+get_var_insts_and_lives([], _, [], []).
+get_var_insts_and_lives([Var | Vars], ModeInfo,
+		[Inst | Insts], [IsLive | IsLives]) :-
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_instmap(ModeInfo, InstMap),
+	instmap_lookup_var(InstMap, Var, Inst0),
+	normalise_inst(Inst0, ModuleInfo, Inst),
+
+	mode_info_var_is_live(ModeInfo, Var, IsLive0),
+
+	( IsLive0 = live ->
+		IsLive = live
+	;
+		% To reduce the potentially exponential explosion in the
+		% number of modes, we only set IsLive to `dead' - meaning
+		% that the procedure requires its argument to be dead, so
+		% that it can do destructive update - if there really is
+		% a good chance of being able to do destructive update.
+		(
+			inst_is_ground(ModuleInfo, Inst),
+			inst_is_unique(ModuleInfo, Inst)
+		->
+			IsLive = dead
+		;
+			IsLive = live
+		)
+	),
+
+	get_var_insts_and_lives(Vars, ModeInfo, Insts, IsLives).
 
 :- pred insert_new_mode(pred_id, list(var), proc_id, mode_info, mode_info).
 :- mode insert_new_mode(in, in, out, mode_info_di, mode_info_uo) is det.
@@ -1518,11 +1606,9 @@ get_var_insts([Var | Vars], InstMap, [Inst | Insts]) :-
 insert_new_mode(PredId, ArgVars, ProcId, ModeInfo0, ModeInfo) :-
 	% figure out the values of all the variables we need to
 	% create a new mode for this predicate
-	mode_info_get_instmap(ModeInfo0, InstMap),
+	get_var_insts_and_lives(ArgVars, ModeInfo0, InitialInsts, ArgLives),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-	get_var_insts(ArgVars, InstMap, VarInsts),
-	normalise_insts(VarInsts, ModuleInfo0, InitialInsts),
-	mode_info_get_preds(ModeInfo0, Preds0),
+	module_info_preds(ModuleInfo0, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
 	pred_info_context(PredInfo0, Context),
 	list__length(ArgVars, Arity),
@@ -1531,8 +1617,8 @@ insert_new_mode(PredId, ArgVars, ProcId, ModeInfo0, ModeInfo) :-
 	MaybeDeterminism = no,
 
 	% create the new mode
-	add_new_proc(PredInfo0, Arity, Modes, MaybeDeterminism, Context,
-		PredInfo1, ProcId),
+	add_new_proc(PredInfo0, Arity, Modes, yes(ArgLives), MaybeDeterminism,
+		Context, PredInfo1, ProcId),
 
 	% copy the clauses for the predicate to this procedure,
 	% and then store the new proc_info and pred_info
@@ -1592,6 +1678,43 @@ normalise_inst(Inst0, ModuleInfo, NormalisedInst) :-
 		)
 	;
 		NormalisedInst = Inst
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Given a list of variables and a list of expected livenesses,
+	% ensure the liveness of each variable satisfies the corresponding
+	% expected liveness.
+
+modecheck_var_list_is_live([_|_], [], _) -->
+	{ error("modecheck_var_list_is_live: length mismatch") }.
+modecheck_var_list_is_live([], [_|_], _) -->
+	{ error("modecheck_var_list_is_live: length mismatch") }.
+modecheck_var_list_is_live([], [], _ArgNum) --> [].
+modecheck_var_list_is_live([Var|Vars], [IsLive|IsLives], ArgNum0) -->
+	{ ArgNum is ArgNum0 + 1 },
+	mode_info_set_call_arg_context(ArgNum),
+	modecheck_var_is_live(Var, IsLive),
+	modecheck_var_list_is_live(Vars, IsLives, ArgNum).
+
+:- pred modecheck_var_is_live(var, is_live, mode_info, mode_info).
+:- mode modecheck_var_is_live(in, in, mode_info_di, mode_info_uo) is det.
+
+	% `live' means possibly used later on, and
+	% `dead' means definitely not used later on.
+	% The only time you get an error is if you pass a variable
+	% which is live to a predicate that expects the variable to
+	% be dead; the predicate may use destructive update to clobber
+	% the variable, so we must be sure that it is dead after the call.
+
+modecheck_var_is_live(VarId, ExpectedIsLive, ModeInfo0, ModeInfo) :-
+	mode_info_var_is_live(ModeInfo0, VarId, VarIsLive),
+	( ExpectedIsLive = dead, VarIsLive = live ->
+		set__singleton_set(WaitingVars, VarId),
+		mode_info_error(WaitingVars, mode_error_var_is_live(VarId),
+			ModeInfo0, ModeInfo)
+	;
+		ModeInfo = ModeInfo0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1721,6 +1844,12 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 		),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 		(
+			% if the top-level inst of the variable is not_reached,
+			% then the instmap as a whole must be unreachable
+			inst_expand(ModuleInfo, Inst, not_reached)
+		->
+			mode_info_set_instmap(unreachable, ModeInfo1, ModeInfo)
+		;
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
 			% the only thing we can have done is lose uniqueness.
@@ -2260,8 +2389,8 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
 	mode_info_set_instmap(InstMap1, ModeInfo0, ModeInfo1),
 
 	% mark the non-clobbered lambda variables as live
-	mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
-	get_live_vars(Vars, FinalInsts, ModuleInfo0, LiveVarsList),
+	get_arg_lives(Modes, ModuleInfo0, ArgLives),
+	get_live_vars(Vars, ArgLives, LiveVarsList),
 	set__list_to_set(LiveVarsList, LiveVars),
 	mode_info_add_live_vars(LiveVars, ModeInfo1, ModeInfo2),
 
@@ -2281,6 +2410,7 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
 	;
 		modecheck_goal(Goal0, Goal, ModeInfo4, ModeInfo5)
 	),
+	mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
 	modecheck_final_insts(Vars, FinalInsts, ModeInfo5, ModeInfo6),
 	mode_checkpoint(exit, "lambda goal", ModeInfo6, ModeInfo7),
 
@@ -3101,6 +3231,20 @@ get_pred_id_and_proc_id(Name, Arity, PredOrFunc, PredArgTypes, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+	% Given a list of variables, and a list of livenesses,
+	% select the live variables.
+
+get_live_vars([_|_], [], _) :- error("get_live_vars: length mismatch").
+get_live_vars([], [_|_], _) :- error("get_live_vars: length mismatch").
+get_live_vars([], [], []).
+get_live_vars([Var|Vars], [IsLive|IsLives], LiveVars) :-
+	( IsLive = live ->
+		LiveVars = [Var | LiveVars0]
+	;
+		LiveVars = LiveVars0
+	),
+	get_live_vars(Vars, IsLives, LiveVars0).
 
 :- pred make_fresh_vars(list(type), varset, map(var, type),
 			list(var), varset, map(var, type)).
