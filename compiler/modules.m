@@ -4857,7 +4857,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		JarFileName, " : ", "$(", MakeVarName, ".classes)\n",
 		"\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName,
-		" $(", MakeVarName, ".classes)\n"
+		" $(", MakeVarName, ".classes)\n\n"
 	]),
 
 	module_name_to_file_name(ModuleName, ".dep", no, DepFileName),
@@ -5185,6 +5185,7 @@ endif\n\n"]),
 			InitFileName, " ",
 			LibFileName, " ",
 			SharedLibFileName, " ",
+			JarFileName, " ",
 			DepFileName, " ",
 			DvFileName, "\n\n"
 	]).
