@@ -471,15 +471,16 @@ call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
 				 	Code0, Code, S_Tab0, S_Tab) :-
 	code_util__arg_loc_to_register(L, R),
 	code_info__variable_type(Var, Type, Code0, Code1),
+	module_info_types(Module_Info, Type_Table),
 	(
 		type_to_type_id(Type, Type_Id, _)
 	->	
-		shapes__request_shape_number(Type_Id, ground, Module_Info,
+		shapes__request_shape_number(Type_Id, ground, Type_Table,
 						S_Tab0, S_Tab1, S_Number) 
 	;
 		shapes__request_shape_number(
 			unqualified("__type_variable__") - -1, ground,
-				Module_Info, S_Tab0, S_Tab1, S_Number)
+				Type_Table, S_Tab0, S_Tab1, S_Number)
 		% was:error("call_gen__insert_arg_livelvals: type not valid")
 	),
 	LiveVal = live_lvalue(reg(R), S_Number),

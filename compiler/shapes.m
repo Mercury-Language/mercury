@@ -10,22 +10,12 @@
 % file of offsets, which will be demand loaded by the program when
 % garbage collection is required.
 %
-%   * Investigate endian problems with byte offsets as we will eventually
-%     use these with byte tables (not words).
-%      --> Is is possible to put the tables as bytes (as we will do)
-%          using C macros to reorder if necessary, so that a compile time
-% 	   step is just pre-processing the tables ?
+% shapes__request_shape_number is called during code generation
+% and gathers information about the shape if it isn't already within the
+% table.
 %
-% [ ] Testing needs to be done, which means some sort of output predicates
-%     need to be created.
-%
-% Compiling poly.nl uncovers the problem that not all types can be
-% converted into a type id using type_to_type_id. There are some
-% types (probably abstract types) that this will not work with, so
-% it is best to deal with these cases...
-%
-% Abstract types in general are a problem, and the solutions used here are
-% not really adequate in the long (or even medium) term. 
+% Abstract types are presently 'ingored' (they are treated as constants),
+% as are type variables.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -46,7 +36,7 @@
 :- pred shapes__init_shape_table(shape_table).
 :- mode shapes__init_shape_table(out) is det.
 
-:- pred shapes__request_shape_number(type_id, inst, module_info, 
+:- pred shapes__request_shape_number(type_id, inst, type_table, 
 		shape_table, shape_table, shape_num).
 :- mode shapes__request_shape_number(in, in, in, in, out, out) is det.
 
@@ -80,7 +70,7 @@ shapes__init_shape_table((S_Tab_Out - S_Num)) :-
 		map__insert(S_Tab2, unqualified("int") - 0 - ground,
 				2 - Const, S_Tab3) 
 	-> 
-		S_Num = 4,
+		S_Num = 3,
 		S_Tab_Out = S_Tab3
 	;
 		error("shapes: init_shape_table: initialization failure") 
@@ -92,21 +82,25 @@ shapes__init_shape_table((S_Tab_Out - S_Num)) :-
 % We only deal well with ground shapes, partial insts and free insts
 % may need some modification.
 %-----------------------------------------------------------------------------%
-shapes__request_shape_number(Type_Id, Inst, Module, 
-			(S_Tab_In - Next_S_Num0),
-			(S_Tab_Out - Next_S_Num1), S_Num) :-
+shapes__request_shape_number(Type_Id, Inst, Type_Table, S_Tab0 - Next_S_Num0,
+				S_Tab - NextNum, S_Num) :-
+	ShapeId = Type_Id - Inst,
 	(
-		map__contains(S_Tab_In, (Type_Id - Inst))  
+		map__contains(S_Tab0, ShapeId)  
 	-> 
-		map__lookup(S_Tab_In, (Type_Id - Inst), (S_Num - _)),
-		Next_S_Num1 = Next_S_Num0,
-		S_Tab_Out = S_Tab_In
+		map__lookup(S_Tab0, ShapeId, (S_Num - _)),
+		S_Tab = S_Tab0,
+		NextNum = Next_S_Num0
 	;
 		Next_S_Num1 is Next_S_Num0 + 1,
 		S_Num is Next_S_Num0 + 1,
-		shapes__create_shape(Module, Type_Id, Inst, Shape),
-		map__set(S_Tab_In, (Type_Id - Inst),
-				(Next_S_Num1 - Shape), S_Tab_Out) 
+	% Avoid infinite recursion by inserting a 'dummy' shape so that if
+	% the shape is self-referential, it doesn't cause trouble.
+		map__set(S_Tab0, ShapeId, Next_S_Num1 - quad(constant, 
+			constant, constant, constant), S_Tab1),
+		shapes__create_shape(Type_Table, Type_Id, Inst, Shape,
+				S_Tab1 - Next_S_Num1, S_Tab2 - NextNum),
+		map__set(S_Tab2, ShapeId, (Next_S_Num1 - Shape), S_Tab) 
 	).
 
 %-----------------------------------------------------------------------------%
@@ -114,6 +108,7 @@ shapes__request_shape_number(Type_Id, Inst, Module,
 % into a file. 
 %-----------------------------------------------------------------------------%
 
+%% XXX shapes will be a problem - they are out of order because of map__keys.
 shapes__construct_shape_lists(S_Tab, S_List, L_List, C_List) :-
 	S_Tab = Shape_Tab - _,
 	map__keys(Shape_Tab, Temp_List),
@@ -129,19 +124,22 @@ shapes__construct_shape_lists(S_Tab, S_List, L_List, C_List) :-
 :- pred shapes__tag_match(bit_number, int).
 :- mode shapes__tag_match(in, in) is semidet.
 
-:- pred shapes__create_shape(module_info, type_id, inst, shape). 
-:- mode shapes__create_shape(in, in, in, out) is det.
+:- pred shapes__create_shape(type_table, type_id, inst, shape, shape_table,
+				shape_table). 
+:- mode shapes__create_shape(in, in, in, out, in, out) is det.
 
 :- pred shapes__create_shapeA(type_id, list(constructor), cons_tag_values,
-		bit_number, shape_tag).
-:- mode shapes__create_shapeA(in, in, in, in, out) is det.
+		bit_number, shape_tag, type_table, shape_table, shape_table).
+:- mode shapes__create_shapeA(in, in, in, in, out, in, in, out) is det.
 
-:- pred shapes__lookup_simple_info(list(type), list(shape_id)).
-:- mode shapes__lookup_simple_info(in, out) is det.
+:- pred shapes__lookup_simple_info(list(type), list(shape_id), type_table,
+					shape_table, shape_table).
+:- mode shapes__lookup_simple_info(in, out, in, in, out) is det.
 
 :- pred shapes__lookup_complicated_info(list(constructor), cons_tag_values,
-		bit_number, list(list(shape_id))).
-:- mode shapes__lookup_complicated_info(in, in, in, out) is det.
+		bit_number, list(list(shape_id)), type_table, shape_table,
+		shape_table).
+:- mode shapes__lookup_complicated_info(in, in, in, out, in, in, out) is det.
 
 :- pred shapes__make_shape_tag_list(list(shape_id), shape_table,
 		list(shape_tag)).
@@ -198,36 +196,33 @@ shapes__tag_match(bit_three, 3).
 %-----------------------------------------------------------------------------%
 % Create a shape (the structural information of the shape).
 %-----------------------------------------------------------------------------%
-shapes__create_shape(Mod, Type_Id, Inst, Shape) :-
+shapes__create_shape(Type_Tab, Type_Id, Inst, Shape, S_Tab0, S_Tab) :-
 	( 
 		Inst = free
 	->
-		Shape = quad(constant, constant, constant, constant) 
-% XXX I am guessing that if we represent free shapes as the same as a
-% constant, the garbage collection will not bother with looking any closer
-% at them.  We want them marked as live, but not traversed.
-% This will not really be needed until parallelism occurs and then
-% a free var can be live. 
+		Shape = quad(constant, constant, constant, constant),
+		S_Tab = S_Tab0
+% XXX Free shapes are not really expected here.
 	;
 		( 
-			module_info_types(Mod, Type_Tab),
 			map__search(Type_Tab, Type_Id, Hlds_Type),
 			Hlds_Type = hlds__type_defn(_, _, Type_Body, _, _),
 			Type_Body = du_type(Ctors, TagVals, _)
 		->
 			Shape = quad(A,B,C,D),
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
-				 bit_zero, A),
+				 bit_zero, A, Type_Tab, S_Tab0, S_Tab1),
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
-				 bit_one, B),
+				 bit_one, B, Type_Tab, S_Tab1, S_Tab2),
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
-				 bit_two, C),
+				 bit_two, C, Type_Tab, S_Tab2, S_Tab3),
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
-				 bit_three, D) 
+				 bit_three, D, Type_Tab, S_Tab3, S_Tab) 
 		;
 			Type_Body = abstract_type
 		->
-			Shape = quad(constant, constant, constant, constant)
+			Shape = quad(constant, constant, constant, constant),
+			S_Tab = S_Tab0
 		;
 			error("shapes: create_shape: not d.u./abstract type or not in type table")
 		) 
@@ -240,47 +235,55 @@ shapes__create_shape(Mod, Type_Id, Inst, Shape) :-
 % and the tag bit we are interested in. If there are none, it is an unused
 % tag and we call it constant.
 %-----------------------------------------------------------------------------%
-shapes__create_shapeA(_, [], _, _, constant).
-shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A) :-
+shapes__create_shapeA(_, [], _, _, constant, _, S_Tab, S_Tab).
+shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A, Type_Table,
+			S_Tab0, S_Tab) :-
 	Ctor = Symname - Args,
 	shapes__make_cons_id(Symname, Args, C_Id),
 	map__lookup(TagVals, C_Id, C_Tag),
 	(
 		C_Tag = string_constant(_)
 	->
-		A = constant
+		A = constant,
+		S_Tab = S_Tab0
 	;
 		C_Tag = float_constant(_) 
 	->
-		A = constant
+		A = constant,
+		S_Tab = S_Tab0
 	;
 		C_Tag = int_constant(_) 
 	->
-		A = constant
+		A = constant,
+		S_Tab = S_Tab0
 	;
 		C_Tag = pred_constant(_, _) 
 	->
-		A = constant
+		A = constant,
+		S_Tab = S_Tab0
 	;	
 		C_Tag = simple_tag(X),
 		shapes__tag_match(Bits, X) 
 	->
-		shapes__lookup_simple_info(Args, Shapes_Ids),
+		shapes__lookup_simple_info(Args, Shapes_Ids, Type_Table, 
+					S_Tab0, S_Tab),
 		A = simple(Shapes_Ids) 
 	;
 		C_Tag = complicated_tag(X, Y),
 		shapes__tag_match(Bits, X) 
 	->
 		shapes__lookup_complicated_info( [Ctor | Rest], TagVals, 
-			Bits, Ls),
+			Bits, Ls, Type_Table, S_Tab0, S_Tab),
 		A = complicated(Ls)
 	;
 		C_Tag = complicated_constant_tag(X, Y),
 		shapes__tag_match(Bits, X) 
 	->
-		A = constant 
+		A = constant,
+		S_Tab = S_Tab0
 	;
-		shapes__create_shapeA(Type_Id, Rest, TagVals, Bits, A)
+		shapes__create_shapeA(Type_Id, Rest, TagVals, Bits, A,
+					Type_Table, S_Tab0, S_Tab)
 		% Where nothing matches up, go on down the list.
 	).
 
@@ -289,16 +292,19 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A) :-
 % Want to find the list of shape_ids that are arguments to the simple 
 % tagged type.
 %-----------------------------------------------------------------------------%
-shapes__lookup_simple_info([], []).
-shapes__lookup_simple_info([ A | Args], [ S | ShapeIds] ) :-
+shapes__lookup_simple_info([], [], _, S_Tab, S_Tab).
+shapes__lookup_simple_info([ A | Args], [ S | ShapeIds], Type_Table, S_Tab0,
+				 S_Tab) :-
+
 %%% XXX Want to insert the shape into the shape_table, if the shape
 %%% is not already present. In other words, we want to request shape
 %%% number. This means that shape_table will need to be threaded
-%%% down here, as will module_info. 
-
-
+%%% down here, as will type_table. 
 	shapes__type_to_shapeid(A, S),
-	shapes__lookup_simple_info(Args, ShapeIds).
+	S = Type_Id - _Inst,
+	shapes__lookup_simple_info(Args, ShapeIds, Type_Table, S_Tab0, S_Tab1),
+        shapes__request_shape_number(Type_Id, ground, Type_Table, S_Tab1,
+				     S_Tab, _S_Num).
 
 :- pred shapes__type_to_shapeid(type, shape_id). 
 :- mode shapes__type_to_shapeid(in, out) is det. 
@@ -310,7 +316,7 @@ shapes__type_to_shapeid(A, S) :-
 	;
 		A = term__variable(_Varnum)
 	->
-		S = (unqualified("__type_variable__") - -1) - ground 
+		S = (unqualified("__type_variable__") - -2) - ground 
 	;
 		error("shapes__arg_to_shapeid : type unknown")
 	).
@@ -322,15 +328,20 @@ shapes__type_to_shapeid(A, S) :-
 % it as a list of lists. Fortunately, this is just a case of calling
 % shapes__lookup_simple_info multiple times. 
 %-----------------------------------------------------------------------------%
-shapes__lookup_complicated_info([], _, _, []).
-shapes__lookup_complicated_info([Ctor | Cs], Tagvals, Bits, [S_Ids | Ss]) :-
-	shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids),
-	shapes__lookup_complicated_info(Cs, Tagvals, Bits, Ss).
+shapes__lookup_complicated_info([], _, _, [], _, S_Tab, S_Tab).
+shapes__lookup_complicated_info([Ctor | Cs], Tagvals, Bits, [S_Ids | Ss],
+				 Type_Table, S_Tab0, S_Tab) :-
+	shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids,
+					Type_Table, S_Tab0, S_Tab1),
+	shapes__lookup_complicated_info(Cs, Tagvals, Bits, Ss, Type_Table,
+					S_Tab1, S_Tab).
 
 :- pred shapes__get_complicated_shapeids(constructor, cons_tag_values,
-					bit_number, list(shape_id)).
-:- mode shapes__get_complicated_shapeids(in, in, in, out) is det.
-shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids) :- 
+					bit_number, list(shape_id), 
+					type_table, shape_table, shape_table).
+:- mode shapes__get_complicated_shapeids(in, in, in, out, in, in, out) is det.
+shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids, Type_Table, 
+				  S_Tab0, S_Tab) :- 
 	Ctor = Symname - Args,
 	shapes__make_cons_id(Symname, Args, C_Id),
 	map__lookup(Tagvals, C_Id, C_Tag),
@@ -338,9 +349,11 @@ shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids) :-
 		C_Tag = complicated_tag(Primary, _Sec),
 		shapes__tag_match(Bits, Primary)
 	->
-		shapes__lookup_simple_info(Args, S_Ids) 
+		shapes__lookup_simple_info(Args, S_Ids, Type_Table, S_Tab0,
+						S_Tab) 
 	;
-		S_Ids = []
+		S_Ids = [],
+		S_Tab = S_Tab0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -422,3 +435,6 @@ shapes__constr_lists_3([S_Id | S_Ids], S_tab, Cs_Old,
         map__lookup(Shape_Tab, S_Id, (Shape_Number - _Shape)).
 
 
+%%:- pred test_data(shape_table).
+%%:- mode test_data(out).
+%%test_data(X) :-
