@@ -4,7 +4,7 @@ Command echo enabled.
 mdb> exception
        5:      3  3 EXCP pred require:error/1-0 (erroneous)
 mdb> print *
-       HeadVar__1             	"oops"
+       Message (arg 1)        	"oops"
 mdb> continue
 Uncaught exception:
 Software Error: oops
