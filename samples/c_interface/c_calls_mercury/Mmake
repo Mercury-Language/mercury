@@ -6,7 +6,7 @@ all: mercury_main
 
 #-----------------------------------------------------------------------------#
 
-MCFLAGS=--no-optimize-dead-procs	# XXX work-around for compiler bug
+# pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb)
 MGNUCFLAGS=-g
 MLFLAGS=-g
 
