@@ -121,6 +121,8 @@ middle_rec__gen_det(Goal, Instrs) -->
 		{ tree__flatten(RecCode, RecListList) },
 		{ list__condense(RecListList, RecList) },
 		{ middle_rec__split_rec_code(RecList, BeforeList0, AfterList) },
+		{ list__append(BeforeList0, AfterList, RecCodeList) },
+		{ middle_rec__find_unused_register(RecCodeList, AuxReg) },
 		{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
 								BeforeList) },
 
@@ -132,9 +134,6 @@ middle_rec__gen_det(Goal, Instrs) -->
 
 		code_info__get_next_label(Loop1Label),
 		code_info__get_next_label(Loop2Label),
-		{ list__append(BeforeList0, AfterList, RecCodeList) },
-
-		{ middle_rec__find_unused_register(RecCodeList, AuxReg) },
 		code_info__get_total_stackslot_count(StackSlots),
 
 		( { StackSlots = 0 } ->
