@@ -59,7 +59,7 @@ MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
 
 verbose=false
 case $FULLARCH in
-	*-win95|*-winnt|*-win32)
+	*-win95|*-winnt|*-win32|*-cygwin32)
 		# `gcc -s' is broken in gnu-win32
 		strip=false
 		;;
