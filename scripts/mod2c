@@ -75,9 +75,11 @@ $decl = $code = $init = $special_init = $gnudecl = $gnuinit = "";
 $in_module = $in_code = $some_code = 0;
 $need_line = 1;
 
-LINE:
-while (<>)
-{
+unshift(@ARGV, '-') if $#ARGV < $[;
+while ($ARGV = shift) {
+  open(F, $ARGV) || die "mod2c: can't open input file `$ARGV': $!\n";
+  LINE:
+  while (<F>) {
     $target = $ARGV;
     $target =~ s/\.mod/\.c/;
     if ($line_nums && $need_line) {
@@ -199,4 +201,5 @@ while (<>)
         }
     }
     $code .= $save;
+  }
 }
