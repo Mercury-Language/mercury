@@ -25,6 +25,7 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 HDRS		=	\
 		  	mercury_engine.h	\
 			mercury_getopt.h	\
+			mercury_grade.h		\
 			mercury_goto.h		\
 			mercury_heap.h		\
 			mercury_imp.h		\
