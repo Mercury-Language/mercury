@@ -27,6 +27,7 @@ SOURCES= \
 	lambda_inference.m\
 	lambda_type.m \
 	lambda_quant.m \
+	lambda_switch.m \
 	loop.m \
 	loop_in_disj.m \
 	middle_rec_labels.m \
@@ -49,9 +50,6 @@ SOURCES= \
 	unused_args_test2.m \
 	vn_float.m
 
-# A bug prevents this test from working:
-#	lambda_switch.m
-#
 # The mode system can't handle the following test cases yet:
 #	assoc_list.m
 #	determinism.m
