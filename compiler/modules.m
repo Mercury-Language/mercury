@@ -1202,7 +1202,7 @@ make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName) -->
 		% `--c-include Mercury/<grade>/<fullarch>' to find
 		% the local `.opt' and `.mih' files without messing
 		% up the search for the files for installed libraries.
-		DirName =  "Mercury"/Grade/FullArch/"Mercury"/SubDirName
+		DirName = "Mercury"/Grade/FullArch/"Mercury"/SubDirName
 	;
 		DirName = "Mercury"/SubDirName
 	},

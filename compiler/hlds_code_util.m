@@ -20,8 +20,6 @@
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
-:- type hlds_code_util ---> suppress_warning_about_nothing_exported.
-
 	% Are equivalence types fully expanded on this backend?
 :- pred are_equivalence_types_expanded(module_info::in) is semidet.
 

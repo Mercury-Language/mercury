@@ -21,21 +21,20 @@
 %-----------------------------------------------------------------------------%
 
 % Pre-passes to transform or annotate the HLDS
-% (XXX these are not listed in right order)
-:- include_module saved_vars.	% transform
-:- include_module stack_opt.	% transform
-:- include_module stack_alloc.	% annotate
-:- include_module arg_info.	% annotate
-:- include_module liveness.	% annotate
-:- include_module live_vars.	% annotate
-:- include_module follow_code.	% transform
-:- include_module follow_vars.	% annotate
-:- include_module store_alloc.	% annotate
-:- include_module deep_profiling. % transform
+:- include_module deep_profiling.	% transform
+:- include_module arg_info.		% annotate
+:- include_module saved_vars.		% transform
+:- include_module stack_opt.		% transform
+:- include_module follow_code.		% transform
+:- include_module liveness.		% annotate
+:- include_module stack_alloc.		% annotate
+   :- include_module live_vars.	  	% annotate
+   :- include_module follow_vars. 	% annotate
+:- include_module store_alloc.		% annotate
 
 % The llds data structure itself
 :- include_module llds.
-:- include_module code_util. % XXX
+:- include_module code_util.
 
 % The HLDS->LLDS code generator.
 :- include_module code_gen.
@@ -56,7 +55,7 @@
 
    :- include_module code_info.
    :- include_module exprn_aux.
-   :- include_module code_aux. % XXX
+   :- include_module code_aux.
    :- include_module continuation_info.
    :- include_module var_locn.
 
@@ -80,10 +79,10 @@
    :- include_module delay_slot.
    :- include_module labelopt.
    :- include_module peephole.
-   :- include_module reassign.
-   :- include_module wrap_blocks.
    :- include_module use_local_vars.
+   :- include_module wrap_blocks.
    :- include_module livemap.
+   :- include_module reassign.
    :- include_module basic_block.
    :- include_module opt_util.
    :- include_module opt_debug.

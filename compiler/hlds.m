@@ -44,7 +44,7 @@
 :- include_module error_util.
 :- include_module goal_form.
 :- include_module goal_util.
-:- include_module hlds_code_util.	% XXX currently code_util.m
+:- include_module hlds_code_util.
 :- include_module passes_aux.
 
 %-----------------------------------------------------------------------------%

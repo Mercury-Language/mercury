@@ -125,7 +125,6 @@
 
 :- implementation.
 
-:- import_module check_hlds__clause_to_proc.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_errors.
 :- import_module check_hlds__mode_util.
