@@ -194,81 +194,93 @@ parser__parse_term_2(MaxPriority, IsArg, Term) -->
 :- mode parser__parse_left_term(in, in, out, out, in, out) is det.
 
 parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
-	(
-		% binary prefix op
-		parser__get_token(name(Op), Context),
-		\+ parser__get_token(open_ct),
-		parser__get_ops_table(OpTable),
-		{ ops__lookup_binary_prefix_op(OpTable, Op,
+	( parser__get_token(Token, Context) ->
+		(
+			% check for unary minus of integer
+			{ Token = name("-") },
+			parser__get_token(integer(X), _IntContext)
+		->
+			parser__get_term_context(Context, TermContext),
+			{ NegX is 0 - X },
+			{ Term = ok(term__functor(term__integer(NegX), [],
+						TermContext)) },
+			{ OpPriority = 0 }
+		;
+			% check for unary minus of float
+			{ Token = name("-") },
+			parser__get_token(float(F), _FloatContext)
+		->
+			parser__get_term_context(Context, TermContext),
+			{ NegF is 0.0 - F },
+			{ Term = ok(term__functor(term__float(NegF), [],
+				TermContext)) },
+			{ OpPriority = 0 }
+		;
+			% check for binary prefix op
+			{ Token = name(Op) },
+			\+ parser__get_token(open_ct),
+			parser__get_ops_table(OpTable),
+			{ ops__lookup_binary_prefix_op(OpTable, Op,
 				BinOpPriority, RightAssoc, RightRightAssoc) },
-		{ BinOpPriority =< MaxPriority },
-		parser__peek_token(NextToken),
-		{ parser__could_start_term(NextToken, yes) }
-	->
-		{ parser__adjust_priority(RightAssoc, BinOpPriority,
+			{ BinOpPriority =< MaxPriority },
+			parser__peek_token(NextToken),
+			{ parser__could_start_term(NextToken, yes) }
+		->
+			{ parser__adjust_priority(RightAssoc, BinOpPriority,
 							RightPriority) },
-		{ parser__adjust_priority(RightRightAssoc, BinOpPriority,
-							RightRightPriority) },
-		{ OpPriority = BinOpPriority },
-		parser__parse_term_2(RightPriority, IsArg, RightResult),
-		( { RightResult = ok(RightTerm) } ->
-			parser__parse_term_2(RightRightPriority, IsArg,
-						RightRightResult),
-			( { RightRightResult = ok(RightRightTerm) } ->
-				parser__get_term_context(Context, TermContext),
-				{ Term = ok(term__functor(term__atom(Op),
-					[RightTerm, RightRightTerm],
-					TermContext)) }
+			{ parser__adjust_priority(RightRightAssoc,
+					BinOpPriority, RightRightPriority) },
+			{ OpPriority = BinOpPriority },
+			parser__parse_term_2(RightPriority, IsArg, RightResult),
+			( { RightResult = ok(RightTerm) } ->
+				parser__parse_term_2(RightRightPriority, IsArg,
+							RightRightResult),
+				( { RightRightResult = ok(RightRightTerm) } ->
+					parser__get_term_context(Context,
+						TermContext),
+					{ Term = ok(term__functor(
+						term__atom(Op),
+						[RightTerm, RightRightTerm],
+						TermContext)) }
+				;
+					% propagate error upwards
+					{ Term = RightRightResult }
+				)
 			;
 				% propagate error upwards
-				{ Term = RightRightResult }
+				{ Term = RightResult }
 			)
 		;
-			% propagate error upwards
-			{ Term = RightResult }
-		)
-	;
-		% prefix op
-		parser__get_token(name(Op), Context),
-		\+ parser__get_token(open_ct),
-		parser__get_ops_table(OpTable),
-		{ ops__lookup_prefix_op(OpTable, Op, UnOpPriority,
-						RightAssoc) },
-		{ UnOpPriority =< MaxPriority },
-		parser__peek_token(NextToken),
-		{ parser__could_start_term(NextToken, yes) }
-	->
-		{ parser__adjust_priority(RightAssoc, UnOpPriority,
-						RightPriority) },
-		parser__parse_term_2(RightPriority, IsArg, RightResult),
-		{ OpPriority = UnOpPriority },
-		( { RightResult = ok(RightTerm) } ->
-			parser__get_term_context(Context, TermContext),
-			{
-				Op = "-",
-				RightTerm = term__functor(term__integer(X), [],
-						_)
-			->
-				NegX is 0 - X,
-				Term = ok(term__functor(term__integer(NegX), [],
-							TermContext))
+			% check for unary prefix op
+			{ Token = name(Op) },
+			\+ parser__get_token(open_ct),
+			parser__get_ops_table(OpTable),
+			{ ops__lookup_prefix_op(OpTable, Op, UnOpPriority,
+							RightAssoc) },
+			{ UnOpPriority =< MaxPriority },
+			parser__peek_token(NextToken),
+			{ parser__could_start_term(NextToken, yes) }
+		->
+			{ parser__adjust_priority(RightAssoc, UnOpPriority,
+							RightPriority) },
+			parser__parse_term_2(RightPriority, IsArg, RightResult),
+			{ OpPriority = UnOpPriority },
+			( { RightResult = ok(RightTerm) } ->
+				parser__get_term_context(Context, TermContext),
+				{ Term = ok(term__functor(term__atom(Op),
+						[RightTerm], TermContext)) }
 			;
-				Op = "-",
-				RightTerm = term__functor(term__float(F), [], _)
-			->
-				builtin_float_minus(0.0, F, NegF),
-				Term = ok(term__functor(term__float(NegF), [],
-					TermContext))
-			;
-				Term = ok(term__functor(term__atom(Op),
-					[RightTerm], TermContext))
-			}
+				% propagate error upwards
+				{ Term = RightResult }
+			)
 		;
-			% propagate error upwards
-			{ Term = RightResult }
+			parser__parse_simple_term(Token, Context, MaxPriority,
+				Term),
+			{ OpPriority = 0 }
 		)
 	;
-		parser__parse_simple_term(MaxPriority, Term),
+		parser__error("unexpected end-of-file at start of sub-term",
+			Term),
 		{ OpPriority = 0 }
 	).
 
@@ -322,21 +334,17 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred parser__parse_simple_term(int, parse(term),
+:- pred parser__parse_simple_term(token, token_context, int, parse(term),
 				parser__state, parser__state).
-:- mode parser__parse_simple_term(in, out, in, out) is det.
+:- mode parser__parse_simple_term(in, in, in, out, in, out) is det.
 
-parser__parse_simple_term(Priority, Term) -->
-	( parser__get_token(Token, Context) ->
-	    ( parser__parse_simple_term_2(Token, Context, Priority, Term0) ->
-		{ Term = Term0 }
-	    ;
-		parser__unexpected_tok(Token, Context,
-			"unexpected token at start of (sub)term", Term)
-	    )
-	;
-	    parser__error("unexpected end-of-file at start of sub-term", Term)
-	).
+parser__parse_simple_term(Token, Context, Priority, Term) -->
+    ( parser__parse_simple_term_2(Token, Context, Priority, Term0) ->
+	{ Term = Term0 }
+    ;
+	parser__unexpected_tok(Token, Context,
+		"unexpected token at start of (sub)term", Term)
+    ).
 
 	% term --> integer		% priority 0
 	% term --> float		% priority 0
