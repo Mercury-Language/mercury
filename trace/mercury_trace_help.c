@@ -37,7 +37,7 @@ static	Word		MR_trace_help_stdout;
 
 static	const char	*MR_trace_help_add_node(Word path, const char *name,
 				int slot, const char *text);
-static	void		MR_trace_help_ensure_init();
+static	void		MR_trace_help_ensure_init(void);
 
 const char *
 MR_trace_add_cat(const char *category, int slot, const char *text)
