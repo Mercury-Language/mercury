@@ -5,6 +5,8 @@
 % Simple implementation of the standard unix `cat' filter:
 % copy input files (or stdin, if no input files) to stdout.
 
+% This source file is hereby placed in the public domain.  -fjh (the author).
+
 %-----------------------------------------------------------------------------%
 
 :- interface.

@@ -1,3 +1,5 @@
+% This source file is hereby placed in the public domain.  -fjh (the author).
+
 %-----------------------------------------------------------------------------%
 :- module mercury_lib.
 :- interface.

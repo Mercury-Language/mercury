@@ -7,6 +7,8 @@
 %
 % The algorithm used is simple insertion sort.
 %
+% This source file is hereby placed in the public domain.  -fjh (the author).
+%
 %-----------------------------------------------------------------------------%
 
 :- module sort.

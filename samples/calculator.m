@@ -5,6 +5,8 @@
 
 % Author: fjh.
 
+% This source file is hereby placed in the public domain.  -fjh.
+
 :- module calculator.
 :- interface.
 :- import_module io.

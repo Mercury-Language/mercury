@@ -1,6 +1,8 @@
 % This module cpp_main_int defines a Mercury predicate cpp_main which acts as an
 % interface to the C++ function cpp_main(), which is defined in cpp_main.c.
 
+% This source file is hereby placed in the public domain.  -fjh (the author).
+
 :- module cpp_main_int.
 
 :- interface.

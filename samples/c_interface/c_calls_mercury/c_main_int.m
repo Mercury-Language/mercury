@@ -1,6 +1,8 @@
 % This module c_main_int defines a Mercury predicate c_main which acts as an
 % interface to the C function c_main(), which is defined in c_main.c.
 
+% This source file is hereby placed in the public domain.  -fjh (the author).
+
 :- module c_main_int.
 
 :- interface.

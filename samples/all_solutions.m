@@ -1,6 +1,8 @@
 % An example program to illustrate the use of all-solutions predicates
 % in Mercury.
 
+% This source file is hereby placed in the public domain.  -fjh (the author).
+
 :- module all_solutions.
 :- interface.
 :- import_module io.

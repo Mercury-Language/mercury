@@ -7,8 +7,11 @@
 %	Goodbye, World
 %
 % Which one it prints out is unspecified: the implementation can pick either.
+%
 % In the "strict sequential semantics" (enabled by the `--strict-sequential'
 % option to the Mercury compiler), it is guaranteed to print "Hello, World".
+
+% This source file is hereby placed in the public domain.  -fjh (the author).
 
 :- module committed_choice.
 :- interface.
