@@ -3,7 +3,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -463,6 +463,35 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
 	*is_func_ptr = is_func;
 	*arg_list_ptr = arg_list;
 	return NULL;
+}
+
+void
+MR_turn_off_debug(MR_SavedDebugState *saved_state)
+{
+	int	i;
+
+	saved_state->MR_sds_trace_enabled = MR_trace_enabled;
+	saved_state->MR_sds_io_tabling_enabled = MR_io_tabling_enabled;
+	MR_trace_enabled = MR_FALSE;
+	MR_io_tabling_enabled = MR_FALSE;
+
+	for (i = 0; i < MR_MAXFLAG ; i++) {
+		saved_state->MR_sds_debugflags[i] = MR_debugflag[i];
+		MR_debugflag[i] = MR_FALSE;
+	}
+}
+
+void
+MR_turn_debug_back_on(MR_SavedDebugState *saved_state)
+{
+	int	i;
+
+	MR_trace_enabled = saved_state->MR_sds_trace_enabled;
+	MR_io_tabling_enabled = saved_state->MR_sds_io_tabling_enabled;
+
+	for (i = 0; i < MR_MAXFLAG ; i++) {
+		MR_debugflag[i] = saved_state->MR_sds_debugflags[i];
+	}
 }
 
 static	MR_Word		MR_trace_exception_value = (MR_Word) NULL;

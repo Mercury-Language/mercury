@@ -92,7 +92,7 @@ sp = det  22
 curfr = non 162
 maxfr = non 162
 mdb> nondet_stack -d
-non 162: ordinary, 16 words
+non 162: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;>
  redoip: unnamed label
  redofr: non 162
  succip: unnamed label
@@ -114,7 +114,7 @@ non 140: ordinary, 17 words
  top frame of a nondet side branch non 140
        HeadVar__2             [3, 4, 5]
        TypeInfo_for_T         int
-non 123: ordinary, 16 words
+non 123: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non 123
  succip: unnamed label
@@ -138,7 +138,7 @@ non 101: ordinary, 17 words
  top frame of a nondet side branch non 101
        HeadVar__2             [2, 3, 4, 5]
        TypeInfo_for_T         int
-non  84: ordinary, 16 words
+non  84: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non  84
  succip: unnamed label
@@ -162,7 +162,7 @@ non  62: ordinary, 17 words
  top frame of a nondet side branch non  62
        HeadVar__2             [1, 2, 3, 4, 5]
        TypeInfo_for_T         int
-non  45: ordinary, 16 words
+non  45: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non  45
  succip: unnamed label
@@ -172,7 +172,7 @@ non  45: ordinary, 16 words
        TypeInfo_for_T         int
        U                      1
        Z                      [2, 3, 4, 5]
-non  29: ordinary, 15 words
+non  29: ordinary, 15 words, pred nondet_stack.queen/2-0 (nondet) <c2;>
  redoip: unnamed label
  redofr: non  29
  succip: unnamed label
@@ -354,7 +354,7 @@ non 218: ordinary, 17 words
  top frame of a nondet side branch non 218
        HeadVar__2             [5]
        TypeInfo_for_T         int
-non 201: ordinary, 16 words
+non 201: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non 201
  succip: unnamed label
@@ -378,7 +378,7 @@ non 179: ordinary, 17 words
  top frame of a nondet side branch non 179
        HeadVar__2             [4, 5]
        TypeInfo_for_T         int
-non 162: ordinary, 16 words
+non 162: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non 162
  succip: unnamed label
@@ -402,7 +402,7 @@ non 140: ordinary, 17 words
  top frame of a nondet side branch non 140
        HeadVar__2             [3, 4, 5]
        TypeInfo_for_T         int
-non 123: ordinary, 16 words
+non 123: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non 123
  succip: unnamed label
@@ -426,7 +426,7 @@ non 101: ordinary, 17 words
  top frame of a nondet side branch non 101
        HeadVar__2             [2, 3, 4, 5]
        TypeInfo_for_T         int
-non  84: ordinary, 16 words
+non  84: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non  84
  succip: unnamed label
@@ -450,7 +450,7 @@ non  62: ordinary, 17 words
  top frame of a nondet side branch non  62
        HeadVar__2             [1, 2, 3, 4, 5]
        TypeInfo_for_T         int
-non  45: ordinary, 16 words
+non  45: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non  45
  succip: unnamed label
@@ -460,7 +460,7 @@ non  45: ordinary, 16 words
        TypeInfo_for_T         int
        U                      1
        Z                      [2, 3, 4, 5]
-non  29: ordinary, 15 words
+non  29: ordinary, 15 words, pred nondet_stack.queen/2-0 (nondet) <c3;>
  redoip: unnamed label
  redofr: non  29
  succip: unnamed label
@@ -641,7 +641,7 @@ sp = det  22
 curfr = non 341
 maxfr = non 341
 mdb> nondet_stack -d
-non 341: ordinary, 16 words
+non 341: ordinary, 16 words, pred nondet_stack.test/2-0 (nondet) <>
  redoip: unnamed label
  redofr: non 341
  succip: unnamed label
@@ -695,7 +695,7 @@ non 278: ordinary, 17 words
  top frame of a nondet side branch non 278
        HeadVar__2             [4]
        TypeInfo_for_T         int
-non 261: ordinary, 16 words
+non 261: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non 261
  succip: unnamed label
@@ -719,7 +719,7 @@ non 239: ordinary, 17 words
  top frame of a nondet side branch non 239
        HeadVar__2             [2, 4]
        TypeInfo_for_T         int
-non 222: ordinary, 16 words
+non 222: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non 222
  succip: unnamed label
@@ -749,7 +749,7 @@ non 194: ordinary, 17 words
  top frame of a nondet side branch non 194
        HeadVar__2             [5]
        TypeInfo_for_T         int
-non 177: ordinary, 17 words
+non 177: ordinary, 17 words, pred nondet_stack.qdelete/3-0 (nondet) <c2;d2;c3;>
  redoip: unnamed label
  redofr: non 177
  succip: unnamed label
@@ -759,7 +759,7 @@ non 177: ordinary, 17 words
        A                      4
        TypeInfo_for_T         int
        Z                      [5]
-non 160: ordinary, 17 words
+non 160: ordinary, 17 words, pred nondet_stack.qdelete/3-0 (nondet) <c2;d2;c3;>
  redoip: unnamed label
  redofr: non 160
  succip: unnamed label
@@ -769,7 +769,7 @@ non 160: ordinary, 17 words
        A                      2
        TypeInfo_for_T         int
        Z                      [4, 5]
-non 143: ordinary, 16 words
+non 143: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non 143
  succip: unnamed label
@@ -796,7 +796,7 @@ non 118: ordinary, 17 words
  top frame of a nondet side branch non 118
        HeadVar__2             [3, 4, 5]
        TypeInfo_for_T         int
-non 101: ordinary, 17 words
+non 101: ordinary, 17 words, pred nondet_stack.qdelete/3-0 (nondet) <c2;d2;c3;>
  redoip: unnamed label
  redofr: non 101
  succip: unnamed label
@@ -806,7 +806,7 @@ non 101: ordinary, 17 words
        A                      2
        TypeInfo_for_T         int
        Z                      [3, 4, 5]
-non  84: ordinary, 16 words
+non  84: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non  84
  succip: unnamed label
@@ -830,7 +830,7 @@ non  62: ordinary, 17 words
  top frame of a nondet side branch non  62
        HeadVar__2             [1, 2, 3, 4, 5]
        TypeInfo_for_T         int
-non  45: ordinary, 16 words
+non  45: ordinary, 16 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
  redoip: unnamed label
  redofr: non  45
  succip: unnamed label
@@ -840,7 +840,7 @@ non  45: ordinary, 16 words
        TypeInfo_for_T         int
        U                      1
        Z                      [2, 3, 4, 5]
-non  29: ordinary, 15 words
+non  29: ordinary, 15 words, pred nondet_stack.queen/2-0 (nondet) <c2;>
  redoip: unnamed label
  redofr: non  29
  succip: unnamed label

@@ -23,7 +23,8 @@
 
 static  MR_Word *nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2);
 static  void    save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
-                    const char *who, const char *what);
+                    const char *who, const char *what,
+                    MR_bool can_print_stack_detail);
 static  void    restore_state(MR_SavedState *saved_state, const char *who,
                     const char *what);
 static  void    extend_consumer_stacks(MR_Subgoal *leader,
@@ -457,7 +458,7 @@ nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2)
 
 static void
 save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
-    const char *who, const char *what)
+    const char *who, const char *what, MR_bool can_print_stack_detail)
 {
     MR_Word *common_ancestor_fr;
     MR_Word *start_non;
@@ -532,7 +533,12 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
     }
 
     if (MR_tablestackdebug) {
-        MR_dump_nondet_stack(stdout, 0, MR_maxfr);
+        if (can_print_stack_detail) {
+            MR_dump_nondet_stack_from_layout(stdout, 0, MR_maxfr,
+                MR_subgoal_debug_cur_proc->MR_sle_call_label, MR_sp, MR_curfr);
+        } else {
+            MR_dump_nondet_stack(stdout, 0, MR_maxfr);
+        }
     }
   #endif /* MR_TABLE_DEBUG */
 
@@ -1067,7 +1073,7 @@ MR_define_entry(MR_SUSPEND_ENTRY);
 
     MR_save_transient_registers();
     save_state(&(consumer->MR_cns_saved_state), subgoal->MR_sg_generator_fr,
-        "suspension", "consumer");
+        "suspension", "consumer", MR_TRUE);
     MR_restore_transient_registers();
 
     cur_gen = MR_gen_next - 1;
@@ -1254,7 +1260,8 @@ MR_define_entry(MR_RESUME_ENTRY);
 
         MR_save_transient_registers();
         save_state(&(MR_cur_leader->MR_sg_resume_info->MR_ri_leader_state),
-            MR_cur_leader->MR_sg_generator_fr, "resumption", "generator");
+            MR_cur_leader->MR_sg_generator_fr, "resumption", "generator",
+            MR_FALSE);
         MR_restore_transient_registers();
 
 #ifdef  MR_TABLE_DEBUG

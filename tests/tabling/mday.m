@@ -9,26 +9,26 @@
 :- implementation.
 
 main(IO0, IO) :-
-	( a(_) ->
+	( x(_) ->
 		write_string("yes\n", IO0, IO)
 	;
 		write_string("no\n", IO0, IO)
 	).
 
-:- pred a(int::out) is nondet.
+:- pred x(int::out) is nondet.
+:- pred y(int::out) is nondet.
+:- pred z(int::out) is nondet.
 :- pred b(int::out) is multi.
 :- pred c(int::out) is multi.
 :- pred d(int::out) is det.
-:- pred a1(int::out) is nondet.
-:- pred a2(int::out) is nondet.
 
-:- pragma minimal_model(a1/1).
-:- pragma minimal_model(a2/1).
+:- pragma minimal_model(y/1).
+:- pragma minimal_model(z/1).
 
-a(A) :- a2(A), d(A).
+x(A) :- y(A), d(A).
 
-a2(A) :- a1(A), a1(A).
-a1(A) :- b(A), c(A).
+y(A) :- z(A), z(A).
+z(A) :- b(A), c(A).
 
 b(3).
 b(4).

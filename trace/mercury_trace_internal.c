@@ -162,14 +162,6 @@ static	MR_Trace_Source_Server	MR_trace_source_server =
 static	MR_bool			MR_trace_internal_interacting = MR_FALSE;
 
 /*
-** The saved value of MR_io_tabling_enabled. We set that variable to MR_FALSE
-** when executing Mercury code from within the debugger, to avoid tabling I/O
-** primitives that aren't part of the user's program.
-*/
-
-static	MR_bool			MR_saved_io_tabling_enabled;
-
-/*
 ** We include values of sometimes-useful types such as typeinfos in the set of
 ** variables whose values we collect at events for possible later printing
 ** only if MR_print_optionals is true.
@@ -641,7 +633,7 @@ static	const MR_Trace_Command_Info	*MR_trace_valid_command(
 static	char	*MR_trace_command_completer_next(const char *word,
 			size_t word_len, MR_Completer_Data *data);
 
-static	MR_bool	MR_saved_tabledebug;
+static	MR_SavedDebugState	MR_saved_debug_state;
 
 MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
@@ -667,11 +659,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	** do any I/O tabling.
 	*/
 
-	MR_trace_enabled = MR_FALSE;
-	MR_saved_tabledebug = MR_tabledebug;
-	MR_tabledebug = MR_FALSE;
-	MR_saved_io_tabling_enabled = MR_io_tabling_enabled;
-	MR_io_tabling_enabled = MR_FALSE;
+	MR_turn_off_debug(&MR_saved_debug_state);
 
 	MR_trace_internal_ensure_init();
 
@@ -716,9 +704,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	MR_trace_event_number = event_details.MR_event_number;
 
 	MR_scroll_next = 0;
-	MR_trace_enabled = MR_TRUE;
-	MR_tabledebug = MR_saved_tabledebug;
-	MR_io_tabling_enabled = MR_saved_io_tabling_enabled;
+	MR_turn_debug_back_on(&MR_saved_debug_state);
 	return jumpaddr;
 }
 
@@ -794,7 +780,7 @@ MR_trace_internal_ensure_init(void)
 		MR_trace_internal_init_from_local();
 		MR_trace_internal_init_from_home_dir();
 
-		MR_saved_io_tabling_enabled = MR_TRUE;
+		MR_saved_debug_state.MR_sds_io_tabling_enabled = MR_TRUE;
 		MR_io_tabling_phase = MR_IO_TABLING_BEFORE;
 		MR_io_tabling_start = MR_IO_ACTION_MAX;
 		MR_io_tabling_end = MR_IO_ACTION_MAX;
@@ -3280,18 +3266,13 @@ MR_trace_cmd_flag(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	found = MR_FALSE;
 	for (i = 0; i < MR_MAXFLAG; i++) {
 		if (MR_streq(MR_debug_flag_info[i].MR_debug_flag_name, name)) {
-			flagptr = &MR_debugflag[
+			/*
+			** The true values of the debugging flags are stored
+			** in MR_saved_debug_state inside the call tree
+			** of MR_trace_event.
+			*/
+			flagptr = &MR_saved_debug_state.MR_sds_debugflags[
 				MR_debug_flag_info[i].MR_debug_flag_index];
-
-			if (flagptr == &MR_tabledebug) {
-				/*
-				** The true value of MR_tabledebug is stored
-				** in MR_saved_tabledebug inside the call tree
-				** of MR_trace_event.
-				*/
-				flagptr = &MR_saved_tabledebug;
-			}
-
 			found = MR_TRUE;
 			break;
 		}
@@ -3590,16 +3571,16 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
 			fprintf(MR_mdb_out,
-				"io tabling has not yet started\n");
+				"I/O tabling has not yet started.\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING) {
 			fprintf(MR_mdb_out,
-				"io tabling has started\n");
+				"I/O tabling has started.\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER) {
 			fprintf(MR_mdb_out,
-				"io tabling has stopped\n");
+				"I/O tabling has stopped.\n");
 		} else {
 			MR_fatal_error(
-				"io tabling in impossible phase\n");
+				"I/O tabling in impossible phase.\n");
 		}
 	} else if (word_count == 2 && (MR_streq(words[1], "start")
 		|| MR_streq(words[1], "begin")))
@@ -3620,16 +3601,16 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 #ifdef	MR_DEBUG_RETRY
 			MR_io_tabling_debug = MR_TRUE;
 #endif
-			fprintf(MR_mdb_out, "io tabling started\n");
+			fprintf(MR_mdb_out, "I/O tabling started.\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING) {
 			fprintf(MR_mdb_out,
-				"io tabling has already started\n");
+				"I/O tabling has already started.\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER) {
 			fprintf(MR_mdb_out,
-				"io tabling has already stopped\n");
+				"I/O tabling has already stopped.\n");
 		} else {
 			MR_fatal_error(
-				"io tabling in impossible phase\n");
+				"I/O tabling in impossible phase.\n");
 		}
 	} else if (word_count == 2 && (MR_streq(words[1], "stop")
 		|| MR_streq(words[1], "end")))
@@ -3643,19 +3624,19 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
 			fprintf(MR_mdb_out,
-				"io tabling has not yet started\n");
+				"I/O tabling has not yet started.\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING) {
 			MR_io_tabling_phase = MR_IO_TABLING_AFTER;
 			MR_io_tabling_end = MR_io_tabling_counter_hwm;
 			MR_io_tabling_stop_event_num =
 				event_info->MR_event_number;
-			fprintf(MR_mdb_out, "io tabling stopped\n");
+			fprintf(MR_mdb_out, "I/O tabling stopped.\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER) {
 			fprintf(MR_mdb_out,
-				"io tabling has already stopped\n");
+				"I/O tabling has already stopped.\n");
 		} else {
 			MR_fatal_error(
-				"io tabling in impossible phase\n");
+				"I/O tabling in impossible phase.\n");
 		}
 	} else if (word_count == 2 && MR_streq(words[1], "stats")) {
 		if (! MR_io_tabling_allowed) {
@@ -3779,14 +3760,14 @@ MR_trace_cmd_unhide_events(char **words, int word_count,
 {
 	if (word_count == 2 && MR_streq(words[1], "off")) {
 		MR_trace_unhide_events = MR_FALSE;
-		fprintf(MR_mdb_out, "hidden events are hidden\n");
+		fprintf(MR_mdb_out, "Hidden events are hidden.\n");
 	} else if (word_count == 2 && MR_streq(words[1], "on")) {
 		MR_trace_unhide_events = MR_TRUE;
 		MR_trace_have_unhid_events = MR_TRUE;
-		fprintf(MR_mdb_out, "hidden events are exposed\n");
+		fprintf(MR_mdb_out, "Hidden events are exposed.\n");
 	} else if (word_count == 1)  {
 		fprintf(MR_mdb_out,
-			"hidden events are %s\n",
+			"Hidden events are %s.\n",
 			MR_trace_unhide_events? "exposed" : "hidden");
 	} else {
 		MR_trace_usage("developer", "unhide_events");

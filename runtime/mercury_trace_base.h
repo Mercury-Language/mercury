@@ -19,6 +19,7 @@
 #include "mercury_stack_layout.h"
 #include "mercury_std.h"
 #include "mercury_tabling.h"	/* for MR_TableNode */
+#include "mercury_engine.h"	/* for MR_MAXFLAG */
 #include "mercury_goto.h"	/* for MR_declare_entry */
 
 /*
@@ -327,6 +328,22 @@ extern	const char
 		*MR_trace_get_action(int action_number,
 			MR_ConstString *proc_name_ptr, MR_Word *is_func_ptr,
 			MR_Word *arg_list_ptr);
+
+/*
+** MR_turn_off_debug saves the current values of the variables controlling 
+** debugging (execution tracing and diagnostics) in the structure provided by
+** the caller, and then turns them off. MR_turn_debug_back_on restores the
+** saved values from the structure.
+*/
+
+typedef struct {
+	MR_bool	MR_sds_trace_enabled;
+	MR_bool	MR_sds_io_tabling_enabled;
+	MR_bool	MR_sds_debugflags[MR_MAXFLAG];
+} MR_SavedDebugState;
+
+extern	void	MR_turn_off_debug(MR_SavedDebugState *saved_state);
+extern	void	MR_turn_debug_back_on(MR_SavedDebugState *saved_state);
 
 /*
 ** These functions allow library/exceptions.m to tell the debuggers

@@ -400,6 +400,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
     MR_bool         print_vars;
     const char      *problem;
     int             frames_traversed_so_far;
+    int             branch;
 
     MR_do_init_modules();
 
@@ -409,7 +410,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
     {
         print_vars = MR_TRUE;
         MR_init_nondet_branch_infos(base_maxfr, top_layout, base_sp,
-                base_curfr);
+            base_curfr);
     } else {
         print_vars = MR_FALSE;
     }
@@ -456,7 +457,16 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
             fprintf(fp, "\n");
         } else {
             MR_print_nondstackptr(fp, base_maxfr);
-            fprintf(fp, ": ordinary, %d words\n", frame_size);
+            fprintf(fp, ": ordinary, %d words", frame_size);
+            if (print_vars && MR_find_matching_branch(base_maxfr, &branch)) {
+                const MR_Label_Layout *label_layout;
+
+                fprintf(fp, ", ");
+                label_layout = MR_nondet_branch_infos[branch].branch_layout;
+                MR_print_proc_id(fp, label_layout->MR_sll_entry);
+                fprintf(fp, " <%s>", MR_label_goal_path(label_layout));
+            }
+            fprintf(fp, "\n");
             fprintf(fp, " redoip: ");
             MR_printlabel(fp, MR_redoip_slot(base_maxfr));
             fprintf(fp, " redofr: ");
@@ -475,9 +485,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
 
             level_number++;
             if (print_vars && base_maxfr > MR_nondet_stack_trace_bottom) {
-                problem = MR_step_over_nondet_frame(
-                        MR_dump_nondet_stack_frame, fp,
-                        level_number, base_maxfr);
+                problem = MR_step_over_nondet_frame(MR_dump_nondet_stack_frame,
+                    fp, level_number, base_maxfr);
                 if (problem != NULL) {
                     fprintf(fp, "%s\n", problem);
                     return;
@@ -523,9 +532,18 @@ MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
     }
 
     if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
+        /*
+        ** The browsing code is in Mercury, so we need to disable debugger
+        ** events and diagnostics inside.
+        */
+
+        MR_SavedDebugState  saved_debug_state;
+
+        MR_turn_off_debug(&saved_debug_state);
         /* XXX we ignore the return value */
         (*MR_address_of_trace_browse_all_on_level) (dump_fp, top_layout,
                 base_sp, base_curfr, level_number, MR_TRUE);
+        MR_turn_debug_back_on(&saved_debug_state);
     }
 }
 
