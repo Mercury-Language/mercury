@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -139,9 +139,15 @@ typedef	Word	MR_PseudoTypeInfo;
 ** Definitions for handwritten code, mostly for mercury_compare_typeinfo.
 */
 
+#ifdef MR_RESERVE_TAG
+#define MR_COMPARE_EQUAL 1
+#define MR_COMPARE_LESS 5
+#define MR_COMPARE_GREATER 9
+#else
 #define MR_COMPARE_EQUAL 0
 #define MR_COMPARE_LESS 1
 #define MR_COMPARE_GREATER 2
+#endif
 
 /*---------------------------------------------------------------------------*/
 
