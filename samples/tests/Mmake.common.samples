@@ -1,3 +1,12 @@
+#-----------------------------------------------------------------------------#
+
+# The Mmake file which includes this one should set the following variables:
+#	THISDIR		relative path of source directory from `samples'
+#	DEPTH		relative path of `samples/test' directory from current
+#			(i.e. . or .. or ../.. or ../../.. etc.)
+#	PROGS		list of Mercury programs to build and test
+#	TESTS		additional tests to run
+#	EXTRA_FILES	additional files to copy from the source directory
 
 #-----------------------------------------------------------------------------#
 
@@ -16,7 +25,7 @@ DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out) $(TESTS:%=%.out)
 RESS=	$(PROGS:%=%.res) $(TESTS:%=%.res)
 
-dep_local:	$(DEPS)
+dep_local:	extra_files $(SRCS) $(DEPS)
 depend_local:	extra_files $(SRCS) $(DEPENDS)
 check_local:	$(OUTS) $(RESS)
 all_local:	$(PROGS) $(TESTS)
@@ -37,9 +46,10 @@ extra_files: $(SOURCEDIR_EXTRA_FILES)
 realclean:
 	rm -f $(SRCS) $(EXTRA_FILES)
 
-SUBDIRS = 
+SUBMMAKEFILES := $(wildcard */Mmakefile)
+SUBDIRS := $(SUBMMAKEFILES:%/Mmakefile=%)
 
-ifeq ($(SUBDIRS),"")
+ifneq ("$(SUBDIRS)","")
 
 dep_subdirs:
 	for dir in $(SUBDIRS); do \

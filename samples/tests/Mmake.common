@@ -6,17 +6,9 @@
 # file by setting both GRADEFLAGS-foo.
 #
 
-# override this with `mmake HAVE_NUPROLOG=yes'
-# if you want to rebuild the `.exp' files.
-HAVE_NUPROLOG=no
-
 DIFF_OPTS=-c
 
 #-----------------------------------------------------------------------------#
-
-# .PRECIOUS: %.mod %.c %.o %_init.c %.no %.nu %_init.nl %_init.no
-
-%_init.c: Entry
 
 #
 # If there is a `.inp' file, then we pipe that in as the command's input.
@@ -68,6 +60,8 @@ clean_exp:
 clean_res:
 	rm -f *.res
 	rm -f *.res2
+
+#-----------------------------------------------------------------------------#
 
 #
 # The `foo' targets make `foo_local' in the current directory before

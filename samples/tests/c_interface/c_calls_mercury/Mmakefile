@@ -17,8 +17,8 @@ include $(SOURCEDIR)/Mmakefile
 
 # Add a few dependencies so that it copies the source
 # files correctly.
-mercury_lib.o: mercury_lib.m
-mercury_main.depend: c_main_int.m
+mercury_lib.o mercury_lib.depend mercury_lib.dep: mercury_lib.m
+mercury_main.depend mercury_main.dep: c_main_int.m mercury_main.m
 c_main_int.o: c_main.h
 
 clean_local: clean_2
