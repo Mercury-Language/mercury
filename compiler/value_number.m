@@ -1133,7 +1133,7 @@ value_number__post_main_2([], R, F, RevSofar, []) :-
 value_number__post_main_2([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
 	Instr0 = Uinstr0 - _Comment0,
 	opt_util__count_temps_instr(Uinstr0, R0, R1, F0, F1),
-	( ( R1 > 0 ; F0 > 0) ->
+	( ( R1 > 0 ; F1 > 0) ->
 		( opt_util__can_instr_fall_through(Uinstr0, no) ->
 			list__reverse([Instr0 | RevSofar], BlockInstrs),
 			value_number__post_main_2(Instrs0, 0, 0, [], Instrs1),
