@@ -40,6 +40,7 @@ install: install_mmake install_scripts $(INSTALL_NUPROLOG) $(INSTALL_SICSTUS)
 .PHONY: install_mmake
 install_mmake: Mmake.vars Mmake.rules
 	[ -d $(INSTALL_LIBDIR)/mmake ] || mkdir -p $(INSTALL_LIBDIR)/mmake
+	rm -f $(INSTALL_LIBDIR)/mmake/Mmake.vars
 	cp `vpath_find Mmake.vars Mmake.rules` $(INSTALL_LIBDIR)/mmake
 
 .PHONY: install_scripts
