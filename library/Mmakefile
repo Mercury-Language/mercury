@@ -374,34 +374,42 @@ else
 .PHONY: install
 install:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+	exit 1
 
 .PHONY: install_all
 install_all:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+	exit 1
 
 .PHONY: install_mercury
 install_mercury:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+	exit 1
 
 .PHONY: install_ints
 install_ints:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+	exit 1
 
 .PHONY: install_hdrs
 install_hdrs:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+	exit 1
 
 .PHONY: install_init
 install_init:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+	exit 1
 
 .PHONY: install_library
 install_library:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+	exit 1
 
 .PHONY: install_split_library
 install_split_library:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+	exit 1
 
 endif
 
