@@ -66,7 +66,7 @@ main_loop_2(term(VarSet, Goal), Database) -->
 	%%% It would be a good idea to add some special commands
 	%%% with side-effects (such as `consult' and `listing');
 	%%% these could be identified and processed here.
-	{ store__init(Store0) },
+	{ store__new(Store0) },
 	{ map__init(VarMap0) },
 	{ term_to_my_term(Goal, MyGoal, VarMap0, VarMap, Store0, Store1) },
 	print_solutions(VarSet, VarMap, MyGoal, Store1, Database),

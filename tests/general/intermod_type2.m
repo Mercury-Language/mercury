@@ -15,9 +15,11 @@
 
 :- import_module array, char, int, list, require, std_util, store, string.
 
-:- type curse	== store(some_store_type).
+:- type my_store_type.
 
-:- type win == mutvar(window, some_store_type).
+:- type curse	== store(my_store_type).
+
+:- type win == mutvar(window, my_store_type).
 
 :- type window
 	--->	win(

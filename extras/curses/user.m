@@ -150,9 +150,9 @@
 :- import_module mcurses:misc, mcurses:basics.
 :- import_module array, char, int, list, require, std_util, store, string.
 
-:- type curse	== store(some_store_type).
-
-:- type win == mutvar(window, some_store_type).
+:- type curse_store_type ---> curse_store_type.
+:- type curse_store == store(curse_store_type).
+:- type win	== mutvar(window, curse_store).
 
 :- type window
 	--->	win(
@@ -179,13 +179,13 @@
 
 init(Win) -->
 	init,
-	{ store__init(Curse0) },
 	cols(Cols),
 	rows(Rows),
 	{ array__init(Cols*Rows, ' ' - [], Data) },
-	{ Func = (func(Self) = win(Self, Cols, Rows, [], Data, [], [])) },
-	{ store__new_cyclic_mutvar(Func, Win, Curse0, Curse) },
-	set_curse(Curse),
+	{ MakeWin = (func(Self) = win(Self, Cols, Rows, [], Data, [], [])) },
+	{ init_curse_store(Curse0) },
+	{ store__new_cyclic_mutvar(MakeWin, Win, Curse0, Curse) },
+	set_curse_store(Curse),
 	set_root(Win),
 	refresh.
 
@@ -574,23 +574,23 @@ update_data([C|Cs], Y, X, Xmax, Data0, Data) :-
 :- pred new_win(window::in, win::out, io__state::di, io__state::uo) is det.
 
 new_win(Window, Win) -->
-	get_curse(Curse0),
+	get_curse_store(Curse0),
 	{ store__new_mutvar(Window, Win, Curse0, Curse) },
-	set_curse(Curse).
+	set_curse_store(Curse).
 
 :- pred get_win(win::in, window::out, io__state::di, io__state::uo) is det.
 
 get_win(Win, Window) -->
-	get_curse(Curse0),
+	get_curse_store(Curse0),
 	{ store__get_mutvar(Win, Window, Curse0, Curse) },
-	set_curse(Curse).
+	set_curse_store(Curse).
 
 :- pred set_win(win::in, window::in, io__state::di, io__state::uo) is det.
 
 set_win(Win, Window) -->
-	get_curse(Curse0),
+	get_curse_store(Curse0),
 	{ store__set_mutvar(Win, Window, Curse0, Curse) },
-	set_curse(Curse).
+	set_curse_store(Curse).
 
 %----------------------------------------------------------------------------%
 
@@ -620,9 +620,15 @@ set_win(Win, Window) -->
 
 %----------------------------------------------------------------------------%
 
-:- pred get_curse(curse::uo, io__state::di, io__state::uo) is det.
+% XXX get_curse_store is not unique-mode-correct.
+% You need to be careful to ensure that get_curse_store
+% and set_curse_store are only ever used in pairs.
 
-:- pred set_curse(curse::di, io__state::di, io__state::uo) is det.
+:- pred init_curse_store(curse_store::uo) is det.
+
+:- pred get_curse_store(curse_store::uo, io__state::di, io__state::uo) is det.
+
+:- pred set_curse_store(curse_store::di, io__state::di, io__state::uo) is det.
 
 :- pragma c_header_code("
 	extern Word	curse_store;
@@ -632,13 +638,23 @@ set_win(Win, Window) -->
 	Word		curse_store;
 ").
 
-:- pragma c_code(get_curse(C::uo, I0::di, I::uo),
+:- pragma c_code(init_curse_store(C::uo),
+	[will_not_call_mercury], "
+	/*
+	** Here we rely on the fact that stores have no
+	** real representation, so we can fill in any
+	** dummy value for C.
+	*/
+	C = 0;
+").
+
+:- pragma c_code(get_curse_store(C::uo, I0::di, I::uo),
 	[will_not_call_mercury], "
 	C = curse_store;
 	I = I0;
 ").
 
-:- pragma c_code(set_curse(C::di, I0::di, I::uo),
+:- pragma c_code(set_curse_store(C::di, I0::di, I::uo),
 	[will_not_call_mercury], "
 	curse_store = C;
 	I = I0;

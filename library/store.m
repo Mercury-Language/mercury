@@ -30,28 +30,16 @@
 :- interface.
 
 % Stores and keys are indexed by a type S that is used to distinguish
-% between different stores.  The idea is to use an existential type
-% declaration for store__init:
-%	:- some [S] pred store__init(store(S)).
-% That way, we could use the type system to ensure at compile time
-% that you never attempt to use a key from one store to access a
-% different store.
-% However, Mercury doesn't yet support existential types :-(
-% For the moment we just use a type `some_store_type'
-% instead of `some [S] ... S'. 
-% So currently this check is not done --
-% if you attempt to use a key from one store to access a
-% different store, the behaviour is undefined.
-% This will hopefully be rectified in some future version when
-% Mercury does support existential types.
+% between different stores.  By using an existential type declaration
+% for store__new (see below), we use the type system to ensure at
+% compile time that you never attempt to use a key from one store
+% to access a different store.
 
 :- type store(S).
 
-:- type some_store_type.
-
-	% initialize a store
-:- pred store__init(store(some_store_type)).
-:- mode store__init(uo) is det.
+	% initialize a new store
+:- some [S] pred store__new(store(S)).
+:- mode          store__new(uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -201,6 +189,20 @@
 :- mode store__unsafe_new_arg_ref(di, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% Unsafe interfaces retained only for backwards compatibility
+%
+
+	% OBSOLETE: use `S' or `some [S] ... S' instead.
+:- type some_store_type.
+
+	% initialize a store
+	% OBSOLETE: use store__new/1 instead
+:- pred store__init(store(some_store_type)).
+:- mode store__init(uo) is det.
+:- pragma obsolete(store__init/1).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -214,7 +216,16 @@
 
 :- type ref(T, S) ---> ref(c_pointer).
 
-:- pragma c_code(init(_S0::uo), will_not_call_mercury, "").
+store__new(S) :-
+	store__do_init(S).
+
+store__init(S) :-
+	store__do_init(S).
+
+:- pred store__do_init(store(some_store_type)).
+:- mode store__do_init(uo) is det.
+
+:- pragma c_code(store__do_init(_S0::uo), will_not_call_mercury, "").
 
 /* 
 Note -- the syntax for the operations on stores

@@ -413,7 +413,7 @@ neg_node_set_status(Neg0, Status) = Neg :-
 :- mode set_trace_node_arg(di, in, di, out) is det.
 
 set_trace_node_arg(Node0, FieldNum, Val, Node) :-
-	store__init(S0),
+	store__new(S0),
 	store__new_ref(Node0, Ref, S0, S1),
 	store__arg_ref(Ref, FieldNum, ArgRef, S1, S2),
 	store__set_ref_value(ArgRef, Val, S2, S),

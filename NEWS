@@ -43,6 +43,11 @@ Changes to the standard library:
   module.  These make it more convenient to work with non-ground
   terms of the corresponding type.
 
+* The `store' module now makes use of existential types.
+
+  The `store__init/1' predicate and the `store__some_store_type' type
+  are now deprecated; the new existentially typed predicate
+  `store__new/1' should be used instead.
 
 NEWS for Mercury release 0.9.1:
 -------------------------------
