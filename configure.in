@@ -297,6 +297,7 @@ case "$host" in
 esac
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
 AC_HAVE_FUNCS(strerror memmove fileno fdopen fstat)
+AC_HAVE_FUNCS(vsnprintf)
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(unistd.h, HAVE_UNISTD_H=1)
 if test "$HAVE_UNISTD_H" = 1; then

@@ -140,6 +140,7 @@ CFILES		= 	\
 			mercury_signal.c	\
 			mercury_stack_trace.c	\
 			mercury_stacks.c	\
+			mercury_string.c	\
 			mercury_tabling.c	\
 			mercury_thread.c	\
 			mercury_timing.c	\

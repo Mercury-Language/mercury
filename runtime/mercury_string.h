@@ -10,6 +10,7 @@
 #define MERCURY_STRING_H
 
 #include <string.h>	/* for strcmp() etc. */
+#include <stdarg.h>
 
 #include "mercury_heap.h"	/* for incr_hp_atomic */
 
@@ -63,7 +64,7 @@
 */
 #define MR_make_aligned_string(ptr, string) 				\
 	do { 								\
-	    if (MR_tag((MR_Word) (string)) != 0) {				\
+	    if (MR_tag((MR_Word) (string)) != 0) {			\
 		MR_make_aligned_string_copy((ptr), (string));		\
 	    } else { 							\
 	    	(ptr) = (string);					\
@@ -82,15 +83,40 @@
 */
 #define MR_make_aligned_string_copy(ptr, string) 			\
 	do {								\
-		MR_Word make_aligned_string_tmp;				\
+		MR_Word make_aligned_string_tmp;			\
 		char * make_aligned_string_ptr;				\
 									\
 	  	incr_hp_atomic(make_aligned_string_tmp,			\
-	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word));	\
+	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
 	    	make_aligned_string_ptr =				\
 		    (char *) make_aligned_string_tmp;			\
 	    	strcpy(make_aligned_string_ptr, (string));		\
 	    	(ptr) = make_aligned_string_ptr;			\
+	} while(0)
+
+
+/* void MR_allocate_aligned_string_msg(MR_ConstString &ptr, size_t len,
+**		Code *proclabel, const char *type);
+** Allocate enough word aligned memory to hold len characters.  Also
+** record for memory profiling purposes the location, proclabel, of the
+** allocation if profiling is enabled.
+**
+** BEWARE: this may modify `hp', so it must only be called from
+** places where `hp' is valid.  If calling it from inside a C function,
+** rather than inside Mercury code, you may need to call
+** save/restore_transient_hp().
+*/
+#define MR_allocate_aligned_string_msg(ptr, len, proclabel)		\
+	do {								\
+		MR_Word make_aligned_string_tmp;			\
+		char * make_aligned_string_ptr;				\
+									\
+	  	incr_hp_atomic_msg(make_aligned_string_tmp,		\
+	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),	\
+		    proclabel, "string:string/0");			\
+	    	make_aligned_string_ptr =				\
+		    (char *) make_aligned_string_tmp;			\
+	    	(ptr) = (MR_String) make_aligned_string_ptr;		\
 	} while(0)
 
 /*
@@ -141,5 +167,18 @@ int	MR_hash_string(MR_Word);
 	   int hash_string_result;					\
 	   MR_do_hash_string(hash_string_result, s);			\
 	   return hash_string_result;
+
+/*
+** Return an MR_String which has been created using the format string,
+** fmt, passed to sprintf.  If memory profiling is turned on, record the
+** allocation as coming from proclabel.  The MR_String returned has been
+** allocated on the mercury heap using MR_allocate_aligned_string_msg.
+**
+** BEWARE: this may modify `hp', so it must only be called from
+** places where `hp' is valid.  If calling it from inside a C function,
+** rather than inside Mercury code, you may need to call
+** save/restore_transient_hp().
+*/
+MR_String MR_make_string(MR_Code *proclabel, const char *fmt, ...);
 
 #endif /* not MERCURY_STRING_H */

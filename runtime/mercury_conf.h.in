@@ -139,6 +139,7 @@
 ** The following macros are defined iff the corresponding function or
 ** system call is available:
 **
+**	HAVE_VSNPRINTF 		we have the vsnprintf() function.
 **	HAVE_SYSCONF     	we have the sysconf() system call.
 **	HAVE_SIGACTION		we have the sigaction() system call.
 **	HAVE_GETPAGESIZE 	we have the getpagesize() system call.
@@ -158,6 +159,7 @@
 **				rather than a function, so you should use
 **				#if defined(fileno) || defined(HAVE_FILENO)
 */
+#undef	HAVE_VSNPRINTF
 #undef	HAVE_SYSCONF
 #undef	HAVE_SIGACTION
 #undef	HAVE_GETPAGESIZE
