@@ -46,7 +46,7 @@
 
 I've designed my module system.  It's based on a Prolog-syntax (but
 not otherwise backwards compatible) strongly-typed logic programming
-language.  I'd interested in any comments people have about it.
+language.  I'd be interested in any comments people have about it.
 
 Note: currently I don't allow nested modules.  I want that to change
 eventually, but this will suffice for a first implementation.
