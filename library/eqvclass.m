@@ -153,7 +153,10 @@ eqvclass__new_equivalence(EqvClass0, Element1, Element2, EqvClass) :-
 
 eqvclass__add_equivalence(EqvClass0, Id1, Id2, EqvClass) :-
 	EqvClass0 = eqvclass(NextId0, PartitionMap0, ElementMap0),
-	map__det_remove(PartitionMap0, Id2, Partition2, PartitionMap),
+	map__det_remove(PartitionMap0, Id2, Partition2, PartitionMap1),
+	map__lookup(PartitionMap1, Id1, Partition1),
+	set__union(Partition1, Partition2, Partition),
+	map__set(PartitionMap1, Id1, Partition, PartitionMap),
 	set__to_sorted_list(Partition2, Elements2),
 	eqvclass__change_partition(Elements2, Id1, ElementMap0, ElementMap),
 	EqvClass = eqvclass(NextId0, PartitionMap, ElementMap).
@@ -168,8 +171,9 @@ eqvclass__change_partition([Element | Elements], Id, ElementMap0, ElementMap) :-
 	eqvclass__change_partition(Elements, Id, ElementMap1, ElementMap).
 
 eqvclass__same_eqvclass(EqvClass0, Element1, Element2) :-
-	eqvclass__find_partition(EqvClass0, Element1, Id1),
-	eqvclass__find_partition(EqvClass0, Element2, Id2),
+	EqvClass0 = eqvclass(_NextId0, _PartitionMap0, ElementMap0),
+	map__search(ElementMap0, Element1, Id1),
+	map__search(ElementMap0, Element2, Id2),
 	Id1 = Id2.
 
 eqvclass__partition_set(EqvClass0, PartitionSet) :-
@@ -191,7 +195,7 @@ eqvclass__partitions(EqvClass0, [Id | Ids], [Partition | Partitions]) :-
 	eqvclass__id_to_partition(EqvClass0, Id, Partition),
 	eqvclass__partitions(EqvClass0, Ids, Partitions).
 
-	% Get the ids of the all the partitions.
+	% Get the ids of all the partitions.
 
 :- pred eqvclass__partition_ids(eqvclass(T), list(partition_id)).
 :- mode eqvclass__partition_ids(in, out) is det.
@@ -200,7 +204,7 @@ eqvclass__partition_ids(EqvClass0, Ids) :-
 	EqvClass0 = eqvclass(_NextId0, PartitionMap0, _ElementMap0),
 	map__keys(PartitionMap0, Ids).
 
-	% Given an element, get the id of the class containing that element.
+	% Given an element, get the id of the partition containing that element.
 
 :- pred eqvclass__find_partition(eqvclass(T), T, partition_id).
 :- mode eqvclass__find_partition(in, in, out) is det.
