@@ -11,6 +11,10 @@
 
 :- implementation.
 
+% we need dummy definitions of these types
+:- type (mode) ---> mode(int, int).
+:- type module_info ---> module_info(int, int).
+
 :- pred mode_is_input(module_info::in, (mode)::in) is semidet.
 :- external(mode_is_input/2).
 

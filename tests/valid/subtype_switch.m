@@ -32,6 +32,13 @@
 
 :- implementation.
 
+:- type widget
+	--->	text(string)
+	;	width(int)
+	;	height(int)
+	;	command(pred(string, io__state, io__state))
+	;	title(string).
+
 :- import_module string, int, require, list.
 
 :- pred stringify_config(tcl_interp, config, string, io__state, io__state).
