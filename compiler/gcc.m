@@ -679,8 +679,11 @@
 #ifndef MC_GUARD_GCC_HEADERS
 #define MC_GUARD_GCC_HEADERS
 
-#include ""gcc/config.h""
-#include ""gcc/system.h""
+#if 0
+  /* These two are already included from runtime/mercury_std.h. */
+  #include ""gcc/config.h""
+  #include ""gcc/system.h""
+#endif
 #include ""gcc/gansidecl.h""
 #include ""gcc/toplev.h""
 #include ""gcc/tree.h""
