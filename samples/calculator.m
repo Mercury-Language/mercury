@@ -24,6 +24,7 @@
 	;       div(expr, expr).
 
 main --> 
+	io__write_string("calculator> "),
 	io__read_line(Res),
 	( { Res = error(_) },
 		io__write_string("Error reading from stdin\n")
@@ -31,7 +32,7 @@ main -->
 		io__write_string("EOF\n")
 	; { Res = ok(Line) },
 		( { fullexpr(X,Line,[]) } ->
-			{ evalexpr(X, Num) },
+			{ Num = evalexpr(X) },
 			io__write_int(Num),
 			io__write_string("\n")
 		;
