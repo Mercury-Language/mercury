@@ -102,11 +102,12 @@
 	% or static after initialization should have this prefix.
 :- func mercury_data_prefix = string.
 
-	% Given the default linkage of a data item, and a bool saying whether
-	% it is being defined, return a C string that gives its storage class.
+	% c_data_linkage_string(Globals, DefaultLinkage, StaticEvenIfSplit,
+	%	BeingDefined):
+	% Return a C string that gives the storage class appropriate for the
+	% definition of a global variable with the specified properties.
 
-:- pred c_data_linkage_string(globals::in, linkage::in, bool::in, string::out)
-	is det.
+:- func c_data_linkage_string(globals, linkage, bool, bool) = string.
 
 	% Given a boolean that states whether a data item includes code
 	% addresses or not, return a C string that gives its "const-ness".
@@ -3071,11 +3072,12 @@ output_data_addrs_decls([DataAddr | DataAddrs], FirstIndent, LaterIndent,
 	output_data_addrs_decls(DataAddrs, FirstIndent, LaterIndent, N1, N,
 		DeclSet1, DeclSet).
 
-c_data_linkage_string(Globals, DefaultLinkage, BeingDefined, LinkageStr) :-
+c_data_linkage_string(Globals, DefaultLinkage, StaticEvenIfSplit, BeingDefined)
+		= LinkageStr :-
 	globals__lookup_bool_option(Globals, split_c_files, SplitFiles),
 	(
 		( DefaultLinkage = extern
-		; SplitFiles = yes
+		; SplitFiles = yes, StaticEvenIfSplit = no
 		)
 	->
 		(
@@ -3123,8 +3125,8 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 	;
 		{ data_name_linkage(DataVarName, Linkage) },
 		globals__io_get_globals(Globals),
-		{ c_data_linkage_string(Globals, Linkage, BeingDefined,
-			LinkageStr) },
+		{ LinkageStr = c_data_linkage_string(Globals, Linkage,
+			no, BeingDefined) },
 		io__write_string(LinkageStr),
 
 		{ InclCodeAddr =

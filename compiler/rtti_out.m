@@ -984,7 +984,8 @@ output_rtti_name_storage_type_name(OutputName, RttiName, BeingDefined) -->
 	output_rtti_type_decl(RttiName),
 	{ rtti_name_linkage(RttiName, Linkage) },
 	globals__io_get_globals(Globals),
-	{ c_data_linkage_string(Globals, Linkage, BeingDefined, LinkageStr) },
+	{ LinkageStr = c_data_linkage_string(Globals, Linkage, yes,
+		BeingDefined) },
 	io__write_string(LinkageStr),
 
 	{ InclCodeAddr = rtti_name_would_include_code_addr(RttiName) },

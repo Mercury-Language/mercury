@@ -128,9 +128,7 @@ convert_plain_type_info(TypeInfo, Rval, LldsType, C0, C) :-
 
 convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
 		Rval, LldsType, C0, C) :-
-	TypeCtorInfoData = pseudo_type_info(
-		plain_arity_zero_pseudo_type_info(RttiTypeCtor)),
-	TypeCtorInfoDataAddr = rtti_addr(RttiTypeCtor, TypeCtorInfoData),
+	TypeCtorInfoDataAddr = rtti_addr(RttiTypeCtor, type_ctor_info),
 	TypeCtorInfoRval = yes(const(data_addr_const(TypeCtorInfoDataAddr))),
 	LldsType = data_ptr,
 	counter__allocate(CNum, C0, C1),
