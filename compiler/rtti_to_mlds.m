@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -149,11 +149,12 @@ gen_init_rtti_data_defn(enum_functor_desc(_RttiTypeId, FunctorName, Ordinal),
 		gen_init_int(Ordinal)
 	]).
 gen_init_rtti_data_defn(notag_functor_desc(_RttiTypeId, FunctorName, ArgType,
-		_MaybeArgName), ModuleName, _, Init, []) :-
+		MaybeArgName), ModuleName, _, Init, []) :-
 	Init = init_struct([
 		gen_init_string(FunctorName),
 		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
-			ModuleName, ArgType)
+			ModuleName, ArgType),
+		gen_init_maybe(ml_string_type, gen_init_string, MaybeArgName)
 	]).
 gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 		Locn, Ordinal, Arity, ContainsVarBitVector, MaybeArgTypes,
@@ -246,6 +247,9 @@ gen_init_rtti_data_defn(base_typeclass_info(_InstanceModule, _ClassId,
 	]).
 gen_init_rtti_data_defn(pseudo_type_info(Pseudo), ModuleName, _, Init, []) :-
 	Init = gen_init_pseudo_type_info_defn(Pseudo, ModuleName).
+
+:- func ml_string_type = mlds__type.
+ml_string_type = mercury_type(string_type, str_type).
 
 :- func gen_init_functors_info(type_ctor_functors_info, module_name,
 		rtti_type_id) = mlds__initializer.
