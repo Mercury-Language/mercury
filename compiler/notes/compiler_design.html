@@ -580,7 +580,12 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <li> issue warnings about unused arguments from predicates, and create
   specialized versions without them (unused_args.m); type_infos are
-  often unused.
+
+<li> unneeded_code.m looks for goals whose results are either not needed
+  at all, or needed in some branches of computation but not others. Provided
+  that the goal in question satisfies some requirements (e.g. it is pure,
+  it cannot fail etc), it either deletes the goal or moves it to the
+  computation branches where its output is needed.
 
 <li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
@@ -1184,6 +1189,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2000-12-13 12:12:59 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-01-19 01:42:29 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
