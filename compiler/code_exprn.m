@@ -960,6 +960,11 @@ code_exprn__place_evaled(Rvals0, Var, Lval, Code) -->
 			_, Code)
 	).
 
+	% code_exprn__place_arg(Rval, MaybeLval, Lval, Code):
+	% generate the code required (if any) to materialize the value Rval
+	% in some location, and return that location as Lval. If MaybeLval
+	% is yes(Lval0), we must put the value into the location Lval0.
+
 :- pred code_exprn__place_arg(rval, maybe(lval), lval, code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__place_arg(in, in, out, out, in, out) is det.
@@ -986,8 +991,8 @@ code_exprn__place_arg(Rval0, MaybeLval, Lval, Code) -->
 		code_exprn__add_lval_reg_dependencies(Lval),
 		{ Code = empty }
 	;
-			% If the value of the variable is a constant or
-			% is built up by operations involving only constants,
+			% If the value is a constant or is built up
+			% by operations involving only constants,
 			% get the constant form and assign that.
 		code_exprn__get_options(ExprnOpts),
 		{ code_exprn__expr_is_constant(Rval0, Vars0, ExprnOpts, Rval) }
