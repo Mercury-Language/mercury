@@ -697,6 +697,11 @@ then
 		-I$root/${stage2_insert}boehm_gc
 		-I$root/${stage2_insert}boehm_gc/include"
 	export MERCURY_ALL_C_INCL_DIRS
+	MERCURY_ALL_MC_C_INCL_DIRS="--c-include-directory $root/${stage2_insert}trace
+		--c-include-directory $root/${stage2_insert}runtime
+		--c-include-directory $root/${stage2_insert}boehm_gc
+		--c-include-directory $root/${stage2_insert}boehm_gc/include"
+	export MERCURY_ALL_MC_C_INCL_DIRS
 
 	MMAKE_DIR="$root/${stage2_insert}scripts"
 	export MMAKE_DIR
