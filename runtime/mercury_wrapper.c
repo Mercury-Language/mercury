@@ -49,6 +49,7 @@ ENDINIT
 #include	"mercury_deep_profiling.h"
 #include	"mercury_memory.h"		/* for MR_copy_string() */
 #include	"mercury_memory_handlers.h"	/* for MR_default_handler */
+#include	"mercury_thread.h"		/* for MR_debug_threads */
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
@@ -1007,7 +1008,9 @@ process_options(int argc, char **argv)
 			break;
 
 		case MR_DEBUG_THREADS_OPT:
+#ifdef MR_THREAD_SAFE
 			MR_debug_threads = MR_TRUE;
+#endif
 			break;
 
 		case 'a':

@@ -28,6 +28,11 @@
   typedef pthread_mutex_t	MercuryLock;
   typedef pthread_cond_t	MercuryCond;
 
+  void MR_mutex_lock(MercuryLock *lock, const char *from);
+  void MR_mutex_unlock(MercuryLock *lock, const char *from);
+  void MR_cond_signal(MercuryCond *cond);
+  void MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
+
   #ifndef MR_DEBUG_THREADS
 	/*
 	** The following macros should be used once the
@@ -166,10 +171,5 @@ extern	MR_bool	MR_init_thread(MR_when_to_use);
 */
 
 extern	void    MR_finalize_thread_engine(void);
-
-void MR_mutex_lock(MercuryLock *lock, const char *from);
-void MR_mutex_unlock(MercuryLock *lock, const char *from);
-void MR_cond_signal(MercuryCond *cond);
-void MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
 
 #endif
