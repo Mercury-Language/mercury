@@ -492,8 +492,32 @@ AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
 LOW_TAG_BITS=$mercury_cv_low_tag_bits
 AC_SUBST(LOW_TAG_BITS)
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(the word size)
-AC_CACHE_VAL(mercury_cv_word_size,
+AC_MSG_CHECKING(the number of bytes per word)
+AC_CACHE_VAL(mercury_cv_bytes_per_word,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <stdlib.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.wordbytes", "w");
+		if (fp == NULL)
+			exit(1);
+		fprintf(fp, "%d\n", sizeof(void *));
+
+		exit(0);
+	}],
+	[mercury_cv_bytes_per_word=`cat conftest.wordbytes`],
+	[mercury_cv_bytes_per_word=0],
+	[mercury_cv_bytes_per_word=0])
+)
+AC_MSG_RESULT($mercury_cv_bytes_per_word)
+AC_DEFINE_UNQUOTED(BYTES_PER_WORD, $mercury_cv_bytes_per_word)
+BYTES_PER_WORD=$mercury_cv_bytes_per_word
+AC_SUBST(BYTES_PER_WORD)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(the number of bits per word)
+AC_CACHE_VAL(mercury_cv_bits_per_word,
 	AC_TRY_RUN([
 	#include <stdio.h>
 	#include <stdlib.h>
@@ -501,20 +525,21 @@ AC_CACHE_VAL(mercury_cv_word_size,
 	int main() {
 		FILE *fp;
 
-		fp = fopen("conftest.wordsize", "w");
+		fp = fopen("conftest.wordbits", "w");
 		if (fp == NULL)
 			exit(1);
 		fprintf(fp, "%d\n", CHAR_BIT * sizeof(void *));
+
 		exit(0);
 	}],
-	[mercury_cv_word_size=`cat conftest.wordsize`],
-	[mercury_cv_word_size=0],
-	[mercury_cv_word_size=0])
+	[mercury_cv_bits_per_word=`cat conftest.wordbits`],
+	[mercury_cv_bits_per_word=0],
+	[mercury_cv_bits_per_word=0])
 )
-AC_MSG_RESULT($mercury_cv_word_size)
-AC_DEFINE_UNQUOTED(WORD_SIZE, $mercury_cv_word_size)
-WORD_SIZE=$mercury_cv_word_size
-AC_SUBST(WORD_SIZE)
+AC_MSG_RESULT($mercury_cv_bits_per_word)
+AC_DEFINE_UNQUOTED(BITS_PER_WORD, $mercury_cv_bits_per_word)
+BITS_PER_WORD=$mercury_cv_bits_per_word
+AC_SUBST(BITS_PER_WORD)
 #-----------------------------------------------------------------------------#
 #
 # For Irix 5, gcc labels don't work with shared libraries.
