@@ -190,6 +190,11 @@
 :- pred io__report_stats(io__state, io__state).
 :- mode io__report_stats(di, uo).
 
+	% Preallocate heap space (to avoid NU-Prolog panic).
+
+:- pred io__preallocate_heap_space(io__state, io__state).
+:- mode io__preallocate_heap_space(di, uo).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -225,6 +230,7 @@
 :- external("NU-Prolog", io__get_line_number/3).
 :- external("NU-Prolog", io__gc_call/3).
 :- external("NU-Prolog", io__flush_output/2).
+:- external("NU-Prolog", io__preallocate_heap_space/2).
 */
 
 io__write_int(Int) -->

@@ -76,12 +76,12 @@ goedel_replace_all_eqv_types([Item - Context | Items0], ItemList0, ItemList) :-
 		unqualify_name(Name, Name2),
 		goedel_replace_eqv_type_list(ItemList0, VarSet, Name2, Args,
 				Body, ItemList1),
-		goedel_replace_eqv_type_list(Items0, VarSet, Name2, Args, Body,				Items1),
-		goedel_replace_all_eqv_types(Items1, ItemList1, ItemList)
+		goedel_replace_eqv_type_list(Items0, VarSet, Name2, Args, Body,				Items1)
 	;
-		goedel_replace_all_eqv_types(Items0,
-				[Item - Context | ItemList0], ItemList)
-	).
+		Items1 = Items0,
+		ItemList1 = [Item - Context | ItemList0]
+	),
+	goedel_replace_all_eqv_types(Items1, ItemList1, ItemList).
 
 goedel_replace_eqv_type_list([], _, _, _, _, []).
 goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,

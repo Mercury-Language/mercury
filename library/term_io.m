@@ -73,11 +73,11 @@
 :- implementation.
 
 /*
-:- extern("NU-Prolog", io__op/4).
-:- extern("NU-Prolog", io__current_ops/3).
-:- extern("NU-Prolog", io__read_term/3).
-:- extern("NU-Prolog", io__write_term/4).
-:- extern("NU-Prolog", io__write_constant/3).
+:- external("NU-Prolog", io__op/4).
+:- external("NU-Prolog", io__current_ops/3).
+:- external("NU-Prolog", io__read_term/3).
+:- external("NU-Prolog", io__write_term/4).
+:- external("NU-Prolog", io__write_constant/3).
 */
 
 %-----------------------------------------------------------------------------%

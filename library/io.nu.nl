@@ -11,8 +11,25 @@
 
 io__gc_call(Goal) -->
 	io__update_state,
-	io__call(Goal),
-	io__update_state.
+	(
+		io__call(Goal),
+		io__update_state,
+		{ 
+		  getprop(io__saved_state, depth, Depth),
+		  Depth1 is Depth + 1,
+		  putprop(io__saved_state, depth, Depth1),
+		  putprop(io__saved_state, Depth, Goal),
+		  fail
+		}
+	;
+		{ 
+		  getprop(io__saved_state, depth, Depth1),
+		  Depth is Depth1 - 1,
+		  putprop(io__saved_state, depth, Depth),
+		  getprop(io__saved_state, Depth, Goal),
+		  remprop(io__saved_state, Depth)
+		}
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -36,6 +53,7 @@ main(Args) :-
 
 :- pred run(list(atom)).
 run(Args) :-
+	putprop(io__saved_state, depth, 0),
 	atoms_to_strings(Args, ArgStrings),
 	( ArgStrings = [Progname | _] ->
 		retractall(io__save_progname(_)),
@@ -48,6 +66,7 @@ run(Args) :-
 	io__final_state(IOState).
 
 :- pred io__call(pred).
+/******
 io__call(Goal, IOState0, IOState) :-
 	findall(Goal - IOState1, call(Goal, IOState0, IOState1), Solutions),
 	io__call_2(Goal, Solutions, IOState).
@@ -74,6 +93,10 @@ io__call_2(Goal, Solutions, IOState) :-
 		write(user_error, '\' not deterministic.\n'),
 		abort
 	).
+*****/
+io__call(Goal, IOState0, IOState) :-
+	call(Goal, IOState0, IOState),
+	!.
 
 :- pred atoms_to_strings(list(atom), list(string)).
 atoms_to_strings([],[]).
@@ -258,13 +281,45 @@ io__final_state(IOState) :-
 :- mode io__get_globals(output, di, uo).
 
 io__get_globals(Globals, IOState, IOState) :-
-	IOState = io__state(StreamNames, Globals, S).
+	IOState = io__state(_StreamNames, Globals, _S).
 
 :- pred io__set_globals(univ, io__state, io__state).
 :- mode io__set_globals(input, di, uo).
 
 io__set_globals(Globals, io__state(StreamNames, _, S),
 		io__state(StreamNames, Globals, S)).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+io__preallocate_heap_space(N) -->
+	{ preallocate_heap(N) },
+	io__update_state.
+
+% preallocate_heap(N) preallocates approximately n kilobytes of heap space.
+% This is necessary in NU-Prolog to avoid
+%	"Panic: growing stacks has required shifting the heap."
+
+preallocate_heap(KBytes) :-
+	(
+		N is KBytes // 16,	
+		preallocate_heap_2(N),
+		report_stats,
+		fail
+	;
+		true
+	).
+
+% allocates N * 4096 * 4 bytes of heap space.
+
+preallocate_heap_2(N) :-
+	( N = 0 ->
+		true
+	;
+		functor(_, f, 4095),
+		N1 is N - 1,
+		preallocate_heap_2(N1)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

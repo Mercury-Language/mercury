@@ -70,7 +70,14 @@
 
 /*
 :- external("NU-Prolog", string__to_int_list).
+:- external("NU-Prolog", intToString).
 */
+
+:- pred intToString(int, string).
+:- mode intToString(int, string).
+
+string__to_int(String, Int) :-
+	intToString(Int, String).
 
 string__append(A, B, C) :-
 	string__to_int_list(A, LA),
