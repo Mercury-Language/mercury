@@ -122,6 +122,9 @@ case $os in
 	-windowsnt*)
 		os=`echo $os | sed -e 's/windowsnt/winnt/'`
 		;;
+	-windows95*)
+		os=`echo $os | sed -e 's/windows95/win95/'`
+		;;
 esac
 
 # Decode aliases for certain CPU-COMPANY combinations.
@@ -611,7 +614,8 @@ case $os in
 	      | -riscos* | -linux* | -uniplus* | -iris* | -rtu* | -xenix* \
 	      | -hiux* | -386bsd* | -netbsd* | -freebsd* | -riscix* \
 	      | -lynxos* | -bosx* | -nextstep* | -cxux* | -aout* | -elf* \
-	      | -ptx* | -coff* | -ecoff* | -winnt* | -domain* | -vsta | -udi | -eabi)
+	      | -ptx* | -coff* | -ecoff* | -winnt* | -win95* \
+	      | -domain* | -vsta | -udi | -eabi)
 		;;
 	-sunos5*)
 		os=`echo $os | sed -e 's|sunos5|solaris2|'`
