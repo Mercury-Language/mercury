@@ -58,6 +58,7 @@
 		;	warn_singleton_vars
 		;	warn_overlapping_scopes
 		;	warn_det_decls_too_lax
+		;	warn_inferred_erroneous
 		;	warn_nothing_exported
 		;	warn_unused_args
 		;	warn_interface_imports
@@ -553,6 +554,7 @@ option_defaults_2(warning_option, [
 	warn_singleton_vars	-	bool(yes),
 	warn_overlapping_scopes	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
+	warn_inferred_erroneous	-	bool(yes),
 	warn_nothing_exported	-	bool(yes),
 	warn_unused_args	-	bool(no),
 	warn_interface_imports	-	bool(yes),
@@ -1021,6 +1023,7 @@ long_option("halt-at-syntax-errors",	halt_at_syntax_errors).
 long_option("warn-singleton-variables",	warn_singleton_vars).
 long_option("warn-overlapping-scopes",	warn_overlapping_scopes).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
+long_option("warn-inferred-erroneous",	warn_inferred_erroneous).
 long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("warn-unused-args",		warn_unused_args).
 long_option("warn-interface-imports",	warn_interface_imports).
@@ -1569,6 +1572,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_singleton_vars	-	bool(Enable),
 			warn_overlapping_scopes	-	bool(Enable),
 			warn_det_decls_too_lax	-	bool(Enable),
+			warn_inferred_erroneous	-	bool(Enable),
 			warn_nothing_exported	-	bool(Enable),
 			warn_interface_imports	-	bool(Enable),
 			warn_missing_opt_files	-	bool(Enable),
@@ -1888,6 +1892,9 @@ options_help_warning -->
 		"--no-warn-det-decls-too-lax",
 		"\tDon't warn about determinism declarations",
 		"\twhich could have been stricter.",
+		"--no-warn-inferred-erroneous",
+		"\tDon't warn about determinism declarations which are",
+		"\tinferred erroneous but are declared a more lax determinism.",
 		"--no-warn-nothing-exported",
 		"\tDon't warn about modules which export nothing.",
 		"--warn-unused-args",

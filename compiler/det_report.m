@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -180,6 +180,9 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 			globals__io_lookup_bool_option(
 				warn_det_decls_too_lax,
 				ShouldIssueWarning),
+			globals__io_lookup_bool_option(
+				warn_inferred_erroneous,
+				WarnAboutInferredErroneous),
 			{ pred_info_get_markers(PredInfo0, Markers) },
 			(
 				{ ShouldIssueWarning = yes },
@@ -199,7 +202,18 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 				% happen for the Unify pred for the unit type,
 				% if such types are not boxed (as they are not
 				% boxed for the IL backend).
-				{ \+ code_util__compiler_generated(PredInfo0) }
+				{ \+ code_util__compiler_generated(PredInfo0) },
+
+				% Don't warn about predicates which are
+				% inferred erroneous when the appropiate
+				% option is set.  This is to avoid
+				% warnings about unimplemented
+				% predicates.
+				{ WarnAboutInferredErroneous = yes,
+					true
+				; WarnAboutInferredErroneous = no,
+					InferredDetism \= erroneous
+				}
 			->
 				{ Message = "  warning: determinism declaration could be tighter.\n" },
 				report_determinism_problem(PredId,

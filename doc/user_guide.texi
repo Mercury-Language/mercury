@@ -3478,6 +3478,13 @@ Don't warn about determinism declarations
 which could have been stricter.
 
 @sp 1
+@item --no-warn-inferred-erroneous
+@findex --no-warn-inferred-erroneous
+@findex --warn-inferred-erroneous
+Don't warn about determinism declaration which are inferred erroneous
+but whose declarations are more lax.
+
+@sp 1
 @item --no-warn-nothing-exported
 @findex --no-warn-nothing-exported
 @findex --warn-nothing-exported
