@@ -60,6 +60,8 @@ Options:
 	-3, --keep-stage-3
 		Don't rebuild the stage 3 directory from scratch after
 		building stage 1.  Instead use the existing stage 3 directory.
+	--stop-after-stage-2
+		Stop after building stage 2, even if it is successful.
 	--use-subdirs
 		Assume intermediate files are built in subdirectories.
 		(Same as the \`--use-subdirs' option to mmake and mmc.)
@@ -79,6 +81,7 @@ copy_boehm_gc=false
 copy_profiler=false
 keep_stage_2=false
 keep_stage_3=false
+stop_after_stage_2=false
 if [ -d compiler/Mercury ]; then
 	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
 else
@@ -151,6 +154,9 @@ while [ $# -gt 0 ]; do
 
 	-3|--keep-stage-3)
 		keep_stage_3=true ;;
+
+	--stop-after-stage-2)
+		stop_after_stage_2=true ;;
 
 	--use-subdirs)
 		use_subdirs=yes ;;
@@ -446,6 +452,12 @@ then
 	else
 		echo "building of stage 2 not successful"
 		exit 1
+	fi
+
+	if $stop_after_stage_2
+	then
+		echo "stopping after building stage 2"
+		exit 0
 	fi
 
 	# We can remove the library object files now,
