@@ -6,9 +6,12 @@
 %
 % File: negation.m
 % Main author: squirrel (Jane Anna Langley)
+% Hacked a little by fjh.
 %
-% This module pushes in negations, and sorts out quantifications along the
-% way.
+% This module expands universal quantification, implication, and
+% equivalence, pushes in negations, and eliminates double negations.
+% (The name `negation' is a bit of a misnomer; originally this module
+% just pushed negation inwards.)
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -93,7 +96,6 @@ negation__transform_item_and_context((Item_In - Context_In),
 
 	% negation__transform_item/2
 
-	% Pushes negations inwards.
 	% If the item is a clause, it pulls out the goal and
 	% transforms it, otherwise the item passes through
 	% unchanged.
@@ -111,7 +113,6 @@ negation__transform_item(Item_In, Item_Out) :-
 
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 	% negation__transform_goal/2
-	% Pushes negations inwards.
 	% Just calls negation__transform_goal_2, passing the context
 	% through unchanged.
 	
@@ -120,17 +121,16 @@ negation__transform_goal(Goal_In - Context, Goal_Out - Context) :-
 
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 	% negation__transform_goal_2/2
+	% This is the predicate that actually does the work!
 	% Pushes negations inwards.
-	% This the predicate that actually does the work!
-	% All implication operators should have been removed by
-	% the time that this goal is reached.  If there are any
-	% encountered then this predicate will report an error.
+	% Expands implication, equivalent, and universal quantification.
 
 % The transformations we actually want...
 
 negation__transform_goal_2(not(Goal), Goal_Out) :-
 	(
 	% Eliminate double negatives
+	% ~(~Goal) ----> Goal
 		Goal = not(Goal1 - _) - _
 	->
 		negation__transform_goal_2(Goal1, Goal_Out)
@@ -192,20 +192,26 @@ negation__transform_goal_2(not(Goal), Goal_Out) :-
 		)
 	).
 
-
-% These forms should have already been eliminated!
-
 	% Implication
-negation__transform_goal_2(implies(_P, _Q), _Goal_Out) :-
-	error("implication encountered when transforming negation").
+	% (P => Q) ----> ~(P /\ ~Q)
+negation__transform_goal_2(implies(P, Q), Goal_Out) :-
+	term__context_init(Context),
+	negation__transform_goal_2(not (P, (not Q) - Context) - Context,
+		Goal_Out).
 
 	% Equivalence
-negation__transform_goal_2(equivalent(_P, _Q), _Goal_Out) :-
-	error("equivalence encountered when transforming negation").
+	% (P <=> Q) ----> (P => Q) /\ (Q => P)
+negation__transform_goal_2(equivalent(P, Q), Goal_Out) :-
+	term__context_init(Context),
+	negation__transform_goal_2(
+		(implies(P, Q) - Context, implies(Q, P) - Context), Goal_Out).
 
 	% Universal Quantification
-negation__transform_goal_2(all(_Vars, _P), _Goal_Out) :-
-	error("'all' encountered when transforming negation").
+	% all [X] P ----> ~(some [X] ~P)
+negation__transform_goal_2(all(Vars, P), Goal_Out) :-
+	term__context_init(Context),
+	negation__transform_goal_2(
+		not some(Vars, (not P) - Context) - Context, Goal_Out).
 
 % These forms do not need to be transformed themselves, they
 % just continue to transform recursively...

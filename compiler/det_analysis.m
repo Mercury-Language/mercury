@@ -270,11 +270,13 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		Detism = InternalDetism
 	),
 
+	determinism_components(Detism, _CanFail2, InternalSolns2),
 	(
-		Detism = semidet,
-		Goal1 = disj(Disjuncts)
+		InternalSolns2 = at_most_one,
+		Goal1 = disj(Disjuncts),
+		Disjuncts \= []
 	->
-		det_disj_to_ite(Disjuncts, GoalInfo0, Goal2),
+		det__disj_to_ite(Disjuncts, GoalInfo0, Goal2),
 		implicitly_quantify_goal(Goal2 - GoalInfo0, NonLocalVars,
 			GoalPair3, _),
 		det_infer_goal(GoalPair3, InstMap0, MiscInfo,
@@ -282,11 +284,13 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		( Detism = NewDetism ->
 			true
 		;
-			error("transformation of semidet disj to ite changes its determinism")
+			error("transformation of pruned disj to ite changes its determinism")
 		)
 %	;
 %		It would nice to do this, but without further changes
 %		it screws up delta-instantiations and liveness.
+%		It is also not clear whether this optimization is allowed
+%		by the semantics of Mercury.
 %
 %		Detism = failure
 %	->
@@ -301,17 +305,38 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		GoalInfo2),
 	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
 
-:- pred det_disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal_expr).
-:- mode det_disj_to_ite(di, in, uo) is det.
 
-det_disj_to_ite([], _, disj([])).
-det_disj_to_ite([Disjunct | Disjuncts], GoalInfo,
-		if_then_else([], Cond, Then, Else)) :-
-	goal_info_init(InitGoalInfo),
-	Cond = Disjunct,
-	Then = conj([]) - InitGoalInfo,
-	Else = Rest - GoalInfo,
-	det_disj_to_ite(Disjuncts, GoalInfo, Rest).
+:- pred det__disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal_expr).
+:- mode det__disj_to_ite(di, in, uo) is det.
+	%
+	% det_disj_to_ite is used to transform disjunctions that occur
+	% in prunable contexts into if-then-elses.
+	% For example, it would transform
+	%	( Disjunct1
+	%	; Disjunct2
+	%	; Disjunct3
+	%	)
+	% into
+	%	( Disjunct1 ->
+	%		true
+	%	; Disjunct2 ->
+	%		true
+	%	;
+	%		Disjunct3
+	%	).
+	%
+det__disj_to_ite([], _, disj([])).
+det__disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
+	( Disjuncts = [] ->
+		Disjunct = Goal - _GoalInfo
+	;
+		Goal = if_then_else([], Cond, Then, Else),
+		Cond = Disjunct,
+		goal_info_init(InitGoalInfo),
+		Then = conj([]) - InitGoalInfo,
+		Else = Rest - GoalInfo,
+		det__disj_to_ite(Disjuncts, GoalInfo, Rest)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -398,6 +423,8 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 		list__append(CondList, ThenList, List),
 		det_infer_goal_2(conj(List), InstMap0, MiscInfo,
 			NonLocalVars, DeltaInstMap, Goal, Detism)
+/***********
+% The following optimization is not semantically valid - fjh.
 	; CondSolns = at_most_zero ->
 		% Optimize away the condition and the `then' part.
 		% XXX We could give a warning if the condition
@@ -405,6 +432,7 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 		Else0 = ElseGoal0 - _,
 		det_infer_goal_2(ElseGoal0, InstMap0, MiscInfo,
 			NonLocalVars, DeltaInstMap, Goal, Detism)
+************/
 	;
 		det_infer_goal(Then0, InstMap1, MiscInfo, Then, _, ThenDetism),
 		det_infer_goal(Else0, InstMap0, MiscInfo, Else, _, ElseDetism),
@@ -427,17 +455,31 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 
 det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _, Goal, Det) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal1, _InstMap, NegDet),
+	det_negation_det(NegDet, Det),
+	(
+	% replace `not true' with `fail'
+		Goal1 = conj([]) - _GoalInfo
+	->
+		Goal = disj([])
+	;
+	% replace `not fail' with `true'
+		Goal1 = disj([]) - _GoalInfo2
+	->
+		Goal = conj([])
+	;
+		Goal = not(Goal1)
+	).
+/*************
+% The following optimizations are not semantically valid - fjh.
 	determinism_components(NegDet, NegCanFail, NegSolns),
 	( NegCanFail = cannot_fail, NegDet \= erroneous ->
-		Goal = disj([]),
-		Det = failure
+		Goal = disj([])
 	; NegSolns = at_most_zero ->
-		Goal = conj([]),
-		Det = det
+		Goal = conj([])
 	;
-		Goal = not(Goal1),
-		Det = semidet
+		Goal = not(Goal1)
 	).
+************/
 
 	% explicit quantification isn't important, since we've already
 	% stored the information about variable scope in the goal_info.
@@ -467,8 +509,9 @@ det_infer_conj([], _InstMap0, _MiscInfo, CanFail, MaxSolns, [], Detism) :-
 	determinism_components(Detism, CanFail, MaxSolns).
 det_infer_conj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
 		[Goal | Goals], Detism) :-
-	% XXX We should look to see when we get to a not_reached point
+	% We should look to see when we get to a not_reached point
 	% and optimize away the remaining elements of the conjunction.
+	% But that optimization is done in the code generation anyway.
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, InstMap1, Detism1),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
 	det_conjunction_canfail(CanFail0, CanFail1, CanFail2),
@@ -603,6 +646,16 @@ det_switch_canfail(can_fail,    can_fail,    can_fail).
 det_switch_canfail(can_fail,    cannot_fail, can_fail).
 det_switch_canfail(cannot_fail, can_fail,    can_fail).
 det_switch_canfail(cannot_fail, cannot_fail, cannot_fail).
+
+:- pred det_negation_det(determinism, determinism).
+:- mode det_negation_det(in, out) is det.
+
+det_negation_det(det,		failure).
+det_negation_det(semidet,	semidet).
+det_negation_det(multidet,	failure).
+det_negation_det(nondet,	semidet).
+det_negation_det(erroneous,	erroneous).
+det_negation_det(failure,	det).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1043,7 +1043,7 @@ transform_goal_2(true, VarSet, _, conj([]) - GoalInfo, VarSet) :-
 	goal_info_init(GoalInfo).
 
 	% Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
-
+	% This code is not used - it is actually done in negation.m.
 transform_goal_2(all(Vars0, Goal0), VarSet0, Subst,
 		not(some(Vars, not(Goal) - GoalInfo) - GoalInfo) - GoalInfo,
 		VarSet) :-
@@ -1089,12 +1089,14 @@ transform_goal_2((A0;B0), VarSet0, Subst, Goal, VarSet) :-
 
 transform_goal_2(implies(P, Q), VarSet0, Subst, Goal, VarSet) :-
 		% `P => Q' is defined as `not (P, not Q)'
+		% This code is not used - it is actually done in negation.m.
 	term__context_init(Context),
 	TransformedGoal = not( (P, not(Q) - Context) - Context ),
 	transform_goal_2(TransformedGoal, VarSet0, Subst, Goal, VarSet).
 
 transform_goal_2(equivalent(P, Q), VarSet0, Subst, Goal, VarSet) :-
 		% `P <=> Q' is defined as `(P => Q), (Q => P)'
+		% This code is not used - it is actually done in negation.m.
 	term__context_init(Context),
 	TransformedGoal = (implies(P, Q) - Context, implies(Q, P) - Context),
 	transform_goal_2(TransformedGoal, VarSet0, Subst, Goal, VarSet).
