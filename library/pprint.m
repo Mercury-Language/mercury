@@ -1,6 +1,6 @@
 %------------------------------------------------------------------------------%
 % pprint.m
-% Copyright (C) 2000 Ralph Becket <rbeck@microsoft.com>
+% Copyright (C) 2000-2001 Ralph Becket <rbeck@microsoft.com>
 % Wed Mar 22 17:44:32  2000
 % vi: ts=4 sw=4 et tw=0 wm=0
 %
@@ -291,7 +291,7 @@
 
 :- implementation.
 
-:- import_module std_util, char.
+:- import_module std_util, char, array, map.
 
 :- type doc
     --->    'NIL'
@@ -381,7 +381,7 @@ be(W, K, [I - 'GROUP'(X)    | Z]) -->
         be(W, K, [I - X | Z])
     ).
 
-% ---------------------------------------------------------------------------- %
+%------------------------------------------------------------------------------%
 
     % Decide whether flattening a given doc will allow it and
     % up to the next possible 'LINE' in the following docs to
@@ -398,7 +398,7 @@ flattening_works(DocToFlatten, FollowingDocs, RemainingWidth) :-
     fits_flattened([DocToFlatten], RemainingWidth, RemainingWidth0),
     fits_on_rest(FollowingDocs, RemainingWidth0).
 
-% ---------------------------------------------------------------------------- %
+%------------------------------------------------------------------------------%
 
     % Decide if a flattened list of docs will fit on the remainder
     % of the line.  Computes the space left over if so.
@@ -418,7 +418,7 @@ fits_flattened(['TEXT'(S)     | Z], R0, R) :-
     R0 > L,
     fits_flattened(Z, R0 - L, R).
 
-% ---------------------------------------------------------------------------- %
+%------------------------------------------------------------------------------%
 
     % Decide if a list of indent-doc pairs, up to the first 'LINE',
     % will fit on the remainder of the line.
@@ -472,10 +472,8 @@ braces(D)               = bracketed("{", "}", D).
 separated(_,  _,   []) = nil.
 
 separated(PP, Sep, [X | Xs]) =
-    ( if Xs = [] then
-        PP(X)
-      else
-        PP(X) `<>` (Sep `<>` separated(PP, Sep, Xs))
+    ( if Xs = [] then PP(X)
+                 else PP(X) `<>` (Sep `<>` separated(PP, Sep, Xs))
     ).
 
 %------------------------------------------------------------------------------%
@@ -506,7 +504,15 @@ to_doc(X) = to_doc(int__max_int, X).
 
 to_doc(Depth, X) = Doc :-
     deconstruct(X, Name, Arity, UnivArgs),
-    ( if Arity = 0 then
+    (      if dynamic_cast_to_list(X, List) then
+        Doc = list_to_doc(Depth, List)
+      else if dynamic_cast_to_array(X, Array) then
+        Doc = array_to_doc(Depth, Array)
+      else if dynamic_cast_to_tuple(X, Tuple) then
+        Doc = tuple_to_doc(Depth, Tuple)
+      else if dynamic_cast_to_map(X, Map) then
+        Doc = map_to_doc(Depth, Map)
+      else if Arity = 0 then
         Doc = text(Name)
       else if Depth =< 0 then
         Doc = text(Name) `<>` text("/") `<>` poly(i(Arity))
@@ -526,6 +532,154 @@ to_doc(Depth, X) = Doc :-
     ).
 
 % ---------------------------------------------------------------------------- %
+
+:- some [T2] pred dynamic_cast_to_array(T1, array(T2)).
+:-           mode dynamic_cast_to_array(in, out) is semidet.
+
+dynamic_cast_to_array(X, A) :-
+
+        % If X is an array then it has a type with one type argument.
+        %
+    [ArgTypeDesc] = type_args(type_of(X)),
+
+        % Convert ArgTypeDesc to a type variable ArgType.
+        %
+    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+
+        % Constrain the type of A to be array(ArgType) and do the
+        % cast.
+        %
+    dynamic_cast(X, A `with_type` array(ArgType)).
+
+%------------------------------------------------------------------------------%
+
+:- some [T2] pred dynamic_cast_to_list(T1, list(T2)).
+:-           mode dynamic_cast_to_list(in, out) is semidet.
+
+dynamic_cast_to_list(X, L) :-
+
+        % If X is a list then it has a type with one type argument.
+        %
+    [ArgTypeDesc] = type_args(type_of(X)),
+
+        % Convert ArgTypeDesc to a type variable ArgType.
+        %
+    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+
+        % Constrain the type of L to be list(ArgType) and do the
+        % cast.
+        %
+    dynamic_cast(X, L `with_type` list(ArgType)).
+
+%------------------------------------------------------------------------------%
+
+:- some [T2, T3] pred dynamic_cast_to_map(T1, map(T2, T3)).
+:-               mode dynamic_cast_to_map(in, out) is semidet.
+
+dynamic_cast_to_map(X, M) :-
+
+        % If X is a map then it has a type with two type arguments.
+        %
+    [KeyTypeDesc, ValueTypeDesc] = type_args(type_of(X)),
+
+        % Convert the TypeDescs to type variables.
+        %
+    (_ `with_type` KeyType) `has_type` KeyTypeDesc,
+    (_ `with_type` ValueType) `has_type` ValueTypeDesc,
+
+        % Constrain the type of M to be map(KeyType, ValueType)
+        % and do the cast.
+        %
+    dynamic_cast(X, M `with_type` map(KeyType, ValueType)).
+
+%------------------------------------------------------------------------------%
+
+:- pred dynamic_cast_to_tuple(T, T).
+:- mode dynamic_cast_to_tuple(in, out) is semidet.
+
+dynamic_cast_to_tuple(X, X) :-
+
+        % If X is a tuple then it's functor name is {}.
+        %
+    functor(X, "{}", _Arity).
+
+%------------------------------------------------------------------------------%
+
+    % XXX Ideally we'd just walk the array.  But that's an optimization
+    % for another day.
+    %
+:- func array_to_doc(int, array(T)) = doc.
+
+array_to_doc(Depth, A) =
+    text("array") `<>` parentheses(list_to_doc(Depth, array__to_list(A))).
+
+%------------------------------------------------------------------------------%
+
+:- func list_to_doc(int, list(T)) = doc.
+
+list_to_doc(Depth, Xs) =
+    brackets(separated_to_depth(to_doc, group(comma_space_line), Depth, Xs)).
+
+%------------------------------------------------------------------------------%
+
+:- func map_to_doc(int, map(T1, T2)) = doc.
+
+map_to_doc(Depth, X) =
+    text("map") `<>` parentheses(
+        group(
+            nest(2, 
+                line `<>`
+                separated_to_depth(map_pair_to_doc, comma_space_line, Depth,
+                    map__to_assoc_list(X)
+                )
+            )
+        )
+    ).
+
+
+
+:- func map_pair_to_doc(int, pair(T1, T2)) = doc.
+
+map_pair_to_doc(Depth, Key - Value) =
+    to_doc(Depth - 1, Key) `<>` text(" -> ") `<>`
+        nest(2, group(line `<>` to_doc(Depth - 1, Value))).
+
+%------------------------------------------------------------------------------%
+
+    % This should only really be used if the item in question really
+    % is a tuple.
+    %
+:- func tuple_to_doc(int, T) = doc.
+
+tuple_to_doc(Depth, Tuple) = Doc :-
+    deconstruct(Tuple, _Name, _Arity, UnivArgs),
+    Args = list__map(
+        ( func(UnivArg) = to_doc(Depth - 1, univ_value(UnivArg)) ),
+        UnivArgs
+    ),
+    Doc = braces(separated(id, group(comma_space_line), Args)).
+
+%------------------------------------------------------------------------------%
+
+    % This is pretty much the same as separated/3 except that it
+    % takes a depth parameter (q.v. to_doc/2) and replaces the
+    % tail of the list below the depth limit with ellipsis.
+    %
+:- func separated_to_depth(func(int, T) = doc, doc, int, list(T)) = doc.
+
+separated_to_depth(_,  _,   _,     []) = nil.
+
+separated_to_depth(PP, Sep, Depth, [X | Xs]) = Doc :-
+    ( if Depth =< 0 then
+        Doc = text("...")
+      else if Xs = [] then
+        Doc = PP(Depth, X)
+      else
+        Doc = PP(Depth, X) `<>`
+              (Sep `<>` separated_to_depth(PP, Sep, Depth - 1, Xs))
+    ).
+
+%------------------------------------------------------------------------------%
 
 word_wrapped(String) =
     separated(
