@@ -684,10 +684,13 @@ func(Var1, Var2, @dots{}) = Var :- Goal
 @end example
 
 @noindent
-where Var1, Var2, @dots{} are variables, Mode1, Mode2, @dots{} are
-modes (@pxref{Modes}), Det is a determinism (@pxref{Determinism}),
+where Var1, Var2, @dots{} are zero or more variables,
+Mode1, Mode2, @dots{} are zero or more modes (@pxref{Modes}),
+Det is a determinism (@pxref{Determinism}),
 and Goal is a goal (@pxref{Goals}). 
-It denotes a higher-order predicate or function term
+The @samp{:- Goal} part is optional;
+if it is not specified, then @samp{:- true} is assumed.
+A lambda expression denotes a higher-order predicate or function term
 whose value is the predicate or function of the specified arguments
 determined by the specified goal.
 @xref{Higher-order}.
@@ -701,7 +704,7 @@ apply(@var{Func}, @var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN})
 @end example
 
 @noindent
-where @var{N} >= 1, @var{Func} is a term of type
+where @var{N} >= 0, @var{Func} is a term of type
 @samp{func(T1, T2, ..., Tn) = T}, @var{FuncVar} is a variable
 of that type, and
 @var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN} are terms of types
@@ -766,7 +769,8 @@ There is a special syntax for constants of type @code{int}, @code{float},
 and @code{string}.  (For @code{char}, the standard syntax suffices.)
 
 @item Predicate types: @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
-@itemx Function types: @code{func(T1) = T}, @code{func(T1, T2) = T}, @dots{}
+@itemx Function types: @code{(func) = T}, @code{func(T1) = T},
+@itemx @code{func(T1, T2) = T}, @dots{}
 These higher-order function and predicate types are used to pass procedure
 addresses and closures to other predicates.  @xref{Higher-order}.
 
@@ -798,7 +802,8 @@ A derived type is defined using @samp{:- type @var{type} ---> @var{body}}.
 (Note there are @emph{three} dashes in that arrow.
 It should not be confused with the two-dash arrow used for DCGs
 or the one-dash arrow used for if-then-else.)
-If the @var{type} term is a functor of arity zero,
+If the @var{type} term is a functor of arity zero
+(i.e. one having zero arguments),
 it names a monomorphic type.
 Otherwise, it names a polymorphic type;
 the arguments of the functor must be distinct type variables.
@@ -1932,7 +1937,7 @@ higher-order procedures.)
 
 To create a higher-order predicate or function term, you can use
 a lambda expression, or, if the predicate or function has only one
-mode, you can just use its name.
+mode and it is not a zero-arity function, you can just use its name.
 For example, if you have declared a predicate
 
 @example
@@ -1987,7 +1992,8 @@ function result, and the determinism defaults to @samp{det}.
 If the predicate or function has more than one mode, you must use an explicit
 lambda expression to specify which mode you want.
 
-You can also create higher-order predicate terms by "currying",
+You can also create higher-order function terms of non-zero arity
+and higher-order predicate terms by "currying",
 i.e. specifying the first few arguments to a predicate or function, but
 leaving the remaining arguments unspecified.  For example, the
 unification
@@ -2007,6 +2013,11 @@ Double = scalar_product(2)
 @noindent
 binds @samp{Double} to a higher-order function term of type
 @samp{func(list(int)) = list(int)}.
+
+Higher-order function terms of zero arity can only be created using
+an explicit lambda expression; you have to use e.g. @samp{(func) = foo}
+rather than plain @samp{foo}, because the latter denotes the result
+of evaluating the function, rather than the function itself.
 
 Note that when constructing a higher-order term, you cannot just use
 the name of a builtin language construct such as @samp{=}, @samp{\=},
@@ -2082,7 +2093,8 @@ would bind @samp{Result} to the sum of @samp{[1, 2, 3]}, i.e. to 6.
 For functions, you use the builtin expression apply/N:
 
 @table @asis
-@item @code{apply(Closure1, Arg1)}
+@item @code{apply(Closure)}
+@itemx @code{apply(Closure1, Arg1)}
 @itemx @code{apply(Closure2, Arg1, Arg2)}
 @itemx @dots{}
 A higher-order function application.  Such a term denotes the
@@ -2180,6 +2192,7 @@ pred is @var{Determinism}
 pred(@var{Mode}) is @var{Determinism}
 pred(@var{Mode1}, @var{Mode2}) is @var{Determinism}
 @dots{}
+(func) = @var{Mode} is @var{Determinism}
 func(@var{Mode1}) = @var{Mode} is @var{Determinism}
 func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
 @dots{}
@@ -2276,21 +2289,21 @@ If a module wishes to make use of entities exported by other modules,
 then it must explicitly import those modules using one or more 
 @code{import_module} or @code{use_module} declarations.
 These declarations may occur either in the interface or the implementation 
-section. If the imported entities are used in the interface section,
+section.  If the imported entities are used in the interface section,
 then the corresponding @code{import_module} or @code{use_module}
-declaration must also be in the interface section. If the imported 
+declaration must also be in the interface section.  If the imported 
 entities are only used in the implementation section, the 
 @code{import_module} or @code{use_module} declaration should be in 
 the implementation section.
 
 Declarations, predicate calls, types, modes and insts
 can be explicitly module qualified using the `:' operator,
-i.e. @code{module:name}. This is useful both for readability and
-for resolving name conflicts. Uses of entities imported using 
+i.e. @code{module:name}.  This is useful both for readability and
+for resolving name conflicts.  Uses of entities imported using 
 @code{use_module} declarations @emph{must} be explicitly module qualified.
 
 Certain optimizations require information or source code for predicates
-defined in other modules to be as effective as possible. At the moment,
+defined in other modules to be as effective as possible.  At the moment,
 inlining and higher-order specialization are the only optimizations that
 the Mercury compiler can perform across module boundaries.
 
@@ -2369,7 +2382,7 @@ The Mercury standard library has a standard naming convention in which
 every entity exported by a module is prefixed by the module name and
 two underscores.  We have found this convention improves the
 readability and maintainability of our code, and so we recommend that
-you follow it in your code too. (Eventually, these names will be converted
+you follow it in your code too.  (Eventually, these names will be converted
 to names of the form @code{module.name}; this will allow you to omit the
 prefix in places where it does not improve readability.)
 
