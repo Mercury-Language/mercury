@@ -165,7 +165,10 @@ case $HOST in
 			esac
 			;;
 
-	mars)		OPTIMIZE=-O5 ;;
+	mars)		case "$C_COMPILER" in
+				gcc)	OPTIMIZE=-O5 ;;
+				*)	OPTIMIZE=-O2 ;;
+			esac ;;
 	ceres)		OPTIMIZE=-O5 ;;	# hlc
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
 	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
@@ -211,6 +214,10 @@ case $HOST in hg)
 	;;   
 esac
 
+# This list of hosts for which we install into /home/$HOST rather than
+# /home/mercury should match the corresponding list in run_all_tests_from_cron.
+# So if you modify this list of hosts, you need to also modify
+# run_all_tests_from_cron.
 case $HOST in
 	hg|ender|roy|venus|earth|mars|ceres) 	
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -398,6 +405,17 @@ case $HOST in
 		CONFIG_OPTS="--disable-dotnet-grades"
 		MMAKE_USE_SUBDIRS=yes
 		export MMAKE_USE_SUBDIRS
+
+		case "$C_COMPILER" in lcc)
+			# For grade none.gc.tr.debug, lcc 4.1 gets an
+			# internal error when compiling library/hash_table.c.
+			# So we need to disable that grade.
+			INSTALL_LIBGRADES="none  \
+				none.gc.prof none.prof none.gc.memprof \
+				none.gc.tr \
+				hlc.gc hlc.par.gc"
+			;;
+		esac
 		;;
 	*)	
 		CONFIG_OPTS="" ;;
@@ -469,14 +487,14 @@ case $HOST in
 		# Once it is done once, it will be saved in the user's
 		# ~/.cvspass file, so it doesn't need to be done again.
 		#
-		# This is commented out, to save bandwidth,
+		# This should soon be commented out, to save bandwidth,
 		# since currently we're using a fixed snapshot
-		# (`-r gcc_3_0_release') anyway.
+		# (`-r gcc_3_2_release') anyway.
 		# Perhaps this should eventually change to use
 		# `-r gcc_latest_snapshot'.
-		#date
-		#cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
-		# 	checkout -r gcc_3_0_release gcc || { false; exit 1; }
+		date
+		cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
+		 	checkout -r gcc_3_2_release gcc || { false; exit 1; }
 		date
 		# Link the Mercury gcc back-end interface sources
 		# into the appropriate place in the gcc sources
@@ -810,10 +828,19 @@ case $HOST in
 			hlc.gc hlc.par.gc"
 		;;
 
-	mars)	GRADES="asm_fast.gc asm_fast
-			asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
-			hlc.gc hlc.par.gc"
+	mars)	
+		case "$C_COMPILER" in
+			gcc)	GRADES="asm_fast.gc asm_fast
+					asm_fast.gc.prof asm_fast.prof
+					asm_fast.gc.memprof asm_fast.gc.tr
+					asm_fast.gc.tr.debug
+					hlc.gc hlc.par.gc"
+			*)	# We don't test none.gc.tr.debug
+				# because it wasn't installed,
+				# due to lcc 4.1 internal error (see above)
+				GRADES="none.gc none none.gc.prof
+				none.prof none.gc.memprof none.gc.tr
+				hlc.gc hlc.par.gc" ;;
 		;;
 
 	venus)
@@ -1186,6 +1213,7 @@ esac
 case $status in
     0)
 
+	echo "Installation directory: $INSTALL_DIR" 1>&2
 	echo "test_mercury exiting successfully at `date`" 1>&2
 	true
 	exit 0

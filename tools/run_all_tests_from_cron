@@ -90,6 +90,10 @@ case "$BRANCH" in
 		# to problems with the GCC back-end.
 	    	BRANCH=latest
 		;;
+	    mundroo)
+		# release branch not yet installed.
+		BRANCH=latest
+		;;
 	    taifun|mundroo)
 	    	# For these hosts we only run 3 times a week.
 		# On Monday and Thursday, test the main branch.
@@ -131,17 +135,17 @@ echo run_test $HOST $C_COMPILER
 echo branch $BRANCH
 
 case "$C_COMPILER" in
-	gcc)	logname="test-$BRANCH-$HOST.out" ;;
-	*)	logname="test-$BRANCH-$HOST-$C_COMPILER.out" ;;
+	gcc)	logname="test-$BRANCH-$HOST" ;;
+	*)	logname="test-$BRANCH-$HOST-$C_COMPILER" ;;
 esac
 
-mv -f $tm_dir/logs/old/$logname $tm_dir/logs/old2 2>/dev/null
-mv -f $tm_dir/logs/old/$logname.errs $tm_dir/logs/old2 2>/dev/null
+mv -f $tm_dir/logs/old/$logname.out $tm_dir/logs/old2 2>/dev/null
+mv -f $tm_dir/logs/old/$logname.out.errs $tm_dir/logs/old2 2>/dev/null
 mv -f $tm_dir/logs/old/$logname.test_errs $tm_dir/logs/old2 2>/dev/null
-mv -f $tm_dir/logs/$logname $tm_dir/logs/old 2>/dev/null
-mv -f $tm_dir/logs/$logname.errs $tm_dir/logs/old 2>/dev/null
+mv -f $tm_dir/logs/$logname.out $tm_dir/logs/old 2>/dev/null
+mv -f $tm_dir/logs/$logname.out.errs $tm_dir/logs/old 2>/dev/null
 mv -f $tm_dir/logs/$logname.test_errs $tm_dir/logs/old 2>/dev/null
-logfile="$tm_dir/logs/$logname"
+logfile="$tm_dir/logs/$logname.out"
 
 if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $BRANCH $C_COMPILER \
 		> $logfile 2>&1
@@ -162,11 +166,9 @@ then
 		rm -f $logfile.test_errs
 	fi
 	echo
-	case $HOST in
-		hg) base=/home/hg ;;
-		*) base=/home/mercury ;;
-	esac
-	cd $base/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH
+	INSTALL_DIR=`tail $logfile | \
+		awk '/^Installation directory:/ { print $3; }' `
+	cd $INSTALL_DIR/lib/mercury/bin/$FULLARCH
 	ls -l mercury_compile
 	size mercury_compile
 	{
@@ -197,7 +199,7 @@ if [ -s $logfile.errs -o -s $logfile.test_errs ]; then
 	fi
 	if [ -s $logfile.test_errs ]; then
 		echo first 100 test failures:
-		grep "FAILED TEST" $logfile.test_errs | head - 100
+		grep "FAILED TEST" $logfile.test_errs | head -100 -
 	fi
 elif [ $test_status = "FAILED" ]; then
 	echo
@@ -213,7 +215,7 @@ echo "test_mercury $test_status: $BRANCH $HOST $C_COMPILER" > $mail_subject
 
 # NB we can't just pipe into `mutt' because the $mail_subject file
 # needs to be written before `mutt' is started.
-mutt -s "`cat $mail_subject`" stayl@cs.mu.oz.au < $tmpfile
+mutt -s "`cat $mail_subject`" fjh@cs.mu.oz.au < $tmpfile
 rm -f $tmpfile $tmpscript $mail_subject
 
 #-----------------------------------------------------------------------------#
