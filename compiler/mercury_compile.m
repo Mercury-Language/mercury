@@ -35,7 +35,7 @@
 :- import_module simplify, intermod, bytecode_gen, bytecode, (lambda).
 :- import_module polymorphism, intermod, higher_order, inlining, common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, saved_vars.
-:- import_module lco, liveness.
+:- import_module lco, liveness, stratify.
 :- import_module follow_code, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, export, base_type_info.
 :- import_module llds_common, llds_out.
@@ -45,6 +45,7 @@
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph, garbage_out, shapes.
 :- import_module options, globals, passes_aux.
+
 
 %-----------------------------------------------------------------------------%
 
@@ -463,7 +464,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 
 	( { UnsafeToContinue = yes } ->
 		{ FoundError = yes },
-		{ HLDS11 = HLDS5 }
+		{ HLDS12 = HLDS5 }
 	;
 		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
 		mercury_compile__maybe_dump_hlds(HLDS6, "6", "switch_detect"),
@@ -478,9 +479,13 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 		mercury_compile__check_unique_modes(HLDS8, Verbose, Stats,
 			HLDS9, FoundUniqError),
 		mercury_compile__maybe_dump_hlds(HLDS9, "9", "unique_modes"),
+		
+		mercury_compile__check_stratification(HLDS9, Verbose, Stats, 
+			HLDS10, FoundStratError),
+		mercury_compile__maybe_dump_hlds(HLDS10, "10", "stratification"),
 
-		mercury_compile__simplify(HLDS9, Verbose, Stats, HLDS10),
-		mercury_compile__maybe_dump_hlds(HLDS10, "10", "simplify"),
+		mercury_compile__simplify(HLDS10, Verbose, Stats, HLDS11),
+		mercury_compile__maybe_dump_hlds(HLDS11, "11", "simplify"),
 
 		%
 		% work out whether we encountered any errors
@@ -488,24 +493,25 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 		(
 			{ FoundModeError = no },
 			{ FoundDetError = no },
-			{ FoundUniqError = no }
+			{ FoundUniqError = no },
+			{ FoundStratError = no }
 		->
 			{ FoundError = no },
 			globals__io_lookup_bool_option(intermodule_optimization,
 								Intermod),
 			{ Intermod = yes ->
-				intermod__adjust_pred_import_status(HLDS10,
-					HLDS11)
+				intermod__adjust_pred_import_status(HLDS11,
+					HLDS12)
 			;
-				HLDS11 = HLDS10
+				HLDS12 = HLDS11
 			}
 		;
 			{ FoundError = yes },
-			{ HLDS11 = HLDS10 }
+			{ HLDS12 = HLDS11 }
 		)
 	),
 
-	{ HLDS20 = HLDS11 },
+	{ HLDS20 = HLDS12 },
 	mercury_compile__maybe_dump_hlds(HLDS20, "20", "front_end").
 
 :- pred mercury_compile__frontend_pass_2_by_preds(module_info, module_info,
@@ -832,6 +838,41 @@ mercury_compile__check_unique_modes(HLDS0, Verbose, Stats, HLDS, FoundError) -->
 		io__set_exit_status(OldStatus)
 	),
 	maybe_report_stats(Stats).
+
+:- pred mercury_compile__check_stratification(module_info, bool, bool,
+	module_info, bool, io__state, io__state).
+:- mode mercury_compile__check_stratification(in, in, in, out, out, di, uo)
+	is det.
+
+mercury_compile__check_stratification(HLDS0, Verbose, Stats, HLDS, 
+		FoundError) -->
+	{ module_info_stratified_preds(HLDS0, StratifiedPreds) },
+	globals__io_lookup_bool_option(warn_non_stratification, Warn),
+	(
+		  { \+ set__empty(StratifiedPreds)
+		  ; Warn = yes }
+	->
+		maybe_write_string(Verbose,
+			"% Checking stratification...\n"),
+		io__get_exit_status(OldStatus),
+		io__set_exit_status(0),
+		stratify__check_stratification(HLDS0, HLDS),
+		io__get_exit_status(NewStatus),
+		( { NewStatus \= 0 } ->
+			{ FoundError = yes },
+			maybe_write_string(Verbose,
+				"% Program contains stratification error(s).\n")
+		;
+			{ FoundError = no },
+			maybe_write_string(Verbose,
+				"% done.\n"),
+			io__set_exit_status(OldStatus)
+		),
+		maybe_report_stats(Stats)
+	;
+		{ FoundError = no },
+		{ HLDS = HLDS0 }
+	).
 
 :- pred mercury_compile__simplify(module_info, bool, bool, module_info,
 	io__state, io__state).

@@ -73,12 +73,24 @@
 :- pred maybe_report_sizes(module_info::in, io__state::di, io__state::uo)
 	is det.
 
+
+:- pred report_pred_proc_id(module_info, pred_id, proc_id, 
+		maybe(term__context), term__context, io__state, io__state).
+:- mode report_pred_proc_id(in, in, in, in, out, di, uo) is det.
+
+:- pred report_pred_name_mode(pred_or_func, string, list((mode)),
+				io__state, io__state).
+:- mode report_pred_name_mode(in, in, in, di, uo) is det.
+	
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module options, globals, hlds_out.
-:- import_module bool, int, map, tree234, std_util.
+:- import_module options, globals, hlds_out, prog_out, mode_util.
+:- import_module mercury_to_mercury.
+:- import_module bool, int, map, tree234, std_util, require, list.
+:- import_module varset.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
@@ -258,4 +270,65 @@ tree_stats(Description, Tree) -->
 	% io__write_int(Depth),
 	io__write_string("\n").
 
+%-----------------------------------------------------------------------------%
+
+
+report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
+	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo) },
+	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_arity(PredInfo, Arity) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ proc_info_context(ProcInfo, Context) },
+	{ proc_info_argmodes(ProcInfo, ArgModes0) },
+
+	% We need to strip off the extra type_info arguments inserted at the
+	% front by polymorphism.m - we only want the last `PredArity' of them.
+	%
+	{ list__length(ArgModes0, NumArgModes) },
+	{ NumToDrop is NumArgModes - Arity },
+	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
+		{ ArgModes = ArgModes1 }
+	;	
+		{ error("report_pred_proc_id: list__drop failed") }
+	),
+	(
+		{ MaybeContext = yes(OutContext) }
+	;
+		{ MaybeContext = no },
+		{ OutContext = Context }
+	),
+	prog_out__write_context(OutContext),
+	io__write_string("In `"),
+	report_pred_name_mode(PredOrFunc, PredName, ArgModes),
+	io__write_string("':\n").
+
+
+report_pred_name_mode(predicate, PredName, ArgModes) -->
+	io__write_string(PredName),
+	( { ArgModes \= [] } ->
+		{ varset__init(InstVarSet) },	% XXX inst var names
+		io__write_string("("),
+		{ strip_builtin_qualifiers_from_mode_list(ArgModes,
+								ArgModes1) },
+		mercury_output_mode_list(ArgModes1, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	).
+
+report_pred_name_mode(function, FuncName, ArgModes) -->
+	{ varset__init(InstVarSet) },	% XXX inst var names
+	{ strip_builtin_qualifiers_from_mode_list(ArgModes, ArgModes1) },
+	{ pred_args_to_func_args(ArgModes1, FuncArgModes, FuncRetMode) },
+	io__write_string(FuncName),
+	( { FuncArgModes \= [] } ->
+		io__write_string("("),
+		mercury_output_mode_list(FuncArgModes, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	),
+	io__write_string(" = "),
+	mercury_output_mode(FuncRetMode, InstVarSet).
 %-----------------------------------------------------------------------------%

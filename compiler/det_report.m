@@ -80,6 +80,7 @@
 
 :- import_module hlds_data, type_util, mode_util, inst_match.
 :- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
+:- import_module passes_aux.
 
 :- import_module bool, int, list, map, set, varset, std_util, term, require.
 
@@ -188,7 +189,7 @@ report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
 	;
 		[]
 	),
-	det_report_pred_proc_id(ModuleInfo, PredId, ModeId, Context),
+	report_pred_proc_id(ModuleInfo, PredId, ModeId, no, Context),
 	prog_out__write_context(Context),
 	io__write_string(Message),
 	prog_out__write_context(Context),
@@ -690,7 +691,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 		{ proc_info_argmodes(ProcInfo, ArgModes) },
 		prog_out__write_context(Context),
 		io__write_string("  call to `"),
-		det_report_pred_name_mode(PredOrFunc, PredName, ArgModes),
+		report_pred_name_mode(PredOrFunc, PredName, ArgModes),
 		io__write_string("' ")
 	).
 
@@ -748,68 +749,6 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 	),
 	io__write_string("'").
 
-%-----------------------------------------------------------------------------%
-
-:- pred det_report_pred_proc_id(module_info, pred_id, proc_id, term__context,
-				io__state, io__state).
-:- mode det_report_pred_proc_id(in, in, in, out, di, uo) is det.
-
-det_report_pred_proc_id(ModuleInfo, PredId, ProcId, Context) -->
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-		PredInfo, ProcInfo) },
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_arity(PredInfo, Arity) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	{ proc_info_context(ProcInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, ArgModes0) },
-
-	% We need to strip off the extra type_info arguments inserted at the
-	% front by polymorphism.m - we only want the last `PredArity' of them.
-	%
-	{ list__length(ArgModes0, NumArgModes) },
-	{ NumToDrop is NumArgModes - Arity },
-	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
-		{ ArgModes = ArgModes1 }
-	;	
-		{ error("report_determinism_problem: list__drop failed") }
-	),
-
-	prog_out__write_context(Context),
-	io__write_string("In `"),
-	det_report_pred_name_mode(PredOrFunc, PredName, ArgModes),
-	io__write_string("':\n").
-
-:- pred det_report_pred_name_mode(pred_or_func, string, list((mode)),
-				io__state, io__state).
-:- mode det_report_pred_name_mode(in, in, in, di, uo) is det.
-
-det_report_pred_name_mode(predicate, PredName, ArgModes) -->
-	io__write_string(PredName),
-	( { ArgModes \= [] } ->
-		{ varset__init(InstVarSet) },	% XXX inst var names
-		io__write_string("("),
-		{ strip_builtin_qualifiers_from_mode_list(ArgModes,
-								ArgModes1) },
-		mercury_output_mode_list(ArgModes1, InstVarSet),
-		io__write_string(")")
-	;
-		[]
-	).
-
-det_report_pred_name_mode(function, FuncName, ArgModes) -->
-	{ varset__init(InstVarSet) },	% XXX inst var names
-	{ strip_builtin_qualifiers_from_mode_list(ArgModes, ArgModes1) },
-	{ pred_args_to_func_args(ArgModes1, FuncArgModes, FuncRetMode) },
-	io__write_string(FuncName),
-	( { FuncArgModes \= [] } ->
-		io__write_string("("),
-		mercury_output_mode_list(FuncArgModes, InstVarSet),
-		io__write_string(")")
-	;
-		[]
-	),
-	io__write_string(" = "),
-	mercury_output_mode(FuncRetMode, InstVarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -949,7 +888,7 @@ det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
 	io__set_exit_status(1).
 det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 			PredId, ProcId), ModuleInfo, error) -->
-	det_report_pred_proc_id(ModuleInfo, PredId, ProcId, _ProcContext),
+	report_pred_proc_id(ModuleInfo, PredId, ProcId, no, _ProcContext),
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Determinism error in lambda expression.\n"),

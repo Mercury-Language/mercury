@@ -43,6 +43,7 @@
 		;	warn_unused_args
 		;	warn_interface_imports
 		;	warn_missing_opt_files
+		;	warn_non_stratification
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -238,6 +239,7 @@ option_defaults_2(warning_option, [
 	warn_nothing_exported	-	bool(yes),
 	warn_unused_args	-	bool(no),
 	warn_interface_imports	-	bool(no),
+	warn_non_stratification -	bool(no),
 	warn_missing_opt_files  -	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
@@ -388,7 +390,7 @@ so this is disabled for the moment.
 				-	int(0),
 	common_struct		-	bool(no),
 	common_goal		-	bool(yes),
-		% commmon_goal is not really an optimization, since
+		% common_goal is not really an optimization, since
 		% it affects the semantics
 	constraint_propagation	-	bool(no),
 	excess_assign		-	bool(no),
@@ -497,6 +499,7 @@ long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("warn-unused-args",		warn_unused_args).
 long_option("warn-interface-imports",	warn_interface_imports).
+long_option("warn-non-stratification",	warn_non_stratification).
 long_option("warn-missing-opt-files",	warn_missing_opt_files).
 
 % verbosity options
@@ -974,8 +977,12 @@ options_help_warning -->
 	io__write_string("\t\tWarn about modules imported in the interface, but\n"),
 	io__write_string("\t\twhich are not used in the interface.\n"),
 	io__write_string("\t--warn-missing-opt-files\n"),
-	io__write_string("\t\tWarn about `.opt' files which cannot be opened.\n").
-
+	io__write_string("\t\tWarn about `.opt' files which cannot be opened.\n"),
+	io__write_string("\t--warn-non-stratification\n"),
+	io__write_string("\t\tWarn about possible non-stratification in the module.\n"),
+	io__write_string("\t\tNon-stratification occurs when a predicate/function can call itself"),
+	io__write_string("\t\tnegatively through some path along its call graph.").
+	
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
 
 options_help_verbosity -->

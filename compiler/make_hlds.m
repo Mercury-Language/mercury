@@ -266,7 +266,9 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	;
 		{ Pragma = memo(Name, Arity) },
 		add_pred_marker(Module0, "memo", Name, Arity, Context,
-			[request(dnf), request(magic), request(memo)], Module)
+			[request(memo)], Module1),
+		add_stratified_pred(Module1, "memo", Name, Arity, Context, 
+			Module)
 	;
 		{ Pragma = inline(Name, Arity) },
 		add_pred_marker(Module0, "inline", Name, Arity, Context,
@@ -410,6 +412,31 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 		{ Info = Info0 }	
 	).
 add_item_clause(nothing, Status, Status, _, Module, Module, Info, Info) --> [].
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_stratified_pred(module_info, string, sym_name, arity,
+	term__context, module_info, io__state, io__state).
+:- mode add_stratified_pred(in, in, in, in, in, out, di, uo) is det.
+
+add_stratified_pred(Module0, PragmaName, Name, Arity, Context, Module) -->
+	{ module_info_get_predicate_table(Module0, PredTable0) },
+	(
+		{ predicate_table_search_sym_arity(PredTable0, Name, 
+			Arity, PredIds) }
+	->
+		{ module_info_stratified_preds(Module0, StratPredIds0) },
+		{ set__insert_list(StratPredIds0, PredIds, StratPredIds) },
+		{ module_info_set_stratified_preds(Module0, StratPredIds, 
+			Module) }
+	;
+		{ string__append_list(
+			["`:- pragma ", PragmaName, "' declaration"],
+			Description) },
+		undefined_pred_or_func_error(Name, Arity, Context,
+			Description),
+		{ module_info_incr_errors(Module0, Module) }
+	).
 
 %-----------------------------------------------------------------------------%
 
