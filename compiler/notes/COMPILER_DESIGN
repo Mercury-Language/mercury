@@ -202,6 +202,10 @@ in an HLDS goal.
 	It also warns the programmer about any constructs that are so simple
 	that they should not have been included in the program in the first
 	place.
+	simplify.m calls common.m which looks for construction unifications
+	which constructs a term that is the same as one that already exists,
+	or repeated calls to a predicate with the same inputs and replaces
+	them with assignment unifications.
 
 3. High-level transformations
 
@@ -230,12 +234,6 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 * inlining (i.e. unfolding) of simple procedures (inlining.m)
 
-* detection of common terms constructions (common.m)
-
-	common.m looks for construction unifications which
-	constructs a term that is the same as one that already exists,
-	and replaces them with assignment unifications
-
 * constraint propagation (constraint.m)
 
 	Not yet working.
@@ -248,8 +246,6 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   specialization and the elimination of unused args can make procedures dead
   even the user doesn't, and automatically constructed unification and
   comparison predicates are often dead as well.
-
-* removal of excess assignment unifications (excess.m)
 
 * reducing the number of variables that have to be saved across procedure calls
   (saved_vars.m). We do this by putting the code that generates the value of

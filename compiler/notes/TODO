@@ -66,10 +66,6 @@ module system
   (like import_module, except that everything must be explicitly
   module qualified).
 
-- allow module qualifiers on function calls and higher-order predicate
-  constants.
-	[being done by stayl]
-
 - imports should not be transitive
   (currently we get this right for predicates, constants, and functors,
   but wrong for types, insts, and modes).
@@ -187,20 +183,6 @@ better diagnostics
 
 - optional warning for any implicit quantifiers whose scope is not
   the entire clause (the "John Lloyd" option :-).
-
-- warn about multiple calls to a predicate with the same input arguments,
-  because this is likely to be a programming mistake.
-  eg.
-
-	p(...) :-
-		...
-		q(InA, InB, OutC, OutD),
-		...
-		q(InA, InB, OutE, OutF).
-
-  should result in
-
-	Warning: redundant call to `q(InA, InB, _, _)'
 
 - give a better error message for the use of if-then without else.
 
