@@ -803,9 +803,13 @@ recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
 
 recompute_instmap_delta_disj([], [], InstMapDelta) -->
 	{ instmap_init(InstMapDelta) }.
-recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
+recompute_instmap_delta_disj([Goal0], [Goal], InstMapDelta) -->
+	recompute_instmap_delta(Goal0, Goal, InstMapDelta).
+recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta)
+		-->
+	{ Goals0 = [_|_] },
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta0),
-	recompute_instmap_delta_conj(Goals0, Goals, InstMapDelta1),
+	recompute_instmap_delta_disj(Goals0, Goals, InstMapDelta1),
 	merge_instmap_delta(InstMapDelta0, InstMapDelta1, InstMapDelta).
 
 %-----------------------------------------------------------------------------%
@@ -816,8 +820,13 @@ recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
 
 recompute_instmap_delta_cases([], [], InstMapDelta) -->
 	{ instmap_init(InstMapDelta) }.
+recompute_instmap_delta_cases([Case0], [Case], InstMapDelta) -->
+	{ Case0 = case(Functor, Goal0) },
+	recompute_instmap_delta(Goal0, Goal, InstMapDelta),
+	{ Case = case(Functor, Goal) }.
 recompute_instmap_delta_cases([Case0 | Cases0], [Case | Cases], InstMapDelta) 
 		-->
+	{ Cases0 = [_|_] },
 	{ Case0 = case(Functor, Goal0) },
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta0),
 	{ Case = case(Functor, Goal) },
@@ -864,8 +873,14 @@ merge_instmapping_delta_2([Var | Vars], MergeInstMapping, InstMapping0,
 		error("merge_instmapping_delta_2: unexpected mode error")
 	    )
 	;
+	    % if a variable only occurs in one of the instmap deltas,
+	    % then mode correctness means that the delta must be adding
+	    % information only, not binding the variable any further;
+	    % since we don't know which path will actually get executed,
+	    % we should not add that information - the merged delta should
+	    % not have any entry for that variable.
 	    ModuleInfo1 = ModuleInfo0,
-	    map__det_insert(InstMapping0, Var, MergeInst, InstMapping1)
+	    InstMapping1 = InstMapping0
 	),
 	merge_instmapping_delta_2(Vars, MergeInstMapping, InstMapping1,
 				InstMapping, ModuleInfo1, ModuleInfo).

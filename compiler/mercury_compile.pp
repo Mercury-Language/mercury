@@ -32,7 +32,7 @@
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
 :- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
-:- import_module negation, dependency_graph, constraint.
+:- import_module negation, call_graph.
 :- import_module common, require.
 
 %-----------------------------------------------------------------------------%
@@ -146,16 +146,26 @@ postprocess_options(ok(OptionTable0), Error) -->
 		{ Error = yes("Invalid grade option") }
 	).
 
+% Set the type of gc that the grade option implies.
+% 'accurate' is not set in the grade, so we don't override it here.
 :- pred convert_gc_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
 convert_gc_grade_option(GC_Grade) -->
 	( { string__remove_suffix(GC_Grade, ".gc", Grade) } ->
-		set_string_opt(gc, "conservative"),
-		convert_grade_option(Grade)
+		( get_string_opt(gc, "accurate") ->
+			convert_grade_option(Grade)
+		;
+			set_string_opt(gc, "conservative"),
+			convert_grade_option(Grade)
+		)
 	;
-		set_string_opt(gc, "none"),
-		convert_grade_option(GC_Grade)
+		( get_string_opt(gc, "accurate") ->
+			convert_grade_option(GC_Grade)
+		;
+			set_string_opt(gc, "none"),
+			convert_grade_option(GC_Grade)
+		)
 	).
 
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
@@ -215,6 +225,12 @@ set_bool_opt(Option, Value, OptionTable0, OptionTable) :-
 
 set_string_opt(Option, Value, OptionTable0, OptionTable) :-
 	map__set(OptionTable0, Option, string(Value), OptionTable).
+
+:- pred get_string_opt(option, string, option_table, option_table).
+:- mode get_string_opt(in, in, in, out) is semidet.
+
+get_string_opt(Option, Value, OptionTable, OptionTable) :-
+	map__lookup(OptionTable, Option, string(Value)).
 
 	% Display error message and then usage message
 :- pred usage_error(string::in, io__state::di, io__state::uo) is det.
@@ -445,7 +461,7 @@ touch_datestamp(ModuleName) -->
 				io__state, io__state).
 :- mode write_dependency_file(in, in, in, di, uo) is det.
 
-write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
+write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ string__append(ModuleName, ".d", DependencyFileName) },
 	maybe_write_string(Verbose, "% Writing auto-dependency file `"),
@@ -454,6 +470,9 @@ write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
 	maybe_flush_output(Verbose),
 	io__open_output(DependencyFileName, Result),
 	( { Result = ok(DepStream) } ->
+		{ list__sort(LongDeps0, LongDeps) },
+		{ list__sort(ShortDeps0, ShortDeps) },
+
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".err : "),
 		io__write_string(DepStream, ModuleName),
@@ -589,12 +608,10 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ".os)\n\n"),
 
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, "_init.c : $("),
-	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".cs)\n"),
+	io__write_string(DepStream, "_init.c :\n"),
 	io__write_string(DepStream, "\t$(C2INIT) $(C2INITFLAGS) $("),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".cs) > "),
+	io__write_string(DepStream, ".srcs) > "),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, "_init.c\n\n"),
 
@@ -1248,17 +1265,23 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 	{ bool__not(FoundTypeError, Proceed1) },
 
 	globals__io_lookup_bool_option(modecheck, DoModeCheck),
-	( { DoModeCheck = yes } ->
+	( { DoModeCheck = yes, FoundTypeError = no } ->
 		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),
 		{ bool__not(FoundModeError, Proceed2) },
 
-		mercury_compile__make_dependency_graph(HLDS3, HLDS3a),
+		globals__io_lookup_bool_option(make_call_graph, MakeCallGraph),
+		( { MakeCallGraph = yes } ->
+			mercury_compile__make_call_graph(HLDS3),
+			maybe_report_stats(Statistics)
+		;
+			[]
+		),
 
 		{ bool__and_list([Proceed0, Proceed1, Proceed2], Proceed) },
 		( { Proceed = yes } ->
-			mercury_compile__maybe_polymorphism(HLDS3a, HLDS4),
+			mercury_compile__maybe_polymorphism(HLDS3, HLDS4),
 			maybe_report_stats(Statistics),
 			mercury_compile__maybe_dump_hlds(HLDS4, "4", "polymorphism"),
 
@@ -1334,32 +1357,26 @@ mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
 			"% Program is mode-correct.\n")
 	).
 
-:- pred mercury_compile__make_dependency_graph(module_info, module_info,
+:- pred mercury_compile__make_call_graph(module_info,
 	io__state, io__state).
-:- mode mercury_compile__make_dependency_graph(in, out, di, uo) is det.
+:- mode mercury_compile__make_call_graph(in, di, uo) is det.
 
-mercury_compile__make_dependency_graph(ModuleInfo0, ModuleInfo) -->
+mercury_compile__make_call_graph(ModuleInfo) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Building dependency graph..."),
+	maybe_write_string(Verbose, "% Building call graph..."),
 	maybe_flush_output(Verbose),
-	{ dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) },
+	{ call_graph__build_call_graph(ModuleInfo, CallGraph) },
 	maybe_write_string(Verbose, "done.\n"),
-	globals__io_lookup_bool_option(show_dependency_graph, ShowDepGraph),
-	( { ShowDepGraph = yes } ->
-		{ module_info_name(ModuleInfo, Name) },
-		{ string__append(Name, ".dependency_graph", WholeName) },
-		io__tell(WholeName, Res),
-		( { Res = ok } ->
-			dependency_graph__write_dependency_graph(ModuleInfo),
-			io__told
-		;
-			report_error("unable to write dependency graph")
-		)
+	{ module_info_name(ModuleInfo, Name) },
+	{ string__append(Name, ".call_graph", WholeName) },
+	io__tell(WholeName, Res),
+	( { Res = ok } ->
+		call_graph__write_call_graph(CallGraph, ModuleInfo),
+		io__told
 	;
-		[]
+		report_error("unable to write call graph")
 	).
 	
-
 :- pred mercury_compile__maybe_polymorphism(module_info, module_info,
 	io__state, io__state).
 :- mode mercury_compile__maybe_polymorphism(in, out, di, uo) is det.
@@ -1542,10 +1559,7 @@ mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, GenerateCode, Proceed) -->
 		{ GenerateCode = yes },
 		{ FoundError = no }
 	->
-		mercury_compile__maybe_propagate_constraints(HLDS10, HLDS10a),
-		mercury_compile__maybe_dump_hlds(HLDS10a, "50", "constraint"),
-
-		mercury_compile__map_args_to_regs(HLDS10a, HLDS11),
+		mercury_compile__map_args_to_regs(HLDS10, HLDS11),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS11, "11", "args_to_regs")
 	;
@@ -1572,24 +1586,6 @@ mercury_compile__check_determinism(HLDS0, HLDS, FoundError) -->
 		maybe_write_string(Verbose,
 			"% Program is determinism-correct.\n")
 	).
-
-:- pred mercury_compile__maybe_propagate_constraints(module_info, module_info,
-	io__state, io__state).
-:- mode mercury_compile__maybe_propagate_constraints(in, out, di, uo) is det.
-
-mercury_compile__maybe_propagate_constraints(HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(constraint_propagation, ConstraintProp),
-	( { ConstraintProp = yes } ->
-		globals__io_lookup_bool_option(verbose, Verbose),
-		maybe_write_string(Verbose, "% Propagating constraints..."),
-		maybe_flush_output(Verbose),
-		constraint_propagation(HLDS0, HLDS),
-		maybe_write_string(Verbose, " done.\n")
-	;
-		{ HLDS0 = HLDS }
-	).
-
-%-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__map_args_to_regs(module_info, module_info,
 	io__state, io__state).
@@ -1943,8 +1939,8 @@ mercury_compile__output_llds(ModuleName, LLDS) -->
 :- mode mercury_compile__maybe_write_gc(in, in, in, di, uo) is det.
 
 mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS) -->
-	globals__io_lookup_string_option(gc, Garbage),
-	( { Garbage = "accurate" } ->
+	globals__io_get_gc_method(GarbageCollectionMethod),
+	( { GarbageCollectionMethod = accurate } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Writing gc info to `"),
 		maybe_write_string(Verbose, ModuleName),
@@ -1953,7 +1949,7 @@ mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS) -->
 		garbage_out__do_garbage_out(Shape_Info, LLDS),
 		maybe_write_string(Verbose, " done.\n")
 	;
-		[]		
+		[]
 	).
 
 :- pred mercury_compile__maybe_find_abstr_exports(module_info, module_info, 

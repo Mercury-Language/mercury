@@ -23,9 +23,8 @@
 :- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
 :- mode code_util__make_local_entry_label(in, in, in, out) is det.
 
-:- pred code_util__make_local_label(module_info, pred_id, proc_id, int, 
-					cont_type, label).
-:- mode code_util__make_local_label(in, in, in, in, in, out) is det.
+:- pred code_util__make_local_label(module_info, pred_id, proc_id, int, label).
+:- mode code_util__make_local_label(in, in, in, in, out) is det.
 
 :- pred code_util__make_proc_label(module_info, pred_id, proc_id, proc_label).
 :- mode code_util__make_proc_label(in, in, in, out) is det.
@@ -54,6 +53,9 @@
 
 :- pred code_util__negate_the_test(list(instruction), list(instruction)).
 :- mode code_util__negate_the_test(in, out) is det.
+
+:- pred code_util__compiler_generated(pred_info).
+:- mode code_util__compiler_generated(in) is semidet.
 
 :- pred code_util__predinfo_is_builtin(module_info, pred_info).
 :- mode code_util__predinfo_is_builtin(in, in) is semidet.
@@ -88,10 +90,9 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
 		Label = local(ProcLabel)
 	).
 
-code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, ContLabel, 
-				Label) :-
+code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
-	Label = local(ProcLabel, LabelNum, ContLabel).
+	Label = local(ProcLabel, LabelNum, unknown).
 
 %-----------------------------------------------------------------------------%
 
@@ -212,6 +213,19 @@ code_util__builtin_binop("builtin_float_ge", 2, float_ge).
 code_util__builtin_binop("builtin_float_le", 2, float_le).
 
 code_util__builtin_unop("builtin_bit_neg", 2, bitwise_complement).
+
+%-----------------------------------------------------------------------------%
+
+	% code_util__compiler_generated(PredInfo) should succeed iff
+	% the PredInfo is for a compiler generated predicate.
+
+code_util__compiler_generated(PredInfo) :-
+    pred_info_name(PredInfo, PredName),
+    pred_info_arity(PredInfo, PredArity),
+    ( PredName = "__Unify__", PredArity = 2
+    ; PredName = "__Compare__", PredArity = 3
+    ; PredName = "__Index__", PredArity = 2
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -145,14 +145,35 @@ implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F),
 	set__list_to_set(HeadVars, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
 
-implicitly_quantify_goal_2(unify(TermA, TermB, X, Y, Z),
-			OutsideVars, _QuantVars,
-			unify(TermA, TermB, X, Y, Z), NonLocalVars) :-
-	term__vars(TermA, VarsA),
-	term__vars(TermB, VarsB),
-	list__append(VarsA, VarsB, Vars),
-	set__list_to_set(Vars, GoalVars),
+implicitly_quantify_goal_2(unify(A, B0, X, Y, Z),
+			OutsideVars, QuantVars,
+			unify(A, B, X, Y, Z), NonLocalVars) :-
+	implicitly_quantify_unify_rhs(B0, OutsideVars, QuantVars, B, VarsB),
+	set__insert(VarsB, A, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
+
+:- pred implicitly_quantify_unify_rhs(unify_rhs, set(var), set(var),
+				 unify_rhs, set(var)).
+:- mode implicitly_quantify_unify_rhs(in, in, in, out, out) is det.
+
+implicitly_quantify_unify_rhs(var(X), _OutsideVars, _QuantVars, var(X), Vars) :-
+	set__singleton_set(Vars, X).
+implicitly_quantify_unify_rhs(functor(Functor, ArgVars),
+				_OutsideVars, _QuantVars,
+				functor(Functor, ArgVars), Vars) :-
+	set__list_to_set(ArgVars, Vars).
+implicitly_quantify_unify_rhs(lambda_goal(LambdaVars, Goal0),
+				OutsideVars, QuantVars,
+				lambda_goal(LambdaVars, Goal), NonLocals) :-
+	% quantified variables cannot be pushed inside a lambda goal,
+	% so we insert the quantified vars into the outside vars set,
+	% and initialize the new quantified vars set to be empty
+	set__union(OutsideVars, QuantVars, OutsideVars1),
+	set__init(QuantVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, QuantVars1,
+			Goal, NonLocals0),
+	% lambda-quantified variables are local
+	set__delete_list(NonLocals0, LambdaVars, NonLocals).
 
 :- pred implicitly_quantify_conj(list(hlds__goal), set(var), set(var),
 				 list(hlds__goal), set(var)).
@@ -301,10 +322,8 @@ goal_vars(Goal - _GoalInfo, Set) :-
 :- mode goal_vars_2(in, in, out) is det.
 
 goal_vars_2(unify(A, B, _, _, _), Set0, Set) :-
-	term__vars(A, VarsA),
-	set__insert_list(Set0, VarsA, Set1),
-	term__vars(B, VarsB),
-	set__insert_list(Set1, VarsB, Set).
+	set__insert(Set0, A, Set1),
+	unify_rhs_vars(B, Set1, Set).
 
 goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
@@ -342,6 +361,18 @@ goal_vars_2(if_then_else(Vars, A, B, C), Set0, Set) :-
 	set__union(Set0, Set4, Set5),
 	goal_vars(C, Set6),
 	set__union(Set5, Set6, Set).
+
+:- pred unify_rhs_vars(unify_rhs, set(var), set(var)).
+:- mode unify_rhs_vars(in, in, out) is det.
+
+unify_rhs_vars(var(X), Set0, Set) :-
+	set__insert(Set0, X, Set).
+unify_rhs_vars(functor(_Functor, ArgVars), Set0, Set) :-
+	set__insert_list(Set0, ArgVars, Set).
+unify_rhs_vars(lambda_goal(LambdaVars, Goal), Set0, Set) :-
+	goal_vars(Goal, GoalVars),
+	set__delete_list(GoalVars, LambdaVars, GoalVars1),
+	set__union(Set0, GoalVars1, Set).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

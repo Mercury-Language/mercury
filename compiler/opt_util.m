@@ -52,6 +52,12 @@
 :- pred opt_util__touches_nondet_ctrl(list(instruction), bool).
 :- mode opt_util__touches_nondet_ctrl(in, out) is det.
 
+	% Find the instructions up to and including
+	% the next one that cannot fall through
+
+:- pred opt_util__find_no_fallthrough(list(instruction), list(instruction)).
+:- mode opt_util__find_no_fallthrough(in, out) is det.
+
 	% Find the first label in the instruction stream.
 
 :- pred opt_util__find_first_label(list(instruction), label).
@@ -121,11 +127,22 @@
 	list(instruction)).
 :- mode opt_util__straight_alternative(in, out, out) is semidet.
 
+	% Remove the labels from a block of code for jumpopt.
+
+:- pred opt_util__filter_out_labels(list(instruction), list(instruction)).
+:- mode opt_util__filter_out_labels(in, out) is det.
+
 	% Remove the assignment to r1 from the list returned by
 	% opt_util__is_sdproceed_next.
 
 :- pred opt_util__filter_out_r1(list(instruction), list(instruction)).
 :- mode opt_util__filter_out_r1(in, out) is det.
+
+	% Remove any livevals instructions that do not precede an instruction
+	% that needs one.
+
+:- pred opt_util__filter_out_bad_livevals(list(instruction), list(instruction)).
+:- mode opt_util__filter_out_bad_livevals(in, out) is det.
 
 	% Remove the livevals instruction from the list returned by
 	% opt_util__is_proceed_next.
@@ -332,11 +349,23 @@ opt_util__skip_comments_livevals_labels(Instrs0, Instrs) :-
 
 opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 	Instr = Uinstr - _Comment,
-	( Uinstr = modframe(Redoip0) ->
+	(
+		Uinstr = modframe(Redoip0)
+	->
 		Redoip = Redoip0,
 		list__reverse(RevSkip, Skip),
 		Rest = Instrs
-	; Uinstr = mkframe(_, _, _) ->
+	;
+		Uinstr = assign(redoip(lval(Fr)),
+			const(address_const(Redoip0))),
+		( Fr = maxfr ; Fr = curfr )
+	->
+		Redoip = Redoip0,
+		list__reverse(RevSkip, Skip),
+		Rest = Instrs
+	;
+		Uinstr = mkframe(_, _, _)
+	->
 		fail
 	;
 		opt_util__can_instr_branch_away(Uinstr, Canbranchaway),
@@ -346,6 +375,18 @@ opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 		;
 			fail
 		)
+	).
+
+opt_util__find_no_fallthrough([], []).
+opt_util__find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
+	(
+		Instr0 = Uinstr0 - _,
+		opt_util__can_instr_fall_through(Uinstr0, no)
+	->
+		Instrs = [Instr0]
+	;
+		opt_util__find_no_fallthrough(Instrs0, Instrs1),
+		Instrs = [Instr0 | Instrs1]
 	).
 
 opt_util__find_first_label([], _) :-
@@ -493,17 +534,7 @@ opt_util__straight_alternative_2([Instr0 | Instrs0], Between0, Between,
 	(
 		(
 			opt_util__can_instr_branch_away(Uinstr0, no),
-			\+ (
-				Uinstr0 = mkframe(_, _, _)
-			;
-				Uinstr0 = modframe(_)
-			;
-				Uinstr0 = assign(redoip(_), _)
-			;
-				Uinstr0 = assign(succfr(_), _)
-			;
-				Uinstr0 = assign(prevfr(_), _)
-			)
+			opt_util__touches_nondet_ctrl_instr(Uinstr0, no)
 		;
 			Uinstr0 = if_val(_, CodeAddr),
 			( CodeAddr = do_fail ; CodeAddr = do_redo )
@@ -560,18 +591,18 @@ opt_util__lval_refers_stackvars(framevar(_), _) :-
 opt_util__lval_refers_stackvars(succip, no).
 opt_util__lval_refers_stackvars(maxfr, no).
 opt_util__lval_refers_stackvars(curfr, no).
-opt_util__lval_refers_stackvars(succfr(_Rval), _Refers) :-
-	% I'm not 100% sure of what we should do here, so
-	% to be safe, just abort. I don't think this code
-	% is used anyway. -fjh.
-	error("found succfr in lval_refers_stackvars").
-	%%% opt_util__rval_refers_stackvars(Rval, Refers).
-opt_util__lval_refers_stackvars(prevfr(_Rval), _Refers) :-
-	% I'm not 100% sure of what we should do here, so
-	% to be safe, just abort. I don't think this code
-	% is used anyway. -fjh.
-	error("found prevfr in lval_refers_stackvars").
-	%%% opt_util__rval_refers_stackvars(Rval, Refers).
+opt_util__lval_refers_stackvars(succfr(Rval), Refers) :-
+	%% I'm not 100% sure of what we should do here, so
+	%% to be safe, just abort. I don't think this code
+	%% is used anyway. -fjh.
+	% error("found succfr in lval_refers_stackvars").
+	opt_util__rval_refers_stackvars(Rval, Refers).
+opt_util__lval_refers_stackvars(prevfr(Rval), Refers) :-
+	%% I'm not 100% sure of what we should do here, so
+	%% to be safe, just abort. I don't think this code
+	%% is used anyway. -fjh.
+	%error("found prevfr in lval_refers_stackvars").
+	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(redoip(Rval), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(hp, no).
@@ -742,6 +773,15 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Need = no
 	).
 
+opt_util__filter_out_labels([], []).
+opt_util__filter_out_labels([Instr0 | Instrs0], Instrs) :-
+	opt_util__filter_out_labels(Instrs0, Instrs1),
+	( Instr0 = label(_) - _ ->
+		Instrs = Instrs1
+	;
+		Instrs = [Instr0 | Instrs1]
+	).
+
 opt_util__filter_out_r1([], []).
 opt_util__filter_out_r1([Instr0 | Instrs0], Instrs) :-
 	opt_util__filter_out_r1(Instrs0, Instrs1),
@@ -751,10 +791,23 @@ opt_util__filter_out_r1([Instr0 | Instrs0], Instrs) :-
 		Instrs = [Instr0 | Instrs1]
 	).
 
+opt_util__filter_out_bad_livevals([], []).
+opt_util__filter_out_bad_livevals([Instr0 | Instrs0], Instrs) :-
+	opt_util__filter_out_bad_livevals(Instrs0, Instrs1),
+	(
+		Instr0 = livevals(_) - _,
+		Instrs1 = [Uinstr1 - _ | _],
+		opt_util__can_use_livevals(Uinstr1, no)
+	->
+		Instrs = Instrs1
+	;
+		Instrs = [Instr0 | Instrs1]
+	).
+
 opt_util__filter_out_livevals([], []).
 opt_util__filter_out_livevals([Instr0 | Instrs0], Instrs) :-
 	opt_util__filter_out_livevals(Instrs0, Instrs1),
-	( Instr0 = livevals(_) - _Comment ->
+	( Instr0 = livevals(_) - _ ->
 		Instrs = Instrs1
 	;
 		Instrs = [Instr0 | Instrs1]
@@ -763,7 +816,7 @@ opt_util__filter_out_livevals([Instr0 | Instrs0], Instrs) :-
 opt_util__filter_in_livevals([], []).
 opt_util__filter_in_livevals([Instr0 | Instrs0], Instrs) :-
 	opt_util__filter_in_livevals(Instrs0, Instrs1),
-	( Instr0 = livevals(_) - _Comment ->
+	( Instr0 = livevals(_) - _ ->
 		Instrs = [Instr0 | Instrs1]
 	;
 		Instrs = Instrs1
@@ -791,14 +844,14 @@ opt_util__is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
 	Taken = yes.
 
 % opt_util__has_incr_sp([Instr0 | Instrs0], Inc) :-
-% 	( Instr0 = incr_sp(N) - _Comment ->
+% 	( Instr0 = incr_sp(N) - _ ->
 % 		Inc = N
 % 	;
 % 		opt_util__has_incr_sp(Instrs0, Inc)
 % 	).
 
 % opt_util__has_decr_sp([Instr0 | Instrs0], Dec) :-
-% 	( Instr0 = decr_sp(N) - _Comment ->
+% 	( Instr0 = decr_sp(N) - _ ->
 % 		Dec = N
 % 	;
 % 		opt_util__has_decr_sp(Instrs0, Dec)
@@ -853,6 +906,28 @@ opt_util__can_instr_fall_through(mark_hp(_), yes).
 opt_util__can_instr_fall_through(restore_hp(_), yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
+
+:- pred opt_util__can_use_livevals(instr, bool).
+:- mode opt_util__can_use_livevals(in, out) is det.
+
+opt_util__can_use_livevals(comment(_), no).
+opt_util__can_use_livevals(livevals(_), no).
+opt_util__can_use_livevals(block(_, _), no).
+opt_util__can_use_livevals(assign(_, _), no).
+opt_util__can_use_livevals(call(_, _, _, _), yes).
+opt_util__can_use_livevals(call_closure(_, _, _), yes).
+opt_util__can_use_livevals(mkframe(_, _, _), no).
+opt_util__can_use_livevals(modframe(_), no).
+opt_util__can_use_livevals(label(_), no).
+opt_util__can_use_livevals(goto(_, _), yes).
+opt_util__can_use_livevals(computed_goto(_, _), no).
+opt_util__can_use_livevals(c_code(_), no).
+opt_util__can_use_livevals(if_val(_, _), yes).
+opt_util__can_use_livevals(incr_hp(_, _, _), no).
+opt_util__can_use_livevals(mark_hp(_), no).
+opt_util__can_use_livevals(restore_hp(_), no).
+opt_util__can_use_livevals(incr_sp(_), no).
+opt_util__can_use_livevals(decr_sp(_), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
 
@@ -1057,27 +1132,33 @@ opt_util__remove_both_incr_decr_sp([Instr0 | Instrs0], Instrs) :-
 
 opt_util__touches_nondet_ctrl([], no).
 opt_util__touches_nondet_ctrl([Uinstr - _ | Instrs], Touch) :-
-	( Uinstr = assign(Lval, Rval) ->
-		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
-		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
-		bool__or(TouchLval, TouchRval, Touch0)
-	; Uinstr = incr_hp(Lval, _, Rval) ->
-		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
-		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
-		bool__or(TouchLval, TouchRval, Touch0)
-	; Uinstr = mark_hp(Lval) ->
-		opt_util__touches_nondet_ctrl_lval(Lval, Touch0)
-	; Uinstr = restore_hp(Rval) ->
-		opt_util__touches_nondet_ctrl_rval(Rval, Touch0)
-	;
-		Touch0 = yes
-	),
+	opt_util__touches_nondet_ctrl_instr(Uinstr, Touch0),
 	(
 		Touch0 = yes,
 		Touch = yes
 	;
 		Touch0 = no,
 		opt_util__touches_nondet_ctrl(Instrs, Touch)
+	).
+
+:- pred opt_util__touches_nondet_ctrl_instr(instr, bool).
+:- mode opt_util__touches_nondet_ctrl_instr(in, out) is det.
+
+opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
+	( Uinstr = assign(Lval, Rval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
+		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
+		bool__or(TouchLval, TouchRval, Touch)
+	; Uinstr = incr_hp(Lval, _, Rval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
+		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
+		bool__or(TouchLval, TouchRval, Touch)
+	; Uinstr = mark_hp(Lval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, Touch)
+	; Uinstr = restore_hp(Rval) ->
+		opt_util__touches_nondet_ctrl_rval(Rval, Touch)
+	;
+		Touch = yes
 	).
 
 :- pred opt_util__touches_nondet_ctrl_lval(lval, bool).
