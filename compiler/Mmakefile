@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne. 
+# Copyright (C) 1995-1998 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -60,19 +60,22 @@ MTAGS	=	$(SCRIPTS_DIR)/mtags
 # mercury_compile.sicstus.debug
 
 .PHONY: depend
-depend : mercury_compile.depend
+depend:		mercury_compile.depend
 
 .PHONY: all
-all : mercury nuprolog sicstus
+all:		mercury nuprolog sicstus
 
 .PHONY: mercury
-mercury: mercury_compile
+mercury:	mercury_compile
 
 .PHONY: nuprolog
-nuprolog: mercury_compile.nu
+nuprolog:	mercury_compile.nu
 
 .PHONY: sicstus
-sicstus: mercury_compile.sicstus
+sicstus:	mercury_compile.sicstus
+
+.PHONY: debug
+debug:		mercury_compile mercury_compile.sicstus.debug
 
 #-----------------------------------------------------------------------------#
 
