@@ -482,7 +482,7 @@ string__right(String, RightCount, RightString) :-
 	string__split(String, LeftCount, _LeftString, RightString).
 
 string__substring(String, Start, Count, Substring) :-
-	string__right(String, Start, Right),
+	string__split(String, Start, _Left, Right),
 	string__left(Right, Count, Substring).
 
 string__remove_suffix(A, B, C) :-
