@@ -2849,9 +2849,7 @@ XXX broken for C == minint
 		io__write_string(")")
 	).
 output_rval(mkword(Tag, Exprn)) -->
-	% XXX we should change the definition of mkword()
-	% so that this cast is not needed
-	io__write_string("(const Word *) mkword("),
+	io__write_string("mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_rval_as_type(Exprn, word),
@@ -2879,9 +2877,7 @@ output_rval(lval(Lval)) -->
 output_rval(create(Tag, _Args, _Unique, CellNum, _Msg)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
-	% XXX we should change the definition of mkword()
-	% so that this cast is not needed
-	io__write_string("(const Word *) mkword(mktag("),
+	io__write_string("mkword(mktag("),
 	io__write_int(Tag),
 	io__write_string("), "),
 	io__write_string("&mercury_const_"),
