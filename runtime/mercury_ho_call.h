@@ -38,7 +38,7 @@
 ** contain values for all the arguments of the procedure, but the closure
 ** layout structure has information about all arguments. This is to make
 ** the creation of a closure from another closure by adding some more
-** hidden arguments as fast as possible. There is no problem is finding
+** hidden arguments as fast as possible. There is no problem in finding
 ** out which pseudotypeinfo describes which hidden argument, because if
 ** the closure contains n hidden arguments, these must be the first n arguments
 ** of the procedure.
