@@ -45,6 +45,8 @@
 #   endif
 # endif
 
+/* #include "mercury_stacks.h" */
+
 GC_FAR struct _GC_arrays GC_arrays /* = { 0 } */;
 
 
@@ -237,6 +239,7 @@ ptr_t arg;
 	/* frequency decreases, thus clearing frequency would decrease, */
 	/* thus more junk remains accessible, thus the heap gets	*/
 	/* larger ...							*/
+    /* clear_mercury_stacks(); */
 # ifdef THREADS
     BZERO(dummy, CLEAR_SIZE*sizeof(word));
 # else
