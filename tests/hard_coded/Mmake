@@ -14,6 +14,9 @@ PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
 
 #-----------------------------------------------------------------------------#
 
+func_test: func_test.m
+	mc --infer-all func_test.m
+
 no_fully_strict: no_fully_strict.m
 	mc --no-fully-strict no_fully_strict.m
 
