@@ -2266,7 +2266,7 @@ null(_) :-
 	null_string = (Str::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	Str = (MR_Word) NULL;
+	Str = NULL;
 ").
 :- pragma foreign_proc("C#",
 	null_string = (Str::out),
