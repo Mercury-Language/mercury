@@ -1726,7 +1726,8 @@ Word * mercury_data_io__base_type_layout_io__stream_0a[] = {
 };
 
 Word * mercury_data_io__base_type_layout_io__stream_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_SIMPLE_TAG, ((Integer) mercury_data_io__base_type_layout_io__stream_0a))
+	make_typelayout_for_all_tags(TYPELAYOUT_SIMPLE_TAG, 
+		((Integer) mercury_data_io__base_type_layout_io__stream_0a))
 };
 
 #endif
@@ -1999,7 +2000,8 @@ void sys_init_io_stream_module(void) {
 	 */
 
 Word * mercury_data_io__base_type_layout_io__external_state_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_INT_VALUE))
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_INT_VALUE))
 };
 
 #endif

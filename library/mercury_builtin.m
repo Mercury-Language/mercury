@@ -475,7 +475,8 @@ unused :-
 
 
 Word * mercury_data___base_type_layout_int_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_INT_VALUE))
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_INT_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_int_2_0);
@@ -496,7 +497,8 @@ Word * mercury_data___base_type_info_int_0[] = {
 };
 
 Word * mercury_data___base_type_layout_character_0[] = {
-    make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_CHARACTER_VALUE))
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_CHARACTER_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_character_2_0);
@@ -517,7 +519,8 @@ Word * mercury_data___base_type_info_character_0[] = {
 };
 
 Word * mercury_data___base_type_layout_string_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_STRING_VALUE))
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_STRING_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_string_2_0);
@@ -538,7 +541,8 @@ Word * mercury_data___base_type_info_string_0[] = {
 };
 
 Word * mercury_data___base_type_layout_float_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_FLOAT_VALUE))
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_FLOAT_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_float_2_0);
@@ -559,7 +563,8 @@ Word * mercury_data___base_type_info_float_0[] = {
 };
 
 Word * mercury_data___base_type_layout_pred_0[] = {
-    make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_PREDICATE_VALUE))
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_PREDICATE_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_pred_2_0);
