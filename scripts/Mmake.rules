@@ -8,6 +8,11 @@
 
 # N.B. All the builtin rules must use $@ as the target, so that they work
 # when $(VPATH) is set.
+#
+# When passing a module to mmc, strip off the directory part of the
+# name. This way the compiler will report an error if the source file
+# is in another directory, rather than generating interface files in
+# the wrong directory.
 
 main_target: $(MAIN_TARGET)
 
@@ -132,19 +137,19 @@ endif
 ifeq ($(MMAKE_USE_MMC_MAKE), no)
 
 $(date0s_subdir)%.date0 : %.m
-	$(MCPI) $(ALL_MCPIFLAGS) $<
+	$(MCPI) $(ALL_MCPIFLAGS) $(*F)
 
 $(dates_subdir)%.date : %.m
-	$(MCI) $(ALL_MCIFLAGS) $<
+	$(MCI) $(ALL_MCIFLAGS) $(*F)
 
 $(date3s_subdir)%.date3 : %.m
-	$(MCSI) $(ALL_MCSIFLAGS) $<
+	$(MCSI) $(ALL_MCSIFLAGS) $(*F)
 
 $(optdates_subdir)%.optdate : %.m
-	$(MCOI) $(ALL_MCOIFLAGS) $<
+	$(MCOI) $(ALL_MCOIFLAGS) $(*F)
 
 $(trans_opt_dates_subdir)%.trans_opt_date : %.m
-	$(MCTOI) $(ALL_MCTOIFLAGS) $<
+	$(MCTOI) $(ALL_MCTOIFLAGS) $(*F)
 
 # Be very careful about changing the following rules.
 # The `@:' is a silent do-nothing command.
@@ -195,11 +200,11 @@ $(pic_ss_subdir)%.pic_s : $(pic_s_dates_subdir)%.pic_s_date
 
 $(s_dates_subdir)%.s_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
-		$< > $*.err 2>&1
+		$(*F) > $(*F).err 2>&1
 
 $(pic_s_dates_subdir)%.pic_s_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
-		--pic --cflags "$(GCCFLAGS_FOR_PIC)" $< > $*.err 2>&1
+		--pic --cflags "$(GCCFLAGS_FOR_PIC)" $(*F) > $(*F).err 2>&1
 
 $(os_subdir)%.$O : $(ss_subdir)%.s
 	$(AS) $< $(OBJFILE_OPT)$@
@@ -229,11 +234,12 @@ $(cs_subdir)%.c : $(c_dates_subdir)%.c_date
 	@:
 
 $(c_dates_subdir)%.c_date : %.m
-	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $< > $*.err 2>&1
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $(*F) > $(*F).err 2>&1
 
 # Aditi-RL back-end
 $(rlos_subdir)%.rlo : %.m
-	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
+		--aditi-only $(*F) > $(*F).err 2>&1
 
 # Java back-end
 
@@ -250,7 +256,8 @@ $(javas_subdir)%.java: $(java_dates_subdir)%.java_date
 	@:
 
 $(java_dates_subdir)%.java_date : %.m
-	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --java-only $< > $*.err 2>&1
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
+		--java-only $(*F) > $(*F).err 2>&1
 
 # .NET back-end
 
@@ -260,7 +267,8 @@ $(ils_subdir)%.il : $(il_dates_subdir)%.il_date
 	@:
 
 $(il_dates_subdir)%.il_date : %.m
-	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --il-only $< > $*.err 2>&1
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
+		--il-only $(*F) > $(*F).err 2>&1
 
 # These rules are only available in *il* backends, because we'd like to avoid
 # processing user code that is in a .cpp file, and we'd like to avoid going via
@@ -291,7 +299,7 @@ endif
 
 $(dirs_subdir)%.dir/*.$O: %.m
 	rm -f $@
-	$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) $<
+	$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) $(*F)
 
 # The `touch' is necessary, since otherwise if
 # the old .err file was of size zero and
@@ -300,11 +308,11 @@ $(dirs_subdir)%.dir/*.$O: %.m
 # (Is that a bug in unix? In bash?)
 
 .m.err:
-	$(MCE) $(ALL_MCFLAGS) $< > $@ 2>&1
+	$(MCE) $(ALL_MCFLAGS) $(*F) > $@ 2>&1
 	@touch $@
 
 .m.ugly:
-	$(MC) --convert-to-mercury $(ALL_MCFLAGS) $<
+	$(MC) --convert-to-mercury $(ALL_MCFLAGS) $(*F)
 
 endif	# MMAKE_USE_MMC_MAKE == no
 
