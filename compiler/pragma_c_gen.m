@@ -368,7 +368,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		% (other than the output args) onto the stack
 		{ get_c_arg_list_vars(OutArgs, OutArgs1) },
 		{ set__list_to_set(OutArgs1, OutArgsSet) },
-		code_info__save_variables(OutArgsSet, SaveVarsCode)
+		code_info__save_variables(OutArgsSet, _, SaveVarsCode)
 	),
 
 	( { CodeModel = model_semi } ->

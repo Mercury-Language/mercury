@@ -20,7 +20,7 @@
 :- import_module prog_data, hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module rtti, llds.
 
-:- import_module bool, list, assoc_list, set, std_util.
+:- import_module bool, list, std_util.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -165,11 +165,6 @@
 :- pred code_util__count_recursive_calls(hlds_goal, pred_id, proc_id,
 	int, int).
 :- mode code_util__count_recursive_calls(in, in, in, out, out) is det.
-
-	% Return the set of locations occupied by output arguments.
-
-:- pred code_util__output_args(assoc_list(prog_var, arg_info), set(lval)).
-:- mode code_util__output_args(in, out) is det.
 
 	% These predicates return the set of lvals referenced in an rval
 	% and an lval respectively. Lvals referenced indirectly through
@@ -790,19 +785,6 @@ code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
 			Min1, Max1),
 		int__min(Min0, Min1, Min),
 		int__max(Max0, Max1, Max)
-	).
-
-code_util__output_args([], LiveVals) :-
-	set__init(LiveVals).
-code_util__output_args([_V - arg_info(Loc, Mode) | Args], Vs) :-
-	code_util__output_args(Args, Vs0),
-	(
-		Mode = top_out
-	->
-		code_util__arg_loc_to_register(Loc, Reg),
-		set__insert(Vs0, Reg, Vs)
-	;
-		Vs = Vs0
 	).
 
 %-----------------------------------------------------------------------------%

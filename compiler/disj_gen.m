@@ -242,8 +242,8 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
 			code_info__maybe_release_hp(MaybeHpSlot),
 			% we're committing to this disjunct
-			code_info__maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
-				commit, PruneTicketCode),
+			code_info__maybe_reset_prune_and_release_ticket(
+				MaybeTicketSlot, commit, PruneTicketCode),
 
 			code_info__reset_resume_known(BranchStart)
 		),

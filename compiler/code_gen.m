@@ -737,9 +737,10 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 		(
 			{ instmap__is_unreachable(Instmap) }
 		->
+			{ OutLvals = set__init },
 			{ FlushCode = empty }
 		;
-			code_info__setup_call(Args, callee, FlushCode)
+			code_info__setup_return(Args, OutLvals, FlushCode)
 		),
 		{
 			MaybeSuccipSlot = yes(SuccipSlot)
@@ -794,24 +795,18 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 					Locn = indirect(Lval, _)
 				)
 			)) },
-			{ solutions(FindBaseLvals, TypeInfoLvals) }
+			{ solutions(FindBaseLvals, TypeInfoLvals) },
+			{ set__insert_list(OutLvals, TypeInfoLvals,
+				LiveLvals) }
 		;
 			{ TraceExitCode = empty },
-			{ TypeInfoLvals = [] }
+			{ LiveLvals = OutLvals }
 		),
-
-			% Find out which locations should be mentioned
-			% in the success path livevals(...) annotation,
-			% so that value numbering doesn't optimize them away.
-		{ code_gen__select_args_with_mode(Args, top_out, _OutVars,
-			OutLvals) },
-		{ list__append(TypeInfoLvals, OutLvals, LiveArgLvals) },
-		{ set__list_to_set(LiveArgLvals, LiveArgs) },
 
 		(
 			{ CodeModel = model_det },
 			{ SuccessCode = node([
-				livevals(LiveArgs) - "",
+				livevals(LiveLvals) - "",
 				goto(succip) - "Return from procedure call"
 			]) },
 			{ AllSuccessCode =
@@ -821,7 +816,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			}
 		;
 			{ CodeModel = model_semi },
-			{ set__insert(LiveArgs, reg(r, 1), SuccessLiveRegs) },
+			{ set__insert(LiveLvals, reg(r, 1), SuccessLiveRegs) },
 			{ SuccessCode = node([
 				assign(reg(r, 1), const(true)) - "Succeed",
 				livevals(SuccessLiveRegs) - "",
@@ -841,7 +836,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				SetupRedoCode = empty
 			},
 			{ SuccessCode = node([
-				livevals(LiveArgs) - "",
+				livevals(LiveLvals) - "",
 				goto(do_succeed(no))
 					- "Return from procedure call"
 			]) },

@@ -310,7 +310,7 @@ bytecode_gen__higher_order_call(PredVar, ArgVars, ArgModes, Detism,
 	make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
-	call_gen__partition_args(ArgVarsInfos, InVars, OutVars),
+	arg_info__partition_args(ArgVarsInfos, InVars, OutVars),
 	list__length(InVars, NInVars),
 	list__length(OutVars, NOutVars),
 

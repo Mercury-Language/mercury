@@ -2036,7 +2036,8 @@ code_info__generate_failure(Code) -->
 				Map, FailureAddress) },
 			{ map__to_assoc_list(Map, AssocList) },
 			code_info__remember_position(CurPos),
-			code_info__pick_and_place_vars(AssocList, PlaceCode),
+			code_info__pick_and_place_vars(AssocList, _,
+				PlaceCode),
 			code_info__reset_to_position(CurPos)
 		),
 		{ BranchCode = node([goto(FailureAddress) - "fail"]) },
@@ -2068,7 +2069,8 @@ code_info__fail_if_rval_is_false(Rval0, Code) -->
 			{ map__to_assoc_list(Map, AssocList) },
 			code_info__get_next_label(SuccessLabel),
 			code_info__remember_position(CurPos),
-			code_info__pick_and_place_vars(AssocList, PlaceCode),
+			code_info__pick_and_place_vars(AssocList, _,
+				PlaceCode),
 			code_info__reset_to_position(CurPos),
 			{ SuccessAddress = label(SuccessLabel) },
 				% We branch away if the test *fails*,
@@ -2233,12 +2235,19 @@ code_info__produce_vars_2([V | Vs], Map, Code) -->
 	{ Code = tree(Code0, Code1) }.
 
 code_info__flush_resume_vars_to_stack(Code) -->
+	code_info__compute_resume_var_stack_locs(VarLocs),
+	code_info__place_vars(VarLocs, Code).
+
+:- pred compute_resume_var_stack_locs(assoc_list(prog_var, lval)::out,
+	code_info::in, code_info::out) is det.
+
+code_info__compute_resume_var_stack_locs(VarLocs) -->
 	code_info__get_fail_info(FailInfo),
 	{ FailInfo = fail_info(ResumePointStack, _, _, _, _) },
 	{ stack__top_det(ResumePointStack, ResumePoint) },
 	{ code_info__pick_stack_resume_point(ResumePoint, StackMap, _) },
-	{ map__to_assoc_list(StackMap, StackLocs) },
-	code_info__pick_and_place_vars(StackLocs, Code).
+	{ map__to_assoc_list(StackMap, VarLocSets) },
+	{ code_info__pick_var_places(VarLocSets, VarLocs) }.
 
 %---------------------------------------------------------------------------%
 
@@ -3060,13 +3069,23 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 
 :- type call_direction ---> caller ; callee.
 
-	% Generate code to either setup the input arguments for a call
-	% (i.e. in the caller), or to setup the output arguments in the
-	% predicate epilog (i.e. in the callee).
+	% Move variables to where they need to be at the time of the call:
+	%
+	% - The variables that need to be saved across the call (either because
+	%   they are forward live after the call or because they are protected
+	%   by an enclosing resumption point) will be saved on the stack.
+	%
+	% - The input arguments will be moved to their registers.
 
-:- pred code_info__setup_call(assoc_list(prog_var, arg_info)::in,
-	call_direction::in, code_tree::out,
+:- pred code_info__setup_call(hlds_goal_info::in,
+	assoc_list(prog_var, arg_info)::in, set(lval)::out, code_tree::out,
 	code_info::in, code_info::out) is det.
+
+	% Move the output arguments of the current procedure to where
+	% they need to be at return.
+
+:- pred code_info__setup_return(assoc_list(prog_var, arg_info)::in,
+	set(lval)::out, code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred code_info__eager_lock_regs(int::in, assoc_list(prog_var, lval)::in,
 	code_info::in, code_info::out) is det.
@@ -3078,10 +3097,8 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 :- pred code_info__clobber_regs(list(lval)::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__save_variables(set(prog_var)::in, code_tree::out,
-	code_info::in, code_info::out) is det.
-
-:- pred code_info__save_variable_on_stack(prog_var::in, code_tree::out,
+:- pred code_info__save_variables(set(prog_var)::in,
+	set(lval)::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
 :- pred code_info__save_variables_on_stack(list(prog_var)::in, code_tree::out,
@@ -3095,7 +3112,7 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 :- implementation.
 
 :- pred code_info__pick_and_place_vars(assoc_list(prog_var, set(lval))::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	set(lval)::out, code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred code_info__place_vars(assoc_list(prog_var, lval)::in,
 	code_tree::out, code_info::in, code_info::out) is det.
@@ -3233,8 +3250,10 @@ code_info__place_var(Var, Lval, Code) -->
 	},
 	code_info__set_var_locns_info(VarInfo).
 
-code_info__pick_and_place_vars(VarLocSets, Code) -->
+code_info__pick_and_place_vars(VarLocSets, LiveLocs, Code) -->
 	{ code_info__pick_var_places(VarLocSets, VarLocs) },
+	{ assoc_list__values(VarLocs, Locs) },
+	{ set__list_to_set(Locs, LiveLocs) },
 	code_info__place_vars(VarLocs, Code).
 
 :- pred code_info__pick_var_places(assoc_list(prog_var, set(lval))::in,
@@ -3427,27 +3446,89 @@ code_info__clear_r1(Code) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__setup_call(VarArgInfos, Direction, Code) -->
+code_info__setup_return(VarArgInfos, OutLocs, Code) -->
+	code_info__setup_call_args(VarArgInfos, callee, OutLocs, Code).
+
+code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code) -->
+	{ partition_args(ArgInfos, InArgInfos, OutArgInfos, _UnusedArgInfos) },
+	{ assoc_list__keys(OutArgInfos, OutVars) },
+	{ set__list_to_set(OutVars, OutVarSet) },
+	code_info__compute_forward_live_var_saves(OutVarSet, ForwardVarLocs),
+
+	{ goal_info_get_code_model(GoalInfo, CodeModel) },
+	( { CodeModel = model_non } ->
+			% Save variables protected by the nearest resumption
+			% point on the stack. XXX This should be unnecessary;
+			% with the current setup, the code that established
+			% the resume point should have saved those variables
+			% on the stack already. However, later we should
+			% arrange things so that this saving of the resume vars
+			% on the stack is delayed until the first call after
+			% the setup of the resume point.
+		code_info__compute_resume_var_stack_locs(ResumeVarLocs),
+		{ list__append(ResumeVarLocs, ForwardVarLocs, StackVarLocs) }
+	;
+		{ StackVarLocs = ForwardVarLocs }
+	),
+
 	code_info__get_var_locns_info(VarInfo0),
 	(
 		{ VarInfo0 = exprn_info(_) },
-		code_info__setup_call_lazy(VarArgInfos, Direction, Code)
+
+		code_info__place_vars(StackVarLocs, StackCode),
+		{ assoc_list__values(StackVarLocs, StackLocs) },
+		{ set__list_to_set(StackLocs, StackLiveLocs) },
+
+		code_info__setup_call_args_lazy(InArgInfos, caller,
+			ArgLiveLocs, ArgCode),
+		{ set__union(StackLiveLocs, ArgLiveLocs, LiveLocs) },
+		{ Code = tree(StackCode, ArgCode) }
 	;
-		{ VarInfo0 = var_locn_info(_) },
-		code_info__setup_call_eager(VarArgInfos, Direction, Code)
+		{ VarInfo0 = var_locn_info(VarLocnInfo0) },
+		{ code_info__var_arg_info_to_lval(InArgInfos, InArgLocs) },
+		{ list__append(StackVarLocs, InArgLocs, AllLocs) },
+		{ var_locn__place_vars(AllLocs, Code,
+			VarLocnInfo0, VarLocnInfo) },
+		code_info__set_var_locns_info(var_locn_info(VarLocnInfo)),
+		{ assoc_list__values(AllLocs, LiveLocList) },
+		{ set__list_to_set(LiveLocList, LiveLocs) },
+
+		{ assoc_list__keys(InArgLocs, InArgVars) },
+		{ set__init(DeadVars0) },
+		code_info__which_variables_are_forward_live(InArgVars,
+			DeadVars0, DeadVars),
+		code_info__make_vars_forward_dead(DeadVars)
 	).
 
-:- pred code_info__setup_call_eager(assoc_list(prog_var, arg_info)::in,
-	call_direction::in, code_tree::out, code_info::in, code_info::out)
-	is det.
+:- pred code_info__setup_call_args(assoc_list(prog_var, arg_info)::in,
+	call_direction::in, set(lval)::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-code_info__setup_call_eager(AllArgsInfos, Direction, Code) -->
+code_info__setup_call_args(VarArgInfos, Direction, LiveLocs, Code) -->
+	code_info__get_var_locns_info(VarInfo0),
+	(
+		{ VarInfo0 = exprn_info(_) },
+		code_info__setup_call_args_lazy(VarArgInfos, Direction,
+			LiveLocs, Code)
+	;
+		{ VarInfo0 = var_locn_info(_) },
+		code_info__setup_call_args_eager(VarArgInfos, Direction,
+			LiveLocs, Code)
+	).
+
+:- pred code_info__setup_call_args_eager(assoc_list(prog_var, arg_info)::in,
+	call_direction::in, set(lval)::out, code_tree::out,
+	code_info::in, code_info::out) is det.
+
+code_info__setup_call_args_eager(AllArgsInfos, Direction, LiveLocs, Code) -->
 	{ list__filter(code_info__call_arg_in_selected_dir(Direction),
 		AllArgsInfos, ArgsInfos) },
 	{ code_info__var_arg_info_to_lval(ArgsInfos, ArgsLocns) },
 	code_info__get_eager_var_locns_info(VarLocnInfo0),
 	{ var_locn__place_vars(ArgsLocns, Code, VarLocnInfo0, VarLocnInfo1) },
 	code_info__set_var_locns_info(var_locn_info(VarLocnInfo1)),
+	{ assoc_list__values(ArgsLocns, LiveLocList) },
+	{ set__list_to_set(LiveLocList, LiveLocs) },
 	{ assoc_list__keys(ArgsLocns, ArgVars) },
 	{ set__init(DeadVars0) },
 	code_info__which_variables_are_forward_live(ArgVars,
@@ -3478,12 +3559,12 @@ code_info__which_variables_are_forward_live([Var | Vars], DeadVars0, DeadVars)
 	),
 	code_info__which_variables_are_forward_live(Vars, DeadVars1, DeadVars).
 
-:- pred code_info__setup_call_lazy(assoc_list(prog_var, arg_info)::in,
-	call_direction::in, code_tree::out, code_info::in, code_info::out)
-	is det.
+:- pred code_info__setup_call_args_lazy(assoc_list(prog_var, arg_info)::in,
+	call_direction::in, set(lval)::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-code_info__setup_call_lazy([], _Direction, empty) --> [].
-code_info__setup_call_lazy([First | Rest], Direction, Code) -->
+code_info__setup_call_args_lazy([], _Direction, set__init, empty) --> [].
+code_info__setup_call_args_lazy([First | Rest], Direction, LiveLocs, Code) -->
 	( { code_info__call_arg_in_selected_dir(Direction, First) } ->
 		{ First = V - arg_info(Loc, _Mode) },
 		{ code_util__arg_loc_to_register(Loc, Reg) },
@@ -3516,7 +3597,8 @@ code_info__setup_call_lazy([First | Rest], Direction, Code) -->
 		->
 			{ code_exprn__lock_reg(Reg, Exprn1, Exprn2) },
 			code_info__set_var_locns_info(exprn_info(Exprn2)),
-			code_info__setup_call_lazy(Rest, Direction, Code1),
+			code_info__setup_call_args_lazy(Rest, Direction,
+				LiveLocs1, Code1),
 			code_info__get_lazy_var_locns_info(Exprn3),
 			{ code_exprn__unlock_reg(Reg, Exprn3, Exprn) },
 			code_info__set_var_locns_info(exprn_info(Exprn)),
@@ -3526,14 +3608,17 @@ code_info__setup_call_lazy([First | Rest], Direction, Code) -->
 			code_info__set_var_locns_info(exprn_info(Exprn2)),
 			{ set__singleton_set(Vset, V) },
 			code_info__make_vars_forward_dead(Vset),
-			code_info__setup_call_lazy(Rest, Direction, Code1),
+			code_info__setup_call_args_lazy(Rest, Direction,
+				LiveLocs1, Code1),
 			code_info__get_lazy_var_locns_info(Exprn4),
 			{ code_exprn__unlock_reg(Reg, Exprn4, Exprn) },
 			code_info__set_var_locns_info(exprn_info(Exprn)),
 			{ Code = tree(Code0, Code1) }
-		)
+		),
+		{ set__insert(LiveLocs1, Reg, LiveLocs) }
 	;
-		code_info__setup_call_lazy(Rest, Direction, Code)
+		code_info__setup_call_args_lazy(Rest, Direction,
+			LiveLocs, Code)
 	).
 
 :- pred code_info__call_arg_in_selected_dir(call_direction::in,
@@ -3628,7 +3713,20 @@ code_info__clobber_regs(Regs) -->
 	},
 	code_info__set_var_locns_info(VarInfo).
 
-code_info__save_variables(OutArgs, Code) -->
+code_info__save_variables(OutArgs, SavedLocs, Code) -->
+	code_info__compute_forward_live_var_saves(OutArgs, VarLocs),
+	{ assoc_list__values(VarLocs, SavedLocList) },
+	{ set__list_to_set(SavedLocList, SavedLocs) },
+	code_info__place_vars(VarLocs, Code).
+
+code_info__save_variables_on_stack(Vars, Code) -->
+	list__map_foldl(code_info__associate_stack_slot, Vars, VarLocs),
+	code_info__place_vars(VarLocs, Code).
+
+:- pred code_info__compute_forward_live_var_saves(set(prog_var)::in,
+	assoc_list(prog_var, lval)::out, code_info::in, code_info::out) is det.
+
+code_info__compute_forward_live_var_saves(OutArgs, VarLocs) -->
 	code_info__get_known_variables(Variables0),
 	{ set__list_to_set(Variables0, Vars0) },
 	code_info__get_module_info(ModuleInfo),
@@ -3644,36 +3742,13 @@ code_info__save_variables(OutArgs, Code) -->
 		VarTypes, TVarMap, Vars1) },
 	{ set__difference(Vars1, OutArgs, Vars) },
 	{ set__to_sorted_list(Vars, Variables) },
-	code_info__save_variables_2(Variables, Code).
+	list__map_foldl(code_info__associate_stack_slot, Variables, VarLocs).
 
-:- pred code_info__save_variables_2(list(prog_var)::in, code_tree::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__associate_stack_slot(prog_var::in,
+	pair(prog_var, lval)::out, code_info::in, code_info::out) is det.
 
-code_info__save_variables_2([], empty) --> [].
-code_info__save_variables_2([Var | Vars], Code) -->
-	code_info__save_variable_on_stack(Var, CodeA),
-	code_info__save_variables_2(Vars, CodeB),
-	{ Code = tree(CodeA, CodeB) }.
-
-code_info__save_variable_on_stack(Var, Code) -->
-	code_info__get_variable_slot(Var, Slot),
-	code_info__get_var_locns_info(VarInfo0),
-	{
-		VarInfo0 = exprn_info(Exprn0),
-		code_exprn__place_var(Var, Slot, Code, Exprn0, Exprn),
-		VarInfo = exprn_info(Exprn)
-	;
-		VarInfo0 = var_locn_info(VarLocn0),
-		var_locn__place_var(Var, Slot, Code, VarLocn0, VarLocn),
-		VarInfo = var_locn_info(VarLocn)
-	},
-	code_info__set_var_locns_info(VarInfo).
-
-code_info__save_variables_on_stack([], empty) --> [].
-code_info__save_variables_on_stack([Var | Vars], Code) -->
-	code_info__save_variable_on_stack(Var, FirstCode),
-	code_info__save_variables_on_stack(Vars, RestCode),
-	{ Code = tree(FirstCode, RestCode) }.
+code_info__associate_stack_slot(Var, Var - Slot) -->
+	code_info__get_variable_slot(Var, Slot).
 
 code_info__max_reg_in_use(Max) -->
 	code_info__get_var_locns_info(VarInfo),
@@ -3697,9 +3772,6 @@ code_info__max_reg_in_use(Max) -->
 
 :- interface.
 
-:- pred code_info__generate_call_stack_vn_livevals(set(prog_var)::in,
-	set(lval)::out, code_info::in, code_info::out) is det.
-
 :- pred code_info__generate_call_vn_livevals(list(arg_loc)::in,
 	set(prog_var)::in, set(lval)::out, code_info::in, code_info::out)
 	is det.
@@ -3712,6 +3784,14 @@ code_info__max_reg_in_use(Max) -->
 
 :- implementation.
 
+code_info__generate_call_vn_livevals(InputArgLocs, OutputArgs, LiveVals) -->
+	code_info__generate_call_stack_vn_livevals(OutputArgs, StackLiveVals),
+	{ code_info__generate_input_var_vn(InputArgLocs, StackLiveVals,
+		LiveVals) }.
+
+:- pred code_info__generate_call_stack_vn_livevals(set(prog_var)::in,
+	set(lval)::out, code_info::in, code_info::out) is det.
+
 code_info__generate_call_stack_vn_livevals(OutputArgs, LiveVals) -->
 	code_info__get_known_variables(KnownVarList),
 	{ set__list_to_set(KnownVarList, KnownVars) },
@@ -3722,11 +3802,6 @@ code_info__generate_call_stack_vn_livevals(OutputArgs, LiveVals) -->
 
 	code_info__get_active_temps_data(Temps),
 	{ code_info__generate_call_temp_vn(Temps, LiveVals1, LiveVals) }.
-
-code_info__generate_call_vn_livevals(InputArgLocs, OutputArgs, LiveVals) -->
-	code_info__generate_call_stack_vn_livevals(OutputArgs, StackLiveVals),
-	{ code_info__generate_input_var_vn(InputArgLocs, StackLiveVals,
-		LiveVals) }.
 
 :- pred code_info__generate_stack_var_vn(list(prog_var)::in, set(lval)::in,
 	set(lval)::out, code_info::in, code_info::out) is det.

@@ -140,9 +140,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),
 	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-	code_info__setup_call(Args, callee, EpilogCode),
-
-	{ code_util__output_args(Args, LiveArgs) },
+	code_info__setup_return(Args, LiveArgs, EpilogCode),
 
 	{ BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)) },
 	{ RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)) },
