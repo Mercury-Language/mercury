@@ -6,12 +6,12 @@ include ../Mmake
 
 #-----------------------------------------------------------------------------#
 
-NONDETPROGS=	commit_bug disj_disj hello_again interpreter nasty_nondet \
-		nondet_disj nondet_ite nondet_ite_2 nondetlive \
-		partition semidet_lambda
+NONDETPROGS=	commit_bug disj_disj dnf hello_again interpreter \
+		nasty_nondet nondet_disj nondet_ite nondet_ite_2 \
+		nondetlive partition semidet_lambda
 
-DETPROGS=	arithmetic det_complicated_unify duplicate_label environment \
-		higher_order parse_list petdr1 \
+DETPROGS=	arithmetic det_complicated_unify duplicate_label \
+		environment higher_order parse_list petdr1 \
 		semidet_map set_test string__format_test string_test \
 		string_test_2 univ unreachable
 
@@ -20,7 +20,7 @@ NOTWORKING=	float_test
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC
-# grades.  So only include thoses tests if the grade is a GC grade.
+# grades.  So only include those tests if the grade is a GC grade.
 #
 
 ifeq ("$(findstring .gc, $(GRADE))","")
@@ -37,10 +37,15 @@ MODS=	$(PROGS:%=%.mod)
 
 depend: $(DEPENDS)
 
-check: $(EXPS) $(OUTS) $(RESS)
+exp:	$(EXPS)
 
-mods: $(MODS)
+check:	$(OUTS) $(RESS)
+
+mods:	$(MODS)
 
 all:	$(PROGS)
+
+clean:
+	rm -f *.c *.o *.err2 *.d *.dep *.nu *.nu.save
 
 #-----------------------------------------------------------------------------#

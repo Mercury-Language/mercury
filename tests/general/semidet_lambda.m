@@ -1,7 +1,7 @@
 % This module tests the case of calling a semidet pred in
 % a nondet lambda expression; Mercury-0.4 got this case wrong.
 
-:- module semidet_pred_in_nondet_lambda.
+:- module semidet_lambda.
 :- interface.
 :- import_module io.
 

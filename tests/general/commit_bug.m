@@ -1,4 +1,4 @@
-% This tests the case of committting across a nondet goal in a nondet
+% This tests the case of committing across a nondet goal in a nondet
 % context. There was a bug in this, which this test case exercised.
 
 :- module commit_bug.
@@ -42,9 +42,13 @@ foo(X, X).
 foo(_, 7).
 
 :- pred nl(io__state::di, io__state::uo) is det.
-nl --> io__write_string("\n").
+nl -->
+	io__write_string("\n").
 
 :- pred print_intlist(list(int)::in,io__state::di, io__state::uo) is det.
-print_intlist([])--> [].
-print_intlist([X|L])--> io__write_int(X), nl, print_intlist(L).
+print_intlist([]) --> [].
+print_intlist([X|L]) -->
+	io__write_int(X),
+	nl,
+	print_intlist(L).
 
