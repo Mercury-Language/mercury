@@ -3121,6 +3121,7 @@ output_goto(do_not_reached, CallerLabel) -->
 :- mode output_call(in, in, in, di, uo) is det.
 
 output_call(Target, Continuation, CallerLabel) -->
+	io__write_string("\t"),
 	% For profiling, we ignore calls to do_call_closure
 	% and do_call_class_method, because in general they
 	% lead to cycles in the call graph that screw up the
@@ -3143,7 +3144,7 @@ output_call(Target, Continuation, CallerLabel) -->
 		% We really shouldn't be calling internal labels ...
 		{ Label = c_local(_) ; Label = local(_, _) }
 	->
-		io__write_string("\tlocalcall("),
+		io__write_string("localcall("),
 		output_label(Label),
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation)
@@ -3151,12 +3152,12 @@ output_call(Target, Continuation, CallerLabel) -->
 		{ Continuation = label(ContLabel) },
 		{ ContLabel = c_local(_) ; ContLabel = local(_, _) }
 	->
-		io__write_string("\tcall_localret("),
+		io__write_string("call_localret("),
 		output_code_addr(Target),
 		io__write_string(",\n\t\t"),
 		output_label(ContLabel)
 	;
-		io__write_string("\tcall("),
+		io__write_string("call("),
 		output_code_addr(Target),
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation)
