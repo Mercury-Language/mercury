@@ -14,6 +14,7 @@ Valid? no
 q('IntroducedFrom__pred__p__22__1'(3), 3, 27)
 Valid? yes
 Found incorrect contour:
+q('IntroducedFrom__pred__p__22__1'(3), 3, 27)
 p(0, 3, 27)
 Is this a bug? yes
        7:      2  2 EXIT pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:9)
@@ -25,6 +26,7 @@ mdb> dd
 p(1, 3, 27)
 Valid? no
 Found incorrect contour:
+q('IntroducedFrom__pred__p__22__1'(3), 3, 27)
 p(1, 3, 27)
 Is this a bug? yes
       13:      5  2 EXIT pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:10)
@@ -38,6 +40,7 @@ Valid? no
 q('IntroducedFrom__pred__p__22__1'(4), 4, 64)
 Valid? yes
 Found incorrect contour:
+q('IntroducedFrom__pred__p__22__1'(4), 4, 64)
 p(2, 4, 64)
 Is this a bug? yes
       19:      8  2 EXIT pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:11)

@@ -3835,12 +3835,10 @@ Assertions about EXIT events
 lead to a kind of bug we call an ``incorrect contour''.
 This is a contour (an execution path through the body of a clause)
 which results in a wrong answer for that clause.
-When the debugger diagnoses a bug of this kind,
-it displays the exit atom for the event at the end of the contour.
-The program event associated with this bug, which we call the ``bug event'',
-is the exit event at the end of the contour.
-(The current implementation does not yet display a representation
-of which contour was at fault.)
+When the debugger diagnoses a bug of this kind, it displays the exit atoms in
+the contour.  The resulting incorrect exit atom is displayed last.  The program
+event associated with this bug, which we call the ``bug event'', is the exit
+event at the end of the contour.
 
 Assertions about FAIL events lead to a kind of bug we call
 a ``partially uncovered atom''.

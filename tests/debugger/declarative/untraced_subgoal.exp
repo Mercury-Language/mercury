@@ -55,6 +55,9 @@ Complete? yes
 r(2, 2)
 Valid? yes
 Found incorrect contour:
+r(1, 1)
+r(2, 2)
+s(2)
 p(2, 2)
 Is this a bug? yes
       29:      3  2 EXIT pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)

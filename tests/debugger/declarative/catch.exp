@@ -36,6 +36,7 @@ Valid? no
 q(2, 2)
 Valid? yes
 Found incorrect contour:
+q(2, 2)
 p(2, succeeded(2))
 Is this a bug? yes
       E5:     C3 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)

@@ -48,6 +48,9 @@ Valid? yes
 qc([[2, ...], [], [1]], [[2, ...], [], [1]])
 Valid? yes
 Found incorrect contour:
+qa([[1], [2, 3]])
+qb([])
+qc([[2, ...], [], [1]], [[2, ...], [], [1]])
 q([[2, 3], [], [1]])
 Is this a bug? yes
       E5:     C3 EXIT pred input_term_dep.q/1-0 (semidet) input_term_dep.m:69 (input_term_dep.m:58)

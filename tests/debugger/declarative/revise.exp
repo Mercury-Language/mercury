@@ -20,6 +20,8 @@ Valid? yes
 b("foo", "foo")
 Valid? yes
 Found incorrect contour:
+a("foo", "foo")
+b("foo", "foo")
 r("foo", "foo")
 Is this a bug? no
 r("foo", "foo")
@@ -27,6 +29,9 @@ Valid? [no] yes
 s("foo", "foo")
 Valid? yes
 Found incorrect contour:
+q("foo", "foo")
+r("foo", "foo")
+s("foo", "foo")
 p("foo", "foo")
 Is this a bug? no
 p("foo", "foo")

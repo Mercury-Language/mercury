@@ -20,6 +20,9 @@ Valid? yes
 r(53, 53)
 Valid? yes
 Found incorrect contour:
+q(53, 53)
+r(53, 53)
+s(53, 53)
 p(53, 53)
 Is this a bug? no
 p(53, 53)
@@ -31,6 +34,9 @@ Valid? [yes]
 s(53, 53)
 Valid? [yes] 
 Found incorrect contour:
+q(53, 53)
+r(53, 53)
+s(53, 53)
 p(53, 53)
 Is this a bug? yes
        9:      2  2 EXIT pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)

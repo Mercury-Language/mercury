@@ -33,6 +33,7 @@ Solutions:
 	q(1, 3)
 Complete? yes
 Found incorrect contour:
+solutions(q(1), [1, 2, 3])
 p(1, [1, 2, 3])
 Is this a bug? yes
      233:      2  2 EXIT pred solutions.p/2-0 (det)

@@ -53,6 +53,9 @@ Valid? y
 q(50, 1, 51)
 Valid? y
 Found incorrect contour:
+-(51, 1) = 50
++(0, 1) = 1
+q(50, 1, 51)
 q(51, 0, 51)
 Is this a bug? n
 q(51, 0, 51)
@@ -60,6 +63,10 @@ Valid? y
 +(49, 51) = 100
 Valid? y
 Found incorrect contour:
+q(49, 0, 49)
+q(51, 0, 51)
++(49, 51) = 100
+-(100, 100) = 0
 a(0)
 Is this a bug? n
 a(0)
@@ -84,6 +91,9 @@ Valid? [yes] y
 q(48, 1, 49)
 Valid? y
 Found incorrect contour:
+-(49, 1) = 48
++(0, 1) = 1
+q(48, 1, 49)
 q(49, 0, 49)
 Is this a bug? n
 q(49, 0, 49)
@@ -95,6 +105,10 @@ Valid? [yes] y
 -(100, 100) = 0
 Valid? [yes] y
 Found incorrect contour:
+q(49, 0, 49)
+q(51, 0, 51)
++(49, 51) = 100
+-(100, 100) = 0
 a(0)
 Is this a bug? n
 a(0)

@@ -750,8 +750,10 @@ write_decl_question(unexpected_exception(_, Call, Exception), User) -->
 
 write_decl_bug(e_bug(EBug), User) -->
 	(
-		{ EBug = incorrect_contour(Atom, _, _) },
+		{ EBug = incorrect_contour(Atom, Contour, _) },
 		io__write_string(User ^ outstr, "Found incorrect contour:\n"),
+		io__write_list(Contour, "", write_decl_final_atom(User, "", 
+			decl_caller_type)),
 		write_decl_final_atom(User, "", decl_caller_type, Atom)
 	;
 		{ EBug = partially_uncovered_atom(Atom, _) },

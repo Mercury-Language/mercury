@@ -18,6 +18,9 @@ Valid? yes
 my_append([1, 2], [9], [1, 2, 9])
 Valid? yes
 Found incorrect contour:
+s1([1, 2])
+s2([9])
+my_append([1, 2], [9], [1, 2, 9])
 p([1, 2, 9])
 Is this a bug? yes
       E3:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
@@ -33,6 +36,9 @@ Valid? yes
 my_append([1, 2], [7, 8, 9], [1, ...])
 Valid? yes
 Found incorrect contour:
+s1([1, 2])
+s2([7, 8, 9])
+my_append([1, 2], [7, 8, 9], [1, ...])
 p([1, 2, 7, 8, 9])
 Is this a bug? yes
       E5:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
@@ -48,6 +54,9 @@ Valid? yes
 my_append([1, 2, 3], [9], [1, 2, ...])
 Valid? yes
 Found incorrect contour:
+s1([1, 2, 3])
+s2([9])
+my_append([1, 2, 3], [9], [1, 2, ...])
 p([1, 2, 3, 9])
 Is this a bug? yes
       E7:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
@@ -61,6 +70,9 @@ Valid? no
 my_append([1, 2, 3], [7, 8, 9], [1, ...])
 Valid? yes
 Found incorrect contour:
+s1([1, 2, 3])
+s2([7, 8, 9])
+my_append([1, 2, 3], [7, 8, 9], [1, ...])
 p([1, 2, 3, 7, 8, 9])
 Is this a bug? yes
       E9:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)

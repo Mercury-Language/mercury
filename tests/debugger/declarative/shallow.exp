@@ -25,6 +25,7 @@ Complete? yes
 b("t1", 1, 5)
 Valid? yes
 Found incorrect contour:
+b("t1", 1, 5)
 p("t1", 5, 1)
 Is this a bug? yes
       14:      3  3 EXIT pred shallow_2.p/3-0 (det) shallow_2.m:16 (shallow.m:29)
@@ -51,6 +52,7 @@ Complete? yes
 b("t2", 1, 5)
 Valid? yes
 Found incorrect contour:
+b("t2", 1, 5)
 p("t2", 37, -11)
 Is this a bug? yes
       28:      7  3 EXIT pred shallow_2.p/3-0 (det) shallow_2.m:16 (shallow.m:29)
@@ -92,6 +94,7 @@ Valid? no
 a("t4", -1, -1)
 Valid? yes
 Found incorrect contour:
+a("t4", -1, -1)
 q("t4", -1, 11)
 Is this a bug? yes
       47:     14  3 EXIT pred shallow_2.q/3-0 (det) shallow_2.m:30 (shallow.m:29)
@@ -118,6 +121,7 @@ Complete? yes
 b("t5", 3, 5)
 Valid? yes
 Found incorrect contour:
+b("t5", 3, 5)
 r("t5", 3, 23)
 Is this a bug? yes
       61:     17  3 EXIT pred shallow_2.r/3-0 (det) shallow_2.m:40 (shallow.m:29)

@@ -18,6 +18,9 @@ Valid? yes
 s(10, 30)
 Valid? yes
 Found incorrect contour:
+q('a', 'a')
+r('a', 10)
+s(10, 30)
 p('a', 30)
 Is this a bug? yes
       E3:     C2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
@@ -29,6 +32,8 @@ mdb> dd
 p('a', 31)
 Valid? no
 Found incorrect contour:
+q('a', 'a')
+r('a', 10)
 p('a', 31)
 Is this a bug? yes
       E5:     C2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
@@ -48,6 +53,7 @@ Call q('b', _)
 No solutions.
 Complete? yes
 Found incorrect contour:
+q('a', 'b')
 p('a', 32)
 Is this a bug? yes
       E7:     C2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)

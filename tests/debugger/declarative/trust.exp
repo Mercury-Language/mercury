@@ -83,6 +83,8 @@ Valid? trust module
 IntroducedFrom__pred__w_cmp__15__1(w("aaB"), w("aAB"), '=')
 Valid? trust module
 Found incorrect contour:
+w_cmp('=', w("aaB"), w("aAB"))
+concat(w("aaa"), w("bbb"), w("aaabbb"))
 dostuff(w("aaabbb"), '=')
 Is this a bug? y
       E3:     C2 EXIT pred trust.dostuff/2-0 (cc_multi)

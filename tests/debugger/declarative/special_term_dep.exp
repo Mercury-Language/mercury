@@ -17,6 +17,7 @@ browser> mark
 pa([2, 3])
 Valid? yes
 Found incorrect contour:
+pa([2, 3])
 p([2, 3])
 Is this a bug? yes
       E3:     C2 EXIT pred special_term_dep.p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)

@@ -25,6 +25,11 @@ Valid? yes
 f(6, -12)
 Valid? yes
 Found incorrect contour:
+a(0)
+b(0, 0)
+c(0, 2)
+c(2, 6)
+f(6, -12)
 p(-12)
 Is this a bug? yes
       E3:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
@@ -40,6 +45,11 @@ Valid? yes
 f(7, -14)
 Valid? yes
 Found incorrect contour:
+a(0)
+b(0, 0)
+c(0, 2)
+c(2, 7)
+f(7, -14)
 p(-14)
 Is this a bug? yes
       E5:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
@@ -67,6 +77,10 @@ Valid? yes
 f(10, -20)
 Valid? yes
 Found incorrect contour:
+a(0)
+b(0, 1)
+e(1, 10)
+f(10, -20)
 p(-20)
 Is this a bug? yes
       E7:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
@@ -82,6 +96,10 @@ Valid? yes
 f(11, -22)
 Valid? yes
 Found incorrect contour:
+a(0)
+b(0, 1)
+e(1, 11)
+f(11, -22)
 p(-22)
 Is this a bug? yes
       E9:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
@@ -114,6 +132,11 @@ Solutions:
 	c(2, 7)
 Complete? yes
 Found incorrect contour:
+a(0)
+f(0, 0)
+b(0, 0)
+g(1, -1)
+f(-1, 2)
 p(2)
 Is this a bug? yes
      E11:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)

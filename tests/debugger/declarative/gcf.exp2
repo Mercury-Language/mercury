@@ -18,6 +18,9 @@ Valid? yes
 f(11)
 Valid? yes
 Found incorrect contour:
+g(2)
+c(2, 11)
+f(11)
 a(11)
 Is this a bug? yes
       27:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
@@ -33,6 +36,9 @@ Valid? yes
 f(12)
 Valid? yes
 Found incorrect contour:
+g(2)
+c(2, 12)
+f(12)
 a(12)
 Is this a bug? yes
       38:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
@@ -50,6 +56,9 @@ Valid? yes
 f(20)
 Valid? yes
 Found incorrect contour:
+g(3)
+c(3, 20)
+f(20)
 a(20)
 Is this a bug? yes
       54:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)

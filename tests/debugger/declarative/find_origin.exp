@@ -24,6 +24,7 @@ Call IntroducedFrom__pred__monotest4__86__1(t(101), t(1))
 No solutions.
 Complete? y
 Found incorrect contour:
+IntroducedFrom__pred__monotest4__86__1(t(101), t(101))
 monotest4(t(101), t(101))
 Is this a bug? y
       E4:     C3 EXIT pred find_origin.monotest4/2-0 (det)
@@ -51,6 +52,7 @@ Call IntroducedFrom__pred__polytest4__148__2(u(string), u(u("hello")), v(u("hell
 No solutions.
 Complete? y
 Found incorrect contour:
+IntroducedFrom__pred__polytest4__148__2(u(string), u(u("hello")), u(u("hello")))
 polytest4(u("hello"), u("hello"))
 Is this a bug? y
       E7:     C5 EXIT pred find_origin.polytest4/2-0 (det)

@@ -74,6 +74,12 @@ read_char_code('<<c_pointer>>', 51)
 read_char_code('<<c_pointer>>', 10)
 Valid? yes
 Found incorrect contour:
+test_2('<<c_pointer>>', 1, 1123, _, _)
+4 io actions:
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+read_char_code('<<c_pointer>>', 51)
+read_char_code('<<c_pointer>>', 10)
 test('<<c_pointer>>', 1123, _, _)
 4 io actions:
 read_char_code('<<c_pointer>>', 49)

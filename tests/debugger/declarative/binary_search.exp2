@@ -35,6 +35,9 @@ Valid? n
 silly_even(619, yes)
 Valid? n
 Found incorrect contour:
+>(619, 0)
+-(619, 1) = 618
+silly_even(618, yes)
 silly_even(619, yes)
 Is this a bug? y
       E4:     C3 EXIT pred binary_search.silly_even/2-0 (det)
@@ -63,6 +66,9 @@ Valid? n
 silly_even(614, yes)
 Valid? y
 Found incorrect contour:
+>(619, 0)
+-(619, 1) = 618
+silly_even(618, yes)
 silly_even(619, yes)
 Is this a bug? y
       E7:     C5 EXIT pred binary_search.silly_even/2-0 (det)
@@ -93,6 +99,8 @@ Valid? n
 add1s([4, 5, 6, 7, 8, 9, 10], [5, ...])
 Valid? y
 Found incorrect contour:
++(3, 1) = 4
+add1s([4, 5, 6, 7, 8, 9, 10], [5, ...])
 add1s([3, 4, 5, 6, 7, 8, 9, 10], [|]/2)
 Is this a bug? y
      E10:     C7 EXIT pred binary_search.add1s/2-0 (det)

@@ -16,6 +16,8 @@ Valid? yes
 b(1)
 Valid? yes
 Found incorrect contour:
+a(0)
+b(1)
 ite(0, 1)
 Is this a bug? yes
       E3:     C2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
@@ -31,6 +33,7 @@ Call a(1)
 No solutions.
 Complete? yes
 Found incorrect contour:
+a(0)
 ite(1, 0)
 Is this a bug? yes
       E5:     C3 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)

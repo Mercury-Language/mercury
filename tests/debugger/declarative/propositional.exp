@@ -16,6 +16,7 @@ Valid? no
 c
 Valid? yes
 Found incorrect contour:
+c
 a
 Is this a bug? yes
       E3:     C2 EXIT pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
@@ -31,6 +32,7 @@ Valid? no
 i
 Valid? yes
 Found incorrect contour:
+i
 f
 Is this a bug? yes
       E6:     C4 EXIT pred propositional.f/0-0 (semidet) propositional.m:35 (propositional.m:29)

@@ -34,6 +34,8 @@ Valid? [yes]
 oset_max([2, 3, 1], 1)
 Valid? [inadmissible] yes
 Found incorrect contour:
+list_to_set([2, 3, 1], [2, 3, 1])
+oset_max([2, 3, 1], 1)
 gtmax(2, [2, 3, 1])
 Is this a bug? yes
       E3:     C2 EXIT pred inadmissible.gtmax/2-0 (semidet)

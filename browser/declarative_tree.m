@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -171,7 +171,8 @@ trace_get_e_bug(IoActionMap, wrap(Store), dynamic(Ref), Bug) :-
 	(
 		Node = exit(_, _, _, _, Event, _),
 		DeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
-		Bug = incorrect_contour(DeclAtom, unit, Event)
+		get_exit_atoms_in_contour(IoActionMap, Store, Node, Contour),
+		Bug = incorrect_contour(DeclAtom, Contour, Event)
 	;
 		Node = fail(_, CallId, _, Event),
 		DeclAtom = call_node_decl_atom(Store, CallId),
@@ -878,6 +879,23 @@ materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
 		materialize_contour(Store, PrevNodeId, PrevNode,
 			Nodes1, Nodes)
 	).
+
+:- pred get_exit_atoms_in_contour(io_action_map::in, S::in, 
+	trace_node(R)::in(trace_node_exit),
+	list(final_decl_atom)::out) is det <= annotated_trace(S, R).
+
+get_exit_atoms_in_contour(IoActionMap, Store, ExitNode, ExitAtoms) :-
+	ExitPrecId = ExitNode ^ exit_preceding,
+	det_trace_node_from_id(Store, ExitPrecId, ExitPrec),
+	materialize_contour(Store, ExitPrecId, ExitPrec, [], Contour),
+	list.filter_map(get_exit_atom(IoActionMap, Store), Contour, ExitAtoms).
+
+:- pred get_exit_atom(io_action_map::in, S::in, pair(R, trace_node(R))::in, 
+	final_decl_atom::out) is semidet <= annotated_trace(S, R).
+
+get_exit_atom(IoActionMap, Store, _ - Exit, FinalAtom) :-
+	Exit = exit(_, _, _, _, _, _),
+	FinalAtom = exit_node_decl_atom(IoActionMap, Store, Exit).
 
 :- type primitive_list_and_var(R)
 	--->	primitive_list_and_var(

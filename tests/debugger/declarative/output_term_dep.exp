@@ -29,6 +29,9 @@ Valid? yes
 pc(13)
 Valid? yes
 Found incorrect contour:
+pa(5)
+pb(8)
+pc(13)
 p(5, 8, 13)
 Is this a bug? yes
       E3:     C2 EXIT pred output_term_dep.p/3-0 (det)
@@ -50,6 +53,9 @@ Valid? yes
 qc([99])
 Valid? yes
 Found incorrect contour:
+qa([1, 2, 3])
+qb([])
+qc([99])
 q([[1, ...], [], [99]])
 Is this a bug? yes
       E5:     C3 EXIT pred output_term_dep.q/1-0 (det)
@@ -81,6 +87,7 @@ Call rb(2)
 No solutions.
 Complete? yes
 Found incorrect contour:
+ra(2)
 r(2, 43)
 Is this a bug? yes
       E9:     C5 EXIT pred output_term_dep.r/2-0 (det)
@@ -100,6 +107,9 @@ Valid? yes
 rb(3)
 Valid? yes
 Found incorrect contour:
+ra(3)
+rb(3)
+rc(57)
 r(3, 57)
 Is this a bug? yes
      E11:     C6 EXIT pred output_term_dep.r/2-0 (det)
@@ -118,6 +128,7 @@ Call ra(4)
 No solutions.
 Complete? yes
 Found incorrect contour:
+rd(-1)
 r(4, -1)
 Is this a bug? yes
      E13:     C7 EXIT pred output_term_dep.r/2-0 (det)
@@ -227,6 +238,7 @@ Call tc(77)
 No solutions.
 Complete? yes
 Found incorrect contour:
+tb(77)
 t(1, 77)
 Is this a bug? yes
      E33:    C12 EXIT pred output_term_dep.t/2-0 (semidet)

@@ -14,6 +14,9 @@ Valid? no
 b(99)
 Valid? yes
 Found incorrect contour:
+b(99)
+b(99)
+b(99)
 a(99, 99, 99)
 Is this a bug? yes
       10:      2  2 EXIT pred oracle_db.a/3-0 (semidet) oracle_db.m:19 (oracle_db.m:9)

@@ -35,6 +35,7 @@ Valid? no
 app([3, 4, 5], [6, 7, 8], [3, ...])
 Valid? no
 Found incorrect contour:
+app([4, 5], [6, 7, 8], [4, ...])
 app([3, 4, 5], [6, 7, 8], [3, ...])
 Is this a bug? yes
       E7:     C4 EXIT pred app.app/3-0 (det) app.m:26 (app.m:28)
@@ -69,6 +70,7 @@ Valid? no
 app([0, 1, 2, 3, 4, 5], [6, ...], [|]/2)
 Valid? no
 Found incorrect contour:
+app([4, 5], [6, 7, 8], [4, ...])
 app([3, 4, 5], [6, 7, 8], [3, ...])
 Is this a bug? yes
      E12:     C7 EXIT pred app.app/3-0 (det) app.m:26 (app.m:28)

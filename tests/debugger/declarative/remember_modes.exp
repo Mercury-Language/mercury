@@ -14,6 +14,10 @@ Valid? no
 p(1, 2)
 Valid? yes
 Found incorrect contour:
+p(1, 2)
+p(1, 2)
+p(1, 2)
+p(1, 2)
 q(1, 1, 2, 1, 2)
 Is this a bug? yes
       E3:     C2 EXIT pred remember_modes.q/5-0 (semidet)

@@ -17,6 +17,7 @@ browser> mark
 q(5, 10) = 15
 Valid? n
 Found incorrect contour:
++(5, 10) = 15
 q(5, 10) = 15
 Is this a bug? y
       E4:     C3 EXIT func ignore.q/2-0 (det)
@@ -38,6 +39,7 @@ Valid? y
 q(4, 6) = 10
 Valid? y
 Found incorrect contour:
++(5, 10) = 15
 q(5, 10) = 15
 Is this a bug? y
       E7:     C5 EXIT func ignore.q/2-0 (det)

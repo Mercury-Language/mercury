@@ -18,6 +18,9 @@ Valid? y
 a(1, 70)
 Valid? n
 Found incorrect contour:
+b(1, 70)
+c(70, 70)
+d(70, 70)
 a(1, 70)
 Is this a bug? y
       E3:     C2 EXIT pred skip.a/2-0 (det)
@@ -71,6 +74,8 @@ Valid? y
 e(72, 72)
 Valid? y
 Found incorrect contour:
+e(72, 72)
+f(72, 72)
 c(72, 72)
 Is this a bug? y
       E9:     C6 EXIT pred skip.c/2-0 (det)
@@ -102,6 +107,9 @@ Valid? [no] skip
 d(72, 72)
 Valid? y
 Found incorrect contour:
+b(3, 72)
+c(72, 72)
+d(72, 72)
 a(3, 72)
 Is this a bug? y
       E8:     C5 EXIT pred skip.a/2-0 (det)

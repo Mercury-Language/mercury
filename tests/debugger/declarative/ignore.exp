@@ -41,6 +41,7 @@ Valid? y
 q(5, 10) = 15
 Valid? y
 Found incorrect contour:
+fold(q, [1, 2, 3, 4, 5], 0) = 15
 p(15)
 Is this a bug? y
       E6:     C4 EXIT pred ignore.p/1-0 (det)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,9 +125,10 @@
 			event_number	% The call event.
 		).
 
+:- type decl_contour == list(final_decl_atom).
+
 	% XXX not yet implemented.
 	%
-:- type decl_contour == unit.
 :- type decl_position == unit.
 
 	% Values of the following two types represent questions from the

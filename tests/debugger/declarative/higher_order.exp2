@@ -14,6 +14,7 @@ Valid? no
 q('IntroducedFrom__pred__p__16__1', 3, 81)
 Valid? yes
 Found incorrect contour:
+q('IntroducedFrom__pred__p__16__1', 3, 81)
 p(3, 81)
 Is this a bug? yes
       11:      2  2 EXIT pred higher_order.p/2-0 (det) higher_order.m:15 (higher_order.m:9)
