@@ -173,7 +173,7 @@ for clauses.
 Tokens in Mercury are the same as in ISO Prolog.
 The only differences are the @samp{#@var{line}} token, which
 is used as a line number directive (see below) and the
-@samp{backquote (`) token} token.
+@samp{backquote (`)} token.
 
 The different tokens are as follows.  Tokens may be separated by
 whitespace or line number directives.
