@@ -1653,7 +1653,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->
-		TypeLayoutOpt = "-DNO_TYPE_LAYOUT"
+		TypeLayoutOpt = "-DNO_TYPE_LAYOUT "
 	;
 		TypeLayoutOpt = ""
 	},
