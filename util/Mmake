@@ -1,0 +1,18 @@
+include ../Mmake.common
+
+CC	= gcc
+CFLAGS	=
+
+mkinit:	mkinit.c
+	$(CC) $(CFLAGS) -o mkinit mkinit.c
+
+.PHONY: install
+install: mkinit
+	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	cp mkinit $(INSTALL_BINDIR)
+
+clean:
+	-rm mkinit.o
+
+realclean:
+	-rm mkinit.o mkinit
