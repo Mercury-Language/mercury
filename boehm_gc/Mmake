@@ -46,10 +46,3 @@ install_lib: libgc.a libgc.$(SO)
 	cp `vpath_find libgc.a libgc.$(SO)` $(INSTALL_MERC_GC_LIB_DIR)
 
 #-----------------------------------------------------------------------------#
-
-# suppress the Mmake default rules for cleaning .c and .s files.
-CLEAN_C=
-CLEAN_S=
-CLEAN_MOD=
-
-#-----------------------------------------------------------------------------#
