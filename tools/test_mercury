@@ -229,6 +229,9 @@ case $ARCH in
 		;;
 esac
 cd ../.. || status=1
+
+MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
+export MERCURY_COMPILER
 case $HOST in murlibobo)
 	{ cd $DIR/mercury &&
 	mmake realclean MMAKEFLAGS=$PARALLEL &&
