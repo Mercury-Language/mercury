@@ -64,7 +64,8 @@ start_label:
             goto start_label;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
-            type_info = (MR_TypeInfo) MR_type_ctor_layout(type_ctor_info).layout_equiv;
+            type_info = (MR_TypeInfo)
+                MR_type_ctor_layout(type_ctor_info).layout_equiv;
             goto start_label;
 
         case MR_TYPECTOR_REP_EQUIV_VAR:
@@ -120,7 +121,8 @@ start_label:
                     int                     sectag;                           \
                                                                               \
                     ptag = MR_tag(data);                                      \
-                    ptaglayout = &MR_type_ctor_layout(type_ctor_info).layout_du[ptag];\
+                    ptaglayout = &MR_type_ctor_layout(type_ctor_info).        \
+                        layout_du[ptag];                                      \
                     data_value = (MR_Word *) MR_body(data, ptag);             \
                                                                               \
                     switch (ptaglayout->MR_sectag_locn) {                     \
@@ -167,7 +169,8 @@ start_label:
                     return_answer(MR_FALSE);
                 }
 
-                ptaglayout = &MR_type_ctor_layout(type_ctor_info).layout_du[x_ptag];
+                ptaglayout = &MR_type_ctor_layout(type_ctor_info).
+                    layout_du[x_ptag];
                 x_data_value = (MR_Word *) MR_body(x, x_ptag);
                 y_data_value = (MR_Word *) MR_body(y, y_ptag);
 
@@ -197,7 +200,7 @@ start_label:
                         break;
 
                     case MR_SECTAG_VARIABLE:
-                        MR_fatal_error("find_du_functor_desc(): attempt get functor desc of variable");                                                   \
+                        MR_fatal_error("find_du_functor_desc(): attempt get functor desc of variable");
                 }
 
                 functor_desc = ptaglayout->MR_sectag_alternatives[x_sectag];
