@@ -209,7 +209,6 @@ opt_debug__dump_instrs(OptDebug, Instrs) -->
 opt_debug__dump_instrs_2([]) --> [].
 opt_debug__dump_instrs_2([Uinstr - _ | Instrs]) -->
 	output_instruction(Uinstr),
-	io__write_string("\n"),
 	opt_debug__dump_instrs_2(Instrs).
 
 opt_debug__dump_node_relmap(Relmap, Str) :-

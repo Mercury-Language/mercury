@@ -439,8 +439,7 @@ vn_debug__cost_detail_msg(Uinstr, InstrCost, CostNow) -->
 		io__write_string("\t"),
 		io__write_string(CostNowStr),
 		io__write_string("\t"),
-		output_instruction(Uinstr),
-		io__write_string("\n")
+		output_instruction(Uinstr)
 	;
 		{ Flag = no }
 	).
@@ -490,7 +489,9 @@ vn_debug__flush_end_msg(Instrs, VnTables) -->
 	).
 
 vn_debug__dump_instrs(Instrs) -->
-	vn_debug__parallel_msg_flag(Flag),
+	vn_debug__parallel_msg_flag(Flag1),
+	vn_debug__cost_msg_flag(Flag2),
+	{ bool__or(Flag1, Flag2, Flag) },
 	opt_debug__dump_instrs(Flag, Instrs).
 
 %-----------------------------------------------------------------------------%

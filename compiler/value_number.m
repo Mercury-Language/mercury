@@ -264,20 +264,21 @@ value_number__procedure(Instrs0, LiveMap, UseSet, AllocSet, BreakSet,
 	{ vn_type__init_params(OptionTable, Params) },
 	value_number__optimize_blocks(Blocks, LiveMap, Params, N0, OptBlocks0,
 		[], RevTuples),
+	{ list__condense([Comments | OptBlocks0], OptInstrs0) },
+	{ opt_util__propagate_livevals(OptInstrs0, OptInstrs1) },
+	vn_debug__cost_header_msg("procedure after non-pred value numbering"),
+	vn_debug__dump_instrs(OptInstrs1),
 	{ globals__lookup_bool_option(Globals, pred_value_number, PredVn) },
 	( { PredVn = yes } ->
-		{ list__condense([Comments | OptBlocks0], OptInstrs0) },
-		vn_debug__cost_header_msg("procedure before parallels"),
-		vn_debug__dump_instrs(OptInstrs0),
 		{ list__reverse(RevTuples, Tuples) },
 		value_number__process_parallel_tuples(Tuples, OptBlocks0,
-			LiveMap, Params, OptBlocks1),
-		{ list__condense([Comments | OptBlocks1], OptInstrs) },
+			LiveMap, Params, OptBlocks),
+		{ list__condense([Comments | OptBlocks], OptInstrs2) },
+		{ opt_util__propagate_livevals(OptInstrs2, OptInstrs) },
 		vn_debug__cost_header_msg("procedure after parallels"),
 		vn_debug__dump_instrs(OptInstrs)
 	;
-		{ OptBlocks1 = OptBlocks0 },
-		{ list__condense([Comments | OptBlocks1], OptInstrs) }
+		{ OptInstrs = OptInstrs0 }
 	).
 
 :- pred value_number__optimize_blocks(list(list(instruction)), livemap,

@@ -298,12 +298,22 @@
 :- pred opt_util__count_incr_hp(list(instruction), int).
 :- mode opt_util__count_incr_hp(in, out) is det.
 
+	% Whenever the input list of instructions contains two livevals
+	% pseudo-ops without an intervening no-fall-through instruction,
+	% ensure that the first of these registers as live every lval
+	% that is live in the second, except those that are assigned to
+	% by intervening instructions. This makes the shadowing of the
+	% second livevals by the first benign.
+
+:- pred opt_util__propagate_livevals(list(instruction), list(instruction)).
+:- mode opt_util__propagate_livevals(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module exprn_aux, llds_out.
-:- import_module int, string, map, require.
+:- import_module int, string, set, map, require.
 
 opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs) :-
 	opt_util__gather_comments(Instrs0, Comments1, Instrs1),
@@ -1438,5 +1448,36 @@ opt_util__count_incr_hp_2([Uinstr0 - _ | Instrs], N0, N) :-
 		N1 = N0
 	),
 	opt_util__count_incr_hp_2(Instrs, N1, N).
+
+%-----------------------------------------------------------------------------%
+
+opt_util__propagate_livevals(Instrs0, Instrs) :-
+	list__reverse(Instrs0, RevInstrs0),
+	set__init(Livevals),
+	opt_util__propagate_livevals_2(RevInstrs0, Livevals, RevInstrs),
+	list__reverse(RevInstrs, Instrs).
+
+:- pred opt_util__propagate_livevals_2(list(instruction), set(lval),
+	list(instruction)).
+:- mode opt_util__propagate_livevals_2(in, in, out) is det.
+
+opt_util__propagate_livevals_2([], _, []).
+opt_util__propagate_livevals_2([Instr0 | Instrs0], Livevals0,
+		[Instr | Instrs]) :-
+	Instr0 = Uinstr0 - Comment,
+	( Uinstr0 = livevals(ThisLivevals) ->
+		set__union(Livevals0, ThisLivevals, Livevals),
+		Instr = livevals(Livevals) - Comment
+	;
+		Instr = Instr0,
+		( Uinstr0 = assign(Lval, _) ->
+			set__delete(Livevals0, Lval, Livevals)
+		; opt_util__can_instr_fall_through(Uinstr0, no) ->
+			set__init(Livevals)
+		;
+			Livevals = Livevals0
+		)
+	),
+	opt_util__propagate_livevals_2(Instrs0, Livevals, Instrs).
 
 %-----------------------------------------------------------------------------%
