@@ -481,7 +481,7 @@ rather than top-down.  In this particular case, the reordered code is still
 tail recursive - but it is tail-recursive on the first recursive call,
 not the second one!
 
-If the occaisional loss of tail recursion causes efficiency problems,
+If the occasional loss of tail recursion causes efficiency problems,
 or if the program contains circular data flow, then a different
 solution must be adopted.  One way to translate such programs
 is to transform the difference list into an accumulator.

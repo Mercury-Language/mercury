@@ -686,7 +686,7 @@ The @var{body} term is defined as
 a sequence of constructor definitions separated by semi-colons.
 Each constructor definition is a functor whose arguments (if any) are types.
 Type definitions must be @dfn{transparent}:
-all type variables occuring in the @var{body}
+all type variables occurring in the @var{body}
 must also occur in the @var{type}.
 
 Here are some examples:
@@ -807,7 +807,7 @@ For example:
 
 Predicates may not be overloaded:
 there must only be one predicate with a given name and arity in each module.
-A module qualifier must be used to dis-ambiguate imported and locally defined
+A module qualifier must be used to disambiguate imported and locally defined
 predicates that have the same name.
 (This restriction will hopefully be further relaxed in the future.)
 
@@ -1905,7 +1905,7 @@ foo(sum([1,2,3])).
 
 Note that in Mercury it is an error to attempt to unify two
 higher-order predicate terms.  This is because equivalence of
-higher-order predicates is undecideable in the general case.
+higher-order predicates is undecidable in the general case.
 
 For example, given the definition of @samp{foo} above, the goal
 
