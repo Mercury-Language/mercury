@@ -36,6 +36,12 @@
 #define stringify(string) #string
 #define entry(label) paste(entry_,label)
 
+#ifdef SPLIT_C_FILES
+#define MODULE_STATIC_OR_EXTERN extern
+#else
+#define MODULE_STATIC_OR_EXTERN static
+#endif
+
 #if defined(USE_GCC_NONLOCAL_GOTOS)
 
   #ifndef __GNUC__
@@ -44,12 +50,6 @@
 
   /* Define the type of a module initialization function */
   typedef void ModuleFunc(void);
-
-  #ifdef SPLIT_C_FILES
-  #define MODULE_STATIC_OR_EXTERN extern
-  #else
-  #define MODULE_STATIC_OR_EXTERN static
-  #endif
 
   /* The following macro expands to a dummy assembler statement which
      contains no code, but which tells gcc that it uses the specified
