@@ -110,11 +110,11 @@ unify_gen__generate_tag_test_2(int_constant(Int), Lval, TestCode) -->
 								TestCode).
 unify_gen__generate_tag_test_2(simple_tag(SimpleTag), Lval, TestCode) -->
 	code_info__generate_test_and_fail(
-			binop(eq,lval(Lval), iconst(SimpleTag)),
+			binop(eq,tag(lval(Lval)), mktag(iconst(SimpleTag))),
 								TestCode).
 unify_gen__generate_tag_test_2(complicated_tag(Bits, Num), Lval, TestCode) -->
 	code_info__generate_test_and_fail(
-				binop(eq,lval(Lval), iconst(Bits)), Test1),
+			binop(eq,tag(lval(Lval)), mktag(iconst(Bits))), Test1),
 	code_info__generate_test_and_fail(
 			binop(eq,field(Bits, lval(Lval), 0), iconst(Num)),
 									Test2),
