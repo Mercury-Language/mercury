@@ -7,9 +7,9 @@ Pure Prolog Interpreter.
 
       11:      6  3 CALL pred interpreter:consult/5-0 (det) 
 mdb> vars
-        0 HeadVar__1
-        1 HeadVar__2
-        2 HeadVar__4
+        1 HeadVar__1
+        2 HeadVar__2
+        3 HeadVar__4
 mdb> print *
        HeadVar__1           		"interpreter.m"
        HeadVar__2           		[]
