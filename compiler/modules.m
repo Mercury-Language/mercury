@@ -3687,7 +3687,7 @@ drop_one_qualifier(ParentQual, ChildName, PartialQual) :-
 
 	% get_children(Items, IncludeDeps):
 	%	IncludeDeps is the list of sub-modules declared with
-	% 	`:- import_module' in Items.
+	% 	`:- include_module' in Items.
 	%
 :- pred get_children(item_list, list(module_name)).
 :- mode get_children(in, out) is det.
