@@ -144,12 +144,12 @@ MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 	if (options == NULL) options = "";
 
         MR_TRACE_USE_HP(
-		make_aligned_string(options_on_heap, options);
+		MR_make_aligned_string(options_on_heap, options);
 
 		imports_list = MR_list_empty();
 		for (i = num_imports; i > 0; i--) {
 			ConstString this_import;
-			make_aligned_string(this_import, imports[i - 1]);
+			MR_make_aligned_string(this_import, imports[i - 1]);
 			imports_list = MR_list_cons(this_import, imports_list);
 		}
 	);
