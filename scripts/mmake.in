@@ -21,6 +21,8 @@ Usage: mmake [<mmake options>] [-- <make options>] <target>...
 Options:
 	-s, --save-makefile:
 		Save the generated makefile to \`Mmake.makefile'.
+		This is useful for tracking down syntax errors in
+		your Mmake file.
 	-v, --verbose:
 		Print verbose progress messages.
 	-h, --help:
