@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003 The University of Melbourne. 
+# Copyright (C) 1995-2004 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -252,8 +252,10 @@ TODO: compiler/notes/todo.html
 
 mercury-compiler.spec: .mercury-compiler.spec.in VERSION
 	version_with_underscores=`echo $(VERSION) | sed 's/-/_/g'`; \
-	maybe_beta=`case $(VERSION) in rotd*|*beta*) \
-			echo "beta-releases/" ;; \
+	beta_dir=`expr "$(VERSION)" : '\(.*beta\).*'`; \
+	maybe_beta=`case $(VERSION) in \
+			rotd*) echo "beta-releases/rotd/" ;; \
+			*beta*) echo "beta-releases/$$beta_dir/" ;; \
 		    esac`; \
 	sed -e "s/@VERSION@/$(VERSION)/g" \
 	    -e "s/@VERSION_WITH_UNDERSCORES@/$$version_with_underscores/g" \
