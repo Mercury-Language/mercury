@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -379,8 +379,13 @@ limited_deconstruct(Term, NonCanon, MaxArity, Functor, Arity, Arguments) :-
 		error("limited_deconstruct called with include_details_cc")
 	).
 
-limited_deconstruct_cc(Term, MaxArity, Result) :-
-	limited_deconstruct_idcc(Term, MaxArity, Result).
+limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
+	limited_deconstruct_idcc(Term, MaxArity, Functor, Arity, Arguments),
+	( Arity =< MaxArity ->
+		MaybeResult = yes({Functor, Arity, Arguments})
+	;
+		MaybeResult = no
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -646,7 +651,7 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 :- pred limited_deconstruct_can(T::in, int::in,
 	string::out, int::out, list(univ)::out) is semidet.
 :- pred limited_deconstruct_idcc(T::in, int::in,
-	maybe({string, int, list(univ)})::out) is cc_multi.
+	string::out, int::out, list(univ)::out) is cc_multi.
 
 :- pragma foreign_proc("C", 
 	deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out),
@@ -774,13 +779,10 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 }").
 
 :- pragma foreign_proc("C", 
-	limited_deconstruct_idcc(Term::in, MaxArity::in, Maybe::out),
+	limited_deconstruct_idcc(Term::in, MaxArity::in, Functor::out,
+		Arity::out, Arguments::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-	MR_String	Functor;
-	MR_Integer	Arity;
-	MR_Word		Arguments;
-
 	#define	EXPAND_INFO_TYPE	MR_Expand_Functor_Args_Limit_Info
 	#define	EXPAND_INFO_CALL	MR_expand_functor_args_limit
 	#define	TYPEINFO_ARG		TypeInfo_for_T
@@ -801,22 +803,16 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 	#undef	ARGUMENTS_ARG
 	#undef	NONCANON
 
-	if (success) {
-		Maybe = ML_construct_idcc_yes(Functor, Arity, Arguments);
-	} else {
-		Maybe = ML_construct_idcc_no();
+	if (!success) {
+		/* Fill in some dummy values, to ensure that we don't
+		   try to return uninitialized memory to Mercury.
+		   It doesn't matter what we put here, except that
+		   we must have Arity > MaxArity. */
+		Arity = MaxArity + 1;
+		Functor = """";
+		Arguments = MR_list_empty();
 	}
 }").
-
-:- func construct_idcc_yes(string, int, list(univ)) =
-		maybe({string, int, list(univ)}).
-:- pragma export(construct_idcc_yes(in, in, in) = out, "ML_construct_idcc_yes").
-construct_idcc_yes(Functor, Arity, Args) = yes({Functor, Arity, Args}).
-
-:- func construct_idcc_no = maybe({string, int, list(univ)}).
-:- pragma export(construct_idcc_no = out, "ML_construct_idcc_no").
-construct_idcc_no = no.
-
 
 
 deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out) :-
@@ -829,6 +825,9 @@ deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term,
 			include_details_cc, Functor, Arity, Arguments).
 
+	% XXX The Mercury implementations of all of these limited_* procedures
+	%     are inefficient -- they construct Functor and Arguments even in
+	%     the case when Arity > MaxArity.
 limited_deconstruct_dna(Term::in, MaxArity::in,
 		Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term,
@@ -839,14 +838,11 @@ limited_deconstruct_can(Term::in, MaxArity::in,
 	rtti_implementation__deconstruct(Term,
 			canonicalize, Functor, Arity, Arguments),
 	Arity =< MaxArity.
-limited_deconstruct_idcc(Term::in, MaxArity::in, MaybeResult::out) :-
+limited_deconstruct_idcc(Term::in, _MaxArity::in,
+		Functor::out, Arity::out, Arguments::out) :-
+	% For this one, the caller checks Arity =< MaxArity.
 	rtti_implementation__deconstruct(Term,
-			include_details_cc, Functor, Arity, Arguments),
-	( Arity =< MaxArity ->
-		MaybeResult = yes({Functor, Arity, Arguments})
-	;
-		MaybeResult = no
-	).
+			include_details_cc, Functor, Arity, Arguments).
 
 %-----------------------------------------------------------------------------%
 
