@@ -482,7 +482,7 @@ mapped_module.depend: Mercury.modules
 nonascii.out:	nonascii.data
 
 nonascii.data:	nonascii_gen
-	nonascii_gen > nonascii.data
+	./nonascii_gen > nonascii.data
 
 nonascii_gen:	nonascii_gen.c
 	$(CC) nonascii_gen.c -o nonascii_gen
