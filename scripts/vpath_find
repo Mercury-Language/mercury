@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# vpath_find:
+#	Find the correct location for files based on the VPATH environment
+#	variable.
+#
+# Usage: vpath_find <files>...
+#
+VPATHS="`echo "$VPATH" | sed 's/:/ /'`"
+for file in "$@"; do
+	for dir in "" $VPATHS; do
+		if [ "$dir" = "" ]; then
+			f="$file"
+		else
+			f="$dir/$file"
+		fi
+		if [ -f $f ]; then
+			echo $f
+			break
+		fi
+	done
+done
