@@ -1191,9 +1191,19 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
-@item @code{--num-real-regs @var{n}}
+@item @code{--branch-delay-slot}}
+(This option is not intended for general use.)
+Assume that branch instructions have a delay slot.
+
+@sp 1
+@item @code{--num-real-r-regs @var{n}}
 (This option is not intended for general use.)
 Assume r1 up to r@var{n} are real machine registers.
+
+@sp 1
+@item @code{--num-real-temps @var{n}}
+(This option is not intended for general use.)
+Assume that @var{n} temporaries will fit into real machine registers.
 
 @sp 1
 @item @code{--profiling} (grades: any grade ending in @samp{.prof})
