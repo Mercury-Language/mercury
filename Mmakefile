@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2001 The University of Melbourne. 
+# Copyright (C) 1995-2002 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -276,6 +276,10 @@ version:
 .PHONY: fullarch
 fullarch:
 	@echo $(FULLARCH)
+
+.PHONY: echo_libgrades
+echo_libgrades:
+	@echo $(LIBGRADES)
 
 #-----------------------------------------------------------------------------#
 
