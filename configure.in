@@ -104,7 +104,7 @@ EOF
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
 	 	 $BOOTSTRAP_MC --high-level-code conftest \
 		 	</dev/null >&AC_FD_CC 2>&1 &&
-		 test "`./conftest 2>&1`" = "Hello, world"
+		 test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
 	then
 		AC_MSG_RESULT(yes)
 	else
@@ -1651,7 +1651,11 @@ else
 	if test $mercury_cv_gcc_model_reg = yes; then
 		BEST_GRADE=reg
 	else
-		BEST_GRADE=none
+		if test $ac_microsoft = yes; then
+			BEST_GRADE=hlc
+		else
+			BEST_GRADE=none
+		fi
 	fi
 fi
 
@@ -1766,9 +1770,16 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
 # add `hlc' (--high-level-code, i.e. MLDS back-end) grade
 LIBGRADES="$LIBGRADES hlc.gc"
 
+# If we are using the MS compiler currently the only interesting grade
+# is hlc.gc, which is what we install by default.
+if test $ac_microsoft = yes; then
+	LIBGRADES=
+fi
+
 # remove GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
+
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
 #
