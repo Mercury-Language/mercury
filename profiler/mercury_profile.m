@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999, 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -186,8 +186,7 @@ main_2(no, Args) -->
 
 		io__set_output_stream(StdOut, _),
 		output__main(OutputProf, IndexMap),
-		io__write_char('\n'),
-		io__told
+		io__write_char('\n')
         ).
 
 
