@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -92,6 +92,10 @@ name(sartre	, "Sartre").
 :- pred rand_sleep(int::in, io__state::di, io__state::uo) is det.
 :- pragma c_code(rand_sleep(Int::in, IO0::di, IO::uo),
 		[thread_safe, will_not_call_mercury], "{
-	sleep(rand() % Int);
+#ifdef _MSC_VER
+	Sleep(1000 * (rand() % Int));
+#else
+	sleep((rand() % Int));
+#endif
 	IO =  IO0;
 }").

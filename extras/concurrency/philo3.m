@@ -1,6 +1,6 @@
 %------------------------------------------------------------------------------%
 % philo3.m
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
+% Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
 % Mon May 14 14:32:29 BST 2001
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
 %
@@ -79,7 +79,11 @@ philosopher(Name, A, ForkA, B, ForkB) -->
 :- pred rand_sleep(int::in, io__state::di, io__state::uo) is det.
 :- pragma c_code(rand_sleep(Int::in, IO0::di, IO::uo),
 		[thread_safe, will_not_call_mercury], "{
-	sleep(rand() % Int);
+#ifdef _MSC_VER
+	Sleep(1000 * (rand() % Int));
+#else
+	sleep((rand() % Int));
+#endif
 	IO =  IO0;
 }").
 
