@@ -471,7 +471,7 @@ void GC_debug_end_stubborn_change(/* p */);
 /* code, and should not be considered in determining 		*/
 /* finalization order.						*/
 # if defined(__STDC__) || defined(__cplusplus)
-    int GC_register_disappearing_link(void ** link);
+    int GC_register_disappearing_link(void ** /* link */);
 # else
     int GC_register_disappearing_link(/* void ** link */);
 # endif
@@ -495,7 +495,7 @@ void GC_debug_end_stubborn_change(/* p */);
 	/* otherwise.						*/
 	/* Only exists for backward compatibility.  See below:	*/
 # if defined(__STDC__) || defined(__cplusplus)
-    int GC_general_register_disappearing_link(void ** link, void * obj);
+    int GC_general_register_disappearing_link(void ** /* link */, void * obj);
 # else
     int GC_general_register_disappearing_link(/* void ** link, void * obj */);
 # endif
@@ -517,7 +517,7 @@ void GC_debug_end_stubborn_change(/* p */);
 	/* obj may or may not cause link to eventually be	*/
 	/* cleared.						*/
 # if defined(__STDC__) || defined(__cplusplus)
-    int GC_unregister_disappearing_link(void ** link);
+    int GC_unregister_disappearing_link(void ** /* link */);
 # else
     int GC_unregister_disappearing_link(/* void ** link */);
 # endif
