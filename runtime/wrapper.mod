@@ -18,6 +18,7 @@
 #include	"timing.h"
 #include	"getopt.h"
 #include	"init.h"
+#include	"dummy.h"
 #include	<ctype.h>
 #include	<string.h>
 
