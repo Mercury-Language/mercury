@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2002 The University of Melbourne.
+# Copyright (C) 1999,2001-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -34,7 +34,7 @@ AC_DEFUN(MERCURY_CHECK_FOR_HEADERS,
 AC_DEFUN(MERCURY_CHECK_CC_NEEDS_TRAD_CPP,
 [
 AC_REQUIRE([AC_PROG_CC])
-AC_MSG_CHECKING(whether C compiler need --traditional-cpp)
+AC_MSG_CHECKING(whether C compiler needs -no-cpp-precomp)
 AC_CACHE_VAL(mercury_cv_cpp_precomp, [
 	>conftest.c
 	if	test "$GCC" = yes &&
@@ -48,7 +48,7 @@ AC_CACHE_VAL(mercury_cv_cpp_precomp, [
 ])
 AC_MSG_RESULT($mercury_cv_cpp_precomp)
 if test $mercury_cv_cpp_precomp = yes; then
-	CC="$CC --traditional-cpp"
+	CC="$CC -no-cpp-precomp"
 fi
 ])
 #-----------------------------------------------------------------------------#
