@@ -8,11 +8,12 @@
 
 :- implementation.
 
-:- import_module std_util, time.
+:- import_module std_util, time, float.
 
 main -->
 	time(Time),
-	( { mktime(localtime(Time)) = Time } ->
+	{ Diff = difftime(Time, mktime(localtime(Time))) },
+	( { (Diff >= 0.0, Diff < 1.0) } ->
 		io__write_string("mktime succeeded\n")
 	;
 		io__write_string("mktime failed\n")

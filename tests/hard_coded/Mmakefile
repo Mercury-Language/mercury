@@ -40,6 +40,7 @@ ORDINARY_PROGS=	\
 	det_in_semidet_cntxt \
 	division_test \
 	dot_separator \
+	dst_test \
 	dupcall_types_bug \
 	dupcall_impurity \
 	elim_special_pred \
@@ -418,6 +419,26 @@ dir_test.clean: clean_dir_test
 clean_dir_test:
 	rm -rf test_dir unwritable
 
+#-----------------------------------------------------------------------------#
+
+# dst_test checks various predicates associated with Daylight Savings.
+# Since all the test data is based on Melbourne's DST conventions, the
+# timezone environment variable TZ must be set accordingly.
+
+ifneq "$(findstring java,$(GRADE))" ""
+
+dst_test.out: dst_test.class
+	TZ="Australia/Melbourne" $(JAVA) dst_test > $@ 2>&1 || \
+		{ grep . $@ /dev/null; exit 1; }
+
+else
+
+dst_test.out: dst_test
+	TZ="Australia/Melbourne" ./$< > $@ 2>&1 || \
+		{ grep . $@ /dev/null; exit 1; }
+
+endif
+ 
 #-----------------------------------------------------------------------------#
 
 clean_local:
