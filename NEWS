@@ -182,9 +182,22 @@ Changes to the Mercury compiler:
 
 * We have fixed a few minor bugs.
 
+NEWS for Mercury release 0.7.3
+------------------------------
 
-NEWS since Mercury release 0.7.2
---------------------------------
+This release is primarily a bug-fix release.
+But as well as bug fixes, there are a few minor improvements:
+
+* The profiler now allows you to merge profiling data from multiple runs.
+
+  There's a new script `mprof_merge_runs' to support this.
+  See the "Profiling" section of the Mercury User's Guide,
+  or the man page for `mprof_merge_runs'.
+
+* Termination analysis no longer uses the `lp_solve' package.
+  
+  This avoids some portability problems and some copyright issues
+  (the `lp_solve' package had a quite restrictive license).
 
 * We've fixed one of the limitations: unique mode declarations
   no longer have to precede non-unique mode declarations.
