@@ -207,7 +207,21 @@ magic__process_module(ModuleInfo0, ModuleInfo) -->
 	{ module_info_aditi_dependency_ordering(ModuleInfo3, Ordering) },
 	{ magic_info_init(ModuleInfo3, Info0) },
 	{ module_info_predids(ModuleInfo3, PredIds) },
-	{ magic__process_imported_procs(PredIds, Info0, Info1) },
+
+	% 
+	% Only preprocess imported Aditi predicates which are used,
+	% to avoid performing error checking (e.g. checking for abstract
+	% types) on predicates which are not used. The check for abstract
+	% types needs to be done in importing modules because an imported
+	% predicate's declaration may use types which are indirectly imported
+	% from another module. Discriminated union types are written as
+	% abstract types to `.int2' files.
+	%
+	{ set__init(UsedImportedPreds0) },
+	{ list__foldl(magic__find_used_imported_aditi_preds(ModuleInfo3),
+		Ordering, UsedImportedPreds0, UsedImportedPreds) },
+	{ magic__process_imported_procs(PredIds, UsedImportedPreds,
+		Info0, Info1) },
 	globals__io_lookup_bool_option(very_verbose, Verbose),
 
 		% Add magic procedures, do some transformation on the goals.
@@ -378,29 +392,83 @@ magic__update_pred_status(PredId) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+	% Find all imported procedures which are called within
+	% a local Aditi procedure. The magic sets version of their
+	% interface must be produced.
+:- pred magic__find_used_imported_aditi_preds(module_info::in,
+	aditi_scc::in, set(pred_id)::in, set(pred_id)::out) is det.
+
+magic__find_used_imported_aditi_preds(ModuleInfo, SCC, Preds0, Preds) :-
+	SCC = aditi_scc(SCCPredProcIds0, _EntryPoints),
+	list__condense(SCCPredProcIds0, SCCPredProcIds),
+	list__foldl(magic__find_used_imported_aditi_preds_2(ModuleInfo),
+		SCCPredProcIds, Preds0, Preds).
+
+:- pred magic__find_used_imported_aditi_preds_2(module_info::in,
+	pred_proc_id::in, set(pred_id)::in, set(pred_id)::out) is det.
+
+magic__find_used_imported_aditi_preds_2(ModuleInfo,
+		PredProcId, Preds0, Preds) :-
+	module_info_pred_proc_info(ModuleInfo, PredProcId, _, ProcInfo),
+	proc_info_goal(ProcInfo, Goal),
+
+	% Generate all pred_ids called by a goal.
+	Generator = (pred(P::out) is nondet :- goal_calls_pred_id(Goal, P)),
+
+	% Add all used imported Aditi predicates to the accumulator.
+	Accumulator = 
+	    (pred(CalledPredId::in, UsedPreds0::in, UsedPreds::out) is det :-	
+		module_info_pred_info(ModuleInfo,
+			CalledPredId, CalledPredInfo),
+		(
+			pred_info_is_imported(CalledPredInfo),
+			pred_info_is_aditi_relation(CalledPredInfo)
+		->
+			set__insert(UsedPreds0, CalledPredId, UsedPreds)
+		;
+			UsedPreds = UsedPreds0
+		)
+	    ),
+
+	Preds = promise_only_solution(
+		(pred(Preds1::out) is cc_multi :-
+			unsorted_aggregate(Generator, Accumulator,
+				Preds0, Preds1)
+		)).
+
 	% Convert imported Aditi procedures for the magic sets interface.
-:- pred magic__process_imported_procs(list(pred_id)::in,
+:- pred magic__process_imported_procs(list(pred_id)::in, set(pred_id)::in,
 		magic_info::in, magic_info::out) is det.
 
-magic__process_imported_procs([]) --> [].
-magic__process_imported_procs([PredId | PredIds]) -->
+magic__process_imported_procs([], _) --> [].
+magic__process_imported_procs([PredId | PredIds], UsedPreds) -->
 	magic_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	(
 		{ pred_info_is_imported(PredInfo) },
-		{ hlds_pred__is_derived_relation(ModuleInfo, PredId) }
+		{ hlds_pred__is_derived_relation(ModuleInfo, PredId) },
+		{ set__member(PredId, UsedPreds) }
 	->
 		{ pred_info_procids(PredInfo, ProcIds) },
 		magic__process_imported_procs_2(PredId, ProcIds)
 	;
-		{ hlds_pred__pred_info_is_base_relation(PredInfo) }
+		{ hlds_pred__pred_info_is_base_relation(PredInfo) },
+		{
+			% Always preprocess base relations defined in
+			% this module.
+			module_info_name(ModuleInfo, ModuleName),
+			pred_info_module(PredInfo, PredModuleName),
+			ModuleName = PredModuleName
+		;
+			set__member(PredId, UsedPreds)	
+		}
 	->
 		{ pred_info_procids(PredInfo, ProcIds) },
 		list__foldl(magic__process_base_relation(PredId), ProcIds)
 	;
 		[]
 	),
-	magic__process_imported_procs(PredIds).
+	magic__process_imported_procs(PredIds, UsedPreds).
 
 :- pred magic__process_imported_procs_2(pred_id::in, list(proc_id)::in,
 		magic_info::in, magic_info::out) is det.

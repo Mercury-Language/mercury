@@ -27,6 +27,7 @@ TYPECLASS_SOURCES= \
 	instance_unconstrained_tvar.m
 
 ADITI_SOURCES= \
+	aditi_error_bug.m \
 	aditi_update.m \
 	base_relation.m \
 	base_relation2.m \
@@ -196,6 +197,9 @@ GRADEFLAGS-agc_unused_in	= --gc accurate
 GRADEFLAGS-complex_failure	= --use-trail
 GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
 
+MCFLAGS-aditi_error_bug		= --aditi
+MCFLAGS-aditi_error_bug2	= --aditi
+MCFLAGS-aditi_error_bug3	= --aditi
 MCFLAGS-aditi_update		= --aditi
 MCFLAGS-base_relation		= --aditi
 MCFLAGS-base_relation2		= --aditi
