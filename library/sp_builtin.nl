@@ -106,6 +106,9 @@ mercury_declaration(external(_)).
 
 mercury_declaration(when(_,_)).
 
+mercury_declaration(pragma(_,_)).
+mercury_declaration(pragma(_,_,_)).
+
 term_expansion((:- Term), Clauses) :-
 	mercury_declaration(Term),
 	Clauses = [].
