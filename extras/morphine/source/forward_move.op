@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -80,7 +80,7 @@ Example: the Morphine goal fget(chrono = [20, 789] and depth = 3..6 and \
 proc = foo/2)  \
 will make the execution move forwards until the first event \
 which chronological event number is 20 or 789, depth is 3, 4, 5 or 6, \
-procedure name is foo and arity is not 2. \
+procedure name is foo and arity is 2. \
 You can also use a list as an argument of fget: \
 fget([chrono=[20, 789], depth = 3..6, proc = foo/2]) will have the \
 same effect as the previous goal.\

@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -79,7 +79,8 @@ For example, \
 current(chrono = Chrono and name = Name)  (or current([chrono = Chrono, \
 name = Name])) will unify Chrono with the chronological \
 event number and Name with the procedure name of the current event. \
-current(depth = 3) will succeed iff the depth of the current event is 3. \
+current(depth = 3) will succeed if and only if the depth of the current \
+event is 3. \
 current(args = [Arg1, -, -]) will unify Arg1 with the first argument of the \
 current procedure if is live. \n\
  \n\
