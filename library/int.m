@@ -351,6 +351,10 @@ X rem Y = Rem :-
 	SUCCESS_INDICATOR = true;
 #endif
 ").
+:- pragma foreign_proc("Java", domain_checks,
+		[thread_safe, promise_pure], "
+	succeeded = true;
+").
 
 :- pragma inline(floor_to_multiple_of_bits_per_int/1).
 floor_to_multiple_of_bits_per_int(X) = Floor :-
