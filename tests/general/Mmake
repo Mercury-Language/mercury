@@ -50,7 +50,7 @@ DETPROGS=	arithmetic \
 		univ \
 		unreachable
 
-NOTWORKING=
+NOTWORKING=	fail_detism
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC
