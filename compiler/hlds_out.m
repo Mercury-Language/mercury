@@ -619,7 +619,7 @@ hlds_out__write_unify_rhs(lambda_goal(Vars, Modes, Goal),
 	{ Indent1 is Indent + 1 },
 	hlds_out__write_indent(Indent1),
 	hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
-	hlds_out__write_indent(Indent),
+	mercury_output_newline(Indent),
 	io__write_string(")").
 
 hlds_out__write_functor(Functor, ArgVars, VarSet) -->

@@ -1642,6 +1642,35 @@ modecheck_unification(X, var(Y), _Unification0, X, var(Y),
 modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 			X, functor(Name, ArgVars),
 			ExtraGoals, Mode, Unification, ModeInfo0, ModeInfo) :-
+/*****
+UNFINISHED
+	%
+	% We replace any unifications with higher-order pred constants
+	% by lambda expressions.  For example, we replace
+	%	X = list__append(Y)
+	% with
+	%	X = lambda [A, B] (list__append(Y, A, B))
+	% 
+	% We do this because it makes two things easier.
+	% Firstly, we need to check that the lambda-goal doesn't
+	% bind any non-local variables (e.g. `Y' in above example).
+	% This would require a bit of moderately tricky special-case code
+	% if we didn't expand them.
+	% Secondly, the polymorphism pass (polymorphism.m) is a lot easier
+	% if we don't have to handle higher-order pred consts.
+	%
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_var_types(ModeInfo0, VarTypes),
+	map__lookup(X, TypeX),
+	(
+		TypeX = term__functor(term__atom("pred"), PredArgTypes, _),
+		Name = term__atom(PredName)
+	->
+		list__length(ArgVars0, Arity),
+		make_pred_cons_id(PredName, Arity, PredArgTypes,
+				 ModuleInfo0, ConsId)
+	)
+******/
 	DoSplit = yes,
 	modecheck_unify_functor(X, Name, ArgVars0, Unification0, DoSplit,
 				ExtraGoals, Mode, ArgVars, Unification,
@@ -1685,7 +1714,8 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Goal0), Unification0,
 	% (a lambda goal is not allowed to bind any of the non-local
 	% variables, since it could get called more than once)
 	Goal0 = _ - GoalInfo0,
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	set__delete_list(NonLocals0, Vars, NonLocals),
 	mode_info_lock_vars(NonLocals, ModeInfo2, ModeInfo3),
 
 	modecheck_goal(Goal0, Goal, ModeInfo3, ModeInfo4),
@@ -2757,6 +2787,7 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	list__length(ArgVars, Arity),
 	map__lookup(VarTypes, X, TypeX),
+	% if we are re-doing mode analysis, preserve the existing cons_id
 	( Unification0 = construct(_, ConsId0, _, _) ->
 		ConsId = ConsId0
 	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->

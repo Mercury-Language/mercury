@@ -2056,11 +2056,7 @@ goal_info_add_feature(GoalInfo0, Feature, GoalInfo) :-
 
 goal_info_remove_feature(GoalInfo0, Feature, GoalInfo) :-
 	goal_info_get_features(GoalInfo0, J0),
-	( set__remove(J0, Feature, J1) ->
-	    J = J1
-	;
-	    J = J0
-	),
+	set__delete(J0, Feature, J),
 	goal_info_set_features(GoalInfo0, J, GoalInfo).
 
 goal_info_has_feature(GoalInfo, Feature) :-

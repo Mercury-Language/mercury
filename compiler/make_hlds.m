@@ -38,6 +38,11 @@
 			term__context, pred_info, proc_id).
 :- mode add_new_proc(in, in, in, in, in, out, out) is det.
 
+:- pred clauses_info_init(int::in, clauses_info::out) is det.
+
+:- pred next_mode_id(proc_table, maybe(determinism), proc_id).
+:- mode next_mode_id(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -480,7 +485,7 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
 		Context, Status, Module) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status,
+	add_new_pred(Module0, VarSet, PredName, Types, Cond, Context, Status,
 		Module1),
 	(
 		% some [Modes]
@@ -492,12 +497,17 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
 		{ Module = Module1 }
 	).
 
-:- pred preds_add(module_info, tvarset, sym_name, list(type),
+:- pred add_new_pred(module_info, tvarset, sym_name, list(type),
 		condition, term__context, import_status,
 		module_info, io__state, io__state).
-:- mode preds_add(in, in, in, in, in, in, in, out, di, uo) is det.
+:- mode add_new_pred(in, in, in, in, in, in, in, out, di, uo) is det.
 
-preds_add(Module0, TVarSet, PredName, Types, Cond, Context, Status, Module) -->
+% NB.  Predicates are also added in polymorpism.m, which converts
+% lambda expressions into separate predicates, so any changes may need
+% to be reflected there too.
+
+add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
+		Module) -->
 	{ module_info_name(Module0, ModuleName) },
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	{ list__length(Types, Arity) },
@@ -745,9 +755,6 @@ preds_add_implicit(PredicateTable0,
 	% determinism_priority.  Efficiency could be improved -
 	% we should probably store the next available ModeId rather
 	% than recomputing it all the time.
-
-:- pred next_mode_id(proc_table, maybe(determinism), proc_id).
-:- mode next_mode_id(in, in, out) is det.
 
 next_mode_id(Procs, MaybeDet, ModeId) :-
 	map__to_assoc_list(Procs, List),
@@ -1019,8 +1026,6 @@ vars_in_term(Term) -->
 	term__vars_2(Term).
 
 %-----------------------------------------------------------------------------
-
-:- pred clauses_info_init(int::in, clauses_info::out) is det.
 
 clauses_info_init(Arity, clauses_info(VarSet, VarTypes, HeadVars, [])) :-
 	map__init(VarTypes),

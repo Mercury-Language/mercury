@@ -175,7 +175,9 @@ implicitly_quantify_unify_rhs(lambda_goal(LambdaVars, Modes, Goal0),
 	% and initialize the new quantified vars set to be empty
 	set__union(OutsideVars, QuantVars, OutsideVars1),
 	set__init(QuantVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, QuantVars1,
+	% the lambda-quantified variables are outside the goal
+	set__insert_list(OutsideVars1, LambdaVars, OutsideVars2),
+	implicitly_quantify_goal(Goal0, OutsideVars2, QuantVars1,
 			Goal, NonLocals0),
 	% lambda-quantified variables are local
 	set__delete_list(NonLocals0, LambdaVars, NonLocals).
