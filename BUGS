@@ -86,6 +86,22 @@ main -->
 	io__write_string("\n").
 
 -----------------------------------------------------------------------------
+Subject: NaN behaviour
+Date: Mon, 21 Oct 2002 21:02:00 +1000
+
+The mercury standard library tends to avoid producing NaN (e.g. throwing
+an exception in many places where libc would return NaN), but it's still
+possible from arithmetic functions (e.g. 0.0*Inf, Inf - Inf, Inf + -Inf,
+Inf / Inf), sin,cos,tan when passed infinity, and perhaps other things (I
+haven't done a full search).  Presumably it can also arise from using the
+foreign language interface.
+
+When NaN does arise, we have a problem that `=' (and unification) aren't
+reflexive.  From a logical point of view, this is a fairly serious problem.
+
+A lesser problem is that `<' doesn't induce a total order on floats.
+
+-----------------------------------------------------------------------------
 Subject: nit in error msg
 Date: Thu, 16 May 1996 10:25:42 +1000 (EST)
 
