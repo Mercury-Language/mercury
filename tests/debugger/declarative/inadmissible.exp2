@@ -1,0 +1,43 @@
+      E1:     C1 CALL pred inadmissible.main/2-0 (det) inadmissible.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> break gtmax
+ 0: + stop  interface pred inadmissible.gtmax/2-0 (semidet)
+mdb> continue
+      E2:     C2 CALL pred inadmissible.gtmax/2-0 (semidet)
+mdb> finish
+      E3:     C2 EXIT pred inadmissible.gtmax/2-0 (semidet)
+mdb> dd
+gtmax(2, [2, 3, 1])
+Valid? no
+list_to_set([2, 3, 1], [2, 3, 1])
+Valid? yes
+oset_max([2, 3, 1], 1)
+Valid? inadmissible
+Found inadmissible call:
+Parent gtmax(2, [2, 3, 1])
+Call oset_max([2, 3, 1], _)
+Is this a bug? yes
+      E3:     C2 EXIT pred inadmissible.gtmax/2-0 (semidet)
+mdb> dd
+gtmax(2, [2, 3, 1])
+Valid? [no] 
+Found inadmissible call:
+Parent gtmax(2, [2, 3, 1])
+Call oset_max([2, 3, 1], _)
+Is this a bug? no
+gtmax(2, [2, 3, 1])
+Valid? [no] no
+list_to_set([2, 3, 1], [2, 3, 1])
+Valid? [yes] 
+oset_max([2, 3, 1], 1)
+Valid? [inadmissible] yes
+Found incorrect contour:
+list_to_set([2, 3, 1], [2, 3, 1])
+oset_max([2, 3, 1], 1)
+>(2, 1)
+gtmax(2, [2, 3, 1])
+Is this a bug? yes
+      E3:     C2 EXIT pred inadmissible.gtmax/2-0 (semidet)
+mdb> quit -y

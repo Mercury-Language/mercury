@@ -1,0 +1,55 @@
+      E1:     C1 CALL pred find_origin.main/2-0 (det) find_origin.m:26
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> step
+      E2:     C2 CALL pred find_origin.monotest/2-0 (det)
+mdb> finish
+      E3:     C2 EXIT pred find_origin.monotest/2-0 (det)
+mdb> dd
+monotest(t(101), 1)
+Valid? b 1
+browser> mark
+monotest1(t(101))
+Valid? n
+Found incorrect contour:
+monotest1(t(101))
+Is this a bug? y
+      E4:     C3 EXIT pred find_origin.monotest1/1-0 (det)
+mdb> break polytest
+ 0: + stop  interface pred find_origin.polytest/3-0 (det)
+mdb> c
+      E5:     C4 CALL pred find_origin.polytest/3-0 (det)
+mdb> f
+      E6:     C4 EXIT pred find_origin.polytest/3-0 (det)
+mdb> dd
+polytest("hello", u("hello"), 5)
+Valid? b 2
+browser> mark
+polytest1("hello", u("hello"))
+Valid? n
+Found incorrect contour:
+polytest1("hello", u("hello"))
+Is this a bug? y
+      E7:     C5 EXIT pred find_origin.polytest1/2-0 (det)
+mdb> c
+      E6:     C4 EXIT pred find_origin.polytest/3-0 (det)
+mdb> delete 0
+ 0: E stop  interface pred find_origin.polytest/3-0 (det)
+mdb> break tracetest
+ 0: + stop  interface pred find_origin.tracetest/2-0 (det)
+mdb> c
+      E8:     C6 CALL pred find_origin.tracetest/2-0 (det)
+mdb> f
+      E9:     C6 EXIT pred find_origin.tracetest/2-0 (det)
+mdb> dd
+tracetest(t(101), -2)
+Valid? b 1
+browser> mark
+tracetest1(t(101))
+Valid? n
+Found incorrect contour:
+tracetest1(t(101))
+Is this a bug? y
+     E10:     C7 EXIT pred find_origin.tracetest1/1-0 (det)
+mdb> quit -y
