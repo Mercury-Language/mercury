@@ -170,6 +170,9 @@ varset__name_var(VarSet0, Id, Name, VarSet) :-
 
 varset__lookup_name(varset(_, Names, _), Id, Name) :-
 	map__search(Names, Id, Name0),
+	Name = Name0.
+/* This part is useful during debugging when you need to
+   be able to distinguish different variables with the same name.
 	(
 		map__member(Names, Id1, Name0),
 		Id1 \= Id
@@ -179,6 +182,7 @@ varset__lookup_name(varset(_, Names, _), Id, Name) :-
 	;
 		Name = Name0
 	).
+*/
 
 %-----------------------------------------------------------------------------%
 
