@@ -84,7 +84,7 @@ profiler/$(deps_subdir)mercury_profile.dep: library/$(deps_subdir)mer_std.dep
 .PHONY: dep_deep_profiler
 ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
 dep_deep_profiler: deep_profiler/$(deps_subdir)mdprof_cgi.dep \
-		deep_profiler/$(deps_subdir)mdprof_server.dep
+		deep_profiler/$(deps_subdir)mdprof_test.dep
 else
 dep_deep_profiler:
 endif
@@ -92,8 +92,8 @@ endif
 deep_profiler/$(deps_subdir)mdprof_cgi.dep: library/$(deps_subdir)mer_std.dep
 	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_cgi.depend
 
-deep_profiler/$(deps_subdir)mdprof_server.dep: library/$(deps_subdir)mer_std.dep
-	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_server.depend
+deep_profiler/$(deps_subdir)mdprof_test.dep: library/$(deps_subdir)mer_std.dep
+	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_test.depend
 
 # depend_library MUST be done before depend_compiler and depend_profiler
 
@@ -349,6 +349,8 @@ echo_libgrades:
 
 #-----------------------------------------------------------------------------#
 
+# The code of the install rule is duplicated in bindist/bindist.Makefile.in.
+
 .PHONY: install
 install: install_main install_grades
 	@echo
@@ -358,9 +360,11 @@ install: install_main install_grades
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
 	@echo "-- and $(INSTALL_INFO_DIR) to your INFOPATH,"
 	@if test $(ENABLE_DEEP_PROFILER) != yes || \
-		cmp -s scripts/mdprof.in $(INSTALL_CGI_DIR)/mdprof; \
+		cmp -s deep_profiler/mdprof_cgi \
+			$(INSTALL_CGI_DIR)/mdprof_cgi; \
 	then true ; else \
-		echo "-- to copy scripts/mdprof to $(INSTALL_CGI_DIR),"; \
+		echo "-- to copy deep_profiler/mdprof_cgi" \
+			"to $(INSTALL_CGI_DIR),"; \
 	fi
 	@echo "-- and to add the following lines to the \`.emacs' file"
 	@echo "-- in your home directory:"
@@ -563,6 +567,7 @@ touch_files:
 .PHONY: uninstall
 uninstall:
 	+cd scripts; $(SUBDIR_MMAKE) uninstall
+	+cd deep_profiler; $(SUBDIR_MMAKE) uninstall
 	+cd util; $(SUBDIR_MMAKE) uninstall
 	+cd doc; $(SUBDIR_MMAKE) uninstall
 	-rm -r $(INSTALL_LIBDIR)

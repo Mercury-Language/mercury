@@ -10,6 +10,7 @@
 #endif
 #include	"mercury_string.h"
 #include	"mercury_misc.h"
+#include	"mercury_array_macros.h"
 
 #include	<stdio.h>
 #include	<stdarg.h>
@@ -104,3 +105,33 @@ MR_fatal_error(const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
+typedef struct {
+	void	(*func)(void *);
+	void	*data;
+} MR_cleanup_record;
+
+static	MR_cleanup_record	*MR_cleanup_records = NULL;
+static	int			MR_cleanup_record_next = 0;
+static	int			MR_cleanup_record_max = 0;
+
+#define	INIT_CLEANUP_RECORD_ARRAY_SIZE	10
+
+void
+MR_register_exception_cleanup(void (*func)(void *), void *data)
+{
+	MR_ensure_room_for_next(MR_cleanup_record, MR_cleanup_record,
+		INIT_CLEANUP_RECORD_ARRAY_SIZE);
+	MR_cleanup_records[MR_cleanup_record_next].func = func;
+	MR_cleanup_records[MR_cleanup_record_next].data = data;
+	MR_cleanup_record_next++;
+}
+
+void
+MR_perform_registered_exception_cleanups(void)
+{
+	int	i;
+
+	for (i = 0; i < MR_cleanup_record_next; i++) {
+		MR_cleanup_records[i].func(MR_cleanup_records[i].data);
+	}
+}

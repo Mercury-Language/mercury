@@ -538,14 +538,14 @@ mercury_check_for_functions \
 		open close dup dup2 fdopen fileno fstat stat isatty \
 		getpid setpgid fork execlp wait kill \
 		grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
-		access sleep
+		access sleep opendir readdir closedir
 
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_FOR_HEADERS( \
 		unistd.h sys/wait.h sys/siginfo.h sys/signal.h ucontext.h \
 		asm/sigcontext.h sys/param.h sys/time.h sys/times.h \
 		sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
-		sys/stropts.h windows.h)
+		sys/stropts.h windows.h dirent.h)
 
 if test "$MR_HAVE_UCONTEXT_H" != 1; then
 	MERCURY_CHECK_FOR_HEADERS(sys/ucontext.h)
@@ -1447,6 +1447,38 @@ if test "$mercury_cv_is_littleender" = yes; then
 fi
 AC_SUBST(MR_LITTLE_ENDIAN)
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether we can use files as locks)
+AC_CACHE_VAL(mercury_cv_have_ocreat_oexcl,
+	AC_TRY_COMPILE([
+		#ifdef MR_HAVE_SYS_TYPES_H
+		#include <sys/types.h>
+		#endif
+		#ifdef MR_HAVE_SYS_STAT_H
+		#include <sys/stat.h>
+		#endif
+		#ifdef MR_HAVE_FCNTL_H
+		#include <fcntl.h>
+		#endif
+	],
+	[
+	#if defined(O_CREAT) && defined(O_EXCL)
+
+	#else
+	/* 
+	** As these macros are not defined the compilation must fail.
+	** Unmatched brackets should do that for us.
+	*/
+		}
+	#endif
+	], 
+	[mercury_cv_have_ocreat_oexcl=yes],
+	[mercury_cv_have_ocreat_oexcl=no])
+)
+AC_MSG_RESULT($mercury_cv_have_ocreat_oexcl)
+if test "$mercury_cv_have_ocreat_oexcl" = yes; then
+	AC_DEFINE(MR_HAVE_OCREAT_OEXCL)
+fi
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(return values of system)
 AC_CACHE_VAL(mercury_cv_normal_system_retval,
 	AC_TRY_RUN([
@@ -1842,12 +1874,21 @@ AC_ARG_ENABLE(deep-profiler,
 enable_deep_profiler="$enableval",enable_deep_profiler=default)
 AC_MSG_CHECKING(whether to enable the deep profiler)
 
-    # This test may need to be made more specific at a later date.
-    # Currently it only distinguishes between systems which have
-    # unistd.h or not, but at a later date we may also need to test for
-    # other posix features.
-if test "$MR_HAVE_UNISTD_H" = 1; then
+# We test for all the features needed by the deep profiler.
+if test "$MR_HAVE_SYS_TYPES_H" = 1 && \
+	test "$MR_HAVE_SYS_STAT_H" = 1 && \
+	test "$MR_HAVE_FCNTL_H" = 1 && \
+	test "$MR_HAVE_UNISTD_H" = 1 && \
+	test "$MR_HAVE_DIRENT_H" = 1 && \
+	test "$ac_cv_func_getpid" = yes && \
+	test "$ac_cv_func_fork" = yes && \
+	test "$ac_cv_func_opendir" = yes && \
+	test "$ac_cv_func_readdir" = yes && \
+	test "$ac_cv_func_closedir" = yes && \
+	test "$mercury_cv_have_ocreat_oexcl" = yes
+then
     mercury_cv_can_enable_deep_profiler=yes
+    AC_DEFINE(MR_DEEP_PROFILER_ENABLED)
 else
     mercury_cv_can_enable_deep_profiler=no
 fi

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999, 2001 The University of Melbourne.
+# Copyright (C) 1996-1999, 2001-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -23,7 +23,9 @@ INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 			scripts/ml scripts/mmake scripts/mprof \
 			scripts/mdb scripts/mkfifo_using_mknod
 
-INSTALL_CGI_SCRIPTS	= scripts/mdprof
+CGI_PROG_NAME		= mdprof_cgi
+
+INSTALL_CGI_PROG	= cgi/$(CGI_PROG_NAME)
 
 INSTALL_EMACS_SCRIPTS	= scripts/gud.el
 
@@ -57,18 +59,22 @@ all:
 	@echo "-- The binary distribution does not need building."
 	@echo "-- Use \`make install' to install"
 
+# The code of the install rule is duplicated from the toplevel Mmakefile,
+# with minor changes.
+
 .PHONY: install
 install: install_lib install_info install_man \
-		install_scripts install_emacs_scripts install_cgi_scripts \
+		install_scripts install_emacs_scripts install_cgi_progs \
 		install_mmake install_mdb install_util install_gac
 	@echo
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
 	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH,"
 	@if test $(ENABLE_DEEP_PROFILER) != yes || \
-		cmp -s scripts/mdprof.in $(INSTALL_CGI_DIR)/mdprof; \
+		cmp -s $(INSTALL_CGI_PROG) \
+			$(INSTALL_CGI_DIR)/$(CGI_PROG_NAME); \
 	then true ; else \
-		echo "-- to copy scripts/mdprof to $(INSTALL_CGI_DIR),"; \
+		echo "-- to copy $(INSTALL_CGI_PROG) to $(INSTALL_CGI_DIR),"; \
 	fi
 	@echo "-- and to add the following lines to the \`.emacs' file"
 	@echo "-- in your home directory:"
@@ -118,15 +124,25 @@ install_emacs_scripts:
 	test -d $(INSTALL_ELISP_DIR) || mkdir -p $(INSTALL_ELISP_DIR)
 	cp $(INSTALL_EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
 
-.PHONY: install_cgi_scripts
-install_cgi_scripts: $(INSTALL_CGI_SCRIPTS)
+# The code of the install_cgi_progs target is duplicated from the code
+# of the install_cgi_progs target in deep_profiler/Mmakefile. However,
+# they refer to the script by different paths.
+
+.PHONY: install_cgi_progs
+install_cgi_progs: $(INSTALL_CGI_PROG)
 	# $(INSTALL_CGI_DIR) is likely to be writeable only by root or
 	# the www system administrator, which is why we don't consider a
 	# failure of this action to be an error. If the command fails,
-	# the action for the `install' target will remind the user
-	# to do the copy later.
+	# the install action in ../Mmakefile will remind the user to do
+	# the copy later.
+	#
+	# The mv before the cp is there in case the executable is being
+	# executed when we do the install. The mv is of course expected to
+	# fail during a first-time installation.
 	-if test $(ENABLE_DEEP_PROFILER) = yes ; then \
-		cp $(INSTALL_CGI_SCRIPTS) $(INSTALL_CGI_DIR) ; \
+		mv $(INSTALL_CGI_DIR)/$(CGI_PROG_NAME) \
+			$(INSTALL_CGI_DIR)/$(CGI_PROG_NAME).was ; \
+		cp $(INSTALL_CGI_PROG) $(INSTALL_CGI_DIR) ; \
 	fi
 
 .PHONY: install_mmake

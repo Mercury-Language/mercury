@@ -20,7 +20,6 @@ SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
 	  mercury.bat
 DEBUGGER_SCRIPTS = mdbrc
 EMACS_SCRIPTS = gud.el
-CGI_SCRIPTS = mdprof
 
 #-----------------------------------------------------------------------------#
 
@@ -34,7 +33,7 @@ CGI_SCRIPTS = mdprof
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS) $(CGI_SCRIPTS)
+all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
 all: Mmake.vars
 
 #-----------------------------------------------------------------------------#
@@ -90,17 +89,6 @@ install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
 install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
 	cp $(EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
 
-.PHONY: install_cgi_scripts
-install_cgi_scripts: $(CGI_SCRIPTS)
-	# $(INSTALL_CGI_DIR) is likely to be writeable only by root or
-	# the www system administrator, which is why we don't consider a
-	# failure of this action to be an error. If the command fails,
-	# the install action in ../Mmakefile will remind the user to do
-	# the copy later.
-	-if test $(ENABLE_DEEP_PROFILER) = yes ; then \
-		cp $(CGI_SCRIPTS) $(INSTALL_CGI_DIR) ; \
-	fi
-
 #-----------------------------------------------------------------------------#
 
 .PHONY: uninstall
@@ -113,15 +101,6 @@ uninstall:
 	# on $(INSTALL_LIBDIR), and the directory into which $(EMACS_SCRIPTS)
 	# is installed, $(INSTALL_ELISP_DIR), is configured to be a
 	# subdirectory of $(INSTALL_LIBDIR).
-	#
-	# We try to uninstall $(CGI_SCRIPTS), but failure to do so is not an
-	# error for two reasons: because we may simply lack permission to
-	# update the directory, and because the deep profiler installation
-	# may not have been enabled in the first place. (Looking at the current
-	# value of $(ENABLE_DEEP_PROFILER) to check for the latter wouldn't
-	# necessarily do any good, since its setting may have changed since
-	# the original install.)
-	-cd $(INSTALL_CGI_DIR) && rm $(CGI_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
 
