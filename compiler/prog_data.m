@@ -48,60 +48,106 @@
 :- type item_and_context ==	pair(item, prog_context).
 
 :- type item		
-	--->	clause(prog_varset, pred_or_func, sym_name,
-			list(prog_term), goal)
-		%	VarNames, PredOrFunc, PredName, HeadArgs, ClauseBody
+	--->	clause(
+			cl_varset		:: prog_varset,
+			cl_pred_or_func		:: pred_or_func,
+			cl_predname		:: sym_name,
+			cl_head_args		:: list(prog_term),
+			cl_body			:: goal
+		)
 
-	; 	type_defn(tvarset, sym_name, list(type_param),
-			type_defn, condition)
-		%	VarNames, TypeName, Args, TypeDefn, Condition
+	; 	type_defn(
+			td_tvarset		:: tvarset,
+			td_ctor_name		:: sym_name,
+			td_ctor_args		:: list(type_param),
+			td_ctor_defn		:: type_defn,
+			td_cond			:: condition
+		)
 
-	; 	inst_defn(inst_varset, sym_name, list(inst_var),
-			inst_defn, condition)
-	; 	mode_defn(inst_varset, sym_name, list(inst_var),
-			mode_defn, condition)
-	; 	module_defn(prog_varset, module_defn)
+	; 	inst_defn(
+			id_varset		:: inst_varset,
+			id_inst_name		:: sym_name,
+			id_inst_args		:: list(inst_var),
+			id_inst_defn		:: inst_defn,
+			id_cond			:: condition
+		)
 
-	; 	pred_or_func(tvarset, inst_varset, existq_tvars, pred_or_func,
-			sym_name, list(type_and_mode), maybe(type),
-			maybe(inst), maybe(determinism),
-			condition, purity, class_constraints)
-		%       TypeVarNames, InstVarNames,
-		%	ExistentiallyQuantifiedTypeVars, PredOrFunc, PredName,
-		%	ArgTypesAndModes, WithType, WithInst, Determinism,
-		%	Cond, Purity, TypeClassContext
-		%
+	; 	mode_defn(
+			md_varset		:: inst_varset,
+			md_mode_name		:: sym_name,
+			md_mode_args		:: list(inst_var),
+			md_mode_defn		:: mode_defn,
+			md_cond			:: condition
+		)
+
+	; 	module_defn(
+			module_defn_varset	:: prog_varset,
+			module_defn_module_defn	:: module_defn
+		)
+
+	; 	pred_or_func(
+			pf_tvarset		:: tvarset,
+			pf_instvarset		:: inst_varset,
+			pf_existqvars		:: existq_tvars,
+			pf_which		:: pred_or_func,
+			pf_name			:: sym_name,
+			pf_arg_decls		:: list(type_and_mode),
+			pf_maybe_with_type	:: maybe(type),
+			pf_maybe_with_inst	:: maybe(inst),
+			pf_maybe_detism		:: maybe(determinism),
+			pf_cond			:: condition,
+			pf_purity		:: purity,
+			pf_class_context	:: class_constraints
+		)
 		%	The WithType and WithInst fields hold the `with_type`
 		% 	and `with_inst` annotations, which are syntactic
 		%	sugar that is expanded by equiv_type.m
 		%	equiv_type.m will set these fields to `no'.
 
-	; 	pred_or_func_mode(inst_varset, maybe(pred_or_func), sym_name,
-			list(mode), maybe(inst), maybe(determinism), condition)
-		%       VarNames, PredOrFunc, PredName, ArgModes, WithInst,
-		%	Determinism, Cond
-		%
+	; 	pred_or_func_mode(
+			pfm_instvarset		:: inst_varset,
+			pfm_which		:: maybe(pred_or_func),
+			pfm_name		:: sym_name,
+			pfm_arg_modes		:: list(mode),
+			pfm_maybe_with_inst	:: maybe(inst),
+			pfm_maybe_detism	:: maybe(determinism),
+			pfm_cond		:: condition
+		)
 		%	The WithInst field holds the `with_inst` annotation,
 		%	which is syntactic sugar that is expanded by
 		%	equiv_type.m. equiv_type.m will set the field to `no'.
 
-	;	pragma(pragma_type)
+	;	pragma(
+			pragma_type		:: pragma_type
+		)
 
-	;	promise(promise_type, goal, prog_varset, prog_vars)
-		% 	PromiseType, PromiseClause, ProgVariables, 
-		% 	UniversallyQuantifiedVars
+	;	promise(
+			prom_type		:: promise_type,
+			prom_clause		:: goal,
+			prom_varset		:: prog_varset,
+			prom_univ_quant_vars	:: prog_vars
+		)
 
-	;	typeclass(list(class_constraint), class_name, list(tvar),
-			class_interface, tvarset)
-		%	Constraints, ClassName, ClassParams, 
-		%	ClassMethods, VarNames
+	;	typeclass(
+			tc_constraints		:: list(class_constraint),
+			tc_class_name		:: class_name,
+			tc_class_params		:: list(tvar),
+			tc_class_methods	:: class_interface,
+			tc_varset		:: tvarset
+		)
 
-	;	instance(list(class_constraint), class_name, list(type),
-			instance_body, tvarset, module_name)
-		%	DerivingClass, ClassName, Types, 
-		%	MethodInstances, VarNames, ModuleContainingInstance
+	;	instance(
+			ci_deriving_class	:: list(class_constraint),
+			ci_class_name		:: class_name,
+			ci_types		:: list(type),
+			ci_method_instances	:: instance_body,
+			ci_varset		:: tvarset,
+			ci_module_containing_instance :: module_name
+		)
 
-	;	nothing(maybe(item_warning)).
+	;	nothing(
+			nothing_maybe_warning	:: maybe(item_warning)
+		).
 		% used for items that should be ignored (e.g.
 		% NU-Prolog `when' declarations, which are silently
 		% ignored for backwards compatibility).

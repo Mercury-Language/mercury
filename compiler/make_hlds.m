@@ -2033,11 +2033,11 @@ module_add_inst_defn(Module0, VarSet, Name, Args, InstDefn, Cond,
 insts_add(_, _, _, _, abstract_inst, _, _, _, _) -->
 	{ error("sorry, abstract insts not implemented") }.
 insts_add(Insts0, VarSet, Name, Args, eqv_inst(Body),
-			Cond, Context, Status, Insts) -->
+			_Cond, Context, Status, Insts) -->
 	{ list__length(Args, Arity) },
 	(
-		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Cond,
-					Context, Status) },
+		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(Body),
+			Context, Status) },
 		{ user_inst_table_insert(Insts0, Name - Arity, I, Insts1) }
 	->
 		{ Insts = Insts1 }
@@ -2050,8 +2050,7 @@ insts_add(Insts0, VarSet, Name, Args, eqv_inst(Body),
 		%	 module_info_incr_errors
 		{ user_inst_table_get_inst_defns(Insts, InstDefns) },
 		{ map__lookup(InstDefns, Name - Arity, OrigI) },
-		{ OrigI = hlds_inst_defn(_, _, _, _,
-					OrigContext, _) },
+		{ OrigI = hlds_inst_defn(_, _, _, OrigContext, _) },
 		multiple_def_error(Status, Name, Arity, "inst",
 			Context, OrigContext, _)
 	).
@@ -2073,7 +2072,7 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
 		{ user_inst_table_get_inst_defns(UserInstTable, InstDefns) },
 		(
 			{ map__search(InstDefns, InstId0, InstDefn) },
-			{ InstDefn = hlds_inst_defn(_, Params, Body, _, _, _) },
+			{ InstDefn = hlds_inst_defn(_, Params, Body, _, _) },
 			{ Body = eqv_inst(EqvInst0) },
 			{ inst_substitute_arg_list(EqvInst0, Params, Args0,
 				EqvInst) },
@@ -2111,11 +2110,11 @@ module_add_mode_defn(Module0, VarSet, Name, Params, ModeDefn, Cond,
 :- mode modes_add(in, in, in, in, in, in, in, in, out, out, di, uo) is det.
 
 modes_add(Modes0, VarSet, Name, Args, eqv_mode(Body),
-			Cond, Context, Status, Modes, InvalidMode) -->
+			_Cond, Context, Status, Modes, InvalidMode) -->
 	{ list__length(Args, Arity) },
 	{ ModeId = Name - Arity },
 	(
-		{ I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Cond,
+		{ I = hlds_mode_defn(VarSet, Args, eqv_mode(Body),
 			Context, Status) },
 		{ mode_table_insert(Modes0, ModeId, I, Modes1) }
 	->
@@ -2124,7 +2123,7 @@ modes_add(Modes0, VarSet, Name, Args, eqv_mode(Body),
 		{ Modes = Modes0 },
 		{ mode_table_get_mode_defns(Modes, ModeDefns) },
 		{ map__lookup(ModeDefns, ModeId, OrigI) },
-		{ OrigI = hlds_mode_defn(_, _, _, _, OrigContext, _) },
+		{ OrigI = hlds_mode_defn(_, _, _, OrigContext, _) },
 		% XXX we should record each error using
 		% 	module_info_incr_errors
 		multiple_def_error(Status, Name, Arity, "mode",
@@ -2150,7 +2149,7 @@ check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
 		{ mode_table_get_mode_defns(ModeTable, ModeDefns) },
 		(
 			{ map__search(ModeDefns, ModeId0, ModeDefn) },
-			{ ModeDefn = hlds_mode_defn(_, _, Body, _, _, _) },
+			{ ModeDefn = hlds_mode_defn(_, _, Body, _, _) },
 			{ Body = eqv_mode(EqvMode) },
 			{ EqvMode = user_defined_mode(Name, Args) }
 		->

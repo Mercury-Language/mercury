@@ -1065,14 +1065,14 @@ recompilation__usage__find_items_used_by_type_body(foreign_type(_)) --> [].
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_items_used_by_mode_defn(
-		hlds_mode_defn(_, _, eqv_mode(Mode), _, _, _)) -->
+		hlds_mode_defn(_, _, eqv_mode(Mode), _, _)) -->
 	recompilation__usage__find_items_used_by_mode(Mode).
 
 :- pred recompilation__usage__find_items_used_by_inst_defn(hlds_inst_defn::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_items_used_by_inst_defn(
-		hlds_inst_defn(_, _, InstBody, _, _, _)) -->
+		hlds_inst_defn(_, _, InstBody, _, _)) -->
 	(
 		{ InstBody = eqv_inst(Inst) },
 		recompilation__usage__find_items_used_by_inst(Inst)

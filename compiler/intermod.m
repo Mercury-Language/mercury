@@ -1360,7 +1360,7 @@ intermod__write_modes(ModuleInfo) -->
 intermod__write_mode(ModuleName, ModeId, ModeDefn) -->
 	{ ModeId = SymName - _Arity },
 	{ ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode),
-			_, Context, ImportStatus) },
+		Context, ImportStatus) },
 	(
 		{ SymName = qualified(ModuleName, _) },
 		{ import_status_to_write(ImportStatus) }
@@ -1387,8 +1387,8 @@ intermod__write_insts(ModuleInfo) -->
 
 intermod__write_inst(ModuleName, InstId, InstDefn) -->
 	{ InstId = SymName - _Arity },
-	{ InstDefn = hlds_inst_defn(Varset, Args, Body, _,
-			Context, ImportStatus) },
+	{ InstDefn = hlds_inst_defn(Varset, Args, Body,
+		Context, ImportStatus) },
 	(
 		{ SymName = qualified(ModuleName, _) },
 		{ import_status_to_write(ImportStatus) }

@@ -29,80 +29,90 @@
 
 :- type cons_table	==	map(cons_id, list(hlds_cons_defn)).
 
-:- type cons_id		--->	cons(sym_name, arity)	% name, arity
-				% Tuples have cons_id
-				% `cons(unqualified("{}"), Arity)'.
+:- type cons_id
+	--->	cons(sym_name, arity)	% name, arity
+		% Tuples have cons_id
+		% `cons(unqualified("{}"), Arity)'.
 
-			;	int_const(int)
-			;	string_const(string)
-			;	float_const(float)
-			;	pred_const(pred_id, proc_id,
-					lambda_eval_method)
-			;	code_addr_const(pred_id, proc_id)
-				% No longer used. code_addr_const cons_ids
-				% were once used to construct type_infos.
-				% Note that a pred_const is for a closure
-				% whereas a code_addr_const is just an address.
-			;	type_ctor_info_const(module_name, string, int)
-				% module name, type name, type arity
-			;	base_typeclass_info_const(module_name,
-					class_id, int, string)
-				% module name of instance declaration
-				% (not filled in so that link errors result
-				% from overlapping instances),
-				% class name and arity,
-				% class instance, a string encoding the type
-				% names and arities of the arguments to the
-				% instance declaration 
-			;	tabling_pointer_const(pred_id, proc_id)
-				% The address of the static variable
-				% that points to the table that implements
-				% memoization, loop checking or the minimal
-				% model semantics for the given procedure.
-			;	deep_profiling_proc_static(rtti_proc_label)
-				% The ProcStatic structure of a procedure,
-				% as documented in the deep profiling paper.
-			;	table_io_decl(rtti_proc_label).
-				% The address of a structure that describes
-				% the layout of the answer block used by
-				% I/O tabling for declarative debugging.
+	;	int_const(int)
+	;	string_const(string)
+	;	float_const(float)
+	;	pred_const(pred_id, proc_id,
+			lambda_eval_method)
+	;	code_addr_const(pred_id, proc_id)
+		% No longer used. code_addr_const cons_ids
+		% were once used to construct type_infos.
+		% Note that a pred_const is for a closure
+		% whereas a code_addr_const is just an address.
+	;	type_ctor_info_const(module_name, string, int)
+		% module name, type name, type arity
+	;	base_typeclass_info_const(module_name,
+			class_id, int, string)
+		% module name of instance declaration
+		% (not filled in so that link errors result
+		% from overlapping instances),
+		% class name and arity,
+		% class instance, a string encoding the type
+		% names and arities of the arguments to the
+		% instance declaration
+	;	tabling_pointer_const(pred_id, proc_id)
+		% The address of the static variable
+		% that points to the table that implements
+		% memoization, loop checking or the minimal
+		% model semantics for the given procedure.
+	;	deep_profiling_proc_static(rtti_proc_label)
+		% The ProcStatic structure of a procedure,
+		% as documented in the deep profiling paper.
+	;	table_io_decl(rtti_proc_label).
+		% The address of a structure that describes
+		% the layout of the answer block used by
+		% I/O tabling for declarative debugging.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
 	% or a functor) for a particular type.
 
-:- type hlds_cons_defn
-	--->	hlds_cons_defn(
-			% maybe add tvarset here?
-			% you can get the tvarset from the hlds__type_defn.
-			existq_tvars,		% existential type vars
-			list(class_constraint), % existential class constraints
-			list(constructor_arg),	% The field names and types of
-						% the arguments of this functor
-						% (if any)
-			type_ctor,		% The result type, i.e. the
-						% type to which this
-						% cons_defn belongs.
-			prog_context		% The location of this
-						% ctor definition in the
-						% original source code
-		).
+:- type hlds_cons_defn --->
+	hlds_cons_defn(
+		% maybe add tvarset here?
+		% you can get the tvarset from the hlds__type_defn.
+		cons_exist_tvars	:: existq_tvars,
+					% existential type vars
+		cons_constraints	:: list(class_constraint),
+					% existential class constraints
+		cons_args		:: list(constructor_arg),
+					% The field names and types of
+					% the arguments of this functor
+					% (if any)
+		cons_type_ctor		:: type_ctor,
+					% The result type, i.e. the
+					% type to which this
+					% cons_defn belongs.
+		cons_context		:: prog_context
+					% The location of this
+					% constructor definition in the
+					% original source code
+	).
 
 %-----------------------------------------------------------------------------%
 
 :- type ctor_field_table == map(ctor_field_name, list(hlds_ctor_field_defn)).
 
-:- type hlds_ctor_field_defn
-	---> hlds_ctor_field_defn(
-		prog_context,	% context of the field definition
-		import_status,
-		type_ctor,	% type containing the field
-		cons_id,	% constructor containing the field
-		int		% argument number (counting from 1)
+:- type hlds_ctor_field_defn --->
+	hlds_ctor_field_defn(
+		field_context	:: prog_context,
+				% context of the field definition
+		field_status	:: import_status,
+		field_type_ctor	:: type_ctor,
+				% type containing the field
+		field_cons_id	:: cons_id,
+				% constructor containing the field
+		field_arg_num	:: int
+				% argument number (counting from 1)
 	).
 
 	%
 	% Field accesses are expanded into inline unifications by
-	% post_typecheck.m after typechecking has worked out which 
+	% post_typecheck.m after typechecking has worked out which
 	% field is being referred to.
 	%
 	% Function declarations and clauses are not generated for these
@@ -135,7 +145,7 @@
 :- mode cons_id_arity(in, out) is det.
 
 	% Get the arity of a cons_id. Return a `no' on those cons_ids
-	% where cons_id_arity/2 would normally abort. 
+	% where cons_id_arity/2 would normally abort.
 
 :- pred cons_id_maybe_arity(cons_id, maybe(arity)).
 :- mode cons_id_maybe_arity(in, out) is det.
@@ -302,25 +312,25 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 :- type hlds_type_body
 	--->	du_type(
 					% the ctors for this type
-			du_type_ctors :: list(constructor), 
+			du_type_ctors		:: list(constructor),
 
 					% their tag values
-			du_type_cons_tag_values :: cons_tag_values,
+			du_type_cons_tag_values	:: cons_tag_values,
 
 					% is this type an enumeration?
-			du_type_is_enum :: bool,
+			du_type_is_enum		:: bool,
 
 					% user-defined equality and
 					% comparison preds
-			du_type_usereq :: maybe(unify_compare),
+			du_type_usereq		:: maybe(unify_compare),
 
 					% is there a `:- pragma reserve_tag'
 					% pragma for this type?
-			du_type_reserved_tag :: bool,
+			du_type_reserved_tag	:: bool,
 
 					% are there `:- pragma foreign' type
 					% declarations for this type?
-			du_type_is_foreign_type :: maybe(foreign_type_body)
+			du_type_is_foreign_type	:: maybe(foreign_type_body)
 		)
 	;	eqv_type(type)
 	;	foreign_type(foreign_type_body)
@@ -538,27 +548,27 @@ get_secondary_tag(reserved_address(_)) = no.
 get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
 		= get_secondary_tag(TagValue).
 
-:- type hlds_type_defn
-	--->	hlds_type_defn(
-			type_defn_tvarset :: tvarset,	
-						% Names of type vars (empty
-						% except for polymorphic types)
-			type_defn_params :: list(type_param),
-						% Formal type parameters
-			type_defn_body :: hlds_type_body,
-						% The definition of the type
+:- type hlds_type_defn --->
+	hlds_type_defn(
+		type_defn_tvarset	:: tvarset,
+					% Names of type vars (empty
+					% except for polymorphic types)
+		type_defn_params	:: list(type_param),
+					% Formal type parameters
+		type_defn_body		:: hlds_type_body,
+					% The definition of the type
 
-			type_defn_import_status :: import_status,
-						% Is the type defined in this
-						% module, and if yes, is it
-						% exported
+		type_defn_import_status	:: import_status,
+					% Is the type defined in this
+					% module, and if yes, is it
+					% exported
 
-			type_defn_need_qualifier :: need_qualifier,
-						% Do uses of the type and
-						% its constructors need
-						% to be qualified.
+		type_defn_need_qualifier :: need_qualifier,
+					% Do uses of the type and
+					% its constructors need
+					% to be qualified.
 
-%			condition,		% UNUSED
+%		type_defn_condition	:: condition,		% UNUSED
 %				% Reserved for holding a user-defined invariant
 %				% for the type, as in the NU-Prolog's type
 %				% checker, which allows `where' conditions on
@@ -566,11 +576,11 @@ get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
 %				% :- type sorted_list(T) == list(T)
 %				%	where sorted.
 
-			type_defn_context :: prog_context	
-						% The location of this type
-						% definition in the original
-						% source code
-		).
+		type_defn_context	:: prog_context
+					% The location of this type
+					% definition in the original
+					% source code
+	).
 
 hlds_data__set_type_defn(Tvarset, Params, Body, Status,
 		NeedQual, Context, Defn) :-
@@ -628,22 +638,28 @@ hlds_data__set_type_defn_status(Defn, Status,
 	% about inst definitions such as
 	%	:- inst list_skel(I) = bound([] ; [I | list_skel(I)].
 
-:- type hlds_inst_defn
-	--->	hlds_inst_defn(
-			inst_varset,		% The names of the inst
-						% parameters (if any).
-			list(inst_var),		% The inst parameters (if any).
-						% ([I] in the above example.)
-			hlds_inst_body,	% The definition of this inst.
-			condition,		% Unused (reserved for
-						% holding a user-defined 
-						% invariant).
-			prog_context,		% The location in the source
-						% code of this inst definition.
+:- type hlds_inst_defn --->
+	hlds_inst_defn(
+		inst_varset		:: inst_varset,
+					% The names of the inst
+					% parameters (if any).
+		inst_params		:: list(inst_var),
+					% The inst parameters (if any).
+					% ([I] in the above example.)
+		inst_body		:: hlds_inst_body,
+					% The definition of this inst.
+%		inst_condition		:: condition,
+%					% Unused (reserved for
+%					% holding a user-defined
+%					% invariant).
+		inst_context		:: prog_context,
+					% The location in the source
+					% code of this inst definition.
 
-			import_status		% So intermod.m can tell 
-						% whether to output this inst.
-		).
+		inst_status		:: import_status
+					% So intermod.m can tell
+					% whether to output this inst.
+	).
 
 :- type hlds_inst_body
 	--->	eqv_inst(inst)			% This inst is equivalent to
@@ -721,13 +737,13 @@ hlds_data__set_type_defn_status(Defn, Status,
 
 :- type inst_table
 	--->	inst_table(
-			user_inst_table,
-			unify_inst_table,
-			merge_inst_table,
-			ground_inst_table,
-			any_inst_table,
-			shared_inst_table,
-			mostly_uniq_inst_table
+			inst_table_user		:: user_inst_table,
+			inst_table_unify	:: unify_inst_table,
+			inst_table_merge	:: merge_inst_table,
+			inst_table_ground	:: ground_inst_table,
+			inst_table_any		:: any_inst_table,
+			inst_table_shared	:: shared_inst_table,
+			inst_table_mostly_uniq	:: mostly_uniq_inst_table
 		).
 
 :- type user_inst_defns.
@@ -750,46 +766,29 @@ inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
 	map__init(AnyInsts),
 	map__init(NondetLiveInsts).
 
-inst_table_get_user_insts(inst_table(UserInsts, _, _, _, _, _, _), UserInsts).
+inst_table_get_user_insts(InstTable, InstTable ^ inst_table_user).
+inst_table_get_unify_insts(InstTable, InstTable ^ inst_table_unify).
+inst_table_get_merge_insts(InstTable, InstTable ^ inst_table_merge).
+inst_table_get_ground_insts(InstTable, InstTable ^ inst_table_ground).
+inst_table_get_any_insts(InstTable, InstTable ^ inst_table_any).
+inst_table_get_shared_insts(InstTable, InstTable ^ inst_table_shared).
+inst_table_get_mostly_uniq_insts(InstTable,
+	InstTable ^ inst_table_mostly_uniq).
 
-inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _),
-			UnifyInsts).
-
-inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _),
-			MergeInsts).
-
-inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _),
-			GroundInsts).
-
-inst_table_get_any_insts(inst_table(_, _, _, _, AnyInsts, _, _), AnyInsts).
-
-inst_table_get_shared_insts(inst_table(_, _, _, _, _, SharedInsts, _),
-			SharedInsts).
-
-inst_table_get_mostly_uniq_insts(inst_table(_, _, _, _, _, _, NondetLiveInsts),
-			NondetLiveInsts).
-
-inst_table_set_user_insts(inst_table(_, B, C, D, E, F, G), UserInsts,
-			inst_table(UserInsts, B, C, D, E, F, G)).
-
-inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G), UnifyInsts,
-			inst_table(A, UnifyInsts, C, D, E, F, G)).
-
-inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G), MergeInsts,
-			inst_table(A, B, MergeInsts, D, E, F, G)).
-
-inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G), GroundInsts,
-			inst_table(A, B, C, GroundInsts, E, F, G)).
-
-inst_table_set_any_insts(inst_table(A, B, C, D, _, F, G), AnyInsts,
-			inst_table(A, B, C, D, AnyInsts, F, G)).
-
-inst_table_set_shared_insts(inst_table(A, B, C, D, E, _, G), SharedInsts,
-			inst_table(A, B, C, D, E, SharedInsts, G)).
-
-inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _),
-			NondetLiveInsts,
-			inst_table(A, B, C, D, E, F, NondetLiveInsts)).
+inst_table_set_user_insts(InstTable, UserInsts,
+	InstTable ^ inst_table_user := UserInsts).
+inst_table_set_unify_insts(InstTable, UnifyInsts,
+	InstTable ^ inst_table_unify := UnifyInsts).
+inst_table_set_merge_insts(InstTable, MergeInsts,
+	InstTable ^ inst_table_merge := MergeInsts).
+inst_table_set_ground_insts(InstTable, GroundInsts,
+	InstTable ^ inst_table_ground := GroundInsts).
+inst_table_set_any_insts(InstTable, AnyInsts,
+	InstTable ^ inst_table_any := AnyInsts).
+inst_table_set_shared_insts(InstTable, SharedInsts,
+	InstTable ^ inst_table_shared := SharedInsts).
+inst_table_set_mostly_uniq_insts(InstTable, MostlyUniqInsts,
+	InstTable ^ inst_table_mostly_uniq := MostlyUniqInsts).
 
 user_inst_table_get_inst_defns(user_inst_table(InstDefns, _), InstDefns).
 
@@ -800,7 +799,7 @@ user_inst_table_insert(user_inst_table(InstDefns0, InstIds0), InstId,
 	map__insert(InstDefns0, InstId, InstDefn, InstDefns),
 	InstIds = [InstId | InstIds0].
 
-user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0), 
+user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 			user_inst_table(InstDefns, InstIds)) :-
 	map__optimize(InstDefns0, InstDefns),
 	list__sort(InstIds0, InstIds).
@@ -825,25 +824,30 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 	% or
 	%	:- mode in_list_skel :: in(list_skel).
 
-:- type hlds_mode_defn
-	--->	hlds_mode_defn(
-			inst_varset,		% The names of the inst
-						% parameters (if any).
-			list(inst_var),		% The list of the inst
-						% parameters (if any).
-						% (e.g. [I] for the second
-						% example above.)
-			hlds_mode_body,	% The definition of this mode.
-			condition,		% Unused (reserved for
-						% holding a user-defined
-						% invariant).
-			prog_context,		% The location of this mode
-						% definition in the original
-						% source code.
-			import_status		% So intermod.m can tell 
-						% whether to output this mode.
-					
-		).
+:- type hlds_mode_defn --->
+	hlds_mode_defn(
+		mode_varset		:: inst_varset,
+					% The names of the inst
+					% parameters (if any).
+		mode_params		:: list(inst_var),
+					% The list of the inst
+					% parameters (if any).
+					% (e.g. [I] for the second
+					% example above.)
+		mody_body		:: hlds_mode_body,
+					% The definition of this mode.
+%		mode_condition		:: condition,
+%					% Unused (reserved for
+%					% holding a user-defined
+%					% invariant).
+		mode_context		:: prog_context,
+					% The location of this mode
+					% definition in the original
+					% source code.
+		mode_status		:: import_status
+					% So intermod.m can tell
+					% whether to output this mode.
+	).
 
 	% The only sort of mode definitions allowed are equivalence modes.
 
@@ -894,7 +898,7 @@ mode_table_init(mode_table(ModeDefns, [])) :-
 
 mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
 			mode_table(ModeDefns, ModeIds)) :-
-	map__optimize(ModeDefns0, ModeDefns), 	% NOP	
+	map__optimize(ModeDefns0, ModeDefns), 	% NOP
 	list__sort(ModeIds0, ModeIds).		% Sort the list of mode_ids
 			% for quick conversion to a set by module_qual
 			% when qualifying the modes of lambda expressions.
@@ -948,23 +952,29 @@ determinism_components(failure,     can_fail,    at_most_zero).
 :- type class_id 	--->	class_id(sym_name, arity).
 
 	% Information about a single `typeclass' declaration
-:- type hlds_class_defn 
-	--->	hlds_class_defn(
-			import_status,
-			list(class_constraint), % SuperClasses
-			list(tvar),		% ClassVars 
-			class_interface,	% The interface from the
-						% original declaration,
-						% used by intermod.m to
-						% write out the interface
-						% for a local typeclass to
-						% the `.opt' file.
-			hlds_class_interface, 	% Methods
-			tvarset,		% VarNames
-			prog_context		% Location of declaration
-		).
+:- type hlds_class_defn --->
+	hlds_class_defn(
+		class_status		:: import_status,
+		class_supers		:: list(class_constraint),
+					% SuperClasses
+		class_vars		:: list(tvar),
+					% ClassVars
+		class_interface		:: class_interface,
+					% The interface from the
+					% original declaration,
+					% used by intermod.m to
+					% write out the interface
+					% for a local typeclass to
+					% the `.opt' file.
+		class_hlds_interface	:: hlds_class_interface,
+					% Methods
+		class_tvarset		:: tvarset,
+					% VarNames
+		class_context		:: prog_context
+					% Location of declaration
+	).
 
-:- type hlds_class_interface	==	list(hlds_class_proc).	
+:- type hlds_class_interface	==	list(hlds_class_proc).
 :- type hlds_class_proc
 	---> 	hlds_class_proc(
 			pred_id,
@@ -976,31 +986,39 @@ determinism_components(failure,     can_fail,    at_most_zero).
 :- type instance_table == map(class_id, list(hlds_instance_defn)).
 
 	% Information about a single `instance' declaration
-:- type hlds_instance_defn 
-	--->	hlds_instance_defn(
-			module_name,		% module of the instance decl
-			import_status,		% import status of the instance
-						% declaration
-			prog_context,		% context of declaration
-			list(class_constraint), % Constraints
-			list(type), 		% ClassTypes 
-			instance_body, 		% Methods
-			maybe(hlds_class_interface),
-						% After check_typeclass, we 
-						% will know the pred_ids and
-						% proc_ids of all the methods
-			tvarset,		% VarNames
-			map(class_constraint, constraint_proof)
-						% "Proofs" of how to build the
-						% typeclass_infos for the
-						% superclasses of this class,
-						% for this instance
-		).
+:- type hlds_instance_defn --->
+	hlds_instance_defn(
+		instance_module		:: module_name,
+					% module of the instance decl
+		instance_status		:: import_status,
+					% import status of the instance
+					% declaration
+		instance_context	:: prog_context,
+					% context of declaration
+		instance_constraints	:: list(class_constraint),
+					% Constraints
+		instance_types		:: list(type),
+					% ClassTypes
+		instance_body		:: instance_body,
+					% Methods
+		instance_hlds_interface	:: maybe(hlds_class_interface),
+					% After check_typeclass, we
+					% will know the pred_ids and
+					% proc_ids of all the methods
+		instance_tvarset	:: tvarset,
+					% VarNames
+		instance_proofs		:: map(class_constraint,
+						constraint_proof)
+					% "Proofs" of how to build the
+					% typeclass_infos for the
+					% superclasses of this class,
+					% for this instance
+	).
 
 	% `Proof' of why a constraint is redundant
-:- type constraint_proof			
+:- type constraint_proof
 			% Apply the instance decl with the given number.
-			% Note that we don't store the actual 
+			% Note that we don't store the actual
 			% hlds_instance_defn for two reasons:
 			% - That would require storing a renamed version of
 			%   the constraint_proofs for *every* use of an
@@ -1021,18 +1039,22 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 %-----------------------------------------------------------------------------%
 
-:- type subclass_details 
-	--->	subclass_details(
-			list(type),		% arguments of the
-						% superclass constraint
-			class_id,		% name of the subclass
-			list(tvar),		% variables of the subclass
-			tvarset			% the names of these vars
-		).
+:- type subclass_details --->
+	subclass_details(
+		subclass_types		:: list(type),
+					% arguments of the
+					% superclass constraint
+		subclass_id		:: class_id,
+					% name of the subclass
+		subclass_tvars		:: list(tvar),
+					% variables of the subclass
+		subclass_tvarset	:: tvarset
+					% the names of these vars
+	).
 
 :- import_module multi_map.
 
-	% I'm sure there's a very clever way of 
+	% I'm sure there's a very clever way of
 	% doing this with graphs or relations...
 :- type superclass_table == multi_map(class_id, subclass_details).
 
@@ -1047,7 +1069,7 @@ determinism_components(failure,     can_fail,    at_most_zero).
 	% subject to the constraints imposed by the quantifiers.
 	%
 	% ie :- promise all [A] some [B] (B > A)
-	% 
+	%
 	% The above assertion states that for all possible values of A,
 	% there will exist at least one value, B, such that B is greater
 	% then A.
@@ -1071,7 +1093,7 @@ determinism_components(failure,     can_fail,    at_most_zero).
 :- import_module int.
 
 :- type assert_id == int.
-:- type assertion_table 
+:- type assertion_table
 	---> 	assertion_table(assert_id, map(assert_id, pred_id)).
 
 assertion_table_init(assertion_table(0, AssertionMap)) :-
@@ -1094,9 +1116,9 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
 
 :- interface.
 
-	% 
+	%
 	% A table recording exclusivity declarations (i.e. promise_exclusive
-	% and promise_exclusive_exhaustive). 
+	% and promise_exclusive_exhaustive).
 	%
 	% e.g. :- all [X]
 	% 		promise_exclusive
@@ -1105,7 +1127,7 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
 	% 		;
 	% 			q(X)
 	% 		).
-	% 
+	%
 	% promises that only one of p(X, Y) and q(X) can succeed at a time,
 	% although whichever one succeeds may have multiple solutions. See
 	% notes/promise_ex.html for details of the declarations.
