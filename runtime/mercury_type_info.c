@@ -452,7 +452,7 @@ MR_deallocate(MR_MemoryList allocated)
 	*/
 
 Word *
-MR_make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
+MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	MR_MemoryList *allocated) 
 {
 	int i, arity, extra_args;
@@ -478,7 +478,7 @@ MR_make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 
 	/* no arguments - optimise common case */
 	if (base_type_info == arg_pseudo_type_info) {
-		return arg_pseudo_type_info;
+		return base_type_info;
 	} 
 
 	if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
@@ -533,7 +533,7 @@ MR_make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 		}
 	}
 	if (type_info == NULL) {
-		return arg_pseudo_type_info;
+		return (Word *) (Word) arg_pseudo_type_info;
 	} else {
 		return type_info;
 	}

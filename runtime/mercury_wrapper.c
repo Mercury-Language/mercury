@@ -46,21 +46,31 @@ ENDINIT
 
 /* size of data areas (including redzones), in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
-size_t		heap_size =      	4096;
+#ifdef MR_DEBUG_AGC
+  size_t		heap_size =      	128;
+#else
+  size_t		heap_size =		4096;
+#endif
 size_t		detstack_size =  	2048;
 size_t		nondstack_size =  	128;
 size_t		solutions_heap_size =	1024;
 size_t		global_heap_size =	1024;
 size_t		trail_size =		128;
+size_t		debug_heap_size =	4096;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
-size_t		heap_zone_size =	16;
+#ifdef NATIVE_GC
+  size_t		heap_zone_size =	96;
+#else
+  size_t		heap_zone_size =	16;
+#endif
 size_t		detstack_zone_size =	16;
 size_t		nondstack_zone_size =	16;
 size_t		solutions_heap_zone_size = 16;
 size_t		global_heap_zone_size =	16;
 size_t		trail_zone_size =	16;
+size_t		debug_heap_zone_size =	16;
 
 /* primary cache size to optimize for, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */

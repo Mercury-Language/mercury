@@ -14,12 +14,6 @@
 #include "mercury_stack_trace.h"
 #include <stdio.h>
 
-typedef	enum {
-	STEP_ERROR_BEFORE,	/* the current entry_layout has no valid info */
-	STEP_ERROR_AFTER,	/* the current entry_layout has valid info,
-				   but the next one does not */
-	STEP_OK			/* both have valid info */
-} MR_Stack_Walk_Step_Result;
 
 static const char * detism_names[] = {
 	"failure",	/* 0 */
@@ -38,11 +32,6 @@ static const char * detism_names[] = {
 	"",		/* 13 */
 	"cc_multi"	/* 14 */
 };
-
-static	MR_Stack_Walk_Step_Result MR_stack_walk_step(
-			const MR_Stack_Layout_Entry *,
-			const MR_Stack_Layout_Label **,
-			Word **, Word **, const char **);
 
 static	void	MR_dump_stack_record_init(void);
 static	void	MR_dump_stack_record_frame(FILE *fp,
@@ -145,7 +134,8 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 	return label_layout;
 }
 
-static MR_Stack_Walk_Step_Result
+
+MR_Stack_Walk_Step_Result
 MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 	const MR_Stack_Layout_Label **return_label_layout,
 	Word **stack_trace_sp_ptr, Word **stack_trace_curfr_ptr,

@@ -41,6 +41,7 @@
 #include	"mercury_regs.h"	/* must come before system headers */
 
 #include	"mercury_std.h"
+#include	"mercury_debug.h"
 
 #include	"mercury_types.h"
 #include	"mercury_string.h"
@@ -69,7 +70,6 @@
 #include	"mercury_trail.h"
 #endif
 
-#include	"mercury_debug.h"
 #include	"mercury_prof.h"
 #include	"mercury_misc.h"
 

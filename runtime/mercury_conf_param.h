@@ -133,6 +133,35 @@
 **	(Since this affects binary compatibility,
 **	this is a "compilation model" option which affects the grade.)
 **
+** MR_DEBUG_AGC_SCHEDULING
+**	Display debugging information while scheduling accurate garbage
+**	collection.
+**
+** MR_DEBUG_AGC_COLLECTION
+**	Display debugging information while collecting garbage using the
+**	accurate garbage collector.
+**
+** MR_DEBUG_AGC_FORWARDING
+**	Display debugging information when leaving or finding forwarding
+**	pointers during accurate garbage collection.
+**
+** MR_DEBUG_AGC_PRINT_VARS
+**	Display the values of live variables during accurate garbage
+**	collection.
+**
+** MR_DEBUG_AGC
+** 	Turn on all debugging information for accurate garbage
+** 	collection.  (Equivalent to all MR_DEBUG_AGC_* macros above).
+*/
+
+#if MR_DEBUG_AGC
+  #define MR_DEBUG_AGC_SCHEDULING
+  #define MR_DEBUG_AGC_COLLECTION
+  #define MR_DEBUG_AGC_FORWARDING
+  #define MR_DEBUG_AGC_PRINT_VARS
+#endif
+
+/*
 ** MR_LABEL_STRUCTS_INCLUDE_NUMBER
 **	Include a label number in each label layout structure.
 */

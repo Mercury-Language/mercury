@@ -106,10 +106,11 @@
 ** alignment boundary.  `align' must be a power of 2.
 */
 
-static	void	setup_mprotect(void);
 static	void	print_dump_stack(void);
 static	bool	try_munprotect(void *address, void *context);
 static	char	*explain_context(void *context);
+static	Code	*get_pc_from_context(void *the_context);
+static	Word	*get_sp_from_context(void *the_context);
 
 #define STDERR 2
 
@@ -224,6 +225,10 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 		zone->name, zone->id, (void *) zone->redzone,
 		(void *) zone->top);
 	}
+  #ifdef NATIVE_GC
+	MR_schedule_agc(get_pc_from_context(context),
+		get_sp_from_context(context));
+  #endif
 	return TRUE;
     } else {
 	char buf[2560];
@@ -519,6 +524,113 @@ simple_sighandler(int sig)
 
 #endif /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
 
+/*
+** get_pc_from_context:
+** 	Given the signal context, return the program counter at the time
+** 	of the signal, if available.  If it is unavailable, return NULL.
+*/
+static Code *
+get_pc_from_context(void *the_context)
+{
+	Code *pc_at_signal = NULL;
+#if defined(HAVE_SIGCONTEXT_STRUCT)
+
+  #ifdef PC_ACCESS
+	struct sigcontext_struct *context = the_context;
+
+	pc_at_signal = (Code *) context->PC_ACCESS;
+  #else
+	pc_at_signal = (Code *) NULL;
+  #endif
+
+#elif defined(HAVE_SIGINFO_T)
+
+  #ifdef PC_ACCESS
+
+	struct sigcontext *context = the_context;
+
+    #ifdef PC_ACCESS_GREG
+	pc_at_signal = (Code *) context->gregs[PC_ACCESS];
+    #else
+	pc_at_signal = (Code *) context->PC_ACCESS;
+    #endif
+
+  #else /* not PC_ACCESS */
+
+	/* if PC_ACCESS is not set, we don't know the context */
+	pc_at_signal = (Code *) NULL;
+
+  #endif /* not PC_ACCESS */
+
+#else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
+
+	pc_at_signal = (Code *) NULL;
+
+#endif
+
+	return pc_at_signal;
+}
+
+/*
+** get_sp_from_context:
+** 	Given the signal context, return the Mercury register "MR_sp" at
+** 	the time of the signal, if available.  If it is unavailable,
+** 	return NULL.
+**
+** XXX We only define this function in accurate gc grades for the moment,
+** because it's unlikely to compile everywhere.  It relies on
+** MR_real_reg_number_sp being defined, which is the name/number of the
+** machine register that is used for MR_sp.
+** Need to fix this so it works when the register is in a fake reg too.
+*/
+static Word *
+get_sp_from_context(void *the_context)
+{
+	Word *sp_at_signal = NULL;
+#ifdef NATIVE_GC
+  #if defined(HAVE_SIGCONTEXT_STRUCT)
+
+    #ifdef PC_ACCESS
+	struct sigcontext_struct *context = the_context;
+
+	sp_at_signal = (Word *) context->MR_real_reg_number_sp;
+    #else
+	sp_at_signal = (Word *) NULL;
+    #endif
+
+  #elif defined(HAVE_SIGINFO_T)
+
+    #ifdef PC_ACCESS
+
+	struct sigcontext *context = the_context;
+
+      #ifdef PC_ACCESS_GREG
+	sp_at_signal = (Word *) context->gregs[MR_real_reg_number_sp];
+      #else
+	sp_at_signal = (Word *) context->sc_regs[MR_real_reg_number_sp];
+      #endif
+
+    #else /* not PC_ACCESS */
+
+	/* 
+	** if PC_ACCESS is not set, we don't know how to get at the
+	** registers
+	*/
+	sp_at_signal = (Word *) NULL;
+
+    #endif /* not PC_ACCESS */
+
+  #else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
+
+	sp_at_signal = (Word *) NULL;
+
+  #endif
+#else /* !NATIVE_GC */
+	sp_at_signal = (Word *) NULL;
+#endif /* !NATIVE_GC */
+
+	return sp_at_signal;
+}
 
 static void 
 print_dump_stack(void)

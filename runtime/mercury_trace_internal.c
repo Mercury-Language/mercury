@@ -624,29 +624,8 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	{
 		printf("\t");
 
-		/*
-		** XXX It would be nice if we could call an exported C
-		** function version of the browser predicate, and thus
-		** avoid going through call_engine, but for some unknown
-		** reason, that seemed to cause the Mercury code in the
-		** browser to clobber part of the C stack.
-		**
-		** Probably that was due to a bug which has since been
-		** fixed, so we should change the code below back again...
-		**
-		** call_engine() expects the transient registers to be
-		** in fake_reg, others in their normal homes.
-		** That is the case on entry to this function.
-		** But r1 or r2 may be transient, so we need to save/restore
-		** transient regs around the assignments to them.
-		*/
-
 		MR_trace_enabled = FALSE;
-		restore_transient_registers();
-		r1 = type_info;
-		r2 = value;
-		save_transient_registers();
-		call_engine(MR_library_trace_browser);
+		MR_trace_write_variable(type_info, value);
 		MR_trace_enabled = TRUE;
 	}
 

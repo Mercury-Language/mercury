@@ -15,5 +15,41 @@
 
 /*---------------------------------------------------------------------------*/
 
+/*
+** MR_schedule_agc:
+** 	Schedule a garbage collection as soon as possible.  The PC
+** 	(program counter) is used to find the procedure that is
+** 	executing.  The stack pointer is then used to replace the saved
+** 	continuation pointer with the address of the garbage collector
+** 	routine.
+*/
+extern	void	MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal);
+
+/*
+** Roots apart from the stacks are stored in this data structure.
+**
+** Essentially, this is a list of any pointers into the heap that are
+** not stored on the heap or the det/nondet stacks.
+**
+** Each node stores the address of the root, and its type.  When a
+** garbage collection occurs, the root will be modified.
+*/
+
+struct	MR_RootNode {
+	Word *root;
+	Word *type_info;
+	struct MR_RootNode* next;
+};
+
+typedef	struct MR_RootNode	*MR_RootList;
+
+/*
+** MR_agc_add_root:
+** 	Adds the root whose address is supplied in root_addr with type
+** 	described by type_info to the list of additional roots.
+*/
+
+extern	void	MR_agc_add_root(Word *root_addr, Word *type_info);
+
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_ACCURATE_GC_H */

@@ -73,9 +73,11 @@ typedef Word ** AnswerBlock;
   #define MR_TABLE_SAVE_ANSWER(Offset, ABlock, Value, TypeInfo)		\
 	do {								\
 	   	save_transient_registers();				\
+		{ Word local_val = Value;				\
 		(*((AnswerBlock)ABlock))[Offset] = 			\
-			deep_copy(Value, (Word *) (Word) &TypeInfo,	\
+			deep_copy(&local_val, (Word *) (Word) &TypeInfo,\
 				NULL, NULL);				\
+		}							\
 		restore_transient_registers();		  		\
 	} while(0)
 

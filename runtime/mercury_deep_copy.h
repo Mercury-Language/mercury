@@ -12,7 +12,7 @@
 #include "mercury_types.h"	/* for `Word' */
 
 /*
-** Deep Copy:
+** deep_copy:
 **
 ** 	Copy a data item, completely.
 **
@@ -25,10 +25,8 @@
 **
 **	The caller must provide the type_info describing
 **	the type of this data structure. It must also
-**	provide the heap_limit - if no limit is desired,
-**	NULL or the bottom of the heap may be passed.
-**	deep_copy returns the address of the new, copied
-**	data structure.
+**	provide the upper and lower limits - if no limits are desired,
+**	pass NULL as the lower_limit.
 **
 **	Deep copy returns the actual data that it copied,
 **	which may need to be stored on the heap, or put in
@@ -61,14 +59,41 @@
 **
 **	Deep copy does not preserve sharing of subterms.  Each
 **	subterm is copied in full, except for data items that are
-**	stored outside the heap. 
+**	stored outside the heap limits. 
 **	XXX For some applications, sharing is useful.  For others we
 **	want a copy that is completely unique.  We should modify
 **	deep_copy to do both.
 */
 
-Word deep_copy(Word data, Word *type_info, Word *lower_limit, 
-	Word *upper_limit);
+Word deep_copy(const Word *data_ptr, const Word *type_info, 
+	const Word *lower_limit, const Word *upper_limit);
+
+/*
+** agc_deep_copy:
+**
+**	Just like deep_copy(), but it will leave forwarding pointers
+**	in the old data (destructively).  lower_limit and upper_limit
+**	give the boundaries for copying data, and the boundaries for
+**	leaving forwarding pointers.
+**
+**	Data will be copied to wherever the heap pointer is pointing.
+**
+**	A forwarding pointer will be left simply by copying the new
+**	value of the data into the old location.  If the data was a
+**	tagged pointer, the pointer will now refer to the rest of the
+**	data on the new heap.  (If the data wasn't a tagged pointer, it
+**	will be a constant anyway). 
+**
+**	The upper and lower limits allow forwarding pointers to be
+**	detected and treated just as if they were pointers off the
+**	heap (say to a constant data structure in the data segment of
+**	the program).
+**
+**	Note: You cannot pass NULL as the lower_limit to agc_deep_copy
+**	(which is possible with normal deep_copy).
+*/
+Word agc_deep_copy(Word *data_ptr, const Word *type_info, 
+	const Word *lower_limit, const Word *upper_limit);
 
 /*
 ** MR_make_permanent:

@@ -67,6 +67,9 @@
 #define r31		count_usage(R_RN(31), mr36)
 #define r32		count_usage(R_RN(32), mr37)
 
+	/* Keep this in sync with the actual defintions below */
+#define MR_real_reg_number_sp MR_real_reg_number_mr1
+
 #define MR_engine_base	LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
 
 /*
@@ -187,6 +190,8 @@
 ** the definitions of MR_NUM_SPECIAL_REG, MR_MAX_SPECIAL_REG_MR,
 ** and MR_saved_*.
 */
+#define MR_real_reg_number_sp MR_real_reg_number_mr0
+
 #define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr1))
 #define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr5))
 #define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))

@@ -318,9 +318,9 @@ construct_zone(const char *name, int id, Word *base,
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
 	/*
-	** setup the hardzone (only if the redzone is unavailable)
+	** setup the hardzone
 	*/
-#if	defined(HAVE_MPROTECT) && !defined(MR_CHECK_OVERFLOW_VIA_MPROTECT)
+#if	defined(HAVE_MPROTECT)
 	zone->hardmax = (Word *) round_up((Unsigned)zone->top - unit, unit);
 	if (mprotect((char *)zone->hardmax, unit, MY_PROT) < 0) {
 		char buf[2560];
@@ -389,6 +389,8 @@ debug_memory(void)
 #ifdef	MR_CHECK_OVERFLOW_VIA_MPROTECT
 		fprintf(stderr, "%-16s#%d-redzone	= %p\n",
 			zone->name, zone->id, (void *) zone->redzone);
+		fprintf(stderr, "%-16s#%d-redzone_base	= %p\n",
+			zone->name, zone->id, (void *) zone->redzone_base);
 #endif	/* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 #ifdef	HAVE_MPROTECT
 		fprintf(stderr, "%-16s#%d-hardmax		= %p\n",
