@@ -1732,14 +1732,7 @@ opt_level(2, _, [
 	common_struct		-	bool(yes),
 	user_guided_type_specialization
 				-	bool(yes),
-/****
-% XXX optimize_duplicate_calls is broken --
-% it doesn't take type information into account.
-% See tests/hard_coded/dupcall_types_bug.m.
-% We should re-enable the optimization only
-% when we have fixed that bug.
 	optimize_duplicate_calls -	bool(yes),
-****/
 	simple_neg		-	bool(yes),
 
 	optimize_rl		-	bool(yes),

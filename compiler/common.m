@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -48,8 +48,9 @@
 	% Check whether this call has been seen before and is replaceable, if
 	% so produce assignment unification for the non-local output variables,
 	% and give a warning.
-	% A call is replaceable if it has no uniquely moded outputs and no
-	% destructive inputs.
+	% A call is considered replaceable if it has no uniquely moded outputs
+	% and no destructive inputs.
+	% It is the caller's responsibility to check that the call is pure.
 
 :- pred common__optimise_call(pred_id, proc_id, list(prog_var), hlds_goal_expr,
 	hlds_goal_info, hlds_goal_expr, simplify_info, simplify_info).

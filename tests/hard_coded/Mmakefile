@@ -37,6 +37,7 @@ ORDINARY_PROGS=	\
 	det_in_semidet_cntxt \
 	division_test \
 	dupcall_types_bug \
+	dupcall_impurity \
 	elim_special_pred \
 	eqv_type_bug \
 	erroneous_liveness \
