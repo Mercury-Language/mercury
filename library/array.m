@@ -403,11 +403,13 @@ ML_make_array(Integer size, Word item)
 
 :- pragma c_code(array__init(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
+	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (Word) ML_make_array(Size, Item);
 ").
 
 :- pragma c_code(array__make_empty_array(Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
+	MR_maybe_record_allocation(1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (Word) ML_make_array(0, 0);
 ").
 
@@ -551,6 +553,7 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 
 :- pragma c_code(array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo), [will_not_call_mercury, thread_safe], "
+	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (Word) ML_resize_array(
 				(MR_ArrayType *) Array0, Size, Item);
 ").
@@ -595,6 +598,7 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 
 :- pragma c_code(array__shrink(Array0::array_di, Size::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
+	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
@@ -630,11 +634,15 @@ ML_copy_array(MR_ArrayType *old_array)
 
 :- pragma c_code(array__copy(Array0::array_ui, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
+	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
+		MR_PROC_LABEL, ""array:array/1"");
 	Array = (Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
 :- pragma c_code(array__copy(Array0::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
+	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
+		MR_PROC_LABEL, ""array:array/1"");
 	Array = (Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
