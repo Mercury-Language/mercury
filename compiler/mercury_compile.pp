@@ -424,8 +424,8 @@ process_module_2(ModuleName) -->
 				globals__io_lookup_bool_option(verbose_errors, V_Err),
 				{ V_Err = yes }
 			->
-				io__write_string(StdErr, "\t\tA file should contain at least one declaration that is \n\t\tnot \":- import_module\" in it's interface section(s)\n"),
-				io__write_string(StdErr, "\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a \":- pred\", \":- type\" or \n\t\t\":- mode\" declaration.\n")
+				io__write_string(StdErr, "\t\tA file should contain at least one declaration that is \n\t\tnot `:- import_module' in it's interface section(s)\n"),
+				io__write_string(StdErr, "\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
 			;
 				[]
 			)
@@ -1132,8 +1132,8 @@ get_dependencies(ModuleName, Items, Deps) -->
 			globals__io_lookup_bool_option(verbose_errors, V_Err),
 			{ V_Err = yes }
 		->
-			io__write_string(StdErr, "\t\tA file should contain at least one declaration that is \n\t\tnot \":- import_module\" in it's interface section(s)\n"),
-			io__write_string(StdErr, "\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a \":- pred\", \":- type\" or \n\t\t\":- mode\" declaration.\n")
+			io__write_string(StdErr, "\t\tA file should contain at least one declaration that is \n\t\tnot `:- import_module' in it's interface section(s)\n"),
+			io__write_string(StdErr, "\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
 		;
 			[]
 		)
