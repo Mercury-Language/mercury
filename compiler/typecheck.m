@@ -3110,17 +3110,103 @@ report_error_functor_arg_types(TypeCheckInfo, Var, ConsDefnList, Functor, Args,
 	write_functor_name(Functor1, Arity),
 	io__write_string(".\n"),
 
-	% XXX we should print type pairs (one type from each side)
-	% only for the arguments in which the two types differ.
+	% If we know the type of the function symbol, and each argument
+	% also has at most one possible type, then we prefer to print an
+	% error message that mentions the actual and expected types of the
+	% arguments only for the arguments in which the two types differ.
+	(
+		{ ConsDefnList = [SingleDefn] },
+		{ SingleDefn = cons_type_info(ConsTVarSet, _ResultType,
+			ConsArgTypes) },
+		{ assoc_list__from_corresponding_lists(Args, ConsArgTypes,
+			ArgExpTypes) },
+		{ find_mismatched_args(ArgExpTypes, TypeAssignSet, ConsTVarSet,
+			1, Mismatches) },
+		{ Mismatches = [_ | _] }
+	->
+		prog_out__write_context(Context),
+		io__write_string("  The types of the relevant arguments are\n"),
+		report_mismatched_args(Mismatches, VarSet, Context)
+	;
+		prog_out__write_context(Context),
+		io__write_string("  "),
+		write_functor_name(Functor, Arity),
+		write_type_of_functor(Functor, Arity, Context, ConsDefnList),
+
+		write_types_of_vars(Args, VarSet, Context, TypeCheckInfo, 
+			TypeAssignSet),
+
+		write_type_assign_set_msg(TypeAssignSet, VarSet)
+	).
+
+:- type mismatch_info
+	--->	mismatch(
+			int,		% argument number, starting from 1
+			var,		% variable in that position
+			type,		% actual type of that variable
+			tvarset,	% the type vars in the actual type
+			type,		% expected type of that variable
+			tvarset		% the type vars in the expected type
+		).
+
+:- pred find_mismatched_args(assoc_list(var, type), type_assign_set, tvarset,
+	int, list(mismatch_info)).
+:- mode find_mismatched_args(in, in, in, in, out) is semidet.
+
+find_mismatched_args([], _, _, _, []).
+find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ExpTVarSet,
+		ArgNum0, Mismatched) :-
+	ArgNum1 is ArgNum0 + 1,
+	find_mismatched_args(ArgExpTypes, TypeAssignSet, ExpTVarSet,
+		ArgNum1, Mismatched1),
+	get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
+	TypeStuffList = [type_stuff(ArgType, ArgVarSet, ArgBinding)],
+	term__apply_rec_substitution(ArgType, ArgBinding, FullArgType),
+	(
+		(
+			% there is no mismatch if the actual type of the
+			% argument is the same as the expected type
+			identical_types(FullArgType, ExpType)
+		;
+			% there is no mismatch if the actual type of the
+			% argument has no constraints on it
+			FullArgType = term__functor(term__atom("<any>"), [], _)
+		)
+	->
+		Mismatched = Mismatched1
+	;
+		Mismatched = [mismatch(ArgNum0, Arg, FullArgType, ArgVarSet,
+			ExpType, ExpTVarSet) | Mismatched1]
+	).
+
+:- pred report_mismatched_args(list(mismatch_info), varset, term__context,
+	io__state, io__state).
+:- mode report_mismatched_args(in, in, in, di, uo) is det.
+
+report_mismatched_args([], _, _) --> [].
+report_mismatched_args([Mismatch | Mismatches], VarSet, Context) -->
+	{ Mismatch = mismatch(ArgNum, Var, ActType, ActTVarSet,
+		ExpType, ExpTVarSet) },
 	prog_out__write_context(Context),
-	io__write_string("  "),
-	write_functor_name(Functor, Arity),
-	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
-
-	write_types_of_vars(Args, VarSet, Context, TypeCheckInfo, 
-		TypeAssignSet),
-
-	write_type_assign_set_msg(TypeAssignSet, VarSet).
+	io__write_string("  argument "),
+	io__write_int(ArgNum),
+	( { varset__search_name(VarSet, Var, _) } ->
+		io__write_string(" ("),
+		mercury_output_var(Var, VarSet, no),
+		io__write_string(")")
+	;
+		[]
+	),
+	io__write_string(": actual `"),
+	mercury_output_term(ActType, ActTVarSet, no),
+	io__write_string("', expected `"),
+	mercury_output_term(ExpType, ExpTVarSet, no),
+	( { Mismatches = [] } ->
+		io__write_string("'.\n")
+	;
+		io__write_string("';\n"),
+		report_mismatched_args(Mismatches, VarSet, Context)
+	).
 
 :- pred write_types_of_vars(list(var), varset, term__context, typecheck_info,
 				type_assign_set, io__state, io__state).
