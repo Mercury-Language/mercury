@@ -344,6 +344,10 @@ else
 	/bin/rm -fr stage3/*
 fi
 
+# since we may have removed the stage3 library, use the one in stage2
+MERCURY_INT_DIR=$root/stage2/library
+export MERCURY_INT_DIR
+
 if $runtests
 then
 	echo "finishing stage3 at `date`"
