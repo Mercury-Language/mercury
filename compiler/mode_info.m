@@ -350,7 +350,7 @@
 
 :- implementation.
 
-:- import_module delay_info, mode_errors, mode_util, globals.
+:- import_module delay_info, mode_errors, mode_util, globals, prog_util.
 :- import_module term, varset.
 :- import_module require, std_util, queue.
 
@@ -474,14 +474,24 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context,
 	CheckingExtraGoals = no,
 
 	module_info_globals(ModuleInfo, Globals),
-	body_should_use_typeinfo_liveness(Globals, TypeinfoLiveness),
+	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness0),
+	(
+		pred_info_module(PredInfo, PredModule),
+		( mercury_public_builtin_module(PredModule)
+		; mercury_private_builtin_module(PredModule)
+		)
+	->
+		TypeInfoLiveness = no
+	;
+		TypeInfoLiveness = TypeInfoLiveness0
+	),
 
 	ModeInfo = mode_info(
 		IOState, ModuleInfo, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
 		ErrorList, LiveVarsList, NondetLiveVarsList, [], [],
 		Changed, HowToCheck, MayChangeProc, CheckingExtraGoals,
-		TypeinfoLiveness, TVarMap
+		TypeInfoLiveness, TVarMap
 	).
 
 %-----------------------------------------------------------------------------%

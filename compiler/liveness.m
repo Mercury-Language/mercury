@@ -145,7 +145,7 @@
 
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
-:- import_module trace, globals, polymorphism, passes_aux.
+:- import_module trace, globals, polymorphism, passes_aux, prog_util.
 :- import_module term, varset.
 
 :- import_module bool, map, std_util, list, assoc_list, require.
@@ -154,7 +154,17 @@
 detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	module_info_globals(ModuleInfo, Globals),
 	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness0),
-	requantify_proc(TypeInfoLiveness0, ProcInfo0, ProcInfo1),
+	(
+		pred_info_module(PredInfo, PredModule),
+		( mercury_public_builtin_module(PredModule)
+		; mercury_private_builtin_module(PredModule)
+		)
+	->
+		TypeInfoLiveness1 = no
+	;
+		TypeInfoLiveness1 = TypeInfoLiveness0
+	),
+	requantify_proc(TypeInfoLiveness1, ProcInfo0, ProcInfo1),
 
 	proc_info_goal(ProcInfo1, Goal0),
 	proc_info_varset(ProcInfo1, Varset),
