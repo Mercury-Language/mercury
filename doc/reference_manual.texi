@@ -286,7 +286,7 @@ Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
 except that as an extension we permit higher-order terms, as described
 below.
 However, the meaning of some terms in Mercury is different to that
-in Prolog.  See @xref{Data-terms}.
+in Prolog.  @xref{Data-terms}.
 
 A term is either a variable or a functor.
 
@@ -467,7 +467,7 @@ The closure and arguments must be valid data-terms.
 @samp{call(Closure)} just calls
 the specified closure.  The other forms append the specified
 arguments onto the argument list of the closure before calling it.
-See @xref{Higher-order}.
+@xref{Higher-order}.
 
 @item @code{Var}
 @itemx @code{Var(Arg1)}
@@ -685,12 +685,12 @@ func(Var1, Var2, @dots{}) = Var :- Goal
 
 @noindent
 where Var1, Var2, @dots{} are variables, Mode1, Mode2, @dots{} are
-modes [@xref{Modes}], Det is a determinism [@xref{Determinism}],
-and Goal is a goal [@xref{Goals}]. 
+modes (@pxref{Modes}), Det is a determinism (@pxref{Determinism}),
+and Goal is a goal (@pxref{Goals}). 
 It denotes a higher-order predicate or function term
 whose value is the predicate or function of the specified arguments
 determined by the specified goal.
-See @xref{Higher-order}.
+@xref{Higher-order}.
 
 A higher-order function application is a compound term of one
 of the following two forms
@@ -708,14 +708,14 @@ of that type, and
 @samp{T1}, @samp{T2}, @dots{}, @samp{Tn}. 
 The type of the higher-order function application term is @var{T}.
 It denotes the result of applying the specified function to the
-specified arguments.  See @xref{Higher-order}.
+specified arguments.  @xref{Higher-order}.
 
 @node Implicit quantification
 @section Implicit quantification
 
 The rule for implicit quantification in Mercury
 is not the same as the usual one in mathematical logic.
-In Mercury variables that do not occur in the head of a clause
+In Mercury, variables that do not occur in the head of a clause
 are implicitly existentially quantified around their closest enclosing scope
 (in a sense to be made precise in the following paragraphs).
 This allows most existential quantifiers to be omitted,
@@ -768,7 +768,7 @@ and @code{string}.  (For @code{char}, the standard syntax suffices.)
 @item Predicate types: @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
 @itemx Function types: @code{func(T1) = T}, @code{func(T1, T2) = T}, @dots{}
 These higher-order function and predicate types are used to pass procedure
-addresses and closures to other predicates.  See @xref{Higher-order}.
+addresses and closures to other predicates.  @xref{Higher-order}.
 
 @item The universal type: @code{univ}.
 The type @code{univ} is defined in the standard library module @code{std_util},
@@ -1616,7 +1616,8 @@ or if the variable's type has only one function symbol.
 The determinism of the empty conjunction (the goal @samp{true})
 is @code{det}.
 The conjunction @samp{(@var{A}, @var{B})} can fail
-if either @var{A} or @var{B} can fail.
+if either @var{A} can fail, or if @var{A} can succeed at least once,
+and @var{B} can fail.
 The conjunction can succeed at most zero times
 if either @var{A} or @var{B} can succeed at most zero times.
 The conjunction can succeed more than once
@@ -1800,7 +1801,7 @@ which one of possibly many solutions to a goal do you want?
 If you want all of them, you need to use the predicate
 @samp{solutions/2} in the standard library module @samp{std_util},
 which collects all of the solutions to a goal into a list --
-see @xref{Higher-order}.
+@pxref{Higher-order}.
 
 If you just want one solution and don't care which,
 the calling predicate should be declared @code{nondet} or @code{multi}.
@@ -2206,7 +2207,7 @@ itself.  It is as if they were defined by
 @end example
 
 @noindent
-using the parametric inst @samp{in/1} mentioned in @xref{Modes}
+using the parametric inst @samp{in/1} mentioned in @ref{Modes}
 which maps an inst to itself.
 
 If you want to define a predicate which returns a higher-order predicate
@@ -2369,10 +2370,8 @@ every entity exported by a module is prefixed by the module name and
 two underscores.  We have found this convention improves the
 readability and maintainability of our code, and so we recommend that
 you follow it in your code too. (Eventually, these names will be converted
-to names of the form @code{module:name}; this will allow you to omit the
-prefix in places where it does not improve readability. A tool for the
-automatic conversion of existing programs will be provided when this change
-occurs.)
+to names of the form @code{module.name}; this will allow you to omit the
+prefix in places where it does not improve readability.)
 
 @node Semantics
 @chapter Semantics
@@ -2719,9 +2718,9 @@ list_cons(head,tail)    /* construct a list with the given head and tail */
 
 The @samp{list_cons} macro should only be used in C code called
 using the @samp{will_not_call_mercury} calling convention.
-XXX I am not sure about this - zs
+@c XXX I am not sure about this - zs
 
-XXX we need a more extensive discussion on memory allocation here
+@c XXX we need a more extensive discussion on memory allocation here
 
 @node Using C pointers
 @subsection Using C pointers
