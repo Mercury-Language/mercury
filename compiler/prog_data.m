@@ -294,16 +294,25 @@
 	% Currently we only support foreign_language_types for IL.
 	%
 
+
+	%
+	% It is important to distinguish between IL value types and
+	% reference types, the compiler may need to generate different code
+	% for each of these cases.
+	%
+
 :- type ref_or_val
 	--->	reference
 	;	value.
 
 :- type foreign_language_type
-			% An indicator of whether the type is a
-			% reference of value type.
-			% The location of the .NET name (the assembly),
-			% and the .NET type name (represented as a sym_name)
-	--->	il(ref_or_val, string, sym_name).
+	--->	il(
+			ref_or_val,	% An indicator of whether the type is a
+					% reference of value type.
+			string,		% The location of the .NET name (the
+					% assembly)
+			sym_name	% The .NET type name
+		).
 
 %
 % Stuff for tabling pragmas

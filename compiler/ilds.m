@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -174,7 +174,7 @@
 	;	refany			% a reference to value with an attached
 					% type
 	; 	class(class_name)
-	;	value_class(class_name)
+	;	valuetype(class_name)
 	;	interface(class_name)
 	;	'[]'(ilds__type, bounds) % An array
 	;	'&'(ilds__type)		 % A managed pointer

@@ -2929,7 +2929,7 @@ mlds_type_to_ilds_type(_, mlds__foreign_type(IsBoxed, ForeignType, Assembly))
 		Class = class(structured_name(assembly(Assembly),
 				ForeignClassName, []))
 	; IsBoxed = no,
-		Class = value_class(structured_name(assembly(Assembly),
+		Class = valuetype(structured_name(assembly(Assembly),
 				ForeignClassName, []))
 	).
 
@@ -2964,8 +2964,8 @@ mlds_class_to_ilds_simple_type(Kind, ClassName) = SimpleType :-
 	( Kind = mlds__package,		SimpleType = class(ClassName)
 	; Kind = mlds__class,		SimpleType = class(ClassName)
 	; Kind = mlds__interface,	SimpleType = class(ClassName)
-	; Kind = mlds__struct,		SimpleType = value_class(ClassName)
-	; Kind = mlds__enum,		SimpleType = value_class(ClassName)
+	; Kind = mlds__struct,		SimpleType = valuetype(ClassName)
+	; Kind = mlds__enum,		SimpleType = valuetype(ClassName)
 	).
 
 :- func mercury_type_to_highlevel_class_type(mercury_type) = ilds__type.
@@ -2995,7 +2995,7 @@ mlds_type_to_ilds_class_name(DataRep, MldsType) =
 get_ilds_type_class_name(ILType) = ClassName :-
 	( 
 		( ILType = ilds__type(_, class(ClassName0))
-		; ILType = ilds__type(_, value_class(ClassName0))
+		; ILType = ilds__type(_, valuetype(ClassName0))
 		)
 	->
 		ClassName = ClassName0
@@ -3641,62 +3641,62 @@ defn_to_local(ModuleName,
 
 convert_to_object(Type) = instr_node(box(ValueType)) :-
 	Type = ilds__type(_, SimpleType),
-	ValueType = simple_type_to_value_class(SimpleType).
+	ValueType = simple_type_to_valuetype(SimpleType).
 
 :- func convert_from_object(ilds__type) = instr_tree.
 
 convert_from_object(Type) = node([unbox(Type), ldobj(Type)]).
 
-:- func simple_type_to_value_class(simple_type) = ilds__type.
-simple_type_to_value_class(int8) = 
-	ilds__type([], value_class(il_system_name(["SByte"]))).
-simple_type_to_value_class(int16) =
-	ilds__type([], value_class(il_system_name(["Int16"]))).
-simple_type_to_value_class(int32) =
-	ilds__type([], value_class(il_system_name(["Int32"]))).
-simple_type_to_value_class(int64) =
-	ilds__type([], value_class(il_system_name(["Int64"]))).
-simple_type_to_value_class(uint8) = 
-	ilds__type([], value_class(il_system_name(["Byte"]))).
-simple_type_to_value_class(uint16) =
-	ilds__type([], value_class(il_system_name(["UInt16"]))).
-simple_type_to_value_class(uint32) =
-	ilds__type([], value_class(il_system_name(["UInt32"]))).
-simple_type_to_value_class(uint64) = 
-	ilds__type([], value_class(il_system_name(["UInt64"]))).
-simple_type_to_value_class(float32) = 
-	ilds__type([], value_class(il_system_name(["Single"]))).
-simple_type_to_value_class(float64) = 
-	ilds__type([], value_class(il_system_name(["Double"]))).
-simple_type_to_value_class(bool) = 
-	ilds__type([], value_class(il_system_name(["Boolean"]))).
-simple_type_to_value_class(char) = 
-	ilds__type([], value_class(il_system_name(["Char"]))).
-simple_type_to_value_class(object) = _ :-
-	% ilds__type([], value_class(il_system_name(["Object"]))).
+:- func simple_type_to_valuetype(simple_type) = ilds__type.
+simple_type_to_valuetype(int8) = 
+	ilds__type([], valuetype(il_system_name(["SByte"]))).
+simple_type_to_valuetype(int16) =
+	ilds__type([], valuetype(il_system_name(["Int16"]))).
+simple_type_to_valuetype(int32) =
+	ilds__type([], valuetype(il_system_name(["Int32"]))).
+simple_type_to_valuetype(int64) =
+	ilds__type([], valuetype(il_system_name(["Int64"]))).
+simple_type_to_valuetype(uint8) = 
+	ilds__type([], valuetype(il_system_name(["Byte"]))).
+simple_type_to_valuetype(uint16) =
+	ilds__type([], valuetype(il_system_name(["UInt16"]))).
+simple_type_to_valuetype(uint32) =
+	ilds__type([], valuetype(il_system_name(["UInt32"]))).
+simple_type_to_valuetype(uint64) = 
+	ilds__type([], valuetype(il_system_name(["UInt64"]))).
+simple_type_to_valuetype(float32) = 
+	ilds__type([], valuetype(il_system_name(["Single"]))).
+simple_type_to_valuetype(float64) = 
+	ilds__type([], valuetype(il_system_name(["Double"]))).
+simple_type_to_valuetype(bool) = 
+	ilds__type([], valuetype(il_system_name(["Boolean"]))).
+simple_type_to_valuetype(char) = 
+	ilds__type([], valuetype(il_system_name(["Char"]))).
+simple_type_to_valuetype(object) = _ :-
+	% ilds__type([], valuetype(il_system_name(["Object"]))).
 	error("no value class for System.Object").
-simple_type_to_value_class(string) = _ :-
-	% ilds__type([], value_class(il_system_name(["String"]))).
+simple_type_to_valuetype(string) = _ :-
+	% ilds__type([], valuetype(il_system_name(["String"]))).
 	error("no value class for System.String").
-simple_type_to_value_class(refany) = _ :-
+simple_type_to_valuetype(refany) = _ :-
 	error("no value class for refany").
-simple_type_to_value_class(class(_)) = _ :-
+simple_type_to_valuetype(class(_)) = _ :-
 	error("no value class for class").
-simple_type_to_value_class(value_class(Name)) =
-	ilds__type([], value_class(Name)).
-simple_type_to_value_class(interface(_)) = _ :-
+simple_type_to_valuetype(valuetype(Name)) =
+	ilds__type([], valuetype(Name)).
+simple_type_to_valuetype(interface(_)) = _ :-
 	error("no value class for interface").
-simple_type_to_value_class('[]'(_, _)) = _ :-
+simple_type_to_valuetype('[]'(_, _)) = _ :-
 	error("no value class for array").
-simple_type_to_value_class('&'( _)) = _ :-
+simple_type_to_valuetype('&'( _)) = _ :-
 	error("no value class for '&'").
-simple_type_to_value_class('*'(_)) = _ :-
+simple_type_to_valuetype('*'(_)) = _ :-
 	error("no value class for '*'").
-simple_type_to_value_class(native_float) = _ :-
+simple_type_to_valuetype(native_float) = _ :-
 	error("no value class for native float").
-simple_type_to_value_class(native_int) = _ :-
+simple_type_to_valuetype(native_int) = _ :-
 	error("no value class for native int").
-simple_type_to_value_class(native_uint) = _ :-
+simple_type_to_valuetype(native_uint) = _ :-
 	error("no value class for native uint").
 
 %-----------------------------------------------------------------------------%

@@ -5464,14 +5464,11 @@ The CIL assembler syntax is used to specify type names for all the .NET CLR
 languages (IL, C# and Managed C++) supported by Mercury's
 @samp{foreign_proc} mechanism.  
 This syntax is documented in the ECMA specifications for .NET).
-Currently on the .NET CLR backend reference and value types are
-supported using
-@samp{pragma foreign_type}, and hence the supported syntax is
-DotNetForeignType is @samp{"class [AssemblyName]ReferenceTypeName"} for
-reference types and
-DotNetForeignType is @samp{"valuetype [AssemblyName]ValueTypeName"} for
-value types.
-@c XXX this restriction should be lifted
+The .NET CLR backend supports reference and value types 
+using @samp{pragma foreign_type}, where DotNetForeignType is
+specified using the syntax 
+@samp{"class [AssemblyName]ReferenceTypeName"} for reference types and
+@samp{"valuetype [AssemblyName]ValueTypeName"} for value types.
 Note that extra whitespace is not handled --- there should only be a single
 space between the class keyword and the assembly specifier.
 @c XXX we should handle whitespace better

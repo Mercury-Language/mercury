@@ -714,7 +714,7 @@ output_simple_type(class(Name), Info0, Info) -->
 		io__write_string("class "),
 		output_structured_name(Name, Info0, Info)
 	).
-output_simple_type(value_class(Name), Info0, Info) --> 
+output_simple_type(valuetype(Name), Info0, Info) --> 
 	( { name_to_simple_type(Name, Type) } ->
 		( { Type = value(SimpleType) } ->
 			output_simple_type(SimpleType, Info0, Info)
@@ -820,7 +820,7 @@ output_simple_type_opcode(object) --> io__write_string("ref").
 output_simple_type_opcode(string) --> io__write_string("ref").
 output_simple_type_opcode(refany) --> io__write_string("ref").
 output_simple_type_opcode(class(_Name)) --> io__write_string("ref").
-output_simple_type_opcode(value_class(_Name)) --> io__write_string("ref").
+output_simple_type_opcode(valuetype(_Name)) --> io__write_string("ref").
 output_simple_type_opcode(interface(_Name)) --> io__write_string("ref").
 output_simple_type_opcode('[]'(_Type, _Bounds)) --> io__write_string("ref").
 output_simple_type_opcode('*'(_Type)) --> io__write_string("ref").

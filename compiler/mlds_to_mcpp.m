@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -599,7 +599,7 @@ write_il_simple_type_as_managed_cpp_type(class(ClassName)) -->
 		io__write_string(" *")
 	).
 		% XXX this is not the right syntax
-write_il_simple_type_as_managed_cpp_type(value_class(ClassName)) --> 
+write_il_simple_type_as_managed_cpp_type(valuetype(ClassName)) --> 
 	io__write_string("value class "),
 	write_managed_cpp_class_name(ClassName),
 	io__write_string(" *").

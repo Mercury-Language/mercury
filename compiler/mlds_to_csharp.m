@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -490,7 +490,7 @@ write_il_simple_type_as_csharp_type(refany) -->
 	io__write_string("mercury.MR_RefAny").
 write_il_simple_type_as_csharp_type(class(ClassName)) --> 
 	write_csharp_class_name(ClassName).
-write_il_simple_type_as_csharp_type(value_class(_ClassName)) --> 
+write_il_simple_type_as_csharp_type(valuetype(_ClassName)) --> 
 	{ sorry(this_file, "value classes") }.
 write_il_simple_type_as_csharp_type(interface(_ClassName)) --> 
 	{ sorry(this_file, "interfaces") }.
