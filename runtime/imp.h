@@ -58,7 +58,7 @@ typedef void	Code;		/* should be `typedef function_t Code' */
     #define Define_entry(label)	\
 	}	\
 	label:	\
-		__asm__(".globl entry_" stringify(label) "\n\t"	\
+		__asm__(".globl entry_" stringify(label) "\n"	\
 			"entry_" stringify(label) ":");	\
 	{
     #include	"dummy.h"
@@ -168,7 +168,7 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
 /* DEFINITIONS FOR PROFILING */
 
-#ifdef	USE_PROFILING
+#ifdef	PROFILE_CALLS
 
 #include	"prof.h"
 #define	PROFILE(callee, caller)		prof_call_profile((callee), (caller))
@@ -179,12 +179,25 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
 #endif
 
+#ifdef PROFILE_TIME
+#include "prof.h"
+#define set_prof_current_proc(target)	(prof_current_proc = (target))
+#define push_prof_current_proc(target)	\
+	(push(prof_current_proc), prof_current_proc = (target))
+#define pop_prof_current_proc()		(prof_current_proc = pop())
+#else
+#define push_prof_current_proc(target)	((void)0)
+#define set_prof_current_proc(target)	((void)0)
+#define pop_prof_current_proc()		((void)0)
+#endif
+
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
 #define	localcall(label, succ_cont, current_label)		\
 			do {					\
 				debugcall(LABEL(label), (succ_cont)); \
 				succip = (succ_cont);		\
+				push_prof_current_proc(LABEL(label));	\
 				PROFILE(LABEL(label), (current_label));	\
 				GOTO_LABEL(label);		\
 			} while (0)
@@ -193,6 +206,7 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 			do {					\
 				debugcall((proc), (succ_cont));	\
 				succip = (succ_cont);		\
+				push_prof_current_proc(proc);	\
 				PROFILE((proc), (current_label));	\
 				GOTO(proc);			\
 			} while (0)
@@ -215,36 +229,22 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 			call(ENTRY(do_solutions), succ_cont); 	\
 		} while (0)
 
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
-#define	callentry(procname, succ_cont)				\
-			do {					\
-				extern EntryPoint ENTRY(procname); \
-				call(ENTRY(procname), succ_cont); \
-			} while (0)
-
 #define	localtailcall(label, current_label)			\
 			do {					\
 				debugtailcall(LABEL(label));	\
+				set_prof_current_proc(LABEL(label)); \
 				PROFILE(LABEL(label), (current_label)); \
 				GOTO_LABEL(label);		\
 			} while (0)
 #define	tailcall(proc, current_label)	do {			\
 				debugtailcall(proc);		\
+				set_prof_current_proc(proc); \
 				PROFILE((proc), (current_label)); \
 				GOTO(proc);			\
 			} while (0)
-
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
-#define	tailcallentry(procname, current_label)			\
-			do {					\
-				extern EntryPoint ENTRY(procname); \
-				tailcall(ENTRY(procname), (current_label)); \
-			} while (0)
-
 #define	proceed()	do {					\
 				debugproceed();			\
+				pop_prof_current_proc();	\
 				GOTO(succip);			\
 			} while (0)
 
@@ -376,32 +376,32 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
 /* DEFINITIONS FOR NONDET STACK FRAMES */
 
-#ifdef	SPEED
-
 #define	REDOIP		(-0)	/* in this proc, set up at clause entry	*/
 #define	PREVFR		(-1)	/* prev frame on stack, set up at call	*/
 #define	SUCCIP		(-2)	/* in caller proc, set up at call	*/
 #define	SUCCFR		(-3)	/* frame of caller proc, set up at call	*/
-#define	SAVEVAL		(-4)	/* saved values start at this offset	*/
 
-#define	NONDET_FIXED_SIZE	4	/* units: words */
-
+#ifdef	SPEED
 #define	bt_prednm(fr)	"unknown"
-
+#define	NONDET_FIXED_SIZE_0	4	/* units: words */
 #else
-
-#define	PREDNM		(-0)	/* for debugging, set up at call 	*/
-#define	REDOIP		(-1)	/* in this proc, set up at clause entry	*/
-#define	PREVFR		(-2)	/* prev frame on stack, set up at call	*/
-#define	SUCCIP		(-3)	/* in caller proc, set up at call	*/
-#define	SUCCFR		(-4)	/* frame of caller proc, set up at call	*/
-#define	SAVEVAL		(-5)	/* saved values start at this offset	*/
-
-#define	NONDET_FIXED_SIZE	5	/* units: words */
-
+#define	PREDNM		(-4)	/* for debugging, set up at call 	*/
 #define	bt_prednm(fr)	LVALUE_CAST(const char *, fr[PREDNM])
-
+#define	NONDET_FIXED_SIZE_0	5	/* units: words */
 #endif
+
+#ifdef PROFILE_TIME
+#define NONDET_FIXED_SIZE	(NONDET_FIXED_SIZE_0 + 2)
+#define PROF_CALLER_PROC	(-NONDET_FIXED_SIZE_0)
+#define PROF_CURRENT_PROC	(-NONDET_FIXED_SIZE_0 - 1)
+#define bt_caller_proc(fr)	(LVALUE_CAST(Code *, fr[PROF_CALLER_PROC])
+#define bt_current_proc(fr)	(LVALUE_CAST(Code *, fr[PROF_CURRENT_PROC])
+#else
+#define NONDET_FIXED_SIZE	NONDET_FIXED_SIZE_0
+#endif
+
+#define	SAVEVAL		(-NONDET_FIXED_SIZE)
+			/* saved values start at this offset	*/
 
 #define	bt_redoip(fr)	LVALUE_CAST(Code *, fr[REDOIP])
 #define	bt_prevfr(fr)	LVALUE_CAST(Word *, fr[PREVFR])
@@ -418,26 +418,21 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
-#ifdef	SPEED
-
-#define	mkframe(prednm, n, redoip)				\
-			do {					\
-				reg	Word	*prevfr;	\
-				reg	Word	*succfr;	\
-								\
-				prevfr = maxfr;			\
-				succfr = curfr;			\
-				maxfr = maxfr + (NONDET_FIXED_SIZE + n);\
-				curfr = maxfr;			\
-				curfr[REDOIP] = (Word) redoip;	\
-				curfr[PREVFR] = (Word) prevfr;	\
-				curfr[SUCCIP] = (Word) succip;	\
-				curfr[SUCCFR] = (Word) succfr;	\
-				debugmkframe();			\
-				nondstack_overflow_check();	\
-			} while (0)
-
+#ifndef	SPEED
+#define mkframe_save_prednm(prednm) (curprednm = prednm)
 #else
+#define mkframe_save_prednm(prednm) /* nothing */
+#endif
+
+#ifdef	PROFILE_TIME
+#define mkframe_save_prof_stuff() (				\
+		bt_call_proc(curfr) = detstackvar[1],		\
+		bt_current_proc(curfr) = prof_current_proc	\
+	)
+#else
+#define mkframe_save_prof_stuff() /* nothing */
+#endif
+
 
 #define	mkframe(prednm, n, redoip)				\
 			do {					\
@@ -446,18 +441,19 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 								\
 				prevfr = maxfr;			\
 				succfr = curfr;			\
-				maxfr = maxfr + (NONDET_FIXED_SIZE + n);\
+				maxfr += (NONDET_FIXED_SIZE + n);\
 				curfr = maxfr;			\
-				curfr[PREDNM] = (Word) prednm;	\
-				curfr[REDOIP] = (Word) redoip;	\
-				curfr[PREVFR] = (Word) prevfr;	\
-				curfr[SUCCIP] = (Word) succip;	\
-				curfr[SUCCFR] = (Word) succfr;	\
+				curredoip = redoip;		\
+				curprevfr = prevfr;		\
+				cursuccip = succip;		\
+				cursuccfr = succfr;		\
+				mkframe_save_prednm(prednm);	\
+				mkframe_save_prof_stuff();	\
 				debugmkframe();			\
 				nondstack_overflow_check();	\
 			} while (0)
 
-#endif
+
 
 #define	modframe(redoip)					\
 			do {					\
@@ -465,15 +461,24 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				debugmodframe();		\
 			} while (0)
 
+#ifdef PROFILE_TIME
+#define succeed_prof_stuff()	(prof_current_proc = pop())
+#else
+#define succeed_prof_stuff()	/* nothing */
+#endif
+
 #define	succeed()	do {					\
 				reg	Word	*childfr;	\
 								\
 				debugsucceed();			\
+				succeed_prof_stuff();		\
 				childfr = curfr;		\
 				curfr = cursuccfr;		\
 				GOTO(bt_succip(childfr));	\
 			} while (0)
 
+#if 0 /* this is old code for intelligent backtracking -
+	it doesn't work with profiling */
 #define	succeed_discard()					\
 			do {					\
 				reg	Word	*childfr;	\
@@ -484,16 +489,34 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				curfr = cursuccfr;		\
 				GOTO(bt_succip(childfr));	\
 			} while (0)
+#endif
+
+#ifdef PROFILE_TIME
+#define fail_prof_stuff() (prof_current_proc = pop())
+#else
+#define fail_prof_stuff()	/* nothing */
+#endif
 
 #define	fail()		do {					\
 				debugfail();			\
+				fail_prof_stuff();		\
 				maxfr = curprevfr;		\
 				curfr = maxfr;			\
 				nondstack_underflow_check();	\
 				GOTO(curredoip);		\
 			} while (0)
 
+#ifdef PROFILE_TIME
+#define redo_prof_stuff() ( \
+		push(bt_caller_proc(curfr)),			\
+		prof_current_proc = bt_current_proc(curfr)	\
+	)
+#else
+#define redo_prof_stuff()	/* nothing */
+#endif
+
 #define	redo()		do {					\
+				redo_prof_stuff();		\
 				debugredo();			\
 				curfr = maxfr;			\
 				GOTO(curredoip);		\
