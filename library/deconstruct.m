@@ -191,6 +191,10 @@
 	% greater than MaxArity, limited_deconstruct fails. This is useful in
 	% avoiding bad performance in cases where Data may be a large array.
 	%
+	% Note that this predicate only returns an answer when NonCanon is
+	% do_not_allow or canonicalize.  If you need the include_details_cc
+	% behaviour use deconstruct__limited_deconstruct_cc/3.
+	%
 :- pred limited_deconstruct(T, noncanon_handling, int, string, int,
 	list(univ)).
 :- mode limited_deconstruct(in, in(do_not_allow), in, out, out, out)
@@ -198,8 +202,12 @@
 :- mode limited_deconstruct(in, in(canonicalize), in, out, out, out)
 	is semidet.
 :- mode limited_deconstruct(in, in(include_details_cc), in, out, out, out)
-	is cc_nondet.
-:- mode limited_deconstruct(in, in, in, out, out, out) is cc_nondet.
+	is erroneous.
+:- mode limited_deconstruct(in, in, in, out, out, out) is semidet.
+
+	% See the documentation of std_util__limited_deconstruct_cc.
+:- pred limited_deconstruct_cc(T, int, maybe({string, int, list(univ)})).
+:- mode limited_deconstruct_cc(in, in, out) is cc_multi.
 
 :- implementation.
 :- interface.
@@ -364,9 +372,11 @@ limited_deconstruct(Term, NonCanon, MaxArity, Functor, Arity, Arguments) :-
 			Functor, Arity, Arguments)
 	;
 		NonCanon = include_details_cc,
-		limited_deconstruct_idcc(Term, MaxArity,
-			Functor, Arity, Arguments)
+		error("limited_deconstruct called with include_details_cc")
 	).
+
+limited_deconstruct_cc(Term, MaxArity, Result) :-
+	limited_deconstruct_idcc(Term, MaxArity, Result).
 
 %-----------------------------------------------------------------------------%
 
@@ -632,7 +642,7 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 :- pred limited_deconstruct_can(T::in, int::in,
 	string::out, int::out, list(univ)::out) is semidet.
 :- pred limited_deconstruct_idcc(T::in, int::in,
-	string::out, int::out, list(univ)::out) is cc_nondet.
+	maybe({string, int, list(univ)})::out) is cc_multi.
 
 :- pragma foreign_proc("C", 
 	deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out),
@@ -717,6 +727,7 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 #define	ARITY_ARG		Arity
 #define	ARGUMENTS_ARG		Arguments
 #define	NONCANON		MR_NONCANON_ABORT
+#define	SAVE_SUCCESS
 #include ""mercury_ml_deconstruct_body.h""
 #undef	EXPAND_INFO_TYPE
 #undef	EXPAND_INFO_CALL
@@ -727,6 +738,7 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 #undef	ARITY_ARG
 #undef	ARGUMENTS_ARG
 #undef	NONCANON
+#undef	SAVE_SUCCESS
 }").
 
 :- pragma foreign_proc("C", 
@@ -743,6 +755,7 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 #define	ARITY_ARG		Arity
 #define	ARGUMENTS_ARG		Arguments
 #define	NONCANON		MR_NONCANON_ALLOW
+#define	SAVE_SUCCESS
 #include ""mercury_ml_deconstruct_body.h""
 #undef	EXPAND_INFO_TYPE
 #undef	EXPAND_INFO_CALL
@@ -753,33 +766,54 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 #undef	ARITY_ARG
 #undef	ARGUMENTS_ARG
 #undef	NONCANON
+#undef	SAVE_SUCCESS
 }").
 
 :- pragma foreign_proc("C", 
-	limited_deconstruct_idcc(Term::in, MaxArity::in,
-		Functor::out, Arity::out, Arguments::out),
+	limited_deconstruct_idcc(Term::in, MaxArity::in, Maybe::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-#define	EXPAND_INFO_TYPE	MR_Expand_Functor_Args_Limit_Info
-#define	EXPAND_INFO_CALL	MR_expand_functor_args_limit
-#define	TYPEINFO_ARG		TypeInfo_for_T
-#define	TERM_ARG		Term
-#define	MAX_ARITY_ARG		MaxArity
-#define	FUNCTOR_ARG		Functor
-#define	ARITY_ARG		Arity
-#define	ARGUMENTS_ARG		Arguments
-#define	NONCANON		MR_NONCANON_CC
-#include ""mercury_ml_deconstruct_body.h""
-#undef	EXPAND_INFO_TYPE
-#undef	EXPAND_INFO_CALL
-#undef	TYPEINFO_ARG
-#undef	TERM_ARG
-#undef	MAX_ARITY_ARG
-#undef	FUNCTOR_ARG
-#undef	ARITY_ARG
-#undef	ARGUMENTS_ARG
-#undef	NONCANON
+	MR_String	Functor;
+	MR_Integer	Arity;
+	MR_Word		Arguments;
+
+	#define	EXPAND_INFO_TYPE	MR_Expand_Functor_Args_Limit_Info
+	#define	EXPAND_INFO_CALL	MR_expand_functor_args_limit
+	#define	TYPEINFO_ARG		TypeInfo_for_T
+	#define	TERM_ARG		Term
+	#define	MAX_ARITY_ARG		MaxArity
+	#define	FUNCTOR_ARG		Functor
+	#define	ARITY_ARG		Arity
+	#define	ARGUMENTS_ARG		Arguments
+	#define	NONCANON		MR_NONCANON_CC
+	#include ""mercury_ml_deconstruct_body.h""
+	#undef	EXPAND_INFO_TYPE
+	#undef	EXPAND_INFO_CALL
+	#undef	TYPEINFO_ARG
+	#undef	TERM_ARG
+	#undef	MAX_ARITY_ARG
+	#undef	FUNCTOR_ARG
+	#undef	ARITY_ARG
+	#undef	ARGUMENTS_ARG
+	#undef	NONCANON
+
+	if (success) {
+		Maybe = ML_construct_idcc_yes(Functor, Arity, Arguments);
+	} else {
+		Maybe = ML_construct_idcc_no();
+	}
 }").
+
+:- func construct_idcc_yes(string, int, list(univ)) =
+		maybe({string, int, list(univ)}).
+:- pragma export(construct_idcc_yes(in, in, in) = out, "ML_construct_idcc_yes").
+construct_idcc_yes(Functor, Arity, Args) = yes({Functor, Arity, Args}).
+
+:- func construct_idcc_no = maybe({string, int, list(univ)}).
+:- pragma export(construct_idcc_no = out, "ML_construct_idcc_no").
+construct_idcc_no = no.
+
+
 
 deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term,
@@ -801,11 +835,14 @@ limited_deconstruct_can(Term::in, MaxArity::in,
 	rtti_implementation__deconstruct(Term,
 			canonicalize, Functor, Arity, Arguments),
 	Arity =< MaxArity.
-limited_deconstruct_idcc(_Term::in, _MaxArity::in,
-		_Functor::out, _Arity::out, _Arguments::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("limited_deconstruct_idcc/5").
+limited_deconstruct_idcc(Term::in, MaxArity::in, MaybeResult::out) :-
+	rtti_implementation__deconstruct(Term,
+			include_details_cc, Functor, Arity, Arguments),
+	( Arity =< MaxArity ->
+		MaybeResult = yes({Functor, Arity, Arguments})
+	;
+		MaybeResult = no
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -219,10 +219,8 @@ test_deconstruct_limited_deconstruct(T, Limit) -->
 	io__write_string(Str),
 	io__print(T),
 	io__write_string("\n"),
-	(
-		{ deconstruct__limited_deconstruct(T, include_details_cc,
-			Limit, Functor, Arity, Arguments) }
-	->
+	{ deconstruct__limited_deconstruct_cc(T, Limit, Result) },
+	( { Result = yes({Functor, Arity, Arguments}) } ->
 		{ string__format("functor %s arity %d ",
 			[s(Functor), i(Arity)], Str2) },
 		io__write_string(Str2),

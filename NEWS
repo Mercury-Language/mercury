@@ -34,14 +34,17 @@ Changes to the Mercury standard library:
   `is_nan_or_inf/1' to float.m.  These predicates are for use only on
   systems which support IEEE floating point arithmetic.
 
-* The determinism of std_util__arg_cc has changed to cc_multi from cc_nondet.
-  The success or failure of the argument lookup is now encoded in the
-  new maybe_arg type.
+* The determinisms of the following predicates in the `std_util'
+  module have been changed from cc_nondet to cc_multi: arg_cc/3 and
+  limited_deconstruct_cc/3 (formerly limited_deconstruct_cc/5).  The
+  success or failure of these predicates is now encoded in a maybe
+  type.
 
 * The incorrect cc_nondet modes of the following predicates in
-  the `deconstruct' module have been removed: arg/4.  cc_multi version
-  of the predicates have been introduced where the success or failure
-  of the predicate has been encoded into a maybe type.
+  the `deconstruct' module have been removed: arg/4, limited_deconstruct/6.
+  cc_multi version of the predicates have been introduced where the
+  success or failure of the predicate has been encoded into a maybe
+  type.
 
 Changes to the extras distribution:
 

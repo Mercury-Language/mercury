@@ -707,12 +707,13 @@
 	% avoiding bad performance in cases where Data may be a large array.
 	%
 	% limited_deconstruct_cc succeeds even if the first argument is
-	% of a non-canonical type.
+	% of a non-canonical type.  limited_deconstruct_cc encodes the
+	% possible failure of the predicate by using a maybe type.
 	%
 :- pred limited_deconstruct(T::in, int::in, string::out,
 	int::out, list(univ)::out) is semidet.
-:- pred limited_deconstruct_cc(T::in, int::in, string::out,
-	int::out, list(univ)::out) is cc_nondet.
+:- pred limited_deconstruct_cc(T::in, int::in,
+		maybe({string, int, list(univ)})::out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -1653,9 +1654,8 @@ limited_deconstruct(Term, MaxArity, Functor, Arity, Arguments) :-
 	deconstruct__limited_deconstruct(Term, canonicalize,
 		MaxArity, Functor, Arity, Arguments).
 
-limited_deconstruct_cc(Term, MaxArity, Functor, Arity, Arguments) :-
-	deconstruct__limited_deconstruct(Term, include_details_cc,
-		MaxArity, Functor, Arity, Arguments).
+limited_deconstruct_cc(Term, MaxArity, Result) :-
+	deconstruct__limited_deconstruct_cc(Term, MaxArity, Result).
 
 det_arg(Type, Index) = Argument :-
 	deconstruct__det_arg(Type, canonicalize, Index, Argument0),

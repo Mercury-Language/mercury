@@ -49,20 +49,30 @@
 ** MAX_ARITY_ARG        If defined, gives the name of the argument whose value
 **                      gives the maximum number of arguments we want to
 **                      succeed for.
+**
+** SAVE_SUCCESS         If defined, success is saved into SUCCESS_INDICATOR.
 */
+
+#if defined(SAVE_SUCCESS) && !defined(MAX_ARITY_ARG)
+  #error "SAVE_SUCCESS requires MAX_ARITY_ARG is defined"
+#endif
 
 #ifdef  MAX_ARITY_ARG
   #define   maybe_max_arity_arg     MAX_ARITY_ARG,
   #define   max_arity_check_start                                       \
                                     if (expand_info.limit_reached) {    \
-                                        SUCCESS_INDICATOR = MR_FALSE;   \
+                                        success = MR_FALSE;   \
                                     } else {                            \
-                                        SUCCESS_INDICATOR = MR_TRUE;
+                                        success = MR_TRUE;
   #define   max_arity_check_end     }
 #else
   #define   maybe_max_arity_arg
   #define   max_arity_check_start
   #define   max_arity_check_end
+#endif
+
+#ifdef  MAX_ARITY_ARG
+    MR_bool             success;
 #endif
 
     EXPAND_INFO_TYPE	expand_info;
@@ -81,6 +91,10 @@
         MR_deconstruct_get_arg_list(expand_info, args, ARGUMENTS_ARG);
         MR_deconstruct_free_allocated_arg_type_infos(expand_info, args);
     max_arity_check_end
+
+#ifdef SAVE_SUCCESS
+    SUCCESS_INDICATOR = success;
+#endif
 
 #undef  maybe_max_arity_arg
 #undef  max_arity_check_start
