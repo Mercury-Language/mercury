@@ -11,10 +11,19 @@
 % actually generates GCC's internal "Tree" representation,
 % without going via an external file.
 
+% Currently this supports grade hlc.gc only.
+%
+% Trailing will probably work too, but since trailing
+% is currently implemented using the C interface,
+% it will end up compiling everything via C.
+
 % TODO:
-% 	Implement the remaining things needed for standard Mercury:
-%	- boxing of floats
-%	- C interface
+%	Fix configuration issues:
+%	- mmake support
+%	- document installation procedure
+%	- test more
+%	- support in tools/bootcheck and check that it bootchecks
+%	- set up nightly tests
 %
 %	Implement implementation-specific features that are supported
 %	by other Mercury back-ends:
@@ -29,6 +38,7 @@
 %	- support gdb
 %		- improve accuracy of line numbers (e.g. for decls).
 %		- fix variable scoping so that local vars show up
+%	- generate gcc trees rather than expanding as we go
 %
 %	Improve efficiency of generated code:
 %	- --static-ground-terms
@@ -66,20 +76,16 @@
 % XXX some of these imports might be unused
 
 :- import_module ml_util.
-:- import_module llds.		% XXX needed for C interface types
+:- import_module mlds_to_c.	% to handle C foreign_code
 :- import_module llds_out.	% XXX needed for llds_out__name_mangle,
 				% llds_out__sym_name_mangle,
 				% llds_out__make_base_typeclass_info_name,
-				% output_c_file_intro_and_grade.
 :- import_module rtti.		% for rtti__addr_to_string.
-:- import_module rtti_to_mlds.	% for mlds_rtti_type_name.
-:- import_module hlds_pred.	% for pred_proc_id.
 :- import_module ml_code_util.	% for ml_gen_mlds_var_decl, which is used by
 				% the code that handles derived classes
-:- import_module ml_type_gen.	% for ml_gen_type_name
-:- import_module export.	% for export__type_to_type_string
+:- import_module hlds_pred.	% for proc_id_to_int and invalid_pred_id
 :- import_module globals, options, passes_aux.
-:- import_module builtin_ops, c_util, modules.
+:- import_module builtin_ops, modules.
 :- import_module prog_data, prog_out, prog_util, type_util, error_util.
 :- import_module pseudo_type_info.
 
@@ -95,12 +101,30 @@
 
 
 mlds_to_gcc__compile_to_asm(MLDS) -->
-	{ MLDS = mlds(ModuleName, _ForeignCode, _Imports, Defns) },
+	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns0) },
+
 	%
-	% XXX at some point we should also handle output of any
-	%     foreign code (C, Ada, Fortran, etc.) to appropriate files.
-	% { Indent = 0 },
-	% mlds_output_c_defns(MLDS_ModuleName, Indent, ForeignCode), io__nl,
+	% Handle output of any foreign code (C, Ada, Fortran, etc.)
+	% to appropriate files.
+	%
+	{ list__filter(defn_contains_foreign_code, Defns0,
+		ForeignDefns, Defns) },
+	(
+		{ ForeignCode = mlds__foreign_code([], [], []) },
+		{ ForeignDefns = [] }
+	->
+		% there's no foreign code, so we don't need to
+		% do anything special
+		{ NeedInitFn = yes }
+	;
+		% create a new MLDS containing just the foreign code
+		% and pass that to mlds_to_c.m
+		{ ForeignMLDS = mlds(ModuleName, ForeignCode, Imports,
+			ForeignDefns) },
+		mlds_to_c__output_mlds(ForeignMLDS),
+		{ NeedInitFn = no }
+	),
+
 	%
 	% We generate things in this order:
 	%	#1. definitions of the types,
@@ -123,7 +147,11 @@ mlds_to_gcc__compile_to_asm(MLDS) -->
 	% XXX currently we just generate an empty initialization function.
 	% Initialization functions are only needed for --profiling
 	% and --heap-profiling, which we don't support yet.
-	gen_init_fn_defns(MLDS_ModuleName, GlobalInfo2, _GlobalInfo).
+	( { NeedInitFn = yes } ->
+		gen_init_fn_defns(MLDS_ModuleName, GlobalInfo2, _GlobalInfo)
+	;
+		[]
+	).
 /****
 not yet:
 	{ list__filter(defn_is_function, NonTypeDefns, FuncDefns) },
@@ -2852,6 +2880,17 @@ gen_context(MLDS_Context) -->
 %
 % Utility predicates.
 %
+
+:- pred defn_contains_foreign_code(mlds__defn).
+:- mode defn_contains_foreign_code(in) is semidet.
+
+defn_contains_foreign_code(Defn) :-
+	Defn = mlds__defn(_Name, _Context, _Flags, Body),
+	Body = function(_, _, yes(FunctionBody)),
+	statement_contains_statement(FunctionBody, Statement),
+	Statement = mlds__statement(Stmt, _),
+	Stmt = atomic(target_code(TargetLang, _)),
+	TargetLang \= lang_asm.
 
 	% XXX This should be moved to ml_util.m
 :- pred defn_is_type(mlds__defn).
