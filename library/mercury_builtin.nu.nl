@@ -129,6 +129,14 @@ np_builtin__split_env_string([C | Cs], Var, Rest) :-
 	    np_builtin__split_env_string(Cs, Var0, Rest)
 	).
 
+lambda(LambdaExpression, Goal0) :-
+	( LambdaExpression = ([] is _Det) ->
+		duplicate(Goal0, Goal)
+	;
+		error("error in use of `lambda'")
+	),
+	call(Goal).
+
 lambda(LambdaExpression, Goal0, Arg1) :-
 	( LambdaExpression = ([Var1::_Mode1] is _Det), var(Var1) ->
 		duplicate([Var1|Goal0], [Arg1|Goal])
