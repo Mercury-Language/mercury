@@ -33,12 +33,12 @@ dll: libgcd$(DLL_DEF_LIB).dll
 libgc$(DLL_DEF_LIB).dll: libgcd.dll
 
 %.obj:%.c
-	$(cc) $(cdebug) $(CFLAGS) $(cvars)  -DSILENT -DALL_INTERIOR_POINTERS -D__STDC__  /c /Fo$*.obj $*.c
+	$(cc) $(cdebug) $(CFLAGS) $(cvars) -Iinclude -DSILENT -DALL_INTERIOR_POINTERS -D__STDC__  /c /Fo$*.obj $*.c
 
 %.obj:%.cpp
-	$(cc) $(cdebug) $(CFLAGS) $(cvars) -DSILENT -DALL_INTERIOR_POINTERS $*.CPP /c  /Fo$*.obj
+	$(cc) $(cdebug) $(CFLAGS) $(cvars) -Iinclude -DSILENT -DALL_INTERIOR_POINTERS $*.CPP /c  /Fo$*.obj
 
-$(OBJS) test.obj: gc_priv.h gc_hdrs.h gc.h
+$(OBJS) tests\test.obj: include\private\gc_priv.h include\private\gc_hdrs.h include\gc.h include\private\gcconfig.h include\private\gc_locks.h include\private\gc_mark.h
 
 gc.lib: $(OBJS)
 	lib /MACHINE:i386 /out:gc.lib $(OBJS)
@@ -47,7 +47,6 @@ libgcd$(DLL_DEF_LIB).dll: $(OBJS)
 #	$(link) /MACHINE:i386 /DLL /out:libgcd.dll $(OBJS)
 
 # The original NT SDK used lib32 instead of lib
-
 
 libnogc$(DLL_DEF_LIB).lib: gc.lib
 	rm -f libnogc$(DLL_DEF_LIB).lib
@@ -59,18 +58,18 @@ libgc$(DLL_DEF_LIB).lib: gc.lib
 	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
 	cp gc.lib libgc$(DLL_DEF_LIB).lib
 
-gctest.exe: test.obj libgc.lib
+gctest.exe: tests\test.obj gc.lib
 #	The following works for win32 debugging.  For win32s debugging use debugtype:coff
 #	and add mapsympe line.
 #  This produces a "GUI" applications that opens no windows and writes to the log file
 #  "gc.log".  This is done to make the result runnable under win32s.
-	$(link) -debug:full -debugtype:cv $(guiflags) -stack:131072 -out:gctest.exe test.obj $(guilibs) libgc.lib
+	$(link) -debug:full -debugtype:cv $(guiflags) -stack:131072 -out:gctest.exe tests\test.obj $(guilibs) libgc.lib
 #	mapsympe -n -o gctest.sym gctest.exe
 
 cord\de_win.rbj: cord\de_win.res
 	cvtres -$(CPU) cord\de_win.res -o cord\de_win.rbj
 
-cord\de.obj cord\de_win.obj: cord\cord.h cord\private\cord_pos.h cord\de_win.h cord\de_cmds.h
+cord\de.obj cord\de_win.obj: include\cord.h include\private\cord_pos.h cord\de_win.h cord\de_cmds.h
 
 cord\de_win.res: cord\de_win.rc cord\de_win.h cord\de_cmds.h
 	$(rc) $(rcvars) -r -fo cord\de_win.res $(cvars) cord\de_win.rc
@@ -79,19 +78,21 @@ cord\de_win.res: cord\de_win.rc cord\de_win.h cord\de_cmds.h
 cord\de.exe: cord\cordbscs.obj cord\cordxtra.obj cord\de.obj cord\de_win.obj cord\de_win.rbj libgc.lib
 	$(link) -debug:full -debugtype:cv $(guiflags) -stack:16384 -out:cord\de.exe  cord\cordbscs.obj cord\cordxtra.obj cord\de.obj cord\de_win.obj cord\de_win.rbj libgc.lib $(guilibs)
 
-gc_cpp.obj: gc_cpp.h gc.h
+gc_cpp.obj: include\gc_cpp.h include\gc.h
 
 gc_cpp.cpp: gc_cpp.cc
 	cp gc_cpp.cc gc_cpp.cpp
 
-test_cpp.cpp: test_cpp.cc
-	cp test_cpp.cc test_cpp.cpp
+test_cpp.cpp: tests\test_cpp.cc
+	cp tests\test_cpp.cc test_cpp.cpp
 
 # This generates the C++ test executable.  The executable expects
 # a single numeric argument, which is the number of iterations.
 # The output appears in the file "gc.log".
-test_cpp.exe: test_cpp.obj gc_cpp.h gc.h libgc.lib
+test_cpp.exe: test_cpp.obj include\gc_cpp.h include\gc.h gc.lib
 	$(link) -debug:full -debugtype:cv $(guiflags) -stack:16384 -out:test_cpp.exe test_cpp.obj libgc.lib $(guilibs)
+
+
 
 .PHONY: clean
 clean:

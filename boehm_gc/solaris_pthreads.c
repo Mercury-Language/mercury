@@ -16,10 +16,10 @@
  * Modified Peter C. for Solaris Posix Threads.
  */
 /* Boehm, September 14, 1994 4:44 pm PDT */
-/* $Id: solaris_pthreads.c,v 1.6 2000-09-18 11:08:54 fjh Exp $ */
+/* $Id: solaris_pthreads.c,v 1.7 2001-04-10 13:20:19 fjh Exp $ */
 
-# if defined(_SOLARIS_PTHREADS)
-# include "gc_priv.h"
+# if defined(GC_SOLARIS_PTHREADS) || defined(_SOLARIS_PTHREADS)
+# include "private/gc_priv.h"
 # include <pthread.h>
 # include <thread.h>
 # include <signal.h>
@@ -36,7 +36,7 @@
 # define _CLASSIC_XOPEN_TYPES
 # include <unistd.h>
 # include <errno.h>
-# include "solaris_threads.h"
+# include "private/solaris_threads.h"
 # include <stdio.h>
 
 #undef pthread_join
