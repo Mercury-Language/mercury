@@ -2187,7 +2187,8 @@ unravel_unification(term__variable(X), term__functor(F, Args, FunctorContext),
 			Context, MainContext, SubContext, VarSet0,
 			Goal, VarSet) :-
 	(
-	    (	% handle lambda expressions
+	    (
+		% handle lambda expressions
 		F = term__atom("lambda"),
 		Args = [LambdaExpressionTerm, GoalTerm0],
 		parse_lambda_expression(LambdaExpressionTerm,
@@ -2221,6 +2222,36 @@ unravel_unification(term__variable(X), term__functor(F, Args, FunctorContext),
 		create_atomic_unification(X,
 				lambda_goal(Vars, Modes, Det, HLDS_Goal),
 				Context, MainContext, SubContext, Goal)
+	;
+	        % handle if-then-else expressions
+		(   F = term__atom("else"),
+		    Args = [term__functor(term__atom("if"), [
+				term__functor(term__atom("then"),
+					[IfTerm, ThenTerm], _)
+				], _),
+			    ElseTerm]
+		;   F = term__atom(";"),
+		    Args = [term__functor(term__atom("->"),
+				[IfTerm, ThenTerm], _),
+			    ElseTerm]
+		),
+		parse_some_vars_goal(IfTerm, VarSet0, Vars, IfParseTree,
+			VarSet11)
+	->
+		map__init(Subst),
+		transform_goal(IfParseTree, VarSet11, Subst, IfGoal, VarSet22),
+		unravel_unification(term__variable(X), ThenTerm,
+			Context, MainContext, SubContext, VarSet22, ThenGoal,
+			VarSet33),
+		unravel_unification(term__variable(X), ElseTerm,
+			Context, MainContext, SubContext, VarSet33, ElseGoal,
+			VarSet),
+		map__init(FollowVars),
+		IfThenElse = if_then_else(Vars, IfGoal, ThenGoal, ElseGoal,
+			FollowVars),
+		goal_info_init(GoalInfo0),
+		goal_info_set_context(GoalInfo0, Context, GoalInfo),
+		Goal = IfThenElse - GoalInfo
 	; Args = [] ->
 		create_atomic_unification(X, functor(F, []),
 				Context, MainContext, SubContext, Goal),
