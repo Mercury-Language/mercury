@@ -1364,7 +1364,7 @@ table_loopcheck_error(Message) :-
 	error(Message).
 
 :- pragma foreign_proc("C",
-	table_report_statistics, [will_not_call_mercury, promise_pure], "
+	table_report_statistics, [will_not_call_mercury], "
 	MR_table_report_statistics(stderr);
 ").
 
