@@ -224,17 +224,29 @@ strip_imported_items([Item - Context | Rest], Items0, Items) :-
 :- mode check_for_clauses_in_interface(in, out, di, uo) is det.
 
 check_for_clauses_in_interface([], []) --> [].
-check_for_clauses_in_interface([Item0 | Items0], Items) -->
+check_for_clauses_in_interface([ItemAndContext0 | Items0], Items) -->
+	{ ItemAndContext0 = Item0 - Context },
 	(
-		( { Item0 = pred_clause(_,_,_,_) - Context }
-		; { Item0 = func_clause(_,_,_,_,_) - Context }
+		( { Item0 = pred_clause(_,_,_,_) }
+		; { Item0 = func_clause(_,_,_,_,_) }
 		)
 	->
 		prog_out__write_context(Context),
-		io__write_string("Warning: clause in module interface.\n"),
+		report_warning("Warning: clause in module interface.\n"),
 		check_for_clauses_in_interface(Items0, Items)
 	;
-		{ Items = [Item0 | Items1] },
+		% `pragma obsolete' declarations are supposed to go
+		% in the interface, but all other pragma declarations
+		% should go in the implementation.
+		{ Item0 = pragma(Pragma) },
+		{ Pragma \= obsolete(_, _) }
+	->
+		prog_out__write_context(Context),
+		report_warning("Warning: pragma in module interface.\n"),
+		check_for_clauses_in_interface(Items0, Items)
+
+	;
+		{ Items = [ItemAndContext0 | Items1] },
 		check_for_clauses_in_interface(Items0, Items1)
 	).
 
