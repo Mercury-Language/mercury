@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2001 The University of Melbourne.
+# Copyright (C) 1996-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -75,7 +75,7 @@ endif
 
 SED_CMD = sed -e "s/<VERSION>/$(VERSION)/g" < $< > $@
 
-%.texi_pp: %.texi
+%.texi_pp: %.texi ../VERSION
 	$(SED_CMD)
 
 mercury.html: mercury.html.in
