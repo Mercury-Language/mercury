@@ -25,14 +25,20 @@
 	%
 	% Some of this code is a nightmare of cut-and-paste style reuse.
 	% It should be cleaned up to eliminate most of the duplication.
-	% But that task can wait until we implement higher-order
+	% But that task really needs to wait until we implement higher-order
 	% predicates.  For the moment, just be careful that any changes
 	% you make are reflected correctly in all similar parts of this
 	% file.
 
 	% XXX not yet implemented:
-	%	:- pred declarations
-	%	:- mode p(...) declarations.
+	%   1. `:- module' and `:- end_module' declarations
+	%   2. `:- mode p(...)' and `:- pred p(type::mode) 
+	%      predicate mode declarations 
+	%   3. importing/exporting operators with a particular fixity
+	%      eg. :- import_op prefix(+). % only prefix +, not infix
+	%      (not important, but should be there for reasons of symmetry.)
+	% Also the handling of type and inst parameters leaves a bit
+	% to be desired, and the error reporting should be improved.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -89,7 +95,6 @@
 			;	if_then(vars,goal,goal)
 			;	if_then_else(vars,goal,goal,goal)
 			;	call(term).
-			%%% ;	error.	XXX not used
 
 :- type goals		==	list(goal).
 :- type vars		==	list(variable).
