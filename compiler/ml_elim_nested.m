@@ -1648,7 +1648,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
 			% we need to strip out the initializer (if any)
 			% and convert it into an assignment statement,
 			% since this local variable is going to become
-			% a field, and fields can have initializers.
+			% a field, and fields can't have initializers.
 			( { Init0 = init_obj(Rval) } ->
 				{ Init1 = no_initializer },
 				{ DefnBody1 = mlds__data(Type, Init1,
