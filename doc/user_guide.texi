@@ -43,7 +43,7 @@
 @c ----------------------------------------------------------------------------
 
 @ifinfo
-This file documents the Mercury implementation.
+This file documents the Mercury implementation, version <VERSION>.
 
 Copyright (C) 1995-2001 The University of Melbourne.
 
@@ -69,6 +69,7 @@ into another language, under the above conditions for modified versions.
 
 @titlepage
 @title The Mercury User's Guide
+@subtitle Version <VERSION>
 @author Fergus Henderson
 @author Thomas Conway
 @author Zoltan Somogyi
@@ -100,7 +101,7 @@ into another language, under the above conditions for modified versions.
 
 @ifinfo
 @node Top,,, (mercury)
-@top The Mercury User's Guide
+@top The Mercury User's Guide, version <VERSION>
 
 This guide describes the compilation environment of Mercury ---
 how to build and debug Mercury programs.

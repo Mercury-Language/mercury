@@ -13,7 +13,7 @@
 @finalout
 @setchapternewpage off
 @ifinfo
-This file documents the Mercury standard library.
+This file documents the Mercury standard library, version <VERSION>.
 
 Copyright (C) 1995-1999 The University of Melbourne.
 
@@ -39,6 +39,7 @@ into another language, under the above conditions for modified versions.
 
 @titlepage
 @title The Mercury Library Reference Manual
+@subtitle Version <VERSION>
 @c @author Fergus Henderson
 @c @author Thomas Conway
 @c @author Zoltan Somogyi
@@ -64,7 +65,7 @@ into another language, under the above conditions for modified versions.
 
 @ifinfo
 @node Top,,, (mercury)
-@top Mercury Library Reference Manual
+@top Mercury Library Reference Manual, version <VERSION>
 @end ifinfo
 
 The Mercury standard library contains a variety of modules which we
@@ -101,7 +102,7 @@ modules whose stability is described as either ``medium to high'' or
 ``high''.
 
 @menu
-@include library-menu.texi
+@include library-menu.texi_pp
 @end menu
-@include library-chapters.texi
+@include library-chapters.texi_pp
 @bye

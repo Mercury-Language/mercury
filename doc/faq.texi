@@ -22,7 +22,7 @@
 @finalout
 @setchapternewpage off
 @ifinfo
-This file is the Mercury Frequently Asked Questions list.
+This file is the Mercury Frequently Asked Questions List, version <VERSION>.
 It contains a list of frequently asked questions about Mercury, with answers.
 
 Copyright (C) 1995-1997 The University of Melbourne.
@@ -48,7 +48,8 @@ into another language, under the above conditions for modified versions.
 @end ifinfo
 
 @titlepage
-@title The Mercury Frequently Asked Questions list
+@title The Mercury Frequently Asked Questions List
+@subtitle Version <VERSION>
 @author Fergus Henderson
 @author Thomas Conway
 @author Zoltan Somogyi
@@ -73,7 +74,7 @@ into another language, under the above conditions for modified versions.
 
 @ifinfo
 @node Top,,, (mercury)
-@top The Mercury Frequently Asked Questions list
+@top The Mercury Frequently Asked Questions List, version <VERSION>
 @menu
 * Programming::     Common programming errors.
 * Unimplemented::   Problems caused by unimplemented Mercury features.

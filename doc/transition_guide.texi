@@ -39,6 +39,7 @@ into another language, under the above conditions for modified versions.
 
 @titlepage
 @title The Prolog to Mercury transition guide
+@subtitle Version <VERSION>
 @author Thomas Conway
 @author Zoltan Somogyi
 @author Fergus Henderson
@@ -63,7 +64,7 @@ into another language, under the above conditions for modified versions.
 
 @ifinfo
 @node Top,,, (mercury)
-@top The Prolog to Mercury transition guide
+@top The Prolog to Mercury Transition Guide, version <VERSION>
 
 This guide gives some advice about
 translating Prolog programs into Mercury.

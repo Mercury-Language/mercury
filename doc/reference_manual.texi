@@ -16,7 +16,7 @@
 @finalout
 @setchapternewpage off
 @ifinfo
-This file documents the Mercury programming language.
+This file documents the Mercury programming language, version <VERSION>.
 
 Copyright (C) 1995-2001 The University of Melbourne.
 
@@ -42,6 +42,7 @@ into another language, under the above conditions for modified versions.
 
 @titlepage
 @title The Mercury Language Reference Manual
+@subtitle Version <VERSION>
 @author Fergus Henderson
 @author Thomas Conway
 @author Zoltan Somogyi
@@ -72,7 +73,7 @@ into another language, under the above conditions for modified versions.
 
 @ifinfo
 @node Top,,, (mercury)
-@top
+@top The Mercury Language Reference Manual, version <VERSION>
 @end ifinfo
 @c XXX Move to after Determinism
 @c * Assertions::        Assertion declarations allow you to declare laws

@@ -315,7 +315,7 @@ if ($docu =~ /.*\//) {
     $docu_dir = '.';
     $docu_name = $docu;
 }
-$docu_name =~ s/\.te?x(i|info)?$//;	# basename of the document
+$docu_name =~ s/\.te?x(i|info|i_pp)?$//;# basename of the document
 
 $docu_toc = $docu_doc = $docu_foot = $docu_name;
 $docu_toc  .= '_toc.html';		# document's table of contents
