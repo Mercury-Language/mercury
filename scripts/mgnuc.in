@@ -370,7 +370,7 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 			;;
 		esac
 		;;
-	i?86-*)
+	i*86-*)
 		# the use of stack_pointer in the ASM_JUMP macro
 		# defined in runtime/goto.h causes lots of warnings
 		# about using possibly uninitialized variables;
@@ -426,7 +426,7 @@ case $COMPILER in gcc)
 					ARCH_OPTS="$ARCH_OPTS -O1" ;;
 				esac
 			esac ;;
-		i?86*)
+		i*86*)
 			case "$*" in
 			*" call_gen.c "*|*" modules.dir/call_gen"*".c "*)
 				ARCH_OPTS="$ARCH_OPTS -O0" ;;
