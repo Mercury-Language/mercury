@@ -756,7 +756,7 @@ ML_make_array(MR_Integer size, MR_Word item)
 ").
 
 :- pragma foreign_proc("C#",
-		array__make_empty_array(Array::array_uo),
+		array__make_empty_array(_Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
         mercury.runtime.Errors.SORRY(""foreign code for this predicate"");
 ").
