@@ -434,9 +434,9 @@ trusted(ProcLayout, Oracle) :-
 	(
 		ProcId = proc(Module, PredOrFunc, _, Name, Arity, _),
 		(
-			member(all(Module), Oracle ^ trusted)
+			set.member(all(Module), Oracle ^ trusted)
 		;
-			member(specific(PredOrFunc, Module, Name, Arity),
+			set.member(specific(PredOrFunc, Module, Name, Arity),
 				Oracle ^ trusted)
 		)
 	;
