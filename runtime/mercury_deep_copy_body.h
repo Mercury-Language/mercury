@@ -101,9 +101,9 @@ try_again:
     */
     du_type:
         {
-            MR_Word             *data_value;
-	    MR_DuPtagLayout     *ptag_layout;
-	    int                 ptag;
+            MR_Word               *data_value;
+	    const MR_DuPtagLayout *ptag_layout;
+	    int                   ptag;
 
             ptag = MR_tag(data);
             ptag_layout = &du_type_layout[ptag];

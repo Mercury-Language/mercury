@@ -145,8 +145,9 @@ gen_init_rtti_data_defn(field_types(_RttiTypeId, _Ordinal, Types),
 		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
 		ModuleName), Types).
 gen_init_rtti_data_defn(reserved_addrs(_RttiTypeId, ReservedAddrs),
-		_ModuleName, _, Init, []) :-
-	Init = gen_init_array(gen_init_reserved_address, ReservedAddrs).
+		_ModuleName, ModuleInfo, Init, []) :-
+	Init = gen_init_array(gen_init_reserved_address(ModuleInfo),
+		ReservedAddrs).
 gen_init_rtti_data_defn(reserved_addr_functors(RttiTypeId,
 			ReservedAddrFunctorDescs),
 		ModuleName, _, Init, []) :-
@@ -189,11 +190,11 @@ gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 			MaybeExist)
 	]).
 gen_init_rtti_data_defn(reserved_addr_functor_desc(_RttiTypeId, FunctorName, Ordinal,
-		ReservedAddress), _, _, Init, []) :-
+		ReservedAddress), _, ModuleInfo, Init, []) :-
 	Init = init_struct([
 		gen_init_string(FunctorName),
 		gen_init_int(Ordinal),
-		gen_init_reserved_address(ReservedAddress)
+		gen_init_reserved_address(ModuleInfo, ReservedAddress)
 	]).
 gen_init_rtti_data_defn(enum_name_ordered_table(RttiTypeId, Functors),
 		ModuleName, _, Init, []) :-
@@ -635,10 +636,12 @@ gen_init_int(Int) = init_obj(const(int_const(Int))).
 gen_init_boxed_int(Int) =
 	init_obj(unop(box(mlds__native_int_type), const(int_const(Int)))).
 
-:- func gen_init_reserved_address(reserved_address) = mlds__initializer.
+:- func gen_init_reserved_address(module_info, reserved_address) =
+	mlds__initializer.
 	/* XXX using `mlds__generic_type' here is probably wrong */
-gen_init_reserved_address(ReservedAddress) =
-	init_obj(ml_gen_reserved_address(ReservedAddress, mlds__generic_type)).
+gen_init_reserved_address(ModuleInfo, ReservedAddress) =
+	init_obj(ml_gen_reserved_address(ModuleInfo, ReservedAddress,
+		mlds__generic_type)).
 
 %-----------------------------------------------------------------------------%
 

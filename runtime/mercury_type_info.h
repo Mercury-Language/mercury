@@ -817,7 +817,7 @@ typedef struct {
     const MR_DuFunctorDesc * const * MR_sectag_alternatives;
 } MR_DuPtagLayout;
 
-typedef MR_DuPtagLayout     *MR_DuTypeLayout;
+typedef const MR_DuPtagLayout *MR_DuTypeLayout;
 
 /*---------------------------------------------------------------------------*/
 
