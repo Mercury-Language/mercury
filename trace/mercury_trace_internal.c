@@ -1759,13 +1759,13 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		const MR_Proc_Layout	*entry;
 
 		entry = event_info->MR_event_sll->MR_sll_entry;
-		if (entry->MR_sle_proc_rep == 0) {
+		if (entry->MR_sle_proc_rep == NULL) {
 			fprintf(MR_mdb_out,
 				"current procedure has no body info\n");
 		} else {
 			MR_trace_browse_internal(
 				ML_goal_rep_type(),
-				entry->MR_sle_proc_rep,
+				(MR_Word) entry->MR_sle_proc_rep,
 				MR_BROWSE_CALLER_PRINT,
 				MR_BROWSE_DEFAULT_FORMAT);
 		}

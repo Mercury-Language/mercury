@@ -493,7 +493,10 @@ typedef union MR_Proc_Id_Union {
 **
 ** The proc_rep field contains a representation of the body of the procedure
 ** as a Mercury term of type goal_rep, defined in program_representation.m.
-** If will be 0 if no such representation is available.
+** Note that the type of this field is `MR_Word *', not `MR_Word',
+** for the same reasons that MR_mkword() has type `MR_Word *' rather
+** than `MR_Word' (see the comment in runtime/mercury_tags.h).
+** It will be a null pointer if no such representation is available.
 **
 ** The used_var_names field points to an array that contains offsets
 ** into the string table, with the offset at index i-1 giving the name of
@@ -573,7 +576,7 @@ typedef	MR_int_least8_t		MR_EvalMethodInt;
 typedef	struct MR_Exec_Trace_Struct {
 	const MR_Label_Layout	*MR_exec_call_label;
 	const MR_Module_Layout	*MR_exec_module_layout;
-	MR_Word			MR_exec_proc_rep;
+	MR_Word			*MR_exec_proc_rep;
 	const MR_int_least16_t	*MR_exec_used_var_names;
 	MR_int_least16_t	MR_exec_max_var_num;
 	MR_int_least16_t	MR_exec_max_r_num;

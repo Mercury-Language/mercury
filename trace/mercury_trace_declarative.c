@@ -468,7 +468,7 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 		at_depth_limit = FALSE;
 	}
 
-	proc_rep = layout->MR_sll_entry->MR_sle_proc_rep;
+	proc_rep = (MR_Word) layout->MR_sll_entry->MR_sle_proc_rep;
 	atom = MR_decl_make_atom(layout, event_info->MR_saved_regs,
 			MR_PORT_CALL);
 	MR_TRACE_CALL_MERCURY(
