@@ -72,6 +72,8 @@ esac
 #	hg)		LN="cp -r"; LN_S="cp -r" ;;
 #	*)		LN="ln"; LN_S="ln -s" ;;
 #esac
+LN="ln"
+LN_S="ln -s"
 
 # flags for building the compiler
 INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
