@@ -1,2 +1,3 @@
-Software error: string__format: argument list has fewer elements than format string
+Uncaught exception:
+Software Error: string__format: argument list has fewer elements than format string
 Stack dump not available in this grade.
