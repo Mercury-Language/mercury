@@ -126,10 +126,10 @@ MR_init_context(MR_Context *c)
 	MR_succfr_slot(c->MR_ctxt_curfr) = NULL;
 
   #ifdef MR_USE_MINIMAL_MODEL
-	if (c->MR_ctxt_generatorstack_zone != NULL) {
-		MR_reset_redzone(c->MR_ctxt_generatorstack_zone);
+	if (c->MR_ctxt_genstack_zone != NULL) {
+		MR_reset_redzone(c->MR_ctxt_genstack_zone);
 	} else {
-		c->MR_ctxt_generatorstack_zone = MR_create_zone(
+		c->MR_ctxt_genstack_zone = MR_create_zone(
 			"generatorstack", 0,
 			MR_generatorstack_size, MR_next_offset(),
 			MR_generatorstack_zone_size, MR_default_handler);
