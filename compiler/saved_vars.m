@@ -177,9 +177,8 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, SlotInfo0,
 		Others = [First | _Rest],
 		can_push(Var, First),
 		goal_info_get_features(GoalInfo, Features),
-		% If the goal has a feature such as call_table_gen or impure,
-		% we don't want to duplicate it.
-		set__empty(Features)
+		( all [Feature] ( set__member(Feature, Features)
+			=> ok_to_duplicate(Feature) = yes ))
 	->
 		set__is_member(Var, NonLocals, IsNonLocal),
 		saved_vars_delay_goal(Others, Goal0, Var, IsNonLocal,
@@ -193,6 +192,22 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, SlotInfo0,
 			Goals1, SlotInfo),
 		Goals = [Goal1 | Goals1]
 	).
+
+% ok_to_duplicate returns `no' for features which shouldn't be on construction
+% unifications in the first place as well as for construction unifications
+% that shouldn't be duplicated.
+
+:- func ok_to_duplicate(goal_feature) = bool.
+
+ok_to_duplicate(constraint) = no.
+ok_to_duplicate(impure) = no.
+ok_to_duplicate(semipure) = no.
+ok_to_duplicate(stack_opt) = no.
+ok_to_duplicate(call_table_gen) = no.
+ok_to_duplicate(keep_this_commit) = no.
+ok_to_duplicate(preserve_backtrack_into) = no.
+ok_to_duplicate(hide_debug_event) = no.
+ok_to_duplicate(tailcall) = no.
 
 % Divide a list of goals into an initial subsequence of goals that
 % construct constants, and all other goals.
