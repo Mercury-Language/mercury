@@ -187,7 +187,8 @@
 
 	% Generate a declaration for an MLDS variable, given its MLDS type.
 	%
-:- func ml_gen_mlds_var_decl(var_name, mlds__type, mlds__context) = mlds__defn.
+:- func ml_gen_mlds_var_decl(mlds__data_name, mlds__type, mlds__context) =
+	mlds__defn.
 
 %-----------------------------------------------------------------------------%
 %
@@ -867,13 +868,13 @@ ml_qualify_var(VarName, QualifiedVarLval) -->
 	% Generate a declaration for an MLDS variable, given its HLDS type.
 	%
 ml_gen_var_decl(VarName, Type, Context) =
-	ml_gen_mlds_var_decl(VarName, mercury_type_to_mlds_type(Type),
+	ml_gen_mlds_var_decl(var(VarName), mercury_type_to_mlds_type(Type),
 		Context).
 
 	% Generate a declaration for an MLDS variable, given its MLDS type.
 	%
-ml_gen_mlds_var_decl(VarName, MLDS_Type, Context) = MLDS_Defn :-
-	Name = data(var(VarName)),
+ml_gen_mlds_var_decl(DataName, MLDS_Type, Context) = MLDS_Defn :-
+	Name = data(DataName),
 	MaybeInitializer = no,
 	Defn = data(MLDS_Type, MaybeInitializer),
 	DeclFlags = ml_gen_var_decl_flags,
@@ -948,7 +949,7 @@ ml_gen_failure(model_non, _, MLDS_Statements) -->
 	% Generate the declaration for the built-in `succeeded' variable.
 	%
 ml_gen_succeeded_var_decl(Context) =
-	ml_gen_mlds_var_decl("succeeded", mlds__bool_type, Context).
+	ml_gen_mlds_var_decl(var("succeeded"), mlds__bool_type, Context).
 
 	% Return the lval for the `succeeded' flag.
 	% (`succeeded' is a boolean variable used to record

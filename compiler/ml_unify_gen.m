@@ -544,7 +544,7 @@ ml_gen_closure_wrapper(PredId, ProcId, NumClosureArgs, _ClosureType,
 	%
 	{ ClosureName = "closure" },
 	{ ClosureArgName = "closure_arg" },
-	{ ClosureDecl = ml_gen_mlds_var_decl(ClosureName,
+	{ ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
 		mlds__generic_env_ptr_type, MLDS_Context) },
 	ml_qualify_var(ClosureName, ClosureLval),
 	ml_qualify_var(ClosureArgName, ClosureArgLval),

@@ -754,7 +754,31 @@ ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, Defns0, Defns) :-
 		MLDS_ProcDefnBody, ExtraDefns),
 	MLDS_ProcDefn = mlds__defn(MLDS_Name, MLDS_Context, MLDS_DeclFlags,
 				MLDS_ProcDefnBody),
-	Defns = list__append(ExtraDefns, [MLDS_ProcDefn | Defns0]).
+	Defns1 = list__append(ExtraDefns, [MLDS_ProcDefn | Defns0]),
+	ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
+		Defns1, Defns).
+
+:- pred ml_gen_maybe_add_table_var(module_info, pred_id, proc_id, proc_info,
+		mlds__defns, mlds__defns).
+:- mode ml_gen_maybe_add_table_var(in, in, in, in, in, out) is det.
+
+ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
+		Defns0, Defns) :-
+	proc_info_eval_method(ProcInfo, EvalMethod),
+	(
+		EvalMethod \= eval_normal
+	->
+		ml_gen_pred_label(ModuleInfo, PredId, ProcId,
+			MLDS_PredLabel, _MLDS_PredModule),
+		Var = tabling_pointer(MLDS_PredLabel - ProcId),
+		proc_info_context(ProcInfo, Context),
+		TablePointerVarDefn = ml_gen_mlds_var_decl(
+			Var, mlds__generic_type,
+			mlds__make_context(Context)),
+		Defns = [TablePointerVarDefn | Defns0]
+	;
+		Defns = Defns0
+	).
 
 	% Return the declaration flags appropriate for a procedure definition.
 	%
@@ -1198,7 +1222,7 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	%
 :- func ml_gen_commit_var_decl(mlds__context, mlds__var_name) = mlds__defn.
 ml_gen_commit_var_decl(Context, VarName) =
-	ml_gen_mlds_var_decl(VarName, mlds__commit_type, Context).
+	ml_gen_mlds_var_decl(var(VarName), mlds__commit_type, Context).
 
 	% Generate MLDS code for the different kinds of HLDS goals.
 	%
