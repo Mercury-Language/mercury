@@ -5,23 +5,11 @@
 */
 
 #include	"imp.h"
-#include	"access.h"
+#include	"regs.h"
 
-#if 0
-/* this old junk is not used */
 
-void reset(void)
-{
-	abort();
-}
-
-void help(void)
-{
-	printf("help text\n");
-}
-#endif	/* old junk */
-
-Word get_reg(int num)
+Word 
+get_reg(int num)
 {
 	restore_transient_registers();
  	switch (num) {
@@ -65,9 +53,10 @@ Word get_reg(int num)
 	fprintf(stderr, "register %d out of range in get_reg\n", num);
 	abort();
 	return 0;
-}
+} /* end get_reg() */
 
-Word set_reg(int num, Word val)
+Word 
+set_reg(int num, Word val)
 {
 	restore_transient_registers();
  	switch (num) {
@@ -111,103 +100,5 @@ Word set_reg(int num, Word val)
 	fprintf(stderr, "register %d out of range in set_reg\n", num);
 	abort();
 	return 0;
-}
+} /* end set_reg() */
 
-#if 0
-/* this old junk is not used */
-
-Word get_mem(Word *addr)
-{
-	if (heap_zone->min <= addr && addr < heap_zone->top)
-		return *addr;
-
-	if (detstack_zone->min <= addr && addr < detstack_zone->top)
-		return *addr;
-
-	if (nondetstack_zone->min <= addr && addr < nondetstack_zone->top)
-		return *addr;
-
-	/* NOTREACHED */
-	fprintf(stderr, "address %p out of range in set_mem\n", (void *) addr);
-	abort();
-	return 0;
-}
-
-Word set_mem(Word *addr, Word val)
-{
-	if (heap_zone->min <= addr && addr < heap_zone->top)
-	{
-		*addr = val;
-		return val;
-	}
-
-	if (detstack_zone->min <= addr && addr < detstack_zone->top)
-	{
-		*addr = val;
-		return val;
-	}
-
-	if (nondetstack_zone->min <= addr && addr < nondetstack_zone->top)
-	{
-		*addr = val;
-		return val;
-	}
-
-	/* NOTREACHED */
-	fprintf(stderr, "address %p out of range in set_mem\n", (void *) addr);
-	abort();
-	return 0;
-}
-
-Word createn(List *exprs)
-{
-	reg	List	*p;
-	reg	Word	*oldhp;
-
-	oldhp = hp;
-	for_list(p, exprs)
-	{
-		hp += 1;
-		hp[-1] = (Word) ldata(p);
-	}
-
-	return (Word) oldhp;
-}
-
-/*
-**	Version of getline that does not truncate lines
-**	but gets more space if necessary.
-*/
-
-int
-getflexline(const char *prompt, FILE *file, char **line, int *line_max)
-{
-	reg	int	c, i, lim;
-	reg	char	*buf;
-
-	printf("%s", prompt);
-
-	i = 0;
-	lim = *line_max-2;
-	buf = *line;
-	while ((c = getc(file)) != EOF && c != '\n')
-	{
-		if (i >= lim)
-		{
-			*line_max *= 2;
-			*line = resize_many(char, *line, *line_max);
-			lim = *line_max-2;
-			buf = *line;
-		}
-
-		buf[i++] = c;
-	}
-	
-	if (c == '\n' || i > 0)
-		buf[i++] = '\n';
-
-	buf[i] = '\0';
-	return i;
-}
-
-#endif /* old junk */
