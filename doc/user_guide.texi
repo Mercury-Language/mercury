@@ -2728,7 +2728,6 @@ the sum of the sizes of the elements in the list.
 @item
 @samp{xml_tmp_filename} is the name of the file to dump XML to before
 invoking your XML browser.
-on 
 @sp 1
 @item
 @samp{xml_browser_cmd} is the shell command(s) used to invoke your XML browser.
