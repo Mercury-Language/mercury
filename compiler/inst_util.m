@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1382,13 +1382,23 @@ inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
 	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_merge(ListA, ListB, ModuleInfo0, List, ModuleInfo).
 inst_merge_3(bound(UniqA, ListA), ground(UniqB, _), ModuleInfo,
-		ground(Uniq, none), ModuleInfo) :-
+		Result, ModuleInfo) :-
 	merge_uniq_bound(UniqB, UniqA, ListA, ModuleInfo, Uniq),
-	bound_inst_list_is_ground(ListA, ModuleInfo).
+	( bound_inst_list_is_ground(ListA, ModuleInfo) ->
+		Result = ground(Uniq, none)
+	;
+		bound_inst_list_is_ground_or_any(ListA, ModuleInfo),
+		Result = any(Uniq)
+	).
 inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
-		ground(Uniq, none), ModuleInfo) :-
+		Result, ModuleInfo) :-
 	merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq),
-	bound_inst_list_is_ground(ListB, ModuleInfo).
+	( bound_inst_list_is_ground(ListB, ModuleInfo) ->
+		Result = ground(Uniq, none)
+	;
+		bound_inst_list_is_ground_or_any(ListB, ModuleInfo),
+		Result = any(Uniq)
+	).
 inst_merge_3(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
 		ModuleInfo, ground(Uniq, GroundInstInfo), ModuleInfo) :-
 	(

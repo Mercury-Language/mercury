@@ -40,6 +40,7 @@ RLO_SOURCES= \
 	aditi_query.m
 
 OTHER_SOURCES= \
+	any_inst_merge.m \
 	common_struct_bug.m \
 	compl_unify_bug.m \
 	complicated_unify.m \
