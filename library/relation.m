@@ -662,7 +662,7 @@ relation__rtc_2(Inf, Rel, [ X | Xs ], Map, RtcIn, RtcOut) :-
 		map(T, int), map(T, int), relation(T), relation(T)).
 :- mode rtc(in, in, in, in, in, out, in, out, in, out) is det.
 rtc(Inf, Rel, A, K, S0, S1, MapIn, MapOut, RtcIn, RtcOut) :-
-	K1 is K+1,
+	K1 is K + 1,
 	stack__push(S0, A, S2),
 	map__set(MapIn, A, K, Map1),
 	relation__add(RtcIn, A, A, Rtc1),
