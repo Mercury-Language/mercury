@@ -152,7 +152,7 @@
 
 :- type curse_store_type ---> curse_store_type.
 :- type curse_store == store(curse_store_type).
-:- type win	== mutvar(window, curse_store).
+:- type win	== mutvar(window, curse_store_type).
 
 :- type window
 	--->	win(
