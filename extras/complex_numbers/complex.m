@@ -31,11 +31,17 @@
 % both constructing and pattern matching; with intermodule optimization
 % enabled, the compiler should generate equally good code for it.
 
+	% convert float to complex
+:- func complex(float) = complex.
+
 	% extract real part
 :- func real(complex) = float.
 
 	% extract imaginary part
 :- func imag(complex) = float.
+
+	% square of absolute value
+:- func abs2(complex) = float.
 
 	% absolute value (a.k.a. modulus)
 :- func abs(complex) = float.
@@ -45,9 +51,8 @@
 	% for all Z, -pi < arg(Z) and arg(Z) =< pi.
 :- func arg(complex) = float.
 
-	% norm (square of absolute value)
-	% XXX is `norm' the right terminology?
-:- func norm(complex) = float.
+	% complex conjugate
+:- func conj(complex) = complex.
 
 	% addition
 :- func complex + complex = complex.
@@ -85,6 +90,9 @@
 :- func sqrt(complex) = complex.
 :- mode sqrt(in) = out is det.
 
+	% cis(Theta) = cos(Theta) + i * sin(Theta)
+:- func cis(float) = complex.
+
 	% polar_to_complex(R, Theta):
 	% conversion from polar coordinates
 :- func polar_to_complex(float, float) = complex.
@@ -99,6 +107,8 @@
 
 :- implementation.
 :- import_module float, math.
+
+complex(Real) = cmplx(Real, 0.0).
 
 real(cmplx(Real, _Imag)) = Real.
 imag(cmplx(_Real, Imag)) = Imag.
@@ -123,11 +133,13 @@ cmplx(Xr, Xi) / cmplx(Yr, Yi) =
 + cmplx(R, I) = cmplx(+ R, + I).
 - cmplx(R, I) = cmplx(- R, - I).
 
-norm(cmplx(R, I)) = R*R + I*I.
+abs2(cmplx(R, I)) = R*R + I*I.
 
-abs(Z) = sqrt(norm(Z)).
+abs(Z) = sqrt(abs2(Z)).
 
 arg(cmplx(R, I)) = atan2(I, R).
+
+conj(cmplx(R, I)) = cmplx(R, -I).
 
 sqr(cmplx(Re0, Im0)) = cmplx(Re, Im) :-
 	Re = Re0 * Re0 - Im0 * Im0,
@@ -144,5 +156,7 @@ complex_to_polar(Z, abs(Z), arg(Z)).
 polar_to_complex(Magnitude, Theta) = cmplx(Real, Imag) :-
 	Real = Magnitude * cos(Theta),
 	Imag = Magnitude * sin(Theta).
+
+cis(Theta) = cmplx(cos(Theta), sin(Theta)).
 
 %------------------------------------------------------------------------------%
