@@ -114,13 +114,13 @@
 
 %-----------------------------------------------------------------------------%
 
-        % aggregate/4 generates all the solutions to a predicate,
+	% aggregate/4 generates all the solutions to a predicate,
 	% sorts them and removes duplicates, then applies an accumulator
 	% predicate to each solution in turn:
-        %
-        % aggregate(Generator, Accumulator, Acc0, Acc) <=>
-        %       solutions(Generator, Solutions),
-        %       list__foldl(Accumulator, Solutions, Acc0, Acc).
+	%
+	% aggregate(Generator, Accumulator, Acc0, Acc) <=>
+	%	solutions(Generator, Solutions),
+	%	list__foldl(Accumulator, Solutions, Acc0, Acc).
 	%
 
 :- pred aggregate(pred(T), pred(T, U, U), U, U).
@@ -133,12 +133,12 @@
 :- mode aggregate(pred(out) is nondet, pred(in, in, out) is det,
 		in, out) is det.
 
-        % unsorted_aggregate/4 generates all the solutions to a predicate
-        % and applies an accumulator predicate to each solution in turn:
-        %
-        % unsorted_aggregate(Generator, Accumulator, Acc0, Acc) <=>
-        %       unsorted_solutions(Generator, Solutions),
-        %       list__foldl(Accumulator, Solutions, Acc0, Acc).
+	% unsorted_aggregate/4 generates all the solutions to a predicate
+	% and applies an accumulator predicate to each solution in turn:
+	%
+	% unsorted_aggregate(Generator, Accumulator, Acc0, Acc) <=>
+	%	unsorted_solutions(Generator, Solutions),
+	%	list__foldl(Accumulator, Solutions, Acc0, Acc).
 	%
 	% The current implementation is in terms of [unsorted_]solutions and
 	% list__foldl, which, for a predicate with N solutions requires O(N)
@@ -1508,9 +1508,9 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 		*/
 
 		incr_hp(Term, 2);
-	        field(mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) = 
+		field(mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) = 
 			(Word) TypeInfo;
-	        field(mktag(0), Term, UNIV_OFFSET_FOR_DATA) = (Word) new_data;
+		field(mktag(0), Term, UNIV_OFFSET_FOR_DATA) = (Word) new_data;
 	}
 
 	SUCCESS_INDICATOR = success;
