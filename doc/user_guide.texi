@@ -1980,20 +1980,44 @@ to refer to one of the ancestors of the current call.
 This will then be the current environment until another of these commands
 changes the environment yet again or execution continues to another event.
 @sp 1
+@item paths in terms
+@cindex paths in terms
+@cindex term navigation
+When browsing or printing a term,
+you can use "^@samp{n}" to refer to the @var{n}th subterm of that term.
+If the term's type has named fields,
+you can use "^@samp{fname}" to refer to
+the subterm of the field named @samp{fname}.
+You can use several of subterm specifications in a row
+to refer to subterms deep within the original term.
+For example, when applied to a list,
+"^2" refers to the tail of the list
+(the second argument of the list constructor),
+"^2^2" refers to the tail of the tail of the list,
+and "^2^2^1" refers to the head of the tail of the tail,
+i.e. to the third element of the list.
+You can think of terms as Unix directories,
+with constants (function symbols of arity zero) being plain files
+and function symbols of arity greater than zero being directories themselves.
+Each subterm specification such as "^2" goes one level down in the hierarchy.
+The exception is the subterm specification "^..",
+which goes one level up, to the parent of the current directory.
+@sp 1
 @item procedure specification
 @cindex procedure specification (in mdb)
 @cindex debugger procedure specification
 Some debugger commands, e.g.@: @samp{break},
 require a parameter that specifies a procedure.
-The procedure may or may not be
-a compiler-generated unify, compare or index procedure.
+The procedure may or may not be a compiler-generated
+unify, compare, index or init procedure of a type constructor.
 If it is, the procedure specification has
 the following components in the following order:
 @itemize @bullet
 @item
-An optional prefix of the form @samp{unif*}, @samp{comp*}, or @samp{indx*}
+An optional prefix of the form
+@samp{unif*}, @samp{comp*}, @samp{indx*} or @samp{init*},
 that specifies whether the procedure belongs
-to an unify, compare or index predicate.
+to a unify, compare, index or init predicate.
 @item
 An optional prefix of the form @samp{@var{module}:}, @samp{@var{module}.}
 or @samp{@var{module}__} that specifies the name of the module that defines
@@ -2480,16 +2504,17 @@ if a previous option suppressed it.
 Prints the names of all the known variables in the current environment,
 together with an ordinal number for each variable.
 @sp 1
-@item print [-fpv] @var{name}
-@itemx print [-fpv] @var{num}
+@item print [-fpv] @var{name}[@var{termpath}]
+@itemx print [-fpv] @var{num}[@var{termpath}]
 @kindex print (mdb command)
 Prints the value of the variable in the current environment
 with the given name, or with the given ordinal number.
-This is a non-interactive version of the @samp{browse}
-command (see below).  Various settings
-which affect the way that terms are printed out
-(including e.g.@: the maximum term depth) can be set using
-the @samp{set} command.
+If the name or number is followed by a term path such as "^2",
+then only the specified subterm of the given variable is printed.
+This is a non-interactive version of the @samp{browse} command (see below).
+Various settings which affect the way that terms are printed out
+(including e.g.@: the maximum term depth)
+can be set using the @samp{set} command.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
@@ -2528,19 +2553,19 @@ and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @c The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 @c and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
-@item browse [-fpvx] @var{name}
-@itemx browse [-fpvx] @var{num}
+@item browse [-fpvx] @var{name}[@var{termpath}]
+@itemx browse [-fpvx] @var{num}[@var{termpath}]
 @kindex browse (mdb command)
 Invokes an interactive term browser to browse
 the value of the variable in the current environment
 with the given ordinal number or with the given name.
+If the name or number is followed by a term path such as "^2",
+then only the specified subterm of the given variable is given to the browser.
 @sp 1
 The interactive term browser allows you
 to selectively examine particular subterms. 
-The depth and size of printed terms
-may be controlled. 
-The displayed terms may also be clipped to fit
-within a single screen.
+The depth and size of printed terms may be controlled. 
+The displayed terms may also be clipped to fit within a single screen.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
