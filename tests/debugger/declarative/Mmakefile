@@ -282,6 +282,6 @@ untraced_subgoal.out: untraced_subgoal untraced_subgoal.inp
 			> untraced_subgoal.out 2>&1
 
 trust.out: trust trust.inp
-	$(MDB) ./trust < trust.inp > trust.out 2>&1
+	$(MDB_STD) ./trust < trust.inp > trust.out 2>&1
 
 #-----------------------------------------------------------------------------#
