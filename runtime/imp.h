@@ -25,6 +25,7 @@ enum {
 	MEMBER_2,
 	MKLIST_1,
 	Q_1,
+	NEG_NOT_Q,
 	INT_1,
 	HEAP_1,
 
