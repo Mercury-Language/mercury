@@ -354,8 +354,11 @@ invalid_pred_id(-1).
 invalid_proc_id(-1).
 
 	% The information specific to a predicate, as opposed to a procedure.
+	%
 	% Any changes in this type definition will almost certainly require
 	% corresponding changes in define.m.
+	% XXX: This comment is either ancient, or prophesy. It seems
+	% define.m doesn't exist yet.
 
 :- type pred_info
 	--->	predicate(
