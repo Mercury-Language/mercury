@@ -82,10 +82,15 @@ NEWS for Mercury release 0.7
   The Mercury `char' type is now 8-bit clean (previously, "for
   compatibility with NU-Prolog" we only supported 7-bit characters).
 
+* The `mc' script has been renamed `mmc'.
+
+  This was done to avoid name clashes with the Midnight Commander
+  and the Modula Compiler.
+
 * We've added `man' pages.
 
   The documentation now includes Unix-style `man' pages for
-  most of the development tools, including mmake, mc, mgnuc, ml,
+  most of the development tools, including mmake, mmc, mgnuc, ml,
   and mprof.  These supplement the existing documentation in the
   Mercury User's Guide.
 
@@ -108,9 +113,9 @@ NEWS for Mercury release 0.7
     accessing types at runtime.
 
     	+ For traversing terms: 
-    		Predicates argument/3, det_argument/3, functor/3,
-		and deconstruct/4.  These are similar to Prolog's arg/3,
-		functor/3, and '=..'.
+    		Functions argument/3, det_argument/3, functor/3,
+		and predicate deconstruct/4.  These are similar to
+		Prolog's arg/3, functor/3, and '=..'.
 
 	+ For constructing terms:
 		Functions num_functors/1, construct/3 and
@@ -124,16 +129,27 @@ NEWS for Mercury release 0.7
 
     There are also some new functions for accessing values of the
     universal type `univ', namely univ/2 and univ_type/1.
+
+  - There is a new module called `prolog' which contains some predicates that
+    may be useful for compatibility with Prolog: arg/3, functor/3,
+    `=:=', `=\=', `==', `\==', `@<', `@>', `@=<', `@>='.  We plan to
+    eventually move the definitions of cut (`!') and `is' here too.
     
   - We've finally implemented generic input-output predicates,
-    namely io__print/3, io__write/3, and io__read/3,
-    using the the functions and predicates described above.
-    We've also added io__nl/3 to print a newline.
-    Together with the change to make module qualifiers optional,
-    these changes make performing output quite a bit simpler;
-    it's nice to be able to write `print("Foo = "), print(Foo), nl'.
+    namely io__print/3, io__write/3, and io__read/3, using the the
+    functions and predicates described above.  These can read or write
+    data of any type.  We've also added io__nl/3 to print a newline.
+    Together with the change to make module qualifiers optional, these
+    changes make performing output quite a bit simpler; it's nice to be
+    able to write `print("Foo = "), print(Foo), nl'.
 
-  - The predicates term_to_type/2 and type_to_term/2 are now implemented.
+  - We've also added generic predicates io__write_binary/3 and
+    io__read_binary/3, for doing binary I/O on values of any type.
+    (The current implementations actually just call io__read/3 and
+    io__write/3 respectively, though, so they're not maximally efficient.)
+
+  - The predicates term_to_type/2 and type_to_term/2, which convert
+    values of any type to or from type `term', are now implemented.
 
   - We have a new module called benchmarking.m to make benchmarking easier.
     The predicate report_stats, which used to be in std_util, is now
@@ -183,10 +199,11 @@ NEWS for Mercury release 0.7
     that also do I/O.  Also, we've added list__map_foldl/5, which is an
     amalgam of list__map/3 and list__foldl/4.
 
-  - We've added a new type of option data: maybe_string(maybe(string)).  See
-    library/getopt.m for details.  Also added to getopt are some missing
-    option-lookup predicates: getopt__lookup_accumulating_option/3 and
-    getopt__lookup_maybe_string_option/3.
+  - We've added a new constructor `maybe_string' to getopt's option_data
+    type, for parsing optional string-valued command-line arguments. 
+    See library/getopt.m for details.  Also added to getopt are some
+    missing option-lookup predicates: getopt__lookup_accumulating_option/3
+    and getopt__lookup_maybe_string_option/3.
 
   - We've added string__foldl to the library.  It has the same semantics as
     (string__to_char_list(String, Chars), list__foldl(Pred, Chars, Acc0, Acc))
