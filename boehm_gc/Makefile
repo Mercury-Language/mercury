@@ -34,7 +34,7 @@ CXX=gcc
 AS=../scripts/mgnuc --grade $(GRADE) --assemble
 
 # CFLAGS= -O -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DSILENT
-CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING $(CFLAGS_FOR_PIC) \
+CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING \
 	$(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
 # profiling was enabled.
