@@ -95,7 +95,7 @@ maxn=`wc -l < batch/$batch.MCFLAGS`
 while test $n -le $maxn
 do
 	mcflags=`awk "NR == $n" batch/$batch.MCFLAGS`
-	echo "MCFLAGS = $mcflags" > Mmake.stage.params
+	echo "EXTRA_MCFLAGS = $mcflags" > Mmake.stage.params
 
 	if test "$needcflags" = true
 	then
