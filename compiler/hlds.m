@@ -498,11 +498,20 @@ predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 :- pred procinfo_headvars(proc_info, list(var)).
 :- mode procinfo_headvars(input, output).
 
-:- pred procinfo_modeinfo(proc_info, xxx).
+:- pred procinfo_modeinfo(proc_info, list(mode)).
 :- mode procinfo_modeinfo(input, output).
 
 :- pred procinfo_goal(proc_info, hlds__goal).
 :- mode procinfo_goal(input, output).
+
+:- pred procinfo_context(proc_info, hlds__context).
+:- mode procinfo_context(input, output).
+
+:- pred procinfo_callinfo(proc_info, call_info).
+:- mode procinfo_callinfo(input, output).
+
+:- pred procinfo_arg_registers(proc_info, list(var_id), map(var_id, int)).
+:- mode procinfo_arg_registers(input, input, output).
 
 :- implementation.
 
