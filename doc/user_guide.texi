@@ -1550,7 +1550,7 @@ for inline assembler labels.
 @item @code{--gc @{none, conservative, accurate@}}
 @itemx @code{--garbage-collection @{none, conservative, accurate@}}
 Specify which method of garbage collection to use.
-Grades containing in @samp{.gc} use @samp{--gc conservative},
+Grades containing @samp{.gc} use @samp{--gc conservative},
 other grades use @samp{--gc none}.
 @samp{accurate} is not yet implemented.
 
