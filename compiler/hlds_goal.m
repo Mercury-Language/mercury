@@ -128,7 +128,7 @@
 		% (except to recompute the goal_info quantification).
 		% `all Vs' gets converted to `not some Vs not'.
 
-	;	some(list(var), hlds_goal)
+	;	{ some(list(var), hlds_goal) }
 
 		% An if-then-else,
 		% `if some <Vars> <Condition> then <Then> else <Else>'.

@@ -467,13 +467,14 @@ mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose,
 
 mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, 
 		Imports, Error) -->
-	globals__io_lookup_bool_option(intermodule_optimization, UseOptInt),
+	globals__io_lookup_bool_option(intermodule_optimization, IntermodOpt),
+	globals__io_lookup_bool_option(use_opt_files, UseOptInt),
 	globals__io_lookup_bool_option(make_optimization_interface,
 						MakeOptInt),
 	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
 	globals__io_lookup_bool_option(make_transitive_opt_interface,
 		MakeTransOptInt),
-	( { UseOptInt = yes, MakeOptInt = no } ->
+	( { (UseOptInt = yes ; IntermodOpt = yes), MakeOptInt = no } ->
 		maybe_write_string(Verbose, "% Reading .opt files...\n"),
 		maybe_flush_output(Verbose),
 		intermod__grab_optfiles(Imports0, Imports1, Error1),
@@ -603,9 +604,10 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    mercury_compile__maybe_dump_hlds(HLDS2, "02", "typeclass"), !,
 
 	    globals__io_lookup_bool_option(intermodule_optimization, Intermod),
+	    globals__io_lookup_bool_option(use_opt_files, UseOptFiles),
 	    globals__io_lookup_bool_option(make_optimization_interface,
 		MakeOptInt),
-	    ( { Intermod = yes, MakeOptInt = no } ->
+	    ( { (Intermod = yes; UseOptFiles = yes), MakeOptInt = no } ->
 		% Eliminate unnecessary clauses from `.opt' files,
 		% to speed up compilation. This must be done after
 		% typeclass instances have been checked, since that
@@ -694,6 +696,9 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
 	globals__io_lookup_bool_option(intermod_unused_args, IntermodArgs),
+	globals__io_lookup_accumulating_option(intermod_directories,
+		IntermodDirs),
+	globals__io_lookup_bool_option(use_opt_files, UseOptFiles),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(termination, Termination),
@@ -735,11 +740,35 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 		module_name_to_file_name(ModuleName, ".opt", yes, OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".optdate")
-	; { Intermod = yes } ->
-		intermod__adjust_pred_import_status(HLDS0, HLDS)
 	;
-		{ HLDS = HLDS0 }
+		% If there is a `.opt' file for this module the import
+		% status of items in the `.opt' file needs to be updated.
+		( { Intermod = yes } ->
+			{ UpdateStatus = yes }
+		; { UseOptFiles = yes } ->
+			{ module_info_name(HLDS0, ModuleName) },
+			module_name_to_file_name(ModuleName,
+				".opt", no, OptName),
+			search_for_file(IntermodDirs, OptName, Found),
+			( { Found = yes } ->
+				{ UpdateStatus = yes },
+				io__seen
+			;
+				{ UpdateStatus = no }
+			)
+		;
+			{ UpdateStatus = no }
+		),	
+		{ is_bool(UpdateStatus) },
+		( { UpdateStatus = yes } ->
+			intermod__adjust_pred_import_status(HLDS0, HLDS)
+		;
+			{ HLDS = HLDS0 }
+		)
 	).
+
+:- pred is_bool(bool::in) is det.
+is_bool(_).
 
 :- pred mercury_compile__output_trans_opt_file(module_info, 
 	io__state, io__state).
@@ -2330,7 +2359,13 @@ mercury_compile__link_module_list(Modules) -->
 	    % create the initialization C file
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
 	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
-	    { string__append_list(["c2init " | MkInitCmd0], MkInitCmd) },
+	    globals__io_get_trace_level(TraceLevel),
+	    { trace_level_trace_interface(TraceLevel, yes) ->
+		CmdPrefix = "c2init -i "
+	    ;
+		CmdPrefix = "c2init "
+	    },
+	    { string__append_list([CmdPrefix | MkInitCmd0], MkInitCmd) },
 	    invoke_system_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Stats),
 	    ( { MkInitOK = no } ->

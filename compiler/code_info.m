@@ -3007,7 +3007,6 @@ code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__get_globals(Globals),
 	{ globals__get_gc_method(Globals, GC_Method) },
-	code_info__get_inst_table(InstTable),
 	{ globals__get_trace_level(Globals, TraceLevel) },
 	{
 		( GC_Method = accurate
@@ -3018,6 +3017,7 @@ code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	;
 		NeedVarInfo = no
 	},
+	code_info__get_inst_table(InstTable),
 	code_info__livevals_to_livelvals(LiveVals2, NeedVarInfo, InstTable,
 		AfterCallInstMap, LiveVals3),
 	code_info__get_temps_in_use(TempsSet),
@@ -3080,8 +3080,8 @@ code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
 :- mode code_info__livevals_to_livelvals(in, in, in, in, out, in, out) is det.
 
 code_info__livevals_to_livelvals([], _, _, _, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], NeedVarInfo,
-		InstTable, AfterCallInstMap, [LiveLval | Lives]) -->
+code_info__livevals_to_livelvals([Lval - Var | Ls], NeedVarInfo, InstTable,
+		AfterCallInstMap, [LiveLval | Lives]) -->
 	code_info__get_varset(VarSet),
 	{ varset__lookup_name(VarSet, Var, Name) },
 	(

@@ -204,11 +204,13 @@ read_trans_opt_files([Import | Imports],
 	maybe_write_string(VeryVerbose, ImportString),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
-	maybe_write_string(VeryVerbose, "% done.\n"),
 
 	module_name_to_file_name(Import, ".trans_opt", no, FileName),
 	prog_io__read_opt_file(FileName, Import, yes,
 			ModuleError, Messages, Items1),
+
+	maybe_write_string(VeryVerbose, " done.\n"),
+
 	update_error_status(ModuleError, Messages, Error0, Error1),
 	{ list__append(Items0, Items1, Items2) },
 	read_trans_opt_files(Imports, Items2, Items, Error1, Error).

@@ -92,8 +92,9 @@
 :- pred pd_util__inst_list_size(inst_table::in, module_info::in,
 		list(inst)::in, int::out) is det.
 
-	% pd_util__goals_match(ModuleInfo, OldGoal, OldArgs, NewGoal,
-	% 		OldToNewRenaming)
+	% pd_util__goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
+	%		NewGoal, NewArgTypes,
+	% 		OldToNewVarRenaming, OldToNewTypeSubst)
 	%
 	% Check the shape of the goals, and return a mapping from
 	% variables in the old goal to variables in the new and
@@ -103,7 +104,7 @@
 	% only attempts to optimize those types of conjunctions.
 :- pred pd_util__goals_match(module_info::in, hlds_goal::in, list(var)::in,
 		list(type)::in, hlds_goal::in, map(var, type)::in,
-		map(var, var)::out, substitution::out) is semidet.
+		map(var, var)::out, tsubst::out) is semidet.
 
 	% pd_util__can_reorder_goals(ModuleInfo, FullyStrict, Goal1, Goal2).
 	%

@@ -213,14 +213,14 @@ item_to_class_method(error(String, Term), _, error(String, Term)).
 item_to_class_method(ok(Item, Context), Term, Result) :-
 	(
 			% XXX Purity is ignored
-		Item = pred(A, B, C, D, E, _, G)
+		Item = pred(A, B, C, D, E, F, _, H)
 	->
-		Result = ok(pred(A, B, C, D, E, G, Context))
+		Result = ok(pred(A, B, C, D, E, F, H, Context))
 	;
 			% XXX Purity is ignored
-		Item = func(A, B, C, D, E, F, _, H)
+		Item = func(A, B, C, D, E, F, G, _, I)
 	->
-		Result = ok(func(A, B, C, D, E, F, H, Context))
+		Result = ok(func(A, B, C, D, E, F, G, I, Context))
 	;
 		Item = pred_mode(A, B, C, D, E)
 	->

@@ -90,19 +90,21 @@
 :- pred inlining__is_simple_goal(hlds_goal, int).
 :- mode inlining__is_simple_goal(in, in) is semidet.
 
-	% inlining__do_inline_call(Args, CalledPredInfo, CalledProcInfo,
+	% inlining__do_inline_call(UnivQVars, Args,
+	%	CalledPredInfo, CalledProcInfo,
 	% 	VarSet0, VarSet, VarTypes0, VarTypes, TVarSet0, TVarSet,
 	%	TypeInfoMap0, TypeInfoMap).
 	%
-	% Given the arguments to the call, the pred_info and proc_info
-	% for the called goal and various information about the
-	% procedure currently being analysed, rename the goal for
-	% the called procedure so that it can be inlined.
-:- pred inlining__do_inline_call(list(var), pred_info, proc_info, 
+	% Given the universally quantified type variables in the caller's
+	% type, the arguments to the call, the pred_info and proc_info
+	% for the called goal and various information about the variables
+	% and types in the procedure currently being analysed, rename the
+	% goal for the called procedure so that it can be inlined.
+:- pred inlining__do_inline_call(list(tvar), list(var), pred_info, proc_info, 
 	varset, varset, map(var, type), map(var, type),
 	tvarset, tvarset, map(tvar, type_info_locn), 
 	map(tvar, type_info_locn), hlds_goal).
-:- mode inlining__do_inline_call(in, in, in, in, out, in, out,
+:- mode inlining__do_inline_call(in, in, in, in, in, out, in, out,
 	in, out, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -315,6 +317,11 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		int,			% variable threshold for inlining
 		set(pred_proc_id),	% inlined procs
 		module_info,		% module_info
+		list(tvar),		% universally quantified type vars
+					% occurring in the argument types
+					% for this predicate (the caller,
+					% not the callee).  These are the
+					% ones that must not be bound.
 
 			% the following fields are updated as a result
 			% of inlining
@@ -345,6 +352,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
+	pred_info_get_univ_quant_tvars(PredInfo0, UnivQTVars),
 	pred_info_typevarset(PredInfo0, TypeVarSet0),
 
 	proc_info_goal(ProcInfo0, Goal0),
@@ -355,13 +363,14 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	DidInlining0 = no,
 	DetChanged0 = no,
 
-	InlineInfo0 = inline_info(VarThresh, InlinedProcs, ModuleInfo0,
+	InlineInfo0 = inline_info(
+		VarThresh, InlinedProcs, ModuleInfo0, UnivQTVars,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DidInlining0,
 		DetChanged0),
 
 	inlining__inlining_in_goal(Goal0, Goal1, InlineInfo0, InlineInfo),
 
-	InlineInfo = inline_info(_, _, _, VarSet, VarTypes, TypeVarSet, 
+	InlineInfo = inline_info(_, _, _, _, VarSet, VarTypes, TypeVarSet, 
 		TypeInfoVarMap, DidInlining, DetChanged),
 
 	% YYY  This is overkill.  We should only recompute the instmap_deltas
@@ -447,6 +456,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		Sym) - GoalInfo0, Goal - GoalInfo, InlineInfo0, InlineInfo) :-
 
 	InlineInfo0 = inline_info(VarThresh, InlinedProcs, ModuleInfo,
+		HeadTypeParams,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
 		DidInlining0, DetChanged0),
 
@@ -468,7 +478,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		TotalVars is ThisMany + CalleeThisMany,
 		TotalVars =< VarThresh
 	->
-		inlining__do_inline_call(ArgVars, PredInfo, 
+		inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, 
 			ProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
 			TypeVarSet0, TypeVarSet, TypeInfoVarMap0, 
 			TypeInfoVarMap, Goal - GoalInfo),
@@ -495,7 +505,8 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		DidInlining = DidInlining0,
 		DetChanged = DetChanged0
 	),
-	InlineInfo = inline_info(VarThresh, InlinedProcs, ModuleInfo,
+	InlineInfo = inline_info(
+		VarThresh, InlinedProcs, ModuleInfo, HeadTypeParams,
 		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DidInlining,
 		DetChanged).
 
@@ -513,7 +524,7 @@ inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G) - GoalInfo,
 
 %-----------------------------------------------------------------------------%
 
-inlining__do_inline_call(ArgVars, PredInfo, ProcInfo, 
+inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo, 
 		VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet, 
 		TypeInfoVarMap0, TypeInfoVarMap, Goal) :-
 
@@ -533,6 +544,11 @@ inlining__do_inline_call(ArgVars, PredInfo, ProcInfo,
 	% call `:- pred foo(T)' with an argument of type
 	% `int', then we need to replace all occurrences of
 	% type `T' with type `int' when we inline it.
+	% Conversely, in the case of existentially typed preds,
+	% we may need to bind type variables in the caller.
+	% For example, if we call `:- pred some [T] foo(T)',
+	% and the definition of `foo' binds `T' to `int',
+	% then we need 
 
 	% first, rename apart the type variables in the callee.
 	% (we can almost throw away the new typevarset, since we
@@ -547,31 +563,68 @@ inlining__do_inline_call(ArgVars, PredInfo, ProcInfo,
 
 	% next, compute the type substitution and then apply it
 
+	% Note: there's no need to update the type_info locations maps,
+	% either for the caller or calle, since for any type vars in the
+	% callee which get bound to type vars in the caller, the type_info
+	% location will be given by the entry in the caller's
+	% type_info locations map (and vice versa).  It doesn't matter if the
+	% final type_info locations map contains some entries
+	% for type variables which have been substituted away,
+	% because those entries simply won't be used.
+
 	map__apply_to_list(HeadVars, CalleeVarTypes1, HeadTypes),
 	map__apply_to_list(ArgVars, VarTypes0, ArgTypes),
-	(
+
+	% handle the common case of non-existentially specially,
+	% since we can do things more efficiently in that case
+	pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
+	( CalleeExistQVars = [] ->
+	    (
 		type_list_subsumes(HeadTypes, ArgTypes, TypeSubn)
-	->
+	    ->
+		% update types in callee only
 		apply_rec_substitution_to_type_map(CalleeVarTypes1,
-			TypeSubn, CalleeVarTypes)
-	;
-		% The head types should always subsume the
+			TypeSubn, CalleeVarTypes),
+		VarTypes1 = VarTypes0
+	    ;
+		% The head types should always be unifiable with the
 		% actual argument types, otherwise it is a type error
-		% that should have been detected by typechecking
+		% that should have been detected by typechecking.
 		% But polymorphism.m introduces type-incorrect code --
 		% e.g. compare(Res, EnumA, EnumB) gets converted
 		% into builtin_compare_int(Res, EnumA, EnumB), which
 		% is a type error since it assumes that an enumeration
 		% is an int.  In those cases, we don't need to
 		% worry about the type substitution.
-		CalleeVarTypes = CalleeVarTypes1
+		% (Perhaps it would be better if polymorphism introduced
+		% calls to unsafe_type_cast/2 for such cases.)
+		CalleeVarTypes = CalleeVarTypes1,
+		VarTypes1 = VarTypes0
+	    )
+	;
+	    % for calls to existentially type preds, we may need to
+	    % bind type variables in the caller, not just those in the callee
+	    (
+		map__init(TypeSubn0),
+		type_unify_list(HeadTypes, ArgTypes, HeadTypeParams,
+			TypeSubn0, TypeSubn)
+	    ->
+		% update types in callee
+		apply_rec_substitution_to_type_map(CalleeVarTypes1,
+			TypeSubn, CalleeVarTypes),
+		% update types in caller
+		apply_rec_substitution_to_type_map(VarTypes0,
+			TypeSubn, VarTypes1)
+	    ;
+	        error("inlining.m: type unification failed")
+	    )
 	),
 
 	% Now rename apart the variables in the called goal.
 
 	map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
 	goal_util__create_variables(CalleeListOfVars, VarSet0,
-		VarTypes0, Subn0, CalleeVarTypes, CalleeVarSet,
+		VarTypes1, Subn0, CalleeVarTypes, CalleeVarSet,
 		VarSet, VarTypes, Subn),
 	goal_util__must_rename_vars_in_goal(CalledGoal, Subn, Goal),
 

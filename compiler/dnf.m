@@ -158,7 +158,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 :- type dnf_info --->	dnf_info(
 				tvarset,
 				map(var, type),
-				list(class_constraint),
+				class_constraints,
 				varset,
 				pred_markers,
 				inst_table,

@@ -916,20 +916,20 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
-	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
+	{ pred_info_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	(
 		{ PredOrFunc = predicate },
-		mercury_output_pred_type(TVarSet, qualified(Module, Name),
-					ArgTypes, no, Purity, ClassContext,
-					Context)
+		mercury_output_pred_type(TVarSet, ExistQVars,
+			qualified(Module, Name), ArgTypes, no, Purity,
+			ClassContext, Context)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType) },
-		mercury_output_func_type(TVarSet,
+		mercury_output_func_type(TVarSet, ExistQVars,
 			qualified(Module, Name), FuncArgTypes,
 			FuncRetType, no, Purity, ClassContext, Context)
 	),
@@ -989,7 +989,7 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 intermod__write_preds(_, []) --> [].
 intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_arg_types(PredInfo, _, ArgTypes) },
+	{ pred_info_arg_types(PredInfo, ArgTypes) },
 	{ list__length(ArgTypes, Arity) },
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
@@ -1225,7 +1225,7 @@ intermod_info_set_tvarset(TVarSet, info(A,B,C,D,E,F,G,H,I,_),
 intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 	globals__io_lookup_bool_option(very_verbose, VVerbose, IO0, IO1),
 	maybe_write_string(VVerbose, 
-		"Adjusting import status of predicates in the `.opt' file...",
+		"% Adjusting import status of predicates in the `.opt' file...",
 		IO1, IO2),
 
 	init_intermod_info(Module0, Info0),
@@ -1238,7 +1238,7 @@ intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 		Deforestation, Info0, Info1),
 	intermod__gather_abstract_exported_types(Info1, Info),
 	do_adjust_pred_import_status(Info, Module0, Module),
-	maybe_write_string(VVerbose, "done\n", IO2, IO).
+	maybe_write_string(VVerbose, " done\n", IO2, IO).
 
 :- pred do_adjust_pred_import_status(intermod_info::in,
 		module_info::in, module_info::out) is det.

@@ -162,7 +162,7 @@ c_gen_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 :- mode c_gen_pred(in, in, in, in, di, uo) is det.
 
 c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
-	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
+	{ pred_info_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
@@ -173,8 +173,9 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		c_gen_indent(Indent),
 		io__write_string("/****\n"),
 		{ pred_info_get_purity(PredInfo, Purity) },
-		mercury_output_pred_type(TVarSet, unqualified(PredName),
-			ArgTypes, no, Purity, ClassContext, Context),
+		mercury_output_pred_type(TVarSet, ExistQVars,
+			unqualified(PredName), ArgTypes, no, Purity,
+			ClassContext, Context),
 
 		{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 		{ ClausesInfo = clauses_info(VarSet, _VarTypes, _, HeadVars,
@@ -355,7 +356,7 @@ c_gen_prototype(ModuleInfo, PredId, ProcId) -->
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
 	{ proc_info_varset(ProcInfo, VarSet) },
 	{ proc_info_headvars(ProcInfo, HeadVars) },
-	{ pred_info_arg_types(PredInfo, _HeadTypeVarSet, HeadTypes) },
+	{ pred_info_arg_types(PredInfo, HeadTypes) },
 	{ proc_info_argmodes(ProcInfo, argument_modes(HeadIT, HeadModes)) },
 
 	( { CodeModel = model_semi } ->

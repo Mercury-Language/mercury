@@ -187,6 +187,21 @@
 % The `module_imports' structure holds information about
 % a module and the modules that it imports.
 
+% Note that we build this structure up as we go along.
+% When generating the dependencies (for `--generate-dependencies'),
+% the two fields that hold the direct imports do not include
+% the imports via ancestors when the module is first read in;
+% the ancestor imports are added later, once all the modules
+% have been read in.  Similarly the indirect imports field is
+% initially set to the empty list and filled in later.
+%
+% When compiling or when making interface files, the same
+% sort of thing applies: initially all the list(module_name) fields
+% except the public children field are set to empty lists,
+% and then we add ancestor modules and imported modules
+% to their respective lists as we process the interface files
+% for those imported or ancestor modules.
+
 :- type module_imports --->
 	module_imports(
 		file_name,	    % The source file
@@ -217,6 +232,9 @@
 :- pred module_imports_get_module_name(module_imports, module_name).
 :- mode module_imports_get_module_name(in, out) is det.
 
+:- pred module_imports_get_impl_deps(module_imports, list(module_name)).
+:- mode module_imports_get_impl_deps(in, out) is det.
+
 :- pred module_imports_get_items(module_imports, item_list).
 :- mode module_imports_get_items(in, out) is det.
 
@@ -229,6 +247,17 @@
 :- pred module_imports_set_error(module_imports, module_error, module_imports).
 :- mode module_imports_set_error(in, in, out) is det.
 
+% set the interface dependencies
+:- pred module_imports_set_int_deps(module_imports, list(module_name),
+				module_imports).
+:- mode module_imports_set_int_deps(in, in, out) is det.
+
+% set the implementation dependencies
+:- pred module_imports_set_impl_deps(module_imports, list(module_name),
+				module_imports).
+:- mode module_imports_set_impl_deps(in, in, out) is det.
+
+% set the indirect dependencies
 :- pred module_imports_set_indirect_deps(module_imports, list(module_name),
 				module_imports).
 :- mode module_imports_set_indirect_deps(in, in, out) is det.
@@ -1068,6 +1097,9 @@ module_imports_get_source_file_name(Module, SourceFileName) :-
 module_imports_get_module_name(Module, ModuleName) :-
 	Module = module_imports(_, ModuleName, _, _, _, _, _, _, _, _).
 
+module_imports_get_impl_deps(Module, ImplDeps) :-
+	Module = module_imports(_, _, _, _, ImplDeps, _, _, _, _, _).
+
 module_imports_get_items(Module, Items) :-
 	Module = module_imports(_, _, _, _, _, _, _, _, Items, _).
 
@@ -1081,6 +1113,14 @@ module_imports_get_error(Module, Error) :-
 module_imports_set_error(Module0, Error, Module) :-
 	Module0 = module_imports(A, B, C, D, E, F, G, H, I, _),
 	Module = module_imports(A, B, C, D, E, F, G, H, I, Error).
+
+module_imports_set_int_deps(Module0, IntDeps, Module) :-
+	Module0 = module_imports(A, B, C, _, E, F, G, H, I, J),
+	Module = module_imports(A, B, C, IntDeps, E, F, G, H, I, J).
+
+module_imports_set_impl_deps(Module0, ImplDeps, Module) :-
+	Module0 = module_imports(A, B, C, D, _, F, G, H, I, J),
+	Module = module_imports(A, B, C, D, ImplDeps, F, G, H, I, J).
 
 module_imports_set_indirect_deps(Module0, IndirectDeps, Module) :-
 	Module0 = module_imports(A, B, C, D, E, _, G, H, I, J),
@@ -1368,9 +1408,12 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			[]
 		),
 
+		globals__io_lookup_bool_option(use_opt_files, UseOptFiles),
 		globals__io_lookup_bool_option(intermodule_optimization,
 			Intermod),
-		( { Intermod = yes } ->
+		globals__io_lookup_accumulating_option(intermod_directories,
+			IntermodDirs),
+		( { Intermod = yes; UseOptFiles = yes } ->
 			io__write_strings(DepStream, [
 				"\n\n", 
 				CFileName, " ",
@@ -1379,6 +1422,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				PicObjFileName, " ",
 				ObjFileName, " :"
 			]),
+
 			% The .c file only depends on the .opt files from 
 			% the current directory, so that inter-module
 			% optimization works when the .opt files for the 
@@ -1388,14 +1432,17 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			% is to make sure the module gets type-checked without
 			% having the definitions of abstract types from other
 			% modules.
-			globals__io_lookup_accumulating_option(
-				intermod_directories, IntermodDirs),
 			globals__io_lookup_bool_option(transitive_optimization,
 				TransOpt),
-			( { TransOpt = yes } ->
-				get_both_opt_deps(LongDeps, IntermodDirs, 
+			globals__io_lookup_bool_option(use_trans_opt_files,
+				UseTransOpt),
+
+			( { TransOpt = yes ; UseTransOpt = yes } ->
+				{ bool__not(UseTransOpt, BuildOptFiles) },
+				get_both_opt_deps(BuildOptFiles,
+					[ModuleName | LongDeps], IntermodDirs,
 					OptDeps, TransOptDeps),
-				write_dependencies_list([ModuleName | OptDeps],
+				write_dependencies_list(OptDeps,
 					".opt", DepStream),
 				io__write_strings(DepStream, [
 					"\n\n", 
@@ -1407,9 +1454,11 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				write_dependencies_list(TransOptDeps,
 					".trans_opt", DepStream)
 			;
-				get_opt_deps(LongDeps, IntermodDirs, ".opt", 
-					OptDeps),
-				write_dependencies_list([ModuleName | OptDeps],
+				{ bool__not(UseOptFiles, BuildOptFiles) },
+				get_opt_deps(BuildOptFiles,
+					[ModuleName | LongDeps],
+					IntermodDirs, ".opt", OptDeps),
+				write_dependencies_list(OptDeps,
 					".opt", DepStream)
 			)
 		;
@@ -1621,59 +1670,99 @@ read_dependency_file_get_modules(TransOptDeps) -->
 	% If it exists, add it to both output lists. Otherwise, if a .opt
 	% file exists, add it to the OptDeps list, and if a .trans_opt
 	% file exists, add it to the TransOptDeps list.
-:- pred get_both_opt_deps(list(module_name)::in, list(string)::in, 
+	% If --use-opt-files is set, don't look for `.m' files, since
+	% we are not building `.opt' files, only using those which
+	% are available.
+:- pred get_both_opt_deps(bool::in, list(module_name)::in, list(string)::in, 
 	list(module_name)::out, list(module_name)::out, 
 	io__state::di, io__state::uo) is det.
-get_both_opt_deps([], _, [], []) --> [].
-get_both_opt_deps([Dep | Deps], IntermodDirs, OptDeps, TransOptDeps) -->
-	module_name_to_file_name(Dep, ".m", no, DepName), 
-	search_for_file(IntermodDirs, DepName, Result1),
-	get_both_opt_deps(Deps, IntermodDirs, OptDeps0, TransOptDeps0),
-	( { Result1 = yes } ->
-		{ OptDeps = [Dep | OptDeps0] },
-		{ TransOptDeps = [Dep | TransOptDeps0] },
-		io__seen
+get_both_opt_deps(_, [], _, [], []) --> [].
+get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
+		OptDeps, TransOptDeps) -->
+	get_both_opt_deps(BuildOptFiles, Deps, IntermodDirs,
+		OptDeps0, TransOptDeps0),
+	( { BuildOptFiles = yes } ->
+		module_name_to_file_name(Dep, ".m", no, DepName), 
+		search_for_file(IntermodDirs, DepName, Result1),
+		( { Result1 = yes } ->
+			{ OptDeps1 = [Dep | OptDeps0] },
+			{ TransOptDeps1 = [Dep | TransOptDeps0] },
+			io__seen,
+			{ Found = yes }
+		;
+			{ OptDeps1 = OptDeps0 },
+			{ TransOptDeps1 = TransOptDeps0 },
+			{ Found = no }
+		)
 	;
+		{ OptDeps1 = OptDeps0 },
+		{ TransOptDeps1 = TransOptDeps0 },
+		{ Found = no }
+	),
+	{ is_bool(Found) },
+	( { Found = no } ->
 		module_name_to_file_name(Dep, ".opt", no, OptName), 
 		search_for_file(IntermodDirs, OptName, Result2),
 		( { Result2 = yes } ->
-			{ OptDeps = [Dep | OptDeps0] },
+			{ OptDeps = [Dep | OptDeps1] },
 			io__seen
 		;
-			{ OptDeps = OptDeps0 }
+			{ OptDeps = OptDeps1 }
 		),
 		module_name_to_file_name(Dep, ".trans_opt", no, TransOptName), 
 		search_for_file(IntermodDirs, TransOptName, Result3),
 		( { Result3 = yes } ->
-			{ TransOptDeps = [Dep | TransOptDeps0] },
+			{ TransOptDeps = [Dep | TransOptDeps1] },
 			io__seen
 		;
-			{ TransOptDeps = TransOptDeps0 }
+			{ TransOptDeps = TransOptDeps1 }
 		)
+	;
+		{ TransOptDeps = TransOptDeps1 },
+		{ OptDeps = OptDeps1 }
 	).
 
 	% For each dependency, search intermod_directories for a .Suffix
 	% file or a .m file, filtering out those for which the search fails.
-:- pred get_opt_deps(list(module_name)::in, list(string)::in, string::in,
-	list(module_name)::out, io__state::di, io__state::uo) is det.
-get_opt_deps([], _, _, []) --> [].
-get_opt_deps([Dep | Deps], IntermodDirs, Suffix, OptDeps) -->
-	module_name_to_file_name(Dep, ".m", no, DepName),
-	search_for_file(IntermodDirs, DepName, Result1),
-	get_opt_deps(Deps, IntermodDirs, Suffix, OptDeps0),
-	( { Result1 = yes } ->
-		{ OptDeps = [Dep | OptDeps0] },
-		io__seen
+	% If --use-opt-files is set, only look for `.opt' files,
+	% not `.m' files.
+:- pred get_opt_deps(bool::in, list(module_name)::in, list(string)::in,
+	string::in, list(module_name)::out,
+	io__state::di, io__state::uo) is det.
+get_opt_deps(_, [], _, _, []) --> [].
+get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, OptDeps) -->
+	get_opt_deps(BuildOptFiles, Deps, IntermodDirs, Suffix, OptDeps0),
+	( { BuildOptFiles = yes } ->
+		module_name_to_file_name(Dep, ".m", no, DepName),
+		search_for_file(IntermodDirs, DepName, Result1),
+		( { Result1 = yes } ->
+			{ OptDeps1 = [Dep | OptDeps0] },
+			{ Found = yes },
+			io__seen
+		;
+			{ Found = no },
+			{ OptDeps1 = OptDeps0 }
+		)
 	;
+		{ Found = no },
+		{ OptDeps1 = OptDeps0 }
+	),
+	{ is_bool(Found) },
+	( { Found = no } ->
 		module_name_to_file_name(Dep, Suffix, no, OptName),
 		search_for_file(IntermodDirs, OptName, Result2),
 		( { Result2 = yes } ->
-			{ OptDeps = [Dep | OptDeps0] },
+			{ OptDeps = [Dep | OptDeps1] },
 			io__seen
 		;
-			{ OptDeps = OptDeps0 }
+			{ OptDeps = OptDeps1 }
 		)
+	;
+		{ OptDeps = OptDeps1 }
 	).
+
+:- pred is_bool(bool::in) is det.
+is_bool(_).
 
 %-----------------------------------------------------------------------------%
 
@@ -1686,10 +1775,12 @@ generate_file_dependencies(FileName) -->
 	read_mod_from_file(FileName, ".m", "Reading file", no,
 		Items, Error, ModuleName),
 	{ string__append(FileName, ".m", SourceFileName) },
-	{ init_dependencies(SourceFileName, Error, ModuleName - Items,
-		ModuleImports) },
+	{ split_into_submodules(ModuleName, Items, SubModuleList) },
+	{ list__map(init_dependencies(SourceFileName, Error), SubModuleList,
+		ModuleImportsList) },
 	{ map__init(DepsMap0) },
-	{ insert_into_deps_map(ModuleImports, DepsMap0, DepsMap1) },
+	{ list__foldl(insert_into_deps_map, ModuleImportsList,
+		DepsMap0, DepsMap1) },
 	generate_dependencies(ModuleName, DepsMap1).
 
 :- pred generate_dependencies(module_name, deps_map, io__state, io__state).
@@ -1736,8 +1827,12 @@ generate_dependencies(ModuleName, DepsMap0) -->
 		{ list__condense(ImplDepsOrdering, TransOptDepsOrdering0) },
 		globals__io_lookup_accumulating_option(intermod_directories, 
 			IntermodDirs),
-		get_opt_deps(TransOptDepsOrdering0, IntermodDirs, ".trans_opt",
-			TransOptDepsOrdering),
+		get_opt_deps(yes, TransOptDepsOrdering0, IntermodDirs,
+			".trans_opt", TransOptDepsOrdering),
+
+		% { relation__to_assoc_list(ImplDepsRel, ImplDepsAL) },
+		% print("ImplDepsAL:\n"),
+		% write_list(ImplDepsAL, "\n", print), nl,
 
 		%
 		% compute the indirect dependencies: they are equal to the
@@ -1748,7 +1843,8 @@ generate_dependencies(ModuleName, DepsMap0) -->
 		{ relation__compose(ImplDepsRel, TransIntDepsRel,
 			IndirectDepsRel) },
 
-		generate_dependencies_write_d_files(DepsList, IndirectDepsRel,
+		generate_dependencies_write_d_files(DepsList,
+			IntDepsRel, ImplDepsRel, IndirectDepsRel,
 			TransOptDepsOrdering, DepsMap)
 	).
 
@@ -1797,27 +1893,27 @@ write_module_scc(Stream, SCC0) -->
 %		TransOptOrder gives the ordering that is used to determine
 %		which other modules the .trans_opt files may depend on.
 :- pred generate_dependencies_write_d_files(list(deps)::in, 
-	relation(module_name)::in, list(module_name)::in, deps_map::in, 
-	io__state::di, io__state::uo) is det.
-generate_dependencies_write_d_files([], _, _TransOptOrder, _DepsMap) --> [].
+	deps_rel::in, deps_rel::in, deps_rel::in, list(module_name)::in,
+	deps_map::in, io__state::di, io__state::uo) is det.
+generate_dependencies_write_d_files([], _, _, _, _, _) --> [].
 generate_dependencies_write_d_files([Dep | Deps],
-		IndirectDepsRel0, TransOptOrder, DepsMap) --> 
+		IntDepsRel, ImplDepsRel, IndirectDepsRel,
+		TransOptOrder, DepsMap) --> 
 	{ Dep = deps(_, Module0) },
 
 	%
-	% Look up the indirect dependencies for this module
-	% from the indirect dependencies relation, and save
-	% them in the module_imports structure.
+	% Look up the interface/implementation/indirect dependencies
+	% for this module from the respective dependency relations,
+	% and save them in the module_imports structure.
 	%
 	{ module_imports_get_module_name(Module0, ModuleName) },
-	{ relation__add_element(IndirectDepsRel0, ModuleName, ModuleKey,
-		IndirectDepsRel) },
-	{ relation__lookup_from(IndirectDepsRel, ModuleKey,
-		IndirectDepsKeysSet) },
-	{ set__to_sorted_list(IndirectDepsKeysSet, IndirectDepsKeys) },
-	{ list__map(relation__lookup_key(IndirectDepsRel), IndirectDepsKeys,
-		IndirectDeps) },
-	{ module_imports_set_indirect_deps(Module0, IndirectDeps, Module) },
+	{ get_dependencies_from_relation(IntDepsRel, ModuleName, IntDeps) },
+	{ get_dependencies_from_relation(ImplDepsRel, ModuleName, ImplDeps) },
+	{ get_dependencies_from_relation(IndirectDepsRel, ModuleName,
+			IndirectDeps) },
+	{ module_imports_set_int_deps(Module0, IntDeps, Module1) },
+	{ module_imports_set_impl_deps(Module1, ImplDeps, Module2) },
+	{ module_imports_set_indirect_deps(Module2, IndirectDeps, Module) },
 
 	%
 	% Compute the trans-opt dependencies for this module.
@@ -1845,8 +1941,19 @@ generate_dependencies_write_d_files([Dep | Deps],
 	;
 		[]
 	),
-	generate_dependencies_write_d_files(Deps, IndirectDepsRel,
+	generate_dependencies_write_d_files(Deps,
+		IntDepsRel, ImplDepsRel, IndirectDepsRel,
 		TransOptOrder, DepsMap).
+
+:- pred get_dependencies_from_relation(deps_rel, module_name,
+		list(module_name)).
+:- mode get_dependencies_from_relation(in, in, out) is det.
+
+get_dependencies_from_relation(DepsRel0, ModuleName, Deps) :-
+	relation__add_element(DepsRel0, ModuleName, ModuleKey, DepsRel),
+	relation__lookup_from(DepsRel, ModuleKey, DepsKeysSet),
+	set__to_sorted_list(DepsKeysSet, DepsKeys),
+	list__map(relation__lookup_key(DepsRel), DepsKeys, Deps).
 
 % This is the data structure we use to record the dependencies.
 % We keep a map from module name to information about the module.
@@ -1903,34 +2010,95 @@ deps_list_to_deps_rel([Deps | DepsList], DepsMap,
 		IntRel0, IntRel, ImplRel0, ImplRel) :-
 	Deps = deps(_, ModuleImports),
 	ModuleImports = module_imports(_FileName, ModuleName,
-		ParentDeps, IntDeps, ImplDeps,
-		_IndirectDeps, PublicChildren, _FactDeps, _Items, ModuleError),
+		ParentDeps, _IntDeps, _ImplDeps,
+		_IndirectDeps, _PublicChildren, _FactDeps, _Items, ModuleError),
 	( ModuleError \= fatal ->
-		% add interface dependencies to the interface deps relation
+		%
+		% Add interface dependencies to the interface deps relation.
+		%
+		% Note that we need to do this both for the interface imports
+		% of this module and for the *implementation* imports of
+		% its ancestors.  This is because if this module is defined
+		% in the implementation section of its parent, then the
+		% interface of this module may depend on things
+		% imported only by its parent's implementation.
+		%
+		% If this module was actually defined in the interface
+		% section of one of its ancestors, then it should only
+		% depend on the interface imports of that ancestor,
+		% so the dependencies added here are in fact more
+		% conservative than they need to be in that case.
+		% However, that should not be a major problem.
+		% 
 		relation__add_element(IntRel0, ModuleName, IntModuleKey,
 			IntRel1),
-		AddIntDep = add_dep(IntModuleKey),
-		list__foldl(AddIntDep, ParentDeps, IntRel1, IntRel2),
-		list__foldl(AddIntDep, IntDeps, IntRel2, IntRel3),
-		list__foldl(AddIntDep, PublicChildren, IntRel3, IntRel4),
+		add_int_deps(IntModuleKey, ModuleImports, IntRel1, IntRel2),
+		list__foldl(add_parent_impl_deps(DepsMap, IntModuleKey),
+				ParentDeps, IntRel2, IntRel3),
 
-		% add implementation dependencies to the impl. deps relation
-		% (the implementation dependencies are a superset of the
-		% interface dependencies)
+		%
+		% Add implementation dependencies to the impl. deps relation.
+		% (The implementation dependencies are a superset of the
+		% interface dependencies.)
+		%
+		% Note that we need to do this both for the imports
+		% of this module and for the imports of its parents,
+		% because this module may depend on things imported
+		% only by its parents.
+		%
 		relation__add_element(ImplRel0, ModuleName, ImplModuleKey,
 			ImplRel1),
-		AddImplDep = add_dep(ImplModuleKey),
-		list__foldl(AddImplDep, ParentDeps, ImplRel1, ImplRel2),
-		list__foldl(AddImplDep, IntDeps, ImplRel2, ImplRel3),
-		list__foldl(AddImplDep, PublicChildren, ImplRel3, ImplRel4),
-		list__foldl(AddImplDep, ImplDeps, ImplRel4, ImplRel5)
+		add_impl_deps(ImplModuleKey, ModuleImports, ImplRel1, ImplRel2),
+		list__foldl(add_parent_impl_deps(DepsMap, ImplModuleKey),
+				ParentDeps, ImplRel2, ImplRel3)
 	;
-		IntRel4 = IntRel0,
-		ImplRel5 = ImplRel0
+		IntRel3 = IntRel0,
+		ImplRel3 = ImplRel0
 	),
 	deps_list_to_deps_rel(DepsList, DepsMap,
-		IntRel4, IntRel, ImplRel5, ImplRel).
+		IntRel3, IntRel, ImplRel3, ImplRel).
 
+% add interface dependencies to the interface deps relation
+%
+:- pred add_int_deps(relation_key, module_imports, deps_rel, deps_rel).
+:- mode add_int_deps(in, in, in, out) is det.
+
+add_int_deps(ModuleKey, ModuleImports, Rel0, Rel) :-
+	ModuleImports = module_imports(_FileName, _ModuleName,
+		ParentDeps, IntDeps, _ImplDeps, _IndirectDeps, PublicChildren,
+		_FactDeps, _Items, _ModuleError),
+	AddDep = add_dep(ModuleKey),
+	list__foldl(AddDep, ParentDeps, Rel0, Rel1),
+	list__foldl(AddDep, IntDeps, Rel1, Rel2),
+	list__foldl(AddDep, PublicChildren, Rel2, Rel).
+
+% add direct implementation dependencies for a module to the
+% impl. deps relation
+%
+:- pred add_impl_deps(relation_key, module_imports, deps_rel, deps_rel).
+:- mode add_impl_deps(in, in, in, out) is det.
+
+add_impl_deps(ModuleKey, ModuleImports, Rel0, Rel) :-
+	% the implementation dependencies are a superset of the
+	% interface dependencies, so first we add the interface deps
+	add_int_deps(ModuleKey, ModuleImports, Rel0, Rel1),
+	% then we add the impl deps
+	module_imports_get_impl_deps(ModuleImports, ImplDeps),
+	list__foldl(add_dep(ModuleKey), ImplDeps, Rel1, Rel).
+
+% add parent implementation dependencies for the given Parent module
+% to the impl. deps relation values for the given ModuleKey.
+%
+:- pred add_parent_impl_deps(deps_map, relation_key, module_name,
+			deps_rel, deps_rel).
+:- mode add_parent_impl_deps(in, in, in, in, out) is det.
+
+add_parent_impl_deps(DepsMap, ModuleKey, Parent, Rel0, Rel) :-
+	map__lookup(DepsMap, Parent, deps(_, ParentModuleImports)),
+	add_impl_deps(ModuleKey, ParentModuleImports, Rel0, Rel).
+
+% add a single dependency to a relation
+%
 :- pred add_dep(relation_key, T, relation(T), relation(T)).
 :- mode add_dep(in, in, in, out) is det.
 
@@ -1939,6 +2107,7 @@ add_dep(ModuleRelKey, Dep, Relation0, Relation) :-
 	relation__add(Relation1, ModuleRelKey, DepRelKey, Relation).
 
 %-----------------------------------------------------------------------------%
+
 	% Write out the `.dep' file, using the information collected in the
 	% deps_map data structure.
 :- pred generate_dependencies_write_dep_file(file_name::in, module_name::in,

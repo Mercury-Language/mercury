@@ -182,7 +182,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 	io__open_output(OutputFileName, Result1),
 	(
 	    { Result1 = ok(OutputStream) },
-	    { pred_info_arg_types(PredInfo0, _, Types) },
+	    { pred_info_arg_types(PredInfo0, Types) },
 	    { init_fact_arg_infos(Types, FactArgInfos0) },
 	    infer_determinism_pass_1(PredInfo0, PredInfo1, Context, ModuleInfo,
 	    	CheckProcs, ExistsAllInMode, WriteHashTables, WriteDataTable,
@@ -377,7 +377,7 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 		(
 		    { Len = Arity }
 		->
-		    { pred_info_arg_types(PredInfo, _, Types) },
+		    { pred_info_arg_types(PredInfo, Types) },
 		    check_fact_type_and_mode(Types, Terms, 0, PredOrFunc, 
 			Context, Result),
 		    { pred_info_procedures(PredInfo, ProcTable) },

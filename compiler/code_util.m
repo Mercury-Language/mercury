@@ -259,7 +259,7 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	(
 		code_util__compiler_generated(PredInfo)
 	->
-		pred_info_arg_types(PredInfo, _TypeVarSet, ArgTypes),
+		pred_info_arg_types(PredInfo, ArgTypes),
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),
 			type_to_type_id(Type, TypeId, _),

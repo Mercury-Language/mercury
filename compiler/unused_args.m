@@ -946,7 +946,7 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	proc_id_to_int(ProcId, ProcInt),
 	string__int_to_string(ProcInt, Id),
-	pred_info_arg_types(PredInfo0, Tvars, ArgTypes0),
+	pred_info_arg_types(PredInfo0, Tvars, ExistQVars, ArgTypes0),
 		% create a unique new pred name using the old proc_id
 	(
 		string__prefix(Name0, "__"),
@@ -989,8 +989,9 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 		% *** This will need to be fixed when the condition
 		%	field of the pred_info becomes used.
 	pred_info_init(PredModule, qualified(PredModule, Name), Arity, Tvars,
-		ArgTypes, true, Context, ClausesInfo, Status, Markers,
-		GoalType, PredOrFunc, ClassContext, EmptyProofs, PredInfo1),
+		ExistQVars, ArgTypes, true, Context, ClausesInfo, Status,
+		Markers, GoalType, PredOrFunc, ClassContext, EmptyProofs,
+		PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
 
 

@@ -43,7 +43,8 @@
 	% Check that the all of the types which have been inferred
 	% for the variables in the clause do not contain any unbound type
 	% variables other than those that occur in the types of head
-	% variables.
+	% variables, and that there are no unsatisfied type class
+	% constraints.
 	%
 :- pred post_typecheck__check_type_bindings(pred_id, pred_info, pred_info,
 		module_info, int, io__state, io__state).
@@ -84,29 +85,38 @@
 %  Check that the all of the types which have been inferred
 %  for the variables in the clause do not contain any unbound type
 %  variables other than those that occur in the types of head
-%  variables.
+%  variables, and that there are no unsatisfied type class constraints.
 
 post_typecheck__check_type_bindings(PredId, PredInfo0, PredInfo, ModuleInfo,
 		NumErrors, IOState0, IOState) :-
+	pred_info_get_unproven_body_constraints(PredInfo0, UnprovenConstraints0),
+	( UnprovenConstraints0 \= [] ->
+		list__sort_and_remove_dups(UnprovenConstraints0,
+			UnprovenConstraints),
+		report_unsatisfied_constraints(UnprovenConstraints,
+			PredId, PredInfo0, ModuleInfo, IOState0, IOState1),
+		list__length(UnprovenConstraints, NumErrors)
+	;
+		NumErrors = 0,
+		IOState1 = IOState0
+	),
+		
 	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	pred_info_get_head_type_params(PredInfo0, HeadTypeParams),
 	ClausesInfo0 = clauses_info(VarSet, B, VarTypesMap0, HeadVars, E),
-	map__apply_to_list(HeadVars, VarTypesMap0, HeadVarTypes),
-	term__vars_list(HeadVarTypes, HeadVarTypeParams),
 	map__to_assoc_list(VarTypesMap0, VarTypesList),
 	set__init(Set0),
-	check_type_bindings_2(VarTypesList, HeadVarTypeParams,
+	check_type_bindings_2(VarTypesList, HeadTypeParams,
 			[], Errs, Set0, Set),
 	( Errs = [] ->
 		PredInfo = PredInfo0,
-		IOState = IOState0,
-		NumErrors = 0
+		IOState = IOState1
 	;
 		%
 		% report the warning
 		%
 		report_unresolved_type_warning(Errs, PredId, PredInfo0,
-				ModuleInfo, VarSet, IOState0, IOState),
-		NumErrors = 0,
+				ModuleInfo, VarSet, IOState1, IOState),
 
 		%
 		% bind all the type variables in `Set' to `void' ...
@@ -165,8 +175,36 @@ bind_type_vars_to_void(UnboundTypeVarsSet, Context,
 		Types0, Types),
 	map__from_corresponding_lists(Vars, Types, VarTypesMap).
 
+%-----------------------------------------------------------------------------%
 %
-% report an error: uninstantiated type parameter
+% report an error: unsatisfied type class constraints
+%
+:- pred report_unsatisfied_constraints(list(class_constraint),
+		pred_id, pred_info, module_info, io__state, io__state).
+:- mode report_unsatisfied_constraints(in, in, in, in, di, uo) is det.
+
+report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo) -->
+	io__set_exit_status(1),
+
+	{ pred_info_typevarset(PredInfo, TVarSet) },
+	{ pred_info_context(PredInfo, Context) },
+
+        prog_out__write_context(Context),
+	io__write_string("In "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(":\n"),
+
+	prog_out__write_context(Context),
+	io__write_string(
+		"  type error: unsatisfied typeclass constraint(s):\n"),
+
+	prog_out__write_context(Context),
+	io__write_string("  "),
+	io__write_list(Constraints, ", ", mercury_output_constraint(TVarSet)),
+	io__write_string(".\n").
+
+%
+% report a warning: uninstantiated type parameter
 %
 :- pred report_unresolved_type_warning(assoc_list(var, (type)), pred_id,
 			pred_info, module_info, varset, io__state, io__state).
@@ -272,7 +310,7 @@ post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo1, PredInfo) -->
 	% 
 post_typecheck__finish_imported_pred(ModuleInfo, PredId, PredInfo0, PredInfo)
 		-->
-	{ pred_info_arg_types(PredInfo0, _, ArgTypes) },
+	{ pred_info_arg_types(PredInfo0, ArgTypes) },
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ pred_info_procids(PredInfo0, ProcIds) },
 	propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds, ArgTypes,

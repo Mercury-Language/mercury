@@ -68,19 +68,29 @@
 :- mode goal_util__goals_goal_vars(in, in, out) is det.
 
 	%
+	% goal_util__extra_nonlocal_typeinfos(TypeInfoMap, TypeClassInfoMap,
+	%		VarTypes, ExistQVars, Goal, NonLocalTypeInfos):
+	% compute which type-info and type-class-info variables
+	% may need to be non-local to a goal.
+	%
 	% A type-info variable may be non-local to a goal if any of 
 	% the ordinary non-local variables for that goal are
 	% polymorphically typed with a type that depends on that
-	% type-info variable.
+	% type-info variable, or if the type-info is for an
+	% existentially quantified type variable.
 	%
 	% In addition, a typeclass-info may be non-local to a goal if
 	% any of the non-local variables for that goal are
 	% polymorphically typed and are constrained by the typeclass
-	% constraints for that typeclass-info variable.
+	% constraints for that typeclass-info variable,
+	% or if the the type-class-info is for an existential constraint,
+	% i.e. a constraint which contrains an existentially quantified
+	% type variable.
 	%
-:- pred goal_util__extra_nonlocal_typeinfos(map(var, type_info_locn),
-		map(var, type), hlds_goal, set(var)).
-:- mode goal_util__extra_nonlocal_typeinfos(in, in, in, out) is det.
+:- pred goal_util__extra_nonlocal_typeinfos(map(tvar, type_info_locn),
+		map(class_constraint, var), map(var, type), existq_tvars,
+		hlds_goal, set(var)).
+:- mode goal_util__extra_nonlocal_typeinfos(in, in, in, in, in, out) is det.
 
 	% See whether the goal is a branched structure.
 :- pred goal_util__goal_is_branched(hlds_goal_expr).
@@ -533,8 +543,8 @@ goal_util__rhs_goal_vars(
 
 %-----------------------------------------------------------------------------%
 
-goal_util__extra_nonlocal_typeinfos(TypeVarMap, VarTypes,
-		Goal0, NonLocalTypeInfos) :-
+goal_util__extra_nonlocal_typeinfos(TypeVarMap, TypeClassVarMap, VarTypes,
+		ExistQVars, Goal0, NonLocalTypeInfos) :-
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	set__to_sorted_list(NonLocals, NonLocalsList),
@@ -543,9 +553,30 @@ goal_util__extra_nonlocal_typeinfos(TypeVarMap, VarTypes,
 		% Find all the type-infos and typeclass-infos that are
 		% non-local
 	solutions_set(lambda([Var::out] is nondet, (
-			list__member(TheVar, NonLocalTypeVars),
-			map__search(TypeVarMap, TheVar, Location),
-			type_info_locn_var(Location, Var)
+			%
+			% if there is some TypeVar for which either
+			% (a) the type of some non-local variable
+			%     depends on that type variable, or
+			% (b) that type variable is existentially
+			%     quantified
+			%
+			( list__member(TypeVar, NonLocalTypeVars)
+			; list__member(TypeVar, ExistQVars)
+			),
+			%
+			% then the type_info Var for that type,
+			% and any type_class_info Vars which represent
+			% constraints on types which include that type,
+			% should be included in the NonLocalTypeInfos.
+			%
+			( map__search(TypeVarMap, TypeVar, Location),
+			  type_info_locn_var(Location, Var)
+			;
+			  % this is probably not very efficient...
+			  map__member(TypeClassVarMap, Constraint, Var),
+			  Constraint = constraint(_Name, ArgTypes),
+			  term__contains_var_list(ArgTypes, TypeVar)
+			)
 		)), NonLocalTypeInfos).
 
 %-----------------------------------------------------------------------------%

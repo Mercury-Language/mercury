@@ -602,7 +602,7 @@ unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clauses) -->
 unify_proc__generate_du_unify_clauses([], _H1, _H2, _Context, []) --> [].
 unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 		[Clause | Clauses]) -->
-	{ Ctor = FunctorName - ArgTypes },
+	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
 	unify_proc__make_fresh_vars(ArgTypes, Vars1),
@@ -659,7 +659,7 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 unify_proc__generate_du_index_clauses([], _X, _Index, _Context, _N, []) --> [].
 unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 		[Clause | Clauses]) -->
-	{ Ctor = FunctorName - ArgTypes },
+	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
 	unify_proc__make_fresh_vars(ArgTypes, ArgVars),
@@ -850,7 +850,7 @@ unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, Context,
 	is det.
 
 unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case) -->
-	{ Ctor = FunctorName - ArgTypes },
+	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
 	unify_proc__make_fresh_vars(ArgTypes, Vars1),

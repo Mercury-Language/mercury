@@ -143,9 +143,10 @@ goedel_output_item(inst_defn(VarSet, InstDefn, _Cond), Context) -->
 goedel_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 	goedel_output_mode_defn(VarSet, ModeDefn, Context).
 
-	% XXX Should we ignore ClassContext, or give an error?
-goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond,
-		Purity, _ClassContext), Context) -->
+	% XXX Should we ignore ClassContext and ExistQVars,
+	% or give an error if they're non-empty?
+goedel_output_item(pred(VarSet, _ExistQVars, PredName, TypesAndModes,
+		_Det, _Cond, Purity, _ClassContext), Context) -->
 	io__write_string("\n"),
 	maybe_write_line_number(Context),
 	(   { Purity = pure } ->
@@ -157,8 +158,10 @@ goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond,
 	),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
 
-	% XXX Should we ignore ClassContext, or give an error?
-goedel_output_item(func(VarSet, PredName, TypesAndModes, RetTypeAndMode, _Det,
+	% XXX Should we ignore ClassContext and ExistQVars,
+	% or give an error if they're non-empty?
+goedel_output_item(func(VarSet, _ExistQVars, PredName,
+		TypesAndModes, RetTypeAndMode, _Det,
 		_Cond, Purity, _ClassContext), Context) -->
 	io__write_string("\n"),
 	maybe_write_line_number(Context),
@@ -333,9 +336,10 @@ goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet, Context) -->
 :- mode goedel_output_ctors(in, in, in, di, uo) is det.
 
 goedel_output_ctors([], _, _) --> [].
-goedel_output_ctors([Name - Args | Ctors], Type, VarSet) -->
-	{ unqualify_name(Name, Name2),
-	  convert_functor_name(Name2, Name3) },
+goedel_output_ctors([Ctor | Ctors], Type, VarSet) -->
+	{ Ctor = ctor(_ExistQVars, _Constraints, Name, Args) },
+	{ unqualify_name(Name, Name2) },
+	{ convert_functor_name(Name2, Name3) },
 	(
 		{ Args = [_ArgName - ArgType | Rest] }
 	->
@@ -465,7 +469,7 @@ goedel_output_func(VarSet, PredName, TypesAndModes, RetTypeAndMode, Context) -->
 goedel_output_func_type(VarSet, FuncName, Types, RetType, _Context) -->
 	{ list__map(lambda([Type::in, Arg::out] is det, (Arg = "" - Type)),
 		Types, Args) },
-	goedel_output_ctors([FuncName - Args], RetType, VarSet).
+	goedel_output_ctors([ctor([], [], FuncName, Args)], RetType, VarSet).
 
 %-----------------------------------------------------------------------------%
 

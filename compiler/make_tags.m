@@ -108,7 +108,8 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 :- mode assign_enum_constants(in, in, in, out) is det.
 
 assign_enum_constants([], _, CtorTags, CtorTags).
-assign_enum_constants([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
+assign_enum_constants([Ctor | Rest], Val, CtorTags0, CtorTags) :-
+	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	create_cons_id(Name, Args, ConsId),
 	Tag = int_constant(Val),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
@@ -144,12 +145,13 @@ assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
 :- mode assign_simple_tags(in, in, in, in, out) is det.
 
 assign_simple_tags([], _, _, CtorTags, CtorTags).
-assign_simple_tags([Name - Args | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
+assign_simple_tags([Ctor | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
+	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	create_cons_id(Name, Args, ConsId),
 		% if we're about to run out of simple tags, start assigning
 		% complicated tags instead
 	( Val = MaxTag, Rest \= [] ->
-		assign_complicated_tags([Name - Args | Rest], MaxTag, 0,
+		assign_complicated_tags([Ctor | Rest], MaxTag, 0,
 			CtorTags0, CtorTags)
 	;
 		Tag = simple_tag(Val),
@@ -163,8 +165,9 @@ assign_simple_tags([Name - Args | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
 :- mode assign_complicated_tags(in, in, in, in, out) is det.
 
 assign_complicated_tags([], _, _, CtorTags, CtorTags).
-assign_complicated_tags([Name - Args | Rest], PrimaryVal, SecondaryVal,
+assign_complicated_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 		CtorTags0, CtorTags) :-
+	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	create_cons_id(Name, Args, ConsId),
 	Tag = complicated_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
@@ -177,8 +180,9 @@ assign_complicated_tags([Name - Args | Rest], PrimaryVal, SecondaryVal,
 :- mode assign_complicated_constant_tags(in, in, in, in, out) is det.
 
 assign_complicated_constant_tags([], _, _, CtorTags, CtorTags).
-assign_complicated_constant_tags([Name - Args | Rest], PrimaryVal,
-		SecondaryVal, CtorTags0, CtorTags) :-
+assign_complicated_constant_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
+			CtorTags0, CtorTags) :-
+	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	create_cons_id(Name, Args, ConsId),
 	Tag = complicated_constant_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
@@ -200,7 +204,8 @@ max_num_tags(NumTagBits, MaxTags) :-
 :- mode ctors_are_all_constants(in) is semidet.
 
 ctors_are_all_constants([]).
-ctors_are_all_constants([_Name - Args | Rest]) :-
+ctors_are_all_constants([Ctor | Rest]) :-
+	Ctor = ctor(_ExistQVars, _Constraints, _Name, Args),
 	Args = [],
 	ctors_are_all_constants(Rest).
 
@@ -212,7 +217,7 @@ ctors_are_all_constants([_Name - Args | Rest]) :-
 
 split_constructors([], [], []).
 split_constructors([Ctor | Ctors], Constants, Functors) :-
-	Ctor = _Name - Args,
+	Ctor = ctor(_ExistQVars, _Constraints, _Name, Args),
 	( Args = [] ->
 		Constants = [Ctor | Constants0],
 		Functors = Functors0

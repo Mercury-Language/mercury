@@ -566,7 +566,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
 :- mode all_args_input_or_zero_size(in, in, in) is semidet.
 
 all_args_input_or_zero_size(Module, PredInfo, ProcInfo) :-
-	pred_info_arg_types(PredInfo, _, TypeList),
+	pred_info_arg_types(PredInfo, TypeList),
 	proc_info_argmodes(ProcInfo, argument_modes(ModeInstTable, ModeList)),
 	all_args_input_or_zero_size_2(TypeList, ModeList, ModeInstTable,
 		Module). 

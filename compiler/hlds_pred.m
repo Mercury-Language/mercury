@@ -21,7 +21,7 @@
 :- implementation.
 
 :- import_module make_hlds, prog_util, mode_util, type_util.
-:- import_module options, goal_util.
+:- import_module options, goal_util, code_aux.
 :- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -282,7 +282,7 @@
 	% polymorphism.m.
 :- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var),
 		instmap, string, tvarset, map(var, type),
-		list(class_constraint), map(tvar, type_info_locn),
+		class_constraints, map(tvar, type_info_locn),
 		map(class_constraint, var), varset, pred_markers, inst_table,
 		module_info, module_info, pred_proc_id).
 :- mode hlds_pred__define_new_pred(in, out, in, in, in, in, in, in,
@@ -291,26 +291,18 @@
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
 
-:- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
-	condition, term__context, clauses_info, import_status,
-	pred_markers, goal_type, pred_or_func, list(class_constraint), 
+:- pred pred_info_init(module_name, sym_name, arity, tvarset, existq_tvars,
+	list(type), condition, term__context, clauses_info, import_status,
+	pred_markers, goal_type, pred_or_func, class_constraints, 
 	map(class_constraint, constraint_proof), pred_info).
-:- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
-	out) is det.
-
-:- pred pred_info_create(module_name, sym_name, tvarset, list(type),
-	condition, term__context, import_status, pred_markers,
-	pred_or_func, list(class_constraint), proc_info, proc_id, pred_info).
-:- mode pred_info_create(in, in, in, in, in, in, in, in, in, in, in, out, out)
-	is det.
-
-:- pred pred_info_set(tvarset, list(type), condition, clauses_info, proc_table,
-	term__context, module_name, string, arity, import_status,
-	tvarset, goal_type, pred_markers, pred_or_func, 
-	list(class_constraint), map(class_constraint, constraint_proof),
-	pred_info).
-:- mode pred_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in, 
+:- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, in, out) is det.
+
+:- pred pred_info_create(module_name, sym_name, tvarset, existq_tvars,
+	list(type), condition, term__context, import_status, pred_markers,
+	pred_or_func, class_constraints, proc_info, proc_id, pred_info).
+:- mode pred_info_create(in, in, in, in, in, in, in, in, in, in, in, in,
+	out, out) is det.
 
 :- pred pred_info_module(pred_info, module_name).
 :- mode pred_info_module(in, out) is det.
@@ -338,11 +330,37 @@
 :- pred pred_info_exported_procids(pred_info, list(proc_id)).
 :- mode pred_info_exported_procids(in, out) is det.
 
-:- pred pred_info_arg_types(pred_info, tvarset, list(type)).
-:- mode pred_info_arg_types(in, out, out) is det.
+:- pred pred_info_arg_types(pred_info, list(type)).
+:- mode pred_info_arg_types(in, out) is det.
 
-:- pred pred_info_set_arg_types(pred_info, tvarset, list(type), pred_info).
-:- mode pred_info_set_arg_types(in, in, in, out) is det.
+:- pred pred_info_arg_types(pred_info, tvarset, existq_tvars, list(type)).
+:- mode pred_info_arg_types(in, out, out, out) is det.
+
+:- pred pred_info_set_arg_types(pred_info, tvarset, existq_tvars, list(type),
+			pred_info).
+:- mode pred_info_set_arg_types(in, in, in, in, out) is det.
+
+:- pred pred_info_get_exist_quant_tvars(pred_info, existq_tvars).
+:- mode pred_info_get_exist_quant_tvars(in, out) is det.
+
+:- pred pred_info_get_univ_quant_tvars(pred_info, existq_tvars).
+:- mode pred_info_get_univ_quant_tvars(in, out) is det.
+
+:- type head_type_params == list(tvar).
+
+:- pred pred_info_get_head_type_params(pred_info, head_type_params).
+:- mode pred_info_get_head_type_params(in, out) is det.
+
+:- pred pred_info_set_head_type_params(pred_info, head_type_params, pred_info).
+:- mode pred_info_set_head_type_params(in, in, out) is det.
+
+:- pred pred_info_get_unproven_body_constraints(pred_info,
+					list(class_constraint)).
+:- mode pred_info_get_unproven_body_constraints(in, out) is det.
+
+:- pred pred_info_set_unproven_body_constraints(pred_info,
+				list(class_constraint), pred_info).
+:- mode pred_info_set_unproven_body_constraints(in, in, out) is det.
 
 :- pred pred_info_clauses_info(pred_info, clauses_info).
 :- mode pred_info_clauses_info(in, out) is det.
@@ -406,11 +424,10 @@
 :- pred pred_info_get_is_pred_or_func(pred_info, pred_or_func).
 :- mode pred_info_get_is_pred_or_func(in, out) is det.
 
-:- pred pred_info_get_class_context(pred_info, list(class_constraint)).
+:- pred pred_info_get_class_context(pred_info, class_constraints).
 :- mode pred_info_get_class_context(in, out) is det.
 
-:- pred pred_info_set_class_context(pred_info, list(class_constraint), 
-	pred_info).
+:- pred pred_info_set_class_context(pred_info, class_constraints, pred_info).
 :- mode pred_info_set_class_context(in, in, out) is det.
 
 :- pred pred_info_get_constraint_proofs(pred_info, 
@@ -510,11 +527,7 @@ invalid_pred_id(-1).
 invalid_proc_id(-1).
 
 	% The information specific to a predicate, as opposed to a procedure.
-	%
-	% Any changes in this type definition will almost certainly require
-	% corresponding changes in define.m.
-	% XXX: This comment is either ancient, or prophesy. It seems
-	% define.m doesn't exist yet.
+	% (Functions count as predicates.)
 
 :- type pred_info
 	--->	predicate(
@@ -546,30 +559,57 @@ invalid_proc_id(-1).
 			pred_markers,	% various boolean flags
 			pred_or_func,	% whether this "predicate" was really
 					% a predicate or a function
-			list(class_constraint),
+			class_constraints,
 					% the class constraints on the 
-					% predicate
-			map(class_constraint, constraint_proof)
+					% type variables in the predicate's
+					% type declaration
+			map(class_constraint, constraint_proof),
 					% explanations of how redundant
 					% constraints were eliminated. These
 					% are needed by polymorphism.m to
 					% work out where to get the
 					% typeclass_infos from.
+					% Computed during type checking.
+			existq_tvars,	% the set of existentially quantified
+					% type variables in the predicate's
+					% type decl
+			head_type_params,
+					% The set of type variables which the
+					% body of the predicate can't bind,
+					% and whose type_infos are produced
+					% elsewhere.  This includes
+					% universally quantified head types
+					% (the type_infos are passed in)
+					% plus existentially quantified types
+					% in preds called from the body
+					% (the type_infos are returned from
+					% the called preds).
+					% Computed during type checking.
+			list(class_constraint)
+					% unproven class constraints on type variables
+					% in the predicate's body, if any
+					% (if this remains non-empty after type
+					% checking has finished, post_typecheck.m
+					% will report a type error).
 		).
 
-pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
-		ClausesInfo, Status, Markers, GoalType, PredOrFunc, 
-		ClassContext, ClassProofs, PredInfo) :-
+pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
+		Cond, Context, ClausesInfo, Status, Markers, GoalType,
+		PredOrFunc, ClassContext, ClassProofs, PredInfo) :-
 	map__init(Procs),
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
+	term__vars_list(Types, TVars),
+	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
+	UnprovenBodyConstraints = [],
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
-		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs).
+		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs,
+		ExistQVars, HeadTypeParams, UnprovenBodyConstraints).
 
-pred_info_create(ModuleName, SymName, TypeVarSet, Types, Cond, Context,
-		Status, Markers, PredOrFunc, ClassContext, ProcInfo, ProcId,
-		PredInfo) :-
+pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
+		Context, Status, Markers, PredOrFunc, ClassContext,
+		ProcInfo, ProcId, PredInfo) :-
 	map__init(Procs0),
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	next_mode_id(Procs0, MaybeDetism, ProcId),
@@ -582,21 +622,17 @@ pred_info_create(ModuleName, SymName, TypeVarSet, Types, Cond, Context,
 	% The empty list of clauses is a little white lie.
 	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars, []),
 	map__init(ClassProofs),
+	term__vars_list(Types, TVars),
+	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
+	UnprovenBodyConstraints = [],
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, ModuleName, PredName, Arity, Status, TypeVarSet, 
-		clauses, Markers, PredOrFunc, ClassContext, ClassProofs).
-
-pred_info_set(HeadTVarSet, Types, Cond, ClausesInfo, Procs, Context,
-		PredModuleName, PredName, Arity, Status, AllTVarSet,
-		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs,
-		PredInfo) :-
-	PredInfo = predicate(HeadTVarSet, Types, Cond, ClausesInfo, Procs,
-		Context, PredModuleName, PredName, Arity, Status, AllTVarSet, 
-		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs).
+		clauses, Markers, PredOrFunc, ClassContext, ClassProofs,
+		ExistQVars, HeadTypeParams, UnprovenBodyConstraints).
 
 pred_info_procids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, 
-		_, _, _, _),
+		_, _, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
@@ -622,51 +658,58 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 	).
 
 pred_info_clauses_info(PredInfo, Clauses) :-
-	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _,
-		_, _, _, _).
+	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _, _,
+		_, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P),
+	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P,
+		Q, R, S),
 	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, 
-		L, M, N, O, P).
+		L, M, N, O, P, Q, R, S).
 
-pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
+pred_info_arg_types(PredInfo, ArgTypes) :-
+	pred_info_arg_types(PredInfo, _TypeVars, _ExistQVars, ArgTypes).
+
+pred_info_arg_types(PredInfo, TypeVars, ExistQVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, 
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _, ExistQVars, _, _).
 
-pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo) :-
-	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P),
+pred_info_set_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes,
+		PredInfo) :-
+	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		_, R, S),
 	PredInfo = predicate(TypeVarSet, ArgTypes, 
-			C, D, E, F, G, H, I, J, K, L, M, N, O, P).
+		C, D, E, F, G, H, I, J, K, L, M, N, O, P, ExistQVars, R, S).
 
 pred_info_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _, _, _).
 
 pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P),
+	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P,
+		Q, R, S),
 	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L, M, 
-		N, O, P).
+		N, O, P, Q, R, S).
 
 pred_info_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, 
-		_, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _).
 
 pred_info_module(PredInfo, Module) :-
 	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _, _, _).
 
 pred_info_name(PredInfo, PredName) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _, _, _).
 
 pred_info_arity(PredInfo, Arity) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _, _, _).
 
 pred_info_import_status(PredInfo, ImportStatus) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _,
-				_, _, _).
+				_, _, _, _, _, _).
 
 pred_info_is_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, imported).
@@ -684,32 +727,36 @@ pred_info_is_pseudo_exported(PredInfo) :-
 	ImportStatus = pseudo_exported.
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P),
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
+		Q, R, S),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M, 
-		N, O, P).
+		N, O, P, Q, R, S).
 
 pred_info_set_import_status(PredInfo0, Status, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P),
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
+		Q, R, S),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, 
-		L, M, N, O, P).
+		L, M, N, O, P, Q, R, S).
 
 pred_info_typevarset(PredInfo, TypeVarSet) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _, _, 
-		_, _, _).
+		_, _, _, _, _, _).
 
 pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P),
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P,
+		Q, R, S),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M,
-				N, O, P).
+				N, O, P, Q, R, S).
 
 pred_info_get_goal_type(PredInfo, GoalType) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, GoalType, _, 
-		_, _, _).
+		_, _, _, _, _, _).
 
 pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P),
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P,
+		Q, R, S),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M, 
-		N, O, P).
+		N, O, P, Q, R, S).
 
 pred_info_requested_inlining(PredInfo0) :-
 	pred_info_get_markers(PredInfo0, Markers),
@@ -743,34 +790,69 @@ purity_to_markers(impure, [impure]).
 
 pred_info_get_markers(PredInfo, Markers) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, 
-		_, _, _).
+		_, _, _, _, _, _).
 
 pred_info_set_markers(PredInfo0, Markers, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P),
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P,
+		Q, R, S),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers, 
-		N, O, P).
+		N, O, P, Q, R, S).
 
 pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _,
-			IsPredOrFunc, _, _).
+			IsPredOrFunc, _, _, _, _, _).
 
 pred_info_set_class_context(PredInfo0, ClassContext, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P),
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P,
+		Q, R, S),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		ClassContext, P).
+		ClassContext, P, Q, R, S).
 
 pred_info_get_class_context(PredInfo, ClassContext) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		ClassContext, _).
+		ClassContext, _, _, _, _).
 
 pred_info_set_constraint_proofs(PredInfo0, Proofs, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _),
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _,
+		Q, R, S),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, Proofs).
+		O, Proofs, Q, R, S).
 
 pred_info_get_constraint_proofs(PredInfo, ConstraintProofs) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		ConstraintProofs).
+		ConstraintProofs, _, _, _).
+
+pred_info_get_exist_quant_tvars(PredInfo, ExistQVars) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, ExistQVars, _, _).
+
+pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
+	pred_info_arg_types(PredInfo, ArgTypes),
+	term__vars_list(ArgTypes, ArgTypeVars0),
+	list__sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
+	pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
+	list__delete_elems(ArgTypeVars, ExistQVars, UnivQVars).
+
+pred_info_get_head_type_params(PredInfo, HeadTypeParams) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, HeadTypeParams, _).
+
+pred_info_set_head_type_params(PredInfo0, HeadTypeParams, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		Q, _, S),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		Q, HeadTypeParams, S).
+
+pred_info_get_unproven_body_constraints(PredInfo, UnprovenBodyConstraints) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, UnprovenBodyConstraints).
+
+pred_info_set_unproven_body_constraints(PredInfo0, UnprovenBodyConstraints,
+		PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		Q, R, _),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		Q, R, UnprovenBodyConstraints).
 
 %-----------------------------------------------------------------------------%
 
@@ -802,14 +884,18 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, InstMap0, PredName, TVarSet,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 
+	% XXX The set of existentially quantified type variables
+	% here might not be correct.
+	ExistQVars = [],
+
 	% If typeinfo_liveness is set, all type_infos for the argument
 	% variables need to be passed in, not just the ones that are used.
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, typeinfo_liveness,
 		TypeInfoLiveness),
 	( TypeInfoLiveness = yes ->
-		goal_util__extra_nonlocal_typeinfos(TVarMap, VarTypes0,
-			Goal0, ExtraTypeInfos0),
+		goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap,
+			VarTypes0, ExistQVars, Goal0, ExtraTypeInfos0),
 		set__delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos),
 		set__to_sorted_list(ExtraTypeInfos, ExtraArgs),
 		list__append(ExtraArgs, ArgVars0, ArgVars)
@@ -832,12 +918,23 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, InstMap0, PredName, TVarSet,
 	map__select(VarTypes0, GoalVars, VarTypes),
 	varset__select(VarSet0, GoalVars, VarSet),
 
+		% Approximate the termination information 
+		% for the new procedure.
+	( code_aux__goal_cannot_loop(ModuleInfo0, Goal0) ->
+		TermInfo = yes(cannot_loop)
+	;
+		TermInfo = no
+	),
+
 	globals__get_args_method(Globals, ArgsMethod),
+
 	proc_info_create(VarSet, VarTypes, ArgVars, Modes, Detism,
 		Goal0, Context, TVarMap, TCVarMap, ArgsMethod, InstTable,
-		ProcInfo),
-	pred_info_create(ModuleName, SymName, TVarSet, ArgTypes, true,
-		Context, local, Markers, predicate, ClassContext, 
+		ProcInfo0),
+	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
+
+	pred_info_create(ModuleName, SymName, TVarSet, ExistQVars, ArgTypes,
+		true, Context, local, Markers, predicate, ClassContext, 
 		ProcInfo, ProcId, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),

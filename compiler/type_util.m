@@ -136,12 +136,6 @@
 :- pred type_list_subsumes(list(type), list(type), tsubst).
 :- mode type_list_subsumes(in, in, out) is semidet.
 
-	% type_list_matches_exactly(TypesA, TypesB) succeeds iff TypesA and
-	% TypesB are exactly the same modulo variable renaming. 
-:- pred type_and_constraint_list_matches_exactly(list(type),
-	list(class_constraint), list(type), list(class_constraint)).
-:- mode type_and_constraint_list_matches_exactly(in, in, in, in) is semidet.
-
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
 
@@ -166,25 +160,46 @@
 	map(var, var), map(tvar, type_info_locn)).
 :- mode apply_substitutions_to_var_map(in, in, in, out) is det.
 
-:- pred apply_rec_subst_to_constraints(substitution, list(class_constraint),
-	list(class_constraint)).
+:- pred apply_rec_subst_to_constraints(substitution, class_constraints,
+	class_constraints).
 :- mode apply_rec_subst_to_constraints(in, in, out) is det.
+
+:- pred apply_rec_subst_to_constraint_list(substitution, list(class_constraint),
+	list(class_constraint)).
+:- mode apply_rec_subst_to_constraint_list(in, in, out) is det.
 
 :- pred apply_rec_subst_to_constraint(substitution, class_constraint,
 	class_constraint).
 :- mode apply_rec_subst_to_constraint(in, in, out) is det.
 
-:- pred apply_subst_to_constraints(substitution, list(class_constraint),
-	list(class_constraint)).
+:- pred apply_subst_to_constraints(substitution, class_constraints,
+	class_constraints).
 :- mode apply_subst_to_constraints(in, in, out) is det.
+
+:- pred apply_subst_to_constraint_list(substitution, list(class_constraint),
+	list(class_constraint)).
+:- mode apply_subst_to_constraint_list(in, in, out) is det.
 
 :- pred apply_subst_to_constraint(substitution, class_constraint,
 	class_constraint).
 :- mode apply_subst_to_constraint(in, in, out) is det.
 
+:- pred apply_variable_renaming_to_constraints(map(var, var), 
+	class_constraints, class_constraints).
+:- mode apply_variable_renaming_to_constraints(in, in, out) is det.
+
+:- pred apply_variable_renaming_to_constraint_list(map(var, var), 
+	list(class_constraint), list(class_constraint)).
+:- mode apply_variable_renaming_to_constraint_list(in, in, out) is det.
+
 :- pred apply_variable_renaming_to_constraint(map(var, var), 
 	class_constraint, class_constraint).
 :- mode apply_variable_renaming_to_constraint(in, in, out) is det.
+
+% Apply a renaming (partial map) to a list.
+% Useful for applying a variable renaming to a list of variables.
+:- pred apply_partial_map_to_list(list(T), map(T, T), list(T)).
+:- mode apply_partial_map_to_list(in, in, out) is det.
 
 % strip out the term__context fields, replacing them with empty
 % term__contexts (as obtained by term__context_init/1)
@@ -361,10 +376,10 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 		% will fail for builtin cons_ids.
 		map__search(Ctors, ConsId, ConsDefns),
 		CorrectCons = lambda([ConsDefn::in] is semidet, (
-				ConsDefn = hlds_cons_defn(_, TypeId, _)
+				ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
 			)),
 		list__filter(CorrectCons, ConsDefns,
-			[hlds_cons_defn(ArgTypes0, _, _)]),
+			[hlds_cons_defn(_, _, ArgTypes0, _, _)]),
 		ArgTypes0 \= []
 	->
 		module_info_types(ModuleInfo, Types),
@@ -391,7 +406,9 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	% type_is_no_tag_type/3 is called.
 
 type_is_no_tag_type(Ctors, Ctor, Type) :-
-	Ctors = [Ctor - [_FieldName - Type]],
+	Ctors = [SingleCtor],
+	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, [_FieldName - Type]),
+	ExistQVars = [],
 	unqualify_name(Ctor, Name),
 	Name \= "type_info",
 	Name \= "base_type_info",
@@ -422,8 +439,15 @@ substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
 :- mode substitute_type_args_2(in, in, out) is det.
 
 substitute_type_args_2([], _, []).
-substitute_type_args_2([Name - Args0 | Ctors0], Subst,
-		[Name - Args | Ctors]) :-
+substitute_type_args_2([Ctor0| Ctors0], Subst, [Ctor | Ctors]) :-
+	% Note: prog_io.m ensures that the existentially quantified
+	% variables, if any, are distinct from the parameters,
+	% and that the (existential) constraints can only contain
+	% existentially quantified variables, so there's
+	% no need to worry about applying the substitution to
+	% ExistQVars or Constraints
+	Ctor0 = ctor(ExistQVars, Constraints, Name, Args0),
+	Ctor = ctor(ExistQVars, Constraints, Name, Args),
 	substitute_type_args_3(Args0, Subst, Args),
 	substitute_type_args_2(Ctors0, Subst, Ctors).
 
@@ -450,19 +474,6 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	term__vars_list(TypesB, TypesBVars),
 	map__init(TypeSubst0),
 	type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
-
-%-----------------------------------------------------------------------------%
-
-	% If this becomes a performance bottleneck, it can probably be coded
-	% more efficiently.
-type_and_constraint_list_matches_exactly(TypesA, ConstraintsA0, 
-		TypesB, ConstraintsB) :-
-	type_list_subsumes(TypesA, TypesB, Subst),
-	type_list_subsumes(TypesB, TypesA, _),
-	apply_subst_to_constraints(Subst, ConstraintsA0, ConstraintsA),
-	list__sort(ConstraintsA, SortedA),
-	list__sort(ConstraintsB, SortedB),
-	SortedA = SortedB.
 
 %-----------------------------------------------------------------------------%
 
@@ -731,6 +742,12 @@ apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TSubst, Subst,
 %-----------------------------------------------------------------------------%
 
 apply_rec_subst_to_constraints(Subst, Constraints0, Constraints) :-
+	Constraints0 = constraints(UnivCs0, ExistCs0),
+	apply_rec_subst_to_constraint_list(Subst, UnivCs0, UnivCs),
+	apply_rec_subst_to_constraint_list(Subst, ExistCs0, ExistCs),
+	Constraints = constraints(UnivCs, ExistCs).
+
+apply_rec_subst_to_constraint_list(Subst, Constraints0, Constraints) :-
 	list__map(apply_rec_subst_to_constraint(Subst), Constraints0,
 		Constraints).
 
@@ -742,7 +759,13 @@ apply_rec_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	strip_term_contexts(Types1, Types),
 	Constraint  = constraint(ClassName, Types).
 
-apply_subst_to_constraints(Subst, Constraints0, Constraints) :-
+apply_subst_to_constraints(Subst,
+		constraints(UniversalCs0, ExistentialCs0),
+		constraints(UniversalCs, ExistentialCs)) :-
+	apply_subst_to_constraint_list(Subst, UniversalCs0, UniversalCs),
+	apply_subst_to_constraint_list(Subst, ExistentialCs0, ExistentialCs).
+
+apply_subst_to_constraint_list(Subst, Constraints0, Constraints) :-
 	list__map(apply_subst_to_constraint(Subst), Constraints0, Constraints).
 
 apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
@@ -750,11 +773,37 @@ apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	term__apply_substitution_to_list(Types0, Subst, Types),
 	Constraint  = constraint(ClassName, Types).
 
+apply_variable_renaming_to_constraints(Renaming,
+		constraints(UniversalCs0, ExistentialCs0),
+		constraints(UniversalCs, ExistentialCs)) :-
+	apply_variable_renaming_to_constraint_list(Renaming,
+			UniversalCs0, UniversalCs),
+	apply_variable_renaming_to_constraint_list(Renaming,
+			ExistentialCs0, ExistentialCs).
+	
+apply_variable_renaming_to_constraint_list(Renaming, Constraints0,
+		Constraints) :-
+	list__map(apply_variable_renaming_to_constraint(Renaming),
+			Constraints0, Constraints).
+
 apply_variable_renaming_to_constraint(Renaming, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, ClassArgTypes0),
 	term__apply_variable_renaming_to_list(ClassArgTypes0,
 		Renaming, ClassArgTypes),
 	Constraint = constraint(ClassName, ClassArgTypes).
+
+%-----------------------------------------------------------------------------%
+
+apply_partial_map_to_list([], _PartialMap, []).
+apply_partial_map_to_list([X|Xs], PartialMap, [Y|Ys]) :-
+	( map__search(PartialMap, X, Y0) ->
+		Y = Y0
+	;
+		Y = X
+	),
+	apply_partial_map_to_list(Xs, PartialMap, Ys).
+
+%-----------------------------------------------------------------------------%
 
 strip_term_contexts(Terms, StrippedTerms) :-
 	list__map(strip_term_context, Terms, StrippedTerms).
