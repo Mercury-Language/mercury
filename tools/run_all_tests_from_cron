@@ -36,6 +36,7 @@ case $HOST in
 	muse) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.3 ;;
 	kryten) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.5 ;;
 	taifun) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.7 ;;
+	mundroo)	ARCH=i686	FULLARCH=i386-pc-solaris2.8 ;;
 	murlibobo) 	ARCH=alpha	FULLARCH=alphaev5-dec-osf5.1 ;;
 	mundook) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
 	quicksilver) 	ARCH=i586	FULLARCH=i586-pc-linux-gnu ;;
