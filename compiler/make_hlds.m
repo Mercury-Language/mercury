@@ -170,20 +170,21 @@ add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 		{ Pragma = c_code(_, _, _, _) },
 		{ Module = Module0 }
 	;
-		{ Pragma = memo(Pred, Arity) },
-		add_pred_marker(Module0, "memo", Pred, Arity, Context,
+		{ Pragma = memo(Name, Arity) },
+		add_pred_marker(Module0, "memo", Name, Arity, Context,
 			[request(dnf), request(magic), request(memo)], Module)
 	;
-		{ Pragma = inline(Pred, Arity) },
-		add_pred_marker(Module0, "inline", Pred, Arity, Context,
+		{ Pragma = inline(Name, Arity) },
+		add_pred_marker(Module0, "inline", Name, Arity, Context,
 			[request(inline)], Module)
 	;
-		{ Pragma = export(Pred, Modes, C_Function) },
+		% XXX should handle pragma(export) for functions better
+		{ Pragma = export(Name, Modes, C_Function) },
 		{ module_info_get_predicate_table(Module0, PredTable) },
 		{ list__length(Modes, Arity) },
 		(
-			{ predicate_table_search_sym_arity(PredTable, Pred, 
-				Arity, [PredId]) }
+			{ predicate_table_search_sym_arity(PredTable,
+				Name, Arity, [PredId]) }
 		->
 			{ predicate_table_get_preds(PredTable, Preds) },
 			{ map__lookup(Preds, PredId, PredInfo) },
@@ -202,34 +203,14 @@ add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 				{ module_info_set_pragma_exported_procs(Module0,
 					PragmaExportedProcs, Module) }
 			;
-				io__stderr_stream(StdErr),
-				io__set_output_stream(StdErr, OldStream),
-				prog_out__write_context(Context),
-				io__write_strings(
-					["Warning: pragma(export, ...) ",
-					"declaration for predicate\n"]),
-				prog_out__write_context(Context),
-				prog_out__write_sym_name(Pred),
-				io__write_string("/"),
-				io__write_int(Arity),
-				io__write_string(" specifies non-existent mode.\n"),
-				io__set_output_stream(OldStream, _),
-				{ Module = Module0 }
+				undefined_mode_error(Name, Arity, Context,
+					"pragma(export, ...) declaration"),
+				{ module_info_incr_errors(Module0, Module) }
 			)
 		;
-			io__stderr_stream(StdErr),
-			io__set_output_stream(StdErr, OldStream),
-			prog_out__write_context(Context),
-			io__write_string(
-			      "Warning: pragma(export, ...) declaration for\n"),
-			prog_out__write_context(Context),
-			io__write_string("non-existent predicate "),
-			prog_out__write_sym_name(Pred),
-			io__write_string("/"),
-			io__write_int(Arity),
-			io__write_string("\n"),
-			io__set_output_stream(OldStream, _),
-			{ Module = Module0 }
+			undefined_pred_or_func_error(Name, Arity, Context,
+				"pragma(export, ...) declaration"),
+			{ module_info_incr_errors(Module0, Module) }
 		)
 	).
 
@@ -249,8 +230,7 @@ add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		{ Module = Module0 }
 	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
 		{ Status = Status0 },
-		module_mark_as_external(Name, Arity, predicate, Context,
-			Module0, Module)
+		module_mark_as_external(Name, Arity, Context, Module0, Module)
 	;
 		{ Status = Status0 },
 		{ Module = Module0 },
@@ -269,10 +249,10 @@ add_item_decl(nothing, _, Status, Module, Status, Module) --> [].
 	term__context, list(marker_status), module_info, io__state, io__state).
 :- mode add_pred_marker(in, in, in, in, in, in, out, di, uo) is det.
 
-add_pred_marker(Module0, PragmaName, Pred, Arity, Context, Markers, Module) -->
+add_pred_marker(Module0, PragmaName, Name, Arity, Context, Markers, Module) -->
 	{ module_info_get_predicate_table(Module0, PredTable0) },
 	(
-		{ predicate_table_search_sym_arity(PredTable0, Pred, 
+		{ predicate_table_search_sym_arity(PredTable0, Name, 
 			Arity, PredIds) }
 	->
 		{ predicate_table_get_preds(PredTable0, Preds0) },
@@ -282,20 +262,12 @@ add_pred_marker(Module0, PragmaName, Pred, Arity, Context, Markers, Module) -->
 		{ module_info_set_predicate_table(Module0, PredTable, 
 			Module) }
 	;
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
-		prog_out__write_context(Context),
-		io__write_strings(
-			["Warning: pragma(",
-			PragmaName,
-			", ...) declaration ",
-			"for predicate\n"]),
-		prog_out__write_context(Context),
-		hlds_out__write_pred_call_id(Pred/Arity),
-		io__write_string(
-			" without preceding pred declaration.\n"),
-		io__set_output_stream(OldStream, _),
-		{ Module = Module0 }
+		{ string__append_list(
+			["pragma(", PragmaName, ", ...) declaration"],
+			Description) },
+		undefined_pred_or_func_error(Name, Arity, Context,
+			Description),
+		{ module_info_incr_errors(Module0, Module) }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -386,12 +358,13 @@ add_item_clause(nothing, _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_mark_as_external(sym_name, int, pred_or_func, term__context,
+:- pred module_mark_as_external(sym_name, int, term__context,
 			module_info, module_info, io__state, io__state).
-:- mode module_mark_as_external(in, in, in, in, in, out, di, uo) is det.
+:- mode module_mark_as_external(in, in, in, in, out, di, uo) is det.
 
-module_mark_as_external(PredName, Arity, PredOrFunc, Context,
-		Module0, Module) -->
+module_mark_as_external(PredName, Arity, Context, Module0, Module) -->
+	% `external' declarations can only apply to things defined
+	% in this module, since everything else is already external.
 	{ module_info_name(Module0, ModuleName) },
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
@@ -401,9 +374,9 @@ module_mark_as_external(PredName, Arity, PredOrFunc, Context,
 	->
 		{ module_mark_preds_as_external(PredIdList, Module0, Module) }
 	;
-		{ Module = Module0 },
-		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
-			Context, "`external' declaration")
+		undefined_pred_or_func_error(PredName, Arity,
+			Context, "`external' declaration"),
+		{ module_info_incr_errors(Module0, Module) }
 	).
 
 :- pred module_mark_preds_as_external(list(pred_id), module_info, module_info).
@@ -700,16 +673,16 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 				Cond, Context, ClausesInfo, Status, no, none,	
 				PredOrFunc, PredInfo0) },
 		(
-			{ predicate_table_search_m_n_a(PredicateTable0,
-				MNameOfPred, PName, Arity, [OrigPred|_]) }
+			{ predicate_table_search_pf_m_n_a(PredicateTable0,
+				PredOrFunc, MNameOfPred, PName, Arity,
+				[OrigPred|_]) }
 		->
 			{ module_info_incr_errors(Module1, Module) },
 			{ module_info_pred_info(Module, OrigPred,
 				OrigPredInfo) },
 			{ pred_info_context(OrigPredInfo, OrigContext) },
-			{ PredOrFunc = predicate, DeclString = "pred"
-			; PredOrFunc = function, DeclString = "func"
-			}, !,
+			{ hlds_out__pred_or_func_to_str(PredOrFunc,
+				DeclString) },
 			multiple_def_error(PredName, Arity, DeclString,
 				Context, OrigContext)
 		;
@@ -857,9 +830,7 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeDet, Context, PredInfo, ModeId) :-
 module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 			MContext, PredOrFunc, ModuleInfo) -->
 
-		% XXX should use PredOrFunc
-
-		% Lookup the pred declaration in the predicate table.
+		% Lookup the pred or func declaration in the predicate table.
 		% If it's not there (or if it is ambiguous), optionally print a
 		% warning message and insert an implicit definition for the
 		% predicate; it is presumed to be local, and its type
@@ -871,8 +842,9 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	{ list__length(Modes, Arity) },
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
-		{ predicate_table_search_m_n_a(PredicateTable0,
-			ModuleName, PName, Arity, [PredId0]) }
+		{ predicate_table_search_pf_m_n_a(PredicateTable0,
+			PredOrFunc, ModuleName, PName, Arity,
+			[PredId0]) }
 	->
 		{ PredicateTable1 = PredicateTable0 },
 		{ PredId = PredId0 }
@@ -945,8 +917,8 @@ preds_add_implicit(PredicateTable0,
 	pred_info_set_marker_list(PredInfo0, [request(infer_type)], PredInfo),
 	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
-		\+ predicate_table_search_m_n_a(PredicateTable0,
-			ModuleName, PName, Arity, _)
+		\+ predicate_table_search_pf_m_n_a(PredicateTable0,
+			PredOrFunc, ModuleName, PName, Arity, _)
 	->
 		predicate_table_insert(PredicateTable0, PredInfo, PredId,
 			PredicateTable)
@@ -1063,7 +1035,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 	{ list__length(Args, Arity) },
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
-		{ predicate_table_search_m_n_a(PredicateTable0,
+		{ predicate_table_search_pf_m_n_a(PredicateTable0, PredOrFunc,
 			ModuleName, PName, Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
@@ -1170,8 +1142,9 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 		% a dummy declaration for the predicate.) 
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
 	( 
-		{ predicate_table_search_m_n_a(PredicateTable0, ModuleName, 
-			PName, Arity, [PredId0]) }
+		{ predicate_table_search_pf_m_n_a(PredicateTable0,
+			PredOrFunc, ModuleName, PName, Arity,
+			[PredId0]) }
 	->
 		{ PredId = PredId0 },
 		{ PredicateTable1 = PredicateTable0 }
@@ -2423,6 +2396,36 @@ multiple_def_error(Name, Arity, DefType, Context, OrigContext) -->
 	io__write_int(Arity),
 	io__write_string("'.\n").
 
+:- pred undefined_pred_or_func_error(sym_name, int, term__context, string,
+				io__state, io__state).
+:- mode undefined_pred_or_func_error(in, in, in, in, di, uo) is det.
+
+undefined_pred_or_func_error(Name, Arity, Context, Description) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: "),
+	io__write_string(Description),
+	io__write_string(" for "),
+	hlds_out__write_pred_call_id(Name/Arity),
+	io__write_string("\n"),
+	prog_out__write_context(Context),
+	io__write_string("  without preceding `pred' or `func' declaration").
+
+:- pred undefined_mode_error(sym_name, int, term__context, string,
+				io__state, io__state).
+:- mode undefined_mode_error(in, in, in, in, di, uo) is det.
+
+undefined_mode_error(Name, Arity, Context, Description) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: "),
+	io__write_string(Description),
+	io__write_string(" for `"),
+	prog_out__write_context(Context),
+	io__write_string("`"),
+	hlds_out__write_pred_call_id(Name/Arity),
+	io__write_string("' specifies non-existent mode.\n").
+
 :- pred maybe_undefined_pred_error(sym_name, int, pred_or_func, term__context,
 				string, io__state, io__state).
 :- mode maybe_undefined_pred_error(in, in, in, in, in, di, uo) is det.
@@ -2445,11 +2448,8 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Context, Description) -->
 		io__write_string("\n"),
 		prog_out__write_context(Context),
 		io__write_string("  without preceding `"),
-		(	{ PredOrFunc = predicate },
-			io__write_string("pred")
-		;	{ PredOrFunc = function },
-			io__write_string("func")
-		), !,
+		{ hlds_out__pred_or_func_to_str(PredOrFunc, DeclString) },
+		io__write_string(DeclString),
 		io__write_string("' declaration.\n")
 	).
 

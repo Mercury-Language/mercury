@@ -316,11 +316,11 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 
 			{ module_info_get_predicate_table(ModuleInfo,
 				PredicateTable) },
-			{ predicate_table_search_name_arity(PredicateTable,
-				"unify", 2, [CallPredId]) ->
+			{ predicate_table_search_pred_m_n_a(PredicateTable,
+				"mercury_builtin", "unify", 2, [CallPredId]) ->
 				PredId = CallPredId
 			;
-				error("polymorphism.m: can't find `unify/2'")
+				error("polymorphism.m: can't find `mercury_builtin:unify/2'")
 			},
 			% XXX Bug! - we should check that the mode is (in, in),
 			%     and report an error (e.g. "unification of
@@ -342,7 +342,8 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 			{ module_info_get_predicate_table(ModuleInfo,
 				PredicateTable) },
 			{
-				predicate_table_search_m_n_a(PredicateTable,
+				predicate_table_search_pred_m_n_a(
+				    PredicateTable,
 				    "mercury_builtin", "builtin_unify_pred", 2,
 				    [PredId0])
 			->
@@ -859,7 +860,8 @@ polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
 		special_pred_name_arity(SpecialPredId, SpecialName, _, Arity),
 		string__append_list(
 			["builtin_", SpecialName, "_", CategoryName], PredName),
-		polymorphism__get_pred_id(PredName, Arity, ModuleInfo, PredId)
+		polymorphism__get_builtin_pred_id(PredName, Arity, ModuleInfo,
+			PredId)
 	),
 	special_pred_mode_num(SpecialPredId, ProcId).
 
@@ -877,16 +879,16 @@ polymorphism__get_category_name(polymorphic_type, _) :-
 polymorphism__get_category_name(user_type(_), _) :-
 	error("polymorphism__get_category_name: user_type").
 
-	% find the unification procedure with the specified name
+	% find the builtin predicate with the specified name
 
-:- pred polymorphism__get_pred_id(string, int, module_info, pred_id).
-:- mode polymorphism__get_pred_id(in, in, in, out) is det.
+:- pred polymorphism__get_builtin_pred_id(string, int, module_info, pred_id).
+:- mode polymorphism__get_builtin_pred_id(in, in, in, out) is det.
 
-polymorphism__get_pred_id(Name, Arity, ModuleInfo, PredId) :-
+polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	(
-		predicate_table_search_name_arity(PredicateTable, Name, Arity,
-			[PredId1])
+		predicate_table_search_pred_m_n_a(PredicateTable,
+			"mercury_builtin", Name, Arity, [PredId1])
 	->
 		PredId = PredId1
 	;

@@ -538,6 +538,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	module_info_set_ctors(ModuleInfo6, Ctors, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- interface.
 
@@ -599,6 +600,7 @@ hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 	DepInfo = dependency_info(A, DepRel, C, D, E, F).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- interface.
 
@@ -608,9 +610,10 @@ hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 
 	% Various predicates for accessing the predicate_table type.
 	% The predicate_table holds information about the predicates
-	% defined in this module or imported from other modules.
+	% and functions defined in this module or imported from other modules.
 	% The primary key for this table is the `pred_id', but there
-	% are also secondary indexes on name, name+arity, and module+name+arity.
+	% are also secondary indexes on each of name, name+arity, and
+	% module+name+arity, for both functions and predicates.
 
 	% Initialize the predicate table
 
@@ -645,38 +648,119 @@ hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 					predicate_table).
 :- mode predicate_table_remove_predid(in, in, out) is det.
 
-	% Search the table for predicates matching this
-	% (possibly module-qualified) sym_name.
+	% Search the table for (a) predicates or functions
+	% (b) predicates only or (c) functions only
+	% matching this (possibly module-qualified) sym_name.
 
 :- pred predicate_table_search_sym(predicate_table, sym_name, list(pred_id)).
 :- mode predicate_table_search_sym(in, in, out) is semidet.
 
-	% Search the table for predicates matching this
+:- pred predicate_table_search_pred_sym(predicate_table, sym_name,
+					list(pred_id)).
+:- mode predicate_table_search_pred_sym(in, in, out) is semidet.
+
+:- pred predicate_table_search_func_sym(predicate_table, sym_name,
+					list(pred_id)).
+:- mode predicate_table_search_func_sym(in, in, out) is semidet.
+
+	% Search the table for (a) predicates or functions
+	% (b) predicates only or (c) functions only matching this
 	% (possibly module-qualified) sym_name & arity.
 
 :- pred predicate_table_search_sym_arity(predicate_table, sym_name, arity,
 					list(pred_id)).
 :- mode predicate_table_search_sym_arity(in, in, in, out) is semidet.
 
-	% Search the table for predicates matching this name.
+:- pred predicate_table_search_pred_sym_arity(predicate_table, sym_name, arity,
+					list(pred_id)).
+:- mode predicate_table_search_pred_sym_arity(in, in, in, out) is semidet.
+
+:- pred predicate_table_search_func_sym_arity(predicate_table, sym_name, arity,
+					list(pred_id)).
+:- mode predicate_table_search_func_sym_arity(in, in, in, out) is semidet.
+
+	% Search the table for (a) predicates or functions
+	% (b) predicates only or (c) functions only
+	% matching this name.
 
 :- pred predicate_table_search_name(predicate_table, string, list(pred_id)).
 :- mode predicate_table_search_name(in, in, out) is semidet.
 
-	% Search the table for predicates matching this name & arity.
+:- pred predicate_table_search_pred_name(predicate_table, string,
+					list(pred_id)).
+:- mode predicate_table_search_pred_name(in, in, out) is semidet.
+
+:- pred predicate_table_search_func_name(predicate_table, string,
+					list(pred_id)).
+:- mode predicate_table_search_func_name(in, in, out) is semidet.
+
+	% Search the table for (a) predicates or functions
+	% (b) predicates only or (c) functions only
+	% matching this name & arity.
+	% When searching for functions, the arity used
+	% is the arity of the function, not the arity N+1 predicate
+	% that it gets converted to.
 
 :- pred predicate_table_search_name_arity(predicate_table, string, arity,
 						list(pred_id)).
 :- mode predicate_table_search_name_arity(in, in, in, out) is semidet.
 
-	% Search the table for THE predicate matching this module,
-	% name, and arity. (We currently don't allow overloading
-	% of predicates with the same name/arity in the same module.)
-	% m_n_a is short for module, name, arity.
+:- pred predicate_table_search_pred_name_arity(predicate_table, string, arity,
+						list(pred_id)).
+:- mode predicate_table_search_pred_name_arity(in, in, in, out) is semidet.
+
+:- pred predicate_table_search_func_name_arity(predicate_table, string, arity,
+						list(pred_id)).
+:- mode predicate_table_search_func_name_arity(in, in, in, out) is semidet.
+
+	% Search the table for (a) predicates or functions
+	% (b) predicates only or (c) functions only
+	% matching this module, name & arity.
+	% When searching for functions, the arity used
+	% is the arity of the function, not the arity N+1 predicate
+	% that it gets converted to.
+	% Note that in cases (b) and (c) there should be at most
+	% one matching pred_id, since under the current overloading
+	% rules each predicate or function can be uniquely identified
+	% by its module, name, arity, and category (function/predicate).
+	% (`m_n_a' here is short for "module, name, arity".)
 
 :- pred predicate_table_search_m_n_a(predicate_table, module_name, string,
 						arity, list(pred_id)).
 :- mode predicate_table_search_m_n_a(in, in, in, in, out) is semidet.
+
+:- pred predicate_table_search_pred_m_n_a(predicate_table, module_name, string,
+						arity, list(pred_id)).
+:- mode predicate_table_search_pred_m_n_a(in, in, in, in, out) is semidet.
+
+:- pred predicate_table_search_func_m_n_a(predicate_table, module_name, string,
+						arity, list(pred_id)).
+:- mode predicate_table_search_func_m_n_a(in, in, in, in, out) is semidet.
+
+	% Search the table for predicates or functions matching
+	% this pred_or_func category, module, name, and arity.
+	% When searching for functions, the arity used
+	% is the arity of the predicate that the function gets converted
+	% to, i.e. the arity of the function plus one.
+	% NB.  This is opposite to what happens with the search
+	% predicates declared above!!
+
+:- pred predicate_table_search_pf_m_n_a(predicate_table, pred_or_func,
+						module_name, string,
+						arity, list(pred_id)).
+:- mode predicate_table_search_pf_m_n_a(in, in, in, in, in, out) is semidet.
+
+	% Search the table for predicates or functions matching
+	% this pred_or_func category, name, and arity.
+	% When searching for functions, the arity used
+	% is the arity of the predicate that the function gets converted
+	% to, i.e. the arity of the function plus one.
+	% NB.  This is opposite to what happens with the search
+	% predicates declared above!!
+
+:- pred predicate_table_search_pf_name_arity(predicate_table, pred_or_func,
+					string, arity, list(pred_id)).
+:- mode predicate_table_search_pf_name_arity(in, in, in, in, out) is semidet.
 
 	% Insert a new pred_info structure into the predicate_table
 	% and assign it a new pred_id. You should check beforehand
@@ -716,62 +800,80 @@ hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 		pred_id,		% next available pred_id
 		list(pred_id),		% the keys of the pred_table -
 					% cached here for efficiency
-		pred_name_index,	% map from pred name to pred_id
-		pred_name_arity_index,	% map from pred name & arity to pred_id
-		pred_module_name_arity_index
+		% indexes on predicates
+		name_index,		% map from pred name to pred_id
+		name_arity_index,	% map from pred name & arity to pred_id
+		module_name_arity_index,
 					% map from pred module, name & arity
+					% to pred_id
+		% indexes on functions
+		name_index,		% map from func name to pred_id
+		name_arity_index,	% map from func name & arity to pred_id
+		module_name_arity_index
+					% map from func module, name & arity
 					% to pred_id
 	).
 
-:- type pred_name_index	== map(string, list(pred_id)).
+:- type name_index	== map(string, list(pred_id)).
 
-:- type pred_name_arity_index == map(name_arity, list(pred_id)).
+:- type name_arity_index == map(name_arity, list(pred_id)).
 :- type name_arity ---> string / arity.
 
-:- type pred_module_name_arity_index == map(module_name_arity, list(pred_id)).
+:- type module_name_arity_index == map(module_name_arity, list(pred_id)).
 :- type module_name_arity ---> module_name_arity(module_name, string, arity).
 
 predicate_table_init(PredicateTable) :-
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-				N_Index, NA_Index, MNA_Index),
+				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
+				Func_N_Index, Func_NA_Index, Func_MNA_Index),
 	map__init(Preds),
 	NextPredId = 0,
 	PredIds = [],
-	map__init(N_Index),
-	map__init(NA_Index),
-	map__init(MNA_Index).
+	map__init(Pred_N_Index),
+	map__init(Pred_NA_Index),
+	map__init(Pred_MNA_Index),
+	map__init(Func_N_Index),
+	map__init(Func_NA_Index),
+	map__init(Func_MNA_Index).
 
 predicate_table_optimize(PredicateTable0, PredicateTable) :-
 	PredicateTable0 = predicate_table(A, B, C,
-				N_Index0, NA_Index0, MNA_Index0),
-	map__optimize(N_Index0, N_Index),
-	map__optimize(NA_Index0, NA_Index),
-	map__optimize(MNA_Index0, MNA_Index),
+				Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
+				Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
+	map__optimize(Pred_N_Index0, Pred_N_Index),
+	map__optimize(Pred_NA_Index0, Pred_NA_Index),
+	map__optimize(Pred_MNA_Index0, Pred_MNA_Index),
+	map__optimize(Func_N_Index0, Func_N_Index),
+	map__optimize(Func_NA_Index0, Func_NA_Index),
+	map__optimize(Func_MNA_Index0, Func_MNA_Index),
 	PredicateTable = predicate_table(A, B, C,
-				N_Index, NA_Index, MNA_Index).
+				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
+				Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
 predicate_table_get_preds(PredicateTable, Preds) :-
-	PredicateTable = predicate_table(Preds, _, _, _, _, _).
+	PredicateTable = predicate_table(Preds, _, _, _, _, _, _, _, _).
 
 predicate_table_set_preds(PredicateTable0, Preds, PredicateTable) :-
-	PredicateTable0 = predicate_table(_, B, C, D, E, F),
-	PredicateTable = predicate_table(Preds, B, C, D, E, F).
+	PredicateTable0 = predicate_table(_, B, C, D, E, F, G, H, I),
+	PredicateTable = predicate_table(Preds, B, C, D, E, F, G, H, I).
 
 predicate_table_get_predids(PredicateTable, PredIds) :-
-	PredicateTable = predicate_table(_, _, PredIds, _, _, _).
+	PredicateTable = predicate_table(_, _, PredIds, _, _, _, _, _, _).
 
 predicate_table_remove_predid(PredicateTable0, PredId, PredicateTable) :-
-	PredicateTable0 = predicate_table(A, B, PredIds0, D, E, F),
+	PredicateTable0 = predicate_table(A, B, PredIds0, D, E, F, G, H, I),
 	list__delete_all(PredIds0, PredId, PredIds),
-	PredicateTable = predicate_table(A, B, PredIds, D, E, F).
+	PredicateTable = predicate_table(A, B, PredIds, D, E, F, G, H, I).
 
 :- pred predicate_table_reverse_predids(predicate_table, predicate_table).
 :- mode predicate_table_reverse_predids(in, out) is det.
 
 predicate_table_reverse_predids(PredicateTable0, PredicateTable) :-
-	PredicateTable0 = predicate_table(A, B, PredIds0, D, E, F),
+	PredicateTable0 = predicate_table(A, B, PredIds0, D, E, F, G, H, I),
 	list__reverse(PredIds0, PredIds),
-	PredicateTable = predicate_table(A, B, PredIds, D, E, F).
+	PredicateTable = predicate_table(A, B, PredIds, D, E, F, G, H, I).
+
+%-----------------------------------------------------------------------------%
 
 :- predicate_table_search_sym(_, X, _) when X. % NU-Prolog indexing.
 
@@ -780,6 +882,30 @@ predicate_table_search_sym(PredicateTable, unqualified(Name), PredIdList) :-
 predicate_table_search_sym(PredicateTable, qualified(Module, Name),
 		PredIdList) :-
 	predicate_table_search_name(PredicateTable, Name, PredIdList0),
+	predicate_table_get_preds(PredicateTable, PredTable),
+	find_preds_matching_module(PredIdList0, Module, PredTable, PredIdList),
+	PredIdList \= [].
+
+:- predicate_table_search_pred_sym(_, X, _) when X. % NU-Prolog indexing.
+
+predicate_table_search_pred_sym(PredicateTable, unqualified(Name), PredIdList)
+		:-
+	predicate_table_search_pred_name(PredicateTable, Name, PredIdList).
+predicate_table_search_pred_sym(PredicateTable, qualified(Module, Name),
+		PredIdList) :-
+	predicate_table_search_pred_name(PredicateTable, Name, PredIdList0),
+	predicate_table_get_preds(PredicateTable, PredTable),
+	find_preds_matching_module(PredIdList0, Module, PredTable, PredIdList),
+	PredIdList \= [].
+
+:- predicate_table_search_func_sym(_, X, _) when X. % NU-Prolog indexing.
+
+predicate_table_search_func_sym(PredicateTable, unqualified(Name), PredIdList)
+		:-
+	predicate_table_search_func_name(PredicateTable, Name, PredIdList).
+predicate_table_search_func_sym(PredicateTable, qualified(Module, Name),
+		PredIdList) :-
+	predicate_table_search_func_name(PredicateTable, Name, PredIdList0),
 	predicate_table_get_preds(PredicateTable, PredTable),
 	find_preds_matching_module(PredIdList0, Module, PredTable, PredIdList),
 	PredIdList \= [].
@@ -803,6 +929,8 @@ find_preds_matching_module([PredId | PredIds0], Module, PredTable, PredIds) :-
 	),
 	find_preds_matching_module(PredIds0, Module, PredTable, PredIds1).
 
+%-----------------------------------------------------------------------------%
+
 :- predicate_table_search_sym_arity(_, X, _, _) when X. % NU-Prolog indexing.
 
 predicate_table_search_sym_arity(PredicateTable, qualified(Module, Name),
@@ -814,23 +942,159 @@ predicate_table_search_sym_arity(PredicateTable, unqualified(Name),
 	predicate_table_search_name_arity(PredicateTable, Name, Arity,
 		PredIdList).
 
-predicate_table_search_name(PredicateTable, PredName, PredId) :-
-	PredicateTable = predicate_table(_, _, _, PredNameIndex, _, _),
-	map__search(PredNameIndex, PredName, PredId).
+:- predicate_table_search_pred_sym_arity(_, X, _, _) when X.
 
-predicate_table_search_name_arity(PredicateTable, PredName, Arity, PredId) :-
-	PredicateTable = predicate_table(_, _, _, _, PredNameArityIndex, _),
-	map__search(PredNameArityIndex, PredName / Arity, PredId).
+predicate_table_search_pred_sym_arity(PredicateTable, qualified(Module, Name),
+		Arity, PredIdList) :-
+	predicate_table_search_pred_m_n_a(PredicateTable, Module, Name, Arity,
+		PredIdList).
+predicate_table_search_pred_sym_arity(PredicateTable, unqualified(Name),
+		Arity, PredIdList) :-
+	predicate_table_search_pred_name_arity(PredicateTable, Name, Arity,
+		PredIdList).
 
-predicate_table_search_m_n_a(PredicateTable, Module, PredName, Arity, PredIds)
-		:-
-	PredicateTable = predicate_table(_, _, _, _, _, MNA_Index),
+:- predicate_table_search_func_sym_arity(_, X, _, _) when X.
+
+predicate_table_search_func_sym_arity(PredicateTable, qualified(Module, Name),
+		Arity, PredIdList) :-
+	predicate_table_search_func_m_n_a(PredicateTable, Module, Name, Arity,
+		PredIdList).
+predicate_table_search_func_sym_arity(PredicateTable, unqualified(Name),
+		Arity, PredIdList) :-
+	predicate_table_search_func_name_arity(PredicateTable, Name, Arity,
+		PredIdList).
+
+%-----------------------------------------------------------------------------%
+
+predicate_table_search_name(PredicateTable, Name, PredIds) :-
+	(
+		predicate_table_search_pred_name(PredicateTable, Name,
+			PredPredIds0)
+	->
+		PredPredIds = PredPredIds0
+	;
+		PredPredIds = []
+	),
+	(
+		predicate_table_search_func_name(PredicateTable, Name,
+			FuncPredIds0)
+	->
+		FuncPredIds = FuncPredIds0
+	;
+		FuncPredIds = []
+	),
+	list__append(FuncPredIds, PredPredIds, PredIds),
+	PredIds \= [].
+
+predicate_table_search_pred_name(PredicateTable, PredName, PredIds) :-
+	PredicateTable = predicate_table(_, _, _, PredNameIndex, _, _, _, _, _),
+	map__search(PredNameIndex, PredName, PredIds).
+
+predicate_table_search_func_name(PredicateTable, FuncName, PredIds) :-
+	PredicateTable = predicate_table(_, _, _, _, _, _, FuncNameIndex, _, _),
+	map__search(FuncNameIndex, FuncName, PredIds).
+
+%-----------------------------------------------------------------------------%
+
+predicate_table_search_name_arity(PredicateTable, Name, Arity, PredIds) :-
+	(
+		predicate_table_search_pred_name_arity(PredicateTable,
+			Name, Arity, PredPredIds0)
+	->
+		PredPredIds = PredPredIds0
+	;
+		PredPredIds = []
+	),
+	(
+		predicate_table_search_func_name_arity(PredicateTable,
+			Name, Arity, FuncPredIds0)
+	->
+		FuncPredIds = FuncPredIds0
+	;
+		FuncPredIds = []
+	),
+	list__append(FuncPredIds, PredPredIds, PredIds),
+	PredIds \= [].
+
+predicate_table_search_pred_name_arity(PredicateTable, PredName, Arity,
+		PredIds) :-
+	PredicateTable = predicate_table(_, _, _, _, PredNameArityIndex, _,
+					_, _, _),
+	map__search(PredNameArityIndex, PredName / Arity, PredIds).
+
+predicate_table_search_func_name_arity(PredicateTable, FuncName, Arity,
+		PredIds) :-
+	PredicateTable = predicate_table(_, _, _, _, _, _,
+					_, FuncNameArityIndex, _),
+	map__search(FuncNameArityIndex, FuncName / Arity, PredIds).
+
+%-----------------------------------------------------------------------------%
+
+predicate_table_search_m_n_a(PredicateTable, Module, Name, Arity,
+		PredIds) :-
+	(
+		predicate_table_search_pred_m_n_a(PredicateTable, Module,
+			Name, Arity, PredPredIds0)
+	->
+		PredPredIds = PredPredIds0
+	;
+		PredPredIds = []
+	),
+	(
+		predicate_table_search_func_m_n_a(PredicateTable, Module,
+			Name, Arity, FuncPredIds0)
+	->
+		FuncPredIds = FuncPredIds0
+	;
+		FuncPredIds = []
+	),
+	list__append(FuncPredIds, PredPredIds, PredIds),
+	PredIds \= [].
+
+predicate_table_search_pred_m_n_a(PredicateTable, Module, PredName, Arity,
+		PredIds) :-
+	PredicateTable = predicate_table(_, _, _, _, _, P_MNA_Index, _, _, _),
 	MNA = module_name_arity(Module, PredName, Arity),
-	map__search(MNA_Index, MNA, PredIds).
+	map__search(P_MNA_Index, MNA, PredIds).
+
+predicate_table_search_func_m_n_a(PredicateTable, Module, FuncName, Arity,
+		PredIds) :-
+	PredicateTable = predicate_table(_, _, _, _, _, _, _, _, F_MNA_Index),
+	MNA = module_name_arity(Module, FuncName, Arity),
+	map__search(F_MNA_Index, MNA, PredIds).
+
+%-----------------------------------------------------------------------------%
+
+:- predicate_table_search_pf_m_n_a(_, X, _, _, _, _) when X.
+
+predicate_table_search_pf_m_n_a(PredicateTable, predicate, Module, Name, Arity,
+		PredIds) :-
+	predicate_table_search_pred_m_n_a(PredicateTable, Module, Name, Arity,
+			PredIds).
+predicate_table_search_pf_m_n_a(PredicateTable, function, Module, Name, Arity,
+		PredIds) :-
+	FuncArity is Arity - 1,
+	predicate_table_search_func_m_n_a(PredicateTable, Module, Name,
+			FuncArity, PredIds).
+
+:- predicate_table_search_pf_name_arity(_, X, _, _, _, _) when X.
+
+predicate_table_search_pf_name_arity(PredicateTable, predicate, Name, Arity,
+		PredIds) :-
+	predicate_table_search_pred_name_arity(PredicateTable, Name, Arity,
+			PredIds).
+predicate_table_search_pf_name_arity(PredicateTable, function, Name, Arity,
+		PredIds) :-
+	FuncArity is Arity - 1,
+	predicate_table_search_func_name_arity(PredicateTable, Name, FuncArity,
+			PredIds).
+
+%-----------------------------------------------------------------------------%
 
 predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 	PredicateTable0 = predicate_table(Preds0, NextPredId0, PredIds0,
-				N_Index0, NA_Index0, MNA_Index0),
+				Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
+				Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
 	pred_info_module(PredInfo, Module),
 	pred_info_name(PredInfo, Name),
 	pred_info_arity(PredInfo, Arity),
@@ -839,42 +1103,91 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 	PredId = NextPredId0,
 	NextPredId is PredId + 1,
 
-		% insert the pred_id into the name index
-	( map__search(N_Index0, Name, N_PredIdList0) ->
-		N_PredIdList = [PredId | N_PredIdList0]
-	;
-		N_PredIdList = [PredId]
-	),
-	map__set(N_Index0, Name, N_PredIdList, N_Index),
+		% insert the pred_id into either the function or predicate
+		% indices, as appropriate
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	( 
+		PredOrFunc = predicate,
 
-		% insert it into the name/arity index
-	NA = Name / Arity,
-	( map__search(NA_Index0, NA, NA_PredIdList0) ->
-		NA_PredIdList = [PredId | NA_PredIdList0]
-	;
-		NA_PredIdList = [PredId]
-	),
-	map__set(NA_Index0, NA, NA_PredIdList, NA_Index),
+			% insert the pred_id into the pred name index
+		( map__search(Pred_N_Index0, Name, N_PredIdList0) ->
+			N_PredIdList = [PredId | N_PredIdList0]
+		;
+			N_PredIdList = [PredId]
+		),
+		map__set(Pred_N_Index0, Name, N_PredIdList, Pred_N_Index),
 
-		% insert it into the module:name/arity index
-	MNA = module_name_arity(Module, Name, Arity),
-	( map__search(MNA_Index0, MNA, MNA_PredIdList0) ->
-		MNA_PredIdList = [PredId | MNA_PredIdList0]
-	;
-		MNA_PredIdList = [PredId]
-	),
-	map__set(MNA_Index0, MNA, MNA_PredIdList, MNA_Index),
+			% insert it into the pred name/arity index
+		NA = Name / Arity,
+		( map__search(Pred_NA_Index0, NA, NA_PredIdList0) ->
+			NA_PredIdList = [PredId | NA_PredIdList0]
+		;
+			NA_PredIdList = [PredId]
+		),
+		map__set(Pred_NA_Index0, NA, NA_PredIdList, Pred_NA_Index),
 
-		% insert it into the pred_id list
+			% insert it into the pred module:name/arity index
+		MNA = module_name_arity(Module, Name, Arity),
+		( map__search(Pred_MNA_Index0, MNA, MNA_PredIdList0) ->
+			MNA_PredIdList = [PredId | MNA_PredIdList0]
+		;
+			MNA_PredIdList = [PredId]
+		),
+		map__set(Pred_MNA_Index0, MNA, MNA_PredIdList, Pred_MNA_Index),
+
+		Func_N_Index = Func_N_Index0,
+		Func_NA_Index = Func_NA_Index0,
+		Func_MNA_Index = Func_MNA_Index0
+	;
+		PredOrFunc = function,
+
+			% insert the pred_id into the func name index
+		( map__search(Func_N_Index0, Name, N_PredIdList0) ->
+			N_PredIdList = [PredId | N_PredIdList0]
+		;
+			N_PredIdList = [PredId]
+		),
+		map__set(Func_N_Index0, Name, N_PredIdList, Func_N_Index),
+
+			% insert it into the func name/arity index
+		FuncArity is Arity - 1,
+		NA = Name / FuncArity,
+		( map__search(Func_NA_Index0, NA, NA_PredIdList0) ->
+			NA_PredIdList = [PredId | NA_PredIdList0]
+		;
+			NA_PredIdList = [PredId]
+		),
+		map__set(Func_NA_Index0, NA, NA_PredIdList, Func_NA_Index),
+
+			% insert it into the func module:name/arity index
+		MNA = module_name_arity(Module, Name, FuncArity),
+		( map__search(Func_MNA_Index0, MNA, MNA_PredIdList0) ->
+			MNA_PredIdList = [PredId | MNA_PredIdList0]
+		;
+			MNA_PredIdList = [PredId]
+		),
+		map__set(Func_MNA_Index0, MNA, MNA_PredIdList, Func_MNA_Index),
+
+		Pred_N_Index = Pred_N_Index0,
+		Pred_NA_Index = Pred_NA_Index0,
+		Pred_MNA_Index = Pred_MNA_Index0
+	),
+
+		% insert the pred_id into the pred_id list
 	PredIds = [PredId | PredIds0],
 
 		% save the pred_info for this pred_id
 	map__set(Preds0, PredId, PredInfo, Preds),
 
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-				N_Index, NA_Index, MNA_Index).
+				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
+				Func_N_Index, Func_NA_Index, Func_MNA_Index).
+
+%-----------------------------------------------------------------------------%
 
 invalid_pred_id(-1).
+
+%-----------------------------------------------------------------------------%
 
 predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
@@ -898,6 +1211,7 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arity(PredInfo, Arity).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- interface.

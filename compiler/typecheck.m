@@ -270,8 +270,6 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	        MaybePredInfo = no,
 		Changed = no
 	    ;
-		write_pred_progress_message("% Type-checking ",
-			PredId, ModuleInfo, IOState0, IOState1),
 		pred_info_get_marker_list(PredInfo0, Markers),
 		( list__member(request(infer_type), Markers) ->
 			% For a predicate whose type is inferred,
@@ -281,10 +279,14 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 			% initial type declaration of 
 			% `pred foo(T1, T2, ..., TN)' by make_hlds.m.
 			Inferring = yes,
-			HeadTypeParams = []
+			HeadTypeParams = [],
+			write_pred_progress_message("% Inferring type of ",
+				PredId, ModuleInfo, IOState0, IOState1)
 		;
 			Inferring = no,
-			term__vars_list(ArgTypes0, HeadTypeParams)
+			term__vars_list(ArgTypes0, HeadTypeParams),
+			write_pred_progress_message("% Type-checking ",
+				PredId, ModuleInfo, IOState0, IOState1)
 		),
 		bool(Inferring), % dummy pred call to avoid type ambiguity
 		
@@ -662,7 +664,7 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 	type_info_get_module_info(TypeInfo1, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	( 
-		predicate_table_search_sym_arity(PredicateTable,
+		predicate_table_search_pred_sym_arity(PredicateTable,
 			PredName, Arity, PredIdList)
 	->
 		% handle the case of a non-overloaded predicate specially
@@ -709,12 +711,18 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 		invalid_pred_id(PredId),
 		type_info_get_io_state(TypeInfo1, IOState0),
 		(
-			predicate_table_search_sym(PredicateTable, PredName,
-				OtherIds)
+			predicate_table_search_pred_sym(PredicateTable,
+				PredName, OtherIds)
 		->
 			typecheck_find_arities(ModuleInfo, OtherIds, Arities),
 			report_error_pred_num_args(TypeInfo1, PredCallId,
 				Arities, IOState0, IOState)
+		;
+			predicate_table_search_func_sym(PredicateTable,
+				PredName, _OtherIds)
+		->
+			report_error_func_instead_of_pred(TypeInfo1, PredCallId,
+				IOState0, IOState)
 		;
 			report_error_undef_pred(TypeInfo1, PredCallId,
 				IOState0, IOState)
@@ -2949,6 +2957,21 @@ report_error_undef_pred(TypeInfo, PredId) -->
 	io__write_string("  error: undefined predicate `"),
 	hlds_out__write_pred_call_id(PredId),
 	io__write_string("'.\n").
+
+:- pred report_error_func_instead_of_pred(type_info, pred_call_id,
+					io__state, io__state).
+:- mode report_error_func_instead_of_pred(type_info_no_io, in, di, uo) is det.
+
+report_error_func_instead_of_pred(TypeInfo, PredId) -->
+	write_type_info_context(TypeInfo),
+	io__write_string("  error: undefined predicate `"),
+	hlds_out__write_pred_call_id(PredId),
+	io__write_string("'.\n"),
+	{ type_info_get_context(TypeInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("  (There is a *function* with that name, however.\n"),
+	prog_out__write_context(Context),
+	io__write_string("  Perhaps you forgot to add ` = ...'?)\n").
 
 :- pred report_error_pred_num_args(type_info, pred_call_id, list(int),
 					io__state, io__state).

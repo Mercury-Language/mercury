@@ -1766,9 +1766,8 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% specified name and arity
 		% (XXX and module, if module-qualified)
 		Name = term__atom(PredName),
-		PredArity is Arity + 1,		% n-ary func => n+1-ary pred
-		predicate_table_search_name_arity(PredTable, PredName,
-			PredArity, PredIds),
+		predicate_table_search_func_name_arity(PredTable, PredName,
+			Arity, PredIds),
 
 		% Check if there any of the candidate predicates are functions,
 		% and have argument/return types which subsume the actual
@@ -1777,7 +1776,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		pred_info_typevarset(PredInfo, TVarSet),
 		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
 		list__append(ArgTypes0, [TypeOfX], ArgTypes),
-		find_matching_pred_id(PredIds, function, ModuleInfo0, TVarSet,
+		find_matching_pred_id(PredIds, ModuleInfo0, TVarSet,
 			ArgTypes, PredId)
 	->
 		%
@@ -2086,16 +2085,18 @@ resolve_pred_overloading(PredId0, Args0, PredName, ModeInfo0, PredId) :-
 		%
 		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 		module_info_get_predicate_table(ModuleInfo0, PredTable),
-		( predicate_table_search_sym(PredTable, PredName, PredIds0) ->
+		(
+			predicate_table_search_pred_sym(PredTable, PredName,
+				PredIds0)
+		->
 			PredIds = PredIds0
 		;
 			PredIds = []
 		),
 
 		%
-		% Check if there any of the candidate pred_ids are
-		% for predicates (not for functions),
-		% and have argument/return types which subsume the actual
+		% Check if there any of the candidate pred_ids 
+		% have argument/return types which subsume the actual
 		% argument/return types of this function call
 		%
 		mode_info_get_predid(ModeInfo0, ThisPredId),
@@ -2104,7 +2105,7 @@ resolve_pred_overloading(PredId0, Args0, PredName, ModeInfo0, PredId) :-
 		mode_info_get_var_types(ModeInfo0, VarTypes0),
 		map__apply_to_list(Args0, VarTypes0, ArgTypes),
 		(
-			find_matching_pred_id(PredIds, predicate, ModuleInfo0,
+			find_matching_pred_id(PredIds, ModuleInfo0,
 				TVarSet, ArgTypes, PredId1)
 		->
 			PredId = PredId1
@@ -2118,25 +2119,19 @@ resolve_pred_overloading(PredId0, Args0, PredName, ModeInfo0, PredId) :-
 		PredId = PredId0
 	).
 
-:- pred find_matching_pred_id(list(pred_id), pred_or_func, module_info,
-				tvarset, list(type), pred_id).
-:- mode find_matching_pred_id(in, in, in, in, in, out) is semidet.
+:- pred find_matching_pred_id(list(pred_id), module_info, tvarset, list(type),
+				pred_id).
+:- mode find_matching_pred_id(in, in, in, in, out) is semidet.
 
-find_matching_pred_id([PredId | PredIds], MatchPredOrFunc, ModuleInfo,
-		TVarSet, ArgTypes, ThePredId) :-
+find_matching_pred_id([PredId | PredIds], ModuleInfo, TVarSet, ArgTypes,
+		ThePredId) :-
 	(
 		%
-		% check that this pred_id is for the right category
-		% (predicate or function)
+		% lookup the argument types of the candidate predicate
+		% (or the argument types + return type of the candidate
+		% function)
 		%
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-		PredOrFunc = MatchPredOrFunc,
-
-		%
-		% lookup the argument types of the candidate predicate
-		% (i.e. the argument types + return type of the function)
-		%
 		pred_info_arg_types(PredInfo, PredTVarSet, PredArgTypes0),
 
 		%
@@ -2147,17 +2142,17 @@ find_matching_pred_id([PredId | PredIds], MatchPredOrFunc, ModuleInfo,
 					PredArgTypes),
 
 		%
-		% check that the types of the candidate predicate subsume
-		% the actual argument types
+		% check that the types of the candidate predicate/function
+		% subsume the actual argument types
 		%
 		type_list_subsumes(PredArgTypes, ArgTypes, _TypeSubst)
 	->
 		%
 		% we've found a matching predicate
-		% was there was more than one matching predicate?
+		% was there was more than one matching predicate/function?
 		%
 		(
-			find_matching_pred_id(PredIds, MatchPredOrFunc,
+			find_matching_pred_id(PredIds,
 				ModuleInfo, TVarSet, ArgTypes, _OtherPredId)
 		->
 			% XXX this should report an error properly, not
@@ -2167,7 +2162,7 @@ find_matching_pred_id([PredId | PredIds], MatchPredOrFunc, ModuleInfo,
 			ThePredId = PredId
 		)
 	;
-		find_matching_pred_id(PredIds, MatchPredOrFunc, ModuleInfo,
+		find_matching_pred_id(PredIds, ModuleInfo,
 				TVarSet, ArgTypes, ThePredId)
 	).
 
@@ -2755,14 +2750,14 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 				module_info, pred_id, proc_id).
 :- mode get_pred_id_and_proc_id(in, in, in, in, in, out, out) is det.
 
-get_pred_id_and_proc_id(Name, Arity, _PredOrFunc, PredArgTypes, ModuleInfo,
+get_pred_id_and_proc_id(Name, Arity, PredOrFunc, PredArgTypes, ModuleInfo,
 			PredId, ProcId) :-
 	list__length(PredArgTypes, PredArity),
 	TotalArity is Arity + PredArity,
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	(
-	    predicate_table_search_name_arity(PredicateTable,
-		Name, TotalArity, PredIds)
+	    predicate_table_search_pf_name_arity(PredicateTable,
+		PredOrFunc, Name, TotalArity, PredIds)
 	->
 	    (
 		PredIds = [PredId0]
@@ -2775,35 +2770,52 @@ get_pred_id_and_proc_id(Name, Arity, _PredOrFunc, PredArgTypes, ModuleInfo,
 		( ProcIds = [ProcId0] ->
 		    ProcId = ProcId0
 		; ProcIds = [] ->
+		    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+		    string__int_to_string(TotalArity, TotalArityString),
 		    string__append_list([
-			    "cannot take address of predicate\n(`",
-			    Name,
-			    "') with no modes.\n",
-			    "(Sorry, confused by earlier errors -- bailing out.)"],
+			    "cannot take address of ", PredOrFuncStr,
+			    "\n`", Name, "/", TotalArityString,
+			    "' with no modes.\n",
+			    "(Sorry, confused by earlier errors ",
+			    	"-- bailing out.)"],
 			    Message),
 		    error(Message)
 		;
+		    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+		    string__int_to_string(TotalArity, TotalArityString),
 		    string__append_list([
 			    "sorry, not implemented: ",
-			    "taking address of predicate\n(`",
-			    Name,
-			    "') with multiple modes.\n",
+			    "taking address of ", PredOrFuncStr,
+			    "\n`", Name, "/", TotalArityString,
+			    "' with multiple modes.\n",
 			    "(use an explicit lambda expression instead)"],
 			    Message),
 		    error(Message)
 		)
 	    ;
+	        % Ambiguous pred or func.
 		% cons_id ought to include the module prefix, so
 		% that we could use predicate_table__search_m_n_a to 
 		% prevent this from happening
-		string__append("get_pred_id_and_proc_id: ambiguous pred: ",
-				Name, Msg),
+	        hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+	        string__int_to_string(TotalArity, TotalArityString),
+		string__append_list(
+			["get_pred_id_and_proc_id: ",
+			"ambiguous ", PredOrFuncStr,
+		        "\n`", Name, "/", TotalArityString, "'"],
+			Msg),
 		error(Msg)
 	    )
 	;
+	    % Undefined/invalid pred or func.
 	    % the type-checker should ensure that this never happens
-	    string__append("get_pred_id_and_proc_id: invalid pred: ",
-				Name, Msg),
+	    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+	    string__int_to_string(TotalArity, TotalArityString),
+	    string__append_list(
+		["get_pred_id_and_proc_id: ",
+		"undefined/invalid ", PredOrFuncStr,
+		"\n`", Name, "/", TotalArityString, "'"],
+		Msg),
 	    error(Msg)
 	).
 

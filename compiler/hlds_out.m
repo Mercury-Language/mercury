@@ -64,6 +64,9 @@
 :- pred hlds_out__write_pred_or_func(pred_or_func, io__state, io__state).
 :- mode hlds_out__write_pred_or_func(in, di, uo) is det.
 
+:- pred hlds_out__pred_or_func_to_str(pred_or_func, string).
+:- mode hlds_out__pred_or_func_to_str(in, out) is det.
+
 :- pred hlds_out__write_unify_context(unify_context, term__context,
 				io__state, io__state).
 :- mode hlds_out__write_unify_context(in, in, di, uo) is det.
@@ -217,6 +220,9 @@ hlds_out__write_pred_or_func(predicate) -->
 	io__write_string("predicate").
 hlds_out__write_pred_or_func(function) -->
 	io__write_string("function").
+
+hlds_out__pred_or_func_to_str(predicate, "pred").
+hlds_out__pred_or_func_to_str(function, "func").
 
 %-----------------------------------------------------------------------------%
 
