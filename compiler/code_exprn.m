@@ -1127,7 +1127,7 @@ code_exprn__release_reg(Reg) -->
 	(
 		{ set__member(Reg, Acqu0) }
 	->
-		{ set__remove(Acqu0, Reg, Acqu) },
+		{ set__delete(Acqu0, Reg, Acqu) },
 		code_exprn__set_acquired(Acqu),
 		code_exprn__get_regs(Regs0),
 		{ bag__remove(Regs0, Reg, Regs) },

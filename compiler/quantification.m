@@ -12,7 +12,7 @@
 	% inserting additional existential quantifiers in the form of
 	% `some/2' goals, we instead record existential quantification
 	% in the goal_info for each goal.  In fact we could (should?)
-	% even remove any explicit existential quantifiers that were
+	% even delete any explicit existential quantifiers that were
 	% present in the source code, since the information they convey
 	% will be stored in the goal_info, although currently we don't
 	% do that.
@@ -67,7 +67,7 @@ implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars,
 			   some(Vars, Goal), NonLocals) :-
 	set__insert_list(OutsideVars, Vars, OutsideVars1),
 	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
-	set__remove_list(NonLocals0, Vars, NonLocals).
+	set__delete_list(NonLocals0, Vars, NonLocals).
 
 implicitly_quantify_goal_2(conj(List0), OutsideVars,
 			   conj(List), NonLocalVars) :-
@@ -250,7 +250,7 @@ goal_vars_2(switch(_Var, _Det, Cases), Set0, Set) :-
 
 goal_vars_2(some(Vars, Goal), Set0, Set) :-
 	goal_vars(Goal, Set1),
-	set__remove_list(Set1, Vars, Set2),
+	set__delete_list(Set1, Vars, Set2),
 	set__union(Set0, Set2, Set).
 
 goal_vars_2(not(Goal - _GoalInfo), Set0, Set) :-
@@ -268,7 +268,7 @@ goal_vars_2(if_then_else(Vars, A, B, C), Set0, Set) :-
 	goal_vars(A, Set1),
 	goal_vars(B, Set2),
 	set__union(Set1, Set2, Set3),
-	set__remove_list(Set3, Vars, Set4),
+	set__delete_list(Set3, Vars, Set4),
 	set__union(Set0, Set4, Set5),
 	goal_vars(C, Set6),
 	set__union(Set5, Set6, Set).

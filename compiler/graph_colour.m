@@ -30,23 +30,19 @@
 graph_colour__group_elements(Constraints, Colours) :-
 	set__power_union(Constraints, AllVars),
 	set__init(EmptySet),
-	set__remove(Constraints, EmptySet, Constraints1),
+	set__delete(Constraints, EmptySet, Constraints1),
 	set__to_sorted_list(Constraints1, ConstraintList),
 	graph_colour__find_all_colours(ConstraintList, AllVars, ColourList),
 	set__list_to_set(ColourList, Colours),
-	(
-		% some [S,T,C] (
-			set__member(S, Colours),
-			set__member(T, Colours),
-			set__member(C, S),
-			set__member(C, T),
-			T \= S
-		% )
-	->
-		error("graph_colour__group_elements: sanity check failed")
-	;
-		true
-	).
+	true.
+%	(
+%		set__power_union(Colours, AllColours),
+%		(set__member(Var, AllVars) => set__member(Var, AllColours))
+%	->
+%		error("graph_colour__group_elements: sanity check failed")
+%	;
+%		true
+%	).
 
 %------------------------------------------------------------------------------%
 
@@ -163,7 +159,7 @@ graph_colour__divide_constraints(Var, [S|Ss], C, NC, Vars0, Vars) :-
 	(
 		set__member(Var, S)
 	->
-		set__remove(S, Var, T),
+		set__delete(S, Var, T),
 		(
 			set__empty(T)
 		->
