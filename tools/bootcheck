@@ -24,6 +24,12 @@ Options:
 		Copy the runtime directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
+	--copy-boehm-gc
+		Copy the bohem_gc directory instead of linking it.
+		This is necessary if one wants to bootcheck a grade
+		that is not compatible with the standard one.
+	-R
+		Implies both --copy-runtime and --copy-boehm-gc.
 	-p, --copy-profiler
 		Copy the profiler directory instead of linking it.
 		This is sometimes necessary for bootstrapping
@@ -62,6 +68,7 @@ outfile=""
 runtests=true
 do_bootcheck=true
 copy_runtime=false
+copy_boehm_gc=false
 copy_profiler=false
 keep_stage_2=false
 keep_stage_3=false
@@ -104,6 +111,13 @@ while [ $# -gt 0 ]; do
 
 	-r|--copy-runtime)
 		copy_runtime=true ;;
+
+	--copy-boehm-gc)
+		copy_boehm_gc=true ;;
+
+	-R)
+		copy_runtime=true
+		copy_boehm_gc=true ;;
 
 	-s|--sicstus)
 		test_sicstus=true ;;
@@ -261,7 +275,23 @@ then
 	else
 		ln -s $root/runtime .
 	fi
-	ln -s $root/boehm_gc .
+	if "$copy_boehm_gc"
+	then
+		# Remove symbolic link to the stage 1 boehm_gc if it's present,
+		# which it can be with the -2 option.
+		rm boehm_gc
+		mkdir boehm_gc
+		cd boehm_gc
+		ln -s $root/boehm_gc/*.h .
+		ln -s $root/boehm_gc/*.c .
+		ln -s $root/boehm_gc/*.s .
+		ln -s $root/boehm_gc/includes .
+		cp $root/boehm_gc/Mmake* .
+		cp $root/boehm_gc/Makefile .
+		cd $root/stage2_sicstus
+	else
+		ln -s $root/boehm_gc .
+	fi
 	ln -s $root/doc .
 	ln -s $root/scripts .
 	ln -s $root/util .
@@ -449,7 +479,21 @@ then
 	else
 		ln -s $root/runtime .
 	fi
-	ln -s $root/boehm_gc .
+	if test "$copy_boehm_gc" = "true"
+	then
+		mkdir boehm_gc
+		cd boehm_gc
+		ln -s $root/boehm_gc/*.h .
+		ln -s $root/boehm_gc/*.c .
+		ln -s $root/boehm_gc/*.s .
+		ln -s $root/boehm_gc/includes .
+		cp $root/boehm_gc/Mmake* .
+		cp $root/boehm_gc/Makefile .
+		ln -s $root/boehm_gc/machdeps .
+		cd $root/stage2
+	else
+		ln -s $root/boehm_gc .
+	fi
 	ln -s $root/doc .
 	ln -s $root/scripts .
 	ln -s $root/util .
