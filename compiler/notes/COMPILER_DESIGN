@@ -76,6 +76,13 @@ stored in the io__state, using the type globals defined in globals.m.
 	are written. This also checks whether imports are really needed
 	in the interface.
 
+* reading and writing of optimization interfaces (intermod.m).
+	
+	<module>.opt contains clauses for exported preds suitable for
+	inlining or higher-order specialization. The .opt file for the
+	current module is written after type-checking. .opt files
+	for imported modules are read here.
+
 * expansion of equivalence types (equiv_type.m)
 
 	This is really part of type-checking, but is done
@@ -196,7 +203,8 @@ in an HLDS goal.
 
 The first two passes of this stage are code simplifications.
 
-* introduction of type_info arguments for polymorphic predicates
+* introduction of type_info arguments for polymorphic predicates and
+  transformation of complicated unifications into predicate calls
   (polymorphism.m)
 
 * removal of lambda expressions (lambda.m)
@@ -431,14 +439,6 @@ CURRENTLY USELESS
 The following modules do not serve any function at the moment.
 Some of them are obsolete; other are work-in-progress.
 (For some of them its hard to say which!)
-
-	no_builtin.m:
-		An empty module, for debugging purposes.
-
-	nit_builtin.m:
-		Support for `nit', the NU-Prolog incompetence tester.
-		We don't use nit anymore - the Mercury compiler does
-		a better job.
 
 	mercury_to_goedel.m:
 		This converts from item_list to Goedel source code.

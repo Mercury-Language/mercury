@@ -66,7 +66,9 @@ module system
   (like import_module, except that everything must be explicitly
   module qualified).
 
-- handle module qualifiers on types, insts, and modes
+- allow module qualifiers on function calls and higher-order predicate
+  constants.
+	[being done by stayl]
 
 - imports should not be transitive
   (currently we get this right for predicates, constants, and functors,
@@ -97,7 +99,7 @@ typechecking
 ------------
 
 - allow explicit type qualifications `X : Type'
-
+	[being done by stayl]
 
 mode analysis:
 --------------
@@ -141,16 +143,13 @@ source-level transformations
 ----------------------------
 
 - more work on module system, separate compilation, and the multiple
-  specialization problem, in particular
-	- cross-module inlining
-	- cross-module specialization of higher-order preds
-	[being done by stayl]
+  specialization problem
 
 - deforestation
 
 - transform non-tail-recursive predicates into tail-recursive form
   using accumulators
-
+  [being worked on by jammb]
 
 low-level optimizations
 -----------------------
@@ -159,6 +158,7 @@ low-level optimizations
   the real registers into the fake_reg array and back)
 
 - tail recursion optimization using pass-by-reference argument conventions
+  [being worked on by jammb]
 
 - other specializations, e.g. if argument is known to be bound to
   f(X,Y), then just pass X and Y in registers
