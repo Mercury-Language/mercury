@@ -1943,7 +1943,7 @@ In this example, the concrete representations @samp{set([1,2])} and
 the set containing the elements 1 and 2.
 
 For types such as this, which do not have a canonical representation,
-the standard definition of equality is the desired one; we want equality on
+the standard definition of equality is not the desired one; we want equality on
 sets to mean equality of the abstract values, not equality of their
 representations.  To support such types, Mercury allows programmers to
 specify a user-defined equality predicate for user-defined types:
