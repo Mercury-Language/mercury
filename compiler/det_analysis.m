@@ -347,26 +347,23 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 	apply_instmap_delta(InstMap0, DeltaInstMap, InstMap),
 	det_infer_goal_2(Goal0, InstMap0, MiscInfo, NonLocalVars, DeltaInstMap,
-		Goal, Category0),
+		Goal, InternalCategory),
 
 	% If a non-deterministic goal doesn't have any output variables,
 	% then we can make it semi-deterministic (which will tell the
 	% code generator to generate a commit after the goal).
 	(
-		Category0 = nondeterministic,
+		InternalCategory = nondeterministic,
 		no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, MiscInfo)
 	->
-		Category1 = semideterministic
+		Category = semideterministic
 	;
-		Category1 = Category0
+		Category = InternalCategory
 	),
 
-	% We need to take into account the `local' determinism of the goal,
-	% which will get computed during mode analysis and/or switch detection.
-	goal_info_get_local_determinism(GoalInfo0, LocalDeterminism),
-	max_category(Category1, LocalDeterminism, Category),
-
-	goal_info_set_determinism(GoalInfo0, Category, GoalInfo).
+	goal_info_set_internal_determinism(GoalInfo0, InternalCategory,
+		GoalInfo1),
+	goal_info_set_determinism(GoalInfo1, Category, GoalInfo).
 
 :- pred det_infer_goal_2(hlds__goal_expr, instmap, misc_info, set(var),
 				instmap_delta, hlds__goal_expr, category).
