@@ -87,7 +87,7 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	(
 		GoalExpr0 = conj(Goals0),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		excess_assignments_in_conj(Goals0, [], [], NonLocals,
+		excess_assignments_in_conj(Goals0, [], ElimVars0, NonLocals,
 					Goals, ElimVars),
 		conj_list_to_goal(Goals, GoalInfo0, Goal)
 	;

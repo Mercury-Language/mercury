@@ -34,7 +34,7 @@
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module simplify, intermod, bytecode_gen, bytecode, (lambda).
 :- import_module polymorphism, intermod, higher_order, inlining, common, dnf.
-:- import_module constraint, unused_args, dead_proc_elim, excess.
+:- import_module constraint, unused_args, dead_proc_elim, excess, saved_vars.
 :- import_module lco, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, export, base_type_info.
@@ -603,11 +603,14 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_excess_assigns(HLDS50, Verbose, Stats, HLDS53),
+	mercury_compile__maybe_followcode(HLDS50, Verbose, Stats, HLDS52),
+	mercury_compile__maybe_dump_hlds(HLDS52, "52", "followcode"),
+
+	mercury_compile__maybe_excess_assigns(HLDS52, Verbose, Stats, HLDS53),
 	mercury_compile__maybe_dump_hlds(HLDS53, "53", "excessassign"),
 
-	mercury_compile__maybe_followcode(HLDS53, Verbose, Stats, HLDS56),
-	mercury_compile__maybe_dump_hlds(HLDS56, "56", "followcode"),
+	mercury_compile__maybe_saved_vars(HLDS53, Verbose, Stats, HLDS56),
+	mercury_compile__maybe_dump_hlds(HLDS56, "56", "savedvars"),
 
 	mercury_compile__compute_liveness(HLDS56, Verbose, Stats, HLDS59),
 	mercury_compile__maybe_dump_hlds(HLDS59, "59", "liveness"),
@@ -701,26 +704,32 @@ mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
 
 mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		ModuleInfo0, ModuleInfo, Proc) -->
-	globals__io_lookup_bool_option(excess_assign, ExcessAssign),
-	( { ExcessAssign = yes } ->
-		{ excess_assignments_proc(ProcInfo0, ModuleInfo0, ProcInfo1) }
-	;
-		{ ProcInfo1 = ProcInfo0 }
-	),
 	globals__io_lookup_bool_option(follow_code, FollowCode),
 	globals__io_lookup_bool_option(prev_code, PrevCode),
 	( { FollowCode = yes ; PrevCode = yes } ->
-		{ move_follow_code_in_proc(ProcInfo1, ProcInfo2,
+		{ move_follow_code_in_proc(ProcInfo0, ProcInfo1,
 			ModuleInfo0, ModuleInfo1) }
 	;
-		{ ProcInfo2 = ProcInfo1 },
+		{ ProcInfo1 = ProcInfo0 },
 		{ ModuleInfo1 = ModuleInfo0 }
 	),
-	{ detect_liveness_proc(ProcInfo2, ModuleInfo1, ProcInfo3) },
-	{ allocate_stack_slots_in_proc(ProcInfo3, ModuleInfo1, ProcInfo4) },
-	{ store_alloc_in_proc(ProcInfo4, ModuleInfo1, ProcInfo5) },
+	globals__io_lookup_bool_option(excess_assign, ExcessAssign),
+	( { ExcessAssign = yes } ->
+		{ excess_assignments_proc(ProcInfo1, ModuleInfo0, ProcInfo2) }
+	;
+		{ ProcInfo2 = ProcInfo1 }
+	),
+	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
+	( { SavedVars = yes } ->
+		{ saved_vars_proc(ProcInfo2, ModuleInfo0, ProcInfo3) }
+	;
+		{ ProcInfo3 = ProcInfo2 }
+	),
+	{ detect_liveness_proc(ProcInfo3, ModuleInfo1, ProcInfo4) },
+	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo1, ProcInfo5) },
+	{ store_alloc_in_proc(ProcInfo5, ModuleInfo1, ProcInfo6) },
 	{ module_info_get_shapes(ModuleInfo1, Shapes0) },
-	generate_proc_code(ProcInfo5, ProcId, PredId, ModuleInfo1,
+	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo1,
 		Shapes0, Shapes, Proc0),
 	{ module_info_set_shapes(ModuleInfo1, Shapes, ModuleInfo) },
 	globals__io_lookup_bool_option(optimize, Optimize),
@@ -1143,6 +1152,24 @@ mercury_compile__maybe_excess_assigns(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(update_proc(
 			excess_assignments_proc), HLDS0, HLDS),
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
+	).
+
+:- pred mercury_compile__maybe_saved_vars(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_saved_vars(in, in, in, out, di, uo)
+	is det.
+
+mercury_compile__maybe_saved_vars(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
+	( { SavedVars = yes } ->
+		maybe_write_string(Verbose, "% Reordering to minimize variable saves..."),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(update_proc(
+			saved_vars_proc), HLDS0, HLDS),
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;

@@ -150,6 +150,7 @@
 		;	optimize_higher_order
 		;	optimize_constructor_last_call
 		;	excess_assign
+		;	optimize_saved_vars
 		;	follow_code
 		;	prev_code
 		;	optimize_dead_procs
@@ -385,6 +386,7 @@ option_defaults_2(optimization_option, [
 		% it affects the semantics
 	constraint_propagation	-	bool(no),
 	excess_assign		-	bool(no),
+	optimize_saved_vars	-	bool(no),
 	prev_code		-	bool(no),
 	follow_code		-	bool(no),
 	optimize_unused_args	-	bool(no),
@@ -613,6 +615,8 @@ long_option("inline-vars-threshold",		inline_vars_threshold).
 long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
 long_option("excess-assign",		excess_assign).
+long_option("optimize-saved-vars",	optimize_saved_vars).
+long_option("optimise-saved-vars",	optimize_saved_vars).
 long_option("prev-code",		prev_code).
 long_option("follow-code",		follow_code).
 long_option("constraint-propagation",	constraint_propagation).
@@ -834,6 +838,7 @@ opt_level(1, OptionTable, [
 	optimize_labels		-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(DelaySlot),
+	optimize_saved_vars	-	bool(yes),
 	follow_vars		-	bool(yes),
 	middle_rec		-	bool(yes),
 	emit_c_loops		-	bool(yes)
@@ -1306,6 +1311,9 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tDon't migrate into the end of branched goals.\n"),
 	io__write_string("\t--excess-assign\n"),
 	io__write_string("\t\tRemove excess assignment unifications.\n"),
+	io__write_string("\t--optimize-saved-vars\n"),
+	io__write_string("\t\tReorder goals to minimize the number of variables\n"),
+	io__write_string("\t\tthat have to be saved across calls.\n"),
 	io__write_string("\t--no-optimize-unused-args\n"),
 	io__write_string("\t\tDisable removal of unused predicate arguments.\n"),
 	io__write_string("\t\tThis will cause the compiler to generate less\n"),
