@@ -218,7 +218,7 @@ postprocess_options(ok(OptionTable), Error) -->
             { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
 	)
     ;
-        { Error = yes("Invalid target option (must be `c', `il', or `java')") }
+        { Error = yes("Invalid target option (must be `c', `asm', `il', or `java')") }
     ).
     
 
