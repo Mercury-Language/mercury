@@ -37,8 +37,8 @@ breakpoint - Commands that let users set and control breakpoints.
 end
 document_category 600 parameter
 parameter  - Commands that let users access debugger parameters.
-             The parameter commands are `printlevel', `echo', `scroll',
-             `mmc_options', `alias' and `unalias'.
+             The parameter commands are `printlevel', `echo', `context',
+	     `scroll', `mmc_options', `alias' and `unalias'.
 
 end
 document_category 700 help

@@ -909,6 +909,8 @@ EXTRA_LIBRARIES-foo = mylib4foo
 @chapter Debugging
 
 @menu
+* Quick overview::
+* GNU Emacs interface::
 * Tracing of Mercury programs::
 * Preparing a program for debugging::
 * Selecting trace events::
@@ -916,6 +918,221 @@ EXTRA_LIBRARIES-foo = mylib4foo
 * Mercury debugger concepts::
 * Debugger commands::
 @end menu
+
+@node Quick overview
+@section Quick overview
+
+This section gives a quick and simple guide to getting
+started with the debugger.  The remainder of this chapter
+contains more detailed documentation.
+
+To use the debugger, you must
+first compile your program with debugging enabled.
+You can do this by using the @samp{--debug} option to @samp{mdb},
+or by including @samp{GRADEFLAGS = --debug} in your @file{Mmakefile}.
+
+@example
+bash$ mmc --debug hello.m
+@end example
+
+Once you've compiled with debugging enabled, you can use the @samp{mdb}
+command to invoke your program under the debugger:
+
+@example
+bash$ mdb ./hello arg1 arg2 ...
+@end example
+
+Any arguments (such as @samp{arg1 arg2 ...} in this example)
+that you pass after the program name will be given as arguments
+to the program.
+
+The debugger will print a start-up message
+and will then show you the first trace event,
+namely the call to @code{main/2}:
+
+@example
+       1:      1  1 CALL pred hello:main/2-0 (det)
+                         hello.m:13
+mdb>
+@end example
+
+By hitting enter at the @samp{mdb>} prompt, you can step through
+the execution of your program to the next trace event:
+
+@example
+       2:      2  2 CALL pred io:write_string/3-0 (det)
+                         io.m:2837 (hello.m:14)
+mdb>
+Hello, world
+       3:      2  2 EXIT pred io:write_string/3-0 (det)
+                         io.m:2837 (hello.m:14)
+mdb>
+
+@end example
+
+For each trace event, the debugger prints out several pieces of
+information.  The three numbers at the start of the display are the
+event number, the sequence number, and the call depth. 
+(You don't really need to pay too much attention to those.)
+They are followed by the event type (e.g. @samp{CALL} or @samp{EXIT}).
+After that comes the module name (@samp{io}),
+procedure name (@samp{write_string}), arity (@samp{3}),
+mode number (@samp{0}), and determinism (@samp{det}).
+This may sometimes be followed by a "path"
+(@pxref{Tracing of Mercury programs}).
+At the end is the file name and line number of the
+called procedure and (if available) also the file name
+and line number of the call.
+
+The most useful @code{mdb} commands have single-letter abbreviations.
+The @samp{alias} command will show these abbreviations:
+
+@example
+mdb> alias
+?      =>    help
+EMPTY  =>    step
+NUMBER =>    step
+P      =>    print *
+b      =>    break
+c      =>    continue
+d      =>    stack
+f      =>    finish
+g      =>    goto
+h      =>    help
+p      =>    print
+r      =>    retry
+s      =>    step
+v      =>    vars
+@end example
+
+The @samp{P} or @samp{print *} command will display the values
+of any live variables in scope.
+The @samp{f} or @samp{finish} command can be used if you want
+to skip over a call.
+The @samp{b} or @samp{break} command can be used to set break-points.
+The @samp{d} or @samp{stack} command will display the call stack.
+The @samp{quit} command will exit the debugger.
+
+That should be enough to get you started.
+But if you have GNU Emacs installed, you should strongly
+consider using the Emacs interface to @samp{mdb} --- see
+the following section.
+
+For more information about the available commands,
+use the @samp{?} or @samp{help} command, or see @ref{Debugger commands}.
+
+@node GNU Emacs interface
+@section GNU Emacs interface
+
+As well as the command-line debugger, mdb, there is also an Emacs
+interface to this debugger.  Note that the Emacs interface only
+works with GNU Emacs, not with XEmacs.
+
+With the Emacs interface, the debugger will display your source code
+as you trace through it, marking the line that is currently being
+executed, and allowing you to easily set breakpoints on particular
+lines in your source code.  You can have separate windows for
+the debugger prompt, the source code being executed, and for
+the output of the program being executed.
+In addition, most of the mdb commands are accessible via menus.
+
+To start the Emacs interface, you first need to put the following
+text in the file @file{.emacs} in your home directory,
+replacing "/usr/local/mercury-1.0" with the directory
+that your Mercury implementation was installed in.
+
+@example
+(setq load-path (cons (expand-file-name
+  "/usr/local/mercury-1.0/lib/mercury/elisp")
+  load-path))
+(autoload 'mdb "gud" "Invoke the Mercury debugger" t)
+@end example
+
+Build your program with debugging enabled, as described
+in @ref{Quick overview} or @ref{Preparing a program for debugging}.
+Then start up Emacs, e.g. using the command @samp{emacs},
+and type @kbd{M-x mdb @key{RET}}. Emacs will prompt you for
+the mdb command to invoke
+
+@example
+Run mdb (like this): mdb 
+@end example
+
+@noindent
+and you should type in the name of the program that you want to debug
+and any arguments that you want to pass to it:
+
+@example
+Run mdb (like this): mdb ./hello arg1 arg2 ...
+@end example
+
+Emacs will then create several "buffers": one for the debugger prompt,
+one for the output of the program being executed, and one or more for
+the source files.  By default, Emacs will split the display into two
+parts, called "windows", so that two of these buffers will be visible.
+You can use the command @kbd{C-x o} to switch between windows,
+and you can use the command @kbd{C-x 2} to split a window into two
+windows.  You can use the "Buffers" menu to select which buffer is
+displayed in each window.
+
+If you're using X-Windows, then it is a good idea
+to set the Emacs variable @samp{pop-up-frames} to @samp{t}
+before starting mdb, since this will cause each buffer to be
+displayed in a new "frame" (i.e. a new X window).
+You can set this variable interactively using the
+@samp{set-variable} command, i.e.
+@kbd{M-x set-variable @key{RET} pop-up-frames @key{RET} t @key{RET}}.
+Or you can put @samp{(setq pop-up-frames t)} in the @file{.emacs}
+file in your home directory.
+
+For more information on buffers, windows, and frames,
+see the Emacs documentation.
+
+Another useful Emacs variable is @samp{gud-mdb-search-directories}.
+This specifies the list of directories to search for source files.
+You can use a command such as
+
+@example
+M-x set-variable @key{RET}
+gud-mdb-search-directories @key{RET}
+(list "/foo/bar" "../other" "/home/guest") @key{RET}
+@end example
+
+@noindent
+to set it interactively, or you can put a command like
+
+@example
+(setq gud-mdb-search-directories
+  (list "/foo/bar" "../other" "/home/guest"))
+@end example
+
+@noindent
+in your @file{.emacs} file.
+
+At each trace event, the debugger will search for the
+source file corresponding to that event, first in the
+same directory as the program, and then in the directories
+specified by the @samp{gud-mdb-search-directories} variable.
+It will display the source file, with the line number
+corresponding to that trace event marked by
+an arrow (@samp{=>}) at the start of the line.
+
+Several of the debugger features can be accessed by moving
+the cursor to the relevant part of the source code and then
+selecting a command from the menu.
+You can set a break point on a line by moving the cursor to the
+appropriate line in your source code (e.g. with the arrow keys,
+or by clicking the mouse there), and then selecting
+the "Set breakpoint on line" command from the "Breakpoints"
+sub-menu of the "MDB" menu.  You can set a breakpoint on
+a procedure by moving the cursor over the procedure name
+and then selecting the "Set breakpoint on procedure"
+command from the same menu.  And you can display the value of
+a variable by moving the cursor over the variable name
+and then selecting the "Print variable" command from the
+"Data browsing" sub-menu of the "MDB" menu.
+Most of the menu commands also have keyboard short-cuts,
+which are displayed on the menu.
 
 @node Tracing of Mercury programs
 @section Tracing of Mercury programs
