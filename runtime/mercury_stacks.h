@@ -296,7 +296,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 } MR_Exception_Handler_Frame;
 
 #define MR_EXCEPTION_FRAMEVARS \
-    (((MR_Exception_Handler_Frame *) (MR_curfr - MR_NONDET_FIXED_SIZE)) - 1)
+    (((MR_Exception_Handler_Frame *) (MR_curfr - MR_NONDET_FIXED_SIZE + 1)) - 1)
 
 #define MR_create_exception_handler(name,				      \
 		handler_code_model, handler_closure, redoip)		      \
