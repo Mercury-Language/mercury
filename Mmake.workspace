@@ -98,7 +98,11 @@ MTAGSFLAGS +=	$(EXTRA_MTAGSFLAGS)
 
 VPATH =		$(LIBRARY_DIR)
 
-MCFLAGS +=	--config-file $(SCRIPTS_DIR)/Mercury.config
+ifeq ($(origin MERCURY_CONFIG_FILE),undefined)
+MERCURY_CONFIG_FILE =	$(SCRIPTS_DIR)/Mercury.config.bootstrap
+endif
+
+MCFLAGS +=	--config-file $(MERCURY_CONFIG_FILE)
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 MCFLAGS +=	--options-file $(WORKSPACE)/Mercury.options

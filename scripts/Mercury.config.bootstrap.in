@@ -6,12 +6,13 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
-# Mercury.config
+# Mercury.config.bootstrap
 #
 # Configuration file for the Melbourne Mercury Compiler.
 #
-# Note to developers: when updating this file consider whether
-# Mercury.config.bootstrap.in should also be updated.
+# This file is used instead of Mercury.config when building the
+# stage1 compiler. It should only refer to options which are
+# understood by the installed compilers.
 #
 # Environment variables: MERCURY_STDLIB_DIR, MERCURY_C_COMPILER,
 # MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.

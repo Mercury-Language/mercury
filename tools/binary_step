@@ -148,6 +148,9 @@ root=`/bin/pwd`
 MERCURY_COMPILER=$root/compiler/mercury_compile
 export MERCURY_COMPILER
 
+MERCURY_CONFIG_FILE=$root/scripts/Mercury.config
+export MERCURY_CONFIG_FILE
+
 MMAKE_VPATH=.
 export MMAKE_VPATH
 MMAKE_DIR=../scripts

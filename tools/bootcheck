@@ -457,6 +457,9 @@ then
 	MERCURY_COMPILER=$root/compiler/mercury_compile
 	export MERCURY_COMPILER
 
+	MERCURY_CONFIG_FILE=$root/scripts/Mercury.config
+	export MERCURY_CONFIG_FILE
+
 	[ -d stage2 ] || mkdir stage2
 	if $keep_stage_2
 	then
@@ -1046,6 +1049,9 @@ then
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
 	export MERCURY_COMPILER
+
+	MERCURY_CONFIG_FILE=$root/scripts/Mercury.config
+	export MERCURY_CONFIG_FILE
 
 	if test "$test_grade" = "$grade"
 	then

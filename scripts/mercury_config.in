@@ -126,6 +126,7 @@ cp -r $input_libdir/reconf/* $TMPDIR || exit 1
 mkdir $TMPDIR/bindist || exit 1
 
 # The configure script tries to process these files, but they won't be used.
+touch $TMPDIR/scripts/Mercury.config.bootstrap.in || exit 1
 touch $TMPDIR/Mmake.common.in $TMPDIR/bindist/bindist.INSTALL.in || exit 1
 touch $TMPDIR/bindist/bindist.Makefile.in || exit 1
 

@@ -34,7 +34,7 @@ EMACS_SCRIPTS = gud.el
 
 .PHONY: all
 all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
-all: Mmake.vars Mercury.config
+all: Mmake.vars Mercury.config Mercury.config.bootstrap
 
 #-----------------------------------------------------------------------------#
 
