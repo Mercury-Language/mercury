@@ -1563,7 +1563,7 @@ lambda expressions.  (To be pedantic, it would be more accurate to
 say that Mercury supports higher-order procedures: in Mercury, when you
 construct a higher-order predicate term, you only get one mode of
 a predicate; if you want multiple modes, you must pass multiple
-high-order procedures.)
+higher-order procedures.)
 
 @menu
 * Creating higher-order terms::
