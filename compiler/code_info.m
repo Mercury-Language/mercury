@@ -1417,7 +1417,7 @@ code_info__pick_failure([Map - Addr | Rest], CodeAddr) -->
 
 code_info__variable_locations(Locations) -->
 	code_info__get_exprn_info(Exprn),
-	{ code_exprn__get_varlocs(Locations, Exprn, _) }.
+	{ code_exprn__get_varlocs(Exprn, Locations) }.
 
 %---------------------------------------------------------------------------%
 

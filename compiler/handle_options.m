@@ -7,8 +7,6 @@
 % File: handle_options.m.
 % Main authors: fjh, zs.
 
-% This is the top-level of the Mercury compiler.
-
 % This module does post-procesing on the command-line options, after
 % getopt has done its stuff.
 

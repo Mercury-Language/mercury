@@ -282,7 +282,7 @@ option_defaults_2(optimization_option, [
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
-	optimize_unused_args	-	bool(yes),
+	optimize_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(yes),
 	optimize_repeat		-	int(3),
 	optimize_vnrepeat	-	int(1),
@@ -329,8 +329,8 @@ short_option('I', 			search_directories).
 short_option('l', 			line_numbers).
 short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
-short_option('O', 			c_optimize).
 short_option('o', 			output_file_name).
+short_option('O', 			opt_level).
 % short_option('p', 			polymorphism).
 short_option('p', 			profiling).
 short_option('P', 			convert_to_mercury).
@@ -950,9 +950,9 @@ options_help -->
 	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
 	io__write_string("\t--no-optimize-higher-order\n"),
 	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
-	io__write_string("\t-O-, --no-c-optimize\n"),
+	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
-	io__write_string("\t--opt-level <n>\n"),
+	io__write_string("\t-O <n>, --opt-level <n>\n"),
 	io__write_string("\t\tSet optimization level to <n>.\n"),
 	io__write_string("\t\tOptimimization level 0 means no optimization\n"),
 	io__write_string("\t\twhile optimimization level 5 means full optimization.\n"),

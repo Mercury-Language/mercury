@@ -43,11 +43,7 @@ jumpopt__main(Instrs0, Blockopt, Recjump, Instrs, Mod) :-
 	jumpopt__build_forkmap(Instrs0, Sdprocmap, Forkmap0, Forkmap),
 	jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap, Lvalmap,
 		Procmap, Sdprocmap, Forkmap, Succmap, Instrs1, Mod),
-	( Blockopt = yes ->
-		opt_util__filter_out_bad_livevals(Instrs1, Instrs)
-	;
-		Instrs = Instrs1
-	).
+	opt_util__filter_out_bad_livevals(Instrs1, Instrs).
 
 %-----------------------------------------------------------------------------%
 

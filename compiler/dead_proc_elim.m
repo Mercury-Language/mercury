@@ -49,81 +49,84 @@
 
 dead_proc_elim(ModuleInfo0, ModuleInfo, State0, State) :-
 	set__init(Examined0),
-	dead__initialize(ModuleInfo0, Queue0, Needed0),
-	dead__examine(Queue0, Examined0, ModuleInfo0, Needed0, Needed),
-	dead__eliminate(ModuleInfo0, Needed, ModuleInfo, State0, State).
+	dead_proc_elim__initialize(ModuleInfo0, Queue0, Needed0),
+	dead_proc_elim__examine(Queue0, Examined0, ModuleInfo0,
+		Needed0, Needed),
+	dead_proc_elim__eliminate(ModuleInfo0, Needed, ModuleInfo,
+		State0, State).
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead__initialize(module_info, queue(pred_proc_id), set(pred_proc_id)).
-:- mode dead__initialize(in, out, out) is det.
+:- pred dead_proc_elim__initialize(module_info, queue(pred_proc_id),
+	set(pred_proc_id)).
+:- mode dead_proc_elim__initialize(in, out, out) is det.
 
-dead__initialize(ModuleInfo, Queue, Needed) :-
+dead_proc_elim__initialize(ModuleInfo, Queue, Needed) :-
 	queue__init(Queue0),
 	set__init(Needed0),
 	module_info_predids(ModuleInfo, PredIds),
 	module_info_preds(ModuleInfo, PredTable),
-	dead__initialize_preds(PredIds, PredTable,
+	dead_proc_elim__initialize_preds(PredIds, PredTable,
 		Queue0, Queue, Needed0, Needed).
 
-:- pred dead__initialize_preds(list(pred_id), pred_table,
+:- pred dead_proc_elim__initialize_preds(list(pred_id), pred_table,
 	queue(pred_proc_id), queue(pred_proc_id),
 	set(pred_proc_id), set(pred_proc_id)).
-:- mode dead__initialize_preds(in, in, in, out, in, out) is det.
+:- mode dead_proc_elim__initialize_preds(in, in, in, out, in, out) is det.
 
-dead__initialize_preds([], _PredTable, Queue, Queue, Needed, Needed).
-dead__initialize_preds([PredId | PredIds], PredTable,
+dead_proc_elim__initialize_preds([], _PredTable, Queue, Queue, Needed, Needed).
+dead_proc_elim__initialize_preds([PredId | PredIds], PredTable,
 		Queue0, Queue, Needed0, Needed) :-
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_exported_procids(PredInfo, ProcIds),
-	dead__initialize_procs(PredId, ProcIds,
+	dead_proc_elim__initialize_procs(PredId, ProcIds,
 		Queue0, Queue1, Needed0, Needed1),
-	dead__initialize_preds(PredIds, PredTable,
+	dead_proc_elim__initialize_preds(PredIds, PredTable,
 		Queue1, Queue, Needed1, Needed).
 
-:- pred dead__initialize_procs(pred_id, list(proc_id),
+:- pred dead_proc_elim__initialize_procs(pred_id, list(proc_id),
 	queue(pred_proc_id), queue(pred_proc_id),
 	set(pred_proc_id), set(pred_proc_id)).
-:- mode dead__initialize_procs(in, in, in, out, in, out) is det.
+:- mode dead_proc_elim__initialize_procs(in, in, in, out, in, out) is det.
 
-dead__initialize_procs(_PredId, [], Queue, Queue, Needed, Needed).
-dead__initialize_procs(PredId, [ProcId | ProcIds],
+dead_proc_elim__initialize_procs(_PredId, [], Queue, Queue, Needed, Needed).
+dead_proc_elim__initialize_procs(PredId, [ProcId | ProcIds],
 		Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, PredId - ProcId, Queue1),
 	set__insert(Needed0, PredId - ProcId, Needed1),
-	dead__initialize_procs(PredId, ProcIds,
+	dead_proc_elim__initialize_procs(PredId, ProcIds,
 		Queue1, Queue, Needed1, Needed).
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead__examine(queue(pred_proc_id), set(pred_proc_id),
+:- pred dead_proc_elim__examine(queue(pred_proc_id), set(pred_proc_id),
 	module_info, set(pred_proc_id), set(pred_proc_id)).
-:- mode dead__examine(in, in, in, in, out) is det.
+:- mode dead_proc_elim__examine(in, in, in, in, out) is det.
 
-dead__examine(Queue0, Examined0, ModuleInfo, Needed0, Needed) :-
+dead_proc_elim__examine(Queue0, Examined0, ModuleInfo, Needed0, Needed) :-
 	% see if the queue is empty
 	( queue__get(Queue0, PredProcId, Queue1) ->
 		% see if the next element has been examined before
 		( set__member(PredProcId, Examined0) ->
-			dead__examine(Queue1, Examined0, ModuleInfo,
+			dead_proc_elim__examine(Queue1, Examined0, ModuleInfo,
 				Needed0, Needed)
 		;
 			set__insert(Examined0, PredProcId, Examined1),
-			dead__examine_proc(PredProcId, ModuleInfo,
+			dead_proc_elim__examine_proc(PredProcId, ModuleInfo,
 				Queue1, Queue2, Needed0, Needed1),
-			dead__examine(Queue2, Examined1, ModuleInfo,
+			dead_proc_elim__examine(Queue2, Examined1, ModuleInfo,
 				Needed1, Needed)
 		)
 	;
 		Needed = Needed0
 	).
 
-:- pred dead__examine_proc(pred_proc_id, module_info,
+:- pred dead_proc_elim__examine_proc(pred_proc_id, module_info,
 	queue(pred_proc_id), queue(pred_proc_id),
 	set(pred_proc_id), set(pred_proc_id)).
-:- mode dead__examine_proc(in, in, in, out, in, out) is det.
+:- mode dead_proc_elim__examine_proc(in, in, in, out, in, out) is det.
 
-dead__examine_proc(PredId - ProcId, ModuleInfo, Queue0, Queue,
+dead_proc_elim__examine_proc(PredId - ProcId, ModuleInfo, Queue0, Queue,
 		Needed0, Needed) :-
 	(
 		module_info_preds(ModuleInfo, PredTable),
@@ -134,7 +137,8 @@ dead__examine_proc(PredId - ProcId, ModuleInfo, Queue0, Queue,
 		map__lookup(ProcTable, ProcId, ProcInfo)
 	->
 		proc_info_goal(ProcInfo, Goal),
-		dead__traverse_goal(Goal, Queue0, Queue, Needed0, Needed)
+		dead_proc_elim__traverse_goal(Goal, Queue0, Queue,
+			Needed0, Needed)
 	;
 		Queue = Queue0,
 		Needed = Needed0
@@ -142,63 +146,67 @@ dead__examine_proc(PredId - ProcId, ModuleInfo, Queue0, Queue,
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead__traverse_goals(list(hlds__goal),
+:- pred dead_proc_elim__traverse_goals(list(hlds__goal),
 	queue(pred_proc_id), queue(pred_proc_id),
 	set(pred_proc_id), set(pred_proc_id)).
-:- mode dead__traverse_goals(in, in, out, in, out) is det.
+:- mode dead_proc_elim__traverse_goals(in, in, out, in, out) is det.
 
-dead__traverse_goals([], Queue, Queue, Needed, Needed).
-dead__traverse_goals([Goal | Goals], Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_goal(Goal, Queue0, Queue1, Needed0, Needed1),
-	dead__traverse_goals(Goals, Queue1, Queue, Needed1, Needed).
+dead_proc_elim__traverse_goals([], Queue, Queue, Needed, Needed).
+dead_proc_elim__traverse_goals([Goal | Goals], Queue0, Queue,
+		Needed0, Needed) :-
+	dead_proc_elim__traverse_goal(Goal, Queue0, Queue1, Needed0, Needed1),
+	dead_proc_elim__traverse_goals(Goals, Queue1, Queue, Needed1, Needed).
 
-:- pred dead__traverse_cases(list(case),
+:- pred dead_proc_elim__traverse_cases(list(case),
 	queue(pred_proc_id), queue(pred_proc_id),
 	set(pred_proc_id), set(pred_proc_id)).
-:- mode dead__traverse_cases(in, in, out, in, out) is det.
+:- mode dead_proc_elim__traverse_cases(in, in, out, in, out) is det.
 
-dead__traverse_cases([], Queue, Queue, Needed, Needed).
-dead__traverse_cases([case(_, Goal) | Cases], Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_goal(Goal, Queue0, Queue1, Needed0, Needed1),
-	dead__traverse_cases(Cases, Queue1, Queue, Needed1, Needed).
+dead_proc_elim__traverse_cases([], Queue, Queue, Needed, Needed).
+dead_proc_elim__traverse_cases([case(_, Goal) | Cases], Queue0, Queue,
+		Needed0, Needed) :-
+	dead_proc_elim__traverse_goal(Goal, Queue0, Queue1, Needed0, Needed1),
+	dead_proc_elim__traverse_cases(Cases, Queue1, Queue, Needed1, Needed).
 
-:- pred dead__traverse_goal(hlds__goal,
+:- pred dead_proc_elim__traverse_goal(hlds__goal,
 	queue(pred_proc_id), queue(pred_proc_id),
 	set(pred_proc_id), set(pred_proc_id)).
-:- mode dead__traverse_goal(in, in, out, in, out) is det.
+:- mode dead_proc_elim__traverse_goal(in, in, out, in, out) is det.
 
-dead__traverse_goal(GoalExpr - _, Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_expr(GoalExpr, Queue0, Queue, Needed0, Needed).
+dead_proc_elim__traverse_goal(GoalExpr - _, Queue0, Queue, Needed0, Needed) :-
+	dead_proc_elim__traverse_expr(GoalExpr, Queue0, Queue, Needed0, Needed).
 
-:- pred dead__traverse_expr(hlds__goal_expr,
+:- pred dead_proc_elim__traverse_expr(hlds__goal_expr,
 	queue(pred_proc_id), queue(pred_proc_id),
 	set(pred_proc_id), set(pred_proc_id)).
-:- mode dead__traverse_expr(in, in, out, in, out) is det.
+:- mode dead_proc_elim__traverse_expr(in, in, out, in, out) is det.
 
-dead__traverse_expr(disj(Goals), Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_goals(Goals, Queue0, Queue, Needed0, Needed).
-dead__traverse_expr(conj(Goals), Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_goals(Goals, Queue0, Queue, Needed0, Needed).
-dead__traverse_expr(not(Goal), Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_goal(Goal, Queue0, Queue, Needed0, Needed).
-dead__traverse_expr(some(_, Goal), Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_goal(Goal, Queue0, Queue, Needed0, Needed).
-dead__traverse_expr(switch(_, _, Cases), Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_cases(Cases, Queue0, Queue, Needed0, Needed).
-dead__traverse_expr(if_then_else(_, Cond, Then, Else),
+dead_proc_elim__traverse_expr(disj(Goals), Queue0, Queue, Needed0, Needed) :-
+	dead_proc_elim__traverse_goals(Goals, Queue0, Queue, Needed0, Needed).
+dead_proc_elim__traverse_expr(conj(Goals), Queue0, Queue, Needed0, Needed) :-
+	dead_proc_elim__traverse_goals(Goals, Queue0, Queue, Needed0, Needed).
+dead_proc_elim__traverse_expr(not(Goal), Queue0, Queue, Needed0, Needed) :-
+	dead_proc_elim__traverse_goal(Goal, Queue0, Queue, Needed0, Needed).
+dead_proc_elim__traverse_expr(some(_, Goal), Queue0, Queue, Needed0, Needed) :-
+	dead_proc_elim__traverse_goal(Goal, Queue0, Queue, Needed0, Needed).
+dead_proc_elim__traverse_expr(switch(_, _, Cases), Queue0, Queue,
+		Needed0, Needed) :-
+	dead_proc_elim__traverse_cases(Cases, Queue0, Queue, Needed0, Needed).
+dead_proc_elim__traverse_expr(if_then_else(_, Cond, Then, Else),
 		Queue0, Queue, Needed0, Needed) :-
-	dead__traverse_goal(Cond, Queue0, Queue1, Needed0, Needed1),
-	dead__traverse_goal(Then, Queue1, Queue2, Needed1, Needed2),
-	dead__traverse_goal(Else, Queue2, Queue,  Needed2, Needed).
-dead__traverse_expr(call(PredId, ProcId, _,_,_,_,_),
+	dead_proc_elim__traverse_goal(Cond, Queue0, Queue1, Needed0, Needed1),
+	dead_proc_elim__traverse_goal(Then, Queue1, Queue2, Needed1, Needed2),
+	dead_proc_elim__traverse_goal(Else, Queue2, Queue,  Needed2, Needed).
+dead_proc_elim__traverse_expr(call(PredId, ProcId, _,_,_,_,_),
 		Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, PredId - ProcId, Queue),
 	set__insert(Needed0, PredId - ProcId, Needed).
-dead__traverse_expr(pragma_c_code(_, PredId, ProcId, _,_),
+dead_proc_elim__traverse_expr(pragma_c_code(_, PredId, ProcId, _,_),
 		Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, PredId - ProcId, Queue),
 	set__insert(Needed0, PredId - ProcId, Needed).
-dead__traverse_expr(unify(_,_,_, Uni, _), Queue0, Queue, Needed0, Needed) :-
+dead_proc_elim__traverse_expr(unify(_,_,_, Uni, _), Queue0, Queue,
+		Needed0, Needed) :-
 	(
 		Uni = construct(_, ConsId, _, _),
 		( ConsId = pred_const(PredId, ProcId)
@@ -216,31 +224,33 @@ dead__traverse_expr(unify(_,_,_, Uni, _), Queue0, Queue, Needed0, Needed) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead__eliminate(module_info, set(pred_proc_id), module_info,
+:- pred dead_proc_elim__eliminate(module_info, set(pred_proc_id), module_info,
 	io__state, io__state).
-:- mode dead__eliminate(in, in, out, di, uo) is det.
+:- mode dead_proc_elim__eliminate(in, in, out, di, uo) is det.
 
-dead__eliminate(ModuleInfo0, Needed, ModuleInfo, State0, State) :-
+dead_proc_elim__eliminate(ModuleInfo0, Needed, ModuleInfo, State0, State) :-
 	module_info_predids(ModuleInfo0, PredIds),
 	module_info_preds(ModuleInfo0, PredTable0),
-	dead__eliminate_preds(PredIds, Needed, PredTable0, PredTable,
+	dead_proc_elim__eliminate_preds(PredIds, Needed, PredTable0, PredTable,
 		State0, State),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
 
-:- pred dead__eliminate_preds(list(pred_id), set(pred_proc_id),
+:- pred dead_proc_elim__eliminate_preds(list(pred_id), set(pred_proc_id),
 	pred_table, pred_table, io__state, io__state).
-:- mode dead__eliminate_preds(in, in, in, out, di, uo) is det.
+:- mode dead_proc_elim__eliminate_preds(in, in, in, out, di, uo) is det.
 
-dead__eliminate_preds([], _Needed, PredTable, PredTable) --> [].
-dead__eliminate_preds([PredId | PredIds], Needed, PredTable0, PredTable) -->
-	dead__eliminate_pred(PredId, Needed, PredTable0, PredTable1),
-	dead__eliminate_preds(PredIds, Needed, PredTable1, PredTable).
+dead_proc_elim__eliminate_preds([], _Needed, PredTable, PredTable) --> [].
+dead_proc_elim__eliminate_preds([PredId | PredIds], Needed,
+		PredTable0, PredTable) -->
+	dead_proc_elim__eliminate_pred(PredId, Needed, PredTable0, PredTable1),
+	dead_proc_elim__eliminate_preds(PredIds, Needed, PredTable1, PredTable).
 
-:- pred dead__eliminate_pred(pred_id, set(pred_proc_id),
+:- pred dead_proc_elim__eliminate_pred(pred_id, set(pred_proc_id),
 	pred_table, pred_table, io__state, io__state).
-:- mode dead__eliminate_pred(in, in, in, out, di, uo) is det.
+:- mode dead_proc_elim__eliminate_pred(in, in, in, out, di, uo) is det.
 
-dead__eliminate_pred(PredId, Needed, PredTable0, PredTable, State0, State) :-
+dead_proc_elim__eliminate_pred(PredId, Needed, PredTable0, PredTable,
+		State0, State) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_import_status(PredInfo0, Status),
 	(
@@ -252,7 +262,7 @@ dead__eliminate_pred(PredId, Needed, PredTable0, PredTable, State0, State) :-
 		pred_info_procedures(PredInfo0, ProcTable0),
 		pred_info_name(PredInfo0, Name),
 		pred_info_arity(PredInfo0, Arity),
-		dead__eliminate_procs(PredId, ProcIds0, Needed, Keep,
+		dead_proc_elim__eliminate_procs(PredId, ProcIds0, Needed, Keep,
 			Name, Arity, ProcTable0, ProcTable, State0, State),
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable)
@@ -261,14 +271,15 @@ dead__eliminate_pred(PredId, Needed, PredTable0, PredTable, State0, State) :-
 		PredTable = PredTable0
 	).
 
-:- pred dead__eliminate_procs(pred_id, list(proc_id),
+:- pred dead_proc_elim__eliminate_procs(pred_id, list(proc_id),
 	set(pred_proc_id), maybe(proc_id), string, int,
 	proc_table, proc_table, io__state, io__state).
-:- mode dead__eliminate_procs(in, in, in, in, in, in, in, out, di, uo) is det.
+:- mode dead_proc_elim__eliminate_procs(in, in, in, in, in, in, in, out, di, uo)
+	is det.
 
-dead__eliminate_procs(_, [], _, _, _, _, ProcTable, ProcTable) --> [].
-dead__eliminate_procs(PredId, [ProcId | ProcIds], Needed, Keep, Name, Arity,
-		ProcTable0, ProcTable) -->
+dead_proc_elim__eliminate_procs(_, [], _, _, _, _, ProcTable, ProcTable) --> [].
+dead_proc_elim__eliminate_procs(PredId, [ProcId | ProcIds], Needed, Keep, Name,
+		Arity, ProcTable0, ProcTable) -->
 	(
 		( { set__member(PredId - ProcId, Needed) }
 		; { Keep = yes(ProcId) }
@@ -290,7 +301,7 @@ dead__eliminate_procs(PredId, [ProcId | ProcIds], Needed, Keep, Name, Arity,
 		),
 		{ map__delete(ProcTable0, ProcId, ProcTable1) }
 	),
-	dead__eliminate_procs(PredId, ProcIds, Needed, Keep, Name, Arity,
-		ProcTable1, ProcTable).
+	dead_proc_elim__eliminate_procs(PredId, ProcIds, Needed, Keep, Name,
+		Arity, ProcTable1, ProcTable).
 
 %-----------------------------------------------------------------------------%

@@ -10,62 +10,8 @@
 % This module defines a series of predicates that operate on the
 % abstract 'exprn_info' structure which maintains information about
 % the contents of registers, and manages the cached expressions for
-% variables. These predicates are:
-%
-%	code_exprn__init_state(Arguments, Varset, Opts, ExprnInfo)
-%		which produces an initial state of the ExprnInfo given
-%		an association list of variables and lvalues. The initial
-%		state places the given variables at their corresponding
-%		locations. The Varset parameter contains a mapping from
-%		variables to names, which is used when code is generated
-%		to provide meaningful comments. Opts gives the table of
-%		options; this is used to decide what expressions are
-%		considered constants.
-%
-%	code_exprn__clobber_regs(CriticalVars, ExprnInfo0, ExprnInfo)
-%		which modifies the state ExprnInfo0 to produce ExprnInfo
-%		in which all variables stored in registers are clobbered.
-%		If any variables in CriticalVars are stored only in
-%		registers, and are not stored on the stack, then this
-%		predicate will abort.
-%
-%	code_exprn__set_var_location(Var, Lval, ExprnInfo0, ExprnInfo)
-%		which modifies ExprnInfo0 to produce ExprnInfo in which
-%		Var is *magically* stored in Lval.
-%
-%	code_exprn__var_becomes_dead(Var, ExprnInfo0, ExprnInfo)
-%		which frees any code generator resources used by Var
-%		in ExprnInfo0 to produce ExprnInfo (in the implementation,
-%		any cached expressions which still need those resources
-%		will inherit them appropriately).
-%
-%	code_exprn__cache_exprn(Var, Rval, ExprnInfo0, ExprnInfo)
-%		which produces a modified ExprnInfo0, ExprnInfo
-%		which indicates that when a value of Var is needed,
-%		code to evaluate Rval should be produced.
-%
-%	code_exprn__place_var(Var, Lval, Code, ExprnInfo0, ExprnInfo)
-%		which produces Code and a modified version of ExprnInfo0,
-%		ExprnInfo which places the value of Var in Lval.
-%
-%	code_exprn__produce_var(Var, Rval, Code, ExprnInfo0, ExprnInfo)
-%		which produces a code fragment Code to evaluate Var and
-%		provide it as Rval (which may be a const, etc, or an lval).
-%
-%	code_exprn__acquire_reg(Reg, ExprnInfo0, ExprnInfo)
-%		which finds an unused register and marks it as 'in use'.
-%		
-%	code_exprn__release_reg(Reg, ExprnInfo, ExprnInfo)
-%		which marks a previously acquired reg and releases it so
-%		that it can be reused.
-%
-%	code_exprn__lock_reg(Reg, ExprnInfo, ExprnInfo)
-%		which prevents a register from being reused, even if
-%		there are no variables refering to it.
-%
-%	code_exprn__unlock_reg(Reg, ExprnInfo0, ExprnInfo)
-%		which undoes the previous operation.
-%
+% variables.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -77,12 +23,33 @@
 
 :- type exprn_info.
 
+%	code_exprn__init_state(Arguments, Varset, Opts, ExprnInfo)
+%		Produces an initial state of the ExprnInfo given
+%		an association list of variables and lvalues. The initial
+%		state places the given variables at their corresponding
+%		locations. The Varset parameter contains a mapping from
+%		variables to names, which is used when code is generated
+%		to provide meaningful comments. Opts gives the table of
+%		options; this is used to decide what expressions are
+%		considered constants.
+
 :- pred code_exprn__init_state(assoc_list(var, rval), varset, option_table,
 	exprn_info).
 :- mode code_exprn__init_state(in, in, in, out) is det.
 
+%	code_exprn__clobber_regs(CriticalVars, ExprnInfo0, ExprnInfo)
+%		Modifies the state ExprnInfo0 to produce ExprnInfo
+%		in which all variables stored in registers are clobbered.
+%		If any variables in CriticalVars are stored only in
+%		registers, and are not stored on the stack, then this
+%		predicate will abort.
+
 :- pred code_exprn__clobber_regs(list(var), exprn_info, exprn_info).
 :- mode code_exprn__clobber_regs(in, in, out) is det.
+
+%	code_exprn__set_var_location(Var, Lval, ExprnInfo0, ExprnInfo)
+%		Modifies ExprnInfo0 to produce ExprnInfo in which
+%		Var is *magically* stored in Lval.
 
 :- pred code_exprn__set_var_location(var, lval, exprn_info, exprn_info).
 :- mode code_exprn__set_var_location(in, in, in, out) is det.
@@ -90,21 +57,51 @@
 :- pred code_exprn__maybe_set_var_location(var, lval, exprn_info, exprn_info).
 :- mode code_exprn__maybe_set_var_location(in, in, in, out) is det.
 
+%	code_exprn__var_becomes_dead(Var, ExprnInfo0, ExprnInfo)
+%		Frees any code generator resources used by Var
+%		in ExprnInfo0 to produce ExprnInfo (in the implementation,
+%		any cached expressions which still need those resources
+%		will inherit them appropriately).
+
 :- pred code_exprn__var_becomes_dead(var, exprn_info, exprn_info).
 :- mode code_exprn__var_becomes_dead(in, in, out) is det.
+
+%	code_exprn__cache_exprn(Var, Rval, ExprnInfo0, ExprnInfo)
+%		Produces a modified ExprnInfo0, ExprnInfo
+%		which indicates that when a value of Var is needed,
+%		code to evaluate Rval should be produced.
 
 :- pred code_exprn__cache_exprn(var, rval, exprn_info, exprn_info).
 :- mode code_exprn__cache_exprn(in, in, in, out) is det.
 
+%	code_exprn__place_var(Var, Lval, Code, ExprnInfo0, ExprnInfo)
+%		Produces Code and a modified version of ExprnInfo0,
+%		ExprnInfo which places the value of Var in Lval.
+
 :- pred code_exprn__place_var(var, lval, code_tree, exprn_info, exprn_info).
 :- mode code_exprn__place_var(in, in, out, in, out) is det.
+
+%	code_exprn__produce_var(Var, Rval, Code, ExprnInfo0, ExprnInfo)
+%		Produces a code fragment Code to evaluate Var and
+%		provide it as Rval (which may be a const, etc, or an lval).
 
 :- pred code_exprn__produce_var(var, rval, code_tree, exprn_info, exprn_info).
 :- mode code_exprn__produce_var(in, out, out, in, out) is det.
 
+%	code_exprn__produce_var(Var, Rval, Code, ExprnInfo0, ExprnInfo)
+%		Produces a code fragment Code to evaluate Var and
+%		provide it as an Rval of the form lval(reg(_)).
+
 :- pred code_exprn__produce_var_in_reg(var, rval, code_tree,
 						exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg(in, out, out, in, out) is det.
+
+%	code_exprn__acquire_reg(Reg, ExprnInfo0, ExprnInfo)
+%		Finds an unused register and marks it as 'in use'.
+%
+%	code_exprn__release_reg(Reg, ExprnInfo, ExprnInfo)
+%		Marks a previously acquired reg and releases it so
+%		that it can be reused.
 
 :- pred code_exprn__acquire_reg(reg, exprn_info, exprn_info).
 :- mode code_exprn__acquire_reg(out, in, out) is det.
@@ -112,14 +109,28 @@
 :- pred code_exprn__release_reg(reg, exprn_info, exprn_info).
 :- mode code_exprn__release_reg(in, in, out) is det.
 
+%	XXX These should be local, or their function should be folded into
+%	acquire/release.
+%
+%	code_exprn__lock_reg(Reg, ExprnInfo, ExprnInfo)
+%		Prevents a register from being reused, even if
+%		there are no variables refering to it.
+%
+%	code_exprn__unlock_reg(Reg, ExprnInfo0, ExprnInfo)
+%		Undoes a lock operation.
+
 :- pred code_exprn__lock_reg(reg, exprn_info, exprn_info).
 :- mode code_exprn__lock_reg(in, in, out) is det.
 
 :- pred code_exprn__unlock_reg(reg, exprn_info, exprn_info).
 :- mode code_exprn__unlock_reg(in, in, out) is det.
 
-:- pred code_exprn__get_varlocs(map(var, set(rval)), exprn_info, exprn_info).
-:- mode code_exprn__get_varlocs(out, in, out) is det.
+%	code_exprn__get_varlocs(ExprnInfo, Locations)
+%		Returns a map from each variable that occurs in ExprnInfo to
+%		the set of locations (really rvals) in which it may be found.
+
+:- pred code_exprn__get_varlocs(exprn_info, map(var, set(rval))).
+:- mode code_exprn__get_varlocs(in, out) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -179,11 +190,11 @@ code_exprn__init_state_2([V - L|Rest], Vars0, Vars, Regs0, Regs) :-
 
 %------------------------------------------------------------------------------%
 
-code_exprn__get_varlocs(Locations) -->
-	code_exprn__get_vars(Vars),
-	{ map__to_assoc_list(Vars, VarList) },
-	{ map__init(Locations0) },
-	{ code_exprn__repackage_locations(VarList, Locations0, Locations) }.
+code_exprn__get_varlocs(ExprnInfo, Locations) :-
+	code_exprn__get_vars(Vars, ExprnInfo, _),
+	map__to_assoc_list(Vars, VarList),
+	map__init(Locations0),
+	code_exprn__repackage_locations(VarList, Locations0, Locations).
 
 :- pred code_exprn__repackage_locations(assoc_list(var, var_stat),
 			map(var, set(rval)), map(var, set(rval))).
@@ -803,39 +814,122 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 	->
 		{ error("code_exprn__place_var: cached exprn with no vars!") }
 	;
-		code_exprn__get_options(ExprnOpts),
-		{ code_exprn__expr_is_constant(Exprn0, Vars0,
-						ExprnOpts, Exprn) }
-	->
-			% move stuff out of the way
-			% Since Exprn is a constant, it can't refer
-			% to the variable(s) being moved out of Lval.
-		code_exprn__clear_lval(Lval, Exprn, _Exprn, ClearCode),
-			% reserve the register
-		code_exprn__add_lval_reg_dependencies(Lval),
-		{ set__list_to_set([Exprn, lval(Lval)], Rvals) },
-		{ Stat = evaled(Rvals) },
-		code_exprn__get_var_name(Var, VarName),
-		{ string__append("Assigning from ", VarName, Comment) },
-		{ ExprnCode = node([
-			assign(Lval, Exprn) - Comment
-		]) }
-	;
-		% if the variable already has its value stored in the
-		% right place, we don't need to generate any code
+			% if the variable already has its value stored in the
+			% right place, we don't need to generate any code
 		{ Exprn0 = var(Var1) },
-		code_exprn__get_vars(Vars0),
 		{ map__search(Vars0, Var1, Stat0) },
 		{ Stat0 = evaled(VarRvals) },
 		{ set__member(lval(Lval), VarRvals) }
 	->
-		{ ClearCode = empty },
-		{ ExprnCode = empty },
+			% but we do need to reserve the registers
+			% needed to access Lval
 		code_exprn__add_lval_reg_dependencies(Lval),
-		{ set__singleton_set(LvalSet, lval(Lval)) },
-		{ Stat = evaled(LvalSet) }
+		{ map__set(Vars0, Var, Stat0, Vars) },
+		code_exprn__set_vars(Vars),
+		{ Code = empty }
 	;
+			% If the value of the variable is a constant or
+			% is built up by operations involving only constants,
+			% get the constant form and assign that
+		code_exprn__get_options(ExprnOpts),
+		{ code_exprn__expr_is_constant(Exprn0, Vars0, ExprnOpts,
+			Exprn) }
+	->
 			% move stuff out of the way
+			% Since Exprn is a constant, it can't refer
+			% to the variable(s) being moved out of Lval.
+		code_exprn__clear_lval(Lval, Exprn, _, ClearCode),
+			% reserve the registers needed to access Lval
+		code_exprn__add_lval_reg_dependencies(Lval),
+		{ set__list_to_set([Exprn, lval(Lval)], Rvals) },
+		{ Stat = evaled(Rvals) },
+		code_exprn__get_vars(Vars1),
+		{ map__set(Vars1, Var, Stat, Vars) },
+		code_exprn__set_vars(Vars),
+		code_exprn__get_var_name(Var, VarName),
+		{ string__append("Assigning from ", VarName, Comment) },
+		{ ExprnCode = node([
+			assign(Lval, Exprn) - Comment
+		]) },
+		{ Code = tree(ClearCode, ExprnCode) }
+	;
+		code_exprn__place_expression(Exprn0, Var, Lval, Code)
+	).
+
+code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
+	code_exprn__get_vars(Vars0),
+	(
+		{ set__member(lval(Lval), Rvals0) }
+	->
+		{ Stat = evaled(Rvals0) },
+		code_exprn__get_vars(Vars1),
+		{ map__set(Vars1, Var, Stat, Vars) },
+		code_exprn__set_vars(Vars),
+		{ Code = empty }
+	;
+		{ set__to_sorted_list(Rvals0, RvalList) },
+		{ code_exprn__select_rval(RvalList, Rval0) },
+		{
+			Rval0 = lval(reg(_))
+		;
+			Rval0 = lval(stackvar(_))
+		;
+			Rval0 = lval(framevar(_))
+		}
+	->
+			% move stuff out of the way XXX
+		code_exprn__clear_lval(Lval, Rval0, Rval, ClearCode),
+			% reserve the register XXX
+		code_exprn__add_lval_reg_dependencies(Lval),
+		code_exprn__get_var_rvals(Var, Rvals1),
+		{ set__insert(Rvals1, lval(Lval), Rvals) },
+		{ Stat = evaled(Rvals) },
+		code_exprn__get_var_name(Var, VarName),
+		code_exprn__construct_code(Lval, VarName, Rval, ExprnCode),
+		code_exprn__get_vars(Vars1),
+		{ map__set(Vars1, Var, Stat, Vars) },
+		code_exprn__set_vars(Vars),
+		{ Code = tree(ClearCode, ExprnCode) }
+	;
+		{ set__to_sorted_list(Rvals0, RvalList0) },
+		code_exprn__get_options(ExprnOpts),
+		{ code_exprn__member_expr_is_constant(RvalList0,
+				Vars0, ExprnOpts, Rval0) }
+	->
+			% XXX much in common with case above
+			% move stuff out of the way
+		code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),
+			% reserve the register
+		code_exprn__add_lval_reg_dependencies(Lval),
+		code_exprn__get_var_rvals(Var, Rvals1),
+		{ set__insert(Rvals1, lval(Lval), Rvals) },
+		{ Stat = evaled(Rvals) },
+		code_exprn__get_var_name(Var, VarName),
+		{ string__append("Assigning from ", VarName, Comment) },
+		{ ExprnCode = node([
+			assign(Lval, Rval1) - Comment
+		]) },
+		code_exprn__get_vars(Vars1),
+		{ map__set(Vars1, Var, Stat, Vars) },
+		code_exprn__set_vars(Vars),
+		{ Code = tree(ClearCode, ExprnCode) }
+	;
+		{ set__to_sorted_list(Rvals0, RvalList) },
+		{ code_exprn__select_rval(RvalList, Rval) },
+		code_exprn__place_expression(Rval, Var, Lval, Code)
+	).
+
+:- pred code_exprn__place_expression(rval, var, lval, code_tree,
+						exprn_info, exprn_info).
+:- mode code_exprn__place_expression(in, in, in, out, in, out) is det.
+
+code_exprn__place_expression(Exprn0, Var, Lval, Code) -->
+	(
+%		{ Rval = create(Tag, Rvals, _Label) }
+%	->
+%	;
+			% move stuff out of the way, and heed any changes
+			% this produces in the form of the expression
 		code_exprn__clear_lval(Lval, Exprn0, Exprn1, ClearCode),
 			% reserve the register
 		code_exprn__add_lval_reg_dependencies(Lval),
@@ -849,93 +943,12 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 		{ Stat = evaled(Rvals) },
 		code_exprn__get_var_name(Var, VarName),
 		code_exprn__construct_code(Lval, VarName, Exprn, Code1),
-		{ ExprnCode = tree(Code0, Code1) }
-	),
-	code_exprn__get_vars(Vars1),
-	{ map__set(Vars1, Var, Stat, Vars) },
-	code_exprn__set_vars(Vars),
-	{ Code = tree(ClearCode, ExprnCode) }.
-
-code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
-	code_exprn__get_vars(Vars0),
-	(
-		{ set__member(lval(Lval), Rvals0) }
-	->
-		{ ClearCode = empty },
-		{ ExprnCode = empty },
-		{ Stat = evaled(Rvals0) }
-	;
-		{ set__to_sorted_list(Rvals0, RvalList) },
-		{ code_exprn__select_rval(RvalList, Rval0) },
-		{
-			Rval0 = lval(reg(_))
-		;
-			Rval0 = lval(stackvar(_))
-		;
-			Rval0 = lval(framevar(_))
-		}
-	->
-			% move stuff out of the way
-		code_exprn__clear_lval(Lval, Rval0, Rval, ClearCode),
-			% reserve the register
-		code_exprn__add_lval_reg_dependencies(Lval),
-		code_exprn__get_var_rvals(Var, Rvals1),
-		{ set__insert(Rvals1, lval(Lval), Rvals) },
-		{ Stat = evaled(Rvals) },
-		code_exprn__get_var_name(Var, VarName),
-		code_exprn__construct_code(Lval, VarName, Rval, ExprnCode)
-	;
-		{set__to_sorted_list(Rvals0, RvalList0) },
-		code_exprn__get_options(ExprnOpts),
-		{ code_exprn__member_expr_is_constant(RvalList0,
-				Vars0, ExprnOpts, Rval0) }
-	->
-			% move stuff out of the way
-		code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),
-			% reserve the register
-		code_exprn__add_lval_reg_dependencies(Lval),
-		code_exprn__get_var_rvals(Var, Rvals1),
-		{ set__insert(Rvals1, lval(Lval), Rvals) },
-		{ Stat = evaled(Rvals) },
-		code_exprn__get_var_name(Var, VarName),
-		{ string__append("Assigning from ", VarName, Comment) },
-		{ ExprnCode = node([
-			assign(Lval, Rval1) - Comment
-		]) }
-	;
-			% choose one of the rvals from
-			% the old set, to avoid the
-			% potential issue-slot conflict
-			% unless the rval is a create,
-			% which is non-atomic so we must
-			% choose from the new set.
-		{ set__to_sorted_list(Rvals0, RvalList) },
-		{ code_exprn__select_rval(RvalList, Rval0) },
-			% move stuff out of the way
-		code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),
-			% reserve the register
-		code_exprn__add_lval_reg_dependencies(Lval),
-		(
-			{ Rval1 = create(_, _, _) }
-		->
-			code_exprn__get_var_rvals(Var, Rvals7),
-			{ set__to_sorted_list(Rvals7, RvalList7) },
-			{ code_exprn__select_rval(RvalList7, Rval) }
-		;
-			{ Rval = Rval1 }
-		),
-			% Insert the destination into the
-			% rvals for the variable
-		code_exprn__get_var_rvals(Var, Rvals1),
-		{ set__insert(Rvals1, lval(Lval), Rvals) },
-		{ Stat = evaled(Rvals) },
-		code_exprn__get_var_name(Var, VarName),
-		code_exprn__construct_code(Lval, VarName, Rval, ExprnCode)
-	),
-	code_exprn__get_vars(Vars1),
-	{ map__set(Vars1, Var, Stat, Vars) },
-	code_exprn__set_vars(Vars),
-	{ Code = tree(ClearCode, ExprnCode) }.
+		code_exprn__get_vars(Vars1),
+		{ map__set(Vars1, Var, Stat, Vars) },
+		code_exprn__set_vars(Vars),
+		{ ExprnCode = tree(Code0, Code1) },
+		{ Code = tree(ClearCode, ExprnCode) }
+	).
 
 %------------------------------------------------------------------------------%
 
