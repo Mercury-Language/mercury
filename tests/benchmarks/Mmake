@@ -29,6 +29,8 @@ depend: $(DEPENDS)
 
 check: $(EXPS) $(OUTS) $(RESS)
 
+outs: $(OUTS)
+
 cs: $(CS)
 
 ss: $(SS)
