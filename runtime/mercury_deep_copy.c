@@ -42,6 +42,9 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 #undef  copy_type_info
 #define copy_type_info	deep_copy_type_info
 
+#undef  copy_typeclass_info
+#define copy_typeclass_info	deep_copy_typeclass_info
+
 #undef  leave_forwarding_pointer
 #define leave_forwarding_pointer(DataPtr, NewData)
 
@@ -69,6 +72,9 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
 #undef  copy_type_info
 #define copy_type_info	agc_deep_copy_type_info
+
+#undef  copy_typeclass_info
+#define copy_typeclass_info	agc_deep_copy_typeclass_info
 
 #ifdef MR_DEBUG_AGC_FORWARDING
   #define FORWARD_DEBUG_MSG(Msg, Data)	\

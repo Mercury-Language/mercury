@@ -78,10 +78,7 @@
 
 	% univ_value(Univ):
 	%	returns the value of the object stored in Univ.
-	%
-	% Warning: support for existential types is still experimental.
-	%
-:- some([T], func univ_value(univ) = T).
+:- some [T] func univ_value(univ) = T.
 
 %-----------------------------------------------------------------------------%
 
@@ -271,10 +268,7 @@
 	% inverse to the function type_of/1.  It constrains the type
 	% of the first argument to be the type represented by the
 	% second argument.
-	%
-	% Warning: support for existential types is still experimental.
-	%
-:- some([T], pred has_type(T::unused, type_info::in) is det).
+:- some [T] pred has_type(T::unused, type_info::in) is det.
 
 	% type_name(Type) returns the name of the specified type
 	% (e.g. type_name(type_of([2,3])) = "list:list(int)").
@@ -1797,7 +1791,7 @@ ML_get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 	/*
 	** ML_typecheck_arguments:
 	**
-	** Given a list of univs (`arg_list'), and an vector of
+	** Given a list of univs (`arg_list'), and a vector of
 	** type_infos (`arg_vector'), checks that they are all of the
 	** same type; if so, returns TRUE, otherwise returns FALSE;
 	** `arg_vector' may contain type variables, these
@@ -1825,7 +1819,6 @@ ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
 		list_arg_type_info = MR_field(MR_mktag(0),
 			MR_list_head(arg_list), UNIV_OFFSET_FOR_TYPEINFO);
 
-		/* XXX need to handle existential types */
 		arg_type_info = (Word) MR_create_type_info(
 			(Word *) type_info, (Word *) arg_vector[i]);
 
@@ -2090,6 +2083,7 @@ ML_get_num_functors(Word type_info)
 typedef struct ML_Expand_Info_Struct {
 	ConstString functor;
 	int arity;
+	int num_extra_args;
 	Word *argument_vector;
 	Word *type_info_vector;
 	bool non_canonical_type;
@@ -2184,6 +2178,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
                 layout_vector_for_tag, data_word);
             info->arity = 0;
+            info->num_extra_args = 0;
             info->argument_vector = NULL;
             info->type_info_vector = NULL;	
             break;
@@ -2197,6 +2192,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
                     layout_vector_for_tag, data_value);
                 info->arity = 0;
+                info->num_extra_args = 0;
                 info->argument_vector = NULL;
                 info->type_info_vector = NULL;	
                 break;
@@ -2225,6 +2221,9 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     
                 info->arity =
 	        MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(functor_descriptor);
+
+                info->num_extra_args = 
+		    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_VARCOUNT(functor_descriptor);
 	
                 if (info->need_functor) {
                     MR_make_aligned_string(info->functor, 
@@ -2243,9 +2242,12 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
                         arg_pseudo_type_info = (Word *)
                             MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
-				    functor_descriptor)[i];
-                        info->type_info_vector[i] = (Word) MR_create_type_info(
-                            type_info, arg_pseudo_type_info);
+				    	functor_descriptor)[i];
+                        info->type_info_vector[i] = 
+			    (Word) MR_create_type_info_maybe_existq(
+                                	type_info, arg_pseudo_type_info, 
+					(Word *) data_value,
+					functor_descriptor);
                     }
                 }
                 break;
@@ -2263,6 +2265,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
             info->arity = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(
 	    	functor_descriptor);
+            info->num_extra_args = 0;
 	
             if (info->need_functor) {
                 MR_make_aligned_string(info->functor, 
@@ -2287,8 +2290,11 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                     arg_pseudo_type_info = (Word *)
                         MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
 				functor_descriptor)[i];
-                    info->type_info_vector[i] = (Word) MR_create_type_info(
-                        type_info, arg_pseudo_type_info);
+                    info->type_info_vector[i] = 
+		    	(Word) MR_create_type_info_maybe_existq(
+                            type_info, arg_pseudo_type_info, 
+					(Word *) data_value,
+					functor_descriptor);
                 }
             }
             break;
@@ -2296,7 +2302,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
         case MR_TYPECTOR_REP_EQUIV: {
             Word *equiv_type_info;
 
-			equiv_type_info = MR_create_type_info(type_info, 
+			equiv_type_info = MR_create_type_info(
+				type_info, 
 				(Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(
 					layout_vector_for_tag));
 			ML_expand(equiv_type_info, data_word_ptr, info);
@@ -2305,7 +2312,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
         case MR_TYPECTOR_REP_EQUIV_VAR: {
             Word *equiv_type_info;
 
-			equiv_type_info = MR_create_type_info(type_info, 
+			equiv_type_info = MR_create_type_info(
+				type_info, 
 				(Word *) layout_vector_for_tag);
 			ML_expand(equiv_type_info, data_word_ptr, info);
             break;
@@ -2325,6 +2333,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_CHAR:
@@ -2340,6 +2349,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_FLOAT:
@@ -2358,6 +2368,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_STRING:
@@ -2374,6 +2385,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_PRED:
@@ -2383,6 +2395,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_UNIV:
@@ -2409,6 +2422,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_TYPEINFO:
@@ -2419,6 +2433,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
@@ -2429,6 +2444,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_ARRAY:
@@ -2439,6 +2455,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_SUCCIP:
@@ -2448,6 +2465,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_HP:
@@ -2457,6 +2475,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_CURFR:
@@ -2466,6 +2485,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_MAXFR:
@@ -2475,6 +2495,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_REDOFR:
@@ -2484,6 +2505,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_REDOIP:
@@ -2493,6 +2515,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_TRAIL_PTR:
@@ -2502,6 +2525,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_TICKET:
@@ -2511,6 +2535,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->argument_vector = NULL;
             info->type_info_vector = NULL;
             info->arity = 0;
+            info->num_extra_args = 0;
             break;
 
         case MR_TYPECTOR_REP_UNKNOWN:    /* fallthru */
@@ -2768,7 +2793,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 		}
 			/* Fill in the data */
 		MR_field(MR_mktag(0), Argument, UNIV_OFFSET_FOR_DATA) = 
-			info.argument_vector[i];
+			info.argument_vector[i + info.num_extra_args];
 	}
 
 	/* Free the allocated type_info_vector, since we just copied

@@ -1240,8 +1240,18 @@ stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvals,
 stack_layout__construct_closure_arg_rval(ClosureArg,
 		yes(ArgRval) - ArgRvalType, CNum0, CNum) :-
 	ClosureArg = closure_arg_info(Type, _Inst),
-	base_type_layout__construct_typed_pseudo_type_info(Type, ArgRval,
-		ArgRvalType, CNum0, CNum).
+
+		% For a stack layout, we can treat all type variables as
+		% universally quantified. This is not the argument of a
+		% constructor, so we do not need to distinguish between type
+		% variables that are and aren't in scope; we can take the
+		% variable number directly from the procedure's tvar set.
+	ExistQTvars = [],
+	base_type_layout__max_varint(Max),
+	NumUnivQTvars = Max - 1,
+
+	base_type_layout__construct_typed_pseudo_type_info(Type, 
+		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType, CNum0, CNum).
 
 %---------------------------------------------------------------------------%
 
@@ -1298,7 +1308,17 @@ stack_layout__represent_live_value_type(unwanted, Rval, data_ptr) -->
 stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 		-->
 	stack_layout__get_cell_number(CNum0),
+
+		% For a stack layout, we can treat all type variables as
+		% universally quantified. This is not the argument of a
+		% constructor, so we do not need to distinguish between type
+		% variables that are and aren't in scope; we can take the
+		% variable number directly from the procedure's tvar set.
+	{ ExistQTvars = [] },
+	{ base_type_layout__max_varint(Max) },
+	{ NumUnivQTvars = Max - 1 },
 	{ base_type_layout__construct_typed_pseudo_type_info(Type,
+		NumUnivQTvars, ExistQTvars,
 		Rval, LldsType, CNum0, CNum) },
 	stack_layout__set_cell_number(CNum).
 

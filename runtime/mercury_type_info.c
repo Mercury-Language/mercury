@@ -154,9 +154,26 @@ END_MODULE
 	** which does much the same thing, only allocating using MR_GC_malloc()
 	** instead of on the Mercury heap.
 	*/
-
 Word * 
 MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
+{
+	return MR_create_type_info_maybe_existq(term_type_info, 
+		arg_pseudo_type_info, NULL, NULL);
+}
+
+	/*
+	** MR_create_type_info_maybe_existq():
+	**
+	** The same as MR_create_type_info except that the type-info being
+	** created may be for an existentially typed argument of a constructor.
+	** In order to handle this, it also takes the data value from which
+	** the values whose pseudo type-info we are looking at was taken, as
+	** well as the functor descriptor for that functor.
+	*/
+Word * 
+MR_create_type_info_maybe_existq(Word *term_type_info, 
+	Word *arg_pseudo_type_info, Word *data_value, 
+	Word *functor_descriptor)
 {
 	int i, arity, extra_args;
 	MR_TypeCtorInfo type_ctor_info;
@@ -168,8 +185,9 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	** If so, then substitute it's value, and then we're done.
 	*/
 	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		arg_type_info = (Word *) 
-			term_type_info[(Word) arg_pseudo_type_info];
+
+		arg_type_info = MR_get_arg_type_info(term_type_info, 
+			arg_pseudo_type_info, data_value, functor_descriptor);
 
 		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
 			fatal_error("MR_create_type_info: "
@@ -202,10 +220,11 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	*/
 	type_info = NULL;
 	for (i = extra_args; i < arity + extra_args; i++) {
-		arg_type_info = MR_create_type_info(term_type_info,
-				(Word *) arg_pseudo_type_info[i]);
+		arg_type_info = MR_create_type_info_maybe_existq(term_type_info,
+				(Word *) arg_pseudo_type_info[i],
+				data_value, functor_descriptor);
 		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
-			fatal_error("MR_create_type_info: "
+			fatal_error("MR_create_type_info_maybe_existq: "
 				"unbound type variable");
 		}
 		if (arg_type_info != (Word *) arg_pseudo_type_info[i]) {
@@ -228,6 +247,65 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	} else {
 		return type_info;
 	}
+}
+
+Word *
+MR_get_arg_type_info(Word *term_type_info, 
+	Word *arg_pseudo_type_info, Word *data_value, 
+	Word *functor_descriptor)
+{
+	Word *arg_type_info;
+
+	int num_univ_type_infos;
+
+	num_univ_type_infos =
+		MR_TYPEINFO_GET_TYPE_CTOR_INFO(term_type_info)->arity;
+
+	if ((Word) arg_pseudo_type_info <= num_univ_type_infos) {
+
+		/* This is a universally quantified type variable */
+
+		arg_type_info = (Word *) 
+			term_type_info[(Word) arg_pseudo_type_info];
+	} else {
+
+		/* This is an existentially quantified type variable */
+
+		Word type_info_locn;
+
+		type_info_locn = ((Word *) 
+			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TYPE_INFO_LOCNS(
+			functor_descriptor))
+				[(Integer)arg_pseudo_type_info 
+				- num_univ_type_infos - 1];
+
+		if (MR_TYPE_INFO_LOCN_IS_INDIRECT(type_info_locn)) {
+
+			/*
+			** This is indirect; the type-info
+			** is inside a typeclass-info 
+			*/
+
+			int typeinfo_number;
+			int arg_number;
+
+			typeinfo_number = MR_TYPE_INFO_LOCN_INDIRECT_GET_TYPEINFO_NUMBER(type_info_locn);
+
+			arg_number = MR_TYPE_INFO_LOCN_INDIRECT_GET_ARG_NUMBER(type_info_locn);
+
+			arg_type_info = 
+				MR_typeclass_info_type_info(
+					data_value[arg_number],
+					typeinfo_number);
+		} else {
+			/* This is direct */
+
+			arg_type_info = 
+				(Word *) data_value[MR_TYPE_INFO_LOCN_DIRECT_GET_TYPEINFO_NUMBER(type_info_locn)];
+		}
+	}
+
+	return arg_type_info;
 }
 
 /*
@@ -434,6 +512,22 @@ Word *
 MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	MR_MemoryList *allocated) 
 {
+	return MR_make_type_info_maybe_existq(term_type_info, 
+		arg_pseudo_type_info, NULL, NULL, allocated);
+}
+
+	/*
+	** The same as MR_make_type_info except that the type-info being
+	** created may be for an existentially typed argument of a constructor.
+	** In order to handle this, it also takes the data value from which
+	** the values whose pseudo type-info we are looking at was taken, as
+	** well as the functor descriptor for that functor.
+	*/
+Word *
+MR_make_type_info_maybe_existq(const Word *term_type_info, 
+	const Word *arg_pseudo_type_info, Word *data_value, 
+	Word *functor_descriptor, MR_MemoryList *allocated) 
+{
 	int i, arity, extra_args;
 	MR_TypeCtorInfo type_ctor_info;
 	Word *arg_type_info;
@@ -444,8 +538,10 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	** If so, then substitute its value, and then we're done.
 	*/
 	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		arg_type_info = (Word *) 
-			term_type_info[(Word) arg_pseudo_type_info];
+
+		arg_type_info = MR_get_arg_type_info(term_type_info, 
+			arg_pseudo_type_info, data_value, functor_descriptor);
+
 		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
 			fatal_error("make_type_info: "
 				"unbound type variable");

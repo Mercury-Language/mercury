@@ -632,6 +632,9 @@ typedef struct {
 ** 	...
 **	ConstString	functorname;
 **	Word		tagbits;
+**	Integer		num_extra_args; 	for exist quant args
+**	Word		locn1;			type info locations
+**	...
 */
 } MR_TypeLayout_FunctorDescriptor;
 
@@ -643,6 +646,12 @@ typedef struct {
 		((Integer) 1)
 #define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_TAG	\
 		((Integer) 2)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_EXIST_TYPEINFO_VARCOUNT \
+		((Integer) 3)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_EXIST_TYPECLASSINFO_VARCOUNT \
+		((Integer) 4)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_TYPE_INFO_LOCNS \
+		((Integer) 5)
 
 #define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V)			\
 		((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARITY])
@@ -657,6 +666,31 @@ typedef struct {
 #define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TAG(V)			\
 	((Word) ((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V) +	\
 		MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_TAG]))
+
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPEINFO_VARCOUNT(V)	\
+	((Word) ((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V) +	\
+		MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_EXIST_TYPEINFO_VARCOUNT]))
+
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPECLASSINFO_VARCOUNT(V)	\
+	((Word) ((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V) +	\
+		MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_EXIST_TYPECLASSINFO_VARCOUNT]))
+
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_VARCOUNT(V)	\
+		MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPEINFO_VARCOUNT(V) + MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_EXIST_TYPECLASSINFO_VARCOUNT(V)
+
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TYPE_INFO_LOCNS(V)	  \
+	(((Word *)V) + 							  \
+		MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY((Word *)V) + \
+		MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_TYPE_INFO_LOCNS)
+
+	/*
+	** Macros for handling type info locations
+	*/
+#define MR_TYPE_INFO_LOCN_IS_INDIRECT(t) ((t) & (Unsigned) 1)
+#define MR_TYPE_INFO_LOCN_INDIRECT_GET_TYPEINFO_NUMBER(t) (int) ((t) >> 7)
+#define MR_TYPE_INFO_LOCN_INDIRECT_GET_ARG_NUMBER(t) \
+	(int) (((t) >> 1) & (Unsigned) 63)
+#define MR_TYPE_INFO_LOCN_DIRECT_GET_TYPEINFO_NUMBER(t) (int) ((t) >> 1)
 
 	/*
 	** Macros for dealing with shared remote vectors.
@@ -742,8 +776,12 @@ typedef struct {
 
 #define	MR_typeclass_info_instance_arity(tci) \
 	((Integer)(*(Word **)(tci))[0])
+#define	MR_typeclass_info_num_superclasses(tci) \
+	((Integer)(*(Word **)(tci))[1])
+#define	MR_typeclass_info_num_type_infos(tci) \
+	((Integer)(*(Word **)(tci))[2])
 #define	MR_typeclass_info_class_method(tci, n) \
-	((Code *)(*(Word **)tci)[(n)])
+	((Code *)(*(Word **)tci)[(n+2)])
 #define	MR_typeclass_info_arg_typeclass_info(tci, n) \
 	(((Word *)(tci))[(n)])
 
@@ -760,6 +798,8 @@ typedef struct {
 /*---------------------------------------------------------------------------*/
 
 Word * MR_create_type_info(Word *, Word *);
+Word * MR_create_type_info_maybe_existq(Word *, Word *, Word *, Word *);
+Word * MR_get_arg_type_info(Word *, Word *, Word *, Word *);
 int MR_compare_type_info(Word, Word);
 Word MR_collapse_equivalences(Word);
 
@@ -777,6 +817,9 @@ typedef struct MR_MemoryCellNode *MR_MemoryList;
 
 Word * MR_make_type_info(const Word *term_type_info, 
 	const Word *arg_pseudo_type_info, MR_MemoryList *allocated);
+Word * MR_make_type_info_maybe_existq(const Word *term_type_info, 
+	const Word *arg_pseudo_type_info, Word *data_value, 
+	Word *functor_descriptor, MR_MemoryList *allocated) ;
 void MR_deallocate(MR_MemoryList allocated_memory_cells);
 
 /*---------------------------------------------------------------------------*/

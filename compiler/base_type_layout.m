@@ -227,14 +227,26 @@
 		list(comp_gen_c_data)).
 :- mode base_type_layout__generate_llds(in, out, out) is det.
 
-	% Given a Mercury type, this predicate returns an rval giving the
-	% pseudo type info for that type, plus the llds_type of that rval.
-	% The int arguments are label numbers for generating `create' rvals
-	% with.
+	% base_type_layout__construct_typed_pseudo_type_info(Type,
+	% 	NumUnivQTvars, ExistQVars, Rval, LldsType, LabelNum0, LabelNum)
+	%
+	% Given a Mercury type (`Type'), this predicate returns an rval (`Rval')
+	% giving the pseudo type info for that type, plus the llds_type
+	% (`LldsType') of that rval. NumUnivQTvars is the number of universally
+	% quantified type variables of the enclosing type and ExistQVars is the
+	% list of existentially quantified type variables of the constructor in
+	% question.
+	% The int arguments (`LabelNum0' and `LabelNum') are label numbers for
+	% generating `create' rvals with.
 :- pred base_type_layout__construct_typed_pseudo_type_info(type,
+	int, existq_tvars,
 	rval, llds_type, int, int).
 :- mode base_type_layout__construct_typed_pseudo_type_info(in,
+	in, in,
 	out, out, in, out) is det.
+
+	% Maximum value of an integer representation of a variable.
+:- pred base_type_layout__max_varint(int::out) is det.
 
 :- implementation.
 
@@ -247,6 +259,7 @@
 	layout_info(
 		module_name,	% module name
 		cons_table,	% ctor table
+		class_table,	% class table
 		int,		% number of tags available
 		int,		% next available label 
 		type_id,	% type_id of type being currently examined
@@ -325,12 +338,13 @@ base_type_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules) :-
 	int__pow(2, NumTagBits, MaxTags),
 	module_info_name(ModuleInfo0, ModuleName),
 	module_info_ctors(ModuleInfo0, ConsTable),
+	module_info_classes(ModuleInfo0, ClassTable),
 	module_info_get_cell_count(ModuleInfo0, CellCount),
-	LayoutInfo0 = layout_info(ModuleName, ConsTable, MaxTags, CellCount, 
-		unqualified("") - 0, []),
+	LayoutInfo0 = layout_info(ModuleName, ConsTable, ClassTable, 
+		MaxTags, CellCount, unqualified("") - 0, []),
 	base_type_layout__construct_base_type_data(BaseGenInfos, Globals,
 		LayoutInfo0, LayoutInfo),
-	LayoutInfo = layout_info(_, _, _, FinalCellCount, _, CModules),
+	LayoutInfo = layout_info(_, _, _, _, FinalCellCount, _, CModules),
 	module_info_set_cell_count(ModuleInfo0, FinalCellCount, ModuleInfo).
 
 %---------------------------------------------------------------------------%
@@ -484,9 +498,6 @@ base_type_layout__no_tag_indicator(yes, 1).
 base_type_layout__enum_indicator(no, 0).
 base_type_layout__enum_indicator(yes, 1).
 
-	% Maximum value of a integer representation of a variable.
-	
-:- pred base_type_layout__max_varint(int::out) is det.
 base_type_layout__max_varint(1024).
 
 	% Tag values
@@ -717,9 +728,15 @@ base_type_layout__layout_no_tag_vector(SymName, Type, LayoutInfo0,
 	base_type_layout__no_tag_indicator(yes, NoTagIndicator),
 	Rval0 = yes(const(int_const(NoTagIndicator))),
 
+	base_type_layout__get_type_id(LayoutInfo0, _ - NumUnivQTvars),
+
+		% This is a no-tag type so there can't be any existentially
+		% quantified args.
+	ExistQVars0 = [],
+
 		% generate pseudo_type_info
-	base_type_layout__generate_pseudo_type_info(Type, Rval1, LayoutInfo0, 
-		LayoutInfo1),
+	base_type_layout__generate_pseudo_type_info(Type, NumUnivQTvars, 
+		ExistQVars0, Rval1, LayoutInfo0, LayoutInfo1),
 
 		% functor name
 	unqualify_name(SymName, Name),
@@ -739,14 +756,19 @@ base_type_layout__layout_no_tag_vector(SymName, Type, LayoutInfo0,
 	% Tag is 3, rest of word is pointer to pseudo_type_info or
 	% variable number
 
-:- pred base_type_layout__layout_eqv(type, layout_info, 
-		layout_info, list(maybe(rval))).
+:- pred base_type_layout__layout_eqv(type, layout_info, layout_info, 
+	list(maybe(rval))).
 :- mode base_type_layout__layout_eqv(in, in, out, out) is det.
 base_type_layout__layout_eqv(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 
+	base_type_layout__get_type_id(LayoutInfo0, _-NumUnivQTvars),
+
+		% There are no existentially typed args to an equivalence.
+	ExistQVars = [],
+
 		% generate rest of word, remove a level of creates
-	base_type_layout__generate_pseudo_type_info(Type, Rval0, LayoutInfo0, 
-		LayoutInfo1),
+	base_type_layout__generate_pseudo_type_info(Type, NumUnivQTvars,
+		ExistQVars, Rval0, LayoutInfo0, LayoutInfo1),
 	base_type_layout__tag_value_equiv(Tag),
 	( 
 		% If it was a constant (a type variable), then tag it
@@ -905,6 +927,16 @@ base_type_layout__handle_unshared(ConsList, LayoutInfo0, LayoutInfo, Rval) :-
 	%	N pseudo-typeinfos (of the arguments)
 	%	- a string constant (the name of the functor)
 	%	- tag information
+	%	M - the number of extra arguments for type-infos and
+	%	    typeclass-infos of existentially quantified arguments
+	%	The location of each such type-info. (This is a tagged word
+	%	    indicating whether the type-info exists as an argument of
+	%	    the functor in its own right or whether it is nested inside
+	%	    a typeclass-info. If it is the former, the rest of the word
+	%	    just contains the argument number. If the latter, the rest
+	%	    of the word contains two numbers: the argument number of
+	%	    the typeclass-info and the index of the type-info inside
+	%	    it).
 
 :- pred base_type_layout__functor_descriptor(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
@@ -923,14 +955,144 @@ base_type_layout__functor_descriptor([ConsId - ConsTag | _], LayoutInfo0,
 	),
 	base_type_layout__get_cons_args(LayoutInfo0, ConsId, ConsArgs),
 	list__length(ConsArgs, NumArgs),
-	list__map_foldl(base_type_layout__generate_pseudo_type_info,
+
+	base_type_layout__get_type_id(LayoutInfo0, TypeId),
+
+		% XXX we are re-doing work from base_type_layout__get_cons_args
+	base_type_layout__get_cons_table(LayoutInfo0, ConsTable),
+	map__lookup(ConsTable, ConsId, MatchingCons),
+	list__filter(
+		(pred(hlds_cons_defn(_, _, _, TheTypeId, _)::in) is semidet :-
+			TheTypeId = TypeId
+		), MatchingCons, MatchingConsCorrectType),
+
+	(
+		MatchingConsCorrectType = 
+			[hlds_cons_defn(ExistQVars0, Constraints0, _, _, _)]
+	->
+		ExistQVars = ExistQVars0,
+		Constraints = Constraints0
+	;
+		error("base_type_layout__functor_descriptor: no constructor of the correct type!")
+	),
+
+	TypeId = _ - NumUnivQTvars,
+
+	list__map_foldl((pred(C::in, P::out, L0::in, L::out) is det :-
+			base_type_layout__generate_pseudo_type_info(C, 
+				NumUnivQTvars, ExistQVars, P, L0, L)
+		),
 		ConsArgs, PseudoTypeInfos, LayoutInfo0, LayoutInfo1),
 	base_type_layout__encode_cons_tag(ConsTag, ConsTagRvals, LayoutInfo1,
 		LayoutInfo),
+
+	base_type_layout__generate_type_info_locns(ExistQVars, Constraints,
+		Locns, NumExtraTypeInfos, NumExtraTypeClassInfos, LayoutInfo),
+	list__map((pred(Tvar::in, yes(Locn)::out) is det :-
+			map__lookup(Locns, Tvar, Locn)
+		), ExistQVars, ExistQVarLocns),
+
 	list__append([yes(const(int_const(NumArgs))) | PseudoTypeInfos], 
 		[yes(const(string_const(ConsString))) | ConsTagRvals], 
+		EndRvals0),
+	NTypeInfos = yes(const(int_const(NumExtraTypeInfos))), 
+	NTypeClassInfos = yes(const(int_const(NumExtraTypeClassInfos))),
+	list__append(EndRvals0, [NTypeInfos, NTypeClassInfos |ExistQVarLocns], 
 		EndRvals).
 
+:- pred base_type_layout__generate_type_info_locns(list(tvar),
+	list(class_constraint), map(tvar, rval), int, int, layout_info).
+:- mode base_type_layout__generate_type_info_locns(in, in, out, out, out, in) 
+	is det.
+
+base_type_layout__generate_type_info_locns(Tvars, Constraints, Locns, 
+		NUnconstrained, NumConstraints, Info) :-
+	base_type_layout__get_class_table(Info, ClassTable),
+	list__map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)), 
+		Constraints, ConstrainedTvars0),
+	list__condense(ConstrainedTvars0, ConstrainedTvars1),
+	term__vars_list(ConstrainedTvars1, ConstrainedTvars2),
+	list__delete_elems(Tvars, ConstrainedTvars2, UnconstrainedTvars),
+		% We do this to maintain the ordering of the type variables.
+	list__delete_elems(Tvars, UnconstrainedTvars, ConstrainedTvars),
+	map__init(Locns0),
+	list__foldl((pred(T::in, N0 - Ls0::in, N - Ls::out) is det :- 
+			make_direct_typeinfo_index(N0, Locn),
+			map__det_insert(Ls0, T, Locn, Ls),
+			N = N0 + 1
+		), UnconstrainedTvars, 0-Locns0, NUnconstrained-Locns1),
+	list__foldl(
+		find_type_info_index(Constraints, ClassTable, NUnconstrained),
+		ConstrainedTvars, Locns1, Locns),
+	list__length(Constraints, NumConstraints).
+
+:- pred find_type_info_index(list(class_constraint)::in, class_table::in, 
+	int::in, tvar::in, map(tvar, rval)::in, map(tvar, rval)::out) is det.
+find_type_info_index(Constraints, ClassTable, NUn, Tvar, Locns0, Locns) :-
+	first_matching_type_class_info(Constraints, Tvar,
+		FirstConstraint, NUn, ThisN, TypeInfoIndex),
+	FirstConstraint = constraint(ClassName, Args),
+	list__length(Args, ClassArity),
+	map__lookup(ClassTable, class_id(ClassName, ClassArity), ClassDefn),
+	ClassDefn = hlds_class_defn(SuperClasses, _, _, _, _),
+	list__length(SuperClasses, NumSuperClasses),
+	RealTypeInfoIndex = TypeInfoIndex + NumSuperClasses,
+	make_indirect_typeinfo_index(ThisN, RealTypeInfoIndex, Rval),
+	map__det_insert(Locns0, Tvar, Rval, Locns).
+
+:- pred first_matching_type_class_info(list(class_constraint)::in, tvar::in,
+	class_constraint::out, int::in, int::out, int::out) is det.
+first_matching_type_class_info([], _, _, _, _, _) :-
+	error("base_type_layout: constrained type info not found").
+first_matching_type_class_info([C|Cs], Tvar, MatchingConstraint, N0, N,
+		TypeInfoIndex) :-
+	C = constraint(_, Ts), 
+	term__vars_list(Ts, TVs),
+	(
+		list__nth_member_search(TVs, Tvar, Index)
+	->
+		N = N0,
+		MatchingConstraint = C,
+		TypeInfoIndex = Index
+	;
+		first_matching_type_class_info(Cs, Tvar, MatchingConstraint,
+			N0 + 1, N, TypeInfoIndex)
+	).
+
+%--------------------------------------------------------------------------%
+% Note: Any changes to this code will need to be reflected in
+% runtime/mercury_type_info.c
+
+:- pred make_direct_typeinfo_index(int::in, rval::out) is det.
+make_direct_typeinfo_index(N, Rval) :-
+	TaggedValue is (N << base_type_layout__indirect_tag_bits) 
+		+ base_type_layout__direct_tag,
+	Rval = const(int_const(TaggedValue)).
+
+:- pred make_indirect_typeinfo_index(int::in, int::in, rval::out) is det.
+make_indirect_typeinfo_index(ArgNumber, TypeInfoNumber, Rval) :-
+	require((1 << base_type_layout__indirect_offset_bits) > ArgNumber, 
+		"base_type_layout: arg number too large to be represented"),
+	TaggedValue0 is 
+		(TypeInfoNumber << base_type_layout__indirect_offset_bits) 
+		+ ArgNumber,
+	TaggedValue is (TaggedValue0 << base_type_layout__indirect_tag_bits) 
+		+ base_type_layout__indirect_tag,
+	Rval = const(int_const(TaggedValue)).
+
+:- func base_type_layout__direct_tag = int.
+base_type_layout__direct_tag = 0.
+
+:- func base_type_layout__indirect_tag = int.
+base_type_layout__indirect_tag = 1.
+
+:- func base_type_layout__indirect_tag_bits = int.
+base_type_layout__indirect_tag_bits = 1.
+
+:- func base_type_layout__indirect_offset_bits = int.
+base_type_layout__indirect_offset_bits = 6.
+
+%--------------------------------------------------------------------------%
 
 	% For shared remote tags:
 	%
@@ -987,9 +1149,12 @@ base_type_layout__handle_shared_remote([C | Cs], LayoutInfo0, LayoutInfo,
 
 base_type_layout__functors_eqv(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 
+	ExistQTvars = [], 
+	base_type_layout__get_type_id(LayoutInfo0, _-NumUnivQTvars),
+
 		% Construct pseudo
-	base_type_layout__generate_pseudo_type_info(Type, Rvals0, LayoutInfo0, 
-		LayoutInfo),
+	base_type_layout__generate_pseudo_type_info(Type, NumUnivQTvars,
+		ExistQTvars, Rvals0, LayoutInfo0, LayoutInfo),
 	base_type_layout__functors_value(equiv, EqvIndicator),
 	EqvRval = yes(const(int_const(EqvIndicator))),
 	Rvals = [EqvRval, Rvals0].
@@ -1089,25 +1254,30 @@ base_type_layout__functors_special(_ConsId - ConsTag, Rvals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred base_type_layout__generate_pseudo_type_info(type, maybe(rval), 
-	layout_info, layout_info).
-:- mode base_type_layout__generate_pseudo_type_info(in, out, in, out) is det.
+:- pred base_type_layout__generate_pseudo_type_info(type, int, existq_tvars,
+	maybe(rval), layout_info, layout_info).
+:- mode base_type_layout__generate_pseudo_type_info(in, in, in, out, 
+	in, out) is det.
 
-base_type_layout__generate_pseudo_type_info(Type, yes(Rval), LayoutInfo0, 
-		LayoutInfo) :-
+base_type_layout__generate_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
+		yes(Rval), LayoutInfo0, LayoutInfo) :-
 	base_type_layout__get_cell_number(LayoutInfo0, CellNumber0),
-	base_type_layout__construct_pseudo_type_info(Type, Rval,
-		CellNumber0, CellNumber),
+	base_type_layout__construct_pseudo_type_info(Type, NumUnivQTvars,
+		ExistQTvars, Rval, CellNumber0, CellNumber),
 	base_type_layout__set_cell_number(CellNumber, LayoutInfo0, LayoutInfo).
 
-:- pred base_type_layout__construct_pseudo_type_info(type, rval, int, int).
-:- mode base_type_layout__construct_pseudo_type_info(in, out, in, out) is det.
+:- pred base_type_layout__construct_pseudo_type_info(type, int, existq_tvars,
+	rval, int, int).
+:- mode base_type_layout__construct_pseudo_type_info(in, in, in, out, 
+	in, out) is det.
 
-base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
-	base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, _,
-		CNum0, CNum).
+base_type_layout__construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
+		Pseudo, CNum0, CNum) :-
+	base_type_layout__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
+		ExistQTvars, Pseudo, _, CNum0, CNum).
 
-base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, LldsType,
+base_type_layout__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
+		ExistQTvars, Pseudo, LldsType,
 		CNum0, CNum) :-
 	(
 		type_to_type_id(Type, TypeId, TypeArgs0)
@@ -1154,7 +1324,10 @@ base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, LldsType,
 		CNum1 = CNum0 + 1,
 
 			% generate args, but remove one level of create()s.
-		list__map_foldl(base_type_layout__construct_pseudo_type_info,
+		list__map_foldl((pred(T::in, P::out, C0::in, C::out) is det :-
+				base_type_layout__construct_pseudo_type_info(
+					T, NumUnivQTvars, ExistQTvars, P, C0, C)
+		),
 			TypeArgs, PseudoArgs0, CNum1, CNum),
 		list__map(base_type_layout__remove_create, PseudoArgs0,
 			PseudoArgs1),
@@ -1166,7 +1339,33 @@ base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, LldsType,
 	;
 		type_util__var(Type, Var)
 	->
-		term__var_to_int(Var, VarInt),
+			% In the case of a type variable, we need to assign a
+			% variable number *for this constructor* ie. taking
+			% only the existentially quantified variables of
+			% this constructor (and not those of other functors in
+			% the same type) into account.
+
+			% XXX term__var_to_int doesn't gaurantee anything about
+			% the the ints returned (other than that they be
+			% distinct for different variables), but we are relying
+			% on more here.
+		term__var_to_int(Var, VarInt0),
+		(
+			VarInt0 =< NumUnivQTvars
+		->
+				% This is a universally quantified variable.
+			VarInt = VarInt0
+		;
+				% It is existentially quantified.
+			(
+				list__nth_member_search(ExistQTvars, 
+					Var, ExistNum0)
+			->
+				VarInt = ExistNum0 + NumUnivQTvars
+			;
+				error("base_type_layout: var not in list")
+			)
+		),
 		base_type_layout__max_varint(MaxVarInt),
 		require(VarInt < MaxVarInt, 
 			"type_ctor_layout: type variable representation exceeds limit"),
@@ -1285,57 +1484,62 @@ base_type_layout__get_cons_args(LayoutInfo, ConsId, TypeArgs) :-
 :- pred base_type_layout__get_module_name(layout_info, module_name).
 :- mode base_type_layout__get_module_name(in, out) is det.
 base_type_layout__get_module_name(LayoutInfo, ModuleName) :-
-	LayoutInfo = layout_info(ModuleName, _, _, _, _, _).
+	LayoutInfo = layout_info(ModuleName, _, _, _, _, _, _).
 
 :- pred base_type_layout__get_cons_table(layout_info, cons_table).
 :- mode base_type_layout__get_cons_table(in, out) is det.
 base_type_layout__get_cons_table(LayoutInfo, ConsTable) :-
-	LayoutInfo = layout_info(_, ConsTable, _, _, _, _).
+	LayoutInfo = layout_info(_, ConsTable, _, _, _, _, _).
 
 :- pred base_type_layout__get_max_tags(layout_info, int).
 :- mode base_type_layout__get_max_tags(in, out) is det.
 base_type_layout__get_max_tags(LayoutInfo, MaxTags) :-
-	LayoutInfo = layout_info(_, _, MaxTags, _, _, _).
+	LayoutInfo = layout_info(_, _, _, MaxTags, _, _, _).
 
 :- pred base_type_layout__get_cell_number(layout_info, int).
 :- mode base_type_layout__get_cell_number(in, out) is det.
 base_type_layout__get_cell_number(LayoutInfo, NextCNum) :-
-	LayoutInfo = layout_info(_, _, _, NextCNum, _, _).
+	LayoutInfo = layout_info(_, _, _, _, NextCNum, _, _).
 
 :- pred base_type_layout__get_type_id(layout_info, type_id).
 :- mode base_type_layout__get_type_id(in, out) is det.
 base_type_layout__get_type_id(LayoutInfo, TypeId) :-
-	LayoutInfo = layout_info(_, _, _, _, TypeId, _).
+	LayoutInfo = layout_info(_, _, _, _, _, TypeId, _).
 
 :- pred base_type_layout__get_c_data(layout_info, list(comp_gen_c_data)).
 :- mode base_type_layout__get_c_data(in, out) is det.
 base_type_layout__get_c_data(LayoutInfo, CModules) :-
-	LayoutInfo = layout_info(_, _, _, _, _, CModules).
+	LayoutInfo = layout_info(_, _, _, _, _, _, CModules).
+
+:- pred base_type_layout__get_class_table(layout_info, class_table).
+:- mode base_type_layout__get_class_table(in, out) is det.
+base_type_layout__get_class_table(LayoutInfo, Table) :-
+	LayoutInfo = layout_info(_, _, Table, _, _, _, _).
 
 :- pred base_type_layout__add_c_data(layout_info, comp_gen_c_data,
 	layout_info).
 :- mode base_type_layout__add_c_data(in, in, out) is det.
 base_type_layout__add_c_data(LayoutInfo0, CModule, LayoutInfo) :-
-	LayoutInfo0 = layout_info(A, B, C, D, E, CModules0),
+	LayoutInfo0 = layout_info(A, B, C, D, E, F, CModules0),
 	CModules = [CModule | CModules0],
-	LayoutInfo = layout_info(A, B, C, D, E, CModules).
+	LayoutInfo = layout_info(A, B, C, D, E, F, CModules).
 
 :- pred base_type_layout__get_next_cell_number(int, layout_info, layout_info).
 :- mode base_type_layout__get_next_cell_number(out, in, out) is det.
 base_type_layout__get_next_cell_number(CNum0, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = layout_info(A, B, C, CNum0, E, F),
+	LayoutInfo0 = layout_info(A, B, C, D, CNum0, F, G),
 	CNum = CNum0 + 1,
-	LayoutInfo = layout_info(A, B, C, CNum, E, F).
+	LayoutInfo = layout_info(A, B, C, D, CNum, F, G).
 
 :- pred base_type_layout__set_cell_number(int, layout_info, layout_info).
 :- mode base_type_layout__set_cell_number(in, in, out) is det.
 base_type_layout__set_cell_number(NextLabel, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = layout_info(A, B, C, _, E, F),
-	LayoutInfo = layout_info(A, B, C, NextLabel, E, F).
+	LayoutInfo0 = layout_info(A, B, C, D, _, F, G),
+	LayoutInfo = layout_info(A, B, C, D, NextLabel, F, G).
 
 :- pred base_type_layout__set_type_id(layout_info, type_id, layout_info).
 :- mode base_type_layout__set_type_id(in, in, out) is det.
 base_type_layout__set_type_id(LayoutInfo0, TypeId, LayoutInfo) :-
-	LayoutInfo0 = layout_info(A, B, C, D, _, F),
-	LayoutInfo = layout_info(A, B, C, D, TypeId, F).
+	LayoutInfo0 = layout_info(A, B, C, D, E, _, G),
+	LayoutInfo = layout_info(A, B, C, D, E, TypeId, G).
 
