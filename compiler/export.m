@@ -622,7 +622,7 @@ export__produce_header_file(ForeignExportDecls, ModuleName) -->
 			C_ExportDecls) },
 	{ HeaderExt = ".mh" },
 	module_name_to_file_name(ModuleName, HeaderExt, yes, FileName),
-	io__open_output(FileName, Result),
+	io__open_output(FileName ++ ".tmp", Result),
 	(
 		{ Result = ok(FileStream) }
 	->
@@ -670,13 +670,15 @@ export__produce_header_file(ForeignExportDecls, ModuleName) -->
 			"\n",
 			"#endif /* ", GuardMacroName, " */\n"]),
 		io__set_output_stream(OutputStream, _),
-		io__close_output(FileStream)
+		io__close_output(FileStream),
+		% rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
+		update_interface(FileName)
 	;
 		io__progname_base("export.m", ProgName),
 		io__write_string("\n"),
 		io__write_string(ProgName),
 		io__write_string(": can't open `"),
-		io__write_string(FileName),
+		io__write_string(FileName ++ ".tmp"),
 		io__write_string("' for output\n"),
 		io__set_exit_status(1)
 	).
