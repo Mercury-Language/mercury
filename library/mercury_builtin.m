@@ -293,6 +293,9 @@
 :- pred term__context_init(term__context).
 :- mode term__context_init(out) is det.
 
+% The type c_pointer can be used by predicates which use the C interface.
+:- type c_pointer.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -414,6 +417,9 @@ compare_error :-
 	error("internal error in compare/3").
 
 term__context_init(term__context("", 0)).
+
+% The type c_pointer can be used by predicates which use the C interface.
+:- type c_pointer == int.
 
 :- end_module mercury_builtin.
 
