@@ -52,15 +52,13 @@
 % code at that resume point as well as the nature of the required
 % entry labels.
 %
-% Accurate garbage collection notes:
+% Alternate liveness calculation notes:
 %
-% When using accurate gc, liveness is computed slightly differently.
-% The garbage collector needs access to the typeinfo variables of any
-% variable that could be live at a garbage collection point. In the
-% present design of the garbage collector, garbage collection takes place
-% at procedure returns.
+% When using accurate gc or execution tracing, liveness is computed
+% slightly differently.  The runtime system needs access to the
+% typeinfo variables of any variable that is live at a continuation.
 % 
-% Hence, the invariant needed for accurate GC is:
+% Hence, the invariant needed for alternate liveness calculation:
 % 	a variable holding a typeinfo must be live at any continuation
 % 	where any variable whose type is described (in whole or in part)
 % 	by that typeinfo is live.
@@ -85,7 +83,7 @@
 % 
 % (1) happens without any changes to the liveness computation (it is
 %     the normal condition for variables becoming dead). This more
-%     conservative than what is required for accurate GC, but is
+%     conservative than what is required for the invariant, but is
 %     required for code generation, so we should keep it ;-)
 % (2) is implemented by adding the typeinfo variables for the types of the
 %     nonlocals to the nonlocals for the purposes of computing liveness.
@@ -145,7 +143,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
-:- import_module hlds_out, mode_util, code_util, quantification.
+:- import_module hlds_out, mode_util, code_util, quantification, options.
 :- import_module prog_data, globals, passes_aux.
 :- import_module bool, list, map, set, std_util, term, assoc_list, require.
 :- import_module varset, string.
@@ -876,18 +874,20 @@ initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 		error("initial_liveness: list length mismatch")
 	),
 	module_info_globals(ModuleInfo, Globals),
-	globals__get_gc_method(Globals, GCmethod),
 
 		% If a variable is unused in the goal, it shouldn't be
 		% in the initial liveness. (If we allowed it to start
 		% live, it wouldn't ever become dead, because it would
 		% have to be used to be killed).
 		% So we intersect the headvars with the non-locals and
-		% their typeinfo vars.
+		% (if doing alternate liveness calculation) their
+		% typeinfo vars.
 	proc_info_goal(ProcInfo, _Goal - GoalInfo),
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	(
-		GCmethod = accurate
+	globals__lookup_bool_option(Globals, alternate_liveness, 
+		AlternateLiveness),
+	( 	
+		AlternateLiveness = yes
 	->
 		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,
 			TypeInfoNonLocals),
@@ -933,12 +933,13 @@ initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	;
 		error("initial_deadness: list length mis-match")
 	),
-		% If doing accurate garbage collection, the corresponding
+		% If doing alternate liveness, the corresponding
 		% typeinfos need to be added to these.
 	module_info_globals(ModuleInfo, Globals),
-	globals__get_gc_method(Globals, GCmethod),
-	(
-		GCmethod = accurate
+	globals__lookup_bool_option(Globals, alternate_liveness, 
+		AlternateLiveness),
+	( 
+		AlternateLiveness = yes
 	->
 		proc_info_get_typeinfo_vars_setwise(ProcInfo, Deadness2,
 			TypeInfoVars),
@@ -1053,7 +1054,7 @@ live_info_get_varset(live_info(_, _, _, Varset), Varset).
 
 %-----------------------------------------------------------------------------%
 
-	% Get the nonlocals, and, if doing accurate GC, add the
+	% Get the nonlocals, and, if doing alternate liveness, add the
 	% typeinfo vars for the nonlocals.
 
 :- pred liveness__get_nonlocals_and_typeinfos(live_info, hlds_goal_info,
@@ -1063,10 +1064,11 @@ liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
 		NonLocals) :-
 	live_info_get_module_info(LiveInfo, ModuleInfo),
 	module_info_globals(ModuleInfo, Globals),
-	globals__get_gc_method(Globals, GCmethod),
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	(
-		GCmethod = accurate
+	globals__lookup_bool_option(Globals, alternate_liveness, 
+		AlternateLiveness),
+	( 
+		AlternateLiveness = yes
 	->
 		live_info_get_proc_info(LiveInfo, ProcInfo),
 		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,

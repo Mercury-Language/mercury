@@ -35,8 +35,8 @@
 :- implementation.
 
 :- import_module llds, arg_info, prog_data, hlds_goal, hlds_data, mode_util.
-:- import_module liveness, code_aux, globals, graph_colour, instmap.
-:- import_module list, map, set, std_util, assoc_list.
+:- import_module liveness, code_aux, globals, graph_colour, instmap, options.
+:- import_module list, map, set, std_util, assoc_list, bool.
 :- import_module int, term, require.
 
 %-----------------------------------------------------------------------------%
@@ -237,9 +237,10 @@ build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
 	set__difference(Liveness, OutVars, InputLiveness),
 	set__union(InputLiveness, ResumeVars0, StackVars0),
 
-	% Might need to add more live variables with accurate GC.
+	% Might need to add more live variables with alternate liveness
+	% calculation.
 
-	maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo,
+	maybe_add_alternate_liveness_typeinfos(ModuleInfo, ProcInfo,
 		OutVars, StackVars0, StackVars),
 
 	set__insert(LiveSets0, StackVars, LiveSets),
@@ -275,9 +276,10 @@ build_live_sets_in_goal_2(class_method_call(_, _, ArgVars, Types, Modes, Det),
 	set__difference(Liveness, OutVars, InputLiveness),
 	set__union(InputLiveness, ResumeVars0, StackVars0),
 
-	% Might need to add more live variables with accurate GC.
+	% Might need to add more live variables with alternate liveness
+	% calculation.
 
-	maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo,
+	maybe_add_alternate_liveness_typeinfos(ModuleInfo, ProcInfo,
 		OutVars, StackVars0, StackVars),
 
 	set__insert(LiveSets0, StackVars, LiveSets),
@@ -312,9 +314,10 @@ build_live_sets_in_goal_2(call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		set__difference(Liveness, OutVars, InputLiveness),
 		set__union(InputLiveness, ResumeVars0, StackVars0),
 
-		% Might need to add more live variables with accurate GC.
+		% Might need to add more live variables with alternate
+		% liveness calculation.
 
-		maybe_add_accurate_gc_typeinfos(ModuleInfo,
+		maybe_add_alternate_liveness_typeinfos(ModuleInfo,
 			ProcInfo, OutVars, StackVars0, StackVars),
 
 		set__insert(LiveSets0, StackVars, LiveSets),
@@ -372,9 +375,10 @@ build_live_sets_in_goal_2(pragma_c_code(MayCallMercury, PredId, ProcId,
 		set__difference(Liveness, OutVars, InputLiveness),
 		set__union(InputLiveness, ResumeVars0, StackVars0),
 
-		% Might need to add more live variables with accurate GC.
+		% Might need to add more live variables with alternate
+		% liveness calculation.
 
-		maybe_add_accurate_gc_typeinfos(ModuleInfo,
+		maybe_add_alternate_liveness_typeinfos(ModuleInfo,
 			ProcInfo, OutVars, StackVars0, StackVars),
 
 		set__insert(LiveSets0, StackVars, LiveSets),
@@ -468,9 +472,9 @@ build_live_sets_in_cases([case(_Cons, Goal0) | Goals0],
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% If doing accurate garbage collection, any typeinfos for
+	% If doing alternate liveness calculation, any typeinfos for
 	% output variables or live variables are also live.
-	% This is because if you want to collect, you need to
+	% This is because if you want to examine the live data, you need to
 	% know what shape the polymorphic args of the variables
 	% are, so you need the typeinfos to be present on the stack.
 
@@ -479,24 +483,25 @@ build_live_sets_in_cases([case(_Cons, Goal0) | Goals0],
 	% saved (otherwise we would throw out typeinfos and might
 	% need one at a continuation point just after a call).
 
-	% maybe_add_accurate_gc_typeinfos takes a set of vars
+	% maybe_add_alternate_liveness_typeinfos takes a set of vars
 	% (output vars) and a set of live vars and if we
-	% are doing accurate GC, add the appropriate typeinfo variables to the
-	% set of variables. If not, return the live vars unchanged.
+	% are doing alternate liveness, adds the appropriate typeinfo
+	% variables to the set of variables. If not, it returns the live
+	% vars unchanged.
 
 	% Make sure you get the output vars first, and the live vars second,
 	% since this makes a significant difference to the output set of vars.
 
-:- pred maybe_add_accurate_gc_typeinfos(module_info, proc_info,
+:- pred maybe_add_alternate_liveness_typeinfos(module_info, proc_info,
 	set(var), set(var), set(var)).
-:- mode maybe_add_accurate_gc_typeinfos(in, in, in, in, out) is det.
+:- mode maybe_add_alternate_liveness_typeinfos(in, in, in, in, out) is det.
 
-maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo, OutVars,
-	LiveVars1, LiveVars) :-
+maybe_add_alternate_liveness_typeinfos(ModuleInfo, ProcInfo, OutVars,
+		LiveVars1, LiveVars) :-
 	module_info_globals(ModuleInfo, Globals),
-	globals__get_gc_method(Globals, GC_Method),
+	globals__lookup_bool_option(Globals, alternate_liveness, AlternateLive),
 	(
-		GC_Method = accurate
+		AlternateLive = yes
 	->
 		proc_info_get_typeinfo_vars_setwise(ProcInfo, LiveVars1,
 			TypeInfoVarsLive),

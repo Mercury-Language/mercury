@@ -118,6 +118,7 @@
 		;	profile_calls
 		;	profile_time
 		;	profile_memory
+		;	stack_trace
 		;	use_trail
 		;	pic_reg
 		;	debug
@@ -139,11 +140,19 @@
 				% `--num-tag-bits'.
 		;	args
 		;	type_layout
-				% XXX stack_layout is a development only 
-				% option. It will eventually be replaced
-				% by new options handling different
-				% sorts of stack_layouts.
-		;	stack_layout
+				% Stack layout information required to do
+				% a stack trace.
+		;	basic_stack_layout
+				% Stack layout information required to do
+				% accurate GC.
+		;	agc_stack_layout
+				% Stack layout information required to do
+				% tracing.
+		;	trace_stack_layout
+				% Use alternate calculation of liveness
+				% where typeinfos are live for any live data
+				% the includes that type variable.
+		;	alternate_liveness
 		;	highlevel_c
 		;	unboxed_float
 	% Code generation options
@@ -378,6 +387,7 @@ option_defaults_2(compilation_model_option, [
 	profile_calls		-	bool(no),
 	profile_time		-	bool(no),
 	profile_memory		-	bool(no),
+	stack_trace		-	bool(no),
 	use_trail		-	bool(no),
 	pic_reg			-	bool(no),
 	debug			-	bool(no),
@@ -398,7 +408,10 @@ option_defaults_2(compilation_model_option, [
 					% at configuration time
 	args			-	string("compact"),
 	type_layout		-	bool(yes),
-	stack_layout		-	bool(no),
+	basic_stack_layout	-	bool(no),
+	agc_stack_layout	-	bool(no),
+	trace_stack_layout	-	bool(no),
+	alternate_liveness	-	bool(no),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -680,6 +693,7 @@ long_option("memory-profiling",		memory_profiling).
 long_option("profile-calls",		profile_calls).
 long_option("profile-time",		profile_time).
 long_option("profile-memory",		profile_memory).
+long_option("stack-trace",		stack_trace).
 long_option("use-trail",		use_trail).
 long_option("pic-reg",			pic_reg).
 long_option("debug",			debug).
@@ -691,7 +705,10 @@ long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
-long_option("stack-layout",		type_layout).
+long_option("agc-stack-layout",		agc_stack_layout).
+long_option("basic-stack-layout",	basic_stack_layout).
+long_option("trace-stack-layout",	trace_stack_layout).
+long_option("alternate-liveness",	alternate_liveness).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -1513,11 +1530,31 @@ your program compiled with different options.
 	io__write_string("\t\tto them. (The C code also needs to be compiled with\n"),
 	io__write_string("\t\t`-DNO_TYPE_LAYOUT').\n"),
 	
-		% This is a developer only option at the moment.
-%	io__write_string("\t--stack-layout\n"),
+		% This is a developer only option.
+%	io__write_string("\t--basic-stack-layout\n"),
 %	io__write_string("\t(This option is not for general use.)\n"),
-%	io__write_string("\t\tGenerate stack_layout structures.\n"),
+%	io__write_string("\t\tGenerate the simple stack_layout structures required\n"),
+%	io__write_string("\t\tfor stack traces.\n"),
 
+		% This is a developer only option.
+%	io__write_string("\t--agc-stack-layout\n"),
+%	io__write_string("\t(This option is not for general use.)\n"),
+%	io__write_string("\t\tGenerate the stack_layout structures required for\n"),
+%	io__write_string("\t\taccurate garbage collection.\n"),
+%
+		% This is a developer only option.
+%	io__write_string("\t--trace-stack-layout\n"),
+%	io__write_string("\t(This option is not for general use.)\n"),
+%	io__write_string("\t\tGenerate the stack_layout structures required for\n"),
+%	io__write_string("\t\texecution tracing.\n"),
+
+		% This is a developer only option.
+%	io__write_string("\t--alternate-liveness\n"),
+%	io__write_string("\t(This option is not for general use.)\n"),
+%	io__write_string("\t\tUse an alternate technique for calculating liveness.\n"),
+%	io__write_string("\t\tKeeps typeinfo variables around for as long as any data\n"),
+%	io__write_string("\t\tthat has a type that contains that type variable is live\n"),
+%
 	io__write_string("\t--unboxed-float\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tDon't box floating point numbers.\n"),

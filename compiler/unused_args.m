@@ -20,7 +20,8 @@
 %	- used to instantiate an output variable
 %	- involved in a simple test, switch or a semidet deconstruction 
 %	- used as an argument to another predicate in this module which is used.
-%  In accurate gc grades, the following variables are also considered used
+%  When using alternate liveness calculation, the following variables are 
+%  also considered used
 %	- a type-info (or part of a type-info) of a type parameter of the 
 %	  type of a variable that is used (for example, if a variable
 %	  of type list(T) is used, then TypeInfo_for_T is used)
@@ -253,8 +254,9 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 			ArgModes, VarDep1, VarDep2),
 		
 		module_info_globals(ModuleInfo, Globals),
-		globals__get_gc_method(Globals, GCMethod),
-		( GCMethod = accurate ->
+		globals__lookup_bool_option(Globals, alternate_liveness, 
+			AlternateLiveness),
+		( AlternateLiveness = yes ->
 			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
 			setup_typeinfo_deps(Vars, VarTypes, 
 				proc(PredId, ProcId), TVarMap, VarDep2,

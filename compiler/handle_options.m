@@ -256,8 +256,11 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
-	% --generate-trace requires disabling optimizations
-	% that would change the trace being generated
+	% --generate-trace requires 
+	% 	- disabling optimizations that would change 
+	% 	  the trace being generated
+	% 	- enabling stack layouts
+	% 	- enabling alternate liveness
 	globals__io_lookup_bool_option(generate_trace, Trace),
 	( { Trace = yes } ->
 		globals__io_set_option(inline_simple, bool(no)),
@@ -267,17 +270,27 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		globals__io_set_option(optimize_higher_order, bool(no)),
 		globals__io_set_option(optimize_duplicate_calls, bool(no)),
 		globals__io_set_option(optimize_constructor_last_call,
-			bool(no))
+			bool(no)),
+		globals__io_set_option(trace_stack_layout, bool(yes)),
+		globals__io_set_option(alternate_liveness, bool(yes))
 	;
 		[]
 	),
 
-	% --gc accurate requires stack layouts.
+	% --stack-trace requires basic stack layouts
+	option_implies(stack_trace, basic_stack_layout, bool(yes)),
+
+	% --gc accurate requires stack layouts and alternate liveness.
 	( { GC_Method = accurate } ->
-		globals__io_set_option(stack_layout, bool(yes)) 
+		globals__io_set_option(agc_stack_layout, bool(yes)),
+		globals__io_set_option(alternate_liveness, bool(yes)) 
 	;
 		[]
 	),
+
+	% `agc' and `trace' stack layouts need `basic' stack layouts
+	option_implies(agc_stack_layout, basic_stack_layout, bool(yes)),
+	option_implies(trace_stack_layout, basic_stack_layout, bool(yes)),
 
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),

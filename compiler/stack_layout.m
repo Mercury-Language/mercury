@@ -28,6 +28,22 @@
 % 					(the location will be set to -1
 % 					if there is no succip available).
 %
+% If we are doing execution tracing, it will also include information
+% on the live data at entry and exit:
+% 	number of live 		(Integer)
+% 	    variables at entry 
+% 	live data locations and (Word *) - pointer to vector of
+% 	    types			MR_Live_Lval and MR_Live_Type pairs
+%	type parameters		(Word *) - pointer to vector of 
+%					MR_Live_Lval
+%
+% 	number of live 		(Integer)
+% 	    variables at exit 
+% 	live data locations and (Word *) - pointer to vector of
+% 	    types			MR_Live_Lval and MR_Live_Type pairs
+%	type parameters		(Word *) - pointer to vector of 
+%					MR_Live_Lval
+%
 % For each continuation label in a procedure
 % 	mercury_data__stack_layout__mercury__<proc_label>_i<label number>
 % containing:
@@ -68,7 +84,7 @@
 :- implementation.
 
 :- import_module llds, globals, options, continuation_info, llds_out.
-:- import_module base_type_layout.
+:- import_module base_type_layout, prog_data.
 :- import_module assoc_list, bool, string, int, list, map, std_util, require.
 :- import_module set.
 
@@ -76,8 +92,11 @@
 	stack_layout_info(
 		string,		% module name
 		int,		% next available cell number 
+		bool,		% generate agc layout info?
+		bool,		% generate tracing layout info?
 		list(c_module)	% generated data
 	).
+
 
 %---------------------------------------------------------------------------%
 
@@ -89,8 +108,12 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules) :-
 
 	module_info_name(ModuleInfo0, ModuleName),
 	module_info_get_cell_count(ModuleInfo0, CellCount),
+	module_info_globals(ModuleInfo0, Globals),
+	globals__lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
+	globals__lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
 
-	LayoutInfo0 = stack_layout_info(ModuleName, CellCount, []),
+	LayoutInfo0 = stack_layout_info(ModuleName, CellCount, AgcLayout,
+		TraceLayout, []),
 	list__foldl(stack_layout__construct_layouts, ProcLayoutList,
 		LayoutInfo0, LayoutInfo),
 
@@ -108,25 +131,33 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules) :-
 
 stack_layout__construct_layouts(ProcLayoutInfo) -->
 
-	{ ProcLayoutInfo = proc_layout_info(ProcLabel, StackSlots, CodeModel, 
-		SuccipLoc, InternalMap) },
+	{ ProcLayoutInfo = proc_layout_info(MaybeGeneralInfo, InternalMap, 
+		EntryInfo, ExitInfo) },
 
-	{ map__to_assoc_list(InternalMap, Internals) },
+	( { MaybeGeneralInfo = yes(GeneralInfo) } ->
+		stack_layout__construct_proc_layout(GeneralInfo, EntryInfo,
+			ExitInfo),
+		{ GeneralInfo = proc_layout_general_info(ProcLabel, _, _, _) },
+		{ map__to_assoc_list(InternalMap, Internals) },
+		list__foldl(stack_layout__construct_internal_layout(ProcLabel),
+			Internals)
+	;
+		{ error("stack_layout__construct_layouts: uninitialized proc layout") }
+	).
 
-	stack_layout__construct_proc_layout(ProcLabel, StackSlots, 
-		CodeModel, SuccipLoc),
-	list__foldl(stack_layout__construct_internal_layout(ProcLabel),
-		Internals).
 
 %---------------------------------------------------------------------------%
 
 	% Construct the layout describing a single procedure.
 
-:- pred stack_layout__construct_proc_layout(proc_label, int, code_model, 
-		maybe(int), stack_layout_info, stack_layout_info).
-:- mode stack_layout__construct_proc_layout(in, in, in, in, in, out) is det.
-stack_layout__construct_proc_layout(ProcLabel, StackSlots, CodeModel, 
-		SuccipLoc) -->
+:- pred stack_layout__construct_proc_layout(proc_layout_general_info,
+		maybe(continuation_label_info), maybe(continuation_label_info),
+		stack_layout_info, stack_layout_info).
+:- mode stack_layout__construct_proc_layout(in, in, in, in, out) is det.
+stack_layout__construct_proc_layout(GeneralInfo, MaybeEntryInfo,
+		MaybeExitInfo) -->
+	{ GeneralInfo = proc_layout_general_info(ProcLabel, StackSlots, 
+		CodeModel, SuccipLoc) },
 	{
 		SuccipLoc = yes(Location0)
 	->
@@ -154,9 +185,21 @@ stack_layout__construct_proc_layout(ProcLabel, StackSlots, CodeModel,
 	{ CodeAddrRval = const(code_addr_const(label(Label))) },
 
 	stack_layout__represent_code_model(CodeModel, CodeModelRval),
-	{ MaybeRvals = [yes(CodeAddrRval), yes(StackSlotsRval), 
+	{ MaybeRvals0 = [yes(CodeAddrRval), yes(StackSlotsRval), 
 		yes(CodeModelRval), yes(SuccipRval)] },
 	stack_layout__get_module_name(ModuleName),
+
+	stack_layout__get_trace_stack_layout(TraceLayout),
+	(
+		{ TraceLayout = yes }
+	->
+		stack_layout__construct_trace_rvals(MaybeEntryInfo,
+			MaybeExitInfo, TraceRvals)
+	;
+		{ TraceRvals = [] }
+	),
+
+	{ list__append(MaybeRvals0, TraceRvals, MaybeRvals) },
 
 	{ CModule = c_data(ModuleName, stack_layout(Label), yes, 
 		MaybeRvals, []) },
@@ -171,38 +214,100 @@ stack_layout__construct_proc_layout(ProcLabel, StackSlots, CodeModel,
 		stack_layout_info, stack_layout_info).
 :- mode stack_layout__construct_internal_layout(in, in, in, out) is det.
 stack_layout__construct_internal_layout(ProcLabel, Label - Internal) -->
-	{ Internal = internal_layout_info(ContinuationLabelInfo) },
-	{
-		ContinuationLabelInfo = yes(continuation_label_info(
-			LiveLvalSet0, _TVars))
-	->
-		LiveLvalSet = LiveLvalSet0
-	;
-		% We record no live values here. This might not be
-		% true, however this label is not being used as a
-		% continuation, so it shouldn't be relied upon.
-		
-		set__init(LiveLvalSet)
-	},
-		
-		% XXX Should also output TVars.
-
-	{ set__to_sorted_list(LiveLvalSet, LiveLvals) },
-	
 		% generate the required rvals
 	stack_layout__get_module_name(ModuleName),
 	{ EntryAddrRval = const(data_addr_const(data_addr(ModuleName,
 		stack_layout(local(ProcLabel))))) },
+
+	stack_layout__construct_agc_rvals(Internal, AgcRvals),
+
+	{ LayoutRvals = [yes(EntryAddrRval) | AgcRvals] }, 
+
+	{ CModule = c_data(ModuleName, stack_layout(Label), yes, 
+		LayoutRvals, []) },
+	stack_layout__add_cmodule(CModule).
+
+	
+	% Construct the rvals required for tracing.
+
+:- pred stack_layout__construct_trace_rvals(maybe(continuation_label_info), 
+		maybe(continuation_label_info), list(maybe(rval)),
+		stack_layout_info, stack_layout_info).
+:- mode stack_layout__construct_trace_rvals(in, in, out, in, out) is det.
+stack_layout__construct_trace_rvals(MaybeEntryInfo, MaybeExitInfo,
+		RvalList) -->
+	( 
+		{ MaybeEntryInfo = yes(EntryInfo) },
+		{ MaybeExitInfo = yes(ExitInfo) }
+	->
+		{ EntryInfo = continuation_label_info(EntryLvals, EntryTVars) },
+		{ ExitInfo = continuation_label_info(ExitLvals, ExitTVars) },
+		stack_layout__construct_livelval_rvals(EntryLvals, EntryTVars,
+			EntryRvals),
+		stack_layout__construct_livelval_rvals(ExitLvals, ExitTVars,
+			ExitRvals),
+		{ list__append(EntryRvals, ExitRvals, RvalList) }
+	;
+		{ error("stack_layout__construct_agc_rvals: entry or exit information not available.") }
+	).
+
+
+	% Construct the rvals required for accurate GC.
+
+:- pred stack_layout__construct_agc_rvals(internal_layout_info, 
+		list(maybe(rval)), stack_layout_info, stack_layout_info).
+:- mode stack_layout__construct_agc_rvals(in, out, in, out) is det.
+stack_layout__construct_agc_rvals(Internal, RvalList) -->
+	stack_layout__get_agc_stack_layout(AgcStackLayout),
+	( 
+		{ AgcStackLayout = yes }
+	->
+		{ Internal = internal_layout_info(ContinuationLabelInfo) },
+		{
+			ContinuationLabelInfo = yes(continuation_label_info(
+				LiveLvalSet0, TVars0))
+		->
+			LiveLvalSet = LiveLvalSet0,
+			TVars = TVars0
+		;
+			% This label is not being used as a continuation,
+			% or we are not doing accurate GC, so we record
+			% no live values here. 
+			% This might not be a true reflection of the
+			% liveness at this point, so the values cannot
+			% be relied upon by the runtime system unless
+			% you know you are at a continuation (and doing
+			% accurate GC).
+			
+			set__init(LiveLvalSet),
+			set__init(TVars)
+		},
+		stack_layout__construct_livelval_rvals(LiveLvalSet, TVars,
+			RvalList)
+	;
+		{ RvalList = [yes(const(int_const(0))), 
+			yes(const(int_const(0)))] }
+	).
+
+
+	% XXX Should also create Tvars.
+
+:- pred stack_layout__construct_livelval_rvals(set(pair(lval, live_value_type)),
+		set(pair(tvar, lval)), list(maybe(rval)), 
+		stack_layout_info, stack_layout_info).
+:- mode stack_layout__construct_livelval_rvals(in, in, out, in, out) is det.
+stack_layout__construct_livelval_rvals(LiveLvalSet, _TVars, RvalList) -->
+	{ set__to_sorted_list(LiveLvalSet, LiveLvals) },
 	{ list__length(LiveLvals, Length) },
 	{ LengthRval = const(int_const(Length)) },
 	stack_layout__construct_liveval_pairs(LiveLvals, LiveValRval),
 
-	{ MaybeRvals = [yes(EntryAddrRval), 
-		yes(LengthRval), yes(LiveValRval)]  },
+		% XXX We don't yet generate tvars, so we use 0 as
+		% a dummy value.
+	{ TVarRval = const(int_const(0)) },
+	{ RvalList = [yes(LengthRval), yes(LiveValRval), yes(TVarRval)] }.
 
-	{ CModule = c_data(ModuleName, stack_layout(Label), yes, 
-		MaybeRvals, []) },
-	stack_layout__add_cmodule(CModule).
+
 
 %---------------------------------------------------------------------------%
 
@@ -367,40 +472,53 @@ stack_layout__tag_bits(8).
 		stack_layout_info).
 :- mode stack_layout__get_module_name(out, in, out) is det.
 stack_layout__get_module_name(ModuleName, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(ModuleName, _, _).
+	LayoutInfo = stack_layout_info(ModuleName, _, _, _, _).
 
 :- pred stack_layout__get_next_cell_number(int, stack_layout_info,
 	stack_layout_info).
 :- mode stack_layout__get_next_cell_number(out, in, out) is det.
 stack_layout__get_next_cell_number(CNum0, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, CNum0, C),
+	LayoutInfo0 = stack_layout_info(A, CNum0, C, D, E),
 	CNum is CNum0 + 1,
-	LayoutInfo = stack_layout_info(A, CNum, C).
+	LayoutInfo = stack_layout_info(A, CNum, C, D, E).
 
 :- pred stack_layout__get_cell_number(int, stack_layout_info,
 		stack_layout_info).
 :- mode stack_layout__get_cell_number(out, in, out) is det.
 stack_layout__get_cell_number(CNum, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, CNum, _).
+	LayoutInfo = stack_layout_info(_, CNum, _, _, _).
 
 :- pred stack_layout__get_cmodules(list(c_module), stack_layout_info, 
 		stack_layout_info).
 :- mode stack_layout__get_cmodules(out, in, out) is det.
 stack_layout__get_cmodules(CModules, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, CModules).
+	LayoutInfo = stack_layout_info(_, _, _, _, CModules).
+
+:- pred stack_layout__get_agc_stack_layout(bool, stack_layout_info, 
+		stack_layout_info).
+:- mode stack_layout__get_agc_stack_layout(out, in, out) is det.
+stack_layout__get_agc_stack_layout(AgcStackLayout, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, AgcStackLayout, _, _).
+
+:- pred stack_layout__get_trace_stack_layout(bool, stack_layout_info, 
+		stack_layout_info).
+:- mode stack_layout__get_trace_stack_layout(out, in, out) is det.
+stack_layout__get_trace_stack_layout(TraceStackLayout, LayoutInfo,
+		LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, TraceStackLayout, _).
 
 :- pred stack_layout__add_cmodule(c_module, stack_layout_info,
 		stack_layout_info).
 :- mode stack_layout__add_cmodule(in, in, out) is det.
 stack_layout__add_cmodule(CModule, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B, CModules0),
+	LayoutInfo0 = stack_layout_info(A, B, C, D, CModules0),
 	CModules = [CModule | CModules0],
-	LayoutInfo = stack_layout_info(A, B, CModules).
+	LayoutInfo = stack_layout_info(A, B, C, D, CModules).
 
 :- pred stack_layout__set_cell_number(int, stack_layout_info,
 		stack_layout_info).
 :- mode stack_layout__set_cell_number(in, in, out) is det.
 stack_layout__set_cell_number(CNum, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, _, C),
-	LayoutInfo = stack_layout_info(A, CNum, C).
+	LayoutInfo0 = stack_layout_info(A, _, C, D, E),
+	LayoutInfo = stack_layout_info(A, CNum, C, D, E).
 

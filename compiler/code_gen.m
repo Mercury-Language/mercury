@@ -198,8 +198,9 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		MaybeFollowVars = no,
 		map__init(FollowVars)
 	),
-	globals__get_gc_method(Globals, GC_Method),
-	( GC_Method = accurate ->
+	globals__lookup_bool_option(Globals, basic_stack_layout,
+		BasicStackLayout),
+	( BasicStackLayout = yes ->
 		SaveSuccip = yes
 	;
 		SaveSuccip = no
@@ -235,7 +236,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	;
 		Instructions = Instructions0
 	),
-	( GC_Method = accurate ->
+	( BasicStackLayout = yes ->
 		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
 			ProcLabel),
 		continuation_info__add_proc_layout_info(proc(PredId, ProcId),
@@ -403,6 +404,33 @@ code_gen__generate_prolog(CodeModel, Goal, FrameInfo, PrologCode) -->
 	;
 		{ TraceCode = empty }
 	),
+
+		% Generate live value information and put
+		% it into the continuation info if we are doing
+		% execution tracing.
+	code_info__get_globals(Globals),
+	(
+		{ globals__lookup_bool_option(Globals, trace_stack_layout,
+			yes) }
+	->
+		code_info__get_arginfo(ArgModes),
+		code_info__get_headvars(HeadVars),
+		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes,
+			Args) },
+		{ code_gen__select_args_with_mode(Args, top_in, InVars,
+			InLvals) },
+
+		code_gen__generate_lvaltypes(InVars, InLvals, LvalTypes,
+			TypeInfos),
+		
+		code_info__get_continuation_info(ContInfo0),
+		{ continuation_info__add_proc_entry_info(proc(PredId, ProcId),
+			LvalTypes, TypeInfos, ContInfo0, ContInfo) },
+		code_info__set_continuation_info(ContInfo)
+	;
+		[]
+	),
+
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ predicate_arity(ModuleInfo, PredId, Arity) },
@@ -561,7 +589,6 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 			]) }
 		),
 		{ RestoreDeallocCode = tree(RestoreSuccipCode, DeallocCode ) },
-		{ code_gen__output_args(Args, LiveArgs) },
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
 		( { MaybeTraceInfo = yes(TraceInfo) } ->
 			trace__generate_event_code(exit, TraceInfo,
@@ -576,6 +603,35 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 			{ SuccessTraceCode = empty },
 			{ FailureTraceCode = empty }
 		),
+			% Generate live value information and put
+			% it into the continuation info if we are doing
+			% execution tracing.
+		{ code_gen__select_args_with_mode(Args, top_out, OutVars,
+			OutLvals) },
+		code_info__get_globals(Globals),
+		(
+			{ globals__lookup_bool_option(Globals,
+				trace_stack_layout, yes) }
+		->
+			code_gen__generate_lvaltypes(OutVars, OutLvals,
+				LvalTypes, TypeInfos),
+			code_info__get_continuation_info(ContInfo0),
+			code_info__get_pred_id(PredId),
+			code_info__get_proc_id(ProcId),
+			{ continuation_info__add_proc_exit_info(proc(PredId,
+				ProcId), LvalTypes, TypeInfos, ContInfo0,
+				ContInfo) },
+			code_info__set_continuation_info(ContInfo),
+
+				% Make sure typeinfos are in livevals(...)
+				% so that value numbering doesn't mess
+				% with them.
+			{ assoc_list__values(TypeInfos, ExtraLvals) },
+			{ list__append(ExtraLvals, OutLvals, LiveArgLvals) }
+		;
+			{ LiveArgLvals = OutLvals }
+		),
+		{ set__list_to_set(LiveArgLvals, LiveArgs) },
 		(
 			{ CodeModel = model_det },
 			{ SuccessCode = node([
@@ -635,6 +691,36 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 			     EndComment))))
 		}
 	).
+
+%---------------------------------------------------------------------------%
+
+	% Generate the list of lval - live_value_type pairs and the
+	% typeinfo variable - lval pairs for any type variables in
+	% the types of the given variables.
+
+:- pred code_gen__generate_lvaltypes(list(var), list(lval),
+		assoc_list(lval, live_value_type), assoc_list(var, lval),
+		code_info, code_info).
+:- mode code_gen__generate_lvaltypes(in, in, out, out, in, out) is det.
+code_gen__generate_lvaltypes(Vars, Lvals, LvalTypes, TypeInfos) -->
+	code_info__get_instmap(InstMap),
+	list__map_foldl(code_info__variable_type, Vars, Types),
+	{ list__map(instmap__lookup_var(InstMap), Vars, Insts) },
+	{ assoc_list__from_corresponding_lists(Types, Insts,
+		TypeInsts) },
+	{ list__map(lambda([TypeInst::in, LiveType::out] is det, (
+			TypeInst = Type - Inst,
+			LiveType = var(Type, Inst))), 
+		TypeInsts, LiveTypes) },
+
+	% XXX This doesn't work yet.
+	% { list__map(type_util__vars, Types, TypeVarsList) },
+	% { list__condense(TypeVarsList, TypeVars) },
+	% code_info__find_type_infos(TypeVars, TypeInfos),
+	{ TypeInfos = [] },
+
+	{ assoc_list__from_corresponding_lists(Lvals, LiveTypes,
+		LvalTypes) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1072,18 +1158,29 @@ code_gen__generate_non_goal_2(pragma_c_code(MayCallMercury,
 
 %---------------------------------------------------------------------------%
 
-code_gen__output_args([], LiveVals) :-
-	set__init(LiveVals).
-code_gen__output_args([_V - arg_info(Loc, Mode) | Args], Vs) :-
-	code_gen__output_args(Args, Vs0),
+code_gen__output_args(Args, Vs) :-
+	code_gen__select_args_with_mode(Args, top_out, _, Lvals),
+	set__list_to_set(Lvals, Vs).
+
+:- pred code_gen__select_args_with_mode(assoc_list(var, arg_info), 
+	arg_mode, list(var), list(lval)).
+:- mode code_gen__select_args_with_mode(in, in, out, out) is det.
+
+code_gen__select_args_with_mode([], _, [], []).
+code_gen__select_args_with_mode([Var - ArgInfo | Args], DesiredMode, Vs, Ls) :-
+	code_gen__select_args_with_mode(Args, DesiredMode, Vs0, Ls0),
+	ArgInfo = arg_info(Loc, Mode),
 	(
-		Mode = top_out
+		Mode = DesiredMode
 	->
 		code_util__arg_loc_to_register(Loc, Reg),
-		set__insert(Vs0, Reg, Vs)
+		Vs = [Var | Vs0],
+		Ls = [Reg | Ls0]
 	;
-		Vs = Vs0
+		Vs = Vs0,
+		Ls = Ls0
 	).
+
 
 %---------------------------------------------------------------------------%
 

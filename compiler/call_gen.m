@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -79,7 +79,7 @@
 
 :- import_module hlds_module, hlds_goal, hlds_data, prog_data, code_util.
 :- import_module arg_info, type_util, mode_util, unify_proc, instmap.
-:- import_module trace, globals.
+:- import_module trace, globals, options.
 :- import_module bool, int, list, assoc_list, tree, set, map.
 :- import_module std_util, require.
 
@@ -460,9 +460,10 @@ call_gen__save_variables(Args, Code) -->
 	{ set__list_to_set(Variables0, Vars0) },
 	{ set__difference(Vars0, Args, Vars1) },
 	code_info__get_globals(Globals),
-	{ globals__get_gc_method(Globals, GC_Method) },
+	{ globals__lookup_bool_option(Globals, alternate_liveness, 
+		AlternateLiveness) },
 	( 
-		{ GC_Method = accurate }
+		{ AlternateLiveness = yes }
 	->
 		code_info__get_proc_info(ProcInfo),
 		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars1, 
