@@ -181,6 +181,26 @@
 				% where typeinfos are live for any live data
 				% the includes that type variable.
 		;	typeinfo_liveness
+				% Generate unify and compare preds.  For
+				% measurement only. Code generated with
+				% this set to `no' is unlikely to
+				% actually work.
+		;	special_preds
+				% Generate type_ctor_info structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_info
+				% Generate type_ctor_layout structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_layout
+				% Generate type_ctor_functors structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_functors
 	% Code generation options
 		;	low_level_debug
 		;	trad_passes
@@ -484,6 +504,10 @@ option_defaults_2(compilation_model_option, [
 	procid_stack_layout	-	bool(no),
 	trace_stack_layout	-	bool(no),
 	typeinfo_liveness	-	bool(no),
+	special_preds		-	bool(yes),
+	type_ctor_info		-	bool(yes),
+	type_ctor_layout	-	bool(yes),
+	type_ctor_functors	-	bool(yes),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -828,6 +852,10 @@ long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
 long_option("trace-stack-layout",	trace_stack_layout).
 long_option("typeinfo-liveness",	typeinfo_liveness).
+long_option("special-preds",		special_preds).
+long_option("type-ctor-info",		type_ctor_info).
+long_option("type-ctor-layout",		type_ctor_layout).
+long_option("type-ctor-functors",	type_ctor_functors).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).

@@ -450,28 +450,36 @@ save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
 
 unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		ModuleInfo, ClauseInfo) :-
-	unify_proc__info_init(ModuleInfo, VarTypeInfo0),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, special_preds, SpecialPredsOpt),
 	( TypeBody = eqv_type(EqvType) ->
 		HeadVarType = EqvType
 	;
 		HeadVarType = Type
 	),
 	special_pred_info(SpecialPredId, HeadVarType,
-			_PredName, ArgTypes, _Modes, _Det),
+		_PredName, ArgTypes, _Modes, _Det),
+	unify_proc__info_init(ModuleInfo, VarTypeInfo0),
 	unify_proc__make_fresh_vars_from_types(ArgTypes, Args,
-					VarTypeInfo0, VarTypeInfo1),
-	( SpecialPredId = unify, Args = [H1, H2] ->
-		unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context,
-					Clauses, VarTypeInfo1, VarTypeInfo)
-	; SpecialPredId = index, Args = [X, Index] ->
-		unify_proc__generate_index_clauses(TypeBody, X, Index, Context,
-					Clauses, VarTypeInfo1, VarTypeInfo)
-	; SpecialPredId = compare, Args = [Res, X, Y] ->
-		unify_proc__generate_compare_clauses(TypeBody, Res, X, Y,
-					Context,
-					Clauses, VarTypeInfo1, VarTypeInfo)
+				VarTypeInfo0, VarTypeInfo1),
+	( SpecialPredsOpt = yes ->
+		( SpecialPredId = unify, Args = [H1, H2] ->
+			unify_proc__generate_unify_clauses(TypeBody, H1, H2,
+				Context, Clauses, VarTypeInfo1, VarTypeInfo)
+		; SpecialPredId = index, Args = [X, Index] ->
+			unify_proc__generate_index_clauses(TypeBody,
+				X, Index, Context, Clauses, VarTypeInfo1,
+				VarTypeInfo)
+		; SpecialPredId = compare, Args = [Res, X, Y] ->
+			unify_proc__generate_compare_clauses(TypeBody, Res,
+				X, Y, Context, Clauses, VarTypeInfo1,
+				VarTypeInfo)
+		;
+			error("unknown special pred")
+		)
 	;
-		error("unknown special pred")
+		Clauses = [],
+		VarTypeInfo = VarTypeInfo1
 	),
 	unify_proc__info_extract(VarTypeInfo, VarSet, Types),
 	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses).

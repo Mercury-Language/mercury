@@ -1560,12 +1560,19 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_type_ctor_infos(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_type_ctor_infos(HLDS0, Verbose, Stats, HLDS) -->
-	maybe_write_string(Verbose,
-		"% Generating type_ctor_info structures..."),
-	maybe_flush_output(Verbose),
-	{ base_type_info__generate_hlds(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
-	maybe_report_stats(Stats).
+	globals__io_lookup_bool_option(type_ctor_info, TypeCtorInfoOption),
+	( 
+		{ TypeCtorInfoOption = yes } 
+	->
+		maybe_write_string(Verbose,
+			"% Generating type_ctor_info structures..."),
+		maybe_flush_output(Verbose),
+		{ base_type_info__generate_hlds(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
+	).
 
 	% We only add type_ctor_layouts if shared-one-or-two-cell
 	% type_infos are being used (the layouts refer to the

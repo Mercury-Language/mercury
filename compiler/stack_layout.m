@@ -768,10 +768,16 @@ stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
 		initial(ArgTypes, none), must_be_static, CNum1,
 		"stack_layout_locn_vector") },
 
-	{ list__map(SelectNames, AllArrayInfo, AllNames) },
-	stack_layout__get_next_cell_number(CNum2),
-	{ NameVector = create(0, AllNames, uniform(yes(string)),
-		must_be_static, CNum2, "stack_layout_name_vector") }.
+	stack_layout__get_trace_stack_layout(TraceStackLayout),
+	( { TraceStackLayout = yes } ->
+		{ list__map(SelectNames, AllArrayInfo, AllNames) },
+		stack_layout__get_next_cell_number(CNum2),
+		{ NameVector = create(0, AllNames, uniform(yes(string)),
+			must_be_static, CNum2, "stack_layout_name_vector") }
+	;
+		{ NameVector = const(int_const(0)) }
+	).
+
 
 :- pred stack_layout__construct_liveval_array_infos(list(var_info)::in,
 	int::in, int::in,
