@@ -5,8 +5,6 @@
 %
 %   raise a polynomial (1+x+y+z) to the 10th power (symbolically)
 
-
-
 :- module poly.
 
 :- interface.
@@ -18,6 +16,9 @@
 :- type poly --->	poly(var, list(term)) ; const(int).
 :- type list(T) --->	[] ; [T | list(T)].
 
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is det.
+
 :- pred main3(poly, io__state, io__state).
 :- mode main3(out, di, uo) is det.
 
@@ -25,6 +26,8 @@
 :- mode main1(out) is det.
 
 :- implementation.
+
+main --> main3(_).
 
 main3(Out) -->
 	{ main1(Out) },
@@ -136,10 +139,6 @@ print_term(term(N, Poly)) -->
 	print_poly(Poly),
 	io__write_string(")").
 
-
-
-
-
 test_poly1(P) :-
 	P = poly(x, [term(0,const(1)), term(1,const(1))]).
 
@@ -152,7 +151,6 @@ test_poly3(P) :-
 test_poly(P) :-
 	poly_add(poly(x, [term(0,const(1)), term(1,const(1))]), poly(y, [term(1, const(1))]), Q),
 	poly_add(poly(z, [term(1,const(1))]), Q, P).
-
 
 
 poly_add(Poly1, Poly2, Result) :-
@@ -213,12 +211,6 @@ term_add(List1, List2, Result) :-
 		)
 	).
 
-
-
-
-
-
-
 add_to_order_zero_term(List, C2, Result) :-
 	( List = [term(0,C1)|Terms] ->
 		poly_add(C1, C2, C),
@@ -226,10 +218,6 @@ add_to_order_zero_term(List, C2, Result) :-
 	;
 		Result = [term(0,C2)|List]
 	).
-
-
-
-
 
 poly_exp(N, Poly, Result) :-
 	( N = 0 ->
@@ -243,8 +231,6 @@ poly_exp(N, Poly, Result) :-
 		poly_exp(M, Poly, Part),
 		poly_mul(Poly, Part, Result)
 	).
-
-
 
 poly_mul(Poly1, Poly2, Result) :-
 	(
@@ -320,19 +306,9 @@ mul_through(List, Poly, Result) :-
 		Result = [term(E,NewTerm)|NewTerms]
 	).
 
-
-
-
-
-
-
 lt(x, y).
 lt(y, z).
 lt(x, z).
-
-
-
-
 
 even(N) :-
 	M is N // 2,

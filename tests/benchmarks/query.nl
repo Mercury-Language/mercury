@@ -5,8 +5,6 @@
 %   query population and area database to find coun-
 %   tries of approximately equal population density
 
-
-
 :- module query.
 
 :- interface.
@@ -21,7 +19,12 @@
 :- pred main3(quad, io__state, io__state).
 :- mode main3(out, di, uo) is nondet.
 
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is nondet.
+
 :- implementation.
+
+main --> main3(_).
 
 main1(Out) :-	
 	query(Out).

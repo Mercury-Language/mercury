@@ -7,8 +7,6 @@
 %
 %   symbolic derivatives
 
-
-
 :- module deriv2.
 
 :- import_module int, io.
@@ -26,6 +24,11 @@
 		;	log(expr)
 		;	exp(expr)
 		.
+
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is semidet.
+
+main --> main6(_, _, _, _).
 
 :- pred main6(expr, expr, expr, expr, io__state, io__state).
 :- mode main6(out, out, out, out, di, uo) is semidet.
@@ -112,8 +115,6 @@ print_expr(-E) -->
 	io__write_string("neg("),
 	print_expr(E),
 	io__write_string(")").
-
-
 
 main4(E1, E2, E3, E4) :-
 	ops8(E1),

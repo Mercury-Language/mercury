@@ -1,5 +1,3 @@
-
-
 :- module tak.
 
 :- interface.
@@ -12,7 +10,12 @@
 :- pred main3(int, io__state, io__state).
 :- mode main3(out, di, uo) is det.
 
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is det.
+
 :- implementation.
+
+main --> main3(_).
 
 main1(Out) :-
 	tak(18, 12, 6, Out).
@@ -24,14 +27,6 @@ main3(Out) -->
 
 :- pred tak(int, int, int, int).
 :- mode tak(in, in, in, out) is det.
-
-
-
-
-
-
-
-
 
 tak(X, Y, Z, A) :-
 	(X =< Y ->

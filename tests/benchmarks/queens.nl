@@ -1,10 +1,6 @@
 % 9-queens program
 
-
-
-
 :- module queens.
-
 
 :- interface.
 
@@ -16,7 +12,12 @@
 :- pred main3(list(int), io__state, io__state).
 :- mode main3(out, di, uo) is nondet.
 
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is nondet.
+
 :- implementation.
+
+main --> main3(_).
 
 main1(Out) :-	
 	data(Data),
@@ -32,8 +33,6 @@ main3(Out) -->
 :- pred queen(list(int), list(int)).
 :- mode queen(in, out) is nondet.
 
-
-
 :- pred qperm(list(int), list(int)).
 :- mode qperm(in, out) is nondet.
 
@@ -46,19 +45,11 @@ main3(Out) -->
 :- pred nodiag(int, int, list(int)).
 :- mode nodiag(in, in, in) is semidet.
 
-
-
-
-
 data([1,2,3,4,5,6,7,8]).
-
-
 
 queen(Data, Out) :-
 	qperm(Data, Out),
 	safe(Out).
-
-
 
 qperm([], []).
 qperm([X|Y], K) :-
@@ -66,28 +57,14 @@ qperm([X|Y], K) :-
 	K = [U|V],
 	qperm(Z, V).
 
-
-
-	% gives performance of about 8.7
 qdelete(A, [A|L], L).
 qdelete(X, [A|Z], [A|R]) :-
 	qdelete(X, Z, R).
-
-
-
-
-
-
 
 safe([]).
 safe([N|L]) :-
 	nodiag(N, 1, L),
 	safe(L).
-
-
-
-
-
 
 nodiag(_, _, []).
 nodiag(B, D, [N|L]) :-

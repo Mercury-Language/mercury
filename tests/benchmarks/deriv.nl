@@ -7,10 +7,6 @@
 %
 %   symbolic derivatives
 
-
-
-
-
 :- module deriv.
 
 :- import_module int, io.
@@ -29,6 +25,9 @@
 		;	exp(expr)
 		.
 
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is semidet.
+
 :- pred main6(expr, expr, expr, expr, io__state, io__state).
 :- mode main6(out, out, out, out, di, uo) is semidet.
 
@@ -36,6 +35,8 @@
 :- mode main4(out, out, out, out) is semidet.
 
 :- implementation.
+
+main --> main6(_, _, _, _).
 
 main6(E1, E2, E3, E4) -->
 	{ main4(E1, E2, E3, E4) },
@@ -113,11 +114,6 @@ print_expr(-E) -->
 	print_expr(E),
 	io__write_string(")").
 
-
-
-
-
-
 main4(E1, E2, E3, E4) :-
 	ops8(E1),
 	divide10(E2),
@@ -135,10 +131,6 @@ ops8(E) :-
 
 divide10(E) :-
 	d(x / x / x / x / x / x / x / x / x / x / x, x, E).
-
-
-
-
 
 d(U + V, X, DU + DV) :-
     true ,

@@ -1,7 +1,3 @@
-%	pri2
-
-
-
 :- module primes.
 
 :- interface.
@@ -11,10 +7,15 @@
 :- pred main1(list(int)).
 :- mode main1(out) is det.
 
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is det.
+
 :- pred main3(list(int), io__state, io__state).
 :- mode main3(out, di, uo) is det.
 
 :- implementation.
+
+main --> main3(_).
 
 main1(Out) :-	
 	data(Data),
@@ -39,23 +40,11 @@ main3(Out) -->
 :- pred remove(int, list(int), list(int)).
 :- mode remove(in, in, out) is det.
 
-
-
-
-
 data(98).
-
-
-
-
 
 primes(Limit, Ps) :-
 	integers(2, Limit, Is),
 	sift(Is, Ps).
-
-
-
-
 
 integers(Low, High, Result) :- 
 	( Low =< High ->
@@ -66,18 +55,10 @@ integers(Low, High, Result) :-
 		Result = []
 	).
 
-
-
-
-
 sift([], []).
 sift([I | Is], [I | Ps]) :-
 	remove(I, Is, New),
 	sift(New, Ps).
-
-
-
-
 
 remove(_P, [], []).
 remove(P, [I | Is], Result) :-

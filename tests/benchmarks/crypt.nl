@@ -13,15 +13,16 @@
 % where E=even, O=odd.
 % This program generalizes easily
 % to any such problem.
-% Written by Peter Van Roy
-
-
+% Originally written by Peter Van Roy
 
 :- module crypt.
 
 :- interface.
 
 :- import_module list, int, io, printlist.
+
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is nondet.
 
 :- pred main1(list(int)).
 :- mode main1(out) is nondet.
@@ -30,6 +31,8 @@
 :- mode main3(out, di, uo) is nondet.
 
 :- implementation.
+
+main --> main3(_).
 
 :- import_module require.
 
@@ -70,10 +73,6 @@ main3(Out) -->
 :- mode lefteven(in) is semidet.
 :- mode lefteven(out) is nondet.
 
-
-
-
-
 crypt([A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P]) :-
 	odd(A), even(B), even(C), even(E),
 	mult([C, B, A], E, [I, H, G, F | X]),
@@ -92,18 +91,8 @@ crypt([A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P]) :-
 % language construct in NU-Prolog, and cannot be defined as a predicate.
 % If you try, nc comes up with an obscure error message.
 
-
-
-
-
 sum2(AL, BL, CL) :-
 	sum2(AL, BL, 0, CL).
-
-
-
-
-
-
 
 sum2([], [], Carry, Cs) :-
 	( Carry = 0 ->
@@ -139,17 +128,7 @@ sum2([A | AL], [B | BL], Carry, Cs) :-
 	sum2(AL, BL, NewCarry, CL),
 	Cs = [C | CL].
 
-
-
-
-
-
-
 mult(AL, D, BL) :- mult(AL, D, 0, BL).
-
-
-
-
 
 mult([A | AL], D, Carry, [B | BL] ) :-
 	X1 is A * D,
@@ -160,10 +139,6 @@ mult([A | AL], D, Carry, [B | BL] ) :-
 mult([], _, Carry, [C, Cend]) :-
 	C is Carry mod 10,
 	Cend is Carry // 10.
-
-
-
-
 
 zero([]).
 zero([0 | L]) :- zero(L).
