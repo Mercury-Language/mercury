@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -472,7 +472,7 @@ detect_deadness_in_goal_2(conj(Goals0), _, Deadness0, LiveInfo,
 detect_deadness_in_goal_2(par_conj(Goals0, SM), GoalInfo, Deadness0, LiveInfo,
 		Deadness, par_conj(Goals, SM)) :-
 	set__init(Union0),
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals),
 	detect_deadness_in_par_conj(Goals0, Deadness0, NonLocals,
 		LiveInfo, Union0, Union, Goals),
 	set__union(Union, Deadness0, Deadness).
@@ -979,7 +979,7 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, Liveness) :-
 		% typeinfo vars.
 	module_info_globals(ModuleInfo, Globals),
 	proc_info_goal(ProcInfo, _Goal - GoalInfo),
-	goal_info_get_nonlocals(GoalInfo, NonLocals0),
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	body_should_use_typeinfo_liveness(Globals, TypeinfoLiveness),
 	pred_info_module(PredInfo, PredModule),
@@ -1172,7 +1172,7 @@ live_info_get_varset(live_info(_, _, _, _, Varset), Varset).
 
 liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, 
 		NonLocals) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals0),
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
 	live_info_get_typeinfo_liveness(LiveInfo, TypeinfoLiveness),
 	( 
 		TypeinfoLiveness = yes

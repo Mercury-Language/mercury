@@ -819,10 +819,10 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	%
 	proc_info_headvars(ProcInfo, HeadVars),
 	Goal0 = GoalExpr - GoalInfo0,
-	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals0),
 	set__list_to_set(HeadVars, HeadVarsSet),
 	set__intersect(HeadVarsSet, NonLocals0, NonLocals),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+	goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo),
 	Goal = GoalExpr - GoalInfo,
 
 	goal_info_get_context(GoalInfo, Context),
@@ -996,7 +996,7 @@ goal_local_vars(Goal) = LocalVars :-
 	goal_util__goal_vars(Goal, GoalVars),
 	% delete the non-locals
 	Goal = _ - GoalInfo,
-	goal_info_get_nonlocals(GoalInfo, NonLocalVars),
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocalVars),
 	set__difference(GoalVars, NonLocalVars, LocalVars).
 
 :- func union_of_direct_subgoal_locals(hlds_goal) = set(prog_var).

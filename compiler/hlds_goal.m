@@ -400,6 +400,9 @@
 					% of the lambda expression.
 			maybe(cell_to_reuse),
 					% Cell to destructively update.
+					% Constructions for which this
+					% field is `yes(_)' are described
+					% as "reconstructions".
 			cell_is_unique,	% Can the cell be allocated
 					% in shared data.
 			maybe(rl_exprn_id)
@@ -621,20 +624,22 @@
 	% if this structure is modified.
 :- type hlds_goal_info
 	---> goal_info(
-		set(prog_var),	% the pre-birth set
-		set(prog_var),	% the post-birth set
-		set(prog_var),	% the pre-death set
-		set(prog_var),	% the post-death set
+		pre_births :: set(prog_var),	% the pre-birth set
+		post_births :: set(prog_var),	% the post-birth set
+		pre_deaths :: set(prog_var),	% the pre-death set
+		post_deaths :: set(prog_var),	% the post-death set
 				% (all four are computed by liveness.m)
 				% NB for atomic goals, the post-deadness
 				% should be applied _before_ the goal
 
-		determinism, 	% the overall determinism of the goal
+		determinism :: determinism, 
+				% the overall determinism of the goal
 				% (computed during determinism analysis)
 				% [because true determinism is undecidable,
 				% this may be a conservative approximation]
 
-		instmap_delta,	% the change in insts over this goal
+		instmap_delta :: instmap_delta,
+				% the change in insts over this goal
 				% (computed during mode analysis)
 				% [because true unreachability is undecidable,
 				% the instmap_delta may be reachable even
@@ -653,9 +658,10 @@
 				% conservative approximations, so if either
 				% says a goal is unreachable then it is.
 
-		prog_context,
+		context :: prog_context,
 
-		set(prog_var),	% the non-local vars in the goal,
+		nonlocals :: set(prog_var),
+				% the non-local vars in the goal,
 				% i.e. the variables that occur both inside
 				% and outside of the goal.
 				% (computed by quantification.m)
@@ -663,25 +669,46 @@
 				% conservative approximation: it may be
 				% a superset of the real non-locals]
 
-		maybe(follow_vars),
+		/*
+		code_gen_nonlocals :: maybe(set(prog_var)),
+				% the non-local vars in the goal,
+				% modified slightly for code generation.
+				% The difference between the code-gen nonlocals
+				% and the ordinary nonlocals is that arguments
+				% of a reconstruction which are taken from the
+				% reused cell are not considered to be
+				% `code_gen_nonlocals' of the goal.
+				% This avoids allocating stack slots and
+				% generating unnecessary field extraction
+				% instructions for those arguments.
+				% Mode information is still computed using
+				% the ordinary non-locals.
+				% 
+				% If the field has value `no', the ordinary
+				% nonlocals are used instead. This will
+				% be the case if the procedure body does not
+				% contain any reconstructions.
+		*/
+
+		follow_vars :: maybe(follow_vars),
 				% advisory information about where variables
 				% ought to be put next. The legal range
 				% includes the nonexistent register r(-1),
 				% which indicates any available register.
 
-		set(goal_feature),
+		features :: set(goal_feature),
 				% The set of used-defined "features" of
 				% this goal, which optimisers may wish
 				% to know about.
 
-		resume_point,
+		resume_point :: resume_point,
 				% If this goal establishes a resumption point,
 				% state what variables need to be saved for
 				% that resumption point, and which entry
 				% labels of the resumption point will be
 				% needed. (See compiler/notes/allocation.html)
 
-		goal_path
+		goal_path :: goal_path
 				% The path to this goal from the root in
 				% reverse order.
 	).
@@ -786,8 +813,15 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 :- pred goal_info_get_nonlocals(hlds_goal_info, set(prog_var)).
 :- mode goal_info_get_nonlocals(in, out) is det.
 
+:- pred goal_info_get_code_gen_nonlocals(hlds_goal_info, set(prog_var)).
+:- mode goal_info_get_code_gen_nonlocals(in, out) is det.
+
 :- pred goal_info_set_nonlocals(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_nonlocals(in, in, out) is det.
+
+:- pred goal_info_set_code_gen_nonlocals(hlds_goal_info,
+		set(prog_var), hlds_goal_info).
+:- mode goal_info_set_code_gen_nonlocals(in, in, out) is det.
 
 :- pred goal_info_get_features(hlds_goal_info, set(goal_feature)).
 :- mode goal_info_get_features(in, out) is det.
@@ -1057,105 +1091,73 @@ goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) :-
 	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
 	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
 
-goal_info_get_pre_births(GoalInfo, PreBirths) :-
-	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _, _).
+goal_info_get_pre_births(GoalInfo, GoalInfo ^ pre_births).
 
-goal_info_get_post_births(GoalInfo, PostBirths) :-
-	GoalInfo = goal_info(_, PostBirths, _, _, _, _, _, _, _, _, _, _).
+goal_info_get_post_births(GoalInfo, GoalInfo ^ post_births).
 
-goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
-	GoalInfo = goal_info(_, _, PreDeaths, _, _, _, _, _, _, _, _, _).
+goal_info_get_pre_deaths(GoalInfo, GoalInfo ^ pre_deaths).
 
-goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
-	GoalInfo = goal_info(_, _, _, PostDeaths, _, _, _, _, _, _, _, _).
+goal_info_get_post_deaths(GoalInfo, GoalInfo ^ post_deaths).
 
-goal_info_get_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, _, _, _, Determinism, _, _, _, _, _, _, _).
+goal_info_get_determinism(GoalInfo, GoalInfo ^ determinism).
 
-goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
-	GoalInfo = goal_info(_, _, _, _, _, InstMapDelta, _, _, _, _, _, _).
+goal_info_get_instmap_delta(GoalInfo, GoalInfo ^ instmap_delta).
 
-goal_info_get_context(GoalInfo, Context) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, Context, _, _, _, _, _).
+goal_info_get_context(GoalInfo, GoalInfo ^ context).
 
-goal_info_get_nonlocals(GoalInfo, NonLocals) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, NonLocals, _, _, _, _).
+goal_info_get_nonlocals(GoalInfo, GoalInfo ^ nonlocals).
 
-goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, MaybeFollowVars, _, _, _).
+	% The code-gen non-locals are always the same as the
+	% non-locals when structure reuse is not being performed.
+goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals) :-
+	goal_info_get_nonlocals(GoalInfo, NonLocals).
 
-goal_info_get_features(GoalInfo, Features) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, Features, _, _).
+goal_info_get_follow_vars(GoalInfo, GoalInfo ^ follow_vars).
 
-goal_info_get_resume_point(GoalInfo, ResumePoint) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, ResumePoint, _).
+goal_info_get_features(GoalInfo, GoalInfo ^ features).
 
-goal_info_get_goal_path(GoalInfo, GoalPath) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, _, GoalPath).
+goal_info_get_resume_point(GoalInfo, GoalInfo ^ resume_point).
 
-% :- type hlds_goal_info
-% 	--->	goal_info(
-% 		A	set(prog_var),	% the pre-birth set
-% 		B	set(prog_var),	% the post-birth set
-% 		C	set(prog_var),	% the pre-death set
-% 		D	set(prog_var),	% the post-death set
-% 		E	determinism, 	% the overall determinism of the goal
-% 		F	instmap_delta,	% the change in insts over this goal
-% 		G	prog_context,
-% 		H	set(prog_var),	% the non-local vars in the goal
-% 		I	maybe(follow_vars),
-% 		J	set(goal_feature),
-%		K	resume_point,
-%		L	goal_path
-% 	).
+goal_info_get_goal_path(GoalInfo, GoalInfo ^ goal_path).
 
-goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo) :-
-	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(PreBirths, B, C, D, E, F, G, H, I, J, K, L).
+goal_info_set_pre_births(GoalInfo0, PreBirths,
+		GoalInfo0 ^ pre_births := PreBirths).
 
-goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, PostBirths, C, D, E, F, G, H, I, J, K, L).
+goal_info_set_post_births(GoalInfo0, PostBirths,
+		GoalInfo0 ^ post_births := PostBirths).
 
-goal_info_set_pre_deaths(GoalInfo0, PreDeaths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, PreDeaths, D, E, F, G, H, I, J, K, L).
+goal_info_set_pre_deaths(GoalInfo0, PreDeaths,
+		GoalInfo0 ^ pre_deaths := PreDeaths).
 
-goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, PostDeaths, E, F, G, H, I, J, K, L).
+goal_info_set_post_deaths(GoalInfo0, PostDeaths,
+		GoalInfo0 ^ post_deaths := PostDeaths).
 
-goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, Determinism, F, G, H, I, J, K, L).
+goal_info_set_determinism(GoalInfo0, Determinism,
+		GoalInfo0 ^ determinism := Determinism).
 
-goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, E, InstMapDelta, G, H, I, J, K, L).
+goal_info_set_instmap_delta(GoalInfo0, InstMapDelta,
+		GoalInfo0 ^ instmap_delta := InstMapDelta).
 
-goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, E, F, Context, H, I, J, K, L).
+goal_info_set_context(GoalInfo0, Context, GoalInfo0 ^ context := Context).
 
-goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I, J, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, NonLocals, I, J, K, L).
+goal_info_set_nonlocals(GoalInfo0, NonLocals,
+		GoalInfo0 ^ nonlocals := NonLocals).
 
-goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _, J, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, FollowVars, J, K, L).
+	% The code-gen non-locals are always the same as the
+	% non-locals when structure reuse is not being performed.
+goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo).
 
-goal_info_set_features(GoalInfo0, Features, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, _, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, Features, K, L).
+goal_info_set_follow_vars(GoalInfo0, FollowVars,
+		GoalInfo0 ^ follow_vars := FollowVars).
 
-goal_info_set_resume_point(GoalInfo0, ResumePoint, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, _, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, ResumePoint, L).
+goal_info_set_features(GoalInfo0, Features, GoalInfo0 ^ features := Features).
 
-goal_info_set_goal_path(GoalInfo0, GoalPath, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, K, _),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, K, GoalPath).
+goal_info_set_resume_point(GoalInfo0, ResumePoint,
+		GoalInfo0 ^ resume_point := ResumePoint).
+
+goal_info_set_goal_path(GoalInfo0, GoalPath,
+		GoalInfo0 ^ goal_path := GoalPath).
 
 goal_info_get_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_determinism(GoalInfo, Determinism),
