@@ -6,9 +6,12 @@ Changes to the Mercury standard library:
   float.m and extras/complex_numbers (because of rounding errors the
   functions aren't actually reversible).
 
-* We've removed the buggy destructive update modes of string__set_char,
-  string__set_char_det and string__unsafe_set_char (they cause crashes when
-  applied to constant strings).
+* We've removed the destructive update modes of string__set_char,
+  string__set_char_det and string__unsafe_set_char. The compiler
+  currently always stores constant strings in static data, even
+  if they are passed to procedures with mode `di', so any attempt
+  to update a constant string will cause a crash. Fixing this properly
+  will be a lot of work, so for now we have just removed the modes.
 
 * We've fixed a bug in time.m. Type `tm' didn't store the day of the month,
   which meant that the functions which required that field (e.g. time__asctime,

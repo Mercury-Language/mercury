@@ -249,6 +249,9 @@
 
 :- pred string__set_char(char, int, string, string).
 :- mode string__set_char(in, in, in, out) is semidet.
+% XXX This mode is disabled because the compiler puts constant
+% strings into static data even when they might be updated.
+%:- mode string__set_char(in, in, di, uo) is semidet.
 %	string__set_char(Char, Index, String0, String):
 %	`String' is `String0' with the (`Index' + 1)-th character
 %	set to `Char'.
@@ -258,6 +261,9 @@
 :- func string__set_char_det(char, int, string) = string.
 :- pred string__set_char_det(char, int, string, string).
 :- mode string__set_char_det(in, in, in, out) is det.
+% XXX This mode is disabled because the compiler puts constant
+% strings into static data even when they might be updated.
+%:- mode string__set_char_det(in, in, di, uo) is det.
 %	string__set_char_det(Char, Index, String0, String):
 %	`String' is `String0' with the (`Index' + 1)-th character
 %	set to `Char'.
@@ -266,8 +272,15 @@
 
 :- func string__unsafe_set_char(char, int, string) = string.
 :- mode string__unsafe_set_char(in, in, in) = out is det.
+% XXX This mode is disabled because the compiler puts constant
+% strings into static data even when they might be updated.
+%:- mode string__unsafe_set_char(in, in, di) = uo is det.
+
 :- pred string__unsafe_set_char(char, int, string, string).
 :- mode string__unsafe_set_char(in, in, in, out) is det.
+% XXX This mode is disabled because the compiler puts constant
+% strings into static data even when they might be updated.
+%:- mode string__unsafe_set_char(in, in, di, uo) is det.
 %	string__unsafe_set_char(Char, Index, String0, String):
 %	`String' is `String0' with the (`Index' + 1)-th character
 %	set to `Char'.
@@ -1730,6 +1743,29 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	mercury::runtime::Errors::SORRY(""c code for this function"");
 ").
 
+/*
+:- pred string__set_char(char, int, string, string).
+:- mode string__set_char(in, in, di, uo) is semidet.
+*/
+/*
+:- pragma foreign_proc("C",
+	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	if ((MR_Unsigned) Index >= strlen(Str0)) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		SUCCESS_INDICATOR = TRUE;
+		Str = Str0;
+		MR_set_char(Str, Index, Ch);
+	}
+").
+:- pragma foreign_proc("MC++",
+	string__set_char(_Ch::in, _Index::in, _Str0::di, _Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+").
+*/
+
 /*-----------------------------------------------------------------------*/
 
 /*
@@ -1749,6 +1785,24 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		[will_not_call_mercury, thread_safe], "
 	mercury::runtime::Errors::SORRY(""c code for this function"");
 ").
+
+/*
+:- pred string__unsafe_set_char(char, int, string, string).
+:- mode string__unsafe_set_char(in, in, di, uo) is det.
+*/
+/*
+:- pragma foreign_proc("C",
+	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	Str = Str0;
+	MR_set_char(Str, Index, Ch);
+").
+:- pragma foreign_proc("MC++",
+	string__unsafe_set_char(_Ch::in, _Index::in, _Str0::di, _Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+").
+*/
 
 /*-----------------------------------------------------------------------*/
 
