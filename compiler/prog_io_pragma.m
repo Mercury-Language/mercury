@@ -308,7 +308,7 @@ parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
             PTerms6 = [PredAndVarsTerm, FlagsTerm,
 		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm],
 	    parse_pragma_foreign_proc_attributes_term(
-		ForeignLanguage, FlagsTerm, MaybeFlags),
+		ForeignLanguage, Pragma, FlagsTerm, MaybeFlags),
 	    ( MaybeFlags = ok(Flags) ->
 	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields,
 			FieldsContext) ->
@@ -387,14 +387,14 @@ parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
 		CodeTerm = term__functor(term__string(Code), [], Context)
 	    ->
 		parse_pragma_foreign_proc_attributes_term(
-			ForeignLanguage, FlagsTerm, MaybeFlags),
+			ForeignLanguage, Pragma, FlagsTerm, MaybeFlags),
 		( 
 			MaybeFlags = ok(Flags),
 			parse_pragma_foreign_code(ModuleName, Flags,
 				PredAndVarsTerm, ordinary(Code, yes(Context)),
 				VarSet, Res),
 			parse_pragma_foreign_proc_attributes_term(
-				ForeignLanguage, PredAndVarsTerm,
+				ForeignLanguage, Pragma, PredAndVarsTerm,
 				MaybeFlags2),
 			( 
 				MaybeFlags2 = ok(Flags)
@@ -527,7 +527,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
             PTerms6 = [PredAndVarsTerm, FlagsTerm,
 		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm],
 	    parse_pragma_foreign_proc_attributes_term(
-	    		ForeignLanguage, FlagsTerm, MaybeFlags),
+	    		ForeignLanguage, Pragma, FlagsTerm, MaybeFlags),
 	    ( MaybeFlags = ok(Flags) ->
 	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields,
 			FieldsContext) ->
@@ -606,7 +606,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 		CodeTerm = term__functor(term__string(Code), [], Context)
 	    ->
 		parse_pragma_foreign_proc_attributes_term(ForeignLanguage, 
-			FlagsTerm, MaybeFlags),
+			Pragma, FlagsTerm, MaybeFlags),
 		( 
 			MaybeFlags = ok(Flags),
 			parse_pragma_foreign_code(ModuleName, Flags,
@@ -615,7 +615,8 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 	        ; 
 			MaybeFlags = error(FlagsErr, FlagsErrTerm),
 			parse_pragma_foreign_proc_attributes_term(
-				ForeignLanguage, PredAndVarsTerm, MaybeFlags2),
+				ForeignLanguage, Pragma, PredAndVarsTerm,
+				MaybeFlags2),
 			(
 				MaybeFlags2 = ok(Flags),
 			    % XXX we should issue a warning; this syntax is
@@ -732,7 +733,7 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 	    (
 		PragmaTerms = [PredAndModesTerm, FlagsTerm, FunctionTerm],
 		parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
-				FlagsTerm, MaybeFlags),
+				"import", FlagsTerm, MaybeFlags),
 		(
 			MaybeFlags = error(FlagError, ErrorTerm),
 			FlagsResult = error("invalid second argument in `:- pragma import/3' declaration : " ++ FlagError, ErrorTerm)
@@ -1218,23 +1219,32 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 	--->	may_call_mercury(may_call_mercury)
 	;	thread_safe(thread_safe)
 	;	tabled_for_io(tabled_for_io)
+	;	purity(purity)
 	;	aliasing
 	;	max_stack_size(int).
 
-:- pred parse_pragma_foreign_proc_attributes_term(foreign_language, term, 
-		maybe1(pragma_foreign_proc_attributes)).
-:- mode parse_pragma_foreign_proc_attributes_term(in, in, out) is det.
+:- pred parse_pragma_foreign_proc_attributes_term(foreign_language, string,
+		term, maybe1(pragma_foreign_proc_attributes)).
+:- mode parse_pragma_foreign_proc_attributes_term(in, in, in, out) is det.
 
-parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Term,
+parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 		MaybeAttributes) :-
 	default_attributes(ForeignLanguage, Attributes0),
+	( ( Pragma = "c_code" ; Pragma = "import" ) ->
+		set_purity(Attributes0, pure, Attributes1)
+	;
+		Attributes1 = Attributes0
+	),
 	ConflictingAttributes = [
 		may_call_mercury(will_not_call_mercury) - 
 			may_call_mercury(may_call_mercury),
 		thread_safe(thread_safe) - 
 			thread_safe(not_thread_safe),
 		tabled_for_io(tabled_for_io) - 
-			tabled_for_io(not_tabled_for_io)
+			tabled_for_io(not_tabled_for_io),
+		purity(pure) - purity(impure),
+		purity(pure) - purity(semipure),
+		purity(semipure) - purity(impure)
 	],
 	(
 		parse_pragma_foreign_proc_attributes_term0(Term, AttrList)
@@ -1247,48 +1257,37 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Term,
 		->
 			MaybeAttributes = error("conflicting attributes in attribute list", Term)
 		;
-			( 
-				list__member(may_call_mercury(
-					will_not_call_mercury), AttrList)
-			->
-				set_may_call_mercury(Attributes0,
-					will_not_call_mercury, Attributes1)
-			;
-				Attributes1 = Attributes0
-			),
-			(
-				list__member(thread_safe(thread_safe),
-					AttrList)
-			->
-				set_thread_safe(Attributes1, thread_safe,
-					Attributes2)
-			;
-				Attributes2 = Attributes1
-			),
-			( 
-				list__member(tabled_for_io(tabled_for_io),
-					AttrList)
-			->
-				set_tabled_for_io(Attributes2, tabled_for_io,
-					Attributes3)
-			;
-				Attributes3 = Attributes2
-			),
-			ExtraAttrs = list__filter_map(
-				attribute_to_extra_attribute, AttrList),
 			list__foldl(
-				(pred(EAttr::in, Attrs0::in,
-						Attrs::out) is det :- 
-					add_extra_attribute(Attrs0, EAttr,
-						Attrs)),
-				ExtraAttrs, Attributes3, Attributes),
-				MaybeAttributes = check_required_attributes(
-					ForeignLanguage, Attributes, Term)
+				process_attribute,
+				AttrList, Attributes1, Attributes),
+			MaybeAttributes = check_required_attributes(
+				ForeignLanguage, Attributes, Term)
 		)
 	;
 		ErrMsg = "expecting a foreign proc attribute or list of attributes",
 		MaybeAttributes = error(ErrMsg, Term)
 	).
+
+
+	% Update the pragma_foreign_proc_attributes according to the given 
+	% collected_pragma_foreign_proc_attribute.
+:- pred process_attribute(collected_pragma_foreign_proc_attribute::in,
+		pragma_foreign_proc_attributes::in,
+		pragma_foreign_proc_attributes::out) is det.
+
+process_attribute(may_call_mercury(MayCallMercury), Attrs0, Attrs) :-
+	set_may_call_mercury(Attrs0, MayCallMercury, Attrs).
+process_attribute(thread_safe(ThreadSafe), Attrs0, Attrs) :-
+	set_thread_safe(Attrs0, ThreadSafe, Attrs).
+process_attribute(tabled_for_io(TabledForIO), Attrs0, Attrs) :-
+	set_tabled_for_io(Attrs0, TabledForIO, Attrs).
+process_attribute(purity(Pure), Attrs0, Attrs) :-
+	set_purity(Attrs0, Pure, Attrs).
+process_attribute(max_stack_size(Size), Attrs0, Attrs) :-
+	add_extra_attribute(Attrs0, max_stack_size(Size), Attrs).
+
+	% Aliasing is currently ignored in the main branch compiler.
+process_attribute(aliasing, Attrs, Attrs).
 
 
 	% Check whether all the required attributes have been set for
@@ -1310,12 +1309,6 @@ check_required_attributes(il, Attrs, Term) = Res :-
 	;
 		Res = ok(Attrs)
 	).
-
-:- func attribute_to_extra_attribute(collected_pragma_foreign_proc_attribute)
-	= pragma_foreign_proc_extra_attribute is semidet.
-
-attribute_to_extra_attribute(max_stack_size(Size)) = max_stack_size(Size).
-
 
 :- pred parse_pragma_foreign_proc_attributes_term0(term,
 		list(collected_pragma_foreign_proc_attribute)).
@@ -1353,6 +1346,8 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
 		Flag = aliasing
 	; parse_max_stack_size(Term, Size) ->
 		Flag = max_stack_size(Size)
+	; parse_purity_promise(Term, Purity) ->
+		Flag = purity(Purity)
 	;
 		fail
 	).
@@ -1403,6 +1398,12 @@ parse_max_stack_size(term__functor(
 		term__atom("max_stack_size"), [SizeTerm], _), Size) :-
 	SizeTerm = term__functor(term__integer(Size), [], _).
 
+:- pred parse_purity_promise(term::in, purity::out) is semidet.
+
+parse_purity_promise(term__functor(term__atom("promise_pure"), [], _), 
+		(pure)).
+parse_purity_promise(term__functor(term__atom("promise_semipure"), [], _),
+		(semipure)).
 
 % parse a pragma foreign_code declaration
 

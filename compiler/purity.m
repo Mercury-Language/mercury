@@ -431,12 +431,14 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 	{ pred_info_get_purity(PredInfo0, DeclPurity) } ,
 	{ pred_info_get_promised_purity(PredInfo0, PromisedPurity) },
+		% XXX we should remove this test when we have bootstrapped
+		% the changes requires to make foreign_proc impure by default
 	( { pred_info_get_goal_type(PredInfo0, pragmas) } ->
 		{ WorstPurity = (impure) },
 		{ IsPragmaCCode = yes },
 			% This is where we assume pragma foreign_proc is
 			% pure.
-		{ Purity = pure },
+		{ Purity = (pure) },
 		{ PredInfo = PredInfo0 },
 		{ NumErrors0 = 0 }
 	;   
@@ -785,11 +787,8 @@ compute_expr_purity(if_then_else(Vars,Goali0,Goalt0,Goale0,Store),
 	{ worst_purity(Purity1, Purity2, Purity12) },
 	{ worst_purity(Purity12, Purity3, Purity) }.
 compute_expr_purity(Ccode, Ccode, _, _, Purity) -->
-	{ Ccode = foreign_proc(_,PredId,_,_,_,_,_) },
-	ModuleInfo =^ module_info,
-	{ module_info_preds(ModuleInfo, Preds) },
-	{ map__lookup(Preds, PredId, CalledPredInfo) },
-	{ pred_info_get_purity(CalledPredInfo, Purity) }.
+	{ Ccode = foreign_proc(Attributes,_,_,_,_,_,_) },
+	{ purity(Attributes, Purity) }.
 compute_expr_purity(shorthand(_), _, _, _, _) -->
 	% these should have been expanded out by now
 	{ error("compute_expr_purity: unexpected shorthand") }.

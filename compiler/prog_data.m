@@ -538,6 +538,9 @@
 :- pred thread_safe(pragma_foreign_proc_attributes, thread_safe).
 :- mode thread_safe(in, out) is det.
 
+:- pred purity(pragma_foreign_proc_attributes, purity).
+:- mode purity(in, out) is det.
+
 :- pred set_thread_safe(pragma_foreign_proc_attributes, thread_safe,
 		pragma_foreign_proc_attributes).
 :- mode set_thread_safe(in, in, out) is det.
@@ -556,6 +559,9 @@
 		pragma_foreign_proc_attributes).
 :- mode set_tabled_for_io(in, in, out) is det.
 
+:- pred set_purity(pragma_foreign_proc_attributes, purity,
+		pragma_foreign_proc_attributes).
+:- mode set_purity(in, in, out) is det.
 
 :- pred add_extra_attribute(pragma_foreign_proc_attributes, 
 		pragma_foreign_proc_extra_attribute,
@@ -998,6 +1004,7 @@
 :- implementation.
 
 :- import_module string.
+:- import_module purity.
 
 :- type pragma_foreign_proc_attributes
 	--->	attributes(
@@ -1005,14 +1012,20 @@
 			may_call_mercury	:: may_call_mercury,
 			thread_safe		:: thread_safe,
 			tabled_for_io		:: tabled_for_io,
+			purity			:: purity,
 			extra_attributes	:: 
 				list(pragma_foreign_proc_extra_attribute)
 		).
 
 
+	% XXX we define Purity as being "pure" by default, but we should
+	% change this to "impure" once the promise_pure syntax is available
+	% and all the uses of foreign_proc in the library have the appropriate
+	% promises on them.
 default_attributes(Language, 
 	attributes(Language, may_call_mercury, not_thread_safe, 
-		not_tabled_for_io, [])).
+		not_tabled_for_io, pure, [])).		% delete me and 
+%		not_tabled_for_io, impure, [])).	% uncomment me soon!
 
 may_call_mercury(Attrs, Attrs ^ may_call_mercury).
 
@@ -1021,6 +1034,8 @@ thread_safe(Attrs, Attrs ^ thread_safe).
 foreign_language(Attrs, Attrs ^ foreign_language).
 
 tabled_for_io(Attrs, Attrs ^ tabled_for_io).
+
+purity(Attrs, Attrs ^ purity).
 
 set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
 	Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -1034,12 +1049,15 @@ set_foreign_language(Attrs0, ForeignLanguage, Attrs) :-
 set_tabled_for_io(Attrs0, TabledForIo, Attrs) :-
 	Attrs = Attrs0 ^ tabled_for_io := TabledForIo.
 
+set_purity(Attrs0, Purity, Attrs) :-
+	Attrs = Attrs0 ^ purity := Purity.
+
 attributes_to_strings(Attrs, StringList) :-
 	% We ignore Lang because it isn't an attribute that you can put
 	% in the attribute list -- the foreign language specifier string
 	% is at the start of the pragma.
 	Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
-			ExtraAttributes),
+			Purity,	ExtraAttributes),
 	(
 		MayCallMercury = may_call_mercury,
 		MayCallMercuryStr = "may_call_mercury"
@@ -1061,7 +1079,18 @@ attributes_to_strings(Attrs, StringList) :-
 		TabledForIO = not_tabled_for_io,
 		TabledForIOStr = "not_tabled_for_io"
 	),
-	StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr] ++
+	(
+		Purity = pure,
+		PurityStrList = ["promise_pure"]
+	;
+		Purity = (semipure),
+		PurityStrList = ["promise_semipure"]
+	;
+		Purity = (impure),
+		PurityStrList = []
+	),
+	StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
+			PurityStrList] ++
 		list__map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(Attributes0, NewAttribute,
