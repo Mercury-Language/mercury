@@ -1153,13 +1153,13 @@ code_info__save_ticket(Code) -->
 
 code_info__restore_ticket(Code) -->
 	code_info__get_stack_top(Lval),
-	{ Code = node([ restore_ticket(lval(Lval)) - "Restore ticket" ]) }.
+	{ Code = node([ restore_ticket(lval(Lval)) - "Restore solver state" ]) }.
 
 code_info__restore_ticket_and_pop(Code) -->
 	code_info__pop_temp(Lval),
 	{ Code = tree(
-		node([ restore_ticket(lval(Lval)) - "Restore ticket" ]),
-		node([ discard_ticket - "Restore ticket" ]) )
+		node([ restore_ticket(lval(Lval)) - "Restore solver state" ]),
+		node([ discard_ticket - "Pop ticket stack" ]) )
 		}.
 
 code_info__discard_ticket(Code) -->

@@ -37,7 +37,6 @@
 :- pred mode_is_unused(module_info, mode).
 :- mode mode_is_unused(in, in) is semidet.
 
-	% a mode is considered unused if both initial and final insts are free
 :- pred mode_to_arg_mode(module_info, mode, arg_mode).
 :- mode mode_to_arg_mode(in, in, out) is det.
 

@@ -962,7 +962,7 @@ output_instruction(restore_ticket(Rval), DeclSet0, _) -->
 	).
 
 output_instruction(discard_ticket, _, _) -->
-	io__write_string("\tdiscard_ticket();").
+	io__write_string("\tdiscard_ticket();\n").
 
 output_instruction(incr_sp(N, Msg), _, _) -->
 	io__write_string("\tincr_sp_push_msg("),

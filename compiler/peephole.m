@@ -244,6 +244,17 @@ peephole__match(mkframe(Descr, Slots, Redoip1), Comment, _, _, Instrs0, Instrs)
 		)
 	).
 
+	% If a `store_ticket' is followed by a `restore_ticket',
+	% we can delete the `restore_ticket'.
+	%
+	%	store_ticket(Lval)	=>	store_ticket(Lval)
+	%	restore_ticket(Lval)
+
+peephole__match(store_ticket(Lval), Comment, _, _, Instrs0, Instrs) :-
+	opt_util__skip_comments(Instrs0, Instrs1),
+	Instrs1 = [restore_ticket(lval(Lval)) - _Comment2 | Instrs2],
+	Instrs = [store_ticket(Lval) - Comment | Instrs2].
+
 	% If a `modframe' is followed by another, with the instructions
 	% in between containing only straight-line code, we can delete
 	% one of the modframes:
