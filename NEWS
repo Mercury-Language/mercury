@@ -1,6 +1,9 @@
 NEWS since Mercury release 0.8:
 -------------------------------
 
+Changes to the Mercury language:
+********************************
+
 * We've made a small change to the rule for quantification of lambda
   expressions.  
 
@@ -26,10 +29,13 @@ NEWS since Mercury release 0.8:
   predicate argument and unify it with the compound term in the body of
   the lambda expression.
 
+Changes to the Mercury standard library:
+****************************************
+
 * We've added a new predicate to the Mercury standard library:
 	bag__count_value/3.
 
-  The following predicates have been replaced by functions with
+* The following predicates have been replaced by functions with
   the same names, and will be removed in a future release.
   The predicate versions were intended for use in programs which needed
   to work in both Prolog and Mercury, but executing Mercury programs using
@@ -51,6 +57,9 @@ NEWS since Mercury release 0.8:
 	float__min_exponent/1,
 	float__max_exponent/1.
 
+New library packages in the Mercury extras distribution:
+********************************************************
+
 * We've added support for optional lazy evaluation.
 
   The extras distribution now includes a new module `lazy',
@@ -64,6 +73,9 @@ NEWS since Mercury release 0.8:
   The interface is based on the C functions dlopen(), dlsym(), and co.,
   which are supported by most modern Unix systems.
   See the files in extras/dynamic_linking for details.
+
+Changes to the Mercury implementation:
+**************************************
 
 * The debugger now includes support for interactive queries.
 
