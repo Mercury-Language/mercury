@@ -459,13 +459,10 @@
 	.
 
 :- type instance_method	
-	--->	func_instance(sym_name, sym_name, arity, prog_context)
-				% Method, Instance, Arity, 
+	--->	instance_method(pred_or_func, sym_name,
+			sym_name, arity, prog_context).
+				% PredOrFunc, Method, Instance, Arity, 
 				% Line number of declaration
-	;	pred_instance(sym_name, sym_name, arity, prog_context)
-				% Method, Instance, Arity, 
-				% Line number of declaration
-	.
 
 :- type instance_body
 	--->	abstract

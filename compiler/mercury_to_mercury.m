@@ -532,11 +532,12 @@ mercury_output_instance_methods(Methods) -->
 
 output_instance_method(Method) -->
 	io__write_char('\t'),
+	{ Method = instance_method(PredOrFunc, Name1, Name2, Arity, _Context) },
 	(
-		{ Method = func_instance(Name1, Name2, Arity, _Context) },
+		{ PredOrFunc = function },
 		io__write_string("func(")
 	;
-		{ Method = pred_instance(Name1, Name2, Arity, _Context) },
+		{ PredOrFunc = predicate },
 		io__write_string("pred(")
 	),
 	mercury_output_bracketed_sym_name(Name1, next_to_graphic_token),

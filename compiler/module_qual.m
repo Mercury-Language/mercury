@@ -1070,16 +1070,11 @@ qualify_instance_body(ClassName, concrete(M0s), concrete(Ms)) :-
 		Ms = M0s
 	;
 		sym_name_get_module_name(ClassName, unqualified(""), Module),
-		Qualify = lambda([M0::in, M::out] is det,
-			(
-				M0 = pred_instance(Method0, A, B, C),
-				add_module_qualifier(Module, Method0, Method),
-				M = pred_instance(Method, A, B, C)
-			;
-				M0 = func_instance(Method0, A, B, C),
-				add_module_qualifier(Module, Method0, Method),
-				M = func_instance(Method, A, B, C)
-			)),
+		Qualify = lambda([M0::in, M::out] is det, (
+			M0 = instance_method(A, Method0, C, D, E),
+			add_module_qualifier(Module, Method0, Method),
+			M = instance_method(A, Method, C, D, E)
+		)),
 		list__map(Qualify, M0s, Ms)
 	).
 

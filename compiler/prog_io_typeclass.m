@@ -530,9 +530,9 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					InstanceMethod, "instance method",
 					ok(InstanceMethodName, []))
 			->
-				Result = ok(pred_instance(ClassMethodName,
-					InstanceMethodName, ArityInt,
-					TermContext))
+				Result = ok(instance_method(predicate,
+					ClassMethodName, InstanceMethodName,
+					ArityInt, TermContext))
 			;
 				Result = error(
 				    "expected `pred(<Name> / <Arity>) is <InstanceMethod>'",
@@ -556,9 +556,9 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					InstanceMethod, "instance method",
 					ok(InstanceMethodName, []))
 			->
-				Result = ok(func_instance(ClassMethodName,
-					InstanceMethodName, ArityInt,
-					TermContext))
+				Result = ok(instance_method(function,
+					ClassMethodName, InstanceMethodName,
+					ArityInt, TermContext))
 			;
 				Result = error(
 				    "expected `func(<Name> / <Arity>) is <InstanceMethod>'",

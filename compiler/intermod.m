@@ -228,7 +228,7 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 		;
 			% Remove any items added for the clauses
 			% for this predicate.
-			dcg_set(IntermodInfo0)
+			:=(IntermodInfo0)
 		)
 	;
 		[]
@@ -310,9 +310,6 @@ intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
 		% included in the .opt file.
 		pred_info_get_goal_type(PredInfo, assertion)
 	).
-
-:- pred dcg_set(T::in, T::unused, T::out) is det.
-dcg_set(T, _, T).
 
 :- pred intermod__traverse_clauses(list(clause)::in, list(clause)::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
@@ -826,10 +823,18 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 		=(IntermodInfo0),
 		(
 			{ Interface0 = concrete(Methods0) },
-			{ MaybePredProcIds = yes(PredProcIds) ->
+			{ MaybePredProcIds = yes(ClassProcs) ->
+				GetPredId =
+				    (pred(Proc::in, PredId::out) is det :-
+					Proc = hlds_class_proc(PredId, _)
+				    ),
+				list__map(GetPredId, ClassProcs, ClassPreds0),
+
+				% The interface is sorted on pred_id.
+				list__remove_adjacent_dups(ClassPreds0,
+					ClassPreds),
 				assoc_list__from_corresponding_lists(
-					PredProcIds, Methods0,
-					MethodAL0)
+					ClassPreds, Methods0, MethodAL0)
 			;
 				error(
 	"intermod__gather_instances_3: method pred_proc_ids not filled in")
@@ -859,7 +864,7 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 				% Don't write declarations for any of the
 				% methods if one can't be written.
 				%
-				dcg_set(IntermodInfo0)
+				:=(IntermodInfo0)
 			)
 		;
 			{ Interface0 = abstract },
@@ -892,43 +897,46 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 	% Resolve overloading of instance methods before writing them
 	% to the `.opt' file.
 :- pred intermod__qualify_instance_method(module_info::in,
-		pair(hlds_class_proc, instance_method)::in,
+		pair(pred_id, instance_method)::in,
 		pair(pred_id, instance_method)::out) is det.
 
-intermod__qualify_instance_method(ModuleInfo, ClassProcId - InstanceMethod0,
-		PredId - InstanceMethod) :-
-	ClassProcId = hlds_class_proc(MethodCallPredId, _),
+intermod__qualify_instance_method(ModuleInfo,
+		MethodCallPredId - InstanceMethod0, PredId - InstanceMethod) :-
 	module_info_pred_info(ModuleInfo, MethodCallPredId,
 		MethodCallPredInfo),
 	pred_info_arg_types(MethodCallPredInfo, MethodCallTVarSet, _,
 		MethodCallArgTypes),
-	(
-		InstanceMethod0 = func_instance(MethodName,
+	InstanceMethod0 = instance_method(PredOrFunc, MethodName,
 			InstanceMethodName0, MethodArity, MethodContext),
+	(
+		PredOrFunc = function,
 		module_info_get_predicate_table(ModuleInfo, PredicateTable),
 		(
 			predicate_table_search_func_sym_arity(PredicateTable,
 				InstanceMethodName0, MethodArity, PredIds),
 			typecheck__find_matching_pred_id(PredIds, ModuleInfo,
 				MethodCallTVarSet, MethodCallArgTypes,
-				PredId0, InstanceMethodName)
+				PredId0, InstanceMethodName1)
 		->
 			PredId = PredId0,
-			InstanceMethod = func_instance(MethodName,
-				InstanceMethodName, MethodArity, MethodContext)
+			InstanceMethodName = InstanceMethodName1
 		;
-			error(
-		"intermod__qualify_instance_method: undefined function")
+			hlds_out__simple_call_id_to_string(
+				function - InstanceMethodName0/MethodArity,
+				MethodStr),
+			string__append(
+			    "intermod__qualify_instance_method: undefined ",
+			    MethodStr, Msg),
+			error(Msg)
 		)
 	;
-		InstanceMethod0 = pred_instance(MethodName,
-			InstanceMethodName0, MethodArity, MethodContext),
+		PredOrFunc = predicate,
 		typecheck__resolve_pred_overloading(ModuleInfo,
 			MethodCallArgTypes, MethodCallTVarSet,
-			InstanceMethodName0, InstanceMethodName, PredId),
-		InstanceMethod = pred_instance(MethodName,
-			InstanceMethodName, MethodArity, MethodContext)
-	).
+			InstanceMethodName0, InstanceMethodName, PredId)
+	),
+	InstanceMethod = instance_method(PredOrFunc, MethodName,
+			InstanceMethodName, MethodArity, MethodContext).
 
 %-----------------------------------------------------------------------------%
 
@@ -1742,7 +1750,8 @@ intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 		HigherOrderSizeLimit),
 	intermod__gather_preds(PredIds, yes, Threshold, HigherOrderSizeLimit,
 		Deforestation, Info0, Info1),
-	intermod__gather_types(Info1, Info),
+	intermod__gather_instances(Info1, Info2),
+	intermod__gather_types(Info2, Info),
 	do_adjust_pred_import_status(Info, Module0, Module),
 	maybe_write_string(VVerbose, " done\n", IO2, IO).
 
