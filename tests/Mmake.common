@@ -230,7 +230,7 @@ THIS_DIR_TESTS_TO_RUN := $(shell echo $(patsubst $(THIS_DIR)/%,%,\
 		$(filter $(THIS_DIR)/%,$(TESTS_TO_RUN))) \
 		| tr ' ' '\n' | grep -v /)
 else
-THIS_DIR_TESTS_TO_RUN := $(TESTS)
+THIS_DIR_TESTS_TO_RUN := $(strip $(TESTS))
 endif
 
 ifeq ($(THIS_DIR_TESTS_TO_RUN),)
