@@ -260,12 +260,13 @@ type_to_type_id(Type, SymName - Arity, Args) :-
 	(
 		type_is_higher_order(Type, _, PredArgTypes) 
 	->
-		Args = PredArgTypes
+		Args = PredArgTypes,
+		list__length(Args1, Arity)	% functions have arity 2, 
+						% (they are =/2)
 	;
-		Args = Args1
-	),
-	list__length(Args, Arity).
-
+		Args = Args1,
+		list__length(Args, Arity)
+	).
 
 construct_type(TypeId, Args, Type) :-
 	term__context_init(Context),
