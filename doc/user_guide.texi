@@ -154,12 +154,6 @@ which contain the dependencies for a module.
 Files ending in @file{.dep} are automatically-generated Makefile fragments
 which contain the rules for an entire program.
 
-In the source code for the Mercury runtime library,
-we use a few files ending in @file{.mod};
-these are preprocessed using the perl script @samp{mod2c} to produce C files.
-(Originally the Mercury compiler also produced @file{.mod} files,
-but now we compile directly to C.)
-
 As usual, @file{.c} files are C source code,
 @file{.h} files are C header files,
 @file{.o} files are object code,
