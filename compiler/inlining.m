@@ -9,17 +9,29 @@
 :- module inlining.
 
 	% This module inlines
-	%	- procedures that are flat (ie contain no branched structures)
-	%	  and are composed of inline builtins (eg arithmetic)
-	%	- procedures where the product of the number of calls to them
+	%
+	%	* (--inline-simple and --inline-simple-threshold N)
+	%	  procedures whose size is below the given threshold,
+	%	  PLUS	  
+	%	  procedures that are flat (ie contain no branched structures)
+	%	  and are composed of inline builtins (eg arithmetic),
+	%	  and whose size is less than three times the given threshold
+	%	  (XXX shouldn't hard-code 3)
+	%
+	%	* (--inline-compound-threshold N)
+	%	  procedures where the product of the number of calls to them
 	%	  and their size is below a given threshold.
-	%	- procedures which are called only once (if the appropriate
-	%	  option is enabled).
-	% 	- procedures which have a `:- pragma inline(name/arity).'
+	%
+	%	* (--inline-single-use)
+	%	  procedures which are called only once
+	%
+	% 	* procedures which have a `:- pragma inline(name/arity).'
+	%
 	% If inlining a procedure takes the total number of variables over
 	% a given threshold (from a command-line option), then the procedure
 	% is not inlined - note that this means that some calls to a
 	% procedure may inlined while others are not.
+	%
 	% It builds the call-graph (if necessary) works from the bottom of
 	% the call-graph towards the top, first perfoming inlining on a
 	% procedure then deciding if calls to it (higher in the call-graph)
@@ -29,6 +41,7 @@
 	% There are a couple of classes of procedure that we clearly want
 	% to inline because doing so *reduces* the size of the generated
 	% code:
+	%
 	%	- access predicates that get or set one or more fields
 	%	  of a structure (Inlining these is almost always a win
 	%	  because the infrastructure for the call to the procedure
@@ -41,15 +54,19 @@
 	%	  where several `set' accessors get called one after the other,
 	%	  inlining them enables the code generator to avoid creating
 	%	  the intermediate structures which is often a win).
+	%
 	%	- arithmetic predicates where the as above, the cost of the
 	%	  call will often outweigh the cost of the arithmetic.
+	%
 	%	- pragma C code, where often the C operation is very small,
 	%	  inlining avoids a call and allows the C compiler to do a
 	%	  better job of optimizing it.
+	%
 	% The threshold on the size of simple goals (which covers both of the
 	% first two cases above), is to prevent the inlining of large goals
 	% such as those that construct big terms where the duplication is
 	% usually inappropriate (for example in nrev).
+	%
 	% The threshold on the number of variables in a procedure is to prevent
 	% the problem of inlining lots of calls and having a resulting
 	% procedure with so many variables that the back end of the compiler
@@ -64,8 +81,8 @@
 :- pred inlining(module_info, module_info, io__state, io__state).
 :- mode inlining(in, out, di, uo) is det.
 
-:- pred inlining__simple_goal(hlds__goal, int).
-:- mode inlining__simple_goal(in, in) is semidet.
+:- pred inlining__is_simple_goal(hlds__goal, int).
+:- mode inlining__is_simple_goal(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -87,8 +104,7 @@
 				%		var-threshold
 
 inlining(ModuleInfo0, ModuleInfo) -->
-		% Get the usage counts for predicates
-	{ dead_proc_elim__analyze(ModuleInfo0, NeededMap) },
+		%
 		% Package up all the inlining options
 		% - whether to inline simple conj's of builtins
 		% - whether to inline predicates that are
@@ -101,13 +117,31 @@ inlining(ModuleInfo0, ModuleInfo) -->
 		%   we want in procedures - if inlining a procedure
 		%   would cause the number of variables to exceed
 		%   this threshold then we don't inline it.
+		%
 	globals__io_lookup_bool_option(inline_simple, Simple),
 	globals__io_lookup_bool_option(inline_single_use, SingleUse),
-	globals__io_lookup_int_option(inline_compound_threshold, Threshold),
+	globals__io_lookup_int_option(inline_compound_threshold,
+							CompoundThreshold),
 	globals__io_lookup_int_option(inline_simple_threshold, SimpleThreshold),
 	globals__io_lookup_int_option(inline_vars_threshold, VarThreshold),
-	{ Params = params(Simple, SingleUse, Threshold, SimpleThreshold,
-			VarThreshold) },
+	{ Params = params(Simple, SingleUse, CompoundThreshold,
+			SimpleThreshold, VarThreshold) },
+
+		%
+		% Get the usage counts for predicates
+		% (but only if needed, i.e. only if --inline-single-use
+		% or --inline-compound-threshold has been specified)
+		%
+	(
+		( { SingleUse = yes }
+		; { CompoundThreshold > 0 }
+		)
+	->
+		{ dead_proc_elim__analyze(ModuleInfo0, NeededMap) }
+	;
+		{ map__init(NeededMap) }
+	),
+
 		% build the call graph and extract the topological sort
 		% Note: the topological sort returns a list of SCCs.
 		% Clearly, we want to process the SCCs bottom to top
@@ -156,19 +190,20 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		{ map__lookup(Procs, ProcId, ProcInfo) },
 		{ proc_info_goal(ProcInfo, CalledGoal) },
 		{ Entity = proc(PredId, ProcId) },
-		% the heuristic represented by this disjunction
-		% could be improved
+	%
+	% the heuristic represented by the following code
+	% could be improved
+	%
 		(
-			(
-				{ Simple = yes },
-				{ inlining__simple_goal(CalledGoal,
-					SimpleThreshold) }
-			;
-				{ map__search(NeededMap, Entity, Needed) },
-				{ Needed = yes(NumUses) },
-				{ goal_size(CalledGoal, Size) },
-				{ Size * NumUses =< CompoundThreshold }
-			)
+			{ Simple = yes },
+			{ inlining__is_simple_goal(CalledGoal,
+				SimpleThreshold) }
+		;
+			{ CompoundThreshold > 0 },
+			{ map__search(NeededMap, Entity, Needed) },
+			{ Needed = yes(NumUses) },
+			{ goal_size(CalledGoal, Size) },
+			{ Size * NumUses =< CompoundThreshold }
 		;
 			{ SingleUse = yes },
 			{ map__search(NeededMap, Entity, Needed) },
@@ -184,33 +219,41 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		{ InlinedProcs = InlinedProcs0 }
 	).
 
+	% this heuristic is used for both local and intermodule inlining
 
-inlining__simple_goal(Goal, GoalThreshold) :-
+inlining__is_simple_goal(CalledGoal, SimpleThreshold) :-
+	goal_size(CalledGoal, Size),
 	(
-		inlining__simple_goal_2(Goal)
+		Size < SimpleThreshold
 	;
-		goal_size(Goal, Size),
-		Size < GoalThreshold
+		%
+		% For flat goals, we are more likely to be able to
+		% optimize stuff away, so we use a higher threshold.
+		% XXX this should be a separate option, we shouldn't
+		% hardcode the number `3' (which is just a guess).
+		%
+		Size < SimpleThreshold * 3,
+		inlining__is_flat_simple_goal(CalledGoal)
 	).
 
-:- pred inlining__simple_goal_2(hlds__goal::in) is semidet.
+:- pred inlining__is_flat_simple_goal(hlds__goal::in) is semidet.
 
-inlining__simple_goal_2(conj(Goals) - _) :-
-	inlining__simple_goal_list(Goals).
-inlining__simple_goal_2(not(Goal) - _) :-
-	inlining__simple_goal_2(Goal).
-inlining__simple_goal_2(some(_, Goal) - _) :-
-	inlining__simple_goal_2(Goal).
-inlining__simple_goal_2(call(_, _, _, Builtin, _, _) - _) :-
+inlining__is_flat_simple_goal(conj(Goals) - _) :-
+	inlining__is_flat_simple_goal_list(Goals).
+inlining__is_flat_simple_goal(not(Goal) - _) :-
+	inlining__is_flat_simple_goal(Goal).
+inlining__is_flat_simple_goal(some(_, Goal) - _) :-
+	inlining__is_flat_simple_goal(Goal).
+inlining__is_flat_simple_goal(call(_, _, _, Builtin, _, _) - _) :-
 	hlds__is_builtin_is_inline(Builtin).
-inlining__simple_goal_2(unify(_, _, _, _, _) - _).
+inlining__is_flat_simple_goal(unify(_, _, _, _, _) - _).
 
-:- pred inlining__simple_goal_list(hlds__goals::in) is semidet.
+:- pred inlining__is_flat_simple_goal_list(hlds__goals::in) is semidet.
 
-inlining__simple_goal_list([]).
-inlining__simple_goal_list([Goal | Goals]) :-
-	inlining__simple_goal_2(Goal),
-	inlining__simple_goal_list(Goals).
+inlining__is_flat_simple_goal_list([]).
+inlining__is_flat_simple_goal_list([Goal | Goals]) :-
+	inlining__is_flat_simple_goal(Goal),
+	inlining__is_flat_simple_goal_list(Goals).
 
 :- pred inlining__mark_proc_as_inlined(pred_proc_id, module_info,
 	set(pred_proc_id), set(pred_proc_id), io__state, io__state).

@@ -375,8 +375,9 @@ option_defaults_2(optimization_option, [
 	inlining		-	bool_special,
 	inline_simple		-	bool(no),
 	inline_single_use	-	bool(no),
-	inline_compound_threshold	-	int(0),
-	inline_simple_threshold	-	int(0),
+	inline_compound_threshold -	int(0),
+	inline_simple_threshold	-	int(5),	% has no effect until
+						% --inline-simple is enabled
 	inline_vars_threshold	-	int(100),
 	intermod_inline_simple_threshold
 				-	int(0),
@@ -876,10 +877,13 @@ opt_level(3, _, [
 % Optimization level 4: apply optimizations which may have some
 % payoff even if they increase compilation time quite a bit
 
-% Currently this just enables value_number
+% Currently this enables value_number
+% and increases the inlining thresholds
 
 opt_level(4, _, [
-	optimize_value_number	-	bool(yes)
+	optimize_value_number	-	bool(yes),
+	inline_simple_threshold	-	int(8),
+	inline_compound_threshold -	int(20)
 ]).
 
 % Optimization level 5: apply optimizations which may have some
