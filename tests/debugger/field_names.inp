@@ -1,0 +1,129 @@
+echo on
+context none
+step
+finish
+p 5
+p 5^1x
+p 5^1
+p 5^2
+p 5^3
+p 5^4
+p 5^t1a
+p 5^t1b
+p 5^t1c
+p 5^t1d
+p 5^t1e
+step
+finish
+p 4
+p 4^1
+p 4^2
+p 4^3
+p 4^t1a
+p 4^t1e
+p 4^t1f
+p 4^t1g
+step
+finish
+p 5
+p 5^1
+p 5^2
+p 5^3
+p 5^3^t1a
+p 5^3^t1b
+p 5^3^t1c
+p 5^3^t1d
+p 5^3^t1e
+p 5^4
+p 5^4^t1a
+p 5^4^t1e
+p 5^4^t1f
+p 5^4^t1g
+p 5^t2a
+p 5^t2b
+p 5^t2b^t1a
+p 5^t2b^t1b
+p 5^t2b^t1c
+p 5^t2b^t1d
+p 5^t2b^t1e
+p 5^t2c
+p 5^t2c^t1a
+p 5^t2c^t1e
+p 5^t2c^t1f
+p 5^t2c^t1g
+step
+finish
+p 4
+p 4^1
+p 4^1^1
+p 4^1^t1a
+p 4^1^t1e
+p 4^1^t1g
+p 4^2
+p 4^3
+p 4^3^1
+p 4^3^t1a
+p 4^4
+p 4^4^t1a
+p 4^4^t1b
+p 4^4^t1c
+p 4^4^t1d
+p 4^4^t1e
+p 4^t3a
+p 4^t3a^1
+p 4^t3a^t1a
+p 4^t3a^t1e
+p 4^t3a^t1g
+p 4^t3b
+p 4^t3c
+p 4^t3d
+p 4^t3d^t1a
+p 4^t3d^t1b
+p 4^t3d^t1c
+p 4^t3d^t1d
+p 4^t3d^t1e
+p 4^t3e^t1a
+step
+finish
+p 2
+p 2^1
+p 2^2
+p 2^3^t1a
+p 2^3^t1b
+p 2^3^t1c
+p 2^3^t1d
+p 2^3^t1e
+p 2^4
+p 2^4^t1a
+p 2^4^t1e
+p 2^4^t1f
+p 2^4^t1g
+p 2^t2a
+p 2^t2b
+p 2^t2b^t1a
+p 2^t2b^t1b
+p 2^t2b^t1c
+p 2^t2b^t1d
+p 2^t2b^t1e
+p 2^t2c
+p 2^t2c^t1a
+p 2^t2c^t1e
+p 2^t2c^t1f
+p 2^t2c^t1g
+step
+finish
+p 2
+p 2/1
+p 2/1/1
+p 2/1/t1a
+p 2/t5a
+p 2/t5a/1
+p 2/t5a/t1a
+p 2/t6a
+step
+finish
+p 2
+p 2/1
+p 2/t5a
+p 2/t6a
+continue -S

@@ -684,6 +684,7 @@ typedef struct {
 typedef struct {
     MR_ConstString      MR_notag_functor_name;
     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
+    MR_ConstString      MR_notag_functor_arg_name;
 } MR_NotagFunctorDesc;
 
 /*---------------------------------------------------------------------------*/

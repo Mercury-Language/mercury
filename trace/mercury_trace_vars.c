@@ -672,12 +672,16 @@ MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
 
 			if (MR_isdigit(*s)) {
 				s++;
+				while (MR_isdigit(*s)) {
+					s++;
+				}
+			} else if (MR_isalnumunder(*s)) {
+				s++;
+				while (MR_isalnumunder(*s)) {
+					s++;
+				}
 			} else {
 				return "bad component selector";
-			}
-
-			while (MR_isdigit(*s)) {
-				s++;
 			}
 		} while (*s != '\0');
 
@@ -836,6 +840,10 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
 /* ML_arg() is defined in std_util.m */
 extern	bool 	ML_arg(MR_TypeInfo term_type_info, MR_Word *term, int arg_index,
 			MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr);
+/* ML_named_arg_num() is defined in std_util.m */
+extern	bool 	ML_named_arg_num(MR_TypeInfo term_type_info, MR_Word *term,
+			const char *arg_name, int *arg_num_ptr);
+
 
 static char *
 MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
@@ -857,18 +865,44 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 		while (*path != '\0') {
 			old_path = path;
 
-			arg_num = 0;
-			while (MR_isdigit(*path)) {
-				arg_num = arg_num * 10 + *path - '0';
-				path++;
+			if (MR_isdigit(*path)) {
+				/* we have a field number */
+
+				arg_num = 0;
+				while (MR_isdigit(*path)) {
+					arg_num = arg_num * 10 + *path - '0';
+					path++;
+				}
+
+				/* ML_arg numbers fields from 0, not 1 */
+				--arg_num;
+			} else {
+				/* we have a field name */
+				char	saved_char;
+
+				while (MR_isalnumunder(*path)) {
+					path++;
+				}
+
+				saved_char = *path;
+				*path = '\0';
+
+				if (! ML_named_arg_num(typeinfo, value,
+					old_path, &arg_num))
+				{
+					*path = saved_char;
+					return old_path;
+				}
+
+				*path = saved_char;
 			}
 
 			if (*path != '\0') {
+				MR_assert(*path == '^' || *path == '/');
 				path++; /* step over / or ^ */
 			}
 
-			/* ML_arg starts indexing fields from 0, not 1 */
-			if (ML_arg(typeinfo, value, arg_num - 1,
+			if (ML_arg(typeinfo, value, arg_num,
 				&new_typeinfo, &new_value))
 			{
 				typeinfo = new_typeinfo;

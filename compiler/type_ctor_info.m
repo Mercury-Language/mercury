@@ -300,9 +300,11 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 			Enum = no,
 			globals__lookup_bool_option(Globals,
 				unboxed_no_tag_types, NoTagOption),
-			( NoTagOption = yes,
-			  type_constructors_are_no_tag_type(Ctors, Name,
-			  	ArgType) ->
+			(
+				NoTagOption = yes,
+				type_constructors_are_no_tag_type(Ctors,
+					Name, ArgType, MaybeArgName)
+			->
 				( term__is_ground(ArgType) ->
 					Inst = equiv_type_is_ground
 				;
@@ -310,7 +312,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 				),
 				TypeCtorRep = notag(EqualityAxioms, Inst),
 				type_ctor_info__make_notag_tables(Name,
-					ArgType, RttiTypeId,
+					ArgType, MaybeArgName, RttiTypeId,
 					TypeTables, FunctorsInfo, LayoutInfo),
 				NumPtags = -1
 			;
@@ -369,10 +371,10 @@ make_pseudo_type_info_tables(HO_TypeInfo, Tables0, Tables) :-
 % Make the functor and notag tables for a notag type.
 
 :- pred type_ctor_info__make_notag_tables(sym_name::in, (type)::in,
-	rtti_type_id::in, list(rtti_data)::out,
+	maybe(string)::in, rtti_type_id::in, list(rtti_data)::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out) is det.
 
-type_ctor_info__make_notag_tables(SymName, ArgType, RttiTypeId,
+type_ctor_info__make_notag_tables(SymName, ArgType, MaybeArgName, RttiTypeId,
 		TypeTables, FunctorsInfo, LayoutInfo) :-
 	unqualify_name(SymName, FunctorName),
 	RttiTypeId = rtti_type_id(_, _, UnivTvars),
@@ -381,7 +383,8 @@ type_ctor_info__make_notag_tables(SymName, ArgType, RttiTypeId,
 	ExistTvars = [],
 	make_pseudo_type_info_and_tables(ArgType, UnivTvars, ExistTvars,
 		RttiData, [], Tables0),
-	FunctorDesc = notag_functor_desc(RttiTypeId, FunctorName, RttiData),
+	FunctorDesc = notag_functor_desc(RttiTypeId, FunctorName, RttiData,
+		MaybeArgName),
 	FunctorRttiName = notag_functor_desc,
 
 	FunctorsInfo = notag_functors(FunctorRttiName),

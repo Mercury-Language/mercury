@@ -27,6 +27,7 @@ DEBUGGER_PROGS=	\
 	exception_value			\
 	exception_vars			\
 	existential_type_classes	\
+	field_names			\
 	implied_instance		\
 	interpreter			\
 	loopcheck			\
@@ -178,6 +179,9 @@ existential_type_classes.out: existential_type_classes \
 			existential_type_classes.inp
 	$(MDB) ./existential_type_classes < existential_type_classes.inp 2>&1 | \
 		sed 's/string.m:[0-9]*/string.m:NNNN/g' > existential_type_classes.out
+
+field_names.out: field_names field_names.inp
+	$(MDB) ./field_names < field_names.inp > field_names.out 2>&1
 
 implied_instance.out: implied_instance implied_instance.inp
 	$(MDB) ./implied_instance < implied_instance.inp \

@@ -1822,7 +1822,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			{
 				AllowNoTagTypes = yes,
 				type_constructors_are_no_tag_type(ConsList,
-					Name, CtorArgType)
+					Name, CtorArgType, _)
 			->
 				NoTagType = no_tag_type(Args,
 					Name, CtorArgType),

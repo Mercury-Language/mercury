@@ -163,8 +163,8 @@ output_rtti_data_defn(enum_functor_desc(RttiTypeId, FunctorName, Ordinal),
 	io__write_string(""",\n\t"),
 	io__write_int(Ordinal),
 	io__write_string("\n};\n").
-output_rtti_data_defn(notag_functor_desc(RttiTypeId, FunctorName, ArgType),
-		DeclSet0, DeclSet) -->
+output_rtti_data_defn(notag_functor_desc(RttiTypeId, FunctorName, ArgType,
+		MaybeArgName), DeclSet0, DeclSet) -->
 	output_rtti_data_decls(ArgType, "", "", 0, _, DeclSet0, DeclSet1),
 	output_generic_rtti_data_defn_start(RttiTypeId, notag_functor_desc,
 		DeclSet1, DeclSet),
@@ -172,6 +172,16 @@ output_rtti_data_defn(notag_functor_desc(RttiTypeId, FunctorName, ArgType),
 	c_util__output_quoted_string(FunctorName),
 	io__write_string(""",\n\t "),
 	output_addr_of_rtti_data(ArgType),
+	io__write_string(",\n\t"),
+	(
+		{ MaybeArgName = yes(ArgName) },
+		io__write_string(""""),
+		io__write_string(ArgName),
+		io__write_string("""")
+	;
+		{ MaybeArgName = no },
+		io__write_string("NULL")
+	),
 	io__write_string("\n};\n").
 output_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 		Locn, Ordinal, Arity, ContainsVarBitVector, MaybeArgTypes,

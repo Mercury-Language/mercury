@@ -194,9 +194,10 @@
 			% the MR_NotagFunctorDesc C type.
 
 			string,			% functor name
-			rtti_data		% pseudo typeinfo of argument
+			rtti_data,		% pseudo typeinfo of argument
 						% (as a pseudo_type_info
 						% rtti_data)
+			maybe(string)		% the argument's name, if any
 		)
 	;	du_functor_desc(
 			rtti_type_id,		% identifies the type
@@ -448,7 +449,7 @@ rtti_data_to_name(field_types(RttiTypeId, Ordinal, _),
 	RttiTypeId, field_types(Ordinal)).
 rtti_data_to_name(enum_functor_desc(RttiTypeId, _, Ordinal),
 	RttiTypeId, enum_functor_desc(Ordinal)).
-rtti_data_to_name(notag_functor_desc(RttiTypeId, _, _),
+rtti_data_to_name(notag_functor_desc(RttiTypeId, _, _, _),
 	RttiTypeId, notag_functor_desc).
 rtti_data_to_name(du_functor_desc(RttiTypeId, _,_,_,_, Ordinal, _,_,_,_,_),
 	RttiTypeId, du_functor_desc(Ordinal)).

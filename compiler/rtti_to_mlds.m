@@ -148,8 +148,8 @@ gen_init_rtti_data_defn(enum_functor_desc(_RttiTypeId, FunctorName, Ordinal),
 		gen_init_string(FunctorName),
 		gen_init_int(Ordinal)
 	]).
-gen_init_rtti_data_defn(notag_functor_desc(_RttiTypeId, FunctorName, ArgType),
-		ModuleName, _, Init, []) :-
+gen_init_rtti_data_defn(notag_functor_desc(_RttiTypeId, FunctorName, ArgType,
+		_MaybeArgName), ModuleName, _, Init, []) :-
 	Init = init_struct([
 		gen_init_string(FunctorName),
 		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,

@@ -2594,11 +2594,19 @@ ML_get_num_functors(MR_TypeInfo type_info)
     ** non-zero). The arity will always be set.
     **
     ** ML_expand will fill in the other fields (functor, arity,
-    ** arg_values, arg_type_infos, and non_canonical_type)
-    ** accordingly, but
-    ** the values of fields not asked for should be assumed to
-    ** contain random data when ML_expand returns.
-    ** (that is, they should not be relied on to remain unchanged).
+    ** arg_values, arg_type_infos, and non_canonical_type) accordingly,
+    ** but the values of fields not asked for should be assumed to contain
+    ** random data when ML_expand returns (that is, they should not be
+    ** relied on to remain unchanged).
+    **
+    ** The arg_type_infos field will contain a pointer to an array of arity
+    ** MR_TypeInfos, one for each user-visible field of the cell. The
+    ** arg_values field will contain a pointer to an arity + num_extra_args
+    ** MR_Words, one for each field of the cell, whether user-visible or not.
+    ** The first num_extra_args words will be the type infos and/or typeclass
+    ** infos added by the implementation to describe the types of the
+    ** existentially typed fields, while the last arity words will be the
+    ** user-visible fields themselves.
     */
 
 /* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
@@ -2631,6 +2639,12 @@ extern  void    ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
     */
 extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
                     MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr);
+
+    /*
+    ** NB. ML_named_arg_num() is used in mercury_trace_vars.c.
+    */
+extern  bool    ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
+                    const char *arg_name, int *arg_num_ptr);
 
 ").
 
@@ -3118,6 +3132,9 @@ ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 ** It takes the address of a term, its type, and an argument index.
 ** If the selected argument exists, it succeeds and returns the address
 ** of the argument, and its type; if it doesn't, it fails (i.e. returns FALSE).
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
 */
 
 bool
@@ -3149,7 +3166,8 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     success = (arg_index >= 0 && arg_index < expand_info.arity);
     if (success) {
         *arg_type_info_ptr = expand_info.arg_type_infos[arg_index];
-        *arg_ptr = &expand_info.arg_values[arg_index];
+        *arg_ptr = &expand_info.arg_values[
+            arg_index + expand_info.num_extra_args];
     }
 
     /*
@@ -3162,6 +3180,111 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     }
 
     return success;
+}
+
+/*
+** ML_named_arg_num() takes the address of a term, its type, and an argument
+** name. If the given term has an argument with the given name, it succeeds and
+** returns the argument number (counted starting from 0) of the argument;
+** if it doesn't, it fails (i.e. returns FALSE).
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+bool
+ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
+    const char *arg_name, int *arg_num_ptr)
+{
+    MR_TypeCtorInfo             type_ctor_info;
+    const MR_DuPtagLayout       *ptag_layout;
+    const MR_DuFunctorDesc      *functor_desc;
+    const MR_NotagFunctorDesc   *notag_functor_desc;
+    MR_Word                     data;
+    int                         ptag;
+    MR_Word                     sectag;
+    MR_TypeInfo                 eqv_type_info;
+    int                         i;
+
+    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+
+    switch (type_ctor_info->type_ctor_rep) {
+        case MR_TYPECTOR_REP_DU_USEREQ:
+        case MR_TYPECTOR_REP_DU:
+            data = *term_ptr;
+            ptag = MR_tag(data);
+            ptag_layout = &type_ctor_info->type_layout.layout_du[ptag];
+
+            switch (ptag_layout->MR_sectag_locn) {
+                case MR_SECTAG_NONE:
+                    functor_desc = ptag_layout->MR_sectag_alternatives[0];
+                    break;
+                case MR_SECTAG_LOCAL:
+                    sectag = MR_unmkbody(data);
+                    functor_desc =
+                        ptag_layout->MR_sectag_alternatives[sectag];
+                    break;
+                case MR_SECTAG_REMOTE:
+                    sectag = MR_field(ptag, data, 0);
+                    functor_desc =
+                        ptag_layout->MR_sectag_alternatives[sectag];
+                    break;
+            }
+
+            if (functor_desc->MR_du_functor_arg_names == NULL) {
+                return FALSE;
+            }
+
+            for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
+                if (functor_desc->MR_du_functor_arg_names[i] != NULL
+                && streq(arg_name, functor_desc->MR_du_functor_arg_names[i]))
+                {
+                    *arg_num_ptr = i;
+                    return TRUE;
+                }
+            }
+
+            return FALSE;
+
+        case MR_TYPECTOR_REP_EQUIV:
+            eqv_type_info = MR_create_type_info(
+                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                type_ctor_info->type_layout.layout_equiv);
+            return ML_named_arg_num(eqv_type_info, term_ptr, arg_name,
+                arg_num_ptr);
+
+        case MR_TYPECTOR_REP_EQUIV_GROUND:
+            eqv_type_info = MR_pseudo_type_info_is_ground(
+                type_ctor_info->type_layout.layout_equiv);
+            return ML_named_arg_num(eqv_type_info, term_ptr, arg_name,
+                arg_num_ptr);
+
+        case MR_TYPECTOR_REP_EQUIV_VAR:
+            /*
+            ** The current version of the RTTI gives all such equivalence types
+            ** the EQUIV type_ctor_rep, not EQUIV_VAR.
+            */
+            MR_fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
+            break;
+
+        case MR_TYPECTOR_REP_NOTAG:
+        case MR_TYPECTOR_REP_NOTAG_USEREQ:
+        case MR_TYPECTOR_REP_NOTAG_GROUND:
+        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+            notag_functor_desc = type_ctor_info->type_functors.functors_notag;
+
+            if (notag_functor_desc->MR_notag_functor_arg_name != NULL
+            && streq(arg_name, notag_functor_desc->MR_notag_functor_arg_name))
+            {
+                *arg_num_ptr = 0;
+                return TRUE;
+            }
+
+            return FALSE;
+
+        default:
+            return FALSE;
+    }
 }
 
 ").

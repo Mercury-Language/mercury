@@ -20,7 +20,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_data, prog_data.
 :- import_module term.
-:- import_module list, map.
+:- import_module std_util, list, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -253,15 +253,17 @@
 	% (i.e. one with only one constructor, and
 	% whose one constructor has only one argument,
 	% and which is not private_builtin:type_info/1),
-	% and if so, return its constructor symbol and argument type.
+	% and if so, return its constructor symbol, argument type,
+	% and the argument's name (if it has one).
 	%
 	% This doesn't do any checks for options that might be set
 	% (such as turning off no_tag_types).  If you want those checks
 	% you should use type_is_no_tag_type/4, or if you really know
 	% what you are doing, perform the checks yourself.
 
-:- pred type_constructors_are_no_tag_type(list(constructor), sym_name, type).
-:- mode type_constructors_are_no_tag_type(in, out, out) is semidet.
+:- pred type_constructors_are_no_tag_type(list(constructor), sym_name, type,
+	maybe(string)).
+:- mode type_constructors_are_no_tag_type(in, out, out, out) is semidet.
 
 	% Unify (with occurs check) two types with respect to a type
 	% substitution and update the type bindings.
@@ -433,7 +435,7 @@
 
 :- import_module prog_io, prog_io_goal, prog_util, options, globals.
 :- import_module bool, char, int, string.
-:- import_module assoc_list, require, std_util, varset.
+:- import_module assoc_list, require, varset.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
 	sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
@@ -969,9 +971,10 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 	% would always be fully module-qualified at points where
 	% type_constructors_are_no_tag_type/3 is called.
 
-type_constructors_are_no_tag_type(Ctors, Ctor, ArgType) :-
+type_constructors_are_no_tag_type(Ctors, Ctor, ArgType, MaybeArgName) :-
 	Ctors = [SingleCtor],
-	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, [_FName - ArgType]),
+	SingleCtor = ctor(ExistQVars, _Constraints, Ctor,
+		[MaybeSymName - ArgType]),
 	ExistQVars = [],
 	unqualify_name(Ctor, Name),
 	Name \= "type_info",
@@ -982,7 +985,16 @@ type_constructors_are_no_tag_type(Ctors, Ctor, ArgType) :-
 	% We don't handle unary tuples as no_tag types --
 	% they are rare enough that it's not worth
 	% the implementation effort.
-	Name \= "{}".
+	Name \= "{}",
+
+	(
+		MaybeSymName = yes(SymName),
+		unqualify_name(SymName, ArgName),
+		MaybeArgName = yes(ArgName)
+	;
+		MaybeSymName = no,
+		MaybeArgName = no
+	).
 
 %-----------------------------------------------------------------------------%
 
