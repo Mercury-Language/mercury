@@ -322,19 +322,6 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		return NULL;
 	}
 
-#ifdef MR_USE_DECL_STACK_SLOT
-	if (entry->MR_sle_maybe_decl_debug < 1) {
-		/*
-		** If using reserved stack slots, we ignore any event
-		** for a procedure that does not have a slot reserved.
-		** Such procedures are effectively assumed correct, so
-		** we give the user a warning.
-		*/
-		MR_edt_compiler_flag_warning = MR_TRUE;
-		return NULL;
-	}
-#endif /* MR_USE_DECL_STACK_SLOT */
-
 	event_details.MR_call_seqno = MR_trace_call_seqno;
 	event_details.MR_call_depth = MR_trace_call_depth;
 	event_details.MR_event_number = MR_trace_event_number;
@@ -475,11 +462,6 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 		}
 	);
 
-#ifdef MR_USE_DECL_STACK_SLOT
-	MR_trace_decl_set_slot(layout->MR_sll_entry,
-					event_info->MR_saved_regs, node);
-#endif
-
 	return node;
 }
 	
@@ -495,14 +477,7 @@ MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
 				event_info->MR_saved_regs,
 				MR_PORT_EXIT);
 
-#ifdef MR_USE_DECL_STACK_SLOT
-	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
-				event_info->MR_saved_regs);
-#else
-	call = MR_trace_matching_call(prev);
 	MR_decl_checkpoint_match(call);
-#endif
-	
 	MR_TRACE_CALL_MERCURY(
 		last_interface = MR_DD_call_node_get_last_interface(
 				(MR_Word) call);
@@ -525,10 +500,6 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Trace_Node		next;
 	MR_Word			last_interface;
 
-#ifdef MR_USE_DECL_STACK_SLOT
-	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
-				event_info->MR_saved_regs);
-#else
 	/*
 	** Search through previous contour for a matching EXIT event.
 	*/
@@ -548,7 +519,6 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 			MR_fatal_error("MR_trace_decl_redo: no matching EXIT");
 		}
 	);
-#endif /* !MR_USE_DECL_STACK_SLOT */
 
 	MR_TRACE_CALL_MERCURY(
 		last_interface = MR_DD_call_node_get_last_interface(
@@ -571,25 +541,17 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Trace_Node		call;
 	MR_Word			redo;
 
-#ifdef MR_USE_DECL_STACK_SLOT
-	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
-				event_info->MR_saved_regs);
-#else
-	if (MR_trace_node_port(prev) == MR_PORT_CALL)
-	{
+	if (MR_trace_node_port(prev) == MR_PORT_CALL) {
 		/*
 		** We are already at the corresponding call, so there
 		** is no need to search for it.
 		*/
 		call = prev;
-	}
-	else
-	{
+	} else {
 		next = MR_trace_find_prev_contour(prev);
 		call = MR_trace_matching_call(next);
 	}
 	MR_decl_checkpoint_match(call);
-#endif
 
 	MR_TRACE_CALL_MERCURY(
 		redo = MR_DD_call_node_get_last_interface((MR_Word) call);
@@ -610,13 +572,8 @@ MR_trace_decl_excp(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Trace_Node		call;
 	MR_Word			last_interface;
 
-#ifdef MR_USE_DECL_STACK_SLOT
-	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
-				event_info->MR_saved_regs);
-#else
 	call = MR_trace_matching_call(prev);
 	MR_decl_checkpoint_match(call);
-#endif
 
 	MR_TRACE_CALL_MERCURY(
 		last_interface = MR_DD_call_node_get_last_interface(
@@ -849,51 +806,6 @@ MR_trace_decl_disj(MR_Event_Info *event_info, MR_Trace_Node prev)
 
 	return node;
 }
-
-#ifdef MR_USE_DECL_STACK_SLOT
-
-static	MR_Trace_Node
-MR_trace_decl_get_slot(const MR_Proc_Layout *entry, MR_Word *saved_regs)
-{
-	int			decl_slot;
-	MR_Word			*saved_sp;
-	MR_Word			*saved_curfr;
-	MR_Trace_Node		node;
-	
-	decl_slot = entry->MR_sle_maybe_decl_debug;
-	
-	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-		saved_sp = (MR_Word *) MR_saved_sp(saved_regs);
-		node = (MR_Trace_Node) MR_based_stackvar(saved_sp, decl_slot);
-	} else {
-		saved_curfr = (MR_Word *) MR_saved_curfr(saved_regs);
-		node = (MR_Trace_Node) MR_based_framevar(saved_curfr,
-							decl_slot);
-	}
-	
-	return node;
-}
-
-static	void
-MR_trace_decl_set_slot(const MR_Proc_Layout *entry,
-		MR_Word *saved_regs, MR_Trace_Node node)
-{
-	int			decl_slot;
-	MR_Word			*saved_sp;
-	MR_Word			*saved_curfr;
-	
-	decl_slot = entry->MR_sle_maybe_decl_debug;
-	
-	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-		saved_sp = (MR_Word *) MR_saved_sp(saved_regs);
-		MR_based_stackvar(saved_sp, decl_slot) = (MR_Word) node;
-	} else {
-		saved_curfr = (MR_Word *) MR_saved_curfr(saved_regs);
-		MR_based_framevar(saved_curfr, decl_slot) = (MR_Word) node;
-	}
-}
-
-#endif /* MR_USE_DECL_STACK_SLOT */
 
 static	MR_Trace_Node
 MR_trace_matching_call(MR_Trace_Node node)
@@ -1214,17 +1126,6 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 				"compiled with trace level `decl'.\n");
 		return MR_FALSE;
 	}
-
-#ifdef MR_USE_DECL_STACK_SLOT
-	if (entry->MR_sle_maybe_decl_debug < 1) {
-		/* No slots are reserved for declarative debugging */
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
-				"because this procedure was not\n"
-				"compiled with stack slots reserved.\n");
-		return MR_FALSE;
-	}
-#endif /* MR_USE_DECL_STACK_SLOT */
 
 	if (trace_mode == MR_TRACE_DECL_DEBUG_DUMP) {
 		out = fopen(outfile, "w");
