@@ -1075,7 +1075,7 @@ det_univ_to_type(Univ, X) :-
 **	One word contains the address of a type_info for the type.
 **	The other word contains the data.
 **	The offsets MR_UNIV_OFFSET_FOR_TYPEINFO and MR_UNIV_OFFSET_FOR_DATA
-**	are defined in runtime/type_info.h.
+**	are defined in runtime/mercury_type_info.h.
 */
 
 #include ""mercury_type_info.h""
