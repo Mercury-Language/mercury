@@ -43,15 +43,71 @@ umask 002
 #-----------------------------------------------------------------------------#
 
 DATE=`date '+%Y-%m-%d'`
+DAY=`date '+%e'`
 
-RELEASE_VERSION=rotd-$DATE
-CHECKOUT_OPTS=-A
+case $HOST in
+	murlibobo|taifun|hg|hydra)
+		#
+		# For these hosts:
+		# On odd-numbered days, test the release branch.
+		# On even-numbered days, test the main branch.
+		#
+		case $DAY in
+			*[13579]) INSTALL_DIR_NAME=mercury-0.10 ;;
+			*)	  INSTALL_DIR_NAME=mercury-latest ;;
+		esac
+		;;
+	*)
+		#
+		# For the remaining hosts, do the reverse:
+		# On odd-numbered days, test the main branch.
+		# On even-numbered days, test the release branch.
+		#
+		case $DAY in
+			*[13579]) INSTALL_DIR_NAME=mercury-latest ;;
+			*)	  INSTALL_DIR_NAME=mercury-0.10 ;;
+		esac
+		;;
+esac
 
-# To build one of the official releases, uncomment the following two lines
-# which specify the release number and the cvs checkout option needed to
-# retrieve it.
-### RELEASE_VERSION=0.8.1
-### CHECKOUT_OPTS=-rversion-0_8_1
+#
+# We set the following variables according to which
+# branch we're testing.
+#
+# CHECKOUT_OPTS:
+# Options to pass to cvs checkout.
+#
+# BASE_TAG_NAME:
+# The name on which to base the cvs tag names that we add.
+# We add cvs tags of the form
+# `stable-$BASE_TAG_NAME-$fullname_tag' and
+# `unstable-$BASE_TAG_NAME-$fullname_tag'
+# for the unstable (passed bootcheck, but not tests)
+# and stable (pass both bootcheck and tests) versions respectively.
+#
+# RELEASE_VERSION:
+# The name to give this version.
+#
+# RELEASE_VERSION_PATTERN:
+# A pattern used to delete earlier versions which
+# this version will replace, if it builds successfully.
+# This should usually be the same as $RELEASE_VERSION,
+# but with `*' instead of $DATE.
+#
+case $INSTALL_DIR_NAME in
+	mercury-latest)
+		CHECKOUT_OPTS=-A
+		BASE_TAG_NAME=rotd
+		RELEASE_VERSION=rotd-$DATE
+		RELEASE_VERSION_PATTERN=rotd-*
+		;;
+	mercury-0.10)
+		CHECKOUT_OPTS=-rversion-0_10_x
+		BASE_TAG_NAME=version-0_10_x
+		RELEASE_VERSION=0.10-beta-$DATE
+		RELEASE_VERSION_PATTERN=0.10-beta-*
+		;;
+esac
 
 #-----------------------------------------------------------------------------#
 
@@ -109,9 +165,9 @@ DIR=$TESTDIR/test_dirs/$HOST
 
 case $HOST in
 	hg|ender|roy)	
-		INSTALL_DIR=/home/$HOST/public/mercury-latest/$FULLARCH ;;
+		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
-		INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH ;;
+		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
@@ -119,16 +175,24 @@ BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
 BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases
 BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files
 
-STABLE=$DIR/mercury-latest-stable
-UNSTABLE=$DIR/mercury-latest-unstable
+STABLE=$DIR/$INSTALL_DIR_NAME-stable
+UNSTABLE=$DIR/$INSTALL_DIR_NAME-unstable
 
 case $ARCH in
 	alpha)
 		# due to a bug in the DEC loader, INSTALL_DIR should be
 		# as short as possible, to avoid overflow of fixed length
 		# buffers for -rpath options. The above definition is too long.
-		INSTALL_DIR=/home/mercury/public/.a	# for mercury-latest
-		### INSTALL_DIR=/home/mercury/public/.b	# for 0.8
+		case $INSTALL_DIR_NAME in
+		mercury-latest) INSTALL_DIR=/home/mercury/public/.a ;;
+		mercury-0.8)	INSTALL_DIR=/home/mercury/public/.b ;;
+		mercury-0.9)	INSTALL_DIR=/home/mercury/public/.c ;;
+		mercury-0.10)	INSTALL_DIR=/home/mercury/public/.d ;;
+		*)
+			echo "unknown INSTALL_DIR_NAME \`$INSTALL_DIR_NAME'!"
+			exit 1
+			;;
+		esac
 		;;
 esac
 
@@ -152,10 +216,10 @@ esac
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
 	hg|ender|roy)
-		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 	*)
-		BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+		BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 esac
 
@@ -435,13 +499,13 @@ case $HOST in murlibobo)
 	sh configure --prefix=$INSTALL_DIR &&
 	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
 	cd .. &&
-	rm -f mercury-latest-unstable/* &&
+	rm -f $INSTALL_DIR_NAME-unstable/* &&
 	mv mercury-compiler-$version.tar.gz	\
-	    mercury-latest-unstable/mercury-compiler-$version-unstable.tar.gz &&
+	    $INSTALL_DIR_NAME-unstable/mercury-compiler-$version-unstable.tar.gz &&
 	mv mercury-extras-$version.tar.gz	\
-	    mercury-latest-unstable/mercury-extras-$version-unstable.tar.gz &&
+	    $INSTALL_DIR_NAME-unstable/mercury-extras-$version-unstable.tar.gz &&
 	mv mercury-tests-$version.tar.gz	\
-	    mercury-latest-unstable/mercury-tests-$version-unstable.tar.gz
+	    $INSTALL_DIR_NAME-unstable/mercury-tests-$version-unstable.tar.gz
 	} || status=1
 	# later parts of this script assume that we've already run configure,
 	# so we need to redo that
@@ -560,12 +624,14 @@ cd ..
 : update the unstable release
 
 case $HOST in murlibobo)
+	# XXX should remove old files
 	rsh $BETA_FTPHOST \
-		"rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz" &&
-	rcp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
+		"echo rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
+	rcp $INSTALL_DIR_NAME-unstable/mercury-*-$version-unstable.tar.gz \
 		$BETA_FTPHOST:$BETA_FTPDIR 
-	rm -f $BETA_WEBDIR/mercury-*-rotd-*-unstable.tar.gz &&
-	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
+	# XXX should remove old files
+	echo rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
+	cp $INSTALL_DIR_NAME-unstable/mercury-*-$version-unstable.tar.gz \
 		$BETA_WEBDIR
 	;;
 esac
@@ -620,10 +686,10 @@ fullname_tag=`echo $fullname | tr . _`
 	mv mercury/mercury-$version.$fullarch.tar.gz \
 		$UNSTABLE/mercury-$version.$fullname.tar.gz &&
 	:
-	echo "test_mercury tagging unstable rotd, starting at `date`" 1>&2 &&
-	cvs rtag -d unstable-rotd-$fullname_tag mercury clpr tests &&
-	cvs tag unstable-rotd-$fullname_tag mercury tests &&
-	echo "test_mercury tagging unstable rotd, finished at `date`" 1>&2
+	echo "test_mercury tagging unstable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
+	cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
+	cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
+	echo "test_mercury tagging unstable $BASE_TAG_NAME, finished at `date`" 1>&2
 } || status=1
 
 case $status in
@@ -636,10 +702,10 @@ case $status in
 	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullname.tar.gz" &&
 	rcp $STABLE/mercury-$version.$fullname.tar.gz \
 		$BETA_FTPHOST:$BETA_FTPDIR &&
-	echo "test_mercury tagging stable rotd, starting at `date`" 1>&2 &&
-	cvs rtag -d stable-rotd-$fullname_tag mercury clpr tests &&
-	cvs tag stable-rotd-$fullname_tag mercury tests &&
-	echo "test_mercury tagging stable rotd, finished at `date`" 1>&2
+	echo "test_mercury tagging stable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
+	cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
+	cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
+	echo "test_mercury tagging stable $BASE_TAG_NAME, finished at `date`" 1>&2
        } || status=1
     ;;
 esac
@@ -653,10 +719,10 @@ case $status in
 	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
 	    cd $DIR &&
-		# Delete older stable rotds and anything stable tar files 
-		# with the same version.
-	    rm -f $STABLE/mercury-*-rotd-*[0-9].tar.gz &&
-	    rm -f $STABLE/mercury-*-$version.tar.gz &&
+		# Delete older stable versions that this one replaces
+		# XXX should remove old files
+	    echo rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    echo rm -f $STABLE/mercury-*-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
@@ -664,9 +730,10 @@ case $status in
 	    $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
 	        $STABLE/mercury-tests-$version.tar.gz &&
 
+		# XXX should remove old files
 	    rsh $BETA_FTPHOST "\
-	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz && 
-	    rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
+	    echo rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz && 
+	    echo rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
 	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
@@ -674,8 +741,9 @@ case $status in
 	    $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
 
-	    rm -f $BETA_WEBDIR/mercury-*-rotd-*[0-9].tar.gz &&
-	    rm -f $BETA_WEBDIR/mercury-*-$version.tar.gz && 
+		# XXX should remove old files
+	    echo rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    echo rm -f $BETA_WEBDIR/mercury-*-$version.tar.gz && 
 	    $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
