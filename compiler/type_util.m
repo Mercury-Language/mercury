@@ -993,23 +993,15 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 	% type_constructors_are_no_tag_type/3 is called.
 
 type_constructors_are_no_tag_type(Ctors, Ctor, ArgType, MaybeArgName) :-
-	type_is_single_ctor_single_arg(Ctors, Ctor, MaybeSymName, ArgType),
+	type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName0, ArgType),
 	\+ ctor_is_type_info(Ctor),
 
 	% We don't handle unary tuples as no_tag types --
 	% they are rare enough that it's not worth
 	% the implementation effort.
-	unqualify_name(Ctor, Name),
-	Name \= "{}",
+	Ctor \= unqualified("{}"),
 
-	(
-		MaybeSymName = yes(SymName),
-		unqualify_name(SymName, ArgName),
-		MaybeArgName = yes(ArgName)
-	;
-		MaybeSymName = no,
-		MaybeArgName = no
-	).
+	map_maybe(unqualify_name, MaybeArgName0, MaybeArgName).
 
 type_constructors_are_type_info(Ctors) :-
 	type_is_single_ctor_single_arg(Ctors, Ctor, _, _),
@@ -1043,13 +1035,13 @@ unqualify_private_builtin(qualified(ModuleName, Name), Name) :-
 	mercury_private_builtin_module(ModuleName).
 
 :- pred type_is_single_ctor_single_arg(list(constructor), sym_name, 
-	maybe(sym_name), type).
+	maybe(ctor_field_name), type).
 :- mode type_is_single_ctor_single_arg(in, out, out, out) is semidet.
 
-type_is_single_ctor_single_arg(Ctors, Ctor, MaybeSymName, ArgType) :-
+type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
 	Ctors = [SingleCtor],
 	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, 
-		[MaybeSymName - ArgType]),
+		[MaybeArgName - ArgType]),
 	ExistQVars = [].
 
 %-----------------------------------------------------------------------------%
