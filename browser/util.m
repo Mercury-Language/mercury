@@ -81,8 +81,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module bool, int, require.
-:- pragma foreign_import_module(c, bool).
+:- import_module int, require.
 
 util__trace_getline(Prompt, Result) -->
 	io__input_stream(MdbIn),
@@ -91,16 +90,14 @@ util__trace_getline(Prompt, Result) -->
 
 util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 	call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success),
-	{
-		Success = yes,
+	{ Success \= 0 ->
 		Result = ok(Line)
 	;
-		Success = no,
 		Result = eof
 	}.
 
 :- pred call_trace_getline(input_stream::in, output_stream::in, string::in,
-	string::out, bool::out, io__state::di, io__state::uo) is det.
+	string::out, int::out, io__state::di, io__state::uo) is det.
 
 :- pragma c_header_code("
 	#include ""mercury_wrapper.h""
@@ -113,7 +110,10 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 :- pragma foreign_proc("C",
 	call_trace_getline(MdbIn::in, MdbOut::in, Prompt::in, Line::out,
 		Success::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io],
+	% We need to use will_not_call_mercury here,
+	% because MR_make_aligned_string_copy() references MR_hp,
+	% which only works for will_not_call_mercury foreign_procs.
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	char		*line;
 	MercuryFile	*mdb_in = (MercuryFile *) MdbIn;
@@ -130,11 +130,11 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 	if (line == NULL) {
 		/* we copy the null string to avoid warnings about const */
 		MR_make_aligned_string_copy(Line, """");
-		Success = ML_bool_return_no();
+		Success = 0;
 	} else {
 		MR_make_aligned_string_copy(Line, line);
 		MR_free(line);
-		Success = ML_bool_return_yes();
+		Success = 1;
 	}
 ").
 
