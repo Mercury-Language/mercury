@@ -471,14 +471,16 @@ lib%.install_init: %.init install_lib_dirs
 	$(INSTALL) `vpath_find $*.init` $(INSTALL_MODULE_DIR)
 
 .PHONY: lib%.install_library
-lib%.install_library: lib%.a lib%.$(EXT_FOR_SHARED_LIB) \
+lib%.install_library: lib%.$A lib%.$(EXT_FOR_SHARED_LIB) \
 			install_grade_dirs lib%.install_grade_hdrs \
 			lib%.install_opts
-	$(INSTALL) `vpath_find lib$*.a lib$*.$(EXT_FOR_SHARED_LIB)` \
+	$(INSTALL) `vpath_find lib$*.$A lib$*.$(EXT_FOR_SHARED_LIB)` \
 			$(INSTALL_MERC_LIB_DIR)
+	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$*.$A
 
-lib%.install_split_library: %.split.a install_grade_dirs
-	$(INSTALL) `vpath_find $*.split.a` $(INSTALL_MERC_LIB_DIR)/lib$*.a
+lib%.install_split_library: %.split.$A install_grade_dirs
+	$(INSTALL) `vpath_find $*.split.$A` $(INSTALL_MERC_LIB_DIR)/lib$*.$A
+	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$*.$A
 
 # XXX grade_files only contains the files for the default grade, not the
 # current grade in each iteration of the loop over ALL_LIBGRADES below.

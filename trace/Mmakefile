@@ -179,6 +179,7 @@ install_lib: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 	cp `vpath_find lib$(TRACE_LIB_NAME).$A \
 		lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
+	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(TRACE_LIB_NAME).$A
 
 endif
 

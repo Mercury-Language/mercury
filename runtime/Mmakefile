@@ -372,6 +372,7 @@ install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 	cp `vpath_find lib$(RT_LIB_NAME).$A \
 		lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
+	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).$A
 
 endif
 
