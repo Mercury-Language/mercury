@@ -228,6 +228,22 @@
 #define MR_virtual_global_hp 		MR_saved_global_hp(MR_fake_reg)
 
 /*
+** MR_clear_regs_for_GC() clears all of the Mercury general-purpose
+** registers.  It is used to avoid unwanted memory retition due to
+** false hits in the conservative garbage collector.
+*/
+#define MR_clear_regs_for_GC()						\
+	do {								\
+		save_registers();					\
+		{ int i;						\
+		  for (i = 1; i <= MAX_VIRTUAL_REG; i++) {		\
+			virtual_reg(i) = 0;				\
+		  }							\
+		}							\
+		restore_registers();					\
+	} while (0)
+
+/*
 ** get_reg() and set_reg() provide a different way of addressing
 ** the registers; unlike virtual_reg(), you don't need to wrap them
 ** inside save_registers()/restore_regs() to copy the real regs to/from

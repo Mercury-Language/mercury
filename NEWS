@@ -55,6 +55,12 @@ Changes to the Mercury standard library:
   However, many of the operations in the standard library still handle
   errors by aborting execution rather than by throwing exceptions.
 
+* There's a new standard library module `gc', for controlling the
+  garbage collector.
+
+  Currently it contains only one predicate, `garbage_collect',
+  which forces a garbage collection.  We may add more later.
+
 * We've added some new predicates to the Mercury standard library:
 	array__map/3,
 	bag__count_value/3.

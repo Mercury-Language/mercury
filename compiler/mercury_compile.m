@@ -27,6 +27,7 @@
 	% library modules
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
 :- import_module library, getopt, set_bbbtree, term, varset.
+:- import_module gc.
 
 	% the main compiler passes (mostly in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
@@ -126,6 +127,7 @@ process_arg_list(Args, Modules) -->
 :- mode process_stdin_arg_list(in, out, di, uo) is det.
 
 process_stdin_arg_list(Modules0, Modules) -->
+	( { Modules0 \= [] } -> garbage_collect ; [] ),
 	io__read_line_as_string(FileResult),
 	( 
 		{ FileResult = ok(Line) },
@@ -156,6 +158,7 @@ process_stdin_arg_list(Modules0, Modules) -->
 process_arg_list_2([], []) --> [].
 process_arg_list_2([Arg | Args], [Modules | ModulesList]) -->
 	process_arg(Arg, Modules), !,
+	( { Args \= [] } -> garbage_collect ; [] ),
 	process_arg_list_2(Args, ModulesList).
 
 	% Figure out whether the argument is a module name or a file name.
