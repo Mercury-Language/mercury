@@ -111,7 +111,8 @@ export MERCURY_COMPILER
 cd mercury || { false; exit 1; }
 cat > Mmake.params << EOF
 MC=../scripts/mc
-MCFLAGS=-O2 --inline-threshold 10 --procs-per-c-function 10
+MCFLAGS=-O2 --inline-threshold 10 --procs-per-c-function 10 \
+	--lookup-switch-req-density 101
 EOF
 autoconf || { false; exit 1; }
 rm -f config.cache
