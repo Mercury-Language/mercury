@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 The University of Melbourne.
+% Copyright (C) 1998-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,6 +16,7 @@
 	% or the libmer_trace library.
 :- include_module browse.
 :- include_module browser_info.
+:- include_module browser_term.
 :- include_module collect_lib.
 :- include_module debugger_interface.
 :- include_module declarative_debugger.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -162,6 +162,7 @@
 :- interface.
 
 :- import_module mdb__browser_info.
+:- import_module mdb__browser_term.
 :- import_module std_util, int, string.
 
 	% sized_pretty__univ_to_string_line(Univ, LineWidth, Lines, String)

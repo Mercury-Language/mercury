@@ -31,6 +31,7 @@
 
 #include "mdb.browse.mh"
 #include "mdb.browser_info.mh"
+#include "mdb.browser_term.mh"
 #include "mdb.interactive_query.mh"
 
 #include "type_desc.mh"
@@ -51,8 +52,8 @@ MR_type_value_to_browser_term(MR_TypeInfo type_info, MR_Word value)
 	MR_Word	browser_term;
 
 	MR_TRACE_CALL_MERCURY(
-		ML_BROWSE_plain_term_to_browser_term((MR_Word) type_info,
-			value, &browser_term);
+		browser_term = ML_BROWSE_plain_term_to_browser_term(
+			(MR_Word) type_info, value);
 	);
 	return browser_term;
 }
@@ -63,7 +64,7 @@ MR_univ_to_browser_term(MR_Word univ)
 	MR_Word browser_term;
 
 	MR_TRACE_CALL_MERCURY(
-		ML_BROWSE_univ_to_browser_term(univ, &browser_term);
+		browser_term = ML_BROWSE_univ_to_browser_term(univ);
 	);
 	return browser_term;
 }
@@ -75,9 +76,8 @@ MR_synthetic_to_browser_term(const char *functor, MR_Word arg_list,
 	MR_Word	browser_term;
 
 	MR_TRACE_CALL_MERCURY(
-		ML_BROWSE_synthetic_term_to_browser_term(
-			(MR_String) (MR_Integer) functor, arg_list, is_func,
-			&browser_term);
+		browser_term = ML_BROWSE_synthetic_term_to_browser_term(
+			(MR_String) (MR_Integer) functor, arg_list, is_func);
 	);
 	return browser_term;
 }
@@ -103,57 +103,65 @@ MR_trace_save_term(const char *filename, MR_Word browser_term)
 void
 MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 {
-	MercuryFile	mdb_in, mdb_out;
+	MercuryFile	mdb_in;
+	MercuryFile	mdb_out;
 	MR_Word		maybe_mark;
+	MR_Word		browser_term;
 
 	MR_trace_browse_ensure_init();
 
 	MR_c_file_to_mercury_file(MR_mdb_in, &mdb_in);
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
+	browser_term = MR_type_value_to_browser_term((MR_TypeInfo) type_info,
+		value);
+
 	if (format != MR_BROWSE_DEFAULT_FORMAT) {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_browse_format(type_info, value,
+			ML_BROWSE_browse_browser_term_format(browser_term,
 				&mdb_in, &mdb_out, (MR_Word) format,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	} else {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_browse(type_info, value, &mdb_in, &mdb_out,
-				&maybe_mark, MR_trace_browser_persistent_state,
+			ML_BROWSE_browse_browser_term(browser_term,
+				&mdb_in, &mdb_out, &maybe_mark,
+				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	}
 	MR_trace_browser_persistent_state =
-			MR_make_permanent(MR_trace_browser_persistent_state,
-				MR_trace_browser_persistent_state_type);
+		MR_make_permanent(MR_trace_browser_persistent_state,
+			MR_trace_browser_persistent_state_type);
 }
 
 void
 MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 	MR_Browse_Format format)
 {
-	MercuryFile	mdb_in, mdb_out;
+	MercuryFile	mdb_in;
+	MercuryFile	mdb_out;
 	MR_Word		maybe_mark;
+	MR_Word		browser_term;
 
 	MR_trace_browse_ensure_init();
 
 	MR_c_file_to_mercury_file(MR_mdb_in, &mdb_in);
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
+	browser_term = MR_synthetic_to_browser_term(name, arg_list, is_func);
+
 	if (format != MR_BROWSE_DEFAULT_FORMAT) {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_browse_format_synthetic(
-				(MR_String) (MR_Word) name, arg_list, is_func,
+			ML_BROWSE_browse_browser_term_format(browser_term,
 				&mdb_in, &mdb_out, (MR_Word) format,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	} else {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_browse_synthetic(
-				(MR_String) (MR_Word) name, arg_list, is_func,
+			ML_BROWSE_browse_browser_term(browser_term,
 				&mdb_in, &mdb_out, &maybe_mark,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
@@ -186,31 +194,35 @@ MR_trace_browse_external(MR_Word type_info, MR_Word value,
 			&MR_trace_browser_persistent_state);
 	);
 	MR_trace_browser_persistent_state =
-			MR_make_permanent(MR_trace_browser_persistent_state,
-				MR_trace_browser_persistent_state_type);
+		MR_make_permanent(MR_trace_browser_persistent_state,
+			MR_trace_browser_persistent_state_type);
 }
 
 #endif
 
 void
 MR_trace_print(MR_Word type_info, MR_Word value, MR_Browse_Caller_Type caller,
-		MR_Browse_Format format)
+	MR_Browse_Format format)
 {
-	MercuryFile mdb_out;
+	MercuryFile	mdb_out;
+	MR_Word		browser_term;
 
 	MR_trace_browse_ensure_init();
 
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
+	browser_term = MR_type_value_to_browser_term((MR_TypeInfo) type_info,
+		value);
+
 	if (format != MR_BROWSE_DEFAULT_FORMAT) {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_print_format(type_info, value,
+			ML_BROWSE_print_browser_term_format(browser_term,
 				&mdb_out, caller, (MR_Word) format,
 				MR_trace_browser_persistent_state);
 		);
 	} else {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_print(type_info, value, &mdb_out,
+			ML_BROWSE_print_browser_term(browser_term, &mdb_out,
 				(MR_Word) caller,
 				MR_trace_browser_persistent_state);
 		);
@@ -221,23 +233,24 @@ void
 MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 	MR_Browse_Caller_Type caller, MR_Browse_Format format)
 {
-	MercuryFile mdb_out;
+	MercuryFile	mdb_out;
+	MR_Word		browser_term;
 
 	MR_trace_browse_ensure_init();
 
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
+	browser_term = MR_synthetic_to_browser_term(name, arg_list, is_func);
+
 	if (format != MR_BROWSE_DEFAULT_FORMAT) {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_print_format_synthetic(
-				(MR_String) (MR_Word) name, arg_list, is_func,
+			ML_BROWSE_print_browser_term_format(browser_term,
 				&mdb_out, caller, (MR_Word) format,
 				MR_trace_browser_persistent_state);
 		);
 	} else {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_print_synthetic(
-				(MR_String) (MR_Word) name, arg_list, is_func,
+			ML_BROWSE_print_browser_term(browser_term,
 				&mdb_out, (MR_Word) caller,
 				MR_trace_browser_persistent_state);
 		);
@@ -246,10 +259,13 @@ MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 
 MR_bool
 MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
-		MR_Word flat, MR_Word raw_pretty, MR_Word verbose, 
-		MR_Word pretty, const char *param, const char *value)
+	MR_Word flat, MR_Word raw_pretty, MR_Word verbose, 
+	MR_Word pretty, const char *param, const char *value)
 {
-	int			depth, size, width, lines;
+	int			depth;
+	int			size;
+	int			width;
+	int			lines;
 	MR_Browse_Format	new_format;
 
 	MR_trace_browse_ensure_init();

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,23 +16,9 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp__program_representation.
+:- import_module mdb__browser_term.
 
 :- import_module bool, list, std_util, io.
-
-:- type browser_term
-	--->	plain_term(
-			univ		% We are browsing a plain term.
-		)
-	;	synthetic_term(
-			string,		% We are browsing a synthetic term,
-					% such as a predicate name applied to
-					% a list of arguments. The string says
-					% what we should print as the functor.
-			list(univ),	% The arguments.
-			maybe(univ)	% If yes, the synthetic term represents
-					% a function call, and the argument
-					% inside the yes() is the return value.
-		).
 
 	% The non-persistent browser information.  A new one of these is
 	% created every time the browser is called, based on the contents

@@ -54,8 +54,9 @@
 
 :- implementation.
 
-:- import_module mdb__browser_info.
 :- import_module mdb__browse.
+:- import_module mdb__browser_info.
+:- import_module mdb__browser_term.
 :- import_module mdb__io_action.
 :- import_module mdb__util.
 :- import_module mdb__declarative_execution.
@@ -317,71 +318,76 @@ print_chosen_io_action(IoActions, ActionNum, User0, OK) -->
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
-browse_io_action(IoAction, MaybeMark, User0, User) -->
-	{ io_action_to_synthetic_term(IoAction, ProcName, Args, IsFunc) },
-	browse_synthetic(ProcName, Args, IsFunc, User0 ^ instr, User0 ^ outstr,
-		MaybeDirs, User0 ^ browser, Browser),
-	{ maybe_convert_dirs_to_path(MaybeDirs, MaybeMark) },
-	{ User = User0 ^ browser := Browser }.
+browse_io_action(IoAction, MaybeMark, !User, !IO) :-
+	Term = io_action_to_browser_term(IoAction),
+	browse_browser_term(Term, !.User ^ instr, !.User ^ outstr, MaybeDirs,
+		!.User ^ browser, Browser, !IO),
+	maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
+	!:User = !.User ^ browser := Browser.
 
 :- pred browse_decl_bug_arg(decl_bug::in, int::in,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
-browse_decl_bug_arg(Bug, ArgNum, User0, User) -->
-	{ decl_bug_trace_atom(Bug, Atom) },
-	browse_atom_argument(Atom, ArgNum, _, User0, User).
+browse_decl_bug_arg(Bug, ArgNum, !User, !IO) :-
+	decl_bug_trace_atom(Bug, Atom),
+	browse_atom_argument(Atom, ArgNum, _, !User, !IO).
 
 :- pred browse_atom_argument(trace_atom::in, int::in, maybe(term_path)::out,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
-browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User) -->
-	{ Atom = atom(_, Args0) },
-	{ maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args) },
+browse_atom_argument(Atom, ArgNum, MaybeMark, !User, !IO) :-
+	Atom = atom(_, Args0),
+	maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
 	(
-		{ list__index1(Args, ArgNum, ArgInfo) },
-		{ ArgInfo = arg_info(_, _, MaybeArg) },
-		{ MaybeArg = yes(Arg) }
+		list__index1(Args, ArgNum, ArgInfo),
+		ArgInfo = arg_info(_, _, MaybeArg),
+		MaybeArg = yes(Arg)
 	->
-		browse(univ_value(Arg), User0 ^ instr, User0 ^ outstr,
-			MaybeDirs, User0 ^ browser, Browser),
-		{ maybe_convert_dirs_to_path(MaybeDirs, MaybeMark) },
-		{ User = User0 ^ browser := Browser }
+		browse_browser_term(univ_to_browser_term(Arg),
+			!.User ^ instr, !.User ^ outstr,
+			MaybeDirs, !.User ^ browser, Browser, !IO),
+		maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
+		!:User = !.User ^ browser := Browser
 	;
-		io__write_string(User ^ outstr, "Invalid argument number\n"),
-		{ MaybeMark = no },
-		{ User = User0 }
+		io__write_string(!.User ^ outstr, "Invalid argument number\n",
+			!IO),
+		MaybeMark = no
 	).
 
 :- pred print_atom_arguments(trace_atom::in, int::in, int::in, user_state::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-print_atom_arguments(Atom, From, To, User0) -->
-	print_atom_argument(Atom, From, User0, OK),
-	( { OK = yes, From + 1 =< To } ->
-		print_atom_arguments(Atom, From + 1, To, User0)
+print_atom_arguments(Atom, From, To, User, !IO) :-
+	print_atom_argument(Atom, From, User, OK, !IO),
+	(
+		OK = yes,
+		From + 1 =< To
+	->
+		print_atom_arguments(Atom, From + 1, To, User, !IO)
 	;
-		[]
+		true
 	).
 
 :- pred print_atom_argument(trace_atom::in, int::in, user_state::in, bool::out,
 	io__state::di, io__state::uo) is cc_multi.
 
-print_atom_argument(Atom, ArgNum, User0, OK) -->
-	{ Atom = atom(_, Args0) },
-	{ maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args) },
+print_atom_argument(Atom, ArgNum, User, OK, !IO) :-
+	Atom = atom(_, Args0),
+	maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
 	(
-		{ list__index1(Args, ArgNum, ArgInfo) },
-		{ ArgInfo = arg_info(_, _, MaybeArg) },
-		{ MaybeArg = yes(Arg) }
+		list__index1(Args, ArgNum, ArgInfo),
+		ArgInfo = arg_info(_, _, MaybeArg),
+		MaybeArg = yes(Arg)
 	->
-		print(univ_value(Arg), User0 ^ outstr, decl_caller_type,
-			User0 ^ browser),
-		{ OK = yes }
+		print_browser_term(univ_to_browser_term(Arg), User ^ outstr,
+			decl_caller_type, User ^ browser, !IO),
+		OK = yes
 	;
-		io__write_string(User0 ^ outstr, "Invalid argument number\n"),
-		{ OK = no }
+		io__write_string(User ^ outstr, "Invalid argument number\n",
+			!IO),
+		OK = no
 	).
 
 :- pred maybe_convert_dirs_to_path(maybe(list(dir)), maybe(term_path)).
@@ -694,8 +700,10 @@ write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
 		% Call the term browser to print the atom (or part of it
 		% up to a size limit) as a goal.
 		%
-	browse__print_synthetic(Functor, Args, is_function(PredOrFunc),
-		User ^ outstr, CallerType, User ^ browser, !IO),
+	BrowserTerm = synthetic_term_to_browser_term(Functor, Args,
+		is_function(PredOrFunc)),
+	browse__print_browser_term(BrowserTerm, User ^ outstr, CallerType,
+		User ^ browser, !IO),
 	write_io_actions(User, IoActions, !IO).
 
 :- pred trace_atom_arg_to_univ(trace_atom_arg::in, univ::out) is det.
@@ -736,9 +744,9 @@ write_io_actions(User, IoActions) -->
 :- pred print_io_action(user_state::in, io_action::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-print_io_action(User, IoAction) -->
-	{ io_action_to_synthetic_term(IoAction, ProcName, Args, IsFunc) },
-	browse__print_synthetic(ProcName, Args, IsFunc, User ^ outstr,
-		print_all, User ^ browser).
+print_io_action(User, IoAction, !IO) :-
+	Term = io_action_to_browser_term(IoAction),
+	browse__print_browser_term(Term, User ^ outstr, print_all,
+		User ^ browser, !IO).
 
 %-----------------------------------------------------------------------------%

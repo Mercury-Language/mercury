@@ -21,35 +21,20 @@
 :- interface.
 
 :- import_module mdb__browser_info.
-:- import_module io, bool, std_util, list.
+:- import_module mdb__browser_term.
+:- import_module io, std_util, list.
 
 	% The interactive term browser.  The caller type will be `browse', and
 	% the default format for the `browse' caller type will be used.
 	%
-:- pred browse__browse(T::in, io__input_stream::in,
-	io__output_stream::in, maybe(list(dir))::out,
+:- pred browse__browse_browser_term(browser_term::in,
+	io__input_stream::in, io__output_stream::in, maybe(list(dir))::out,
 	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
 
 	% As above, except that the supplied format will override the default.
 	%
-:- pred browse__browse_format(T::in, io__input_stream::in,
-	io__output_stream::in, portray_format::in,
-	browser_persistent_state::in, browser_persistent_state::out,
-	io::di, io::uo) is cc_multi.
-
-	% A version of browse__browse that works on synthetic terms
-	% in the sense of browser_info:browser_term.
-	%
-:- pred browse__browse_synthetic(string::in, list(univ)::in, bool::in,
-	io__input_stream::in, io__output_stream::in, maybe(list(dir))::out,
-	browser_persistent_state::in, browser_persistent_state::out,
-	io::di, io::uo) is cc_multi.
-
-	% A version of browse__browse_format that works on synthetic terms
-	% in the sense of browser_info:browser_term.
-	%
-:- pred browse__browse_format_synthetic(string::in, list(univ)::in, bool::in,
+:- pred browse__browse_browser_term_format(browser_term::in,
 	io__input_stream::in, io__output_stream::in, portray_format::in,
 	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
@@ -66,26 +51,13 @@
 	% `print' or `print_all'.  The default portray format for that
 	% caller type is used.
 	%
-:- pred browse__print(T::in, io__output_stream::in, browse_caller_type::in,
-	browser_persistent_state::in, io::di, io::uo) is cc_multi.
-
-	% A version of browse__print that works on synthetic terms
-	% in the sense of browser_info:browser_term.
-	%
-:- pred browse__print_synthetic(string::in, list(univ)::in, bool::in,
+:- pred browse__print_browser_term(browser_term::in,
 	io__output_stream::in, browse_caller_type::in,
 	browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
 	% As above, except that the supplied format will override the default.
 	%
-:- pred browse__print_format(T::in, io__output_stream::in,
-	browse_caller_type::in, portray_format::in,
-	browser_persistent_state::in, io::di, io::uo) is cc_multi.
-
-	% A version of browse__print_format that works on synthetic terms
-	% in the sense of browser_info:browser_term.
-	%
-:- pred browse__print_format_synthetic(string::in, list(univ)::in, bool::in,
+:- pred browse__print_browser_term_format(browser_term::in,
 	io__output_stream::in, browse_caller_type::in, portray_format::in,
 	browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
@@ -112,28 +84,6 @@
 
 %---------------------------------------------------------------------------%
 
-	% This predicate converts terms represented as univs to browser terms.
-
-:- pred univ_to_browser_term(univ::in, browser_term::out) is det.
-
-	% This predicate converts plain terms from the representation used
-	% in the trace directory to browser terms.
-
-:- pred plain_term_to_browser_term(T::in, browser_term::out) is det.
-
-	% This predicate converts synthetic terms from the representation used
-	% in the trace directory (as a list of arguments, the last of which
-	% represents the return value for function calls) to the representation
-	% used in the browser directory, in which a function call's return
-	% value is stored separately from the other arguments.
-	%
-	% The reason why the trace directory does not use the latter
-	% representation is that it would require C code to construct values
-	% of type maybe(T).
-
-:- pred synthetic_term_to_browser_term(string::in, list(univ)::in, bool::in,
-	browser_term::out) is det.
-
 	% save_term_to_file(FileName, Format, BrowserTerm, Out, !IO):
 	% Save BrowserTerm to the file FileName. If there is an error,
 	% print an error message to Out.
@@ -153,7 +103,7 @@
 :- import_module mdb__frame.
 :- import_module mdb__sized_pretty.
 
-:- import_module string, int, char, map, std_util.
+:- import_module bool, string, int, char, map, std_util.
 :- import_module parser, require, pprint, getopt, deconstruct.
 
 %---------------------------------------------------------------------------%
@@ -162,31 +112,17 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__browse(in, in, in, out, in, out, di, uo),
-	"ML_BROWSE_browse").
-:- pragma export(browse__browse_format(in, in, in, in, in, out, di, uo),
-	"ML_BROWSE_browse_format").
-:- pragma export(browse__browse_synthetic(in, in, in, in, in, out,
-	in, out, di, uo), "ML_BROWSE_browse_synthetic").
-:- pragma export(browse__browse_format_synthetic(in, in, in, in, in, in,
-	in, out, di, uo), "ML_BROWSE_browse_format_synthetic").
+:- pragma export(browse__browse_browser_term(in, in, in, out, in, out, di, uo),
+	"ML_BROWSE_browse_browser_term").
+:- pragma export(browse__browse_browser_term_format(in, in, in, in, in, out,
+	di, uo), "ML_BROWSE_browse_browser_term_format").
 :- pragma export(browse__browse_external(in, in, in, in, out, di, uo),
 	"ML_BROWSE_browse_external").
-:- pragma export(browse__print(in, in, in, in, di, uo),
-	"ML_BROWSE_print").
-:- pragma export(browse__print_format(in, in, in, in, in, di, uo),
-	"ML_BROWSE_print_format").
-:- pragma export(browse__print_synthetic(in, in, in, in, in, in, di, uo),
-	"ML_BROWSE_print_synthetic").
-:- pragma export(browse__print_format_synthetic(in, in, in, in, in, in, in,
-	di, uo), "ML_BROWSE_print_format_synthetic").
+:- pragma export(browse__print_browser_term(in, in, in, in, di, uo),
+	"ML_BROWSE_print_browser_term").
+:- pragma export(browse__print_browser_term_format(in, in, in, in, in, di, uo),
+	"ML_BROWSE_print_browser_term_format").
 
-:- pragma export(plain_term_to_browser_term(in, out),
-	"ML_BROWSE_plain_term_to_browser_term").
-:- pragma export(univ_to_browser_term(in, out),
-	"ML_BROWSE_univ_to_browser_term").
-:- pragma export(synthetic_term_to_browser_term(in, in, in, out),
-	"ML_BROWSE_synthetic_term_to_browser_term").
 :- pragma export(save_term_to_file(in, in, in, in, di, uo),
 	"ML_BROWSE_save_term_to_file").
 
@@ -327,27 +263,13 @@ write_indent(Indent, !IO) :-
 % Non-interactive display
 %
 
-browse__print(Term, OutputStream, Caller, State, !IO) :-
-	browse__print_common(plain_term(univ(Term)), OutputStream,
-		Caller, no, State, !IO).
+browse__print_browser_term(Term, OutputStream, Caller, State, !IO) :-
+	browse__print_common(Term, OutputStream, Caller, no, State, !IO).
 
-browse__print_format(Term, OutputStream, Caller, Format, State, !IO):-
-	browse__print_common(plain_term(univ(Term)), OutputStream,
-		Caller, yes(Format), State, !IO).
-
-browse__print_synthetic(FunctorString, Args, IsFunc, OutputStream,
-		Caller, State, !IO):-
-	synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
-		BrowserTerm),
-	browse__print_common(BrowserTerm, OutputStream, Caller, no, State,
-		!IO).
-
-browse__print_format_synthetic(FunctorString, Args, IsFunc, OutputStream,
-		Caller, Format, State, !IO):-
-	synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
-		BrowserTerm),
-	browse__print_common(BrowserTerm, OutputStream,
-		Caller, yes(Format), State, !IO).
+browse__print_browser_term_format(Term, OutputStream, Caller, Format,
+		State, !IO):-
+	browse__print_common(Term, OutputStream, Caller, yes(Format),
+		State, !IO).
 
 :- pred browse__print_common(browser_term::in, io__output_stream::in,
 	browse_caller_type::in, maybe(portray_format)::in,
@@ -379,31 +301,18 @@ browse__print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State,
 % Interactive display
 %
 
-browse__browse(Object, InputStream, OutputStream, MaybeMark, !State, !IO) :-
-	browse_common(internal, plain_term(univ(Object)),
-		InputStream, OutputStream, no, MaybeMark, !State, !IO).
-
-browse__browse_format(Object, InputStream, OutputStream, Format,
+browse__browse_browser_term(Term, InputStream, OutputStream, MaybeMark,
 		!State, !IO) :-
-	browse_common(internal, plain_term(univ(Object)),
-		InputStream, OutputStream, yes(Format), _, !State, !IO).
+	browse_common(internal, Term, InputStream, OutputStream, no,
+		MaybeMark, !State, !IO).
 
-browse__browse_synthetic(FunctorString, Args, IsFunc,
-		InputStream, OutputStream, MaybeMark, !State, !IO) :-
-	synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
-		BrowserTerm),
-	browse_common(internal, BrowserTerm,
-		InputStream, OutputStream, no, MaybeMark, !State, !IO).
+browse__browse_browser_term_format(Term, InputStream, OutputStream, Format,
+		!State, !IO) :-
+	browse_common(internal, Term, InputStream, OutputStream, yes(Format),
+		_, !State, !IO).
 
-browse__browse_format_synthetic(FunctorString, Args, IsFunc,
-		InputStream, OutputStream, Format, !State, !IO) :-
-	synthetic_term_to_browser_term(FunctorString, Args, IsFunc,
-		BrowserTerm),
-	browse_common(internal, BrowserTerm,
-		InputStream, OutputStream, yes(Format), _, !State, !IO).
-
-browse__browse_external(Object, InputStream, OutputStream, !State, !IO) :-
-	browse_common(external, plain_term(univ(Object)),
+browse__browse_external(Term, InputStream, OutputStream, !State, !IO) :-
+	browse_common(external, plain_term(univ(Term)),
 		InputStream, OutputStream, no, _, !State, !IO).
 
 :- pred browse_common(debugger::in, browser_term::in, io__input_stream::in,
@@ -422,23 +331,6 @@ browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
 	io__set_output_stream(OldOutputStream, _, !IO),
 	MaybeMark = Info ^ maybe_mark,
 	!:State = Info ^ state.
-
-univ_to_browser_term(Univ, BrowserTerm) :-
-	BrowserTerm = plain_term(Univ).
-
-plain_term_to_browser_term(Term, BrowserTerm) :-
-	BrowserTerm = plain_term(univ(Term)).
-
-synthetic_term_to_browser_term(FunctorString, Args, IsFunc, BrowserTerm) :-
-	(
-		IsFunc = no,
-		BrowserTerm = synthetic_term(FunctorString, Args, no)
-	;
-		IsFunc = yes,
-		list__split_last_det(Args, FuncArgs, Return),
-		BrowserTerm = synthetic_term(FunctorString, FuncArgs,
-			yes(Return))
-	).
 
 :- pred browse_main_loop(debugger::in, browser_info::in, browser_info::out,
 	io::di, io::uo) is cc_multi.

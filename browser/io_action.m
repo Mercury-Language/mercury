@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,8 @@
 :- interface.
 
 :- import_module mdb__util.
-:- import_module bool, list, map, std_util, io.
+:- import_module mdb__browser_term.
+:- import_module list, map, std_util, io.
 
 :- type io_action
 	--->	io_action(
@@ -32,14 +33,13 @@
 :- pred make_io_action_map(int::in, int::in, io_action_map::out,
 	io__state::di, io__state::uo) is det.
 
-:- pred io_action_to_synthetic_term(io_action::in, string::out,
-	list(univ)::out, bool::out) is det.
+:- func io_action_to_browser_term(io_action) = browser_term.
 
 :- implementation.
 
-:- import_module require, int.
+:- import_module bool, int, require.
 
-io_action_to_synthetic_term(IoAction, ProcName, Args, IsFunc) :-
+io_action_to_browser_term(IoAction) = Term :-
 	IoAction = io_action(ProcName, PredFunc, Args),
 	(
 		PredFunc = predicate,
@@ -47,7 +47,8 @@ io_action_to_synthetic_term(IoAction, ProcName, Args, IsFunc) :-
 	;
 		PredFunc = function,
 		IsFunc = yes
-	).
+	),
+	Term = synthetic_term_to_browser_term(ProcName, Args, IsFunc).
 
 make_io_action_map(Start, End, IoActionMap) -->
 	make_io_action_map_2(Start, End, map__init, IoActionMap).
