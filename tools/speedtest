@@ -80,7 +80,7 @@ do
 
 	MERCURY_COMPILER=$root/$file
 	export MERCURY_COMPILER
-	cd trial
+	cd arena
 	count=1
 	while test $count -le $limit
 	do

@@ -1,8 +1,0 @@
-:- module fact_table.
-:- interface.
-:- import_module io, list.
-:- import_module prog_data, hlds_pred, hlds_module.
-:- pred fact_table:fact_table_compile_facts((prog_data:sym_name), (prog_data:arity), string, (hlds_pred:pred_info), (hlds_pred:pred_info), (term:context), (hlds_module:module_info), string, (hlds_pred:proc_id), (io:state), (io:state)).
-:- mode fact_table:fact_table_compile_facts(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
-:- pred fact_table:fact_table_generate_c_code((prog_data:sym_name), (list:list((prog_data:pragma_var))), (hlds_pred:proc_id), (hlds_pred:proc_id), (hlds_pred:proc_info), (list:list((prog_data:(type)))), (hlds_module:module_info), string, string, (io:state), (io:state)).
-:- mode fact_table:fact_table_generate_c_code(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.

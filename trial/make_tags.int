@@ -1,6 +1,0 @@
-:- module make_tags.
-:- interface.
-:- import_module prog_data, hlds_data, globals.
-:- import_module bool.
-:- pred make_tags:assign_constructor_tags((list:list((prog_data:constructor))), (globals:globals), (hlds_data:cons_tag_values), (bool:bool)).
-:- mode make_tags:assign_constructor_tags(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.

@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# Create and populate an arena directory for use in speed tests.
+
+if test ! -d boehm_gc
+then
+	echo "make_arena should be executed at the top level of a workspace"
+	exit 1
+fi
+
+if test -d arena
+then
+	echo "make_arena: arena directory already exists"
+	exit 1
+fi
+
+mkdir arena
+
+# copy the source files that make the best benchmark subjects into tha arena
+cp compiler/make_hlds.m compiler/typecheck.m compiler/llds_out.m arena
+
+# copy the interface files and possibly optimization files they will need
+cp library/*.int* library/*.*opt compiler/*.int* arena
+
+exit 0
