@@ -1,7 +1,7 @@
 mercury for DEBIAN
 ------------------
 
-This is Mercury compiler packaged for Debian.
+This is the Mercury compiler packaged for Debian.
 
 Some remarks on compiling the source package:
 Mercury is written in Mercury.  It is normally shipped with pre-compiled
