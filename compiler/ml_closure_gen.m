@@ -157,7 +157,12 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 		MaybeConsName, Var, ExtraArgRvals, ExtraArgTypes, ArgVars,
 		ArgModes, HowToConstruct, Context,
 		MLDS_Decls0, MLDS_Statements),
-	{ MLDS_Decls = ClosureLayoutDecls ++ MLDS_Decls0 }.
+	{ MLDS_Decls1 = ClosureLayoutDecls ++ MLDS_Decls0 },
+	% We sometimes generates two definitions of the same RTTI constant
+	% in ml_gen_closure_layout (e.g. two definitions of the same
+	% pseudo_type_info).  To avoid generating invalid MLDS code,
+	% we need to check for and eliminate any duplicate definitions here.
+	{ MLDS_Decls = list__remove_dups(MLDS_Decls1) }.
 
 	%
 	% Generate a value for the closure layout struct.
