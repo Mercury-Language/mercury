@@ -503,6 +503,7 @@ then
 		$LN_S $root/boehm_gc/*.h .
 		$LN_S $root/boehm_gc/*.c .
 		$LN_S $root/boehm_gc/*.s .
+		$LN_S $root/boehm_gc/*.S .
 		$LN_S $root/boehm_gc/include .
 		cp $root/boehm_gc/Mmake* .
 		$LN_S $root/boehm_gc/Makefile .
