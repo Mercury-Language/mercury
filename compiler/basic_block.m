@@ -160,7 +160,7 @@ possible_targets(call(_, ReturnAddr, _, _), Labels) :-
 	;
 		Labels = []
 	).
-possible_targets(mkframe(_, _, _), []).
+possible_targets(mkframe(_, _, _, _), []).
 possible_targets(modframe(_), []).
 possible_targets(label(_), []).
 possible_targets(goto(CodeAddr), Targets) :-
@@ -187,7 +187,7 @@ possible_targets(mark_ticket_stack(_), []).
 possible_targets(discard_tickets_to(_), []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
-possible_targets(pragma_c(_, _, _, _, _), []).
+possible_targets(pragma_c(_, _, _, _), []).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -111,7 +111,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = call(_, _, _, _),
 		Cost = 0
 	;
-		Uinstr = mkframe(_, _, _),
+		Uinstr = mkframe(_, _, _, _),
 		Cost = 0
 	;
 		Uinstr = modframe(_),
@@ -181,7 +181,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = decr_sp(_),
 		Cost = 0
 	;
-		Uinstr = pragma_c(_, _, _, _, _),
+		Uinstr = pragma_c(_, _, _, _),
 		error("pragma_c found in vn_block_cost")
 	).
 

@@ -317,8 +317,8 @@ implicitly_quantify_goal_2(
 	{ set__union(NonLocalVars1, NonLocalVars2, NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
 
-implicitly_quantify_goal_2(pragma_c_code(A,B,C,D,Vars,F,G,H), _,
-		pragma_c_code(A,B,C,D,Vars,F,G,H)) --> 
+implicitly_quantify_goal_2(pragma_c_code(A,B,C,Vars,E,F,G), _,
+		pragma_c_code(A,B,C,Vars,E,F,G)) --> 
 	implicitly_quantify_atomic_goal(Vars).
 
 :- pred implicitly_quantify_atomic_goal(list(var), quant_info, quant_info).
@@ -642,7 +642,7 @@ quantification__goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, LambdaSet0,
 	set__union(Set5, Set6, Set),
 	set__union(LambdaSet5, LambdaSet6, LambdaSet).
 
-quantification__goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _, _, _),
+quantification__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 

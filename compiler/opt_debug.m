@@ -296,7 +296,7 @@ opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
-opt_debug__dump_vninstr(vn_mkframe(_, _, _), "mkframe").
+opt_debug__dump_vninstr(vn_mkframe(_, _, _, _), "mkframe").
 opt_debug__dump_vninstr(vn_label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).
@@ -828,11 +828,17 @@ opt_debug__dump_instr(call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
-opt_debug__dump_instr(mkframe(Name, Size, Redoip), Str) :-
+opt_debug__dump_instr(mkframe(Name, Size, MaybePragma, Redoip), Str) :-
 	string__int_to_string(Size, S_str),
+	( MaybePragma = yes(pragma_c_struct(StructName, StructFields, _)) ->
+		string__append_list(["yes(", StructName, ", ",
+			StructFields, ")"], P_str)
+	;
+		P_str = "no"
+	),
 	opt_debug__dump_code_addr(Redoip, R_str),
-	string__append_list(["mkframe(", Name, ", ", S_str, ", ", R_str, ")"],
-		Str).
+	string__append_list(["mkframe(", Name, ", ", S_str, ", ",
+		P_str, ", ", R_str, ")"], Str).
 opt_debug__dump_instr(modframe(Redoip), Str) :-
 	opt_debug__dump_code_addr(Redoip, R_str),
 	string__append_list(["modframe(", R_str, ")"], Str).
@@ -890,8 +896,26 @@ opt_debug__dump_instr(decr_sp(Size), Str) :-
 	string__int_to_string(Size, S_str),
 	string__append_list(["decr_sp(", S_str, ")"], Str).
 % XXX  should probably give more info than this
-opt_debug__dump_instr(pragma_c(_, _, Code, _, _), Str) :-
-	string__append_list(["pragma_c(", Code, ")"], Str).
+opt_debug__dump_instr(pragma_c(_, Comps, _, _), Str) :-
+	opt_debug__dump_components(Comps, C_str),
+	string__append_list(["pragma_c(", C_str, ")"], Str).
+
+:- pred opt_debug__dump_components(list(pragma_c_component), string).
+:- mode opt_debug__dump_components(in, out) is det.
+
+opt_debug__dump_components([], "").
+opt_debug__dump_components([Comp | Comps], Str) :-
+	opt_debug__dump_component(Comp, Str1),
+	opt_debug__dump_components(Comps, Str2),
+	string__append(Str1, Str2, Str).
+
+:- pred opt_debug__dump_component(pragma_c_component, string).
+:- mode opt_debug__dump_component(in, out) is det.
+
+opt_debug__dump_component(pragma_c_inputs(_), "").
+opt_debug__dump_component(pragma_c_outputs(_), "").
+opt_debug__dump_component(pragma_c_user_code(_, Code), Code).
+opt_debug__dump_component(pragma_c_raw_code(Code), Code).
 
 opt_debug__dump_fullinstr(Uinstr - Comment, Str) :-
 	opt_debug__dump_instr(Uinstr, U_str),

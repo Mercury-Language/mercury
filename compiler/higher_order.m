@@ -91,8 +91,6 @@ process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 			NextHOid, NewPreds1, NewPreds, ModuleInfo5, ModuleInfo)
 	).
 
-
-
 %-------------------------------------------------------------------------------
 
 	% The largest goal that will be specialized. Goal size is measured
@@ -103,7 +101,6 @@ process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 :- pred max_specialized_goal_size(int::out) is det.
 
 max_specialized_goal_size(20).
-
 
 :- type request --->
 	request(
@@ -158,7 +155,6 @@ max_specialized_goal_size(20).
 			list(higher_order_arg)	% specialized args
 		).
 
-
 	% Returned by traverse_goal. 
 :- type changed --->
 		changed		% Need to requantify goal + check other procs
@@ -175,7 +171,6 @@ get_specialization_requests(Requests, GoalSizes, ModuleInfo0, ModuleInfo) :-
 	set__init(Requests0),
 	get_specialization_requests_2(PredIds, Requests0, Requests,
 			GoalSizes0, GoalSizes, ModuleInfo0, ModuleInfo).
-
 
 :- pred get_specialization_requests_2(list(pred_id)::in, set(request)::in, 
 		set(request)::out, goal_sizes::in, goal_sizes::out, 
@@ -261,7 +256,6 @@ traverse_other_procs(PredId, [ProcId | ProcIds], ModuleInfo, Requests0,
 	traverse_other_procs(PredId, ProcIds, ModuleInfo, Requests1,
 						Requests, Procs1, Procs).
 	
-
 %-------------------------------------------------------------------------------
 	% Goal traversal
 
@@ -328,12 +322,11 @@ traverse_goal(some(Vars, Goal0) - Info, some(Vars, Goal) - Info,
 	traverse_goal(Goal0, Goal, PredProcId, Changed, GoalSize).
 
 traverse_goal(Goal, Goal, _, unchanged, 1) -->
-	{ Goal = pragma_c_code(_, _, _, _, _, _, _, _) - _ }.
+	{ Goal = pragma_c_code(_, _, _, _, _, _, _) - _ }.
 
 traverse_goal(Goal, Goal, _, unchanged, 1) -->
 	{ Goal = unify(_, _, _, Unify, _) - _ }, 
 	check_unify(Unify).
-
 
 :- pred traverse_conj(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 	changed::in, changed::out, int::in, int::out, higher_order_info::in,
@@ -364,7 +357,6 @@ traverse_disj([Goal0 | Goals0], [Goal | Goals], PredProcId,
 	traverse_disj_2(Goals0, Goals, PredProcId,
 			Changed0, Changed, GoalSize0, GoalSize, Info0).
 
-
 :- pred traverse_disj_2(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 	changed::in, changed::out, int::in, int::out, higher_order_info::in,
 	higher_order_info::in, higher_order_info::out) is det.
@@ -379,7 +371,6 @@ traverse_disj_2([Goal0 | Goals0], [Goal | Goals], PredProcId, Changed0, Changed,
 	merge_higher_order_infos(Info0, ThisGoalInfo, Info1),
 	traverse_disj_2(Goals0, Goals, PredProcId, Changed1, Changed,
 				GoalSize1, GoalSize, InitialInfo, Info1, Info).
-
 
 				% The dependencies have changed, so the
 				% dependency graph needs to rebuilt for
@@ -417,7 +408,6 @@ traverse_cases_2([Case0 | Cases0], [Case | Cases], PredProcId, Changed0,
 	traverse_cases_2(Cases0, Cases, PredProcId, Changed1, Changed,
 				GoalSize1, GoalSize, InitialInfo, Info1, Info).
 
-
 	% This is used in traversing disjunctions. We save the initial
 	% accumulator, then traverse each disjunct starting with the initial
 	% info. We then merge the resulting infos.
@@ -433,7 +423,6 @@ merge_higher_order_infos(Info1, Info2, Info) :-
 	set__sorted_list_to_set(List12, Requests),
 	Info = info(PredVars, Requests, NewPreds, ModuleInfo).
 
-
 :- pred merge_pred_vars(pred_vars::in, pred_vars::in, pred_vars::out) is det.
 
 merge_pred_vars(PredVars1, PredVars2, PredVars) :-
@@ -441,7 +430,6 @@ merge_pred_vars(PredVars1, PredVars2, PredVars) :-
 	map__to_assoc_list(PredVars2, PredVarList2),
 	merge_pred_var_lists(PredVarList1, PredVarList2, PredVarList),
 	map__from_assoc_list(PredVarList, PredVars). 
-	
 	
 		% find out which variables after a disjunction cannot
 		% be specialized
@@ -453,7 +441,6 @@ merge_pred_var_lists([], List, List).
 merge_pred_var_lists([PredVar | PredVars], List2, MergedList) :-
 	merge_pred_var_with_list(PredVar, List2, MergedList1),
 	merge_pred_var_lists(PredVars, MergedList1, MergedList).
-
 
 :- pred merge_pred_var_with_list(pair(var, maybe_pred_and_args)::in,
 			assoc_list(var, maybe_pred_and_args)::in,
@@ -481,7 +468,6 @@ merge_pred_var_with_list(Var1 - Value1, [Var2 - Value2 | Vars], MergedList) :-
 		merge_pred_var_with_list(Var1 - Value1, Vars, MergedList1)
 	).	
 			
-
 :- pred check_unify(unification::in, higher_order_info::in,
 				higher_order_info::out) is det.
 
@@ -712,7 +698,6 @@ maybe_add_alias(LVar, RVar,
 		PredVars = PredVars0
 	).
 		
-
 :- pred update_changed_status(changed::in, changed::in, changed::out) is det.
 
 update_changed_status(changed, _, changed).
@@ -804,7 +789,6 @@ create_new_preds([Request | Requests], NewPreds0, NewPreds, PredsToFix0,
 	create_new_preds(Requests, NewPreds1, NewPreds, PredsToFix1, PredsToFix,
 			NextHOid1, NextHOid, Module1, Module, IO1, IO).
 
-
 		% Here we create the pred_info for the new predicate.
 :- pred create_new_pred(request::in, new_pred::out, int::in, int::out,
 	module_info::in, module_info::out, io__state::di, io__state::uo) is det.
@@ -867,7 +851,6 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 	predicate_table_insert(PredTable0, PredInfo2, NewPredId, PredTable),
 	module_info_set_predicate_table(ModuleInfo0, PredTable, ModuleInfo).
 	
-
 :- pred output_higher_order_args(module_info::in, int::in,
 	list(higher_order_arg)::in, io__state::di, io__state::uo) is det.
 
@@ -890,7 +873,6 @@ output_higher_order_args(ModuleInfo, NumToDrop, [HOArg | HOArgs]) -->
 	io__write_string(" curried arguments\n"),
 	output_higher_order_args(ModuleInfo, NumToDrop, HOArgs).
 	
-
 :- pred remove_listof_higher_order_args(list(T)::in, int::in,
 			list(higher_order_arg)::in, list(T)::out) is det.
 
@@ -918,7 +900,6 @@ remove_listof_higher_order_args(List0, ArgNo, ArgsToRemove, List) :-
                         List = List0
                 )
         ).
-
 
 	% Fixup calls to specialized predicates.
 :- pred fixup_preds(list(pred_proc_id)::in, new_preds::in,
@@ -950,7 +931,6 @@ fixup_preds([PredProcId | PredProcIds], NewPreds, ModuleInfo0, ModuleInfo) :-
 	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
 	fixup_preds(PredProcIds, NewPreds, ModuleInfo1, ModuleInfo).
 
-
 :- pred create_specialized_versions(list(pred_proc_id)::in, new_preds::in, 
 		set(request)::in, set(request)::out, goal_sizes::in,
 		goal_sizes::out, module_info::in, module_info::out) is det.
@@ -967,7 +947,6 @@ create_specialized_versions([PredProc | PredProcs], NewPreds, Requests0,
 			ModuleInfo0, ModuleInfo1),
 	create_specialized_versions(PredProcs, NewPreds, Requests1, Requests, 
 			GoalSizes1, GoalSizes, ModuleInfo1, ModuleInfo).
-
 
 	% Create specialized versions of a single procedure.
 :- pred create_specialized_versions_2(list(new_pred)::in, new_preds::in, 
@@ -1046,7 +1025,6 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 			Requests1, Requests, GoalSizes1, GoalSizes,
 			ModuleInfo2, ModuleInfo).
 
-	
 		% Returns a list of hlds_goals which construct the list of
 		% higher order arguments which have been specialized. Traverse
 		% goal will then recognize these as having a unique possible

@@ -166,9 +166,15 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 	% and when massaging the code generated for the procedure.
 
 :- type frame_info	--->	frame(
-					int, 	    % number of slots in frame
-					maybe(int)  % slot number of succip
+					int, 	    % Number of slots in frame.
+
+					maybe(int), % Slot number of succip
 						    % if succip is present
+						    % in a general slot.
+
+					bool	    % Is this the frame of a
+						    % model_non proc defined
+						    % via pragma C code?
 				).
 
 %---------------------------------------------------------------------------%
@@ -220,7 +226,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% now the code is a list of code fragments (== list(instr)),
 		% so we need to do a level of unwinding to get a flat list.
 	list__condense(FragmentList, Instructions0),
-	FrameInfo = frame(TotalSlots, MaybeSuccipSlot),
+	FrameInfo = frame(TotalSlots, MaybeSuccipSlot, _),
 	(
 		MaybeSuccipSlot = yes(SuccipSlot)
 	->
@@ -257,7 +263,7 @@ generate_category_code(model_det, Goal, Code, FrameInfo) -->
 		middle_rec__match_and_generate(Goal, MiddleRecCode)
 	->
 		{ Code = MiddleRecCode },
-		{ FrameInfo = frame(0, no) }
+		{ FrameInfo = frame(0, no, no) }
 	;
 		% make a new failure cont (not model_non);
 		% this continuation is never actually used,
@@ -267,7 +273,8 @@ generate_category_code(model_det, Goal, Code, FrameInfo) -->
 		code_gen__generate_goal(model_det, Goal, BodyCode),
 		code_info__get_instmap(Instmap),
 
-		code_gen__generate_prolog(model_det, FrameInfo, PrologCode),
+		code_gen__generate_prolog(model_det, Goal, FrameInfo,
+			PrologCode),
 		(
 			{ instmap__is_reachable(Instmap) }
 		->
@@ -286,7 +293,7 @@ generate_category_code(model_semi, Goal, Code, FrameInfo) -->
 
 		% generate the code for the body of the clause
 	code_gen__generate_goal(model_semi, Goal, BodyCode),
-	code_gen__generate_prolog(model_semi, FrameInfo, PrologCode),
+	code_gen__generate_prolog(model_semi, Goal, FrameInfo, PrologCode),
 	code_gen__generate_epilog(model_semi, FrameInfo, EpilogCode),
 	{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }.
 
@@ -303,11 +310,12 @@ generate_category_code(model_non, Goal, Code, FrameInfo) -->
 			% generate the code for the body of the clause
 		code_info__push_resume_point_vars(ResumeVars),
 		code_gen__generate_goal(model_non, Goal, BodyCode),
-		code_gen__generate_prolog(model_non, FrameInfo, PrologCode),
+		code_gen__generate_prolog(model_non, Goal, FrameInfo,
+			PrologCode),
 		code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
-		code_info__pop_resume_point_vars,
 		{ MainCode = tree(PrologCode, tree(BodyCode, EpilogCode)) },
 
+		code_info__pop_resume_point_vars,
 		code_info__restore_failure_cont(RestoreCode),
 		trace__generate_event_code(fail, TraceInfo, TraceEventCode),
 		code_info__generate_failure(FailCode),
@@ -321,7 +329,8 @@ generate_category_code(model_non, Goal, Code, FrameInfo) -->
 	;
 			% generate the code for the body of the clause
 		code_gen__generate_goal(model_non, Goal, BodyCode),
-		code_gen__generate_prolog(model_non, FrameInfo, PrologCode),
+		code_gen__generate_prolog(model_non, Goal, FrameInfo,
+			PrologCode),
 		code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
 		{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }
 	).
@@ -346,11 +355,11 @@ generate_category_code(model_non, Goal, Code, FrameInfo) -->
 	% need a stack frame, and if the procedure is nondet, then the code
 	% to fill in the succip slot is subsumed by the mkframe.
 
-:- pred code_gen__generate_prolog(code_model, frame_info, code_tree, 
+:- pred code_gen__generate_prolog(code_model, hlds_goal, frame_info, code_tree, 
 	code_info, code_info).
-:- mode code_gen__generate_prolog(in, out, out, in, out) is det.
+:- mode code_gen__generate_prolog(in, in, out, out, in, out) is det.
 
-code_gen__generate_prolog(CodeModel, FrameInfo, PrologCode) -->
+code_gen__generate_prolog(CodeModel, Goal, FrameInfo, PrologCode) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
 	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
@@ -386,7 +395,6 @@ code_gen__generate_prolog(CodeModel, FrameInfo, PrologCode) -->
 		{ TotalSlots = MainSlots },
 		{ MaybeSuccipSlot = no }
 	),
-	{ FrameInfo = frame(TotalSlots, MaybeSuccipSlot) },
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
 		{ trace__generate_slot_fill_code(TraceInfo, TraceFillCode) },
@@ -404,20 +412,47 @@ code_gen__generate_prolog(CodeModel, FrameInfo, PrologCode) -->
 	(
 		{ CodeModel = model_non }
 	->
-		{ AllocCode = node([
-			mkframe(PushMsg, TotalSlots, do_fail) -
-				"Allocate stack frame"
-		]) }
+		(
+			{ Goal = pragma_c_code(_,_,_,_,_,_, PragmaCode) - _},
+			{ PragmaCode = nondet(Fields, FieldsContext,
+				_,_,_,_,_,_,_) }
+		->
+			{ pragma_c_gen__struct_name(ModuleName, PredName,
+				Arity, ProcId, StructName) },
+			{ Struct = pragma_c_struct(StructName,
+				Fields, FieldsContext) },
+			{ string__format("#define\tMR_ORDINARY_SLOTS\t%d\n",
+				[i(TotalSlots)], DefineStr) },
+			{ DefineComponents = [pragma_c_raw_code(DefineStr)] },
+			{ AllocCode = node([
+				mkframe(PushMsg, TotalSlots, yes(Struct),
+					do_fail)
+					- "Allocate stack frame",
+				pragma_c([], DefineComponents,
+					will_not_call_mercury, no)
+					- ""
+			]) },
+			{ NondetPragma = yes }
+		;
+			{ AllocCode = node([
+				mkframe(PushMsg, TotalSlots, no, do_fail) -
+					"Allocate stack frame"
+			]) },
+			{ NondetPragma = no }
+		)
 	;
 		{ TotalSlots > 0 }
 	->
 		{ AllocCode = node([
 			incr_sp(TotalSlots, PushMsg) -
 				"Allocate stack frame"
-		]) }
+		]) },
+		{ NondetPragma = no }
 	;
-		{ AllocCode = empty }
+		{ AllocCode = empty },
+		{ NondetPragma = no }
 	),
+	{ FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma) },
 	{ EndComment = node([
 		comment("End of procedure prologue") - ""
 	]) },
@@ -462,6 +497,11 @@ code_gen__generate_prolog(CodeModel, FrameInfo, PrologCode) -->
 	% Not all frames will have all these components. For example, for
 	% nondet procedures we don't deallocate the stack frame before
 	% success.
+	%
+	% Epilogs for procedures defined by nondet pragma C codes do not
+	% follow the rules above. For such procedures, the normal functions
+	% of the epilog are handled when traversing the pragma C code goal;
+	% we need only #undef a macro defined by the procedure prolog.
 
 :- pred code_gen__generate_epilog(code_model, frame_info, code_tree,
 	code_info, code_info).
@@ -471,112 +511,130 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 	{ StartComment = node([
 		comment("Start of procedure epilogue") - ""
 	]) },
-	code_info__get_instmap(Instmap),
-	code_info__get_arginfo(ArgModes),
-	code_info__get_headvars(HeadVars),
-	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args)},
-	(
-		{ instmap__is_unreachable(Instmap) }
-	->
-		{ FlushCode = empty }
-	;
-		code_info__setup_call(Args, callee, FlushCode)
-	),
-	{ FrameInfo = frame(TotalSlots, MaybeSuccipSlot) },
-	(
-		{ MaybeSuccipSlot = yes(SuccipSlot) }
-	->
-		{ RestoreSuccipCode = node([
-			assign(succip, lval(stackvar(SuccipSlot))) -
-				"restore the success ip"
-		]) }
-	;
-		{ RestoreSuccipCode = empty }
-	),
-	(
-		{ TotalSlots = 0 ; CodeModel = model_non }
-	->
-		{ DeallocCode = empty }
-	;
-		{ DeallocCode = node([
-			decr_sp(TotalSlots) - "Deallocate stack frame"
-		]) }
-	),
-	{ RestoreDeallocCode = tree(RestoreSuccipCode, DeallocCode ) },
-	{ code_gen__output_args(Args, LiveArgs) },
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		trace__generate_event_code(exit, TraceInfo, SuccessTraceCode),
-		( { CodeModel = model_semi } ->
-			trace__generate_event_code(fail, TraceInfo,
-				FailureTraceCode)
-		;
-			{ FailureTraceCode = empty }
-		)
-	;
-		{ SuccessTraceCode = empty },
-		{ FailureTraceCode = empty }
-	),
-	(
-		{ CodeModel = model_det },
-		{ SuccessCode = node([
-			livevals(LiveArgs) - "",
-			goto(succip) - "Return from procedure call"
-		]) },
-		{ AllSuccessCode =
-			tree(SuccessTraceCode,
-			tree(RestoreDeallocCode,
-			     SuccessCode))
-		},
-		{ AllFailureCode = empty }
-	;
-		{ CodeModel = model_semi },
-		code_info__restore_failure_cont(ResumeCode),
-		{ set__insert(LiveArgs, reg(r, 1), SuccessLiveRegs) },
-		{ SuccessCode = node([
-			assign(reg(r, 1), const(true)) - "Succeed",
-			livevals(SuccessLiveRegs) - "",
-			goto(succip) - "Return from procedure call"
-		]) },
-		{ AllSuccessCode =
-			tree(SuccessTraceCode,
-			tree(RestoreDeallocCode,
-			     SuccessCode))
-		},
-		{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
-		{ FailureCode = node([
-			assign(reg(r, 1), const(false)) - "Fail",
-			livevals(FailureLiveRegs) - "",
-			goto(succip) - "Return from procedure call"
-		]) },
-		{ AllFailureCode =
-			tree(ResumeCode,
-			tree(FailureTraceCode,
-			tree(RestoreDeallocCode,
-			     FailureCode)))
-		}
-	;
-		{ CodeModel = model_non },
-		{ SuccessCode = node([
-			livevals(LiveArgs) - "",
-			goto(do_succeed(no)) - "Return from procedure call"
-		]) },
-		{ AllSuccessCode =
-			tree(SuccessTraceCode,
-			     SuccessCode)
-		},
-		{ AllFailureCode = empty }
-	),
 	{ EndComment = node([
 		comment("End of procedure epilogue") - ""
 	]) },
-	{ EpilogCode =
-		tree(StartComment,
-		tree(FlushCode,
-		tree(AllSuccessCode,
-		tree(AllFailureCode,
-		     EndComment))))
-	}.
+	{ FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma) },
+	( { NondetPragma = yes } ->
+		{ UndefStr = "#undef\tMR_ORDINARY_SLOTS\n" },
+		{ UndefComponents = [pragma_c_raw_code(UndefStr)] },
+		{ UndefCode = node([
+			pragma_c([], UndefComponents,
+				will_not_call_mercury, no)
+				- ""
+		]) },
+		{ EpilogCode =
+			tree(StartComment,
+			tree(UndefCode,
+			     EndComment))
+		}
+	;
+		code_info__get_instmap(Instmap),
+		code_info__get_arginfo(ArgModes),
+		code_info__get_headvars(HeadVars),
+		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes,
+			Args)},
+		(
+			{ instmap__is_unreachable(Instmap) }
+		->
+			{ FlushCode = empty }
+		;
+			code_info__setup_call(Args, callee, FlushCode)
+		),
+		(
+			{ MaybeSuccipSlot = yes(SuccipSlot) }
+		->
+			{ RestoreSuccipCode = node([
+				assign(succip, lval(stackvar(SuccipSlot))) -
+					"restore the success ip"
+			]) }
+		;
+			{ RestoreSuccipCode = empty }
+		),
+		(
+			{ TotalSlots = 0 ; CodeModel = model_non }
+		->
+			{ DeallocCode = empty }
+		;
+			{ DeallocCode = node([
+				decr_sp(TotalSlots) - "Deallocate stack frame"
+			]) }
+		),
+		{ RestoreDeallocCode = tree(RestoreSuccipCode, DeallocCode ) },
+		{ code_gen__output_args(Args, LiveArgs) },
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		( { MaybeTraceInfo = yes(TraceInfo) } ->
+			trace__generate_event_code(exit, TraceInfo,
+				SuccessTraceCode),
+			( { CodeModel = model_semi } ->
+				trace__generate_event_code(fail, TraceInfo,
+					FailureTraceCode)
+			;
+				{ FailureTraceCode = empty }
+			)
+		;
+			{ SuccessTraceCode = empty },
+			{ FailureTraceCode = empty }
+		),
+		(
+			{ CodeModel = model_det },
+			{ SuccessCode = node([
+				livevals(LiveArgs) - "",
+				goto(succip) - "Return from procedure call"
+			]) },
+			{ AllSuccessCode =
+				tree(SuccessTraceCode,
+				tree(RestoreDeallocCode,
+				     SuccessCode))
+			},
+			{ AllFailureCode = empty }
+		;
+			{ CodeModel = model_semi },
+			code_info__restore_failure_cont(ResumeCode),
+			{ set__insert(LiveArgs, reg(r, 1), SuccessLiveRegs) },
+			{ SuccessCode = node([
+				assign(reg(r, 1), const(true)) - "Succeed",
+				livevals(SuccessLiveRegs) - "",
+				goto(succip) - "Return from procedure call"
+			]) },
+			{ AllSuccessCode =
+				tree(SuccessTraceCode,
+				tree(RestoreDeallocCode,
+				     SuccessCode))
+			},
+			{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
+			{ FailureCode = node([
+				assign(reg(r, 1), const(false)) - "Fail",
+				livevals(FailureLiveRegs) - "",
+				goto(succip) - "Return from procedure call"
+			]) },
+			{ AllFailureCode =
+				tree(ResumeCode,
+				tree(FailureTraceCode,
+				tree(RestoreDeallocCode,
+				     FailureCode)))
+			}
+		;
+			{ CodeModel = model_non },
+			{ SuccessCode = node([
+				livevals(LiveArgs) - "",
+				goto(do_succeed(no))
+					- "Return from procedure call"
+			]) },
+			{ AllSuccessCode =
+				tree(SuccessTraceCode,
+				     SuccessCode)
+			},
+			{ AllFailureCode = empty }
+		),
+		{ EpilogCode =
+			tree(StartComment,
+			tree(FlushCode,
+			tree(AllSuccessCode,
+			tree(AllFailureCode,
+			     EndComment))))
+		}
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -739,18 +797,12 @@ code_gen__generate_det_goal_2(unify(_L, _R, _U, Uni, _C), _GoalInfo, Instr) -->
 		{ error("generate_det_goal_2: cannot have det simple_test") }
 	).
 
-code_gen__generate_det_goal_2(pragma_c_code(C_Code, MayCallMercury,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, Extra),
+code_gen__generate_det_goal_2(pragma_c_code(MayCallMercury,
+		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, Instr) -->
-	(
-		{ Extra = none },
-		pragma_c_gen__generate_pragma_c_code(model_det, C_Code,
-			MayCallMercury, PredId, ModeId, Args, ArgNames,
-			OrigArgTypes, GoalInfo, Instr)
-	;
-		{ Extra = extra_pragma_info(_, _) },
-		{ error("det pragma has non-empty extras field") }
-	).
+	pragma_c_gen__generate_pragma_c_code(model_det, MayCallMercury,
+		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
+		PragmaCode, Instr).
 
 %---------------------------------------------------------------------------%
 
@@ -829,18 +881,12 @@ code_gen__generate_semi_goal_2(unify(_L, _R, _U, Uni, _C),
 		{ error("code_gen__generate_semi_goal_2 - complicated_unify") }
 	).
 
-code_gen__generate_semi_goal_2(pragma_c_code(C_Code, MayCallMercury,
-		PredId, ModeId, Args, ArgNameMap, OrigArgTypes, Extra),
+code_gen__generate_semi_goal_2(pragma_c_code(MayCallMercury,
+		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, Instr) -->
-	(
-		{ Extra = none },
-		pragma_c_gen__generate_pragma_c_code(model_semi, C_Code,
-			MayCallMercury, PredId, ModeId, Args, ArgNameMap,
-			OrigArgTypes, GoalInfo, Instr)
-	;
-		{ Extra = extra_pragma_info(_, _) },
-		{ error("semidet pragma has non-empty extras field") }
-	).
+	pragma_c_gen__generate_pragma_c_code(model_semi, MayCallMercury,
+		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
+		PragmaCode, Instr).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1017,26 +1063,12 @@ code_gen__generate_non_goal_2(
 code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
 							_GoalInfo, _Code) -->
 	{ error("Cannot have a nondet unification.") }.
-code_gen__generate_non_goal_2(pragma_c_code(C_Code, MayCallMercury,
-		PredId, ModeId, Args, ArgNameMap, OrigArgTypes, Extra),
+code_gen__generate_non_goal_2(pragma_c_code(MayCallMercury,
+		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, Instr) -->
-	(
-		{ Extra = none },
-		% Error disabled for bootstrapping. string.m uses this form,
-		% and we can't change it to the new form until the new form
-		% is completed, and even then we must wait until that compiler
-		% is installed on all our machines.
-		% { error("nondet pragma has empty extras field") }
-		pragma_c_gen__generate_pragma_c_code(model_semi, C_Code,
-			MayCallMercury, PredId, ModeId, Args, ArgNameMap,
-			OrigArgTypes, GoalInfo, Instr)
-	;
-		{ Extra = extra_pragma_info(SavedVars, LabelNames) },
-		pragma_c_gen__generate_backtrack_pragma_c_code(model_semi,
-			C_Code, MayCallMercury, PredId, ModeId, Args,
-			ArgNameMap, OrigArgTypes, SavedVars, LabelNames,
-			GoalInfo, Instr)
-	).
+	pragma_c_gen__generate_pragma_c_code(model_non, MayCallMercury,
+		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
+		PragmaCode, Instr).
 
 %---------------------------------------------------------------------------%
 

@@ -37,7 +37,6 @@
 
 :- import_module hlds_module, io.
 
-
 	% Perform stratification analysis, for the given module.
 	% If the "warn-non-stratification" option is set this 
 	% pred will check the entire module for stratification
@@ -49,7 +48,6 @@
 		io__state, io__state).
 :- mode stratify__check_stratification(in, out, di, uo) is det.
 
-
 :- implementation.
 
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data.
@@ -57,8 +55,6 @@
 :- import_module prog_out, globals, options.
 
 :- import_module assoc_list, map, list, set, bool, std_util, relation, require.
-
-
 
 stratify__check_stratification(Module0, Module) -->
 	{ module_info_ensure_dependency_info(Module0, Module1) },
@@ -80,8 +76,6 @@ stratify__check_stratification(Module0, Module) -->
 	%{ relation__atsort(DepGraph, HOSCCs1) },	
 	%{ dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs) },
 	%higher_order_check_sccs(HOSCCs, HOInfo, Module2, Module).
-
-
 
 %-----------------------------------------------------------------------------%
 
@@ -186,7 +180,7 @@ first_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated,
 		WholeScc, ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
 		Error, Module0, Module).
-first_order_check_goal(pragma_c_code(_, _IsRec, CPred, CProc, _, _, _, _), 
+first_order_check_goal(pragma_c_code(_IsRec, CPred, CProc, _, _, _, _), 
 		GoalInfo, Negated, WholeScc, ThisPredProcId, 
 		Error, Module0, Module) -->
 	(
@@ -372,7 +366,7 @@ higher_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated, WholeScc,
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
 	higher_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module).
-higher_order_check_goal(pragma_c_code(_, _IsRec, _, _, _, _, _, _), _GoalInfo, 
+higher_order_check_goal(pragma_c_code(_IsRec, _, _, _, _, _, _), _GoalInfo, 
 	_Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, 
 	_, Module, Module) --> [].
 higher_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
@@ -505,7 +499,6 @@ gen_conservative_graph(Module, DepGraph0, DepGraph, HOInfo) :-
 	map__to_assoc_list(HOInfo, HOInfoL),
 	add_new_arcs(HOInfoL, CallsHO, DepGraph0, DepGraph).
 
-
 	% For a given module collects for each non imported proc a set 
 	% of called procs and a higher order info structure. This pred 
 	% also returns a set of all non imported procs that make a 
@@ -520,7 +513,6 @@ get_call_info(Module, ProcCalls, HOInfo, CallsHO) :-
 	module_info_predids(Module, PredIds),
 	expand_predids(PredIds, Module, ProcCalls0, ProcCalls, HOInfo0, 
 		HOInfo, CallsHO0, CallsHO). 
-
 
 	% find the transitive closure of a given list of procs
 	% this pred is used to see how face a higher order address can
@@ -553,7 +545,6 @@ tc([P|Ps], ProcCalls, CallsHO, HOInfo0, HOInfo, Changed0, Changed) :-
 	merge_calls(PCallsL, P, CallsHO, yes, HOInfo0, HOInfo1, 
 		Changed0, Changed1),
 	tc(Ps, ProcCalls, CallsHO, HOInfo1, HOInfo, Changed1, Changed).
-
 
 	% merge any higher order addresses that can pass between the
 	% given caller and callees. This code also merges any possible
@@ -650,7 +641,6 @@ merge_calls([C|Cs], P, CallsHO, DoingFirstOrder, HOInfo0, HOInfo, Changed0,
 			Changed0, Changed)
 	).
  
-
 	% given the set of procs that make higher order calls and a
 	% list of procs and higher order call info this pred rebuilds
 	% the given call graph with new arcs for every possible higher
@@ -685,8 +675,6 @@ add_new_arcs2([Callee|Cs], CallerKey, DepGraph0, DepGraph) :-
 	relation__add(DepGraph0, CallerKey, CalleeKey, DepGraph1),
 	add_new_arcs2(Cs, CallerKey, DepGraph1, DepGraph).
 
-
-
 	% for each given pred id pass all non imported procs onto the
 	% process_procs pred
 :- pred expand_predids(list(pred_id), module_info, call_map, call_map, 
@@ -705,7 +693,6 @@ expand_predids([PredId|PredIds], Module, ProcCalls0, ProcCalls, HOInfo0,
 	expand_predids(PredIds, Module, ProcCalls1, ProcCalls, HOInfo1, 
 		HOInfo, CallsHO1, CallsHO).
 
-	
 	% for each given proc id generate the set of procs it calls and
 	% its higher order info structure
 :- pred process_procs(list(proc_id), module_info, pred_id, list(type), 
@@ -736,7 +723,6 @@ process_procs([ProcId|Procs], Module, PredId, ArgTypes, ProcTable, ProcCalls0,
 	process_procs(Procs, Module, PredId, ArgTypes, ProcTable, ProcCalls1,
 		ProcCalls, HOInfo1, HOInfo, CallsHO1, CallsHO).
 	
-
 	% determine if a given set of modes and types indicates that
 	% higher order values can be passed into and/or out of a proc
 :- pred higherorder_in_out(list(type), list(mode), module_info, ho_in_out). 
@@ -791,7 +777,6 @@ higherorder_in_out1([Type|Types], [Mode|Modes], Module, HOIn0, HOIn,
 	),
 	higherorder_in_out1(Types, Modes, Module, HOIn1, HOIn, HOOut1, HOOut).
 	
-
 	% return the set of all procs called in and all addresses
 	% taken, in a given goal
 :- pred check_goal(hlds_goal_expr, set(pred_proc_id), set(pred_proc_id), 
@@ -878,9 +863,8 @@ check_goal1(not(Goal - _GoalInfo), Calls0, Calls, HasAT0, HasAT, CallsHO0,
 		CallsHO) :- 
 	check_goal1(Goal, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
 
-check_goal1(pragma_c_code(_, _IsRec, _CPred, _CProc, _, _, _, _), Calls, Calls, 
+check_goal1(pragma_c_code(_IsRec, _CPred, _CProc, _, _, _, _), Calls, Calls, 
 		HasAT, HasAT, CallsHO, CallsHO).
-
 	
 :- pred check_goal_list(list(hlds_goal), set(pred_proc_id), set(pred_proc_id), 
 	set(pred_proc_id), set(pred_proc_id), bool, bool). 
@@ -902,7 +886,6 @@ check_case_list([Case|Goals], Calls0, Calls, HasAT0, HasAT, CallsHO0,
 	Case = case(_ConsId, Goal - _GoalInfo),
 	check_goal1(Goal, Calls0, Calls1, HasAT0, HasAT1, CallsHO0, CallsHO1),
 	check_case_list(Goals, Calls1, Calls, HasAT1, HasAT, CallsHO1, CallsHO).
-
 
 	% This pred returns a list of all the calls in a given set of
 	% goals including calls in unification lambda functions and
@@ -943,7 +926,6 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), Calls0,
 		Calls = Calls0	
 	).
 	
-
 	% add this call to the call list
 get_called_procs(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), Calls0, 
 		Calls) :- 
@@ -954,7 +936,6 @@ get_called_procs(higher_order_call(_Var, _Vars, _Types, _Modes, _Det,
 
 get_called_procs(class_method_call(_Var, _Num,_Vars, _Types, _Modes, _Det),
 	Calls, Calls).
-
 
 get_called_procs(conj(Goals), Calls0, Calls) :-
 	check_goal_list(Goals, Calls0, Calls).
@@ -971,9 +952,8 @@ get_called_procs(some(_Vars, Goal - _GoalInfo), Calls0, Calls) :-
 	get_called_procs(Goal, Calls0, Calls).
 get_called_procs(not(Goal - _GoalInfo), Calls0, Calls) :-
 	get_called_procs(Goal, Calls0, Calls).
-get_called_procs(pragma_c_code(_, _IsRec, _CPred, _CProc, _, _, _, _),
+get_called_procs(pragma_c_code(_IsRec, _CPred, _CProc, _, _, _, _),
 	Calls, Calls).
-
 
 :- pred check_goal_list(list(hlds_goal), list(pred_proc_id), 
 	list(pred_proc_id)).
@@ -995,8 +975,6 @@ check_case_list([Case|Goals], Calls0, Calls) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-
 
 :- pred emit_message(pred_proc_id, term__context, string, bool, 
 		module_info, module_info, io__state, io__state).

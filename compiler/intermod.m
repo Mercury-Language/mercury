@@ -245,7 +245,6 @@ intermod__traverse_clauses([clause(P, Goal0, C) | Clauses0],
 		{ DoWrite = no }
 	).
 
-
 :- pred has_ho_input(module_info::in, proc_info::in) is semidet.
 
 has_ho_input(ModuleInfo, ProcInfo) :-
@@ -301,7 +300,6 @@ intermod__gather_types(ModuleInfo, TypeTable, [TypeToCheck | TypesToCheck]) -->
 	),
 	intermod__gather_types(ModuleInfo, TypeTable, TypesToCheck).
 
-
 	% All equivalence types that only have a :- type foo. in the
 	% interface section need to be exported in full. All other
 	% types of type will be exported by intermod__gather_types.
@@ -334,7 +332,6 @@ intermod__gather_abstract_exported_types -->
 			)
 		)) },
 	list__foldl(AddAbstractEquivType, TypeList).
-
 
 	% Go over the goal of an exported proc looking for proc decls, types,
 	% insts and modes that we need to write to the optfile.
@@ -414,9 +411,8 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 
 	% Inlineable exported pragma_c_code goals can't use any
 	% non-exported types, so we just write out the clauses. 
-intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G,H) - Info,
-			pragma_c_code(A,B,C,D,E,F,G,H) - Info, yes) --> [].
-
+intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G) - Info,
+			pragma_c_code(A,B,C,D,E,F,G) - Info, yes) --> [].
 
 :- pred intermod__traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
@@ -604,7 +600,6 @@ intermod__gather_modes(ModuleInfo, Modes, Insts, [PredId | PredIds]) -->
 	intermod__gather_pred_modes(ModuleInfo, Modes, Insts, Procs, ProcIds),
 	intermod__gather_modes(ModuleInfo, Modes, Insts, PredIds).
 
-
 :- pred intermod__gather_pred_modes(module_info::in, mode_defns::in,
 		user_inst_defns::in, proc_table::in, list(proc_id)::in,
 		intermod_info::in, intermod_info::out) is det.
@@ -743,7 +738,6 @@ intermod__write_intermod_info(IntermodInfo) -->
 	intermod__write_pred_decls(ModuleInfo, PredDecls),
 	intermod__write_preds(ModuleInfo, Preds),
 	globals__io_set_option(verbose_dump_hlds, string(VerboseDump)).
-
 
 :- pred intermod__write_modules(list(module_name)::in,
 			io__state::di, io__state::uo) is det.
@@ -981,18 +975,18 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 			{ Goal = conj(Goals) - _ },
 			{ list__filter(
 				lambda([X::in] is semidet, (
-					X = pragma_c_code(_,_,_,_,_,_,_,_) - _
+					X = pragma_c_code(_,_,_,_,_,_,_) - _
 				)),
 				Goals, [CCodeGoal]) },
-			{ CCodeGoal = pragma_c_code(CCode, MayCallMercury,
-						_, _, Vars, _, _, _) - _ }
+			{ CCodeGoal = pragma_c_code(MayCallMercury,
+				_, _, Vars, _, _, PragmaCode) - _ }
 		;
-			{ Goal = pragma_c_code(CCode, MayCallMercury,
-						_, _, Vars, _, _, _) - _ }
+			{ Goal = pragma_c_code(MayCallMercury,
+				_, _, Vars, _, _, PragmaCode) - _ }
 		)
 	->	
-		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, 
-					MayCallMercury, Vars, Varset, SymName)
+		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
+			PragmaCode, MayCallMercury, Vars, Varset, SymName)
 	;
 		{ error("intermod__write_c_code called with non c_code goal") }
 	),
@@ -1000,22 +994,21 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 				Clauses, Procs).
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
-		pred_or_func::in, string::in, may_call_mercury::in,
+		pred_or_func::in, pragma_c_code_impl::in, may_call_mercury::in,
 		list(var)::in, varset::in, sym_name::in,
 		io__state::di, io__state::uo) is det.
 
 intermod__write_c_clauses(_, [], _, _, _, _, _, _) --> [].
 intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
-			CCode, MayCallMercury, Vars, Varset, SymName) -->
+		PragmaImpl, MayCallMercury, Vars, Varset, SymName) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	( { MaybeArgModes = yes(ArgModes) } ->
 		{ get_pragma_c_code_vars(Vars, Varset, ArgModes, PragmaVars) },
-		% XXX will need modification for nondet pragma C code
 		mercury_output_pragma_c_code(MayCallMercury, SymName,
-			PredOrFunc, PragmaVars, no, Varset, CCode),
-		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode,
-			MayCallMercury, Vars, Varset, SymName)
+			PredOrFunc, PragmaVars, Varset, PragmaImpl),
+		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
+			PragmaImpl, MayCallMercury, Vars, Varset, SymName)
 	;
 		{ error("intermod__write_c_clauses: no mode declaration") }
 	).
@@ -1077,7 +1070,6 @@ intermod_info_get_module_info(Module)	--> =(info(_,_,_,_,_,_,Module,_,_,_)).
 intermod_info_get_write_c_header(Write)	--> =(info(_,_,_,_,_,_,_,Write,_,_)).
 intermod_info_get_var_types(VarTypes)	--> =(info(_,_,_,_,_,_,_,_,VarTypes,_)).
 intermod_info_get_tvarset(TVarSet)	--> =(info(_,_,_,_,_,_,_,_,_,TVarSet)).
-
 
 :- pred intermod_info_set_modules(set(module_name)::in,
 			intermod_info::in, intermod_info::out) is det.
@@ -1185,7 +1177,6 @@ fixup_special_preds([TypeId | TypeIds], SpecialPredList,
 	set_list_of_preds_exported(NewPredIds, Preds0, Preds1),
 	fixup_special_preds(TypeIds, SpecialPredList, SpecMap, Preds1, Preds).
 
-
 :- pred set_list_of_preds_exported(list(pred_id)::in, pred_table::in,
 					pred_table::out) is det.
 
@@ -1264,7 +1255,6 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	{ list__append(Items0, NewItems2, Items) },
 	{ Module = module_imports(ModuleName, DirectImports,
 				IndirectImports, Items, no) }.
-
 
 :- pred read_optimization_interfaces(list(module_name)::in, item_list::in,
 			item_list::out, bool::in, bool::out,

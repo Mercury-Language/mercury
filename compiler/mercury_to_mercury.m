@@ -59,9 +59,9 @@
 :- mode mercury_output_pragma_decl(in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pragma_c_code(may_call_mercury, sym_name, pred_or_func,
-		list(pragma_var), maybe(pair(list(string))),
-		varset, string, io__state, io__state).
-:- mode mercury_output_pragma_c_code(in, in, in, in, in, in, in, di, uo) is det.
+		list(pragma_var), varset, pragma_c_code_impl,
+		io__state, io__state).
+:- mode mercury_output_pragma_c_code(in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
 		int, proc_id, list(int), io__state, io__state) is det.
@@ -286,14 +286,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 		mercury_output_pragma_c_body_code(Code)
 	;
 		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars,
-			VarSet, C_CodeString) }, 
+			VarSet, PragmaCode) }, 
 		mercury_output_pragma_c_code(MayCallMercury, Pred, PredOrFunc, 
-			Vars, no, VarSet, C_CodeString)
-	;
-		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars,
-			SavedVars, LabelNames, VarSet, C_CodeString) }, 
-		mercury_output_pragma_c_code(MayCallMercury, Pred, PredOrFunc, 
-			Vars, yes(SavedVars - LabelNames), VarSet, C_CodeString)
+			Vars, VarSet, PragmaCode)
 	;
 		{ Pragma = import(Pred, PredOrFunc, ModeList, MayCallMercury,
 			C_Function) },
@@ -1818,7 +1813,7 @@ mercury_output_pragma_c_body_code(C_CodeString) -->
 
 	% Output the given pragma c_code declaration
 mercury_output_pragma_c_code(MayCallMercury, PredName, PredOrFunc, Vars0,
-		MaybeExtraInfo, VarSet, C_CodeString) -->
+		VarSet, PragmaCode) -->
 	io__write_string(":- pragma c_code("),
 	mercury_output_sym_name(PredName),
 	{
@@ -1853,15 +1848,33 @@ mercury_output_pragma_c_code(MayCallMercury, PredName, PredOrFunc, Vars0,
 		io__write_string(", will_not_call_mercury, ")
 	),
 	(
-		{ MaybeExtraInfo = no }
+		{ PragmaCode = ordinary(C_Code, _) },
+		term_io__quote_string(C_Code)
 	;
-		{ MaybeExtraInfo = yes(SavedVars - LabelNames) },
-		mercury_output_c_ident_list(SavedVars),
-		io__write_string(", "),
-		mercury_output_c_ident_list(LabelNames),
-		io__write_string(", ")
+		{ PragmaCode = nondet(Fields, _, First, _,
+			Later, _, Treat, Shared, _) },
+		io__write_string("local_vars("),
+		term_io__quote_string(Fields),
+		io__write_string("), "),
+		io__write_string("first_code("),
+		term_io__quote_string(First),
+		io__write_string("), "),
+		io__write_string("retry_code("),
+		term_io__quote_string(Later),
+		io__write_string("), "),
+		(
+			{ Treat = share },
+			io__write_string("shared_code(")
+		;
+			{ Treat = duplicate },
+			io__write_string("duplicated_code(")
+		;
+			{ Treat = automatic },
+			io__write_string("common_code(")
+		),
+		term_io__quote_string(Shared),
+		io__write_string(")")
 	),
-	term_io__quote_string(C_CodeString),
 	io__write_string(").\n").
 
 :- pred mercury_output_c_ident_list(list(string), io__state, io__state).

@@ -210,8 +210,8 @@ lambda__process_goal_2(class_method_call(A,B,C,D,E,F), GoalInfo,
 lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
 			call(A,B,C,D,E,F) - GoalInfo) -->
 	[].
-lambda__process_goal_2(pragma_c_code(A,B,C,D,E,F,G,H), GoalInfo,
-			pragma_c_code(A,B,C,D,E,F,G,H) - GoalInfo) -->
+lambda__process_goal_2(pragma_c_code(A,B,C,D,E,F,G), GoalInfo,
+			pragma_c_code(A,B,C,D,E,F,G) - GoalInfo) -->
 	[].
 
 :- pred lambda__process_goal_list(list(hlds_goal), list(hlds_goal),

@@ -973,8 +973,8 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-modecheck_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId, _ProcId0, Args0,
-		ArgNameMap, OrigArgTypes, ExtraPragmaInfo), GoalInfo, Goal) -->
+modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, _ProcId0, Args0,
+		ArgNameMap, OrigArgTypes, PragmaCode), GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
 	mode_info_set_call_context(call(PredId)),
 
@@ -985,10 +985,10 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId, _ProcId0, Args0,
 				ProcId, Args, ExtraGoals),
 
 	=(ModeInfo),
-	{ Pragma = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, Args0,
-			ArgNameMap, OrigArgTypes, ExtraPragmaInfo) },
+	{ Pragma = pragma_c_code(IsRecursive, PredId, ProcId, Args0,
+			ArgNameMap, OrigArgTypes, PragmaCode) },
 	{ handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
-				InstMap0, ModeInfo, Goal) },
+			InstMap0, ModeInfo, Goal) },
 
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").

@@ -132,7 +132,7 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;
-		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _, _),
+		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	),

@@ -69,11 +69,11 @@ dupelim_main(Instrs0, Instrs) :-
 	create_basic_blocks(Instrs0, Comments, _ProcLabel, _N,
 		LabelSeq0, BlockMap0),
 	map__init(StdMap0),
-	set__init(FallInto0),
+	set__init(Fixed0),
 	dupelim__build_maps(LabelSeq0, BlockMap0, StdMap0, StdMap,
-		FallInto0, FallInto),
+		Fixed0, Fixed),
 	map__values(StdMap, StdList),
-	find_clusters(StdList, FallInto, [], Clusters),
+	find_clusters(StdList, Fixed, [], Clusters),
 	( Clusters = [] ->
 			% We don't want to introduce any incidental changes
 			% if we cannot eliminate any blocks.
@@ -96,9 +96,9 @@ dupelim_main(Instrs0, Instrs) :-
 :- pred dupelim__build_maps(list(label)::in, block_map::in,
 	std_map::in, std_map::out, set(label)::in, set(label)::out) is det.
 
-dupelim__build_maps([], _, StdMap, StdMap, FallInto, FallInto).
+dupelim__build_maps([], _, StdMap, StdMap, Fixed, Fixed).
 dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
-		FallInto0, FallInto) :-
+		Fixed0, Fixed) :-
 	map__lookup(BlockMap, Label, BlockInfo),
 	BlockInfo = block_info(_, _, Instrs, _, MaybeFallThrough),
 	standardize_block(Instrs, MaybeFallThrough, StdInstrs),
@@ -108,12 +108,22 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 		map__det_insert(StdMap0, StdInstrs, [Label], StdMap1)
 	),
 	( MaybeFallThrough = yes(FallIntoLabel) ->
-		set__insert(FallInto0, FallIntoLabel, FallInto1)
+		set__insert(Fixed0, FallIntoLabel, Fixed1)
 	;
-		FallInto1 = FallInto0
+		Fixed1 = Fixed0
 	),
+	AddPragmaReferredLabels = lambda(
+		[Instr::in, FoldFixed0::in, FoldFixed::out] is det, (
+		( Instr = pragma_c(_, _, _, yes(Label)) - _ ->
+			set__insert(FoldFixed0, Label, FoldFixed)
+		;
+			FoldFixed = FoldFixed0
+		)
+	)),
+	list__foldl(AddPragmaReferredLabels, Instrs,
+		Fixed1, Fixed2),
 	dupelim__build_maps(Labels, BlockMap, StdMap1, StdMap,
-		FallInto1, FallInto).
+		Fixed2, Fixed).
 
 % For each set of labels that start basic blocks with identical standard forms,
 % find_clusters finds out whether we can eliminate some of those blocks;
@@ -124,34 +134,37 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 % to eliminate all but one of the blocks. However, blocks that can be fallen
 % into cannot be eliminated. (Actually, they could, but only by inserting
 % a goto, and full jumpopt would then undo the elimination of the block.)
+% Similarly, blocks whose starting label is referred to by C code cannot
+% be eliminated. (Actually, they could, but only by doing surgery on C code
+% strings, which is not a good idea.)
 
 :- pred find_clusters(list(list(label))::in, set(label)::in,
 	list(cluster)::in, list(cluster)::out) is det.
 
 find_clusters([], _, Clusters, Clusters).
-find_clusters([Labels | LabelsList], FallInto, Clusters0, Clusters) :-
+find_clusters([Labels | LabelsList], Fixed, Clusters0, Clusters) :-
 	(
 		Labels = [_, _ | _],
 			% The rest of the condition is relatively expensive,
 			% so don't do it if there aren't at least two labels
 			% whose blocks have the same standardized form.
 		IsFallenInto = lambda([Label::in] is semidet, (
-			set__member(Label, FallInto)
+			set__member(Label, Fixed)
 		)),
 		list__filter(IsFallenInto, Labels,
-			FallIntoLabels, NonFallIntoLabels),
-		NonFallIntoLabels = [FirstNonFallInto | OtherNonFallInto]
+			FixedLabels, NonFixedLabels),
+		NonFixedLabels = [FirstNonFixed | OtherNonFixed]
 	->
-		( FallIntoLabels = [ChosenLabel | _] ->
-			Cluster = cluster(ChosenLabel, NonFallIntoLabels)
+		( FixedLabels = [ChosenLabel | _] ->
+			Cluster = cluster(ChosenLabel, NonFixedLabels)
 		;
-			Cluster = cluster(FirstNonFallInto, OtherNonFallInto)
+			Cluster = cluster(FirstNonFixed, OtherNonFixed)
 		),
 		Clusters1 = [Cluster | Clusters0]
 	;
 		Clusters1 = Clusters0
 	),
-	find_clusters(LabelsList, FallInto, Clusters1, Clusters).
+	find_clusters(LabelsList, Fixed, Clusters1, Clusters).
 
 %-----------------------------------------------------------------------------%
 
@@ -281,7 +294,7 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = call(_, _, _, _),
 		Instr = Instr1
 	;
-		Instr1 = mkframe(_, _, _),
+		Instr1 = mkframe(_, _, _, _),
 		Instr = Instr1
 	;
 		Instr1 = modframe(_),
@@ -341,7 +354,7 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = decr_sp(_),
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _),
 		Instr = Instr1
 	).
 
@@ -534,7 +547,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = mkframe(_, _, _),
+		Instr1 = mkframe(_, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
@@ -611,7 +624,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	).
@@ -765,8 +778,8 @@ dupelim__replace_labels_instr(assign(Lval0, Rval0), ReplMap,
 dupelim__replace_labels_instr(call(Target, Return0, LiveInfo, CM),
 		ReplMap, call(Target, Return, LiveInfo, CM)) :-
 	dupelim__replace_labels_code_addr(Return0, ReplMap, Return).
-dupelim__replace_labels_instr(mkframe(Name, Size, Redoip0), ReplMap,
-		mkframe(Name, Size, Redoip)) :-
+dupelim__replace_labels_instr(mkframe(Name, Size, Pragma, Redoip0), ReplMap,
+		mkframe(Name, Size, Pragma, Redoip)) :-
 	dupelim__replace_labels_code_addr(Redoip0, ReplMap, Redoip).
 dupelim__replace_labels_instr(modframe(Redoip0), ReplMap, modframe(Redoip)) :-
 	dupelim__replace_labels_code_addr(Redoip0, ReplMap, Redoip).
@@ -810,7 +823,16 @@ dupelim__replace_labels_instr(discard_tickets_to(Rval0), ReplMap,
 	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
 dupelim__replace_labels_instr(incr_sp(Size, Msg), _, incr_sp(Size, Msg)).
 dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-dupelim__replace_labels_instr(pragma_c(A,B,C,D,E), _, pragma_c(A,B,C,D,E)).
+dupelim__replace_labels_instr(pragma_c(A,B,C,D), ReplMap, pragma_c(A,B,C,D)) :-
+	(
+		D = no
+	;
+		D = yes(Label0),
+		dupelim__replace_labels_label(Label0, ReplMap, Label),
+			% We cannot replace the label in the C code string
+			% itself.
+		require(unify(Label0, Label), "trying to replace Mercury label in C code")
+	).
 
 :- pred dupelim__replace_labels_lval(lval::in, map(label, label)::in,
 	lval::out) is det.

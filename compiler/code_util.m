@@ -774,8 +774,8 @@ code_util__count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
 code_util__count_recursive_calls_2(higher_order_call(_, _,_, _, _, _), _, _,
 		0, 0).
 code_util__count_recursive_calls_2(class_method_call(_, _,_, _, _, _), _, _, 
-	0, 0).
-code_util__count_recursive_calls_2(pragma_c_code(_,_,_,_, _, _, _, _), _, _,
+		0, 0).
+code_util__count_recursive_calls_2(pragma_c_code(_,_,_, _, _, _, _), _, _,
 		0, 0).
 code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
 		PredId, ProcId, Count, Count) :-

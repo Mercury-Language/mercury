@@ -343,48 +343,39 @@ build_live_sets_in_goal_2(unify(_,_,_,D,_), Liveness, ResumeVars0, LiveSets0,
 		LiveSets = LiveSets0
 	).
 
-build_live_sets_in_goal_2(pragma_c_code(_, MayCallMercury, PredId, ProcId,
-		Args, _, _, Extra), Liveness, ResumeVars0, LiveSets0,
+build_live_sets_in_goal_2(pragma_c_code(MayCallMercury, PredId, ProcId,
+		Args, _, _, _), Liveness, ResumeVars0, LiveSets0,
 		GoalInfo, ModuleInfo, ProcInfo,
 		Liveness, ResumeVars, LiveSets) :-
 
 	goal_info_get_code_model(GoalInfo, CodeModel),
 	(
+		% We don't need to save any variables onto the stack
+		% before a pragma_c_code if we know that it can't
+		% succeed more than once and that it is not going
+		% to call back Mercury code, because such pragma C code
+		% won't clobber the registers.
+
 		CodeModel \= model_non,
 		MayCallMercury = will_not_call_mercury
 	->
-		% We don't need to save any variables onto the stack
-		% before a pragma_c_code if we know that it can't succeed
-		% more than once and that it is not going to call back
-		% Mercury code, because C code won't clobber the registers.
-
 		ResumeVars = ResumeVars0,
 		LiveSets = LiveSets0
 	;
 		% The variables which need to be saved onto the stack
 		% before the call are all the variables that are live
 		% after the call (except for the output arguments produced
-		% by the call), plus any variables needed by a nondet
-		% pragma to communication between incarnations, plus
-		% all the variables that may be needed at an enclosing
-		% resumption point.
+		% by the call), plus all the variables that may be needed
+		% at an enclosing resumption point.
 
 		find_output_vars(PredId, ProcId, Args, ModuleInfo, OutVars),
 		set__difference(Liveness, OutVars, InputLiveness),
-		(
-			Extra = none,
-			StackVars0 = InputLiveness
-		;
-			Extra = extra_pragma_info(SavedVarNames, _),
-			assoc_list__keys(SavedVarNames, SavedVars),
-			set__insert_list(InputLiveness, SavedVars, StackVars0)
-		),
-		set__union(StackVars0, ResumeVars0, StackVars1),
+		set__union(InputLiveness, ResumeVars0, StackVars0),
 
 		% Might need to add more live variables with accurate GC.
 
 		maybe_add_accurate_gc_typeinfos(ModuleInfo,
-			ProcInfo, OutVars, StackVars1, StackVars),
+			ProcInfo, OutVars, StackVars0, StackVars),
 
 		set__insert(LiveSets0, StackVars, LiveSets),
 

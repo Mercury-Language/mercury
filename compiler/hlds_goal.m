@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
-:- import_module list, assoc_list, set, map, std_util.
+:- import_module list, set, map, std_util.
 
 	% Here is how goals are represented
 
@@ -155,15 +155,15 @@
 		% C code from a pragma(c_code, ...) decl.
 
 	;	pragma_c_code(
-			string,		% The C code to do the work
 			may_call_mercury,
 					% Can the C code recursively
 					% invoke Mercury code?
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(var),	% The (Mercury) argument variables
-			list(maybe(string)),
-					% C variable names for each of the
+			list(maybe(pair(string, mode))),
+					% C variable names and the original
+					% mode declaration for each of the
 					% arguments. A no for a particular 
 					% argument means that it is not used
 					% by the C code.  (In particular, the
@@ -173,25 +173,14 @@
 			list(type),	% The original types of the arguments.
 					% (With inlining, the actual types may
 					% be instances of the original types.)
-			extra_pragma_info
-					% Extra information for model_non
-					% pragma_c_codes; none for others.
+			pragma_c_code_impl
+					% Info about the code that does the
+					% actual work.
 		).
 
-:- type extra_pragma_info
-	--->	none
-	;	extra_pragma_info(
-			assoc_list(var, string),
-					% the vars/names of the framevars used
-					% by the hand-written C code (we may
-					% need some more for saving the heap
-					% pointer and/or tickets)
-			list(string)	% the names of the labels needed
-		).
-
-	% Given the variable name field from a pragma c_code, get all the
+	% Given the variable info field from a pragma c_code, get all the
 	% variable names.
-:- pred get_pragma_c_var_names(list(maybe(string)), list(string)).
+:- pred get_pragma_c_var_names(list(maybe(pair(string, mode))), list(string)).
 :- mode get_pragma_c_var_names(in, out) is det.
 
 	% There may be two sorts of "builtin" predicates - those that we
@@ -484,13 +473,13 @@ get_pragma_c_var_names(MaybeVarNames, VarNames) :-
 	get_pragma_c_var_names_2(MaybeVarNames, [], VarNames0),
 	list__reverse(VarNames0, VarNames).
 
-:- pred get_pragma_c_var_names_2(list(maybe(string))::in, list(string)::in,
-					list(string)::out) is det.
+:- pred get_pragma_c_var_names_2(list(maybe(pair(string, mode)))::in,
+	list(string)::in, list(string)::out) is det.
 
 get_pragma_c_var_names_2([], Names, Names).
 get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	(
-		MaybeName = yes(Name),
+		MaybeName = yes(Name - _),
 		Names1 = [Name | Names0]
 	;
 		MaybeName = no,
@@ -920,7 +909,7 @@ goal_is_atomic(higher_order_call(_,_,_,_,_,_)).
 goal_is_atomic(class_method_call(_,_,_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_,_)).
+goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 

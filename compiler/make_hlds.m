@@ -61,7 +61,7 @@
 :- import_module make_tags, quantification, (inst).
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
-:- import_module fact_table, purity, term_util, export, llds.
+:- import_module fact_table, purity, goal_util, term_util, export, llds.
 
 :- import_module string, char, int, set, bintree, list, map, require.
 :- import_module bool, getopt, assoc_list, term, term_io, varset.
@@ -304,11 +304,6 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		% Handle pragma c_code decls later on (when we process
 		% clauses).
 		{ Pragma = c_code(_, _, _, _, _, _) },
-		{ Module = Module0 }
-	;
-		% Handle pragma c_code decls later on (when we process
-		% clauses).
-		{ Pragma = c_code(_, _, _, _, _, _, _, _) },
 		{ Module = Module0 }
 	;
 		{ Pragma = memo(Name, Arity) },
@@ -596,10 +591,10 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 		Module0, Module, Info0, Info) -->
 	(
 		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars, 
-			VarSet, C_Code) }
+			VarSet, PragmaImpl) }
 	->
 		module_add_pragma_c_code(MayCallMercury, Pred, PredOrFunc,
-			Vars, VarSet, C_Code, Status, Context, no,
+			Vars, VarSet, PragmaImpl, Status, Context,
 			Module0, Module, Info0, Info)
 	;
 		{ Pragma = import(Name, PredOrFunc, Modes, MayCallMercury,
@@ -607,14 +602,6 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 	->
 		module_add_pragma_import(Name, PredOrFunc, Modes,
 			MayCallMercury, C_Function, Status, Context,
-			Module0, Module, Info0, Info)
-	;
-		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars, 
-			SavedVars, LabelNames, VarSet, C_Code) }
-	->
-		{ ExtraPragmaInfo = yes(SavedVars - LabelNames) },
-		module_add_pragma_c_code(MayCallMercury, Pred, PredOrFunc,
-			Vars, VarSet, C_Code, Status, Context, ExtraPragmaInfo,
 			Module0, Module, Info0, Info)
 	;
 		{ Pragma = fact_table(Pred, Arity, File) }
@@ -1889,7 +1876,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		( { Status \= opt_imported } ->
 			% warn about singleton variables 
 			maybe_warn_singletons(VarSet,
-				PredOrFunc - PredName/Arity, Goal),
+				PredOrFunc - PredName/Arity, ModuleInfo, Goal),
 			% warn about variables with overlapping scopes
 			maybe_warn_overlap(Warnings, VarSet, PredOrFunc,
 						PredName/Arity)
@@ -2104,10 +2091,10 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, MayCallMercury, C_Function,
 	%
 	% Add the C_Code for this `pragma import' to the clauses_info
 	%
-	{ ExtraInfo = no },
+	{ PragmaImpl = ordinary(C_Code, no) },
 	clauses_info_add_pragma_c_code(Clauses0, Purity, MayCallMercury,
-		PredId, ProcId, VarSet, PragmaVars, ArgTypes, C_Code, Context,
-		ExtraInfo, Clauses, Info0, Info),
+		PredId, ProcId, VarSet, PragmaVars, ArgTypes, PragmaImpl,
+		Context, Clauses, Info0, Info),
 
 	%
 	% Store the clauses_info etc. back into the pred_info
@@ -2245,15 +2232,15 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_pragma_c_code(may_call_mercury, sym_name, pred_or_func, 
-		list(pragma_var), varset, string, import_status, term__context, 
-		maybe(pair(list(string))), module_info, module_info,
-		qual_info, qual_info, io__state, io__state).
-:- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in, out,
-		in, out, di, uo) is det.  
+	list(pragma_var), varset, pragma_c_code_impl, import_status,
+	term__context, module_info, module_info, qual_info, qual_info,
+	io__state, io__state).
+:- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, in, out,
+	in, out, di, uo) is det.  
 
 module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet, 
-			C_Code, Status, Context, ExtraInfo,
-			ModuleInfo0, ModuleInfo, Info0, Info) --> 
+		PragmaImpl, Status, Context, ModuleInfo0, ModuleInfo,
+		Info0, Info) --> 
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ list__length(PVars, Arity) },
 		% print out a progress message
@@ -2282,8 +2269,8 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
 			Context, "`:- pragma c_code' declaration"),
 		{ preds_add_implicit(PredicateTable0,
-				ModuleName, PredName, Arity, Context,
-				PredOrFunc, PredId, PredicateTable1) }
+			ModuleName, PredName, Arity, Context,
+			PredOrFunc, PredId, PredicateTable1) }
 	),
 		% Lookup the pred_info for this pred,
 		% add the pragma to the proc_info in the proc_table in the
@@ -2334,7 +2321,7 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 			{ pred_info_get_purity(PredInfo1, Purity) },
 			clauses_info_add_pragma_c_code(Clauses0, Purity,
 				MayCallMercury, PredId, ProcId, VarSet,
-				PVars, ArgTypes, C_Code, Context, ExtraInfo,
+				PVars, ArgTypes, PragmaImpl, Context,
 				Clauses, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
 				PredInfo2) },
@@ -2345,9 +2332,10 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 				PredicateTable) },
 			{ module_info_set_predicate_table(ModuleInfo0, 
 				PredicateTable, ModuleInfo) },
-			{ pragma_get_var_names(PVars, Names) },
-			maybe_warn_pragma_singletons(C_Code, Names,
-				Context, PredOrFunc - PredName/Arity)
+			{ pragma_get_var_infos(PVars, ArgInfo) },
+			maybe_warn_pragma_singletons(PragmaImpl, ArgInfo,
+				Context, PredOrFunc - PredName/Arity,
+				ModuleInfo)
 		;
 			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }, 
 			io__stderr_stream(StdErr),
@@ -2368,9 +2356,10 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 	% from the list of pragma_vars extract the modes.
 :- pred pragma_get_modes(list(pragma_var), list(mode)).
 :- mode pragma_get_modes(in, out) is det.
+
 pragma_get_modes([], []).
-pragma_get_modes([V|Vars], [M|Modes]) :-
-	V = pragma_var(_Variable, _Name, M),
+pragma_get_modes([PragmaVar | Vars], [Mode | Modes]) :-
+	PragmaVar = pragma_var(_Var, _Name, Mode),
 	pragma_get_modes(Vars, Modes).
 
 %-----------------------------------------------------------------------------%
@@ -2378,22 +2367,23 @@ pragma_get_modes([V|Vars], [M|Modes]) :-
 	% from the list of pragma_vars , extract the vars.
 :- pred pragma_get_vars(list(pragma_var), list(var)).
 :- mode pragma_get_vars(in, out) is det.
+
 pragma_get_vars([], []).
-pragma_get_vars([P|PragmaVars], [V|Vars]) :-
-	P = pragma_var(V, _Name, _Mode),
+pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
+	PragmaVar = pragma_var(Var, _Name, _Mode),
 	pragma_get_vars(PragmaVars, Vars).
 
 %---------------------------------------------------------------------------%
 
 	% from the list of pragma_vars, extract the names.
 
-:- pred pragma_get_var_names(list(pragma_var), list(maybe(string))).
-:- mode pragma_get_var_names(in, out) is det.
+:- pred pragma_get_var_infos(list(pragma_var), list(maybe(pair(string, mode)))).
+:- mode pragma_get_var_infos(in, out) is det.
 
-pragma_get_var_names([], []).
-pragma_get_var_names([P|PragmaVars], [yes(N)|Names]) :-
-	P = pragma_var(_Var, N, _Mode),
-	pragma_get_var_names(PragmaVars, Names).
+pragma_get_var_infos([], []).
+pragma_get_var_infos([PragmaVar | PragmaVars], [yes(Name - Mode) | Info]) :-
+	PragmaVar = pragma_var(_Var, Name, Mode),
+	pragma_get_var_infos(PragmaVars, Info).
 
 %---------------------------------------------------------------------------%
 
@@ -2534,52 +2524,53 @@ warn_overlap([Warn|Warns], VarSet, PredOrFunc, PredCallId) -->
 
 	% Warn about variables which occur only once but don't start with
 	% an underscore, or about variables which do start with an underscore
-	% but occur more than once.
+	% but occur more than once, or about variables that do not occur in
+	% C code strings when they should.
 	%
-:- pred maybe_warn_singletons(varset, pred_or_func_call_id, hlds_goal,
-				io__state, io__state).
-:- mode maybe_warn_singletons(in, in, in, di, uo) is det.
+:- pred maybe_warn_singletons(varset, pred_or_func_call_id, module_info,
+	hlds_goal, io__state, io__state).
+:- mode maybe_warn_singletons(in, in, in, in, di, uo) is det.
 
-maybe_warn_singletons(VarSet, PredCallId, Body) -->
+maybe_warn_singletons(VarSet, PredCallId, ModuleInfo, Body) -->
 	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
 		{ set__init(QuantVars) },
-		warn_singletons_in_goal(Body, QuantVars, VarSet, PredCallId)
+		warn_singletons_in_goal(Body, QuantVars, VarSet, PredCallId,
+			ModuleInfo)
 	;	
 		[]
 	).
 
 :- pred warn_singletons_in_goal(hlds_goal, set(var), varset,
-			pred_or_func_call_id, io__state, io__state).
-:- mode warn_singletons_in_goal(in, in, in, in, di, uo) is det.
+	pred_or_func_call_id, module_info, io__state, io__state).
+:- mode warn_singletons_in_goal(in, in, in, in, in, di, uo) is det.
 
-warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId) -->
+warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId, MI) -->
 	warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet,
-		PredCallId).
+		PredCallId, MI).
 
 :- pred warn_singletons_in_goal_2(hlds_goal_expr, hlds_goal_info, set(var),
-				varset, pred_or_func_call_id,
-				io__state, io__state).
-:- mode warn_singletons_in_goal_2(in, in, in, in, in, di, uo) is det.
+	varset, pred_or_func_call_id, module_info, io__state, io__state).
+:- mode warn_singletons_in_goal_2(in, in, in, in, in, in, di, uo) is det.
 
 warn_singletons_in_goal_2(conj(Goals), _GoalInfo, QuantVars, VarSet,
-		PredCallId) -->
-	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId).
+		PredCallId, MI) -->
+	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI).
 
 warn_singletons_in_goal_2(disj(Goals, _), _GoalInfo, QuantVars, VarSet,
-		PredCallId) -->
-	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId).
+		PredCallId, MI) -->
+	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI).
 
 warn_singletons_in_goal_2(switch(_Var, _CanFail, Cases, _),
-			_GoalInfo, QuantVars, VarSet, PredCallId) -->
-	warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId).
+			_GoalInfo, QuantVars, VarSet, PredCallId, MI) -->
+	warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId, MI).
 
 warn_singletons_in_goal_2(not(Goal), _GoalInfo, QuantVars, VarSet,
-		PredCallId) -->
-	warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId).
+		PredCallId, MI) -->
+	warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, MI).
 
 warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, QuantVars, VarSet,
-		PredCallId) -->
+		PredCallId, MI) -->
 	%
 	% warn if any quantified variables occur only in the quantifier
 	%
@@ -2593,10 +2584,10 @@ warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, QuantVars, VarSet,
 		[]
 	),
 	{ set__insert_list(QuantVars, Vars, QuantVars1) },
-	warn_singletons_in_goal(SubGoal, QuantVars1, VarSet, PredCallId).
+	warn_singletons_in_goal(SubGoal, QuantVars1, VarSet, PredCallId, MI).
 
 warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else, _), GoalInfo,
-				QuantVars, VarSet, PredCallId) -->
+				QuantVars, VarSet, PredCallId, MI) -->
 	%
 	% warn if any quantified variables do not occur in the condition
 	% or the "then" part of the if-then-else
@@ -2614,19 +2605,19 @@ warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else, _), GoalInfo,
 	),
 
 	{ set__insert_list(QuantVars, Vars, QuantVars1) },
-	warn_singletons_in_goal(Cond, QuantVars1, VarSet, PredCallId),
-	warn_singletons_in_goal(Then, QuantVars1, VarSet, PredCallId),
-	warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId).
+	warn_singletons_in_goal(Cond, QuantVars1, VarSet, PredCallId, MI),
+	warn_singletons_in_goal(Then, QuantVars1, VarSet, PredCallId, MI),
+	warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId, MI).
 
 warn_singletons_in_goal_2(call(_, _, Args, _, _, _),
-			GoalInfo, QuantVars, VarSet, PredCallId) -->
+			GoalInfo, QuantVars, VarSet, PredCallId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
 warn_singletons_in_goal_2(higher_order_call(_, Args, _, _, _, _),
-			GoalInfo, QuantVars, VarSet, PredCallId) -->
+			GoalInfo, QuantVars, VarSet, PredCallId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
@@ -2634,54 +2625,56 @@ warn_singletons_in_goal_2(higher_order_call(_, Args, _, _, _, _),
 
 	% This code should never be called anyway.
 warn_singletons_in_goal_2(class_method_call(_, _, Args, _, _, _),
-			GoalInfo, QuantVars, VarSet, PredCallId) -->
+			GoalInfo, QuantVars, VarSet, PredCallId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
 warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
-			GoalInfo, QuantVars, VarSet, PredCallId) -->
+			GoalInfo, QuantVars, VarSet, PredCallId, MI) -->
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
-		PredCallId).
+		PredCallId, MI).
 
-warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _, _), 
-		GoalInfo, _QuantVars, _VarSet, PredCallId) --> 
+warn_singletons_in_goal_2(pragma_c_code(_, _, _, _, ArgInfo, _, PragmaImpl), 
+		GoalInfo, _QuantVars, _VarSet, PredCallId, MI) --> 
 	{ goal_info_get_context(GoalInfo, Context) },
-	warn_singletons_in_pragma_c_code(C_Code, ArgNames, Context, 
-		PredCallId).
+	warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo, Context, 
+		PredCallId, MI).
 
 :- pred warn_singletons_in_goal_list(list(hlds_goal), set(var), varset,
-				pred_or_func_call_id, io__state, io__state).
-:- mode warn_singletons_in_goal_list(in, in, in, in, di, uo) is det.
+	pred_or_func_call_id, module_info, io__state, io__state).
+:- mode warn_singletons_in_goal_list(in, in, in, in, in, di, uo) is det.
 
-warn_singletons_in_goal_list([], _, _, _) --> [].
-warn_singletons_in_goal_list([Goal|Goals], QuantVars, VarSet, CallPredId) -->
-	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId),
-	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, CallPredId).
+warn_singletons_in_goal_list([], _, _, _, _) --> [].
+warn_singletons_in_goal_list([Goal|Goals], QuantVars, VarSet, CallPredId, MI)
+		-->
+	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId, MI),
+	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, CallPredId, MI).
 
 :- pred warn_singletons_in_cases(list(case), set(var), varset,
-				pred_or_func_call_id, io__state, io__state).
-:- mode warn_singletons_in_cases(in, in, in, in, di, uo) is det.
+	pred_or_func_call_id, module_info, io__state, io__state).
+:- mode warn_singletons_in_cases(in, in, in, in, in, di, uo) is det.
 
-warn_singletons_in_cases([], _, _, _) --> [].
-warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId) -->
+warn_singletons_in_cases([], _, _, _, _) --> [].
+warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId, MI) -->
 	{ Case = case(_ConsId, Goal) },
-	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId),
-	warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId).
+	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId, MI),
+	warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId, MI).
 
 :- pred warn_singletons_in_unify(var, unify_rhs, hlds_goal_info, set(var),
-			varset, pred_or_func_call_id, io__state, io__state).
-:- mode warn_singletons_in_unify(in, in, in, in, in, in, di, uo) is det.
+	varset, pred_or_func_call_id, module_info, io__state, io__state).
+:- mode warn_singletons_in_unify(in, in, in, in, in, in, in, di, uo) is det.
 
-warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId) -->
+warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId, _)
+		-->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons([X, Y], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
 warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
-				CallPredId) -->
+				CallPredId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
@@ -2689,7 +2682,7 @@ warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
 
 warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 				LambdaGoal),
-				GoalInfo, QuantVars, VarSet, CallPredId) -->
+			GoalInfo, QuantVars, VarSet, CallPredId, MI) -->
 	%
 	% warn if any lambda-quantified variables occur only in the quantifier
 	%
@@ -2709,57 +2702,152 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 	%
 	% warn if the lambda-goal contains singletons
 	%
-	warn_singletons_in_goal(LambdaGoal, QuantVars, VarSet, CallPredId).
+	warn_singletons_in_goal(LambdaGoal, QuantVars, VarSet, CallPredId, MI).
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_warn_pragma_singletons(string, list(maybe(string)),
-		term__context, pred_or_func_call_id, io__state, io__state).
-:- mode maybe_warn_pragma_singletons(in, in, in, in, di, uo) is det.
+:- pred maybe_warn_pragma_singletons(pragma_c_code_impl,
+	list(maybe(pair(string, mode))), term__context, pred_or_func_call_id,
+	module_info, io__state, io__state).
+:- mode maybe_warn_pragma_singletons(in, in, in, in, in, di, uo) is det.
 
-maybe_warn_pragma_singletons(C_Code, ArgNames, Context, CallId) -->
+maybe_warn_pragma_singletons(PragmaImpl, ArgInfo, Context, CallId, MI) -->
 	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
-		warn_singletons_in_pragma_c_code(C_Code, ArgNames,
-			Context, CallId)
+		warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo,
+			Context, CallId, MI)
 	;	
 		[]
 	).
 
 	% warn_singletons_in_pragma_c_code checks to see if each variable is
-	% a substring of the given c code. If not, it gives a warning
-:- pred warn_singletons_in_pragma_c_code(string, list(maybe(string)),
-	term__context, pred_or_func_call_id, io__state, io__state).
-:- mode warn_singletons_in_pragma_c_code(in, in, in, in, di, uo) is det.
+	% mentioned at least once in the c code fragments that ought to
+	% mention it. If not, it gives a warning.
+:- pred warn_singletons_in_pragma_c_code(pragma_c_code_impl,
+	list(maybe(pair(string, mode))), term__context, pred_or_func_call_id,
+	module_info, io__state, io__state).
+:- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, di, uo) is det.
 
-warn_singletons_in_pragma_c_code(C_Code, ArgNames, 
-		Context, PredOrFunc - PredCallId) -->
-	{ c_code_to_name_list(C_Code, C_CodeList) },
-	{ solutions(lambda([Name::out] is nondet, (
-			list__member(yes(Name), ArgNames),
-			\+ string__prefix(Name, "_"),
-			\+ list__member(Name, C_CodeList)
-		)), SingletonVars) },
-	( { SingletonVars = [] } ->
-		[]
-	;
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
-		prog_out__write_context(Context),
-		io__write_string("In `:- pragma c_code' for "),
-		hlds_out__write_call_id(PredOrFunc, PredCallId),
-		io__write_string(":\n"),
-		prog_out__write_context(Context),
-		( { SingletonVars = [_] } ->
-			io__write_string("  warning: variable `"),
-			write_string_list(SingletonVars),
-			io__write_string("' does not occur in the C code.\n")
+warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo, 
+		Context, PredOrFunc - PredCallId, ModuleInfo) -->
+	(
+		{ PragmaImpl = ordinary(C_Code, _) },
+		{ c_code_to_name_list(C_Code, C_CodeList) },
+		{ solutions(lambda([Name::out] is nondet, (
+				list__member(yes(Name - _), ArgInfo),
+				\+ string__prefix(Name, "_"),
+				\+ list__member(Name, C_CodeList)
+			)), UnmentionedVars) },
+		( { UnmentionedVars = [] } ->
+			[]
 		;
-			io__write_string("  warning: variables `"),
-			write_string_list(SingletonVars),
-			io__write_string("' do not occur in the C code.\n")
+			io__stderr_stream(StdErr1),
+			io__set_output_stream(StdErr1, OldStream1),
+			prog_out__write_context(Context),
+			io__write_string("In `:- pragma c_code' for "),
+			hlds_out__write_call_id(PredOrFunc, PredCallId),
+			io__write_string(":\n"),
+			prog_out__write_context(Context),
+			( { UnmentionedVars = [_] } ->
+				io__write_string("  warning: variable `"),
+				write_string_list(UnmentionedVars),
+				io__write_string("' does not occur in the C code.\n")
+			;
+				io__write_string("  warning: variables `"),
+				write_string_list(UnmentionedVars),
+				io__write_string("' do not occur in the C code.\n")
+			),
+			io__set_output_stream(OldStream1, _)
+		)
+	;
+		{ PragmaImpl = nondet(_, _, FirstCode, _,
+			LaterCode, _, _, SharedCode, _) },
+		{ c_code_to_name_list(FirstCode, FirstCodeList) },
+		{ c_code_to_name_list(LaterCode, LaterCodeList) },
+		{ c_code_to_name_list(SharedCode, SharedCodeList) },
+		{ solutions(lambda([Name::out] is nondet, (
+				list__member(yes(Name - Mode), ArgInfo),
+				mode_is_input(ModuleInfo, Mode),
+				\+ string__prefix(Name, "_"),
+				\+ list__member(Name, FirstCodeList)
+			)), UnmentionedInputVars) },
+		( { UnmentionedInputVars = [] } ->
+			[]
+		;
+			io__stderr_stream(StdErr2),
+			io__set_output_stream(StdErr2, OldStream2),
+			prog_out__write_context(Context),
+			io__write_string("In `:- pragma c_code' for "),
+			hlds_out__write_call_id(PredOrFunc, PredCallId),
+			io__write_string(":\n"),
+			prog_out__write_context(Context),
+			( { UnmentionedInputVars = [_] } ->
+				io__write_string("  warning: variable `"),
+				write_string_list(UnmentionedInputVars),
+				io__write_string("' does not occur in the first C code.\n")
+			;
+				io__write_string("  warning: variables `"),
+				write_string_list(UnmentionedInputVars),
+				io__write_string("' do not occur in the first C code.\n")
+			),
+			io__set_output_stream(OldStream2, _)
 		),
-		io__set_output_stream(OldStream, _)
+		{ solutions(lambda([Name::out] is nondet, (
+				list__member(yes(Name - Mode), ArgInfo),
+				mode_is_output(ModuleInfo, Mode),
+				\+ string__prefix(Name, "_"),
+				\+ list__member(Name, FirstCodeList),
+				\+ list__member(Name, SharedCodeList)
+			)), UnmentionedFirstOutputVars) },
+		( { UnmentionedFirstOutputVars = [] } ->
+			[]
+		;
+			io__stderr_stream(StdErr3),
+			io__set_output_stream(StdErr3, OldStream3),
+			prog_out__write_context(Context),
+			io__write_string("In `:- pragma c_code' for "),
+			hlds_out__write_call_id(PredOrFunc, PredCallId),
+			io__write_string(":\n"),
+			prog_out__write_context(Context),
+			( { UnmentionedFirstOutputVars = [_] } ->
+				io__write_string("  warning: variable `"),
+				write_string_list(UnmentionedFirstOutputVars),
+				io__write_string("' does not occur in the first C code or the shared C code.\n")
+			;
+				io__write_string("  warning: variables `"),
+				write_string_list(UnmentionedFirstOutputVars),
+				io__write_string("' do not occur in the first C code or the shared C code.\n")
+			),
+			io__set_output_stream(OldStream3, _)
+		),
+		{ solutions(lambda([Name::out] is nondet, (
+				list__member(yes(Name - Mode), ArgInfo),
+				mode_is_output(ModuleInfo, Mode),
+				\+ string__prefix(Name, "_"),
+				\+ list__member(Name, LaterCodeList),
+				\+ list__member(Name, SharedCodeList)
+			)), UnmentionedLaterOutputVars) },
+		( { UnmentionedLaterOutputVars = [] } ->
+			[]
+		;
+			io__stderr_stream(StdErr4),
+			io__set_output_stream(StdErr4, OldStream4),
+			prog_out__write_context(Context),
+			io__write_string("In `:- pragma c_code' for "),
+			hlds_out__write_call_id(PredOrFunc, PredCallId),
+			io__write_string(":\n"),
+			prog_out__write_context(Context),
+			( { UnmentionedLaterOutputVars = [_] } ->
+				io__write_string("  warning: variable `"),
+				write_string_list(UnmentionedLaterOutputVars),
+				io__write_string("' does not occur in the retry C code or the shared C code.\n")
+			;
+				io__write_string("  warning: variables `"),
+				write_string_list(UnmentionedLaterOutputVars),
+				io__write_string("' do not occur in the retry C code or the shared C code.\n")
+			),
+			io__set_output_stream(OldStream4, _)
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2965,51 +3053,42 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 
 :- pred clauses_info_add_pragma_c_code(clauses_info, purity, may_call_mercury,
 	pred_id, proc_id, varset, list(pragma_var), list(type),
-	string, term__context,
-	maybe(pair(list(string))), clauses_info,
+	pragma_c_code_impl, term__context, clauses_info,
 	qual_info, qual_info, io__state, io__state) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
-	in, out, in, out, di, uo) is det.
+	out, in, out, di, uo) is det.
 
 clauses_info_add_pragma_c_code(ClausesInfo0, Purity, MayCallMercury, PredId,
-		ModeId, PVarSet, PVars, OrigArgTypes, C_Code, Context,
-		ExtraInfo, ClausesInfo, Info0, Info) -->
+		ModeId, PVarSet, PVars, OrigArgTypes, PragmaImpl, Context,
+		ClausesInfo, Info0, Info) -->
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
 				 HeadVars, ClauseList),
 	pragma_get_vars(PVars, Args0),
-	pragma_get_var_names(PVars, Names),
+	pragma_get_var_infos(PVars, ArgInfo),
 
 		% merge the varsets of the proc and the new pragma_c_code
 	varset__merge_subst(VarSet0, PVarSet, VarSet1, Subst),
 	map__apply_to_list(Args0, Subst, TermArgs),
 	term__term_list_to_var_list(TermArgs, Args),
 
-	(
-		ExtraInfo = no,
-		ExtraPragmaInfo = none,
-		VarSet2 = VarSet1
-	;
-		ExtraInfo = yes(SavedVarNames - LabelNames),
-		allocate_vars_for_saved_vars(SavedVarNames, SavedVars,
-			VarSet1, VarSet2),
-		ExtraPragmaInfo = extra_pragma_info(SavedVars, LabelNames)
-	),
-
 		% build the pragma_c_code
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 	% Put the purity in the goal_info in case this c code is inlined
 	add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
-	HldsGoal0 = pragma_c_code(C_Code, MayCallMercury, PredId, ModeId, Args,
-			Names, OrigArgTypes, ExtraPragmaInfo) - GoalInfo
+	HldsGoal0 = pragma_c_code(MayCallMercury, PredId, ModeId, Args,
+		ArgInfo, OrigArgTypes, PragmaImpl) - GoalInfo
 	}, 
-		% Insert unifications with the head args.
-	insert_arg_unifications(HeadVars, TermArgs, Context, head, HldsGoal0,
-		VarSet2, HldsGoal1, VarSet3, Info0, Info),
+		% Apply unifications with the head args.
+		% Since the set of head vars and the set vars in the
+		% pragma C code are disjoint, the unifications can be
+		% implemented as substitutions, and they will be.
+	insert_arg_unifications(HeadVars, TermArgs, Context, head, yes,
+		HldsGoal0, VarSet1, HldsGoal1, VarSet2, Info0, Info),
 	{
 	map__init(Empty),
-	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet3, Empty,
+	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet2, Empty,
 		HldsGoal, VarSet, _, _Warnings),
 	NewClause = clause([ModeId], HldsGoal, Context),
 	ClausesInfo =  clauses_info(VarSet, VarTypes, VarTypes1, HeadVars, 
@@ -3038,8 +3117,8 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context,
 		Goal, VarSet, Warnings, Info0, Info) -->
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1, Info0, Info1),
 	{ term__apply_substitution_to_list(Args0, Subst, Args) },
-	insert_arg_unifications(HeadVars, Args, Context, head, Goal1, VarSet1,
-		Goal2, VarSet2, Info1, Info),
+	insert_arg_unifications(HeadVars, Args, Context, head, no,
+		Goal1, VarSet1, Goal2, VarSet2, Info1, Info),
 	{ map__init(Empty) },
 	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
 				Goal, VarSet, _, Warnings) }.
@@ -3201,7 +3280,7 @@ transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 		{ list__length(Args, Arity) },
 		{ PredCallId = Name/Arity },
 		insert_arg_unifications(HeadVars, Args,
-			Context, call(PredCallId),
+			Context, call(PredCallId), no,
 			Goal0, VarSet1, Goal, VarSet, Info0, Info)
 	).
 
@@ -3211,7 +3290,6 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 	{ term__apply_substitution(B0, Subst, B) },
 	unravel_unification(A, B, Context, explicit, [],
 			VarSet0, Goal, VarSet, Info0, Info).
-
 
 %-----------------------------------------------------------------------------
 
@@ -3223,6 +3301,17 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 	% It also gets passed a `arg_context', which indicates
 	% where the terms came from.
 
+	% We never insert unifications of the form X = X.
+	% If ForPragmaC is yes, we process unifications of the form
+	% X = Y by substituting the var expected by the outside environment
+	% (the head variable) for the variable inside the goal (which was
+	% created just for the pragma_c_code goal), while giving the headvar
+	% the name of the just eliminated variable. The result will be
+	% a proc_info in which the head variables have meaningful names
+	% and the body goal is just a pragma C code. Without this special
+	% treatment, the body goal will be a conjunction, which would
+	% complicate the handling of code generation for nondet pragma C codes.
+
 :- type arg_context
 	--->	head		% the arguments in the head of the clause
 	;	call(pred_call_id) % the arguments in a call to a predicate
@@ -3233,13 +3322,13 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 		).
 
 :- pred insert_arg_unifications(list(var), list(term),
-		term__context, arg_context, hlds_goal, varset, hlds_goal,
+		term__context, arg_context, bool, hlds_goal, varset, hlds_goal,
 		varset, qual_info, qual_info, io__state, io__state).
-:- mode insert_arg_unifications(in, in, in, in, in, in, out, out,
-		in, out, di, uo) is det.
+:- mode insert_arg_unifications(in, in, in, in, in, in, in, out,
+		out, in, out, di, uo) is det.
 
-insert_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
-			Goal, VarSet, Info0, Info) -->
+insert_arg_unifications(HeadVars, Args, Context, ArgContext, ForPragmaC,
+		Goal0, VarSet0, Goal, VarSet, Info0, Info) -->
 	( { HeadVars = [] } ->
 		{ Goal = Goal0 },
 		{ VarSet = VarSet0 },
@@ -3248,30 +3337,52 @@ insert_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 		{ Goal0 = _ - GoalInfo },
 		{ goal_to_conj_list(Goal0, List0) },
 		insert_arg_unifications_2(HeadVars, Args, Context, ArgContext,
-			0, List0, VarSet0, List, VarSet, Info0, Info),
+			ForPragmaC, 0, List0, VarSet0, List, VarSet,
+			Info0, Info),
 		{ conj_list_to_goal(List, GoalInfo, Goal) }
 	).
 
 :- pred insert_arg_unifications_2(list(var), list(term),
-		term__context, arg_context, int, list(hlds_goal), varset,
+		term__context, arg_context, bool, int, list(hlds_goal), varset,
 		list(hlds_goal), varset, qual_info, qual_info,
 		io__state, io__state).
-:- mode insert_arg_unifications_2(in, in, in, in, in, in, in, out,
-		out, in, out, di, uo) is det.
+:- mode insert_arg_unifications_2(in, in, in, in, in, in, in, in,
+		out, out, in, out, di, uo) is det.
 
-insert_arg_unifications_2([], [_|_], _, _, _, _, _, _, _, _, _) -->
+insert_arg_unifications_2([], [_|_], _, _, _, _, _, _, _, _, _, _) -->
 	{ error("insert_arg_unifications_2: length mismatch") }.
-insert_arg_unifications_2([_|_], [], _, _, _, _, _, _, _, _, _) -->
+insert_arg_unifications_2([_|_], [], _, _, _, _, _, _, _, _, _, _) -->
 	{ error("insert_arg_unifications_2: length mismatch") }.
-insert_arg_unifications_2([], [], _, _, _, List, VarSet, List, VarSet,
-			Info, Info) --> [].
-insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
-			List0, VarSet0, List, VarSet, Info0, Info) -->
+insert_arg_unifications_2([], [], _, _, _, _, List, VarSet, List, VarSet,
+		Info, Info) --> [].
+insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext,
+		ForPragmaC, N0, List0, VarSet0, List, VarSet, Info0, Info) -->
 	{ N1 is N0 + 1 },
-		% skip unifications of the form `X = X'
-	( { Arg = term__variable(Var) } ->
-		insert_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
-				List0, VarSet0, List, VarSet, Info0, Info)
+	(
+		{ Arg = term__variable(Var) }
+	->
+		% Skip unifications of the form `X = X'
+		insert_arg_unifications_2(Vars, Args, Context,
+			ArgContext, ForPragmaC, N1, List0, VarSet0, List,
+			VarSet, Info0, Info)
+	;
+		{ Arg = term__variable(ArgVar) },
+		{ ForPragmaC = yes }
+	->
+		% Handle unifications of the form `X = Y' by substitution
+		% if this is safe.
+		{ map__init(Subst0) },
+		{ map__det_insert(Subst0, ArgVar, Var, Subst) },
+		{ goal_util__rename_vars_in_goals(List0, no, Subst,
+			List1) },
+		{ varset__search_name(VarSet0, ArgVar, ArgVarName) ->
+			varset__name_var(VarSet0, Var, ArgVarName, VarSet1)
+		;
+			VarSet1 = VarSet0
+		},
+		insert_arg_unifications_2(Vars, Args, Context, ArgContext,
+			ForPragmaC, N1, List1, VarSet1, List, VarSet,
+			Info0, Info)
 	;
 		{ arg_context_to_unify_context(ArgContext, N1,
 			UnifyMainContext, UnifySubContext) },
@@ -3281,7 +3392,8 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 		{ goal_to_conj_list(Goal, ConjList) },
 		{ list__append(ConjList, List1, List) },
 		insert_arg_unifications_2(Vars, Args, Context, ArgContext,
-			N1, List0, VarSet1, List1, VarSet, Info1, Info)
+			ForPragmaC, N1, List0, VarSet1, List1, VarSet,
+			Info1, Info)
 	).
 
 	% append_arg_unifications is the same as insert_arg_unifications,
@@ -3460,7 +3572,7 @@ unravel_unification(term__variable(X), RHS,
 		{ map__init(Substitution) },
 		transform_goal(ParsedGoal, VarSet2, Substitution,
 				HLDS_Goal0, VarSet3, Info1, Info2),
-		insert_arg_unifications(Vars, Vars1, Context, head,
+		insert_arg_unifications(Vars, Vars1, Context, head, no,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
 		{ create_atomic_unification(X,
 			lambda_goal(predicate, Vars, Modes, Det, HLDS_Goal),
@@ -3488,7 +3600,7 @@ unravel_unification(term__variable(X), RHS,
 		{ map__init(Substitution) },
 		transform_goal(ParsedGoal, VarSet2, Substitution,
 			HLDS_Goal0, VarSet3, Info1, Info2),
-		insert_arg_unifications(Vars, Vars1, Context, head,
+		insert_arg_unifications(Vars, Vars1, Context, head, no,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
 		{ create_atomic_unification(X,
 		lambda_goal(predicate, Vars, Modes, Det, HLDS_Goal),
@@ -3519,7 +3631,7 @@ unravel_unification(term__variable(X), RHS,
 		{ map__init(Substitution) },
 		transform_goal(ParsedGoal, VarSet2, Substitution,
 				HLDS_Goal0, VarSet3, Info1, Info2),
-		insert_arg_unifications(Vars, Vars1, Context, head,
+		insert_arg_unifications(Vars, Vars1, Context, head, no,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
 		{ create_atomic_unification(X,
 			lambda_goal(function, Vars, Modes, Det, HLDS_Goal),
@@ -4017,7 +4129,6 @@ pragma_conflict_error(Name, Arity, Context, PragmaName) -->
 	hlds_out__write_pred_call_id(Name/Arity),
 	io__write_string(".\n").
 
-
 %-----------------------------------------------------------------------------%
 %	module_add_pragma_fact_table(PredName, Arity, FileName, 
 %		Status, Context, Module0, Module, Info0, Info)
@@ -4138,10 +4249,10 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 	fact_table_generate_c_code(SymName, PragmaVars, ProcID, PrimaryProcID,
 		ProcInfo, ArgTypes, Module0, C_ProcCode, C_ExtraCode),
 
-	% XXX this should be modified to use the new type of pragma_c.
+	% XXX this should be modified to use nondet pragma c_code.
 	module_add_pragma_c_code(will_not_call_mercury, SymName, PredOrFunc, 
-		PragmaVars, VarSet, C_ProcCode, Status, Context, no,
-		Module0, Module1, Info0, Info),
+		PragmaVars, VarSet, ordinary(C_ProcCode, no),
+		Status, Context, Module0, Module1, Info0, Info),
 	{
 		C_ExtraCode = ""
 	->

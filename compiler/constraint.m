@@ -195,8 +195,8 @@ constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
 	mode_checkpoint(exit, "unify").
 
 constraint__propagate_goal_2(
-		pragma_c_code(A, B, C, D, E, F, G, H), 
-		pragma_c_code(A, B, C, D, E, F, G, H)) -->
+		pragma_c_code(A, B, C, D, E, F, G), 
+		pragma_c_code(A, B, C, D, E, F, G)) -->
 	mode_checkpoint(enter, "pragma_c_code"),
 	mode_checkpoint(exit, "pragma_c_code").
 

@@ -533,11 +533,11 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			(
 				Uinstr = call(_, _, _, _)
 			;
-				Uinstr = mkframe(_, _, _)
+				Uinstr = mkframe(_, _, _, _)
 			;
 				Uinstr = c_code(_)
 			;
-				Uinstr = pragma_c(_, _, _, _, _)
+				Uinstr = pragma_c(_, _, may_call_mercury, _)
 			)
 		->
 			NeedsFrame = yes
@@ -660,7 +660,7 @@ possible_targets(call(_, ReturnAddr, _, _), Labels) :-
 	;
 		Labels = []
 	).
-possible_targets(mkframe(_, _, _), []).
+possible_targets(mkframe(_, _, _, _), []).
 possible_targets(modframe(_), []).
 possible_targets(label(_), []).
 possible_targets(goto(CodeAddr), Targets) :-
@@ -687,7 +687,7 @@ possible_targets(mark_ticket_stack(_), []).
 possible_targets(discard_tickets_to(_), []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
-possible_targets(pragma_c(_, _, _, _, _), []).
+possible_targets(pragma_c(_, _, _, _), []).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -704,11 +704,8 @@ can_clobber_succip([Label | Labels], BlockMap, CanClobberSuccip) :-
 		(
 			Uinstr = call(_, _, _, _)
 		;
-			% Only may_call_mercury pragma_c's can clobber succip,
-			% but the LLDS doesn't say whether a given pragma_c
-			% may call Mercury or not. We therefore make the
-			% conservative assumption that it may.
-			Uinstr = pragma_c(_, _, _, _, _)
+			% Only may_call_mercury pragma_c's can clobber succip.
+			Uinstr = pragma_c(_, _, may_call_mercury, _)
 		)
 	->
 		CanClobberSuccip = yes
@@ -1260,8 +1257,8 @@ substitute_labels_instr(call(Target, ReturnAddr0, LiveInfo, Model), LabelMap,
 	;
 		ReturnAddr = ReturnAddr0
 	).
-substitute_labels_instr(mkframe(Name, Size, Redoip), _,
-		mkframe(Name, Size, Redoip)).
+substitute_labels_instr(mkframe(Name, Size, Pragma, Redoip), _,
+		mkframe(Name, Size, Pragma, Redoip)).
 substitute_labels_instr(modframe(Redoip), _, modframe(Redoip)).
 substitute_labels_instr(label(_), _, _) :-
 	error("label in substitute_labels_instr").
@@ -1299,8 +1296,8 @@ substitute_labels_instr(mark_ticket_stack(Lval), _, mark_ticket_stack(Lval)).
 substitute_labels_instr(discard_tickets_to(Rval), _, discard_tickets_to(Rval)).
 substitute_labels_instr(incr_sp(Size, Name), _, incr_sp(Size, Name)).
 substitute_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-substitute_labels_instr(pragma_c(Decl, In, Code, Out, Context), _,
-		pragma_c(Decl, In, Code, Out, Context)).
+substitute_labels_instr(pragma_c(Decls, Components, MayCallMercury, MaybeLabel),
+		_, pragma_c(Decls, Components, MayCallMercury, MaybeLabel)).
 
 :- pred substitute_labels_list(list(label)::in, assoc_list(label)::in,
 	list(label)::out) is det.

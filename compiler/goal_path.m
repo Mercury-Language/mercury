@@ -59,8 +59,8 @@ fill_expr_slots(higher_order_call(A,B,C,D,E,F), _Path0,
 fill_expr_slots(class_method_call(A,B,C,D,E,F), _Path0,
 		class_method_call(A,B,C,D,E,F)).
 fill_expr_slots(unify(A,B,C,D,E), _Path0, unify(A,B,C,D,E)).
-fill_expr_slots(pragma_c_code(A,B,C,D,E,F,G,H), _Path0,
-		pragma_c_code(A,B,C,D,E,F,G,H)).
+fill_expr_slots(pragma_c_code(A,B,C,D,E,F,G), _Path0,
+		pragma_c_code(A,B,C,D,E,F,G)).
 
 :- pred fill_conj_slots(list(hlds_goal)::in, goal_path::in, int::in,
 	list(hlds_goal)::out) is det.

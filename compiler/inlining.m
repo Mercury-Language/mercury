@@ -196,10 +196,11 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		{ map__lookup(Procs, ProcId, ProcInfo) },
 		{ proc_info_goal(ProcInfo, CalledGoal) },
 		{ Entity = proc(PredId, ProcId) },
-	%
-	% the heuristic represented by the following code
-	% could be improved
-	%
+
+		%
+		% the heuristic represented by the following code
+		% could be improved
+		%
 		(
 			{ Simple = yes },
 			{ inlining__is_simple_goal(CalledGoal,
@@ -219,17 +220,10 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		% Don't inline recursive predicates
 		{ \+ goal_calls(CalledGoal, PredProcId) },
 
-		% Don't inline model_non pragma c that doesn't have an
-		% `extra_pragma_info'.  
-		%
-		% XXX  model_non pragma c without `extra_pragma_info' should
-		% not be accepted by the compiler, but at the moment it's
-		% the only way to get model_non pragma c (the ``correct''
-		% way of doing it hasn't been implemented yet).  We just
-		% have to make sure it doesn't get inlined because that stops
-		% it from working.
+		% Under no circumstances inline model_non pragma c codes.
+		% The resulting code would not work properly.
 		\+ {
-			CalledGoal = pragma_c_code(_,_,_,_,_,_,_,none) - _,
+			CalledGoal = pragma_c_code(_,_,_,_,_,_,_) - _,
 			proc_info_interface_code_model(ProcInfo, model_non)
 		}
 	->
@@ -527,8 +521,8 @@ inlining__inlining_in_goal(class_method_call(A, B, C, D, E, F) - GoalInfo,
 inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 		unify(A, B, C, D, E) - GoalInfo) --> [].
 
-inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G, H) - GoalInfo,
-		pragma_c_code(A, B, C, D, E, F, G, H) - GoalInfo) --> [].
+inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G) - GoalInfo,
+		pragma_c_code(A, B, C, D, E, F, G) - GoalInfo) --> [].
 
 %-----------------------------------------------------------------------------%
 

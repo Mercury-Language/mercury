@@ -616,19 +616,19 @@ det_infer_goal_2(some(Vars, Goal0), _, InstMap0, SolnContext, DetInfo, _, _,
 		Goal, Det, Msgs).
 
 	% pragma c_codes are handled in the same way as predicate calls
-det_infer_goal_2(pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
-			ArgNameMap, OrigArgTypes, Extra), 
+det_infer_goal_2(pragma_c_code(IsRecursive, PredId, ProcId, Args,
+			ArgNameMap, OrigArgTypes, PragmaCode), 
 		GoalInfo, _, SolnContext, DetInfo, _, _,
-		pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
-			ArgNameMap, OrigArgTypes, Extra),
+		pragma_c_code(IsRecursive, PredId, ProcId, Args,
+			ArgNameMap, OrigArgTypes, PragmaCode),
 		Detism, Msgs) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	( MaybeDetism = yes(Detism0) ->
 		determinism_components(Detism0, CanFail, NumSolns0),
-		( Extra = extra_pragma_info(_, _) ->
-			% pragma C codes that specify saved variables and labels
+		( PragmaCode = nondet(_, _, _, _, _, _, _, _, _) ->
+			% pragma C codes of this form
 			% can have more than one solution
 			NumSolns1 = at_most_many
 		;

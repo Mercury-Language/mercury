@@ -785,9 +785,10 @@ simplify__goal_2(some(Vars1, Goal1), SomeInfo, Goal, SomeInfo, Info0, Info) :-
 	Goal = some(Vars, Goal3).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
-	Goal0 = pragma_c_code(_, _, PredId, ProcId, Args, _, _, _),
-	( simplify_do_calls(Info0),
-	  goal_info_is_pure(GoalInfo)
+	Goal0 = pragma_c_code(_, PredId, ProcId, Args, _, _, _),
+	(
+		simplify_do_calls(Info0),
+		goal_info_is_pure(GoalInfo)
 	->	
 		common__optimise_call(PredId, ProcId, Args, Goal0,
 			GoalInfo, Goal, Info0, Info)
@@ -1598,7 +1599,7 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-
 			Goal = GoalExpr - _,
 			GoalExpr \= call(_, _, _, _, _, _),
 			GoalExpr \= higher_order_call(_, _, _, _, _, _),
-			GoalExpr \= pragma_c_code(_, _, _, _, _, _, _, _)
+			GoalExpr \= pragma_c_code(_, _, _, _, _, _, _)
 		)
 	->
 		simplify_info_get_common_info(Info0, CommonInfo0),

@@ -118,7 +118,8 @@
 :- type decl_id --->	create_label(int)
 		;	float_label(string)
 		;	code_addr(code_addr)
-		;	data_addr(data_addr).
+		;	data_addr(data_addr)
+		;	pragma_c_struct(string).
 
 output_c_file(C_File) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
@@ -686,7 +687,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		(
 			Instr = call(_, label(ContLabel), _, _)
 		;
-			Instr = mkframe(_Comment2, _SlotCount, label(ContLabel))
+			Instr = mkframe(_, _, _, label(ContLabel))
 		;
 			Instr = modframe(label(ContLabel))
 		;
@@ -786,10 +787,35 @@ output_instruction_decls(call(Target, ContLabel, _, _), DeclSet0, DeclSet) -->
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(ContLabel, "", "", 0, _, DeclSet1, DeclSet).
 output_instruction_decls(c_code(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(mkframe(_, _, FailureContinuation),
+output_instruction_decls(mkframe(_, _, MaybeStruct, FailureContinuation),
 		DeclSet0, DeclSet) -->
+	(
+		{ MaybeStruct = yes(pragma_c_struct(StructName,
+			StructFields, MaybeStructFieldsContext)) }
+	->
+		{ set__member(pragma_c_struct(StructName), DeclSet0) ->
+			string__append_list(["struct ", StructName, " has been declared already"], Msg),
+			error(Msg)
+		;
+			true
+		},
+		io__write_string("struct "),
+		io__write_string(StructName),
+		io__write_string(" {\n"),
+		( { MaybeStructFieldsContext = yes(StructFieldsContext) } ->
+			output_set_line_num(StructFieldsContext),
+			io__write_string(StructFields),
+			output_reset_line_num
+		;
+			io__write_string(StructFields)
+		),
+		io__write_string("\n};\n"),
+		{ set__insert(DeclSet0, pragma_c_struct(StructName), DeclSet1) }
+	;
+		{ DeclSet1 = DeclSet0 }
+	),
 	output_code_addr_decls(FailureContinuation, "", "", 0, _,
-		DeclSet0, DeclSet).
+		DeclSet1, DeclSet).
 output_instruction_decls(modframe(FailureContinuation), DeclSet0, DeclSet) -->
 	output_code_addr_decls(FailureContinuation, "", "", 0, _,
 		DeclSet0, DeclSet).
@@ -819,10 +845,30 @@ output_instruction_decls(discard_tickets_to(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(pragma_c(_Decls, Inputs, _C_Code, Outputs, _Context),
+output_instruction_decls(pragma_c(_, Components, _, _), DeclSet0, DeclSet) -->
+	output_pragma_c_component_list_decls(Components, DeclSet0, DeclSet).
+
+:- pred output_pragma_c_component_list_decls(list(pragma_c_component),
+	decl_set, decl_set, io__state, io__state).
+:- mode output_pragma_c_component_list_decls(in, in, out, di, uo) is det.
+
+output_pragma_c_component_list_decls([], DeclSet, DeclSet) --> [].
+output_pragma_c_component_list_decls([Component | Components],
 		DeclSet0, DeclSet) -->
-	output_pragma_input_rval_decls(Inputs, DeclSet0, DeclSet1),
-	output_pragma_output_lval_decls(Outputs, DeclSet1, DeclSet).
+	output_pragma_c_component_decls(Component, DeclSet0, DeclSet1),
+	output_pragma_c_component_list_decls(Components, DeclSet1, DeclSet).
+
+:- pred output_pragma_c_component_decls(pragma_c_component,
+	decl_set, decl_set, io__state, io__state).
+:- mode output_pragma_c_component_decls(in, in, out, di, uo) is det.
+
+output_pragma_c_component_decls(pragma_c_inputs(Inputs), DeclSet0, DeclSet) -->
+	output_pragma_input_rval_decls(Inputs, DeclSet0, DeclSet).
+output_pragma_c_component_decls(pragma_c_outputs(Outputs), DeclSet0, DeclSet) -->
+	output_pragma_output_lval_decls(Outputs, DeclSet0, DeclSet).
+output_pragma_c_component_decls(pragma_c_raw_code(_), DeclSet, DeclSet) --> [].
+output_pragma_c_component_decls(pragma_c_user_code(_, _), DeclSet, DeclSet)
+		--> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -977,14 +1023,26 @@ output_instruction(c_code(C_Code_String), _) -->
 	io__write_string("\t"),
 	io__write_string(C_Code_String).
 
-output_instruction(mkframe(Str, Num, FailureContinuation), _) -->
-	io__write_string("\tmkframe("""),
-	io__write_string(Str),
-	io__write_string(""", "),
-	io__write_int(Num),
-	io__write_string(", "),
-	output_code_addr(FailureContinuation),
-	io__write_string(");\n").
+output_instruction(mkframe(Msg, Num, MaybePragmaStructName, FailCont), _) -->
+	( { MaybePragmaStructName = yes(pragma_c_struct(StructName, _, _)) } ->
+		io__write_string("\tmkpragmaframe("""),
+		io__write_string(Msg),
+		io__write_string(""", "),
+		io__write_int(Num),
+		io__write_string(", "),
+		io__write_string(StructName),
+		io__write_string(", "),
+		output_code_addr(FailCont),
+		io__write_string(");\n")
+	;
+		io__write_string("\tmkframe("""),
+		io__write_string(Msg),
+		io__write_string(""", "),
+		io__write_int(Num),
+		io__write_string(", "),
+		output_code_addr(FailCont),
+		io__write_string(");\n")
+	).
 
 output_instruction(modframe(FailureContinuation), _) -->
 	io__write_string("\tmodframe("),
@@ -1082,28 +1140,52 @@ output_instruction(decr_sp(N), _) -->
 	io__write_int(N),
 	io__write_string(");\n").
 
-	% The code we produce for pragma(c_code, ...) is in the form
-	% {
-	%	<declaration of one local variable for each one in the proc>
-	%	<declarations for any rvals and lvals used, if needed>
-	%	<assignment of the input regs to the corresponding locals>
-	%	<the C code itself>
-	%	<assignment to the output regs of the corresponding locals>
-	% }
-output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs, Context), _) -->
+output_instruction(pragma_c(Decls, Components, _, _), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
-	output_pragma_inputs(Inputs),
-	output_set_line_num(Context),
-	io__write_string("{\t\t"),
-	io__write_string(C_Code),
-	io__write_string(";}\n"),
-	output_reset_line_num,
-	output_pragma_outputs(Outputs),
+	output_pragma_c_components(Components),
 	io__write_string("\n\t}\n").
+
+:- pred output_pragma_c_components(list(pragma_c_component),
+	io__state, io__state).
+:- mode output_pragma_c_components(in, di, uo) is det.
+
+output_pragma_c_components([]) --> [].
+output_pragma_c_components([C | Cs]) -->
+	output_pragma_c_component(C),
+	output_pragma_c_components(Cs).
+
+:- pred output_pragma_c_component(pragma_c_component, io__state, io__state).
+:- mode output_pragma_c_component(in, di, uo) is det.
+
+output_pragma_c_component(pragma_c_inputs(Inputs)) -->
+	output_pragma_inputs(Inputs).
+output_pragma_c_component(pragma_c_outputs(Outputs)) -->
+	output_pragma_outputs(Outputs).
+output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code)) -->
+	( { C_Code = "" } ->
+		[]
+	;
+			% We should start the C_Code on a new line,
+			% just in case it starts with a proprocessor directive.
+		( { MaybeContext = yes(Context) } ->
+			io__write_string("{\n"),
+			output_set_line_num(Context),
+			io__write_string(C_Code),
+			io__write_string(";}\n"),
+			output_reset_line_num
+		;
+			io__write_string("{\n"),
+			io__write_string(C_Code),
+			io__write_string(";}\n")
+		)
+	).
+output_pragma_c_component(pragma_c_raw_code(C_Code)) -->
+	io__write_string(C_Code).
 
 :- pred output_set_line_num(term__context, io__state, io__state).
 :- mode output_set_line_num(in, di, uo) is det.
+
 output_set_line_num(Context) -->
 	{ term__context_file(Context, File) },
 	{ term__context_line(Context, Line) },
@@ -1124,6 +1206,7 @@ output_set_line_num(Context) -->
 
 :- pred output_reset_line_num(io__state, io__state).
 :- mode output_reset_line_num(di, uo) is det.
+
 output_reset_line_num -->
 	% We want to generate another #line directive to reset the C compiler's
 	% idea of what it is processing back to the file we are generating.
@@ -1150,14 +1233,23 @@ output_reset_line_num -->
 
 output_pragma_decls([]) --> [].
 output_pragma_decls([D|Decls]) -->
-	{ D = pragma_c_decl(Type, VarName) },
+	(
+		{ D = pragma_c_arg_decl(Type, VarName) },
 		% Apart from special cases, the local variables are Words
-	{ export__term_to_type_string(Type, VarType) },
-	io__write_string("\t\t"),
-	io__write_string(VarType),
-	io__write_string("\t"),
-	io__write_string(VarName),
-	io__write_string(";\n"),
+		{ export__term_to_type_string(Type, VarType) },
+		io__write_string("\t"),
+		io__write_string(VarType),
+		io__write_string("\t"),
+		io__write_string(VarName),
+		io__write_string(";\n")
+	;
+		{ D = pragma_c_struct_ptr_decl(StructTag, VarName) },
+		io__write_string("\tstruct "),
+		io__write_string(StructTag),
+		io__write_string("\t*"),
+		io__write_string(VarName),
+		io__write_string(";\n")
+	),
 	output_pragma_decls(Decls).
 
 	% Output declarations for any rvals used to initialize the inputs
@@ -1179,7 +1271,7 @@ output_pragma_input_rval_decls([I | Inputs], DeclSet0, DeclSet) -->
 output_pragma_inputs([]) --> [].
 output_pragma_inputs([I|Inputs]) -->
 	{ I = pragma_c_input(VarName, Type, Rval) },
-	io__write_string("\t\t"),
+	io__write_string("\t"),
 	io__write_string(VarName),
 	io__write_string(" = "),
 	(
@@ -1216,7 +1308,7 @@ output_pragma_output_lval_decls([O | Outputs], DeclSet0, DeclSet) -->
 output_pragma_outputs([]) --> [].
 output_pragma_outputs([O|Outputs]) --> 
 	{ O = pragma_c_output(Lval, Type, VarName) },
-	io__write_string("\t\t"),
+	io__write_string("\t"),
 	output_lval_as_word(Lval),
 	io__write_string(" = "),
 	(
@@ -1290,6 +1382,7 @@ output_gc_livevals_2([live_lvalue(Lval, LiveValueType, TypeParams)|Lvals]) -->
 
 :- pred output_gc_livevals_params(assoc_list(var, lval), io__state, io__state).
 :- mode output_gc_livevals_params(in, di, uo) is det.
+
 output_gc_livevals_params([]) --> [].
 output_gc_livevals_params([Var - Lval | Lvals]) -->
 	{ term__var_to_int(Var, VarInt) },
@@ -1301,6 +1394,7 @@ output_gc_livevals_params([Var - Lval | Lvals]) -->
 
 :- pred output_live_value_type(live_value_type, io__state, io__state).
 :- mode output_live_value_type(in, di, uo) is det.
+
 output_live_value_type(succip) --> io__write_string("MR_succip").
 output_live_value_type(curfr) --> io__write_string("MR_curfr").
 output_live_value_type(maxfr) --> io__write_string("MR_maxfr").
@@ -1629,6 +1723,8 @@ output_decl_id(code_addr(_CodeAddress)) -->
 	{ error("output_decl_id: code_addr unexpected") }.
 output_decl_id(float_label(_Label)) -->
 	{ error("output_decl_id: float_label unexpected") }.
+output_decl_id(pragma_c_struct(_Name)) -->
+	{ error("output_decl_id: pragma_c_struct unexpected") }.
 
 :- pred output_cons_arg_types(list(maybe(rval)), string, int, 
 				io__state, io__state).

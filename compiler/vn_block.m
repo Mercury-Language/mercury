@@ -229,10 +229,10 @@ vn_block__handle_instr(call(Proc, Return, Info, CallModel),
 	vn_block__new_ctrl_node(vn_call(Proc, Return, Info, CallModel), Livemap,
 		Params, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(mkframe(Name, Size, Redoip), Livemap, Params,
+vn_block__handle_instr(mkframe(Name, Size, Pragma, Redoip), Livemap, Params,
 		VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr0, SeenIncr, Tuple0, Tuple) :-
-	vn_block__new_ctrl_node(vn_mkframe(Name, Size, Redoip),
+	vn_block__new_ctrl_node(vn_mkframe(Name, Size, Pragma, Redoip),
 		Livemap, Params, VnTables0, VnTables1,
 		Liveset0, Liveset1, Tuple0, Tuple1),
 	vn_block__handle_instr(assign(redoip(lval(maxfr)),
@@ -353,7 +353,7 @@ vn_block__handle_instr(decr_sp(N),
 	vn_block__new_ctrl_node(vn_decr_sp(N), Livemap,
 		Params, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(pragma_c(_, _, _, _, _),
+vn_block__handle_instr(pragma_c(_, _, _, _),
 		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
 		SeenIncr, SeenIncr, Tuple, Tuple) :-
 	error("value numbering not supported for pragma_c").
@@ -388,7 +388,7 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		VnInstr = vn_mkframe(_, _, _),
+		VnInstr = vn_mkframe(_, _, _, _),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
@@ -874,7 +874,7 @@ vn_block__is_ctrl_instr(livevals(_), yes).
 vn_block__is_ctrl_instr(block(_, _, _), no).
 vn_block__is_ctrl_instr(assign(_, _), no).
 vn_block__is_ctrl_instr(call(_, _, _, _), yes).
-vn_block__is_ctrl_instr(mkframe(_, _, _), yes).
+vn_block__is_ctrl_instr(mkframe(_, _, _, _), yes).
 vn_block__is_ctrl_instr(modframe(_), no).
 vn_block__is_ctrl_instr(label(_), yes).
 vn_block__is_ctrl_instr(goto(_), yes).
@@ -891,7 +891,7 @@ vn_block__is_ctrl_instr(mark_ticket_stack(_), yes).
 vn_block__is_ctrl_instr(discard_tickets_to(_), yes).
 vn_block__is_ctrl_instr(incr_sp(_, _), yes).
 vn_block__is_ctrl_instr(decr_sp(_), yes).
-vn_block__is_ctrl_instr(pragma_c(_, _, _, _, _), no).
+vn_block__is_ctrl_instr(pragma_c(_, _, _, _), no).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

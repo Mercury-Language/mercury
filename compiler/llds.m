@@ -126,9 +126,17 @@
 			% says whether tail recursion elimination is
 			% potentially applicable to the call.
 
-	;	mkframe(string, int, code_addr)
-			% mkframe(Comment, SlotCount, FailureContinuation)
-			% creates a nondet stack frame.
+	;	mkframe(string, int, maybe(pragma_c_struct), code_addr)
+			% mkframe(Comment, SlotCount, MaybePragmaStruct,
+			% FailureContinuation) creates a nondet stack frame.
+			% Comment says what predicate creates the frame.
+			% SlotCount says how many ordinary framevar slots
+			% it ought to have. If MaybePragmaStruct is yes,
+			% the argument gives the details of the structure
+			% which occupies the rest of the framevar slots.
+			% CodeAddr is the code address to branch to when
+			% trying to generate the next solution from this
+			% choice point.
 
 	;	modframe(code_addr)
 			% modframe(FailureContinuation) is the same as
@@ -222,26 +230,75 @@
 	;	decr_sp(int)
 			% Decrement the det stack pointer.
 
-	;	pragma_c(list(pragma_c_decl), list(pragma_c_input),
-			string, list(pragma_c_output), term__context).
-			% The local variable declarations, the info required
-			% for placing the inputs in the variables, the c code,
-			% the info required for picking up the outputs, and
-			% the context of the original appearance of the C code
-			% in the Mercury source.
+	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
+				may_call_mercury, maybe(label)).
+			% The first argument says what local variable
+			% declarations are required for the following
+			% components, which in turn can specify how
+			% the inputs should be placed in their variables,
+			% how the outputs should be picked up from their
+			% variables, and C code both from the program
+			% and the compiler. These components can be
+			% sequenced in various ways. This flexibility
+			% is needed for nondet pragma C codes, which
+			% need different copies of several components
+			% for different paths tthrough the code.
+			%
+			% The third argument says whether the user C code
+			% components may call Mercury; certain optimizations
+			% can be performed across pragma_c instructions that
+			% cannot call Mercury.
+			%
+			% Some components in some pragma_c instructions
+			% refer to a Mercury label. If they do, we must
+			% prevent the label from being optimized away.
+			% To make it known to labelopt, we mention it in
+			% the fourth arg.
 
-%	;	frame_pragma_c(list(pragma_c_decl), list(pragma_c_input),
-%			string, list(pragma_c_output), list(label), term__context).
-%			% The same as above, plus the list of labels to use
-%			% in LABEL_1 and DEFINE_LABEL_1 style macros.
-%			% For use in model_non pragma_c_codes, where it
-%			% should be preceded by a mkframe.
+	% Procedures defined by nondet pragma C codes must have some way of
+	% preserving information after a success, so that when control
+	% backtracks to the procedure, the C code knows what to do.
+	% Our implementation saves this information in a C struct.
+	% Programmers must include the declaration of the fields of this
+	% C struct in the `pragma c_code' declaration itself.
+	% A pragma_c_struct holds information about this C struct.
+:- type pragma_c_struct
+	--->	pragma_c_struct(
+			string,		% The name of the struct tag.
+			string,		% The field declarations, supplied
+					% by the user in the `pragma c_code'
+					% declaration.
+			maybe(term__context)
+					% Where the field declarations
+					% originally appeared.
+		).
 
-	% pragma_c_decl holds the information needed for a variable
-	% declaration for a pragma_c instruction.
+	% A pragma_c_decl holds the information needed for the declaration
+	% of a local variable in a block of C code emitted for a pragma_c
+	% instruction.
 :- type pragma_c_decl
-	--->	pragma_c_decl(type, string).
-				% Type name, variable name.
+	--->	pragma_c_arg_decl(
+			% This local variable corresponds to a procedure arg.
+			type,	% The Mercury type of the argument.
+			string	% The name of the local variable that
+				% will hold the value of that argument
+				% inside the C block.
+		)
+	;	pragma_c_struct_ptr_decl(
+			% This local variable holds the address of the
+			% save struct.
+			string,	% The name of the C struct tag of the save
+				% struct; the type of the local variable
+				% will be a pointer to a struct with this tag.
+			string	% The name of the local variable.
+		).
+
+	% A pragma_c_component holds one component of a pragma_c instruction.
+:- type pragma_c_component
+	--->	pragma_c_inputs(list(pragma_c_input))
+	;	pragma_c_outputs(list(pragma_c_output))
+	;	pragma_c_user_code(maybe(term__context), string)
+	;	pragma_c_raw_code(string).
 
 	% A pragma_c_input represents the code that initializes one
 	% of the input variables for a pragma_c instruction.

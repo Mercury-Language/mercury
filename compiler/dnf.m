@@ -225,7 +225,7 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
-		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _, _),
+		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
 		ModuleInfo = ModuleInfo0,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
@@ -429,7 +429,7 @@ dnf__is_atomic_expr(not(_), no).
 dnf__is_atomic_expr(some(_, GoalExpr - _), IsAtomic) :-
 	dnf__is_atomic_expr(GoalExpr, IsAtomic).
 dnf__is_atomic_expr(if_then_else(_, _, _, _, _), no).
-dnf__is_atomic_expr(pragma_c_code(_, _, _, _, _, _, _, _), yes).
+dnf__is_atomic_expr(pragma_c_code(_, _, _, _, _, _, _), yes).
 
 :- pred dnf__expr_free_of_nonatomic(hlds_goal_expr::in,
 	set(pred_proc_id)::in) is semidet.
@@ -451,7 +451,7 @@ dnf__expr_free_of_nonatomic(if_then_else(_, Cond, Then, Else, _), NonAtomic) :-
 	dnf__goal_free_of_nonatomic(Cond, NonAtomic),
 	dnf__goal_free_of_nonatomic(Then, NonAtomic),
 	dnf__goal_free_of_nonatomic(Else, NonAtomic).
-dnf__expr_free_of_nonatomic(pragma_c_code(_, _, _, _, _, _, _, _), _NonAtomic).
+dnf__expr_free_of_nonatomic(pragma_c_code(_, _, _, _, _, _, _), _NonAtomic).
 
 :- pred dnf__goal_free_of_nonatomic(hlds_goal::in,
 	set(pred_proc_id)::in) is semidet.

@@ -484,6 +484,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		hlds_out__write_marker_list(MarkerList),
 		io__write_string("\n")
 	),
+
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	( { string__contains_char(Verbose, 'v') } ->
 		{ AppendVarnums = yes }
@@ -1120,8 +1121,8 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		[]
 	).
 
-hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgVars, ArgNames, _,
-			Extra), _, _, _, Indent, Follow, _) -->
+hlds_out__write_goal_2(pragma_c_code(_, _, _, ArgVars, ArgNames, _,
+			PragmaCode), _, _, _, Indent, Follow, _) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("$pragma(c_code, ["),
 	hlds_out__write_varnum_list(ArgVars),
@@ -1130,18 +1131,38 @@ hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgVars, ArgNames, _,
 	hlds_out__write_string_list(Names),
 	io__write_string("], "),
 	(
-		{ Extra = none }
+		{ PragmaCode = ordinary(C_Code, _) },
+		io__write_string(""""),
+		io__write_string(C_Code),
+		io__write_string("""")
 	;
-		{ Extra = extra_pragma_info(SavedVarNames, LabelNames) },
-		io__write_string("["),
-		hlds_out__write_var_name_list(SavedVarNames),
-		io__write_string("], ["),
-		hlds_out__write_string_list(LabelNames),
-		io__write_string("], ")
+		{ PragmaCode = nondet(Fields, _FieldsContext,
+			First, _FirstContext,
+			Later, _LaterContext,
+			Treat, Shared, _SharedContext) },
+		io__write_string("local_vars("""),
+		io__write_string(Fields),
+		io__write_string("""), "),
+		io__write_string("first_code("""),
+		io__write_string(First),
+		io__write_string("""), "),
+		io__write_string("retry_code("""),
+		io__write_string(Later),
+		io__write_string("""), "),
+		(
+			{ Treat = share },
+			io__write_string("shared_code(""")
+		;
+			{ Treat = duplicate },
+			io__write_string("duplicated_code(""")
+		;
+			{ Treat = automatic },
+			io__write_string("common_code(""")
+		),
+		io__write_string(Shared),
+		io__write_string(""")")
 	),
-	io__write_string(""""),
-	io__write_string(C_Code),
-	io__write_string(""" )"),
+	io__write_string(")"),
 	io__write_string(Follow),
 	io__write_string("\n").
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -674,13 +674,17 @@ c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName),
 c_gen_goal_2(unify(_A, _B, _, Unification, _), Indent, CGenInfo0, CGenInfo) -->
 	c_gen_unification(Unification, Indent, CGenInfo0, CGenInfo).
 
-c_gen_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _, _), _, _, _) -->
+c_gen_goal_2(pragma_c_code(_, _, _, _, ArgNames, _, PragmaCode), _, _, _) -->
 	{ sorry(4) },
 	{ get_pragma_c_var_names(ArgNames, Names) },
 	io__write_string("$pragma(c_code, ["),
 	c_gen_string_list(Names),
 	io__write_string("], """),
-	io__write_string(C_Code),
+	( { PragmaCode = ordinary(C_Code, _) } -> 
+		io__write_string(C_Code)
+	;
+		{ error("cannot translate nondet pragma code to C") }
+	),
 	io__write_string(""" )").
 
 :- pred c_gen_string_list(list(string), io__state, io__state).

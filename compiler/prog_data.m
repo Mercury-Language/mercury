@@ -99,18 +99,10 @@
 	;	c_code(string)
 
 	;	c_code(may_call_mercury, sym_name, pred_or_func,
-			list(pragma_var), varset, string)
+			list(pragma_var), varset, pragma_c_code_impl)
 			% Whether or not the C code may call Mercury,
 			% PredName, Predicate or Function, Vars/Mode, 
-			% VarNames, C Code
-
-	;	c_code(may_call_mercury, sym_name,
-			pred_or_func, list(pragma_var),
-			list(string), list(string),
-			varset, string)
-			% Whether or not the C code may call Mercury,
-			% PredName, Predicate or Function, Vars/Mode, 
-			% SavedVars, LabelNames, VarNames, C Code
+			% VarNames, C Code Implementation Info
 
 	;	memo(sym_name, arity)
 			% Predname, Arity
@@ -172,6 +164,64 @@
 
 	;	check_termination(sym_name, arity).
 			% Predname, Arity
+
+	% This type holds information about the implementation details
+	% of procedures defined via `pragma c_code'.
+
+	% All the strings in this type may be accompanied by the context
+	% of their appearance in the source code. These contexts are
+	% used to tell the C compiler where the included C code comes from,
+	% to allow it to generate error messages that refer to the original
+	% appearance of the code in the Mercury program.
+	% The context is missing if the C code was constructed by the compiler.
+:- type pragma_c_code_impl
+	--->	ordinary(		% This is a C definition of a model_det
+					% or model_semi procedure. (We also
+					% allow model_non, until everyone has
+					% had time to adapt to the new way
+					% of handling model_non pragmas.)
+			string,		% The C code of the procedure.
+			maybe(term__context)
+		)
+	;	nondet(			% This is a C definition of a model_non
+					% procedure.
+			string,
+			maybe(term__context),
+					% The info saved for the time when
+					% backtracking reenters this procedure
+					% is stored in a C struct. This arg
+					% contains the field declarations.
+
+			string,
+			maybe(term__context),
+					% Gives the code to be executed when
+					% the procedure is called for the first 
+					% time. This code may access the input
+					% variables.
+
+			string,	
+			maybe(term__context),
+					% Gives the code to be executed when
+					% control backtracks into the procedure.
+					% This code may not access the input
+					% variables.
+
+			pragma_shared_code_treatment,
+					% How should the shared code be
+					% treated during code generation.
+			string,	
+			maybe(term__context)
+					% Shared code that is executed after
+					% both the previous code fragments.
+					% May not access the input variables.
+		).
+
+	% The use of this type is explained in the comment at the top of
+	% pragma_c_gen.m.
+:- type pragma_shared_code_treatment
+	--->	duplicate
+	;	share
+	;	automatic.
 
 :- type class_constraint	---> constraint(class_name, list(type)).
 

@@ -178,7 +178,8 @@ goal_util__rename_vars_in_goals([Goal0 | Goals0], Must, Subn, [Goal | Goals]) :-
 		hlds_goal).
 :- mode goal_util__rename_vars_in_goal(in, in, in, out) is det.
 
-goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo) :-
+goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo)
+		:-
 	goal_util__name_apart_2(Goal0, Must, Subn, Goal),
 	goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo).
 
@@ -246,18 +247,9 @@ goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 	goal_util__rename_unify_rhs(TermR0, Must, Subn, TermR),
 	goal_util__rename_unify(Unify0, Must, Subn, Unify).
 
-goal_util__name_apart_2(pragma_c_code(A,B,C,D,Vars0,F,G,Extra0), Must, Subn,
-		pragma_c_code(A,B,C,D,Vars,F,G,Extra)) :-
-	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
-	(
-		Extra0 = none,
-		Extra = none
-	;
-		Extra0 = extra_pragma_info(SavedVars0, LabelNames),
-		goal_util__rename_var_pair_list(SavedVars0, Must, Subn,
-			SavedVars),
-		Extra = extra_pragma_info(SavedVars, LabelNames)
-	).
+goal_util__name_apart_2(pragma_c_code(A,B,C,Vars0,E,F,G), Must, Subn,
+		pragma_c_code(A,B,C,Vars,E,F,G)) :-
+	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -457,17 +449,9 @@ goal_util__goal_vars_2(if_then_else(Vars, A - _, B - _, C - _, _), Set0, Set) :-
 	goal_util__goal_vars_2(B, Set2, Set3),
 	goal_util__goal_vars_2(C, Set3, Set).
 
-goal_util__goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _, _, Extra),
+goal_util__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _, _, _),
 		Set0, Set) :-
-	set__insert_list(Set0, ArgVars, Set1),
-	(
-		Extra = none,
-		Set = Set1
-	;
-		Extra = extra_pragma_info(SavedVarNames, _),
-		assoc_list__keys(SavedVarNames, SavedVars),
-		set__insert_list(Set1, SavedVars, Set)
-	).
+	set__insert_list(Set0, ArgVars, Set).
 
 :- pred goal_util__goals_goal_vars(list(hlds_goal), set(var), set(var)).
 :- mode goal_util__goals_goal_vars(in, in, out) is det.
@@ -552,7 +536,7 @@ goal_expr_size(call(_, _, _, _, _, _), 1).
 goal_expr_size(higher_order_call(_, _, _, _, _, _), 1).
 goal_expr_size(class_method_call(_, _, _, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
-goal_expr_size(pragma_c_code(_, _, _, _, _, _, _, _), 1).
+goal_expr_size(pragma_c_code(_, _, _, _, _, _, _), 1).
 
 %-----------------------------------------------------------------------------%
 

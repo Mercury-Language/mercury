@@ -1219,7 +1219,7 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			VnInstr = vn_call(_, _, _, _),
 			VnTables1 = VnTables0
 		;
-			VnInstr = vn_mkframe(_, _, _),
+			VnInstr = vn_mkframe(_, _, _, _),
 			VnTables1 = VnTables0
 		;
 			VnInstr = vn_label(_),

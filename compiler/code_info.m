@@ -1251,7 +1251,7 @@ code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
 				% this code could be better
 				% (mkframe is a bit of a sledge hammer)
 			{ TempFrameCode = node([
-				mkframe("temp frame", 1, RedoAddr)
+				mkframe("temp frame", 1, no, RedoAddr)
 					- "create a temporary frame",
 				assign(curfr, lval(succfr(lval(maxfr))))
 					- "restore curfr after mkframe"

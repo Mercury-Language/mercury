@@ -170,7 +170,7 @@ code_aux__goal_is_flat_2(some(_Vars, Goal)) :-
 code_aux__goal_is_flat_2(higher_order_call(_, _, _, _, _, _)).
 code_aux__goal_is_flat_2(call(_, _, _, _, _, _)).
 code_aux__goal_is_flat_2(unify(_, _, _, _, _)).
-code_aux__goal_is_flat_2(pragma_c_code(_, _, _, _, _, _, _, _)).
+code_aux__goal_is_flat_2(pragma_c_code(_, _, _, _, _, _, _)).
 
 %-----------------------------------------------------------------------------%
 

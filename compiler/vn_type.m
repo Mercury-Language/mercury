@@ -70,7 +70,8 @@
 :- type vn_instr	--->	vn_livevals(lvalset)
 			;	vn_call(code_addr, code_addr,
 					list(liveinfo), call_model)
-			;	vn_mkframe(string, int, code_addr)
+			;	vn_mkframe(string, int, maybe(pragma_c_struct),
+					code_addr)
 			;	vn_label(label)
 			;	vn_goto(code_addr)
 			;	vn_computed_goto(vn, list(label))

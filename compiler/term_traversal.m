@@ -179,7 +179,7 @@ traverse_goal_2(if_then_else(_, Cond, Then, Else, _), _, Params, Info0, Info) :-
 	traverse_goal(Else, Params, Info0, Info2),
 	combine_paths(Info1, Info2, Params, Info).
 
-traverse_goal_2(pragma_c_code(_, _, CallPredId, CallProcId, Args, _, _, _),
+traverse_goal_2(pragma_c_code(_, CallPredId, CallProcId, Args, _, _, _),
 		GoalInfo, Params, Info0, Info) :-
 	params_get_module_info(Params, Module),
 	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,

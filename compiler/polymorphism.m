@@ -749,8 +749,8 @@ polymorphism__process_goal_expr(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 	polymorphism__process_goal(B0, B),
 	polymorphism__process_goal(C0, C).
 
-polymorphism__process_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId,
-		ProcId, ArgVars0, ArgNames0, OrigArgTypes0, ExtraInfo),
+polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId,
+		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode),
 		GoalInfo, Goal) -->
 	polymorphism__process_call(PredId, ProcId, ArgVars0,
 		ArgVars, ExtraVars, ExtraGoals),
@@ -772,7 +772,7 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId,
 	{ term__vars_list(PredArgTypes, PredTypeVars0) },
 	{ list__remove_dups(PredTypeVars0, PredTypeVars) },
 	{ polymorphism__c_code_add_typeinfos(ExtraVars, PredTypeVars,
-			PredTypeVarSet, ArgNames0, ArgNames) },
+			PredTypeVarSet, ArgInfo0, ArgInfo) },
 
 	%
 	% insert type_info types for all the inserted type_info vars
@@ -787,13 +787,13 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId,
 	%
 	% plug it all back together
 	%
-	{ Call = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, ArgVars,
-			ArgNames, OrigArgTypes, ExtraInfo) - CallGoalInfo },
+	{ Call = pragma_c_code(IsRecursive, PredId, ProcId, ArgVars,
+			ArgInfo, OrigArgTypes, PragmaCode) - CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
-:- pred polymorphism__c_code_add_typeinfos(list(var), list(tvar),
-			tvarset, list(maybe(string)), list(maybe(string))).
+:- pred polymorphism__c_code_add_typeinfos(list(var), list(tvar), tvarset,
+	list(maybe(pair(string, mode))), list(maybe(pair(string, mode)))).
 :- mode polymorphism__c_code_add_typeinfos(in, in, in, in, out) is det.
 
 polymorphism__c_code_add_typeinfos([], [], _, ArgNames, ArgNames).
@@ -803,7 +803,9 @@ polymorphism__c_code_add_typeinfos([_Var|Vars], [TVar|TVars], TypeVarSet,
 		ArgNames0, ArgNames1),
 	( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
 		string__append("TypeInfo_for_", TypeVarName, C_VarName),
-		ArgNames = [yes(C_VarName) | ArgNames1]
+		Input = user_defined_mode(qualified("mercury_builtin", "in"),
+			[]),
+		ArgNames = [yes(C_VarName - Input) | ArgNames1]
 	;
 		ArgNames = [no | ArgNames1]
 	).

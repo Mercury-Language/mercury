@@ -140,13 +140,15 @@ peephole__match(if_val(Rval, CodeAddr), Comment, Instrs0, Instrs) :-
 	% These two patterns are mutually exclusive because if_val is not
 	% straigh-line code.
 
-peephole__match(mkframe(Name, Slots, Redoip1), Comment, Instrs0, Instrs) :-
+peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment,
+		Instrs0, Instrs) :-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
 	->
 		list__append(Skipped, Rest, Instrs1),
-		Instrs = [mkframe(Name, Slots, Redoip2) - Comment | Instrs1]
+		Instrs = [mkframe(Name, Slots, Pragma, Redoip2) - Comment
+			| Instrs1]
 	;
 		opt_util__skip_comments_livevals(Instrs0, Instrs1),
 		Instrs1 = [Instr1 | Instrs2],
@@ -157,7 +159,7 @@ peephole__match(mkframe(Name, Slots, Redoip1), Comment, Instrs0, Instrs) :-
 		->
 			Instrs = [
 				if_val(Test, do_redo) - Comment2,
-				mkframe(Name, Slots, do_fail) - Comment
+				mkframe(Name, Slots, Pragma, do_fail) - Comment
 				| Instrs2
 			]
 		;
@@ -168,14 +170,16 @@ peephole__match(mkframe(Name, Slots, Redoip1), Comment, Instrs0, Instrs) :-
 			->
 				Instrs = [
 					if_val(Test, do_redo) - Comment2,
-					mkframe(Name, Slots, Redoip1) - Comment
+					mkframe(Name, Slots, Pragma, Redoip1)
+						- Comment
 					| Instrs2
 				]
 			;
 				Target = do_redo
 			->
 				Instrs = [
-					mkframe(Name, Slots, Redoip1) - Comment,
+					mkframe(Name, Slots, Pragma, Redoip1)
+						- Comment,
 					if_val(Test, Redoip1) - Comment2
 					| Instrs2
 				]

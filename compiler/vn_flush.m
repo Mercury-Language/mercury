@@ -190,7 +190,7 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Templocs = Templocs0,
 		Instrs = [call(ProcAddr, RetAddr, LiveInfo, CodeModel) - ""]
 	;
-		Vn_instr = vn_mkframe(Name, Size, Redoip),
+		Vn_instr = vn_mkframe(Name, Size, Pragma, Redoip),
 		vn_util__rval_to_vn(const(code_addr_const(Redoip)), AddrVn,
 			VnTables0, VnTables1),
 		vn_util__lval_to_vnlval(redoip(lval(maxfr)), SlotVnlval,
@@ -198,7 +198,7 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		vn_table__set_current_value(SlotVnlval, AddrVn,
 			VnTables2, VnTables),
 		Templocs = Templocs0,
-		Instrs = [mkframe(Name, Size, Redoip) - ""]
+		Instrs = [mkframe(Name, Size, Pragma, Redoip) - ""]
 	;
 		Vn_instr = vn_label(Label),
 		VnTables = VnTables0,

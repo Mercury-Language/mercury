@@ -635,13 +635,8 @@ qualify_pragma(source_file(File), source_file(File), Info, Info) --> [].
 qualify_pragma(c_header_code(Code), c_header_code(Code), Info, Info) --> [].
 qualify_pragma(c_code(Code), c_code(Code), Info, Info) --> [].
 qualify_pragma(c_code(Rec, SymName, PredOrFunc, PragmaVars0, Varset, CCode),
-	c_code(Rec, SymName, PredOrFunc, PragmaVars, Varset, CCode), 
+		c_code(Rec, SymName, PredOrFunc, PragmaVars, Varset, CCode), 
 		Info0, Info) -->
-	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
-qualify_pragma(c_code(Rec, SymName, PredOrFunc, PragmaVars0,
-		SavedVars, LabelCount, Varset, CCode),
-	c_code(Rec, SymName, PredOrFunc, PragmaVars,
-		SavedVars, LabelCount, Varset, CCode), Info0, Info) -->
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
 qualify_pragma(memo(A, B), memo(A, B), Info, Info) --> [].
 qualify_pragma(inline(A, B), inline(A, B), Info, Info) --> [].

@@ -762,8 +762,7 @@ typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 typecheck_goal_2(switch(_, _, _, _), _) -->
 	{ error("unexpected switch") }.
 % no need to typecheck pragmas
-typecheck_goal_2(pragma_c_code(A,B,C,D,E,F,G,H),
-		pragma_c_code(A,B,C,D,E,F,G,H))
+typecheck_goal_2(pragma_c_code(A,B,C,D,E,F,G), pragma_c_code(A,B,C,D,E,F,G))
 	--> []. 
 
 %-----------------------------------------------------------------------------%

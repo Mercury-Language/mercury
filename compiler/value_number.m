@@ -172,7 +172,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 				Target = succfr(_)
 			)
 		;
-			Uinstr0 = mkframe(_, _, _)
+			Uinstr0 = mkframe(_, _, _, _)
 		)
 	->
 		N1 is N0 + 1,
@@ -1075,7 +1075,7 @@ value_number__boundary_instr(livevals(_), no).
 value_number__boundary_instr(block(_, _, _), no).
 value_number__boundary_instr(assign(_,_), no).
 value_number__boundary_instr(call(_, _, _, _), yes).
-value_number__boundary_instr(mkframe(_, _, _), yes).
+value_number__boundary_instr(mkframe(_, _, _, _), yes).
 value_number__boundary_instr(modframe(_), yes).
 value_number__boundary_instr(label(_), yes).
 value_number__boundary_instr(goto(_), yes).
@@ -1092,7 +1092,7 @@ value_number__boundary_instr(mark_ticket_stack(_), no).
 value_number__boundary_instr(discard_tickets_to(_), no).
 value_number__boundary_instr(incr_sp(_, _), yes).
 value_number__boundary_instr(decr_sp(_), yes).
-value_number__boundary_instr(pragma_c(_, _, _, _, _), yes).
+value_number__boundary_instr(pragma_c(_, _, _, _), yes).
 
 %-----------------------------------------------------------------------------%
 

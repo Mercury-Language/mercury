@@ -53,7 +53,9 @@
 	code_addr, list(instruction), list(instruction)).
 :- mode opt_util__next_modframe(in, in, out, out, out) is semidet.
 
-	% See if these instructions touch nondet stack controls.
+	% See if these instructions touch nondet stack controls, i.e.
+	% the virtual machine registers that point to the nondet stack
+	% (curfr and maxfr) and the fixed slots in nondet stack frames.
 
 :- pred opt_util__touches_nondet_ctrl(list(instruction), bool).
 :- mode opt_util__touches_nondet_ctrl(in, out) is det.
@@ -414,7 +416,7 @@ opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 		list__reverse(RevSkip, Skip),
 		Rest = Instrs
 	;
-		Uinstr = mkframe(_, _, _)
+		Uinstr = mkframe(_, _, _, _)
 	->
 		fail
 	;
@@ -789,7 +791,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = call(_, _, _, _),
 		Need = no
 	;
-		Uinstr0 = mkframe(_, _, _),
+		Uinstr0 = mkframe(_, _, _, _),
 		Need = no
 	;
 		Uinstr0 = modframe(_),
@@ -889,7 +891,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = decr_sp(_),
 		Need = no
 	;
-		Uinstr0 = pragma_c(_, _, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _),
 		Need = no
 	).
 
@@ -972,7 +974,7 @@ opt_util__can_instr_branch_away(livevals(_), no).
 opt_util__can_instr_branch_away(block(_, _, _), yes).
 opt_util__can_instr_branch_away(assign(_, _), no).
 opt_util__can_instr_branch_away(call(_, _, _, _), yes).
-opt_util__can_instr_branch_away(mkframe(_, _, _), no).
+opt_util__can_instr_branch_away(mkframe(_, _, _, _), no).
 opt_util__can_instr_branch_away(modframe(_), no).
 opt_util__can_instr_branch_away(label(_), no).
 opt_util__can_instr_branch_away(goto(_), yes).
@@ -989,7 +991,38 @@ opt_util__can_instr_branch_away(mark_ticket_stack(_), no).
 opt_util__can_instr_branch_away(discard_tickets_to(_), no).
 opt_util__can_instr_branch_away(incr_sp(_, _), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
-opt_util__can_instr_branch_away(pragma_c(_, _, _, _, _), no).
+opt_util__can_instr_branch_away(pragma_c(_, Components, _, _), BranchAway) :-
+	opt_util__can_components_branch_away(Components, BranchAway).
+
+:- pred opt_util__can_components_branch_away(list(pragma_c_component), bool).
+:- mode opt_util__can_components_branch_away(in, out) is det.
+
+opt_util__can_components_branch_away([], no).
+opt_util__can_components_branch_away([Component | Components], BranchAway) :-
+	opt_util__can_component_branch_away(Component, BranchAway1),
+	( BranchAway1 = yes ->
+		BranchAway = yes
+	;
+		opt_util__can_components_branch_away(Components, BranchAway)
+	).
+
+:- pred opt_util__can_component_branch_away(pragma_c_component, bool).
+:- mode opt_util__can_component_branch_away(in, out) is det.
+
+	% The input and output components get expanded to straight line code.
+	% Some of the raw_code components we generate for nondet pragma C codes
+	% invoke succeed(), which definitely does branch away.
+	% User-written C code cannot branch away because users do not know
+	% how to do that. (They can call other functions, but those functions
+	% will return, so control will still go to the instruction following
+	% this one. We the developers could write C code that branched away,
+	% but we are careful to preserve a declarative interface, and that
+	% is incompatible with branching away.)
+
+opt_util__can_component_branch_away(pragma_c_inputs(_), no).
+opt_util__can_component_branch_away(pragma_c_outputs(_), no).
+opt_util__can_component_branch_away(pragma_c_raw_code(_), yes).
+opt_util__can_component_branch_away(pragma_c_user_code(_, _), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
 opt_util__can_instr_fall_through(livevals(_), yes).
@@ -997,7 +1030,7 @@ opt_util__can_instr_fall_through(block(_, _, Instrs), FallThrough) :-
 	opt_util__can_block_fall_through(Instrs, FallThrough).
 opt_util__can_instr_fall_through(assign(_, _), yes).
 opt_util__can_instr_fall_through(call(_, _, _, _), no).
-opt_util__can_instr_fall_through(mkframe(_, _, _), yes).
+opt_util__can_instr_fall_through(mkframe(_, _, _, _), yes).
 opt_util__can_instr_fall_through(modframe(_), yes).
 opt_util__can_instr_fall_through(label(_), yes).
 opt_util__can_instr_fall_through(goto(_), no).
@@ -1014,7 +1047,7 @@ opt_util__can_instr_fall_through(mark_ticket_stack(_), yes).
 opt_util__can_instr_fall_through(discard_tickets_to(_), yes).
 opt_util__can_instr_fall_through(incr_sp(_, _), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
-opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _), yes).
+opt_util__can_instr_fall_through(pragma_c(_, _, _, _), yes).
 
 	% Check whether an instruction sequence can possibly fall through
 	% to the next instruction without using its label.
@@ -1038,7 +1071,7 @@ opt_util__can_use_livevals(livevals(_), no).
 opt_util__can_use_livevals(block(_, _, _), no).
 opt_util__can_use_livevals(assign(_, _), no).
 opt_util__can_use_livevals(call(_, _, _, _), yes).
-opt_util__can_use_livevals(mkframe(_, _, _), no).
+opt_util__can_use_livevals(mkframe(_, _, _, _), no).
 opt_util__can_use_livevals(modframe(_), no).
 opt_util__can_use_livevals(label(_), no).
 opt_util__can_use_livevals(goto(_), yes).
@@ -1055,7 +1088,7 @@ opt_util__can_use_livevals(mark_ticket_stack(_), no).
 opt_util__can_use_livevals(discard_tickets_to(_), no).
 opt_util__can_use_livevals(incr_sp(_, _), no).
 opt_util__can_use_livevals(decr_sp(_), no).
-opt_util__can_use_livevals(pragma_c(_, _, _, _, _), no).
+opt_util__can_use_livevals(pragma_c(_, _, _, _), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
 
@@ -1096,7 +1129,7 @@ opt_util__instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_labels(Instrs, Labels, CodeAddrs).
 opt_util__instr_labels_2(assign(_,_), [], []).
 opt_util__instr_labels_2(call(Target, Ret, _, _), [], [Target, Ret]).
-opt_util__instr_labels_2(mkframe(_, _, Addr), [], [Addr]).
+opt_util__instr_labels_2(mkframe(_, _, _, Addr), [], [Addr]).
 opt_util__instr_labels_2(modframe(Addr), [], [Addr]).
 opt_util__instr_labels_2(label(_), [], []).
 opt_util__instr_labels_2(goto(Addr), [], [Addr]).
@@ -1113,7 +1146,12 @@ opt_util__instr_labels_2(mark_ticket_stack(_), [], []).
 opt_util__instr_labels_2(discard_tickets_to(_), [], []).
 opt_util__instr_labels_2(incr_sp(_, _), [], []).
 opt_util__instr_labels_2(decr_sp(_), [], []).
-opt_util__instr_labels_2(pragma_c(_, _, _, _, _), [], []).
+opt_util__instr_labels_2(pragma_c(_, _, _, MaybeLabel), Labels, []) :-
+	( MaybeLabel = yes(Label) ->
+		Labels = [Label]
+	;
+		Labels = []
+	).
 
 :- pred opt_util__instr_rvals_and_lvals(instr, list(rval), list(lval)).
 :- mode opt_util__instr_rvals_and_lvals(in, out, out) is det.
@@ -1126,7 +1164,7 @@ opt_util__instr_rvals_and_lvals(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_rvals_and_lvals(Instrs, Labels, CodeAddrs).
 opt_util__instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
 opt_util__instr_rvals_and_lvals(call(_, _, _, _), [], []).
-opt_util__instr_rvals_and_lvals(mkframe(_, _, _), [], []).
+opt_util__instr_rvals_and_lvals(mkframe(_, _, _, _), [], []).
 opt_util__instr_rvals_and_lvals(modframe(_), [], []).
 opt_util__instr_rvals_and_lvals(label(_), [], []).
 opt_util__instr_rvals_and_lvals(goto(_), [], []).
@@ -1143,9 +1181,38 @@ opt_util__instr_rvals_and_lvals(mark_ticket_stack(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(discard_tickets_to(Rval), [Rval], []).
 opt_util__instr_rvals_and_lvals(incr_sp(_, _), [], []).
 opt_util__instr_rvals_and_lvals(decr_sp(_), [], []).
-opt_util__instr_rvals_and_lvals(pragma_c(_, In, _, Out, _), Rvals, Lvals) :-
-	pragma_c_inputs_get_rvals(In, Rvals),
-	pragma_c_outputs_get_lvals(Out, Lvals).
+opt_util__instr_rvals_and_lvals(pragma_c(_, Components, _, _), Rvals, Lvals) :-
+	pragma_c_components_get_rvals_and_lvals(Components, Rvals, Lvals).
+
+	% extract the rvals and lvals from the pragma_c_components
+:- pred pragma_c_components_get_rvals_and_lvals(list(pragma_c_component),
+	list(rval), list(lval)).
+:- mode pragma_c_components_get_rvals_and_lvals(in, out, out) is det.
+
+pragma_c_components_get_rvals_and_lvals([], [], []).
+pragma_c_components_get_rvals_and_lvals([Comp | Comps], Rvals, Lvals) :-
+	pragma_c_components_get_rvals_and_lvals(Comps, Rvals1, Lvals1),
+	pragma_c_component_get_rvals_and_lvals(Comp,
+		Rvals1, Rvals, Lvals1, Lvals).
+
+	% extract the rvals and lvals from the pragma_c_component
+	% and add them to the list.
+:- pred pragma_c_component_get_rvals_and_lvals(pragma_c_component,
+	list(rval), list(rval), list(lval), list(lval)).
+:- mode pragma_c_component_get_rvals_and_lvals(in, in, out, in, out) is det.
+
+pragma_c_component_get_rvals_and_lvals(pragma_c_inputs(Inputs),
+		Rvals0, Rvals, Lvals, Lvals) :-
+	pragma_c_inputs_get_rvals(Inputs, Rvals1),
+	list__append(Rvals1, Rvals0, Rvals).
+pragma_c_component_get_rvals_and_lvals(pragma_c_outputs(Outputs),
+		Rvals, Rvals, Lvals0, Lvals) :-
+	pragma_c_outputs_get_lvals(Outputs, Lvals1),
+	list__append(Lvals1, Lvals0, Lvals).
+pragma_c_component_get_rvals_and_lvals(pragma_c_user_code(_, _),
+		Rvals, Rvals, Lvals, Lvals).
+pragma_c_component_get_rvals_and_lvals(pragma_c_raw_code(_),
+		Rvals, Rvals, Lvals, Lvals).
 
 	% extract the rvals from the pragma_c_input
 :- pred pragma_c_inputs_get_rvals(list(pragma_c_input), list(rval)).
@@ -1216,7 +1283,7 @@ opt_util__count_temps_instr(assign(Lval, Rval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
 	opt_util__count_temps_rval(Rval, R1, R, F1, F).
 opt_util__count_temps_instr(call(_, _, _, _), R, R, F, F).
-opt_util__count_temps_instr(mkframe(_, _, _), R, R, F, F).
+opt_util__count_temps_instr(mkframe(_, _, _, _), R, R, F, F).
 opt_util__count_temps_instr(modframe(_), R, R, F, F).
 opt_util__count_temps_instr(label(_), R, R, F, F).
 opt_util__count_temps_instr(goto(_), R, R, F, F).
@@ -1243,7 +1310,7 @@ opt_util__count_temps_instr(discard_tickets_to(Rval), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R0, R, F0, F).
 opt_util__count_temps_instr(incr_sp(_, _), R, R, F, F).
 opt_util__count_temps_instr(decr_sp(_), R, R, F, F).
-opt_util__count_temps_instr(pragma_c(_, _, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(pragma_c(_, _, _, _), R, R, F, F).
 
 :- pred opt_util__count_temps_lval(lval, int, int, int, int).
 :- mode opt_util__count_temps_lval(in, in, out, in, out) is det.
@@ -1350,6 +1417,8 @@ opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
 		opt_util__touches_nondet_ctrl_lval(Lval, Touch)
 	; Uinstr = restore_hp(Rval) ->
 		opt_util__touches_nondet_ctrl_rval(Rval, Touch)
+	; Uinstr = pragma_c(_, Components, _, _) ->
+		opt_util__touches_nondet_ctrl_components(Components, Touch)
 	;
 		Touch = yes
 	).
@@ -1404,6 +1473,31 @@ opt_util__touches_nondet_ctrl_mem_ref(stackvar_ref(_), no).
 opt_util__touches_nondet_ctrl_mem_ref(framevar_ref(_), no).
 opt_util__touches_nondet_ctrl_mem_ref(heap_ref(Rval, _, _), Touch) :-
 	opt_util__touches_nondet_ctrl_rval(Rval, Touch).
+
+:- pred opt_util__touches_nondet_ctrl_components(list(pragma_c_component),
+	bool).
+:- mode opt_util__touches_nondet_ctrl_components(in, out) is det.
+
+opt_util__touches_nondet_ctrl_components([], no).
+opt_util__touches_nondet_ctrl_components([C | Cs], Touch) :-
+	opt_util__touches_nondet_ctrl_component(C, Touch1),
+	opt_util__touches_nondet_ctrl_components(Cs, Touch2),
+	bool__or(Touch1, Touch2, Touch).
+
+:- pred opt_util__touches_nondet_ctrl_component(pragma_c_component, bool).
+:- mode opt_util__touches_nondet_ctrl_component(in, out) is det.
+
+	% The inputs and outputs components get emitted as simple
+	% straight-line code that do not refer to control slots.
+	% The compiler does not generate raw_code that refers to control slots.
+	% User code shouldn't either, but until we have prohibited the
+	% use of ordinary pragma C codes for model_non procedures,
+	% some user code will need to ignore this restriction.
+
+opt_util__touches_nondet_ctrl_component(pragma_c_inputs(_), no).
+opt_util__touches_nondet_ctrl_component(pragma_c_outputs(_), no).
+opt_util__touches_nondet_ctrl_component(pragma_c_raw_code(_), no).
+opt_util__touches_nondet_ctrl_component(pragma_c_user_code(_, _), yes).
 
 %-----------------------------------------------------------------------------%
 
