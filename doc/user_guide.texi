@@ -2799,6 +2799,14 @@ Do not disable optimizations that can change the trace.
 @c Make the generated tracing code include support
 @c for an experimental declarative debugger.
 
+@sp 1
+@item @code{--trace-just-in-case}
+Generate code that supports execution tracing,
+but which is optimized to execute outside mdb.
+(If tracing is enabled, the default is to generate code
+that optimizes execution speed inside mdb
+at the expense of execution speed outside mdb.)
+
 @item --stack-trace-higher-order
 Enable stack traces through predicates and functions with
 higher-order arguments, even if stack tracing is not
@@ -3300,11 +3308,6 @@ Don't reclaim heap on backtracking in semidet code.
 @sp 1
 @item --no-reclaim-heap-on-failure
 Combines the effect of the two options above.
-
-@sp 1
-@item @code{--call-trace-struct}
-(This option is not intended for general use.)
-Pass information to the tracing system in one struct.
 
 @sp 1
 @item --cc @var{compiler-name}

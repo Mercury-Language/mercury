@@ -613,10 +613,10 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 	SaveStmt = "\t\tsave_transient_registers();\n",
 	RestoreStmt = "\t\trestore_transient_registers();\n",
 	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);",
-	globals__lookup_bool_option(Globals, call_trace_struct,
-		CallTraceStruct)
+	globals__lookup_bool_option(Globals, trace_just_in_case,
+		TraceJustInCase)
 	},
-	( { CallTraceStruct = yes } ->
+	( { TraceJustInCase = yes } ->
 		{ string__append_list([
 			"\t\tMR_jumpaddr = MR_trace_struct(\n",
 			"\t\t\t&mercury_data__tci__", LabelStr, ");\n"],
