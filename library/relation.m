@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999,2002-2003 The University of Melbourne.
+% Copyright (C) 1995-1999,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -133,7 +133,7 @@
 :- mode relation__lookup_key_set_from(in, in, out) is det.
 
 :- func relation__lookup_key_set_from(relation(T),
-		relation_key) = set(relation_key).
+		relation_key) = relation_key_set.
 
 	% relation__lookup_to returns the set of elements
 	% x such that xRy, given some y.
@@ -511,6 +511,9 @@ relation__lookup_key_set_from(relation(_Key, _ElMap, Fwd, _Bwd),
 		init(Vs)
 	).
 
+relation__lookup_key_set_from(R, U) = Vs :-
+	relation__lookup_key_set_from(R, U, Vs).
+
 %------------------------------------------------------------------------------%
 
 relation__lookup_to(R, U, to_set(Vs)) :-
@@ -525,6 +528,9 @@ relation__lookup_key_set_to(relation(_Key, _ElMap, _Fwd, Bwd),
 	;
 		init(Us)
 	).
+
+relation__lookup_key_set_to(R, U) = Vs :-
+	relation__lookup_key_set_to(R, U, Vs).
 
 %------------------------------------------------------------------------------%
 
