@@ -416,9 +416,9 @@ mercury_output_uni_mode_list([Mode | Modes], VarSet) -->
 	).
 
 mercury_output_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet) -->
-	mercury_output_mode(InstA1 -> InstA2, VarSet),
+	mercury_output_mode((InstA1 -> InstA2), VarSet),
 	io__write_string(" = "),
-	mercury_output_mode(InstB1 -> InstB2, VarSet).
+	mercury_output_mode((InstB1 -> InstB2), VarSet).
 
 mercury_output_mode((InstA -> InstB), VarSet) -->
 	( 
