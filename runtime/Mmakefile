@@ -26,6 +26,7 @@ HDRS		=	\
 			mercury_accurate_gc.h	\
 			mercury_calls.h		\
 			mercury_conf.h		\
+			mercury_conf_param.h	\
 			mercury_context.h	\
 			mercury_debug.h		\
 			mercury_deep_copy.h	\
