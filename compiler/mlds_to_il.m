@@ -1333,9 +1333,19 @@ generate_defn_initializer(defn(Name, Context, _DeclFlags, Entity),
 data_initializer_to_instrs(init_obj(Rval), _Type, node([]), InitInstrs) --> 
 	load(Rval, InitInstrs).
 
-	% Currently, structs are the same as arrays.
-data_initializer_to_instrs(init_struct(InitList), Type,
+	% MLDS structures initializers are assumed to be initialized like
+	% structures in C, which means nested elements are actually laid out
+	% flat in the structure.
+	%
+	% So we flatten structures, and then process them as arrays
+	% (this may have to be re-visited if used to initialise high-level
+	% data).
+
+data_initializer_to_instrs(init_struct(InitList0), Type,
 		AllocInstrs, InitInstrs) --> 
+
+	
+	{ InitList = flatten_inits(InitList0) },
 	data_initializer_to_instrs(init_array(InitList), Type,
 		AllocInstrs, InitInstrs).
 
@@ -1345,6 +1355,7 @@ data_initializer_to_instrs(init_struct(InitList), Type,
 	% allocations.
 data_initializer_to_instrs(init_array(InitList), Type,
 		AllocInstrs, InitInstrs) -->
+
 		%
 		% figure out the array element type
 		%
@@ -1415,6 +1426,24 @@ maybe_box_initializer(init_struct(X), init_struct(X)) --> [].
 maybe_box_initializer(init_obj(Rval), init_obj(NewRval)) -->
 	{ rval_to_type(Rval, BoxType) },
 	{ NewRval = unop(box(BoxType), Rval) }.
+
+
+	% Code to flatten nested intializers.
+
+:- func flatten_inits(list(mlds__initializer)) = list(mlds__initializer).
+flatten_inits(Inits) = list__condense(list__map(flatten_init, Inits)).
+
+:- func flatten_init(mlds__initializer) = list(mlds__initializer).
+flatten_init(I) = Inits :-
+	( I = init_struct(Inits0) ->
+		Inits = flatten_inits(Inits0)
+	; I = init_array(Inits0) ->
+		Inits = flatten_inits(Inits0)
+	;
+		Inits = [I]
+	).
+	
+
 
 %-----------------------------------------------------------------------------%
 %
