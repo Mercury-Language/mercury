@@ -2504,7 +2504,7 @@ mercury_output_pragma_export(Name, PredOrFunc, ModeList, C_Function) -->
 
 mercury_output_pragma_fact_table(Pred, Arity, FileName) -->
 	io__write_string(":- pragma fact_table("),
-	mercury_output_sym_name(Pred),
+	mercury_output_bracketed_sym_name(Pred, next_to_graphic_token),
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string(", "),
@@ -2519,11 +2519,11 @@ mercury_output_pragma_fact_table(Pred, Arity, FileName) -->
 
 mercury_output_pragma_owner(Pred, Arity, Owner) -->
 	io__write_string(":- pragma owner("),
-	mercury_output_sym_name(Pred),
+	mercury_output_bracketed_sym_name(Pred, next_to_graphic_token),
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string(", "),
-	term_io__quote_string(Owner),
+	term_io__quote_atom(Owner),
 	io__write_string(").\n").
 
 :- pred mercury_output_pragma_index(sym_name, arity, index_spec,
