@@ -7,7 +7,7 @@
 MAIN_TARGET = all
 
 # We need to use a grade with trailing
-GRADE = asm_fast.gc.tr
+GRADEFLAGS = --use-trail
 
 MCFLAGS = --infer-all
 

@@ -4,7 +4,7 @@
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-GRADE = asm_fast.gc.tr
+GRADEFLAGS = --use-trail
 
 # enable C debugging
 RM_C = :
