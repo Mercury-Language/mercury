@@ -84,7 +84,7 @@ conf.h: conf.h.date
 cs: $(MOD_CS)
 
 tags: $(MODS) $(ORIG_CS)
-	ctags $(MODS) $(ORIG_CS)
+	ctags $(MODS) $(ORIG_CS) $(HDRS)
 
 .PHONY: check_headers
 check_headers:
