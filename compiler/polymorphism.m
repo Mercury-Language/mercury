@@ -344,9 +344,6 @@
 	% the argtypes of the called predicates, and so we need to make
 	% sure we don't muck them up before we've finished the first pass.
 
-:- pred breakpoint is det.
-breakpoint.
-
 polymorphism__process_module(ModuleInfo0, ModuleInfo, IO0, IO) :-
 	module_info_preds(ModuleInfo0, Preds0),
 	map__keys(Preds0, PredIds0),
@@ -402,9 +399,9 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 
 %	It is misleading to output this message for predicates which are
 %	not defined in this module, and we get far too many of them anyway.
-	write_proc_progress_message("% Transforming polymorphism for ",
-				PredId, ProcId, ModuleInfo0, IO0, IO1),
-%	IO1 = IO0,
+	% write_proc_progress_message("% Transforming polymorphism for ",
+	% 			PredId, ProcId, ModuleInfo0, IO0, IO1),
+	IO1 = IO0,
 
 	polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, 
 		ModuleInfo0, ProcInfo, PredInfo1, ModuleInfo1),
@@ -1798,11 +1795,8 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst, ExistQVars,
 					% Make the type_infos for the types
 					% that are constrained by this. These
 					% are packaged in the typeclass_info
-				term__apply_substitution_to_list(
-					ConstrainedTypes, VarTypes0,
-					RenamedConstrainedTypes),
 				polymorphism__make_type_info_vars(
-					RenamedConstrainedTypes, ExistQVars,
+					ConstrainedTypes, ExistQVars,
 					Context, InstanceExtraTypeInfoVars,
 					TypeInfoGoals,
 					Info0, Info1),

@@ -48,7 +48,8 @@ specialize_higher_order(ModuleInfo0, ModuleInfo) -->
 	{ map__init(NewPreds0) },
 	process_requests(Requests, GoalSizes, 1, _NextHOid,
 				NewPreds0, NewPreds, ModuleInfo1, ModuleInfo2),
-	% YYY hlds_out__write_hlds(0, ModuleInfo2),
+	% YYY
+	hlds_out__write_hlds(0, ModuleInfo2),
 	{ recompute_instmap_delta_new_preds(NewPreds,
 				ModuleInfo2, ModuleInfo) }.
 
@@ -1039,7 +1040,7 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	map__init(Substitution0),
 	proc_info_headvars(NewProcInfo0, HeadVars0),
 	proc_info_inst_table(NewProcInfo0, InstTable0),
-	proc_info_argmodes(NewProcInfo0, argument_modes(_ArgIT0, ArgModes0)),
+	proc_info_argmodes(NewProcInfo0, argument_modes(ArgIT0, ArgModes0)),
 	construct_higher_order_terms(ModuleInfo0, HeadVars0, HeadVars1,
 		ArgModes0, ArgModes1, HOArgs, NewProcInfo0, NewProcInfo1,
 		NewPredInfo0, NewPredInfo1, Substitution0,
@@ -1086,15 +1087,15 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	implicitly_quantify_clause_body(HeadVars, Goal2, Varset0, VarTypes1,
 					Goal3, Varset, VarTypes, _),
 
-%	inst_table_create_sub(InstTable0, InstTable0, Sub, ArgIT),
-%	list__map(apply_inst_key_sub_mode(Sub), ArgModes, NewArgModes),
+	inst_table_create_sub(InstTable0, ArgIT0, Sub, ArgIT),
+	list__map(apply_inst_key_sub_mode(Sub), ArgModes, NewArgModes),
 
 	proc_info_set_goal(NewProcInfo1, Goal3, NewProcInfo2),
 	proc_info_set_varset(NewProcInfo2, Varset, NewProcInfo3),
 	proc_info_set_vartypes(NewProcInfo3, VarTypes, NewProcInfo4),
 	proc_info_set_headvars(NewProcInfo4, HeadVars, NewProcInfo5),
 	proc_info_set_argmodes(NewProcInfo5,
-		argument_modes(InstTable0, ArgModes), NewProcInfo6),
+		argument_modes(ArgIT, NewArgModes), NewProcInfo6),
 	proc_info_set_inst_table(NewProcInfo6, InstTable0, NewProcInfo),
 
 	map__det_insert(NewProcs0, NewProcId, NewProcInfo, NewProcs),
@@ -1145,6 +1146,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	% Add the curried arguments to the procedure's argument list.
 	proc_info_argmodes(CalledProcInfo,
 		argument_modes(CalledArgIT, CalledArgModes)),
+	% proc_info_get_initial_instmap(CalledProcInfo, ModuleInfo,
+	% 		CalledInstMap),
 	(
 		list__split_list(NumArgs, CalledArgModes,
 				CurriedArgModes0a, UnCurriedArgModes0)
@@ -1203,7 +1206,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	remove_listof_higher_order_args(CurriedArgModes1, 1,
 					CurriedHOArgs, CurriedArgModes),
 	remove_listof_higher_order_args(NewHeadVars1, 1,
-					 CurriedHOArgs, NewHeadVars),
+					CurriedHOArgs, NewHeadVars),
 	list__append(ArgModes0, CurriedArgModes, ArgModes1),
 	list__append(HeadVars0, NewHeadVars, HeadVars1),
 
@@ -1212,6 +1215,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	pred_info_name(CalledPredInfo, Name),
 	Rhs = functor(cons(qualified(Module, Name), NumArgs), NewHeadVars0),
 	Context = unify_context(head(Index), []),
+	% inst_table_get_inst_key_table(CalledArgIT, CalledArgIKT),
 	list__map(lambda([ArgMode :: in, InstPair :: out] is det, (
 			mode_get_insts(ModuleInfo, ArgMode, InstFrom, InstTo),
 			InstPair = InstFrom - InstTo

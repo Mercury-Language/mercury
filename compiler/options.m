@@ -1146,7 +1146,7 @@ opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
-	optimize_higher_order	-	bool(yes),
+	%optimize_higher_order	-	bool(yes), % YYY
 	%deforestation		-	bool(yes), % causes an abort
 	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
