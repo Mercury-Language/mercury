@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997 The University of Melbourne.
+# Copyright (C) 1997-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -45,13 +45,20 @@
 		esac
 		;;
 
-	-p|--profiling)
+	-p|--profiling|--time-profiling)
 		profile_time=true
 		profile_calls=true
+		profile_memory=false
+		;;
+	--memory-profiling)
+		profile_time=false
+		profile_calls=true
+		profile_memory=true
 		;;
 	-p-|--no-profiling)
 		profile_time=false
 		profile_calls=false
+		profile_memory=false
 		;;
 	--profile-time)
 		profile_time=true ;;
@@ -61,6 +68,10 @@
 		profile_calls=true ;;
 	--no-profile-calls)
 		profile_calls=false ;;
+	--profile-memory)
+		profile_memory=true ;;
+	--no-profile-memory)
+		profile_memory=false ;;
 
 	--use-trail)
 		use_trail=true ;;
@@ -123,24 +134,40 @@
 		esac
 
 		case "$grade" in
+			*.memprof)
+				profile_time=false
+				profile_calls=true
+				profile_memory=true
+				grade="` expr $grade : '\(.*\).memprof' `"
+				;;
 			*.prof)
 				profile_time=true
 				profile_calls=true
+				profile_memory=false
 				grade="` expr $grade : '\(.*\).prof' `"
 				;;
 			*.proftime)	
 				profile_time=true
 				profile_calls=false
+				profile_memory=false
 				grade="` expr $grade : '\(.*\).proftime' `"
 				;;
 			*.profcalls)	
 				profile_time=false
 				profile_calls=true
+				profile_memory=false
 				grade="` expr $grade : '\(.*\).profcalls' `"
+				;;
+			*.profall)
+				profile_time=true
+				profile_calls=true
+				profile_memory=true
+				grade="` expr $grade : '\(.*\).profall' `"
 				;;
 			*)
 				profile_time=false
 				profile_calls=false
+				profile_memory=false
 				;;
 		esac
 

@@ -41,6 +41,12 @@
 
 %------------------------------------------------------------------------------%
 
+:- type node(N)			==	int.
+
+:- type arc(A)			==	int.
+
+%------------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module map, int, std_util, list.
@@ -58,10 +64,6 @@
 :- type agc_graph__node_supply	==	int.
 
 :- type agc_graph__arc_supply	==	int.
-
-:- type node(N)			==	int.
-
-:- type arc(A)			==	int.
 
 :- type arc_info(N, A)	--->	arc_info(node(N), node(N), A).
 

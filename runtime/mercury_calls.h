@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -26,15 +26,21 @@
 ** On some systems [basically those using PIC (Position Independent Code)],
 ** if we're using gcc non-local gotos to jump between functions then
 ** we need to do ASM_FIXUP_REGS after each return from a procedure call.
+** However, if we're using asm labels, then this is done in the
+** Define_label(), Define_static(), and Define_Entry() macros,
+** so there's no need to do it here.
+** Also if we're using native gc, then the fixup_gp label below
+** would stuff up the succip values, so we can't do it.
 **
-** We *don't* need to do this if we are using NATIVE_GC, because all
-** labels are defined as entry labels anyway. Entry labels do 
-** ASM_FIXUP_REGS immediately. Also, for NATIVE_GC we need the succip
-** set to the address of the continuation label, not the fixup_gp:
-** label.
+** For the non-asm `jump' and `fast' grades, we do in theory need
+** to do something like this.  However, doing ASM_FIXUP_REGS only
+** on returns is *not* sufficient to ensure correctness in general.
+** So the non-asm `jump' and `fast' grades are in theory broken,
+** with or without this code.  In practice they happen to work
+** (for our current set of test cases!) either way.
+** So it is simpler (and more efficient) to just comment it out.
 */
-#if defined(USE_GCC_NONLOCAL_GOTOS) && defined(NEED_ASM_FIXUP_REGS) &&	\
-	!defined(NATIVE_GC)
+#if 0
   #define	noprof_call(proc, succ_cont)			\
 		({						\
 			__label__ fixup_gp;			\

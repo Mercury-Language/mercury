@@ -12,7 +12,6 @@
 
 :- pred sol(pred(T), list(T)).
 :- mode sol(pred(out) is det, out) is det.
-:- mode sol(pred(out) is det, out) is det.
 
 :- implementation.
 

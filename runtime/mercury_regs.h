@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -70,7 +70,7 @@
     #include "machdeps/alpha_regs.h"
   #elif defined(__hppa__)
     #include "machdeps/pa_regs.h"
-  #elif defined(_POWER)
+  #elif defined(_POWER) || defined(__powerpc__)
     #include "machdeps/rs6000_regs.h"
   #else
     #error "USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
@@ -129,6 +129,14 @@
 		r(n), \
 		fake_reg[virtual_reg_map[(n) - 1]])
 
+/* saved_reg(save_area, n) is like virtual_reg, except in that */
+/* it accesses the given save area instead of the machine regs and fake_reg */
+
+#define saved_reg(save_area, n)	\
+	LVALUE_COND((n) > MAX_REAL_REG, \
+		save_area[(n) + NUM_SPECIAL_REG - 1], \
+		save_area[virtual_reg_map[(n) - 1]])
+
 /*
 ** get_reg() and set_reg() provide a different way of addressing
 ** the registers; unlike virtual_reg(), you don't need to wrap them
@@ -137,6 +145,7 @@
 ** getting or setting one or two registers?
 ** Currently they're buggy for n>32 and are not used except for debugging.
 */
+
 extern	Word	get_reg(int);
 extern	Word	set_reg(int, Word);
 

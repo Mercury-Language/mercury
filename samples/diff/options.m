@@ -49,6 +49,7 @@
 	;	brief
 	;	ifdef
 	;	side_by_side
+	;	cvs_merge_conflict
 
 	% Output options
 	;	show_c_function		% Not handled (and unlikely to be soon)
@@ -139,6 +140,7 @@ long_option("ignore-case",		ignore_case).
 long_option("paginate",			paginate).
 long_option("print",			paginate).
 long_option("rcs",			rcs).
+long_option("cvs-merge-conflict",	cvs_merge_conflict).
 long_option("show-c-function",		show_c_function).
 long_option("brief",			brief).
 long_option("recursive",		recursive).
@@ -218,6 +220,7 @@ option_defaults(rcs,				bool(no)).
 option_defaults(brief,				bool(no)).
 option_defaults(ifdef,				maybe_string(no)).
 option_defaults(side_by_side,			bool(no)).
+option_defaults(cvs_merge_conflict,		bool(no)).
 
 	% Output options
 option_defaults(show_c_function,		bool_special).
@@ -392,44 +395,47 @@ postprocess_output_style(OptionTable, Style) :-
 		map__search(OptionTable, rcs, bool(UseRCS)),
 		map__search(OptionTable, brief, bool(UseBrief)),
 		map__search(OptionTable, ifdef, maybe_string(UseIfdef)),
-		map__search(OptionTable, side_by_side, bool(UseSideBySide))
+		map__search(OptionTable, side_by_side, bool(UseSideBySide)),
+		map__search(OptionTable, cvs_merge_conflict, bool(CVSConflict))
 	->
 		postprocess_output_style_2(UseHelp, UseVersion, UseContext,
 			UseUnified, UseEd, UseForwardEd, UseRCS, UseBrief,
-			UseIfdef, UseSideBySide,
+			UseIfdef, UseSideBySide, CVSConflict,
 			Style)
 	;
 		error("postprocess_output_style")
 	).
 
 :- pred postprocess_output_style_2(bool, bool, maybe(int), maybe(int), bool,
-		bool, bool, bool, maybe(string), bool,
+		bool, bool, bool, maybe(string), bool, bool,
 		diff_out__output_style).
-:- mode postprocess_output_style_2(in, in, in, in, in, in, in, in, in, in,
+:- mode postprocess_output_style_2(in, in, in, in, in, in, in, in, in, in, in,
 		out) is semidet.
 
-postprocess_output_style_2(no, no, no, no, no, no, no, no, no, no,
+postprocess_output_style_2(no, no, no, no, no, no, no, no, no, no, no,
 					normal).
-postprocess_output_style_2(yes, no, no, no, no, no, no, no, no, no,
+postprocess_output_style_2(yes, no, no, no, no, no, no, no, no, no, no,
 					help_only).
-postprocess_output_style_2(no, yes, no, no, no, no, no, no, no, no,
+postprocess_output_style_2(no, yes, no, no, no, no, no, no, no, no, no,
 					version_only).
-postprocess_output_style_2(no, no, yes(C), no, no, no, no, no, no, no,
+postprocess_output_style_2(no, no, yes(C), no, no, no, no, no, no, no, no,
 					context(C)).
-postprocess_output_style_2(no, no, no, yes(U), no, no, no, no, no, no,
+postprocess_output_style_2(no, no, no, yes(U), no, no, no, no, no, no, no,
 					unified(U)).
-postprocess_output_style_2(no, no, no, no, yes, no, no, no, no, no,
+postprocess_output_style_2(no, no, no, no, yes, no, no, no, no, no, no,
 					ed).
-postprocess_output_style_2(no, no, no, no, no, yes, no, no, no, no,
+postprocess_output_style_2(no, no, no, no, no, yes, no, no, no, no, no,
 					forward_ed).
-postprocess_output_style_2(no, no, no, no, no, no, yes, no, no, no,
+postprocess_output_style_2(no, no, no, no, no, no, yes, no, no, no, no,
 					rcs).
-postprocess_output_style_2(no, no, no, no, no, no, no, yes, no, no,
+postprocess_output_style_2(no, no, no, no, no, no, no, yes, no, no, no,
 					brief).
-postprocess_output_style_2(no, no, no, no, no, no, no, no, yes(Sym), no,
+postprocess_output_style_2(no, no, no, no, no, no, no, no, yes(Sym), no, no,
 					ifdef(Sym)).
-postprocess_output_style_2(no, no, no, no, no, no, no, no, no, yes,
+postprocess_output_style_2(no, no, no, no, no, no, no, no, no, yes, no,
 					side_by_side).
+postprocess_output_style_2(no, no, no, no, no, no, no, no, no, no, yes,
+					cvs_merge_conflict).
 
 %-----------------------------------------------------------------------------%
 

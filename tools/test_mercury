@@ -247,14 +247,6 @@ case $status in 0)
 		 	MMAKEFLAGS=$PARALLEL \
 		) || status=1
 		;;
-	kryten|murlibobo)
-		mmake install MMAKEFLAGS=$PARALLEL || status=1
-		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
-			|| status=1
-		# install the asm_fast.gc.tr and asm_fast.tr grades
-		mmake install_grades LIBGRADES="asm_fast.gc.tr asm_fast.tr" \
-			MMAKEFLAGS="$PARALLEL" || status=1
-		;;
 	*)
 		mmake install MMAKEFLAGS=$PARALLEL || status=1
 		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
@@ -290,22 +282,43 @@ case $HOST in
 esac
 for grade in $GRADES kludge_for_broken_shells
 do
-	if [ "$GRADE" != kludge_for_broken_shells ]; then
+	if [ "$grade" != kludge_for_broken_shells ]; then
 		echo "test clpr stuff for grade $grade" 1>&2
 		(cd mercury/extras/clpr &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake depend	$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake 		$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake check	$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake install	$PARALLEL MMAKEFLAGS=$PARALLEL &&
+			 mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" &&
+			 mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" &&
+			 mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" &&
+			 mmake install	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
 		echo "test trailed_update stuff for grade $grade" 1>&2
 		(cd mercury/extras/trailed_update &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake depend	$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake 		$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake check	$PARALLEL MMAKEFLAGS=$PARALLEL &&
+			 mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" &&
+			 mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" &&
+			 mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
 	fi
@@ -357,6 +370,7 @@ case $HOST in
 			reg reg.gc
 			asm_fast asm_fast.gc
 			asm_fast.prof asm_fast.gc.prof
+			asm_fast.gc.memprof
 			"
 		;;
 	kryten)
@@ -387,13 +401,21 @@ do
 	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
 		$PARALLEL || status=1
 	case $grade in
-		*.prof)	cd benchmarks
-			./poly > poly.$grade.out
-			mprof -V > poly.$grade.mprof 2>&1 
-			cp Prof.CallPair poly.$grade.CallPair
-			cp Prof.Counts poly.$grade.Counts
-			cp Prof.Decl poly.$grade.Decl
-			cd ..
+		*.memprof*)
+			# we need to link statically for profiling on DEC Alpha
+			(cd benchmarks &&
+			rm -f poly &&
+			mmake poly \
+				GRADE="$grade" \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS="$TEST_CFLAGS" \
+				EXTRA_MLFLAGS="-static" &&
+			./poly > poly.$grade.out &&
+			mprof -v -m -c > poly.$grade.mprof 2>&1  &&
+			cp Prof.CallPair poly.$grade.CallPair &&
+			cp Prof.MemoryWords poly.$grade.MemoryWords &&
+			cp Prof.MemoryCells poly.$grade.MemoryCells &&
+			cp Prof.Decl poly.$grade.Decl) || status=1
 			;;
 	esac
 done

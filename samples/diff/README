@@ -1,3 +1,55 @@
+
+This is now looking a LOT more like the standard "diff" utility.  There
+are a few features missing (e.g. we can't do directory diffs), but apart
+from that, it seems to work.
+
+The major changes in this version are:
+
+	- We now accept command-line options.  In particular, we
+	  recognise all options that are accepted by GNU diff,
+	  though a lot of them result in error reports and a few
+	  which have do nothing to do with the output format or
+	  semantics, but are merely for efficiency, are accepted
+	  and ignored.
+
+	- We support different output formats, in particular all
+	  of the output formats supported by GNU diff. There are
+	  a number of modifiers to the output formats (for example,
+	  --expand-tabs) which we don't yet support.
+
+	- Just about everything (except the actual diff algorithm)
+	  has been modified to support the above changes.
+
+	- Lots of cleanups, lots more documentation.
+
+Examine the file TODO to see what's still missing.
+
+Andrew Bromage  8 Jan 1998
+
+===========================================================================
+
+The version which appears here is a re-hacked version of Marnix Klooster's
+hacked version of my original.  Special thanks to him for making my code
+a lot more maintainable than it originally was.  :-)
+
+The changes from the previous version:
+
+	- Bug fix for a problem which was causing it to bomb out if
+	  the two files were identical.
+
+	- Changed indenting so it more closely matches the Mercury
+	  compiler coding standard.
+
+	- Update to use unique arrays (now called array.m).
+
+	- Various minor documentation tweaks.
+
+Oh, and it still runs in nowhere near the speed of GNU diff.
+
+Andrew Bromage  28 Jul 1997
+
+===========================================================================
+
 The Mercury modules in this directory have been derived from the
 'diff' sample distributed with Mercury 0.6.  That sample carries the
 following copyright information, description and to-do list (in
@@ -60,26 +112,4 @@ Marnix
 --
 Marnix Klooster
 marnix@worldonline.nl
-
----------------------------------
-
-The version which appears here is a re-hacked version of Marnix Klooster's
-hacked version of my original.  Special thanks to him for making my code
-a lot more maintainable than it originally was.  :-)
-
-The changes from the previous version:
-
-	- Bug fix for a problem which was causing it to bomb out if
-	  the two files were identical.
-
-	- Changed indenting so it more closely matches the Mercury
-	  compiler coding standard.
-
-	- Update to use unique arrays (now called array.m).
-
-	- Various minor documentation tweaks.
-
-Oh, and it still runs in nowhere near the speed of GNU diff.
-
-Andrew Bromage  28 Jul 1997
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -44,6 +44,7 @@ extern	Code *		program_entry_point; /* normally mercury__main_2_0; */
 
 extern	void		(*MR_library_initializer)(void);
 extern	void		(*MR_library_finalizer)(void);
+extern	Code		*MR_library_trace_browser;
 
 extern	void		(*address_of_mercury_init_io)(void);
 extern	void		(*address_of_init_modules)(void);

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -65,6 +65,9 @@
 
 #define	field(t, p, i)		((Word *) body((p), (t)))[i]
 #define	const_field(t, p, i)	((const Word *) body((p), (t)))[i]
+
+#define	mask_field(p, i)	((Word *) strip_tag(p))[i]
+#define	const_mask_field(p, i)	((const Word *) strip_tag(p))[i]
 
 /*
 ** the following list_* macros are used by handwritten C code

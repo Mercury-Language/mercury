@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -11,6 +11,7 @@
 
 #include "mercury_types.h"	/* for `Code *' */
 #include "mercury_debug.h"	/* for debuggoto() */
+#include "mercury_accurate_gc.h"
 
 #define paste(a,b) a##b
 #define stringify(string) #string
@@ -33,20 +34,21 @@
 ** accurate garbage collection.
 */
 
-#if defined(SPEED) && !defined(DEBUG_GOTOS)
+#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(NATIVE_GC)
 #define	make_label(n, a, l)	/* nothing */
 #else
 #define	make_label(n, a, l)	make_entry(n, a, l)
 #endif
 
-#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(PROFILE_CALLS)
+#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(PROFILE_CALLS) \
+			&& !defined(NATIVE_GC)
 #define make_local(n, a, l)	/* nothing */
 #else 
 #define make_local(n, a, l)	make_entry(n, a, l)
 #endif
 
 #if defined(SPEED) && !defined(DEBUG_LABELS) && !defined(DEBUG_GOTOS) \
-			&& !defined(PROFILE_CALLS)
+			&& !defined(PROFILE_CALLS) && !defined(NATIVE_GC)
 #define make_entry(n, a, l)	/* nothing */
 #else
 #define make_entry(n, a, l)	insert_entry(n, a, MR_STACK_LAYOUT(l))
@@ -275,15 +277,15 @@
 ** where <clobbers> is an indication to gcc of what gets clobbered.
 */
 #ifdef INLINE_ASM_FIXUP_REGS
-#define ASM_FIXUP_REGS					\
+  #define ASM_FIXUP_REGS				\
 	__asm__ __volatile__(				\
 		INLINE_ASM_FIXUP_REGS			\
 	);
-#define NEED_ASM_FIXUP_REGS
+  #define NEED_ASM_FIXUP_REGS
 #else
-#define ASM_FIXUP_REGS
-#define INLINE_ASM_FIXUP_REGS
-#undef  NEED_ASM_FIXUP_REGS
+  #define ASM_FIXUP_REGS
+  #define INLINE_ASM_FIXUP_REGS
+  #undef  NEED_ASM_FIXUP_REGS
 #endif
 
 /*
@@ -513,14 +515,14 @@
 	label:	\
 	{
   #define init_local(label)	make_local(stringify(label), &&label, label)
+  #define Define_label(label)	Define_local(label)
+  #define Declare_label(label)	/* no declaration required */
   #ifdef NATIVE_GC
-   #define Declare_label(label)	Define_extern_entry(label)
-   #define Define_label(label)	Define_entry(label)
+   #define init_label(label)	\
+	make_label(stringify(label), &&entry(label), label)
   #else
-   #define Declare_label(label)	/* no declaration required */
-   #define Define_label(label)	Define_local(label)
+   #define init_label(label)	make_label(stringify(label), &&label, label)
   #endif
-  #define init_label(label)	make_label(stringify(label), &&label, label)
 
   #define LOCAL(label)		(&&entry(label))
   #define LABEL(label)		(&&entry(label))

@@ -31,7 +31,8 @@
 	;	rcs
 	;	ifdef(string)
 	;	brief
-	;	side_by_side.
+	;	side_by_side
+	;	cvs_merge_conflict.
 
 :- pred diff_out__default_output_style(diff_out__output_style :: out) is det.
 
@@ -120,6 +121,8 @@ display_diff(File1, File2, Diff) -->
 		)
 	; { OutputStyle = side_by_side },
 		display_diff_side_by_side(File1, File2, Diff)
+	; { OutputStyle = cvs_merge_conflict },
+		display_diff_cvs_merge_conflict(File1, File2, Diff)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -295,6 +298,42 @@ diff_out__write_command_forward_ed(X - X2, C) -->
 		io__write_int(X2)
 	),
 	io__write_char('\n').
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% display_diff_cvs_merge_conflict writes out the files in a
+	% unified diff, using #ifdefs around each edit.
+	%
+:- pred display_diff_cvs_merge_conflict(file, file, diff, io__state, io__state).
+:- mode display_diff_cvs_merge_conflict(in, in, in, di, uo) is det.
+
+display_diff_cvs_merge_conflict(File1, File2, Diff) -->
+	display_diff_cvs_merge_conflict_2(0, File1, File2, Diff).
+
+	% Argument 1 (prev) is the last pos displayed before
+	% the current edit (or end of edits, in the base case).
+	% This is important for when we have to display the
+	% "non-diffed" text between edits.
+:- pred display_diff_cvs_merge_conflict_2(int, file, file, diff,
+		io__state, io__state).
+:- mode display_diff_cvs_merge_conflict_2(in, in, in, in, di, uo) is det.
+
+display_diff_cvs_merge_conflict_2(Prev, File1, _File2, []) -->
+	{ file__get_numlines(File1, SegEnd) },
+	diff_out__show_file(File1, "", Prev - SegEnd).
+display_diff_cvs_merge_conflict_2(Prev, File1, File2, [Edit | Diff]) -->
+	{ first_mentioned_positions(Edit, StartX, StartY) },
+	{ last_mentioned_positions(Edit, EndX, EndY) },
+	diff_out__show_file(File1, "", Prev - StartX),
+	{ file__get_file_name(File1, Name1) },
+	io__write_strings(["<<<<<<< ", Name1, "\n"]),
+	diff_out__show_file(File1, "", StartX - EndX),
+	io__write_string("=======\n"),
+	diff_out__show_file(File2, "", StartY - EndY),
+	{ file__get_file_name(File2, Name2) },
+	io__write_strings([">>>>>>> ", Name2, "\n"]),
+	display_diff_cvs_merge_conflict_2(EndX, File1, File2, Diff).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

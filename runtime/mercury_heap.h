@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -144,16 +144,19 @@
 
 /*
 ** The incr_hp*() macros are defined in terms of the tag_incr_hp*() macros.
+** Note: the `proclabel' argument is not parenthesized, since it must
+** be a label name; we may need to prefix `_entry_' in front of it,
+** which wouldn't work if it was parenthesized.
 */
 #define	incr_hp(dest, count) \
 		tag_incr_hp((dest), mktag(0), (count))
 #define	incr_hp_msg(dest, count, proclabel, type) \
-		tag_incr_hp_msg((dest), mktag(0), (count), (proclabel), (type))
+		tag_incr_hp_msg((dest), mktag(0), (count), proclabel, (type))
 #define	incr_hp_atomic(dest, count) \
 		tag_incr_hp_atomic((dest), mktag(0), (count))
 #define	incr_hp_atomic_msg(dest, count, proclabel, type) \
 		tag_incr_hp_atomic_msg((dest), mktag(0), (count), \
-			(proclabel), (type))
+			proclabel, (type))
 
 /*
 ** Note that gcc optimizes `hp += 2; return hp - 2;'

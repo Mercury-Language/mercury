@@ -1,12 +1,12 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997 University of Melbourne.
+# Copyright (C) 1997-1998 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
-# mprof_merge_counts - 
+# mprof_merge_runs - 
 #
 # Merges the profiling counts from different runs of a profiled program.
 #
@@ -70,8 +70,9 @@ case $# in
 esac
 
 #
-# The Prof.Counts file format is as follows:
-#	clock-frequency	tick-rate
+# The Prof.Counts, Prof.MemoryWords, and Prof.MemoryCells file format
+# is as follows:
+#	what_to_profile scale units
 #	address1 count1
 #	address2 count2
 #	...
@@ -80,17 +81,21 @@ esac
 # To merge two different count files, we just need to
 # add up the counts for each address.
 #
-touch Prof.Counts.total &&
-awk '
-	FNR == 1 { clock = $1; rate = $2; }
-	FNR != 1 { counts[$1] += $2; }
-	END {
-		printf("%d %d\n", clock, rate); 
-		for (addr in counts) {
-			printf("%d %d\n", addr, counts[addr]);
-		}
-	}
-' Prof.Counts.total Prof.Counts > Prof.Counts.newtotal &&
+for prof_file in Prof.Counts Prof.MemoryWords Prof.MemoryCells; do
+	if [ -f $prof_file ]; then
+		touch $prof_file.total &&
+		awk '
+			FNR == 1 { what_to_profile = $1; scale = $2; units = $3; }
+			FNR != 1 { counts[$1] += $2; }
+			END {
+				printf("%s %f %s\n", what_to_profile, scale, units); 
+				for (addr in counts) {
+					printf("%d %d\n", addr, counts[addr]);
+				}
+			}
+		' $prof_file.total $prof_file > $prof_file.newtotal
+	fi
+done &&
 #
 # The Prof.CallPair file format is as follows:
 #	caller1 callee1 count1

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,12 +14,22 @@
 
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
 
+/* for make_type_info(), we keep a list of allocated memory cells */
+struct MemoryCellNode {
+	void *data;
+	struct MemoryCellNode *next;
+};
+typedef struct MemoryCellNode *MemoryList;
+
 /*
 ** Prototypes.
 */
 static Word get_base_type_layout_entry(Word data, Word *type_info);
+static Word deep_copy_arg(Word data, Word *type_info, Word *arg_type_info,
+	Word *lower_limit, Word *upper_limit);
 static Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
-	bool *allocated);
+	MemoryList *allocated);
+static void deallocate(MemoryList allocated_memory_cells);
 static Word * deep_copy_type_info(Word *type_info,
 	Word *lower_limit, Word *upper_limit);
 
@@ -27,6 +37,8 @@ MR_DECLARE_STRUCT(mercury_data___base_type_info_pred_0);
 MR_DECLARE_STRUCT(mercury_data___base_type_info_func_0);
 
 /*
+** deep_copy(): see mercury_deep_copy.h for documentation.
+**
 ** Due to the depth of the control here, we'll use 4 space indentation.
 */
 Word 
@@ -36,10 +48,10 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
     int data_tag, entry_tag; 
 
     int arity, i;
-    bool allocated;
-    Word *argument_vector, *type_info_vector, *new_type_info;
+    Word *argument_vector, *type_info_vector;
 
     Word new_data;
+
 	
     data_tag = tag(data);
     data_value = (Word *) body(data, data_tag);
@@ -51,7 +63,7 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
     switch(entry_tag) {
 
-        case TYPELAYOUT_CONST_TAG:      /* and COMP_CONST_TAG */
+        case TYPELAYOUT_CONST_TAG: /* and TYPELAYOUT_COMP_CONST_TAG */
 
             /* Some builtins need special treatment */
             if ((Word) entry_value <= TYPELAYOUT_MAX_VARINT) {
@@ -238,14 +250,10 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
                     /* copy arguments */
                 for (i = 0; i < arity; i++) {
-                    new_type_info = make_type_info(type_info,
-                        (Word *) type_info_vector[i], &allocated);
-                    field(0, new_data, i) = 
-                        deep_copy(argument_vector[i],
-                            new_type_info, lower_limit, upper_limit); 
-                    if (allocated) { 
-                        free(new_type_info);
-                    }
+		    field(0, new_data, i) =
+			deep_copy_arg(argument_vector[i],
+				type_info, (Word *) type_info_vector[i],
+				lower_limit, upper_limit);
                 }
                     /* tag this pointer */
                 new_data = (Word) mkword(data_tag, new_data);
@@ -283,15 +291,10 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
                     /* copy arguments */
                 for (i = 0; i < arity; i++) {
-                    new_type_info = make_type_info(type_info,
-                        (Word *) type_info_vector[i], &allocated);
                     field(0, new_data, i + 1) = 
-                        deep_copy(argument_vector[i], 
-                            new_type_info, lower_limit, 
-                            upper_limit);
-                    if (allocated) {
-                        free(new_type_info);
-                    }
+			deep_copy_arg(argument_vector[i],
+				type_info, (Word *) type_info_vector[i],
+				lower_limit, upper_limit);
                 }
 
                 /* tag this pointer */
@@ -302,7 +305,7 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             break;
         }
 
-        case TYPELAYOUT_EQUIV_TAG:
+        case TYPELAYOUT_EQUIV_TAG: /* and TYPELAYOUT_NO_TAG */
             /* note: we treat no_tag types just like equivalences */
 
             if ((Word) entry_value < TYPELAYOUT_MAX_VARINT) {
@@ -316,13 +319,9 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 		** (as per comments in base_type_layout.m)
 		** XXX should avoid use of hard-coded offset `1' here
 		*/
-                new_type_info = make_type_info(type_info, 
-                    (Word *) entry_value[1], &allocated);
-                new_data = deep_copy(data, new_type_info, 
-                    lower_limit, upper_limit);
-                if (allocated) {
-                    free(new_type_info);
-                }
+		new_data = deep_copy_arg(data,
+				type_info, (Word *) entry_value[1],
+				lower_limit, upper_limit);
             }
             break;
 
@@ -334,22 +333,52 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
     return new_data;
 } /* end deep_copy() */
 
+
 Word 
 get_base_type_layout_entry(Word data_tag, Word *type_info)
 {
 	Word *base_type_info, *base_type_layout;
-
-	base_type_info = (Word *) type_info[0];
-
-	if (base_type_info == 0) {
-		base_type_info = type_info;
-	}
-
-	base_type_layout = (Word *) base_type_info[OFFSET_FOR_BASE_TYPE_LAYOUT];
-
+	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+	base_type_layout = MR_BASE_TYPEINFO_GET_TYPELAYOUT(base_type_info);
 	return base_type_layout[data_tag];
 }
 
+/*
+** deep_copy_arg is like deep_copy() except that it takes a
+** pseudo_type_info (namely arg_pseudo_type_info) rather than
+** a type_info.  The pseudo_type_info may contain type variables,
+** which refer to arguments of the term_type_info.
+*/
+static Word
+deep_copy_arg(Word data, Word *term_type_info, Word *arg_pseudo_type_info,
+		Word *lower_limit, Word *upper_limit)
+{
+	MemoryList allocated_memory_cells;
+	Word *new_type_info;
+	Word new_data;
+
+	allocated_memory_cells = NULL;
+	new_type_info = make_type_info(term_type_info, arg_pseudo_type_info,
+					&allocated_memory_cells);
+	new_data = deep_copy(data, new_type_info, lower_limit, upper_limit);
+	deallocate(allocated_memory_cells);
+
+	return new_data;
+}
+
+/*
+** deallocate() frees up a list of memory cells
+*/
+static void
+deallocate(MemoryList allocated)
+{
+	while (allocated != NULL) {
+	    MemoryList next = allocated->next;
+	    free(allocated->data);
+	    free(allocated);
+	    allocated = next;
+	}
+}
 
 	/* 
 	** Given a type_info (term_type_info) which contains a
@@ -366,15 +395,14 @@ get_base_type_layout_entry(Word data_tag, Word *type_info)
 	** arg_pseudo_type_info with all the type variables filled in.
 	** If there are no type variables to fill in, we return the
 	** arg_pseudo_type_info, unchanged. Otherwise, we allocate
-	** memory using malloc().  If memory is allocated, the boolean
-	** argument (passed by reference) is set to TRUE, otherwise it is
-	** set to FALSE.  It is the caller's responsibility to check whether 
-	** the call to make_type_info allocated memory, and if so, free
-	** it.
+	** memory using malloc().  Any such memory allocated will be
+	** inserted into the list of allocated memory cells.
+	** It is the caller's responsibility to free these cells
+	** by calling deallocate() on the list when they are no longer
+	** needed.
 	**
 	** This code could be tighter. In general, we want to
 	** handle our own allocations rather than using malloc().
-	** Also, we might be able to do only one traversal.
 	**
 	** NOTE: If you are changing this code, you might also need
 	** to change the code in create_type_info in library/std_util.m,
@@ -384,26 +412,30 @@ get_base_type_layout_entry(Word data_tag, Word *type_info)
 
 Word *
 make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
-	bool *allocated) 
+	MemoryList *allocated) 
 {
-	int arity, i, extra_args;
+	int i, arity, extra_args;
 	Word *base_type_info;
+	Word *arg_type_info;
 	Word *type_info;
 
-	*allocated = FALSE;
-
-		/* 
-		** The arg_pseudo_type_info might be a polymorphic variable,
-		** is so - substitute.
-		*/
-
+	/* 
+	** The arg_pseudo_type_info might be a polymorphic variable.
+	** If so, then substitute its value, and then we're done.
+	*/
 	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		return (Word *) term_type_info[(Word) arg_pseudo_type_info];
+		arg_type_info = (Word *) 
+			term_type_info[(Word) arg_pseudo_type_info];
+		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
+			fatal_error("make_type_info: "
+				"unbound type variable");
+		}
+		return arg_type_info;
 	}
 
 	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
 
-		/* no arguments - optimise common case */
+	/* no arguments - optimise common case */
 	if (base_type_info == arg_pseudo_type_info) {
 		return arg_pseudo_type_info;
 	} 
@@ -416,52 +448,55 @@ make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
                 extra_args = 1;
         }
 
-		/*
-                ** Check for type variables -- if there are none,
-                ** we don't need to create a new type_info.
-                */
-	for (i = arity + extra_args - 1; i >= extra_args; i--) {
-		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
-			break;
+	/*
+	** Iterate over the arguments, figuring out whether we
+	** need to make any substitutions.
+	** If so, copy the resulting argument type-infos into
+	** a new type_info.
+	*/
+	type_info = NULL;
+	for (i = extra_args; i < arity + extra_args; i++) {
+		arg_type_info = make_type_info(term_type_info,
+			(Word *) arg_pseudo_type_info[i], allocated);
+		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
+			fatal_error("make_type_info: "
+				"unbound type variable");
 		}
-	}
-
-		/*
-		** Do we need to create a new type_info?
-		*/ 
-	if (i >= extra_args) {
-		type_info = checked_malloc((arity + extra_args) * sizeof(Word));
-		*allocated = TRUE;
-
+		if (arg_type_info != (Word *) arg_pseudo_type_info[i]) {
 			/*
-			** Copy any preliminary arguments to the type_info 
-			** (this means the base_type_info and possibly 
-			** arity for higher order terms).
-			*/ 
-                for (i = 0; i < extra_args; i++) {
-                        type_info[i] = arg_pseudo_type_info[i];
-                }
-
-			/*
-			**  Copy type arguments, substituting for any
-			**  type variables.
-			*/ 
-		for (i = extra_args; i < arity + extra_args; i++) {
-			if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
-				type_info[i] = term_type_info[
-					arg_pseudo_type_info[i]];
-				if (type_info[i] < TYPELAYOUT_MAX_VARINT) {
-					fatal_error("make_type_info: "
-						"unbound type variable.");
-				}
-			} else {
-				type_info[i] = arg_pseudo_type_info[i];
+			** We made a substitution.
+			** We need to allocate a new type_info,
+			** if we haven't done so already.
+			*/
+			if (type_info == NULL) {
+				MemoryList node;
+				/*
+				** allocate a new type_info and copy the
+				** data across from arg_pseduo_type_info
+				*/
+				type_info = checked_malloc(
+					(arity + extra_args) * sizeof(Word));
+				memcpy(type_info, arg_pseudo_type_info,
+					(arity + extra_args) * sizeof(Word));
+				/*
+				** insert this type_info cell into the linked
+				** list of allocated memory cells, so we can
+				** free it later on
+				*/
+				node = checked_malloc(sizeof(*node));
+				node->data = type_info;
+				node->next = *allocated;
+				*allocated = node;
 			}
+			type_info[i] = (Word) arg_type_info;
 		}
-		return type_info;
-	} else {
-		return arg_pseudo_type_info;
 	}
+	if (type_info == NULL) {
+		return arg_pseudo_type_info;
+	} else {
+		return type_info;
+	}
+
 } /* end make_type_info() */
 
 Word *
@@ -476,7 +511,7 @@ deep_copy_type_info(Word *type_info, Word *lower_limit, Word *upper_limit)
 
 		base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
 		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
-		new_type_info = make_many(Word, arity + 1);
+		incr_saved_hp(LVALUE_CAST(Word, new_type_info), arity + 1);
 		new_type_info[0] = type_info[0];
 		for (i = 1; i < arity + 1; i++) {
 			new_type_info[i] = (Word) deep_copy_type_info(

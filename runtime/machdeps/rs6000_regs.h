@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-1997 The University of Melbourne.
+** Copyright (C) 1996-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -59,7 +59,7 @@ register	Word	mr9 __asm__("r22");
 )
 
 #define save_transient_regs_to_mem(save_area)		((void)0)
-#define restore_transient_reg_from_mem(save_area)	((void)0)
+#define restore_transient_regs_from_mem(save_area)	((void)0)
 
 #define	mr10	fake_reg[10]
 #define	mr11	fake_reg[11]

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,22 +13,22 @@
 
 #ifndef SPEED
 
-extern	void	mkframe_debug(void);
-extern	void	modframe_debug(void);
-extern	void	succeed_debug(void);
-extern	void	succeeddiscard_debug(void);
-extern	void	fail_debug(void);
-extern	void	redo_debug(void);
-extern	void	call_debug(/* const */ Code *proc, /* const */ Code *succcont);
-extern	void	tailcall_debug(/* const */ Code *proc);
-extern	void	proceed_debug(void);
-extern	void	cr1_debug(Word val0, const Word *addr);
-extern	void	cr2_debug(Word val0, Word val1, const Word *addr);
-extern	void	incr_hp_debug(Word val, const Word *addr);
-extern	void	incr_sp_debug(Word val, const Word *addr);
-extern	void	decr_sp_debug(Word val, const Word *addr);
-extern	void	push_debug(Word val, const Word *addr);
-extern	void	pop_debug(Word val, const Word *addr);
+extern	void	mkframe_msg(void);
+extern	void	modframe_msg(void);
+extern	void	succeed_msg(void);
+extern	void	succeeddiscard_msg(void);
+extern	void	fail_msg(void);
+extern	void	redo_msg(void);
+extern	void	call_msg(/* const */ Code *proc, /* const */ Code *succcont);
+extern	void	tailcall_msg(/* const */ Code *proc);
+extern	void	proceed_msg(void);
+extern	void	cr1_msg(Word val0, const Word *addr);
+extern	void	cr2_msg(Word val0, Word val1, const Word *addr);
+extern	void	incr_hp_debug_msg(Word val, const Word *addr);
+extern	void	incr_sp_msg(Word val, const Word *addr);
+extern	void	decr_sp_msg(Word val, const Word *addr);
+extern	void	push_msg(Word val, const Word *addr);
+extern	void	pop_msg(Word val, const Word *addr);
 #endif
 
 #if !defined(SPEED) || defined(DEBUG_GOTOS)

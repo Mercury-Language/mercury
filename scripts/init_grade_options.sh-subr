@@ -1,10 +1,10 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997 The University of Melbourne.
+# Copyright (C) 1997-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
-# parse_grade_options.sh-subr:
+# init_grade_options.sh-subr:
 #	An `sh' subroutine for initializing grade-related options.
 #	Used by the `ml' and `mgnuc' scripts.
 #
@@ -19,6 +19,7 @@ global_regs=true
 gc_method=conservative
 profile_time=false
 profile_calls=false
+profile_memory=false
 use_trail=false
 args_method=compact
 debug=false

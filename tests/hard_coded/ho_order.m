@@ -1,8 +1,8 @@
 %-----------------------------------------------------------------------------%
 % Regression test for a bug in higher_order.m
 % Symptom: "Software Error: variable not found" during code generation.
-% Cause: lambda.m reorders the argument variables of lambda
-% 	expressions so that inputs come before outputs.
+% Cause: Prior to Feb 1998, lambda.m reordered the argument variables
+% 	of lambda expressions so that inputs came before outputs.
 %	higher_order.m was not doing the reordering before
 %	replacing a higher_order_call with a call to the lambda
 % 	expression.

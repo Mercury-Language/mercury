@@ -39,7 +39,7 @@ fi
 batch=$1
 
 root=`/bin/pwd`
-files=`ls batch/$batch.mercury_compile.*.gz | sed 's:.gz::'`
+files=`ls batch/$batch.mercury_compile.*`
 
 trap 'gzip $root/batch/$batch.mercury_compile.*[0-9] > /dev/null 2>&1; exit 0' 0 1 2 3 15 
 
@@ -52,13 +52,19 @@ fi
 
 for file in $files
 do
+	case $file in
+	*.gz)
+		gunzip $file
+		file=batch/`basename $file .gz`
+		;;
+	esac
+
 	paramfile=`echo $file | sed 's/mercury_compile/params/'`
 	if test -r $paramfile
 	then
 		cat $paramfile
 	fi
 
-	gunzip $file.gz
 	MERCURY_COMPILER=$root/$file
 	export MERCURY_COMPILER
 	cd trial

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -23,7 +23,7 @@
 #include	<string.h>
 #include	<ctype.h>
 #include	<errno.h>
-#include	"getopt.h"
+#include	"mercury_getopt.h"
 #include	"mercury_conf.h"
 #include	"mercury_std.h"
 
@@ -78,6 +78,7 @@ static const char header2[] =
 static const char mercury_funcs[] =
 	"\n"
 	"Declare_entry(%s);\n"
+	"Declare_entry(mercury__io__print_3_0);\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
 	"extern char *GC_stackbottom;\n"
@@ -131,6 +132,7 @@ static const char mercury_funcs[] =
 	"#endif\n"
 	"	MR_library_initializer = ML_io_init_state;\n"
 	"	MR_library_finalizer = ML_io_finalize_state;\n"
+	"	MR_library_trace_browser = ENTRY(mercury__io__print_3_0);\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
 	"#endif\n"
@@ -169,6 +171,15 @@ static const char main_func[] =
 	"	return mercury_main(argc, argv);\n"
 	"}\n"
 	;
+
+
+static const char if_need_to_init[] = 
+	"#if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) \\\n"
+	"	|| defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"
+	"	|| defined(DEBUG_LABELS) || defined(NATIVE_GC) \\\n"
+	"	|| !defined(SPEED)\n\n"
+	;
+
 
 /* --- function prototypes --- */
 static	void parse_options(int argc, char *argv[]);
@@ -299,11 +310,7 @@ output_sub_init_functions(void)
 {
 	int filenum;
 
-	fputs("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "
-		"!defined(USE_ASM_LABELS)) \\\n", stdout);
-	fputs("\t|| defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n",
-		stdout);
-	fputs("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n", stdout);
+	fputs(if_need_to_init, stdout);
 
 	fputs("static void init_modules_0(void)\n", stdout);
 	fputs("{\n", stdout);
@@ -325,11 +332,8 @@ output_main_init_function(void)
 	fputs("static void init_modules(void)\n", stdout);
 	fputs("{\n", stdout);
 
-	fputs("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "
-		"!defined(USE_ASM_LABELS)) \\\n", stdout);
-	fputs("\t|| defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n",
-		stdout);
-	fputs("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n", stdout);
+	fputs(if_need_to_init, stdout);
+
 	for (i = 0; i <= num_modules; i++)
 		printf("\tinit_modules_%d();\n", i);
 	fputs("#endif\n", stdout);

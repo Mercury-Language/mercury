@@ -43,7 +43,9 @@ PROGS=		array_test \
 		liveness \
 		liveness2 \
 		mode_inf_bug \
+		mode_inf \
 		mu \
+		nondet_ite_2 \
 		parse_list \
 		petdr1 \
 		prune_switch \
@@ -53,14 +55,26 @@ PROGS=		array_test \
 		string_test \
 		string_test_2 \
 		univ \
-		unreachable \
-		nondet_ite_2
+		unreachable 
 
 # space.m does not work, due to an unfixed bug in code generation.
 NOT_WORKING =	space
 
-# mode_inf_bug needs to be compiled with `--infer-all'.
+# mode_inf and mode_inf_bug need to be compiled with `--infer-all'.
+MCFLAGS-mode_inf = --infer-all
 MCFLAGS-mode_inf_bug = --infer-all
+
+# In grade `none' with options `-O1 --opt-space' on kryten
+# (a sparc-sun-solaris2.5 system), string_test needs to be linked
+# with `--no-strip', otherwise it gets a seg fault. 
+# The test case ../hard_coded/mode_choice suffers from a similar problem.
+# This is probably a bug in one of the underlying tools (e.g. the Solaris
+# linker) rather than a bug in Mercury, and since it is goes away when you
+# compile with debugging information, it is very difficult to debug.
+# It is much easier to just work around it this way rather than
+# tracking it down.
+MLFLAGS-string_test = --no-strip
+
 
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)

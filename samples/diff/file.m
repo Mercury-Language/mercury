@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,6 +10,8 @@
 % This module provides file input.  One can read a file entirely,
 % select a single line from a read file, get the number of lines
 % in a read file, and convert a read file to a list of strings.
+%
+% Every file has a filename attached to it.
 
 %-----------------------------------------------------------------------------%
 
@@ -60,15 +62,15 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module array, require, int.
+:- import_module array, require, int, bool.
 
 %-----------------------------------------------------------------------------%
 
-:- type file --->
-	file(
-		string,			% File name
-		array(string)		% Contents
-	).
+:- type file
+	--->	file(
+			string,			% File name
+			array(string)		% Contents
+		).
 
 	% Open the stream, read from the stream, then close
 	% the stream.

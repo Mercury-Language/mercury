@@ -21,6 +21,7 @@ PROGS=	\
 	det_in_semidet_cntxt \
 	division_test \
 	elim_special_pred \
+	eqv_type_bug \
 	error_func \
 	erroneous_liveness \
 	expand \
@@ -32,6 +33,7 @@ PROGS=	\
 	func_and_pred \
 	func_test \
 	getopt_test \
+	ground_dd \
 	higher_order_func_test \
 	higher_order_syntax \
 	higher_order_type_manip \
@@ -47,9 +49,13 @@ PROGS=	\
 	nullary_ho_func \
 	pragma_c_code \
 	pragma_inline \
+	pragma_import \
+	purity \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \
+	remove_file \
+	reorder_di \
 	reverse_arith \
 	string_alignment \
 	string_loop \
@@ -67,6 +73,17 @@ MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 
+# In grade `none' with options `-O1 --opt-space' on kryten
+# (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
+# with `--no-strip', otherwise it gets a seg fault. 
+# The test case ../hard_coded/string_test suffers from a similar problem.
+# This is probably a bug in one of the underlying tools (e.g. the Solaris
+# linker) rather than a bug in Mercury, and since it is goes away when you
+# compile with debugging information, it is very difficult to debug.
+# It is much easier to just work around it this way rather than
+# tracking it down.
+MLFLAGS-mode_choice = --no-strip
+
 # no_fully_strict is expected to fail (it calls error/1)
 # so we need to ignore the exit status (hence the leading `-')
 no_fully_strict.out: no_fully_strict
@@ -82,14 +99,48 @@ MODS=	$(PROGS:%=%.mod)
 
 #-----------------------------------------------------------------------------#
 
+SUBDIRS = typeclasses
+
+#-----------------------------------------------------------------------------#
+
+SUBDIR_MMAKE = mmake $(MMAKEFLAGS) \
+			GRADE='$(GRADE)' \
+			EXTRA_CFLAGS='$(EXTRA_CFLAGS)' \
+			EXTRA_MCFLAGS='$(EXTRA_MCFLAGS)'
+
 dep:	$(DEPS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
+	done
 
 depend:	$(DEPENDS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
+	done
 
 check:	$(OUTS) $(RESS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
+	done
 
 mods:	$(MODS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) mods) || exit 1; \
+	done
 
 all:	$(PROGS)
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
+	done
+
+clean:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
+	done
+
+realclean:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
+	done
 
 #-----------------------------------------------------------------------------#

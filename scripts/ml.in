@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne.
+# Copyright (C) 1995-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -55,6 +55,7 @@ Options:
 	-p, --profiling
 	--profile-calls
 	--profile-time
+	--profile-memory
 	--debug
 	--use-trail
 	--args {simple, compact}
@@ -90,6 +91,7 @@ case $FULLARCH in
 		;;
 esac
 mercury_libs=default
+all_libs=default
 demangle=true
 MAYBE_STATIC_OPT=""
 make_shared_lib=false
@@ -151,26 +153,14 @@ EOF
 		esac
 		;;
 	-shared|--shared)
+		all_libs=shared
 		MAYBE_STATIC_OPT=""
 		case $mercury_libs in static|default)
 			mercury_libs=shared ;;
 		esac
 		;;
 	-static|--static)
-		case $FULLARCH in
-		    *-linux*)
-		    	# On Linux, if we're linking statically, we need to
-		    	# pass `-defsym _DYNAMIC=0' to the linker, to avoid
-		    	# undefined references to _DYNAMIC in
-		    	# boehm_gc/dyn_load.c.
-		    	# (We might eventually need similar treatment
-		    	# for other OSs too)
-			MAYBE_STATIC_OPT="-static -Wl,-defsym,_DYNAMIC=0"
-			;;
-		    *)
-			MAYBE_STATIC_OPT=-static
-			;;
-		esac
+		all_libs=static
 		case $mercury_libs in shared|default)
 			mercury_libs=static ;;
 		esac
@@ -197,6 +187,9 @@ EOF
     shift
 done
 
+# If you haven't set mercury_libs, set it to the default value
+# (shared on most systems). Note that if you have set all_libs,
+# it will also have set mercury_libs.
 case $mercury_libs in default)
 	mercury_libs=shared
 	case $FULLARCH in i?86-*-linux*)
@@ -210,6 +203,41 @@ case $mercury_libs in default)
 	esac
 	;;
 esac
+
+# If you haven't set all_libs, set it to the default value
+# (shared on most systems).
+case $all_libs in default)
+	all_libs=shared
+	case $FULLARCH in i?86-*-linux*)
+		# shared libraries are not the default on Linux
+		# -- see README.Linux
+		case $make_shared_lib in false)
+			all_libs=static
+			;;
+		esac
+		;;
+	esac
+	;;
+esac
+
+# Defaults have been set, now set options.
+case $all_libs in static)
+	case $FULLARCH in
+		*-linux*)
+			# On Linux, if we're linking statically, we need to
+			# pass `-defsym _DYNAMIC=0' to the linker, to avoid
+			# undefined references to _DYNAMIC in
+			# boehm_gc/dyn_load.c.
+			# (We might eventually need similar treatment
+			# for other OSs too)
+			MAYBE_STATIC_OPT="-static -Wl,-defsym,_DYNAMIC=0"
+			;;
+		*)
+			MAYBE_STATIC_OPT=-static
+			;;
+	esac
+esac
+
 
 #
 # compute the grade from the options settings
@@ -229,11 +257,18 @@ case $gc_method in
 	conservative)	GRADE="$GRADE.gc" ;;
 	accurate)	GRADE="$GRADE.agc" ;;
 esac
-case $profile_time,$profile_calls in
-	true,true)	GRADE="$GRADE.prof" ;;
-	true,false)	GRADE="$GRADE.proftime" ;;
-	false,true)	GRADE="$GRADE.profcalls" ;;
-	false,false)	;;
+case $profile_time,$profile_calls,$profile_memory in
+	true,true,false)	GRADE="$GRADE.prof" ;;
+	true,false,false)	GRADE="$GRADE.proftime" ;;
+	false,true,false)	GRADE="$GRADE.profcalls" ;;
+	true,true,true)		GRADE="$GRADE.profall" ;;
+	false,true,true)	GRADE="$GRADE.memprof" ;;
+	false,false,false)	;;
+	*)			progname=`basename $0`
+				echo \
+	"$progname: Error: invalid combination of profiling options." 1>&2
+				exit 1
+			;;
 esac
 case $use_trail in
 	true)		GRADE="$GRADE.tr" ;;

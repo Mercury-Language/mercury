@@ -34,3 +34,4 @@ local(Pred, Int) :- call(Pred, Int0), Int is Int0 + 1.
 
 plusone(Int0) = Int :- Int is Int0 + 1.
 
+
