@@ -72,6 +72,41 @@ extern	void	*memalign(size_t, size_t);
 #endif
 #endif
 
+/*
+** DESCRIPTION
+**  The function mprotect() changes the  access  protections  on
+**  the mappings specified by the range [addr, addr + len) to be
+**  that specified by prot.  Legitimate values for prot are  the
+**  same  as  those  permitted  for  mmap  and  are  defined  in
+**  <sys/mman.h> as:
+**
+** PROT_READ    page can be read
+** PROT_WRITE   page can be written
+** PROT_EXEC    page can be executed
+** PROT_NONE    page can not be accessed
+*/
+#ifdef  HAVE_MPROTECT
+
+#ifdef CONSERVATIVE_GC
+	/*
+	** The conservative garbage collectors scans through
+	** all these areas, so we need to allow reads.
+	** XXX This probably causes efficiency problems:
+	** too much memory for the GC to scan, and it probably
+	** all gets paged in.
+	*/
+#define MY_PROT PROT_READ
+#else
+#define MY_PROT PROT_NONE
+#endif
+
+/* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
+#ifndef PROT_NONE
+#define PROT_NONE 0
+#endif
+
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 #ifdef	HAVE_SIGINFO
@@ -129,11 +164,18 @@ static	unsigned	page_size;
  * (must be less than Size), and the address of a function to handle
  * memory references in the redzone.
  * If it fails to allocate or protect the zone, then it exits.
+ * If mprotect or SIGINFO are unavailable, then the last two arguments
+ * are not present.
  */
-typedef bool ZoneHandler(Word *addr, MemoryZone *zone, void *context);
+
+#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 MemoryZone	*create_zone(const char *name, int id, unsigned size,
 			unsigned offset, unsigned redsize,
 			ZoneHandler *handler);
+#else
+MemoryZone	*create_zone(const char *name, int id, unsigned size,
+			unsigned offset);
+#endif
 
 /* construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
  * has the same behaviour as create_zone, except instread of allocating
@@ -141,15 +183,25 @@ MemoryZone	*create_zone(const char *name, int id, unsigned size,
  * least Size bytes, or if HAVE_MPROTECT is defined, then it must be at
  * least Size + unit[*] bytes.
  * If it fails to protect the redzone then it exits
+ * If mprotect or SIGINFO are unavailable, then the last two arguments
+ * are not present.
+ *
  * [*] unit is a global variable containing the page size in bytes
  */
+
+#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 MemoryZone	*construct_zone(const char *name, int Id, Word *base,
 			unsigned size, unsigned offset, unsigned redsize,
 			ZoneHandler *handler);
+#else
+MemoryZone	*construct_zone(const char *name, int Id, Word *base,
+			unsigned size, unsigned offset);
+#endif
 
 static MemoryZone	*get_zone(void);
 static void		unget_zone(MemoryZone *zone);
 
+#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 /* default_handler is a function that can be passed to create_zone to
  * unprotect enough of the redzone to allow the access to succeed, or
  * fail if there is no space left in the zone.
@@ -160,6 +212,7 @@ static ZoneHandler default_handler;
  * fails.
  */
 static ZoneHandler null_handler;
+#endif
 
 void init_memory(void)
 {
@@ -192,7 +245,9 @@ void init_memory(void)
 		zone_table[i].max = NULL;
 #endif
 #ifdef	HAVE_MPROTECT
+#ifdef	HAVE_SIGINFO
 		zone_table[i].redzone = NULL;
+#endif
 		zone_table[i].hardmax = NULL;
 #endif
 		if (i+1 < MAX_ZONES)
@@ -283,6 +338,7 @@ void init_memory(void)
 	** Create memory zones for the heap, det stack and nondet stack.
 	*/
 
+#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 	detstack_zone = construct_zone("det stack", 1, detstack_base,
 			detstack_size, detstack_offset, detstack_zone_size,
 			default_handler);
@@ -293,7 +349,16 @@ void init_memory(void)
 	heap_zone = construct_zone("heap", 1, heap_base, heap_size, heap_offset,
 			heap_zone_size, default_handler);
 #endif
-
+#else	/* !HAVE_SIGINFO */
+	detstack_zone = construct_zone("det stack", 1, detstack_base,
+			detstack_size, detstack_offset);
+	nondetstack_zone = construct_zone("nondet stack", 1, nondetstack_base,
+			nondstack_size, nondstack_offset);
+#ifndef CONSERVATIVE_GC
+	heap_zone = construct_zone("heap", 1, heap_base, heap_size,
+			heap_offset);
+#endif
+#endif
 
 #ifndef	SPEED
 	nondetstack_zone->min[PREDNM] = (Word) "bottom";
@@ -335,11 +400,13 @@ void init_memory(void)
 			fprintf(stderr, "%-16s#%d-top		= %p\n",
 				zone->name, zone->id, (void *) zone->top);
 #ifdef	HAVE_MPROTECT
+#ifdef	HAVE_SIGINFO
 			fprintf(stderr, "%-16s#%d-redzone	= %p\n",
 				zone->name, zone->id, (void *) zone->redzone);
+#endif	/* HAVE_SIGINFO */
 			fprintf(stderr, "%-16s#%d-hardmax		= %p\n",
 				zone->name, zone->id, (void *) zone->hardmax);
-#endif
+#endif	/* HAVE_MPROTECT */
 			fprintf(stderr, "%-16s#%d-size		= %lu\n",
 				zone->name, zone->id, (unsigned long)
 				((char *)zone->hardmax - (char *)zone->min));
@@ -394,9 +461,14 @@ void unget_zone(MemoryZone *zone)
 	free_memory_zones = zone;
 }
 
+#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 MemoryZone *create_zone(const char *name, int id, unsigned size,
 		unsigned offset, unsigned redsize,
 		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
+#else	/* !HAVE_SIGINFO */
+MemoryZone *create_zone(const char *name, int id, unsigned size,
+		unsigned offset)
+#endif
 {
 	Word		*base;
 	unsigned	total_size;
@@ -418,12 +490,21 @@ MemoryZone *create_zone(const char *name, int id, unsigned size,
 	if (base == NULL)
 		fatal_error("failed to allocate zone");
 
+#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 	return construct_zone(name, id, base, size, offset, redsize, handler);
+#else
+	return construct_zone(name, id, base, size, offset);
+#endif
 }
 
+#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
 		unsigned offset, unsigned redsize,
 		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
+#else
+MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
+		unsigned offset)
+#endif
 {
 	MemoryZone	*zone;
 	unsigned	total_size;
@@ -436,7 +517,9 @@ MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
 	zone->name = name;
 	zone->id = id;
 
+#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 	zone->handler = handler;
+#endif
 
 	zone->bottom = base;
 
@@ -452,10 +535,11 @@ MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
 	zone->max = zone->min;
 #endif
 
-#ifdef	HAVE_MPROTECT
 	/*
 	** setup the redzone+hardzone
 	*/
+#ifdef	HAVE_MPROTECT
+#ifdef	HAVE_SIGINFO
 	zone->redzone = (Word *)
 			round_up((Unsigned)base+size-redsize, unit);
 	if (mprotect((char *)zone->redzone, redsize+unit, MY_PROT) < 0)
@@ -466,8 +550,18 @@ MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
 			zone->name, zone->id, zone->bottom, zone->redzone);
 		fatal_error(buf);
 	}
+#else	/* !HAVE_SIGINFO */
 	zone->hardmax = (Word *) ((char *)zone->top-unit);
-#endif
+	if (mprotect((char *)zone->hardmax, unit, MY_PROT) < 0)
+	{
+		char buf[2560];
+		sprintf(buf, "unable to set %s#%d hardmax\n"
+			"base=%p, hardmax=%p",
+			zone->name, zone->id, zone->bottom, zone->hardmax);
+		fatal_error(buf);
+	}
+#endif	/* HAVE_SIGINFO */
+#endif	/* HAVE_MPROTECT */
 
 	return zone;
 }

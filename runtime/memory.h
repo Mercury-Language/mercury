@@ -52,20 +52,32 @@ extern	Word 	num_uses[MAX_RN];
  *			beat the cache.
  *	max	- the highest address in this memory area that has been
  *			used so far. This is only defined in debugging grades.
- *	redzone	- the address of the start of the region that has been
- *			mprotected as a redzone.
- *			(should be on a page boundary)
  *	hardmax	- the address of the bottom of the last page of the allocated
  *			area. This is one higher than the highest address that
  *			can be used in this zone. We never unprotect the
  *			last page of a zone so that we retain protection
- *			against overrunning the end of the zone.
+ *			against overrunning the end of the zone. This is
+ *			obviously only available on platforms that have
+ *			mprotect.
  *			(should be on a page boundary)
+ *	redzone	- the address of the start of the region that has been
+ *			mprotected as a redzone. Since without SIGINFO
+ *			it is not possible [portably] to figure out
+ *			where the fault occured, redzone is only available
+ *			on platforms that have both mprotect and SIGINFO.
+ *			(should be on a page boundary)
+ *	handler - the address of a function to handle accesses in the
+ *			redzone of this allocated area. This is only
+ *			specified if mprotect and SIGINFO are available.
  */
 
-#define MAX_ZONE_NAME	64
+typedef struct MEMORY_ZONE	MemoryZone;
 
-typedef struct MEMORY_ZONE {
+#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+typedef bool ZoneHandler(Word *addr, struct MEMORY_ZONE *zone, void *context);
+#endif
+
+struct MEMORY_ZONE {
 	struct MEMORY_ZONE *next; /* the memory zones are organized as a
 				   * linked list of free zones and linked
 				   * list of used zones. The next field
@@ -77,7 +89,6 @@ typedef struct MEMORY_ZONE {
 	Word	*bottom;	/* beginning of the allocated area */
 	Word	*top;		/* end of the allocated area */
 	Word	*min;		/* lowest word of the area to be used */
-	bool	((*handler)(Word *addr, struct MEMORY_ZONE *zone, void *context));
 #ifndef SPEED
 	Word	*max;		/* highest word of the area to be used */
 #endif
@@ -88,8 +99,11 @@ typedef struct MEMORY_ZONE {
 	Word	*redzone;	/* beginning of the current redzone */
 	Word	*hardmax;	/* last page of the zone which can't be
 				   unprotected */
-#endif
-} MemoryZone;
+#ifdef	HAVE_SIGINFO
+	ZoneHandler *handler;   /* handler for page faults in the redzone */
+#endif	/* HAVE_SIGINFO */
+#endif	/* HAVE_MPROTECT */
+};
 
 #define MAX_ZONES	16
 
@@ -112,40 +126,5 @@ extern	int		dumpindex;
 #endif
 
 extern	void	init_memory(void);
-
-/*
-** DESCRIPTION
-**  The function mprotect() changes the  access  protections  on
-**  the mappings specified by the range [addr, addr + len) to be
-**  that specified by prot.  Legitimate values for prot are  the
-**  same  as  those  permitted  for  mmap  and  are  defined  in
-**  <sys/mman.h> as:
-**
-** PROT_READ    page can be read
-** PROT_WRITE   page can be written
-** PROT_EXEC    page can be executed
-** PROT_NONE    page can not be accessed
-*/
-#ifdef  HAVE_MPROTECT
-
-#ifdef CONSERVATIVE_GC
-	/*
-	** The conservative garbage collectors scans through
-	** all these areas, so we need to allow reads.
-	** XXX This probably causes efficiency problems:
-	** too much memory for the GC to scan, and it probably
-	** all gets paged in.
-	*/
-#define MY_PROT PROT_READ
-#else
-#define MY_PROT PROT_NONE
-#endif
-
-/* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
-#ifndef PROT_NONE
-#define PROT_NONE 0
-#endif
-
-#endif
 
 #endif
