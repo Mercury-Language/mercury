@@ -1329,9 +1329,11 @@ mercury_runtime_terminate(void)
 
 	if (MR_profiling) MR_prof_finish();
 
-#ifdef	MR_THREAD_SAFE
+#ifndef MR_HIGHLEVEL_CODE
+  #ifdef MR_THREAD_SAFE
 	MR_exit_now = TRUE;
 	pthread_cond_broadcast(MR_runqueue_cond);
+  #endif
 #endif
 
 	terminate_engine();
