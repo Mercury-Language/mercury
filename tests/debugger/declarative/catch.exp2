@@ -33,7 +33,7 @@ Valid? yes
 Found incorrect contour:
 try(q(2), succeeded(2))
 Is this a bug? yes
-      26:     10  3 EXIT pred exception.try/2-0 (cc_multi) exception.m:321 (catch.m:19)
+      26:     10  3 EXIT pred exception.try/2-0 (cc_multi) exception.m:NNNN (catch.m:19)
 mdb> continue
       27:      9  2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
 mdb> continue
