@@ -106,8 +106,6 @@ dates		:
 os: $(library.os)
 cs: $(library.cs)
 
-library.pic_os=$(library.os:.o=.$(EXT_FOR_PIC_OBJECTS))
-
 #-----------------------------------------------------------------------------#
 
 .PHONY: libmercury
