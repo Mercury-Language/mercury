@@ -24,8 +24,6 @@ static void demangle(char *name);
 
 int main(int argc, char **argv)
 {
-	char buf[1000];
-
 	if (argc > 1) {
 		/*
 		** invoke demangle() on each command line argument
@@ -41,6 +39,7 @@ int main(int argc, char **argv)
 		** every valid C identifier in the input
 		*/
 		for (;;) {
+			char buf[1000];
 			int len = 0;
 			int c = getchar();
 			while (c != EOF && (isalnum(c) || c == '_')) {
@@ -80,25 +79,47 @@ static void demangle(char *name) {
 	/* avoid a naming conflict with strchr's alter ego */
 	char *start = name;
 	char *end = name + strlen(name);
-	char buf[1000];
 	int mode_num;
 	int arity;
 	int internal = -1;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX } category;
 
+	/*
+	** skip any leading underscore inserted by the C compiler
+	*/
 	if (*start == '_') start++;
+
+	/*
+	** skip the `entry_' prefix, if any
+	*/
 	if (strncmp(start, entry, sizeof(entry) - 1) == 0) {
 		start += sizeof(entry) - 1;
 	}
+
+	/*
+	** strip off the `mercury__' prefix
+	*/
 	if (strncmp(start, mercury, sizeof(mercury) - 1) == 0) {
 		start += sizeof(mercury) - 1;
 	} else {
 		goto wrong_format;
 	}
+
+	/*
+	** now start working from the end of the string
+	** scan backwards past the number at the end
+	*/
 	do {
 		if (end == start) goto wrong_format;
 		end--;
 	} while (isdigit(*end));
+
+	/*
+	** if we got to an `i', that means it is an internal
+	** label of the form `mercury__append_3_0_i1'
+	** in that case, save the internal label number and then
+	** scan back past the mode number
+	*/
 	if (*end == 'i') {
 		if (sscanf(end + 1, "%d", &internal) != 1) goto wrong_format;
 		if (*--end != '_') goto wrong_format;
@@ -107,13 +128,35 @@ static void demangle(char *name) {
 			end--;
 		} while (isdigit(*end));
 	}
+
+	/*
+	** parse the mode number
+	*/
 	if (sscanf(end + 1, "%d", &mode_num) != 1) goto wrong_format;
+
+	/*
+	** scan back past the arity number and then parse it
+	*/
 	do {
 		if (end == start) goto wrong_format;
 		end--;
-	} while (*end != '_');
+	} while (isdigit(*end));
+	if (*end != '_') goto wrong_format;
 	if (sscanf(end + 1, "%d", &arity) != 1) goto wrong_format;
+
+	/*
+	** cut off the string before the start of the arity number,
+	** i.e. at the end of the predicate name or type name
+	*/
 	*end = '\0';
+
+	/*
+	** now start processing from the start of the string again
+	** check whether the start of the string matches the name of
+	** one of the special compiler-generated predicates; if so,
+	** set the `category' to the appropriate value and then
+	** skip past the prefix
+	*/
 	if (strncmp(start, unify, sizeof(unify) - 1) == 0) {
 		start += sizeof(unify) - 1;
 		category = UNIFY;
@@ -128,10 +171,22 @@ static void demangle(char *name) {
 	} else {
 		category = ORDINARY;
 	}
+
+	/*
+	** The compiler changes all names starting with `f_' so that
+	** they start with `f__' instead, and uses names starting with
+	** `f_' for mangled names which are sequences of decimal
+	** reprententations of ASCII codes separated by underscores.
+	** If the name starts with `f__', we must change it back to
+	** start with `f_'.  Otherwise, if it starts with `f_' we must
+	** convert the list of ASCII codes back into an identifier.
+	** 
+	*/
 	if (strncmp(start, "f__" , 3) == 0) {
 		start++;
 		*start = 'f';
 	} else if (strncmp(start, "f_", 2) == 0) {
+		char buf[1000];
 		char *num = start + 2;
 		int count = 0;
 		while (num < end) {
@@ -148,6 +203,9 @@ static void demangle(char *name) {
 		strcpy(start, buf);
 	}
 
+	/*
+	** Now, finally, we can print the demangled symbol name
+	*/
 	printf("<");
 	switch(category) {
 	case UNIFY:
