@@ -28,27 +28,12 @@
 #define	min(a, b)	((a) < (b) ? (a) : (b))
 #endif
 
-#ifdef SLOWSTRCMP
 #define streq(s1, s2)		(strcmp(s1, s2) == 0)
 #define strdiff(s1, s2)		(strcmp(s1, s2) != 0)
 #define strtest(s1, s2)		(strcmp(s1, s2))
 #define strneq(s1, s2, n)	(strncmp(s1, s2, n) == 0)
 #define strndiff(s1, s2, n)	(strncmp(s1, s2, n) != 0)
 #define strntest(s1, s2, n)	(strncmp(s1, s2, n))
-#else
-#define streq(s1, s2)		((*(s1) == *(s2)) && \
-				(strcmp((s1)+1, (s2)+1) == 0))
-#define strdiff(s1, s2)		((*(s1) != *(s2)) || \
-				(strcmp((s1)+1, (s2)+1) != 0))
-#define strtest(s1, s2)		((*(s1) != *(s2)) ? (*(s1) - *(s2)) : \
-				strcmp((s1)+1, (s2)+1))
-#define strneq(s1, s2, n)	((*(s1) == *(s2)) && \
-				(strncmp((s1)+1, (s2)+1, n-1) == 0))
-#define strndiff(s1, s2, n)	((*(s1) != *(s2)) || \
-				(strncmp((s1)+1, (s2)+1, n-1) != 0))
-#define strntest(s1, s2, n)	((*(s1) != *(s2)) ? (*(s1) - *(s2)) : \
-				strncmp((s1)+1, (s2)+1, n-1))
-#endif
 
 #define	ungetchar(c)		ungetc(c, stdin)
 
