@@ -111,8 +111,6 @@ case "`hostname`" in
 	kryten.*)
 		GCC=/usr/local/contrib/bin/gcc
 		HOST_OPTS="-msupersparc" ;;
-	munta.*)
-		GCC=/usr/local/gcc/bin/gcc ;;
 	*)
 		GCC=gcc
 esac
