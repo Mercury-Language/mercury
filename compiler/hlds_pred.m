@@ -102,6 +102,9 @@
 :- type clause		--->	clause(
 					list(proc_id),	% modes for which
 							% this clause applies
+							% (empty list means
+							% it applies to all
+							% clauses)
 					hlds_goal,	% Body
 					term__context
 				).

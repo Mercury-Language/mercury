@@ -222,12 +222,17 @@ unify_proc__search_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Determinism,
 unify_proc__request_unify(UnifyId, Determinism, Context, InstTable, ModuleInfo0,
 		ModuleInfo) :-
 	%
-	% check if this unification has already been requested
+	% check if this unification has already been requested, or
+	% if the proc is hand defined.
 	%
 	UnifyId = TypeId - UnifyMode,
 	(
-		unify_proc__search_mode_num(InstTable, ModuleInfo0, TypeId,
-			UnifyMode, Determinism, _)
+		(
+			unify_proc__search_mode_num(InstTable, ModuleInfo0,
+				TypeId, UnifyMode, Determinism, _)
+		; 
+			type_id_is_hand_defined(TypeId)
+		)
 	->
 		ModuleInfo = ModuleInfo0
 	;

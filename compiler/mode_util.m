@@ -226,7 +226,7 @@
 :- implementation.
 :- import_module require, int, map, set, std_util, assoc_list, bag.
 :- import_module prog_util, type_util, unify_proc.
-:- import_module inst_match, inst_util.
+:- import_module inst_match, inst_util, det_analysis.
 
 %-----------------------------------------------------------------------------%
 
@@ -1299,6 +1299,11 @@ mode_id_to_int(_ - X, X).
 			bool
 		).
 
+:- pred slap_recompute_info(recompute_info, recompute_info, recompute_info).
+:- mode slap_recompute_info(in, in, out) is det.
+
+slap_recompute_info(RI, _, RI).
+
 :- pred recompute_info_get_vartypes(recompute_info, map(var, type)).
 :- mode recompute_info_get_vartypes(in, out) is det.
 
@@ -1490,32 +1495,82 @@ recompute_instmap_delta_3(not(Goal0), GoalInfo, not(Goal), GoalInfo,
 	{ instmap_delta_init_reachable(InstMapDelta) },
 	recompute_instmap_delta_2(Goal0, Goal, InstMap).
 
-recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
-		if_then_else(Vars, A, B, C, SM), GoalInfo,
-		InstMap0, InstMapDelta) -->
-	{ B0 = _ - GoalInfoB0 },
-	{ goal_info_get_nonlocals(GoalInfoB0, NonLocalsB) },
+recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo0,
+		Goal, GoalInfo, InstMap0, InstMapDelta) -->
+	=(RI0),
+	{ B0 = _ - ThenInfo0 },
+	{ goal_info_get_nonlocals(ThenInfo0, NonLocalsB) },
 	recompute_info_add_live_vars(NonLocalsB),
 	recompute_instmap_delta_2(A0, A, InstMap0, InstMap1, _InstMapDelta1),
 	recompute_info_remove_live_vars(NonLocalsB),
-	recompute_instmap_delta_2(B0, B, InstMap1, InstMap2, _InstMapDelta2),
-	recompute_instmap_delta_2(C0, C, InstMap0, InstMap3, _InstMapDelta3),
-	{ instmap__vars(InstMap0, OuterNonLocals) },
-	{ goal_info_get_nonlocals(GoalInfo, InnerNonLocals) },
-	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
-	=(RI4),
-	{ recompute_info_get_module_info(RI4, M4) },
-	{ recompute_info_get_inst_table(RI4, InstTable4) },
-	{ instmap__merge(NonLocals, [InstMap2, InstMap3],
-		InstMap0, InstMapAfter, M4, InstTable4, M, InstTable,
-		Errors) },
-	{ Errors = [] ->
-		compute_instmap_delta(InstMap0, InstMapAfter, InstMapDelta)
+	{ A = Cond0 - CondInfo0 },
+	{ goal_info_get_determinism(CondInfo0, CondDetism0) },
+	{ determinism_components(CondDetism0, CondCanFail0, CondSolns0) },
+	( { CondCanFail0 = cannot_fail } ->
+		{ goal_to_conj_list(C0, CondList) },
+		{ goal_to_conj_list(B0, ThenList) },
+		{ list__append(CondList, ThenList, List) },
+		slap_recompute_info(RI0),
+		recompute_instmap_delta_3(conj(List), GoalInfo0,
+				Goal, GoalInfo, InstMap0, InstMapDelta)
+	; { CondSolns0 = at_most_zero } ->
+		{ det_negation_det(CondDetism0, MaybeNegDetism) },
+		{ Cond0 = not(NegCond) ->
+			Cond = NegCond
+		;
+			(
+				MaybeNegDetism = yes(NegDetism1),
+				(
+					NegDetism1 = erroneous,
+					instmap_delta_init_unreachable(
+						NegInstMapDelta1)
+				;
+					NegDetism1 = det,
+					instmap_delta_init_reachable(
+						NegInstMapDelta1)
+				)
+			->
+				NegDetism = NegDetism1,
+				NegInstMapDelta = NegInstMapDelta1
+			;
+				error("recompute_instmap_delta_3: cannot get negated determinism")
+			),
+			goal_info_set_determinism(CondInfo0,
+				NegDetism, NegCondInfo0),
+			goal_info_set_instmap_delta(NegCondInfo0,
+				NegInstMapDelta, NegCondInfo),
+			Cond = not(A0) - NegCondInfo
+		},
+		{ goal_to_conj_list(C0, ElseList) },
+		{ List = [Cond | ElseList] },
+		slap_recompute_info(RI0),
+		recompute_instmap_delta_3(conj(List), GoalInfo0,
+				Goal, GoalInfo, InstMap0, InstMapDelta)
 	;
-		error("recompute_instmap_delta_3: if_then_else merge error")
-	},
-	recompute_info_set_module_info(M),
-	recompute_info_set_inst_table(InstTable).
+		recompute_instmap_delta_2(B0, B, InstMap1, InstMap2,
+				_InstMapDelta2),
+		recompute_instmap_delta_2(C0, C, InstMap0, InstMap3,
+				_InstMapDelta3),
+		{ instmap__vars(InstMap0, OuterNonLocals) },
+		{ goal_info_get_nonlocals(GoalInfo, InnerNonLocals) },
+		{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
+		=(RI4),
+		{ recompute_info_get_module_info(RI4, M4) },
+		{ recompute_info_get_inst_table(RI4, InstTable4) },
+		{ instmap__merge(NonLocals, [InstMap2, InstMap3],
+			InstMap0, InstMapAfter, M4, InstTable4, M, InstTable,
+			Errors) },
+		{ Errors = [] ->
+			compute_instmap_delta(InstMap0, InstMapAfter,
+				InstMapDelta)
+		;
+			error("recompute_instmap_delta_3: if_then_else merge error")
+		},
+		{ Goal = if_then_else(Vars, A, B, C, SM) },
+		{ GoalInfo = GoalInfo0 },
+		recompute_info_set_module_info(M),
+		recompute_info_set_inst_table(InstTable)
+	).
 
 recompute_instmap_delta_3(some(Vars, Goal0), GoalInfo,
 		some(Vars, Goal), GoalInfo, InstMap, InstMapDelta) -->

@@ -478,10 +478,10 @@ mercury_output_instance_methods(Methods) -->
 output_instance_method(Method) -->
 	io__write_char('\t'),
 	(
-		{ Method = func_instance(Name1, Name2, Arity) },
+		{ Method = func_instance(Name1, Name2, Arity, _Context) },
 		io__write_string("func(")
 	;
-		{ Method = pred_instance(Name1, Name2, Arity) },
+		{ Method = pred_instance(Name1, Name2, Arity, _Context) },
 		io__write_string("pred(")
 	),
 	mercury_output_bracketed_sym_name(Name1, next_to_graphic_token),
@@ -1292,6 +1292,14 @@ mercury_output_ctor(Ctor, VarSet) -->
 
 	mercury_output_quantifier(VarSet, ExistQVars),
 
+	(
+		{ ExistQVars = [] }
+	->
+		[]
+	;
+		io__write_string("(")
+	),
+
 	% we need to quote ';'/2, '{}'/2, '&'/2, and 'some'/2
 	{ list__length(Args, Arity) },
 	(
@@ -1330,7 +1338,14 @@ mercury_output_ctor(Ctor, VarSet) -->
 		[]
 	),
 
-	mercury_output_class_constraint_list(Constraints, VarSet, "&").
+	mercury_output_class_constraint_list(Constraints, VarSet, "&"),
+	(
+		{ ExistQVars = [] }
+	->
+		[]
+	;
+		io__write_string(")")
+	).
 
 :- pred mercury_output_ctor_arg(varset, constructor_arg, io__state, io__state).
 :- mode mercury_output_ctor_arg(in, in, di, uo) is det.
@@ -1404,6 +1419,11 @@ mercury_output_pred_type_2(VarSet, ExistQVars, PredName, Types, MaybeDet,
 		Purity, ClassContext, _Context, StartString, Separator) -->
 	io__write_string(StartString),
 	mercury_output_quantifier(VarSet, ExistQVars),
+	( { ExistQVars = [] } -> 
+		[] 
+	; 
+		io__write_string("(")
+	),
 	write_purity_prefix(Purity),
 	io__write_string("pred "),
 	(
@@ -1414,10 +1434,20 @@ mercury_output_pred_type_2(VarSet, ExistQVars, PredName, Types, MaybeDet,
 		mercury_output_term(Type, VarSet, no),
 		mercury_output_remaining_terms(Rest, VarSet, no),
 		io__write_string(")"),
-		mercury_output_class_context(ClassContext, VarSet)
+		mercury_output_class_context(ClassContext, VarSet),
+		( { ExistQVars = [] } -> 
+			[] 
+		; 
+			io__write_string(")")
+		)
 	;
 		mercury_output_bracketed_sym_name(PredName),
 		mercury_output_class_context(ClassContext, VarSet),
+		( { ExistQVars = [] } -> 
+			[] 
+		; 
+			io__write_string(")")
+		),
 		mercury_output_det_annotation(MaybeDet)
 	),
 
@@ -1493,6 +1523,11 @@ mercury_output_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
 		Separator) -->
 	io__write_string(StartString),
 	mercury_output_quantifier(VarSet, ExistQVars),
+	( { ExistQVars = [] } -> 
+		[] 
+	; 
+		io__write_string("(")
+	),
 	write_purity_prefix(Purity),
 	io__write_string("func "),
 	(
@@ -1509,6 +1544,11 @@ mercury_output_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
 	io__write_string(" = "),
 	mercury_output_term(RetType, VarSet, no),
 	mercury_output_class_context(ClassContext, VarSet),
+	( { ExistQVars = [] } -> 
+		[] 
+	; 
+		io__write_string(")")
+	),
 	mercury_output_det_annotation(MaybeDet),
 	io__write_string(Separator).
 

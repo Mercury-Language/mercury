@@ -317,6 +317,14 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		% code generator would fail for these.
 		% XXX we should warn about this (if the goal wasn't `true')
 		%
+
+		% XXX this optimization is currently disabled,
+		% since it mishandles calls to existentially typed
+		% predicates. 
+		% The fix for this is to run polymorphism.m before simplify.m.
+		% When that is done, we can re-enable this optimization.
+		semidet_fail,
+
 		determinism_components(Detism, cannot_fail, MaxSoln),
 		MaxSoln \= at_most_zero,
 		goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),

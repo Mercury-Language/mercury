@@ -930,8 +930,7 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMap,
 	% have been (partially) output, if its inst is (or contains) `any'.
 	instmap__lookup_var(InstMap0, Var, Inst0),
 	instmap__lookup_var(InstMap, Var, Inst),
-		% YYY Probably completely bogus. :-(
-	inst_matches_binding(Inst, InstMap0, Inst0, InstMap, InstTable,
+	inst_matches_binding(Inst0, InstMap0, Inst, InstMap, InstTable,
 		ModuleInfo),
 	instmap__no_output_vars_2(Vars, InstMap0, InstMap, InstTable,
 		ModuleInfo).

@@ -169,6 +169,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 	Clause = clause(ProcIds, _, _),
+	% an empty list here means that the clause applies to all procs
 	( ProcIds = [] ->
 		MatchingClauses = [Clause | MatchingClauses1]
 	; list__member(ProcId, ProcIds) ->

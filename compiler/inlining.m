@@ -373,9 +373,6 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	InlineInfo = inline_info(_, _, _, _, VarSet, VarTypes, TypeVarSet, 
 		TypeInfoVarMap, DidInlining, DetChanged),
 
-	% YYY  This is overkill.  We should only recompute the instmap_deltas
-	%      in very high optimisation grades.  However, we haven't yet
-	%      implemented anything simpler...
 	( DidInlining = yes,
 		proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0,
 			Instmap0),

@@ -1585,29 +1585,32 @@ modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts,
 			Vars, Goals) -->
 	(
-		modecheck_set_var_inst_list_2(Vars0, InitialInsts,
-				FinalInsts, no_extra_goals,
-				Vars1, Goals1)
+		modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
+			no_extra_goals, 0, Vars1, Goals1)
 	->
 		{ Vars = Vars1, Goals = Goals1 }
 	;
 		{ error("modecheck_set_var_inst_list: length mismatch") }
 	).
 
-:- pred modecheck_set_var_inst_list_2(list(var), list(inst),
-			list(inst), extra_goals, list(var), extra_goals,
-			mode_info, mode_info).
-:- mode modecheck_set_var_inst_list_2(in, in, in, in, out, out,
+:- pred modecheck_set_var_inst_list_2(list(var), list(inst), list(inst),
+					extra_goals, int,
+					list(var), extra_goals,
+					mode_info, mode_info).
+:- mode modecheck_set_var_inst_list_2(in, in, in, in, in, out, out,
 					mode_info_di, mode_info_uo) is semidet.
 
-modecheck_set_var_inst_list_2([], [], [], ExtraGoals, [], ExtraGoals) --> [].
+modecheck_set_var_inst_list_2([], [], [], ExtraGoals, _, [], ExtraGoals) -->
+	[].
 modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
-			[FinalInst | FinalInsts], ExtraGoals0,
+			[FinalInst | FinalInsts], ExtraGoals0, ArgNum0,
 			[Var | Vars], ExtraGoals) -->
+	{ ArgNum is ArgNum0 + 1 },
+	mode_info_set_call_arg_context(ArgNum),
 	modecheck_set_var_inst(Var0, InitialInst, FinalInst,
 				Var, ExtraGoals0, ExtraGoals1),
-	modecheck_set_var_inst_list_2(Vars0, InitialInsts,
-				FinalInsts, ExtraGoals1, Vars, ExtraGoals).
+	modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
+ 				ExtraGoals1, ArgNum, Vars, ExtraGoals).
 
 :- pred modecheck_set_var_inst(var, inst, inst, var,
 				extra_goals, extra_goals, mode_info, mode_info).

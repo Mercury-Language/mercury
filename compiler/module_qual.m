@@ -830,13 +830,13 @@ qualify_instance_interface(ClassName, M0s, Ms) :-
 		sym_name_get_module_name(ClassName, unqualified(""), Module),
 		Qualify = lambda([M0::in, M::out] is det,
 			(
-				M0 = pred_instance(Method0, A, B),
+				M0 = pred_instance(Method0, A, B, C),
 				add_module_qualifier(Module, Method0, Method),
-				M = pred_instance(Method, A, B)
+				M = pred_instance(Method, A, B, C)
 			;
-				M0 = func_instance(Method0, A, B),
+				M0 = func_instance(Method0, A, B, C),
 				add_module_qualifier(Module, Method0, Method),
-				M = func_instance(Method, A, B)
+				M = func_instance(Method, A, B, C)
 			)),
 		list__map(Qualify, M0s, Ms)
 	).

@@ -39,7 +39,7 @@
 :- import_module base_typeclass_info.
 :- import_module prog_data, prog_util, prog_out.
 :- import_module hlds_data, hlds_pred, hlds_out.
-:- import_module code_util, special_pred, globals, options.
+:- import_module code_util, special_pred, type_util, globals, options.
 
 :- import_module bool, string, map, std_util, require.
 
@@ -70,7 +70,10 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 	TypeId = SymName - TypeArity,
 	(
 		SymName = qualified(TypeModuleName, TypeName),
-		( TypeModuleName = ModuleName ->
+		( 
+			TypeModuleName = ModuleName,
+			\+ type_id_is_hand_defined(TypeId)
+		->
 			map__lookup(TypeTable, TypeId, TypeDefn),
 			hlds_data__get_type_defn_status(TypeDefn, Status),
 			special_pred_list(Specials),

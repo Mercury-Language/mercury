@@ -166,8 +166,8 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		% declared final insts.
 		%
 		mode_list_get_initial_insts(ArgModes, ModuleInfo0,
-			InitialInsts),
-		modecheck_var_has_inst_list(Args0, InitialInsts, 1,
+				InitialInsts),
+		modecheck_var_has_inst_list(Args0, InitialInsts, 0,
 					ModeInfo2, ModeInfo3),
 		mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
 		modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
