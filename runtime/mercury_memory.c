@@ -230,9 +230,6 @@ MR_init_memory(void)
 
 	MR_init_zones();
 
-	if (MR_memdebug) {
-		MR_debug_memory();
-	}
 } /* end MR_init_memory() */
 
 /*---------------------------------------------------------------------------*/

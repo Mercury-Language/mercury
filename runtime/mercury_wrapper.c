@@ -130,8 +130,10 @@ size_t		MR_pnegstack_zone_size =	  16;
 ** amount of heap space still available, and if not, we call
 ** MR_garbage_collect().
 **
-** The collector should (XXX it currently doesn't) recompute this
-** and/or heap_zone->gc_threshold automatically at the end of each collection.
+** XXX Actually, this variable is only used to set the initial value
+** of heap_zone->gc_threshold.
+** The collector recomputes heap_zone->gc_threshold automatically at
+** the end of each collection.
 **
 ** Like the sizes above, it is measured in kilobytes
 ** (but we later multiply by 1024 to convert to bytes).
@@ -521,6 +523,10 @@ mercury_runtime_init(int argc, char **argv)
 	}
   #endif /* ! MR_THREAD_SAFE */
 #endif /* ! MR_HIGHLEVEL_CODE */
+
+	if (MR_memdebug) {
+		MR_debug_memory();
+	}
 
 	/* initialize profiling */
 
