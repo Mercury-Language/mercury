@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2004 The University of Melbourne.
+% Copyright (C) 1997-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -168,14 +168,6 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
 		),
 		Inst1 = Inst0
 	;
-			% XXX should these expansions be done wrt the
-			% ModuleInfo after the module_info__set_insts below?
-			% The original code I cleaned up had these calls to
-			% inst_expand in that position, but referred to the
-			% version of ModuleInfo that is current here.
-		inst_expand(!.ModuleInfo, InstA, InstA2),
-		inst_expand(!.ModuleInfo, InstB, InstB2),
-
 			% insert ThisInstPair into the table with value
 			% `unknown'
 		svmap__det_insert(ThisInstPair, unknown,
@@ -184,6 +176,8 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
 			InstTable0, InstTable1),
 		module_info_set_insts(InstTable1, !ModuleInfo),
 			% unify the insts
+		inst_expand(!.ModuleInfo, InstA, InstA2),
+		inst_expand(!.ModuleInfo, InstB, InstB2),
 		abstractly_unify_inst_2(Live, InstA2, InstB2, UnifyIsReal,
 			Inst0, Det, !ModuleInfo),
 

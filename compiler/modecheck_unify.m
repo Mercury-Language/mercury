@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -613,9 +613,6 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		LiveX = dead
 	->
 		Goal = conj([])
-		% !:ModeInfo = !.ModeInfo	% XXX deleting this exposes
-						% a bug in the state variable
-						% transformation
 	;
 		Det = failure
 	->
@@ -626,9 +623,6 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		% Unifying two preds is not erroneous as far as the
 		% mode checker is concerned, but a mode _error_.
 		Goal = disj([])
-		% !:ModeInfo = !.ModeInfo	% XXX deleting this exposes
-						% a bug in the state variable
-						% transformation
 	;
 		Functor = functor(ConsId, IsExistConstruction, ArgVars),
 		Unify = unify(X, Functor, Mode, Unification, UnifyContext),
