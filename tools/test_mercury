@@ -728,6 +728,12 @@ case $status in 0)
         true)	cd mercury || { false; exit 1; } ;;
     esac
 
+    # Make a backup copy of the current installation which we will restore
+    # if the new installation fails.
+
+    mkdir -p $INSTALL_DIR/../mercury_install_backup
+    cp -rf $INSTALL_DIR/* $INSTALL_DIR/../mercury_install_backup
+
     # Previously we had lots of special case code here for installing on
     # IRIX systems.   We don't currently have any IRIX boxes, and this 
     # code was a bit of a pain to maintain.  If we ever get an IRIX box
@@ -775,6 +781,8 @@ case $status in 0)
 	    ;;
         *)
 	    date >> $TESTDIR/logs/install-failed."$TEST_ID"
+	    # restore the previous installation
+	    cp -rf $INSTALL_DIR/../mercury_install_backup/* $INSTALL_DIR
 	    ;;
     esac
 esac
