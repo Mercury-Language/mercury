@@ -1108,7 +1108,9 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	{ HLDS99 = HLDS97 },
 	mercury_compile__maybe_dump_hlds(HLDS99, "99", "final"), !,
 
-	mercury_compile__maybe_do_optimize(LLDS1, Verbose, Stats, LLDS).
+	{ module_info_get_global_data(HLDS99, GlobalData) },
+	mercury_compile__maybe_do_optimize(LLDS1, GlobalData, Verbose, Stats,
+		LLDS).
 
 :- pred mercury_compile__backend_pass_by_preds(module_info, module_info,
 	list(c_procedure), io__state, io__state).
@@ -1237,7 +1239,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 		Proc0) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	( { Optimize = yes } ->
-		optimize__proc(Proc0, Proc)
+		optimize__proc(Proc0, GlobalData1, Proc)
 	;
 		{ Proc = Proc0 }
 	),
@@ -1910,17 +1912,17 @@ mercury_compile__generate_code(HLDS0, Verbose, Stats, HLDS, LLDS) -->
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
 
-:- pred mercury_compile__maybe_do_optimize(list(c_procedure), bool, bool,
-	list(c_procedure), io__state, io__state).
-:- mode mercury_compile__maybe_do_optimize(in, in, in, out, di, uo) is det.
+:- pred mercury_compile__maybe_do_optimize(list(c_procedure), global_data,
+	bool, bool, list(c_procedure), io__state, io__state).
+:- mode mercury_compile__maybe_do_optimize(in, in, in, in, out, di, uo) is det.
 
-mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
+mercury_compile__maybe_do_optimize(LLDS0, GlobalData, Verbose, Stats, LLDS) -->
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
 		maybe_write_string(Verbose,
 			"% Doing optimizations...\n"),
 		maybe_flush_output(Verbose),
-		optimize_main(LLDS0, LLDS),
+		optimize_main(LLDS0, GlobalData, LLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;

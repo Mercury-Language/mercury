@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -634,6 +634,10 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 	code_info, code_info).
 :- mode code_info__add_trace_layout_for_label(in, in, in, out) is det.
 
+:- pred code_info__add_gc_layout_for_label(label, layout_label_info,
+	code_info, code_info).
+:- mode code_info__add_gc_layout_for_label(in, in, in, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -650,10 +654,6 @@ code_info__set_follow_vars(FollowVars, CI0, CI) :-
 	code_info__get_exprn_info(ExprnInfo0, CI0, _),
 	code_exprn__set_follow_vars(FollowVars, ExprnInfo0, ExprnInfo),
 	code_info__set_exprn_info(ExprnInfo, CI0, CI).
-
-:- pred code_info__get_active_temps_data(assoc_list(lval, slot_contents),
-	code_info, code_info).
-:- mode code_info__get_active_temps_data(out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -709,9 +709,15 @@ code_info__post_goal_update(GoalInfo) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__variable_type(Var, Type) -->
+:- pred code_info__get_var_types(map(prog_var, type), code_info, code_info).
+:- mode code_info__get_var_types(out, in, out) is det.
+
+code_info__get_var_types(VarTypes) -->
 	code_info__get_proc_info(ProcInfo),
-	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ proc_info_vartypes(ProcInfo, VarTypes) }.
+
+code_info__variable_type(Var, Type) -->
+	code_info__get_var_types(VarTypes),
 	{ map__lookup(VarTypes, Var, Type) }.
 
 code_info__lookup_type_defn(Type, TypeDefn) -->
@@ -855,6 +861,27 @@ code_info__add_trace_layout_for_label(Label, LayoutInfo) -->
 	},
 	code_info__set_layout_info(Internals).
 
+code_info__add_gc_layout_for_label(Label, LayoutInfo) -->
+	code_info__get_layout_info(Internals0),
+	{ map__search(Internals0, Label, Internal0) ->
+		Internal0 = internal_layout_info(Exec, Agc0),
+		( Agc0 = no ->
+			true
+		;
+			error("adding gc layout for already known label")
+		),
+		Internal = internal_layout_info(Exec, yes(LayoutInfo)),
+		map__set(Internals0, Label, Internal, Internals)
+	;
+		Internal = internal_layout_info(no, yes(LayoutInfo)),
+		map__det_insert(Internals0, Label, Internal, Internals)
+	},
+	code_info__set_layout_info(Internals).
+
+:- pred code_info__get_active_temps_data(assoc_list(lval, slot_contents),
+	code_info, code_info).
+:- mode code_info__get_active_temps_data(out, in, out) is det.
+
 code_info__get_active_temps_data(Temps) -->
 	code_info__get_temps_in_use(TempsInUse),
 	code_info__get_temp_content_map(TempContentMap),
@@ -886,6 +913,10 @@ code_info__get_active_temps_data(Temps) -->
 :- pred code_info__after_all_branches(store_map, branch_end,
 	code_info, code_info).
 :- mode code_info__after_all_branches(in, in, in, out) is det.
+
+:- pred code_info__save_hp_in_branch(code_tree, lval, position_info,
+	position_info).
+:- mode code_info__save_hp_in_branch(out, out, in, out) is det.
 
 :- implementation.
 
@@ -1008,6 +1039,11 @@ code_info__remake_with_store_map(StoreMap) -->
 code_info__fixup_lvallist([], []).
 code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 	code_info__fixup_lvallist(Ls, Rs).
+
+code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
+	Pos0 = position_info(CodeInfo0),
+	code_info__save_hp(Code, Slot, CodeInfo0, CodeInfo),
+	Pos  = position_info(CodeInfo).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1754,6 +1790,7 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 		HijackInfo, MaybeTrailSlots) },
 
 	code_info__set_fail_info(FailInfo),
+	% XXX should release the temp slots in each arm of the switch
 	(
 		{ HijackInfo = commit_temp_frame(MaxfrSlot) },
 		{ SuccessUndoCode = node([
@@ -2295,7 +2332,8 @@ code_info__generate_resume_point(ResumePoint, Code) -->
 			label(Label1) -
 				"stack only failure continuation"
 		]) },
-		code_info__set_var_locations(Map1)
+		code_info__set_var_locations(Map1),
+		code_info__generate_resume_layout(Label1, Map1)
 	;
 		{ ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2) },
 		{ extract_label_from_code_addr(Addr1, Label1) },
@@ -2305,6 +2343,7 @@ code_info__generate_resume_point(ResumePoint, Code) -->
 				"stack failure continuation before orig"
 		]) },
 		code_info__set_var_locations(Map1),
+		code_info__generate_resume_layout(Label1, Map1),
 		{ map__to_assoc_list(Map2, AssocList2) },
 		code_info__place_resume_vars(AssocList2, PlaceCode),
 		{ Label2Code = node([
@@ -2329,6 +2368,7 @@ code_info__generate_resume_point(ResumePoint, Code) -->
 				"stack failure continuation after orig"
 		]) },
 		code_info__set_var_locations(Map2),
+		code_info__generate_resume_layout(Label2, Map2),
 		{ Code = tree(Label1Code, tree(PlaceCode, Label2Code)) }
 	).
 
@@ -3243,6 +3283,83 @@ code_info__get_live_value_type(ticket, unwanted). % XXX we may need to
 code_info__get_live_value_type(ticket_counter, unwanted).
 code_info__get_live_value_type(sync_term, unwanted).
 code_info__get_live_value_type(trace_data, unwanted).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__generate_resume_layout(label::in, resume_map::in,
+	code_info::in, code_info::out) is det.
+
+code_info__generate_resume_layout(Label, ResumeMap) -->
+	code_info__get_globals(Globals),
+	{ globals__get_gc_method(Globals, GcMethod) },
+	( { GcMethod = accurate } ->
+		{ map__to_assoc_list(ResumeMap, ResumeList) },
+		code_info__get_instmap(InstMap),
+		code_info__get_var_types(VarTypes),
+		code_info__get_varset(VarSet),
+		{ set__init(TVars0) },
+		{ code_info__generate_resume_layout_for_vars(ResumeList,
+			VarSet, VarTypes, InstMap, VarInfos, TVars0, TVars) },
+		{ set__list_to_set(VarInfos, VarInfoSet) },
+		{ set__to_sorted_list(TVars, TVarList) },
+		code_info__find_typeinfos_for_tvars(TVarList, TVarInfoMap),
+		code_info__get_active_temps_data(Temps),
+		{ code_info__generate_temp_var_infos(Temps, TempInfos) },
+		{ set__list_to_set(TempInfos, TempInfoSet) },
+		{ set__union(VarInfoSet, TempInfoSet, AllInfoSet) },
+		{ Layout = layout_label_info(AllInfoSet, TVarInfoMap) },
+		code_info__add_gc_layout_for_label(Label, Layout)
+	;
+		[]
+	).
+
+:- pred code_info__generate_resume_layout_for_vars(
+	assoc_list(prog_var, set(rval))::in, prog_varset::in,
+	map(prog_var, type)::in, instmap::in, list(var_info)::out,
+	set(tvar)::in, set(tvar)::out) is det.
+
+code_info__generate_resume_layout_for_vars([], _, _, _, [], TVars, TVars).
+code_info__generate_resume_layout_for_vars([Var - RvalSet | VarRvals], VarSet,
+		VarTypes, InstMap, [VarInfo | VarInfos], TVars0, TVars) :-
+	code_info__generate_resume_layout_for_var(Var, RvalSet, VarSet,
+		VarTypes, InstMap, VarInfo, TypeVars),
+	set__insert_list(TVars0, TypeVars, TVars1),
+	code_info__generate_resume_layout_for_vars(VarRvals, VarSet,
+		VarTypes, InstMap, VarInfos, TVars1, TVars).
+
+:- pred code_info__generate_resume_layout_for_var(prog_var::in, set(rval)::in,
+	prog_varset::in, map(prog_var, type)::in, instmap::in,
+	var_info::out, list(tvar)::out) is det.
+
+code_info__generate_resume_layout_for_var(Var, RvalSet, VarSet,
+		VarTypes, InstMap, VarInfo, TypeVars) :-
+	set__to_sorted_list(RvalSet, RvalList),
+	( RvalList = [RvalPrime] ->
+		Rval = RvalPrime
+	;
+		error("var has more than one rval in stack resume map")
+	),
+	( Rval = lval(LvalPrime) ->
+		Lval = LvalPrime
+	;
+		error("var rval is not lval in stack resume map")
+	),
+	varset__lookup_name(VarSet, Var, "V_", Name),
+	instmap__lookup_var(InstMap, Var, Inst),
+	map__lookup(VarTypes, Var, Type),
+	LiveType = var(Var, Name, Type, Inst),
+	VarInfo = var_info(direct(Lval), LiveType),
+	type_util__vars(Type, TypeVars).
+
+:- pred code_info__generate_temp_var_infos(
+	assoc_list(lval, slot_contents)::in, list(var_info)::out) is det.
+
+code_info__generate_temp_var_infos([], []).
+code_info__generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
+	Temp = Slot - Contents,
+	code_info__get_live_value_type(Contents, LiveLvalueType),
+	Live = var_info(direct(Slot), LiveLvalueType),
+	code_info__generate_temp_var_infos(Temps, Lives).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

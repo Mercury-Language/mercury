@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2065,6 +2065,9 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 :- pred global_data_update_proc_layout(global_data::in,
 	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
 
+:- pred global_data_maybe_get_proc_layout(global_data::in, pred_proc_id::in,
+	proc_layout_info::out) is semidet.
+
 :- pred global_data_get_proc_layout(global_data::in, pred_proc_id::in,
 	proc_layout_info::out) is det.
 
@@ -2111,6 +2114,10 @@ global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayout,
 	map__det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
 	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
 		GlobalData).
+
+global_data_maybe_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
+	map__search(ProcLayoutMap, PredProcId, ProcLayout).
 
 global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
 	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
