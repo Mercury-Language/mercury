@@ -64,13 +64,17 @@
 
 	% Given a map, return a list of all the keys in the map
 :- pred map__keys(map(K, _V), list(K)).
-:- mode map__keys(input, output).
+:- mode map__keys(input, output) is det.
 
-	% convert a map to an associate list
+	% Given a map, return a list of all the data values in the map
+:- pred map__values(map(_K, V), list(V)).
+:- mode map__values(input, output) is det.
+
+	% convert a map to an association list
 :- pred map__to_assoc_list(map(K,V), list(pair(K,V))).
 :- mode map__to_assoc_list(input, output).
 
-	% convert a map to an associate list
+	% convert a map to an association list
 :- pred map__from_assoc_list(list(pair(K,V)), map(K,V)).
 :- mode map__from_assoc_list(input, output).
 
@@ -124,6 +128,9 @@ map__set(Map0, K, V, Map) :-
 
 map__keys(Map, KeyList) :-
 	bintree__keys(Map, KeyList).
+
+map__values(Map, KeyList) :-
+	bintree__values(Map, KeyList).
 
 map__to_assoc_list(M, L) :-
 	bintree__to_list(M, L).

@@ -21,6 +21,13 @@
 :- pred set__list_to_set(list(T), set(T)).
 :- mode set__list_to_set(in, out) is det.
 
+	% `set__list_to_set(Set, List)' is true iff `List' is the list
+	% of all the members of `Set', in sorted order.
+
+:- pred set__to_sorted_list(set(T), list(T)).
+:- mode set__to_sorted_list(in, out) is det.
+
+	% `set__init(Set)' is true iff `Set' is an empty set.
 	% `set__init(Set)' is true iff `Set' is an empty set.
 
 :- pred set__init(set(_T)).
@@ -93,7 +100,8 @@
 :- mode set__remove_list(in, in, out) is det.
 
 	% `set_union(SetA, SetB, Set)' is true iff `Set' is the union of
-	% `SetA' and `SetB'.
+	% `SetA' and `SetB'.  If the sets are known to be of different
+	% sizes, then for efficiency make `SetA' the larger of the two.
 
 :- pred set__union(set(T), set(T), set(T)).
 :- mode set__union(in, in, out) is det.
@@ -112,9 +120,10 @@
 
 :- type set(T)		  ==	  list(T).
 
-set__list_to_set(List, Set) :-
-	set__init(Set0),
-	set__insert_list(Set0, List, Set).
+set__list_to_set(List, List).
+
+set__to_sorted_list(Set, List) :-
+	sort(Set, List).
 
 :- set__insert_list(_, Xs, _) when Xs.	% NU-Prolog indexing.
 

@@ -50,8 +50,14 @@
 :- pred bintree__keys(bintree(K,_V), list(K)).
 :- mode bintree__keys(in, out).
 
+:- pred bintree__values(bintree(_K,V), list(V)).
+:- mode bintree__values(in, out).
+
 :- pred bintree__from_list(list(pair(K,V)), bintree(K,V)).
 :- mode bintree__from_list(in, out).
+
+:- pred bintree__from_sorted_list(list(pair(K,V)), bintree(K,V)).
+:- mode bintree__from_sorted_list(in, out).
 
 :- pred bintree__from_corresponding_lists(list(K), list(V), bintree(K,V)).
 :- mode bintree__from_corresponding_lists(in, in, out).
@@ -69,6 +75,9 @@
 
 :- pred bintree__branching_factor(bintree(_K,_V), int, int).
 :- mode bintree__branching_factor(in, out, out).
+
+:- pred bintree__balance(bintree(K, V), bintree(K, V)).
+:- mode bintree__balance(in, out).
 
 %-----------------------------------------------------------------------------%
 
@@ -294,6 +303,35 @@ bintree__from_list_2([K - V | List], Tree0, Tree) :-
 
 %-----------------------------------------------------------------------------%
 
+bintree__from_sorted_list(List, Tree) :-
+	length(List, Length),
+	bintree__from_sorted_list_2(Length, List, Tree, _).
+
+:- pred bintree__from_sorted_list_2(int, list(pair(K,V)),
+				bintree(K,V), list(pair(K, V))).
+:- mode bintree__from_sorted_list_2(in, in, out, out).
+
+bintree__from_sorted_list_2(Num, List0, Tree, List) :-
+	( Num = 0 ->
+		List = List0,
+		Tree = empty
+	;
+		Num1 is Num - 1,
+		Half is Num1 // 2,
+		bintree__from_sorted_list_2(Half, List0, LeftSubTree, List1),
+		List1 = [HeadKey - HeadValue | List2],
+		Tree = tree(HeadKey, HeadValue, LeftSubTree, RightSubTree),
+		bintree__from_sorted_list_2(Half, List2, RightSubTree, List)
+	).
+
+%-----------------------------------------------------------------------------%
+
+bintree__balance(Tree0, Tree) :-
+	bintree__to_list(Tree0, List),
+	bintree__from_sorted_list(List, Tree).
+
+%-----------------------------------------------------------------------------%
+
 bintree__from_corresponding_lists(Keys, Values, Tree) :-
 	bintree__from_corresponding_lists_2(Keys, Values, empty, Tree).
 
@@ -331,6 +369,19 @@ bintree__keys_2(empty, List, List).
 bintree__keys_2(tree(K, _V, Left, Right), List0, List) :-
 	bintree__keys_2(Right, List0, List1),
 	bintree__keys_2(Left, [K | List1], List).
+
+%-----------------------------------------------------------------------------%
+
+bintree__values(Tree, List) :-
+	bintree__values_2(Tree, [], List).
+
+:- pred bintree__values_2(bintree(_K, V), list(V), list(V)).
+:- mode bintree__values_2(in, in, out).
+
+bintree__values_2(empty, List, List).
+bintree__values_2(tree(_K, V, Left, Right), List0, List) :-
+	bintree__values_2(Right, List0, List1),
+	bintree__values_2(Left, [V | List1], List).
 
 %-----------------------------------------------------------------------------%
 

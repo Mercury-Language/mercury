@@ -313,44 +313,45 @@ typecheck_finish_clause(TypeInfo0, TypeInfo) :-
 		TypeInfo = TypeInfo0
 	).
 
+	% Check that the all of the types which have been inferred
+	% for the variables in the clause do not contain any unbound type
+	% variables other than the HeadTypeParams.
+
 :- pred check_type_bindings(type_assign, type_info, type_info).
 :- mode check_type_bindings(in, typeinfo_di, typeinfo_uo).
 
 check_type_bindings(TypeAssign, TypeInfo0, TypeInfo) :-
 	typeinfo_get_head_type_params(TypeInfo0, HeadTypeParams),
 	type_assign_get_type_bindings(TypeAssign, TypeBindings),
-	type_assign_get_typevarset(TypeAssign, TVarSet),
-	varset__vars(TVarSet, TVars),
-	check_type_bindings_2(TVars, TypeBindings, HeadTypeParams, ErrorVars),
+	type_assign_get_var_types(TypeAssign, VarTypes),
+	map__values(VarTypes, Types),
+	set__init(Set0),
+	check_type_bindings_2(Types, TypeBindings, HeadTypeParams, Set0, Set),
+	set__to_sorted_list(Set, ErrorVars),
 	( ErrorVars = [] ->
 		TypeInfo = TypeInfo0
 	;
+		type_assign_get_typevarset(TypeAssign, TVarSet),
 		report_unresolved_type_error(ErrorVars, TVarSet, TypeInfo0,
 			TypeInfo)
 	).
 
-:- pred check_type_bindings_2(list(var), tsubst, headtypes, list(var)).
-:- mode check_type_bindings_2(in, in, in, out).
+:- pred check_type_bindings_2(list(term), tsubst, headtypes, set(var),
+				set(var)).
+:- mode check_type_bindings_2(in, in, in, in, out).
 
-check_type_bindings_2([], _, _, []).
-check_type_bindings_2([TVar | TVars], TypeBindings, HeadTypeParams, L) :-
-	( member(TVar, HeadTypeParams) ->
-		L = L1
-	;
-		term__apply_rec_substitution(term_variable(TVar),
-			TypeBindings, Type),
-		(
-			Type = term_variable(T),
-			\+ member(T, HeadTypeParams)
-		->
-			L = [TVar | L1]
-		;
-			L = L1
-		)
-	),
-	check_type_bindings_2(TVars, TypeBindings, HeadTypeParams, L1).
+check_type_bindings_2([], _, _, Set, Set).
+check_type_bindings_2([Type0 | Types], TypeBindings, HeadTypeParams, Set0,
+			Set) :-
+	term__apply_rec_substitution(Type0, TypeBindings, Type),
+	term__vars(Type, TVars),
+	set__list_to_set(TVars, TVarsSet0),
+	set__remove_list(TVarsSet0, HeadTypeParams, TVarsSet1),
+	set__union(Set0, TVarsSet1, Set1),
+	check_type_bindings_2(Types, TypeBindings, HeadTypeParams, Set1, Set).
 
-	% report an error - uninstantiated type parameter
+	% report an error: uninstantiated type parameter
+
 :- pred report_unresolved_type_error(list(var), tvarset, type_info, type_info).
 :- mode report_unresolved_type_error(in, in, typeinfo_di, typeinfo_uo).
 
@@ -625,7 +626,9 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 		% this shouldn't happen - how can a variable which has
 		% not yet been assigned a type variable fail to have
 		% the correct type?
-		error("problem in type unification")
+		%%% error("problem in type unification")
+		term__context_init(0, Context),
+		Type = term_functor(term_atom("<any>"), [], Context)
 	),
 	TypeStuff = type_stuff(Type, TVarSet, TypeBindings),
 	(
@@ -921,9 +924,11 @@ typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo)
 	;
 		typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet0),
+		typecheck_unify_var_functor_2a(TypeAssignSet0,
+			TypeInfo0, ConsDefnList, [], ConsTypeAssignSet),
 								% XXX Args
-		typecheck_unify_var_functor_2(ConsDefnList, Var, Args,
-			TypeInfo0, TypeAssignSet0, [], TypeAssignSet),
+		typecheck_unify_var_functor_3a( ConsTypeAssignSet, Var, Args,
+			TypeInfo0, [], TypeAssignSet),
 		( TypeAssignSet = [], TypeAssignSet0 \= [] ->
 			typeinfo_get_io_state(TypeInfo0, IOState0),
 			report_error_unif_var_functor(TypeInfo0,
@@ -938,38 +943,91 @@ typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 		)
 	).
 
-	% Iterate over all the different possible cons defns
-	% for the functor.
+	% typecheck_unify_var_functor_2a(TypeAssignSet, TypeInfo, ConsDefns):
+	%	
+	% Iterate over all the different possible type assignments.
+	% For each type assignment in `TypeAssignSet', produce a pair 
+	%
+	%	TypeAssign - [cons_type(Type1, ArgTypes1), ...])
+	%
+	% where each `cons_type(Type, ArgTypes)' records one of the possible
+	% types for the constructor in `ConsDefns', and where `TypeAssign' is
+	% the type assignment renamed apart from the types of the constructors.
 
-:- pred typecheck_unify_var_functor_2(list(cons_type_info), var, list(term),
-				type_info, type_assign_set,
-				type_assign_set, type_assign_set).
-:- mode typecheck_unify_var_functor_2(in, in, in, in, in, in, out).
+:- type cons_type ---> cons_type(type, list(type)).
+:- type cons_type_set == list(cons_type).
+:- type cons_type_assign_set == list(pair(type_assign, cons_type_set)).
 
-typecheck_unify_var_functor_2([], _, _, _, _) --> [].
-typecheck_unify_var_functor_2([ConsDefn | ConsDefns], Var, Args,
-		TypeInfo, TheTypeAssignSet) -->
-	typecheck_unify_var_functor_3(TheTypeAssignSet, ConsDefn,
+:- pred typecheck_unify_var_functor_2a(type_assign_set,
+				type_info, list(cons_type_info),
+				cons_type_assign_set, cons_type_assign_set).
+:- mode typecheck_unify_var_functor_2a(in, in, in, in, out).
+
+	% Iterate over the type assign sets
+
+typecheck_unify_var_functor_2a([], _, _) --> [].
+typecheck_unify_var_functor_2a([TypeAssign0 | TypeAssigns], TypeInfo,
+		ConsDefns) -->
+	{ typecheck_unify_var_functor_2b(ConsDefns, TypeInfo,
+		TypeAssign0, TypeAssign, [], ConsTypeAssignSet) },
+	append([TypeAssign - ConsTypeAssignSet]),
+	typecheck_unify_var_functor_2a(TypeAssigns, TypeInfo, ConsDefns).
+
+	% Iterate over all the different cons defns.
+
+:- pred typecheck_unify_var_functor_2b(list(cons_type_info), type_info,
+				type_assign, type_assign,
+				cons_type_set, cons_type_set).
+:- mode typecheck_unify_var_functor_2b(in, in, in, out, in, out).
+
+typecheck_unify_var_functor_2b([], _, TypeAssign, TypeAssign) --> [].
+typecheck_unify_var_functor_2b([ConsDefn | ConsDefns], TypeInfo, TypeAssign0,
+		TypeAssign)
+		-->
+	{ get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
+			ConsType, ArgTypes, TypeAssign1) },
+	append([cons_type(ConsType, ArgTypes)]),
+	typecheck_unify_var_functor_2b(ConsDefns, TypeInfo,
+			TypeAssign1, TypeAssign).
+
+	% typecheck_unify_var_functor_3a(ConsTypeAssignSet, Var, Args, ...):
+	%
+	% For each possible cons type assignment in `ConsTypeAssignSet',
+	% for each possible constructor type and argument types,
+	% check that the types of `Var' and `Args' matches these types.
+
+:- pred typecheck_unify_var_functor_3a(cons_type_assign_set, var, list(term),
+				type_info, type_assign_set, type_assign_set).
+:- mode typecheck_unify_var_functor_3a(in, in, in, in, in, out).
+
+typecheck_unify_var_functor_3a([], _, _, _) --> [].
+typecheck_unify_var_functor_3a([TypeAssign - ConsTypes | ConsTypeAssigns],
+		Var, Args, TypeInfo) -->
+	typecheck_unify_var_functor_3b(ConsTypes, TypeAssign,
 			Var, Args, TypeInfo),
-	typecheck_unify_var_functor_2(ConsDefns, Var, Args,
-		TypeInfo, TheTypeAssignSet).
+	typecheck_unify_var_functor_3a(ConsTypeAssigns, Var, Args, TypeInfo).
 
-	% For each possible cons defn, we now
-	% iterate over all the different possible type assignments.
+	% typecheck_unify_var_functor_3b(ConsTypes, TypeAssign, Var, Args, ...):
+	%
+	% For each possible constructor type and argument types in `ConsTypes',
+	% check that the types of `Var' and `Args' matches these types.
 
-:- pred typecheck_unify_var_functor_3(type_assign_set, cons_type_info,
+:- pred typecheck_unify_var_functor_3b(list(cons_type), type_assign,
 				var, list(term), type_info,
 				type_assign_set, type_assign_set).
-:- mode typecheck_unify_var_functor_3(in, in, in, in, in, in, out).
+:- mode typecheck_unify_var_functor_3b(in, in, in, in, in, in, out).
 
-typecheck_unify_var_functor_3([], _, _, _, _) --> [].
-typecheck_unify_var_functor_3([TypeAssign | TypeAssigns],
-			ConsDefn, Var, Args, TypeInfo) -->
-	type_assign_unify_var_functor_2(ConsDefn,
+typecheck_unify_var_functor_3b([], _, _, _, _) --> [].
+typecheck_unify_var_functor_3b([ConsType | ConsTypes],
+			TypeAssign, Var, Args, TypeInfo) -->
+	{ ConsType = cons_type(Type, ArgTypes) },
+	type_assign_unify_var_functor_2(Type, ArgTypes,
 			Args, Var, TypeAssign, TypeInfo),
-	typecheck_unify_var_functor_3(TypeAssigns,
-			ConsDefn, Var, Args, TypeInfo).
+	typecheck_unify_var_functor_3b(ConsTypes, TypeAssign,
+			Var, Args, TypeInfo).
 
+
+/******** OLD JUNK
 :- pred typecheck_unification_old(term, term, type_info, type_info).
 :- mode typecheck_unification_old(in, in, typeinfo_di, typeinfo_uo).
 
@@ -987,7 +1045,7 @@ typecheck_unification_old(X, Y, TypeInfo0, TypeInfo) :-
 	;
 		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
 	).
-
+**************/
 
 	% iterate over all the possible type assignments.
 
@@ -1110,27 +1168,27 @@ type_assign_unify_term(term_functor(_, _, _), term_functor(_, _, _),
 type_assign_unify_var_functor([], _, _, _, _) --> [].
 type_assign_unify_var_functor([ConsDefn | ConsDefns],
 			Args, Var, TypeAssign0, TypeInfo) -->
-	type_assign_unify_var_functor_2(ConsDefn,
-			Args, Var, TypeAssign0, TypeInfo),
+	{ get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
+			ConsType, ArgTypes, TypeAssign1) },
+	type_assign_unify_var_functor_2(ConsType, ArgTypes,
+			Args, Var, TypeAssign1, TypeInfo),
 	type_assign_unify_var_functor(ConsDefns,
 			Args, Var, TypeAssign0, TypeInfo).
 
 
-:- pred type_assign_unify_var_functor_2(cons_type_info, list(term),
-		var, type_assign,
-		type_info, type_assign_set, type_assign_set).
-:- mode type_assign_unify_var_functor_2(in, in, in, in, typeinfo_ui, in, out).
+:- pred type_assign_unify_var_functor_2(type, list(type), list(term),
+		var, type_assign, type_info,
+		type_assign_set, type_assign_set).
+:- mode type_assign_unify_var_functor_2(in, in, in, in, in, typeinfo_ui,
+		in, out).
 
 	% unify the type of the variable with the type of
 	% the constructor and if this succeeds insert that
 	% type assignment into the type assignment set.
 
-type_assign_unify_var_functor_2(ConsDefn, Args, Y, TypeAssign0,
+type_assign_unify_var_functor_2(ConsType, ArgTypes, Args, Y, TypeAssign1,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 
-	get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
-			ConsType, ArgTypes, TypeAssign1),
-	
 		% unify the type of Var with the type of the constructor
 	type_assign_get_var_types(TypeAssign1, VarTypes0),
 	( %%% if some [TypeY]
@@ -2059,6 +2117,7 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 
 %-----------------------------------------------------------------------------%
 
+/************** OLD JUNK
 :- pred report_error_unif(type_info, term, term,
 			type_assign_set, io__state, io__state).
 :- mode report_error_unif(typeinfo_no_io, in, in, in, di, uo).
@@ -2072,6 +2131,7 @@ report_error_unif(TypeInfo, X, Y, TypeAssignSet) -->
 	io__write_term(VarSet, Y),
 	io__write_string("'.\n"),
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
+**********************/
 
 :- pred report_error_unif_var_var(type_info, var, var, type_assign_set,
 					io__state, io__state).
@@ -2083,9 +2143,9 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	{ typeinfo_get_unify_context(TypeInfo, UnifyContext) },
 
+	write_context_and_pred_id(TypeInfo),
 	write_unify_context(UnifyContext, Context),
 
-	write_typeinfo_context(TypeInfo),
 	io__write_string("  type error in unification of variable `"),
 	io__write_variable(X, VarSet),
 	io__write_string("' and variable `"),
@@ -2117,7 +2177,7 @@ report_error_unif_var_functor(TypeInfo, Var, Functor, Args, TypeAssignSet) -->
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	{ typeinfo_get_unify_context(TypeInfo, UnifyContext) },
 
-	write_typeinfo_context(TypeInfo),
+	write_context_and_pred_id(TypeInfo),
 	write_unify_context(UnifyContext, Context),
 
 	io__write_string("  type error in unification of "),
@@ -2126,11 +2186,11 @@ report_error_unif_var_functor(TypeInfo, Var, Functor, Args, TypeAssignSet) -->
 	io__write_term(VarSet, term_functor(Functor, Args, Context)),
 	io__write_string("'.\n"),
 
-	io__write_string("\t"),
+	io__write_string("\t("),
 	write_argument_name(VarSet, Var),
 	io__write_string(" "),
 	write_type_of_var(TypeInfo, TypeAssignSet, Var),
-	io__write_string(".\n"),
+	io__write_string(".)\n"),
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
@@ -2457,7 +2517,7 @@ write_context_and_pred_id(TypeInfo) -->
 report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	write_typeinfo_context(TypeInfo),
 	io__write_string("  error: ambiguous overloading causes type ambiguity.\n"),
-	io__write_string("\tpossible type assignments include:\n"),
+	io__write_string("\tPossible type assignments include:\n"),
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ map__keys(VarTypes1, Vars1) },

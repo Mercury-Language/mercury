@@ -59,6 +59,10 @@
 :- pred delete(list(T), T, list(T)).
 :- mode delete(in, in, out).
 
+	% sort(List0, List):
+	%	List is List0 sorted with duplicates removed.
+:- pred sort(list(T), list(T)).
+:- mode sort(in, out).
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -70,6 +74,7 @@
 :- external("NU-Prolog", delete/3).
 :- external("NU-Prolog", length/2).
 :- external("NU-Prolog", reverse/2).
+:- external("NU-Prolog", sort/2).
 */
 
 condense([], []).

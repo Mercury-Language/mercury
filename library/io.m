@@ -11,8 +11,8 @@
 %-----------------------------------------------------------------------------%
 
 :- module io.
-:- import_module char, int, float, string.
 :- interface.
+:- import_module char, int, float, string, std_util.
 
 % External interface: imported predicate
 
