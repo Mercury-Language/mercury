@@ -30,4 +30,5 @@ Mercury
 *.pdb
 *.*_date
 *.mh
+*.mih
 Mercury.modules

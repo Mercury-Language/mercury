@@ -17,6 +17,7 @@
 *.pic_o
 mdb*.h
 mdb*.mh
+mdb*.mih
 mer_browser.init
 Mercury
 mdb.dv

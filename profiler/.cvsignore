@@ -4,6 +4,7 @@
 *.d
 *.h
 *.mh
+*.mih
 *.ql
 *.pl
 *.prof
