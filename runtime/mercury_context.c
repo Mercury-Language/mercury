@@ -54,6 +54,8 @@ init_thread_stuff(void)
 	free_context_list_lock = make(MercuryLock);
 	pthread_mutex_init(free_context_list_lock, MR_MUTEX_ATTR);
 
+	pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
+
 	MR_KEY_CREATE(&MR_engine_base_key, NULL);
 
 #endif

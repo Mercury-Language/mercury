@@ -151,6 +151,13 @@ typedef struct {
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef	MR_THREAD_SAFE
+typedef struct MR_mercury_thread_list_struct {
+	MercuryThread			thread;
+	struct MR_mercury_thread_list_struct	*next;
+} MercuryThreadList;
+#endif
+
 /*
 ** The Mercury engine structure.
 **	Normally there is one of these for each Posix thread.
@@ -180,8 +187,9 @@ typedef struct MR_mercury_engine_struct {
 #ifdef	MR_THREAD_SAFE
 	MercuryThread	owner_thread;
 	unsigned	c_depth;
+	MercuryThreadList *saved_owners;
 		/*
-		** These two fields are used to ensure that when a
+		** These three fields are used to ensure that when a
 		** thread executing C code calls the Mercury engine
 		** associated with that thread, the Mercury code
 		** will finish in the same engine and return appropriately.
@@ -193,6 +201,10 @@ typedef struct MR_mercury_engine_struct {
 		** the Mercury engine finishes, c_depth is decremented and
 		** the owner_thread field of the current context is restored
 		** to its previous value.
+		** The list `saved_owners' is used in call_engine_inner
+		** to store the owner of a context across calls into Mercury.
+		** At the moment this is only used for sanity checking - that
+		** execution never returns into C in the wrong thread.
 		*/
 #endif
 	jmp_buf		*e_jmp_buf;

@@ -116,6 +116,7 @@ init_engine(MercuryEngine *eng)
 #ifdef	MR_THREAD_SAFE
 	eng->owner_thread = pthread_self();
 	eng->c_depth = 0;
+	eng->saved_owners = NULL;
 #endif
 
 	/*
@@ -232,9 +233,6 @@ call_engine(Code *entry_point)
 void 
 call_engine_inner(Code *entry_point)
 {
-#ifdef	MR_THREAD_SAFE
-	MercuryThread saved_owner_thread;
-#endif
 	/*
 	** Allocate some space for local variables in other
 	** procedures. This is done because we may jump into the middle
@@ -251,6 +249,11 @@ call_engine_inner(Code *entry_point)
 	** This technique should work and should be vaguely portable,
 	** just so long as local variables and temporaries are allocated in
 	** the same way in every function.
+	**
+	** WARNING!
+	** Do not add local variables to call_engine_inner that you expect
+	** to remain live across Mercury execution - Mercury execution will
+	** scribble on the stack frame for this function.
 	*/
 
 	unsigned char locals[LOCALS_SIZE];
@@ -295,8 +298,17 @@ call_engine_inner(Code *entry_point)
 	*/
 #ifdef	MR_THREAD_SAFE
 	MR_ENGINE(c_depth)++;
-	saved_owner_thread = MR_ENGINE(this_context)->owner_thread;
+{
+	MercuryThreadList *new_element;
+
+	new_element = make(MercuryThreadList);
+	new_element->thread = MR_ENGINE(this_context)->owner_thread;
+	new_element->next = MR_ENGINE(saved_owners);
+	MR_ENGINE(saved_owners) = new_element;
+}
+
 	MR_ENGINE(this_context)->owner_thread = MR_ENGINE(owner_thread);
+
 #endif
 
 	/*
@@ -306,16 +318,32 @@ call_engine_inner(Code *entry_point)
 	noprof_call(entry_point, LABEL(engine_done));
 
 Define_label(engine_done);
+
 	/*
 	** Decrement the number of times we've entered this
 	** engine from C and restore the owning thread in
 	** the current context.
 	*/
 #ifdef	MR_THREAD_SAFE
+
 	assert(MR_ENGINE(this_context)->owner_thread
 		== MR_ENGINE(owner_thread));
 	MR_ENGINE(c_depth)--;
-	MR_ENGINE(this_context)->owner_thread = saved_owner_thread;
+{
+	MercuryThreadList *tmp;
+	MercuryThread val;
+
+	tmp = MR_ENGINE(saved_owners);
+	if (tmp != NULL)
+	{
+		val = tmp->thread;
+		MR_ENGINE(saved_owners) = tmp->next;
+		oldmem(tmp);
+	} else {
+		val = 0;
+	}
+	MR_ENGINE(this_context)->owner_thread = val;
+}
 #endif
 
 	/*

@@ -19,19 +19,22 @@ ENDINIT
 
 #ifdef	MR_THREAD_SAFE
   MercuryThreadKey MR_engine_base_key;
+  MercuryLock MR_global_lock;
 #endif
 
 bool	MR_exit_now;
-
-void *init_thread(void *unused);
 
 Declare_entry(do_runnext);
 
 MR_MAKE_STACK_LAYOUT_ENTRY(do_runnext)
 
 #ifdef MR_THREAD_SAFE
+
+static void *
+create_thread_2(void *goal);
+
 MercuryThread *
-create_thread(int x)
+create_thread(MR_ThreadGoal *goal)
 {
 	MercuryThread *thread;
 	pthread_attr_t attrs;
@@ -39,7 +42,7 @@ create_thread(int x)
 
 	thread = make(MercuryThread);
 	pthread_attr_init(&attrs);
-	err = pthread_create(thread, &attrs, init_thread, (void *) x);
+	err = pthread_create(thread, &attrs, create_thread_2, (void *) goal);
 
 #if 0
 	fprintf(stderr, "pthread_create returned %d (errno = %d)\n",
@@ -51,10 +54,27 @@ create_thread(int x)
 
 	return thread;
 }
+
+static void *
+create_thread_2(void *goal0)
+{
+	MR_ThreadGoal *goal;
+
+	goal = (MR_ThreadGoal *) goal0;
+	if (goal != NULL) {
+		init_thread(MR_use_now);
+		(goal->func)(goal->arg);
+	} else {
+		init_thread(MR_use_later);
+	}
+
+	return NULL;
+}
+
 #endif /* MR_THREAD_SAFE */
 
-void *
-init_thread(void *unused)
+void
+init_thread(MR_when_to_use when_to_use)
 {
 	MercuryEngine *eng;
 
@@ -87,13 +107,19 @@ init_thread(void *unused)
 	MR_ENGINE(owner_thread) = pthread_self();
 #endif
 
-	if (unused == 0) {
-		call_engine(ENTRY(do_runnext));
+	switch (when_to_use) {
+		case MR_use_later :
+			call_engine(ENTRY(do_runnext));
 
-		destroy_engine(eng);
+			destroy_engine(eng);
+			return;
+
+		case MR_use_now :
+			return;
+		
+		default:
+			fatal_error("init_thread was passed a bad value");
 	}
-
-	return NULL;
 }
 
 #ifdef	MR_THREAD_SAFE
@@ -156,6 +182,11 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
 	assert(err == 0);
 }
 #endif
+
+/*
+INIT mercury_scheduler_wrapper
+ENDINIT
+*/
 
 
 Define_extern_entry(do_runnext);

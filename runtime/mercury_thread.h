@@ -52,6 +52,17 @@
     #define	MR_WAIT(cnd, mtx)	MR_cond_wait((cnd), (mtx))
   #endif
 
+    	/*
+	** The following two macros are used to protect pragma c_code
+	** predicates which are not thread-safe.
+	** See the comments below.
+	*/
+  #define MR_OBTAIN_GLOBAL_C_LOCK()	MR_mutex_lock(&MR_global_lock, \
+						"pragma c code");
+
+  #define MR_RELEASE_GLOBAL_C_LOCK()	MR_mutex_unlock(&MR_global_lock, \
+						"pragma c code");
+
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
     #define MR_GETSPECIFIC(key) 	({		\
 		pthread_addr_t gstmp;			\
@@ -64,9 +75,35 @@
     #define	MR_KEY_CREATE		pthread_key_create
   #endif
 
-  MercuryThread	*create_thread(int x);
+  typedef struct {
+	  void	(*func)(void *);
+	  void	*arg;
+  } MR_ThreadGoal;
+
+  /*
+  ** create_thread(Goal) creates a new POSIX thread, and creates and
+  ** initializes a new Mercury engine to run in that thread. If Goal
+  ** is a NULL pointer, that thread will suspend on the global Mercury
+  ** runqueue. If Goal is non-NULL, it is a pointer to a MR_ThreadGoal
+  ** structure containing a function and an argument. The function will
+  ** be called with the given argument in the new thread.
+  */
+  MercuryThread	*create_thread(MR_ThreadGoal *);
   void		destroy_thread(void *eng);
   extern bool	MR_exit_now;
+
+	/*
+	** MR_global_lock is a mutex for ensuring that only one non-threadsafe
+	** piece of pragma c code executes at a time. If `not_threadsafe' is
+	** given or `threadsafe' is not given in the attributes of a pragma
+	** c code definition of a predicate, then the generated code will
+	** obtain this lock before executing the C code fragment, and then
+	** release it afterwards.
+	** XXX we should emit a warning if may_call_mercury and not_threadsafe
+	** (the defaults) are specified since if you obtain the lock then
+	** call back into Mercury deadlock could result.
+	*/
+  extern MercuryLock MR_global_lock;
 
 #else /* not MR_THREAD_SAFE */
 
@@ -76,8 +113,29 @@
   #define MR_SIGNAL(nothing)		do { } while (0)
   #define MR_WAIT(no, thing)		do { } while (0)
 
+  #define MR_OBTAIN_GLOBAL_C_LOCK()	do { } while (0)
+
+  #define MR_RELEASE_GLOBAL_C_LOCK()	do { } while (0)
+
 #endif
 
-void	*init_thread(void *);
+/*
+** The following enum is used as the argument to init_thread.
+** MR_use_now should be passed to init_thread to indicate that
+** it has been called in a context in which it should initialize
+** the current thread's environment and return.
+** MR_use_later should be passed to indicate that the thread should
+** be initialized, then suspend waiting for work to appear in the
+** runqueue. The engine is destroyed when the execution of work from
+** the runqueue returns.
+*/
+typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
+
+/*
+** Create and initialize a new Mercury engine running in the current
+** POSIX thread.
+** See the comments above for the meaning of the argument.
+*/
+void	init_thread(MR_when_to_use);
 
 #endif
