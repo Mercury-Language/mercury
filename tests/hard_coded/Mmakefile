@@ -136,7 +136,7 @@ ORDINARY_PROGS=	\
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
 ifeq "$(findstring hl,$(GRADE))" ""
-BACKEND_PROGS = copy_pred factt_non type_tables
+BACKEND_PROGS = copy_pred copy_pred_2 factt_non type_tables
 else
 BACKEND_PROGS =
 endif

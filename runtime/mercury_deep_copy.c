@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,6 +16,7 @@
 #include "mercury_deep_copy.h"
 #include "mercury_type_info.h"
 #include "mercury_ho_call.h"
+#include "mercury_layout_util.h"
 #include "mercury_memory.h"
 
 
