@@ -533,6 +533,10 @@ else
 	fi
 fi
 
+# We can't use grade jump.gc or fast.gc unless we have a working Mercury
+# compiler to bootstrap with, since the C code generated for the other
+# grades won't work in grade jump.gc or fast.gc.
+
 if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
 	if test $BOOTSTRAP_MC = ""; then
 		DESIRED_GRADE=GRADE
@@ -564,7 +568,7 @@ DEFAULT_GRADE=$GRADE
 # For Irix 5.x, shared libraries are incompatible with gcc non-local gotos
 # We prefer to use shared libraries by default
 case "$host" in
-	mips-sgi-irix5.*)
+	mips-sgi-irix5.*|alpha-dec-osf*)
 		DEFAULT_GRADE=reg.gc
 		;;
 esac
@@ -608,12 +612,12 @@ case "$host" in
 		PIC_O=o
 		SO=so
 		;;
-	mips-sgi-irix5.*)
+	mips-sgi-irix5.*|alpha-dec-osf*)
 		LINK_SHARED_OBJ="ld -shared"
 		PIC=
 		PIC_O=o
 		# shared libraries only work for reg.gc or none.gc
-		if test "$GRADE" = reg.gc; then
+		if test "$GRADE" = reg.gc || test "$GRADE" = none.gc; then
 			AC_MSG_RESULT(yes)
 			SO=so
 		else
@@ -649,16 +653,12 @@ scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
 ,
 
-chmod a-w Mmake.common scripts/mc scripts/mcn scripts/mcs scripts/mprof \
-scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml \
-scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init \
-scripts/msc scripts/msl scripts/msp scripts/sicstus_conv \
-runtime/conf.h
+echo chmod a-w $CONFIG_FILES $CONFIG_HEADERS
+chmod a-w $CONFIG_FILES $CONFIG_HEADERS
 
-chmod +x scripts/mc scripts/mcn scripts/mcs scripts/mprof \
-scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml \
-scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init \
-scripts/msc scripts/msl scripts/msp scripts/sicstus_conv 
+exec_files="`echo $CONFIG_FILES | sed -e 's/[^ ]*Mmake.common//' `"
+echo chmod +x $exec_files
+chmod +x $exec_files
 )
 
 #-----------------------------------------------------------------------------#
