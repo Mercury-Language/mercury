@@ -494,7 +494,7 @@ while ($_ = &next_line) {
 	    $table_type = 'v';
 	}
 	# special cases
-	if ($tag eq 'top' || ($tag eq 'node' && /^\@node\s+top\s*,/i)) {
+	if (0 && ($tag eq 'top' || ($tag eq 'node' && /^\@node\s+top\s*,/i))) {
 	    $in_top = 1;
 	    @lines = (); # ignore all lines before top (title page garbage)
 	    next;
