@@ -45,6 +45,13 @@
 :- mode same_length(input_list_skel, output_list_skel).
 :- mode same_length(output_list_skel, input_list_skel).
 
+	% split_list(Len, List, Start, End):
+	%	splits `List' into a prefix `Start' of length `Len',
+	%	and a remainder `End'.
+
+:- pred split_list(int, list(T), list(T), list(T)).
+:- mode split_list(input, input, output, output).
+
 :- pred reverse(list(T), list(T)).
 :- mode reverse(input, output).
 
@@ -74,6 +81,18 @@ member_chk(X, [Y | Ys]) :-
 		true
 	;
 		member_chk(X, Ys)
+	).
+
+split_list(N, List, Start, End) :-
+	( N = 0 ->
+		Start = [],
+		End = List
+	;
+		N > 0,
+		N1 is N - 1,
+		List = [Head | List1],
+		Start = [Head | Start1],
+		split_list(N1, List1, Start1, End)
 	).
 
 %-----------------------------------------------------------------------------%
