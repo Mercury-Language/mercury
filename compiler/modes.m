@@ -485,6 +485,9 @@ modecheck_goal_2(unify(A, B, _, _, UnifyContext), _,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 
+modecheck_goal_2(switch(_, _, _), _, _) -->
+	{ error("modecheck_goal_2: unexpected switch") }.
+
 	% Return Result = yes if the called predicate never succeeds.
 
 :- pred mode_info_never_succeeds(mode_info, pred_id, proc_id, bool).
@@ -1924,6 +1927,7 @@ make_ground_inst_list([Inst0 | Insts0], ModuleInfo0,
 
 make_ground_inst(not_reached, M, not_reached, M).
 make_ground_inst(free, M, ground, M).
+make_ground_inst(free(T), M, defined_inst(typed_ground(T)), M).
 make_ground_inst(bound(BoundInsts0), M0, bound(BoundInsts), M) :-
 	make_ground_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
 make_ground_inst(ground, M, ground, M).

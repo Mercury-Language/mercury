@@ -264,7 +264,8 @@ move_follow_code_is_branched(Goal - _GoalInfo) :-
 
 move_follow_code_is_builtin(Goal - _GoalInfo) :-
 	(
-		Goal = unify(_,_,_,_,_)
+		Goal = unify(_,_,_,Unification,_),
+		Unification \= complicated_unify(_, _, _)
 	->
 		true
 	;

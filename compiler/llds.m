@@ -79,6 +79,11 @@
 			;	true
 			;	false
 			;	unused.
+			/* any additions here also require additions in
+			   code_info__generate_expression
+			   code_info__generate_expression_vars
+			   code_info__expression_dependencies
+			*/
 
 :- type operator	--->	(+)
 			;	(-)

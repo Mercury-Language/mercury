@@ -1268,16 +1268,18 @@ parse_type_decl_rule(VarSet, Rule, R) :-
 	% a representation of the declaration.
 :- pred parse_mode_decl_pred(varset, term, maybe1(item)).
 :- mode parse_mode_decl_pred(in, in, out) is det.
-parse_mode_decl_pred(VarSet, Pred, R) :-
+parse_mode_decl_pred(VarSet, Pred, Result) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, Determinism),
-	( Determinism = ok(Determinism1) ->
-		process_mode(VarSet, Body2, Determinism1, Condition, R)
-	;
+	parse_mode_decl_pred_2(Determinism, VarSet, Body2, Condition, Result).
+
+:- pred parse_mode_decl_pred_2(maybe1(determinism), varset, term, condition,
+				maybe1(item)).
+:- mode parse_mode_decl_pred_2(in, in, in, in, out) is det.
+parse_mode_decl_pred_2(ok(Det), VarSet, Body, Condition, R) :-
+	process_mode(VarSet, Body, Det, Condition, R).
+parse_mode_decl_pred_2(error(Term, Reason), _, _, _, error(Term, Reason)).
 		% just pass the error up (after conversion to the right type)
-		Determinism = error(Term, Reason),
-		R = error(Term, Reason)
-	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1311,8 +1313,6 @@ get_determinism(B, Body, Determinism) :-
 	).
 
 :- pred standard_det(string, determinism).
-/*###1314 [cc] Warning: determinism declaration could be stricter.%%%*/
-/*###1314 [cc] Declared `semidet', inferred `det'.%%%*/
 :- mode standard_det(in, out) is semidet.
 standard_det("det", det).
 standard_det("nondet", nondet).
@@ -1421,25 +1421,23 @@ process_abstract_type_2(ok(Functor, Args), ok(abstract_type(Functor, Args))).
 	
 :- pred check_for_errors(term, term, maybe_functor).
 :- mode check_for_errors(in, in, out) is det.
-check_for_errors(Term, Body, Result) :-
-	( Term = term__variable(_) ->
-		Result = error("Variable on LHS of type definition", Term)
+check_for_errors(Head, Body, Result) :-
+	( Head = term__variable(_) ->
+		Result = error("Variable on LHS of type definition", Head)
 	;
-		parse_qualified_term(Term, "type definition", R),
-		check_for_errors_2(R, Body, Term, Result)
+		parse_qualified_term(Head, "type definition", R),
+		check_for_errors_2(R, Body, Head, Result)
 	).
 
 :- pred check_for_errors_2(maybe_functor, term, term, maybe_functor).
 :- mode check_for_errors_2(in, in, in, out) is det.
 check_for_errors_2(error(Msg, Term), _, _, error(Msg, Term)).
-check_for_errors_2(ok(Name, Args), Body, Term, Result) :-
-	check_for_errors_3(Name, Args, Body, Term, Result).
+check_for_errors_2(ok(Name, Args), Body, Head, Result) :-
+	check_for_errors_3(Name, Args, Body, Head, Result).
 
 :- pred check_for_errors_3(sym_name, list(term), term, term, maybe_functor).
-/*###1437 [cc] Error: determinism declaration not satisfied.%%%*/
-/*###1437 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode check_for_errors_3(in, in, in, in, out) is det.
-check_for_errors_3(Name, Args, Body, Term, Result) :-
+check_for_errors_3(Name, Args, Body, Head, Result) :-
 	% check that all the head args are variables
 	( %%%	some [Arg]
 		(
@@ -1447,7 +1445,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 			Arg \= term__variable(_)
 		)
 	->
-		Result = error("Type parameters must be variables", Arg)
+		Result = error("Type parameters must be variables", Head)
 	;
 	% check that all the head arg variables are distinct
 	  %%%	some [Arg2, OtherArgs]
@@ -1456,7 +1454,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 			list__member(Arg2, OtherArgs)
 		)
 	->
-		Result = error("Repeated type parameters in LHS of type defn", Term)
+		Result = error("Repeated type parameters in LHS of type defn", Head)
 	% check that all the variables in the body occur in the head
 	; %%% some [Var2]
 		(
@@ -1659,8 +1657,6 @@ convert_inst_defn(Head, Body, Result) :-
 	convert_inst_defn_2(R, Head, Body, Result).
 
 :- pred convert_inst_defn_2(maybe_functor, term, term, maybe1(inst_defn)).
-/*###1658 [cc] Error: determinism declaration not satisfied.%%%*/
-/*###1658 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode convert_inst_defn_2(in, in, in, out) is det.
 
 convert_inst_defn_2(error(M,T), _, _, error(M,T)).
@@ -1672,7 +1668,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 			Arg \= term__variable(_)
 		)
 	->
-		Result = error("Inst parameters must be variables", Arg)
+		Result = error("Inst parameters must be variables", Head)
 	;
 	% check that all the head arg variables are distinct
 	%%%	some [Arg2, OtherArgs]
@@ -1712,8 +1708,6 @@ convert_abstract_inst_defn(Head, Result) :-
 	convert_abstract_inst_defn_2(R, Head, Result).
 
 :- pred convert_abstract_inst_defn_2(maybe_functor, term, maybe1(inst_defn)).
-/*###1709 [cc] Error: determinism declaration not satisfied.%%%*/
-/*###1709 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode convert_abstract_inst_defn_2(in, in, out) is det.
 convert_abstract_inst_defn_2(error(M,T), _, error(M,T)).
 convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
@@ -1724,7 +1718,7 @@ convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
 			Arg \= term__variable(_)
 		)
 	->
-		Result = error("Inst parameters must be variables", Arg)
+		Result = error("Inst parameters must be variables", Head)
 	;
 	% check that all the head arg variables are distinct
 	%%%	some [Arg2, OtherArgs]
@@ -1798,8 +1792,6 @@ process_inst_defn(ok(InstDefn), VarSet, Cond,
 	% parse a `:- mode foo :: ...' or `:- mode foo = ...' definition.
 
 :- pred parse_mode_decl(varset, term, maybe1(item)).
-/*###1793 [cc] Error: determinism declaration not satisfied.%%%*/
-/*###1793 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode parse_mode_decl(in, in, out) is det.
 parse_mode_decl(VarSet, ModeDefn, Result) :-
 	( %%% some [H,B]
@@ -1828,8 +1820,6 @@ convert_mode_defn(Head, Body, Result) :-
 	convert_mode_defn_2(R, Head, Body, Result).
 
 :- pred convert_mode_defn_2(maybe_functor, term, term, maybe1(mode_defn)).
-/*###1821 [cc] Error: determinism declaration not satisfied.%%%*/
-/*###1821 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode convert_mode_defn_2(in, in, in, out) is det.
 convert_mode_defn_2(error(M,T), _, _, error(M,T)).
 convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
@@ -1840,7 +1830,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 			Arg \= term__variable(_)
 		)
 	->
-		Result = error("Mode parameters must be variables", Arg)
+		Result = error("Mode parameters must be variables", Head)
 	;
 	% check that all the head arg variables are distinct
 		%%% some [Arg2, OtherArgs]
@@ -1876,16 +1866,14 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	).
 
 :- pred convert_type_and_mode_list(list(term), list(type_and_mode)).
-:- mode convert_type_and_mode_list(in, out) is det.
+:- mode convert_type_and_mode_list(in, out) is semidet.
 convert_type_and_mode_list([], []).
 convert_type_and_mode_list([H0|T0], [H|T]) :-
 	convert_type_and_mode(H0, H),
 	convert_type_and_mode_list(T0, T).
 
 :- pred convert_type_and_mode(term, type_and_mode).
-/*###1874 [cc] Error: determinism declaration not satisfied.%%%*/
-/*###1874 [cc] Declared `det', inferred `semidet'.%%%*/
-:- mode convert_type_and_mode(in, out) is det.
+:- mode convert_type_and_mode(in, out) is semidet.
 convert_type_and_mode(Term, Result) :-
 	(
 		Term = term__functor(term__atom("::"), [TypeTerm, ModeTerm],

@@ -258,9 +258,11 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type hlds__goal		== pair(hlds__goal_expr, hlds__goal_info).
 
 :- type hlds__goal_expr    	--->	
-				% A conjunction
+				% A conjunction.
+				% Note: conjunctions must be fully flattened.
 				conj(hlds__goals)
 
+				% A predicate call.
 				% Initially only the sym_name and arguments
 				% are filled in.  Type analysis fills in the
 				% pred_id.  Mode analysis fills in the
@@ -276,14 +278,26 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% Variable, local determinism, cases
 			;	switch(var, category, list(case))
 
+				% A unification.
 				% Initially only the terms and the context
 				% are know.  Mode analysis fills in the
 				% missing information.
 			;	unify(term, term, unify_mode, unification,
 								unify_context)
+				% A disjunction.
+				% Note: disjunctions must be fully flattened.
 			;	disj(hlds__goals)
+
+				% A negation
 			;	not(list(var), hlds__goal)
+
+				% An explicit quantification.
+				% Quantification is stored in the goal_info,
+				% so these get ignored.
+				% `all Vs' gets converted to `not some Vs not'.
 			;	some(list(var), hlds__goal)
+
+				% An if-then-else.
 			;	if_then_else(list(var), hlds__goal,
 					hlds__goal, hlds__goal).
 
@@ -294,7 +308,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type call_info	==	map(var, lval).
 
 :- type case		--->	case(cons_id, hlds__goal).
-			%	functor(s) to match with,
+			%	functor to match with,
 			%	goal to execute if match succeeds.
 
 	% Initially all unifications are represented as
@@ -767,17 +781,16 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	% m_n_a is short for module, name, arity.
 	
 :- pred predicate_table_search_m_n_a(predicate_table, module_name, string,
-						arity, pred_id).
+						arity, list(pred_id)).
 :- mode predicate_table_search_m_n_a(in, in, in, in, out) is semidet.
 
 	% Insert a new pred_info structure into the predicate_table
-	% and assign it a new pred_id.  Fails if the pred_info structure
-	% cannot be inserted into the table, i.e. if the (module, name, arity)
-	% conflicts with a pred already in the table.
+	% and assign it a new pred_id.  You should check beforehand
+	% that the pred doesn't already occur in the table.
 
 :- pred predicate_table_insert(predicate_table, pred_info, pred_id,
 				predicate_table).
-:- mode predicate_table_insert(in, in, out, out) is semidet.
+:- mode predicate_table_insert(in, in, out, out) is det.
 
 	% Return an invalid pred_id.  Used to initialize the pred_id
 	% in call(...) goals before we do typechecking or when type-checking
@@ -809,12 +822,12 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 :- type pred_name_index	== map(string, list(pred_id)).
 :- type pred_name_arity_index == map(name_arity, list(pred_id)).
 :- type name_arity ---> string / arity.
-:- type pred_module_name_arity_index == map(module_name_arity, pred_id).
+:- type pred_module_name_arity_index == map(module_name_arity, list(pred_id)).
 :- type module_name_arity ---> module_name_arity(module_name, string, arity).
 
 predicate_table_init(PredicateTable) :-
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-					N_Index, NA_Index, MNA_Index),
+				N_Index, NA_Index, MNA_Index),
 	map__init(Preds),
 	NextPredId = 0,
 	PredIds = [],
@@ -857,9 +870,9 @@ predicate_table_reverse_predids(PredicateTable0, PredicateTable) :-
 :- predicate_table_search_sym_arity(_, X, _, _) when X. % NU-Prolog indexing.
 
 predicate_table_search_sym_arity(PredicateTable, qualified(Module, Name),
-		Arity, [PredId]) :-
+		Arity, PredIdList) :-
 	predicate_table_search_m_n_a(PredicateTable, Module, Name, Arity,
-		PredId).
+		PredIdList).
 predicate_table_search_sym_arity(PredicateTable, unqualified(Name),
 		Arity, PredIdList) :-
 	predicate_table_search_name_arity(PredicateTable, Name, Arity,
@@ -873,10 +886,11 @@ predicate_table_search_name_arity(PredicateTable, PredName, Arity, PredId) :-
 	PredicateTable = predicate_table(_, _, _, _, PredNameArityIndex, _),
 	map__search(PredNameArityIndex, PredName / Arity, PredId).
 
-predicate_table_search_m_n_a(PredicateTable, Module, PredName, Arity, PredId) :-
+predicate_table_search_m_n_a(PredicateTable, Module, PredName, Arity, PredIds)
+		:-
 	PredicateTable = predicate_table(_, _, _, _, _, MNA_Index),
 	MNA = module_name_arity(Module, PredName, Arity),
-	map__search(MNA_Index, MNA, PredId).
+	map__search(MNA_Index, MNA, PredIds).
 
 predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 	PredicateTable0 = predicate_table(Preds0, NextPredId0, PredIds0,
@@ -889,12 +903,7 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 	PredId = NextPredId0,
 	NextPredId is NextPredId0 + 1,
 
-		% insert the pred id into the primary (module:name/arity) index
-	MNA = module_name_arity(Module, Name, Arity),
-	\+ map__contains(MNA_Index0, MNA),
-	map__set(MNA_Index0, MNA, PredId, MNA_Index),
-
-		% insert it into the name index
+		% insert the pred_id into the name index
 	( map__search(N_Index0, Name, N_PredIdList0) ->
 		N_PredIdList = [PredId | N_PredIdList0]
 	;
@@ -910,6 +919,15 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 		NA_PredIdList = [PredId]
 	),
 	map__set(NA_Index0, NA, NA_PredIdList, NA_Index),
+
+		% insert it into the module:name/arity index
+	MNA = module_name_arity(Module, Name, Arity),
+	( map__search(MNA_Index0, MNA, MNA_PredIdList0) ->
+		MNA_PredIdList = [PredId | MNA_PredIdList0]
+	;
+		MNA_PredIdList = [PredId]
+	),
+	map__set(MNA_Index0, MNA, MNA_PredIdList, MNA_Index),
 
 		% insert it into the pred_id list
 	PredIds = [PredId | PredIds0],

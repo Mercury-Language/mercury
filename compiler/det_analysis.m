@@ -29,8 +29,6 @@
 % by inserting run-time checking code which calls error/1 if the
 % predicate really isn't deterministic (semideterministic).
 
-% XXX we should record errors by calling module_info_incr_errors
-
 %-----------------------------------------------------------------------------%
 
 :- module det_analysis.
@@ -245,16 +243,17 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 
 global_checking_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 	{ global_analysis_single_pass(ModuleInfo0, ProcList, unchanged,
-		ModuleInfo, _) },
-	global_checking_pass_2(ProcList, ModuleInfo).
+		ModuleInfo1, _) },
+	global_checking_pass_2(ProcList, ModuleInfo1, ModuleInfo).
 
-:- pred global_checking_pass_2(predproclist, module_info, io__state, io__state).
-:- mode global_checking_pass_2(in, in, di, uo) is det.
+:- pred global_checking_pass_2(predproclist, module_info, module_info,
+				io__state, io__state).
+:- mode global_checking_pass_2(in, in, out, di, uo) is det.
 
-global_checking_pass_2([], _ModuleInfo) --> [].
-global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
+global_checking_pass_2([], ModuleInfo, ModuleInfo) --> [].
+global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 	{
-	  module_info_preds(ModuleInfo, PredTable),
+	  module_info_preds(ModuleInfo0, PredTable),
 	  map__lookup(PredTable, PredId, PredInfo),
 	  pred_info_procedures(PredInfo, ProcTable),
 	  map__lookup(ProcTable, ModeId, ProcInfo),
@@ -263,7 +262,7 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
 	  proc_info_inferred_determinism(ProcInfo, InferredCategory)
 	},
 	( { DeclaredCategory = InferredCategory } ->
-		[]
+		{ ModuleInfo1 = ModuleInfo0 }
 	;
 		{ max_category(DeclaredCategory, InferredCategory, Category) },
 		( { Category = DeclaredCategory } ->
@@ -272,16 +271,19 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
 			( { ShouldIssueWarning = yes } ->
 				report_determinism_warning(PredId, ModeId,
 					InferredCategory, DeclaredCategory,
-					ModuleInfo)
+					ModuleInfo0)
 			;
 				[]
-			)
+			),
+			{ ModuleInfo1 = ModuleInfo0 }
 		;
 			report_determinism_error(PredId, ModeId,
-				InferredCategory, DeclaredCategory, ModuleInfo)
+				InferredCategory, DeclaredCategory,
+				ModuleInfo0),
+			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) }
 		)
 	),
-	global_checking_pass_2(Rest, ModuleInfo).
+	global_checking_pass_2(Rest, ModuleInfo1, ModuleInfo).
 
 :- pred report_determinism_error(pred_id, proc_id, category, category,
 				module_info, io__state, io__state).
@@ -452,16 +454,28 @@ det_infer_goal_2(unify(LT, RT, M, U, C), MiscInfo, _, _,
 
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), MiscInfo,
 		_NonLocals, _DeltaInstMap,
-		if_then_else(Vars, Cond, Then, Else), D) :-
+		Goal, D) :-
 	det_infer_goal(Cond0, MiscInfo, Cond, DCond),
 	det_infer_goal(Then0, MiscInfo, Then, DThen),
 	det_infer_goal(Else0, MiscInfo, Else, DElse),
 	( DCond = deterministic ->
+		% optimize away the `else' part
+		goal_to_conj_list(Cond, CondList),
+		goal_to_conj_list(Then, ThenList),
+		list__append(CondList, ThenList, List),
+		( List = [SingleGoal - _] ->
+			Goal = SingleGoal
+		;
+			Goal = conj(List)
+		),
 		D = DThen
-	; DCond = semideterministic ->
-		max_category(DThen, DElse, D)
 	;
-		D = nondeterministic
+		Goal = if_then_else(Vars, Cond, Then, Else),
+		( DCond = semideterministic ->
+			max_category(DThen, DElse, D)
+		;
+			D = nondeterministic
+		)
 	).
 
 	% Negations are always semideterministic.  It is an error for
@@ -608,6 +622,6 @@ detism_lookup(MiscInfo, PredId, ModeId, Category) :-
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ModeId, ProcInfo),
-	proc_info_inferred_determinism(ProcInfo, Category).
+	proc_info_interface_determinism(ProcInfo, Category).
 
 %-----------------------------------------------------------------------------%

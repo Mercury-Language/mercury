@@ -644,8 +644,6 @@ code_info__flush_variable(Var, Code) -->
 
 %---------------------------------------------------------------------------%
 
-	% unused - do nothing.
-code_info__generate_expression(unused, _, empty) --> [].
 code_info__generate_expression(lval(Lval), TargetReg, Code) -->
 	(
 		{ Lval = TargetReg }
@@ -706,15 +704,6 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 		% { VarStat = unused }
 		{ Code = empty }
 	).
-code_info__generate_expression(binop(Op, L0, R0), TargetReg, Code) -->
-	code_info__generate_expression_vars(L0, L, Code0),
-	code_info__generate_expression_vars(R0, R, Code1),
-	{ ThisCode = node([
-		assign(TargetReg, binop(Op, L, R)) -
-				"Evaluate binary expression"
-	]) },
-	{ Code2 = tree(Code1, ThisCode) },
-	{ Code = tree(Code0, Code2) }.
 code_info__generate_expression(create(Tag, Args), TargetReg, Code) -->
 	{ list__length(Args, Arity) }, % includes possible tag word
 	(
@@ -740,16 +729,28 @@ code_info__generate_expression(mkword(Tag, Rval0), TargetReg, Code) -->
 		assign(TargetReg, mkword(Tag, Rval)) - "Tag a word"
 	]) },
 	{ Code = tree(Code0, Code1) }.
+code_info__generate_expression(mktag(Rval0), TargetReg, Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code0),
+	{ Code1 = node([
+		assign(TargetReg, mktag(Rval)) - "Make a tag"
+	]) },
+	{ Code = tree(Code0, Code1) }.
+code_info__generate_expression(tag(Rval0), TargetReg, Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code0),
+	{ Code1 = node([
+		assign(TargetReg, tag(Rval)) - "Extract a word's tag"
+	]) },
+	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression(mkbody(Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
-		assign(TargetReg, mkbody(Rval)) - "Tag a word"
+		assign(TargetReg, mkbody(Rval)) - "Prepare to tag a word"
 	]) },
 	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression(body(Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
-		assign(TargetReg, body(Rval)) - "Tag a word"
+		assign(TargetReg, body(Rval)) - "Untag a word"
 	]) },
 	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression(iconst(Int), TargetReg, Code) -->
@@ -764,9 +765,36 @@ code_info__generate_expression(field(Tag, Rval0, Field), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
 		assign(TargetReg, field(Tag, Rval, Field)) -
-						"extract a field of a term"
+						"Extract a field of a term"
 	]) },
 	{ Code = tree(Code0, Code1) }.
+
+code_info__generate_expression(binop(Op, L0, R0), TargetReg, Code) -->
+	code_info__generate_expression_vars(L0, L, Code0),
+	code_info__generate_expression_vars(R0, R, Code1),
+	{ ThisCode = node([
+		assign(TargetReg, binop(Op, L, R)) -
+				"Evaluate binary expression"
+	]) },
+	{ Code2 = tree(Code1, ThisCode) },
+	{ Code = tree(Code0, Code2) }.
+code_info__generate_expression(not(Rval0), TargetReg, Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code0),
+	{ Code1 = node([
+		assign(TargetReg, not(Rval)) - "Negate a boolean value"
+	]) },
+	{ Code = tree(Code0, Code1) }.
+code_info__generate_expression(true, TargetReg, Code) -->
+	{ Code = node([
+		assign(TargetReg, true) - "Make a boolean const"
+	]) }.
+code_info__generate_expression(false, TargetReg, Code) -->
+	{ Code = node([
+		assign(TargetReg, false) - "Make a boolean const"
+	]) }.
+
+	% unused - do nothing.
+code_info__generate_expression(unused, _, empty) --> [].
 
 %---------------------------------------------------------------------------%
 
@@ -789,7 +817,6 @@ code_info__generate_cons_args(Reg, Tag, Field0, [Arg|Args], Code) -->
 							code_info, code_info).
 :- mode code_info__generate_expression_vars(in, out, out, in, out) is det.
 
-code_info__generate_expression_vars(unused, unused, empty) --> [].
 code_info__generate_expression_vars(lval(Lval), lval(Lval), empty) --> [].
 code_info__generate_expression_vars(var(Var), Result, Code) -->
 	code_info__get_variable(Var, VarStat),
@@ -818,11 +845,6 @@ code_info__generate_expression_vars(var(Var), Result, Code) -->
 		{ Result = unused },
 		{ Code = empty }
 	).
-code_info__generate_expression_vars(binop(Op, L0, R0),
-						binop(Op, L, R), Code) -->
-	code_info__generate_expression_vars(L0, L, Code0),
-	code_info__generate_expression_vars(R0, R, Code1),
-	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression_vars(create(Tag, Rvals0), create(Tag, Rvals),
 								Code) -->
 	code_info__generate_expression_vars_2(Rvals0, Rvals, Code).
@@ -830,6 +852,8 @@ code_info__generate_expression_vars(mkword(Tag, Rval0), mkword(Tag, Rval),
 								Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
 code_info__generate_expression_vars(mktag(Rval0), mktag(Rval), Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code).
+code_info__generate_expression_vars(tag(Rval0), tag(Rval), Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
 code_info__generate_expression_vars(mkbody(Rval0), mkbody(Rval), Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
@@ -840,6 +864,16 @@ code_info__generate_expression_vars(sconst(Str), sconst(Str), empty) --> [].
 code_info__generate_expression_vars(field(Tag, Rval0, Field),
 					field(Tag, Rval, Field), Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
+code_info__generate_expression_vars(binop(Op, L0, R0),
+						binop(Op, L, R), Code) -->
+	code_info__generate_expression_vars(L0, L, Code0),
+	code_info__generate_expression_vars(R0, R, Code1),
+	{ Code = tree(Code0, Code1) }.
+code_info__generate_expression_vars(not(Rval0), not(Rval), Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code).
+code_info__generate_expression_vars(true, true, empty) --> [].
+code_info__generate_expression_vars(false, false, empty) --> [].
+code_info__generate_expression_vars(unused, unused, empty) --> [].
 
 %---------------------------------------------------------------------------%
 
@@ -1734,7 +1768,7 @@ code_info__reduce_variables_and_registers_2([Var|Vars], Variables0) -->
 	->
 		{ code_info__update_variables(Var, VarStat,
 						Variables0, Variables1) },
-		code_info__variable_dependencies(Var, VarStat,
+		code_info__variable_dependencies(VarStat,
 						Variables1, Variables)
 	;
 		{ error("Live variable not found!") }
@@ -1743,64 +1777,68 @@ code_info__reduce_variables_and_registers_2([Var|Vars], Variables0) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__variable_dependencies(var, variable_stat,
-					variable_info, variable_info, 
-							code_info, code_info).
-:- mode code_info__variable_dependencies(in, in, in, out, in, out) is det.
+:- pred code_info__variable_dependencies(variable_stat,
+						variable_info, variable_info, 
+						code_info, code_info).
+:- mode code_info__variable_dependencies(in, in, out, in, out) is det.
 
-code_info__variable_dependencies(_Var, unused, V, V) --> [].
-code_info__variable_dependencies(_Var, evaluated(_Lvals), V, V) --> [].
-code_info__variable_dependencies(Var, cached(Exprn, _), V0, V) -->
-	code_info__expression_dependencies(Var, Exprn, V0, V).
+code_info__variable_dependencies(unused, V, V) --> [].
+code_info__variable_dependencies(evaluated(_Lvals), V, V) --> [].
+code_info__variable_dependencies(cached(Exprn, _), V0, V) -->
+	code_info__expression_dependencies(Exprn, V0, V).
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__expressions_dependencies(var, list(rval),
+:- pred code_info__expressions_dependencies(list(rval),
+						variable_info, variable_info,
+						code_info, code_info).
+:- mode code_info__expressions_dependencies(in, in, out, in, out) is det.
+
+code_info__expressions_dependencies([], V, V) --> [].
+code_info__expressions_dependencies([R|Rs], V0, V) -->
+	code_info__expression_dependencies(R, V0, V1),
+	code_info__expressions_dependencies(Rs, V1, V).
+
+:- pred code_info__expression_dependencies(rval,
 				variable_info, variable_info,
 						code_info, code_info).
-:- mode code_info__expressions_dependencies(in, in, in, out, in, out) is det.
+:- mode code_info__expression_dependencies(in, in, out, in, out) is det.
 
-:- code_info__expressions_dependencies(_, X, _, _, _, _) when X. % Indexing
-
-code_info__expressions_dependencies(_Var, [], V, V) --> [].
-code_info__expressions_dependencies(Var, [R|Rs], V0, V) -->
-	code_info__expression_dependencies(Var, R, V0, V1),
-	code_info__expressions_dependencies(Var, Rs, V1, V).
-
-:- pred code_info__expression_dependencies(var, rval,
-				variable_info, variable_info,
-						code_info, code_info).
-:- mode code_info__expression_dependencies(in, in, in, out, in, out) is det.
-
-:- code_info__expression_dependencies(_, X, _, _, _, _) when X. % Indexing
-
-code_info__expression_dependencies(_Var, lval(_Lval), V, V) --> [].
-code_info__expression_dependencies(_Var, var(Var0), V0, V) -->
+code_info__expression_dependencies(lval(_Lval), V, V) --> [].
+code_info__expression_dependencies(var(Var0), V0, V) -->
 	(
 		code_info__get_variables(VariablesA),
 		{ map__search(VariablesA, Var0, VarStat) }
 	->
 		{ code_info__update_variables(Var0, VarStat, V0, V1) },
-		code_info__variable_dependencies(Var0, VarStat, V1, V)
+		code_info__variable_dependencies(VarStat, V1, V)
 	;
 		{ error("Live variable not found!") }
 	).
-code_info__expression_dependencies(Var, binop(_, E0, E1), V0, V) -->
-	code_info__expression_dependencies(Var, E0, V0, V1),
-	code_info__expression_dependencies(Var, E1, V1, V).
-code_info__expression_dependencies(Var, field(_, Rval,_), V0, V) -->
-	code_info__expression_dependencies(Var, Rval, V0, V).
-code_info__expression_dependencies(Var, mkword(_Tag, Rval), V0, V) -->
-	code_info__expression_dependencies(Var, Rval, V0, V).
-code_info__expression_dependencies(Var, mkbody(Rval), V0, V) -->
-	code_info__expression_dependencies(Var, Rval, V0, V).
-code_info__expression_dependencies(Var, body(Rval), V0, V) -->
-	code_info__expression_dependencies(Var, Rval, V0, V).
-code_info__expression_dependencies(_Var, mktag(_), V, V) --> [].
-code_info__expression_dependencies(Var, create(_Tag, Rvals), V0, V) -->
-	code_info__expressions_dependencies(Var, Rvals, V0, V).
-code_info__expression_dependencies(_Var, iconst(_), V, V) --> [].
-code_info__expression_dependencies(_Var, sconst(_), V, V) --> [].
+code_info__expression_dependencies(create(_Tag, Rvals), V0, V) -->
+	code_info__expressions_dependencies(Rvals, V0, V).
+code_info__expression_dependencies(mkword(_Tag, Rval), V0, V) -->
+	code_info__expression_dependencies(Rval, V0, V).
+code_info__expression_dependencies(mktag(Rval), V0, V) -->
+	code_info__expression_dependencies(Rval, V0, V).
+code_info__expression_dependencies(tag(Rval), V0, V) -->
+	code_info__expression_dependencies(Rval, V0, V).
+code_info__expression_dependencies(mkbody(Rval), V0, V) -->
+	code_info__expression_dependencies(Rval, V0, V).
+code_info__expression_dependencies(body(Rval), V0, V) -->
+	code_info__expression_dependencies(Rval, V0, V).
+code_info__expression_dependencies(iconst(_), V, V) --> [].
+code_info__expression_dependencies(sconst(_), V, V) --> [].
+code_info__expression_dependencies(field(_, Rval,_), V0, V) -->
+	code_info__expression_dependencies(Rval, V0, V).
+code_info__expression_dependencies(binop(_, E0, E1), V0, V) -->
+	code_info__expression_dependencies(E0, V0, V1),
+	code_info__expression_dependencies(E1, V1, V).
+code_info__expression_dependencies(not(Rval), V0, V) -->
+	code_info__expression_dependencies(Rval, V0, V).
+code_info__expression_dependencies(true, V, V) --> [].
+code_info__expression_dependencies(false, V, V) --> [].
+code_info__expression_dependencies(unused, V, V) --> [].
 
 %---------------------------------------------------------------------------%
 

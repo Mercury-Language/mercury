@@ -365,10 +365,13 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Module) -->
 	{ clauses_info_init(Arity, ClausesInfo) },
 	{ pred_info_init(ModuleName, PredName, Arity, VarSet, Types, Cond,
 		Context, ClausesInfo, PredInfo) },
+	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	(
-		{ predicate_table_insert(PredicateTable0, PredInfo, _PredId,
-			PredicateTable) }
+		{ \+ predicate_table_search_m_n_a(PredicateTable0,
+			ModuleName, PName, Arity, _) }
 	->
+		{ predicate_table_insert(PredicateTable0, PredInfo, _PredId,
+			PredicateTable) },
 		{ module_info_set_predicate_table(Module0, PredicateTable,
 			Module) }
 	;
@@ -405,15 +408,16 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 	),
 		%
 		% Lookup the pred declaration in the predicate table.
-		% (if it's not there, print an error message and insert
-		% a dummy declaration for the predicate.)
-		%
+		% If it's not there (or if it is ambiguous), print an
+		% error message and insert a dummy declaration for the
+		% predicate.
+		% 
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
 		{ predicate_table_search_m_n_a(PredicateTable0,
-			ModuleName, PName, Arity, PredId0) }
+			ModuleName, PName, Arity, [PredId0]) }
 	->
 		{ PredicateTable1 = PredicateTable0 },
 		{ PredId = PredId0 }
@@ -462,11 +466,13 @@ preds_add_implicit(PredicateTable0,
 	clauses_info_init(Arity, ClausesInfo),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
 		Context, ClausesInfo, PredInfo),
+	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
-		predicate_table_insert(PredicateTable0, PredInfo, PredId0,
-			PredicateTable1)
+		\+ predicate_table_search_m_n_a(PredicateTable0,
+			ModuleName, PName, Arity, _)
 	->
-		PredId = PredId0,
+		predicate_table_insert(PredicateTable0, PredInfo, PredId,
+			PredicateTable1),
 		predicate_table_remove_predid(PredicateTable1, PredId,
 			PredicateTable)
 	;	
@@ -535,7 +541,7 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
 		{ predicate_table_search_m_n_a(PredicateTable0,
-			ModuleName, PName, Arity, PredId0) }
+			ModuleName, PName, Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
 		{ PredicateTable1 = PredicateTable0 }

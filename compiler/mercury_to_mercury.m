@@ -219,6 +219,8 @@ mercury_output_inst_list([Inst | Insts], VarSet) -->
 
 mercury_output_inst(free, _) -->
 	io__write_string("free").
+mercury_output_inst(free(_T), _) -->
+	io__write_string("free(with some type)").
 mercury_output_inst(bound(BoundInsts), VarSet) -->
 	io__write_string("bound("),
 	mercury_output_bound_insts(BoundInsts, VarSet),
@@ -533,6 +535,8 @@ mercury_output_det(failure) -->
 	io__write_string("failure").
 mercury_output_det(erroneous) -->
 	io__write_string("erroneous").
+mercury_output_det(unspecified) -->
+	io__write_string("unspecified").
 
 :- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
 :- mode mercury_output_bracketed_sym_name(in, di, uo) is det.

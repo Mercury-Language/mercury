@@ -463,6 +463,8 @@ typecheck_goal_2(unify(A, B, Mode, Info, UnifyContext),
 	type_info_set_arg_num(0),
 	type_info_set_unify_context(UnifyContext),
 	typecheck_unification(A, B).
+typecheck_goal_2(switch(_, _, _), _) -->
+	{ error("unexpected switch") }.
 
 %-----------------------------------------------------------------------------%
 
