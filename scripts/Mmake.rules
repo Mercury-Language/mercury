@@ -96,6 +96,11 @@ ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
 	-[ -d Mercury/date3s ] || mkdir Mercury/date3s
 	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
+	-[ -d Mercury/trans_opt_dates ] || mkdir Mercury/trans_opt_dates
+	-[ -d Mercury/c_dates ] || mkdir Mercury/c_dates
+	-[ -d Mercury/il_dates ] || mkdir Mercury/il_dates
+	-[ -d Mercury/s_dates ] || mkdir Mercury/s_dates
+	-[ -d Mercury/pic_s_dates ] || mkdir Mercury/pic_s_dates
 endif
 
 # beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
@@ -108,6 +113,11 @@ ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
 	-[ -d Mercury/date3s ] || mkdir Mercury/date3s
 	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
+	-[ -d Mercury/trans_opt_dates ] || mkdir Mercury/trans_opt_dates
+	-[ -d Mercury/c_dates ] || mkdir Mercury/c_dates
+	-[ -d Mercury/il_dates ] || mkdir Mercury/il_dates
+	-[ -d Mercury/s_dates ] || mkdir Mercury/s_dates
+	-[ -d Mercury/pic_s_dates ] || mkdir Mercury/pic_s_dates
 endif
 
 # The `.doit' files are helpful when using Prolog.
@@ -182,7 +192,7 @@ ifeq ($(TARGET_ASM),yes)
 $(ss_subdir)%.s : $(s_dates_subdir)%.s_date
 	@:
 
-$(ss_subdir)%.pic_s : $(s_dates_subdir)%.s_date
+$(ss_subdir)%.pic_s : $(pic_s_dates_subdir)%.pic_s_date
 	@:
 
 $(s_dates_subdir)%.s_date : %.m
