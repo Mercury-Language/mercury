@@ -2808,6 +2808,28 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 
+	% When filling in the fields of a newly allocated cell, use a fresh
+	% local variable as the base address for the field references in
+	% preference to an lval that is more expensive to access. This yields
+	% a speedup of about 0.3%.
+
+	( { Target = var(_, _) } ->
+		{ Base = lval(Target) }
+	;
+		% It doesn't matter what string we pick for BaseVarName,
+		% as long as its declaration doesn't hide any of the variables
+		% inside Args. This is not hard to ensure, since the printed
+		% forms of the variables inside Args all include "__".
+		{ BaseVarName = "base" },
+		{ Base = string(BaseVarName) },
+		mlds_indent(Context, Indent + 1),
+		mlds_output_type_prefix(Type),
+		io__write_string(" "),
+		io__write_string(BaseVarName),
+		mlds_output_type_suffix(Type),
+		io__write_string(";\n")
+	),
+
 	% for --gc accurate, we need to insert a call to GC_check()
 	% before every allocation
 	globals__io_get_gc_method(GC_Method),
@@ -2838,27 +2860,6 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	mlds_maybe_output_heap_profile_instr(Context, Indent + 1, Args,
 		FuncName, MaybeCtorName),
 
-	% When filling in the fields of a newly allocated cell, use a fresh
-	% local variable as the base address for the field references in
-	% preference to an lval that is more expensive to access. This yields
-	% a speedup of about 0.3%.
-
-	( { Target = var(_, _) } ->
-		{ Base = lval(Target) }
-	;
-		% It doesn't matter what string we pick for BaseVarName,
-		% as long as its declaration doesn't hide any of the variables
-		% inside Args. This is not hard to ensure, since the printed
-		% forms of the variables inside Args all include "__".
-		{ BaseVarName = "base" },
-		{ Base = string(BaseVarName) },
-		mlds_indent(Context, Indent + 1),
-		mlds_output_type_prefix(Type),
-		io__write_string(" "),
-		io__write_string(BaseVarName),
-		mlds_output_type_suffix(Type),
-		io__write_string(";\n")
-	),
 	mlds_indent(Context, Indent + 1),
 	write_lval_or_string(Base),
 	io__write_string(" = "),
