@@ -16,13 +16,11 @@ Summary of types
 		4 bytes interpreted as a signed int
 		MSB read first.
 		2's complement
-	- pointer
-		4 bytes interpreted as a machine address.
-		MSB read first.
 	- float
 		XXX: not yet supported but presumably..
 		4 bytes interpreted as float.
-		XXX: Should use IEEE floats.
+		MSB read first.
+		Must be IEEE float format.
 	- list of T
 		- contiguous sequence of T
 	- determinism
@@ -45,35 +43,35 @@ Summary of types
 		- 2 (byte) (complicated constant tag)
 			- primary (byte)
 			- secondary (int)
-		- 3 (byte) (no_tag)
-		- 4 (byte) XXX: This one needs to be added
-			It handles an enumeration of pure constants.
+		- 3 (byte) (enum tag)
+			Enumeration of pure constants.
+		- 4 (byte) (no_tag)
 	- cons_id (constructor id) is one of:
 		% Note that not all of these alternatives are
 		% meaningful in all bytecodes that have arguments of
 		% type cons_id. XXX: Specify exactly which cases
 		% are meaningful.
-		- 0 (byte)
+		- 0 (byte) (cons)
 			- functor name (cstring)
 			- arity (short)
 			- tag (tag)
-		- 1 (byte)
+		- 1 (byte) (int const)
 			- integer constant (int)
-		- 2 (byte)
+		- 2 (byte) (string const)
 			- string constant (cstring) XXX: no '\0' in strings!
-		- 3 (byte)
+		- 3 (byte) (float const)
 			- float constant (float) XXX: not yet supported
-		- 4 (byte)
+		- 4 (byte) (pred const)
 			- module id (cstring)
 			- predicate id (cstring)
 			- arity (short)
 			- procedure id (byte)
-		- 5 (byte)
+		- 5 (byte) (code addr const)
 			- module id (cstring)
 			- predicate id (cstring)
 			- arity (short)
 			- procedure id (byte)
-		- 6 (byte)
+		- 6 (byte) (base type info const)
 			- module id (cstring)
 			- type name (cstring)
 			- type arity (byte)
@@ -84,6 +82,11 @@ Summary of types
 			- integer constant (int)
 		- 2 (byte)
 			- float constant (float) XXX: not yet supported
+	- dir (direction of information movement in general unification)
+	  is one of:
+			- 0 (byte) to_arg
+			- 1 (byte) to_var
+			- 2 (byte) to_none
 
 
 Summary of Bytecodes
@@ -110,7 +113,10 @@ Summary of Bytecodes
 	- label count (short)
 		Number of labels in the procedure. Used for allocating a
 		table of labels in the interpreter.
-	- length of list = number of items in next arg (short)
+	- temp count (short)
+		Number of temporary variables needed for this procedure. (?)
+	- length of list (short)
+		Number of items in next arg
 	- list of
 		- Variable info (cstring)
 		XXX: we should also have typeinfo for each variable.
@@ -132,6 +138,9 @@ Summary of Bytecodes
 		Label refers to label for next disjunct.
 
 - endof_disjunct (8)
+	- label id (short)
+		Label refers to label for next disjunct.(?)
+		Is -1 if there is no next disjunct in this disjunction.
 
 - enter_switch (9)
 	- variable in slots on which we are switching (short)
@@ -148,6 +157,9 @@ Summary of Bytecodes
 		label refers to label for next switch arm.
 			
 - endof_switch_arm (12) 
+	- label id (short)
+		Label id refers to label immediately before next switch arm. 
+		(?)
 
 - enter_if (13)
 	- else label id (short)
@@ -156,12 +168,19 @@ Summary of Bytecodes
 		Note that we must've pushed a failure context
 		before entering the enter_if. If the condition
 		fails, we follow the failure context.
+	- frame pointer tmp (short)
+		XXX: hmm... dunno..
+
 
 - enter_then (14)
+	- frame pointer temp (short)
+		XXX: what's this for?
 	XXX: should have flag here? [I wrote this note in a meeting.
 	What in hell did I mean?]
 
-- enter_else (15)
+- endof_then (15) XXX: enter_else is a better name.
+	- follow label (short)
+		XXX: label just before endof_if ???
 
 - endof_if (16)
 
@@ -175,9 +194,13 @@ Summary of Bytecodes
 - endof_negation (18)
 
 - enter_commit (19)
+	- temp (short)
+		XXX: what's this for?
 	% XXX: how does this work?
 
 - endof_commit (20)
+	- temp (short)
+		XXX: what's this for?
 
 - assign (21)
 	- Variable A in slots (short)
@@ -201,11 +224,6 @@ Summary of Bytecodes
 	Apply constructor to list of arguments (in list of variable slots)
 	and store result in a variable slot.
 
-- complex_construct (XXX: this bytecode doesn't yet exist)
-	This used for general unification using partially instantiated
-	terms. This should be added soon and is made possible by bromage's
-	aliasing work.
-
 - deconstruct (24)
 	- variable slot Var (short)
 	- constructor id (cons_id)
@@ -225,20 +243,28 @@ Summary of Bytecodes
 		the same as cons_id, or ints are not equal, or floats are
 		not equal), then we must follow the failure context.
 
-- complex_deconstruct (25)
+- complex_construct (25)
+	- var (short)
+	- cons id (cons_id)
+	- list length (short)
+	- list of:
+		- var (short)
+		- direction (dir)
+	
+	This used for general unification using partially instantiated
+	terms. This is made possible by bromage's aliasing work.
+
+- complex_deconstruct (26)
 	- variable slot (short)
 	- constructor id (cons_id)
 	- list length of next arg (short)
 	- list of
 		- variable slot (short)
-		- `dir' which is one of:
-			- 0 (byte) to_arg
-			- 1 (byte) to_var
-			- 2 (byte) to_none
+		- direction (dir)
 	Note: This is a generalised deconstruct. The directions specify
 	which way bindings move. XXX: This is still not 100% crystal clear.
 
-- place_arg (26)
+- place_arg (27)
 	- register number (byte) 
 		XXX: Do we have at most 256 registers?
 	- variable number (short)
@@ -251,16 +277,6 @@ Summary of Bytecodes
 	method reuses input registers as output registers. In the 
 	non-compact mode, input and output registers are distinct.)
 
-
-
-- call (27)
-	- module id (cstring)
-	- predicate id (cstring)
-	- arity (short)
-	- procedure id (byte)
-	XXX: If we call a Mercury builtin, the module name is `mercury_builtin'.
-	What if the user has a module called mercury_builtin?
-
 - pickup_arg (28)
 	- register number (byte)
 	- variable number in variable slots (short)
@@ -271,11 +287,26 @@ Summary of Bytecodes
 	register or normal registers. We may later want to spit out
 	another byte `r' or `f' to identify the type of register.)
 
-- builtin_binop (29)
+
+
+- call (29)
+	- module id (cstring)
+	- predicate id (cstring)
+	- arity (short)
+	- procedure id (byte)
+	XXX: If we call a Mercury builtin, the module name is `mercury_builtin'.
+	What if the user has a module called mercury_builtin?
+
+- higher_order_call (30)
+	- var (short)
+	- input variable count (short)
+	- output variable count (short)
+	- determinism (determinism)
+
+- builtin_binop (31)
 	- binary operator (byte)
-	% XXX: how do we interpret the binary operator byte?
-	% Currently the generated bytecode has `*' for multiply,
-	% `+' for plus, and so on. Does this suffice??
+		This single byte is an index into a table of binary
+		operators.
 	- argument to binary operator (op_arg)
 	- another argument to binary operator (op_arg)
 	- variable slot which receives result of binary operation (short)
@@ -283,29 +314,40 @@ Summary of Bytecodes
 	int operations. In the interpreter, we should use a lookup table 
 	that maps bytes to the operations.
 
-- builtin_unop (30)
+- builtin_unop (32)
 	- unary operator (byte)
+		An index into a table of unary operators.
 	- argument to unary operator (op_arg)
 	- variable slot which receives result of unary operation (short)
 
-- builtin_bintest (31)
+- builtin_bintest (33)
 	- binary operator (byte)
+		An index into a table of binary operators.
 	- argument to binary test (op_arg)
 	- another argument to binary test op_arg)
-	% XXX: How do we return a result here???
+	Note we must first push a choice point which we may follow should
+	the test fail.
 
-- builtin_untest (32)
+- builtin_untest (34)
 	- unary operator (byte)
+		An index into a tabler of unary operators.
 	- argument to unary operator (op_arg)
+	Note we must first push a choice point which we may follow should
+	the test fail.
 
-- context (33)
+- semidet_succeed (35)
+
+- semidet_success_check (36)
+
+- fail (37)
+
+- context (38)
 	- line number in Mercury source that the current bytecode
 		line corresponds to. (short)
 	XXX: Still not clear how we should implement `step' in a debugger
 	since a single context may have other contexts interleaved in it.
 
-
-- not_supported (34)
+- not_supported (39)
 	Some unsupported feature is used. Inline C in Mercury code,
 	for instance. Any procedure thatr contains inline C
 	(or is compiled Mercury?) must have the format:
