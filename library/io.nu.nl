@@ -329,7 +329,7 @@ io__flush_output(Stream) -->
 	{ flushOutput(Stream) },
 	io__update_state.
 
-io__flush_binary_output(Stream) -->
+io__flush_binary_output(_Stream) -->
 	{ error("io__flush_binary_output: binary IO not implemented for Prolog.") }.
 
 %-----------------------------------------------------------------------------%
@@ -393,16 +393,16 @@ io__set_output_stream(NewStream, OldStream) -->
 	{ setOutput(NewStream) },
 	io__update_state.
 
-io__binary_input_stream(Stream) -->
+io__binary_input_stream(_Stream) -->
 	{ error("io__binary_input_stream: binary IO not implemented for Prolog.") }.
 
-io__binary_output_stream(Stream) -->
+io__binary_output_stream(_Stream) -->
 	{ error("io__binary_output_stream: binary IO not implemented for Prolog.") }.
 
-io__set_binary_input_stream(NewStream, OldStream) -->
+io__set_binary_input_stream(_NewStream, _OldStream) -->
 	{ error("io__set_input_binary_stream: binary IO not implemented for Prolog.") }.
 
-io__set_binary_output_stream(NewStream, OldStream) -->
+io__set_binary_output_stream(_NewStream, _OldStream) -->
 	{ error("io__set_binary_output_stream: binary IO not implemented for Prolog.") }.
 
 %-----------------------------------------------------------------------------%
@@ -434,10 +434,10 @@ io__close_input(Stream) -->
 io__close_output(Stream) -->
 	io__do_close(Stream).
 
-io__close_binary_input(Stream) -->
+io__close_binary_input(_Stream) -->
 	{ error("io__close_binary_input: binary IO not implemented for Prolog.") }.
 
-io__close_binary_output(Stream) -->
+io__close_binary_output(_Stream) -->
 	{ error("io__close_binary_output: binary IO not implemented for Prolog.") }.
 
 io__do_close(Stream) -->
