@@ -332,6 +332,8 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"** Automatically generated from `", SourceFileName,
 			"' by the Mercury compiler,\n",
 		"** version ", Version, ".\n",
+		"** Do not edit.\n",
+		"**\n",
 		"** The autoconfigured grade settings governing\n",
 		"** the generation of this C file were\n",
 		"**\n",
@@ -339,7 +341,7 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"** UNBOXED_FLOAT=", UnboxedFloatStr, "\n",
 		"**\n",
 		"** END_OF_C_GRADE_INFO\n",
-		"** Do not edit.\n*/\n"
+		"*/\n"
 	]).
 
 :- pred convert_bool_to_string(bool, string).
