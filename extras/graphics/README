@@ -1,6 +1,6 @@
 This directory contains stuff for doing graphics with Mercury.
 We have created bindings to Tcl/Tk and OpenGL. Neither are complete,
-but both a complete *enough* to be very useful.
+but both are complete *enough* to be very useful.
 
 If you add missing functionality to any of these modules, let us know,
 and we'll see about incorporating enhancements in the main distribution.
