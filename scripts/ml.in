@@ -611,7 +611,7 @@ case $demangle in
 	$MKFIFO $PIPE
 		# execute the demangler in the background, with stdin 
 		# coming from the pipe and with stdout redirected to stderr
-	exec $DEMANGLER 1>&2 < $PIPE &
+	exec $DEMANGLER --explain-link-errors 1>&2 < $PIPE &
 		# redirect our stdout and stderr into the pipe
 	exec >$PIPE 2>&1
 		# now we can remove the pipe; since is an open file, it will
