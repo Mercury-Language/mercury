@@ -80,6 +80,7 @@ OTHER_SOURCES= \
 	multidet_prune1.m \
 	multidet_test.m \
 	nasty_func_test.m \
+	nested_mod_type_bug.m \
 	nondet_live.m \
 	pred_with_no_modes.m \
 	qualified_cons_id.m \
