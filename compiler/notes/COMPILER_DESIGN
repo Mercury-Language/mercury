@@ -168,6 +168,9 @@ one - polymorphism.m calls calls lambda__transform_lambda directly.
 
 The remaining HLDS-to-HLDS transformations are optimizations:
 
+* specialization of higher-order predicates where the value of the
+  higher-order arguments are known (higher_order.m)
+
 * inlining (i.e. unfolding) of simple procedures (inlining.m)
 
 * detection of common terms constructions (common.m)
@@ -179,6 +182,9 @@ The remaining HLDS-to-HLDS transformations are optimizations:
 * constraint propagation (constraint.m)
 
 	Not yet working.
+
+* issue warnings about and remove unused arguments from predicates,
+  e.g. type_infos (unused_args.m)
 
 * removal of excess assignment unifications (excess.m)
 
