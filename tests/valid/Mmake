@@ -8,6 +8,8 @@ include ../Mmake.common
 
 # please keep this list sorted
 SOURCES= \
+	agc_unbound_typevars.m \
+	agc_unused_in.m \
 	compl_unify_bug.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
@@ -73,6 +75,8 @@ all:	objs
 
 # some regression tests only failed with particular options enabled
 # (please keep this list sorted)
+GRADE-agc_unbound_typevars	= asm_fast.agc
+GRADE-agc_unused_in		= asm_fast.agc
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
 MCFLAGS-simplify_bug		= -O-1
