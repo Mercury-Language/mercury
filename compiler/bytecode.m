@@ -125,7 +125,7 @@
 
 :- pred bytecode__version(int::out) is det.
 
-bytecode__version(8).
+bytecode__version(9).
 
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
@@ -133,7 +133,7 @@ output_bytecode_file(FileName, ByteCodes) -->
 		{ Result = ok }
 	->
 		{ bytecode__version(Version) },
-		output_two_byte(Version),
+		output_short(Version),
 		output_bytecode_list(ByteCodes),
 		io__told_binary
 	;
@@ -152,6 +152,7 @@ debug_bytecode_file(FileName, ByteCodes) -->
 		{ Result = ok }
 	->
 		{ bytecode__version(Version) },
+		io__write_string("bytecode_version "),
 		io__write_int(Version),
 		io__write_string("\n"),
 		debug_bytecode_list(ByteCodes),
@@ -303,7 +304,7 @@ output_args(semidet_succeed) --> [].
 output_args(semidet_success_check) --> [].
 output_args(fail) --> [].
 output_args(context(Line)) -->
-	output_two_byte(Line).
+	output_short(Line).
 output_args(not_supported) --> [].
 
 :- pred debug_args(byte_code, io__state, io__state).
@@ -495,7 +496,7 @@ debug_reg(f, _) -->
 :- mode output_length(in, di, uo) is det.
 
 output_length(Length) -->
-	output_two_byte(Length).
+	output_short(Length).
 
 :- pred debug_length(int, io__state, io__state).
 :- mode debug_length(in, di, uo) is det.
@@ -537,7 +538,7 @@ debug_arg(float_const(FloatVal)) -->
 :- mode output_var(in, di, uo) is det.
 
 output_var(Var) -->
-	output_two_byte(Var).
+	output_short(Var).
 
 :- pred output_vars(list(byte_var), io__state, io__state).
 :- mode output_vars(in, di, uo) is det.
@@ -567,7 +568,7 @@ debug_vars([Var | Vars]) -->
 :- mode output_temp(in, di, uo) is det.
 
 output_temp(Var) -->
-	output_two_byte(Var).
+	output_short(Var).
 
 :- pred debug_temp(byte_temp, io__state, io__state).
 :- mode debug_temp(in, di, uo) is det.
@@ -665,7 +666,7 @@ debug_proc_id(ProcId) -->
 :- mode output_label_id(in, di, uo) is det.
 
 output_label_id(LabelId) -->
-	output_two_byte(LabelId).
+	output_short(LabelId).
 
 :- pred debug_label_id(int, io__state, io__state).
 :- mode debug_label_id(in, di, uo) is det.
@@ -682,7 +683,7 @@ output_cons_id(cons(ModuleId, Functor, Arity, Tag)) -->
 	output_byte(0),
 	output_string(ModuleId),
 	output_string(Functor),
-	output_two_byte(Arity),
+	output_short(Arity),
 	output_tag(Tag).
 output_cons_id(int_const(IntVal)) -->
 	output_byte(1),
@@ -1086,10 +1087,16 @@ output_byte(Val) -->
 		{ error("byte does not fit in eight bits") }
 	).
 
-:- pred output_two_byte(int, io__state, io__state).
-:- mode output_two_byte(in, di, uo) is det.
+/*
+** Spit out a `short' in a portable format.
+** This format is: big-endian, 16-bit, 2's-complement.
+**
+** NOTE: We -assume- the machine architecture uses 2's-complement.
+*/
+:- pred output_short(int, io__state, io__state).
+:- mode output_short(in, di, uo) is det.
 
-output_two_byte(Val) -->
+output_short(Val) -->
 	{ Val1 is Val >> 8 },
 	{ Val2 is Val mod 256 },
 	( { Val1 < 256 } ->
@@ -1099,34 +1106,132 @@ output_two_byte(Val) -->
 		{ error("small integer does not fit in sixteen bits") }
 	).
 
+/*
+** Spit out an `int' in a portable `highest common denominator' format.
+** This format is: big-endian, 64-bit, 2's-complement int.
+**
+** NOTE: We -assume- the machine architecture uses 2's-complement.
+*/
 :- pred output_int(int, io__state, io__state).
 :- mode output_int(in, di, uo) is det.
 
-output_int(Val) -->
-	{ Val1 is Val >> 24 },
-	{ Val2 is (Val >> 16) mod 256 },
-	{ Val3 is (Val >> 8) mod 256 },
-	{ Val4 is Val mod 256 },
-	( { Val1 < 256 } ->
-		io__write_byte(Val1),
-		io__write_byte(Val2),
-		io__write_byte(Val3),
-		io__write_byte(Val4)
+output_int(IntVal) -->
+	{ int__bits_per_int(IntBits) },
+	( { IntBits > bytecode_int_bits } ->
+		{ error("size of int is larger than size of bytecode integer.")}
 	;
-		{ error("integer does not fit in thirtytwo bits") }
+		{ ZeroPadBytes is (bytecode_int_bits - IntBits) // 
+			bits_per_byte },
+		output_padding_zeros(ZeroPadBytes),
+		{ FirstByteToDump is bytecode_int_bytes - ZeroPadBytes - 1 },
+		output_int_bytes(FirstByteToDump, IntVal)
 	).
 
+:- func bytecode_int_bits = int.
+:- mode bytecode_int_bits = out is det.
+
+bytecode_int_bits = bits_per_byte * bytecode_int_bytes.
+
+:- func bytecode_int_bytes = int.
+:- mode bytecode_int_bytes = out is det.
+
+bytecode_int_bytes = 8.
+
+:- func bits_per_byte = int.
+:- mode bits_per_byte = out is det.
+
+bits_per_byte = 8.
+
+:- pred output_padding_zeros(int, io__state, io__state).
+:- mode output_padding_zeros(in, di, uo) is det.
+
+output_padding_zeros(NumBytes) -->
+	( { NumBytes > 0 } ->
+		io__write_byte(0),
+		{ NumBytes1 is NumBytes - 1 },
+		output_padding_zeros(NumBytes1)
+	;
+		{ true }
+	).
+
+:- pred output_int_bytes(int, int, io__state, io__state).
+:- mode output_int_bytes(in, in, di, uo) is det.
+
+output_int_bytes(ByteNum, IntVal) -->
+	( { ByteNum >= 0 } ->
+		{ BitShifts is ByteNum * bits_per_byte },
+		{ Byte is (IntVal >> BitShifts) mod (1 << bits_per_byte) },
+		{ ByteNum1 is ByteNum - 1 },
+		io__write_byte(Byte),
+		output_int_bytes(ByteNum1, IntVal)
+	;
+		{ true }
+	).
+
+/*
+** Spit out a `float' in a portable `highest common denominator format.
+** This format is: big-endian, 64-bit, IEEE-754 floating point value.
+**
+** NOTE: We -assume- the machine architecture uses IEEE-754.
+*/
 :- pred output_float(float, io__state, io__state).
 :- mode output_float(in, di, uo) is det.
 
 output_float(Val) -->
-	% XXX This is just temporary; we ought to find a way to write out
-	% the float as a sequence of bytes. Requiring the compiling and
-	% debugging platform to have the same FP representation is better
-	% than silently rounding/truncating float values given to the
-	% debugger.
-	{ string__float_to_string(Val, Str) },
-	output_string(Str).
+	{ float_to_float64_bytes(Val, B0, B1, B2, B3, B4, B5, B6, B7) },
+	output_byte(B0),
+	output_byte(B1),
+	output_byte(B2),
+	output_byte(B3),
+	output_byte(B4),
+	output_byte(B5),
+	output_byte(B6),
+	output_byte(B7).
+
+/*
+** Convert a `float' to the representation used in the bytecode.
+** That is, a sequence of eight bytes.
+*/
+:- pred float_to_float64_bytes(float::in, 
+		int::out, int::out, int::out, int::out, 
+		int::out, int::out, int::out, int::out) is det.
+:- pragma(c_code, 
+	float_to_float64_bytes(FloatVal::in, B0::out, B1::out, B2::out, B3::out,
+		B4::out, B5::out, B6::out, B7::out),
+	"
+
+	{
+		Float64		float64;
+		unsigned char	*raw_mem_p;
+
+		float64 = (Float64) FloatVal;
+		raw_mem_p = (unsigned char*) &float64;
+
+		#if defined(BIG_ENDIAN)
+			B0 = raw_mem_p[0];
+			B1 = raw_mem_p[1];
+			B2 = raw_mem_p[2];
+			B3 = raw_mem_p[3];
+			B4 = raw_mem_p[4];
+			B5 = raw_mem_p[5];
+			B6 = raw_mem_p[6];
+			B7 = raw_mem_p[7];
+		#elif defined(LITTLE_ENDIAN)
+			B7 = raw_mem_p[0];
+			B6 = raw_mem_p[1];
+			B5 = raw_mem_p[2];
+			B4 = raw_mem_p[3];
+			B3 = raw_mem_p[4];
+			B2 = raw_mem_p[5];
+			B1 = raw_mem_p[6];
+			B0 = raw_mem_p[7];
+		#else
+			#error	Weird-endian architecture
+		#endif
+	}
+	
+	"
+).
 
 %---------------------------------------------------------------------------%
 

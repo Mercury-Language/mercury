@@ -55,6 +55,11 @@
 **	SIGACTION_FIELD		the name of the field in the sigaction struct
 **				(either sa_handler or sa_sigaction).
 **	PARALLEL		we are configuring for parallel execution
+**	FLOAT_IS_64_BITS	The C type `float' is 64-bit on this host.
+**	DOUBLE_IS_64_BITS	The C type `double' is 64-bit on this host.
+**	LONG_DOUBLE_IS_64_BITS	The C type `long double' is 64-bit on this host.
+**	BIG_ENDIAN		This host is big-endian.
+**	LITTLE_ENDIAN		This host is little-endian.
 */
 
 #undef	WORD_TYPE
@@ -81,5 +86,10 @@
 #undef	HAVE_SIGACTION
 #undef	SIGACTION_FIELD
 #undef	PARALLEL
+#undef	FLOAT_IS_64_BIT
+#undef	DOUBLE_IS_64_BIT
+#undef	LONG_DOUBLE_IS_64_BIT
+#undef	BIG_ENDIAN
+#undef	LITTLE_ENDIAN
 
 #endif /* CONF_H */

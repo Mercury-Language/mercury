@@ -24,6 +24,22 @@ typedef WORD_TYPE		Integer;
 typedef unsigned WORD_TYPE	Unsigned;
 typedef void			Code;	/* code addresses are `void *' */
 
+/*
+** Float64 is required for the bytecode.
+** XXX: We should also check for IEEE-754 compliance.
+*/
+
+#if	FLOAT_IS_64_BIT
+	typedef	float			Float64;
+#elif	DOUBLE_IS_64_BIT
+	typedef	double			Float64;
+#elif	LONG_DOUBLE_IS_64_BIT
+	typedef	long double		Float64;
+#else
+	#error	For Mercury bytecode, we require 64-bit IEEE-754 floating point
+#endif
+
+
 /* continuation function type, for --high-level-C option */
 typedef void (*Cont) (void);
 
