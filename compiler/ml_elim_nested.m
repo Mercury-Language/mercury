@@ -1412,7 +1412,9 @@ atomic_stmt_contains_var(restore_hp(Rval), Name) :-
 	rval_contains_var(Rval, Name).
 atomic_stmt_contains_var(trail_op(TrailOp), Name) :-
 	trail_op_contains_var(TrailOp, Name).
-atomic_stmt_contains_var(target_code(_Lang, _String), _) :- fail.
+atomic_stmt_contains_var(target_code(_Lang, Components), Name) :-
+	list__member(Component, Components),
+	target_code_component_contains_var(Component, Name).
 
 :- pred trail_op_contains_var(trail_op, mlds__var).
 :- mode trail_op_contains_var(in, in) is semidet.
@@ -1427,6 +1429,27 @@ trail_op_contains_var(mark_ticket_stack(Lval), Name) :-
 	lval_contains_var(Lval, Name).
 trail_op_contains_var(prune_tickets_to(Rval), Name) :-
 	rval_contains_var(Rval, Name).
+
+:- pred target_code_component_contains_var(target_code_component, mlds__var).
+:- mode target_code_component_contains_var(in, in) is semidet.
+
+target_code_component_contains_var(raw_target_code(_Code), _Name) :-
+	fail.
+target_code_component_contains_var(user_target_code(_Code, _Context), _Name) :- 
+	fail.
+target_code_component_contains_var(target_code_input(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+target_code_component_contains_var(target_code_output(Lval), Name) :-
+	lval_contains_var(Lval, Name).
+target_code_component_contains_var(name(EntityName), _VarName) :-
+	EntityName = data(var(_UnqualVarName)),
+	% XXX They might match.  But the EntityName here is unqualified,
+	%     so we can't tell for sure if there is a match.  Hence we
+	%     just abort.  Currently name/1 is only used for procedure
+	%     names, not var names, so this case won't occur.  (If it
+	%     does, the right fix is probably to make the EntityName
+	%     a fully qualified name rather than an unqualified name.)
+	error("target_code_component_contains_var: name/1 used for var").
 
 :- pred rvals_contains_var(list(mlds__rval), mlds__var).
 :- mode rvals_contains_var(in, in) is semidet.

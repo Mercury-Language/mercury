@@ -827,19 +827,6 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		proc_info_interface_code_model(ProcInfo, model_non)
 	),
 
-	% For the MLDS back-end, don't inline any pragma c codes.
-	% XXX This is a work-around needed because of some problems
-	% with the current MLDS back-end implementation of
-	% pragma c_code.  In particular, ml_elim_nested.m assumes
-	% that target_code instructions don't contain variables,
-	% but with the current implementation sometimes they do.
-	% Also ml_code_gen.m doesn't handle complicated pragma_c_code
-	% goals, which can result from inlining.
-	\+ (
-		HighLevelCode = yes,
-		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_) - _
-	),
-
 	% Don't inline memoed Aditi predicates.
 	pred_info_get_markers(PredInfo, CalledPredMarkers),
 	\+ check_marker(CalledPredMarkers, aditi_memo),
