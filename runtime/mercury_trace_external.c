@@ -21,6 +21,9 @@
 */
 
 #include "mercury_imp.h"
+
+#ifdef MR_USE_EXTERNAL_DEBUGGER
+
 #include "mercury_trace.h"
 #include "mercury_trace_external.h"
 #include "mercury_trace_util.h"
@@ -33,8 +36,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
-
-#ifdef MR_USE_EXTERNAL_DEBUGGER
 
 /*
 ** This type must match the definition of classify_request in
