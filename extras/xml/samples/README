@@ -1,0 +1,24 @@
+
+This directory contains sample files for running the XML parser.
+
+To build the parser, under extra/xml directory: 
+
+Step 0.		mmake tryit.depend
+
+Step 1.		mmake tryit
+
+
+To run the parser, under extra/xml/samples directory:
+
+		../tryit newsarticles.xml
+		
+
+The files in this directory are:
+
+	README			this file.
+	catalog 		a catalog file  
+	newsarticles.dtd   	a sample news article DTD file	
+	newsarticles.xml	a sample news article XML 1.0 file
+
+
+

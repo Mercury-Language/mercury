@@ -75,7 +75,7 @@ main([File|Files]) -->
 		stderr_stream(StdErr),
 		format(StdErr, "%s: %s\n", [s(File), s(Err)])
 	    ),
-	    %write(Res), nl,
+	    write(Res), nl,
 	    []
     ;
 	[]

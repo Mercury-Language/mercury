@@ -37,3 +37,5 @@ The files in this directory are:
 			and prints any error messages
 	Mmakefile	a control file for mmake to build the sample program
 
+	samples		a directory including instructions on how to run the
+			XML parser and some sample files 
