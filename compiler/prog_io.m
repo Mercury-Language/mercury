@@ -7,7 +7,7 @@
 	% This module defines a data structure for representing Mercury
 	% programs.
 	%
-	% In some ways the representation of programs is considerably
+	% In some ways the representation of programs here is considerably
 	% more complex than is necessary for the compiler.
 	% The basic reason for this is that it was designed to preserve
 	% as much information about the source code as possible, so that
@@ -22,6 +22,8 @@
 	% No simplifications are done.  The results of this phase specify
 	% basically the same information as is contained in the source code,
 	% but in a parse tree rather than a flat file.
+	% Simplifications are done only by make_hlds.nl, which transforms
+	% the parse tree which we built here into the HLDS.
 	%
 	% Some of this code is a nightmare of cut-and-paste style reuse.
 	% It should be cleaned up to eliminate most of the duplication.
