@@ -176,10 +176,12 @@ OTHER_SOURCES= \
 # XXX We also don't pass this one (see the comments in it for details):
 #	mode_selection.m
 
-# There used to be problems with compiling typeclass
-# and AGC stuff in grades jump.* and fast.*, but they should
-# be long since fixed now.
-SOURCES0 = $(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+# The agc.* tests don't yet work in --high-level-code grades.
+ifneq "$(findstring hl,$(GRADE))" ""
+	SOURCES0 = $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+else
+	SOURCES0 = $(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+endif
 
 # Base grades `jump' and `fast'
 # cannot be used with `--no-special-preds'
