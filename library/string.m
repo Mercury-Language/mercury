@@ -2950,6 +2950,17 @@ max_precision = min_precision + 2.
 			FloatVal = java.lang.Double.parseDouble(FloatString);
 			succeeded = true;
 		} catch(java.lang.NumberFormatException e) {
+
+			// At this point it *should* in theory be safe just to
+			// set succeeded = false, since the Java API claims
+			// that Double.parseDouble() will handle all the cases
+			// we require.  However, it turns out that in practice
+			// (tested with Sun's Java 2 SDK, Standard Edition,
+			// version 1.3.1_04)
+			// Java actually throws a NumberFormatException when
+			// you give it NaN or infinity, so we handle these
+			// cases below.
+
 			if (FloatString.equalsIgnoreCase(""nan"")) {
 				FloatVal = java.lang.Double.NaN;
 				succeeded = true;
