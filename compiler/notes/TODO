@@ -45,6 +45,12 @@ modes.nl
 
 - handle polymorphic modes
 
+stack_alloc.nl
+--------------
+
+- make it work: it needs to assign stack slots for variables
+  which need to be saved over a call
+
 general
 -------
 

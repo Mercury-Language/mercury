@@ -9,30 +9,38 @@ The overall structure for the compiler is as follows:
    the source code
    (prog_io.nl)
 
-3. simplify - convert parse tree to simplified high-level data structure,
-   construct symbol tables (make_hlds.nl), handle imports and exports
-   (done in toplevel.nl)
+3. simplify - convert parse tree to simplified high-level data structure
+   (including conversion to superhomogeneous form) and construct symbol
+   tables (make_hlds.nl); also handle imports and exports (done in
+   toplevel.nl)
 
 4. type checking, overloading resolution & module name resolution
    fully qualify all names
    (typecheck.nl)
 
-5. mode checking (modes.nl), determinism checking (det_analysis.nl),
-   destructive assignment analysis, etc.
+5. mode analysis (also computes liveness information) (modes.nl),
+   switch detection (not yet implemented),
+   determinism analysis (det_analysis.nl)
 
-6. recognization of builtins (builtins.nl), code generation (codegen.nl).
+6. code generation.  This comprises several subpasses:
+	recognization of builtins (builtins.nl),
+	migration of builtins following branched structures (followvars.nl),
+	allocation of stack slots (stack_alloc.nl)
+	allocation of variable targets following branched structures
+		(followvars.nl)
+	code generation (codegen.nl).
 
-7. peephole optimization.
+7. peephole optimization (not yet implemented).
 
 8. output final code (llds.nl).
 
 Middle recursion optimization: should be done in the code generator
-by recognizing the pattern of the hlds.
+by recognizing the pattern of the hlds?  Ditto tail recursion.
 
-Structure reuse optimization : we have a pass after mode analysis (or at 
-the same time?) which annotates the hlds with reuse information.
-The code generator uses this reuse information to generate assignments
-instead of creating terms on the heap.
+Structure reuse optimization : we should have a pass after mode
+analysis (or at the same time?) which annotates the hlds with reuse
+information.  The code generator uses this reuse information to
+generate assignments instead of creating terms on the heap.
 
 Debugging/garbage collection information: the compiler should output
 the liveness, type, instantiatedness and location of every variable at
