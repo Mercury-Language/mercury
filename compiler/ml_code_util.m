@@ -138,6 +138,12 @@
 	%
 :- func ml_string_type = mlds__type.
 
+	% Allocate some fresh type variables to use as the Mercury types
+	% of boxed objects (e.g. to get the argument types for tuple
+	% constructors or closure constructors).  Note that this should
+	% only be used in cases where the tvarset doesn't matter.
+:- func ml_make_boxed_types(arity) = list(prog_type).
+
 %-----------------------------------------------------------------------------%
 %
 % Routines for generating function declarations (i.e. mlds__func_params).
@@ -547,6 +553,13 @@
 	% Get the value of the appropriate --det-copy-out or --nondet-copy-out
 	% option, depending on the code model.
 :- func get_copy_out_option(globals, code_model) = bool.
+
+	% Add the qualifier `builtin' to any unqualified name.
+	% Although the builtin types `int', `float', etc. are treated as part
+	% of the `builtin' module, for historical reasons they don't have
+	% any qualifiers in the HLDS, so we need to add the `builtin'
+	% qualifier before converting such names to MLDS.
+:- func fixup_builtin_module(module_name) = module_name.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1052,6 +1065,11 @@ ml_gen_array_elem_type(elem_type_generic) = mlds__generic_type.
 
 ml_string_type = mercury_type(string_type, str_type,
 				non_foreign_type(string_type)).
+
+ml_make_boxed_types(Arity) = BoxedTypes :-
+	varset__init(TypeVarSet0),
+	varset__new_vars(TypeVarSet0, Arity, BoxedTypeVars, _TypeVarSet),
+	term__var_list_to_term_list(BoxedTypeVars, BoxedTypes).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2748,6 +2766,14 @@ get_copy_out_option(Globals, CodeModel) = CopyOut :-
 	;	
 		globals__lookup_bool_option(Globals,
 			det_copy_out, CopyOut)
+	).
+
+	% Add the qualifier `builtin' to any unqualified name.
+fixup_builtin_module(ModuleName0) = ModuleName :-
+	( ModuleName0 = unqualified("") ->
+		mercury_public_builtin_module(ModuleName)
+	;
+		ModuleName = ModuleName0
 	).
 
 %-----------------------------------------------------------------------------%

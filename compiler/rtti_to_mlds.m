@@ -32,7 +32,7 @@
 :- implementation.
 :- import_module foreign, prog_data, hlds_data.
 :- import_module pseudo_type_info, prog_util, prog_out, type_util.
-:- import_module ml_code_util, ml_unify_gen.
+:- import_module ml_code_util, ml_unify_gen, ml_closure_gen.
 :- import_module bool, list, std_util, string, term, require.
 
 rtti_data_list_to_mlds(ModuleInfo, RttiDatas) =
