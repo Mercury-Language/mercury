@@ -92,29 +92,44 @@ SUBDIRS = typeclasses
 
 #-----------------------------------------------------------------------------#
 
+SUBDIR_MMAKE = mmake $(MMAKEFLAGS) \
+			GRADE=$(GRADE) \
+			EXTRA_CFLAGS=$(EXTRA_CFLAGS) \
+			EXTRA_MCFLAGS=$(EXTRA_MCFLAGS)
+
 dep:	$(DEPS)
 	for dir in $(SUBDIRS); do \
-		(cd $$dir && mmake $(MMAKEFLAGS) dep) || exit 1; \
+		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
 	done
 
 depend:	$(DEPENDS)
 	for dir in $(SUBDIRS); do \
-		(cd $$dir && mmake $(MMAKEFLAGS) depend) || exit 1; \
+		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
 	done
 
 check:	$(OUTS) $(RESS)
 	for dir in $(SUBDIRS); do \
-		(cd $$dir && mmake $(MMAKEFLAGS) check) || exit 1; \
+		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
 	done
 
 mods:	$(MODS)
 	for dir in $(SUBDIRS); do \
-		(cd $$dir && mmake $(MMAKEFLAGS) mods) || exit 1; \
+		(cd $$dir && $(SUBDIR_MMAKE) mods) || exit 1; \
 	done
 
 all:	$(PROGS)
 	for dir in $(SUBDIRS); do \
-		(cd $$dir && mmake $(MMAKEFLAGS) all) || exit 1; \
+		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
+	done
+
+clean:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
+	done
+
+realclean:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
 	done
 
 #-----------------------------------------------------------------------------#
