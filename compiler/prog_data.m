@@ -535,6 +535,13 @@
 		pragma_foreign_code_attributes).
 :- mode set_thread_safe(in, in, out) is det.
 
+:- pred tabled_for_io(pragma_foreign_code_attributes, tabled_for_io).
+:- mode tabled_for_io(in, out) is det.
+
+:- pred set_tabled_for_io(pragma_foreign_code_attributes, tabled_for_io,
+		pragma_foreign_code_attributes).
+:- mode set_tabled_for_io(in, in, out) is det.
+
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another
 	% more efficient one for the case when we know that the C code will
@@ -549,6 +556,10 @@
 :- type thread_safe
 	--->	not_thread_safe
 	;	thread_safe.
+
+:- type tabled_for_io
+	--->	not_tabled_for_io
+	;	tabled_for_io.
 
 :- type pragma_var    
 	--->	pragma_var(prog_var, string, mode).
@@ -924,24 +935,30 @@
 
 :- type pragma_foreign_code_attributes
 	--->	attributes(
-			may_call_mercury,
-			thread_safe
+			may_call_mercury	:: may_call_mercury,
+			thread_safe		:: thread_safe,
+			tabled_for_io		:: tabled_for_io
 		).
 
-default_attributes(attributes(may_call_mercury, not_thread_safe)).
+default_attributes(attributes(may_call_mercury, not_thread_safe,
+	not_tabled_for_io)).
 
 may_call_mercury(Attrs, MayCallMercury) :-
-	Attrs = attributes(MayCallMercury, _).
+	MayCallMercury = Attrs ^ may_call_mercury.
 
 thread_safe(Attrs, ThreadSafe) :-
-	Attrs = attributes(_, ThreadSafe).
+	ThreadSafe = Attrs ^ thread_safe.
+
+tabled_for_io(Attrs, TabledForIo) :-
+	TabledForIo = Attrs ^ tabled_for_io.
 
 set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
-	Attrs0 = attributes(_, ThreadSafe),
-	Attrs  = attributes(MayCallMercury, ThreadSafe).
+	Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
 
 set_thread_safe(Attrs0, ThreadSafe, Attrs) :-
-	Attrs0 = attributes(MayCallMercury, _),
-	Attrs  = attributes(MayCallMercury, ThreadSafe).
+	Attrs = Attrs0 ^ thread_safe := ThreadSafe.
+
+set_tabled_for_io(Attrs0, TabledForIo, Attrs) :-
+	Attrs = Attrs0 ^ tabled_for_io := TabledForIo.
 
 %-----------------------------------------------------------------------------%

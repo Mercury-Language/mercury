@@ -820,7 +820,7 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 :- type collected_pragma_c_code_attribute
 	--->	may_call_mercury(may_call_mercury)
 	;	thread_safe(thread_safe)
-	.
+	;	tabled_for_io(tabled_for_io).
 
 :- pred parse_pragma_c_code_attributes_term(term, 
 		pragma_foreign_code_attributes).
@@ -845,10 +845,21 @@ parse_pragma_c_code_attributes_term(Term, Attributes) :-
 			% XXX an error message would be nice
 			fail
 		;
-			set_thread_safe(Attributes1, thread_safe, Attributes)
+			set_thread_safe(Attributes1, thread_safe, Attributes2)
 		)
 	;
-		Attributes = Attributes1
+		Attributes2 = Attributes1
+	),
+	( list__member(tabled_for_io(tabled_for_io), AttrList) ->
+		( list__member(tabled_for_io(not_tabled_for_io), AttrList) ->
+			% XXX an error message would be nice
+			fail
+		;
+			set_tabled_for_io(Attributes2, tabled_for_io,
+				Attributes)
+		)
+	;
+		Attributes = Attributes2
 	).
 
 :- pred parse_pragma_c_code_attributes_term0(term,
@@ -881,6 +892,8 @@ parse_single_pragma_c_code_attribute(Term, Flag) :-
 		Flag = may_call_mercury(MayCallMercury)
 	; parse_threadsafe(Term, ThreadSafe) ->
 		Flag = thread_safe(ThreadSafe)
+	; parse_tabled_for_io(Term, TabledForIo) ->
+		Flag = tabled_for_io(TabledForIo)
 	;
 		fail
 	).
@@ -904,6 +917,14 @@ parse_threadsafe(term__functor(term__atom("thread_safe"), [], _),
 	thread_safe).
 parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
 	not_thread_safe).
+
+:- pred parse_tabled_for_io(term, tabled_for_io).
+:- mode parse_tabled_for_io(in, out) is semidet.
+
+parse_tabled_for_io(term__functor(term__atom("tabled_for_io"), [], _),
+	tabled_for_io).
+parse_tabled_for_io(term__functor(term__atom("not_tabled_for_io"), [], _),
+	not_tabled_for_io).
 
 % parse a pragma c_code declaration
 
