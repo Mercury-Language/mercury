@@ -249,6 +249,17 @@
 */
 #undef MR_CAN_DO_PENDING_IO
 
+/*
+** MR_USE_EXTERNAL_DEBUGGER:
+**	Allow MR_trace() to use an external process debugger
+**	(with communication done via a socket interface)
+**	rather than using the debugger that is part of
+**	the Mercury runtime.
+**	This requires that the system support sockets.
+**	See trace/mercury_trace_external.c.
+*/
+#undef  MR_USE_EXTERNAL_DEBUGGER
+
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_conf_param.h"

@@ -13,9 +13,8 @@
 ** available from http://www.irisa.fr/lande/ducasse.
 **
 ** The code for using an external debugger is conditionalized
-** on MR_USE_EXTERNAL_DEBUGGER (which by default is not enabled)
-** because it uses sockets, which are not portable.
-** Ideally we ought to use autoconf for that...
+** on MR_USE_EXTERNAL_DEBUGGER which is enabled for systems that support
+** sockets.
 **
 ** Main authors: Erwan Jahier and Fergus Henderson.
 */
