@@ -178,7 +178,8 @@
 				% Initially only the two terms are filled
 				% in.  Mode analysis fills in the last
 				% two fields.
-			;	unify(term, term, unify_mode, unification)
+			;	unify(term, term, unify_mode, unification,
+								unify_context)
 
 			% The remainder aren't used as yet, since
 			% we only handle deterministic code.
@@ -240,6 +241,19 @@
 				% generated unification predicate for that
 				% type & mode.
 			;	complicated_unify(unify_mode, term, term).
+
+:- type unify_context	--->	unify_context(
+					unify_main_context,
+					unify_sub_contexts
+				).
+
+:- type unify_main_context --->	explicit
+			;	head(int)
+			;	call(pred_id, int).
+
+:- type unify_sub_context ==	pair(cons_id, int).
+
+:- type unify_sub_contexts ==	list(unify_sub_context).
 
 %%% :- export_type hlds__goals.
 :- type hlds__goals		==	list(hlds__goal).

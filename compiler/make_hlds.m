@@ -513,7 +513,7 @@ determinism_to_category(unspecified, unspecified).
 	% we should probably store the next available ModeId rather
 	% than recomputing it all the time
 
-:- pred next_mode_id(proc_table, pred_mode_id).
+:- pred next_mode_id(proc_table, proc_id).
 :- mode next_mode_id(input, output).
 
 next_mode_id(Procs, ModeId) :-

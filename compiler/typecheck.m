@@ -332,7 +332,7 @@ typecheck_goal_2(all(_Vs, G)) -->
 typecheck_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
 	%%% checkpoint("call"),
 	typecheck_call_pred(PredId, Args).
-typecheck_goal_2(unify(A, B, _Mode, _Info)) -->
+typecheck_goal_2(unify(A, B, _Mode, _Info, Context)) -->
 	%%% checkpoint("unify"),
 	typecheck_unification(A, B).
 
