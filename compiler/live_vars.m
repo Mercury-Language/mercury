@@ -111,7 +111,8 @@ detect_live_vars_in_goal_2(conj(Goals0), Liveness0, LiveVars0, ModuleInfo,
 
 detect_live_vars_in_goal_2(disj(Goals0), Liveness0, LiveVars0,
 					ModuleInfo, Liveness, LiveVars) :-
-	detect_live_vars_in_disj(Goals0, Liveness0, LiveVars0,
+	set__union(Liveness0, LiveVars0, LiveVars1),
+	detect_live_vars_in_disj(Goals0, Liveness0, LiveVars1,
 					ModuleInfo, Liveness, LiveVars).
 
 detect_live_vars_in_goal_2(not(_Vars, Goal0), Liveness0, LiveVars0, ModuleInfo,
