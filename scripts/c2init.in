@@ -9,8 +9,7 @@
 # C2INIT - Convert *.c to *_init.c
 #
 # This script outputs an appropriate init.c, given the .c files.
-#
-# Usage: c2init [-w<entry-point>] [-c<maxcalls>] modules...
+# Type `c2init --help' for usage message.
 #
 # Environment variables: MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS,
 # MERCURY_MKINIT.
@@ -22,14 +21,27 @@ MKINIT=${MERCURY_MKINIT=mkinit}
 # maximum number of calls to put in a single function
 maxcalls=40
 defentry=mercury__io__run_0_0
-while getopts "w:c:" c
-do
-	case $c in
-	c)	maxcalls="$OPTARG"; shift 2;;
-	w)	defentry="$OPTARG"; shift 2;;
-	\?)	echo "Usage: c2init [-w<entry-point>] [-c<maxcalls>]" \
-			"modules ..."
+while true; do
+	case "$1" in
+	-c|--max-calls)
+		maxcalls="$2"; shift 2;;
+	-w|--entry-point)
+		defentry="$2"; shift 2;;
+	--)
+		shift; break;;
+	-*)
+		echo "Usage: c2init [options] modules ..." 1>&2
+		echo "Options: " 1>&2
+		echo "-c <n>, --max-calls <n>" 1>&2
+		echo "	Break up the initialization into groups of at" \
+			"most <n> function calls" 1>&2
+		echo "	(Default value of <n> is 40)" 1>&2
+		echo "-w <label>, --entry-point <label>" 1>&2
+		echo "	Set entry point to <label>" 1>&2
+		echo "	(Default value is \`mercury__io__run_0_0')" 1>&2
 		exit 1;;
+	*)
+		break;;
 	esac
 done
 
