@@ -93,21 +93,16 @@
 %-----------------------------------------------------------------------------%
 %  TODO:
 %
-%		error reporting could still be improved:
-%		- undefined symbols are only handled cleanly
-%		  if they occur as predicate arguments.
-%		- type errors in predicate calls should state
-%		  which predicate call caused the error.
-%		- errors in unification with head arguments should be handled
-%		  specially; that `HeadVar', `HeadVars'', etc. is ugly.
+%	error reporting could still be improved, in particular
+%	unification of var with function	
 %
 %  Wish list:
-% 	 	we should handle explicit type qualifications
-% 		(and remove them here) but we don't do so yet
+% 	we should handle explicit type qualifications
+% 	(and remove them here) but we don't do so yet
 %
-%		we should handle equivalence types here
+%	we should handle equivalence types here
 %
-%		we should handle overloading of predicates
+%	we should handle overloading of predicates
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -152,8 +152,10 @@
 	% This table is used by the type-checker to look
 	% up the type of functors/constants.
 
-:- type cons_id		--->	cons(string, int).
-				% name, arity
+:- type cons_id		--->	cons(string, int)	% name, arity
+			;	int_const(int)
+			;	string_const(string)
+			;	float_const(float).
 
 %%% :- export_type cons_table.
 :- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
@@ -548,6 +550,33 @@ moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
 	Warns0 is Warns + 1,
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% Various predicates for accessing the cons_id type.
+
+:- interface.
+
+:- pred make_functor_cons_id(const, int, cons_id).
+:- mode make_functor_cons_id(in, in, out) is det.
+
+:- pred make_cons_id(sym_name, list(type), type_id, cons_id).
+:- mode make_cons_id(input, input, input, output) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+make_functor_cons_id(term_atom(Name), Arity, cons(Name, Arity)).
+make_functor_cons_id(term_integer(Int), _, int_const(Int)).
+make_functor_cons_id(term_string(String), _, string_const(String)).
+make_functor_cons_id(term_float(Float), _, float_const(Float)).
+
+make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
+	length(Args, Arity).
+make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
+	length(Args, Arity).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

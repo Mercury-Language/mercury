@@ -7,6 +7,15 @@
 % This file contains a mode-checker.
 % Still very incomplete.
 
+% XXX unifying `free' with `free' should be allowed if one of the variables
+% is dead.
+
+% XXX unifying `free' with `f(free)' introduces aliasing, and should be
+% disallowed, unless either the variable is dead or all the free argument(s)
+% are dead.
+
+% XXX should handle reordering of conjunctions.
+
 /*************************************
 To mode-check a clause:
 	1.  Initialize the insts of the head variables.
@@ -408,6 +417,15 @@ instmap_lookup_var(InstMap, Var, Inst) :-
 		Inst = free
 	).
 
+:- pred instmap_lookup_arg_list(list(term), instmap, list(inst)).
+:- mode instmap_lookup_arg_list(in, in, out).
+
+instmap_lookup_arg_list([], _InstMap, []).
+instmap_lookup_arg_list([Arg|Args], InstMap, [Inst|Insts]) :-
+	Arg = term_variable(Var),
+	instmap_lookup_var(InstMap, Var, Inst),
+	instmap_lookup_arg_list(Args, InstMap, Insts).
+
 %-----------------------------------------------------------------------------%
 
 	% XXX we don't reorder conjunctions yet
@@ -581,21 +599,21 @@ modecheck_call_pred(PredId, Args, ProcId, ModeInfo0, ModeInfo) :-
 	map__lookup(Procs, ProcId, ProcInfo),
 	procinfo_argmodes(ProcInfo, ProcArgModes),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
-	m_var_list_to_term_list(ArgVars, Args),
+	term_list_to_var_list(Args, ArgVars),
 	modecheck_var_has_inst_list(ArgVars, InitialInsts,
 				ModeInfo0, ModeInfo1),
 	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 	modecheck_set_var_inst_list(ArgVars, FinalInsts, ModeInfo1, ModeInfo).
 
-:- pred m_var_list_to_term_list(list(var), list(term)).
-:- mode m_var_list_to_term_list(input, output) is det.
-:- mode m_var_list_to_term_list(output, input) is semidet.
+:- pred term_list_to_var_list(list(term), list(var)).
+:- mode term_list_to_var_list(input, output) is semidet.
+:- mode term_list_to_var_list(output, input) is det.
 
-:- m_var_list_to_term_list(Vars, Terms) when Vars or Terms. % Indexing
+:- term_list_to_var_list(Terms, Vars) when Terms or Vars. % Indexing
 
-m_var_list_to_term_list([], []).
-m_var_list_to_term_list([V | Vs0], [term_variable(V) | Vs]) :-
-	m_var_list_to_term_list(Vs0, Vs).
+term_list_to_var_list([], []).
+term_list_to_var_list([term_variable(Var) | Terms], [Var | Vars]) :-
+	term_list_to_var_list(Terms, Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -743,6 +761,45 @@ report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
 	io__write_variable(Y, VarSet),
 	io__write_string("' has instantiatedness `"),
 	mercury_output_inst(InstY, InstVarSet),
+	io__write_string("'.\n").
+
+:- pred report_mode_error_unify_var_functor(modeinfo, var, const, list(term),
+					inst, list(inst), io__state, io__state).
+:- mode report_mode_error_unify_var_functor(in, in, in, in, in, in, di, uo)
+	is det.
+
+report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
+		-->
+	{ modeinfo_get_context(ModeInfo, Context) },
+	{ modeinfo_get_varset(ModeInfo, VarSet) },
+	{ modeinfo_get_instvarset(ModeInfo, InstVarSet) },
+	{ term__context_init(0, Context) },
+	{ Term = term_functor(Name, Args, Context) },
+	modeinfo_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error in unification of `"),
+	io__write_variable(X, VarSet),
+	io__write_string("' and `"),
+	io__write_term(VarSet, Term),
+	io__write_string("'.\n"),
+	prog_out__write_context(Context),
+	io__write_string("  Variable `"),
+	io__write_variable(X, VarSet),
+	io__write_string("' has instantiatedness `"),
+	mercury_output_inst(InstX, InstVarSet),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  term `"),
+	io__write_term(VarSet, Term),
+	io__write_string("' has instantiatedness `"),
+	io__write_constant(Name),
+	( { Args \= [] } ->
+		io__write_string("("),
+		mercury_output_inst_list(ArgInsts, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	),
 	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%
@@ -992,19 +1049,103 @@ modecheck_unification(term_variable(X), term_variable(Y), Modes, Unification,
 	Modes = ModeX - ModeY,
 	categorize_unify_var_var(ModeX, ModeY, X, Y, ModuleInfo, Unification).
 
-modecheck_unification(term_functor(_Functor, _Args, _), term_variable(_Y),
-			_Mode, _Unification, _ModeInfo0, _ModeInfo) :-
-		% XXX
-	error("NOT IMPLEMENTED: unification of var with functor\n").
+modecheck_unification(term_variable(X), term_functor(Name, Args, _),
+			Mode, Unification, ModeInfo0, ModeInfo) :-
+	modeinfo_get_moduleinfo(ModeInfo0, ModuleInfo),
+	modeinfo_get_instmap(ModeInfo0, InstMap0),
+	instmap_lookup_var(InstMap0, X, InstX),
+	instmap_lookup_arg_list(Args, InstMap0, InstArgs),
+	InstY = bound([functor(Name, InstArgs)]),
+	(
+		% could just use abstractly_unify_inst(InstX, InstY, ...)
+		% but this is a little bit faster
+		abstractly_unify_inst_functor(InstX, Name, InstArgs, ModuleInfo,
+			Inst)
+	->
+		modeinfo_get_instmap(ModeInfo0, InstMap0),
+		map__set(InstMap0, X, Inst, InstMap1),
+		bind_args(Inst, Args, InstMap1, InstMap),
+		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
+	;
+		modeinfo_get_io_state(ModeInfo0, IOState0),
+		report_mode_error_unify_var_functor(ModeInfo0, X, Name, Args,
+					InstX, InstArgs, IOState0, IOState),
+		modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo1),
+		modeinfo_incr_errors(ModeInfo1, ModeInfo),
+			% If we get an error, set the inst to ground
+			% to suppress follow-on errors
+		Inst = ground
+	),
+	ModeX = (InstX -> Inst),
+	ModeY = (InstY -> Inst),
+	Mode = ModeX - ModeY,
+	get_mode_of_args(Inst, InstArgs, ModeArgs),
+	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, Args,
+			ModuleInfo, Unification).
 
-modecheck_unification(term_variable(Y), term_functor(F, As, _), ModeAssign0,
-		ModeInfo, ModeAssignSet0, ModeAssignSet) :-
-	modecheck_unification(term_functor(F, As, _), term_variable(Y),
-		ModeAssign0, ModeInfo, ModeAssignSet0, ModeAssignSet).
+modecheck_unification(term_functor(F, As, _), term_variable(Y),
+		Modes, Unification, ModeInfo0, ModeInfo) :-
+	modecheck_unification(term_variable(Y), term_functor(F, As, _),
+		Modes, Unification, ModeInfo0, ModeInfo).
 	
 modecheck_unification(term_functor(_, _, _), term_functor(_, _, _),
 		_, _, _, _) :-
 	error("modecheck internal error: unification of term with term\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred bind_args(inst, list(term), instmap, instmap).
+:- mode bind_args(in, in, in, out) is det.
+
+bind_args(ground, Args, InstMap0, InstMap) :-
+	ground_args(Args, InstMap0, InstMap).
+
+bind_args(bound([functor(_, InstList)]), Args, InstMap0, InstMap) :-
+	bind_args_2(Args, InstList, InstMap0, InstMap).
+
+:- pred bind_args_2(list(term), list(inst), instmap, instmap).
+:- mode bind_args_2(in, in, in, out).
+
+bind_args_2([], [], InstMap, InstMap).
+bind_args_2([Arg | Args], [Inst | Insts], InstMap0, InstMap) :-
+	Arg = term_variable(Var),
+	map__set(InstMap0, Var, Inst, InstMap1),
+	bind_args_2(Args, Insts, InstMap1, InstMap).
+
+:- pred ground_args(list(term), instmap, instmap).
+:- mode ground_args(in, in, out).
+
+ground_args([], InstMap, InstMap).
+ground_args([Arg | Args], InstMap0, InstMap) :-
+	Arg = term_variable(Var),
+	map__set(InstMap0, Var, ground, InstMap1),
+	ground_args(Args, InstMap1, InstMap).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_mode_of_args(inst, list(inst), list(mode)).
+:- mode get_mode_of_args(in, in, out) is det.
+
+get_mode_of_args(ground, ArgInsts, ArgModes) :-
+	mode_ground_args(ArgInsts, ArgModes).
+get_mode_of_args(bound([functor(_Name, ArgInstsB)]), ArgInstsA, ArgModes) :-
+	get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes).
+
+:- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
+:- mode get_mode_of_args_2(in, in, out).
+
+get_mode_of_args_2([], [], []).
+get_mode_of_args_2([InstA | InstsA], [InstB | InstsB], [Mode | Modes]) :-
+	Mode = (InstA -> InstB),
+	get_mode_of_args_2(InstsA, InstsB, Modes).
+
+:- pred mode_ground_args(list(inst), list(mode)).
+:- mode mode_ground_args(in, out).
+
+mode_ground_args([], []).
+mode_ground_args([Inst | Insts], [Mode | Modes]) :-
+	Mode = (Inst -> ground),
+	mode_ground_args(Insts, Modes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1061,6 +1202,40 @@ abstractly_unify_inst_2(abstract_inst(Name, ArgsA),
 			abstract_inst(Name, Args)) :-
 	abstractly_unify_inst_list(ArgsA, ArgsB, ModuleInfo, Args).
 
+%-----------------------------------------------------------------------------%
+
+	% This is the abstract unification operation which
+	% unifies a variable (or rather, it's instantiatedness)
+	% with a functor.  We could just set the instantiatedness
+	% of the functor to be `bound([functor(Name, Args)])', and then
+	% call abstractly_unify_inst, but the following specialized code
+	% is slightly more efficient.
+
+:- pred abstractly_unify_inst_functor(inst, const, list(inst),
+					module_info, inst).
+:- mode abstractly_unify_inst_functor(in, in, in, in, out) is semidet.
+
+abstractly_unify_inst_functor(InstA, Name, ArgInsts, ModuleInfo, Inst) :-
+	inst_expand(ModuleInfo, InstA, InstA2),
+	abstractly_unify_inst_functor_2(InstA2, Name, ArgInsts, ModuleInfo,
+		Inst).
+
+:- pred abstractly_unify_inst_functor_2(inst, const, list(inst),
+					module_info, inst).
+:- mode abstractly_unify_inst_functor_2(in, in, in, in, out) is semidet.
+
+abstractly_unify_inst_functor_2(free, Name, Args, _,
+			bound([functor(Name, Args)])).
+abstractly_unify_inst_functor_2(bound(ListX), Name, Args, M, bound(List)) :-
+	ListY = [functor(Name, Args)],
+	abstractly_unify_bound_inst_list(ListX, ListY, M, List).
+abstractly_unify_inst_functor_2(ground, _Name, _Args, _, ground).
+abstractly_unify_inst_functor_2(abstract_inst(_,_), _Name, _Args, _, _) :- fail.
+
+%-----------------------------------------------------------------------------%
+
+	% This code performs abstract unification of two bound(...) insts.
+	% like a sorted merge operation.  If two elements have the
 	% The lists of bound_inst are guaranteed to be sorted.
 	% Abstract unification of two bound(...) insts proceeds
 	% like a sorted merge operation.  If two elements have the
@@ -1113,6 +1288,8 @@ inst_list_is_ground([Inst | Insts], ModuleInfo) :-
 	inst_is_ground(ModuleInfo, Inst),
 	inst_list_is_ground(Insts, ModuleInfo).
 
+%-----------------------------------------------------------------------------%
+
 :- pred categorize_unify_var_var(mode, mode, var, var, module_info,
 				unification).
 :- mode categorize_unify_var_var(in, in, in, in, in, out).
@@ -1123,9 +1300,30 @@ categorize_unify_var_var(ModeX, ModeY, X, Y, ModuleInfo, Unification) :-
 	; mode_is_output(ModuleInfo, ModeY) ->
 		Unification = assign(Y, X)
 	;
-		% XXX we should detect simple_tests!!!
+		% XXX we should distinguish `simple_test's from
+		% `complicated_unify's!!!
+		% Currently we just assume that they're all `simple_test's.
+		Unification = simple_test(X, Y)
+/******
+	;
 		Unification = complicated_unify(ModeX - ModeY,
 				term_variable(X), term_variable(Y))
+*******/
+	).
+
+:- pred categorize_unify_var_functor(mode, list(mode), var, const,
+				list(term), module_info, unification).
+:- mode categorize_unify_var_functor(in, in, in, in, in, in, out).
+
+categorize_unify_var_functor(ModeX, ArgModes, X, Name, Args, ModuleInfo,
+		Unification) :-
+	length(Args, Arity),
+	make_functor_cons_id(Name, Arity, ConsId),
+	term_list_to_var_list(Args, ArgVars),
+	( mode_is_output(ModuleInfo, ModeX) ->
+		Unification = construct(X, ConsId, ArgVars, ArgModes)
+	; 
+		Unification = deconstruct(X, ConsId, ArgVars, ArgModes)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -98,6 +98,7 @@
 
 /*
 :- external("NU-Prolog", (\=)/2).
+:- external("NU-Prolog", call/1).
 :- external("NU-Prolog", (=>)/2).
 :- external("NU-Prolog", (<=)/2).
 :- external("NU-Prolog", (<=>)/2).

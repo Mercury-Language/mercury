@@ -14,24 +14,24 @@
 %-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_type_id(type_id, io__state, io__state).
-:- mode hlds_out__write_type_id(input, di, uo).
+:- mode hlds_out__write_type_id(input, di, uo) is det.
 
 :- pred hlds_out__write_cons_id(cons_id, io__state, io__state).
-:- mode hlds_out__write_cons_id(input, di, uo).
+:- mode hlds_out__write_cons_id(input, di, uo) is det.
 
 :- pred hlds_out__write_pred_id(pred_id, io__state, io__state).
-:- mode hlds_out__write_pred_id(in, di, uo).
+:- mode hlds_out__write_pred_id(in, di, uo) is det.
 
 :- pred hlds_out__write_unify_context(unify_context, term__context,
 				io__state, io__state).
-:- mode hlds_out__write_unify_context(in, in, di, uo).
+:- mode hlds_out__write_unify_context(in, in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 	% print out an hlds structure.
 
 :- pred hlds_out__write_hlds(int, module_info, io__state, io__state).
-:- mode hlds_out__write_hlds(in, in, in, out).
+:- mode hlds_out__write_hlds(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -48,6 +48,14 @@ hlds_out__write_cons_id(cons(Name, Arity)) -->
 	io__write_string(Name),
 	io__write_string("/"),
 	io__write_int(Arity).
+hlds_out__write_cons_id(int_const(Int)) -->
+	io__write_int(Int).
+hlds_out__write_cons_id(string_const(String)) -->
+	io__write_char('"'),
+	io__write_string(String),
+	io__write_char('"').
+hlds_out__write_cons_id(float_const(Float)) -->
+	io__write_float(Float).
 
 hlds_out__write_pred_id(PredId) -->
 	% XXX module name

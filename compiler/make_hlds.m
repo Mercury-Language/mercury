@@ -396,14 +396,6 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 	{ map__set(Ctors0, ConsId, ConsDefns2, Ctors1) },
 	ctors_add(Rest, TypeId, Context, Ctors1, Ctors).
 
-:- pred make_cons_id(sym_name, list(type), type_id, cons_id).
-:- mode make_cons_id(input, input, input, output).
-
-make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
-	length(Args, Arity).
-make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
-	length(Args, Arity).
-
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
@@ -1389,17 +1381,6 @@ create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goalinfo_init(GoalInfo),
 	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.
-
-:- pred make_functor_cons_id(const, int, cons_id).
-:- mode make_functor_cons_id(in, in, out).
-
-make_functor_cons_id(Constant, Arity, ConsId) :-
-	( Constant = term_atom(Name) ->
-		ConsId = cons(Name, Arity)
-	;
-		% The cons_id produced here will never actually be used
-		ConsId = cons("", 0)
-	).
 
 %-----------------------------------------------------------------------------%
 

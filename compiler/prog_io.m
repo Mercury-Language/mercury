@@ -404,7 +404,7 @@ check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
 	->
 	    dummy_term_with_context(Context, Term2),
             ThisError =
-	        "warning: incorrect module name in `:- module' declaration"
+	        "Warning: incorrect module name in `:- module' declaration"
 		    - Term2,
             Messages = [ThisError | Messages0],
 	    Items = Items1,
@@ -1104,7 +1104,7 @@ parse_type_decl_2(ok(TypeDefn), VarSet, Cond,
 :- pred add_warning(string, term, message_list, message_list).
 :- mode add_warning(in, in, out, input).
 add_warning(Warning, Term, [Msg - Term | Msgs], Msgs) :-
-	string__append("warning: ", Warning, Msg).
+	string__append("Warning: ", Warning, Msg).
 
 	% add an error message to the list of messages
 
