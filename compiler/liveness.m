@@ -67,8 +67,8 @@ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 
 detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 					Liveness, Goal - GoalInfo) :-
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 		% work out which variables get born in this goal
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	set__difference(NonLocals, Liveness0, NewVarsSet),
 	set__to_sorted_list(NewVarsSet, NewVarsList),
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
@@ -566,8 +566,11 @@ stuff_deadness_residue_after_goal(Goal0 - GoalInfo0, Residue, Goal - GoalInfo)
 		% conjunction.  This technique is probably a bit fragile,
 		% since other parts of the compiler aren't very keen on
 		% singleton disjunctions.
-		% XXX The unconditional overwriting of the three other fields
-		% is also worrying.
+		%
+		% This code does NOT overwrite any part of the goal_info
+		% attached to the original goal. It merely uses it as a
+		% basis for constructing the goal_info to be attached
+		% to the conjunction being created.
 		Goal = conj([Goal0 - GoalInfo0]),
 		set__init(PreBirths),
 		set__init(PostBirths),
