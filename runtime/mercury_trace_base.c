@@ -500,6 +500,8 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 
 #endif	/* MR_TRACE_HISTOGRAM */
 
+#ifndef MR_HIGHLEVEL_CODE
+
 MR_define_extern_entry(MR_do_trace_redo_fail_shallow);
 MR_define_extern_entry(MR_do_trace_redo_fail_deep);
 
@@ -554,6 +556,8 @@ MR_define_entry(MR_do_trace_redo_fail_deep);
 
 MR_END_MODULE
 
+#endif /* !MR_HIGHLEVEL_CODE */
+
 /* forward decls to suppress gcc warnings */
 void mercury_sys_init_trace_init(void);
 void mercury_sys_init_trace_init_type_tables(void);
@@ -563,7 +567,9 @@ void mercury_sys_init_trace_write_out_proc_statics(FILE *fp);
 
 void mercury_sys_init_trace_init(void)
 {
+#ifndef MR_HIGHLEVEL_CODE
 	MR_trace_labels_module();
+#endif
 }
 
 void mercury_sys_init_trace_init_type_tables(void)

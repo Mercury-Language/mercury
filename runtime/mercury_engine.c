@@ -20,20 +20,24 @@ ENDINIT
 
 #include	"mercury_dummy.h"
 
-#ifdef MR_USE_GCC_NONLOCAL_GOTOS
+#ifndef MR_HIGHLEVEL_CODE
 
-#define LOCALS_SIZE	10024	/* amount of space to reserve for local vars */
-#define MAGIC_MARKER	187	/* a random character */
-#define MAGIC_MARKER_2	142	/* another random character */
+  #ifdef MR_USE_GCC_NONLOCAL_GOTOS
 
-#endif
+    #define LOCALS_SIZE  10024	/* amount of space to reserve for local vars */
+    #define MAGIC_MARKER	187	/* a random character */
+    #define MAGIC_MARKER_2	142	/* another random character */
 
-static	void	call_engine_inner(MR_Code *entry_point) MR_NO_RETURN;
+  #endif /* MR_USE_GCC_NONLOCAL_GOTOS */
 
-#ifndef MR_USE_GCC_NONLOCAL_GOTOS
-  static MR_Code	*engine_done(void);
-  static MR_Code	*engine_init_registers(void);
-#endif
+  static	void	call_engine_inner(MR_Code *entry_point) MR_NO_RETURN;
+
+  #ifndef MR_USE_GCC_NONLOCAL_GOTOS
+    static MR_Code	*engine_done(void);
+    static MR_Code	*engine_init_registers(void);
+  #endif
+
+#endif /* !MR_HIGHLEVEL_CODE */
 
 MR_bool	MR_debugflag[MR_MAXFLAG];
 
@@ -179,6 +183,17 @@ MR_destroy_engine(MercuryEngine *eng)
 }
 
 /*---------------------------------------------------------------------------*/
+
+#ifdef MR_HIGHLEVEL_CODE
+
+/*
+** This debugging hook is empty in the high-level code case:
+** we don't save the previous locations.
+*/
+void 
+MR_dump_prev_locations(void) {}
+
+#else /* !MR_HIGHLEVEL_CODE */
 
 /*
 ** MR_Word *
@@ -667,6 +682,8 @@ if (!MR_tracedebug) {
 } /* end call_engine_inner() */
 #endif /* not MR_USE_GCC_NONLOCAL_GOTOS */
 
+#endif /* !MR_HIGHLEVEL_CODE */
+
 /*---------------------------------------------------------------------------*/
 
 void
@@ -679,6 +696,8 @@ MR_terminate_engine(void)
 }
 
 /*---------------------------------------------------------------------------*/
+
+#ifndef MR_HIGHLEVEL_CODE
 
 MR_define_extern_entry(MR_do_redo);
 MR_define_extern_entry(MR_do_fail);
@@ -723,6 +742,8 @@ MR_define_entry(MR_exception_handler_do_fail);
 
 MR_END_MODULE
 
+#endif /* !MR_HIGHLEVEL_CODE */
+
 /* forward decls to suppress gcc warnings */
 void mercury_sys_init_engine_init(void);
 void mercury_sys_init_engine_init_type_tables(void);
@@ -732,7 +753,9 @@ void mercury_sys_init_engine_write_out_proc_statics(FILE *fp);
 
 void mercury_sys_init_engine_init(void)
 {
+#ifndef MR_HIGHLEVEL_CODE
 	special_labels_module();
+#endif
 }
 
 void mercury_sys_init_engine_init_type_tables(void)

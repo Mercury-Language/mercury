@@ -21,6 +21,7 @@
 #include "mercury_type_tables.h"
 #include "mercury_tabling.h"
 #include "mercury_misc.h"
+#include "mercury_memory.h"
 #include <string.h>
 
 /*
