@@ -23,7 +23,7 @@
 					byte_pred_or_func, int)
 			;	endof_pred
 			;	enter_proc(byte_proc_id, determinism,
-					int, int, list(byte_var_info))
+					int, int, int, list(byte_var_info))
 			;	endof_proc
 			;	label(byte_label_id)
 			;	enter_disjunction(byte_label_id)
@@ -40,7 +40,8 @@
 			;	endof_then(byte_label_id)
 			;	enter_else(byte_temp)
 			;	endof_if
-			;	enter_negation(byte_label_id)
+			;	enter_negation(byte_temp, byte_label_id)
+			;	endof_negation_goal(byte_temp)
 			;	endof_negation
 			;	enter_commit(byte_temp)
 			;	endof_commit(byte_temp)
@@ -207,10 +208,11 @@ output_args(enter_pred(PredId, PredArity, IsFunc, ProcCount)) -->
 	output_byte(IsFunc),
 	output_length(ProcCount).
 output_args(endof_pred) --> [].
-output_args(enter_proc(ProcId, Detism, LabelCount, TempCount, Vars)) -->
+output_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars)) -->
 	output_proc_id(ProcId),
 	output_determinism(Detism),
 	output_length(LabelCount),
+	output_label_id(LabelId),
 	output_length(TempCount),
 	{ list__length(Vars, VarCount) },
 	output_length(VarCount),
@@ -229,9 +231,9 @@ output_args(enter_switch(Var, LabelId)) -->
 	output_var(Var),
 	output_label_id(LabelId).
 output_args(endof_switch) --> [].
-output_args(enter_switch_arm(ConsId, LabelId)) -->
+output_args(enter_switch_arm(ConsId, NextLabelId)) -->
 	output_cons_id(ConsId),
-	output_label_id(LabelId).
+	output_label_id(NextLabelId).
 output_args(endof_switch_arm(LabelId)) -->
 	output_label_id(LabelId).
 output_args(enter_if(ElseLabelId, FollowLabelId, FramePtrTemp)) -->
@@ -245,8 +247,11 @@ output_args(endof_then(FollowLabelId)) -->
 output_args(enter_else(FramePtrTemp)) -->
 	output_temp(FramePtrTemp).
 output_args(endof_if) --> [].
-output_args(enter_negation(LabelId)) -->
+output_args(enter_negation(FramePtrTemp, LabelId)) -->
+	output_temp(FramePtrTemp),
 	output_label_id(LabelId).
+output_args(endof_negation_goal(FramePtrTemp)) -->
+	output_temp(FramePtrTemp).
 output_args(endof_negation) --> [].
 output_args(enter_commit(Temp)) -->
 	output_temp(Temp).
@@ -335,10 +340,11 @@ debug_args(enter_pred(PredId, PredArity, IsFunc, ProcsCount)) -->
 	),
 	debug_length(ProcsCount).
 debug_args(endof_pred) --> [].
-debug_args(enter_proc(ProcId, Detism, LabelCount, TempCount, Vars)) -->
+debug_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars)) -->
 	debug_proc_id(ProcId),
 	debug_determinism(Detism),
 	debug_length(LabelCount),
+	debug_label_id(LabelId),
 	debug_length(TempCount),
 	{ list__length(Vars, VarCount) },
 	debug_length(VarCount),
@@ -357,9 +363,9 @@ debug_args(enter_switch(Var, LabelId)) -->
 	debug_var(Var),
 	debug_label_id(LabelId).
 debug_args(endof_switch) --> [].
-debug_args(enter_switch_arm(ConsId, LabelId)) -->
+debug_args(enter_switch_arm(ConsId, NextLabelId)) -->
 	debug_cons_id(ConsId),
-	debug_label_id(LabelId).
+	debug_label_id(NextLabelId).
 debug_args(endof_switch_arm(LabelId)) -->
 	debug_label_id(LabelId).
 debug_args(enter_if(ElseLabelId, FollowLabelId, FramePtrTemp)) -->
@@ -373,8 +379,11 @@ debug_args(endof_then(FollowLabelId)) -->
 debug_args(enter_else(FramePtrTemp)) -->
 	debug_temp(FramePtrTemp).
 debug_args(endof_if) --> [].
-debug_args(enter_negation(LabelId)) -->
+debug_args(enter_negation(FramePtrTemp, LabelId)) -->
+	debug_temp(FramePtrTemp),
 	debug_label_id(LabelId).
+debug_args(endof_negation_goal(FramePtrTemp)) -->
+	debug_temp(FramePtrTemp).
 debug_args(endof_negation) --> [].
 debug_args(enter_commit(Temp)) -->
 	debug_temp(Temp).
@@ -869,7 +878,7 @@ debug_unop(Unop) -->
 
 byte_code(enter_pred(_, _, _, _),		 0).
 byte_code(endof_pred,				 1).
-byte_code(enter_proc(_, _, _, _, _),		 2).
+byte_code(enter_proc(_, _, _, _, _, _),		 2).
 byte_code(endof_proc,				 3).
 byte_code(label(_),				 4).
 byte_code(enter_disjunction(_),			 5).
@@ -884,7 +893,7 @@ byte_code(enter_if(_, _, _),			13).
 byte_code(enter_then(_),			14).
 byte_code(endof_then(_),			15).
 byte_code(endof_if,				16).
-byte_code(enter_negation(_),			17).
+byte_code(enter_negation(_, _),			17).
 byte_code(endof_negation,			18).
 byte_code(enter_commit(_),			19).
 byte_code(endof_commit(_),			20).
@@ -908,13 +917,14 @@ byte_code(fail,					37).
 byte_code(context(_),				38).
 byte_code(not_supported,			39).
 byte_code(enter_else(_),			40).
+byte_code(endof_negation_goal(_),		41).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
 
 byte_debug(enter_pred(_, _, _, _),		"enter_pred").
 byte_debug(endof_pred,				"endof_pred").
-byte_debug(enter_proc(_, _, _, _, _),		"enter_proc").
+byte_debug(enter_proc(_, _, _, _, _, _),	"enter_proc").
 byte_debug(endof_proc,				"endof_proc").
 byte_debug(label(_),				"label").
 byte_debug(enter_disjunction(_),		"enter_disjunction").
@@ -930,7 +940,8 @@ byte_debug(enter_then(_),			"enter_then").
 byte_debug(endof_then(_),			"endof_then").
 byte_debug(enter_else(_),			"enter_else").
 byte_debug(endof_if,				"endof_if").
-byte_debug(enter_negation(_),			"enter_negation").
+byte_debug(enter_negation(_,_),			"enter_negation").
+byte_debug(endof_negation_goal(_),		"endof_negation_goal").
 byte_debug(endof_negation,			"endof_negation").
 byte_debug(enter_commit(_),			"enter_commit").
 byte_debug(endof_commit(_),			"endof_commit").

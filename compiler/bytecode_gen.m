@@ -132,7 +132,17 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	call_gen__output_arg_locs(Args, OutputArgs),
 	bytecode_gen__gen_places(OutputArgs, ByteInfo, PlaceCode),
 
-	bytecode_gen__goal(Goal, ByteInfo1, ByteInfo, GoalCode),
+	% If semideterministic, reserve temp slot 0 for the return value
+	( CodeModel = model_semi ->
+		bytecode_gen__get_next_temp(ByteInfo1, _FrameTemp, ByteInfo2)
+	;
+		ByteInfo2 = ByteInfo1
+	),
+
+	bytecode_gen__goal(Goal, ByteInfo2, ByteInfo3, GoalCode),
+
+	bytecode_gen__get_next_label(ByteInfo3, EndLabel, ByteInfo),
+	
 	bytecode_gen__get_counts(ByteInfo, LabelCount, TempCount),
 
 	ZeroLabelCode = node([label(ZeroLabel)]),
@@ -149,12 +159,12 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 		BodyCode = node(BodyCode0)
 	),
 	proc_id_to_int(ProcId, ProcInt),
-	EnterCode = node([enter_proc(ProcInt, Detism, LabelCount, TempCount,
-		VarInfos)]),
+	EnterCode = node([enter_proc(ProcInt, Detism, LabelCount, EndLabel,
+		TempCount, VarInfos)]),
 	( CodeModel = model_semi ->
-		EndofCode = node([semidet_succeed, endof_proc])
+		EndofCode = node([semidet_succeed, label(EndLabel), endof_proc])
 	;
-		EndofCode = node([endof_proc])
+		EndofCode = node([label(EndLabel), endof_proc])
 	),
 	Code = tree(EnterCode, tree(BodyCode, EndofCode)).
 
@@ -209,10 +219,14 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	;
 		GoalExpr = not(Goal),
 		bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, SomeCode),
-		bytecode_gen__get_next_label(ByteInfo1, EndLabel, ByteInfo),
-		EnterCode = node([enter_negation(EndLabel)]),
-		EndofCode = node([endof_negation, label(EndLabel)]),
-		Code = tree(EnterCode, tree(SomeCode, EndofCode))
+		bytecode_gen__get_next_label(ByteInfo1, EndLabel, ByteInfo2),
+		bytecode_gen__get_next_temp(ByteInfo2, FrameTemp, ByteInfo),
+		EnterCode = node([enter_negation(FrameTemp, EndLabel)]),
+		EndofCode = node([endof_negation_goal(FrameTemp),
+			label(EndLabel), endof_negation]),
+		Code =  tree(EnterCode,
+			tree(SomeCode,
+			     EndofCode))
 	;
 		GoalExpr = some(_, _, Goal),
 		bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, SomeCode),
