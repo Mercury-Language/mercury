@@ -14,6 +14,7 @@ Changes to the Mercury language:
 * Support for Haskell-like "@" expressions.
 
 Changes to the Mercury compiler:
+* A new `--make' option, for simpler building of programs.
 * A new `--smart-recompilation' option, for fine-grained dependency tracking.
 * A new optional warning: `--warn-non-tail-recursion'.
 * A new optimization: `--constraint-propagation'.
@@ -297,6 +298,12 @@ Changes to the extras distribution:
   better with lex.
 
 Changes to the Mercury compiler:
+
+* There is a new `--make' option which performs most of the functions
+  of Mmake.  The advantages of `mmc --make' are that no `mmake depend'
+  step is necessary and the dependencies are more accurate.  Parallel
+  builds are not yet supported.  See the "Using Mmake" chapter of the
+  "Mercury User's Guide" for details.
 
 * The Mercury compiler can now perform smart recompilation, enabled by the
   `--smart-recompilation' option. With smart recompilation, when the
