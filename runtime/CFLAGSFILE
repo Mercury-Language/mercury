@@ -2,7 +2,7 @@
 # -g -O2 -DSPEED
 
 # Use these options for optimizing compiles with gcc
-# -O2 -fomit-frame-pointer -DSPEED
+ -O2 -fomit-frame-pointer -DSPEED
 
 # Use this with gcc if you want to look at the .s files
 # -fverbose-asm
