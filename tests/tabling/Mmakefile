@@ -12,6 +12,9 @@ PROGS=	\
 	tc_loop \
 	tc_minimal
 
+# We don't yet pass the following tests:
+#	coup
+
 #-----------------------------------------------------------------------------#
 
 # at the moment tabling only works with conservative gc
