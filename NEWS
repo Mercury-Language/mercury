@@ -185,7 +185,9 @@ Changes to the Mercury compiler:
 NEWS for Mercury release 0.7.3
 ------------------------------
 
-This release is primarily a bug-fix release.
+This release is primarily a bug-fix release.  The problems fixed
+include installation problems on Windows, some problems with the
+profiler, and compatibility with GNU Make versions >= 3.76.
 But as well as bug fixes, there are a few minor improvements:
 
 * The profiler now allows you to merge profiling data from multiple runs.
@@ -194,7 +196,8 @@ But as well as bug fixes, there are a few minor improvements:
   See the "Profiling" section of the Mercury User's Guide,
   or the man page for `mprof_merge_runs'.
 
-* Termination analysis no longer uses the `lp_solve' package.
+* Termination analysis no longer uses the `lp_solve' package,
+  so we have removed it from the distribution.
   
   This avoids some portability problems and some copyright issues
   (the `lp_solve' package had a quite restrictive license).
