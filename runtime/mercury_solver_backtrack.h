@@ -129,7 +129,7 @@ extern void fatal(const char *);
 		init_solver_goal();			\
 			/* get some memory for */	\
 			/* the CLP(R) trail    */	\
-		trail = solver_malloc(DEF_TRAIL_SZ*sizeof(int)); \
+		trail = checked_malloc(DEF_TRAIL_SZ*sizeof(int)); \
 		trtop = 0;				\
 			/* initialise the      */	\
 			/* CLP(R) streams      */	\
