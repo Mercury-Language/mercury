@@ -39,18 +39,22 @@
 	;	io_error(io__error)	% error reading from the input stream
 	;	eof.			% end-of-file
 
-:- type token_context == int.
+% For every token, we record the line number of the line on
+% which the token occurred.
+
+:- type token_context == int.	% line number
 
 :- type token_list == list(pair(token, token_context)).
 
 :- pred lexer__get_token_list(token_list, io__state, io__state).
 :- mode lexer__get_token_list(out, di, uo) is det.
-%		Read a list of tokens from the current input stream.
-%		Keep reading until either we encounter either an `end' token
-%		(i.e. a full stop followed by whitespace) or the end-of-file.
+%	Read a list of tokens from the current input stream.
+%	Keep reading until either we encounter either an `end' token
+%	(i.e. a full stop followed by whitespace) or the end-of-file.
 
 :- pred lexer__token_to_string(token, string).
 :- mode lexer__token_to_string(in, out) is det.
+%	Convert a token to a human-readable string describing the token.
 
 %-----------------------------------------------------------------------------%
 
