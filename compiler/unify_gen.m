@@ -145,6 +145,12 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 
 unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 	code_info__produce_variable(Var, VarCode, Rval),
+	%
+	% As an optimization, for data types with exactly two alternatives,
+	% one of which is a constant, we make sure that we test against the
+	% constant (negating the result of the test, if needed),
+	% since a test against a constant is cheaper than a tag test.
+	%
 	(
 		{ ConsId = cons(_, Arity) },
 		{ Arity > 0 }
@@ -183,7 +189,7 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 			" has functor ", ConsIdName], Comment) },
 		{ CommentCode = node([comment(Comment) - ""]) },
 		code_info__cons_id_to_tag(Var, ConsId, Tag),
-		{ unify_gen__generate_tag_rval_2(Tag, Rval, TestRval) }
+		{ unify_gen__generate_tag_test_rval_2(Tag, Rval, TestRval) }
 	;
 		{ Reverse = yes(TestConsId) },
 		{ string__append_list(["checking that ", VarName,
@@ -191,7 +197,7 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 			Comment) },
 		{ CommentCode = node([comment(Comment) - ""]) },
 		code_info__cons_id_to_tag(Var, TestConsId, Tag),
-		{ unify_gen__generate_tag_rval_2(Tag, Rval, NegTestRval) },
+		{ unify_gen__generate_tag_test_rval_2(Tag, Rval, NegTestRval) },
 		{ code_util__neg_rval(NegTestRval, TestRval) }
 	),
 	code_info__get_next_label(ElseLab),
@@ -209,55 +215,60 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__generate_tag_rval(prog_var::in, cons_id::in, rval::out,
-	code_tree::out, code_info::in, code_info::out) is det.
+:- pred unify_gen__generate_tag_test_rval(prog_var::in, cons_id::in,
+	rval::out, code_tree::out, code_info::in, code_info::out) is det.
 
-unify_gen__generate_tag_rval(Var, ConsId, TestRval, Code) -->
+unify_gen__generate_tag_test_rval(Var, ConsId, TestRval, Code) -->
         code_info__produce_variable(Var, Code, Rval),
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	{ unify_gen__generate_tag_rval_2(Tag, Rval, TestRval) }.
+	{ unify_gen__generate_tag_test_rval_2(Tag, Rval, TestRval) }.
 
-:- pred unify_gen__generate_tag_rval_2(cons_tag::in, rval::in, rval::out)
+:- pred unify_gen__generate_tag_test_rval_2(cons_tag::in, rval::in, rval::out)
 	is det.
 
-unify_gen__generate_tag_rval_2(string_constant(String), Rval, TestRval) :-
+unify_gen__generate_tag_test_rval_2(string_constant(String), Rval, TestRval) :-
 	TestRval = binop(str_eq, Rval, const(string_const(String))).
-unify_gen__generate_tag_rval_2(float_constant(Float), Rval, TestRval) :-
+unify_gen__generate_tag_test_rval_2(float_constant(Float), Rval, TestRval) :-
 	TestRval = binop(float_eq, Rval, const(float_const(Float))).
-unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
+unify_gen__generate_tag_test_rval_2(int_constant(Int), Rval, TestRval) :-
 	TestRval = binop(eq, Rval, const(int_const(Int))).
-unify_gen__generate_tag_rval_2(pred_closure_tag(_, _, _), _Rval, _TestRval) :-
+unify_gen__generate_tag_test_rval_2(pred_closure_tag(_, _, _), _Rval,
+		_TestRval) :-
 	% This should never happen, since the error will be detected
 	% during mode checking.
 	error("Attempted higher-order unification").
-unify_gen__generate_tag_rval_2(code_addr_constant(_, _), _Rval, _TestRval) :-
+unify_gen__generate_tag_test_rval_2(code_addr_constant(_, _), _Rval,
+		_TestRval) :-
 	% This should never happen
 	error("Attempted code_addr unification").
-unify_gen__generate_tag_rval_2(type_ctor_info_constant(_, _, _), _, _) :-
+unify_gen__generate_tag_test_rval_2(type_ctor_info_constant(_, _, _), _, _) :-
 	% This should never happen
 	error("Attempted type_ctor_info unification").
-unify_gen__generate_tag_rval_2(base_typeclass_info_constant(_, _, _), _, _) :-
+unify_gen__generate_tag_test_rval_2(base_typeclass_info_constant(_, _, _), _,
+		_) :-
 	% This should never happen
 	error("Attempted base_typeclass_info unification").
-unify_gen__generate_tag_rval_2(tabling_pointer_constant(_, _), _, _) :-
+unify_gen__generate_tag_test_rval_2(tabling_pointer_constant(_, _), _, _) :-
 	% This should never happen
 	error("Attempted tabling_pointer unification").
-unify_gen__generate_tag_rval_2(deep_profiling_proc_static_tag(_), _, _) :-
+unify_gen__generate_tag_test_rval_2(deep_profiling_proc_static_tag(_), _, _) :-
 	% This should never happen
 	error("Attempted deep_profiling_proc_static_tag unification").
-unify_gen__generate_tag_rval_2(no_tag, _Rval, TestRval) :-
+unify_gen__generate_tag_test_rval_2(no_tag, _Rval, TestRval) :-
 	TestRval = const(true).
-unify_gen__generate_tag_rval_2(unshared_tag(UnsharedTag), Rval, TestRval) :-
+unify_gen__generate_tag_test_rval_2(unshared_tag(UnsharedTag), Rval,
+		TestRval) :-
 	TestRval = binop(eq,	unop(tag, Rval),
 				unop(mktag, const(int_const(UnsharedTag)))).
-unify_gen__generate_tag_rval_2(shared_remote_tag(Bits, Num), Rval, TestRval) :-
+unify_gen__generate_tag_test_rval_2(shared_remote_tag(Bits, Num), Rval,
+		TestRval) :-
 	TestRval = binop(and,
 			binop(eq,	unop(tag, Rval),
 					unop(mktag, const(int_const(Bits)))), 
 			binop(eq,	lval(field(yes(Bits), Rval,
 						const(int_const(0)))),
 					const(int_const(Num)))).
-unify_gen__generate_tag_rval_2(shared_local_tag(Bits, Num), Rval,
+unify_gen__generate_tag_test_rval_2(shared_local_tag(Bits, Num), Rval,
 		TestRval) :-
 	TestRval = binop(eq,	Rval,
 			mkword(Bits, unop(mkbody, const(int_const(Num))))).
