@@ -70,6 +70,7 @@ SOURCES= \
 	type_inf_loop.m \
 	type_loop.m \
 	type_mismatch.m \
+	type_vars.m \
 	typeclass_test_1.m \
 	typeclass_test_2.m \
 	typeclass_test_3.m \

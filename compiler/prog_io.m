@@ -1433,18 +1433,15 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 		;
 			list__member(Ctor, Constrs),
 			Ctor = ctor(ExistQVars, _Constraints, _CtorName,
-					CtorArgs),
+					_CtorArgs),
 			list__member(Var, ExistQVars),
-			assoc_list__values(CtorArgs, CtorArgTypes),
-			\+ term__contains_var_list(CtorArgTypes, Var)
+			term__contains_var_list(Args, Var)
 		->
 			Result = error( "type variable has overlapping scopes (explicit type quantifier shadows argument type)", Body)
 
 		% check that all type variables in existential quantifiers
-		% occur somewhere in the body
-		% (maybe this should just be a warning, not an error?
-		% If we were to allow it, we should at this point delete any
-		% such unused type variables from the list of quantifiers.)
+		% occur somewhere in the constructor argument types
+		% (not just the constraints)
 		;
 			list__member(Ctor, Constrs),
 			Ctor = ctor(ExistQVars, _Constraints, _CtorName,
@@ -1454,7 +1451,7 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 			\+ term__contains_var_list(CtorArgTypes, Var)
 		->
 			Result = error(
-			"var occurs only in existential quantifier",
+		"type variable does not occur in arguments of constructor",
 					Body)
 		% check that all type variables in existential constraints
 		% occur in the existential quantifiers
