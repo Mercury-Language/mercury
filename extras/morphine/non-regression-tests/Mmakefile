@@ -49,7 +49,7 @@ endif
 queens.out.orig: queens queens.in 
 	$(MORPHINE) < queens.in > queens.out.orig 2>&1
 
-# Filter out things that might chande depending if we use Eclipse3.5.2 
+# Filter out things that might change depending if we use Eclipse3.5.2 
 # or Eclipse4.*, unix or inet socket, etc.
 queens.out: queens.out.orig
 	cat queens.out.orig | \
@@ -58,6 +58,7 @@ queens.out: queens.out.orig
 		grep -v 'loading' | \
 		grep -v 'is loaded' | \
 		grep -v 'making scenario' | \
+		grep -v 'WARNING' | \
 		grep -v 'Compiling collect.m' | \
 		grep -v 'mmc --grade' | \
 		grep -v 'ml --grade' \
@@ -71,6 +72,7 @@ test_vars.out: test_vars.out.orig
 		grep -v 'host = ' | \
 		grep -v 'compiled traceable' | \
 		grep -v 'loading' | \
+		grep -v 'WARNING' | \
 		grep -v 'is loaded' | \
 		grep -v 'making scenario' \
 			> test_vars.out 2>&1
