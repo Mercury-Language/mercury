@@ -3508,19 +3508,10 @@ static MR_MercuryFile mercury_stdin_binary =
 static MR_MercuryFile mercury_stdout_binary =
 	new_mercury_file(0, 1);
 
-	// XXX these should not create extra copies, instead we should
-	// use the mercury_files above.
-
-static MR_MercuryFile mercury_current_text_input =
-	new_open_mercury_file(System::Console::OpenStandardInput(),
-		System::Console::In, NULL, 1);
-static MR_MercuryFile mercury_current_text_output =
-	new_open_mercury_file(System::Console::OpenStandardOutput(),
-		NULL, System::Console::Out, 1);
-static MR_MercuryFile mercury_current_binary_input =
-        new_mercury_file(0, 1);
-static MR_MercuryFile mercury_current_binary_output =
-        new_mercury_file(0, 1);
+static MR_MercuryFile mercury_current_text_input = mercury_stdin;
+static MR_MercuryFile mercury_current_text_output = mercury_stdout;
+static MR_MercuryFile mercury_current_binary_input = mercury_stdin_binary;
+static MR_MercuryFile mercury_current_binary_output = mercury_stdout_binary;
 
 static System::IO::IOException *MR_io_exception;
 
