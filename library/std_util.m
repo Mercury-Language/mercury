@@ -11,9 +11,10 @@
 % This file is intended for all the useful standard utilities
 % that don't belong elsewhere, like <stdlib.h> in C.
 %
-% It contains the predicates solutions/2, semidet_succeed/0, semidet_fail/0;
-% the types univ, unit, maybe(T), pair(T1, T2); and some predicates which
-% operate on those types.
+% It contains the predicates solutions/2, semidet_succeed/0,
+% semidet_fail/0, functor/3, arg/3, det_arg/3, expand/4; the types univ,
+% unit, maybe(T), pair(T1, T2); and some predicates which operate on
+% those types.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -538,11 +539,28 @@ void sys_init_unify_univ_module(void) {
 
 	/* Type definitions */
 
+	/* 
+	 * The last two fields, need_functor, and need_args, must
+	 * be set by the caller, to indicate whether mercury_expand
+	 * should copy the functor (if need_functor is non-zero) or
+	 * the argument vector and type_info_vector (if need_args is
+	 * non-zero). The arity will always be set.
+	 *
+	 * mercury_expand will fill in the other fields (functor, arity,
+	 * argument_vector and type_info_vector) accordingly, but
+	 * the values of fields not asked for should be assumed to
+	 * contain random data when mercury_expand returns.
+	 * (that is, they should not be relied on to remain unchanged).
+	 */
+
+
 typedef struct mercury_expand_info {
 	String functor;
 	int arity;
 	Word *argument_vector;
 	Word *type_info_vector;
+	bool need_functor;
+	bool need_args;
 } expand_info;
 
 
@@ -750,18 +768,26 @@ mercury_expand_simple(Word data_value, Word* arg_type_infos, Word * type_info,
 
 	info->arity = arg_type_infos[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
 
-	info->functor = (String) arg_type_infos[info->arity + 
-		TYPELAYOUT_SIMPLE_FUNCTOR_OFFSET];
-	info->argument_vector = (Word *) data_value;
+	if (info->need_functor) {
+		make_aligned_string(info->functor, 
+			(String) arg_type_infos[info->arity + 
+			TYPELAYOUT_SIMPLE_FUNCTOR_OFFSET]);
+	}
 
-	info->type_info_vector = checked_malloc(info->arity * sizeof(Word));
+	if (info->need_args) {
+		info->argument_vector = (Word *) data_value;
 
-	for (i = 0; i < info->arity ; i++) {
-		Word * arg_pseudo_type_info;
+		info->type_info_vector = 
+			checked_malloc(info->arity * sizeof(Word));
 
-		arg_pseudo_type_info = (Word *) arg_type_infos[i + 1];
-		info->type_info_vector[i] = (Word) create_type_info(type_info, 
-			(Word *) arg_pseudo_type_info);
+		for (i = 0; i < info->arity ; i++) {
+			Word * arg_pseudo_type_info;
+
+			arg_pseudo_type_info = (Word *) arg_type_infos[i + 1];
+			info->type_info_vector[i] = (Word) 
+				create_type_info(type_info, 
+					(Word *) arg_pseudo_type_info);
+		}
 	}
 }
 
@@ -803,7 +829,6 @@ mercury_expand_complicated(Word data_value, Word entry_value, Word * type_info,
 void
 mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 {
-
 	switch ((int) entry_value) {
 	
 	case TYPELAYOUT_UNASSIGNED_VALUE:
@@ -814,66 +839,62 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 		fatal_error(""Attempt to use an UNUSED tag in expand."");
 		break;
 
-	case TYPELAYOUT_STRING_VALUE: {
+	case TYPELAYOUT_STRING_VALUE:
 		/* XXX should escape characters correctly */
 
-		incr_hp_atomic((Word) info->functor, 
-			(strlen((String) data_value) + 2 + sizeof(Word)) 
-				/ sizeof(Word));
-		sprintf(info->functor, ""%c%s%c"", '""', 
-			(String) data_value, '""');
-
+		if (info->need_functor) {
+			incr_hp_atomic(LVALUE_CAST(Word, info->functor), 
+				(strlen((String) data_value) + 2 + 
+					sizeof(Word)) / sizeof(Word));
+			sprintf(info->functor, ""%c%s%c"", '""', 
+				(String) data_value, '""');
+		}
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-		}
 		break;
 
 	case TYPELAYOUT_FLOAT_VALUE:
-	{
-		char buf[500];
-		Float f;
-
-		f = word_to_float(data_value);
-		sprintf(buf, ""%#.15g"", f);
-		incr_hp_atomic((Word) info->functor, 
-			(strlen(buf) + sizeof(Word)) / sizeof(Word));
-		strcpy(info->functor, buf);
-
+		if (info->need_functor) {
+			char buf[500];
+			Float f;
+			f = word_to_float(data_value);
+			sprintf(buf, ""%#.15g"", f);
+			incr_hp_atomic(LVALUE_CAST(Word, info->functor), 
+				(strlen(buf) + sizeof(Word)) / sizeof(Word));
+			strcpy(info->functor, buf);
+		}
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-	}
 	break;
 
 	case TYPELAYOUT_INT_VALUE:
-	{
-		char buf[500];
+		if (info->need_functor) {
+			char buf[500];
 
-		sprintf(buf, ""%ld"", (long) data_value);
-		incr_hp_atomic((Word) info->functor, 
-			(strlen(buf) + sizeof(Word)) / sizeof(Word));
-		strcpy(info->functor, buf);
+			sprintf(buf, ""%ld"", (long) data_value);
+			incr_hp_atomic(LVALUE_CAST(Word, info->functor), 
+				(strlen(buf) + sizeof(Word)) / sizeof(Word));
+			strcpy(info->functor, buf);
+		}
 
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-	}
 	break;
 
 	case TYPELAYOUT_CHARACTER_VALUE:
-	{
-		incr_hp_atomic((Word) info->functor, 
-			(3 + sizeof(Word)) / sizeof(Word));
-
 		/* XXX should escape characters correctly */
 
-		sprintf(info->functor, ""\'%c\'"", (char) data_value);
-
+		if (info->need_functor) {
+			incr_hp_atomic(LVALUE_CAST(Word, info->functor), 
+				(3 + sizeof(Word)) / sizeof(Word));
+			sprintf(info->functor, ""\'%c\'"", (char) data_value);
+		}
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-	}
 	break;
 
 	case TYPELAYOUT_UNIV_VALUE:
@@ -888,13 +909,13 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 		break;
 
 	case TYPELAYOUT_PREDICATE_VALUE:
-	{
-		make_aligned_string(LVALUE_CAST(String, info->functor), 
-			""<<predicate>>"");
+		if (info->need_functor) {
+			make_aligned_string(LVALUE_CAST(String, info->functor), 
+				""<<predicate>>"");
+		}
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-	}
 	break;
 
 	default:
@@ -979,7 +1000,9 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 :- pragma(c_code, functor(Type::in, Functor::out, Arity::out), " 
 {
 	expand_info info;
-	int len;
+
+	info.need_functor = TRUE;
+	info.need_args = FALSE;
 
 	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
 
@@ -988,18 +1011,15 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	Arity = info.arity;
 
-	/* Free the allocated type_info_vector, since we don't need
-	 * it at all.
-	 */
-
-	free(info.type_info_vector);
 }").
 
 :- pragma(c_code, arg(Type::in, ArgumentIndex::in, Argument::out), " 
 {
 	expand_info info;
 	Word arg_pseudo_type_info;
-	int len;
+
+	info.need_functor = FALSE;
+	info.need_args = TRUE;
 
 	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
 
@@ -1044,7 +1064,10 @@ det_arg(Type, ArgumentIndex, Argument) :-
 	expand_info info;
 	Word arg_pseudo_type_info;
 	Word Argument, tmp;
-	int i, len;
+	int i;
+
+	info.need_functor = TRUE;
+	info.need_args = TRUE;
 
 	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
 
