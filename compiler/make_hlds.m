@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2004 The University of Melbourne.
+% Copyright (C) 1993-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -739,9 +739,9 @@ add_item_decl_pass_2(pragma(Pragma), Context, !Status, !Module, !IO) :-
 		% clauses and pragma c_code).
 		Pragma = import(_, _, _, _, _)
 	;
-		Pragma = export(Name, PredOrFunc, Modes, C_Function),
-		add_pragma_export(Name, PredOrFunc, Modes, C_Function,
-			Context, !Module, !IO)
+		% Handle pragma export decls later on, after default  
+		% function modes have been added.
+		Pragma = export(_, _, _, _)
 	;
 			% Used for inter-module unused argument elimination.
 			% This can only appear in .opt files.
@@ -1092,6 +1092,11 @@ add_item_clause(pragma(Pragma), !Status, Context, !Module, !Info, !IO) :-
 		Pragma = reserve_tag(TypeName, TypeArity)
 	->
 		add_pragma_reserve_tag(TypeName, TypeArity, !.Status,
+			Context, !Module, !IO)
+	;
+		Pragma = export(Name, PredOrFunc, Modes, C_Function)
+	->
+		add_pragma_export(Name, PredOrFunc, Modes, C_Function,
 			Context, !Module, !IO)
 	;
  		% don't worry about any pragma declarations other than the

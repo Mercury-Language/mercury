@@ -76,6 +76,7 @@ OTHER_PROGS= \
 	error \
 	existential_cons \
 	explicit_quant \
+	export_before_func \
 	exported_foreign_type \
 	fail_ite \
 	followcode_det_problem \
