@@ -1,0 +1,53 @@
+#!/bin/sh
+
+#set -x
+   
+# Given a list of dirs, for each subdir in those dirs which is a CVS
+# archive it produces a diff file that is compatible with cvspatch.
+
+yesterday_date=`date --date "1 day ago" +"%Y-%m-%d"`
+date=`date +"%Y-%m-%d"`
+time="00:00:00"
+   
+cvsdate="$yesterday_date $time"
+   
+pwd=`pwd`
+
+for dir in $@
+do
+    for subdir in `ls $dir`
+    do
+        if [ -d $dir/$subdir/CVS ]
+        then
+	    olddiff=`ls -t $pwd/$subdir-*.diff.gz | head -1`
+	    oldrevisions=`ls -t $pwd/$subdir-*.revisions.gz | head -1`
+	    diff=$pwd/$subdir-$date.diff.gz
+	    revisions=$pwd/$subdir-$date.revisions.gz
+
+	    # If there is no backup, make one
+	    if [ z"$olddiff" == z  ] ; then 
+	    	echo "No backup for $dir/$subdir, making one"
+		(cd $dir/$subdir; cvs diff -u -N . 2> /dev/null |
+		    gzip -9 > $diff)
+		(cd $dir/$subdir; find . -path '*CVS*' -name Entries \
+		 	-exec backuprevisions '{}' ';' | gzip -9 > $revisions)
+	    # If there are changes in the directory since the backup,
+	    # make a new backup.
+	    elif [ x"`find $dir/$subdir/* -newer $olddiff`" != x ] ; then
+	    	echo "Changes in $dir/$subdir, making new backup"
+		(cd $dir/$subdir; cvs -f diff -u -N . 2> /dev/null |
+		    gzip -9 > $diff)
+		(cd $dir/$subdir; find . -path '*CVS*' -name Entries \
+		 	-exec backuprevisions '{}' ';' | gzip -9 > $revisions)
+	    else
+	    	touch $olddiff 
+	    	touch $oldrevisions 
+	    fi
+        fi
+    done
+done
+
+# delete all the backups over 7 days old
+find . -name "*.diff.gz" -mtime +7 -exec rm '{}' ';'
+find . -name "*.revision.gz" -mtime +7 -exec rm '{}' ';'
+
