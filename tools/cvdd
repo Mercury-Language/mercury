@@ -37,6 +37,12 @@ then
 	exit 1
 fi
 
+if test ! -d "$1" -o ! -d "$2"
+then
+	echo "usage: cvdd dir1 dir2"
+	exit 1
+fi
+
 case "$pathname" in
 ./*)
 	pathname=`expr $pathname : '\./\(.*\)'`
@@ -47,7 +53,8 @@ echo "Diffing $pathname"
 
 filelist="/tmp/cvdd_files$$"
 dirlist="/tmp/cvdd_dirs$$"
-trap "/bin/rm -f $filelist $dirlist > /dev/null 2>&1" 0 1 2 3 15
+trap "/bin/rm -f $filelist $dirlist > /dev/null 2>&1; exit 0" 0
+trap "/bin/rm -f $filelist $dirlist > /dev/null 2>&1; exit 1" 1 2 3 15
 
 (
 	cvsfiles $1
