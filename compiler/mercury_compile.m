@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -428,12 +428,22 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		{ HLDS = HLDS3 },
 		{ FoundError = FoundTypeError }
 	    ;
+		% only write out the `.opt' file if there are no type errors
+		globals__io_lookup_bool_option(make_optimization_interface,
+			MakeOptInt),
 		( { FoundTypeError = no } ->
-		    mercury_compile__maybe_write_optfile(MakeOptInt,
-		    		HLDS3, HLDS4), !,
-		    ( { MakeOptInt = no } ->
+			mercury_compile__maybe_write_optfile(MakeOptInt,
+		    		HLDS3, HLDS4), !
+		;
+			{ HLDS4 = HLDS3 }
+		),
+		% if our job was to write out the `.opt' file, then we're done
+		( { MakeOptInt = yes } ->
+		    	{ HLDS = HLDS4 },
+		    	{ FoundError = FoundTypeError }
+		;
 			%
-			% We can't continue after an undefined insts/mode
+			% We can't continue after an undefined inst/mode
 			% error, since mode analysis would get internal errors
 			%
 			( { FoundUndefModeError = yes } ->
@@ -452,25 +462,16 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 			    { bool__or(FoundTypeError, FoundModeOrDetError,
 					FoundError) }
 			)
-		    ;
-		    	{ HLDS = HLDS4 },
-		    	{ FoundError = FoundTypeError }
-		    )
-		;
-			{ FoundError = yes },
-			{ HLDS = HLDS3 }
 		)
 	    )
 	).
 
 
 
-:- pred mercury_compile__maybe_write_optfile(bool::out, module_info::in,
+:- pred mercury_compile__maybe_write_optfile(bool::in, module_info::in,
 		module_info::out, io__state::di, io__state::uo) is det.
 
 mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(make_optimization_interface,
-		MakeOptInt),
 	globals__io_lookup_bool_option(intermod_unused_args, IntermodArgs),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),

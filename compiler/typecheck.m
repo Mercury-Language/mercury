@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -625,17 +625,8 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 typecheck_check_for_ambiguity(StuffToCheck, HeadVars,
 		TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet),
-	( TypeAssignSet = [TypeAssign] ->
-		typecheck_info_get_found_error(TypeCheckInfo0, FoundError),
-		(
-			StuffToCheck = whole_pred,
-			FoundError = no
-		->
-			check_type_bindings(TypeAssign, HeadVars,
-				TypeCheckInfo0, TypeCheckInfo)
-		;
-			TypeCheckInfo = TypeCheckInfo0
-		)
+	( TypeAssignSet = [_SingleTypeAssign] ->
+		TypeCheckInfo = TypeCheckInfo0
 	; TypeAssignSet = [TypeAssign1, TypeAssign2 | _] ->
 		%
 		% we only report an ambiguity error if
@@ -693,139 +684,6 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars,
 		error("internal error in typechecker: no type-assignment"),
 		TypeCheckInfo = TypeCheckInfo0
 	).
-
-	% Check that the all of the types which have been inferred
-	% for the variables in the clause do not contain any unbound type
-	% variables other than those that occur in the types of head
-	% variables.
-
-:- pred check_type_bindings(type_assign, list(var),
-			typecheck_info, typecheck_info).
-:- mode check_type_bindings(in, in,
-			typecheck_info_di, typecheck_info_uo) is det.
-
-check_type_bindings(TypeAssign, HeadVars, TypeCheckInfo0, TypeCheckInfo) :-
-	type_assign_get_type_bindings(TypeAssign, TypeBindings),
-	type_assign_get_var_types(TypeAssign, VarTypesMap),
-	map__apply_to_list(HeadVars, VarTypesMap, HeadVarTypes0),
-	term__apply_rec_substitution_to_list(HeadVarTypes0, TypeBindings,
-		HeadVarTypes),
-	term__vars_list(HeadVarTypes, HeadVarTypeParams),
-	map__to_assoc_list(VarTypesMap, VarTypesList),
-	set__init(Set0),
-	check_type_bindings_2(VarTypesList, TypeBindings, HeadVarTypeParams,
-		[], Errs, Set0, _Set),
-	% ... we could at this point bind all the type variables in `Set'
-	% to `void' ...
-	( Errs = [] ->
-		TypeCheckInfo = TypeCheckInfo0
-	;
-		type_assign_get_typevarset(TypeAssign, TVarSet),
-		report_unresolved_type_error(Errs, TVarSet, TypeCheckInfo0,
-				TypeCheckInfo)
-	).
-
-:- pred check_type_bindings_2(assoc_list(var, (type)), tsubst, headtypes,
-			assoc_list(var, (type)), assoc_list(var, (type)),
-			set(tvar), set(tvar)).
-:- mode check_type_bindings_2(in, in, in, in, out, in, out) is det.
-
-check_type_bindings_2([], _, _, Errs, Errs, Set, Set).
-check_type_bindings_2([Var - Type0 | VarTypes], TypeBindings, HeadTypeParams,
-			Errs0, Errs, Set0, Set) :-
-	term__apply_rec_substitution(Type0, TypeBindings, Type),
-	term__vars(Type, TVars),
-	set__list_to_set(TVars, TVarsSet0),
-	set__delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
-	( \+ set__empty(TVarsSet1) ->
-		Errs1 = [Var - Type | Errs0],
-		set__union(Set0, TVarsSet1, Set1)
-	;
-		Errs1 = Errs0,
-		Set0 = Set1
-	),
-	check_type_bindings_2(VarTypes, TypeBindings, HeadTypeParams,
-		Errs1, Errs, Set1, Set).
-
-	% report a warning: uninstantiated type parameter
-
-:- pred report_unresolved_type_error(assoc_list(var, (type)), tvarset,
-				typecheck_info, typecheck_info).
-:- mode report_unresolved_type_error(in, in, typecheck_info_di, 
-				typecheck_info_uo) is det.
-
-report_unresolved_type_error(Errs, TVarSet, TypeCheckInfo0, TypeCheckInfo) :-
-	typecheck_info_get_io_state(TypeCheckInfo0, IOState0),
-	globals__io_lookup_bool_option(infer_types, Inferring,
-		IOState0, IOState1),
-	( Inferring = yes ->
-		%
-		% If type inferences is enabled, it can result in spurious
-		% unresolved type warnings in the early passes; the warnings
-		% may be spurious because the types may get resolved in later
-		% passes.  Unfortunately there's no way to tell which
-		% is the last pass until after it is finished... 
-		% probably these warnings ought to be issued in a different
-		% pass than type checking.
-		%
-		% For the moment, if type inference is enabled, you just don't
-		% get these warnings.
-		%
-		IOState = IOState1
-	;
-		report_unresolved_type_error_2(TypeCheckInfo0, Errs, TVarSet,
-			IOState1, IOState)
-	),
-	typecheck_info_set_io_state(TypeCheckInfo0, IOState, TypeCheckInfo).
-	% Currently it is just a warning, not an error.
-	% typecheck_info_set_found_error(TypeCheckInfo1, yes, TypeCheckInfo).
-
-:- pred report_unresolved_type_error_2(typecheck_info, assoc_list(var, (type)),
-					tvarset, io__state, io__state).
-:- mode report_unresolved_type_error_2(typecheck_info_no_io, in, in, di, uo) 
-					is det.
-
-report_unresolved_type_error_2(TypeCheckInfo, Errs, TVarSet) -->
-	write_typecheck_info_context(TypeCheckInfo),
-	{ typecheck_info_get_varset(TypeCheckInfo, VarSet) },
-	{ typecheck_info_get_context(TypeCheckInfo, Context) },
-	io__write_string("  warning: unresolved polymorphism.\n"),
-	prog_out__write_context(Context),
-	( { Errs = [_] } ->
-		io__write_string("  The variable with an unbound type was:\n")
-	;
-		io__write_string("  The variables with unbound types were:\n")
-	),
-	write_type_var_list(Errs, Context, VarSet, TVarSet),
-	prog_out__write_context(Context),
-	io__write_string("  The unbound type variable(s) will be implicitly\n"),
-	prog_out__write_context(Context),
-	io__write_string("  bound to the builtin type `void'.\n"),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
-		io__write_string("\tThe body of the clause contains a call to a polymorphic predicate,\n"),
-		io__write_string("\tbut I can't determine which version should be called,\n"),
-		io__write_string("\tbecause the type variables listed above didn't get bound.\n"),
-			% XXX improve error message
-		io__write_string("\t(I ought to tell you which call caused the problem, but I'm afraid\n"),
-		io__write_string("\tyou'll have to work it out yourself.  My apologies.)\n")
-	;
-		[]
-	).
-
-:- pred write_type_var_list(assoc_list(var, (type)), term__context,
-			varset, tvarset, io__state, io__state).
-:- mode write_type_var_list(in, in, in, in, di, uo) is det.
-
-write_type_var_list([], _, _, _) --> [].
-write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet) -->
-	prog_out__write_context(Context),
-	io__write_string("      "),
-	mercury_output_var(Var, VarSet, no),
-	io__write_string(" :: "),
-	mercury_output_term(Type, TVarSet, no),
-	io__write_string("\n"),
-	write_type_var_list(Rest, Context, VarSet, TVarSet).
 
 %-----------------------------------------------------------------------------%
 

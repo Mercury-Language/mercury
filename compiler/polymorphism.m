@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1418,6 +1418,7 @@ polymorphism__make_superclasses_from_proofs([C|Cs], Subst, TypeSubst,
 % Given a list of types, create a list of variables to hold the type_info
 % for those types, and create a list of goals to initialize those type_info
 % variables to the appropriate type_info structures for the types.
+% Update the varset and vartypes accordingly.
 
 :- pred polymorphism__make_type_info_vars(list(type),
 	list(var), list(hlds_goal), poly_info, poly_info).
@@ -1501,7 +1502,7 @@ polymorphism__make_type_info_var(Type, Var, ExtraGoals, Info0, Info) :-
 				Index, ExtraGoals, Var, Info0, Info)
 		)
 	;
-		Type = term__variable(TypeVar1)
+		Type = term__variable(_TypeVar1)
 	->
 		% This occurs for code where a predicate calls a polymorphic
 		% predicate with an unbound type variable, for example
@@ -1509,7 +1510,16 @@ polymorphism__make_type_info_var(Type, Var, ExtraGoals, Info0, Info) :-
 		%	:- pred p.
 		%	:- pred q(list(T)).
 		%	p :- q([]).
-		%
+
+		% this case is now treated as an error;
+		% it should be caught by purity.m.
+		error("polymorphism__make_var: unbound type variable")
+/************
+This is what we used to do... but this didn't handle the case of type
+variables used by lambda expressions properly.
+Binding unbound type variables to `void' is now done in purity.m,
+because it is easier to do it correctly there.
+
 		% In this case T is unbound, so there cannot be any objects
 		% of type T, and so q/1 cannot possibly use the unification
 		% predicate for type T.  We pass the type-info for the
@@ -1539,6 +1549,7 @@ polymorphism__make_type_info_var(Type, Var, ExtraGoals, Info0, Info) :-
 		map__det_insert(TypeInfoMap1, TypeVar1, type_info(Var),
 			TypeInfoMap),
 		Info = poly_info(A, B, C, TypeInfoMap, E, F, G, H)
+***************/
 	;
 		error("polymorphism__make_var: unknown type")
 	).
