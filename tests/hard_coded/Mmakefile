@@ -46,6 +46,7 @@ ORDINARY_PROGS=	\
 	existential_bound_tvar \
 	existential_float \
 	existential_reordering \
+	existential_reordering_class \
 	existential_type_switch_opt \
 	existential_types_test \
 	expand \
