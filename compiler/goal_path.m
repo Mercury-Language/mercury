@@ -100,7 +100,7 @@ fill_expr_slots(shorthand(_), _, _, _, _) :-
 
 fill_conj_slots([], _, _, _, []).
 fill_conj_slots([Goal0 | Goals0], Path0, N0, SlotInfo, [Goal | Goals]) :-
-	N1 is N0 + 1,
+	N1 = N0 + 1,
 	fill_goal_slots(Goal0, [conj(N1) | Path0], SlotInfo, Goal),
 	fill_conj_slots(Goals0, Path0, N1, SlotInfo, Goals).
 
@@ -109,7 +109,7 @@ fill_conj_slots([Goal0 | Goals0], Path0, N0, SlotInfo, [Goal | Goals]) :-
 
 fill_disj_slots([], _, _, _, []).
 fill_disj_slots([Goal0 | Goals0], Path0, N0, SlotInfo, [Goal | Goals]) :-
-	N1 is N0 + 1,
+	N1 = N0 + 1,
 	fill_goal_slots(Goal0, [disj(N1) | Path0], SlotInfo, Goal),
 	fill_disj_slots(Goals0, Path0, N1, SlotInfo, Goals).
 
@@ -119,6 +119,6 @@ fill_disj_slots([Goal0 | Goals0], Path0, N0, SlotInfo, [Goal | Goals]) :-
 fill_switch_slots([], _, _, _, _, []).
 fill_switch_slots([case(A, Goal0) | Cases0], Path0, N0, NumCases, SlotInfo,
 		[case(A, Goal) | Cases]) :-
-	N1 is N0 + 1,
+	N1 = N0 + 1,
 	fill_goal_slots(Goal0, [switch(N1, NumCases) | Path0], SlotInfo, Goal),
 	fill_switch_slots(Cases0, Path0, N1, NumCases, SlotInfo, Cases).
