@@ -217,6 +217,21 @@ evaluate_det_call("int", "//", 0, [X, Y, Z], Z, int_const(ZVal)) :-
 	YVal \= 0,
 	ZVal = XVal // YVal.
 
+evaluate_det_call("int", "plus", 0, [X, Y, Z], Z, int_const(ZVal)) :-
+	X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+	Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+	ZVal = XVal + YVal.
+
+evaluate_det_call("int", "minus", 0, [X, Y, Z], Z, int_const(ZVal)) :-
+	X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+	Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+	ZVal = XVal - YVal.
+
+evaluate_det_call("int", "times", 0, [X, Y, Z], Z, int_const(ZVal)) :-
+	X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+	Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+	ZVal = XVal * YVal.
+
 evaluate_det_call("int", "unchecked_quotient", 0, [X, Y, Z], Z,
 		int_const(ZVal)) :-
 	X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
