@@ -70,52 +70,44 @@ parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
 			ErrorTerm)
 	).
 
-/*
 parse_pragma_type(ModuleName, "foreign_type", PragmaTerms,
             ErrorTerm, _VarSet, Result) :-
-    ( PragmaTerms = [MercuryName, ForeignName, Target] ->
-    	(
-	    parse_backend(Target, Backend)
-	->
-	    parse_implicitly_qualified_term(ModuleName, MercuryName,
+    ( PragmaTerms = [LangTerm, MercuryName, ForeignTypeTerm] ->
+	( parse_foreign_language(LangTerm, Language) ->
+	    parse_foreign_language_type(ForeignTypeTerm, Language,
+	    	MaybeForeignType),
+	    (
+		MaybeForeignType = ok(ForeignType),
+		parse_implicitly_qualified_term(ModuleName, MercuryName,
 		    ErrorTerm, "`:- pragma foreign_type' declaration",
 		    MaybeMercuryType),
-	    (
-		MaybeMercuryType = ok(MercuryTypeSymName, MercuryArgs),
-		( MercuryArgs = [] ->
-		    parse_qualified_term(ForeignName, ErrorTerm,
-			"`:- pragma foreign_type' declaration",
-			MaybeForeignType),
-		    (
-			MaybeForeignType = ok(ForeignType, ForeignArgs),
-			( ForeignArgs = [] ->
-			    term__coerce(MercuryName, MercuryType),
-			    Result = ok(pragma(foreign_type(Backend,
-				    MercuryType, MercuryTypeSymName,
-				    ForeignType)))
-			;
-			    Result = error("foreign type arity not 0", ErrorTerm)
-			)
+		(
+		    MaybeMercuryType = ok(MercuryTypeSymName, MercuryArgs),
+		    ( MercuryArgs = [] ->
+			term__coerce(MercuryName, MercuryType),
+			Result = ok(pragma(foreign_type(ForeignType,
+			    MercuryType, MercuryTypeSymName)))
 		    ;
-			MaybeForeignType = error(String, Term),
-			Result = error(String, Term)
+			Result = error("foreign type arity not 0", ErrorTerm)
 		    )
 		;
-		    Result = error("mercury type arity not 0", ErrorTerm)
+		    MaybeMercuryType = error(String, Term),
+		    Result = error(String, Term)
 		)
 	    ;
-		MaybeMercuryType = error(String, Term),
+		MaybeForeignType = error(String, Term),
 		Result = error(String, Term)
 	    )
-	;
-	    Result = error("invalid backend parameter", Target)
+	;   
+	   Result = error(
+	   "invalid foreign language in `:- pragma foreign_type' declaration",
+			LangTerm)
 	)
     ;
         Result = error(
     "wrong number of arguments in `:- pragma foreign_type' declaration",
             ErrorTerm)
     ).
-*/
 
 parse_pragma_type(ModuleName, "foreign_decl", PragmaTerms,
 			ErrorTerm, VarSet, Result) :-
@@ -214,13 +206,43 @@ parse_foreign_language(term__functor(term__string(String), _, _), Lang) :-
 parse_foreign_language(term__functor(term__atom(String), _, _), Lang) :-
 	globals__convert_foreign_language(String, Lang).
 
-:- pred parse_backend(term, backend).
-:- mode parse_backend(in, out) is semidet.
+:- pred parse_foreign_language_type(term, foreign_language,
+		maybe1(foreign_language_type)).
+:- mode parse_foreign_language_type(in, in, out) is det.
 
-parse_backend(term__functor(Functor, Args, _), Backend) :-
-	Functor = term__atom("il"),
-	Args = [term__functor(term__string(Module), [], _)],
-	Backend = il(Module).
+parse_foreign_language_type(InputTerm, Language, Result) :-
+	( 
+		Language = il
+	->
+		( 
+			InputTerm = term__functor(term__string(ILTypeName),
+				[], _)
+		->
+			parse_il_type_name(ILTypeName, InputTerm, Result)
+		;
+			Result = error("invalid backend specification term",
+				InputTerm)
+		)
+	;
+		Result = error("unsupported language specified, unable to parse backend type", InputTerm)
+	).
+
+:- pred parse_il_type_name(string, term, maybe1(foreign_language_type)).
+:- mode parse_il_type_name(in, in, out) is det.
+
+parse_il_type_name(String0, ErrorTerm, ForeignType) :-
+	( 
+		string__append("class [", String1, String0),
+		string__sub_string_search(String1, "]", Index)
+	->
+		string__left(String1, Index, AssemblyName),
+		string__split(String1, Index + 1, _, TypeNameStr),
+		string_to_sym_name(TypeNameStr, ".", TypeSymName),
+		ForeignType = ok(il(AssemblyName, TypeSymName))
+	;
+		ForeignType = error(
+			"invalid foreign language type description", ErrorTerm)
+	).
 
 	% This predicate parses both c_header_code and foreign_decl pragmas.
 :- pred parse_pragma_foreign_decl_pragma(module_name, string,

@@ -395,18 +395,47 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = foreign_proc(_, _, _, _, _, _) },
 		{ Module = Module0 }
 	;	
-		{ Pragma = foreign_type(Backend, _MercuryType, Name,
-				ForeignType) },
+		{ Pragma = foreign_type(ForeignType, _MercuryType, Name) },
 
-		{ Backend = il(ForeignTypeLocation) },
+		{ ForeignType = il(ForeignTypeLocation, ForeignTypeName) },
 
 		{ varset__init(VarSet) },
 		{ Args = [] },
-		{ Body = foreign_type(ForeignType, ForeignTypeLocation) },
+		{ Body = foreign_type(ForeignTypeName, ForeignTypeLocation) },
 		{ Cond = true },
 
-		module_add_type_defn_2(Module0, VarSet, Name, Args, Body,
-			Cond, Context, Status, Module)
+		{ TypeId = Name - 0 },
+		{ module_info_types(Module0, Types) },
+		{ TypeStr = error_util__describe_sym_name_and_arity(
+				Name / 0) },
+		( 
+			{ map__search(Types, TypeId, OldDefn) }
+		->
+			{ hlds_data__get_type_defn_status(OldDefn, OldStatus) },
+			{ combine_status(OldStatus, ImportStatus, NewStatus) },
+			( { NewStatus = abstract_exported } ->
+				{ ErrorPieces = [
+					words("Error: pragma foreign_type "),
+					fixed(TypeStr),
+					words("must have the same visibility as the type declaration.")
+				] },
+				error_util__write_error_pieces(Context, 0, ErrorPieces),
+				{ module_info_incr_errors(Module0, Module) }
+
+			;
+				module_add_type_defn_2(Module0, VarSet, Name,
+					Args, Body, Cond, Context, Status,
+					Module)
+			)
+		;
+			{ ErrorPieces = [
+				words("Error: type "),
+				fixed(TypeStr),
+				words("defined as foreign_type without being declared.")
+			] },
+			error_util__write_error_pieces(Context, 0, ErrorPieces),
+			{ module_info_incr_errors(Module0, Module) }
+		)
 	;	
 		% Handle pragma tabled decls later on (when we process
 		% clauses).

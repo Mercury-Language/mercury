@@ -4825,6 +4825,9 @@ fair search rule; and so forth.
 				       or function as a call to code
 				       written in a different
 				       programming language.
+* Using foreign types from Mercury::   How to use a type defined in         
+				       a different programming language
+				       in Mercury code.                     
 * Data passing conventions::	       How Mercury types are passed to
 				       different languages.
 * Adding foreign declarations::        How to add declarations of
@@ -5014,6 +5017,7 @@ items.
 
 @end table
 
+
 @c -----------------------------------------------------------------------
 
 @node Data passing conventions
@@ -5087,6 +5091,44 @@ rather than argument passing.
 
 @c XXX foreign type should be documented here.
 
+@c -----------------------------------------------------------------------
+
+@node Using foreign types from Mercury
+@section Using foreign types from Mercury
+
+Types defined in a foreign language can be accessed in Mercury using 
+a declaration of the form
+
+@example
+:- pragma foreign_type(@var{Lang}, @var{MercuryTypeName}, @var{ForeignTypeDescriptor}).
+@end example
+
+This defines @var{MercuryTypeName} as a synonym for type
+@var{ForeignTypeDescriptor} defined in the foreign language @var{Lang}.
+You must declare @var{MercuryTypeName} using a @samp{:- type}
+declaration as usual, and the foreign_type pragma must have the same
+visibility as the type declaration (either both in the interface or both
+in the implementation).
+
+@var{ForeignTypeDescriptor} defines how the Mercury type is mapped for a
+particular foreign language.  Specific syntax is given in the language
+specific information below.  
+
+@var{MercuryTypeName} is treated as an abstract type at all times in
+Mercury code.
+However, if @var{MercuryTypeName} is one of the parameters of a
+foreign_proc for @var{Lang}, it will be passed to that foreign_proc as
+specified by @var{ForeignTypeDescriptor}.
+
+Multiple foreign language definitions may be given for the same type ---
+the appropriate definition will be used for the appropriate language (see the
+language specific information below for details).
+
+You can use Mercury foreign language interfacing declarations           
+which specify language @var{X} to interface to types that are actually
+written in a different language @var{Y} provided that @var{X} and @var{Y}
+have compatible interface conventions.  Support for this kind of
+compatibility is described in the language specific information below.
 @c -----------------------------------------------------------------------
 
 @node Adding foreign declarations
@@ -5211,6 +5253,7 @@ Use the string "MC++" to set the foreign language to Managed C++.
 * Using pragma foreign_proc for C 	:: Calling C code from Mercury
 * Using pragma foreign_decl for C 	:: Including C declarations in Mercury
 * Using pragma foreign_code for C 	:: Including C code in Mercury
+* Using pragma foreign_type for C 	:: Declaring C types in Mercury
 @end menu
 
 @node Using pragma foreign_proc for C
@@ -5334,6 +5377,16 @@ For example,
 
 Such code is copied verbatim into the generated C file.
 
+@node Using pragma foreign_type for C
+@subsubsection Using pragma foreign_type for C
+
+This pragma is currently not supported for C.
+
+See the section on using C pointers (@pxref{Using C pointers}) for
+information on how to use the c_pointer type with the C interface.
+@c XXX we should eventually just move that section to here,
+@c presenting it as an alternative to pragma foreign_type.
+
 @c ----------------------------------------------------------------------------
 
 @node Interfacing with C#
@@ -5343,10 +5396,20 @@ Such code is copied verbatim into the generated C file.
 Currently undocumented, sorry.
 
 @menu
+* Using pragma foreign_type for C#	:: Declaring C# types in Mercury
 * Using pragma foreign_proc for C# 	:: Calling C# code from Mercury
 * Using pragma foreign_decl for C# 	:: Including C# declarations in Mercury
 * Using pragma foreign_code for C# 	:: Including C# code in Mercury
 @end menu
+
+@node Using pragma foreign_type for C#
+@subsubsection Using pragma foreign_type for C#
+
+There is no direct support for using C# types from Mercury; however, the
+types for IL are compatible with C#, and so the foreign_type
+support for IL can be used instead.
+See the section on using pragma foreign_type for IL
+(@pxref{Using pragma foreign_type for IL}).
 
 @node Using pragma foreign_proc for C#
 @subsubsection Using pragma foreign_proc for C#
@@ -5373,10 +5436,64 @@ Not currently supported for C#.
 @subsection Interfacing with IL
 
 @menu
+* Using pragma foreign_type for IL	:: Declaring IL types in Mercury
 * Using pragma foreign_proc for IL 	:: Calling IL code from Mercury
 * Using pragma foreign_decl for IL 	:: Including IL declarations in Mercury
 * Using pragma foreign_code for IL 	:: Including IL code in Mercury
 @end menu
+
+@node Using pragma foreign_type for IL
+@subsubsection Using pragma foreign_type for IL
+
+The IL @samp{pragma foreign_type} declaration is of the form:
+
+@example
+:- pragma foreign_type(il, @var{MercuryTypeName}, @var{DotNetForeignType}).
+@end example
+
+If the @var{MercuryTypeName} is the type of a parameter of a procedure
+defined using @samp{pragma foreign_proc} for any of the .NET CLR
+languages, it will be passed to the foreign_proc's foreign language code
+as @var{DotNetForeignType}.
+
+Furthermore, any Mercury procedure exported with @samp{pragma export}
+will use @var{DotNetForeignType} as the .NET CLR parameter type for
+parameters whose Mercury type is @var{MercuryTypeName}.
+
+The CIL assembler syntax is used to specify type names for all the .NET CLR
+languages (IL, C# and Managed C++) supported by Mercury's
+@samp{foreign_proc} mechanism.  
+This syntax is documented in the ECMA specifications for .NET).
+Currently on the .NET CLR backend only reference classes are supported using
+@samp{pragma foreign_type}, and hence the only supported syntax for
+DotNetForeignType is @samp{"class [AssemblyName]ClassName"}.
+@c XXX this restriction should be lifted
+Note that extra whitespace is not handled --- there should only be a single
+space between the class keyword and the assembly specifier.
+@c XXX we should handle whitespace better
+
+For example:
+
+@example
+:- type xmldoc.
+:- pragma foreign_type(il, xmldoc, "class [System.Xml]System.Xml.XmlDocument").
+@end example
+
+ensures that on the .NET CLR backend the Mercury type @samp{xmldoc} is
+marshalled by the backend as @samp{System.Xml.XmlDocument} from assembly
+@samp{System.Xml}.
+The following example shows how one can use the marshalled data from C#. 
+
+@example
+:- pred loadxml(string::in, xmldoc::di, xmldoc::uo) is det.
+
+:- pragma foreign_proc("C#", load(String::in, XML0::di, XML::uo),
+        [will_not_call_mercury],
+"
+    XML0.LoadXml(String);
+    XML = XML0;
+").
+@end example
 
 @node Using pragma foreign_proc for IL
 @subsubsection Using pragma foreign_proc for IL
@@ -5454,10 +5571,20 @@ Not currently supported for IL.
 Currently undocumented, sorry.
 
 @menu
+* Using pragma foreign_type for MC++::  Declaring MC++ types in Mercury
 * Using pragma foreign_proc for MC++::  Calling MC++ code from Mercury
 * Using pragma foreign_decl for MC++::  Including MC++ declarations in Mercury
 * Using pragma foreign_code for MC++::  Including MC++ code in Mercury
 @end menu
+
+@node Using pragma foreign_type for MC++
+@subsubsection Using pragma foreign_type for MC++
+
+There is no direct support for using MC++ types from Mercury; however, the
+types for IL are compatible with MC++, and so the foreign_type
+support for IL can be used instead.
+See the section on using pragma foreign_type for IL
+(@pxref{Using pragma foreign_type for IL}).
 
 @node Using pragma foreign_proc for MC++
 @subsubsection Using pragma foreign_proc for MC++

@@ -157,9 +157,8 @@
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, Foreign Code Implementation Info
 
-	;	foreign_type(backend, (type), sym_name, sym_name)
-			% Backend, MercuryType, MercuryTypeName,
-			% ForeignType, ForeignTypeLocation
+	;	foreign_type(foreign_language_type, (type), sym_name)
+			% ForeignType, MercuryType, MercuryTypeName
 
 	;	foreign_import_module(foreign_language, module_name)
 			% Equivalent to
@@ -288,9 +287,17 @@
 % Stuff for the foreign interfacing pragmas.
 %
 
-:- type backend
-			% The location of the il name.
-	--->	il(string).
+	% 
+	% A foreign_language_type represents a type that is defined in a
+	% foreign language and accessed in Mercury (most likely through 
+	% pragma foreign_type).
+	% Currently we only support foreign_language_types for IL.
+	%
+
+:- type foreign_language_type
+			% The location of the .NET name (the assembly),
+			% and the .NET type name (represented as a sym_name)
+	--->	il(string, sym_name).
 
 %
 % Stuff for tabling pragmas
