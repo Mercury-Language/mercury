@@ -26,7 +26,7 @@ const struct mercury_data___base_type_layout_pred_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_pred_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_PREDICATE_VALUE))
+		mkbody(MR_TYPELAYOUT_PREDICATE_VALUE))
 };
 
 	/* base_type_functors for `pred' */

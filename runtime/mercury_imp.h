@@ -20,12 +20,6 @@
 #define MERCURY_IMP_H
 
 /*
-** mercury_bootstrap.h should come first, since may defines macros
-** used in other header files.
-*/
-#include	"mercury_bootstrap.h"
-
-/*
 ** The #include of "mercury_conf.h" must come before the `#ifdef USE_DLLS',
 ** because mercury_conf.h defines the USE_DLLS macro.
 */
@@ -81,5 +75,7 @@
 #include	"mercury_tabling.h"
 
 #include	"mercury_grade.h"
+
+#include	"mercury_bootstrap.h"
 
 #endif /* not MERCURY_IMP_H */

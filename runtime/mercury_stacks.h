@@ -20,8 +20,6 @@
 #define	MR_based_stackvar(base_sp, n)	((base_sp)[-n])
 #define	MR_stackvar(n)			MR_based_stackvar(MR_sp, n)
 
-#define	detstackvar(n)			MR_based_stackvar(MR_sp, n)
-
 #define	incr_sp_push_msg(n, msg)				\
 			(					\
 				debugincrsp(n, MR_sp),		\
@@ -107,21 +105,6 @@
 #define	MR_detfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_DETFR])
 #define	MR_based_framevar(fr, n) (((Word *) (fr))[MR_SAVEVAL + 1 - (n)])
 
-#define	bt_prevfr(fr)		MR_prevfr_slot(fr)
-#define	bt_redoip(fr)		MR_redoip_slot(fr)
-#define	bt_redofr(fr)		MR_redofr_slot(fr)
-#define	bt_succip(fr)		MR_succip_slot(fr)
-#define	bt_succfr(fr)		MR_succfr_slot(fr)
-#define	bt_prednm(fr)		MR_prednm_slot(fr)
-#define	bt_var(fr, n)		MR_based_framevar(fr, (n) + 1)
-
-#define	curprevfr		bt_prevfr(MR_curfr)
-#define	curredoip		bt_redoip(MR_curfr)
-#define	curredofr		bt_redofr(MR_curfr)
-#define	cursuccip		bt_succip(MR_curfr)
-#define	cursuccfr		bt_succfr(MR_curfr)
-#define	curprednm		bt_prednm(MR_curfr)
-
 #define	MR_framevar(n)		MR_based_framevar(MR_curfr, n)
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
@@ -200,14 +183,6 @@
 				MR_redofr_slot(MR_maxfr) = MR_curfr;	\
 				MR_detfr_slot(MR_maxfr)  = MR_sp;	\
 				nondstack_overflow_check();		\
-			} while (0)
-
-/*
-** This should be removed soon - the latest compiler does not generate it.
-*/
-#define modframe(redoip)						\
-			do {						\
-				curredoip = redoip;			\
 			} while (0)
 
 #define	succeed()	do {						\

@@ -225,7 +225,7 @@ Declare_entry(do_runnext);
 				fork_new_context_i > 0 ;		\
 				fork_new_context_i--) {			\
 			*(f_n_c_context->context_sp) = 			\
-				detstackvar(fork_new_context_i);	\
+				MR_stackvar(fork_new_context_i);	\
 			f_n_c_context->context_sp++;			\
 		}							\
 		f_n_c_context->resume = (child);			\

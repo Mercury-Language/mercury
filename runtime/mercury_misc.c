@@ -27,12 +27,13 @@ mkframe_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nnew choice point for procedure %s\n", curprednm);
-	printf("new  fr: "); printnondstack(curfr);
-	printf("prev fr: "); printnondstack(curprevfr);
-	printf("succ fr: "); printnondstack(cursuccfr);
-	printf("succ ip: "); printlabel(cursuccip);
-	printf("redo ip: "); printlabel(curredoip);
+	printf("\nnew choice point for procedure %s\n",
+		MR_prednm_slot(MR_curfr));
+	printf("new  fr: "); printnondstack(MR_curfr);
+	printf("prev fr: "); printnondstack(MR_prevfr_slot(MR_curfr));
+	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
+	printf("succ ip: "); printlabel(MR_succip_slot(MR_curfr));
+	printf("redo ip: "); printlabel(MR_redoip_slot(MR_curfr));
 
 	if (MR_detaildebug) {
 		dumpnondstack();
@@ -46,10 +47,10 @@ succeed_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nsucceeding from procedure %s\n", curprednm);
-	printf("curr fr: "); printnondstack(curfr);
-	printf("succ fr: "); printnondstack(cursuccfr);
-	printf("succ ip: "); printlabel(cursuccip);
+	printf("\nsucceeding from procedure %s\n", MR_prednm_slot(MR_curfr));
+	printf("curr fr: "); printnondstack(MR_curfr);
+	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
+	printf("succ ip: "); printlabel(MR_succip_slot(MR_curfr));
 
 	if (MR_detaildebug) {
 		printregs("registers at success");
@@ -63,10 +64,10 @@ succeeddiscard_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nsucceeding from procedure %s, discarding frame\n", curprednm);
-	printf("curr fr: "); printnondstack(curfr);
-	printf("succ fr: "); printnondstack(cursuccfr);
-	printf("succ ip: "); printlabel(cursuccip);
+	printf("\nsucceeding from procedure %s, discarding frame\n", MR_prednm_slot(MR_curfr));
+	printf("curr fr: "); printnondstack(MR_curfr);
+	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
+	printf("succ ip: "); printlabel(MR_succip_slot(MR_curfr));
 
 	if (MR_detaildebug) {
 		printregs("registers at success");
@@ -80,10 +81,10 @@ fail_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nfailing from procedure %s\n", curprednm);
-	printf("curr fr: "); printnondstack(curfr);
-	printf("fail fr: "); printnondstack(curprevfr);
-	printf("fail ip: "); printlabel(bt_redoip(curprevfr));
+	printf("\nfailing from procedure %s\n", MR_prednm_slot(MR_curfr));
+	printf("curr fr: "); printnondstack(MR_curfr);
+	printf("fail fr: "); printnondstack(MR_prevfr_slot(MR_curfr));
+	printf("fail ip: "); printlabel(MR_redoip_slot(curprevfr_slot(MR_curfr)));
 
 	return;
 }
@@ -93,10 +94,10 @@ redo_msg(void)
 {
 	restore_transient_registers();
 
-	printf("\nredo from procedure %s\n", curprednm);
-	printf("curr fr: "); printnondstack(curfr);
-	printf("redo fr: "); printnondstack(maxfr);
-	printf("redo ip: "); printlabel(bt_redoip(maxfr));
+	printf("\nredo from procedure %s\n", MR_prednm_slot(MR_curfr));
+	printf("curr fr: "); printnondstack(MR_curfr);
+	printf("redo fr: "); printnondstack(MR_maxfr);
+	printf("redo ip: "); printlabel(MR_redoip_slot(MR_maxfr));
 
 	return;
 }
@@ -117,7 +118,7 @@ tailcall_msg(/* const */ Code *proc)
 	restore_transient_registers();
 
 	printf("\ntail calling "); printlabel(proc);
-	printf("continuation "); printlabel(succip);
+	printf("continuation "); printlabel(MR_succip);
 	printregs("registers at tailcall");
 
 	return;
@@ -315,17 +316,17 @@ dumpframe(/* const */ Word *fr)
 		(const void *) fr, 
 		(long) (Integer) (fr - MR_CONTEXT(nondetstack_zone)->min));
 #ifdef	MR_DEBUG_NONDET_STACK
-	printf("\t predname  %s\n", bt_prednm(fr));
+	printf("\t predname  %s\n", MR_prednm_slot(fr));
 #endif
-	printf("\t succip    "); printlabel(bt_succip(fr));
-	printf("\t redoip    "); printlabel(bt_redoip(fr));
-	printf("\t succfr    "); printnondstack(bt_succfr(fr));
-	printf("\t prevfr    "); printnondstack(bt_prevfr(fr));
+	printf("\t succip    "); printlabel(MR_succip_slot(fr));
+	printf("\t redoip    "); printlabel(MR_redoip_slot(fr));
+	printf("\t succfr    "); printnondstack(MR_succfr_slot(fr));
+	printf("\t prevfr    "); printnondstack(MR_prevfr_slot(fr));
 
-	for (i = 0; &bt_var(fr,i) > bt_prevfr(fr); i++) {
+	for (i = 1; &MR_based_framevar(fr,i) > MR_prevfr_slot(fr); i++) {
 		printf("\t framevar(%d)  %ld 0x%lx\n",
-			i, (long) (Integer) bt_var(fr,i),
-			(unsigned long) bt_var(fr,i));
+			i, (long) (Integer) MR_based_framevar(fr,i),
+			(unsigned long) MR_based_framevar(fr,i));
 	}
 	return;
 }
@@ -336,8 +337,8 @@ dumpnondstack(void)
 	reg	Word	*fr;
 
 	printf("\nnondstack dump\n");
-	for (fr = maxfr; fr > MR_CONTEXT(nondetstack_zone)->min;
-			fr = bt_prevfr(fr)) {
+	for (fr = MR_maxfr; fr > MR_CONTEXT(nondetstack_zone)->min;
+			fr = MR_prevfr_slot(fr)) {
 		dumpframe(fr);
 	}
 	return;
@@ -347,7 +348,7 @@ void
 printframe(const char *msg)
 {
 	printf("\n%s\n", msg);
-	dumpframe(curfr);
+	dumpframe(MR_curfr);
 
 	print_ordinary_regs();
 	return;
@@ -360,11 +361,11 @@ printregs(const char *msg)
 
 	printf("\n%s\n", msg);
 
-	printf("%-9s", "succip:");  printlabel(succip);
-	printf("%-9s", "curfr:");   printnondstack(curfr);
-	printf("%-9s", "maxfr:");   printnondstack(maxfr);
-	printf("%-9s", "hp:");      printheap(hp);
-	printf("%-9s", "sp:");      printdetstack(sp);
+	printf("%-9s", "succip:");  printlabel(MR_succip);
+	printf("%-9s", "curfr:");   printnondstack(MR_curfr);
+	printf("%-9s", "maxfr:");   printnondstack(MR_maxfr);
+	printf("%-9s", "hp:");      printheap(MR_hp);
+	printf("%-9s", "sp:");      printdetstack(MR_sp);
 
 	print_ordinary_regs();
 

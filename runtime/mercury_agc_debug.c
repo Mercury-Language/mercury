@@ -219,7 +219,7 @@ dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 			break;
 
 		case MR_LVAL_TYPE_FRAMEVAR:
-			value = bt_var(current_frame, locn_num);
+			value = MR_based_framevar(current_frame, locn_num);
 			have_value = TRUE;
 			fprintf(stderr, "framevar%d", locn_num);
 			break;

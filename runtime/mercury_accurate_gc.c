@@ -402,8 +402,10 @@ copy_value(MR_Live_Lval locn, Word *type_info, bool copy_regs,
 			break;
 
 		case MR_LVAL_TYPE_FRAMEVAR:
-			bt_var(current_frame, locn_num) = agc_deep_copy(
-				&bt_var(current_frame, locn_num), type_info,
+			MR_based_framevar(current_frame, locn_num) =
+				agc_deep_copy(
+				&MR_based_framevar(current_frame, locn_num),
+				type_info,
 				MR_ENGINE(heap_zone2->min),
 				MR_ENGINE(heap_zone2->hardmax));
 			break;

@@ -10,8 +10,6 @@
 ** Temporary definitions only needed for bootstrapping and/or
 ** for backwards compatibility.  All of the definitions here
 ** will go away eventually, so don't use them!
-**
-** This file should contain MACROS ONLY -- see mercury_imp.h for why.
 */
 
 #ifndef	MERCURY_BOOTSTRAP_H
@@ -19,11 +17,38 @@
 
 #define	NONDET_FIXED_SIZE	MR_NONDET_FIXED_SIZE
 
-#define succip		MR_succip
-#define hp		MR_hp
-#define sp		MR_sp
-#define curfr		MR_curfr
-#define maxfr		MR_maxfr
+#define succip			MR_succip
+#define hp			MR_hp
+#define sp			MR_sp
+#define curfr			MR_curfr
+#define maxfr			MR_maxfr
+
+#define	detstackvar(n)		MR_stackvar(n)
+#define	framevar(n)		MR_framevar((n) + 1)
+
+#define	bt_prevfr(fr)		MR_prevfr_slot(fr)
+#define	bt_redoip(fr)		MR_redoip_slot(fr)
+#define	bt_redofr(fr)		MR_redofr_slot(fr)
+#define	bt_succip(fr)		MR_succip_slot(fr)
+#define	bt_succfr(fr)		MR_succfr_slot(fr)
+#define	bt_prednm(fr)		MR_prednm_slot(fr)
+#define	bt_var(fr, n)		MR_based_framevar(fr, (n) + 1)
+
+#define	curprevfr		bt_prevfr(MR_curfr)
+#define	curredoip		bt_redoip(MR_curfr)
+#define	curredofr		bt_redofr(MR_curfr)
+#define	cursuccip		bt_succip(MR_curfr)
+#define	cursuccfr		bt_succfr(MR_curfr)
+#define	curprednm		bt_prednm(MR_curfr)
+
+/*
+** This should be removed soon - the latest compiler does not generate it.
+*/
+#define modframe(redoip)						\
+			do {						\
+				curredoip = redoip;			\
+			} while (0)
+
 
 #define TYPELAYOUT_UNASSIGNED_VALUE	(MR_TYPELAYOUT_UNASSIGNED_VALUE)
 #define TYPELAYOUT_UNUSED_VALUE		(MR_TYPELAYOUT_UNUSED_VALUE)
@@ -37,7 +62,5 @@
 #define TYPELAYOUT_ARRAY_VALUE		(MR_TYPELAYOUT_ARRAY_VALUE)
 #define TYPELAYOUT_TYPEINFO_VALUE	(MR_TYPELAYOUT_TYPEINFO_VALUE)
 #define TYPELAYOUT_C_POINTER_VALUE	(MR_TYPELAYOUT_C_POINTER_VALUE)
-
-#define	framevar(n)		MR_framevar((n) + 1)
 
 #endif	/* MERCURY_BOOTSTRAP_H */
