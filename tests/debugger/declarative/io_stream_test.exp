@@ -13,17 +13,15 @@ mdb> continue
       E2:     C2 CALL pred io_stream_test.test/4-0 (det)
 mdb> print *
        Stream (arg 1)         	stream(0, input, text, file("tabled_read_decl.data"))
-       DCG_0 (arg 3)          	state('<<c_pointer>>')
 mdb> finish -n
       E3:     C2 EXIT pred io_stream_test.test/4-0 (det)
 mdb> print *
        Stream (arg 1)         	stream(0, input, text, file("tabled_read_decl.data"))
        N (arg 2)              	1123
-       DCG_1 (arg 4)          	state('<<c_pointer>>')
 mdb> print
-test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, state('<<c_pointer>>'))
+test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
 mdb> dd -a
-test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, state('<<c_pointer>>'))
+test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
 4 io actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
@@ -32,7 +30,7 @@ read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 10)
 Valid? print 1-2
 stream(0, input, text, file("tabled_read_decl.data"))
 1123
-test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, state('<<c_pointer>>'))
+test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
 4 io actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
@@ -41,14 +39,14 @@ read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 10)
 Valid? p io 1-2
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
-test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, state('<<c_pointer>>'))
+test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
 4 io actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 51)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 10)
 Valid? no
-test_2(stream(0, input, text, file("tabled_read_decl.data")), 1, 1123, _, state('<<c_pointer>>'))
+test_2(stream(0, input, text, file("tabled_read_decl.data")), 1, 1123, _, _)
 4 io actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
@@ -56,7 +54,7 @@ read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 51)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 10)
 Valid? yes
 Found incorrect contour:
-test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, state('<<c_pointer>>'))
+test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
 4 io actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)

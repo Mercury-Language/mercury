@@ -797,10 +797,11 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
 			error("bad nondet pragma port")
 		)
 	),
+	VarTypes = code_info__get_var_types(!.CI),
 	code_info__get_varset(!.CI, VarSet),
 	code_info__get_instmap(!.CI, InstMap),
-	trace__produce_vars(LiveVars, VarSet, InstMap, set__init, TvarSet,
-		VarInfoList, ProduceCode, !CI),
+	trace__produce_vars(LiveVars, VarSet, VarTypes, InstMap, Port,
+		set__init, TvarSet, [], VarInfoList, ProduceCode, !CI),
 	code_info__max_reg_in_use(!.CI, MaxReg),
 	code_info__get_max_reg_in_use_at_trace(!.CI, MaxTraceReg0),
 	( MaxTraceReg0 < MaxReg ->
@@ -867,9 +868,9 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
 		]),
 	Code = tree(ProduceCode, TraceCode).
 
-:- func find_lval_in_var_info(var_info) = lval.
+:- func find_lval_in_var_info(layout_var_info) = lval.
 
-find_lval_in_var_info(var_info(LayoutLocn, _)) =
+find_lval_in_var_info(layout_var_info(LayoutLocn, _, _)) =
 	find_lval_in_layout_locn(LayoutLocn).
 
 :- func find_lval_in_layout_locn(layout_locn) = lval.
@@ -905,20 +906,27 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
 		Code = empty
 	).
 
-:- pred trace__produce_vars(list(prog_var)::in, prog_varset::in, instmap::in,
-	set(tvar)::in, set(tvar)::out, list(var_info)::out, code_tree::out,
-	code_info::in, code_info::out) is det.
+:- pred trace__produce_vars(list(prog_var)::in, prog_varset::in, vartypes::in,
+	instmap::in, trace_port::in, set(tvar)::in, set(tvar)::out,
+	list(layout_var_info)::in, list(layout_var_info)::out,
+	code_tree::out, code_info::in, code_info::out) is det.
 
-trace__produce_vars([], _, _, Tvars, Tvars, [], empty, !CI).
-trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
-		[VarInfo | VarInfos], tree(VarCode, VarsCode), !CI) :-
-	trace__produce_var(Var, VarSet, InstMap, Tvars0, Tvars1,
-		VarInfo, VarCode, !CI),
-	trace__produce_vars(Vars, VarSet, InstMap, Tvars1, Tvars,
-		VarInfos, VarsCode, !CI).
+trace__produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, !CI).
+trace__produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
+		!TVars, !VarInfos, tree(VarCode, VarsCode), !CI) :-
+	map__lookup(VarTypes, Var, Type),
+	( is_dummy_argument_type(Type) ->
+		VarCode = empty
+	;
+		trace__produce_var(Var, VarSet, InstMap, !TVars,
+			VarInfo, VarCode, !CI),
+		!:VarInfos = [VarInfo | !.VarInfos]
+	),
+	trace__produce_vars(Vars, VarSet, VarTypes, InstMap, Port, !TVars,
+		!VarInfos, VarsCode, !CI).
 
 :- pred trace__produce_var(prog_var::in, prog_varset::in, instmap::in,
-	set(tvar)::in, set(tvar)::out, var_info::out, code_tree::out,
+	set(tvar)::in, set(tvar)::out, layout_var_info::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
 trace__produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
@@ -937,7 +945,7 @@ trace__produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
 		LldsInst = partial(Inst)
 	),
 	LiveType = var(Var, Name, Type, LldsInst),
-	VarInfo = var_info(direct(Lval), LiveType),
+	VarInfo = layout_var_info(direct(Lval), LiveType, "trace"),
 	type_util__real_vars(Type, TypeVars),
 	set__insert_list(!.Tvars, TypeVars, !:Tvars).
 

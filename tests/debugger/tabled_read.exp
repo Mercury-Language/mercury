@@ -19,20 +19,17 @@ mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        N (arg 3)              	123
-       DCG_2 (arg 5)          	state('<<c_pointer>>')
 mdb> retry -o -a
       E2:     C2 CALL pred tabled_read.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
-       DCG_0 (arg 4)          	state('<<c_pointer>>')
 mdb> finish -n
       E3:     C2 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        N (arg 3)              	123
-       DCG_2 (arg 5)          	state('<<c_pointer>>')
 mdb> table_io end
 I/O tabling stopped.
 mdb> continue
@@ -45,7 +42,6 @@ mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        N (arg 3)              	789
-       DCG_2 (arg 5)          	state('<<c_pointer>>')
 mdb> retry -f
       E4:     C3 CALL pred tabled_read.test/5-0 (det)
 mdb> finish -n
@@ -54,6 +50,5 @@ mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        N (arg 3)              	42
-       DCG_2 (arg 5)          	state('<<c_pointer>>')
 mdb> continue -S
 42

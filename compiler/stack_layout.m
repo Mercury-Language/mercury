@@ -58,6 +58,7 @@
 :- implementation.
 
 :- import_module backend_libs__rtti.
+:- import_module check_hlds__type_util.
 :- import_module hlds__code_model.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
@@ -296,10 +297,10 @@ stack_layout__add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 
 stack_layout__construct_layouts(ProcLayoutInfo, !Info) :-
 	ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, _Detism,
-		_StackSlots, _SuccipLoc, _EvalMethod, _MaybeCallLabel,
-		_MaxTraceReg, HeadVars, MaybeGoal, _InstMap, _TraceSlotInfo,
-		ForceProcIdLayout, VarSet, _VarTypes, InternalMap,
-		MaybeTableIoDecl, _IsBeingTraced, _NeedsAllNames,
+		_StackSlots, _SuccipLoc, _EvalMethod, _EffTraceLevel,
+		_MaybeCallLabel, _MaxTraceReg, HeadVars, _ArgModes, MaybeGoal,
+		_InstMap, _TraceSlotInfo, ForceProcIdLayout, VarSet, _VarTypes,
+		InternalMap, MaybeTableIoDecl, _NeedsAllNames,
 		_MaybeDeepProfInfo),
 	map__to_assoc_list(InternalMap, Internals),
 	compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal,
@@ -500,11 +501,10 @@ stack_layout__construct_proc_traversal(EntryLabel, Detism, NumStackSlots,
 
 stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 	ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, Detism,
-		StackSlots, SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
-		HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
-		_ForceProcIdLayout, VarSet, VarTypes, _InternalMap,
-		MaybeTableInfo, IsBeingTraced, NeedsAllNames,
-		MaybeProcStatic),
+		StackSlots, SuccipLoc, EvalMethod, EffTraceLevel,
+		MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes, MaybeGoal,
+		InstMap, TraceSlotInfo, _ForceProcIdLayout, VarSet, VarTypes,
+		_InternalMap, MaybeTableInfo, NeedsAllNames, MaybeProcStatic),
 	stack_layout__construct_proc_traversal(EntryLabel, Detism, StackSlots,
 		SuccipLoc, Traversal, !Info),
 	(
@@ -515,14 +515,15 @@ stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 		stack_layout__get_trace_stack_layout(!.Info, TraceStackLayout),
 		(
 			TraceStackLayout = yes,
-			IsBeingTraced = yes,
+			given_trace_level_is_none(EffTraceLevel) = no,
 			valid_proc_layout(ProcLayoutInfo)
 		->
 			stack_layout__construct_trace_layout(RttiProcLabel,
-				EvalMethod, MaybeCallLabel, MaxTraceReg,
-				HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
-				VarSet, VarTypes, MaybeTableInfo,
-				NeedsAllNames, VarNumMap, ExecTrace, !Info),
+				EvalMethod, EffTraceLevel, MaybeCallLabel,
+				MaxTraceReg, HeadVars, ArgModes, MaybeGoal,
+				InstMap, TraceSlotInfo, VarSet, VarTypes,
+				MaybeTableInfo, NeedsAllNames, VarNumMap,
+				ExecTrace, !Info),
 			MaybeExecTrace = yes(ExecTrace)
 		;
 			MaybeExecTrace = no
@@ -547,25 +548,26 @@ stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 	).
 
 :- pred stack_layout__construct_trace_layout(rtti_proc_label::in,
-	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
-	maybe(hlds_goal)::in, instmap::in, trace_slot_info::in, prog_varset::in,
-	vartypes::in, maybe(proc_table_info)::in, bool::in,
-	var_num_map::in, proc_layout_exec_trace::out,
+	eval_method::in, trace_level::in, maybe(label)::in, int::in,
+	list(prog_var)::in, list(mode)::in, maybe(hlds_goal)::in,
+	instmap::in, trace_slot_info::in, prog_varset::in, vartypes::in,
+	maybe(proc_table_info)::in, bool::in, var_num_map::in,
+	proc_layout_exec_trace::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
-		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
-		_VarSet, VarTypes, MaybeTableInfo, NeedsAllNames, VarNumMap,
-		ExecTrace, !Info) :-
+stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
+		MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes,
+		MaybeGoal, InstMap, TraceSlotInfo, _VarSet, VarTypes,
+		MaybeTableInfo, NeedsAllNames, VarNumMap, ExecTrace, !Info) :-
 	stack_layout__construct_var_name_vector(VarNumMap,
 		NeedsAllNames, MaxVarNum, VarNameVector, !Info),
 	list__map(convert_var_to_int(VarNumMap), HeadVars, HeadVarNumVector),
+	ModuleInfo = !.Info ^ module_info,
 	(
 		MaybeGoal = no,
 		MaybeProcRepRval = no
 	;
 		MaybeGoal = yes(Goal),
-		ModuleInfo = !.Info ^ module_info,
 		prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes,
 			ModuleInfo, ProcRep),
 		type_to_univ(ProcRep, ProcRepUniv),
@@ -607,11 +609,26 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 			MaybeTableName = yes(table_gen_info(RttiProcLabel))
 		)
 	),
+	encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes,
+		0, Flags),
 	ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcRepRval,
 		MaybeTableName, HeadVarNumVector, VarNameVector,
 		MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
 		MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
-		MaybeCallTableSlot).
+		MaybeCallTableSlot, EffTraceLevel, Flags).
+
+:- pred encode_exec_trace_flags(module_info::in, list(prog_var)::in,
+	list(mode)::in, vartypes::in, int::in, int::out) is det.
+
+encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, !Flags) :-
+	(
+		proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
+			VarTypes, _, _)
+	->
+		!:Flags = !.Flags + 1
+	;
+		true
+	).
 
 :- pred stack_layout__construct_var_name_vector(var_num_map::in,
 	bool::in, int::out, list(int)::out,
@@ -732,7 +749,7 @@ label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
 	LabelLayout = layout_label_info(VarInfoSet, _),
 	VarInfos = set__to_sorted_list(VarInfoSet),
 	FindVar = (pred(VarInfo::in, Var - Name::out) is semidet :-
-		VarInfo = var_info(_, LiveValueType),
+		VarInfo = layout_var_info(_, LiveValueType, _),
 		LiveValueType = var(Var, Name, _, _)
 	),
 	list__filter_map(FindVar, VarInfos, VarsNames),
@@ -880,7 +897,8 @@ stack_layout__construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
 		MaybeVarInfo = no,
 		LabelVars = label_has_no_var_info
 	;
-			% XXX ignore differences in insts inside var_infos
+			% XXX ignore differences in insts inside
+			% layout_var_infos
 		set__union(TraceLiveVarSet, ResumeLiveVarSet, LiveVarSet0),
 		set__union(LiveVarSet0, ReturnLiveVarSet, LiveVarSet),
 		map__union(set__intersect, TraceTypeVarMap, ResumeTypeVarMap,
@@ -923,7 +941,7 @@ stack_layout__construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred stack_layout__construct_livelval_rvals(set(var_info)::in,
+:- pred stack_layout__construct_livelval_rvals(set(layout_var_info)::in,
 	var_num_map::in, map(tvar, set(layout_locn))::in, int::out,
 	rval::out, rval::out, rval::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
@@ -965,20 +983,20 @@ stack_layout__construct_tvar_rvals(TVarLocnMap, Vector) :-
 
 %---------------------------------------------------------------------------%
 
-	% Given a list of var_infos and the type variables that occur in them,
-	% select only the var_infos that may be required by up-level printing
-	% in the trace-based debugger. At the moment the typeinfo list we
-	% return may be bigger than necessary, but this does not compromise
-	% correctness; we do this to avoid having to scan the types of all
-	% the selected var_infos.
+	% Given a list of layout_var_infos and the type variables that occur
+	% in them, select only the layout_var_infos that may be required
+	% by up-level printing in the trace-based debugger. At the moment
+	% the typeinfo list we return may be bigger than necessary, but this
+	% does not compromise correctness; we do this to avoid having to
+	% scan the types of all the selected layout_var_infos.
 
 :- pred stack_layout__select_trace_return(
-	list(var_info)::in, map(tvar, set(layout_locn))::in,
-	list(var_info)::out, map(tvar, set(layout_locn))::out) is det.
+	list(layout_var_info)::in, map(tvar, set(layout_locn))::in,
+	list(layout_var_info)::out, map(tvar, set(layout_locn))::out) is det.
 
 stack_layout__select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
 	IsNamedReturnVar = (pred(LocnInfo::in) is semidet :-
-		LocnInfo = var_info(Locn, LvalType),
+		LocnInfo = layout_var_info(Locn, LvalType, _),
 		LvalType = var(_, Name, _, _),
 		Name \= "",
 		( Locn = direct(Lval) ; Locn = indirect(Lval, _)),
@@ -986,7 +1004,7 @@ stack_layout__select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
 	),
 	list__filter(IsNamedReturnVar, Infos, TraceReturnInfos).
 
-	% Given a list of var_infos, put the ones that tracing can be
+	% Given a list of layout_var_infos, put the ones that tracing can be
 	% interested in (whether at an internal port or for uplevel printing)
 	% in a block at the start, and both this block and the remaining
 	% block. The division into two blocks can make the job of the
@@ -995,19 +1013,19 @@ stack_layout__select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
 	% blocks makes it more likely that different labels' layout structures
 	% will have common parts (e.g. name vectors).
 
-:- pred stack_layout__sort_livevals(list(var_info)::in, list(var_info)::out)
-	is det.
+:- pred stack_layout__sort_livevals(list(layout_var_info)::in,
+	list(layout_var_info)::out) is det.
 
 stack_layout__sort_livevals(OrigInfos, FinalInfos) :-
 	IsNamedVar = (pred(LvalInfo::in) is semidet :-
-		LvalInfo = var_info(_Lval, LvalType),
+		LvalInfo = layout_var_info(_Lval, LvalType, _),
 		LvalType = var(_, Name, _, _),
 		Name \= ""
 	),
 	list__filter(IsNamedVar, OrigInfos, NamedVarInfos0, OtherInfos0),
 	CompareVarInfos = (pred(Var1::in, Var2::in, Result::out) is det :-
-		Var1 = var_info(Lval1, LiveType1),
-		Var2 = var_info(Lval2, LiveType2),
+		Var1 = layout_var_info(Lval1, LiveType1, _),
+		Var2 = layout_var_info(Lval2, LiveType2, _),
 		stack_layout__get_name_from_live_value_type(LiveType1, Name1),
 		stack_layout__get_name_from_live_value_type(LiveType2, Name2),
 		compare(NameResult, Name1, Name2),
@@ -1088,7 +1106,7 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	% Construct a vector of (locn, live_value_type) pairs,
 	% and a corresponding vector of variable names.
 
-:- pred stack_layout__construct_liveval_arrays(list(var_info)::in,
+:- pred stack_layout__construct_liveval_arrays(list(layout_var_info)::in,
 	var_num_map::in, int::out, rval::out, rval::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
@@ -1154,7 +1172,7 @@ stack_layout__construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
 
 associate_type(LldsType, Rval, Rval - LldsType).
 
-:- pred stack_layout__construct_liveval_array_infos(list(var_info)::in,
+:- pred stack_layout__construct_liveval_array_infos(list(layout_var_info)::in,
 	var_num_map::in, int::in, int::in,
 	list(liveval_array_info)::out, list(liveval_array_info)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
@@ -1162,12 +1180,22 @@ associate_type(LldsType, Rval, Rval - LldsType).
 stack_layout__construct_liveval_array_infos([], _, _, _, [], [], !Info).
 stack_layout__construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
 		BytesSoFar, BytesLimit, IntVars, ByteVars, !Info) :-
-	VarInfo = var_info(Locn, LiveValueType),
+	VarInfo = layout_var_info(Locn, LiveValueType, _),
 	stack_layout__represent_live_value_type(LiveValueType, TypeRval,
 		TypeRvalType, !Info),
 	stack_layout__construct_liveval_num_rval(VarNumMap, VarInfo,
 		VarNumRval, !Info),
 	(
+		LiveValueType = var(_, _, Type, _),
+		is_dummy_argument_type(Type),
+		% We want to preserve I/O states in registers
+		\+ (
+			Locn = direct(reg(_, _))
+		)
+	->
+		error("construct_liveval_array_infos: " ++
+			"unexpected reference to dummy value")
+	;
 		BytesSoFar < BytesLimit,
 		stack_layout__represent_locn_as_byte(Locn, LocnByteRval)
 	->
@@ -1188,11 +1216,11 @@ stack_layout__construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
 	).
 
 :- pred stack_layout__construct_liveval_num_rval(var_num_map::in,
-	var_info::in, rval::out,
+	layout_var_info::in, rval::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_liveval_num_rval(VarNumMap, var_info(_, LiveValueType),
-		VarNumRval, !Info) :-
+stack_layout__construct_liveval_num_rval(VarNumMap,
+		layout_var_info(_, LiveValueType, _), VarNumRval, !Info) :-
 	( LiveValueType = var(Var, _, _, _) ->
 		stack_layout__convert_var_to_int(VarNumMap, Var, VarNum),
 		VarNumRval = const(int_const(VarNum))
@@ -1437,12 +1465,12 @@ stack_layout__represent_lval(reg(r, Num), Word) :-
 	stack_layout__make_tagged_word(lval_r_reg, Num, Word).
 stack_layout__represent_lval(reg(f, Num), Word) :-
 	stack_layout__make_tagged_word(lval_f_reg, Num, Word).
-
 stack_layout__represent_lval(stackvar(Num), Word) :-
+	require(Num > 0, "stack_layout__represent_lval: bad stackvar"),
 	stack_layout__make_tagged_word(lval_stackvar, Num, Word).
 stack_layout__represent_lval(framevar(Num), Word) :-
+	require(Num > 0, "stack_layout__represent_lval: bad framevar"),
 	stack_layout__make_tagged_word(lval_framevar, Num, Word).
-
 stack_layout__represent_lval(succip, Word) :-
 	stack_layout__make_tagged_word(lval_succip, 0, Word).
 stack_layout__represent_lval(maxfr, Word) :-
@@ -1538,6 +1566,8 @@ stack_layout__long_lval_offset_bits = 6.
 stack_layout__represent_locn_as_byte(LayoutLocn, Rval) :-
 	LayoutLocn = direct(Lval),
 	stack_layout__represent_lval_as_byte(Lval, Byte),
+	0 =< Byte,
+	Byte < 256,
 	Rval = const(int_const(Byte)).
 
 	% Construct a representation of an lval in a byte, if possible.
@@ -1545,13 +1575,14 @@ stack_layout__represent_locn_as_byte(LayoutLocn, Rval) :-
 :- pred stack_layout__represent_lval_as_byte(lval::in, int::out) is semidet.
 
 stack_layout__represent_lval_as_byte(reg(r, Num), Byte) :-
+	require(Num > 0, "stack_layout__represent_lval_as_byte: bad reg"),
 	stack_layout__make_tagged_byte(0, Num, Byte).
-
 stack_layout__represent_lval_as_byte(stackvar(Num), Byte) :-
+	require(Num > 0, "stack_layout__represent_lval_as_byte: bad stackvar"),
 	stack_layout__make_tagged_byte(1, Num, Byte).
 stack_layout__represent_lval_as_byte(framevar(Num), Byte) :-
+	require(Num > 0, "stack_layout__represent_lval_as_byte: bad framevar"),
 	stack_layout__make_tagged_byte(2, Num, Byte).
-
 stack_layout__represent_lval_as_byte(succip, Byte) :-
 	stack_layout__locn_type_code(lval_succip, Val),
 	stack_layout__make_tagged_byte(3, Val, Byte).
@@ -1568,12 +1599,9 @@ stack_layout__represent_lval_as_byte(sp, Byte) :-
 	stack_layout__locn_type_code(lval_sp, Val),
 	stack_layout__make_tagged_byte(3, Val, Byte).
 
-:- pred stack_layout__make_tagged_byte(int::in, int::in, int::out) is semidet.
+:- pred stack_layout__make_tagged_byte(int::in, int::in, int::out) is det.
 
 stack_layout__make_tagged_byte(Tag, Value, TaggedValue) :-
-	Limit = 1 << (stack_layout__byte_bits -
-		stack_layout__short_lval_tag_bits),
-	Value < Limit,
 	TaggedValue is unchecked_left_shift(Value,
 		stack_layout__short_lval_tag_bits) + Tag.
 

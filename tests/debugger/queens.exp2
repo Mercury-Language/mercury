@@ -5,7 +5,7 @@ mdb> register --quiet
 mdb> retry 1
 not that many ancestors
 mdb> print *
-       DCG_0 (arg 1)          	state('<<c_pointer>>')
+mdb: there are no live variables.
 mdb> b data
  0: + stop  interface pred queens.data/1-0 (det)
 mdb> continue

@@ -812,7 +812,7 @@ output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
 		MaybeTableInfo, _HeadVarNums, _VarNames, _MaxVarNum,
 		_MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
 		_MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
-		_MaybeCallTableSlot),
+		_MaybeCallTableSlot, _EffTraceLevel, _Flags),
 	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 	ModuleName = get_defining_module_name(ProcLabel) ,
 	output_layout_decl(CallLabelLayout, !DeclSet, !IO),
@@ -838,7 +838,8 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
 	ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
 		MaybeTableInfo, HeadVarNums, _VarNames, MaxVarNum,
 		MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
-		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot),
+		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot, EffTraceLevel,
+		Flags),
 	io__write_string("\n", !IO),
 	output_layout_name_storage_type_name(
 		proc_layout_exec_trace(RttiProcLabel), yes, !IO),
@@ -900,6 +901,10 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
 	io__write_string(eval_method_to_c_string(EvalMethod), !IO),
 	io__write_string(",\n", !IO),
 	write_maybe_slot_num(MaybeCallTableSlot, !IO),
+	io__write_string(",\n", !IO),
+	io__write_string(trace_level_rep(EffTraceLevel), !IO),
+	io__write_string(",\n", !IO),
+	io__write_int(Flags, !IO),
 	io__write_string("\n};\n", !IO).
 
 :- pred write_maybe_slot_num(maybe(int)::in, io::di, io::uo) is det.

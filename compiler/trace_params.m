@@ -115,7 +115,8 @@
 	% use for compiler-generated unify, index and compare predicates.
 :- func trace_level_for_unify_compare(trace_level) = trace_level.
 
-	% This is used to represent the trace level in the module layout.
+	% This is used to represent the trace level in the module layout
+	% and in proc layouts.
 :- func trace_level_rep(trace_level) = string.
 
 :- func encode_suppressed_events(trace_suppress_items) = int.

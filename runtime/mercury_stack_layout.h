@@ -757,6 +757,17 @@ typedef struct MR_Stack_Traversal_Struct {
 ** We cannot put enums into structures as bit fields. To avoid wasting space,
 ** we put MR_EvalMethodInts into structures instead of MR_EvalMethods
 ** themselves.
+**
+** If the procedure is compiled with some form of tabling, the maybe_call_table
+** field contains the number of the stack slot through which we can reach the
+** call table entry for this call. In forms of tabling which associate a C
+** structure (MR_Subgoal, MR_MemoNonRecord) with a call table entry, the slot
+** will point to that structure; in other forms of tabling, it will point
+** to the call's MR_TableNode.
+**
+** The flags field encodes boolean properties of the procedure. For now,
+** the only property is whether the procedure has a pair of I/O state
+** arguments.
 */
 
 typedef	enum {
@@ -772,6 +783,15 @@ typedef	enum {
 } MR_EvalMethod;
 
 typedef	MR_int_least8_t		MR_EvalMethodInt;
+
+typedef	enum {
+	MR_TRACELEVEL_NONE,
+	MR_TRACELEVEL_SHALLOW,
+	MR_TRACELEVEL_DEEP,
+	MR_TRACELEVEL_DECL_REP
+} MR_TraceLevel;
+
+typedef	MR_int_least8_t		MR_TraceLevelInt;
 
 typedef	struct MR_Exec_Trace_Struct {
 	const MR_Label_Layout	*MR_exec_call_label;
@@ -790,6 +810,8 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_int_least8_t		MR_exec_maybe_maxfr;
 	MR_EvalMethodInt	MR_exec_eval_method_CAST_ME;
 	MR_int_least8_t		MR_exec_maybe_call_table;
+	MR_TraceLevelInt	MR_exec_trace_level_CAST_ME;
+	MR_uint_least8_t	MR_exec_flags;
 	const MR_Label_Layout	**MR_exec_label_layout;
 } MR_Exec_Trace;
 
@@ -801,6 +823,8 @@ typedef	struct MR_Exec_Trace_Struct {
 			MR_NUM_SPECIAL_REG;				\
 		max_mr_num = MR_max(max_r_num, MR_FIRST_UNREAL_R_SLOT); \
 	} while (0)
+
+#define	MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR	0x1
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -910,8 +934,16 @@ typedef	struct MR_Proc_Layout_Traversal_Struct {
 #define	MR_sle_maybe_decl_debug MR_sle_exec_trace->MR_exec_maybe_decl_debug
 
 #define	MR_sle_eval_method(proc_layout_ptr)				\
-			((MR_EvalMethod) (proc_layout_ptr)->		\
-				MR_sle_exec_trace->MR_exec_eval_method_CAST_ME)
+	((MR_EvalMethod) (proc_layout_ptr)->				\
+		MR_sle_exec_trace->MR_exec_eval_method_CAST_ME)
+
+#define	MR_sle_trace_level(proc_layout_ptr)				\
+	((MR_TraceLevel) (proc_layout_ptr)->				\
+		MR_sle_exec_trace->MR_exec_trace_level_CAST_ME)
+
+#define	MR_proc_has_io_state_pair(proc_layout_ptr)			\
+	((proc_layout_ptr)->MR_sle_exec_trace->MR_exec_flags		\
+		& MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR)
 
 	/* Adjust the arity of functions for printing. */
 #define MR_sle_user_adjusted_arity(entry)				\

@@ -41,5 +41,5 @@ mdb>
        8:      1  1 EXIT pred multi_parameter.main/2-0 (det)
                          multi_parameter.m:23
 mdb> print *
-       DCG_2 (arg 2)          	state('<<c_pointer>>')
+mdb: there are no live variables.
 mdb> continue -S

@@ -580,22 +580,21 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
     arg_max = 0;
 
-    has_io_state = MR_FALSE;
-    found_io_action_counter = MR_FALSE;
+    if (MR_proc_has_io_state_pair(level_layout)) {
+        has_io_state = MR_TRUE;
+        found_io_action_counter = MR_find_saved_io_counter(call_label,
+            base_sp, base_curfr, &saved_io_action_counter);
+    } else {
+        has_io_state = MR_FALSE;
         /* just to prevent uninitialized variable warnings */
-    saved_io_action_counter = 0;
+        found_io_action_counter = MR_FALSE;
+        saved_io_action_counter = 0;
+    }
 
     for (i = 0; i < MR_all_desc_var_count(call_label); i++) {
         arg_value = MR_trace_find_input_arg(return_label_layout,
             saved_regs, base_sp, base_curfr,
             call_label->MR_sll_var_nums[i], &succeeded);
-
-        if (MR_is_io_state(MR_var_pti(call_label, i))) {
-            has_io_state = MR_TRUE;
-            found_io_action_counter = MR_find_saved_io_counter(
-                call_label, base_sp, base_curfr,
-                &saved_io_action_counter);
-        }
 
         if (! succeeded) {
             if (! MR_is_io_state(MR_var_pti(call_label, i))) {

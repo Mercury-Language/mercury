@@ -16,6 +16,11 @@
 CFLAGS-aditi_backend.rl_code=-O0
 MCFLAGS-aditi_backend.rl_code=--opt-space --trace minimum
 
+# llds_out.m contains some sanity checking code that is usually turned off.
+# However, the cost of checking whether they turned off exceeds the cost of
+# performing them unless inlining is enabled.
+MCFLAGS-ll_backend.llds_out=--inlining
+
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
 MGNUCFLAGS-libs.process_util = --no-ansi

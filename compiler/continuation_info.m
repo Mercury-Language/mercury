@@ -89,6 +89,9 @@
 					% debugger.
 			eval_method	:: eval_method,
 					% Of the procedure.
+			eff_trace_level	:: trace_level,
+					% The effective trace level of the
+					% procedure.
 			call_label	:: maybe(label),
 					% If the trace level is not none,
 					% this contains the label associated
@@ -104,6 +107,8 @@
 					% The head variables, in order,
 					% including the ones introduced by the
 					% compiler.
+			arg_modes	:: list(mode),
+					% The modes of the head variables.
 			maybe_proc_body	:: maybe(hlds_goal),
 					% The body of the procedure, if
 					% required.
@@ -125,9 +130,6 @@
 					% Info for each internal label,
 					% needed for basic_stack_layouts.
 			maybe_table_info :: maybe(proc_table_info),
-			is_being_traced :: bool,
-					% True if the effective trace level
-					% of the procedure is not none.
 			need_all_names	:: bool,
 					% True iff we need the names of all the
 					% variables.
@@ -242,16 +244,19 @@
 	%
 :- type layout_label_info
 	--->	layout_label_info(
-			set(var_info),
+			set(layout_var_info),
 				% live vars and their locations/names
 			map(tvar, set(layout_locn))
 				% locations of polymorphic type vars
 		).
 
-:- type var_info
-	--->	var_info(
-			layout_locn,	% the location of the variable
-			live_value_type % info about the variable
+:- type layout_var_info
+	--->	layout_var_info(
+			layout_locn,		% the location of the variable
+			live_value_type, 	% info about the variable
+			string			% where in the compiler
+						% this layout_var_info was
+						% created
 		).
 
 :- type closure_layout_info
@@ -348,7 +353,7 @@
 :- import_module libs__options.
 :- import_module ll_backend__code_util.
 
-:- import_module string, require, term, varset.
+:- import_module int, string, require, term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -481,12 +486,13 @@ continuation_info__process_continuation(WantReturnInfo, CallInfo,
 	map__set(Internals0, ReturnLabelNum, Internal, Internals).
 
 :- pred continuation_info__convert_return_data(list(liveinfo)::in,
-	set(var_info)::out, map(tvar, set(layout_locn))::out) is det.
+	set(layout_var_info)::out, map(tvar, set(layout_locn))::out) is det.
 
 continuation_info__convert_return_data(LiveInfos, VarInfoSet, TypeInfoMap) :-
 	GetVarInfo = (pred(LiveLval::in, VarInfo::out) is det :-
 		LiveLval = live_lvalue(Lval, LiveValueType, _),
-		VarInfo = var_info(Lval, LiveValueType)
+		VarInfo = layout_var_info(Lval, LiveValueType,
+			"convert_return_data")
 	),
 	list__map(GetVarInfo, LiveInfos, VarInfoList),
 	GetTypeInfo = (pred(LiveLval::in, LiveTypeInfoMap::out) is det :-
@@ -621,8 +627,10 @@ continuation_info__generate_resume_layout(ResumeMap, Temps, InstMap,
 		ProcInfo, ModuleInfo, Layout) :-
 	map__to_assoc_list(ResumeMap, ResumeList),
 	set__init(TVars0),
+	proc_info_vartypes(ProcInfo, VarTypes),
 	continuation_info__generate_resume_layout_for_vars(ResumeList,
-		InstMap, ProcInfo, ModuleInfo, VarInfos, TVars0, TVars),
+		InstMap, VarTypes, ProcInfo, ModuleInfo, [], VarInfos,
+		TVars0, TVars),
 	set__list_to_set(VarInfos, VarInfoSet),
 	set__to_sorted_list(TVars, TVarList),
 	continuation_info__find_typeinfos_for_tvars(TVarList, ResumeMap,
@@ -633,24 +641,32 @@ continuation_info__generate_resume_layout(ResumeMap, Temps, InstMap,
 	Layout = layout_label_info(AllInfoSet, TVarInfoMap).
 
 :- pred continuation_info__generate_resume_layout_for_vars(
-	assoc_list(prog_var, set(lval))::in, instmap::in, proc_info::in,
-	module_info::in, list(var_info)::out, set(tvar)::in,
-	set(tvar)::out) is det.
+	assoc_list(prog_var, set(lval))::in, instmap::in, vartypes::in,
+	proc_info::in, module_info::in,
+	list(layout_var_info)::in, list(layout_var_info)::out,
+	set(tvar)::in, set(tvar)::out) is det.
 
-continuation_info__generate_resume_layout_for_vars([], _, _, _, [],
-		TVars, TVars).
+continuation_info__generate_resume_layout_for_vars([], _, _, _, _,
+		!VarInfos, !TVars).
 continuation_info__generate_resume_layout_for_vars([Var - LvalSet | VarLvals],
-		InstMap, ProcInfo, ModuleInfo, [VarInfo | VarInfos],
-		TVars0, TVars) :-
-	continuation_info__generate_resume_layout_for_var(Var, LvalSet,
-		InstMap, ProcInfo, ModuleInfo, VarInfo, TypeVars),
-	set__insert_list(TVars0, TypeVars, TVars1),
+		InstMap, VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars) :-
+	(
+		map__lookup(VarTypes, Var, Type),
+		is_dummy_argument_type(Type)
+	->
+		true
+	;
+		continuation_info__generate_resume_layout_for_var(Var, LvalSet,
+			InstMap, ProcInfo, ModuleInfo, VarInfo, TypeVars),
+		set__insert_list(!.TVars, TypeVars, !:TVars),
+		!:VarInfos = [VarInfo | !.VarInfos]
+	),
 	continuation_info__generate_resume_layout_for_vars(VarLvals,
-		InstMap, ProcInfo, ModuleInfo, VarInfos, TVars1, TVars).
+		InstMap, VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars).
 
 :- pred continuation_info__generate_resume_layout_for_var(prog_var::in,
 	set(lval)::in, instmap::in, proc_info::in, module_info::in,
-	var_info::out, list(tvar)::out) is det.
+	layout_var_info::out, list(tvar)::out) is det.
 
 continuation_info__generate_resume_layout_for_var(Var, LvalSet, InstMap,
 		ProcInfo, ModuleInfo, VarInfo, TypeVars) :-
@@ -660,18 +676,28 @@ continuation_info__generate_resume_layout_for_var(Var, LvalSet, InstMap,
 	;
 		error("var has more than one lval in stack resume map")
 	),
+	( Lval = stackvar(N) ->
+		require(N > 0, "generate_resume_layout_for_var: bad stackvar")
+	; Lval = stackvar(N) ->
+		require(N > 0, "generate_resume_layout_for_var: bad framevar")
+	;
+		true
+	),
 	continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo,
 		ModuleInfo, LiveValueType, TypeVars),
-	VarInfo = var_info(direct(Lval), LiveValueType).
+	VarInfo = layout_var_info(direct(Lval), LiveValueType,
+		"generate_result_layout_for_var").
 
 :- pred continuation_info__generate_temp_var_infos(
-	assoc_list(lval, slot_contents)::in, list(var_info)::out) is det.
+	assoc_list(lval, slot_contents)::in, list(layout_var_info)::out)
+	is det.
 
 continuation_info__generate_temp_var_infos([], []).
 continuation_info__generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
 	Temp = Slot - Contents,
 	continuation_info__live_value_type(Contents, LiveLvalueType),
-	Live = var_info(direct(Slot), LiveLvalueType),
+	Live = layout_var_info(direct(Slot), LiveLvalueType,
+		"generate_temp_var_infos"),
 	continuation_info__generate_temp_var_infos(Temps, Lives).
 
 %---------------------------------------------------------------------------%

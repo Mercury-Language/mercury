@@ -114,6 +114,8 @@
 	% Get the variables for the current procedure.
 :- pred code_info__get_varset(code_info::in, prog_varset::out) is det.
 
+:- func code_info__get_var_types(code_info) = vartypes.
+
 :- pred code_info__get_maybe_trace_info(code_info::in, maybe(trace_info)::out)
 	is det.
 
@@ -745,8 +747,6 @@ code_info__body_typeinfo_liveness(CI) = TypeInfoLiveness :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	code_info__get_globals(CI, Globals),
 	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness).
-
-:- func code_info__get_var_types(code_info) = map(prog_var, type).
 
 code_info__get_var_types(CI) = VarTypes :-
 	code_info__get_proc_info(CI, ProcInfo),

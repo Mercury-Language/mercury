@@ -2966,7 +2966,7 @@ output_cons_args([Rval - Type | RvalsTypes], !IO) :-
 		direct_field_int_constant(Type) = yes,
 		Rval = const(int_const(N))
 	->
-		io__write_int(N, !IO)
+		output_int_const(N, Type, !IO)
 	;
 		output_rval_as_type(Rval, Type, !IO)
 	),
@@ -2989,7 +2989,15 @@ output_cons_arg_groups([Group | Groups], !IO) :-
 			direct_field_int_constant(Type) = yes,
 			list__map(project_int_constant, Rvals, Ints)
 		->
-			output_cons_arg_group_ints(Ints, !IO)
+			Check = check_int_const_sizes,
+			(
+				Check = no,
+				output_cons_arg_group_ints(Ints, !IO)
+			;
+				Check = yes,
+				output_cons_arg_group_ints_check(Ints, Type,
+					!IO)
+			)
 		;
 			output_cons_arg_group_elements(Type, Rvals, !IO)
 		),
@@ -3000,7 +3008,7 @@ output_cons_arg_groups([Group | Groups], !IO) :-
 			direct_field_int_constant(Type) = yes,
 			project_int_constant(Rval, Int)
 		->
-			io__write_int(Int, !IO)
+			output_int_const(Int, Type, !IO)
 		;
 			output_rval_as_type(Rval, Type, !IO)
 		)
@@ -3037,9 +3045,75 @@ output_cons_arg_group_ints([Int | Ints], !IO) :-
 		io__write_string("\n", !IO)
 	).
 
+:- pred output_cons_arg_group_ints_check(list(int)::in, llds_type::in,
+	io::di, io::uo) is det.
+
+output_cons_arg_group_ints_check([], _, !IO).
+output_cons_arg_group_ints_check([Int | Ints], Type, !IO) :-
+	output_int_const(Int, Type, !IO),
+	( Ints \= [] ->
+		io__write_string(",\n", !IO),
+		output_cons_arg_group_ints_check(Ints, Type, !IO)
+	;
+		io__write_string("\n", !IO)
+	).
+
 :- pred project_int_constant(rval::in, int::out) is semidet.
 
 project_int_constant(const(int_const(N)), N).
+
+:- func check_int_const_sizes = bool.
+:- pragma inline(check_int_const_sizes/0).
+
+% If you this to `yes', we will test all integer constants places into static
+% data structures to see if they fit into the space allocated for them.
+
+check_int_const_sizes = no.
+
+:- pred output_int_const(int::in, llds_type::in, io::di, io::uo) is det.
+:- pragma inline(output_int_const/4).
+
+output_int_const(N, Type, !IO) :-
+	Check = check_int_const_sizes,
+	(
+		Check = yes,
+		( ok_int_const(N, Type) ->
+			io__write_int(N, !IO)
+		;
+			error("output_int_const: constant does not fit in type")
+		)
+	;
+		Check = no,
+		io__write_int(N, !IO)
+	).
+
+:- pred ok_int_const(int::in, llds_type::in) is semidet.
+:- pragma inline(ok_int_const/2).
+
+ok_int_const(N, int_least8) :-
+	-128 =< N, N < 128.
+ok_int_const(N, uint_least8) :-
+	0 =< N, N < 256.
+ok_int_const(N, int_least16) :-
+	-32768 =< N, N < 32768.
+ok_int_const(N, uint_least16) :-
+	0 =< N, N < 65536.
+ok_int_const(_N, int_least32).
+ok_int_const(_N, uint_least32).
+ok_int_const(_N, bool) :-
+	error("ok_int_const: not integer constant").
+ok_int_const(_N, integer).
+ok_int_const(_N, unsigned).
+ok_int_const(_, float) :-
+	error("ok_int_const: not integer constant").
+ok_int_const(_, word) :-
+	error("ok_int_const: not integer constant").
+ok_int_const(_, string) :-
+	error("ok_int_const: not integer constant").
+ok_int_const(_, data_ptr) :-
+	error("ok_int_const: not integer constant").
+ok_int_const(_, code_ptr) :-
+	error("ok_int_const: not integer constant").
 
 %-----------------------------------------------------------------------------%
 
@@ -3981,7 +4055,7 @@ output_rval_as_type(Rval, DesiredType, !IO) :-
 				% a considerably longer lifetime. In debugging
 				% grades, the file size difference can be
 				% very substantial (in the range of megabytes).
-				io__write_int(N, !IO)
+				output_int_const(N, DesiredType, !IO)
 			;
 				% cast value to desired type
 				output_llds_type_cast(DesiredType, !IO),

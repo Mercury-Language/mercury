@@ -15,11 +15,9 @@ mdb> delete 0
 mdb> vars
         1 File (arg 1)
         2 Database0 (arg 2)
-        3 DCG_0 (arg 4)
 mdb> print *
        File (arg 1)           	"interpreter.m"
        Database0 (arg 2)      	[]
-       DCG_0 (arg 4)          	state('<<c_pointer>>')
 mdb> b database_assert_clause
  0: + stop  interface pred interpreter.database_assert_clause/4-0 (det)
 mdb> c

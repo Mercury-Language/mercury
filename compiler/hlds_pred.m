@@ -1974,6 +1974,10 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 :- pred proc_info_has_io_state_pair(module_info::in, proc_info::in,
 	int::out, int::out) is semidet.
 
+:- pred proc_info_has_io_state_pair_from_details(module_info::in,
+	list(prog_var)::in, list(mode)::in, vartypes::in,
+	int::out, int::out) is semidet.
+
 	% Given a procedure table and the id of a procedure in that table,
 	% return a procedure id to be attached to a clone of that procedure.
 	% (The task of creating the clone proc_info and inserting into the
@@ -2543,9 +2547,14 @@ no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
 proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars,
+		ArgModes, VarTypes, InArgNum, OutArgNum).
+
+proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
+		VarTypes, InArgNum, OutArgNum) :-
 	assoc_list__from_corresponding_lists(HeadVars, ArgModes,
 		HeadVarsModes),
-	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_has_io_state_pair_2(HeadVarsModes, ModuleInfo, VarTypes,
 		1, no, no, MaybeIn, MaybeOut),
 	( MaybeIn = yes(In), MaybeOut = yes(Out) ->
