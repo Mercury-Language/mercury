@@ -52,15 +52,6 @@
 :- pred ops__lookup_op(ops__table, string).
 :- mode ops__lookup_op(in, in) is semidet.
 
-	% Returns the highest priority number (the lowest is zero).
-	% Note that due to Prolog tradition, the priority numbers
-	% are backwards: higher numbers mean lower priority
-	% and lower numbers mean higher priority.  Sorry...
-:- func ops__max_priority = ops__priority.
-
-:- pred ops__max_priority(ops__priority).
-:- mode ops__max_priority(out) is det.
-
 %-----------------------------------------------------------------------------%
 
 	% Operators with a low "priority" bind more tightly than those
@@ -68,6 +59,12 @@
 	% priority 500 and `*' has priority 400, the term `2 * X + Y'
 	% would parse as `(2 * X) + Y'.
 :- type ops__priority == int.
+
+	% Returns the highest priority number (the lowest is zero).
+:- func ops__max_priority = ops__priority.
+
+:- pred ops__max_priority(ops__priority).
+:- mode ops__max_priority(out) is det.
 
 %-----------------------------------------------------------------------------%
 
