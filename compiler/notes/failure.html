@@ -177,10 +177,20 @@ and the start of the current goal.
 <li>
 The curfr_is_maxfr subfield says
 whether the code generator knows that curfr is guaranteed to be equal to maxfr.
-The answer is yes if there are no calls to nondet procedures
-between the start of the procedure and the start of the current goal,
-and if the code generator itself hasn't pushed any temporary nondet
-stack frames (see nondet if-then-elses below).
+The answer is yes if all of the following conditions hold:
+
+	<ul>
+	<li>
+	we are in a procedure that lives on the nondet stack
+	(maxfr and curfr are both set to the address of the procedure's
+	stack frame when it is created);
+	<li>
+	there are no calls to nondet procedures on the path between
+	the start of the procedure and the start of the current goal; and
+	<li>
+	the code generator itself hasn't pushed any temporary nondet
+	stack frames (see nondet if-then-elses below).
+	</ul>
 </ul>
 
 <p>
@@ -491,7 +501,7 @@ Before the code generator enters a goal that is being committed across,
 it saves the value of maxfr,
 pushes a new entry on the resume point stack indicating
 the resume point for getting control back if the goal has no solutions
-saves the value of redoip slot of the top frame (which is this frame).
+saves the value of the redoip slot of the top frame (which is this frame).
 and overrides this redoip slot to make it point
 to the stack continuation in the resume point.
 The success continuation will reset maxfr;
@@ -512,8 +522,8 @@ since resetting maxfr affects which frame is top.
 Before the code generator enters a goal that is being committed across,
 it saves the value of maxfr,
 pushes a new entry on the resume point stack indicating
-the resume point for getting control back if the goal has no solutions
-saves the values of redoip and redofr slots of the top frame
+the resume point for getting control back if the goal has no solutions,
+saves the values of the redoip and redofr slots of the top frame
 (which may be different from this frame),
 overrides the redoip slot to make it point
 to the stack continuation in the resume point
@@ -565,6 +575,6 @@ set any redoips or hijack anything.
 
 <hr>
 <!-------------------------->
-Last update was $Date: 1997-10-31 04:34:24 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-11-05 08:22:26 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
