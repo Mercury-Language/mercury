@@ -4,7 +4,7 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% file: parser.nl.
+% file: parser.m.
 % main author: fjh.
 %
 % This file exports the predicate parser__read_term, which reads

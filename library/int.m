@@ -16,7 +16,7 @@
 
 :- import_module float.
 
-% '<' and '>' are currently defined in mercury_builtin.nl, since they need to
+% '<' and '>' are currently defined in mercury_builtin.m, since they need to
 % be because they are used in the implementation of compare/3.
 % 
 % :- pred <(int, int).

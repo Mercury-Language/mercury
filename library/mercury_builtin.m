@@ -37,7 +37,7 @@
 
 % Unique insts.  Currently aliased to standard insts, since unique insts
 % aren't implemented yet.  Note that `bound_unique' is aliased to `bound'
-% in the parser (prog_io.nl), because it couldn't be done here.
+% in the parser (prog_io.m), because it couldn't be done here.
 
 :- inst free_unique = free.
 :- inst ground_unique = ground.
@@ -97,7 +97,7 @@
 :- pred !(T, T).
 :- mode !(in, out) is det.
 
-% The call/N family.  Note that the compiler (make_hlds.nl) will transform
+% The call/N family.  Note that the compiler (make_hlds.m) will transform
 % goals which are not atoms (e.g. goals which are free variables) into
 % calls to call/1.
 
@@ -165,7 +165,7 @@
 
 :- type type_info(T) ---> type_info(int /*, ... */).
 
-% These should be defined in int.nl, but we define them here since
+% These should be defined in int.m, but we define them here since
 % they're need for the implementation of compare/3.
 
 :- pred <(int, int).

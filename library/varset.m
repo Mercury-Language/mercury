@@ -17,8 +17,8 @@
 % [But at the moment, the rest of the code is only using varsets to store
 % names, not values.]
 %
-% There may be some design flaws in the relationship between varset.nl,
-% term.nl, and graph.nl.  Once we have implemented unique modes and
+% There may be some design flaws in the relationship between varset.m,
+% term.m, and graph.m.  Once we have implemented unique modes and
 % destructive assignment, we will need to rethink the design;  we may
 % end up modifying these modules considerably, or we may end up
 % making new single-threaded versions of these modules.

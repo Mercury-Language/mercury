@@ -10,7 +10,7 @@
 % Lexical analysis.  This module defines the representation of tokens
 % and exports predicates for reading in tokens from an input stream.
 %
-% See ISO Prolog 6.4.  Also see the comments at the top of parser.nl.
+% See ISO Prolog 6.4.  Also see the comments at the top of parser.m.
 %
 %-----------------------------------------------------------------------------%
 
@@ -407,7 +407,7 @@ lexer__finish_quoted_name(QuoteChar, Chars, Token) :-
 	; QuoteChar = '"' ->
 		Token = string(String)
 	;
-		error("lexer.nl: unknown quote character")
+		error("lexer.m: unknown quote character")
 	).
 
 :- pred lexer__get_quoted_name_escape(character, list(character), token,

@@ -9,9 +9,7 @@
 %
 % This file encapsulates all the term I/O.
 % This exports predicates to read and write terms in the
-% nice ground representation provided in term.nl.
-% Some of the predicates here are actually implemented in non-logical
-% NU-Prolog in term_io.nu.nl.
+% nice ground representation provided in term.m.
 %
 %-----------------------------------------------------------------------------%
 
