@@ -156,7 +156,8 @@ io__main -->
 		write('Mercury Interpreter, version '), 
 		library__version(VersionString),
 		format("~s", [VersionString]), nl,
-		write('Copyright (C) 1995 The University of Melbourne'), nl,
+		write('Copyright (C) 1993-1997 The University of Melbourne'),
+		nl,
 		write('Underlying Prolog implementation: '),
 		currentOutput(Output), flushOutput(Output),
 		assert(io__main_has_been_executed)
