@@ -18,18 +18,21 @@ SOURCES= \
 	easy_nondet_test_2.m \
 	error.m \
 	followcode_det_problem.m \
+	headvar_not_found.m \
 	higher_order.m \
 	higher_order2.m\
 	higher_order3.m\
 	implied_mode.m \
 	indexing.m \
 	lambda_inference.m\
+	lambda_type.m\
 	loop.m \
 	multidet_prune1.m \
 	multidet_test.m \
 	name_mangling.m \
 	nondet_live.m \
 	semidet_disj.m \
+	shape_type.m \
 	stack_alloc.m \
 	switches.m \
 	two_pragma_c_codes.m \
