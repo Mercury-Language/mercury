@@ -165,15 +165,16 @@ void init_memory(void)
 	arena = memalign(unit, total_size);
 	if (arena == NULL)
 	{
-		printf("cannot allocate arena: memalign() failed\n");
+		perror("Mercury runtime");
+		fprintf(stderr, "cannot allocate arena: memalign() failed\n");
 		exit(1);
 	}
 	arena = (char *) roundup((int) arena, unit);
 	
-	fake_reg_offset = (int) fake_reg % unit;
-	heap_offset = fake_reg_offset + pcache_size / 4;
-	detstack_offset = heap_offset + pcache_size / 4;
-	nondstack_offset = detstack_offset + pcache_size / 4;
+	fake_reg_offset = (int) fake_reg % pcache_size;
+	heap_offset = (fake_reg_offset + pcache_size / 4) % pcache_size;
+	detstack_offset = (heap_offset + pcache_size / 4) % pcache_size;
+	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
 
 #ifdef CONSERVATIVE_GC
 	heap = heapmin = heapend = 0;
@@ -204,7 +205,7 @@ void init_memory(void)
 
 	if (arena + total_size <= (char *) nondstackend)
 	{
-		printf("allocated too much memory\n");
+		fprintf(stderr, "Mercury runtime: allocated too much memory\n");
 		exit(1);
 	}
 
@@ -317,7 +318,7 @@ static void setup_mprotect(void)
 	if (heap_zone_size > 0
 	    && mprotect(heap_zone, heap_zone_size, MY_PROT) != 0)
 	{
-		perror("cannot protect head redzone");
+		perror("Mercury runtime: cannot protect head redzone");
 		exit(1);
 	}
 
@@ -326,7 +327,7 @@ static void setup_mprotect(void)
 	if (detstack_zone_size > 0
 	    && mprotect(detstack_zone, detstack_zone_size, MY_PROT) != 0)
 	{
-		perror("cannot protect detstack redzone");
+		perror("Mercury runtime: cannot protect detstack redzone");
 		exit(1);
 	}
 
@@ -335,7 +336,7 @@ static void setup_mprotect(void)
 	if (nondstack_zone_size > 0
 	    && mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) != 0)
 	{
-		perror("cannot protect nondstack redzone");
+		perror("Mercury runtime: cannot protect nondstack redzone");
 		exit(1);
 	}
 }
@@ -367,7 +368,7 @@ static bool try_munprotect(void *addr)
 
 			if (mprotect(heap_zone, new_zone-heap_zone, PROT_READ|PROT_WRITE) != 0)
 			{
-				perror("cannot unprotect heap\n");
+				perror("Mercury runtime: cannot unprotect heap\n");
 				exit(1);
 			}
 
@@ -399,7 +400,7 @@ static bool try_munprotect(void *addr)
 
 			if (mprotect(detstack_zone, new_zone-detstack_zone, PROT_READ|PROT_WRITE) != 0)
 			{
-				perror("cannot unprotect detstack\n");
+				perror("Mercury runtime: cannot unprotect detstack\n");
 				exit(1);
 			}
 
@@ -431,7 +432,7 @@ static bool try_munprotect(void *addr)
 
 			if (mprotect(nondstack_zone, new_zone-nondstack_zone, PROT_READ|PROT_WRITE) != 0)
 			{
-				perror("cannot unprotect nondstack\n");
+				perror("Mercury runtime: cannot unprotect nondstack\n");
 				exit(1);
 			}
 
@@ -480,21 +481,21 @@ static void setup_signal(void)
 	act.sa_flags = SA_SIGINFO | SA_RESTART;
 	if (sigemptyset(&act.sa_mask) != 0)
 	{
-		perror("cannot set clear signal mask");
+		perror("Mercury runtime: cannot set clear signal mask");
 		exit(1);
 	}
 
 	act.sa_sigaction = complex_bushandler;
 	if (sigaction(SIGBUS, &act, NULL) != 0)
 	{
-		perror("cannot set SIGBUS handler");
+		perror("Mercury runtime: cannot set SIGBUS handler");
 		exit(1);
 	}
 
 	act.sa_sigaction = complex_segvhandler;
 	if (sigaction(SIGSEGV, &act, NULL) != 0)
 	{
-		perror("cannot set SIGSEGV handler");
+		perror("Mercury runtime: cannot set SIGSEGV handler");
 		exit(1);
 	}
 }
