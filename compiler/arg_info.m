@@ -153,13 +153,7 @@ make_arg_infos(Method, _ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
 
 make_arg_infos_list([], _, _, []).
 make_arg_infos_list([Mode | Modes], Reg0, ModuleInfo, [ArgInfo | ArgInfos]) :-
-	( mode_is_input(ModuleInfo, Mode) ->
-		ArgMode = top_in
-	; mode_is_output(ModuleInfo, Mode) ->
-		ArgMode = top_out
-	;
-		ArgMode = top_unused
-	),
+	mode_to_arg_mode(ModuleInfo, Mode, ArgMode),
 	ArgInfo = arg_info(Reg0, ArgMode),
 	Reg1 is Reg0 + 1,
 	make_arg_infos_list(Modes, Reg1, ModuleInfo, ArgInfos).
@@ -171,12 +165,13 @@ make_arg_infos_list([Mode | Modes], Reg0, ModuleInfo, [ArgInfo | ArgInfos]) :-
 make_arg_infos_compact_list([], _, _, _, []).
 make_arg_infos_compact_list([Mode | Modes], InReg0, OutReg0, ModuleInfo,
 		[ArgInfo | ArgInfos]) :-
-	( mode_is_input(ModuleInfo, Mode) ->
+	mode_to_arg_mode(ModuleInfo, Mode, ArgMode),
+	(
 		ArgMode = top_in,
 		ArgReg = InReg0,
 		InReg1 is InReg0 + 1,
 		OutReg1 = OutReg0
-	; mode_is_output(ModuleInfo, Mode) ->
+	;
 		ArgMode = top_out,
 		ArgReg = OutReg0,
 		InReg1 = InReg0,

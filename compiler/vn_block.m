@@ -806,7 +806,8 @@ vn_block__find_cheaper_copies_2([Vnlval - Vn | VnlvalVns], SeekVn, OldCost,
 			MaybeLval = yes(Lval),
 			vn_cost__lval_cost(Lval, Params, LvalCost),
 			LvalCost < OldCost,
-			Lval \= temp(_)
+			Lval \= temp(_),
+			Lval \= hp
 		->
 			Rvals = [lval(Lval) | Rvals0]
 		;

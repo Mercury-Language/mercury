@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_data, hlds_goal, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module int, string, list.
 
 	% mode_get_insts returns the initial instantiatedness and
@@ -35,6 +35,10 @@
 	% a mode is considered unused if both initial and final insts are free
 :- pred mode_is_unused(module_info, mode).
 :- mode mode_is_unused(in, in) is semidet.
+
+	% a mode is considered unused if both initial and final insts are free
+:- pred mode_to_arg_mode(module_info, mode, arg_mode).
+:- mode mode_to_arg_mode(in, in, out) is det.
 
 /*
 ** Predicates to test various properties of insts.
@@ -300,6 +304,16 @@ mode_is_unused(ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 	inst_is_free(ModuleInfo, InitialInst),
 	inst_is_free(ModuleInfo, FinalInst).
+
+mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	( inst_is_bound(ModuleInfo, InitialInst) ->
+		ArgMode = top_in
+	; inst_is_bound(ModuleInfo, FinalInst) ->
+		ArgMode = top_out
+	;
+		ArgMode = top_unused
+	).
 
 %-----------------------------------------------------------------------------%
 
