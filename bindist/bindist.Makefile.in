@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999 The University of Melbourne.
+# Copyright (C) 1996-1999, 2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -66,24 +66,16 @@ install: install_lib install_info install_man \
 install_lib:
 	@echo "-- Installing lib in $(INSTALL_LIBDIR)..."
 	test -d $(INSTALL_LIBDIR) || mkdir -p $(INSTALL_LIBDIR)
-	# (XXX don't use redirection or pipes, because on gnu-win32
-	# stdout defaults to text mode, which breaks tar and gzip)
-	gzip --decompress lib.tar.gz
-	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && \
-		tar -xf $$LIB_TAR_FILE $(LIB_PARTS)
-	gzip lib.tar # tidy up
+	gzip --decompress --stdout lib.tar.gz | ( \
+		cd $(INSTALL_LIBDIR) && tar -xf - $(LIB_PARTS) )
 	@echo "-- Done."
 
 .PHONY: install_info
 install_info:
 	@echo "-- Installing info documentation in $(INSTALL_INFODIR)..."
 	test -d $(INSTALL_INFODIR) || mkdir -p $(INSTALL_INFODIR)
-	# (XXX don't use redirection or pipes, because on gnu-win32
-	# stdout defaults to text mode, which breaks tar and gzip)
-	gzip --decompress info.tar.gz
-	INFO_TAR_FILE=`pwd`/info.tar &&  cd $(INSTALL_INFODIR)/.. && \
-		tar -xf $$INFO_TAR_FILE
-	gzip info.tar # tidy up
+	gzip --decompress --stdout info.tar.gz | ( \
+		cd $(INSTALL_INFODIR)/.. && tar -xf - )
 	@echo "-- Done."
 
 .PHONY: install_man
@@ -92,10 +84,8 @@ install_man:
 	test -d $(INSTALL_MAN_DIR) || mkdir -p $(INSTALL_MAN_DIR)
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
-	gzip --decompress man.tar.gz
-	MAN_TAR_FILE=`pwd`/man.tar &&  cd $(INSTALL_MAN_DIR)/.. && \
-		tar -xf $$MAN_TAR_FILE
-	gzip man.tar # tidy up
+	gzip --decompress --stdout man.tar.gz | ( \
+		cd $(INSTALL_MAN_DIR)/.. && tar -xf - )
 	@echo "-- Done."
 
 .PHONY: install_scripts
