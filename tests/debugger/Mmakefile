@@ -35,7 +35,8 @@ DEBUGGER_PROGS=	\
 	queens				\
 	resume_typeinfos		\
 	retry				\
-	shallow
+	shallow				\
+	tabled_read
 
 # The following tests are disabled, since currently they get some spurious
 # failures if readline support is enabled:
@@ -43,6 +44,7 @@ DEBUGGER_PROGS=	\
 # Note that some of the make rules for interactive are disabled too.
 
 MCFLAGS-shallow = --trace shallow
+MCFLAGS-tabled_read = --trace-table-io
 MCFLAGS = --trace deep
 MLFLAGS = --trace
 C2INITFLAGS = --trace
@@ -200,6 +202,9 @@ retry.out: retry retry.inp
 
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
+
+tabled_read.out: tabled_read tabled_read.inp
+	$(MDB) ./tabled_read < tabled_read.inp > tabled_read.out 2>&1
 
 # Note that interactive.out.orig depends on $(interactive.ints) because
 # interactive.inp contains interactive queries that require interactive.ints

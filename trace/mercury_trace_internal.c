@@ -155,6 +155,8 @@ static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
+static	void	MR_print_unsigned_var(FILE *fp, const char *var,
+			MR_Unsigned value);
 static	bool	MR_parse_source_locn(char *word, const char **file, int *line);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
@@ -208,6 +210,8 @@ static	void	MR_trace_event_print_internal_report(
 
 static	bool	MR_trace_valid_command(const char *word);
 
+bool		MR_saved_io_tabling_enabled;
+
 MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 		MR_Event_Info *event_info)
@@ -231,12 +235,15 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	/*
 	** We want to make sure that the Mercury code used to implement some
 	** of the debugger's commands (a) doesn't generate any trace events,
-	** and (b) doesn't generate any unwanted debugging output.
+	** (b) doesn't generate any unwanted debugging output, and (c) doesn't
+	** do any I/O tabling.
 	*/
 
 	MR_trace_enabled = FALSE;
 	saved_tabledebug = MR_tabledebug;
 	MR_tabledebug = FALSE;
+	MR_saved_io_tabling_enabled = MR_io_tabling_enabled;
+	MR_io_tabling_enabled = FALSE;
 
 	MR_trace_internal_ensure_init();
 
@@ -276,6 +283,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	MR_scroll_next = 0;
 	MR_trace_enabled = TRUE;
 	MR_tabledebug = saved_tabledebug;
+	MR_io_tabling_enabled = MR_saved_io_tabling_enabled;
 	return jumpaddr;
 }
 
@@ -331,6 +339,11 @@ MR_trace_internal_ensure_init(void)
 		MR_trace_internal_init_from_env();
 		MR_trace_internal_init_from_local();
 		MR_trace_internal_init_from_home_dir();
+
+		MR_saved_io_tabling_enabled = TRUE;
+		MR_io_tabling_phase = MR_IO_TABLING_BEFORE;
+		MR_io_tabling_start = MR_IO_ACTION_MAX;
+		MR_io_tabling_end = MR_IO_ACTION_MAX;
 
 		MR_trace_internal_initialized = TRUE;
 	}
@@ -877,7 +890,8 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 
 		result = MR_trace_retry(event_info, event_details,
-				ancestor_level, &problem, jumpaddr);
+				ancestor_level, &problem,
+				MR_mdb_in, MR_mdb_out, jumpaddr);
 		switch (result) {
 
 		case MR_RETRY_OK_DIRECT:
@@ -1858,6 +1872,74 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("developer", "all_regs");
 		}
+	} else if (streq(words[0], "table_io")) {
+		if (word_count == 1) {
+			if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has not yet started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has finished\n");
+			} else {
+				MR_fatal_error(
+					"io tabling in impossible phase\n");
+			}
+		} else if (word_count == 2 && streq(words[1], "start")) {
+			if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
+				MR_io_tabling_phase = MR_IO_TABLING_DURING;
+				MR_io_tabling_start = MR_io_tabling_counter;
+				MR_io_tabling_end = MR_IO_ACTION_MAX;
+				fprintf(MR_mdb_out, "io tabling started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has already started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has already ended\n");
+			} else {
+				MR_fatal_error(
+					"io tabling in impossible phase\n");
+			}
+		} else if (word_count == 2 && streq(words[1], "end")) {
+			if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has not yet started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
+			{
+				MR_io_tabling_phase = MR_IO_TABLING_AFTER;
+				MR_io_tabling_end = MR_io_tabling_counter_hwm;
+				fprintf(MR_mdb_out, "io tabling ended\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has already ended\n");
+			} else {
+				MR_fatal_error(
+					"io tabling in impossible phase\n");
+			}
+		} else if (word_count == 2 && streq(words[1], "stats")) {
+			fprintf(MR_mdb_out, "phase = %d\n",
+				MR_io_tabling_phase);
+			MR_print_unsigned_var(MR_mdb_out, "counter",
+				MR_io_tabling_counter);
+			MR_print_unsigned_var(MR_mdb_out, "hwm",
+				MR_io_tabling_counter_hwm);
+			MR_print_unsigned_var(MR_mdb_out, "start",
+				MR_io_tabling_start);
+			MR_print_unsigned_var(MR_mdb_out, "end",
+				MR_io_tabling_end);
+		} else {
+			MR_trace_usage("developer", "table_io");
+		}
 	} else if (streq(words[0], "source")) {
 		bool	ignore_errors;
 
@@ -2002,6 +2084,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			"Give the command `help' for help.\n", words[0]);
 	}
 	return KEEP_INTERACTING;
+}
+
+static void
+MR_print_unsigned_var(FILE *fp, const char *var, MR_Unsigned value)
+{
+	fprintf(fp, "%s = %" MR_INTEGER_LENGTH_MODIFIER "u\n", var, value);
 }
 
 static bool
@@ -2947,6 +3035,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 #endif
 	{ "developer", "stack_regs" },
 	{ "developer", "all_regs" },
+	{ "developer", "table_io" },
 	{ "misc", "source" },
 	{ "misc", "save" },
 	{ "misc", "quit" },

@@ -15,6 +15,11 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
+#define	tag_incr_hp_msg(d, t, c, p, ty)	MR_tag_incr_hp_msg((d), (t),	    \
+						(c), p, (ty))
+#define	incr_hp_msg(d, c, p, t)		MR_incr_hp_msg((d), (c), p, (t))
+#define	GOTO_LABEL(label)		MR_GOTO_LABEL(label)
+
 #define do_redo				MR_do_redo
 #define do_fail				MR_do_fail
 #define do_reset_hp_fail		MR_do_reset_hp_fail
@@ -57,6 +62,8 @@
 #define	r32				MR_r32
 
 #define	r(N)				MR_r(N)
+
+#ifdef	MR_EXTRA_BACKWARDS_COMPAT
 
 #define	NUM_REAL_REGS			MR_NUM_REAL_REGS
 
@@ -308,7 +315,7 @@ typedef MR_Bool 		Bool;
 ** This stuff is not enabled by default.
 ** To enable it, you must explicitly define MR_EXTRA_BACKWARDS_COMPAT.
 */
-#ifdef	MR_EXTRA_BACKWARDS_COMPAT
+/* #ifdef	MR_EXTRA_BACKWARDS_COMPAT */
 
 #define succip			MR_succip
 #define hp			MR_hp

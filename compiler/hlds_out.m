@@ -134,6 +134,9 @@
 :- pred hlds_out__write_can_fail(can_fail, io__state, io__state).
 :- mode hlds_out__write_can_fail(in, di, uo) is det.
 
+:- pred hlds_out__write_eval_method(eval_method, io__state, io__state).
+:- mode hlds_out__write_eval_method(in, di, uo) is det.
+
 :- pred hlds_out__write_import_status(import_status, io__state, io__state).
 :- mode hlds_out__write_import_status(in, di, uo) is det.
 
@@ -301,7 +304,8 @@ hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
 hlds_out__cons_id_to_string(type_ctor_info_const(_, _, _), "<type_ctor_info>").
 hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
 	"<base_typeclass_info>").
-hlds_out__cons_id_to_string(tabling_pointer_const(_, _), "<tabling_pointer>").
+hlds_out__cons_id_to_string(tabling_pointer_const(_, _),
+	"<tabling_pointer>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
 	prog_out__write_sym_name_and_arity(SymName / Arity).
@@ -2884,6 +2888,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_get_maybe_termination_info(Proc, MaybeTermination) },
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
 	{ proc_info_typeclass_info_varmap(Proc, TypeClassInfoMap) },
+	{ proc_info_eval_method(Proc, EvalMethod) },
 	{ proc_info_is_address_taken(Proc, IsAddressTaken) },
 	{ proc_info_get_call_table_tip(Proc, MaybeCallTableTip) },
 	{ Indent1 is Indent + 1 },
@@ -2930,6 +2935,14 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		io__write_string("% address is taken\n")
 	;
 		io__write_string("% address is not taken\n")
+	),
+
+	( { EvalMethod = eval_normal } ->
+		[]
+	;
+		io__write_string("% eval method: "),
+		hlds_out__write_eval_method(EvalMethod),
+		io__write_string("\n")
 	),
 
 	( { MaybeCallTableTip = yes(CallTableTip) } ->
@@ -3059,6 +3072,17 @@ hlds_out__write_can_fail(can_fail) -->
 	io__write_string("can_fail").
 hlds_out__write_can_fail(cannot_fail) -->
 	io__write_string("cannot_fail").
+
+hlds_out__write_eval_method(eval_normal) -->
+	io__write_string("normal").
+hlds_out__write_eval_method(eval_loop_check) -->
+	io__write_string("loop_check").
+hlds_out__write_eval_method(eval_memo) -->
+	io__write_string("memo").
+hlds_out__write_eval_method(eval_minimal) -->
+	io__write_string("minimal").
+hlds_out__write_eval_method(eval_table_io) -->
+	io__write_string("table_io").
 
 :- pred hlds_out__write_indent(int, io__state, io__state).
 :- mode hlds_out__write_indent(in, di, uo) is det.

@@ -34,13 +34,13 @@
 */
 
 /*
-** string_const("...", len):
+** MR_string_const("...", len):
 **	Given a C string literal and its length, returns a Mercury string.
 */
 #define MR_string_const(string, len) ((MR_String) string)
 
 /*
-** bool string_equal(MR_ConstString s1, MR_ConstString s2):
+** bool MR_string_equal(MR_ConstString s1, MR_ConstString s2):
 **	Return true iff the two Mercury strings s1 and s2 are equal.
 */
 #define MR_string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
@@ -53,8 +53,8 @@
 **	then the string pointed to by `string' should have been either
 **	statically allocated or allocated on the Mercury heap.
 **	
-** BEWARE: this may modify `hp', so it must only be called from
-** places where `hp' is valid.  If calling it from inside a C function,
+** BEWARE: this may modify `MR_hp', so it must only be called from
+** places where `MR_hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
 ** MR_{save/restore}_transient_hp().
 **
@@ -76,8 +76,8 @@
 **	is guaranteed to be copied. This is useful for copying C strings
 **	onto the Mercury heap.
 **
-** BEWARE: this may modify `hp', so it must only be called from
-** places where `hp' is valid.  If calling it from inside a C function,
+** BEWARE: this may modify `MR_hp', so it must only be called from
+** places where `MR_hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
 ** MR_{save/restore}_transient_hp().
 */
@@ -101,8 +101,8 @@
 ** record for memory profiling purposes the location, proclabel, of the
 ** allocation if profiling is enabled.
 **
-** BEWARE: this may modify `hp', so it must only be called from
-** places where `hp' is valid.  If calling it from inside a C function,
+** BEWARE: this may modify `MR_hp', so it must only be called from
+** places where `MR_hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
 ** MR_{save/restore}_transient_hp().
 */
@@ -158,7 +158,7 @@ int	MR_hash_string(MR_Word);
 #endif
 
 /* 
-** If we're not using gcc, the actual definition of hash_string is in
+** If we're not using gcc, the actual definition of MR_hash_string is in
 ** runtime/mercury_misc.c;
 ** it uses the macro MR_HASH_STRING_FUNC_BODY below.
 */
@@ -174,8 +174,8 @@ int	MR_hash_string(MR_Word);
 ** allocation as coming from proclabel.  The MR_String returned has been
 ** allocated on the mercury heap using MR_allocate_aligned_string_msg.
 **
-** BEWARE: this may modify the saved copy of `hp', so it must only be
-** called from places where the saved copy of `hp' is valid.
+** BEWARE: this may modify the saved copy of `MR_hp', so it must only be
+** called from places where the saved copy of `MR_hp' is valid.
 ** You will generally need to call MR_{save/restore}_transient_hp()
 ** before/after calling this function.
 */

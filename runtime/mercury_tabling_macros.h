@@ -25,6 +25,9 @@
 #define MR_RAW_TABLE_ENUM(table, range, value)				\
 	MR_int_fix_index_lookup_or_add((table), (range), (value))
 
+#define MR_RAW_TABLE_START_INT(table, start, value)			\
+	MR_int_start_index_lookup_or_add((table), (start), (value));
+
 #define MR_RAW_TABLE_WORD(table, value)					\
 	MR_int_hash_lookup_or_add((table), (value));
 
@@ -102,6 +105,24 @@
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: enum %d of %d => %p\n", 	\
 				prev_table, (value), (count), (table));	\
+		}							\
+	} while (0)
+
+#define	MR_DEBUG_NEW_TABLE_START_INT(table, table0, start, value)	\
+	do {								\
+		(table) = MR_RAW_TABLE_START_INT((table0), (start), (value));\
+		if (MR_tabledebug) {					\
+			printf("TABLE %p: int %d - %d => %p\n",		\
+				(table0), (value), (start), (table));	\
+		}							\
+	} while (0)
+#define	MR_DEBUG_TABLE_START_INT(table, start, value)			\
+	do {								\
+		MR_TrieNode prev_table = (table);			\
+		(table) = MR_RAW_TABLE_START_INT((table), (start), (value));\
+		if (MR_tabledebug) {					\
+			printf("TABLE %p: int %d - %d => %p\n",		\
+				prev_table, (value), (start), (table));	\
 		}							\
 	} while (0)
 
@@ -260,6 +281,15 @@
 #define	MR_DEBUG_TABLE_ENUM(table, count, value)			\
 	do {								\
 		(table) = MR_RAW_TABLE_ENUM((table), (count), (value));	\
+	} while (0)
+
+#define	MR_DEBUG_NEW_TABLE_START_INT(table, table0, start, value)	\
+	do {								\
+		(table) = MR_RAW_TABLE_START_INT((table0), (start), (value));\
+	} while (0)
+#define	MR_DEBUG_TABLE_START_INT(table, start, value)			\
+	do {								\
+		(table) = MR_RAW_TABLE_START_INT((table), (start), (value));\
 	} while (0)
 
 #define	MR_DEBUG_NEW_TABLE_WORD(table, table0, value)			\

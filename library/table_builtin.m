@@ -316,6 +316,144 @@
 
 :- interface.
 
+:- import_module io.
+
+	% This procedure should be called exactly once for each I/O action.
+	% If I/O tabling is enabled, this predicate will increment the I/O 
+	% action counter, and will check if this action should be tabled.
+	% If not, it fails. If yes, it succeeds, and binds the output
+	% arguments, which are, in order:
+	%
+	% - The root trie node for all I/O actions. This is similar to
+	%   the per-procedure tabling pointers, but it is shared by all
+	%   I/O actions.
+	% - the I/O action number of this action.
+	% - The I/O action number of the first action in the tabled range.
+	%
+	% After the first tabled action, the root trie node will point to a
+	% (dynamically expandable) array of trie nodes. The trie node for
+	% I/O action number Counter is at offset Counter - Start in this array,
+	% where Start is the I/O action number of the first tabled action.
+	% The three output parameters together specify this location.
+
+:- impure pred table_io_in_range(ml_table::out, int::out, int::out) is semidet.
+
+	% This procedure should be called exactly once for each I/O action
+	% for which table_io_in_range returns true. Given the trie node
+	% for a given I/O action number, it returns true iff that action has
+	% been carried out before (i.e. the action is now being reexecuted
+	% after a retry command in the debugger).
+
+:- impure pred table_io_has_occurred(ml_table::in) is semidet.
+
+	% This predicate simply copies the input I/O state to become the output
+	% I/O state. It is used only because it is easier to get the insts
+	% right by calling this procedure than by hand-writing insts for a
+	% unification.
+
+:- pred table_io_copy_io_state(io__state::di, io__state::uo) is det.
+
+	% N.B. interface continued below
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+% For purposes of I/O tabling, we divide the program's execution into four
+% phases.
+%
+% Phase UNINIT consists of Mercury code executed prior to the first debugger
+% event. Even if main/2 is traced, this will include the initialization of the
+% I/O system itself. During this phase, MR_io_tabling_enabled will be FALSE.
+%
+% Phase BEFORE consists of Mercury code during whose execution the user does
+% not need safe retry across I/O, probably because he/she does not require
+% retry at all. During this phase, MR_io_tabling_enabled will be TRUE while
+% we ensure that table_io_range returns FALSE by setting MR_io_tabling_start
+% to the highest possible value.
+%
+% Phase DURING consists of Mercury code during whose execution the user does
+% need safe retry across I/O. During this phase, MR_io_tabling_enabled will be
+% TRUE, and MR_io_tabling_start will be set to the value of
+% MR_io_tabling_counter on entry to phase DURING. We will ensure that
+% table_io_in_range returns TRUE by setting MR_io_tabling_end to the highest
+% possible value.
+%
+% Phase AFTER again consists of Mercury code during whose execution the user
+% does not need safe retry across I/O. During this phase, MR_io_tabling_enabled
+% will be TRUE, MR_io_tabling_start will contain the value of
+% MR_io_tabling_counter at the time of the entry to phase DURING, while
+% MR_io_tabling_end will contain the value of MR_io_tabling_counter at the end
+% of phase DURING, thus ensuring that table_io_in_range again returns FALSE.
+%
+% The transition from phase UNINIT to phase BEFORE will occur during the
+% initialization of the debugger, at the first trace event.
+%
+% The transition from phase BEFORE to phase DURING will occur when the user
+% issues the "table_io start" command, while the transition from phase DURING
+% to phase AFTER will occur when the user issues the "table_io end" command.
+% The user may automate entry into phase DURING by putting "table_io start"
+% into a .mdbrc file. Of course the program will never enter phase DURING or
+% phase AFTER if the user never gives the commands that start those phases.
+%
+% The debugger itself invokes Mercury code e.g. to print the values of
+% variables. During such calls it will set MR_io_tabling_enabled to FALSE,
+% since the I/O actions executed during such times do not belong to the user
+% program.
+
+:- pragma c_code(table_io_in_range(T::out, Counter::out, Start::out),
+	[will_not_call_mercury],
+"
+	if (MR_io_tabling_enabled) {
+		MR_io_tabling_counter++;
+
+		if (MR_io_tabling_start < MR_io_tabling_counter 
+			&& MR_io_tabling_counter <= MR_io_tabling_end)
+		{
+			T = (MR_Word) &MR_io_tabling_pointer;
+			Counter = MR_io_tabling_counter;
+			Start = MR_io_tabling_start;
+			if (MR_io_tabling_counter > MR_io_tabling_counter_hwm)
+			{
+				MR_io_tabling_counter_hwm =
+					MR_io_tabling_counter;
+			}
+
+			SUCCESS_INDICATOR = TRUE;
+		} else {
+			SUCCESS_INDICATOR = FALSE;
+		}
+	} else {
+		SUCCESS_INDICATOR = FALSE;
+	}
+").
+
+:- pragma c_code(table_io_has_occurred(T::in),
+		[will_not_call_mercury],
+"
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""checking %p for previous execution: %p\\n"",
+			table, &table->MR_answerblock);
+	}
+#endif
+	SUCCESS_INDICATOR = (table->MR_answerblock != NULL);
+").
+
+:- pragma c_code(table_io_copy_io_state(S0::di, S::uo),
+		[will_not_call_mercury],
+"
+	S = S0;
+").
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
 %
 % Predicates that manage the tabling of model_non subgoals.
 %
@@ -652,6 +790,7 @@
 #endif
 	")
 ).
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -667,9 +806,14 @@
 % is a pointer to the leaf of the trie reached by the lookup. From the
 % returned leaf another trie may be connected.
 %
+
 	% Lookup or insert an integer in the given table.
 :- impure pred table_lookup_insert_int(ml_table::in, int::in, ml_table::out)
 	is det.
+
+	% Lookup or insert an integer in the given table.
+:- impure pred table_lookup_insert_start_int(ml_table::in, int::in, int::in,
+	ml_table::out) is det.
 
 	% Lookup or insert a character in the given trie.
 :- impure pred table_lookup_insert_char(ml_table::in, character::in,
@@ -715,6 +859,10 @@
 :- impure pred table_save_float_ans(ml_answer_block::in, int::in, float::in)
 	is det.
 
+	% Save an I/O state in the given answer block at the given offset.
+:- impure pred table_save_io_state_ans(ml_answer_block::in, int::in,
+	io__state::ui) is det.
+
 	% Save any type of answer in the given answer block at the given
 	% offset.
 :- impure pred table_save_any_ans(ml_answer_block::in, int::in, T::in) is det.
@@ -738,6 +886,10 @@
 	% given offset.
 :- semipure pred table_restore_float_ans(ml_answer_block::in, int::in,
 	float::out) is det.
+
+	% Restore an I/O state from the given answer block at the given offset.
+:- semipure pred table_restore_io_state_ans(ml_answer_block::in, int::in,
+	io__state::uo) is det.
 
 	% Restore any type of answer from the given answer block at the
 	% given offset.
@@ -783,6 +935,16 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table0 = (MR_TrieNode) T0;
 	MR_DEBUG_NEW_TABLE_INT(table, table0, (MR_Integer) I);
+	T = (MR_Word) table;
+").
+
+:- pragma c_code(table_lookup_insert_start_int(T0::in, S::in, I::in, T::out),
+		will_not_call_mercury, "
+	MR_TrieNode	table0, table;
+
+	table0 = (MR_TrieNode) T0;
+	MR_DEBUG_NEW_TABLE_START_INT(table, table0,
+		(MR_Integer) S, (MR_Integer) I);
 	T = (MR_Word) table;
 ").
 
@@ -883,6 +1045,15 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 #endif
 ").
 
+:- pragma c_code(table_save_io_state_ans(T::in, Offset::in, S::ui),
+		will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) S,
+		&mercury_data_io__type_ctor_info_state_0);
+").
+
 :- pragma c_code(table_save_any_ans(T::in, Offset::in, V::in),
 		will_not_call_mercury, "
 	MR_TrieNode	table;
@@ -925,6 +1096,14 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 #else
 	F = MR_word_to_float(MR_TABLE_GET_ANSWER(table, Offset));
 #endif
+").
+
+:- pragma c_code(table_restore_io_state_ans(T::in, Offset::in, V::uo),
+		will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	V = (MR_Word) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_restore_any_ans(T::in, Offset::in, V::out),

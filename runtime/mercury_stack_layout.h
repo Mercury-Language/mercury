@@ -345,7 +345,8 @@ typedef	enum {
 	MR_EVAL_METHOD_NORMAL,
 	MR_EVAL_METHOD_LOOP_CHECK,
 	MR_EVAL_METHOD_MEMO,
-	MR_EVAL_METHOD_MINIMAL
+	MR_EVAL_METHOD_MINIMAL,
+	MR_EVAL_METHOD_TABLE_IO
 } MR_EvalMethod;
 
 /*
@@ -376,6 +377,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	MR_int_least16_t	MR_sle_max_var_num;
 	MR_int_least16_t	MR_sle_max_r_num;
 	MR_int_least8_t		MR_sle_maybe_from_full;
+	MR_int_least8_t		MR_sle_maybe_io_seq;
 	MR_int_least8_t		MR_sle_maybe_trail;
 	MR_int_least8_t		MR_sle_maybe_maxfr;
 	MR_EvalMethodInt	MR_sle_eval_method_CAST_ME;

@@ -97,6 +97,8 @@
 		;	assume_gmake
 		;	trace
 		;	trace_optimized
+		;	trace_table_io
+		;	trace_table_io_states
 		;	suppress_trace
 		;	stack_trace_higher_order
 		;	generate_bytecode
@@ -498,6 +500,8 @@ option_defaults_2(aux_output_option, [
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
 	trace_optimized		-	bool(no),
+	trace_table_io		-	bool(no),
+	trace_table_io_states	-	bool(no),
 	suppress_trace		-	string(""),
 	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
@@ -894,6 +898,8 @@ long_option("assume-gmake",		assume_gmake).
 long_option("trace",			trace).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
+long_option("trace-table-io",		trace_table_io).
+long_option("trace-table-io-states",	trace_table_io_states).
 long_option("suppress-trace",		suppress_trace).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
@@ -1702,6 +1708,14 @@ options_help_aux_output -->
 %		"\tSuppress the named aspects of the execution tracing system.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
+% tabling io is not documented yet, since it is still experimental
+%		"--trace-table-io",
+%		"\tEnable the tabling of I/O actions, to allow the debugger",
+%		"\tto execute retry commands across I/O actions.",
+%		"--trace-table-io-states",
+%		"\tWhen tabling I/O actions, table the io__state arguments",
+%		"\ttogether with the others. This should be required iff",
+%		"\tvalues of type io__state actually contain information.",
 		"--stack-trace-higher-order",
 		"\tEnable stack traces through predicates and functions with",
 		"\thigher-order arguments, even if stack tracing is not",

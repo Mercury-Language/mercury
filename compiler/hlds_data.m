@@ -289,13 +289,13 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 :- type cons_tag
 	--->	string_constant(string)
-			% Strings are represented using the string_const()
+			% Strings are represented using the MR_string_const()
 			% macro; in the current implementation, Mercury
 			% strings are represented just as C null-terminated
 			% strings.
 	;	float_constant(float)
-			% Floats are represented using the float_to_word(),
-			% word_to_float(), and float_const() macros.
+			% Floats are represented using the MR_float_to_word(),
+			% MR_word_to_float(), and MR_float_const() macros.
 			% The default implementation of these is to
 			% use boxed double-precision floats.
 	;	int_constant(int)

@@ -1279,7 +1279,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	** Go back to an event before the topmost call.
 	*/
 	retry_result = MR_trace_retry(event_info, event_details, 0, &problem,
-			jumpaddr);
+			NULL, NULL, jumpaddr);
 	if (retry_result != MR_RETRY_OK_DIRECT) {
 		if (retry_result == MR_RETRY_ERROR) {
 			return problem;
@@ -1402,7 +1402,7 @@ MR_decl_handle_bug_found(MR_Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 	MR_print_succip_reg(stdout, event_info->MR_saved_regs);
 #endif
 	retry_result = MR_trace_retry(event_info, event_details, 0, &problem,
-			&jumpaddr);
+			NULL, NULL, &jumpaddr);
 #ifdef	MR_DEBUG_RETRY
 	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
 	MR_print_succip_reg(stdout, event_info->MR_saved_regs);

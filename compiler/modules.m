@@ -1411,7 +1411,7 @@ get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
 			list(module_name), list(module_name)).
 :- mode add_implicit_imports(in, in, in, in, out, out) is det.
 
-add_implicit_imports(Items, _Globals, ImportDeps0, UseDeps0,
+add_implicit_imports(Items, Globals, ImportDeps0, UseDeps0,
 		ImportDeps, UseDeps) :-
 	mercury_public_builtin_module(MercuryPublicBuiltin),
 	mercury_private_builtin_module(MercuryPrivateBuiltin),
@@ -1420,10 +1420,13 @@ add_implicit_imports(Items, _Globals, ImportDeps0, UseDeps0,
 	UseDeps1 = [MercuryPrivateBuiltin | UseDeps0],
 	(
 		%
-		% we should include MercuryTableBuiltin iff
-		% the Items contain a tabling pragma
+		% we should include MercuryTableBuiltin if
+		% the Items contain a tabling pragma, or if
+		% --trace-table-io is specified
 		%
-		contains_tabling_pragma(Items)
+		( contains_tabling_pragma(Items)
+		; globals__lookup_bool_option(Globals, trace_table_io, yes)
+		)
 	->
 		UseDeps = [MercuryTableBuiltin | UseDeps1]
 	;

@@ -104,7 +104,7 @@
 :- type pred_proc_list	==	list(pred_proc_id).
 
 %-----------------------------------------------------------------------------%
-	
+
 	% This is used for a closure executed top-down on the Aditi
 	% side of the connection.
 	% These expression numbers are stored in the proc_info - the owner
@@ -261,7 +261,7 @@
 	--->	imported(section)
 				% defined in the interface of some other module
 				% or `external' (in some other language)
-	;	opt_imported	% defined in the optimization 
+	;	opt_imported	% defined in the optimization
 				% interface of another module
 	;	abstract_imported % describes a type with only an abstract
 				% declaration imported, maybe with the body
@@ -308,7 +308,7 @@
 	% "markers".
 
 	% an abstract set of markers.
-:- type pred_markers. 
+:- type pred_markers.
 
 :- type marker
 	--->	infer_type	% Requests type inference for the predicate
@@ -321,7 +321,7 @@
 				% Used for pragma(obsolete).
 	;	inline		% Requests that this predicate be inlined.
 				% Used for pragma(inline).
-	;	no_inline	% Requests that this be predicate not be 
+	;	no_inline	% Requests that this be predicate not be
 				% inlined.
 				% Used for pragma(no_inline).
 				% Conflicts with `inline' marker.
@@ -347,7 +347,7 @@
 	;	naive		% Use naive evaluation of this Aditi predicate.
 	;	psn		% Use predicate semi-naive evaluation of this
 				% Aditi predicate.
-	
+
 	;	aditi_memo	% Requests that this Aditi predicate be
 				% evaluated using memoing. This has no
 				% relation to eval_method field of the
@@ -355,7 +355,7 @@
 				% predicates.
 	;	aditi_no_memo	% Ensure that this Aditi predicate
 				% is not memoed.
-	
+
 			% `context' and `supp_magic' are mutually
 			% exclusive. One of them must be performed
 			% on all Aditi predicates. `supp_magic'
@@ -367,12 +367,12 @@
 				% the predicate. See context.m
 
 	;	generate_inline % Used for small Aditi predicates which
-				% project a relation to be used as input to a 
+				% project a relation to be used as input to a
 				% call to an Aditi predicate in a lower SCC.
 				% The goal for the predicate should consist
 				% of fail, true or a single rule.
 				% These relations are never memoed.
-				% The reason for this marker is explained 
+				% The reason for this marker is explained
 				% where it is introduced in
 				% magic_util__create_closure.
 
@@ -448,7 +448,7 @@
 :- type type_info_varmap == map(tvar, type_info_locn).
 
 	% A type_info_locn specifies how to access a type_info.
-:- type type_info_locn	
+:- type type_info_locn
 	--->	type_info(prog_var)
 				% It is a normal type_info, i.e. the type
 				% is not constrained.
@@ -467,21 +467,21 @@
 				% code; from C code use the macro
 				% MR_typeclass_info_superclass_info.
 
-	% type_info_locn_var(TypeInfoLocn, Var): 
-	% 	Var is the variable corresponding to the TypeInfoLocn. Note 
+	% type_info_locn_var(TypeInfoLocn, Var):
+	% 	Var is the variable corresponding to the TypeInfoLocn. Note
 	% 	that this does *not* mean that Var is a type_info; it may be
 	% 	a typeclass_info in which the type_info is nested.
 :- pred type_info_locn_var(type_info_locn::in, prog_var::out) is det.
 
-:- pred type_info_locn_set_var(type_info_locn::in, prog_var::in, 
+:- pred type_info_locn_set_var(type_info_locn::in, prog_var::in,
 		type_info_locn::out) is det.
 
 	% hlds_pred__define_new_pred(Goal, CallGoal, Args, ExtraArgs, InstMap,
-	% 	PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
+	% 	PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
 	%	VarSet, Markers, Owner, IsAddressTaken,
 	%	ModuleInfo0, ModuleInfo, PredProcId)
 	%
-	% Create a new predicate for the given goal, returning a goal to 
+	% Create a new predicate for the given goal, returning a goal to
 	% call the created predicate. ExtraArgs is the list of extra
 	% type_infos and typeclass_infos required by typeinfo liveness
 	% which were added to the front of the argument list.
@@ -498,7 +498,7 @@
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, existq_tvars,
 	list(type), condition, prog_context, clauses_info, import_status,
-	pred_markers, goal_type, pred_or_func, class_constraints, 
+	pred_markers, goal_type, pred_or_func, class_constraints,
 	constraint_proof_map, aditi_owner, pred_info).
 :- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, in, in, out) is det.
@@ -874,7 +874,7 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
 	Indexes = [],
 	set__init(Assertions),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
-		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
+		Context, PredModuleName, PredName, Arity, Status, TypeVarSet,
 		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
 		Indexes, Assertions).
@@ -904,7 +904,7 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	UnprovenBodyConstraints = [],
 	Indexes = [],
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
-		Context, ModuleName, PredName, Arity, Status, TypeVarSet, 
+		Context, ModuleName, PredName, Arity, Status, TypeVarSet,
 		clauses, Markers, PredOrFunc, ClassContext, ClassProofs,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
 		Indexes, Assertions).
@@ -1191,12 +1191,12 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	SymName = qualified(ModuleName, PredName),
 
 		% Remove unneeded variables from the vartypes and varset.
-	goal_util__goal_vars(Goal0, GoalVars0), 
+	goal_util__goal_vars(Goal0, GoalVars0),
 	set__insert_list(GoalVars0, ArgVars, GoalVars),
 	map__select(VarTypes0, GoalVars, VarTypes),
 	varset__select(VarSet0, GoalVars, VarSet),
 
-		% Approximate the termination information 
+		% Approximate the termination information
 		% for the new procedure.
 	( code_aux__goal_cannot_loop(ModuleInfo0, Goal0) ->
 		TermInfo = yes(cannot_loop)
@@ -1212,7 +1212,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	set__init(Assertions),
 
 	pred_info_create(ModuleName, SymName, TVarSet, ExistQVars, ArgTypes,
-		true, Context, ExportStatus, Markers, predicate, ClassContext, 
+		true, Context, ExportStatus, Markers, predicate, ClassContext,
 		Owner, Assertions, ProcInfo, ProcId, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
@@ -1434,12 +1434,12 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_call_table_tip(proc_info, maybe(prog_var), proc_info).
 :- mode proc_info_set_call_table_tip(in, in, out) is det.
 
-	% For a set of variables V, find all the type variables in the types 
-	% of the variables in V, and return set of typeinfo variables for 
+	% For a set of variables V, find all the type variables in the types
+	% of the variables in V, and return set of typeinfo variables for
 	% those type variables. (find all typeinfos for variables in V).
 	%
 	% This set of typeinfos is often needed in liveness computation
-	% for accurate garbage collection - live variables need to have 
+	% for accurate garbage collection - live variables need to have
 	% their typeinfos stay live too.
 
 :- pred proc_info_get_typeinfo_vars(set(prog_var), vartypes, type_info_varmap,
@@ -1459,7 +1459,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- mode proc_info_create_var_from_type(in, in, out, out) is det.
 
 	% Create a new variable for each element of the list of types.
-:- pred proc_info_create_vars_from_types(proc_info, 
+:- pred proc_info_create_vars_from_types(proc_info,
 		list(type), list(prog_var), proc_info).
 :- mode proc_info_create_vars_from_types(in, in, out, out) is det.
 
@@ -1513,6 +1513,21 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	% There are also some predicates in private_builtin.m to
 	% manipulate typeclass_infos which don't need their type_infos.
 :- pred no_type_info_builtin(module_name::in, string::in, int::in) is semidet.
+
+	% If the procedure has a input/output pair of io__state arguments,
+	% return the positions of those arguments in the argument list.
+	% The positions are given as argument numbers, with the first argument
+	% in proc_info_headvars being position 1, and so on. The first output
+	% argument gives the position of the input state, the second the
+	% position of the output state.
+	%
+	% Note that the automatically constructed unify, index and compare
+	% procedures for the io:state type are not counted as having io:state
+	% args, since they do not fall into the scheme of one input and one
+	% output arg. Since they should never be called, this should not
+	% matter.
+:- pred proc_info_has_io_state_pair(module_info::in, proc_info::in,
+	int::out, int::out) is semidet.
 
 :- implementation.
 
@@ -1881,7 +1896,7 @@ proc_info_create_vars_from_types(ProcInfo0, Types, NewVars, ProcInfo) :-
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	varset__new_vars(VarSet0, NumVars, NewVars, VarSet),
-	map__det_insert_from_corresponding_lists(VarTypes0, 
+	map__det_insert_from_corresponding_lists(VarTypes0,
 		NewVars, Types, VarTypes),
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo).
@@ -1993,6 +2008,71 @@ no_type_info_builtin_2(private_builtin,
 no_type_info_builtin_2(table_builtin, "table_restore_any_ans", 3).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
 
+proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_argmodes(ProcInfo, ArgModes),
+	assoc_list__from_corresponding_lists(HeadVars, ArgModes,
+		HeadVarsModes),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_has_io_state_pair_2(HeadVarsModes, ModuleInfo, VarTypes,
+		1, no, no, MaybeIn, MaybeOut),
+	( MaybeIn = yes(In), MaybeOut = yes(Out) ->
+		InArgNum = In,
+		OutArgNum = Out
+	;
+		fail
+	).
+
+:- pred proc_info_has_io_state_pair_2(assoc_list(prog_var, mode)::in,
+	module_info::in, map(prog_var, type)::in,
+	int::in, maybe(int)::in, maybe(int)::in,
+	maybe(int)::out, maybe(int)::out) is semidet.
+
+proc_info_has_io_state_pair_2([], _, _, _,
+		MaybeIn, MaybeOut, MaybeIn, MaybeOut).
+proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
+		ArgNum, MaybeIn0, MaybeOut0, MaybeIn, MaybeOut) :-
+	(
+		map__lookup(VarTypes, Var, VarType),
+		type_util__type_is_io_state(VarType)
+	->
+		( mode_is_fully_input(ModuleInfo, Mode) ->
+			(
+				MaybeIn0 = no,
+				MaybeIn1 = yes(ArgNum),
+				MaybeOut1 = MaybeOut0
+			;
+				MaybeIn0 = yes(_),
+				% Procedures with two input arguments
+				% of type io__state (e.g. the automatically
+				% generated unification or comparison procedure
+				% for the io__state type) do not fall into
+				% the one input/one output pattern we are
+				% looking for.
+				fail
+			)
+		; mode_is_fully_output(ModuleInfo, Mode) ->
+			(
+				MaybeOut0 = no,
+				MaybeOut1 = yes(ArgNum),
+				MaybeIn1 = MaybeIn0
+			;
+				MaybeOut0 = yes(_),
+				% Procedures with two output arguments of
+				% type io__state do not fall into the one
+				% input/one output pattern we are looking for.
+				fail
+			)
+		;
+			fail
+		)
+	;
+		MaybeIn1 = MaybeIn0,
+		MaybeOut1 = MaybeOut0
+	),
+	proc_info_has_io_state_pair_2(VarModes, ModuleInfo, VarTypes,
+		ArgNum + 1, MaybeIn1, MaybeOut1, MaybeIn, MaybeOut).
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -2082,7 +2162,6 @@ get_state_args_det(Args0, Args, State0, State) :-
 	).
 
 %-----------------------------------------------------------------------------%
-
 	% Predicates to deal with record syntax.
 
 :- interface.
@@ -2162,7 +2241,7 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Predicates to check whether a given predicate 
+	% Predicates to check whether a given predicate
 	% is an Aditi query.
 
 :- interface.
@@ -2268,7 +2347,7 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 	(
 		check_marker(Markers, psn)
 	;
-		% Predicate semi-naive evaluation is the default. 
+		% Predicate semi-naive evaluation is the default.
 		check_marker(Markers, aditi),
 		\+ check_marker(Markers, naive)
 	).
@@ -2308,9 +2387,9 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 	% of the procedure using it to be non-unique.
 :- func eval_method_destroys_uniqueness(eval_method) = bool.
 
-	% Return the change a given evaluation method can do to a given 
+	% Return the change a given evaluation method can do to a given
 	% determinism.
-:- pred eval_method_change_determinism(eval_method, determinism, 
+:- pred eval_method_change_determinism(eval_method, determinism,
 		determinism).
 :- mode eval_method_change_determinism(in, in, out) is det.
 
@@ -2319,43 +2398,52 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 :- import_module det_analysis.
 
 valid_determinism_for_eval_method(eval_normal, _).
-valid_determinism_for_eval_method(eval_memo, _).
 valid_determinism_for_eval_method(eval_loop_check, _).
+valid_determinism_for_eval_method(eval_table_io, _) :-
+	error("valid_determinism_for_eval_method called after tabling phase").
+valid_determinism_for_eval_method(eval_memo, _).
 valid_determinism_for_eval_method(eval_minimal, Determinism) :-
 	determinism_components(Determinism, can_fail, _).
 
 eval_method_to_string(eval_normal,		"normal").
-eval_method_to_string(eval_memo,		"memo").
 eval_method_to_string(eval_loop_check,		"loop_check").
+eval_method_to_string(eval_table_io,		"table_io").
+eval_method_to_string(eval_memo,		"memo").
 eval_method_to_string(eval_minimal, 		"minimal_model").
 
 eval_method_needs_stratification(eval_normal) = no.
 eval_method_needs_stratification(eval_loop_check) = no.
+eval_method_needs_stratification(eval_table_io) = no.
 eval_method_needs_stratification(eval_memo) = no.
 eval_method_needs_stratification(eval_minimal) = yes.
 
 eval_method_has_per_proc_tabling_pointer(eval_normal) = no.
 eval_method_has_per_proc_tabling_pointer(eval_loop_check) = yes.
+eval_method_has_per_proc_tabling_pointer(eval_table_io) = no.
 eval_method_has_per_proc_tabling_pointer(eval_memo) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_minimal) = yes.
 
 eval_method_requires_tabling_transform(eval_normal) = no.
 eval_method_requires_tabling_transform(eval_loop_check) = yes.
+eval_method_requires_tabling_transform(eval_table_io) = yes.
 eval_method_requires_tabling_transform(eval_memo) = yes.
 eval_method_requires_tabling_transform(eval_minimal) = yes.
 
 eval_method_requires_ground_args(eval_normal) = no.
 eval_method_requires_ground_args(eval_loop_check) = yes.
+eval_method_requires_ground_args(eval_table_io) = yes.
 eval_method_requires_ground_args(eval_memo) = yes.
 eval_method_requires_ground_args(eval_minimal) = yes.
 
 eval_method_destroys_uniqueness(eval_normal) = no.
 eval_method_destroys_uniqueness(eval_loop_check) = yes.
+eval_method_destroys_uniqueness(eval_table_io) = no.
 eval_method_destroys_uniqueness(eval_memo) = yes.
 eval_method_destroys_uniqueness(eval_minimal) = yes.
 
 eval_method_change_determinism(eval_normal, Detism, Detism).
 eval_method_change_determinism(eval_loop_check, Detism, Detism).
+eval_method_change_determinism(eval_table_io, Detism, Detism).
 eval_method_change_determinism(eval_memo, Detism, Detism).
 eval_method_change_determinism(eval_minimal, Det0, Det) :-
 	det_conjunction_detism(semidet, Det0, Det).

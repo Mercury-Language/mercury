@@ -484,6 +484,9 @@ so that the compiler does the right thing for options such as
 The first pass of this stage does tabling transformations (table_gen.m). 
 This involves the insertion of several calls to tabling predicates 
 defined in mercury_builtin.m and the addition of some scaffolding structure.
+Note that this pass can change the evaluation methods of some procedures to
+eval_table_io, so it should come before any passes that require definitive
+evaluation methods (e.g. inlining).
 
 <p>
 
@@ -1163,6 +1166,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2000-11-16 08:45:48 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-12-06 06:05:33 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

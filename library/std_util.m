@@ -3568,7 +3568,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
                 default:
                     MR_fatal_error(
-		    ""get_du_functor_info: unknown sectag locn"");
+                        ""get_du_functor_info: unknown sectag locn"");
             }
             break;
 

@@ -137,6 +137,7 @@ OTHER_SOURCES= \
 	switch_detection_bug.m \
 	switch_detection_bug2.m \
 	switches.m \
+	tabled_io.m \
 	tabled_for_io.m \
 	tricky_assert2.m \
 	tricky_ite.m \

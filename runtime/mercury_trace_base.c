@@ -83,10 +83,10 @@ MR_Unsigned	MR_trace_event_number = 0;
 
 /*
 ** MR_trace_from_full is a boolean that is set before every call;
-** it states whether the caller is being fully traced, or only interface
-** traced. If the called code is interface traced, it will generate
-** call, exit and fail trace events only if MR_trace_from_full is true.
-** (It will never generate internal events.) If the called code is fully
+** it states whether the caller is being deep traced, or only shallow
+** traced. If the called code is shallow traced, it will generate
+** interface trace events only if MR_trace_from_full is true.
+** (It will never generate internal events.) If the called code is deep
 ** traced, it will always generate all trace events, external and internal,
 ** regardless of the setting of this variable on entry.
 **
@@ -95,6 +95,18 @@ MR_Unsigned	MR_trace_event_number = 0;
 */
 
 MR_Bool		MR_trace_from_full = TRUE;
+
+/*
+** I/O tabling is documented in library/table_builtin.m
+*/
+
+MR_IoTablingPhase	MR_io_tabling_phase = MR_IO_TABLING_UNINIT;
+bool			MR_io_tabling_enabled = FALSE;
+MR_TableNode		MR_io_tabling_pointer = { 0 };
+MR_Unsigned		MR_io_tabling_counter = 0;
+MR_Unsigned		MR_io_tabling_counter_hwm = 0;
+MR_Unsigned		MR_io_tabling_start = 0;
+MR_Unsigned		MR_io_tabling_end = 0;
 
 #ifdef	MR_TRACE_HISTOGRAM
 

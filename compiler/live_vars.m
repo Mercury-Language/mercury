@@ -79,7 +79,7 @@ allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 		LiveSets1 = LiveSets0
 	),
 	trace__do_we_need_maxfr_slot(Globals, ProcInfo0, ProcInfo1),
-	trace__reserved_slots(ProcInfo1, Globals, NumReservedSlots,
+	trace__reserved_slots(ModuleInfo, ProcInfo1, Globals, NumReservedSlots,
 		MaybeReservedVarInfo),
 	( MaybeReservedVarInfo = yes(ResVar - _) ->
 		set__singleton_set(ResVarSet, ResVar),

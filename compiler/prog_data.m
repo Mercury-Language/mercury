@@ -282,6 +282,7 @@
 					% evaluation
 	;	eval_loop_check		% loop check only
 	;	eval_memo		% memoing + loop check 
+	;	eval_table_io		% memoing I/O actions for debugging
 	;	eval_minimal.		% minimal model 
 					% evaluation 
 %

@@ -472,7 +472,7 @@ argloc_to_string(RegNum, RegName) :-
 			% XXX This magic number can't be good
 		RegNum > 32 
 	->
-		string__append_list(["r(", RegNumString, ")"], RegName)
+		string__append_list(["MR_r(", RegNumString, ")"], RegName)
 	;
 		string__append("r", RegNumString, RegName)
 	).
@@ -485,7 +485,7 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 	;
         	Type = term__functor(term__atom("float"), [], _)
 	->
-		string__append_list(["float_to_word(", Rval, ")" ],
+		string__append_list(["MR_float_to_word(", Rval, ")" ],
 			ConvertedRval)
 	;
         	Type = term__functor(term__atom("character"), [], _)
@@ -506,7 +506,7 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	;
         	Type = term__functor(term__atom("float"), [], _)
 	->
-		string__append_list(["word_to_float(", Rval, ")" ],
+		string__append_list(["MR_word_to_float(", Rval, ")" ],
 			ConvertedRval)
 	;
 		ConvertedRval = Rval

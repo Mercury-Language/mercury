@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include "mercury_stack_layout.h"
 #include "mercury_std.h"
+#include "mercury_tabling.h"	/* for MR_TableNode */
 
 /*
 ** This enum should EXACTLY match the definition of the `trace_port_type'
@@ -48,7 +49,8 @@ extern	const char 			*MR_port_names[];
 
 #define MR_trace_incr_seq()		((MR_Word) ++MR_trace_call_seqno)
 #define MR_trace_incr_depth()		((MR_Word) ++MR_trace_call_depth)
-#define MR_trace_reset_depth(d)		(MR_trace_call_depth = (MR_Unsigned) (d))
+#define MR_trace_reset_depth(d)		(MR_trace_call_depth = \
+						(MR_Unsigned) (d))
 
 /*
 ** MR_trace is called from Mercury modules compiled with tracing.
@@ -110,6 +112,48 @@ extern	bool		MR_trace_enabled;
 
 extern	MR_Unsigned	MR_trace_event_number;
 extern	MR_Bool		MR_trace_from_full;
+
+/*
+** The details of I/O tabling are documented in library/table_builtin.m.
+*/
+
+typedef enum {
+	/* from program start to first debugger event */
+	MR_IO_TABLING_UNINIT,	
+
+	/* from first debugger event to "table_io start" command */
+	MR_IO_TABLING_BEFORE,
+
+	/* from "table_io start" command to "table_io end" command */
+	MR_IO_TABLING_DURING,
+
+	/* from "table_io end" command to program exit */
+	MR_IO_TABLING_AFTER
+} MR_IoTablingPhase;
+
+typedef	MR_Unsigned	MR_IoActionNum;
+
+#define	MR_IO_ACTION_MAX	((MR_IoActionNum) -1)
+
+extern	MR_IoTablingPhase	MR_io_tabling_phase;
+
+/* True iff I/O tabling is enabled. */
+extern	bool		MR_io_tabling_enabled;
+
+/* The root of the trie that we use for tabling I/O. */
+extern	MR_TableNode	MR_io_tabling_pointer;
+
+/* The I/O action number of the last I/O action. */
+extern	MR_IoActionNum	MR_io_tabling_counter;
+
+/* The highest I/O action number ever reached ("hwm" = "high water mark"). */
+extern	MR_IoActionNum	MR_io_tabling_counter_hwm;
+
+/* The highest I/O action number which is too early to be tabled. */
+extern	MR_IoActionNum	MR_io_tabling_start;
+
+/* The highest I/O action number which is to be tabled. */
+extern	MR_IoActionNum	MR_io_tabling_end;
 
 /*
 ** These functions will report the number of the last event,

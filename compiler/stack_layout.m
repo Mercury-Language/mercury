@@ -88,6 +88,7 @@
 %	MR_int_least16_t			MR_sle_max_var_num;
 %	MR_int_least16_t			MR_sle_max_r_num;
 %	MR_int_least8_t				MR_sle_maybe_from_full;
+%	MR_int_least8_t				MR_sle_maybe_io_seq;
 %	MR_int_least8_t				MR_sle_maybe_trail;
 %	MR_int_least8_t				MR_sle_maybe_maxfr;
 %	MR_EvalMethod				MR_sle_eval_method:8;
@@ -139,6 +140,10 @@
 % whether this incarnation of the procedure was called from deeply traced code
 % or not. (The determinism of the procedure decides whether the stack slot
 % refers to a stackvar or a framevar.)
+%
+% If the procedure has an I/O state argument, the maybe_io_seq field will
+% contain the number of the stack slot that holds the value the I/O action
+% counter had on entry to this procedure.
 %
 % If trailing is not enabled, the maybe_trail field will contain a negative
 % number. If it is enabled, it will contain number of the first of two stack
@@ -422,7 +427,8 @@ stack_layout__valid_proc_layout(ProcLayoutInfo) :-
 	MR_Integer	cur_offset;
 	MR_Word		tmp;
 
-	incr_hp_atomic(tmp, (ArenaSize + sizeof(MR_Word)) / sizeof(MR_Word));
+	MR_incr_hp_atomic(tmp,
+		(ArenaSize + sizeof(MR_Word)) / sizeof(MR_Word));
 	Arena = (char *) tmp;
 
 	cur_offset = 0;
@@ -842,8 +848,8 @@ stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel, MaxTraceReg,
 				data_addr(ModuleName, module_layout)))),
 		MaxTraceRegRval = yes(const(int_const(MaxTraceReg))),
 		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
-			MaybeDeclSlots, MaybeTrailSlots, MaybeMaxfrSlot,
-			MaybeCallTableSlot),
+			MaybeIoSeqSlot, MaybeTrailSlots, MaybeMaxfrSlot,
+			MaybeCallTableSlot, MaybeDeclSlots),
 		EvalMethodInt =
 			stack_layout__represent_eval_method(EvalMethod),
 		EvalMethodRval = yes(const(int_const(EvalMethodInt))),
@@ -851,6 +857,11 @@ stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel, MaxTraceReg,
 			FromFullRval = yes(const(int_const(FromFullSlot)))
 		;
 			FromFullRval = yes(const(int_const(-1)))
+		),
+		( MaybeIoSeqSlot = yes(IoSeqSlot) ->
+			IoSeqRval = yes(const(int_const(IoSeqSlot)))
+		;
+			IoSeqRval = yes(const(int_const(-1)))
 		),
 		( MaybeTrailSlots = yes(FirstTrailSlot) ->
 			TrailRval = yes(const(int_const(FirstTrailSlot)))
@@ -874,12 +885,12 @@ stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel, MaxTraceReg,
 		),
 		Rvals = [CallRval, ModuleRval, GoalRepRval, VarNameVector,
 			VarNameCount, MaxTraceRegRval,
-			FromFullRval, TrailRval, MaxfrRval,
+			FromFullRval, IoSeqRval, TrailRval, MaxfrRval,
 			EvalMethodRval, CallTableRval, DeclRval],
 		ArgTypes = initial([
 			4 - yes(data_ptr),
 			2 - yes(int_least16),
-			6 - yes(int_least8)],
+			7 - yes(int_least8)],
 			none)
 		}
 	;
@@ -894,7 +905,7 @@ stack_layout__represent_eval_method(eval_normal)     = 0.
 stack_layout__represent_eval_method(eval_loop_check) = 1.
 stack_layout__represent_eval_method(eval_memo)       = 2.
 stack_layout__represent_eval_method(eval_minimal)    = 3.
-
+stack_layout__represent_eval_method(eval_table_io)   = 4.
 
 :- pred stack_layout__construct_var_name_vector(prog_varset::in,
 	map(int, string)::in, maybe(rval)::out, maybe(rval)::out,

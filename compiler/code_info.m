@@ -393,7 +393,7 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 	set__init(Zombies),
 	map__init(LayoutMap),
 	code_info__max_var_slot(StackSlots, VarSlotMax),
-	trace__reserved_slots(ProcInfo, Globals, FixedSlots, _),
+	trace__reserved_slots(ModuleInfo, ProcInfo, Globals, FixedSlots, _),
 	int__max(VarSlotMax, FixedSlots, SlotMax),
 	CodeInfo0 = code_info(
 		Globals,
@@ -423,21 +423,22 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 		no
 	),
 	code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo,
-		TraceSlotInfo, CodeInfo0, CodeInfo1),
+		ModuleInfo, TraceSlotInfo, CodeInfo0, CodeInfo1),
 	code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint,
 		CodeInfo1, CodeInfo).
 
 :- pred code_info__init_maybe_trace_info(trace_level::in, globals::in,
-	proc_info::in, trace_slot_info::out,
+	proc_info::in, module_info::in, trace_slot_info::out,
 	code_info::in, code_info::out) is det.
 
-code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo, TraceSlotInfo)
-		-->
+code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo, ModuleInfo,
+		TraceSlotInfo) -->
 	( { trace_level_is_none(TraceLevel) = no } ->
-		trace__setup(ProcInfo, Globals, TraceSlotInfo, TraceInfo),
+		trace__setup(ModuleInfo, ProcInfo, Globals,
+			TraceSlotInfo, TraceInfo),
 		code_info__set_maybe_trace_info(yes(TraceInfo))
 	;
-		{ TraceSlotInfo = trace_slot_info(no, no, no, no, no) }
+		{ TraceSlotInfo = trace_slot_info(no, no, no, no, no, no) }
 	).
 
 %---------------------------------------------------------------------------%
