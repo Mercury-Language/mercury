@@ -15,78 +15,42 @@
 # MERCURY_COMPILER, MERCURY_C_COMPILER,
 # MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.
 
-INTDIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
 MERC_C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 MERC_ALL_MC_C_INCL_DIRS=${MERCURY_ALL_MC_C_INCL_DIRS="--c-include-directory $MERC_C_INCL_DIR"}
 MC=${MERCURY_COMPILER="@LIBDIR@/bin/@FULLARCH@/mercury_compile"}
-DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
-CC=${MERCURY_C_COMPILER="@CC@"}
-CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
-CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
-CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
-CFLAG_TO_NAME_OBJECT_FILE="@OBJFILE_OPT@"
-OBJECT_FILE_EXTENSION=".@OBJ_SUFFIX@"
-FULLARCH=@FULLARCH@
-LOW_TAG_BITS=@LOW_TAG_BITS@
-BITS_PER_WORD=@BITS_PER_WORD@
-BYTES_PER_WORD=@BYTES_PER_WORD@
-NUM_REAL_R_REGS=@NUM_REAL_R_REGS@
-NUM_REAL_R_TEMPS=@NUM_REAL_R_TEMPS@
-HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
-HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
-MS_DOTNET_LIBRARY_VERSION=@MS_DOTNET_LIBRARY_VERSION@
-DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
+INTDIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
 
+# The default options settings are passed in the DEFAULT_MCFLAGS enviroment
+# variable, rather than on the command line, so that they can be overridden
+# by the value of MCFLAGS in the Mercury.options file. 
+#
 # The default optimization level should be after
 # all the options that describe the machine configuration.
+DEFAULT_MCFLAGS="\
+		$MERC_ALL_MC_C_INCL_DIRS \
+		--cc \"${MERCURY_C_COMPILER=@CC@}\" \
+		--grade \"${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}\" \
+		--cflags-for-threads \"@CFLAGS_FOR_THREADS@\" \
+		--cflags-for-regs \"@CFLAGS_FOR_REGS@\" \
+		--cflags-for-gotos \"@CFLAGS_FOR_GOTOS@\" \
+		--cflags-for-pic \"@CFLAGS_FOR_PIC@\" \
+		--c-flag-to-name-object-file \"@OBJFILE_OPT@\" \
+		--object-file-extension \".@OBJ_SUFFIX@\" \
+		--fullarch \"@FULLARCH@\" \
+		--num-real-r-regs \"@NUM_REAL_R_REGS@\" \
+		--num-real-r-temps \"@NUM_REAL_R_TEMPS@\" \
+		--conf-low-tag-bits \"@LOW_TAG_BITS@\" \
+		--bits-per-word \"@BITS_PER_WORD@\" \
+		--bytes-per-word \"@BYTES_PER_WORD@\" \
+		--dotnet-library-version \"@MS_DOTNET_LIBRARY_VERSION@\" \
+		@HAVE_DELAY_SLOT@ \
+		@HAVE_BOXED_FLOATS@ \
+		${MERCURY_DEFAULT_OPT_LEVEL=-O2} \
+		"
+export DEFAULT_MCFLAGS
 
-# XXX Once the `mmc --make' change is installed everywhere, the default
-# option settings below should be set in the DEFAULT_MCFLAGS environment
-# variable to avoid having them override the value of MCFLAGS in the
-# Mercury.options file.
-# XXX when the compiler has bootstrapped we need to add the following to
-# the mmc command line
-# --dotnet-library-version "$MS_DOTNET_LIBRARY_VERSION"
 case $# in
-	0) exec $MC \
-		$MERC_ALL_MC_C_INCL_DIRS \
-		--cc "$CC" --grade "$DEFAULT_GRADE" \
-		--cflags-for-threads "$CFLAGS_FOR_THREADS" \
-		--cflags-for-regs "$CFLAGS_FOR_REGS" \
-		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
-		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
-		--object-file-extension "$OBJECT_FILE_EXTENSION" \
-		--fullarch "$FULLARCH" \
-		--num-real-r-regs "$NUM_REAL_R_REGS" \
-		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
-		--conf-low-tag-bits "$LOW_TAG_BITS" \
-		--bits-per-word "$BITS_PER_WORD" \
-		--bytes-per-word "$BYTES_PER_WORD" \
-		--dotnet-library-version "$MS_DOTNET_LIBRARY_VERSION" \
-		$HAVE_DELAY_SLOT \
-		$HAVE_BOXED_FLOATS \
-		$DEFAULT_OPT_LEVEL \
-		-I "$INTDIR"
-		;;
-	*) exec $MC \
-		$MERC_ALL_MC_C_INCL_DIRS \
-		--cc "$CC" --grade "$DEFAULT_GRADE" \
-		--cflags-for-threads "$CFLAGS_FOR_THREADS" \
-		--cflags-for-regs "$CFLAGS_FOR_REGS" \
-		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
-		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
-		--object-file-extension "$OBJECT_FILE_EXTENSION" \
-		--fullarch "$FULLARCH" \
-		--num-real-r-regs "$NUM_REAL_R_REGS" \
-		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
-		--conf-low-tag-bits "$LOW_TAG_BITS" \
-		--bits-per-word "$BITS_PER_WORD" \
-		--bytes-per-word "$BYTES_PER_WORD" \
-		--dotnet-library-version "$MS_DOTNET_LIBRARY_VERSION" \
-		$HAVE_DELAY_SLOT \
-		$HAVE_BOXED_FLOATS \
-		$DEFAULT_OPT_LEVEL \
-		"$@" \
-		-I "$INTDIR"
-		;;
+	0) exec $MC -I "$INTDIR" ;;
+	*) exec $MC -I "$@" "$INTDIR" ;;
 esac
+
