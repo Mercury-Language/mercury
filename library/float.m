@@ -50,26 +50,26 @@
 	% addition
 :- func float + float = float.
 :- mode in    + in    = uo  is det.
-% :- mode uo  + in  = in  is det.
-% :- mode in  + uo  = in  is det.
+:- mode uo  + in  = in  is det.
+:- mode in  + uo  = in  is det.
 
 	% subtraction
 :- func float - float = float.
 :- mode in    - in    = uo  is det.
-% :- mode uo  - in  = in  is det.
-% :- mode in  - uo  = in  is det.
+:- mode uo  - in  = in  is det.
+:- mode in  - uo  = in  is det.
 
 	% multiplication
 :- func float * float = float.
 :- mode in    * in    = uo  is det.
-% :- mode uo  * in  = in  is det.
-% :- mode in  * uo  = in  is det.
+:- mode uo  * in  = in  is det.
+:- mode in  * uo  = in  is det.
 
 	% division
 :- func float / float = float.
 :- mode in    / in    = uo  is det.
-% :- mode uo  / in  = in  is det.
-% :- mode in  / uo  = in  is det.
+:- mode uo  / in  = in  is det.
+:- mode in  / uo  = in  is det.
 
 	% unary plus
 :- func + float = float.
@@ -142,10 +142,11 @@
 % The arithmetic and comparison operators are builtins,
 % which the compiler expands inline.  We don't need to define them here.
 
-% Unary plus and minus are not builtins, but ought to be.
+% These are actually implemented as builtins.
+% Their explicit definitions are necessary only for bootstrapping.
 
-+ X = 0.0 + X.
-- X = 0.0 - X.
+% + X = 0.0 + X.
+% - X = 0.0 - X.
 
 %---------------------------------------------------------------------------%
 

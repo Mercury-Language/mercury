@@ -1314,6 +1314,7 @@ io__set_op_table(OpTable,	io__state(A, B, _, D, E),
 
 #include ""init.h""
 #include ""wrapper.h""
+#include ""type_info.h""
 
 #include <stdlib.h>
 #include <string.h>
@@ -1340,10 +1341,6 @@ extern MercuryFile *mercury_current_binary_output;
 #define initial_external_state()	0	/* some random number */
 #define update_io(r_src, r_dest)	((r_dest) = (r_src))
 #define final_io_state(r)		((void)0)
-
-#define COMPARE_EQUAL 0
-#define COMPARE_LESS 1
-#define COMPARE_GREATER 2
 
 void 		mercury_init_io(void);
 MercuryFile*	mercury_open(const char *filename, const char *type);
@@ -1504,7 +1501,10 @@ Define_entry(mercury__io__run_0_0);
 	noprof_call(ENTRY(mercury__io__init_state_2_0),
 		LABEL(mercury__io__run_0_0_i1));
 Define_label(mercury__io__run_0_0_i1);
+#ifdef	COMPACT_ARGS
+#else
 	r1 = r2;
+#endif
 	if (program_entry_point == NULL) {
 		fatal_error(""no program entry point supplied"");
 	}
@@ -1721,17 +1721,18 @@ BEGIN_MODULE(io_stream_module)
 BEGIN_CODE
 
 Define_entry(mercury____Unify___io__stream_0_0);
-	r1 = ((MercuryFile*) r2 == (MercuryFile *)r3);
+	unify_output =
+		((MercuryFile*) unify_input1 == (MercuryFile *) unify_input2);
 	proceed();
 
 Define_entry(mercury____Compare___io__stream_0_0);
-	r1 = ((r2 < r3) ? COMPARE_LESS :
-	      (r2 > r3) ? COMPARE_GREATER :
-			  COMPARE_EQUAL);
+	compare_output = ((compare_input1 < compare_input2) ? COMPARE_LESS :
+		          (compare_input1 > compare_input2) ? COMPARE_GREATER :
+			  				      COMPARE_EQUAL);
 	proceed();
 
 Define_entry(mercury____Index___io__stream_0_0);
-	r2 = -1;
+	index_output = -1;
 	proceed();
 
 Define_entry(mercury____Term_To_Type___io__stream_0_0);

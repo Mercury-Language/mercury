@@ -1675,6 +1675,12 @@ Declare_entry(mercury__string__append_3_3_xx);
 
 :- pragma(c_code, "
 
+#ifdef	COMPACT_ARGS
+#define	string__append_ooi_input_reg	r1
+#else
+#define	string__append_ooi_input_reg	r3
+#endif
+
 Define_extern_entry(mercury__string__append_3_3_xx);
 Declare_label(mercury__string__append_3_3_xx_i1);
 
@@ -1686,36 +1692,40 @@ Define_entry(mercury__string__append_3_3_xx);
 	mkframe(""string__append/3"", 4,
 		LABEL(mercury__string__append_3_3_xx_i1));
 	mark_hp(framevar(0));
-	framevar(1) = r3;
-	framevar(2) = strlen((char *)r3);
+	framevar(1) = string__append_ooi_input_reg;
+	framevar(2) = strlen((char *) string__append_ooi_input_reg);
 	framevar(3) = 0;
 Define_label(mercury__string__append_3_3_xx_i1);
-	{ String s3;
-	  size_t s3_len;
-	  size_t count;
-	  restore_hp(framevar(0));
-	  s3 = (String) framevar(1);
-	  s3_len = framevar(2);
-	  count = framevar(3);
-	  if (count > s3_len) {
-		modframe(ENTRY(do_fail));
+{
+	String	s3;
+	size_t	s3_len;
+	size_t	count;
+
+	restore_hp(framevar(0));
+	s3 = (String) framevar(1);
+	s3_len = framevar(2);
+	count = framevar(3);
+	if (count > s3_len) {
+		/* modframe(ENTRY(do_fail)); */
 		fail();
-	  }
-	  incr_hp_atomic(r1, (count + sizeof(Word)) / sizeof(Word));
-	  memcpy((char *)r1, s3, count);
-	  ((char *)r1)[count] = '\\0';
-	  incr_hp_atomic(r2, (s3_len - count + sizeof(Word)) / sizeof(Word));
-	  strcpy((char *)r2, s3 + count);
-	  framevar(3) = count + 1;
-	  succeed();
 	}
+	incr_hp_atomic(r1, (count + sizeof(Word)) / sizeof(Word));
+	memcpy((char *) r1, s3, count);
+	((char *) r1)[count] = '\\0';
+	incr_hp_atomic(r2, (s3_len - count + sizeof(Word)) / sizeof(Word));
+	strcpy((char *) r2, s3 + count);
+	framevar(3) = count + 1;
+	succeed();
+}
 END_MODULE
+
+#undef	string__append_ooi_input_reg
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
 INIT sys_init_string_append_module
 */
-	/* suppress gcc -Wmissing-decl warning */
+/* suppress gcc -Wmissing-decl warning */
 void sys_init_string_append_module(void);
 
 void sys_init_string_append_module(void) {
@@ -1725,14 +1735,12 @@ void sys_init_string_append_module(void) {
 
 ").
 
-/*
-:- mode string__append(out, out, in) is multidet.
-*/
+% :- mode string__append(out, out, in) is multidet.
 :- pragma(c_code, string__append(S1::out, S2::out, S3::in), "
-	/* S1, S2, S3 assumed to be passed via r1, r2, r3 */
-	/* The pragma_c_code will generate a mkframe();
-	   we need to pop off that frame before jumping to the hand-coded
-	   fragment above.
+	/*
+	** The pragma_c_code will generate a mkframe();
+	** we need to pop off that frame before jumping to the hand-coded
+	** fragment above.
 	*/
 	maxfr = curprevfr;
 	curfr = cursuccfr;

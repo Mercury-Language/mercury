@@ -398,7 +398,11 @@ BEGIN_CODE
 
 Define_entry(mercury__copy_2_0);
 Define_entry(mercury__copy_2_1);
+#ifdef	COMPACT_ARGS
+	r1 = r2;
+#else
 	r3 = r2;
+#endif
 	proceed();
 
 END_MODULE

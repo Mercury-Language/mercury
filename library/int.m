@@ -64,20 +64,20 @@
 	% addition
 :- func int + int = int.
 :- mode in  + in  = uo  is det.
-% :- mode uo  + in  = in  is det.
-% :- mode in  + uo  = in  is det.
+:- mode uo  + in  = in  is det.
+:- mode in  + uo  = in  is det.
 
 	% multiplication
 :- func int * int = int.
 :- mode in  * in  = uo  is det.
-% :- mode uo  * in  = in  is det.
-% :- mode in  * uo  = in  is det.
+:- mode uo  * in  = in  is det.
+:- mode in  * uo  = in  is det.
 
 	% subtraction
 :- func int - int = int.
 :- mode in  - in  = uo  is det.
-% :- mode uo  - in  = in  is det.
-% :- mode in  - uo  = in  is det.
+:- mode uo  - in  = in  is det.
+:- mode in  - uo  = in  is det.
 
 	% modulus (or is it remainder?)
 :- func int mod int = int.
@@ -88,8 +88,8 @@
 	% (if it doesn't, file a bug report)
 :- func int // int = int.
 :- mode in  // in  = uo  is det.
-% :- mode uo  // in  = in  is det.
-% :- mode in  // uo  = in  is det.
+:- mode uo  // in  = in  is det.
+:- mode in  // uo  = in  is det.
 
 	% left shift
 :- func int << int = int.
@@ -251,11 +251,14 @@ int__log2_2(X, N0, N) :-
 % builtin_unary_minus and builtin_unary_plus aren't actually builtin yet,
 % although they should be... still, cross-module inlining would do the trick
 
-- X = 0 - X.
-+ X = 0 + X.
+% These are actually implemented as builtins.
+% Their explicit definitions are necessary only for bootstrapping.
 
-builtin_unary_minus(X, Y) :- Y is 0 - X.
-builtin_unary_plus(X, Y)  :- Y is 0 + X.
+% - X = 0 - X.
+% + X = 0 + X.
+
+% builtin_unary_minus(X, Y) :- Y is 0 - X.
+% builtin_unary_plus(X, Y)  :- Y is 0 + X.
 
 %-----------------------------------------------------------------------------%
 
