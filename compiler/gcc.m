@@ -89,6 +89,13 @@
 :- pred build_array_type(gcc__type::in, int::in, gcc__type::out,
 		io__state::di, io__state::uo) is det.
 
+	% build_range_type(Type, Min, Max, RangeType):
+	% Given a discrete (integer, enum, boolean, or char) type,
+	% produce a new type which is the sub-range of that type
+	% with low bound Min and high bound Max.
+:- pred build_range_type(gcc__type::in, int::in, int::in,
+		gcc__type::out, io__state::di, io__state::uo) is det.
+
 % A GCC `tree' representing a list of parameter types.
 :- type gcc__param_types.
 :- func empty_param_types = gcc__param_types.
@@ -613,6 +620,13 @@
 	HOST_WIDE_INT max = (NumElems == 0 ? 0 : (HOST_WIDE_INT) NumElems - 1);
 	tree index_type = build_index_type (build_int_2 (max, 0));
 	ArrayType = (MR_Word) build_array_type((tree) ElemType, index_type);
+").
+
+:- pragma c_code(build_range_type(Type::in, Min::in, Max::in, RangeType::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	RangeType = (MR_Word) build_range_type((tree) Type,
+			build_int_2 (Min, 0), build_int_2 (Max, 0));
 ").
 
 :- type gcc__param_types == gcc__tree.

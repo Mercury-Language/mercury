@@ -1948,12 +1948,19 @@ gen_stmt(FuncInfo, if_then_else(Cond, Then, MaybeElse), _Context) -->
 		gen_statement(FuncInfo, Else)
 	),
 	gcc__gen_end_cond.
-gen_stmt(FuncInfo, switch(Type, Val, _Range, Cases, Default), _) -->
+gen_stmt(FuncInfo, switch(Type, Val, Range, Cases, Default), _) -->
 	build_type(Type, FuncInfo ^ global_info, GCC_Type),
+	( { Range = range(Min, Max) } ->
+		gcc__build_range_type(GCC_Type, Min, Max, GCC_RangeType)
+	;
+		{ GCC_RangeType = GCC_Type }
+	),
 	build_rval(Val, FuncInfo, GCC_Expr),
-	gcc__gen_start_switch(GCC_Expr, GCC_Type),
-	gen_cases(FuncInfo, Cases),
+	gcc__gen_start_switch(GCC_Expr, GCC_RangeType),
+	% we put the default case first, so that if it is unreachable,
+	% it will get merged in with the first case.
 	gen_default(FuncInfo, Default),
+	gen_cases(FuncInfo, Cases),
 	gcc__gen_end_switch(GCC_Expr).
 
 	%
@@ -2088,7 +2095,13 @@ gen_case_label(FuncInfo, match_range(Min, Max)) -->
 :- pred gen_default(func_info::in, mlds__switch_default::in,
 		io__state::di, io__state::uo) is det.
 gen_default(_, default_do_nothing) --> [].
-gen_default(_, default_is_unreachable) --> [].
+gen_default(_, default_is_unreachable) -->
+	% If the default is unreachable, we just generate a label
+	% which will just drop through into the first case.
+	% This generally leads to more efficient code than
+	% default_do_nothing.
+	gcc__build_unnamed_label(Label),
+	gcc__gen_default_case_label(Label).
 gen_default(FuncInfo, default_case(Statement)) -->
 	gcc__build_unnamed_label(Label),
 	gcc__gen_default_case_label(Label),
