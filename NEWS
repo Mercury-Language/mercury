@@ -1,24 +1,3 @@
-Work in progress
-----------------
-
-* There is a new `--generate-bytecode' option --
-  but the bytecode interpreter isn't working yet.
-
-* There is a new `--generate-prolog' option
-  which does not work yet.
-
-* There is a new `--optimize-constructor-last-call' option
-  which identifies opportunities for LCO where a call
-  is followed only by some constructor invocations.
-  However, these opportunities are not exploited yet.
-
-* We now allow programmers to give names to the arguments of constructor
-  function symbols. XXX
-
-* Support for big tables of facts. XXX
-
-* Tabling/memoing of det and semidet predicates. XXX
-
 DRAFT NEWS for Mercury release 0.7
 ----------------------------------
 
@@ -47,10 +26,12 @@ DRAFT NEWS for Mercury release 0.7
 
   The C interface now handles Mercury functions properly --
   previously it only handled predicates, not functions. 
-  Also, exporting semidet predicates or functions to C now works
-  (see `samples/c_interface/c_calls_mercury.m' for some examples).
+  Also, exporting semidet predicates or functions to C now works.
   We've improved the documentation, and we've included some examples
   of how to use the C interface to interface with C++.
+  We also now support `main' being defined in C rather than in Mercury.
+
+  See samples/c_interface for examples of all of the above.
 
 * We now support cross-module optimizations.
 
@@ -126,16 +107,16 @@ DRAFT NEWS for Mercury release 0.7
     traversing and constructing terms of arbitrary type, and for
     accessing types at runtime.
 
-    	For traversing terms: 
+    	+ For traversing terms: 
     		Predicates argument/3, det_argument/3, functor/3,
 		and deconstruct/4.  These are similar to Prolog's arg/3,
 		functor/3, and '=..'.
 
-	For constructing terms:
+	+ For constructing terms:
 		Functions num_functors/1, construct/3 and
 		predicate get_functor/5.
 
-	For accessing and constructing types:
+	+ For accessing and constructing types:
 		Functions type_of/1, type_ctor/1, type_args/1,
 		type_ctor_name/1, type_ctor_arity/1, make_type/2,
 		and predicates type_ctor_and_args/3 and
@@ -152,7 +133,7 @@ DRAFT NEWS for Mercury release 0.7
     these changes make performing output quite a bit simpler;
     it's nice to be able to write `print("Foo = "), print(Foo), nl'.
 
-  - term_to_type/2 and type_to_term/2 are now implemented.
+  - The predicates term_to_type/2 and type_to_term/2 are now implemented.
 
   - We have a new module called time.m XXX to make benchmarking easier.
     The predicate report_stats, which used to be in std_util, is now
@@ -179,13 +160,13 @@ DRAFT NEWS for Mercury release 0.7
     arguments), and bag__remove (now semidet) to be consistent with set.m 
     and map.m. 
 
-  - There are two new predicates `io__tmpnam' and `io__remove_file',
+  - There are two new predicates io__tmpnam and io__remove_file,
     with semantics similar to the ANSI C functions tmpnam() and remove().
 
-  - There are new predicates `int__max_int', `int__min_int', 
-    `int__bits_per_int', `char__min_char_value', `char__max_char_value',
-    with semantics similar to INT_MAX, INT_MIN, (CHAR_BIT * sizeof(int)),
-    CHAR_MIN, and CHAR_MAX in ANSI C (respectively).
+  - There are new predicates int__max_int, int__min_int, int__bits_per_int,
+    char__min_char_value, and char__max_char_value, with semantics similar
+    to INT_MAX, INT_MIN, (CHAR_BIT * sizeof(int)), CHAR_MIN, and CHAR_MAX
+    in ANSI C (respectively).
 
   - We've added list__merge_and_remove_dups/4 and list__sort_and_remove_dups/4
     to complete the set of list__merge and list__sort operations.
@@ -218,12 +199,10 @@ DRAFT NEWS for Mercury release 0.7
     is remainder with respect to `//', whereas `div' truncates towards minus
     infinity, and `mod' is remainder with respect to `div'.
 
-  - The interface to arrays has changed significantly.  array.m has been
-    renamed bt_array.m (short for `backtrackable array') and uniq_array.m
-    has been renamed array.m.
-
-    The interfaces of both modules have been extended to make them closer
-    to each other.
+  - The old array.m module has been renamed bt_array.m (short for
+    "backtrackable array", or "binary tree array"), and uniq_array.m
+    has been renamed array.m.  The interfaces of both modules have been
+    extended to make them closer to each other.
 
     The following predicates have been added to array.m (formerly
     uniq_array.m):
@@ -232,9 +211,9 @@ DRAFT NEWS for Mercury release 0.7
 	  that it's designed for cases when you only want to make an
 	  array smaller, so you don't have to supply a filler element.
 
-	+ array__min/2, array__max/2, array__bounds/3  Finds the lower
-	  (in this implementation, always 0), upper and both bounds of
-	  a array respectively.
+	+ array__min/2, array__bounds/3  Find the lower bound or both
+	  bounds (respectively) of an array.  (In this implementation,
+	  the lower bound is always 0.)
 
     The following predicates have been added to bt_array.m (formerly
     array.m):
@@ -259,7 +238,4 @@ DRAFT NEWS for Mercury release 0.7
 	  array increased in bounds, the extra slots were filled with one
 	  particular element from the old bt_array.  The extra argument is
 	  the element to use to fill these slots instead.
-
-    See the modules array.m and bt_array.m or consult the library
-    reference for further details.
 

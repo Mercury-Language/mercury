@@ -1,0 +1,37 @@
+Work in progress
+----------------
+
+The compiler contains some code for the following features,
+which are not yet completed:
+
+* There is a new `--generate-bytecode' option --
+  but the bytecode interpreter isn't working yet.
+
+* There is a new `--generate-prolog' option
+  which does not work yet.
+
+* There is a new `--optimize-constructor-last-call' option
+  which identifies opportunities for LCO where a call
+  is followed only by some constructor invocations.
+  However, these opportunities are not exploited yet.
+
+* We now allow programmers to give names to the arguments of constructor
+  function symbols.  (Disabled, due to lack of a suitable operator.)
+
+* Support for big tables of facts.
+  (Only supports `string', `int', and `float'.  Not yet documented.)
+
+
+We also have some code that goes at least some part of the way towards
+implementing the features below.   However, for these features, the
+code has not yet been committed and thus is not part of the standard
+distribution.
+
+* Tabling/memoing of det and semidet predicates.
+
+* Support for Haskell-style type classes.
+
+* Support for user-defined equality axioms, for types which have
+  multiple representations of the same abstract value, e.g. sets
+  represented as unsorted lists.
+

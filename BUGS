@@ -44,8 +44,8 @@ map__lookup failed" message.  The work-around is to link with
 `--static'.
 
 This is actually due to a bug in the Alpha shared library mechanism,
-which does not conform to the ANSI C standard.  So we do not plan to
-fix this one.
+which does not conform to the ANSI C standard.  There is not much
+we can do about this one.
 
 -----------------------------------------------------------------------------
 Subject: nit in error msg

@@ -23,7 +23,7 @@ We are working on eliminating all of these problems.
 In addition, design decisions in this implementation have imposed the
 following fixed limits:
 
-* Predicates can have at most about 1000 arguments.
+* Predicates and functions can have at most about 1000 arguments.
 
 * Higher order terms are limited to arity of about 500.
 
