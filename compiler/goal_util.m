@@ -126,6 +126,21 @@
 :- mode goal_calls_pred_id(in, in) is semidet.
 :- mode goal_calls_pred_id(in, out) is nondet.
 
+	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
+	% i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
+	% or indirect sub-goal.
+	%
+:- pred goal_contains_goal(hlds_goal, hlds_goal).
+:- mode goal_contains_goal(in, out) is multi.
+
+	% direct_subgoal(Goal, DirectSubGoal) is true iff DirectSubGoal is
+	% a direct sub-goal of Goal.
+	%
+:- pred direct_subgoal(hlds_goal_expr, hlds_goal).
+:- mode direct_subgoal(in, out) is nondet.
+
+%-----------------------------------------------------------------------------%
+
 	% Convert a switch back into a disjunction. This is needed 
 	% for the magic set transformation.
 :- pred goal_util__switch_to_disjunction(prog_var, list(case), instmap, 
@@ -696,6 +711,13 @@ goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(pragma_c_code(_, _, _, _, _, _, _), 1).
 
 %-----------------------------------------------------------------------------%
+%
+% We could implement goal_calls as
+%	goal_calls(Goal, proc(PredId, ProcId)) :-
+%		goal_contains_subgoal(Goal, call(PredId, ProcId, _, _, _, _)).
+% but the following is more efficient in the (in, in) mode
+% since it avoids creating any choice points.
+%
 
 goal_calls(GoalExpr - _, PredProcId) :-
 	goal_expr_calls(GoalExpr, PredProcId).
@@ -747,6 +769,13 @@ goal_expr_calls(some(_, _, Goal), PredProcId) :-
 goal_expr_calls(call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 
 %-----------------------------------------------------------------------------%
+%
+% We could implement goal_calls_pred_id as
+%	goal_calls_pred_id(Goal, PredId) :-
+%		goal_contains_subgoal(Goal, call(PredId, _, _, _, _, _)).
+% but the following is more efficient in the (in, in) mode
+% since it avoids creating any choice points.
+%
 
 goal_calls_pred_id(GoalExpr - _, PredId) :-
 	goal_expr_calls_pred_id(GoalExpr, PredId).
@@ -796,6 +825,37 @@ goal_expr_calls_pred_id(not(Goal), PredId) :-
 goal_expr_calls_pred_id(some(_, _, Goal), PredId) :-
 	goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
+
+%-----------------------------------------------------------------------------%
+
+	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
+	% i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
+	% or indirect sub-goal.
+	%
+goal_contains_goal(Goal, Goal).
+goal_contains_goal(Goal - _, SubGoal) :-
+	direct_subgoal(Goal, DirectSubGoal),
+	goal_contains_goal(DirectSubGoal, SubGoal).
+
+	% direct_subgoal(Goal, SubGoal) is true iff SubGoal is
+	% a direct sub-goal of Goal.
+	%
+direct_subgoal(some(_, _, Goal), Goal).
+direct_subgoal(not(Goal), Goal).
+direct_subgoal(if_then_else(_, If, Then, Else, _), Goal) :-
+	( Goal = If
+	; Goal = Then
+	; Goal = Else
+	).
+direct_subgoal(conj(ConjList), Goal) :-
+	list__member(Goal, ConjList).
+direct_subgoal(par_conj(ConjList, _), Goal) :-
+	list__member(Goal, ConjList).
+direct_subgoal(disj(DisjList, _), Goal) :-
+	list__member(Goal, DisjList).
+direct_subgoal(switch(_, _, CaseList, _), Goal) :-
+	list__member(Case, CaseList),
+	Case = case(_, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -1023,5 +1083,4 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 	set__intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
 	not set__empty(Intersection).
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -656,9 +656,6 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId) = MLDS_ProcDefnBody :-
 			_PredInfo, ProcInfo),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_goal(ProcInfo, Goal),
-	proc_info_varset(ProcInfo, VarSet),
-	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_headvars(ProcInfo, HeadVars),
 	Goal = _ - GoalInfo,
 	goal_info_get_context(GoalInfo, Context),
 
@@ -671,8 +668,17 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId) = MLDS_ProcDefnBody :-
 	;
 		MLDSGenInfo2 = MLDSGenInfo0
 	),
-	MLDS_LocalVars = ml_gen_local_var_decls(Goal, VarSet, VarTypes,
-			HeadVars),
+	% This would generate all the local variables at the top of the
+	% function:
+	%	proc_info_varset(ProcInfo, VarSet),
+	%	proc_info_vartypes(ProcInfo, VarTypes),
+	%	proc_info_headvars(ProcInfo, HeadVars),
+	%	MLDS_LocalVars = ml_gen_all_local_var_decls(Goal, VarSet,
+	% 		VarTypes, HeadVars),
+	% But instead we now generate them locally for each goal.
+	% We just declare the `succeeded' var here.
+	MLDS_Context = mlds__make_context(Context),
+	MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context)],
 	ml_gen_proc_body(CodeModel, Goal, MLDS_Decls0, MLDS_Statements,
 			MLDSGenInfo2, _MLDSGenInfo),
 	MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
@@ -680,18 +686,16 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId) = MLDS_ProcDefnBody :-
 	MLDS_ProcDefnBody = mlds__function(yes(proc(PredId, ProcId)),
 			MLDS_Params, yes(MLDS_Statement)).
 
-:- type prog_type == prog_data__type.
-
-	% Generate MLDS definitions for the local variables in a function.
+	% Generate MLDS definitions for all the local variables in a function.
 	%
-	% Note that currently we generate all the local variables at the
+	% Note that this function generates all the local variables at the
 	% top of the function.  It might be a better idea to instead
 	% generate local declarations for all the variables used in
 	% each sub-goal.
 	%
-:- func ml_gen_local_var_decls(hlds_goal, prog_varset,
+:- func ml_gen_all_local_var_decls(hlds_goal, prog_varset,
 		map(prog_var, prog_type), list(prog_var)) = mlds__defns.
-ml_gen_local_var_decls(Goal, VarSet, VarTypes, HeadVars) =
+ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars) =
 		MLDS_LocalVars :-
 	Goal = _ - GoalInfo,
 	goal_info_get_context(GoalInfo, Context),
@@ -699,10 +703,37 @@ ml_gen_local_var_decls(Goal, VarSet, VarTypes, HeadVars) =
 	set__delete_list(AllVarsSet, HeadVars, LocalVarsSet),
 	set__to_sorted_list(LocalVarsSet, LocalVars),
 	MLDS_Context = mlds__make_context(Context),
-	MLDS_LocalVars0 = list__map(ml_gen_local_var_decl(VarSet, VarTypes,
-				MLDS_Context), LocalVars),
+	MLDS_LocalVars0 = ml_gen_local_var_decls(VarSet, VarTypes,
+				MLDS_Context, LocalVars),
 	MLDS_SucceededVar = ml_gen_succeeded_var_decl(MLDS_Context),
 	MLDS_LocalVars = [MLDS_SucceededVar | MLDS_LocalVars0].
+
+	% Generate declarations for a list of local variables.
+	%
+:- func ml_gen_local_var_decls(prog_varset, map(prog_var, prog_type),
+		mlds__context, prog_vars) = mlds__defns.
+ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars) =
+	list__map(ml_gen_local_var_decl(VarSet, VarTypes, Context), Vars).
+
+	% Generate a declaration for a local variable.
+	%
+:- func ml_gen_local_var_decl(prog_varset, map(prog_var, prog_type),
+		mlds__context, prog_var) = mlds__defn.
+ml_gen_local_var_decl(VarSet, VarTypes, Context, Var) = MLDS_Defn :-
+	VarName = ml_gen_var_name(VarSet, Var),
+	Name = data(var(VarName)),
+	map__lookup(VarTypes, Var, Type),
+	MLDS_Type = mercury_type_to_mlds_type(Type),
+	MaybeInitializer = no,
+	Defn = data(MLDS_Type, MaybeInitializer),
+	DeclFlags = ml_gen_var_decl_flags,
+	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
+
+:- func ml_gen_var_name(prog_varset, prog_var) = string.
+ml_gen_var_name(VarSet, Var) = UniqueVarName :-
+	varset__lookup_name(VarSet, Var, VarName),
+	term__var_to_int(Var, VarNumber),
+	string__format("%s_%d", [s(VarName), i(VarNumber)], UniqueVarName).
 
 	% Generate the declaration for the built-in `succeeded' variable.
 	%
@@ -712,20 +743,6 @@ ml_gen_succeeded_var_decl(Context) = MLDS_Defn :-
 	Type = mlds__bool_type,
 	MaybeInitializer = no,
 	Defn = data(Type, MaybeInitializer),
-	DeclFlags = ml_gen_var_decl_flags,
-	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
-
-	% Generate the declaration for a local variable.
-	%
-:- func ml_gen_local_var_decl(prog_varset, map(prog_var, prog_type),
-		mlds__context, prog_var) = mlds__defn.
-ml_gen_local_var_decl(VarSet, VarTypes, Context, Var) = MLDS_Defn :-
-	varset__lookup_name(VarSet, Var, VarName),
-	Name = data(var(VarName)),
-	map__lookup(VarTypes, Var, Type),
-	MLDS_Type = mercury_type_to_mlds_type(Type),
-	MaybeInitializer = no,
-	Defn = data(MLDS_Type, MaybeInitializer),
 	DeclFlags = ml_gen_var_decl_flags,
 	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
 
@@ -786,12 +803,54 @@ ml_gen_goal(CodeModel, Goal, MLDS_Statement) -->
 :- mode ml_gen_goal(in, in, out, out, in, out) is det.
 
 ml_gen_goal(CodeModel, Goal - GoalInfo, MLDS_Decls, MLDS_Statements) -->
+	%
+	% Generate the local variables for this goal.
+	%
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	{ SubGoalNonLocals =
+		union_of_direct_subgoal_nonlocals(Goal - GoalInfo) },
+	{ set__difference(SubGoalNonLocals, NonLocals, VarsToDeclareHere) },
+	{ set__to_sorted_list(VarsToDeclareHere, LocalVarsList) },
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
+	{ ml_gen_info_get_var_types(MLDSGenInfo, VarTypes) },
+	{ LocalVarDecls = ml_gen_local_var_decls(VarSet, VarTypes,
+		mlds__make_context(Context), LocalVarsList) },
+
+	%
+	% Generate code for the goal in its own code model.
+	%
 	{ goal_info_get_context(GoalInfo, Context) },
 	{ goal_info_get_code_model(GoalInfo, GoalCodeModel) },
 	ml_gen_goal_expr(Goal, GoalCodeModel, Context,
-		MLDS_Decls, MLDS_Statements0),
+		GoalDecls, GoalStatements0),
+
+	%
+	% Add whatever wrapper is needed to convert the goal's
+	% code model to the desired code model.
+	%
 	ml_gen_wrap_goal(CodeModel, GoalCodeModel, Context,
-		MLDS_Statements0, MLDS_Statements).
+		GoalStatements0, GoalStatements),
+	
+	{ ml_join_decls(LocalVarDecls, [], GoalDecls, GoalStatements, Context,
+		MLDS_Decls, MLDS_Statements) }.
+
+:- func union_of_direct_subgoal_nonlocals(hlds_goal) = set(prog_var).
+
+union_of_direct_subgoal_nonlocals(Goal - _GoalInfo) =
+	promise_only_solution((pred(UnionOfNonLocals::out) is cc_multi :-
+		set__init(EmptySet),
+		unsorted_aggregate(direct_subgoal(Goal),
+			union_subgoal_nonlocals, EmptySet, UnionOfNonLocals)
+	)).
+
+:- pred union_subgoal_nonlocals(hlds_goal, set(prog_var), set(prog_var)).
+:- mode union_subgoal_nonlocals(in, in, out) is det.
+
+union_subgoal_nonlocals(SubGoal, UnionOfNonLocals0, UnionOfNonLocals) :-
+	SubGoal = _ - SubGoalInfo,
+	goal_info_get_nonlocals(SubGoalInfo, SubGoalNonLocals),
+	set__union(UnionOfNonLocals0, SubGoalNonLocals, UnionOfNonLocals).
 
 	% ml_gen_wrap_goal(OuterCodeModel, InnerCodeModel, Context,
 	%		MLDS_Statements0, MLDS_Statements):
@@ -1031,7 +1090,7 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval) -->
 %
 % Generate rvals and lvals for the arguments of a procedure call
 %
-:- pred ml_gen_arg_list(list(prog_var), list(prog_data__type), list(mode),
+:- pred ml_gen_arg_list(list(prog_var), list(prog_type), list(mode),
 		list(mlds__rval), list(mlds__lval),
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_arg_list(in, in, in, out, out, in, out) is det.
@@ -1654,9 +1713,9 @@ ml_gen_conj([First | Rest], CodeModel, Context,
 		ml_gen_goal(model_det, First, FirstDecls, FirstStatements),
 		ml_gen_conj(Rest, CodeModel, Context,
 			RestDecls, RestStatements),
-		{ MLDS_Decls = list__append(FirstDecls, RestDecls) },
-		{ MLDS_Statements = list__append(FirstStatements,
-			RestStatements) }
+		{ ml_join_decls(FirstDecls, FirstStatements,
+			RestDecls, RestStatements, Context,
+			MLDS_Decls, MLDS_Statements) }
 	;
 		%	model_semi goal:
 		%		<Goal, Goals>
@@ -1834,9 +1893,9 @@ ml_gen_disj([First | Rest], CodeModel, Context,
 		ml_gen_goal(model_non, First, FirstDecls, FirstStatements),
 		ml_gen_disj(Rest, model_non, Context,
 			RestDecls, RestStatements),
-		{ MLDS_Decls = list__append(FirstDecls, RestDecls) },
-		{ MLDS_Statements = list__append(FirstStatements,
-			RestStatements) }
+		{ ml_join_decls(FirstDecls, FirstStatements,
+			RestDecls, RestStatements, Context,
+			MLDS_Decls, MLDS_Statements) }
 	; /* CodeModel is model_det or model_semi */
 		%
 		% model_det/model_semi disj:
@@ -1886,6 +1945,38 @@ ml_gen_disj([First | Rest], CodeModel, Context,
 			% simplify.m should get wrap commits around these
 			{ error("model_non disj in model_det disjunction") }
 		)
+	).
+
+	% ml_join_decls:
+	% 	Join two statement lists and their corresponding
+	% 	declaration lists in sequence.
+	% 
+	% 	If the statements have no declarations in common,
+	% 	then their corresponding declaration lists will be
+	% 	concatenated together into a single list of declarations.
+	% 	But if they have any declarations in common, then we
+	% 	put each statement list and its declarations into
+	% 	a block, so that the declarations remain local to
+	% 	each statement list.
+	% 
+:- pred ml_join_decls(mlds__defns, mlds__statements,
+		mlds__defns, mlds__statements, prog_context,
+		mlds__defns, mlds__statements).
+:- mode ml_join_decls(in, in, in, in, in, out, out) is det.
+
+ml_join_decls(FirstDecls, FirstStatements, RestDecls, RestStatements, Context,
+		MLDS_Decls, MLDS_Statements) :-
+	(
+		list__member(mlds__defn(Name, _, _, _), FirstDecls),
+		list__member(mlds__defn(Name, _, _, _), RestDecls)
+	->
+		First = ml_gen_block(FirstDecls, FirstStatements, Context),
+		Rest = ml_gen_block(RestDecls, RestStatements, Context),
+		MLDS_Decls = [],
+		MLDS_Statements = [First, Rest]
+	;
+		MLDS_Decls = list__append(FirstDecls, RestDecls),
+		MLDS_Statements = list__append(FirstStatements, RestStatements)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2182,7 +2273,7 @@ ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _ConsId,
 		ClosureCellNo, "closure") }.
 ***/
 
-:- pred ml_cons_id_to_tag(cons_id, prog_data__type, cons_tag,
+:- pred ml_cons_id_to_tag(cons_id, prog_type, cons_tag,
 		ml_gen_info, ml_gen_info).
 :- mode ml_cons_id_to_tag(in, in, out, in, out) is det.
 
@@ -2275,7 +2366,7 @@ ml_sizeof_word_rval = SizeofWordRval :-
 	MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
 	SizeofWordRval = lval(var(qual(MLDS_Module, "SIZEOF_WORD"))).
 
-:- pred ml_gen_cons_args(list(mlds__lval), list(prog_data__type),
+:- pred ml_gen_cons_args(list(mlds__lval), list(prog_type),
 		list(uni_mode), module_info, list(mlds__rval)).
 :- mode ml_gen_cons_args(in, in, in, in, out) is det.
 
@@ -2293,7 +2384,7 @@ ml_gen_cons_args(Lvals, Types, Modes, ModuleInfo, Rvals) :-
 	% we just produce `0', meaning initialize that field to a
 	% null value.  (XXX perhaps we should have a special `null' rval.)
 
-:- pred ml_gen_cons_args_2(list(mlds__lval), list(prog_data__type),
+:- pred ml_gen_cons_args_2(list(mlds__lval), list(prog_type),
 		list(uni_mode), module_info, list(mlds__rval)).
 :- mode ml_gen_cons_args_2(in, in, in, in, out) is semidet.
 
@@ -2391,7 +2482,7 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 		{ MLDS_Statements = [] } % if this is det, then nothing happens
 	).
 
-:- pred ml_gen_unify_args(prog_vars, list(uni_mode), list(prog_data__type),
+:- pred ml_gen_unify_args(prog_vars, list(uni_mode), list(prog_type),
 		mlds__lval, int, mlds__tag, prog_context,
 		mlds__statements, ml_gen_info, ml_gen_info).
 :- mode ml_gen_unify_args(in, in, in, in, in, in, in, out, in, out) is det.
@@ -2408,7 +2499,7 @@ ml_gen_unify_args(Args, Modes, ArgTypes, VarLval, ArgNum, PrimaryTag, Context,
 		{ error("ml_gen_unify_args: length mismatch") }
 	).
 
-:- pred ml_gen_unify_args_2(prog_vars, list(uni_mode), list(prog_data__type),
+:- pred ml_gen_unify_args_2(prog_vars, list(uni_mode), list(prog_type),
 		mlds__lval, int, mlds__tag, prog_context,
 		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
 :- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, out, in, out)
@@ -2424,7 +2515,7 @@ ml_gen_unify_args_2([Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
 	ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag,
 		Context, MLDS_Statements1, MLDS_Statements).
 
-:- pred ml_gen_unify_arg(prog_var, uni_mode, prog_data__type,
+:- pred ml_gen_unify_arg(prog_var, uni_mode, prog_type,
 		mlds__lval, int, mlds__tag, prog_context,
 		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
 :- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, out, in, out)
@@ -2999,7 +3090,7 @@ ml_gen_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 	% an output mode.
 	%
 :- func select_output_vars(module_info, list(prog_var), list(mode),
-		map(prog_var, prog_data__type)) = list(prog_var).
+		map(prog_var, prog_type)) = list(prog_var).
 
 select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
 	( HeadVars = [], HeadModes = [] ->
@@ -3064,7 +3155,7 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet, FuncArg) :-
 	;
 		MLDS_ArgType = MLDS_Type
 	),
-	varset__lookup_name(VarSet, Var, VarName),
+	VarName = ml_gen_var_name(VarSet, Var),
 	Name = data(var(VarName)),
 	FuncArg = Name - MLDS_ArgType.
 
@@ -3111,7 +3202,7 @@ ml_gen_var(Var, Lval) -->
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ varset__lookup_name(VarSet, Var, VarName) },
+	{ VarName = ml_gen_var_name(VarSet, Var) },
 	{ VarLval = var(qual(MLDS_Module, VarName)) },
 	% output variables are passed by reference...
 	{ list__member(Var, OutputVars) ->
@@ -3154,6 +3245,8 @@ sorry(What) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- type prog_type == prog_data__type.
 
 %
 % The `ml_gen_info' type holds information used during MLDS code generation
@@ -3228,8 +3321,7 @@ ml_gen_info_get_proc_id(ml_gen_info(_, _, ProcId, _, _, _, _, _), ProcId).
 
 ml_gen_info_get_varset(ml_gen_info(_, _, _, VarSet, _, _, _, _), VarSet).
 
-:- pred ml_gen_info_get_var_types(ml_gen_info,
-		map(prog_var, prog_data__type)).
+:- pred ml_gen_info_get_var_types(ml_gen_info, map(prog_var, prog_type)).
 :- mode ml_gen_info_get_var_types(in, out) is det.
 
 ml_gen_info_get_var_types(ml_gen_info(_, _, _, _, VarTypes, _, _, _),

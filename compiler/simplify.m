@@ -2097,33 +2097,3 @@ simplify_info_undo_goal_updates(Info1, Info2, Info) :-
 	simplify_info_set_instmap(Info3, InstMap, Info).
 
 %-----------------------------------------------------------------------------%
-
-:- pred goal_contains_goal(hlds_goal, hlds_goal).
-:- mode goal_contains_goal(in, out) is multi.
-
-goal_contains_goal(Goal, Goal).
-goal_contains_goal(Goal - _, SubGoal) :-
-	direct_subgoal(Goal, DirectSubGoal),
-	goal_contains_goal(DirectSubGoal, SubGoal).
-
-:- pred direct_subgoal(hlds_goal_expr, hlds_goal).
-:- mode direct_subgoal(in, out) is nondet.
-
-direct_subgoal(some(_, _, Goal), Goal).
-direct_subgoal(not(Goal), Goal).
-direct_subgoal(if_then_else(_, If, Then, Else, _), Goal) :-
-	( Goal = If
-	; Goal = Then
-	; Goal = Else
-	).
-direct_subgoal(conj(ConjList), Goal) :-
-	list__member(Goal, ConjList).
-direct_subgoal(par_conj(ConjList, _), Goal) :-
-	list__member(Goal, ConjList).
-direct_subgoal(disj(DisjList, _), Goal) :-
-	list__member(Goal, DisjList).
-direct_subgoal(switch(_, _, CaseList, _), Goal) :-
-	list__member(Case, CaseList),
-	Case = case(_, Goal).
-
-%-----------------------------------------------------------------------------%
