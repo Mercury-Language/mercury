@@ -652,7 +652,7 @@
 	% of a non-canonical type.
 	%
 :- func named_argument(T::in, string::in) = (univ::out) is semidet.
-:- pred named_argument_cc(T::in, string::in, univ::out) is cc_nondet.
+:- pred named_argument_cc(T::in, string::in, maybe(univ)::out) is cc_multi.
 
 	% det_arg(Data, ArgumentIndex) = Argument
 	% det_argument(Data, ArgumentIndex) = ArgumentUniv
@@ -797,16 +797,6 @@ maybe_pred(Pred, X, Y) :-
 	;
 		Y = no
 	).
-
-	% Utility predicates which are useful for constructing values
-	% of the maybe(T) type from foreign code.
-:- func construct_yes(T) = maybe(T).
-:- pragma export(construct_yes(in) = out, "ML_construct_maybe_yes").
-construct_yes(T) = yes(T).
-
-:- func construct_no = maybe(T).
-:- pragma export(construct_no = out, "ML_construct_maybe_no").
-construct_no = no.
 
 %-----------------------------------------------------------------------------%
 
@@ -1644,10 +1634,16 @@ named_argument(Term, Name) = ArgumentUniv :-
 	deconstruct__named_arg(Term, canonicalize, Name, Argument),
 	type_to_univ(Argument, ArgumentUniv).
 
-named_argument_cc(Term, Name, ArgumentUniv) :-
-	deconstruct__named_arg(Term, include_details_cc,
-		Name, Argument),
-	type_to_univ(Argument, ArgumentUniv).
+named_argument_cc(Term, Name, MaybeArgumentUniv) :-
+	deconstruct__named_arg_cc(Term, Name, MaybeArgument),
+	(
+		MaybeArgument = arg(Argument),
+		type_to_univ(Argument, ArgumentUniv),
+		MaybeArgumentUniv = yes(ArgumentUniv)
+	;
+		MaybeArgument = no_arg,
+		MaybeArgumentUniv = no
+	).
 
 deconstruct(Term, Functor, Arity, Arguments) :-
 	deconstruct__deconstruct(Term, canonicalize,
