@@ -1753,6 +1753,17 @@ AC_TRY_CPP([
 AC_MSG_RESULT($mercury_cv_profiling)
 
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(if C compiler is egcs)
+case "`$CC --version < /dev/null 2>&1`" in
+    egcs-*)
+    	mercury_cv_egcs=yes
+	;;
+    *)
+    	mercury_cv_egcs=no
+	;;
+esac
+AC_MSG_RESULT($mercury_cv_egcs)
+#-----------------------------------------------------------------------------#
 #
 # Add an option that disables the deep profiler.
 #
@@ -1767,6 +1778,16 @@ if test "$HAVE_UNISTD_H" = 1; then
 else
     mercury_cv_enable_deep_profiler=no
 fi
+
+# on x86, gcc version egcs-1.1.2 has a bug which causes it to get
+# an internal compiler error when compiling library/random.c
+# (when that file was build with mmc --intermodule-optimization -O4)
+# So if we're using an egcs version of gcc, disable deep profiling.
+case "$host" in i*86-*-*)
+    case "$mercury_cv_egcs" in yes)
+	mercury_cv_enable_deep_profiler=no ;;
+    esac ;;
+esac
 
 AC_MSG_RESULT($mercury_cv_enable_deep_profiler)
 ENABLE_DEEP_PROFILER=$mercury_cv_enable_deep_profiler
