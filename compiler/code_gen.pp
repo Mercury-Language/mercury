@@ -124,6 +124,8 @@ generate_pred_list_code(ModuleInfo, [PredId | PredIds],
 			Predicates) -->
 	{ getprop(codegen, codegen, Predicates0, Ref),
 	  erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics),
 #endif
 	{ list__append(Predicates0, Predicates1, Predicates) },
 		% and generate the code for the rest of the predicates
