@@ -322,7 +322,7 @@ case $status in 0)
 	# If you want to add extra grades to install on specific hosts,
 	# do it here.
     case $HOST in
-    	hg)	mmake install_grades LIBGRADES="asm_fast.gc.par" || status=1
+    	hg)	mmake install_grades LIBGRADES="asm_fast.par.gc" || status=1
 		;;
 	*)
 		;;
