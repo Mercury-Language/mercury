@@ -324,6 +324,7 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 	typecheck_goal(Body0, Body),
 	{ Clause = clause(Modes, Body, Context) },
 		% check for type ambiguities
+	type_info_set_context(Context),
 	typecheck_finish_clause.
 
 %-----------------------------------------------------------------------------%
@@ -2821,16 +2822,21 @@ write_context_and_pred_id(TypeInfo) -->
 report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	write_type_info_context(TypeInfo),
 	io__write_string("  error: ambiguous overloading causes type ambiguity.\n"),
-	{ type_info_get_context(TypeInfo, Context) },
-	prog_out__write_context(Context),
-	io__write_string("  Possible type assignments include:\n"),
 	{ type_info_get_varset(TypeInfo, VarSet) },
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ map__keys(VarTypes1, Vars1) },
 	report_ambiguity_error_2(Vars1, VarSet, TypeInfo,
-					TypeAssign1, TypeAssign2),
+			TypeAssign1, TypeAssign2, no, Found),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
+	{ type_info_get_context(TypeInfo, Context) },
+	( { Found = no } ->
+		prog_out__write_context(Context),
+		io__write_string("  One or more of the predicates or functions called\n"),
+		prog_out__write_context(Context),
+		io__write_string("  is declared in more than one module.\n"),
+		prog_out__write_context(Context),
+		io__write_string("  Try adding explicit module qualifiers.\n")
+	; { VerboseErrors = yes } ->
 		io__write_string("\tYou will need to add an explicit type qualification to resolve the\n"),
 		io__write_string("\ttype ambiguity.\n"),
 		io__write_string("\tThe way to add an explicit type qualification\n"),
@@ -2841,14 +2847,15 @@ report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	).
 
 :- pred report_ambiguity_error_2(list(var), varset, type_info,
-				type_assign, type_assign,
+				type_assign, type_assign, bool, bool,
 				io__state, io__state).
-:- mode report_ambiguity_error_2(in, in, type_info_no_io, in, in, di, uo)
-				is det.
+:- mode report_ambiguity_error_2(in, in, type_info_no_io, in, in, in, out,
+				di, uo) is det.
 
-report_ambiguity_error_2([], _VarSet, _, _TypeAssign1, _TypeAssign2) --> [].
-report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2)
-		-->
+report_ambiguity_error_2([], _VarSet, _, _TypeAssign1, _TypeAssign2,
+		Found, Found) --> [].
+report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2,
+		Found0, Found) -->
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ type_assign_get_var_types(TypeAssign2, VarTypes2) },
 	{ type_assign_get_type_bindings(TypeAssign1, TypeBindings1) },
@@ -2861,6 +2868,14 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2)
 		\+ identical_types(T1, T2)
 	} ->
 		{ type_info_get_context(TypeInfo, Context) },
+		( { Found0 = no } ->
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Possible type assignments include:\n")
+		;
+			[]
+		),
+		{ Found1 = yes },
 		prog_out__write_context(Context),
 		mercury_output_var(V, VarSet),
 		io__write_string(" :: "),
@@ -2871,10 +2886,10 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2)
 		mercury_output_term(T2, TVarSet2),
 		io__write_string("\n")
 	;
-		[]
+		{ Found1 = Found0 }
 	),
 	report_ambiguity_error_2(Vs, VarSet, TypeInfo,
-				TypeAssign1, TypeAssign2).
+			TypeAssign1, TypeAssign2, Found1, Found).
 
 	% Check whether two types are identical ignoring their
 	% term__contexts, i.e. whether they can be unified without
