@@ -6,12 +6,6 @@
 . ../handle_options
 . ../startup
 
-# We suppress the printing of the banner, because different workspaces
-# may get different version numbers printed in it. This would otherwise be
-# the source of irrelevant difference between the actual and expected outputs.
-MERCURY_SUPPRESS_MDB_BANNER=yes
-export MERCURY_SUPPRESS_MDB_BANNER
-
 mmake $jfactor depend || exit 1
 eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
 checkstatus=$?

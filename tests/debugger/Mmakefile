@@ -8,6 +8,14 @@ RM_C=:
 
 #-----------------------------------------------------------------------------#
 
+# We suppress the printing of the banner, because different workspaces
+# may get different version numbers printed in it. This would otherwise be
+# the source of irrelevant difference between the actual and expected outputs.
+
+MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
+
+#-----------------------------------------------------------------------------#
+
 DEBUGGER_PROGS=	\
 	debugger_regs			\
 	existential_type_classes	\
@@ -42,28 +50,28 @@ ALLPROGS=	$(PROGS)
 #-----------------------------------------------------------------------------#
 
 debugger_regs.out: debugger_regs debugger_regs.inp
-	mdb ./debugger_regs < debugger_regs.inp > debugger_regs.out
+	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out
 
 existential_type_classes.out: existential_type_classes \
 			existential_type_classes.inp
-	mdb ./existential_type_classes < existential_type_classes.inp > existential_type_classes.out
+	$(MDB) ./existential_type_classes < existential_type_classes.inp > existential_type_classes.out
 
 implied_instance.out: implied_instance implied_instance.inp
-	mdb ./implied_instance < implied_instance.inp > implied_instance.out
+	$(MDB) ./implied_instance < implied_instance.inp > implied_instance.out
 
 interpreter.out: interpreter interpreter.inp
-	mdb ./interpreter interpreter.m < interpreter.inp > interpreter.out
+	$(MDB) ./interpreter interpreter.m < interpreter.inp > interpreter.out
 
 multi_parameter.out: multi_parameter multi_parameter.inp
-	mdb ./multi_parameter < multi_parameter.inp > multi_parameter.out
+	$(MDB) ./multi_parameter < multi_parameter.inp > multi_parameter.out
 
 queens.out: queens queens.inp
-	mdb ./queens < queens.inp > queens.out
+	$(MDB) ./queens < queens.inp > queens.out
 
 # We ignore the result of this action because
 # the exit status of grep is not useful in this case
 mdb_command_test.out: queens mdb_command_test.inp
-	-mdb ./queens < mdb_command_test.inp \
+	-$(MDB) ./queens < mdb_command_test.inp \
 		| egrep "internal error in the trace help system" \
 		> mdb_command_test.out
 
