@@ -65,8 +65,10 @@ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) :-
 dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) :-
 	module_info_predids(ModuleInfo0, PredIds),
 	relation__init(DepGraph0),
+	dependency_graph__add_pred_nodes(PredIds, ModuleInfo0,
+				DepGraph0, DepGraph1),
 	dependency_graph__add_pred_arcs(PredIds, ModuleInfo0,
-				DepGraph0, DepGraph),
+				DepGraph1, DepGraph),
 	hlds__dependency_info_init(DepInfo0),
 	hlds__dependency_info_set_dependency_graph(DepInfo0, DepGraph,
 				DepInfo1),
@@ -110,6 +112,34 @@ dependency_graph__remove_imported_preds(ModuleInfo,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- pred dependency_graph__add_pred_nodes(list(pred_id), module_info,
+                        dependency_graph, dependency_graph).
+:- mode dependency_graph__add_pred_nodes(in, in, in, out) is det.
+
+dependency_graph__add_pred_nodes([], _ModuleInfo, DepGraph, DepGraph).
+dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo,
+                                        DepGraph0, DepGraph) :-
+        module_info_preds(ModuleInfo, PredTable),
+        map__lookup(PredTable, PredId, PredInfo),
+        pred_info_procids(PredInfo, ProcIds),
+        dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
+                DepGraph0, DepGraph1),
+        dependency_graph__add_pred_nodes(PredIds, ModuleInfo, DepGraph1, DepGraph).
+
+:- pred dependency_graph__add_proc_nodes(list(proc_id), pred_id, module_info,
+                        dependency_graph, dependency_graph).
+:- mode dependency_graph__add_proc_nodes(in, in, in, in, out) is det.
+
+dependency_graph__add_proc_nodes([], _PredId, _ModuleInfo, DepGraph, DepGraph).
+dependency_graph__add_proc_nodes([ProcId | ProcIds], PredId, ModuleInfo,
+                                                DepGraph0, DepGraph) :-
+	relation__add_element(DepGraph0, proc(PredId, ProcId), _, DepGraph1),
+        dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
+                                                DepGraph1, DepGraph).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- pred dependency_graph__add_pred_arcs(list(pred_id), module_info,
 			dependency_graph, dependency_graph).
 :- mode dependency_graph__add_pred_arcs(in, in, in, out) is det.
@@ -144,8 +174,8 @@ dependency_graph__add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
 
 	proc_info_goal(ProcInfo0, Goal),
 
-	dependency_graph__add_arcs_in_goal(Goal, proc(PredId, ProcId),
-					DepGraph0, DepGraph1),
+	relation__lookup_element(DepGraph0, proc(PredId, ProcId), Caller),
+	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph1),
 
 	dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo,
 						DepGraph1, DepGraph).
@@ -157,7 +187,7 @@ dependency_graph__add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
 % of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
-:- pred dependency_graph__add_arcs_in_goal(hlds__goal, pred_proc_id,
+:- pred dependency_graph__add_arcs_in_goal(hlds__goal, relation_key,
 					dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_goal(in, in, in, out) is det.
 
@@ -170,7 +200,7 @@ dependency_graph__add_arcs_in_goal(Goal - _GoalInfo, PPId,
 	% `Liveness' is the set of live variables, i.e. vars which
 	% have been referenced and will be referenced again.
 
-:- pred dependency_graph__add_arcs_in_goal_2(hlds__goal_expr, pred_proc_id,
+:- pred dependency_graph__add_arcs_in_goal_2(hlds__goal_expr, relation_key,
 					dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_goal_2(in, in, in, out) is det.
 
@@ -209,7 +239,8 @@ dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _, _),
 	->
 		DepGraph1 = DepGraph0
 	;
-		Callee = proc(PredId, ProcId),
+		relation__lookup_element(DepGraph0, proc(PredId, ProcId),
+				Callee),
 		relation__add(DepGraph0, Caller, Callee, DepGraph1)
 	),
 	DepGraph1 = DepGraph.
@@ -236,7 +267,7 @@ dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _, _), _,
 
 %-----------------------------------------------------------------------------%
 
-:- pred dependency_graph__add_arcs_in_list(list(hlds__goal), pred_proc_id,
+:- pred dependency_graph__add_arcs_in_list(list(hlds__goal), relation_key,
 			dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_list(in, in, in, out) is det.
 
@@ -247,7 +278,7 @@ dependency_graph__add_arcs_in_list([Goal|Goals], Caller, DepGraph0, DepGraph) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dependency_graph__add_arcs_in_cases(list(case), pred_proc_id,
+:- pred dependency_graph__add_arcs_in_cases(list(case), relation_key,
 			dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_cases(in, in, in, out) is det.
 
@@ -260,7 +291,7 @@ dependency_graph__add_arcs_in_cases([case(Cons, Goal)|Goals], Caller,
 
 %-----------------------------------------------------------------------------%
 
-:- pred dependency_graph__add_arcs_in_cons(cons_id, pred_proc_id,
+:- pred dependency_graph__add_arcs_in_cons(cons_id, relation_key,
 			dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_cons(in, in, in, out) is det.
 dependency_graph__add_arcs_in_cons(cons(_, _), _Caller,
@@ -273,11 +304,11 @@ dependency_graph__add_arcs_in_cons(float_const(_), _Caller,
 				DepGraph, DepGraph).
 dependency_graph__add_arcs_in_cons(pred_const(Pred, Proc), Caller,
 				DepGraph0, DepGraph) :-
-	Callee = proc(Pred, Proc),
+        relation__lookup_element(DepGraph0, proc(Pred, Proc), Callee),
 	relation__add(DepGraph0, Caller, Callee, DepGraph).
 dependency_graph__add_arcs_in_cons(code_addr_const(Pred, Proc), Caller,
 				DepGraph0, DepGraph) :-
-	Callee = proc(Pred, Proc),
+        relation__lookup_element(DepGraph0, proc(Pred, Proc), Callee),
 	relation__add(DepGraph0, Caller, Callee, DepGraph).
 dependency_graph__add_arcs_in_cons(base_type_info_const(_, _, _), _Caller,
 				DepGraph, DepGraph).
@@ -290,7 +321,7 @@ dependency_graph__write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
 	{ module_info_dependency_info(ModuleInfo, DepInfo) },
 	{ hlds__dependency_info_get_dependency_graph(DepInfo, DepGraph) },
-	{ relation__effective_domain(DepGraph, DomSet) },
+	{ relation__domain(DepGraph, DomSet) },
 	{ set__to_sorted_list(DomSet, DomList) },
 	dependency_graph__write_dependency_graph_2(DomList, DepGraph,
 			ModuleInfo),
@@ -305,14 +336,15 @@ dependency_graph__write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 dependency_graph__write_dependency_graph_2([], _DepGraph, _ModuleInfo) --> [].
 dependency_graph__write_dependency_graph_2([Node|Nodes], DepGraph, 
 			ModuleInfo) -->
-	{ relation__lookup_from(DepGraph, Node, SuccSet) },
+	{ relation__lookup_element(DepGraph, Node, NodeKey) },
+	{ relation__lookup_from(DepGraph, NodeKey, SuccSet) },
 	{ set__to_sorted_list(SuccSet, SuccList) },
 	dependency_graph__write_dependency_graph_3(SuccList, Node, DepGraph, 
 				ModuleInfo),
 	dependency_graph__write_dependency_graph_2(Nodes, DepGraph, 
 				ModuleInfo).
 
-:- pred dependency_graph__write_dependency_graph_3(list(pred_proc_id),
+:- pred dependency_graph__write_dependency_graph_3(list(relation_key),
 		pred_proc_id, dependency_graph, module_info, 
 		io__state, io__state).
 :- mode dependency_graph__write_dependency_graph_3(in, in, in, in, 
@@ -323,8 +355,9 @@ dependency_graph__write_dependency_graph_3([], _Node, _DepGraph,
 	[].
 dependency_graph__write_dependency_graph_3([S|Ss], Node, DepGraph, 
 				ModuleInfo) -->
-	{ Node = proc(PPredId, PProcId) },
-	{ S    = proc(CPredId, CProcId) },
+	{ relation__lookup_key(DepGraph, S, SNode) },
+	{ Node  = proc(PPredId, PProcId) },
+	{ SNode = proc(CPredId, CProcId) },
 	{ module_info_pred_proc_info(ModuleInfo, PPredId, PProcId,
 						PPredInfo, PProcInfo) },
 	{ module_info_pred_proc_info(ModuleInfo, CPredId, CProcId,
@@ -395,7 +428,7 @@ dependency_graph__write_prof_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
 	{ module_info_dependency_info(ModuleInfo, DepInfo) },
 	{ hlds__dependency_info_get_dependency_graph(DepInfo, DepGraph) },
-	{ relation__effective_domain(DepGraph, DomSet) },
+	{ relation__domain(DepGraph, DomSet) },
 	{ set__to_sorted_list(DomSet, DomList) },
 	dependency_graph__write_prof_dependency_graph_2(DomList, DepGraph,
 			ModuleInfo).
@@ -411,10 +444,11 @@ dependency_graph__write_prof_dependency_graph(ModuleInfo0, ModuleInfo) -->
 dependency_graph__write_prof_dependency_graph_2([], _DepGraph, _ModuleInfo) --> [].
 dependency_graph__write_prof_dependency_graph_2([Node|Nodes], DepGraph, 
 			ModuleInfo) -->
-	{ relation__lookup_from(DepGraph, Node, SuccSet) },
+	{ relation__lookup_element(DepGraph, Node, NodeKey) },
+	{ relation__lookup_from(DepGraph, NodeKey, SuccSet) },
 	{ set__to_sorted_list(SuccSet, SuccList) },
-	dependency_graph__write_prof_dependency_graph_3(SuccList, Node, DepGraph, 
-				ModuleInfo),
+	dependency_graph__write_prof_dependency_graph_3(SuccList, Node,
+				DepGraph, ModuleInfo),
 	dependency_graph__write_prof_dependency_graph_2(Nodes, DepGraph, 
 				ModuleInfo).
 
@@ -422,7 +456,7 @@ dependency_graph__write_prof_dependency_graph_2([Node|Nodes], DepGraph,
 % dependency_graph__write_prof_dependency_graph_3:
 %	Process all the callee's of a node.
 %	XXX We should only make the Caller label once and then pass it around.
-:- pred dependency_graph__write_prof_dependency_graph_3(list(pred_proc_id),
+:- pred dependency_graph__write_prof_dependency_graph_3(list(relation_key),
 		pred_proc_id, dependency_graph, module_info, 
 		io__state, io__state).
 :- mode dependency_graph__write_prof_dependency_graph_3(in, in, in, in, 
@@ -433,8 +467,9 @@ dependency_graph__write_prof_dependency_graph_3([], _Node, _DepGraph,
 	[].
 dependency_graph__write_prof_dependency_graph_3([S|Ss], Node, DepGraph, 
 				ModuleInfo) -->
-	{ Node = proc(PPredId, PProcId) }, % Caller
-	{ S    = proc(CPredId, CProcId) }, % Callee
+	{ relation__lookup_key(DepGraph, S, SNode) },
+	{ Node  = proc(PPredId, PProcId) }, % Caller
+	{ SNode = proc(CPredId, CProcId) }, % Callee
 	dependency_graph__output_label(ModuleInfo, PPredId, PProcId),
 	io__write_string("\t"),
 	dependency_graph__output_label(ModuleInfo, CPredId, CProcId),
