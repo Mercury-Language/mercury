@@ -26,7 +26,7 @@
 		.
 
 :- pred main(io__state, io__state).
-:- mode main(di, uo) is semidet.
+:- mode main(di, uo) is det.
 
 :- pred main6(expr, expr, expr, expr, io__state, io__state).
 :- mode main6(out, out, out, out, di, uo) is semidet.
@@ -36,7 +36,7 @@
 
 :- implementation.
 
-main --> main6(_, _, _, _).
+main --> ( main6(_, _, _, _) -> [] ; [] ).
 
 main6(E1, E2, E3, E4) -->
 	{ main4(E1, E2, E3, E4) },
@@ -133,34 +133,25 @@ divide10(E) :-
 	d(x / x / x / x / x / x / x / x / x / x / x, x, E).
 
 d(U + V, X, DU + DV) :-
-    true ,
     d(U, X, DU),
     d(V, X, DV).
 d(U - V, X, DU - DV) :-
-    true ,
     d(U, X, DU),
     d(V, X, DV).
 d(U * V, X, DU * V + U * DV) :-
-    true ,
     d(U, X, DU),
     d(V, X, DV).
 d(U / V, X, (DU * V - U * DV) / ^(V, 2)) :-
-    true ,
     d(U, X, DU),
     d(V, X, DV).
 d(^(U, N), X, DU * num(N) * ^(U, N1)) :-
-    true ,
     N1 is N - 1,
     d(U, X, DU).
 d(-U, X, -DU) :-
-    true ,
     d(U, X, DU).
 d(exp(U), X, exp(U) * DU) :-
-    true ,
     d(U, X, DU).
 d(log(U), X, DU / U) :-
-    true ,
     d(U, X, DU).
-d(x, x, num(1)) :-
-    true .
+d(x, x, num(1)).
 d(num(_), _, num(0)).

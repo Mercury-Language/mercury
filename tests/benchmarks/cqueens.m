@@ -7,25 +7,23 @@
 :- import_module list, int, io, printlist.
 
 :- pred main(io__state, io__state).
-:- mode main(di, uo) is nondet.
+:- mode main(di, uo) is multidet.
 
 :- pred main1(list(int)).
 :- mode main1(out) is nondet.
 
-:- pred main3(list(int), io__state, io__state).
-:- mode main3(out, di, uo) is nondet.
-
 :- implementation.
-
-main --> main3(_).
 
 main1(Out) :-	
 	data(Data),
 	queen(Data, Out).
 
-main3(Out) -->
-	{ data(Data), queen(Data, Out) },
-	print_list(Out).
+main -->
+	( { data(Data), queen(Data, Out) } ->
+		print_list(Out)
+	;
+		io__write_string("No solution\n")
+	).
 
 :- pred data(list(int)).
 :- mode data(out) is det.

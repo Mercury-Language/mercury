@@ -22,26 +22,23 @@
 :- import_module list, int, io, printlist.
 
 :- pred main(io__state, io__state).
-:- mode main(di, uo) is nondet.
+:- mode main(di, uo) is multidet.
 
 :- pred main1(list(int)).
 :- mode main1(out) is nondet.
 
-:- pred main3(list(int), io__state, io__state).
-:- mode main3(out, di, uo) is nondet.
-
 :- implementation.
-
-main --> main3(_).
-
 :- import_module require.
 
 main1(Out) :-	
 	crypt(Out).
 
-main3(Out) -->
-	{ main1(Out) },
-	print_list(Out).
+main -->
+	( { main1(Out) } ->
+		print_list(Out)
+	;
+		io__write_string("No solution\n")
+	).
 
 :- pred crypt(list(int)).
 :- mode crypt(out) is nondet.
@@ -63,15 +60,15 @@ main3(Out) -->
 
 :- pred odd(int).
 :- mode odd(in) is semidet.
-:- mode odd(out) is nondet.
+:- mode odd(out) is multidet.
 
 :- pred even(int).
 :- mode even(in) is semidet.
-:- mode even(out) is nondet.
+:- mode even(out) is multidet.
 
 :- pred lefteven(int).
 :- mode lefteven(in) is semidet.
-:- mode lefteven(out) is nondet.
+:- mode lefteven(out) is multidet.
 
 crypt([A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P]) :-
 	odd(A), even(B), even(C), even(E),

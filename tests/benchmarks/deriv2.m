@@ -26,9 +26,9 @@
 		.
 
 :- pred main(io__state, io__state).
-:- mode main(di, uo) is semidet.
+:- mode main(di, uo) is det.
 
-main --> main6(_, _, _, _).
+main --> ( main6(_, _, _, _) -> [] ; [] ).
 
 :- pred main6(expr, expr, expr, expr, io__state, io__state).
 :- mode main6(out, out, out, out, di, uo) is semidet.

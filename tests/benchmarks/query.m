@@ -16,29 +16,27 @@
 :- pred main1(quad).
 :- mode main1(out) is nondet.
 
-:- pred main3(quad, io__state, io__state).
-:- mode main3(out, di, uo) is nondet.
-
 :- pred main(io__state, io__state).
-:- mode main(di, uo) is nondet.
+:- mode main(di, uo) is multidet.
 
 :- implementation.
-
-main --> main3(_).
 
 main1(Out) :-	
 	query(Out).
 
-main3(Out) -->
-	{ main1(Out), Out = quad(C1, D1, C2, D2) },
-	io__write_string(C1),
-	io__write_string(" has density "),
-	io__write_int(D1),
-	io__write_string(" while "),
-	io__write_string(C2),
-	io__write_string(" has density "),
-	io__write_int(D2),
-	io__write_string("\n").
+main -->
+	( { main1(Out), Out = quad(C1, D1, C2, D2) } ->
+		io__write_string(C1),
+		io__write_string(" has density "),
+		io__write_int(D1),
+		io__write_string(" while "),
+		io__write_string(C2),
+		io__write_string(" has density "),
+		io__write_int(D2),
+		io__write_string("\n")
+	;
+		io__write_string("No solutions\n")
+	).
 
 :- pred query(quad).
 :- mode query(out) is nondet.
@@ -47,7 +45,7 @@ main3(Out) -->
 :- mode density(out, out) is nondet.
 
 :- pred pop(string, int).
-:- mode pop(out, out) is nondet.
+:- mode pop(out, out) is multidet.
 
 :- pred area(string, int).
 :- mode area(in, out) is semidet.
