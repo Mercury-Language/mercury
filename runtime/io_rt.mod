@@ -606,8 +606,8 @@ mercury__semidet_fail_0_0:
 /* from string.m */
 
 mercury__string__float_to_string_2_0:
-	{ char buf[100];
-	  sprintf(buf, "%f", word_to_float(r1));
+	{ char buf[500];
+	  sprintf(buf, "%g", word_to_float(r1));
 	  incr_hp_atomic(r2, (strlen(buf) + sizeof(Word)) / sizeof(Word));
 	  strcpy((char *)r2, buf);
 	}
