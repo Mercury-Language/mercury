@@ -1426,7 +1426,8 @@ add_implicit_imports(Items, _Globals, ImportDeps0, UseDeps0,
 		UseDeps = UseDeps1
 	).
 
-:- pred contains_tabling_pragma(item_list).
+:- pred contains_tabling_pragma(item_list::in) is semidet.
+
 contains_tabling_pragma([Item|Items]) :-
 	(
 		Item = pragma(Pragma) - _Context,

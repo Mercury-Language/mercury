@@ -1268,7 +1268,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 				% of such preds on a pred-by-pred basis.
 			{ module_info_globals(ModuleInfo0, Globals0) },
 			{ globals__get_trace_level(Globals0, TraceLevel) },
-			{ globals__set_trace_level(Globals0, none, Globals1) },
+			{ globals__set_trace_level_none(Globals0, Globals1) },
 			{ module_info_set_globals(ModuleInfo0, Globals1,
 				ModuleInfo1) },
 			{ copy(Globals1, Globals1Unique) },
@@ -1358,7 +1358,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, PredId, ModuleInfo3, ProcInfo6) },
 	globals__io_get_trace_level(TraceLevel),
-	( { TraceLevel \= none } ->
+	( { trace_level_is_none(TraceLevel) = no } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
 					PredId, ProcId, ModuleInfo3),
@@ -2085,7 +2085,7 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 
 mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_get_trace_level(TraceLevel),
-	( { TraceLevel \= none } ->
+	( { trace_level_is_none(TraceLevel) = no } ->
 		maybe_write_string(Verbose, "% Calculating goal paths..."),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(
@@ -2776,7 +2776,7 @@ mercury_compile__link_module_list(Modules) -->
 	    % create the initialization C file
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
 	    globals__io_get_trace_level(TraceLevel),
-	    { TraceLevel \= none ->
+            { trace_level_is_none(TraceLevel) = no ->
 		TraceOpt = "--trace "
 	    ;
 		TraceOpt = ""

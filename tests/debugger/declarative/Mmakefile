@@ -46,7 +46,7 @@ NONWORKING_DECLARATIVE_PROGS=	\
 	ite_2			\
 	solutions
 
-MCFLAGS = --trace deep --trace-decl
+MCFLAGS = --trace decl
 MLFLAGS = --trace
 C2INITFLAGS = --trace
 

@@ -252,7 +252,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			( CallModel = det ; CallModel = semidet ),
 			map__search(Procmap, RetLabel, Between0),
 			PrevInstr = livevals(Livevals),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			opt_util__filter_out_livevals(Between0, Between1),
@@ -265,7 +265,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			CallModel = semidet,
 			map__search(Forkmap, RetLabel, Between),
 			PrevInstr = livevals(Livevals),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			list__append(Between, [livevals(Livevals) - "",
@@ -279,7 +279,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			NewInstrs = [
@@ -303,7 +303,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			counter__allocate(LabelNum, Counter0, Counter1),
@@ -328,7 +328,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		;
 			% Short circuit the return label if possible.
 			map__search(Instrmap, RetLabel, RetInstr),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			jumpopt__final_dest(RetLabel, RetInstr, Instrmap,

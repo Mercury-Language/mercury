@@ -186,12 +186,6 @@
 		)
 	;	nondet_pragma.
 
-:- type trace_type
-	--->	deep_trace
-	;	shallow_trace(lval).	% This holds the saved value of a bool
-					% that is true iff we were called from
-					% code with full tracing.
-
 trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, Modes),
@@ -263,11 +257,12 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 
 trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
 	globals__get_trace_level(Globals, TraceLevel),
+	FixedSlots = trace_level_needs_fixed_slots(TraceLevel),
 	(
-		TraceLevel = none
-	->
+		FixedSlots = no,
 		ReservedSlots = 0
 	;
+		FixedSlots = yes,
 		Fixed = 3, % event#, call#, call depth
 		(
 			globals__lookup_bool_option(Globals, trace_redo, yes),
@@ -277,13 +272,12 @@ trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
 		;
 			RedoLayout = 0
 		),
-		( TraceLevel = deep ->
-			FromFull = 0
-		;
+		( trace_level_needs_from_full_slot(TraceLevel) = yes ->
 			FromFull = 1
+		;
+			FromFull = 0
 		),
-		globals__lookup_bool_option(Globals, trace_decl, TraceDecl),
-		( TraceDecl = yes ->
+		( trace_level_needs_decl_debug_slots(TraceLevel) = yes ->
 			DeclDebug = 2
 		;
 			DeclDebug = 0
@@ -300,7 +294,6 @@ trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
 
 trace__setup(Globals, TraceSlotInfo, TraceInfo) -->
 	code_info__get_proc_model(CodeModel),
-	{ globals__lookup_bool_option(Globals, trace_decl, TraceDecl) },
 	{ globals__lookup_bool_option(Globals, trace_redo, TraceRedo) },
 	(
 		{ TraceRedo = yes },
@@ -313,29 +306,40 @@ trace__setup(Globals, TraceSlotInfo, TraceInfo) -->
 		{ MaybeRedoLayout = no },
 		{ NextSlotAfterRedoLayout = 4 }
 	),
-	{ globals__get_trace_level(Globals, deep) ->
-		TraceType = deep_trace,
+	{ globals__get_trace_level(Globals, TraceLevel) },
+	{ trace_level_needs_from_full_slot(TraceLevel) = FromFullSlot },
+	{
+		FromFullSlot = no,
 		MaybeFromFullSlot = no,
-		NextSlotAfterFromFull = NextSlotAfterRedoLayout,
-		globals__lookup_bool_option(Globals, trace_internal,
-			TraceInternal)
+		MaybeFromFullSlotLval = no,
+		NextSlotAfterFromFull = NextSlotAfterRedoLayout
 	;
-		% Trace level must be shallow.
+		FromFullSlot = yes,
 		MaybeFromFullSlot = yes(NextSlotAfterRedoLayout),
 		( CodeModel = model_non ->
 			CallFromFullSlot = framevar(NextSlotAfterRedoLayout)
 		;
 			CallFromFullSlot = stackvar(NextSlotAfterRedoLayout)
 		),
-		TraceType = shallow_trace(CallFromFullSlot),
-		NextSlotAfterFromFull is NextSlotAfterRedoLayout + 1,
-		% Shallow traced procs never generate internal events.
-		TraceInternal = no
+		MaybeFromFullSlotLval = yes(CallFromFullSlot),
+		NextSlotAfterFromFull is NextSlotAfterRedoLayout + 1
 	},
-	{ globals__lookup_bool_option(Globals, trace_decl, yes) ->
+	{ trace_level_needs_internal_events(TraceLevel) = TraceInternal0 },
+	{
+		TraceInternal0 = no,
+		TraceInternal = no
+	;
+		TraceInternal0 = yes,
+		globals__lookup_bool_option(Globals, trace_internal,
+			TraceInternal)
+	},
+	{ trace_level_needs_decl_debug_slots(TraceLevel) = DeclDebugSlots },
+	{
+		DeclDebugSlots = yes,
 		MaybeDeclSlots = yes(NextSlotAfterFromFull),
 		NextSlotAfterDecl = NextSlotAfterFromFull + 2
 	;
+		DeclDebugSlots = no,
 		MaybeDeclSlots = no,
 		NextSlotAfterDecl = NextSlotAfterFromFull
 	},
@@ -355,13 +359,13 @@ trace__setup(Globals, TraceSlotInfo, TraceInfo) -->
 	},
 	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
 		MaybeDeclSlots, MaybeTrailSlot) },
-	{ init_trace_info(TraceType, TraceInternal, TraceDecl, MaybeTrailLvals,
-		MaybeRedoLayout, TraceInfo) }.
+	{ init_trace_info(TraceLevel, TraceInternal, MaybeFromFullSlotLval,
+		MaybeTrailLvals, MaybeRedoLayout, TraceInfo) }.
 
 trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	code_info__get_proc_model(CodeModel),
 	{
-	trace_info_get_trace_type(TraceInfo, TraceType),
+	trace_info_get_maybe_from_full_slot(TraceInfo, MaybeFromFullSlot),
 	trace_info_get_maybe_redo_layout_slot(TraceInfo, MaybeRedoLayoutSlot),
 	trace_info_get_maybe_trail_slots(TraceInfo, MaybeTrailLvals),
 	trace__event_num_slot(CodeModel, EventNumLval),
@@ -408,7 +412,7 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		FillAllSlots = FillFourSlots
 	),
 	(
-		TraceType = shallow_trace(CallFromFullSlot),
+		MaybeFromFullSlot = yes(CallFromFullSlot),
 		trace__stackref_to_string(CallFromFullSlot,
 			CallFromFullSlotStr),
 		string__append_list([
@@ -420,7 +424,7 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			"\t\t}"
 		], TraceStmt)
 	;
-		TraceType = deep_trace,
+		MaybeFromFullSlot = no,
 		TraceStmt = FillAllSlots
 	),
 	TraceCode = node([
@@ -436,17 +440,18 @@ trace__prepare_for_call(TraceCode) -->
 	{
 		MaybeTraceInfo = yes(TraceInfo)
 	->
-		trace_info_get_trace_type(TraceInfo, TraceType),
+		trace_info_get_maybe_from_full_slot(TraceInfo,
+			MaybeFromFullSlot),
 		trace__call_depth_slot(CodeModel, CallDepthLval),
 		trace__stackref_to_string(CallDepthLval, CallDepthStr),
 		string__append_list([
 			"MR_trace_reset_depth(", CallDepthStr, ");\n"
 		], ResetDepthStmt),
 		(
-			TraceType = shallow_trace(_),
+			MaybeFromFullSlot = yes(_),
 			ResetFromFullStmt = "MR_trace_from_full = FALSE;\n"
 		;
-			TraceType = deep_trace,
+			MaybeFromFullSlot = no,
 			ResetFromFullStmt = "MR_trace_from_full = TRUE;\n"
 		),
 		TraceCode = node([
@@ -493,7 +498,9 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 		},
 		(
 			{ ( Port = ite_cond ; Port = neg_enter ) },
-			{ trace_info_get_trace_decl(TraceInfo, no) }
+			{ trace_info_get_trace_level(TraceInfo, TraceLevel) },
+			{ trace_level_needs_neg_context_events(TraceLevel)
+				= no }
 		->
 			{ Code = empty }
 		;
@@ -512,7 +519,8 @@ trace__maybe_generate_negated_event_code(Goal, NegPort, Code) -->
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
 		{ trace_info_get_trace_internal(TraceInfo, yes) },
-		{ trace_info_get_trace_decl(TraceInfo, yes) }
+		{ trace_info_get_trace_level(TraceInfo, TraceLevel) },
+		{ trace_level_needs_neg_context_events(TraceLevel) = yes }
 	->
 		{
 			NegPort = neg_failure,
@@ -659,9 +667,10 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 trace__maybe_setup_redo_event(TraceInfo, Code) :-
 	trace_info_get_maybe_redo_layout_slot(TraceInfo, TraceRedoLayout),
 	( TraceRedoLayout = yes(_) ->
-		trace_info_get_trace_type(TraceInfo, TraceType),
+		trace_info_get_maybe_from_full_slot(TraceInfo,
+			MaybeFromFullSlot),
 		(
-			TraceType = shallow_trace(Lval),
+			MaybeFromFullSlot = yes(Lval),
 			% The code in the runtime looks for the from-full
 			% flag in framevar 5; see the comment before
 			% trace__reserved_slots.
@@ -673,7 +682,7 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
 					- "set up shallow redo event"
 			])
 		;
-			TraceType = deep_trace,
+			MaybeFromFullSlot = no,
 			Code = node([
 				mkframe(temp_frame(nondet_stack_proc),
 					do_trace_redo_fail_deep)
@@ -844,12 +853,11 @@ trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
 	% of a procedure.
 :- type trace_info
 	--->	trace_info(
-			trace_type,	% The trace level (which cannot be
-					% none), and if it is shallow, the
-					% lval of the slot that holds the
+			trace_level,	% The trace level.
+			bool,		% Whether we generate internal events.
+			maybe(lval),	% If the trace level is shallow,
+					% the lval of the slot that holds the
 					% from-full flag.
-			bool,		% The value of --trace-internal.
-			bool,		% The value of --trace-decl.
 			maybe(pair(lval)),
 					% If trailing is enabled, the lvals
 					% of the slots that hold the value
@@ -865,26 +873,28 @@ trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
 					% two events have identical layouts).
 		).
 
-:- pred init_trace_info(trace_type::in, bool::in, bool::in,
+:- pred init_trace_info(trace_level::in, bool::in, maybe(lval)::in,
 	maybe(pair(lval))::in, maybe(label)::in, trace_info::out) is det.
 
-:- pred trace_info_get_trace_type(trace_info::in, trace_type::out) is det.
+:- pred trace_info_get_trace_level(trace_info::in, trace_level::out) is det.
 :- pred trace_info_get_trace_internal(trace_info::in, bool::out) is det.
-:- pred trace_info_get_trace_decl(trace_info::in, bool::out) is det.
+:- pred trace_info_get_maybe_from_full_slot(trace_info::in, maybe(lval)::out)
+	is det.
 :- pred trace_info_get_maybe_trail_slots(trace_info::in,
 	maybe(pair(lval))::out) is det.
 :- pred trace_info_get_maybe_redo_layout_slot(trace_info::in,
 	maybe(label)::out) is det.
 
-init_trace_info(TraceType, TraceInternal, TraceDecl,
+init_trace_info(TraceLevel, TraceInternal, MaybeFromFullSlot,
 	MaybeTrailSlot, MaybeRedoLayoutSlot,
-	trace_info(TraceType, TraceInternal, TraceDecl,
+	trace_info(TraceLevel, TraceInternal, MaybeFromFullSlot,
 		MaybeTrailSlot, MaybeRedoLayoutSlot)).
 
-trace_info_get_trace_type(trace_info(TraceType, _, _, _, _), TraceType).
+trace_info_get_trace_level(trace_info(TraceLevel, _, _, _, _), TraceLevel).
+trace_info_get_maybe_from_full_slot(trace_info(_, _, MaybeFromFullSlot, _, _),
+	MaybeFromFullSlot).
 trace_info_get_trace_internal(trace_info(_, TraceInternal, _, _, _),
 	TraceInternal).
-trace_info_get_trace_decl(trace_info(_, _, TraceDecl, _, _), TraceDecl).
 trace_info_get_maybe_trail_slots(trace_info(_, _, _, MaybesTrailSlot, _),
 	MaybesTrailSlot).
 trace_info_get_maybe_redo_layout_slot(trace_info(_, _, _, _,

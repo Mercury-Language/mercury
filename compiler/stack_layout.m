@@ -285,7 +285,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	globals__lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
 	globals__lookup_bool_option(Globals, procid_stack_layout,
 		ProcIdLayout),
-	globals__lookup_bool_option(Globals, trace_decl, TraceDecl),
+	globals__get_trace_level(Globals, TraceLevel),
 	globals__have_static_code_addresses(Globals, StaticCodeAddr),
 	set_bbbtree__init(LayoutLabels0),
 
@@ -293,7 +293,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	map__init(LabelTables0),
 	StringTable0 = string_table(StringMap0, [], 0),
 	LayoutInfo0 = stack_layout_info(ModuleInfo0,
-		AgcLayout, TraceLayout, ProcIdLayout, TraceDecl,
+		AgcLayout, TraceLayout, ProcIdLayout, TraceLevel,
 		StaticCodeAddr, [], [], LayoutLabels0, [],
 		StringTable0, LabelTables0, map__init),
 	stack_layout__lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
@@ -763,12 +763,13 @@ stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
 	( { TraceLayout = yes } ->
 		stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
 			VarNameCount, VarNameVector),
-		stack_layout__get_trace_decl(TraceDecl),
+		stack_layout__get_trace_level(TraceLevel),
+		{ trace_level_needs_proc_body_reps(TraceLevel) = BodyReps },
 		(
-			{ TraceDecl = no },
+			{ BodyReps = no },
 			{ GoalRepRval = yes(const(int_const(0))) }
 		;
-			{ TraceDecl = yes },
+			{ BodyReps = yes },
 			stack_layout__get_module_info(ModuleInfo0),
 			{ prog_rep__represent_goal(Goal, InstMap, ModuleInfo0,
 				GoalRep) },
@@ -829,14 +830,15 @@ stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
 
 stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, Count, Vector)
 		-->
-	stack_layout__get_trace_decl(TraceDecl),
+	stack_layout__get_trace_level(TraceLevel),
+	{ trace_level_needs_all_var_names(TraceLevel) = NeedsAllNames },
 	(
-		{ TraceDecl = yes },
+		{ NeedsAllNames = yes },
 		{ varset__var_name_list(VarSet, VarNameList) },
 		{ list__map(stack_layout__convert_var_name_to_int,
 			VarNameList, VarNames) }
 	;
-		{ TraceDecl = no },
+		{ NeedsAllNames = no },
 		{ map__to_assoc_list(UsedVarNameMap, VarNames) }
 	),
 	(
@@ -1748,7 +1750,7 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 		agc_stack_layout	:: bool, % generate agc info?
 		trace_stack_layout	:: bool, % generate tracing info?
 		procid_stack_layout	:: bool, % generate proc id info?
-		trace_decl		:: bool, % declarative debugging?
+		trace_level		:: trace_level,
 		static_code_addresses	:: bool, % have static code addresses?
 		proc_layouts		:: list(comp_gen_c_data),
 		internal_layouts	:: list(comp_gen_c_data),
@@ -1785,7 +1787,7 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 :- pred stack_layout__get_procid_stack_layout(bool::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred stack_layout__get_trace_decl(bool::out,
+:- pred stack_layout__get_trace_level(trace_level::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 :- pred stack_layout__get_static_code_addresses(bool::out,
@@ -1813,7 +1815,7 @@ stack_layout__get_module_info(LI ^ module_info, LI, LI).
 stack_layout__get_agc_stack_layout(LI ^ agc_stack_layout, LI, LI).
 stack_layout__get_trace_stack_layout(LI ^ trace_stack_layout, LI, LI).
 stack_layout__get_procid_stack_layout(LI ^ procid_stack_layout, LI, LI).
-stack_layout__get_trace_decl(LI ^ trace_decl, LI, LI).
+stack_layout__get_trace_level(LI ^ trace_level, LI, LI).
 stack_layout__get_static_code_addresses(LI ^ static_code_addresses, LI, LI).
 stack_layout__get_proc_layout_data(LI ^ proc_layouts, LI, LI).
 stack_layout__get_internal_layout_data(LI ^ internal_layouts, LI, LI).

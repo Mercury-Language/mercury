@@ -145,7 +145,7 @@ generate_maybe_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
 				% modules, we must switch off the tracing
 				% of such preds on a pred-by-pred basis.
 			globals__get_trace_level(Globals0, TraceLevel),
-			globals__set_trace_level(Globals0, none, Globals1),
+			globals__set_trace_level_none(Globals0, Globals1),
 			module_info_set_globals(ModuleInfo0, Globals1,
 				ModuleInfo1),
 			generate_pred_code(ModuleInfo1, ModuleInfo2,
