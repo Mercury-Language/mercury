@@ -151,10 +151,11 @@ ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
 			MLDS_Decls, MLDS_Unif_Statements)
 	),
 	(
-			% Note that we can deallocate a cell even if the 
-			% unification fails, it is the responsibility of
-			% the structure reuse phase to ensure that this
-			% is safe.
+		%
+		% Note that we can deallocate a cell even if the
+		% unification fails, it is the responsibility of the
+		% structure reuse phase to ensure that this is safe.
+		%
 		{ CanCGC = yes },
 		ml_gen_var(Var, VarLval),
 		{ MLDS_Stmt = atomic(delete_object(VarLval)) },
