@@ -196,7 +196,6 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 
 % The debugger_response type is used for response sent
 % to the debugger process from the Mercury program being debugged.
-% This type would need to be extended.
 :- type debugger_response
 	% sending hello
 	--->	hello	% are you there?
@@ -238,17 +237,35 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
  		)
 	% responses to current_vars
 	;	current_vars(list(univ), list(string))
-	% reponse to current_nth_var
+	% responses to current_nth_var
 	;	current_nth_var(univ)
 	% responses to current_live_var_names
 	;	current_live_var_names(list(string), list(string))
 	% response sent when the last event is reached
 	;	last_event
-	% responses to abort_prog or no_trace
+	% responses to a successful browse request session
+	;	browser_end	
+	% responses to a successful mmc_option request
+	;	mmc_option_ok
+	% responses to requests that proceeded successfully
 	;	ok
-	% responses to anything
+	% responses to requests that went wrong
 	;	error(string)
-	.
+	% responses to stack 
+	% The protocol between the debugger and the debuggee is described is
+	% trace/mercury_trace_external.c.
+	;	level(int)				% stack level
+	;	proc(string, string, string, int, int)	% compiler generated proc
+	;	proc(string, string, int, int)		% user generated proc
+	;	def_module(string)
+	;	detail(int, int, int)
+	;	(pred)
+	;	(func)
+	;	det(string)
+	;	end_stack
+	% responses to stack_regs
+	;	stack_regs(int, int, int).
+
 
 %-----------------------------------------------------------------------------%
 %	send to the debugger (e.g. Opium) the wanted features.

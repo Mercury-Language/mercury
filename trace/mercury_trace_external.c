@@ -1029,18 +1029,16 @@ MR_get_var_number(Word debugger_request)
 **	  of the procedure)
 **	- the atom 'pred' or 'func' depending if the procedure is a function 
 **	  or not
-**	- proc('string:string'/long-long) (the name of the procedure)
-**		XXX this is not valid format for a Mercury term
+**	- proc(string, string, long, long) (the procedure)
 **	- det(string) (the determinism of the procedure)
-**	- def_module(string) (the name of the defining module if different from
-**	  the current one)
+**	- def_module(string) (the name of the defining module) if different from
+**	  the current one.
 **
 **    For each compiler generated procedures, the debuggee sends:
 **	- level(int) (as above)
 **	- detail(unsigned long, unsigned long, unsigned long) (as above)
-**	- proc('string for string:string'/long-long) (the name of the 
+**	- proc(string, string, string, long, long) (the name of the 
 **	  compiler-generated procedure)
-**		XXX this is not valid format for a Mercury term
 **	- det(string) (as above)
 **	- def_module(string) (as above)
 ** 3) The debuggee sends "end_stack"
@@ -1115,8 +1113,8 @@ MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
 		MR_send_message_to_socket_format(
-			/* XXX Names with ' may cause some problems here */
-			"proc('%s for %s:%s'/%ld-%ld).\n",
+			/* XXX Names with " may cause some problems here */
+			"proc(\"%s\",\"%s\",\"%s\",%ld,%ld).\n",
 			entry->MR_sle_comp.MR_comp_pred_name,
 			entry->MR_sle_comp.MR_comp_type_module,
 			entry->MR_sle_comp.MR_comp_type_name,
@@ -1142,8 +1140,8 @@ MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 		}
 		
 		MR_send_message_to_socket_format(
-			/* XXX Names with ' may cause some problems here */
-			"proc('%s:%s'/%ld-%ld).\n",
+			/* XXX Names with " may cause some problems here */
+			"proc(\"%s\",\"%s\",%ld,%ld).\n",
 			entry->MR_sle_user.MR_user_decl_module,
 			entry->MR_sle_user.MR_user_name,
 			(long) entry->MR_sle_user.MR_user_arity,
