@@ -5769,26 +5769,31 @@ io__setenv(Var, Value) :-
 	SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
 ").
 
-:- pragma foreign_proc("MC++", io__putenv(VarAndValue::in),
-		[will_not_call_mercury, tabled_for_io],
-"
-	/*
-	** Unfortunately there is no API in the .NET standard library
-	** for setting environment variables.  So we need to use
-	** platform-specific methods.  Currently we use the Posix function
-	** putenv(), which is also supported on Windows.
-	*/
-
-	/*
-	** Convert VarAndValue from a .NET managed string (System.String)
-	** to an unmanaged C string (`char *') on the unmanaged C heap,
-	** and then just invoke putenv().
-	*/
-	char __nogc *c_string = static_cast<char*>(
-			System::Runtime::InteropServices::Marshal::
-			StringToHGlobalAnsi(VarAndValue).ToPointer()); 
-	SUCCESS_INDICATOR = (putenv(c_string) == 0);
-").
+%
+% XXX Disabled until the following build error is fixed
+%  LIBCMT.lib(crt0.obj) : error LNK2019: unresolved external symbol _main
+%  referenced in function _mainCRTStartup
+%
+%:- pragma foreign_proc("MC++", io__putenv(VarAndValue::in),
+%		[will_not_call_mercury, tabled_for_io],
+%"
+%	/*
+%	** Unfortunately there is no API in the .NET standard library
+%	** for setting environment variables.  So we need to use
+%	** platform-specific methods.  Currently we use the Posix function
+%	** putenv(), which is also supported on Windows.
+%	*/
+%
+%	/*
+%	** Convert VarAndValue from a .NET managed string (System.String)
+%	** to an unmanaged C string (`char *') on the unmanaged C heap,
+%	** and then just invoke putenv().
+%	*/
+%	char __nogc *c_string = static_cast<char*>(
+%			System::Runtime::InteropServices::Marshal::
+%			StringToHGlobalAnsi(VarAndValue).ToPointer()); 
+%	SUCCESS_INDICATOR = (putenv(c_string) == 0);
+%").
 
 io__putenv(_) :-
 	% This version is only used for back-ends for which there is no
