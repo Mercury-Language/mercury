@@ -2515,7 +2515,9 @@ to_keep=""
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
     MERCURY_MSG("checking whether any C files need to be rebuilt...")
-    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c
+    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c \
+    		library/Mercury/cs/*.c compiler/Mercury/cs/*.c \
+		browser/Mercury/cs/*.c profiler/Mercury/cs/*.c 
     do
         case $c_file in
         */'*.c')
