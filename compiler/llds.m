@@ -250,7 +250,7 @@ output_c_procedure_list([P|Ps]) -->
 :- mode output_c_procedure(in, di, uo) is det.
 
 output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
-	io__write_string("/*-------------------------------------"),
+	io__write_string("\n/*-------------------------------------"),
 	io__write_string("------------------------------------*/\n"),
 	io__write_string("/* code for predicate "),
 	io__write_string(Name),

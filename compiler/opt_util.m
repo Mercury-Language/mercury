@@ -44,11 +44,26 @@
 :- pred opt_util__is_proceed_next(list(instruction), list(instruction)).
 :- mode opt_util__is_proceed_next(in, out) is semidet.
 
+ 	% Is a proceed instruction (i.e. a goto(succip) instruction)
+ 	% next in the instruction list, possibly preceded by an assignment
+	% to r1, a restoration of succip and a det stack frame removal?
+	% If yes, return the instructions up to the proceed.
+
+:- pred opt_util__is_sdproceed_next(list(instruction), list(instruction)).
+:- mode opt_util__is_sdproceed_next(in, out) is semidet.
+
+ 	% Is a succeed instruction (i.e. a goto(do_succeed) instruction)
+ 	% next in the instruction list? If yes, return the instructions
+	% up to the succed.
+
+:- pred opt_util__is_succeed_next(list(instruction), list(instruction)).
+:- mode opt_util__is_succeed_next(in, out) is semidet.
+
 	% Remove the livevals instruction from the list returned by
 	% opt_util__is_proceed_next.
 
-:- pred opt_util__proceed_no_livevals(list(instruction), list(instruction)).
-:- mode opt_util__proceed_no_livevals(in, out) is semidet.
+:- pred opt_util__filter_out_livevals(list(instruction), list(instruction)).
+:- mode opt_util__filter_out_livevals(in, out) is semidet.
 
 	% Check whether an instruction can possibly branch away.
 
@@ -160,26 +175,83 @@ opt_util__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 opt_util__is_proceed_next(Instrs0, Instrs_between) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
-	Instr1 = assign(succip, lval(stackvar(_))) - _,
-	opt_util__skip_comments_labels(Instrs2, Instrs3),
+	( Instr1 = assign(succip, lval(stackvar(_))) - _ ->
+		Instr1use = Instr1,
+		opt_util__skip_comments_labels(Instrs2, Instrs3)
+	;
+		Instr1use = comment("no succip restoration") - "",
+		Instrs3 = Instrs1
+	),
 	Instrs3 = [Instr3 | Instrs4],
-	Instr3 = decr_sp(_) - _,
-	opt_util__skip_comments_labels(Instrs4, Instrs5),
+	( Instr3 = decr_sp(_) - _ ->
+		Instr3use = Instr3,
+		opt_util__skip_comments_labels(Instrs4, Instrs5)
+	;
+		Instr3use = comment("no sp restoration") - "",
+		Instrs5 = Instrs3
+	),
 	Instrs5 = [Instr5 | Instrs6],
 	( Instr5 = livevals(_) - _ ->
-		opt_util__skip_comments_labels(Instrs6, Instrs7),
-		Instrs7 = [Instr7 | _],
-		Instr7 = goto(succip) - _,
-		Instrs_between = [Instr1, Instr3, Instr5]
-	; Instr5 = goto(succip) - _ ->
-		Instrs_between = [Instr1, Instr3]
+		Instr5use = Instr5,
+		opt_util__skip_comments_labels(Instrs6, Instrs7)
 	;
-		fail
-	).
+		Instr5use = comment("no livevals") - "",
+		Instrs7 = Instrs5
+	),
+	Instrs7 = [Instr7 | _],
+	Instr7 = goto(succip) - _,
+	Instrs_between = [Instr1use, Instr3use, Instr5use].
 
-opt_util__proceed_no_livevals([], []).
-opt_util__proceed_no_livevals([Instr0 | Instrs0], Instrs) :-
-	opt_util__proceed_no_livevals(Instrs0, Instrs1),
+opt_util__is_sdproceed_next(Instrs0, Instrs_between) :-
+	opt_util__skip_comments_labels(Instrs0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	( Instr1 = assign(succip, lval(stackvar(_))) - _ ->
+		Instr1use = Instr1,
+		opt_util__skip_comments_labels(Instrs2, Instrs3)
+	;
+		Instr1use = comment("no succip restoration") - "",
+		Instrs3 = Instrs1
+	),
+	Instrs3 = [Instr3 | Instrs4],
+	( Instr3 = decr_sp(_) - _ ->
+		Instr3use = Instr3,
+		opt_util__skip_comments_labels(Instrs4, Instrs5)
+	;
+		Instr3use = comment("no sp restoration") - "",
+		Instrs5 = Instrs3
+	),
+	Instrs5 = [Instr5 | Instrs6],
+	Instr5 = assign(reg(r(1)), const(_)) - _,
+	opt_util__skip_comments_labels(Instrs6, Instrs7),
+	Instrs7 = [Instr7 | Instrs8],
+	( Instr7 = livevals(_) - _ ->
+		Instr7use = Instr7,
+		opt_util__skip_comments_labels(Instrs8, Instrs9)
+	;
+		Instr7use = comment("no livevals") - "",
+		Instrs9 = Instrs7
+	),
+	Instrs9 = [Instr9 | _],
+	Instr9 = goto(succip) - _,
+	Instrs_between = [Instr1use, Instr3use, Instr5, Instr7use].
+
+opt_util__is_succeed_next(Instrs0, Instrs_between) :-
+	opt_util__skip_comments_labels(Instrs0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	( Instr1 = livevals(_) - _ ->
+		Instr1use = Instr1,
+		opt_util__skip_comments_labels(Instrs2, Instrs3)
+	;
+		Instr1use = comment("no livevals") - "",
+		Instrs3 = Instrs1
+	),
+	Instrs3 = [Instr3 | _],
+	Instr3 = goto(do_succeed) - _,
+	Instrs_between = [Instr1use].
+
+opt_util__filter_out_livevals([], []).
+opt_util__filter_out_livevals([Instr0 | Instrs0], Instrs) :-
+	opt_util__filter_out_livevals(Instrs0, Instrs1),
 	( Instr0 = livevals(_) - _Comment ->
 		Instrs = Instrs1
 	;
