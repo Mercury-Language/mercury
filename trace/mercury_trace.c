@@ -174,7 +174,8 @@ MR_trace_real(const MR_Label_Layout *layout)
 	switch (MR_trace_ctrl.MR_trace_cmd) {
 		case MR_CMD_COLLECT:
 		  {
-		        MR_Event_Info	event_info;
+#ifdef MR_USE_EXTERNAL_DEBUGGER
+			MR_Event_Info	event_info;
 			MR_Word		*saved_regs = event_info.MR_saved_regs;
 			int		max_r_num;
 			const char	*path;
@@ -211,6 +212,9 @@ MR_trace_real(const MR_Label_Layout *layout)
 				return MR_trace_event(&MR_trace_ctrl, MR_TRUE,
                                                layout, port, seqno, depth);
 			}
+#else
+			MR_fatal_error("attempt to use external debugger");
+#endif
 
 			goto check_stop_print;
 		  }	

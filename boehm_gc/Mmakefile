@@ -42,7 +42,7 @@ ifeq ("$(USING_MICROSOFT_CL_COMPILER)", "yes")
 
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
-	nmake -f NT_MAKEFILE gc.lib; \
+	nmake -f NT_MAKEFILE nodebug=1 gc.lib; \
 	cp gc.lib libgc.lib 
 
 clean_local:

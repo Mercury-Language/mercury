@@ -18,6 +18,8 @@ CC='CL /nologo' CPP='CL /nologo /E' configure
 configure defaults to using the hlc.gc grade as this is the only grade
 currently supported.
 
+Also ensure that the environment variable TMPDIR points to a valid directory.
+
 -----------------------------------------------------------------------------
 
 SOURCE INSTALLATION

@@ -489,18 +489,18 @@ mercury_check_for_functions \
 		sysconf getpagesize gethostname \
 		mprotect memalign memmove \
 		sigaction siginterrupt setitimer \
-		snprintf vsnprintf _vsnprintf strerror \
+		snprintf _snprintf vsnprintf _vsnprintf strerror \
 		open close dup dup2 fdopen fileno fstat stat isatty \
 		getpid setpgid fork execlp wait kill \
 		grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
-		access
+		access sleep
 
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_FOR_HEADERS( \
 		unistd.h sys/wait.h sys/siginfo.h sys/signal.h ucontext.h \
 		asm/sigcontext.h sys/param.h sys/time.h sys/times.h \
 		sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
-		sys/stropts.h)
+		sys/stropts.h windows.h)
 
 if test "$MR_HAVE_UCONTEXT_H" != 1; then
 	MERCURY_CHECK_FOR_HEADERS(sys/ucontext.h)
@@ -2779,6 +2779,25 @@ AC_TRY_LINK([
 if test "$mercury_cv_have_posix_times" = yes; then
 	AC_MSG_RESULT(yes)
 	AC_DEFINE(MR_HAVE_POSIX_TIMES)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#-----------------------------------------------------------------------------#
+#
+# Check for the WIN32 Sleep function
+#
+AC_MSG_CHECKING(for Sleep function)
+AC_CACHE_VAL(mercury_cv_have_capital_s_sleep,
+AC_TRY_LINK([
+	#include <windows.h>
+],[
+	Sleep(1);
+],[mercury_cv_have_capital_s_sleep=yes],[mercury_cv_have_capital_s_sleep=no]))
+
+if test "$mercury_cv_have_capital_s_sleep" = yes; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_HAVE_CAPITAL_S_SLEEP)
 else
 	AC_MSG_RESULT(no)
 fi

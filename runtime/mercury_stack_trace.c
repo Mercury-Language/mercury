@@ -21,6 +21,10 @@
 #include "mercury_trace_base.h"
 #include <stdio.h>
 
+#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
+  #define snprintf	_snprintf
+#endif
+
 #ifndef MR_HIGHLEVEL_CODE
 
 static  const char  *MR_step_over_nondet_frame(FILE *fp,

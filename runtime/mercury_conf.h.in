@@ -125,6 +125,7 @@
 **	MR_HAVE_TERMIOS_H	we have <termios.h>
 **	MR_HAVE_SYS_IOCTL_H	we have <sys/ioctl.h>
 **	MR_HAVE_SYS_STROPTS_H	we have <sys/stropts.h>
+**	MR_HAVE_WINDOWS_H	we have <windows.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -143,6 +144,7 @@
 #undef	MR_HAVE_TERMIOS_H
 #undef	MR_HAVE_SYS_IOCTL_H
 #undef	MR_HAVE_SYS_STROPTS_H
+#undef	MR_HAVE_WINDOWS_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -177,6 +179,7 @@
 **	MR_HAVE_KILL		we have the kill() function.
 ** 	MR_HAVE_GETHOSTNAME	we have the gethostname() function.
 **	MR_HAVE_SNPRINTF 	we have the snprintf() function.
+**	MR_HAVE__SNPRINTF 	we have the _snprintf() function.
 **	MR_HAVE_VSNPRINTF 	we have the vsnprintf() function.
 **	MR_HAVE__VSNPRINTF 	we have the _vsnprintf() function.
 **	MR_HAVE_SYSCONF     	we have the sysconf() system call.
@@ -211,6 +214,8 @@
 **	MR_HAVE_TCSETATTR	we have the tcsetattr() function.
 **	MR_HAVE_IOCTL		we have the ioctl() function.
 **	MR_HAVE_ACCESS		we have the access() function.
+**	MR_HAVE_SLEEP		we have the sleep() function.
+**	MR_HAVE_CAPITAL_S_SLEEP	we have the Sleep() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -220,6 +225,7 @@
 #undef	MR_HAVE_KILL
 #undef	MR_HAVE_GETHOSTNAME
 #undef	MR_HAVE_SNPRINTF
+#undef	MR_HAVE__SNPRINTF
 #undef	MR_HAVE_VSNPRINTF
 #undef	MR_HAVE__VSNPRINTF
 #undef	MR_HAVE_SYSCONF
@@ -251,6 +257,8 @@
 #undef	MR_HAVE_TCSETATTR
 #undef	MR_HAVE_IOCTL
 #undef	MR_HAVE_ACCESS
+#undef	MR_HAVE_SLEEP
+#undef	MR_HAVE_CAPITAL_S_SLEEP
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,6 +21,13 @@
 
 #include <stdlib.h>
 
+#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
+  #define snprintf	_snprintf
+#endif
+
+#if defined(MR_HAVE_SNPRINTF) || defined(MR_HAVE__SNPRINTF)
+  #define MR_HAVE_A_SNPRINTF
+#endif
 const char		*MR_spy_when_names[] =
 {
 	"all",
@@ -409,7 +416,7 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
 
 	if (new_size == old_size) {
 		/* there were no matching labels */
-#ifdef	MR_HAVE_SNPRINTF
+#ifdef	MR_HAVE_A_SNPRINTF
 		snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
 			"there is no event at %s:%d",
 			filename, linenumber);

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,6 +28,10 @@
 
 #ifdef MR_HAVE_SYS_TYPES_H
   #include <sys/types.h>	/* for getpid() */
+#endif
+
+#ifdef MR_HAVE_WINDOWS_H
+#include <windows.h>
 #endif
 
 #define MR_DEFAULT_SOURCE_WINDOW_COMMAND	"xterm -e"
@@ -338,8 +342,19 @@ MR_trace_source_attach(MR_Trace_Source_Server *server, int timeout,
 		/*
 		** XXX This is an inaccurate way of keeping time.
 		*/
+#ifdef MR_HAVE_SLEEP
 		sleep(1);
-
+#elif MR_HAVE_CAPITAL_S_SLEEP
+		Sleep(1000);
+#else
+        /*
+        ** busy-wait for a few billion cycles, which should hopefully
+        ** take a second or more.
+        */
+        volatile int i;
+        for (i = 0; i < 100000000; i++)
+        {}
+#endif
 		msg = MR_trace_source_check_server(real_server_cmd,
 				server->server_name, verbose);
 		if (msg == NULL) {

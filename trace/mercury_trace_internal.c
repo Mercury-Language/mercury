@@ -85,6 +85,10 @@
 #define	MDBRC_FILENAME		".mdbrc"
 #define	DEFAULT_MDBRC_FILENAME	"mdbrc"
 
+#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
+  #define snprintf	_snprintf
+#endif
+
 /*
 ** XXX We should consider whether all the static variables in this module
 ** should be thread local.
