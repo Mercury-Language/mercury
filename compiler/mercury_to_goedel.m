@@ -26,13 +26,10 @@
 :- module mercury_to_goedel.
 :- interface.
 
-	% A stupid hack - but don't remove this line. fjh.
-:- import_module int, char, prog_io, prog_out.
+:- import_module string, list, prog_io, io.
 
-:- import_module list, string, io.
-
-:- pred main_predicate(list(string), io__state, io__state).
-:- mode main_predicate(input, di, uo).
+:- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
+:- mode convert_to_goedel(input, input, di, uo).
 
 %-----------------------------------------------------------------------------%
 
@@ -54,83 +51,6 @@ option_write_line_numbers :- fail.
 option_handle_functor_overloading("character").
 
 %-----------------------------------------------------------------------------%
-	% Validate command line arguments
-
-main_predicate([]) --> usage.
-main_predicate([_]) --> usage.
-main_predicate([_, _]) --> usage.
-main_predicate([_, Progname, File | Files]) -->
-	process_files(Progname, [File| Files]).
-
-	% Display usage message
-:- pred usage(io__state, io__state).
-:- mode usage(di, uo).
-usage -->
-	io__progname("mercury_to_goedel", Progname),
-	io__stderr_stream(StdErr),
- 	io__write_string(StdErr, "Mercury-to-Goedel converter version 0.1\n"),
- 	io__write_string(StdErr, "Usage: "),
-	io__write_string(StdErr, Progname),
-	io__write_string(StdErr, " progname filenames\n").
-
-%-----------------------------------------------------------------------------%
-
-	% Open the file and process it.
-
-:- pred process_files(string, list(string), io__state, io__state).
-:- mode process_files(input, input, di, uo).
-process_files(Progname, Files) -->
-	process_files_2(Files, Progname, []).
-
-:- pred process_files_2(list(string), string, list(item_and_context),
-			io__state, io__state).
-:- mode process_files_2(input, input, input, di, uo).
-process_files_2([], Progname, Items) -->
-	convert_to_goedel(Progname, Items).
-process_files_2([File | Files], Progname, Items0) -->
-	io__stderr_stream(StdErr),
-	io__write_string(StdErr, "% Reading "),
-	io__write_string(StdErr, File),
-	io__write_string(StdErr, "..."),
-	io__flush_output(StdErr),
-	{ string__append(File, ".nl", FileName) },
-	io__gc_call(
-		prog_io__read_module(FileName, File, Result, Messages, Items)
-	),
-	process_files_3(Result, Messages, Items, Files, Progname, Items0).
-
-:- pred process_files_3(bool, message_list, list(item_and_context), 
-			list(string), string, list(item_and_context),
-			io__state, io__state).
-:- mode process_files_3(input, input, input, input, input, input, di, uo).
-
-process_files_3(no, Warnings, Items2, Files, Progname, Items) -->
-		% switch to stderr
-	io__stderr_stream(StdErr),
-	io__set_output_stream(StdErr, OldStream),
-		% print error messages
-	io__write_string(" successful parse.\n"),
-	prog_out__write_messages(Warnings),
-		% switch back to stdout
-	io__set_output_stream(OldStream, _),
-		% process the remaining files
-	{ append(Items, Items2, Items3) },
-	process_files_2(Files, Progname, Items3).
-
-process_files_3(yes, Errors, _, _, _, _) -->
-		% switch to stderr
-	io__stderr_stream(StdErr),
-	io__set_output_stream(StdErr, OldStream),
-		% print error messages
-	io__write_string(" parse error(s).\n"),
-	prog_out__write_messages(Errors),
-		% switch back to stdout
-	io__set_output_stream(OldStream, _).
-
-%-----------------------------------------------------------------------------%
-
-:- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
-:- mode convert_to_goedel(input, input, di, uo).
 
 convert_to_goedel(ProgName, Items) -->
 	io__stderr_stream(StdErr),
