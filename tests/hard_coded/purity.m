@@ -28,12 +28,15 @@ main -->
 
 :- impure pred set_x(int::in) is det.
 :- pragma c_code(set_x(X::in), will_not_call_mercury, "x=X;" ).
+:- pragma no_inline(set_x/1).
 
 :- impure pred incr_x is det.
 :- pragma c_code(incr_x, will_not_call_mercury, "++x;" ).
+:- pragma no_inline(incr_x/0).
 
 :- semipure pred get_x(int::out) is det.
 :- pragma c_code(get_x(X::out), will_not_call_mercury, "X=x;").
+:- pragma no_inline(get_x/1).
 
 
 :- impure pred set_x_inline(int::in) is det.
