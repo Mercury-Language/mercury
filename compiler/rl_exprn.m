@@ -165,9 +165,7 @@ rl_exprn__generate_key_range(ModuleInfo,
 	rl_exprn__generate_decls(ConstCode, InitCode, Decls, Info2, _Info),
 
 	rl_exprn__generate_fragments(ConstCode, InitCode, empty,
-		empty, ProjectCode, empty, CodeTree),
-	tree__flatten(CodeTree, Code0),
-	list__condense(Code0, Code).
+		empty, ProjectCode, empty, Code).
 
 :- pred rl_exprn__generate_bound(module_info::in, maybe(list(type))::in,
 	list(type)::in, tuple_num::in, bounding_tuple::in, byte_tree::out,
@@ -441,19 +439,11 @@ rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
 	rl_exprn__generate_decls(ConstCode, InitCode, Decls),
 
 	{ rl_exprn__generate_fragments(ConstCode, InitCode,
-		empty, EvalCode, ProjectCode, empty, Code0) },
-			
-	{ CodeTree =
-		tree(ConstCode,
-		tree(Code0,
-		node([rl_PROC_expr_end])
-	)) },
-	{ tree__flatten(CodeTree, CodeLists) },
-	{ list__condense(CodeLists, Code) }.
+		empty, EvalCode, ProjectCode, empty, Code) }.
 
 :- pred rl_exprn__generate_fragments(byte_tree::in, byte_tree::in,
 		byte_tree::in, byte_tree::in, byte_tree::in, byte_tree::in,
-		byte_tree::out) is det.
+		list(bytecode)::out) is det.
 
 rl_exprn__generate_fragments(DeclCode, InitCode, GroupInitCode,
 		EvalCode, ProjectCode, CleanupCode, Code) :-
@@ -474,8 +464,15 @@ rl_exprn__generate_fragments(DeclCode, InitCode, GroupInitCode,
 		),
 		[0 - InitCode, 1 - GroupInitCode, 2 - EvalCode,
 			3 - ProjectCode, 4 - CleanupCode],
-		empty, Code0),
-	Code = tree(DeclCode, Code0).
+		empty, FragmentsCode),
+
+	CodeTree =
+		tree(DeclCode,
+		tree(FragmentsCode,
+		node([rl_PROC_expr_end])
+	)),
+	tree__flatten(CodeTree, Code0),
+	list__condense(Code0, Code).
 
 :- pred rl_exprn__generate_decls(byte_tree::out, byte_tree::out,
 		list(type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
@@ -1442,10 +1439,8 @@ rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 
 	{ InitCode = tree(DeclCode, InitCode0) },
 	{ rl_exprn__generate_fragments(ConstCode, InitCode, GroupInitCode,
-		EvalCode, ProjectCode, empty, AggCode0) },
-	{ tree__flatten(AggCode0, AggCode1) },
-	{ list__condense(AggCode1, AggCode) }.
-			
+		EvalCode, ProjectCode, empty, AggCode) }.
+
 %-----------------------------------------------------------------------------%
 
 	% Generate code to initialise the accumulator for a group and
