@@ -427,6 +427,16 @@ and do something with each one.
 for symptoms involving HLDS data structures.
 For symptoms involving only structures defined in prog_data,
 use parse_tree__error_util.
+
+<dt> code_model.m:
+<dd> Defines a type for classifying determinisms
+in ways useful to the various backends,
+and utility predicates on that type.
+
+<dt> arg_info.m:
+<dd> Utility routines that the various backends use
+to analyze procedures' argument lists
+and decide on parameter passing conventions.
 </dl>
 
 <h4> 2. Semantic analysis and error checking </h4>
@@ -844,11 +854,6 @@ annotate the HLDS with information used for LLDS code generation,
 or perform LLDS-specific transformations on the HLDS:
 
 	<dl>
-		<dt> choosing registers for procedure arguments (arg_info.m)
-			<dd>
-			Currently uses one of two simple algorithms, but
-			we may add other algorithms later.
-
 		<dt> reducing the number of variables that have to be
 			saved across procedure calls (saved_vars.m)
 			<dd>
@@ -1525,6 +1530,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2004-03-19 10:19:37 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2004-03-23 11:02:45 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
