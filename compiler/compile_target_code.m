@@ -1165,9 +1165,9 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 				MercuryLibDirs0),
 		globals__io_lookup_string_option(fullarch, FullArch),
 		globals__io_get_globals(Globals),
-		{ compute_grade(Globals, Grade) },
+		{ grade_directory_component(Globals, GradeDir) },
 		{ MercuryLibDirs = list__map(
-				(func(LibDir) = LibDir/"lib"/Grade/FullArch),
+				(func(LibDir) = LibDir/"lib"/GradeDir/FullArch),
 				MercuryLibDirs0) },
 		globals__io_lookup_accumulating_option(link_libraries,
 				LinkLibrariesList0),
@@ -1246,7 +1246,7 @@ get_mercury_std_libs(StdLibDir, StdLibs) -->
 	globals__io_get_gc_method(GCMethod),
 	globals__io_lookup_string_option(library_extension, LibExt),
 	globals__io_get_globals(Globals),
-	{ compute_grade(Globals, Grade) },
+	{ grade_directory_component(Globals, GradeDir) },
 
 	%
 	% GC libraries.
@@ -1293,10 +1293,10 @@ get_mercury_std_libs(StdLibDir, StdLibs) -->
 		{ SharedTraceLibs = "" }
 	;
 		{ StaticTraceLibs =
-			StdLibDir/"lib"/Grade/FullArch/
+			StdLibDir/"lib"/GradeDir/FullArch/
 				("libmer_trace" ++ LibExt) ++
 			" " ++
-			StdLibDir/"lib"/Grade/FullArch/
+			StdLibDir/"lib"/GradeDir/FullArch/
 				("libmer_browser" ++ LibExt) },
 		{ SharedTraceLibs = "-lmer_trace -lmer_browser" }
 	),
@@ -1305,8 +1305,8 @@ get_mercury_std_libs(StdLibDir, StdLibs) -->
 	{ MercuryLinkage = "static" ->
 	    StdLibs = string__join_list(" ",
 		[StaticTraceLibs,
-		StdLibDir/"lib"/Grade/FullArch/("libmer_std" ++ LibExt),
-		StdLibDir/"lib"/Grade/FullArch/("libmer_rt" ++ LibExt),
+		StdLibDir/"lib"/GradeDir/FullArch/("libmer_std" ++ LibExt),
+		StdLibDir/"lib"/GradeDir/FullArch/("libmer_rt" ++ LibExt),
 		StaticGCLibs])
 	; MercuryLinkage = "shared" ->
 	    StdLibs = string__join_list(" ",
