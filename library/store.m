@@ -188,7 +188,8 @@ I wonder whether it is worth it?
 	% or if the argument is a `no_tag' type,
 	% then the behaviour is undefined, and probably harmful.
 
-:- pred store__unsafe_arg_ref(ref(T, S), int, ref(ArgT, S), store(S), store(S)).
+:- pred store__unsafe_arg_ref(ref(T, S), int, ref(ArgT, S),
+				store(S), store(S)).
 :- mode store__unsafe_arg_ref(in, in, out, di, uo) is det.
 
 :- pred store__unsafe_new_arg_ref(T, int, ref(ArgT, S), store(S), store(S)).
