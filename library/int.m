@@ -133,8 +133,17 @@
 	% X rem Y = X - (X // Y) * Y
 	% `mod' has nicer mathematical properties for negative X,
 	% but `rem' is typically more efficient.
+	%
+	% Throws a `math__domain_error' exception if the right operand
+	% is zero. See the comments at the top of math.m to find out how to
+	% disable domain checks.
 :- func int rem int = int.
 :- mode in rem in = uo is det.
+
+	% unchecked_rem(X, Y) is the same as X rem Y, but the
+	% behaviour is undefined if the right operand is zero.
+:- func unchecked_rem(int, int) = int.
+:- mode unchecked_rem(in, in) = uo is det.
 
 	% Left shift.
 	% X << Y returns X "left shifted" by Y bits. 
@@ -292,11 +301,21 @@ X // Y = Div :-
 		Div = unchecked_quotient(X, Y)
 	).
 
+% XXX uncomment this line when the change to make `rem' a non-builtin
+% is installed everywhere.
+%:- pragma inline(rem/2).
+X rem Y = Rem :-
+	( domain_checks, Y = 0 ->
+		throw(math__domain_error("int:rem"))
+	;
+		Rem = unchecked_rem(X, Y)
+	).
+
 	% This code is included here rather than just calling
 	% the version in math.m because we currently don't do
 	% transitive inter-module inlining, so code which uses
 	% `//'/2 but doesn't import math.m couldn't have the
-	% domain check optimized away..
+	% domain check optimized away.
 :- pred domain_checks is semidet.
 :- pragma inline(domain_checks/0).
 

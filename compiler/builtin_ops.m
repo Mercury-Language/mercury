@@ -191,8 +191,6 @@ builtin_translation("int", "*", 0, [X, Y, Z],
 	assign(Z, binary((*), leaf(X), leaf(Y)))).
 builtin_translation("int", "unchecked_quotient", 0, [X, Y, Z],
 	assign(Z, binary((/), leaf(X), leaf(Y)))).
-builtin_translation("int", "rem", 0, [X, Y, Z],
-	assign(Z, binary((mod), leaf(X), leaf(Y)))).
 builtin_translation("int", "unchecked_rem", 0, [X, Y, Z],
 	assign(Z, binary((mod), leaf(X), leaf(Y)))).
 builtin_translation("int", "unchecked_left_shift", 0, [X, Y, Z],

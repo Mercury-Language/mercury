@@ -186,11 +186,18 @@ evaluate_builtin_tri("int", "mod", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	YVal \= 0,
 	ZVal is XVal mod YVal.
 
+	% This isn't actually a builtin.
 evaluate_builtin_tri("int", "rem", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
 	YVal \= 0,
 	ZVal is XVal rem YVal.
+
+evaluate_builtin_tri("int", "unchecked_rem", 0, X, Y, Z, Z, int_const(ZVal)) :-
+	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
+	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	YVal \= 0,
+	ZVal is unchecked_rem(XVal, YVal).
 
 evaluate_builtin_tri("int", "unchecked_left_shift",
 		0, X, Y, Z, Z, int_const(ZVal)) :-

@@ -49,7 +49,10 @@ Changes to the Mercury standard library:
 
 * The predicates and functions in int.m, float, math.m and array.m now 
   generate exceptions rather than program aborts on domain errors and
-  out-of-bounds array accesses.
+  out-of-bounds array accesses. There are new functions
+  `float__unchecked_quotient/2', `int__unchecked_quotient/2' and
+  `int__unchecked_rem/2' for which no checking is performed and the
+  behaviour if the right operand is zero is undefined.
 
 * We've removed the buggy reverse modes of the arithmetic functions in
   float.m and extras/complex_numbers (because of rounding errors the
