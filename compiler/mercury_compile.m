@@ -2485,7 +2485,14 @@ mercury_compile__link_module_list(Modules) -->
 		    { join_string_list(LinkLibraryDirectoriesList, "-L", "",
 				" ", LinkLibraryDirectories) },
 		    globals__io_lookup_accumulating_option(link_libraries,
-				LinkLibrariesList),
+				LinkLibrariesOptions),
+		    { TraceLevel \= none ->
+		    	LinkLibrariesList = LinkLibrariesOptions
+		    ;
+		    	list__append(LinkLibrariesOptions,
+				["mer_trace", "mer_browser"],
+				LinkLibrariesList)
+		    },
 		    { join_string_list(LinkLibrariesList, "-l", "", " ",
 				LinkLibraries) },
 		    globals__io_lookup_accumulating_option(link_objects,
