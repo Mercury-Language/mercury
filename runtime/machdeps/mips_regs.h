@@ -18,14 +18,14 @@
 
 #define NUM_REAL_REGS 8
 
-reg 	Word	mr0 __asm__("s0");
-reg	Word	mr1 __asm__("s1");
-reg	Word	mr2 __asm__("s2");
-reg	Word	mr3 __asm__("s3");
-reg	Word	mr4 __asm__("s4");
-reg	Word	mr5 __asm__("s5");
-reg	Word	mr6 __asm__("s6");
-reg	Word	mr7 __asm__("s7");
+register	Word	mr0 __asm__("s0");
+register	Word	mr1 __asm__("s1");
+register	Word	mr2 __asm__("s2");
+register	Word	mr3 __asm__("s3");
+register	Word	mr4 __asm__("s4");
+register	Word	mr5 __asm__("s5");
+register	Word	mr6 __asm__("s6");
+register	Word	mr7 __asm__("s7");
 
 #define save_registers()	(	\
 	fake_reg[0] = mr0,			\

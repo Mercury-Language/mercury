@@ -34,9 +34,9 @@
 
 #define NUM_REAL_REGS 3
 
-reg	Word	mr0 __asm__("esi");	/* sp */
-reg	Word	mr1 __asm__("ebx");	/* succip */
-reg	Word	mr2 __asm__("edi");	/* r1 */
+register	Word	mr0 __asm__("esi");	/* sp */
+register	Word	mr1 __asm__("ebx");	/* succip */
+register	Word	mr2 __asm__("edi");	/* r1 */
 
 #define save_registers()	(		\
 	fake_reg[0] = mr0,			\

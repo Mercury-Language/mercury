@@ -25,16 +25,16 @@
 
 #define NUM_REAL_REGS 10
 
-reg 	Word	mr0 __asm__("i0");
-reg	Word	mr1 __asm__("i1");	/* potentially non-clobbered */
-reg	Word	mr2 __asm__("i2");	/* potentially non-clobbered */
-reg	Word	mr3 __asm__("i3");	/* potentially non-clobbered */
-reg	Word	mr4 __asm__("i4");	/* potentially non-clobbered */
-reg	Word	mr5 __asm__("i5");	/* potentially non-clobbered */
-reg	Word	mr6 __asm__("l1");
-reg	Word	mr7 __asm__("l2");
-reg	Word	mr8 __asm__("l3");
-reg	Word	mr9 __asm__("l4");
+register 	Word	mr0 __asm__("i0");
+register	Word	mr1 __asm__("i1");	/* potentially non-clobbered */
+register	Word	mr2 __asm__("i2");	/* potentially non-clobbered */
+register	Word	mr3 __asm__("i3");	/* potentially non-clobbered */
+register	Word	mr4 __asm__("i4");	/* potentially non-clobbered */
+register	Word	mr5 __asm__("i5");	/* potentially non-clobbered */
+register	Word	mr6 __asm__("l1");
+register	Word	mr7 __asm__("l2");
+register	Word	mr8 __asm__("l3");
+register	Word	mr9 __asm__("l4");
 
 /* we could use l5, l6, and l7 as well, */
 /* but for the moment at least I'll leave them for gcc */
