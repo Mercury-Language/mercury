@@ -10,7 +10,11 @@
 % TODO:
 %	- RTTI for debugging (module_layout, proc_layout, internal_layout)
 %	- trail ops
-%	- foreign language interfacing (trd: what does this mean?)
+%	- foreign language interfacing for languages other than C
+%	  (handle `user_foreign_code' and `foreign_code_decl' --
+%	  actually perhaps this should be done in an earlier pass,
+%	  in which case the only thing that would need to be done here
+%	  is to change some calls to sorry/2 to unexpected/2).
 %	- packages, classes and inheritance
 %	  (currently we just generate all classes as structs)
 
@@ -2764,7 +2768,7 @@ mlds_output_rval(mem_addr(Lval)) -->
 	mlds_output_lval(Lval).
 
 mlds_output_rval(self(_)) -->
-	{ error("mlds_to_c: self rval encountered.\n") }.
+	io__write_string("this").
 
 :- pred mlds_output_unop(mlds__unary_op, mlds__rval, io__state, io__state).
 :- mode mlds_output_unop(in, in, di, uo) is det.
