@@ -446,7 +446,8 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 	% Return the primary tag, if any, for a cons_tag.
 	% A return value of `no' means the primary tag is unknown.
-	% A return value of `yes(0)' means the primary tag is always zero.
+	% A return value of `yes(N)' means the primary tag is N.
+	% (`yes(0)' also corresponds to the case where there no primary tag.)
 :- func get_primary_tag(cons_tag) = maybe(int).
 
 	% Return the secondary tag, if any, for a cons_tag.
