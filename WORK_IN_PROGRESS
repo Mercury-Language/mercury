@@ -4,6 +4,10 @@ Work in progress
 The compiler contains some code for the following features,
 which are not yet completed:
 
+* We have added support for dynamic link libraries (DLLs) on Windows.
+  This is not yet enabled by default because it has not yet been tested
+  properly.
+
 * There is a new `--generate-bytecode' option --
   but the bytecode interpreter isn't working yet.
 
