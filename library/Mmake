@@ -8,7 +8,7 @@
 # for building the Mercury libraries.
 
 MERCURY_DIR=..
-include ../Mmake.common
+include $(MERCURY_DIR)/Mmake.common
 
 MAIN_TARGET=mercury
 
@@ -84,8 +84,8 @@ library.mods	: $(library.mods)
 tags		: $(library.ms)
 	mtags $(library.ms)
 
-library.stats : ../compiler/source_stats.awk $(library.ms)
-	awk -f ../compiler/source_stats.awk `vpath_find $(library.ms)` > $@
+library.stats : $(COMPILER_DIR)/source_stats.awk $(library.ms)
+	awk -f $(COMPILER_DIR)/source_stats.awk `vpath_find $(library.ms)` > $@
 	
 #-----------------------------------------------------------------------------#
 
