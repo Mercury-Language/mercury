@@ -5,6 +5,6 @@ then
 else
 	rm -f CLEAN > /dev/null 2>&1
 	mmake $gradeopt -j realclean_local > /dev/null 2>&1
-	/bin/rm *.d *.dep *.int *.int2 *.int3 *.date .date3 > /dev/null 2>&1
+	/bin/rm *.d *.dep *.int *.int2 *.int3 *.date *.date3 > /dev/null 2>&1
 	/bin/rm *.opt *.optdate *.trans_opt *.trans_opt_date > /dev/null 2>&1
 fi
