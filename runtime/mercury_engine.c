@@ -56,6 +56,7 @@ MR_Debug_Flag_Info	MR_debug_flag_info[MR_MAXFLAG] = {
 	{ "ordreg",	MR_ORDINARY_REG_FLAG },
 	{ "anyreg",	MR_ANY_REG_FLAG },
 	{ "printlocn",	MR_PRINT_LOCN_FLAG },
+	{ "notnearest",	MR_NOT_NEAREST_FLAG },
 	{ "detail",	MR_DETAILFLAG }
 };
 

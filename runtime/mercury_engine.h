@@ -61,8 +61,9 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_ORDINARY_REG_FLAG	15
 #define	MR_ANY_REG_FLAG 	16
 #define	MR_PRINT_LOCN_FLAG 	17
-#define	MR_DETAILFLAG		18
-#define	MR_MAXFLAG		19
+#define	MR_NOT_NEAREST_FLAG 	18
+#define	MR_DETAILFLAG		19
+#define	MR_MAXFLAG		20
 /* MR_DETAILFLAG should be the last real flag */
 
 /*
@@ -116,6 +117,10 @@ extern	MR_bool	MR_debugflag[];
 **
 ** MR_printlocndebug controls whether we want to get diagnostics showing how
 ** the runtime system looks up locations recorded in RTTI data structures.
+**
+** MR_not_nearest_flag, if set, tells minimal model tabling to save stack
+** segments only to the nearest generator, not to the nearest common ancestor
+** of the consumer being suspended and its generator.
 */
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
@@ -136,6 +141,7 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_ordregdebug		MR_debugflag[MR_ORDINARY_REG_FLAG]
 #define	MR_anyregdebug		MR_debugflag[MR_ANY_REG_FLAG]
 #define	MR_printlocndebug	MR_debugflag[MR_PRINT_LOCN_FLAG]
+#define	MR_not_nearest_flag	MR_debugflag[MR_NOT_NEAREST_FLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 
 typedef struct {

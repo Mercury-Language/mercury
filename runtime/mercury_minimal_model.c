@@ -465,7 +465,11 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
 
     MR_restore_transient_registers();
 
-    common_ancestor_fr = nearest_common_ancestor(MR_curfr, generator_fr);
+    if (MR_not_nearest_flag) {
+        common_ancestor_fr = generator_fr;
+    } else {
+        common_ancestor_fr = nearest_common_ancestor(MR_curfr, generator_fr);
+    }
     start_non = MR_prevfr_slot(common_ancestor_fr) + 1;
     start_det = MR_table_detfr_slot(common_ancestor_fr) + 1;
 
