@@ -1618,8 +1618,9 @@ mercury_compile__maybe_detect_common_struct(HLDS0, HLDS) -->
 
 mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(inlining, Inlining),
+	globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	(
-		{ Inlining = yes }
+		{ Inlining = yes, ErrorCheckOnly = no }
 	->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Inlining..."),
