@@ -1,8 +1,8 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % File: int.m.
 % Main authors: conway, fjh.
@@ -183,49 +183,77 @@
 	% on this machine.
 :- pred int__bits_per_int(int::out) is det.
 
-/* The following routines are builtins that the compiler knows about.
-   Don't use them; use the functions above.
-   These will go away in some future release.
-*/
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
+:- implementation.
+:- interface.
+
+	% Everything below here will not appear in the
+	% Mercury Library Reference Manual.
+
+%-----------------------------------------------------------------------------%
+
+%
+% The following routines are builtins that the compiler knows about.
+% Don't use them; use the functions above.
+% These will go away in some future release.
+%
+
+:- pragma obsolete(builtin_plus/3).
 :- pred builtin_plus(int, int, int).
 :- mode builtin_plus(in, in, uo) is det.
 
+:- pragma obsolete(builtin_unary_plus/2).
 :- pred builtin_unary_plus(int, int).
 :- mode builtin_unary_plus(in, uo) is det.
 
+:- pragma obsolete(builtin_minus/3).
 :- pred builtin_minus(int, int, int).
 :- mode builtin_minus(in, in, uo) is det.
 
+:- pragma obsolete(builtin_unary_minus/2).
 :- pred builtin_unary_minus(int, int).
 :- mode builtin_unary_minus(in, uo) is det.
 
+:- pragma obsolete(builtin_times/3).
 :- pred builtin_times(int, int, int).
 :- mode builtin_times(in, in, uo) is det.
 
+:- pragma obsolete(builtin_div/3).
 :- pred builtin_div(int, int, int).
 :- mode builtin_div(in, in, uo) is det.
 
+:- pragma obsolete(builtin_mod/3).
 :- pred builtin_mod(int, int, int).
 :- mode builtin_mod(in, in, uo) is det.
 
+:- pragma obsolete(builtin_left_shift/3).
 :- pred builtin_left_shift(int, int, int).
 :- mode builtin_left_shift(in, in, uo) is det.
 
+:- pragma obsolete(builtin_right_shift/3).
 :- pred builtin_right_shift(int, int, int).
 :- mode builtin_right_shift(in, in, uo) is det.
 
+:- pragma obsolete(builtin_bit_or/3).
 :- pred builtin_bit_or(int, int, int).
 :- mode builtin_bit_or(in, in, uo) is det.
 
+:- pragma obsolete(builtin_bit_and/3).
 :- pred builtin_bit_and(int, int, int).
 :- mode builtin_bit_and(in, in, uo) is det.
 
+:- pragma obsolete(builtin_bit_xor/3).
 :- pred builtin_bit_xor(int, int, int).
 :- mode builtin_bit_xor(in, in, uo) is det.
 
+:- pragma obsolete(builtin_bit_neg/2).
 :- pred builtin_bit_neg(int, int).
 :- mode builtin_bit_neg(in, uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require.
