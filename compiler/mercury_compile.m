@@ -2209,9 +2209,8 @@ mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
 
 % The `--high-level-C' MLDS-based alternative backend
 
-:- pred mercury_compile__mlds_backend(string, module_info,
-		io__state, io__state).
-:- mode mercury_compile__mlds_backend(in, in, di, uo) is det.
+:- pred mercury_compile__mlds_backend(module_info, io__state, io__state).
+:- mode mercury_compile__mlds_backend(in, di, uo) is det.
 
 mercury_compile__mlds_backend(HLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
