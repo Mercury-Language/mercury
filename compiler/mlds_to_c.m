@@ -27,14 +27,28 @@
 :- import_module io.
 
 	% output_mlds(MLDS, Suffix):
-	%	Output C code to the appropriate C file and header file.
+	%	Output C code the the appropriate C file and
+	%	C declarations to the appropriate header file.
 	%	The file names are determined by the module name,
 	%	with the specified Suffix appended at the end.
 	%	(The suffix is used for debugging dumps.  For normal
 	%	output, the suffix should be the empty string.)
-	%	
 :- pred mlds_to_c__output_mlds(mlds, string, io__state, io__state).
 :- mode mlds_to_c__output_mlds(in, in, di, uo) is det.
+
+	% output_header_file(MLDS, Suffix):
+	%	Output C declarations for the procedures (etc.) in the
+	%	specified MLDS module to the appropriate .mih header file.
+	%	See output_mlds for the meaning of Suffix.
+:- pred mlds_to_c__output_header_file(mlds, string, io__state, io__state).
+:- mode mlds_to_c__output_header_file(in, in, di, uo) is det.
+
+	% output_c_file(MLDS, Suffix):
+	%	Output C code for the specified MLDS module to the
+	%	appropriate C file.
+	%	See output_mlds for the meaning of Suffix.
+:- pred mlds_to_c__output_c_file(mlds, string, io__state, io__state).
+:- mode mlds_to_c__output_c_file(in, in, di, uo) is det.
 
 	% output an MLDS context in C #line format. 
 	% this is useful for other foreign language interfaces such as
@@ -56,7 +70,8 @@
 :- import_module backend_libs__rtti.		% for rtti__addr_to_string.
 :- import_module ml_backend__rtti_to_mlds.	% for mlds_rtti_type_name.
 :- import_module hlds__hlds_pred.	% for pred_proc_id.
-:- import_module ml_backend__ml_code_util.	% for ml_gen_public_field_decl_flags, which is
+:- import_module ml_backend__ml_code_util.
+				% for ml_gen_public_field_decl_flags, which is
 				% used by the code that handles derived classes
 :- import_module ml_backend__ml_type_gen.	% for ml_gen_type_name
 :- import_module backend_libs__foreign.
@@ -78,36 +93,43 @@
 %-----------------------------------------------------------------------------%
 
 mlds_to_c__output_mlds(MLDS, Suffix) -->
-	%
-	% We write the header file out to <module>.h.tmp and then
-	% call `update_interface' to move the <module>.h.tmp file to
-	% <module>.h; this avoids updating the timestamp on the `.h'
-	% file if it hasn't changed.
-	% 
 	% We output the source file before outputting the header,
 	% since the Mmake dependencies say the header file depends
 	% on the source file, and so if we wrote them out in the
 	% other order this might lead to unnecessary recompilation
 	% next time Mmake is run.
 	%
+	% XXX at some point we should also handle output of any non-C
+	%     foreign code (Ada, Fortran, etc.) to appropriate files.
+	%
+	output_c_file(MLDS, Suffix),
+	output_header_file(MLDS, Suffix).
+
+mlds_to_c__output_c_file(MLDS, Suffix) -->
 	{ ModuleName = mlds__get_module_name(MLDS) },
-	module_name_to_file_name(ModuleName, ".c" ++ Suffix, yes,
-		SourceFile),
+	module_name_to_file_name(ModuleName, ".c" ++ Suffix, yes, SourceFile),
+	{ Indent = 0 },
+	output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)).
+
+	%
+	% Generate the header file
+	%
+mlds_to_c__output_header_file(MLDS, Suffix) -->
+	%
+	% We write the header file out to <module>.mih.tmp and then
+	% call `update_interface' to move the <module>.mih.tmp file to
+	% <module>.mih; this avoids updating the timestamp on the `.mih'
+	% file if it hasn't changed.
+	% 
+	{ ModuleName = mlds__get_module_name(MLDS) },
 	module_name_to_file_name(ModuleName, ".mih" ++ Suffix ++ ".tmp",
 		yes, TmpHeaderFile),
 	module_name_to_file_name(ModuleName, ".mih" ++ Suffix, yes,
 		HeaderFile),
 	{ Indent = 0 },
-	output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)),
 	output_to_file(TmpHeaderFile, mlds_output_hdr_file(Indent, MLDS)),
 	update_interface(HeaderFile).
-	%
-	% XXX at some point we should also handle output of any non-C
-	%     foreign code (Ada, Fortran, etc.) to appropriate files.
 
-	%
-	% Generate the header file
-	%
 :- pred mlds_output_hdr_file(indent, mlds, io__state, io__state).
 :- mode mlds_output_hdr_file(in, in, di, uo) is det.
 

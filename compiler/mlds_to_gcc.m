@@ -236,49 +236,57 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		% We only handle C currently, so we just look up C
 	{ ForeignCode = map__lookup(AllForeignCode, c) },
 	(
-		% Check if there is any code from pragma foreign_code,
+		% Check if there is any C code from pragma foreign_code,
 		% pragma export, or pragma foreign_proc declarations.
+		% We only want to generate a `.c' file if there is C foreign
+		% code.
 		%
-		% We don't call mlds_to_c to generate `.c' and `.h' files
-		% if the module contains only `pragma foreign_decls'.
-		% This is needed to avoid calling mlds_to_c when intermodule
+		% We don't generate a `.c' file if the
+		% module contains only `pragma foreign_decls' . This
+		% is needed to avoid generating a `.c' file when intermodule
 		% optimization is enabled and `pragma foreign_decls'
 		% declarations have been read in from the `.opt' files
 		% and have propagated through to the MLDS.
-		% Calling mlds_to_c when the module itself doesn't contain
+		% Creating a C file when the module itself doesn't contain
 		% C code breaks things, since Mmake won't compile and link
 		% in the generated `.c' files, but those files contain the
 		% definition of the `*__init_type_tables()' functions that
 		% are referenced by `*_init.c'.
 		%
 		% XXX This is not quite right, since if the module itself
-		% contains `pragma foreign_decls', the `.h' file might
+		% contains `pragma foreign_decls', the `.c' file might
 		% be needed.  But the Mercury standard library needs
 		% intermodule optimization enabled for `make install'
 		% to work.  A better fix would be to ignore foreign_decls
-		% that were defined in other modules, but to call mlds_to_c
-		% for foreign_decls that were defined in the module that
-		% we're compiling.
+		% that were defined in other modules, but to create the `.c'
+		% file if there are foreign_decls that were defined in the
+		% module that we're compiling.
 		{ ForeignCode = mlds__foreign_code(_Decls, _Imports, [], []) },
 		{ ForeignDefns = [] }
 	->
 		{ ContainsCCode = no },
-		% there's no foreign code, so we don't need to
-		% do anything special
 		{ NeedInitFn = yes }
 	;
-		% create a new MLDS containing just the foreign code
-		% (with all definitions made public, so we can use
-		% them from the asm file!) and pass that to mlds_to_c.m
-		{ ForeignMLDS = mlds(ModuleName, AllForeignCode, Imports,
-			list__map(make_public, ForeignDefns)) },
-		mlds_to_c__output_mlds(ForeignMLDS, ""),
 		% XXX currently the only foreign code we handle is C;
 		%     see comments above (at the declaration for
 		%     mlds_to_c__compile_to_asm)
 		{ ContainsCCode = yes },
-		{ NeedInitFn = no }
+		{ NeedInitFn = no },
+		% create a new MLDS containing just the foreign code
+		% (with all definitions made public, so we can use
+		% them from the asm file!) and pass that to mlds_to_c.m
+		% to create the .mih file, and if necessary the .c file.
+		{ ForeignMLDS = mlds(ModuleName, AllForeignCode, Imports,
+			list__map(make_public, ForeignDefns)) },
+		mlds_to_c__output_c_file(ForeignMLDS, "")
 	),
+	%
+	% Generate the .mih C header file for this module.
+	% We do this regardless of whether the module contains C code,
+	% because this is needed to allow interoperability between modules
+	% compiled with --target asm and --target c.
+	%
+	mlds_to_c__output_header_file(MLDS, ""),
 
 	%
 	% We generate things in this order:

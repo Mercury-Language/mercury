@@ -3902,16 +3902,17 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ".mihs = "),
 	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 	( { HighLevelCode = yes } ->
-		( { Target = asm } ->
-			% For the `--target asm' back-end, we only
-			% generate `.mih' files for modules that
-			% contain C code
-			write_dependencies_list(
-				modules_that_need_headers(Modules, DepsMap),
-				".mih", DepStream)
-		; { Target = c } ->
+		( { Target = c ; Target = asm } ->
 			% For the `--target c' MLDS back-end, we
-			% generate `.mih' files for every module
+			% generate `.mih' files for every module.
+			% Likewise for the `--target asm' back-end.
+			% (For the `--target asm' back-end,
+			% we previously used to do that only for modules
+			% that contain C code, but this caused trouble
+			% when trying to interoperate between compiled
+			% with `--target c' and code compiled with
+			% `--target asm', so now we generate them
+			% unconditionally.)
 			write_compact_dependencies_list(Modules,
 					"$(mihs_subdir)", ".mih",
 					Basis, DepStream)
