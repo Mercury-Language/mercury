@@ -1,6 +1,6 @@
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1999 The University of Melbourne.
-% This file may only be copied under the terms of the GNU General
+% This file may only be copied under the terms of the GNU Library General 
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
