@@ -65,6 +65,8 @@ cd /home/mercury/public/test_mercury/scripts;
 cvs checkout mercury/tools/test_mercury
 cp mercury/tools/test_mercury $tmpscript
 
+cvs checkout mercury/tools/generate_index_html
+
 #-----------------------------------------------------------------------------#
 
 echo run_test $HOST

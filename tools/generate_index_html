@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# generate_index_html
+#
+# Generates index.html files with a link to each file in the directory, and
+# recursively for its sub-directories.
+#
+# Note: This script recursively calls itself, so it had better be in its
+# own path!
+#
+
+INDEX=index.html.$HOST
+
+trap 'rm -f $INDEX; exit 1' 1 2 3 13 15
+
+    #
+    # These are the standard locations for apache's icons
+    #
+img_txt="<img src=/icons/text.gif>"
+img_dir="<img src=/icons/folder.gif>"
+img_bak="<img src=/icons/back.gif>"
+
+echo "<H1>Directory listing</H1>" > $INDEX
+echo "<hr>" >> $INDEX
+echo "$img_bak <a href=../>Parent Directory</a><br>" >> $INDEX
+
+for file in * 
+do
+    if [ $file != index.html ]  && [ $file != README ]
+    then
+        if [ -d $file ]
+        then
+    	    (cd $file && generate_index_html)
+            echo "$img_dir <a href=$file/>$file/</a><br>" >> $INDEX
+        else
+	    size=`ls -l $file | awk '{ print $5; }'`
+	    sizekb=`expr $size / 1024`
+            echo "$img_txt <a href=$file>$file</a> ($sizekb kilobytes)<br>" >> $INDEX
+        fi
+    fi
+done
+
+echo "<hr>" >> $INDEX
+
+if [ -f README ]
+then
+    echo "<pre>" >> $INDEX
+    cat README >> $INDEX
+    echo "</pre>" >> $INDEX
+fi
+
+chmod a+r,g+w $INDEX
+chgrp mercury $INDEX
+
+mv $INDEX index.html
+

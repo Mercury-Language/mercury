@@ -110,6 +110,7 @@ esac
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
 BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
 BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases
+BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files/
 
 STABLE=$DIR/mercury-latest-stable
 UNSTABLE=$DIR/mercury-latest-unstable
@@ -658,5 +659,13 @@ case $status in
 	exit 1
 	;;
 esac
+
+# Now rebuild the index files on the www site
+(
+PATH="`pwd`:$PATH"
+export PATH
+cd $BETA_WEBDIR_TOP
+generate_index_html
+)
 
 #-----------------------------------------------------------------------------#
