@@ -97,5 +97,5 @@ static int hash_name(const void *name)
 
 static int hash_addr(const void *addr)
 {
-	return (((int) ((const Code *) addr)) >> 3) % ENTRY_TABLE_SIZE;
+	return (((unsigned int) ((const Code *) addr)) >> 3) % ENTRY_TABLE_SIZE;
 }
