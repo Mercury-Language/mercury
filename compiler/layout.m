@@ -9,16 +9,19 @@
 % used by the parts of the runtime system that need to look at the stacks
 % (and sometimes the registers) and make sense of their contents. The parts
 % of the runtime system that need to do this include exception handling,
-% the debugger, and (eventually) the accurate garbage collector.
+% the debugger, the deep profiler and (eventually) the accurate garbage
+% collector.
 %
-% When output by layout_out.m, values of most these types will correspond to
-% the C types defined in runtime/mercury_stack_layout.h; the documentation of
-% those types can be found there. The names of the C types are listed next to
-% the function symbol whose arguments represent their contents.
+% When output by layout_out.m, values of most these types will correspond
+% to the C types defined in runtime/mercury_stack_layout.h or
+% runtime/mercury_deep_profiling.h; the documentation of those types
+% can be found there. The names of the C types are listed next to the
+% function symbol whose arguments represent their contents.
 %
-% The code to generate values of these types is in stack_layout.m.
+% The code to generate values of these types is in stack_layout.m and
+% deep_profiling.m.
 %
-% This module is should be, but as yet isn't, independent of whether we are
+% This module should be, but as yet isn't, independent of whether we are
 % compiling to LLDS or MLDS.
 %
 % Author: zs.
@@ -29,7 +32,7 @@
 
 :- interface.
 
-:- import_module prog_data, trace_params, llds.
+:- import_module prog_data, trace_params, llds, rtti, hlds_goal.
 :- import_module std_util, list, assoc_list.
 
 :- type layout_data
@@ -61,6 +64,40 @@
 			closure_file_name	:: string,
 			closure_line_number	:: int,
 			closure_goal_path	:: string
+		)
+	;	proc_static_data(		% defines MR_ProcStatic
+			proc_static_id		:: rtti_proc_label,
+			proc_static_file_name	:: string,
+			call_site_statics	:: list(call_site_static_data)
+		).
+
+:- type call_site_static_data			% defines MR_CallSiteStatic
+	--->	normal_call(
+			normal_callee		:: rtti_proc_label,
+			normal_type_subst	:: string,
+			normal_filename		:: string,
+			normal_line_number	:: int,
+			normal_goal_path	:: goal_path
+		)
+	;	special_call(
+			special_filename	:: string,
+			special_line_number	:: int,
+			special_goal_path	:: goal_path
+		)
+	;	higher_order_call(
+			higher_order_filename	:: string,
+			ho_line_number		:: int,
+			ho_goal_path		:: goal_path
+		)
+	;	method_call(
+			method_filename		:: string,
+			method_line_number	:: int,
+			method_goal_path	:: goal_path
+		)
+	;	callback(
+			callback_filename	:: string,
+			callback_line_number	:: int,
+			callback_goal_path	:: goal_path
 		).
 
 :- type label_var_info
@@ -126,7 +163,9 @@
 	;	module_layout_string_table(module_name)
 	;	module_layout_file_vector(module_name)
 	;	module_layout_proc_vector(module_name)
-	;	module_layout(module_name).
+	;	module_layout(module_name)
+	;	proc_static(rtti_proc_label)
+	;	proc_static_call_sites(rtti_proc_label).
 
 :- type label_vars
 	--->	label_has_var_info

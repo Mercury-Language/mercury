@@ -75,7 +75,7 @@ extern void ML_report_full_memory_stats(void);
 
 :- pragma foreign_proc("C", report_full_memory_stats, will_not_call_mercury,
 "
-#ifdef	PROFILE_MEMORY
+#ifdef	MR_MPROF_PROFILE_MEMORY
 	ML_report_full_memory_stats();
 #endif
 ").
@@ -100,7 +100,7 @@ extern void ML_report_full_memory_stats(void);
 #include ""mercury_heap_profile.h""
 #include ""mercury_wrapper.h""		/* for MR_time_at_last_stat */
 
-#ifdef PROFILE_MEMORY
+#ifdef MR_MPROF_PROFILE_MEMORY
 
   #define MEMORY_PROFILE_SIZE	10	/* Profile the top 10 entries */
 
@@ -147,7 +147,7 @@ extern void ML_report_full_memory_stats(void);
 
   static int  ML_memory_profile_compare_final(const void *, const void *);
 
-#endif /* PROFILE_MEMORY */
+#endif /* MR_MPROF_PROFILE_MEMORY */
 
 void
 ML_report_stats(void)
@@ -156,7 +156,7 @@ ML_report_stats(void)
 #ifndef MR_HIGHLEVEL_CODE
 	MercuryEngine		*eng;
 #endif
-#ifdef PROFILE_MEMORY
+#ifdef MR_MPROF_PROFILE_MEMORY
 	int			num_table_entries;
 	ML_memprof_report_entry	table[MEMORY_PROFILE_SIZE];
 #endif
@@ -181,9 +181,11 @@ ML_report_stats(void)
 #ifndef MR_HIGHLEVEL_CODE
 	fprintf(stderr, "" D Stack: %.3fk, ND Stack: %.3fk,"",
 		((char *) MR_sp - (char *)
-			eng->context.detstack_zone->min) / 1024.0,
+			eng->MR_eng_context.MR_ctxt_detstack_zone->min)
+				/ 1024.0,
 		((char *) MR_maxfr - (char *)
-			eng->context.nondetstack_zone->min) / 1024.0
+			eng->MR_eng_context.MR_ctxt_nondetstack_zone->min)
+				/ 1024.0
 	);
 #endif
 
@@ -221,7 +223,7 @@ ML_report_stats(void)
 	);
 #endif
 
-#ifdef	PROFILE_MEMORY
+#ifdef	MR_MPROF_PROFILE_MEMORY
 
 	/*
 	** Update the overall counter (this needs to be done first,
@@ -257,12 +259,12 @@ ML_report_stats(void)
 		ML_overall_counter.words_at_period_end
 	);
 
-#endif /* PROFILE_MEMORY */
+#endif /* MR_MPROF_PROFILE_MEMORY */
 
 	fprintf(stderr, ""]\\n"");
 }
 
-#ifdef PROFILE_MEMORY
+#ifdef MR_MPROF_PROFILE_MEMORY
 
 void
 ML_report_full_memory_stats(void)
@@ -557,7 +559,7 @@ ML_memory_profile_compare_final(const void *i1, const void *i2)
 	}
 }
 
-#endif /* PROFILE_MEMORY */
+#endif /* MR_MPROF_PROFILE_MEMORY */
 ").
 
 %-----------------------------------------------------------------------------%

@@ -75,45 +75,45 @@ MR_init_engine(MercuryEngine *eng)
 	*/
 
 #ifndef	CONSERVATIVE_GC
-	eng->heap_zone = MR_create_zone("heap", 1, MR_heap_size,
+	eng->MR_eng_heap_zone = MR_create_zone("heap", 1, MR_heap_size,
 			MR_next_offset(), MR_heap_zone_size,
 			MR_default_handler);
-	eng->e_hp = eng->heap_zone->min;
+	eng->MR_eng_hp = eng->heap_zone->min;
 
 #ifdef	NATIVE_GC
-	eng->heap_zone2 = MR_create_zone("heap2", 1, MR_heap_size,
+	eng->MR_eng_heap_zone2 = MR_create_zone("heap2", 1, MR_heap_size,
 			MR_next_offset(), MR_heap_zone_size,
 			MR_default_handler);
 
   #ifdef MR_DEBUG_AGC_PRINT_VARS
-	eng->debug_heap_zone = MR_create_zone("debug_heap", 1,
+	eng->MR_eng_debug_heap_zone = MR_create_zone("debug_heap", 1,
 			MR_debug_heap_size, MR_next_offset(),
 			MR_debug_heap_zone_size, MR_default_handler);
   #endif
 #endif
 
-	eng->solutions_heap_zone = MR_create_zone("solutions_heap", 1,
+	eng->MR_eng_solutions_heap_zone = MR_create_zone("solutions_heap", 1,
 			MR_solutions_heap_size, MR_next_offset(),
 			MR_solutions_heap_zone_size, MR_default_handler);
-	eng->e_sol_hp = eng->solutions_heap_zone->min;
+	eng->MR_eng_sol_hp = eng->solutions_heap_zone->min;
 
-	eng->global_heap_zone = MR_create_zone("global_heap", 1,
+	eng->MR_eng_global_heap_zone = MR_create_zone("global_heap", 1,
 			MR_global_heap_size, MR_next_offset(),
 			MR_global_heap_zone_size, MR_default_handler);
-	eng->e_global_hp = eng->global_heap_zone->min;
+	eng->MR_eng_global_hp = eng->global_heap_zone->min;
 #endif
 
 #ifdef	MR_THREAD_SAFE
-	eng->owner_thread = pthread_self();
-	eng->c_depth = 0;
-	eng->saved_owners = NULL;
+	eng->MR_eng_owner_thread = pthread_self();
+	eng->MR_eng_c_depth = 0;
+	eng->MR_eng_saved_owners = NULL;
 #endif
 
 	/*
 	** Finally, allocate an initialize context (Mercury thread)
 	** in the engine and initialize the per-context stuff.
 	*/
-	eng->this_context = MR_create_context();
+	eng->MR_eng_this_context = MR_create_context();
 }
 
 /*---------------------------------------------------------------------------*/
@@ -124,7 +124,7 @@ void MR_finalize_engine(MercuryEngine *eng)
 	** XXX there are lots of other resources in MercuryEngine that
 	** might need to be finalized.  
 	*/
-	MR_destroy_context(eng->this_context);
+	MR_destroy_context(eng->MR_eng_this_context);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -212,20 +212,20 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 
 	jmp_buf		curr_jmp_buf;
 	jmp_buf		* volatile prev_jmp_buf;
-#if defined(PROFILE_TIME)
+#if defined(MR_MPROF_PROFILE_TIME)
 	MR_Code		* volatile prev_proc;
 #endif
 
 	/*
-	** Preserve the value of MR_ENGINE(e_jmp_buf) on the C stack.
+	** Preserve the value of MR_ENGINE(MR_eng_jmp_buf) on the C stack.
 	** This is so "C calls Mercury which calls C which calls Mercury" etc.
 	** will work.
 	*/
 
 	MR_restore_transient_registers();
 
-	prev_jmp_buf = MR_ENGINE(e_jmp_buf);
-	MR_ENGINE(e_jmp_buf) = &curr_jmp_buf;
+	prev_jmp_buf = MR_ENGINE(MR_eng_jmp_buf);
+	MR_ENGINE(MR_eng_jmp_buf) = &curr_jmp_buf;
 
 	/*
 	** Create an exception handler frame on the nondet stack
@@ -250,7 +250,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 
 #ifdef	MR_DEBUG_JMPBUFS
 		printf("engine caught jmp %p %p\n",
-			prev_jmp_buf, MR_ENGINE(e_jmp_buf));
+			prev_jmp_buf, MR_ENGINE(MR_eng_jmp_buf));
 #endif
 
 		MR_debugmsg0("...caught longjmp\n");
@@ -259,11 +259,11 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 		** set MR_prof_current_proc to be the caller proc again
 		** (if time profiling is enabled),
 		** restore the registers (since longjmp may clobber them),
-		** and restore the saved value of MR_ENGINE(e_jmp_buf).
+		** and restore the saved value of MR_ENGINE(MR_eng_jmp_buf).
 		*/
 		MR_update_prof_current_proc(prev_proc);
 		MR_restore_registers();
-		MR_ENGINE(e_jmp_buf) = prev_jmp_buf;
+		MR_ENGINE(MR_eng_jmp_buf) = prev_jmp_buf;
 		if (catch_exceptions) {
 			/*
 			** Figure out whether or not we got an exception.
@@ -272,7 +272,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 			** done, so all we have to do here is to return the
 			** exception.
 			*/
-			exception = MR_ENGINE(e_exception);
+			exception = MR_ENGINE(MR_eng_exception);
 			if (exception != NULL) {
 				return exception;
 			}
@@ -294,7 +294,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	}
 
 
-  	MR_ENGINE(e_jmp_buf) = &curr_jmp_buf;
+  	MR_ENGINE(MR_eng_jmp_buf) = &curr_jmp_buf;
   
 	/*
 	** If call profiling is enabled, and this is a case of
@@ -302,8 +302,8 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	** then we record the Mercury caller / Mercury callee pair
 	** in the table of call counts, if possible.
 	*/
-#ifdef PROFILE_CALLS
-  #ifdef PROFILE_TIME
+#ifdef MR_MPROF_PROFILE_CALLS
+  #ifdef MR_MPROF_PROFILE_TIME
 	if (MR_prof_current_proc != NULL) {
 		MR_PROFILE(entry_point, MR_prof_current_proc);
 	}
@@ -314,7 +314,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	** we don't know who the caller is.
 	*/ 
   #endif
-#endif /* PROFILE_CALLS */
+#endif /* MR_MPROF_PROFILE_CALLS */
 
 	/*
 	** If time profiling is enabled, then we need to
@@ -333,7 +333,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	** have any local variables and this code needs the
 	** `prev_proc' local variable.
 	*/
-#ifdef PROFILE_TIME
+#ifdef MR_MPROF_PROFILE_TIME
 	prev_proc = MR_prof_current_proc;
 	MR_set_prof_current_proc(entry_point);
 #endif
@@ -431,17 +431,19 @@ dummy_label:
 	** owned by this thread.
 	*/
 #ifdef	MR_THREAD_SAFE
-	MR_ENGINE(c_depth)++;
+	MR_ENGINE(MR_eng_c_depth)++;
 {
 	MercuryThreadList *new_element;
 
 	new_element = MR_GC_NEW(MercuryThreadList);
-	new_element->thread = MR_ENGINE(this_context)->owner_thread;
-	new_element->next = MR_ENGINE(saved_owners);
-	MR_ENGINE(saved_owners) = new_element;
+	new_element->thread =
+		MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread;
+	new_element->next = MR_ENGINE(MR_eng_saved_owners);
+	MR_ENGINE(MR_eng_saved_owners) = new_element;
 }
 
-	MR_ENGINE(this_context)->owner_thread = MR_ENGINE(owner_thread);
+	MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread =
+		MR_ENGINE(MR_eng_owner_thread);
 
 #endif
 
@@ -460,23 +462,23 @@ MR_define_label(engine_done);
 	*/
 #ifdef	MR_THREAD_SAFE
 
-	assert(MR_ENGINE(this_context)->owner_thread
-		== MR_ENGINE(owner_thread));
-	MR_ENGINE(c_depth)--;
+	assert(MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread
+		== MR_ENGINE(MR_eng_owner_thread));
+	MR_ENGINE(MR_eng_c_depth)--;
 {
 	MercuryThreadList *tmp;
 	MercuryThread val;
 
-	tmp = MR_ENGINE(saved_owners);
+	tmp = MR_ENGINE(MR_eng_saved_owners);
 	if (tmp != NULL)
 	{
 		val = tmp->thread;
-		MR_ENGINE(saved_owners) = tmp->next;
+		MR_ENGINE(MR_eng_saved_owners) = tmp->next;
 		MR_GC_free(tmp);
 	} else {
 		val = 0;
 	}
-	MR_ENGINE(this_context)->owner_thread = val;
+	MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread = val;
 }
 #endif
 
@@ -516,15 +518,15 @@ MR_define_label(engine_done);
 	** Since longjmp() may clobber the registers, we need to
 	** save them first.
 	*/
-	MR_ENGINE(e_exception) = NULL;
+	MR_ENGINE(MR_eng_exception) = NULL;
 	MR_save_registers();
 
 #ifdef	MR_DEBUG_JMPBUFS
-	printf("engine longjmp %p\n", MR_ENGINE(e_jmp_buf));
+	printf("engine longjmp %p\n", MR_ENGINE(MR_eng_jmp_buf));
 #endif
 
 	MR_debugmsg0("longjmping out...\n");
-	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
+	longjmp(*(MR_ENGINE(MR_eng_jmp_buf)), 1);
 }} /* end call_engine_inner() */
 
 /* with nonlocal gotos, we don't save the previous locations */
@@ -551,10 +553,10 @@ MR_dump_prev_locations(void) {}
 static MR_Code *
 engine_done(void)
 {
-	MR_ENGINE(e_exception) = NULL;
+	MR_ENGINE(MR_eng_exception) = NULL;
 	MR_save_registers();
 	MR_debugmsg0("longjmping out...\n");
-	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
+	longjmp(*(MR_ENGINE(MR_eng_jmp_buf)), 1);
 }
 
 static MR_Code *
@@ -695,9 +697,28 @@ MR_define_entry(MR_exception_handler_do_fail);
 
 MR_END_MODULE
 
-void mercury_sys_init_engine(void); /* suppress gcc warning */
-void mercury_sys_init_engine(void) {
+/* forward decls to suppress gcc warnings */
+void mercury_sys_init_engine_init(void);
+void mercury_sys_init_engine_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_engine_write_out_proc_statics(FILE *fp);
+#endif
+
+void mercury_sys_init_engine_init(void)
+{
 	special_labels_module();
 }
+
+void mercury_sys_init_engine_init_type_tables(void)
+{
+	/* no types to register */
+}
+
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_engine_write_out_proc_statics(FILE *fp)
+{
+	/* no proc_statics to write out */
+}
+#endif
 
 /*---------------------------------------------------------------------------*/

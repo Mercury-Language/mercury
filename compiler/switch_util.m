@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -287,6 +287,7 @@ switch_util__switch_priority(code_addr_constant(_, _), 6).
 switch_util__switch_priority(type_ctor_info_constant(_, _, _), 6).
 switch_util__switch_priority(base_typeclass_info_constant(_, _, _), 6).
 switch_util__switch_priority(tabling_pointer_constant(_, _), 6).
+switch_util__switch_priority(deep_profiling_proc_static_tag(_), 6).
 
 	% Determine the range of an atomic type.
 	% Fail if the type isn't the sort of type that has a range

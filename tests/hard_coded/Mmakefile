@@ -120,11 +120,20 @@ ORDINARY_PROGS=	\
 	type_spec_modes \
 	type_to_term_bug \
 	unused_float_box_test \
-	user_defined_equality \
 	user_defined_equality2 \
 	write \
 	write_reg1 \
 	write_reg2
+
+# Deep profiling cannot yet handle exceptions being caught, which the
+# user_defined_equality test case does.
+
+ifeq "$(findstring profdeep,$(GRADE))" ""
+	EXCEPTION_PROGS = \
+		user_defined_equality
+else
+	EXCEPTION_PROGS =
+endif
 
 # We do not pass the following tests at all:
 #
@@ -142,35 +151,52 @@ ORDINARY_PROGS=	\
 #
 # factt_non does not work in the hl* grades (e.g. hlc.gc),
 # because the code for nondet fact tables assumes that
-# we're using the LLDS back-end.
+# we're using the LLDS back-end. Also, fact tables and deep profiling do not
+# (yet) mix.
 #
 # type_tables does not work in the hl* grades because the test itself
 # is a quick hack that assumes the use of the LLDS backend; it should
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
+
 ifeq "$(findstring hl,$(GRADE))" ""
-BACKEND_PROGS = copy_pred factt_non type_tables
+	ifeq "$(findstring profdeep,$(GRADE))" ""
+		BACKEND_PROGS = \
+			copy_pred \
+			factt_non \
+			type_tables 
+	else
+		BACKEND_PROGS = \
+			copy_pred \
+			type_tables
+	endif
 else
-BACKEND_PROGS =
+	BACKEND_PROGS =
 endif
 
-# The MLDS back-end doesn't support nondet C in trailing grades
+# The MLDS back-end doesn't support nondet C in trailing grades.
+# We also don't support nondet C in deep profiling grades.
 ifeq "$(findstring hl,$(GRADE))$(findstring .tr,$(GRADE))" "hl.tr"
-NONDET_C_PROGS =
+	NONDET_C_PROGS =
 else
-NONDET_C_PROGS = \
-	inline_nondet_pragma_c \
-	nondet_c
+	ifneq "$(findstring profdeep,$(GRADE))" ""
+		NONDET_C_PROGS =
+	else
+		NONDET_C_PROGS = \
+			inline_nondet_pragma_c \
+			nondet_c
+	endif
 endif
 
-PROGS = $(ORDINARY_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS)
+PROGS = $(ORDINARY_PROGS) $(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
-ifeq "$(findstring hl,$(GRADE))" ""
-SPLIT_PROGS = split_c_files
+# The same is true for deep profiling grades.
+ifeq "$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+	SPLIT_PROGS = split_c_files
 else
-SPLIT_PROGS =
+	SPLIT_PROGS =
 endif
 
 #-----------------------------------------------------------------------------#

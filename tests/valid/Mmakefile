@@ -203,15 +203,22 @@ endif
 
 # Aditi is not yet implemented for the MLDS back-end
 # (i.e. grades hl*).
-ifneq "$(findstring hl,$(GRADE))" ""
+# It will never be implemented for deep profiling grades.
+ifneq "$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
     SOURCES=$(SOURCES2)
 else
     SOURCES=$(SOURCES2) $(ADITI_SOURCES)
 endif
 
-ALL_SOURCES = $(SOURCES) $(RLO_SOURCES)
+ifneq "$(findstring profdeep,$(GRADE))" ""
+	ALL_RLO_SOURCES =
+else
+	ALL_RLO_SOURCES = $(RLO_SOURCES)
+endif
+
+ALL_SOURCES = $(SOURCES) $(ALL_RLO_SOURCES)
 DEPS =	$(ALL_SOURCES:%.m=%.depend)
-OBJS =	$(SOURCES:%.m=$(os_subdir)%.$O) $(RLO_SOURCES:%.m=$(rlos_subdir)%.rlo)
+OBJS =	$(SOURCES:%.m=$(os_subdir)%.$O) $(ALL_RLO_SOURCES:%.m=$(rlos_subdir)%.rlo)
 PROGS =	$(SOURCES:%.m=%)
 
 all:	objs

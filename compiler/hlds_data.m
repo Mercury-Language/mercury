@@ -13,8 +13,8 @@
 
 :- interface.
 
-:- import_module hlds_pred, prog_data, (inst), term.
-:- import_module bool, list, map, std_util.
+:- import_module hlds_pred, prog_data, (inst), rtti.
+:- import_module bool, list, map, std_util, term.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -54,7 +54,7 @@
 				% that points to the table that implements
 				% memoization, loop checking or the minimal
 				% model semantics for the given procedure.
-			.
+			;	deep_profiling_proc_static(rtti_proc_label).
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
 	% or a functor) for a particular type.
@@ -187,6 +187,9 @@ cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
 cons_id_arity(tabling_pointer_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of tabling_pointer_const").
+cons_id_arity(deep_profiling_proc_static(_), _) :-
+	error("cons_id_arity: can't get arity of deep_profiling_proc_static").
+
 
 cons_id_maybe_arity(cons(_, Arity), yes(Arity)).
 cons_id_maybe_arity(int_const(_), yes(0)).
@@ -197,6 +200,7 @@ cons_id_maybe_arity(code_addr_const(_, _), no).
 cons_id_maybe_arity(type_ctor_info_const(_, _, _), no) .
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _), no).
 cons_id_maybe_arity(tabling_pointer_const(_, _), no).
+cons_id_maybe_arity(deep_profiling_proc_static(_), no).
 
 make_functor_cons_id(term__atom(Name), Arity,
 		cons(unqualified(Name), Arity)).
@@ -348,6 +352,9 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 			% represented as global data. The word just contains
 			% the address of the tabling pointer of the
 			% specified procedure.
+	;	deep_profiling_proc_static_tag(rtti_proc_label)
+			% This is for constants representing procedure
+			% descriptions for deep profiling.
 	;	unshared_tag(tag_bits)
 			% This is for constants or functors which can be
 			% distinguished with just a primary tag.

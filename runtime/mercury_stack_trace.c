@@ -424,7 +424,7 @@ MR_find_context(const MR_Label_Layout *label, const char **fileptr,
 	int				i, j;
 
 	proc = label->MR_sll_entry;
-	if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(proc)) {
+	if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc)) {
 		return FALSE;
 	}
 
@@ -467,7 +467,7 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 		return;
 	}
 
-	if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+	if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
 		MR_Integer maybe_from_full =
 			entry->MR_sle_maybe_from_full;
 		if (maybe_from_full > 0) {
@@ -535,11 +535,11 @@ static void
 MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry,
 	bool spec)
 {
-	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
+	if (! MR_PROC_LAYOUT_HAS_PROC_ID(entry)) {
 		MR_fatal_error("cannot print procedure id without layout");
 	}
 
-	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
 		if (spec) {
 			MR_fatal_error("cannot generate specifications "
 				"for compiler generated procedures");

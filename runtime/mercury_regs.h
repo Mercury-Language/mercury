@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2000 The University of Melbourne.
+** Copyright (C) 1993-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,7 @@
   #define MR_LVALUE_COND(expr, x, y)	(*((expr)?&(x):&(y)))
 #endif
 
-#define MR_fake_reg	(MR_ENGINE(fake_reg))
+#define MR_fake_reg	(MR_ENGINE(MR_eng_fake_reg))
 
 /*---------------------------------------------------------------------------*/
 /*

@@ -251,7 +251,7 @@
 
 % HLDS modules.
 :- import_module mercury_to_mercury, purity, special_pred, instmap.
-:- import_module termination, term_errors, check_typeclass.
+:- import_module termination, term_errors, check_typeclass, rtti.
 
 % RL back-end modules (XXX should avoid using those here).
 :- import_module rl.
@@ -306,6 +306,8 @@ hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
 	"<base_typeclass_info>").
 hlds_out__cons_id_to_string(tabling_pointer_const(_, _),
 	"<tabling_pointer>").
+hlds_out__cons_id_to_string(deep_profiling_proc_static(_),
+	"<deep_profiling_proc_static>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
 	prog_out__write_sym_name_and_arity(SymName / Arity).
@@ -325,6 +327,8 @@ hlds_out__write_cons_id(base_typeclass_info_const(_, _, _, _)) -->
 	io__write_string("<base_typeclass_info>").
 hlds_out__write_cons_id(tabling_pointer_const(_, _)) -->
 	io__write_string("<tabling_pointer>").
+hlds_out__write_cons_id(deep_profiling_proc_static(_)) -->
+	io__write_string("<deep_profiling_proc_static>").
 
 	% The code of this predicate duplicates the functionality of
 	% error_util__describe_one_pred_name. Changes here should be made
@@ -2134,6 +2138,16 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		{ proc_id_to_int(ProcId, ProcIdInt) },
 		io__write_int(ProcIdInt),
 		io__write_string(")")
+	;
+		{ ConsId = deep_profiling_proc_static(RttiProcLabel) },
+		{ rtti__proc_label_pred_proc_id(RttiProcLabel,
+			PredId, ProcId) },
+		io__write_string("deep_profiling_proc_static("),
+		hlds_out__write_pred_id(ModuleInfo, PredId),
+		{ proc_id_to_int(ProcId, ProcIdInt) },
+		io__write_string(" (mode "),
+		io__write_int(ProcIdInt),
+		io__write_string("))")
 	).
 
 hlds_out__write_var_modes([], [], _, _, _) --> [].
@@ -2928,6 +2942,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_eval_method(Proc, EvalMethod) },
 	{ proc_info_is_address_taken(Proc, IsAddressTaken) },
 	{ proc_info_get_call_table_tip(Proc, MaybeCallTableTip) },
+	{ proc_info_get_maybe_deep_profile_info(Proc, MaybeDeepProfileInfo) },
 	{ Indent1 is Indent + 1 },
 
 	hlds_out__write_indent(Indent1),
@@ -2985,6 +3000,27 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	( { MaybeCallTableTip = yes(CallTableTip) } ->
 		io__write_string("% call table tip: "),
 		mercury_output_var(CallTableTip, VarSet, AppendVarnums),
+		io__write_string("\n")
+	;
+		[]
+	),
+
+	( { MaybeDeepProfileInfo = yes(DeepProfileInfo) } ->
+		{ DeepProfileInfo = deep_profile_proc_info(Role, _SCC) },
+		io__write_string("% deep profile info: "),
+		(
+			{ Role = inner_proc(DeepPredProcId) },
+			io__write_string("inner, outer is ")
+		;
+			{ Role = outer_proc(DeepPredProcId) },
+			io__write_string("outer, inner is ")
+		),
+		{ DeepPredProcId = proc(DeepPredId, DeepProcId) },
+		{ pred_id_to_int(DeepPredId, DeepPredInt) },
+		{ proc_id_to_int(DeepProcId, DeepProcInt) },
+		io__write_int(DeepPredInt),
+		io__write_string("/"),
+		io__write_int(DeepProcInt),
 		io__write_string("\n")
 	;
 		[]

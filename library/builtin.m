@@ -280,22 +280,14 @@ promise_only_solution_io(Pred, X) -->
 
 :- pragma foreign_code("C", "
 
-#ifdef MR_HIGHLEVEL_CODE
+/* forward decls, to suppress gcc -Wmissing-decl warning */
+void sys_init_builtin_types_module_init(void);
+void sys_init_builtin_types_module_init_type_tables(void);
+#ifdef MR_DEEP_PROFILING
+void sys_init_builtin_types_module_write_out_proc_statics(FILE *fp);
+#endif
 
-/* forward decl, to suppress gcc -Wmissing-decl warning */
-void sys_init_builtin_types_module(void);
-
-/*
-** This empty initialization function is needed just to
-** match the one that we use for LLDS grades.
-*/
-void
-sys_init_builtin_types_module(void)
-{
-	/* no initialization needed */
-}
-
-#else
+#ifndef MR_HIGHLEVEL_CODE
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, int, 0,
 	MR_TYPECTOR_REP_INT,
@@ -369,9 +361,12 @@ INIT sys_init_builtin_types_module
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc builtin_types_module;
 extern void mercury__private_builtin__init(void);
 
-void sys_init_builtin_types_module(void); /* suppress gcc warning */
-void sys_init_builtin_types_module(void) {
+#endif /* ! HIGHLEVEL_CODE */
 
+void
+sys_init_builtin_types_module_init(void)
+{
+#ifndef	MR_HIGHLEVEL_CODE
 	/* 
 	** We had better call this init() because we use the
 	** labels for the special preds of int, float, pred, 
@@ -397,7 +392,12 @@ void sys_init_builtin_types_module(void) {
 		mercury_data___type_ctor_info_tuple_0, _tuple_);
 	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
 		mercury_data___type_ctor_info_void_0, mercury__unused_0_0);
+#endif
+}
 
+void
+sys_init_builtin_types_module_init_type_tables(void)
+{
 	MR_register_type_ctor_info(
 		&mercury_data___type_ctor_info_int_0);
 	MR_register_type_ctor_info(
@@ -416,7 +416,13 @@ void sys_init_builtin_types_module(void) {
 		&mercury_data___type_ctor_info_void_0);
 }
 
-#endif /* ! HIGHLEVEL_CODE */
+#ifdef	MR_DEEP_PROFILING
+void
+sys_init_builtin_types_module_write_out_proc_statics(FILE *fp)
+{
+	/* no proc_statics to write out */
+}
+#endif
 
 ").
 
@@ -947,32 +953,36 @@ aliasing, and in particular the lack of support for `ui' modes.
 
 :- external(copy/2).
 
-:- pragma c_header_code("#include ""mercury_deep_copy.h""").
+:- pragma foreign_decl("C", "
+#include ""mercury_deep_copy.h""
+#include ""mercury_deep_profiling_hand.h""
+").
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 #ifdef MR_HIGHLEVEL_CODE
   void MR_CALL mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info, MR_Box, MR_Box *);
   void MR_CALL mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info, MR_Box, MR_Box *);
 #endif
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
 #ifdef MR_HIGHLEVEL_CODE
 
 void MR_CALL
 mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info type_info,
-	MR_Box value, MR_Box * copy)
+	MR_Box value, MR_Box *copy)
 {
 	MR_Word val = (MR_Word) value;
-	*copy = (MR_Box) MR_deep_copy(&val,
-			(MR_TypeInfo) type_info, NULL, NULL);
+	*copy = (MR_Box) MR_deep_copy(&val, (MR_TypeInfo) type_info,
+		NULL, NULL);
 }
 
 void MR_CALL
-mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info type_info, MR_Box x, MR_Box * y)
+mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info type_info,
+	MR_Box value, MR_Box *copy)
 {
-	mercury__builtin__copy_2_p_0(type_info, x, y);
+	mercury__builtin__copy_2_p_0(type_info, value, copy);
 }
 
 /* forward decl, to suppress gcc -Wmissing-decl warning */
@@ -990,36 +1000,90 @@ sys_init_copy_module(void)
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
+#ifdef	MR_DEEP_PROFILING
+MR_proc_static_user_builtin_empty(copy, 2, 0, ""builtin.m"");
+MR_proc_static_user_builtin_empty(copy, 2, 1, ""builtin.m"");
+#endif
+
 MR_define_extern_entry(mercury__copy_2_0);
 MR_define_extern_entry(mercury__copy_2_1);
 
 MR_BEGIN_MODULE(copy_module)
 	MR_init_entry(mercury__copy_2_0);
 	MR_init_entry(mercury__copy_2_1);
+#ifdef	MR_DEEP_PROFILING
+	MR_init_label(mercury__copy_2_0_i1);
+	MR_init_label(mercury__copy_2_0_i2);
+	MR_init_label(mercury__copy_2_1_i1);
+	MR_init_label(mercury__copy_2_1_i2);
+#endif
 MR_BEGIN_CODE
 
-#ifdef PROFILE_CALLS
-  #define fallthru(target, caller) { MR_tailcall((target), (caller)); }
+#ifdef	MR_DEEP_PROFILING
+  #define call_label(proc_label)	MR_PASTE3(proc_label, _i, 1)
+  #define exit_label(proc_label)	MR_PASTE3(proc_label, _i, 2)
+  #define first_slot			3
+
+  #define copy_body(proc_label, proc_static)				\
+		MR_incr_sp_push_msg(6, ""builtin:copy/2"");		\
+		MR_stackvar(6) = (MR_Word) MR_succip;			\
+		MR_stackvar(1) = MR_r1;					\
+		MR_stackvar(2) = MR_r2;					\
+									\
+		MR_deep_det_call(proc_label, proc_static, first_slot,	\
+			call_label(proc_label));			\
+									\
+		{							\
+		MR_Word		value, copy;				\
+		MR_TypeInfo	type_info;				\
+									\
+		type_info = (MR_TypeInfo) MR_stackvar(1);		\
+		value = MR_stackvar(2);					\
+									\
+		MR_save_transient_registers();				\
+		copy = MR_deep_copy(&value, type_info, NULL, NULL);	\
+		MR_restore_transient_registers();			\
+									\
+		MR_stackvar(1) = copy;					\
+		}							\
+									\
+		MR_deep_det_exit(proc_label, first_slot,		\
+			exit_label(proc_label));			\
+									\
+		MR_r1 = MR_stackvar(1);					\
+		MR_succip = (MR_Code *) MR_stackvar(6);			\
+		MR_decr_sp_pop_msg(6);					\
+		MR_proceed();
 #else
-  #define fallthru(target, caller)
+  #define copy_body(proc_label, proc_static)				\
+		{							\
+		MR_Word		value, copy;				\
+		MR_TypeInfo	type_info;				\
+									\
+		type_info = (MR_TypeInfo) MR_r1;			\
+		value = MR_r2;						\
+									\
+		MR_save_transient_registers();				\
+		copy = MR_deep_copy(&value, type_info, NULL, NULL);	\
+		MR_restore_transient_registers();			\
+									\
+		MR_r1 = copy;						\
+		MR_proceed();						\
+		}
 #endif
 
 MR_define_entry(mercury__copy_2_0);
-fallthru(MR_ENTRY(mercury__copy_2_1), MR_ENTRY(mercury__copy_2_0))
+	copy_body(mercury__copy_2_0,
+		MR_proc_static_user_builtin_name(copy, 2, 0))
+
 MR_define_entry(mercury__copy_2_1);
-{
-	MR_Word value, copy, type_info;
+	copy_body(mercury__copy_2_1,
+		MR_proc_static_user_builtin_name(copy, 2, 1))
 
-	type_info = MR_r1;
-	value = MR_r2;
-
-	MR_save_transient_registers();
-	copy = MR_deep_copy(&value, (MR_TypeInfo) type_info, NULL, NULL);
-	MR_restore_transient_registers();
-
-	MR_r1 = copy;
-	MR_proceed();
-}
+#undef	call_label
+#undef	exit_label
+#undef	first_slot
+#undef	copy_body
 MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
@@ -1027,12 +1091,37 @@ MR_END_MODULE
 /*
 INIT sys_init_copy_module
 */
+
+/* suppress gcc -Wmissing-decl warnings */
+void sys_init_copy_module_init(void);
+void sys_init_copy_module_init_type_tables(void);
+#ifdef MR_DEEP_PROFILING
+void sys_init_copy_module_write_out_proc_statics(FILE *fp);
+#endif
+
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc copy_module;
-void sys_init_copy_module(void);
-	/* extra declaration to suppress gcc -Wmissing-decl warning */
-void sys_init_copy_module(void) {
+
+void
+sys_init_copy_module_init(void)
+{
 	copy_module();
 }
+
+void
+sys_init_copy_module_init_type_tables(void)
+{
+}
+
+#ifdef	MR_DEEP_PROFILING
+void
+sys_init_copy_module_write_out_proc_statics(FILE *fp)
+{
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&mercury_data__proc_static__mercury__copy_2_0);
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&mercury_data__proc_static__mercury__copy_2_1);
+}
+#endif
 
 #endif /* ! MR_HIGHLEVEL_CODE */
 ").
@@ -1041,24 +1130,30 @@ void sys_init_copy_module(void) {
 
 % The type c_pointer can be used by predicates which use the C interface.
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
-#ifdef MR_HIGHLEVEL_CODE
+#include ""mercury_deep_profiling_hand.h""
 
-/* forward decl, to suppress gcc -Wmissing-decl warning */
-void sys_init_unify_c_pointer_module(void);
-
+/* Ensure that the initialization code for the above module gets run. */
 /*
-** This empty initialization function is needed just to
-** match the one that we use for LLDS grades.
+INIT sys_init_c_pointer_module
 */
-void
-sys_init_unify_c_pointer_module(void)
-{
-	/* no initialization needed */
-}
 
-#else
+/* duplicate declarations to suppress gcc -Wmissing-decl warning */
+void sys_init_c_pointer_module_init(void);
+void sys_init_c_pointer_module_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void sys_init_c_pointer_module_write_out_proc_statics(FILE *fp);
+#endif
+
+#ifndef MR_HIGHLEVEL_CODE
+
+#ifdef	MR_DEEP_PROFILING
+MR_proc_static_compiler_empty(builtin, __Unify__,   c_pointer,
+	0, 0, ""builtin.m"");
+MR_proc_static_compiler_empty(builtin, __Compare__, c_pointer,
+	0, 0, ""builtin.m"");
+#endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,
 	MR_TYPECTOR_REP_C_POINTER,
@@ -1069,12 +1164,19 @@ MR_declare_entry(mercury____Unify___builtin__c_pointer_0_0);
 MR_declare_entry(mercury____Index___builtin__c_pointer_0_0);
 MR_declare_entry(mercury____Compare___builtin__c_pointer_0_0);
 
-MR_BEGIN_MODULE(unify_c_pointer_module)
+MR_BEGIN_MODULE(c_pointer_module)
 	MR_init_entry(mercury____Unify___builtin__c_pointer_0_0);
 	MR_init_entry(mercury____Compare___builtin__c_pointer_0_0);
-
+#ifdef	MR_DEEP_PROFILING
+	MR_init_label(mercury____Unify___builtin__c_pointer_0_0_i1);
+	MR_init_label(mercury____Unify___builtin__c_pointer_0_0_i2);
+	MR_init_label(mercury____Unify___builtin__c_pointer_0_0_i3);
+	MR_init_label(mercury____Unify___builtin__c_pointer_0_0_i4);
+	MR_init_label(mercury____Compare___builtin__c_pointer_0_0_i1);
+	MR_init_label(mercury____Compare___builtin__c_pointer_0_0_i2);
+#endif
 MR_BEGIN_CODE
-MR_define_entry(mercury____Unify___builtin__c_pointer_0_0);
+
 	/*
 	** For c_pointer, we assume that equality and comparison
 	** can be based on object identity (i.e. using address comparisons).
@@ -1082,38 +1184,68 @@ MR_define_entry(mercury____Unify___builtin__c_pointer_0_0);
 	** the io__state contains a map(io__stream, filename).
 	** However, it might not be correct in general...
 	*/
-	MR_r1 = (MR_r1 == MR_r2);
-	MR_proceed();
 
-MR_define_entry(mercury____Compare___builtin__c_pointer_0_0);
-	MR_r1 = (MR_r1 == MR_r2 ? MR_COMPARE_EQUAL :
-			  MR_r1 < MR_r2 ? MR_COMPARE_LESS :
-			  MR_COMPARE_GREATER);
-	MR_proceed();
+#define	proc_label	mercury____Unify___builtin__c_pointer_0_0
+#define	proc_static	MR_proc_static_compiler_name(builtin, __Unify__, \
+				c_pointer, 0, 0)
+#define	body_code	do { MR_r1 = (MR_r1 == MR_r2); } while(0)
+
+#include ""mercury_hand_unify_body.h""
+
+#undef	body_code
+#undef	proc_static
+#undef	proc_label
+
+#define	proc_label	mercury____Compare___builtin__c_pointer_0_0
+#define	proc_static	MR_proc_static_compiler_name(builtin, __Compare__, \
+				c_pointer, 0, 0)
+#define	body_code	do {						     \
+				MR_r1 = (MR_r1 == MR_r2 ? MR_COMPARE_EQUAL : \
+					MR_r1 < MR_r2 ? MR_COMPARE_LESS :    \
+					MR_COMPARE_GREATER);		     \
+			} while (0)
+
+#include ""mercury_hand_compare_body.h""
+
+#undef	body_code
+#undef	proc_static
+#undef	proc_label
 
 MR_END_MODULE
 
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_unify_c_pointer_module
-*/
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc c_pointer_module;
 
+#endif /* ! MR_HIGHLEVEL_CODE */
 
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc unify_c_pointer_module;
-void sys_init_unify_c_pointer_module(void);
-	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
-void sys_init_unify_c_pointer_module(void) {
-	unify_c_pointer_module();
+void
+sys_init_c_pointer_module_init(void)
+{
+	c_pointer_module();
 
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_builtin__type_ctor_info_c_pointer_0,
 		builtin__c_pointer_0_0);
+}
 
+void
+sys_init_c_pointer_module_init_type_tables(void)
+{
 	MR_register_type_ctor_info(
 		&mercury_data_builtin__type_ctor_info_c_pointer_0);
 }
 
-#endif /* ! MR_HIGHLEVEL_CODE */
+#ifdef	MR_DEEP_PROFILING
+void
+sys_init_c_pointer_module_write_out_proc_statics(FILE *fp)
+{
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(builtin, __Unify__, c_pointer,
+			0, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(builtin, __Compare__, c_pointer,
+			0, 0));
+}
+#endif
 
 ").
 

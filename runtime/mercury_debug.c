@@ -98,7 +98,13 @@ MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succ_cont)
 {
 	printf("\ncalling      "); MR_printlabel(stdout, proc);
 	printf("continuation "); MR_printlabel(stdout, succ_cont);
-	MR_printregs("registers at call");
+	if (MR_sregdebug) {
+		MR_printregs("registers at call");
+	}
+
+#ifdef	MR_DEEP_PROFILING
+	MR_print_deep_prof_vars(stdout);
+#endif
 }
 
 void 
@@ -108,14 +114,26 @@ MR_tailcall_msg(/* const */ MR_Code *proc)
 
 	printf("\ntail calling "); MR_printlabel(stdout, proc);
 	printf("continuation "); MR_printlabel(stdout, MR_succip);
-	MR_printregs("registers at tailcall");
+	if (MR_sregdebug) {
+		MR_printregs("registers at tailcall");
+	}
+
+#ifdef	MR_DEEP_PROFILING
+	MR_print_deep_prof_vars(stdout);
+#endif
 }
 
 void 
 MR_proceed_msg(void)
 {
 	printf("\nreturning from determinate procedure\n");
-	MR_printregs("registers at proceed");
+	if (MR_sregdebug) {
+		MR_printregs("registers at proceed");
+	}
+
+#ifdef	MR_DEEP_PROFILING
+	MR_print_deep_prof_vars(stdout);
+#endif
 }
 
 void 
@@ -178,9 +196,11 @@ MR_reg_msg(void)
 	for(i=1; i<=8; i++) {
 		x = (MR_Integer) MR_get_reg(i);
 #ifndef CONSERVATIVE_GC
-		if ((MR_Integer) MR_ENGINE(heap_zone)->min <= x
-				&& x < (MR_Integer) MR_ENGINE(heap_zone)->top) {
-			x -= (MR_Integer) MR_ENGINE(heap_zone)->min;
+		if ((MR_Integer) MR_ENGINE(MR_eng_heap_zone)->min <= x
+				&& x < (MR_Integer)
+					MR_ENGINE(MR_eng_heap_zone)->top)
+		{
+			x -= (MR_Integer) MR_ENGINE(MR_eng_heap_zone)->min;
 		}
 #endif
 		printf("%8lx ", (long) x);
@@ -214,7 +234,7 @@ MR_printheap(const MR_Word *h)
 #ifndef CONSERVATIVE_GC
 	printf("ptr %p, offset %3ld words\n",
 		(const void *) h,
-		(long) (MR_Integer) (h - MR_ENGINE(heap_zone)->min));
+		(long) (MR_Integer) (h - MR_ENGINE(MR_eng_heap_zone)->min));
 #else
 	printf("ptr %p\n",
 		(const void *) h);
@@ -228,7 +248,8 @@ MR_dumpframe(/* const */ MR_Word *fr)
 
 	printf("frame at ptr %p, offset %3ld words\n",
 		(const void *) fr, 
-		(long) (MR_Integer) (fr - MR_CONTEXT(nondetstack_zone)->min));
+		(long) (MR_Integer)
+			(fr - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
 	printf("\t succip    "); MR_printlabel(stdout, MR_succip_slot(fr));
 	printf("\t redoip    "); MR_printlabel(stdout, MR_redoip_slot(fr));
 	printf("\t succfr    "); MR_printnondstack(MR_succfr_slot(fr));
@@ -247,7 +268,7 @@ MR_dumpnondstack(void)
 	MR_Word	*fr;
 
 	printf("\nnondstack dump\n");
-	for (fr = MR_maxfr; fr > MR_CONTEXT(nondetstack_zone)->min;
+	for (fr = MR_maxfr; fr > MR_CONTEXT(MR_ctxt_nondetstack_zone)->min;
 			fr = MR_prevfr_slot(fr)) {
 		MR_dumpframe(fr);
 	}
@@ -276,6 +297,20 @@ MR_printregs(const char *msg)
 	printf("%-9s", "sp:");      MR_printdetstack(MR_sp);
 
 	MR_print_ordinary_regs();
+
+	if (MR_watch_addr != NULL) {
+		printf("watch addr %p: 0x%lx %ld\n", MR_watch_addr,
+			(long) *MR_watch_addr, (long) *MR_watch_addr);
+	}
+
+	if (MR_watch_csd_addr != NULL) {
+		if (MR_watch_csd_ignore == 0) {
+			MR_print_deep_prof_var(stdout, "watch_csd",
+				(MR_CallSiteDynamic *) MR_watch_csd_addr);
+		} else {
+			MR_watch_csd_ignore--;
+		}
+	}
 }
 
 static void 
@@ -289,19 +324,15 @@ MR_print_ordinary_regs(void)
 		value = (MR_Integer) MR_get_reg(i+1);
 
 #ifndef	CONSERVATIVE_GC
-		if ((MR_Integer) MR_ENGINE(heap_zone)->min <= value &&
-				value < (MR_Integer) MR_ENGINE(heap_zone)->top) {
+		if ((MR_Integer) MR_ENGINE(MR_eng_heap_zone)->min <= value
+				&& value < (MR_Integer)
+					MR_ENGINE(MR_eng_heap_zone)->top)
+		{
 			printf("(heap) ");
 		}
 #endif
 
-		printf("%ld\n", (long) value);
-	}
-
-	if (MR_sp >= &MR_CONTEXT(detstack_zone)->min[300]) {
-		for (i = 321; i < 335; i++) {
-			MR_printdetslot_as_label(i);
-		}
+		printf("%ld %lx\n", (long) value, (long) value);
 	}
 }
 
@@ -310,10 +341,10 @@ MR_print_ordinary_regs(void)
 static void 
 MR_printdetslot_as_label(const MR_Integer offset)
 {
-	MR_printdetstackptr(&MR_CONTEXT(detstack_zone)->min[offset]);
+	MR_printdetstackptr(&MR_CONTEXT(MR_ctxt_detstack_zone)->min[offset]);
 	printf(" ");
 	MR_printlabel(stdout,
-		(MR_Code *) (MR_CONTEXT(detstack_zone)->min[offset]));
+		(MR_Code *) (MR_CONTEXT(MR_ctxt_detstack_zone)->min[offset]));
 }
 
 void 
@@ -326,7 +357,8 @@ void
 MR_print_detstackptr(FILE *fp, const MR_Word *s)
 {
 	fprintf(fp, "det %3ld (%p)",
-		(long) (MR_Integer) (s - MR_CONTEXT(detstack_zone)->min),
+		(long) (MR_Integer)
+			(s - MR_CONTEXT(MR_ctxt_detstack_zone)->min),
 		(const void *) s);
 }
 
@@ -335,7 +367,8 @@ MR_printdetstack(const MR_Word *s)
 {
 	printf("ptr %p, offset %3ld words\n",
 		(const void *) s,
-		(long) (MR_Integer) (s - MR_CONTEXT(detstack_zone)->min));
+		(long) (MR_Integer)
+			(s - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
 }
 
 void 
@@ -348,7 +381,8 @@ void
 MR_print_nondstackptr(FILE *fp, const MR_Word *s)
 {
 	fprintf(fp, "non %3ld (%p)",
-		(long) (MR_Integer) (s - MR_CONTEXT(nondetstack_zone)->min),
+		(long) (MR_Integer)
+			(s - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min),
 		(const void *) s);
 }
 
@@ -357,7 +391,8 @@ MR_printnondstack(const MR_Word *s)
 {
 	printf("ptr %p, offset %3ld words\n",
 		(const void *) s,
-		(long) (MR_Integer) (s - MR_CONTEXT(nondetstack_zone)->min));
+		(long) (MR_Integer)
+			(s - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
 }
 
 void 
@@ -368,7 +403,7 @@ MR_print_heapptr(FILE *fp, const MR_Word *s)
 		(long) s, (const void *) s);
 #else
 	fprintf(fp, "heap %3ld (%p)",
-		(long) (MR_Integer) (s - MR_ENGINE(heap_zone)->min),
+		(long) (MR_Integer) (s - MR_ENGINE(MR_eng_heap_zone)->min),
 		(const void *) s);
 #endif
 }
@@ -408,4 +443,68 @@ MR_printlabel(FILE *fp, /* const */ MR_Code *w)
 {
 	MR_print_label(fp, w);
 	fprintf(fp, "\n");
+}
+
+void
+MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
+{
+#ifdef	MR_DEEP_PROFILING
+	fprintf(fp, "%s: %p", name, csd);
+
+	if (csd == NULL) {
+		fprintf(fp, "\n");
+	} else {
+		fprintf(fp, ", depth %d,",
+			csd->MR_csd_depth_count);
+
+#ifdef	MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
+		fprintf(fp, " calls %d,",
+			csd->MR_csd_own.MR_own_calls);
+#endif
+		fprintf(fp, " exits %d, fails %d, redos %d\n",
+			csd->MR_csd_own.MR_own_exits,
+			csd->MR_csd_own.MR_own_fails,
+			csd->MR_csd_own.MR_own_redos);
+
+		fprintf(fp, "  pd: %p", csd->MR_csd_callee_ptr);
+		if (csd->MR_csd_callee_ptr == NULL) {
+			fprintf(fp, "\n");
+		} else if (csd->MR_csd_callee_ptr->MR_pd_proc_static == NULL) {
+			fprintf(fp, ", ps is NULL\n");
+		} else {
+			MR_ProcStatic	*ps;
+			MR_Proc_Id	*proc_id;
+
+			ps = csd->MR_csd_callee_ptr->MR_pd_proc_static;
+			fprintf(fp, ", ps: %p\n", ps);
+			proc_id = &ps->MR_ps_proc_id;
+			if (MR_PROC_ID_COMPILER_GENERATED(*proc_id)) {
+				fprintf(fp, "  %s:%s %s/%d-%d\n  ",
+					proc_id->MR_proc_comp.
+						MR_comp_type_module,
+					proc_id->MR_proc_comp.
+						MR_comp_type_name,
+					proc_id->MR_proc_comp.
+						MR_comp_pred_name,
+					proc_id->MR_proc_comp.MR_comp_arity,
+					proc_id->MR_proc_comp.MR_comp_mode);
+			} else {
+				fprintf(fp, "  %s:%s/%d-%d\n  ",
+					proc_id->MR_proc_user.
+						MR_user_decl_module,
+					proc_id->MR_proc_user.MR_user_name,
+					proc_id->MR_proc_user.MR_user_arity,
+					proc_id->MR_proc_user.MR_user_mode);
+			}
+
+#ifdef	MR_USE_ACTIVATION_COUNTS
+			fprintf(fp, "active %d, ",
+				ps->MR_ps_activation_count);
+#endif
+			fprintf(fp, "outermost %p, array %d\n",
+				ps->MR_ps_outermost_activation_ptr,
+				ps->MR_ps_num_call_sites);
+		}
+	}
+#endif
 }

@@ -92,7 +92,7 @@ MR_insert_entry_label(const char *name, MR_Code *addr,
 {
 	MR_do_init_label_tables();
 
-#ifdef	PROFILE_CALLS
+#ifdef	MR_MPROF_PROFILE_CALLS
 	if (MR_profiling) {
 		MR_prof_output_addr_decl(name, addr);
 	}

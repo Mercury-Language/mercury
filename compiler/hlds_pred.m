@@ -55,9 +55,6 @@
 :- pred hlds_pred__next_pred_id(pred_id, pred_id).
 :- mode hlds_pred__next_pred_id(in, out) is det.
 
-:- pred hlds_pred__next_proc_id(proc_id, proc_id).
-:- mode hlds_pred__next_proc_id(in, out) is det.
-
 :- pred pred_id_to_int(pred_id, int).
 :- mode pred_id_to_int(in, out) is det.
 :- mode pred_id_to_int(out, in) is det.
@@ -791,9 +788,6 @@ hlds_pred__initial_proc_id(0).
 hlds_pred__next_pred_id(PredId, NextPredId) :-
 	NextPredId is PredId + 1.
 
-hlds_pred__next_proc_id(ProcId, NextProcId) :-
-	NextProcId is ProcId + 1.
-
 pred_id_to_int(PredId, PredId).
 
 proc_id_to_int(ProcId, ProcId).
@@ -1366,6 +1360,37 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	--->	address_is_taken
 	;	address_is_not_taken.
 
+:- type deep_profile_role
+	--->	inner_proc(
+			outer_proc	:: pred_proc_id
+		)
+	;	outer_proc(
+			inner_proc	:: pred_proc_id
+		).
+
+:- type deep_profile_proc_info
+	--->	deep_profile_proc_info(
+			role		:: deep_profile_role,
+			visible_scc	:: list(visible_scc_data)
+					% If the procedure is not tail
+					% recursive, this list is empty.
+					% Otherwise, it contains outer-inner
+					% pairs of procedures in the visible
+					% SCC, including this procedure and
+					% its copy.
+		).
+
+:- type visible_scc_data
+	--->	visible_scc_data(
+			vis_outer_proc	:: pred_proc_id,
+			vis_inner_proc	:: pred_proc_id,
+			rec_call_sites	:: list(int)
+					% A list of all the call site numbers
+					% that correspond to tail calls.
+					% (Call sites are numbered depth-first,
+					% left-to-right, from zero.)
+		).
+
 :- pred proc_info_init(arity, list(type), list(mode), maybe(list(mode)),
 	maybe(list(is_live)), maybe(determinism), prog_context,
 	is_address_taken, proc_info).
@@ -1551,6 +1576,12 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_call_table_tip(proc_info, maybe(prog_var), proc_info).
 :- mode proc_info_set_call_table_tip(in, in, out) is det.
 
+:- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
+	maybe(deep_profile_proc_info)::out) is det.
+
+:- pred proc_info_set_maybe_deep_profile_info(proc_info::in,
+	maybe(deep_profile_proc_info)::in, proc_info::out) is det.
+
 	% For a set of variables V, find all the type variables in the types
 	% of the variables in V, and return set of typeinfo variables for
 	% those type variables. (find all typeinfos for variables in V).
@@ -1645,6 +1676,12 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	% matter.
 :- pred proc_info_has_io_state_pair(module_info::in, proc_info::in,
 	int::out, int::out) is semidet.
+
+	% Given a procedure table and the id of a procedure in that table,
+	% return a procedure id to be attached to a clone of that procedure.
+	% (The task of creating the clone proc_info and inserting into the
+	% procedure table is the task of the caller.)
+:- pred clone_proc_id(proc_table::in, proc_id::in, proc_id::out) is det.
 
 	% When mode inference is enabled, we record for each inferred
 	% mode whether it is valid or not by keeping a list of error
@@ -1747,7 +1784,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% backend XXX. Its value is set during
 					% the live_vars pass; it is invalid
 					% before then.
- 			call_table_tip	:: maybe(prog_var)
+ 			call_table_tip	:: maybe(prog_var),
 					% If the tracing is enabled and the
  					% procedure's evaluation method is
  					% memo, loopcheck or minimal, this
@@ -1774,6 +1811,8 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% relevant backend must record this
 					% fact in a place accessible to the
 					% debugger.
+			maybe_deep_profile_proc_info
+					:: maybe(deep_profile_proc_info)
 		).
 
 	% Some parts of the procedure aren't known yet. We initialize
@@ -1806,7 +1845,7 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 		MaybeArgLives, ClauseBody, MContext, StackSlots, MaybeDet,
 		InferredDet, CanProcess, ArgInfo, InitialLiveness, TVarsMap,
 		TCVarsMap, eval_normal, no, no, DeclaredModes, IsAddressTaken,
-		RLExprn, no, no
+		RLExprn, no, no, no
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
@@ -1821,7 +1860,7 @@ proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		InstVarSet, HeadLives, Goal, Context,
 		StackSlots, DeclaredDetism, InferredDetism, CanProcess, ArgInfo,
 		Liveness, TVarMap, TCVarsMap, eval_normal, ArgSizes,
-		Termination, no, IsAddressTaken, RLExprn, no, no).
+		Termination, no, IsAddressTaken, RLExprn, no, no, no).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet, Detism,
 		Goal, Context, TVarMap, TCVarsMap, IsAddressTaken, ProcInfo) :-
@@ -1833,7 +1872,7 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet, Detism,
 	ProcInfo = procedure(VarSet, VarTypes, HeadVars, HeadModes, ModeErrors,
 		InstVarSet, MaybeHeadLives, Goal, Context, StackSlots,
 		yes(Detism), Detism, yes, [], Liveness, TVarMap, TCVarsMap,
-		eval_normal, no, no, no, IsAddressTaken, RLExprn, no, no).
+		eval_normal, no, no, no, IsAddressTaken, RLExprn, no, no, no).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, ProcInfo) :-
@@ -1921,6 +1960,8 @@ proc_info_is_address_taken(ProcInfo, ProcInfo^is_address_taken).
 proc_info_get_rl_exprn_id(ProcInfo, ProcInfo^maybe_aditi_rl_id).
 proc_info_get_need_maxfr_slot(ProcInfo, ProcInfo^need_maxfr_slot).
 proc_info_get_call_table_tip(ProcInfo, ProcInfo^call_table_tip).
+proc_info_get_maybe_deep_profile_info(ProcInfo,
+	ProcInfo^maybe_deep_profile_proc_info).
 
 proc_info_set_varset(ProcInfo, VS, ProcInfo^prog_varset := VS).
 proc_info_set_vartypes(ProcInfo, VT, ProcInfo^var_types := VT).
@@ -1949,6 +1990,8 @@ proc_info_set_address_taken(ProcInfo, AT, ProcInfo^is_address_taken := AT).
 proc_info_set_rl_exprn_id(ProcInfo, ID, ProcInfo^maybe_aditi_rl_id := yes(ID)).
 proc_info_set_need_maxfr_slot(ProcInfo, NMS, ProcInfo^need_maxfr_slot := NMS).
 proc_info_set_call_table_tip(ProcInfo, CTT, ProcInfo^call_table_tip := CTT).
+proc_info_set_maybe_deep_profile_info(ProcInfo, CTT,
+	ProcInfo^maybe_deep_profile_proc_info := CTT).
 
 proc_info_get_typeinfo_vars(Vars, VarTypes, TVarMap, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),
@@ -2205,6 +2248,25 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
 	),
 	proc_info_has_io_state_pair_2(VarModes, ModuleInfo, VarTypes,
 		ArgNum + 1, MaybeIn1, MaybeOut1, MaybeIn, MaybeOut).
+
+clone_proc_id(ProcTable, _ProcId, CloneProcId) :-
+	find_lowest_unused_proc_id(ProcTable, CloneProcId).
+
+:- pred find_lowest_unused_proc_id(proc_table::in, proc_id::out) is det.
+
+find_lowest_unused_proc_id(ProcTable, CloneProcId) :-
+	find_lowest_unused_proc_id_2(0, ProcTable, CloneProcId).
+
+:- pred find_lowest_unused_proc_id_2(proc_id::in, proc_table::in, proc_id::out)
+	is det.
+
+find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
+	( map__search(ProcTable, TrialProcId, _) ->
+		find_lowest_unused_proc_id_2(TrialProcId + 1, ProcTable,
+			CloneProcId)
+	;
+		CloneProcId = TrialProcId
+	).
 
 %-----------------------------------------------------------------------------%
 

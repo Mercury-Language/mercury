@@ -38,7 +38,7 @@
 
 :- implementation.
 
-:- import_module rtti, builtin_ops.
+:- import_module rtti, layout, builtin_ops.
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
 :- import_module globals, options, continuation_info, stack_layout.
@@ -242,6 +242,9 @@ unify_gen__generate_tag_rval_2(base_typeclass_info_constant(_, _, _), _, _) :-
 unify_gen__generate_tag_rval_2(tabling_pointer_constant(_, _), _, _) :-
 	% This should never happen
 	error("Attempted tabling_pointer unification").
+unify_gen__generate_tag_rval_2(deep_profiling_proc_static_tag(_), _, _) :-
+	% This should never happen
+	error("Attempted deep_profiling_proc_static_tag unification").
 unify_gen__generate_tag_rval_2(no_tag, _Rval, TestRval) :-
 	TestRval = const(true).
 unify_gen__generate_tag_rval_2(unshared_tag(UnsharedTag), Rval, TestRval) :-
@@ -359,6 +362,16 @@ unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 	{ module_info_name(ModuleInfo, ModuleName) },
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
 	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
+unify_gen__generate_construction_2(
+		deep_profiling_proc_static_tag(RttiProcLabel),
+		Var, Args, _Modes, _, _, empty) -->
+	( { Args = [] } ->
+		[]
+	;
+		{ error("unify_gen: deep_profiling_proc_static has args") }
+	),
+	{ DataAddr = layout_addr(proc_static(RttiProcLabel)) },
+	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 		Var, Args, _Modes, _, _, empty) -->
 	( { Args = [] } ->
@@ -422,7 +435,12 @@ unify_gen__generate_construction_2(
 			% But det is compatible with nondet.
 		{ CodeModel = CallCodeModel
 		; CodeModel = model_non, CallCodeModel = model_det
-		}
+		},
+			% This optimization distorts deep profiles, so don't
+			% perform it in deep profiling grades.
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__lookup_bool_option(Globals, profile_deep, Deep) },
+		{ Deep = no }
 	->
 	    ( { CallArgs = [] } ->
 		% if there are no new arguments, we can just use the old
@@ -707,6 +725,9 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 		{ Code = empty }
 	;
 		{ Tag = tabling_pointer_constant(_, _) },
+		{ Code = empty }
+	;
+		{ Tag = deep_profiling_proc_static_tag(_) },
 		{ Code = empty }
 	;
 		{ Tag = no_tag },

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -9,8 +9,9 @@
 #ifndef MERCURY_DEBUG_H
 #define MERCURY_DEBUG_H
 
-#include "mercury_types.h"	/* for `MR_Word' and `MR_Code' */
-#include <stdio.h>		/* for `FILE' */
+#include "mercury_types.h"		/* for MR_Word and MR_Code */
+#include "mercury_deep_profiling.h"	/* for MR_CallSiteDynamic */
+#include <stdio.h>			/* for FILE */
 
 /*---------------------------------------------------------------------------*/
 
@@ -94,18 +95,19 @@
 		(MR_save_transient_registers(), MR_printframe(msg)))
 
 #define	MR_debugsucceed() \
-	MR_IF (MR_nondstackdebug, \
+	MR_IF (MR_calldebug, \
 		(MR_save_transient_registers(), MR_succeed_msg()))
 
 #define	MR_debugsucceeddiscard() \
-	MR_IF (MR_nondstackdebug, \
+	MR_IF (MR_calldebug, \
 		(MR_save_transient_registers(), MR_succeeddiscard_msg()))
 
 #define	MR_debugfail() \
-	IF (MR_nondstackdebug, (MR_save_transient_registers(), MR_fail_msg()))
+	MR_IF (MR_calldebug, \
+		(MR_save_transient_registers(), MR_fail_msg()))
 
 #define	MR_debugredo() \
-	MR_IF (MR_nondstackdebug, \
+	MR_IF (MR_calldebug, \
 		(MR_save_transient_registers(), MR_redo_msg()))
 
 #define	MR_debugcall(proc, succ_cont) \
@@ -133,6 +135,14 @@
 
 #endif /* MR_LOWLEVEL_DEBUG */
 
+#define	MR_print_deep_prof_vars(fp)					     \
+	do {								     \
+		MR_print_deep_prof_var(stdout, "current_call_site_dynamic",  \
+			MR_current_call_site_dynamic);			     \
+		MR_print_deep_prof_var(stdout, "next_call_site_dynamic",     \
+			MR_next_call_site_dynamic);			     \
+	} while (0)
+
 /*---------------------------------------------------------------------------*/
 
 #ifdef MR_LOWLEVEL_DEBUG
@@ -141,7 +151,8 @@ extern	void	MR_succeed_msg(void);
 extern	void	MR_succeeddiscard_msg(void);
 extern	void	MR_fail_msg(void);
 extern	void	MR_redo_msg(void);
-extern	void	MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succcont);
+extern	void	MR_call_msg(/* const */ MR_Code *proc,
+			/* const */ MR_Code *succcont);
 extern	void	MR_tailcall_msg(/* const */ MR_Code *proc);
 extern	void	MR_proceed_msg(void);
 extern	void	MR_cr1_msg(MR_Word val0, const MR_Word *addr);
@@ -176,6 +187,8 @@ extern	void	MR_print_nondstackptr(FILE *fp, const MR_Word *s);
 extern	void	MR_print_heapptr(FILE *fp, const MR_Word *s);
 extern	void	MR_print_label(FILE *fp, /* const */ MR_Code *w);
 extern	void	MR_printlabel(FILE *fp, /* const */ MR_Code *w);
+extern	void	MR_print_deep_prof_var(FILE *fp, const char *name,
+			MR_CallSiteDynamic *csd);
 
 /*---------------------------------------------------------------------------*/
 

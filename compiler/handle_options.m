@@ -482,8 +482,33 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		[]
 	),
 
-	% Deep profiling requires `procid' stack layouts
-	option_implies(profile_deep, procid_stack_layout, bool(yes)),
+	% Deep profiling will eventually use `procid' stack layouts,
+	% but for now, we use a separate copy of each MR_Proc_Id structure.
+	% option_implies(profile_deep, procid_stack_layout, bool(yes)),
+	globals__io_lookup_bool_option(profile_deep, ProfileDeep),
+	globals__io_lookup_bool_option(highlevel_code, HighLevel),
+	( { ProfileDeep = yes } ->
+		(
+			{ HighLevel = no },
+			{ Target = c }
+		->
+			[]
+		;
+			usage_error("deep profiling is incompatible with high level code")
+		),
+		globals__io_lookup_bool_option(
+			use_lots_of_ho_specialization, LotsOfHOSpec),
+		( { LotsOfHOSpec = yes } ->
+			{ True = bool(yes) },
+			globals__io_set_option(optimize_higher_order, True),
+			globals__io_set_option(higher_order_size_limit,
+				int(999999))
+		;
+			[]
+		)
+	;
+		[]
+	),
 
 	% --no-reorder-conj implies --no-deforestation.
 	option_neg_implies(reorder_conj, deforestation, bool(no)),
@@ -663,7 +688,6 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 			[s(UseForeignLanguage)]))
 	),
 
-	globals__io_lookup_bool_option(highlevel_code, HighLevel),
 	( { HighLevel = no } ->
 		postprocess_options_lowlevel
 	;
@@ -990,24 +1014,24 @@ grade_component_table("gc", gc, [gc - string("conservative")]).
 grade_component_table("agc", gc, [gc - string("accurate")]).
 
 	% Profiling components
-grade_component_table("prof", prof, [profile_time - bool(yes),
-	profile_deep - bool(no), profile_calls - bool(yes),
-	profile_memory - bool(no)]).
-grade_component_table("profdeep", prof, [profile_time - bool(yes),
-	profile_deep - bool(yes), profile_calls - bool(no),
-	profile_memory - bool(no)]).
-grade_component_table("proftime", prof, [profile_time - bool(yes),
-	profile_deep - bool(no), profile_calls - bool(no),
-	profile_memory - bool(no)]).
-grade_component_table("profcalls", prof, [profile_time - bool(no),
-	profile_deep - bool(no), profile_calls - bool(yes),
-	profile_memory - bool(no)]).
-grade_component_table("memprof", prof, [profile_time - bool(no),
-	profile_deep - bool(no), profile_calls - bool(yes),
-	profile_memory - bool(yes)]).
-grade_component_table("profall", prof, [profile_time - bool(yes),
-	profile_deep - bool(no), profile_calls - bool(yes),
-	profile_memory - bool(yes)]).
+grade_component_table("prof", prof,
+	[profile_time - bool(yes), profile_calls - bool(yes),
+	profile_memory - bool(no), profile_deep - bool(no)]).
+grade_component_table("proftime", prof,
+	[profile_time - bool(yes), profile_calls - bool(no),
+	profile_memory - bool(no), profile_deep - bool(no)]).
+grade_component_table("profcalls", prof,
+	[profile_time - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(no), profile_deep - bool(no)]).
+grade_component_table("memprof", prof,
+	[profile_time - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(yes), profile_deep - bool(no)]).
+grade_component_table("profall", prof,
+	[profile_time - bool(yes), profile_calls - bool(yes),
+	profile_memory - bool(yes), profile_deep - bool(no)]).
+grade_component_table("profdeep", prof,
+	[profile_time - bool(no), profile_calls - bool(no),
+	profile_memory - bool(no), profile_deep - bool(yes)]).
 
 	% Trailing components
 grade_component_table("tr", trail, [use_trail - bool(yes)]).

@@ -35,6 +35,7 @@ Grade options:
 	--profile-calls
 	--profile-time
 	--profile-memory
+	--profile-deep
 	--use-trail
 	--reserve-tag
 	--use-minimal-model
@@ -44,7 +45,6 @@ Grade options:
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide."
 
-# --profile-deep is not yet documented because it is not yet implemented
 # --gcc-nested-functions is not yet documented because it is not yet stable
 # --high-level-data is not yet documented because it is not yet implemented
 # --high-level is not yet documented because --high-level-data is

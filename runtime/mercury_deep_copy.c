@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -64,8 +64,8 @@
 
 #undef  in_traverse_range(X)
 #define in_traverse_range(X)	\
-		((X) >= MR_ENGINE(solutions_heap_zone)->min && \
-			(X) <= MR_ENGINE(solutions_heap_zone)->hardmax)
+		((X) >= MR_ENGINE(MR_eng_solutions_heap_zone)->min && \
+			(X) <= MR_ENGINE(MR_eng_solutions_heap_zone)->hardmax)
 
 #undef	maybeconst
 #define	maybeconst
@@ -128,24 +128,24 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 
 	MR_restore_transient_hp();	/* Because we play with MR_hp */
 
-	if (lower_limit < MR_ENGINE(heap_zone)->bottom ||
-			lower_limit > MR_ENGINE(heap_zone)->top) {
-		lower_limit = MR_ENGINE(heap_zone)->bottom;
+	if (lower_limit < MR_ENGINE(MR_eng_heap_zone)->bottom ||
+			lower_limit > MR_ENGINE(MR_eng_heap_zone)->top) {
+		lower_limit = MR_ENGINE(MR_eng_heap_zone)->bottom;
 	}
 
 	/* temporarily swap the heap with the global heap */
-	SWAP(MR_ENGINE(heap_zone), MR_ENGINE(global_heap_zone),
+	SWAP(MR_ENGINE(MR_eng_heap_zone), MR_ENGINE(MR_eng_global_heap_zone),
 		MR_MemoryZone *);
 	SWAP(MR_hp, MR_global_hp, MR_Word *);
 
 	/* copy values from the heap to the global heap */
 	MR_save_transient_hp();
 	result = MR_deep_copy(&term, type_info, lower_limit,
-			MR_ENGINE(global_heap_zone)->top);
+			MR_ENGINE(MR_eng_global_heap_zone)->top);
 	MR_restore_transient_hp();
 
 	/* swap the heap and global heap back again */
-	SWAP(MR_ENGINE(heap_zone), MR_ENGINE(global_heap_zone),
+	SWAP(MR_ENGINE(MR_eng_heap_zone), MR_ENGINE(MR_eng_global_heap_zone),
 		MR_MemoryZone *);
 	SWAP(MR_hp, MR_global_hp, MR_Word *);
 

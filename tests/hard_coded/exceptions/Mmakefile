@@ -12,8 +12,13 @@ MAIN_TARGET = check
 include ../../Mmake.common
 -include ../../Mmake.params
 
-PROGS = test_exceptions.m test_uncaught_exception.m test_exceptions_func.m \
-	test_try_all.m tricky_try_store.m
+EXCEPTION_PROGS = \
+	test_exceptions.m \
+	test_exceptions_func.m \
+	test_try_all.m \
+	test_uncaught_exception.m \
+	tricky_try_store.m
+
 #
 # XXX the following tests are not enabled because we do not pass them yet:
 #	test_memo.m test_loop_check.m
@@ -24,6 +29,15 @@ PROGS = test_exceptions.m test_uncaught_exception.m test_exceptions_func.m \
 # tricky_try_store.m contains a work-around for that,
 # which should be deleted once that bug is fixed.
 #
+
+# Deep profiling grades cannot yet handle catching exceptions, either
+# explicitly or implicitly by the runtime system.
+
+ifneq "$(findstring profdeep,$(GRADE))" ""
+	PROGS=
+else
+	PROGS=$(EXCEPTION_PROGS)
+endif
 
 depend: $(PROGS:.m=.depend)
 all: $(PROGS:.m=)

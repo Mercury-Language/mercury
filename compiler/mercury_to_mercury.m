@@ -1188,6 +1188,8 @@ mercury_output_cons_id(base_typeclass_info_const(Module, Class, InstanceNum,
 		[i(InstanceNum), s(InstanceString)]).
 mercury_output_cons_id(tabling_pointer_const(_, _), _) -->
 	io__write_string("<tabling pointer>").
+mercury_output_cons_id(deep_profiling_proc_static(_), _) -->
+	io__write_string("<deep_profiling_proc_static>").
 
 mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context) -->
 	io__write_string(":- mode ("),

@@ -1,0 +1,142 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-2001 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - this is Mmake file for building the Mercury deep profiler
+
+-include Mmake.deep.params
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+MAIN_TARGET=mdprof_cgi mdprof_server
+
+VPATH=$(LIBRARY_DIR)
+
+#-----------------------------------------------------------------------------#
+
+# Specify which compilers to use to compile the profiler.
+# Don't change these without good reason - if you want to
+# do a temporary change, change ../Mmake.params
+
+M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR)  \
+		MERCURY_ALL_C_INCL_DIRS="\
+			-I$(TRACE_DIR) \
+			-I$(LIBRARY_DIR) \
+			-I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) \
+			-I$(BOEHM_GC_DIR)/include \
+		"
+MCD	=	$(M_ENV) $(MC) --generate-dependencies
+MCI	=	$(M_ENV) $(MC) --make-interface
+MCPI	=	$(M_ENV) $(MC) --make-private-interface
+MCSI	=	$(M_ENV) $(MC) --make-short-interface
+MCOI	=	$(M_ENV) $(MC) --make-optimization-interface
+MCTOI	=	$(M_ENV) $(MC) --make-transitive-optimization-interface
+MCG	=	$(M_ENV) $(MC) --compile-to-c
+MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
+MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
+C2INIT  =	MERCURY_MOD_LIB_MODS="$(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
+		MERCURY_TRACE_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init" \
+                MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
+ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
+MLFLAGS =	--shared --mercury-libs none
+MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
+		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
+		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A \
+		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A ` \
+		    case $(GRADE) in \
+			*.par*.gc*.prof*) \
+				echo $(BOEHM_GC_DIR)/libpar_gc_prof.$A ;; \
+			*.par*.gc*)	echo $(BOEHM_GC_DIR)/libpar_gc.$A ;; \
+			*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
+			*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
+		    esac \
+		` $(MATH_LIB)
+MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
+MNLFLAGS =	-u 6000
+MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend:	mdprof_cgi.depend mdprof_server.depend
+
+.PHONY: all
+all:	mdprof_cgi mdprof_server
+
+#-----------------------------------------------------------------------------#
+
+# Add some additional dependencies, so that Mmake knows to remake the
+# profiler if one of the libraries changes.
+
+mdprof_cgi:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mdprof_cgi:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mdprof_server:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mdprof_server:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+# Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
+# if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
+# so just leave it out.
+
+$(cs_subdir)mdprof_cgi_init.c:		$(UTIL_DIR)/mkinit
+$(cs_subdir)mdprof_server_init.c:	$(UTIL_DIR)/mkinit
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: check
+check:	mdprof_cgi.check mdprof_server.check
+
+.PHONY: ints 
+ints:	mdprof_cgi.ints mdprof_server.ints
+
+#-----------------------------------------------------------------------------#
+
+# We need the shenanigans with .deep.tags to avoid situations in which an
+# "mmake tags" in this directory does nothing even in the absence of a tags
+# file in this directory, because mmake uses VPATH to find ../library/tags
+# and believes it to be the tags file we are asking for.
+
+.PHONY: tags
+tags:		.deep.tags
+
+.deep.tags:	$(MTAGS) $(mdprof_cgi.ms) $(mdprof_server.ms) $(LIBRARY_DIR)/*.m
+		$(MTAGS) $(mdprof_cgi.ms) $(mdprof_server.ms) $(LIBRARY_DIR)/*.m
+		touch .deep.tags
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates:
+	touch $(mdprof_cgi.dates) $(mdprof_server.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs
+os: $(mdprof_cgi.os) $(os_subdir)mdprof_cgi_init.o
+os: $(mdprof_server.os) $(os_subdir)mdprof_server_init.o
+cs: $(mdprof_cgi.cs) $(cs_subdir)mdprof_cgi_init.c
+cs: $(mdprof_server.cs) $(cs_subdir)mdprof_server_init.c
+
+#-----------------------------------------------------------------------------#
+
+realclean_local:
+	rm -f tags
+
+#-----------------------------------------------------------------------------#
+
+# Installation targets
+
+.PHONY: install
+install: install_deep
+
+.PHONY: install_deep
+install_deep: mdprof_cgi mdprof_server
+	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mdprof_cgi$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mdprof_cgi
+	cp `vpath_find mdprof_server$(EXT_FOR_EXE)`\
+		$(INSTALL_MERC_BIN_DIR)/mdprof_server
+
+#-----------------------------------------------------------------------------#

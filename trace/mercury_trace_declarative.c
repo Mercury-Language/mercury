@@ -305,7 +305,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		return MR_trace_event_internal(cmd, TRUE, event_info);
 	}
 
-	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+	if (!MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
 		/* XXX this should be handled better. */
 		MR_fatal_error("layout has no execution tracing");
 	}
@@ -345,7 +345,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		}
 	}
 
-	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
 		/*
 		** Filter out events for compiler generated procedures.
 		*/
@@ -1055,7 +1055,7 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 	MR_trace_init_point_vars(layout, saved_regs, port);
 
 	name = MR_decl_atom_name(entry);
-	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
 		arity = entry->MR_sle_comp.MR_comp_arity;
 		pred_or_func = MR_PREDICATE;
 	} else {
@@ -1106,8 +1106,8 @@ MR_decl_atom_name(const MR_Proc_Layout *entry)
 {
 	MR_ConstString		name;
 
-	if (MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
-		if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+	if (MR_PROC_LAYOUT_HAS_PROC_ID(entry)) {
+		if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
 			MR_TRACE_USE_HP(
 				MR_make_aligned_string(name, "<<internal>>");
 			);
@@ -1166,7 +1166,7 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 	}
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
-	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+	if (!MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
 				"because this procedure was not\n"
@@ -1174,7 +1174,7 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 		return FALSE;
 	}
 
-	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging "
 				"at compiler generated procedures.\n");

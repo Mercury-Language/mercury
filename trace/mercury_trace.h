@@ -233,4 +233,6 @@ typedef struct {
 
 #define	MR_port_is_entry(port)		((port) == MR_PORT_CALL)
 
+extern	void	MR_trace_init_modules(void);
+
 #endif /* MERCURY_TRACE_H */

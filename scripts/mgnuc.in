@@ -86,6 +86,8 @@ verbose=false
 assemble=false
 c_debug=false
 c_optimize=true
+use_activation_counts=false
+preserve_tail_recursion=true
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -156,37 +158,39 @@ while : ; do
 		;;
 
 	--split-c-files)
-		SPLIT_OPTS=-DSPLIT_C_FILES
-		;;
+		SPLIT_OPTS=-DSPLIT_C_FILES ;;
 	--no-split-c-files)
-		SPLIT_OPTS=
-		;;
+		SPLIT_OPTS= ;;
 
 	--inline-alloc)
-		INLINE_ALLOC_OPTS="-DINLINE_ALLOC -DSILENT"
-		;;
+		INLINE_ALLOC_OPTS="-DINLINE_ALLOC -DSILENT" ;;
 	--no-inline-alloc)
-		INLINE_ALLOC_OPTS=""
-		;;
+		INLINE_ALLOC_OPTS="" ;;
 
 	-g|--c-debug)
-		c_debug=true
-		;;
+		c_debug=true ;;
 	-g-|--no-c-debug)
-		c_debug=false
-		;;
+		c_debug=false ;;
 
 	--c-optimize)
-		c_optimize=true
-		;;
+		c_optimize=true ;;
 	--no-c-optimize)
-		c_optimize=false
-		;;
+		c_optimize=false ;;
 
 	--low-level-debug)
 		low_level_debug=true ;;
 	--no-low-level-debug)
 		low_level_debug=false ;;
+
+	--use-activation-counts)
+		use_activation_counts=true ;;
+	--no-use-activation-counts)
+		use_activation_counts=false ;;
+
+	--preserve-tail-recursion)
+		preserve_tail_recursion=true ;;
+	--no-preserve-tail-recursion)
+		preserve_tail_recursion=false ;;
 
 	# include the file `parse_grade_options.sh-subr'
 	@PARSE_GRADE_OPTIONS@
@@ -285,20 +289,35 @@ case $gc_method in
 esac
 
 case $profile_time in
-	true)		PROF_TIME_OPTS="-DPROFILE_TIME" ;;
+	true)		PROF_TIME_OPTS="-DMR_MPROF_PROFILE_TIME" ;;
 	false)		PROF_TIME_OPTS="-DNO_SIGNALS" ;;
 			# We pass -DNO_SIGNALS unless profiling is enabled.
 			# See comments in runtime/mercury_prof_mem.h for why.
 esac
 
 case $profile_calls in
-	true)		PROF_CALLS_OPTS="-DPROFILE_CALLS" ;;
+	true)		PROF_CALLS_OPTS="-DMR_MPROF_PROFILE_CALLS" ;;
 	false)		PROF_CALLS_OPTS="" ;;
 esac
 
 case $profile_memory in
-	true)		PROF_MEMORY_OPTS="-DPROFILE_MEMORY" ;;
+	true)		PROF_MEMORY_OPTS="-DMR_MPROF_PROFILE_MEMORY" ;;
 	false)		PROF_MEMORY_OPTS="" ;;
+esac
+
+case $use_activation_counts in
+	true)		ACTIVATION_COUNT_OPT="-DMR_USE_ACTIVATION_COUNTS" ;;
+	false)		ACTIVATION_COUNT_OPT="";;
+esac
+
+case $preserve_tail_recursion in
+	true)		PRESERVE_TAIL_RECURSION_OPT="-DMR_DEEP_PROFILING_TAIL_RECURSION" ;;
+	false)		PRESERVE_TAIL_RECURSION_OPT="";;
+esac
+
+case $profile_deep in
+	true)		PROF_DEEP_OPTS="-DMR_DEEP_PROFILING $ACTIVATION_COUNT_OPT $PRESERVE_TAIL_RECURSION_OPT" ;;
+	false)		PROF_DEEP_OPTS="" ;;
 esac
 
 case $use_trail in
@@ -484,8 +503,8 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
 		$HLC_OPTS $HLD_OPTS $GCC_OPTS $GC_OPTS $DEFINE_OPTS \
 		$TRACE_OPTS $STACK_TRACE_OPTS $LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
-		$INLINE_ALLOC_OPTS $TRAIL_OPTS $RESERVE_TAG_OPTS \
-		$MINIMAL_MODEL_OPTS \
+		$PROF_DEEP_OPTS $INLINE_ALLOC_OPTS $TRAIL_OPTS \
+		$RESERVE_TAG_OPTS $MINIMAL_MODEL_OPTS \
 		$SPLIT_OPTS $THREAD_OPTS $PICREG_OPTS $ARCH_OPTS $ARG_OPTS"
 
 case $verbose in true)

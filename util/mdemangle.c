@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -477,6 +477,14 @@ demangle(const char *orig_name)
 					category = ORDINARY;
 					start = name_before_prefixes;
 				} else {
+					/*
+					** The compiler adds a redundant mode
+					** number to the predicate name
+					** to avoid creating two predicates
+					** with the same name (deep profiling
+					** doesn't like that). It isn't used
+					** here, so we just ignore it.
+					*/
 					*end_of_lambda_pred_name = '\0';
 					start = lambda_pred_name;
 				}

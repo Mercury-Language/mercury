@@ -516,6 +516,11 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Retry_Result			result;
 #endif
 
+#ifdef	MR_DEEP_PROFILING
+	*problem = "retry is incompatible with deep profiling.";
+	return MR_RETRY_ERROR;
+#endif
+
 	args = NULL;
 	MR_init_call_table_array();
 
@@ -546,7 +551,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	}
 
 	level_layout = return_label_layout->MR_sll_entry;
-	if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
+	if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
 		*problem = "that procedure does not have debugging information";
 		goto report_problem;
 	}
@@ -1017,7 +1022,7 @@ MR_undo_updates_of_maxfr(const MR_Proc_Layout *level_layout,
 		** will be saved in a stack slot.
 		*/
 
-		if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
+		if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
 			return "an intervening stack frame "
 				"has no debugging information";
 		} else if (level_layout->MR_sle_maybe_maxfr > 0) {
@@ -1174,7 +1179,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
 		label_layout = label->i_layout;
 		proc_layout = label_layout->MR_sll_entry;
 
-		if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
+		if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
 			*problem = "reached label without debugging info";
 			return MR_RETRY_ERROR;
 		}
@@ -1286,7 +1291,7 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
 {
 	MR_TrieNode	call_table;
 
-	if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
+	if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
 		/*
 		** The exec trace seems to have disappeared since the call
 		** to MR_undo_updates_of_maxfr ...
@@ -1368,4 +1373,12 @@ MR_abandon_call_table_array(void)
 	if (MR_call_table_ptrs != NULL) {
 		MR_free(MR_call_table_ptrs);
 	}
+}
+
+void
+MR_trace_init_modules(void)
+{
+	MR_do_init_modules();
+	MR_do_init_modules_type_tables();
+	MR_do_init_modules_debugger();
 }

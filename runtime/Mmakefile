@@ -43,6 +43,8 @@ HDRS		=	\
 			mercury_context.h	\
 			mercury_debug.h		\
 			mercury_deep_copy.h	\
+			mercury_deep_profiling.h \
+			mercury_deep_profiling_hand.h \
 			mercury_dummy.h		\
 			mercury_dlist.h		\
 		  	mercury_engine.h	\
@@ -67,6 +69,7 @@ HDRS		=	\
 			mercury_overflow.h	\
 			mercury_prof.h		\
 			mercury_prof_mem.h	\
+			mercury_prof_time.h	\
 			mercury_reg_workarounds.h	\
 			mercury_regorder.h	\
 			mercury_regs.h		\
@@ -75,6 +78,7 @@ HDRS		=	\
 			mercury_stack_layout.h	\
 			mercury_stack_trace.h	\
 			mercury_stacks.h	\
+			mercury_strerror.h	\
 			mercury_string.h	\
 			mercury_tabling.h	\
 			mercury_tabling_macros.h	\
@@ -94,7 +98,15 @@ HDRS		=	\
 # They do not have to be syntactically well-formed.
 
 BODY_HDRS	=	\
+			mercury_deep_call_port_body.h	\
 			mercury_deep_copy_body.h \
+			mercury_deep_leave_port_body.h	\
+			mercury_deep_redo_port_body.h	\
+			mercury_deep_rec_depth_actions.h \
+			mercury_deep_rec_depth_body.h \
+			mercury_exception_catch_body.h	\
+			mercury_hand_compare_body.h	\
+			mercury_hand_unify_body.h	\
 			mercury_make_type_info_body.h	\
 			mercury_unify_compare_body.h
 
@@ -123,6 +135,7 @@ CFILES		= 	\
 			mercury_context.c	\
 			mercury_debug.c		\
 			mercury_deep_copy.c	\
+			mercury_deep_profiling.c \
 			mercury_dlist.c		\
 			mercury_dummy.c		\
 			mercury_engine.c	\
@@ -142,11 +155,13 @@ CFILES		= 	\
 			mercury_misc.c		\
 			mercury_prof.c		\
 			mercury_prof_mem.c	\
+			mercury_prof_time.c	\
 			mercury_reg_workarounds.c	\
 			mercury_regs.c		\
 			mercury_signal.c	\
 			mercury_stack_trace.c	\
 			mercury_stacks.c	\
+			mercury_strerror.c	\
 			mercury_string.c	\
 			mercury_tabling.c	\
 			mercury_thread.c	\

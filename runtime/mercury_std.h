@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-2000 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -178,7 +178,7 @@
 #define MR_STRINGIFY(x)		MR_STRINGIFY_2(x)
 #define MR_STRINGIFY_2(x)	#x
 
-/* paste two macros together */
+/* paste some macros together */
 #define MR_PASTE2(a,b)			MR_PASTE2_2(a,b)
 #define MR_PASTE2_2(a,b)		a##b
 #define MR_PASTE3(a,b,c)		MR_PASTE3_2(a,b,c)
@@ -191,6 +191,12 @@
 #define MR_PASTE6_2(a,b,c,d,e,f)	a##b##c##d##e##f
 #define MR_PASTE7(a,b,c,d,e,f,g)	MR_PASTE7_2(a,b,c,d,e,f,g)
 #define MR_PASTE7_2(a,b,c,d,e,f,g)	a##b##c##d##e##f##g
+#define MR_PASTE8(a,b,c,d,e,f,g,h)	    MR_PASTE8_2(a,b,c,d,e,f,g,h)
+#define MR_PASTE8_2(a,b,c,d,e,f,g,h)	    a##b##c##d##e##f##g##h
+#define MR_PASTE9(a,b,c,d,e,f,g,h,i)	    MR_PASTE9_2(a,b,c,d,e,f,g,h,i)
+#define MR_PASTE9_2(a,b,c,d,e,f,g,h,i)	    a##b##c##d##e##f##g##h##i
+#define MR_PASTE10(a,b,c,d,e,f,g,h,i,j)	    MR_PASTE10_2(a,b,c,d,e,f,g,h,i,j)
+#define MR_PASTE10_2(a,b,c,d,e,f,g,h,i,j)   a##b##c##d##e##f##g##h##i##j
 
 /*
 ** MR_CHECK_EXPR_TYPE(expr, type):

@@ -502,6 +502,9 @@ rl_exprn__set_term_arg_cons_id_code(base_typeclass_info_const(_, _, _, _),
 rl_exprn__set_term_arg_cons_id_code(tabling_pointer_const(_, _),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
+rl_exprn__set_term_arg_cons_id_code(deep_profiling_proc_static(_),
+		_, _, _, _, _, _) -->
+	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 
 :- pred rl_exprn__set_term_arg_cons_id_code_2(aditi_type::in, tuple_num::in,
 		int::in, bool::in, bytecode::out) is det.
@@ -1148,6 +1151,9 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 	; 
 		{ ConsId = tabling_pointer_const(_, _) },
 		{ error("rl_exprn__unify: unsupported cons_id - tabling_pointer_const") }
+	; 
+		{ ConsId = deep_profiling_proc_static(_) },
+		{ error("rl_exprn__unify: unsupported cons_id - deep_profiling_proc_static") }
 	).
 		
 rl_exprn__unify(deconstruct(Var, ConsId, Args, UniModes, CanFail, _CanCGC),

@@ -140,6 +140,11 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% #if MR_THREAD_SAFE
 	% 	MR_Bool must_finalize_engine;
 	% #endif 
+	% #if MR_DEEP_PROFILING
+	%	MR_CallSiteDynamic *saved_call_site_addr
+	%				= MR_current_callback_site;
+	%	MR_CallSiteDynamic *saved_csd;
+	% #endif
 	%
 	%		/* save the registers that our C caller may be using */
 	%	MR_save_regs_to_mem(c_regs);
@@ -154,6 +159,10 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% 	must_finalize_engine = MR_init_thread(MR_use_now);
 	% #endif 
 	%
+	% #if MR_DEEP_PROFILING
+	%	saved_csd = MR_current_call_site_dynamic;
+	%	MR_setup_callback(MR_ENTRY(<label of called proc>));
+	% #endif
 	%		/* 
 	%		** restore Mercury's registers that were saved as
 	%		** we entered C from Mercury.  For single threaded
@@ -174,6 +183,10 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%		/* clobbered by the return from the C function    */
 	%		/* MR_call_engine()				  */
 	%	MR_restore_transient_registers();
+	% #if MR_DEEP_PROFILING
+	% 	MR_current_call_site_dynamic = saved_csd;
+	%	MR_current_callback_site = saved_call_site_addr;
+	% #endif
 	% #if SEMIDET
 	%	if (!MR_r1) {
 	%		MR_restore_regs_from_mem(c_regs);
@@ -216,7 +229,8 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
 
-	string__append_list([	"\n",
+	string__append_list([
+		"\n",
 				DeclareString, "(", ProcLabelString, ");\n",
 				"\n",
 				C_RetType, "\n", 
@@ -227,18 +241,31 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"#if MR_THREAD_SAFE\n",
 				"\tMR_Bool must_finalize_engine;\n", 
 				"#endif\n",
+		"#if MR_DEEP_PROFILING\n",
+		"\tMR_CallSiteDynList **saved_cur_callback;\n",
+		"\tMR_CallSiteDynamic *saved_cur_csd;\n",
+		"#endif\n",
 				MaybeDeclareRetval,
 				"\n",
 				"\tMR_save_regs_to_mem(c_regs);\n", 
 				"#if MR_THREAD_SAFE\n",
 				"\tmust_finalize_engine = MR_init_thread(MR_use_now);\n", 
 				"#endif\n",
+		"#if MR_DEEP_PROFILING\n",
+		"\tsaved_cur_callback = MR_current_callback_site;\n",
+		"\tsaved_cur_csd = MR_current_call_site_dynamic;\n",
+		"\tMR_setup_callback(MR_ENTRY(", ProcLabelString, "));\n",
+		"#endif\n",
 				"\tMR_restore_registers();\n", 
 				InputArgs,
 				"\tMR_save_transient_registers();\n",
 				"\t(void) MR_call_engine(MR_ENTRY(",
 					ProcLabelString, "), FALSE);\n",
 				"\tMR_restore_transient_registers();\n",
+		"#if MR_DEEP_PROFILING\n",
+		"\tMR_current_call_site_dynamic = saved_cur_csd;\n",
+		"\tMR_current_callback_site = saved_cur_callback;\n",
+		"#endif\n",
 				MaybeFail,
 				OutputArgs,
 				"#if MR_THREAD_SAFE\n",
@@ -551,6 +578,9 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 			"\n",
 			"#ifndef MERCURY_HDR_EXCLUDE_IMP_H\n",
 			"#include ""mercury_imp.h""\n",
+			"#endif\n",
+			"#ifdef MR_DEEP_PROFILING\n",
+			"#include ""mercury_deep_profiling.h""\n",
 			"#endif\n",
 			"\n"]),
 		export__produce_header_file_2(C_ExportDecls),

@@ -12,6 +12,7 @@
 #include "mercury_types.h"		/* for `MR_Word' */
 #include "mercury_context.h"		/* for min_heap_reclamation_point() */
 #include "mercury_heap_profile.h"	/* for MR_record_allocation() */
+#include "mercury_deep_profiling.h"	/* for MR_current_call_site_dynamic */
 #include "mercury_std.h"		/* for MR_EXTERN_INLINE */
 #ifdef MR_HIGHLEVEL_CODE
   #include "mercury.h"			/* for MR_new_object() */
@@ -141,7 +142,15 @@
   
 #endif /* not CONSERVATIVE_GC */
   
-#ifdef	PROFILE_MEMORY
+#if	defined (MR_DEEP_PROFILING) && defined(MR_DEEP_PROFILING_MEMORY)
+  #define MR_maybe_record_allocation(count, proclabel, type)		\
+	(								\
+		MR_current_call_site_dynamic->MR_csd_own.MR_own_allocs	\
+			+= 1,						\
+		MR_current_call_site_dynamic->MR_csd_own.MR_own_words	\
+			+= (count)					\
+	)
+#elif	defined(MR_MPROF_PROFILE_MEMORY)
   #define MR_maybe_record_allocation(count, proclabel, type)		\
 	MR_record_allocation((count), MR_ENTRY(proclabel), 		\
 		MR_STRINGIFY(proclabel), (type))

@@ -1246,11 +1246,12 @@ list__sort(P, L0, L) :-
         ).
 
 % list__hosort is actually det but the compiler can't confirm it
-:- pred list__hosort(pred(X, X, comparison_result), int, list(X), list(X), list(X)).
+:- pred list__hosort(pred(X, X, comparison_result), int, list(X),
+	list(X), list(X)).
 :- mode list__hosort(pred(in, in, out) is det, in, in, out, out) is semidet.
 
-	% list__hosort is a Mercury implementation of the mergesort described in
-	% The Craft of Prolog.
+	% list__hosort is a Mercury implementation of the mergesort
+	% described in The Craft of Prolog.
 	% N denotes the length of the part of L0 that this call is sorting.
 	% 		(require((length(L0, M), M >= N)))
 	% Since we have redundant information about the list (N, and the
@@ -1260,22 +1261,22 @@ list__hosort(P, N, L0, L, Rest) :-
         (
 		N = 1
 	->
-                L0 = [X|Rest],
+                L0 = [X | Rest],
 		L = [X]
         ;
 		N = 2
 	->
-		L0 = [X,Y|Rest],
+		L0 = [X, Y | Rest],
 		call(P, X, Y, C),
 		(
 			C = (<),
-			L = [X,Y]
+			L = [X, Y]
 		; 
 			C = (=),
-			L = [X,Y]
+			L = [X, Y]
 		;
 			C = (>),
-			L = [Y,X]
+			L = [Y, X]
 		)
         ;      
 		N1 is N//2,
@@ -1286,41 +1287,41 @@ list__hosort(P, N, L0, L, Rest) :-
         ).
 
 list__merge(_P, [], [], []).
-list__merge(_P, [], [Y|Ys], [Y|Ys]).
-list__merge(_P, [X|Xs], [], [X|Xs]).
-list__merge(P, [H1|T1], [H2|T2], L) :-
+list__merge(_P, [], [Y | Ys], [Y | Ys]).
+list__merge(_P, [X | Xs], [], [X | Xs]).
+list__merge(P, [H1 | T1], [H2 | T2], L) :-
 	call(P, H1, H2, C),
 	(
 		C = (<),
-		L = [H1|T],   
-		list__merge(P, T1, [H2|T2], T)
+		L = [H1 | T],   
+		list__merge(P, T1, [H2 | T2], T)
 	;
 		C = (=),
-		L = [H1,H2|T],
+		L = [H1, H2 | T],
 		list__merge(P, T1, T2, T)
 	;
 		C = (>),
-		L = [H2|T],   
-		list__merge(P, [H1|T1], T2, T)
+		L = [H2 | T],   
+		list__merge(P, [H1 | T1], T2, T)
 	).
 
 list__merge_and_remove_dups(_P, [], [], []).
-list__merge_and_remove_dups(_P, [], [Y|Ys], [Y|Ys]).
-list__merge_and_remove_dups(_P, [X|Xs], [], [X|Xs]).
-list__merge_and_remove_dups(P, [H1|T1], [H2|T2], L) :-
+list__merge_and_remove_dups(_P, [], [Y | Ys], [Y | Ys]).
+list__merge_and_remove_dups(_P, [X | Xs], [], [X | Xs]).
+list__merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
 	call(P, H1, H2, C),
 	(
 		C = (<),
-		L = [H1|T],   
-		list__merge_and_remove_dups(P, T1, [H2|T2], T)
+		L = [H1 | T],   
+		list__merge_and_remove_dups(P, T1, [H2 | T2], T)
 	;
 		C = (=),
-		L = [H1 | T],
+		L = [H1  |  T],
 		list__merge_and_remove_dups(P, T1, T2, T)
 	;
 		C = (>),
-		L = [H2|T],   
-		list__merge_and_remove_dups(P, [H1|T1], T2, T)
+		L = [H2 | T],   
+		list__merge_and_remove_dups(P, [H1 | T1], T2, T)
 	).
 
 

@@ -39,6 +39,7 @@
 :- import_module type_ctor_info, termination, higher_order, accumulator.
 :- import_module inlining, deforest, dnf, magic, dead_proc_elim.
 :- import_module delay_construct, unused_args, unneeded_code, lco.
+:- import_module deep_profiling.
 
 	% the LLDS back-end
 :- import_module saved_vars, liveness.
@@ -69,8 +70,8 @@
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
-:- import_module mercury_to_mercury.
-:- import_module dependency_graph, prog_util, rl_dump, rl_file.
+:- import_module mercury_to_mercury, hlds_data.
+:- import_module layout, dependency_graph, prog_util, rl_dump, rl_file.
 :- import_module options, globals, trace_params, passes_aux.
 
 	% library modules
@@ -649,7 +650,8 @@ mercury_compile(Module) -->
 	    ;
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
-		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50),
+		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50,
+			DeepProfilingStructures),
 		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 		globals__io_lookup_bool_option(aditi_only, AditiOnly),
 		globals__io_get_target(Target),
@@ -736,7 +738,7 @@ mercury_compile(Module) -->
 			)
 		    ;
 			mercury_compile__backend_pass(HLDS50, HLDS70,
-				GlobalData, LLDS),
+				DeepProfilingStructures, GlobalData, LLDS),
 			mercury_compile__output_pass(HLDS70, GlobalData, LLDS,
 				MaybeRLFile, ModuleName, _CompileErrors)
 		    )
@@ -1287,11 +1289,12 @@ mercury_compile__frontend_pass_2_by_preds(HLDS0, HLDS, FoundError) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__middle_pass(module_name, module_info, module_info,
-					io__state, io__state).
-% :- mode mercury_compile__middle_pass(in, di, uo, di, uo) is det.
-:- mode mercury_compile__middle_pass(in, in, out, di, uo) is det.
+	list(layout_data), io__state, io__state).
+% :- mode mercury_compile__middle_pass(in, di, uo, out, di, uo) is det.
+:- mode mercury_compile__middle_pass(in, in, out, out, di, uo) is det.
 
-mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
+mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
+		DeepProfilingStructures) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
@@ -1367,7 +1370,14 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_dead_procs(HLDS46, Verbose, Stats, HLDS48),
 	mercury_compile__maybe_dump_hlds(HLDS48, "48", "dead_procs"),
 
-	{ HLDS50 = HLDS48 },
+	% Deep profiling transformation should be done late in the piece
+	% since it munges the code a fair amount and introduces strange
+	% disjunctions that might confuse other hlds->hlds transformations.
+	mercury_compile__maybe_deep_profiling(HLDS48, Verbose, Stats, HLDS49,
+		DeepProfilingStructures),
+	mercury_compile__maybe_dump_hlds(HLDS49, "49", "deep_profiling"),
+
+	{ HLDS49 = HLDS50 },
 	mercury_compile__maybe_dump_hlds(HLDS50, "50", "middle_pass").
 
 %-----------------------------------------------------------------------------%
@@ -1432,12 +1442,16 @@ mercury_compile__maybe_generate_rl_bytecode(ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__backend_pass(module_info, module_info, global_data,
-	list(c_procedure), io__state, io__state).
+:- pred mercury_compile__backend_pass(module_info, module_info,
+	list(layout_data), global_data, list(c_procedure),
+	io__state, io__state).
 % :- mode mercury_compile__backend_pass(di, uo, out, out, di, uo) is det.
-:- mode mercury_compile__backend_pass(in, out, out, out, di, uo) is det.
+:- mode mercury_compile__backend_pass(in, out, in, out, out, di, uo) is det.
 
-mercury_compile__backend_pass(HLDS50, HLDS, GlobalData, LLDS) -->
+mercury_compile__backend_pass(HLDS50, HLDS, DeepProfilingStructures,
+		GlobalData, LLDS) -->
+	{ global_data_init(DeepProfilingStructures, GlobalData0) },
+
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
@@ -1451,21 +1465,23 @@ mercury_compile__backend_pass(HLDS50, HLDS, GlobalData, LLDS) -->
 	(
 		{ TradPasses = no },
 		mercury_compile__backend_pass_by_phases(HLDS51, HLDS,
-			GlobalData, LLDS)
+			GlobalData0, GlobalData, LLDS)
 	;
 		{ TradPasses = yes },
 		mercury_compile__backend_pass_by_preds(HLDS51, HLDS,
-			GlobalData, LLDS)
+			GlobalData0, GlobalData, LLDS)
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__backend_pass_by_phases(module_info, module_info,
-	global_data, list(c_procedure), io__state, io__state).
-:- mode mercury_compile__backend_pass_by_phases(in, out, out, out, di, uo)
+	global_data, global_data, list(c_procedure),
+	io__state, io__state).
+:- mode mercury_compile__backend_pass_by_phases(in, out, in, out, out, di, uo)
 	is det.
 
-mercury_compile__backend_pass_by_phases(HLDS51, HLDS99, GlobalData, LLDS) -->
+mercury_compile__backend_pass_by_phases(HLDS51, HLDS99,
+		GlobalData0, GlobalData, LLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
@@ -1496,8 +1512,6 @@ mercury_compile__backend_pass_by_phases(HLDS51, HLDS99, GlobalData, LLDS) -->
 	{ HLDS90 = HLDS72 },
 	mercury_compile__maybe_dump_hlds(HLDS90, "90", "precodegen"),
 
-	{ global_data_init(GlobalData0) },
-
 	mercury_compile__generate_code(HLDS90, GlobalData0, Verbose, Stats,
 		HLDS99, GlobalData1, LLDS1),
 	mercury_compile__maybe_dump_hlds(HLDS99, "99", "codegen"),
@@ -1510,15 +1524,16 @@ mercury_compile__backend_pass_by_phases(HLDS51, HLDS99, GlobalData, LLDS) -->
 		LLDS).
 
 :- pred mercury_compile__backend_pass_by_preds(module_info, module_info,
-	global_data, list(c_procedure), io__state, io__state).
-% :- mode mercury_compile__backend_pass_by_preds(di, uo, out, out, di, uo)
+	global_data, global_data, list(c_procedure),
+	io__state, io__state).
+% :- mode mercury_compile__backend_pass_by_preds(di, uo, in, out, out, di, uo)
 %	is det.
-:- mode mercury_compile__backend_pass_by_preds(in, out, out, out, di, uo)
+:- mode mercury_compile__backend_pass_by_preds(in, out, in, out, out, di, uo)
 	is det.
 
-mercury_compile__backend_pass_by_preds(HLDS0, HLDS, GlobalData, LLDS) -->
+mercury_compile__backend_pass_by_preds(HLDS0, HLDS, GlobalData0, GlobalData,
+		LLDS) -->
 	{ module_info_predids(HLDS0, PredIds) },
-	{ global_data_init(GlobalData0) },
 	mercury_compile__backend_pass_by_preds_2(PredIds, HLDS0, HLDS,
 		GlobalData0, GlobalData, LLDS).
 
@@ -2286,7 +2301,8 @@ mercury_compile__maybe_magic(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__maybe_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_lookup_bool_option(optimize_dead_procs, Dead),
 	( { Dead = yes } ->
-		maybe_write_string(Verbose, "% Eliminating dead procedures...\n"),
+		maybe_write_string(Verbose,
+			"% Eliminating dead procedures...\n"),
 		maybe_flush_output(Verbose),
 		dead_proc_elim(HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
@@ -2295,6 +2311,26 @@ mercury_compile__maybe_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS0 = HLDS }
 	).
 
+:- pred mercury_compile__maybe_deep_profiling(module_info, bool, bool,
+	module_info, list(layout_data), io__state, io__state).
+:- mode mercury_compile__maybe_deep_profiling(in, in, in, out, out, di, uo)
+	is det.
+
+mercury_compile__maybe_deep_profiling(HLDS0, Verbose, Stats, HLDS,
+		DeepProfilingStructures) -->
+	globals__io_lookup_bool_option(profile_deep, Dead),
+	( { Dead = yes } ->
+		maybe_write_string(Verbose,
+			"% Applying deep profiling transformation...\n"),
+		maybe_flush_output(Verbose),
+		apply_deep_profiling_transformation(HLDS0, HLDS,
+			DeepProfilingStructures),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS },
+		{ DeepProfilingStructures = [] }
+	).
 
 :- pred mercury_compile__maybe_introduce_accumulators(module_info, bool, bool,
 	module_info, io__state, io__state).
@@ -3036,21 +3072,27 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	},
 	globals__io_lookup_bool_option(profile_calls, ProfileCalls),
 	{ ProfileCalls = yes ->
-		ProfileCallsOpt = "-DPROFILE_CALLS "
+		ProfileCallsOpt = "-DMR_MPROF_PROFILE_CALLS "
 	;
 		ProfileCallsOpt = ""
 	},
 	globals__io_lookup_bool_option(profile_time, ProfileTime),
 	{ ProfileTime = yes ->
-		ProfileTimeOpt = "-DPROFILE_TIME "
+		ProfileTimeOpt = "-DMR_MPROF_PROFILE_TIME "
 	;
 		ProfileTimeOpt = ""
 	},
 	globals__io_lookup_bool_option(profile_memory, ProfileMemory),
 	{ ProfileMemory = yes ->
-		ProfileMemoryOpt = "-DPROFILE_MEMORY "
+		ProfileMemoryOpt = "-DMR_MPROF_PROFILE_MEMORY "
 	;
 		ProfileMemoryOpt = ""
+	},
+	globals__io_lookup_bool_option(profile_deep, ProfileDeep),
+	{ ProfileDeep = yes ->
+		ProfileDeepOpt = "-DMR_DEEP_PROFILING "
+	;
+		ProfileDeepOpt = ""
 	},
 	globals__io_lookup_bool_option(pic_reg, PIC_Reg),
 	{ PIC_Reg = yes ->
@@ -3167,7 +3209,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		CFLAGS_FOR_THREADS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
-		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
+		ProfileDeepOpt, PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
 		Target_DebugOpt, LL_DebugOpt,
 		StackTraceOpt, RequireTracingOpt,
 		UseTrailOpt, MinimalModelOpt, TypeLayoutOpt,

@@ -121,7 +121,7 @@
 
 :- import_module prog_out.
 :- import_module hlds_pred.
-:- import_module llds_out, opt_util.
+:- import_module llds_out, code_util, opt_util.
 :- import_module globals, options.
 
 :- import_module int, set, map, string.
@@ -351,6 +351,10 @@ opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
 opt_debug__dump_data_name(tabling_pointer(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["tabling_pointer(", ProcLabelStr, ")"], Str).
+opt_debug__dump_data_name(deep_profiling_procedure_data(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["deep_profiling_procedure_data(",
+				ProcLabelStr, ")"], Str).
 
 opt_debug__dump_rtti_type_id(rtti_type_id(ModuleName, TypeName, Arity), Str) :-
 	llds_out__sym_name_mangle(ModuleName, ModuleName_str),
@@ -456,6 +460,15 @@ opt_debug__dump_layout_name(module_layout_proc_vector(ModuleName), Str) :-
 opt_debug__dump_layout_name(module_layout(ModuleName), Str) :-
 	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
 	string__append_list(["module_layout(", ModuleNameStr, ")"], Str).
+opt_debug__dump_layout_name(proc_static(RttiProcLabel), Str) :-
+	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["proc_static(", ProcLabelStr, ")"], Str).
+opt_debug__dump_layout_name(proc_static_call_sites(RttiProcLabel), Str) :-
+	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["proc_static_call_sites(", ProcLabelStr, ")"],
+		Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

@@ -267,7 +267,7 @@ MR_trace_set_level(int ancestor_level)
 
 	if (level_layout != NULL) {
 		entry = level_layout->MR_sll_entry;
-		if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+		if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
 			return "this procedure does not have "
 				"debugging information";
 		}

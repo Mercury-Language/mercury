@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2000 The University of Melbourne.
+# Copyright (C) 1996-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -175,6 +175,8 @@ library-menu.texi: $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
+			$(LIBRARY_DIR)/profiling_builtin.m)		\
+				;;					\
 			*)						\
 				echo "* `basename $$filename .m`::"; 	\
 				;;					\
@@ -182,12 +184,14 @@ library-menu.texi: $(LIBRARY_DIR)/*.m
 	done;								\
 	} > library-menu.texi
 
-library-chapters.texi: $(LIBRARY_DIR)/*.m
-	for filename in $(LIBRARY_DIR)/*.m; do 				\
+library-chapters.texi: $(LIBRARY_DIR)/[a-z]*.m
+	for filename in $(LIBRARY_DIR)/[a-z]*.m; do 			\
 		case $$filename in					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
+				;;					\
+			$(LIBRARY_DIR)/profiling_builtin.m)		\
 				;;					\
 			*)						\
 				file="`basename $$filename .m`"; 	\

@@ -3,7 +3,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,26 +87,26 @@ MR_finalize_runqueue(void)
 void 
 MR_init_context(MR_Context *c)
 {
-	c->next = NULL;
-	c->resume = NULL;
+	c->MR_ctxt_next = NULL;
+	c->MR_ctxt_resume = NULL;
 #ifdef	MR_THREAD_SAFE
-	c->owner_thread = (MercuryThread) NULL;
+	c->MR_ctxt_owner_thread = (MercuryThread) NULL;
 #endif
-	c->context_succip = MR_ENTRY(MR_do_not_reached);
+	c->MR_ctxt_succip = MR_ENTRY(MR_do_not_reached);
 
-	if (c->detstack_zone != NULL) {
-		MR_reset_redzone(c->detstack_zone);
+	if (c->MR_ctxt_detstack_zone != NULL) {
+		MR_reset_redzone(c->MR_ctxt_detstack_zone);
 	} else {
-		c->detstack_zone = MR_create_zone("detstack", 0,
+		c->MR_ctxt_detstack_zone = MR_create_zone("detstack", 0,
 			MR_detstack_size, MR_next_offset(),
 			MR_detstack_zone_size, MR_default_handler);
 	}
-	c->context_sp = c->detstack_zone->min;
+	c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->min;
 
-	if (c->nondetstack_zone != NULL) {
-		MR_reset_redzone(c->nondetstack_zone);
+	if (c->MR_ctxt_nondetstack_zone != NULL) {
+		MR_reset_redzone(c->MR_ctxt_nondetstack_zone);
 	} else {
-		c->nondetstack_zone = MR_create_zone("nondetstack", 0,
+		c->MR_ctxt_nondetstack_zone = MR_create_zone("nondetstack", 0,
 			MR_nondstack_size, MR_next_offset(),
 			MR_nondstack_zone_size, MR_default_handler);
 	}
@@ -116,48 +116,48 @@ MR_init_context(MR_Context *c)
 	** minus one word, to the base address to get the maxfr/curfr pointer
 	** for the first frame on the nondet stack.
 	*/
-	c->context_maxfr = c->nondetstack_zone->min + MR_NONDET_FIXED_SIZE - 1;
-	c->context_curfr = c->context_maxfr;
-	MR_redoip_slot(c->context_curfr) = MR_ENTRY(MR_do_not_reached);
-	MR_redofr_slot(c->context_curfr) = NULL;
-	MR_prevfr_slot(c->context_curfr) = NULL;
-	MR_succip_slot(c->context_curfr) = MR_ENTRY(MR_do_not_reached);
-	MR_succfr_slot(c->context_curfr) = NULL;
+	c->MR_ctxt_maxfr = c->MR_ctxt_nondetstack_zone->min + MR_NONDET_FIXED_SIZE - 1;
+	c->MR_ctxt_curfr = c->MR_ctxt_maxfr;
+	MR_redoip_slot(c->MR_ctxt_curfr) = MR_ENTRY(MR_do_not_reached);
+	MR_redofr_slot(c->MR_ctxt_curfr) = NULL;
+	MR_prevfr_slot(c->MR_ctxt_curfr) = NULL;
+	MR_succip_slot(c->MR_ctxt_curfr) = MR_ENTRY(MR_do_not_reached);
+	MR_succfr_slot(c->MR_ctxt_curfr) = NULL;
 
 #ifdef	MR_USE_MINIMAL_MODEL
-	if (c->generatorstack_zone != NULL) {
-		MR_reset_redzone(c->generatorstack_zone);
+	if (c->MR_ctxt_generatorstack_zone != NULL) {
+		MR_reset_redzone(c->MR_ctxt_generatorstack_zone);
 	} else {
-		c->generatorstack_zone = MR_create_zone("generatorstack", 0,
+		c->MR_ctxt_generatorstack_zone = MR_create_zone("generatorstack", 0,
 			MR_generatorstack_size, MR_next_offset(),
 			MR_generatorstack_zone_size, MR_default_handler);
 	}
-	c->context_gen_next = 0;
+	c->MR_ctxt_gen_next = 0;
 
-	if (c->cutstack_zone != NULL) {
-		MR_reset_redzone(c->cutstack_zone);
+	if (c->MR_ctxt_cutstack_zone != NULL) {
+		MR_reset_redzone(c->MR_ctxt_cutstack_zone);
 	} else {
-		c->cutstack_zone = MR_create_zone("cutstack", 0,
+		c->MR_ctxt_cutstack_zone = MR_create_zone("cutstack", 0,
 			MR_cutstack_size, MR_next_offset(),
 			MR_cutstack_zone_size, MR_default_handler);
 	}
-	c->context_cut_next = 0;
+	c->MR_ctxt_cut_next = 0;
 #endif
 
 #ifdef MR_USE_TRAIL
-	if (c->trail_zone != NULL) {
-		MR_reset_redzone(c->trail_zone);
+	if (c->MR_ctxt_trail_zone != NULL) {
+		MR_reset_redzone(c->MR_ctxt_trail_zone);
 	} else {
-		c->trail_zone = MR_create_zone("trail", 0,
+		c->MR_ctxt_trail_zone = MR_create_zone("trail", 0,
 			MR_trail_size, MR_next_offset(),
 			MR_trail_zone_size, MR_default_handler);
 	}
-	c->context_trail_ptr = (MR_TrailEntry *) c->trail_zone->min;
-	c->context_ticket_counter = 1;
-	c->context_ticket_high_water = 1;
+	c->MR_ctxt_trail_ptr = (MR_TrailEntry *) c->MR_ctxt_trail_zone->min;
+	c->MR_ctxt_ticket_counter = 1;
+	c->MR_ctxt_ticket_high_water = 1;
 #endif
 
-	c->context_hp = NULL;
+	c->MR_ctxt_hp = NULL;
 }
 
 MR_Context *
@@ -169,14 +169,14 @@ MR_create_context(void)
 	if (free_context_list == NULL) {
 		MR_UNLOCK(free_context_list_lock, "create_context i");
 		c = MR_GC_NEW(MR_Context);
-		c->detstack_zone = NULL;
-		c->nondetstack_zone = NULL;
+		c->MR_ctxt_detstack_zone = NULL;
+		c->MR_ctxt_nondetstack_zone = NULL;
 #ifdef MR_USE_TRAIL
-		c->trail_zone = NULL;
+		c->MR_ctxt_trail_zone = NULL;
 #endif
 	} else {
 		c = free_context_list;
-		free_context_list = c->next;
+		free_context_list = c->MR_ctxt_next;
 		MR_UNLOCK(free_context_list_lock, "create_context ii");
 	}
 
@@ -189,7 +189,7 @@ void
 MR_destroy_context(MR_Context *c)
 {
 	MR_LOCK(free_context_list_lock, "destroy_context");
-	c->next = free_context_list;
+	c->MR_ctxt_next = free_context_list;
 	free_context_list = c;
 	MR_UNLOCK(free_context_list_lock, "destroy_context");
 }
@@ -287,10 +287,10 @@ MR_check_pending_contexts(bool block)
 void
 MR_schedule(MR_Context *ctxt)
 {
-	ctxt->next = NULL;
+	ctxt->MR_ctxt_next = NULL;
 	MR_LOCK(MR_runqueue_lock, "schedule");
 	if (MR_runqueue_tail) {
-		MR_runqueue_tail->next = ctxt;
+		MR_runqueue_tail->MR_ctxt_next = ctxt;
 		MR_runqueue_tail = ctxt;
 	} else {
 		MR_runqueue_head = ctxt;
@@ -313,8 +313,8 @@ MR_define_entry(MR_do_runnext);
 	unsigned depth;
 	MercuryThread thd;
 
-	depth = MR_ENGINE(c_depth);
-	thd = MR_ENGINE(owner_thread);
+	depth = MR_ENGINE(MR_eng_c_depth);
+	thd = MR_ENGINE(MR_eng_owner_thread);
 
 	MR_LOCK(MR_runqueue_lock, "MR_do_runnext (i)");
 
@@ -327,30 +327,32 @@ MR_define_entry(MR_do_runnext);
 		/* XXX check pending io */
 		prev = NULL;
 		while(tmp != NULL) {
-			if ((depth > 0 && tmp->owner_thread == thd)
-			    || (tmp->owner_thread == (MercuryThread) NULL)) {
+			if ((depth > 0 && tmp->MR_ctxt_owner_thread == thd) ||
+				(tmp->MR_ctxt_owner_thread ==
+					(MercuryThread) NULL))
+			{
 				break;
 			}
 			prev = tmp;
-			tmp = tmp->next;
+			tmp = tmp->MR_ctxt_next;
 		}
 		if (tmp != NULL) {
 			break;
 		}
 		MR_WAIT(MR_runqueue_cond, MR_runqueue_lock);
 	}
-	MR_ENGINE(this_context) = tmp;
+	MR_ENGINE(MR_eng_this_context) = tmp;
 	if (prev != NULL) {
-		prev->next = tmp->next;
+		prev->MR_ctxt_next = tmp->MR_ctxt_next;
 	} else {
-		MR_runqueue_head = tmp->next;
+		MR_runqueue_head = tmp->MR_ctxt_next;
 	}
 	if (MR_runqueue_tail == tmp) {
 		MR_runqueue_tail = prev;
 	}
 	MR_UNLOCK(MR_runqueue_lock, "MR_do_runnext (iii)");
-	MR_load_context(MR_ENGINE(this_context));
-	MR_GOTO(MR_ENGINE(this_context)->resume);
+	MR_load_context(MR_ENGINE(MR_eng_this_context));
+	MR_GOTO(MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume);
 }
 #else /* !MR_THREAD_SAFE */
 {
@@ -362,20 +364,39 @@ MR_define_entry(MR_do_runnext);
 		MR_check_pending_contexts(TRUE); /* block */
 	}
 
-	MR_ENGINE(this_context) = MR_runqueue_head;
-	MR_runqueue_head = MR_runqueue_head->next;
+	MR_ENGINE(MR_eng_this_context) = MR_runqueue_head;
+	MR_runqueue_head = MR_runqueue_head->MR_ctxt_next;
 	if (MR_runqueue_head == NULL) {
 		MR_runqueue_tail = NULL;
 	}
 
-	MR_load_context(MR_ENGINE(this_context));
-	MR_GOTO(MR_ENGINE(this_context)->resume);
+	MR_load_context(MR_ENGINE(MR_eng_this_context));
+	MR_GOTO(MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume);
 }
 #endif
 
 MR_END_MODULE
 
-void mercury_sys_init_scheduler_wrapper(void); /* suppress gcc warning */
-void mercury_sys_init_scheduler_wrapper(void) {
+/* forward decls to suppress gcc warnings */
+void mercury_sys_init_scheduler_wrapper_init(void);
+void mercury_sys_init_scheduler_wrapper_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_scheduler_wrapper_write_out_proc_statics(FILE *fp);
+#endif
+
+void mercury_sys_init_scheduler_wrapper_init(void)
+{
 	scheduler_module();
 }
+
+void mercury_sys_init_scheduler_wrapper_init_type_tables(void)
+{
+	/* no types to register */
+}
+
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_scheduler_wrapper_write_out_proc_statics(FILE *fp)
+{
+	/* no proc_statics to write out */
+}
+#endif

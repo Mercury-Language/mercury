@@ -23,7 +23,7 @@
   #define	MR_NEED_ENTRY_LABEL_ARRAY
 #endif
 
-#if     defined(MR_NEED_ENTRY_LABEL_ARRAY) || defined(PROFILE_CALLS)
+#if     defined(MR_NEED_ENTRY_LABEL_ARRAY) || defined(MR_MPROF_PROFILE_CALLS)
   #define	MR_NEED_ENTRY_LABEL_INFO
 #endif
 

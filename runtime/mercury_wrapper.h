@@ -18,6 +18,7 @@
 #include "mercury_stack_layout.h"	/* for `MR_Label_Layout' etc */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
 #include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
+#include <stdio.h>			/* for `FILE' */
 
 /*
 ** mercury_runtime_init() does some stuff to initialize the garbage collector
@@ -86,6 +87,9 @@ extern	void		(*MR_address_of_mercury_init_io)(void);
 extern	void		(*MR_address_of_init_modules)(void);
 extern	void		(*MR_address_of_init_modules_type_tables)(void);
 extern	void		(*MR_address_of_init_modules_debugger)(void);
+#ifdef	MR_DEEP_PROFILING
+extern	void		(*MR_address_of_write_out_proc_statics)(FILE *fp);
+#endif
 
 #ifdef CONSERVATIVE_GC
 extern	void		(*MR_address_of_init_gc)(void);
@@ -195,7 +199,11 @@ extern	const char	*MR_mdb_err_filename;
 /* size of the primary cache */
 extern	size_t		MR_pcache_size;
 
+/* low level debugging */
 extern	bool		MR_check_space;
+extern	MR_Word		*MR_watch_addr;
+extern	MR_Word		*MR_watch_csd_addr;
+extern	int		MR_watch_csd_ignore;
 
 /* timing */
 extern	int		MR_time_at_start;
@@ -211,6 +219,7 @@ extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
 extern	bool		MR_profiling;
+extern	bool		MR_print_deep_profiling_statistics;
 
 #ifdef  MR_TYPE_CTOR_STATS
 

@@ -42,7 +42,7 @@
 :- import_module bitmap.
 :- import_module hash_table.
 
-:- import_module builtin, private_builtin, table_builtin.
+:- import_module builtin, private_builtin, table_builtin, profiling_builtin.
 
 % library__version must be implemented using pragma c_code,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration

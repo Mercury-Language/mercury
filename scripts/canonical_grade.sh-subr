@@ -70,13 +70,14 @@ case $gc_method in
 	accurate)	GRADE="$GRADE.agc" ;;
 esac
 
-case $profile_time,$profile_calls,$profile_memory in
-	true,true,false)	GRADE="$GRADE.prof" ;;
-	true,false,false)	GRADE="$GRADE.proftime" ;;
-	false,true,false)	GRADE="$GRADE.profcalls" ;;
-	true,true,true)		GRADE="$GRADE.profall" ;;
-	false,true,true)	GRADE="$GRADE.memprof" ;;
-	false,false,false)	;;
+case $profile_time,$profile_calls,$profile_memory,$profile_deep in
+	true,true,false,false)	GRADE="$GRADE.prof" ;;
+	true,false,false,false)	GRADE="$GRADE.proftime" ;;
+	false,true,false,false)	GRADE="$GRADE.profcalls" ;;
+	true,true,true,false)	GRADE="$GRADE.profall" ;;
+	false,true,true,false)	GRADE="$GRADE.memprof" ;;
+	false,false,false,true)	GRADE="$GRADE.profdeep" ;;
+	false,false,false,false)	;;
 	*)			progname=`basename $0`
 				echo "$progname: error: invalid combination of profiling options." 1>&2
 				exit 1

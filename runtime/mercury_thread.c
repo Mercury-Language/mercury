@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -96,12 +96,12 @@ MR_init_thread(MR_when_to_use when_to_use)
 	MR_restore_registers();
 #endif
 	MR_load_engine_regs(MR_cur_engine());
-	MR_load_context(MR_ENGINE(this_context));
+	MR_load_context(MR_ENGINE(MR_eng_this_context));
 
 	MR_save_registers();
 
 #ifdef	MR_THREAD_SAFE
-	MR_ENGINE(owner_thread) = pthread_self();
+	MR_ENGINE(MR_eng_owner_thread) = pthread_self();
 #endif
 
 	switch (when_to_use) {

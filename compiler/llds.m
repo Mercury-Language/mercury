@@ -69,7 +69,7 @@
 
 :- type global_data.
 
-:- pred global_data_init(global_data::out) is det.
+:- pred global_data_init(list(layout_data)::in, global_data::out) is det.
 
 :- pred global_data_add_new_proc_var(global_data::in,
 	pred_proc_id::in, comp_gen_c_var::in, global_data::out) is det.
@@ -928,10 +928,12 @@
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
-	;	tabling_pointer(proc_label).
+	;	tabling_pointer(proc_label)
 			% A variable that contains a pointer that points to
 			% the table used to implement memoization, loopcheck
 			% or minimal model semantics for the given procedure.
+	;	deep_profiling_procedure_data(proc_label)
+	.
 
 :- type reg_type	
 	--->	r		% general-purpose (integer) regs
@@ -1301,9 +1303,15 @@ get_defining_module_name(special_proc(ModuleName, _, _, _, _, _)) = ModuleName.
 						% ensures no overlaps.
 		).
 
-global_data_init(global_data(EmptyDataMap, EmptyLayoutMap, [], [])) :-
+:- func wrap_layout_data(layout_data) = comp_gen_c_data.
+
+wrap_layout_data(LayoutData) = layout_data(LayoutData).
+
+global_data_init(LayoutData, GlobalData) :-
 	map__init(EmptyDataMap),
-	map__init(EmptyLayoutMap).
+	map__init(EmptyLayoutMap),
+	NonCommon = map(wrap_layout_data, LayoutData),
+	GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [], NonCommon).
 
 global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar, GlobalData) :-
 	ProcVarMap0 = GlobalData0 ^ proc_var_map,

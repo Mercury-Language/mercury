@@ -66,15 +66,13 @@ else
     PROGS_2=$(DECLARATIVE_PROGS) $(NONDEBUG_DECLARATIVE_PROGS)
 endif
 
-# Debugging does not work in MLDS (hl*) grades.
+# Debugging does not work in MLDS (hl*) and deep profiling (profdeep) grades.
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 # Currently, declarative debugging does not work in `rt' grades.
 # Also, declarative debugging only works in `.gc' grades.
 
-ifneq "$(findstring hl,$(GRADE))" ""
-    PROGS=
-else
+ifeq "$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
     ifneq "$(findstring .gc,$(GRADE))" ""
         ifneq "$(findstring rt,$(GRADE))" ""
 	    PROGS=
@@ -96,6 +94,8 @@ else
     else
         PROGS=
     endif
+else
+    PROGS=
 endif
 
 #-----------------------------------------------------------------------------#

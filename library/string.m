@@ -1828,19 +1828,21 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 
 /*-----------------------------------------------------------------------*/
 
-/*
-:- pred string__append(string, string, string).
-:- mode string__append(in, in, in) is semidet.	% implied
-:- mode string__append(in, out, in) is semidet.
-:- mode string__append(in, in, out) is det.
-:- mode string__append(out, out, in) is multi.
-*/
+:- pragma promise_pure(string__append/3).
 
-/*
-:- mode string__append(in, in, in) is semidet.
-*/
+string__append(S1::in, S2::in, S3::in) :-
+	string__append_iii(S1, S2, S3).
+string__append(S1::in, S2::out, S3::in) :-
+	string__append_ioi(S1, S2, S3).
+string__append(S1::in, S2::in, S3::out) :-
+	string__append_iio(S1, S2, S3).
+string__append(S1::out, S2::out, S3::in) :-
+	string__append_ooi(S1, S2, S3).
+
+:- pred string__append_iii(string::in, string::in, string::in) is semidet.
+
 :- pragma foreign_proc("C",
-	string__append(S1::in, S2::in, S3::in),
+	string__append_iii(S1::in, S2::in, S3::in),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len_1 = strlen(S1);
 	SUCCESS_INDICATOR = (
@@ -1848,17 +1850,17 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		strcmp(S2, S3 + len_1) == 0
 	);
 }").
+
 :- pragma foreign_proc("MC++",
-	string__append(_S1::in, _S2::in, _S3::in),
+	string__append_iii(_S1::in, _S2::in, _S3::in),
 		[will_not_call_mercury, thread_safe], "{
 	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
-/*
-:- mode string__append(in, out, in) is semidet.
-*/
+:- pred string__append_ioi(string::in, string::out, string::in) is semidet.
+
 :- pragma foreign_proc("C",
-	string__append(S1::in, S2::out,S3::in),
+	string__append_ioi(S1::in, S2::out,S3::in),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len_1, len_2, len_3;
 
@@ -1877,17 +1879,17 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		SUCCESS_INDICATOR = TRUE;
 	}
 }").
+
 :- pragma foreign_proc("MC++",
-	string__append(_S1::in, _S2::out, _S3::in),
+	string__append_ioi(_S1::in, _S2::out, _S3::in),
 		[will_not_call_mercury, thread_safe], "{
 	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
-/*
-:- mode string__append(in, in, out) is det.
-*/
+:- pred string__append_iio(string::in, string::in, string::out) is det.
+
 :- pragma foreign_proc("C",
-	string__append(S1::in, S2::in, S3::out),
+	string__append_iio(S1::in, S2::in, S3::out),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len_1, len_2;
 	len_1 = strlen(S1);
@@ -1896,58 +1898,54 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	strcpy(S3, S1);
 	strcpy(S3 + len_1, S2);
 }").
+
 :- pragma foreign_proc("MC++",
-	string__append(S1::in, S2::in, S3::out),
+	string__append_iio(S1::in, S2::in, S3::out),
 		[will_not_call_mercury, thread_safe], "{
 	S3 = System::String::Concat(S1, S2);
 }").
 
+:- pred string__append_ooi(string::out, string::out, string::in) is multi.
+
+string__append_ooi(S1, S2, S3) :-
+	S3Len = string__length(S3),
+	string__append_ooi_2(0, S3Len, S1, S2, S3).
+
+:- pred string__append_ooi_2(int::in, int::in, string::out, string::out,
+	string::in) is multi.
+
+string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
+	( NextS1Len = S3Len ->
+		string__append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
+	;
+		(
+			string__append_ooi_3(NextS1Len, S3Len,
+				S1, S2, S3)
+		;
+			string__append_ooi_2(NextS1Len + 1, S3Len,
+				S1, S2, S3)
+		)
+	).
+
+:- pred string__append_ooi_3(int::in, int::in, string::out,
+	string::out, string::in) is det.
+
 :- pragma foreign_proc("C",
-	string__append(S1::out, S2::out, S3::in),
-		[will_not_call_mercury, thread_safe],
-	local_vars("
-		MR_String s;
-		size_t len;
-		size_t count;
-	"),
-	first_code("
-		LOCALS->s = S3;
-		LOCALS->len = strlen(S3);
-		LOCALS->count = 0;
-	"),
-	retry_code("
-		LOCALS->count++;
-	"),
-	common_code("
-		MR_allocate_aligned_string_msg(S1, LOCALS->count,
-			MR_PROC_LABEL);
-		memcpy(S1, LOCALS->s, LOCALS->count);
-		S1[LOCALS->count] = '\\0';
-		MR_allocate_aligned_string_msg(S2, LOCALS->len - LOCALS->count,
-			MR_PROC_LABEL);
-		strcpy(S2, LOCALS->s + LOCALS->count);
+	string__append_ooi_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
+		[will_not_call_mercury, thread_safe], "{
+	MR_allocate_aligned_string_msg(S1, S1Len, MR_PROC_LABEL);
+	memcpy(S1, S3, S1Len);
+	S1[S1Len] = '\\0';
+	MR_allocate_aligned_string_msg(S2, S3Len - S1Len, MR_PROC_LABEL);
+	strcpy(S2, S3 + S1Len);
+}").
 
-		if (LOCALS->count < LOCALS->len) {
-			SUCCEED;
-		} else {
-			SUCCEED_LAST;
-		}
-	")
-).
 :- pragma foreign_proc("MC++",
-	string__append(_S1::out, _S2::out, _S3::in),
-		[will_not_call_mercury, thread_safe],
-	local_vars("
-	"),
-	first_code("
-	"),
-	retry_code("
-	"),
-	common_code("
-		mercury::runtime::Errors::SORRY(""c code for this function"");
-	")
-).
-
+	string__append_ooi_3(_S1Len::in, _S3Len::in,
+			_S1::out, _S2::out, _S3::in),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+").
 
 /*-----------------------------------------------------------------------*/
 

@@ -888,9 +888,9 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	MR_MemoryZone *temp_zone;
 	MR_Word *temp_hp;
 
-	temp_zone = MR_ENGINE(heap_zone);
-	MR_ENGINE(heap_zone) = MR_ENGINE(solutions_heap_zone);
-	MR_ENGINE(solutions_heap_zone) = temp_zone;
+	temp_zone = MR_ENGINE(MR_eng_heap_zone);
+	MR_ENGINE(MR_eng_heap_zone) = MR_ENGINE(MR_eng_solutions_heap_zone);
+	MR_ENGINE(MR_eng_solutions_heap_zone) = temp_zone;
 	temp_hp = MR_hp;
 	MR_hp = MR_sol_hp;
 	MR_sol_hp = temp_hp;
@@ -942,7 +942,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 		MR_save_transient_hp();					\\
 		NewVal = MR_deep_copy(&OldVal, (MR_TypeInfo) TypeInfo_for_T,\\
 				(const MR_Word *) SolutionsHeapPtr,	\\
-				MR_ENGINE(solutions_heap_zone)->top);	\\
+				MR_ENGINE(MR_eng_solutions_heap_zone)->top);\\
 		MR_restore_transient_hp();				\\
 	} while (0)
 #endif
@@ -1238,22 +1238,28 @@ unravel_univ(Univ, X) :-
 
 :- pragma foreign_code("C", "
 
-#ifdef MR_HIGHLEVEL_CODE
+#include ""mercury_deep_profiling_hand.h""
 
-/* forward decl, to suppress gcc -Wmissing-decl warning */
-void sys_init_unify_type_desc_module(void);
-
+/* Ensure that the initialization code for the above module gets run. */
 /*
-** This empty initialization function is needed just to
-** match the one that we use for LLDS grades.
+INIT sys_init_type_desc_module
 */
-void
-sys_init_unify_type_desc_module(void)
-{
-	/* no initialization needed */
-}
 
-#else
+/* suppress gcc -Wmissing-decl warnings */
+void sys_init_type_desc_module_init(void);
+void sys_init_type_desc_module_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void sys_init_type_desc_module_write_out_proc_statics(FILE *);
+#endif
+
+#ifndef MR_HIGHLEVEL_CODE
+
+#ifdef	MR_DEEP_PROFILING
+MR_proc_static_compiler_empty(std_util, __Unify__,   type_desc, 0, 0,
+	""std_util.m"");
+MR_proc_static_compiler_empty(std_util, __Compare__, type_desc, 0, 0,
+	""std_util.m"");
+#endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0,
 	MR_TYPECTOR_REP_TYPEINFO);
@@ -1261,58 +1267,96 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0,
 MR_define_extern_entry(mercury____Unify___std_util__type_desc_0_0);
 MR_define_extern_entry(mercury____Compare___std_util__type_desc_0_0);
 
-MR_BEGIN_MODULE(unify_type_desc_module)
+MR_BEGIN_MODULE(type_desc_module)
 	MR_init_entry(mercury____Unify___std_util__type_desc_0_0);
 	MR_init_entry(mercury____Compare___std_util__type_desc_0_0);
+#ifdef	MR_DEEP_PROFILING
+	MR_init_label(mercury____Unify___std_util__type_desc_0_0_i1);
+	MR_init_label(mercury____Unify___std_util__type_desc_0_0_i2);
+	MR_init_label(mercury____Unify___std_util__type_desc_0_0_i3);
+	MR_init_label(mercury____Unify___std_util__type_desc_0_0_i4);
+	MR_init_label(mercury____Compare___std_util__type_desc_0_0_i1);
+	MR_init_label(mercury____Compare___std_util__type_desc_0_0_i2);
+#endif
 MR_BEGIN_CODE
-MR_define_entry(mercury____Unify___std_util__type_desc_0_0);
-{
-	/*
-	** Unification for type_desc.
-	*/
-	int	comp;
 
-	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) MR_r1, (MR_TypeInfo) MR_r2);
-	MR_restore_transient_registers();
-	MR_r1 = (comp == MR_COMPARE_EQUAL);
-	MR_proceed();
-}
+#define	proc_label	mercury____Unify___std_util__type_desc_0_0
+#define	proc_static	MR_proc_static_compiler_name(std_util, __Unify__, \
+				type_desc, 0, 0)
+#define	body_code	do {						\
+				int	comp;				\
+									\
+				MR_save_transient_registers();		\
+				comp = MR_compare_type_info(		\
+					(MR_TypeInfo) MR_r1,		\
+					(MR_TypeInfo) MR_r2);		\
+				MR_restore_transient_registers();	\
+				MR_r1 = (comp == MR_COMPARE_EQUAL);	\
+			} while (0)
 
-MR_define_entry(mercury____Compare___std_util__type_desc_0_0);
-{
-	/*
-	** Comparison for type_desc.
-	*/
-	int	comp;
+#include ""mercury_hand_unify_body.h""
 
-	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) MR_r1, (MR_TypeInfo) MR_r2);
-	MR_restore_transient_registers();
-	MR_r1 = comp;
-	MR_proceed();
-}
+#undef	body_code
+#undef	proc_static
+#undef	proc_label
+
+#define	proc_label	mercury____Compare___std_util__type_desc_0_0
+#define	proc_static	MR_proc_static_compiler_name(std_util, __Compare__, \
+				type_desc, 0, 0)
+#define	body_code	do {						\
+				int	comp;				\
+									\
+				MR_save_transient_registers();		\
+				comp = MR_compare_type_info(		\
+					(MR_TypeInfo) MR_r1,		\
+					(MR_TypeInfo) MR_r2);		\
+				MR_restore_transient_registers();	\
+				MR_r1 = comp;				\
+			} while (0)
+
+#include ""mercury_hand_compare_body.h""
+
+#undef	body_code
+#undef	proc_static
+#undef	proc_label
 
 MR_END_MODULE
 
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_unify_type_desc_module
-*/
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc unify_type_desc_module;
-void sys_init_unify_type_desc_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_unify_type_desc_module(void) {
-	unify_type_desc_module();
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc type_desc_module;
+
+#endif /* ! MR_HIGHLEVEL_CODE */
+
+void
+sys_init_type_desc_module_init(void)
+{
+#ifndef	MR_HIGHLEVEL_CODE
+	type_desc_module();
 
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_std_util__type_ctor_info_type_desc_0,
 		std_util__type_desc_0_0);
+#endif
+}
 
+void
+sys_init_type_desc_module_init_type_tables(void)
+{
 	MR_register_type_ctor_info(
 		&mercury_data_std_util__type_ctor_info_type_desc_0);
 }
 
-#endif /* ! MR_HIGHLEVEL_CODE */
+#ifdef	MR_DEEP_PROFILING
+void
+sys_init_type_desc_module_write_out_proc_statics(FILE *fp)
+{
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(std_util, __Compare__, type_desc,
+			0, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(std_util, __Unify__, type_desc,
+			0, 0));
+}
+#endif
 
 ").
 
@@ -2749,6 +2793,10 @@ ML_get_num_functors(MR_TypeInfo type_info)
 :- pragma foreign_decl("C", "
 
     #include <stdio.h>
+
+#ifdef MR_DEEP_PROFILING
+    #include ""mercury_deep_profiling.h""
+#endif
 
     /*
     ** Code for functor, arg and deconstruct

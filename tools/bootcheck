@@ -130,6 +130,11 @@ fi
 compile_times=false
 type_stats=""
 
+if test -d .KEEP_OBJS
+then
+	keep_objs=true
+fi
+
 # If you change these, you will also need to change scripts/ml.in,
 # scripts/c2init.in, Mmake.common.in, tools/binary, tools/binary_step
 # and tools/linear.
@@ -200,7 +205,7 @@ while [ $# -gt 0 ]; do
 	-n|--no-bootcheck)
 		do_bootcheck=false ;;
 
-	--no-check_namespace)
+	--no-check-namespace)
 		check_namespace=false ;;
 
 	-t|--no-test-suite)
@@ -354,15 +359,8 @@ then
 	then
 		echo "building of stage 1 successful"
 	else
-		cd $root/library;
-		mmake $mmake_opts depend
-		cd $root/browser;
-		mmake $mmake_opts depend
-		cd $root/compiler;
-		mmake $mmake_opts depend
-		cd $root/profiler;
-		mmake $mmake_opts depend
 		cd $root
+		mmake $mmake_opts depend
 		if mmake $mmake_opts MMAKEFLAGS=$jfactor all
 		then
 			echo "building of stage 1 successful"
@@ -371,6 +369,14 @@ then
 			exit 1
 		fi
 	fi
+
+	# Turn off the writing out of deep profiling files, since Deep.data
+	# will be overwritten many times in each directory, and thus the time
+	# spent writing them out is wasted. If deep profiling debugging is
+	# enabled, this also avoids the writing of *huge* amounts of stuff
+	# on stderr.
+	MERCURY_OPTIONS="$MERCURY_OPTIONS -s"
+	export MERCURY_OPTIONS
 
 	MERCURY_COMPILER=$root/compiler/mercury_compile
 	export MERCURY_COMPILER
@@ -481,8 +487,14 @@ then
 		$LN_S $root/profiler/*.m .
 		cp $root/profiler/Mmake* .
 		cd $root/stage2
+		mkdir deep_profiler
+		cd deep_profiler
+		$LN_S $root/deep_profiler/*.m .
+		cp $root/deep_profiler/Mmake* .
+		cd $root/stage2
 	else
 		$LN_S $root/profiler .
+		$LN_S $root/deep_profiler .
 	fi
 	$LN_S $root/conf* .
 	$LN_S $root/aclocal.m4 .
@@ -522,13 +534,15 @@ then
 	fi
 
 	if (cd stage2 && $MMAKE $mmake_opts dep_library dep_browser \
-		dep_compiler dep_profiler)
+		dep_compiler dep_profiler dep_deep_profiler)
 	then
 		echo "building of stage 2 dependencies successful"
 	else
 		echo "building of stage 2 dependencies not successful"
 		exit 1
 	fi
+
+	# the `RM_C=:' ensures that the `.c' files do not get deleted
 
 	if (cd stage2/library && $MMAKE $mmake_opts $jfactor mercury)
 	then
@@ -651,6 +665,7 @@ then
 	$LN_S $root/scripts .
 	$LN_S $root/util .
 	$LN_S $root/profiler .
+	$LN_S $root/deep_profiler .
 	$LN_S $root/conf* .
 	$LN_S $root/aclocal.m4 .
 	$LN_S $root/VERSION .
@@ -792,19 +807,25 @@ then
 		/bin/rm -fr $root/stage3/* < /dev/null
 		/bin/rm -fr $root/stage3/.[a-zA-Z]* < /dev/null
 
+		if $keep_objs
+		then
+			true
+		else
 		case "$grade" in
 			*debug*)
-				# These files take up a lot of disk space,
-				# so we compress them. This reduces the
-				# probability that running the tests will
-				# run out of disk space, while still allowing
-				# the original files to be reconstructed
+					# These files take up a lot of disk
+					# space, so we compress them. This
+					# reduces the probability that running
+					# the tests will run out of disk space,
+					# while still allowing the original
+					# files to be reconstructed
 				# relatively quickly.
 				gzip $root/stage2/library/*.c
 				gzip $root/stage2/browser/*.c
 				gzip $root/stage2/compiler/*.c
 				;;
 		esac
+		fi
 	fi
 
 	echo "finishing stage3 at `date`"

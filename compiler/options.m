@@ -148,11 +148,24 @@
 		;	profiling		% profile_time + profile_calls
 		;	time_profiling		% profile_time + profile_calls
 		;	memory_profiling	% profime_mem + profile_calls
-		;	deep_profiling	% profile_time + profile_deep
+		;	deep_profiling		% profile_deep
 		;	profile_calls
 		;	profile_time
 		;	profile_memory
 		;	profile_deep
+		;	use_activation_counts
+				% use_activation_counts is used to determine
+				% which mechanism for cycle detection should be
+				% used for deep profiling. Actually, we only
+				% want to use the `yes' value, but we keep
+				% support for the `no' value for benchmarks
+				% for the paper.
+		;	use_zeroing_for_ho_cycles
+		;	use_lots_of_ho_specialization
+				% We should always handle tail recursion
+				% specially in deep profiling; the options is
+				% only for benchmarks for the paper.
+		;	deep_profile_tail_recursion
 		;	debug
 		;	stack_trace
 		;	require_tracing
@@ -383,6 +396,7 @@
 		;	optimize_peep
 		;	optimize_jumps
 		;	optimize_fulljumps
+		;	pessimize_tailcalls
 		;	checked_nondet_tailcalls
 		;	use_local_vars
 		;	optimize_labels
@@ -574,6 +588,12 @@ option_defaults_2(compilation_model_option, [
 	profile_time		-	bool(no),
 	profile_memory		-	bool(no),
 	profile_deep		-	bool(no),
+	use_activation_counts	-	bool(no),
+	use_zeroing_for_ho_cycles
+				-	bool(yes),
+	use_lots_of_ho_specialization
+				-	bool(no),
+	deep_profile_tail_recursion	-	bool(yes),
 	debug			-	bool_special,
 	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
@@ -774,6 +794,7 @@ option_defaults_2(optimization_option, [
 	optimize_peep		-	bool(no),
 	optimize_jumps		-	bool(no),
 	optimize_fulljumps	-	bool(no),
+	pessimize_tailcalls	-	bool(no),
 	checked_nondet_tailcalls -	bool(no),
 	use_local_vars		-	bool(no),
 	optimize_labels		-	bool(no),
@@ -985,6 +1006,13 @@ long_option("profile-calls",		profile_calls).
 long_option("profile-time",		profile_time).
 long_option("profile-memory",		profile_memory).
 long_option("profile-deep",		profile_deep).
+long_option("use-activation-counts",	use_activation_counts).
+long_option("use-zeroing-for-ho-cycles",
+					use_zeroing_for_ho_cycles).
+long_option("use-lots-of-ho-specialization",
+					use_lots_of_ho_specialization).
+long_option("deep-profile-tail-recursion",
+					deep_profile_tail_recursion).
 long_option("debug",			debug).
 % The following options are not allowed, because they're
 % not very useful and would probably only confuse people.
@@ -1206,6 +1234,7 @@ long_option("optimize-jumps",		optimize_jumps).
 long_option("optimise-jumps",		optimize_jumps).
 long_option("optimize-fulljumps",	optimize_fulljumps).
 long_option("optimise-fulljumps",	optimize_fulljumps).
+long_option("pessimize-tailcalls",	pessimize_tailcalls).
 long_option("checked-nondet-tailcalls", checked_nondet_tailcalls).
 long_option("use-local-vars",		use_local_vars).
 long_option("optimize-labels",		optimize_labels).
@@ -1301,7 +1330,7 @@ special_handler(memory_profiling, none, OptionTable0, ok(OptionTable)) :-
         map__set(OptionTable2, profile_memory, bool(yes), OptionTable3),
         map__set(OptionTable3, profile_deep, bool(no), OptionTable).
 special_handler(deep_profiling, none, OptionTable0, ok(OptionTable)) :-
-	map__set(OptionTable0, profile_time, bool(yes), OptionTable1),
+	map__set(OptionTable0, profile_time, bool(no), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(no), OptionTable2),
         map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
         map__set(OptionTable3, profile_deep, bool(yes), OptionTable).
@@ -2053,6 +2082,10 @@ options_help_compilation_model -->
 		"--memory-profiling\t\t(grade modifier: `.memprof')",
 		"\tEnable memory and call profiling.",
 		"\tThis option is not supported for the IL or Java back-ends.",
+		"--deep-profiling\t\t(grade modifier: `.profdeep')",
+		"\tEnable deep profiling.",
+		"\tThis option is not supported for the high-level C, IL",
+		"\tor Java back-ends.",
 /*****************
 XXX The following options are not documented,
 because they are currently not useful.
@@ -2536,6 +2569,8 @@ options_help_llds_llds_optimization -->
 		"\tDisable elimination of jumps to jumps.",
 		"--no-optimize-fulljumps",
 		"\tDisable elimination of jumps to ordinary code.",
+		"--pessimize-tailcalls",
+		"\tDisable the optimization of tailcalls.",
 		"--checked-nondet-tailcalls",
 		"\tConvert nondet calls into tail calls whenever possible, even",
 		"\twhen this requires a runtime check. This option tries to",

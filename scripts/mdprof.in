@@ -1,0 +1,20 @@
+#! /bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# This should set up PATH to include the directory containing the installed
+# mdprof_cgi and mprof_server programs. This should allow this shell script
+# to find the right version of mdprof_cgi, and it should allow the mdprof_cgi
+# process to find the right mdprof_server.
+#
+# We ignore the argument(s) of this script. The web server passes us the same
+# information in the environment variable QUERY_STRING, but QUERY_STRING is
+# unprocessed, which is what we want; the web servers breaks up QUERY_STRING
+# on boundaries inappropriate for us when computing the command line arguments.
+
+PATH=@PREFIX@/bin:$PATH
+export PATH
+exec mdprof_cgi

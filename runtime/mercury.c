@@ -886,6 +886,8 @@ MR_asm_box_float(MR_Float f)
 	return (MR_Box) ptr;
 }
 
+#endif /* ! MR_HIGHLEVEL_CODE */
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -893,12 +895,17 @@ INIT mercury_sys_init_mercury_hlc
 ENDINIT
 */
 
-/* forward decl, to suppress gcc -Wmissing-decl warning. */
-void mercury_sys_init_mercury_hlc(void);
+/* forward decls, to suppress gcc -Wmissing-decl warnings. */
+void mercury_sys_init_mercury_hlc_init(void);
+void mercury_sys_init_mercury_hlc_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_mercury_hlc_write_out_proc_statics(FILE *fp);
+#endif
 
 void
-mercury_sys_init_mercury_hlc(void)
+mercury_sys_init_mercury_hlc_init(void)
 {
+#ifdef MR_HIGHLEVEL_CODE
 	/*
 	** We need to call MR_init_entry() for the unification and comparison
 	** predicates for builtin types.  Note that we don't need to do this
@@ -922,23 +929,21 @@ mercury_sys_init_mercury_hlc(void)
 	MR_init_entry(mercury__builtin____Compare____void_0_0);
 	MR_init_entry(mercury__builtin____Compare____func_0_0);
 	MR_init_entry(mercury__builtin____Compare____pred_0_0);
+#else
+	/* no initialization needed */
+#endif
 }
+
+void mercury_sys_init_mercury_hlc_init_type_tables(void)
+{
+	/* no types to register */
+}
+
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_mercury_hlc_write_out_proc_statics(FILE *fp)
+{
+	/* no proc_statics to write out */
+}
+#endif
 
 /*---------------------------------------------------------------------------*/
-
-#else /* ! MR_HIGHLEVEL_CODE */
-
-/* suppress gcc -Wmissing-decl warn */
-void mercury_sys_init_mercury_hlc(void);
-
-/*
-** This empty initialization function is needed only
-** to match the one that we use for MLDS grades.
-*/
-void
-mercury_sys_init_mercury_hlc(void)
-{
-	/* no initialization needed */
-}
-
-#endif /* ! MR_HIGHLEVEL_CODE */

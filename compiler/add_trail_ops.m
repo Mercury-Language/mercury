@@ -453,11 +453,6 @@ ticket_type = c_pointer_type.
 :- func ticket_counter_type = (type).
 ticket_counter_type = c_pointer_type.
 
-:- func c_pointer_type = (type).
-c_pointer_type = Type :-
-	mercury_public_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule, "c_pointer") - 0, [], Type).
-
 %-----------------------------------------------------------------------------%
 
 % XXX copied from table_gen.m

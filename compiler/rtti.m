@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -417,6 +417,10 @@
 	% Construct an rtti_proc_label for a given procedure.
 :- func rtti__make_proc_label(module_info, pred_id, proc_id) = rtti_proc_label.
 
+	% Construct an rtti_proc_label for a given procedure.
+:- pred rtti__proc_label_pred_proc_id(rtti_proc_label::in,
+	pred_id::out, proc_id::out) is det.
+
 	% Return the C variable name of the RTTI data structure identified
 	% by the input arguments.
 	% XXX this should be in rtti_out.m
@@ -545,6 +549,10 @@ rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 		ProcVarSet, ProcHeadVars, ProcArgModes, ProcCodeModel,
 		IsImported, IsPseudoImp, IsExported, IsSpecialPredInstance).
 
+rtti__proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
+	ProcLabel = rtti_proc_label(_, _, _, _, _, _, PredId, ProcId,
+		_, _, _, _, _, _, _, _).
+
 rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 	rtti__mangle_rtti_type_id(RttiTypeId, ModuleName, TypeName, A_str),
 	(
@@ -625,8 +633,8 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 			TypeName, "_", A_str], Str)
 	).
 
-:- pred rtti__mangle_rtti_type_id(rtti_type_id, string, string, string).
-:- mode rtti__mangle_rtti_type_id(in, out, out, out) is det.
+:- pred rtti__mangle_rtti_type_id(rtti_type_id::in,
+	string::out, string::out, string::out) is det.
 
 rtti__mangle_rtti_type_id(RttiTypeId, ModuleName, TypeName, A_str) :-
 	RttiTypeId = rtti_type_id(ModuleName0, TypeName0, TypeArity),

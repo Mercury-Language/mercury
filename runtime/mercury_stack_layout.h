@@ -439,7 +439,7 @@ typedef struct MR_Stack_Traversal_Struct {
 ** unification, comparison and index procedures. The meanings of the fields
 ** in both forms are the same as in procedure labels. The runtime system
 ** can figure out which form is present by using the macro
-** MR_ENTRY_LAYOUT_COMPILER_GENERATED, which will return true only if
+** MR_PROC_LAYOUT_COMPILER_GENERATED, which will return true only if
 ** the procedure is of the second type.
 **
 ** The compiler generates MR_User_Proc_Id and MR_Compiler_Proc_Id structures
@@ -474,9 +474,12 @@ typedef union MR_Proc_Id_Union {
 	MR_Compiler_Proc_Id	MR_proc_comp;
 } MR_Proc_Id;
 
-#define	MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)		\
-		((MR_Unsigned) entry->MR_sle_user.MR_user_pred_or_func \
-		> MR_FUNCTION)
+#define	MR_PROC_LAYOUT_COMPILER_GENERATED(entry)			\
+	MR_PROC_ID_COMPILER_GENERATED(entry->MR_sle_proc_id)
+
+#define	MR_PROC_ID_COMPILER_GENERATED(proc_id)				\
+	((MR_Unsigned) (proc_id).MR_proc_user.MR_user_pred_or_func	\
+	 	> MR_FUNCTION)
 
 /*
 ** The MR_Exec_Trace structure contains the following fields.
@@ -613,8 +616,8 @@ typedef	struct MR_Exec_Trace_Struct {
 ** The runtime system considers all proc layout structures to be of type
 ** MR_Proc_Layout, but must use the macros defined below to check for the 
 ** existence of each substructure before accessing the fields of that
-** substructure. The macros are MR_ENTRY_LAYOUT_HAS_PROC_ID to check for the
-** MR_Proc_Id substructure and MR_ENTRY_LAYOUT_HAS_EXEC_TRACE to check for the
+** substructure. The macros are MR_PROC_LAYOUT_HAS_PROC_ID to check for the
+** MR_Proc_Id substructure and MR_PROC_LAYOUT_HAS_EXEC_TRACE to check for the
 ** MR_Exec_Trace substructure.
 **
 ** The reason why some substructures may be missing is to save space.
@@ -673,11 +676,11 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 	MR_Exec_Trace		MR_comp_exec_trace;
 } MR_Proc_Layout_Compiler_Exec;
 
-#define	MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)			\
+#define	MR_PROC_LAYOUT_HAS_PROC_ID(entry)			\
 		((MR_Word) entry->MR_sle_user.MR_user_pred_or_func != -1)
 
-#define	MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)			\
-		(MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)		\
+#define	MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)			\
+		(MR_PROC_LAYOUT_HAS_PROC_ID(entry)		\
 		&& entry->MR_sle_call_label != NULL)
 
 #define	MR_sle_code_addr	MR_sle_traversal.MR_trav_code_addr
@@ -714,7 +717,7 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 ** procedures the size of the frame can be deduced from the prevfr field
 ** and the location of the succip is fixed.
 **
-** An unknown slot count should be signalled by MR_ENTRY_NO_SLOT_COUNT.
+** An unknown slot count should be signalled by MR_PROC_NO_SLOT_COUNT.
 ** An unknown succip location should be signalled by MR_LONG_LVAL_TYPE_UNKNOWN.
 **
 ** For the procedure identification, we always use the same module name
@@ -729,7 +732,7 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 ** five variant types listed above.)
 */ 
 
-#define	MR_ENTRY_NO_SLOT_COUNT		-1
+#define	MR_PROC_NO_SLOT_COUNT		-1
 
 #ifdef	MR_STATIC_CODE_ADDRESSES
  #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		MR_STATIC(entry)
@@ -780,7 +783,7 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 ** burden of initializing fields to the MR_trace of the call event either.
 **
 ** The following macros will access the fixed slots. They can be used whenever
-** MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) is true; which set you should use
+** MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry) is true; which set you should use
 ** depends on the determinism of the procedure.
 **
 ** These macros have to be kept in sync with compiler/trace.m.

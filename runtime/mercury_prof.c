@@ -22,6 +22,7 @@
 
 #include	"mercury_prof.h"
 #include	"mercury_heap_profile.h" /* for MR_prof_output_mem_tables() */
+#include	"mercury_prof_time.h"	 /* for MR_turn_on_time_profiling() */
 #include	"mercury_prof_mem.h"	 /* for prof_malloc() */
 
 #include	"mercury_signal.h"
@@ -30,31 +31,11 @@
 
 #include	<signal.h>		/* for SIGINT */
 
-#if defined(PROFILE_TIME)
-
-#ifdef HAVE_SYS_TIME
-#include	<sys/time.h>
-#endif
-
-#if !defined(MR_CLOCK_TICKS_PER_SECOND) \
-	|| !defined(HAVE_SETITIMER)
-  #error "Time profiling not supported on this system"
-#endif
-
-static int	MR_itimer_sig;
-static int	MR_itimer_type;
-static const char * MR_time_method;
-
-#endif	/* PROFILE_TIME */
-
 /*
 ** XXX Ought to make these command line options
 */
 #define CALL_TABLE_SIZE 4096
 #define TIME_TABLE_SIZE 4096
-#define MR_CLOCK_TICKS_PER_PROF_SIG	5
-
-#define MR_USEC_PER_SEC            	1000000
 
 /*
 ** profiling node information 
@@ -93,7 +74,7 @@ typedef struct s_prof_time_node {
 
 MR_Code *		volatile	MR_prof_current_proc;
 
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
   MR_Code *		MR_prof_ho_caller_proc;
 #endif
 
@@ -104,14 +85,12 @@ MR_Code *		volatile	MR_prof_current_proc;
 
 static volatile	int		in_profiling_code = FALSE;
 
-
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
   static FILE 		*MR_prof_decl_fptr = NULL;
   static prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
 #endif
 
-#ifdef PROFILE_TIME
-  static bool		time_profiling_on = FALSE;
+#ifdef MR_MPROF_PROFILE_TIME
   static prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 #endif
 
@@ -119,64 +98,37 @@ static volatile	int		in_profiling_code = FALSE;
 ** Local function declarations
 */
 
-#ifdef PROFILE_TIME
-  static void prof_init_time_profile_method(void);
-  static void prof_time_profile(int);
+#ifdef MR_MPROF_PROFILE_TIME
+  static void prof_handle_tick(int);
   static void prof_output_addr_table(void);
   static void print_time_node(FILE *fptr, prof_time_node *node);
 #endif
 
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
   static void print_addr_pair_node(FILE *fptr, prof_call_node *node);
   static void prof_output_addr_pair_table(void);
 #endif
 
-#ifdef PROFILE_MEMORY
+#ifdef MR_MPROF_PROFILE_MEMORY
   static void prof_output_mem_tables(void);
   static void print_memory_node(FILE *words_fptr, FILE *cells_fptr,
 		MR_memprof_record *node);
 #endif
 
-#if defined(PROFILE_TIME) || defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
+#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
+		|| defined(MR_MPROF_PROFILE_MEMORY)
   static void prof_handle_sigint(void);
-#endif
-
-/* ======================================================================== */
-
-#ifndef HAVE_STRERROR
-
-/*
-** Apparently SunOS 4.1.3 doesn't have strerror()
-**	(!%^&!^% non-ANSI systems, grumble...)
-**
-** This code should perhaps go somewhere other than in prof.c.
-*/
-
-extern int sys_nerr;
-extern char *sys_errlist[];
-
-char *
-strerror(int errnum)
-{
-	if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
-		return sys_errlist[errnum];
-	} else {
-		static char buf[30];
-		sprintf(buf, "Error %d", errnum);
-		return buf;
-	}
-}
-
 #endif
 
 /* ======================================================================== */
 
 /* utility routines for opening and closing files */
 
-#if defined(PROFILE_TIME) || defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
+#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
+	|| defined(MR_MPROF_PROFILE_MEMORY)
 
 static FILE *
-checked_fopen(const char *filename, const char *message, const char *mode)
+MR_checked_fopen(const char *filename, const char *message, const char *mode)
 {
 	FILE *file;
 
@@ -191,7 +143,7 @@ checked_fopen(const char *filename, const char *message, const char *mode)
 }
 
 static void
-checked_fclose(FILE *file, const char *filename)
+MR_checked_fclose(FILE *file, const char *filename)
 {
 	errno = 0;
 	if (fclose(file) != 0) {
@@ -203,7 +155,7 @@ checked_fclose(FILE *file, const char *filename)
 }
 
 static void
-checked_atexit(void (*func)(void))
+MR_checked_atexit(void (*func)(void))
 {
 	errno = 0;
 	if (atexit(func) != 0) {
@@ -214,92 +166,11 @@ checked_atexit(void (*func)(void))
 	}
 }
 
-#endif /* PROFILE_TIME or PROFILE_CALLS or PROFILE_MEMORY */
+#endif /* MR_MPROF_PROFILE_TIME or MR_MPROF_PROFILE_CALLS or MR_MPROF_PROFILE_MEMORY */
 
 /* ======================================================================== */
 
-#ifdef	PROFILE_TIME
-
-static void
-checked_setitimer(int which, struct itimerval *value)
-{
-	errno = 0;
-	if (setitimer(which, value, NULL) != 0) {
-		perror("Mercury runtime: cannot set timer for profiling");
-		exit(1);
-	}
-}
-
-/*
-**	prof_turn_on_time_profiling:
-**		Sets up the profiling timer and starts it up. 
-**		At the moment it is after every MR_CLOCK_TICKS_PER_PROF_SIG
-**		ticks of the clock.
-**
-**		WARNING: SYSTEM SPECIFIC CODE.  
-**		This code is not very portable, because it uses setitimer(),
-**		which is not part of POSIX.1 or ANSI C.
-*/
-
-void
-MR_prof_turn_on_time_profiling(void)
-{
-	FILE 	*fptr;
-	struct itimerval itime;
-	const long prof_sig_interval_in_usecs = MR_CLOCK_TICKS_PER_PROF_SIG *
-		(MR_USEC_PER_SEC / MR_CLOCK_TICKS_PER_SECOND);
-
-	time_profiling_on = TRUE;
-
-	itime.it_value.tv_sec = 0;
-	itime.it_value.tv_usec = prof_sig_interval_in_usecs;
-	itime.it_interval.tv_sec = 0;
-	itime.it_interval.tv_usec = prof_sig_interval_in_usecs;
-
-	MR_setup_signal(MR_itimer_sig, prof_time_profile, FALSE,
-		"Mercury runtime: cannot install signal handler");
-	checked_setitimer(MR_itimer_type, &itime);
-}
-
-/*
-**	prof_init_time_profile_method:
-**		initializes MR_itimer_type and MR_itimer_sig
-**		based on the setting of MR_time_profile_method.
-*/
-static void
-prof_init_time_profile_method(void)
-{
-	switch (MR_time_profile_method) {
-#if defined(ITIMER_REAL) && defined(SIGALRM)
-		case MR_profile_real_time:
-			MR_itimer_type = ITIMER_REAL;
-			MR_itimer_sig  = SIGALRM;
-			MR_time_method = "real-time";
-			break;
-#endif
-#if defined(ITIMER_VIRTUAL) && defined(SIGVTALRM)
-		case MR_profile_user_time:
-			MR_itimer_type = ITIMER_VIRTUAL;
-			MR_itimer_sig  = SIGVTALRM;
-			MR_time_method = "user-time";
-			break;
-#endif
-#if defined(ITIMER_VIRTUAL) && defined(SIGVTALRM)
-		case MR_profile_user_plus_system_time:
-			MR_itimer_type = ITIMER_PROF;
-			MR_itimer_sig  = SIGPROF;
-			MR_time_method = "user-plus-system-time";
-			break;
-#endif
-		default:
-			MR_fatal_error("invalid time profile method");
-	}
-}
-#endif /* PROFILE_TIME */
-
-/* ======================================================================== */
-
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
 
 /*
 **	prof_call_profile:
@@ -346,21 +217,21 @@ MR_prof_call_profile(MR_Code *Callee, MR_Code *Caller)
 	return;
 }
 
-#endif /* PROFILE_CALLS */
+#endif /* MR_MPROF_PROFILE_CALLS */
 
 /* ======================================================================== */
 
-#ifdef PROFILE_TIME
+#ifdef MR_MPROF_PROFILE_TIME
 
 /*
-**	prof_time_profile:
+**	prof_handle_tick:
 **		Signal handler to be called whenever a profiling signal is
 **		received. Saves the current code address into a hash table.
 **		If the address already exists, it increments its count.
 */
 
 static void
-prof_time_profile(int signum)
+prof_handle_tick(int signum)
 {
 	prof_time_node	*node, **node_addr, *new_node;
 	int		hash_value;
@@ -398,36 +269,13 @@ prof_time_profile(int signum)
 
 	in_profiling_code = FALSE;
 	return;
-} /* end prof_time_profile() */
+} /* end prof_handle_tick() */
+
+#endif /* MR_MPROF_PROFILE_TIME */
 
 /* ======================================================================== */
 
-/*
-**	prof_turn_off_time_profiling:
-**		Turns off the time profiling.
-*/
-
-void
-MR_prof_turn_off_time_profiling(void)
-{
-	struct itimerval itime;
-
-	if (time_profiling_on == FALSE)
-		return;
-
-	itime.it_value.tv_sec = 0;
-	itime.it_value.tv_usec = 0;
-	itime.it_interval.tv_sec = 0;
-	itime.it_interval.tv_usec = 0;
-
-	checked_setitimer(MR_itimer_type, &itime);
-}
-	
-#endif /* PROFILE_TIME */
-
-/* ======================================================================== */
-
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
 
 /*
 **	prof_output_addr_pair_table :
@@ -441,13 +289,13 @@ prof_output_addr_pair_table(void)
 	FILE	*fptr;
 	int	i;
 
-	fptr = checked_fopen("Prof.CallPair", "create", "w");
+	fptr = MR_checked_fopen("Prof.CallPair", "create", "w");
 
 	for (i = 0; i < CALL_TABLE_SIZE ; i++) {
 		print_addr_pair_node(fptr, addr_pair_table[i]);
 	}
 
-	checked_fclose(fptr, "Prof.CallPair");
+	MR_checked_fclose(fptr, "Prof.CallPair");
 }
 
 static void
@@ -461,11 +309,11 @@ print_addr_pair_node(FILE *fptr, prof_call_node *node)
 	}
 }
 
-#endif /* PROFILE_CALLS */
+#endif /* MR_MPROF_PROFILE_CALLS */
 
 /* ======================================================================== */
 
-#if defined(PROFILE_CALLS)
+#if defined(MR_MPROF_PROFILE_CALLS)
 
 /*
 **	prof_output_addr_decl:
@@ -478,16 +326,17 @@ void
 MR_prof_output_addr_decl(const char *name, const MR_Code *address)
 {
 	if (!MR_prof_decl_fptr) {
-		MR_prof_decl_fptr = checked_fopen("Prof.Decl", "create", "w");
+		MR_prof_decl_fptr =
+			MR_checked_fopen("Prof.Decl", "create", "w");
 	}
 	fprintf(MR_prof_decl_fptr, "%ld\t%s\n", (long) address, name);
 }
 
-#endif /* PROFILE_CALLS */
+#endif /* MR_MPROF_PROFILE_CALLS */
 
 /* ======================================================================== */
 
-#ifdef PROFILE_TIME
+#ifdef MR_MPROF_PROFILE_TIME
 
 /*
 **	prof_output_addr_table:
@@ -503,7 +352,7 @@ prof_output_addr_table(void)
 	double scale;
 	double rate;
 
-	fptr = checked_fopen("Prof.Counts", "create", "w");
+	fptr = MR_checked_fopen("Prof.Counts", "create", "w");
 
 	/*
 	** Write out header line indicating what we are profiling,
@@ -522,7 +371,7 @@ prof_output_addr_table(void)
 		print_time_node(fptr, addr_table[i]);
 	}
 
-	checked_fclose(fptr, "Prof.Counts");
+	MR_checked_fclose(fptr, "Prof.Counts");
 }
 
 static void
@@ -535,11 +384,11 @@ print_time_node(FILE *fptr, prof_time_node *node)
 	}
 }
 
-#endif /* PROFILE_TIME */
+#endif /* MR_MPROF_PROFILE_TIME */
 
 /* ======================================================================== */
 
-#ifdef PROFILE_MEMORY
+#ifdef MR_MPROF_PROFILE_MEMORY
 
 /*
 **	prof_output_mem_tables:
@@ -554,8 +403,8 @@ prof_output_mem_tables(void)
 	FILE *cells_fptr;
 	int  i;
 
-	words_fptr = checked_fopen("Prof.MemoryWords", "create", "w");
-	cells_fptr = checked_fopen("Prof.MemoryCells", "create", "w");
+	words_fptr = MR_checked_fopen("Prof.MemoryWords", "create", "w");
+	cells_fptr = MR_checked_fopen("Prof.MemoryCells", "create", "w");
 
 	fprintf(words_fptr, "%s %f %s\n",
 		"memory-words", 0.001, "kilowords");
@@ -564,8 +413,8 @@ prof_output_mem_tables(void)
 
 	print_memory_node(words_fptr, cells_fptr, MR_memprof_procs.root);
 
-	checked_fclose(words_fptr, "Prof.MemoryWords");
-	checked_fclose(cells_fptr, "Prof.MemoryCells");
+	MR_checked_fclose(words_fptr, "Prof.MemoryWords");
+	MR_checked_fclose(cells_fptr, "Prof.MemoryCells");
 }
 
 static void
@@ -597,19 +446,20 @@ print_memory_node(FILE *words_fptr, FILE *cells_fptr, MR_memprof_record *node)
 	}
 }
 
-#endif /* PROFILE_MEMORY */
+#endif /* MR_MPROF_PROFILE_MEMORY */
 
 /* ======================================================================== */
 
 void
 MR_prof_init(void)
 {
-#ifdef PROFILE_TIME
-	prof_init_time_profile_method();
+#ifdef MR_MPROF_PROFILE_TIME
+	MR_init_time_profile_method();
 #endif
 
-#if defined(PROFILE_TIME) || defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
-	checked_atexit(MR_prof_finish);
+#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
+		|| defined(MR_MPROF_PROFILE_MEMORY)
+	MR_checked_atexit(MR_prof_finish);
   #ifdef SIGINT
 	MR_setup_signal(SIGINT, prof_handle_sigint, FALSE,
 		"Mercury runtime: cannot install signal handler");
@@ -617,11 +467,15 @@ MR_prof_init(void)
 #endif
 }
 
-#if defined(PROFILE_TIME) || defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
+#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
+		|| defined(MR_MPROF_PROFILE_MEMORY)
 static void
 prof_handle_sigint(void)
 {
-  /* exit() will call MR_prof_finish(), which we registered with atexit(). */
+	/*
+	** exit() will call MR_prof_finish(), which we registered
+	** with atexit().
+	*/
   exit(1);
 }
 #endif
@@ -634,27 +488,43 @@ MR_prof_finish(void)
 	if (done) return;
 	done = TRUE;
 
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
 	prof_output_addr_pair_table();
 #endif
 
-#ifdef PROFILE_TIME
-	MR_prof_turn_off_time_profiling();
+#ifdef MR_MPROF_PROFILE_TIME
+	MR_turn_off_time_profiling();
 	prof_output_addr_table();
 #endif
 
-#ifdef PROFILE_MEMORY
+#ifdef MR_MPROF_PROFILE_MEMORY
 	prof_output_mem_tables();
 #endif
 }
 
 void MR_close_prof_decl_file(void)
 {
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
 	if (MR_prof_decl_fptr) {
-		checked_fclose(MR_prof_decl_fptr, "Prof.Decl");
+		MR_checked_fclose(MR_prof_decl_fptr, "Prof.Decl");
 	}
 #endif
 }
+
+#ifdef MR_MPROF_PROFILE_TIME
+
+void
+MR_prof_turn_on_time_profiling(void)
+{
+	MR_turn_on_time_profiling(prof_handle_tick);
+}
+
+void
+MR_prof_turn_off_time_profiling(void)
+{
+	MR_turn_off_time_profiling();
+}
+
+#endif
 
 /* ======================================================================== */

@@ -23,7 +23,7 @@
 
 /* Stack slots start numbering at 1 */
 #define	MR_based_stackvar(base_sp, n)	((base_sp)[-(n)])
-#define	MR_stackvar(n)			MR_based_stackvar(MR_sp, n)
+#define	MR_stackvar(n)			MR_based_stackvar(MR_sp, (n))
 
 #define	MR_incr_sp_push_msg(n, msg)				\
 			(					\
@@ -241,8 +241,8 @@ enum MR_HandlerCodeModel {
 	/*
 	** For this value, the exception will be handled by C code using
 	** setjmp/longjmp.  If an exception occurs, then after the Mercury
-	** stacks have been unwound, `MR_longjmp(MR_ENGINE(e_jmp_buf))' will
-	** be called.
+	** stacks have been unwound, `MR_longjmp(MR_ENGINE(MR_eng_jmp_buf))'
+	** will be called.
 	*/
 	MR_C_LONGJMP_HANDLER
 };
@@ -261,7 +261,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	** (see above), but it is declared to have type `MR_Word' to ensure
 	** that everything remains word-aligned.
 	*/
-	MR_Word code_model;
+	MR_Word MR_excp_code_model;
 
 	/*
 	** If code_model is MR_MODEL_*_HANDLER, then
@@ -269,7 +269,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	** which will be a closure of the specified determinism.
 	** If code_model is MR_C_LONGJMP, then this field is unused.
 	*/
-	MR_Word handler;
+	MR_Word MR_excp_handler;
 
 	/*
 	** The remaining fields hold stuff that must be saved in order
@@ -277,24 +277,31 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	*/
 
 	/* the det stack pointer */
-	MR_Word *stack_ptr;
+	MR_Word *MR_excp_stack_ptr;
 
 	/* the trail state */
 	MR_IF_USE_TRAIL(
-		MR_Word trail_ptr;
-		MR_Word ticket_counter;
+		MR_Word MR_excp_trail_ptr;
+		MR_Word MR_excp_ticket_counter;
 	)
 
 	/* the heap state */
 	MR_IF_NOT_CONSERVATIVE_GC(
-		MR_Word *heap_ptr;
-		MR_Word *solns_heap_ptr;
-		MR_MemoryZone *heap_zone;
+		MR_Word *MR_excp_heap_ptr;
+		MR_Word *MR_excp_solns_heap_ptr;
+		MR_MemoryZone *MR_excp_heap_zone;
 	)
 } MR_Exception_Handler_Frame;
 
-#define MR_EXCEPTION_FRAMEVARS \
-    (((MR_Exception_Handler_Frame *) (MR_curfr - MR_NONDET_FIXED_SIZE + 1)) - 1)
+#ifdef	MR_DEEP_PROFILING
+  #define MR_EXCEPTION_FRAMEVARS	2
+#else
+  #define MR_EXCEPTION_FRAMEVARS	0
+#endif
+
+#define MR_EXCEPTION_STRUCT \
+	(((MR_Exception_Handler_Frame *)				      \
+      	(MR_curfr + 1 - MR_EXCEPTION_FRAMEVARS - MR_NONDET_FIXED_SIZE)) - 1)
 
 #define MR_create_exception_handler(name,				      \
 		handler_code_model, handler_closure, redoip)		      \
@@ -305,28 +312,34 @@ typedef struct MR_Exception_Handler_Frame_struct {
 		** redoip when unwinding the nondet stack in		      \
 		** builtin_throw/1), and save the stuff we will		      \
 		** need if an exception is thrown.			      \
+		**							      \
+		** In deep profiling grades, we need two stack slots to save  \
+		** intermediate values in across calls to profiling routines. \
 		*/							      \
-		MR_mkpragmaframe((name), 0,				      \
+		MR_mkpragmaframe((name), MR_EXCEPTION_FRAMEVARS,	      \
 			MR_Exception_Handler_Frame_struct,		      \
 			MR_ENTRY(MR_exception_handler_do_fail));	      \
 		/* record the handler's code model */			      \
-		MR_EXCEPTION_FRAMEVARS->code_model = (handler_code_model);    \
+		MR_EXCEPTION_STRUCT->MR_excp_code_model =		      \
+			(handler_code_model);				      \
 		/* save the handler's closure */			      \
-		MR_EXCEPTION_FRAMEVARS->handler = (handler_closure);	      \
+		MR_EXCEPTION_STRUCT->MR_excp_handler = (handler_closure);     \
 		/* save the det stack pointer */			      \
-		MR_EXCEPTION_FRAMEVARS->stack_ptr = MR_sp;		      \
+		MR_EXCEPTION_STRUCT->MR_excp_stack_ptr = MR_sp;		      \
 		MR_IF_NOT_CONSERVATIVE_GC(				      \
 			/* save the heap and solutions heap pointers */	      \
-			MR_EXCEPTION_FRAMEVARS->heap_ptr = MR_hp;	      \
-			MR_EXCEPTION_FRAMEVARS->solns_heap_ptr = MR_sol_hp;   \
-			MR_EXCEPTION_FRAMEVARS->heap_zone = 		      \
-				MR_ENGINE(heap_zone);			      \
+			MR_EXCEPTION_STRUCT->MR_excp_heap_ptr = MR_hp;        \
+			MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr =         \
+				MR_sol_hp;				      \
+			MR_EXCEPTION_STRUCT->MR_excp_heap_zone =	      \
+				MR_ENGINE(MR_eng_heap_zone);		      \
 		)							      \
 		MR_IF_USE_TRAIL(					      \
 			/* save the trail state */			      \
-			MR_mark_ticket_stack(				      \
-				MR_EXCEPTION_FRAMEVARS->ticket_counter);      \
-			MR_store_ticket(MR_EXCEPTION_FRAMEVARS->trail_ptr);   \
+			MR_mark_ticket_stack(MR_EXCEPTION_STRUCT->	      \
+				MR_excp_ticket_counter);		      \
+			MR_store_ticket(MR_EXCEPTION_STRUCT->		      \
+				MR_excp_trail_ptr);			      \
 		)							      \
 									      \
 		/*							      \

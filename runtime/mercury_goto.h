@@ -10,20 +10,19 @@
 #define MERCURY_GOTO_H
 
 #include "mercury_conf.h"
+#include "mercury_std.h"	/* for MR_PASTE2 and MR_STRINGIFY */
 #include "mercury_types.h"	/* for `MR_Code *' */
 #include "mercury_debug.h"	/* for MR_debuggoto() */
 #include "mercury_label.h"	/* for MR_insert_{entry,internal}_label() */
 #include "mercury_dummy.h"	/* for MR_dummy_identify_function() */
 
-#define MR_paste(a,b) a##b
-#define MR_stringify(string) #string
-#define MR_entry(label) MR_paste(_entry_,label)
-#define MR_skip(label) MR_paste(skip_,label)
+#define MR_entry(label)		MR_PASTE2(_entry_,label)
+#define MR_skip(label)		MR_PASTE2(skip_,label)
 
-#define MR_ENTRY_LAYOUT(label)	  	(const MR_Proc_Layout *) (MR_Word)\
-				&(MR_paste(mercury_data__proc_layout__,label))
-#define MR_INTERNAL_LAYOUT(label) 	(const MR_Label_Layout *) (MR_Word)\
-				&(MR_paste(mercury_data__label_layout__,label))
+#define MR_PROC_LAYOUT(label)	(const MR_Proc_Layout *) (MR_Word) \
+				&(MR_PASTE2(mercury_data__proc_layout__,label))
+#define MR_LABEL_LAYOUT(label) 	(const MR_Label_Layout *) (MR_Word) \
+				&(MR_PASTE2(mercury_data__label_layout__,label))
 
 /*
 ** Passing the name of a label to MR_insert_{internal,entry}_label
@@ -58,15 +57,15 @@
 
 #define MR_make_label_ai(n, a, l)		MR_insert_internal(n, a, NULL)
 #define MR_make_label_sl(n, a, l)		MR_insert_internal(n, a, \
-							MR_INTERNAL_LAYOUT(l))
+							MR_LABEL_LAYOUT(l))
 
 #define MR_make_local_ai(n, a, l)		MR_insert_entry(n, a, NULL)
 #define MR_make_local_sl(n, a, l)		MR_insert_entry(n, a, \
-							MR_ENTRY_LAYOUT(l))
+							MR_PROC_LAYOUT(l))
 
 #define MR_make_entry_ai(n, a, l)		MR_insert_entry(n, a, NULL)
 #define MR_make_entry_sl(n, a, l)		MR_insert_entry(n, a, \
-							MR_ENTRY_LAYOUT(l))
+							MR_PROC_LAYOUT(l))
 
 #if defined(MR_INSERT_LABELS)
   #define MR_make_label(n, a, l)		MR_make_label_ai(n, a, l)
@@ -74,7 +73,7 @@
   #define MR_make_label(n, a, l)		/* nothing */
 #endif
 
-#if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
+#if defined(MR_INSERT_LABELS) || defined(MR_MPROF_PROFILE_CALLS)
   #define MR_make_local(n, a, l)		MR_make_local_ai(n, a, l)
 #else 
   #define MR_make_local(n, a, l)		/* nothing */
@@ -88,7 +87,7 @@
 ** to the MLDS back-end too, you may also need to change the
 ** `need_to_init_entries' predicate in compiler/mlds_to_c.m.
 */
-#if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
+#if defined(MR_INSERT_LABELS) || defined(MR_MPROF_PROFILE_CALLS)
   #define MR_make_entry(n, a, l)		MR_make_entry_ai(n, a, l)
 #else
   #define MR_make_entry(n, a, l)		/* nothing */
@@ -275,7 +274,7 @@
   */
   #ifdef __ELF__
     #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
-	"	.type _entry_" MR_stringify(label) ",@function\n"
+	"	.type _entry_" MR_STRINGIFY(label) ",@function\n"
   #endif
 
 #elif defined (__sparc)
@@ -338,7 +337,7 @@
   */
   #ifndef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
     #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
-	"	.type _entry_" MR_stringify(label) ",#function\n"
+	"	.type _entry_" MR_STRINGIFY(label) ",#function\n"
   #endif
 
 #endif
@@ -378,7 +377,7 @@
 */
 #ifndef MR_INLINE_ASM_GLOBALIZE_LABEL
 #define MR_INLINE_ASM_GLOBALIZE_LABEL(label) \
-	"	.globl _entry_" MR_stringify(label) "\n"
+	"	.globl _entry_" MR_STRINGIFY(label) "\n"
 #endif
 
 /*
@@ -396,7 +395,7 @@
 */
 #ifndef MR_INLINE_ASM_ENTRY_LABEL
 #define MR_INLINE_ASM_ENTRY_LABEL(label)	\
-	"_entry_" MR_stringify(label) ":\n"
+	"_entry_" MR_STRINGIFY(label) ":\n"
 #endif
 
 /*
@@ -523,10 +522,10 @@
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void) {		\
 		MR_PRETEND_ADDRESS_IS_USED(module_name);		\
 		MR_PRETEND_ADDRESS_IS_USED(				\
-			&&MR_paste(module_name,_dummy_label));		\
+			&&MR_PASTE2(module_name,_dummy_label));		\
 		goto *MR_dummy_identify_function(			\
-			&&MR_paste(module_name,_dummy_label));		\
-		MR_paste(module_name,_dummy_label):			\
+			&&MR_PASTE2(module_name,_dummy_label));		\
+		MR_PASTE2(module_name,_dummy_label):			\
 		{
   #else /* gcc version <= egcs 1.1.2 */
     #define MR_BEGIN_MODULE(module_name)				\
@@ -534,8 +533,8 @@
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void) {		\
 		MR_PRETEND_ADDRESS_IS_USED(module_name);		\
 		MR_PRETEND_ADDRESS_IS_USED(				\
-			&&MR_paste(module_name,_dummy_label));		\
-		MR_paste(module_name,_dummy_label):			\
+			&&MR_PASTE2(module_name,_dummy_label));		\
+		MR_PASTE2(module_name,_dummy_label):			\
 		{
   #endif /* gcc version <= egcs 1.1.2 */
   /* initialization code for module goes between MR_BEGIN_MODULE */
@@ -547,9 +546,9 @@
 
   #if defined(USE_ASM_LABELS)
     #define MR_declare_entry(label)		\
-	extern void label(void) __asm__("_entry_" MR_stringify(label))
+	extern void label(void) __asm__("_entry_" MR_STRINGIFY(label))
     #define MR_declare_static(label)		\
-	static void label(void) __asm__("_entry_" MR_stringify(label))
+	static void label(void) __asm__("_entry_" MR_STRINGIFY(label))
     #define MR_define_extern_entry(label)	MR_declare_entry(label)
     #define MR_define_entry(label)		\
 		MR_ASM_ENTRY(label)		\
@@ -570,13 +569,13 @@
     */
     #define MR_init_entry(label)	\
 	MR_PRETEND_ADDRESS_IS_USED(&&label); \
-	MR_make_entry(MR_stringify(label), label, label)
+	MR_make_entry(MR_STRINGIFY(label), label, label)
     #define MR_init_entry_ai(label)	\
 	MR_PRETEND_ADDRESS_IS_USED(&&label); \
-	MR_make_entry_ai(MR_stringify(label), label, label)
+	MR_make_entry_ai(MR_STRINGIFY(label), label, label)
     #define MR_init_entry_sl(label)	\
 	MR_PRETEND_ADDRESS_IS_USED(&&label); \
-	MR_make_entry_sl(MR_stringify(label), label, label)
+	MR_make_entry_sl(MR_STRINGIFY(label), label, label)
 
     #define MR_ENTRY(label) 		(&label)
     #define MR_STATIC(label) 		(&label)
@@ -602,13 +601,13 @@
 	label:	\
 	{
     #define MR_init_entry(label)	\
-	MR_make_entry(MR_stringify(label), &&label, label);	\
+	MR_make_entry(MR_STRINGIFY(label), &&label, label);	\
 	MR_entry(label) = &&label
     #define MR_init_entry_ai(label)	\
-	MR_make_entry_ai(MR_stringify(label), &&label, label);	\
+	MR_make_entry_ai(MR_STRINGIFY(label), &&label, label);	\
 	MR_entry(label) = &&label
     #define MR_init_entry_sl(label)	\
-	MR_make_entry_sl(MR_stringify(label), &&label, label);	\
+	MR_make_entry_sl(MR_STRINGIFY(label), &&label, label);	\
 	MR_entry(label) = &&label
     #define MR_ENTRY(label) 		(MR_entry(label))
     #define MR_STATIC(label) 		(MR_entry(label))
@@ -626,19 +625,19 @@
 	label:	\
 	{
   #define MR_init_local(label)	\
-  	MR_make_local(MR_stringify(label), &&MR_entry(label), label)
+  	MR_make_local(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_init_local_ai(label)	\
-  	MR_make_local_ai(MR_stringify(label), &&MR_entry(label), label)
+  	MR_make_local_ai(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_init_local_sl(label)	\
-  	MR_make_local_sl(MR_stringify(label), &&MR_entry(label), label)
+  	MR_make_local_sl(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_define_label(label)	MR_define_local(label)
   #define MR_declare_label(label)	/* no declaration required */
   #define MR_init_label(label)	\
-	MR_make_label(MR_stringify(label), &&MR_entry(label), label)
+	MR_make_label(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_init_label_ai(label)	\
-	MR_make_label_ai(MR_stringify(label), &&MR_entry(label), label)
+	MR_make_label_ai(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_init_label_sl(label)	\
-	MR_make_label_sl(MR_stringify(label), &&MR_entry(label), label)
+	MR_make_label_sl(MR_STRINGIFY(label), &&MR_entry(label), label)
 
   #define MR_LOCAL(label)	(&&MR_entry(label))
   #define MR_LABEL(label)	(&&MR_entry(label))
@@ -682,11 +681,11 @@
 		MR_GOTO_LABEL(label);		\
 	}					\
 	static MR_Code* label(void) {
-  #define MR_init_entry(label)		MR_make_entry(MR_stringify(label),    \
+  #define MR_init_entry(label)		MR_make_entry(MR_STRINGIFY(label),    \
 		  				label, label)
-  #define MR_init_entry_ai(label)	MR_make_entry_ai(MR_stringify(label), \
+  #define MR_init_entry_ai(label)	MR_make_entry_ai(MR_STRINGIFY(label), \
 		  				label, label)
-  #define MR_init_entry_sl(label)	MR_make_entry_sl(MR_stringify(label), \
+  #define MR_init_entry_sl(label)	MR_make_entry_sl(MR_STRINGIFY(label), \
 		  				label, label)
 
   #define MR_declare_local(label)	static MR_Code *label(void)
@@ -694,11 +693,11 @@
 		MR_GOTO_LABEL(label);	\
 	}				\
 	static MR_Code* label(void) {
-  #define MR_init_local(label)		MR_make_local(MR_stringify(label),    \
+  #define MR_init_local(label)		MR_make_local(MR_STRINGIFY(label),    \
 		  				label, label)
-  #define MR_init_local_ai(label)	MR_make_local_ai(MR_stringify(label), \
+  #define MR_init_local_ai(label)	MR_make_local_ai(MR_STRINGIFY(label), \
 		  				label, label)
-  #define MR_init_local_sl(label)	MR_make_local_sl(MR_stringify(label), \
+  #define MR_init_local_sl(label)	MR_make_local_sl(MR_STRINGIFY(label), \
 		  				label, label)
 
   #define MR_declare_label(label)	static MR_Code *label(void)
@@ -706,11 +705,11 @@
 		MR_GOTO_LABEL(label);	\
 	}				\
 	static MR_Code* label(void) {
-  #define MR_init_label(label)		MR_make_label(MR_stringify(label),    \
+  #define MR_init_label(label)		MR_make_label(MR_STRINGIFY(label),    \
 		  				label, label)
-  #define MR_init_label_ai(label)	MR_make_label_ai(MR_stringify(label), \
+  #define MR_init_label_ai(label)	MR_make_label_ai(MR_STRINGIFY(label), \
 		  				label, label)
-  #define MR_init_label_sl(label)	MR_make_label_sl(MR_stringify(label), \
+  #define MR_init_label_sl(label)	MR_make_label_sl(MR_STRINGIFY(label), \
 		  				label, label)
 
   #define MR_ENTRY(label) 	((MR_Code *) (label))

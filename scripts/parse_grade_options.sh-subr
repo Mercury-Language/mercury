@@ -98,7 +98,7 @@
 		profile_deep=false
 		;;
 	--deep-profiling)
-		profile_time=true
+		profile_time=false
 		profile_calls=false
 		profile_memory=false
 		profile_deep=true
@@ -357,7 +357,7 @@
 					profile_deep=false
 					;;
 				profdeep)
-					profile_time=true
+					profile_time=false
 					profile_calls=false
 					profile_memory=false
 					profile_deep=true

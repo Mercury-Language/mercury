@@ -29,6 +29,10 @@ ENDINIT
 
 #include	"mercury_imp.h"
 
+#ifdef MR_DEEP_PROFILING
+#include	"mercury_deep_profiling.h"
+#endif
+
 #include	<stdio.h>
 #include	<string.h>
 
@@ -42,9 +46,9 @@ ENDINIT
 #include	"mercury_dummy.h"
 #include	"mercury_stack_layout.h"
 #include	"mercury_trace_base.h"
-#include	"mercury_memory.h"	/* for MR_copy_string() */
+#include	"mercury_deep_profiling.h"
+#include	"mercury_memory.h"		/* for MR_copy_string() */
 #include	"mercury_memory_handlers.h"	/* for MR_default_handler */
-#include	"mercury_memory_zones.h"	/* for MR_default_handler */
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
@@ -89,6 +93,9 @@ const char	*MR_mdb_err_filename = NULL;
 /* other options */
 
 bool		MR_check_space = FALSE;
+MR_Word		*MR_watch_addr = NULL;
+MR_Word		*MR_watch_csd_addr = NULL;
+int		MR_watch_csd_ignore = 0;
 
 static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
@@ -111,6 +118,8 @@ char **		mercury_argv;
 int		mercury_exit_status = 0;
 
 bool		MR_profiling = TRUE;
+bool		MR_print_deep_profiling_statistics = FALSE;
+bool		MR_deep_profiling_save_results = TRUE;
 
 #ifdef	MR_TYPE_CTOR_STATS
 
@@ -171,11 +180,14 @@ void	(*MR_address_of_mercury_init_io)(void);
 void	(*MR_address_of_init_modules)(void);
 void	(*MR_address_of_init_modules_type_tables)(void);
 void	(*MR_address_of_init_modules_debugger)(void);
+#ifdef	MR_DEEP_PROFILING
+void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
+#endif
 
 int	(*MR_address_of_do_load_aditi_rl_code)(void);
 
-char *	(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
-char *	(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
+char	*(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
+char	*(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
 
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
 void	(*MR_address_of_trace_init_external)(void);
@@ -289,6 +301,7 @@ mercury_runtime_init(int argc, char **argv)
 #endif
 
 #if defined(MR_LOWLEVEL_DEBUG) || defined(MR_TABLE_DEBUG)
+	if (MR_unbufdebug) {
 	/*
 	** Ensure stdio & stderr are unbuffered even if redirected.
 	** Using setvbuf() is more complicated than using setlinebuf(),
@@ -297,6 +310,7 @@ mercury_runtime_init(int argc, char **argv)
 
 	setvbuf(stdout, NULL, _IONBF, 0);
 	setvbuf(stderr, NULL, _IONBF, 0);
+	}
 #endif
 
 #ifdef CONSERVATIVE_GC
@@ -356,7 +370,20 @@ mercury_runtime_init(int argc, char **argv)
 #endif /* ! MR_HIGHLEVEL_CODE */
 
 	/* initialize profiling */
-	if (MR_profiling) MR_prof_init();
+
+#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
+		|| defined(MR_MPROF_PROFILE_MEMORY)
+	if (MR_profiling) {
+		MR_prof_init();
+	}
+#endif
+
+#ifdef  MR_DEEP_PROFILING_TIMING
+	if (MR_deep_profiling_save_results) {
+		MR_deep_prof_init();
+		MR_deep_prof_turn_on_time_profiling();
+	}
+#endif
 
 	/*
 	** We need to call MR_save_registers(), since we're about to
@@ -375,11 +402,11 @@ mercury_runtime_init(int argc, char **argv)
 
 #ifndef MR_HIGHLEVEL_CODE
   #ifndef __LCC__
-	MR_save_context(&(MR_ENGINE(context)));
+	MR_save_context(&(MR_ENGINE(MR_eng_context)));
   #else
 	{
 	  /* XXX Work around lcc bug -- lcc 4.1 miscompiles the original code */
-	  size_t offset = offsetof(MercuryEngine, context);
+	  size_t offset = offsetof(MercuryEngine, MR_eng_context);
 	  char *tmp = (char *) MR_cur_engine();
 	  MR_Context *eng_context = (tmp += offset, (MR_Context *) tmp);
 	  MR_save_context(eng_context);
@@ -706,7 +733,7 @@ process_options(int argc, char **argv)
 	int		c;
 	int		long_index;
 
-	while ((c = MR_getopt_long(argc, argv, "acC:d:e:D:i:m:o:P:pr:tT:x",
+	while ((c = MR_getopt_long(argc, argv, "acC:d:D:e:i:m:o:pP:r:sStT:x",
 		MR_long_opts, &long_index)) != EOF)
 	{
 		switch (c)
@@ -819,43 +846,77 @@ process_options(int argc, char **argv)
 #ifdef CONSERVATIVE_GC
 				GC_quiet = FALSE;
 #endif
-			}
-			else if (streq(MR_optarg, "b"))
+			} else if (streq(MR_optarg, "b")) {
 				MR_nondstackdebug = TRUE;
-			else if (streq(MR_optarg, "c"))
+			} else if (streq(MR_optarg, "c")) {
 				MR_calldebug    = TRUE;
-			else if (streq(MR_optarg, "d"))
+			} else if (streq(MR_optarg, "d")) {
 				MR_detaildebug  = TRUE;
-			else if (streq(MR_optarg, "f"))
+			} else if (streq(MR_optarg, "f")) {
 				MR_finaldebug   = TRUE;
-			else if (streq(MR_optarg, "g"))
+			} else if (streq(MR_optarg, "g")) {
 				MR_gotodebug    = TRUE;
-			else if (streq(MR_optarg, "G"))
+			} else if (streq(MR_optarg, "G")) {
 #ifdef CONSERVATIVE_GC
 				GC_quiet = FALSE;
 #else
 				; /* ignore inapplicable option */
 #endif
-			else if (streq(MR_optarg, "h"))
+			} else if (streq(MR_optarg, "h")) {
 				MR_heapdebug    = TRUE;
-			else if (streq(MR_optarg, "H"))
+			} else if (streq(MR_optarg, "H")) {
 				MR_hashdebug    = TRUE;
-			else if (streq(MR_optarg, "m"))
+			} else if (MR_optarg[0] == 'I') {
+				int	ignore;
+
+				if (sscanf(MR_optarg+1, "%u", &ignore) != 1) {
+					usage();
+				}
+
+				MR_watch_csd_ignore = ignore;
+			} else if (streq(MR_optarg, "m")) {
 				MR_memdebug     = TRUE;
-			else if (streq(MR_optarg, "p"))
+			} else if (streq(MR_optarg, "p")) {
 				MR_progdebug    = TRUE;
-			else if (streq(MR_optarg, "r"))
+			} else if (streq(MR_optarg, "r")) {
 				MR_sregdebug    = TRUE;
-			else if (streq(MR_optarg, "s"))
+			} else if (streq(MR_optarg, "s")) {
 				MR_detstackdebug  = TRUE;
-			else if (streq(MR_optarg, "S"))
+			} else if (streq(MR_optarg, "S")) {
 				MR_tablestackdebug = TRUE;
-			else if (streq(MR_optarg, "t"))
+			} else if (streq(MR_optarg, "t")) {
 				MR_tracedebug   = TRUE;
-			else if (streq(MR_optarg, "T"))
+			} else if (streq(MR_optarg, "T")) {
 				MR_tabledebug   = TRUE;
-			else
+			} else if (streq(MR_optarg, "u")) {
+				MR_unbufdebug   = TRUE;
+			} else if (MR_optarg[0] == 'w' || MR_optarg[0] == 'W')
+			{
+				long	addr;
+
+				if (MR_optarg[1] == '0' && MR_optarg[2] == 'x')
+				{
+					if (sscanf(MR_optarg+3, "%lx", &addr)
+						!= 1)
+					{
+						usage();
+					}
+				} else {
+					if (sscanf(MR_optarg+1, "%lu", &addr)
+						!= 1)
+					{
+						usage();
+					}
+				}
+
+				if (MR_optarg[0] == 'w') {
+					MR_watch_addr = (MR_Word *) addr;
+				} else {
+					MR_watch_csd_addr = (MR_Word *) addr;
+				}
+			} else {
 				usage();
+			}
 
 			use_own_timer = FALSE;
 			break;
@@ -894,6 +955,14 @@ process_options(int argc, char **argv)
 			if (sscanf(MR_optarg, "%d", &repeats) != 1)
 				usage();
 
+			break;
+
+		case 's':	
+			MR_deep_profiling_save_results = FALSE;
+			break;
+
+		case 'S':	
+			MR_print_deep_profiling_statistics = TRUE;
 			break;
 
 		case 't':	
@@ -970,6 +1039,11 @@ mercury_runtime_main(void)
 	unsigned char	safety_buffer[SAFETY_BUFFER_SIZE];
 #endif
 
+#ifdef	MR_DEEP_PROFILING
+	MR_CallSiteDynList	**saved_cur_callback;
+	MR_CallSiteDynamic	*saved_cur_csd;
+#endif
+
 	static	int	repcounter;
 
 #ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
@@ -1017,22 +1091,36 @@ mercury_runtime_main(void)
 
 #ifdef MR_LOWLEVEL_DEBUG
   #ifndef CONSERVATIVE_GC
-	MR_ENGINE(heap_zone)->max      = MR_ENGINE(heap_zone)->min;
+	MR_ENGINE(MR_eng_heap_zone)->max =
+		MR_ENGINE(MR_eng_heap_zone)->min;
   #endif
-	MR_CONTEXT(detstack_zone)->max  = MR_CONTEXT(detstack_zone)->min;
-	MR_CONTEXT(nondetstack_zone)->max = MR_CONTEXT(nondetstack_zone)->min;
+	MR_CONTEXT(MR_ctxt_detstack_zone)->max =
+		MR_CONTEXT(MR_ctxt_detstack_zone)->min;
+	MR_CONTEXT(MR_ctxt_nondetstack_zone)->max =
+		MR_CONTEXT(MR_ctxt_nondetstack_zone)->min;
 #endif
 
 	MR_time_at_start = MR_get_user_cpu_miliseconds();
 	MR_time_at_last_stat = MR_time_at_start;
 
 	for (repcounter = 0; repcounter < repeats; repcounter++) {
+#ifdef	MR_DEEP_PROFILING
+		saved_cur_callback = MR_current_callback_site;
+		saved_cur_csd = MR_current_call_site_dynamic;
+		MR_setup_callback(MR_program_entry_point);
+#endif
+
 #ifdef MR_HIGHLEVEL_CODE
 		MR_do_interpreter();
 #else
 		MR_debugmsg0("About to call engine\n");
 		(void) MR_call_engine(MR_ENTRY(MR_do_interpreter), FALSE);
 		MR_debugmsg0("Returning from MR_call_engine()\n");
+#endif
+
+#ifdef	MR_DEEP_PROFILING
+		MR_current_call_site_dynamic = saved_cur_csd;
+		MR_current_callback_site = saved_cur_callback;
 #endif
 	}
 
@@ -1058,15 +1146,15 @@ mercury_runtime_main(void)
 		printf("\n");
   #ifndef CONSERVATIVE_GC
 		printf("max heap used:      %6ld words\n",
-			(long) (MR_ENGINE(heap_zone)->max
-				- MR_ENGINE(heap_zone)->min));
+			(long) (MR_ENGINE(MR_eng_heap_zone)->max
+				- MR_ENGINE(MR_eng_heap_zone)->min));
   #endif
 		printf("max detstack used:  %6ld words\n",
-			(long)(MR_CONTEXT(detstack_zone)->max
-			       - MR_CONTEXT(detstack_zone)->min));
+			(long)(MR_CONTEXT(MR_ctxt_detstack_zone)->max
+			       - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
 		printf("max nondstack used: %6ld words\n",
-			(long) (MR_CONTEXT(nondetstack_zone)->max
-				- MR_CONTEXT(nondetstack_zone)->min));
+			(long) (MR_CONTEXT(MR_ctxt_nondetstack_zone)->max
+				- MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
 	}
 #endif
 
@@ -1272,15 +1360,19 @@ print_register_usage_counts(void)
 static void
 MR_do_interpreter(void)
 {
-  #ifdef  PROFILE_TIME
-	if (MR_profiling) MR_prof_turn_on_time_profiling();
+  #ifdef  MR_MPROF_PROFILE_TIME
+	if (MR_profiling) {
+		MR_prof_turn_on_time_profiling();
+	}
   #endif
 
 	/* call the Mercury predicate main/2 */
 	(*MR_program_entry_point)();
 
-  #ifdef  PROFILE_TIME
-	if (MR_profiling) MR_prof_turn_off_time_profiling();
+  #ifdef  MR_MPROF_PROFILE_TIME
+	if (MR_profiling)  {
+		MR_prof_turn_off_time_profiling();
+	}
   #endif
 }
 
@@ -1314,7 +1406,7 @@ MR_define_entry(MR_do_interpreter);
 		MR_fatal_error("no program entry point supplied");
 	}
 
-#ifdef  PROFILE_TIME
+#ifdef  MR_MPROF_PROFILE_TIME
 	MR_set_prof_current_proc(MR_program_entry_point);
 	if (MR_profiling) {
 		MR_prof_turn_on_time_profiling();
@@ -1353,7 +1445,7 @@ MR_define_label(global_fail);
 
 MR_define_label(all_done);
 
-#ifdef  PROFILE_TIME
+#ifdef  MR_MPROF_PROFILE_TIME
 	if (MR_profiling) {
 		MR_prof_turn_off_time_profiling();
 	}
@@ -1408,9 +1500,19 @@ mercury_runtime_terminate(void)
 
 	MR_trace_final();
 
+#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
+		|| defined(MR_MPROF_PROFILE_MEMORY)
 	if (MR_profiling) {
 		MR_prof_finish();
 	}
+#endif
+
+#ifdef MR_DEEP_PROFILING
+	MR_deep_prof_turn_off_time_profiling();
+	if (MR_deep_profiling_save_results) {
+		MR_write_out_profiling_tree();
+	}
+#endif
 
 #ifndef MR_HIGHLEVEL_CODE
   #ifdef MR_THREAD_SAFE
@@ -1447,9 +1549,32 @@ MR_load_aditi_rl_code(void)
 }
 
 /*---------------------------------------------------------------------------*/
-void mercury_sys_init_wrapper(void); /* suppress gcc warning */
-void mercury_sys_init_wrapper(void) {
+
+/* forward decls to suppress gcc warnings */
+void mercury_sys_init_wrapper_init(void);
+void mercury_sys_init_wrapper_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_wrapper_write_out_proc_statics(FILE *fp);
+#endif
+
+void
+mercury_sys_init_wrapper_init(void)
+{
 #ifndef MR_HIGHLEVEL_CODE
 	interpreter_module();
 #endif
 }
+
+void
+mercury_sys_init_wrapper_init_type_tables(void)
+{
+	/* no types to register */
+}
+
+#ifdef	MR_DEEP_PROFILING
+void
+mercury_sys_init_wrapper_write_out_proc_statics(FILE *fp)
+{
+	/* no proc_statics to write out */
+}
+#endif

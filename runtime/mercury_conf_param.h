@@ -199,14 +199,26 @@
 ** uses which occur inside debugging routines, so to get an accurate
 ** count you should not also enable low-level debugging.)
 **
-** PROFILE_CALLS
-** Enables call count profiling.
+** MR_MPROF_PROFILE_CALLS
+** Enables call count profiling for mprof.
 **
-** PROFILE_TIME
-** Enables time profiling.
+** MR_MPROF_PROFILE_TIME
+** Enables time profiling for mprof.
 **
-** PROFILE_MEMORY
-** Enables profiling of memory usage.
+** MR_MPROF_PROFILE_MEMORY
+** Enables profiling of memory usage for mprof.
+**
+** MR_DEEP_PROFILING
+** Enables deep profiling.
+**
+** MR_DEEP_PROFILING_PERF_TEST
+** Allows the selective performance testing of various aspects of deep
+** profiling. For implementors only.
+**
+** MR_USE_ACTIVATION_COUNTS
+** Selects the activation counter approach to deep profiling over the
+** save/restore approach (the two approaches are documented in the deep
+** profiling paper). For implementors only.
 */
 
 /*
@@ -248,6 +260,30 @@
   #define MR_CHECK_FOR_OVERFLOW
 #endif
 
+/*
+** MR_DEEP_PROFILING_PORT_COUNTS.
+** Enables deep profiling of port counts.
+**
+** MR_DEEP_PROFILING_TIMING.
+** Enables deep profiling of time.
+**
+** MR_DEEP_PROFILING_MEMORY.
+** Enables deep profiling of memory usage.
+*/
+
+#ifdef	MR_DEEP_PROFILING
+  /* this is the default set of measurements in deep profiling grades */
+  #define MR_DEEP_PROFILING_PORT_COUNTS
+  #ifndef MR_DEEP_PROFILING_PERF_TEST
+    #define MR_DEEP_PROFILING_TIMING
+    #define MR_DEEP_PROFILING_MEMORY
+  #endif
+#else
+  #undef  MR_DEEP_PROFILING_PORT_COUNTS
+  #undef  MR_DEEP_PROFILING_TIMING
+  #undef  MR_DEEP_PROFILING_MEMORY
+#endif
+
 /*---------------------------------------------------------------------------*/
 /*
 ** Configuration parameters whose values are determined by the settings
@@ -270,8 +306,7 @@
   #define MR_STATIC_CODE_ADDRESSES
 #endif
 
-/* XXX documetn MR_BYTECODE_CALLABLE */
-
+/* XXX document MR_BYTECODE_CALLABLE */
 
 /*
 ** MR_INSERT_LABELS     -- labels need to be inserted into the label table. 
@@ -306,7 +341,7 @@
 #ifdef MR_INSERT_ENTRY_LABEL_NAMES
   #error "MR_INSERT_ENTRY_LABEL_NAMES should not be defined on the command line"
 #endif
-#if defined(PROFILE_CALLS) || defined(MR_LOWLEVEL_DEBUG) \
+#if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_DEBUG_GOTOS) \
 		|| defined(MR_DEBUG_AGC_SCHEDULING)
   #define MR_INSERT_ENTRY_LABEL_NAMES
 #endif
@@ -322,7 +357,7 @@
 #ifdef MR_INSERT_INTERNAL_LABEL_NAMES
   #error "MR_INSERT_INTERNAL_LABEL_NAMES should not be defined on the command line"
 #endif
-#if defined(MR_LOWLEVEL_DEBUG) || defined(MR_DEBUG_AGC_SCHEDULING)
+#if defined(MR_DEBUG_GOTOS) || defined(MR_DEBUG_AGC_SCHEDULING)
   #define MR_INSERT_INTERNAL_LABEL_NAMES
 #endif
 
@@ -339,8 +374,8 @@
 #ifdef MR_NEED_INITIALIZATION_AT_START
   #error "MR_NEED_INITIALIZATION_AT_START should not be defined on the command line"
 #endif
-#if !defined(MR_STATIC_CODE_ADDRESSES) || defined(PROFILE_CALLS) \
-	|| defined(PROFILE_TIME) || defined(DEBUG_LABELS)
+#if !defined(MR_STATIC_CODE_ADDRESSES) || defined(MR_MPROF_PROFILE_CALLS) \
+	|| defined(MR_MPROF_PROFILE_TIME) || defined(DEBUG_LABELS)
   #define MR_NEED_INITIALIZATION_AT_START
 #endif
 

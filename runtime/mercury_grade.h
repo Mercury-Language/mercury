@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -106,15 +106,26 @@
   #define MR_GRADE_PART_4	MR_GRADE_PART_3
 #endif
 
-#ifdef PROFILE_TIME
-  #ifdef PROFILE_CALLS
-    #ifdef PROFILE_MEMORY
+#ifdef MR_DEEP_PROFILING
+  #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _profdeep)
+  #if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
+	|| defined(MR_MPROF_PROFILE_MEMORY)
+    /*
+    ** Deep profiling is completely separate from the other profiling
+    ** alternatives, and there is no point in allowing their combination.
+    */
+    #error "Invalid combination of profiling options"
+  #endif
+#else
+  #ifdef MR_MPROF_PROFILE_TIME
+    #ifdef MR_MPROF_PROFILE_CALLS
+      #ifdef MR_MPROF_PROFILE_MEMORY
       #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _profall)
     #else
       #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _prof)
     #endif
   #else
-    #ifdef PROFILE_MEMORY
+      #ifdef MR_MPROF_PROFILE_MEMORY
       /*
       ** Memory profiling interferes with time profiling,
       ** so there's no point in allowing this.
@@ -125,15 +136,15 @@
       #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _proftime)
     #endif
   #endif
-#else
-  #ifdef PROFILE_CALLS
-    #ifdef PROFILE_MEMORY
+  #else
+    #ifdef MR_MPROF_PROFILE_CALLS
+      #ifdef MR_MPROF_PROFILE_MEMORY
       #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _memprof)
     #else
       #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _profcalls)
     #endif
   #else
-    #ifdef PROFILE_MEMORY
+      #ifdef MR_MPROF_PROFILE_MEMORY
       /*
       ** Call-graph memory profiling requires call profiling,
       ** and call profiling is reasonably cheap, so there's
@@ -143,6 +154,7 @@
     #else
       #define MR_GRADE_PART_5	MR_GRADE_PART_4
     #endif
+  #endif
   #endif
 #endif
 
@@ -275,15 +287,15 @@ extern const char MR_GRADE_VAR;
   #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3
 #endif
 
-#ifdef PROFILE_TIME
-  #ifdef PROFILE_CALLS
-    #ifdef PROFILE_MEMORY
+#ifdef MR_MPROF_PROFILE_TIME
+  #ifdef MR_MPROF_PROFILE_CALLS
+    #ifdef MR_MPROF_PROFILE_MEMORY
       #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profall"
     #else
       #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".prof"
     #endif
   #else
-    #ifdef PROFILE_MEMORY
+    #ifdef MR_MPROF_PROFILE_MEMORY
       /*
       ** Memory profiling interferes with time profiling,
       ** so there's no point in allowing this.
@@ -295,14 +307,14 @@ extern const char MR_GRADE_VAR;
     #endif
   #endif
 #else
-  #ifdef PROFILE_CALLS
-    #ifdef PROFILE_MEMORY
+  #ifdef MR_MPROF_PROFILE_CALLS
+    #ifdef MR_MPROF_PROFILE_MEMORY
       #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".memprof"
     #else
       #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profcalls"
     #endif
   #else
-    #ifdef PROFILE_MEMORY
+    #ifdef MR_MPROF_PROFILE_MEMORY
       /*
       ** Call-graph memory profiling requires call profiling,
       ** and call profiling is reasonably cheap, so there's

@@ -291,6 +291,9 @@ fi
 if test "$MKFIFO" = ""; then
 	AC_MSG_WARN(cannot find a working \`mkfifo' or \`mknod')
 	MKFIFO=none
+	AC_DEFINE_UNQUOTED(MR_MKFIFO, "")
+else
+	AC_DEFINE_UNQUOTED(MR_MKFIFO, "$MKFIFO")
 fi
 AC_SUBST(MKFIFO)
 test "$MKNOD" = "" && MKNOD=mknod
@@ -338,6 +341,12 @@ AC_SUBST(INFO)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(PERL,perl)
 AC_SUBST(PERL)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(HOSTNAMECMD,hostname uname)
+case "$HOSTNAMECMD" in
+	*hostname)	HOSTNAMECMD="$HOSTNAMECMD -f" ;;
+esac
+AC_DEFINE_UNQUOTED(MR_HOSTNAMECMD, "$HOSTNAMECMD")
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
@@ -1987,7 +1996,7 @@ if test "$enable_prof_grades" = yes; then
 			fi
 		fi
 	fi
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof $DEFAULT_GRADE.profdeep"
 fi
 
 if test "$enable_trail_grades" = yes; then
@@ -2773,9 +2782,10 @@ to_keep=""
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
     MERCURY_MSG("checking whether any C files need to be rebuilt...")
-    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c \
+    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c deep_profiler/*.c \
     		library/Mercury/cs/*.c compiler/Mercury/cs/*.c \
-		browser/Mercury/cs/*.c profiler/Mercury/cs/*.c 
+		browser/Mercury/cs/*.c profiler/Mercury/cs/*.c \
+		deep_profiler/Mercury/cs/*.c 
     do
         case $c_file in
         */'*.c')
@@ -2824,7 +2834,7 @@ fi
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mercury.bat
 scripts/mprof scripts/mercury_update_interface scripts/mgnuc scripts/ml
-scripts/mmake scripts/c2init scripts/mdb scripts/mdbrc 
+scripts/mmake scripts/c2init scripts/mdb scripts/mdbrc scripts/mdprof
 scripts/sicstus_conv scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
 for header in $CONFIG_HEADERS ; do

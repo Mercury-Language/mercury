@@ -15,11 +15,17 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 
 #-----------------------------------------------------------------------------#
 
-DEBUGGER_PROGS=	\
+RETRY_PROGS = \
 	all_solutions			\
+	browser_test			\
+	mdb_command_test		\
+	queens				\
+	retry				\
+	tabled_read
+
+NONRETRY_PROGS = \
 	breakpoints			\
 	browse_pretty			\
-	browser_test			\
 	debugger_regs			\
 	exception_cmd			\
 	exception_value			\
@@ -29,15 +35,11 @@ DEBUGGER_PROGS=	\
 	implied_instance		\
 	interpreter			\
 	loopcheck			\
-	mdb_command_test		\
 	multi_parameter			\
 	output_term_dep			\
 	polymorphic_output		\
-	queens				\
 	resume_typeinfos		\
-	retry				\
-	shallow				\
-	tabled_read
+	shallow
 
 
 # The following tests are disabled, since currently they get some spurious
@@ -56,13 +58,23 @@ C2INITFLAGS = --trace
 GRADEFLAGS-interactive = --pic-reg
 MLFLAGS-interactive = --shared
 
-# The debugging tests don't work in MLDS grades (hl*).
+# Debugging doesn't yet don't work in MLDS grades (hl*), and the retry command
+# doesn't and will not work in deep profiling grades (profdeep).
 # Also base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 
 ifneq "$(findstring hl,$(GRADE))" ""
     PROGS=
 else
+    ifneq "$(findstring profdeep,$(GRADE))" ""
+	# Eventually, this should be DEBUGGER_PROGS=$(NONRETRY_PROGS).
+	# However, the code that is required to switch off the profiling
+	# primitives in Mercury code invoked by the debugger (e.g. for
+	# browsing) has not yet been implemented.
+    	DEBUGGER_PROGS=
+    else
+    	DEBUGGER_PROGS=$(NONRETRY_PROGS) $(RETRY_PROGS)
+    endif
     ifneq "$(findstring asm_,$(GRADE))" ""
         PROGS=$(DEBUGGER_PROGS)
     else

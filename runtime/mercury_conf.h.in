@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -350,6 +350,20 @@
 #undef  HAVE_READLINE_READLINE
 #undef  HAVE_READLINE_HISTORY
 
+/*
+** MR_MKFIFO
+**	The name of the shell command to make a named pipe. This will be the
+**	empty string if autoconfiguration did not find such a command.
+*/
+#undef	MR_MKFIFO
+
+/*
+** MR_HOSTNAMECMD
+**	The name of the shell command to return the name of the host.
+**	This will be the empty string if autoconfiguration did not find
+**	such a command.
+*/
+#undef	MR_HOSTNAMECMD
 
 /*
 ** MR_NEW_MERCURYFILE_STRUCT

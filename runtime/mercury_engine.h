@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000 The University of Melbourne.
+** Copyright (C) 1994-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -49,8 +49,9 @@ extern	bool	MR_debugflag[];
 #define	MR_TABLEFLAG		10
 #define	MR_TABLEHASHFLAG	11
 #define	MR_TABLESTACKFLAG	12
-#define	MR_DETAILFLAG		13
-#define	MR_MAXFLAG		14
+#define	MR_UNBUFFLAG		13
+#define	MR_DETAILFLAG		14
+#define	MR_MAXFLAG		15
 /* MR_DETAILFLAG should be the last real flag */
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
@@ -66,6 +67,7 @@ extern	bool	MR_debugflag[];
 #define	MR_tabledebug		MR_debugflag[MR_TABLEFLAG]
 #define	MR_hashdebug		MR_debugflag[MR_TABLEHASHFLAG]
 #define	MR_tablestackdebug	MR_debugflag[MR_TABLESTACKFLAG]
+#define	MR_unbufdebug		MR_debugflag[MR_UNBUFFLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 
 	/* 
@@ -79,7 +81,8 @@ extern	bool	MR_debugflag[];
 
 typedef struct {
 		jmp_buf *mercury_env;	/* 
-					** used to save MR_ENGINE(e_jmp_buf )
+					** used to save
+					** MR_ENGINE(MR_eng_jmp_buf )
 					*/
 		jmp_buf env;		/* 
 					** used by calls to setjmp and longjmp 
@@ -108,8 +111,8 @@ typedef struct {
 	/*
 	** MR_setjmp(MR_jmp_buf *env, longjmp_label)
 	**
-	** Save MR_ENGINE(e_jmp_buf), save the Mercury state, call setjmp(env), 
-	** then fall through.
+	** Save MR_ENGINE(MR_eng_jmp_buf), save the Mercury state,
+	** call setjmp(env),  then fall through.
 	**
 	** When setjmp returns via a call to longjmp, control will pass to
 	** longjmp_label.
@@ -124,7 +127,7 @@ typedef struct {
 	*/
 #define MR_setjmp(setjmp_env, longjmp_label)				\
 	    do {							\
-		(setjmp_env)->mercury_env = MR_ENGINE(e_jmp_buf);	\
+		(setjmp_env)->mercury_env = MR_ENGINE(MR_eng_jmp_buf);	\
 		MR_save_regs_to_mem((setjmp_env)->regs);		\
 		(setjmp_env)->saved_succip = MR_succip;			\
 		(setjmp_env)->saved_sp = MR_sp;				\
@@ -137,7 +140,7 @@ typedef struct {
 		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_high_water =	\
 				MR_ticket_high_water);			\
 		if (setjmp((setjmp_env)->env)) {			\
-			MR_ENGINE(e_jmp_buf) = (setjmp_env)->mercury_env; \
+			MR_ENGINE(MR_eng_jmp_buf) = (setjmp_env)->mercury_env;\
 			MR_restore_regs_from_mem((setjmp_env)->regs);	\
 			MR_succip = (setjmp_env)->saved_succip;		\
 			MR_sp = (setjmp_env)->saved_sp;			\
@@ -175,30 +178,30 @@ typedef struct MR_mercury_thread_list_struct {
 */
 
 typedef struct MR_mercury_engine_struct {
-	MR_Word		fake_reg[MR_MAX_FAKE_REG];
+	MR_Word		MR_eng_fake_reg[MR_MAX_FAKE_REG];
 		/* The fake reg vector for this engine. */
 #ifndef CONSERVATIVE_GC
-	MR_Word		*e_hp;
+	MR_Word		*MR_eng_hp;
 		/* The heap pointer for this engine */
-	MR_Word		*e_sol_hp;
+	MR_Word		*MR_eng_sol_hp;
 		/* The solutions heap pointer for this engine */
-	MR_Word		*e_global_hp;
+	MR_Word		*MR_eng_global_hp;
 		/* The global heap pointer for this engine */
 #endif
-	MR_Context	*this_context;
+	MR_Context	*MR_eng_this_context;
 		/*
-		** this_context points to the context currently
+		** MR_eng_this_context points to the context currently
 		** executing in this engine.
 		*/
-	MR_Context	context;
+	MR_Context	MR_eng_context;
 		/*
-		** context stores all the context information
+		** MR_eng_context stores all the context information
 		** for the context executing in this engine.
 		*/
 #ifdef	MR_THREAD_SAFE
-	MercuryThread	owner_thread;
-	unsigned	c_depth;
-	MercuryThreadList *saved_owners;
+	MercuryThread	MR_eng_owner_thread;
+	unsigned	MR_eng_c_depth;
+	MercuryThreadList *MR_eng_saved_owners;
 		/*
 		** These three fields are used to ensure that when a
 		** thread executing C code calls the Mercury engine
@@ -218,17 +221,17 @@ typedef struct MR_mercury_engine_struct {
 		** execution never returns into C in the wrong thread.
 		*/
 #endif
-	jmp_buf		*e_jmp_buf;
-	MR_Word		*e_exception;
+	jmp_buf		*MR_eng_jmp_buf;
+	MR_Word		*MR_eng_exception;
 #ifndef	CONSERVATIVE_GC
-	MR_MemoryZone	*heap_zone;
-	MR_MemoryZone	*solutions_heap_zone;
-	MR_MemoryZone	*global_heap_zone;
+	MR_MemoryZone	*MR_eng_heap_zone;
+	MR_MemoryZone	*MR_eng_solutions_heap_zone;
+	MR_MemoryZone	*MR_eng_global_heap_zone;
 #endif
 #ifdef	NATIVE_GC
-	MR_MemoryZone	*heap_zone2;
+	MR_MemoryZone	*MR_eng_heap_zone2;
   #ifdef MR_DEBUG_AGC_PRINT_VARS
-	MR_MemoryZone	*debug_heap_zone;
+	MR_MemoryZone	*MR_eng_debug_heap_zone;
   #endif
 #endif
 } MercuryEngine;
@@ -272,7 +275,7 @@ typedef struct MR_mercury_engine_struct {
 
 #endif	/* !MR_THREAD_SAFE */
 
-#define	MR_CONTEXT(x)		(MR_ENGINE(context).x)
+#define	MR_CONTEXT(x)		(MR_ENGINE(MR_eng_context).x)
 
 #ifndef CONSERVATIVE_GC
   #define MR_IF_NOT_CONSERVATIVE_GC(x)	x
@@ -282,16 +285,20 @@ typedef struct MR_mercury_engine_struct {
 
 #define MR_load_engine_regs(eng)					\
   	do {								\
-		MR_IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
-		MR_IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
-		MR_IF_NOT_CONSERVATIVE_GC(MR_global_hp = (eng)->e_global_hp;) \
+		MR_IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->MR_eng_hp;)	\
+		MR_IF_NOT_CONSERVATIVE_GC(MR_sol_hp =			\
+			(eng)->MR_eng_sol_hp;)				\
+		MR_IF_NOT_CONSERVATIVE_GC(MR_global_hp =		\
+			(eng)->MR_eng_global_hp;)			\
 	} while (0)
 
 #define MR_save_engine_regs(eng)					\
   	do {								\
-		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
-		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
-		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_global_hp = MR_global_hp;) \
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->MR_eng_hp = MR_hp;)	\
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->MR_eng_sol_hp =	\
+			MR_sol_hp;)					\
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->MR_eng_global_hp =	\
+			MR_global_hp;)					\
 	} while (0)
 
 /*

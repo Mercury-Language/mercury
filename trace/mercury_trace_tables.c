@@ -50,12 +50,13 @@ MR_register_all_modules_and_procs(FILE *fp, bool verbose)
 			fflush(fp);
 		}
 
-		MR_do_init_modules();
+		MR_trace_init_modules();
 		done = TRUE;
 		if (verbose) {
 			fprintf(fp, "done.\n");
 			if (MR_module_info_next == 0) {
-				fprintf(fp, "There are no debuggable modules.");
+				fprintf(fp,
+					"There are no debuggable modules.\n");
 			} else if (MR_module_info_next == 1) {
 				fprintf(fp, "There is one debuggable module, "
 					"with %d procedures.\n",

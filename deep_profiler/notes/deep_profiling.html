@@ -1,0 +1,361 @@
+<html>
+<head>
+<title>
+Notes On The Design Of The Mercury Deep Profiler
+</title>
+</head>
+
+<body bgcolor="#ffffff" text="#000000">
+
+<hr>
+<!---------------------------------------------------------------------------->
+
+<h2>Overview</h2>
+
+Programmers can prepare a program for deep profiling
+by compiling it in a deep profiling grade such as asm_fast.gc.profdeep.
+When a program compiled in a deep profiling grade is executed,
+it builds a data structure containing profiling information,
+and writes this out to a file called Deep.data at the end of execution.
+Programmers can then browse the contents of these profiling data files
+using the Mercury deep profiling tool, mdprof.
+
+<p>
+
+<hr>
+<!---------------------------------------------------------------------------->
+
+<h2>The structure of the profiling data file</h2>
+
+The data structure written out to the Deep.data file, the profiling tree,
+resembles a call graph.
+It has four kinds of nodes:
+CallSiteStatic, ProcStatic, CallSiteDynamic and ProcDynamic structures.
+These four node types are consistently abbreviated as css, ps, csd and pd
+throughout the deep profiling system,
+including the names of structure fields.
+
+<p>
+
+The Deep.data file consists of a header and a sequence of nodes.
+The header contains
+<ul>
+<li> a string identifying the file as containing deep profiling data
+<li> four integers giving the number of each kind of node in the data file
+<li> an integer giving the number of profiling clock ticks per second
+on the machine on which the profiling run was executed
+<li> a count of the number of clock ticks
+encountered within profiling instrumentation
+<li> a count of the number of clock ticks
+encountered outside profiling instrumentation
+<li> the id of the ProcDynamic node representing the Mercury runtime system.
+It has one callback call site, which has charged to it
+the calls to library initialization procedure, to main/2
+(or to other procedures if the top level of the program is in foreign code),
+and to the library finalization procedure.
+</ul>
+
+The following sequence contains nodes of all four types.
+In the running program, these nodes refer to each other by pointers,
+but in the process of writing them out we convert these pointers to node ids,
+which are dense small integers starting at one.
+
+<dl>
+
+<dt> CallSiteStatic
+<dd>
+CallSiteStatic structures are created by the compiler.
+There is one CallSiteStatic structure for each call site in the source code.
+CallSiteStatic structures contain the following fields:
+
+<ul>
+<li>
+MR_css_kind:
+an indication of the nature of the call at that call site: first order call,
+call through a procedure-valued variable, method call, or callback.
+(Callback sites are invocations of foreign_proc goals
+that may call back to Mercury.)
+<li>
+MR_css_callee_ptr_if_known:
+if the call site is a first order call,
+this field contains the id of the proc_static structure
+of the procedure called from that call site.
+Otherwise, it is not meaningful.
+<li>
+MR_css_type_subst_if_known:
+if the call site is a first order call,
+this field contains a text representation of the type variable binding(s)
+required to unify the types of the actual parameters at the call site
+and the formal parameters of the procedure called from that call site.
+Otherwise, it is not meaningful.
+<li>
+MR_css_file_name:
+the name of the file containing the call site,
+or (for the sake of compactness) an empty string
+if, as usual, this file name is the same as
+the file name associated with the procedure containing the call site.
+<li>
+MR_css_line_number:
+the line number on which the call site occurs.
+<li>
+MR_css_goal_path:
+the goal path of the call goal within its procedure body.
+</ul>
+
+<dt> ProcStatic
+<dd>
+ProcStatic structures are created by the compiler.
+There is one ProcStatic structure for each procedure in the source code.
+ProcStatic structures contain the following fields:
+
+<ul>
+<li>
+MR_ps_proc_id:
+the identity of the procedure.
+<li>
+MR_ps_file_name:
+the name of the file containing the procedure declaration.
+<li>
+MR_ps_num_call_sites:
+the number of call sites within the procedure.
+<li>
+MR_ps_call_sites:
+an array containing MR_ps_num_call_sites CallSiteStatic structures,
+one for every call site within the procedure.
+In the Deep.data file,
+it contains an array of the node ids of those structures.
+<li>
+The MR_ps_outermost_activation_ptr and MR_ps_activation_count fields
+are used only during runtime, and are omitted
+when the ProcDynamic node is written out to the Deep.data file.
+</ul>
+
+<dt> CallSiteDynamic
+<dd>
+CallSiteDynamic structures are created
+by the instrumented program during a profiling run.
+There will be one or more CallSiteDynamic structures
+for each call site through which
+the program actually performs a call during the profiling run.
+For a given call site, there will be distinct CallSiteDynamic structures
+for each distinct context in which those invocations take place.
+
+<ul>
+<li>
+MR_csd_callee:
+the id of the ProcDynamic structure of the procedure called at that call site,
+or zero if there were no calls through the given call site
+in the context represented by this CallSiteDynamic structure
+and all its ancestors.
+<li>
+MR_csd_own:
+the measurements collected for the invocations of the called procedure
+from the context represented by this CallSiteDynamic structure
+and all its ancestors,
+<li>
+MR_csd_depth_count:
+this field is used only during runtime, and is omitted
+when the CallSiteDynamic node is written out to the Deep.data file.
+</ul>
+
+<dt> ProcDynamic
+<dd>
+ProcDynamic structures are created
+by the instrumented program during a profiling run.
+There will be one or more ProcDynamic structures
+for each procedure which is called during the profiling run.
+For a given procedure, there will be distinct ProcDynamic structures
+for each distinct context in which those calls take place.
+
+<ul>
+<li>
+MR_pd_proc_static:
+gives the id of the ProcStatic structure of the procedure .
+<li>
+MR_pd_call_site_ptr_ptrs:
+an array, whose size is givn by the MR_ps_num_call_sites field
+of the ProcStatic structure identified by the MR_pd_proc_static field.
+Each element corresponds to a call site.
+Elements corresponding to a first order call site
+contain either the id of a CallSiteDynamic node
+representing the call made from that call site
+in the context represented by the ProcDynamic structure and its ancestors,
+or zero if no such call was made.
+Elements corresponding to other kinds of call sites
+(higher order call, method call, callback)
+have a list of the ids of zero or more CallSiteDynamic structures,
+one for each different procedure that was called from that call site.
+</ul>
+</dl>
+
+<hr>
+<!---------------------------------------------------------------------------->
+
+<h2>The Mercury deep profiling tool mdprof</h2>
+
+The Mercury deep profiler consists of four programs.
+One is the web browser of the user's choice:
+this implements the user interface.
+The other three are mdprof, mdprof_cgi and mdprof_server.
+
+<dl>
+<dt> mdprof
+<dd>
+This a simple shell script.
+It is invoked by the web server in response to queries of the right form.
+It does nothing more than set up the PATH environment variable
+to contain the directory in which mdprof_cgi and mdprof_server were installed,
+and then invoke mdprof_cgi.
+<dt> mdprof_cgi
+<dd>
+This is a Mercury program.
+It is invoked once for every page displayed by the deep profiling system.
+It is passed,
+in the environment variable QUERY_STRING which is set by the web server,
+an URL component containing the name of a profiling data file
+and a query specifying which part of that data file is to be displayed.
+Mdprof_cgi checks whether a server process already exists
+for the given profiling data file, and if not, it creates that process.
+It then sends it the query, passes the results back to the web server,
+and exits.
+<dt> mdprof_server
+<dd>
+This is a Mercury program.
+It reads in the profiling data file
+whose name is passed to it on the command line by mdprof_cgi,
+processes it to materialize information that is required by queries
+but is stored in the profiling data file only implicitly,
+and then goes into a loop awaiting queries.
+When it gets a query from mdprof_cgi, it answers the query
+and goes back to sleep.
+It exits when it has not received a query for a set timeout period,
+which by default is thirty minutes,
+or when it receives a "query" telling it to shut down.
+(Due to the timeout mechanism, shutting down the server explicitly
+is not useful unless the profiling data file has changed,
+the server has been recompiled,
+or one wants to recover its space occupied by its virtual memory.)
+<dd>
+</dl>
+
+The reason for the split between mdprof/mdprof_cgi and mdprof_server
+is simply that the web server requires the program it invokes to exit
+before it displays the page the program generates,
+and we don't want have to read and process the deep profiling data file
+for every page to be displayed,
+since that takes a significant fraction of a minute.
+The reason for the split between mdprof and mdprof_cgi
+is to make it easy to specify and to modify
+the name of the directory containing the server program.
+
+<p>
+
+Mdprof_cgi and mdprof_server communicate via a pair of named pipes, whose names
+have the form /var/tmp/mdprof_server_{from,to}_<i>mangled_data_file_name</i>.
+(The mangling is required to replace any slashes in the name of the data file.)
+The existence of these files serves as an approximation of a lock;
+the idea is that they exist if and only if a server process
+for that data file is alive and serving queries via those pipes.
+Mdprof_cgi creates a server process for the data file
+if and only if these named pipes do not exist.
+They are created and destroyed only by mdprof_server,
+and they are always created and destroyed together.
+Mdprof_server creates them as soon as it starts
+and deletes them just before it exits.
+There is no race condition when the pipes are deleted:
+while a server process may exist for a very short while
+after the pipes are deleted,
+it will not do anything after that deletion except shut down.
+There <i>is</i> a race condition when the pipes are created.
+It is possible for the web server to receive two requests
+for a given data file in quick succession,
+and it is possible that when the second invocation of mdprof_cgi
+checks whether the pipes exist,
+the first invocation of mdprof_cgi
+either has not yet created the server process
+or that the server process has not yet created the pipes.
+However, the window of vulnerability is small,
+the likelyhood that two different users will start mdprof browsing sessions
+during that window is very small,
+and the likelyhood that one user will start two different sessions
+during that window is even smaller.
+The mechanisms required for locking would in any case be
+operating system dependent.
+Since the programming cost is significant and the benefits are not,
+we simply live with the window of vulnerability.
+
+<hr>
+<!---------------------------------------------------------------------------->
+
+<h2>The modules of the deep profiler</h2>
+
+<dl>
+<dt> array_util.m
+<dd>
+This module contains utility predicates for handling arrays.
+<dt> cliques.m
+<dd>
+This module allows you build a description of a directed graph (represented
+as a set of arcs between nodes identified by dense small integers) and then
+find the strongly connected components of that graph.
+<dt> conf.m
+<dd>
+This module contains primitives whose parameters are decided by
+the configure script. This module picks them up from the #defines
+put into runtime/mercury_conf.h by the configure script.
+<dt> dense_bitset.m
+<dd>
+This module provides an ADT for storing dense sets of small integers.
+The sets are represented as bit vectors, which are implemented as arrays
+of integers. This is used by cliques.m.
+<dt> interface.m
+<dd>
+This module defines the type of the commands
+that mdprof_cgi passes to mdprof_server,
+as well as utility predicates for manipulating commands and responses.
+<dt> mdprof_cgi.m
+<dd>
+This file contains the program that is executed by the web server
+to handle each web page requests.
+<dt> mdprof_server.m
+<dd>
+This file defines the top level predicates of mdprof_server.
+It is mostly concerned with option handling.
+<dt> measurements.m
+<dd>
+This module defines the data structures
+that store deep profiling measurements
+and the operations on them.
+<dt> merge.m
+<dd>
+This module contains code for recursively merging
+sets of ProcDynamic and CallSiteDynamic nodes.
+mdprof_uses this code to make sure that each clique contains
+at most ProcDynamic structure for any given procedure.
+<dt> profile.m
+<dd>
+This file defines the main data structures of mdprof_server,
+and predicates for accessing them.
+<dt> read_profile.m
+<dd>
+This module contains code for reading in the deep profiling data files
+created by deep profiled executables.
+<dt> server.m
+<dd>
+This module contains the main server loop of mdprof_server;
+each iteration of the server loop serves up one web page.
+The module also contains test code for checking that all the web pages
+can be created without runtime aborts.
+<dt> startup.m
+<dd>
+This module contains the code for turning the raw list of nodes read in by
+read_profile.m into the data structure that mdprof_server needs to service
+requests for web pages.
+<dt> timeout.m
+<dd>
+This module implements the timeouts that mdprof_server uses
+to shut down after it hasn't received any queries for a while.
+<dt> util.m
+<dd>
+This module defines utility predicates for both mdprof_cgi and mdprof_server.
+</dl>

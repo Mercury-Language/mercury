@@ -1,12 +1,12 @@
 /*
-** Copyright (C) 1995-1997,2000 The University of Melbourne.
+** Copyright (C) 1995-1997,2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
 ** mercury_prof.h -- definitions for profiling.
-** (See also mercury_heap_profiling.h.)
+** (See also mercury_heap_profiling.h and mercury_deep_profiling.h.)
 */
 
 #ifndef MERCURY_PROF_H
@@ -30,7 +30,7 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 ** being executed when a profiling interrupt occurs.
 */
 
-#ifdef PROFILE_TIME
+#ifdef MR_MPROF_PROFILE_TIME
   #define MR_set_prof_current_proc(target)		\
 		(MR_prof_current_proc = (target))
   #define MR_update_prof_current_proc(target)		\
@@ -45,10 +45,10 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 ** for a call to MR_do_call_closure or MR_do_call_class_method.
 */
 
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
   extern MR_Code *	MR_prof_ho_caller_proc;
 #endif
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
   #define MR_set_prof_ho_caller_proc(target) \
   		(MR_prof_ho_caller_proc = (target))
 #else
@@ -59,13 +59,13 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 ** The MR_PROFILE() macro is used (by mercury_calls.h) to record each call.
 */
 
-#ifdef	PROFILE_CALLS
+#ifdef	MR_MPROF_PROFILE_CALLS
   #define MR_PROFILE(callee, caller) MR_prof_call_profile((callee), (caller))
 #else
   #define MR_PROFILE(callee, caller) ((void)0)
 #endif
 
-#ifdef PROFILE_CALLS
+#ifdef MR_MPROF_PROFILE_CALLS
   extern void	MR_prof_call_profile(MR_Code *, MR_Code *);
 #endif
 
@@ -94,7 +94,7 @@ extern	void	MR_prof_init(void);
 extern	void	MR_prof_finish(void);
 extern	void	MR_close_prof_decl_file(void);
 
-#ifdef PROFILE_TIME
+#ifdef MR_MPROF_PROFILE_TIME
   extern void 	MR_prof_turn_on_time_profiling(void);
   extern void	MR_prof_turn_off_time_profiling(void);
 #endif

@@ -42,8 +42,9 @@ garbage_collect -->
 #ifdef CONSERVATIVE_GC
   #ifndef MR_HIGHLEVEL_CODE
 	/* clear out the stacks and registers before garbage collecting */
-	MR_clear_zone_for_GC(MR_CONTEXT(detstack_zone), MR_sp + 1);
-	MR_clear_zone_for_GC(MR_CONTEXT(nondetstack_zone), MR_maxfr + 1);
+	MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp + 1);
+	MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_nondetstack_zone),
+		MR_maxfr + 1);
 	MR_clear_regs_for_GC();
   #endif
 

@@ -62,6 +62,8 @@
 :- pred code_util__make_proc_label(module_info, pred_id, proc_id, proc_label).
 :- mode code_util__make_proc_label(in, in, in, out) is det.
 
+:- func code_util__make_proc_label_from_rtti(rtti_proc_label) = proc_label.
+
 	% code_util__make_user_proc_label(ModuleName, PredIsImported,
 	%	PredOrFunc, ModuleName, PredName, Arity, ProcId, Label):
 	% Make a proc_label for a user-defined procedure.
@@ -208,7 +210,8 @@ code_util__make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
 				RttiProcLabel^proc_id)
 		)
 	->
-		code_util__make_proc_label_from_rtti(RttiProcLabel, ProcLabel),
+		code_util__make_proc_label_from_rtti(RttiProcLabel)
+			= ProcLabel,
 		ProcAddr = imported(ProcLabel)
 	;
 		code_util__make_local_entry_label_from_rtti(RttiProcLabel,
@@ -226,7 +229,7 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
 :- mode code_util__make_local_entry_label_from_rtti(in, in, out) is det.
 
 code_util__make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
-	code_util__make_proc_label_from_rtti(RttiProcLabel, ProcLabel),
+	code_util__make_proc_label_from_rtti(RttiProcLabel) = ProcLabel,
 	(
 		Immed = no,
 		% If we want to define the label or use it to put it
@@ -276,12 +279,9 @@ code_util__make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
-	code_util__make_proc_label_from_rtti(RttiProcLabel, ProcLabel).
+	code_util__make_proc_label_from_rtti(RttiProcLabel) = ProcLabel.
 
-:- pred code_util__make_proc_label_from_rtti(rtti_proc_label, proc_label).
-:- mode code_util__make_proc_label_from_rtti(in, out) is det.
-
-code_util__make_proc_label_from_rtti(RttiProcLabel, ProcLabel) :-
+code_util__make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule,
 		PredModule, PredName, PredArity, ArgTypes, _PredId, ProcId,
 		_VarSet, _HeadVars, _ArgModes, _CodeModel,
@@ -692,6 +692,8 @@ code_util__cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _,
 		base_typeclass_info_constant(M,C,N)).
 code_util__cons_id_to_tag(tabling_pointer_const(PredId,ProcId), _, _,
 		tabling_pointer_constant(PredId,ProcId)).
+code_util__cons_id_to_tag(deep_profiling_proc_static(PPId), _, _,
+		deep_profiling_proc_static_tag(PPId)).
 code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(
 			% handle the `character' type specially

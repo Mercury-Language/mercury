@@ -362,24 +362,22 @@ typed_compare(R, X, Y) :-
 
 	% The definitions for type_ctor_info/1 and type_info/1.
 
+:- pragma c_header_code("
+#ifdef MR_DEEP_PROFILING
+#include ""mercury_deep_profiling.h""
+#endif
+").
+
 :- pragma foreign_code("C", "
 
-#ifdef MR_HIGHLEVEL_CODE
+/* forward decls, to suppress gcc -Wmissing-decl warnings */
+void sys_init_type_info_module_init(void);
+void sys_init_type_info_module_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void sys_init_type_info_module_write_out_proc_statics(FILE *fp);
+#endif
 
-/* forward decl, to suppress gcc -Wmissing-decl warning */
-void sys_init_type_info_module(void);
-
-/*
-** This empty initialization function is needed just to
-** match the one that we use for LLDS grades.
-*/
-void
-sys_init_type_info_module(void)
-{
-	/* no initialization needed */
-}
-
-#else
+#ifndef MR_HIGHLEVEL_CODE
 
 	/*
 	** For most purposes, type_ctor_info can be treated just like
@@ -457,8 +455,13 @@ MR_END_MODULE
 INIT sys_init_type_info_module
 */
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc type_info_module;
-void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_type_info_module(void) {
+
+#endif /* ! MR_HIGHLEVEL_CODE */
+
+void
+sys_init_type_info_module_init(void)
+{
+#ifndef	MR_HIGHLEVEL_CODE
 	type_info_module();
 
 	MR_INIT_TYPE_CTOR_INFO(
@@ -473,7 +476,12 @@ void sys_init_type_info_module(void) {
 	MR_INIT_TYPE_CTOR_INFO(
 	  mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
 	  private_builtin__typeclass_info_1_0);
+#endif
+}
 
+void
+sys_init_type_info_module_init_type_tables(void)
+{
 	MR_register_type_ctor_info(
 	  &mercury_data_private_builtin__type_ctor_info_type_ctor_info_1);
 	MR_register_type_ctor_info(
@@ -484,7 +492,13 @@ void sys_init_type_info_module(void) {
 	  &mercury_data_private_builtin__type_ctor_info_typeclass_info_1);
 }
 
-#endif /* ! MR_HIGHLEVEL_CODE */
+#ifdef	MR_DEEP_PROFILING
+void
+sys_init_type_info_module_write_out_proc_statics(FILE *fp)
+{
+	/* no proc_statics to write out */
+}
+#endif
 
 ").
 

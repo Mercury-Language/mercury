@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,12 +26,14 @@
 	% labels. The third argument gives the trace level, which we also
 	% use to avoid optimizations that may interfere with RTTI.
 	%
-	% The three bool inputs should be
+	% The four bool inputs should be
 	%
 	% - the value of the --optimize-fulljumps option,
 	%
 	% - an indication of whether this is the final application of this
-	%   optimization, and
+	%   optimization,
+	%
+	% - the value of the --pessimize-tailcalls option, and
 	%
 	% - the value of the --checked-nondet-tailcalls option respectively.
 	%
@@ -40,7 +42,7 @@
 
 :- pred jumpopt_main(list(instruction)::in, set(label)::in, trace_level::in,
 	proc_label::in, counter::in, counter::out,
-	bool::in, bool::in, bool::in,
+	bool::in, bool::in, bool::in, bool::in,
 	list(instruction)::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -77,7 +79,8 @@
 % been applied.
 
 jumpopt_main(Instrs0, LayoutLabels, TraceLevel, ProcLabel, C0, C,
-		Blockopt, Recjump, MostlyDetTailCall, Instrs, Mod) :-
+		Blockopt, Recjump, PessimizeTailCalls, CheckedNondetTailCall,
+		Instrs, Mod) :-
 	map__init(Instrmap0),
 	map__init(Lvalmap0),
 	map__init(Procmap0),
@@ -86,10 +89,25 @@ jumpopt_main(Instrs0, LayoutLabels, TraceLevel, ProcLabel, C0, C,
 	map__init(Blockmap0),
 	jumpopt__build_maps(Instrs0, Blockopt, Recjump, Instrmap0, Instrmap,
 		Blockmap0, Blockmap, Lvalmap0, Lvalmap,
-		Procmap0, Procmap, Sdprocmap0, Sdprocmap, Succmap0, Succmap),
+		Procmap0, Procmap1, Sdprocmap0, Sdprocmap1,
+		Succmap0, Succmap1),
 	map__init(Forkmap0),
-	jumpopt__build_forkmap(Instrs0, Sdprocmap, Forkmap0, Forkmap),
-	( MostlyDetTailCall = yes ->
+	jumpopt__build_forkmap(Instrs0, Sdprocmap1, Forkmap0, Forkmap1),
+	(
+		PessimizeTailCalls = no,
+		Procmap = Procmap1,
+		Sdprocmap = Sdprocmap1,
+		Succmap = Succmap1,
+		Forkmap = Forkmap1
+	;
+		PessimizeTailCalls = yes,
+		Procmap = map__init,
+		Sdprocmap = map__init,
+		Succmap = map__init,
+		Forkmap = map__init
+	),
+	(
+		CheckedNondetTailCall = yes,
 		CheckedNondetTailCallInfo0 = yes(ProcLabel - C0),
 		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
 			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
@@ -101,6 +119,7 @@ jumpopt_main(Instrs0, LayoutLabels, TraceLevel, ProcLabel, C0, C,
 			error("jumpopt_main: lost the next label number")
 		)
 	;
+		CheckedNondetTailCall = no,
 		CheckedNondetTailCallInfo0 = no,
 		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
 			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,

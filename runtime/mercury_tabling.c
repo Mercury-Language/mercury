@@ -1638,7 +1638,7 @@ MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
 MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
 
 MR_MAKE_PROC_LAYOUT(mercury__table_builtin__table_nondet_resume_1_0,
-	MR_DETISM_NON, MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
+	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
 	MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop,
@@ -2013,12 +2013,30 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_resume_module;
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_commit_module;
 #endif
 
-void mercury_sys_init_table_modules(void);
-	/* extra declaration to suppress gcc -Wmissing-decl warning */
-void mercury_sys_init_table_modules(void) {
+/* forward declarations to suppress gcc -Wmissing-decl warnings */
+void mercury_sys_init_table_modules_init(void);
+void mercury_sys_init_table_modules_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp);
+#endif
+
+void mercury_sys_init_table_modules_init(void)
+{
 #ifdef	MR_USE_MINIMAL_MODEL
 	table_nondet_suspend_module();
 	table_nondet_resume_module();
 	table_nondet_commit_module();
 #endif
 }
+
+void mercury_sys_init_table_modules_init_type_tables(void)
+{
+	/* no types to register */
+}
+
+#ifdef	MR_DEEP_PROFILING
+void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp)
+{
+	/* no proc_statics to write out */
+}
+#endif

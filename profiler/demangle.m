@@ -1,9 +1,7 @@
 %-----------------------------------------------------------------------------%
-%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%
 %-----------------------------------------------------------------------------%
 %
 % File: demangle.m
@@ -270,6 +268,12 @@ demangle_proc -->
 				{ IntroducedPredType = type_spec(TypeSpec) },
 				{ Seq = 0 },
 				{ Line = 0 }
+
+				% The compiler adds a redundant mode
+				% number to the predicate name to avoid
+				% creating two predicates with the same
+				% name (deep profiling doesn't like that).
+				% It isn't used here so we just ignore it.
 			;
 				{ IntroducedPredType = IntroducedPredType0 },
 				remove_int(Line),

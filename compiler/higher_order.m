@@ -2248,10 +2248,20 @@ create_new_pred(Request, NewPred, NextHOid0, NextHOid, NewPreds0, NewPreds,
         pred_info_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
 
 	( IsUserTypeSpec = yes ->
-		% If this is a user-guided type specialisation, the
-		% new name comes from the name of the requesting predicate.
+		% If this is a user-guided type specialisation, the new name
+		% comes from the name and mode number of the requesting
+		% predicate. The mode number is included because we want to
+		% avoid the creation of more than one predicate with the same
+		% name if more than one mode of a predicate is specialized.
+		% Since the names of e.g. deep profiling proc_static structures
+		% are derived from the names of predicates, duplicate predicate
+		% names lead to duplicate global variable names and hence to
+		% link errors.
 		Caller = proc(CallerPredId, CallerProcId),
-		predicate_name(ModuleInfo0, CallerPredId, PredName),
+		predicate_name(ModuleInfo0, CallerPredId, PredName0),
+		proc_id_to_int(CallerProcId, CallerProcInt),
+		PredName = string__append_list(
+			[PredName0, "_", int_to_string(CallerProcInt)]),
 		SymName = qualified(PredModule, PredName),
 		NextHOid = NextHOid0,
 		NewProcId = CallerProcId,

@@ -392,10 +392,9 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		output_init_comment(ModuleName),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
-		output_debugger_init_list_decls(Datas),
-		io__write_string("\n"),
+		{ decl_set_init(DeclSet0) },
 		output_c_module_init_list(ModuleName, Modules, Datas,
-			StackLayoutLabels),
+			StackLayoutLabels, DeclSet0, _DeclSet),
 		output_rl_file(ModuleName, MaybeRLFile),
 		io__told
 	;
@@ -419,10 +418,19 @@ output_c_file_mercury_headers -->
 	;
 		io__write_string("#include ""mercury_imp.h""\n")
 	),
+	globals__io_lookup_bool_option(profile_deep, DeepProfile),
+	(
+		{ DeepProfile = yes },
+		io__write_string("#include ""mercury_deep_profiling.h""\n")
+	;
+		{ DeepProfile = no }
+	),
 	globals__io_lookup_bool_option(generate_bytecode, GenBytecode),
-	(	{ GenBytecode = yes },
+	(
+		{ GenBytecode = yes },
 		io__write_string("#include ""mb_interface_stub.h""\n")
-	;	{ GenBytecode = no }
+	;
+		{ GenBytecode = no }
 	).
 
 output_c_file_intro_and_grade(SourceFileName, Version) -->
@@ -491,7 +499,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 		output_comp_gen_c_var_list(Vars, DeclSet2, DeclSet3),
 		output_comp_gen_c_data_list(Datas, DeclSet3, DeclSet4),
 		output_comp_gen_c_module_list(Modules, StackLayoutLabels,
-			DeclSet4, _DeclSet),
+			DeclSet4, DeclSet5),
 		output_user_foreign_code_list(UserForeignCode),
 		output_exported_c_functions(Exports),
 
@@ -500,7 +508,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 		;
 			io__write_string("\n"),
 			output_c_module_init_list(ModuleName, Modules, Datas,
-				StackLayoutLabels)
+				StackLayoutLabels, DeclSet5, _DeclSet)
 		),
 		output_rl_file(ModuleName, MaybeRLFile),
 		io__told
@@ -516,9 +524,10 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 
 :- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
 	list(comp_gen_c_data)::in, map(label, data_addr)::in,
-	io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
+output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
+		DeclSet0, DeclSet) -->
 	{ MustInit = lambda([Module::in] is semidet, (
 		module_defines_label_with_layout(Module, StackLayoutLabels)
 	)) },
@@ -543,18 +552,23 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 	io__write_string("/* suppress gcc -Wmissing-decls warnings */\n"),
 	io__write_string("void "),
 	output_init_name(ModuleName),
-	io__write_string("(void);\n"),
+	io__write_string("init(void);\n"),
 	io__write_string("void "),
 	output_init_name(ModuleName),
-	io__write_string("_type_tables(void);\n"),
+	io__write_string("init_type_tables(void);\n"),
 	io__write_string("void "),
 	output_init_name(ModuleName),
-	io__write_string("_debugger(void);\n"),
+	io__write_string("init_debugger(void);\n"),
+	io__write_string("#ifdef MR_DEEP_PROFILING\n"),
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("write_out_proc_statics(FILE *fp);\n"),
+	io__write_string("#endif\n"),
 	io__write_string("\n"),
 
 	io__write_string("void "),
 	output_init_name(ModuleName),
-	io__write_string("(void)\n"),
+	io__write_string("init(void)\n"),
 	io__write_string("{\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
 	io__write_string("\tif (done) {\n"),
@@ -582,12 +596,12 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 		% overwritten, it can be deleted.
 	io__write_string("\t"),
 	output_init_name(ModuleName),
-	io__write_string("_debugger();\n"),
+	io__write_string("init_debugger();\n"),
 	io__write_string("}\n\n"),
 
 	io__write_string("void "),
 	output_init_name(ModuleName),
-	io__write_string("_type_tables(void)\n"),
+	io__write_string("init_type_tables(void)\n"),
 	io__write_string("{\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
 	io__write_string("\tif (done) {\n"),
@@ -597,9 +611,11 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 	output_type_tables_init_list(Datas, SplitFiles),
 	io__write_string("}\n\n"),
 
+	output_debugger_init_list_decls(Datas, DeclSet0, DeclSet1),
+	io__write_string("\n"),
 	io__write_string("void "),
 	output_init_name(ModuleName),
-	io__write_string("_debugger(void)\n"),
+	io__write_string("init_debugger(void)\n"),
 	io__write_string("{\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
 	io__write_string("\tif (done) {\n"),
@@ -608,6 +624,16 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 	io__write_string("\tdone = TRUE;\n"),
 	output_debugger_init_list(Datas),
 	io__write_string("}\n\n"),
+
+	io__write_string("#ifdef MR_DEEP_PROFILING\n"),
+	output_write_proc_static_list_decls(Datas, DeclSet1, DeclSet),
+	io__write_string("\nvoid "),
+	output_init_name(ModuleName),
+	io__write_string("write_out_proc_statics(FILE *fp)\n"),
+	io__write_string("{\n"),
+	output_write_proc_static_list(Datas),
+	io__write_string("}\n"),
+	io__write_string("\n#endif\n\n"),
 
 	io__write_string(
 		"/* ensure everything is compiled with the same grade */\n"),
@@ -669,7 +695,7 @@ output_init_bunch_def([Module | Modules], ModuleName, SplitFiles) -->
 
 output_init_bunch_calls([], _, _, _) --> [].
 output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
-	io__write_string("\t\t"),
+	io__write_string("\t"),
 	output_bunch_name(ModuleName, InitStatus, Seq),
 	io__write_string("();\n"),
 	{ NextSeq is Seq + 1 },
@@ -709,21 +735,20 @@ output_type_tables_init_list([Data | Datas], SplitFiles) -->
 	% Output declarations for each module layout defined in this module
 	% (there should only be one, of course).
 :- pred output_debugger_init_list_decls(list(comp_gen_c_data)::in,
-	io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_debugger_init_list_decls([]) --> [].
-output_debugger_init_list_decls([Data | Datas]) -->
+output_debugger_init_list_decls([], DeclSet, DeclSet) --> [].
+output_debugger_init_list_decls([Data | Datas], DeclSet0, DeclSet) -->
 	(
 		{ Data = layout_data(LayoutData) },
 		{ LayoutData = module_layout_data(ModuleName, _, _, _, _, _) }
 	->
-		{ decl_set_init(DeclSet0) },
 		output_data_addr_decls(layout_addr(module_layout(ModuleName)),
-			"", "", 0, _, DeclSet0, _DeclSet)
+			"", "", 0, _, DeclSet0, DeclSet1)
 	;
-		[]
+		{ DeclSet1 = DeclSet0 }
 	),
-	output_debugger_init_list_decls(Datas).
+	output_debugger_init_list_decls(Datas, DeclSet1, DeclSet).
 
 	% Output calls to MR_register_module_layout()
 	% for each module layout defined in this module
@@ -738,15 +763,49 @@ output_debugger_init_list([Data | Datas]) -->
 		{ Data = layout_data(LayoutData) },
 		{ LayoutData = module_layout_data(ModuleName, _, _, _, _, _) }
 	->
-		io__write_string("\t\tif (MR_register_module_layout != NULL) {\n"),
-		io__write_string("\t\t\t(*MR_register_module_layout)("),
-		io__write_string("\n\t\t\t\t&"),
+		io__write_string("\tif (MR_register_module_layout != NULL) {\n"),
+		io__write_string("\t\t(*MR_register_module_layout)("),
+		io__write_string("\n\t\t\t&"),
 		output_layout_name(module_layout(ModuleName)),
-		io__write_string(");\n\t\t}\n")
+		io__write_string(");\n\t}\n")
 	;
 		[]
 	),
 	output_debugger_init_list(Datas).
+
+:- pred output_write_proc_static_list_decls(list(comp_gen_c_data)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_write_proc_static_list_decls([], DeclSet, DeclSet) --> [].
+output_write_proc_static_list_decls([Data | Datas], DeclSet0, DeclSet) -->
+	(
+		{ Data = layout_data(LayoutData) },
+		{ LayoutData = proc_static_data(_, _, _) }
+	->
+		output_maybe_layout_data_decl(LayoutData, DeclSet0, DeclSet1)
+	;
+		{ DeclSet1 = DeclSet0 }
+	),
+	output_write_proc_static_list_decls(Datas,
+		DeclSet1, DeclSet).
+
+:- pred output_write_proc_static_list(list(comp_gen_c_data)::in,
+	io__state::di, io__state::uo) is det.
+
+output_write_proc_static_list([]) --> [].
+output_write_proc_static_list([Data | Datas]) -->
+	(
+		{ Data = layout_data(LayoutData) },
+		{ LayoutData = proc_static_data(RttiProcLabel, _, _) }
+	->
+		io__write_string("\tMR_write_out_proc_static(fp, "),
+		io__write_string("(MR_ProcStatic *)\n\t\t&"),
+		output_layout_name(proc_static(RttiProcLabel)),
+		io__write_string(");\n")
+	;
+		[]
+	),
+	output_write_proc_static_list(Datas).
 
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
@@ -757,7 +816,7 @@ output_init_comment(ModuleName) -->
 	io__write_string("/*\n"),
 	io__write_string("INIT "),
 	output_init_name(ModuleName),
-	io__write_string("\n"),
+	io__write_string("init\n"),
 	globals__io_lookup_bool_option(aditi, Aditi),
 	( { Aditi = yes } ->
 		{ llds_out__make_rl_data_name(ModuleName, RLName) },
@@ -779,7 +838,7 @@ output_init_name(ModuleName) -->
 
 llds_out__make_init_name(ModuleName, InitName) :-
 	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
-	string__append_list(["mercury__", MangledModuleName, "__init"],
+	string__append_list(["mercury__", MangledModuleName, "__"],
 		InitName).
 
 llds_out__make_rl_data_name(ModuleName, RLDataConstName) :-
@@ -851,7 +910,7 @@ output_c_data_type_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 output_c_data_type_def(rtti_data(RttiData), DeclSet0, DeclSet) -->
 	output_rtti_data_decl(RttiData, DeclSet0, DeclSet).
 output_c_data_type_def(layout_data(LayoutData), DeclSet0, DeclSet) -->
-	output_layout_data_decl(LayoutData, DeclSet0, DeclSet).
+	output_maybe_layout_data_decl(LayoutData, DeclSet0, DeclSet).
 
 :- pred output_comp_gen_c_module_list(list(comp_gen_c_module)::in,
 	map(label, data_addr)::in, decl_set::in, decl_set::out,
@@ -2381,6 +2440,8 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 		->
 			[]
 		;
+			% XXX io__write_string("const ")
+			% []
 			io__write_string("const ")
 		)
 	;
@@ -2439,6 +2500,7 @@ data_addr_would_include_code_address(layout_addr(LayoutName)) =
 data_name_would_include_code_address(common(_)) =                 no.
 data_name_would_include_code_address(base_typeclass_info(_, _)) = yes.
 data_name_would_include_code_address(tabling_pointer(_)) =        no.
+data_name_would_include_code_address(deep_profiling_procedure_data(_)) =  no.
 
 :- pred output_decl_id(decl_id, io__state, io__state).
 :- mode output_decl_id(in, di, uo) is det.
@@ -3018,6 +3080,7 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 data_name_linkage(common(_),                 static).
 data_name_linkage(base_typeclass_info(_, _), extern).
 data_name_linkage(tabling_pointer(_),        static).
+data_name_linkage(deep_profiling_procedure_data(_), static).
 
 %-----------------------------------------------------------------------------%
 
@@ -3360,6 +3423,11 @@ output_data_addr(ModuleName, VarName) -->
 	;
 		{ VarName = tabling_pointer(ProcLabel) },
 		io__write_string("mercury_var__tabling__"),
+		output_proc_label(ProcLabel)
+	;
+		{ VarName = deep_profiling_procedure_data(ProcLabel) },
+		io__write_string(mercury_data_prefix),
+		io__write_string("_deep_profiling_data__"),
 		output_proc_label(ProcLabel)
 	).
 
