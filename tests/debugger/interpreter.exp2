@@ -32,15 +32,15 @@ mdb> finish
 mdb> print *
        Database (arg 1)       	[]
        VarSet (arg 2)         	varset(var_supply(0), empty, empty)
-       Term (arg 3)           	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 22))
-       HeadVar__4             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [])
+       Term (arg 3)           	functor(atom(":-"), [functor(atom/1, [|]/2, context/2)], context("interpreter.m", 22))
+       HeadVar__4             	[clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2))]
 mdb> finish -a
 This command is a no-op from this port.
 mdb> print *
        Database (arg 1)       	[]
        VarSet (arg 2)         	varset(var_supply(0), empty, empty)
-       Term (arg 3)           	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 22))
-       HeadVar__4             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [])
+       Term (arg 3)           	functor(atom(":-"), [functor(atom/1, [|]/2, context/2)], context("interpreter.m", 22))
+       HeadVar__4             	[clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2))]
 mdb> 
       E5:     C4  6 CALL pred interpreter:consult_until_eof/4-0 (det)
 mdb> finish -n

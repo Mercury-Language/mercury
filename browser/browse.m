@@ -654,27 +654,121 @@ browser_term_to_string_2(BrowserTerm, MaxSize, CurSize, NewSize,
 		limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
 			Functor, _Arity, Args, MaybeReturn)
 	->
-		CurSize1 = CurSize + 1,
-		CurDepth1 = CurDepth + 1,
-		args_to_string_list(Args, MaxSize, CurSize1, NewSize1,
-			MaxDepth, CurDepth1, ArgStrs),
+		browser_term_to_string_3(Functor, Args, MaybeReturn,
+			MaxSize, CurSize, NewSize, MaxDepth, CurDepth, Str)
+	;
+		browser_term_compress(BrowserTerm, Str),
+		NewSize = CurSize
+	).
+
+:- pred browser_term_to_string_3(string::in, list(univ)::in, maybe(univ)::in,
+	int::in, int::in, int::out, int::in, int::in, string::out) is cc_multi.
+
+browser_term_to_string_3(Functor, Args, MaybeReturn, MaxSize, Size0, Size,
+	MaxDepth, Depth0, Str) :-
+
+	(
+		Functor = "[|]",
+		Args = [ListHead, ListTail],
+		MaybeReturn = no
+	->
+		% For the purposes of size and depth, we treat lists as if
+		% they consist of one functor plus an argument for each
+		% element of the list.
+		Size1 = Size0 + 1,
+		Depth1 = Depth0 + 1,
+		browser_term_to_string_2(plain_term(ListHead), MaxSize,
+			Size1, Size2, MaxDepth, Depth1, HeadStr),
+		list_tail_to_string_list(ListTail, MaxSize, Size2, Size,
+			MaxDepth, Depth1, TailStrs),
+		list__append(TailStrs, ["]"], Strs),
+		string__append_list(["[", HeadStr | Strs], Str)
+	;
+		Functor = "[]",
+		Args = [],
+		MaybeReturn = no
+	->
+		Size = Size0 + 1,
+		Str = "[]"
+	;
+		Size1 = Size0 + 1,
+		Depth1 = Depth0 + 1,
+		args_to_string_list(Args, MaxSize, Size1, Size2, MaxDepth,
+			Depth1, ArgStrs),
 		BracketedArgsStr = bracket_string_list(ArgStrs),
 		(
 			MaybeReturn = yes(Return),
 			browser_term_to_string_2(plain_term(Return), MaxSize,
-				NewSize1, NewSize, MaxDepth, CurDepth1,
-				ReturnStr),
+				Size2, Size, MaxDepth, Depth1, ReturnStr),
 			string__append_list([Functor, BracketedArgsStr,
 				" = ", ReturnStr], Str)
 		;
 			MaybeReturn = no,
-			NewSize = NewSize1,
+			Size = Size2,
 			string__append_list([Functor, BracketedArgsStr], Str)
 		)
+	).
+
+:- pred list_tail_to_string_list(univ::in, int::in, int::in, int::out, int::in,
+	int::in, list(string)::out) is cc_multi.
+
+list_tail_to_string_list(TailUniv, MaxSize, Size0, Size, MaxDepth, Depth0,
+	TailStrs) :-
+
+	% We want the limit to be at least two to ensure that the limited
+	% deconstruct won't fail for any list term.
+	Limit = max(MaxSize, 2),
+	(
+		limited_deconstruct_browser_term_cc(plain_term(TailUniv),
+			Limit, Functor, _Arity, Args, MaybeReturn)
+	->
+		(
+			Functor = "[]",
+			Args = [],
+			MaybeReturn = no
+		->
+			Size = Size0,
+			TailStrs = []
+		;
+			Functor = "[|]",
+			Args = [ListHead, ListTail],
+			MaybeReturn = no
+		->
+			(
+				Size0 < MaxSize,
+				Depth0 < MaxDepth
+			->
+				browser_term_to_string_2(plain_term(ListHead),
+					MaxSize, Size0, Size1, MaxDepth, Depth0,
+					HeadStr),
+				list_tail_to_string_list(ListTail, MaxSize,
+					Size1, Size, MaxDepth, Depth0,
+					TailStrs0),
+				TailStrs = [", ", HeadStr | TailStrs0]
+			;
+				Size = Size0,
+				TailStrs = [", ..."]
+			)
+		;
+			(
+				Size0 < MaxSize,
+				Depth0 < MaxDepth
+			->
+				browser_term_to_string_3(Functor, Args,
+					MaybeReturn, MaxSize, Size0, Size,
+					MaxDepth, Depth0, TailStr),
+				TailStrs = [" | ", TailStr]
+			;
+				Size = Size0,
+				browser_term_compress(plain_term(TailUniv),
+					TailCompressedStr),
+				TailStrs = [" | ", TailCompressedStr]
+			)
+		)
 	;
-		% Str = "...",
-		browser_term_compress(BrowserTerm, Str),
-		NewSize = CurSize
+		Size = Size0,
+		browser_term_compress(plain_term(TailUniv), TailCompressedStr),
+		TailStrs = [" | ", TailCompressedStr]
 	).
 
 :- pred args_to_string_list(list(univ)::in, int::in, int::in, int::out,

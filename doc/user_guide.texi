@@ -2594,10 +2594,23 @@ to change the output style of the browser.
 @sp 1
 @item
 @samp{depth} is the maximum depth to which subterms will be displayed.
+Subterms at the depth limit may be abbreviated as functor/arity,
+or (in lists) may be replaced by an ellipsis (@samp{...}).
+The principal functor of any term has depth zero.
+For subterms which are not lists,
+the depth of any argument of the functor is one greater than the
+depth of the functor.
+For subterms which are lists,
+the depth of each element of the list
+is one greater than the depth of the list.
 @sp 1
 @item
 @samp{size} is the suggested maximum number of functors to display.
-Beyond this limit, the browser will abbreviate the output.
+Beyond this limit, subterms may be abbreviated as functor/arity,
+or (in lists) may be replaced by an ellipsis (@samp{...}).
+For the purposes of this parameter,
+the size of a list is one greater than
+the sum of the sizes of the elements in the list.
 @sp 1
 @item
 @samp{width} is the width of the screen in characters.

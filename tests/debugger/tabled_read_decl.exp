@@ -88,13 +88,13 @@ read_char_code('<<c_pointer>>', 51)
 mdb> print action 4
 read_char_code('<<c_pointer>>', 10)
 mdb> print action 5
-poly_read_char_code(list(character), <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 52)
+poly_read_char_code(list(character), <<c_pointer>>, ['a', 'b', 'c'], 52)
 mdb> print action 6
-poly_read_char_code(list(character), <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 53)
+poly_read_char_code(list(character), <<c_pointer>>, ['a', 'b', 'c'], 53)
 mdb> print action 7
-poly_read_char_code(list(character), <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 54)
+poly_read_char_code(list(character), <<c_pointer>>, ['a', 'b', 'c'], 54)
 mdb> print action 8
-poly_read_char_code(list(character), <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 10)
+poly_read_char_code(list(character), <<c_pointer>>, ['a', 'b', 'c'], 10)
 mdb> print action 9
 mdb: I/O action number not in range.
 mdb> continue -S

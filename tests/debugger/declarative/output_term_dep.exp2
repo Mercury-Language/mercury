@@ -40,7 +40,7 @@ mdb> continue
 mdb> finish
       32:     14  3 EXIT pred output_term_dep:q/1-0 (det)
 mdb> dd
-q([|]([|](1, [|]/2), [|]([], [|]/2)))
+q([[1, ...], [], [99]])
 Valid? browse 1
 browser> mark 2/1
 qb([])
@@ -50,7 +50,7 @@ Valid? yes
 qc([99])
 Valid? yes
 Found incorrect contour:
-q([|]([|](1, [|]/2), [|]([], [|]/2)))
+q([[1, ...], [], [99]])
 Is this a bug? yes
       32:     14  3 EXIT pred output_term_dep:q/1-0 (det)
 mdb> continue
