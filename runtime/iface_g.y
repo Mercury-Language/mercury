@@ -3,9 +3,14 @@
 **	Grammar for the interface to the Ptah interpeter
 */
 
+/*
+The following line is used by yyrepl:
+YYREPL	YY	yy
+*/
+
 #ifndef	lint
-static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.5 1993-12-13 11:40:40 zs Exp $";
+static const char
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.6 1993-12-18 04:11:31 fjh Exp $";
 #endif
 
 #include	<ctype.h>
@@ -14,9 +19,9 @@ rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/ifa
 #include	"list.h"
 #include	"access.h"
 
-extern	Action	action;
-extern	char	*act_predname;
-extern	int	act_value;
+extern	Action		action;
+extern	const char	*act_predname;
+extern	int		act_value;
 
 extern	int	yylex(void);
 extern	void	yyerror(const char *);
@@ -24,10 +29,10 @@ extern	void	yyerror(const char *);
 
 %union
 {
-	int	Uint;
-	char	*Ustr;
-	Word	Uword;
-	List	*Ulist;
+	int		Uint;
+	const char	*Ustr;
+	Word		Uword;
+	List		*Ulist;
 }
 
 %token		RESET HELP CALL REDO
@@ -180,9 +185,9 @@ expr	:	NUM
 /*		Lists						      */
 
 expr_l	:	expr
-		{	$$ = makelist($1);		}
+		{	$$ = makelist((void *)$1);		}
 	|	expr_l expr
-		{	$$ = addtail($1, $2);		}
+		{	$$ = addtail($1, (void *)$2);		}
 	;
 
 %%

@@ -8,6 +8,7 @@
 */
 
 #include	<stdio.h>
+#include	<assert.h>
 #include	"std.h"
 #include	"list.h"
 #include	"table.h"
@@ -31,18 +32,14 @@ tab_init_table(Table *table)
 **	in a table.
 */
 
-Cast
-tab_lookup_table(const Table *table, const Cast key)
+void *
+tab_lookup_table(const Table *table, const void *key)
 {
 	reg	List	*ptr;
 	reg	int	h;
 
 	h = tablehash(table)(key);
-
-#ifdef	HASHDEBUG
-	if (! (0 <= h && h < table->ta_size))
-		fprintf(stderr, "internal error: bad hash index in lookup_table: 0x%x\n", h);
-#endif
+	assert(0 <= h && h < table->ta_size);
 
 	for_list (ptr, table->ta_store[h])
 		if (tableequal(table)(key, tablekey(table)(ldata(ptr))))
@@ -57,11 +54,11 @@ tab_lookup_table(const Table *table, const Cast key)
 */
 
 bool
-tab_insert_table(const Table *table, const Cast entry)
+tab_insert_table(const Table *table, void *entry)
 {
-	reg	List	*ptr;
-	reg	Cast	key;
-	reg	int	h;
+	reg	List		*ptr;
+	reg	const void	*key;
+	reg	int		h;
 
 	key = tablekey(table)(entry);
 	h   = tablehash(table)(key);
@@ -101,12 +98,12 @@ tab_get_all_entries(const Table *table)
 */
 
 int
-tab_hash(Cast cs)
+tab_hash(const void *cs)
 {
-	reg	int	h;
-	reg	char	*s;
+	reg	int		h;
+	reg	const char	*s;
 
-	s = (char *) cs;
+	s = (const char *) cs;
 	for (h = 0; *s != '\0'; s++)
 		h = (h << 1) + *s;
 

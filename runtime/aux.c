@@ -1,3 +1,4 @@
+#include 	<stdlib.h>
 #include	"imp.h"
 #include	"list.h"
 #include	"access.h"
@@ -450,15 +451,15 @@ Word do_mklist(int start, int len)
 }
 
 void *
-newmem(int n)
+newmem(size_t n)
 {
 	reg	void	*p;
 
-	p = malloc((unsigned) n);
-	if (p == (void *) NULL)
+	p = malloc(n);
+	if (p == NULL)
 	{
-		fprintf(stderr, "ran out of malloc\n");
-		abort();
+		fprintf(stderr, "ran out of memory\n");
+		exit(1);
 	}
 
 	return p;

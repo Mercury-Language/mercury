@@ -73,12 +73,14 @@ typedef	struct	s_kwentry
 } Kwentry;
 
 extern	void	yykwinit(void);
-static	char	*new_name(const char *);
+static	char *	new_name(const char *);
 
-static	Cast	name_key(Cast);
-static	bool	name_equal(Cast, Cast);
-static	Cast	kw_key(Cast);
-static	bool	kw_equal(Cast, Cast);
+static	const void *	name_key(const void *);
+static	bool		name_equal(const void *, const void *);
+static	const void *	kw_key(const void *);
+static	bool		kw_equal(const void *, const void *);
+
+/* XXX this initialization should be done in init_table() */
 static	Table	kw_tab =   { TABLESIZE, NULL, kw_key,   tab_hash, kw_equal   };
 static	Table	name_tab = { TABLESIZE, NULL, name_key, tab_hash, name_equal };
 
@@ -123,11 +125,11 @@ alnum	[a-zA-Z_0-9]
 			}
 
 {alpha}{alnum}*		{
-				reg	Kwentry	*kwentry;
+				reg	const Kwentry	*kwentry;
 
 				yylval.Ustr = new_name(yytext);
-				kwentry = (Kwentry *) lookup_table(kw_tab, yylval.Ustr);
-				if (kwentry != (Kwentry *) NULL)
+				kwentry = (const Kwentry *) lookup_table(kw_tab, yylval.Ustr);
+				if (kwentry != NULL)
 					return kwentry->kw_val;
 				else
 					return ID;
@@ -193,45 +195,39 @@ yyreinit(void)
 static char *
 new_name(const char *str)
 {
-	reg	Cast	old;
+	reg	void 	*old;
 	reg	char	*copy;
 
-	if ((old = lookup_table(name_tab, str)) != (Cast) NULL)
+	if ((old = lookup_table(name_tab, str)) != NULL)
 		return (char *) old;
 
-	copy = (char *) malloc(strlen(str) + 1);
-	if (copy == (char *) NULL)
-	{
-		fprintf(stderr, "ran out of malloc\n");
-		abort();
-	}
-
+	copy = make_many(char, strlen(str) + 1);
 	strcpy(copy, str);
 	insert_table(name_tab, copy);
 
 	return copy;
 }
 
-static Cast
-name_key(Cast entry)
+static const void *
+name_key(const void * entry)
 {
 	return entry;
 }
 
 static bool
-name_equal(Cast key1, Cast key2)
+name_equal(const void *key1, const void *key2)
 {
-	return streq((char *) key1, (char *) key2);
+	return streq((const char *) key1, (const char *) key2);
 }
 
-static Cast
-kw_key(Cast entry)
+static const void *
+kw_key(const void *entry)
 {
-	return (Cast) ((Kwentry *) entry)->kw_name;
+	return ((const Kwentry *) entry)->kw_name;
 }
 
 static bool
-kw_equal(Cast key1, Cast key2)
+kw_equal(const void *key1, const void *key2)
 {
-	return streq((char *) key1, (char *) key2);
+	return streq((const char *) key1, (const char *) key2);
 }

@@ -3,6 +3,7 @@
 */
 
 #include	<stdio.h>
+#include	<assert.h>
 #include	"std.h"
 #include	"list.h"
 
@@ -16,7 +17,7 @@ makelist0()
 	reg	List	*list;
 
 	list = make(List);
-	ldata(list) = (Cast) 0;
+	ldata(list) = NULL;
 	next(list) = list;
 	prev(list) = list;
 	
@@ -28,17 +29,11 @@ makelist0()
 */
 
 List *
-list_makelist(Cast data)
+list_makelist(void * data)
 {
 	reg	List	*list;
 
-#ifdef	LISTDEBUG
-	if (data == 0)
-	{
-		fprintf(stderr, "NULL passed to makelist\n");
-		abort();
-	}
-#endif
+	assert(data != NULL);
 	list = makelist0();
 	addhead(list, data);
 	return list;
@@ -49,7 +44,7 @@ list_makelist(Cast data)
 */
 
 List *
-list_addhead(List *list, Cast data)
+list_addhead(List *list, void *data)
 {
 	reg	List	*item;
 
@@ -58,7 +53,7 @@ list_addhead(List *list, Cast data)
 
 	item = make(List);
 	ldata(item) = data;
-	ldata(list) = (Cast) ((int) ldata(list) + 1);
+	llength(list)++;
 
 	/* item's pointers	*/
 	next(item) = next(list);
@@ -84,7 +79,7 @@ list_addtail(List *list, Cast data)
 
 	item = make(List);
 	ldata(item) = data;
-	ldata(list) = (Cast) ((int) ldata(list) + 1);
+	llength(list)++;
 
 	/* item's pointers	*/
 	next(item) = list;
@@ -110,9 +105,9 @@ addlist(List *list1, List *list2)
 	if (list2 == NULL)
 		list2 = makelist0();
 
-	if (length(list2) > 0)
+	if (llength(list2) > 0)
 	{
-		if (length(list1) == 0)
+		if (llength(list1) == 0)
 		{
 			ldata(list1) = ldata(list2);
 			/* pointers from header	*/
@@ -124,7 +119,7 @@ addlist(List *list1, List *list2)
 		}
 		else
 		{
-			ldata(list1) = (Cast) ((int) ldata(list1) + (int) ldata(list2));
+			llength(list1) = llength(list1) + llength(list2);
 			/* end of list 1 to start of list 2	*/
 			next(prev(list1)) = next(list2);
 			prev(next(list2)) = prev(list1);
@@ -134,7 +129,7 @@ addlist(List *list1, List *list2)
 		}
 	}
 
-	oldmem((Cast) list2);
+	oldmem(list2);
 	return list1;
 }
 
@@ -166,13 +161,13 @@ addndlist(List *list1, List *list2)
 */
 
 void
-list_insert_before(List *list, List *where, Cast data)
+list_insert_before(List *list, List *where, void *data)
 {
 	reg	List	*item;
 
 	item = make(List);
-	ldata(item) = (Cast) data;
-	ldata(list) = (Cast) ((int) ldata(list) + 1);
+	ldata(item) = data;
+	llength(list)++;
 
 	/* item's pointers */
 	next(item) = where;
@@ -187,13 +182,13 @@ list_insert_before(List *list, List *where, Cast data)
 */
 
 void
-list_insert_after(List *list, List *where, Cast data)
+list_insert_after(List *list, List *where, void *data)
 {
 	reg	List	*item;
 
 	item = make(List);
-	ldata(item) = (Cast) data;
-	ldata(list) = (Cast) ((int) ldata(list) + 1);
+	ldata(item) = data;
+	llength(list)++;
 
 	/* item's pointers */
 	next(item) = next(where);
@@ -208,12 +203,12 @@ list_insert_after(List *list, List *where, Cast data)
 */
 
 int
-length(List *list)
+length(const List *list)
 {
 	if (list == NULL)
 		return 0;
 
-	return (int) ldata(list);
+	return llength(list);
 }
 
 /*
@@ -222,7 +217,7 @@ length(List *list)
 */
 
 void
-delete(List *list, List *item, void (* func)(Cast))
+delete(List *list, List *item, void (* func)(void *))
 {
 	if (list == NULL)
 		return;
@@ -231,13 +226,13 @@ delete(List *list, List *item, void (* func)(Cast))
 		return;
 
 	if (func != NULL)
-		(* func)(ldata(item));
+		func(ldata(item));
 
-	ldata(list) = (Cast) ((int) ldata(list) - 1);
+	llength(list)--;
 	next(prev(item)) = next(item);
 	prev(next(item)) = prev(item);
 
-	oldmem((Cast) item);
+	oldmem(item);
 }
 
 /*
@@ -247,7 +242,7 @@ delete(List *list, List *item, void (* func)(Cast))
 */
 
 void
-oldlist(List *list, void (* func)(Cast))
+oldlist(List *list, void (* func)(void *))
 {
 	reg	List	*ptr;
 	reg	List	*item;
@@ -262,10 +257,10 @@ oldlist(List *list, void (* func)(Cast))
 		ptr = next(ptr);
 
 		if (func != NULL)
-			(* func)(ldata(item));
+			func(ldata(item));
  
-		oldmem((Cast) item);
+		oldmem(item);
 	}
 	 
-	oldmem((Cast) list);
+	oldmem(list);
 }

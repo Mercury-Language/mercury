@@ -53,24 +53,15 @@
 #define make(t)			((t *) newmem(sizeof(t)))
 #define make_many(t, n)		((t *) newmem((n) * sizeof(t)))
 
-#ifndef NOMALLOCCAST
-#define malloc_type(t)		((t *) malloc((unsigned) sizeof(t)))
-#define malloc_mtype(t, n)	((t *) malloc((unsigned) ((n) * sizeof(t))))
-#define realloc_type(t, r, n) 	((t *) realloc((char *) (r), (unsigned) ((n) * sizeof(t))))
-#else
 #define malloc_type(t)		((t *) malloc(sizeof(t)))
 #define malloc_mtype(t, n)	((t *) malloc((n) * sizeof(t)))
-#define realloc_type(t, r, n) 	((t *) realloc((char *) (r), (n) * sizeof(t)))
-#endif
+#define realloc_type(t, r, n) 	((t *) realloc((r), (n) * sizeof(t)))
 
 #ifndef	TRUE
 #define	TRUE		1
 #endif
 #ifndef	FALSE
 #define	FALSE		0
-#endif
-#ifndef	NULL
-#define	NULL		0
 #endif
 
 #undef	CTRL
@@ -81,11 +72,7 @@
 
 typedef	void	*Cast;
 
-extern	void	*malloc(unsigned);
-extern	void	*realloc(void *, unsigned);
-extern	void	free(void *);
-
-extern	void	*newmem(int);
+extern	void	*newmem(size_t);
 extern	void	oldmem(void *);
 
 #endif /* STD_H */
