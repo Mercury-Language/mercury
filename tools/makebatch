@@ -2,7 +2,7 @@
 #
 # A program to prepare batches of versions of the compiler.
 #
-# The control and output files are all in the dubdirectory batch.
+# The control and output files are all in the subdirectory batch.
 # The control files are $batch.MCFLAGS and possibly $batch.CFLAGS
 # and/or $batch.GRADE, where $batch is the last argument of makebatch.
 # $batch.CFLAGS and $batch.GRADE are consulted if they exist.
