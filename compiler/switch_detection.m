@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -444,11 +444,10 @@ find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals,
 
 %-----------------------------------------------------------------------------%
 
-find_bind_var(Var, ProcessUnify, Goal0, Goal, Result0, Result, Info0, Info,
-		FoundDeconstruct) :-
-	map__init(Substitution),
-	find_bind_var(Var, ProcessUnify, Goal0, Goal, Substitution,
-		_, Result0, Result, Info0, Info, DeconstructSearch),
+find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
+	map__init(Subst),
+	find_bind_var(Var, ProcessUnify, !Goal, Subst, _, !Result, !Info,
+		DeconstructSearch),
 	(
 		DeconstructSearch = before_deconstruct,
 		FoundDeconstruct = no
@@ -472,16 +471,16 @@ find_bind_var(Var, ProcessUnify, Goal0, Goal, Result0, Result, Info0, Info,
 	Info::in, Info::out, deconstruct_search::out) is det.
 
 find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal,
-		Substitution0, Substitution, Result0, Result, Info0, Info,
+		Subst0, Subst, Result0, Result, Info0, Info,
 		FoundDeconstruct) :-
 	( Goal0 = some(Vars, CanRemove, SubGoal0) ->
 		find_bind_var(Var, ProcessUnify, SubGoal0, SubGoal,
-			Substitution0, Substitution, Result0, Result,
+			Subst0, Subst, Result0, Result,
 			Info0, Info, FoundDeconstruct),
 		Goal = some(Vars, CanRemove, SubGoal) - GoalInfo
 	; Goal0 = conj(SubGoals0) ->
 		conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
-			Substitution0, Substitution, Result0, Result,
+			Subst0, Subst, Result0, Result,
 			Info0, Info, FoundDeconstruct),
 		Goal = conj(SubGoals) - GoalInfo
 	; Goal0 = unify(A, B, _, UnifyInfo0, _) ->
@@ -489,38 +488,40 @@ find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal,
 			% check whether the unification is a deconstruction
 			% unification on Var or a variable aliased to Var
 			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _, _),
-			term__apply_rec_substitution(
-				term__variable(Var),
-				Substitution0, term__variable(Var1)),
-			term__apply_rec_substitution(
-				term__variable(UnifyVar),
-				Substitution0, term__variable(UnifyVar1)),
+			term__apply_rec_substitution(term__variable(Var),
+				Subst0, term__variable(Var1)),
+			term__apply_rec_substitution(term__variable(UnifyVar),
+				Subst0, term__variable(UnifyVar1)),
 			Var1 = UnifyVar1
 		->
 			call(ProcessUnify, Var, Goal0 - GoalInfo, Goals,
 				Result0, Result, Info0, Info),
 			conj_list_to_goal(Goals, GoalInfo, Goal),
 			FoundDeconstruct = found_deconstruct,
-			Substitution = Substitution0
+			Subst = Subst0
 		;
 			Goal = Goal0 - GoalInfo,
 			FoundDeconstruct = before_deconstruct,
 			% otherwise abstractly interpret the unification
 			Result = Result0,
 			Info = Info0,
-			( interpret_unify(A, B, Substitution0, Substitution1) ->
-				Substitution = Substitution1
+			( interpret_unify(A, B, Subst0, Subst1) ->
+				Subst = Subst1
 			;
 				% the unification must fail - just ignore it
-				Substitution = Substitution0
+				Subst = Subst0
 			)
 		)
 	;
 		Goal = Goal0 - GoalInfo,
-		Substitution = Substitution0,
+		Subst = Subst0,
 		Result = Result0,
 		Info = Info0,
-		FoundDeconstruct = given_up_search
+		( goal_info_has_feature(GoalInfo, from_head) ->
+			FoundDeconstruct = before_deconstruct
+		;
+			FoundDeconstruct = given_up_search
+		)
 	).
 
 :- pred conj_find_bind_var(prog_var::in,
@@ -529,15 +530,15 @@ find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal,
 	prog_substitution::in, prog_substitution::out, Result::in, Result::out,
 	Info::in, Info::out, deconstruct_search::out) is det.
 
-conj_find_bind_var(_Var, _, [], [], !Substitution, !Result, !Info,
+conj_find_bind_var(_Var, _, [], [], !Subst, !Result, !Info,
 		before_deconstruct).
 conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
-		!Substitution, !Result, !Info, FoundDeconstruct) :-
-	find_bind_var(Var, ProcessUnify, Goal0, Goal, !Substitution,
+		!Subst, !Result, !Info, FoundDeconstruct) :-
+	find_bind_var(Var, ProcessUnify, Goal0, Goal, !Subst,
 		!Result, !Info, FoundDeconstruct1),
 	( FoundDeconstruct1 = before_deconstruct ->
 		conj_find_bind_var(Var, ProcessUnify, Goals0, Goals,
-			!Substitution, !Result, !Info, FoundDeconstruct)
+			!Subst, !Result, !Info, FoundDeconstruct)
 	;
 		FoundDeconstruct = FoundDeconstruct1,
 		Goals = Goals0

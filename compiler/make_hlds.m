@@ -6525,8 +6525,9 @@ transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity, GoalType,
         ;
             ArgContext = head(PredOrFunc, Arity),
             insert_arg_unifications(HeadVars, Args, Context, ArgContext,
-                HeadGoal0, HeadGoal, !VarSet, !ModuleInfo, !QualInfo, !SInfo,
-                !IO)
+                HeadGoal0, HeadGoal1, !VarSet, !ModuleInfo, !QualInfo, !SInfo,
+                !IO),
+            attach_features_to_all_goals([from_head], HeadGoal1, HeadGoal)
         ),
         prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
         transform_goal(Body0, Subst, Body, !VarSet, !ModuleInfo, !QualInfo,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,6 +191,7 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, Goals, !SlotInfo) :-
 :- func ok_to_duplicate(goal_feature) = bool.
 
 ok_to_duplicate(constraint) = no.
+ok_to_duplicate(from_head) = yes.
 ok_to_duplicate(impure) = no.
 ok_to_duplicate(semipure) = no.
 ok_to_duplicate(not_impure_for_determinism) = no.

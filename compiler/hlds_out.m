@@ -1071,21 +1071,29 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 
 set_dump_opts_for_clauses(SavedDumpStr, !IO) :-
 	globals__io_lookup_string_option(dump_hlds_options, SavedDumpStr, !IO),
-	DumpStr0 = "",
-	( string__contains_char(SavedDumpStr, 'c') ->
-		DumpStr1 = DumpStr0 ++ "c"
-	;
-		DumpStr1 = DumpStr0
-	),
-	( string__contains_char(SavedDumpStr, 'n') ->
-		DumpStr2 = DumpStr1 ++ "n"
-	;
-		DumpStr2 = DumpStr1
-	),
-	( string__contains_char(SavedDumpStr, 'v') ->
-		DumpStr = DumpStr2 ++ "v"
-	;
-		DumpStr = DumpStr2
+	some [!DumpStr] (
+		!:DumpStr = "",
+		( string__contains_char(SavedDumpStr, 'c') ->
+			!:DumpStr = !.DumpStr ++ "c"
+		;
+			true
+		),
+		( string__contains_char(SavedDumpStr, 'n') ->
+			!:DumpStr = !.DumpStr ++ "n"
+		;
+			true
+		),
+		( string__contains_char(SavedDumpStr, 'v') ->
+			!:DumpStr = !.DumpStr ++ "v"
+		;
+			true
+		),
+		( string__contains_char(SavedDumpStr, 'g') ->
+			!:DumpStr = !.DumpStr ++ "g"
+		;
+			true
+		),
+		DumpStr = !.DumpStr
 	),
 	globals__io_set_option(dump_hlds_options, string(DumpStr), !IO).
 

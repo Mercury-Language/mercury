@@ -82,6 +82,7 @@ OTHER_PROGS= \
 	followcode_det_problem \
 	foreign_underscore_var \
 	func_default_modes \
+	func_in_head \
 	func_int_bug_main \
 	headvar_not_found \
 	higher_order \
