@@ -7,7 +7,7 @@
 % File: typecheck.m.
 % Main author: fjh.
 %
-% This file contains a type-checker.
+% This file contains the Mercury type-checker.
 % 
 % The predicates in this module are named as follows:
 % 
@@ -64,8 +64,9 @@
 %    give better error messages.  However, this is not a high
 %    priority.
 %
-% 3) higher-order predicate types
+% 3) higher-order predicate and function types
 %	pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ... 
+%	func(T1) = T2, func(T1, T2) = T3, ... 
 %
 % 4) builtin types
 %	character, int, float, string
@@ -74,18 +75,35 @@
 %	etc.) provided by the system, but they can just
 %	be part of the standard library.
 %
-% Each predicate must have a `:- pred' declaration specifying the
-% types of the arguments for that predicate.
+% Each exported predicate must have a `:- pred' declaration specifying the
+% types of the arguments for that predicate.  For predicates that are
+% local to a module, we infer the types.
 %
 %-----------------------------------------------------------------------------%
-%  Wish list:
+%
+% Known Bugs:
+%
+% XXX	Type inference loops for some type-incorrect programs, e.g.
+%		p([X]) :- p(X).
+%
+% XXX	Type inference doesn't handle ambiguity as well as it could do.
+%	We should do a topological sort, and then typecheck it all
+%	bottom-up.  If we infer an ambiguous type for a pred, we should
+%	not reject it immediately; instead we should give it an overloaded
+%	type, and keep going.  When we've finished type inference, we should
+%	then delete unused overloadings, and only then should we report
+%	ambiguity errors, if any overloading still remains.
+%
+% XXX	There seems to be a performance bug with the handling of
+%	typevarsets; during type inference, the typevarsets get bigger
+%	and bigger.
+%
+% Wish list:
 %
 % 	we should handle explicit type qualifications
 % 	(and remove them here) but we don't do so yet
 %
 %	we should handle equivalence types here
-%
-%	we should allow type inference for non-exported predicates
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
