@@ -1270,7 +1270,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				"mdb: dd_wrong requires no arguments.\n");
 		} else if (port != MR_PORT_EXIT) {
 			fflush(MR_mdb_out);
-			fprintf(MD_mdb_err,
+			fprintf(MR_mdb_err,
 				"mdb: wrong answer analysis is only "
 				"available from EXIT events.\n");
 		} else if (MR_trace_start_wrong_answer(cmd, layout,
