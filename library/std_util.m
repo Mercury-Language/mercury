@@ -2128,17 +2128,6 @@ bool ML_arg(Word term_type_info, Word *term, Word argument_index,
 
 :- pragma c_code("
 
-static void ML_expand_const(Word data_value, Word entry_value,
-	ML_Expand_Info *info);
-static void ML_expand_enum(Word data_value, Word entry_value, 
-	ML_Expand_Info *info);
-static void ML_expand_simple(Word data_value, Word* arg_type_infos, 
-	Word * type_info, ML_Expand_Info *info);
-static void ML_expand_builtin(Word data_value, Word entry_value,
-	ML_Expand_Info *info);
-static void ML_expand_complicated(Word data_value, Word entry_value, 
-	Word * type_info, ML_Expand_Info *info);
-
 Declare_entry(mercury__builtin_compare_pred_3_0);
 Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 
@@ -2167,343 +2156,260 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 **
 ** 	If you change this code you will also have reflect any changes in 
 **	runtime/mercury_deep_copy.c and runtime/mercury_table_any.c
+**
+**	We use 4 space tabs here because of the level of indenting.
 */
 
 void 
 ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 {
-	Code *compare_pred;
-	Word *base_type_info, *arg_type_info;
-	Word data_value, entry_value, base_type_layout_entry;
-	int entry_tag, data_tag; 
-	Word data_word;
+    Code *compare_pred;
+    Word *base_type_info, *base_type_functors;
+    Word data_value, entry_value, base_type_layout_entry, functors_indicator;
+    int data_tag, entry_tag; 
+    Word data_word;
+    enum MR_DataRepresentation data_rep;
 
-	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+    base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
 
-	compare_pred = (Code *) base_type_info[OFFSET_FOR_COMPARE_PRED];
-	info->non_canonical_type = ( compare_pred ==
-		ENTRY(mercury__builtin_compare_non_canonical_type_3_0) );
+    compare_pred = (Code *) base_type_info[OFFSET_FOR_COMPARE_PRED];
+    info->non_canonical_type = ( compare_pred ==
+        ENTRY(mercury__builtin_compare_non_canonical_type_3_0) );
 
-	data_word = *data_word_ptr;
-	data_tag = tag(data_word);
-	data_value = body(data_word, data_tag);
+    data_word = *data_word_ptr;
+    data_tag = tag(data_word);
+    data_value = body(data_word, data_tag);
 	
-	base_type_layout_entry = MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(
-		base_type_info, data_tag);
+    base_type_layout_entry = MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(
+        base_type_info, data_tag);
+    base_type_functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(base_type_info);
 
-	entry_tag = tag(base_type_layout_entry);
-	entry_value = body(base_type_layout_entry, entry_tag);
+    entry_value = body(base_type_layout_entry, entry_tag);
+
+    data_rep = MR_categorize_data(functors_indicator,
+        base_type_layout_entry);
+
+    switch(data_rep) {
+
+        case MR_DATAREP_ENUM:
+            info->functor = MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
+                entry_value, data_value);
+            info->arity = 0;
+            info->argument_vector = NULL;
+            break;
+
+        case MR_DATAREP_COMPLICATED_CONST:
+            data_value = unmkbody(data_value);
+            info->functor = MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
+                entry_value, data_value);
+            info->arity = 0;
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;	
+            break;
+
+        case MR_DATAREP_COMPLICATED: {
+            Word secondary_tag;
+
+            secondary_tag = ((Word *) data_value)[0];
+             
+                /* 
+                 * Look past the secondary tag, and get the simple vector,
+                 * then we can just use the code for simple tags.
+                 */
+            data_value = (Word) ((Word *) data_value + 1);
+            entry_value = MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+                entry_value, secondary_tag);
+            entry_value = strip_tag(entry_value);
+        }   /* fallthru */
+
+        case MR_DATAREP_SIMPLE: /* fallthru */
+        {
+            int i;
+	    Word * simple_vector = (Word *) entry_value;
+
+            info->arity =
+	    MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(simple_vector);
 	
-	switch(entry_tag) {
+            if (info->need_functor) {
+                make_aligned_string(info->functor, 
+                    MR_TYPELAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(
+                    simple_vector));
+            }
 
-	case TYPELAYOUT_CONST_TAG: /* case TYPELAYOUT_COMP_CONST_TAG: */
+            if (info->need_args) {
+                info->argument_vector = (Word *) data_value;
 
-		/* 
-		** This tag represents builtins, enums or complicated
-		** constants.
-		*/ 
+                info->type_info_vector = checked_malloc(
+                    info->arity * sizeof(Word));
 
-		if (TYPEINFO_IS_VARIABLE(entry_value)) {
+                for (i = 0; i < info->arity ; i++) {
+                    Word *arg_pseudo_type_info;
 
-			/* 
-			** It's a builtin, the rest of the layout 
-			** entry value represents the type of builtin.
-			*/
-			entry_value = unmkbody(entry_value);
-			ML_expand_builtin(data_word, entry_value,
-				info);
-		} else {
-			/* It's a complicated constant or enum */
-			if (MR_TYPELAYOUT_ENUM_VECTOR_IS_ENUM(entry_value)) {
-				ML_expand_enum(data_word, entry_value, 
-					info);
-			} else {
-				data_value = unmkbody(data_value);
-				ML_expand_const(data_value, entry_value, 
-					info);
-			}
-		}
-		break;
+                    arg_pseudo_type_info = (Word *)
+                        MR_TYPELAYOUT_SIMPLE_VECTOR_ARGS(simple_vector)[i];
+                    info->type_info_vector[i] = (Word) MR_create_type_info(
+                        type_info, arg_pseudo_type_info);
+                }
+            }
+            break;
+        }
 
-	case TYPELAYOUT_SIMPLE_TAG:
-		ML_expand_simple(data_value, (Word *) entry_value, 
-			type_info, info);
-		break;
+        case MR_DATAREP_NOTAG:
+        {
+            int i;
+	    Word * simple_vector = (Word *) entry_value;
 
-	case TYPELAYOUT_COMPLICATED_TAG:
-		ML_expand_complicated(data_value, entry_value, type_info,
-			info);
-		break;
+            data_value = (Word) data_word_ptr;
 
-	case TYPELAYOUT_EQUIV_TAG: /* case TYPELAYOUT_NO_TAG: */
+            info->arity = MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(simple_vector);
+	
+            if (info->need_functor) {
+                make_aligned_string(info->functor, 
+                    MR_TYPELAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(
+                    simple_vector));
+            }
 
-			/* 
-			** Is it a type variable? 
-			*/
-		if (TYPEINFO_IS_VARIABLE(entry_value)) {
-			arg_type_info = MR_create_type_info(type_info, 
-				(Word *) entry_value);
-			ML_expand(arg_type_info, data_word_ptr, info);
-		}
-			/* 
-			** is it a no_tag type?
-			*/
-		else if (MR_TYPELAYOUT_NO_TAG_VECTOR_IS_NO_TAG(entry_value)) {
-			ML_expand_simple((Word) data_word_ptr,
-				(Word *) entry_value, type_info, info);
-		}
-			/* 
-			** It must be an equivalent type.
-			*/
-		else {
-			arg_type_info = MR_create_type_info(type_info, 
+            if (info->need_args) {
+                    /* 
+                     * A NO_TAG is much like SIMPLE, but we use the
+                     * data_word_ptr here to simulate an argument
+                     * vector.
+                     */
+                info->argument_vector = (Word *) data_word_ptr;
+
+                info->type_info_vector = checked_malloc(
+                    info->arity * sizeof(Word));
+
+                for (i = 0; i < info->arity ; i++) {
+                    Word *arg_pseudo_type_info;
+
+                    arg_pseudo_type_info = (Word *)
+                        MR_TYPELAYOUT_SIMPLE_VECTOR_ARGS(simple_vector)[i];
+                    info->type_info_vector[i] = (Word) MR_create_type_info(
+                        type_info, arg_pseudo_type_info);
+                }
+            }
+            break;
+        }
+        case MR_DATAREP_EQUIV: {
+            Word *equiv_type_info;
+
+			equiv_type_info = MR_create_type_info(type_info, 
 				(Word *) MR_TYPELAYOUT_EQUIV_TYPE(
 					entry_value));
-			ML_expand(arg_type_info, data_word_ptr, info);
-		}
+			ML_expand(equiv_type_info, data_word_ptr, info);
+            break;
+        }
+        case MR_DATAREP_EQUIV_VAR: {
+            Word *equiv_type_info;
 
-		break;
+			equiv_type_info = MR_create_type_info(type_info, 
+				(Word *) entry_value);
+			ML_expand(equiv_type_info, data_word_ptr, info);
+            break;
+        }
+        case MR_DATAREP_INT:
+            if (info->need_functor) {
+                char buf[500];
+                char *str;
 
-	default:
-		/* If this happens, the layout data is corrupt */
+                sprintf(buf, ""%ld"", (long) data_value);
+                incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
+                    (strlen(buf) + sizeof(Word)) / sizeof(Word));
+                strcpy(str, buf);
+                info->functor = str;
+            }
 
-		fatal_error(""ML_expand: found unused tag value"");
-	}
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_DATAREP_CHAR:
+                /* XXX should escape characters correctly */
+            if (info->need_functor) {
+                char *str;
+
+                incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
+                    (3 + sizeof(Word)) / sizeof(Word));
+                    sprintf(str, ""\'%c\'"", (char) data_value);
+                info->functor = str;
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_DATAREP_FLOAT:
+            if (info->need_functor) {
+                char buf[500];
+                Float f;
+                char *str;
+
+                f = word_to_float(data_value);
+                sprintf(buf, ""%#.15g"", f);
+                incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
+                    (strlen(buf) + sizeof(Word)) / sizeof(Word));
+                strcpy(str, buf);
+                info->functor = str;
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_DATAREP_STRING:
+                /* XXX should escape characters correctly */
+            if (info->need_functor) {
+                char *str;
+    
+                incr_saved_hp_atomic(LVALUE_CAST(Word, str),
+                    (strlen((String) data_value) + 2 + sizeof(Word))
+                    / sizeof(Word));
+                sprintf(str, ""%c%s%c"", '""', (String) data_value, '""');
+                info->functor = str;
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_DATAREP_PRED:
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<predicate>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
+            break;
+
+        case MR_DATAREP_UNIV:
+                /* 
+                 * Univ is a two word structure, containing
+                 * type_info and data.
+                 */
+            ML_expand((Word *)
+                ((Word *) data_value)[UNIV_OFFSET_FOR_TYPEINFO], 
+                &((Word *) data_value)[UNIV_OFFSET_FOR_DATA], info);
+            break;
+        case MR_DATAREP_VOID:
+		    fatal_error(""ML_expand: cannot expand void types"");
+            break;
+        case MR_DATAREP_ARRAY:
+		    fatal_error(""ML_expand: cannot expand array types"");
+            break;
+        case MR_DATAREP_TYPEINFO:
+		    fatal_error(""ML_expand: cannot expand typeinfo types"");
+            break;
+        case MR_DATAREP_C_POINTER:
+		    fatal_error(""ML_expand: cannot expand c_pointer types"");
+            break;
+        case MR_DATAREP_UNKNOWN:    /* fallthru */
+        default:
+            fatal_error(""ML_expand: cannot expand -- unknown data type"");
+            break;
+    }
 }
-
-/*
- * Expand a constant value.
- */
-
-void
-ML_expand_const(Word data_value, Word entry_value, ML_Expand_Info *info) 
-{
-
-	/* the functors are stored after the enum_indicator and
-	 * the number of functors
-	 */
-	info->functor = MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(entry_value,
-		data_value);
-	info->arity = 0;
-	info->argument_vector = NULL;
-	info->type_info_vector = NULL;
-}
-
-
-/*
- * Expand an enum.
- */
-
-void
-ML_expand_enum(Word data_value, Word enum_vector, ML_Expand_Info *info) 
-{
-	info->functor = MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(enum_vector,
-		data_value);
-	info->arity = 0;
-	info->argument_vector = NULL;
-	info->type_info_vector = NULL;
-}
-
-
-/*
- * Expand a functor with arguments, which has a simple tag.
- *
- * Simple tags - type_layout points to an array containing
- * the arity, then a pseudo-typeinfo for each argument, and type_info is
- * the current type_info (the type of this data item).
- *
- * Data word points to an array of argument data.
- *
- */
-void 
-ML_expand_simple(Word data_value, Word* simple_vector, Word * type_info,
-	ML_Expand_Info *info)
-{
-	int i;
-
-	info->arity = MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(simple_vector);
-	
-	if (info->need_functor) {
-		make_aligned_string(info->functor, 
-			MR_TYPELAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(
-				simple_vector));
-	}
-
-	if (info->need_args) {
-		info->argument_vector = (Word *) data_value;
-
-		info->type_info_vector = 
-			checked_malloc(info->arity * sizeof(Word));
-
-		for (i = 0; i < info->arity ; i++) {
-			Word *arg_pseudo_type_info;
-
-			arg_pseudo_type_info = (Word *)
-				MR_TYPELAYOUT_SIMPLE_VECTOR_ARGS(
-					simple_vector)[i];
-			info->type_info_vector[i] = (Word) 
-				MR_create_type_info(type_info, 
-					arg_pseudo_type_info);
-		}
-	}
-}
-
-/*
- * Complicated tags - entry_value points to a vector containing: 
- *	The number of sharers of this tag
- *	A pointer to a simple tag structure (see mercury_print_simple)
- *	for each sharer.
- *
- *	The data_value points to the actual sharer of this tag, 
- *	which should be used as an index into the vector of pointers
- *	into simple tag structures. The next n words the data_value
- *	points to are the arguments of the functor.
- */
-
-void
-ML_expand_complicated(Word data_value, Word entry_value, Word * type_info,
-	ML_Expand_Info *info)
-{
-	Word new_data_value, simple_vector, simple_vector_tag, secondary_tag;
-
-	secondary_tag = ((Word *) data_value)[0];
-	new_data_value = (Word) ((Word *) data_value + 1);
-
-	simple_vector = MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
-		entry_value, secondary_tag);
-	simple_vector_tag = tag(simple_vector);
-	simple_vector = body(simple_vector, simple_vector_tag);
-
-	ML_expand_simple(new_data_value, (Word *) simple_vector, 
-		type_info, info);
-}
-
-void
-ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
-{
-	switch ((int) entry_value) {
-	
-	case TYPELAYOUT_UNASSIGNED_VALUE:
-		fatal_error(""ML_expand: attempt to use an UNASSIGNED tag"");
-		break;
-
-	case TYPELAYOUT_UNUSED_VALUE:
-		fatal_error(""ML_expand: attempt to use an UNUSED tag"");
-		break;
-
-	case TYPELAYOUT_STRING_VALUE:
-		/* XXX should escape characters correctly */
-
-		if (info->need_functor) {
-			char *str;
-
-			incr_saved_hp_atomic(LVALUE_CAST(Word, str),
-				(strlen((String) data_value) + 2 + 
-					sizeof(Word)) / sizeof(Word));
-			sprintf(str, ""%c%s%c"", '""', 
-				(String) data_value, '""');
-			info->functor = str;
-		}
-		info->argument_vector = NULL;
-		info->type_info_vector = NULL;
-		info->arity = 0;
-		break;
-
-	case TYPELAYOUT_FLOAT_VALUE:
-		if (info->need_functor) {
-			char buf[500];
-			Float f;
-			char *str;
-
-			f = word_to_float(data_value);
-			sprintf(buf, ""%#.15g"", f);
-			incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
-				(strlen(buf) + sizeof(Word)) / sizeof(Word));
-			strcpy(str, buf);
-			info->functor = str;
-		}
-		info->argument_vector = NULL;
-		info->type_info_vector = NULL;
-		info->arity = 0;
-		break;
-
-	case TYPELAYOUT_INT_VALUE:
-		if (info->need_functor) {
-			char buf[500];
-			char *str;
-
-			sprintf(buf, ""%ld"", (long) data_value);
-			incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
-				(strlen(buf) + sizeof(Word)) / sizeof(Word));
-			strcpy(str, buf);
-			info->functor = str;
-		}
-
-		info->argument_vector = NULL;
-		info->type_info_vector = NULL;
-		info->arity = 0;
-		break;
-
-	case TYPELAYOUT_CHARACTER_VALUE:
-		/* XXX should escape characters correctly */
-
-		if (info->need_functor) {
-			char *str;
-
-			incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
-				(3 + sizeof(Word)) / sizeof(Word));
-			sprintf(str, ""\'%c\'"", (char) data_value);
-			info->functor = str;
-		}
-		info->argument_vector = NULL;
-		info->type_info_vector = NULL;
-		info->arity = 0;
-		break;
-
-	case TYPELAYOUT_UNIV_VALUE:
-
-		/* Univ is a two word structure, containing
-		 * type_info and data.
-		 */
-
-		ML_expand((Word *) 
-			((Word *) data_value)[UNIV_OFFSET_FOR_TYPEINFO], 
-			&((Word *) data_value)[UNIV_OFFSET_FOR_DATA], info);
-		break;
-
-	case TYPELAYOUT_PREDICATE_VALUE:
-		if (info->need_functor) {
-			make_aligned_string(info->functor, ""<<predicate>>"");
-		}
-		info->argument_vector = NULL;
-		info->type_info_vector = NULL;
-		info->arity = 0;
-		break;
-
-	case TYPELAYOUT_VOID_VALUE:
-		fatal_error(""ML_expand: found void"");
-		break;
-
-	case TYPELAYOUT_ARRAY_VALUE:
-		fatal_error(""ML_expand: found array"");
-		break;
-
-	case TYPELAYOUT_TYPEINFO_VALUE:
-		fatal_error(""ML_expand: found type_info"");
-		break;
-
-	case TYPELAYOUT_C_POINTER_VALUE:
-		fatal_error(""ML_expand: found c_pointer"");
-		break;
-		
-		
-	default:
-		fatal_error(""ML_expand: invalid tag value"");
-		break;
-	}
-}
-
-
 
 /*
 ** ML_arg() is a subroutine used to implement arg/2, argument/2,
