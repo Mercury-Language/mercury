@@ -516,7 +516,8 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	TypeCtor = (MR_Word) MR_make_type_ctor_desc(type_info, type_ctor_info);
 }").
 
-:- pragma foreign_proc("C#", type_ctor(_TypeInfo::in) = (_TypeCtor::out),
+:- pragma foreign_proc("C#",
+	type_ctor(_TypeInfo::in) = (_TypeCtor::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
 	mercury.runtime.Errors.SORRY(""foreign code for type_ctor"");
