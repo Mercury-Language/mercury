@@ -2222,7 +2222,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	{ allocate_store_maps(final_allocation, ProcInfoStackSlot,
 		PredId, ModuleInfoSimplify, ProcInfoStoreAlloc) },
 	globals__io_get_trace_level(TraceLevel),
-	( { trace_level_is_none(TraceLevel) = no } ->
+	( { given_trace_level_is_none(TraceLevel) = no } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
 			PredId, ProcId, ModuleInfoSimplify),
@@ -3090,7 +3090,7 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 
 mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_get_trace_level(TraceLevel),
-	( { trace_level_is_none(TraceLevel) = no } ->
+	( { given_trace_level_is_none(TraceLevel) = no } ->
 		maybe_write_string(Verbose, "% Calculating goal paths..."),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(

@@ -47,7 +47,7 @@ optimize_main([Proc0 | Procs0], GlobalData, [Proc | Procs]) -->
 
 optimize__proc(CProc0, GlobalData, CProc) -->
 	{ CProc0 = c_procedure(Name, Arity, PredProcId, Instrs0,
-		ProcLabel, C0, ContainsReconstruction) },
+		ProcLabel, C0, MayAlterRtti) },
 	optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, C0,
 		OptDebugInfo0),
 	globals__io_lookup_int_option(optimize_repeat, Repeat),
@@ -61,13 +61,13 @@ optimize__proc(CProc0, GlobalData, CProc) -->
 	;
 		set__init(LayoutLabelSet)
 	},
-	optimize__repeat(Repeat, LayoutLabelSet, Instrs0, ProcLabel, C0, C1,
-		OptDebugInfo0, OptDebugInfo1, Instrs1),
+	optimize__repeat(Repeat, LayoutLabelSet, Instrs0, ProcLabel,
+		MayAlterRtti, C0, C1, OptDebugInfo0, OptDebugInfo1, Instrs1),
 	optimize__middle(Instrs1, yes, LayoutLabelSet, ProcLabel,
-		C1, C, OptDebugInfo1, OptDebugInfo, Instrs3),
+		MayAlterRtti, C1, C, OptDebugInfo1, OptDebugInfo, Instrs3),
 	optimize__last(Instrs3, LayoutLabelSet, C, OptDebugInfo, Instrs),
 	{ CProc = c_procedure(Name, Arity, PredProcId, Instrs,
-		ProcLabel, C, ContainsReconstruction) }.
+		ProcLabel, C, MayAlterRtti) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -162,12 +162,12 @@ optimize__maybe_opt_debug(Instrs, Counter, Msg,
 %-----------------------------------------------------------------------------%
 
 :- pred optimize__repeat(int::in, set(label)::in, list(instruction)::in,
-	proc_label::in, counter::in, counter::out, opt_debug_info::in,
-	opt_debug_info::out, list(instruction)::out,
+	proc_label::in, may_alter_rtti::in, counter::in, counter::out,
+	opt_debug_info::in, opt_debug_info::out, list(instruction)::out,
 	io__state::di, io__state::uo) is det.
 
-optimize__repeat(Iter0, LayoutLabelSet, Instrs0, ProcLabel, C0, C,
-		OptDebugInfo0, OptDebugInfo, Instrs) -->
+optimize__repeat(Iter0, LayoutLabelSet, Instrs0, ProcLabel, MayAlterRtti,
+		C0, C, OptDebugInfo0, OptDebugInfo, Instrs) -->
 	( { Iter0 > 0 } ->
 		{ Iter1 = Iter0 - 1 },
 		( { Iter1 = 0 } ->
@@ -176,11 +176,12 @@ optimize__repeat(Iter0, LayoutLabelSet, Instrs0, ProcLabel, C0, C,
 			{ Final = no }
 		),
 		optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel,
-			C0, C1, OptDebugInfo0, OptDebugInfo1, Instrs1, Mod),
+			MayAlterRtti, C0, C1, OptDebugInfo0, OptDebugInfo1,
+			Instrs1, Mod),
 		( { Mod = yes } ->
 			optimize__repeat(Iter1, LayoutLabelSet, Instrs1,
-				ProcLabel, C1, C, OptDebugInfo1, OptDebugInfo,
-				Instrs)
+				ProcLabel, MayAlterRtti, C1, C,
+				OptDebugInfo1, OptDebugInfo, Instrs)
 		;
 			{ Instrs = Instrs1 },
 			{ C = C1 },
@@ -196,12 +197,12 @@ optimize__repeat(Iter0, LayoutLabelSet, Instrs0, ProcLabel, C0, C,
 	% to create more opportunities for use of the tailcall macro.
 
 :- pred optimize__repeated(list(instruction)::in, bool::in, set(label)::in,
-	proc_label::in, counter::in, counter::out,
+	proc_label::in, may_alter_rtti::in, counter::in, counter::out,
 	opt_debug_info::in, opt_debug_info::out, list(instruction)::out,
 	bool::out, io__state::di, io__state::uo) is det.
 
-optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
-		OptDebugInfo0, OptDebugInfo, Instrs, Mod) -->
+optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
+		C0, C, OptDebugInfo0, OptDebugInfo, Instrs, Mod) -->
 	{ opt_util__find_first_label(Instrs0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
@@ -211,7 +212,6 @@ optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
 		PessimizeTailCalls),
 	globals__io_lookup_bool_option(checked_nondet_tailcalls,
 		CheckedNondetTailCalls),
-	globals__io_get_trace_level(TraceLevel),
 	( { Jumpopt = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing jumps for "),
@@ -220,9 +220,10 @@ optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
 		;
 			[]
 		),
-		{ jumpopt_main(Instrs0, LayoutLabelSet, TraceLevel, ProcLabel,
-			C0, C1, FullJumpopt, Final, PessimizeTailCalls,
-			CheckedNondetTailCalls, Instrs1, Mod1) },
+		{ jumpopt_main(Instrs0, LayoutLabelSet, MayAlterRtti,
+			ProcLabel, C0, C1, FullJumpopt, Final,
+			PessimizeTailCalls, CheckedNondetTailCalls,
+			Instrs1, Mod1) },
 		optimize__maybe_opt_debug(Instrs1, C1, "after jump opt",
 			OptDebugInfo0, OptDebugInfo1)
 	;
@@ -293,12 +294,12 @@ optimize__repeated(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
 	maybe_report_stats(Statistics).
 
 :- pred optimize__middle(list(instruction)::in, bool::in, set(label)::in,
-	proc_label::in, counter::in, counter::out,
+	proc_label::in, may_alter_rtti::in, counter::in, counter::out,
 	opt_debug_info::in, opt_debug_info::out, list(instruction)::out,
 	io__state::di, io__state::uo) is det.
 
-optimize__middle(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
-		OptDebugInfo0, OptDebugInfo, Instrs) -->
+optimize__middle(Instrs0, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
+		C0, C, OptDebugInfo0, OptDebugInfo, Instrs) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	{ opt_util__find_first_label(Instrs0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
@@ -321,7 +322,6 @@ optimize__middle(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
 			PessimizeTailCalls),
 		globals__io_lookup_bool_option(checked_nondet_tailcalls,
 			CheckedNondetTailCalls),
-		globals__io_get_trace_level(TraceLevel),
 		( { Jumps = yes, FullJumpopt = yes } ->
 			( { VeryVerbose = yes } ->
 				io__write_string("% Optimizing jumps for "),
@@ -330,7 +330,7 @@ optimize__middle(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
 			;
 				[]
 			),
-			{ jumpopt_main(Instrs1, LayoutLabelSet, TraceLevel,
+			{ jumpopt_main(Instrs1, LayoutLabelSet, MayAlterRtti,
 				ProcLabel, C1, C2, FullJumpopt, Final,
 				PessimizeTailCalls, CheckedNondetTailCalls,
 				Instrs2, _Mod2) },

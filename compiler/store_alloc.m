@@ -78,7 +78,8 @@ allocate_store_maps(RunType, ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	),
 	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
 	globals__get_trace_level(Globals, TraceLevel),
-	( trace_level_is_none(TraceLevel) = no ->
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	( eff_trace_level_is_none(PredInfo, ProcInfo0, TraceLevel) = no ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
 	;
 		set__init(ResumeVars0)

@@ -9,6 +9,7 @@
 
 :- implementation.
 
+:- import_module shallow2.
 :- import_module list, int.
 
 main -->
@@ -30,12 +31,6 @@ main -->
 :- pred qdelete(T, list(T), list(T)).
 :- mode qdelete(out, in, out) is nondet.
 
-:- pred safe(list(int)).
-:- mode safe(in) is semidet.
-
-:- pred nodiag(int, int, list(int)).
-:- mode nodiag(in, in, in) is semidet.
-
 data([1,2,3,4,5]).
 
 queen(Data, Out) :-
@@ -51,25 +46,6 @@ qperm([X|Y], K) :-
 qdelete(A, [A|L], L).
 qdelete(X, [A|Z], [A|R]) :-
 	qdelete(X, Z, R).
-
-safe([]).
-safe([N|L]) :-
-	nodiag(N, 1, L),
-	safe(L).
-
-nodiag(_, _, []).
-nodiag(B, D, [N|L]) :-
-	NmB is N - B,
-	BmN is B - N,
-	( D = NmB ->
-		fail
-	; D = BmN ->
-		fail
-	;
-		true
-	),
-	D1 is D + 1,
-	nodiag(B, D1, L).
 
 :- pred print_list(list(int), io__state, io__state).
 :- mode print_list(in, di, uo) is det.

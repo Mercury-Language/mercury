@@ -96,8 +96,9 @@
 					% The head variables, in order,
 					% including the ones introduced by the
 					% compiler.
-			proc_body	:: hlds_goal,
-					% The body of the procedure.
+			maybe_proc_body	:: maybe(hlds_goal),
+					% The body of the procedure, if
+					% required.
 			initial_instmap	:: instmap,
 					% The instmap at the start of the
 					% procedure body.
@@ -115,7 +116,13 @@
 			internal_map	:: proc_label_layout_info,
 					% Info for each internal label,
 					% needed for basic_stack_layouts.
-			table_io_decl	:: maybe(table_io_decl_info)
+			table_io_decl	:: maybe(table_io_decl_info),
+					% True if the effective trace level
+					% of the procedure is not none.
+			is_being_traced :: bool,
+					% True iff we need the names of all the
+					% variables.
+			need_all_names	:: bool
 		).
 
 	%

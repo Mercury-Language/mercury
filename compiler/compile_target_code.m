@@ -795,7 +795,7 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	maybe_write_string(Verbose, "% Creating initialization file...\n"),
 
 	globals__io_get_trace_level(TraceLevel),
-	{ trace_level_is_none(TraceLevel) = no ->
+	{ given_trace_level_is_none(TraceLevel) = no ->
 		TraceOpt = "--trace "
 	;
 		TraceOpt = ""
@@ -897,7 +897,7 @@ link(ErrorStream, LinkTargetType, ModuleName,
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	globals__io_get_trace_level(TraceLevel),
-	{ trace_level_is_none(TraceLevel) = no ->
+	{ given_trace_level_is_none(TraceLevel) = no ->
 		TraceOpt = "--trace "
 	;
 		TraceOpt = ""

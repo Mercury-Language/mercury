@@ -93,7 +93,7 @@
 :- import_module ll_backend__store_alloc.
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__matching.
-:- import_module libs__trace_params, libs__globals, libs__options.
+:- import_module libs__globals, libs__options.
 
 :- import_module counter, bool, int, list, assoc_list.
 :- import_module map, set, std_util, require, term, varset.
@@ -324,8 +324,8 @@ optimize_live_sets(ModuleInfo, ProcInfo0, OptAlloc, ProcInfo, Changed,
 		optimize_saved_vars_cell_full_path, FullPath),
 	globals__lookup_bool_option(Globals,
 		optimize_saved_vars_cell_on_stack, OnStack),
-	globals__get_trace_level(Globals, TraceLevel),
-	OptNoReturnCalls = trace_level_is_none(TraceLevel),
+	globals__lookup_bool_option(Globals,
+		opt_no_return_calls, OptNoReturnCalls),
 	OptParams = opt_params(ModuleInfo, VarTypes0, MatchingParams,
 		AllPathNodeRatio, FixpointLoop, FullPath, OnStack,
 		OptNoReturnCalls, NonCandidateVars),

@@ -1091,7 +1091,7 @@ struct MR_TypeCtorInfo_Struct {
         -1                                                              \
     }
 
-#else /* MR_HIGHLEVEL_CODE */
+#else /* ! MR_HIGHLEVEL_CODE */
 
   #define MR_builtin_type_ctor_info_name(TYPE, ARITY)			        \
 	MR_PASTE2(mercury_data_,					                        \

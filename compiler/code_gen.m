@@ -275,9 +275,9 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		% procedures, always needed for model_semi procedures, and
 		% needed for model_non procedures only if we are doing
 		% execution tracing.
-	code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo,
-		FollowVars, ModuleInfo, CellCounter0, OutsideResumePoint,
-		TraceSlotInfo, CodeInfo0),
+	code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
+		ProcInfo, FollowVars, ModuleInfo, CellCounter0,
+		OutsideResumePoint, TraceSlotInfo, CodeInfo0),
 
 		% Generate code for the procedure.
 	generate_category_code(CodeModel, Goal, OutsideResumePoint,
@@ -289,8 +289,10 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	globals__get_trace_level(Globals, TraceLevel),
 	code_info__get_created_temp_frame(CreatedTempFrame, CodeInfo, _),
 
+	EffTraceIsNone = eff_trace_level_is_none(PredInfo, ProcInfo,
+		TraceLevel),
 	(
-		trace_level_is_none(TraceLevel) = no,
+		EffTraceIsNone = no,
 		CreatedTempFrame = yes,
 		CodeModel \= model_non
 	->
@@ -344,11 +346,24 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		proc_info_headvars(ProcInfo, HeadVars),
 		proc_info_varset(ProcInfo, VarSet),
 		proc_info_vartypes(ProcInfo, VarTypes),
+		globals__get_trace_suppress(Globals, TraceSuppress),
+		(
+			eff_trace_needs_proc_body_reps(PredInfo, ProcInfo,
+				TraceLevel, TraceSuppress) = yes
+		->
+			MaybeGoal = yes(Goal)
+		;
+			MaybeGoal = no
+		),
+		IsBeingTraced = bool__not(EffTraceIsNone),
+		NeedsAllNames = eff_trace_needs_all_var_names(PredInfo,
+			ProcInfo, TraceLevel, TraceSuppress),
 		ProcLayout = proc_layout_info(RttiProcLabel, EntryLabel,
 			Detism, TotalSlots, MaybeSuccipSlot, EvalMethod,
-			MaybeTraceCallLabel, MaxTraceReg, HeadVars, Goal,
+			MaybeTraceCallLabel, MaxTraceReg, HeadVars, MaybeGoal,
 			InstMap0, TraceSlotInfo, ForceProcId, VarSet, VarTypes,
-			InternalMap, MaybeTableIoDecl),
+			InternalMap, MaybeTableIoDecl, IsBeingTraced,
+			NeedsAllNames),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)
 	;
@@ -365,13 +380,14 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	pred_info_name(PredInfo, Name),
 	pred_info_arity(PredInfo, Arity),
 
-	( goal_contains_reconstruction(Goal) ->
-		ContainsReconstruction = contains_reconstruction
-	;
-		ContainsReconstruction = does_not_contain_reconstruction
-	),
-
 	code_info__get_label_counter(LabelCounter, CodeInfo, _),
+	(
+		EffTraceIsNone = yes,
+		MayAlterRtti = may_alter_rtti
+	;
+		EffTraceIsNone = no,
+		MayAlterRtti = must_not_alter_rtti
+	),
 
 	globals__lookup_bool_option(Globals, generate_bytecode, GenBytecode),
 	(
@@ -390,11 +406,11 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 			BytecodeInstructions),
 		Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
 			BytecodeInstructions, ProcLabel, EmptyLabelCounter,
-			ContainsReconstruction)
+			MayAlterRtti)
 	;	
 		Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
 			Instructions, ProcLabel, LabelCounter,
-			ContainsReconstruction)
+			MayAlterRtti)
 	).
 
 :- pred maybe_add_tabling_pointer_var(module_info::in,

@@ -54,14 +54,17 @@
 allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 		IO, IO) :-
 	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_trace_level(Globals, TraceLevel),
-	( trace_level_needs_input_vars(TraceLevel) = yes ->
+	(
+		eff_trace_level_needs_input_vars(PredInfo, ProcInfo0,
+			TraceLevel) = yes
+	->
 		trace__fail_vars(ModuleInfo, ProcInfo0, FailVars)
 	;
 		set__init(FailVars)
 	),
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	globals__lookup_bool_option(Globals, opt_no_return_calls,
 		OptNoReturnCalls),
@@ -76,9 +79,9 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo3),
 	SimpleStackAlloc = stack_alloc(LiveSets0),
 
-	trace__do_we_need_maxfr_slot(Globals, ProcInfo3, ProcInfo4),
-	trace__reserved_slots(ModuleInfo, ProcInfo4, Globals, NumReservedSlots,
-		MaybeReservedVarInfo),
+	trace__do_we_need_maxfr_slot(Globals, PredInfo, ProcInfo3, ProcInfo4),
+	trace__reserved_slots(ModuleInfo, PredInfo, ProcInfo4, Globals,
+		NumReservedSlots, MaybeReservedVarInfo),
 	(
 		MaybeReservedVarInfo = yes(ResVar - _),
 		set__singleton_set(ResVarSet, ResVar),

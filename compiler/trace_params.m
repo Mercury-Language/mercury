@@ -10,6 +10,24 @@
 %
 % This module defines the parameters of execution tracing at various trace
 % levels and with various settings of the --suppress-trace option.
+%
+% In most cases the trace level we want to apply to a procedure (which is its
+% effective trace level) is the same as the global trace level. However, if the
+% global trace level is shallow, then we optimize the handling of procedures
+% that cannot be called from deep traced contexts. If a procedure is neither
+% exported nor has its address taken, then it can only be called from other
+% procedures in its module. If the module is shallow traced, this guarantees
+% that we will never get any events from the procedure, so there is no point
+% in including any tracing code in it in the first place. We therefore make
+% its effective trace level "none" for must purposes (the purposes whose
+% functions test effective trace levels). Apart from avoiding the overhead
+% of calls to MR_trace, this also allows the code generator to preserve tail
+% recursion optimization. However, we continue to generate the data structures
+% that enable the debugger to walk the stack for such procedures. We accomplish
+% this by making the relevant test work on the global trace level, not
+% effective trace levels. Most of the other functions defined in this module
+% convert the given (global) trace level into the effective trace level of
+% the relevant procedure before calculating their result.
 
 %-----------------------------------------------------------------------------%
 
@@ -17,6 +35,7 @@
 
 :- interface.
 
+:- import_module hlds__hlds_pred.
 :- import_module ll_backend__llds. % XXX for trace_port
 :- import_module bool.
 
@@ -29,20 +48,33 @@
 :- pred convert_trace_suppress(string::in, trace_suppress_items::out)
 	is semidet.
 
-	% These functions check for various properties of the trace level.
-:- func trace_level_is_none(trace_level) = bool.
-:- func trace_level_needs_input_vars(trace_level) = bool.
-:- func trace_level_needs_fixed_slots(trace_level) = bool.
-:- func trace_level_needs_from_full_slot(trace_level) = bool.
+	% These functions check for various properties of the global
+	% trace level.
+:- func given_trace_level_is_none(trace_level) = bool.
 :- func trace_level_allows_delay_death(trace_level) = bool.
 :- func trace_needs_return_info(trace_level, trace_suppress_items) = bool.
-:- func trace_needs_all_var_names(trace_level, trace_suppress_items) = bool.
-:- func trace_needs_proc_body_reps(trace_level, trace_suppress_items) = bool.
-:- func trace_needs_port(trace_level, trace_suppress_items, trace_port) = bool.
 
 	% Should optimization passes maintain meaningful
 	% variable names where possible.
 :- func trace_level_needs_meaningful_var_names(trace_level) = bool.
+
+	% These functions check for various properties of the given procedure's
+	% effective trace level.
+:- func eff_trace_level_is_none(pred_info, proc_info, trace_level) = bool.
+:- func eff_trace_level_needs_input_vars(pred_info, proc_info, trace_level)
+	= bool.
+:- func eff_trace_level_needs_fixed_slots(pred_info, proc_info, trace_level)
+	= bool.
+:- func eff_trace_level_needs_from_full_slot(pred_info, proc_info, trace_level)
+	= bool.
+:- func eff_trace_needs_all_var_names(pred_info, proc_info, trace_level,
+	trace_suppress_items) = bool.
+:- func eff_trace_needs_proc_body_reps(pred_info, proc_info, trace_level,
+	trace_suppress_items) = bool.
+:- func eff_trace_needs_port(pred_info, proc_info, trace_level,
+	trace_suppress_items, trace_port) = bool.
+
+:- func eff_trace_level(pred_info, proc_info, trace_level) = trace_level.
 
 :- func trace_level_none = trace_level.
 
@@ -78,6 +110,53 @@ convert_trace_level("decl", _, decl).
 convert_trace_level("rep", _, decl_rep).
 convert_trace_level("default", no, none).
 convert_trace_level("default", yes, deep).
+
+eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
+	(
+		TraceLevel = shallow,
+		pred_info_import_status(PredInfo, Status),
+		status_is_exported(Status, no),
+		proc_info_is_address_taken(ProcInfo, address_is_not_taken)
+	->
+		EffTraceLevel = none
+	;
+		EffTraceLevel = TraceLevel
+	).
+
+given_trace_level_is_none(TraceLevel) =
+	trace_level_is_none(TraceLevel).
+
+eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) =
+	trace_level_is_none(
+		eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
+eff_trace_level_needs_input_vars(PredInfo, ProcInfo, TraceLevel) =
+	trace_level_needs_input_vars(
+		eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
+eff_trace_level_needs_fixed_slots(PredInfo, ProcInfo, TraceLevel) =
+	trace_level_needs_fixed_slots(
+		eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
+eff_trace_level_needs_from_full_slot(PredInfo, ProcInfo, TraceLevel) =
+	trace_level_needs_from_full_slot(
+		eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
+eff_trace_needs_all_var_names(PredInfo, ProcInfo, TraceLevel, SuppressItems) =
+	trace_needs_all_var_names(
+		eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+		SuppressItems).
+eff_trace_needs_proc_body_reps(PredInfo, ProcInfo, TraceLevel, SuppressItems) =
+	trace_needs_proc_body_reps(
+		eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+		SuppressItems).
+eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel, SuppressItems, Port) =
+	trace_needs_port(eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+		SuppressItems, Port).
+
+:- func trace_level_is_none(trace_level) = bool.
+:- func trace_level_needs_input_vars(trace_level) = bool.
+:- func trace_level_needs_fixed_slots(trace_level) = bool.
+:- func trace_level_needs_from_full_slot(trace_level) = bool.
+:- func trace_needs_all_var_names(trace_level, trace_suppress_items) = bool.
+:- func trace_needs_proc_body_reps(trace_level, trace_suppress_items) = bool.
+:- func trace_needs_port(trace_level, trace_suppress_items, trace_port) = bool.
 
 trace_level_is_none(none) = yes.
 trace_level_is_none(shallow) = no.

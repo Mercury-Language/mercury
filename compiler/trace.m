@@ -129,7 +129,7 @@
 
 	% Figure out whether we need a slot for storing the value of maxfr
 	% on entry, and record the result in the proc info.
-:- pred trace__do_we_need_maxfr_slot(globals::in, proc_info::in,
+:- pred trace__do_we_need_maxfr_slot(globals::in, pred_info::in, proc_info::in,
 	proc_info::out) is det.
 
 	% Return the number of slots reserved for tracing information.
@@ -138,17 +138,17 @@
 	% It is possible that one of these reserved slots contains a variable.
 	% If so, the variable and its slot number are returned in the last
 	% argument.
-:- pred trace__reserved_slots(module_info::in, proc_info::in, globals::in,
-	int::out, maybe(pair(prog_var, int))::out) is det.
+:- pred trace__reserved_slots(module_info::in, pred_info::in, proc_info::in,
+	globals::in, int::out, maybe(pair(prog_var, int))::out) is det.
 
 	% Construct and return an abstract struct that represents the
 	% tracing-specific part of the code generator state. Return also
 	% info about the non-fixed slots used by the tracing system,
 	% for eventual use in the constructing the procedure's layout
 	% structure.
-:- pred trace__setup(module_info::in, proc_info::in, globals::in,
-	trace_slot_info::out, trace_info::out, code_info::in, code_info::out)
-	is det.
+:- pred trace__setup(module_info::in, pred_info::in, proc_info::in,
+	globals::in, trace_slot_info::out, trace_info::out,
+	code_info::in, code_info::out) is det.
 
 	% Generate code to fill in the reserved stack slots.
 :- pred trace__generate_slot_fill_code(trace_info::in, code_tree::out,
@@ -252,11 +252,11 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 		error("length mismatch in trace__fail_vars")
 	).
 
-trace__do_we_need_maxfr_slot(Globals, ProcInfo0, ProcInfo) :-
+trace__do_we_need_maxfr_slot(Globals, PredInfo0, ProcInfo0, ProcInfo) :-
 	globals__get_trace_level(Globals, TraceLevel),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
 	(
-		trace_level_is_none(TraceLevel) = no,
+		eff_trace_level_is_none(PredInfo0, ProcInfo0, TraceLevel) = no,
 		CodeModel \= model_non,
 		proc_info_goal(ProcInfo0, Goal),
 		code_util__goal_may_alloc_temp_frame(Goal)
@@ -342,12 +342,13 @@ trace__do_we_need_maxfr_slot(Globals, ProcInfo0, ProcInfo) :-
 	% which answers such questions, for later inclusion in the
 	% procedure's layout structure.
 
-trace__reserved_slots(_ModuleInfo, ProcInfo, Globals, ReservedSlots,
+trace__reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
 		MaybeTableVarInfo) :-
 	globals__get_trace_level(Globals, TraceLevel),
 	globals__get_trace_suppress(Globals, TraceSuppress),
 	globals__lookup_bool_option(Globals, trace_table_io, TraceTableIo),
-	FixedSlots = trace_level_needs_fixed_slots(TraceLevel),
+	FixedSlots = eff_trace_level_needs_fixed_slots(PredInfo, ProcInfo,
+		TraceLevel),
 	(
 		FixedSlots = no,
 		ReservedSlots = 0,
@@ -357,13 +358,17 @@ trace__reserved_slots(_ModuleInfo, ProcInfo, Globals, ReservedSlots,
 		Fixed = 3, % event#, call#, call depth
 		(
 			proc_info_interface_code_model(ProcInfo, model_non),
-			trace_needs_port(TraceLevel, TraceSuppress, redo) = yes
+			eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel,
+				TraceSuppress, redo) = yes
 		->
 			RedoLayout = 1
 		;
 			RedoLayout = 0
 		),
-		( trace_level_needs_from_full_slot(TraceLevel) = yes ->
+		(
+			eff_trace_level_needs_from_full_slot(PredInfo,
+				ProcInfo, TraceLevel) = yes
+		->
 			FromFull = 1
 		;
 			FromFull = 0
@@ -399,12 +404,14 @@ trace__reserved_slots(_ModuleInfo, ProcInfo, Globals, ReservedSlots,
 		)
 	).
 
-trace__setup(_ModuleInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo) -->
+trace__setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
+		TraceInfo) -->
 	code_info__get_proc_model(CodeModel),
 	{ globals__get_trace_level(Globals, TraceLevel) },
 	{ globals__get_trace_suppress(Globals, TraceSuppress) },
 	{ globals__lookup_bool_option(Globals, trace_table_io, TraceTableIo) },
-	{ trace_needs_port(TraceLevel, TraceSuppress, redo) = TraceRedo },
+	{ TraceRedo = eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel,
+		TraceSuppress, redo) },
 	(
 		{ TraceRedo = yes },
 		{ CodeModel = model_non }
@@ -416,7 +423,8 @@ trace__setup(_ModuleInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo) -->
 		{ MaybeRedoLayoutLabel = no },
 		{ NextSlotAfterRedoLayout = 4 }
 	),
-	{ trace_level_needs_from_full_slot(TraceLevel) = FromFullSlot },
+	{ FromFullSlot = eff_trace_level_needs_from_full_slot(PredInfo,
+		ProcInfo, TraceLevel) },
 	{
 		FromFullSlot = no,
 		MaybeFromFullSlot = no,
@@ -664,7 +672,10 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 			error("trace__generate_internal_event_code: bad path")
 		},
 		(
-			{ trace_needs_port(TraceInfo ^ trace_level,
+			code_info__get_pred_info(PredInfo),
+			code_info__get_proc_info(ProcInfo),
+			{ eff_trace_needs_port(PredInfo, ProcInfo,
+				TraceInfo ^ trace_level,
 				TraceInfo ^ trace_suppress_items, Port) = yes }
 		->
 			{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
@@ -690,7 +701,10 @@ trace__maybe_generate_negated_event_code(Goal, NegPort, Code) -->
 			NegPort = neg_success,
 			Port = neg_success
 		},
-		{ trace_needs_port(TraceInfo ^ trace_level,
+		code_info__get_pred_info(PredInfo),
+		code_info__get_proc_info(ProcInfo),
+		{ eff_trace_needs_port(PredInfo, ProcInfo,
+			TraceInfo ^ trace_level,
 			TraceInfo ^ trace_suppress_items, Port) = yes }
 	->
 		{ Goal = _ - GoalInfo },
@@ -707,7 +721,10 @@ trace__maybe_generate_pragma_event_code(PragmaPort, Context, Code) -->
 	(
 		{ MaybeTraceInfo = yes(TraceInfo) },
 		{ trace__convert_nondet_pragma_port_type(PragmaPort, Port) },
-		{ trace_needs_port(TraceInfo ^ trace_level,
+		code_info__get_pred_info(PredInfo),
+		code_info__get_proc_info(ProcInfo),
+		{ eff_trace_needs_port(PredInfo, ProcInfo,
+			TraceInfo ^ trace_level,
 			TraceInfo ^ trace_suppress_items, Port) = yes }
 	->
 		trace__generate_event_code(Port, nondet_pragma, TraceInfo,
@@ -720,7 +737,10 @@ trace__generate_external_event_code(ExternalPort, TraceInfo, Context,
 		MaybeExternalInfo) -->
 	{ trace__convert_external_port_type(ExternalPort, Port) },
 	(
-		{ trace_needs_port(TraceInfo ^ trace_level,
+		code_info__get_pred_info(PredInfo),
+		code_info__get_proc_info(ProcInfo),
+		{ eff_trace_needs_port(PredInfo, ProcInfo,
+			TraceInfo ^ trace_level,
 			TraceInfo ^ trace_suppress_items, Port) = yes }
 	->
 		trace__generate_event_code(Port, external, TraceInfo,

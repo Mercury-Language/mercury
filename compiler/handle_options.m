@@ -617,7 +617,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% 	- enabling stack layouts
 	% 	- enabling typeinfo liveness
 	globals__io_lookup_bool_option(trace_optimized, TraceOptimized),
-	( { trace_level_is_none(TraceLevel) = no } ->
+	( { given_trace_level_is_none(TraceLevel) = no } ->
 		( { TraceOptimized = no } ->
 			% The following options modify the structure
 			% of the program, which makes it difficult to

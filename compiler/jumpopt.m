@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module ll_backend__llds, libs__trace_params.
+:- import_module ll_backend__llds.
 :- import_module list, set, bool, counter.
 
 	% Take an instruction list and optimize jumps. This includes jumps
@@ -23,10 +23,10 @@
 	% The second argument gives the set of labels that have layout
 	% structures. This module will not optimize jumps to labels in this
 	% set, since this may interfere with the RTTI recorded for these
-	% labels. The third argument gives the trace level, which we also
-	% use to avoid optimizations that may interfere with RTTI.
+	% labels. The third argument says whether we are allowed to perform
+	% optimizations that may interfere with RTTI.
 	%
-	% The four bool inputs should be
+	% The final four bool inputs should be
 	%
 	% - the value of the --optimize-fulljumps option,
 	%
@@ -40,7 +40,7 @@
 	% The bool output says whether the instruction sequence was modified
 	% by the optimization.
 
-:- pred jumpopt_main(list(instruction)::in, set(label)::in, trace_level::in,
+:- pred jumpopt_main(list(instruction)::in, set(label)::in, may_alter_rtti::in,
 	proc_label::in, counter::in, counter::out,
 	bool::in, bool::in, bool::in, bool::in,
 	list(instruction)::out, bool::out) is det.
@@ -79,7 +79,7 @@
 % numbering, which can do a better job of optimizing this block, have
 % been applied.
 
-jumpopt_main(Instrs0, LayoutLabels, TraceLevel, ProcLabel, C0, C,
+jumpopt_main(Instrs0, LayoutLabels, MayAlterRtti, ProcLabel, C0, C,
 		Blockopt, Recjump, PessimizeTailCalls, CheckedNondetTailCall,
 		Instrs, Mod) :-
 	map__init(Instrmap0),
@@ -112,7 +112,7 @@ jumpopt_main(Instrs0, LayoutLabels, TraceLevel, ProcLabel, C0, C,
 		CheckedNondetTailCallInfo0 = yes(ProcLabel - C0),
 		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
 			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
-			LayoutLabels, TraceLevel, CheckedNondetTailCallInfo0,
+			LayoutLabels, MayAlterRtti, CheckedNondetTailCallInfo0,
 			CheckedNondetTailCallInfo, Instrs1),
 		( CheckedNondetTailCallInfo = yes(_ - Cprime) ->
 			C = Cprime
@@ -124,7 +124,7 @@ jumpopt_main(Instrs0, LayoutLabels, TraceLevel, ProcLabel, C0, C,
 		CheckedNondetTailCallInfo0 = no,
 		jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap,
 			Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap,
-			LayoutLabels, TraceLevel, CheckedNondetTailCallInfo0,
+			LayoutLabels, MayAlterRtti, CheckedNondetTailCallInfo0,
 			_, Instrs1),
 		C = C0
 	),
@@ -245,9 +245,9 @@ jumpopt__build_forkmap([Instr - _Comment|Instrs], Sdprocmap,
 	% between the if-val and the goto.
 
 :- pred jumpopt__instr_list(list(instruction), instr, instrmap, tailmap,
-	lvalmap, tailmap, tailmap, tailmap, tailmap, set(label), trace_level,
-	maybe(pair(proc_label, counter)), maybe(pair(proc_label, counter)),
-	list(instruction)).
+	lvalmap, tailmap, tailmap, tailmap, tailmap, set(label),
+	may_alter_rtti, maybe(pair(proc_label, counter)),
+	maybe(pair(proc_label, counter)), list(instruction)).
 :- mode jumpopt__instr_list(in, in, in, in, in, in, in, in, in, in, in,
 	in, out, out) is det.
 
@@ -256,7 +256,7 @@ jumpopt__instr_list([], _PrevInstr, _Instrmap, _Blockmap, _Lvalmap,
 		_, CheckedNondetTailCallInfo, CheckedNondetTailCallInfo, []).
 jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-		TraceLevel, CheckedNondetTailCallInfo0,
+		MayAlterRtti, CheckedNondetTailCallInfo0,
 		CheckedNondetTailCallInfo, Instrs) :-
 	Instr0 = Uinstr0 - Comment0,
 	(
@@ -271,7 +271,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			( CallModel = det ; CallModel = semidet ),
 			map__search(Procmap, RetLabel, Between0),
 			PrevInstr = livevals(Livevals),
-			trace_level_is_none(TraceLevel) = yes,
+			MayAlterRtti = may_alter_rtti,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			opt_util__filter_out_livevals(Between0, Between1),
@@ -285,7 +285,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			CallModel = semidet,
 			map__search(Forkmap, RetLabel, Between),
 			PrevInstr = livevals(Livevals),
-			trace_level_is_none(TraceLevel) = yes,
+			MayAlterRtti = may_alter_rtti,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			list__append(Between, [livevals(Livevals) - "",
@@ -300,7 +300,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
-			trace_level_is_none(TraceLevel) = yes,
+			MayAlterRtti = may_alter_rtti,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			NewInstrs = [
@@ -324,7 +324,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
-			trace_level_is_none(TraceLevel) = yes,
+			MayAlterRtti = may_alter_rtti,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			counter__allocate(LabelNum, Counter0, Counter1),
@@ -349,7 +349,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		;
 			% Short circuit the return label if possible.
 			map__search(Instrmap, RetLabel, RetInstr),
-			trace_level_is_none(TraceLevel) = yes,
+			MayAlterRtti = may_alter_rtti,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			jumpopt__final_dest(RetLabel, RetInstr, Instrmap,
@@ -451,7 +451,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			jumpopt__instr_list(AdjustedBlock, comment(""),
 				Instrmap, CrippledBlockmap, Lvalmap, Procmap,
 				Sdprocmap, Forkmap, Succmap, LayoutLabels,
-				TraceLevel, CheckedNondetTailCallInfo0,
+				MayAlterRtti, CheckedNondetTailCallInfo0,
 				CheckedNondetTailCallInfo1, NewInstrs),
 			RemainInstrs = Instrs0
 		;
@@ -657,7 +657,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 	),
 	jumpopt__instr_list(RemainInstrs, NewPrevInstr, Instrmap, Blockmap,
 		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-		TraceLevel, CheckedNondetTailCallInfo1,
+		MayAlterRtti, CheckedNondetTailCallInfo1,
 		CheckedNondetTailCallInfo, Instrs9),
 	list__append(NewInstrs, Instrs9, Instrs).
 

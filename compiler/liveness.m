@@ -244,8 +244,8 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 	),
 
 	globals__get_trace_level(Globals, TraceLevel),
-	( trace_level_is_none(TraceLevel) = no ->
-		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
+	( eff_trace_level_is_none(PredInfo, ProcInfo1, TraceLevel) = no ->
+		trace__fail_vars(ModuleInfo, ProcInfo1, ResumeVars0)
 	;
 		set__init(ResumeVars0)
 	),

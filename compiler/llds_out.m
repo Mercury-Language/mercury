@@ -434,7 +434,7 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 
 output_c_file_mercury_headers -->
 	globals__io_get_trace_level(TraceLevel),
-	( { trace_level_is_none(TraceLevel) = no } ->
+	( { given_trace_level_is_none(TraceLevel) = no } ->
 		io__write_string("#include ""mercury_imp.h""\n"),
 		io__write_string("#include ""mercury_trace_base.h""\n")
 	;

@@ -78,7 +78,6 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	globals__lookup_bool_option(Globals, procid_stack_layout,
 		ProcIdLayout),
 	globals__get_trace_level(Globals, TraceLevel),
-	globals__get_trace_suppress(Globals, TraceSuppress),
 	globals__have_static_code_addresses(Globals, StaticCodeAddr),
 	map__init(LayoutLabels0),
 
@@ -87,8 +86,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	StringTable0 = string_table(StringMap0, [], 0),
 	LayoutInfo0 = stack_layout_info(ModuleInfo0,
 		AgcLayout, TraceLayout, ProcIdLayout,
-		TraceLevel, TraceSuppress, StaticCodeAddr,
-		[], [], [], LayoutLabels0, [],
+		StaticCodeAddr, [], [], [], LayoutLabels0, [],
 		StringTable0, LabelTables0, map__init),
 	stack_layout__lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
 	stack_layout__lookup_string_in_table("<too many variables>", _,
@@ -251,8 +249,9 @@ stack_layout__add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, Detism,
 		StackSlots, SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
-		HeadVars, Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
-		VarSet, VarTypes, InternalMap, MaybeTableIoDecl) },
+		HeadVars, MaybeGoal, InstMap, TraceSlotInfo, ForceProcIdLayout,
+		VarSet, VarTypes, InternalMap, MaybeTableIoDecl, IsBeingTraced,
+		NeedsAllNames) },
 	{ map__to_assoc_list(InternalMap, Internals) },
 	stack_layout__set_cur_proc_named_vars(map__init),
 
@@ -268,7 +267,13 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 		stack_layout__get_trace_stack_layout(TraceLayout),
 		{
 			TraceLayout = yes,
-			Kind = proc_layout_exec_trace(UserOrCompiler)
+			(
+				IsBeingTraced = no,
+				Kind = proc_layout_proc_id(UserOrCompiler)
+			;
+				IsBeingTraced = yes,
+				Kind = proc_layout_exec_trace(UserOrCompiler)
+			)
 		;
 			TraceLayout = no,
 			Kind = proc_layout_proc_id(UserOrCompiler)
@@ -288,9 +293,9 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	stack_layout__set_label_tables(LabelTables),
 	stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel,
 		ProcLabel, Detism, StackSlots, SuccipLoc, EvalMethod,
-		MaybeCallLabel, MaxTraceReg, HeadVars, Goal, InstMap,
+		MaybeCallLabel, MaxTraceReg, HeadVars, MaybeGoal, InstMap,
 		TraceSlotInfo, VarSet, VarTypes, NamedVars, MaybeTableIoDecl,
-		Kind).
+		Kind, NeedsAllNames).
 
 %---------------------------------------------------------------------------%
 
@@ -390,15 +395,16 @@ stack_layout__context_is_valid(Context) :-
 :- pred stack_layout__construct_proc_layout(rtti_proc_label::in, label::in,
 	proc_label::in, determinism::in, int::in, maybe(int)::in,
 	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
-	hlds_goal::in, instmap::in, trace_slot_info::in, prog_varset::in,
+	maybe(hlds_goal)::in, instmap::in, trace_slot_info::in, prog_varset::in,
 	vartypes::in, map(int, string)::in, maybe(table_io_decl_info)::in,
-	proc_layout_kind::in, stack_layout_info::in, stack_layout_info::out)
-	is det.
+	proc_layout_kind::in, bool::in, stack_layout_info::in,
+	stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 		Detism, StackSlots, MaybeSuccipLoc, EvalMethod, MaybeCallLabel,
-		MaxTraceReg, HeadVars, Goal, InstMap, TraceSlotInfo, VarSet,
-		VarTypes, UsedVarNames, MaybeTableIoDeclInfo, Kind) -->
+		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
+		VarSet, VarTypes, UsedVarNames, MaybeTableIoDeclInfo, Kind,
+		NeedsAllNames) -->
 	{
 		MaybeSuccipLoc = yes(Location)
 	->
@@ -456,9 +462,9 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 	;
 		{ Kind = proc_layout_exec_trace(_) },
 		stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod,
-			MaybeCallLabel, MaxTraceReg, HeadVars, Goal, InstMap,
-			TraceSlotInfo, VarSet, VarTypes, UsedVarNames,
-			MaybeTableIoDeclInfo, ExecTrace),
+			MaybeCallLabel, MaxTraceReg, HeadVars, MaybeGoal,
+			InstMap, TraceSlotInfo, VarSet, VarTypes, UsedVarNames,
+			MaybeTableIoDeclInfo, NeedsAllNames, ExecTrace),
 		{ MaybeRest = proc_id_and_exec_trace(ExecTrace) }
 	),
 
@@ -478,25 +484,23 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 
 :- pred stack_layout__construct_trace_layout(rtti_proc_label::in,
 	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
-	hlds_goal::in, instmap::in, trace_slot_info::in, prog_varset::in,
+	maybe(hlds_goal)::in, instmap::in, trace_slot_info::in, prog_varset::in,
 	vartypes::in, map(int, string)::in, maybe(table_io_decl_info)::in,
-	proc_layout_exec_trace::out,
+	bool::in, proc_layout_exec_trace::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
-		MaxTraceReg, HeadVars, Goal, InstMap, TraceSlotInfo, VarSet,
-		VarTypes, UsedVarNameMap, MaybeTableIoDecl, ExecTrace) -->
+		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
+		VarSet, VarTypes, UsedVarNameMap, MaybeTableIoDecl,
+		NeedsAllNames, ExecTrace) -->
 	stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
-		MaxVarNum, VarNameVector),
+		NeedsAllNames, MaxVarNum, VarNameVector),
 	{ list__map(term__var_to_int, HeadVars, HeadVarNumVector) },
-	stack_layout__get_trace_level(TraceLevel),
-	stack_layout__get_trace_suppress(TraceSuppress),
-	{ BodyReps = trace_needs_proc_body_reps(TraceLevel, TraceSuppress) },
 	(
-		{ BodyReps = no },
+		{ MaybeGoal = no },
 		{ MaybeProcRepRval = no }
 	;
-		{ BodyReps = yes },
+		{ MaybeGoal = yes(Goal) },
 		stack_layout__get_module_info(ModuleInfo),
 		{ prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes,
 			ModuleInfo, ProcRep) },
@@ -532,15 +536,11 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		MaybeCallTableSlot) }.
 
 :- pred stack_layout__construct_var_name_vector(prog_varset::in,
-	map(int, string)::in, int::out, list(int)::out,
+	map(int, string)::in, bool::in, int::out, list(int)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, Count, Offsets)
-		-->
-	stack_layout__get_trace_level(TraceLevel),
-	stack_layout__get_trace_suppress(TraceSuppress),
-	{ NeedsAllNames = trace_needs_all_var_names(TraceLevel,
-		TraceSuppress) },
+stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, NeedsAllNames,
+		Count, Offsets) -->
 	(
 		{ NeedsAllNames = yes },
 		{ varset__var_name_list(VarSet, VarNameList) },
@@ -1469,8 +1469,6 @@ stack_layout__represent_determinism(Detism, Code) :-
 		agc_stack_layout	:: bool, % generate agc info?
 		trace_stack_layout	:: bool, % generate tracing info?
 		procid_stack_layout	:: bool, % generate proc id info?
-		trace_level		:: trace_level,
-		trace_suppress_items	:: trace_suppress_items,
 		static_code_addresses	:: bool, % have static code addresses?
 		table_io_decls		:: list(comp_gen_c_data),
 		proc_layouts		:: list(comp_gen_c_data),
@@ -1507,12 +1505,6 @@ stack_layout__represent_determinism(Detism, Code) :-
 :- pred stack_layout__get_procid_stack_layout(bool::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred stack_layout__get_trace_level(trace_level::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
-:- pred stack_layout__get_trace_suppress(trace_suppress_items::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
 :- pred stack_layout__get_static_code_addresses(bool::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
@@ -1541,8 +1533,6 @@ stack_layout__get_module_info(LI ^ module_info, LI, LI).
 stack_layout__get_agc_stack_layout(LI ^ agc_stack_layout, LI, LI).
 stack_layout__get_trace_stack_layout(LI ^ trace_stack_layout, LI, LI).
 stack_layout__get_procid_stack_layout(LI ^ procid_stack_layout, LI, LI).
-stack_layout__get_trace_level(LI ^ trace_level, LI, LI).
-stack_layout__get_trace_suppress(LI ^ trace_suppress_items, LI, LI).
 stack_layout__get_static_code_addresses(LI ^ static_code_addresses, LI, LI).
 stack_layout__get_table_io_decl_data(LI ^ table_io_decls, LI, LI).
 stack_layout__get_proc_layout_data(LI ^ proc_layouts, LI, LI).

@@ -1,4 +1,7 @@
 echo on
 context before
 context
-c -a
+step
+print *
+stack
+c -S

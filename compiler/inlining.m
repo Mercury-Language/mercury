@@ -171,13 +171,16 @@
 	% this structure holds option values, extracted from the globals
 :- type inline_params
 	--->	params(
-			simple				:: bool,
-			single_use			:: bool,
-			size_threshold			:: int,
-			simple_goal_threshold		:: int,
-			var_threshold			:: int,
-			highlevel_code			:: bool,
-			tracing				:: bool
+			simple			:: bool,
+			single_use		:: bool,
+			size_threshold		:: int,
+			simple_goal_threshold	:: int,
+			var_threshold		:: int,
+			highlevel_code		:: bool,
+			any_tracing		:: bool
+						% Is any procedure being traced
+						% in the module?
+						
 		).
 
 inlining(ModuleInfo0, ModuleInfo) -->
@@ -204,9 +207,9 @@ inlining(ModuleInfo0, ModuleInfo) -->
 	globals__io_lookup_int_option(inline_vars_threshold, VarThreshold),
 	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 	globals__io_get_trace_level(TraceLevel),
-	{ Tracing = bool__not(trace_level_is_none(TraceLevel)) },
+	{ AnyTracing = bool__not(given_trace_level_is_none(TraceLevel)) },
 	{ Params = params(Simple, SingleUse, CompoundThreshold,
-		SimpleThreshold, VarThreshold, HighLevelCode, Tracing) },
+		SimpleThreshold, VarThreshold, HighLevelCode, AnyTracing) },
 
 		%
 		% Get the usage counts for predicates
@@ -428,9 +431,9 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 
 inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		ModuleInfo0, ModuleInfo, IoState0, IoState) :-
-	VarThresh = Params^var_threshold,
-	HighLevelCode = Params^highlevel_code,
-	Tracing = Params^tracing,
+	VarThresh = Params ^ var_threshold,
+	HighLevelCode = Params ^ highlevel_code,
+	AnyTracing = Params ^ any_tracing,
 
 	PredProcId = proc(PredId, ProcId),
 
@@ -453,7 +456,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	DetChanged0 = no,
 	PurityChanged0 = no,
 
-	InlineInfo0 = inline_info(VarThresh, HighLevelCode, Tracing,
+	InlineInfo0 = inline_info(VarThresh, HighLevelCode, AnyTracing,
 		InlinedProcs, ModuleInfo0, UnivQTVars, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
 		DidInlining0, Requantify0, DetChanged0, PurityChanged0),
@@ -555,7 +558,7 @@ inlining__inlining_in_goal(some(Vars, CanRemove, Goal0) - GoalInfo,
 inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		Sym) - GoalInfo0, Goal - GoalInfo, InlineInfo0, InlineInfo) :-
 
-	InlineInfo0 = inline_info(VarThresh, HighLevelCode, Tracing,
+	InlineInfo0 = inline_info(VarThresh, HighLevelCode, AnyTracing,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
 		DidInlining0, Requantify0, DetChanged0, PurityChanged0),
@@ -563,7 +566,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 	% should we inline this call?
 	(
 		inlining__should_inline_proc(PredId, ProcId, Builtin,
-			HighLevelCode, Tracing, InlinedProcs, Markers,
+			HighLevelCode, AnyTracing, InlinedProcs, Markers,
 			ModuleInfo),
 			% okay, but will we exceed the number-of-variables
 			% threshold?
@@ -628,7 +631,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		DetChanged = DetChanged0,
 		PurityChanged = PurityChanged0
 	),
-	InlineInfo = inline_info(VarThresh, HighLevelCode, Tracing,
+	InlineInfo = inline_info(VarThresh, HighLevelCode, AnyTracing,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DidInlining,
 		Requantify, DetChanged, PurityChanged).

@@ -148,16 +148,18 @@
 			list(instruction),	% the code for this procedure
 			proc_label,		% proc_label of this procedure
 			counter,		% source for new label numbers
-			contains_reconstruction	% value numbering needs
-						% to handle goals that
-						% perform structure reuse
-						% specially.
+			may_alter_rtti		% The compiler is allowed to
+						% perform optimizations on this
+						% c_procedure that could alter
+						% RTTI information (e.g. the
+						% set of variables live at
+						% a label) only if this field
+						% is set to `may_alter_rtti'.
 		).
 
-:- type contains_reconstruction
-	--->	contains_reconstruction
-	;	does_not_contain_reconstruction
-	.
+:- type may_alter_rtti
+	--->	may_alter_rtti
+	;	must_not_alter_rtti.
 
 :- type llds_proc_id	==	int.
 

@@ -77,8 +77,9 @@
 		% outermost resumption point, and info about the non-fixed
 		% stack slots used for tracing purposes.
 :- pred code_info__init(bool::in, globals::in, pred_id::in, proc_id::in,
-	proc_info::in, follow_vars::in, module_info::in, counter::in,
-	resume_point_info::out, trace_slot_info::out, code_info::out) is det.
+	pred_info::in, proc_info::in, follow_vars::in, module_info::in,
+	counter::in, resume_point_info::out, trace_slot_info::out,
+	code_info::out) is det.
 
 		% Get the globals table.
 :- pred code_info__get_globals(globals::out,
@@ -98,6 +99,11 @@
 
 		% Get the HLDS of the procedure we are generating code for.
 :- pred code_info__get_proc_info(proc_info::out,
+	code_info::in, code_info::out) is det.
+
+		% Get the HLDS of the predicate containing the procedure
+		% we are generating code for.
+:- pred code_info__get_pred_info(pred_info::out,
 	code_info::in, code_info::out) is det.
 
 		% Get the variables for the current procedure.
@@ -271,7 +277,10 @@
 		proc_id :: proc_id,
 				% The id of the current procedure.
 		proc_info :: proc_info,
-				% The proc_info for the this procedure.
+				% The proc_info for this procedure.
+		pred_info :: pred_info,
+				% The pred_info for the predicate containing
+				% this procedure.
 		varset :: prog_varset,
 				% The variables in this procedure.
 		var_slot_count :: int,
@@ -366,9 +375,9 @@
 
 %---------------------------------------------------------------------------%
 
-code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
-		ModuleInfo, CellCounter, ResumePoint, TraceSlotInfo, CodeInfo)
-		:-
+code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
+		FollowVars, ModuleInfo, CellCounter, ResumePoint,
+		TraceSlotInfo, CodeInfo) :-
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
 	proc_info_liveness_info(ProcInfo, Liveness),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -378,7 +387,7 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 	globals__lookup_bool_option(Globals, lazy_code, LazyCode),
 	globals__get_options(Globals, Options),
 	globals__get_trace_level(Globals, TraceLevel),
-	( trace_level_is_none(TraceLevel) = no ->
+	( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
 		trace__fail_vars(ModuleInfo, ProcInfo, FailVars),
 		MaybeFailVars = yes(FailVars),
 		set__union(Liveness, FailVars, EffLiveness)
@@ -415,7 +424,8 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 	set__init(Zombies),
 	map__init(LayoutMap),
 	code_info__max_var_slot(StackSlots, VarSlotMax),
-	trace__reserved_slots(ModuleInfo, ProcInfo, Globals, FixedSlots, _),
+	trace__reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
+		FixedSlots, _),
 	int__max(VarSlotMax, FixedSlots, SlotMax),
 	globals__lookup_bool_option(Globals, opt_no_return_calls,
 		OptNoReturnCalls),
@@ -426,6 +436,7 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 			PredId,
 			ProcId,
 			ProcInfo,
+			PredInfo,
 			VarSet,
 			SlotMax,
 			no,
@@ -453,19 +464,19 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 			no
 		)
 	),
-	code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo,
-		ModuleInfo, TraceSlotInfo, CodeInfo0, CodeInfo1),
+	code_info__init_maybe_trace_info(TraceLevel, Globals, ModuleInfo,
+		PredInfo, ProcInfo, TraceSlotInfo, CodeInfo0, CodeInfo1),
 	code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint,
 		CodeInfo1, CodeInfo).
 
 :- pred code_info__init_maybe_trace_info(trace_level::in, globals::in,
-	proc_info::in, module_info::in, trace_slot_info::out,
+	module_info::in, pred_info::in, proc_info::in, trace_slot_info::out,
 	code_info::in, code_info::out) is det.
 
-code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo, ModuleInfo,
-		TraceSlotInfo) -->
-	( { trace_level_is_none(TraceLevel) = no } ->
-		trace__setup(ModuleInfo, ProcInfo, Globals,
+code_info__init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
+		ProcInfo, TraceSlotInfo) -->
+	( { eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no } ->
+		trace__setup(ModuleInfo, PredInfo, ProcInfo, Globals,
 			TraceSlotInfo, TraceInfo),
 		code_info__set_maybe_trace_info(yes(TraceInfo))
 	;
@@ -479,6 +490,7 @@ code_info__get_module_info(CI^code_info_static^module_info, CI, CI).
 code_info__get_pred_id(CI^code_info_static^pred_id, CI, CI).
 code_info__get_proc_id(CI^code_info_static^proc_id, CI, CI).
 code_info__get_proc_info(CI^code_info_static^proc_info, CI, CI).
+code_info__get_pred_info(CI^code_info_static^pred_info, CI, CI).
 code_info__get_varset(CI^code_info_static^varset, CI, CI).
 code_info__get_var_slot_count(CI^code_info_static^var_slot_count, CI, CI).
 code_info__get_maybe_trace_info(CI^code_info_static^maybe_trace_info, CI, CI).
