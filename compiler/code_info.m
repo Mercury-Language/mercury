@@ -925,7 +925,7 @@ code_info__generate_expression_2(var(Var), TargetReg, Code) -->
 	;
 		{ error("invalid variable status") }
 	).
-code_info__generate_expression_2(create(Tag, Args, Label), TargetReg, Code) -->
+code_info__generate_expression_2(create(Tag, Args, _), TargetReg, Code) -->
 	{ list__length(Args, Arity) }, % includes possible tag word
 	(
 		{ Arity = 0 }
@@ -942,8 +942,9 @@ code_info__generate_expression_2(create(Tag, Args, Label), TargetReg, Code) -->
 		code_info__args_are_constant(Args)
 	->
 		code_info__generate_expression_cons_vars(Args, Args1, CodeA),
+		code_info__get_next_label_number(LabelCount),
 		{ CodeB = node([
-			assign(TargetReg, create(Tag, Args1, Label))
+			assign(TargetReg, create(Tag, Args1, LabelCount))
 				- "Assign a constant ground term"
 		]) },
 		{ Code = tree(CodeA, CodeB) }
