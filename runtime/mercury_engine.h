@@ -212,7 +212,9 @@ typedef struct MR_mercury_engine_struct {
 ** In the non-thread-safe situation, it is just a global variable.
 ** In the thread-safe situation, MR_engine_base is either a global
 ** register (if one is available), or a macro that accesses thread-local
-** storage.
+** storage. We provide two macros, MR_ENGINE(x) and MR_CONTEXT(x),
+** that can be used in both kinds of situations to refer to fields
+** of the engine structure, and to fields of the engine's current context.
 */
 
 #ifdef	MR_THREAD_SAFE
@@ -240,8 +242,9 @@ typedef struct MR_mercury_engine_struct {
   #define MR_ENGINE(x)		(MR_engine_base.x)
   #define MR_get_engine()	(&MR_engine_base)
 
-
 #endif	/* !MR_THREAD_SAFE */
+
+#define	MR_CONTEXT(x)		(MR_ENGINE(context).x)
 
 #ifndef CONSERVATIVE_GC
   #define IF_NOT_CONSERVATIVE_GC(x)	x
