@@ -1788,8 +1788,13 @@ hlds_out__write_instmap_delta(InstMapDelta, VarSet, AppendVarnums, Indent,
 	( { instmap_delta_is_unreachable(InstMapDelta) } ->
 		io__write_string("unreachable")
 	;
-		{ instmap_delta_to_assoc_list(InstMapDelta, AssocList) },
-		{ instmap__init_reachable(InstMap) },	% YYY
+			% YYY need to thread the instmap through the
+			% goal so that inst_key_subn stays up to date.
+		{ instmap__init_reachable(InstMap0) },
+		{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, 
+				InstMap) },
+		{ instmap__to_assoc_list(InstMap, AssocList) },
+
 		hlds_out__write_instmap_2(AssocList, VarSet, AppendVarnums,
 			Indent, InstMap, InstTable)
 	).
