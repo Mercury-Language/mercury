@@ -87,8 +87,7 @@ match([T|Ts], Chars, Match0, Match) :-
 			% Match against a variable.
 		match_2(T, Chars, [], Ts, Match0, Match)
 	;
-% XXX		T = '\\'
-		is_backslash(T)
+		T = ('\\') % don't you love ISO compiant syntax :-(
 	->
 		Ts = [T1|Ts1],
 		Chars = [T1|Chars1],
@@ -153,8 +152,7 @@ sub([C|Cs], Match, Result) :-
 		sub(Cs, Match, Result0),
 		list__append(Chars, Result0, Result)
 	;
-% XXX		C = '\\'
-		is_backslash(C)
+		C = ('\\')
 	->
 		(
 			Cs = [C1|Cs1]
@@ -169,12 +167,6 @@ sub([C|Cs], Match, Result) :-
 		sub(Cs, Match, Result0),
 		Result = [C|Result0]
 	).
-
-%------------------------------------------------------------------------------%
-
-:- pred is_backslash(char::in) is semidet.
-
-is_backslash('\\').
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
