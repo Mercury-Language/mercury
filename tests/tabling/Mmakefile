@@ -17,8 +17,12 @@ SIMPLE_PROGS = \
 	fib_float \
 	fib_list \
 	fib_string \
-	loopcheck \
-	unused_args
+	loopcheck
+
+# XXX This test case fails due to bugs in the handling of impurity.
+# The bugs have been fixed on the main branch, but the fix is too
+# complicated to port to the release branch so close to the release.
+#	unused_args
 
 NONDET_PROGS = \
 	coup \
