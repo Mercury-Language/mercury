@@ -3,11 +3,11 @@
 # Mmake - this is Mmake file for building the Mercury compiler 
 
 MERCURY_DIR=..
-include ../Mmake.common
+include $(MERCURY_DIR)/Mmake.common
 
 MAIN_TARGET=mercury
 
-VPATH=../library
+VPATH=$(LIBRARY_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -19,14 +19,14 @@ MCD	=	MERCURY_INT_DIR=. $(MC) --generate-dependencies
 MCI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-interface
 MCG	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
 		MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --compile-to-c
-MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
+MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	-I $(BOEHM_GC_DIR) $(PROFFLAGS)
 C2INIT =	\
-MERCURY_MOD_LIB_MODS="../runtime/runtime.init ../library/library.init" \
-		MERCURY_MKINIT=../util/mkinit c2init
-ML	=	MERCURY_C_LIB_DIR=. ml
+MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/runtime.init $(LIBRARY_DIR)/library.init" \
+		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
+ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	-- -static -L$(RUNTIME_DIR) -L$(LIBRARY_DIR) -L$(BOEHM_GC_DIR)
-MSL	=	MERCURY_SP_LIB_DIR=../library msl
+MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
 MNLFLAGS =	-u 6000
 
 #-----------------------------------------------------------------------------#
@@ -68,8 +68,10 @@ mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
 
 #-----------------------------------------------------------------------------#
 
-conf.m: conf.m.in # XXX ../config.status - problems with bootstrapping
-	cd ..; CONFIG_FILES=compiler/conf.m CONFIG_HEADERS= ./config.status
+# XXX conf.m shold depend on $(MERCURY_DIR)/config.status,
+# but that causes problems with bootstrapping
+conf.m: conf.m.in
+	CONFIG_FILES=conf.m CONFIG_HEADERS= $(MERCURY_DIR)/config.status
 
 #-----------------------------------------------------------------------------#
 
@@ -82,7 +84,7 @@ ints		: mercury_compile.ints
 #-----------------------------------------------------------------------------#
 
 tags		: $(mercury_compile.ms)
-	mtags *.pp *.in $(mercury_compile.ms) ../library/*.m
+	mtags *.pp *.in $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
 
 mercury_compile.stats : source_stats.awk $(mercury_compile.ms)
 	awk -f `vpath_find source_stats.awk` \
