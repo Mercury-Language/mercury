@@ -1,28 +1,4 @@
 #!/bin/sh
-.method private static default 
-	bool
-	'special___Unify___array_1_0'(
-		object[] 'TypeInfo_for_T_3',
-		class ['mscorlib']'System'.'Array' 'HeadVar__1_1',
-		class ['mscorlib']'System'.'Array' 'HeadVar__2_2'
-	)
-{
-.maxstack 3
-	
-	
-	{	// #1
-	ldarg.0
-	ldarg.1
-	ldarg.2
-	call	bool
-		['mer_std__csharp_code']'mer_std__csharp_code'.'mercury_code'::'special___Unify___array_1_0'(
-			object[],
-			class ['mscorlib']'System'.'Array',
-			class ['mscorlib']'System'.'Array'
-		)
-	}	// #1
-	ret
-}
 #---------------------------------------------------------------------------#
 # Copyright (C) 2002-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
