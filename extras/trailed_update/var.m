@@ -109,7 +109,11 @@
 %
 %---------------------------------------------------------------------------%
 
-:- type var(T) ---> var_rep(var_rep(T))
+	% We use '$VAR'/1 as the name for the functor for variable
+	% representations simply because that name is "traditional".
+	% (Note that the representation can be printed out, if you call
+	% io__write(Var), so this is not entirely hidden from the user.)
+:- type var(T) ---> '$VAR'(var_rep(T))
 	where equality is (==).
 
 :- type var_rep(T)
@@ -241,11 +245,11 @@ var__rep_alias(T) = alias(T).
 	ML_var_init_with_value(TypeInfo_for_T, Value, &Var);
 ").
 
-:- pred var__rep_init_with_value(T::in, var_rep(T)::out(var_rep_ground))
+:- pred var__rep_init_with_value(T::in, var_rep(T)::out(ptr(var_rep_ground)))
 	is det.
-:- pragma export(var__rep_init_with_value(in, out(var_rep_ground)),
+:- pragma export(var__rep_init_with_value(in, out(ptr(var_rep_ground))),
 	"ML_var_init_with_value").
-var__rep_init_with_value(Value, ground(Value)).
+var__rep_init_with_value(Value, alias(ground(Value))).
 
 :- pragma c_code( var(Value::out) = (Var::in) /* det */, may_call_mercury,
 "
