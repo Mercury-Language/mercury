@@ -289,8 +289,10 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 	code_info__maybe_push_temp_frame(CodeModel, MayHijack,
 		HijackInfo, CurFrameLval, TempFrameCode),
 
-		% Generate the negated goal.
-	code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		% Generate the negated goal as a semi-deterministic goal;
+		% it cannot be nondet, since mode correctness requires it
+		% to have no output vars.
+	code_gen__generate_goal(model_semi, Goal, GoalCode),
 
 	code_info__ite_enter_then(HijackInfo, CurFrameLval,
 		ThenNeckCode, ElseNeckCode),
