@@ -87,9 +87,9 @@ lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB) runtime.init \
 	$(LIBMER_DLL_H) $(LIBMER_GLOBALS_H)
 
 libmer$(DLL_DEF_LIB).a: $(OBJS)
-	rm -f libmer.a
-	ar cr libmer.a $(OBJS)
-	$(RANLIB) libmer.a
+	rm -f libmer$(DLL_DEF_LIB).a
+	ar cr libmer$(DLL_DEF_LIB).a $(OBJS)
+	$(RANLIB) libmer$(DLL_DEF_LIB).a
 
 libmer.so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)			\

@@ -189,9 +189,9 @@ $(OBJS) test.o dyn_load.o dyn_load_sunos53.o: $(srcdir)/gc_priv.h $(srcdir)/gc_h
 mark.o typd_mlc.o finalize.o: $(srcdir)/gc_mark.h
 
 libgc$(PROF)$(DLL_DEF_LIB).a: gc.a
-	rm -f libgc$(PROF).a
+	rm -f libgc$(PROF)$(DLL_DEF_LIB).a
 	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
-	cp gc.a libgc$(PROF).a
+	cp gc.a libgc$(PROF)$(DLL_DEF_LIB).a
 
 base_lib gc.a: $(OBJS) dyn_load.o $(UTILS)
 	echo > base_lib
@@ -388,6 +388,9 @@ user_namespace: $(SRCS)
 		cp tmp $$file; \
 		done
 
+.PHONY: so
+so: libgc$(PROF).so
+
 #-----------------------------------------------------------------------------#
 # support for DLLs using gnu-win32
 #-----------------------------------------------------------------------------#
@@ -400,6 +403,10 @@ DLL_CFLAGS = -DGC_DEFINE_DLL
 
 .PHONY: dll
 dll: libgc.dll libgc.a libgc_dll.h libgc_globals.h
+	@echo Made DLL
+
+# GNU Make seems to need these extra dependencies as a hint
+libgc$(PROF).dll: libgc$(PROF)$(DLL_DEF_LIB) libgc.def
 
 test_dll.o: test.c libgc_dll.h libgc_globals.h
 	$(CC) $(CFLAGS) -UGC_DEFINE_DLL -c test.c -o test_dll.o
