@@ -15,7 +15,7 @@ backward   - Commands that move execution backward.
 end
 document_category 400 browsing
 browsing   - Commands that let users explore the state of the computation.
-             The browsing commands are `vars', `print', `stack', `up', `down,
+             The browsing commands are `vars', `print', `stack', `up', `down',
 	     `level', and `current'.
 
 end
@@ -28,7 +28,7 @@ end
 document_category 600 parameter
 parameter  - Commands that let users access debugger parameters.
              The parameter commands are `printlevel', `echo', `scroll',
-	     `alias' and `unalias.
+	     `alias' and `unalias'.
 
 end
 document_category 700 help
