@@ -70,6 +70,7 @@ OTHER_SOURCES= \
 	explicit_quant.m \
 	fail_ite.m \
 	followcode_det_problem.m \
+	foreign_type_spec.m \
 	func_int_bug_main.m \
 	func_default_modes.m \
 	headvar_not_found.m \

@@ -195,6 +195,15 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 		globals__lookup_bool_option(Globals, special_preds, no)
 	),
 
+	%
+	% We can't generate clauses for unification predicates for
+	% foreign types lazily because they call the polymorphic procedure
+	% private_builtin__nyi_foreign_type_unify.
+	% polymorphism__process_generated_pred can't handle calls to
+	% polymorphic procedures after the initial polymorphism pass.
+	%
+	Body \= foreign_type(_, _, _),
+
 	% The special predicates for types with user-defined
 	% equality or existentially typed constructors are always
 	% generated immediately by make_hlds.m.
