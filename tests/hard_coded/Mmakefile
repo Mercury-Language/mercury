@@ -30,7 +30,6 @@ ORDINARY_PROGS=	\
 	cycles2 \
 	deep_copy \
 	deep_copy_bug \
-	deep_copy_exist \
 	det_in_semidet_cntxt \
 	division_test \
 	dupcall_types_bug \
@@ -163,7 +162,14 @@ endif
 # we do not pass the following tests
 #	var_not_found -- mode error in automatically generated unification
 #		predicate.  This test uses partially instantiated modes,
-#		which are not yet fully support.
+#		which are not yet fully supported.
+#	deep_copy_exist
+#		XXX the deep_copy_exist test fails on the 0.10 branch
+#		if compiled in debug grades.  This is fixed on the main branch.
+#		It's probably not worth the effort to port the fix to the 0.10
+#		branch, so for the 0.10 branch, we just don't enable this
+#		test case.
+
 
 #-----------------------------------------------------------------------------#
 
@@ -189,12 +195,6 @@ MCFLAGS-existential_types_test = --infer-all
 MCFLAGS-existential_float = --infer-all
 MCFLAGS-user_defined_equality	= --infer-all
 MCFLAGS-parse		=	--trace deep
-
-# XXX the deep_copy_exist test fails on the 0.10 branch
-# if compiled in debug grades.  This is fixed on the main branch.
-# It's probably not worth the effort to port the fix to the 0.10 branch,
-# so for the 0.10 branch, we just don't use --trace deep.
-MCFLAGS-deep_copy_exist	=	--trace minimum
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
