@@ -18,9 +18,9 @@ PROGS=	\
 	dds3_17 \
 	dds3_8 \
 	fold \
-	list \
+	my_list \
 	lte \
-	map \
+	my_map \
 	member \
 	mergesort \
 	mergesort_ap \
