@@ -318,11 +318,11 @@ equiv_type__replace_in_item(ModuleName,
 	).
 
 equiv_type__replace_in_item(ModuleName,
-			typeclass(Constraints0, ClassName, Vars,
-				ClassInterface0, VarSet0),
-			_Context, EqvMap, EqvInstMap,
-			typeclass(Constraints, ClassName, Vars,
-				ClassInterface, VarSet),
+		typeclass(Constraints0, ClassName, Vars, ClassInterface0,
+			VarSet0),
+		_Context, EqvMap, EqvInstMap,
+		typeclass(Constraints, ClassName, Vars, ClassInterface,
+			VarSet),
 		Errors, !Info) :-
 	list__length(Vars, Arity),
 	equiv_type__maybe_record_expanded_items(ModuleName, ClassName,
@@ -347,11 +347,11 @@ equiv_type__replace_in_item(ModuleName,
 		ExpandedItems, !Info).
 
 equiv_type__replace_in_item(ModuleName,
-			instance(Constraints0, ClassName, Ts0,
-				InstanceBody, VarSet0, ModName),
-			_Context, EqvMap, _EqvInstMap,
-			instance(Constraints, ClassName, Ts,
-				InstanceBody, VarSet, ModName),
+		instance(Constraints0, ClassName, Ts0, InstanceBody,
+			VarSet0, ModName),
+		_Context, EqvMap, _EqvInstMap,
+		instance(Constraints, ClassName, Ts, InstanceBody,
+			VarSet, ModName),
 		[], !Info) :-
 	( ( !.Info = no ; ModName = ModuleName ) ->
 		UsedTypeCtors0 = no
