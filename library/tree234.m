@@ -41,6 +41,9 @@
 :- pred tree234__remove(tree234(K, V), K, V, tree234(K, V)).
 :- mode tree234__remove(in, in, out, out) is semidet.
 
+:- pred tree234__remove_smallest(tree234(K, V), K, V, tree234(K, V)).
+:- mode tree234__remove_smallest(in, out, out, out) is semidet.
+
 :- pred tree234__keys(tree234(K, V), list(K)).
 :- mode tree234__keys(in, out) is det.
 
@@ -568,8 +571,7 @@ tree234__delete(Tree0, K, Tree) :-
 
 %------------------------------------------------------------------------------%
 
-% tree234__remove(empty, _K, _V, empty) :- fail.
-tree234__remove(empty, _K, _V, _Tree) :- fail.
+tree234__remove(empty, _K, _V, empty) :- fail.
 
 tree234__remove(two(K0, V0, T0, T1), K, V, Tree) :-
 	compare(Result0, K, K0),
@@ -658,6 +660,47 @@ tree234__remove(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V, Tree) :-
 				Tree = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T4)
 			)
 		)
+	).
+
+%------------------------------------------------------------------------------%
+
+tree234__remove_smallest(empty, _K, _V, empty) :- fail.
+
+tree234__remove_smallest(two(K0, V0, T0, T1), K, V, Tree) :-
+	(
+		T0 = empty
+	->
+		K = K0,
+		V = V0,
+		Tree = T1
+	;
+		tree234__remove_smallest(T0, K, V, T2),
+		Tree = two(K0, V0, T2, T1)
+	).
+
+tree234__remove_smallest(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
+	(
+		T0 = empty
+	->
+		K = K0,
+		V = V0,
+		Tree = two(K1, V1, T1, T2)
+	;
+		tree234__remove_smallest(T0, K, V, T3),
+		Tree = three(K0, V0, K1, V1, T3, T1, T2)
+	).
+
+tree234__remove_smallest(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+								K, V, Tree) :-
+	(
+		T0 = empty
+	->
+		K = K0,
+		V = V0,
+		Tree = three(K1, V1, K2, V2, T1, T2, T3)
+	;
+		tree234__remove_smallest(T0, K, V, T4),
+		Tree = four(K0, V0, K1, V1, K2, V2, T4, T1, T2, T3)
 	).
 
 %------------------------------------------------------------------------------%
