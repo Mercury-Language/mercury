@@ -795,6 +795,8 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 	make_pragma_decls(Args, ArgNameMap, Decls),
 	get_pragma_input_vars(InArgs, ArgNameMap, Inputs, InputVarsCode),
 	( { CodeModel = model_semi } ->
+		% We have to clear r1 for C code that gets inlined
+		% so that it is safe to assign to SUCCESS_INDICATOR.
 		code_info__clear_r1(ShuffleR1_Code),
 
 		% c_code goes here
