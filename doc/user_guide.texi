@@ -200,7 +200,7 @@ To avoid unnecessary recompilations of the clients of the module,
 the timestamps on the these files are updated only if their contents change.
 @file{.date}, @file{.date0}, @file{.date3}, @file{.optdate},
 and @file{.trans_opt_date}
-files associated with the module are used as date stamps;
+files associated with the module are used as timestamp files;
 they are used when deciding whether the interface files need to be regenerated.
 
 @file{.c_date}, @file{.il_date}, @file{.java_date},
