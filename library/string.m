@@ -843,7 +843,7 @@ string__to_char_list_2(Str, Index, CharList) :-
 	}
 }").
 
-:- pragma foreign_proc("MC++", string__to_char_list(Str::in, CharList::out),
+:- pragma foreign_proc("MC++", string__to_char_list(Str::in, CharList::uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
         MR_Integer length, i; 
         MR_Word tmp;
@@ -860,7 +860,7 @@ string__to_char_list_2(Str, Index, CharList) :-
         CharList = tmp;
 }").
 
-:- pragma foreign_proc("MC++", string__to_char_list(Str::out, CharList::in),
+:- pragma foreign_proc("MC++", string__to_char_list(Str::uo, CharList::in),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
         System::Text::StringBuilder *tmp;
 	MR_Char c;

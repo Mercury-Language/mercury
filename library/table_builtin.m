@@ -1453,36 +1453,42 @@ table_save_any_ans(_, _, _) :-
 	impure private_builtin__imp,
 	private_builtin__sorry("table_save_any_ans").
 
+:- pragma promise_semipure(table_restore_int_ans/3).
 table_restore_int_ans(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_restore_int_ans").
 
+:- pragma promise_semipure(table_restore_char_ans/3).
 table_restore_char_ans(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_restore_char_ans").
 
+:- pragma promise_semipure(table_restore_string_ans/3).
 table_restore_string_ans(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_restore_string_ans").
 
+:- pragma promise_semipure(table_restore_float_ans/3).
 table_restore_float_ans(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_restore_float_ans").
 
+:- pragma promise_semipure(table_restore_io_state_ans/3).
 table_restore_io_state_ans(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_restore_io_state_ans").
 
+:- pragma promise_semipure(table_restore_any_ans/3).
 table_restore_any_ans(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
