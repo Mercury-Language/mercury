@@ -95,44 +95,44 @@ extern	int	hash_string(const char *);
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
-#define	localcall(label, succcont)				\
+#define	localcall(label, succ_cont)				\
 			do {					\
-				debugcall(LABEL(label), (succcont)); \
-				succip = (succcont);		\
+				debugcall(LABEL(label), (succ_cont)); \
+				succip = (succ_cont);		\
 				GOTO_LABEL(label);		\
 			} while (0)
 
-#define	call(proc, succcont)					\
+#define	call(proc, succ_cont)					\
 			do {					\
-				debugcall((proc), (succcont));	\
-				succip = (succcont);		\
+				debugcall((proc), (succ_cont));	\
+				succip = (succ_cont);		\
 				GOTO(proc);			\
 			} while (0)
 
-#define	call_closure(succcont)					\
-			do {					\
-	{ extern EntryPoint ENTRY(do_call_closure);		\
-			call(ENTRY(do_call_closure), succont); } \
-			} while (0)
+#define	call_closure(succ_cont)					\
+		do {						\
+			extern EntryPoint ENTRY(do_call_closure); \
+			call(ENTRY(do_call_closure), succ_cont); \
+		} while (0)
 
-#define	call_semidet_closure(succcont)				\
-			do {					\
-	{ extern EntryPoint ENTRY(do_call_semidet_closure);	\
-		call(ENTRY(do_call_semidet_closure), succont); } \
-			} while (0)
+#define	call_semidet_closure(succ_cont)				\
+		do {						\
+			extern EntryPoint ENTRY(do_call_semidet_closure); \
+			call(ENTRY(do_call_semidet_closure), succ_cont); \
+		} while (0)
 
-#define	solutions(succcont)					\
-			do {					\
-	{ extern EntryPoint ENTRY(do_solutions);		\
-			call(ENTRY(do_solutions), succont); } \
-			} while (0)
+#define	solutions(succ_cont)					\
+		do {						\
+			extern EntryPoint ENTRY(do_solutions);	\
+			call(ENTRY(do_solutions), succ_cont); 	\
+		} while (0)
 
 /* used only by the hand-written example programs */
 /* not by the automatically generated code */
-#define	callentry(procname, succcont)				\
+#define	callentry(procname, succ_cont)				\
 			do {					\
 				extern EntryPoint ENTRY(procname); \
-				call(ENTRY(procname), succcont); \
+				call(ENTRY(procname), succ_cont); \
 			} while (0)
 
 #define	localtailcall(label)					\
@@ -162,7 +162,20 @@ extern	int	hash_string(const char *);
 
 #ifdef CONSERVATIVE_GC
 
-#error "CONSERVATIVE_GC not yet implemented"
+#include "gc.h"
+
+#define	tag_incr_hp(dest,tag,count)	(			\
+				(dest) = mkword(tag, (Word)gc_malloc(count)), \
+				(void)0				\
+			)
+
+#define	incr_hp(dest,count)	(				\
+				(dest) = (Word)gc_malloc(count)), \
+				(void)0				\
+			)
+
+#define	mark_hp(dest)	((void)0)
+#define	restore_hp(src)	((void)0)
 
 #else
 
@@ -482,7 +495,7 @@ extern	int	hash_string(const char *);
 #define	debugsucceeddiscard()			((void)0)
 #define	debugfail()				((void)0)
 #define	debugredo()				((void)0)
-#define	debugcall(proc, succcont)		((void)0)
+#define	debugcall(proc, succ_cont)		((void)0)
 #define	debugtailcall(proc)			((void)0)
 #define	debugproceed()				((void)0)
 #define	debuggoto(label)			((void)0)
@@ -538,8 +551,8 @@ extern	int	hash_string(const char *);
 #define	debugredo() \
 	IF (nondstackdebug, (save_transient_registers(), redo_msg()))
 
-#define	debugcall(proc, succcont) \
-	IF (calldebug, (save_transient_registers(), call_msg(proc, succcont)))
+#define	debugcall(proc, succ_cont) \
+	IF (calldebug, (save_transient_registers(), call_msg(proc, succ_cont)))
 
 #define	debugtailcall(proc) \
 	IF (calldebug, (save_transient_registers(), tailcall_msg(proc)))
