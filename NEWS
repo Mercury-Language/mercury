@@ -197,10 +197,19 @@ Changes to the extras distribution:
 
 Changes to the Mercury compiler:
 
+* `mmc --make' now works correctly with Microsoft Visual C++.
+
 * It's now easier to use shared libraries on Linux/x86 systems with
   `mmc --make'.  See the documentation for the `--mercury-linkage'
   and `--linkage' options and the `MERCURY_LINKAGE' Mmake variable
   in the Mercury User's Guide.
+
+* The behaviour of the `--pre-link-command' and `--extra-init-command'
+  options has changed.  They now take a command which will be passed
+  the names of all source files in the program or library, with the
+  name of the main module's source file passed first.
+  See the "Build system options" section of the "Invocation" chapter
+  of the Mercury User's Guide for details.
 
 * It is now possible to reconfigure an existing Mercury installation
   to use a different C compiler.  See the "C compilers" chapter

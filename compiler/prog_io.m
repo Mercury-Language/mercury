@@ -590,8 +590,12 @@ find_module_name(FileName, MaybeModuleName) -->
 		;
 			PartialFileName = FileName
 		},
-		{ file_name_to_module_name(dir__basename_det(PartialFileName),
-			DefaultModuleName) },
+		{ dir__basename(PartialFileName, BaseName0) ->
+			BaseName = BaseName0
+		;
+			BaseName = ""
+		},
+		{ file_name_to_module_name(BaseName, DefaultModuleName) },
 		read_first_item(DefaultModuleName, FileName,
 			ModuleName, RevMessages, _, _, _),
 		{ MaybeModuleName = yes(ModuleName) },

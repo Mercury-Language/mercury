@@ -61,6 +61,7 @@ DEFAULT_MCFLAGS=\
 		--shared-libs "@SHARED_LIBS@" \
 		--math-lib "@MATH_LIB@" \
 		--readline-libs "@READLINE_LIBRARIES@" \
+		--linker-opt-separator "@LINK_OPT_SEP@" \
 		--linker-thread-flags "@LDFLAGS_FOR_THREADS@" \
 		--shlib-linker-thread-flags "@LD_LIBFLAGS_FOR_THREADS@" \
 		--linker-trace-flags "@LDFLAGS_FOR_TRACE@" \
@@ -69,6 +70,11 @@ DEFAULT_MCFLAGS=\
 		--linker-strip-flag "@LD_STRIP_FLAG@" \
 		--linker-debug-flags "@LDFLAGS_FOR_DEBUG@" \
 		--shlib-linker-debug-flags "@LD_LIBFLAGS_FOR_DEBUG@" \
+		--linker-link-lib-flag "@LINK_LIB@" \
+		--linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
+		--shlib-linker-link-lib-flag "@LINK_LIB@" \
+		--shlib-linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
+		--linker-path-flag "@LIB_LIBPATH@" \
 		--linker-rpath-flag "@EXE_RPATH_OPT@" \
 		--linker-rpath-separator "@EXE_RPATH_SEP@" \
 		--shlib-linker-rpath-flag "@SHLIB_RPATH_OPT@" \
@@ -76,7 +82,7 @@ DEFAULT_MCFLAGS=\
 		--linker-allow-undefined-flag "@ALLOW_UNDEFINED@" \
 		--linker-error-undefined-flag "@ERROR_UNDEFINED@" \
 		--fullarch "@FULLARCH@" \
-		--install-prefix "@prefix@" \
+		--install-prefix "@INSTALL_PREFIX@" \
 		--num-real-r-regs "@NUM_REAL_R_REGS@" \
 		--num-real-r-temps "@NUM_REAL_R_TEMPS@" \
 		--conf-low-tag-bits "@LOW_TAG_BITS@" \

@@ -257,28 +257,50 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
 	maybe_make_target_message(TargetFile),
 	{ TargetFile = ModuleName - _FileType },
 	{ CompilationTask = Task - TaskOptions },
+	(
+		{ CompilationTask =
+			process_module(compile_to_target_code) - _ },
+		\+ { can_fork }
+	->
+		% We need a temporary file to pass the arguments to
+		% the mmc process which will do the compilation.
+		% It's created here (not in invoke_mmc) so it can be
+		% cleaned up by build_with_check_for_interrupt.
+		io__make_temp(ArgFileName),
+		{ MaybeArgFileName = yes(ArgFileName) }
+	;
+		{ MaybeArgFileName = no }	
+	),
 	{ Cleanup =
 		(pred(MakeInfo0::in, MakeInfo::out, di, uo) is det -->
 			% XXX Remove `.int.tmp' files.
 			list__foldl2(remove_target_file, TouchedTargetFiles,
 				MakeInfo0, MakeInfo1),
 			list__foldl2(remove_file, TouchedFiles,
-				MakeInfo1, MakeInfo)
+				MakeInfo1, MakeInfo),
+			(
+				{ MaybeArgFileName = yes(ArgFileName2) },
+				io__remove_file(ArgFileName2, _)
+			;
+				{ MaybeArgFileName = no }
+			)
 		) },
 	build_with_check_for_interrupt(
 	    build_with_module_options_and_output_redirect(ModuleName,
-		TaskOptions, build_target_2(ModuleName, Task, Imports)),
+		TaskOptions,
+		build_target_2(ModuleName, Task, MaybeArgFileName, Imports)),
 	    Cleanup, Succeeded, Info0, Info1),
     	record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
 	    TouchedFiles, Info1, Info).
 
 :- pred build_target_2(module_name::in, compilation_task_type::in,
-	module_imports::in, list(string)::in, io__output_stream::in,
-	bool::out, make_info::in, make_info::out,
+	maybe(file_name)::in, module_imports::in, list(string)::in,
+	io__output_stream::in, bool::out, make_info::in, make_info::out,
 	io__state::di, io__state::uo) is det.
 
-build_target_2(ModuleName, process_module(ModuleTask), _Imports,
-		AllOptionArgs, ErrorStream, Succeeded, Info, Info) -->
+build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
+		_Imports, AllOptionArgs, ErrorStream,
+		Succeeded, Info, Info) -->
 	{ prog_out__sym_name_to_string(ModuleName, ".", ModuleArg) },
 
 	globals__io_lookup_bool_option(verbose_commands, Verbose),
@@ -306,7 +328,9 @@ build_target_2(ModuleName, process_module(ModuleTask), _Imports,
 	io__set_output_stream(ErrorStream, OldOutputStream),
 	( { ModuleTask = compile_to_target_code } ->
 		call_in_forked_process(call_mercury_compile_main([ModuleArg]),
-			invoke_mmc(ErrorStream, AllOptionArgs), Succeeded)
+			invoke_mmc(ErrorStream, ArgFileName,
+				AllOptionArgs ++ [ModuleArg]),
+			Succeeded)
 	;
 		call_mercury_compile_main([ModuleArg], Succeeded)
 	),
@@ -325,7 +349,7 @@ build_target_2(ModuleName, process_module(ModuleTask), _Imports,
 		[]
 	).
 
-build_target_2(ModuleName, target_code_to_object_code(PIC),
+build_target_2(ModuleName, target_code_to_object_code(PIC), _,
 		Imports, _, ErrorStream, Succeeded, Info, Info) -->
 	globals__io_get_target(CompilationTarget),
 
@@ -336,7 +360,7 @@ build_target_2(ModuleName, target_code_to_object_code(PIC),
 				ErrorStream, Imports),
 			Succeeded).
 
-build_target_2(ModuleName, foreign_code_to_object_code(PIC, Lang),
+build_target_2(ModuleName, foreign_code_to_object_code(PIC, Lang), _,
 		Imports, _, ErrorStream, Succeeded, Info, Info) -->
 	foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile),
 
@@ -347,7 +371,7 @@ build_target_2(ModuleName, foreign_code_to_object_code(PIC, Lang),
 					Imports, ForeignCodeFile),
 			Succeeded).
 
-build_target_2(ModuleName, fact_table_code_to_object_code(PIC),
+build_target_2(ModuleName, fact_table_code_to_object_code(PIC), _,
 		Imports, _, ErrorStream, Succeeded, Info, Info) -->
 	list__map_foldl(fact_table_foreign_code_file(ModuleName, PIC),
 			Imports ^ fact_table_deps, FactTableForeignCodes),
@@ -474,15 +498,67 @@ call_mercury_compile_main(Args, Succeeded) -->
 	{ Succeeded = ( Status = 0 -> yes ; no ) },
 	io__set_exit_status(Status0).
 
-:- pred invoke_mmc(io__output_stream::in, list(string)::in, bool::out,
-		io__state::di, io__state::uo) is det.
+:- pred invoke_mmc(io__output_stream::in, maybe(file_name)::in,
+	list(string)::in, bool::out, io__state::di, io__state::uo) is det.
 
-invoke_mmc(ErrorStream, Args, Succeeded) -->
-	{ CommandVerbosity = verbose }, % We've already written the command.
-	{ Command = string__join_list(" ",
-			["mmc" | list__map(quote_arg, Args)]) },
-	invoke_shell_command(ErrorStream, CommandVerbosity,
-		Command, Succeeded).
+invoke_mmc(ErrorStream, MaybeArgFileName, Args, Succeeded) -->
+	io__progname("", ProgName),
+	( { ProgName = "" } ->
+		io__get_environment_var("MERCURY_COMPILER",
+			MaybeMercuryCompiler),
+		{ MaybeMercuryCompiler = yes(MercuryCompiler)
+		; MaybeMercuryCompiler = no, MercuryCompiler = "mmc"
+		}
+	;
+		{ MercuryCompiler = ProgName }
+	),
+
+	{ QuotedArgs = list__map(quote_arg, Args) },
+
+	% Some operating systems (e.g. Windows) have shells with
+	% ludicrously short limits on the length of command lines,
+	% so we need to write the arguments to a file which will
+	% be read by the child mmc process.
+	% This code is only called if fork() doesn't work, so there's
+	% no point checking whether the shell actually has this
+	% limitation.
+	% The temporary file is created by the caller so that it will be
+	% removed by build_with_check_for_interrupt if an interrupt occurs.
+	{
+		MaybeArgFileName = yes(ArgFileName)
+	;
+		MaybeArgFileName = no,
+		error(
+		"make.module_target.invoke_mmc: argument file not created")
+	},
+		
+	io__open_output(ArgFileName, ArgFileOpenRes),
+	(
+		{ ArgFileOpenRes = ok(ArgFileStream) },
+		io__write_string(ArgFileStream, "MCFLAGS = "),
+		io__write_list(ArgFileStream, QuotedArgs, " ",
+			io__write_string),
+		io__nl(ArgFileStream),
+		io__close_output(ArgFileStream),
+
+		{ Command = string__join_list(" ",
+			[quote_arg(MercuryCompiler),
+				"--arg-file", quote_arg(ArgFileName)]) },
+			
+		% We've already written the command.
+		{ CommandVerbosity = verbose },
+		invoke_system_command(ErrorStream,
+			CommandVerbosity, Command, Succeeded)
+	;
+		{ ArgFileOpenRes = error(Error) },
+		{ Succeeded = no },
+		io__write_string("Error opening `"),
+		io__write_string(ArgFileName),
+		io__write_string("' for output: "),
+		io__write_string(io__error_message(Error)),
+		io__nl
+	),
+	io__remove_file(ArgFileName, _).
 
 %-----------------------------------------------------------------------------%
 

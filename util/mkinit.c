@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -874,6 +874,13 @@ process_c_file(const char *filename, int *num_bunches_ptr,
 
 	/* remove the directory name, if any */
 	if ((position = strrchr(filename, '/')) != NULL) {
+		filename = position + 1;
+	}
+	/*
+	** There's not meant to be an `else' here -- we need to handle
+	** file names that contain both `/' and '\\'.
+	*/
+	if ((position = strrchr(filename, '\\')) != NULL) {
 		filename = position + 1;
 	}
 

@@ -693,22 +693,12 @@
 :- pred update_interface(file_name, io__state, io__state).
 :- mode update_interface(in, di, uo) is det.
 
-	% make_directory(Dir, Succeeded)
+	% maybe_make_symlink(TargetFile, LinkName, Result).
 	%
-	% Make the directory Dir and all its parents.
-	% XXX This belongs in the standard library.
-:- pred make_directory(dir_name, bool, io__state, io__state).
-:- mode make_directory(in, out, di, uo) is det.
-
-:- pred make_directory(dir_name, io__state, io__state).
-:- mode make_directory(in, di, uo) is det.
-
-	% make_symlink(LinkTarget, LinkName, Succeeded)
-	%
-	% Make LinkName a symlink pointing to LinkTarget.
-	% XXX This belongs in the standard library.
-:- pred make_symlink(file_name, file_name, bool, io__state, io__state).
-:- mode make_symlink(in, in, out, di, uo) is det.
+	% If `--use-symlinks' is set, attempt to make LinkName a
+	% symlink pointing to LinkTarget.
+:- pred maybe_make_symlink(file_name, file_name, bool, io__state, io__state).
+:- mode maybe_make_symlink(in, in, out, di, uo) is det.
 
 	% copy_file(Source, Destination, Succeeded).
 	%
@@ -719,7 +709,8 @@
 	% make_symlink_or_copy_file(LinkTarget, LinkName, Succeeded).
 	%
 	% Attempt to make LinkName a symlink pointing to LinkTarget,
-	% copying LinkTarget to LinkName if that fails.
+	% copying LinkTarget to LinkName if that fails (or if
+	% `--use-symlinks' is not set).
 :- pred make_symlink_or_copy_file(file_name, file_name,
 		bool, io__state, io__state).
 :- mode make_symlink_or_copy_file(in, in, out, di, uo) is det.
@@ -1096,29 +1087,15 @@ module_name_to_file_name(ModuleName, FileName) :-
 module_name_to_make_var_name(ModuleName, MakeVarName) :-
 	prog_out__sym_name_to_string(ModuleName, ".", MakeVarName).
 
-make_directory(DirName) -->
-	modules__make_directory(DirName, _Result).
-
-make_directory(DirName, Result) -->
-	( { dir__this_directory(DirName) } ->
-		{ Result = yes }
-	;
-		{ string__format("[ -d %s ] || mkdir -p %s",
-			[s(DirName), s(DirName)], Command) },
-		io__output_stream(ErrorStream),
-		invoke_shell_command(ErrorStream, verbose, Command, Result)
-	).
-
-make_symlink(LinkTarget, LinkName, Result) -->
-	io__output_stream(ErrorStream),
-	globals__io_lookup_bool_option(use_symlinks, SymLinks),
+maybe_make_symlink(LinkTarget, LinkName, Result) -->
+	globals__io_lookup_bool_option(use_symlinks, UseSymLinks),
 	(
-		{ SymLinks = yes },
-		{ string__format("rm -f %s && ln -s %s %s",
-			[s(LinkName), s(LinkTarget), s(LinkName)], Command) },
-		invoke_shell_command(ErrorStream, verbose, Command, Result)
+		{ UseSymLinks = yes },
+		io__remove_file(LinkName, _),
+		io__make_symlink(LinkTarget, LinkName, LinkResult),
+		{ Result = ( if LinkResult = ok then yes else no ) }
 	;
-		{ SymLinks = no },
+		{ UseSymLinks = no },
 		{ Result = no }
 	).
 
@@ -1148,28 +1125,32 @@ copy_file(Source, Destination, Res) -->
 	).
 
 make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded) -->
-	make_symlink(SourceFileName, DestinationFileName, SymlinkSucceeded),
-	( { SymlinkSucceeded = yes } ->
+	globals__io_lookup_bool_option(use_symlinks, UseSymLinks),
+	(
+		{ UseSymLinks = yes },
+		{ LinkOrCopy = "linking" },
+		io__make_symlink(SourceFileName, DestinationFileName, Result)
+	;
+		{ UseSymLinks = no },
+		{ LinkOrCopy = "copying" },
+		copy_file(SourceFileName, DestinationFileName, Result)
+	),
+	( 
+		{ Result = ok },
 		{ Succeeded = yes }
 	;
-		copy_file(SourceFileName, DestinationFileName,
-			CopyRes),
-		( 
-			{ CopyRes = ok },
-			{ Succeeded = yes }
-		;
-			{ CopyRes = error(CopyError) },
-			{ Succeeded = no },
-			io__progname_base("mercury_compile",
-				ProgName),
-			io__write_string(ProgName),
-			io__write_string(": error copying `"),
-			io__write_string(SourceFileName),
-			io__write_string("' to `"),
-			io__write_string(DestinationFileName),
-			io__write_string("': "),
-			io__write_string(io__error_message(CopyError))
-		)
+		{ Result = error(Error) },
+		{ Succeeded = no },
+		io__progname_base("mercury_compile", ProgName),
+		io__write_string(ProgName),
+		io__write_string(": error "),
+		io__write_string(LinkOrCopy),
+		io__write_string(" `"),
+		io__write_string(SourceFileName),
+		io__write_string("' to `"),
+		io__write_string(DestinationFileName),
+		io__write_string("': "),
+		io__write_string(io__error_message(Error))
 	).
 
 :- pred make_file_name(dir_name, bool, bool, file_name, string,
@@ -1209,7 +1190,7 @@ make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName) -->
 		DirName = "Mercury"/SubDirName
 	},
 	( { MkDir = yes } ->
-		make_directory(DirName)
+		make_directory(DirName, _)
 	;
 		[]
 	),
@@ -1685,9 +1666,7 @@ write_interface_file(_SourceFileName, ModuleName, Suffix,
 	globals__io_set_option(line_numbers, bool(LineNumbers)),
 	update_interface(OutputFileName).
 
-		% invoke the shell script `mercury_update_interface'
-		% to update <Module>.int from <Module>.int.tmp if
-		% necessary
+		% update <Module>.int from <Module>.int.tmp if necessary
 
 update_interface(OutputFileName) -->
 	update_interface(OutputFileName, Succeeded),
@@ -1700,14 +1679,128 @@ update_interface(OutputFileName) -->
 update_interface(OutputFileName, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Updating interface:\n"),
-	( { Verbose = yes } ->
-		{ Command = "mercury_update_interface -v " }
+	{ TmpOutputFileName = OutputFileName ++ ".tmp" },
+	io__open_binary_input(OutputFileName, OutputFileRes),
+	( 
+		{ OutputFileRes = ok(OutputFileStream) },
+		io__open_binary_input(TmpOutputFileName, TmpOutputFileRes),
+		(
+			{ TmpOutputFileRes = ok(TmpOutputFileStream) },	
+			binary_input_stream_cmp(OutputFileStream,
+				TmpOutputFileStream, FilesDiffer),
+			io__close_binary_input(OutputFileStream),
+			io__close_binary_input(TmpOutputFileStream),
+			(
+				{ FilesDiffer = ok(ok(no)) },
+				{ Succeeded = yes },
+				maybe_write_string(Verbose, "% "),
+				maybe_write_string(Verbose, OutputFileName),
+				maybe_write_string(Verbose,
+						"' has not changed.\n"),
+				io__remove_file(TmpOutputFileName, _)
+			;
+				{ FilesDiffer = ok(ok(yes)) },
+				update_interface_create_file("CHANGED",
+					OutputFileName, TmpOutputFileName,
+					Succeeded)
+			;
+				{ FilesDiffer = ok(error(TmpFileError)) },
+				{ Succeeded = no },
+				io__write_string("Error reading `"),
+				io__write_string(TmpOutputFileName),
+				io__write_string("': "),
+				io__write_string(
+					io__error_message(TmpFileError)),
+				io__nl
+			;
+				{ FilesDiffer = error(_, _) },
+				update_interface_create_file("been CREATED",
+					OutputFileName, TmpOutputFileName,
+					Succeeded)
+			)
+		;
+
+			{ TmpOutputFileRes = error(TmpOutputFileError) },
+			{ Succeeded = no },
+			io__close_binary_input(OutputFileStream),
+			io__write_string("Error creating `"),
+			io__write_string(OutputFileName),
+			io__write_string("': "),
+			io__write_string(
+				io__error_message(TmpOutputFileError)),
+			io__nl
+		)
 	;
-		{ Command = "mercury_update_interface " }
+		{ OutputFileRes = error(_) },
+		update_interface_create_file("been CREATED", OutputFileName,
+			TmpOutputFileName, Succeeded)
+	).
+
+:- pred binary_input_stream_cmp(io__binary_input_stream::in,
+	io__binary_input_stream::in, io__maybe_partial_res(io__res(bool))::out,
+	io__state::di, io__state::uo) is det.
+
+binary_input_stream_cmp(OutputFileStream, TmpOutputFileStream, FilesDiffer) -->
+    io__binary_input_stream_foldl2_io_maybe_stop(OutputFileStream,
+        (pred(Byte::in, Continue::out, _::in, Differ::out, di, uo) is det -->
+            io__read_byte(TmpOutputFileStream, TmpByteResult),
+            {
+                TmpByteResult = ok(TmpByte),
+                ( TmpByte = Byte ->
+                    Differ = ok(no),
+                    Continue = yes    
+                ;
+                    Differ = ok(yes),
+                    Continue = no
+                )
+            ;
+                TmpByteResult = eof,
+                Differ = ok(yes),
+                Continue = no
+            ;
+                TmpByteResult = error(TmpByteError),
+                Differ = error(TmpByteError) `with_type` io__res(bool),
+                Continue = no
+            }
+        ),
+        ok(no), FilesDiffer0),
+
+    % Check whether there is anything left in TmpOutputFileStream
+    ( { FilesDiffer0 = ok(ok(no)) } ->
+        io__read_byte(TmpOutputFileStream, TmpByteResult2),
+        { TmpByteResult2 = ok(_), FilesDiffer = ok(ok(yes))
+        ; TmpByteResult2 = eof, FilesDiffer = FilesDiffer0
+        ; TmpByteResult2 = error(Error), FilesDiffer = ok(error(Error))
+        }
+    ;
+        { FilesDiffer = FilesDiffer0 }
+    ).
+
+:- pred update_interface_create_file(string::in, string::in, string::in,
+		bool::out, io__state::di, io__state::uo) is det.
+
+update_interface_create_file(Msg, OutputFileName,
+			TmpOutputFileName, Succeeded) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% `"),
+	maybe_write_string(Verbose, OutputFileName),
+	maybe_write_string(Verbose, "' has "),
+	maybe_write_string(Verbose, Msg),
+	maybe_write_string(Verbose, ".\n"),
+	copy_file(TmpOutputFileName, OutputFileName, MoveRes),
+	(
+		{ MoveRes = ok },
+		{ Succeeded = yes }
+	;
+		{ MoveRes = error(MoveError) },
+		{ Succeeded = no },
+		io__write_string("Error creating `"),
+		io__write_string(OutputFileName),
+		io__write_string("': "),
+		io__write_string(io__error_message(MoveError)),
+		io__nl
 	),
-	{ string__append(Command, OutputFileName, ShellCommand) },
-	io__output_stream(OutputStream),
-	invoke_shell_command(OutputStream, verbose, ShellCommand, Succeeded).
+	io__remove_file(TmpOutputFileName, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -2217,8 +2310,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	% temporary name, and then rename it to the desired name
 	% when we've finished.
 	%
-	{ dir__dirname(DependencyFileName, DirName) },
-	io__make_temp(DirName, "tmp_d", TmpDependencyFileName),
+	io__make_temp(dir__dirname(DependencyFileName),
+		"tmp_d", TmpDependencyFileName),
 	maybe_write_string(Verbose, "% Writing auto-dependency file `"),
 	maybe_write_string(Verbose, DependencyFileName),
 	maybe_write_string(Verbose, "'..."),

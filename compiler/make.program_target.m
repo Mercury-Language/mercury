@@ -220,11 +220,11 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		Info0, Info) -->
 	globals__io_lookup_maybe_string_option(pre_link_command,
 		MaybePreLinkCommand),
-	( { MaybePreLinkCommand = yes(PreLinkCommand0) } ->
-		{ PreLinkCommand = substitute_user_command(PreLinkCommand0,
-			MainModuleName, set__to_sorted_list(AllModules)) },
-		invoke_shell_command(ErrorStream, verbose, PreLinkCommand,
-			PreLinkSucceeded)
+	( { MaybePreLinkCommand = yes(PreLinkCommand) } ->
+		make_all_module_command(PreLinkCommand, MainModuleName,
+			to_sorted_list(AllModules), CommandString),
+		invoke_system_command(ErrorStream, verbose,
+			CommandString, PreLinkSucceeded)
 	;
 		{ PreLinkSucceeded = yes }
 	),	
@@ -832,7 +832,7 @@ install_file(FileName, InstallDir, Succeeded) -->
 	{ Command = string__join_list("	", list__map(quote_arg,
 			[InstallCommand, FileName, InstallDir])) },
 	io__output_stream(OutputStream),
-	invoke_shell_command(OutputStream, verbose, Command, Succeeded).
+	invoke_system_command(OutputStream, verbose, Command, Succeeded).
 
 :- pred make_install_dirs(bool::out, bool::out,
 		io__state::di, io__state::uo) is det.
@@ -845,8 +845,7 @@ make_install_dirs(Result, LinkResult) -->
 
 	{ IntsSubdir = LibDir/"ints"/"Mercury" },
 	make_directory(IntsSubdir, Result3),
-
-	{ Result4 = Result1 `and` Result2 `and` Result3 },
+	{ Results0 = [Result1, Result2, Result3] },
 
 	{ Subdirs = ["int0", "int", "int2", "int3",
 			"opt", "trans_opt", "module_dep"] },
@@ -854,14 +853,16 @@ make_install_dirs(Result, LinkResult) -->
 		Subdirs, LinkResults),
 	{ LinkResult = bool__and_list(LinkResults) },
 	( { LinkResult = yes } ->
-		{ Result = Result4 }
+		{ Results = Results0 }
 	;
 		list__map_foldl(
 		    (pred(Ext::in, MkDirResult::out, di, uo) is det -->
-		    	make_directory(IntsSubdir/(Ext ++ "s"), MkDirResult)
+		    	make_directory(IntsSubdir/(Ext ++ "s"),
+				MkDirResult)
 		    ), Subdirs, MkDirResults),
-		{ Result = bool__and_list([Result4 | MkDirResults]) }
-	).
+		{ Results = Results0 ++ MkDirResults }
+	),
+	print_mkdir_errors(Results, Result).
 
 :- pred make_grade_install_dirs(string::in, bool::out, bool::out,
 		io__state::di, io__state::uo) is det.
@@ -877,30 +878,41 @@ make_grade_install_dirs(Grade, Result, LinkResult) -->
 	{ GradeIncSubdir = LibDir/"lib"/Grade/FullArch/"inc"/"Mercury" },
 	make_directory(GradeIncSubdir, Result2),
 
-	{ Result3 = Result1 `and` Result2 },
+	{ Results0 = [Result1, Result2] },
 
 	make_install_symlink(GradeIncSubdir, "mih", LinkResult0),
 	list__map_foldl(make_install_symlink(GradeIntsSubdir),
 		["opt", "trans_opt"], LinkResults),
 	{ LinkResult = bool__and_list([LinkResult0 | LinkResults]) },
 	( { LinkResult = yes } ->
-		{ Result = Result3 }
+		{ Results = Results0 }
 	;
 		make_directory(GradeIncSubdir/"mih", Result4),
-		list__map_foldl(
-		    (pred(Ext::in, MkDirResult::out, di, uo) is det -->
-		    	make_directory(GradeIntsSubdir/(Ext ++ "s"),
-				MkDirResult)
-		    ), ["opt", "trans_opt"], MkDirResults),
-		{ Result = bool__and_list([Result3, Result4 | MkDirResults]) }
-	).
+		make_directory(GradeIntsSubdir/"opts", Result5),
+		make_directory(GradeIntsSubdir/"trans_opts",
+			Result6),
+		{ Results = [Result4, Result5, Result6 | Results0] }
+	),
+	print_mkdir_errors(Results, Result).
+
+:- pred print_mkdir_errors(list(io__res)::in, bool::out,
+		io__state::di, io__state::uo) is det.
+
+print_mkdir_errors([], yes) --> [].
+print_mkdir_errors([ok | Rest], Succeeded) -->
+	print_mkdir_errors(Rest, Succeeded).
+print_mkdir_errors([error(Error) | Rest], no) -->
+	io__write_string("Error creating installation directories: "),
+	io__write_string(io__error_message(Error)),
+	io__nl,
+	print_mkdir_errors(Rest, _).
 
 :- pred make_install_symlink(string::in, string::in, bool::out,
 		io__state::di, io__state::uo) is det.
 
-make_install_symlink(Subdir, Ext, Result) -->
+make_install_symlink(Subdir, Ext, Succeeded) -->
 	{ LinkName = Subdir/(Ext ++ "s") },
-	make_symlink("..", LinkName, Result).
+	maybe_make_symlink("..", LinkName, Succeeded).
 
 %-----------------------------------------------------------------------------%
 

@@ -528,6 +528,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	option_implies(make, transitive_optimization, bool(no)),
 	option_implies(invoked_by_mmc_make, transitive_optimization, bool(no)),
 
+	( { \+ io__have_symlinks } ->
+		globals__io_set_option(use_symlinks, bool(no))	
+	;
+		[]
+	),
+
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
 	option_implies(check_termination, warn_missing_trans_opt_files,

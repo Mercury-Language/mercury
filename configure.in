@@ -68,14 +68,21 @@ case "$PREFIX" in
 	;;
 esac
 
-LIBDIR="$PREFIX/lib/mercury"
-WINDOWS_LIBDIR="`cygpath -w $LIBDIR 2>/dev/null`"
+
+# Using `cygpath -m' gives a path that works under both
+# Cygwin and native Windows, without causing quoting
+# problems in shell scripts. (`cygpath -m' converts the
+# path to Windows format, with '/' as the directory
+# separator).
+AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+
+PREFIX="`$CYGPATH $PREFIX`"
+LIBDIR="`$CYGPATH $PREFIX/lib/mercury`"
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
 AC_SUBST(VERSION)
 AC_SUBST(PREFIX)
 AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
-AC_SUBST(WINDOWS_LIBDIR)
 DEFAULT_MERCURY_DEBUGGER_INIT_DIR=$LIBDIR/mdb
 AC_SUBST(DEFAULT_MERCURY_DEBUGGER_INIT_DIR)
 #-----------------------------------------------------------------------------#
@@ -144,6 +151,8 @@ case "$CONFIG_PREFIX" in
 		exit 1
 		;;
 esac
+CONFIG_PREFIX="`$CYGPATH $CONFIG_PREFIX`"
+CONFIG_LIBDIR="`$CYGPATH $CONFIG_LIBDIR`"
 AC_SUBST(CONFIG_PREFIX)
 AC_SUBST(CONFIG_LIBDIR)
 #-----------------------------------------------------------------------------#
@@ -483,6 +492,7 @@ case "$MERCURY_CONF_RECONFIGURE" in
 		;;
 esac
 
+#-----------------------------------------------------------------------------#
 # Make sure we search /usr/local/include and /usr/local/lib for
 # header files and libraries.  GNU C normally searches /usr/local/include
 # by default, but (inconsistently) on some systems, such as Solaris,
@@ -501,16 +511,6 @@ done
 
 AC_PROG_CPP
 #-----------------------------------------------------------------------------#
-# Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.
-# When cross-compiling from Cygwin to Mingw (and perhaps also on
-# native Mingw?), `-lm' exists, but it is not needed and in fact we must
-# not use it, because if we do then it causes cygwin1.dll to be linked in.
-AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
-case "$CC" in *"-mno-cygwin")
-	MATH_LIB=
-esac
-AC_SUBST(MATH_LIB)
-#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for use of a Microsoft C compiler)
 AC_EGREP_CPP(yes,
 [
@@ -522,8 +522,6 @@ AC_EGREP_CPP(yes,
 ] AC_MSG_RESULT(yes), [ac_microsoft=no
 ] AC_MSG_RESULT(no))
 
-AC_CHECK_PROG(CYGPATH, cygpath, cygpath -w, echo)
-
 LDFLAGS_FOR_TRACE=
 LD_LIBFLAGS_FOR_TRACE=
 if test "$ac_microsoft" = "yes" ; then
@@ -533,6 +531,7 @@ if test "$ac_microsoft" = "yes" ; then
 	LIB_PREFIX="lib"
 	LIB_LIBPATH="/LIBPATH:"
 	LINK_LIB=""
+	LINK_LIB_SUFFIX=".lib"
 	LINK_OPT_SEP="/link"
 
 	OBJFILE_OPT="/Fo"
@@ -542,6 +541,7 @@ if test "$ac_microsoft" = "yes" ; then
 
 	LDFLAGS_FOR_DEBUG="/DEBUG"
 	LD_LIBFLAGS_FOR_DEBUG="/DEBUG"
+	LD_STRIP_FLAG=
 
 	USING_MICROSOFT_CL_COMPILER="yes"
 
@@ -560,6 +560,7 @@ else
 	LIB_PREFIX=""
 	LIB_LIBPATH="-L"
 	LINK_LIB="-l"
+	LINK_LIB_SUFFIX=""
 	LINK_OPT_SEP=""
 
 	OBJFILE_OPT="-o "
@@ -567,6 +568,7 @@ else
 	ARFLAGS="cr"
 	AR_LIBFILE_OPT=""
 
+	LD_STRIP_FLAG="-s"
 	LDFLAGS_FOR_DEBUG="-g"
 	LD_LIBFLAGS_FOR_DEBUG="-g"
 
@@ -608,6 +610,7 @@ AC_SUBST(ARFLAGS)
 AC_SUBST(AR_LIBFILE_OPT)
 AC_SUBST(LDFLAGS_FOR_DEBUG)
 AC_SUBST(LD_LIBFLAGS_FOR_DEBUG)
+AC_SUBST(LD_STRIP_FLAG)
 AC_SUBST(LDFLAGS_FOR_TRACE)
 AC_SUBST(LD_LIBFLAGS_FOR_TRACE)
 AC_SUBST(USING_MICROSOFT_CL_COMPILER)
@@ -616,14 +619,24 @@ AC_SUBST(LIB_SUFFIX)
 AC_SUBST(LIB_PREFIX)
 AC_SUBST(LIB_LIBPATH)
 AC_SUBST(LINK_LIB)
+AC_SUBST(LINK_LIB_SUFFIX)
 AC_SUBST(LINK_OPT_SEP)
 AC_SUBST(FIX_PATH_FOR_CC)
 AC_SUBST(CYGPATH)
 
 #-----------------------------------------------------------------------------#
-# If we're producing a Win32 version of the compiler, don't use symlinks
-# when installing. The generated compiler executable will not be able to
-# follow them.
+# Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.
+# The result of this check may be overridden below.
+AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
+
+#-----------------------------------------------------------------------------#
+# If we're compiling the compiler with MS Visual C++ or `gcc -mno-cygwin',
+# don't use symlinks when installing -- the generated compiler executable
+# will not be able to follow them.
+#
+# When cross-compiling from Cygwin to Mingw (and perhaps also on
+# native Mingw?), `-lm' exists, but it is not needed and in fact we must
+# not use it, because if we do then it causes cygwin1.dll to be linked in.
 MMC_USE_SYMLINKS_OPT=
 LN_S="ln -s"
 case "$host" in
@@ -632,11 +645,15 @@ case "$host" in
 	    # cl is the Microsoft C compiler
 	    *gcc*-mno-cygwin* | *cl* | *CL*)
 		MMC_USE_SYMLINKS_OPT=--no-use-symlinks
-		LN_S=false ;;
+		MATH_LIB=
+		LN_S=false
+		;;
 	esac ;;
 esac
+
 AC_SUBST(LN_S)
 AC_SUBST(MMC_USE_SYMLINKS_OPT)
+AC_SUBST(MATH_LIB)
 
 #-----------------------------------------------------------------------------#
 # Microsoft.NET configuration
@@ -2752,11 +2769,8 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # set up some default values that should work on most systems
 # see Mmake.common.in for documentation on the meaning of these variables
 LINK_EXE=$CC
-LD_STRIP_FLAG="-s"
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
-LD_DEBUG_FLAGS="-g"
-LD_LIB_DEBUG_FLAGS="-g"
 if test "$GCC" = "yes"; then
 	SHARED_LIBS="\`$CC -print-libgcc-file-name\` \$(MATH_LIB) -lc"
 	SHARED_LIBS_SH="\`$CC -print-libgcc-file-name\` \$MATH_LIB -lc"
@@ -3155,7 +3169,6 @@ esac
 #-----------------------------------------------------------------------------#
 
 AC_SUBST(LINK_EXE)
-AC_SUBST(LD_STRIP_FLAG)
 AC_SUBST(LD_STATIC_FLAGS)
 AC_SUBST(DEFAULT_LINKAGE)
 AC_SUBST(LINK_SHARED_OBJ)

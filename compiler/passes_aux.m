@@ -199,6 +199,9 @@ about unbound type variables.
 	% Invoke a shell script.
 	% Both standard and error output will go to the
 	% specified output stream.
+	% XXX Use of this predicate should be avoided -- it requires
+	% a Unix shell to be present, so it won't work properly 
+	% with native Windows.
 :- pred invoke_shell_command(io__output_stream::in,
 	command_verbosity::in, string::in, bool::out,
 	io__state::di, io__state::uo) is det.
@@ -210,6 +213,9 @@ about unbound type variables.
 	% Both standard and error output will go to the
 	% specified output stream after being piped through
 	% `ProcessOutput'.
+	% XXX Use of this predicate should be avoided -- it requires
+	% a Unix shell to be present, so it won't work properly 
+	% with native Windows.
 :- pred invoke_shell_command(io__output_stream::in,
 	command_verbosity::in, string::in, maybe(string)::in, bool::out,
 	io__state::di, io__state::uo) is det.
@@ -506,6 +512,8 @@ invoke_system_command(ErrorStream, Verbosity, Command, Succeeded) -->
 
 invoke_system_command(ErrorStream, Verbosity, Command,
 		MaybeProcessOutput, Succeeded) -->
+	% This predicate shouldn't alter the exit status of mercury_compile.
+	io__get_exit_status(OldStatus),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	(
 		{ Verbosity = verbose },
@@ -629,7 +637,8 @@ invoke_system_command(ErrorStream, Verbosity, Command,
 		report_error(ErrorStream, "error opening command output: "
 				++ io__error_message(TmpFileError))
 	),
-	io__remove_file(ProcessedTmpFile, _).
+	io__remove_file(ProcessedTmpFile, _),
+	io__set_exit_status(OldStatus).
 
 make_command_string(String0, QuoteType, String) :-
 	( use_win32 ->

@@ -200,7 +200,7 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, char, string, std_util.
+:- import_module dir, int, char, string, std_util.
 :- import_module set, bintree_set, assoc_list, require.
 :- import_module varset, term.
 :- import_module library.	% for the version number.
@@ -226,7 +226,7 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile) -->
 		{ C_File = c_file(ModuleName, C_HeaderInfo,
 			UserForeignCodes, Exports, Vars, Datas, Modules) },
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
-		make_directory(ObjDirName),
+		dir__make_directory(ObjDirName, _),
 
 		output_split_c_file_init(ModuleName, Modules, Datas,
 			StackLayoutLabels, MaybeRLFile),

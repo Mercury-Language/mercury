@@ -21,10 +21,20 @@
 
 :- func options_variables_init = options_variables.
 
-	% Read a single options file.  No searching will be done.
+	% Read a single options file, without searching
+	% --options-search-directories.
 	% This is used to read the configuration file.
 :- pred read_options_file(file_name::in, options_variables::in,
 	maybe(options_variables)::out, io__state::di, io__state::uo) is det.
+
+	% Read a single options file.  No searching will be done.
+	% The result is the value of the variable MCFLAGS obtained
+	% from the file, ignoring settings in the environment.
+	% This is used to pass arguments to child mmc processes
+	% without exceeding command line limits on crappy operating
+	% systems.
+:- pred read_args_file(file_name::in, maybe(list(string))::out,
+	io__state::di, io__state::uo) is det.
 
 	% Read all options files specified by `--options-file' options.
 :- pred read_options_files(options_variables::in,
@@ -85,6 +95,35 @@
 
 options_variables_init = map__init.
 
+read_args_file(OptionsFile, MaybeMCFlags) -->
+	read_options_file(OptionsFile,
+		options_variables_init, MaybeVariables),	
+	(
+		{ MaybeVariables = yes(Variables) },
+		% Ignore settings in the environment -- the parent
+		% mmc process will have included those in the file.
+		lookup_variable_words(no, Variables,
+			"MCFLAGS", FlagsResult),
+		(
+			{ FlagsResult = set(MCFlags) },
+			{ MaybeMCFlags = yes(MCFlags) }
+		;	
+			{ FlagsResult = unset },
+			io__write_string(
+"mercury_compile: internal error: arguments file does not set MCFLAGS.\n"),
+			{ MaybeMCFlags = no }
+		;
+			{ FlagsResult = error(Msg) },
+			{ MaybeMCFlags = no },
+			io__write_string(Msg),
+			io__nl
+		)
+	;
+		{ MaybeVariables = no },
+		{ MaybeMCFlags = no }
+	).
+	
+
 read_options_file(OptionsFile, Variables0, MaybeVariables) -->
 	promise_only_solution_io(
 	    (pred(R::out, di, uo) is cc_multi -->
@@ -120,10 +159,10 @@ read_options_files(Variables0, MaybeVariables) -->
 			    (pred(OptionsFile::in, Vars0::in, Vars::out,
 					di, uo) is det -->
 				{ OptionsFile = "Mercury.options" ->
-					ErrorIfNotExist = error,
+					ErrorIfNotExist = no_error,
 					Search = no_search
 				;
-					ErrorIfNotExist = no_error,
+					ErrorIfNotExist = error,
 					Search = search
 				},
 				read_options_file(ErrorIfNotExist, Search, no,
@@ -162,27 +201,30 @@ read_options_files(Variables0, MaybeVariables) -->
 		maybe(dir_name)::in, string::in, options_variables::in,
 		options_variables::out, io__state::di, io__state::uo) is det.
 
-read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
+read_options_file(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
 		Variables0, Variables) -->
     ( { OptionsFile0 = "-" } ->
 	% Read from standard input.
 	debug_msg(
 		(pred(di, uo) is det -->
-			io__write_string("Reading options file from stdin.\n")
+			io__write_string("Reading options file from stdin...")
 		)),
-	read_options_lines(dir__this_directory, Variables0, Variables)
+	read_options_lines(dir__this_directory, Variables0, Variables),
+	debug_msg(
+		(pred(di, uo) is det -->
+			io__write_string("done.\n")
+		))
     ;
-	( { OptionsFile0 = "Mercury.options" } ->
-		% Don't complain if the "Mercury.options"
-		% file doesn't exist.
-		{ ErrorIfNotExist = no_error },
-		{ SearchDirs = [dir__this_directory] }
-	; { Search = search } ->
-		{ ErrorIfNotExist = ErrorIfNotExist0 },
+	debug_msg(
+		(pred(di, uo) is det -->
+			io__write_string("Reading options file "),
+			io__write_string(OptionsFile0),
+			io__write_string("...")
+		)),
+	( { Search = search } ->
 		globals__io_lookup_accumulating_option(
 			options_search_directories, SearchDirs)
 	;
-		{ ErrorIfNotExist = ErrorIfNotExist0 },
 		{ SearchDirs = [dir__this_directory] }
 	),
 	( { dir__split_name(OptionsFile0, OptionsDir, OptionsFile) } ->
@@ -216,8 +258,7 @@ read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
 			)),
 
 		read_options_lines(FoundDir, Variables0, Variables),
-		io__input_stream(OptionsStream),
-		io__set_input_stream(OldInputStream, _),
+		io__set_input_stream(OldInputStream, OptionsStream),
 		io__close_input(OptionsStream)
 	;
 		{ MaybeDir = error(_) },
@@ -236,7 +277,11 @@ read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
 		;
 			[]
 		)
-	)
+	),
+	debug_msg(
+		(pred(di, uo) is det -->
+			io__write_string("done.\n")
+		))
     ).
 
 :- func maybe_add_path_name(dir_name, file_name) = file_name.
@@ -343,7 +388,7 @@ read_options_line_2(FoundEOF, Chars0, Chars) -->
 	    (
 		{ MaybeChar2 = yes(Char2) },
 		( { Char2 = '\n' } ->
-		    read_options_line_2(FoundEOF, ['\n' | Chars0], Chars)
+		    read_options_line_2(FoundEOF, [' ' | Chars0], Chars)
 		;
 		    read_options_line_2(FoundEOF,
 		    		[Char2, Char | Chars0], Chars)
@@ -1028,7 +1073,20 @@ lookup_variable_words_report_error(Vars, VarName, Result) -->
 	io__state::di, io__state::uo) is det.
 
 lookup_variable_words(Vars, VarName, Result) -->
-	io__get_environment_var(VarName, MaybeEnvValue),
+	lookup_variable_words(yes, Vars, VarName, Result).
+
+:- pred lookup_variable_words(bool::in, options_variables::in,
+	options_variable::in, variable_result(list(string))::out,
+	io__state::di, io__state::uo) is det.
+
+lookup_variable_words(LookupEnv, Vars, VarName, Result) -->
+	(
+		{ LookupEnv = yes },
+		io__get_environment_var(VarName, MaybeEnvValue)
+	;
+		{ LookupEnv = no },
+		{ MaybeEnvValue = no }
+	),
 	( { MaybeEnvValue = yes(EnvValue) } ->
 		{ SplitResult = checked_split_into_words(
 			string__to_char_list(EnvValue)) },

@@ -96,9 +96,11 @@ AC_REQUIRE([AC_PROG_CC])
 AC_MSG_CHECKING(whether to pass -I/usr/local/include to C compiler)
 ALL_LOCAL_C_INCL_DIRS=""
 ALL_LOCAL_C_INCL_DIR_MMC_OPTS=""
-if test "$GCC" = yes; then
+
+if test "$GCC" = yes -o "$USING_MICROSOFT_CL_COMPILER" = yes; then
 	# Don't add -I/usr/local/include, since it causes a warning
-	# with gcc 3.1, and gcc already searches /usr/local/include
+	# with gcc 3.1, and gcc already searches /usr/local/include.
+	# Microsoft compilers don't understand Unix pathnames.
 	AC_MSG_RESULT(no)
 else
 	# It's some other compiler.  We don't know if it searches
@@ -122,7 +124,9 @@ AC_SUBST(ALL_LOCAL_C_INCL_DIR_MMC_OPTS)
 AC_DEFUN(MERCURY_CHECK_LOCAL_C_LIB_DIRS,
 [
 AC_MSG_CHECKING(whether to pass -L/usr/local/lib to the linker)
-if test -d /usr/local/lib/.; then
+
+# Microsoft compilers don't understand Unix pathnames.
+if test "$USING_MICROSOFT_CL_COMPILER" = no -a -d /usr/local/lib/.; then
 	AC_MSG_RESULT(yes)
 	ALL_LOCAL_C_LIB_DIRS=/usr/local/lib
 	ALL_LOCAL_C_LIB_DIR_MMC_OPTS="-L/usr/local/lib -R/usr/local/lib"

@@ -322,19 +322,12 @@ lib_std: lib$(STD_LIB_NAME)
 
 ifeq ($(MMAKE_USE_MMC_MAKE),no)
 
-EXTRA_INIT_COMMAND = \
-	for file in $($(STD_LIB_NAME).ms); do \
-		grep '^INIT ' $$file; \
-		true; \
-	done
+EXTRA_INIT_COMMAND = ./print_extra_inits $($(STD_LIB_NAME).ms)
 
 else
 
-MCFLAGS += --extra-init-command \
-		"for module in %; do \
-			grep '^INIT ' $$$${module}.m; \
-			true; \
-		done"
+MCFLAGS += --extra-init-command ./print_extra_inits
+
 endif	# 
 
 endif	# GRADE != il && GRADE != java

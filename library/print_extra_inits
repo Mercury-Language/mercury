@@ -1,0 +1,24 @@
+#!/bin/sh
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2003 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+# library/print_extra_inits - print extra .init file lines to stdout.
+#
+# Invocation:
+#	print_extra_inits <mer_std.ms>
+# 		where <mer_std.ms> is the names of all of the source files
+#		for the modules	in libmer_std.
+#
+#-----------------------------------------------------------------------------#
+
+for file; do
+	if [ -f $file ]; then
+		grep '^INIT ' $file
+	else
+		echo "$0: source file $file not found" 1>&2
+		exit 1
+	fi
+done
+exit 0

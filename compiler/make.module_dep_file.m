@@ -285,7 +285,7 @@ do_write_module_dep_file(Imports) -->
 		{ ProgDepResult = error(Error) },
 		{ io__error_message(Error, Msg) },
 		io__write_strings(["Error opening ", ProgDepFile,
-			"for output: ", Msg, "\n"]),
+			" for output: ", Msg, "\n"]),
 		io__set_exit_status(1)
 	).
 
@@ -546,7 +546,8 @@ make_module_dependencies(ModuleName, Info0, Info) -->
 		    build_with_module_options(ModuleName,
 			["--make-short-interface"],
 			make_short_interfaces(ErrorStream,
-				SourceFileName, SubModuleList)), 
+				SourceFileName, SubModuleList)
+		    ), 
 		    cleanup_short_interfaces(SubModuleNames),
 		    Succeeded, Info2, Info3)
 	    ;

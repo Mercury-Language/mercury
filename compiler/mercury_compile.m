@@ -168,18 +168,35 @@
 %-----------------------------------------------------------------------------%
 
 real_main -->
-	gc_init,
+    gc_init,
 
          % All messages go to stderr
     io__stderr_stream(StdErr),
     io__set_output_stream(StdErr, _),
     io__command_line_arguments(Args0),
 
-    ( { Args0 = ["--invoked-by-mmc-make" | _] } ->
-        % All the configuration options were passed
-        % on the command line.
-        { process_options(Args0, OptionArgs, NonOptionArgs, _) },
-        { MaybeMCFlags = yes([]) },
+    ( { Args0 = ["--arg-file", ArgFile] } ->
+	%
+	% All the configuration and options file options
+	% are passed in the given file, which is created
+	% by the parent `mmc --make' process.
+	%
+
+	% read_args_file may attempt to look up options,
+	% so we need to initialize the globals..
+	handle_options([], _, _, _, _),
+
+	options_file__read_args_file(ArgFile, MaybeArgs1),
+	{
+		MaybeArgs1 = yes(Args1),
+        	process_options(Args1, OptionArgs, NonOptionArgs, _),
+        	MaybeMCFlags = yes([])
+	;
+		MaybeArgs1 = no,
+		OptionArgs = [],
+		NonOptionArgs = [],
+        	MaybeMCFlags = yes([])
+	},
         { Variables = options_variables_init },
 	{ Link = no }
     ;

@@ -49,6 +49,9 @@
 :- type io_pred == pred(bool, io__state, io__state).
 :- inst io_pred == (pred(out, di, uo) is det).
 
+	% Does fork() work on the current platform.
+:- pred can_fork is semidet.
+
 	% call_in_forked_process(P, AltP, Succeeded)
 	%
 	% Execute `P' in a separate process.
@@ -260,7 +263,7 @@ call_in_forked_process(P, Success) -->
 	call_in_forked_process(P, P, Success).
 
 call_in_forked_process(P, AltP, Success) -->
-	( { can_fork(1) } ->
+	( { can_fork } ->
 		call_in_forked_process_2(P, ForkStatus, CallStatus),
 		{ ForkStatus = 1 ->
 			Success = no
@@ -273,12 +276,9 @@ call_in_forked_process(P, AltP, Success) -->
 		AltP(Success)
 	).
 
-	% Dummy argument to work around bug mixing Mercury and foreign clauses.
-:- pred can_fork(T::unused) is semidet.
+can_fork :- semidet_fail.
 
-can_fork(_::unused) :- semidet_fail.
-
-:- pragma foreign_proc("C", can_fork(_T::unused),
+:- pragma foreign_proc("C", can_fork,
 		[will_not_call_mercury, thread_safe, promise_pure],
 "
 #ifdef MC_CAN_FORK

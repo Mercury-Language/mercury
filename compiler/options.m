@@ -610,14 +610,20 @@
 		;	shared_libs
 		;	math_lib
 		;	readline_libs
+		;	linker_opt_separator
 		;	linker_thread_flags
 		;	shlib_linker_thread_flags
 		;	linker_static_flags
 		;	linker_strip_flag
+		;	linker_link_lib_flag
+		;	linker_link_lib_suffix
+		;	shlib_linker_link_lib_flag
+		;	shlib_linker_link_lib_suffix
 		;	linker_debug_flags
 		;	shlib_linker_debug_flags
 		;	linker_trace_flags
 		;	shlib_linker_trace_flags
+		;	linker_path_flag
 		;	linker_rpath_flag
 		;	linker_rpath_separator
 		;	shlib_linker_rpath_flag
@@ -1180,8 +1186,8 @@ option_defaults_2(link_option, [
 	mercury_library_directories -	accumulating([]),
 	mercury_library_special -	string_special,
 	mercury_libraries -		accumulating([]),
-					% The mmc script will set the default
-					% standard library directory.
+					% The Mercury.config file will set the
+					% default standard library directory.
 	mercury_standard_library_directory - maybe_string(no),
 	mercury_standard_library_directory_special - maybe_string_special,
 	init_file_directories -		accumulating([]),
@@ -1219,6 +1225,7 @@ option_defaults_2(link_option, [
 	shared_libs -			string(""),
 	math_lib -			string(""),
 	readline_libs -			string(""),
+	linker_opt_separator -		string(""),
 	linker_debug_flags -		string("-g"),
 	shlib_linker_debug_flags -	string("-g"),
 	linker_trace_flags -		string("-g"),
@@ -1227,6 +1234,11 @@ option_defaults_2(link_option, [
 	shlib_linker_thread_flags -	string(""),
 	linker_static_flags -		string("-static"),
 	linker_strip_flag -		string("-s"),
+	linker_link_lib_flag -		string("-l"),
+	linker_link_lib_suffix -	string(""),
+	shlib_linker_link_lib_flag -	string("-l"),
+	shlib_linker_link_lib_suffix -	string(""),
+	linker_path_flag -		string("-L"),
 	linker_rpath_flag -		string("-Wl,-rpath"),
 	linker_rpath_separator -	string(" -Wl,-rpath"),
 	shlib_linker_rpath_flag -	string("-Wl,-rpath"),
@@ -1876,6 +1888,7 @@ long_option("thread-libs",		thread_libs).
 long_option("shared-libs",		shared_libs).
 long_option("math-lib",			math_lib).
 long_option("readline-libs",		readline_libs).
+long_option("linker-opt-separator",	linker_opt_separator).
 long_option("linker-debug-flags",  	linker_debug_flags).
 long_option("shlib-linker-debug-flags",	shlib_linker_debug_flags).
 long_option("linker-trace-flags",  	linker_trace_flags).
@@ -1884,6 +1897,11 @@ long_option("linker-thread-flags",	linker_thread_flags).
 long_option("shlib-linker-thread-flags", shlib_linker_thread_flags).
 long_option("linker-static-flags",	linker_static_flags).
 long_option("linker-strip-flag",	linker_strip_flag).
+long_option("linker-link-lib-flag",	linker_link_lib_flag).
+long_option("linker-link-lib-suffix",	linker_link_lib_suffix).
+long_option("shlib-linker-link-lib-flag", shlib_linker_link_lib_flag).
+long_option("shlib-linker-link-lib-suffix", shlib_linker_link_lib_suffix).
+long_option("linker-path-flag",		linker_path_flag).
 long_option("linker-rpath-flag",	linker_rpath_flag).
 long_option("linker-rpath-separator",	linker_rpath_separator).
 long_option("shlib-linker-rpath-flag",	shlib_linker_rpath_flag).
@@ -2358,44 +2376,81 @@ handle_quoted_flag(Option, Flag, Table,
 	append_to_accumulating_option(Option - quote_arg(Flag), Table)).
 
 quote_arg(Arg0) = Arg :-
-	ArgList = quote_arg_2(string__to_char_list(Arg0)),
-	(
-		ArgList = []
-	->
-		Arg = """"""
-	;
-		list__member(Char, ArgList),
-		\+ ( char__is_alnum_or_underscore(Char)
-		; Char = ('-')
-		; Char = ('/')
-		; Char = ('.')
-		; Char = (',')
-		; Char = (':')
+	% XXX Instead of using dir__use_windows_paths, this should really
+	% test whether we are using a Unix or Windows shell.
+	( dir__use_windows_paths ->
+		ArgList = quote_arg_windows(string__to_char_list(Arg0)),
+		(
+			ArgList = []
+		->
+			Arg = """"""
+		;
+			Arg = string__from_char_list(ArgList)
 		)
-	->
-		Arg = """" ++ string__from_char_list(ArgList) ++ """"
 	;
-		Arg = string__from_char_list(ArgList)
+		ArgList = quote_arg_unix(string__to_char_list(Arg0)),
+		(
+			ArgList = []
+		->
+			Arg = """"""
+		;
+			list__member(Char, ArgList),
+			\+ ( char__is_alnum_or_underscore(Char)
+			; Char = ('-')
+			; Char = ('/')
+			; Char = ('.')
+			; Char = (',')
+			; Char = (':')
+			)
+		->
+			Arg = """" ++ string__from_char_list(ArgList) ++ """"
+		;
+			Arg = string__from_char_list(ArgList)
+		)
 	).
 
-:- func quote_arg_2(list(char)) = list(char).
+:- func quote_arg_windows(list(char)) = list(char).
 
-quote_arg_2([]) = [].
-quote_arg_2([Char | Chars0]) = Chars :-
-	Chars1 = quote_arg_2(Chars0),
-	( quote_char(Char) ->
+quote_arg_windows([]) = [].
+quote_arg_windows([Char | Chars0]) = Chars :-
+	Chars1 = quote_arg_windows(Chars0),
+	( quote_char_windows(Char) ->
+		% We want whitespace characters within an argument to not be
+		% treated as whitespace when splitting the command line
+		% into words.
+		% Newlines and tabs within a word don't really make
+		% sense, so just convert them to spaces.
+		QuoteChar = ( char__is_whitespace(Char) -> ' ' ; Char ),
+		Chars = [('\\'), QuoteChar | Chars1]
+	;
+		Chars = [Char | Chars1]
+	).
+
+:- pred quote_char_windows(char::in) is semidet.
+
+quote_char_windows(' ').
+quote_char_windows('\n').
+quote_char_windows('\t').
+quote_char_windows('"').
+quote_char_windows('%').
+
+:- func quote_arg_unix(list(char)) = list(char).
+
+quote_arg_unix([]) = [].
+quote_arg_unix([Char | Chars0]) = Chars :-
+	Chars1 = quote_arg_unix(Chars0),
+	( quote_char_unix(Char) ->
 		Chars = [('\\'), Char | Chars1]
 	;
-		Chars = [Char | Chars1]	
-	).	
+		Chars = [Char | Chars1]
+	).
 
+:- pred quote_char_unix(char::in) is semidet.
 
-:- pred quote_char(char::in) is semidet.
-
-quote_char('\\').
-quote_char('"').
-quote_char('`').
-quote_char('$').
+quote_char_unix('\\').
+quote_char_unix('"').
+quote_char_unix('`').
+quote_char_unix('$').
 
 %-----------------------------------------------------------------------------%
 
@@ -3890,13 +3945,20 @@ options_help_link -->
 		% --link-executable-command, --link-shared-lib-command,
 		% --mkinit-command, --demangle-command, --trace-libs,
 		% --thread-libs, --shared-libs, --math-lib, --readline-libs,
-		% linker-thread-flags, --shlib-linker-thread-flags,
+		% --linker-opt-separator,
+		% --linker-debug-flags, --shlib-linker-debug-flags,
+		% --linker-trace-flags, --shlib-linker-trace-flags,
+		% --linker-thread-flags, --shlib-linker-thread-flags,
 		% --linker-static-flags, --linker-strip-flag,
+		% --linker-link-lib-flag, --linker-link-lib-suffix,
+		% --shlib-linker-link-lib-flag, --shlib-linker-link-lib-suffix,
+		% --linker-path-flag, --linker-link-with-lib-flag,
 		% --linker-rpath-flag, --linker-rpath-separator,
+		% --shlib-linker-link-with-lib-flag,
 		% --shlib-linker-rpath-flag, --shlib-linker-rpath-separator,
 		% --linker-allow-undefined-flag and
 		% --linker-error-undefined-flag,
-		% options are reserved for use by the `mmc' script;
+		% options are reserved for use by the `Mercury.config' file;
 		% they are deliberately not documented.
 	]).
 
@@ -3923,16 +3985,17 @@ options_help_build_system -->
 		"\tSpecify a command to run before linking with `mmc --make'.",
 		"\tThis can be used to compile C source files which rely on",
 		"\theader files generated by the Mercury compiler.",
-		"\tOccurrences of `@' in the command will be replaced with",
-		"\tthe name of the main module with `.' as the module",
-		"\tqualifier. Occurrences of `%' in the command will be",
-		"\treplaced with the list of modules making up the library.",
-		"\tOccurrences of `@@' and `%%' will be replaced with `@'",
-		"\tand `%' respectively.",
+		"\tThe command will be passed the names of all of the source",
+		"\tfiles in the program or library, with the source file",
+		"\tcontaining the main module given first.",
+
 		"--extra-init-command <command>",
 		"\tSpecify a command to produce extra entries in the `.init'",
-		"\tfile for a library. Occurrences of `@' and `%' in the command",
-		"\tare substituted as for the `--pre-link-command' option.",
+		"\tfile for a library.",
+		"\tThe command will be passed the names of all of the source",
+		"\tfiles in the program or library, with the source file",
+		"\tcontaining the main module given first.",
+
 		"--install-prefix <dir>",
 		"\tThe directory under which to install Mercury libraries.",
 		
@@ -4012,7 +4075,7 @@ options_help_misc -->
 		"\tdefaults to the string ""guest""."
 
 		% The `--fullarch' option is reserved for
-		% use by the mmc script.
+		% use by the `Mercury.config' file.
 	]).
 
 :- pred write_tabbed_lines(list(string), io__state, io__state).

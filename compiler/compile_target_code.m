@@ -140,15 +140,14 @@
 
 %-----------------------------------------------------------------------------%
 
-	% substitute_user_command(Command0, ModuleName,
-	%		AllModuleNames) = Command
+	% make_all_module_command(CommandName, MainModule,
+	%		AllModuleNames, CommandString)
 	%
-	% Replace all occurrences of `@' in Command with ModuleName,
-	% and replace occurrences of `%' in Command with AllModuleNames.
-	% This is used to implement the `--pre-link-command' and
-	% `--make-init-file-command' options.
-:- func substitute_user_command(string, module_name,
-		list(module_name)) = string.
+	% Create a command string which passes the source file names
+	% for AllModuleNames to CommandName, with MainModule given first.
+:- pred make_all_module_command(string, module_name,
+		list(module_name), string, io__state, io__state).
+:- mode make_all_module_command(in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -672,7 +671,7 @@ compile_java_file(ErrorStream, JavaFile, Succeeded) -->
 		},
 		% javac won't create the destination directory for
 		% class files, so we need to do it.
-		make_directory(DirName),
+		dir__make_directory(DirName, _),
 		% Set destination directory for class files.
 		{ DestDir = "-d " ++ DirName ++ " " }
 	;
@@ -757,12 +756,11 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded) -->
 		globals__io_lookup_maybe_string_option(extra_init_command,
 			MaybeInitFileCommand),
 		(
-			{ MaybeInitFileCommand = yes(InitFileCommand0) },
-			{ InitFileCommand = substitute_user_command(
-				InitFileCommand0, MainModuleName,
-				AllModules) },
-			invoke_shell_command(InitFileStream, verbose_commands,
-				InitFileCommand, Succeeded0)
+			{ MaybeInitFileCommand = yes(InitFileCommand) },
+			make_all_module_command(InitFileCommand,
+				MainModuleName, AllModules, CommandString),
+			invoke_system_command(InitFileStream, verbose_commands,
+				CommandString, Succeeded0)
 		;
 			{ MaybeInitFileCommand = no },
 			{ Succeeded0 = yes }
@@ -815,7 +813,7 @@ link_module_list(Modules, Succeeded) -->
 	( { Target = asm } ->
 	    % for --target asm, we generate everything into a single object file
 	    ( { Modules = [FirstModule | _] } ->
-		join_module_list([FirstModule], Obj, [], ObjectsList)
+		join_module_list([FirstModule], Obj, ObjectsList)
 	    ;
 		{ error("link_module_list: no modules") }
 	    ),
@@ -825,13 +823,13 @@ link_module_list(Modules, Succeeded) -->
 	    module_name_to_file_name(MainModuleName, LibExt,
 	    	yes, SplitLibFileName),
 	    { string__append(".dir/*", Obj, DirObj) },
-	    join_module_list(Modules, DirObj, [], ObjectList),
+	    join_module_list(Modules, DirObj, ObjectList),
 	    create_archive(OutputStream, SplitLibFileName,
 	    	ObjectList, MakeLibCmdOK),
 	    { ObjectsList = [SplitLibFileName] }
 	;
 	    { MakeLibCmdOK = yes },
-	    join_module_list(Modules, Obj, [], ObjectsList)
+	    join_module_list(Modules, Obj, ObjectsList)
 	),
 	( { MakeLibCmdOK = no } ->
     	    { Succeeded = no }
@@ -839,8 +837,8 @@ link_module_list(Modules, Succeeded) -->
     	    ( { TargetType = executable } ->
 		{ list__map(
 		    (pred(ModuleStr::in, ModuleName::out) is det :-
-			ModuleStrBase = dir__basename_det(ModuleStr),
-			file_name_to_module_name(ModuleStrBase, ModuleName)
+			file_name_to_module_name(dir__basename_det(ModuleStr),
+				ModuleName)
 		    ),
 		    Modules, ModuleNames) },
 		{ MustCompile = yes },
@@ -904,7 +902,7 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 		module_name_to_file_name(ThisModuleName, ".c", no,
 			CFileName)
 	    ), ModuleNames, CFileNameList),
-	{ join_string_list(CFileNameList, "", "", " ", CFileNames) },
+	{ join_quoted_string_list(CFileNameList, "", "", " ", CFileNames) },
 
 	globals__io_lookup_accumulating_option(init_file_directories,
 		InitFileDirsList),
@@ -963,9 +961,9 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	{ MkInitCmd = string__append_list(
 		[Mkinit,  " -g ", Grade, " ", TraceOpt, " ", ExtraInitsOpt,
 		" ", NoMainOpt, " ", AditiOpt, " ", RuntimeFlags,
-		" -o ", TmpInitCFileName, " ", InitFileDirs,
+		" -o ", quote_arg(TmpInitCFileName), " ", InitFileDirs,
 		" ", InitFileNames, " ", CFileNames]) },
-	invoke_shell_command(ErrorStream, verbose, MkInitCmd, MkInitOK0),
+	invoke_system_command(ErrorStream, verbose, MkInitCmd, MkInitOK0),
 	maybe_report_stats(Stats),
 	( { MkInitOK0 = yes } ->
 	    update_interface(InitCFileName, MkInitOK1),
@@ -1125,7 +1123,8 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 			mercury_standard_library_directory, MaybeStdLibDir),
 		(
 			{ MaybeStdLibDir = yes(StdLibDir) },
-			get_mercury_std_libs(StdLibDir, MercuryStdLibs)
+			get_mercury_std_libs(LinkTargetType,
+				StdLibDir, MercuryStdLibs)
 		;
 			{ MaybeStdLibDir = no },
 			{ MercuryStdLibs = "" }
@@ -1136,15 +1135,19 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 		%
 		get_system_libs(LinkTargetType, SystemLibs),
 
-		{ join_string_list(ObjectsList, "", "", " ", Objects) },
+		{ join_quoted_string_list(ObjectsList,
+				"", "", " ", Objects) },
 		globals__io_lookup_accumulating_option(LDFlagsOpt,
 				LDFlagsList),
 		{ join_string_list(LDFlagsList, "", "", " ", LDFlags) },
 		globals__io_lookup_accumulating_option(
 				link_library_directories,
 				LinkLibraryDirectoriesList),
-		{ join_quoted_string_list(LinkLibraryDirectoriesList, "-L", "",
-				" ", LinkLibraryDirectories) },
+		globals__io_lookup_string_option(linker_path_flag,
+				LinkerPathFlag),
+		{ join_quoted_string_list(LinkLibraryDirectoriesList,
+				LinkerPathFlag, "", " ",
+				LinkLibraryDirectories) },
 
 		%
 		% Set up the runtime library path.
@@ -1198,6 +1201,9 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 		list__map_foldl2(process_link_library(MercuryLibDirs),
 				LinkLibrariesList0, LinkLibrariesList,
 				yes, LibrariesSucceeded),	
+
+		globals__io_lookup_string_option(linker_opt_separator,
+				LinkOptSep),
 		(
 			{ LibrariesSucceeded = yes },
 			{ join_quoted_string_list(LinkLibrariesList,
@@ -1207,13 +1213,14 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 			% so it should come after Objects.
 			globals__io_lookup_string_option(CommandOpt, Command),
 			{ string__append_list(
-				[Command, " ", UndefOpt, " ", StripOpt,
-				" ", DebugOpts, " ", StaticOpts, " ",
+				[Command, " ",
+				StaticOpts, " ", StripOpt, " ", UndefOpt, " ",
 				ThreadOpts, " ", TraceOpts, " ",
-				LinkLibraryDirectories, " ", RpathOpts,
 				" -o ", OutputFileName, " ", Objects, " ",
-				LDFlags, " ", LinkLibraries, " ",
-				MercuryStdLibs, " ", SystemLibs],
+				LinkOptSep, " ", LinkLibraryDirectories, " ",
+				RpathOpts, " ", DebugOpts, " ", LDFlags, " ",
+				LinkLibraries, " ", MercuryStdLibs, " ",
+				SystemLibs],
 				LinkCmd) },
 
 			globals__io_lookup_bool_option(demangle, Demangle),
@@ -1225,7 +1232,7 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 				{ MaybeDemangleCmd = no }
 			),
 
-			invoke_shell_command(ErrorStream, verbose_commands,
+			invoke_system_command(ErrorStream, verbose_commands,
 				LinkCmd, MaybeDemangleCmd, LinkSucceeded)
 		;
 			{ LibrariesSucceeded = no },
@@ -1262,10 +1269,10 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 
 	% Find the standard Mercury libraries, and the system
 	% libraries needed by them.
-:- pred get_mercury_std_libs(dir_name::in, string::out,
-		io__state::di, io__state::uo) is det.
+:- pred get_mercury_std_libs(linked_target_type::in, dir_name::in,
+		string::out, io__state::di, io__state::uo) is det.
 
-get_mercury_std_libs(StdLibDir, StdLibs) -->
+get_mercury_std_libs(TargetType, StdLibDir, StdLibs) -->
 	globals__io_lookup_string_option(fullarch, FullArch),
 	globals__io_get_gc_method(GCMethod),
 	globals__io_lookup_string_option(library_extension, LibExt),
@@ -1294,14 +1301,14 @@ get_mercury_std_libs(StdLibDir, StdLibs) -->
 		;
 			GCGrade = GCGrade0
 		},
-		{ SharedGCLibs = "-l" ++ GCGrade },
-		{ StaticGCLibs =
-			StdLibDir/"lib"/FullArch/("lib" ++ GCGrade ++ LibExt) }
+		make_link_lib(TargetType, GCGrade, SharedGCLibs),
+		{ StaticGCLibs = quote_arg(StdLibDir/"lib"/FullArch/
+					("lib" ++ GCGrade ++ LibExt)) }
 	;
 		{ GCMethod = mps },
-		{ SharedGCLibs = "-lmps" },
-		{ StaticGCLibs =
-			StdLibDir/"lib"/FullArch/("libmps" ++ LibExt) }
+		make_link_lib(TargetType, "mps", SharedGCLibs),
+		{ StaticGCLibs = quote_arg(StdLibDir/"lib"/FullArch/
+					("libmps" ++ LibExt) ) }
 	;
 		{ GCMethod = accurate },
 		{ StaticGCLibs = "" },
@@ -1317,27 +1324,54 @@ get_mercury_std_libs(StdLibDir, StdLibs) -->
 		{ SharedTraceLibs = "" }
 	;
 		{ StaticTraceLibs =
-			StdLibDir/"lib"/GradeDir/FullArch/
-				("libmer_trace" ++ LibExt) ++
+			quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+				("libmer_trace" ++ LibExt)) ++
 			" " ++
-			StdLibDir/"lib"/GradeDir/FullArch/
-				("libmer_browser" ++ LibExt) },
-		{ SharedTraceLibs = "-lmer_trace -lmer_browser" }
+			quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+				("libmer_browser" ++ LibExt)) },
+		make_link_lib(TargetType, "mer_trace", TraceLib),
+		make_link_lib(TargetType, "mer_browser", BrowserLib),
+		{ SharedTraceLibs = string__join_list(" ",
+					[TraceLib, BrowserLib]) }
 	),
 
 	globals__io_lookup_string_option(mercury_linkage, MercuryLinkage),
-	{ MercuryLinkage = "static" ->
-	    StdLibs = string__join_list(" ",
+	( { MercuryLinkage = "static" } ->
+	    { StdLibs = string__join_list(" ",
 		[StaticTraceLibs,
-		StdLibDir/"lib"/GradeDir/FullArch/("libmer_std" ++ LibExt),
-		StdLibDir/"lib"/GradeDir/FullArch/("libmer_rt" ++ LibExt),
-		StaticGCLibs])
-	; MercuryLinkage = "shared" ->
-	    StdLibs = string__join_list(" ",
-		[SharedTraceLibs, "-lmer_std -lmer_rt", SharedGCLibs])
+		quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+			("libmer_std" ++ LibExt)),
+		quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+			("libmer_rt" ++ LibExt)),
+		StaticGCLibs]) }
+	; { MercuryLinkage = "shared" } ->
+	    make_link_lib(TargetType, "mer_std", StdLib),
+	    make_link_lib(TargetType, "mer_rt", RuntimeLib),
+	    { StdLibs = string__join_list(" ",
+		[SharedTraceLibs, StdLib, RuntimeLib, SharedGCLibs]) }
 	;
-		error("unknown linkage " ++ MercuryLinkage)
-	}.
+	    { error("unknown linkage " ++ MercuryLinkage) }
+	).
+
+:- pred make_link_lib(linked_target_type::in, string::in, string::out,
+		io__state::di, io__state::uo) is det.
+
+make_link_lib(TargetType, LibName, LinkOpt) -->
+	{
+		TargetType = executable,
+		LinkLibFlag = linker_link_lib_flag,
+		LinkLibSuffix = linker_link_lib_suffix
+	;
+		TargetType = shared_library,
+		LinkLibFlag = shlib_linker_link_lib_flag,
+		LinkLibSuffix = shlib_linker_link_lib_suffix
+	;
+		TargetType = static_library,
+		error("make_link_lib: static_library")
+	},
+	globals__io_lookup_string_option(LinkLibFlag, LinkLibOpt),
+	globals__io_lookup_string_option(LinkLibSuffix, Suffix),
+	{ LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix) }.
 
 :- pred get_system_libs(linked_target_type::in, string::out,
 		io__state::di, io__state::uo) is det.
@@ -1445,7 +1479,7 @@ process_link_library(MercuryLibDirs, LibName, LinkerOpt, !Succeeded) -->
 		bool, io__state, io__state).
 :- mode create_archive(in, in, in, out, di, uo) is det.
 
-create_archive(ErrorStream, LibFileName, ObjectList, MakeLibCmdOK) -->
+create_archive(ErrorStream, LibFileName, ObjectList, Succeeded) -->
 	globals__io_lookup_string_option(create_archive_command, ArCmd),
 	globals__io_lookup_accumulating_option(
 		create_archive_command_flags, ArFlagsList),
@@ -1453,13 +1487,20 @@ create_archive(ErrorStream, LibFileName, ObjectList, MakeLibCmdOK) -->
 	globals__io_lookup_string_option(
 		create_archive_command_output_flag, ArOutputFlag),
 	globals__io_lookup_string_option(ranlib_command, RanLib),
-	{ join_string_list(ObjectList, "", "", " ", Objects) },
+	{ join_quoted_string_list(ObjectList, "", "", " ", Objects) },
 	{ MakeLibCmd = string__append_list([
 		ArCmd, " ", ArFlags, " ", ArOutputFlag, " ",
-		LibFileName, " ", Objects,  
-		" && ", RanLib, " ", LibFileName]) },
+		LibFileName, " ", Objects]) },
 	invoke_system_command(ErrorStream, verbose_commands,
-		MakeLibCmd, MakeLibCmdOK).
+		MakeLibCmd, MakeLibCmdSucceeded),
+	( { RanLib = "" ; MakeLibCmdSucceeded = no } ->
+		{ Succeeded = MakeLibCmdSucceeded }
+	;
+		{ RanLibCmd =
+			string__append_list([RanLib, " ", LibFileName]) },
+		invoke_system_command(ErrorStream, verbose_commands,
+			RanLibCmd, Succeeded)
+	).
 
 get_object_code_type(FileType, ObjectCodeType) -->
 	globals__io_lookup_string_option(pic_object_file_extension, PicObjExt),
@@ -1572,27 +1613,23 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
 	join_string_list(map(quote_arg, Strings),
 		Prefix, Suffix, Separator, Result).
 
-	% join_module_list(ModuleNames, Extension, Terminator, Result)
+	% join_module_list(ModuleNames, Extension, Result)
 	%
 	% The list of strings `Result' is computed from the list of strings
 	% `ModuleNames', by removing any directory paths, and
 	% converting the strings to file names and then back,
 	% adding the specified Extension.  (This conversion ensures
 	% that we follow the usual file naming conventions.)
-	% Each file name is separated by a space from the next one, 
-	% and the result is followed by the list of strings `Terminator'.
 
-:- pred join_module_list(list(string), string, list(string), list(string),
+:- pred join_module_list(list(string), string, list(string),
 			io__state, io__state).
-:- mode join_module_list(in, in, in, out, di, uo) is det.
+:- mode join_module_list(in, in, out, di, uo) is det.
 
-join_module_list([], _Extension, Terminator, Terminator) --> [].
-join_module_list([Module | Modules], Extension, Terminator,
-			[FileName, " " | Rest]) -->
-	{ BaseName = dir__basename_det(Module) },
-	{ file_name_to_module_name(BaseName, ModuleName) },
+join_module_list([], _Extension, []) --> [].
+join_module_list([Module | Modules], Extension, [FileName | Rest]) -->
+	{ file_name_to_module_name(dir__basename_det(Module), ModuleName) },
 	module_name_to_file_name(ModuleName, Extension, no, FileName),
-	join_module_list(Modules, Extension, Terminator, Rest).
+	join_module_list(Modules, Extension, Rest).
 
 %-----------------------------------------------------------------------------%
 
@@ -1677,46 +1714,16 @@ remove_split_c_output_files(ModuleName, ThisChunk, NumChunks) -->
 
 %-----------------------------------------------------------------------------%
 
-substitute_user_command(Command0, MainModule, AllModules) = Command :-
-	( string__contains_char(Command0, Char), (Char = ('@') ; Char = '%') ->
-		prog_out__sym_name_to_string(MainModule, ".", MainModuleStr),
-		AllModulesStrings = list__map(
-		    (func(Module) = ModuleStr :-
-			prog_out__sym_name_to_string(Module, ".", ModuleStr)
-		    ), AllModules),
-		join_string_list(AllModulesStrings,
-			"", "", " ", AllModulesStr),
-		Command = string__from_rev_char_list(substitute_user_command_2(
-			string__to_char_list(Command0),
-			reverse(string__to_char_list(MainModuleStr)),
-			reverse(string__to_char_list(AllModulesStr)),
-			[]))
-	;
-		Command = Command0
-	).
-
-:- func substitute_user_command_2(list(char), list(char),
-		list(char), list(char)) = list(char).
-
-substitute_user_command_2([], _, _, RevChars) = RevChars.
-substitute_user_command_2([Char | Chars], RevMainModule,
-		RevAllModules, RevChars0) =
-	(
-		( Char = ('@'), Subst = RevMainModule
-		; Char = '%', Subst = RevAllModules
-		)
-	->
-		( Chars = [Char | Chars2] ->
-			substitute_user_command_2(Chars2, RevMainModule,
-				RevAllModules, [Char | RevChars0])
-		;
-			substitute_user_command_2(Chars, RevMainModule,
-				RevAllModules, Subst ++ RevChars0)
-		)
-	;
-		substitute_user_command_2(Chars, RevMainModule,
-			RevAllModules, [Char | RevChars0])
-	).
+make_all_module_command(Command0, MainModule, AllModules, Command) -->
+	% Pass the main module first.
+	list__map_foldl(
+		(pred(Module::in, FileName::out, di, uo) is det -->
+			module_name_to_file_name(Module, ".m", no, FileName)
+		),
+		[MainModule | list__delete_all(AllModules, MainModule)],
+		ModuleNameStrings),
+	{ Command = string__join_list(" ",
+		list__map(quote_arg, [Command0 | ModuleNameStrings])) }.
 
 %-----------------------------------------------------------------------------%
 
