@@ -29,7 +29,9 @@ CXX=g++ -ansi
 AS=../scripts/mgnuc --grade $(GRADE) -x assembler-with-cpp -c
 
 # CFLAGS= -O -DALL_INTERIOR_POINTERS -DNO_SIGNALS -DSILENT
-CFLAGS= -DNO_SIGNALS -DSILENT
+CFLAGS= -DNO_SIGNALS -DSILENT $(EXTRA_CFLAGS)
+# If profiling is enabled, -DNO_SIGNALS should not be used.
+
 # Setjmp_test may yield overly optimistic results when compiled
 # without optimization.
 # -DSILENT disables statistics printing, and improves performance.
