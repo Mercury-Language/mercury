@@ -37,6 +37,8 @@ static	void	put_line_back(char *line);
 int
 main(int argc, char **argv)
 {
+	char	*filename;
+	char	*category;	/* mdb help category */
 	FILE	*infp;
 	char	*line;
 	char	command[MAXLINELEN];
@@ -47,12 +49,15 @@ main(int argc, char **argv)
 	bool	next_concept;
 
 	if (argc != 3) {
-		printf("usage: info_to_mdb section_name section_info_file\n");
+		fprintf(stderr,
+			"usage: info_to_mdb category_name section_info_file\n");
 		exit(EXIT_FAILURE);
 	}
+	category = argv[1];
+	filename = argv[2];
 
-	if ((infp = fopen(argv[2], "r")) == NULL) {
-		printf("cannot read %s\n", argv[2]);
+	if ((infp = fopen(filename, "r")) == NULL) {
+		fprintf(stderr, "cannot read `%s'\n", filename);
 		exit(EXIT_FAILURE);
 	}
 
@@ -81,7 +86,7 @@ main(int argc, char **argv)
 		}
 
 		slot += 100;
-		printf("document %s %d ", argv[1], slot);
+		printf("document %s %d ", category, slot);
 		if (is_concept) {
 			for (i = 0; line[i] != '\n'; i++) {
 				command[i] = concept_char(line[i]);
@@ -227,7 +232,7 @@ static void
 put_line_back(char *line)
 {
 	if (putback_line != NULL) {
-		printf("trying to put back more than one line\n");
+		fprintf(stderr, "trying to put back more than one line\n");
 		exit(EXIT_FAILURE);
 	}
 

@@ -18,6 +18,10 @@ debug_cmd_path="debug debugger"
 for section in interactive forward backward browsing breakpoint \
 	parameter help exp developer misc 
 do
+	case $section in
+		interactive)	category=queries ;;
+		*)		category=$section ;;
+	esac
 	info -f ./mercury_user_guide.info -o $tmp $debug_cmd_path $section
-	../util/info_to_mdb $section $tmp >> mdb_doc
+	../util/info_to_mdb $category $tmp >> mdb_doc
 done

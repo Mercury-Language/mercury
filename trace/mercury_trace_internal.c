@@ -1122,7 +1122,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				}
 			} else {
 				fprintf(MR_mdb_out,
-					"%s is not a valid command.\n",
+					"`%s' is not a valid command.\n",
 					words[2]);
 			}
 		}
@@ -2455,9 +2455,9 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	** experimental commands.
 	*/
 
-	{ "interactive", "query" },
-	{ "interactive", "cc_query" },
-	{ "interactive", "io_query" },
+	{ "queries", "query" },
+	{ "queries", "cc_query" },
+	{ "queries", "io_query" },
 	{ "forward", "step" },
 	{ "forward", "goto" },
 	{ "forward", "finish" },
