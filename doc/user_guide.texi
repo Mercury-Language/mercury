@@ -4374,7 +4374,7 @@ Output detailed debugging traces of the optimization process.
 @sp 1
 @item --debug-opt-pred-id @var{predid}
 @findex --debug-opt-pred-id
-With --debug-opt, restrict the debugging traces
+With @samp{--debug-opt}, restrict the debugging traces
 to the optimization of the predicate or function with the specified pred id.
 
 @sp 1
