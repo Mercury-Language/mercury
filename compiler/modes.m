@@ -1607,13 +1607,14 @@ abstractly_unify_inst_2(Live, InstA, InstB, ModuleInfo, Expansions, Inst) :-
 
 	% Abstractly unify two expanded insts.
 	% The is_live parameter is `live' iff *both* insts are live.
-	% XXX handle `not_reached' insts.
 
 :- pred abstractly_unify_inst_3(is_live, inst, inst, module_info, expansions,
 				inst).
 :- mode abstractly_unify_inst_3(in, in, in, in, in, out) is semidet.
 
 :- abstractly_unify_inst_3(A, B, C, _, _, _) when A and B and C.
+
+abstractly_unify_inst_3(live, not_reached, _,		_, _, not_reached).
 
 abstractly_unify_inst_3(live, free,	free,		_, _, _) :- fail.
 abstractly_unify_inst_3(live, free,	bound(List),	M, _, bound(List)) :-
@@ -1642,6 +1643,8 @@ abstractly_unify_inst_3(live, abstract_inst(Name, ArgsA),
 			abstract_inst(Name, Args)) :-
 	abstractly_unify_inst_list(ArgsA, ArgsB, live, ModuleInfo, Expansions,
 		Args).
+
+abstractly_unify_inst_3(dead, not_reached, _, _, _, not_reached).
 
 abstractly_unify_inst_3(dead, free, Inst, _, _, Inst).
 	
@@ -1715,6 +1718,7 @@ abstractly_unify_inst_functor(Live, InstA, Name, ArgInsts, ArgLives,
 					list(is_live), module_info, inst).
 :- mode abstractly_unify_inst_functor_2(in, in, in, in, in, in, out) is semidet.
 
+abstractly_unify_inst_functor_2(live, not_reached, _, _, _, _, not_reached).
 abstractly_unify_inst_functor_2(live, free, Name, Args, ArgLives, ModuleInfo,
 			bound([functor(Name, Args)])) :-
 	inst_list_is_ground_or_dead(Args, ArgLives, ModuleInfo).
@@ -1727,6 +1731,7 @@ abstractly_unify_inst_functor_2(live, ground, _Name, _Args, _, _, ground).
 abstractly_unify_inst_functor_2(live, abstract_inst(_,_), _, _, _, _, _) :-
 	fail.
 
+abstractly_unify_inst_functor_2(dead, not_reached, _, _, _, _, not_reached).
 abstractly_unify_inst_functor_2(dead, free, Name, Args, _ArgLives, _ModuleInfo,
 			bound([functor(Name, Args)])).
 abstractly_unify_inst_functor_2(dead, bound(ListX), Name, Args, _ArgLives, M,
