@@ -1,6 +1,6 @@
 
 On Irix 5, it is not possible to use both gcc's non-local gotos and
-shared libraries.  The Mercury auto-configuration script will usually
+position independant code.  The Mercury auto-configuration script will usually
 resolve this problem by disabling the use of gcc's non-local gotos.
 That works fine, but the resulting `reg.gc' grade compiler is
 considerably less efficient that the `asm_fast.gc' grade compiler that
@@ -21,14 +21,7 @@ and `scripts/mgnuc.in'.]
 Once you have done that, you can reinstall Mercury;
 `configure' should detect that using gcc labels now works. 
 (If it doesn't, examine config.log to work out what went wrong.) 
-`configure' will also disable shared libraries, so that
-the installation process doesn't attempt to build shared
-versions of the `asm_fast.gc' grade libraries (and others).
-However, the linker will still pick up the shared libraries
-for `reg.gc' and the other grades installed initially
-(before creating a nonshared libgcc.a).
-The default grade will be set to `reg.gc', since shared libraries
-give you small executables and short link times.  But for
-large programs, you should set GRADE=asm_fast.gc in your Mmake file
-for considerably improved performance.
+
+Note that Mercury does not yet support shared libraries for IRIX 5, due to
+problems with the conservative garbage collector.
 
