@@ -227,11 +227,12 @@ export MMAKE_USE_SUBDIRS
 
 #-----------------------------------------------------------------------------#
 
-# on hg, the file system we're using does not support links
-case `hostname` in
-	hg*)	LN="cp -r"; LN_S="cp -r" ;;
-	*)	LN="ln"; LN_S="ln -s" ;;
-esac
+LN="ln"
+LN_S="ln -s"
+
+# uncomment this code if the file system doesn't support links
+### LN="cp -r"
+### LN_S="cp -r"
 
 #-----------------------------------------------------------------------------#
 
@@ -429,8 +430,8 @@ then
 		exit 1
 	fi
 
-	if (cd stage2 && $MMAKE $mmake_opts depend_library depend_browser \
-		depend_compiler depend_profiler)
+	if (cd stage2 && $MMAKE $mmake_opts dep_library dep_browser \
+		dep_compiler dep_profiler)
 	then
 		echo "building of stage 2 dependencies successful"
 	else
@@ -582,8 +583,8 @@ then
 		cp /dev/null "$type_stats"
 	fi
 
-	if (cd stage3 && $MMAKE $mmake_opts depend_library depend_browser \
-		depend_compiler)
+	if (cd stage3 && $MMAKE $mmake_opts dep_library dep_browser \
+		dep_compiler)
 	then
 		echo "building of stage 3 dependencies successful"
 	else
@@ -731,11 +732,13 @@ then
 	export MERCURY_LIBS
 
 	MERCURY_ALL_C_INCL_DIRS="-I$root/${stage2_insert}trace
+		-I$root/${stage2_insert}library
 		-I$root/${stage2_insert}runtime
 		-I$root/${stage2_insert}boehm_gc
 		-I$root/${stage2_insert}boehm_gc/include"
 	export MERCURY_ALL_C_INCL_DIRS
 	MERCURY_ALL_MC_C_INCL_DIRS="--c-include-directory $root/${stage2_insert}trace
+		--c-include-directory $root/${stage2_insert}library
 		--c-include-directory $root/${stage2_insert}runtime
 		--c-include-directory $root/${stage2_insert}boehm_gc
 		--c-include-directory $root/${stage2_insert}boehm_gc/include"
