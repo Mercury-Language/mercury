@@ -18,17 +18,20 @@
 :- mode in2 :: in.
 
 sol(Generator, List) :-
+	Test = ((pred) is semidet),
+	TestFunc = ((func) = 1),
 	Cons = lambda([Elem::in, L0::in, L::out] is det, (
 			cons(Elem, L0, L)
 		)),
-	t(Generator, Cons, [], List).
+	t(Test, TestFunc, Generator, Cons, [], List).
 
 :- pred cons(T::in, list(T)::in, list(T)::out) is det.
 cons(H, T, [H|T]).
 
-:- pred t(pred(T), pred(T,T2,T2), T2, T2).
-:- mode t(pred(out) is det, pred(in,in,out) is det, in2, out) is det.
+:- pred t((pred), ((func) = int), pred(T), pred(T,T2,T2), T2, T2).
+:- mode t((pred) is semidet, ((func) = out is det),
+		pred(out) is det, pred(in,in,out) is det, in2, out) is det.
 
-t(_, _, A, A).
+t(_, _, _, _, A, A).
 
 %-----------------------------------------------------------------------------%

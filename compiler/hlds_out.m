@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1933,10 +1933,15 @@ hlds_out__write_unify_rhs_3(
 		{ PredOrFunc = predicate },
 		io__write_string("("),
 		io__write_string(EvalStr),
-		io__write_string("pred("),
-		hlds_out__write_var_modes(Vars, Modes, VarSet, InstVarSet,
-			AppendVarnums),
-		io__write_string(") is "),
+		( { Vars = [] } ->
+			io__write_string("(pred)")
+		;
+			io__write_string("pred("),
+			hlds_out__write_var_modes(Vars, Modes, VarSet,
+				InstVarSet, AppendVarnums),
+			io__write_string(")")
+		),
+		io__write_string(" is "),
 		mercury_output_det(Det),
 		io__write_string(" :-\n"),
 		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
@@ -1949,10 +1954,15 @@ hlds_out__write_unify_rhs_3(
 		{ pred_args_to_func_args(Vars, ArgVars, RetVar) },
 		io__write_string("("),
 		io__write_string(EvalStr),
-		io__write_string("func("),
-		hlds_out__write_var_modes(ArgVars, ArgModes, VarSet,
-			InstVarSet, AppendVarnums),
-		io__write_string(") = ("),
+		( { ArgVars = [] } ->
+			io__write_string("(func)")
+		;
+			io__write_string("func("),
+			hlds_out__write_var_modes(ArgVars, ArgModes, VarSet,
+				InstVarSet, AppendVarnums),
+			io__write_string(")")
+		),
+		io__write_string(" = ("),
 		hlds_out__write_var_mode(RetVar, RetMode, VarSet,
 			InstVarSet, AppendVarnums),
 		io__write_string(") is "),
