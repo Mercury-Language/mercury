@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: dict.h,v 1.1 1997-05-28 05:58:59 aet Exp $
+** $Id: dict.h,v 1.2 1997-05-29 09:52:58 aet Exp $
 */
 
 
@@ -20,7 +20,7 @@
 **	are never pretty.
 **
 **	Given how slow the current implementation is, you can be sure
-**	it will change.
+**	it will change. 8^)
 **
 **	Note: The "_p" -suffix- denotes a pointer, not a private type or data.
 */
@@ -49,6 +49,12 @@ Dict
 dict_new(KeyComparison key_cmp);
 
 /*
+** Return TRUE if a dictionary is empty, false otherwise.
+*/
+MB_Bool
+dict_is_empty(Dict dict);
+
+/*
 ** Insert key-value pair into dictionary.
 */
 void
@@ -74,9 +80,22 @@ KeyComparison
 dict_key_compare(Dict dict);
 
 /*
-** XXX: Need another function to allow us to iterate through the
-** contents of a dictionary.
+** Return the `first' key in the dictionary. In fact, this simply
+** returns -any- key in the dictionary. This allows us to iterate
+** over all elements in the dictionary. Procedure returns FALSE
+** if there is no first key (dict is empty) and TRUE otherwise.
+** The first key itself is returned through first_key_p.
 */
+MB_Bool
+dict_first_key(Dict dict, void **first_key_p);
+
+/*
+** In the given dictionary, returns the key following this_key.
+** The next key is returned through next_key_p. Returns FALSE if
+** there is no next key or this_key doesn't exist, TRUE otherwise.
+*/
+MB_Bool
+dict_next_key(Dict dict, void *this_key, void **next_key_p);
 
 #endif	/* MB_DICT_H */
 
