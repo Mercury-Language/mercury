@@ -6,9 +6,10 @@
 % File: debugger_interface.m
 % Authors: fjh, jahier
 % Purpose:
-%	This module provide support routines needed by runtime/mercury_trace.c
-%	for interfacing to an external (in a different process) debugger,
-%	in particular an Opium-style debugger.
+%	This module provide support routines needed by
+%	runtime/mercury_trace_external.c for interfacing to an external
+%	(in a different process) debugger, in particular an Opium-style
+%	debugger.
 %
 % This module corresponds to what is called the "Query Handler" in Opium.
 
@@ -39,15 +40,20 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 
 % The stuff defined below is similar to types goal_path and trace_port
 % defined in modules compiler/hlds_goal.m and compiler/trace.m.
+% This enumeration must be EXACTLY the same as the MR_trace_port enum in
+% runtime/mercury_trace.h, and in the same order, since the code assumes
+% the representation is the same.
 
-:- type trace_port_type 
+:- type trace_port_type
 	--->	call
 	;	exit
 	;	fail
 	;	ite_then
 	;	ite_else
-	;	switch
 	;	disj
+	;	switch
+	;	nondet_pragma_first
+	;	nondet_pragma_later
 	.
 
 :- type goal_path_string == string.
