@@ -818,12 +818,8 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 		string__append_list(["branches of ", GoalType, 
 			" disagree on liveness\nFirst: ",
 			FirstNames, "\nRest: ", RestNames], Msg),
-		% error(Msg)
-		dump(Msg) % XXX temporary debugging hack
+		error(Msg)
 	).
-
-:- pred dump(string::in) is det.
-:- pragma c_code(dump(S::in), "puts(S);").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
