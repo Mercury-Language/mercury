@@ -262,7 +262,7 @@ esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
-	hg|ender|roy|venus|earth|mars|ceres)
+	hg|ender|roy|venus|earth|ceres)
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 	*)
