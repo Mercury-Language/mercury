@@ -252,12 +252,15 @@ GC_bool tmp;
     n_root_sets++;
 }
 
+static GC_bool roots_were_cleared = FALSE;
+
 void GC_clear_roots GC_PROTO((void))
 {
     DCL_LOCK_STATE;
     
     DISABLE_SIGNALS();
     LOCK();
+    roots_were_cleared = TRUE;
     n_root_sets = 0;
     GC_root_size = 0;
 #   if !defined(MSWIN32) && !defined(MSWINCE)
@@ -468,8 +471,9 @@ ptr_t cold_gc_frame;
 	          cold_gc_bs_pointer = bsp - 2048;
 		  if (cold_gc_bs_pointer < BACKING_STORE_BASE) {
 		    cold_gc_bs_pointer = BACKING_STORE_BASE;
+		  } else {
+		    GC_push_all_stack(BACKING_STORE_BASE, cold_gc_bs_pointer);
 		  }
-		  GC_push_all(BACKING_STORE_BASE, cold_gc_bs_pointer);
 		} else {
 		  cold_gc_bs_pointer = BACKING_STORE_BASE;
 		}
@@ -484,6 +488,23 @@ ptr_t cold_gc_frame;
 #       endif
 #   endif /* !THREADS */
 }
+
+/*
+ * Push GC internal roots.  Only called if there is some reason to believe
+ * these would not otherwise get registered.
+ */
+void GC_push_gc_structures GC_PROTO((void))
+{
+    GC_push_finalizer_structures();
+    GC_push_stubborn_structures();
+#   if defined(THREADS)
+      GC_push_thread_structures();
+#   endif
+}
+
+#ifdef THREAD_LOCAL_ALLOC
+  void GC_mark_thread_local_free_lists();
+#endif
 
 /*
  * Call the mark routines (GC_tl_push for a single pointer, GC_push_conditional
@@ -501,16 +522,6 @@ ptr_t cold_gc_frame;
     register int i;
 
     /*
-     * push registers - i.e., call GC_push_one(r) for each
-     * register contents r.
-     */
-#   ifdef USE_GENERIC_PUSH_REGS
-	GC_generic_push_regs(cold_gc_frame);
-#   else
-        GC_push_regs(); /* usually defined in machine_dep.c */
-#   endif
-        
-    /*
      * Next push static data.  This must happen early on, since it's
      * not robust against mark stack overflow.
      */
@@ -519,7 +530,10 @@ ptr_t cold_gc_frame;
 	   || defined(PCR)) && !defined(SRC_M3)
          GC_remove_tmp_roots();
          if (!GC_no_dls) GC_register_dynamic_libraries();
+#      else
+	 GC_no_dls = TRUE;
 #      endif
+
      /* Mark everything in static data areas                             */
        for (i = 0; i < n_root_sets; i++) {
          GC_push_conditional_with_exclusions(
@@ -527,20 +541,43 @@ ptr_t cold_gc_frame;
 			     GC_static_roots[i].r_end, all);
        }
 
+     /* Mark from GC internal roots if those might otherwise have	*/
+     /* been excluded.							*/
+       if (GC_no_dls || roots_were_cleared) {
+	   GC_push_gc_structures();
+       }
+
+     /* Mark thread local free lists, even if their mark 	*/
+     /* descriptor excludes the link field.			*/
+#      ifdef THREAD_LOCAL_ALLOC
+         GC_mark_thread_local_free_lists();
+#      endif
+
     /*
-     * Now traverse stacks.
+     * Now traverse stacks, and mark from register contents.
+     * These must be done last, since they can legitimately overflow
+     * the mark stack.
      */
-#   if !defined(USE_GENERIC_PUSH_REGS)
+#   ifdef USE_GENERIC_PUSH_REGS
+	GC_generic_push_regs(cold_gc_frame);
+	/* Also pushes stack, so that we catch callee-save registers	*/
+	/* saved inside the GC_push_regs frame.				*/
+#   else
+       /*
+        * push registers - i.e., call GC_push_one(r) for each
+        * register contents r.
+        */
+        GC_push_regs(); /* usually defined in machine_dep.c */
 	GC_push_current_stack(cold_gc_frame);
-	/* IN the threads case, this only pushes collector frames.      */
-	/* In the USE_GENERIC_PUSH_REGS case, this is done inside	*/
-	/* GC_push_regs, so that we catch callee-save registers saved	*/
-	/* inside the GC_push_regs frame.				*/
-	/* In the case of linux threads on Ia64, the hot section of	*/
+	/* In the threads case, this only pushes collector frames.      */
+	/* In the case of linux threads on IA64, the hot section of	*/
 	/* the main stack is marked here, but the register stack	*/
 	/* backing store is handled in the threads-specific code.	*/
 #   endif
     if (GC_push_other_roots != 0) (*GC_push_other_roots)();
     	/* In the threads case, this also pushes thread stacks.	*/
+        /* Note that without interior pointer recognition lots	*/
+    	/* of stuff may have been pushed already, and this	*/
+    	/* should be careful about mark stack overflows.	*/
 }
 

@@ -26,11 +26,13 @@ GC_API void GC_register_finalizer_no_order
 /* Check whether object with base pointer p has debugging info	*/ 
 /* p is assumed to point to a legitimate object in our part	*/
 /* of the heap.							*/
+/* This excludes the check as to whether the back pointer is 	*/
+/* odd, which is added by the GC_HAS_DEBUG_INFO macro.		*/
 /* Note that if DBG_HDRS_ALL is set, uncollectable objects	*/
 /* on free lists may not have debug information set.  Thus it's	*/
 /* not always safe to return TRUE, even if the client does	*/
 /* its part.							*/
-GC_bool GC_has_debug_info(p)
+GC_bool GC_has_other_debug_info(p)
 ptr_t p;
 {
     register oh * ohdr = (oh *)p;
@@ -38,7 +40,7 @@ ptr_t p;
     register word sz = GC_size((ptr_t) ohdr);
     
     if (HBLKPTR((ptr_t)ohdr) != HBLKPTR((ptr_t)body)
-        || sz < sizeof (oh)) {
+        || sz < DEBUG_BYTES + EXTRA_BYTES) {
         return(FALSE);
     }
     if (ohdr -> oh_sz == sz) {
@@ -72,8 +74,8 @@ ptr_t p;
   /* be a pointer to the interior of an object.				   */
   void GC_store_back_pointer(ptr_t source, ptr_t dest)
   {
-    if (GC_has_debug_info(dest)) {
-      ((oh *)dest) -> oh_back_ptr = (ptr_t)HIDE_POINTER(source);
+    if (GC_HAS_DEBUG_INFO(dest)) {
+      ((oh *)dest) -> oh_back_ptr = HIDE_BACK_PTR(source);
     }
   }
 
@@ -92,19 +94,34 @@ ptr_t p;
     oh * hdr = (oh *)GC_base(dest);
     ptr_t bp;
     ptr_t bp_base;
-    if (!GC_has_debug_info((ptr_t) hdr)) return GC_NO_SPACE;
-    bp = hdr -> oh_back_ptr;
+    if (!GC_HAS_DEBUG_INFO((ptr_t) hdr)) return GC_NO_SPACE;
+    bp = REVEAL_POINTER(hdr -> oh_back_ptr);
     if (MARKED_FOR_FINALIZATION == bp) return GC_FINALIZER_REFD;
     if (MARKED_FROM_REGISTER == bp) return GC_REFD_FROM_REG;
-    if (0 == bp) return GC_UNREFERENCED;
-    bp = REVEAL_POINTER(bp);
+    if (NOT_MARKED == bp) return GC_UNREFERENCED;
+#   if ALIGNMENT == 1
+      /* Heuristically try to fix off by 1 errors we introduced by 	*/
+      /* insisting on even addresses.					*/
+      {
+	ptr_t alternate_ptr = bp + 1;
+	ptr_t target = *(ptr_t *)bp;
+	ptr_t alternate_target = *(ptr_t *)alternate_ptr;
+
+	if (alternate_target >= GC_least_plausible_heap_addr
+	    && alternate_target <= GC_greatest_plausible_heap_addr
+	    && (target < GC_least_plausible_heap_addr
+		|| target > GC_greatest_plausible_heap_addr)) {
+	    bp = alternate_ptr;
+	}
+      }
+#   endif
     bp_base = GC_base(bp);
     if (0 == bp_base) {
       *base_p = bp;
       *offset_p = 0;
       return GC_REFD_FROM_ROOT;
     } else {
-      if (GC_has_debug_info(bp_base)) bp_base += sizeof(oh);
+      if (GC_HAS_DEBUG_INFO(bp_base)) bp_base += sizeof(oh);
       *base_p = bp_base;
       *offset_p = bp - bp_base;
       return GC_REFD_FROM_HEAP;
@@ -216,7 +233,7 @@ ptr_t p;
 ptr_t GC_store_debug_info(p, sz, string, integer)
 register ptr_t p;	/* base pointer */
 word sz; 	/* bytes */
-char * string;
+GC_CONST char * string;
 word integer;
 {
     register word * result = (word *)((oh *)p + 1);
@@ -227,7 +244,10 @@ word integer;
     /* inconsistent while we're in the handler.				*/
     LOCK();
 #   ifdef KEEP_BACK_PTRS
-      ((oh *)p) -> oh_back_ptr = 0;
+      ((oh *)p) -> oh_back_ptr = HIDE_BACK_PTR(NOT_MARKED);
+#   endif
+#   ifdef MAKE_BACK_GRAPH
+      ((oh *)p) -> oh_bg_ptr = HIDE_BACK_PTR((ptr_t)0);
 #   endif
     ((oh *)p) -> oh_string = string;
     ((oh *)p) -> oh_int = integer;
@@ -235,7 +255,7 @@ word integer;
       ((oh *)p) -> oh_sz = sz;
       ((oh *)p) -> oh_sf = START_FLAG ^ (word)result;
       ((word *)p)[BYTES_TO_WORDS(GC_size(p))-1] =
-         result[ROUNDED_UP_WORDS(sz)] = END_FLAG ^ (word)result;
+         result[SIMPLE_ROUNDED_UP_WORDS(sz)] = END_FLAG ^ (word)result;
 #   endif
     UNLOCK();
     return((ptr_t)result);
@@ -252,11 +272,14 @@ word integer;
 {
     register word * result = (word *)((oh *)p + 1);
     
-    /* There is some argument that we should dissble signals here.	*/
+    /* There is some argument that we should disable signals here.	*/
     /* But that's expensive.  And this way things should only appear	*/
     /* inconsistent while we're in the handler.				*/
 #   ifdef KEEP_BACK_PTRS
-      ((oh *)p) -> oh_back_ptr = 0;
+      ((oh *)p) -> oh_back_ptr = HIDE_BACK_PTR(NOT_MARKED);
+#   endif
+#   ifdef MAKE_BACK_GRAPH
+      ((oh *)p) -> oh_bg_ptr = HIDE_BACK_PTR((ptr_t)0);
 #   endif
     ((oh *)p) -> oh_string = string;
     ((oh *)p) -> oh_int = integer;
@@ -264,7 +287,7 @@ word integer;
       ((oh *)p) -> oh_sz = sz;
       ((oh *)p) -> oh_sf = START_FLAG ^ (word)result;
       ((word *)p)[BYTES_TO_WORDS(GC_size(p))-1] =
-         result[ROUNDED_UP_WORDS(sz)] = END_FLAG ^ (word)result;
+         result[SIMPLE_ROUNDED_UP_WORDS(sz)] = END_FLAG ^ (word)result;
 #   endif
     return((ptr_t)result);
 }
@@ -288,9 +311,9 @@ register oh * ohdr;
     if (((word *)ohdr)[BYTES_TO_WORDS(gc_sz)-1] != (END_FLAG ^ (word)body)) {
         return((ptr_t)((word *)ohdr + BYTES_TO_WORDS(gc_sz)-1));
     }
-    if (((word *)body)[ROUNDED_UP_WORDS(ohdr -> oh_sz)]
+    if (((word *)body)[SIMPLE_ROUNDED_UP_WORDS(ohdr -> oh_sz)]
         != (END_FLAG ^ (word)body)) {
-        return((ptr_t)((word *)body + ROUNDED_UP_WORDS(ohdr -> oh_sz)));
+        return((ptr_t)((word *)body + SIMPLE_ROUNDED_UP_WORDS(ohdr -> oh_sz)));
     }
     return(0);
 }
@@ -301,10 +324,11 @@ ptr_t p;
 {
     register oh * ohdr = (oh *)GC_base(p);
     
+    GC_ASSERT(!I_HOLD_LOCK());
     GC_err_printf1("0x%lx (", ((unsigned long)ohdr + sizeof(oh)));
     GC_err_puts(ohdr -> oh_string);
 #   ifdef SHORT_DBG_HDRS
-      GC_err_printf1(":%ld, sz=%ld)\n", (unsigned long)(ohdr -> oh_int));
+      GC_err_printf1(":%ld)\n", (unsigned long)(ohdr -> oh_int));
 #   else
       GC_err_printf2(":%ld, sz=%ld)\n", (unsigned long)(ohdr -> oh_int),
           			        (unsigned long)(ohdr -> oh_sz));
@@ -319,7 +343,8 @@ ptr_t p;
     ptr_t p;
 # endif
 {
-    if (GC_has_debug_info(p)) {
+    GC_ASSERT(!I_HOLD_LOCK());
+    if (GC_HAS_DEBUG_INFO(p)) {
 	GC_print_obj(p);
     } else {
 	GC_default_print_heap_obj_proc(p);
@@ -332,6 +357,7 @@ ptr_t p, clobbered_addr;
 {
     register oh * ohdr = (oh *)GC_base(p);
     
+    GC_ASSERT(!I_HOLD_LOCK());
     GC_err_printf2("0x%lx in object at 0x%lx(", (unsigned long)clobbered_addr,
     					        (unsigned long)p);
     if (clobbered_addr <= (ptr_t)(&(ohdr -> oh_sz))
@@ -353,14 +379,18 @@ ptr_t p, clobbered_addr;
 
 void GC_check_heap_proc GC_PROTO((void));
 
+void GC_print_all_smashed_proc GC_PROTO((void));
+
 void GC_do_nothing() {}
 
 void GC_start_debugging()
 {
 #   ifndef SHORT_DBG_HDRS
       GC_check_heap = GC_check_heap_proc;
+      GC_print_all_smashed = GC_print_all_smashed_proc;
 #   else
       GC_check_heap = GC_do_nothing;
+      GC_print_all_smashed = GC_do_nothing;
 #   endif
     GC_print_heap_obj = GC_debug_print_heap_obj_proc;
     GC_debugging_started = TRUE;
@@ -569,7 +599,7 @@ GC_PTR p;
     int i;
 # endif
 {
-    GC_PTR result = GC_malloc_uncollectable(lb + DEBUG_BYTES);
+    GC_PTR result = GC_malloc_uncollectable(lb + UNCOLLECTABLE_DEBUG_BYTES);
     
     if (result == 0) {
         GC_err_printf1("GC_debug_malloc_uncollectable(%ld) returning NIL (",
@@ -595,7 +625,8 @@ GC_PTR p;
     int i;
 # endif
 {
-    GC_PTR result = GC_malloc_atomic_uncollectable(lb + DEBUG_BYTES);
+    GC_PTR result =
+	GC_malloc_atomic_uncollectable(lb + UNCOLLECTABLE_DEBUG_BYTES);
     
     if (result == 0) {
         GC_err_printf1(
@@ -669,10 +700,13 @@ GC_PTR p;
 }
 
 #ifdef THREADS
+
+extern void GC_free_inner(GC_PTR p);
+
 /* Used internally; we assume it's called correctly.	*/
 void GC_debug_free_inner(GC_PTR p)
 {
-    GC_free(GC_base(p));
+    GC_free_inner(GC_base(p));
 }
 #endif
 
@@ -748,6 +782,41 @@ void GC_debug_free_inner(GC_PTR p)
 }
 
 #ifndef SHORT_DBG_HDRS
+
+/* List of smashed objects.  We defer printing these, since we can't	*/
+/* always print them nicely with the allocation lock held.		*/
+/* We put them here instead of in GC_arrays, since it may be useful to	*/
+/* be able to look at them with the debugger.				*/
+#define MAX_SMASHED 20
+ptr_t GC_smashed[MAX_SMASHED];
+unsigned GC_n_smashed = 0;
+
+# if defined(__STDC__) || defined(__cplusplus)
+    void GC_add_smashed(ptr_t smashed)
+# else
+    void GC_add_smashed(smashed)
+    ptr_t smashed;
+#endif
+{
+    GC_smashed[GC_n_smashed] = smashed;
+    if (GC_n_smashed < MAX_SMASHED - 1) ++GC_n_smashed;
+}
+
+/* Print all objects on the list.  Clear the list.	*/
+void GC_print_all_smashed_proc ()
+{
+    int i;
+
+    GC_ASSERT(!I_HOLD_LOCK());
+    if (GC_n_smashed == 0) return;
+    GC_err_printf0("GC_check_heap_block: found smashed heap objects:\n");
+    for (i = 0; i < GC_n_smashed; ++i) {
+        GC_print_smashed_obj(GC_base(GC_smashed[i]), GC_smashed[i]);
+	GC_smashed[i] = 0;
+    }
+    GC_n_smashed = 0;
+}
+
 /* Check all marked objects in the given block for validity */
 /*ARGSUSED*/
 # if defined(__STDC__) || defined(__cplusplus)
@@ -773,14 +842,10 @@ void GC_debug_free_inner(GC_PTR p)
     /* go through all words in block */
 	while( p <= plim ) {
 	    if( mark_bit_from_hdr(hhdr, word_no)
-	        && GC_has_debug_info((ptr_t)p)) {
+	        && GC_HAS_DEBUG_INFO((ptr_t)p)) {
 	        ptr_t clobbered = GC_check_annotated_obj((oh *)p);
 	        
-	        if (clobbered != 0) {
-	            GC_err_printf0(
-	                "GC_check_heap_block: found smashed location at ");
-        	    GC_print_smashed_obj((ptr_t)p, clobbered);
-	        }
+	        if (clobbered != 0) GC_add_smashed(clobbered);
 	    }
 	    word_no += sz;
 	    p += sz;
@@ -841,6 +906,28 @@ struct closure {
     (*(cl -> cl_fn))((GC_PTR)((char *)obj + sizeof(oh)), cl -> cl_data);
 } 
 
+/* Set ofn and ocd to reflect the values we got back.	*/
+static void store_old (obj, my_old_fn, my_old_cd, ofn, ocd)
+GC_PTR obj;
+GC_finalization_proc my_old_fn;
+struct closure * my_old_cd;
+GC_finalization_proc *ofn;
+GC_PTR *ocd;
+{
+    if (0 != my_old_fn) {
+      if (my_old_fn != GC_debug_invoke_finalizer) {
+        GC_err_printf1("Debuggable object at 0x%lx had non-debug finalizer.\n",
+		       obj);
+        /* This should probably be fatal. */
+      } else {
+        if (ofn) *ofn = my_old_cd -> cl_fn;
+        if (ocd) *ocd = my_old_cd -> cl_data;
+      }
+    } else {
+      if (ofn) *ofn = 0;
+      if (ocd) *ocd = 0;
+    }
+}
 
 # ifdef __STDC__
     void GC_debug_register_finalizer(GC_PTR obj, GC_finalization_proc fn,
@@ -855,14 +942,21 @@ struct closure {
     GC_PTR *ocd;
 # endif
 {
+    GC_finalization_proc my_old_fn;
+    GC_PTR my_old_cd;
     ptr_t base = GC_base(obj);
     if (0 == base || (ptr_t)obj - base != sizeof(oh)) {
         GC_err_printf1(
 	    "GC_register_finalizer called with non-base-pointer 0x%lx\n",
 	    obj);
     }
-    GC_register_finalizer(base, GC_debug_invoke_finalizer,
-    			  GC_make_closure(fn,cd), ofn, ocd);
+    if (0 == fn) {
+      GC_register_finalizer(base, 0, 0, &my_old_fn, &my_old_cd);
+    } else {
+      GC_register_finalizer(base, GC_debug_invoke_finalizer,
+    			    GC_make_closure(fn,cd), &my_old_fn, &my_old_cd);
+    }
+    store_old(obj, my_old_fn, (struct closure *)my_old_cd, ofn, ocd);
 }
 
 # ifdef __STDC__
@@ -880,14 +974,22 @@ struct closure {
     GC_PTR *ocd;
 # endif
 {
+    GC_finalization_proc my_old_fn;
+    GC_PTR my_old_cd;
     ptr_t base = GC_base(obj);
     if (0 == base || (ptr_t)obj - base != sizeof(oh)) {
         GC_err_printf1(
 	  "GC_register_finalizer_no_order called with non-base-pointer 0x%lx\n",
 	  obj);
     }
-    GC_register_finalizer_no_order(base, GC_debug_invoke_finalizer,
-     			  	      GC_make_closure(fn,cd), ofn, ocd);
+    if (0 == fn) {
+      GC_register_finalizer_no_order(base, 0, 0, &my_old_fn, &my_old_cd);
+    } else {
+      GC_register_finalizer_no_order(base, GC_debug_invoke_finalizer,
+    			    	     GC_make_closure(fn,cd), &my_old_fn,
+				     &my_old_cd);
+    }
+    store_old(obj, my_old_fn, (struct closure *)my_old_cd, ofn, ocd);
  }
 
 # ifdef __STDC__
@@ -905,25 +1007,39 @@ struct closure {
     GC_PTR *ocd;
 # endif
 {
+    GC_finalization_proc my_old_fn;
+    GC_PTR my_old_cd;
     ptr_t base = GC_base(obj);
     if (0 == base || (ptr_t)obj - base != sizeof(oh)) {
         GC_err_printf1(
 	    "GC_register_finalizer_ignore_self called with non-base-pointer 0x%lx\n",
 	    obj);
     }
-    GC_register_finalizer_ignore_self(base, GC_debug_invoke_finalizer,
-    			  	      GC_make_closure(fn,cd), ofn, ocd);
+    if (0 == fn) {
+      GC_register_finalizer_ignore_self(base, 0, 0, &my_old_fn, &my_old_cd);
+    } else {
+      GC_register_finalizer_ignore_self(base, GC_debug_invoke_finalizer,
+    			    	     GC_make_closure(fn,cd), &my_old_fn,
+				     &my_old_cd);
+    }
+    store_old(obj, my_old_fn, (struct closure *)my_old_cd, ofn, ocd);
 }
+
+#ifdef GC_ADD_CALLER
+# define RA GC_RETURN_ADDR,
+#else
+# define RA
+#endif
 
 GC_PTR GC_debug_malloc_replacement(lb)
 size_t lb;
 {
-    return GC_debug_malloc(lb, "unknown", 0);
+    return GC_debug_malloc(lb, RA "unknown", 0);
 }
 
 GC_PTR GC_debug_realloc_replacement(p, lb)
 GC_PTR p;
 size_t lb;
 {
-    return GC_debug_realloc(p, lb, "unknown", 0);
+    return GC_debug_realloc(p, lb, RA "unknown", 0);
 }

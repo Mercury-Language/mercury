@@ -1,6 +1,7 @@
 /* 
  * Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
  * Copyright (c) 1991-1994 by Xerox Corporation.  All rights reserved.
+ * Copyright (c) 1999-2001 by Hewlett-Packard Company. All rights reserved.
  *
  * THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
  * OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
@@ -13,17 +14,27 @@
  */
 /* Boehm, July 31, 1995 5:02 pm PDT */
 
+/*
+ * We (the Mercury group) have made the following changes:
+ * -- added some comments about clearing the Mercury stacks
+ *    [actually this is probably better done using the
+ *     add_dynamic_roots callback hook];
+ * -- deleted a debugging call to MessageBoxA,
+ *    as a hacky work-around to avoid needing to link in
+ *    the Windows libraries.
+ * -fjh.
+ */
 
 #include <stdio.h>
+#include <limits.h>
 #ifndef _WIN32_WCE
 #include <signal.h>
 #endif
 
 #define I_HIDE_POINTERS	/* To make GC_call_with_alloc_lock visible */
-#include "private/gc_priv.h"
-#include "private/gc_mark.h"
+#include "private/gc_pmark.h"
 
-#ifdef SOLARIS_THREADS
+#ifdef GC_SOLARIS_THREADS
 # include <sys/syscall.h>
 #endif
 #if defined(MSWIN32) || defined(MSWINCE)
@@ -42,29 +53,29 @@
 	/* Critical section counter is defined in the M3 runtime 	*/
 	/* That's all we use.						*/
 #     else
-#	ifdef SOLARIS_THREADS
+#	ifdef GC_SOLARIS_THREADS
 	  mutex_t GC_allocate_ml;	/* Implicitly initialized.	*/
 #	else
-#          ifdef WIN32_THREADS
-#	      if defined(_DLL) || defined(GC_DLL)
+#          if defined(GC_WIN32_THREADS) 
+#             if defined(GC_PTHREADS)
+		  pthread_mutex_t GC_allocate_ml = PTHREAD_MUTEX_INITIALIZER;
+#	      elif !defined(GC_NOT_DLL) && (defined(_DLL) || defined(GC_DLL))
 		 __declspec(dllexport) CRITICAL_SECTION GC_allocate_ml;
 #	      else
 		 CRITICAL_SECTION GC_allocate_ml;
 #	      endif
 #          else
-#             if defined(IRIX_THREADS) \
-		 || (defined(LINUX_THREADS) && defined(USE_SPIN_LOCK))
-	        pthread_t GC_lock_holder = NO_THREAD;
-#	      else
-#	        if defined(HPUX_THREADS) \
-		   || defined(LINUX_THREADS) && !defined(USE_SPIN_LOCK)
+#             if defined(GC_PTHREADS) && !defined(GC_SOLARIS_THREADS)
+#		if defined(USE_SPIN_LOCK)
+	          pthread_t GC_lock_holder = NO_THREAD;
+#	        else
 		  pthread_mutex_t GC_allocate_ml = PTHREAD_MUTEX_INITIALIZER;
 	          pthread_t GC_lock_holder = NO_THREAD;
 			/* Used only for assertions, and to prevent	 */
 			/* recursive reentry in the system call wrapper. */
-#		else 
+#		endif 
+#    	      else
 	          --> declare allocator lock here
-#		endif
 #	      endif
 #	   endif
 #	endif
@@ -74,6 +85,10 @@
 
 /* #include "mercury_stacks.h" */
 
+#if defined(NOSYS) || defined(ECOS)
+#undef STACKBASE
+#endif
+
 GC_FAR struct _GC_arrays GC_arrays /* = { 0 } */;
 
 
@@ -81,16 +96,25 @@ GC_bool GC_debugging_started = FALSE;
 	/* defined here so we don't have to load debug_malloc.o */
 
 void (*GC_check_heap) GC_PROTO((void)) = (void (*) GC_PROTO((void)))0;
+void (*GC_print_all_smashed) GC_PROTO((void)) = (void (*) GC_PROTO((void)))0;
 
 void (*GC_start_call_back) GC_PROTO((void)) = (void (*) GC_PROTO((void)))0;
 
 ptr_t GC_stackbottom = 0;
 
+#ifdef IA64
+  ptr_t GC_register_stackbottom = 0;
+#endif
+
 GC_bool GC_dont_gc = 0;
+
+GC_bool GC_dont_precollect = 0;
 
 GC_bool GC_quiet = 0;
 
 GC_bool GC_print_stats = 0;
+
+GC_bool GC_print_back_height = 0;
 
 #ifdef FIND_LEAK
   int GC_find_leak = 1;
@@ -103,6 +127,12 @@ GC_bool GC_print_stats = 0;
 #else
   int GC_all_interior_pointers = 0;
 #endif
+
+long GC_large_alloc_warn_interval = 5;
+	/* Interval between unsuppressed warnings.	*/
+
+long GC_large_alloc_warn_suppressed = 0;
+	/* Number of warnings suppressed so far.	*/
 
 /*ARGSUSED*/
 GC_PTR GC_default_oom_fn GC_PROTO((size_t bytes_requested))
@@ -268,7 +298,8 @@ ptr_t arg;
     register word sp = (word)GC_approx_sp();  /* Hotter than actual sp */
 #   ifdef THREADS
         word dummy[SMALL_CLEAR_SIZE];
-	unsigned random_no = 0;  /* Should be more random than it is ... */
+	static unsigned random_no = 0;
+       			 	 /* Should be more random than it is ... */
 				 /* Used to occasionally clear a bigger	 */
 				 /* chunk.				 */
 #   endif
@@ -294,6 +325,8 @@ ptr_t arg;
     if (++random_no % 13 == 0) {
 	limit = sp;
 	MAKE_HOTTER(limit, BIG_CLEAR_SIZE*sizeof(word));
+        limit &= ~0xf;	/* Make it sufficiently aligned for assembly	*/
+        		/* implementations of GC_clear_stack_inner.	*/
 	return GC_clear_stack_inner(arg, limit);
     } else {
 	BZERO(dummy, SMALL_CLEAR_SIZE*sizeof(word));
@@ -429,11 +462,25 @@ void GC_init()
     DCL_LOCK_STATE;
     
     DISABLE_SIGNALS();
+
+#if defined(GC_WIN32_THREADS) && !defined(GC_PTHREADS)
+    if (!GC_is_initialized) InitializeCriticalSection(&GC_allocate_ml);
+#endif /* MSWIN32 */
+
     LOCK();
     GC_init_inner();
     UNLOCK();
     ENABLE_SIGNALS();
 
+#   if defined(PARALLEL_MARK) || defined(THREAD_LOCAL_ALLOC)
+	/* Make sure marker threads and started and thread local */
+	/* allocation is initialized, in case we didn't get 	 */
+	/* called from GC_init_parallel();			 */
+        {
+	  extern void GC_init_parallel(void);
+	  GC_init_parallel();
+	}
+#   endif /* PARALLEL_MARK || THREAD_LOCAL_ALLOC */
 }
 
 #if defined(MSWIN32) || defined(MSWINCE)
@@ -446,9 +493,27 @@ void GC_init()
 
 extern void GC_setpagesize();
 
+#ifdef UNIX_LIKE
+
+extern void GC_set_and_save_fault_handler GC_PROTO((void (*handler)(int)));
+
+static void looping_handler(sig)
+int sig;
+{
+    GC_err_printf1("Caught signal %d: looping in handler\n", sig);
+    for(;;);
+}
+#endif
+
+#ifdef MSWIN32
+extern GC_bool GC_no_win32_dlls;
+#else
+# define GC_no_win32_dlls FALSE
+#endif
+
 void GC_init_inner()
 {
-#   ifndef THREADS
+#   if !defined(THREADS) && defined(GC_ASSERTIONS)
         word dummy;
 #   endif
     word initial_heap_sz = (word)MINHINCR;
@@ -456,6 +521,9 @@ void GC_init_inner()
     if (GC_is_initialized) return;
 #   ifdef PRINTSTATS
       GC_print_stats = 1;
+#   endif
+#   if defined(MSWIN32) || defined(MSWINCE)
+      InitializeCriticalSection(&GC_write_cs);
 #   endif
     if (0 != GETENV("GC_PRINT_STATS")) {
       GC_print_stats = 1;
@@ -469,13 +537,45 @@ void GC_init_inner()
     if (0 != GETENV("GC_DONT_GC")) {
       GC_dont_gc = 1;
     }
-    /* Adjust normal object descriptor for extra allocation.	*/
-    if (ALIGNMENT > DS_TAGS && EXTRA_BYTES != 0) {
-      GC_obj_kinds[NORMAL].ok_descriptor = ((word)(-ALIGNMENT) | DS_LENGTH);
+    if (0 != GETENV("GC_PRINT_BACK_HEIGHT")) {
+      GC_print_back_height = 1;
     }
-#   if defined(MSWIN32) || defined(MSWINCE)
-	InitializeCriticalSection(&GC_write_cs);
+    if (0 != GETENV("GC_NO_BLACKLIST_WARNING")) {
+      GC_large_alloc_warn_interval = LONG_MAX;
+    }
+    {
+      char * time_limit_string = GETENV("GC_PAUSE_TIME_TARGET");
+      if (0 != time_limit_string) {
+        long time_limit = atol(time_limit_string);
+        if (time_limit < 5) {
+	  WARN("GC_PAUSE_TIME_TARGET environment variable value too small "
+	       "or bad syntax: Ignoring\n", 0);
+        } else {
+	  GC_time_limit = time_limit;
+        }
+      }
+    }
+    {
+      char * interval_string = GETENV("GC_LARGE_ALLOC_WARN_INTERVAL");
+      if (0 != interval_string) {
+        long interval = atol(interval_string);
+        if (interval <= 0) {
+	  WARN("GC_LARGE_ALLOC_WARN_INTERVAL environment variable has "
+	       "bad value: Ignoring\n", 0);
+        } else {
+	  GC_large_alloc_warn_interval = interval;
+        }
+      }
+    }
+#   ifdef UNIX_LIKE
+      if (0 != GETENV("GC_LOOP_ON_ABORT")) {
+        GC_set_and_save_fault_handler(looping_handler);
+      }
 #   endif
+    /* Adjust normal object descriptor for extra allocation.	*/
+    if (ALIGNMENT > GC_DS_TAGS && EXTRA_BYTES != 0) {
+      GC_obj_kinds[NORMAL].ok_descriptor = ((word)(-ALIGNMENT) | GC_DS_LENGTH);
+    }
     GC_setpagesize();
     GC_exclude_static_roots(beginGC_arrays, endGC_arrays);
     GC_exclude_static_roots(beginGC_obj_kinds, endGC_obj_kinds);
@@ -487,25 +587,25 @@ void GC_init_inner()
  	GC_init_win32();
 #   endif
 #   if defined(SEARCH_FOR_DATA_START)
-	/* This doesn't really work if the collector is in a shared library. */
 	GC_init_linux_data_start();
 #   endif
-#   if defined(NETBSD) && defined(__ELF__)
+#   if (defined(NETBSD) || defined(OPENBSD)) && defined(__ELF__)
 	GC_init_netbsd_elf();
 #   endif
-#   if defined(IRIX_THREADS) || defined(LINUX_THREADS) \
-       || defined(HPUX_THREADS) || defined(SOLARIS_THREADS)
+#   if defined(GC_PTHREADS) || defined(GC_SOLARIS_THREADS)
         GC_thr_init();
 #   endif
-#   ifdef SOLARIS_THREADS
+#   ifdef GC_SOLARIS_THREADS
 	/* We need dirty bits in order to find live stack sections.	*/
         GC_dirty_init();
 #   endif
-#   if !defined(THREADS) || defined(SOLARIS_THREADS) || defined(WIN32_THREADS) \
-       || defined(IRIX_THREADS) || defined(LINUX_THREADS) \
-       || defined(HPUX_THREADS)
+#   if !defined(THREADS) || defined(GC_PTHREADS) || defined(GC_WIN32_THREADS) \
+	|| defined(GC_SOLARIS_THREADS)
       if (GC_stackbottom == 0) {
 	GC_stackbottom = GC_get_stack_base();
+#       if defined(LINUX) && defined(IA64)
+	  GC_register_stackbottom = GC_get_register_stack_base();
+#       endif
       }
 #   endif
     GC_ASSERT(sizeof (ptr_t) == sizeof(word));
@@ -573,8 +673,19 @@ void GC_init_inner()
       PCR_IL_Unlock();
       GC_pcr_install();
 #   endif
-    /* Get black list set up */
-      GC_gcollect_inner();
+#   if !defined(SMALL_CONFIG)
+      if (!GC_no_win32_dlls && 0 != GETENV("GC_ENABLE_INCREMENTAL")) {
+	GC_ASSERT(!GC_incremental);
+        GC_setpagesize();
+#       ifndef GC_SOLARIS_THREADS
+          GC_dirty_init();
+#       endif
+        GC_ASSERT(GC_words_allocd == 0)
+    	GC_incremental = TRUE;
+      }
+#   endif /* !SMALL_CONFIG */
+    /* Get black list set up and/or incrmental GC started */
+      if (!GC_dont_precollect || GC_incremental) GC_gcollect_inner();
     GC_is_initialized = TRUE;
 #   ifdef STUBBORN_ALLOC
     	GC_stubborn_init();
@@ -607,20 +718,14 @@ void GC_enable_incremental GC_PROTO(())
     LOCK();
     if (GC_incremental) goto out;
     GC_setpagesize();
-#   ifdef MSWIN32
-      {
-        extern GC_bool GC_is_win32s();
-
-	/* VirtualProtect is not functional under win32s.	*/
-	if (GC_is_win32s()) goto out;
-      }
-#   endif /* MSWIN32 */
-#   ifndef SOLARIS_THREADS
+    if (GC_no_win32_dlls) goto out;
+#   ifndef GC_SOLARIS_THREADS
         GC_dirty_init();
 #   endif
     if (!GC_is_initialized) {
         GC_init_inner();
     }
+    if (GC_incremental) goto out;
     if (GC_dont_gc) {
         /* Can't easily do it. */
         UNLOCK();
@@ -656,7 +761,7 @@ out:
   }
 
   int GC_write(buf, len)
-  char * buf;
+  GC_CONST char * buf;
   size_t len;
   {
       BOOL tmp;
@@ -706,17 +811,18 @@ int GC_tmp;  /* Should really be local ... */
 # endif
 #endif
 
-#if !defined(MSWIN32) && !defined(MSWINCE) && !defined(OS2) && !defined(MACOS)
+#if !defined(MSWIN32) && !defined(MSWINCE) && !defined(OS2) \
+    && !defined(MACOS)  && !defined(ECOS) && !defined(NOSYS)
 int GC_write(fd, buf, len)
 int fd;
-char *buf;
+GC_CONST char *buf;
 size_t len;
 {
      register int bytes_written = 0;
      register int result;
      
      while (bytes_written < len) {
-#	ifdef SOLARIS_THREADS
+#	ifdef GC_SOLARIS_THREADS
 	    result = syscall(SYS_write, fd, buf + bytes_written,
 	    			  	    len - bytes_written);
 #	else
@@ -728,6 +834,23 @@ size_t len;
     return(bytes_written);
 }
 #endif /* UN*X */
+
+#ifdef ECOS
+int GC_write(fd, buf, len)
+{
+  _Jv_diag_write (buf, len);
+  return len;
+}
+#endif
+
+#ifdef NOSYS
+int GC_write(fd, buf, len)
+{
+  /* No writing.  */
+  return len;
+}
+#endif
+
 
 #if defined(MSWIN32) || defined(MSWINCE)
 #   define WRITE(f, buf, len) GC_write(buf, len)
@@ -830,7 +953,7 @@ GC_CONST char * msg;
 	    /* It's arguably nicer to sleep, but that makes it harder	*/
 	    /* to look at the thread if the debugger doesn't know much	*/
 	    /* about threads.						*/
-	    for(;;);
+	    for(;;) {}
     }
 #   ifdef MSWIN32
 	DebugBreak();
@@ -840,38 +963,6 @@ GC_CONST char * msg;
 }
 #endif
 
-#ifdef NEED_CALLINFO
-
-void GC_print_callers (info)
-struct callinfo info[NFRAMES];
-{
-    register int i;
-    
-#   if NFRAMES == 1
-      GC_err_printf0("\tCaller at allocation:\n");
-#   else
-      GC_err_printf0("\tCall chain at allocation:\n");
-#   endif
-    for (i = 0; i < NFRAMES; i++) {
-     	if (info[i].ci_pc == 0) break;
-#	if NARGS > 0
-	{
-	  int j;
-
-     	  GC_err_printf0("\t\targs: ");
-     	  for (j = 0; j < NARGS; j++) {
-     	    if (j != 0) GC_err_printf0(", ");
-     	    GC_err_printf2("%d (0x%X)", ~(info[i].ci_arg[j]),
-     	    				~(info[i].ci_arg[j]));
-     	  }
-	  GC_err_printf0("\n");
-	}
-# 	endif
-     	GC_err_printf1("\t\t##PC##= 0x%X\n", info[i].ci_pc);
-    }
-}
-
-#endif /* SAVE_CALL_CHAIN */
 
 /* Needed by SRC_M3, gcj, and should perhaps be the official interface	*/
 /* to GC_dont_gc.							*/

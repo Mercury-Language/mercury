@@ -20,7 +20,7 @@
 signed_word GC_mem_found = 0;
 			/* Number of words of memory reclaimed     */
 
-#ifdef PARALLEL_MARK
+#if defined(PARALLEL_MARK) || defined(THREAD_LOCAL_ALLOC)
   word GC_fl_builder_count = 0;
 	/* Number of threads currently building free lists without 	*/
 	/* holding GC lock.  It is not safe to collect if this is 	*/
@@ -631,47 +631,41 @@ COUNT_DECL
     ptr_t result = list;
 
     GC_ASSERT(GC_find_header((ptr_t)hbp) == hhdr);
+    GC_remove_protection(hbp, 1, (hhdr)->hb_descr == 0 /* Pointer-free? */);
     if (init) {
       switch(sz) {
 #      if !defined(SMALL_CONFIG) && !defined(USE_MARK_BYTES)
         case 1:
 	    /* We now issue the hint even if GC_nearly_full returned	*/
 	    /* DONT_KNOW.						*/
-	    GC_write_hint(hbp);
             result = GC_reclaim1(hbp, hhdr, list COUNT_ARG);
             break;
         case 2:
-	    GC_write_hint(hbp);
             result = GC_reclaim_clear2(hbp, hhdr, list COUNT_ARG);
             break;
         case 4:
-	    GC_write_hint(hbp);
             result = GC_reclaim_clear4(hbp, hhdr, list COUNT_ARG);
             break;
 #      endif /* !SMALL_CONFIG && !USE_MARK_BYTES */
         default:
-	    GC_write_hint(hbp);
             result = GC_reclaim_clear(hbp, hhdr, sz, list COUNT_ARG);
             break;
       }
     } else {
+      GC_ASSERT((hhdr)->hb_descr == 0 /* Pointer-free block */);
       switch(sz) {
 #      if !defined(SMALL_CONFIG) && !defined(USE_MARK_BYTES)
         case 1:
-	    GC_write_hint(hbp);
             result = GC_reclaim1(hbp, hhdr, list COUNT_ARG);
             break;
         case 2:
-	    GC_write_hint(hbp);
             result = GC_reclaim_uninit2(hbp, hhdr, list COUNT_ARG);
             break;
         case 4:
-	    GC_write_hint(hbp);
             result = GC_reclaim_uninit4(hbp, hhdr, list COUNT_ARG);
             break;
 #      endif /* !SMALL_CONFIG && !USE_MARK_BYTES */
         default:
-	    GC_write_hint(hbp);
             result = GC_reclaim_uninit(hbp, hhdr, sz, list COUNT_ARG);
             break;
       }
@@ -702,7 +696,8 @@ COUNT_DECL
     if (report_if_found) {
 	GC_reclaim_check(hbp, hhdr, sz);
     } else {
-        *flh = GC_reclaim_generic(hbp, hhdr, sz, ok -> ok_init,
+        *flh = GC_reclaim_generic(hbp, hhdr, sz,
+				  (ok -> ok_init || GC_debugging_started),
 	 			  *flh MEM_FOUND_ADDR);
     }
 }
@@ -774,8 +769,12 @@ COUNT_DECL
 /* Routines to gather and print heap block info 	*/
 /* intended for debugging.  Otherwise should be called	*/
 /* with lock.						*/
-static size_t number_of_blocks;
-static size_t total_bytes;
+
+struct Print_stats
+{
+	size_t number_of_blocks;
+	size_t total_bytes;
+};
 
 #ifdef USE_MARK_BYTES
 
@@ -834,28 +833,52 @@ hdr * hhdr;
 {
     register hdr * hhdr = HDR(h);
     register size_t bytes = WORDS_TO_BYTES(hhdr -> hb_sz);
+    struct Print_stats *ps;
     
     GC_printf3("(%lu:%lu,%lu)", (unsigned long)(hhdr -> hb_obj_kind),
     			        (unsigned long)bytes,
     			        (unsigned long)(GC_n_set_marks(hhdr)));
     bytes += HBLKSIZE-1;
     bytes &= ~(HBLKSIZE-1);
-    total_bytes += bytes;
-    number_of_blocks++;
+
+    ps = (struct Print_stats *)dummy;
+    ps->total_bytes += bytes;
+    ps->number_of_blocks++;
 }
 
 void GC_print_block_list()
 {
+    struct Print_stats pstats;
+
     GC_printf0("(kind(0=ptrfree,1=normal,2=unc.,3=stubborn):size_in_bytes, #_marks_set)\n");
-    number_of_blocks = 0;
-    total_bytes = 0;
-    GC_apply_to_all_blocks(GC_print_block_descr, (word)0);
+    pstats.number_of_blocks = 0;
+    pstats.total_bytes = 0;
+    GC_apply_to_all_blocks(GC_print_block_descr, (word)&pstats);
     GC_printf2("\nblocks = %lu, bytes = %lu\n",
-    	       (unsigned long)number_of_blocks,
-    	       (unsigned long)total_bytes);
+    	       (unsigned long)pstats.number_of_blocks,
+    	       (unsigned long)pstats.total_bytes);
 }
 
 #endif /* NO_DEBUGGING */
+
+/*
+ * Clear all obj_link pointers in the list of free objects *flp.
+ * Clear *flp.
+ * This must be done before dropping a list of free gcj-style objects,
+ * since may otherwise end up with dangling "descriptor" pointers.
+ * It may help for other pointer-containg objects.
+ */
+void GC_clear_fl_links(flp)
+ptr_t *flp;
+{
+    ptr_t next = *flp;
+
+    while (0 != next) {
+       *flp = 0;
+       flp = &(obj_link(next));
+       next = *flp;
+    }
+}
 
 /*
  * Perform GC_reclaim_block on the entire heap, after first clearing
@@ -866,19 +889,29 @@ int report_if_found;		/* Abort if a GC_reclaimable object is found */
 {
     int kind;
     
+#   if defined(PARALLEL_MARK) || defined(THREAD_LOCAL_ALLOC)
+      GC_ASSERT(0 == GC_fl_builder_count);
+#   endif
     /* Clear reclaim- and free-lists */
       for (kind = 0; kind < GC_n_kinds; kind++) {
-        register ptr_t *fop;
-        register ptr_t *lim;
-        register struct hblk ** rlp;
-        register struct hblk ** rlim;
-        register struct hblk ** rlist = GC_obj_kinds[kind].ok_reclaim_list;
+        ptr_t *fop;
+        ptr_t *lim;
+        struct hblk ** rlp;
+        struct hblk ** rlim;
+        struct hblk ** rlist = GC_obj_kinds[kind].ok_reclaim_list;
+	GC_bool should_clobber = (GC_obj_kinds[kind].ok_descriptor != 0);
         
         if (rlist == 0) continue;	/* This kind not used.	*/
         if (!report_if_found) {
             lim = &(GC_obj_kinds[kind].ok_freelist[MAXOBJSZ+1]);
 	    for( fop = GC_obj_kinds[kind].ok_freelist; fop < lim; fop++ ) {
-	      *fop = 0;
+	      if (*fop != 0) {
+		if (should_clobber) {
+		  GC_clear_fl_links(fop);
+		} else {
+	          *fop = 0;
+		}
+	      }
 	    }
 	} /* otherwise free list objects are marked, 	*/
 	  /* and its safe to leave them			*/
@@ -901,6 +934,9 @@ int report_if_found;		/* Abort if a GC_reclaimable object is found */
     /* This is a very stupid thing to do.  We make it possible anyway,	*/
     /* so that you can convince yourself that it really is very stupid.	*/
     GC_reclaim_all((GC_stop_func)0, FALSE);
+# endif
+# if defined(PARALLEL_MARK) || defined(THREAD_LOCAL_ALLOC)
+    GC_ASSERT(0 == GC_fl_builder_count);
 # endif
     
 }

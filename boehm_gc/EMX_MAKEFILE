@@ -77,7 +77,7 @@ $(OBJS) test.o: $(srcdir)/gc_priv.h $(srcdir)/gc_hdrs.h $(srcdir)/gc.h \
 # options such as -DSILENT affects the size of GC_arrays,
 # invalidating all .o files that rely on gc_priv.h
 
-mark.o typd_mlc.o finalize.o: $(srcdir)/gc_mark.h
+mark.o typd_mlc.o finalize.o: $(srcdir)/include/gc_mark.h $(srcdir)/include/private/gc_pmark.h
 
 gc.a: $(OBJS)
 	$(AR) ru gc.a $(OBJS)

@@ -81,23 +81,6 @@ void GC_push_regs()
 	  register long TMP_SP; /* must be bound to r11 */
 #       endif
 
-#       if defined(MIPS) && defined(LINUX)
-	  /* I'm not sure whether this has actually been tested. */
-#         define call_push(x)     asm("move $4," x ";"); asm("jal GC_push_one")
-	  call_push("$2");
-	  call_push("$3");
-	  call_push("$16");
-	  call_push("$17");
-	  call_push("$18");
-	  call_push("$19");
-	  call_push("$20");
-	  call_push("$21");
-	  call_push("$22");
-	  call_push("$23");
-	  call_push("$30");
-#         undef call_push
-#       endif	/* MIPS && LINUX */
-
 #       ifdef VAX
 	  /* VAX - generic code below does not work under 4.2 */
 	  /* r1 through r5 are caller save, and therefore     */
@@ -228,7 +211,7 @@ void GC_push_regs()
 	&& !(defined(NETBSD) && defined(__ELF__)) \
 	&& !(defined(OPENBSD) && defined(__ELF__)) \
 	&& !(defined(BEOS) && defined(__ELF__)) \
-	&& !defined(DOS4GW)
+	&& !defined(DOS4GW) && !defined(HURD)
 	/* I386 code, generic code does not appear to work */
 	/* It does appear to work under OS2, and asms dont */
 	/* This is used for some 38g UNIX variants and for CYGWIN32 */
@@ -244,7 +227,9 @@ void GC_push_regs()
 #	if ( defined(I386) && defined(LINUX) && defined(__ELF__) ) \
 	|| ( defined(I386) && defined(FREEBSD) && defined(__ELF__) ) \
 	|| ( defined(I386) && defined(NETBSD) && defined(__ELF__) ) \
-	|| ( defined(I386) && defined(OPENBSD) && defined(__ELF__) )
+	|| ( defined(I386) && defined(OPENBSD) && defined(__ELF__) ) \
+	|| ( defined(I386) && defined(HURD) && defined(__ELF__) ) \
+	|| ( defined(I386) && defined(DGUX) )
 
 	/* This is modified for Linux with ELF (Note: _ELF_ only) */
 	/* This section handles FreeBSD with ELF. */
@@ -391,8 +376,8 @@ void GC_push_regs()
 #     endif
 
       /* other machines... */
-#       if !(defined M68K) && !(defined VAX) && !(defined RT) 
-#	if !(defined SPARC) && !(defined I386) && !(defined NS32K)
+#       if !defined(M68K) && !defined(VAX) && !defined(RT) 
+#	if !defined(SPARC) && !defined(I386) && !defined(NS32K)
 #	if !defined(POWERPC) && !defined(UTS4) 
 #       if !defined(PJ) && !(defined(MIPS) && defined(LINUX))
 	    --> bad news <--
@@ -407,27 +392,35 @@ void GC_push_regs()
 void GC_generic_push_regs(cold_gc_frame)
 ptr_t cold_gc_frame;
 {
-	/* Generic code                          */
-	/* The idea is due to Parag Patel at HP. */
-	/* We're not sure whether he would like  */
-	/* to be he acknowledged for it or not.  */
 	{
-	    static jmp_buf regs;
-	    register word * i = (word *) regs;
-	    register ptr_t lim = (ptr_t)(regs) + (sizeof regs);
+#	    ifdef HAVE_BUILTIN_UNWIND_INIT
+	      /* This was suggested by Richard Henderson as the way to	*/
+	      /* force callee-save registers and register windows onto	*/
+	      /* the stack.						*/
+	      __builtin_unwind_init();
+#	    else /* !HAVE_BUILTIN_UNWIND_INIT */
+	      /* Generic code                          */
+	      /* The idea is due to Parag Patel at HP. */
+	      /* We're not sure whether he would like  */
+	      /* to be he acknowledged for it or not.  */
+	      jmp_buf regs;
+	      register word * i = (word *) regs;
+	      register ptr_t lim = (ptr_t)(regs) + (sizeof regs);
 
-	    /* Setjmp on Sun 3s doesn't clear all of the buffer.  */
-	    /* That tends to preserve garbage.  Clear it.         */
+	      /* Setjmp doesn't always clear all of the buffer.		*/
+	      /* That tends to preserve garbage.  Clear it.   		*/
 		for (; (char *)i < lim; i++) {
 		    *i = 0;
 		}
-#	    if defined(POWERPC) || defined(MSWIN32) || defined(MSWINCE) \
-	       || defined(UTS4) || defined(LINUX)
-		(void) setjmp(regs);
-#	    else
-	        (void) _setjmp(regs);
-#	    endif
-#           if defined(SPARC) || defined(IA64)
+#	      if defined(POWERPC) || defined(MSWIN32) || defined(MSWINCE) \
+                || defined(UTS4) || defined(LINUX) || defined(EWS4800)
+		  (void) setjmp(regs);
+#	      else
+	          (void) _setjmp(regs);
+#	      endif
+#	    endif /* !HAVE_BUILTIN_UNWIND_INIT */
+#           if (defined(SPARC) && !defined(HAVE_BUILTIN_UNWIND_INIT)) \
+		|| defined(IA64)
 	      /* On a register window machine, we need to save register	*/
 	      /* contents on the stack for this to work.  The setjmp	*/
 	      /* is probably not needed on SPARC, since pointers are	*/
@@ -438,6 +431,10 @@ ptr_t cold_gc_frame;
 	        word GC_save_regs_in_stack();
 	      
 	        GC_save_regs_ret_val = GC_save_regs_in_stack();
+		/* On IA64 gcc, could use __builtin_ia64_flushrs() and	*/
+		/* __builtin_ia64_flushrs().  The latter will be done	*/
+		/* implicitly by __builtin_unwind_init() for gcc3.0.1	*/
+		/* and later.						*/
 	      }
 #           endif
 	    GC_push_current_stack(cold_gc_frame);
@@ -479,8 +476,11 @@ ptr_t cold_gc_frame;
 /* On IA64, we also need to flush register windows.  But they end	*/
 /* up on the other side of the stack segment.				*/
 /* Returns the backing store pointer for the register stack.		*/
-# ifdef IA64
-#   ifdef __GNUC__
+/* We now implement this as a separate assembly file, since inline	*/
+/* assembly code here doesn't work with either the Intel or HP 		*/
+/* compilers.								*/
+# if 0
+#   ifdef LINUX
 	asm("        .text");
 	asm("        .psr abi64");
 	asm("        .psr lsb");
@@ -497,12 +497,25 @@ ptr_t cold_gc_frame;
 	asm("        mov r8=ar.bsp");
 	asm("        br.ret.sptk.few rp");
 	asm("        .endp GC_save_regs_in_stack");
-#   else
-	void GC_save_regs_in_stack() {
-	  asm("        flushrs");
-	  asm("        ;;");
-	  asm("        mov r8=ar.bsp");
-	  asm("        br.ret.sptk.few rp");
+#   endif /* LINUX */
+#   if 0 /* Other alternatives that don't work on HP/UX */
+	word GC_save_regs_in_stack() {
+#	  if USE_BUILTINS
+	    __builtin_ia64_flushrs();
+	    return __builtin_ia64_bsp();
+#	  else
+#	    ifdef HPUX
+	      _asm("        flushrs");
+	      _asm("        ;;");
+	      _asm("        mov r8=ar.bsp");
+	      _asm("        br.ret.sptk.few rp");
+#	    else
+	      asm("        flushrs");
+	      asm("        ;;");
+	      asm("        mov r8=ar.bsp");
+	      asm("        br.ret.sptk.few rp");
+#	    endif
+#	  endif
 	}
 #   endif
 # endif
@@ -511,7 +524,7 @@ ptr_t cold_gc_frame;
 /* returns arg.  Stack clearing is crucial on SPARC, so we supply	*/
 /* an assembly version that's more careful.  Assumes limit is hotter	*/
 /* than sp, and limit is 8 byte aligned.				*/
-#if defined(ASM_CLEAR_CODE) && !defined(THREADS)
+#if defined(ASM_CLEAR_CODE)
 #ifndef SPARC
 	--> fix it
 #endif

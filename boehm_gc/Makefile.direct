@@ -1,3 +1,30 @@
+#-----------------------------------------------------------------------------#
+# WARNING: the original copy of this file resides in Makefile.direct.
+# Any changes made here must be also made there (and vice versa).
+#-----------------------------------------------------------------------------#
+# WARNING: This makefile is not safe for parallel makes.
+# This makefile should only be invoked with `-j1'.
+#
+# (The reason parallel makes break is because of the use of constructs like
+# `./if_not_there on_sparc_sunos5_so $(MAKE) dyn_load.o)' to handle
+# OS-specific dependencies; this can lead to one process noticing
+# a partially build dyn_load.o and trying to use it before it is
+# completely built.)
+#-----------------------------------------------------------------------------#
+# I have modified this file.
+# I've added a different rule for the libgc.a target,
+# added the `include ../Mmake.common' line,
+# and changed the rule for libgc.so to use the $(LINK_SHARED_LIB) macro
+# defined in ../Mmake.common.
+# I've change the definitions of CC, AS, and CFLAGS.
+# I've also modified the stuff to support for DLLs on gnu-win32
+#	- fjh.
+#-----------------------------------------------------------------------------#
+
+MERCURY_DIR=..
+LINK_BOEHM_GC_ONLY=yes
+include ../Mmake.common
+
 # This is the original manually generated Makefile.  It may still be used
 # to build the collector.
 #
@@ -9,33 +36,59 @@
 #      	 and runs some tests of collector and cords.  Does not add cords or
 #	 c++ interface to gc.a
 # cord/de - builds dumb editor based on cords.
+
 ABI_FLAG= 
 # ABI_FLAG should be the cc flag that specifies the ABI.  On most
 # platforms this will be the empty string.  Possible values:
 # +DD64 for 64-bit executable on HP/UX.
 # -n32, -n64, -o32 for SGI/MIPS ABIs.
+#
 
 AS_ABI_FLAG=$(ABI_FLAG)
 # ABI flag for assembler.  On HP/UX this is +A64 for 64 bit
 # executables.
 
-CC=cc $(ABI_FLAG)
+# CC=cc $(ABI_FLAG)
+
+# Mercury-specific definition of CC.
+# Note that we need to use "env FOO=bar ..." here, rather than just
+# "FOO=bar ...", since $(CC) needs to be a program, not a shell script,
+# because it is invoked via if_not_there, and if_not_there.c uses execvp()
+# rather than system().
+# ("env" is a standard Unix program, which normally lives in /usr/bin).
+CC=env MERCURY_C_INCL_DIR=. ../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check
+
 CXX=g++ $(ABI_FLAG)
-AS=as $(AS_ABI_FLAG)
+# Needed only for "make c++", which adds the c++ interface
+
+# AS=as $(AS_ABI_FLAG)
 #  The above doesn't work with gas, which doesn't run cpp.
 #  Define AS as `gcc -c -x assembler-with-cpp' instead.
+#  Under Irix 6, you will have to specify the ABI (-o32, -n32, or -64)
+#  if you use something other than the default ABI on your machine.
+# Mercury-specific AS:
+AS=../scripts/mgnuc --grade $(GRADE) --assemble
 
 # Redefining srcdir allows object code for the nonPCR version of the collector
 # to be generated in different directories.
 srcdir= .
 VPATH= $(srcdir)
 
-CFLAGS= -O -I$(srcdir)/include -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DNO_EXECUTE_PERMISSION -DSILENT -DALL_INTERIOR_POINTERS
+# CFLAGS= -O -I$(srcdir)/include -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS \
+#	-DNO_EXECUTE_PERMISSION -DSILENT -DALL_INTERIOR_POINTERS
 
 # To build the parallel collector on Linux, add to the above:
 # -DGC_LINUX_THREADS -DPARALLEL_MARK -DTHREAD_LOCAL_ALLOC
 # To build the parallel collector n a static library on HP/UX, add to the above:
 # -DGC_HPUX_THREADS -DPARALLEL_MARK -DTHREAD_LOCAL_ALLOC -DUSE_HPUX_TLS -D_POSIX_C_SOURCE=199506L
+
+# Mercury-specific CFLAGS:
+CFLAGS= -I$(srcdir)/include \
+	-DSILENT -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
+	$(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+# Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
+# profiling was enabled (see comments in runtime/mercury_prof_mem.h for why).
+# We need $(CFLAGS_FOR_PIC) because we might be building a shared library.
 
 # HOSTCC and HOSTCFLAGS are used to build executables that will be run as
 # part of the build process, i.e. on the build machine.  These will usually
@@ -349,7 +402,7 @@ $(OBJS) tests/test.o dyn_load.o dyn_load_sunos53.o: \
     $(srcdir)/include/private/gc_hdrs.h $(srcdir)/include/private/gc_locks.h \
     $(srcdir)/include/gc.h \
     $(srcdir)/include/private/gcconfig.h $(srcdir)/include/gc_typed.h \
-    Makefile
+    $(LIBGC_DLL_H) Makefile
 # The dependency on Makefile is needed.  Changing
 # options such as -DSILENT affects the size of GC_arrays,
 # invalidating all .o files that rely on gc_priv.h
@@ -368,6 +421,12 @@ tests/test.o: tests $(srcdir)/tests/test.c
 
 tests:
 	mkdir tests
+
+# Mercury-specific target:
+lib$(GC_GRADE)$(DLL_DEF_LIB).a: gc.a
+	rm -f lib$(GC_GRADE)$(DLL_DEF_LIB).a
+	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
+	cp gc.a lib$(GC_GRADE)$(DLL_DEF_LIB).a
 
 base_lib gc.a: $(OBJS) dyn_load.o $(UTILS)
 	echo > base_lib
@@ -417,6 +476,20 @@ c++: gc_cpp.o $(srcdir)/include/gc_cpp.h test_cpp
 
 dyn_load_sunos53.o: dyn_load.c
 	$(CC) $(CFLAGS) -DSUNOS53_SHARED_LIB -c $(srcdir)/dyn_load.c -o $@
+
+# Mercury-specific target:
+# generic shared library version of the collector
+lib$(GC_GRADE).so: $(OBJS) $(UTILS) # dyn_load_sunos53.o
+	rm -f on_sparc_sunos5_so
+	./if_mach SPARC SUNOS5 touch on_sparc_sunos5_so
+	./if_mach SPARC SUNOS5 $(MAKE) dyn_load_sunos53.o
+	./if_mach SPARC SUNOS5 \
+	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load_sunos53.o \
+		-ldl `./threadlibs`
+	./if_not_there on_sparc_sunos5_so $(MAKE) dyn_load.o
+	./if_not_there on_sparc_sunos5_so \
+	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load.o -lc
+
 
 # SunOS5 shared library version of the collector
 sunos5gc.so: $(OBJS) dyn_load_sunos53.o
@@ -470,12 +543,14 @@ mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_sgi_mach_dep.S \
 	./if_mach IA64 "" as $(AS_ABI_FLAG) -o ia64_save_regs_in_stack.o $(srcdir)/ia64_save_regs_in_stack.s
 	./if_mach IA64 "" $(CC) -c -o mach_dep1.o $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
 	./if_mach IA64 "" ld -r -o mach_dep.o mach_dep1.o ia64_save_regs_in_stack.o
-	./if_not_there mach_dep.o $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
+	-./if_not_there mach_dep.o $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
+	./if_not_there mach_dep.o `cygpath -w /bin/sh` $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
 
 mark_rts.o: $(srcdir)/mark_rts.c $(UTILS)
 	rm -f mark_rts.o
 	-./if_mach ALPHA OSF1 $(CC) -c $(CFLAGS) -Wo,-notail $(srcdir)/mark_rts.c
-	./if_not_there mark_rts.o $(CC) -c $(CFLAGS) $(srcdir)/mark_rts.c
+	-./if_not_there mark_rts.o $(CC) -c $(CFLAGS) $(srcdir)/mark_rts.c
+	./if_not_there mark_rts.o `cygpath -w /bin/sh` $(CC) -c $(CFLAGS) $(srcdir)/mark_rts.c
 #	Work-around for DEC optimizer tail recursion elimination bug.
 #  The ALPHA-specific line should be removed if gcc is used.
 
@@ -606,19 +681,6 @@ gctest_dyn_link: tests/test.o libgc.so
 gctest_irix_dyn_link: tests/test.o libirixgc.so
 	$(CC) -L$(ABSDIR) -o gctest_irix_dyn_link tests/test.o -lirixgc
 
-# The following appear to be dead, especially since libgc_globals.h
-# is apparently lost.
-test_dll.o: tests/test.c libgc_globals.h
-	$(CC) $(CFLAGS) -DGC_USE_DLL -c tests/test.c -o test_dll.o
-
-test_dll: test_dll.o libgc_dll.a libgc.dll
-	$(CC) test_dll.o -L$(ABSDIR) -lgc_dll -o test_dll
-
-SYM_PREFIX-libgc=GC
-
-# Uncomment the following line to build a GNU win32 DLL
-# include Makefile.DLLs
-
 reserved_namespace: $(SRCS)
 	for file in $(SRCS) tests/test.c tests/test_cpp.cc; do \
 		sed s/GC_/_GC_/g < $$file > tmp; \
@@ -630,3 +692,43 @@ user_namespace: $(SRCS)
 		sed s/_GC_/GC_/g < $$file > tmp; \
 		cp tmp $$file; \
 		done
+
+#-----------------------------------------------------------------------------#
+
+# The Mmakefile invokes `make $(EXT_FOR_SHARED_LIB)',
+# so we need targets `a', `so', and `dll'.
+
+.PHONY: a
+a: lib$(GC_GRADE).a
+
+.PHONY: so
+so: lib$(GC_GRADE).so
+
+#-----------------------------------------------------------------------------#
+# support for DLLs using gnu-win32
+#-----------------------------------------------------------------------------#
+ifeq ($(USE_DLLS),yes)
+
+LIBGC_DLL_H = libgc_dll.h 
+LIBGC_GLOBALS_H = libgc_globals.h 
+
+DLL_CFLAGS = -DUSE_DLLS -DGC_DEFINE_DLL
+
+.PHONY: dll
+dll: libgc.dll libgc.a libgc_dll.h libgc_globals.h
+	@echo Made DLL
+
+# GNU Make seems to need these extra dependencies as a hint
+lib$(GC_GRADE).dll: lib$(GC_GRADE)$(DLL_DEF_LIB) libgc.def
+
+test_dll.o: tests/test.c libgc_dll.h libgc_globals.h
+	$(CC) $(CFLAGS) -UGC_DEFINE_DLL -c tests/test.c -o test_dll.o
+
+test_dll: test_dll.o libgc.a libgc.dll
+	$(CC) test_dll.o -L$(ABSDIR) -lgc -o test_dll
+
+SYM_PREFIX-libgc=GC
+include ../Makefile.DLLs
+
+endif
+#-----------------------------------------------------------------------------#
