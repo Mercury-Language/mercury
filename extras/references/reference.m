@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2000,2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,22 +55,23 @@
 
 :- pragma inline(new_reference/2).
 :- pragma c_code(new_reference(X::in, Ref::out), will_not_call_mercury, "
-	incr_hp(Ref, (sizeof(ME_Reference) + sizeof(Word) - 1) / sizeof(Word));
+	MR_incr_hp(Ref, (sizeof(ME_Reference) + sizeof(MR_Word) - 1) / 
+			sizeof(MR_Word));
 	((ME_Reference *) Ref)->value = (void *) X;
 	((ME_Reference *) Ref)->id = MR_current_choicepoint_id();
 ").
 
 :- pragma inline(value/2).
 :- pragma c_code(value(Ref::in, X::out), will_not_call_mercury, "
-	X = (Word) ((ME_Reference *) Ref)->value;
+	X = (MR_Word) ((ME_Reference *) Ref)->value;
 ").
 
 :- pragma inline(update/2).
 :- pragma c_code(update(Ref::in, X::in), will_not_call_mercury, "
 	ME_Reference *ref = (ME_Reference *) Ref;
 	if (ref->id != MR_current_choicepoint_id()) {
-		MR_trail_current_value((Word *) (&ref->value));
-		MR_trail_current_value((Word *) (&ref->id));
+		MR_trail_current_value((MR_Word *) (&ref->value));
+		MR_trail_current_value((MR_Word *) (&ref->id));
 		ref->id = MR_current_choicepoint_id();
 	}
 	ref->value = (void *) X;

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2000 University of Melbourne.
+** Copyright (C) 1999-2000,2002 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -35,7 +35,7 @@
 ** ").
 **
 ** :- pragma c_code(foo_reference = (X::out), will_not_call_mercury, "
-**         X = (Word) &foo;
+**         X = (MR_Word) &foo;
 ** ").
 */
 
@@ -49,7 +49,7 @@ typedef struct {
 	MR_ChoicepointId id;
 } ME_Reference;
 
-typedef Word ME_NbReference;
+typedef MR_Word ME_NbReference;
 
 #endif	/* not C_REFERENCE_H */
 

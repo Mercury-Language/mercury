@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2000,2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,7 +52,7 @@
 
 %  This type is implemented in C.
 %  Note that if the C type used to implement nb_references changes (from
-%  something equivalent to `Word'), then `c_reference.h' should also be
+%  something equivalent to `MR_Word'), then `c_reference.h' should also be
 %  updated.
 :- type nb_reference(T) ---> nb_reference(c_pointer).
 
@@ -60,31 +60,31 @@
 
 :- pragma inline(new_nb_reference/2).
 :- pragma c_code(new_nb_reference(X::in, Ref::out), will_not_call_mercury, "
-	incr_hp(Ref, 1);
+	MR_incr_hp(Ref, 1);
 #ifndef CONSERVATIVE_GC
-	save_transient_registers();
+	MR_save_transient_registers();
 #endif
-	*(Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
-			(Word *) Ref);
+	*(MR_Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
+			(MR_Word *) Ref);
 #ifndef CONSERVATIVE_GC
-	restore_transient_registers();
+	MR_restore_transient_registers();
 #endif
 ").
 
 :- pragma inline(value/2).
 :- pragma c_code(value(Ref::in, X::out), will_not_call_mercury, "
-	X = *(Word *) Ref;
+	X = *(MR_Word *) Ref;
 ").
 
 :- pragma inline(update/2).
 :- pragma c_code(update(Ref::in, X::in), will_not_call_mercury, "
 #ifndef CONSERVATIVE_GC
-	save_transient_registers();
+	MR_save_transient_registers();
 #endif
-	*(Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
-			(Word *) Ref);
+	*(MR_Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
+			(MR_Word *) Ref);
 #ifndef CONSERVATIVE_GC
-	restore_transient_registers();
+	MR_restore_transient_registers();
 #endif
 ").
 

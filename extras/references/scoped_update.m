@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-1999,2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -76,9 +76,9 @@
 */
 
 typedef struct {
-	Word *var;
-	Word insideval;
-	Word outsideval;
+	MR_Word *var;
+	MR_Word insideval;
+	MR_Word outsideval;
 } *ME_ScopeHandle;
 
 void ME_enter_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason);
@@ -145,8 +145,8 @@ ME_exit_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason)
 			ME_untrail_msg(""ME_exit_scope_failing: ""
 					""commit/solve\n"");
 			/* This *may* help GC collect more garbage */
-			handle->var = (Word *) 0;
-			handle->outsideval = handle->insideval = (Word) 0;
+			handle->var = (MR_Word *) 0;
+			handle->outsideval = handle->insideval = (MR_Word) 0;
 			break;
 
 		default:
@@ -161,18 +161,18 @@ ME_exit_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason)
 
 :- pragma c_code(enter_scope(Ptr::in, Scoped_update_handle::muo),
 		will_not_call_mercury, "
-	Word rec;
+	MR_Word rec;
 	ME_ScopeHandle handle;
 
-	incr_hp(rec, (sizeof(*handle) + sizeof(Word) - 1) / sizeof(Word));
+	MR_incr_hp(rec, (sizeof(*handle) + sizeof(MR_Word) - 1) / sizeof(MR_Word));
 	handle = (ME_ScopeHandle) rec;
-	handle->var = (Word *) Ptr;
-	handle->insideval = handle->outsideval = *(Word *) Ptr;
+	handle->var = (MR_Word *) Ptr;
+	handle->insideval = handle->outsideval = *(MR_Word *) Ptr;
 	MR_trail_function(ME_exit_scope_failing, handle);
 
 	ME_show_handle("">> enter scope:  "", handle);
 
-	Scoped_update_handle = (Word) handle;
+	Scoped_update_handle = (MR_Word) handle;
 ").
 
 :- pragma c_code(exit_scope(Handle::mdi), will_not_call_mercury, "
