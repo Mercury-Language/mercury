@@ -183,11 +183,13 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			ByteInfo = ByteInfo0
 		;
 			% XXX
-			functor(GenericCallType, GenericCallFunctor, _),
-			string__append_list([
+			functor(GenericCallType, _GenericCallFunctor, _),
+			/*string__append_list([
 				"sorry: bytecode not yet implemented for ",
 				GenericCallFunctor, " calls"], Msg),
-			error(Msg)
+			error(Msg)*/
+			Code = node([not_supported]),
+			ByteInfo = ByteInfo0
 		)
 	;
 		GoalExpr = call(PredId, ProcId, ArgVars, BuiltinState, _, _),
@@ -257,7 +259,8 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		bytecode_gen__goal(Else, ByteInfo5, ByteInfo, ElseCode),
 		EnterIfCode = node([enter_if(ElseLabel, EndLabel, FrameTemp)]),
 		EnterThenCode = node([enter_then(FrameTemp)]),
-		EndofThenCode = node([endof_then(EndLabel), label(ElseLabel)]),
+		EndofThenCode = node([endof_then(EndLabel), label(ElseLabel),
+			enter_else(FrameTemp)]),
 		EndofIfCode = node([endof_if, label(EndLabel)]),
 		Code =
 			tree(EnterIfCode,
