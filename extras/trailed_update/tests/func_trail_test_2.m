@@ -53,7 +53,7 @@ small_int_2(6).
 
 :- pragma c_code(trail_test_message(Prefix::in, I::in, J::in),
 	will_not_call_mercury, "
-	    printf(""%s: %d %d\n"",
+	    printf(""%s: %d %d\\n"",
 		   (char *)Prefix, (int)I, (int)J);
 ").
 
@@ -74,11 +74,11 @@ void trace_fail(int handle, MR_untrail_reason reason) {
 	    case MR_exception:
 	    case MR_undo:
 	    case MR_retry:
-/*		printf(""trace_fail: exception/undo/retry\n""); */
-	        printf(""<= fail: %d\n"", handle);
+/*		printf(""trace_fail: exception/undo/retry\\n""); */
+	        printf(""<= fail: %d\\n"", handle);
 		break;
 	    default:
-		printf(""trace_fail: default\n"");
+		printf(""trace_fail: default\\n"");
 		break;
 	}
 }
@@ -89,15 +89,15 @@ void trace_redo(int handle, MR_untrail_reason reason) {
 	    case MR_exception:
 	    case MR_undo:
 	    case MR_retry:
-/*		printf(""trace_redo: exception/undo/retry\n""); */
-	        printf("">= redo: %d\n"", handle);
+/*		printf(""trace_redo: exception/undo/retry\\n""); */
+	        printf("">= redo: %d\\n"", handle);
 		break;
 	    case MR_commit:
 	    case MR_solve:
-		printf(""trace_redo: commit/solve\n"");
+		printf(""trace_redo: commit/solve\\n"");
 		break;
 	    default:
-		printf(""trace_redo: default\n"");
+		printf(""trace_redo: default\\n"");
 		/* we may need to do something if reason == MR_gc */
 		break;
 	}
@@ -106,12 +106,12 @@ void trace_redo(int handle, MR_untrail_reason reason) {
 ").
 
 :- pragma c_code(enter(I::in), will_not_call_mercury, "
-	printf("">> enter (%d)\n"", (int) I);
+	printf("">> enter (%d)\\n"", (int) I);
 	MR_trail_function(trace_fail, (void *) I);
 ").
 
 
 :- pragma c_code(leave(I::in), will_not_call_mercury, "
-	printf(""<< leave (%d)\n"", (int) I);
+	printf(""<< leave (%d)\\n"", (int) I);
 	MR_trail_function(trace_redo, (void *) I);
 ").
