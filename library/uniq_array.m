@@ -34,9 +34,10 @@
 :- mode uniq_array_uo == out(uniq_array).
 :- mode uniq_array_ui == in(uniq_array).
 
-	% uniq_array__make_empty_array(Array) creates an array of size zero
-	% with bounds from 0 to 0.
+%-----------------------------------------------------------------------------%
 
+	% uniq_array__make_empty_array(Array) creates an array of size zero
+	% starting at lower bound 0.
 :- pred uniq_array__make_empty_array(uniq_array(T)).
 :- mode uniq_array__make_empty_array(uniq_array_uo) is det.
 
@@ -51,6 +52,8 @@
 	% for io__read, io__write, term_to_type, and type_to_term.
 :- func uniq_array(list(T)) = uniq_array(T).
 :- mode uniq_array(in) = uniq_array_uo is det.
+
+%-----------------------------------------------------------------------------%
 
 	% uniq_array__max returns the upper bound of the array
 :- pred uniq_array__max(uniq_array(_T), int).
@@ -68,6 +71,8 @@
 :- pred uniq_array__in_bounds(uniq_array(_T), int).
 :- mode uniq_array__in_bounds(uniq_array_ui, in) is semidet.
 :- mode uniq_array__in_bounds(in, in) is semidet.
+
+%-----------------------------------------------------------------------------%
 
 	% uniq_array__lookup returns the Nth element of a uniq_array.
 	% It is an error if the index is out of bounds.
@@ -125,6 +130,12 @@
 	% with `Init'.
 :- pred uniq_array__resize(uniq_array(T), int, T, uniq_array(T)).
 :- mode uniq_array__resize(uniq_array_di, in, in, uniq_array_uo) is det.
+
+	% uniq_array__shrink(Array0, Size, Array):
+	% The uniq_array is shrunk to make it fit the new size `Size'.
+	% It is an error if `Size' is larger than the size of `Array0'.
+:- pred uniq_array__shrink(uniq_array(T), int, uniq_array(T)).
+:- mode uniq_array__shrink(uniq_array_di, in, uniq_array_uo) is det.
 
 	% uniq_array__from_list takes a list,
 	% and returns a uniq_array containing those elements in
@@ -508,14 +519,17 @@ ML_resize_uniq_array(MR_UniqArrayType *old_array, Integer array_size,
 {
 	Integer i;
 	MR_UniqArrayType* array;
-	Integer old_array_size;
+	Integer elements_to_copy;
 
-	old_array_size = old_array->size;
-	if (old_array_size == array_size) return old_array;
+	elements_to_copy = old_array->size;
+	if (elements_to_copy == array_size) return old_array;
+	if (elements_to_copy > array_size) {
+		elements_to_copy = array_size;
+	}
 
 	array = (MR_UniqArrayType *) make_many(Word, array_size + 1);
 	array->size = array_size;
-	for (i = 0; i < old_array_size; i++) {
+	for (i = 0; i < elements_to_copy; i++) {
 		array->elements[i] = old_array->elements[i];
 	}
 	for (; i < array_size; i++) {
@@ -538,6 +552,51 @@ ML_resize_uniq_array(MR_UniqArrayType *old_array, Integer array_size,
 "
 	UniqArray = (Word) ML_resize_uniq_array(
 				(MR_UniqArrayType *) UniqArray0, Size, Item);
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma(c_header_code, "
+MR_UniqArrayType * ML_shrink_uniq_array(MR_UniqArrayType *old_array,
+					Integer array_size);
+").
+
+:- pragma(c_code, "
+MR_UniqArrayType *
+ML_shrink_uniq_array(MR_UniqArrayType *old_array, Integer array_size)
+{
+	Integer i;
+	MR_UniqArrayType* array;
+	Integer old_array_size;
+
+	old_array_size = old_array->size;
+	if (old_array_size == array_size) return old_array;
+	if (old_array_size < array_size) {
+		fatal_error(""uniq_array__shrink: can't shrink to a larger size"");
+	}
+
+	array = (MR_UniqArrayType *) make_many(Word, array_size + 1);
+	array->size = array_size;
+	for (i = 0; i < array_size; i++) {
+		array->elements[i] = old_array->elements[i];
+	}
+
+	/*
+	** since the mode on the old array is `uniq_array_di', it is safe to
+	** deallocate the storage for it
+	*/
+	oldmem(old_array);
+
+	return array;
+}
+").
+
+:- pragma(c_code,
+	uniq_array__shrink(UniqArray0::uniq_array_di, Size::in,
+		UniqArray::uniq_array_uo),
+"
+	UniqArray = (Word) ML_shrink_uniq_array(
+				(MR_UniqArrayType *) UniqArray0, Size);
 ").
 
 %-----------------------------------------------------------------------------%
