@@ -420,7 +420,7 @@ get_single_arg_inst(bound(_Uniq, List), _, ConsId, ArgInst) :-
 		ArgInst = not_reached
 	).
 get_single_arg_inst(free, _, _, free).
-get_single_arg_inst(free(_Type), _, _, free).
+get_single_arg_inst(free(_Type), _, _, free).	% XXX loses type info
 get_single_arg_inst(any(Uniq), _, _, any(Uniq)).
 get_single_arg_inst(abstract_inst(_, _), _, _, _) :-
 	error("get_single_arg_inst: abstract insts not supported").
@@ -483,6 +483,7 @@ inst_is_clobbered(ModuleInfo, defined_inst(InstName)) :-
 :- inst_is_free(_, X) when X.		% NU-Prolog indexing.
 
 inst_is_free(_, free).
+inst_is_free(_, free(_Type)).
 inst_is_free(_, inst_var(_)) :-
 	error("internal error: uninstantiated inst parameter").
 inst_is_free(ModuleInfo, defined_inst(InstName)) :-
