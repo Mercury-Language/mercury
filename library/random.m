@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2003 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -9,7 +9,7 @@
 % stability: low
 %
 % Define a set of random number generator predicates. This implementation
-% uses a threaded random-number supply.   The supply can be used in a
+% uses a threaded random-number supply.  The supply can be used in a
 % non-unique way, which means that each thread returns the same list of
 % random numbers.  However, this may not be desired so in the interests
 % of safety it is also declared with (backtrackable) unique modes.
@@ -56,8 +56,7 @@
 
 	% random__init(Seed, RS): creates a supply of random numbers RS
 	% using the specified Seed.
-:- pred random__init(int, random__supply).
-:- mode random__init(in, uo) is det.
+:- pred random__init(int::in, random__supply::uo) is det.
 
 	% random__random(Num, RS0, RS): extracts a number Num in the
 	% range 0 .. RandMax from the random number supply RS0, and
@@ -107,8 +106,7 @@
 	% The following predicate was just for test purposes.
 	% It should not be used by user programs.
 :- pragma obsolete(random__test/4).
-:- pred random__test(int, int, list(int), int).
-:- mode random__test(in, in, out, out) is det.
+:- pred random__test(int::in, int::in, list(int)::out, int::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -117,8 +115,7 @@
 
 :- type random__supply ---> rs(int). % I(j)
 
-:- pred random__params(int, int, int).	% a, c, m
-:- mode random__params(out, out, out) is det.
+:- pred random__params(int::out, int::out, int::out) is det.	% a, c, m
 
 random__params(9301, 49297, 233280).
 
@@ -136,12 +133,12 @@ random__random(I, rs(RS0), rs(RS)) :-
 	% algorithm if the threshold is exceeded.  But that would defeat
 	% the purpose of having a "quick and dirty" random number generator,
 	% so we don't do that.
-random__random(Low, Range, Num) -->
-	random__random(R),
-	random__randcount(M),
+random__random(Low, Range, Num, !RandomSupply) :-
+	random__random(R, !RandomSupply),
+	random__randcount(M, !RandomSupply),
 	% With our current set of parameters and a reasonable choice of Range,
 	% the following should never overflow.
-	{ Num = Low + (Range * R) // M }.
+	Num = Low + (Range * R) // M.
 
 random__randmax(M1, RS, RS) :-
 	random__params(_A, _C, M),
@@ -171,7 +168,6 @@ random__permutation(List0, List, RS0, RS) :-
 
 :- pred perform_sampling(int, array(T), list(T), list(T),
 	random__supply, random__supply) is det.
-
 :- mode perform_sampling(in, array_di, in, out, mdi, muo) is det.
 :- mode perform_sampling(in, array_di, in, out, in, out) is det.
 

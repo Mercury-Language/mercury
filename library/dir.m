@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999-2000, 2002-2004 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999-2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 %
 % Duplicate directory separators and trailing separators are also
 % removed where that doesn't change the meaning of the path name.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module dir.
@@ -28,13 +28,12 @@
 :- import_module list.
 :- import_module string.
 
-	% predicates to isolate system dependencies 
+	% predicates to isolate system dependencies
 
 	% Returns the default separator between components of a pathname --
 	% '/' on Unix systems and '\\' on Microsoft Windows systems.
 :- func dir__directory_separator = character.
-:- pred dir__directory_separator(character).
-:- mode dir__directory_separator(out) is det.
+:- pred dir__directory_separator(character::out) is det.
 
 	% Is the character a directory separator.
 	% On Microsoft Windows systems this will succeed for '/'
@@ -45,13 +44,11 @@
 
 	% Returns ".".
 :- func dir__this_directory = string.
-:- pred dir__this_directory(string).
-:- mode dir__this_directory(out) is det.	
+:- pred dir__this_directory(string::out) is det.
 
 	% Returns "..".
 :- func dir__parent_directory = string.
-:- pred dir__parent_directory(string).
-:- mode dir__parent_directory(out) is det.	
+:- pred dir__parent_directory(string::out) is det.
 
 	% dir__split_name(PathName, DirName, BaseName).
 	%
@@ -152,14 +149,13 @@
 	% Make the given directory, and all parent directories.
 	% This will also succeed if the directory already exists
 	% and is readable and writable by the current user.
-:- pred dir__make_directory(string, io__res, io__state, io__state).
-:- mode dir__make_directory(in, out, di, uo) is det.
+:- pred dir__make_directory(string::in, io__res::out, io::di, io::uo) is det.
 
 	% Make only the given directory.
 	% Fails if the directory already exists, or the parent
 	% directory doesn't.
-:- pred dir__make_single_directory(string, io__res, io__state, io__state).
-:- mode dir__make_single_directory(in, out, di, uo) is det.
+:- pred dir__make_single_directory(string::in, io__res::out, io::di, io::uo)
+	is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -169,7 +165,7 @@
 	% a directory.
 	% Processing will stop if Continue is bound to `no'.
 :- type dir__foldl_pred(T) == pred(string, string, io__file_type, bool,
-					T, T, io__state, io__state).
+					T, T, io, io).
 :- inst dir__foldl_pred == (pred(in, in, in, out, in, out, di, uo) is det).
 
 	% dir__foldl2(P, DirName, InitialData, Result, !IO).
@@ -179,9 +175,8 @@
 	% Processing will stop if the boolean (Continue) output of P is bound
 	% to `no'.
 	% The order in which the entries are processed is unspecified.
-:- pred dir__foldl2(dir__foldl_pred(T), string,
-	T, io__maybe_partial_res(T), io__state, io__state).
-:- mode dir__foldl2(in(dir__foldl_pred), in, in, out, di, uo) is det.
+:- pred dir__foldl2(dir__foldl_pred(T)::in(dir__foldl_pred), string::in,
+	T::in, io__maybe_partial_res(T)::out, io::di, io::uo) is det.
 
 	% dir__recursive_foldl2(P, DirName, FollowSymLinks,
 	% 	InitialData, Result, !IO).
@@ -191,33 +186,32 @@
 	% the directory itself before its contents.
 	% If `FollowSymLinks' is `yes', recursively process the
 	% directories referenced by symbolic links.
-:- pred dir__recursive_foldl2(dir__foldl_pred(T), string, bool,
-	T, io__maybe_partial_res(T), io__state, io__state).
-:- mode dir__recursive_foldl2(in(dir__foldl_pred),
-	in, in, in, out, di, uo) is det.
+:- pred dir__recursive_foldl2(dir__foldl_pred(T)::in(dir__foldl_pred),
+	string::in, bool::in, T::in, io__maybe_partial_res(T)::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-       % Implement brace expansion, as in sh: return the sequence of strings
-       % generated from the given input string. Throw an exception if the
-       % input string contains mismatched braces.
-       %
-       % The following is the documentation of brace expansion from the sh
-       % manual:
-       %
-       %	Brace expansion is a mechanism by which arbitrary strings may
-       %	be generated. This mechanism is similar to pathname expansion,
-       %	but the filenames generated need not exist. Patterns to be
-       %	brace expanded take the form of an optional preamble, followed
-       %	by a series of comma-separated strings between a pair of
-       %	braces, followed by an optional postscript. The preamble is
-       %	prefixed to each string contained within the braces, and the
-       %	postscript is then appended to each resulting string, expanding
-       %	left to right.
-       %
-       %	Brace expansions may be nested. The results of each expanded
-       %	string are not sorted; left to right order is preserved.
-       %	For example, a{d,c,b}e expands into `ade ace abe'.
+	% Implement brace expansion, as in sh: return the sequence of strings
+	% generated from the given input string. Throw an exception if the
+	% input string contains mismatched braces.
+	%
+	% The following is the documentation of brace expansion from the sh
+	% manual:
+	%
+	%	Brace expansion is a mechanism by which arbitrary strings may
+	%	be generated. This mechanism is similar to pathname expansion,
+	%	but the filenames generated need not exist. Patterns to be
+	%	brace expanded take the form of an optional preamble, followed
+	%	by a series of comma-separated strings between a pair of
+	%	braces, followed by an optional postscript. The preamble is
+	%	prefixed to each string contained within the braces, and the
+	%	postscript is then appended to each resulting string, expanding
+	%	left to right.
+	%
+	%	Brace expansions may be nested. The results of each expanded
+	%	string are not sorted; left to right order is preserved.
+	%	For example, a{d,c,b}e expands into `ade ace abe'.
 :- func expand_braces(string) = list(string).
 
 %-----------------------------------------------------------------------------%
@@ -240,13 +234,16 @@
 :- import_module std_util.
 
 dir__directory_separator = (if have_win32 then ('\\') else ('/')).
-:- pragma foreign_proc("C#", dir__directory_separator = (Sep::out),
+
+:- pragma foreign_proc("C#",
+	dir__directory_separator = (Sep::out),
 	[promise_pure, will_not_call_mercury, thread_safe],
 "
 	Sep = System.IO.Path.DirectorySeparatorChar;
 ").
 
-:- pragma foreign_proc("Java", dir__directory_separator = (Sep::out),
+:- pragma foreign_proc("Java",
+	dir__directory_separator = (Sep::out),
 	[promise_pure, will_not_call_mercury, thread_safe],
 "
 	Sep = java.io.File.separatorChar;
@@ -255,11 +252,13 @@ dir__directory_separator = (if have_win32 then ('\\') else ('/')).
 :- func dir__alt_directory_separator = char.
 
 dir__alt_directory_separator = (io__have_cygwin -> ('\\') ; ('/')).
-:- pragma foreign_proc("C#", dir__alt_directory_separator = (Sep::out),
+
+:- pragma foreign_proc("C#",
+	dir__alt_directory_separator = (Sep::out),
 	[promise_pure, will_not_call_mercury, thread_safe],
 "
 	Sep = System.IO.Path.AltDirectorySeparatorChar;
-").		
+").
 
 dir__is_directory_separator(Char) :-
 	( Char = dir__directory_separator, Char \= dir__alt_directory_separator
@@ -276,6 +275,7 @@ dir__is_directory_separator_semidet(Char) :-
 use_windows_paths :- dir__directory_separator = ('\\').
 
 :- pragma export((dir__this_directory = out), "ML_dir_this_directory").
+
 dir__this_directory = ".".
 
 dir__parent_directory = "..".
@@ -283,14 +283,16 @@ dir__parent_directory = "..".
 %-----------------------------------------------------------------------------%
 
 dir__basename_det(FileName) =
-	( if BaseName = dir__basename(FileName)
-	  then BaseName
-	  else func_error("dir.basename_det: given directory is root directory")
+	( BaseName = dir__basename(FileName) ->
+		BaseName
+	;
+		func_error("dir.basename_det: " ++
+			"given directory is root directory")
 	).
 
 dir__basename(FileName) = BaseName :-
 	FileNameChars = canonicalize_path_chars(
-			string__to_char_list(FileName)),
+		string__to_char_list(FileName)),
 	\+ dir__is_root_directory(FileNameChars),
 	\+ (
 		% Current directory on the given drive.
@@ -310,7 +312,7 @@ dir__basename(FileName) = BaseName :-
 
 dir__dirname(FileName) = DirName :-
 	FileNameChars = canonicalize_path_chars(
-			string__to_char_list(FileName)),
+		string__to_char_list(FileName)),
 	(
 		dir__is_root_directory(FileNameChars)
 	->
@@ -320,7 +322,7 @@ dir__dirname(FileName) = DirName :-
 		use_windows_paths,
 	  	FileNameChars = [Drive, (':')],
 		char__is_alpha(Drive)
-	->	
+	->
 		DirName = string__from_char_list(FileNameChars)
 	;
 		dir__split_name_2(FileNameChars, DirName0, _)
@@ -337,7 +339,7 @@ dir__dirname(FileName) = DirName :-
 
 dir__split_name(FileName, DirName, BaseName) :-
 	FileNameChars = canonicalize_path_chars(
-			string__to_char_list(FileName)),
+		string__to_char_list(FileName)),
 	\+ is_root_directory(FileNameChars),
 	dir__split_name_2(FileNameChars, DirName, BaseName).
 
@@ -401,7 +403,7 @@ dir__split_name_3(FileNameChars, DirName, BaseName) :-
 					RevDirName1 = []
 				)
 			)
-		->	
+		->
 			RevDirName = RevDirName1
 		;
 			RevDirName = RevDirName0
@@ -423,8 +425,8 @@ dir__split_name_3(FileNameChars, DirName, BaseName) :-
 		fail
 	).
 
-:- pred dir__split_name_dotnet(string::in,
-		string::out, string::out) is semidet.
+:- pred dir__split_name_dotnet(string::in, string::out, string::out)
+	is semidet.
 
 dir__split_name_dotnet(_, "", "") :- semidet_fail.
 
@@ -474,7 +476,7 @@ canonicalize_path_chars(FileName0) = FileName :-
 		;
 			FileName = [CanonicalChar1 | FileName2]
 		)
-	;	
+	;
 		FileName = canonicalize_path_chars_2(FileName0, [])
 	).
 
@@ -488,10 +490,14 @@ canonicalize_path_chars_2([C0 | FileName0], RevFileName0) =
 	% On Cygwin, "\foo\bar" (relative to root of current drive)
 	% is different to "/foo/bar" (relative to Cygwin root directory),
 	% so we can't convert separators.
-	C = ( if \+ io__have_cygwin, is_directory_separator(C0)
-	      then directory_separator
-	      else C0
-	    ),
+	(
+		\+ io__have_cygwin,
+		is_directory_separator(C0)
+	->
+		C = directory_separator
+	;
+		C = C0
+	),
 
 	% Remove repeated directory separators.
 	(
@@ -507,14 +513,14 @@ canonicalize_path_chars_2([C0 | FileName0], RevFileName0) =
 :- func remove_trailing_dir_separator(list(char)) = list(char).
 
 remove_trailing_dir_separator(Chars) =
-		( if
-			list__split_last(Chars, Chars1, Sep),
-			dir__is_directory_separator(Sep)
-		  then	
-			Chars1
-		  else
-			Chars
-		).
+	(
+		list__split_last(Chars, Chars1, Sep),
+		dir__is_directory_separator(Sep)
+	->
+		Chars1
+	;
+		Chars
+	).
 
 dir__path_name_is_root_directory(PathName) :-
 	is_root_directory(canonicalize_path_chars(
@@ -554,20 +560,19 @@ strip_leading_win32_root_directory(!FileName) :-
 	% may change, and it's pretty awful anyway (`C:foo' isn't the
 	% same as `C:\foo'), so we don't support it here.
 :- pred strip_leading_win32_drive_root_directory(list(char)::in,
-		list(char)::out) is semidet.
+	list(char)::out) is semidet.
 
-strip_leading_win32_drive_root_directory(
-		[Letter, ':', Sep | !.FileName],
+strip_leading_win32_drive_root_directory([Letter, ':', Sep | !.FileName],
 		!:FileName) :-
 	char__is_alpha(Letter),
 	dir__is_directory_separator(Sep).
 
 	% Check for `\foo...'.
 :- pred strip_leading_win32_current_drive_root_directory(list(char)::in,
-		list(char)::out) is semidet.
+	list(char)::out) is semidet.
 
-strip_leading_win32_current_drive_root_directory(
-		[Char1 | !.FileName], !:FileName) :-
+strip_leading_win32_current_drive_root_directory([Char1 | !.FileName],
+		!:FileName) :-
 	dir__is_directory_separator(Char1),
 	( !.FileName = []
 	; !.FileName = [Char2 | !:FileName],
@@ -575,8 +580,8 @@ strip_leading_win32_current_drive_root_directory(
 	).
 
 	% Check for `\\server\' or `\\server\share\'.
-:- pred strip_leading_win32_unc_root_directory(list(char)::in,
-		list(char)::out) is semidet.
+:- pred strip_leading_win32_unc_root_directory(list(char)::in, list(char)::out)
+	is semidet.
 
 strip_leading_win32_unc_root_directory([Sep, Sep | !.FileName], !:FileName) :-
 	dir__is_directory_separator(Sep),
@@ -585,7 +590,7 @@ strip_leading_win32_unc_root_directory([Sep, Sep | !.FileName], !:FileName) :-
 	Server \= [],
 	(
 		!.FileName = []
-	;	
+	;
 		!.FileName = [Sep | !:FileName],
 		(
 			!.FileName = []
@@ -619,22 +624,23 @@ is_dotnet_root_directory(FileName) :-
 		;
 			fail
 		)
-	).	
+	).
 
 :- pred is_dotnet_root_directory_2(string::in) is semidet.
 
 is_dotnet_root_directory_2(_) :-
 	error("dir.is_dotnet_root_directory called for non-.NET CLI backend").
 
-:- pragma foreign_proc("C#", is_dotnet_root_directory_2(FileName::in),
+:- pragma foreign_proc("C#",
+	is_dotnet_root_directory_2(FileName::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-    try {
-        SUCCESS_INDICATOR =
-                (System.IO.Path.GetDirectoryName(FileName) == null);
-    } catch (System.Exception e) {
-        SUCCESS_INDICATOR = false;
-    }
+	try {
+		SUCCESS_INDICATOR =
+			(System.IO.Path.GetDirectoryName(FileName) == null);
+	} catch (System.Exception e) {
+		SUCCESS_INDICATOR = false;
+	}
 }").
 
 %-----------------------------------------------------------------------------%
@@ -683,9 +689,10 @@ dir__dotnet_path_name_is_absolute_2(_) :-
 	error(
 	"dir.dotnet_path_name_is_absolute_2 called for non-.NET CLI backend").
 
-:- pragma foreign_proc("C#", dir__dotnet_path_name_is_absolute_2(FileName::in),
+:- pragma foreign_proc("C#",
+	dir__dotnet_path_name_is_absolute_2(FileName::in),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"	
+"
 	try {
 		SUCCESS_INDICATOR = System.IO.Path.IsPathRooted(FileName);
 	} catch (System.Exception e) {
@@ -698,65 +705,71 @@ dir__dotnet_path_name_is_absolute_2(_) :-
 dir__make_path_name(DirName, FileName) = DirName/FileName.
 
 :- pragma export(dir__make_path_name(in, in) = out, "ML_make_path_name").
+
 DirName0/FileName0 = PathName :-
-    DirName = string__from_char_list(canonicalize_path_chars(
-                    string__to_char_list(DirName0))),
-    FileName = string__from_char_list(canonicalize_path_chars(
-                    string__to_char_list(FileName0))),
-    (
-        dir__path_name_is_absolute(FileName)
-    ->
-        error("dir./: second argument is absolute")
-    ;
-        % Check that FileName is not a relative path of the form "C:foo".
-        use_windows_paths,   
-        Length = length(FileName),
-        ( Length >= 2 ->
-            char__is_alpha(string__unsafe_index(FileName, 0)),
-            string__unsafe_index(FileName, 1) = (':'),
-            ( Length > 2 ->
-                \+ is_directory_separator(string__unsafe_index(FileName, 2))
-            ;
-                true
-            )
-        ;
-            fail
-        )
-    ->
-        error("dir./: second argument is a current drive relative path")
-    ;
-        DirNameLength = length(DirName),
-        (
-            % Check for construction of relative paths of the form "C:foo".
-            use_windows_paths,
-            DirNameLength = 2,
-            char__is_alpha(string__unsafe_index(DirName, 0)),
-            string__unsafe_index(DirName, 1) = (':')
-        ;
-            % Don't introduce duplicate directory separators.
-            % On Windows \\foo (a UNC server specification) is
-            % not equivalent to \foo (the directory X:\foo, where
-            % X is the current drive).
-            ( DirNameLength \= 0 ->
-                dir__is_directory_separator(
-                        string__unsafe_index(DirName, DirNameLength - 1))
-            ;
-                        
-                fail
-            )
-        )
-    ->
-        PathName = DirName ++ FileName
-    ;
-        % Using string__append_list has a fixed overhead of six
-        % words, whereas using two string__appends back to back
-        % would have a memory overhead proportional to the size
-        % of the string copied twice. We prefer the former because
-        % it is bounded.
-        PathName = string__append_list([DirName,
-            string__char_to_string(dir__directory_separator),
-            FileName])
-    ).
+	DirName = string__from_char_list(canonicalize_path_chars(
+		string__to_char_list(DirName0))),
+	FileName = string__from_char_list(canonicalize_path_chars(
+		string__to_char_list(FileName0))),
+	(
+		dir__path_name_is_absolute(FileName)
+	->
+		error("dir./: second argument is absolute")
+	;
+		% Check that FileName is not a relative path
+		% of the form "C:foo".
+		use_windows_paths,
+		Length = length(FileName),
+		( Length >= 2 ->
+			char__is_alpha(string__unsafe_index(FileName, 0)),
+			string__unsafe_index(FileName, 1) = (':'),
+			( Length > 2 ->
+				\+ is_directory_separator(
+					string__unsafe_index(FileName, 2))
+			;
+				true
+			)
+		;
+			fail
+		)
+	->
+		error("dir./: second argument " ++
+			"is a current drive relative path")
+	;
+		DirNameLength = length(DirName),
+		(
+			% Check for construction of relative paths
+			% of the form "C:foo".
+			use_windows_paths,
+			DirNameLength = 2,
+			char__is_alpha(string__unsafe_index(DirName, 0)),
+			string__unsafe_index(DirName, 1) = (':')
+		;
+			% Don't introduce duplicate directory separators.
+			% On Windows \\foo (a UNC server specification) is
+			% not equivalent to \foo (the directory X:\foo, where
+			% X is the current drive).
+			( DirNameLength \= 0 ->
+				dir__is_directory_separator(
+					string__unsafe_index(DirName,
+						DirNameLength - 1))
+			;
+
+				fail
+			)
+		)
+	->
+		PathName = DirName ++ FileName
+	;
+		% Using string__append_list has a fixed overhead of six
+		% words, whereas using two string__appends back to back
+		% would have a memory overhead proportional to the size
+		% of the string copied twice. We prefer the former because
+		% it is bounded.
+		PathName = string__append_list([DirName,
+			string__char_to_string(dir__directory_separator),
+			FileName])
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -804,28 +817,27 @@ dir__make_directory(PathName, Result, !IO) :-
 % The .NET CLI library function System.IO.Directory.CreateDirectory()
 % creates the entire path in one call.
 :- pragma foreign_proc("C#",
-	dir__make_directory(DirName::in, Res::out,
-			_IO0::di, _IO::uo),
+	dir__make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
 		terminates],
 "{
-    try {
-        // CreateDirectory doesn't fail if a file with the same
-        // name as the directory being created already exists.
-        if (System.IO.File.Exists(DirName)) {
-            mercury.dir.mercury_code.ML_make_mkdir_res_error(
-                new System.Exception(""a file with that name already exists""),
-		ref Res);
-        } else if (System.IO.Directory.Exists(DirName)) {
-            mercury.dir.mercury_code.ML_check_dir_accessibility(DirName,
-                ref Res);
-        } else {
-            System.IO.Directory.CreateDirectory(DirName);
-            Res = mercury.dir.mercury_code.ML_make_mkdir_res_ok();
-        }
-    } catch (System.Exception e) {
-        mercury.dir.mercury_code.ML_make_mkdir_res_error(e, ref Res);
-    }
+	try {
+		// CreateDirectory doesn't fail if a file with the same
+		// name as the directory being created already exists.
+		if (System.IO.File.Exists(DirName)) {
+			mercury.dir.mercury_code.ML_make_mkdir_res_error(
+				new System.Exception(""a file with that name already exists""),
+				ref Res);
+		} else if (System.IO.Directory.Exists(DirName)) {
+			mercury.dir.mercury_code.ML_check_dir_accessibility(DirName,
+				ref Res);
+		} else {
+			System.IO.Directory.CreateDirectory(DirName);
+			Res = mercury.dir.mercury_code.ML_make_mkdir_res_ok();
+		}
+	} catch (System.Exception e) {
+		mercury.dir.mercury_code.ML_make_mkdir_res_error(e, ref Res);
+	}
 }").
 
 % Java has a similar library function java.io.File.mkdirs()
@@ -837,9 +849,9 @@ dir__make_directory(PathName, Result, !IO) :-
 	try {
 		java.io.File dir = new java.io.File(DirName);
 		if (dir.isFile()) {
-                	throw new java.lang.RuntimeException(
-					""a file with that name already"" +
-					"" exists"");
+			throw new java.lang.RuntimeException(
+				""a file with that name already"" +
+				"" exists"");
 		}
 		if (dir.isDirectory()) {
 			Res = check_dir_accessibility_4_p_0(DirName);
@@ -858,33 +870,39 @@ dir__make_directory(PathName, Result, !IO) :-
 :- pred can_implement_make_directory is semidet.
 
 can_implement_make_directory :- semidet_fail.
-:- pragma foreign_proc("C", can_implement_make_directory,
-		[will_not_call_mercury, promise_pure, thread_safe],
+
+:- pragma foreign_proc("C",
+	can_implement_make_directory,
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 #if defined(MR_WIN32)
 	SUCCESS_INDICATOR = MR_TRUE;
 #elif defined(MR_HAVE_MKDIR)
 	SUCCESS_INDICATOR = MR_TRUE;
-#else		
+#else
 	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
 :- pragma foreign_proc("C#",
 	can_implement_make_directory,
 	[will_not_call_mercury, promise_pure, thread_safe],
-	"SUCCESS_INDICATOR = true;"
+"
+	SUCCESS_INDICATOR = true;
+"
 ).
 :- pragma foreign_proc("Java",
 	can_implement_make_directory,
 	[will_not_call_mercury, promise_pure, thread_safe],
-	"succeeded = true;"
+"
+	succeeded = true;
+"
 ).
 
 dir__make_single_directory(DirName, Result, !IO) :-
-	dir__make_single_directory_2(1, DirName, Result, !IO).	
+	dir__make_single_directory_2(1, DirName, Result, !IO).
 
 :- pred dir__make_single_directory_2(int::in, string::in, io__res::out,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	dir__make_single_directory_2(ErrorIfExists::in, DirName::in,
@@ -958,7 +976,7 @@ dir__make_single_directory(DirName, Result, !IO) :-
 		} else {
 			info.Create();
 			Result =
-			    mercury.dir.mercury_code.ML_make_mkdir_res_ok();
+				mercury.dir.mercury_code.ML_make_mkdir_res_ok();
 		}
 	}
     } catch (System.Exception e) {
@@ -1002,23 +1020,23 @@ dir__make_single_directory(DirName, Result, !IO) :-
 ").
 
 :- func dir__make_mkdir_res_ok = io__res.
-:- pragma export((dir__make_mkdir_res_ok = out), "ML_make_mkdir_res_ok"). 
+:- pragma export((dir__make_mkdir_res_ok = out), "ML_make_mkdir_res_ok").
 
 dir__make_mkdir_res_ok = ok.
 
-:- pred dir__make_mkdir_res_error(io__system_error::in,
-		io__res::out, io__state::di, io__state::uo) is det.
+:- pred dir__make_mkdir_res_error(io__system_error::in, io__res::out,
+	io::di, io::uo) is det.
 :- pragma export(dir__make_mkdir_res_error(in, out, di, uo),
-		"ML_make_mkdir_res_error").
+	"ML_make_mkdir_res_error").
 
 dir__make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
 	io__make_maybe_win32_err_msg(Error,
 		"dir.make_directory failed: ", Msg, !IO).
 
 :- pred dir__make_mkdir_res_exists(io__system_error::in,
-		string::in, io__res::out, io__state::di, io__state::uo) is det.
+	string::in, io__res::out, io::di, io::uo) is det.
 :- pragma export(dir__make_mkdir_res_exists(in, in, out, di, uo),
-		"ML_make_mkdir_res_exists").
+	"ML_make_mkdir_res_exists").
 
 dir__make_mkdir_res_exists(Error, DirName, Res, !IO) :-
 	io__file_type(yes, DirName, TypeResult, !IO),
@@ -1029,171 +1047,194 @@ dir__make_mkdir_res_exists(Error, DirName, Res, !IO) :-
 		dir__make_mkdir_res_error(Error, Res, !IO)
 	).
 
-:- pred dir__check_dir_accessibility(string::in, io__res::out,
-		io__state::di, io__state::uo) is det.
+:- pred dir__check_dir_accessibility(string::in, io__res::out, io::di, io::uo)
+	is det.
 :- pragma export(dir__check_dir_accessibility(in, out, di, uo),
-		"ML_check_dir_accessibility").
+	"ML_check_dir_accessibility").
 
 dir__check_dir_accessibility(DirName, Res, !IO) :-
 	% Check whether we can read and write the directory.
-	io__check_file_accessibility(DirName,
-		[read, write, execute], Res, !IO).
+	io__check_file_accessibility(DirName, [read, write, execute],
+		Res, !IO).
 
 %-----------------------------------------------------------------------------%
 
 dir__foldl2(P, DirName, T, Res, !IO) :-
-	dir__foldl2_process_dir(no, P, DirName, [],
-		no, no, _, T, Res, !IO).
+	dir__foldl2_process_dir(no, P, DirName, [], no, no, _, T, Res, !IO).
 
 dir__recursive_foldl2(P, DirName, FollowLinks, T, Res, !IO) :-
-	dir__foldl2_process_dir(no, P, DirName, [],
-		yes, FollowLinks, _, T, Res, !IO).
+	dir__foldl2_process_dir(no, P, DirName, [], yes, FollowLinks, _,
+		T, Res, !IO).
 
-:- pred dir__foldl2_process_dir(bool, dir__foldl_pred(T), string,
-	list(file_id), bool, bool, bool, T, io__maybe_partial_res(T),
-	io__state, io__state).
-:- mode dir__foldl2_process_dir(in, in(dir__foldl_pred), in, in, in, in,
-	out, in, out, di, uo) is det.
+:- pred dir__foldl2_process_dir(bool::in,
+	dir__foldl_pred(T)::in(dir__foldl_pred), string::in,
+	list(file_id)::in, bool::in, bool::in, bool::out, T::in,
+	io__maybe_partial_res(T)::out, io::di, io::uo) is det.
+
+:- pred dir__foldl2_process_dir2(dir__stream::in, bool::in,
+	dir__foldl_pred(T)::in(dir__foldl_pred), string::in,
+	list(file_id)::in, string::in, bool::in, bool::in, T::in,
+	{io__maybe_partial_res(T), bool}::out, io::di, io::uo) is det.
+
+dir__foldl2_process_dir2(Dir, SymLinkParent, P, DirName, ParentIds, FirstEntry,
+		Recursive, FollowLinks, T0, {Res, Cont}, !IO) :-
+	dir__foldl2_process_entries(Dir, SymLinkParent, P, DirName,
+		ok(FirstEntry), ParentIds, Recursive, FollowLinks, Cont,
+		T0, Res, !IO).
 
 dir__foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
-                FollowLinks, Continue, T0, Result, !IO) :-
-    ( can_implement_dir_foldl ->
-        (
-            Recursive = yes,
-            FollowLinks = yes
-        ->
-            check_for_symlink_loop(SymLinkParent, DirName,
-                   LoopRes, ParentIds0, ParentIds, !IO)
-        ;
-            ParentIds = ParentIds0,
-            LoopRes = ok(no)
-        ),
-        (
-            LoopRes = ok(no),
-            dir__open(DirName, OpenResult, !IO),
-            (
-                OpenResult = ok({Dir, FirstEntry}),
+		FollowLinks, Continue, T0, Result, !IO) :-
+	( can_implement_dir_foldl ->
+		(
+			Recursive = yes,
+			FollowLinks = yes
+		->
+			check_for_symlink_loop(SymLinkParent, DirName,
+				LoopRes, ParentIds0, ParentIds, !IO)
+		;
+			ParentIds = ParentIds0,
+			LoopRes = ok(no)
+		),
+		(
+			LoopRes = ok(no),
+			dir__open(DirName, OpenResult, !IO),
+			(
+				OpenResult = ok({Dir, FirstEntry}),
 
-                % We need to close the directory if an exception is
-                % thrown to avoid resource leaks.
-                Cleanup = dir__close(Dir),
-                exception__finally(
-                    (pred({Res, Cont}::out, !.IO::di, !:IO::uo) is det :-
-                        dir__foldl2_process_entries(Dir, SymLinkParent,
-                                P, DirName, ok(FirstEntry), ParentIds,
-                                Recursive, FollowLinks, Cont,
-                                T0, Res, !IO)
-                    ), {DirRes, Continue}, Cleanup, CleanupRes, !IO),
-                (
-                    DirRes = ok(T),
-                    (
-                        CleanupRes = ok,
-                        Result = DirRes
-                    ;
-                        CleanupRes = error(Error),
-                        Result = error(T, Error)
-                    )
-                ;
-                    DirRes = error(_, _),
-                    Result = DirRes
-                )
-            ;
-                OpenResult = eof,
-                Continue = yes,
-                Result = ok(T0)
-            ;
-                OpenResult = error(Error),
-                Continue = no,
-                Result = error(T0, Error)
-            )
-        ;
-            LoopRes = ok(yes),
+				% We need to close the directory if an
+				% exception is thrown to avoid resource leaks.
+				Cleanup = dir__close(Dir),
+				exception__finally(dir__foldl2_process_dir2(
+					Dir, SymLinkParent, P, DirName,
+					ParentIds, FirstEntry, Recursive,
+					FollowLinks, T0),
+					{DirRes, Continue},
+					Cleanup, CleanupRes, !IO),
+				(
+					DirRes = ok(T),
+					(
+						CleanupRes = ok,
+						Result = DirRes
+					;
+						CleanupRes = error(Error),
+						Result = error(T, Error)
+					)
+				;
+					DirRes = error(_, _),
+					Result = DirRes
+				)
+			;
+				OpenResult = eof,
+				Continue = yes,
+				Result = ok(T0)
+			;
+				OpenResult = error(Error),
+				Continue = no,
+				Result = error(T0, Error)
+			)
+		;
+			LoopRes = ok(yes),
 
-            Continue = yes,
-            Result = ok(T0)
-        ;
-            LoopRes = error(Error),
+			Continue = yes,
+			Result = ok(T0)
+		;
+			LoopRes = error(Error),
 
-            Continue = no,
-            Result = error(T0, Error)
-        )
-    ;
-        Continue = no,
-        Result = error(T0,
-            make_io_error("dir.foldl2 not implemented on this platform"))
-    ).
+			Continue = no,
+			Result = error(T0, Error)
+		)
+	;
+		Continue = no,
+		Result = error(T0, make_io_error("dir.foldl2 " ++
+			"not implemented on this platform"))
+	).
 
-:- pred dir__foldl2_process_entries(dir__stream, bool, dir__foldl_pred(T),
-	string, io__result(string), list(file_id), bool, bool,
-	bool, T, io__maybe_partial_res(T), io__state, io__state).
-:- mode dir__foldl2_process_entries(in, in, in(dir__foldl_pred),
-	in, in, in, in, in, out, in, out, di, uo) is det.
+:- pred dir__foldl2_process_entries(dir__stream::in, bool::in,
+	dir__foldl_pred(T)::in(dir__foldl_pred), string::in,
+	io__result(string)::in, list(file_id)::in, bool::in,
+	bool::in, bool::out, T::in, io__maybe_partial_res(T)::out,
+	io::di, io::uo) is det.
 
 dir__foldl2_process_entries(_, _, _, _, error(Error), _, _, _, no,
-                T0, error(T0, Error), !IO).
+		T0, error(T0, Error), !IO).
 dir__foldl2_process_entries(_, _, _, _, eof, _, _, _, yes, T0, ok(T0), !IO).
 dir__foldl2_process_entries(Dir, SymLinkParent, P, DirName, ok(FileName),
 		ParentIds, Recursive, FollowLinks, Continue, T0, Res, !IO) :-
-    PathName = DirName/FileName,
-    io__file_type(no, PathName, FileTypeRes, !IO),
-    (
-        FileTypeRes = ok(Type),
-        P(DirName, FileName, Type, Continue1, T0, T1, !IO),
-        (
-            Continue1 = yes,
-            ( Recursive = yes, Type = directory ->
-                dir__foldl2_process_dir(SymLinkParent, P, PathName, ParentIds,
-                        Recursive, FollowLinks, Continue2, T1, Res1, !IO)
-            ; Recursive = yes, Type = symbolic_link, FollowLinks = yes ->
-                io__file_type(yes, PathName, TargetTypeRes, !IO),
-                (
-                    TargetTypeRes = ok(TargetType),
-                    ( TargetType = directory ->
-                        dir__foldl2_process_dir(yes, P, PathName, ParentIds,
-                            Recursive, FollowLinks, Continue2, T1, Res1, !IO)
-                    ;
-                        Continue2 = yes,
-                        Res1 = ok(T1)
-                    )
-                ;
-                    TargetTypeRes = error(TargetTypeError),
-                    Continue2 = no,
-                    Res1 = error(T1, TargetTypeError)
-                )
-            ;
-                Continue2 = yes,
-                Res1 = ok(T1)
-            ),
-            ( Continue2 = yes, Res1 = ok(T) ->
-                dir__read_entry(Dir, EntryResult, !IO),
-                dir__foldl2_process_entries(Dir, SymLinkParent, P, DirName,
-                    EntryResult, ParentIds, Recursive, FollowLinks,
-                    Continue, T, Res, !IO)
-            ;
-                Continue = no,
-                Res = Res1
-            )
-        ;
-            Continue1 = no,
-            Res = ok(T1),
-            Continue = no
-        )
-    ;
-        FileTypeRes = error(Error),
-        Continue = no,
-        Res = error(T0, Error)
-    ).
+	PathName = DirName/FileName,
+	io__file_type(no, PathName, FileTypeRes, !IO),
+	(
+		FileTypeRes = ok(Type),
+		P(DirName, FileName, Type, Continue1, T0, T1, !IO),
+		(
+			Continue1 = yes,
+			(
+				Recursive = yes,
+				Type = directory
+			->
+				dir__foldl2_process_dir(SymLinkParent, P,
+					PathName, ParentIds, Recursive,
+					FollowLinks, Continue2, T1, Res1, !IO)
+			;
+				Recursive = yes,
+				Type = symbolic_link,
+				FollowLinks = yes
+			->
+				io__file_type(yes, PathName, TargetTypeRes,
+					!IO),
+				(
+					TargetTypeRes = ok(TargetType),
+					( TargetType = directory ->
+						dir__foldl2_process_dir(yes, P,
+							PathName, ParentIds,
+							Recursive, FollowLinks,
+							Continue2, T1, Res1,
+							!IO)
+					;
+						Continue2 = yes,
+						Res1 = ok(T1)
+					)
+				;
+					TargetTypeRes = error(TargetTypeError),
+					Continue2 = no,
+					Res1 = error(T1, TargetTypeError)
+				)
+			;
+				Continue2 = yes,
+				Res1 = ok(T1)
+			),
+			(
+				Continue2 = yes,
+				Res1 = ok(T)
+			->
+				dir__read_entry(Dir, EntryResult, !IO),
+				dir__foldl2_process_entries(Dir, SymLinkParent,
+					P, DirName, EntryResult, ParentIds,
+					Recursive, FollowLinks, Continue, T,
+					Res, !IO)
+			;
+				Continue = no,
+				Res = Res1
+			)
+		;
+			Continue1 = no,
+			Res = ok(T1),
+			Continue = no
+		)
+	;
+		FileTypeRes = error(Error),
+		Continue = no,
+		Res = error(T0, Error)
+	).
 
 	% Check whether we've seen this directory before in this
 	% branch of the directory tree. This only works if the
 	% system can provide a unique identifier for each file.
 	% Returns `ok(DetectedLoop : bool)' on success.
 :- pred check_for_symlink_loop(bool::in, string::in, io__res(bool)::out,
-		list(file_id)::in, list(file_id)::out,
-		io__state::di, io__state::uo) is det.
+	list(file_id)::in, list(file_id)::out, io::di, io::uo) is det.
 
 check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
-        ( io__have_symlinks ->
+	( io__have_symlinks ->
 		io__file_id(DirName, IdRes, !IO),
 		(
 			IdRes = ok(Id),
@@ -1252,7 +1293,7 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 :- type dir__stream ---> dir__stream.
 :- pragma foreign_type("C", dir__stream, "ML_DIR_STREAM").
 :- pragma foreign_type("il", dir__stream,
-		"class [mscorlib]System.Collections.IEnumerator").
+	"class [mscorlib]System.Collections.IEnumerator").
 :- pragma foreign_type("Java", dir__stream, "java.util.Iterator").
 
 :- pred can_implement_dir_foldl is semidet.
@@ -1267,7 +1308,7 @@ can_implement_dir_foldl :- semidet_fail.
 	SUCCESS_INDICATOR = MR_TRUE;
 #elif defined(MR_WIN32)
 	SUCCESS_INDICATOR = MR_TRUE;
-#else		
+#else
 	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
@@ -1279,22 +1320,19 @@ can_implement_dir_foldl :- semidet_fail.
 
 	% Win32 doesn't allow us to open a directory without
 	% returning the first item.
-:- pred dir__open(string, io__result({dir__stream, string}),
-		io__state, io__state).
-:- mode dir__open(in, out, di, uo) is det.
+:- pred dir__open(string::in, io__result({dir__stream, string})::out,
+	io::di, io::uo) is det.
 
 dir__open(DirName, Res, !IO) :-
 	( can_implement_dir_foldl ->
 		dir__open_2(DirName, Res, !IO)
 	;
-		Res = error(
-	io__make_io_error("dir.foldl2 not implemented on this platform"))
+		Res = error(io__make_io_error("dir.foldl2 not implemented " ++
+			"on this platform"))
 	).
 
-
-:- pred dir__open_2(string, io__result({dir__stream, string}),
-		io__state, io__state).
-:- mode dir__open_2(in, out, di, uo) is det.
+:- pred dir__open_2(string::in, io__result({dir__stream, string})::out,
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	dir__open_2(DirName::in, Result::out, IO0::di, IO::uo),
@@ -1328,7 +1366,7 @@ dir__open(DirName, Res, !IO) :-
 
 #elif defined(MR_HAVE_OPENDIR) && defined(MR_HAVE_READDIR) && \\
 		defined(MR_HAVE_CLOSEDIR)
-	ML_DIR_STREAM Dir; 
+	ML_DIR_STREAM Dir;
 
 	Dir = opendir(DirName);
 	if (Dir == NULL) {
@@ -1376,11 +1414,10 @@ dir__open(DirName, Res, !IO) :-
 	}
 ").
 
-:- pred dir__check_dir_readable(string, int, io__result({dir__stream, string}),
-		io__state, io__state).
-:- mode dir__check_dir_readable(in, out, out, di, uo) is det.
+:- pred dir__check_dir_readable(string::in, int::out,
+	io__result({dir__stream, string})::out, io::di, io::uo) is det.
 :- pragma export(dir__check_dir_readable(in, out, out, di, uo),
-		"ML_check_dir_readable").
+	"ML_check_dir_readable").
 
 dir__check_dir_readable(DirName, IsReadable, Result, !IO) :-
 	io__file_type(yes, DirName, FileTypeRes, !IO),
@@ -1402,8 +1439,8 @@ dir__check_dir_readable(DirName, IsReadable, Result, !IO) :-
 		;
 			IsReadable = 0,
 			Result = error(make_io_error(
-				"dir.foldl2: pathname is not a directory"))	
-			
+				"dir.foldl2: pathname is not a directory"))
+
 		)
 	;
 		FileTypeRes = error(Msg),
@@ -1411,11 +1448,10 @@ dir__check_dir_readable(DirName, IsReadable, Result, !IO) :-
 		Result = error(Msg)
 	).
 
-:- pred dir__read_first_entry(dir__stream, io__result({dir__stream, string}),
-		io__state, io__state).
-:- mode dir__read_first_entry(in, out, di, uo) is det.
+:- pred dir__read_first_entry(dir__stream::in,
+	io__result({dir__stream, string})::out, io::di, io::uo) is det.
 :- pragma export(dir__read_first_entry(in, out, di, uo),
-		"ML_dir_read_first_entry").
+	"ML_dir_read_first_entry").
 
 dir__read_first_entry(Dir, Result, !IO) :-
 	dir__read_entry(Dir, EntryResult, !IO),
@@ -1431,10 +1467,9 @@ dir__read_first_entry(Dir, Result, !IO) :-
 	).
 
 :- pred make_win32_dir_open_result_ok(dir__stream::in, c_pointer::in,
-		io__result({dir__stream, string})::out,
-		io__state::di, io__state::uo) is det.
+	io__result({dir__stream, string})::out, io::di, io::uo) is det.
 :- pragma export(make_win32_dir_open_result_ok(in, in, out, di, uo),
-		"ML_make_win32_dir_open_result_ok").
+	"ML_make_win32_dir_open_result_ok").
 
 make_win32_dir_open_result_ok(Dir, FirstFilePtr, Result, !IO) :-
 	FirstFile0 = copy_c_string(FirstFilePtr),
@@ -1453,7 +1488,7 @@ make_win32_dir_open_result_ok(Dir, FirstFilePtr, Result, !IO) :-
 			( CloseRes = ok, Result = eof
 			; CloseRes = error(Error), Result = error(Error)
 			)
-		;		
+		;
 			ReadResult = error(Error),
 			dir__close(Dir, _, !IO),
 			Result = error(Error)
@@ -1470,32 +1505,34 @@ make_win32_dir_open_result_ok(Dir, FirstFilePtr, Result, !IO) :-
 	% garbage collector attempt to copy a potentially unaligned
 	% string.
 :- func copy_c_string(c_pointer) = string.
+
 copy_c_string(_) = _ :-
-	error(
-"dir.copy_c_string should only be called by code generated by C backends").
+	error("dir.copy_c_string should only be called " ++
+		"by code generated by C backends").
+
 :- pragma foreign_proc("C",
 	copy_c_string(Ptr::in) = (Str::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
-	"MR_make_aligned_string_copy(Str, (char *) Ptr);").
-
+"
+	MR_make_aligned_string_copy(Str, (char *) Ptr);
+").
 
 :- func make_dir_open_result_eof = io__result({dir__stream, string}).
 :- pragma export((make_dir_open_result_eof = out),
-		"ML_make_dir_open_result_eof").
+	"ML_make_dir_open_result_eof").
 
 make_dir_open_result_eof = eof.
 
 :- pred make_dir_open_result_error(io__system_error::in,
-		io__result({dir__stream, string})::out,
-		io__state::di, io__state::uo) is det.
+	io__result({dir__stream, string})::out, io::di, io::uo) is det.
 :- pragma export(make_dir_open_result_error(in, out, di, uo),
-		"ML_make_dir_open_result_error").
+	"ML_make_dir_open_result_error").
 
-make_dir_open_result_error(Error, error(io__make_io_error(Msg))) -->
-	io__make_err_msg(Error, "dir.foldl2: opening directory failed: ", Msg).
+make_dir_open_result_error(Error, error(io__make_io_error(Msg)), !IO) :-
+	io__make_err_msg(Error, "dir.foldl2: opening directory failed: ", Msg,
+		!IO).
 
-:- pred dir__close(dir__stream, io__res, io__state, io__state).
-:- mode dir__close(in, out, di, uo) is det.
+:- pred dir__close(dir__stream::in, io__res::out, io::di, io::uo) is det.
 
 dir__close(Dir, Res, !IO) :-
 	dir__close_2(Dir, Status, Error, !IO),
@@ -1507,8 +1544,8 @@ dir__close(Dir, Res, !IO) :-
 		Res = ok
 	).
 
-:- pred dir__close_2(dir__stream, int, io__system_error, io__state, io__state).
-:- mode dir__close_2(in, out, out, di, uo) is det.
+:- pred dir__close_2(dir__stream::in, int::out, io__system_error::out,
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	dir__close_2(Dir::in, Status::out, Error::out, IO0::di, IO::uo),
@@ -1544,9 +1581,8 @@ dir__close(Dir, Res, !IO) :-
 	Status = 1;
 }").
 
-
-:- pred dir__read_entry(dir__stream, io__result(string), io__state, io__state).
-:- mode dir__read_entry(in, out, di, uo) is det.
+:- pred dir__read_entry(dir__stream::in, io__result(string)::out,
+	io::di, io::uo) is det.
 
 dir__read_entry(Dir, Res, !IO) :-
 	dir__read_entry_2(Dir, Status, Error, FileName, !IO),
@@ -1566,15 +1602,14 @@ dir__read_entry(Dir, Res, !IO) :-
 		)
 	->
 		dir__read_entry(Dir, Res, !IO)
-	;	
+	;
 		Res = ok(FileName)
 	).
 
 	% dir__read_entry_2(Dir, Status, Error, FileName, !IO).
 	% Status is -1 for EOF, 0 for error, 1 for success.
-:- pred dir__read_entry_2(dir__stream, int, io__system_error, string,
-		io__state, io__state).
-:- mode dir__read_entry_2(in, out, out, out, di, uo) is det.
+:- pred dir__read_entry_2(dir__stream::in, int::out, io__system_error::out,
+	string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	dir__read_entry_2(Dir::in, Status::out, Error::out, FileName::out,
@@ -1586,7 +1621,7 @@ dir__read_entry(Dir, Res, !IO) :-
 
 	IO = IO0;
 	if (FindNextFile(Dir, &file_data)) {
-		Status = 1;	
+		Status = 1;
 		MR_make_aligned_string_copy(FileName,
 			file_data.cFileName);
 	} else {
@@ -1603,7 +1638,7 @@ dir__read_entry(Dir, Res, !IO) :-
 	dir_entry = readdir(Dir);
 	if (dir_entry == NULL) {
 		Error = errno;
-		FileName = NULL;		
+		FileName = NULL;
 		Status = (Error == 0 ? -1 : 0);
 	} else {
 		MR_make_aligned_string_copy(FileName,
@@ -1741,7 +1776,7 @@ find_matching_brace_or_comma([Char | Chars], Alternatives0, CurAlternative,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
-%       Functional forms added.
+%	Functional forms added.
 
 dir__directory_separator(dir__directory_separator).
 
@@ -1752,4 +1787,3 @@ dir__parent_directory(dir__parent_directory).
 dir__basename(S, dir__basename(S)).
 
 dir__dirname(S, dir__dirname(S)).
-

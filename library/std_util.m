@@ -123,11 +123,11 @@
 
 	% As above, but with two accumulators.
 :- pred map_fold2_maybe(pred(T, U, Acc1, Acc1, Acc2, Acc2),
-		maybe(T), maybe(U), Acc1, Acc1, Acc2, Acc2).
+	maybe(T), maybe(U), Acc1, Acc1, Acc2, Acc2).
 :- mode map_fold2_maybe(pred(in, out, in, out, in, out) is det, in, out,
-		in, out, in, out) is det.
+	in, out, in, out) is det.
 :- mode map_fold2_maybe(pred(in, out, in, out, di, uo) is det,
-		in, out, in, out, di, uo) is det.
+	in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -206,13 +206,13 @@
 
 :- pred aggregate(pred(T), pred(T, U, U), U, U).
 :- mode aggregate(pred(out) is multi, pred(in, in, out) is det,
-		in, out) is det.
+	in, out) is det.
 :- mode aggregate(pred(out) is multi, pred(in, di, uo) is det,
-		di, uo) is det.
+	di, uo) is det.
 :- mode aggregate(pred(out) is nondet, pred(in, di, uo) is det,
-		di, uo) is det.
+	di, uo) is det.
 :- mode aggregate(pred(out) is nondet, pred(in, in, out) is det,
-		in, out) is det.
+	in, out) is det.
 
 	% aggregate2/6 generates all the solutions to a predicate,
 	% sorts them and removes duplicates, then applies an accumulator
@@ -225,13 +225,13 @@
 
 :- pred aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
 :- mode aggregate2(pred(out) is multi, pred(in, in, out, in, out) is det,
-		in, out, in, out) is det.
+	in, out, in, out) is det.
 :- mode aggregate2(pred(out) is multi, pred(in, in, out, di, uo) is det,
-		in, out, di, uo) is det.
+	in, out, di, uo) is det.
 :- mode aggregate2(pred(out) is nondet, pred(in, in, out, di, uo) is det,
-		in, out, di, uo) is det.
+	in, out, di, uo) is det.
 :- mode aggregate2(pred(out) is nondet, pred(in, in, out, in, out) is det,
-		in, out, in, out) is det.
+	in, out, in, out) is det.
 
 	% unsorted_aggregate/4 generates all the solutions to a predicate
 	% and applies an accumulator predicate to each solution in turn.
@@ -247,37 +247,37 @@
 
 :- pred unsorted_aggregate(pred(T), pred(T, U, U), U, U).
 :- mode unsorted_aggregate(pred(out) is multi, pred(in, in, out) is det,
-		in, out) is cc_multi.
+	in, out) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is multi, pred(in, di, uo) is det,
-		di, uo) is cc_multi.
+	di, uo) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is multi, pred(in, di, uo) is cc_multi,
-		di, uo) is cc_multi.
+	di, uo) is cc_multi.
 :- mode unsorted_aggregate(pred(muo) is multi, pred(mdi, di, uo) is det,
-		di, uo) is cc_multi.
+	di, uo) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is nondet, pred(in, di, uo) is det,
-		di, uo) is cc_multi.
+	di, uo) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is nondet, pred(in, di, uo) is cc_multi,
-		di, uo) is cc_multi.
+	di, uo) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is nondet, pred(in, in, out) is det,
-		in, out) is cc_multi.
+	in, out) is cc_multi.
 :- mode unsorted_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
-		di, uo) is cc_multi.
+	di, uo) is cc_multi.
 
 	% This is a generalization of unsorted_aggregate which allows the
 	% iteration to stop before all solutions have been found.
 	% Declaratively, the specification is as follows:
 	%
-	%	do_while(Generator, Filter) -->
-	%		{ unsorted_solutions(Generator, Solutions) },
-	%		do_while_2(Solutions, Filter).
+	%	do_while(Generator, Filter, !Acc) -->
+	%		unsorted_solutions(Generator, Solutions),
+	%		do_while_2(Solutions, Filter, !Acc).
 	%
-	%	do_while_2([], _) --> [].
-	%	do_while_2([X|Xs], Filter) -->
-	%		Filter(X, More),
-	%		(if { More = yes } then
-	%			do_while_2(Xs, Filter)
-	%		else
-	%			{ true }
+	%	do_while_2([], _, !Acc).
+	%	do_while_2([X | Xs], Filter, !Acc) :-
+	%		Filter(X, More, !Acc),
+	%		( More = yes ->
+	%			do_while_2(Xs, Filter, !Acc)
+	%		;
+	%			true
 	%		).
 	%
 	% Operationally, however, do_while/4 will call the Filter
@@ -521,7 +521,7 @@
 	% FunctorNumber is out of range.
 	%
 :- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
-		list(type_desc__type_desc)::out) is semidet.
+	list(type_desc__type_desc)::out) is semidet.
 
 	% get_functor(Type, FunctorNumber, FunctorName, Arity, ArgTypes,
 	%	ArgNames)
@@ -533,8 +533,7 @@
 	% not a discriminated union type, or if FunctorNumber is out of range.
 	%
 :- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
-		list(type_desc__type_desc)::out, list(maybe(string))::out)
-		is semidet.
+	list(type_desc__type_desc)::out, list(maybe(string))::out) is semidet.
 
 	% get_functor_ordinal(Type, I, Ordinal)
 	%
@@ -715,7 +714,7 @@
 :- pred limited_deconstruct(T::in, int::in, string::out,
 	int::out, list(univ)::out) is semidet.
 :- pred limited_deconstruct_cc(T::in, int::in,
-		maybe({string, int, list(univ)})::out) is cc_multi.
+	maybe({string, int, list(univ)})::out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -772,15 +771,14 @@ map_fold2_maybe(_, no, no, A, A, B, B).
 map_fold2_maybe(P, yes(T0), yes(T), A0, A, B0, B) :-
 	P(T0, T, A0, A, B0, B).
 
-/****
-	Is this really useful?
-% for use in lambda expressions where the type of functor '-' is ambiguous
-:- pred pair(X, Y, pair(X, Y)).
-:- mode pair(in, in, out) is det.
-:- mode pair(out, out, in) is det.
+% 	Is this really useful?
+% % for use in lambda expressions where the type of functor '-' is ambiguous
+% :- pred pair(X, Y, pair(X, Y)).
+% :- mode pair(in, in, out) is det.
+% :- mode pair(out, out, in) is det.
+% 
+% pair(X, Y, X-Y).
 
-pair(X, Y, X-Y).
-****/
 fst(X-_Y) = X.
 fst(P,X) :-
 	X = fst(P).
@@ -790,9 +788,7 @@ snd(P,X) :-
 	X = snd(P).
 
 maybe_pred(Pred, X, Y) :-
-	(
-		call(Pred, X, Z)
-	->
+	( call(Pred, X, Z) ->
 		Y = yes(Z)
 	;
 		Y = no
@@ -809,21 +805,21 @@ maybe_pred(Pred, X, Y) :-
 
 :- pred builtin_aggregate(pred(T), pred(T, U, U), U, U).
 :- mode builtin_aggregate(pred(out) is multi, pred(in, in, out) is det,
-		in, out) is det. /* really cc_multi */
+	in, out) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(out) is multi, pred(in, di, uo) is det,
-		di, uo) is det. /* really cc_multi */
+	di, uo) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(out) is multi, pred(in, di, uo) is cc_multi,
-		di, uo) is det. /* really cc_multi */
+	di, uo) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(muo) is multi, pred(mdi, di, uo) is det,
-		di, uo) is det. /* really cc_multi */
+	di, uo) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(out) is nondet, pred(in, di, uo) is det,
-		di, uo) is det. /* really cc_multi */
+	di, uo) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(out) is nondet, pred(in, di, uo) is cc_multi,
-		di, uo) is det. /* really cc_multi */
+	di, uo) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(out) is nondet, pred(in, in, out) is det,
-		in, out) is det. /* really cc_multi */
+	in, out) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
-		di, uo) is det. /* really cc_multi */
+	di, uo) is det. /* really cc_multi */
 
 /*
 ** If we're doing heap reclamation on failure, then
@@ -932,6 +928,7 @@ builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 % but typeclasses still don't work in `jump' or `fast' grades.
 
 :- pragma promise_pure(do_while/4).
+
 do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
 	impure new_mutvar(Accumulator0, Mutvar),
@@ -965,6 +962,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 :- mode non_cc_call(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode non_cc_call(pred(in, di, uo) is cc_multi, in, di, uo) is det.
 :- mode non_cc_call(pred(mdi, di, uo) is det, mdi, di, uo) is det.
+
 non_cc_call(P::pred(in, in, out) is det, X::in, Acc0::in, Acc::out) :-
 	P(X, Acc0, Acc).
 non_cc_call(P::pred(in, di, uo) is cc_multi, X::in, Acc0::di, Acc::uo) :-
@@ -979,11 +977,10 @@ non_cc_call(P::pred(mdi, di, uo) is det, X::mdi, Acc0::di, Acc::uo) :-
 	% This is the same as call/5, except that it is not cc_multi
 	% even when the called predicate is cc_multi.
 :- impure pred non_cc_call(pred(T1, T2, Acc, Acc), T1, T2, Acc, Acc).
-:- mode non_cc_call(pred(in, out, in, out) is det, in, out, in, out)
-	is det.
+:- mode non_cc_call(pred(in, out, in, out) is det, in, out, in, out) is det.
 :- mode non_cc_call(pred(in, out, di, uo) is det, in, out, di, uo) is det.
-:- mode non_cc_call(pred(in, out, di, uo) is cc_multi, in, out, di, uo)
-	is det.
+:- mode non_cc_call(pred(in, out, di, uo) is cc_multi, in, out, di, uo) is det.
+
 non_cc_call(P::pred(in, out, di, uo) is det, X::in, More::out,
 		Acc0::di, Acc::uo) :-
 	P(X, More, Acc0, Acc).
@@ -1133,8 +1130,8 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	[will_not_call_mercury, thread_safe],
 "{
 #ifdef MR_RECLAIM_HP_ON_FAILURE
-	MR_MemoryZone *temp_zone;
-	MR_Word *temp_hp;
+	MR_MemoryZone	*temp_zone;
+	MR_Word		*temp_hp;
 
 	temp_zone = MR_ENGINE(MR_eng_heap_zone);
 	MR_ENGINE(MR_eng_heap_zone) = MR_ENGINE(MR_eng_solutions_heap_zone);
@@ -1473,21 +1470,22 @@ builtin_solutions(Generator, UnsortedList) :-
 	builtin_aggregate(Generator, cons, [], UnsortedList).
 
 :- pred cons(T::in, list(T)::in, list(T)::out) is det.
-cons(H, T, [H|T]).
+
+cons(H, T, [H | T]).
 
 %-----------------------------------------------------------------------------%
 
-aggregate(Generator, Accumulator, Acc0, Acc) :-
+aggregate(Generator, Accumulator, !Acc) :-
 	solutions(Generator, Solutions),
-	list__foldl(Accumulator, Solutions, Acc0, Acc).
+	list__foldl(Accumulator, Solutions, !Acc).
 
-aggregate2(Generator, Accumulator, Acc0, Acc) -->
-	{ solutions(Generator, Solutions) },
-	list__foldl2(Accumulator, Solutions, Acc0, Acc).
+aggregate2(Generator, Accumulator, !Acc1, !Acc2) :-
+	solutions(Generator, Solutions),
+	list__foldl2(Accumulator, Solutions, !Acc1, !Acc2).
 
-unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
-	builtin_aggregate(Generator, Accumulator, Acc0, Acc1),
-	cc_multi_equal(Acc1, Acc).
+unsorted_aggregate(Generator, Accumulator, !Acc) :-
+	builtin_aggregate(Generator, Accumulator, !Acc),
+	cc_multi_equal(!Acc).
 
 %-----------------------------------------------------------------------------%
 
@@ -1546,12 +1544,14 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 % But this optimization won't happen until after determinism analysis,
 % which doesn't know anything about integer arithmetic,
 % so this code won't provide a warning from determinism analysis.
+
 semidet_succeed :-
 	0 + 0 = 0.
 semidet_fail :-
 	0 + 0 \= 0.
 
 :- pragma promise_pure(cc_multi_equal/2).
+
 cc_multi_equal(X, X).
 
 %-----------------------------------------------------------------------------%
@@ -1580,6 +1580,7 @@ det_univ_to_type(Univ, X) :-
 univ_value(univ_cons(X)) = X.
 
 :- pragma promise_pure(type_to_univ/2).
+
 type_to_univ(T::di, Univ::uo) :-
 	Univ0 = 'new univ_cons'(T),
 	unsafe_promise_unique(Univ0, Univ).

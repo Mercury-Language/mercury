@@ -33,8 +33,8 @@
 
 :- pragma promise_pure(garbage_collect/2).
 
-garbage_collect -->
-	{ impure garbage_collect }.
+garbage_collect(!IO) :-
+	impure garbage_collect.
 
 :- pragma no_inline(garbage_collect/0).
 
@@ -59,6 +59,7 @@ garbage_collect -->
   #endif
 #endif
 ").
+
 garbage_collect :-
 	impure private_builtin__imp.
 

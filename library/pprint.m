@@ -1,9 +1,9 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne
+% vim:ts=4 sw=4 expandtab tw=0 wm=0
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2000-2004 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
-% vi: ts=4 sw=4 et tw=0 wm=0
 %-----------------------------------------------------------------------------%
 %
 % File: pprint.m
@@ -98,7 +98,7 @@
 % displayed by the pretty printer given various line widths.
 %
 % 1. "Hello " ++ line ++ "world"
-% 
+%
 %   Hello
 %   world
 %
@@ -290,7 +290,7 @@
     % one might use
     %
     %   brackets(nest(2, packed_cs(Xs)))
-    % 
+    %
 :- func packed_cs(list(T)) = doc <= (doc(T)).
 
     % A variant of the above whereby only the first N elements of
@@ -359,11 +359,10 @@
     % Write docs out in pretty printed format.  The int
     % argument specifies a page width in characters.
     %
-:- pred write(int, T, io__state, io__state) <= doc(T).
-:- mode write(in, in, di, uo) is det.
+:- pred write(int::in, T::in, io::di, io::uo) is det <= doc(T).
 
-:- pred write(io__output_stream, int, T, io__state, io__state) <= doc(T).
-:- mode write(in, in, in, di, uo) is det.
+:- pred write(io__output_stream::in, int::in, T::in, io::di, io::uo) is det
+    <= doc(T).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -381,7 +380,7 @@
     ;       'LINE'
     ;       'GROUP'(doc)
     ;       'DOC'(int, univ).
-                % 
+                %
                 % 'DOC'(MaxDepth, Univ)
                 % - Univ is the object to be converted to a doc via to_doc/3,
                 %   represented as a univ.
@@ -434,9 +433,11 @@ to_string(W, X) = S :-
     layout_best(pred(H::in, T::in, [H | T]::out) is det, W, X, [], Ss),
     S = string__append_list(list__reverse(Ss)).
 
-write(W, X)             --> layout_best(io__write_string, W, doc(X)).
+write(W, X, !IO) :-
+    layout_best(io__write_string, W, doc(X), !IO).
 
-write(Stream, W, X)     --> layout_best(io__write_string(Stream), W, doc(X)).
+write(Stream, W, X, !IO) :-
+    layout_best(io__write_string(Stream), W, doc(X), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -464,7 +465,7 @@ layout_best(P, W, X, S0, S) :-
     % This predicate is somewhat different to the function `be' described
     % by Wadler.  In the first place, the decision procedure has been
     % recoded (in fits_flat/2) to preserve linear running times under
-    % a strict language.  The second important change is that lb/8 
+    % a strict language.  The second important change is that lb/8
     % handles output strings as they are identified (e.g. writing them
     % out or accumulating them in a list), doing away with the need for
     % a more elaborate simple_doc type.
@@ -506,8 +507,7 @@ lb(P, _, K0, K, _, 'TEXT'(T),     S0, S) :-
 
     % Decide if a flattened doc will fit on the remainder of the line.
     %
-:- pred fits_flat(doc, int).
-:- mode fits_flat(in, in) is semidet.
+:- pred fits_flat(doc::in, int::in) is semidet.
 
 fits_flat(X, R) :-
     ff(X, R) = _.
@@ -826,8 +826,7 @@ univ_to_doc(Depth, Priority, Univ) = to_doc(Depth, Priority, univ_value(Univ)).
 
 %-----------------------------------------------------------------------------%
 
-:- some [T2] pred dynamic_cast_to_var(T1, var(T2)).
-:-           mode dynamic_cast_to_var(in, out) is semidet.
+:- some [T2] pred dynamic_cast_to_var(T1::in, var(T2)::out) is semidet.
 
 dynamic_cast_to_var(X, V) :-
 
@@ -846,23 +845,21 @@ dynamic_cast_to_var(X, V) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dynamic_cast_to_sparse_bitset_of_int(T1, sparse_bitset(int)).
-:- mode dynamic_cast_to_sparse_bitset_of_int(in, out) is semidet.
+:- pred dynamic_cast_to_sparse_bitset_of_int(T1::in, sparse_bitset(int)::out)
+    is semidet.
 
 dynamic_cast_to_sparse_bitset_of_int(X, A) :-
-        dynamic_cast(X, A `with_type` sparse_bitset(int)).
+    dynamic_cast(X, A `with_type` sparse_bitset(int)).
 
-:- some [T2]
-   pred dynamic_cast_to_sparse_bitset_of_var(T1, sparse_bitset(var(T2))).
-:- mode dynamic_cast_to_sparse_bitset_of_var(in, out) is semidet.
+:- some [T2] pred dynamic_cast_to_sparse_bitset_of_var(T1::in,
+    sparse_bitset(var(T2))::out) is semidet.
 
 dynamic_cast_to_sparse_bitset_of_var(X, A) :-
-        dynamic_cast(X, A `with_type` sparse_bitset(var)).
+    dynamic_cast(X, A `with_type` sparse_bitset(var)).
 
 %-----------------------------------------------------------------------------%
 
-:- some [T2] pred dynamic_cast_to_array(T1, array(T2)).
-:-           mode dynamic_cast_to_array(in, out) is semidet.
+:- some [T2] pred dynamic_cast_to_array(T1::in, array(T2)::out) is semidet.
 
 dynamic_cast_to_array(X, A) :-
 
@@ -881,8 +878,7 @@ dynamic_cast_to_array(X, A) :-
 
 %-----------------------------------------------------------------------------%
 
-:- some [T2] pred dynamic_cast_to_list(T1, list(T2)).
-:-           mode dynamic_cast_to_list(in, out) is semidet.
+:- some [T2] pred dynamic_cast_to_list(T1::in, list(T2)::out) is semidet.
 
 dynamic_cast_to_list(X, L) :-
 
@@ -901,8 +897,7 @@ dynamic_cast_to_list(X, L) :-
 
 %-----------------------------------------------------------------------------%
 
-:- some [T2, T3] pred dynamic_cast_to_map(T1, map(T2, T3)).
-:-               mode dynamic_cast_to_map(in, out) is semidet.
+:- some [T2, T3] pred dynamic_cast_to_map(T1::in, map(T2, T3)::out) is semidet.
 
 dynamic_cast_to_map(X, M) :-
 
@@ -922,8 +917,8 @@ dynamic_cast_to_map(X, M) :-
 
 %-----------------------------------------------------------------------------%
 
-:- some [T2, T3] pred dynamic_cast_to_map_pair(T1, map_pair(T2, T3)).
-:-               mode dynamic_cast_to_map_pair(in, out) is semidet.
+:- some [T2, T3] pred dynamic_cast_to_map_pair(T1::in, map_pair(T2, T3)::out)
+    is semidet.
 
 dynamic_cast_to_map_pair(X, MP) :-
 
@@ -943,11 +938,9 @@ dynamic_cast_to_map_pair(X, MP) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dynamic_cast_to_tuple(T, T).
-:- mode dynamic_cast_to_tuple(in, out) is semidet.
+:- pred dynamic_cast_to_tuple(T::in, T::out) is semidet.
 
 dynamic_cast_to_tuple(X, X) :-
-
         % If X is a tuple then it's functor name is {}.
         %
     functor(X, "{}", _Arity).

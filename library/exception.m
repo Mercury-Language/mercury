@@ -76,23 +76,23 @@
 %		; Result = exception(_)
 %		).
 %
-:- pred try_io(pred(T, io__state, io__state),
-		exception_result(T), io__state, io__state).
-:- mode try_io(pred(out, di, uo) is det,     
-		out(cannot_fail), di, uo) is cc_multi.
+:- pred try_io(pred(T, io, io),
+	exception_result(T), io, io).
+:- mode try_io(pred(out, di, uo) is det,
+	out(cannot_fail), di, uo) is cc_multi.
 :- mode try_io(pred(out, di, uo) is cc_multi,
-		out(cannot_fail), di, uo) is cc_multi.
+	out(cannot_fail), di, uo) is cc_multi.
 
 %
 % try_store(Goal, Result, Store_0, Store):
 %    Just like try_io, but for stores rather than io__states.
 %
 :- pred try_store(pred(T, store(S), store(S)),
-		exception_result(T), store(S), store(S)).
-:- mode try_store(pred(out, di, uo) is det,     
-		out(cannot_fail), di, uo) is cc_multi.
+	exception_result(T), store(S), store(S)).
+:- mode try_store(pred(out, di, uo) is det,
+	out(cannot_fail), di, uo) is cc_multi.
 :- mode try_store(pred(out, di, uo) is cc_multi,
-		out(cannot_fail), di, uo) is cc_multi.
+	out(cannot_fail), di, uo) is cc_multi.
 
 %
 % try_all(Goal, ResultList):
@@ -138,10 +138,10 @@
 %    and std_util__unsorted_aggregate is interleaved.
 
 :- pred incremental_try_all(pred(T), pred(exception_result(T), A, A), A, A).
-:- mode incremental_try_all(pred(out) is nondet, 
-		pred(in, di, uo) is det, di, uo) is cc_multi.
-:- mode incremental_try_all(pred(out) is nondet, 
-		pred(in, in, out) is det, in, out) is cc_multi.
+:- mode incremental_try_all(pred(out) is nondet,
+	pred(in, di, uo) is det, di, uo) is cc_multi.
+:- mode incremental_try_all(pred(out) is nondet,
+	pred(in, in, out) is det, in, out) is cc_multi.
 
 %
 % rethrow(ExceptionResult):
@@ -165,13 +165,11 @@
 %	is called, unless Cleanup throws an exception.
 %	This predicate performs the same function as the `finally'
 %	clause (`try {...} finally {...}') in languages such as Java.
-:- pred finally(pred(T, io__state, io__state), T,
-		pred(io__res, io__state, io__state), io__res,
-		io__state, io__state).
+:- pred finally(pred(T, io, io), T, pred(io__res, io, io), io__res, io, io).
 :- mode finally(pred(out, di, uo) is det, out,
-		pred(out, di, uo) is det, out, di, uo) is det.
+	pred(out, di, uo) is det, out, di, uo) is det.
 :- mode finally(pred(out, di, uo) is cc_multi, out,
-		pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
+	pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -187,8 +185,8 @@
 							       is cc_multi.
 :- mode try(in(bound(cc_nondet)), pred(out) is cc_nondet, out) is cc_multi.
 
-:- pred try_io(determinism, 	    pred(T, io__state, io__state),
-				    exception_result(T), io__state, io__state).
+:- pred try_io(determinism, 	    pred(T, io, io),
+				    exception_result(T), io, io).
 :- mode try_io(in(bound(det)),      pred(out, di, uo) is det,
 				    out(cannot_fail), di, uo) is cc_multi.
 :- mode try_io(in(bound(cc_multi)), pred(out, di, uo) is cc_multi,
@@ -202,11 +200,11 @@
 				    out(cannot_fail), di, uo) is cc_multi.
 
 :- pred try_all(determinism,        pred(T), list(exception_result(T))).
-:- mode try_all(in(bound(det)),	    pred(out) is det, 
+:- mode try_all(in(bound(det)),	    pred(out) is det,
 				    	     out(try_all_det)) is cc_multi.
-:- mode try_all(in(bound(semidet)), pred(out) is semidet,  
+:- mode try_all(in(bound(semidet)), pred(out) is semidet,
 				    	     out(try_all_semidet)) is cc_multi.
-:- mode try_all(in(bound(multi)),   pred(out) is multi, 
+:- mode try_all(in(bound(multi)),   pred(out) is multi,
 				    	     out(try_all_multi)) is cc_multi.
 :- mode try_all(in(bound(nondet)),  pred(out) is nondet,
 				    	     out(try_all_nondet)) is cc_multi.
@@ -274,13 +272,13 @@ get_determinism(_Pred::(pred(out) is nondet), Det::out(bound(nondet))) :-
 :- pragma promise_pure(get_determinism_2/2).
 
 get_determinism_2(
-	_Pred::pred(out, di, uo) is det,
+		_Pred::pred(out, di, uo) is det,
 			Det::out(bound(det))) :-
 	( cc_multi_equal(det, Det)
 	; error("get_determinism_2")
 	).
 get_determinism_2(
-	_Pred::pred(out, di, uo) is cc_multi,
+		_Pred::pred(out, di, uo) is cc_multi,
 			Det::out(bound(cc_multi))) :-
 	( cc_multi_equal(cc_multi, Det)
 	; error("get_determinism_2")
@@ -296,7 +294,7 @@ get_determinism_2(
 % The termination analyzer can infer termination
 % of throw/1 itself but declaring it to be terminating
 % here means that all of the standard library will
-% treat it as terminating as well. 
+% treat it as terminating as well.
 :- pragma terminates(throw/1).
 
 throw(Exception) :-
@@ -325,13 +323,13 @@ finally(P::(pred(out, di, uo) is cc_multi), PRes::out,
 		!.IO::di, !:IO::uo) :-
 	finally_2(P, Cleanup, {PRes, CleanupRes}, !IO).
 
-:- pred finally_2(pred(T, io__state, io__state),
-		pred(io__res, io__state, io__state), {T, io__res},
-		io__state, io__state).
+:- pred finally_2(pred(T, io, io), pred(io__res, io, io), {T, io__res},
+	io, io).
 :- mode finally_2(pred(out, di, uo) is det,
-		pred(out, di, uo) is det, out, di, uo) is cc_multi.
+	pred(out, di, uo) is det, out, di, uo) is cc_multi.
 :- mode finally_2(pred(out, di, uo) is cc_multi,
-		pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
+	pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
+
 :- pragma promise_pure(finally_2/5).
 
 finally_2(P, Cleanup, {PRes, CleanupRes}, !IO) :-
@@ -349,14 +347,13 @@ finally_2(P, Cleanup, {PRes, CleanupRes}, !IO) :-
 			semidet_succeed,
 			impure use(!.IO)
 		->
-			rethrow(ExcpResult)		
+			rethrow(ExcpResult)
 		;
 			error("exception.finally_2")
 		)
 	).
 
-:- impure pred use(T).
-:- mode use(in) is det.
+:- impure pred use(T::in) is det.
 
 :- pragma foreign_proc("C",
 	use(_T::in),
@@ -380,6 +377,7 @@ finally_2(P, Cleanup, {PRes, CleanupRes}, !IO) :-
 :- mode wrap_success(pred(out) is nondet, out) is nondet.
 :- mode wrap_success(pred(out) is cc_multi, out) is cc_multi.
 :- mode wrap_success(pred(out) is cc_nondet, out) is cc_nondet.
+
 wrap_success(Goal, succeeded(R)) :- Goal(R).
 
 :- pred wrap_success_or_failure(pred(T), exception_result(T)) is det.
@@ -389,11 +387,12 @@ wrap_success(Goal, succeeded(R)) :- Goal(R).
 %:- mode wrap_success_or_failure(pred(out) is nondet, out) is multi. (unused)
 :- mode wrap_success_or_failure(pred(out) is cc_multi, out) is cc_multi.
 :- mode wrap_success_or_failure(pred(out) is cc_nondet, out) is cc_multi.
+
 wrap_success_or_failure(Goal, Result) :-
 	(if Goal(R) then Result = succeeded(R) else Result = failed).
 
 /*********************
-% This doesn't work, due to 
+% This doesn't work, due to
 % 	bash$ mmc exception.m
 % 	Software error: sorry, not implemented: taking address of pred
 % 	`wrap_success_or_failure/2' with multiple modes.
@@ -418,7 +417,6 @@ try(semidet, Goal, Result) :-
 		wrap_exception, Result0),
 	cc_multi_equal(Result0, Result).
 try(cc_multi, Goal, Result) :-
-
 	catch_impl(
 		(pred(R::out) is cc_multi :-
 				wrap_success_or_failure(Goal, R)
@@ -429,9 +427,8 @@ try(cc_nondet, Goal, Result) :-
 				wrap_success_or_failure(Goal, R)),
 		wrap_exception, Result).
 
-
 /**********
-% This doesn't work, due to 
+% This doesn't work, due to
 % 	bash$ mmc exception.m
 % 	Software error: sorry, not implemented: taking address of pred
 % 	`wrap_success_or_failure/2' with multiple modes.
@@ -477,9 +474,9 @@ incremental_try_all(Goal, AccPred, Acc0, Acc) :-
 % We need to switch on the Detism argument
 % for the same reason as above.
 
-try_store(StoreGoal, Result) -->
-	{ get_determinism_2(StoreGoal, Detism) },
-	try_store(Detism, StoreGoal, Result).
+try_store(StoreGoal, Result, !Store) :-
+	get_determinism_2(StoreGoal, Detism),
+	try_store(Detism, StoreGoal, Result, !Store).
 
 	% Store0 is not really unique in the calls to unsafe_promise_unique
 	% below, since it is also used in the calls to handle_store_result.
@@ -487,29 +484,30 @@ try_store(StoreGoal, Result) -->
 	% other reference is only used in the case when an exception is
 	% thrown, and in that case the declarative semantics of this
 	% predicate say that the final store returned is unspecified.
-try_store(det, StoreGoal, Result, Store0, Store) :-
+try_store(det, StoreGoal, Result, !Store) :-
 	Goal = (pred({R, S}::out) is det :-
-		unsafe_promise_unique(Store0, S0),
+		unsafe_promise_unique(!.Store, S0),
 		StoreGoal(R, S0, S)),
 	try(det, Goal, Result0),
-	handle_store_result(Result0, Result, Store0, Store).
-try_store(cc_multi, StoreGoal, Result, Store0, Store) :-
+	handle_store_result(Result0, Result, !Store).
+try_store(cc_multi, StoreGoal, Result, !Store) :-
 	Goal = (pred({R, S}::out) is cc_multi :-
-		unsafe_promise_unique(Store0, S0),
+		unsafe_promise_unique(!.Store, S0),
 		StoreGoal(R, S0, S)),
 	try(cc_multi, Goal, Result0),
-	handle_store_result(Result0, Result, Store0, Store).
+	handle_store_result(Result0, Result, !Store).
 
 :- pred handle_store_result(exception_result({T, store(S)})::in(cannot_fail),
-		exception_result(T)::out(cannot_fail),
-		store(S)::in, store(S)::uo) is det.
-handle_store_result(Result0, Result, Store0, Store) :-
+	exception_result(T)::out(cannot_fail),
+	store(S)::in, store(S)::uo) is det.
+
+handle_store_result(Result0, Result, !Store) :-
 	(
-		Result0 = succeeded({Res, S1}),
+		Result0 = succeeded({Res, NewStore}),
 		Result = succeeded(Res),
-		% S1 is now unique because the only other reference to the
-		% store was from Store0, which we're throwing away here
-		unsafe_promise_unique(S1, Store)
+		% NewStore is now unique because the only other reference to
+		% the store was from !.Store, which we're throwing away here.
+		unsafe_promise_unique(NewStore, !:Store)
 	;
 		Result0 = exception(E0),
 		% We need to make a copy of the exception object, in case
@@ -519,56 +517,61 @@ handle_store_result(Result0, Result, Store0, Store) :-
 		Result = exception(E),
 		% Store0 is now unique because the only other reference to
 		% the store was from the goal which just threw an exception.
-		unsafe_promise_unique(Store0, Store)
+		unsafe_promise_unique(!Store)
 	).
 
-try_io(IO_Goal, Result) -->
-	{ get_determinism_2(IO_Goal, Detism) },
-	try_io(Detism, IO_Goal, Result).
+try_io(IO_Goal, Result, !IO) :-
+	get_determinism_2(IO_Goal, Detism),
+	try_io(Detism, IO_Goal, Result, !IO).
 
 % We'd better not inline try_io/5, since it uses a horrible hack
 % with unsafe_perform_io (see below) that might confuse the compiler.
 :- pragma no_inline(try_io/5).
-try_io(det, IO_Goal, Result) -->
-	{ Goal = (pred(R::out) is det :-
-		very_unsafe_perform_io(IO_Goal, R)) },
-	{ try(det, Goal, Result) }.
-try_io(cc_multi, IO_Goal, Result) -->
-	{ Goal = (pred(R::out) is cc_multi :-
-		very_unsafe_perform_io(IO_Goal, R)) },
-	{ try(cc_multi, Goal, Result) }.
 
-:- pred very_unsafe_perform_io(pred(T, io__state, io__state), T).
+try_io(det, IO_Goal, Result, !IO) :-
+	Goal = (pred(R::out) is det :-
+		very_unsafe_perform_io(IO_Goal, R)),
+	try(det, Goal, Result).
+try_io(cc_multi, IO_Goal, Result, !IO) :-
+	Goal = (pred(R::out) is cc_multi :-
+		very_unsafe_perform_io(IO_Goal, R)),
+	try(cc_multi, Goal, Result).
+
+:- pred very_unsafe_perform_io(pred(T, io, io), T).
 :- mode very_unsafe_perform_io(pred(out, di, uo) is det, out) is det.
-:- mode very_unsafe_perform_io(pred(out, di, uo) is cc_multi, out)
-								is cc_multi.
+:- mode very_unsafe_perform_io(pred(out, di, uo) is cc_multi, out) is cc_multi.
+
 % Mercury doesn't support impure higher-order pred terms, so if we want
 % to form a closure from unsafe_perform_io, as we need to do above,
 % then we must (falsely!) promise that it is pure.
 :- pragma promise_pure(very_unsafe_perform_io/2). % XXX this is a lie
 
 very_unsafe_perform_io(Goal, Result) :-
-	impure make_io_state(IOState0),
-	Goal(Result, IOState0, IOState),
-	impure consume_io_state(IOState).
+	impure make_io_state(IO0),
+	Goal(Result, IO0, IO),
+	impure consume_io_state(IO).
 
-:- impure pred make_io_state(io__state::uo) is det.
+:- impure pred make_io_state(io::uo) is det.
 :- pragma foreign_proc("C", make_io_state(_IO::uo),
-		[will_not_call_mercury, thread_safe], "").
+	[will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc("C#", make_io_state(_IO::uo),
-		[will_not_call_mercury, thread_safe], "").
+	[will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc("Java", make_io_state(_IO::uo),
-		[will_not_call_mercury, thread_safe], "").
+	[will_not_call_mercury, thread_safe], "").
 
-:- impure pred consume_io_state(io__state::di) is det.
-:- pragma foreign_proc("C", consume_io_state(_IO::di),
-		[will_not_call_mercury, thread_safe], "").
-:- pragma foreign_proc("C#", consume_io_state(_IO::di),
-		[will_not_call_mercury, thread_safe], "").
-:- pragma foreign_proc("Java", consume_io_state(_IO::di),
-		[will_not_call_mercury, thread_safe], "").
+:- impure pred consume_io_state(io::di) is det.
+:- pragma foreign_proc("C",
+	consume_io_state(_IO::di),
+	[will_not_call_mercury, thread_safe], "").
+:- pragma foreign_proc("C#",
+	consume_io_state(_IO::di),
+	[will_not_call_mercury, thread_safe], "").
+:- pragma foreign_proc("Java",
+	consume_io_state(_IO::di),
+	[will_not_call_mercury, thread_safe], "").
 
 :- pred wrap_exception(univ::in, exception_result(T)::out) is det.
+
 wrap_exception(Exception, exception(Exception)).
 
 %-----------------------------------------------------------------------------%
@@ -601,7 +604,6 @@ wrap_exception(Exception, exception(Exception)).
 throw_impl(Univ::in) :-
 	builtin_throw(Univ).
 
-
 catch_impl(Pred::(pred(out) is det), Handler::in(handler), T::out) :-
 	builtin_catch(Pred, Handler, T).
 catch_impl(Pred::(pred(out) is semidet), Handler::in(handler), T::out) :-
@@ -619,9 +621,7 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 % hand-coded low-level C code.
 %
 :- pragma terminates(builtin_throw/1).
-:- pred builtin_throw(univ).
-:- mode builtin_throw(in) is erroneous.
-
+:- pred builtin_throw(univ::in) is erroneous.
 
 :- /* impure */
    pred builtin_catch(pred(T), handler(T), T).
@@ -632,11 +632,8 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 :- mode builtin_catch(pred(out) is multi, in(handler), out) is multi.
 :- mode builtin_catch(pred(out) is nondet, in(handler), out) is nondet.
 
-	
-
 :- external(builtin_throw/1).
 :- external(builtin_catch/3).
-
 
 %-----------------------------------------------------------------------------%
 %
@@ -925,7 +922,7 @@ mercury__exception__builtin_catch_gc_trace(void *frame)
 	** which is the type of the handler_pred.
 	*/
 	MR_VAR_ARITY_TYPEINFO_STRUCT(s, 2) type_info_for_handler_pred;
-	type_info_for_handler_pred.MR_ti_type_ctor_info = 
+	type_info_for_handler_pred.MR_ti_type_ctor_info =
 		&mercury__builtin__builtin__type_ctor_info_pred_0;
 	type_info_for_handler_pred.MR_ti_var_arity_arity = 2;
 	type_info_for_handler_pred.MR_ti_var_arity_arg_typeinfos[0] =
@@ -980,7 +977,7 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 {
 	ML_ExceptionHandler this_handler;
 	ML_DECLARE_AGC_HANDLER
-	
+
 	this_handler.prev = ML_GET_EXCEPTION_HANDLER();
 	ML_SET_EXCEPTION_HANDLER(&this_handler);
 
@@ -1066,7 +1063,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		(*cont)();
 
-		/* 
+		/*
 		** If we get here, it means that the continuation
 		** has failed, and so we are about to redo the
 		** nondet goal.  Thus we need to re-establish
@@ -1125,7 +1122,7 @@ ML_catch_success_cont(void *env_ptr) {
 	ML_SET_EXCEPTION_HANDLER(env->this_handler.prev);
 	(*env->cont)(env->cont_env);
 
-	/* 
+	/*
 	** If we get here, it means that the continuation
 	** has failed, and so we are about to redo the
 	** nondet goal.  Thus we need to re-establish
@@ -1160,7 +1157,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 		** If we reach here, it means that
 		** the nondet goal has failed, so we
 		** need to restore the previous exception
-		** handler 
+		** handler
 		*/
 		ML_SET_EXCEPTION_HANDLER(locals.this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
@@ -1178,7 +1175,6 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 			locals.this_handler.handler);
 #endif
 
-
 		ML_SET_EXCEPTION_HANDLER(locals.this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 		ML_call_handler_det_handcoded(
@@ -1193,8 +1189,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 #endif /* MR_HIGHLEVEL_CODE */
 ").
 
-
-	% For the .NET backend we override throw_impl as it is easier to 
+	% For the .NET backend we override throw_impl as it is easier to
 	% implement these things using foreign_proc.
 
 :- pragma foreign_decl("C#", "
@@ -1202,9 +1197,9 @@ namespace mercury {
 	namespace runtime {
 		public class Exception : System.Exception
 		{
-		   public Exception(object[] data) 
+		   public Exception(object[] data)
 		   {
-			mercury_exception = data;	
+			mercury_exception = data;
 		   }
 		   public object[] mercury_exception;
 		};
@@ -1212,15 +1207,17 @@ namespace mercury {
 }
 ").
 
-:- pragma foreign_proc("C#", throw_impl(T::in),
-		[will_not_call_mercury, promise_pure], "
+:- pragma foreign_proc("C#",
+	throw_impl(T::in),
+	[will_not_call_mercury, promise_pure],
+"
 	throw new mercury.runtime.Exception(T);
 ").
 
-
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
-		[will_not_call_mercury, promise_pure], "
+	[will_not_call_mercury, promise_pure],
+"
 	try {
 		mercury.exception.mercury_code.ML_call_goal_det(
 			TypeInfo_for_T, Pred, ref T);
@@ -1230,9 +1227,10 @@ namespace mercury {
 			TypeInfo_for_T, Handler, ex.mercury_exception, ref T);
 	}
 ").
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	catch_impl(Pred::pred(out) is cc_multi, Handler::in(handler), T::out),
-		[will_not_call_mercury, promise_pure], "
+	[will_not_call_mercury, promise_pure],
+"
 	try {
 		mercury.exception.mercury_code.ML_call_goal_det(
 			TypeInfo_for_T, Pred, ref T);
@@ -1244,28 +1242,29 @@ namespace mercury {
 ").
 /*
 
-	% We can't implement these until we implement semidet procedures 
+	% We can't implement these until we implement semidet procedures
 	% for the C# interface.
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	catch_impl(Pred::pred(out) is semidet, Handler::in(handler), T::out),
-		[will_not_call_mercury, promise_pure], "
+	[will_not_call_mercury, promise_pure],
+"
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	catch_impl(Pred::pred(out) is cc_nondet, Handler::in(handler), T::out),
-		[will_not_call_mercury, promise_pure], "
+	[will_not_call_mercury, promise_pure],
+"
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
-
 
 	% We can't implement these because nondet C# foreign_proc for C#
 	% is not possible.
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
-		[will_not_call_mercury, promise_pure], 
+	[will_not_call_mercury, promise_pure],
 	local_vars(""),
 	first_code(""),
 	retry_code(""),
@@ -1273,9 +1272,9 @@ namespace mercury {
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	")
 ).
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
-		[will_not_call_mercury, promise_pure], 
+	[will_not_call_mercury, promise_pure],
 	local_vars(""),
 	first_code(""),
 	retry_code(""),
@@ -1284,9 +1283,6 @@ namespace mercury {
 	")
 ).
 */
-
-
-
 
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.
@@ -1322,27 +1318,28 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 /*
 *******/
 
-:- pragma foreign_proc("Java", throw_impl(_T::in),
-		[will_not_call_mercury, promise_pure], "
+:- pragma foreign_proc("Java",
+	throw_impl(_T::in),
+	[will_not_call_mercury, promise_pure],
+"
 	throw new java.lang.Error(""throw_impl not yet implemented"");
 ").
 
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	catch_impl(_Pred::pred(out) is det, _Handler::in(handler), _T::out),
-		[will_not_call_mercury, promise_pure], "
-{
+	[will_not_call_mercury, promise_pure],
+"{
 	// the shenanigans with `if (always)' are to avoid errors from
 	// the Java compiler about unreachable code.
 	boolean always = true;
 	if (always) {
 		throw new java.lang.Error(""catch_impl not yet implemented"");
 	}
-}
-").
-:- pragma foreign_proc("Java", 
+}").
+:- pragma foreign_proc("Java",
 	catch_impl(_Pred::pred(out) is semidet, _Handler::in(handler), T::out),
-		[will_not_call_mercury, promise_pure], "
-{
+	[will_not_call_mercury, promise_pure],
+"{
 	// the shenanigans with `if (always)' are to avoid errors from
 	// the Java compiler about unreachable code.
 	boolean always = true;
@@ -1350,13 +1347,12 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 		throw new java.lang.Error(""catch_impl not yet implemented"");
 	}
 	T = null;
-}
-").
-:- pragma foreign_proc("Java", 
+}").
+:- pragma foreign_proc("Java",
 	catch_impl(_Pred::pred(out) is cc_multi, _Handler::in(handler),
 		T::out),
-		[will_not_call_mercury, promise_pure], "
-{
+	[will_not_call_mercury, promise_pure],
+"{
 	// the shenanigans with `if (always)' are to avoid errors from
 	// the Java compiler about unreachable code.
 	boolean always = true;
@@ -1364,13 +1360,12 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 		throw new java.lang.Error(""catch_impl not yet implemented"");
 	}
 	T = null;
-}
-").
-:- pragma foreign_proc("Java", 
+}").
+:- pragma foreign_proc("Java",
 	catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler),
 		T::out),
-		[will_not_call_mercury, promise_pure], "
-{
+	[will_not_call_mercury, promise_pure],
+"{
 	// the shenanigans with `if (always)' are to avoid errors from
 	// the Java compiler about unreachable code.
 	boolean always = true;
@@ -1378,16 +1373,17 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 		throw new java.lang.Error(""catch_impl not yet implemented"");
 	}
 	T = null;
-}
-").
-:- pragma foreign_proc("Java", 
+}").
+:- pragma foreign_proc("Java",
 	catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
-		[will_not_call_mercury, promise_pure], "
+	[will_not_call_mercury, promise_pure],
+"
 	throw new java.lang.Error(""catch_impl not yet implemented"");
 ").
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
-		[will_not_call_mercury, promise_pure], "
+	[will_not_call_mercury, promise_pure],
+"
 	throw new java.lang.Error(""catch_impl not yet implemented"");
 ").
 
@@ -1602,14 +1598,14 @@ MR_declare_label(mercury__exception__builtin_throw_1_0_i1);
 
 /*
 ** MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn, pred_or_func,
-**			module, name, arity, mode)                         
+**			module, name, arity, mode)
 */
 
 /*
 ** The various procedures of builtin_catch all allocate their stack frames
 ** on the nondet stack, so for the purposes of doing stack traces we say
 ** they have MR_DETISM_NON, even though they are not actually nondet.
-*/ 
+*/
 
 MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_0,
 	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
@@ -1740,7 +1736,7 @@ MR_BEGIN_MODULE(exceptions_module)
 	MR_init_label_sl(mercury__exception__builtin_catch_3_4_i3);
 	MR_init_label_sl(mercury__exception__builtin_catch_3_5_i3);
 #endif
-	
+
 #ifdef	MR_DEEP_PROFILING
 	MR_init_label_sl(mercury__exception__builtin_catch_3_4_i4);
 	MR_init_label_sl(mercury__exception__builtin_catch_3_5_i4);
@@ -1752,7 +1748,7 @@ MR_BEGIN_MODULE(exceptions_module)
 	MR_init_label_sl(mercury__exception__builtin_catch_3_4_i6);
 	MR_init_label_sl(mercury__exception__builtin_catch_3_5_i6);
 #endif
-		
+
 #ifdef	MR_DEEP_PROFILING
 	MR_init_label_sl(mercury__exception__builtin_catch_3_4_i7);
 	MR_init_label_sl(mercury__exception__builtin_catch_3_5_i7);
@@ -1785,7 +1781,7 @@ MR_BEGIN_CODE
 ** There are slight differences between the versions of the code
 ** for the different determinisms.
 */
-	
+
 #define	save_r1			do {					\
 					MR_framevar(1) = MR_r1;		\
 				} while (0)
@@ -1963,7 +1959,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 			MR_Word *save_succip;
 			/*
 			** There was no exception handler.
-			** 
+			**
 			** We restore the original value of MR_curfr,
 			** print out some diagnostics,
 			** and then terminate execution.
@@ -2193,7 +2189,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	}
 	MR_incr_sp_push_msg(1, ""pred builtin_throw/1"");
 	MR_stackvar(1) = (MR_Word) MR_succip;
-	MR_call(MR_ENTRY(mercury__do_call_closure_compact), 
+	MR_call(MR_ENTRY(mercury__do_call_closure_compact),
 		MR_LABEL(mercury__exception__builtin_throw_1_0_i1),
 		MR_ENTRY(mercury__exception__builtin_throw_1_0));
 }
@@ -2258,32 +2254,31 @@ mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp)
 :- pragma export(report_uncaught_exception(in, di, uo),
 	"ML_report_uncaught_exception").
 
-:- pred report_uncaught_exception(univ, io__state, io__state).
-:- mode report_uncaught_exception(in, di, uo) is cc_multi.
+:- pred report_uncaught_exception(univ::in, io::di, io::uo) is cc_multi.
 
-report_uncaught_exception(Exception) -->
-	try_io(report_uncaught_exception_2(Exception), Result),
+report_uncaught_exception(Exception, !IO) :-
+	try_io(report_uncaught_exception_2(Exception), Result, !IO),
 	(
-		{ Result = succeeded(_) }
+		Result = succeeded(_)
 	;
-		{ Result = exception(_) }
+		Result = exception(_)
 		% if we got a further exception while trying to report
 		% the uncaught exception, just ignore it
 	).
 
-:- pred report_uncaught_exception_2(univ, unit, io__state, io__state).
-:- mode report_uncaught_exception_2(in, out, di, uo) is det.
+:- pred report_uncaught_exception_2(univ::in, unit::out,
+	io::di, io::uo) is det.
 
-report_uncaught_exception_2(Exception, unit) -->
-	io__flush_output,
-	io__stderr_stream(StdErr),
-	io__write_string(StdErr, "Uncaught Mercury exception:\n"),
-	( { univ_to_type(Exception, software_error(Message)) } ->
-		io__format(StdErr, "Software Error: %s\n", [s(Message)])
+report_uncaught_exception_2(Exception, unit, !IO) :-
+	io__flush_output(!IO),
+	io__stderr_stream(StdErr, !IO),
+	io__write_string(StdErr, "Uncaught Mercury exception:\n", !IO),
+	( univ_to_type(Exception, software_error(Message)) ->
+		io__format(StdErr, "Software Error: %s\n", [s(Message)], !IO)
 	;
-		io__write(StdErr, univ_value(Exception)),
-		io__nl(StdErr)
+		io__write(StdErr, univ_value(Exception), !IO),
+		io__nl(StdErr, !IO)
 	),
-	io__flush_output(StdErr).
+	io__flush_output(StdErr, !IO).
 
 %-----------------------------------------------------------------------------%

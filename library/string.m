@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2003 The University of Melbourne.
+% Copyright (C) 1993-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -12,8 +12,8 @@
 % This modules provides basic string handling facilities.
 
 % Note that in the current implementation, strings are represented as in C,
-% using a null character as the string terminator.  Future implementations,
-% however, might allow null characters in strings.  Programmers should
+% using a null character as the string terminator. Future implementations,
+% however, might allow null characters in strings. Programmers should
 % avoid creating strings that might contain null characters.
 
 %-----------------------------------------------------------------------------%
@@ -21,14 +21,15 @@
 :- interface.
 :- import_module list, char.
 
+	% Determine the length of a string.
+	% An empty string has length zero.
 :- func string__length(string) = int.
 :- mode string__length(in) = uo is det.
 :- pred string__length(string, int).
 :- mode string__length(in, uo) is det.
 :- mode string__length(ui, uo) is det.
-	% Determine the length of a string.
-	% An empty string has length zero.
 
+	% Append two strings together.
 :- func string__append(string, string) = string.
 :- mode string__append(in, in) = uo is det.
 
@@ -37,332 +38,320 @@
 :- mode string__append(in, uo, in) is semidet.
 :- mode string__append(in, in, uo) is det.
 :- mode string__append(out, out, in) is multi.
-%	Append two strings together.
-%
-%       The following mode is semidet in the sense that it doesn't
-%       succeed more than once - but it does create a choice-point,
-%       which means it's inefficient and that the compiler can't deduce
-%       that it is semidet.  Use string__remove_suffix instead.
+% The following mode is semidet in the sense that it doesn't succeed more
+% than once - but it does create a choice-point, which means it's inefficient
+% and that the compiler can't deduce that it is semidet.
+% Use string__remove_suffix instead.
 % :- mode string__append(out, in, in) is semidet.
 
+	% S1 ++ S2 = S :- string__append(S1, S2, S).
+	%
+	% Nicer syntax.
 :- func string ++ string = string.
 :- mode in ++ in = uo is det.
-%	S1 ++ S2 = S :- string__append(S1, S2, S).
-%
-%	Nicer syntax.
 
+	% string__remove_suffix(String, Suffix, Prefix):
+	% The same as string__append(Prefix, Suffix, String) except that
+	% this is semidet whereas string__append(out, in, in) is nondet.
 :- pred string__remove_suffix(string, string, string).
 :- mode string__remove_suffix(in, in, out) is semidet.
-%	string__remove_suffix(String, Suffix, Prefix):
-%       The same as string__append(Prefix, Suffix, String) except that
-%       this is semidet whereas string__append(out, in, in) is nondet.
 
+	% string__prefix(String, Prefix) is true iff Prefix is a
+	% prefix of String. Same as string__append(Prefix, _, String).
 :- pred string__prefix(string, string).
 :- mode string__prefix(in, in) is semidet.
 :- mode string__prefix(in, out) is multi.
-	% string__prefix(String, Prefix) is true iff Prefix is a
-	% prefix of String.  Same as string__append(Prefix, _, String).
 
+	% string__suffix(String, Suffix) is true iff Suffix is a
+	% suffix of String. Same as string__append(_, Suffix, String).
 :- pred string__suffix(string, string).
 :- mode string__suffix(in, in) is semidet.
 :- mode string__suffix(in, out) is multi.
-	% string__suffix(String, Suffix) is true iff Suffix is a
-	% suffix of String.  Same as string__append(_, Suffix, String).
 
+	% string__char_to_string(Char, String).
+	% Converts a character (single-character atom) to a string
+	% or vice versa.
 :- func string__char_to_string(char) = string.
 :- mode string__char_to_string(in) = uo is det.
 :- pred string__char_to_string(char, string).
 :- mode string__char_to_string(in, uo) is det.
 :- mode string__char_to_string(out, in) is semidet.
-%	string__char_to_string(Char, String).
-%		Converts a character (single-character atom) to a string
-%		or vice versa.
 
+	% Convert an integer to a string.
 :- func string__int_to_string(int) = string.
 :- mode string__int_to_string(in) = uo is det.
 :- pred string__int_to_string(int, string).
 :- mode string__int_to_string(in, uo) is det.
-%	Convert an integer to a string.
 
+	% string__int_to_base_string(Int, Base, String):
+	% Convert an integer to a string in a given Base (between 2 and 36).
 :- func string__int_to_base_string(int, int) = string.
 :- mode string__int_to_base_string(in, in) = uo is det.
 :- pred string__int_to_base_string(int, int, string).
 :- mode string__int_to_base_string(in, in, uo) is det.
-%	string__int_to_base_string(Int, Base, String):
-%	Convert an integer to a string in a given Base (between 2 and 36).
 
+	% Convert an float to a string.
+	% In the current implementation the resulting float will be in the
+	% form that it was printed using the format string "%#.<prec>g".
+	% <prec> will be in the range p to (p+2)
+	% where p = floor(mantissa_digits * log2(base_radix) / log2(10)).
+	% The precision chosen from this range will be such to allow a
+	% successful decimal -> binary conversion of the float.
 :- func string__float_to_string(float) = string.
 :- mode string__float_to_string(in) = uo is det.
 :- pred string__float_to_string(float, string).
 :- mode string__float_to_string(in, uo) is det.
-%	Convert an float to a string.
-%	In the current implementation the resulting float will be in the
-%	form that it was printed using the format string "%#.<prec>g".
-%	<prec> will be in the range p to (p+2)
-%	where p = floor(mantissa_digits * log2(base_radix) / log2(10)).
-%	The precision chosen from this range will be such to allow a
-%	successful decimal -> binary conversion of the float.
 
+	% string__first_char(String, Char, Rest) is true iff Char is
+	% the first character of String, and Rest is the remainder.
+	%
+	% WARNING: string__first_char makes a copy of Rest because the
+	% garbage collector doesn't handle references into the middle
+	% of an object, at least not the way we use it.
+	% Repeated use of string__first_char to iterate
+	% over a string will result in very poor performance.
+	% Use string__foldl or string__to_char_list instead.
 :- pred string__first_char(string, char, string).
 :- mode string__first_char(in, in, in) is semidet.	% implied
 :- mode string__first_char(in, uo, in) is semidet.	% implied
 :- mode string__first_char(in, in, uo) is semidet.	% implied
 :- mode string__first_char(in, uo, uo) is semidet.
 :- mode string__first_char(uo, in, in) is det.
-%	string__first_char(String, Char, Rest) is true iff
-%		Char is the first character of String, and Rest is the
-%		remainder.
-%
-%		WARNING: string__first_char makes a copy of Rest
-%		because the garbage collector doesn't handle references
-%		into the middle of an object.
-%		Repeated use of string__first_char to iterate
-%		over a string will result in very poor performance.
-%		Use string__foldl or string__to_char_list instead.
 
+	% string__replace(String0, Search, Replace, String):
+	% string__replace replaces the first occurence of Search in String0
+	% with Replace to give String. It fails if Search does not occur
+	% in String0.
 :- pred string__replace(string, string, string, string).
 :- mode string__replace(in, in, in, uo) is semidet.
-% string__replace(String0, Search, Replace, String):
-% 	string__replace replaces the first occurence of the second string in 
-% 	the first string with the third string to give the fourth string.
-% 	It fails if the second string does not occur in the first.
 
+	% string__replace_all(String0, Search, Replace, String):
+	% string__replace_all replaces any occurences of Search in
+	% String0 with Replace to give String.
 :- func string__replace_all(string, string, string) = string.
 :- mode string__replace_all(in, in, in) = uo is det.
 :- pred string__replace_all(string, string, string, string).
 :- mode string__replace_all(in, in, in, uo) is det.
-% string__replace_all(String0, Search, Replace, String):
-% 	string__replace_all replaces any occurences of the second string in 
-% 	the first string with the third string to give the fourth string.
 
+	% Converts a string to lowercase.
 :- func string__to_lower(string) = string.
 :- mode string__to_lower(in) = uo is det.
 :- pred string__to_lower(string, string).
 :- mode string__to_lower(in, uo) is det.
 :- mode string__to_lower(in, in) is semidet.		% implied
-%	Converts a string to lowercase.
 
+	% Converts a string to uppercase.
 :- func string__to_upper(string) = string.
 :- mode string__to_upper(in) = uo is det.
 :- pred string__to_upper(string, string).
 :- mode string__to_upper(in, uo) is det.
 :- mode string__to_upper(in, in) is semidet.		% implied
-%	Converts a string to uppercase.
 
+	% Convert the first character (if any) of a string to uppercase.
 :- func string__capitalize_first(string) = string.
-:- pred string__capitalize_first(string, string).
-:- mode string__capitalize_first(in, out) is det.
-%	Convert the first character (if any) of a string to uppercase.
+:- pred string__capitalize_first(string::in, string::out) is det.
 
+	% Convert the first character (if any) of a string to lowercase.
 :- func string__uncapitalize_first(string) = string.
-:- pred string__uncapitalize_first(string, string).
-:- mode string__uncapitalize_first(in, out) is det.
-%	Convert the first character (if any) of a string to lowercase.
+:- pred string__uncapitalize_first(string::in, string::out) is det.
 
+	% Convert the string to a list of characters.
 :- func string__to_char_list(string) = list(char).
 :- pred string__to_char_list(string, list(char)).
 :- mode string__to_char_list(in, out) is det.
 :- mode string__to_char_list(uo, in) is det.
 
+	% Convert a list of characters to a string.
 :- func string__from_char_list(list(char)) = string.
 :- mode string__from_char_list(in) = uo is det.
 :- pred string__from_char_list(list(char), string).
 :- mode string__from_char_list(in, uo) is det.
 :- mode string__from_char_list(out, in) is det.
 
+	% Same as string__from_char_list, except that it reverses the order
+	% of the characters.
 :- func string__from_rev_char_list(list(char)) = string.
 :- mode string__from_rev_char_list(in) = uo is det.
 :- pred string__from_rev_char_list(list(char), string).
 :- mode string__from_rev_char_list(in, uo) is det.
-%	Same as string__from_char_list, except that it reverses the order
-%	of the characters.
 
+	% Converts a signed base 10 string to an int; throws an exception
+	% if the string argument does not match the regexp [+-]?[0-9]+
 :- func string__det_to_int(string) = int.
-%	Converts a signed base 10 string to an int;
-%	throws an exception if the string argument
-%	does not match the regexp [+-]?[0-9]+
 
-:- pred string__to_int(string, int).
-:- mode string__to_int(in, out) is semidet.
-% 	Convert a string to an int.  The string must contain only digits,
-% 	optionally preceded by a plus or minus sign.  If the string does
-% 	not match this syntax, string__to_int fails.
+	% Convert a string to an int. The string must contain only digits,
+	% optionally preceded by a plus or minus sign. If the string does
+	% not match this syntax, string__to_int fails.
+:- pred string__to_int(string::in, int::out) is semidet.
 
-:- pred string__base_string_to_int(int, string, int).
-:- mode string__base_string_to_int(in, in, out) is semidet.
-% 	Convert a string in the specified base (2-36) to an int.  The
-% 	string must contain only digits in the specified base, optionally
-% 	preceded by a plus or minus sign.  For bases > 10, digits 10 to 35
-% 	are repesented by the letters A-Z or a-z.  If the string does not
-% 	match this syntax, the predicate fails.
+	% Convert a string in the specified base (2-36) to an int. The
+	% string must contain only digits in the specified base, optionally
+	% preceded by a plus or minus sign. For bases > 10, digits 10 to 35
+	% are repesented by the letters A-Z or a-z. If the string does not
+	% match this syntax, the predicate fails.
+:- pred string__base_string_to_int(int::in, string::in, int::out) is semidet.
 
+	% Converts a signed base N string to an int; throws an exception
+	% if the string argument is not precisely an optional sign followed
+	% by a non-empty string of base N digits.
 :- func string__det_base_string_to_int(int, string) = int.
-%	Converts a signed base N string to an int;
-%	throws an exception if the string argument
-%	is not precisely an optional sign followed
-%	by a non-empty string of base N digits.
 
-:- pred string__to_float(string, float).
-:- mode string__to_float(in, out) is semidet.
-%	Convert a string to an float. If the string is not
-%	a syntactically correct float literal, string__to_float fails.
+	% Convert a string to an float. If the string is not a syntactically
+	% correct float literal, string__to_float fails.
+:- pred string__to_float(string::in, float::out) is semidet.
 
-:- pred string__is_alpha(string).
-:- mode string__is_alpha(in) is semidet.
 	% True if string contains only alphabetic characters (letters).
+:- pred string__is_alpha(string::in) is semidet.
 
-:- pred string__is_alpha_or_underscore(string).
-:- mode string__is_alpha_or_underscore(in) is semidet.
 	% True if string contains only alphabetic characters and underscores.
+:- pred string__is_alpha_or_underscore(string::in) is semidet.
 
-:- pred string__is_alnum_or_underscore(string).
-:- mode string__is_alnum_or_underscore(in) is semidet.
 	% True if string contains only letters, digits, and underscores.
+:- pred string__is_alnum_or_underscore(string::in) is semidet.
 
+	% string__pad_left(String0, PadChar, Width, String):
+	% Insert `PadChar's at the left of `String0' until it is at least
+	% as long as `Width', giving `String'.
 :- func string__pad_left(string, char, int) = string.
-:- pred string__pad_left(string, char, int, string).
-:- mode string__pad_left(in, in, in, out) is det.
-%	string__pad_left(String0, PadChar, Width, String):
-%	insert `PadChar's at the left of `String0' until it is at least
-%	as long as `Width', giving `String'.
+:- pred string__pad_left(string::in, char::in, int::in, string::out) is det.
 
+	% string__pad_right(String0, PadChar, Width, String):
+	% Insert `PadChar's at the right of `String0' until it is at least
+	% as long as `Width', giving `String'.
 :- func string__pad_right(string, char, int) = string.
-:- pred string__pad_right(string, char, int, string).
-:- mode string__pad_right(in, in, in, out) is det.
-%	string__pad_right(String0, PadChar, Width, String):
-%	insert `PadChar's at the right of `String0' until it is at least
-%	as long as `Width', giving `String'.
+:- pred string__pad_right(string::in, char::in, int::in, string::out) is det.
 
-:- func string__duplicate_char(char, int) = string.
-:- mode string__duplicate_char(in, in) = uo is det.
-:- pred string__duplicate_char(char, int, string).
-:- mode string__duplicate_char(in, in, uo) is det.
-%	string__duplicate_char(Char, Count, String):
-%	construct a string consisting of `Count' occurrences of `Char'
-%	in sequence.
+	% string__duplicate_char(Char, Count, String):
+	% Construct a string consisting of `Count' occurrences of `Char'
+	% in sequence.
+:- func string__duplicate_char(char::in, int::in) = (string::uo) is det.
+:- pred string__duplicate_char(char::in, int::in, string::uo) is det.
 
-:- pred string__contains_char(string, char).
-:- mode string__contains_char(in, in) is semidet.
-%	string__contains_char(String, Char):
-%	succeed if `Char' occurs in `String'.
+	% string__contains_char(String, Char):
+	% Succeed if `Char' occurs in `String'.
+:- pred string__contains_char(string::in, char::in) is semidet.
 
-:- pred string__index(string, int, char).
-:- mode string__index(in, in, uo) is semidet.
-%	string__index(String, Index, Char):
-%	`Char' is the (`Index' + 1)-th character of `String'.
-%	Fails if `Index' is out of range (negative, or greater than or
-%	equal to the length of `String').
+	% string__index(String, Index, Char):
+	% `Char' is the (`Index' + 1)-th character of `String'.
+	% Fails if `Index' is out of range (negative, or greater than or
+	% equal to the length of `String').
+:- pred string__index(string::in, int::in, char::uo) is semidet.
 
+	% string__index_det(String, Index, Char):
+	% `Char' is the (`Index' + 1)-th character of `String'.
+	% Calls error/1 if `Index' is out of range (negative, or greater than
+	% or equal to the length of `String').
 :- func string__index_det(string, int) = char.
-:- pred string__index_det(string, int, char).
-:- mode string__index_det(in, in, uo) is det.
-%	string__index_det(String, Index, Char):
-%	`Char' is the (`Index' + 1)-th character of `String'.
-%	Calls error/1 if `Index' is out of range (negative, or greater than or
-%	equal to the length of `String').
+:- pred string__index_det(string::in, int::in, char::uo) is det.
 
+	% A synonym for index_det/2:
+	% String ^ elem(Index) = string__index_det(String, Index).
 :- func string ^ elem(int) = char.
-%	A synonym for index_det/2:
-%	String ^ elem(Index) = string__index_det(String, Index).
 
+	% string__unsafe_index(String, Index, Char):
+	% `Char' is the (`Index' + 1)-th character of `String'.
+	% WARNING: behavior is UNDEFINED if `Index' is out of range
+	% (negative, or greater than or equal to the length of `String').
+	% This version is constant time, whereas string__index_det
+	% may be linear in the length of the string.
+	% Use with care!
 :- func string__unsafe_index(string, int) = char.
-:- pred string__unsafe_index(string, int, char).
-:- mode string__unsafe_index(in, in, uo) is det.
-%	string__unsafe_index(String, Index, Char):
-%	`Char' is the (`Index' + 1)-th character of `String'.
-%	WARNING: behavior is UNDEFINED if `Index' is out of range
-%	(negative, or greater than or equal to the length of `String').
-%	This version is constant time, whereas string__index_det
-%	may be linear in the length of the string.
-%	Use with care!
+:- pred string__unsafe_index(string::in, int::in, char::uo) is det.
 
+	% A synonym for unsafe_index/2:
+	% String ^ unsafe_elem(Index) = string__unsafe_index(String, Index).
 :- func string ^ unsafe_elem(int) = char.
-%	A synonym for unsafe_index/2:
-%	String ^ unsafe_elem(Index) = string__unsafe_index(String, Index).
 
+	% string__chomp(String):
+	% `String' minus any single trailing newline character.
 :- func string__chomp(string) = string.
-%	string__chomp(String):
-%	`String' minus any single trailing newline character.
 
+	% string__lstrip(String):
+	% `String' minus any initial whitespace characters.
 :- func string__lstrip(string) = string.
-%	string__lstrip(String):
-%	`String' minus any initial whitespace characters.
 
+	% string__rstrip(String):
+	% `String' minus any trailing whitespace characters.
 :- func string__rstrip(string) = string.
-%	string__rstrip(String):
-%	`String' minus any trailing whitespace characters.
 
+	% string__strip(String):
+	% `String' minus any initial and trailing whitespace characters.
 :- func string__strip(string) = string.
-%	string__strip(String):
-%	`String' minus any initial and trailing whitespace characters.
 
-:- func string__lstrip(pred(char),          string) = string.
-:- mode string__lstrip(pred(in) is semidet, in    ) = out is det.
-%	string__lstrip(Pred, String):
-%	`String' minus the maximal prefix consisting entirely of
-%	chars satisfying `Pred'.
+	% string__lstrip(Pred, String):
+	% `String' minus the maximal prefix consisting entirely of
+	% chars satisfying `Pred'.
+:- func string__lstrip(pred(char)::in(pred(in) is semidet), string::in)
+	= (string::out) is det.
 
-:- func string__rstrip(pred(char),          string) = string.
-:- mode string__rstrip(pred(in) is semidet, in    ) = out is det.
-%	string__rstrip(Pred, String):
-%	`String' minus the maximal suffix consisting entirely of
-%	chars satisfying `Pred'.
+	% string__rstrip(Pred, String):
+	% `String' minus the maximal suffix consisting entirely of
+	% chars satisfying `Pred'.
+:- func string__rstrip(pred(char)::in(pred(in) is semidet), string::in)
+	= (string::out) is det.
 
-:- func string__prefix_length(pred(char),            string) = int.
-:- mode string__prefix_length(pred(in  ) is semidet, in)     = out is det.
-% string__prefix_length(Pred, String):
-% The length of the maximal prefix of `String' consisting entirely of
-% chars satisfying Pred.
+	% string__prefix_length(Pred, String):
+	% The length of the maximal prefix of `String' consisting entirely of
+	% chars satisfying Pred.
+:- func string__prefix_length(pred(char)::in(pred(in) is semidet), string::in)
+	= (int::out) is det.
 
-:- func suffix_length(pred(char),            string) = int.
-:- mode suffix_length(pred(in  ) is semidet, in)     = out is det.
-% string__suffix_length(Pred, String):
-% The length of the maximal suffix of `String' consisting entirely of
-% chars satisfying Pred.
+	% string__suffix_length(Pred, String):
+	% The length of the maximal suffix of `String' consisting entirely of
+	% chars satisfying Pred.
+:- func suffix_length(pred(char)::in(pred(in) is semidet), string::in)
+	= (int::out) is det.
 
+	% string__set_char(Char, Index, String0, String):
+	% `String' is `String0' with the (`Index' + 1)-th character
+	% set to `Char'.
+	% Fails if `Index' is out of range (negative, or greater than or
+	% equal to the length of `String0').
 :- pred string__set_char(char, int, string, string).
 :- mode string__set_char(in, in, in, out) is semidet.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
 %:- mode string__set_char(in, in, di, uo) is semidet.
-%	string__set_char(Char, Index, String0, String):
-%	`String' is `String0' with the (`Index' + 1)-th character
-%	set to `Char'.
-%	Fails if `Index' is out of range (negative, or greater than or
-%	equal to the length of `String0').
 
+	% string__set_char_det(Char, Index, String0, String):
+	% `String' is `String0' with the (`Index' + 1)-th character
+	% set to `Char'.
+	% Calls error/1 if `Index' is out of range (negative, or greater than
+	% or equal to the length of `String0').
 :- func string__set_char_det(char, int, string) = string.
 :- pred string__set_char_det(char, int, string, string).
 :- mode string__set_char_det(in, in, in, out) is det.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
 %:- mode string__set_char_det(in, in, di, uo) is det.
-%	string__set_char_det(Char, Index, String0, String):
-%	`String' is `String0' with the (`Index' + 1)-th character
-%	set to `Char'.
-%	Calls error/1 if `Index' is out of range (negative, or greater than or
-%	equal to the length of `String0').
 
+	% string__unsafe_set_char(Char, Index, String0, String):
+	% `String' is `String0' with the (`Index' + 1)-th character
+	% set to `Char'.
+	% WARNING: behavior is UNDEFINED if `Index' is out of range
+	% (negative, or greater than or equal to the length of `String0').
+	% This version is constant time, whereas string__set_char_det
+	% may be linear in the length of the string.
+	% Use with care!
 :- func string__unsafe_set_char(char, int, string) = string.
 :- mode string__unsafe_set_char(in, in, in) = out is det.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
 %:- mode string__unsafe_set_char(in, in, di) = uo is det.
-
 :- pred string__unsafe_set_char(char, int, string, string).
 :- mode string__unsafe_set_char(in, in, in, out) is det.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
 %:- mode string__unsafe_set_char(in, in, di, uo) is det.
-%	string__unsafe_set_char(Char, Index, String0, String):
-%	`String' is `String0' with the (`Index' + 1)-th character
-%	set to `Char'.
-%	WARNING: behavior is UNDEFINED if `Index' is out of range
-%	(negative, or greater than or equal to the length of `String0').
-%	This version is constant time, whereas string__set_char_det
-%	may be linear in the length of the string.
-%	Use with care!
 
+	% string__foldl(Closure, String, Acc0, Acc):
+	% `Closure' is an accumulator predicate which is to be called for each
+	% character of the string `String' in turn. The initial value of the
+	% accumulator is `Acc0' and the final value is `Acc'.
+	% (string__foldl is equivalent to
+	% 	string__to_char_list(String, Chars),
+	% 	list__foldl(Closure, Chars, Acc0, Acc)
+	% but is implemented more efficiently.)
 :- func string__foldl(func(char, T) = T, string, T) = T.
 :- pred string__foldl(pred(char, T, T), string, T, T).
 :- mode string__foldl(pred(in, in, out) is det, in, in, out) is det.
@@ -370,31 +359,25 @@
 :- mode string__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode string__foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode string__foldl(pred(in, in, out) is multi, in, in, out) is multi.
-%	string__foldl(Closure, String, Acc0, Acc):
-%	`Closure' is an accumulator predicate which is to be called for each
-%	character of the string `String' in turn. The initial value of the
-%	accumulator is `Acc0' and the final value is `Acc'.
-%	(string__foldl is equivalent to
-%		string__to_char_list(String, Chars),
-%		list__foldl(Closure, Chars, Acc0, Acc)
-%	but is implemented more efficiently.)
 
+	% string__foldl_substring(Closure, String, Start, Count, !Acc)
+	% is equivalent to string__foldl(Closure, SubString, !Acc)
+	% where SubString = string__substring(String, Start, Count).
 :- func string__foldl_substring(func(char, T) = T, string, int, int, T) = T.
 :- pred string__foldl_substring(pred(char, T, T), string, int, int, T, T).
 :- mode string__foldl_substring(pred(in, in, out) is det, in, in, in,
-		in, out) is det.
+	in, out) is det.
 :- mode string__foldl_substring(pred(in, di, uo) is det, in, in, in,
-		di, uo) is det.
+	di, uo) is det.
 :- mode string__foldl_substring(pred(in, in, out) is semidet, in, in, in,
-		in, out) is semidet.
+	in, out) is semidet.
 :- mode string__foldl_substring(pred(in, in, out) is nondet, in, in, in,
-		in, out) is nondet.
+	in, out) is nondet.
 :- mode string__foldl_substring(pred(in, in, out) is multi, in, in, in,
-		in, out) is multi.
-%	string__foldl_substring(Closure, String, Start, Count, Acc0, Acc)
-%	is equivalent to string__foldl(Closure, SubString, Acc0, Acc)
-%	where SubString = string__substring(String, Start, Count).
+	in, out) is multi.
 
+	% string__foldr(Closure, String, !Acc):
+	% As string__foldl/4, except that processing proceeds right-to-left.
 :- func string__foldr(func(char, T) = T, string, T) = T.
 :- pred string__foldr(pred(char, T, T), string, T, T).
 :- mode string__foldr(pred(in, in, out) is det, in, in, out) is det.
@@ -402,177 +385,175 @@
 :- mode string__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode string__foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode string__foldr(pred(in, in, out) is multi, in, in, out) is multi.
-%	string__foldr(Closure, String, Acc0, Acc):
-%	As string__foldl/4, except that processing proceeds right-to-left.
 
+	% string__foldr_substring(Closure, String, Start, Count, !Acc)
+	% is equivalent to string__foldr(Closure, SubString, !Acc)
+	% where SubString = string__substring(String, Start, Count).
 :- func string__foldr_substring(func(char, T) = T, string, int, int, T) = T.
 :- pred string__foldr_substring(pred(char, T, T), string, int, int, T, T).
 :- mode string__foldr_substring(pred(in, in, out) is det, in, in, in,
-		in, out) is det.
+	in, out) is det.
 :- mode string__foldr_substring(pred(in, di, uo) is det, in, in, in,
-		di, uo) is det.
+	di, uo) is det.
 :- mode string__foldr_substring(pred(in, in, out) is semidet, in, in, in,
-		in, out) is semidet.
+	in, out) is semidet.
 :- mode string__foldr_substring(pred(in, in, out) is nondet, in, in, in,
-		in, out) is nondet.
+	in, out) is nondet.
 :- mode string__foldr_substring(pred(in, in, out) is multi, in, in, in,
-		in, out) is multi.
-%	string__foldr_substring(Closure, String, Start, Count, Acc0, Acc)
-%	is equivalent to string__foldr(Closure, SubString, Acc0, Acc)
-%	where SubString = string__substring(String, Start, Count).
+	in, out) is multi.
 
+	% string__words(SepP, String) returns the list of non-empty substrings
+	% of String (in first to last order) that are delimited by non-empty
+	% sequences of chars matched by SepP. For example,
+	%
+	% string__words(char__is_whitespace, " the cat  sat on the  mat") =
+	% 	["the", "cat", "sat", "on", "the", "mat"]
 :- func string__words(pred(char), string) = list(string).
 :- mode string__words(pred(in) is semidet, in) = out is det.
-%	string__words(SepP, String) returns the list of
-%	non-empty substrings of String (in first to last
-%	order) that are delimited by non-empty sequences
-%	of chars matched by SepP.  For example,
-%
-%	string__words(char__is_whitespace, " the cat  sat on the  mat") =
-%		["the", "cat", "sat", "on", "the", "mat"]
 
+	% string__words(String) = string__words(char__is_whitespace, String).
 :- func string__words(string) = list(string).
-%	string__words(String) = string__words(char__is_whitespace, String).
 
+	% string__split(String, Count, LeftSubstring, RightSubstring):
+	% `LeftSubstring' is the left-most `Count' characters of `String',
+	% and `RightSubstring' is the remainder of `String'.
+	% (If `Count' is out of the range [0, length of `String'], it is
+	% treated as if it were the nearest end-point of that range.)
 :- pred string__split(string, int, string, string).
 :- mode string__split(in, in, uo, uo) is det.
-%	string__split(String, Count, LeftSubstring, RightSubstring):
-%	`LeftSubstring' is the left-most `Count' characters of `String',
-%	and `RightSubstring' is the remainder of `String'.
-%	(If `Count' is out of the range [0, length of `String'], it is
-%	treated as if it were the nearest end-point of that range.)
 
+	% string__left(String, Count, LeftSubstring):
+	% `LeftSubstring' is the left-most `Count' characters of `String'.
+	% (If `Count' is out of the range [0, length of `String'], it is
+	% treated as if it were the nearest end-point of that range.)
 :- func string__left(string, int) = string.
 :- mode string__left(in, in) = uo is det.
 :- pred string__left(string, int, string).
 :- mode string__left(in, in, uo) is det.
-%	string__left(String, Count, LeftSubstring):
-%	`LeftSubstring' is the left-most `Count' characters of `String'.
-%	(If `Count' is out of the range [0, length of `String'], it is
-%	treated as if it were the nearest end-point of that range.)
 
+	% string__right(String, Count, RightSubstring):
+	% `RightSubstring' is the right-most `Count' characters of `String'.
+	% (If `Count' is out of the range [0, length of `String'], it is
+	% treated as if it were the nearest end-point of that range.)
 :- func string__right(string, int) = string.
 :- mode string__right(in, in) = uo is det.
 :- pred string__right(string, int, string).
 :- mode string__right(in, in, uo) is det.
-%	string__right(String, Count, RightSubstring):
-%	`RightSubstring' is the right-most `Count' characters of `String'.
-%	(If `Count' is out of the range [0, length of `String'], it is
-%	treated as if it were the nearest end-point of that range.)
 
+	% string__substring(String, Start, Count, Substring):
+	% `Substring' is first the `Count' characters in what would
+	% remain of `String' after the first `Start' characters were
+	% removed.
+	% (If `Start' is out of the range [0, length of `String'], it is
+	% treated as if it were the nearest end-point of that range.
+	% If `Count' is out of the range [0, length of `String' - `Start'],
+	% it is treated as if it were the nearest end-point of that range.)
 :- func string__substring(string, int, int) = string.
 :- mode string__substring(in, in, in) = uo is det.
 :- pred string__substring(string, int, int, string).
 :- mode string__substring(in, in, in, uo) is det.
-%	string__substring(String, Start, Count, Substring):
-%	`Substring' is first the `Count' characters in what would
-%	remain of `String' after the first `Start' characters were
-%	removed.
-%	(If `Start' is out of the range [0, length of `String'], it is
-%	treated as if it were the nearest end-point of that range.
-%	If `Count' is out of the range [0, length of `String' - `Start'], it is
-%	treated as if it were the nearest end-point of that range.)
 
+	% string__unsafe_substring(String, Start, Count, Substring):
+	% `Substring' is first the `Count' characters in what would
+	% remain of `String' after the first `Start' characters were
+	% removed.
+	% WARNING: if `Start' is out of the range [0, length of `String'],
+	% or if `Count' is out of the range [0, length of `String' - `Start'],
+	% then the behaviour is UNDEFINED.
+	% Use with care!
+	% This version takes time proportional to the length of the
+	% substring, whereas string__substring may take time proportional
+	% to the length of the whole string.
 :- func string__unsafe_substring(string, int, int) = string.
 :- mode string__unsafe_substring(in, in, in) = uo is det.
 :- pred string__unsafe_substring(string, int, int, string).
 :- mode string__unsafe_substring(in, in, in, uo) is det.
-%	string__unsafe_substring(String, Start, Count, Substring):
-%	`Substring' is first the `Count' characters in what would
-%	remain of `String' after the first `Start' characters were
-%	removed.
-%	WARNING: if `Start' is out of the range [0, length of `String'],
-%	or if `Count' is out of the range [0, length of `String' - `Start'],
-%	then the behaviour is UNDEFINED.
-%	Use with care!
-%	This version takes time proportional to the length of the
-%	substring, whereas string__substring may take time proportional
-%	to the length of the whole string.
 
+	% Append a list of strings together.
 :- func string__append_list(list(string)::in) = (string::uo) is det.
 :- pred string__append_list(list(string), string).
 :- mode string__append_list(in, uo) is det.
-%	Append a list of strings together.
 
+	% string__join_list(Separator, Strings) = JoinedString:
+	% Appends together the strings in Strings, putting Separator between
+	% adjacent strings. If Strings is the empty list, returns the empty
+	% string.
 :- func string__join_list(string::in, list(string)::in) = (string::uo) is det.
-%	string__join_list(Separator, Strings) = JoinedString:
-%	Appends together the strings in Strings, putting Separator between
-%	adjacent strings. If Strings is the empty list, returns the empty
-%	string.
 
+	% Compute a hash value for a string.
 :- func string__hash(string) = int.
 :- pred string__hash(string, int).
 :- mode string__hash(in, out) is det.
-%	Compute a hash value for a string.
 
+	% string__sub_string_search(String, SubString, Index).
+	% `Index' is the position in `String' where the first occurrence of
+	% `SubString' begins. Indices start at zero, so if `SubString'
+	% is a prefix of `String', this will return Index = 0.
 :- pred string__sub_string_search(string, string, int).
 :- mode string__sub_string_search(in, in, out) is semidet.
-%	string__sub_string_search(String, SubString, Index).
-%	`Index' is the position in `String' where the first occurrence of
-%	`SubString' begins.  Indices start at zero, so if `SubString'
-%	is a prefix of `String', this will return Index = 0.
 
+	% A function similar to sprintf() in C.
+	%
+	% For example,
+	% 	string__format("%s %i %c %f\n",
+	% 		[s("Square-root of"), i(2), c('='), f(1.41)], String)
+	% will return
+	% 	String = "Square-root of 2 = 1.41\n".
+	%
+	% The following options available in C are supported: flags [0+-# ],
+	% a field width (or *), and a precision (could be a ".*").
+	%
+	% Valid conversion character types are {dioxXucsfeEgGp%}. %n is not
+	% supported. string__format will not return the length of the string.
+	%
+	% conv	var	output form.		effect of '#'.
+	% char.	type.
+	%
+	% d	int	signed integer
+	% i	int	signed integer
+	% o	int	signed octal		with '0' prefix
+	% x,X	int	signed hex		with '0x', '0X' prefix
+	% u	int	unsigned integer
+	% c	char	character
+	% s	string	string
+	% f	float	rational number		with '.', if precision 0
+	% e,E	float	[-]m.dddddE+-xx		with '.', if precision 0
+	% g,G	float	either e or f		with trailing zeros.
+	% p	int	integer
+	%
+	% An option of zero will cause any padding to be zeros rather than
+	% spaces. A '-' will cause the output to be left-justified in its
+	% 'space'. (With a `-', the default is for fields to be
+	% right-justified.)
+	% A '+' forces a sign to be printed. This is not sensible for string
+	% and character output. A ' ' causes a space to be printed before a
+	% thing if there is no sign there. The other option is the '#', which
+	% modifies the output string's format. These options are normally put
+	% directly after the '%'.
+	%
+	% Note:
+	% 	%#.0e, %#.0E now prints a '.' before the 'e'.
+	%
+	% 	Asking for more precision than a float actually has will
+	% 	result in potentially misleading output.
+	%
+	% 	Numbers are now rounded by precision value, not
+	% 	truncated as previously.
+	%
+	% 	The implementation uses the sprintf() function, so the
+	% 	actual output will depend on the C standard library.
+	%
 :- func string__format(string, list(string__poly_type)) = string.
 :- pred string__format(string, list(string__poly_type), string).
 :- mode string__format(in, in, out) is det.
-%
-%	A function similar to sprintf() in C.  
-%
-%	For example,
-%		string__format("%s %i %c %f\n", 
-%			[s("Square-root of"), i(2), c('='), f(1.41)], String)
-%	will return
-%		String = "Square-root of 2 = 1.41\n".
-%
-%	The following options available in C are supported: flags [0+-# ],
-%	a field width (or *), and a precision (could be a ".*").
-%
-%	Valid conversion character types are {dioxXucsfeEgGp%}.  %n is not
-%	supported.  string__format will not return the length of the string.
-%
-%	conv	var	output form.		effect of '#'.
-%	char.	type.
-%
-%	d	int	signed integer
-%	i	int	signed integer
-%	o	int	signed octal		with '0' prefix
-%	x,X	int	signed hex		with '0x', '0X' prefix
-%	u	int	unsigned integer
-%	c	char	character
-%	s	string	string
-%	f	float	rational number		with '.', if precision 0
-%	e,E	float	[-]m.dddddE+-xx		with '.', if precision 0
-%	g,G	float	either e or f		with trailing zeros.
-%	p	int	integer
-%
-%	An option of zero will cause any padding to be zeros rather than spaces.
-%	A '-' will cause the output to be left-justified in its 'space'. 
-%	(With a `-', the default is for fields to be right-justified.)
-%	A '+' forces a sign to be printed.  This is not sensible for string and
-%	character output.  A ' ' causes a space to be printed before a thing
-%	if there is no sign there.  The other option is the '#', which 
-%	modifies the output string's format.  These options are normally put 
-%	directly after the '%'.
-%
-%	Note:
-%		%#.0e, %#.0E now prints a '.' before the 'e'.
-%
-%		Asking for more precision than a float actually has will
-%		result in potentially misleading output.
-%
-%		Numbers are now rounded by precision value, not
-%		truncated as previously.
-%
-%		The implementation uses the sprintf() function, so the
-%		actual output will depend on the C standard library.
 
 %------------------------------------------------------------------------------%
 
-:- type string__poly_type --->
-			f(float)
-		;	i(int)
-		;	s(string)
-		;	c(char).
+:- type string__poly_type
+	--->	f(float)
+	;	i(int)
+	;	s(string)
+	;	c(char).
 
 %-----------------------------------------------------------------------------%
 
@@ -592,46 +573,42 @@ string__replace_all(String, SubString0, SubString1, StringOut) :-
 	string__to_char_list(String, CharList),
 	string__to_char_list(SubString0, SubCharList0),
 	string__to_char_list(SubString1, SubCharList1),
-       	find_all_sub_charlist(CharList, SubCharList0, SubCharList1, 
+	find_all_sub_charlist(CharList, SubCharList0, SubCharList1,
 		CharListOut),
-       	string__from_char_list(CharListOut, StringOut).
+	string__from_char_list(CharListOut, StringOut).
 
 	% find_all_sub_charlist replaces any occurences of the second list of
 	% characters (in order) in the first list of characters with the second
 	% list of characters.
-:- pred find_all_sub_charlist(list(char), list(char), list(char), list(char)).
-:- mode find_all_sub_charlist(in, in, in, out) is det.
+:- pred find_all_sub_charlist(list(char)::in, list(char)::in, list(char)::in,
+	list(char)::out) is det.
 
 find_all_sub_charlist(CharList, SubCharList0, SubCharList1, CharList0) :-
 		% find the first occurence
-	(
-		find_sub_charlist(CharList, SubCharList0, BeforeList, AfterList)
-	->
-		(
-			AfterList = []
-		->
+	( find_sub_charlist(CharList, SubCharList0, BeforeList, AfterList) ->
+		( AfterList = [] ->
 			% at the end
 			list__append(BeforeList, SubCharList1, CharList0)
 		;
 			% recursively find the rest of the occurences
-			find_all_sub_charlist(AfterList, SubCharList0, 
+			find_all_sub_charlist(AfterList, SubCharList0,
 				SubCharList1, AfterList0),
 			list__append(BeforeList, SubCharList1, BeforeList0),
 			list__append(BeforeList0, AfterList0, CharList0)
 		)
 	;
-		%no occurences left
+		% no occurences left
 		CharList0 = CharList
 	).
 
 	% find_sub_charlist(List, SubList, Before, After) is true iff SubList
 	% is a sublist of List, and Before is the list of characters before
 	% SubList in List, and After is the list after it.
-:- pred find_sub_charlist(list(char), list(char), list(char), list(char)).
-:- mode find_sub_charlist(in, in, out, out) is semidet.
+:- pred find_sub_charlist(list(char)::in, list(char)::in, list(char)::out,
+	list(char)::out) is semidet.
 
 find_sub_charlist(CharList, [], [], CharList).
-find_sub_charlist([C|CharList], [S|SubCharList], Before, After) :-
+find_sub_charlist([C | CharList], [S | SubCharList], Before, After) :-
 	(
 		C = S
 	->
@@ -641,22 +618,22 @@ find_sub_charlist([C|CharList], [S|SubCharList], Before, After) :-
 			Before = [],
 			After = After0
 		;
-			find_sub_charlist(CharList, [S|SubCharList], Before0, 
+			find_sub_charlist(CharList, [S | SubCharList], Before0,
 				After0),
-			Before = [C|Before0],
+			Before = [C | Before0],
 			After = After0
 
 		)
 	;
-		find_sub_charlist(CharList, [S|SubCharList], Before0, After),
-		Before = [C|Before0]
+		find_sub_charlist(CharList, [S | SubCharList], Before0, After),
+		Before = [C | Before0]
 	).
 
 	% find_rest_of_sub_charlist(List, SubList, After) is true iff List
 	% begins with all the characters in SubList in order, and end with
 	% After.
-:- pred find_rest_of_sub_charlist(list(char), list(char), list(char)).
-:- mode find_rest_of_sub_charlist(in, in, out) is semidet.
+:- pred find_rest_of_sub_charlist(list(char)::in, list(char)::in,
+	list(char)::out) is semidet.
 
 find_rest_of_sub_charlist(CharList, SubCharList, After) :-
 	list__append(SubCharList, After, CharList).
@@ -667,19 +644,18 @@ string__to_int(String, Int) :-
 string__base_string_to_int(Base, String, Int) :-
 	string__index(String, 0, Char),
 	Len = string__length(String),
-	(      if Char = ('-') then
+	( Char = ('-') ->
 		foldl_substring(accumulate_int(Base), String, 1, Len - 1, 0, N),
 		Int = -N
-	  else if Char = ('+') then
+	; Char = ('+') ->
 		foldl_substring(accumulate_int(Base), String, 1, Len - 1, 0, N),
 		Int = N
-	  else
+	;
 		foldl_substring(accumulate_int(Base), String, 0, Len, 0, N),
 		Int = N
 	).
 
-:- pred accumulate_int(int, char, int, int).
-:- mode accumulate_int(in, in, in, out) is semidet.
+:- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
 
 accumulate_int(Base, Char, N, (Base * N) + M) :-
 	char__digit_to_int(Char, M),
@@ -689,6 +665,7 @@ accumulate_int(Base, Char, N, (Base * N) + M) :-
 % so that the compiler can do loop invariant hoisting
 % on calls to string__length that occur in loops.
 :- pragma inline(string__index_det/3).
+
 string__index_det(String, Int, Char) :-
 	( string__index(String, Int, Char0) ->
 		Char = Char0
@@ -716,23 +693,23 @@ string__foldl_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
 
 :- pred string__foldl_substring_2(pred(char, T, T), string, int, int, T, T).
 :- mode string__foldl_substring_2(pred(in, in, out) is det, in, in, in,
-		in, out) is det.
+	in, out) is det.
 :- mode string__foldl_substring_2(pred(in, di, uo) is det, in, in, in,
-		di, uo) is det.
+	di, uo) is det.
 :- mode string__foldl_substring_2(pred(in, in, out) is semidet, in, in, in,
-		in, out) is semidet.
+	in, out) is semidet.
 :- mode string__foldl_substring_2(pred(in, in, out) is nondet, in, in, in,
-		in, out) is nondet.
+	in, out) is nondet.
 :- mode string__foldl_substring_2(pred(in, in, out) is multi, in, in, in,
-		in, out) is multi.
+	in, out) is multi.
 
-string__foldl_substring_2(Closure, String, I, Count, Acc0, Acc) :-
-	( if 0 < Count then
-		Closure(string__unsafe_index(String, I), Acc0, Acc1),
+string__foldl_substring_2(Closure, String, I, Count, !Acc) :-
+	( 0 < Count ->
+		Closure(string__unsafe_index(String, I), !Acc),
 		string__foldl_substring_2(Closure, String, I + 1, Count - 1,
-			Acc1, Acc)
-	  else
-	  	Acc = Acc0
+			!Acc)
+	;
+		true
 	).
 
 string__foldr(F, String, Acc0) = Acc :-
@@ -753,26 +730,24 @@ string__foldr_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
 
 :- pred string__foldr_substring_2(pred(char, T, T), string, int, int, T, T).
 :- mode string__foldr_substring_2(pred(in, in, out) is det, in, in, in,
-		in, out) is det.
+	in, out) is det.
 :- mode string__foldr_substring_2(pred(in, di, uo) is det, in, in, in,
-		di, uo) is det.
+	di, uo) is det.
 :- mode string__foldr_substring_2(pred(in, in, out) is semidet, in, in, in,
-		in, out) is semidet.
+	in, out) is semidet.
 :- mode string__foldr_substring_2(pred(in, in, out) is nondet, in, in, in,
-		in, out) is nondet.
+	in, out) is nondet.
 :- mode string__foldr_substring_2(pred(in, in, out) is multi, in, in, in,
-		in, out) is multi.
+	in, out) is multi.
 
-string__foldr_substring_2(Closure, String, I, Count, Acc0, Acc) :-
-	( if 0 < Count then
-		Closure(string__unsafe_index(String, I + Count - 1),
-			Acc0, Acc1),
-		string__foldr_substring_2(Closure, String, I, Count - 1,
-			Acc1, Acc )
-	  else
-	  	Acc = Acc0
+string__foldr_substring_2(Closure, String, I, Count, !Acc) :-
+	( 0 < Count ->
+		Closure(string__unsafe_index(String, I + Count - 1), !Acc),
+		string__foldr_substring_2(Closure, String, I, Count - 1, !Acc)
+	;
+		true
 	).
-  		
+
 string__left(String, Count, LeftString) :-
 	string__split(String, Count, LeftString, _RightString).
 
@@ -795,24 +770,22 @@ string__prefix(String::in, Prefix::in) :-
 	PreLen =< Len,
 	prefix_2_iii(String, Prefix, PreLen - 1).
 
-:- pred prefix_2_iii(string, string, int).
-:- mode prefix_2_iii(in, in, in) is semidet.
+:- pred prefix_2_iii(string::in, string::in, int::in) is semidet.
 
 prefix_2_iii(String, Prefix, I) :-
-	( if 0 =< I then
+	( 0 =< I ->
 		(String `unsafe_index` I) =
 			(Prefix `unsafe_index` I) `with_type` char,
 		prefix_2_iii(String, Prefix, I - 1)
-	  else
-	  	true
+	;
+		true
 	).
 
 string__prefix(String::in, Prefix::out) :-
 	Len = length(String),
 	prefix_2_ioii(String, Prefix, 0, Len).
 
-:- pred prefix_2_ioii(string, string, int, int).
-:- mode prefix_2_ioii(in, out, in, in) is multi.
+:- pred prefix_2_ioii(string::in, string::out, int::in, int::in) is multi.
 
 prefix_2_ioii(String, Prefix, PreLen, _Len) :-
 	Prefix = unsafe_substring(String, 0, PreLen).
@@ -829,24 +802,23 @@ string__suffix(String::in, Suffix::in) :-
 	PreLen =< Len,
 	suffix_2_iiii(String, Suffix, 0, Len - PreLen, PreLen).
 
-:- pred suffix_2_iiii(string, string, int, int, int).
-:- mode suffix_2_iiii(in, in, in, in, in) is semidet.
+:- pred suffix_2_iiii(string::in, string::in, int::in, int::in, int::in)
+	is semidet.
 
 suffix_2_iiii(String, Suffix, I, Offset, Len) :-
-	( if I < Len then
+	( I < Len ->
 		(String `unsafe_index` (I + Offset)) =
 			(Suffix `unsafe_index` I) `with_type` char,
 		suffix_2_iiii(String, Suffix, I + 1, Offset, Len)
-	  else
-	  	true
+	;
+		true
 	).
 
 string__suffix(String::in, Suffix::out) :-
 	Len = length(String),
 	suffix_2_ioii(String, Suffix, 0, Len).
 
-:- pred suffix_2_ioii(string, string, int, int).
-:- mode suffix_2_ioii(in, out, in, in) is multi.
+:- pred suffix_2_ioii(string::in, string::out, int::in, int::in) is multi.
 
 suffix_2_ioii(String, Suffix, SufLen, Len) :-
 	Suffix = unsafe_substring(String, Len - SufLen, SufLen).
@@ -913,11 +885,9 @@ string__from_char_list(CharList, Str) :-
 
 /*-----------------------------------------------------------------------*/
 
-/*
-:- pred string__to_char_list(string, list(char)).
-:- mode string__to_char_list(in, uo) is det.
-:- mode string__to_char_list(uo, in) is det.
-*/
+% :- pred string__to_char_list(string, list(char)).
+% :- mode string__to_char_list(in, uo) is det.
+% :- mode string__to_char_list(uo, in) is det.
 
 :- pragma promise_pure(string__to_char_list/2).
 :- pragma foreign_proc("C",
@@ -940,34 +910,36 @@ string__from_char_list(CharList, Str) :-
 		/* mode (uo, in) is det */
 	MR_Word char_list_ptr;
 	size_t size;
-/*
-** loop to calculate list length + sizeof(MR_Word) in `size' using list in
-** `char_list_ptr'
-*/
+
+	/*
+	** loop to calculate list length + sizeof(MR_Word) in `size'
+	** using list in `char_list_ptr'
+	*/
 	size = sizeof(MR_Word);
 	char_list_ptr = CharList;
 	while (! MR_list_is_empty(char_list_ptr)) {
 		size++;
 		char_list_ptr = MR_list_tail(char_list_ptr);
 	}
-/*
-** allocate (length + 1) bytes of heap space for string
-** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
-*/
+
+	/*
+	** allocate (length + 1) bytes of heap space for string
+	** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
+	*/
 	MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
 
-/*
-** loop to copy the characters from the char_list to the string
-*/
+	/*
+	** loop to copy the characters from the char_list to the string
+	*/
 	size = 0;
 	char_list_ptr = CharList;
 	while (! MR_list_is_empty(char_list_ptr)) {
 		Str[size++] = MR_list_head(char_list_ptr);
 		char_list_ptr = MR_list_tail(char_list_ptr);
 	}
-/*
-** null terminate the string
-*/
+	/*
+	** null terminate the string
+	*/
 	Str[size] = '\\0';
 }").
 
@@ -989,7 +961,7 @@ string__to_char_list_2(Str, Index, CharList) :-
 	;
 		CharList = []
 	).
-	
+
 /*-----------------------------------------------------------------------*/
 
 %
@@ -1003,10 +975,12 @@ string__to_char_list_2(Str, Index, CharList) :-
 "{
 	MR_Word list_ptr;
 	MR_Word size, len;
-/*
-** loop to calculate list length + sizeof(MR_Word) in `size' using list in
-** `list_ptr' and separately count the length of the string
-*/
+
+	/*
+	** loop to calculate list length + sizeof(MR_Word) in `size'
+	** using list in `list_ptr' and separately count the length of the
+	** string
+	*/
 	size = sizeof(MR_Word);
 	len = 1;
 	list_ptr = Chars;
@@ -1015,21 +989,23 @@ string__to_char_list_2(Str, Index, CharList) :-
 		len++;
 		list_ptr = MR_list_tail(list_ptr);
 	}
-/*
-** allocate (length + 1) bytes of heap space for string
-** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
-*/
+
+	/*
+	** allocate (length + 1) bytes of heap space for string
+	** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
+	*/
 	MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
 
-/*
-** set size to be the offset of the end of the string
-** (ie the \\0) and null terminate the string.
-*/
+	/*
+	** set size to be the offset of the end of the string
+	** (ie the \\0) and null terminate the string.
+	*/
 	Str[--len] = '\\0';
-/*
-** loop to copy the characters from the list_ptr to the string
-** in reverse order.
-*/
+
+	/*
+	** loop to copy the characters from the list_ptr to the string
+	** in reverse order.
+	*/
 	list_ptr = Chars;
 	while (!MR_list_is_empty(list_ptr)) {
 		Str[--len] = (MR_Char) MR_list_head(list_ptr);
@@ -1037,7 +1013,7 @@ string__to_char_list_2(Str, Index, CharList) :-
 	}
 }").
 
-string__from_rev_char_list(Chars::in, Str::uo) :- 
+string__from_rev_char_list(Chars::in, Str::uo) :-
 	Str = string__from_char_list(list__reverse(Chars)).
 
 string__to_upper(StrIn, StrOut) :-
@@ -1045,10 +1021,10 @@ string__to_upper(StrIn, StrOut) :-
 	string__char_list_to_upper(List, ListUpp),
 	string__from_char_list(ListUpp, StrOut).
 
-:- pred string__char_list_to_upper(list(char), list(char)).
-:- mode string__char_list_to_upper(in, out) is det.
+:- pred string__char_list_to_upper(list(char)::in, list(char)::out) is det.
+
 string__char_list_to_upper([], []).
-string__char_list_to_upper([X|Xs], [Y|Ys]) :-
+string__char_list_to_upper([X | Xs], [Y | Ys]) :-
 	char__to_upper(X,Y),
 	string__char_list_to_upper(Xs,Ys).
 
@@ -1057,10 +1033,10 @@ string__to_lower(StrIn, StrOut) :-
 	string__char_list_to_lower(List, ListLow),
 	string__from_char_list(ListLow, StrOut).
 
-:- pred string__char_list_to_lower(list(char), list(char)).
-:- mode string__char_list_to_lower(in, out) is det.
+:- pred string__char_list_to_lower(list(char)::in, list(char)::out) is det.
+
 string__char_list_to_lower([], []).
-string__char_list_to_lower([X|Xs], [Y|Ys]) :-
+string__char_list_to_lower([X | Xs], [Y | Ys]) :-
 	char__to_lower(X,Y),
 	string__char_list_to_lower(Xs,Ys).
 
@@ -1080,21 +1056,21 @@ string__uncapitalize_first(S0, S) :-
 		S = S0
 	).
 
-:- pred string__all_match(pred(char), string).
-:- mode string__all_match(pred(in) is semidet, in) is semidet.
+:- pred string__all_match(pred(char)::in(pred(in) is semidet), string::in)
+	is semidet.
 
 string__all_match(P, String) :-
 	all_match_2(string__length(String) - 1, P, String).
 
-:- pred all_match_2(int, pred(char), string).
-:- mode all_match_2(in, pred(in) is semidet, in) is semidet.
+:- pred all_match_2(int::in, pred(char)::in(pred(in) is semidet), string::in)
+	is semidet.
 
 string__all_match_2(I, P, String) :-
-	( if I >= 0 then
+	( I >= 0 ->
 		P(string__unsafe_index(String, I)),
 		string__all_match_2(I - 1, P, String)
-	  else
-	  	true
+	;
+		true
 	).
 
 string__is_alpha(S) :-
@@ -1187,7 +1163,7 @@ string__append_list(Lists, string__append_list(Lists)).
 		if (add_sep) {
 			len += sep_len;
 		}
-		
+
 		len += strlen((MR_String) MR_list_head(list));
 		list = MR_list_tail(list);
 		add_sep = MR_TRUE;
@@ -1223,12 +1199,12 @@ string__append_list(Strs::in) = (Str::uo) :-
 	).
 
 string__join_list(_, []) = "".
-string__join_list(Sep, [H|T]) = H ++ string__join_list_2(Sep, T).
+string__join_list(Sep, [H | T]) = H ++ string__join_list_2(Sep, T).
 
 :- func string__join_list_2(string::in, list(string)::in) = (string::uo) is det.
 
 string__join_list_2(_, []) = "".
-string__join_list_2(Sep, [H|T]) = Sep ++ H ++ string__join_list_2(Sep, T).
+string__join_list_2(Sep, [H | T]) = Sep ++ H ++ string__join_list_2(Sep, T).
 
 %-----------------------------------------------------------------------------%
 
@@ -1240,8 +1216,7 @@ string__hash(String, HashVal) :-
 	string__hash_2(String, 0, Length, 0, HashVal0),
 	HashVal = HashVal0 `xor` Length.
 
-:- pred string__hash_2(string, int, int, int, int).
-:- mode string__hash_2(in, in, in, in, out) is det.
+:- pred string__hash_2(string::in, int::in, int::in, int::in, int::out) is det.
 
 string__hash_2(String, Index, Length, HashVal0, HashVal) :-
 	( Index < Length ->
@@ -1253,8 +1228,7 @@ string__hash_2(String, Index, Length, HashVal0, HashVal) :-
 		HashVal = HashVal0
 	).
 
-:- pred string__combine_hash(int, int, int).
-:- mode string__combine_hash(in, in, out) is det.
+:- pred string__combine_hash(int::in, int::in, int::out) is det.
 
 string__combine_hash(H0, X, H) :-
 	H1 = H0 `xor` (H0 << 5),
@@ -1262,7 +1236,7 @@ string__combine_hash(H0, X, H) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	string__sub_string_search(WholeString::in, SubString::in, Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -1276,7 +1250,7 @@ string__combine_hash(H0, X, H) :-
 	}
 }").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	string__sub_string_search(WholeString::in, SubString::in, Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -1289,26 +1263,24 @@ string__sub_string_search(String, SubString, Index) :-
 	sub_string_search_2(String, SubString, 0, length(String),
 		length(SubString), Index).
 
-	% Brute force string searching.  For short Strings this is
+	% Brute force string searching. For short Strings this is
 	% good; for longer strings Boyer-Moore is much better.
-	%
 :- pred sub_string_search_2(string::in, string::in, int::in, int::in, int::in,
-		int::out) is semidet.
+	int::out) is semidet.
 
 sub_string_search_2(String, SubString, I, Length, SubLength, Index) :-
-	( if
+	(
 		I < Length,
 		% XXX This is inefficient --
-		%     there is no (in, in, in) = in is semidet
-		%     mode of string__substring, so this ends up
-		%     calling the (in, in, in) = out mode and then
-		%     doing the unification.  This will create a lot
-		%     of unnecessary garbage.
+		% there is no (in, in, in) = in is semidet mode of
+		% string__substring, so this ends up calling the
+		% (in, in, in) = out mode and then doing the unification.
+		% This will create a lot of unnecessary garbage.
 		string__substring(String, I, SubLength) = SubString
-	  then
-	  	Index = I
-	  else
-	  	sub_string_search_2(String, SubString, I + 1,
+	->
+		Index = I
+	;
+		sub_string_search_2(String, SubString, I + 1,
 			Length, SubLength, Index)
 	).
 
@@ -1320,17 +1292,17 @@ sub_string_search_2(String, SubString, I, Length, SubLength, Index) :-
 string__format(FormatString, PolyList, String) :-
 	(
 		format_string(Specifiers, PolyList, [],
-				to_char_list(FormatString), [])
+			to_char_list(FormatString), [])
 	->
 		String = string__append_list(
-				list__map(specifier_to_string, Specifiers))
+			list__map(specifier_to_string, Specifiers))
 	;
 		error("string__format: format string invalid.")
 	).
 
 :- type specifier
 	--->	conv(
-			flags 		:: list(char),
+			flags		:: list(char),
 			width		:: maybe(list(char)),
 			precision	:: maybe(list(char)),
 			spec		:: spec
@@ -1343,15 +1315,15 @@ string__format(FormatString, PolyList, String) :-
 	% represent a conversion specifier and those that do.
 	%
 :- pred format_string(list(specifier)::out,
-		list(string__poly_type)::in, list(string__poly_type)::out,
-		list(char)::in, list(char)::out) is det.
+	list(string__poly_type)::in, list(string__poly_type)::out,
+	list(char)::in, list(char)::out) is det.
 
 format_string(Results, PolyTypes0, PolyTypes) -->
 	other(NonConversionSpecChars),
 	( conversion_specification(ConversionSpec, PolyTypes0, PolyTypes1) ->
 		format_string(Results0, PolyTypes1, PolyTypes),
 		{ Results = [string(NonConversionSpecChars),
-				ConversionSpec | Results0] }
+			ConversionSpec | Results0] }
 	;
 		{ Results = [string(NonConversionSpecChars)] },
 		{ PolyTypes = PolyTypes0 }
@@ -1373,13 +1345,13 @@ other(Result) -->
 
 	%
 	% Each conversion specification is introduced by the character
-	% '%',  and ends with a conversion specifier.  In between there
-	% may be (in this order)  zero  or more  flags,  an optional
+	% '%', and ends with a conversion specifier. In between there
+	% may be (in this order) zero or more flags, an optional
 	% minimum field width, and an optional precision.
 	%
 :- pred conversion_specification(specifier::out,
-		list(string__poly_type)::in, list(string__poly_type)::out,
-		list(char)::in, list(char)::out) is semidet.
+	list(string__poly_type)::in, list(string__poly_type)::out,
+	list(char)::in, list(char)::out) is semidet.
 
 conversion_specification(Specificier, PolyTypes0, PolyTypes) -->
 	['%'],
@@ -1392,18 +1364,18 @@ conversion_specification(Specificier, PolyTypes0, PolyTypes) -->
 	;
 		{ error("string__format: invalid conversion specifier.") }
 	).
-	
-:- pred optional(pred(T, U, U, V, V), maybe(T), U, U, V, V).
-:- mode optional(pred(out, in, out, in, out) is semidet, out, in, out,
-		in, out) is det.
 
-optional(P, MaybeOutput, Init, Final) -->
-	( P(Output, Init, Final0) ->
-		{ MaybeOutput = yes(Output) },
-		{ Final = Final0 }
+:- pred optional(
+	pred(T, U, U, V, V)::in(pred(out, in, out, in, out) is semidet),
+	maybe(T)::out, U::in, U::out, V::in, V::out) is det.
+
+optional(P, MaybeOutput, Init, Final, !Acc) :-
+	( P(Output, Init, Final0, !Acc) ->
+		MaybeOutput = yes(Output),
+		Final = Final0
 	;
-		{ MaybeOutput = no },
-		{ Final = Init }
+		MaybeOutput = no,
+		Final = Init
 	).
 
 :- pred flags(list(char)::out, list(char)::in, list(char)::out) is semidet.
@@ -1431,17 +1403,18 @@ flag('+').
 	% Do we have a minimum field width?
 	%
 :- pred width(list(char)::out,
-		list(string__poly_type)::in, list(string__poly_type)::out,
-		list(char)::in, list(char)::out) is semidet.
+	list(string__poly_type)::in, list(string__poly_type)::out,
+	list(char)::in, list(char)::out) is semidet.
 
-width(Width, PolyTypes0, PolyTypes) --> 
+width(Width, PolyTypes0, PolyTypes) -->
 	( ['*'] ->
 		{ PolyTypes0 = [i(Width0) | PolyTypes1] ->
-				% XXX maybe better done in C.
+				% XXX may be better done in C.
 			Width = to_char_list(int_to_string(Width0)),
 			PolyTypes = PolyTypes1
 		;
-			error("string__format: `*' width modifer not associated with an integer.")
+			error("string__format: `*' width modifier " ++
+				"not associated with an integer.")
 		}
 	;
 		=(Init),
@@ -1457,10 +1430,10 @@ width(Width, PolyTypes0, PolyTypes) -->
 	% Do we have a precision?
 	%
 :- pred prec(list(char)::out,
-		list(string__poly_type)::in, list(string__poly_type)::out,
-		list(char)::in, list(char)::out) is semidet.
+	list(string__poly_type)::in, list(string__poly_type)::out,
+	list(char)::in, list(char)::out) is semidet.
 
-prec(Prec, PolyTypes0, PolyTypes) --> 
+prec(Prec, PolyTypes0, PolyTypes) -->
 	['.'],
 	( ['*'] ->
 		{ PolyTypes0 = [i(Prec0) | PolyTypes1] ->
@@ -1468,7 +1441,8 @@ prec(Prec, PolyTypes0, PolyTypes) -->
 			Prec = to_char_list(int_to_string(Prec0)),
 			PolyTypes = PolyTypes1
 		;
-			error("string__format: `*' precision modifer not associated with an integer.")
+			error("string__format: `*' precision modifier " ++
+				"not associated with an integer.")
 		}
 	;
 		=(Init),
@@ -1513,15 +1487,15 @@ prec(Prec, PolyTypes0, PolyTypes) -->
 		% specifier representing "%%"
 	;	percent
 	.
-		
+
 	%
 	% Do we have a valid conversion specifier?
 	% We check to ensure that the specifier also matches the type
 	% from the input list.
 	%
 :- pred spec(spec::out,
-		list(string__poly_type)::in, list(string__poly_type)::out,
-		list(char)::in, list(char)::out) is semidet.
+	list(string__poly_type)::in, list(string__poly_type)::out,
+	list(char)::in, list(char)::out) is semidet.
 
 	% valid integer conversion specifiers
 spec(d(Int), [i(Int) | Ps], Ps) --> ['d'].
@@ -1565,17 +1539,18 @@ digit -->
 	{ char__is_digit(Char) }.
 
 	% Zero or more occurences of the string parsed by the ho pred.
-:- pred zero_or_more_occurences(pred(list(T), list(T)), list(T), list(T)).
-:- mode zero_or_more_occurences(pred(in, out) is semidet, in, out) is det.
+:- pred zero_or_more_occurences(
+	pred(list(T), list(T))::in(pred(in, out) is semidet),
+	list(T)::in, list(T)::out) is det.
 
-zero_or_more_occurences(P) -->
-	( P ->
-		zero_or_more_occurences(P)
+zero_or_more_occurences(P, !Chars) :-
+	( P(!Chars) ->
+		zero_or_more_occurences(P, !Chars)
 	;
-		[]
+		true
 	).
 
-:- func specifier_to_string(specifier) = string. 
+:- func specifier_to_string(specifier) = string.
 
 specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 	(
@@ -1583,72 +1558,71 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 		Spec = d(Int),
 		( using_sprintf ->
 			FormatStr = make_format(Flags, Width,
-					Prec, int_length_modifer, "d"),
+				Prec, int_length_modifer, "d"),
 			String = native_format_int(FormatStr, Int)
 		;
 			String = format_int(Flags, conv(Width), conv(Prec),
-					Int)
+				Int)
 		)
 	;
 		Spec = i(Int),
 		( using_sprintf ->
 			FormatStr = make_format(Flags, Width,
-					Prec, int_length_modifer, "i"),
+				Prec, int_length_modifer, "i"),
 			String = native_format_int(FormatStr, Int)
 		;
 			String = format_int(Flags, conv(Width), conv(Prec),
-					Int)
+				Int)
 		)
 	;
 		Spec = o(Int),
 		( using_sprintf ->
 			FormatStr = make_format(Flags, Width,
-					Prec, int_length_modifer, "o"),
+				Prec, int_length_modifer, "o"),
 			String = native_format_int(FormatStr, Int)
 		;
 			String = format_unsigned_int(Flags, conv(Width),
-					conv(Prec), 8, Int, no, "")
+				conv(Prec), 8, Int, no, "")
 		)
 	;
 		Spec = u(Int),
 		( using_sprintf ->
 			FormatStr = make_format(Flags, Width,
-					Prec, int_length_modifer, "u"),
+				Prec, int_length_modifer, "u"),
 			String = native_format_int(FormatStr, Int)
 		;
 			String = format_unsigned_int(Flags, conv(Width),
-					conv(Prec), 10, Int, no, "")
+				conv(Prec), 10, Int, no, "")
 		)
 	;
 		Spec = x(Int),
 		( using_sprintf ->
 			FormatStr = make_format(Flags, Width,
-					Prec, int_length_modifer, "x"),
+				Prec, int_length_modifer, "x"),
 			String = native_format_int(FormatStr, Int)
 		;
 			String = format_unsigned_int(Flags, conv(Width),
-					conv(Prec), 16, Int, no, "0x")
+				conv(Prec), 16, Int, no, "0x")
 		)
 	;
 		Spec = cX(Int),
 		( using_sprintf ->
 			FormatStr = make_format(Flags, Width,
-					Prec, int_length_modifer, "X"),
+				Prec, int_length_modifer, "X"),
 			String = native_format_int(FormatStr, Int)
 		;
 			String = format_unsigned_int(Flags, conv(Width),
-					conv(Prec), 16, Int, no, "0X")
+				conv(Prec), 16, Int, no, "0X")
 		)
 	;
 		Spec = p(Int),
 		( using_sprintf ->
 			FormatStr = make_format(Flags, Width,
-					Prec, int_length_modifer, "p"),
+				Prec, int_length_modifer, "p"),
 			String = native_format_int(FormatStr, Int)
 		;
 			String = format_unsigned_int(['#' | Flags],
-					conv(Width), conv(Prec),
-					16, Int, yes, "0x")
+				conv(Width), conv(Prec), 16, Int, yes, "0x")
 		)
 	;
 			% valid float conversion specifiers
@@ -1658,7 +1632,7 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			String = native_format_float(FormatStr, Float)
 		;
 			String = format_scientific_number(Flags,
-					conv(Width), conv(Prec), Float, "e")
+				conv(Width), conv(Prec), Float, "e")
 		)
 	;
 		Spec = cE(Float),
@@ -1667,7 +1641,7 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			String = native_format_float(FormatStr, Float)
 		;
 			String = format_scientific_number(Flags,
-					conv(Width), conv(Prec), Float, "E")
+				conv(Width), conv(Prec), Float, "E")
 		)
 	;
 		Spec = f(Float),
@@ -1675,8 +1649,8 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			FormatStr = make_format(Flags, Width, Prec, "", "f"),
 			String = native_format_float(FormatStr, Float)
 		;
-			String = format_float(Flags,
-					conv(Width), conv(Prec), Float)
+			String = format_float(Flags, conv(Width), conv(Prec),
+				Float)
 		)
 	;
 		Spec = cF(Float),
@@ -1684,8 +1658,8 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			FormatStr = make_format(Flags, Width, Prec, "", "F"),
 			String = native_format_float(FormatStr, Float)
 		;
-			String = format_float(Flags,
-					conv(Width), conv(Prec), Float)
+			String = format_float(Flags, conv(Width), conv(Prec),
+				Float)
 		)
 	;
 		Spec = g(Float),
@@ -1694,7 +1668,7 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			String = native_format_float(FormatStr, Float)
 		;
 			String = format_scientific_number_g(Flags,
-					conv(Width), conv(Prec), Float, "e")
+				conv(Width), conv(Prec), Float, "e")
 		)
 	;
 		Spec = cG(Float),
@@ -1703,7 +1677,7 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			String = native_format_float(FormatStr, Float)
 		;
 			String = format_scientific_number_g(Flags,
-					conv(Width), conv(Prec), Float, "E")
+				conv(Width), conv(Prec), Float, "E")
 		)
 	;
 			% valid char conversion Specifiers
@@ -1722,7 +1696,7 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			String = native_format_string(FormatStr, Str)
 		;
 			String = format_string(Flags,
-					conv(Width), conv(Prec), Str)
+				conv(Width), conv(Prec), Str)
 		)
 	;
 			% conversion specifier representing the "%" sign
@@ -1740,9 +1714,9 @@ conv(yes(X)) = yes(string__det_to_int(from_char_list(X))).
 
 	% Construct a format string.
 :- func make_format(list(char), maybe(list(char)),
-		maybe(list(char)), string, string) = string.
+	maybe(list(char)), string, string) = string.
 
-make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = 
+make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 	( using_sprintf ->
 		make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod,
 			Spec)
@@ -1751,13 +1725,14 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 			Spec)
 	).
 
-	% Are we using C's sprintf?  All backends other than C return false.
+	% Are we using C's sprintf? All backends other than C return false.
 	% Note that any backends which return true for using_sprintf/0 must
-	% also implement:	int_length_modifer/0
-	%			native_format_float/2
-	%			native_format_int/2
-	%			native_format_string/2
-	%			native_format_char/2
+	% also implement:
+	%	int_length_modifer/0
+	%	native_format_float/2
+	%	native_format_int/2
+	%	native_format_string/2
+	%	native_format_char/2
 :- pred using_sprintf is semidet.
 
 :- pragma foreign_proc("C", using_sprintf,
@@ -1778,7 +1753,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 
 	% Construct a format string suitable to passing to sprintf.
 :- func make_format_sprintf(list(char), maybe(list(char)),
-		maybe(list(char)), string, string) = string.
+	maybe(list(char)), string, string) = string.
 
 make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	(
@@ -1795,15 +1770,14 @@ make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		Prec = []
 	),
 	String = string__append_list(["%", from_char_list(Flags),
-				from_char_list(Width),
-				from_char_list(Prec), LengthMod, Spec]).
+		from_char_list(Width), from_char_list(Prec), LengthMod, Spec]).
 
 	% Construct a format string suitable to passing to .NET's formatting
 	% functions.
-	% XXX this code is not yet complete.  We need to do a lot more work
+	% XXX this code is not yet complete. We need to do a lot more work
 	% to make this work perfectly.
 :- func make_format_dotnet(list(char), maybe(list(char)),
-		maybe(list(char)), string, string) = string.
+	maybe(list(char)), string, string) = string.
 
 make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	(
@@ -1819,12 +1793,12 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 		MaybePrec = no,
 		Prec = []
 	),
-	( 	Spec0 = "i" -> Spec = "d"
+	(	Spec0 = "i" -> Spec = "d"
 	;	Spec0 = "f" -> Spec = "e"
 	;	Spec = Spec0
 	),
 	String = string__append_list([
-		"{0", 
+		"{0",
 		from_char_list(Width),
 		":",
 		Spec,
@@ -1834,7 +1808,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 		"}"]).
 
 :- func int_length_modifer = string.
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	int_length_modifer = (LengthModifier::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -1883,7 +1857,7 @@ native_format_int(_, _) = _ :-
 	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func native_format_string(string, string) = string.
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	native_format_string(FormatStr::in, Val::in) = (Str::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -1900,7 +1874,7 @@ native_format_string(_, _) = _ :-
 	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func native_format_char(string, char) = string.
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	native_format_char(FormatStr::in, Val::in) = (Str::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -1934,7 +1908,7 @@ format_char(Flags, Width, Char) = String :-
 format_string(Flags, Width, Prec, OldStr) = NewStr :-
 	( Prec = yes(NumChars) ->
 		PrecStr = string__substring(OldStr, 0, NumChars)
- 	;
+	;
 		PrecStr = OldStr
 	),
 	NewStr = justify_string(Flags, Width, PrecStr).
@@ -1991,7 +1965,7 @@ format_int(Flags, Width, Prec, Int) = String :-
 		SignedStr = "+" ++ FieldStr
 	; member(' ', Flags) ->
 		SignedStr = " " ++ FieldStr
-	; ZeroPadded = yes  ->
+	; ZeroPadded = yes ->
 		SignedStr = "0" ++ FieldStr
 	;
 		SignedStr = FieldStr
@@ -2004,14 +1978,17 @@ format_int(Flags, Width, Prec, Int) = String :-
 	% (u,o,x,X).
 	%
 :- func format_unsigned_int(flags, maybe_width, maybe_precision,
-		int, int, bool, string) = string.
+	int, int, bool, string) = string.
 
 format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 		%
 		% Find the integer's absolute value, and take care of the
 		% special case of precision zero with an integer of 0.
 		%
-	( Int = 0, Prec = yes(0) ->
+	(
+		Int = 0,
+		Prec = yes(0)
+	->
 		AbsIntStr = ""
 	;
 		integer__pow(integer(2), integer(int__bits_per_int), Div),
@@ -2075,13 +2052,13 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 		(
 			Base = 16,
 			member('#', Flags),
-			( Int \= 0  ; IsTypeP = yes )
+			( Int \= 0 ; IsTypeP = yes )
 		->
-			FieldStr = string__pad_left(PrecModStr,
-					'0', FieldWidth - 2)
+			FieldStr = string__pad_left(PrecModStr, '0',
+				FieldWidth - 2)
 		;
-			FieldStr = string__pad_left(PrecModStr,
-					'0', FieldWidth)
+			FieldStr = string__pad_left(PrecModStr, '0',
+				FieldWidth)
 		)
 	;
 		FieldStr = PrecModStr
@@ -2093,9 +2070,11 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 	(
 		Base = 16,
 		member('#', Flags),
-		( Int \= 0 ; IsTypeP = yes )
+		( Int \= 0
+		; IsTypeP = yes
+		)
 	->
-	 	FieldModStr = Prefix ++ FieldStr
+		FieldModStr = Prefix ++ FieldStr
 	;
 		FieldModStr = FieldStr
 	),
@@ -2106,6 +2085,7 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 	% Format a float (f)
 	%
 :- func format_float(flags, maybe_width, maybe_precision, float) = string.
+
 format_float(Flags, Width, Prec, Float) = NewFloat :-
 
 		%
@@ -2131,8 +2111,8 @@ format_float(Flags, Width, Prec, Float) = NewFloat :-
 			%
 		( \+ member('#', Flags), Prec = yes(0) ->
 			PrecStrLen = string__length(PrecStr),
-			PrecModStr = string__substring(PrecStr,
-					0, PrecStrLen - 1)
+			PrecModStr = string__substring(PrecStr, 0,
+				PrecStrLen - 1)
 		;
 			PrecModStr = PrecStr
 		)
@@ -2176,7 +2156,8 @@ format_float(Flags, Width, Prec, Float) = NewFloat :-
 	% figures (g,G)
 	%
 :- func format_scientific_number_g(flags, maybe_width, maybe_precision,
-		float, string) = string.
+	float, string) = string.
+
 format_scientific_number_g(Flags, Width, Prec, Float, E) = NewFloat :-
 		%
 		% Determine absolute value of string.
@@ -2193,10 +2174,10 @@ format_scientific_number_g(Flags, Width, Prec, Float, E) = NewFloat :-
 		( Prec = yes(Precision) ->
 			(Precision = 0 ->
 				PrecStr = change_to_g_notation(AbsStr,
-						1, E, Flags)
+					1, E, Flags)
 			;
 				PrecStr = change_to_g_notation(AbsStr,
-						Precision, E, Flags)
+					Precision, E, Flags)
 			)
 		;
 			PrecStr = change_to_g_notation(AbsStr, 6, E, Flags)
@@ -2240,7 +2221,8 @@ format_scientific_number_g(Flags, Width, Prec, Float, E) = NewFloat :-
 	% Format a scientific number (e,E)
 	%
 :- func format_scientific_number(flags, maybe_width, maybe_precision,
-		float, string) = string.
+	float, string) = string.
+
 format_scientific_number(Flags, Width, Prec, Float, E) = NewFloat :-
 		%
 		% Determine absolute value of string.
@@ -2321,6 +2303,7 @@ justify_string(Flags, Width, Str) =
 	% Convert an integer to an octal string.
 	%
 :- func to_octal(integer) = string.
+
 to_octal(Num) = NumStr :-
 	( Num > integer(0) ->
 		Rest = to_octal(Num // integer(8)),
@@ -2335,6 +2318,7 @@ to_octal(Num) = NumStr :-
 	% Convert an integer to a hexadecimal string using a-f.
 	%
 :- func to_hex(integer) = string.
+
 to_hex(Num) = NumStr :-
 	( Num > integer(0) ->
 		Rest = to_hex(Num // integer(16)),
@@ -2349,6 +2333,7 @@ to_hex(Num) = NumStr :-
 	% Convert an integer to a hexadecimal string using A-F.
 	%
 :- func to_capital_hex(integer) = string.
+
 to_capital_hex(Num) = NumStr :-
 	( Num > integer(0) ->
 		Rest = to_capital_hex(Num // integer(16)),
@@ -2364,6 +2349,7 @@ to_capital_hex(Num) = NumStr :-
 	% (using % a-f).
 	%
 :- func get_hex_int(integer) = string.
+
 get_hex_int(Int) = HexStr :-
 	( Int < integer(10) ->
 		HexStr = integer__to_string(Int)
@@ -2385,6 +2371,7 @@ get_hex_int(Int) = HexStr :-
 	% Convert an integer to a hexadecimal string using A-F.
 	%
 :- func get_capital_hex_int(integer) = string.
+
 get_capital_hex_int(Int) = HexStr :-
 	( Int < integer(10) ->
 		HexStr = integer__to_string(Int)
@@ -2411,6 +2398,7 @@ get_capital_hex_int(Int) = HexStr :-
 	% needed.
 	%
 :- func convert_float_to_string(float) = string.
+
 convert_float_to_string(Float) = String :-
 	string__lowlevel_float_to_string(Float, FloatStr),
 
@@ -2418,10 +2406,8 @@ convert_float_to_string(Float) = String :-
 		% check for scientific representation.
 		%
 	(
-		(
-			string__contains_char(FloatStr, 'e')
-		;
-			string__contains_char(FloatStr, 'E')
+		( string__contains_char(FloatStr, 'e')
+		; string__contains_char(FloatStr, 'E')
 		)
 	->
 		split_at_exponent(FloatStr, FloatPtStr, ExpStr),
@@ -2438,9 +2424,9 @@ convert_float_to_string(Float) = String :-
 				%
 			ExtraDigits = ExpInt,
 			PaddedFracStr = string__pad_right(FractionStr,
-					'0', ExtraDigits),
+				'0', ExtraDigits),
 			string__split(PaddedFracStr, ExtraDigits,
-					MantissaRest, NewFraction),
+				MantissaRest, NewFraction),
 
 			NewMantissa = MantissaStr ++ MantissaRest,
 			MantAndPoint = NewMantissa ++ ".",
@@ -2455,10 +2441,10 @@ convert_float_to_string(Float) = String :-
 				%
 			ExtraDigits = abs(ExpInt),
 			PaddedMantissaStr = string__pad_left(MantissaStr,
-					'0', ExtraDigits),
+				'0', ExtraDigits),
 			string__split(PaddedMantissaStr,
-					length(PaddedMantissaStr) - ExtraDigits,
-					NewMantissa, FractionRest),
+				length(PaddedMantissaStr) - ExtraDigits,
+				NewMantissa, FractionRest),
 
 			( NewMantissa = "" ->
 				MantAndPoint = "0."
@@ -2473,7 +2459,7 @@ convert_float_to_string(Float) = String :-
 
 	%
 	% Converts a floating point number to a specified number of standard
-	% figures.  The style used depends on the value converted; style e (or
+	% figures. The style used depends on the value converted; style e (or
 	% E) is used only if the exponent resulting from such a conversion is
 	% less than -4 or greater than or equal to the precision. Trailing
 	% zeros are removed from the fractional portion of the result unless
@@ -2481,9 +2467,13 @@ convert_float_to_string(Float) = String :-
 	% is followed by a digit.
 	%
 :- func change_to_g_notation(string, int, string, flags) = string.
+
 change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
 	Exponent = size_of_required_exponent(Float, Prec),
-	( Exponent >= -4, Exponent < Prec ->
+	(
+		Exponent >= -4,
+		Exponent < Prec
+	->
 			% Float will be represented normally.
 			% -----------------------------------
 			% Need to calculate precision to pass to the
@@ -2499,23 +2489,23 @@ change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
 				%
 			DecimalPos = decimal_pos(Float),
 			FormattedFloat0 = change_precision(
-					abs(DecimalPos) - 1 + Prec, Float)
+				abs(DecimalPos) - 1 + Prec, Float)
 		;
 				%
 				% deal with floats such as ddddddd.mmmmmmmm
 				%
 			ScientificFloat = change_to_e_notation(Float,
-					Prec - 1, "e"),
+				Prec - 1, "e"),
 			split_at_exponent(ScientificFloat,
-					BaseStr, ExponentStr),
+				BaseStr, ExponentStr),
 			Exp = string__det_to_int(ExponentStr),
 			split_at_decimal_point(BaseStr,
-					MantissaStr, FractionStr),
+				MantissaStr, FractionStr),
 			RestMantissaStr = substring(FractionStr, 0, Exp),
 			NewFraction = substring(FractionStr,
-					Exp, Prec - Exp - 1),
+				Exp, Prec - Exp - 1),
 			FormattedFloat0 = MantissaStr ++
-					RestMantissaStr ++ "." ++ NewFraction
+				RestMantissaStr ++ "." ++ NewFraction
 		),
 
 			%
@@ -2538,8 +2528,8 @@ change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
 		( member('#', Flags) ->
 			FormattedFloat = UncheckedFloat
 		;
-			split_at_exponent(UncheckedFloat,
-					BaseStr, ExponentStr),
+			split_at_exponent(UncheckedFloat, BaseStr,
+				ExponentStr),
 			NewBaseStr = remove_trailing_zeros(BaseStr),
 			FormattedFloat = NewBaseStr ++ E ++ ExponentStr
 		)
@@ -2549,6 +2539,7 @@ change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
 	% convert floating point notation to scientific notation.
 	%
 :- func change_to_e_notation(string, int, string) = string.
+
 change_to_e_notation(Float, Prec, E) = ScientificFloat :-
 	UnsafeExponent = decimal_pos(Float),
 	UnsafeBase = calculate_base_unsafe(Float, Prec),
@@ -2561,12 +2552,12 @@ change_to_e_notation(Float, Prec, E) = ScientificFloat :-
 		% need to append 0, to fix the problem of having no numbers
 		% after the decimal point.
 		SafeBase = calculate_base_unsafe(
-				string__append(UnsafeBase, "0"), Prec),
+			string__append(UnsafeBase, "0"), Prec),
 		SafeExponent = UnsafeExponent + 1
- 	;
+	;
 		SafeBase = UnsafeBase,
 		SafeExponent = UnsafeExponent
- 	),
+	),
 		%
 		% Creating exponent.
 		%
@@ -2578,15 +2569,15 @@ change_to_e_notation(Float, Prec, E) = ScientificFloat :-
 			ExponentStr = string__append_list(
 				[E, "+", string__int_to_string(SafeExponent)])
 		)
- 	;
+	;
 		( SafeExponent > -10 ->
 			ExponentStr = string__append_list(
 				[E, "-0", string__int_to_string(
-						int__abs(SafeExponent))])
+					int__abs(SafeExponent))])
 		;
 			ExponentStr = E ++ string__int_to_string(SafeExponent)
 		)
- 	),
+	),
 	ScientificFloat = SafeBase ++ ExponentStr.
 
 	%
@@ -2594,6 +2585,7 @@ change_to_e_notation(Float, Prec, E) = ScientificFloat :-
 	% the exponent needed to represent the float in scientific notation.
 	%
 :- func size_of_required_exponent(string, int) = int.
+
 size_of_required_exponent(Float, Prec) = Exponent :-
 	UnsafeExponent = decimal_pos(Float),
 	UnsafeBase = calculate_base_unsafe(Float, Prec),
@@ -2615,6 +2607,7 @@ size_of_required_exponent(Float, Prec) = Exponent :-
 	% a string with all trailing zeros removed.
 	%
 :- func remove_trailing_zeros(string) = string.
+
 remove_trailing_zeros(Float) = TrimmedFloat :-
 	FloatCharList = string__to_char_list(Float),
 	FloatCharListRev = list__reverse(FloatCharList),
@@ -2627,6 +2620,7 @@ remove_trailing_zeros(Float) = TrimmedFloat :-
 	% decimal point, if need be.
 	%
 :- func remove_zeros(list(char)) = list(char).
+
 remove_zeros(CharNum) = TrimmedNum :-
 	( CharNum = ['0' | Rest] ->
 		TrimmedNum = remove_zeros(Rest)
@@ -2641,6 +2635,7 @@ remove_zeros(CharNum) = TrimmedNum :-
 	% represents a floating point number.
 	%
 :- func decimal_pos(string) = int.
+
 decimal_pos(Float) = Pos :-
 	split_at_decimal_point(Float, MantissaStr, _FractionStr),
 	NumZeros = string__length(MantissaStr) - 1,
@@ -2653,12 +2648,13 @@ decimal_pos(Float) = Pos :-
 	% decimal point are positive.
 	%
 :- func find_non_zero_pos(list(char), int) = int.
+
 find_non_zero_pos(Xs, CurrentPos) = ActualPos :-
 	( Xs = [Y | Ys] ->
 		( is_decimal_point(Y) ->
-		  	ActualPos = find_non_zero_pos(Ys, CurrentPos)
+			ActualPos = find_non_zero_pos(Ys, CurrentPos)
 		; Y = '0' ->
-		 	ActualPos = find_non_zero_pos(Ys, CurrentPos - 1)
+			ActualPos = find_non_zero_pos(Ys, CurrentPos - 1)
 		;
 			ActualPos = CurrentPos
 		)
@@ -2670,17 +2666,18 @@ find_non_zero_pos(Xs, CurrentPos) = ActualPos :-
 	% Representing a floating point number in scientific notation requires
 	% a base and an exponent. This function returns the base. But it is
 	% unsafe, since particular input result in the base having a mantissa
-	% with more than one digit.  Therefore, the calling function must check
+	% with more than one digit. Therefore, the calling function must check
 	% for this problem.
 	%
 :- func calculate_base_unsafe(string, int) = string.
+
 calculate_base_unsafe(Float, Prec) = Exp :-
 	Place = decimal_pos(Float),
 	split_at_decimal_point(Float, MantissaStr, FractionStr),
 	( Place < 0 ->
 		DecimalPos = abs(Place),
-		PaddedMantissaStr = string__substring(FractionStr,
-				0, DecimalPos),
+		PaddedMantissaStr = string__substring(FractionStr, 0,
+			DecimalPos),
 
 			%
 			% get rid of superfluous zeros.
@@ -2693,16 +2690,16 @@ calculate_base_unsafe(Float, Prec) = Exp :-
 			%
 		PaddedFractionStr = pad_right(FractionStr, '0', Prec + 1),
 		ExpFractionStr = string__substring(PaddedFractionStr,
-				DecimalPos, Prec + 1)
+			DecimalPos, Prec + 1)
 	; Place > 0 ->
 		ExpMantissaStr = string__substring(MantissaStr, 0, 1),
 		FirstHalfOfFractionStr = string__substring(MantissaStr,
-				1, Place),
+			1, Place),
 		ExpFractionStr = FirstHalfOfFractionStr ++ FractionStr
 	;
 		ExpMantissaStr = MantissaStr,
 		ExpFractionStr = FractionStr
- 	),
+	),
 	MantissaAndPoint = ExpMantissaStr ++ ".",
 	UnroundedExpStr = MantissaAndPoint ++ ExpFractionStr,
 	Exp = change_precision(Prec, UnroundedExpStr).
@@ -2714,6 +2711,7 @@ calculate_base_unsafe(Float, Prec) = Exp :-
 	% n.b. OldFloat must be positive for this function to work.
 	%
 :- func change_precision(int, string) = string.
+
 change_precision(Prec, OldFloat) = NewFloat :-
 	split_at_decimal_point(OldFloat, MantissaStr, FractionStr),
 	FracStrLen = string__length(FractionStr),
@@ -2729,15 +2727,15 @@ change_precision(Prec, OldFloat) = NewFloat :-
 		->
 			NewPrecFrac = string__det_to_int(UnroundedFrac) + 1,
 			NewPrecFracStrNotOK = string__int_to_string(
-					NewPrecFrac),
+				NewPrecFrac),
 			NewPrecFracStr = string__pad_left(NewPrecFracStrNotOK,
-					'0', Prec),
+				'0', Prec),
 			(
 				string__length(NewPrecFracStr) >
 					string__length(UnroundedFrac)
 			->
 				PrecFracStr = substring(NewPrecFracStr,
-						1, Prec),
+					1, Prec),
 				PrecMantissaInt = det_to_int(MantissaStr) + 1,
 				PrecMantissaStr = int_to_string(PrecMantissaInt)
 			;
@@ -2756,10 +2754,10 @@ change_precision(Prec, OldFloat) = NewFloat :-
 			PrecFracStr = UnroundedFrac,
 			PrecMantissaStr = MantissaStr
 		)
- 	;
+	;
 		PrecFracStr = FractionStr,
 		PrecMantissaStr = MantissaStr
- 	),
+	),
 	HalfNewFloat = PrecMantissaStr ++ ".",
 	NewFloat = HalfNewFloat ++ PrecFracStr.
 
@@ -2782,9 +2780,11 @@ split_at_decimal_point(Str, Mantissa, Fraction) :-
 	).
 
 :- pred is_decimal_point(char :: in) is semidet.
+
 is_decimal_point('.').
 
 :- pred is_exponent(char :: in) is semidet.
+
 is_exponent('e').
 is_exponent('E').
 
@@ -2840,14 +2840,16 @@ string__float_to_string_2(Prec, Float) = String :-
 	% code provides a general mechanism for calculating the required
 	% precision.
 :- func min_precision = int.
+
 min_precision = 15.
+
 % min_precision =
 %	floor_to_int(float(mantissa_digits) * log2(float(radix)) / log2(10.0)).
 
 :- func max_precision = int.
 max_precision = min_precision + 2.
 
-% 
+%
 % string__lowlevel_float_to_string differs from string__float_to_string in
 % that it must be implemented without calling string__format (e.g. by
 % invoking some foreign language routine to do the conversion) as this is
@@ -2855,15 +2857,14 @@ max_precision = min_precision + 2.
 % representation of a float.
 %
 % The string returned must match one of the following regular expression:
-% 	^[+-]?[0-9]*\.?[0-9]+((e|E)[0-9]+)?$
-% 	^[nN][aA][nN]$
-% 	^[+-]?[iI][nN][fF][iI][nN][iI][tT][yY]$
-% 	^[+-]?[iI][nN][fF]$
+%	^[+-]?[0-9]*\.?[0-9]+((e|E)[0-9]+)?$
+%	^[nN][aA][nN]$
+%	^[+-]?[iI][nN][fF][iI][nN][iI][tT][yY]$
+%	^[+-]?[iI][nN][fF]$
 % and the string returned must have sufficient precision for representing
 % the float.
 %
-:- pred string__lowlevel_float_to_string(float, string).
-:- mode string__lowlevel_float_to_string(in, uo) is det.
+:- pred string__lowlevel_float_to_string(float::in, string::uo) is det.
 
 :- pragma foreign_proc("C",
 	string__lowlevel_float_to_string(Flt::in, Str::uo),
@@ -2905,7 +2906,7 @@ max_precision = min_precision + 2.
 	** the float; if there are then sscanf() will return 2 rather
 	** than 1.
 	*/
-	char   	tmpc;
+	char	tmpc;
 	SUCCESS_INDICATOR =
 		(!MR_isspace(FloatString[0])) &&
 		(sscanf(FloatString, MR_FLT_FMT ""%c"", &FloatVal, &tmpc) == 1);
@@ -2921,17 +2922,17 @@ max_precision = min_precision + 2.
 	    System.Char.IsWhiteSpace(FloatString, 0) ||
 	    System.Char.IsWhiteSpace(FloatString, FloatString.Length - 1))
 	{
-	    SUCCESS_INDICATOR = false;
+		SUCCESS_INDICATOR = false;
 	} else {
-	    /*
-	    ** XXX should we also catch System.OverflowException?
-	    */
-	    try {
-	        FloatVal = System.Convert.ToDouble(FloatString);
-	        SUCCESS_INDICATOR = true;
-	    } catch (System.FormatException e) {
-	        SUCCESS_INDICATOR = false;
-	    }
+		/*
+		** XXX should we also catch System.OverflowException?
+		*/
+		try {
+			FloatVal = System.Convert.ToDouble(FloatString);
+			SUCCESS_INDICATOR = true;
+		} catch (System.FormatException e) {
+			SUCCESS_INDICATOR = false;
+		}
 	}
 }").
 
@@ -2954,7 +2955,7 @@ max_precision = min_precision + 2.
 			// At this point it *should* in theory be safe just to
 			// set succeeded = false, since the Java API claims
 			// that Double.parseDouble() will handle all the cases
-			// we require.  However, it turns out that in practice
+			// we require. However, it turns out that in practice
 			// (tested with Sun's Java 2 SDK, Standard Edition,
 			// version 1.3.1_04)
 			// Java actually throws a NumberFormatException when
@@ -2969,14 +2970,15 @@ max_precision = min_precision + 2.
 				FloatVal = java.lang.Double.POSITIVE_INFINITY;
 				succeeded = true;
 			} else if (FloatString.substring(1).
-					equalsIgnoreCase(""infinity"")) {
+				equalsIgnoreCase(""infinity""))
+			{
 				if (FloatString.charAt(0) == '+') {
 					FloatVal = java.lang.Double.
-							POSITIVE_INFINITY;
+						POSITIVE_INFINITY;
 					succeeded = true;
 				} else if (FloatString.charAt(0) == '-') {
 					FloatVal = java.lang.Double.
-							NEGATIVE_INFINITY;
+						NEGATIVE_INFINITY;
 					succeeded = true;
 				} else {
 					succeeded = false;
@@ -2990,10 +2992,6 @@ max_precision = min_precision + 2.
 
 /*-----------------------------------------------------------------------*/
 
-/*
-:- pred string__contains_char(string, char).
-:- mode string__contains_char(in, in) is semidet.
-*/
 	% strchr always returns true when searching for '\0',
 	% but the '\0' is an implementation detail which really
 	% shouldn't be considered to be part of the string itself.
@@ -3029,12 +3027,11 @@ string__contains_char(Str, Char, Index, Length) :-
 
 /*-----------------------------------------------------------------------*/
 
-/* :- pred string__index(string, int, char). */
-/* :- mode string__index(in, in, out) is semidet. */
 % It's important to inline string__index and string__index_det.
 % so that the compiler can do loop invariant hoisting
 % on calls to string__length that occur in loops.
 :- pragma inline(string__index/3).
+
 string__index(Str, Index, Char) :-
 	Len = string__length(Str),
 	( string__index_check(Index, Len) ->
@@ -3043,8 +3040,8 @@ string__index(Str, Index, Char) :-
 		fail
 	).
 
-:- pred string__index_check(int, int).
-:- mode string__index_check(in, in) is semidet.
+:- pred string__index_check(int::in, int::in) is semidet.
+
 /* We should consider making this routine a compiler built-in. */
 :- pragma foreign_proc("C",
 	string__index_check(Index::in, Length::in),
@@ -3073,19 +3070,19 @@ string__index_check(Index, Length) :-
 
 /*-----------------------------------------------------------------------*/
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	string__unsafe_index(Str::in, Index::in, Ch::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Ch = Str[Index];
 ").
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	string__unsafe_index(Str::in, Index::in, Ch::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Ch = Str[Index];
 ").
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	string__unsafe_index(Str::in, Index::in, Ch::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -3136,10 +3133,6 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 #endif
 ").
 
-/*
-:- pred string__set_char(char, int, string, string).
-:- mode string__set_char(in, in, in, out) is semidet.
-*/
 :- pragma foreign_proc("C",
 	string__set_char(Ch::in, Index::in, Str0::in, Str::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3162,7 +3155,7 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 		SUCCESS_INDICATOR = false;
 	} else {
 		Str = System.String.Concat(Str0.Substring(0, Index),
-			System.Convert.ToString(Ch), 
+			System.Convert.ToString(Ch),
 			Str0.Substring(Index + 1));
 		SUCCESS_INDICATOR = true;
 	}
@@ -3172,45 +3165,35 @@ string__set_char(Ch, Index, Str0, Str) :-
 	list__replace_nth(List0, Index + 1, Ch, List),
 	string__to_char_list(Str, List).
 
-/*
-:- pred string__set_char(char, int, string, string).
-:- mode string__set_char(in, in, di, uo) is semidet.
-*/
-/*
-:- pragma foreign_proc("C",
-	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	if ((MR_Unsigned) Index >= strlen(Str0)) {
-		SUCCESS_INDICATOR = MR_FALSE;
-	} else {
-		SUCCESS_INDICATOR = MR_TRUE;
-		Str = Str0;
-		MR_set_char(Str, Index, Ch);
-	}
-").
-
-:- pragma foreign_proc("C#",
-	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	if (Index >= Str0.Length) {
-		SUCCESS_INDICATOR = false;
-	} else {
-		Str = System.String.Concat(Str0.Substring(0, Index),
-			System.Convert.ToString(Ch), 
-			Str0.Substring(Index + 1));
-		SUCCESS_INDICATOR = true;
-	}
-").
-*/
+% :- pragma foreign_proc("C",
+% 	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
+% 	[will_not_call_mercury, promise_pure, thread_safe],
+% "
+% 	if ((MR_Unsigned) Index >= strlen(Str0)) {
+% 		SUCCESS_INDICATOR = MR_FALSE;
+% 	} else {
+% 		SUCCESS_INDICATOR = MR_TRUE;
+% 		Str = Str0;
+% 		MR_set_char(Str, Index, Ch);
+% 	}
+% ").
+%
+% :- pragma foreign_proc("C#",
+% 	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
+% 	[will_not_call_mercury, promise_pure, thread_safe],
+% "
+% 	if (Index >= Str0.Length) {
+% 		SUCCESS_INDICATOR = false;
+% 	} else {
+% 		Str = System.String.Concat(Str0.Substring(0, Index),
+% 			System.Convert.ToString(Ch),
+% 			Str0.Substring(Index + 1));
+% 		SUCCESS_INDICATOR = true;
+% 	}
+% ").
 
 /*-----------------------------------------------------------------------*/
 
-/*
-:- pred string__unsafe_set_char(char, int, string, string).
-:- mode string__unsafe_set_char(in, in, in, out) is det.
-*/
 :- pragma foreign_proc("C",
 	string__unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3225,7 +3208,7 @@ string__set_char(Ch, Index, Str0, Str) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Str = System.String.Concat(Str0.Substring(0, Index),
-		System.Convert.ToString(Ch), 
+		System.Convert.ToString(Ch),
 		Str0.Substring(Index + 1));
 ").
 :- pragma foreign_proc("Java",
@@ -3235,40 +3218,30 @@ string__set_char(Ch, Index, Str0, Str) :-
 	Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
 ").
 
-/*
-:- pred string__unsafe_set_char(char, int, string, string).
-:- mode string__unsafe_set_char(in, in, di, uo) is det.
-*/
-/*
-:- pragma foreign_proc("C",
-	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	Str = Str0;
-	MR_set_char(Str, Index, Ch);
-").
-:- pragma foreign_proc("C#",
-	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	Str = System.String.Concat(Str0.Substring(0, Index),
-		System.Convert.ToString(Ch), 
-		Str0.Substring(Index + 1));
-").
-:- pragma foreign_proc("Java",
-	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
-").
-*/
+% :- pragma foreign_proc("C",
+% 	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+% 	[will_not_call_mercury, promise_pure, thread_safe],
+% "
+% 	Str = Str0;
+% 	MR_set_char(Str, Index, Ch);
+% ").
+% :- pragma foreign_proc("C#",
+% 	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+% 	[will_not_call_mercury, promise_pure, thread_safe],
+% "
+% 	Str = System.String.Concat(Str0.Substring(0, Index),
+% 		System.Convert.ToString(Ch),
+% 		Str0.Substring(Index + 1));
+% ").
+% :- pragma foreign_proc("Java",
+% 	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+% 	[will_not_call_mercury, promise_pure, thread_safe],
+% "
+% 	Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
+% ").
 
 /*-----------------------------------------------------------------------*/
 
-/*
-:- pred string__length(string, int).
-:- mode string__length(in, uo) is det.
-*/
 :- pragma foreign_proc("C",
 	string__length(Str::in, Length::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3287,11 +3260,6 @@ string__set_char(Ch, Index, Str0, Str) :-
 	Length = Str.length();
 ").
 
-
-/*
-:- pred string__length(string, int).
-:- mode string__length(ui, uo) is det.
-*/
 :- pragma foreign_proc("C",
 	string__length(Str::ui, Length::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3311,12 +3279,14 @@ string__set_char(Ch, Index, Str0, Str) :-
 ").
 
 :- pragma promise_pure(string__length/2).
+
 string__length(Str0, Len) :-
 		% XXX This copy is only necessary because of the ui.
 	copy(Str0, Str),
 	string__length_2(Str, 0, Len).
 
 :- pred string__length_2(string::in, int::di, int::uo) is det.
+
 string__length_2(Str, Index, Length) :-
 	( string__index(Str, Index, _) ->
 		string__length_2(Str, Index + 1, Length)
@@ -3484,22 +3454,21 @@ string__mercury_append(X, Y, Z) :-
 
 /*-----------------------------------------------------------------------*/
 
-/*
-:- pred string__substring(string, int, int, string).
-:- mode string__substring(in, in, in, uo) is det.
-%	string__substring(String, Start, Count, Substring):
-*/
-
 string__substring(Str::in, Start::in, Count::in, SubStr::uo) :-
 	End = min(Start + Count, string__length(Str)),
 	SubStr = string__from_char_list(strchars(Start, End, Str)).
 
 :- func strchars(int, int, string) = list(char).
+
 strchars(I, End, Str) =
-	( if ( I < 0 ; End =< I )
-		then []
-		else [string__index_det(Str, I) | 
-			strchars(I + 1, End, Str)]
+	(
+		( I < 0
+		; End =< I
+		)
+	->
+		[]
+	;
+		[string__index_det(Str, I) | strchars(I + 1, End, Str)]
 	).
 
 :- pragma foreign_proc("C",
@@ -3523,12 +3492,6 @@ strchars(I, End, Str) =
 	}
 }").
 
-/*
-:- pred string__unsafe_substring(string, int, int, string).
-:- mode string__unsafe_substring(in, in, in, out) is det.
-%	string__unsafe_substring(String, Start, Count, Substring):
-*/
-
 :- pragma foreign_proc("C",
 	string__unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3550,16 +3513,6 @@ strchars(I, End, Str) =
 "
 	SubString = Str.substring(Start, Start + Count);
 ").
-
-/*
-:- pred string__split(string, int, string, string).
-:- mode string__split(in, in, uo, uo) is det.
-%	string__split(String, Count, LeftSubstring, RightSubstring):
-%	`LeftSubstring' is the left-most `Count' characters of `String',
-%	and `RightSubstring' is the remainder of `String'.
-%	(If `Count' is out of the range [0, length of `String'], it is
-%	treated as if it were the nearest end-point of that range.)
-*/
 
 :- pragma foreign_proc("C",
 	string__split(Str::in, Count::in, Left::uo, Right::uo),
@@ -3627,21 +3580,6 @@ string__split(Str, Count, Left, Right) :-
 
 /*-----------------------------------------------------------------------*/
 
-/*
-:- pred string__first_char(string, char, string).
-:- mode string__first_char(in, in, in) is semidet.	% implied
-:- mode string__first_char(in, uo, in) is semidet.	% implied
-:- mode string__first_char(in, in, uo) is semidet.	% implied
-:- mode string__first_char(in, uo, uo) is semidet.
-:- mode string__first_char(uo, in, in) is det.
-%	string__first_char(String, Char, Rest) is true iff
-%		Char is the first character of String, and Rest is the
-%		remainder.
-*/
-
-/*
-:- mode string__first_char(in, in, in) is semidet.	% implied
-*/
 :- pragma foreign_proc("C",
 	string__first_char(Str::in, First::in, Rest::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3672,9 +3610,6 @@ string__split(Str, Count, Left, Right) :-
 		Str.endsWith(Rest));
 ").
 
-/*
-:- mode string__first_char(in, uo, in) is semidet.	% implied
-*/
 :- pragma foreign_proc("C",
 	string__first_char(Str::in, First::uo, Rest::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3688,7 +3623,7 @@ string__split(Str, Count, Left, Right) :-
 "
 	int len = Str.Length;
 	if (len > 0) {
-		SUCCESS_INDICATOR = 
+		SUCCESS_INDICATOR =
 			(System.String.Compare(Str, 1, Rest, 0, len) == 0);
 		First = Str[0];
 	} else {
@@ -3699,7 +3634,7 @@ string__split(Str, Count, Left, Right) :-
 	string__first_char(Str::in, First::uo, Rest::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	
+
 	if (Str.length() == Rest.length() + 1
 		&& Str.endsWith(Rest))
 	{
@@ -3712,9 +3647,6 @@ string__split(Str, Count, Left, Right) :-
 	}
 ").
 
-/*
-:- mode string__first_char(in, in, uo) is semidet.	% implied
-*/
 :- pragma foreign_proc("C",
 	string__first_char(Str::in, First::in, Rest::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3760,10 +3692,7 @@ string__split(Str, Count, Left, Right) :-
 	}
 }").
 
-/*
-:- mode string__first_char(in, uo, uo) is semidet.
-*/
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	string__first_char(Str::in, First::uo, Rest::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -3782,7 +3711,7 @@ string__split(Str, Count, Left, Right) :-
 		SUCCESS_INDICATOR = MR_TRUE;
 	}
 }").
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	string__first_char(Str::in, First::uo, Rest::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -3792,9 +3721,9 @@ string__split(Str, Count, Left, Right) :-
 		First = Str[0];
 		Rest = Str.Substring(1);
 		SUCCESS_INDICATOR = true;
-        }
+	}
 }").
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	string__first_char(Str::in, First::uo, Rest::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -3807,12 +3736,9 @@ string__split(Str, Count, Left, Right) :-
 		First = Str.charAt(0);
 		Rest = Str.substring(1);
 		succeeded = true;
-        }
+	}
 }").
 
-/*
-:- mode string__first_char(uo, in, in) is det.
-*/
 :- pragma foreign_proc("C",
 	string__first_char(Str::uo, First::in, Rest::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -3841,7 +3767,7 @@ string__split(Str, Count, Left, Right) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
-%       Functional forms added.
+% Functional forms added.
 
 string__length(S) = L :-
 	string__length(S, L).
@@ -3940,16 +3866,16 @@ string__words(SepP, String) = Words :-
 
 %------------------------------------------------------------------------------%
 
-:- func words_2(pred(char), string, int, list(string)) = list(string).
-:- mode words_2(pred(in) is semidet, in, in, in) = out is det.
+:- func words_2(pred(char)::in(pred(in) is semidet), string::in, int::in,
+	list(string)::in) = (list(string)::out) is det.
 
 words_2(SepP, String, WordEnd, Words0) = Words :-
-	( if WordEnd < 0 then
+	( WordEnd < 0 ->
 		Words = Words0
-	  else
+	;
 		WordPre = preceding_boundary(SepP, String, WordEnd),
 		Word = string__unsafe_substring(String, WordPre + 1,
-				WordEnd - WordPre),
+			WordEnd - WordPre),
 		PrevWordEnd = preceding_boundary(isnt(SepP), String, WordPre),
 		Words = words_2(SepP, String, PrevWordEnd, [Word | Words0])
 	).
@@ -3962,19 +3888,19 @@ string__words(String) = string__words(char__is_whitespace, String).
 
 	% preceding_boundary(SepP, String, I) returns the largest index J =< I
 	% in String of the char that is SepP and min(-1, I) if there is no
-	% such J.  preceding_boundary/3 is intended for finding (in reverse)
+	% such J. preceding_boundary/3 is intended for finding (in reverse)
 	% consecutive maximal sequences of chars satisfying some property.
 	% Note that I *must not* exceed the largest valid index for String.
 
-:- func preceding_boundary(pred(char), string, int) = int.
-:- mode preceding_boundary(pred(in) is semidet, in, in) = out is det.
+:- func preceding_boundary(pred(char)::in(pred(in) is semidet), string::in,
+	int::in) = (int::out) is det.
 
 preceding_boundary(SepP, String, I) =
-	( if I < 0 then
+	( I < 0 ->
 		I
-	  else if SepP(string__unsafe_index(String, I)) then
+	; SepP(string__unsafe_index(String, I)) ->
 		I
-	  else
+	;
 		preceding_boundary(SepP, String, I - 1)
 	).
 
@@ -3989,18 +3915,19 @@ string__det_to_int(S) = string__det_base_string_to_int(10, S).
 %------------------------------------------------------------------------------%
 
 string__det_base_string_to_int(Base, S) = N :-
-	( if string__base_string_to_int(Base, S, N0) then
+	( string__base_string_to_int(Base, S, N0) ->
 		N = N0
-	  else
-	  	error("string__det_base_string_to_int/2: conversion failed")
+	;
+		error("string__det_base_string_to_int/2: conversion failed")
 	).
 
 %-----------------------------------------------------------------------------%
 
 chomp(S) =
-	( if   index(S, length(S) - 1, '\n')
-	  then left(S, length(S) - 1)
-	  else S
+	( index(S, length(S) - 1, '\n') ->
+		left(S, length(S) - 1)
+	;
+		S
 	).
 
 %-----------------------------------------------------------------------------%
@@ -4024,46 +3951,54 @@ rstrip(P, S) = left(S, length(S) - suffix_length(P, S)).
 
 %-----------------------------------------------------------------------------%
 
-lstrip(P, S)  = right(S, length(S) - prefix_length(P, S)).
+lstrip(P, S) = right(S, length(S) - prefix_length(P, S)).
 
 %-----------------------------------------------------------------------------%
 
 prefix_length(P, S) = prefix_length_2(0, length(S), P, S).
 
-:- func prefix_length_2(int, int, pred(char),            string) = int.
-:- mode prefix_length_2(in,  in,  pred(in  ) is semidet, in)     = out is det.
+:- func prefix_length_2(int::in, int::in, pred(char)::in(pred(in) is semidet),
+	string::in) = (int::out) is det.
 
 prefix_length_2(I, N, P, S) =
-	( if   I < N			% XXX We need ordered conjunction.
-	  then ( if P(S ^ unsafe_elem(I)) then prefix_length_2(I + 1, N, P, S)
-					  else I
-	       )
-	  else I
+	% XXX We are using if-then-elses to get ordered conjunction.
+	( I < N ->
+		( P(S ^ unsafe_elem(I)) ->
+			prefix_length_2(I + 1, N, P, S)
+		;
+			I
+		)
+	;
+		I
 	).
 
 %-----------------------------------------------------------------------------%
 
 suffix_length(P, S) = suffix_length_2(length(S) - 1, length(S), P, S).
 
-:- func suffix_length_2(int, int, pred(char),            string) = int.
-:- mode suffix_length_2(in,  in,  pred(in  ) is semidet, in)     = out is det.
+:- func suffix_length_2(int::in, int::in, pred(char)::in(pred(in) is semidet),
+	string::in) = (int::out) is det.
 
 suffix_length_2(I, N, P, S) =
-	( if   0 =< I			% XXX We need ordered conjunction.
-	  then ( if P(S ^ unsafe_elem(I)) then suffix_length_2(I - 1, N, P, S)
-					  else N - (I + 1)
-	       )
-	  else N - (I + 1)
+	% XXX We are using if-then-elses to get ordered conjunction.
+	( 0 =< I ->
+		( P(S ^ unsafe_elem(I)) ->
+			suffix_length_2(I - 1, N, P, S)
+		;
+			N - (I + 1)
+		)
+	;
+		N - (I + 1)
 	).
 
 %------------------------------------------------------------------------------%
 
-% char_list_remove_suffix/3 : We use this instead of the more general
+% char_list_remove_suffix/3: We use this instead of the more general
 % list__remove_suffix so that (for example) string__format will succeed in
-% grade Java, even though Unification has not yet been implemented.
+% grade Java, even though unification has not yet been implemented.
 
-:- pred char_list_remove_suffix(list(char), list(char), list(char)).
-:- mode char_list_remove_suffix(in, in, out) is semidet.
+:- pred char_list_remove_suffix(list(char)::in, list(char)::in,
+	list(char)::out) is semidet.
 
 char_list_remove_suffix(List, Suffix, Prefix) :-
 	list__length(List, ListLength),
@@ -4073,13 +4008,9 @@ char_list_remove_suffix(List, Suffix, Prefix) :-
 	char_list_equal(Suffix, Rest).
 
 :- pred char_list_equal(list(char)::in, list(char)::in) is semidet.
-	char_list_equal([], []).
-	char_list_equal([X|Xs], [X|Ys]) :-
+
+char_list_equal([], []).
+char_list_equal([X | Xs], [X | Ys]) :-
 	char_list_equal(Xs, Ys).
 
-%------------------------------------------------------------------------------%
-
-:- end_module string.
-
-%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

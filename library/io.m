@@ -9,12 +9,13 @@
 % Stability: medium to high.
 %
 % This file encapsulates all the file I/O.
+%
 % We implement a purely logical I/O system using non-logical I/O primitives
-% of the underlying system (C or Prolog).
-% The logicalness is ensured by passing around a ``state-of-the-world''
-% argument using unique modes.  The compiler will check that the state
-% of the world argument is properly single-threaded, and will also check
-% to ensure that you don't attempt to backtrack over any I/O.
+% of the underlying system (C, Java or IL).
+% We ensure referential transparency by passing around a ``state-of-the-world''
+% argument using unique modes. The compiler will check that the state of the
+% world argument is properly single-threaded, and will also ensure that you
+% don't attempt to backtrack over any I/O.
 %
 % Attempting any operation on a stream which has already been closed results
 % in undefined behaviour.
@@ -24,16 +25,8 @@
 
 :- module io.
 :- interface.
+
 :- import_module bool, char, string, std_util, list, map, time, deconstruct.
-
-%-----------------------------------------------------------------------------%
-
-% External interface: imported predicate
-
-% :- pred main(io__state, io__state).
-% :- mode main(di, uo) is det.
-%	main(IOState0, IOState1).
-%		This module provides startup code which calls main/2.
 
 %-----------------------------------------------------------------------------%
 
@@ -66,30 +59,34 @@
 
 	% Various types used for the result from the access predicates
 
-:- type io__res		--->	ok
-			;	error(io__error).
+:- type io__res
+	--->	ok
+	;	error(io__error).
 
-:- type io__res(T)	--->	ok(T)
-			;	error(io__error).
+:- type io__res(T)
+	--->	ok(T)
+	;	error(io__error).
 
 	% io__maybe_partial_res is used where it is possible to return
 	% a partial result when an error occurs,
 :- type io__maybe_partial_res(T)
-			--->	ok(T)
-			;	error(T, io__error).
+	--->	ok(T)
+	;	error(T, io__error).
 
-:- type io__result	--->	ok
-			;	eof
-			;	error(io__error).
+:- type io__result
+	--->	ok
+	;	eof
+	;	error(io__error).
 
-:- type io__result(T)	--->	ok(T)
-			;	eof
-			;	error(io__error).
+:- type io__result(T)
+	--->	ok(T)
+	;	eof
+	;	error(io__error).
 
-:- type io__read_result(T)	--->	ok(T)
-				;	eof
-				;	error(string, int).
-					% error message, line number
+:- type io__read_result(T)
+	--->	ok(T)
+	;	eof
+	;	error(string, int).	% error message, line number
 
 :- type io__error.	% Use io__error_message to decode it.
 
@@ -97,12 +94,6 @@
 	% which do printf-like formatting.
 
 :- type io__poly_type == string__poly_type.
-%			--->
-%		c(char)
-%	;	s(string)
-%	;	i(int)
-%	;	f(float).
-%
 
 	% io__whence denotes the base for a seek operation.
 	% 	set	- seek relative to the start of the file
@@ -112,208 +103,194 @@
 :- type io__whence
 	--->	set
 	;	cur
-	;	end
-	.
+	;	end.
 
 %-----------------------------------------------------------------------------%
 
 % Text input predicates.
 
-:- pred io__read_char(io__result(char), io__state, io__state).
-:- mode io__read_char(out, di, uo) is det.
-%		Reads a character from the current input stream.
+	% Reads a character from the current input stream.
+:- pred io__read_char(io__result(char)::out, io::di, io::uo) is det.
 
-:- pred io__read_word(io__result(list(char)), io__state, io__state).
-:- mode io__read_word(out, di, uo) is det.
-%		Reads a whitespace delimited word from the current input stream.
+	% Reads a whitespace delimited word from the current input stream.
+:- pred io__read_word(io__result(list(char))::out, io::di, io::uo) is det.
 
-:- pred io__read_line(io__result(list(char)), io__state, io__state).
-:- mode io__read_line(out, di, uo) is det.
-%		Reads a line from the current input stream, returns the
-%		the result as a list of chars.
+	% Reads a line from the current input stream, returns the
+	% the result as a list of chars.
+:- pred io__read_line(io__result(list(char))::out, io::di, io::uo) is det.
 
-:- pred io__read_line_as_string(io__result(string), io__state, io__state).
-:- mode io__read_line_as_string(out, di, uo) is det.
-%		Reads a line from the current input stream, returns the
-%		result as a string.
+	% Reads a line from the current input stream, returns the
+	% result as a string.
+:- pred io__read_line_as_string(io__result(string)::out, io::di, io::uo)
+	is det.
 
-:- pred io__read_file(io__maybe_partial_res(list(char)), io__state, io__state).
-:- mode io__read_file(out, di, uo) is det.
-%		Reads all the characters from the current input stream until
-%		eof or error.
+	% Reads all the characters from the current input stream until
+	% eof or error.
+:- pred io__read_file(io__maybe_partial_res(list(char))::out, io::di, io::uo)
+	is det.
 
-:- pred io__read_file_as_string(io__maybe_partial_res(string),
-			io__state, io__state).
-:- mode io__read_file_as_string(out, di, uo) is det.
-%		Reads all the characters from the current input stream until
-%		eof or error.  Returns the result as a string rather than
-%		as a list of char.
+	% Reads all the characters from the current input stream until
+	% eof or error.  Returns the result as a string rather than
+	% as a list of char.
+:- pred io__read_file_as_string(io__maybe_partial_res(string)::out,
+	io::di, io::uo) is det.
 
-:- pred io__input_stream_foldl(pred(char, T, T),
-			T, io__maybe_partial_res(T), io__state, io__state).
-:- mode io__input_stream_foldl((pred(in, in, out) is det),
-			in, out, di, uo) is det.
-:- mode io__input_stream_foldl((pred(in, in, out) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each character read from
-%		the input stream in turn, until eof or error.
+	% Applies the given closure to each character read from
+	% the input stream in turn, until eof or error.
+:- pred io__input_stream_foldl(pred(char, T, T), T, io__maybe_partial_res(T),
+	io, io).
+:- mode io__input_stream_foldl((pred(in, in, out) is det), in, out,
+	di, uo) is det.
+:- mode io__input_stream_foldl((pred(in, in, out) is cc_multi), in, out,
+	di, uo) is cc_multi.
 
-:- pred io__input_stream_foldl_io(pred(char, io__state, io__state),
-			io__res, io__state, io__state).
-:- mode io__input_stream_foldl_io((pred(in, di, uo) is det),
-			out, di, uo) is det.
-:- mode io__input_stream_foldl_io((pred(in, di, uo) is cc_multi),
-			out, di, uo) is cc_multi.
-%		Applies the given closure to each character read from
-%		the input stream in turn, until eof or error.
+	% Applies the given closure to each character read from
+	% the input stream in turn, until eof or error.
+:- pred io__input_stream_foldl_io(pred(char, io, io), io__res, io, io).
+:- mode io__input_stream_foldl_io((pred(in, di, uo) is det), out, di, uo)
+	is det.
+:- mode io__input_stream_foldl_io((pred(in, di, uo) is cc_multi), out, di, uo)
+	is cc_multi.
 
-:- pred io__input_stream_foldl2_io(pred(char, T, T, io__state, io__state),
-			T, io__maybe_partial_res(T), io__state, io__state).
+	% Applies the given closure to each character read from
+	% the input stream in turn, until eof or error.
+:- pred io__input_stream_foldl2_io(pred(char, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
 :- mode io__input_stream_foldl2_io((pred(in, in, out, di, uo) is det),
-			in, out, di, uo) is det.
+	in, out, di, uo) is det.
 :- mode io__input_stream_foldl2_io((pred(in, in, out, di, uo) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each character read from
-%		the input stream in turn, until eof or error.
+	in, out, di, uo) is cc_multi.
 
+	% Applies the given closure to each character read from
+	% the input stream in turn, until eof or error, or the
+	% closure returns `no' as its second argument.
 :- pred io__input_stream_foldl2_io_maybe_stop(
-			pred(char, bool, T, T, io__state, io__state),
-			T, io__maybe_partial_res(T), io__state, io__state).
+	pred(char, bool, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
 :- mode io__input_stream_foldl2_io_maybe_stop(
-			(pred(in, out, in, out, di, uo) is det),
-			in, out, di, uo) is det.
+	(pred(in, out, in, out, di, uo) is det),
+	in, out, di, uo) is det.
 :- mode io__input_stream_foldl2_io_maybe_stop(
-			(pred(in, out, in, out, di, uo) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each character read from
-%		the input stream in turn, until eof or error, or the
-%		closure returns `no' as its second argument.
+	(pred(in, out, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
+	% Un-reads a character from the current input stream.
+	% You can put back as many characters as you like.
+	% You can even put back something that you didn't actually read.
+	% Note: `io__putback_char' uses the C library function ungetc().
+	% On some systems only one character of pushback is guaranteed.
+	% `io__putback_char' will throw an io__error exception
+	% if ungetc() fails.
+:- pred io__putback_char(char::in, io::di, io::uo) is det.
 
-:- pred io__putback_char(char, io__state, io__state).
-:- mode io__putback_char(in, di, uo) is det.
-%		Un-reads a character from the current input stream.
-%		You can put back as many characters as you like.
-%		You can even put back something that you didn't actually read.
-%		Note: `io__putback_char' uses the C library function ungetc().
-%		On some systems only one character of pushback is guaranteed.
-%		`io__putback_char' will throw an io__error exception
-%		if ungetc() fails.
+	% Reads a character from specified stream.
+:- pred io__read_char(io__input_stream::in, io__result(char)::out,
+	io::di, io::uo) is det.
 
-:- pred io__read_char(io__input_stream, io__result(char),
-				io__state, io__state).
-:- mode io__read_char(in, out, di, uo) is det.
-%		Reads a character from specified stream.
+	% Reads a whitespace delimited word from specified stream.
+:- pred io__read_word(io__input_stream::in, io__result(list(char))::out,
+	io::di, io::uo) is det.
 
-:- pred io__read_word(io__input_stream, io__result(list(char)),
-							io__state, io__state).
-:- mode io__read_word(in, out, di, uo) is det.
-%		Reads a whitespace delimited word from specified stream.
+	% Reads a line from specified stream, returning the result
+	% as a list of chars.
+:- pred io__read_line(io__input_stream::in, io__result(list(char))::out,
+	io::di, io::uo) is det.
 
-:- pred io__read_line(io__input_stream, io__result(list(char)),
-							io__state, io__state).
-:- mode io__read_line(in, out, di, uo) is det.
-%		Reads a line from specified stream, returning the result
-%		as a list of chars.
+	% Reads a line from specified stream, returning the
+	% result as a string.
+:- pred io__read_line_as_string(io__input_stream::in, io__result(string)::out,
+	io::di, io::uo) is det.
 
-:- pred io__read_line_as_string(io__input_stream, io__result(string),
-			io__state, io__state).
-:- mode io__read_line_as_string(in, out, di, uo) is det.
-%		Reads a line from specified stream, returning the
-%		result as a string.
+	% Reads all the characters from the given input stream until
+	% eof or error.
+:- pred io__read_file(io__input_stream::in,
+	io__maybe_partial_res(list(char))::out, io::di, io::uo) is det.
 
-:- pred io__read_file(io__input_stream, io__maybe_partial_res(list(char)),
-			io__state, io__state).
-:- mode io__read_file(in, out, di, uo) is det.
-%		Reads all the characters from the given input stream until
-%		eof or error.
+	% Reads all the characters from the given input stream until
+	% eof or error.  Returns the result as a string rather than
+	% as a list of char.
+:- pred io__read_file_as_string(io__input_stream::in,
+	io__maybe_partial_res(string)::out, io::di, io::uo) is det.
 
-:- pred io__read_file_as_string(io__input_stream,
-			io__maybe_partial_res(string), io__state, io__state).
-:- mode io__read_file_as_string(in, out, di, uo) is det.
-%		Reads all the characters from the given input stream until
-%		eof or error.  Returns the result as a string rather than
-%		as a list of char.
-
+	% Applies the given closure to each character read from
+	% the input stream in turn, until eof or error.
 :- pred io__input_stream_foldl(io__input_stream, pred(char, T, T),
-			T, io__maybe_partial_res(T), io__state, io__state).
-:- mode io__input_stream_foldl(in, (pred(in, in, out) is det),
-			in, out, di, uo) is det.
-:- mode io__input_stream_foldl(in, (pred(in, in, out) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each character read from
-%		the input stream in turn, until eof or error.
+	T, io__maybe_partial_res(T), io, io).
+:- mode io__input_stream_foldl(in, in(pred(in, in, out) is det),
+	in, out, di, uo) is det.
+:- mode io__input_stream_foldl(in, in(pred(in, in, out) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
-:- pred io__input_stream_foldl_io(io__input_stream,
-			pred(char, io__state, io__state), io__res,
-			io__state, io__state).
-:- mode io__input_stream_foldl_io(in, (pred(in, di, uo) is det),
-			out, di, uo) is det.
-:- mode io__input_stream_foldl_io(in, (pred(in, di, uo) is cc_multi),
-			out, di, uo) is cc_multi.
-%		Applies the given closure to each character read from
-%		the input stream in turn, until eof or error.
+	% Applies the given closure to each character read from
+	% the input stream in turn, until eof or error.
+:- pred io__input_stream_foldl_io(io__input_stream, pred(char, io, io),
+	io__res, io, io).
+:- mode io__input_stream_foldl_io(in, in(pred(in, di, uo) is det),
+	out, di, uo) is det.
+:- mode io__input_stream_foldl_io(in, in(pred(in, di, uo) is cc_multi),
+	out, di, uo) is cc_multi.
 
+	% Applies the given closure to each character read from
+	% the input stream in turn, until eof or error.
 :- pred io__input_stream_foldl2_io(io__input_stream,
-			pred(char, T, T, io__state, io__state),
-			T, io__maybe_partial_res(T), io__state, io__state).
-:- mode io__input_stream_foldl2_io(in, (pred(in, in, out, di, uo) is det),
-			in, out, di, uo) is det.
-:- mode io__input_stream_foldl2_io(in, (pred(in, in, out, di, uo) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each character read from
-%		the input stream in turn, until eof or error.
+	pred(char, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
+:- mode io__input_stream_foldl2_io(in,
+	in(pred(in, in, out, di, uo) is det),
+	in, out, di, uo) is det.
+:- mode io__input_stream_foldl2_io(in,
+	in(pred(in, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
+	% Applies the given closure to each character read from
+	% the input stream in turn, until eof or error, or the
+	% closure returns `no' as its second argument.
 :- pred io__input_stream_foldl2_io_maybe_stop(io__input_stream,
-			pred(char, bool, T, T, io__state, io__state),
-			T, io__maybe_partial_res(T), io__state, io__state).
+	pred(char, bool, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
 :- mode io__input_stream_foldl2_io_maybe_stop(in,
-			(pred(in, out, in, out, di, uo) is det),
-			in, out, di, uo) is det.
+	(pred(in, out, in, out, di, uo) is det),
+	in, out, di, uo) is det.
 :- mode io__input_stream_foldl2_io_maybe_stop(in,
-			(pred(in, out, in, out, di, uo) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each character read from
-%		the input stream in turn, until eof or error, or the
-%		closure returns `no' as its second argument.
+	(pred(in, out, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
-:- pred io__putback_char(io__input_stream, char, io__state, io__state).
-:- mode io__putback_char(in, in, di, uo) is det.
-%		Un-reads a character from specified stream.
-%		You can put back as many characters as you like.
-%		You can even put back something that you didn't actually read.
-%		Note: `io__putback_char' uses the C library function ungetc().
-%		On some systems only one character of pushback is guaranteed.
-%		`io__putback_char' will throw an io__error exception
-%		if ungetc() fails.
+	% Un-reads a character from specified stream.
+	% You can put back as many characters as you like.
+	% You can even put back something that you didn't actually read.
+	% Note: `io__putback_char' uses the C library function ungetc().
+	% On some systems only one character of pushback is guaranteed.
+	% `io__putback_char' will throw an io__error exception
+	% if ungetc() fails.
+:- pred io__putback_char(io__input_stream::in, char::in, io::di, io::uo)
+	is det.
 
-:- pred io__read(io__read_result(T), io__state, io__state).
-:- mode io__read(out, di, uo) is det.
-:- pred io__read(io__input_stream, io__read_result(T), io__state, io__state).
-:- mode io__read(in, out, di, uo) is det.
-%		Reads a ground term of any type, written using standard
-%		Mercury syntax, from the current or specified input stream.
-%		The type of the term read is determined by the context
-%		in which `io__read' is used.
-%
-%		First, the input stream is read until an end-of-term token,
-%		end-of-file, or I/O error is reached.  (An end-of-term
-%		token consists of a `.' followed by whitespace.
-%		The trailing whitespace is left in the input stream.)
-%
-%		Then, the result is determined according to the tokens read.
-%		If there were no non-whitespace characters before the
-%		end of file, then `io__read' returns `eof'.
-%		If the tokens read formed a syntactically correct ground term
-%		of the correct type, followed by an end-of-term token,
-%		then it returns `ok(Term)'.  If characters read from
-%		the input stream did not form a syntactically
-%		correct term, or if the term read is not a ground term,
-%		or if the term is not a valid term of the appropriate type,
-%		or if an I/O error is encountered, then it returns
-%		`error(Message, LineNumber)'.
+	% Reads a ground term of any type, written using standard
+	% Mercury syntax, from the current or specified input stream.
+	% The type of the term read is determined by the context
+	% in which `io__read' is used.
+	%
+	% First, the input stream is read until an end-of-term token,
+	% end-of-file, or I/O error is reached.  (An end-of-term
+	% token consists of a `.' followed by whitespace.
+	% The trailing whitespace is left in the input stream.)
+	%
+	% Then, the result is determined according to the tokens read.
+	% If there were no non-whitespace characters before the
+	% end of file, then `io__read' returns `eof'.
+	% If the tokens read formed a syntactically correct ground term
+	% of the correct type, followed by an end-of-term token,
+	% then it returns `ok(Term)'.  If characters read from
+	% the input stream did not form a syntactically
+	% correct term, or if the term read is not a ground term,
+	% or if the term is not a valid term of the appropriate type,
+	% or if an I/O error is encountered, then it returns
+	% `error(Message, LineNumber)'.
+:- pred io__read(io__read_result(T)::out, io::di, io::uo) is det.
+:- pred io__read(io__input_stream::in, io__read_result(T)::out, io::di, io::uo)
+	is det.
 
-% The type `posn' represents a position within a string.
+	% The type `posn' represents a position within a string.
 :- type posn
 	--->	posn(int, int, int).
 		% line number, offset of start of line, current offset
@@ -321,855 +298,723 @@
 		% computing term_contexts, for use e.g. in error messages).
 		% Offsets start at zero.
 
-:- pred io__read_from_string(string, string, int, io__read_result(T),
-				posn, posn).
-:- mode io__read_from_string(in, in, in, out, in, out) is det.
-% mode io__read_from_string(FileName, String, MaxPos, Result, Posn0, Posn):
-%		Same as io__read/4 except that it reads from
-%		a string rather than from a stream.
-%		FileName is the name of the source (for use in error messages).
-%		String is the string to be parsed.
-%		Posn0 is the position to start parsing from.
-%		Posn is the position one past where the term read in ends.
-%		MaxPos is the offset in the string which should be
-%		considered the end-of-stream -- this is the upper bound
-%		for Posn.  (In the usual case, MaxPos is just the length
-%		of the String.)
-%		WARNING: if MaxPos > length of String then the behaviour
-%		is UNDEFINED.
+	% io__read_from_string(FileName, String, MaxPos, Result, Posn0, Posn):
+	% Same as io__read/4 except that it reads from
+	% a string rather than from a stream.
+	% FileName is the name of the source (for use in error messages).
+	% String is the string to be parsed.
+	% Posn0 is the position to start parsing from.
+	% Posn is the position one past where the term read in ends.
+	% MaxPos is the offset in the string which should be
+	% considered the end-of-stream -- this is the upper bound
+	% for Posn.  (In the usual case, MaxPos is just the length
+	% of the String.)
+	% WARNING: if MaxPos > length of String then the behaviour
+	% is UNDEFINED.
+:- pred io__read_from_string(string::in, string::in, int::in,
+	io__read_result(T)::out, posn::in, posn::out) is det.
 
-:- pred io__ignore_whitespace(io__result, io__state, io__state).
-:- mode io__ignore_whitespace(out, di, uo) is det.
-%		Discards all the whitespace from the current stream.
+	% Discards all the whitespace from the current stream.
+:- pred io__ignore_whitespace(io__result::out, io::di, io::uo) is det.
 
-:- pred io__ignore_whitespace(io__input_stream, io__result,
-				io__state, io__state).
-:- mode io__ignore_whitespace(in, out, di, uo) is det.
-%		Discards all the whitespace from the specified stream.
-
-
+	% Discards all the whitespace from the specified stream.
+:- pred io__ignore_whitespace(io__input_stream::in, io__result::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 % Text output predicates.
 % These will all throw an io__error exception if an I/O error occurs.
 
-:- pred io__print(T, io__state, io__state).
-:- mode io__print(in, di, uo) is det.
+	% io__print/3 writes its argument to the standard output stream.
+	% io__print/4 writes its second argument to the output stream
+	% specified in its first argument.
+	% In all cases, the argument to output can be of any type.
+	% It is output in a format that is intended to be human readable.
+	%
+	% If the argument is just a single string or character, it
+	% will be printed out exactly as is (unquoted).
+	% If the argument is of type univ, then it will print out
+	% the value stored in the univ, but not the type.
+	%
+	% io__print/5 is the same as io__print/4 except that it allows
+	% the caller to specify how non-canonical types should be handled.
+	% io__print/3 and io__print/4 implicitly specify `canonicalize'
+	% as the method for handling non-canonical types.  This means
+	% that for higher-order types, or types with user-defined
+	% equality axioms, or types defined using the foreign language
+	% interface (i.e. c_pointer type or pragma foreign_type),
+	% the text output will only describe the type that is being
+	% printed, not the value.
+	%
+	% io__print_cc/3 is the same as io__print/3 except that it
+	% specifies `include_details_cc' rather than `canonicalize'.
+	% This means that it will print the details of non-canonical
+	% types.  However, it has determinism `cc_multi'.
+	%
+	% Note that even if `include_details_cc' is specified,
+	% some implementations may not be able to print all the details
+	% for higher-order types or types defined using the foreign
+	% language interface.
 
-:- pred io__print(io__output_stream, T, io__state, io__state).
-:- mode io__print(in, in, di, uo) is det.
+:- pred io__print(T::in, io::di, io::uo) is det.
+
+:- pred io__print(io__output_stream::in, T::in, io::di, io::uo) is det.
 
 :- pred io__print(io__output_stream, deconstruct__noncanon_handling, T,
-	io__state, io__state).
+	io, io).
 :- mode io__print(in, in(do_not_allow), in, di, uo) is det.
 :- mode io__print(in, in(canonicalize), in, di, uo) is det.
 :- mode io__print(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__print(in, in, in, di, uo) is cc_multi.
 
-:- pred io__print_cc(T, io__state, io__state).
-:- mode io__print_cc(in, di, uo) is cc_multi.
+:- pred io__print_cc(T::in, io::di, io::uo) is cc_multi.
 
-%	io__print/3 writes its argument to the standard output stream.
-%	io__print/4 writes its second argument to the output stream
-%	specified in its first argument.
-%	In all cases, the argument to output can be of any type.
-%	It is output in a format that is intended to be human readable.
-%
-%	If the argument is just a single string or character, it
-%	will be printed out exactly as is (unquoted).
-%	If the argument is of type univ, then it will print out
-%	the value stored in the univ, but not the type.
-%
-%	io__print/5 is the same as io__print/4 except that it allows
-%	the caller to specify how non-canonical types should be handled.
-%	io__print/3 and io__print/4 implicitly specify `canonicalize'
-%	as the method for handling non-canonical types.  This means
-%	that for higher-order types, or types with user-defined
-%	equality axioms, or types defined using the foreign language
-%	interface (i.e. c_pointer type or pragma foreign_type),
-%	the text output will only describe the type that is being
-%	printed, not the value.
-%
-%	io__print_cc/3 is the same as io__print/3 except that it
-%	specifies `include_details_cc' rather than `canonicalize'.
-%	This means that it will print the details of non-canonical
-%	types.  However, it has determinism `cc_multi'.
-%
-%	Note that even if `include_details_cc' is specified,
-%	some implementations may not be able to print all the details
-%	for higher-order types or types defined using the foreign
-%	language interface.
+	% io__write/3 writes its argument to the current output stream.
+	% io__write/4 writes its second argument to the output stream
+	% specified in its first argument.
+	% In all cases, the argument to output may be of any type.
+	% The argument is written in a format that is intended to
+	% be valid Mercury syntax whenever possible.
+	%
+	% Strings and characters are always printed out in quotes,
+	% using backslash escapes if necessary.
+	% For higher-order types, or for types defined using the
+	% foreign language interface (pragma foreign_code), the text
+	% output will only describe the type that is being printed, not
+	% the value, and the result may not be parsable by `io__read'.
+	% For the types containing existential quantifiers,
+	% the type `type_desc' and closure types, the result may not be
+	% parsable by `io__read', either.  But in all other cases the
+	% format used is standard Mercury syntax, and if you append a
+	% period and newline (".\n"), then the results can be read in
+	% again using `io__read'.
+	%
+	% io__write/5 is the same as io__write/4 except that it allows
+	% the caller to specify how non-canonical types should be handled.
+	% io__write_cc/3 is the same as io__write/3 except that it
+	% specifies `include_details_cc' rather than `canonicalize'.
 
-:- pred io__write(T, io__state, io__state).
-:- mode io__write(in, di, uo) is det.
+:- pred io__write(T::in, io::di, io::uo) is det.
 
-:- pred io__write(io__output_stream, T, io__state, io__state).
-:- mode io__write(in, in, di, uo) is det.
+:- pred io__write(io__output_stream::in, T::in, io::di, io::uo) is det.
 
 :- pred io__write(io__output_stream, deconstruct__noncanon_handling, T,
-	io__state, io__state).
+	io, io).
 :- mode io__write(in, in(do_not_allow), in, di, uo) is det.
 :- mode io__write(in, in(canonicalize), in, di, uo) is det.
 :- mode io__write(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__write(in, in, in, di, uo) is cc_multi.
 
-:- pred io__write_cc(T, io__state, io__state).
-:- mode io__write_cc(in, di, uo) is cc_multi.
+:- pred io__write_cc(T::in, io::di, io::uo) is cc_multi.
 
-%	io__write/3 writes its argument to the current output stream.
-%	io__write/4 writes its second argument to the output stream
-%	specified in its first argument.
-%	In all cases, the argument to output may be of any type.
-%	The argument is written in a format that is intended to
-%	be valid Mercury syntax whenever possible.
-%
-%	Strings and characters are always printed out in quotes,
-%	using backslash escapes if necessary.
-%	For higher-order types, or for types defined using the
-%	foreign language interface (pragma foreign_code), the text
-%	output will only describe the type that is being printed, not
-%	the value, and the result may not be parsable by `io__read'.
-%	For the types containing existential quantifiers,
-%	the type `type_desc' and closure types, the result may not be
-%	parsable by `io__read', either.  But in all other cases the
-%	format used is standard Mercury syntax, and if you append a
-%	period and newline (".\n"), then the results can be read in
-%	again using `io__read'.
-%
-%	io__write/5 is the same as io__write/4 except that it allows
-%	the caller to specify how non-canonical types should be handled.
-%	io__write_cc/3 is the same as io__write/3 except that it
-%	specifies `include_details_cc' rather than `canonicalize'.
+	% Writes a newline character to the current output stream.
+:- pred io__nl(io::di, io::uo) is det.
 
-:- pred io__nl(io__state, io__state).
-:- mode io__nl(di, uo) is det.
-%		Writes a newline character to the current output stream.
+	% Writes a newline character to the specified output stream.
+:- pred io__nl(io__output_stream::in, io::di, io::uo) is det.
 
-:- pred io__nl(io__output_stream, io__state, io__state).
-:- mode io__nl(in, di, uo) is det.
-%		Writes a newline character to the specified output stream.
+	% Writes a string to the current output stream.
+:- pred io__write_string(string::in, io::di, io::uo) is det.
 
-:- pred io__write_string(string, io__state, io__state).
-:- mode io__write_string(in, di, uo) is det.
-%		Writes a string to the current output stream.
+	% Writes a string to the specified output stream.
+:- pred io__write_string(io__output_stream::in, string::in, io::di, io::uo)
+	is det.
 
-:- pred io__write_string(io__output_stream, string, io__state, io__state).
-:- mode io__write_string(in, in, di, uo) is det.
-%		Writes a string to the specified output stream.
+	% Writes a list of strings to the current output stream.
+:- pred io__write_strings(list(string)::in, io::di, io::uo) is det.
 
-:- pred io__write_strings(list(string), io__state, io__state).
-:- mode io__write_strings(in, di, uo) is det.
-%		Writes a list of strings to the current output stream.
+	% Writes a list of strings to the specified output stream.
+:- pred io__write_strings(io__output_stream::in, list(string)::in,
+	io::di, io::uo) is det.
 
-:- pred io__write_strings(io__output_stream, list(string),
-				io__state, io__state).
-:- mode io__write_strings(in, in, di, uo) is det.
-%		Writes a list of strings to the specified output stream.
+	% Writes a character to the current output stream.
+:- pred io__write_char(char::in, io::di, io::uo) is det.
 
-:- pred io__write_char(char, io__state, io__state).
-:- mode io__write_char(in, di, uo) is det.
-%		Writes a character to the current output stream.
+	% Writes a character to the specified output stream.
+:- pred io__write_char(io__output_stream::in, char::in, io::di, io::uo) is det.
 
-:- pred io__write_char(io__output_stream, char, io__state, io__state).
-:- mode io__write_char(in, in, di, uo) is det.
-%		Writes a character to the specified output stream.
+	% Writes an integer to the current output stream.
+:- pred io__write_int(int::in, io::di, io::uo) is det.
 
-:- pred io__write_int(int, io__state, io__state).
-:- mode io__write_int(in, di, uo) is det.
-%		Writes an integer to the current output stream.
+	% Writes an integer to the specified output stream.
+:- pred io__write_int(io__output_stream::in, int::in, io::di, io::uo) is det.
 
-:- pred io__write_int(io__output_stream, int, io__state, io__state).
-:- mode io__write_int(in, in, di, uo) is det.
-%		Writes an integer to the specified output stream.
+	% Writes a floating point number to the current output stream.
+:- pred io__write_float(float::in, io::di, io::uo) is det.
 
-:- pred io__write_float(float, io__state, io__state).
-:- mode io__write_float(in, di, uo) is det.
-%	io__write_float(Float, IO0, IO1).
-%		Writes a floating point number to the current output stream.
+	% Writes a floating point number to the specified output stream.
+:- pred io__write_float(io__output_stream::in, float::in, io::di, io::uo)
+	is det.
 
-:- pred io__write_float(io__output_stream, float, io__state, io__state).
-:- mode io__write_float(in, in, di, uo) is det.
-%	io__write_float(Float, IO0, IO1).
-%		Writes a floating point number to the specified output stream.
+	% Formats the specified arguments according to the format string,
+	% using string__format, and then writes the result to the current
+	% output stream. (See the documentation of string__format for details.)
+:- pred io__format(string::in, list(io__poly_type)::in, io::di, io::uo) is det.
 
-:- pred io__format(string, list(io__poly_type), io__state, io__state).
-:- mode io__format(in, in, di, uo) is det.
-%	io__format(FormatString, Arguments, IO0, IO).
-%		Formats the specified arguments according to
-%		the format string, using string__format, and
-%		then writes the result to the current output stream.
-%		(See the documentation of string__format for details.)
+	% Formats the specified argument list according to the format string,
+	% using string__format, and then writes the result to the specified
+	% output stream. (See the documentation of string__format for details.)
+:- pred io__format(io__output_stream::in, string::in, list(io__poly_type)::in,
+	io::di, io::uo) is det.
 
-:- pred io__format(io__output_stream, string, list(io__poly_type),
-		io__state, io__state).
-:- mode io__format(in, in, in, di, uo) is det.
-%	io__format(Stream, FormatString, Arguments, IO0, IO).
-%		Formats the specified argument list according to
-%		the format string, using string__format, and
-%		then writes the result to the specified output stream.
-%		(See the documentation of string__format for details.)
+	% Writes the specified arguments to the current output stream.
+:- pred io__write_many(list(io__poly_type)::in, io::di, io::uo) is det.
 
-:- pred io__write_many(list(io__poly_type), io__state, io__state).
-:- mode io__write_many(in, di, uo) is det.
-%	io__write_many(Arguments, IO0, IO).
-%		Writes the specified arguments to the current output stream.
+	% Writes the specified arguments to the specified output stream.
+:- pred io__write_many(io__output_stream::in, list(io__poly_type)::in,
+	io::di, io::uo) is det.
 
-:- pred io__write_many(io__output_stream, list(io__poly_type),
-			io__state, io__state).
-:- mode io__write_many(in, in, di, uo) is det.
-%	io__write_many(Stream, Arguments, IO0, IO).
-%		Writes the specified arguments to the specified output stream.
-
-:- pred io__write_list(list(T), string, pred(T, io__state, io__state),
-	io__state, io__state).
+	% io__write_list(List, Separator, OutputPred, !IO):
+	% applies OutputPred to each element of List, printing Separator
+	% between each element. Outputs to the current output stream.
+:- pred io__write_list(list(T), string, pred(T, io, io), io, io).
 :- mode io__write_list(in, in, pred(in, di, uo) is det, di, uo) is det.
 :- mode io__write_list(in, in, pred(in, di, uo) is cc_multi, di, uo)
 	is cc_multi.
-	% io__write_list(List, Separator, OutputPred, IO0, IO)
-	% applies OutputPred to each element of List, printing Separator
-	% between each element. Outputs to the current output stream.
 
-:- pred io__write_list(io__output_stream, list(T), string, 
-	pred(T, io__state, io__state), io__state, io__state).
+	% io__write_list(Stream, List, Separator, OutputPred, !IO):
+	% applies OutputPred to each element of List, printing Separator
+	% between each element. Outputs to Stream.
+:- pred io__write_list(io__output_stream, list(T), string,
+	pred(T, io, io), io, io).
 :- mode io__write_list(in, in, in, pred(in, di, uo) is det, di, uo) is det.
 :- mode io__write_list(in, in, in, pred(in, di, uo) is cc_multi, di, uo)
 	is cc_multi.
-	% io__write_list(Stream, List, Separator, OutputPred, IO0, IO)
-	% applies OutputPred to each element of List, printing Separator
-	% between each element. Outputs to Stream.
 
-:- pred io__flush_output(io__state, io__state).
-:- mode io__flush_output(di, uo) is det.
-%	Flush the output buffer of the current output stream.
+	% Flush the output buffer of the current output stream.
+:- pred io__flush_output(io::di, io::uo) is det.
 
-:- pred io__flush_output(io__output_stream, io__state, io__state).
-:- mode io__flush_output(in, di, uo) is det.
-%	Flush the output buffer of the specified output stream.
+	% Flush the output buffer of the specified output stream.
+:- pred io__flush_output(io__output_stream::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 % Input text stream predicates.
 
-:- pred io__see(string, io__res, io__state, io__state).
-:- mode io__see(in, out, di, uo) is det.
-%	io__see(File, Result, IO0, IO1).
-%		Attempts to open a file for input, and if successful
-%		sets the current input stream to the newly opened stream.
-%		Result is either 'ok' or 'error'.
+	% io__see(File, Result, !IO):
+	% Attempts to open a file for input, and if successful,
+	% sets the current input stream to the newly opened stream.
+	% Result is either 'ok' or 'error'.
+:- pred io__see(string::in, io__res::out, io::di, io::uo) is det.
 
-:- pred io__seen(io__state, io__state).
-:- mode io__seen(di, uo) is det.
-%		Closes the current input stream.
-%		The current input stream reverts to standard input.
-%		This will throw an io__error exception
-%		if an I/O error occurs.
+	% Closes the current input stream.
+	% The current input stream reverts to standard input.
+	% This will throw an io__error exception
+	% if an I/O error occurs.
+:- pred io__seen(io::di, io::uo) is det.
 
-:- pred io__open_input(string, io__res(io__input_stream),
-			io__state, io__state).
-:- mode io__open_input(in, out, di, uo) is det.
-%	io__open_input(File, Result, IO0, IO1).
-%		Attempts to open a file for input.
-%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+	% Attempts to open a file for input.
+	% Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+:- pred io__open_input(string::in, io__res(io__input_stream)::out,
+	io::di, io::uo) is det.
 
-:- pred io__close_input(io__input_stream, io__state, io__state).
-:- mode io__close_input(in, di, uo) is det.
-%	io__close_input(File, IO0, IO1).
-%		Closes an open input stream.
-%		This will throw an io__error exception
-%		if an I/O error occurs.
+	% Closes an open input stream.
+	% This will throw an io__error exception
+	% if an I/O error occurs.
+:- pred io__close_input(io__input_stream::in, io::di, io::uo) is det.
 
-:- pred io__input_stream(io__input_stream, io__state, io__state).
-:- mode io__input_stream(out, di, uo) is det.
-%		Retrieves the current input stream.
-%		Does not modify the IO state.
+	% Retrieves the current input stream.
+	% Does not modify the IO state.
+:- pred io__input_stream(io__input_stream::out, io::di, io::uo) is det.
 
-:- pred io__set_input_stream(io__input_stream, io__input_stream,
-				io__state, io__state).
-:- mode io__set_input_stream(in, out, di, uo) is det.
-%       io__set_input_stream(NewStream, OldStream, IO0, IO1)
-%		Changes the current input stream to the stream specified.
-%		Returns the previous stream.
+	% io__set_input_stream(NewStream, OldStream, !IO):
+	% Changes the current input stream to the stream specified.
+	% Returns the previous stream.
+:- pred io__set_input_stream(io__input_stream::in, io__input_stream::out,
+	io::di, io::uo) is det.
 
-:- pred io__stdin_stream(io__input_stream, io__state, io__state).
-:- mode io__stdin_stream(out, di, uo) is det.
-%		Retrieves the standard input stream.
-%		Does not modify the IO state.
+	% Retrieves the standard input stream.
+	% Does not modify the IO state.
+:- pred io__stdin_stream(io__input_stream::out, io::di, io::uo) is det.
 
-:- pred io__input_stream_name(string, io__state, io__state).
-:- mode io__input_stream_name(out, di, uo) is det.
-%	Retrieves the human-readable name associated with the current input
-%	stream.
-%	For file streams, this is the filename.
-%	For stdin this is the string "<standard input>".
+	% Retrieves the human-readable name associated with the current input
+	% stream.
+	% For file streams, this is the filename.
+	% For stdin this is the string "<standard input>".
+:- pred io__input_stream_name(string::out, io::di, io::uo) is det.
 
-:- pred io__input_stream_name(io__input_stream, string, io__state, io__state).
-:- mode io__input_stream_name(in, out, di, uo) is det.
-%	Retrieves the human-readable name associated with the specified input
-%	stream.
-%	For file streams, this is the filename.
-%	For stdin this is the string "<standard input>".
+	% Retrieves the human-readable name associated with the specified input
+	% stream.
+	% For file streams, this is the filename.
+	% For stdin this is the string "<standard input>".
+:- pred io__input_stream_name(io__input_stream::in, string::out,
+	io::di, io::uo) is det.
 
-:- pred io__get_line_number(int, io__state, io__state).
-:- mode io__get_line_number(out, di, uo) is det.
-%	Return the line number of the current input stream.
-%	Lines are normally numbered starting at 1
-%	(but this can be overridden by calling io__set_line_number).
+	% Return the line number of the current input stream.
+	% Lines are normally numbered starting at 1
+	% (but this can be overridden by calling io__set_line_number).
+:- pred io__get_line_number(int::out, io::di, io::uo) is det.
 
-:- pred io__get_line_number(io__input_stream, int, io__state, io__state).
-:- mode io__get_line_number(in, out, di, uo) is det.
-%	Return the line number of the specified input stream.
-%	Lines are normally numbered starting at 1
-%	(but this can be overridden by calling io__set_line_number).
+	% Return the line number of the specified input stream.
+	% Lines are normally numbered starting at 1
+	% (but this can be overridden by calling io__set_line_number).
+:- pred io__get_line_number(io__input_stream::in, int::out, io::di, io::uo)
+	is det.
 
-:- pred io__set_line_number(int, io__state, io__state).
-:- mode io__set_line_number(in, di, uo) is det.
-%	Set the line number of the current input stream.
+	% Set the line number of the current input stream.
+:- pred io__set_line_number(int::in, io::di, io::uo) is det.
 
-:- pred io__set_line_number(io__input_stream, int, io__state, io__state).
-:- mode io__set_line_number(in, in, di, uo) is det.
-%	Set the line number of the specified input stream.
+	% Set the line number of the specified input stream.
+:- pred io__set_line_number(io__input_stream::in, int::in, io::di, io::uo)
+	is det.
 
 %-----------------------------------------------------------------------------%
 
 % Output text stream predicates.
 
-:- pred io__tell(string, io__res, io__state, io__state).
-:- mode io__tell(in, out, di, uo) is det.
-%	io__tell(File, Result, IO0, IO1).
-%		Attempts to open a file for output, and if successful
-%		sets the current output stream to the newly opened stream.
-%		As per Prolog tell/1. Result is either 'ok' or 'error(ErrCode)'.
+	% Attempts to open a file for output, and if successful
+	% sets the current output stream to the newly opened stream.
+	% As per Prolog tell/1. Result is either 'ok' or 'error(ErrCode)'.
+:- pred io__tell(string::in, io__res::out, io::di, io::uo) is det.
 
-:- pred io__told(io__state, io__state).
-:- mode io__told(di, uo) is det.
-%	io__told(IO0, IO1).
-%		Closes the current output stream.
-%		The default output stream reverts to standard output.
-%		As per Prolog told/0.
-%		This will throw an io__error exception
-%		if an I/O error occurs.
+	% Closes the current output stream; the default output stream
+	% reverts to standard output. As per Prolog told/0.
+	% This will throw an io__error exception if an I/O error occurs.
+:- pred io__told(io::di, io::uo) is det.
 
-:- pred io__open_output(string, io__res(io__output_stream),
-				io__state, io__state).
-:- mode io__open_output(in, out, di, uo) is det.
-%	io__open_output(File, Result, IO0, IO1).
-%		Attempts to open a file for output.
-%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+	% Attempts to open a file for output.
+	% Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+:- pred io__open_output(string::in, io__res(io__output_stream)::out,
+	io::di, io::uo) is det.
 
-:- pred io__open_append(string, io__res(io__output_stream),
-				io__state, io__state).
-:- mode io__open_append(in, out, di, uo) is det.
-%	io__open_append(File, Result, IO0, IO1).
-%		Attempts to open a file for appending.
-%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+	% Attempts to open a file for appending.
+	% Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+:- pred io__open_append(string::in, io__res(io__output_stream)::out,
+	io::di, io::uo) is det.
 
-:- pred io__close_output(io__output_stream, io__state, io__state).
-:- mode io__close_output(in, di, uo) is det.
-%	io__close_output(File, IO0, IO1).
-%		Closes an open output stream.
-%		This will throw an io__error exception
-%		if an I/O error occurs.
+	% Closes an open output stream.
+	% This will throw an io__error exception if an I/O error occurs.
+:- pred io__close_output(io__output_stream::in, io::di, io::uo) is det.
 
-:- pred io__output_stream(io__output_stream, io__state, io__state).
-:- mode io__output_stream(out, di, uo) is det.
-%		Retrieves the current output stream.
-%		Does not modify the IO state.
+	% Retrieves the current output stream.
+	% Does not modify the IO state.
+:- pred io__output_stream(io__output_stream::out, io::di, io::uo) is det.
 
-:- pred io__set_output_stream(io__output_stream, io__output_stream,
-				io__state, io__state).
-:- mode io__set_output_stream(in, out, di, uo) is det.
-%	io__set_output_stream(NewStream, OldStream, IO0, IO)
-%		Changes the current output stream to the stream specified.
-%		Returns the previous stream.
+	% io__set_output_stream(NewStream, OldStream, !IO):
+	% Changes the current output stream to the stream specified.
+	% Returns the previous stream.
+:- pred io__set_output_stream(io__output_stream::in, io__output_stream::out,
+	io::di, io::uo) is det.
 
-:- pred io__stdout_stream(io__output_stream, io__state, io__state).
-:- mode io__stdout_stream(out, di, uo) is det.
-%		Retrieves the standard output stream.
-%		Does not modify the IO state.
+	% Retrieves the standard output stream.
+	% Does not modify the IO state.
+:- pred io__stdout_stream(io__output_stream::out, io::di, io::uo) is det.
 
-:- pred io__stderr_stream(io__output_stream, io__state, io__state).
-:- mode io__stderr_stream(out, di, uo) is det.
-%		Retrieves the standard error stream.
-%		Does not modify the IO state.
+	% Retrieves the standard error stream.
+	% Does not modify the IO state.
+:- pred io__stderr_stream(io__output_stream::out, io::di, io::uo) is det.
 
-:- pred io__output_stream_name(string, io__state, io__state).
-:- mode io__output_stream_name(out, di, uo) is det.
-%	Retrieves the human-readable name associated with the current
-%	output stream.
-%	For file streams, this is the filename.
-%	For stdout this is the string "<standard output>".
-%	For stderr this is the string "<standard error>".
+	% Retrieves the human-readable name associated with the current
+	% output stream.
+	% For file streams, this is the filename.
+	% For stdout this is the string "<standard output>".
+	% For stderr this is the string "<standard error>".
+:- pred io__output_stream_name(string::out, io::di, io::uo) is det.
 
-:- pred io__output_stream_name(io__output_stream, string,
-				io__state, io__state).
-:- mode io__output_stream_name(in, out, di, uo) is det.
-%	Retrieves the human-readable name associated with the specified stream.
-%	For file streams, this is the filename.
-%	For stdout this is the string "<standard output>".
-%	For stderr this is the string "<standard error>".
+	% Retrieves the human-readable name associated with the specified
+	% stream.
+	% For file streams, this is the filename.
+	% For stdout this is the string "<standard output>".
+	% For stderr this is the string "<standard error>".
+:- pred io__output_stream_name(io__output_stream::in, string::out,
+	io::di, io::uo) is det.
 
-:- pred io__get_output_line_number(int, io__state, io__state).
-:- mode io__get_output_line_number(out, di, uo) is det.
-%	Return the line number of the current output stream.
-%	Lines are normally numbered starting at 1
-%	(but this can be overridden by calling io__set_output_line_number).
+	% Return the line number of the current output stream.
+	% Lines are normally numbered starting at 1
+	% (but this can be overridden by calling io__set_output_line_number).
+:- pred io__get_output_line_number(int::out, io::di, io::uo) is det.
 
-:- pred io__get_output_line_number(io__output_stream, int,
-				io__state, io__state).
-:- mode io__get_output_line_number(in, out, di, uo) is det.
-%	Return the line number of the specified output stream.
-%	Lines are normally numbered starting at 1
-%	(but this can be overridden by calling io__set_output_line_number).
+	% Return the line number of the specified output stream.
+	% Lines are normally numbered starting at 1
+	% (but this can be overridden by calling io__set_output_line_number).
+:- pred io__get_output_line_number(io__output_stream::in, int::out,
+	io::di, io::uo) is det.
 
-:- pred io__set_output_line_number(int, io__state, io__state).
-:- mode io__set_output_line_number(in, di, uo) is det.
-%	Set the line number of the current output stream.
+	% Set the line number of the current output stream.
+:- pred io__set_output_line_number(int::in, io::di, io::uo) is det.
 
-:- pred io__set_output_line_number(io__output_stream, int,
-				io__state, io__state).
-:- mode io__set_output_line_number(in, in, di, uo) is det.
-%	Set the line number of the specified output stream.
-
+	% Set the line number of the specified output stream.
+:- pred io__set_output_line_number(io__output_stream::in, int::in,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 % Binary input predicates.
 
-:- pred io__read_binary(io__result(T), io__state, io__state).
-:- mode io__read_binary(out, di, uo) is det.
-%		Reads a binary representation of a term of type T
-%		from the current binary input stream.
+	% Reads a binary representation of a term of type T
+	% from the current binary input stream.
+:- pred io__read_binary(io__result(T)::out, io::di, io::uo) is det.
 
-:- pred io__read_binary(io__binary_input_stream, io__result(T),
-		io__state, io__state).
-:- mode io__read_binary(in, out, di, uo) is det.
-%		Reads a binary representation of a term of type T
-%		from the specified binary input stream.
+	% Reads a binary representation of a term of type T
+	% from the specified binary input stream.
+	%
+	% Note: if you attempt to read a binary representation written
+	% by a different program, or a different version of the same
+	% program, then the results are not guaranteed to be meaningful.
+	% Another caveat is that higher-order types cannot be read.
+	% (If you try, you will get a runtime error.)
+	%
+	% XXX Note also that due to the current implementation,
+	% io__read_binary will not work for the Java back-end.
+:- pred io__read_binary(io__binary_input_stream::in, io__result(T)::out,
+	io::di, io::uo) is det.
 
-%		Note: if you attempt to read a binary representation written
-%		by a different program, or a different version of the same
-%		program, then the results are not guaranteed to be meaningful.
-%		Another caveat is that higher-order types cannot be read. 
-%		(If you try, you will get a runtime error.)
-%
-%		XXX Note also that due to the current implementation,
-%		io__read_binary will not work for the Java back-end.
+	% Reads a single 8-bit byte from the current binary input stream.
+:- pred io__read_byte(io__result(int)::out, io::di, io::uo) is det.
 
-:- pred io__read_byte(io__result(int), io__state, io__state).
-:- mode io__read_byte(out, di, uo) is det.
-%		Reads a single 8-bit byte from the current binary input
-%		stream.
+	% Reads a single 8-bit byte from the specified binary input stream.
+:- pred io__read_byte(io__binary_input_stream::in, io__result(int)::out,
+	io::di, io::uo) is det.
 
-:- pred io__read_byte(io__binary_input_stream, io__result(int),
-				io__state, io__state).
-:- mode io__read_byte(in, out, di, uo) is det.
-%		Reads a single 8-bit byte from the specified binary input
-%		stream.
+	% Reads all the bytes from the current binary input stream
+	% until eof or error.
+:- pred io__read_binary_file(io__result(list(int))::out, io::di, io::uo)
+	is det.
 
-:- pred io__read_binary_file(io__result(list(int)), io__state, io__state).
-:- mode io__read_binary_file(out, di, uo) is det.
-%		Reads all the bytes from the current binary input stream
-%		until eof or error.
+	% Reads all the bytes from the given binary input stream until
+	% eof or error.
+:- pred io__read_binary_file(io__input_stream::in, io__result(list(int))::out,
+	io::di, io::uo) is det.
 
-:- pred io__read_binary_file(io__input_stream, io__result(list(int)),
-						io__state, io__state).
-:- mode io__read_binary_file(in, out, di, uo) is det.
-%		Reads all the bytes from the given binary input stream until
-%		eof or error.
-
+	% Applies the given closure to each byte read from the
+	% current binary input stream in turn, until eof or error.
 :- pred io__binary_input_stream_foldl(pred(int, T, T),
-			T, io__maybe_partial_res(T), io__state, io__state).
+	T, io__maybe_partial_res(T), io, io).
 :- mode io__binary_input_stream_foldl((pred(in, in, out) is det),
-			in, out, di, uo) is det.
+	in, out, di, uo) is det.
 :- mode io__binary_input_stream_foldl((pred(in, in, out) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each byte read from the
-%		current binary input stream in turn, until eof or error.
+	in, out, di, uo) is cc_multi.
 
-:- pred io__binary_input_stream_foldl_io(pred(int, io__state, io__state),
-			io__res, io__state, io__state).
+	% Applies the given closure to each byte read from the
+	% current binary input stream in turn, until eof or error.
+:- pred io__binary_input_stream_foldl_io(pred(int, io, io),
+	io__res, io, io).
 :- mode io__binary_input_stream_foldl_io((pred(in, di, uo) is det),
-			out, di, uo) is det.
+	out, di, uo) is det.
 :- mode io__binary_input_stream_foldl_io((pred(in, di, uo) is cc_multi),
-			out, di, uo) is cc_multi.
-%		Applies the given closure to each byte read from the
-%		current binary input stream in turn, until eof or error.
+	out, di, uo) is cc_multi.
 
+	% Applies the given closure to each byte read from the
+	% current binary input stream in turn, until eof or error.
 :- pred io__binary_input_stream_foldl2_io(
-			pred(int, T, T, io__state, io__state),
-			T, io__maybe_partial_res(T), io__state, io__state).
-:- mode io__binary_input_stream_foldl2_io((pred(in, in, out, di, uo) is det),
-			in, out, di, uo) is det.
+	pred(int, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
 :- mode io__binary_input_stream_foldl2_io(
-			(pred(in, in, out, di, uo) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each byte read from the
-%		current binary input stream in turn, until eof or error.
+	in(pred(in, in, out, di, uo) is det),
+	in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io(
+	in(pred(in, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
+	% Applies the given closure to each byte read from the
+	% current binary input stream in turn, until eof or error,
+	% or the closure returns `no' as its second argument.
 :- pred io__binary_input_stream_foldl2_io_maybe_stop(
-			pred(int, bool, T, T, io__state, io__state),
-			T, io__maybe_partial_res(T), io__state, io__state).
+	pred(int, bool, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
 :- mode io__binary_input_stream_foldl2_io_maybe_stop(
-			(pred(in, out, in, out, di, uo) is det),
-			in, out, di, uo) is det.
+	(pred(in, out, in, out, di, uo) is det),
+	in, out, di, uo) is det.
 :- mode io__binary_input_stream_foldl2_io_maybe_stop(
-			(pred(in, out, in, out, di, uo) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each byte read from the
-%		current binary input stream in turn, until eof or error,
-%		or the closure returns `no' as its second argument.
+	(pred(in, out, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
+	% Applies the given closure to each byte read from the
+	% given binary input stream in turn, until eof or error.
 :- pred io__binary_input_stream_foldl(io__binary_input_stream,
-			pred(int, T, T), T, io__maybe_partial_res(T),
-			io__state, io__state).
-:- mode io__binary_input_stream_foldl(in, (pred(in, in, out) is det),
-			in, out, di, uo) is det.
-:- mode io__binary_input_stream_foldl(in, (pred(in, in, out) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each byte read from the
-%		given binary input stream in turn, until eof or error.
+	pred(int, T, T), T, io__maybe_partial_res(T), io, io).
+:- mode io__binary_input_stream_foldl(in, in(pred(in, in, out) is det),
+	in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl(in, in(pred(in, in, out) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
+	% Applies the given closure to each byte read from the
+	% given binary input stream in turn, until eof or error.
 :- pred io__binary_input_stream_foldl_io(io__binary_input_stream,
-			pred(int, io__state, io__state), io__res,
-			io__state, io__state).
-:- mode io__binary_input_stream_foldl_io(in, (pred(in, di, uo) is det),
-			out, di, uo) is det.
-:- mode io__binary_input_stream_foldl_io(in, (pred(in, di, uo) is cc_multi),
-			out, di, uo) is cc_multi.
-%		Applies the given closure to each byte read from the
-%		given binary input stream in turn, until eof or error.
+	pred(int, io, io), io__res, io, io).
+:- mode io__binary_input_stream_foldl_io(in, in(pred(in, di, uo) is det),
+	out, di, uo) is det.
+:- mode io__binary_input_stream_foldl_io(in, in(pred(in, di, uo) is cc_multi),
+	out, di, uo) is cc_multi.
 
+	% Applies the given closure to each byte read from the
+	% given binary input stream in turn, until eof or error.
 :- pred io__binary_input_stream_foldl2_io(io__binary_input_stream,
-			pred(int, T, T, io__state, io__state),
-			T, io__maybe_partial_res(T), io__state, io__state).
+	pred(int, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
 :- mode io__binary_input_stream_foldl2_io(in,
-			(pred(in, in, out, di, uo) is det),
-			in, out, di, uo) is det.
+	(pred(in, in, out, di, uo) is det),
+	in, out, di, uo) is det.
 :- mode io__binary_input_stream_foldl2_io(in,
-			(pred(in, in, out, di, uo) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each byte read from the
-%		given binary input stream in turn, until eof or error.
+	(pred(in, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
+	% Applies the given closure to each byte read from the
+	% given binary input stream in turn, until eof or error,
+	% or the closure returns `no' as its second argument.
 :- pred io__binary_input_stream_foldl2_io_maybe_stop(
-			io__binary_input_stream,
-			pred(int, bool, T, T, io__state, io__state),
-			T, io__maybe_partial_res(T), io__state, io__state).
+	io__binary_input_stream,
+	pred(int, bool, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
 :- mode io__binary_input_stream_foldl2_io_maybe_stop(in,
-			(pred(in, out, in, out, di, uo) is det),
-			in, out, di, uo) is det.
+	(pred(in, out, in, out, di, uo) is det),
+	in, out, di, uo) is det.
 :- mode io__binary_input_stream_foldl2_io_maybe_stop(in,
-			(pred(in, out, in, out, di, uo) is cc_multi),
-			in, out, di, uo) is cc_multi.
-%		Applies the given closure to each byte read from the
-%		given binary input stream in turn, until eof or error,
-%		or the closure returns `no' as its second argument.
+	(pred(in, out, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
 
-:- pred io__putback_byte(int, io__state, io__state).
-:- mode io__putback_byte(in, di, uo) is det.
-%		Un-reads a byte from the current binary input stream.
-%		You can put back as many bytes as you like.
-%		You can even put back something that you didn't actually read.
-%		The byte is taken from the bottom 8 bits of an integer.
-%		Note: `io__putback_byte' uses the C library function ungetc().
-%		On some systems only one byte of pushback is guaranteed.
-%		`io__putback_byte' will throw an io__error exception
-%		if ungetc() fails.
+	% Un-reads a byte from the current binary input stream.
+	% You can put back as many bytes as you like.
+	% You can even put back something that you didn't actually read.
+	% The byte is taken from the bottom 8 bits of an integer.
+	% Note: `io__putback_byte' uses the C library function ungetc().
+	% On some systems only one byte of pushback is guaranteed.
+	% `io__putback_byte' will throw an io__error exception
+	% if ungetc() fails.
+:- pred io__putback_byte(int::in, io::di, io::uo) is det.
 
-:- pred io__putback_byte(io__binary_input_stream, int, io__state, io__state).
-:- mode io__putback_byte(in, in, di, uo) is det.
-%		Un-reads a byte from specified binary input stream.
-%		You can put back as many bytes as you like.
-%		You can even put back something that you didn't actually read.
-%		The byte is returned in the bottom 8 bits of an integer.
-%		Note: `io__putback_byte' uses the C library function ungetc().
-%		On some systems only one byte of pushback is guaranteed.
-%		`io__putback_byte' will throw an io__error exception
-%		if ungetc() fails.
+	% Un-reads a byte from specified binary input stream.
+	% You can put back as many bytes as you like.
+	% You can even put back something that you didn't actually read.
+	% The byte is returned in the bottom 8 bits of an integer.
+	% Note: `io__putback_byte' uses the C library function ungetc().
+	% On some systems only one byte of pushback is guaranteed.
+	% `io__putback_byte' will throw an io__error exception
+	% if ungetc() fails.
+:- pred io__putback_byte(io__binary_input_stream::in, int::in,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-% Binary output predicates.
-% These will all throw an io__error exception if an I/O error occurs.
+	% Binary output predicates.
+	% These will all throw an io__error exception if an I/O error occurs.
+	% XXX what about wide characters?
 
-% XXX what about wide characters?
+	% Writes a binary representation of a term to the current
+	% binary output stream, in a format suitable for reading
+	% in again with io__read_binary.
+:- pred io__write_binary(T::in, io::di, io::uo) is det.
 
-:- pred io__write_binary(T, io__state, io__state).
-:- mode io__write_binary(in, di, uo) is det.
-%		Writes a binary representation of a term to the current
-%		binary output stream, in a format suitable for reading
-%		in again with io__read_binary.
+	% Writes a binary representation of a term to the specified
+	% binary output stream, in a format suitable for reading
+	% in again with io__read_binary.
+	%
+	% XXX Note that due to the current implementation,
+	% io__write_binary will not work for the Java back-end.
+:- pred io__write_binary(io__binary_output_stream::in, T::in, io::di, io::uo)
+	is det.
 
-:- pred io__write_binary(io__binary_output_stream, T, io__state, io__state).
-:- mode io__write_binary(in, in, di, uo) is det.
-%		Writes a binary representation of a term to the specified
-%		binary output stream, in a format suitable for reading
-%		in again with io__read_binary.
+	% Writes a single byte to the current binary output stream.
+	% The byte is taken from the bottom 8 bits of an int.
+:- pred io__write_byte(int::in, io::di, io::uo) is det.
 
-%		XXX Note that due to the current implementation,
-%		io__write_binary will not work for the Java back-end.
+	% Writes a single byte to the specified binary output stream.
+	% The byte is taken from the bottom 8 bits of an int.
+:- pred io__write_byte(io__binary_output_stream::in, int::in, io::di, io::uo)
+	is det.
 
-:- pred io__write_byte(int, io__state, io__state).
-:- mode io__write_byte(in, di, uo) is det.
-%		Writes a single byte to the current binary output stream.
-%		The byte is taken from the bottom 8 bits of an int.
+	% Writes several bytes to the current binary output stream.
+	% The bytes are taken from a string.
+:- pred io__write_bytes(string::in, io::di, io::uo) is det.
 
-:- pred io__write_byte(io__binary_output_stream, int, io__state, io__state).
-:- mode io__write_byte(in, in, di, uo) is det.
-%		Writes a single byte to the specified binary output stream.
-%		The byte is taken from the bottom 8 bits of an int.
+	% Writes several bytes to the specified binary output stream.
+	% The bytes are taken from a string.
+:- pred io__write_bytes(io__binary_output_stream::in, string::in,
+	io::di, io::uo) is det.
 
-:- pred io__write_bytes(string, io__state, io__state).
-:- mode io__write_bytes(in, di, uo) is det.
-%		Writes several bytes to the current binary output stream.
-%		The bytes are taken from a string.
+	% Flush the output buffer of the current binary output stream.
+:- pred io__flush_binary_output(io::di, io::uo) is det.
 
-:- pred io__write_bytes(io__binary_output_stream, string,
-				io__state, io__state).
-:- mode io__write_bytes(in, in, di, uo) is det.
-%		Writes several bytes to the specified binary output stream.
-%		The bytes are taken from a string.
+	% Flush the output buffer of the specified binary output stream.
+:- pred io__flush_binary_output(io__binary_output_stream::in,
+	io::di, io::uo) is det.
 
-:- pred io__flush_binary_output(io__state, io__state).
-:- mode io__flush_binary_output(di, uo) is det.
-%	Flush the output buffer of the current binary output stream.
+	% Seek to an offset relative to Whence (documented above)
+	% on a specified binary stream. Attempting to seek on a pipe
+	% or tty results in implementation dependent behaviour.
+:- pred io__seek_binary(io__binary_stream::in, io__whence::in, int::in,
+	io::di, io::uo) is det.
 
-:- pred io__flush_binary_output(io__binary_output_stream,
-				io__state, io__state).
-:- mode io__flush_binary_output(in, di, uo) is det.
-%	Flush the output buffer of the specified binary output stream.
-
-:- pred io__seek_binary(io__binary_stream, io__whence, int,
-				io__state, io__state).
-:- mode io__seek_binary(in, in, in, di, uo) is det.
-%	Seek to an offset relative to Whence (documented above)
-%	on a specified binary stream. Attempting to seek on a
-%	pipe or tty results in implementation dependent behaviour.
-
-:- pred io__binary_stream_offset(io__binary_stream, int,
-				io__state, io__state).
-:- mode io__binary_stream_offset(in, out, di, uo) is det.
-%	Returns the offset (in bytes) into the specified binary stream.
+	% Returns the offset (in bytes) into the specified binary stream.
+:- pred io__binary_stream_offset(io__binary_stream::in, int::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-% Binary input stream predicates.
+	% Binary input stream predicates.
 
-:- pred io__see_binary(string, io__res, io__state, io__state).
-:- mode io__see_binary(in, out, di, uo) is det.
-%	io__see_binary(File, Result, IO0, IO1).
-%		Attempts to open a file for binary input, and if successful
-%		sets the current binary input stream to the newly opened stream.
-%		Result is either 'ok' or 'error'.
+	% Attempts to open a file for binary input, and if successful
+	% sets the current binary input stream to the newly opened stream.
+	% Result is either 'ok' or 'error'.
+:- pred io__see_binary(string::in, io__res::out, io::di, io::uo) is det.
 
-:- pred io__seen_binary(io__state, io__state).
-:- mode io__seen_binary(di, uo) is det.
-%		Closes the current input stream.
-%		The current input stream reverts to standard input.
-%		This will throw an io__error exception
-%		if an I/O error occurs.
+	% Closes the current input stream.
+	% The current input stream reverts to standard input.
+	% This will throw an io__error exception
+	% if an I/O error occurs.
+:- pred io__seen_binary(io::di, io::uo) is det.
 
-:- pred io__open_binary_input(string, io__res(io__binary_input_stream),
-			io__state, io__state).
-:- mode io__open_binary_input(in, out, di, uo) is det.
-%	io__open_binary_input(File, Result, IO0, IO1).
-%		Attempts to open a binary file for input.
-%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+	% Attempts to open a binary file for input.
+	% Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+:- pred io__open_binary_input(string::in,
+	io__res(io__binary_input_stream)::out, io::di, io::uo) is det.
 
-:- pred io__close_binary_input(io__binary_input_stream, io__state, io__state).
-:- mode io__close_binary_input(in, di, uo) is det.
-%	io__close_binary_input(File, IO0, IO1).
-%		Closes an open binary input stream.
-%		This will throw an io__error exception
-%		if an I/O error occurs.
+	% Closes an open binary input stream.
+	% This will throw an io__error exception
+	% if an I/O error occurs.
+:- pred io__close_binary_input(io__binary_input_stream::in,
+	io::di, io::uo) is det.
 
-:- pred io__binary_input_stream(io__binary_input_stream,
-			io__state, io__state).
-:- mode io__binary_input_stream(out, di, uo) is det.
-%		Retrieves the current binary input stream.
-%		Does not modify the IO state.
+	% Retrieves the current binary input stream.
+	% Does not modify the IO state.
+:- pred io__binary_input_stream(io__binary_input_stream::out,
+	io::di, io::uo) is det.
 
-:- pred io__set_binary_input_stream(io__binary_input_stream,
-			io__binary_input_stream, io__state, io__state).
-:- mode io__set_binary_input_stream(in, out, di, uo) is det.
-%       io__set_binary_input_stream(NewStream, OldStream, IO0, IO1)
-%		Changes the current input stream to the stream specified.
-%		Returns the previous stream.
+	% io__set_binary_input_stream(NewStream, OldStream, !IO):
+	% Changes the current input stream to the stream specified.
+	% Returns the previous stream.
+:- pred io__set_binary_input_stream(io__binary_input_stream::in,
+	io__binary_input_stream::out, io::di, io::uo) is det.
 
-:- pred io__stdin_binary_stream(io__binary_input_stream,
-			io__state, io__state).
-:- mode io__stdin_binary_stream(out, di, uo) is det.
-%		Retrieves the standard binary input stream.
-%		Does not modify the IO state.
+	% Retrieves the standard binary input stream.
+	% Does not modify the IO state.
+:- pred io__stdin_binary_stream(io__binary_input_stream::out,
+	io::di, io::uo) is det.
 
-:- pred io__binary_input_stream_name(string, io__state, io__state).
-:- mode io__binary_input_stream_name(out, di, uo) is det.
-%	Retrieves the human-readable name associated with the current binary
-%	input stream.
-%	For file streams, this is the filename.
+	% Retrieves the human-readable name associated with the current binary
+	% input stream. For file streams, this is the filename.
+:- pred io__binary_input_stream_name(string::out, io::di, io::uo) is det.
 
-:- pred io__binary_input_stream_name(io__binary_input_stream, string,
-		io__state, io__state).
-:- mode io__binary_input_stream_name(in, out, di, uo) is det.
-%	Retrieves the human-readable name associated with the specified binary
-%	input stream.
-%	For file streams, this is the filename.
+	% Retrieves the human-readable name associated with the specified
+	% binary input stream. For file streams, this is the filename.
+:- pred io__binary_input_stream_name(io__binary_input_stream::in, string::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-% Binary output stream predicates.
+	% Binary output stream predicates.
 
-:- pred io__tell_binary(string, io__res, io__state, io__state).
-:- mode io__tell_binary(in, out, di, uo) is det.
-%	io__tell_binary(File, Result, IO0, IO1).
-%		Attempts to open a file for binary output, and if successful
-%		sets the current binary output stream to the newly opened
-%		stream. As per Prolog tell/1. Result is either 'ok' or
-%		'error(ErrCode)'.
+	% Attempts to open a file for binary output, and if successful
+	% sets the current binary output stream to the newly opened
+	% stream. As per Prolog tell/1. Result is either 'ok' or
+	% 'error(ErrCode)'.
+:- pred io__tell_binary(string::in, io__res::out, io::di, io::uo) is det.
 
-:- pred io__told_binary(io__state, io__state).
-:- mode io__told_binary(di, uo) is det.
-%	io__told_binary(IO0, IO1).
-%		Closes the current binary output stream.
-%		The default binary output stream reverts to standard output.
-%		As per Prolog told/0.
-%		This will throw an io__error exception
-%		if an I/O error occurs.
+	% Closes the current binary output stream.
+	% The default binary output stream reverts to standard output.
+	% As per Prolog told/0.
+	% This will throw an io__error exception
+	% if an I/O error occurs.
+:- pred io__told_binary(io::di, io::uo) is det.
 
-:- pred io__open_binary_output(string, io__res(io__binary_output_stream),
-				io__state, io__state).
-:- mode io__open_binary_output(in, out, di, uo) is det.
-%	io__open_binary_output(File, Result, IO0, IO1).
-%		Attempts to open a file for binary output.
-%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+	% Attempts to open a file for binary output.
+	% Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+:- pred io__open_binary_output(string::in,
+	io__res(io__binary_output_stream)::out, io::di, io::uo) is det.
 
-:- pred io__open_binary_append(string, io__res(io__binary_output_stream),
-				io__state, io__state).
-:- mode io__open_binary_append(in, out, di, uo) is det.
-%	io__open_binary_append(File, Result, IO0, IO1).
-%		Attempts to open a file for binary appending.
-%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+	% Attempts to open a file for binary appending.
+	% Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+:- pred io__open_binary_append(string::in,
+	io__res(io__binary_output_stream)::out, io::di, io::uo) is det.
 
-:- pred io__close_binary_output(io__binary_output_stream,
-				io__state, io__state).
-:- mode io__close_binary_output(in, di, uo) is det.
-%	io__close_binary_output(File, IO0, IO1).
-%		Closes an open binary output stream.
-%		This will throw an io__error exception
-%		if an I/O error occurs.
+	% Closes an open binary output stream.
+	% This will throw an io__error exception
+	% if an I/O error occurs.
+:- pred io__close_binary_output(io__binary_output_stream::in,
+	io::di, io::uo) is det.
 
-:- pred io__binary_output_stream(io__binary_output_stream,
-				io__state, io__state).
-:- mode io__binary_output_stream(out, di, uo) is det.
-%		Retrieves the current binary output stream.
-%		Does not modify the IO state.
+	% Retrieves the current binary output stream.
+	% Does not modify the IO state.
+:- pred io__binary_output_stream(io__binary_output_stream::out,
+	io::di, io::uo) is det.
 
-:- pred io__stdout_binary_stream(io__binary_output_stream,
-				io__state, io__state).
-:- mode io__stdout_binary_stream(out, di, uo) is det.
-%		Retrieves the standard binary output stream.
-%		Does not modify the IO state.
+	% Retrieves the standard binary output stream.
+	% Does not modify the IO state.
+:- pred io__stdout_binary_stream(io__binary_output_stream::out,
+	io::di, io::uo) is det.
 
-:- pred io__set_binary_output_stream(io__binary_output_stream,
-			io__binary_output_stream, io__state, io__state).
-:- mode io__set_binary_output_stream(in, out, di, uo) is det.
-%	io__set_binary_output_stream(NewStream, OldStream, IO0, IO)
-%		Changes the current binary output stream to the stream
-%		specified. Returns the previous stream.
+	% io__set_binary_output_stream(NewStream, OldStream, !IO):
+	% Changes the current binary output stream to the stream
+	% specified. Returns the previous stream.
+:- pred io__set_binary_output_stream(io__binary_output_stream::in,
+	io__binary_output_stream::out, io::di, io::uo) is det.
 
-:- pred io__binary_output_stream_name(string, io__state, io__state).
-:- mode io__binary_output_stream_name(out, di, uo) is det.
 %	Retrieves the human-readable name associated with the current
 %	binary output stream.
 %	For file streams, this is the filename.
+:- pred io__binary_output_stream_name(string::out, io::di, io::uo) is det.
 
-:- pred io__binary_output_stream_name(io__binary_output_stream, string,
-			io__state, io__state).
-:- mode io__binary_output_stream_name(in, out, di, uo) is det.
-%	Retrieves the human-readable name associated with the specified 
-%	output stream.
-%	For file streams, this is the filename.
+	% Retrieves the human-readable name associated with the specified
+	% output stream. For file streams, this is the filename.
+:- pred io__binary_output_stream_name(io__binary_output_stream::in,
+	string::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-% Global state predicates.
+	% Global state predicates.
 
-:- pred io__progname(string, string, io__state, io__state).
-:- mode io__progname(in, out, di, uo) is det.
-% 	io__progname(DefaultProgname, Progname)
-%		Returns the name that the program was invoked with,
-%		if available, or DefaultProgname if the name is not
-%		available.
-%
-%		Does not modify the IO state.
+	% io__progname(DefaultProgname, Progname):
+	% Returns the name that the program was invoked with, if available,
+	% or DefaultProgname if the name is not available.
+	% Does not modify the IO state.
+:- pred io__progname(string::in, string::out, io::di, io::uo) is det.
 
-:- pred io__progname_base(string, string, io__state, io__state).
-:- mode io__progname_base(in, out, di, uo) is det.
-% 	io__progname_base(DefaultProgname, Progname)
-%		Like `io__progname', except that it strips off any path name
-%		preceding the program name.  Useful for error messages.
+	% io__progname_base(DefaultProgname, Progname):
+	% Like `io__progname', except that it strips off any path name
+	% preceding the program name.  Useful for error messages.
+:- pred io__progname_base(string::in, string::out, io::di, io::uo) is det.
 
-:- pred io__command_line_arguments(list(string), io__state, io__state).
-:- mode io__command_line_arguments(out, di, uo) is det.
-% 	io__command_line_arguments(Args)
-%		Returns the arguments that the program was invoked with,
-%		if available, otherwise an empty list.
-%
-%		Does not modify the IO state.
+	% Returns the arguments that the program was invoked with,
+	% if available, otherwise an empty list.
+	% Does not modify the IO state.
+:- pred io__command_line_arguments(list(string)::out, io::di, io::uo) is det.
 
-% The io__state contains an integer used to record the program's exit
-% status.  When the program finishes, it will return this exit status to
-% the operating system.  The following predicates can be used to get and
-% set the exit status.
+	% The io__state contains an integer used to record the program's exit
+	% status.  When the program finishes, it will return this exit status
+	% to the operating system.  The following predicates can be used
+	% to get and set the exit status.
 
-:- pred io__get_exit_status(int, io__state, io__state).
-:- mode io__get_exit_status(out, di, uo) is det.
+:- pred io__get_exit_status(int::out, io::di, io::uo) is det.
 
-:- pred io__set_exit_status(int, io__state, io__state).
-:- mode io__set_exit_status(in, di, uo) is det.
+:- pred io__set_exit_status(int::in, io::di, io::uo) is det.
 
-% The io__state includes a `globals' field which is not used by the I/O
-% library, but can be used by the application.  The globals field is
-% of type `univ' so that the application can store any data it wants there.
-% The following predicates can be used to access this global state.
+	% The io__state includes a `globals' field which is not used by the I/O
+	% library, but can be used by the application. The globals field is
+	% of type `univ' so that the application can store any data it wants
+	% there. The following predicates can be used to access this global
+	% state.
 
-:- pred io__get_globals(univ, io__state, io__state).
-:- mode io__get_globals(uo, di, uo) is det.
 	% Doesn't modify the io__state.
+:- pred io__get_globals(univ::uo, io::di, io::uo) is det.
 
-:- pred io__set_globals(univ, io__state, io__state).
-:- mode io__set_globals(di, di, uo) is det.
+:- pred io__set_globals(univ::di, io::di, io::uo) is det.
 
-% The following predicates provide an interface to the environment list.
-% Do not attempt to put spaces or '=' signs in the names of environment
-% variables, or bad things may result!
+	% The following predicates provide an interface to the environment
+	% list. Do not attempt to put spaces or '=' signs in the names of
+	% environment variables, or bad things may result!
 
-:- pred io__get_environment_var(string, maybe(string), io__state, io__state).
-:- mode io__get_environment_var(in, out, di, uo) is det.
 	% First argument is the name of the environment variable.
 	% Returns yes(Value) if the variable was set (Value will
 	% be set to the value of the variable) and no if the
 	% variable was not set.
+:- pred io__get_environment_var(string::in, maybe(string)::out,
+	io::di, io::uo) is det.
 
-:- pred io__set_environment_var(string, string, io__state, io__state).
-:- mode io__set_environment_var(in, in, di, uo) is det.
 	% First argument is the name of the environment variable,
 	% second argument is the value to be assigned to that
 	% variable.  Will throw an exception if the system runs
 	% out of environment space.
+:- pred io__set_environment_var(string::in, string::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 % File handling predicates
 
-:- pred io__make_temp(string, io__state, io__state).
-:- mode io__make_temp(out, di, uo) is det.
-	% io__make_temp(Name, IO0, IO) creates an empty file
-	% whose name which is different to the name of any existing file.
-	% Name is bound to the name of the file.
-	% It is the responsibility of the program to delete the file
-	% when it is no longer needed.
+	% io__make_temp(Name, !IO) creates an empty file whose name
+	% is different to the name of any existing file. Name is bound
+	% to the name of the file. It is the responsibility of the program
+	% to delete the file when it is no longer needed.
 	%
 	% The file will reside in an implementation-dependent directory.
 	% For current Mercury implementations, it is determined as follows:
@@ -1185,9 +1030,8 @@
 	%    system property java.io.tmpdir. On UNIX systems the default
 	%    value of this property is typically "/tmp" or "/var/tmp";
 	%    on Microsoft Windows systems it is typically "c:\\temp".
+:- pred io__make_temp(string::out, io::di, io::uo) is det.
 
-:- pred io__make_temp(string, string, string, io__state, io__state).
-:- mode io__make_temp(in, in, out, di, uo) is det.
 	% io__mktemp(Dir, Prefix, Name, IO0, IO) creates an empty
 	% file whose name is different to the name of any existing file.
 	% The file will reside in the directory specified by `Dir' and will
@@ -1195,18 +1039,17 @@
 	% Name is bound to the name of the file.
 	% It is the responsibility of the program to delete the file
 	% when it is no longer needed.
+:- pred io__make_temp(string::in, string::in, string::out,
+	io::di, io::uo) is det.
 
-:- pred io__remove_file(string, io__res, io__state, io__state).
-:- mode io__remove_file(in, out, di, uo) is det.
-	% io__remove_file(FileName, Result, IO0, IO) attempts to remove the
+	% io__remove_file(FileName, Result, !IO) attempts to remove the
 	% file `FileName', binding Result to ok/0 if it succeeds, or
 	% error/1 if it fails.
 	% If `FileName' names a file that is currently open,
 	% the behaviour is implementation-dependent.
+:- pred io__remove_file(string::in, io__res::out, io::di, io::uo) is det.
 
-:- pred io__rename_file(string, string, io__res, io__state, io__state).
-:- mode io__rename_file(in, in, out, di, uo) is det.
-	% io__rename_file(OldFileName, NewFileName, Result, IO0, IO)
+	% io__rename_file(OldFileName, NewFileName, Result, !IO)
 	% attempts to rename the file `OldFileName' as `NewFileName',
 	% binding Result to ok/0 if it succeeds, or error/1 if it fails.
 	% If `OldFileName' names a file that is currently open,
@@ -1215,40 +1058,40 @@
 	% the behaviour is also implementation-dependent;
 	% on some systems, the file previously named `NewFileName' will be
 	% deleted and replaced with the file previously named `OldFileName'.
+:- pred io__rename_file(string::in, string::in, io__res::out,
+	io::di, io::uo) is det.
 
-:- pred io__have_symlinks is semidet.
 	% Can this platform read and create symbolic links.
+:- pred io__have_symlinks is semidet.
 
-:- pred io__make_symlink(string, string, io__res, io__state, io__state).
-:- mode io__make_symlink(in, in, out, di, uo) is det.
-	% io__make_symlink(FileName, LinkFileName, Result, IO0, IO)
+	% io__make_symlink(FileName, LinkFileName, Result, !IO)
 	% attempts to make `LinkFileName' be a symbolic link to `FileName'.
 	% If `FileName' is a relative path, it is interpreted relative
 	% to the directory containing `LinkFileName'.
+:- pred io__make_symlink(string::in, string::in, io__res::out,
+	io::di, io::uo) is det.
 
-:- pred io__read_symlink(string, io__res(string), io__state, io__state).
-:- mode io__read_symlink(in, out, di, uo) is det.
-	% io__read_symlink(FileName, Result, IO0, IO) returns
+	% io__read_symlink(FileName, Result, !IO) returns
 	% `ok(LinkTarget)' if `FileName' is a symbolic link pointing
 	% to `LinkTarget', and `error(Error)' otherwise.
 	% If `LinkTarget' is a relative path, it should be interpreted
 	% relative the directory containing `FileName', not the current
 	% directory.
+:- pred io__read_symlink(string::in, io__res(string)::out, io::di, io::uo)
+	is det.
 
 :- type io__access_type
 	--->	read
 	;	write
-	;	execute
-	.
+	;	execute.
 
-:- pred io__check_file_accessibility(string, list(access_type),
-		io__res, io__state, io__state).
-:- mode io__check_file_accessibility(in, in, out, di, uo) is det.
 	% io__check_file_accessibility(FileName, AccessTypes, Result)
 	% Check whether the current process can perform the operations
 	% given in `AccessTypes' on `FileName'.
 	% XXX When using the .NET CLI, this predicate will sometimes
 	% report that a directory is writable when in fact it is not.
+:- pred io__check_file_accessibility(string::in, list(access_type)::in,
+	io__res::out, io::di, io::uo) is det.
 
 :- type io__file_type
 	--->	regular_file
@@ -1261,28 +1104,24 @@
 	;	message_queue
 	;	semaphore
 	;	shared_memory
-	;	unknown
-	. 
+	;	unknown.
 
-:- pred io__file_type(bool, string, io__res(file_type), io__state, io__state).
-:- mode io__file_type(in, in, out, di, uo) is det.
 	% io__file_type(FollowSymLinks, FileName, TypeResult)
 	% finds the type of the given file.
+:- pred io__file_type(bool::in, string::in, io__res(file_type)::out,
+	io::di, io::uo) is det.
 
-:- pred io__file_modification_time(string, io__res(time_t),
-		io__state, io__state).
-:- mode io__file_modification_time(in, out, di, uo) is det.
 	% io__file_modification_time(FileName, TimeResult)
 	% finds the last modification time of the given file.
+:- pred io__file_modification_time(string::in, io__res(time_t)::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-% Memory management predicates.
+	% Memory management predicates.
 
 	% Write memory/time usage statistics to stderr.
-
-:- pred io__report_stats(io__state, io__state).
-:- mode io__report_stats(di, uo) is det.
+:- pred io__report_stats(io::di, io::uo) is det.
 
 	% Write statistics to stderr; what statistics will be written
 	% is controlled by the first argument, which acts a selector.
@@ -1302,134 +1141,111 @@
 	%			of the tabling system. Requires the runtime
 	%			to have been compiled with the macro
 	%			MR_TABLE_STATISTICS defined.
-
-:- pred io__report_stats(string, io__state, io__state).
-:- mode io__report_stats(in, di, uo) is det.
-
-/*** no longer supported, sorry
-:- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
-:- mode io__gc_call(pred(di, uo) is det, di, uo) is det.
-%	io__gc_call(Goal, IO0, IO1).
-%		Execute Goal, passing IO0, and IO1, and
-%		collect any garbage created during it's execution.
-***/
+:- pred io__report_stats(string::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-% Miscellaneous predicates
+	% Miscellaneous predicates
 
-:- pred io__call_system(string, io__res(int), io__state, io__state).
-:- mode io__call_system(in, out, di, uo) is det.
-%	io__call_system(Command, Result, IO0, IO1).
-%		Invokes the operating system shell with the specified
-%		Command.  Result is either `ok(ExitStatus)', if it was
-%		possible to invoke the command, or `error(ErrorCode)' if not.
-%		The ExitStatus will be 0 if the command completed
-%		successfully or the return value of the system call.  If a
-%		signal kills the system call, then Result will be an error
-%		indicating which signal occurred.
+	% Invokes the operating system shell with the specified
+	% Command.  Result is either `ok(ExitStatus)', if it was
+	% possible to invoke the command, or `error(ErrorCode)' if not.
+	% The ExitStatus will be 0 if the command completed
+	% successfully or the return value of the system call.  If a
+	% signal kills the system call, then Result will be an error
+	% indicating which signal occurred.
+:- pred io__call_system(string::in, io__res(int)::out, io::di, io::uo) is det.
 
 :- type io__system_result
 	--->	exited(int)
-	;	signalled(int)
-	.
+	;	signalled(int).
 
-:- pred io__call_system_return_signal(string, io__res(io__system_result),
-		io__state, io__state).
-:- mode io__call_system_return_signal(in, out, di, uo) is det.
-%	io__call_system_return_signal(Command, Result, IO0, IO1).
-%		Invokes the operating system shell with the specified
-%		Command.  Result is either `ok(ExitStatus)' if it was
-%		possible to invoke the command and the it ran to completion,
-%		`signal(SignalNum)' if the command was killed by a signal, or
-%		`error(ErrorCode)' if the command could not be executed.
-%		The `ExitStatus' will be 0 if the command completed
-%		successfully or the return value of the command otherwise.
+	% Invokes the operating system shell with the specified
+	% Command.  Result is either `ok(ExitStatus)' if it was
+	% possible to invoke the command and the it ran to completion,
+	% `signal(SignalNum)' if the command was killed by a signal, or
+	% `error(ErrorCode)' if the command could not be executed.
+	% The `ExitStatus' will be 0 if the command completed
+	% successfully or the return value of the command otherwise.
+:- pred io__call_system_return_signal(string::in,
+	io__res(io__system_result)::out, io::di, io::uo) is det.
 
+	% Construct an error code including the specified error message.
 :- func io__make_io_error(string) = io__error.
-%	io__make_io_error(ErrorMessage) = ErrorCode.
-%		Construct an error code including the specified error message.
 
+	% Look up the error message corresponding to a particular error code.
 :- func io__error_message(io__error) = string.
-:- pred io__error_message(io__error, string).
-:- mode io__error_message(in, out) is det.
-%	io__error_message(ErrorCode, ErrorMessage).
-%		Look up the error message corresponding to a particular error
-%		code.
+:- pred io__error_message(io__error::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
-%
-% Deprecated predicates.
-%
-% Do not use these in new programs!
-% They may be deleted in the next release.
+
+	% Deprecated predicates.
+	%
+	% Do not use these in new programs!
+	% They may be deleted in the next release.
 
 	% use io__input_stream/3 instead -- it has identical semantics
 :- pragma obsolete(io__current_input_stream/3).
-:- pred io__current_input_stream(io__input_stream, io__state, io__state).
-:- mode io__current_input_stream(out, di, uo) is det.
+:- pred io__current_input_stream(io__input_stream::out, io::di, io::uo) is det.
 
 	% use io__output_stream/3 instead -- it has identical semantics
 :- pragma obsolete(io__current_output_stream/3).
-:- pred io__current_output_stream(io__output_stream, io__state, io__state).
-:- mode io__current_output_stream(out, di, uo) is det.
+:- pred io__current_output_stream(io__output_stream::out, io::di, io::uo)
+	is det.
 
 	% use io__binary_input_stream/3 instead -- it has identical semantics
 :- pragma obsolete(io__current_binary_input_stream/3).
-:- pred io__current_binary_input_stream(io__binary_input_stream,
-			io__state, io__state).
-:- mode io__current_binary_input_stream(out, di, uo) is det.
+:- pred io__current_binary_input_stream(io__binary_input_stream::out,
+	io::di, io::uo) is det.
 
 	% use io__binary_output_stream/3 instead -- it has identical semantics
 :- pragma obsolete(io__current_binary_output_stream/3).
-:- pred io__current_binary_output_stream(io__binary_output_stream,
-			io__state, io__state).
-:- mode io__current_binary_output_stream(out, di, uo) is det.
+:- pred io__current_binary_output_stream(io__binary_output_stream::out,
+	io::di, io::uo) is det.
 
-:- pragma obsolete(io__tmpnam/3). % use io__make_temp/3 instead
-:- pred io__tmpnam(string, io__state, io__state).
-:- mode io__tmpnam(out, di, uo) is det.
-	% io__tmpnam(Name, IO0, IO) binds `Name' to a temporary
-	% file name which is different to the name of any existing file.
+	% io__tmpnam(Name, !IO) binds `Name' to a temporary file name
+	% which is different to the name of any existing file.
 	% It will reside in /tmp if the TMPDIR environment variable
-	% is not set, or in the directory specified by TMPDIR if it
-	% is set.
+	% is not set, or in the directory specified by TMPDIR if it is set.
 	% Use of this predicate is deprecated, because it may
 	% result in race conditions.  Use io__make_temp/3 instead.
+:- pragma obsolete(io__tmpnam/3). % use io__make_temp/3 instead
+:- pred io__tmpnam(string::out, io::di, io::uo) is det.
 
-:- pragma obsolete(io__tmpnam/5). % use io__make_temp/5 instead
-:- pred io__tmpnam(string, string, string, io__state, io__state).
-:- mode io__tmpnam(in, in, out, di, uo) is det.
-	% io__tmpnam(Dir, Prefix, Name, IO0, IO) binds `Name' to a
+	% io__tmpnam(Dir, Prefix, Name, !IO) binds `Name' to a
 	% temporary file name which is different to the name of any
 	% existing file. It will reside in the directory specified by
 	% `Dir' and have a prefix using up to the first 5 characters
 	% of `Prefix'.
 	% Use of this predicate is deprecated, because it may
 	% result in race conditions.  Use io__make_temp/5 instead.
+:- pragma obsolete(io__tmpnam/5). % use io__make_temp/5 instead
+:- pred io__tmpnam(string::in, string::in, string::out, io::di, io::uo) is det.
 
-	% OBSOLETE: call io__report_stats/3 instead, with the first argument
-	% specified as "full_memory_stats".
-:- pragma obsolete(io__report_full_memory_stats/2).
-:- pred io__report_full_memory_stats(io__state, io__state).
-:- mode io__report_full_memory_stats(di, uo) is det.
 	% Write complete memory usage statistics to stderr,
 	% including information about all procedures and types.
 	% (You need to compile with memory profiling enabled.)
+	%
+	% OBSOLETE: call io__report_stats/3 instead, with the first argument
+	% specified as "full_memory_stats".
+:- pragma obsolete(io__report_full_memory_stats/2).
+:- pred io__report_full_memory_stats(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 % Everything below here is not intended to be part of the public interface,
 % and will not be included in the Mercury library reference manual.
 
 %-----------------------------------------------------------------------------%
+
 :- interface.
 
-%
-% For use by dir.m:
-%
+	%
+	% For use by dir.m:
+	%
 
 	% A system-dependent error indication.
 	% For C, this is the value of errno.
@@ -1439,13 +1255,12 @@
 		"class [mscorlib]System.Exception").
 :- pragma foreign_type(java, io__system_error, "java.lang.Exception").
 
-% io__make_err_msg(Error, MessagePrefix, Message):
-%	`Message' is an error message obtained by looking up the
-%	message for the given errno value and prepending
-%	`MessagePrefix'.
-:- pred io__make_err_msg(io__system_error, string, string,
-		io__state, io__state).
-:- mode io__make_err_msg(in, in, out, di, uo) is det.
+	% io__make_err_msg(Error, MessagePrefix, Message):
+	% `Message' is an error message obtained by looking up the
+	% message for the given errno value and prepending
+	% `MessagePrefix'.
+:- pred io__make_err_msg(io__system_error::in, string::in, string::out,
+	io::di, io::uo) is det.
 
 % Succeeds iff the Win32 API is available.
 :- pred have_win32 is semidet.
@@ -1456,60 +1271,59 @@
 % Succeeds iff the .NET class library is available.
 :- pred have_dotnet is semidet.
 
-% io__make_win32_err_msg(Error, MessagePrefix, Message):
-%	`Message' is an error message obtained by looking up the
-%	error message for the given Win32 error number and prepending
-%	`MessagePrefix'.
-%	This will abort if called on a system which does not support
-%	the Win32 API.
-:- pred io__make_win32_err_msg(io__system_error,
-		string, string, io__state, io__state).
-:- mode io__make_win32_err_msg(in, in, out, di, uo) is det.
+	% io__make_win32_err_msg(Error, MessagePrefix, Message):
+	% `Message' is an error message obtained by looking up the
+	% error message for the given Win32 error number and prepending
+	% `MessagePrefix'.
+	% This will abort if called on a system which does not support
+	% the Win32 API.
+:- pred io__make_win32_err_msg(io__system_error::in,
+	string::in, string::out, io::di, io::uo) is det.
 
-% io__make_maybe_win32_err_msg(Error, MessagePrefix, Message):
-%	`Message' is an error message obtained by looking up the
-%	last Win32 error message and prepending `MessagePrefix'.
-%	On non-Win32 systems, the message corresponding to the
-%	current value of errno will be used.
-:- pred io__make_maybe_win32_err_msg(io__system_error,
-		string, string, io__state, io__state).
-:- mode io__make_maybe_win32_err_msg(in, in, out, di, uo) is det.
+	% io__make_maybe_win32_err_msg(Error, MessagePrefix, Message):
+	% `Message' is an error message obtained by looking up the
+	% last Win32 error message and prepending `MessagePrefix'.
+	% On non-Win32 systems, the message corresponding to the
+	% current value of errno will be used.
+:- pred io__make_maybe_win32_err_msg(io__system_error::in,
+	string::in, string::out, io::di, io::uo) is det.
 
-% io__file_id(FileName, FileId).
-%
-%	Return a unique identifier for the given file (after following
-%	symlinks in FileName).
-%	XXX On Cygwin sometimes two files will have the same file_id.
-%	This is because MS-Windows does not use inodes, so Cygwin
-%	hashes the absolute file name.
-%	On Windows without Cygwin this will always return error(_).
-%	That doesn't matter, because this function is only used for
-%	checking for symlink loops in dir.foldl2, but plain Windows
-%	doesn't support symlinks.
+	% Return a unique identifier for the given file (after following
+	% symlinks in FileName).
+	% XXX On Cygwin sometimes two files will have the same file_id.
+	% This is because MS-Windows does not use inodes, so Cygwin
+	% hashes the absolute file name.
+	% On Windows without Cygwin this will always return error(_).
+	% That doesn't matter, because this function is only used for
+	% checking for symlink loops in dir.foldl2, but plain Windows
+	% doesn't support symlinks.
 :- type file_id.
-:- pred io__file_id(string, io__res(file_id), io__state, io__state).
-:- mode io__file_id(in, out, di, uo) is det.
+:- pred io__file_id(string::in, io__res(file_id)::out, io::di, io::uo) is det.
 
-% Succeeds if io__file_id is implemented on this platform.
+	% Succeeds if io__file_id is implemented on this platform.
 :- pred io__have_file_ids is semidet.
 
-%
-% For use by term_io.m:
-%
+	%
+	% For use by term_io.m:
+	%
 
 :- import_module ops.
 
-:- pred io__get_op_table(ops__table, io__state, io__state).
-:- mode io__get_op_table(out, di, uo) is det.
+:- pred io__get_op_table(ops__table::out, io::di, io::uo) is det.
 
-:- pred io__set_op_table(ops__table, io__state, io__state).
-:- mode io__set_op_table(di, di, uo) is det.
+:- pred io__set_op_table(ops__table::di, io::di, io::uo) is det.
 
-%
-% For use by browser/browse.m:
-%
+:- pred adjust_priority_for_assoc(ops__priority::in, ops__assoc::in,
+	ops__priority::out) is det.
 
-% Types and predicates for managing the stream info database.
+:- pred maybe_write_paren(char::in, ops__priority::in, ops__priority::in,
+	io::di, io::uo) is det.
+
+	%
+	% For use by browser/browse.m:
+	%
+
+	% Types and predicates for managing the stream info database.
 
 :- type io__stream_db ==	map(io__stream_id, stream_info).
 
@@ -1530,43 +1344,46 @@
 		)
 	;	unknown_stream.
 
-:- type stream_mode	--->	input
-			;	output
-			;	append.
+:- type stream_mode
+	--->	input
+	;	output
+	;	append.
 
-:- type stream_content	--->	text
-			;	binary
-			;	preopen.
+:- type stream_content
+	--->	text
+	;	binary
+	;	preopen.
 
-:- type stream_source	--->	file(string)	% the file name
-			;	stdin
-			;	stdout
-			;	stderr.
+:- type stream_source
+	--->	file(string)	% the file name
+	;	stdin
+	;	stdout
+	;	stderr.
 
+	% Retrieves the database mapping streams to the information we have
+	% about those streams.
 :- pred io__get_stream_db(io__stream_db::out, io__state::di, io__state::uo)
 	is det.
-% Retrieves the database mapping streams to the information we have
-% about those streams.
 
+	% Returns the information associated with the specified input
+	% stream in the given stream database.
 :- func io__input_stream_info(io__stream_db, io__input_stream)
 	= io__maybe_stream_info.
-%	Returns the information associated with the specified input
-%	stream in the given stream database.
 
+	% Returns the information associated with the specified output
+	% stream in the given stream database.
 :- func io__output_stream_info(io__stream_db, io__output_stream)
 	= io__maybe_stream_info.
-%	Returns the information associated with the specified output
-%	stream in the given stream database.
 
+	% Returns the information associated with the specified binary input
+	% stream in the given stream database.
 :- func io__binary_input_stream_info(io__stream_db, io__binary_input_stream)
 	= io__maybe_stream_info.
-%	Returns the information associated with the specified binary input
-%	stream in the given stream database.
 
+	% Returns the information associated with the specified binary output
+	% stream in the given stream database.
 :- func io__binary_output_stream_info(io__stream_db, io__binary_output_stream)
 	= io__maybe_stream_info.
-%	Returns the information associated with the specified binary output
-%	stream in the given stream database.
 
 % Predicates for writing out univs
 
@@ -1583,32 +1400,31 @@
 :- mode io__write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__write_univ(in, in, in, di, uo) is cc_multi.
 
-%
-% For use by extras/aditi/aditi.m
-%
+	%
+	% For use by extras/aditi/aditi.m
+	%
 
 	% This is the same as io__read_from_string, except that an integer
 	% is allowed where a character is expected. This is needed because
 	% Aditi does not have a builtin character type. This also allows an
 	% integer where a float is expected.
-:- pred io__read_from_string_with_int_instead_of_char(string, string, int,
-			io__read_result(T), posn, posn).
-:- mode io__read_from_string_with_int_instead_of_char(in, in, in,
-			out, in, out) is det.
+:- pred io__read_from_string_with_int_instead_of_char(string::in, string::in,
+	int::in, io__read_result(T)::out, posn::in, posn::out) is det.
 
-%
-% For use by compiler/process_util.m:
-%
+	%
+	% For use by compiler/process_util.m:
+	%
 
 	% Interpret the child process exit status returned by
 	% system() or wait().
 :- func io__handle_system_command_exit_status(int) =
-		io__res(io__system_result).
+	io__res(io__system_result).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
 :- import_module bool, enum, int, parser, exception.
 :- use_module table_builtin.
@@ -1616,12 +1432,12 @@
 
 :- pragma foreign_import_module(c, string).
 
-:- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
 	% instead we store data in global variables.
 	% The reason this is not defined simply as `io__state == c_pointer'
 	% is so that `type_name' produces more informative results
 	% for cases such as `type_name(main)'.
+:- type io__state ---> io__state(c_pointer).
 
 :- pragma foreign_decl("C", "
 	extern MR_Word		ML_io_stream_db;
@@ -1662,8 +1478,8 @@
 	// It must be either ML_OS_text_encoding or ML_Unix_text_encoding.
 	//
 	// XXX The initial setting for this should be controlled
-	//     by an environment variable.  (This might require moving
-	//     the code which initializes mercury_stdin, etc.)
+	// by an environment variable.  (This might require moving
+	// the code which initializes mercury_stdin, etc.)
 	//
 	static ML_file_encoding_kind ML_default_text_encoding =
 		ML_file_encoding_kind.ML_OS_text_encoding;
@@ -1672,11 +1488,10 @@
 :- pragma foreign_code("Java",
 "
 	static java.lang.Object	ML_io_stream_db =
-			new mercury.tree234.tree234_2.empty_0();
+		new mercury.tree234.tree234_2.empty_0();
 	static java.lang.Object	ML_io_user_globals =
-			new mercury.tree234.tree234_2.empty_0();
+		new mercury.tree234.tree234_2.empty_0();
 ").
-
 
 :- type io__stream_putback ==	map(io__stream_id, list(char)).
 
@@ -1698,44 +1513,42 @@
 
 	% This inter-language stuff is tricky.
 	% We communicate via ints rather than via io__result_codes because
-	% we don't want the C code to depend on how Mercury stores its
-	% discriminated union data types.
+	% we don't want the C/Java/etc code to depend on how Mercury stores
+	% its discriminated union data types.
 
-:- pred io__read_char_code(io__input_stream, int, io__state, io__state).
-:- mode io__read_char_code(in, out, di, uo) is det.
-%		Reads a character from specified stream,
-%		and returns the numerical value for that character
-%		(as from char__to_int).
-%		This may involve converting external character encodings
-%		into Mercury's internal character repesentation
-%		and (for text streams) converting OS line indicators,
-%		e.g. CR-LF for Windows, to '\n' characters.
-%		Returns -1 if at EOF, -2 if an error occurs.
+	% Reads a character from specified stream,
+	% and returns the numerical value for that character
+	% (as from char__to_int).
+	% This may involve converting external character encodings
+	% into Mercury's internal character repesentation
+	% and (for text streams) converting OS line indicators,
+	% e.g. CR-LF for Windows, to '\n' characters.
+	% Returns -1 if at EOF, -2 if an error occurs.
+:- pred io__read_char_code(io__input_stream::in, int::out, io::di, io::uo)
+	is det.
 
-:- pred io__read_byte_val(io__input_stream, int, io__state, io__state).
-:- mode io__read_byte_val(in, out, di, uo) is det.
-%		Reads a byte from specified stream.
-%		Returns -1 if at EOF, -2 if an error occurs.
+	% Reads a byte from specified stream.
+	% Returns -1 if at EOF, -2 if an error occurs.
+:- pred io__read_byte_val(io__input_stream::in, int::out,
+	io::di, io::uo) is det.
 
-:- pred io__call_system_code(string, int, string, io__state, io__state).
-:- mode io__call_system_code(in, out, out, di, uo) is det.
-%	io__call_system_code(Command, Status, Message, IO0, IO1).
-%		Invokes the operating system shell with the specified
-%		Command.  Returns Status = 127 and Message on failure.
-%		Otherwise returns the raw exit status from the system()
-%		call.
+	% io__call_system_code(Command, Status, Message, !IO):
+	% Invokes the operating system shell with the specified
+	% Command.  Returns Status = 127 and Message on failure.
+	% Otherwise returns the raw exit status from the system()
+	% call.
+:- pred io__call_system_code(string::in, int::out, string::out,
+	io::di, io::uo) is det.
 
-:- semipure pred io__getenv(string, string).
-:- mode io__getenv(in, out) is semidet.
-%	io__getenv(Var, Value).
-%		Gets the value Value associated with the environment
-%		variable Var.  Fails if the variable was not set.
+	% io__getenv(Var, Value):
+	% Gets the value Value associated with the environment
+	% variable Var.  Fails if the variable was not set.
+:- semipure pred io__getenv(string::in, string::out) is semidet.
 
-:- impure pred io__setenv(string, string).
-:- mode io__setenv(in, in) is semidet.
-%	io__setenv(NameString,ValueString).
-%		Sets the named environment variable to the specified
-%		value.  Fails if the operation does not work.
+	% io__setenv(NameString,ValueString):
+	% Sets the named environment variable to the specified
+	% value.  Fails if the operation does not work.
+:- impure pred io__setenv(string::in, string::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -1745,167 +1558,145 @@
 :- pragma inline(io__read_char/3).
 :- pragma inline(io__read_char/4).
 
-io__read_char(Result) -->
-	io__input_stream(Stream),
-	io__read_char(Stream, Result).
+io__read_char(Result, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__read_char(Stream, Result, !IO).
 
-io__read_char(Stream, Result) -->
-	io__read_char_code(Stream, Code),
-	(
-		{ Code = -1 }
-	->
-		{ Result = eof }
+io__read_char(Stream, Result, !IO) :-
+	io__read_char_code(Stream, Code, !IO),
+	( Code = -1 ->
+		Result = eof
+	; char__to_int(Char, Code) ->
+		Result = ok(Char)
 	;
-		{ char__to_int(Char, Code) }
-	->
-		{ Result = ok(Char) }
-	;
-		io__make_err_msg("read failed: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("read failed: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
 % we want to inline these, to allow deforestation
 :- pragma inline(io__read_byte/3).
 :- pragma inline(io__read_byte/4).
 
-io__read_byte(Result) -->
-	io__binary_input_stream(Stream),
-	io__read_byte(Stream, Result).
+io__read_byte(Result, !IO) :-
+	io__binary_input_stream(Stream, !IO),
+	io__read_byte(Stream, Result, !IO).
 
-io__read_byte(Stream, Result) -->
-	io__read_byte_val(Stream, Code),
-	(
-		{ Code >= 0 }
-	->
-		{ Result = ok(Code) }
+io__read_byte(Stream, Result, !IO) :-
+	io__read_byte_val(Stream, Code, !IO),
+	( Code >= 0 ->
+		Result = ok(Code)
+	; Code = -1 ->
+		Result = eof
 	;
-		{ Code = -1 }
-	->
-		{ Result = eof }
-	;
-		io__make_err_msg("read failed: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("read failed: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
-io__read_word(Result) -->
-	io__input_stream(Stream),
-	io__read_word(Stream, Result).
+io__read_word(Result, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__read_word(Stream, Result, !IO).
 
-io__read_word(Stream, Result) -->
-	io__ignore_whitespace(Stream, WSResult),
+io__read_word(Stream, Result, !IO) :-
+	io__ignore_whitespace(Stream, WSResult, !IO),
 	(
-		{ WSResult = error(Error) },
-		{ Result = error(Error) }
+		WSResult = error(Error),
+		Result = error(Error)
 	;
-		{ WSResult = eof },
-		{ Result = eof }
+		WSResult = eof,
+		Result = eof
 	;
-		{ WSResult = ok },
-		io__read_word_2(Stream, Result)
+		WSResult = ok,
+		io__read_word_2(Stream, Result, !IO)
 	).
 
-:- pred io__read_word_2(io__input_stream, io__result(list(char)),
-				io__state, io__state).
-:- mode	io__read_word_2(in, out, di, uo) is det.
+:- pred io__read_word_2(io__input_stream::in, io__result(list(char))::out,
+	io::di, io::uo) is det.
 
-io__read_word_2(Stream, Result) -->
-	io__read_char(Stream, CharResult),
+io__read_word_2(Stream, Result, !IO) :-
+	io__read_char(Stream, CharResult, !IO),
 	(
-		{ CharResult = error(Error) },
-		{ Result = error(Error) }
+		CharResult = error(Error),
+		Result = error(Error)
 	;
-		{ CharResult = eof },
-		{ Result = eof }
+		CharResult = eof,
+		Result = eof
 	;
-		{ CharResult = ok(Char) },
-		(
-			{ char__is_whitespace(Char) }
-		->
-			io__putback_char(Stream, Char),
-			{ Result = ok([]) }
+		CharResult = ok(Char),
+		( char__is_whitespace(Char) ->
+			io__putback_char(Stream, Char, !IO),
+			Result = ok([])
 		;
-			io__read_word_2(Stream, Result0),
+			io__read_word_2(Stream, Result0, !IO),
 			(
-				{ Result0 = ok(Chars) },
-				{ Result = ok([Char | Chars]) }
+				Result0 = ok(Chars),
+				Result = ok([Char | Chars])
 			;
-				{ Result0 = error(_) },
-				{ Result = Result0 }
+				Result0 = error(_),
+				Result = Result0
 			;
-				{ Result0 = eof },
-				{ Result = ok([Char]) }
+				Result0 = eof,
+				Result = ok([Char])
 			)
-		)	
+		)
 	).
 
-io__read_line(Result) -->
-	io__input_stream(Stream),
-	io__read_line(Stream, Result).
+io__read_line(Result, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__read_line(Stream, Result, !IO).
 
-io__read_line(Stream, Result) -->
-	io__read_char_code(Stream, Code),
-	(
-		{ Code = -1 }
-	->
-		{ Result = eof }
-	;
-		{ char__to_int(Char, Code) }
-	->
-		( { Char = '\n' } ->
-			{ Result = ok([Char]) }
+io__read_line(Stream, Result, !IO) :-
+	io__read_char_code(Stream, Code, !IO),
+	( Code = -1 ->
+		Result = eof
+	; char__to_int(Char, Code) ->
+		( Char = '\n' ->
+			Result = ok([Char])
 		;
-			io__read_line_2(Stream, Result0),
-			{ Result = ok([Char | Result0]) }
+			io__read_line_2(Stream, Result0, !IO),
+			Result = ok([Char | Result0])
 		)
 	;
-		io__make_err_msg("read failed: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("read failed: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
-:- pred io__read_line_2(io__input_stream, list(char), io__state, io__state).
-:- mode io__read_line_2(in, out, di, uo) is det.
+:- pred io__read_line_2(io__input_stream::in, list(char)::out,
+	io::di, io::uo) is det.
 
-io__read_line_2(Stream, Result) -->
-	io__read_char_code(Stream, Code),
-	(
-		{ Code = -1 }
-	->
-		{ Result = [] }
-	;
-		{ char__to_int(Char, Code) }
-	->
-		( { Char = '\n' } ->
-			{ Result = [Char] }
+io__read_line_2(Stream, Result, !IO) :-
+	io__read_char_code(Stream, Code, !IO),
+	( Code = -1 ->
+		Result = []
+	; char__to_int(Char, Code) ->
+		( Char = '\n' ->
+			Result = [Char]
 		;
-			io__read_line_2(Stream, Chars),
-			{ Result = [Char | Chars] }
+			io__read_line_2(Stream, Chars, !IO),
+			Result = [Char | Chars]
 		)
 	;
-		{ Result = [] }
+		Result = []
 	).
 
-io__read_line_as_string(Result) -->
-	io__input_stream(Stream),
-	io__read_line_as_string(Stream, Result).
+io__read_line_as_string(Result, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__read_line_as_string(Stream, Result, !IO).
 
-io__read_line_as_string(Stream, Result, IO0, IO) :-
-	io__read_line_as_string_2(Stream, yes, Res, String, IO0, IO1),
+io__read_line_as_string(Stream, Result, !IO) :-
+	io__read_line_as_string_2(Stream, yes, Res, String, !IO),
 	( Res < 0 ->
 		( Res = -1 ->
-			Result = eof,
-			IO = IO1
+			Result = eof
 		;
-			io__make_err_msg("read failed: ", Msg, IO1, IO),
+			io__make_err_msg("read failed: ", Msg, !IO),
 			Result = error(io_error(Msg))
 		)
 	;
-		Result = ok(String),
-		IO = IO1
+		Result = ok(String)
 	).
 
-:- pred io__read_line_as_string_2(io__input_stream, bool, int, string,
-		io__state, io__state).
-:- mode io__read_line_as_string_2(in, in, out, out, di, uo) is det.
+:- pred io__read_line_as_string_2(io__input_stream::in, bool::in, int::out,
+	string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__read_line_as_string_2(File::in, _Bool::in, Res :: out,
@@ -1942,12 +1733,12 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 			read_buf_size = ML_IO_READ_LINE_GROW(read_buf_size);
 			if (read_buffer == initial_read_buffer) {
 				read_buffer = MR_NEW_ARRAY(MR_Char,
-						read_buf_size);
+					read_buf_size);
 				memcpy(read_buffer, initial_read_buffer,
 					ML_IO_READ_LINE_START);
 			} else {
 				read_buffer = MR_RESIZE_ARRAY(read_buffer,
-						MR_Char, read_buf_size);
+					MR_Char, read_buf_size);
 			}
 		}
 	}
@@ -1968,60 +1759,63 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 
 	% XXX This is terribly inefficient, a better approach would be to
 	% use a buffer like what is done for io__read_file_as_string.
-io__read_line_as_string_2(Stream, FirstCall, Res, String) -->
-	io__read_char(Stream, Result),
-	( { Result = ok(Char) },
-		( { Char = '\n' } ->
-			{ Res = 0 },
-			{ String = "\n" }
+io__read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
+	io__read_char(Stream, Result, !IO),
+	(
+		Result = ok(Char),
+		( Char = '\n' ->
+			Res = 0,
+			String = "\n"
 		;
-			io__read_line_as_string_2(Stream, no, Res, String0),
-			{ string__first_char(String, Char, String0) } 
+			io__read_line_as_string_2(Stream, no, Res, String0,
+				!IO),
+			string__first_char(String, Char, String0)
 		)
-	; { Result = eof },
-		{ FirstCall = yes ->
+	;
+		Result = eof,
+		( FirstCall = yes ->
 			String = "",
 			Res = -1
 		;
 			String = "",
 			Res = 0
-		}
-	; { Result = error(_) },
-		{ String = "" },
-		{ Res = -2 }
+		)
+	;
+		Result = error(_),
+		String = "",
+		Res = -2
 	).
 
-io__read_file(Result) -->
-	io__input_stream(Stream),
-	io__read_file(Stream, Result).
+io__read_file(Result, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__read_file(Stream, Result, !IO).
 
-io__read_file(Stream, Result) -->
-	io__read_file_2(Stream, [], Result).
+io__read_file(Stream, Result, !IO) :-
+	io__read_file_2(Stream, [], Result, !IO).
 
-:- pred io__read_file_2(io__input_stream, list(char),
-		io__maybe_partial_res(list(char)), io__state, io__state).
-:- mode io__read_file_2(in, in, out, di, uo) is det.
+:- pred io__read_file_2(io__input_stream::in, list(char)::in,
+	io__maybe_partial_res(list(char))::out, io::di, io::uo) is det.
 
-io__read_file_2(Stream, Chars0, Result) -->
-	io__read_char(Stream, Result0),
+io__read_file_2(Stream, Chars0, Result, !IO) :-
+	io__read_char(Stream, Result0, !IO),
 	(
-		{ Result0 = eof },
-		{ Result = ok(list__reverse(Chars0)) }
+		Result0 = eof,
+		Result = ok(list__reverse(Chars0))
 	;
-		{ Result0 = error(Err) },
-		{ Result = error(list__reverse(Chars0), Err) }
+		Result0 = error(Err),
+		Result = error(list__reverse(Chars0), Err)
 	;
-		{ Result0 = ok(Char) },
-		io__read_file_2(Stream, [Char|Chars0], Result)
+		Result0 = ok(Char),
+		io__read_file_2(Stream, [Char | Chars0], Result, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
 
-io__read_file_as_string(Result) -->
-	io__input_stream(Stream),
-	io__read_file_as_string(Stream, Result).
+io__read_file_as_string(Result, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__read_file_as_string(Stream, Result, !IO).
 
-io__read_file_as_string(Stream, Result) -->
+io__read_file_as_string(Stream, Result, !IO) :-
 	%
 	% check if the stream is a regular file;
 	% if so, allocate a buffer according to the
@@ -2029,143 +1823,138 @@ io__read_file_as_string(Stream, Result) -->
 	% a default buffer size of 4k minus a bit
 	% (to give malloc some room).
 	%
-	io__stream_file_size(Stream, FileSize),
-	{ FileSize >= 0 ->
+	io__stream_file_size(Stream, FileSize, !IO),
+	( FileSize >= 0 ->
 		BufferSize0 = FileSize + 1
 	;
 		BufferSize0 = 4000
-	},
-	{ io__alloc_buffer(BufferSize0, Buffer0) },
+	),
+	io__alloc_buffer(BufferSize0, Buffer0),
 
 	%
 	% Read the file into the buffer (resizing it as we go if necessary),
 	% convert the buffer into a string, and see if anything went wrong.
 	%
-	io__clear_err(Stream),
-	{ Pos0 = 0 },
-	io__read_file_as_string_2(Stream, Buffer0, Pos0, BufferSize0,
-		Buffer, Pos, BufferSize),
-	{ require(Pos < BufferSize, "io__read_file_as_string: overflow") },
-	{ io__buffer_to_string(Buffer, Pos, String) },
-	io__check_err(Stream, Result0),
-	{
+	io__clear_err(Stream, !IO),
+	Pos0 = 0,
+	io__read_file_as_string_2(Stream, Buffer0, Buffer, Pos0, Pos,
+		BufferSize0, BufferSize, !IO),
+	require(Pos < BufferSize, "io__read_file_as_string: overflow"),
+	io__buffer_to_string(Buffer, Pos, String),
+	io__check_err(Stream, Result0, !IO),
+	(
 		Result0 = ok,
 		Result = ok(String)
 	;
 		Result0 = error(Error),
 		Result = error(String, Error)
-	}.
+	).
 
-:- pred io__read_file_as_string_2(io__input_stream, buffer, int, int,
-		buffer, int, int, io__state, io__state).
-:- mode io__read_file_as_string_2(in, buffer_di, in, in,
-		buffer_uo, out, out, di, uo) is det.
+:- pred io__read_file_as_string_2(io__input_stream::in, buffer::buffer_di,
+	buffer::buffer_uo, int::in, int::out, int::in, int::out,
+	io::di, io::uo) is det.
 
-io__read_file_as_string_2(Stream, Buffer0, Pos0, Size0, Buffer, Pos, Size) -->
-	io__read_into_buffer(Stream, Buffer0, Pos0, Size0,
-		Buffer1, Pos1),
-	( { Pos1 =< Pos0 } ->
+io__read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO) :-
+	Pos0 = !.Pos,
+	Size0 = !.Size,
+	io__read_into_buffer(Stream, !Buffer, !Pos, !.Size, !IO),
+	( !.Pos =< Pos0 ->
 		% end-of-file or error
-		{ Size = Size0 },
-		{ Pos = Pos0 },
-		{ Buffer = Buffer1 }
-	; { Pos1 = Size0 } ->
+		true
+	; !.Pos = Size0 ->
 		% full buffer
-		{ Size1 = Size0 * 2 },
-		{ io__resize_buffer(Buffer1, Size0, Size1, Buffer2) },
-		io__read_file_as_string_2(Stream, Buffer2, Pos1, Size1,
-			Buffer, Pos, Size)
+		!:Size = Size0 * 2,
+		io__resize_buffer(Size0, !.Size, !Buffer),
+		io__read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
 	;
-		io__read_file_as_string_2(Stream, Buffer1, Pos1, Size0,
-			Buffer, Pos, Size)
+		io__read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
 
-io__input_stream_foldl(Pred, T0, Res) -->
-	io__input_stream(Stream),
-	io__input_stream_foldl(Stream, Pred, T0, Res).
+io__input_stream_foldl(Pred, T0, Res, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__input_stream_foldl(Stream, Pred, T0, Res, !IO).
 
-io__input_stream_foldl(Stream, Pred, T0, Res) -->
-	io__read_char(Stream, CharResult),
+io__input_stream_foldl(Stream, Pred, T0, Res, !IO) :-
+	io__read_char(Stream, CharResult, !IO),
 	(
-		{ CharResult = ok(Char) },
-		{ Pred(Char, T0, T1) },
-		io__input_stream_foldl(Stream, Pred, T1, Res)
-	;
-		{ CharResult = eof },
-		{ Res = ok(T0) }
-	;
-		{ CharResult = error(Error) },
-		{ Res = error(T0, Error) }
-	).
-
-io__input_stream_foldl_io(Pred, Res) -->
-	io__input_stream(Stream),
-	io__input_stream_foldl_io(Stream, Pred, Res).
-
-io__input_stream_foldl_io(Stream, Pred, Res) -->
-	io__read_char(Stream, CharResult),
-	(
-		{ CharResult = ok(Char) },
-		Pred(Char),
-		io__input_stream_foldl_io(Stream, Pred, Res)
-	;
-		{ CharResult = eof },
-		{ Res = ok }
-	;
-		{ CharResult = error(Error) },
-		{ Res = error(Error) }
-	).
-
-io__input_stream_foldl2_io(Pred, T0, Res) -->
-	io__input_stream(Stream),
-	io__input_stream_foldl2_io(Stream, Pred, T0, Res).
-
-io__input_stream_foldl2_io(Stream, Pred, T0, Res) -->
-	io__read_char(Stream, CharResult),
-	(
-		{ CharResult = ok(Char) },
+		CharResult = ok(Char),
 		Pred(Char, T0, T1),
-		io__input_stream_foldl2_io(Stream, Pred, T1, Res)
+		io__input_stream_foldl(Stream, Pred, T1, Res, !IO)
 	;
-		{ CharResult = eof },
-		{ Res = ok(T0) }
+		CharResult = eof,
+		Res = ok(T0)
 	;
-		{ CharResult = error(Error) },
-		{ Res = error(T0, Error) }
+		CharResult = error(Error),
+		Res = error(T0, Error)
 	).
 
-io__input_stream_foldl2_io_maybe_stop(Pred, T0, Res) -->
-	io__input_stream(Stream),
-	io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res).
+io__input_stream_foldl_io(Pred, Res, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__input_stream_foldl_io(Stream, Pred, Res, !IO).
 
-io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res) -->
-	io__read_char(Stream, CharResult),
+io__input_stream_foldl_io(Stream, Pred, Res, !IO) :-
+	io__read_char(Stream, CharResult, !IO),
 	(
-		{ CharResult = ok(Char) },
-		Pred(Char, Continue, T0, T1),
+		CharResult = ok(Char),
+		Pred(Char, !IO),
+		io__input_stream_foldl_io(Stream, Pred, Res, !IO)
+	;
+		CharResult = eof,
+		Res = ok
+	;
+		CharResult = error(Error),
+		Res = error(Error)
+	).
+
+io__input_stream_foldl2_io(Pred, T0, Res, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__input_stream_foldl2_io(Stream, Pred, T0, Res, !IO).
+
+io__input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
+	io__read_char(Stream, CharResult, !IO),
+	(
+		CharResult = ok(Char),
+		Pred(Char, T0, T1, !IO),
+		io__input_stream_foldl2_io(Stream, Pred, T1, Res, !IO)
+	;
+		CharResult = eof,
+		Res = ok(T0)
+	;
+		CharResult = error(Error),
+		Res = error(T0, Error)
+	).
+
+io__input_stream_foldl2_io_maybe_stop(Pred, T0, Res, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO).
+
+io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
+	io__read_char(Stream, CharResult, !IO),
+	(
+		CharResult = ok(Char),
+		Pred(Char, Continue, T0, T1, !IO),
 		(
-			{ Continue = no },
-			{ Res = ok(T1) }
+			Continue = no,
+			Res = ok(T1)
 		;
-			{ Continue = yes },
+			Continue = yes,
 			io__input_stream_foldl2_io_maybe_stop(Stream,
-				Pred, T1, Res)
+				Pred, T1, Res, !IO)
 		)
 	;
-		{ CharResult = eof },
-		{ Res = ok(T0) }
+		CharResult = eof,
+		Res = ok(T0)
 	;
-		{ CharResult = error(Error) },
-		{ Res = error(T0, Error) }
+		CharResult = error(Error),
+		Res = error(T0, Error)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred io__clear_err(stream, io__state, io__state).
-:- mode io__clear_err(in, di, uo) is det.
-% same as ANSI C's clearerr().
+	% same as ANSI C's clearerr().
+:- pred io__clear_err(stream::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__clear_err(Stream::in, IO0::di, IO::uo),
@@ -2195,20 +1984,18 @@ io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res) -->
 	// XXX as for .NET above
 ").
 
-:- pred io__check_err(stream, io__res, io__state, io__state).
-:- mode io__check_err(in, out, di, uo) is det.
+:- pred io__check_err(stream::in, io__res::out, io::di, io::uo) is det.
 
-io__check_err(Stream, Res) -->
-	io__ferror(Stream, Int, Msg),
-	{ Int = 0 ->
+io__check_err(Stream, Res, !IO) :-
+	io__ferror(Stream, Int, Msg, !IO),
+	( Int = 0 ->
 		Res = ok
 	;
 		Res = error(io_error(Msg))
-	}.
+	).
 
-:- pred io__ferror(stream, int, string, io__state, io__state).
-:- mode io__ferror(in, out, out, di, uo) is det.
-% similar to ANSI C's ferror().
+	% similar to ANSI C's ferror().
+:- pred io__ferror(stream::in, int::out, string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	ferror(Stream::in, RetVal::out, RetStr::out, IO0::di, IO::uo),
@@ -2241,15 +2028,13 @@ io__check_err(Stream, Res) -->
 	RetVal = 0;
 }").
 
-:- pred io__make_err_msg(string, string, io__state, io__state).
-:- mode io__make_err_msg(in, out, di, uo) is det.
+:- pred io__make_err_msg(string::in, string::out, io::di, io::uo) is det.
 
-io__make_err_msg(Msg0, Msg) -->
-	io__get_system_error(Error),
-	io__make_err_msg(Error, Msg0, Msg).
+io__make_err_msg(Msg0, Msg, !IO) :-
+	io__get_system_error(Error, !IO),
+	io__make_err_msg(Error, Msg0, Msg, !IO).
 
-:- pred io__get_system_error(io__system_error, io__state, io__state).
-:- mode io__get_system_error(out, di, uo) is det.
+:- pred io__get_system_error(io__system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__get_system_error(Error::out, IO0::di, IO::uo),
@@ -2282,7 +2067,7 @@ io__make_err_msg(Msg0, Msg) -->
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "{
@@ -2307,9 +2092,9 @@ have_win32 :- semidet_fail.
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 #ifdef MR_WIN32
-  SUCCESS_INDICATOR = MR_TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #else
-  SUCCESS_INDICATOR = MR_FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
 
@@ -2320,9 +2105,9 @@ have_cygwin :- semidet_fail.
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 #ifdef __CYGWIN__
-  SUCCESS_INDICATOR = MR_TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #else
-  SUCCESS_INDICATOR = MR_FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
 
@@ -2331,7 +2116,9 @@ have_dotnet :- semidet_fail.
 :- pragma foreign_proc("C#",
 	have_dotnet,
 	[will_not_call_mercury, promise_pure, thread_safe],
-	"SUCCESS_INDICATOR = true;").
+"
+	SUCCESS_INDICATOR = true;
+").
 
 :- pragma export(make_win32_err_msg(in, in, out, di, uo),
 		"ML_make_win32_err_msg").
@@ -2352,15 +2139,14 @@ make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
 		make_win32_err_msg(Error, Msg0, Msg, !IO)
 	;
 		make_err_msg(Error, Msg0, Msg, !IO)
-	).		
+	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred io__stream_file_size(stream, int, io__state, io__state).
-:- mode io__stream_file_size(in, out, di, uo) is det.
-% io__stream_file_size(Stream, Size):
-%	if Stream is a regular file, then Size is its size (in bytes),
-%	otherwise Size is -1.
+	% io__stream_file_size(Stream, Size):
+	% If Stream is a regular file, then Size is its size (in bytes),
+	% otherwise Size is -1.
+:- pred io__stream_file_size(stream::in, int::out, io::di, io::uo) is det.
 
 :- pragma foreign_decl("C", "
 #ifdef MR_HAVE_UNISTD_H
@@ -2378,12 +2164,12 @@ make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 #if defined(MR_HAVE_FSTAT) && \
-    (defined(MR_HAVE_FILENO) || defined(fileno)) && \
-    defined(S_ISREG)
+		(defined(MR_HAVE_FILENO) || defined(fileno)) && \
+		defined(S_ISREG)
 	struct stat s;
 	if (MR_IS_FILE_STREAM(*Stream)) {
 		if (fstat(fileno(MR_file(*Stream)), &s) == 0 &&
-				S_ISREG(s.st_mode))
+			S_ISREG(s.st_mode))
 		{
 			Size = s.st_size;
 		} else {
@@ -2416,17 +2202,16 @@ make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
 	Size = Stream.size();
 ").
 
-io__file_modification_time(File, Result) -->
-	io__file_modification_time_2(File, Status, Msg, Time),
-	{ Status = 1 ->
+io__file_modification_time(File, Result, !IO) :-
+	io__file_modification_time_2(File, Status, Msg, Time, !IO),
+	( Status = 1 ->
 		Result = ok(Time)
 	;
 		Result = error(io_error(Msg))
-	}.
+	).
 
-:- pred io__file_modification_time_2(string, int, string, time_t,
-		io__state, io__state).
-:- mode io__file_modification_time_2(in, out, out, out, di, uo) is det.
+:- pred io__file_modification_time_2(string::in, int::out, string::out,
+	time_t::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__file_modification_time_2(FileName::in, Status::out, Msg::out,
@@ -2480,7 +2265,7 @@ io__file_modification_time(File, Result) -->
 		long time = (new java.io.File(FileName)).lastModified();
 		if (time == 0) {
 			throw new java.lang.Exception(
-					""File not found or I/O error"");
+				""File not found or I/O error"");
 		}
 		date.setTime(time);
 		Msg = """";
@@ -2492,22 +2277,24 @@ io__file_modification_time(File, Result) -->
 	Time = date;
 ").
 
-
 %-----------------------------------------------------------------------------%
 
-io__file_type(FollowSymLinks, FileName, MaybeType) -->
-	( { file_type_implemented } -> 
-		{ FollowSymLinksInt = ( FollowSymLinks = yes -> 1 ; 0 ) },
-		io__file_type_2(FollowSymLinksInt, FileName, MaybeType)
+io__file_type(FollowSymLinks, FileName, MaybeType, !IO) :-
+	( file_type_implemented ->
+		FollowSymLinksInt = (FollowSymLinks = yes -> 1 ; 0),
+		io__file_type_2(FollowSymLinksInt, FileName, MaybeType, !IO)
 	;
-		{ MaybeType = error(io__make_io_error(
-		"Sorry, io.file_type not implemented on this platform")) }
+		MaybeType = error(io__make_io_error(
+			"Sorry, io.file_type not implemented " ++
+			"on this platform"))
 	).
 
 :- pred file_type_implemented is semidet.
 
 file_type_implemented :- semidet_fail.
-:- pragma foreign_proc("C", file_type_implemented,
+
+:- pragma foreign_proc("C",
+	file_type_implemented,
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 #ifdef MR_HAVE_STAT
@@ -2516,19 +2303,20 @@ file_type_implemented :- semidet_fail.
 	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
-:- pragma foreign_proc("C#", file_type_implemented,
+:- pragma foreign_proc("C#",
+	file_type_implemented,
 	[will_not_call_mercury, promise_pure, thread_safe],
 	"SUCCESS_INDICATOR = true;"
 ).
-:- pragma foreign_proc("Java", file_type_implemented,
+:- pragma foreign_proc("Java",
+	file_type_implemented,
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	succeeded = true;
 ").
 
-:- pred io__file_type_2(int, string, io__res(io__file_type),
-		io__state, io__state).
-:- mode io__file_type_2(in, in, out, di, uo) is det.
+:- pred io__file_type_2(int::in, string::in, io__res(io__file_type)::out,
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__file_type_2(FollowSymLinks::in, FileName::in,
@@ -2672,13 +2460,13 @@ file_type_implemented :- semidet_fail.
 	System.IO.FileAttributes attrs =
 		System.IO.File.GetAttributes(FileName);
 	if ((attrs & System.IO.FileAttributes.Directory) ==
-			System.IO.FileAttributes.Directory)
+		System.IO.FileAttributes.Directory)
 	{
 	    Result = mercury.io.mercury_code.ML_make_io_res_1_ok_file_type(
-			mercury.io.mercury_code.ML_file_type_directory());
+		mercury.io.mercury_code.ML_file_type_directory());
 	}
 	else if ((attrs & System.IO.FileAttributes.Device) ==
-			System.IO.FileAttributes.Device)
+		System.IO.FileAttributes.Device)
 	{
 	    // XXX It may be a block device, but .NET doesn't
 	    // distinguish between character and block devices.
@@ -2709,21 +2497,21 @@ file_type_implemented :- semidet_fail.
 
 	if (file.isFile()) {
 		Result = new mercury.io.res_1.ok_1(new mercury.io.file_type_0(
-				mercury.io.file_type_0.regular_file));
+			mercury.io.file_type_0.regular_file));
 	} else if (file.isDirectory()) {
 		Result = new mercury.io.res_1.ok_1(new mercury.io.file_type_0(
-				mercury.io.file_type_0.directory));
+			mercury.io.file_type_0.directory));
 	} else {
 		Result = new mercury.io.res_1.ok_1(new mercury.io.file_type_0(
-				mercury.io.file_type_0.unknown));
+			mercury.io.file_type_0.unknown));
 	}
 ").
 
 :- func file_type_character_device = file_type.
 :- func file_type_block_device = file_type.
 :- func file_type_fifo = file_type.
-:- func file_type_directory  = file_type.
-:- func file_type_socket  = file_type.
+:- func file_type_directory = file_type.
+:- func file_type_socket = file_type.
 :- func file_type_symbolic_link = file_type.
 :- func file_type_regular = file_type.
 :- func file_type_message_queue = file_type.
@@ -2744,7 +2532,7 @@ file_type_shared_memory = shared_memory.
 file_type_unknown = unknown.
 
 :- pragma export(file_type_character_device = out,
-			"ML_file_type_character_device").
+	"ML_file_type_character_device").
 :- pragma export(file_type_block_device = out, "ML_file_type_block_device").
 :- pragma export(file_type_fifo = out, "ML_file_type_fifo").
 :- pragma export(file_type_directory = out, "ML_file_type_directory").
@@ -2758,17 +2546,17 @@ file_type_unknown = unknown.
 
 %-----------------------------------------------------------------------------%
 
-io__check_file_accessibility(FileName, AccessTypes, Result) -->
-	( { have_dotnet } ->
+io__check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
+	( have_dotnet ->
 		io__check_file_accessibility_dotnet(FileName, AccessTypes,
-			Result)
+			Result, !IO)
 	;
-		io__check_file_accessibility_2(FileName, AccessTypes, Result)
+		io__check_file_accessibility_2(FileName, AccessTypes, Result,
+			!IO)
 	).
 
-:- pred io__check_file_accessibility_2(string, list(access_type),
-		io__res, io__state, io__state).
-:- mode io__check_file_accessibility_2(in, in, out, di, uo) is det.
+:- pred io__check_file_accessibility_2(string::in, list(access_type)::in,
+	io__res::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__check_file_accessibility_2(FileName::in, AccessTypes::in,
@@ -2779,31 +2567,31 @@ io__check_file_accessibility(FileName, AccessTypes, Result) -->
 #if defined(MR_HAVE_ACCESS)
   #ifdef F_OK
 	int mode = F_OK;
-  #else 
+  #else
 	int mode = 0;
   #endif
 	int access_result;
 
 	if (ML_access_types_includes_execute(AccessTypes)) {
-		#ifdef X_OK
-			mode |= X_OK;
-		#else
-			mode |= 1;
-		#endif
+  #ifdef X_OK
+		mode |= X_OK;
+  #else
+		mode |= 1;
+  #endif
 	}
 	if (ML_access_types_includes_write(AccessTypes)) {
-		#ifdef W_OK
-			mode |= W_OK;
-		#else
-			mode |= 2;
-		#endif
+  #ifdef W_OK
+		mode |= W_OK;
+  #else
+		mode |= 2;
+  #endif
 	}
 	if (ML_access_types_includes_read(AccessTypes)) {
-		#ifdef R_OK
-			mode |= R_OK;
-		#else
-			mode |= 4;
-		#endif
+  #ifdef R_OK
+		mode |= R_OK;
+  #else
+		mode |= 4;
+  #endif
 	}
 
 	access_result = access(FileName, mode);
@@ -2811,8 +2599,7 @@ io__check_file_accessibility(FileName, AccessTypes, Result) -->
 		Result = ML_make_io_res_0_ok();
 	} else {
 		ML_make_io_res_0_error(errno,
-			MR_make_string_const(
-				""file not accessible: ""),
+			MR_make_string_const(""file not accessible: ""),
 			&Result);
 	}
 #else /* !MR_HAVE_ACCESS */
@@ -2831,13 +2618,13 @@ io__check_file_accessibility(FileName, AccessTypes, Result) -->
 	java.lang.String permissions = null;
 
 	if (access_types_includes_read_1_p_0(
-			(mercury.list.list_1) AccessTypes))
+		(mercury.list.list_1) AccessTypes))
 	{
 		permissions = ""read"";
 	}
 
 	if (access_types_includes_write_1_p_0(
-			(mercury.list.list_1) AccessTypes))
+		(mercury.list.list_1) AccessTypes))
 	{
 		if (permissions == null) {
 			permissions = ""write"";
@@ -2847,7 +2634,7 @@ io__check_file_accessibility(FileName, AccessTypes, Result) -->
 	}
 
 	if (access_types_includes_execute_1_p_0(
-			(mercury.list.list_1) AccessTypes))
+		(mercury.list.list_1) AccessTypes))
 	{
 		if (permissions == null) {
 			permissions = ""execute"";
@@ -2859,8 +2646,8 @@ io__check_file_accessibility(FileName, AccessTypes, Result) -->
 	try {
 		if (permissions != null) {
 			java.lang.System.getSecurityManager().checkPermission(
-					new java.io.FilePermission(
-					FileName, permissions));
+				new java.io.FilePermission(FileName,
+					permissions));
 		}
 		Result = make_io_res_0_ok_0_f_0();
 	}
@@ -2903,7 +2690,10 @@ io__check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
 			;
 				CheckReadRes = ok
 			),
-			( CheckReadRes = ok, CheckWrite = yes ->
+			(
+				CheckReadRes = ok,
+				CheckWrite = yes
+			->
 				io__open_append(FileName, OutputRes, !IO),
 				(
 					OutputRes = ok(OutputStream),
@@ -2951,17 +2741,17 @@ have_dotnet_exec_permission(Res, !IO) :-
 	have_dotnet_exec_permission(Result::out, _IO0::di, _IO::uo),
 	[promise_pure, may_call_mercury, thread_safe, terminates],
 "{
-    try {
-        // We need unrestricted permissions to execute
-        // unmanaged code.
-        (new System.Security.Permissions.SecurityPermission(
-            System.Security.Permissions.SecurityPermissionFlag.AllFlags)).
-            Demand();
-        Result = mercury.io.mercury_code.ML_make_io_res_0_ok();
-    } catch (System.Exception e) {
-        mercury.io.mercury_code.ML_make_io_res_0_error(e,
-            ""execute permission check failed: "", ref Result);
-    }
+	try {
+		// We need unrestricted permissions to execute
+		// unmanaged code.
+		(new System.Security.Permissions.SecurityPermission(
+			System.Security.Permissions.SecurityPermissionFlag.
+			AllFlags)).Demand();
+		Result = mercury.io.mercury_code.ML_make_io_res_0_ok();
+	} catch (System.Exception e) {
+		mercury.io.mercury_code.ML_make_io_res_0_error(e,
+			""execute permission check failed: "", ref Result);
+	}
 
 }").
 
@@ -3012,8 +2802,8 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
 			if ((attrs & System.IO.FileAttributes.ReadOnly) ==
 				System.IO.FileAttributes.ReadOnly)
 			{
-				throw (new
-				    System.Exception(""file is read-only""));
+				throw (new System.Exception(
+					""file is read-only""));
 			}
 		}
 		Result = mercury.io.mercury_code.ML_make_io_res_0_ok();
@@ -3025,53 +2815,60 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
 
 :- pred access_types_includes_read(list(access_type)::in) is semidet.
 :- pragma export(access_types_includes_read(in),
-		"ML_access_types_includes_read").
+	"ML_access_types_includes_read").
+
 access_types_includes_read(Access) :- list__member(read, Access).
 
 :- pred access_types_includes_write(list(access_type)::in) is semidet.
 :- pragma export(access_types_includes_write(in),
-		"ML_access_types_includes_write").
+	"ML_access_types_includes_write").
+
 access_types_includes_write(Access) :- list__member(write, Access).
 
 :- pred access_types_includes_execute(list(access_type)::in) is semidet.
 :- pragma export(access_types_includes_execute(in),
-		"ML_access_types_includes_execute").
+	"ML_access_types_includes_execute").
+
 access_types_includes_execute(Access) :- list__member(execute, Access).
 
 :- func make_io_res_0_ok = io__res.
 :- pragma export((make_io_res_0_ok = out), "ML_make_io_res_0_ok").
+
 make_io_res_0_ok = ok.
 
 :- pred make_io_res_0_error(io__system_error::in, string::in, io__res::out,
-		io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 :- pragma export(make_io_res_0_error(in, in, out, di, uo),
-		"ML_make_io_res_0_error").
-make_io_res_0_error(Error, Msg0, error(make_io_error(Msg))) -->
-	io__make_err_msg(Error, Msg0, Msg).
+	"ML_make_io_res_0_error").
+
+make_io_res_0_error(Error, Msg0, error(make_io_error(Msg)), !IO) :-
+	io__make_err_msg(Error, Msg0, Msg, !IO).
 
 :- func make_io_res_0_error_msg(string) = io__res.
 :- pragma export((make_io_res_0_error_msg(in) = out),
-		"ML_make_io_res_0_error_msg").
+	"ML_make_io_res_0_error_msg").
+
 make_io_res_0_error_msg(Msg) = error(make_io_error(Msg)).
 
 :- func make_io_res_1_ok_file_type(file_type) = io__res(file_type).
 :- pragma export((make_io_res_1_ok_file_type(in) = out),
-		"ML_make_io_res_1_ok_file_type").
+	"ML_make_io_res_1_ok_file_type").
+
 make_io_res_1_ok_file_type(FileType) = ok(FileType).
 
 :- pred make_io_res_1_error_file_type(io__system_error::in,
-		string::in, io__res(file_type)::out,
-		io__state::di, io__state::uo) is det.
+	string::in, io__res(file_type)::out, io::di, io::uo) is det.
 :- pragma export(make_io_res_1_error_file_type(in, in, out, di, uo),
-		"ML_make_io_res_1_error_file_type").
-make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg))) -->
-	io__make_err_msg(Error, Msg0, Msg).
+	"ML_make_io_res_1_error_file_type").
+
+make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg)), !IO) :-
+	io__make_err_msg(Error, Msg0, Msg, !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- type file_id ---> file_id.
-:- pragma foreign_type("C", file_id, "ML_File_Id") where
-		comparison is compare_file_id.
+:- pragma foreign_type("C", file_id, "ML_File_Id")
+	where comparison is compare_file_id.
 
 :- pragma foreign_decl("C",
 "
@@ -3088,18 +2885,23 @@ make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg))) -->
 #endif
 
 typedef struct {
-  	ML_dev_t device;
-  	ML_ino_t inode;
+	ML_dev_t device;
+	ML_ino_t inode;
 } ML_File_Id;
 ").
 
-:- pred compare_file_id(comparison_result::uo,
-		file_id::in, file_id::in) is det.
+:- pred compare_file_id(comparison_result::uo, file_id::in, file_id::in)
+	is det.
 
 compare_file_id(Result, FileId1, FileId2) :-
 	compare_file_id_2(Result0, FileId1, FileId2),
-	Result =
-	    ( if Result0 < 0 then (<) else if Result0 = 0 then (=) else (>) ).
+	( Result0 < 0 ->
+		Result = (<)
+	; Result0 = 0 ->
+		Result = (=)
+	;
+		Result = (>)
+	).
 
 :- pred compare_file_id_2(int::out, file_id::in, file_id::in) is det.
 
@@ -3118,7 +2920,7 @@ compare_file_id(Result, FileId1, FileId2) :-
 	** padding bits.  In practice, that should be OK.
 	*/
 	device_cmp = memcmp(&(FileId1.device), &(FileId2.device),
-			sizeof(ML_dev_t));
+		sizeof(ML_dev_t));
 
 	if (device_cmp < 0) {
 		Res = -1;
@@ -3126,12 +2928,12 @@ compare_file_id(Result, FileId1, FileId2) :-
 		Res = 1;
 	} else {
 		inode_cmp = memcmp(&(FileId1.inode), &(FileId2.inode),
-				sizeof(ML_ino_t));
+			sizeof(ML_ino_t));
 		if (device_cmp < 0) {
 			Res = -1;
 		} else if (device_cmp > 0) {
 			Res = 1;
-		} else {	
+		} else {
 			Res = 0;
 		}
 	}
@@ -3142,24 +2944,24 @@ compare_file_id(Result, FileId1, FileId2) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	throw new java.lang.RuntimeException(
-			""File IDs are not supported by Java."");
+		""File IDs are not supported by Java."");
 ").
 
-io__file_id(FileName, Result) -->
-	( { have_file_ids } ->
-		io__file_id_2(FileName, Status, Msg, FileId),
-		( { Status = 1 } ->
-			{ Result = ok(FileId) }
+io__file_id(FileName, Result, !IO) :-
+	( have_file_ids ->
+		io__file_id_2(FileName, Status, Msg, FileId, !IO),
+		( Status = 1 ->
+			Result = ok(FileId)
 		;
-			{ Result = error(io_error(Msg)) }
+			Result = error(io_error(Msg))
 		)
 	;
-		{ Result = error(
-	make_io_error("io.file_id not implemented on this platform")) }
+		Result = error(make_io_error("io.file_id not implemented " ++
+			"on this platform"))
 	).
 
-:- pred io__file_id_2(string, int, string, file_id, io__state, io__state).
-:- mode io__file_id_2(in, out, out, out, di, uo) is det.
+:- pred io__file_id_2(string::in, int::out, string::out, file_id::out,
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__file_id_2(FileName::in, Status::out, Msg::out,
@@ -3168,6 +2970,7 @@ io__file_id(FileName, Result) -->
 "{
 #ifdef MR_HAVE_STAT
 	struct stat s;
+
 	if (stat(FileName, &s) == 0) {
 		FileId.device = s.st_dev;
 		FileId.inode = s.st_ino;
@@ -3193,7 +2996,7 @@ io__file_id(FileName, Result) -->
 	// fail for Java.
 	if (true) {	// otherwise Java complains about unreachable stmts.
 		throw new RuntimeException(
-				""io.file_id_2 called but not supported"");
+			""io.file_id_2 called but not supported"");
 	}
 ").
 
@@ -3230,7 +3033,8 @@ have_file_ids :- semidet_fail.
 :- mode buffer_uo == out(uniq_buffer).
 
 :- pred io__alloc_buffer(int::in, buffer::buffer_uo) is det.
-:- pragma foreign_proc("C", 
+
+:- pragma foreign_proc("C",
 	io__alloc_buffer(Size::in, Buffer::buffer_uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
@@ -3243,15 +3047,16 @@ have_file_ids :- semidet_fail.
 }").
 
 io__alloc_buffer(Size, buffer(Array)) :-
-		% XXX '0' is used as Mercury doesn't recognise '\0' as 
+		% XXX '0' is used as Mercury doesn't recognise '\0' as
 		% a char constant.
 	array__init(Size, '0', Array).
 
-:- pred io__resize_buffer(buffer::buffer_di, int::in, int::in,
-		buffer::buffer_uo) is det.
+:- pred io__resize_buffer(int::in, int::in,
+	buffer::buffer_di, buffer::buffer_uo) is det.
+
 :- pragma foreign_proc("C",
-	io__resize_buffer(Buffer0::buffer_di, OldSize::in,
-		NewSize::in, Buffer::buffer_uo),
+	io__resize_buffer(OldSize::in, NewSize::in,
+		Buffer0::buffer_di, Buffer::buffer_uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	MR_CHECK_EXPR_TYPE(Buffer0, MR_Char *);
@@ -3263,18 +3068,18 @@ io__alloc_buffer(Size, buffer(Array)) :-
 	if (Buffer0 + OldSize == (MR_Char *) MR_hp) {
 		MR_Word next;
 		MR_offset_incr_hp_atomic_msg(next, 0,
-		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
-		   	/ sizeof(MR_Word),
-		   MR_PROC_LABEL, ""io:buffer/0"");
+			(NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
+				/ sizeof(MR_Word),
+			MR_PROC_LABEL, ""io:buffer/0"");
 		assert(Buffer0 + OldSize == (MR_Char *) next);
-	    	Buffer = Buffer0;
+		Buffer = Buffer0;
 	} else {
 		/* just have to alloc and copy */
 		MR_Word buf;
 		MR_offset_incr_hp_atomic_msg(buf, 0,
-		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
-		   	/ sizeof(MR_Word),
-		   MR_PROC_LABEL, ""io:buffer/0"");
+			(NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
+				/ sizeof(MR_Word),
+			MR_PROC_LABEL, ""io:buffer/0"");
 		Buffer = (MR_Char *) buf;
 		if (OldSize > NewSize) {
 			memcpy(Buffer, Buffer0, NewSize);
@@ -3285,13 +3090,14 @@ io__alloc_buffer(Size, buffer(Array)) :-
 #endif
 }").
 
-io__resize_buffer(buffer(Array0), _OldSize, NewSize, buffer(Array)) :-
-		% XXX '0' is used as Mercury doesn't recognise '\0' as 
+io__resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
+		% XXX '0' is used as Mercury doesn't recognise '\0' as
 		% a char constant.
 	array__resize(Array0, NewSize, '0', Array).
 
 :- pred io__buffer_to_string(buffer::buffer_di, int::in, string::uo) is det.
-:- pragma foreign_proc("C", 
+
+:- pragma foreign_proc("C",
 	io__buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
@@ -3302,16 +3108,15 @@ io__resize_buffer(buffer(Array0), _OldSize, NewSize, buffer(Array)) :-
 io__buffer_to_string(buffer(Array), Len, from_char_list(List)) :-
 	array__fetch_items(Array, min(Array), min(Array) + Len - 1, List).
 
-:- pred io__read_into_buffer(stream::in, buffer::buffer_di, int::in, int::in,
-		    buffer::buffer_uo, int::out,
-		    io__state::di, io__state::uo) is det.
+:- pred io__read_into_buffer(stream::in, buffer::buffer_di, buffer::buffer_uo,
+	int::in, int::out, int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	io__read_into_buffer(Stream::in, Buffer0::buffer_di, Pos0::in,
-		    Size::in, Buffer::buffer_uo, Pos::out, IO0::di, IO::uo),
+	io__read_into_buffer(Stream::in, Buffer0::buffer_di, Buffer::buffer_uo,
+		Pos0::in, Pos::out, Size::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	int		items_read;
+	int	items_read;
 
 	MR_CHECK_EXPR_TYPE(Buffer0, MR_Char *);
 	MR_CHECK_EXPR_TYPE(Buffer, MR_Char *);
@@ -3323,183 +3128,179 @@ io__buffer_to_string(buffer(Array), Len, from_char_list(List)) :-
 	MR_update_io(IO0, IO);
 }").
 
-io__read_into_buffer(Stream, buffer(Array0), Pos0, Size, buffer(Array), Pos) -->
-	io__read_into_array(Stream, Array0, Pos0, Size, Array, Pos).
+io__read_into_buffer(Stream, buffer(Array0), buffer(Array), !Pos, Size, !IO) :-
+	io__read_into_array(Stream, Size, Array0, Array, !Pos, !IO).
 
-:- pred io__read_into_array(stream::in, array(char)::array_di, int::in, int::in,
-		    array(char)::array_uo, int::out,
-		    io__state::di, io__state::uo) is det.
+:- pred io__read_into_array(stream::in,
+	array(char)::array_di, array(char)::array_uo, int::in, int::out,
+	int::in, io::di, io::uo) is det.
 
-io__read_into_array(Stream, Array0, Pos0, Size, Array, Pos) -->
-	( { Pos0 >= Size } ->
-		{ Array = Array0 },
-		{ Pos = Pos0 }
+io__read_into_array(Stream, !Array, !Pos, Size, !IO) :-
+	( !.Pos >= Size ->
+		true
 	;
-		io__read_char(Stream, CharResult),
-		( { CharResult = ok(Char) } ->
-			{ array__set(Array0, Pos0, Char, Array1) },
-			io__read_into_array(Stream, Array1, Pos0 + 1,
-					Size, Array, Pos)
+		io__read_char(Stream, CharResult, !IO),
+		( CharResult = ok(Char) ->
+			array__set(!.Array, !.Pos, Char, !:Array),
+			!:Pos = !.Pos + 1,
+			io__read_into_array(Stream, !Array, !Pos, Size, !IO)
 		;
-			{ Array = Array0 },
-			{ Pos = Pos0}
+			true
 		)
 	).
 
 %-----------------------------------------------------------------------------%
 
-io__read_binary_file(Result) -->
-	io__binary_input_stream(Stream),
-	io__read_binary_file(Stream, Result).
+io__read_binary_file(Result, !IO) :-
+	io__binary_input_stream(Stream, !IO),
+	io__read_binary_file(Stream, Result, !IO).
 
-io__read_binary_file(Stream, Result) -->
-	io__read_binary_file_2(Stream, [], Result).
+io__read_binary_file(Stream, Result, !IO) :-
+	io__read_binary_file_2(Stream, [], Result, !IO).
 
-:- pred io__read_binary_file_2(io__input_stream, list(int),
-		io__result(list(int)), io__state, io__state).
-:- mode io__read_binary_file_2(in, in, out, di, uo) is det.
+:- pred io__read_binary_file_2(io__input_stream::in, list(int)::in,
+	io__result(list(int))::out, io::di, io::uo) is det.
 
-io__read_binary_file_2(Stream, Bytes0, Result) -->
-	io__read_byte(Stream, Result0),
+io__read_binary_file_2(Stream, Bytes0, Result, !IO) :-
+	io__read_byte(Stream, Result0, !IO),
 	(
-		{ Result0 = eof },
-		{ list__reverse(Bytes0, Bytes) },
-		{ Result = ok(Bytes) }
+		Result0 = eof,
+		list__reverse(Bytes0, Bytes),
+		Result = ok(Bytes)
 	;
-		{ Result0 = error(Err) },
-		{ Result = error(Err) }
+		Result0 = error(Err),
+		Result = error(Err)
 	;
-		{ Result0 = ok(Byte) },
-		io__read_binary_file_2(Stream, [Byte|Bytes0], Result)
+		Result0 = ok(Byte),
+		io__read_binary_file_2(Stream, [Byte | Bytes0], Result, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
 
-io__binary_input_stream_foldl(Pred, T0, Res) -->
-	io__binary_input_stream(Stream),
-	io__binary_input_stream_foldl(Stream, Pred, T0, Res).
+io__binary_input_stream_foldl(Pred, T0, Res, !IO) :-
+	io__binary_input_stream(Stream, !IO),
+	io__binary_input_stream_foldl(Stream, Pred, T0, Res, !IO).
 
-io__binary_input_stream_foldl(Stream, Pred, T0, Res) -->
-	io__read_byte(Stream, ByteResult),
+io__binary_input_stream_foldl(Stream, Pred, T0, Res, !IO) :-
+	io__read_byte(Stream, ByteResult, !IO),
 	(
-		{ ByteResult = ok(Byte) },
-		{ Pred(Byte, T0, T1) },
-		io__binary_input_stream_foldl(Stream, Pred, T1, Res)
-	;
-		{ ByteResult = eof },
-		{ Res = ok(T0) }
-	;
-		{ ByteResult = error(Error) },
-		{ Res = error(T0, Error) }
-	).
-
-io__binary_input_stream_foldl_io(Pred, Res) -->
-	io__binary_input_stream(Stream),
-	io__binary_input_stream_foldl_io(Stream, Pred, Res).
-
-io__binary_input_stream_foldl_io(Stream, Pred, Res) -->
-	io__read_byte(Stream, ByteResult),
-	(
-		{ ByteResult = ok(Byte) },
-		Pred(Byte),
-		io__binary_input_stream_foldl_io(Stream, Pred, Res)
-	;
-		{ ByteResult = eof },
-		{ Res = ok }
-	;
-		{ ByteResult = error(Error) },
-		{ Res = error(Error) }
-	).
-
-io__binary_input_stream_foldl2_io(Pred, T0, Res) -->
-	io__binary_input_stream(Stream),
-	io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res).
-
-io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res) -->
-	io__read_byte(Stream, ByteResult),
-	(
-		{ ByteResult = ok(Byte) },
+		ByteResult = ok(Byte),
 		Pred(Byte, T0, T1),
-		io__binary_input_stream_foldl2_io(Stream, Pred, T1, Res)
+		io__binary_input_stream_foldl(Stream, Pred, T1, Res, !IO)
 	;
-		{ ByteResult = eof },
-		{ Res = ok(T0) }
+		ByteResult = eof,
+		Res = ok(T0)
 	;
-		{ ByteResult = error(Error) },
-		{ Res = error(T0, Error) }
+		ByteResult = error(Error),
+		Res = error(T0, Error)
 	).
 
-io__binary_input_stream_foldl2_io_maybe_stop(Pred, T0, Res) -->
-	io__binary_input_stream(Stream),
-	io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res).
+io__binary_input_stream_foldl_io(Pred, Res, !IO) :-
+	io__binary_input_stream(Stream, !IO),
+	io__binary_input_stream_foldl_io(Stream, Pred, Res, !IO).
 
-io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res) -->
-	io__read_byte(Stream, ByteResult),
+io__binary_input_stream_foldl_io(Stream, Pred, Res, !IO) :-
+	io__read_byte(Stream, ByteResult, !IO),
 	(
-		{ ByteResult = ok(Byte) },
-		Pred(Byte, Continue, T0, T1),
+		ByteResult = ok(Byte),
+		Pred(Byte, !IO),
+		io__binary_input_stream_foldl_io(Stream, Pred, Res, !IO)
+	;
+		ByteResult = eof,
+		Res = ok
+	;
+		ByteResult = error(Error),
+		Res = error(Error)
+	).
+
+io__binary_input_stream_foldl2_io(Pred, T0, Res, !IO) :-
+	io__binary_input_stream(Stream, !IO),
+	io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO).
+
+io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
+	io__read_byte(Stream, ByteResult, !IO),
+	(
+		ByteResult = ok(Byte),
+		Pred(Byte, T0, T1, !IO),
+		io__binary_input_stream_foldl2_io(Stream, Pred, T1, Res, !IO)
+	;
+		ByteResult = eof,
+		Res = ok(T0)
+	;
+		ByteResult = error(Error),
+		Res = error(T0, Error)
+	).
+
+io__binary_input_stream_foldl2_io_maybe_stop(Pred, T0, Res, !IO) :-
+	io__binary_input_stream(Stream, !IO),
+	io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res,
+		!IO).
+
+io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
+	io__read_byte(Stream, ByteResult, !IO),
+	(
+		ByteResult = ok(Byte),
+		Pred(Byte, Continue, T0, T1, !IO),
 		(
-			{ Continue = no },
-			{ Res = ok(T1) }
+			Continue = no,
+			Res = ok(T1)
 		;
-			{ Continue = yes },
+			Continue = yes,
 			io__binary_input_stream_foldl2_io_maybe_stop(Stream,
-				Pred, T1, Res)
+				Pred, T1, Res, !IO)
 		)
 	;
-		{ ByteResult = eof },
-		{ Res = ok(T0) }
+		ByteResult = eof,
+		Res = ok(T0)
 	;
-		{ ByteResult = error(Error) },
-		{ Res = error(T0, Error) }
+		ByteResult = error(Error),
+		Res = error(T0, Error)
 	).
 
 %-----------------------------------------------------------------------------%
 
-io__putback_char(Char) -->
-	io__input_stream(Stream),
-	io__putback_char(Stream, Char).
+io__putback_char(Char, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__putback_char(Stream, Char, !IO).
 
-io__putback_byte(Char) -->
-	io__binary_input_stream(Stream),
-	io__putback_byte(Stream, Char).
+io__putback_byte(Char, !IO) :-
+	io__binary_input_stream(Stream, !IO),
+	io__putback_byte(Stream, Char, !IO).
 
-io__read(Result) -->
-	term_io__read_term(ReadResult),
-	io__get_line_number(LineNumber),
-	{ IsAditiTuple = no },
-	{ io__process_read_term(IsAditiTuple, ReadResult, LineNumber,
-		Result) }.
+io__read(Result, !IO) :-
+	term_io__read_term(ReadResult, !IO),
+	io__get_line_number(LineNumber, !IO),
+	IsAditiTuple = no,
+	io__process_read_term(IsAditiTuple, ReadResult, LineNumber,
+		Result).
 
 io__read_from_string_with_int_instead_of_char(FileName, String, Len, Result,
-		Posn0, Posn) :-
+		!Posn) :-
 	IsAditiTuple = yes,
 	io__read_from_string(IsAditiTuple, FileName, String, Len, Result,
-		Posn0, Posn).
+		!Posn).
 
-io__read_from_string(FileName, String, Len, Result, Posn0, Posn) :-
+io__read_from_string(FileName, String, Len, Result, !Posn) :-
 	IsAditiTuple = no,
-	io__read_from_string(IsAditiTuple, FileName, String, Len,
-		Result, Posn0, Posn). 
+	io__read_from_string(IsAditiTuple, FileName, String, Len, Result,
+		!Posn).
 
-:- pred io__read_from_string(bool, string, string, int, io__read_result(T),
-				posn, posn).
-:- mode io__read_from_string(in, in, in, in, out, in, out) is det.
+:- pred io__read_from_string(bool::in, string::in, string::in, int::in,
+	io__read_result(T)::out, posn::in, posn::out) is det.
 
-io__read_from_string(IsAditiTuple, FileName, String, Len,
-		Result, Posn0, Posn) :-
-	parser__read_term_from_string(FileName, String, Len,
-		Posn0, Posn, ReadResult),
-	Posn = posn(LineNumber, _, _),
+io__read_from_string(IsAditiTuple, FileName, String, Len, Result, !Posn) :-
+	parser__read_term_from_string(FileName, String, Len, !Posn,
+		ReadResult),
+	!.Posn = posn(LineNumber, _, _),
 	io__process_read_term(IsAditiTuple, ReadResult, LineNumber, Result).
 
-:- pred io__process_read_term(bool, read_term, int, io__read_result(T)).
-:- mode io__process_read_term(in, in, in, out) is det.
+:- pred io__process_read_term(bool::in, read_term::in, int::in,
+	io__read_result(T)::out) is det.
 
 io__process_read_term(IsAditiTuple, ReadResult, LineNumber, Result) :-
-	(	
+	(
 		ReadResult = term(_VarSet, Term),
-		( 
+		(
 			(
 				IsAditiTuple = yes,
 				term_to_type_with_int_instead_of_char(Term,
@@ -3512,11 +3313,13 @@ io__process_read_term(IsAditiTuple, ReadResult, LineNumber, Result) :-
 			Result = ok(Type)
 		;
 			( \+ term__is_ground(Term) ->
-				Result = error("io__read: the term read was not a ground term",
+				Result = error("io__read: the term read " ++
+					"was not a ground term",
 					LineNumber)
 			;
 				Result = error(
-					"io__read: the term read did not have the right type",
+					"io__read: the term read " ++
+					"did not have the right type",
 					LineNumber)
 			)
 		)
@@ -3528,79 +3331,77 @@ io__process_read_term(IsAditiTuple, ReadResult, LineNumber, Result) :-
 		Result = error(String, Int)
 	).
 
-io__read(Stream, Result) -->
-	io__set_input_stream(Stream, OrigStream),
-	io__read(Result),
-	io__set_input_stream(OrigStream, _Stream).
+io__read(Stream, Result, !IO) :-
+	io__set_input_stream(Stream, OrigStream, !IO),
+	io__read(Result, !IO),
+	io__set_input_stream(OrigStream, _Stream, !IO).
 
-io__ignore_whitespace(Result) -->
-	io__input_stream(Stream),
-	io__ignore_whitespace(Stream, Result).
+io__ignore_whitespace(Result, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__ignore_whitespace(Stream, Result, !IO).
 
-io__ignore_whitespace(Stream, Result) -->
-	io__read_char(Stream, CharResult),
+io__ignore_whitespace(Stream, Result, !IO) :-
+	io__read_char(Stream, CharResult, !IO),
 	(
-		{ CharResult = error(Error) },
-		{ Result = error(Error) }
+		CharResult = error(Error),
+		Result = error(Error)
 	;
-		{ CharResult = eof },
-		{ Result = eof }
+		CharResult = eof,
+		Result = eof
 	;
-		{ CharResult = ok(Char) },
-		(
-			{ char__is_whitespace(Char) }
-		->
-			io__ignore_whitespace(Stream, Result)
+		CharResult = ok(Char),
+		( char__is_whitespace(Char) ->
+			io__ignore_whitespace(Stream, Result, !IO)
 		;
-			io__putback_char(Stream, Char),
-			{ Result = ok }
-		)	
+			io__putback_char(Stream, Char, !IO),
+			Result = ok
+		)
 	).
 
 %-----------------------------------------------------------------------------%
 
 % output predicates
 
-io__nl -->
-	io__write_char('\n').
+io__nl(!IO) :-
+	io__write_char('\n', !IO).
 
-io__nl(Stream) -->
-	io__write_char(Stream, '\n').
+io__nl(Stream, !IO) :-
+	io__write_char(Stream, '\n', !IO).
 
-io__write_strings(Strings) -->
-	io__output_stream(Stream),
-	io__write_strings(Stream, Strings).
+io__write_strings(Strings, !IO) :-
+	io__output_stream(Stream, !IO),
+	io__write_strings(Stream, Strings, !IO).
 
-io__write_strings(_Stream, []) --> [].
-io__write_strings(Stream, [S|Ss]) -->
-	io__write_string(Stream, S),
-	io__write_strings(Stream, Ss).
+io__write_strings(_Stream, [], !IO).
+io__write_strings(Stream, [S | Ss], !IO) :-
+	io__write_string(Stream, S, !IO),
+	io__write_strings(Stream, Ss, !IO).
 
-io__format(FormatString, Arguments) -->
-	io__output_stream(Stream),
-	io__format(Stream, FormatString, Arguments).
+io__format(FormatString, Arguments, !IO) :-
+	io__output_stream(Stream, !IO),
+	io__format(Stream, FormatString, Arguments, !IO).
 
-io__format(Stream, FormatString, Arguments) -->
-	{ string__format(FormatString, Arguments, String) },
-	io__write_string(Stream, String).
+io__format(Stream, FormatString, Arguments, !IO) :-
+	string__format(FormatString, Arguments, String),
+	io__write_string(Stream, String, !IO).
 
-io__write_many(Poly_list) -->
-	io__output_stream(Stream),
-	io__write_many(Stream, Poly_list).
+io__write_many(Poly_list, !IO) :-
+	io__output_stream(Stream, !IO),
+	io__write_many(Stream, Poly_list, !IO).
 
-io__write_many(_Stream, [], IO, IO ).
-io__write_many(Stream, [c(C) | Rest] ) -->
-	io__write_char(Stream, C),
-	io__write_many(Stream, Rest).
-io__write_many(Stream, [i(I) | Rest] ) -->
-	io__write_int(Stream, I),
-	io__write_many(Stream, Rest).
-io__write_many(Stream, [s(S) | Rest]) -->
-	io__write_string(Stream, S),
-	io__write_many(Stream, Rest).
-io__write_many(Stream, [f(F) | Rest]) -->
-	io__write_float(Stream, F),
-	io__write_many(Stream, Rest).
+io__write_many(_Stream, [], !IO).
+io__write_many(Stream, [c(C) | Rest], !IO) :-
+	io__write_char(Stream, C, !IO),
+	io__write_many(Stream, Rest, !IO).
+io__write_many(Stream, [i(I) | Rest], !IO) :-
+	io__write_int(Stream, I, !IO),
+	io__write_many(Stream, Rest, !IO).
+io__write_many(Stream, [s(S) | Rest], !IO) :-
+	io__write_string(Stream, S, !IO),
+	io__write_many(Stream, Rest, !IO).
+io__write_many(Stream, [f(F) | Rest], !IO) :-
+	io__write_float(Stream, F, !IO),
+	io__write_many(Stream, Rest, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -3613,161 +3414,156 @@ io__write_many(Stream, [f(F) | Rest]) -->
 :- pragma export(io__print(in, in(include_details_cc), in, di, uo),
 	"ML_io_print_cc_to_stream").
 
-io__print(Stream, NonCanon, Term) -->
-	io__set_output_stream(Stream, OrigStream),
-	io__do_print(NonCanon, Term),
-	io__set_output_stream(OrigStream, _Stream).
+io__print(Stream, NonCanon, Term, !IO) :-
+	io__set_output_stream(Stream, OrigStream, !IO),
+	io__do_print(NonCanon, Term, !IO),
+	io__set_output_stream(OrigStream, _Stream, !IO).
 
 :- pragma export(io__print(in, in, di, uo), "ML_io_print_to_stream").
 
-io__print(Stream, Term) -->
-	io__set_output_stream(Stream, OrigStream),
-	io__do_print(canonicalize, Term),
-	io__set_output_stream(OrigStream, _Stream).
+io__print(Stream, Term, !IO) :-
+	io__set_output_stream(Stream, OrigStream, !IO),
+	io__do_print(canonicalize, Term, !IO),
+	io__set_output_stream(OrigStream, _Stream, !IO).
 
 :- pragma export(io__print(in, di, uo), "ML_io_print_to_cur_stream").
 
-io__print(Term) -->
-	io__do_print(canonicalize, Term).
+io__print(Term, !IO) :-
+	io__do_print(canonicalize, Term, !IO).
 
-io__print_cc(Term) -->
-	io__do_print(include_details_cc, Term).
+io__print_cc(Term, !IO) :-
+	io__do_print(include_details_cc, Term, !IO).
 
-:- pred io__do_print(deconstruct__noncanon_handling, T, io__state, io__state).
+:- pred io__do_print(deconstruct__noncanon_handling, T, io, io).
 :- mode io__do_print(in(do_not_allow), in, di, uo) is det.
 :- mode io__do_print(in(canonicalize), in, di, uo) is det.
 :- mode io__do_print(in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__do_print(in, in, di, uo) is cc_multi.
 
-io__do_print(NonCanon, Term) -->
+io__do_print(NonCanon, Term, !IO) :-
 	% `string', `char' and `univ' are special cases for io__print
-	{ type_to_univ(Term, Univ) },
-	( { univ_to_type(Univ, String) } ->
-		io__write_string(String)
-	; { univ_to_type(Univ, Char) } ->
-		io__write_char(Char)
-	; { univ_to_type(Univ, OrigUniv) } ->
-		io__write_univ(OrigUniv)
+	type_to_univ(Term, Univ),
+	( univ_to_type(Univ, String) ->
+		io__write_string(String, !IO)
+	; univ_to_type(Univ, Char) ->
+		io__write_char(Char, !IO)
+	; univ_to_type(Univ, OrigUniv) ->
+		io__write_univ(OrigUniv, !IO)
 	;
-		io__print_quoted(NonCanon, Term)
+		io__print_quoted(NonCanon, Term, !IO)
 	).
 
-:- pred io__print_quoted(deconstruct__noncanon_handling, T,
-	io__state, io__state).
+:- pred io__print_quoted(deconstruct__noncanon_handling, T, io, io).
 :- mode io__print_quoted(in(do_not_allow), in, di, uo) is det.
 :- mode io__print_quoted(in(canonicalize), in, di, uo) is det.
 :- mode io__print_quoted(in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__print_quoted(in, in, di, uo) is cc_multi.
 
-io__print_quoted(NonCanon, Term) -->
-	io__do_write(NonCanon, Term).
-/*
-When we have type classes, then instead of io__write(Term),
-we will want to do something like
-	( { univ_to_type_class(Univ, Portrayable) } ->
-		portray(Portrayable)
-	;
-		... code like io__write, but which prints
-		    the arguments using io__print_quoted, rather than
-		    io__write ...
-	)
-*/
+io__print_quoted(NonCanon, Term, !IO) :-
+	io__do_write(NonCanon, Term, !IO).
+% When we have type classes, then instead of io__write(Term),
+% we will want to do something like
+% 	( univ_to_type_class(Univ, Portrayable) ->
+% 		portray(Portrayable, !IO)
+% 	;
+% 		... code like io__write, but which prints the arguments
+%		using io__print_quoted, rather than io__write ...
+% 	)
 
 %-----------------------------------------------------------------------------%
 
 % various different versions of io__write
 
-io__write(Stream, NonCanon, X) -->
-	io__set_output_stream(Stream, OrigStream),
-	io__do_write(NonCanon, X),
-	io__set_output_stream(OrigStream, _Stream).
+io__write(Stream, NonCanon, X, !IO) :-
+	io__set_output_stream(Stream, OrigStream, !IO),
+	io__do_write(NonCanon, X, !IO),
+	io__set_output_stream(OrigStream, _Stream, !IO).
 
-io__write(Stream, X) -->
-	io__set_output_stream(Stream, OrigStream),
-	io__do_write(canonicalize, X),
-	io__set_output_stream(OrigStream, _Stream).
+io__write(Stream, X, !IO) :-
+	io__set_output_stream(Stream, OrigStream, !IO),
+	io__do_write(canonicalize, X, !IO),
+	io__set_output_stream(OrigStream, _Stream, !IO).
 
-io__write(X) -->
-	io__do_write(canonicalize, X).
+io__write(X, !IO) :-
+	io__do_write(canonicalize, X, !IO).
 
-io__write_cc(X) -->
-	io__do_write(include_details_cc, X).
+io__write_cc(X, !IO) :-
+	io__do_write(include_details_cc, X, !IO).
 
-:- pred io__do_write(deconstruct__noncanon_handling, T, io__state, io__state).
+:- pred io__do_write(deconstruct__noncanon_handling, T, io, io).
 :- mode io__do_write(in(do_not_allow), in, di, uo) is det.
 :- mode io__do_write(in(canonicalize), in, di, uo) is det.
 :- mode io__do_write(in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__do_write(in, in, di, uo) is cc_multi.
 
-io__do_write(NonCanon, Term) -->
-	{ type_to_univ(Term, Univ) },
-	io__do_write_univ(NonCanon, Univ).
+io__do_write(NonCanon, Term, !IO) :-
+	type_to_univ(Term, Univ),
+	io__do_write_univ(NonCanon, Univ, !IO).
 
 %-----------------------------------------------------------------------------%
 
 % various different versions of io__write_univ
 
-io__write_univ(Univ) -->
-	io__do_write_univ(canonicalize, Univ).
+io__write_univ(Univ, !IO) :-
+	io__do_write_univ(canonicalize, Univ, !IO).
 
-io__write_univ(Stream, Univ) -->
-	io__set_output_stream(Stream, OrigStream),
-	io__do_write_univ(canonicalize, Univ),
-	io__set_output_stream(OrigStream, _Stream).
+io__write_univ(Stream, Univ, !IO) :-
+	io__set_output_stream(Stream, OrigStream, !IO),
+	io__do_write_univ(canonicalize, Univ, !IO),
+	io__set_output_stream(OrigStream, _Stream, !IO).
 
-io__write_univ(Stream, NonCanon, Univ) -->
-	io__set_output_stream(Stream, OrigStream),
-	io__do_write_univ(NonCanon, Univ),
-	io__set_output_stream(OrigStream, _Stream).
+io__write_univ(Stream, NonCanon, Univ, !IO) :-
+	io__set_output_stream(Stream, OrigStream, !IO),
+	io__do_write_univ(NonCanon, Univ, !IO),
+	io__set_output_stream(OrigStream, _Stream, !IO).
 
-:- pred io__do_write_univ(deconstruct__noncanon_handling, univ,
-	io__state, io__state).
+:- pred io__do_write_univ(deconstruct__noncanon_handling, univ, io, io).
 :- mode io__do_write_univ(in(do_not_allow), in, di, uo) is det.
 :- mode io__do_write_univ(in(canonicalize), in, di, uo) is det.
 :- mode io__do_write_univ(in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__do_write_univ(in, in, di, uo) is cc_multi.
 
-io__do_write_univ(NonCanon, Univ) -->
-	io__get_op_table(OpTable),
-	io__do_write_univ(NonCanon, Univ, ops__max_priority(OpTable) + 1).
+io__do_write_univ(NonCanon, Univ, !IO) :-
+	io__get_op_table(OpTable, !IO),
+	io__do_write_univ(NonCanon, Univ, ops__max_priority(OpTable) + 1, !IO).
 
 :- pred io__do_write_univ(deconstruct__noncanon_handling, univ, ops__priority,
-	io__state, io__state).
+	io, io).
 :- mode io__do_write_univ(in(do_not_allow), in, in, di, uo) is det.
 :- mode io__do_write_univ(in(canonicalize), in, in, di, uo) is det.
 :- mode io__do_write_univ(in(include_details_cc), in, in, di, uo) is cc_multi.
 :- mode io__do_write_univ(in, in, in, di, uo) is cc_multi.
 
-io__do_write_univ(NonCanon, Univ, Priority) -->
+io__do_write_univ(NonCanon, Univ, Priority, !IO) :-
 	%
 	% we need to special-case the builtin types:
 	%	int, char, float, string
 	%	type_info, univ, c_pointer, array
 	%	and private_builtin:type_info
 	%
-	( { univ_to_type(Univ, String) } ->
-		term_io__quote_string(String)
-	; { univ_to_type(Univ, Char) } ->
-		term_io__quote_char(Char)
-	; { univ_to_type(Univ, Int) } ->
-		io__write_int(Int)
-	; { univ_to_type(Univ, Float) } ->
-		io__write_float(Float)
-	; { univ_to_type(Univ, TypeDesc) } ->
-		io__write_type_desc(TypeDesc)
-	; { univ_to_type(Univ, TypeCtorDesc) } ->
-		io__write_type_ctor_desc(TypeCtorDesc)
-	; { univ_to_type(Univ, Stream) } ->
-		io__get_stream_db(StreamDb),
-		{ io__maybe_stream_info(StreamDb, Stream) = StreamInfo },
-		{ type_to_univ(StreamInfo, StreamInfoUniv) },
-		io__do_write_univ(NonCanon, StreamInfoUniv, Priority)
-	; { univ_to_type(Univ, C_Pointer) } ->
-		io__write_c_pointer(C_Pointer)
+	( univ_to_type(Univ, String) ->
+		term_io__quote_string(String, !IO)
+	; univ_to_type(Univ, Char) ->
+		term_io__quote_char(Char, !IO)
+	; univ_to_type(Univ, Int) ->
+		io__write_int(Int, !IO)
+	; univ_to_type(Univ, Float) ->
+		io__write_float(Float, !IO)
+	; univ_to_type(Univ, TypeDesc) ->
+		io__write_type_desc(TypeDesc, !IO)
+	; univ_to_type(Univ, TypeCtorDesc) ->
+		io__write_type_ctor_desc(TypeCtorDesc, !IO)
+	; univ_to_type(Univ, Stream) ->
+		io__get_stream_db(StreamDb, !IO),
+		io__maybe_stream_info(StreamDb, Stream) = StreamInfo,
+		type_to_univ(StreamInfo, StreamInfoUniv),
+		io__do_write_univ(NonCanon, StreamInfoUniv, Priority, !IO)
+	; univ_to_type(Univ, C_Pointer) ->
+		io__write_c_pointer(C_Pointer, !IO)
 	;
 		%
 		% Check if the type is array:array/1.
-		% We can't just use univ_to_type here since 
+		% We can't just use univ_to_type here since
 		% array:array/1 is a polymorphic type.
 		%
 		% The calls to type_ctor_name and type_ctor_module_name
@@ -3782,501 +3578,501 @@ io__do_write_univ(NonCanon, Univ, Priority) -->
 		% for efficiency, to find failure cheaply in the common cases,
 		% rather than for readability.
 		%
-		{ type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes) },
-		{ ArgTypes = [ElemType] },
-		{ type_ctor_name(TypeCtor) = "array" },
-		{ type_ctor_module_name(TypeCtor) = "array" }
+		type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes),
+		ArgTypes = [ElemType],
+		type_ctor_name(TypeCtor) = "array",
+		type_ctor_module_name(TypeCtor) = "array"
 	->
 		%
 		% Now that we know the element type, we can
 		% constrain the type of the variable `Array'
 		% so that we can use det_univ_to_type.
 		%
-		{ has_type(Elem, ElemType) },
-		{ same_array_elem_type(Array, Elem) },
-		{ det_univ_to_type(Univ, Array) },
-		io__write_array(Array)
-	; 
+		has_type(Elem, ElemType),
+		same_array_elem_type(Array, Elem),
+		det_univ_to_type(Univ, Array),
+		io__write_array(Array, !IO)
+	;
 		%
 		% Check if the type is private_builtin:type_info/1.
 		% See the comments above for array:array/1.
 		%
-		{ type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes) },
-		{ ArgTypes = [ElemType] },
-		{ type_ctor_name(TypeCtor) = "type_info" },
-		{ type_ctor_module_name(TypeCtor) = "private_builtin" }
+		type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes),
+		ArgTypes = [ElemType],
+		type_ctor_name(TypeCtor) = "type_info",
+		type_ctor_module_name(TypeCtor) = "private_builtin"
 	->
-		{ has_type(Elem, ElemType) },
-		{ same_private_builtin_type(PrivateBuiltinTypeInfo, Elem) },
-		{ det_univ_to_type(Univ, PrivateBuiltinTypeInfo) },
-		io__write_private_builtin_type_info(PrivateBuiltinTypeInfo)
-	; 
-		io__write_ordinary_term(NonCanon, Univ, Priority)
+		has_type(Elem, ElemType),
+		same_private_builtin_type(PrivateBuiltinTypeInfo, Elem),
+		det_univ_to_type(Univ, PrivateBuiltinTypeInfo),
+		io__write_private_builtin_type_info(PrivateBuiltinTypeInfo, !IO)
+	;
+		io__write_ordinary_term(NonCanon, Univ, Priority, !IO)
 	).
 
-:- pred same_array_elem_type(array(T), T).
-:- mode same_array_elem_type(unused, unused) is det.
+:- pred same_array_elem_type(array(T)::unused, T::unused) is det.
+
 same_array_elem_type(_, _).
 
-:- pred same_private_builtin_type(private_builtin__type_info(T), T).
-:- mode same_private_builtin_type(unused, unused) is det.
+:- pred same_private_builtin_type(private_builtin__type_info(T)::unused,
+	T::unused) is det.
+
 same_private_builtin_type(_, _).
 
 :- pred io__write_ordinary_term(deconstruct__noncanon_handling, univ,
-	ops__priority, io__state, io__state).
+	ops__priority, io, io).
 :- mode io__write_ordinary_term(in(do_not_allow), in, in, di, uo) is det.
 :- mode io__write_ordinary_term(in(canonicalize), in, in, di, uo) is det.
 :- mode io__write_ordinary_term(in(include_details_cc), in, in, di, uo)
 	is cc_multi.
 :- mode io__write_ordinary_term(in, in, in, di, uo) is cc_multi.
 
-io__write_ordinary_term(NonCanon, Univ, Priority) -->
-	{ univ_value(Univ) = Term },
-	{ deconstruct__deconstruct(Term, NonCanon, Functor, _Arity, Args) },
-	io__get_op_table(OpTable),
+io__write_ordinary_term(NonCanon, Univ, Priority, !IO) :-
+	univ_value(Univ) = Term,
+	deconstruct__deconstruct(Term, NonCanon, Functor, _Arity, Args),
+	io__get_op_table(OpTable, !IO),
 	(
-		{ Functor = "[|]" },
-		{ Args = [ListHead, ListTail] }
+		Functor = "[|]",
+		Args = [ListHead, ListTail]
 	->
-		io__write_char('['),
-		io__write_arg(NonCanon, ListHead),
-		io__write_list_tail(NonCanon, ListTail),
-		io__write_char(']')
+		io__write_char('[', !IO),
+		io__write_arg(NonCanon, ListHead, !IO),
+		io__write_list_tail(NonCanon, ListTail, !IO),
+		io__write_char(']', !IO)
 	;
-		{ Functor = "[]" },
-		{ Args = [] }
+		Functor = "[]",
+		Args = []
 	->
-		io__write_string("[]")
+		io__write_string("[]", !IO)
 	;
-		{ Functor = "{}" },
-		{ Args = [BracedTerm] }
+		Functor = "{}",
+		Args = [BracedTerm]
 	->
-		io__write_string("{ "),
-		io__do_write_univ(NonCanon, BracedTerm),
-		io__write_string(" }")
+		io__write_string("{ ", !IO),
+		io__do_write_univ(NonCanon, BracedTerm, !IO),
+		io__write_string(" }", !IO)
 	;
-		{ Functor = "{}" },
-		{ Args = [BracedHead | BracedTail] }
+		Functor = "{}",
+		Args = [BracedHead | BracedTail]
 	->
-		io__write_char('{'),
-		io__write_arg(NonCanon, BracedHead),
-		io__write_term_args(NonCanon, BracedTail),
-		io__write_char('}')
+		io__write_char('{', !IO),
+		io__write_arg(NonCanon, BracedHead, !IO),
+		io__write_term_args(NonCanon, BracedTail, !IO),
+		io__write_char('}', !IO)
 	;
-		{ Args = [PrefixArg] },
-		{ ops__lookup_prefix_op(OpTable, Functor,
-			OpPriority, OpAssoc) }
+		Args = [PrefixArg],
+		ops__lookup_prefix_op(OpTable, Functor,
+			OpPriority, OpAssoc)
 	->
-		maybe_write_char('(', Priority, OpPriority),
-		term_io__quote_atom(Functor),
-		io__write_char(' '),
-		{ adjust_priority(OpPriority, OpAssoc, NewPriority) },
-		io__do_write_univ(NonCanon, PrefixArg, NewPriority),
-		maybe_write_char(')', Priority, OpPriority)
+		maybe_write_paren('(', Priority, OpPriority, !IO),
+		term_io__quote_atom(Functor, !IO),
+		io__write_char(' ', !IO),
+		adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+		io__do_write_univ(NonCanon, PrefixArg, NewPriority, !IO),
+		maybe_write_paren(')', Priority, OpPriority, !IO)
 	;
-		{ Args = [PostfixArg] },
-		{ ops__lookup_postfix_op(OpTable, Functor,
-			OpPriority, OpAssoc) }
+		Args = [PostfixArg],
+		ops__lookup_postfix_op(OpTable, Functor,
+			OpPriority, OpAssoc)
 	->
-		maybe_write_char('(', Priority, OpPriority),
-		{ adjust_priority(OpPriority, OpAssoc, NewPriority) },
-		io__do_write_univ(NonCanon, PostfixArg, NewPriority),
-		io__write_char(' '),
-		term_io__quote_atom(Functor),
-		maybe_write_char(')', Priority, OpPriority)
+		maybe_write_paren('(', Priority, OpPriority, !IO),
+		adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+		io__do_write_univ(NonCanon, PostfixArg, NewPriority, !IO),
+		io__write_char(' ', !IO),
+		term_io__quote_atom(Functor, !IO),
+		maybe_write_paren(')', Priority, OpPriority, !IO)
 	;
-		{ Args = [Arg1, Arg2] },
-		{ ops__lookup_infix_op(OpTable, Functor, 
-			OpPriority, LeftAssoc, RightAssoc) }
+		Args = [Arg1, Arg2],
+		ops__lookup_infix_op(OpTable, Functor,
+			OpPriority, LeftAssoc, RightAssoc)
 	->
-		maybe_write_char('(', Priority, OpPriority),
-		{ adjust_priority(OpPriority, LeftAssoc, LeftPriority) },
-		io__do_write_univ(NonCanon, Arg1, LeftPriority),
-		( { Functor = "," } ->
-			io__write_string(", ")
+		maybe_write_paren('(', Priority, OpPriority, !IO),
+		adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
+		io__do_write_univ(NonCanon, Arg1, LeftPriority, !IO),
+		( Functor = "," ->
+			io__write_string(", ", !IO)
 		;
-			io__write_char(' '),
-			term_io__quote_atom(Functor),
-			io__write_char(' ')
+			io__write_char(' ', !IO),
+			term_io__quote_atom(Functor, !IO),
+			io__write_char(' ', !IO)
 		),
-		{ adjust_priority(OpPriority, RightAssoc, RightPriority) },
-		io__do_write_univ(NonCanon, Arg2, RightPriority),
-		maybe_write_char(')', Priority, OpPriority)
+		adjust_priority_for_assoc(OpPriority, RightAssoc,
+			RightPriority),
+		io__do_write_univ(NonCanon, Arg2, RightPriority, !IO),
+		maybe_write_paren(')', Priority, OpPriority, !IO)
 	;
-		{ Args = [Arg1, Arg2] },
-		{ ops__lookup_binary_prefix_op(OpTable, Functor,
-			OpPriority, FirstAssoc, SecondAssoc) }
+		Args = [Arg1, Arg2],
+		ops__lookup_binary_prefix_op(OpTable, Functor,
+			OpPriority, FirstAssoc, SecondAssoc)
 	->
-		maybe_write_char('(', Priority, OpPriority),
-		term_io__quote_atom(Functor),
-		io__write_char(' '),
-		{ adjust_priority(OpPriority, FirstAssoc, FirstPriority) },
-		io__do_write_univ(NonCanon, Arg1, FirstPriority),
-		io__write_char(' '),
-		{ adjust_priority(OpPriority, SecondAssoc, SecondPriority) },
-		io__do_write_univ(NonCanon, Arg2, SecondPriority),
-		maybe_write_char(')', Priority, OpPriority)
+		maybe_write_paren('(', Priority, OpPriority, !IO),
+		term_io__quote_atom(Functor, !IO),
+		io__write_char(' ', !IO),
+		adjust_priority_for_assoc(OpPriority, FirstAssoc,
+			FirstPriority),
+		io__do_write_univ(NonCanon, Arg1, FirstPriority, !IO),
+		io__write_char(' ', !IO),
+		adjust_priority_for_assoc(OpPriority, SecondAssoc,
+			SecondPriority),
+		io__do_write_univ(NonCanon, Arg2, SecondPriority, !IO),
+		maybe_write_paren(')', Priority, OpPriority, !IO)
 	;
 		(
-			{ Args = [] },
-			{ ops__lookup_op(OpTable, Functor) },
-			{ Priority =< ops__max_priority(OpTable) }
+			Args = [],
+			ops__lookup_op(OpTable, Functor),
+			Priority =< ops__max_priority(OpTable)
 		->
-			io__write_char('('),
-			term_io__quote_atom(Functor),
-			io__write_char(')')
+			io__write_char('(', !IO),
+			term_io__quote_atom(Functor, !IO),
+			io__write_char(')', !IO)
 		;
 			term_io__quote_atom(Functor,
-				maybe_adjacent_to_graphic_token)
+				maybe_adjacent_to_graphic_token, !IO)
 		),
 		(
-			{ Args = [X|Xs] }
+			Args = [X | Xs]
 		->
-			io__write_char('('),
-			io__write_arg(NonCanon, X),
-			io__write_term_args(NonCanon, Xs),
-			io__write_char(')')
+			io__write_char('(', !IO),
+			io__write_arg(NonCanon, X, !IO),
+			io__write_term_args(NonCanon, Xs, !IO),
+			io__write_char(')', !IO)
 		;
-			[]
+			true
 		)
 	).
 
-:- pred maybe_write_char(char, ops__priority, ops__priority,
-			io__state, io__state).
-:- mode maybe_write_char(in, in, in, di, uo) is det.
+adjust_priority_for_assoc(Priority, y, Priority).
+adjust_priority_for_assoc(Priority, x, Priority - 1).
 
-maybe_write_char(Char, Priority, OpPriority) -->
-	( { OpPriority > Priority } ->
-		io__write_char(Char)
+maybe_write_paren(Char, Priority, OpPriority, !IO) :-
+	( OpPriority > Priority ->
+		io__write_char(Char, !IO)
 	;
-		[]
+		true
 	).
 
-:- pred adjust_priority(ops__priority, ops__assoc, ops__priority).
-:- mode adjust_priority(in, in, out) is det.
-
-adjust_priority(Priority, y, Priority).
-adjust_priority(Priority, x, Priority - 1).
-
-:- pred io__write_list_tail(deconstruct__noncanon_handling, univ,
-	io__state, io__state).
+:- pred io__write_list_tail(deconstruct__noncanon_handling, univ, io, io).
 :- mode io__write_list_tail(in(do_not_allow), in, di, uo) is det.
 :- mode io__write_list_tail(in(canonicalize), in, di, uo) is det.
 :- mode io__write_list_tail(in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__write_list_tail(in, in, di, uo) is cc_multi.
 
-io__write_list_tail(NonCanon, Univ) -->
-	{ Term = univ_value(Univ) },
-	{ deconstruct__deconstruct(Term, NonCanon, Functor, _Arity, Args) },
-	( { Functor = "[|]", Args = [ListHead, ListTail] } ->
-		io__write_string(", "),
-		io__write_arg(NonCanon, ListHead),
-		io__write_list_tail(NonCanon, ListTail)
-	; { Functor = "[]", Args = [] } ->
-		[]
+io__write_list_tail(NonCanon, Univ, !IO) :-
+	Term = univ_value(Univ),
+	deconstruct__deconstruct(Term, NonCanon, Functor, _Arity, Args),
+	(
+		Functor = "[|]",
+		Args = [ListHead, ListTail]
+	->
+		io__write_string(", ", !IO),
+		io__write_arg(NonCanon, ListHead, !IO),
+		io__write_list_tail(NonCanon, ListTail, !IO)
 	;
-		io__write_string(" | "),
-		io__do_write_univ(NonCanon, Univ)
+		Functor = "[]",
+		Args = []
+	->
+		true
+	;
+		io__write_string(" | ", !IO),
+		io__do_write_univ(NonCanon, Univ, !IO)
 	).
 
 :- pred io__write_term_args(deconstruct__noncanon_handling, list(univ),
-	io__state, io__state).
+	io, io).
 :- mode io__write_term_args(in(do_not_allow), in, di, uo) is det.
 :- mode io__write_term_args(in(canonicalize), in, di, uo) is det.
 :- mode io__write_term_args(in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__write_term_args(in, in, di, uo) is cc_multi.
 
 	% write the remaining arguments
-io__write_term_args(_, []) --> [].
-io__write_term_args(NonCanon, [X|Xs]) -->
-	io__write_string(", "),
-	io__write_arg(NonCanon, X),
-	io__write_term_args(NonCanon, Xs).
+io__write_term_args(_, [], !IO).
+io__write_term_args(NonCanon, [X | Xs], !IO) :-
+	io__write_string(", ", !IO),
+	io__write_arg(NonCanon, X, !IO),
+	io__write_term_args(NonCanon, Xs, !IO).
 
-:- pred io__write_arg(deconstruct__noncanon_handling, univ,
-	io__state, io__state).
+:- pred io__write_arg(deconstruct__noncanon_handling, univ, io, io).
 :- mode io__write_arg(in(do_not_allow), in, di, uo) is det.
 :- mode io__write_arg(in(canonicalize), in, di, uo) is det.
 :- mode io__write_arg(in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__write_arg(in, in, di, uo) is cc_multi.
 
-io__write_arg(NonCanon, X) -->
-	arg_priority(ArgPriority),
-	io__do_write_univ(NonCanon, X, ArgPriority).
+io__write_arg(NonCanon, X, !IO) :-
+	arg_priority(ArgPriority, !IO),
+	io__do_write_univ(NonCanon, X, ArgPriority, !IO).
 
-:- pred arg_priority(int, io__state, io__state).
-:- mode arg_priority(out, di, uo) is det.
-/*
-arg_priority(ArgPriority) -->
-	io__get_op_table(OpTable),
-	{ ops__lookup_infix_op(OpTable, ",", Priority, _, _) ->
-		ArgPriority = Priority }
-	;
-		error("arg_priority: can't find the priority of `,'")
-	}.
-*/
+:- pred arg_priority(int::out, io::di, io::uo) is det.
+
+% arg_priority(ArgPriority, !IO) :-
+% 	io__get_op_table(OpTable, !IO),
+% 	( ops__lookup_infix_op(OpTable, ",", Priority, _, _) ->
+% 		ArgPriority = Priority
+% 	;
+% 		error("arg_priority: can't find the priority of `,'")
+% 	).
+%
 % We could implement this as above, but it's more efficient to just
 % hard-code it.
-arg_priority(1000) --> [].
+arg_priority(1000, !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred io__write_type_desc(type_desc, io__state, io__state).
-:- mode io__write_type_desc(in, di, uo) is det.
+:- pred io__write_type_desc(type_desc::in, io::di, io::uo) is det.
 
-io__write_type_desc(TypeDesc) -->
-	io__write_string(type_name(TypeDesc)).
+io__write_type_desc(TypeDesc, !IO) :-
+	io__write_string(type_name(TypeDesc), !IO).
 
-:- pred io__write_type_ctor_desc(type_ctor_desc, io__state, io__state).
-:- mode io__write_type_ctor_desc(in, di, uo) is det.
+:- pred io__write_type_ctor_desc(type_ctor_desc::in, io::di, io::uo) is det.
 
-io__write_type_ctor_desc(TypeCtorDesc) -->
-        { type_ctor_name_and_arity(TypeCtorDesc, ModuleName, Name, Arity0) },
-	{ ModuleName = "builtin", Name = "func" ->
+io__write_type_ctor_desc(TypeCtorDesc, !IO) :-
+	type_ctor_name_and_arity(TypeCtorDesc, ModuleName, Name, Arity0),
+	(
+		ModuleName = "builtin",
+		Name = "func"
+	->
 		% The type ctor that we call `builtin:func/N' takes N + 1
 		% type parameters: N arguments plus one return value.
 		% So we need to subtract one from the arity here.
 		Arity = Arity0 - 1
 	;
 		Arity = Arity0
-	},
-	( { ModuleName = "builtin" } ->
-		io__format("%s/%d", [s(Name), i(Arity)])
+	),
+	( ModuleName = "builtin" ->
+		io__format("%s/%d", [s(Name), i(Arity)], !IO)
 	;
-		io__format("%s.%s/%d", [s(ModuleName), s(Name), i(Arity)])
+		io__format("%s.%s/%d", [s(ModuleName), s(Name), i(Arity)], !IO)
 	).
 
-:- pred io__write_c_pointer(c_pointer, io__state, io__state).
-:- mode io__write_c_pointer(in, di, uo) is det.
+:- pred io__write_c_pointer(c_pointer::in, io::di, io::uo) is det.
 
-io__write_c_pointer(_C_Pointer) -->
+io__write_c_pointer(_C_Pointer, !IO) :-
 	% XXX what should we do here?
-	io__write_string("'<<c_pointer>>'").
+	io__write_string("'<<c_pointer>>'", !IO).
 
-:- pred io__write_array(array(T), io__state, io__state).
-:- mode io__write_array(in, di, uo) is det.
+:- pred io__write_array(array(T)::in, io::di, io::uo) is det.
 
-io__write_array(Array) -->
-	io__write_string("array("),
-	{ array__to_list(Array, List) },
-	io__write(List),
-	io__write_string(")").
+io__write_array(Array, !IO) :-
+	io__write_string("array(", !IO),
+	array__to_list(Array, List),
+	io__write(List, !IO),
+	io__write_string(")", !IO).
 
 :- pred io__write_private_builtin_type_info(private_builtin__type_info(T)::in,
-		io__state::di, io__state::uo) is det.
-io__write_private_builtin_type_info(PrivateBuiltinTypeInfo) -->
-	{ TypeInfo = rtti_implementation__unsafe_cast(PrivateBuiltinTypeInfo) },
-	io__write_type_desc(TypeInfo).
+	io::di, io::uo) is det.
+
+io__write_private_builtin_type_info(PrivateBuiltinTypeInfo, !IO) :-
+	TypeInfo = rtti_implementation__unsafe_cast(PrivateBuiltinTypeInfo),
+	io__write_type_desc(TypeInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
-io__write_list([], _Separator, _OutputPred) --> [].
-io__write_list([E|Es], Separator, OutputPred) -->
-	call(OutputPred, E),
+io__write_list([], _Separator, _OutputPred, !IO).
+io__write_list([E | Es], Separator, OutputPred, !IO) :-
+	call(OutputPred, E, !IO),
 	(
-		{ Es = [] }
+		Es = []
 	;
-		{ Es = [_|_] },
-		io__write_string(Separator)
+		Es = [_ | _],
+		io__write_string(Separator, !IO)
 	),
-	io__write_list(Es, Separator, OutputPred).
+	io__write_list(Es, Separator, OutputPred, !IO).
 
-io__write_list(Stream, List, Separator, OutputPred) -->
-	io__set_output_stream(Stream, OrigStream),
-	io__write_list(List, Separator, OutputPred),
-	io__set_output_stream(OrigStream, _Stream).
+io__write_list(Stream, List, Separator, OutputPred, !IO) :-
+	io__set_output_stream(Stream, OrigStream, !IO),
+	io__write_list(List, Separator, OutputPred, !IO),
+	io__set_output_stream(OrigStream, _Stream, !IO).
 
 %-----------------------------------------------------------------------------%
 
-io__write_binary(Stream, Term) -->
-	io__set_binary_output_stream(Stream, OrigStream),
-	io__write_binary(Term),
-	io__set_binary_output_stream(OrigStream, _Stream).
+io__write_binary(Stream, Term, !IO) :-
+	io__set_binary_output_stream(Stream, OrigStream, !IO),
+	io__write_binary(Term, !IO),
+	io__set_binary_output_stream(OrigStream, _Stream, !IO).
 
-io__read_binary(Stream, Result) -->
-	io__set_binary_input_stream(Stream, OrigStream),
-	io__read_binary(Result),
-	io__set_binary_input_stream(OrigStream, _Stream).
+io__read_binary(Stream, Result, !IO) :-
+	io__set_binary_input_stream(Stream, OrigStream, !IO),
+	io__read_binary(Result, !IO),
+	io__set_binary_input_stream(OrigStream, _Stream, !IO).
 
-io__write_binary(Term) -->
+io__write_binary(Term, !IO) :-
 	% a quick-and-dirty implementation... not very space-efficient
 	% (not really binary!)
 	% XXX This will not work for the Java back-end. See the comment at the
 	% top of the MR_MercuryFileStruct class definition.
-	io__binary_output_stream(Stream),
-	io__write(Stream, Term),
-	io__write_string(Stream, ".\n").
+	io__binary_output_stream(Stream, !IO),
+	io__write(Stream, Term, !IO),
+	io__write_string(Stream, ".\n", !IO).
 
-io__read_binary(Result) -->
+io__read_binary(Result, !IO) :-
 	% a quick-and-dirty implementation... not very space-efficient
 	% (not really binary!)
 	% XXX This will not work for the Java back-end. See the comment at the
 	% top of the MR_MercuryFileStruct class definition.
-	io__binary_input_stream(Stream),
-	io__read(Stream, ReadResult),
+	io__binary_input_stream(Stream, !IO),
+	io__read(Stream, ReadResult, !IO),
 	(
-		{ ReadResult = ok(T) },
+		ReadResult = ok(T),
 		% We've read the newline and the trailing full stop.
 		% Now skip the newline after the full stop.
-		io__read_char(Stream, NewLineRes),
-		( { NewLineRes = error(Error) } ->
-			{ Result = error(Error) }
-		; { NewLineRes = ok('\n') } ->
-			{ Result = ok(T) }
+		io__read_char(Stream, NewLineRes, !IO),
+		( NewLineRes = error(Error) ->
+			Result = error(Error)
+		; NewLineRes = ok('\n') ->
+			Result = ok(T)
 		;
-			{ Result = error(io_error(
-				"io.read_binary: missing newline")) }
+			Result = error(io_error(
+				"io.read_binary: missing newline"))
 		)
 	;
-		{ ReadResult = eof },
-		{ Result = eof }
+		ReadResult = eof,
+		Result = eof
 	;
-		{ ReadResult = error(ErrorMsg, _Line) },
-		{ Result = error(io_error(ErrorMsg)) }
+		ReadResult = error(ErrorMsg, _Line),
+		Result = error(io_error(ErrorMsg))
 	).
 
 %-----------------------------------------------------------------------------%
 
 % stream predicates
 
-io__open_input(FileName, Result) -->
-	io__do_open_text(FileName, "r", Result0, OpenCount, NewStream),
-	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) },
+io__open_input(FileName, Result, !IO) :-
+	io__do_open_text(FileName, "r", Result0, OpenCount, NewStream, !IO),
+	( Result0 \= -1 ->
+		Result = ok(NewStream),
 		io__insert_stream_info(NewStream,
-			stream(OpenCount, input, text, file(FileName)))
+			stream(OpenCount, input, text, file(FileName)), !IO)
 	;
-		io__make_err_msg("can't open input file: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("can't open input file: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
-io__open_output(FileName, Result) -->
-	io__do_open_text(FileName, "w", Result0, OpenCount, NewStream),
-	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) },
+io__open_output(FileName, Result, !IO) :-
+	io__do_open_text(FileName, "w", Result0, OpenCount, NewStream, !IO),
+	( Result0 \= -1 ->
+		Result = ok(NewStream),
 		io__insert_stream_info(NewStream,
-			stream(OpenCount, output, text, file(FileName)))
+			stream(OpenCount, output, text, file(FileName)), !IO)
 	;
-		io__make_err_msg("can't open output file: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("can't open output file: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
-io__open_append(FileName, Result) -->
-	io__do_open_text(FileName, "a", Result0, OpenCount, NewStream),
-	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) },
+io__open_append(FileName, Result, !IO) :-
+	io__do_open_text(FileName, "a", Result0, OpenCount, NewStream, !IO),
+	( Result0 \= -1 ->
+		Result = ok(NewStream),
 		io__insert_stream_info(NewStream,
-			stream(OpenCount, append, text, file(FileName)))
+			stream(OpenCount, append, text, file(FileName)), !IO)
 	;
-		io__make_err_msg("can't append to file: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("can't append to file: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
-io__open_binary_input(FileName, Result) -->
-	io__do_open_binary(FileName, "rb", Result0, OpenCount, NewStream),
-	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) },
+io__open_binary_input(FileName, Result, !IO) :-
+	io__do_open_binary(FileName, "rb", Result0, OpenCount, NewStream, !IO),
+	( Result0 \= -1 ->
+		Result = ok(NewStream),
 		io__insert_stream_info(NewStream,
-			stream(OpenCount, input, binary, file(FileName)))
+			stream(OpenCount, input, binary, file(FileName)), !IO)
 	;
-		io__make_err_msg("can't open input file: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("can't open input file: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
-io__open_binary_output(FileName, Result) -->
-	io__do_open_binary(FileName, "wb", Result0, OpenCount, NewStream),
-	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) },
+io__open_binary_output(FileName, Result, !IO) :-
+	io__do_open_binary(FileName, "wb", Result0, OpenCount, NewStream, !IO),
+	( Result0 \= -1 ->
+		Result = ok(NewStream),
 		io__insert_stream_info(NewStream,
-			stream(OpenCount, output, binary, file(FileName)))
+			stream(OpenCount, output, binary, file(FileName)), !IO)
 	;
-		io__make_err_msg("can't open output file: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("can't open output file: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
-io__open_binary_append(FileName, Result) -->
-	io__do_open_binary(FileName, "ab", Result0, OpenCount, NewStream),
-	( { Result0 \= -1 } ->
-		{ Result = ok(NewStream) },
+io__open_binary_append(FileName, Result, !IO) :-
+	io__do_open_binary(FileName, "ab", Result0, OpenCount, NewStream, !IO),
+	( Result0 \= -1 ->
+		Result = ok(NewStream),
 		io__insert_stream_info(NewStream,
-			stream(OpenCount, append, binary, file(FileName)))
+			stream(OpenCount, append, binary, file(FileName)), !IO)
 	;
-		io__make_err_msg("can't append to file: ", Msg),
-		{ Result = error(io_error(Msg)) }
+		io__make_err_msg("can't append to file: ", Msg, !IO),
+		Result = error(io_error(Msg))
 	).
 
 %-----------------------------------------------------------------------------%
 
 	% Declarative versions of Prolog's see/1 and seen/0.
 
-io__see(File, Result) -->
-	io__open_input(File, Result0),
+io__see(File, Result, !IO) :-
+	io__open_input(File, Result0, !IO),
 	(
-		{ Result0 = ok(Stream) },
-		io__set_input_stream(Stream, _),
-		{ Result = ok }
+		Result0 = ok(Stream),
+		io__set_input_stream(Stream, _, !IO),
+		Result = ok
 	;
-		{ Result0 = error(Error) },
-		{ Result = error(Error) }
+		Result0 = error(Error),
+		Result = error(Error)
 	).
 
-io__seen -->
-	io__stdin_stream(Stdin),
-	io__set_input_stream(Stdin, OldStream),
-	io__close_input(OldStream).
+io__seen(!IO) :-
+	io__stdin_stream(Stdin, !IO),
+	io__set_input_stream(Stdin, OldStream, !IO),
+	io__close_input(OldStream, !IO).
 
 	% Plus binary IO versions.
 
-io__see_binary(File, Result) -->
-	io__open_binary_input(File, Result0),
+io__see_binary(File, Result, !IO) :-
+	io__open_binary_input(File, Result0, !IO),
 	(
-		{ Result0 = ok(Stream) },
-		io__set_binary_input_stream(Stream, _),
-		{ Result = ok }
+		Result0 = ok(Stream),
+		io__set_binary_input_stream(Stream, _, !IO),
+		Result = ok
 	;
-		{ Result0 = error(Error) },
-		{ Result = error(Error) }
+		Result0 = error(Error),
+		Result = error(Error)
 	).
 
-io__seen_binary -->
-	io__stdin_binary_stream(Stdin),
-	io__set_binary_input_stream(Stdin, OldStream),
-	io__close_binary_input(OldStream).
+io__seen_binary(!IO) :-
+	io__stdin_binary_stream(Stdin, !IO),
+	io__set_binary_input_stream(Stdin, OldStream, !IO),
+	io__close_binary_input(OldStream, !IO).
 
 %-----------------------------------------------------------------------------%
 
 	% Declarative versions of Prolog's tell/1 and told/0.
 
-io__told -->
-	io__stdout_stream(Stdout),
-	io__set_output_stream(Stdout, OldStream),
-	io__close_output(OldStream).
+io__told(!IO) :-
+	io__stdout_stream(Stdout, !IO),
+	io__set_output_stream(Stdout, OldStream, !IO),
+	io__close_output(OldStream, !IO).
 
-io__tell(File, Result) -->
-	io__open_output(File, Result0),
+io__tell(File, Result, !IO) :-
+	io__open_output(File, Result0, !IO),
 	(
-		{ Result0 = ok(Stream) },
-		io__set_output_stream(Stream, _),
-		{ Result = ok }
+		Result0 = ok(Stream),
+		io__set_output_stream(Stream, _, !IO),
+		Result = ok
 	;
-		{ Result0 = error(Msg) },
-		{ Result = error(Msg) }
+		Result0 = error(Msg),
+		Result = error(Msg)
 	).
 
-io__told_binary -->
-	io__stdout_binary_stream(Stdout),
-	io__set_binary_output_stream(Stdout, OldStream),
-	io__close_binary_output(OldStream).
+io__told_binary(!IO) :-
+	io__stdout_binary_stream(Stdout, !IO),
+	io__set_binary_output_stream(Stdout, OldStream, !IO),
+	io__close_binary_output(OldStream, !IO).
 
-io__tell_binary(File, Result) -->
-	io__open_binary_output(File, Result0),
+io__tell_binary(File, Result, !IO) :-
+	io__open_binary_output(File, Result0, !IO),
 	(
-		{ Result0 = ok(Stream) },
-		io__set_binary_output_stream(Stream, _),
-		{ Result = ok }
+		Result0 = ok(Stream),
+		io__set_binary_output_stream(Stream, _, !IO),
+		Result = ok
 	;
-		{ Result0 = error(Msg) },
-		{ Result = error(Msg) }
+		Result0 = error(Msg),
+		Result = error(Msg)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -4284,58 +4080,57 @@ io__tell_binary(File, Result) -->
 
 % stream name predicates
 
-io__input_stream_name(Name) -->
-	io__input_stream(Stream),
-	io__stream_name(Stream, Name).
+io__input_stream_name(Name, !IO) :-
+	io__input_stream(Stream, !IO),
+	io__stream_name(Stream, Name, !IO).
 
-io__input_stream_name(Stream, Name) -->
-	io__stream_name(Stream, Name).
+io__input_stream_name(Stream, Name, !IO) :-
+	io__stream_name(Stream, Name, !IO).
 
-io__output_stream_name(Name) -->
-	io__output_stream(Stream),
-	io__stream_name(Stream, Name).
+io__output_stream_name(Name, !IO) :-
+	io__output_stream(Stream, !IO),
+	io__stream_name(Stream, Name, !IO).
 
-io__output_stream_name(Stream, Name) -->
-	io__stream_name(Stream, Name).
+io__output_stream_name(Stream, Name, !IO) :-
+	io__stream_name(Stream, Name, !IO).
 
-io__binary_input_stream_name(Name) -->
-	io__binary_input_stream(Stream),
-	io__stream_name(Stream, Name).
+io__binary_input_stream_name(Name, !IO) :-
+	io__binary_input_stream(Stream, !IO),
+	io__stream_name(Stream, Name, !IO).
 
-io__binary_input_stream_name(Stream, Name) -->
-	io__stream_name(Stream, Name).
+io__binary_input_stream_name(Stream, Name, !IO) :-
+	io__stream_name(Stream, Name, !IO).
 
-io__binary_output_stream_name(Name) -->
-	io__binary_output_stream(Stream),
-	io__stream_name(Stream, Name).
+io__binary_output_stream_name(Name, !IO) :-
+	io__binary_output_stream(Stream, !IO),
+	io__stream_name(Stream, Name, !IO).
 
-io__binary_output_stream_name(Stream, Name) -->
-	io__stream_name(Stream, Name).
+io__binary_output_stream_name(Stream, Name, !IO) :-
+	io__stream_name(Stream, Name, !IO).
 
-:- pred io__stream_name(io__stream, string, io__state, io__state).
-:- mode io__stream_name(in, out, di, uo) is det.
+:- pred io__stream_name(io__stream::in, string::out, io::di, io::uo) is det.
 
-io__stream_name(Stream, Name) -->
-	io__stream_info(Stream, MaybeInfo),
-	{
+io__stream_name(Stream, Name, !IO) :-
+	io__stream_info(Stream, MaybeInfo, !IO),
+	(
 		MaybeInfo = yes(Info),
 		Info = stream(_, _, _, Source),
 		Name = source_name(Source)
 	;
 		MaybeInfo = no,
 		Name = "<stream name unavailable>"
-	}.
+	).
 
 :- pred io__stream_info(io__stream::in, maybe(stream_info)::out,
 	io__state::di, io__state::uo) is det.
 
-io__stream_info(Stream, MaybeInfo) -->
-	io__get_stream_db(StreamDb),
-	{ map__search(StreamDb, get_stream_id(Stream), Info) ->
+io__stream_info(Stream, MaybeInfo, !IO) :-
+	io__get_stream_db(StreamDb, !IO),
+	( map__search(StreamDb, get_stream_id(Stream), Info) ->
 		MaybeInfo = yes(Info)
 	;
 		MaybeInfo = no
-	}.
+	).
 
 io__input_stream_info(StreamDb, Stream) =
 	io__maybe_stream_info(StreamDb, Stream).
@@ -4353,6 +4148,7 @@ io__binary_output_stream_info(StreamDb, Stream) =
 
 io__maybe_stream_info(StreamDb, Stream) = Info :-
 	( map__search(StreamDb, get_stream_id(Stream), Info0) ->
+		% Info0 and Info have different types.
 		Info0 = stream(Id, Mode, Content, Source),
 		Info  = stream(Id, Mode, Content, Source)
 	;
@@ -4378,8 +4174,8 @@ source_name(stdin) = "<standard input>".
 source_name(stdout) = "<standard output>".
 source_name(stderr) = "<standard error>".
 
-:- pragma foreign_proc("C", 
-	io__get_stream_db(StreamDb::out, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+	io__get_stream_db(StreamDb::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	StreamDb = ML_io_stream_db;
@@ -4389,37 +4185,37 @@ source_name(stderr) = "<standard error>".
 :- pred io__set_stream_db(io__stream_db::in, io__state::di, io__state::uo)
 	is det.
 
-:- pragma foreign_proc("C", 
-	io__set_stream_db(StreamDb::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C",
+	io__set_stream_db(StreamDb::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ML_io_stream_db = StreamDb;
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("C#", 
-	io__get_stream_db(StreamDb::out, _IO0::di, _IO::uo), 
+:- pragma foreign_proc("C#",
+	io__get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	StreamDb = ML_io_stream_db;
 ").
 
-:- pragma foreign_proc("C#", 
-	io__set_stream_db(StreamDb::in, _IO0::di, _IO::uo), 
+:- pragma foreign_proc("C#",
+	io__set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ML_io_stream_db = StreamDb;
 ").
 
-:- pragma foreign_proc("Java", 
-	io__get_stream_db(StreamDb::out, _IO0::di, _IO::uo), 
+:- pragma foreign_proc("Java",
+	io__get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	StreamDb = ML_io_stream_db;
 ").
 
-:- pragma foreign_proc("Java", 
-	io__set_stream_db(StreamDb::in, _IO0::di, _IO::uo), 
+:- pragma foreign_proc("Java",
+	io__set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ML_io_stream_db = StreamDb;
@@ -4430,22 +4226,22 @@ source_name(stderr) = "<standard error>".
 :- pred io__insert_stream_info(io__stream::in, stream_info::in,
 	io__state::di, io__state::uo) is det.
 
-io__insert_stream_info(Stream, Name) -->
-	io__get_stream_db(StreamDb0),
-	{ map__set(StreamDb0, get_stream_id(Stream), Name, StreamDb) },
-	io__set_stream_db(StreamDb).
+io__insert_stream_info(Stream, Name, !IO) :-
+	io__get_stream_db(StreamDb0, !IO),
+	map__set(StreamDb0, get_stream_id(Stream), Name, StreamDb),
+	io__set_stream_db(StreamDb, !IO).
 
 :- pred io__maybe_delete_stream_info(io__stream::in,
 	io__state::di, io__state::uo) is det.
 
-io__maybe_delete_stream_info(Stream) -->
-	io__may_delete_stream_info(MayDeleteStreamInfo),
-	( { MayDeleteStreamInfo \= 0 } ->
-		io__get_stream_db(StreamDb0),
-		{ map__delete(StreamDb0, get_stream_id(Stream), StreamDb) },
-		io__set_stream_db(StreamDb)
+io__maybe_delete_stream_info(Stream, !IO) :-
+	io__may_delete_stream_info(MayDeleteStreamInfo, !IO),
+	( MayDeleteStreamInfo \= 0 ->
+		io__get_stream_db(StreamDb0, !IO),
+		map__delete(StreamDb0, get_stream_id(Stream), StreamDb),
+		io__set_stream_db(StreamDb, !IO)
 	;
-		[]
+		true
 	).
 
 % Return an integer that is nonzero if and only if we should delete
@@ -4478,16 +4274,16 @@ io__may_delete_stream_info(1, !IO).
 	% XXX design flaw with regard to unique modes
 	% and io__get_globals/3: the `Globals::uo' mode here is a lie.
 
-:- pragma foreign_proc("C", 
-	io__get_globals(Globals::uo, IOState0::di, IOState::uo), 
+:- pragma foreign_proc("C",
+	io__get_globals(Globals::uo, IOState0::di, IOState::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Globals = ML_io_user_globals;
 	MR_update_io(IOState0, IOState);
 ").
 
-:- pragma foreign_proc("C", 
-	io__set_globals(Globals::di, IOState0::di, IOState::uo), 
+:- pragma foreign_proc("C",
+	io__set_globals(Globals::di, IOState0::di, IOState::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	/* XXX need to globalize the memory */
@@ -4495,52 +4291,51 @@ io__may_delete_stream_info(1, !IO).
 	MR_update_io(IOState0, IOState);
 ").
 
-:- pragma foreign_proc("C#", 
-	io__get_globals(Globals::uo, _IOState0::di, _IOState::uo), 
+:- pragma foreign_proc("C#",
+	io__get_globals(Globals::uo, _IOState0::di, _IOState::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Globals = ML_io_user_globals;
 ").
 
-:- pragma foreign_proc("C#", 
-	io__set_globals(Globals::di, _IOState0::di, _IOState::uo), 
+:- pragma foreign_proc("C#",
+	io__set_globals(Globals::di, _IOState0::di, _IOState::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ML_io_user_globals = Globals;
 ").
 
-:- pragma foreign_proc("Java", 
-	io__get_globals(Globals::uo, _IOState0::di, _IOState::uo), 
+:- pragma foreign_proc("Java",
+	io__get_globals(Globals::uo, _IOState0::di, _IOState::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Globals = ML_io_user_globals;
 ").
 
-:- pragma foreign_proc("Java", 
-	io__set_globals(Globals::di, _IOState0::di, _IOState::uo), 
+:- pragma foreign_proc("Java",
+	io__set_globals(Globals::di, _IOState0::di, _IOState::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ML_io_user_globals = Globals;
 ").
 
-io__progname_base(DefaultName, PrognameBase) -->
-	io__progname(DefaultName, Progname),
-	{ PrognameBase = dir__basename_det(Progname) }.
-
+io__progname_base(DefaultName, PrognameBase, !IO) :-
+	io__progname(DefaultName, Progname, !IO),
+	PrognameBase = dir__basename_det(Progname).
 
 :- pragma foreign_proc("C",
-	io__get_stream_id(Stream::in) = (Id::out), 
+	io__get_stream_id(Stream::in) = (Id::out),
 	[will_not_call_mercury, promise_pure],
 "
 
 #ifndef MR_NATIVE_GC
-	/* 
+	/*
 	** Most of the time, we can just use the pointer to the stream
 	** as a unique identifier.
 	*/
 	Id = (MR_Word) Stream;
 #else
-	/* 
+	/*
 	** for accurate GC we embed an ID in the MercuryFile
 	** and retrieve it here.
 	*/
@@ -4549,14 +4344,14 @@ io__progname_base(DefaultName, PrognameBase) -->
 ").
 
 :- pragma foreign_proc("C#",
-	io__get_stream_id(Stream::in) = (Id::out), 
+	io__get_stream_id(Stream::in) = (Id::out),
 	[will_not_call_mercury, promise_pure],
 "
 	Id = Stream.id;
 ").
 
 :- pragma foreign_proc("Java",
-	io__get_stream_id(Stream::in) = (Id::out), 
+	io__get_stream_id(Stream::in) = (Id::out),
 	[will_not_call_mercury, promise_pure],
 "
 	Id = Stream.id;
@@ -4569,23 +4364,23 @@ io__progname_base(DefaultName, PrognameBase) -->
 
 :- pragma promise_pure(io__get_environment_var/4).
 
-io__get_environment_var(Var, OptValue) -->
-	( { semipure io__getenv(Var, Value) } ->
-	    { OptValue0 = yes(Value) }
+io__get_environment_var(Var, OptValue, !IO) :-
+	( semipure io__getenv(Var, Value) ->
+		OptValue0 = yes(Value)
 	;
-	    { OptValue0 = no }
+		OptValue0 = no
 	),
-	{ OptValue = OptValue0 }.
+	OptValue = OptValue0.
 
 :- pragma promise_pure(io__set_environment_var/4).
 
-io__set_environment_var(Var, Value) -->
-	( { impure io__setenv(Var, Value) } ->
-	    []
+io__set_environment_var(Var, Value, !IO) :-
+	( impure io__setenv(Var, Value) ->
+		true
 	;
-	    { string__format("Could not set environment variable `%s'",
-				[s(Var)], Message) },
-	    { error(Message) }
+		string__format("Could not set environment variable `%s'",
+			[s(Var)], Message),
+		error(Message)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -4593,16 +4388,16 @@ io__set_environment_var(Var, Value) -->
 
 % statistics reporting predicates
 
-io__report_stats -->
-	io__report_stats("standard").
+io__report_stats(!IO) :-
+	io__report_stats("standard", !IO).
 
-io__report_full_memory_stats -->
-	io__report_stats("full_memory_stats").
+io__report_full_memory_stats(!IO) :-
+	io__report_stats("full_memory_stats", !IO).
 
 :- pragma promise_pure(io__report_stats/3).
 
-io__report_stats(Selector) -->
-	{ Selector = "standard" ->
+io__report_stats(Selector, !IO) :-
+	( Selector = "standard" ->
 		impure report_stats
 	; Selector = "full_memory_stats" ->
 		impure report_full_memory_stats
@@ -4613,7 +4408,7 @@ io__report_stats(Selector) -->
 			"io__report_stats: selector `%s' not understood",
 			[s(Selector)], Message),
 		error(Message)
-	}.
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -4624,40 +4419,36 @@ io__report_stats(Selector) -->
 
 	% XXX Since on the IL backend pragma export is NYI, this
 	% predicate must be placed in the interface.
-:- pred io__init_state(io__state, io__state).
-:- mode io__init_state(di, uo) is det.
+:- pred io__init_state(io::di, io::uo) is det.
 
 :- implementation.
 
-% for use by the Mercury runtime
+	% for use by the Mercury runtime
 :- pragma export(io__init_state(di, uo), "ML_io_init_state").
 
-io__init_state -->
-	io__gc_init(type_of(StreamDb), type_of(Globals)),
-	{ map__init(StreamDb) },
-	{ type_to_univ("<globals>", Globals) },
-	io__set_stream_db(StreamDb),
-	io__set_op_table(ops__init_mercury_op_table),
-	io__set_globals(Globals),
-	io__insert_std_stream_names.
+io__init_state(!IO) :-
+	io__gc_init(type_of(StreamDb), type_of(Globals), !IO),
+	map__init(StreamDb),
+	type_to_univ("<globals>", Globals),
+	io__set_stream_db(StreamDb, !IO),
+	io__set_op_table(ops__init_mercury_op_table, !IO),
+	io__set_globals(Globals, !IO),
+	io__insert_std_stream_names(!IO).
 
-:- pred io__finalize_state(io__state, io__state).
-:- mode io__finalize_state(di, uo) is det.
+:- pred io__finalize_state(io::di, io::uo) is det.
 
-% for use by the Mercury runtime
+	% for use by the Mercury runtime
 :- pragma export(io__finalize_state(di, uo), "ML_io_finalize_state").
 
-io__finalize_state -->
 	% currently no finalization needed...
 	% (Perhaps we should close all open Mercury files?
 	% That will happen on process exit anyway, so currently
 	% we don't bother.)
-	[].
+io__finalize_state(!IO).
 
-:- pred io__gc_init(type_desc, type_desc, io__state, io__state).
-:- mode io__gc_init(in, in, di, uo) is det.
+:- pred io__gc_init(type_desc::in, type_desc::in, io::di, io::uo) is det.
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	io__gc_init(StreamDbType::in, UserGlobalsType::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -4670,22 +4461,23 @@ io__finalize_state -->
 	MR_update_io(IO0, IO);
 ").
 
-io__gc_init(_, _) --> [].
+io__gc_init(_, _, !IO).
 
-:- pred io__insert_std_stream_names(io__state, io__state).
-:- mode io__insert_std_stream_names(di, uo) is det.
+:- pred io__insert_std_stream_names(io::di, io::uo) is det.
 
-io__insert_std_stream_names -->
-	io__stdin_stream(Stdin),
-	io__insert_stream_info(Stdin, stream(0, input, preopen, stdin)),
-	io__stdout_stream(Stdout),
-	io__insert_stream_info(Stdout, stream(1, output, preopen, stdout)),
-	io__stderr_stream(Stderr),
-	io__insert_stream_info(Stderr, stream(1, output, preopen, stderr)).
+io__insert_std_stream_names(!IO) :-
+	io__stdin_stream(Stdin, !IO),
+	io__insert_stream_info(Stdin, stream(0, input, preopen, stdin), !IO),
+	io__stdout_stream(Stdout, !IO),
+	io__insert_stream_info(Stdout, stream(1, output, preopen, stdout),
+		!IO),
+	io__stderr_stream(Stderr, !IO),
+	io__insert_stream_info(Stderr, stream(1, output, preopen, stderr),
+		!IO).
 
-io__call_system(Command, Result) -->
-	io__call_system_return_signal(Command, Result0),
-	{
+io__call_system(Command, Result, !IO) :-
+	io__call_system_return_signal(Command, Result0, !IO),
+	(
 		Result0 = ok(exited(Code)),
 		Result = ok(Code)
 	;
@@ -4697,17 +4489,17 @@ io__call_system(Command, Result) -->
 	;
 		Result0 = error(Error),
 		Result = error(Error)
-	}.
-	
-io__call_system_return_signal(Command, Result) -->
-	io__call_system_code(Command, Code, Msg),
-	{ Code = 127 ->
+	).
+
+io__call_system_return_signal(Command, Result, !IO) :-
+	io__call_system_code(Command, Code, Msg, !IO),
+	( Code = 127 ->
 		Result = error(io_error(Msg))
 	;
 		Result = io__handle_system_command_exit_status(Code)
-	}.
+	).
 
-:- type io__error	
+:- type io__error
 	--->	io_error(string).		% This is subject to change.
 	% Note that we use `io_error' rather than `io__error'
 	% because io__print, which may be called to print out the uncaught
@@ -4723,33 +4515,31 @@ io__error_message(io_error(Error), Error).
 	% XXX design flaw with regard to unique modes and
 	% io__get_op_table
 
-io__get_op_table(ops__init_mercury_op_table) --> [].
+io__get_op_table(ops__init_mercury_op_table, !IO).
 
-io__set_op_table(_OpTable) --> [].
+io__set_op_table(_OpTable, !IO).
 
 %-----------------------------------------------------------------------------%
 
 % For use by the debugger:
 
-:- pred io__get_io_input_stream_type(type_desc, io__state, io__state).
-:- mode io__get_io_input_stream_type(out, di, uo) is det.
+:- pred io__get_io_input_stream_type(type_desc::out, io::di, io::uo) is det.
 
 :- pragma export(io__get_io_input_stream_type(out, di, uo),
 	"ML_io_input_stream_type").
 
-io__get_io_input_stream_type(Type) -->
-	io__stdin_stream(Stream),
-	{ Type = type_of(Stream) }.
+io__get_io_input_stream_type(Type, !IO) :-
+	io__stdin_stream(Stream, !IO),
+	Type = type_of(Stream).
 
-:- pred io__get_io_output_stream_type(type_desc, io__state, io__state).
-:- mode io__get_io_output_stream_type(out, di, uo) is det.
+:- pred io__get_io_output_stream_type(type_desc::out, io::di, io::uo) is det.
 
 :- pragma export(io__get_io_output_stream_type(out, di, uo),
 	"ML_io_output_stream_type").
 
-io__get_io_output_stream_type(Type) -->
-	io__stdout_stream(Stream),
-	{ Type = type_of(Stream) }.
+io__get_io_output_stream_type(Type, !IO) :-
+	io__stdout_stream(Stream, !IO),
+	Type = type_of(Stream).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -4805,7 +4595,6 @@ int		mercury_getc(MercuryFilePtr mf);
 void		mercury_close(MercuryFilePtr mf);
 int		ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 ").
-
 
 :- pragma foreign_decl("C#", "
 
@@ -4872,7 +4661,7 @@ namespace mercury {
 	** for which the current implementations attempt to access binary
 	** streams using text mode operations (and so will definitely break.)
 	*/
-	
+
 	public static class MR_MercuryFileStruct {
 		public	static final int		INPUT		= 0;
 		public	static final int		OUTPUT		= 1;
@@ -4949,11 +4738,11 @@ namespace mercury {
 				// be a problem for write-only files.
 			} else {
 				throw new RuntimeException(
-						""Invalid file opening mode"");
+					""Invalid file opening mode"");
 			}
 			try {
-				randomaccess	= new java.io.RandomAccessFile(
-						file, openstring);
+				randomacces = new java.io.RandomAccessFile(
+					file, openstring);
 				if (mode == 'a') {
 					seek(SEEK_END, 0);
 				}
@@ -4965,40 +4754,39 @@ namespace mercury {
 		}
 
 		public MR_MercuryFileStruct(java.io.InputStream stream,
-				boolean openAsBinary)
+			boolean openAsBinary)
 		{
 			id		= ML_next_stream_id++;
 			mode		= INPUT;
 			pushback	= new java.util.Stack();
-			
+
 			if (!openAsBinary) {
-				input		= new java.io.
-						InputStreamReader(stream);
+				input = new java.io.InputStreamReader(stream);
 			} else {
 				/* open stdin as binary */
 				binary_input = new java.io.FileInputStream(
-						java.io.FileDescriptor.in);
+					java.io.FileDescriptor.in);
 				channel = get_channel(binary_input);
 			}
 		}
 
 		public MR_MercuryFileStruct(java.io.OutputStream stream,
-				boolean openAsBinary)
+			boolean openAsBinary)
 		{
 			id		= ML_next_stream_id++;
 			mode		= OUTPUT;
 
 			if (!openAsBinary) {
-				output		= new java.io.
-						OutputStreamWriter(stream);
+				output = new java.io.OutputStreamWriter(
+					stream);
 			} else {
 				/* open stdout as binary */
 				binary_output = new java.io.FileOutputStream(
-						java.io.FileDescriptor.out);
+					java.io.FileDescriptor.out);
 				channel = get_channel(binary_output);
 			}
 		}
-		
+
 		/*
 		** size():
 		**	Returns the length of a binary file. XXX Note that this
@@ -5017,10 +4805,10 @@ namespace mercury {
 
 			try {
 				java.lang.reflect.Method size_mth =
-						channel.getClass().
+					channel.getClass().
 						getMethod(""size"", null);
 				return ((Long) size_mth.invoke(channel, null)).
-						intValue();
+					intValue();
 			} catch (java.lang.Exception e) {
 				if (binary_output != null) {
 					return position;
@@ -5056,23 +4844,23 @@ namespace mercury {
 
 			if (input != null || output != null) {
 				throw new java.lang.RuntimeException(
-						""Java text streams are "" +
-						""not seekable"");
+					""Java text streams are "" +
+					""not seekable"");
 			}
 			if (binary_output != null) {
 				throw new java.lang.RuntimeException(
-						""for Java versions < 1.4, "" +
-						""mercury_stdout_binary is "" +
-						""not seekable"");
+					""for Java versions < 1.4, "" +
+					""mercury_stdout_binary is "" +
+					""not seekable"");
 			}
 			if (binary_input != null &&
-					(flag != SEEK_CUR || offset < 0))
+				(flag != SEEK_CUR || offset < 0))
 			{
 				throw new java.lang.RuntimeException(
-						""for Java versions < 1.4, "" +
-						""mercury_stdin_binary may "" +
-						""only seek forwards from "" +
-						""the current position"");
+					""for Java versions < 1.4, "" +
+					""mercury_stdin_binary may "" +
+					""only seek forwards from "" +
+					""the current position"");
 			}
 
 			pushback = new java.util.Stack();
@@ -5104,7 +4892,7 @@ namespace mercury {
 				}
 			} catch (java.lang.Exception e) {
 				throw new java.lang.RuntimeException(
-						e.getMessage());
+					e.getMessage());
 			}
 		}
 
@@ -5291,7 +5079,7 @@ namespace mercury {
 			if (c == '\\n') {
 				line_number++;
 			}
-	
+
 			try {
 				if (output != null) {
 					output.write(c);
@@ -5319,7 +5107,7 @@ namespace mercury {
 				throw new java.lang.RuntimeException(
 					""Attempted to write to input stream"");
 			}
-			
+
 			try {
 				if (output != null) {
 					for (int i = 0; i < s.length(); i++) {
@@ -5479,7 +5267,7 @@ mercury_init_io(void)
 	MR_mercuryfile_init(NULL, 1, &mercury_stdout_binary);
 
 #if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) && \
-    defined(MR_HAVE_DUP)
+		defined(MR_HAVE_DUP)
 	MR_file(mercury_stdin_binary) = fdopen(dup(fileno(stdin)), ""rb"");
 	if (MR_file(mercury_stdin_binary) == NULL) {
 		MR_fatal_error(""error opening standard input stream in ""
@@ -5530,21 +5318,21 @@ mercury_file_init(System.IO.Stream stream,
 
 static MR_MercuryFileStruct mercury_stdin =
 	mercury_file_init(System.Console.OpenStandardInput(),
-	    System.Console.In, null, ML_default_text_encoding);
+		System.Console.In, null, ML_default_text_encoding);
 static MR_MercuryFileStruct mercury_stdout =
 	mercury_file_init(System.Console.OpenStandardOutput(),
-	    null, System.Console.Out, ML_default_text_encoding);
+		null, System.Console.Out, ML_default_text_encoding);
 static MR_MercuryFileStruct mercury_stderr =
 	mercury_file_init(System.Console.OpenStandardError(),
-	    null, System.Console.Error, ML_default_text_encoding);
+		null, System.Console.Error, ML_default_text_encoding);
 
 	// XXX should we use BufferedStreams here?
 static MR_MercuryFileStruct mercury_stdin_binary =
 	mercury_file_init(System.Console.OpenStandardInput(),
-	    System.Console.In, null, ML_file_encoding_kind.ML_raw_binary);
+		System.Console.In, null, ML_file_encoding_kind.ML_raw_binary);
 static MR_MercuryFileStruct mercury_stdout_binary =
 	mercury_file_init(System.Console.OpenStandardOutput(),
-	    null, System.Console.Out, ML_file_encoding_kind.ML_raw_binary);
+		null, System.Console.Out, ML_file_encoding_kind.ML_raw_binary);
 
 static MR_MercuryFileStruct mercury_current_text_input = mercury_stdin;
 static MR_MercuryFileStruct mercury_current_text_output = mercury_stdout;
@@ -5559,27 +5347,26 @@ static System.Exception MR_io_exception;
 :- pragma foreign_code("Java",
 "
 static MR_MercuryFileStruct mercury_stdin =
-		new MR_MercuryFileStruct(java.lang.System.in);
+	new MR_MercuryFileStruct(java.lang.System.in);
 static MR_MercuryFileStruct mercury_stdout =
-		new MR_MercuryFileStruct(java.lang.System.out);
+	new MR_MercuryFileStruct(java.lang.System.out);
 static MR_MercuryFileStruct mercury_stderr =
-		new MR_MercuryFileStruct(java.lang.System.err);
+	new MR_MercuryFileStruct(java.lang.System.err);
 static MR_MercuryFileStruct mercury_stdin_binary =
-		new MR_MercuryFileStruct(java.lang.System.in, true);
+	new MR_MercuryFileStruct(java.lang.System.in, true);
 static MR_MercuryFileStruct mercury_stdout_binary =
-		new MR_MercuryFileStruct(java.lang.System.out, true);
+	new MR_MercuryFileStruct(java.lang.System.out, true);
 
 static MR_MercuryFileStruct mercury_current_text_input = mercury_stdin;
 static MR_MercuryFileStruct mercury_current_text_output = mercury_stdout;
 static MR_MercuryFileStruct mercury_current_binary_input =
-		mercury_stdin_binary;
+	mercury_stdin_binary;
 static MR_MercuryFileStruct mercury_current_binary_output =
-		mercury_stdout_binary;
-		
+	mercury_stdout_binary;
+
 // XXX not thread-safe!
 static java.lang.Exception MR_io_exception;
 ").
-
 
 :- pragma foreign_code("C", "
 
@@ -5605,10 +5392,10 @@ mercury_open(const char *filename, const char *openmode)
 static MR_MercuryFileStruct mercury_open(string filename, string openmode,
 	ML_file_encoding_kind file_encoding)
 {
-        System.IO.FileMode   mode;
-        System.IO.FileAccess access;
-        System.IO.FileShare  share;
-        System.IO.Stream     stream = null;
+	System.IO.FileMode	mode;
+	System.IO.FileAccess	access;
+	System.IO.FileShare	share;
+	System.IO.Stream	 stream = null;
 
 	try {
 		if (openmode == ""r"" || openmode == ""rb"") {
@@ -5646,22 +5433,24 @@ static MR_MercuryFileStruct mercury_open(string filename, string openmode,
 		MR_io_exception = e;
 	}
 
-        if (stream == null) {
-                return null;
-        } else {
+	if (stream == null) {
+		return null;
+	} else {
 		// we initialize the `reader' and `writer' fields to null;
 		// they will be filled in later if they are needed.
-                return mercury_file_init(
+		return mercury_file_init(
 			new System.IO.BufferedStream(stream),
 			null, null, file_encoding);
-        }
+	}
 }
 
 ").
 
 :- pred throw_io_error(string::in) is erroneous.
 :- pragma export(throw_io_error(in), "ML_throw_io_error").
-throw_io_error(Message) :- throw(io_error(Message)).
+
+throw_io_error(Message) :-
+	throw(io_error(Message)).
 
 :- pragma foreign_code("C", "
 
@@ -5749,7 +5538,7 @@ mercury_print_string(MR_MercuryFileStruct mf, string s)
 	if (mf.writer == null) {
 		mf.writer = new System.IO.StreamWriter(mf.stream,
 			System.Text.Encoding.Default);
-		
+
 	}
 
 	switch (mf.file_encoding) {
@@ -5785,7 +5574,6 @@ mercury_print_string(MR_MercuryFileStruct mf, string s)
 
 ").
 
-
 :- pragma foreign_code("C", "
 
 void
@@ -5811,7 +5599,6 @@ mercury_getc(MercuryFilePtr mf)
 }
 
 ").
-
 
 :- pragma foreign_code("C#", "
 
@@ -5952,7 +5739,7 @@ mercury_getc(MR_MercuryFileStruct mf)
 		}
 		break;
 	}
-        return c;
+	return c;
 }
 
 static void
@@ -5968,7 +5755,6 @@ mercury_ungetc(MR_MercuryFileStruct mf, int code)
 	}
 }
 ").
-
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -5995,7 +5781,7 @@ ME_closed_stream_close(MR_StreamInfo *info)
 
 static int
 ME_closed_stream_read(MR_StreamInfo *info, void *buffer, size_t size)
-{ 
+{
 	errno = MR_CLOSED_FILE_ERROR;
 	return -1;	/* XXX should this be 0? */
 }
@@ -6022,12 +5808,12 @@ ME_closed_stream_ungetch(MR_StreamInfo *info, int ch)
 }
 
 static int
-ME_closed_stream_getch(MR_StreamInfo *info) 
+ME_closed_stream_getch(MR_StreamInfo *info)
 {
 	errno = MR_CLOSED_FILE_ERROR;
 	return EOF;
 }
- 
+
 static int
 ME_closed_stream_vfprintf(MR_StreamInfo *info, const char *format, va_list ap)
 {
@@ -6159,7 +5945,6 @@ mercury_close(MR_MercuryFileStruct mf)
 
 ").
 
-
 :- pragma foreign_code("C", "
 
 int
@@ -6179,7 +5964,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 /* input predicates */
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	io__read_char_code(File::in, CharCode::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -6187,7 +5972,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	io__read_byte_val(File::in, ByteVal::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -6195,7 +5980,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	io__putback_char(File::in, Character::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, terminates],
 "{
@@ -6222,7 +6007,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	io__read_char_code(File::in, CharCode::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
@@ -6230,7 +6015,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	CharCode = mercury_getc(mf);
 ").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	io__read_byte_val(File::in, ByteVal::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
@@ -6243,7 +6028,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	}
 ").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	io__putback_char(File::in, Character::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, terminates],
 "{
@@ -6263,14 +6048,14 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	mf.putback = Byte;
 }").
 
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	io__read_char_code(File::in, CharCode::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
 	CharCode = File.read_char();
 ").
 
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	io__read_byte_val(File::in, ByteVal::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
@@ -6291,10 +6076,9 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	File.ungetc(Byte);
 ").
 
-
 /* output predicates - with output to mercury_current_text_output */
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	io__write_string(Message::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
 		terminates],
@@ -6303,7 +6087,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	io__write_char(Character::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
 		terminates],
@@ -6364,7 +6148,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	io__flush_output(IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
 		terminates],
@@ -6386,7 +6170,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	io__write_string(Message::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
 		terminates],
@@ -6394,7 +6178,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	mercury_print_string(mercury_current_text_output, Message);
 ").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	io__write_char(Character::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
 		terminates],
@@ -6448,7 +6232,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	mercury_print_binary_string(mercury_current_binary_output, Message);
 }").
 
-:- pragma foreign_proc("C#", 
+:- pragma foreign_proc("C#",
 	io__flush_output(_IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
 		terminates],
@@ -6464,14 +6248,14 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	mercury_current_binary_output.stream.Flush();
 ").
 
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	io__write_string(Message::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
 		terminates],
 "
 	System.out.print(Message);
 ").
-:- pragma foreign_proc("Java", 
+:- pragma foreign_proc("Java",
 	io__write_char(Character::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
 		terminates],
@@ -6525,8 +6309,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	mercury_current_binary_output.flush();
 ").
 
-io__write_float(Float) -->
-	io__write_string(string__float_to_string(Float)).
+io__write_float(Float, !IO) :-
+	io__write_string(string__float_to_string(Float), !IO).
 
 /* moving about binary streams */
 
@@ -6540,8 +6324,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	whence_to_int(Whence, Flag),
 	io__seek_binary_2(Stream, Flag, Offset, IO0, IO).
 
-:- pred io__seek_binary_2(io__stream, int, int, io__state, io__state).
-:- mode io__seek_binary_2(in, in, in, di, uo) is det.
+:- pred io__seek_binary_2(io__stream::in, int::in, int::in,
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__seek_binary_2(Stream::in, Flag::in, Off::in, IO0::di, IO::uo),
@@ -6580,7 +6364,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma foreign_proc("C",
 	io__write_string(Stream::in, Message::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-		terminates], 
+		terminates],
 "{
 	mercury_print_string(Stream, Message);
 	MR_update_io(IO0, IO);
@@ -6589,7 +6373,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma foreign_proc("C",
 	io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-		terminates], 
+		terminates],
 "{
 	if (MR_PUTCH(*Stream, Character) < 0) {
 		mercury_output_error(Stream);
@@ -6670,7 +6454,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma foreign_proc("C#",
 	io__write_string(Stream::in, Message::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
-		terminates], 
+		terminates],
 "{
 	mercury_print_string(Stream, Message);
 }").
@@ -6678,7 +6462,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma foreign_proc("C#",
 	io__write_char(Stream::in, Character::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
-		terminates], 
+		terminates],
 "{
 	MR_MercuryFileStruct stream = Stream;
 	/* See mercury_output_string() for comments */
@@ -6762,7 +6546,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma foreign_proc("Java",
 	io__write_string(Stream::in, Message::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
-		terminates], 
+		terminates],
 "
 	Stream.write(Message);
 ").
@@ -6823,8 +6607,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	Stream.flush();
 ").
 
-io__write_float(Stream, Float) -->
-	io__write_string(Stream, string__float_to_string(Float)).
+io__write_float(Stream, Float, !IO) :-
+	io__write_string(Stream, string__float_to_string(Float), !IO).
 
 /* stream predicates */
 
@@ -6943,7 +6727,7 @@ io__write_float(Stream, Float) -->
 	LineNum = MR_line_number(*mercury_current_text_output);
 	MR_update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("C",
 	io__get_output_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -6968,10 +6752,14 @@ io__write_float(Stream, Float) -->
 	MR_update_io(IO0, IO);
 }").
 
-current_input_stream(S) --> input_stream(S).
-current_output_stream(S) --> output_stream(S).
-current_binary_input_stream(S) --> binary_input_stream(S).
-current_binary_output_stream(S) --> binary_output_stream(S).
+current_input_stream(S, !IO) :-
+	input_stream(S, !IO).
+current_output_stream(S, !IO) :-
+	output_stream(S, !IO).
+current_binary_input_stream(S, !IO) :-
+	binary_input_stream(S, !IO).
+current_binary_output_stream(S, !IO) :-
+	binary_output_stream(S, !IO).
 
 % io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %	Changes the current input stream to the stream specified.
@@ -7154,7 +6942,7 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 
 :- pragma foreign_proc("C#",
 	io__set_binary_input_stream(NewStream::in, OutStream::out,
-		_IO0::di, _IO::uo), 
+		_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	OutStream = mercury_current_binary_input;
@@ -7163,7 +6951,7 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 
 :- pragma foreign_proc("C#",
 	io__set_binary_output_stream(NewStream::in, OutStream::out,
-		_IO0::di, _IO::uo), 
+		_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	OutStream = mercury_current_binary_output;
@@ -7289,9 +7077,10 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 	Stream.line_number = LineNum;
 }").
 
-% io__set_input_stream(NewStream, OldStream, IO0, IO1)
-%	Changes the current input stream to the stream specified.
-%	Returns the previous stream.
+	% io__set_input_stream(NewStream, OldStream, IO0, IO1)
+	% Changes the current input stream to the stream specified.
+	% Returns the previous stream.
+
 :- pragma foreign_proc("Java",
 	io__set_input_stream(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -7310,7 +7099,7 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 
 :- pragma foreign_proc("Java",
 	io__set_binary_input_stream(NewStream::in, OutStream::out,
-		_IO0::di, _IO::uo), 
+		_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	OutStream = mercury_current_binary_input;
@@ -7319,22 +7108,22 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 
 :- pragma foreign_proc("Java",
 	io__set_binary_output_stream(NewStream::in, OutStream::out,
-		_IO0::di, _IO::uo), 
+		_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	OutStream = mercury_current_binary_output;
 	mercury_current_binary_output = NewStream;
 ").
 
-/* stream open/close predicates */
+	/* stream open/close predicates */
 
-%	io__do_open_binary(File, Mode, ResultCode, StreamId, Stream, IO0, IO):
-%	io__do_open_text(File, Mode, ResultCode, StreamId, Stream, IO0, IO):
-%		Attempts to open a file in the specified mode.
-%		The Mode is a string suitable for passing to fopen().
-%		Result is 0 for success, -1 for failure.
-%		StreamId is a unique integer identifying the open.
-%		Both StreamId and Stream are valid only if Result == 0.
+	% io__do_open_binary(File, Mode, ResultCode, StreamId, Stream, !IO):
+	% io__do_open_text(File, Mode, ResultCode, StreamId, Stream, !IO):
+	% Attempts to open a file in the specified mode.
+	% The Mode is a string suitable for passing to fopen().
+	% Result is 0 for success, -1 for failure.
+	% StreamId is a unique integer identifying the open.
+	% Both StreamId and Stream are valid only if Result == 0.
 
 :- pred io__do_open_binary(string::in, string::in, int::out, int::out,
 	io__input_stream::out, io__state::di, io__state::uo) is det.
@@ -7387,7 +7176,7 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	MR_MercuryFileStruct mf = mercury_open(FileName, Mode,
-			ML_file_encoding_kind.ML_raw_binary);
+		ML_file_encoding_kind.ML_raw_binary);
 	Stream = mf;
 	if (mf != null) {
 		ResultCode = 0;
@@ -7406,19 +7195,17 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 	try {
 		if (Mode.charAt(0) == 'r') {
 			Stream = new MR_MercuryFileStruct(
-					new java.io.FileInputStream(FileName));
+				new java.io.FileInputStream(FileName));
 		} else if (Mode.charAt(0) == 'w') {
 			Stream = new MR_MercuryFileStruct(
-					new java.io.FileOutputStream(
-					FileName));
+				new java.io.FileOutputStream(FileName));
 		} else if (Mode.charAt(0) == 'a') {
 			Stream = new MR_MercuryFileStruct(
-					new java.io.FileOutputStream(
-					FileName, true));
+				new java.io.FileOutputStream(FileName, true));
 		} else {
 			throw new java.lang.RuntimeException(
-					""io__do_open_text: Invalid open mode""
-					+ "" \\"""" + Mode + ""\\"""");
+				""io__do_open_text: Invalid open mode""
+				+ "" \\"""" + Mode + ""\\"""");
 		}
 		StreamId = Stream.id;
 		ResultCode = 0;
@@ -7447,21 +7234,21 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 	}
 ").
 
-io__close_input(Stream) -->
-	io__maybe_delete_stream_info(Stream),
-	io__close_stream(Stream).
+io__close_input(Stream, !IO) :-
+	io__maybe_delete_stream_info(Stream, !IO),
+	io__close_stream(Stream, !IO).
 
-io__close_output(Stream) -->
-	io__maybe_delete_stream_info(Stream),
-	io__close_stream(Stream).
+io__close_output(Stream, !IO) :-
+	io__maybe_delete_stream_info(Stream, !IO),
+	io__close_stream(Stream, !IO).
 
-io__close_binary_input(Stream) -->
-	io__maybe_delete_stream_info(Stream),
-	io__close_stream(Stream).
+io__close_binary_input(Stream, !IO) :-
+	io__maybe_delete_stream_info(Stream, !IO),
+	io__close_stream(Stream, !IO).
 
-io__close_binary_output(Stream) -->
-	io__maybe_delete_stream_info(Stream),
-	io__close_stream(Stream).
+io__close_binary_output(Stream, !IO) :-
+	io__maybe_delete_stream_info(Stream, !IO),
+	io__close_stream(Stream, !IO).
 
 :- pred io__close_stream(stream::in, io__state::di, io__state::uo) is det.
 
@@ -7532,7 +7319,7 @@ io__close_binary_output(Stream) -->
 
 :- pragma foreign_proc("C",
 	io__get_exit_status(ExitStatus::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io], 
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ExitStatus = mercury_exit_status;
 	MR_update_io(IO0, IO);
@@ -7553,21 +7340,20 @@ io__close_binary_output(Stream) -->
 "
 	Status = system(Command);
 	if ( Status == -1 ) {
-		/* 
+		/*
 		** Return values of 127 or -1 from system() indicate that
 		** the system call failed. Don't return -1, as -1 indicates
-		** that the system call was killed by signal number 1. 
+		** that the system call was killed by signal number 1.
 		*/
 		Status = 127;
 		ML_maybe_make_err_msg(MR_TRUE, errno,
 			""error invoking system command: "",
 			MR_PROC_LABEL, Msg);
 	} else {
-		Msg = MR_make_string_const("""");	
+		Msg = MR_make_string_const("""");
 	}
 	MR_update_io(IO0, IO);
 ").
-
 
 io__progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
 	% This is a fall-back for back-ends which don't support the
@@ -7606,7 +7392,7 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
-            defined (WIFSIGNALED) && defined (WTERMSIG)
+			defined (WIFSIGNALED) && defined (WTERMSIG)
 		if (WIFEXITED(Status0)) {
 			Status = WEXITSTATUS(Status0);
 		} else if (WIFSIGNALED(Status0)) {
@@ -7635,7 +7421,7 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 		// We don't get the 0th argument: it is the executable name
 	while (--i > 0) {
 		Args = mercury.list.mercury_code.ML_cons(null,
-				arg_vector[i], Args);
+			arg_vector[i], Args);
 	}
 ").
 
@@ -7655,12 +7441,12 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 
 :- pragma foreign_proc("C#",
 	io__call_system_code(Command::in, Status::out, Msg::out,
-			_IO0::di, _IO::uo),
+		_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	try {
 		// XXX This could be better... need to handle embedded spaces
-		//     in the command name.
+		// in the command name.
 		int index = Command.IndexOf("" "");
 		string command = Command.Substring(0, index);
 		string arguments = Command.Remove(0, index + 1);
@@ -7701,14 +7487,14 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 
 :- pragma foreign_proc("Java",
 	io__get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io], 
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ExitStatus = mercury.runtime.JavaInternal.exit_status;
 ").
 
 :- pragma foreign_proc("Java",
 	io__set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io], 
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	mercury.runtime.JavaInternal.exit_status = ExitStatus;
 ").
@@ -7716,26 +7502,24 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 io__command_line_arguments(Args, IO, IO) :-
 	build_command_line_args(0, Args).
 
-:- pred build_command_line_args(int, list(string)).
-:- mode build_command_line_args(in, out) is det.
+:- pred build_command_line_args(int::in, list(string)::out) is det.
 
 build_command_line_args(ArgNumber, Args) :-
 	( command_line_argument(ArgNumber, Arg) ->
-		Args = [Arg|MoreArgs],
+		Args = [Arg | MoreArgs],
 		build_command_line_args(ArgNumber + 1, MoreArgs)
 	;
 		Args = []
 	).
 
-:- pred command_line_argument(int, string).
-:- mode command_line_argument(in, out) is semidet.
+:- pred command_line_argument(int::in, string::out) is semidet.
 
 	% XXX This predicate is currently only used by the Java implementation,
 	% but to prevent compilation warnings for (eg) the C implementation,
 	% some definition needs to be present.
 command_line_argument(_, "") :-
 	( semidet_succeed ->
-		error("unexpected call to command_line_argument")       
+		error("unexpected call to command_line_argument")
 	;
 		semidet_fail
 	).
@@ -7757,19 +7541,19 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("Java",
 	io__call_system_code(Command::in, Status::out, Msg::out,
-			_IO0::di, _IO::uo),
+		_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	try {
 		java.lang.Process process = java.lang.Runtime.getRuntime().
-				exec(Command);
+			exec(Command);
 
 		StreamPipe stdin = new StreamPipe(mercury_stdin,
-				process.getOutputStream());
+			process.getOutputStream());
 		StreamPipe stdout = new StreamPipe(process.getInputStream(),
-				mercury_stdout);
+			mercury_stdout);
 		StreamPipe stderr = new StreamPipe(process.getErrorStream(),
-				mercury_stderr);
+			mercury_stderr);
 		stdin.start();
 		stdout.start();
 		stderr.start();
@@ -7847,19 +7631,15 @@ command_line_argument(_, "") :-
 	}
 ").
 
-
 io__setenv(Var, Value) :-
 	impure io__putenv(Var ++ "=" ++ Value).
 
-
-:- impure pred io__putenv(string).
-:- mode io__putenv(in) is semidet.
-%	io__putenv(VarString).
-%		If VarString is a string of the form "name=value",
-%		sets the environment variable name to the specified
-%		value.  Fails if the operation does not work.
-%		Not supported for .NET.
-%		This should only be called from io__setenv.
+	% io__putenv(VarString): If VarString is a string of the form
+	% "name=value", sets the environment variable name to the specified
+	% value.  Fails if the operation does not work.
+	% Not supported for .NET.
+	% This should only be called from io__setenv.
+:- impure pred io__putenv(string::in) is semidet.
 
 :- pragma foreign_proc("C",
 	io__putenv(VarAndValue::in),
@@ -7904,53 +7684,51 @@ io__setenv(Var, Value) :-
 	// This implementation is included only to suppress warnings.
 
 	throw new RuntimeException(
-			""io__putenv/1 not implemented for Java: "" +
-			VarAndValue);
+		""io__putenv/1 not implemented for Java: "" + VarAndValue);
 ").
 
 /*---------------------------------------------------------------------------*/
 
-io__tmpnam(Name) -->
-	io__make_temp(Name),
-	io__remove_file(Name, _Result).
+io__tmpnam(Name, !IO) :-
+	io__make_temp(Name, !IO),
+	io__remove_file(Name, _Result, !IO).
 
-io__tmpnam(Dir, Prefix, Name) -->
-	io__make_temp(Dir, Prefix, Name),
-	io__remove_file(Name, _Result).
+io__tmpnam(Dir, Prefix, Name, !IO) :-
+	io__make_temp(Dir, Prefix, Name, !IO),
+	io__remove_file(Name, _Result, !IO).
 
 /*---------------------------------------------------------------------------*/
 
 	% We need to do an explicit check of TMPDIR because not all
 	% systems check TMPDIR for us (eg Linux #$%*@&).
-io__make_temp(Name) -->
-	{ Var = ( dir__use_windows_paths -> "TMP" ; "TMPDIR" ) },
-	io__get_environment_var(Var, Result),
+io__make_temp(Name, !IO) :-
+	Var = ( dir__use_windows_paths -> "TMP" ; "TMPDIR" ),
+	io__get_environment_var(Var, Result, !IO),
 	(
-		{ Result = yes(Dir) }
+		Result = yes(Dir)
 	;
-		{ Result = no },
-		{ dir__use_windows_paths ->
+		Result = no,
+		( dir__use_windows_paths ->
 			Dir = dir__this_directory
 		;
 			Dir = "/tmp"
-		}
+		)
 	),
-	io__make_temp(Dir, "mtmp", Name).
+	io__make_temp(Dir, "mtmp", Name, !IO).
 
-io__make_temp(Dir, Prefix, Name) -->
+io__make_temp(Dir, Prefix, Name, !IO) :-
 	io__do_make_temp(Dir, Prefix, char_to_string(dir__directory_separator),
-		Name, Err, Message),
-	{ Err \= 0 ->
+		Name, Err, Message, !IO),
+	( Err \= 0 ->
 		throw_io_error(Message)
 	;
 		true
-	}.
+	).
 
 /*---------------------------------------------------------------------------*/
 
-:- pred io__do_make_temp(string, string, string, string, int, string,
-	io__state, io__state).
-:- mode io__do_make_temp(in, in, in, out, out, out, di, uo) is det.
+:- pred io__do_make_temp(string::in, string::in, string::in,
+	string::out, int::out, string::out, io::di, io::uo) is det.
 
 /*
 ** XXX	The code for io__make_temp assumes POSIX.
@@ -8037,40 +7815,41 @@ io__make_temp(Dir, Prefix, Name) -->
 		Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	/* XXX For some reason this MC++ code below doesn't work.
-	 * We get the following error message:
-	 *   Unhandled Exception: System.TypeInitializationException: The type
-	 *   initializer for ""remove_file.mercury_code"" threw an exception.
-	 *   ---> System.IO.FileLoadException: The dll initialization routine
-	 *   failed for file 'io__cpp_code.dll'.
-	 * so instead we use the .NET call and ignore Dir and Prefix.
-	int result;
-	char __nogc *dir = static_cast<char*>(
-			System::Runtime::InteropServices::Marshal::
-			StringToHGlobalAnsi(Dir).ToPointer());;
-	char __nogc *prefix = static_cast<char*>(
-			System::Runtime::InteropServices::Marshal::
-			StringToHGlobalAnsi(Prefix).ToPointer());;
-	char tmpFileName[MAX_PATH];
-	System::String *msg[] = {
-			S""Unable to create temporary file in "",
-			Dir,
-			S"" with prefix "",
-			Prefix
-		};
-
-
-	result = GetTempFileName(dir, prefix, 0, tmpFileName);
-
-	if (result == 0) {
-		Error = -1;
-		FileName = S"""";
-		ErrorMessage = System::String::Join(S"""", msg);
-	} else {
-		Error = 0;
-		FileName = tmpFileName;
-		ErrorMessage = S"""";
-	}
+	/*
+	** XXX For some reason this MC++ code below doesn't work.
+	** We get the following error message:
+	**   Unhandled Exception: System.TypeInitializationException: The type
+	**   initializer for ""remove_file.mercury_code"" threw an exception.
+	**   ---> System.IO.FileLoadException: The dll initialization routine
+	**   failed for file 'io__cpp_code.dll'.
+	** so instead we use the .NET call and ignore Dir and Prefix.
+	** 
+	** int result;
+	** char __nogc *dir = static_cast<char*>(
+	** 	System::Runtime::InteropServices::Marshal::
+	** 	StringToHGlobalAnsi(Dir).ToPointer());;
+	** char __nogc *prefix = static_cast<char*>(
+	** 	System::Runtime::InteropServices::Marshal::
+	** 	StringToHGlobalAnsi(Prefix).ToPointer());;
+	** char tmpFileName[MAX_PATH];
+	** System::String *msg[] = {
+	** 	S""Unable to create temporary file in "",
+	** 	Dir,
+	** 	S"" with prefix "",
+	** 	Prefix
+	** };
+	**
+	** result = GetTempFileName(dir, prefix, 0, tmpFileName);
+	**
+	** if (result == 0) {
+	** 	Error = -1;
+	** 	FileName = S"""";
+	** 	ErrorMessage = System::String::Join(S"""", msg);
+	** } else {
+	** 	Error = 0;
+	** 	FileName = tmpFileName;
+	** 	ErrorMessage = S"""";
+	** }
 	*/
 
 	try {
@@ -8092,7 +7871,7 @@ io__make_temp(Dir, Prefix, Name) -->
 :- pragma foreign_proc("Java",
 	io__do_make_temp(_Dir::in, _Prefix::in, _Sep::in, _FileName::out,
 		_Error::out, _ErrorMessage::out, _IO0::di, _IO::uo),
-        [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	// this function should never be called.
 
@@ -8100,15 +7879,15 @@ io__make_temp(Dir, Prefix, Name) -->
 ").
 
 :- pragma foreign_proc("Java",
-        io__make_temp(FileName::out, _IO0::di, _IO::uo),
-        [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	io__make_temp(FileName::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	try {
 		java.io.File tmpdir = new java.io.File(
-				java.lang.System.getProperty(
-				""java.io.tmpdir""));
+			java.lang.System.getProperty(
+			""java.io.tmpdir""));
 		FileName = java.io.File.createTempFile(""mtmp"", null, tmpdir).
-				getName();
+			getName();
 	} catch (java.lang.Exception e) {
 		throw new RuntimeException(e.getMessage());
 		// This is done instead of just 'throw e' because otherwise
@@ -8117,8 +7896,8 @@ io__make_temp(Dir, Prefix, Name) -->
 ").
 
 :- pragma foreign_proc("Java",
-        io__make_temp(Dir::in, Prefix::in, FileName::out, _IO0::di, _IO::uo),
-        [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	io__make_temp(Dir::in, Prefix::in, FileName::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	try {
 		if (Prefix.length() < 3) {
@@ -8132,7 +7911,7 @@ io__make_temp(Dir, Prefix, Name) -->
 			Prefix = Prefix.substring(0, 5);
 		}
 		FileName = java.io.File.createTempFile(Prefix, null,
-				new java.io.File(Dir)).getName();
+			new java.io.File(Dir)).getName();
 	} catch (java.lang.Exception e) {
 		throw new RuntimeException(e.getMessage());
 		// This is done instead of just 'throw e' because otherwise
@@ -8253,16 +8032,16 @@ io__make_temp(Dir, Prefix, Name) -->
 
 ").
 
-io__remove_file(FileName, Result, IO0, IO) :-
-	io__remove_file_2(FileName, Res, ResString, IO0, IO),
+io__remove_file(FileName, Result, !IO) :-
+	io__remove_file_2(FileName, Res, ResString, !IO),
 	( Res \= 0 ->
 		Result = error(io_error(ResString))
 	;
 		Result = ok
 	).
 
-:- pred io__remove_file_2(string, int, string, io__state, io__state).
-:- mode io__remove_file_2(in, out, out, di, uo) is det.
+:- pred io__remove_file_2(string::in, int::out, string::out, io::di, io::uo)
+	is det.
 
 :- pragma foreign_proc("C",
 	io__remove_file_2(FileName::in, RetVal::out, RetStr::out,
@@ -8325,8 +8104,8 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 		Result = ok
 	).
 
-:- pred io__rename_file_2(string, string, int, string, io__state, io__state).
-:- mode io__rename_file_2(in, in, out, out, di, uo) is det.
+:- pred io__rename_file_2(string::in, string::in, int::out, string::out,
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
@@ -8388,8 +8167,9 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 
 io__have_symlinks :- semidet_fail.
 
-:- pragma foreign_proc("C", io__have_symlinks,
-		[will_not_call_mercury, promise_pure, thread_safe],
+:- pragma foreign_proc("C",
+	io__have_symlinks,
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 #if defined(MR_HAVE_SYMLINK) && defined(MR_HAVE_READLINK)
 	SUCCESS_INDICATOR = MR_TRUE;
@@ -8398,26 +8178,26 @@ io__have_symlinks :- semidet_fail.
 #endif
 ").
 
-io__make_symlink(FileName, LinkFileName, Result) -->
-	( { io__have_symlinks } ->
-		io__make_symlink_2(FileName, LinkFileName, Status),
-		( { Status = 0 } ->
-			io__make_err_msg("io.make_symlink failed: ", Msg),
-			{ Result = error(make_io_error(Msg)) }
+io__make_symlink(FileName, LinkFileName, Result, !IO) :-
+	( io__have_symlinks ->
+		io__make_symlink_2(FileName, LinkFileName, Status, !IO),
+		( Status = 0 ->
+			io__make_err_msg("io.make_symlink failed: ", Msg, !IO),
+			Result = error(make_io_error(Msg))
 		;
-			{ Result = ok }
+			Result = ok
 		)
 	;
-		{ Result = error(make_io_error(
-			"io.make_symlink not supported on this platform")) }
+		Result = error(make_io_error(
+			"io.make_symlink not supported on this platform"))
 	).
 
 :- pred io__make_symlink_2(string::in, string::in, int::out,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	io__make_symlink_2(FileName::in, LinkFileName::in,
-		Status::out, IO0::di, IO::uo), 
+	io__make_symlink_2(FileName::in, LinkFileName::in, Status::out,
+		IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 #ifdef MR_HAVE_SYMLINK
@@ -8428,19 +8208,20 @@ io__make_symlink(FileName, LinkFileName, Result) -->
 	MR_update_io(IO0, IO);
 }").
 
-io__read_symlink(FileName, Result) -->
-	( { io__have_symlinks } ->
-		io__read_symlink_2(FileName, TargetFileName, Status, Error),
-		( { Status = 0 } ->
-			io__make_err_msg(Error,
-				"io.read_symlink failed: ", Msg),
-			{ Result = error(make_io_error(Msg)) }
+io__read_symlink(FileName, Result, !IO) :-
+	( io__have_symlinks ->
+		io__read_symlink_2(FileName, TargetFileName, Status, Error,
+			!IO),
+		( Status = 0 ->
+			io__make_err_msg(Error, "io.read_symlink failed: ",
+				Msg, !IO),
+			Result = error(make_io_error(Msg))
 		;
-			{ Result = ok(TargetFileName) }
+			Result = ok(TargetFileName)
 		)
 	;
-		{ Result = error(make_io_error(
-			"io.read_symlink not supported on this platform")) }
+		Result = error(make_io_error(
+			"io.read_symlink not supported on this platform"))
 	).
 
 :- pred io__read_symlink_2(string::in, string::out, int::out,
@@ -8448,17 +8229,17 @@ io__read_symlink(FileName, Result) -->
 
 :- pragma foreign_proc("C",
 	io__read_symlink_2(FileName::in, TargetFileName::out,
-		Status::out, Error::out, IO0::di, IO::uo), 
+		Status::out, Error::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 #ifdef MR_HAVE_READLINK
   #ifndef PATH_MAX
-  #define PATH_MAX 256
+    #define PATH_MAX 256
   #endif
-	int num_chars;
-	char *buffer2 = NULL;
-	int buffer_size2 = PATH_MAX;
-	char buffer[PATH_MAX + 1];
+	int	num_chars;
+	char	*buffer2 = NULL;
+	int	buffer_size2 = PATH_MAX;
+	char	buffer[PATH_MAX + 1];
 
 	/* readlink() does not null-terminate the buffer */
 	num_chars = readlink(FileName, buffer, PATH_MAX);
@@ -8487,7 +8268,7 @@ io__read_symlink(FileName, Result) -->
 		buffer[num_chars] = '\\0';
 		MR_make_aligned_string_copy(TargetFileName,
 			buffer);
-		Status = 1;	
+		Status = 1;
 	}
 #else /* !MR_HAVE_READLINK */
 	TargetFileName = NULL;
@@ -8500,24 +8281,24 @@ io__read_symlink(FileName, Result) -->
 % called:
 
 :- pragma foreign_proc("Java",
-	io__make_symlink_2(_FileName::in, _LinkFileName::in,
-		_Status::out, _IO0::di, _IO::uo), 
+	io__make_symlink_2(_FileName::in, _LinkFileName::in, _Status::out,
+		_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	if (true) {
 		throw new java.lang.RuntimeException(
-				""io__make_symlink_2 not implemented"");
+			""io__make_symlink_2 not implemented"");
 	}
 ").
 
 :- pragma foreign_proc("Java",
-	io__read_symlink_2(_FileName::in, _TargetFileName::out,
-		_Status::out, _Error::out, _IO0::di, _IO::uo), 
+	io__read_symlink_2(_FileName::in, _TargetFileName::out, _Status::out,
+		_Error::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	if (true) {
 		throw new java.lang.RuntimeException(
-				""io__read_symlink_2 not implemented"");
+			""io__read_symlink_2 not implemented"");
 	}
 ").
 

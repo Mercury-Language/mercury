@@ -5,10 +5,11 @@
 %-----------------------------------------------------------------------------%
 %
 % file: integer.m
-% main authors: aet Mar 1998. 
-%               Dan Hazel <odin@svrc.uq.edu.au> Oct 1999.
-% 
-% Implements an arbitrary precision integer type and basic 
+% main authors:
+% aet Mar 1998.
+% Dan Hazel <odin@svrc.uq.edu.au> Oct 1999.
+%
+% Implements an arbitrary precision integer type and basic
 % operations on it. (An arbitrary precision integer may have
 % any number of digits, unlike an int, which is limited to the
 % precision of the machine's int type, which is typically 32 bits.)
@@ -97,63 +98,60 @@
 
 % Possible improvements:
 %
-%	1) allow negative digits (-base+1 .. base-1) in lists of
-%	  digits and normalise only when printing. This would
-%	  probably simplify the division algorithm, also.
-%       (djh: this is not really done although -ve integers include a list
-%             of -ve digits for faster comparison and so that normal mercury
-%             sorting produces an intuitive order)
+% 1) allow negative digits (-base+1 .. base-1) in lists of
+%    digits and normalise only when printing. This would
+%    probably simplify the division algorithm, also.
+%    (djh: this is not really done although -ve integers include a list
+%    of -ve digits for faster comparison and so that normal mercury
+%    sorting produces an intuitive order)
 %
-%	2) alternatively, instead of using base=10000, use *all* the
-%	  bits in an int and make use of the properties of machine
-%	  arithmetic. Base 10000 doesn't use even half the bits
-%	  in an int, which is inefficient. (Base 2^14 would be
-%	  a little better but would require a slightly more
-%	  complex case conversion on reading and printing.)
-%       (djh: this is done)
+% 2) alternatively, instead of using base=10000, use *all* the
+%    bits in an int and make use of the properties of machine
+%    arithmetic. Base 10000 doesn't use even half the bits
+%    in an int, which is inefficient. (Base 2^14 would be
+%    a little better but would require a slightly more
+%    complex case conversion on reading and printing.)
+%    (djh: this is done)
 %
-%	3) Use an O(n^(3/2)) algorithm for multiplying large
-%	  integers, rather than the current O(n^2) method.
-%	  There's an obvious divide-and-conquer technique,
-%	  Karatsuba multiplication.
+% 3) Use an O(n^(3/2)) algorithm for multiplying large
+%    integers, rather than the current O(n^2) method.
+%    There's an obvious divide-and-conquer technique,
+%    Karatsuba multiplication.
 %
-%	4) We could overload operators so that we can have mixed operations
-%	  on ints and integers. For example, "integer(1)+3". This
-%	  would obviate most calls of integer().
+% 4) We could overload operators so that we can have mixed operations
+%    on ints and integers. For example, "integer(1)+3". This
+%    would obviate most calls of integer().
 %
-%	5) Use double-ended lists rather than simple lists. This
-%	  would improve the efficiency of the division algorithm,
-%	  which reverse lists.
-%       (djh: this is obsolete - digits lists are now in normal order)
+% 5) Use double-ended lists rather than simple lists. This
+%    would improve the efficiency of the division algorithm,
+%    which reverse lists.
+%    (djh: this is obsolete - digits lists are now in normal order)
 %
-%	6) Add bit operations (XOR, AND, OR, etc). We would treat
-%	  the integers as having a 2's complement bit representation.
-%	  This is easier to do if we use base 2^14 as mentioned above.
-%       (djh: this is done:  /\ \/ << >> xor \)
+% 6) Add bit operations (XOR, AND, OR, etc). We would treat
+%    the integers as having a 2's complement bit representation.
+%    This is easier to do if we use base 2^14 as mentioned above.
+%    (djh: this is done:  /\ \/ << >> xor \)
 %
-%	7) The implementation of `div' is slower than it need be.
-%       (djh: this is much improved)
+% 7) The implementation of `div' is slower than it need be.
+%    (djh: this is much improved)
 %
-%	8) Fourier methods such as Schoenhage-Strassen and
-%	  multiplication via modular arithmetic are left as
-%	  exercises to the reader. 8^)
+% 8) Fourier methods such as Schoenhage-Strassen and
+%    multiplication via modular arithmetic are left as
+%    exercises to the reader. 8^)
 %
+% Of the above, 1) would have the best bang-for-buck, 5) would
+% benefit division and remainder operations quite a lot, and 3)
+% would benefit large multiplications (thousands of digits)
+% and is straightforward to implement.
 %
-%	Of the above, 1) would have the best bang-for-buck, 5) would
-%	benefit division and remainder operations quite a lot, and 3)
-%	would benefit large multiplications (thousands of digits)
-%	and is straightforward to implement.
-%       (djh:
-%            I'd like to see 1) done.
-%            integers are now represented as
-%                    i(Length, Digits)
-%                where Digits are no longer reversed.
-%            The only penalty for not reversing is in multiplication
-%            by the base which now entails walking to the end of the list
-%            to append a 0.
-%            Therefore I'd like to see:
-%       9) Allow empty tails for low end zeros.
-%          Base multiplication is then an increment to Length.
+% (djh: I'd like to see 1) done. integers are now represented as
+% i(Length, Digits) where Digits are no longer reversed.
+% The only penalty for not reversing is in multiplication
+% by the base which now entails walking to the end of the list
+% to append a 0. Therefore I'd like to see:
+%
+% 9) Allow empty tails for low end zeros.
+%    Base multiplication is then an increment to Length.
 
 :- type sign == int.	% sign of integer and length of digit list
 :- type digit == int.	% base 2^14 digit
@@ -189,7 +187,7 @@ lowbitmask = 1.
 
 evenmask = 16382.
 
-'<'(X, Y) :- 
+'<'(X, Y) :-
 	big_cmp(X, Y) = C,
 	C = (<).
 
@@ -232,10 +230,10 @@ X /\ Y =
 		( big_isnegative(Y) ->
 			\ big_or(\ X, \ Y)
 		;
-			big_and_not(Y, \ X) 
+			big_and_not(Y, \ X)
 		)
 	; big_isnegative(Y) ->
-		big_and_not(X, \ Y) 
+		big_and_not(X, \ Y)
 	;
 		big_and(X, Y)
 	).
@@ -245,7 +243,7 @@ X \/ Y =
 		( big_isnegative(Y) ->
 			\ big_and(\ X, \ Y)
 		;
-			\ big_and_not(\ X, Y) 
+			\ big_and_not(\ X, Y)
 		)
 	; big_isnegative(Y) ->
 		\ big_and_not(\ Y, X)
@@ -253,7 +251,7 @@ X \/ Y =
 		big_or(X, Y)
 	).
 
-X `xor` Y = 
+X `xor` Y =
 	( big_isnegative(X) ->
 		( big_isnegative(Y) ->
 			big_xor(\ X, \ Y)
@@ -318,7 +316,7 @@ big_div(X, Y) = Div :-
 	big_quot_rem(X, Y, Trunc, Rem),
 	( if	integer_signum(Y) * integer_signum(Rem) < 0
 	  then	Div = Trunc - integer__one
-   	  else	Div = Trunc
+	  else	Div = Trunc
 	).
 
 :- func big_mod(integer, integer) = integer.
@@ -327,7 +325,7 @@ big_mod(X, Y) = Mod :-
 	big_quot_rem(X, Y, _Trunc, Rem),
 	( if	integer_signum(Y) * integer_signum(Rem) < 0
 	  then	Mod = Rem + Y
-   	  else	Mod = Rem
+	  else	Mod = Rem
 	).
 
 :- func big_right_shift(integer, int) = integer.
@@ -464,7 +462,7 @@ xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
 
 xor_pairs_equal([], _) = [].
 xor_pairs_equal([_ | _], []) = [].
-xor_pairs_equal([X | Xs], [Y | Ys]) = 
+xor_pairs_equal([X | Xs], [Y | Ys]) =
 	[int__xor(X, Y) | xor_pairs_equal(Xs, Ys)].
 
 :- func big_and(integer, integer) = integer.
@@ -515,7 +513,7 @@ and_not_pairs(i(L1, D1), i(L2, D2)) = Integer :-
 
 and_not_pairs_equal([], _) = [].
 and_not_pairs_equal([_ | _], []) = [].
-and_not_pairs_equal([X | Xs], [Y | Ys]) = 
+and_not_pairs_equal([X | Xs], [Y | Ys]) =
 	[X /\ \ Y | and_not_pairs_equal(Xs, Ys)].
 
 :- func big_xor_not(integer, integer) = integer.
@@ -537,9 +535,9 @@ pos_cmp(X, Y) = Result :-
 
 big_plus(X, Y) = Sum :-
 	( X = integer__zero ->
-		Sum = Y 
+		Sum = Y
 	; Y = integer__zero ->
-		Sum = X 
+		Sum = X
 	;
 		AbsX = big_abs(X),
 		AbsY = big_abs(Y),
@@ -590,7 +588,7 @@ int_to_integer(D) = Int :-
 
 :- func shortint_to_integer(int) = integer.
 
-shortint_to_integer(D) = 
+shortint_to_integer(D) =
 	( D = 0 -> integer__zero ; D > 0 -> i(1, [D]) ; i(-1, [D]) ).
 
 :- func signum(int) = int.
@@ -618,7 +616,7 @@ pos_int_to_digits_2(D, Tail) = Result :-
 
 :- func mul_base(integer) = integer.
 
-mul_base(i(Len, Digits)) = 
+mul_base(i(Len, Digits)) =
 	( Digits = [] -> integer__zero ; i(Len + 1, mul_base_2(Digits)) ).
 
 :- func mul_base_2(list(digit)) = list(digit).
@@ -630,7 +628,7 @@ mul_base_2([H | T]) = [H | mul_base_2(T)].
 
 mul_by_digit(Digit, i(Len, Digits0)) = Out :-
 	mul_by_digit_2(Digit, Mod, Digits0, Digits),
-	Out = ( Mod = 0 -> i(Len, Digits) ; i(Len + 1, [Mod | Digits]) ). 
+	Out = ( Mod = 0 -> i(Len, Digits) ; i(Len + 1, [Mod | Digits]) ).
 
 :- pred mul_by_digit_2(digit::in, digit::out, list(digit)::in,
 	list(digit)::out) is det.
@@ -780,10 +778,10 @@ quot_rem(U, V, Quot, Rem) :-
 quot_rem_2(Ur, U, V, Quot, Rem) :-
 	( pos_lt(Ur, V) ->
 		( U = i(_, [Ua | _]) ->
-			quot_rem_2(integer_append(Ur, Ua), tail(U), V, 
+			quot_rem_2(integer_append(Ur, Ua), tail(U), V,
 				Quot0, Rem0),
-                	Quot = integer_prepend(0, Quot0),
-                	Rem = Rem0
+	Quot = integer_prepend(0, Quot0),
+	Rem = Rem0
 		;
 			Quot = i(1, [0]),
 			Rem = Ur
@@ -810,7 +808,7 @@ quot_rem_2(Ur, U, V, Quot, Rem) :-
 		),
 		NewUr = pos_minus(Ur, QByV),
 		( U = i(_, [Ua | _]) ->
-                	quot_rem_2(integer_append(NewUr, Ua), tail(U), V,
+	quot_rem_2(integer_append(NewUr, Ua), tail(U), V,
 				Quot0, Rem0),
 			Quot = integer_prepend(Q, Quot0),
 			Rem = Rem0
@@ -835,10 +833,10 @@ head(I) = (I = i(_, [Hd|_T]) ->  Hd ; func_error("integer__head: []") ).
 
 :- func head_tail(integer) = digit.
 
-head_tail(I) = 
-	(I = i(_, [_ | [HT | _]]) -> 
-		HT 
-	; 
+head_tail(I) =
+	(I = i(_, [_ | [HT | _]]) ->
+		HT
+	;
 		func_error("integer__head_tail: []")
 	).
 
@@ -897,7 +895,7 @@ integer__pow(A, N) = P :-
 integer__pow(A, N, P) :-
 	( if	big_isnegative(N)
 	  then	error("integer__pow: negative exponent")
-   	  else	P = big_pow(A, N)
+	  else	P = big_pow(A, N)
 	).
 
 :- func big_pow(integer, integer) = integer.
@@ -914,7 +912,7 @@ big_pow(A, N) =
 	; N = i(_, [Head | Tail]) ->
 		bits_pow_list(Tail, A, bits_pow_head(Head, A))
 	;
-        	integer__zero
+		integer__zero
 	).
 
 :- func bits_pow_head(int, integer) = integer.
@@ -954,13 +952,13 @@ integer__float(i(_, List)) = float_list(float__float(base), 0.0, List).
 :- func float_list(float, float, list(int)) = float.
 
 float_list(_, Accum, []) = Accum.
-float_list(FBase, Accum, [H | T]) = 
+float_list(FBase, Accum, [H | T]) =
 	float_list(FBase, Accum * FBase + float__float(H), T).
- 
+
 integer__int(Integer) = Int :-
-	(	
-		Integer >= integer(int__min_int), 
-		Integer =< integer(int__max_int) 
+	(
+		Integer >= integer(int__min_int),
+		Integer =< integer(int__max_int)
 	->
 		Integer = i(_Sign, Digits),
 		Int = int_list(Digits, 0)
@@ -979,7 +977,7 @@ integer__one = i(1, [1]).
 
 %-----------------------------------------------------------------------------%
 %
-% Converting strings to integers. 
+% Converting strings to integers.
 %
 
 integer__from_string(S) = Big :-
@@ -988,7 +986,7 @@ integer__from_string(S) = Big :-
 
 :- func string_to_integer(list(char)::in) = (integer::out) is semidet.
 
-string_to_integer(CCs @ [C | Cs]) = 
+string_to_integer(CCs @ [C | Cs]) =
 	( if	C = ('-')
 	  then	big_sign(-1, string_to_integer(Cs))
 	  else	string_to_integer_acc(CCs, integer__zero)
@@ -1005,17 +1003,17 @@ string_to_integer_acc([C | Cs], Acc) = Result :-
 		% then the call to pos_int_to_digits/1 may not terminate.
 	( char__is_digit(C) ->
 		Digit0 = char__to_int(C),
-		Z = char__to_int('0'), 
+		Z = char__to_int('0'),
 		Digit = pos_int_to_digits(Digit0 - Z),
 		NewAcc = pos_plus(Digit, mul_by_digit(10, Acc)),
 		Result = string_to_integer_acc(Cs, NewAcc)
-	;	
+	;
 		fail
 	).
 
 %-----------------------------------------------------------------------------%
 %
-% Converting integers to strings. 
+% Converting integers to strings.
 %
 
 integer__to_string(i(Sign, Digits)) = SignStr ++ digits_to_string(AbsDigits) :-
@@ -1038,7 +1036,7 @@ digits_to_string(Digits @ [_|_]) = Str :-
 		digits_to_strings(Tail, Ss, []),
 		string__append_list([SHead | Ss], Str)
 	;
-		error("integer.digits_to_string/1: empty list")	
+		error("integer.digits_to_string/1: empty list")
 	).
 
 :- pred digits_to_strings(list(digit)::in, list(string)::out,
@@ -1084,7 +1082,7 @@ log10printbase = 4.
 
 :- func printbase_pos_int_to_digits(int) = integer.
 
-printbase_pos_int_to_digits(D) = 
+printbase_pos_int_to_digits(D) =
 	printbase_pos_int_to_digits_2(D, integer__zero).
 
 :- func printbase_pos_int_to_digits_2(int, integer) = integer.
@@ -1158,7 +1156,7 @@ printbase_add_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 printbase_pos_mul(i(L1, Ds1), i(L2, Ds2)) =
 	( if	L1 < L2
 	  then	printbase_pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
-   	  else	printbase_pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
+	  else	printbase_pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
 	).
 
 :- func printbase_pos_mul_list(list(digit), integer, integer) = integer.

@@ -29,45 +29,39 @@
 :- type relation_key_set == sparse_bitset(relation_key).
 
 	% relation__init creates a new relation.
-:- pred relation__init(relation(T)).
-:- mode relation__init(out) is det.
-
+:- pred relation__init(relation(T)::out) is det.
 :- func relation__init = relation(T).
 
 	% relation__add_element adds an element to the domain of a
 	% relation.  Return the old relation_key if one already
 	% exists.
-:- pred relation__add_element(relation(T), T, relation_key, relation(T)).
-:- mode relation__add_element(in, in, out, out) is det.
+:- pred relation__add_element(relation(T)::in, T::in, relation_key::out,
+	relation(T)::out) is det.
 
 	% relation__search_element returns the relation_key associated
         % with a domain element.  Fail if the relation_key is not valid.
-:- pred relation__search_element(relation(T), T, relation_key).
-:- mode relation__search_element(in, in, out) is semidet.
+:- pred relation__search_element(relation(T)::in, T::in, relation_key::out)
+	is semidet.
 
 	% relation__lookup_element returns the relation_key associated
         % with a domain element.  Abort if the relation_key is not valid.
-:- pred relation__lookup_element(relation(T), T, relation_key).
-:- mode relation__lookup_element(in, in, out) is det.
-
+:- pred relation__lookup_element(relation(T)::in, T::in, relation_key::out)
+	is det.
 :- func relation__lookup_element(relation(T), T) = relation_key.
 
 	% relation__search_key returns the domain element associated
 	% with a relation_key.  Fail if the relation_key is not valid.
-:- pred relation__search_key(relation(T), relation_key, T).
-:- mode relation__search_key(in, in, out) is semidet.
+:- pred relation__search_key(relation(T)::in, relation_key::in, T::out)
+	is semidet.
 
 	% relation__lookup_key returns the domain element associated
 	% with a relation_key.  Abort if the relation_key is not valid.
-:- pred relation__lookup_key(relation(T), relation_key, T).
-:- mode relation__lookup_key(in, in, out) is det.
-
+:- pred relation__lookup_key(relation(T)::in, relation_key::in, T::out) is det.
 :- func relation__lookup_key(relation(T), relation_key) = T.
 
 	% relation__add adds an element to the relation.
-:- pred relation__add(relation(T), relation_key, relation_key, relation(T)).
-:- mode relation__add(in, in, in, out) is det.
-
+:- pred relation__add(relation(T)::in, relation_key::in, relation_key::in,
+	relation(T)::out) is det.
 :- func relation__add(relation(T), relation_key, relation_key) = relation(T).
 
 	% relation__add_values adds an pair of values to the relation's
@@ -78,36 +72,32 @@
 	%	 relation__add_element(R1, Y, YKey, R2),
 	%	 relation__add(R1, XKey, YKey, R).
 	%
-:- pred relation__add_values(relation(T), T, T, relation(T)).
-:- mode relation__add_values(in, in, in, out) is det.
-
+:- pred relation__add_values(relation(T)::in, T::in, T::in, relation(T)::out)
+	is det.
 :- func relation__add_values(relation(T), T, T) = relation(T).
 
 	% relation__add_assoc_list adds a list of elements to a
 	% relation.
-:- pred relation__add_assoc_list(relation(T),
-		assoc_list(relation_key, relation_key), relation(T)).
-:- mode relation__add_assoc_list(in, in, out) is det.
+:- pred relation__add_assoc_list(relation(T)::in,
+	assoc_list(relation_key, relation_key)::in, relation(T)::out) is det.
 
 :- func relation__add_assoc_list(relation(T),
-		assoc_list(relation_key, relation_key)) = relation(T).
+	assoc_list(relation_key, relation_key)) = relation(T).
 
 	% relation__remove removes an element from the relation.
-:- pred relation__remove(relation(T), relation_key, relation_key,
-		relation(T)).
-:- mode relation__remove(in, in, in, out) is det.
+:- pred relation__remove(relation(T)::in, relation_key::in, relation_key::in,
+	relation(T)::out) is det.
 
 :- func relation__remove(relation(T), relation_key, relation_key)
-		= relation(T).
+	= relation(T).
 
 	% relation__remove_assoc_list removes a list of elements
 	% from a relation.
-:- pred relation__remove_assoc_list(relation(T),
-		assoc_list(relation_key, relation_key), relation(T)).
-:- mode relation__remove_assoc_list(in, in, out) is det.
+:- pred relation__remove_assoc_list(relation(T)::in,
+	assoc_list(relation_key, relation_key)::in, relation(T)::out) is det.
 
 :- func relation__remove_assoc_list(relation(T),
-		assoc_list(relation_key, relation_key)) = relation(T).
+	assoc_list(relation_key, relation_key)) = relation(T).
 
 	% relation__lookup checks to see if an element is
 	% in the relation.
@@ -123,74 +113,60 @@
 
 	% relation__lookup_from returns the set of elements
 	% y such that xRy, given an x.
-:- pred relation__lookup_from(relation(T), relation_key, set(relation_key)).
-:- mode relation__lookup_from(in, in, out) is det.
-
+:- pred relation__lookup_from(relation(T)::in, relation_key::in,
+	set(relation_key)::out) is det.
 :- func relation__lookup_from(relation(T), relation_key) = set(relation_key).
 
-:- pred relation__lookup_key_set_from(relation(T),
-		relation_key, relation_key_set).
-:- mode relation__lookup_key_set_from(in, in, out) is det.
+:- pred relation__lookup_key_set_from(relation(T)::in,
+	relation_key::in, relation_key_set::out) is det.
 
-:- func relation__lookup_key_set_from(relation(T),
-		relation_key) = relation_key_set.
+:- func relation__lookup_key_set_from(relation(T), relation_key)
+	= relation_key_set.
 
 	% relation__lookup_to returns the set of elements
 	% x such that xRy, given some y.
-:- pred relation__lookup_to(relation(T), relation_key, set(relation_key)).
-:- mode relation__lookup_to(in, in, out) is det.
+:- pred relation__lookup_to(relation(T)::in, relation_key::in,
+	set(relation_key)::out) is det.
 
 :- func relation__lookup_to(relation(T), relation_key) = set(relation_key).
 
-:- pred relation__lookup_key_set_to(relation(T),
-		relation_key, relation_key_set).
-:- mode relation__lookup_key_set_to(in, in, out) is det.
-
-:- func relation__lookup_key_set_to(relation(T),
-		relation_key) = relation_key_set.
+:- pred relation__lookup_key_set_to(relation(T)::in,
+	relation_key::in, relation_key_set::out) is det.
+:- func relation__lookup_key_set_to(relation(T), relation_key)
+	= relation_key_set.
 
 	% relation__to_assoc_list turns a relation into a list of
 	% pairs of elements.
-:- pred relation__to_assoc_list(relation(T), assoc_list(T, T)).
-:- mode relation__to_assoc_list(in, out) is det.
-
+:- pred relation__to_assoc_list(relation(T)::in, assoc_list(T, T)::out) is det.
 :- func relation__to_assoc_list(relation(T)) = assoc_list(T, T).
 
 	% relation__to_key_assoc_list turns a relation into a list of
 	% pairs of relation keys.
-:- pred relation__to_key_assoc_list(relation(T),
-	assoc_list(relation_key, relation_key)).
-:- mode relation__to_key_assoc_list(in, out) is det.
-
+:- pred relation__to_key_assoc_list(relation(T)::in,
+	assoc_list(relation_key, relation_key)::out) is det.
 :- func relation__to_key_assoc_list(relation(T))
-		= assoc_list(relation_key, relation_key).
+	= assoc_list(relation_key, relation_key).
 
 	% relation__from_assoc_list turns a list of pairs of
 	% elements into a relation.
-:- pred relation__from_assoc_list(assoc_list(T, T), relation(T)).
-:- mode relation__from_assoc_list(in, out) is det.
-
+:- pred relation__from_assoc_list(assoc_list(T, T)::in, relation(T)::out)
+	is det.
 :- func relation__from_assoc_list(assoc_list(T, T)) = relation(T).
 
 	% relation__domain finds the set of all elements in the
 	% domain of a relation.
-:- pred relation__domain(relation(T), set(T)).
-:- mode relation__domain(in, out) is det.
-
+:- pred relation__domain(relation(T)::in, set(T)::out) is det.
 :- func relation__domain(relation(T)) = set(T).
 
 	% relation__inverse(R, R') is true iff for all x, y
 	% in the domain of R, xRy if yR'x.
-:- pred relation__inverse(relation(T), relation(T)).
-:- mode relation__inverse(in, out) is det.
-
+:- pred relation__inverse(relation(T)::in, relation(T)::out) is det.
 :- func relation__inverse(relation(T)) = relation(T).
 
 	% relation__compose(R1, R2, R) is true if R is the
 	% composition of the relations R1 and R2.
-:- pred relation__compose(relation(T), relation(T), relation(T)).
-:- mode relation__compose(in, in, out) is det.
-
+:- pred relation__compose(relation(T)::in, relation(T)::in, relation(T)::out)
+	is det.
 :- func relation__compose(relation(T), relation(T)) = relation(T).
 
 	% relation__dfs(Rel, X, Dfs) is true if Dfs is a
@@ -198,9 +174,8 @@
 	% set of elements in the list Dfs is exactly equal
 	% to the set of elements y such that xR*y, where
 	% R* is the reflexive transitive closure of R.
-:- pred relation__dfs(relation(T), relation_key, list(relation_key)).
-:- mode relation__dfs(in, in, out) is det.
-
+:- pred relation__dfs(relation(T)::in, relation_key::in,
+	list(relation_key)::out) is det.
 :- func relation__dfs(relation(T), relation_key) = list(relation_key).
 
 	% relation__dfsrev(Rel, X, DfsRev) is true if DfsRev is a
@@ -208,111 +183,89 @@
 	% set of elements in the list Dfs is exactly equal
 	% to the set of elements y such that xR*y, where
 	% R* is the reflexive transitive closure of R.
-:- pred relation__dfsrev(relation(T), relation_key, list(relation_key)).
-:- mode relation__dfsrev(in, in, out) is det.
-
+:- pred relation__dfsrev(relation(T)::in, relation_key::in,
+	list(relation_key)::out) is det.
 :- func relation__dfsrev(relation(T), relation_key) = list(relation_key).
 
 	% relation__dfs(Rel, Dfs) is true if Dfs is a depth-
 	% first sorting of Rel, i.e. a list of the nodes in Rel
-	% such that it contains all elements in the relation and all 
-	% the children of a node are placed in the list before 
+	% such that it contains all elements in the relation and all
+	% the children of a node are placed in the list before
 	% the parent.
-:- pred relation__dfs(relation(T), list(relation_key)).
-:- mode relation__dfs(in, out) is det.
-
+:- pred relation__dfs(relation(T)::in, list(relation_key)::out) is det.
 :- func relation__dfs(relation(T)) = list(relation_key).
 
-	% relation__dfsrev(Rel, DfsRev) is true if DfsRev is a reverse 
+	% relation__dfsrev(Rel, DfsRev) is true if DfsRev is a reverse
 	% depth-first sorting of Rel.  ie DfsRev is the reverse of Dfs
 	% from relation__dfs/2.
-:- pred relation__dfsrev(relation(T), list(relation_key)).
-:- mode relation__dfsrev(in, out) is det.
-
+:- pred relation__dfsrev(relation(T)::in, list(relation_key)::out) is det.
 :- func relation__dfsrev(relation(T)) = list(relation_key).
 
-	% relation__dfs(Rel, X, Visit0, Visit, Dfs) is true 
-	% if Dfs is a depth-first sorting of Rel starting at 
-	% X providing we have already visited Visit0 nodes, 
-	% i.e.  a list of nodes such that all the unvisited 
-	% children of a node are placed in the list before the 
+	% relation__dfs(Rel, X, Visit0, Visit, Dfs) is true
+	% if Dfs is a depth-first sorting of Rel starting at
+	% X providing we have already visited Visit0 nodes,
+	% i.e.  a list of nodes such that all the unvisited
+	% children of a node are placed in the list before the
 	% parent.  Visit0 allows us to initialise a set of
 	% previously visited nodes.  Visit is Dfs + Visit0.
-:- pred relation__dfs(relation(T), relation_key, relation_key_set,
-		relation_key_set, list(relation_key)).
-:- mode relation__dfs(in, in, in, out, out) is det.
+:- pred relation__dfs(relation(T)::in, relation_key::in, relation_key_set::in,
+	relation_key_set::out, list(relation_key)::out) is det.
 
-	% relation__dfsrev(Rel, X, Visit0, Visit, DfsRev) is true if 
-	% DfsRev is a reverse depth-first sorting of Rel starting at X 
-	% providing we have already visited Visit0 nodes, 
+	% relation__dfsrev(Rel, X, Visit0, Visit, DfsRev) is true if
+	% DfsRev is a reverse depth-first sorting of Rel starting at X
+	% providing we have already visited Visit0 nodes,
 	% ie the reverse of Dfs from relation__dfs/5.
 	% Visit is Visit0 + DfsRev.
-:- pred relation__dfsrev(relation(T), relation_key,
-		relation_key_set, relation_key_set,
-		list(relation_key)).
-:- mode relation__dfsrev(in, in, in, out, out) is det.
+:- pred relation__dfsrev(relation(T)::in, relation_key::in,
+	relation_key_set::in, relation_key_set::out, list(relation_key)::out)
+	is det.
 
 	% relation__is_dag(R) is true iff R is a directed acyclic graph.
-:- pred relation__is_dag(relation(T)).
-:- mode relation__is_dag(in) is semidet.
+:- pred relation__is_dag(relation(T)::in) is semidet.
 
 	% relation__components(R, Comp) is true if Comp
 	% is the set of the connected components of R.
-:- pred relation__components(relation(T), set(set(relation_key))).
-:- mode relation__components(in, out) is det.
-
+:- pred relation__components(relation(T)::in, set(set(relation_key))::out)
+	is det.
 :- func relation__components(relation(T)) = set(set(relation_key)).
 
 	% relation__cliques(R, Cliques) is true if
 	% Cliques is the set of the strongly connected
 	% components (cliques) of R.
-:- pred relation__cliques(relation(T), set(set(relation_key))).
-:- mode relation__cliques(in, out) is det.
-
+:- pred relation__cliques(relation(T)::in, set(set(relation_key))::out) is det.
 :- func relation__cliques(relation(T)) = set(set(relation_key)).
 
 	% relation__reduced(R, Red) is true if Red is
 	% the reduced relation (relation of cliques)
 	% obtained from R.
-:- pred relation__reduced(relation(T), relation(set(T))).
-:- mode relation__reduced(in, out) is det.
-
+:- pred relation__reduced(relation(T)::in, relation(set(T))::out) is det.
 :- func relation__reduced(relation(T)) = relation(set(T)).
 
 	% relation__tsort(R, TS) is true if TS is a
 	% topological sorting of R.  It fails if R
 	% is cyclic.
-:- pred relation__tsort(relation(T), list(T)).
-:- mode relation__tsort(in, out) is semidet.
+:- pred relation__tsort(relation(T)::in, list(T)::out) is semidet.
 
 	% relation__atsort(R, ATS) is true if ATS is
 	% a topological sorting of the cliques in R.
-:- pred relation__atsort(relation(T), list(set(T))).
-:- mode relation__atsort(in, out) is det.
-
+:- pred relation__atsort(relation(T)::in, list(set(T))::out) is det.
 :- func relation__atsort(relation(T)) = list(set(T)).
 
 	% relation__sc(R, SC) is true if SC is the
 	% symmetric closure of R.  In graph terms,
 	% symmetric closure is the same as turning
 	% a directed graph into an undirected graph.
-:- pred relation__sc(relation(T), relation(T)).
-:- mode relation__sc(in, out) is det.
-
+:- pred relation__sc(relation(T)::in, relation(T)::out) is det.
 :- func relation__sc(relation(T)) = relation(T).
 
 	% relation__tc(R, TC) is true if TC is the
 	% transitive closure of R.
-:- pred relation__tc(relation(T), relation(T)).
-:- mode relation__tc(in, out) is det.
-
+:- pred relation__tc(relation(T)::in, relation(T)::out) is det.
 :- func relation__tc(relation(T)) = relation(T).
 
 	% relation__rtc(R, RTC) is true if RTC is the
 	% reflexive transitive closure of R.
-:- pred relation__rtc(relation(T), relation(T)).
-:- mode relation__rtc(in, out) is det.
-
+:- pred relation__rtc(relation(T)::in, relation(T)::out) is det.
 :- func relation__rtc(relation(T)) = relation(T).
 
 	% relation__traverse(R, ProcessNode, ProcessEdge) will
@@ -322,9 +275,9 @@
 	% at that node, until all nodes have been processed.
 :- pred relation__traverse(relation(K), pred(K, T, T), pred(K, K, T, T), T, T).
 :- mode relation__traverse(in, pred(in, di, uo) is det,
-		pred(in, in, di, uo) is det, di, uo) is det.
+	pred(in, in, di, uo) is det, di, uo) is det.
 :- mode relation__traverse(in, pred(in, in, out) is det,
-		pred(in, in, in, out) is det, in, out) is det.
+	pred(in, in, in, out) is det, in, out) is det.
 
 %------------------------------------------------------------------------------%
 
@@ -333,7 +286,12 @@
 :- import_module map, bimap, int, std_util, list, queue, stack.
 :- import_module require, sparse_bitset.
 
-:- type relation_key ---> relation_key(int).
+:- type relation_key
+	--->	relation_key(int).
+
+:- type key_map		== map(int, relation_key).
+:- type key_set_map	== map(int, relation_key_set).
+ 
 :- instance enum(relation_key) where [
 	to_int(relation_key(Int)) = Int,
 	from_int(Int) = relation_key(Int)
@@ -346,8 +304,8 @@
 	relation(
 		relation_key,				% Next key
 		bimap(T, relation_key),			% Elements <-> keys
-		map(int, relation_key_set),		% The mapping U -> V
-		map(int, relation_key_set)		% The reverse mapping
+		key_set_map,				% The mapping U -> V
+		key_set_map				% The reverse mapping
 							% V -> U
 	).
 
@@ -361,9 +319,8 @@ relation__init(relation(relation_key(0), ElMap, FwdMap, BwdMap)) :-
 
 %------------------------------------------------------------------------------%
 
-	% relation__add_element adds an element to the domain of a
-	% relation.  Return the old relation_key if one already
-	% exists.
+	% relation__add_element adds an element to the domain of a relation.
+	% Return the old relation_key if one already exists.
 relation__add_element(relation(relation_key(Key0), ElMap0, Fwd, Rev),
 		Elem, NewKey, relation(relation_key(Key), ElMap, Fwd, Rev)) :-
 	( bimap__search(ElMap0, Elem, NewKey0) ->
@@ -540,20 +497,19 @@ relation__to_assoc_list(relation(_Key, ElMap, Fwd, _Bwd), List) :-
 	map__keys(Fwd, FwdKeys),
 	relation__to_assoc_list_2(Fwd, FwdKeys, ElMap, [], List).
 
-:- pred relation__to_assoc_list_2(map(int, relation_key_set),
-	list(int), bimap(T, relation_key),
-	assoc_list(T, T), assoc_list(T, T)).
-:- mode relation__to_assoc_list_2(in, in, in, in, out) is det.
+:- pred relation__to_assoc_list_2(key_set_map::in,
+	list(int)::in, bimap(T, relation_key)::in,
+	assoc_list(T, T)::in, assoc_list(T, T)::out) is det.
+
 relation__to_assoc_list_2(_Fwd, [], _, !AssocList).
 relation__to_assoc_list_2(Fwd, [Key | Keys], ElementMap, !AssocList) :-
 	relation__to_assoc_list_2(Fwd, Keys, ElementMap, !AssocList),
 	bimap__reverse_lookup(ElementMap, KeyEl, relation_key(Key)),
 	map__lookup(Fwd, Key, Set),
-	!:AssocList =
-		foldr(
-			(func(U, AL) = [KeyEl - V | AL] :-
-				bimap__reverse_lookup(ElementMap, V, U)
-			), Set, !.AssocList).
+	!:AssocList = sparse_bitset__foldr(
+		(func(U, AL) = [KeyEl - V | AL] :-
+			bimap__reverse_lookup(ElementMap, V, U)
+		), Set, !.AssocList).
 
 	% relation__to_key_assoc_list turns a relation into a list of
 	% pairs of elements.
@@ -561,18 +517,17 @@ relation__to_key_assoc_list(relation(_Key, _ElMap, Fwd, _Bwd), List) :-
 	map__keys(Fwd, FwdKeys),
 	relation__to_key_assoc_list_2(Fwd, FwdKeys, [], List).
 
-:- pred relation__to_key_assoc_list_2(map(int, relation_key_set),
-	list(int), assoc_list(relation_key, relation_key),
-	assoc_list(relation_key, relation_key)).
-:- mode relation__to_key_assoc_list_2(in, in, in, out) is det.
+:- pred relation__to_key_assoc_list_2(key_set_map::in,
+	list(int)::in, assoc_list(relation_key, relation_key)::in,
+	assoc_list(relation_key, relation_key)::out) is det.
+
 relation__to_key_assoc_list_2(_Fwd, [], !AssocList).
 relation__to_key_assoc_list_2(Fwd, [Key | Keys], !AssocList) :-
 	relation__to_key_assoc_list_2(Fwd, Keys, !AssocList),
 	map__lookup(Fwd, Key, Set),
-	!:AssocList =
-		foldr(
-			(func(U, AL) = [relation_key(Key) - U | AL]),
-			Set, !.AssocList).
+	!:AssocList = sparse_bitset__foldr(
+		(func(U, AL) = [relation_key(Key) - U | AL]),
+		Set, !.AssocList).
 
 %------------------------------------------------------------------------------%
 
@@ -592,8 +547,8 @@ relation__domain(relation(_Key, ElMap, _Fwd, _Bwd), Dom) :-
 	bimap__ordinates(ElMap, DomList),
 	sorted_list_to_set(DomList, Dom).
 
-:- pred relation__domain_sorted_list(relation(T), list(relation_key)).
-:- mode relation__domain_sorted_list(in, out) is det.
+:- pred relation__domain_sorted_list(relation(T)::in, list(relation_key)::out)
+	is det.
 
 relation__domain_sorted_list(relation(_Key, ElMap, _Fwd, _Bwd), Dom) :-
 	bimap__coordinates(ElMap, Dom).
@@ -628,36 +583,42 @@ relation__compose(R1, R2, !:Compose) :-
 			relation__lookup_key_set_from(R2, R2Key, R2Keys)
 		),
 		to_sorted_list(MatchElements)),
-	
+
 	% Find the sets of keys in each relation which will occur in
 	% the new relation.
-	list__foldl2(
-	    (pred((R1Keys - R2Keys)::in, R1NeededKeys0::in, R1NeededKeys1::out,
-			R2NeededKeys0::in, R2NeededKeys1::out) is det :-
-		R1NeededKeys1 = sparse_bitset__union(R1NeededKeys0, R1Keys),
-		R2NeededKeys1 = sparse_bitset__union(R2NeededKeys0, R2Keys)
-	    ), KeyAL, sparse_bitset__init, R1NeededKeys,
-	    sparse_bitset__init, R2NeededKeys),
+	list__foldl2(find_new_rel_keys, KeyAL,
+		sparse_bitset__init, R1NeededKeys,
+		sparse_bitset__init, R2NeededKeys),
 
 	% Add the elements to the composition.
-	{!:Compose, KeyMap1} = foldl(copy_element(R1), R1NeededKeys,
-				{!.Compose, map__init}),
-	{!:Compose, KeyMap2} = foldl(copy_element(R2), R2NeededKeys,
-				{!.Compose, map__init}),
+	{!:Compose, KeyMap1} = sparse_bitset__foldl(copy_element(R1),
+		R1NeededKeys, {!.Compose, map__init}),
+	{!:Compose, KeyMap2} = sparse_bitset__foldl(copy_element(R2),
+		R2NeededKeys, {!.Compose, map__init}),
 
 	% Add the arcs to the composition.
-	list__foldl(
-	    (pred((R1Keys - R2Keys)::in, !.Compose::in,
-	    		!:Compose::out) is det :-	
-		relation__add_cartesian_product(
-			map_key_set(KeyMap1, R1Keys),
-			map_key_set(KeyMap2, R2Keys),
-			!Compose)
-	    ), KeyAL, !Compose).
+	list__foldl(add_compose_arcs(KeyMap1, KeyMap2), KeyAL, !Compose).
 
-:- func copy_element(relation(T), relation_key,
-		{relation(T), map(int, relation_key)}) =
-		{relation(T), map(int, relation_key)}.
+:- pred find_new_rel_keys(pair(relation_key_set)::in,
+	relation_key_set::in, relation_key_set::out,
+	relation_key_set::in, relation_key_set::out) is det.
+
+find_new_rel_keys(R1Keys - R2Keys,
+		R1NeededKeys0, R1NeededKeys1, R2NeededKeys0, R2NeededKeys1) :-
+	R1NeededKeys1 = sparse_bitset__union(R1NeededKeys0, R1Keys),
+	R2NeededKeys1 = sparse_bitset__union(R2NeededKeys0, R2Keys).
+
+:- pred add_compose_arcs(key_map::in, key_map::in, pair(relation_key_set)::in,
+	relation(T)::in, relation(T)::out) is det.
+
+add_compose_arcs(KeyMap1, KeyMap2, R1Keys - R2Keys, !Compose) :-
+	relation__add_cartesian_product(
+		map_key_set(KeyMap1, R1Keys),
+		map_key_set(KeyMap2, R2Keys),
+		!Compose).
+
+:- func copy_element(relation(T), relation_key, {relation(T), key_map}) =
+	{relation(T), key_map}.
 
 copy_element(R0, Key, {Compose0, KeyMap0}) = {Compose, KeyMap} :-
 	relation__lookup_key(R0, Key, Elem),
@@ -665,11 +626,10 @@ copy_element(R0, Key, {Compose0, KeyMap0}) = {Compose, KeyMap} :-
 	Key = relation_key(KeyInt),
 	map__det_insert(KeyMap0, KeyInt, ComposeKey, KeyMap).
 
-:- func map_key_set(map(int, relation_key),
-		relation_key_set) = relation_key_set.
+:- func map_key_set(key_map, relation_key_set) = relation_key_set.
 
 map_key_set(KeyMap, Set0) = Set :-
-	Set = foldl(
+	Set = sparse_bitset__foldl(
 		(func(Key0, Set1) = Set2 :-
 			Key0 = relation_key(KeyInt),
 			map__lookup(KeyMap, KeyInt, Key),
@@ -694,7 +654,7 @@ relation__dfsrev(Rel, X, DfsRev) :-
 
 	% relation__dfs/5 performs a depth-first search of
 	% a relation.  It returns the elements in visited
-	% order.  Providing the nodes Visited0 have already been 
+	% order.  Providing the nodes Visited0 have already been
 	% visited.
 relation__dfs(Rel, X, Visited0, Visited, Dfs) :-
 	relation__dfs_2(Rel, X, Visited0, Visited, [], DfsRev),
@@ -706,7 +666,6 @@ relation__dfs(Rel, X, Visited0, Visited, Dfs) :-
 	% visited.
 relation__dfsrev(Rel, X, Visited0, Visited, DfsRev) :-
 	relation__dfs_2(Rel, X, Visited0, Visited, [], DfsRev).
-
 
 	% relation__dfs(Rel, Dfs) is true if Dfs is a depth-
 	% first sorting of Rel.  Where the nodes are in the
@@ -722,15 +681,12 @@ relation__dfsrev(Rel, DfsRev) :-
 	relation__domain_sorted_list(Rel, DomList),
 	list__foldl2(relation__dfs_2(Rel), DomList, init, _, [], DfsRev).
 
-:- pred relation__dfs_2(relation(T), relation_key,
-		relation_key_set, relation_key_set,
-		list(relation_key), list(relation_key)).
-:- mode relation__dfs_2(in, in, in, out, in, out) is det.
+:- pred relation__dfs_2(relation(T)::in, relation_key::in,
+	relation_key_set::in, relation_key_set::out,
+	list(relation_key)::in, list(relation_key)::out) is det.
 
 relation__dfs_2(Rel, Node, !Visit, !DfsRev) :-
-	(
-		contains(!.Visit, Node)
-	->
+	( contains(!.Visit, Node) ->
 		true
 	;
 		relation__lookup_key_set_from(Rel, Node, AdjSet),
@@ -746,9 +702,7 @@ relation__dfs_2(Rel, Node, !Visit, !DfsRev) :-
 		!:DfsRev = [Node | !.DfsRev]
 	).
 
-
 %------------------------------------------------------------------------------%
-
 
 	% relation__is_dag
 	%	Does a DFS on the relation.  It is a directed acylic graph
@@ -759,14 +713,14 @@ relation__is_dag(R) :-
 	init(AllVisit),
 	foldl(relation__is_dag_2(R, Visit), DomList, AllVisit, _).
 
-:- pred relation__is_dag_2(relation(T), relation_key_set,
-	relation_key, relation_key_set, relation_key_set).
-:- mode relation__is_dag_2(in, in, in, in, out) is semidet.
+:- pred relation__is_dag_2(relation(T)::in, relation_key_set::in,
+	relation_key::in, relation_key_set::in, relation_key_set::out)
+	is semidet.
 
 	% Provided that we never encounter a node that we've visited before
 	% during the current DFS, the graph isn't cyclic.
 	% NB It is possible that we have visited a node before while doing a
-	% DFS from another node. 
+	% DFS from another node.
 	%
 	% ie		2     3
 	%		 \   /
@@ -796,39 +750,39 @@ relation__components(Rel, Set) :-
 	relation__components_2(Rel, DomList, set__init, SetofBitsets),
 	Set = set__map(to_set, SetofBitsets).
 
-:- pred relation__components_2(relation(T), list(relation_key),
-	set(relation_key_set), set(relation_key_set)).
-:- mode relation__components_2(in, in, in, out) is det.
-relation__components_2(_Rel, [], Comp, Comp).
-relation__components_2(Rel, [X | Xs], Comp0, Comp) :-
+:- pred relation__components_2(relation(T)::in, list(relation_key)::in,
+	set(relation_key_set)::in, set(relation_key_set)::out) is det.
+
+relation__components_2(_Rel, [], !Comp).
+relation__components_2(Rel, [X | Xs], !Comp) :-
 	init(Set0),
 	queue__list_to_queue([X], Q0),
-	relation__reachable_from(Rel, Set0, Q0, Component),
-	set__insert(Comp0, Component, Comp1),
+	relation__reachable_from(Rel, Q0, Set0, Component),
+	set__insert(!.Comp, Component, !:Comp),
 	list_to_set(Xs, XsSet `with_type` relation_key_set),
 	difference(XsSet, Component, Xs1Set),
 	to_sorted_list(Xs1Set, Xs1),
-	relation__components_2(Rel, Xs1, Comp1, Comp).
+	relation__components_2(Rel, Xs1, !Comp).
 
-:- pred relation__reachable_from(relation(T), relation_key_set,
-	queue(relation_key), relation_key_set).
-:- mode relation__reachable_from(in, in, in, out) is det.
-relation__reachable_from(Rel, Set0, Q0, Set) :-
+:- pred relation__reachable_from(relation(T)::in, queue(relation_key)::in,
+	relation_key_set::in, relation_key_set::out) is det.
+
+relation__reachable_from(Rel, Q0, !Set) :-
 	( queue__get(Q0, X, Q1) ->
-	    ( contains(Set0, X) ->
-		relation__reachable_from(Rel, Set0, Q1, Set)
-	    ;
-	    	relation__lookup_key_set_from(Rel, X, FwdSet),
-	    	relation__lookup_key_set_to(Rel, X, BwdSet),
-	    	union(FwdSet, BwdSet, NextSet0),
-		difference(NextSet0, Set0, NextSet1),
-		to_sorted_list(NextSet1, NextList),
-		queue__put_list(Q0, NextList, Q2),
-		insert(Set0, X, Set1),
-	    	relation__reachable_from(Rel, Set1, Q2, Set)
-	    )
+		( contains(!.Set, X) ->
+			relation__reachable_from(Rel, Q1, !Set)
+		;
+			relation__lookup_key_set_from(Rel, X, FwdSet),
+			relation__lookup_key_set_to(Rel, X, BwdSet),
+			union(FwdSet, BwdSet, NextSet0),
+			difference(NextSet0, !.Set, NextSet1),
+			to_sorted_list(NextSet1, NextList),
+			queue__put_list(Q0, NextList, Q2),
+			insert(!.Set, X, !:Set),
+			relation__reachable_from(Rel, Q2, !Set)
+		)
 	;
-	    Set = Set0
+		true
 	).
 
 %------------------------------------------------------------------------------%
@@ -839,7 +793,7 @@ relation__reachable_from(Rel, Set0, Q0, Set) :-
 	%
 	%	Works using the following algorith
 	%		1. Topologically sort the nodes.  Then number the nodes
-	%		   so the highest num is the first node in the 
+	%		   so the highest num is the first node in the
 	%		   topological sort.
 	%		2. Reverse the relation ie R'
 	%		3. Starting from the highest numbered node do a DFS on
@@ -905,7 +859,7 @@ relation__make_clique_map(Rel, [S | Ss], Map0, Map, Red0, Red) :-
 	relation__make_clique_map(Rel, Ss, Map1, Map, Red1, Red).
 
 :- pred relation__make_clique_map_2(map(relation_key, relation_key),
-		relation_key, list(relation_key), 
+		relation_key, list(relation_key),
 		map(relation_key, relation_key)).
 :- mode relation__make_clique_map_2(in, in, in, out) is det.
 relation__make_clique_map_2(Map, _Key, [], Map).
@@ -913,7 +867,7 @@ relation__make_clique_map_2(MapIn, Key, [X | Xs], MapOut) :-
 	map__set(MapIn, X, Key, Map1),
 	relation__make_clique_map_2(Map1, Key, Xs, MapOut).
 
-:- pred relation__make_reduced_graph(map(relation_key, relation_key), 
+:- pred relation__make_reduced_graph(map(relation_key, relation_key),
 		assoc_list(relation_key, relation_key),
 		relation(set(T)), relation(set(T))).
 :- mode relation__make_reduced_graph(in, in, in, out) is det.
@@ -1076,17 +1030,15 @@ relation__rtc_2([H | T], Rel, Visit0, !RTC) :-
 		relation__rtc_2(T, Rel, Visit, !RTC)
 	).
 
-:- pred find_followers(relation(T), relation_key,
-		relation_key_set, relation_key_set).
-:- mode find_followers(in, in, in, out) is det.
+:- pred find_followers(relation(T)::in, relation_key::in,
+	relation_key_set::in, relation_key_set::out) is det.
 
 find_followers(Rel, K, L0, L) :-
 	relation__lookup_key_set_from(Rel, K, Followers),
 	union(Followers, L0, L).
 
-:- pred relation__add_cartesian_product(relation_key_set, relation_key_set, 
-		relation(T), relation(T)).
-:- mode relation__add_cartesian_product(in, in, in, out) is det.
+:- pred relation__add_cartesian_product(relation_key_set::in,
+	relation_key_set::in, relation(T)::in, relation(T)::out) is det.
 
 relation__add_cartesian_product(KeySet1, KeySet2, !RTC) :-
     foldl(
@@ -1099,41 +1051,46 @@ relation__add_cartesian_product(KeySet1, KeySet2, !RTC) :-
 
 %------------------------------------------------------------------------------%
 
-relation__traverse(Relation, ProcessNode, ProcessEdge) -->
-	{ Domain = to_sorted_list(relation__domain(Relation)) },
-	relation__traverse_nodes(Domain, Relation, ProcessNode, ProcessEdge).
+relation__traverse(Relation, ProcessNode, ProcessEdge, !Acc) :-
+	Domain = to_sorted_list(relation__domain(Relation)),
+	relation__traverse_nodes(Domain, Relation, ProcessNode, ProcessEdge,
+		!Acc).
 
 :- pred relation__traverse_nodes(list(K), relation(K), pred(K, T, T),
-		pred(K, K, T, T), T, T).
+	pred(K, K, T, T), T, T).
 :- mode relation__traverse_nodes(in, in, pred(in, di, uo) is det,
-		pred(in, in, di, uo) is det, di, uo) is det.
+	pred(in, in, di, uo) is det, di, uo) is det.
 :- mode relation__traverse_nodes(in, in, pred(in, in, out) is det,
-		pred(in, in, in, out) is det, in, out) is det.
+	pred(in, in, in, out) is det, in, out) is det.
 
-relation__traverse_nodes([], _, _, _) --> [].
-relation__traverse_nodes([Node | Nodes], Relation, ProcessNode, ProcessEdge) -->
+relation__traverse_nodes([], _, _, _, !Acc).
+relation__traverse_nodes([Node | Nodes], Relation, ProcessNode, ProcessEdge,
+		!Acc) :-
 	% XXX avoid the sparse_bitset.to_sorted_list here
 	% (difficult to do using sparse_bitset.foldl because
 	% traverse_children has multiple modes).
-	{ Children = to_sorted_list(lookup_from(Relation,
-			lookup_element(Relation, Node))) },
-	ProcessNode(Node),
-	relation__traverse_children(Children, Node, Relation, ProcessEdge),
-	relation__traverse_nodes(Nodes, Relation, ProcessNode, ProcessEdge).
+	Children = to_sorted_list(lookup_from(Relation,
+		lookup_element(Relation, Node))),
+	ProcessNode(Node, !Acc),
+	relation__traverse_children(Children, Node, Relation, ProcessEdge,
+		!Acc),
+	relation__traverse_nodes(Nodes, Relation, ProcessNode, ProcessEdge,
+		!Acc).
 
 :- pred relation__traverse_children(list(relation_key), K, relation(K),
-		pred(K, K, T, T), T, T).
+	pred(K, K, T, T), T, T).
 :- mode relation__traverse_children(in, in, in, pred(in, in, di, uo) is det,
-		di, uo) is det.
+	di, uo) is det.
 :- mode relation__traverse_children(in, in, in, pred(in, in, in, out) is det,
-		in, out) is det.
+	in, out) is det.
 
-relation__traverse_children([], _, _, _) --> [].
+relation__traverse_children([], _, _, _, !Acc).
 relation__traverse_children([ChildKey | Children], Parent,
-		Relation, ProcessEdge) -->
-	{ Child = lookup_key(Relation, ChildKey) },
-	ProcessEdge(Parent, Child),
-	relation__traverse_children(Children, Parent, Relation, ProcessEdge).
+		Relation, ProcessEdge, !Acc) :-
+	Child = lookup_key(Relation, ChildKey),
+	ProcessEdge(Parent, Child, !Acc),
+	relation__traverse_children(Children, Parent, Relation, ProcessEdge,
+		!Acc).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -1220,4 +1177,3 @@ relation__tc(R1) = R2 :-
 
 relation__rtc(R1) = R2 :-
 	relation__rtc(R1, R2).
-
