@@ -1793,8 +1793,9 @@ char_is_not(A, B) :-
 :- pred convert_dump_alias(string, string).
 :- mode convert_dump_alias(in, out) is semidet.
 
-convert_dump_alias("ALL", "abcdfgilmnprstuvCIMPTU").
+convert_dump_alias("ALL", "abcdfgilmnprstuvCDIMPTU").
 convert_dump_alias("all", "abcdfgilmnprstuvCMPT").
+convert_dump_alias("most", "bcdfgilmnprstuvP").
 convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
 convert_dump_alias("paths", "cP").

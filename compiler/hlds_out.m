@@ -1331,10 +1331,17 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 			[]
 		;
 			hlds_out__write_indent(Indent),
-			io__write_string("% new insts: "),
-			hlds_out__write_instmap_delta(InstMapDelta, VarSet,
-				AppendVarnums, Indent),
-			io__write_string("\n")
+			( { string__contains_char(Verbose, 'D') } ->
+				io__write_string("% new insts: "),
+				hlds_out__write_instmap_delta(InstMapDelta,
+					VarSet, AppendVarnums, Indent),
+				io__write_string("\n")
+			;
+				io__write_string("% vars with new insts: "),
+				hlds_out__write_instmap_delta_vars(
+					InstMapDelta, VarSet, AppendVarnums),
+				io__write_string("\n")
+			)
 		)
 	;
 		[]
@@ -1548,44 +1555,44 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
     ( 
 	{ GenericCall = higher_order(PredVar, Purity, PredOrFunc, _) },
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
-	hlds_out__write_indent(Indent),
 	(
 		{ PredOrFunc = predicate },
 		( { string__contains_char(Verbose, 'l') } ->
-			io__write_string("% higher-order predicate call\n"),
-			hlds_out__write_indent(Indent)
+			hlds_out__write_indent(Indent),
+			io__write_string("% higher-order predicate call\n")
 		;
 			[]
 		),
+		hlds_out__write_indent(Indent),
 		write_purity_prefix(Purity),
 		hlds_out__write_functor(term__atom("call"),
-				[PredVar|ArgVars], VarSet, AppendVarnums)
+			[PredVar | ArgVars], VarSet, AppendVarnums)
 	;
 		{ PredOrFunc = function },
 		( { string__contains_char(Verbose, 'l') } ->
+			hlds_out__write_indent(Indent),
 			io__write_string(
-				"% higher-order function application\n"),
-			hlds_out__write_indent(Indent)
+				"% higher-order function application\n")
 		;
 			[]
 		),
 		{ pred_args_to_func_args([PredVar | ArgVars],
 			FuncArgVars, FuncRetVar) },
+		hlds_out__write_indent(Indent),
 		write_purity_prefix(Purity),
 		mercury_output_var(FuncRetVar, VarSet, AppendVarnums),
 		io__write_string(" = "),
 		hlds_out__write_functor(term__atom("apply"), FuncArgVars,
-				VarSet, AppendVarnums)
+			VarSet, AppendVarnums)
 	),
 	io__write_string(Follow)
     ; 
 	{ GenericCall = class_method(TCInfoVar, MethodNum,
 		_ClassId, _MethodId) },
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
-	hlds_out__write_indent(Indent),
 	( { string__contains_char(Verbose, 'l') } ->
-		io__write_string("% class method call\n"),
-		hlds_out__write_indent(Indent)
+		hlds_out__write_indent(Indent),
+		io__write_string("% class method call\n")
 	;
 		[]
 	),
@@ -1597,25 +1604,24 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
 	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
 	{ Term = term__functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
 			Context) },
+	hlds_out__write_indent(Indent),
 	mercury_output_term(Term, VarSet, AppendVarnums),
 	io__write_string(Follow)
     ;
 	{ GenericCall = unsafe_cast },
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
-	hlds_out__write_indent(Indent),
 	( { string__contains_char(Verbose, 'l') } ->
-		io__write_string("% unsafe_cast\n"),
-		hlds_out__write_indent(Indent)
+		hlds_out__write_indent(Indent),
+		io__write_string("% unsafe_cast\n")
 	;
 		[]
 	),
-	( { string__contains_char(Verbose, 'i') } ->
+	( { string__contains_char(Verbose, 'D') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% modes: "),
 		{ varset__init(InstVarSet) },
 		mercury_output_mode_list(Modes, InstVarSet),
-		io__nl,
-		hlds_out__write_indent(Indent)
+		io__nl
 	;
 		[]
 	),
@@ -1623,10 +1629,12 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
     	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
     	{ term__context_init(Context) }, 
 	{ Term = term__functor(Functor, ArgTerms, Context) },
+	hlds_out__write_indent(Indent),
     	mercury_output_term(Term, VarSet, AppendVarnums),
 	io__write_string(Follow)
     ;
 	{ GenericCall = aditi_builtin(AditiBuiltin, CallId) },
+	hlds_out__write_indent(Indent),
 	hlds_out__write_aditi_builtin(ModuleInfo, AditiBuiltin, CallId,
 		ArgVars, VarSet, AppendVarnums, Indent, Follow)
     ).
@@ -2687,6 +2695,18 @@ hlds_out__write_instmap_delta(InstMapDelta, VarSet, AppendVarnums, Indent) -->
 		{ instmap_delta_to_assoc_list(InstMapDelta, AssocList) },
 		hlds_out__write_instmap_2(AssocList, VarSet, AppendVarnums,
 			Indent)
+	).
+
+:- pred hlds_out__write_instmap_delta_vars(instmap_delta::in, prog_varset::in,
+	bool::in, io__state::di, io__state::uo) is det.
+
+hlds_out__write_instmap_delta_vars(InstMapDelta, VarSet, AppendVarnums) -->
+	( { instmap_delta_is_unreachable(InstMapDelta) } ->
+		io__write_string("unreachable")
+	;
+		{ instmap_delta_to_assoc_list(InstMapDelta, AssocList) },
+		{ assoc_list__keys(AssocList, Vars) },
+		hlds_out__write_vars(Vars, VarSet, AppendVarnums)
 	).
 
 hlds_out__write_import_status(local) -->
