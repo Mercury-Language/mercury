@@ -166,7 +166,7 @@ non  28: ordinary, 14 words
  succfr: non  10 
  on main nondet branch non 154
        HeadVar__1             [1, 2, 3, 4, 5]
-       TypeInfo_5             int
+       TypeCtorInfo_5         int
 non  14: temp
  redoip: unnamed label
  redofr: non  10 
@@ -826,7 +826,7 @@ non  28: ordinary, 14 words
  succfr: non  10 
  internal frame on nondet side branch non 285
        HeadVar__1             [1, 2, 3, 4, 5]
-       TypeInfo_5             int
+       TypeCtorInfo_5         int
 non  14: temp
  redoip: unnamed label
  redofr: non  10 
