@@ -239,7 +239,10 @@ case $HOST in murlibobo)
 	rm -f so_locations &&
 	autoconf &&
 	mercury_cv_num_low_tag_bits=2 sh configure --prefix=$INSTALL_DIR &&
-	mmake MMAKEFLAGS='MCFLAGS="-O2 --num-tag-bits 2" -j4' tar
+	mmake MMAKEFLAGS='MCFLAGS="-O2 --num-tag-bits 2" -j4' tar &&
+	version=`mmake version` &&
+	rm -f mercury-latest-unstable.tar.gz &&
+	mv mercury-$version.tar.gz mercury-latest-unstable.tar.gz
 	} || status=1
 	;;
 esac
@@ -249,10 +252,9 @@ case $status in
 	: if we get this far, then it worked.
 	date >> /home/mercury/public/test_mercury/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
-		cd $DIR/mercury
-		version=`mmake version`
-		cd $DIR
-		cp mercury-$version.tar.gz mercury-$version-stable.tar.gz 
+		cd $DIR &&
+		rm -f mercury-latest-stable.tar.gz &&
+		ln mercury-latest-unstable.tar.gz mercury-latest-stable.tar.gz
 		;;
 	esac
 	true
