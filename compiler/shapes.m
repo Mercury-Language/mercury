@@ -101,33 +101,40 @@
 
 %-----------------------------------------------------------------------------%
 % Initialization is done rather simply.
-% XXX We manually insert some standard builtin types. This may cause
-% problems if the types are redefined in some way... These and other
-% low numbered cases need to be treated specially at runtime...
-% Note : still have to deal with succip etc.
+%
+% We manually insert some standard builtin types. 
+% We also insert types that are defined in a special way (eg, univ
+% io__stream, and io__external_state). 
+% Since these types have an abstract definition, we also need to module 
+% qualify them. 
+%
+% (string, float, int, character etc don't even have a :- type ....
+% anywhere).
+%
+% These and cases need to be treated specially at runtime.
 %-----------------------------------------------------------------------------%
 shapes__init_shape_table((S_Tab_Out - S_Num)) :-
 	Const = quad(constant, constant, constant, constant),
-	term__context_init(TC),
 	I = ground(shared, no),
-	Builtins = [ 
-		(term__functor(term__atom("string"), [], TC) - I) - 
-			(builtin(0) - Const),
-		(term__functor(term__atom("float"), [], TC) - I) - 
-			(builtin(1) - Const),
-		(term__functor(term__atom("int"), [], TC) - I) - 
-			(builtin(2) - Const),
-		(term__functor(term__atom("character"), [], TC) - I) - 
-			(builtin(3) - Const),
-		(term__functor(term__atom("io__stream"), [], TC) - I) - 
-			(builtin(4) - Const),
-		(term__functor(term__atom("univ"), [], TC) - I) - 
-			(builtin(5) - Const),
-		(term__functor(term__atom("io__external_state"), [], TC) - I) - 
-			(builtin(6) - Const)
+	construct_type(unqualified("string") - 0, [], StrType),
+	construct_type(unqualified("float") - 0, [], FloatType),
+	construct_type(unqualified("int") - 0, [], IntType),
+	construct_type(unqualified("character") - 0, [], CharType),
+	construct_type(qualified("io", "io__stream") - 0, [], IoType),
+	construct_type(qualified("std_util", "univ") - 0, [], UnivType),
+	construct_type(qualified("io", "io__external_state") - 0, 
+		[], IoExtType),
+
+	Builtins = [(StrType - I) - 	(builtin(0) - Const),
+		(FloatType - I) - 	(builtin(1) - Const),
+		(IntType - I) - 	(builtin(2) - Const),
+		(CharType - I) - 	(builtin(3) - Const),
+		(IoType - I) - 		(builtin(4) - Const),
+		(UnivType - I) - 	(builtin(5) - Const),
+		(IoExtType - I) -	(builtin(6) - Const)
 	],
 	map__from_assoc_list(Builtins, S_Tab_Out),
-	S_Num = 7.
+	S_Num = 7.			% Next shape number to be assigned.
 
 %-----------------------------------------------------------------------------%
 % Creation of the shape table allows shapes to be uniquely numbered.

@@ -290,7 +290,9 @@ garbage_out__write_code_addr(L) -->
 	(
 		{ L = label(Label) }
 	->
-		output_label(Label)
+		io__write_string(""""),
+		output_label(Label),
+		io__write_string("""")
 	;
 		{ error("garbage_out : Unexpected code_addr type") }
 	).
@@ -304,18 +306,26 @@ garbage_out__write_code_addr(L) -->
 garbage_out__write_liveinfo_list([]) --> { true }.
 garbage_out__write_liveinfo_list(
 		[live_lvalue(LiveVal, ShapeNum, Params)| Ls]) -->
+	(
+		{ Params = yes(_) }
+	->
+		io__write_string("polyliveinfo(")
+	;
+		io__write_string("liveinfo(")
+	),
 	garbage_out__write_liveval(LiveVal),
-	io__write_string(" - "),
+	io__write_string(", "),
 	shapes__write_shape_num(ShapeNum),
 	( 
 		{ Params = yes(LvalList) }
 	->
-		io__write_string(" - ["),
+		io__write_string(", ["),
 		garbage_out__write_lval_list(LvalList),
 		io__write_string("]")
 	;
 		[]
 	),
+	io__write_string(")"),
 	garbage_out__maybe_write_comma_space(Ls),
 	garbage_out__write_liveinfo_list(Ls).
 
@@ -328,6 +338,11 @@ garbage_out__write_liveinfo_list(
 garbage_out__write_lval_list([]) --> [].
 garbage_out__write_lval_list([Lval | Ls]) --> 
 	garbage_out__write_liveval(Lval),
+	( { Ls \= [] } ->
+		io__write_string(", ")
+	;
+		[]
+	),
 	garbage_out__write_lval_list(Ls).
 
 %-----------------------------------------------------------------------------%
@@ -586,8 +601,10 @@ garbage_out__write_type_id(qualified(Module,TypeName) - Arity) -->
 :- mode garbage_out__write_special_preds(in, di, uo) is det.
 garbage_out__write_special_preds([]) --> [].
 garbage_out__write_special_preds([Label - ShapeNum | SpecialPreds]) -->
-	io__write_string("special_pred_shape("),
+	io__write_string("special_pred("),
+	io__write_string(""""),
 	output_label(Label),
+	io__write_string(""""),
 	io__write_string(", "),
 	shapes__write_shape_num(ShapeNum),
 	io__write_string("). \n"),
