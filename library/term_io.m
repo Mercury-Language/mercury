@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -631,14 +631,11 @@ term_io__escaped_char(Char) = String :-
 :- mode mercury_escape_char(in, out) is det.
 
 	% Convert a character to the corresponding octal escape code.
-
-	% XXX Note that we use C-style octal escapes rather than ISO-Prolog
-	% octal escapes.  This is for backwards compatibility with
-	% NU-Prolog and (old versions of?) SICStus Prolog.
-	% The Mercury lexer accepts either, so this should work
-	% ok so long as you don't have two escaped characters
-	% in a row :-(
-
+	%
+	% We use ISO-Prolog style octal escapes, which are of the form
+	% '\nnn\'; note that unlike C octal escapes, they are terminated
+	% with a backslash.
+	%
 	% Note: the code here is similar to code in
 	% compiler/mercury_to_mercury.m; any changes here
 	% may require similar changes there.
@@ -647,7 +644,7 @@ mercury_escape_char(Char, EscapeCode) :-
 	char__to_int(Char, Int),
 	string__int_to_base_string(Int, 8, OctalString0),
 	string__pad_left(OctalString0, '0', 3, OctalString),
-	string__first_char(EscapeCode, '\\', OctalString).
+	EscapeCode = "\\" ++ OctalString ++ "\\".
 
 :- pred is_mercury_source_char(char).
 :- mode is_mercury_source_char(in) is semidet.
