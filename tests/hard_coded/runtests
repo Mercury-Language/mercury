@@ -22,7 +22,7 @@ fi
 . ../startup
 
 eval mmake $mmakeopts depend_local || exit 1
-eval mmake -k $mmakeopts check_local
+eval mmake $mmakeopts -k check_local
 checkstatus=$?
 
 cat *.res > .allres

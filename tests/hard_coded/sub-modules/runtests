@@ -11,7 +11,7 @@
 jfactor=-j1
 
 eval mmake $mmakeopts $jfactor depend || exit 1
-eval mmake -k $mmakeopts $jfactor check
+eval mmake $mmakeopts -k $jfactor check
 checkstatus=$?
 
 cat *.res > .allres

@@ -11,10 +11,13 @@ Options:
 		Pass EXTRA_MLFLAGS=<mlflags> as an option to \`mmake check'.
 	-g <grade>, --grade <grade>
 		Pass GRADE=<grade> as an option to \`mmake check'.
+	-t <target>, --target <target>
+		Pass \`--target <target>' as an option to \`mmake check'.
 	-j <num-jobs>, --jobs <num-jobs>
 		Run using <num-jobs> different parallel processes.
 "
 
+targetopt=""
 jfactor=""
 flagsopt=""
 mgnucflagsopt=""
@@ -62,6 +65,9 @@ while [ $# -gt 0 ]; do
 	--jobs*)
 		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
 
+	-t|--target)
+		target_opt="--target '$2'"; shift ;;
+
 	--)	
 		shift; break ;;
 	-*)
@@ -80,5 +86,6 @@ if [ $# -ne 0 ]; then
 	exit 1
 fi
 
-mmakeopts="$jfactor $flagsopt $mgnucflagsopt $cflagsopt $mlflagsopt $gradeopt"
-runtestopts="$jfactor $mflag $cflag $lflag $fflag $gflag"
+mmakeopts="$target_opt $jfactor $flagsopt $mgnucflagsopt $cflagsopt \
+	$mlflagsopt $gradeopt"
+runtestopts="$target_opt $jfactor $mflag $cflag $lflag $fflag $gflag"

@@ -16,7 +16,7 @@
 . ../../startup
 
 eval mmake $mmakeopts depend || exit 1
-eval mmake -k $mmakeopts check
+eval mmake $mmakeopts -k check
 checkstatus=$?
 
 cat *.res > .allres
