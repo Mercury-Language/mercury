@@ -233,15 +233,25 @@ bimap__det_insert(bimap(Forward0, Reverse0), K, V, bimap(Forward, Reverse)) :-
 
 bimap__set(bimap(Forward0, Reverse0), K, V, bimap(Forward, Reverse)) :-
 	( map__search(Forward0, K, KVal) ->
-		map__det_update(Forward0, K, V, Forward1),
-		map__delete(Reverse0, KVal, Reverse1)
+		( V \= KVal ->
+			map__det_update(Forward0, K, V, Forward1),
+			map__delete(Reverse0, KVal, Reverse1)
+		;	
+			Forward1 = Forward0,
+			Reverse1 = Reverse0
+		)
 	;
 		map__det_insert(Forward0, K, V, Forward1),
-		Reverse1 = Reverse0
+		Reverse0 = Reverse1
 	),
 	( map__search(Reverse0, V, VKey) ->
-		map__det_update(Reverse1, V, K, Reverse),
-		map__delete(Forward1, VKey, Forward)
+		( K \= VKey ->
+			map__det_update(Reverse1, V, K, Reverse),		
+			map__delete(Forward1, VKey, Forward)
+		;
+			Forward = Forward1,
+			Reverse = Reverse1
+		)
 	;
 		map__det_insert(Reverse1, V, K, Reverse),
 		Forward = Forward1
