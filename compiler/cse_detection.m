@@ -49,7 +49,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

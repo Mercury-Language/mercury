@@ -44,7 +44,7 @@
 :- import_module hlds__hlds_out.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -17,7 +17,6 @@
 :- import_module parse_tree__prog_data.
 
 :- import_module list.
-:- import_module map.
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
@@ -282,35 +281,6 @@
 	% Get the last two arguments from the list, aborting if there
 	% aren't at least two arguments.
 :- pred get_state_args_det(list(T)::in, list(T)::out, T::out, T::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- pred apply_rec_subst_to_prog_constraints(tsubst::in, prog_constraints::in,
-	prog_constraints::out) is det.
-
-:- pred apply_rec_subst_to_prog_constraint_list(tsubst::in,
-	list(prog_constraint)::in, list(prog_constraint)::out) is det.
-
-:- pred apply_rec_subst_to_prog_constraint(tsubst::in, prog_constraint::in,
-	prog_constraint::out) is det.
-
-:- pred apply_subst_to_prog_constraints(tsubst::in, prog_constraints::in,
-	prog_constraints::out) is det.
-
-:- pred apply_subst_to_prog_constraint_list(tsubst::in,
-	list(prog_constraint)::in, list(prog_constraint)::out) is det.
-
-:- pred apply_subst_to_prog_constraint(tsubst::in, prog_constraint::in,
-	prog_constraint::out) is det.
-
-:- pred apply_variable_renaming_to_prog_constraints(map(tvar, tvar)::in,
-	prog_constraints::in, prog_constraints::out) is det.
-
-:- pred apply_variable_renaming_to_prog_constraint_list(map(tvar, tvar)::in,
-	list(prog_constraint)::in, list(prog_constraint)::out) is det.
-
-:- pred apply_variable_renaming_to_prog_constraint(map(tvar, tvar)::in,
-	prog_constraint::in, prog_constraint::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -738,56 +708,6 @@ get_state_args_det(Args0, Args, State0, State) :-
 	;
 		error("hlds_pred__get_state_args_det")
 	).
-
-%-----------------------------------------------------------------------------%
-
-apply_rec_subst_to_prog_constraints(Subst, Constraints0, Constraints) :-
-	Constraints0 = constraints(UnivCs0, ExistCs0),
-	apply_rec_subst_to_prog_constraint_list(Subst, UnivCs0, UnivCs),
-	apply_rec_subst_to_prog_constraint_list(Subst, ExistCs0, ExistCs),
-	Constraints = constraints(UnivCs, ExistCs).
-
-apply_rec_subst_to_prog_constraint_list(Subst, !Constraints) :-
-	list__map(apply_rec_subst_to_prog_constraint(Subst), !Constraints).
-
-apply_rec_subst_to_prog_constraint(Subst, Constraint0, Constraint) :-
-	Constraint0 = constraint(ClassName, Types0),
-	term__apply_rec_substitution_to_list(Types0, Subst, Types),
-	Constraint  = constraint(ClassName, Types).
-
-apply_subst_to_prog_constraints(Subst,
-		constraints(UniversalCs0, ExistentialCs0),
-		constraints(UniversalCs, ExistentialCs)) :-
-	apply_subst_to_prog_constraint_list(Subst, UniversalCs0, UniversalCs),
-	apply_subst_to_prog_constraint_list(Subst, ExistentialCs0,
-		ExistentialCs).
-
-apply_subst_to_prog_constraint_list(Subst, !Constraints) :-
-	list__map(apply_subst_to_prog_constraint(Subst), !Constraints).
-
-apply_subst_to_prog_constraint(Subst, Constraint0, Constraint) :-
-	Constraint0 = constraint(ClassName, Types0),
-	term__apply_substitution_to_list(Types0, Subst, Types),
-	Constraint  = constraint(ClassName, Types).
-
-apply_variable_renaming_to_prog_constraints(Renaming, Constraints0,
-		Constraints) :-
-	Constraints0 = constraints(UnivConstraints0, ExistConstraints0),
-	apply_variable_renaming_to_prog_constraint_list(Renaming,
-		UnivConstraints0, UnivConstraints),
-	apply_variable_renaming_to_prog_constraint_list(Renaming,
-		ExistConstraints0, ExistConstraints),
-	Constraints = constraints(UnivConstraints, ExistConstraints).
-
-apply_variable_renaming_to_prog_constraint_list(Renaming, !Constraints) :-
-	list.map(apply_variable_renaming_to_prog_constraint(Renaming),
-		!Constraints).
-
-apply_variable_renaming_to_prog_constraint(Renaming, !Constraint) :-
-	!.Constraint = constraint(ClassName, ClassArgTypes0),
-	term.apply_variable_renaming_to_list(ClassArgTypes0, Renaming,
-		ClassArgTypes),
-	!:Constraint = constraint(ClassName, ClassArgTypes).
 
 %-----------------------------------------------------------------------------%
 :- end_module prog_util.
