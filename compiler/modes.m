@@ -1616,19 +1616,19 @@ mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-
 abstractly_unify_inst(Live, InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 		% check whether this pair of insts is already in
 		% the unify_insts table
-	ThisInstPair = InstA - InstB,
+	ThisInstPair = unify_inst_pair(Live, InstA, InstB),
 	module_info_insts(ModuleInfo0, InstTable0),
 	inst_table_get_unify_insts(InstTable0, UnifyInsts0),
 	( map__search(UnifyInsts0, ThisInstPair, Result) ->
 		( Result = known(UnifyInst) ->
 			Inst = UnifyInst
 		;
-			Inst = defined_inst(unify_inst(InstA, InstB))
+			Inst = defined_inst(unify_inst(Live, InstA, InstB))
 		),
 		ModuleInfo = ModuleInfo0
 	;
 			% insert ThisInstPair into the table with value
-			%`unknown' 
+			% `unknown' 
 		map__set(UnifyInsts0, ThisInstPair, unknown, UnifyInsts1),
 		inst_table_set_unify_insts(InstTable0, UnifyInsts1, InstTable1),
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),

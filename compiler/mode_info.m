@@ -5,7 +5,7 @@
 :- interface.
 :- import_module hlds, map, list, varset, set.
 :- implementation.
-:- import_module require, delay_info, mode_errors.
+:- import_module require, delay_info, mode_errors, prog_io.
 :- interface.
 
 :- type delay_info.		% defined in delay_info.nl

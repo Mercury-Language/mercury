@@ -158,7 +158,9 @@
 
 :- type user_inst_table	==	map(inst_id, hlds__inst_defn).
 
-:- type unify_inst_table ==	map(pair(inst), maybe_inst).
+:- type unify_inst_table ==	map(unify_inst_pair, maybe_inst).
+
+:- type unify_inst_pair	--->	unify_inst_pair(is_live, inst, inst).
 
 :- type merge_inst_table ==	map(pair(inst), maybe_inst).
 
@@ -369,9 +371,6 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 		term__context,
 		set(var)	% the non-local vars in the goal
 	).
-
-%%% :- export_type is_live.
-:- type is_live		--->	live ; dead.
 
 :- type unify_mode	==	pair(mode, mode).
 

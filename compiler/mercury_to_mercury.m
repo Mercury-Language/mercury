@@ -10,11 +10,19 @@
 :- module mercury_to_mercury.
 :- interface.
 
-:- import_module list, string, hlds, io, prog_io.
+:- import_module list, string, hlds, io, prog_io, varset, term.
 
 :- pred convert_to_mercury(string, string, list(item_and_context),
 				io__state, io__state).
 :- mode convert_to_mercury(in, in, in, di, uo) is det.
+
+:- pred mercury_output_pred_type(varset, sym_name, list(type),
+		term__context, io__state, io__state).
+:- mode mercury_output_pred_type(in, in, in, in, di, uo) is det.
+
+:- pred mercury_output_mode_decl(varset, sym_name, list(mode), determinism,
+			term__context, io__state, io__state).
+:- mode mercury_output_mode_decl(in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_inst(inst, varset, io__state, io__state).
 :- mode mercury_output_inst(in, in, di, uo) is det.
@@ -39,11 +47,14 @@
 :- pred mercury_output_hlds_goal(hlds__goal, varset, int, io__state, io__state).
 :- mode mercury_output_hlds_goal(in, in, in, di, uo) is det.
 
+:- pred mercury_output_newline(int, io__state, io__state).
+:- mode mercury_output_newline(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, set, prog_out, prog_util, varset, term, term_io, std_util.
+:- import_module int, set, prog_out, prog_util, term_io, std_util.
 :- import_module globals, options.
 
 %-----------------------------------------------------------------------------%
@@ -238,8 +249,13 @@ mercury_output_inst_name(merge_inst(InstA, InstB), VarSet) -->
 	io__write_string("$list__merge("),
 	mercury_output_inst_list([InstA, InstB], VarSet),
 	io__write_string(")").
-mercury_output_inst_name(unify_inst(InstA, InstB), VarSet) -->
+mercury_output_inst_name(unify_inst(Liveness, InstA, InstB), VarSet) -->
 	io__write_string("$unify("),
+	( { Liveness = live } ->
+		io__write_string("live, ")
+	;
+		io__write_string("dead, ")
+	),
 	mercury_output_inst_list([InstA, InstB], VarSet),
 	io__write_string(")").
 mercury_output_inst_name(ground_inst(InstName), VarSet) -->
@@ -416,10 +432,6 @@ mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det, Context) -->
 		[]
 	).
 
-:- pred mercury_output_pred_type(varset, sym_name, list(type),
-		term__context, io__state, io__state).
-:- mode mercury_output_pred_type(in, in, in, in, di, uo) is det.
-
 mercury_output_pred_type(VarSet, PredName, Types, _Context) -->
 	io__write_string(":- pred "),
 	(
@@ -466,10 +478,6 @@ mercury_output_remaining_terms([Term | Terms], VarSet) -->
 %-----------------------------------------------------------------------------%
 
 	% Output a mode declaration for a predicate.
-
-:- pred mercury_output_mode_decl(varset, sym_name, list(mode), determinism,
-			term__context, io__state, io__state).
-:- mode mercury_output_mode_decl(in, in, in, in, in, di, uo) is det.
 
 mercury_output_mode_decl(VarSet, PredName, Modes, Det, _Context) -->
 	io__write_string(":- mode "),
@@ -883,9 +891,6 @@ mercury_output_hlds_cases(CasesList, Var, VarSet, Indent) -->
 mercury_output_hlds_some(_Vars, _VarSet) --> [].
 
 %-----------------------------------------------------------------------------%
-
-:- pred mercury_output_newline(int, io__state, io__state).
-:- mode mercury_output_newline(in, di, uo) is det.
 
 mercury_output_newline(Indent) -->
 	io__write_char('\n'),

@@ -227,13 +227,13 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
 :- pred inst_lookup_2(inst_name, inst_table, inst).
 :- mode inst_lookup_2(in, in, out) is det.
 
-inst_lookup_2(unify_inst(A, B), InstTable, Inst) :-
+inst_lookup_2(unify_inst(Live, A, B), InstTable, Inst) :-
 	inst_table_get_unify_insts(InstTable, UnifyInstTable),
-	map__lookup(UnifyInstTable, A - B, MaybeInst),
+	map__lookup(UnifyInstTable, unify_inst_pair(Live, A, B), MaybeInst),
 	( MaybeInst = known(Inst0) ->
 		Inst = Inst0
 	;
-		Inst = defined_inst(unify_inst(A, B))
+		Inst = defined_inst(unify_inst(Live, A, B))
 	).
 inst_lookup_2(merge_inst(A, B), InstTable, Inst) :-
 	inst_table_get_merge_insts(InstTable, MergeInstTable),
@@ -377,8 +377,8 @@ inst_apply_substitution(abstract_inst(Name, Args0), Subst,
 inst_name_apply_substitution(user_inst(Name, Args0), Subst,
 		user_inst(Name, Args)) :-
 	inst_list_apply_substitution(Args0, Subst, Args).
-inst_name_apply_substitution(unify_inst(InstA0, InstB0), Subst,
-		unify_inst(InstA, InstB)) :-
+inst_name_apply_substitution(unify_inst(Live, InstA0, InstB0), Subst,
+		unify_inst(Live, InstA, InstB)) :-
 	inst_apply_substitution(InstA0, Subst, InstA),
 	inst_apply_substitution(InstB0, Subst, InstB).
 inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,

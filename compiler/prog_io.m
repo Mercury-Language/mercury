@@ -192,8 +192,10 @@
 
 :- type inst_name	--->	user_inst(sym_name, list(inst))
 			;	merge_inst(inst, inst)
-			;	unify_inst(inst, inst)
+			;	unify_inst(is_live, inst, inst)
 			;	ground_inst(inst_name).
+
+:- type is_live		--->	live ; dead.
 
 % mode_defn/3 defined above
 
