@@ -495,7 +495,9 @@ generate_other_decls(MLDSDefn, Decls) -->
 	{ ClassName = mlds_module_name_to_class_name(ModuleName) },
 	{ MLDSDefn = mlds__defn(EntityName, _Context, _DeclFlags, Entity) }, 
 	{ term__type_to_term(MLDSDefn, MLDSDefnTerm) },
-	( { EntityName = type(TypeName, _Arity) },
+	( { EntityName = type(TypeName0, Arity) },
+		{ TypeName = string__format("%s_%d",
+			[s(TypeName0), i(Arity)]) },
 		{ FullClassName = append_class_name(ClassName, [TypeName]) },
 		( 
 			{ Entity = mlds__class(ClassDefn) }
@@ -677,7 +679,9 @@ defn_to_class_decl(mlds__defn(_Name, _Context, _DeclFlags,
 defn_to_class_decl(mlds__defn(EntityName, _Context, _DeclFlags,
 		mlds__class(ClassDefn)), ILClassDecl) -->
 	DataRep =^ il_data_rep,
-	( { EntityName = type(TypeName, _Arity) } ->
+	( { EntityName = type(TypeName0, Arity) } ->
+		{ TypeName = string__format("%s_%d",
+			[s(TypeName0), i(Arity)]) },
 		{ ClassDefn = mlds__class_defn(_ClassType, _Imports, 
 			Inherits, _Implements, Defns) },
 		{ FullClassName = structured_name("", [TypeName]) },
@@ -1884,8 +1888,9 @@ mlds_type_to_ilds_type(_, mlds__generic_type) = il_generic_type.
 	% see comments about function types above.
 mlds_type_to_ilds_type(_, mlds__cont_type(_ArgTypes)) = ilds__type([], int32).
 
-mlds_type_to_ilds_type(_, mlds__class_type(Class, _Arity, _Kind)) = 
-	ilds__type([], class(mlds_class_name_to_ilds_class_name(Class))).
+mlds_type_to_ilds_type(_, mlds__class_type(Class, Arity, _Kind)) = 
+	ilds__type([], class(
+		mlds_class_name_to_ilds_class_name(Class, Arity))).
 
 mlds_type_to_ilds_type(_, mlds__commit_type) = il_commit_type.
 
@@ -1929,9 +1934,17 @@ mlds_type_to_ilds_type(DataRep, mercury_type(MercuryType, user_type)) =
 :- func mercury_type_to_highlevel_class_type(mercury_type) = ilds__type.
 mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
 	( type_to_type_id(MercuryType, TypeId, _Args) ->
-		ml_gen_type_name(TypeId, ClassName, _Arity),
-		ILType = ilds__type([], class(
-			mlds_class_name_to_ilds_class_name(ClassName)))
+
+		(
+			type_id_is_array(TypeId)
+		->
+			ILType = il_array_type
+		;
+			ml_gen_type_name(TypeId, ClassName, Arity),
+			ILType = ilds__type([], class(
+				mlds_class_name_to_ilds_class_name(
+					ClassName, Arity)))
+		)
 	;
 		unexpected(this_file, "type_to_type_id failed")
 	).
@@ -1942,10 +1955,14 @@ mlds_type_to_ilds_type(_, mlds__unknown_type) = _ :-
 	unexpected(this_file, "mlds_type_to_ilds_type: unknown_type").
 
 
-:- func mlds_class_name_to_ilds_class_name(mlds__class) = ilds__class_name.
+:- func mlds_class_name_to_ilds_class_name(mlds__class, arity) =
+	ilds__class_name.
 
-mlds_class_name_to_ilds_class_name(qual(MldsModuleName, MldsClassName)) = 
-	append_class_name(mlds_module_name_to_class_name(MldsModuleName),
+mlds_class_name_to_ilds_class_name(
+		qual(MldsModuleName, MldsClassName0), Arity) = IldsClassName :-
+	MldsClassName = string__format("%s_%d", [s(MldsClassName0), i(Arity)]),
+	IldsClassName = append_class_name(
+		mlds_module_name_to_class_name(MldsModuleName),
 		[MldsClassName]).
 
 mlds_type_to_ilds_class_name(DataRep, MldsType) = 
@@ -2057,17 +2074,7 @@ mangle_foreign_code_module(ModuleName0, Lang, ModuleName) :-
 :- mode mangle_dataname_module(in, in, out) is det.
 
 mangle_dataname_module(no, ModuleName0, ModuleName) :-
-	SymName0 = mlds_module_name_to_sym_name(ModuleName0),
-	( 
-		SymName0 = qualified(Q, M0),
-		string__append(M0, "__c_code", M),
-		SymName = qualified(Q, M)
-	; 
-		SymName0 = unqualified(M0),
-		string__append(M0, "__c_code", M),
-		SymName = unqualified(M)
-	),
-	ModuleName = mercury_module_name_to_mlds(SymName).
+	mangle_foreign_code_module(ModuleName0, managed_cplusplus, ModuleName).
 
 mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 	( 

@@ -79,6 +79,9 @@
 :- pred type_is_aditi_state(type).
 :- mode type_is_aditi_state(in) is semidet.
 
+:- pred type_id_is_array(type_id).
+:- mode type_id_is_array(in) is semidet.
+
 	% Remove an `aditi:state' from the given list if one is present.
 :- pred type_util__remove_aditi_state(list(type), list(T), list(T)).
 :- mode type_util__remove_aditi_state(in, in, out) is det.
@@ -469,6 +472,8 @@ type_id_is_atomic(TypeId, ModuleInfo) :-
 	BuiltinType \= tuple_type,
 	BuiltinType \= pred_type,
 	BuiltinType \= user_type.
+
+type_id_is_array(qualified(unqualified("array"), "array") - 1).
 
 type_util__var(term__variable(Var), Var).
 
