@@ -37,6 +37,7 @@
 
 :- import_module code_gen, code_util, hlds_pred, llds, llds_out.
 :- import_module library, map, int, string, std_util, assoc_list, require.
+:- import_module bool.
 
 export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	module_info_get_pragma_exported_procs(Module, ExportedProcs),
@@ -47,7 +48,11 @@ export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	% For each exported procedure, produce a C function.
 	% The code we generate is in the form
 	%
-	% void
+	% #if SEMIDET
+	%   bool
+	% #else
+	%   int
+	% #endif
 	% <function name>(Word Mercury__Argument1, Word *Mercury__Argument2...)
 	%			/* Word for input, Word* for output */
 	% {
@@ -64,19 +69,16 @@ export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	%	Declare_entry(<label of called proc>);
 	%	call_engine(ENTRY(<label of called proc>);
 	%	}
-	%		/* restore the registers which we saved before    */
-	%		/* the C function call                            */
+	%		/* restore the registers which may have been      */
+	%		/* clobbered by the return from the C function    */
+	%		/* call_engine()				  */
 	%	restore_transient_registers();
+	% #if SEMIDET
+	%	if (!r1) return FALSE;
+	% #endif
 	%	<copy output args from registers into *Mercury__Arguments>
-	% #ifndef CONSERVATIVE_GC
-	%               /* save the registers before returning to C.      */
-	%		/* However, the only register of importance that  */
-	%		/* may have changed during the execution of the   */
-	%		/* Mercury code is the heap pointer. If we are    */
-	%		/* using the convervative garbage collector, the  */
-	%		/* heap pointer is not important, so we don't     */
-	%		/* bother at all.                                 */
-	%	save_registers();
+	% #if SEMIDET
+	%	return TRUE;
 	% #endif
 	% }
 :- pred export__to_c(pred_table, list(pragma_exported_proc), module_info,
@@ -86,16 +88,9 @@ export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function),
-	map__lookup(Preds, PredId, PredInfo),
-	pred_info_procedures(PredInfo, ProcTable),
-	map__lookup(ProcTable, ProcId, ProcInfo),
-	proc_info_arg_info(ProcInfo, ArgInfos),
-	proc_info_headvars(ProcInfo, HeadVars), 
-	proc_info_vartypes(ProcInfo, VarTypes),
-	make_arg_info_type_list(HeadVars, ArgInfos, VarTypes, 
-		ArgInfoTypes),
-
-	get_argument_declarations(ArgInfoTypes, ArgDecls),
+	get_export_info(Preds, PredId, ProcId,
+		C_RetType, MaybeFail, MaybeSucceed, ArgInfoTypes),
+	get_argument_declarations(ArgInfoTypes, yes, ArgDecls),
 
 		% work out which arguments are input, and which are output,
 		% and copy to/from the mercury registers.
@@ -105,7 +100,8 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
 	get_proc_label(ProcLabel, ProcLabelString),
 
-	string__append_list([	"\nvoid\n", 
+	string__append_list([	"\n",
+				C_RetType, " ", 
 				C_Function, 
 				"(", 
 				ArgDecls, 
@@ -120,10 +116,9 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				ProcLabelString,
 				"));\n\t}\n",
 				"\trestore_transient_registers();\n",
+				MaybeFail,
 				OutputArgs,
-				"#ifndef CONSERVATIVE_GC\n",
-				"\tsave_registers();\n",
-				"#endif\n",
+				MaybeSucceed,
 				"}\n\n"],
 				Code),
 
@@ -145,24 +140,94 @@ make_arg_info_type_list([V|Vs], [A|As], VarTypes, [AT|ATs]) :-
 	AT =  A - Type,
 	make_arg_info_type_list(Vs, As, VarTypes, ATs).
 
+	% get_export_info(Preds, PredId, ProcId,
+	%		C_RetType, MaybeFail, MaybeSuccess, ArgInfoTypes):
+	%	Figure out the C return type, the actions on success
+	%	and failure, and the argument locations/modes/types
+	%	for a given procedure.
+:- pred get_export_info(pred_table, pred_id, proc_id,
+			string, string, string, assoc_list(arg_info, type)).
+:- mode get_export_info(in, in, in, out, out, out, out) is det.
 
-:- pred get_argument_declarations(assoc_list(arg_info, type), string).
-:- mode get_argument_declarations(in, out) is det.
+get_export_info(Preds, PredId, ProcId,
+		C_RetType, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_procedures(PredInfo, ProcTable),
+	map__lookup(ProcTable, ProcId, ProcInfo),
+	proc_info_arg_info(ProcInfo, ArgInfos),
+	proc_info_headvars(ProcInfo, HeadVars), 
+	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_interface_code_model(ProcInfo, CodeModel),
+	make_arg_info_type_list(HeadVars, ArgInfos, VarTypes, 
+		ArgInfoTypes0),
 
-get_argument_declarations([], "void").
-get_argument_declarations([X|Xs], Result) :-
-	get_argument_declarations_2([X|Xs], 0, Result).
+	% figure out what the C return type should be,
+	% and build the `return' instructions (if any)
+	( CodeModel = model_det,
+		MaybeFail = "",
+		(
+			PredOrFunc = function,
+			pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
+				arg_info(RetArgLoc, RetArgMode) - RetType),
+			RetArgMode = top_out
+		->
+			export__term_to_type_string(RetType, C_RetType),
+			argloc_to_string(RetArgLoc, RetArgString0),
+			convert_type_from_mercury(RetArgString0, RetType,
+				RetArgString),
+			string__append_list(["return ", RetArgString, ";\n"],
+				MaybeSucceed),
+			ArgInfoTypes = ArgInfoTypes1
+		;
+			C_RetType = "void",
+			MaybeSucceed = "",
+			ArgInfoTypes = ArgInfoTypes0
+		)
+	; CodeModel = model_semi,
+		% we treat semidet functions the same as semidet predicates,
+		% which means that for Mercury functions the Mercury return
+		% value becomes the last argument, and the C return value
+		% is a bool that is used to indicate success or failure.
+		C_RetType = "bool",
+		MaybeFail = "\tif (!r1) return FALSE;\n",
+		MaybeSucceed = "\treturn TRUE;\n",
+		ArgInfoTypes = ArgInfoTypes0
+	; CodeModel = model_non,
+		% we should probably check this earlier, e.g. in make_hlds.m,
+		% but better we catch this error late than never...
+		C_RetType = "\n#error ""cannot export nondet procedure""\n",
+		MaybeFail = "",
+		MaybeSucceed = "",
+		ArgInfoTypes = ArgInfoTypes0
+	).
 
-:- pred get_argument_declarations_2(assoc_list(arg_info, type), int, string).
-:- mode get_argument_declarations_2(in, in, out) is det.
+	% get_argument_declarations(Args, NameThem, DeclString):
+	% build a string to declare the argument types (and if
+	% NameThem = yes, the argument names) of a C function.
 
-get_argument_declarations_2([], _, "").
-get_argument_declarations_2([AT|ATs], Num0, Result) :-
+:- pred get_argument_declarations(assoc_list(arg_info, type), bool, string).
+:- mode get_argument_declarations(in, in, out) is det.
+
+get_argument_declarations([], _, "void").
+get_argument_declarations([X|Xs], NameThem, Result) :-
+	get_argument_declarations_2([X|Xs], 0, NameThem, Result).
+
+:- pred get_argument_declarations_2(assoc_list(arg_info, type), int, bool,
+				string).
+:- mode get_argument_declarations_2(in, in, in, out) is det.
+
+get_argument_declarations_2([], _, _, "").
+get_argument_declarations_2([AT|ATs], Num0, NameThem, Result) :-
 	AT = ArgInfo - Type,
 	ArgInfo = arg_info(_Loc, Mode),
 	Num is Num0 + 1,
-	string__int_to_string(Num, NumString),
-	string__append("Mercury__argument", NumString, ArgName),
+	( NameThem = yes ->
+		string__int_to_string(Num, NumString),
+		string__append(" Mercury__argument", NumString, ArgName)
+	;
+		ArgName = ""
+	),
 	export__term_to_type_string(Type, TypeString0),
 	(
 		Mode = top_out
@@ -170,14 +235,14 @@ get_argument_declarations_2([AT|ATs], Num0, Result) :-
 			% output variables are passed as pointers
 		string__append(TypeString0, " *", TypeString)
 	;
-		string__append(TypeString0, " ", TypeString)
+		TypeString = TypeString0
 	),
 	(
 		ATs = []
 	->
 		string__append(TypeString, ArgName, Result)
 	;
-		get_argument_declarations_2(ATs, Num, TheRest),
+		get_argument_declarations_2(ATs, Num, NameThem, TheRest),
 		string__append_list([TypeString, ArgName, ", ", TheRest], 
 			Result)
 	).
@@ -188,26 +253,17 @@ get_argument_declarations_2([AT|ATs], Num0, Result) :-
 get_input_args([], _, "").
 get_input_args([AT|ATs], Num0, Result) :-
 	AT = ArgInfo - Type,
-	ArgInfo = arg_info(Register, Mode),
+	ArgInfo = arg_info(ArgLoc, Mode),
 	Num is Num0 + 1,
 	(
 		Mode = top_in,
 
-		string__int_to_string(Register, RegString),
 		string__int_to_string(Num, NumString),
 		string__append("Mercury__argument", NumString, ArgName0),
 		convert_type_to_mercury(ArgName0, Type, ArgName),
-
-		( 
-				% XXX We should handle floats
-				% XXX This magic number can't be good
-			Register > 32 
-		->
-			string__append_list(["r(", RegString, ")"], RegName)
-		;
-			string__append("r", RegString, RegName)
-		),
-		string__append_list(["\t", RegName, " = ", ArgName, ";\n" ],
+		argloc_to_string(ArgLoc, ArgLocString),
+		string__append_list(
+			["\t", ArgLocString, " = ", ArgName, ";\n" ],
 			InputArg)
 	;
 		Mode = top_out,
@@ -218,8 +274,6 @@ get_input_args([AT|ATs], Num0, Result) :-
 	),
 	get_input_args(ATs, Num, TheRest),
 	string__append(InputArg, TheRest, Result).
-	
-
 
 :- pred copy_output_args(assoc_list(arg_info, type), int, string).
 :- mode copy_output_args(in, in, out) is det.
@@ -227,7 +281,7 @@ get_input_args([AT|ATs], Num0, Result) :-
 copy_output_args([], _, "").
 copy_output_args([AT|ATs], Num0, Result) :-
 	AT = ArgInfo - Type,
-	ArgInfo = arg_info(Register, Mode),
+	ArgInfo = arg_info(ArgLoc, Mode),
 	Num is Num0 + 1,
 	(
 		Mode = top_in,
@@ -237,19 +291,10 @@ copy_output_args([AT|ATs], Num0, Result) :-
 
 		string__int_to_string(Num, NumString),
 		string__append("Mercury__argument", NumString, ArgName),
-		string__int_to_string(Register, RegString),
-
-		( 
-				% XXX We should handle float registers
-				% XXX This magic number can't be good
-			Register > 32 
-		->
-			string__append_list(["r(", RegString, ")"], RegName0)
-		;
-			string__append("r", RegString, RegName0)
-		),
-		convert_type_from_mercury(RegName0, Type, RegName),
-		string__append_list(["\t*", ArgName, " = ", RegName, ";\n" ],
+		argloc_to_string(ArgLoc, ArgLocString0),
+		convert_type_from_mercury(ArgLocString0, Type, ArgLocString),
+		string__append_list(
+			["\t*", ArgName, " = ", ArgLocString, ";\n" ],
 			OutputArg)
 	;
 		Mode = top_unused,
@@ -258,6 +303,22 @@ copy_output_args([AT|ATs], Num0, Result) :-
 	copy_output_args(ATs, Num, TheRest),
 	string__append(OutputArg, TheRest, Result).
 	
+	% convert an argument location (currently just a register number)
+	% to a string representing a C code fragment that names it.
+:- pred argloc_to_string(arg_loc, string).
+:- mode argloc_to_string(in, out) is det.
+
+argloc_to_string(RegNum, RegName) :-
+	string__int_to_string(RegNum, RegNumString),
+	( 
+			% XXX We should handle float registers
+			% XXX This magic number can't be good
+		RegNum > 32 
+	->
+		string__append_list(["r(", RegNumString, ")"], RegName)
+	;
+		string__append("r", RegNumString, RegName)
+	).
 
 	% Convert an rval (represented as a string), from a C type to
 	% a mercury C type. (ie. convert strings and floats to words).
@@ -317,19 +378,16 @@ export__produce_header_file(Module, ModuleName) -->
 				".m' by the\n** Mercury compiler, version ", 
 				Version,
 				".  Do not edit.\n*/\n"]),
-			io__write_string("#include ""imp.h""\n\n"),
 			{ string__to_upper(ModuleName, UpperModuleName) },
 			{ string__append(UpperModuleName, "_H", UpperFileName) },
 			io__write_strings([
-						"#ifndef ",
-						UpperFileName,
-						"\n",
-						"#define ",
-						UpperFileName,
-						"\n"
-						]),
+					"#ifndef ", UpperFileName, "\n",
+					"#define ", UpperFileName, "\n",
+					"\n",
+					"#include ""imp.h""\n",
+					"\n"]),
 			export__produce_header_file_2(Preds, ExportedProcs),
-			io__write_string("#endif\n"),
+			io__write_string("\n#endif\n"),
 			io__told
 		;
 			io__progname_base("export.m", ProgName),
@@ -350,21 +408,13 @@ export__produce_header_file(Module, ModuleName) -->
 export__produce_header_file_2(_Preds, []) --> [].
 export__produce_header_file_2(Preds, [E|ExportedProcs]) -->
 	{ E = pragma_exported_proc(PredId, ProcId, C_Function) },
-	{ map__lookup(Preds, PredId, PredInfo) },
-	{ pred_info_procedures(PredInfo, ProcTable) },
-	{ map__lookup(ProcTable, ProcId, ProcInfo) },
-	{ proc_info_arg_info(ProcInfo, ArgInfos) },
-
-	{ proc_info_headvars(ProcInfo, HeadVars) },
-	{ proc_info_vartypes(ProcInfo, VarTypes) },
-
-	{ make_arg_info_type_list(HeadVars, ArgInfos, VarTypes, 
-		HeadArgInfoTypes) },
-
-	{ get_argument_declarations(HeadArgInfoTypes, ArgDecls) },
+	{ get_export_info(Preds, PredId, ProcId,
+		C_RetType, _FailureAction, _SuccessAction, HeadArgInfoTypes) },
+	{ get_argument_declarations(HeadArgInfoTypes, no, ArgDecls) },
 
 		% output the function header
-	io__write_string("void\n"),
+	io__write_string(C_RetType),
+	io__write_string(" "),
 	io__write_string(C_Function),
 	io__write_string("("),
 	io__write_string(ArgDecls),

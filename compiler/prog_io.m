@@ -1525,7 +1525,7 @@ parse_pragma_type(_, "c_header_code", PragmaTerms,
 	    )
 	;
 	    Result = error(
-"wrong number of arguments in `pragma c_header_code(...) declaration.", 
+"wrong number of arguments in `pragma c_header_code(...) declaration", 
 			    ErrorTerm)
         ).
 
@@ -1566,7 +1566,7 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 	    )
 	;
 	    Result = error(
-	    "wrong number of arguments in `:- pragma c_code' declaration.", 
+	    "wrong number of arguments in `:- pragma c_code' declaration", 
 		    ErrorTerm)
 	).
 
@@ -1579,33 +1579,61 @@ parse_pragma_type(ModuleName, "export", PragmaTerms,
                 PredAndModesTerm = term__functor(_, _, _),
 	        C_FunctionTerm = term__functor(term__string(C_Function), [], _)
 	    ->
-		parse_qualified_term(ModuleName, PredAndModesTerm,
-			"pragma export declaration", PredAndModesResult),  
 		(
-		    PredAndModesResult = ok(PredName, ModeTerms),
+		    PredAndModesTerm = term__functor(term__atom("="),
+				[FuncAndArgModesTerm, RetModeTerm], _)
+		->
+		    parse_qualified_term(ModuleName, FuncAndArgModesTerm,
+			"pragma export declaration", FuncAndArgModesResult),  
 		    (
-		    	convert_mode_list(ModeTerms, Modes)
-		    ->
-			Result = 
-			ok(pragma(export(PredName, Modes, C_Function)))
-		    ;
-	   		Result = error(
-			"expected pragma(export, PredName(ModeList), C_Function).",
+		        FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
+		        (
+		    	    convert_mode_list(ArgModeTerms, ArgModes),
+			    convert_mode(RetModeTerm, RetMode)
+		        ->
+			    list__append(ArgModes, [RetMode], Modes),
+			    Result =
+			    ok(pragma(export(FuncName, function,
+				Modes, C_Function)))
+		        ;
+	   		    Result = error(
+	"expected pragma export(FuncName(ModeList) = Mode, C_Function)",
 				PredAndModesTerm)
+		        )
+		    ;
+		        FuncAndArgModesResult = error(Msg, Term),
+		        Result = error(Msg, Term)
 		    )
 		;
-		    PredAndModesResult = error(Msg, Term),
-		    Result = error(Msg, Term)
+		    parse_qualified_term(ModuleName, PredAndModesTerm,
+			"pragma export declaration", PredAndModesResult),  
+		    (
+		        PredAndModesResult = ok(PredName, ModeTerms),
+		        (
+		    	    convert_mode_list(ModeTerms, Modes)
+		        ->
+			    Result = 
+			    ok(pragma(export(PredName, predicate, Modes,
+				C_Function)))
+		        ;
+	   		    Result = error(
+	"expected pragma export(PredName(ModeList), C_Function)",
+				PredAndModesTerm)
+		        )
+		    ;
+		        PredAndModesResult = error(Msg, Term),
+		        Result = error(Msg, Term)
+		    )
 		)
 	    ;
 	    	Result = error(
-		     "expected pragma(export, PredName(ModeList), C_Function).",
+		     "expected pragma export(PredName(ModeList), C_Function)",
 		     PredAndModesTerm)
 	    )
 	;
 	    Result = 
 	    	error(
-		"wrong number of arguments in pragma(export, ...) declaration.",
+		"wrong number of arguments in `pragma export(...)' declaration",
 		ErrorTerm)
        ).
 
@@ -1668,7 +1696,7 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms,
 	;
 	    Result = 
 		error(
-	"wrong number of arguments in pragma fact_table(..., ...) declaration.",
+	"wrong number of arguments in pragma fact_table(..., ...) declaration",
 		ErrorTerm)
 	).
 
@@ -1810,14 +1838,14 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 				PragmaVars = [P|PragmaVars0]
 			;
 				PragmaVars = [],
-				Error = yes("unknown mode in pragma(c_code, ...")
+				Error = yes("unknown mode in pragma c_code")
 			)
 		;
 			% if the variable wasn't in the varset it must be an
 			% underscore variable.
 			PragmaVars = [],	% return any old junk for that.
 			Error = yes(
-"sorry, not implemented: anonymous `_' variable in pragma(c_code, ...)")
+"sorry, not implemented: anonymous `_' variable in pragma c_code")
 		)
 	;
 		PragmaVars = [],	% return any old junk in PragmaVars

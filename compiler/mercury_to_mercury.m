@@ -239,8 +239,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 		mercury_output_pragma_c_code(IsRecursive, Pred, PredOrFunc, 
 				Vars, VarSet, C_CodeString)
 	;
-		{ Pragma = export(Pred, ModeList, C_Function) },
-		mercury_output_pragma_export(Pred, ModeList, C_Function)
+		{ Pragma = export(Pred, PredOrFunc, ModeList, C_Function) },
+		mercury_output_pragma_export(Pred, PredOrFunc, ModeList,
+			C_Function)
 	;
 		{ Pragma = obsolete(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, "obsolete")
@@ -1202,20 +1203,27 @@ mercury_output_pragma_decl(PredName, Arity, PragmaName) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_pragma_export(sym_name, list(mode), string, io__state, 
-	io__state).
-:- mode mercury_output_pragma_export(in, in, in, di, uo) is det.
+:- pred mercury_output_pragma_export(sym_name, pred_or_func, list(mode),
+	string, io__state, io__state).
+:- mode mercury_output_pragma_export(in, in, in, in, di, uo) is det.
 
-mercury_output_pragma_export(Pred, ModeList, C_Function) -->
+mercury_output_pragma_export(Name, PredOrFunc, ModeList, C_Function) -->
+	{ varset__init(Varset) }, % the varset isn't really used.
 	io__write_string(":- pragma export("),
-	mercury_output_sym_name(Pred),
-	io__write_string("("),
-	{ varset__init(Varset) },
-		% Okay... varset__init might seem dodgy... but the varset isn't 
-		% actually used.
-	mercury_output_mode_list(ModeList, Varset),
-
-	io__write_string("), "),
+	mercury_output_sym_name(Name),
+	(
+		{ PredOrFunc = function },
+		{ pred_args_to_func_args(ModeList, ArgModes, RetMode) },
+		io__write_string("("),
+		mercury_output_mode_list(ArgModes, Varset),
+		io__write_string(") = "),
+		mercury_output_mode(RetMode, Varset)
+	;
+		{ PredOrFunc = predicate },
+		io__write_string("("),
+		mercury_output_mode_list(ModeList, Varset),
+		io__write_string("), ")
+	),
 	io__write_string(C_Function),
 	io__write_string(").\n").
 

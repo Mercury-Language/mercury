@@ -90,8 +90,10 @@
 				% Predname, Arity
 			;	obsolete(sym_name, int)
 				% Predname, Arity
-			;	export(sym_name, list(mode), string)
-				% Predname, Modes, C function name.
+			;	export(sym_name, pred_or_func, list(mode),
+					string)
+				% Predname, Predicate/function, Modes,
+				% C function name.
 			;	source_file(string)
 				% Source file name.
 			;	fact_table(sym_name, arity, string)

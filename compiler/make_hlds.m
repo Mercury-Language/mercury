@@ -279,13 +279,12 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		add_pred_marker(Module0, "obsolete", Name, Arity, Context,
 			[request(obsolete)], Module)
 	;
-		% XXX should handle pragma(export) for functions better
-		{ Pragma = export(Name, Modes, C_Function) },
+		{ Pragma = export(Name, PredOrFunc, Modes, C_Function) },
 		{ module_info_get_predicate_table(Module0, PredTable) },
 		{ list__length(Modes, Arity) },
 		(
-			{ predicate_table_search_sym_arity(PredTable,
-				Name, Arity, [PredId]) }
+			{ predicate_table_search_pf_sym_arity(PredTable,
+				PredOrFunc, Name, Arity, [PredId]) }
 		->
 			{ predicate_table_get_preds(PredTable, Preds) },
 			{ map__lookup(Preds, PredId, PredInfo) },
