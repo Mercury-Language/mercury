@@ -905,6 +905,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	% cannot succeed, then we replace the if-then-else with the
 	% other disjunct. (We could also eliminate A, but we leave
 	% that to the recursive invocations.)
+	% Note that this simplification is required for the MLDS back-end,
+	% which assumes that conditions of if-then-elses are not model_det.
 	%
 	% The conjunction operator in the remaining disjunct ought to be
 	% a sequential conjunction, because Mercury's if-then-else always
@@ -919,7 +921,6 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Cond0 = _ - CondInfo0,
-
 	goal_info_get_determinism(CondInfo0, CondDetism0),
 	determinism_components(CondDetism0, CondCanFail0, CondSolns0),
 	( CondCanFail0 = cannot_fail ->
@@ -983,6 +984,10 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		simplify__goal(conj(List) - GoalInfo0, Goal - GoalInfo,
 			Info0, Info)
 	;
+		%
+		% recursively simplify the sub-goals,
+		% and rebuild the resulting if-then-else
+		%
 		simplify_info_get_instmap(Info0, InstMap0),
 		simplify__goal(Cond0, Cond, Info0, Info1),
 		simplify_info_update_instmap(Info1, Cond, Info2),
@@ -1003,33 +1008,57 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		merge_instmap_deltas(InstMap0, NonLocals,
 			[CondThenDelta, ElseDelta], NewDelta,
 			ModuleInfo0, ModuleInfo1),
-		simplify_info_set_module_info(Info6, ModuleInfo1, Info),
+		simplify_info_set_module_info(Info6, ModuleInfo1, Info7),
 		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo1),
 		IfThenElse = if_then_else(Vars, Cond, Then, Else, SM),
-		%
-		% If-then-elses that are det or semidet may nevertheless
-		% contain nondet or multidet conditions. If this happens, the
-		% if-then-else must be put inside a `some' to appease the code
-		% generator.
-		%
+
 		goal_info_get_determinism(GoalInfo0, IfThenElseDetism0),
 		determinism_components(IfThenElseDetism0, IfThenElseCanFail,
 			IfThenElseNumSolns),
+
+		goal_info_get_determinism(CondInfo, CondDetism),
+		determinism_components(CondDetism, CondCanFail, CondSolns),
 		(
-			simplify_do_once(Info),
-			goal_info_get_determinism(CondInfo, CondDetism),
-			determinism_components(CondDetism, _, at_most_many),
-			IfThenElseNumSolns \= at_most_many
+			%
+			% check again if we can apply one of the above
+			% simplifications after having simplified the 
+			% sub-goals (we need to do this to ensure that
+			% the goal is fully simplified, to maintain the
+			% invariants that the MLDS back-end depends on)
+			%
+			( CondCanFail = cannot_fail
+			; CondSolns = at_most_zero
+			; Else = disj([], _) - _ 
+			)
 		->
-			determinism_components(InnerDetism, IfThenElseCanFail,
-				at_most_many),
-			goal_info_set_determinism(GoalInfo1, InnerDetism,
-				InnerInfo),
-			Goal = some([], can_remove, IfThenElse - InnerInfo)
+			simplify_info_undo_goal_updates(Info0, Info7, Info8),
+			simplify__goal_2(IfThenElse, GoalInfo1,
+				Goal, GoalInfo, Info8, Info)
 		;
-			Goal = IfThenElse
-		),
-		GoalInfo = GoalInfo1
+			(
+				%
+				% If-then-elses that are det or semidet may
+				% nevertheless contain nondet or multidet
+				% conditions. If this happens, the if-then-else
+				% must be put inside a `some' to appease the
+				% code generator.
+				%
+				simplify_do_once(Info),
+				CondSolns = at_most_many,
+				IfThenElseNumSolns \= at_most_many
+			->
+				determinism_components(InnerDetism,
+					IfThenElseCanFail, at_most_many),
+				goal_info_set_determinism(GoalInfo1,
+					InnerDetism, InnerInfo),
+				Goal = some([], can_remove,
+					IfThenElse - InnerInfo)
+			;
+				Goal = IfThenElse
+			),
+			GoalInfo = GoalInfo1,
+			Info = Info7
+		)
 	).
 
 simplify__goal_2(not(Goal0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
