@@ -164,7 +164,8 @@ mark.o typd_mlc.o finalize.o: $(srcdir)/gc_mark.h
 
 libgc$(PROF).a: gc.a
 	rm -f libgc$(PROF).a
-	ln -s gc.a libgc$(PROF).a
+	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
+	cp gc.a libgc$(PROF).a
 
 gc.a: $(OBJS) dyn_load.o
 	rm -f on_sparc_sunos5

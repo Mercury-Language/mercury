@@ -188,6 +188,11 @@
 #   define DJGPP  /* MSDOS running the DJGPP port of GCC */
 #   define mach_type_known
 # endif
+# if defined(__CYGWIN32__)
+#   define I386
+#   define CYGWIN32
+#   define mach_type_known
+# endif
 # if defined(__BORLANDC__)
 #   define I386
 #   define MSWIN32
@@ -491,6 +496,13 @@
 #       define DATASTART ((ptr_t)((((word) (&etext)) + 0xfff) & ~0xfff))
 #	define STACKBOTTOM ((ptr_t)0xc0000000)
 #	define MPROTECT_VDB
+#   endif
+#   ifdef CYGWIN32
+#       define OS_TYPE "CYGWIN32"
+        extern int _bss_start__;
+#       define DATASTART       ((ptr_t)&_bss_start__)
+        extern int _data_end__;
+#       define DATAEND          ((ptr_t)&_data_end__)
 #   endif
 #   ifdef OS2
 #	define OS_TYPE "OS2"

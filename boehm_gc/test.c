@@ -851,6 +851,9 @@ void SetMinimumStack(long minSize)
   int main()
 #endif
 {
+    char dummy;
+    extern char*GC_stackbottom;
+    GC_stackbottom = &dummy;
     n_tests = 0;
     
 #   if defined(MACOS)

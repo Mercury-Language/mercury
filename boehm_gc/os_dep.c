@@ -227,7 +227,12 @@ static SIGSET_T dummy;
 void GC_disable_signals()
 {
     if (!mask_initialized) {
+#ifdef SIG_FILL
     	SIG_FILL(new_mask);
+#else
+	/* gnu-win32 is broken, it doesn't define SIG_FILL */
+	/* never mind, Mercury doesn't use this function anyway */
+#endif
 
 	SIG_DEL(new_mask, SIGSEGV);
 	SIG_DEL(new_mask, SIGILL);
