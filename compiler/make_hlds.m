@@ -1673,9 +1673,10 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 						ModuleInfo0, ProcId) }
 		->
 			{ pred_info_clauses_info(PredInfo1, Clauses0) },
+			{ pred_info_arg_types(PredInfo1, _TVarSet, ArgTypes) },
 			clauses_info_add_pragma_c_code(Clauses0,
 				MayCallMercury, PredId, ProcId, VarSet,
-				PVars, C_Code, Context, ExtraInfo,
+				PVars, ArgTypes, C_Code, Context, ExtraInfo,
 				Clauses, Goal, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
 				PredInfo2) },
@@ -1949,7 +1950,7 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId).
 
-warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _), 
+warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _, _), 
 		GoalInfo, _QuantVars, _VarSet, PredCallId) --> 
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons_in_pragma_c_code(C_Code, ArgNames, Context, 
@@ -2277,14 +2278,15 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 % hlds_goal.
 
 :- pred clauses_info_add_pragma_c_code(clauses_info, may_call_mercury,
-	pred_id, proc_id, varset, list(pragma_var), string, term__context,
+	pred_id, proc_id, varset, list(pragma_var), list(type),
+	string, term__context,
 	maybe(pair(list(string))), clauses_info, hlds_goal,
 	qual_info, qual_info, io__state, io__state) is det.
-:- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in,
+:- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
 	out, out, in, out, di, uo) is det.
 
 clauses_info_add_pragma_c_code(ClausesInfo0, MayCallMercury, PredId, ModeId,
-		PVarSet, PVars, C_Code, Context, ExtraInfo,
+		PVarSet, PVars, OrigArgTypes, C_Code, Context, ExtraInfo,
 		ClausesInfo, HldsGoal, Info0, Info) -->
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
@@ -2312,7 +2314,7 @@ clauses_info_add_pragma_c_code(ClausesInfo0, MayCallMercury, PredId, ModeId,
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	HldsGoal0 = pragma_c_code(C_Code, MayCallMercury, PredId, ModeId, Args,
-				Names, ExtraPragmaInfo) - GoalInfo
+			Names, OrigArgTypes, ExtraPragmaInfo) - GoalInfo
 	}, 
 		% Insert unifications with the head args.
 	insert_arg_unifications(HeadVars, TermArgs, Context, head, HldsGoal0,

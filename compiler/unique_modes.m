@@ -526,12 +526,13 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
 unique_modes__check_goal_2(pragma_c_code(IsRecursive, C_Code, PredId, ProcId,
-		Args, ArgNameMap, ExtraPragmaInfo), _GoalInfo, Goal) -->
+		Args, ArgNameMap, OrigArgTypes, ExtraPragmaInfo),
+		_GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
 	mode_info_set_call_context(call(PredId)),
 	unique_modes__check_call(PredId, ProcId, Args),
 	{ Goal = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, Args,
-			ArgNameMap, ExtraPragmaInfo) },
+			ArgNameMap, OrigArgTypes, ExtraPragmaInfo) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").
 

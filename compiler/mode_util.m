@@ -1562,8 +1562,8 @@ recompute_instmap_delta_2(_, unify(A, B, UniMode0, Uni, E), GoalInfo,
 	recompute_instmap_delta_unify(Uni, UniMode0, UniMode,
 		GoalInfo, InstMap, InstMapDelta).
 
-recompute_instmap_delta_2(_, pragma_c_code(A, B, PredId, ProcId, Args, F, G), _,
-		pragma_c_code(A, B, PredId, ProcId, Args, F, G),
+recompute_instmap_delta_2(_, pragma_c_code(A, B, PredId, ProcId, Args, F, G,
+		H), _, pragma_c_code(A, B, PredId, ProcId, Args, F, G, H),
 		InstMap, InstMapDelta) -->
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, InstMap, InstMapDelta).

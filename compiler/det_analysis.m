@@ -556,10 +556,10 @@ det_infer_goal_2(some(Vars, Goal0), _, InstMap0, SolnContext, DetInfo, _, _,
 
 	% pragma c_codes are handled in the same way as predicate calls
 det_infer_goal_2(pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
-			ArgNameMap, Extra), 
+			ArgNameMap, OrigArgTypes, Extra), 
 		GoalInfo, _, SolnContext, DetInfo, _, _,
 		pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
-			ArgNameMap, Extra),
+			ArgNameMap, OrigArgTypes, Extra),
 		Detism, Msgs) :-
 	det_lookup_detism(DetInfo, PredId, ProcId, Detism0),
 	determinism_components(Detism0, CanFail, NumSolns0),

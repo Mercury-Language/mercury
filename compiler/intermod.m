@@ -399,8 +399,8 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 
 	% Inlineable exported pragma_c_code goals can't use any
 	% non-exported types, so we just write out the clauses. 
-intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G) - Info,
-			pragma_c_code(A,B,C,D,E,F,G) - Info, yes) --> [].
+intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G,H) - Info,
+			pragma_c_code(A,B,C,D,E,F,G,H) - Info, yes) --> [].
 
 
 :- pred intermod__traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
@@ -966,14 +966,14 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 			{ Goal = conj(Goals) - _ },
 			{ list__filter(
 				lambda([X::in] is semidet, (
-					X = pragma_c_code(_,_,_,_,_,_,_) - _
+					X = pragma_c_code(_,_,_,_,_,_,_,_) - _
 				)),
 				Goals, [CCodeGoal]) },
 			{ CCodeGoal = pragma_c_code(CCode, MayCallMercury,
-						_, _, Vars, _, _) - _ }
+						_, _, Vars, _, _, _) - _ }
 		;
 			{ Goal = pragma_c_code(CCode, MayCallMercury,
-						_, _, Vars, _, _) - _ }
+						_, _, Vars, _, _, _) - _ }
 		)
 	->	
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, 

@@ -226,7 +226,7 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		% have to make sure it doesn't get inlined because that stops
 		% it from working.
 		\+ {
-			CalledGoal = pragma_c_code(_,_,_,_,_,_,none) - _,
+			CalledGoal = pragma_c_code(_,_,_,_,_,_,_,none) - _,
 			proc_info_interface_code_model(ProcInfo, model_non)
 		}
 	->
@@ -473,8 +473,8 @@ inlining__inlining_in_goal_2(higher_order_call(A, B, C, D, E),
 inlining__inlining_in_goal_2(unify(A, B, C, D, E), Varset, VarTypes,
 		_, _, _, _, unify(A, B, C, D, E), Varset, VarTypes).
 
-inlining__inlining_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), Varset, VarTypes,
-		_, _, _, _, pragma_c_code(A,B,C,D,E,F,G), Varset, VarTypes).
+inlining__inlining_in_goal_2(pragma_c_code(A,B,C,D,E,F,G,H), Varset, VarTypes,
+		_, _, _, _, pragma_c_code(A,B,C,D,E,F,G,H), Varset, VarTypes).
 
 %-----------------------------------------------------------------------------%
 

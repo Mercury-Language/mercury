@@ -998,8 +998,8 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		[]
 	).
 
-hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgVars, ArgNames, Extra),
-		_, _, _, Indent, Follow, _) -->
+hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgVars, ArgNames, _,
+			Extra), _, _, _, Indent, Follow, _) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("$pragma(c_code, ["),
 	hlds_out__write_varnum_list(ArgVars),

@@ -27,14 +27,14 @@
 
 :- pred pragma_c_gen__generate_pragma_c_code(code_model::in, string::in,
 	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
-	list(maybe(string))::in, hlds_goal_info::in, code_tree::out,
-	code_info::in, code_info::out) is det.
+	list(maybe(string))::in, list(type)::in, hlds_goal_info::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred pragma_c_gen__generate_backtrack_pragma_c_code(code_model::in,
 	string::in, may_call_mercury::in, pred_id::in, proc_id::in,
-	list(var)::in, list(maybe(string))::in, list(pair(var, string))::in,
-	list(string)::in, hlds_goal_info::in, code_tree::out,
-	code_info::in, code_info::out) is erroneous.
+	list(var)::in, list(maybe(string))::in, list(type)::in,
+	list(pair(var, string))::in, list(string)::in, hlds_goal_info::in,
+	code_tree::out, code_info::in, code_info::out) is erroneous.
 
 %---------------------------------------------------------------------------%
 
@@ -88,7 +88,7 @@
 %	there is nothing that needs restoring.
 
 pragma_c_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
-		PredId, ProcId, Args, Names, _GoalInfo, Code) -->
+		PredId, ProcId, Args, Names, OrigArgTypes, _GoalInfo, Code) -->
 	% First we need to get a list of input and output arguments
 	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo),
 	{ make_c_arg_list(Args, Names, ArgNames) },
@@ -111,7 +111,7 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
 		call_gen__save_variables(OutArgsSet, SaveVarsCode)
 	),
 
-	make_pragma_decls(ArgNames, Decls),
+	{ make_pragma_decls(ArgNames, OrigArgTypes, Decls) },
 	get_pragma_input_vars(InArgs, Inputs, InputVarsCode),
 	( { CodeModel = model_semi } ->
 		% We have to clear r1 for C code that gets inlined
@@ -265,21 +265,23 @@ pragma_select_in_args([V - arg_info(_Loc, Mode) | Rest], In) :-
 % data structure in the llds. It is essentially a list of pairs of type and
 % variable name, so that declarations of the form "Type Name;" can be made.
 
-:- pred make_pragma_decls(list(c_arg)::in, list(pragma_c_decl)::out,
-	code_info::in, code_info::out) is det.
+:- pred make_pragma_decls(list(c_arg)::in, list(type)::in,
+			list(pragma_c_decl)::out) is det.
 
-make_pragma_decls([], []) --> [].
-make_pragma_decls([c_arg(Arg, ArgName) | ArgNames], Decls) -->
-	( { ArgName = yes(Name) } ->
-		code_info__variable_type(Arg, Type),
-		{ Decl = pragma_c_decl(Type, Name) },
-		{ Decls = [Decl | Decls1] },
-		make_pragma_decls(ArgNames, Decls1)
+make_pragma_decls([], [], []).
+make_pragma_decls([c_arg(_Arg, ArgName) | ArgNames], [OrigType | OrigTypes],
+		Decls) :-
+	( ArgName = yes(Name) ->
+		Decl = pragma_c_decl(OrigType, Name),
+		Decls = [Decl | Decls1],
+		make_pragma_decls(ArgNames, OrigTypes, Decls1)
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
-		make_pragma_decls(ArgNames, Decls)
+		make_pragma_decls(ArgNames, OrigTypes, Decls)
 	).
+make_pragma_decls([_|_], [], _) :- error("make_pragma_decls: length mismatch").
+make_pragma_decls([], [_|_], _) :- error("make_pragma_decls: length mismatch").
 
 %---------------------------------------------------------------------------%
 
@@ -345,8 +347,8 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], [O | Outputs]) -->
 
 %---------------------------------------------------------------------------%
 
-pragma_c_gen__generate_backtrack_pragma_c_code(_, _, _, _, _, _, _, _, _,
+pragma_c_gen__generate_backtrack_pragma_c_code(_, _, _, _, _, _, _, _, _, _,
 		_, _) -->
-	{ error("nondet pragma_c_codes not yet implemented") }.
+	{ error("Sorry, nondet pragma_c_codes not yet implemented") }.
 
 %---------------------------------------------------------------------------%

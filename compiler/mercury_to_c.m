@@ -670,7 +670,7 @@ c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName),
 c_gen_goal_2(unify(_A, _B, _, Unification, _), Indent, CGenInfo0, CGenInfo) -->
 	c_gen_unification(Unification, Indent, CGenInfo0, CGenInfo).
 
-c_gen_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _), _, _, _) -->
+c_gen_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _, _), _, _, _) -->
 	{ sorry(4) },
 	{ get_pragma_c_var_names(ArgNames, Names) },
 	io__write_string("$pragma(c_code, ["),

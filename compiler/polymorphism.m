@@ -573,7 +573,8 @@ polymorphism__process_goal_expr(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 	polymorphism__process_goal(C0, C).
 
 polymorphism__process_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId,
-		ProcId, ArgVars0, ArgNames0, ExtraInfo), GoalInfo, Goal) -->
+		ProcId, ArgVars0, ArgNames0, OrigArgTypes0, ExtraInfo),
+		GoalInfo, Goal) -->
 	polymorphism__process_call(PredId, ProcId, ArgVars0,
 		ArgVars, ExtraVars, ExtraGoals),
 	%
@@ -597,10 +598,20 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId,
 			PredTypeVarSet, ArgNames0, ArgNames) },
 
 	%
+	% insert type_info types for all the inserted type_info vars
+	% into the arg-types list
+	%
+	{ MakeType = lambda([TypeVar::in, TypeInfoType::out] is det,
+		construct_type(qualified("mercury_builtin", "type_info") - 1,
+			[term__variable(TypeVar)], TypeInfoType)) },
+	{ list__map(MakeType, PredTypeVars, TypeInfoTypes) },
+	{ list__append(TypeInfoTypes, OrigArgTypes0, OrigArgTypes) },
+
+	%
 	% plug it all back together
 	%
 	{ Call = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, ArgVars,
-			ArgNames, ExtraInfo) - CallGoalInfo },
+			ArgNames, OrigArgTypes, ExtraInfo) - CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 

@@ -155,6 +155,9 @@
 					% type_info variables introduced by
 					% polymorphism.m might be represented
 					% in this way).
+			list(type),	% The original types of the arguments.
+					% (With inlining, the actual types may
+					% be instances of the original types.)
 			extra_pragma_info
 					% Extra information for model_non
 					% pragma_c_codes; none for others.
@@ -817,7 +820,7 @@ goal_is_atomic(disj([], _)).
 goal_is_atomic(higher_order_call(_,_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_)).
+goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 
