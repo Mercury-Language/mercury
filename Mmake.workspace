@@ -68,6 +68,13 @@ STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
 BROWSER_LIB_NAME = mer_browser
 
+# This specifies the path to the so_locations file (or its equivalent),
+# which is used by the linker to help it to map different shared objects
+# to different virtual memory addresses at static link time, so as to avoid
+# the need to relocate them at dynamic link time.
+SO_LOCATIONS_DIR        = $(WORKSPACE)/
+export SO_LOCATIONS_DIR
+
 MC =		$(SCRIPTS_DIR)/mmc
 MGNUC =		$(SCRIPTS_DIR)/mgnuc
 ML =		$(SCRIPTS_DIR)/ml
@@ -163,8 +170,8 @@ endif
 endif
 endif
 
-LINK_LIB_OPTS = $(LINK_TRACE_LIB_OPTS) $(LINK_RT_LIB_OPTS) \
-			$(LINK_STD_LIB_OPTS) $(SHARED_GC_LIBS) 
+LINK_LIB_OPTS = $(LINK_TRACE_LIB_OPTS) $(LINK_STD_LIB_OPTS) \
+			$(LINK_RT_LIB_OPTS) $(SHARED_GC_LIBS) 
 LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR) -L$(LIBRARY_DIR) \
 			-L$(TRACE_DIR) -L$(BROWSER_DIR)
 

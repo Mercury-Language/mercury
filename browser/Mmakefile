@@ -42,6 +42,8 @@ MCFLAGS += --no-warn-smart-recompilation
 # to abort compiling declarative_user.m.
 MCFLAGS-mdb.declarative_user = --no-deforestation
 
+MCFLAGS-mer_browser = --no-warn-nothing-exported
+
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 LN	=	ln
@@ -71,58 +73,49 @@ endif
 all : library browse_test declarative_test
 
 .PHONY: depend
-depend		: mdb.depend browse_test.depend declarative_test.depend
+depend		: $(BROWSER_LIB_NAME).depend \
+			browse_test.depend declarative_test.depend
 
 .PHONY: check
-check		: mdb.check
+check		: $(BROWSER_LIB_NAME).check
 
 .PHONY: all-ints 
 all-ints: ints int3s
 
 .PHONY: ints 
-ints		: mdb.ints browse_test.ints declarative_test.ints
+ints		: $(BROWSER_LIB_NAME).ints \
+			browse_test.ints declarative_test.ints
 
 .PHONY: int3s 
-int3s		: mdb.int3s
+int3s		: $(BROWSER_LIB_NAME).int3s
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(MTAGS) $(mdb.ms)
-	$(MTAGS) $(mdb.ms) ../library/*.m
+tags		: $(MTAGS) $($(BROWSER_LIB_NAME).ms)
+	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../library/*.m
 
-mdb.stats : $(COMPILER_DIR)/source_stats.awk $(mdb.ms)
+$(BROWSER_LIB_NAME).stats : $(COMPILER_DIR)/source_stats.awk \
+				$($(BROWSER_LIB_NAME).ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \
-		`vpath_find $(mdb.ms)` > $@
+		`vpath_find $($(BROWSER_LIB_NAME).ms)` > $@
 	
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
 dates		:
-	touch $(mdb.dates)
+	touch $($(BROWSER_LIB_NAME).dates)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs ss
-os: $(mdb.os)
-cs: $(mdb.cs)
-ss: $(mdb.ss)
+os: $($(BROWSER_LIB_NAME).os)
+cs: $($(BROWSER_LIB_NAME).cs)
+ss: $($(BROWSER_LIB_NAME).ss)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: library
-library: lib$(BROWSER_LIB_NAME).$A lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
-library: $(BROWSER_LIB_NAME).init
-
-lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A : libmdb.$A
-	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
-	$(LN) libmdb.$A lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
-
-lib$(BROWSER_LIB_NAME).so : libmdb.so
-	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).so
-	$(LN) libmdb.so lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).so
-
-$(BROWSER_LIB_NAME).init: $(deps_subdir)mdb.dep mdb.init
-	cp mdb.init $(BROWSER_LIB_NAME).init
+library: lib$(BROWSER_LIB_NAME)
 
 # Ensure we recompile mdb__version if VERSION is changed.
 $(os_subdir)mdb.o \
@@ -131,9 +124,10 @@ $(os_subdir)mdb.pic_o \
 
 #-----------------------------------------------------------------------------#
 
+# In the past we generated libmdb.* and then linked
+# libmer_browser.* to the files.
 realclean_local:
-	rm -f lib$(BROWSER_LIB_NAME).$A lib$(BROWSER_LIB_NAME).so \
-		$(BROWSER_LIB_NAME).init mdb.init
+	rm -rf libmdb.so libmdb.a mdb.init
 	rm -f tags
 
 #-----------------------------------------------------------------------------#

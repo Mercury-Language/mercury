@@ -81,6 +81,8 @@ MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 # Bug workarounds.
 MCFLAGS-std_util += --no-halt-at-warn
 
+MCFLAGS-mer_std = --no-warn-nothing-exported
+
 #-----------------------------------------------------------------------------#
 
 CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
@@ -126,10 +128,10 @@ mercury : all-ints lib_std
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend		: library.depend
+depend		: $(STD_LIB_NAME).depend
 
 .PHONY: check
-check		: library.check
+check		: $(STD_LIB_NAME).check
 
 .PHONY: all-ints 
 
@@ -144,46 +146,47 @@ all-ints: ints int3s
 endif
 
 .PHONY: ints 
-ints		: library.ints
+ints		: $(STD_LIB_NAME).ints
 
 .PHONY: int3s 
-int3s		: library.int3s
+int3s		: $(STD_LIB_NAME).int3s
 
 .PHONY: opts 
-opts		: library.opts
+opts		: $(STD_LIB_NAME).opts
 
 .PHONY: trans_opts 
-trans_opts		: library.trans_opts
-library.trans_opts	: $(library.trans_opts)
+trans_opts		: $(STD_LIB_NAME).trans_opts
+$(STD_LIB_NAME).trans_opts	: $($(STD_LIB_NAME).trans_opts)
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(MTAGS) $(library.ms)
-	$(MTAGS) $(library.ms)
+tags		: $(MTAGS) $($(STD_LIB_NAME).ms)
+	$(MTAGS) $($(STD_LIB_NAME).ms)
 
-library.stats : $(COMPILER_DIR)/source_stats.awk $(library.ms)
-	awk -f $(COMPILER_DIR)/source_stats.awk `vpath_find $(library.ms)` > $@
+$(STD_LIB_NAME).stats : $(COMPILER_DIR)/source_stats.awk $($(STD_LIB_NAME).ms)
+	awk -f $(COMPILER_DIR)/source_stats.awk \
+		`vpath_find $($(STD_LIB_NAME).ms)` > $@
 	
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
 dates		:
-	touch $(library.dates)
+	touch $($(STD_LIB_NAME).dates)
 
 #-----------------------------------------------------------------------------#
 
-# Note that we need to explicitly mention $(library.pic_ss) somewhere
+# Note that we need to explicitly mention $($(STD_LIB_NAME).pic_ss) somewhere
 # in the Mmakefile, otherwise it won't build properly with --target asm:
 # GNU Make's pattern rule algorithm will try to use the .m -> .c -> .pic_o
 # rule chain rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
 # So don't remove the pic_ss target here.
 
 .PHONY: os cs ss pic_ss ils 
-os: $(library.os)
-cs: $(library.cs)
-ss: $(library.ss)
-pic_ss: $(library.pic_ss)
-ils: $(library.ils)
+os: $($(STD_LIB_NAME).os)
+cs: $($(STD_LIB_NAME).cs)
+ss: $($(STD_LIB_NAME).ss)
+pic_ss: $($(STD_LIB_NAME).pic_ss)
+ils: $($(STD_LIB_NAME).ils)
 
 #-----------------------------------------------------------------------------#
 
@@ -217,9 +220,11 @@ MS_ILASMFLAGS=$(DEBUG_MS_ILASMFLAGS)
 library_strong_name.sn:
 	sn -k library_strong_name.sn
 
-mercury.dll: copy_runtime_dlls $(library.dlls) $(library.foreign_dlls) library_strong_name.sn
+mercury.dll: copy_runtime_dlls $($(STD_LIB_NAME).dlls) \
+			$($(STD_LIB_NAME).foreign_dlls) library_strong_name.sn
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll \
-		$(library.dlls) $(library.foreign_dlls) $(RUNTIME_DLLS) 
+		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
+		$(RUNTIME_DLLS) 
 
 # The runtime DLLs must be copied into this directory from the runtime
 # directory so they can be installed properly.
@@ -237,21 +242,12 @@ else
 # the following dependency is just there to improve compilation speed;
 # making tree234.$O first improves effective parallelism with parallel makes.
 lib_std: $(os_subdir)tree234.$O
-lib_std: lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
-lib_std: $(STD_LIB_NAME).init
-
-lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A : liblibrary.$A
-	rm -f lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
-	$(LN) liblibrary.$A lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
-
-lib$(STD_LIB_NAME).so : liblibrary.so
-	rm -f lib$(STD_LIB_NAME).so
-	$(LN) liblibrary.so lib$(STD_LIB_NAME).so
+lib_std: lib$(STD_LIB_NAME)
 
 endif
 
-$(STD_LIB_NAME).init: $(deps_subdir)library.dep
-	for file in $(library.ms); do \
+$(STD_LIB_NAME).init: $(deps_subdir)$(STD_LIB_NAME).dep
+	for file in $($(STD_LIB_NAME).ms); do \
 		grep '^INIT ' $$file; \
 		echo "INIT mercury__`basename $$file .m`__init"; \
 	done > $(STD_LIB_NAME).init
@@ -306,9 +302,11 @@ $(os_subdir)table_builtin.pic_o \
 
 #-----------------------------------------------------------------------------#
 
+# In the past we generated liblibrary.* and then linked
+# libmer_std.* to the files.
 realclean_local:
-	rm -f $(library.mods:%=%.h)
-	rm -f lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).so $(STD_LIB_NAME).init
+	rm -f liblibrary.$A liblibrary.so library.init
+	rm -f $($(STD_LIB_NAME).mods:%=%.h)
 	rm -f tags
 
 #-----------------------------------------------------------------------------#
@@ -333,15 +331,10 @@ install_all: install_mercury
 install_mercury: install_ints install_hdrs install_init install_library
 
 .PHONY: install_ints
-install_ints: liblibrary.install_ints
+install_ints: lib$(STD_LIB_NAME).install_ints
 
 .PHONY: install_hdrs
-install_hdrs: liblibrary.install_hdrs
-
-# The following rules are hand-coded, rather than using the
-# liblibrary.* targets automatically generated by `mmake depend',
-# because they override the name used for the standard library:
-# they use $(STD_LIB_NAME) rather than `library'.
+install_hdrs: lib$(STD_LIB_NAME).install_hdrs
 
 .PHONY: install_init
 install_init: $(STD_LIB_NAME).init install_lib_dirs
@@ -358,7 +351,7 @@ ifneq (,$(findstring il,$(GRADE)))
 
 .PHONY: install_library
 install_library: mercury.dll install_grade_dirs install_gac install_strong_name
-	cp `vpath_find $(library.foreign_dlls) $(library.dlls) \
+	cp `vpath_find $($(STD_LIB_NAME).foreign_dlls) $($(STD_LIB_NAME).dlls) \
 		mercury.dll` $(INSTALL_MERC_LIB_DIR)
 
 # The GAC is the global assembly cache, which is the system managed
@@ -376,20 +369,14 @@ install_strong_name: library_strong_name.sn
 else
 
 .PHONY: install_library
-install_library: lib$(STD_LIB_NAME).$A \
-		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_grade_dirs
-	cp `vpath_find lib$(STD_LIB_NAME).$A \
-		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
-		$(INSTALL_MERC_LIB_DIR)
+install_library: lib$(STD_LIB_NAME).install_library
 
 endif	# non IL grades
 
-# library.split.$A is a version of lib$(STD_LIB_NAME).$A that has been compiled
-# with `--split-c-files'.
+# $(STD_LIB_NAME).split.$A is a version of lib$(STD_LIB_NAME).$A
+# that has been compiled with `--split-c-files'.
 .PHONY: install_split_library
-install_split_library: library.split.$A install_grade_dirs
-	cp `vpath_find library.split.$A` \
-		$(INSTALL_MERC_LIB_DIR)/lib$(STD_LIB_NAME).$A
+install_split_library: lib$(STD_LIB_NAME).install_split_library
 
 else
 

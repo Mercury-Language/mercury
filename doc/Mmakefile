@@ -182,6 +182,8 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 	echo "";							\
 	for filename in $(LIBRARY_DIR)/*.m; do				\
 		case $$filename in					\
+			$(LIBRARY_DIR)/mer_std.m)			\
+				;;					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
 			$(LIBRARY_DIR)/profiling_builtin.m)		\
@@ -200,6 +202,8 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 	for filename in $(LIBRARY_DIR)/[a-z]*.m; do 			\
 		case $$filename in					\
+			$(LIBRARY_DIR)/mer_std.m)			\
+				;;					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
 			$(LIBRARY_DIR)/profiling_builtin.m)		\

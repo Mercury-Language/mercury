@@ -58,12 +58,6 @@ CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 # just reuse the .o files.
 EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
 
-# This specifies the path to the so_locations file (or its equivalent),
-# which is used by the linker to help it to map different shared objects
-# to different virtual memory addresses at static link time, so as to avoid 
-# the need to relocate them at dynamic link time.
-SO_LOCATIONS_DIR	= $(MERCURY_DIR)/
-
 # Specify the Mmake command to link a shared library.
 # This is only used if EXT_FOR_SHARED_LIB was defined as `so' above.
 # This command may reference $(SO_LOCATIONS_DIR).
