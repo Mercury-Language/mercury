@@ -11,10 +11,11 @@
 
 die "Usage: mtags file1.m ...\n" if $#ARGV < 0;
 
-open(out, "| sort -u +0 -1 > tags");
+open(out, "| sort -u +0 -1 > tags") ||
+	die "mtags: error opening pipe: $!\n";
 while ($#ARGV >= 0)
 {
-	open(srcfile, $ARGV[0]);
+	open(srcfile, $ARGV[0]) || die "mtags: can't open $ARGV[0]: $!\n";
 	while ($_ = <srcfile>)
 	{
 		next if ($_ !~ /:- /);
@@ -29,7 +30,7 @@ while ($#ARGV >= 0)
 		# printf "<%s> <%s>\n", $decl, $body;
 		if ($decl ne "pred")
 		{
-			if ($body =~ m/\.[ \t]*$/ &&
+			if ($body =~ /\.[ \t]*$/ &&
 			$body !~ /--->/ && $body !~ /==/ && $body !~ /::/)
 				{ next; }
 		}
@@ -38,10 +39,13 @@ while ($#ARGV >= 0)
 		$body =~ s/\(.*//;
 		$body =~ s/ .*//;
 
-		if ($body =~ m/[a-zA-Z_]/)
-			{ printf out "%s\t%s\t/^%s\$/\n", $body, $ARGV[0], $_;}
+		if ($body =~ /[a-zA-Z_]/) {
+			printf out "%s\t%s\t/^%s\$/;-;/%s/\n",
+					$body, $ARGV[0], $_, $body;
+		}
 	}
 
-	close(cmdfile);
+	close(srcfile) || die "mtags: error closing `$ARGV[0]': $!\n";
 	shift(ARGV);
 }
+close(out) || die "mtags: error closing pipe: $!\n";
