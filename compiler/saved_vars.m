@@ -202,6 +202,7 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, SlotInfo0,
 ok_to_duplicate(constraint) = no.
 ok_to_duplicate(impure) = no.
 ok_to_duplicate(semipure) = no.
+ok_to_duplicate(not_impure_for_determinism) = no.
 ok_to_duplicate(stack_opt) = no.
 ok_to_duplicate(call_table_gen) = no.
 ok_to_duplicate(keep_this_commit) = no.

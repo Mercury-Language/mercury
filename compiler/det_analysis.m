@@ -325,7 +325,12 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	(
 		det_no_output_vars(NonLocalVars, InstMap0, DeltaInstMap,
 			DetInfo),
-		\+ goal_info_is_impure(GoalInfo0)
+		(
+			goal_info_is_impure(GoalInfo0)
+		=>
+			goal_info_has_feature(GoalInfo0,
+				not_impure_for_determinism)
+		)
 	->
 		AddPruning = yes,
 		SolnContext = first_soln

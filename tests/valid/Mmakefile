@@ -53,9 +53,10 @@ IL_PROGS = \
 OTHER_PROGS= \
 	any_inst_merge \
 	any_matches_bound \
+	big_foreign_type \
 	common_struct_bug \
-	compl_unify_bug \
 	complicated_unify \
+	compl_unify_bug \
 	constrained_poly_bound_arg \
 	constrained_poly_insts \
 	constructor_arg_names \
@@ -77,10 +78,9 @@ OTHER_PROGS= \
 	exported_foreign_type \
 	fail_ite \
 	followcode_det_problem \
-	big_foreign_type \
 	foreign_underscore_var \
-	func_int_bug_main \
 	func_default_modes \
+	func_int_bug_main \
 	headvar_not_found \
 	higher_order \
 	higher_order2 \
@@ -93,6 +93,7 @@ OTHER_PROGS= \
 	ho_unify \
 	id_type_bug \
 	implied_mode \
+	impure_detism \
 	indexing \
 	inhibit_warn_test \
 	inlining_bug \
@@ -138,8 +139,8 @@ OTHER_PROGS= \
 	module_d \
 	module_e \
 	mostly_uniq_bug \
-	mostly_uniq_neg \
 	mostly_uniq_mode_inf \
+	mostly_uniq_neg \
 	multidet_prune1 \
 	multidet_test \
 	nasty_func_test \
@@ -168,14 +169,14 @@ OTHER_PROGS= \
 	some_switch \
 	spurious_purity_warning \
 	stack_alloc \
-	static \
 	state_var_bug \
+	static \
 	subtype_switch \
 	switch_detection_bug \
 	switch_detection_bug2 \
 	switches \
-	tabled_io \
 	tabled_for_io \
+	tabled_io \
 	transitive_instance \
 	tricky_assert2 \
 	tricky_ite \
@@ -187,8 +188,8 @@ OTHER_PROGS= \
 	unbound_inst_var \
 	unbound_tvar_in_lambda \
 	undead_proc \
-	uniq_unify \
 	uniq_mode_inf_bug \
+	uniq_unify \
 	unreachable_code \
 	unused_args_test2 \
 	vn_float \

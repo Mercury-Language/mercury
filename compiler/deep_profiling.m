@@ -624,7 +624,7 @@ transform_det_proc(ModuleInfo, PredProcId, !Proc) :-
 			[TopCSD, MiddleCSD], [], ExitPortCode)
 	),
 
-	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
+	make_impure(GoalInfo0, GoalInfo),
 	Goal = conj([
 		BindProcStaticVarGoal,
 		CallPortCode,
@@ -729,7 +729,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !Proc) :-
 	ExitConjGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo0,
 		NewNonlocals),
 
-	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
+	make_impure(GoalInfo0, GoalInfo),
 	Goal = conj([
 		BindProcStaticVarGoal,
 		CallPortCode,
@@ -869,7 +869,7 @@ transform_non_proc(ModuleInfo, PredProcId, !Proc) :-
 	CallExitRedoGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo1,
 		ExitRedoNonLocals),
 
-	goal_info_add_feature(GoalInfo1, impure, GoalInfo),
+	make_impure(GoalInfo1, GoalInfo),
 	Goal = conj([
 		BindProcStaticVarGoal,
 		CallPortCode,
@@ -934,20 +934,6 @@ is_proc_in_interface(ModuleInfo, PredId, _ProcId) = IsInInterface :-
 		IsInInterface = yes
 	;
 		IsInInterface = no
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred add_impurity_if_needed(bool::in, hlds_goal_info::in,
-	hlds_goal_info::out) is det.
-
-add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo) :-
-	(
-		AddedImpurity = no,
-		GoalInfo = GoalInfo0
-	;
-		AddedImpurity = yes,
-		goal_info_add_feature(GoalInfo0, impure, GoalInfo)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1119,7 +1105,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
 	ModuleInfo = !.DeepInfo ^ module_info,
 	goal_info_get_features(GoalInfo0, GoalFeatures),
 	goal_info_remove_feature(GoalInfo0, tailcall, GoalInfo1),
-	goal_info_add_feature(GoalInfo1, impure, GoalInfo),
+	make_impure(GoalInfo1, GoalInfo),
 
 	% We need to make the call itself impure. If we didn't do so,
 	% then simplify could eliminate the goal (e.g. if it was a duplicate
@@ -1258,7 +1244,8 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
 				SaveRestoreVars, !DeepInfo)
 		;
 			VisSCC = [_, _ | _],
-			error("wrap_call: multi-procedure SCCs not yet implemented")
+			error("wrap_call: multi-procedure SCCs " ++
+				"not yet implemented")
 		),
 
 		goal_info_get_code_model(GoalInfo0, CodeModel),
@@ -1277,8 +1264,8 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
 					ExtraVars),
 
 			ReturnFailsGoalInfo =
-				impure_unreachable_init_goal_info(
-					ExtraVars, failure),
+				impure_unreachable_init_goal_info(ExtraVars,
+					failure),
 
 			FailGoalInfo = fail_goal_info,
 			FailGoal = disj([]) - FailGoalInfo,
@@ -1381,7 +1368,7 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal, !DeepInfo) :-
 	RezeroFailGoalInfo = impure_unreachable_init_goal_info(set__init,
 		failure),
 
-	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
+	make_impure(GoalInfo0, GoalInfo),
 	(
 		CodeModel = model_det,
 		Goal = conj([
@@ -1449,7 +1436,7 @@ wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
 	compress_filename(!.DeepInfo, FileName0, FileName),
 	CallSite = callback(FileName, LineNumber, GoalPath),
 
-	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
+	make_impure(GoalInfo0, GoalInfo),
 	Goal = conj([
 		SiteNumVarGoal,
 		PrepareGoal,
@@ -1756,7 +1743,9 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
 	= hlds_goal_info.
 
 impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
-	goal_info_init(NonLocals, InstMapDelta, Determinism, impure, GoalInfo).
+	goal_info_init(NonLocals, InstMapDelta, Determinism, impure,
+		GoalInfo0),
+	goal_info_add_feature(GoalInfo0, not_impure_for_determinism, GoalInfo).
 
 :- func impure_reachable_init_goal_info(set(prog_var), determinism)
 	= hlds_goal_info.
@@ -1770,7 +1759,9 @@ impure_reachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
 
 impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
 	instmap_delta_init_unreachable(InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, Determinism, impure, GoalInfo).
+	goal_info_init(NonLocals, InstMapDelta, Determinism, impure,
+		GoalInfo0),
+	goal_info_add_feature(GoalInfo0, not_impure_for_determinism, GoalInfo).
 
 :- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set(prog_var))
 	= hlds_goal_info.
@@ -1779,13 +1770,36 @@ goal_info_add_nonlocals_make_impure(GoalInfo0, NewNonLocals) = GoalInfo :-
 	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 	NonLocals = set__union(NonLocals0, NewNonLocals),
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
-	goal_info_add_feature(GoalInfo1, impure, GoalInfo).
+	make_impure(GoalInfo1, GoalInfo).
 
 :- func fail_goal_info = hlds_goal_info.
 
 fail_goal_info = GoalInfo :-
 	instmap_delta_init_unreachable(InstMapDelta),
 	goal_info_init(set__init, InstMapDelta, failure, pure, GoalInfo).
+
+:- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
+
+make_impure(GoalInfo0, GoalInfo) :-
+	( goal_info_has_feature(GoalInfo0, (impure)) ->
+		% We don't add not_impure_for_determinism, since we want to
+		% keep the existing determinism.
+		GoalInfo = GoalInfo0
+	;
+		goal_info_add_features([impure, not_impure_for_determinism],
+			GoalInfo0, GoalInfo)
+	).
+
+:- pred add_impurity_if_needed(bool::in, hlds_goal_info::in,
+	hlds_goal_info::out) is det.
+
+add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
+	(
+		AddedImpurity = no
+	;
+		AddedImpurity = yes,
+		make_impure(!GoalInfo)
+	).
 
 %-----------------------------------------------------------------------------%
 

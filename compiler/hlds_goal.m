@@ -703,6 +703,11 @@
 
 :- pred goal_get_nonlocals(hlds_goal::in, set(prog_var)::out) is det.
 
+:- pred goal_info_add_features(list(goal_feature)::in,
+	hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_remove_features(list(goal_feature)::in,
+	hlds_goal_info::in, hlds_goal_info::out) is det.
+
 :- pred goal_info_add_feature(hlds_goal_info::in, goal_feature::in,
 	hlds_goal_info::out) is det.
 :- pred goal_info_remove_feature(hlds_goal_info::in, goal_feature::in,
@@ -735,6 +740,13 @@
 				% for the definition of this.
 	;	(impure)	% This goal is impure.  See hlds_pred.m.
 	;	(semipure)	% This goal is semipure.  See hlds_pred.m.
+	;	not_impure_for_determinism
+				% This goal should not be treated as impure
+				% for the purpose of computing its determinism.
+				% This is intended to be used by program
+				% transformations that insert impure code into
+				% existing goals, and wish to keep the old
+				% determinism of those goals.
 	;	stack_opt	% This goal was created by stack slot
 				% optimization. Other optimizations should
 				% assume that it is there for a reason, and
@@ -1333,6 +1345,16 @@ goal_info_is_impure(GoalInfo) :-
 	goal_info_has_feature(GoalInfo, (impure)).
 
 %-----------------------------------------------------------------------------%
+
+goal_info_add_features([], GoalInfo, GoalInfo).
+goal_info_add_features([Feature | Features], GoalInfo0, GoalInfo) :-
+	goal_info_add_feature(GoalInfo0, Feature, GoalInfo1),
+	goal_info_add_features(Features, GoalInfo1, GoalInfo).
+
+goal_info_remove_features([], GoalInfo, GoalInfo).
+goal_info_remove_features([Feature | Features], GoalInfo0, GoalInfo) :-
+	goal_info_remove_feature(GoalInfo0, Feature, GoalInfo1),
+	goal_info_remove_features(Features, GoalInfo1, GoalInfo).
 
 goal_info_add_feature(GoalInfo0, Feature, GoalInfo) :-
 	goal_info_get_features(GoalInfo0, Features0),
