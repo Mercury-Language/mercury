@@ -2024,7 +2024,7 @@ code_info__stack_variable(Num, Lval) -->
 	%		<space for temporary reg save n>
 	%		<space for succip>
 	%
-	% The stack pointer poinst to the first free location at the
+	% The stack pointer points to the first free location at the
 	% top of the stack.
 	%
 	% `code_info__num_stackslots' counts the number of slots reserved 
