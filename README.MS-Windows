@@ -2,12 +2,13 @@
 
 INTRODUCTION
 
-Mecury has been ported to Windows 95 and Windows NT
-using the gnu-win32 Unix emulation package from Cygnus.
-It may well work on Windows 98 too, but we haven't tested that.
+Mecury has been ported to Windows 95 and Windows NT using the "Cygwin"
+(formerly also known as "Cygwin32" and "gnu-win32") Unix emulation
+package from Cygnus.  It should work on Windows 98 too, but we haven't
+tested that.
 
 This file documents how to build the source distribution
-of Mercury on Windows 95 or Windows NT using gnu-win32.
+of Mercury on Windows using Cygwin.
 
 (Note: we don't have any plans for a port to Windows 3.1.)
 
@@ -15,32 +16,31 @@ of Mercury on Windows 95 or Windows NT using gnu-win32.
 
 PREPARATION
 
-To use or build Mercury on Windows, you need to first get gnu-win32
+To use or build Mercury on Windows, you need to first get Cygwin
 from Cygnus, and install it. 
 
 If you're going to use a binary distribution of Mercury for Windows,
-you need to make sure that you get a version of gnu-win32 that is
-compatible with the one that the binary distribution was compiled with.
-For the current binary distributions, that means version b18.
+you need to make sure that you get a version of Cygwin that is
+compatible with the one that the binary distribution was compiled
+with.  This will normally be specified in the filename of the
+Mercury binary distribution.  For example, if the file name is
+mercury-0.8.1.pc-windows-cygwin-b20.1.tar.gz then you need version
+b20.1 of Cygwin.
 
-The version of gcc that comes with gnu-win32 version b19 (and b19.1),
-called `gcc 2.7-b19', has a bug which causes it to generate incorrect
-code when compiling Mercury.  So if you want to use gnu-win32 version b19,
+The version of gcc that came with Cygwin version b19 (and b19.1),
+called `gcc 2.7-b19', had a bug which causes it to generate incorrect
+code when compiling Mercury.  So if you want to use Cygwin version b19,
 then you need to also install a version of gcc that has this bug fixed,
-such as egcs version 1.0.2 or later.  Note that Mercury has not yet
-been tested properly with b19, so currently we recommend using b18.
+such as egcs version 1.0.2 or later.  It's probably simpler to just
+get version b20.1 or later of Cygwin.
 
-You can download gnu-win32 from <ftp://ftp.cygnus.com/pub/gnu-win32>.
-You can download a binary distribution of egcs 1.0.2 for gnu-win32
-from <http://www.xraylith.wisc.edu/~khan/software/gnu-win32/>
-or <ftp://ftp.xraylith.wisc.edu/pub/khan/gnu-win32/cygwin32/releases/>.
+You can download Cygwin from <http://sourceware.cygnus.com/cygwin/>.
+Follow the installation instructions that come with Cygwin.
+Make sure that the Cygwin binaries are in your PATH, that you have
+a /tmp directory, that you have a copy of sh.exe in /bin.
+Before continuing, check that `sh' and `gcc' work.
 
-Once you have installed gnu-win32 and (for b19) egcs, check that
-`bash' and `gcc' work.   Make sure that `gcc --version' does not
-report `2.7-b19'.
-
-For more information on gnu-win32, see <ftp://ftp.cygnus.com/pub/gnu-win32>
-or <http://www.cygnus.com/misc/gnu-win32/>.
+For more information on Cygwin, see the Cygwin web site mentioned above.
 
 -----------------------------------------------------------------------------
 
@@ -52,34 +52,31 @@ Configure with
 
 as described in the INSTALL file.
 
-You may get a few spurious error message dialogue boxes popping up,
-but so long as it keeps going, you can safely ignore them.
-
 Reportedly running configure sometimes results in permission errors,
 but apparently the errors go away if you run configure a second time.
-This is probably due to a bug in gnu-win32.
+This is probably due to a bug in Cygwin.
 
-If you are using gnu-win32 version b18, and you want to use the
+If you are using Cygwin version b18, and you want to use the
 `--prefix' option to configure to install Mercury onto a different
 drive, then you should probably first use the `mount' command to
 mount that drive (e.g.  `mount d:/ /d'), and use the mount name
  (e.g.`configure --prefix /d/foo'), rather than using the `//d' notation
 (e.g. --prefix //d/foo').  We got a report that using the `//d' notation
-(a gnu-win32 feature: this is supposed to name the root directory of
-drive `d') does not work with the version of gcc included with gnu-win32
-version b18.  It should however work fine with the version of gcc
-included with gnu-win32 version b19.
+(a Cygwin feature: this is supposed to name the root directory of
+drive `d') does not work with the version of gcc included with Cygwin
+version b18.  In addition, support for the `//d' notation is going to be 
+dropped from future versions of Cygwin.
 
 -----------------------------------------------------------------------------
 
 RUNNING MAKE
 
-Due to bugs in gnu-win32, you need to apply the 
+Due to bugs in Cygwin, you need to apply the 
 patches which are listed at the end of this file:
 
-	patch < README.ms-windows
+	patch < README.MS-Windows
 
-Also, the date-stamps seem to get screwed up by gnu-win32;
+Also, the date-stamps seem to get screwed up by Cygwin;
 to avoid errors about `mercury_compile: Command not found',
 or `makeinfo: Command not found', you need to do the following:
 
