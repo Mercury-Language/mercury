@@ -521,7 +521,7 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 			{ goal_info_set_context(GoalInfo0, Context,
 				GoalInfo) },
 			{ Goal = Call - GoalInfo },
-			unify_proc__quantify_clause_body([H1, H2], Goal,
+			unify_proc__quantify_clauses_body([H1, H2], Goal,
 				Context, Clauses)
 		; { IsEnum = yes } ->
 			{ IntType = int_type },
@@ -542,7 +542,7 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 			{ conj_list_to_goal([TC1Goal, TC2Goal, UnifyGoal],
 				GoalInfo, Goal) },
 			{ ArgVars = [H1, H2] },
-			unify_proc__quantify_clause_body(ArgVars, Goal,
+			unify_proc__quantify_clauses_body(ArgVars, Goal,
 				Context, Clauses)
 		;
 			unify_proc__generate_du_unify_clauses(Ctors,
@@ -562,7 +562,7 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		% of the compiler do to prevent an infinite recursion here.
 		{ create_atomic_unification(H1, var(H2), Context, explicit, [],
 			Goal) },
-		unify_proc__quantify_clause_body([H1, H2], Goal, Context,
+		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
 			Clauses)
 	;
 		{ TypeBody = uu_type(_) },
@@ -642,7 +642,7 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 			unify_proc__build_call(
 				"builtin_compare_non_canonical_type",
 				ArgVars, Context, Goal),
-			unify_proc__quantify_clause_body(ArgVars, Goal,
+			unify_proc__quantify_clauses_body(ArgVars, Goal,
 				Context, Clauses)
 		; { IsEnum = yes } ->
 			{ IntType = int_type },
@@ -663,7 +663,7 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 			{ conj_list_to_goal([TC1Goal, TC2Goal, CompareGoal],
 				GoalInfo, Goal) },
 			{ ArgVars = [Res, H1, H2] },
-			unify_proc__quantify_clause_body(ArgVars, Goal,
+			unify_proc__quantify_clauses_body(ArgVars, Goal,
 				Context, Clauses)
 		;
 			unify_proc__generate_du_compare_clauses(Type, Ctors,
@@ -683,7 +683,7 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		% of the compiler do to prevent an infinite recursion here.
 		{ ArgVars = [Res, H1, H2] },
 		unify_proc__build_call("compare", ArgVars, Context, Goal),
-		unify_proc__quantify_clause_body(ArgVars, Goal, Context,
+		unify_proc__quantify_clauses_body(ArgVars, Goal, Context,
 			Clauses)
 	;
 		{ TypeBody = uu_type(_) },
@@ -693,20 +693,33 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		{ error("trying to create compare proc for abstract type") }
 	).
 
-:- pred unify_proc__quantify_clause_body(list(prog_var), hlds_goal,
-		prog_context, list(clause), unify_proc_info, unify_proc_info).
-:- mode unify_proc__quantify_clause_body(in, in, in, out, in, out) is det.
+:- pred unify_proc__quantify_clauses_body(list(prog_var)::in, hlds_goal::in,
+	prog_context::in, list(clause)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clauses) -->
+unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses) -->
+	unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause),
+	{ Clauses = [Clause] }.
+
+:- pred unify_proc__quantify_clause_body(list(prog_var)::in, hlds_goal::in,
+	prog_context::in, clause::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+
+unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause) -->
 	unify_proc__info_get_varset(Varset0),
 	unify_proc__info_get_types(Types0),
 	unify_proc__info_get_type_info_varmap(TVarMap),
+		% Since the we haven't done mode analysis yet, the
+		% instmap_delta fields in goal_infos are not yet
+		% meaningful. Therefore there no point in clipping
+		% them to the set of typeinfo-liveness-completed
+		% nonlocals.
 	{ TypeInfoLiveness = no },
 	{ implicitly_quantify_clause_body(HeadVars, Goal, Varset0, Types0,
 		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
-	{ Clauses = [clause([], Body, Context)] }.
+	{ Clause = clause([], Body, Context) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -765,15 +778,7 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 	{ goal_info_set_context(GoalInfo0, Context,
 		GoalInfo) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
-	unify_proc__info_get_varset(Varset0),
-	unify_proc__info_get_types(Types0),
-	unify_proc__info_get_type_info_varmap(TVarMap),
-	{ TypeInfoLiveness = no },
-	{ implicitly_quantify_clause_body([H1, H2], Goal, Varset0, Types0,
-		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
-	unify_proc__info_set_varset(Varset),
-	unify_proc__info_set_types(Types),
-	{ Clause = clause([], Body, Context) },
+	unify_proc__quantify_clause_body([H1, H2], Goal, Context, Clause),
 	unify_proc__generate_du_unify_clauses(Ctors, H1, H2, Context, Clauses).
 
 %-----------------------------------------------------------------------------%
@@ -822,15 +827,7 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 	{ goal_info_set_context(GoalInfo0, Context,
 		GoalInfo) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
-	unify_proc__info_get_varset(Varset0),
-	unify_proc__info_get_types(Types0),
-	unify_proc__info_get_type_info_varmap(TVarMap),
-	{ TypeInfoLiveness = no },
-	{ implicitly_quantify_clause_body([X, Index], Goal, Varset0, Types0,
-		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
-	unify_proc__info_set_varset(Varset),
-	unify_proc__info_set_types(Types),
-	{ Clause = clause([], Body, Context) },
+	unify_proc__quantify_clause_body([X, Index], Goal, Context, Clause),
 	{ N1 is N + 1 },
 	unify_proc__generate_du_index_clauses(Ctors, X, Index, Context, N1,
 		Clauses).
@@ -888,18 +885,8 @@ unify_proc__generate_du_compare_clauses(Type, Ctors, Res, X, Y, Context,
 		unify_proc__generate_du_compare_clauses_2(Type, Ctors, Res,
 			X, Y, Context, Goal)
 	),
-	{ ArgVars = [Res, X, Y] },
-	unify_proc__info_get_varset(Varset0),
-	unify_proc__info_get_types(Types0),
-	unify_proc__info_get_type_info_varmap(TVarMap),
-	unify_proc__info_get_module_info(ModuleInfo),
-	{ module_info_globals(ModuleInfo, Globals) },
-	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
-	{ implicitly_quantify_clause_body(ArgVars, Goal, Varset0, Types0,
-		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
-	unify_proc__info_set_varset(Varset),
-	unify_proc__info_set_types(Types),
-	{ Clause = clause([], Body, Context) }.
+	{ HeadVars = [Res, X, Y] },
+	unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause).
 
 :- pred unify_proc__generate_du_compare_clauses_2((type)::in,
 	list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
