@@ -768,7 +768,8 @@ check_for_no_exports([], ModuleName) -->
 check_for_no_exports([Item - _Context | Items], ModuleName) -->
 	(
 		{ Item = nothing
-		; Item = module_defn(_,_)
+		; Item = module_defn(_, ModuleDefn),
+		  ModuleDefn \= include_module(_)
 		}
 	->
 		% nothing useful - keep searching
