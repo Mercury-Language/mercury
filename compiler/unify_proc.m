@@ -140,6 +140,7 @@
 :- import_module check_hlds__switch_detection.
 :- import_module check_hlds__type_util.
 :- import_module check_hlds__unique_modes.
+:- import_module hlds__error_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
@@ -691,7 +692,7 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	unify_proc__make_fresh_named_vars_from_types(ArgTypes, "HeadVar__", 1,
 		Args, VarTypeInfo0, VarTypeInfo1),
 	( SpecialPredId = unify, Args = [H1, H2] ->
-		unify_proc__generate_unify_clauses(ModuleInfo, TypeBody,
+		unify_proc__generate_unify_clauses(ModuleInfo, Type, TypeBody,
 			H1, H2, Context, Clauses, VarTypeInfo1, VarTypeInfo)
 	; SpecialPredId = index, Args = [X, Index] ->
 		unify_proc__generate_index_clauses(ModuleInfo, TypeBody,
@@ -711,11 +712,11 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, Args,
 		Clauses, TI_VarMap, TCI_VarMap, HasForeignClauses).
 
-:- pred unify_proc__generate_unify_clauses(module_info::in, hlds_type_body::in,
-	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
-	unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__generate_unify_clauses(module_info::in, (type)::in,
+	hlds_type_body::in, prog_var::in, prog_var::in, prog_context::in,
+	list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_unify_clauses(ModuleInfo, TypeBody,
+unify_proc__generate_unify_clauses(ModuleInfo, Type, TypeBody,
 		H1, H2, Context, Clauses, !Info) :-
 	(
 		type_body_has_user_defined_equality_pred(ModuleInfo,
@@ -757,9 +758,65 @@ unify_proc__generate_unify_clauses(ModuleInfo, TypeBody,
 				H1, H2, Context, Clauses, !Info)
 		;
 			TypeBody = abstract_type(_),
-			error("trying to create unify proc for abstract type")
+			( compiler_generated_rtti_for_the_builtins(ModuleInfo) ->
+				TypeCategory = classify_type(ModuleInfo, Type),
+				generate_builtin_unify(TypeCategory,
+						H1, H2, Context,
+						Clauses, !Info)
+			;
+				error(
+				"trying to create unify proc for abstract type")
+			)
+			
 		)
 	).
+
+:- pred generate_builtin_unify((type_category)::in,
+	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+
+generate_builtin_unify(TypeCategory, H1, H2, Context, Clauses, !Info) :-
+	ArgVars = [H1, H2],
+
+	% can_generate_special_pred_clauses_for_type ensures the unexpected
+	% cases can never occur.
+	( TypeCategory = int_type,
+		Name = "builtin_unify_int"
+	; TypeCategory = char_type,
+		Name = "builtin_unify_character"
+	; TypeCategory = str_type,
+		Name = "builtin_unify_string"
+	; TypeCategory = float_type,
+		Name = "builtin_unify_float"
+	; TypeCategory = higher_order_type,
+		Name = "builtin_unify_pred"
+	; TypeCategory = tuple_type,
+		unexpected(this_file, "generate_builtin_unify: tuple")
+	; TypeCategory = enum_type,
+		unexpected(this_file, "generate_builtin_unify: enum")
+	; TypeCategory = variable_type,
+		unexpected(this_file, "generate_builtin_unify: variable type")
+	; TypeCategory = type_info_type,
+		unexpected(this_file, "generate_builtin_unify: type_info type")
+	; TypeCategory = type_ctor_info_type,
+		unexpected(this_file,
+			"generate_builtin_unify: type_ctor_info type")
+	; TypeCategory = typeclass_info_type,
+		unexpected(this_file,
+			"generate_builtin_unify: typeclass_info type")
+	; TypeCategory = base_typeclass_info_type,
+		unexpected(this_file,
+			"generate_builtin_unify: base_typeclass_info type")
+	; TypeCategory = void_type,
+		unexpected(this_file,
+			"generate_builtin_unify: void type")
+	; TypeCategory = user_ctor_type,
+		unexpected(this_file,
+			"generate_builtin_unify: user_ctor type")
+	),
+	unify_proc__build_call(Name,
+			ArgVars, Context, UnifyGoal, !Info),
+	quantify_clauses_body(ArgVars, UnifyGoal, Context, Clauses, !Info).
 
 :- pred unify_proc__generate_user_defined_unify_clauses(unify_compare::in,
 	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
@@ -959,9 +1016,64 @@ unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
 				Res, H1, H2, Context, Clauses, !Info)
 		;
 			TypeBody = abstract_type(_),
-			error("trying to create compare proc for abstract type")
+			( compiler_generated_rtti_for_the_builtins(ModuleInfo) ->
+				TypeCategory = classify_type(ModuleInfo, Type),
+				generate_builtin_compare(TypeCategory,
+						Res, H1, H2, Context,
+						Clauses, !Info)
+			;
+				error("trying to create compare proc for abstract type")
+			)
 		)
 	).
+
+:- pred generate_builtin_compare(type_category::in,
+	prog_var::in, prog_var::in, prog_var::in,
+	prog_context::in, list(clause)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+
+generate_builtin_compare(TypeCategory, Res, H1, H2, Context, Clauses, !Info) :-
+	ArgVars = [Res, H1, H2],
+
+	% can_generate_special_pred_clauses_for_type ensures the unexpected
+	% cases can never occur.
+	( TypeCategory = int_type,
+		Name = "builtin_compare_int"
+	; TypeCategory = char_type,
+		Name = "builtin_compare_character"
+	; TypeCategory = str_type,
+		Name = "builtin_compare_string"
+	; TypeCategory = float_type,
+		Name = "builtin_compare_float"
+	; TypeCategory = higher_order_type,
+		Name = "builtin_compare_pred"
+	; TypeCategory = tuple_type,
+		unexpected(this_file, "generate_builtin_compare: tuple type")
+	; TypeCategory = enum_type,
+		unexpected(this_file, "generate_builtin_compare: enum type")
+	; TypeCategory = variable_type,
+		unexpected(this_file, "generate_builtin_compare: variable type")
+	; TypeCategory = type_info_type,
+		unexpected(this_file,
+			"generate_builtin_compare: type_info type")
+	; TypeCategory = type_ctor_info_type,
+		unexpected(this_file,
+			"generate_builtin_compare: type_ctor_info type")
+	; TypeCategory = typeclass_info_type,
+		unexpected(this_file,
+			"generate_builtin_compare: typeclass_info type")
+	; TypeCategory = base_typeclass_info_type,
+		unexpected(this_file,
+			"generate_builtin_compare: base_typeclass_info type")
+	; TypeCategory = void_type,
+		unexpected(this_file,
+			"generate_builtin_compare: void type")
+	; TypeCategory = user_ctor_type,
+		unexpected(this_file,
+			"generate_builtin_compare: user_ctor type")
+	),
+	unify_proc__build_call(Name, ArgVars, Context, CompareGoal, !Info),
+	quantify_clauses_body(ArgVars, CompareGoal, Context, Clauses, !Info).
 
 :- pred generate_user_defined_compare_clauses(unify_compare::in,
 	prog_var::in, prog_var::in, prog_var::in,
@@ -1777,5 +1889,10 @@ unify_proc__info_get_module_info(UPI^module_info, UPI, UPI).
 
 unify_proc__info_set_varset(VarSet, UPI, UPI^varset := VarSet).
 unify_proc__info_set_types(Types, UPI, UPI^vartypes := Types).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "unify_proc.m".
 
 %-----------------------------------------------------------------------------%

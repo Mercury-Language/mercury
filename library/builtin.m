@@ -550,88 +550,21 @@ public static bool unify_2_p(object[] ti, object X, object Y)
 
 ").
 
-:- pragma foreign_code("MC++", "
+% These abstract type declarations are needed so that the type_ctor
+% is generated for these types.
+:- type int.
+:- type string.
+:- type character.
+:- type float.
+:- type (pred).
+:- type (func).
+:- type void.
+:- type tuple.
 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, int, 0, MR_TYPECTOR_REP_INT) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, character, 0, MR_TYPECTOR_REP_CHAR) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, string, 0, MR_TYPECTOR_REP_STRING) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, c_pointer, 0,
-	MR_TYPECTOR_REP_C_POINTER) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, void, 0, MR_TYPECTOR_REP_VOID) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, float, 0, MR_TYPECTOR_REP_FLOAT) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, func, 0, MR_TYPECTOR_REP_FUNC) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, pred, 0, MR_TYPECTOR_REP_PRED) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE) 
-
-").
 :- pragma foreign_code("C#", "
 	
-/* XXX these macros need to be defined in C#
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, int, 0, MR_TYPECTOR_REP_INT) 
-public static object[] __type_ctor_info_int_0;
-public static object[] builtin__type_ctor_info_int_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, character, 0, MR_TYPECTOR_REP_CHAR) 
-public static object[] __type_ctor_info_character_0;
-public static object[] builtin__type_ctor_info_character_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, string, 0, MR_TYPECTOR_REP_STRING) 
-public static object[] __type_ctor_info_string_0;
-public static object[] builtin__type_ctor_info_string_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, c_pointer, 0,
-// 						MR_TYPECTOR_REP_C_POINTER) 
-public static object[] __type_ctor_info_c_pointer_0;
-public static object[] builtin__type_ctor_info_c_pointer_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, void, 0, MR_TYPECTOR_REP_VOID) 
-public static object[] __type_ctor_info_void_0;
-public static object[] builtin__type_ctor_info_void_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, float, 0, MR_TYPECTOR_REP_FLOAT) 
-public static object[] __type_ctor_info_float_0;
-public static object[] builtin__type_ctor_info_float_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, func, 0, MR_TYPECTOR_REP_FUNC) 
-public static object[] __type_ctor_info_func_0;
-public static object[] builtin__type_ctor_info_func_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, pred, 0, MR_TYPECTOR_REP_PRED) 
-public static object[] __type_ctor_info_pred_0;
-public static object[] builtin__type_ctor_info_pred_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE) 
-public static object[] __type_ctor_info_tuple_0;
-public static object[] builtin__type_ctor_info_tuple_0;
-*/
-
 public static bool
-__Unify____int_0_0(int x, int y)
-{
-	return x == y;
-}
-
-public static bool
-__Unify____string_0_0(string x, string y)
-{
-	return System.String.Equals(x, y);
-}
-
-public static bool
-__Unify____character_0_0(char x, char y)
-{
-	return x == y;
-}
-
-public static bool
-__Unify____float_0_0(double x, double y)
-{
-	/* XXX what should this function do when x and y are both NaNs? */
-	return x == y;
-}
-
-public static bool
-__Unify____void_0_0(object[] x, object[] y)
+special__Unify____void_0_0(object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
 		""called unify for type `void'"");
@@ -639,7 +572,7 @@ __Unify____void_0_0(object[] x, object[] y)
 }
 
 public static bool
-__Unify____c_pointer_0_0(object[] x, object[] y)
+special___Unify___c_pointer_0_0(object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
 		""called unify for type `c_pointer'"");
@@ -647,7 +580,7 @@ __Unify____c_pointer_0_0(object[] x, object[] y)
 }
 
 public static bool
-__Unify____func_0_0(object[] x, object[] y)
+special__Unify____func_0_0(object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
 		""called unify for `func' type"");
@@ -655,15 +588,7 @@ __Unify____func_0_0(object[] x, object[] y)
 }
 
 public static bool
-__Unify____pred_0_0(object[] x, object[] y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called unify for `pred' type"");
-	return false;
-}
-
-public static bool
-__Unify____tuple_0_0(object[] x, object[] y)
+special__Unify____tuple_0_0(object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
 		""called unify for `tuple' type"");
@@ -671,71 +596,7 @@ __Unify____tuple_0_0(object[] x, object[] y)
 }
 
 public static void
-__Compare____int_0_0(ref object[] result, int x, int y)
-{
-	int r;
-	if (x > y) {
-		r = 2;
-	} else if (x == y) {
-		r = 0;
-	} else {
-		r = 1;
-	}
-	result = mercury.runtime.LowLevelData.make_enum(r);
-}
-
-public static void
-__Compare____float_0_0(ref object[] result, double x, double y)
-{
-	/* XXX what should this function do when x and y are both NaNs? */
-	int r;
-	if (x > y) {
-		r = 2;
-	} else if (x == y) {
-		r = 0;
-	} else if (x < y) {
-		r = 1;
-	} else {
-		mercury.runtime.Errors.fatal_error(
-			""incomparable floats in compare/3"");
-		r = -1;
-	}
-	result = mercury.runtime.LowLevelData.make_enum(r);
-}
-
-
-public static void
-__Compare____string_0_0(ref object[] result, string x, string y)
-{
-	int r;
-	int res = System.String.Compare(x, y);
-	if (res > 0) {
-		r = 2;
-	} else if (res == 0) {
-		r = 0;
-	} else {
-		r = 1;
-	}
-	result = mercury.runtime.LowLevelData.make_enum(r);
-}
-
-public static void
-__Compare____character_0_0(
-	ref object[] result, char x, char y)
-{
-	int r;
-	if (x > y) {
-		r = 2;
-	} else if (x == y) {
-		r = 0;
-	} else {
-		r = 1;
-	}
-	result = mercury.runtime.LowLevelData.make_enum(r);
-}
-
-public static void
-__Compare____void_0_0(ref object[] result,
+special__Compare____void_0_0(ref object[] result,
 	object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
@@ -743,7 +604,7 @@ __Compare____void_0_0(ref object[] result,
 }
 
 public static void
-__Compare____c_pointer_0_0(
+special__Compare____c_pointer_0_0(
 	ref object[] result, object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
@@ -751,7 +612,7 @@ __Compare____c_pointer_0_0(
 }
 
 public static void
-__Compare____func_0_0(ref object[] result,
+special__Compare____func_0_0(ref object[] result,
 	object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
@@ -759,163 +620,11 @@ __Compare____func_0_0(ref object[] result,
 }
 
 public static void
-__Compare____pred_0_0(ref object[] result,
+special__Compare____tuple_0_0(ref object[] result,
 	object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
-		""called compare/3 for `pred' type"");
-}
-
-public static void
-__Compare____tuple_0_0(ref object[] result,
-	object[] x, object[] y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called compare/3 for `pred' type"");
-}
-
-/*
-** Unification procedures with the arguments boxed.
-** These are just wrappers which call the unboxed version.
-*/
-
-public static bool
-do_unify__int_0_0(object x, object y)
-{
-	return __Unify____int_0_0(
-		System.Convert.ToInt32(x), 
-		System.Convert.ToInt32(y)); 
-}
-
-public static bool
-do_unify__string_0_0(object x, object y)
-{
-	return __Unify____string_0_0((string) x, (string) y);
-}
-
-public static bool
-do_unify__float_0_0(object x, object y)
-{
-	return __Unify____float_0_0(
-		System.Convert.ToDouble(x), 
-		System.Convert.ToDouble(y)); 
-}
-
-public static bool
-do_unify__character_0_0(object x, object y)
-{
-	return __Unify____character_0_0(
-		System.Convert.ToChar(x), 
-		System.Convert.ToChar(y)); 
-}
-
-public static bool
-do_unify__void_0_0(object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called unify for type `void'"");
-	return false;
-}
-
-public static bool
-do_unify__c_pointer_0_0(object x, object y)
-{
-	return __Unify____c_pointer_0_0((object[]) x, (object[]) y); 
-}
-
-public static bool
-do_unify__func_0_0(object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called unify for `func' type"");
-	return false;
-}
-
-public static bool
-do_unify__pred_0_0(object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called unify for `pred' type"");
-	return false;
-}
-
-public static bool
-do_unify__tuple_0_0(object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called unify for `tuple' type"");
-	return false;
-}
-
-/*
-** Comparison procedures with the arguments boxed.
-** These are just wrappers which call the unboxed version.
-*/
-
-public static void
-do_compare__int_0_0(ref object[] result, object x, object y)
-{
-	__Compare____int_0_0(ref result,
-		System.Convert.ToInt32(x), 
-		System.Convert.ToInt32(y)); 
-}
-
-public static void
-do_compare__string_0_0(ref object[] result, object x, object y)
-{
-	__Compare____string_0_0(ref result, (string) x, (string) y);
-}
-
-public static void
-do_compare__float_0_0(ref object[] result, object x, object y)
-{
-	__Compare____float_0_0(ref result,
-		System.Convert.ToDouble(x), 
-		System.Convert.ToDouble(y)); 
-}
-
-public static void
-do_compare__character_0_0(
-	ref object[] result, object x, object y)
-{
-	__Compare____character_0_0(ref result, 
-		System.Convert.ToChar(x), 
-		System.Convert.ToChar(y)); 
-}
-
-public static void
-do_compare__void_0_0(ref object[] result, object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called compare/3 for type `void'"");
-}
-
-public static void
-do_compare__c_pointer_0_0(
-	ref object[] result, object x, object y)
-{
-	__Compare____c_pointer_0_0(ref result, (object[]) x, (object[]) y);
-}
-
-public static void
-do_compare__func_0_0(ref object[] result, object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called compare/3 for func type"");
-}
-
-public static void
-do_compare__pred_0_0(ref object[] result, object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called compare/3 for pred type"");
-}
-
-public static void
-do_compare__tuple_0_0(ref object[] result, object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called compare/3 for tuple type"");
+		""called compare/3 for `tuple' type"");
 }
 
 ").

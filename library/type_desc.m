@@ -168,57 +168,19 @@
 call_rtti_compare_type_infos(Res, T1, T2) :-
 	rtti_implementation__compare_type_infos(Res, T1, T2).
 
-:- pragma foreign_code("MC++", "
-
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_ctor_desc, 0, 
-	MR_TYPECTOR_REP_TYPECTORDESC)
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0, 
-	MR_TYPECTOR_REP_TYPEDESC)
-
-").
 :- pragma foreign_code("C#", "
-
-/* XXX These macros need to be defined in C#
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_ctor_desc, 0, 
-//	MR_TYPECTOR_REP_TYPECTORDESC)
-public static object[] __type_ctor_info_type_ctor_desc_0;
-public static object[] type_desc__type_ctor_info_type_ctor_desc_0;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0, 
-//	MR_TYPECTOR_REP_TYPEDESC)
-public static object[] __type_ctor_info_type_desc_0;
-public static object[] type_desc__type_ctor_info_type_desc_0;
-*/
-
 
 public static int MR_compare_type_info(object[] t1, object[] t2) {
 	object[] res = null;
 
 	mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
 		ref res, t1, t2);
-/*
-#ifdef MR_HIGHLEVEL_DATA
-	return res-> data_tag;
-#else
-*/
+// currently comparison_results are always built using low-level data.
+//#ifdef MR_HIGHLEVEL_DATA
+//	return res.data_tag;
+//#else
 	return System.Convert.ToInt32(res[0]);
 // #endif
-}
-
-public static void
-__Compare____type_ctor_desc_0_0(
-	ref object[] result, object[] x, object[] y)
-{
-	mercury.runtime.Errors.SORRY(
-		""foreign code for comparing type_ctor_descs"");
-}
-
-public static bool
-__Unify____type_ctor_desc_0_0(object[] x, object[] y)
-{
-	mercury.runtime.Errors.SORRY(
-		""foreign code for unifying type_ctor_descs"");
-	return false;
 }
 
 public static void
@@ -237,31 +199,6 @@ special___Unify___type_ctor_desc_0_0(object[] x, object[] y)
 	return false;
 }
 
-public static bool
-do_unify__type_ctor_desc_0_0(object x, object y)
-{
-	return __Unify____type_ctor_desc_0_0((object[]) x, (object[]) y);
-}
-
-public static void
-do_compare__type_ctor_desc_0_0(ref object[] result, object x, object y)
-{
-	__Compare____type_ctor_desc_0_0(ref result, (object[]) x, (object[]) y);
-}
-
-public static void
-__Compare____type_desc_0_0(ref object[] result, object[] x, object[] y)
-{
-	mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
-		ref result, x, y);
-}
-
-public static bool
-__Unify____type_desc_0_0(object[] x, object[] y)
-{
-	return (MR_compare_type_info(x, y) == 0);
-}
-
 public static void
 special___Compare___type_desc_0_0(
 	ref object[] result, object[] x, object[] y)
@@ -274,19 +211,6 @@ public static bool
 special___Unify___type_desc_0_0(object[] x, object[] y)
 {
 	return (MR_compare_type_info(x, y) == 0);
-}
-
-public static bool
-do_unify__type_desc_0_0(object x, object y)
-{
-	return __Unify____type_desc_0_0((object[]) x, (object[]) y);
-}
-
-public static void
-do_compare__type_desc_0_0(
-	ref object[] result, object x, object y)
-{
-	__Compare____type_desc_0_0(ref result, (object[]) x, (object[]) y);
 }
 
 ").

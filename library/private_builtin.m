@@ -115,16 +115,6 @@
 public static object[] dummy_var;
 
 ").
-:- pragma foreign_code("MC++", "
-
-// The dummy_var is used to represent io__states and other Mercury
-// parameters that are not really passed around.  Occasionally a dummy variable
-// will be used by the code generator as an lval, so we use
-// private_builtin:dummy_var as that lval.
-
-static MR_Word dummy_var;
-
-").
 
 :- pragma inline(builtin_compare_int/3).
 :- pragma inline(builtin_compare_character/3).
@@ -389,40 +379,7 @@ public static object[] MR_typeclass_info_arg_typeclass_info(
 
 ").
 
-:- pragma foreign_code("MC++", "
-
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 1,
-	MR_TYPECTOR_REP_TYPECTORINFO) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
-	MR_TYPECTOR_REP_TYPEINFO) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 1,
-	MR_TYPECTOR_REP_BASETYPECLASSINFO) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
-	MR_TYPECTOR_REP_TYPECLASSINFO) 
-").
 :- pragma foreign_code("C#", "
-
-/* XXX these macros need to be defined in C#
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 1,
-//	MR_TYPECTOR_REP_TYPECTORINFO) 
-public static object[] __type_ctor_info_type_ctor_info_1;
-public static object[] private_builtin__type_ctor_info_type_ctor_info_1;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
-//	MR_TYPECTOR_REP_TYPEINFO) 
-public static object[] __type_ctor_info_type_info_1;
-public static object[] private_builtin__type_ctor_info_type_info_1;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 1,
-//	MR_TYPECTOR_REP_BASETYPECLASSINFO) 
-public static object[] __type_ctor_info_base_typeclass_info_1;
-public static object[] private_builtin__type_ctor_info_base_typeclass_info_1;
-
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
-//	MR_TYPECTOR_REP_TYPECLASSINFO) 
-public static object[] __type_ctor_info_typeclass_info_1;
-public static object[] private_builtin__type_ctor_info_typeclass_info_1;
-*/
 
 	// XXX These static constants are duplicated both here and in
 	// mercury_dotnet.cs.in.
@@ -483,7 +440,7 @@ public static int MR_SECTAG_REMOTE				= 2;
 public static int MR_SECTAG_VARIABLE				= 3;
 
 public static bool
-__Unify____type_info_1_0(
+special__Unify____type_info_1_0(
 	object[] type_info, object[] x, object[] y)
 {
 	mercury.runtime.Errors.SORRY(""unify for type_info"");
@@ -491,7 +448,7 @@ __Unify____type_info_1_0(
 }
 
 public static bool
-__Unify____typeclass_info_1_0(
+special__Unify____typeclass_info_1_0(
 	object[] type_info, object[] x, object[] y)
 {
 	mercury.runtime.Errors.SORRY(""unify for typeclass_info"");
@@ -499,7 +456,7 @@ __Unify____typeclass_info_1_0(
 }
 
 public static bool
-__Unify____base_typeclass_info_1_0(
+special__Unify____base_typeclass_info_1_0(
 	object[] type_info, object[] x, object[] y)
 {
 	mercury.runtime.Errors.SORRY(""unify for base_typeclass_info"");
@@ -507,7 +464,7 @@ __Unify____base_typeclass_info_1_0(
 }
 
 public static bool
-__Unify____type_ctor_info_1_0(
+special__Unify____type_ctor_info_1_0(
 	object[] type_info, object[] x, object[] y)
 {
 	mercury.runtime.Errors.SORRY(""unify for type_ctor_info"");
@@ -515,90 +472,31 @@ __Unify____type_ctor_info_1_0(
 }
 
 public static void
-__Compare____type_ctor_info_1_0(
+special__Compare____type_ctor_info_1_0(
 	object[] type_info, ref object[] result, object[] x, object[] y)
 {
 	mercury.runtime.Errors.SORRY(""compare for type_ctor_info"");
 }
 
 public static void
-__Compare____type_info_1_0(
+special__Compare____type_info_1_0(
 	object[] type_info, ref object[] result, object[] x, object[] y)
 {
 	mercury.runtime.Errors.SORRY(""compare for type_info"");
 }
 
 public static void
-__Compare____typeclass_info_1_0(
+special__Compare____typeclass_info_1_0(
 	object[] type_info, ref object[] result, object[] x, object[] y)
 {
 	mercury.runtime.Errors.SORRY(""compare for typeclass_info"");
 }
 
 public static void
-__Compare____base_typeclass_info_1_0(
+special__Compare____base_typeclass_info_1_0(
 	object[] type_info, ref object[] result, object[] x, object[] y)
 {
 	mercury.runtime.Errors.SORRY(""compare for base_typeclass_info"");
-}
-
-public static bool
-do_unify__type_ctor_info_1_0(object[] type_info, object x, object y)
-{
-	return __Unify____type_ctor_info_1_0(type_info, 
-		(object[]) x, (object[]) y);
-}
-
-public static bool
-do_unify__type_info_1_0(object[] type_info, object x, object y)
-{
-	return __Unify____type_info_1_0(type_info, (object[]) x, (object[]) y);
-}
-
-public static bool
-do_unify__typeclass_info_1_0(object[] type_info, object x, object y)
-{
-	return __Unify____typeclass_info_1_0(type_info, 
-		(object[]) x, (object[]) y);
-}
-
-public static bool
-do_unify__base_typeclass_info_1_0(object[] type_info, object x, object y)
-{
-	return __Unify____base_typeclass_info_1_0(type_info,
-		(object[]) x, (object[]) y);
-}
-
-public static void
-do_compare__type_ctor_info_1_0(
-	object[] type_info, ref object[] result, object x, object y)
-{
-	__Compare____type_ctor_info_1_0(
-		type_info, ref result, (object[]) x, (object[]) y);
-}
-
-public static void
-do_compare__type_info_1_0(
-	object[] type_info, ref object[] result, object x, object y)
-{
-	__Compare____type_info_1_0(type_info, ref result,
-		(object[]) x, (object[]) y);
-}
-
-public static void
-do_compare__typeclass_info_1_0(
-	object[] type_info, ref object[] result, object x, object y)
-{
-	__Compare____typeclass_info_1_0(type_info, ref result,
-		(object[]) x, (object[]) y);
-}
-
-public static void
-do_compare__base_typeclass_info_1_0(
-	object[] type_info, ref object[] result, object x, object y)
-{
-	__Compare____base_typeclass_info_1_0(type_info, ref result,
-		(object[]) x, (object[]) y);
 }
 
 ").
@@ -1031,24 +929,10 @@ reclaim_heap_nondet_pragma_foreign_code :-
 % Code to define the `heap_pointer' and `ref' types for the .NET back-end.
 % (For the C back-ends, they're defined in runtime/mercury_builtin_types.[ch].)
 
-:- pragma foreign_code("MC++", "
-	
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, heap_pointer, 0,
-	MR_TYPECTOR_REP_HP) 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, ref, 1,
-	MR_TYPECTOR_REP_REFERENCE) 
-").
 :- pragma foreign_code("C#", "
 	
-/* XXX these macros need to be defined in C#
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, heap_pointer, 0,
-//	MR_TYPECTOR_REP_HP) 
-*/
-public static object[] __type_ctor_info_heap_pointer_0;
-public static object[] private_builtin__type_ctor_info_heap_pointer_0;
-
 public static bool
-__Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
+special__Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
 		""called unify for type `private_builtin:heap_pointer'"");
@@ -1056,7 +940,7 @@ __Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
 }
 
 public static void
-__Compare__private_builtin__heap_pointer_0_0(
+special__Compare__private_builtin__heap_pointer_0_0(
 	ref object[] result, object[] x, object[] y)
 {
 	mercury.runtime.Errors.fatal_error(
@@ -1064,51 +948,15 @@ __Compare__private_builtin__heap_pointer_0_0(
 }
 
 public static bool
-do_unify__heap_pointer_0_0(object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called unify for type `private_builtin:heap_pointer'"");
-	return false;
-}
-
-public static void
-do_compare__heap_pointer_0_0(
-	ref object[] result, object x, object y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called compare/3 for type `private_builtin:heap_pointer'"");
-}
-
-/* XXX these macros need to be defined in C#
-// MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, ref, 1,
-//	MR_TYPECTOR_REP_REFERENCE) 
-public static object[] __type_ctor_info_ref_1;
-public static object[] private_builtin__type_ctor_info_ref_1;
-*/
-
-public static bool
-__Unify__private_builtin__ref_1_0(object[] type_info, object[] x, object[] y)
-{
-	return x == y;
-}
-
-public static bool
-do_unify__ref_1_0(object[] type_info, object x, object y)
+special__Unify__private_builtin__ref_1_0(
+	object[] type_info, object[] x, object[] y)
 {
 	return x == y;
 }
 
 public static void
-__Compare__private_builtin__ref_1_0(
+special__Compare__private_builtin__ref_1_0(
 	object[] type_info, ref object[] result, object[] x, object[] y)
-{
-	mercury.runtime.Errors.fatal_error(
-		""called compare/3 for type `private_builtin.ref'"");
-}
-
-public static void
-do_compare__ref_1_0(
-	object[] type_info, ref object[] result, object x, object y)
 {
 	mercury.runtime.Errors.fatal_error(
 		""called compare/3 for type `private_builtin.ref'"");

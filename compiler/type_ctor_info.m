@@ -111,10 +111,26 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 			TypeModuleName = ModuleName,
 			map__lookup(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-			TypeBody \= abstract_type(_),
-			\+ type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody),
-			( are_equivalence_types_expanded(ModuleInfo)
-				=> TypeBody \= eqv_type(_) )
+			(
+				TypeBody \= abstract_type(_)
+			->
+				\+ type_ctor_has_hand_defined_rtti(TypeCtor,
+					TypeBody),
+				( are_equivalence_types_expanded(ModuleInfo)
+					=> TypeBody \= eqv_type(_) )
+			;
+				% type_ctor_infos need be generated for the
+				% builtin types (which are declared as abstract
+				% types)
+				compiler_generated_rtti_for_the_builtins(
+					ModuleInfo),
+				TypeModuleName = unqualified(ModuleNameString),
+				( builtin_type_ctor(ModuleNameString,
+					TypeName, TypeArity, _)
+				; impl_type_ctor(ModuleNameString,
+					TypeName, TypeArity, _)
+				)
+			)
 		->
 			type_ctor_info__gen_type_ctor_gen_info(TypeCtor,
 				TypeName, TypeArity, TypeDefn,
@@ -216,63 +232,84 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 	module_info_globals(ModuleInfo, Globals),
 	hlds_data__get_type_defn_body(HldsDefn, TypeBody),
 	Version = type_ctor_info_rtti_version,
+
+	% It is an error for a type body to be an abstract type unless
+	% we are generating the RTTI for builtins
 	(
 		TypeBody = abstract_type(_),
-		error("type_ctor_info__gen_type_ctor_data: abstract_type")
+		\+ compiler_generated_rtti_for_the_builtins(ModuleInfo)
+	->
+		error(
+		    "type_ctor_info__gen_type_ctor_data: abstract_type")
 	;
-		TypeBody = foreign_type(_, _),
+		true
+	),
+
+	% We check for hand-coded definitions before inspecting the
+	% type-bodys as some type definitions have fake bodies,
+	% eg private_builtin.typeclass_info
+	(
+		ModuleName = unqualified(ModuleStr1),
+		builtin_type_ctor(ModuleStr1, TypeName, TypeArity,
+			BuiltinCtor)
+	->
+		Details = builtin(BuiltinCtor)
+
+	;
+		ModuleName = unqualified(ModuleStr),
+		impl_type_ctor(ModuleStr, TypeName, TypeArity,
+			ImplCtor)
+	->
+		Details = impl_artifact(ImplCtor)
+	;
 		(
-			ModuleName = unqualified(ModuleStr1),
-			builtin_type_ctor(ModuleStr1, TypeName, TypeArity,
-				BuiltinCtor)
-		->
-			Details = builtin(BuiltinCtor)
+			TypeBody = abstract_type(_),
+			error(
+			    "type_ctor_info__gen_type_ctor_data: abstract_type")
 		;
-			ModuleName = unqualified(ModuleStr),
-			impl_type_ctor(ModuleStr, TypeName, TypeArity,
-				ImplCtor)
-		->
-			Details = impl_artifact(ImplCtor)
-		;
+			TypeBody = foreign_type(_, _),
 			Details = foreign
-		)
-	;
-		TypeBody = eqv_type(Type),
-			% There can be no existentially typed args to an
-			% equivalence.
-		UnivTvars = TypeArity,
-		ExistTvars = [],
-		pseudo_type_info__construct_maybe_pseudo_type_info(Type,
-			UnivTvars, ExistTvars, MaybePseudoTypeInfo),
-		Details = eqv(MaybePseudoTypeInfo)
-	;
-		TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred,
-			ReservedTag, _, _),
-		(
-			EqualityPred = yes(_),
-			EqualityAxioms = user_defined
 		;
-			EqualityPred = no,
-			EqualityAxioms = standard
-		),
-		(
-			Enum = yes,
-			type_ctor_info__make_enum_details(Ctors, ConsTagMap,
-				ReservedTag, EqualityAxioms, Details)
+			TypeBody = eqv_type(Type),
+				% There can be no existentially typed args to
+				% an equivalence.
+			UnivTvars = TypeArity,
+			ExistTvars = [],
+			pseudo_type_info__construct_maybe_pseudo_type_info(Type,
+				UnivTvars, ExistTvars, MaybePseudoTypeInfo),
+			Details = eqv(MaybePseudoTypeInfo)
 		;
-			Enum = no,
+			TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred,
+				ReservedTag, _, _),
 			(
-				type_constructors_should_be_no_tag(Ctors, 
-					ReservedTag, Globals, Name, ArgType,
-					MaybeArgName)
-			->
-				type_ctor_info__make_notag_details(TypeArity,
-					Name, ArgType, MaybeArgName,
+				EqualityPred = yes(_),
+				EqualityAxioms = user_defined
+			;
+				EqualityPred = no,
+				EqualityAxioms = standard
+			),
+			(
+				Enum = yes,
+				type_ctor_info__make_enum_details(Ctors,
+					ConsTagMap, ReservedTag,
 					EqualityAxioms, Details)
 			;
-				type_ctor_info__make_du_details(Ctors,
-					ConsTagMap, TypeArity, EqualityAxioms,
-					ModuleInfo, Details)
+				Enum = no,
+				(
+					type_constructors_should_be_no_tag(
+						Ctors, ReservedTag, Globals,
+						Name, ArgType, MaybeArgName)
+				->
+					type_ctor_info__make_notag_details(
+						TypeArity, Name, ArgType,
+						MaybeArgName, EqualityAxioms,
+						Details)
+				;
+					type_ctor_info__make_du_details(Ctors,
+						ConsTagMap, TypeArity,
+						EqualityAxioms, ModuleInfo,
+						Details)
+				)
 			)
 		)
 	),
@@ -880,6 +917,7 @@ update_contains_var_bit_vector(Vector0, ArgNum) = Vector :-
 	),
 	Vector = Vector0 \/ (1 << BitNum).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- func this_file = string.

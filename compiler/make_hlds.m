@@ -3743,8 +3743,9 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
 		)
 	).
 
-add_special_pred_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
+add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
 		TypeBody, Context, Status0, !Module) :-
+	Type = adjust_types_with_special_preds_in_private_builtin(Type0),
 	adjust_special_pred_status(Status0, SpecialPredId, Status),
 	module_info_get_special_pred_map(!.Module, SpecialPredMap0),
 	( map__contains(SpecialPredMap0, SpecialPredId - TypeCtor) ->
@@ -3792,6 +3793,22 @@ add_special_pred_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 		PredInfo3, PredInfo),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Preds, !Module).
+
+	% These types need to have the builtin qualifier removed
+	% so that their special predicates type check.
+:- func adjust_types_with_special_preds_in_private_builtin(type) = (type).
+
+adjust_types_with_special_preds_in_private_builtin(Type) = NormalizedType :-
+	( type_to_ctor_and_args(Type, TypeCtor, []) ->
+		( is_builtin_types_special_preds_defined_in_mercury(TypeCtor,
+				Name) ->
+			construct_type(unqualified(Name) - 0, [], NormalizedType)
+		;
+			NormalizedType = Type
+		)
+	;
+		NormalizedType = Type
+	).
 
 :- pred add_special_pred_decl_list(list(special_pred_id)::in, tvarset::in,
 	(type)::in, type_ctor::in, hlds_type_body::in, prog_context::in,

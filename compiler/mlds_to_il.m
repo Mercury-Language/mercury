@@ -3352,61 +3352,11 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 		SymName = mlds_module_name_to_sym_name(ModuleName0),
 		SymName = qualified(qualified(unqualified("mercury"),
 			LibModuleName0), wrapper_class_name),
-		(
-			DataName = rtti(RttiId),
-			RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-			RttiTypeCtor = rtti_type_ctor(_, Name, Arity),
-
-			% Only the type_ctor_infos for the following
-			% RTTI names are defined in MC++.
-			(
-				RttiName = type_ctor_info
-			;
-				RttiName = type_info(TypeInfo),
-				TypeInfo = plain_arity_zero_type_info(
-					RttiTypeCtor)
-			;
-				RttiName = pseudo_type_info(PseudoTypeInfo),
-				PseudoTypeInfo =
-					plain_arity_zero_pseudo_type_info(
-						RttiTypeCtor)
-			),
-			( LibModuleName0 = "builtin",
-				(
-				  Name = "int", Arity = 0
-				; Name = "string", Arity = 0
-				; Name = "float", Arity = 0
-				; Name = "character", Arity = 0
-				; Name = "void", Arity = 0
-				; Name = "c_pointer", Arity = 0
-				; Name = "pred", Arity = 0
-				; Name = "func", Arity = 0
-				; Name = "tuple", Arity = 0
-				)
-			; LibModuleName0 = "type_desc",
-				(
-				  Name = "type_desc", Arity = 0
-				; Name = "type_ctor_desc", Arity = 0
-				)
-			; LibModuleName0 = "private_builtin",
-				(
-				  Name = "type_ctor_info", Arity = 1
-				; Name = "type_info", Arity = 1
-				; Name = "base_typeclass_info", Arity = 1
-				; Name = "typeclass_info", Arity = 1
-				; Name = "heap_pointer", Arity = 0
-				; Name = "ref", Arity = 1
-				)
-			),
-			CodeString = "__cpp_code"
-		;
-			DataName = var(_),
-			LibModuleName0 = "private_builtin",
-			CodeString = "__csharp_code"
-		)
+		DataName = var(_),
+		LibModuleName0 = "private_builtin",
+		CodeString = "__csharp_code"
 	->
-		string__append(LibModuleName0, CodeString,
-			LibModuleName),
+		string__append(LibModuleName0, CodeString, LibModuleName),
 		ModuleName = mercury_module_name_to_mlds(
 			qualified(qualified(unqualified("mercury"),
 			LibModuleName), wrapper_class_name))

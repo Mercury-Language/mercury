@@ -108,6 +108,14 @@
 		hlds_type_body).
 :- mode can_generate_special_pred_clauses_for_type(in, in, in) is semidet.
 
+	% Are the special predicates for a builtin type defined in Mercury?
+:- pred is_builtin_types_special_preds_defined_in_mercury(
+		type_ctor::in, string::out) is semidet.
+
+	% Does the compiler generate the RTTI for the builtin types, or is
+	% it hand-coded?
+:- pred compiler_generated_rtti_for_the_builtins(module_info::in) is semidet.
+
 :- implementation.
 
 :- import_module check_hlds__mode_util.
@@ -227,9 +235,40 @@ special_pred_for_type_needs_typecheck(ModuleInfo, Body) :-
 	).
 
 can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
-	Body \= abstract_type(_),
+	(
+		Body \= abstract_type(_)
+	;
+		% Only the types which have it's unification and comparison
+		% predicates defined in private_builtin.m
+		compiler_generated_rtti_for_the_builtins(ModuleInfo),
+		is_builtin_types_special_preds_defined_in_mercury(TypeCtor, _)
+	),
 	\+ type_ctor_has_hand_defined_rtti(TypeCtor, Body),
 	\+ type_body_has_user_defined_equality_pred(ModuleInfo, Body,
 		abstract_noncanonical_type).
 
+is_builtin_types_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
+	Builtin = mercury_public_builtin_module,
+	( TypeCtor = qualified(Builtin, "int") - 0
+	; TypeCtor = qualified(Builtin, "string") - 0
+	; TypeCtor = qualified(Builtin, "character") - 0
+	; TypeCtor = qualified(Builtin, "float") - 0
+	; TypeCtor = qualified(Builtin, "pred") - 0
+	),
+	TypeCtor = qualified(_Module, TypeName) - _Arity.
+
+%-----------------------------------------------------------------------------%
+
+	% The compiler generates the rtti for the builtins when we are
+	% on the non C backends.
+	% We don't generate the rtti on the C backends as the runtime contains
+	% references to this rtti so the rtti must be defined in the runtime
+	% not the library.
+compiler_generated_rtti_for_the_builtins(ModuleInfo) :-
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_target(Globals, Target),
+	( Target = il ; Target = java ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
