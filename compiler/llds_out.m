@@ -1781,7 +1781,7 @@ output_unary_op(bitwise_complement) -->
 output_unary_op(not) -->
 	io__write_string("!").
 output_unary_op(cast_to_unsigned) -->
-	io__write_string("(unsigned)").
+	io__write_string("(Unsigned)").
 
 :- pred llds_out__string_op(binary_op, string).
 :- mode llds_out__string_op(in, out) is semidet.
