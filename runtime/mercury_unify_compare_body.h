@@ -238,7 +238,9 @@ start_label:
                                 y_data_value[locns[i].MR_exist_arg_num],
                                 locns[i].MR_exist_offset_in_tci);
                         }
+			MR_save_transient_registers();
                         result = MR_compare_type_info(x_ti, y_ti);
+			MR_restore_transient_registers();
                         if (result != MR_COMPARE_EQUAL) {
   #ifdef  select_compare_code
                             return_answer(result);
@@ -255,23 +257,29 @@ start_label:
                     MR_TypeInfo arg_type_info;
 
                     if (MR_arg_type_may_contain_var(functor_desc, i)) {
+		        MR_save_transient_hp();
                         arg_type_info = MR_create_type_info_maybe_existq(
                             MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                             functor_desc->MR_du_functor_arg_types[i],
                             x_data_value, functor_desc);
+		        MR_restore_transient_hp();
                     } else {
                         arg_type_info = (MR_TypeInfo)
                             functor_desc->MR_du_functor_arg_types[i];
                     }
   #ifdef  select_compare_code
+		    MR_save_transient_registers();
                     result = MR_generic_compare(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);
+		    MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
                         return_answer(result);
                     }
   #else
+		    MR_save_transient_registers();
                     result = MR_generic_unify(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);
+		    MR_restore_transient_registers();
                     if (! result) {
                         return_answer(FALSE);
                     }
@@ -386,14 +394,18 @@ start_label:
                                             type_info)[i + 1];
 
 #ifdef  select_compare_code
+		    MR_save_transient_registers();
                     result = MR_generic_compare(arg_type_info,
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
+		    MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
                         return_answer(result);
                     }
 #else
+		    MR_save_transient_registers();
                     result = MR_generic_unify(arg_type_info,
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
+		    MR_restore_transient_registers();
                     if (! result) {
                         return_answer(FALSE);
                     }

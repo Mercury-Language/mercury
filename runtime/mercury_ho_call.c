@@ -417,11 +417,14 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #define initialize()							\
 	do {								\
-		(void) 0; /* do nothing */				\
-	} while(0)
+		MR_restore_transient_registers();			\
+	} while (0)
 
 #define return_answer(answer)						\
-	return (answer)
+	do {								\
+		MR_save_transient_registers();				\
+		return (answer);					\
+	} while (0)
 
 #define	tailcall_user_pred()						\
 	do {								\
@@ -452,17 +455,19 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 static MR_Word
 MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 {
-
 #define	DECLARE_LOCALS							\
 	MR_TypeCtorInfo	type_ctor_info;
 
 #define initialize()							\
 	do {								\
-		(void) 0; /* do nothing */				\
-	} while(0)
+		MR_restore_transient_registers();			\
+	} while (0)
 
 #define return_answer(answer)						\
-	return (answer)
+	do {								\
+		MR_restore_transient_registers();			\
+		return (answer);					\
+	} while (0)
 
 #define	tailcall_user_pred()						\
 	do {								\
