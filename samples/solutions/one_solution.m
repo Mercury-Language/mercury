@@ -1,4 +1,6 @@
 % An example module to illustrate committed choice nondeterminism in Mercury.
+% There is more than one answer which is logically correct,
+% but the program will only compute one of them.
 % In the standard "commutative" semantics, this program should print out
 % _either_
 %
@@ -13,7 +15,7 @@
 
 % This source file is hereby placed in the public domain.  -fjh (the author).
 
-:- module committed_choice.
+:- module one_solution.
 :- interface.
 :- import_module io.
 

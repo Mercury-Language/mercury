@@ -24,6 +24,7 @@ PROGS=		\
 		det_complicated_unify \
 		determinism_inlining \
 		disj_disj \
+		do_while \
 		double_error \
 		double_error2 \
 		duplicate_label \

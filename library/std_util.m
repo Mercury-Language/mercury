@@ -21,7 +21,7 @@
 
 :- interface.
 
-:- import_module list, set.
+:- import_module list, set, bool.
 
 %-----------------------------------------------------------------------------%
 
@@ -181,6 +181,37 @@
 		in, out) is cc_multi.
 :- mode unsorted_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
 		di, uo) is cc_multi.
+
+	% This is a generalization of unsorted_aggregate which allows the
+	% iteration to stop before all solutions have been found.
+	% Declaratively, the specification is as follows:
+	%
+	%	do_while(Generator, Filter) -->
+	%		{ unsorted_solutions(Generator, Solutions) },
+	%		do_while_2(Solutions, Filter).
+	%
+	%	do_while_2([], _) --> [].
+	%	do_while_2([X|Xs], Filter) -->
+	%		Filter(X, More),
+	%		(if { More = yes } then
+	%			do_while_2(Xs, Filter)
+	%		else
+	%			{ true }
+	%		).
+	%
+	% Operationally, however, do_while/4 will call the Filter
+	% predicate for each solution as it is obtained, rather than
+	% first building a list of all the solutions.
+	%  
+:- pred do_while(pred(T), pred(T, bool, T2, T2), T2, T2).
+:- mode do_while(pred(out) is multi, pred(in, out, in, out) is det, in, out)
+	is cc_multi.
+:- mode do_while(pred(out) is nondet, pred(in, out, in, out) is det, in, out)
+	is cc_multi.
+:- mode do_while(pred(out) is multi, pred(in, out, di, uo) is det, di, uo)
+	is cc_multi.
+:- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is det, di, uo)
+	is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -541,7 +572,7 @@ maybe_pred(Pred, X, Y) :-
 ** while the collector pred is executing, and by the time the nested do_ is
 ** completed, the 'real' heap pointer will have been reset.
 **
-** If the collector predicate throws an exception while they are swapped.
+** If the collector predicate throws an exception while they are swapped,
 ** then the code for builtin_throw/1 will unswap the heaps.
 ** So we don't need to create our own exception handlers to here to
 ** cover that case.
@@ -550,38 +581,28 @@ maybe_pred(Pred, X, Y) :-
 ** and copying operations are no-ops, so we get a "zero-copy" solution.
 */
 
-:- pragma promise_pure(builtin_aggregate/4).
+% Note that the code for builtin_aggregate is very similar to the code
+% for do_while (below).
 
+:- pragma promise_pure(builtin_aggregate/4).
 builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
-	%
 	% Save some of the Mercury virtual machine registers
-	%
 	impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
 
-	%
 	% Initialize the accumulator
-	%
-	%	Mutvar := Accumulator0
-	%
+	% /* Mutvar := Accumulator0 */
 	impure new_mutvar(Accumulator0, Mutvar),
 
 	(
-		%
 		% Get a solution
-		% 
 		GeneratorPred(Answer0),
 
-		%
 		% Check that the generator didn't leave any
 		% delayed goals outstanding
-		% 
 		impure check_for_floundering(TrailPtr),
 
-		%
 		% Update the accumulator
-		%
-		%	MutVar := CollectorPred(MutVar)
-		%
+		% /* MutVar := CollectorPred(MutVar) */
 		impure swap_heap_and_solutions_heap,
 		impure partial_deep_copy(HeapPtr, Answer0, Answer),
 		impure get_mutvar(Mutvar, Acc0),
@@ -589,26 +610,56 @@ builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 		impure set_mutvar(Mutvar, Acc1),
 		impure swap_heap_and_solutions_heap,
 
-		%
 		% Force backtracking, so that we get the next solution.
 		% This will automatically reset the heap and trail.
-		%
 		fail
 	;
-		%
 		% There are no more solutions.
 		% So now we just need to copy the final value
 		% of the accumulator from the solutions heap
 		% back onto the ordinary heap, and then we can
 		% reset the solutions heap pointer.
-		%
-		%	Accumulator := MutVar
-		%
+		% /* Accumulator := MutVar */
 		impure get_mutvar(Mutvar, Accumulator1),
 		impure partial_deep_copy(SolutionsHeapPtr, Accumulator1,
 			Accumulator),
 		impure reset_solutions_heap(SolutionsHeapPtr)
 	).
+
+% The code for do_while/4 is essentially the same as the code for
+% builtin_aggregate (above).  See the detailed comments above.
+%
+% XXX It would be nice to avoid the code duplication here,
+% but it is a bit tricky -- we can't just use a lambda expression,
+% because we'd need to specify the mode, but we want it to work
+% for multiple modes.  An alternative would be to use a typeclass,
+% but typeclasses still don't work in `jump' or `fast' grades.
+
+:- pragma promise_pure(do_while/4).
+do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
+	impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
+	impure new_mutvar(Accumulator0, Mutvar),
+	(
+		GeneratorPred(Answer0),
+
+		impure check_for_floundering(TrailPtr),
+
+		impure swap_heap_and_solutions_heap,
+		impure partial_deep_copy(HeapPtr, Answer0, Answer),
+		impure get_mutvar(Mutvar, Acc0),
+		CollectorPred(Answer, More, Acc0, Acc1),
+		impure set_mutvar(Mutvar, Acc1),
+		impure swap_heap_and_solutions_heap,
+
+		% if More = yes, then backtrack for the next solution.
+		% if More = no, then we're done.
+		More = no
+	;
+		true
+	),
+	impure get_mutvar(Mutvar, Accumulator1),
+	impure partial_deep_copy(SolutionsHeapPtr, Accumulator1, Accumulator),
+	impure reset_solutions_heap(SolutionsHeapPtr).
 
 :- type heap_ptr ---> heap_ptr(c_pointer).
 :- type trail_ptr ---> trail_ptr(c_pointer).
@@ -2736,18 +2787,6 @@ det_argument(Type, ArgumentIndex) = Argument :-
 get_type_info_for_type_info(TypeInfo) :-
 	Type = type_of(1),
 	TypeInfo = type_of(Type).
-
-%-----------------------------------------------------------------------------%
-
-% This is a generalization of unsorted_aggregate which allows the
-% iteration to stop before all solutions have been found.
-% NOT YET IMPLEMENTED
-%  
-% :- pred do_while(pred(T), pred(T,T2,T2,bool), T2, T2).
-% :- mode do_while(pred(out) is multi, pred(in,in,out,out) is det, in, out) is
-% 	cc_multi.
-% :- mode do_while(pred(out) is nondet, pred(in,in,out,out) is det, in, out) is
-% 	cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

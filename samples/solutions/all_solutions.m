@@ -1,5 +1,6 @@
 % An example program to illustrate the use of all-solutions predicates
-% in Mercury.
+% in Mercury.  This program just prints out all solutions to the
+% predicate hello/1.
 
 % This source file is hereby placed in the public domain.  -fjh (the author).
 
