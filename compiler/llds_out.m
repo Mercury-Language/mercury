@@ -1443,14 +1443,14 @@ output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
 	),
 	(
 		PrintComments = yes,
-	io__write_string("/* code for predicate '", !IO),
+		io__write_string("/* code for predicate '", !IO),
 			% Now that we have unused_args.m mangling predicate
 			% names, we should probably demangle them here.
-	io__write_string(Name, !IO),
-	io__write_string("'/", !IO),
-	io__write_int(Arity, !IO),
-	io__write_string(" in mode ", !IO),
-	io__write_int(ModeNum, !IO),
+		io__write_string(Name, !IO),
+		io__write_string("'/", !IO),
+		io__write_int(Arity, !IO),
+		io__write_string(" in mode ", !IO),
+		io__write_int(ModeNum, !IO),
 		io__write_string(" */\n", !IO)
 	;
 		PrintComments = no
@@ -3433,10 +3433,10 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
 		(
 			ProfileCall = yes,
 			io__write_string("MR_localcall(", !IO),
-		output_label(Label, !IO),
-		io__write_string(",\n\t\t", !IO),
-		output_code_addr(Continuation, !IO)
-	;
+			output_label(Label, !IO),
+			io__write_string(",\n\t\t", !IO),
+			output_code_addr(Continuation, !IO)
+		;
 			ProfileCall = no,
 			code_addr_to_string_base(Continuation, BaseStr,
 				NeedsPrefix, Wrapper),
@@ -3481,10 +3481,10 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
 		(
 			ProfileCall = yes,
 			io__write_string("MR_call_localret(", !IO),
-		output_code_addr(Target, !IO),
-		io__write_string(",\n\t\t", !IO),
-		output_label(ContLabel, !IO)
-	;
+			output_code_addr(Target, !IO),
+			io__write_string(",\n\t\t", !IO),
+			output_label(ContLabel, !IO)
+		;
 			ProfileCall = no,
 			code_addr_to_string_base(Target, BaseStr,
 				NeedsPrefix, Wrapper),
@@ -3572,7 +3572,7 @@ output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
 			io__write_string(")", !IO)
 		;
 			NeedsPrefix = no,
-	io__write_string("MR_ENTRY(", !IO),
+			io__write_string("MR_ENTRY(", !IO),
 			io__write_string(BaseStr, !IO),
 			io__write_string(")", !IO)
 		)
