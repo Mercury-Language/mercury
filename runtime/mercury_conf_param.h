@@ -154,6 +154,10 @@
 **
 ** MR_TABLE_DEBUG
 ** 	Enables low-level debugging messages from the tabling system.
+**
+** MR_DEBUG_JMPBUFS
+** 	Enables low-level debugging messages from MR_call_engine and the
+** 	code handling exceptions.
 */
 
 #if MR_DEBUG_AGC

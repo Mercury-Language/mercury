@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-1999 The University of Melbourne.
+** Copyright (C) 1993-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -232,13 +232,23 @@ MR_call_engine(Code *entry_point, bool catch_exceptions)
 		MR_create_exception_handler("call_engine",
 			MR_C_LONGJMP_HANDLER, 0, ENTRY(do_fail));
 	}
-		
+
 	/*
 	** Mark this as the spot to return to.
 	*/
+
+#ifdef	MR_DEBUG_JMPBUFS
+	printf("engine setjmp %p\n", curr_jmp_buf);
+#endif
+
 	if (setjmp(curr_jmp_buf)) {
 		Word	* this_frame;
 		Word	* exception;
+
+#ifdef	MR_DEBUG_JMPBUFS
+		printf("engine caught jmp %p %p\n",
+			prev_jmp_buf, MR_ENGINE(e_jmp_buf));
+#endif
 
 		debugmsg0("...caught longjmp\n");
 		/*
@@ -504,6 +514,11 @@ Define_label(engine_done);
 	*/
 	MR_ENGINE(e_exception) = NULL;
 	save_registers();
+
+#ifdef	MR_DEBUG_JMPBUFS
+	printf("engine longjmp %p\n", MR_ENGINE(e_jmp_buf));
+#endif
+
 	debugmsg0("longjmping out...\n");
 	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
 }} /* end call_engine_inner() */

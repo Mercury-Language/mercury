@@ -640,6 +640,10 @@ mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
 		ML_report_uncaught_exception(exception);
 		abort();
 	} else {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""throw longjmp %p\n"",
+			ML_exception_handler->handler);
+#endif
 		ML_exception_handler->exception = exception;
 		longjmp(ML_exception_handler->handler, 1);
 	}
@@ -653,10 +657,20 @@ mercury__exception__builtin_catch_model_det(MR_Word type_info,
 
 	this_handler.prev = ML_exception_handler;
 	ML_exception_handler = &this_handler;
+
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""detcatch setjmp %p\n"", this_handler.handler);
+#endif
+
 	if (setjmp(this_handler.handler) == 0) {
 		ML_call_goal_det(type_info, pred, output);
 		ML_exception_handler = this_handler.prev;
 	} else {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""detcatch caught jmp %p\n"",
+			this_handler.handler);
+#endif
+
 		ML_exception_handler = this_handler.prev;
 		ML_call_handler_det(type_info, handler_pred,
 			this_handler.exception, output);
@@ -671,11 +685,21 @@ mercury__exception__builtin_catch_model_semi(MR_Word type_info,
 
 	this_handler.prev = ML_exception_handler;
 	ML_exception_handler = &this_handler;
+
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""semicatch setjmp %p\n"", this_handler.handler);
+#endif
+
 	if (setjmp(this_handler.handler) == 0) {
 		bool result = ML_call_goal_semi(type_info, pred, output);
 		ML_exception_handler = this_handler.prev;
 		return result;
 	} else {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""semicatch caught jmp %p\n"",
+			this_handler.handler);
+#endif
+
 		ML_exception_handler = this_handler.prev;
 		return ML_call_handler_semi(type_info, handler_pred,
 			this_handler.exception, output);
@@ -713,10 +737,20 @@ mercury__exception__builtin_catch_model_non(MR_Word type_info,
 
 	this_handler.prev = ML_exception_handler;
 	ML_exception_handler = &this_handler;
+
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""noncatch setjmp %p\n"", this_handler.handler);
+#endif
+
 	if (setjmp(this_handler.handler) == 0) {
 		ML_call_goal_non(type_info, pred, output, success_cont);
 		ML_exception_handler = this_handler.prev;
 	} else {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""noncatch caught jmp %p\n"",
+			this_handler.handler);
+#endif
+
 		ML_exception_handler = this_handler.prev;
 		ML_call_handler_non(type_info, handler_pred,
 			this_handler.exception, output, cont);
@@ -764,6 +798,11 @@ mercury__exception__builtin_catch_model_non(MR_Word type_info,
 
 	locals.this_handler.prev = ML_exception_handler;
 	ML_exception_handler = &locals.this_handler;
+
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""noncatch setjmp %p\n"", locals.this_handler.handler);
+#endif
+
 	if (setjmp(locals.this_handler.handler) == 0) {
 		ML_call_goal_non(type_info, pred, output,
 			ML_catch_success_cont, &locals);
@@ -782,6 +821,13 @@ mercury__exception__builtin_catch_model_non(MR_Word type_info,
 		** and then invoke the handler predicate
 		** for this handler.
 		*/
+
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""noncatch caught jmp %p\n"",
+			locals.this_handler.handler);
+#endif
+
+
 		ML_exception_handler = locals.this_handler.prev;
 		ML_call_handler_non(type_info, handler_pred,
 			locals.this_handler.exception, output,
@@ -1410,7 +1456,16 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** that we found.
 	*/
 
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""throw catch_code_model %d\n"", catch_code_model);
+#endif
+
 	if (catch_code_model == MR_C_LONGJMP_HANDLER) {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""throw longjmp %p\n"",
+			*(MR_ENGINE(e_jmp_buf)));
+#endif
+
 		MR_ENGINE(e_exception) = (Word *) exception;
 		save_registers();
 		longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
