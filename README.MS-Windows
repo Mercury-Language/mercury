@@ -18,8 +18,9 @@ To use or build Mercury on Windows, you need to first get gnu-win32
 from Cygnus, and install it. 
 
 (If you're going to use a binary distribution of Mercury for Windows,
-you need to make sure that you get the same version of gnu-win32 that
-the binary distribution was compiled with.)
+you need to make sure that you get a version of gnu-win32 that is
+compatible with the one that the binary distribution was compiled with.
+Currently we suggest using gnu-win32 version b17.1.)
 
 You can download gnu-win32 from <ftp://ftp.cygnus.com/pub/gnu-win32>.
 
@@ -43,24 +44,22 @@ or <http://www.cygnus.com/misc/gnu-win32/>.
 
 RUNNING CONFIGURE
 
-Configure with either
+Configure with
 
-	sh configure i386-ms-win95
+	sh configure
 
-or
-
-	sh configure i386-ms-winnt
+as described in the INSTALL file.
 
 -----------------------------------------------------------------------------
 
 RUNNING MAKE
 
-Due to bugs in gnu-win32 version b16, you need to apply the 
+Due to bugs in gnu-win32, you need to apply the 
 patches which are listed at the end of this file:
 
 	patch < README.ms-windows
 
-Also, the datestamps seem to get screwed up by gnu-win32;
+Also, the date-stamps seem to get screwed up by gnu-win32;
 to avoid errors about `mercury_compile: Command not found',
 or `makeinfo: Command not found', you need to do the following:
 
@@ -176,10 +175,10 @@ diff -u -r1.1 Mmakefile
 +
 +.PHONY: preinstall_hack_for_win95
 +preinstall_hack_for_win95:
-+	cd compiler && mv mercury_compile xyzzy && mv xyzzy mercury_compile.exe
-+	cd profiler && mv mercury_profile xyzzy && mv xyzzy mercury_profile.exe
-+	cd util && mv mkinit xyzzy && mv xyzzy mkinit.exe
-+	cd util && mv mdemangle xyzzy && mv xyzzy mdemangle.exe
++	cd compiler && mv mercury_compile.exe xyzzy && mv xyzzy mercury_compile
++	cd profiler && mv mercury_profile.exe xyzzy && mv xyzzy mercury_profile
++	cd util && mv mkinit.exe xyzzy && mv xyzzy mkinit
++	cd util && mv mdemangle.exe xyzzy && mv xyzzy mdemangle
 +
 +.PHONY: postinstall_hack_for_win95
 +postinstall_hack_for_win95:
