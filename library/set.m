@@ -172,7 +172,7 @@ set__list_to_set(List, List).
 set__sorted_list_to_set(List, List).
 
 set__to_sorted_list(Set, List) :-
-	list__sort(Set, List).
+	list__sort_and_remove_dups(Set, List).
 
 :- set__insert_list(_, Xs, _) when Xs.	% NU-Prolog indexing.
 

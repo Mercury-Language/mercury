@@ -153,7 +153,7 @@
 %--------------------------------------------------------------------------%
 
 bintree_set__list_to_set(List, Set) :-
-	list__sort(List, SortedList),
+	list__sort_and_remove_dups(List, SortedList),
 	bintree_set__sorted_list_to_set(SortedList, Set).
 
 bintree_set__sorted_list_to_set(List, Set) :-

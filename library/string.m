@@ -1274,7 +1274,7 @@ string__format_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
 	->
 		string__format_get_optional_args( As, Oflags, Width, Precision, Mods),
 		UFlags = [A | Oflags],
-		list__sort(UFlags, Flags)
+		list__sort_and_remove_dups(UFlags, Flags)
 	;
 	(	
 		( A = (.) ; A = '1' ; A = '2' ; A = '3' ; A = '4' ;
