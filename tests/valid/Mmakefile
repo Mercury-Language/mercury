@@ -6,7 +6,7 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-# please keep this list sorted
+# please keep these lists sorted
 AGC_SOURCES= \
 	agc_graph.m \
 	agc_ho_pred.m \
@@ -22,6 +22,7 @@ TYPECLASS_SOURCES= \
 
 OTHER_SOURCES= \
 	compl_unify_bug.m \
+	complex_failure.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
 	dcg_test.m \
@@ -81,6 +82,7 @@ OTHER_SOURCES= \
 	pred_with_no_modes.m \
 	qualified_cons_id.m \
 	same_length_2.m \
+	semi_fail_in_non_ite.m \
 	semidet_disj.m \
 	shape_type.m \
 	simplify_bug.m \
@@ -88,16 +90,16 @@ OTHER_SOURCES= \
 	some_switch.m \
 	stack_alloc.m \
 	subtype_switch.m \
-	switches.m \
 	switch_detection_bug.m \
 	switch_detection_bug2.m \
+	switches.m \
 	tricky_ite.m \
 	two_pragma_c_codes.m \
 	two_way_unif.m \
 	type_inf_ambig_test.m \
+	unbound_tvar_in_lambda.m \
 	undead_proc.m \
 	uniq_unify.m \
-	unbound_tvar_in_lambda.m \
 	unreachable_code.m \
 	unused_args_test2.m \
 	vn_float.m
@@ -140,6 +142,7 @@ GRADEFLAGS-agc_unbound_typevars	= --gc accurate
 GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
 MCFLAGS-compl_unify_bug		= -O3
+MCFLAGS-complex_failure		= --use-trail
 MCFLAGS-double_vn		= -O4
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-higher_order_implied_mode = -O-1
@@ -148,6 +151,7 @@ MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-pred_with_no_modes	= --infer-all
+MCFLAGS-semi_fail_in_non_ite	= --use-trail
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all

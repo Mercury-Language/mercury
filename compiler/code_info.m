@@ -153,12 +153,10 @@
 :- pred code_info__set_exprn_info(exprn_info, code_info, code_info).
 :- mode code_info__set_exprn_info(in, in, out) is det.
 
-:- pred code_info__get_temps_in_use(map(lval, slot_contents),
-	code_info, code_info).
+:- pred code_info__get_temps_in_use(set(lval), code_info, code_info).
 :- mode code_info__get_temps_in_use(out, in, out) is det.
 
-:- pred code_info__set_temps_in_use(map(lval, slot_contents),
-	code_info, code_info).
+:- pred code_info__set_temps_in_use(set(lval), code_info, code_info).
 :- mode code_info__set_temps_in_use(in, in, out) is det.
 
 :- pred code_info__get_fail_info(fail_info, code_info, code_info).
@@ -189,11 +187,13 @@
 :- pred code_info__set_max_temp_slot_count(int, code_info, code_info).
 :- mode code_info__set_max_temp_slot_count(in, in, out) is det.
 
-:- pred code_info__get_avail_temp_slots(set(lval), code_info, code_info).
-:- mode code_info__get_avail_temp_slots(out, in, out) is det.
+:- pred code_info__get_temp_content_map(map(lval, slot_contents),
+	code_info, code_info).
+:- mode code_info__get_temp_content_map(out, in, out) is det.
 
-:- pred code_info__set_avail_temp_slots(set(lval), code_info, code_info).
-:- mode code_info__set_avail_temp_slots(in, in, out) is det.
+:- pred code_info__set_temp_content_map(map(lval, slot_contents),
+	code_info, code_info).
+:- mode code_info__set_temp_content_map(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -242,9 +242,12 @@
 		exprn_info,	% A map storing the information about
 				% the status of each known variable.
 				% (Known vars = forward live vars + zombies)
-		map(lval, slot_contents),
-				% The temp locations in use on the stack
-				% and what they contain (for gc).
+		set(lval),	% The set of temporary locations currently in
+				% use. These lvals must be all be keys in the
+				% map of temporary locations ever used, which
+				% is one of the persistent fields below. Any
+				% keys in that map which are not in this set
+				% are free for reuse.
 		fail_info,	% Information about how to manage failures.
 
 		% PERSISTENT fields
@@ -259,9 +262,17 @@
 		int,		% The maximum number of extra
 				% temporary stackslots that have been
 				% used during the procedure.
-		set(lval)	% Stack variables that have been used
-				% for temporaries and are now again
-				% available for reuse.
+		map(lval, slot_contents)
+				% The temporary locations that have ever been
+				% used on the stack, and what they contain.
+				% Once we have used a stack slot to store
+				% e.g. a ticket, we never reuse that slot
+				% to hold something else, e.g. a saved hp.
+				% This policy prevents us from making such
+				% conflicting choices in parallel branches,
+				% which would make it impossible to describe
+				% to gc what the slot contains after the end
+				% of the branched control structure.
 	).
 
 %---------------------------------------------------------------------------%
@@ -288,8 +299,8 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	),
 	DummyFailInfo = fail_info(ResumePoints, resume_point_unknown,
 		may_be_different, not_inside_non_condition, Hijack),
-	set__init(AvailSlots),
-	map__init(TempsInUse),
+	map__init(TempContentMap),
+	set__init(TempsInUse),
 	set__init(Zombies),
 	map__init(LayoutMap),
 	code_info__max_var_slot(StackSlots, VarSlotMax),
@@ -317,7 +328,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		SaveSuccip,
 		LayoutMap,
 		0,
-		AvailSlots
+		TempContentMap
 	),
 	code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
 		MaybeFailVars, MaybeFromFullSlot, CodeInfo0, CodeInfo1),
@@ -419,7 +430,7 @@ code_info__get_max_temp_slot_count(PE, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
 		_, _, _, _, _, _, _, _, _, _, PE, _).
 
-code_info__get_avail_temp_slots(PF, CI, CI) :-
+code_info__get_temp_content_map(PF, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
 		_, _, _, _, _, _, _, _, _, _, _, PF).
 
@@ -497,7 +508,7 @@ code_info__set_max_temp_slot_count(PE, CI0, CI) :-
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
 		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
 
-code_info__set_avail_temp_slots(PF, CI0, CI) :-
+code_info__set_temp_content_map(PF, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
 		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, _ ),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
@@ -934,7 +945,16 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 			"some but not all branches inside a non condition"),
 		FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr,
 			CondEnv0, Hijack),
-		code_info__set_fail_info(FailInfo, EndCodeInfo1, EndCodeInfo)
+		code_info__set_fail_info(FailInfo, EndCodeInfo1, EndCodeInfoA),
+
+			% Make sure the "temps in use" set at the end of the
+			% branched control structure includes every slot
+			% in use at the end of any branch.
+		code_info__get_temps_in_use(TempsInUse0, EndCodeInfo0, _),
+		code_info__get_temps_in_use(TempsInUse1, EndCodeInfo1, _),
+		set__union(TempsInUse0, TempsInUse1, TempsInUse),
+		code_info__set_temps_in_use(TempsInUse, EndCodeInfoA,
+			EndCodeInfo)
 	},
 	{ MaybeEnd = yes(branch_end_info(EndCodeInfo)) }.
 
@@ -2581,12 +2601,12 @@ code_info__pickup_zombies(Zombies) -->
 :- pred code_info__restore_hp(lval, code_tree, code_info, code_info).
 :- mode code_info__restore_hp(in, out, in, out) is det.
 
-:- pred code_info__restore_and_discard_hp(lval, code_tree,
-	code_info, code_info).
-:- mode code_info__restore_and_discard_hp(in, out, in, out) is det.
+:- pred code_info__release_hp(lval, code_info, code_info).
+:- mode code_info__release_hp(in, in, out) is det.
 
-:- pred code_info__discard_hp(lval, code_info, code_info).
-:- mode code_info__discard_hp(in, in, out) is det.
+:- pred code_info__restore_and_release_hp(lval, code_tree,
+	code_info, code_info).
+:- mode code_info__restore_and_release_hp(in, out, in, out) is det.
 
 :- pred code_info__maybe_save_hp(bool, code_tree, maybe(lval),
 	code_info, code_info).
@@ -2596,12 +2616,12 @@ code_info__pickup_zombies(Zombies) -->
 	code_info, code_info).
 :- mode code_info__maybe_restore_hp(in, out, in, out) is det.
 
-:- pred code_info__maybe_restore_and_discard_hp(maybe(lval), code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_restore_and_discard_hp(in, out, in, out) is det.
+:- pred code_info__maybe_release_hp(maybe(lval), code_info, code_info).
+:- mode code_info__maybe_release_hp(in, in, out) is det.
 
-:- pred code_info__maybe_discard_hp(maybe(lval), code_info, code_info).
-:- mode code_info__maybe_discard_hp(in, in, out) is det.
+:- pred code_info__maybe_restore_and_release_hp(maybe(lval), code_tree,
+	code_info, code_info).
+:- mode code_info__maybe_restore_and_release_hp(in, out, in, out) is det.
 
 :- pred code_info__save_ticket(code_tree, lval, code_info, code_info).
 :- mode code_info__save_ticket(out, out, in, out) is det.
@@ -2610,19 +2630,17 @@ code_info__pickup_zombies(Zombies) -->
 	code_info, code_info).
 :- mode code_info__reset_ticket(in, in, out, in, out) is det.
 
-:- pred code_info__reset_and_discard_ticket(lval, reset_trail_reason, code_tree,
-	code_info, code_info).
+:- pred code_info__release_ticket(lval, code_info, code_info).
+:- mode code_info__release_ticket(in, in, out) is det.
+
+:- pred code_info__reset_and_discard_ticket(lval, reset_trail_reason,
+	code_tree, code_info, code_info).
 :- mode code_info__reset_and_discard_ticket(in, in, out, in, out) is det.
 
-	% Same as reset_and_discard_ticket, but don't release the temp slot.
-	% Used for cases where the temp slot might still be needed again
-	% on backtracking and thus can't be reused in the code that follows.
-:- pred code_info__reset_and_pop_ticket(lval, reset_trail_reason,
+:- pred code_info__reset_discard_and_release_ticket(lval, reset_trail_reason,
 	code_tree, code_info, code_info).
-:- mode code_info__reset_and_pop_ticket(in, in, out, in, out) is det.
-
-:- pred code_info__discard_ticket(lval, code_tree, code_info, code_info).
-:- mode code_info__discard_ticket(in, out, in, out) is det.
+:- mode code_info__reset_discard_and_release_ticket(in, in, out, in, out)
+	is det.
 
 :- pred code_info__maybe_save_ticket(bool, code_tree, maybe(lval),
 	code_info, code_info).
@@ -2632,20 +2650,17 @@ code_info__pickup_zombies(Zombies) -->
 	code_tree, code_info, code_info).
 :- mode code_info__maybe_reset_ticket(in, in, out, in, out) is det.
 
+:- pred code_info__maybe_release_ticket(maybe(lval), code_info, code_info).
+:- mode code_info__maybe_release_ticket(in, in, out) is det.
+
 :- pred code_info__maybe_reset_and_discard_ticket(maybe(lval),
 	reset_trail_reason, code_tree, code_info, code_info).
 :- mode code_info__maybe_reset_and_discard_ticket(in, in, out, in, out) is det.
 
-:- pred code_info__maybe_reset_and_pop_ticket(maybe(lval),
+:- pred code_info__maybe_reset_discard_and_release_ticket(maybe(lval),
 	reset_trail_reason, code_tree, code_info, code_info).
-:- mode code_info__maybe_reset_and_pop_ticket(in, in, out, in, out) is det.
-
-:- pred code_info__maybe_discard_ticket(maybe(lval), code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_discard_ticket(in, out, in, out) is det.
-
-:- pred code_info__save_maxfr(lval, code_tree, code_info, code_info).
-:- mode code_info__save_maxfr(out, out, in, out) is det.
+:- mode code_info__maybe_reset_discard_and_release_ticket(in, in, out, in, out)
+	is det.
 
 %---------------------------------------------------------------------------%
 
@@ -2653,17 +2668,25 @@ code_info__pickup_zombies(Zombies) -->
 
 code_info__save_hp(Code, HpSlot) -->
 	code_info__acquire_temp_slot(lval(hp), HpSlot),
-	{ Code = node([mark_hp(HpSlot) - "Save heap pointer"]) }.
+	{ Code = node([
+		mark_hp(HpSlot) - "Save heap pointer"
+	]) }.
 
 code_info__restore_hp(HpSlot, Code) -->
-	{ Code = node([restore_hp(lval(HpSlot)) - "Restore heap pointer"]) }.
+	{ Code = node([
+		restore_hp(lval(HpSlot)) - "Restore heap pointer"
+	]) }.
 
-code_info__discard_hp(HpSlot) -->
+code_info__release_hp(HpSlot) -->
 	code_info__release_temp_slot(HpSlot).
 
-code_info__restore_and_discard_hp(HpSlot, Code) -->
-	{ Code = node([restore_hp(lval(HpSlot)) - "Restore heap pointer"]) },
-	code_info__discard_hp(HpSlot).
+code_info__restore_and_release_hp(HpSlot, Code) -->
+	{ Code = node([
+		restore_hp(lval(HpSlot)) - "Release heap pointer"
+	]) },
+	code_info__release_hp(HpSlot).
+
+%---------------------------------------------------------------------------%
 
 code_info__maybe_save_hp(Maybe, Code, MaybeHpSlot) -->
 	( { Maybe = yes } ->
@@ -2681,44 +2704,50 @@ code_info__maybe_restore_hp(MaybeHpSlot, Code) -->
 		{ Code = empty }
 	).
 
-code_info__maybe_restore_and_discard_hp(MaybeHpSlot, Code) -->
+code_info__maybe_release_hp(MaybeHpSlot) -->
 	( { MaybeHpSlot = yes(HpSlot) } ->
-		code_info__restore_and_discard_hp(HpSlot, Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__maybe_discard_hp(MaybeHpSlot) -->
-	( { MaybeHpSlot = yes(HpSlot) } ->
-		code_info__discard_hp(HpSlot)
+		code_info__release_hp(HpSlot)
 	;
 		[]
 	).
 
+code_info__maybe_restore_and_release_hp(MaybeHpSlot, Code) -->
+	( { MaybeHpSlot = yes(HpSlot) } ->
+		code_info__restore_and_release_hp(HpSlot, Code)
+	;
+		{ Code = empty }
+	).
+
+%---------------------------------------------------------------------------%
+
 code_info__save_ticket(Code, TicketSlot) -->
 	code_info__acquire_temp_slot(ticket, TicketSlot),
-	{ Code = node([store_ticket(TicketSlot) - "Save trail state"]) }.
+	{ Code = node([
+		store_ticket(TicketSlot) - "Save trail state"
+	]) }.
 
 code_info__reset_ticket(TicketSlot, Reason, Code) -->
-	{ Code = node([reset_ticket(lval(TicketSlot), Reason) - "Reset trail"]) }.
+	{ Code = node([
+		reset_ticket(lval(TicketSlot), Reason) - "Reset trail"
+	]) }.
+
+code_info__release_ticket(TicketSlot) -->
+	code_info__release_temp_slot(TicketSlot).
 
 code_info__reset_and_discard_ticket(TicketSlot, Reason, Code) -->
-	code_info__release_temp_slot(TicketSlot),
 	{ Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
 		discard_ticket - "Pop ticket stack"
 	]) }.
 
-code_info__reset_and_pop_ticket(TicketSlot, Reason, Code) -->
+code_info__reset_discard_and_release_ticket(TicketSlot, Reason, Code) -->
 	{ Code = node([
-		reset_ticket(lval(TicketSlot), Reason) -
-			"Restore trail (but don't release this stack slot)",
+		reset_ticket(lval(TicketSlot), Reason) - "Release trail",
 		discard_ticket - "Pop ticket stack"
-	]) }.
+	]) },
+	code_info__release_temp_slot(TicketSlot).
 
-code_info__discard_ticket(TicketSlot, Code) -->
-	code_info__release_temp_slot(TicketSlot),
-	{ Code = node([discard_ticket - "Pop ticket stack"]) }.
+%---------------------------------------------------------------------------%
 
 code_info__maybe_save_ticket(Maybe, Code, MaybeTicketSlot) -->
 	( { Maybe = yes } ->
@@ -2736,6 +2765,13 @@ code_info__maybe_reset_ticket(MaybeTicketSlot, Reason, Code) -->
 		{ Code = empty }
 	).
 
+code_info__maybe_release_ticket(MaybeTicketSlot) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__release_ticket(TicketSlot)
+	;
+		[]
+	).
+
 code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->
 	( { MaybeTicketSlot = yes(TicketSlot) } ->
 		code_info__reset_and_discard_ticket(TicketSlot, Reason, Code)
@@ -2743,23 +2779,14 @@ code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->
 		{ Code = empty }
 	).
 
-code_info__maybe_reset_and_pop_ticket(MaybeTicketSlot, Reason, Code) -->
+code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
+		Code) -->
 	( { MaybeTicketSlot = yes(TicketSlot) } ->
-		code_info__reset_and_pop_ticket(TicketSlot, Reason, Code)
+		code_info__reset_discard_and_release_ticket(TicketSlot, Reason,
+			Code)
 	;
 		{ Code = empty }
 	).
-
-code_info__maybe_discard_ticket(MaybeTicketSlot, Code) -->
-	( { MaybeTicketSlot = yes(TicketSlot) } ->
-		code_info__discard_ticket(TicketSlot, Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__save_maxfr(MaxfrSlot, Code) -->
-	code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
-	{ Code = node([assign(MaxfrSlot, lval(maxfr)) - "Save maxfr"]) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3063,8 +3090,10 @@ code_info__generate_stack_livevals(Args, LiveVals) -->
 	{ set__to_sorted_list(Vars, VarList) },
 	{ set__init(LiveVals0) },
 	code_info__generate_var_livevals(VarList, LiveVals0, LiveVals1),
-	code_info__get_temps_in_use(TempsSet),
-	{ map__to_assoc_list(TempsSet, Temps) },
+	code_info__get_temps_in_use(TempsInUse),
+	code_info__get_temp_content_map(TempContentMap),
+	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
+	{ map__to_assoc_list(TempsInUseContentMap, Temps) },
 	{ code_info__generate_temp_livevals(Temps, LiveVals1, LiveVals) }.
 
 :- pred code_info__generate_var_livevals(list(var), set(lval), set(lval),
@@ -3100,8 +3129,10 @@ code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	{ globals__want_return_layouts(Globals, WantReturnLayout) },
 	code_info__livevals_to_livelvals(LiveVals2, WantReturnLayout, 
 		AfterCallInstMap, LiveVals3),
-	code_info__get_temps_in_use(TempsSet),
-	{ map__to_assoc_list(TempsSet, Temps) },
+	code_info__get_temps_in_use(TempsInUse),
+	code_info__get_temp_content_map(TempContentMap),
+	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
+	{ map__to_assoc_list(TempsInUseContentMap, Temps) },
 	{ code_info__generate_temp_livelvals(Temps, LiveVals3, LiveVals) }.
 
 :- pred code_info__generate_var_livelvals(list(var),
@@ -3250,28 +3281,36 @@ code_info__get_live_value_type(trace_data, unwanted).
 :- implementation.
 
 code_info__acquire_temp_slot(Item, StackVar) -->
-	code_info__get_avail_temp_slots(AvailSlots0),
-	( { set__remove_least(AvailSlots0, StackVarPrime, AvailSlots) } ->
-		{ StackVar = StackVarPrime },
-		code_info__set_avail_temp_slots(AvailSlots)
+	code_info__get_temps_in_use(TempsInUse0),
+	{ IsTempUsable = lambda([TempContent::in, Lval::out] is semidet, (
+		TempContent = Lval - ContentType,
+		ContentType = Item,
+		\+ set__member(Lval, TempsInUse0)
+	)) },
+	code_info__get_temp_content_map(TempContentMap0),
+	{ map__to_assoc_list(TempContentMap0, TempContentList) },
+	{ list__filter_map(IsTempUsable, TempContentList, UsableLvals) },
+	(
+		{ UsableLvals = [UsableLval | _] },
+		{ StackVar = UsableLval }
 	;
+		{ UsableLvals = [] },
 		code_info__get_var_slot_count(VarSlots),
 		code_info__get_max_temp_slot_count(TempSlots0),
 		{ TempSlots is TempSlots0 + 1 },
 		{ Slot is VarSlots + TempSlots },
 		code_info__stack_variable(Slot, StackVar),
-		code_info__set_max_temp_slot_count(TempSlots)
+		code_info__set_max_temp_slot_count(TempSlots),
+		{ map__det_insert(TempContentMap0, StackVar, Item,
+			TempContentMap) },
+		code_info__set_temp_content_map(TempContentMap)
 	),
-	code_info__get_temps_in_use(TempsInUse0),
-	{ map__det_insert(TempsInUse0, StackVar, Item, TempsInUse) },
+	{ set__insert(TempsInUse0, StackVar, TempsInUse) },
 	code_info__set_temps_in_use(TempsInUse).
 
 code_info__release_temp_slot(StackVar) -->
-	code_info__get_avail_temp_slots(AvailSlots0),
-	{ set__insert(AvailSlots0, StackVar, AvailSlots) },
-	code_info__set_avail_temp_slots(AvailSlots),
 	code_info__get_temps_in_use(TempsInUse0),
-	{ map__delete(TempsInUse0, StackVar, TempsInUse) },
+	{ set__delete(TempsInUse0, StackVar, TempsInUse) },
 	code_info__set_temps_in_use(TempsInUse).
 
 %---------------------------------------------------------------------------%
