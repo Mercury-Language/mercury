@@ -18,6 +18,10 @@
 					code_tree, code_info, code_info).
 :- mode ite_gen__generate_semidet_ite(in, in, in, out, in, out) is det.
 
+:- pred ite_gen__generate_nondet_ite(hlds__goal, hlds__goal, hlds__goal,
+					code_tree, code_info, code_info).
+:- mode ite_gen__generate_nondet_ite(in, in, in, out, in, out) is det.
+
 %---------------------------------------------------------------------------%
 :- implementation.
 
@@ -88,6 +92,11 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		% generate the then condition
 	{ Instr = tree(TestCode, tree(ThenCode, ElseCode)) },
 	code_info__remake_code_info.
+
+%---------------------------------------------------------------------------%
+
+ite_gen__generate_nondet_ite(_CondGoal, _ThenGoal, _ElseGoal, _Instr) -->
+	{ error("Unimplemented") }.
 
 %---------------------------------------------------------------------------%
 

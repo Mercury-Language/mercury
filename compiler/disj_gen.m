@@ -14,6 +14,10 @@
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_semi_disj(in, out, in, out) is det.
 
+:- pred disj_gen__generate_non_disj(list(hlds__goal),
+					code_tree, code_info, code_info).
+:- mode disj_gen__generate_non_disj(in, out, in, out) is det.
+
 %---------------------------------------------------------------------------%
 :- implementation.
 
@@ -59,6 +63,73 @@ disj_gen__generate_semi_cases([Goal|Goals], FallThrough,
 		% generate the rest of the cases.
 	disj_gen__generate_semi_cases(Goals, FallThrough, EndLabel, GoalsCode0),
 	{ GoalsCode = tree(ThisCode, tree(ElseLabel, GoalsCode0)) }.
+
+%---------------------------------------------------------------------------%
+
+disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
+	code_info__generate_nondet_saves(SaveCode),
+	code_info__get_next_label(ContLab),
+	code_info__push_failure_cont(ContLab),
+	code_info__get_next_label(EndLab),
+	disj_gen__generate_non_disj_2(Goals, EndLab, GoalsCode).
+
+:- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, code_tree,
+						code_info, code_info).
+:- mode disj_gen__generate_non_disj_2(in, in, out, in, out) is det.
+
+disj_gen__generate_non_disj_2([], EndLab, EndCode) -->
+	{ EndCode = node([
+		label(EndLab) - "End of disj"
+	]) }.
+disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
+	(
+		{ Goals = [_|_] }
+	->
+		(
+			code_info__failure_cont(ContLab0)
+		->
+			{ ContCode = node([
+				modframe(yes(ContLab0)) -
+						"Set failure continuation"
+			]) },
+			{ FailCode = node([
+				goto(EndLab) - "Jump to end of disj",
+				label(ContLab0) - "Start of next disjunct"
+			]) }
+		;
+			{ error("Missing failure continuation") }
+		)
+	;
+		(
+			code_info__pop_failure_cont(ContLab1)
+		->
+			{ ContCode = node([
+				modframe(yes(ContLab1)) -
+						"Set failure continuation"
+			]) },
+			{ FailCode = empty }
+		;
+			{ ContCode = node([
+				modframe(no) -
+					"Failure continuation is fail()"
+			]) },
+			{ FailCode = empty }
+		)
+	),
+	code_info__grab_code_info(CodeInfo),
+	code_gen__generate_forced_non_goal(Goal, GoalCode),
+	(
+		{ Goals = [_|_] }
+	->
+		code_info__slap_code_info(CodeInfo),
+		code_info__pop_failure_cont(_),
+		code_info__get_next_label(NextCont),
+		code_info__push_failure_cont(NextCont)
+	;
+		{ true }
+	),
+	disj_gen__generate_non_disj_2(Goals, EndLab, RestCode),
+	{ DisjCode = tree(tree(ContCode, GoalCode), tree(FailCode, RestCode)) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

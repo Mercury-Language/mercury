@@ -18,6 +18,10 @@
 					code_tree, code_info, code_info).
 :- mode call_gen__generate_semidet_call(in, in, in, out, in, out) is det.
 
+:- pred call_gen__generate_nondet_call(pred_id, proc_id, list(var),
+					code_tree, code_info, code_info).
+:- mode call_gen__generate_nondet_call(in, in, in, out, in, out) is det.
+
 :- pred call_gen__generate_det_builtin(pred_id, proc_id, list(var),
 					code_tree, code_info, code_info).
 :- mode call_gen__generate_det_builtin(in, in, in, out, in, out) is det.
@@ -25,6 +29,10 @@
 :- pred call_gen__generate_semidet_builtin(pred_id, proc_id, list(var),
 					code_tree, code_info, code_info).
 :- mode call_gen__generate_semidet_builtin(in, in, in, out, in, out) is det.
+
+:- pred call_gen__generate_nondet_builtin(pred_id, proc_id, list(var),
+					code_tree, code_info, code_info).
+:- mode call_gen__generate_nondet_builtin(in, in, in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -85,7 +93,6 @@ call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__clear_reserved_registers,
 	call_gen__setup_call(Args, Arguments, CodeB),
 	code_info__get_next_label(ReturnLabel),
-	code_info__get_failure_cont(FallThrough),
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
 	(
@@ -93,14 +100,46 @@ call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
 	->
 		{ CodeC = node([
 			entrycall(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continutation label",
-			if_not_val(lval(reg(r(1))), FallThrough) - "Test result"
+			label(ReturnLabel) - "Continutation label"
 		]) }
 	;
 		{ CodeC = node([
 			call(Label, ReturnLabel) - "branch to procedure",
-			label(ReturnLabel) - "Continutation label",
-			if_not_val(lval(reg(r(1))), FallThrough) - "Test result"
+			label(ReturnLabel) - "Continutation label"
+		]) }
+	),
+	code_info__get_next_label(ContLab),
+	code_info__generate_failure(FailCode),
+	{ CodeD = tree(node([
+			if_val(lval(reg(r(1))), ContLab) - "Test for success"
+		]), tree(FailCode, node([ label(ContLab) - "" ]))) },
+
+	{ Code = tree(CodeA, tree(CodeB, tree(CodeC, CodeD))) },
+	call_gen__rebuild_registers(Args).
+
+%---------------------------------------------------------------------------%
+
+call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
+	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
+	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
+	call_gen__save_variables(CodeA),
+	code_info__clear_reserved_registers,
+	call_gen__setup_call(Args, Arguments, CodeB),
+	code_info__get_next_label(ReturnLabel),
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
+	(
+		call_gen__is_imported(PredId)
+	->
+		{ CodeC = node([
+			entrycall(Label, ReturnLabel) -
+					"branch to non-local procedure",
+			label(ReturnLabel) - "Continutation label"
+		]) }
+	;
+		{ CodeC = node([
+			call(Label, ReturnLabel) - "branch to procedure",
+			label(ReturnLabel) - "Continutation label"
 		]) }
 	),
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
@@ -226,6 +265,11 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 	;
 		{ error("Unknown builtin predicate") }
 	).
+
+%---------------------------------------------------------------------------%
+
+call_gen__generate_nondet_builtin(_PredId, _ProcId, _Args, _Code) -->
+	{ error("Unknown builtin predicate") }.
 
 %---------------------------------------------------------------------------%
 

@@ -37,9 +37,9 @@
 
 		% Create a new code_info structure.
 :- pred code_info__init(int, varset, liveness_info, call_info, bool,
-				pred_id, proc_id, proc_info,
+				pred_id, proc_id, proc_info, category,
 					follow_vars, module_info, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, out) is det.
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, out) is det.
 
 		% Generate the next local label in sequence.
 :- pred code_info__get_next_label(label, code_info, code_info).
@@ -233,12 +233,24 @@
 :- pred code_info__get_failure_cont(label, code_info, code_info).
 :- mode code_info__get_failure_cont(out, in, out) is det.
 
+:- pred code_info__failure_cont(label, code_info, code_info).
+:- mode code_info__failure_cont(out, in, out) is semidet.
+
 :- pred code_info__unset_failure_cont(code_info, code_info).
 :- mode code_info__unset_failure_cont(in, out) is det.
 
 :- pred code_info__stack_variable(int, lval, code_info, code_info).
 :- mode code_info__stack_variable(in, out, in, out) is det.
 
+:- pred code_info__generate_nondet_saves(code_tree, code_info, code_info).
+:- mode code_info__generate_nondet_saves(out, in, out) is det.
+
+:- pred code_info__generate_failure(code_tree, code_info, code_info).
+:- mode code_info__generate_failure(out, in, out) is det.
+
+:- pred code_info__generate_test_and_fail(rval, code_tree,
+							code_info, code_info).
+:- mode code_info__generate_test_and_fail(in, out, in, out) is det.
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -296,7 +308,7 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
-					PredId, ProcId, ProcInfo,
+					PredId, ProcId, ProcInfo, Category,
 						FollowVars, ModuleInfo, C) :-
 	code_info__init_register_info(PredId, ProcId,
 					ModuleInfo, RegisterInfo),
@@ -318,7 +330,7 @@ code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
 		ModuleInfo,
 		Liveness,
 		FollowVars,
-		deterministic
+		Category
 	).
 
 %---------------------------------------------------------------------------%
@@ -1351,6 +1363,43 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 
 %---------------------------------------------------------------------------%
 
+code_info__generate_nondet_saves(Code) -->
+	code_info__get_call_info(CallInfo),
+	{ map__to_assoc_list(CallInfo, CallList) },
+	code_info__generate_nondet_saves_2(CallList, Code),
+	code_info__remake_code_info.
+
+:- pred code_info__generate_nondet_saves_2(assoc_list(var, int), code_tree,
+							code_info, code_info).
+:- mode code_info__generate_nondet_saves_2(in, out, in, out) is det.
+
+code_info__generate_nondet_saves_2([], empty) --> [].
+code_info__generate_nondet_saves_2([Var - Slot|VarSlots], Code) --> 
+	(
+		code_info__variable_is_live(Var),
+		code_info__get_variables(Variables),
+		{ map__contains(Variables, Var) }
+	->
+		code_info__stack_variable(Slot, StackThing),
+		code_info__generate_expression(var(Var), StackThing, Code0),
+		code_info__add_lvalue_to_variable(StackThing, Var),
+		code_info__generate_nondet_saves_2(VarSlots, RestCode),
+		{ Code = tree(Code0, RestCode) }
+	;
+			% This case should only occur in the presence
+			% of `erroneous' or `failure' procedures, i.e.
+			% procedures which never succeed.
+		code_info__variable_is_live(Var)
+	->
+		code_info__stack_variable(Slot, StackThing),
+		code_info__add_lvalue_to_variable(StackThing, Var),
+		code_info__generate_nondet_saves_2(VarSlots, Code)
+	;
+		code_info__generate_nondet_saves_2(VarSlots, Code)
+	).
+
+%---------------------------------------------------------------------------%
+
 :- pred code_info__swap_out_reg(reg, code_tree, code_info, code_info).
 :- mode code_info__swap_out_reg(in, out, in, out) is det.
 
@@ -1741,6 +1790,39 @@ code_info__stack_variable(Num, Lval) -->
 
 %---------------------------------------------------------------------------%
 
+code_info__generate_failure(Code) -->
+	code_info__get_category(Category),
+	(
+		{ Category = nondeterministic }
+	->
+		{ Code = node([ fail - "Fail" ]) }
+	;
+		code_info__get_failure_cont(Cont),
+		{ Code = node([ goto(Cont) -
+					"Branch to failure continuation" ]) }
+	).
+
+%---------------------------------------------------------------------------%
+
+code_info__generate_test_and_fail(Rval, Code) -->
+	code_info__get_category(Category),
+	(
+		{ Category = nondeterministic }
+	->
+		code_info__get_next_label(Success),
+		{ Code = node([
+			if_val(Rval, Success) - "",
+			fail - "",
+			label(Success) - ""
+		]) }
+	;
+		code_info__get_failure_cont(Cont),
+		{ Code = node([ if_not_val(Rval, Cont) - "" ]) }
+	).
+
+
+%---------------------------------------------------------------------------%
+
 code_info__push_failure_cont(Cont) -->
 	code_info__get_fall_through(Fall0),
 	{ stack__push(Fall0, Cont, Fall) },
@@ -1765,6 +1847,10 @@ code_info__get_failure_cont(Cont) -->
 	;
 		{ error("No failure continuation") }
 	).
+
+code_info__failure_cont(Cont) -->
+	code_info__get_fall_through(Fall),
+	{ stack__top(Fall, Cont) }.
 
 code_info__unset_failure_cont -->
 	code_info__get_fall_through(Fall0),
@@ -1933,7 +2019,9 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__get_succip_used(S, C1, _),
 	code_info__set_succip_used(S, C2, C3),
 	code_info__get_follow_vars(F, C1, _),
-	code_info__set_follow_vars(F, C3, C).
+	code_info__set_follow_vars(F, C3, C4),
+	code_info__get_fall_through(J, C1, _),
+	code_info__set_fall_through(J, C4, C).
 
 %---------------------------------------------------------------------------%
 

@@ -79,51 +79,47 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 	code_info__flush_variable(VarB, Code1),
 	code_info__get_variable_register(VarB, RegB),
 	{ CodeA = tree(Code0, Code1) },
-	code_info__get_failure_cont(FallThrough),
-	{ CodeB = node([
-		test(lval(RegA), lval(RegB), FallThrough) - "Test for equality"
-	]) },
-	{ Code = tree(CodeA, CodeB) }.
+	code_info__generate_test_and_fail(
+			binop(eq, lval(RegA), lval(RegB)), FailCode),
+	{ Code = tree(CodeA, FailCode) }.
 
 %---------------------------------------------------------------------------%
 
 unify_gen__generate_tag_test(Var, ConsId, Code) -->
         code_info__flush_variable(Var, VarCode),
 	code_info__get_variable_register(Var, Lval),
-	code_info__get_failure_cont(Fail),
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	{ unify_gen__generate_tag_test_2(Tag, Lval, Fail, TestCode) },
+	unify_gen__generate_tag_test_2(Tag, Lval, TestCode),
 	{ Code = tree(VarCode, TestCode) }.
 
-:- pred unify_gen__generate_tag_test_2(cons_tag, lval, label, code_tree).
-:- mode unify_gen__generate_tag_test_2(in, in, in, out) is det.
+:- pred unify_gen__generate_tag_test_2(cons_tag, lval, code_tree,
+							code_info, code_info).
+:- mode unify_gen__generate_tag_test_2(in, in, out, in, out) is det.
 
-unify_gen__generate_tag_test_2(string_constant(_String), _, _, _) :-
-	error("String tests unimplemented").
-unify_gen__generate_tag_test_2(float_constant(_String), _, _, _) :-
-	error("Float tests unimplemented").
-unify_gen__generate_tag_test_2(int_constant(Int), Lval, Fail, TestCode) :-
-	TestCode = node([
-		test(lval(Lval), iconst(Int), Fail) -
-						"Integer test"
-	]).
-unify_gen__generate_tag_test_2(simple_tag(SimpleTag), Lval, Fail, TestCode) :-
-	TestCode = node([
-		if_tag(Lval, SimpleTag, Fail) - "Test tag bits"
-	]).
-unify_gen__generate_tag_test_2(complicated_tag(Bits, Num), Lval, Fail,
-		TestCode) :-
-	TestCode = node([
-		if_tag(Lval, Bits, Fail) - "Test tag bits",
-		test(field(Bits, lval(Lval), 1), iconst(Num), Fail) -
-						"Test the tag word"
-	]).
-unify_gen__generate_tag_test_2(complicated_constant_tag(Bits, Num), Lval, Fail,
-		TestCode) :-
-	TestCode = node([
-		test(lval(Lval), mkword(Bits, mkbody(iconst(Num))),
-			Fail) - "Test for constant"
-	]).
+unify_gen__generate_tag_test_2(string_constant(_String), _, _) -->
+	{ error("String tests unimplemented") }.
+unify_gen__generate_tag_test_2(float_constant(_String), _, _) -->
+	{ error("Float tests unimplemented") }.
+unify_gen__generate_tag_test_2(int_constant(Int), Lval, TestCode) -->
+	code_info__generate_test_and_fail(
+				binop(eq,lval(Lval), iconst(Int)),
+								TestCode).
+unify_gen__generate_tag_test_2(simple_tag(SimpleTag), Lval, TestCode) -->
+	code_info__generate_test_and_fail(
+			binop(eq,lval(Lval), iconst(SimpleTag)),
+								TestCode).
+unify_gen__generate_tag_test_2(complicated_tag(Bits, Num), Lval, TestCode) -->
+	code_info__generate_test_and_fail(
+				binop(eq,lval(Lval), iconst(Bits)), Test1),
+	code_info__generate_test_and_fail(
+			binop(eq,field(Bits, lval(Lval), 1), iconst(Num)),
+									Test2),
+	{ TestCode = tree(Test1, Test2) }.
+unify_gen__generate_tag_test_2(complicated_constant_tag(Bits, Num), Lval,
+		TestCode) -->
+	code_info__generate_test_and_fail(
+		binop(eq, lval(Lval), mkword(Bits, mkbody(iconst(Num)))),
+								TestCode).
 
 %---------------------------------------------------------------------------%
 

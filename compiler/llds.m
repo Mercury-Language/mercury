@@ -37,6 +37,8 @@
 			;	succeed
 			;	fail
 			;	redo
+			;	mkframe(string, int, maybe(label))
+			;	modframe(maybe(label))
 			;	label(label)
 			;	goto(label)
 			;	test(rval, rval, label)
@@ -256,6 +258,42 @@ output_instruction(proceed) -->
 	io__write_string("\t"),
 	io__write_string("proceed();").
 
+output_instruction(succeed) -->
+	io__write_string("\t"),
+	io__write_string("succeed();").
+
+output_instruction(fail) -->
+	io__write_string("\t"),
+	io__write_string("fail();").
+
+output_instruction(mkframe(Str, Num, Maybe)) -->
+	io__write_string("\t"),
+	io__write_string("mkframe(\""),
+	io__write_string(Str),
+	io__write_string("\", "),
+	io__write_int(Num),
+	io__write_string(", "),
+	(
+		{ Maybe = yes(Label) }
+	->
+		output_label(Label)
+	;
+		io__write_string("dofail")
+	),
+	io__write_string(");").
+
+output_instruction(modframe(Maybe)) -->
+	io__write_string("\t"),
+	io__write_string("modframe("),
+	(
+		{ Maybe = yes(Label) }
+	->
+		output_label(Label)
+	;
+		io__write_string("dofail")
+	),
+	io__write_string(");").
+
 output_instruction(label(Label)) -->
 	output_label(Label),
 	io__write_string(":\n\t;").
@@ -403,11 +441,13 @@ output_tag(Tag) -->
 :- mode output_rval(in, di, uo) is det.
 
 output_rval(binop(Op, X, Y)) -->
-	io__write_string("("),
+	io__write_string("(("),
 	output_rval(X),
+	io__write_string(") "),
 	output_operator(Op),
+	io__write_string(" ("),
 	output_rval(Y),
-	io__write_string(")").
+	io__write_string("))").
 output_rval(iconst(N)) -->
 	io__write_int(N).
 output_rval(sconst(String)) -->
@@ -480,6 +520,15 @@ output_lval(stackvar(N)) -->
 		true
 	},
 	io__write_string("detstackvar("),
+	io__write_int(N),
+	io__write_string(")").
+output_lval(framevar(N)) -->
+	{ (N < 0) ->
+		error("stack var out of range")
+	;
+		true
+	},
+	io__write_string("framevar("),
 	io__write_int(N),
 	io__write_string(")").
 output_lval(lvar(_)) -->

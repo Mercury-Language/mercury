@@ -197,7 +197,7 @@ detect_liveness_in_conj([Goal0|Goals0], Liveness0,
 	->
 		Goal = Goal0,
 		Goals = Goals0,
-		Liveness = Liveness0
+		Liveness = Liveness1
 	;
 		detect_liveness_in_goal(Goal0, Liveness0,
 						ModuleInfo, Liveness1, Goal),
@@ -338,14 +338,15 @@ detect_deadness_in_conj([Goal0|Goals0], Deadness0, ModuleInfo,
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, unreachable)
 	->
-		Goal = Goal0,
-		Goals = Goals0,
-		set__init(Deadness)
+		set__init(Deadness2),
+		detect_deadness_in_goal(Goal0, Deadness2,
+						ModuleInfo, Deadness, Goal),
+		Goals = Goals0
 	;
-		detect_deadness_in_conj(Goals0, Deadness0, ModuleInfo,
-							Goals, Deadness1),
+		detect_deadness_in_conj(Goals0, Deadness0,
+						ModuleInfo, Goals, Deadness1),
 		detect_deadness_in_goal(Goal0, Deadness1,
-					ModuleInfo, Deadness, Goal)
+						ModuleInfo, Deadness, Goal)
 	).
 
 %-----------------------------------------------------------------------------%
