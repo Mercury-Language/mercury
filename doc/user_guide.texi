@@ -704,8 +704,10 @@ depend: mypackage.depend
 
 The Mmake target @samp{lib@var{foo}} is a built-in target for
 creating a library whose top-level module is @samp{@var{foo}.m}.
-The automatically generated Make rules for the target @samp{lib@var{foo}}
+The automatically generated Mmake rules for the target @samp{lib@var{foo}}
 will create all the files needed to use the library.
+(You will need to run @samp{mmake @var{foo}.depend} first
+to generate the module dependency information.)
 
 Mmake will create static (non-shared) object libraries
 and, on most platforms, shared object libraries;
