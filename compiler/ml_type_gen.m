@@ -669,7 +669,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 					BaseClassQualifier, UnqualCtorName,
 					CtorArity)
 			),
-			CtorFunction = gen_constructor_function(
+			CtorFunction = gen_constructor_function(Target,
 				BaseClassId, CtorClassType, CtorClassQualifier,
 				SecondaryTagClassId, MaybeSecTagVal, Members,
 				MLDS_Context),
@@ -686,7 +686,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 				),
 				Members \= []
 			->
-				ZeroArgCtor = gen_constructor_function(
+				ZeroArgCtor = gen_constructor_function(Target,
 					BaseClassId, CtorClassType,
 					CtorClassQualifier,
 					SecondaryTagClassId, no, [],
@@ -759,15 +759,28 @@ target_uses_empty_base_classes(il)	= yes.
 target_uses_empty_base_classes(java)	= yes.
 target_uses_empty_base_classes(asm)	= no.
 
-:- func gen_constructor_function(mlds__class_id, mlds__type, mlds_module_name,
-		mlds__class_id, maybe(int), mlds__defns, mlds__context) =
-		mlds__defn.
-gen_constructor_function(BaseClassId, ClassType, ClassQualifier,
+	% This should return yes if references to function parameters in
+	% constructor functions must be qualified with the module name,
+	% not the class name.
+	% We need to do this for the Java back-end, since MLDS names which
+	% are qualified with the module name get unqualified when output
+	% as Java, and parameter names must all be unqualified.
+	% XXX perhaps we should do the same for all back-ends?
+:- func target_requires_module_qualified_params(compilation_target) = bool.
+target_requires_module_qualified_params(c)	 = no.
+target_requires_module_qualified_params(il)	 = no.
+target_requires_module_qualified_params(java)    = yes.
+target_requires_module_qualified_params(asm)	 = no.
+
+:- func gen_constructor_function(compilation_target, mlds__class_id,
+		mlds__type, mlds_module_name, mlds__class_id, maybe(int),
+		mlds__defns, mlds__context) = mlds__defn.
+gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
 		SecondaryTagClassId, MaybeTag, Members, Context) = CtorDefn :-
 	Args = list__map(make_arg, Members),
 	ReturnValues = [],
 
-	InitMembers0 = list__map(gen_init_field(BaseClassId,
+	InitMembers0 = list__map(gen_init_field(Target, BaseClassId,
 			ClassType, ClassQualifier), Members),
 	(
 		MaybeTag = yes(TagVal)
@@ -803,9 +816,10 @@ make_arg(mlds__defn(Name, _Context, _Flags, Defn)) = Arg :-
 	).
 
 	% Generate "this-><fieldname> = <fieldname>;".
-:- func gen_init_field(mlds__class_id, mlds__type, mlds_module_name, mlds__defn)
-		= mlds__statement is det.
-gen_init_field(BaseClassId, ClassType, ClassQualifier, Member) = Statement :-
+:- func gen_init_field(compilation_target, mlds__class_id, mlds__type,
+		mlds_module_name, mlds__defn) = mlds__statement is det.
+gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
+		Statement :-
 	Member = mlds__defn(EntityName, Context, _Flags, Defn),
 	( Defn = data(Type0, _Init, _GC_TraceCode) ->
 		Type = Type0
@@ -821,7 +835,19 @@ gen_init_field(BaseClassId, ClassType, ClassQualifier, Member) = Statement :-
 	;
 		unexpected(this_file, "gen_init_field: non-var member")
 	),
-	Param = mlds__lval(mlds__var(qual(ClassQualifier, VarName), Type)),
+	(
+		target_requires_module_qualified_params(Target) = yes
+	->
+		( BaseClassId = mlds__class_type(qual(ModuleName, _), _, _) ->
+			QualVarName = qual(ModuleName, VarName)
+		;
+			unexpected(this_file,
+				"gen_init_field: invalid BaseClassId")
+		)
+	;
+		QualVarName = qual(ClassQualifier, VarName)
+	),
+	Param = mlds__lval(mlds__var(QualVarName, Type)),
 	Field = mlds__field(yes(0), self(ClassType),
 			named_field(qual(ClassQualifier, Name),
 				mlds__ptr_type(ClassType)),
