@@ -60,6 +60,10 @@
 :- mode io__read_char(out, di, uo) is det.
 %		Reads a character from the current input stream.
 
+:- pred io__read_word(io__result(list(character)), io__state, io__state).
+:- mode io__read_word(out, di, uo) is det.
+%		Reads a whitespace delimited word from the current input stream.
+
 :- pred io__read_line(io__result(list(character)), io__state, io__state).
 :- mode io__read_line(out, di, uo) is det.
 %		Reads a line from the current input stream.
@@ -74,6 +78,11 @@
 				io__state, io__state).
 :- mode io__read_char(in, out, di, uo) is det.
 %		Reads a character from specified stream.
+
+:- pred io__read_word(io__input_stream, io__result(list(character)),
+							io__state, io__state).
+:- mode io__read_word(in, out, di, uo) is det.
+%		Reads a whitespace delimited word from specified stream.
 
 :- pred io__read_line(io__input_stream, io__result(list(character)),
 							io__state, io__state).
@@ -568,6 +577,50 @@ io__read_char(Stream, Result, IO_0, IO) :-
 		)
 	).
 
+io__read_word(Result) -->
+	io__input_stream(Stream),
+	io__read_line(Stream, Result).
+	
+io__read_word(Stream, Result) -->
+	io__read_char(Stream, CharResult),
+	(
+		{ CharResult = error(Error) },
+		{ Result = error(Error) }
+	;
+		{ CharResult = eof },
+		{ Result = eof }
+	;
+		{ CharResult = ok(Char) },
+		(
+			(
+				% XXX Need to add the rest of the ws chars
+				{ Char = '\n' } 
+			;
+				{ Char = '\t' }
+			;	
+				{ Char = ' ' }
+			)
+		->
+			io__putback_char(Stream, Char),
+			{ Result = ok([]) }
+		;
+			io__read_word(Stream, Result0),
+			(
+				{ Result0 = ok(Chars) },
+				{ Result = ok([Char | Chars]) }
+			;
+				{ Result0 = error(_) },
+				{ Result = Result0 }
+			;
+				{ Result0 = eof },
+				{ Result = ok([Char]) }
+			)
+		)	
+	).
+			
+			
+			
+	
 io__read_line(Result) -->
 	io__input_stream(Stream),
 	io__read_line(Stream, Result).
