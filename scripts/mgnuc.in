@@ -395,6 +395,7 @@ case $COMPILER in
 		echo "$0: base grade allowed is \`none'" 1>&2
 					;;
 		esac
+		;;
 esac
 
 # if we're using global registers, add CFLAGS_FOR_REGS
