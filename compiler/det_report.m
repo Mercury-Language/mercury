@@ -775,6 +775,7 @@ det_report_and_handle_msgs(Msgs, ModuleInfo0, ModuleInfo) -->
 				HaltAtWarn = yes
 			}
 		->
+			io__set_exit_status(1),
 			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }
 		;
 			{ ModuleInfo = ModuleInfo0 }
