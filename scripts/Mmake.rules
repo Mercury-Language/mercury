@@ -365,7 +365,7 @@ lib%.install_grades:
 	{ mv tmp_dir/*.c $(cs_subdir). ; \
 	  mv tmp_dir/*.o $(os_subdir). ; \
 	  mv tmp_dir/*.pic_o $(os_subdir). ; \
-	  mv tmp_dir/* . ; rmdir tmp_dir ; true }
+	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
 
 lib%.install_split_grades:
 	rm -rf tmp_dir && \
@@ -379,7 +379,7 @@ lib%.install_split_grades:
 		fi; \
 	done && \
 	{ mv tmp_dir/*.dir $(dirs_subdir). ; \
-	  mv tmp_dir/* . ; rmdir tmp_dir ; true }
+	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
 
 
 .PHONY: install_lib_dirs
