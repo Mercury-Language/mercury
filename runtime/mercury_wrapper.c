@@ -700,10 +700,12 @@ enum MR_long_option {
 	MR_HEAP_SIZE,
 	MR_DETSTACK_SIZE,
 	MR_NONDETSTACK_SIZE,
+	MR_SOLUTIONS_HEAP_SIZE,
 	MR_TRAIL_SIZE,
 	MR_HEAP_REDZONE_SIZE,
 	MR_DETSTACK_REDZONE_SIZE,
 	MR_NONDETSTACK_REDZONE_SIZE,
+	MR_SOLUTIONS_HEAP_REDZONE_SIZE,
 	MR_TRAIL_REDZONE_SIZE,
 	MR_MDB_TTY,
 	MR_MDB_IN,
@@ -715,10 +717,12 @@ struct MR_option MR_long_opts[] = {
 	{ "heap-size", 			1, 0, MR_HEAP_SIZE },
 	{ "detstack-size", 		1, 0, MR_DETSTACK_SIZE },
 	{ "nondetstack-size", 		1, 0, MR_NONDETSTACK_SIZE },
+	{ "solutions-heap-size", 	1, 0, MR_SOLUTIONS_HEAP_SIZE },
 	{ "trail-size", 		1, 0, MR_TRAIL_SIZE },
 	{ "heap-redzone-size", 		1, 0, MR_HEAP_REDZONE_SIZE },
 	{ "detstack-redzone-size", 	1, 0, MR_DETSTACK_REDZONE_SIZE },
 	{ "nondetstack-redzone-size", 	1, 0, MR_NONDETSTACK_REDZONE_SIZE },
+	{ "solutions-heap-redzone-size",1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE },
 	{ "trail-redzone-size", 	1, 0, MR_TRAIL_REDZONE_SIZE },
 	{ "mdb-tty", 			1, 0, MR_MDB_TTY },
 	{ "mdb-in", 			1, 0, MR_MDB_IN },
@@ -760,6 +764,13 @@ process_options(int argc, char **argv)
 			MR_nondstack_size = size;
 			break;
 
+		case MR_SOLUTIONS_HEAP_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			MR_solutions_heap_size = size;
+			break;
+
 		case MR_TRAIL_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
@@ -786,6 +797,13 @@ process_options(int argc, char **argv)
 				usage();
 
 			MR_nondstack_zone_size = size;
+			break;
+
+		case MR_SOLUTIONS_HEAP_REDZONE_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			MR_solutions_heap_zone_size = size;
 			break;
 
 		case MR_TRAIL_REDZONE_SIZE:

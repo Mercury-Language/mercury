@@ -5556,6 +5556,11 @@ Sets the size of the det stack to @var{size} kilobytes.
 Sets the size of the nondet stack to @var{size} kilobytes.
 
 @sp 1
+@item --solutions-heap-size @var{size}
+@findex --solutions-heap-size (runtime option)
+Sets the size of the solutions heap to @var{size} kilobytes.
+
+@sp 1
 @item --trail-size @var{size}
 @findex --trail-size
 @cindex Trail size
