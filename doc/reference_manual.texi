@@ -5381,7 +5381,10 @@ and throws an exception if a loop is detected, while
 @strong{Warning:}
 The current implementation of @samp{pragma minimal_model} is broken:
 the generated code sometimes produces incorrect results.  It should
-not be used.
+not be used.  Also the current implementation of all three pragmas
+is broken for procedures with determinism @samp{nondet} or @samp{multi}.
+The @samp{pragma memo} and @samp{pragma loop_check} declarations
+should not be used on such procedures.
 @end cartouche
 
 The syntax for each of these declarations is
@@ -5456,7 +5459,10 @@ or if you select a garbage collection method other than the default
 
 @c XXX we should fix this bug...
 @strong{Reminder}: the current implementation of
-@samp{pragma minimal_model} is broken.
+@samp{pragma minimal_model} is broken,
+and the current implementation of @samp{pragma memo}
+and @samp{pragma loop_check} is broken for procedures
+with determinism @samp{nondet} or @samp{multi}.
 @end cartouche
 
 @node Termination analysis
