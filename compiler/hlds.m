@@ -621,17 +621,24 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 :- type hlds__goal_info
 	---> goal_info(
 		delta_liveness,	% the changes in liveness after goal
-		unit,		% was the `local' determinism of the goal
+				% (computed by liveness.m)
+		unit,		% junk
 		determinism, 	% the overall determinism of the goal
-		instmap_delta,
+				% (computed during determinism analysis)
+		instmap_delta,	% the change in insts over this goal
+				% (computed during mode analysis)
 		term_context,
 		set(var),	% the non-local vars in the goal
+				% (computed by quantification.m)
 		delta_liveness,	% the changes in liveness before goal
+				% (computed by liveness.m)
 		maybe(map(var, lval)),
 				% the new store_map, if any - this records
 				% where to store variables at the end of
 				% branched structures.
+				% (Computed by store_alloc.m)
 		maybe(set(var)),
+				% The `cont lives' -
 				% maybe the set of variables that are
 				% live when forward execution resumes
 				% on the failure of some subgoal of this
@@ -642,13 +649,16 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 				% live after the condition.
 				% These are the only kinds of goal that
 				% use this field.
+				% (Computed by store_alloc.m.)
 		set(goal_feature),
 				% The set of used-defined "features" of
 				% this goal, which optimisers may wish
 				% to know about.
 		set(var)
+				% The "nondet lives" -
 				% Nondet live variables that may be 'dead' but
 				% still nondet live.
+				% (Computed by liveness.m.)
 	).
 
 :- interface.
