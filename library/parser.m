@@ -253,7 +253,6 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 		;
 			Token = name(Op)
 		},
-		\+ parser__get_token(open_ct),
 		parser__get_ops_table(OpTable),
 		{ ops__lookup_infix_op(OpTable, Op,
 				OpPriority, LeftAssoc, RightAssoc) },
@@ -276,7 +275,6 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 	;
 		% postfix op
 		parser__get_token(name(Op), Context),
-		\+ parser__get_token(open_ct),
 		parser__get_ops_table(OpTable),
 		{ ops__lookup_postfix_op(OpTable, Op, OpPriority, LeftAssoc) },
 		{ OpPriority =< MaxPriority },
