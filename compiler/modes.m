@@ -1218,17 +1218,18 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 		(
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
-			% we haven't done anything.
-
+			% the only thing we can have done is lose uniqueness.
 			inst_matches_initial(Inst0, Inst, ModuleInfo)
 		->
-			ModeInfo = ModeInfo1
+			map__set(InstMapping0, Var0, Inst, InstMapping),
+			InstMap = reachable(InstMapping),
+			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
 		;
 			% We must have either added some information,
 			% or bound part of the var.  The call to
 			% inst_matches_final will fail iff we have
 			% bound part of a var.
-			% XXX bug - what if we just lost some uniqueness?
+			% XXX bug - what if we lost some uniqueness?
 			inst_matches_final(Inst, Inst0, ModuleInfo)
 		->
 			% We've just added some information
