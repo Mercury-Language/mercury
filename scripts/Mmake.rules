@@ -192,7 +192,7 @@ ifeq ($(TARGET_ASM),yes)
 $(ss_subdir)%.s : $(s_dates_subdir)%.s_date
 	@:
 
-$(ss_subdir)%.pic_s : $(pic_s_dates_subdir)%.pic_s_date
+$(pic_ss_subdir)%.pic_s : $(pic_s_dates_subdir)%.pic_s_date
 	@:
 
 $(s_dates_subdir)%.s_date : %.m
@@ -206,7 +206,7 @@ $(pic_s_dates_subdir)%.pic_s_date : %.m
 $(os_subdir)%.$O : $(ss_subdir)%.s
 	$(AS) $< $(OBJFILE_OPT)$@
 
-$(os_subdir)%.pic_o : $(ss_subdir)%.pic_s
+$(os_subdir)%.pic_o : $(pic_ss_subdir)%.pic_s
 	$(AS) $< $(OBJFILE_OPT)$@
 
 # For *__c_code.{o,pic_o}, we depend on the .s or .pic_s file rather
@@ -217,7 +217,7 @@ $(os_subdir)%__c_code.$O : $(ss_subdir)%.s
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
 		-c $(cs_subdir)$*.c $(OBJFILE_OPT)$@
 
-$(os_subdir)%__c_code.pic_o : $(ss_subdir)%.pic_s
+$(os_subdir)%__c_code.pic_o : $(pic_ss_subdir)%.pic_s
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
 		-c $(cs_subdir)$*.c $(OBJFILE_OPT)$@
 

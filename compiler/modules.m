@@ -3028,7 +3028,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".all_pic_ss = "),
-	write_compact_dependencies_list(Modules, "$(ss_subdir)", ".pic_s",
+	write_compact_dependencies_list(Modules, "$(pic_ss_subdir)", ".pic_s",
 		Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
