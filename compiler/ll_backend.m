@@ -63,7 +63,6 @@
    :- include_module layout.
    :- include_module stack_layout.
    :- include_module prog_rep.
-   :- include_module static_term.
    :- include_module global_data.
 %:- end_module llds_data.
 
