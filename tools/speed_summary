@@ -25,6 +25,13 @@
 
 NF == 8	{
 		variant = $1;
+
+		if (variants[variant] == "") {
+			variants[variant] = variant;
+			variant_order[cur_variant + 0] = variant;
+			cur_variant++;
+		}
+
 		time = substr($2, 1, length($2) - 1);
 		# printf "read %s %9.2f\n", variant, time;
 
@@ -44,7 +51,8 @@ NF == 8	{
 		next;
 	}
 END	{
-		for (variant in times_count) {
+		for (ordinal = 0; ordinal < cur_variant; ordinal++) {
+			variant = variant_order[ordinal];
 			count = times_count[variant];
 
 			# perform insertion sort on times[variant "@" *]
