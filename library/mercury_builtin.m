@@ -25,6 +25,7 @@
 
 % The types `character', `int', `float', and `string',
 % and the types `pred', `pred(T)', `pred(T1, T2)', `pred(T1, T2, T3)', ...
+% and `func(T1) = T2', `func(T1, T2) = T3', `func(T1, T2, T3) = T4', ...
 % are builtin and are implemented using special code in the
 % type-checker.  (XXX TODO: report an error for attempts to redefine
 % these types.)
@@ -48,7 +49,9 @@
 % The not yet properly supported `any' inst used for the
 % constraint solver interface is also builtin.
 
-% Higher-order predicate insts `pred(<modes>) is <detism>' are also builtin.
+% Higher-order predicate insts `pred(<modes>) is <detism>'
+% and higher-order functions insts `func(<modes>) = <mode> is det'
+% are also builtin.
 
 %-----------------------------------------------------------------------------%
 
@@ -323,6 +326,62 @@
 :- external(term_to_type/2).
 :- external(type_to_term/2).
 
+
+%-----------------------------------------------------------------------------%
+
+% XXX term_to_type and type_to_term should be moved to term.m.
+
+term_to_type(Term, Val) :-
+	term_to_type_2(Term, type_of(Val), Univ),
+	univ_to_type(Univ, Val).
+
+:- pred term_to_type_2(term::in, type_info::in, univ::out) is semidet.
+
+term_to_type_2(term__variable(_), _Val, _) :-
+	fail.
+term_to_type_2(term__functor(term__integer(Int), _, _), _Type, Value) :-
+	type_to_univ(Int, Value).
+term_to_type_2(term__functor(term__float(Float), _, _), _Type, Value) :-
+	type_to_univ(Float, Value).
+term_to_type_2(term__functor(term__string(String), _, _), _Type, Value) :-
+	type_to_univ(String, Value).
+term_to_type_2(term__functor(term__atom(Functor), ArgTerms, _), Type, Value) :-
+	list__length(ArgTerms, Arity),
+	find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes),
+	term_list_to_type_list(ArgTerms, ArgTypes, Args),
+	Value = construct(Type, FunctorNumber, Args).
+
+:- pred term_list_to_type_list(list(term)::in, list(type_info)::in,
+				list(univ)::out) is semidet.
+
+term_list_to_type_list([], [], []).
+term_list_to_type_list([Term|Terms], [Type|Types], [Value|Values]) :-
+	term_to_type_2(Term, Type, Value),
+	term_list_to_type_list(Terms, Types, Values).
+
+:- pred find_functor(type_info::in, string::in, int::in, int::out,
+		list(type_info)::out) is semidet.
+find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
+	N = num_functors(Type),
+	find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
+        
+:- pred find_functor_2(type_info::in, string::in, int::in, int::in, 
+	int::out, list(type_info)::out) is semidet.
+find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
+	Num >= 0,
+	Num1 = Num - 1,
+	(
+		get_functor(TypeInfo, Num1, Functor, Arity, ArgTypes1)
+	->
+		ArgTypes = ArgTypes1,
+		FunctorNumber = Num1
+	;
+		find_functor_2(TypeInfo, Functor, Arity, Num1,
+			FunctorNumber, ArgTypes)
+	).
+
+%-----------------------------------------------------------------------------%
+
 det_term_to_type(Term, X) :-
 	( term_to_type(Term, X1) ->
 		X = X1
@@ -479,12 +538,16 @@ unused :-
 
 	/* base_type_layout definitions */ 
 
+	/* base_type_layout for `int' */
+
 const struct mercury_data___base_type_layout_int_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_int_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_INT_VALUE))
 };
+
+	/* base_type_layout for `character' */
 
 const struct mercury_data___base_type_layout_character_0_struct {
 	TYPE_LAYOUT_FIELDS
@@ -493,12 +556,16 @@ const struct mercury_data___base_type_layout_character_0_struct {
 		mkbody(TYPELAYOUT_CHARACTER_VALUE))
 };
 
+	/* base_type_layout for `string' */
+
 const struct mercury_data___base_type_layout_string_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_string_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_STRING_VALUE))
 };
+
+	/* base_type_layout for `float' */
 
 const struct mercury_data___base_type_layout_float_0_struct {
 	TYPE_LAYOUT_FIELDS
@@ -507,6 +574,9 @@ const struct mercury_data___base_type_layout_float_0_struct {
 		mkbody(TYPELAYOUT_FLOAT_VALUE))
 };
 
+	/* base_type_layout for `pred' */
+	/* (this is used for all higher-order types) */
+
 const struct mercury_data___base_type_layout_pred_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_pred_0 = {
@@ -514,16 +584,18 @@ const struct mercury_data___base_type_layout_pred_0_struct {
 		mkbody(TYPELAYOUT_PREDICATE_VALUE))
 };
 
-	/* The void type */
+	/* base_type_layout for `void' */
 
 const struct mercury_data___base_type_layout_void_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_void_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_NO_NAME_VALUE))
+		mkbody(TYPELAYOUT_VOID_VALUE))
 };
 
 	/* base_type_functors definitions */
+
+	/* base_type_functors for `int' */
 
 const struct mercury_data___base_type_functors_int_0_struct {
 	Integer f1;
@@ -531,11 +603,15 @@ const struct mercury_data___base_type_functors_int_0_struct {
 	MR_TYPEFUNCTORS_SPECIAL
 };
 
+	/* base_type_functors for `character' */
+
 const struct mercury_data___base_type_functors_character_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_character_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
 };
+
+	/* base_type_functors for `string' */
 
 const struct mercury_data___base_type_functors_string_0_struct {
 	Integer f1;
@@ -543,11 +619,16 @@ const struct mercury_data___base_type_functors_string_0_struct {
 	MR_TYPEFUNCTORS_SPECIAL
 };
 
+	/* base_type_functors for `float' */
+
 const struct mercury_data___base_type_functors_float_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_float_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
 };
+
+	/* base_type_functors for `pred' */
+	/* (this is used for all higher-order types) */
 
 const struct mercury_data___base_type_functors_pred_0_struct {
 	Integer f1;
@@ -555,7 +636,7 @@ const struct mercury_data___base_type_functors_pred_0_struct {
 	MR_TYPEFUNCTORS_SPECIAL
 };
 
-	/* The void type */
+	/* base_type_functors for `void' */
 
 const struct mercury_data___base_type_functors_void_0_struct {
 	Integer f1;
@@ -564,6 +645,10 @@ const struct mercury_data___base_type_functors_void_0_struct {
 };
 
 #endif /* USE_TYPE_LAYOUT */
+
+	/* base_type_infos definitions */
+
+	/* base_type_info for `int' */
 
 Declare_entry(mercury__builtin_unify_int_2_0);
 Declare_entry(mercury__builtin_index_int_2_0);
@@ -600,6 +685,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 #endif
 };
 
+	/* base_type_info for `character' */
 
 Declare_entry(mercury__builtin_unify_character_2_0);
 Declare_entry(mercury__builtin_index_character_2_0);
@@ -639,6 +725,7 @@ mercury_data___base_type_info_character_0_struct {
 #endif
 };
 
+	/* base_type_info for `string' */
 
 Declare_entry(mercury__builtin_unify_string_2_0);
 Declare_entry(mercury__builtin_index_string_2_0);
@@ -675,6 +762,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 #endif
 };
 
+	/* base_type_info for `float' */
 
 Declare_entry(mercury__builtin_unify_float_2_0);
 Declare_entry(mercury__builtin_index_float_2_0);
@@ -711,6 +799,8 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 #endif
 };
 
+	/* base_type_info for `pred' */
+	/* (this is used for all higher-order types) */
 
 Declare_entry(mercury__builtin_unify_pred_2_0);
 Declare_entry(mercury__builtin_index_pred_2_0);
@@ -747,7 +837,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 #endif
 };
 
-	/* The void type */
+	/* base_type_info for `void' */
 
 Declare_entry(mercury__unused_0_0);
 MR_STATIC_CODE_CONST struct mercury_data___base_type_info_void_0_struct {
@@ -892,7 +982,91 @@ void sys_init_copy_module(void) {
 %-----------------------------------------------------------------------------%
 
 % The type c_pointer can be used by predicates which use the C interface.
-:- type c_pointer == int.
+
+:- pragma(c_code, "
+
+/*
+ * c_pointer has a special value reserved for its layout, since it needs to
+ * be handled as a special case.
+ */
+
+#ifdef  USE_TYPE_LAYOUT
+
+const struct mercury_data_mercury_builtin__base_type_layout_c_pointer_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_mercury_builtin__base_type_layout_c_pointer_0 = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_C_POINTER_VALUE))
+};
+
+const struct
+mercury_data_mercury_builtin__base_type_functors_c_pointer_0_struct {
+	Integer f1;
+} mercury_data_mercury_builtin__base_type_functors_c_pointer_0 = {
+	MR_TYPEFUNCTORS_SPECIAL
+};
+
+#endif
+
+Define_extern_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
+Define_extern_entry(mercury____Index___mercury_builtin__c_pointer_0_0);
+Define_extern_entry(mercury____Compare___mercury_builtin__c_pointer_0_0);
+Declare_label(mercury____Compare___mercury_builtin__c_pointer_0_0_i1);
+Define_extern_entry(mercury____Term_To_Type___mercury_builtin__c_pointer_0_0);
+Define_extern_entry(mercury____Type_To_Term___mercury_builtin__c_pointer_0_0);
+
+BEGIN_MODULE(unify_c_pointer_module)
+	init_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
+	init_entry(mercury____Index___mercury_builtin__c_pointer_0_0);
+	init_entry(mercury____Compare___mercury_builtin__c_pointer_0_0);
+	init_label(mercury____Compare___mercury_builtin__c_pointer_0_0_i1);
+	init_entry(mercury____Term_To_Type___mercury_builtin__c_pointer_0_0);
+	init_entry(mercury____Type_To_Term___mercury_builtin__c_pointer_0_0);
+
+BEGIN_CODE
+Define_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
+	/*
+	** For c_pointer, we assume that equality and comparison
+	** can be based on object identity (i.e. using address comparisons).
+	** This is correct for types like io__stream, and necessary since
+	** the io__state contains a map(io__stream, filename).
+	** However, it might not be correct in general...
+	*/
+	unify_output = (unify_input1 == unify_input2);
+	proceed();
+
+Define_entry(mercury____Index___mercury_builtin__c_pointer_0_0);
+	index_output = -1;
+	proceed();
+
+Define_entry(mercury____Compare___mercury_builtin__c_pointer_0_0);
+	compare_output = (compare_input1 == compare_input2 ? COMPARE_EQUAL :
+			  compare_input1 < compare_input2 ? COMPARE_LESS :
+			  COMPARE_GREATER);
+	proceed();
+
+Define_entry(mercury____Term_To_Type___mercury_builtin__c_pointer_0_0);
+	fatal_error(""cannot convert term to type `c_pointer'"");
+
+Define_entry(mercury____Type_To_Term___mercury_builtin__c_pointer_0_0);
+	fatal_error(""cannot convert type `c_pointer' to term"");
+
+END_MODULE
+
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_unify_c_pointer_module
+*/
+extern ModuleFunc unify_c_pointer_module;
+void sys_init_unify_c_pointer_module(void);
+	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
+void sys_init_unify_c_pointer_module(void) {
+	unify_c_pointer_module();
+}
+
+").
+
+
 
 :- end_module mercury_builtin.
 

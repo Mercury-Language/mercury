@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995 University of Melbourne.
+% Copyright (C) 1994-1997 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,22 +27,59 @@
 
 %-----------------------------------------------------------------------------%
 
-% The universal type.
-% Note that the current NU-Prolog implementation of univ_to_type
-% is buggy in that it always succeeds, even if the types didn't
+% The universal type `univ'.
+% An object of type `univ' can hold the type and value of an object of any
+% other type.
+%
+% Note that the current NU-Prolog/SICStus Prolog implementation of
+% univ_to_type is buggy in that it always succeeds, even if the types didn't
 % match, so until this gets implemented correctly, don't use
-% univ_to_type unless you are sure that the types will definely match.
+% univ_to_type unless you are sure that the types will definitely match,
+% or you don't care about debugging with Prolog.
 
 :- type univ.
 
+	% type_to_univ(Object, Univ):
+	% 	true iff the type stored in `Univ' is the same as the type
+	%	of `Object', and the value stored in `Univ' is equal to the
+	%	value of `Object'.
+	%
+	% Operational, the forwards mode converts an object to type `univ',
+	% while the reverse mode converts the value stored in `Univ'
+	% to the type of `Object', but fails if the type stored in `Univ'
+	% does not match the type of `Object'.
+	% 
 :- pred type_to_univ(T, univ).
 :- mode type_to_univ(di, uo) is det.
 :- mode type_to_univ(in, out) is det.
 :- mode type_to_univ(out, in) is semidet.
 
+	% univ_to_type(Univ, Object) :- type_to_univ(Object, Univ).
+	%
 :- pred univ_to_type(univ, T).
 :- mode univ_to_type(in, out) is semidet.
 :- mode univ_to_type(out, in) is det.
+:- mode univ_to_type(uo, di) is det.
+
+	% The functions univ/1 and univ_value/1 provide equivalent
+	% functionality to type_to_univ/2 and univ_to_type/2.
+
+	% univ(Object) = Univ :- type_to_univ(Object, Univ).
+	%
+:- func univ(T) = univ.
+:- mode univ(in) = out is det.
+:- mode univ(di) = uo is det.
+:- mode univ(out) = in is semidet.
+
+	% univ_value(Univ) = Object :- univ_to_type(Univ, Object).
+	%
+:- func univ_value(univ) = T.
+:- mode univ_value(in) = out is semidet.
+
+	% univ_type(Univ):
+	%	returns the type_info for the type stored in `Univ'.
+	%
+:- func univ_type(univ) = type_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -91,6 +128,7 @@
 	% input semideterministically. If calling the closure with the input
 	% X succeeds, Y is bound to `yes(Z)' where Z is the output of the
 	% call, or to `no' if the call fails.
+	%
 :- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
 :- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
 
@@ -113,40 +151,137 @@
 
 %-----------------------------------------------------------------------------%
 
-       % The `type_info' type - allows access to type information.
-       %
-       % A type_info represents the type of a variable.
-       % 
-       % It is possible for the type of a variable to be an unbound type
-       % variable, this is represented as the type 'void'/0. 'void' is
-       % considered a special (builtin) type - it is not a discriminated
-       % union, so get_functor/5 and the function construct/3 will
-       % fail if used upon this type.
+	% The `type_info' and `type_ctor_info' types: these
+	% provide access to type information.
+	% A type_info represents a type, e.g. `list(int)'.
+	% A type_ctor_info represents a type constructor, e.g. `list/1'.
 
+	% XXX The facilities here don't yet work for higher-order types.
+	%     If you try, there is a good chance that you will get a core
+	%     dump or worse.
+ 
 :- type type_info.
+:- type type_ctor_info.
 
-	% type_info(Data) returns the type_info of the type of Data.
+	% (Note: it is not possible for the type of a variable to be an
+	% unbound type variable; if there are no constraints on a type
+	% variable, then the typechecker will use the type `void'.
+	% `void' is a special (builtin) type that has no constructors.
+	% There is no way of creating an object of type `void'.
+	% `void' is not considered to be a discriminated union, so
+	% get_functor/5 and construct/3 will fail if used upon a value
+	% of this type.)
 
+	% type_info(Data) returns a representation of the type of Data.
+	%
 :- func type_of(T) = type_info.
 :- mode type_of(unused) = out is det.
 
+	% type_name(Type) returns the name of the specified type
+	% (e.g. type_name(type_of([2,3])) = "list(int)").
+	% Any equivalence types will be fully expanded.
+	% XXX we should think about what happens with module qualifiers...
+	%
+:- func type_name(type_info) = string.
+
+	% type_ctor_and_args(Type, TypeCtor, TypeArgs):
+	%	True iff `TypeCtor' is a representation of the top-level
+	%	type constructor for `Type', and `TypeArgs' is a list
+	%	of the corresponding type arguments to `TypeCtor',
+	%	and `TypeCtor' is not an equivalence type.
+	%
+	% For example, type_ctor_and_args(type_of([2,3]), TypeCtor,
+	% TypeArgs) will bind `TypeCtor' to a representation of the
+	% type constructor list/1, and will bind `TypeArgs' to the list
+	% `[Int]', where `Int' is a representation of the type `int'.
+	%
+	% Note that the requirement that `TypeCtor' not be an
+	% equivalence type is fulfilled by fully expanding any
+	% equivalence types.  For example, if you have a declaration
+	% `:- type foo == bar.', then type_ctor_and_args/3 will always
+	% return a representation of type constructor `bar/0', not `foo/0'. 
+	% (If you don't want them expanded, you can use the reverse mode
+	% of make_type/2 instead.)
+	%
+:- pred type_ctor_and_args(type_info, type_ctor_info, list(type_info)).
+:- mode type_ctor_and_args(in, out, out) is det.
+
+	% type_ctor(Type) = TypeCtor :-
+	%	type_ctor_and_args(Type, TypeCtor, _).
+	%
+:- func type_ctor(type_info) = type_ctor_info.
+
+	% type_args(Type) = TypeArgs :-
+	%	type_ctor_and_args(Type, _, TypeArgs).
+	%
+:- func type_args(type_info) = list(type_info).
+
+	% type_ctor_name(TypeCtor) returns the name of specified
+	% type constructor.
+	% (e.g. type_ctor_name(type_ctor(type_of([2,3]))) = "list").
+	% XXX we should think about what happens with module qualifiers...
+	%
+:- func type_ctor_name(type_ctor_info) = string.
+
+	% type_ctor_arity(TypeCtor) returns the arity of specified
+	% type constructor.
+	% (e.g. type_ctor_arity(type_ctor(type_of([2,3]))) = 1).
+	%
+:- func type_ctor_arity(type_ctor_info) = int.
+
+	% type_ctor_name_and_arity(TypeCtor, Name, Arity) :-
+	%	Name = type_ctor_name(TypeCtor),
+	%	Arity = type_ctor_arity(TypeCtor).
+	% XXX we should think about what happens with module qualifiers...
+	%
+:- pred type_ctor_name_and_arity(type_ctor_info, string, int).
+:- mode type_ctor_name_and_arity(in, out, out) is det.
+
+	% make_type(TypeCtor, TypeArgs) = Type:
+	%	True iff `Type' is a type constructed by applying
+	%	the type constructor `TypeCtor' to the type arguments
+	%	`TypeArgs'.
+	%
+	% Operationally, the forwards mode returns the type formed by
+	% applying the specified type constructor to the specified
+	% argument types, or fails if the length of TypeArgs is not the
+	% same as the arity of TypeCtor.  The reverse mode returns a
+	% type constructor and its argument types, given a type_info;
+	% the type constructor returned may be an equivalence type
+	% (and hence this reverse mode of make_type/2 may be more useful
+	% for some purposes than the type_ctor/1 function).
+	% 
+:- func make_type(type_ctor_info, list(type_info)) = type_info.
+:- mode make_type(in, in) = out is semidet.
+:- mode make_type(out, out) = in is cc_multi.
+
+	% det_make_type(TypeCtor, TypeArgs):
+	%
+	% Returns the type formed by applying the specified type
+	% constructor to the specified argument types.  Aborts if the
+	% length of `TypeArgs' is not the same as the arity of `TypeCtor'.
+	%
+:- func det_make_type(type_ctor_info, list(type_info)) = type_info.
+:- mode det_make_type(in, in) = out is det.
+
+%-----------------------------------------------------------------------------%
+
 	% num_functors(TypeInfo) 
 	% 
-	% Returns the number of different functors for the type
-	% specified by TypeInfo, or -1 if the type is not a
-	% discriminated union type.
-
+	% Returns the number of different functors for the top-level
+	% type constructor of the type specified by TypeInfo, or -1
+	% if the type is not a discriminated union type.
+	%
 :- func num_functors(type_info) = int.
-:- mode num_functors(in) = out is det.
 
-	% get_functor(Var, N, Functor, Arity, ArgTypes)
+	% get_functor(Type, N, Functor, Arity, ArgTypes)
 	%
 	% Binds Functor and Arity to the name and arity of the Nth
 	% functor for the specified type (starting at zero), and binds
 	% ArgTypes to the type_infos for the types of the arguments of
 	% that functor.  Fails if the type is not a discriminated union
 	% type, or if N is out of range.
-
+	%
 :- pred get_functor(type_info::in, int::in, string::out, int::out,
 		list(type_info)::out) is semidet.
 
@@ -159,9 +294,9 @@
 	% number of arguments doesn't match the arity of the Nth functor
 	% of the type, or if the types of the arguments doesn't match
 	% the expected argument types for that functor.
-
-:- func construct(type_info::in, int::in, list(univ)::in) = (univ::out)
-		is semidet.
+	%
+:- func construct(type_info, int, list(univ)) = univ.
+:- mode construct(in, in, in) = out is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -190,7 +325,7 @@
 	% Given a data item (Data), binds Functor to a string
 	% representation of the functor and Arity to the arity of this
 	% data item.
-
+	%
 :- pred functor(T::in, string::out, int::out) is det.
 
 	% argument(Data, ArgumentIndex, Argument)
@@ -201,7 +336,7 @@
 	% the argument index is out of range -- that is, greater than or
 	% equal to the arity of the functor or lower than 0 -- argument/3
 	% fails.  The argument has the type univ. 
-
+	%
 :- pred argument(T::in, int::in, univ::out) is semidet.
 
 	% det_argument(ArgumentIndex, Data, Argument)
@@ -212,7 +347,7 @@
 	% the argument index is out of range -- that is, greater than or
 	% equal to the arity of the functor or lower than 0 --
 	% det_argument/3 aborts. 
-
+	%
 :- pred det_argument(T::in, int::in, univ::out) is det.
 
 	% arg(ArgumentIndex, Data, Argument) 
@@ -227,7 +362,7 @@
 	% NOTE: `arg' is provided for Prolog compatability - the order
 	% of parameters, and first argument number in `arg' are
 	% different from `argument'.
-
+	%
 :- pred arg(int::in, T::in, univ::out) is semidet.
 
 	% det_arg(ArgumentIndex, Data, Argument) 
@@ -237,7 +372,7 @@
 	% Argument to that argument of the functor of the data item. If
 	% the argument index is out of range -- that is, higher than the
 	% arity of the functor or lower than 1 -- det_arg/3 aborts. 
-
+	%
 :- pred det_arg(int::in, T::in, univ::out) is det.
 
 	% expand(Data, Functor, Arity, Arguments) 
@@ -246,16 +381,17 @@
 	% representation of the functor, Arity to the arity of this data
 	% item, and Arguments to a list of arguments of the functor.
 	% The arguments in the list are each of type univ.
-
+	%
 :- pred expand(T::in, string::out, int::out, list(univ)::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module require, set, int.
+:- import_module require, set, int, string.
 
-:- type type_info == c_pointer.
+%-----------------------------------------------------------------------------%
 
 /****
 	Is this really useful?
@@ -275,6 +411,8 @@ maybe_pred(Pred, X, Y) :-
 	;
 		Y = no
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred builtin_solutions(pred(T), list(T)).
 :- mode builtin_solutions(pred(out) is multi, out) is det.
@@ -321,7 +459,7 @@ BEGIN_CODE
 ** the address of the deep copy routine).
 **
 ** The type_info structure will be in r1 and the closure will be in r2
-** with both caling conventions. The output should go either in r3
+** with both calling conventions. The output should go either in r3
 ** (for the normal parameter convention) or r1 (for the compact parameter
 ** convention).
 */
@@ -544,21 +682,28 @@ unsorted_solutions(Pred, List) :-
 	builtin_solutions(Pred, UnsortedList),
 	cc_multi_equal(UnsortedList, List).
 
-univ_to_type(Univ, X) :- type_to_univ(X, Univ).
-
 %-----------------------------------------------------------------------------%
 
 % semidet_succeed and semidet_fail, implemented using the C interface
 % to make sure that the compiler doesn't issue any determinism warnings
 % for them.
 
-:- pragma(c_code, semidet_succeed, "SUCCESS_INDICATOR = TRUE;").
-:- pragma(c_code, semidet_fail,    "SUCCESS_INDICATOR = FALSE;").
-:- pragma(c_code, cc_multi_equal(X::in, Y::out), "Y = X;").
+:- pragma c_code(semidet_succeed, will_not_call_mercury,
+		"SUCCESS_INDICATOR = TRUE;").
+:- pragma c_code(semidet_fail, will_not_call_mercury,
+		"SUCCESS_INDICATOR = FALSE;").
+:- pragma c_code(cc_multi_equal(X::in, Y::out), will_not_call_mercury,
+		"Y = X;").
+%-----------------------------------------------------------------------------%
 
-/*---------------------------------------------------------------------------*/
+univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
-:- pragma(c_header_code, "
+univ(X) = Univ :- type_to_univ(X, Univ).
+
+univ_value(Univ) = X :- type_to_univ(X, Univ).
+
+
+:- pragma c_header_code("
 
 #include ""type_info.h""
 
@@ -566,7 +711,7 @@ int	mercury_compare_type_info(Word type_info_1, Word type_info_2);
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 /*
 ** Compare two type_info structures, using an arbitrary ordering
@@ -712,7 +857,7 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 
 ").
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
 /*
 **	`univ' is represented as a two word structure.
 **	One word contains the address of a type_info for the type.
@@ -735,12 +880,12 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 	% Allocate heap space, set the first field to contain the address
 	% of the type_info for this type, and then store the input argument
 	% in the second field.
-:- pragma(c_code, type_to_univ(Type::di, Univ::uo), "
+:- pragma c_code(type_to_univ(Type::di, Univ::uo), will_not_call_mercury, "
 	incr_hp(Univ, 2);
 	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo_for_T;
 	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Type;
 ").
-:- pragma(c_code, type_to_univ(Type::in, Univ::out), "
+:- pragma c_code(type_to_univ(Type::in, Univ::out), will_not_call_mercury, "
 	incr_hp(Univ, 2);
 	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo_for_T;
 	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Type;
@@ -750,7 +895,7 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 	% We check that type_infos compare equal.
 	% The variable `TypeInfo_for_T' used in the C code
 	% is the compiler-introduced type-info variable.
-:- pragma(c_code, type_to_univ(Type::out, Univ::in), "{
+:- pragma c_code(type_to_univ(Type::out, Univ::in), will_not_call_mercury, "{
 	Word univ_type_info = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
 	if (mercury_compare_type_info(univ_type_info, TypeInfo_for_T)
 		== COMPARE_EQUAL)
@@ -762,7 +907,11 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 	}
 }").
 
-:- pragma(c_code, "
+:- pragma c_code(univ_type(Univ::in) = (TypeInfo::out), will_not_call_mercury, "
+	TypeInfo = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+").
+
+:- pragma c_code("
 
 /*
  * Univ has a special value reserved for its layout, since it needs to
@@ -785,6 +934,19 @@ const struct mercury_data_std_util__base_type_functors_univ_0_struct {
 	MR_TYPEFUNCTORS_UNIV
 };
 
+const struct mercury_data_std_util__base_type_layout_type_info_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_std_util__base_type_layout_type_info_0 = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_TYPEINFO_VALUE))
+};
+
+const struct mercury_data_std_util__base_type_functors_type_info_0_struct {
+	Integer f1;
+} mercury_data_std_util__base_type_functors_type_info_0 = {
+	MR_TYPEFUNCTORS_SPECIAL
+};
+
 #endif
 
 Define_extern_entry(mercury____Unify___std_util__univ_0_0);
@@ -794,6 +956,13 @@ Declare_label(mercury____Compare___std_util__univ_0_0_i1);
 Define_extern_entry(mercury____Term_To_Type___std_util__univ_0_0);
 Define_extern_entry(mercury____Type_To_Term___std_util__univ_0_0);
 
+Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
+Define_extern_entry(mercury____Index___std_util__type_info_0_0);
+Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
+Declare_label(mercury____Compare___std_util__type_info_0_0_i1);
+Define_extern_entry(mercury____Term_To_Type___std_util__type_info_0_0);
+Define_extern_entry(mercury____Type_To_Term___std_util__type_info_0_0);
+
 BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Unify___std_util__univ_0_0);
 	init_entry(mercury____Index___std_util__univ_0_0);
@@ -801,6 +970,13 @@ BEGIN_MODULE(unify_univ_module)
 	init_label(mercury____Compare___std_util__univ_0_0_i1);
 	init_entry(mercury____Term_To_Type___std_util__univ_0_0);
 	init_entry(mercury____Type_To_Term___std_util__univ_0_0);
+
+	init_entry(mercury____Unify___std_util__type_info_0_0);
+	init_entry(mercury____Index___std_util__type_info_0_0);
+	init_entry(mercury____Compare___std_util__type_info_0_0);
+	init_label(mercury____Compare___std_util__type_info_0_0_i1);
+	init_entry(mercury____Term_To_Type___std_util__type_info_0_0);
+	init_entry(mercury____Type_To_Term___std_util__type_info_0_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___std_util__univ_0_0);
 {
@@ -841,7 +1017,7 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 }
 
 Define_entry(mercury____Index___std_util__univ_0_0);
-	r2 = -1;
+	index_output = -1;
 	proceed();
 
 Define_entry(mercury____Compare___std_util__univ_0_0);
@@ -909,6 +1085,41 @@ Define_entry(mercury____Type_To_Term___std_util__univ_0_0);
 	/* don't know what to put here. */
 	fatal_error(""cannot convert type univ to term"");
 
+
+Define_entry(mercury____Unify___std_util__type_info_0_0);
+	/*
+	** Unification for type_info.
+	**
+	** The two inputs are in the registers named by unify_input[12].
+	** The success/failure indication should go in unify_output.
+	*/
+	unify_output = (mercury_compare_type_info(unify_input1,
+				unify_input2) == COMPARE_EQUAL);
+	proceed();
+
+Define_entry(mercury____Index___std_util__type_info_0_0);
+	index_output = -1;
+	proceed();
+
+Define_entry(mercury____Compare___std_util__type_info_0_0);
+	/*
+	** Comparison for type_info:
+	**
+	** The two inputs are in the registers named by compare_input[12].
+	** The result should go in compare_output.
+	*/
+	compare_output = mercury_compare_type_info(
+				compare_input1, compare_input2);
+	proceed();
+
+Define_entry(mercury____Term_To_Type___std_util__type_info_0_0);
+	/* don't know what to put here. */
+	fatal_error(""cannot convert term to type type_info"");
+
+Define_entry(mercury____Type_To_Term___std_util__type_info_0_0);
+	/* don't know what to put here. */
+	fatal_error(""cannot convert type type_info to term"");
+
 END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
@@ -930,7 +1141,7 @@ void sys_init_unify_univ_module(void) {
 
 	% Prototypes and type definitions.
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
 
 typedef struct ML_Construct_Info_Struct {
 	int vector_type;
@@ -949,12 +1160,19 @@ bool 	ML_get_functors_check_range(int functor_number, Word type_info,
 				ML_Construct_Info *info);
 void	ML_copy_arguments_from_list_to_vector(int arity, Word arg_list, 
 				Word term_vector);
-int	ML_typecheck_arguments(Word type_info, int arity, 
+bool	ML_typecheck_arguments(Word type_info, int arity, 
 				Word arg_list, Word* arg_vector);
 Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
+Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 
 ").
 
+
+	% A type_ctor_info is represented as a pointer to a base_type_info.
+	% XXX what about higher-order types?
+	%     For them the type_ctor_info should include the arity, but
+	%     the arity is stored in the type_info, not the base_type_info.
+:- type type_ctor_info == c_pointer.  
 
 :- pragma c_code(type_of(Value::unused) = (TypeInfo::out),
 	will_not_call_mercury, " 
@@ -964,18 +1182,157 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 	** gives a warning if you don't mention it.
 	*/ 
 
+	TypeInfo = TypeInfo_for_T;
+
 	/*
-	** We collapse equivalences for efficiency. Any use of
-	** a type_info will collapse equivalences anyway, so we
-	** try to avoid doing it multiple times.
+	** We used to collapse equivalences for efficiency here,
+	** but that's not always desirable, due to the reverse
+	** mode of make_type/2, and efficiency of type_infos
+	** probably isn't very important anyway.
 	*/
+#if 0
 	save_transient_registers();
 	TypeInfo = ML_collapse_equivalences(TypeInfo_for_T);
 	restore_transient_registers();
+#endif
 
 }
 ").
 
+type_name(Type) = TypeName :-
+	type_ctor_and_args(Type, TypeCtor, ArgTypes),
+	type_ctor_name_and_arity(TypeCtor, Name, Arity),
+	( Arity = 0 ->
+		TypeName = Name
+	;
+		type_arg_names(ArgTypes, ArgTypeNames),
+		string__append_list([Name, "(" | ArgTypeNames], TypeName)
+	).
+
+:- pred type_arg_names(list(type_info), list(string)).
+:- mode type_arg_names(in, out) is det.
+
+type_arg_names([], []).
+type_arg_names([Type|Types], ArgNames) :-
+	Name = type_name(Type),
+	( Types = [] ->
+		ArgNames = [Name, ")"]
+	;
+		type_arg_names(Types, Names),
+		ArgNames = [Name, ", " | Names]
+	).
+
+type_args(Type) = ArgTypes :-
+	type_ctor_and_args(Type, _TypeCtor, ArgTypes).
+
+type_ctor_name(TypeCtor) = Name :-
+	type_ctor_name_and_arity(TypeCtor, Name, _Arity).
+
+type_ctor_arity(TypeCtor) = Arity :-
+	type_ctor_name_and_arity(TypeCtor, _Name, Arity).
+
+det_make_type(TypeCtor, ArgTypes) = Type :-
+	( make_type(TypeCtor, ArgTypes) = NewType ->
+		Type = NewType
+	;
+		error("det_make_type/2: make_type/2 failed (wrong arity)")
+	).
+
+:- pragma c_code(type_ctor(TypeInfo::in) = (TypeCtor::out), 
+	will_not_call_mercury, "
+{
+	Word *type_info;
+
+	save_transient_registers();
+	type_info = (Word *) ML_collapse_equivalences(TypeInfo);
+	restore_transient_registers();
+
+	TypeCtor = (Word) MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+}
+").
+
+:- pragma c_code(type_ctor_and_args(TypeInfo::in,
+		TypeCtor::out, TypeArgs::out), will_not_call_mercury, "
+{
+	Word *type_info;
+	Word *base_type_info;
+	Integer arity;
+
+	save_transient_registers();
+	type_info = (Word *) ML_collapse_equivalences(TypeInfo);
+	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+	TypeCtor = (Word) base_type_info;
+	arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+	TypeArgs = ML_copy_argument_typeinfos(arity, 0,
+			type_info + OFFSET_FOR_ARG_TYPE_INFOS);
+	restore_transient_registers();
+}
+").
+
+	/*
+	** This is the forwards mode of make_type/2:
+	** given a type constructor and a list of argument
+	** types, check that the length of the argument
+	** types matches the arity of the type constructor,
+	** and if so, use the type constructor to construct
+	** a new type with the specified arguments.
+	*/
+
+:- pragma c_code(make_type(TypeCtor::in, ArgTypes::in) = (Type::out),
+		will_not_call_mercury, "
+{
+	int list_length, arity;
+	Word arg_type;
+	Word *base_type_info;
+	
+	base_type_info = (Word *) TypeCtor;
+
+	arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+
+	arg_type = ArgTypes; 
+	for (list_length = 0; !list_is_empty(arg_type); list_length++) {
+		arg_type = list_tail(arg_type);
+	}
+
+	if (list_length != arity) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		save_transient_registers();
+		Type = ML_make_type(arity, base_type_info, ArgTypes);
+		restore_transient_registers();
+		SUCCESS_INDICATOR = TRUE;
+	}
+}
+").
+
+	/*
+	** This is the reverse mode of make_type: given a type,
+	** split it up into a type constructor and a list of
+	** arguments.
+	*/
+
+:- pragma c_code(make_type(TypeCtor::out, ArgTypes::out) = (TypeInfo::in),
+		will_not_call_mercury, "
+{
+	Word *type_info = (Word *) TypeInfo;
+	Word *base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+	Integer arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+	TypeCtor = (Word) base_type_info;
+	save_transient_registers();
+	ArgTypes = ML_copy_argument_typeinfos(arity, 0,
+			type_info + OFFSET_FOR_ARG_TYPE_INFOS);
+	restore_transient_registers();
+}
+").
+
+:- pragma c_code(type_ctor_name_and_arity(TypeCtor::in,
+	TypeCtorName::out, TypeCtorArity::out), will_not_call_mercury, "
+{
+	Word *base_type_info = (Word *) TypeCtor;
+	TypeCtorName = MR_BASE_TYPEINFO_GET_TYPE_NAME(base_type_info);
+	TypeCtorArity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+}
+").
 
 :- pragma c_code(num_functors(TypeInfo::in) = (Functors::out), 
 	will_not_call_mercury, "
@@ -985,7 +1342,6 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 	restore_transient_registers(); 
 }
 ").
-
 
 :- pragma c_code(get_functor(TypeInfo::in, FunctorNumber::in,
 		FunctorName::out, Arity::out, TypeInfoList::out), 
@@ -1140,7 +1496,7 @@ Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
 }
 "). 
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 	/* 
 	** Prototypes
@@ -1170,7 +1526,7 @@ get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 
 	info->vector_type = MR_TYPEFUNCTORS_INDICATOR(base_type_functors);
 
-	switch	(info->vector_type) {
+	switch (info->vector_type) {
 
 	case MR_TYPEFUNCTORS_ENUM:
 		info->functors_vector = MR_TYPEFUNCTORS_ENUM_FUNCTORS(
@@ -1212,13 +1568,13 @@ get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 		break; 
 
 	case MR_TYPEFUNCTORS_EQUIV: {
-			Word *equiv_type;
-			equiv_type = (Word *) MR_TYPEFUNCTORS_EQUIV_TYPE(
-					base_type_functors);
-			return get_functor_info((Word)
-					create_type_info((Word *) type_info, 
-							equiv_type),
-					functor_number, info);
+		Word *equiv_type;
+		equiv_type = (Word *) MR_TYPEFUNCTORS_EQUIV_TYPE(
+				base_type_functors);
+		return get_functor_info((Word)
+				create_type_info((Word *) type_info, 
+						equiv_type),
+				functor_number, info);
 	}
 	case MR_TYPEFUNCTORS_SPECIAL:
 		return FALSE;
@@ -1236,7 +1592,8 @@ get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 	**
 	** Given a list of univs (`arg_list'), and an vector of
 	** type_infos (`arg_vector'), checks that they are all of the
-	** same type. `arg_vector' may contain type variables, these
+	** same type; if so, returns TRUE, otherwise returns FALSE;
+	** `arg_vector' may contain type variables, these
 	** will be filled in by the type arguments of `type_info'.
 	**
 	** If the type arguments of `type_info' are still type variables 
@@ -1249,7 +1606,7 @@ get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 	** calls to this function.
 	*/
 
-int
+bool
 ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
 		Word* arg_vector) 
 {
@@ -1299,6 +1656,54 @@ ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 			field(mktag(0), list_head(arg_list), 
 				UNIV_OFFSET_FOR_DATA);
 		arg_list = list_tail(arg_list);
+	}
+}
+
+
+	/*
+	** ML_make_type(arity, base_type_info, arg_types_list):
+	**
+	** Construct and return a type_info for a type using the
+	** specified base_type_info for the type constructor,
+	** and using the arguments specified in arg_types_list
+	** for the type arguments (if any).
+	**
+	** Assumes that the arity of the type constructor represented
+	** by base_type_info and the length of the arg_types_list 
+	** are both equal to `arity'.
+	**
+	** You need to save and restore transient registers around
+	** calls to this function.
+	*/
+
+Word
+ML_make_type(int arity, Word *base_type_info, Word arg_types_list) 
+{
+	int i;
+
+	/*
+	** XXX: do we need to treat higher-order predicates as
+	**      a special case here?
+	*/
+
+
+	if (arity == 0) {
+		return (Word) base_type_info;
+	} else {
+		Word *type_info;
+
+		restore_transient_registers();
+		incr_hp(LVALUE_CAST(Word, type_info), arity + 1);
+		save_transient_registers();
+		
+		field(mktag(0), type_info, 0) = (Word) base_type_info;
+		for (i = 0; i < arity; i++) {
+			field(mktag(0), type_info, i + 1) = 
+				list_head(arg_types_list);
+			arg_types_list = list_tail(arg_types_list);
+		}
+
+		return (Word) type_info;
 	}
 }
 
@@ -1472,7 +1877,7 @@ ML_get_num_functors(Word type_info)
 %-----------------------------------------------------------------------------%
 
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
 
 	/* 
 	 * Code for functor, arg and expand
@@ -1518,7 +1923,7 @@ Word * create_type_info(Word *term_type_info,
 
 ").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 static void mercury_expand_const(Word data_value, Word entry_value,
 	ML_Expand_Info *info);
@@ -1833,7 +2238,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-	break;
+		break;
 
 	case TYPELAYOUT_INT_VALUE:
 		if (info->need_functor) {
@@ -1850,7 +2255,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-	break;
+		break;
 
 	case TYPELAYOUT_CHARACTER_VALUE:
 		/* XXX should escape characters correctly */
@@ -1866,7 +2271,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-	break;
+		break;
 
 	case TYPELAYOUT_UNIV_VALUE:
 
@@ -1886,7 +2291,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
 		info->arity = 0;
-	break;
+		break;
 
 	default:
 		fatal_error(""Invalid tag value in expand"");
@@ -2007,7 +2412,8 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	% Code for functor, arg and expand.
 
-:- pragma(c_code, functor(Type::in, Functor::out, Arity::out), " 
+:- pragma c_code(functor(Type::in, Functor::out, Arity::out),
+		will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
 
@@ -2027,7 +2433,8 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 }").
 
-:- pragma(c_code, argument(Type::in, ArgumentIndex::in, Argument::out), " 
+:- pragma c_code(argument(Type::in, ArgumentIndex::in, Argument::out),
+		will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
 	Word arg_pseudo_type_info;
@@ -2088,7 +2495,8 @@ det_argument(Type, ArgumentIndex, Argument) :-
 		error("det_argument : argument out of range")
 	).
 
-:- pragma(c_code, expand(Type::in, Functor::out, Arity::out, Arguments::out), " 
+:- pragma c_code(expand(Type::in, Functor::out, Arity::out, Arguments::out),
+		will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
 	Word arg_pseudo_type_info;
