@@ -177,7 +177,8 @@ determinism_to_code_model(multidet,  model_non).
 determinism_to_code_model(erroneous, model_det).
 determinism_to_code_model(failure,   model_semi).
 
-special_pred_list([unify, index, compare, read, write]).
+% special_pred_list([unify, index, compare, read, write]).
+special_pred_list([unify, index, compare]).
 
 special_pred_name_arity(unify, "unify", 2).
 special_pred_name_arity(index, "index", 2).
