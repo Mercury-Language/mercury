@@ -134,6 +134,8 @@ lexer__get_context(Context) -->
 :- pred lexer__get_token_1(token, io__state, io__state).
 :- mode lexer__get_token_1(out, di, uo) is det.
 
+	% We use a big switch on Char here for efficiency - obviously not
+	% for consiseness.
 lexer__get_token_1(Token) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
@@ -141,34 +143,136 @@ lexer__get_token_1(Token) -->
 	; { Result = eof }, !,
 		{ Token = eof }
 	; { Result = ok(Char) },
-		( { Char = ' ' ; Char = '\t' ; Char = '\n' } ->
-			lexer__get_token_2(Token)
-		; { char__is_upper(Char) ; Char = '_' } ->
-			lexer__get_variable([Char], Token)
-		; { char__is_lower(Char) } ->
-			lexer__get_name([Char], Token)
-		; { Char = '0' } ->
-			lexer__get_zero(Token)
-		; { char__is_digit(Char) } ->
-			lexer__get_number([Char], Token)
-		; { lexer__special_token(Char, SpecialToken) } ->
-			{ SpecialToken = open ->
-				Token = open_ct
-			;
-				Token = SpecialToken
-			}
-		; { Char = ('.') } ->
-			lexer__get_dot(Token)
-		; { Char = ('%') } ->
-			lexer__skip_to_eol(Token)
-		; { Char = '"' ; Char = '''' } ->
-			lexer__get_quoted_name(Char, [], Token)
-		; { Char = ('/') } ->
-			lexer__get_slash(Token)
-		; { lexer__graphic_token_char(Char) } ->
-			lexer__get_graphic([Char], Token)
-		;
-			{ Token = junk(Char) }
+		( { Char = '\001', Token = junk(Char) }
+		; { Char = '\002', Token = junk(Char) }
+		; { Char = '\003', Token = junk(Char) }
+		; { Char = '\004', Token = junk(Char) }
+		; { Char = '\005', Token = junk(Char) }
+		; { Char = '\006', Token = junk(Char) }
+		; { Char = '\007', Token = junk(Char) }
+		; { Char = '\010', Token = junk(Char) }
+% \t		; { Char = '\011', Token = junk(Char) }
+		; { Char = '\t' }, lexer__get_token_2(Token)
+% \n		; { Char = '\012', Token = junk(Char) }
+		; { Char = '\n' }, lexer__get_token_2(Token)
+		; { Char = '\013', Token = junk(Char) }
+% \f		; { Char = '\014', Token = junk(Char) }
+		; { Char = '\f' }, lexer__get_token_2(Token)
+		; { Char = '\015', Token = junk(Char) }
+		; { Char = '\016', Token = junk(Char) }
+		; { Char = '\017', Token = junk(Char) }
+		; { Char = '\020', Token = junk(Char) }
+		; { Char = '\021', Token = junk(Char) }
+		; { Char = '\022', Token = junk(Char) }
+		; { Char = '\023', Token = junk(Char) }
+		; { Char = '\024', Token = junk(Char) }
+		; { Char = '\025', Token = junk(Char) }
+		; { Char = '\026', Token = junk(Char) }
+		; { Char = '\027', Token = junk(Char) }
+		; { Char = '\030', Token = junk(Char) }
+		; { Char = '\031', Token = junk(Char) }
+		; { Char = '\032', Token = junk(Char) }
+		; { Char = '\033', Token = junk(Char) }
+		; { Char = '\034', Token = junk(Char) }
+		; { Char = '\035', Token = junk(Char) }
+		; { Char = '\036', Token = junk(Char) }
+		; { Char = '\037', Token = junk(Char) }
+		; { Char = ' ' }, lexer__get_token_2(Token)
+		; { Char = ('!') }, { Token = name("!") }
+		; { Char = '"' }, lexer__get_quoted_name(Char, [], Token)
+		; { Char = ('#') }, lexer__get_graphic([Char], Token)
+		; { Char = ('$') }, lexer__get_graphic([Char], Token)
+		; { Char = ('%') }, lexer__skip_to_eol(Token)
+		; { Char = ('&') }, lexer__get_graphic([Char], Token)
+		; { Char = '''' }, lexer__get_quoted_name(Char, [], Token)
+		; { Char = ('(') }, { Token = open_ct }
+		; { Char = (')') }, { Token = close }
+		; { Char = ('*') }, lexer__get_graphic([Char], Token)
+		; { Char = ('+') }, lexer__get_graphic([Char], Token)
+		; { Char = (',') }, { Token = comma }
+		; { Char = ('-') }, lexer__get_graphic([Char], Token)
+		; { Char = ('.') }, lexer__get_dot(Token)
+		; { Char = ('/') }, lexer__get_slash(Token)
+		; { Char = '0' }, lexer__get_zero(Token)
+		; { Char = '1' }, lexer__get_number([Char], Token)
+		; { Char = '2' }, lexer__get_number([Char], Token)
+		; { Char = '3' }, lexer__get_number([Char], Token)
+		; { Char = '4' }, lexer__get_number([Char], Token)
+		; { Char = '5' }, lexer__get_number([Char], Token)
+		; { Char = '6' }, lexer__get_number([Char], Token)
+		; { Char = '7' }, lexer__get_number([Char], Token)
+		; { Char = '8' }, lexer__get_number([Char], Token)
+		; { Char = '9' }, lexer__get_number([Char], Token)
+		; { Char = (':') }, lexer__get_graphic([Char], Token)
+		; { Char = (';') }, { Token = name(";") }
+		; { Char = ('<') }, lexer__get_graphic([Char], Token)
+		; { Char = ('=') }, lexer__get_graphic([Char], Token)
+		; { Char = ('>') }, lexer__get_graphic([Char], Token)
+		; { Char = ('?') }, lexer__get_graphic([Char], Token)
+		; { Char = ('@') }, lexer__get_graphic([Char], Token)
+		; { Char = 'A' }, lexer__get_variable([Char], Token)
+		; { Char = 'B' }, lexer__get_variable([Char], Token)
+		; { Char = 'C' }, lexer__get_variable([Char], Token)
+		; { Char = 'D' }, lexer__get_variable([Char], Token)
+		; { Char = 'E' }, lexer__get_variable([Char], Token)
+		; { Char = 'F' }, lexer__get_variable([Char], Token)
+		; { Char = 'G' }, lexer__get_variable([Char], Token)
+		; { Char = 'H' }, lexer__get_variable([Char], Token)
+		; { Char = 'I' }, lexer__get_variable([Char], Token)
+		; { Char = 'J' }, lexer__get_variable([Char], Token)
+		; { Char = 'K' }, lexer__get_variable([Char], Token)
+		; { Char = 'L' }, lexer__get_variable([Char], Token)
+		; { Char = 'M' }, lexer__get_variable([Char], Token)
+		; { Char = 'N' }, lexer__get_variable([Char], Token)
+		; { Char = 'O' }, lexer__get_variable([Char], Token)
+		; { Char = 'P' }, lexer__get_variable([Char], Token)
+		; { Char = 'Q' }, lexer__get_variable([Char], Token)
+		; { Char = 'R' }, lexer__get_variable([Char], Token)
+		; { Char = 'S' }, lexer__get_variable([Char], Token)
+		; { Char = 'T' }, lexer__get_variable([Char], Token)
+		; { Char = 'U' }, lexer__get_variable([Char], Token)
+		; { Char = 'V' }, lexer__get_variable([Char], Token)
+		; { Char = 'W' }, lexer__get_variable([Char], Token)
+		; { Char = 'X' }, lexer__get_variable([Char], Token)
+		; { Char = 'Y' }, lexer__get_variable([Char], Token)
+		; { Char = 'Z' }, lexer__get_variable([Char], Token)
+		; { Char = ('[') }, { Token = open_list }
+		; { Char = ('\\') }, lexer__get_graphic([Char], Token)
+		; { Char = (']') }, { Token = close_list }
+		; { Char = ('^') }, lexer__get_graphic([Char], Token)
+		; { Char = '_' }, lexer__get_variable([Char], Token)
+		; { Char = 'a' }, lexer__get_name([Char], Token)
+		; { Char = 'b' }, lexer__get_name([Char], Token)
+		; { Char = 'c' }, lexer__get_name([Char], Token)
+		; { Char = 'd' }, lexer__get_name([Char], Token)
+		; { Char = 'e' }, lexer__get_name([Char], Token)
+		; { Char = 'f' }, lexer__get_name([Char], Token)
+		; { Char = 'g' }, lexer__get_name([Char], Token)
+		; { Char = 'h' }, lexer__get_name([Char], Token)
+		; { Char = 'i' }, lexer__get_name([Char], Token)
+		; { Char = 'j' }, lexer__get_name([Char], Token)
+		; { Char = 'k' }, lexer__get_name([Char], Token)
+		; { Char = 'l' }, lexer__get_name([Char], Token)
+		; { Char = 'm' }, lexer__get_name([Char], Token)
+		; { Char = 'n' }, lexer__get_name([Char], Token)
+		; { Char = 'o' }, lexer__get_name([Char], Token)
+		; { Char = 'p' }, lexer__get_name([Char], Token)
+		; { Char = 'q' }, lexer__get_name([Char], Token)
+		; { Char = 'r' }, lexer__get_name([Char], Token)
+		; { Char = 's' }, lexer__get_name([Char], Token)
+		; { Char = 't' }, lexer__get_name([Char], Token)
+		; { Char = 'u' }, lexer__get_name([Char], Token)
+		; { Char = 'v' }, lexer__get_name([Char], Token)
+		; { Char = 'w' }, lexer__get_name([Char], Token)
+		; { Char = 'x' }, lexer__get_name([Char], Token)
+		; { Char = 'y' }, lexer__get_name([Char], Token)
+		; { Char = 'z' }, lexer__get_name([Char], Token)
+		; { Char = ('{') }, { Token = open_curly }
+		; { Char = ('}') }, { Token = close_curly }
+		; { Char = ('|') }, { Token = ht_sep }
+		; { Char = ('~') }, lexer__get_graphic([Char], Token)
+		; { Char = '\140', Token = junk(Char) } % `
+		; { Char = '\177', Token = junk(Char) }
 		)
 	).
 
@@ -178,6 +282,8 @@ lexer__get_token_1(Token) -->
 	% This is just like get_token_1, except that we have already
 	% scanned past some whitespace, so '(' gets scanned as `open'
 	% rather than `open_ct'.
+	% We use a big switch on Char here for efficiency - obviously not
+	% for consiseness.
 
 lexer__get_token_2(Token) -->
 	io__read_char(Result),
@@ -186,30 +292,138 @@ lexer__get_token_2(Token) -->
 	; { Result = eof }, !,
 		{ Token = eof }
 	; { Result = ok(Char) },
-		( { Char = ' ' ; Char = '\t' ; Char = '\n' } ->
-			lexer__get_token_2(Token)
-		; { char__is_upper(Char) ; Char = '_' } ->
-			lexer__get_variable([Char], Token)
-		; { char__is_lower(Char) } ->
-			lexer__get_name([Char], Token)
-		; { Char = '0' } ->
-			lexer__get_zero(Token)
-		; { char__is_digit(Char) } ->
-			lexer__get_number([Char], Token)
-		; { lexer__special_token(Char, SpecialToken) } ->
-			{ Token = SpecialToken }
-		; { Char = ('.') } ->
-			lexer__get_dot(Token)
-		; { Char = ('%') } ->
-			lexer__skip_to_eol(Token)
-		; { Char = '"' ; Char = '''' } ->
+		( { Char = '\001', Token = junk(Char) }
+		; { Char = '\002', Token = junk(Char) }
+		; { Char = '\003', Token = junk(Char) }
+		; { Char = '\004', Token = junk(Char) }
+		; { Char = '\005', Token = junk(Char) }
+		; { Char = '\006', Token = junk(Char) }
+		; { Char = '\007', Token = junk(Char) }
+		; { Char = '\010', Token = junk(Char) }
+% \t		; { Char = '\011', Token = junk(Char) }
+		; { Char = '\t' }, lexer__get_token_2(Token)
+% \n		; { Char = '\012', Token = junk(Char) }
+		; { Char = '\n' }, lexer__get_token_2(Token)
+		; { Char = '\013', Token = junk(Char) }
+% \f		; { Char = '\014', Token = junk(Char) }
+		; { Char = '\f' }, lexer__get_token_2(Token)
+		; { Char = '\015', Token = junk(Char) }
+		; { Char = '\016', Token = junk(Char) }
+		; { Char = '\017', Token = junk(Char) }
+		; { Char = '\020', Token = junk(Char) }
+		; { Char = '\021', Token = junk(Char) }
+		; { Char = '\022', Token = junk(Char) }
+		; { Char = '\023', Token = junk(Char) }
+		; { Char = '\024', Token = junk(Char) }
+		; { Char = '\025', Token = junk(Char) }
+		; { Char = '\026', Token = junk(Char) }
+		; { Char = '\027', Token = junk(Char) }
+		; { Char = '\030', Token = junk(Char) }
+		; { Char = '\031', Token = junk(Char) }
+		; { Char = '\032', Token = junk(Char) }
+		; { Char = '\033', Token = junk(Char) }
+		; { Char = '\034', Token = junk(Char) }
+		; { Char = '\035', Token = junk(Char) }
+		; { Char = '\036', Token = junk(Char) }
+		; { Char = '\037', Token = junk(Char) }
+		; { Char = ' ' }, lexer__get_token_2(Token)
+		; { Char = ('!'),  Token = name("!") }
+		; { Char = '"' },
 			lexer__get_quoted_name(Char, [], Token)
-		; { Char = ('/') } ->
-			lexer__get_slash(Token)
-		; { lexer__graphic_token_char(Char) } ->
-			lexer__get_graphic([Char], Token)
-		;
-			{ Token = junk(Char) }
+		; { Char = ('#') }, lexer__get_graphic([Char], Token)
+		; { Char = ('$') }, lexer__get_graphic([Char], Token)
+		; { Char = ('%') }, lexer__skip_to_eol(Token)
+		; { Char = ('&') }, lexer__get_graphic([Char], Token)
+		; { Char = '''' },
+			lexer__get_quoted_name(Char, [], Token)
+		; { Char = '(',  Token = open }
+		; { Char = ')',  Token = close }
+		; { Char = ('*') }, lexer__get_graphic([Char], Token)
+		; { Char = ('+') }, lexer__get_graphic([Char], Token)
+		; { Char = (','),  Token = comma }
+		; { Char = ('-') }, lexer__get_graphic([Char], Token)
+		; { Char = ('.') }, lexer__get_dot(Token)
+		; { Char = ('/') }, lexer__get_slash(Token)
+		; { Char = '0' }, lexer__get_zero(Token)
+		; { Char = '1' }, lexer__get_number([Char], Token)
+		; { Char = '2' }, lexer__get_number([Char], Token)
+		; { Char = '3' }, lexer__get_number([Char], Token)
+		; { Char = '4' }, lexer__get_number([Char], Token)
+		; { Char = '5' }, lexer__get_number([Char], Token)
+		; { Char = '6' }, lexer__get_number([Char], Token)
+		; { Char = '7' }, lexer__get_number([Char], Token)
+		; { Char = '8' }, lexer__get_number([Char], Token)
+		; { Char = '9' }, lexer__get_number([Char], Token)
+		; { Char = (':') }, lexer__get_graphic([Char], Token)
+		; { Char = (';'),  Token = name(";") }
+		; { Char = ('<') }, lexer__get_graphic([Char], Token)
+		; { Char = ('=') }, lexer__get_graphic([Char], Token)
+		; { Char = ('>') }, lexer__get_graphic([Char], Token)
+		; { Char = ('?') }, lexer__get_graphic([Char], Token)
+		; { Char = ('@') }, lexer__get_graphic([Char], Token)
+		; { Char = 'A' }, lexer__get_variable([Char], Token)
+		; { Char = 'B' }, lexer__get_variable([Char], Token)
+		; { Char = 'C' }, lexer__get_variable([Char], Token)
+		; { Char = 'D' }, lexer__get_variable([Char], Token)
+		; { Char = 'E' }, lexer__get_variable([Char], Token)
+		; { Char = 'F' }, lexer__get_variable([Char], Token)
+		; { Char = 'G' }, lexer__get_variable([Char], Token)
+		; { Char = 'H' }, lexer__get_variable([Char], Token)
+		; { Char = 'I' }, lexer__get_variable([Char], Token)
+		; { Char = 'J' }, lexer__get_variable([Char], Token)
+		; { Char = 'K' }, lexer__get_variable([Char], Token)
+		; { Char = 'L' }, lexer__get_variable([Char], Token)
+		; { Char = 'M' }, lexer__get_variable([Char], Token)
+		; { Char = 'N' }, lexer__get_variable([Char], Token)
+		; { Char = 'O' }, lexer__get_variable([Char], Token)
+		; { Char = 'P' }, lexer__get_variable([Char], Token)
+		; { Char = 'Q' }, lexer__get_variable([Char], Token)
+		; { Char = 'R' }, lexer__get_variable([Char], Token)
+		; { Char = 'S' }, lexer__get_variable([Char], Token)
+		; { Char = 'T' }, lexer__get_variable([Char], Token)
+		; { Char = 'U' }, lexer__get_variable([Char], Token)
+		; { Char = 'V' }, lexer__get_variable([Char], Token)
+		; { Char = 'W' }, lexer__get_variable([Char], Token)
+		; { Char = 'X' }, lexer__get_variable([Char], Token)
+		; { Char = 'Y' }, lexer__get_variable([Char], Token)
+		; { Char = 'Z' }, lexer__get_variable([Char], Token)
+		; { Char = ('['),  Token = open_list }
+		; { Char = ('\\') }, lexer__get_graphic([Char], Token)
+		; { Char = (']'),  Token = close_list }
+		; { Char = ('^') }, lexer__get_graphic([Char], Token)
+		; { Char = '_' }, lexer__get_variable([Char], Token)
+		; { Char = '\140', Token = junk(Char) } % `
+		; { Char = 'a' }, lexer__get_name([Char], Token)
+		; { Char = 'b' }, lexer__get_name([Char], Token)
+		; { Char = 'c' }, lexer__get_name([Char], Token)
+		; { Char = 'd' }, lexer__get_name([Char], Token)
+		; { Char = 'e' }, lexer__get_name([Char], Token)
+		; { Char = 'f' }, lexer__get_name([Char], Token)
+		; { Char = 'g' }, lexer__get_name([Char], Token)
+		; { Char = 'h' }, lexer__get_name([Char], Token)
+		; { Char = 'i' }, lexer__get_name([Char], Token)
+		; { Char = 'j' }, lexer__get_name([Char], Token)
+		; { Char = 'k' }, lexer__get_name([Char], Token)
+		; { Char = 'l' }, lexer__get_name([Char], Token)
+		; { Char = 'm' }, lexer__get_name([Char], Token)
+		; { Char = 'n' }, lexer__get_name([Char], Token)
+		; { Char = 'o' }, lexer__get_name([Char], Token)
+		; { Char = 'p' }, lexer__get_name([Char], Token)
+		; { Char = 'q' }, lexer__get_name([Char], Token)
+		; { Char = 'r' }, lexer__get_name([Char], Token)
+		; { Char = 's' }, lexer__get_name([Char], Token)
+		; { Char = 't' }, lexer__get_name([Char], Token)
+		; { Char = 'u' }, lexer__get_name([Char], Token)
+		; { Char = 'v' }, lexer__get_name([Char], Token)
+		; { Char = 'w' }, lexer__get_name([Char], Token)
+		; { Char = 'x' }, lexer__get_name([Char], Token)
+		; { Char = 'y' }, lexer__get_name([Char], Token)
+		; { Char = 'z' }, lexer__get_name([Char], Token)
+		; { Char = ('{'),  Token = open_curly }
+		; { Char = ('|'),  Token = ht_sep }
+		; { Char = ('}'),  Token = close_curly }
+		; { Char = ('~') }, lexer__get_graphic([Char], Token)
+		; { Char = '\177', Token = junk(Char) }
 		)
 	).
 
@@ -928,8 +1142,52 @@ lexer__rev_char_list_to_float(RevChars, Token) :-
 :- pred lexer__rev_char_list_to_string(list(character), string).
 :- mode lexer__rev_char_list_to_string(in, out) is det.
 
-lexer__rev_char_list_to_string(RevChars, String) :-
-	list__reverse(RevChars, Chars),
-	string__from_char_list(Chars, String).
+% lexer__rev_char_list_to_string was originally implemented like this:
+%
+%lexer__rev_char_list_to_string(RevChars, String) :-
+%       list__reverse(RevChars, Chars),
+%       string__from_char_list(Chars, String).
+%
+% The optimized implementation in C below is there for efficiency since
+% it improves the overall speed of parsing by about 7%.
+
+:- pragma(c_code, lexer__rev_char_list_to_string(Chars::in, Str::out), "
+{
+	Word list_ptr;
+	Word size, len;
+	Word str_ptr;
+/*
+** loop to calculate list length + sizeof(Word) in `size' using list in
+** `list_ptr' and separately count the length of the string
+*/
+	size = sizeof(Word);
+	len = 1;
+	list_ptr = Chars;
+	while (!list_is_empty(list_ptr)) {
+		size++;
+		len++;
+		list_ptr = list_tail(list_ptr);
+	}
+/*
+** allocate (length + 1) bytes of heap space for string
+** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
+*/
+	incr_hp_atomic(str_ptr, size / sizeof(Word));
+	Str = (char *) str_ptr;
+/*
+** set size to be the offset of the end of the string
+** (ie the \\0) and null terminate the string.
+*/
+	Str[--len] = '\\0';
+/*
+** loop to copy the characters from the list_ptr to the string
+** in reverse order.
+*/
+	list_ptr = Chars;
+	while (!list_is_empty(list_ptr)) {
+		Str[--len] = (char) list_head(list_ptr);
+		list_ptr = list_tail(list_ptr);
+	}
+}").
 
 %-----------------------------------------------------------------------------%

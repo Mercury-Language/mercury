@@ -133,12 +133,79 @@ char__is_alpha_or_underscore(Char) :-
 		char__is_alpha(Char)
 	).
 
+	% We explicitly enumerate here for efficiency.
+	% (this predicate is part of the inner loop of the lexer.)
 char__is_alnum_or_underscore(Char) :-
-	( char__is_digit(Char) ->
-		true
-	;	
-		char__is_alpha_or_underscore(Char)
+	( Char = '0'
+	; Char = '1'
+	; Char = '2'
+	; Char = '3'
+	; Char = '4'
+	; Char = '5'
+	; Char = '6'
+	; Char = '7'
+	; Char = '8'
+	; Char = '9'
+	; Char = 'a'
+	; Char = 'b'
+	; Char = 'c'
+	; Char = 'd'
+	; Char = 'e'
+	; Char = 'f'
+	; Char = 'g'
+	; Char = 'h'
+	; Char = 'i'
+	; Char = 'j'
+	; Char = 'k'
+	; Char = 'l'
+	; Char = 'm'
+	; Char = 'n'
+	; Char = 'o'
+	; Char = 'p'
+	; Char = 'q'
+	; Char = 'r'
+	; Char = 's'
+	; Char = 't'
+	; Char = 'u'
+	; Char = 'v'
+	; Char = 'w'
+	; Char = 'x'
+	; Char = 'y'
+	; Char = 'z'
+	; Char = 'A'
+	; Char = 'B'
+	; Char = 'C'
+	; Char = 'D'
+	; Char = 'E'
+	; Char = 'F'
+	; Char = 'G'
+	; Char = 'H'
+	; Char = 'I'
+	; Char = 'J'
+	; Char = 'K'
+	; Char = 'L'
+	; Char = 'M'
+	; Char = 'N'
+	; Char = 'O'
+	; Char = 'P'
+	; Char = 'Q'
+	; Char = 'R'
+	; Char = 'S'
+	; Char = 'T'
+	; Char = 'U'
+	; Char = 'V'
+	; Char = 'W'
+	; Char = 'X'
+	; Char = 'Y'
+	; Char = 'Z'
+	; Char = '_'
 	).
+% A more consise implementation is:
+%	( char__is_digit(Char) ->
+%		true
+%	;	
+%		char__is_alpha_or_underscore(Char)
+%	).
 
 char__is_lower(Lower) :-
 	char__lower_upper(Lower, _).
