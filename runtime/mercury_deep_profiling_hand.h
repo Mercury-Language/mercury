@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,21 +16,21 @@
 #include "mercury_deep_profiling.h"
 
 #define	MR_proc_static_user_builtin_name(name, arity, mode)		\
-	MR_PASTE6(mercury_data__proc_static__mercury__,			\
+	MR_PASTE6(mercury_data__proc_static__,				\
 		name, _, arity, _, mode)
 #define	MR_call_sites_user_builtin_name(name, arity, mode)		\
 	MR_PASTE6(mercury_data__proc_static_call_sites__mercury__,	\
 		name, _, arity, _, mode)
 
 #define	MR_proc_static_user_name(module, name, arity, mode)		\
-	MR_PASTE8(mercury_data__proc_static__mercury__,			\
+	MR_PASTE8(mercury_data__proc_static__,				\
 		module, __, name, _, arity, _, mode)
 #define	MR_call_sites_user_name(module, name, arity, mode)		\
 	MR_PASTE8(mercury_data__proc_static_call_sites__mercury__,	\
 		module, __, name, _, arity, _, mode)
 
 #define	MR_proc_static_compiler_name(module, name, type, arity, mode)	\
-	MR_PASTE10(mercury_data__proc_static__mercury__,		\
+	MR_PASTE10(mercury_data__proc_static__,				\
 		name, _, module, __, type, _, arity, _, mode)
 #define	MR_call_sites_compiler_name(module, name, type, arity, mode)	\
 	MR_PASTE10(mercury_data__proc_static_call_sites__mercury__,	\
