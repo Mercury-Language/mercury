@@ -37,6 +37,9 @@ export TMPDIR
 # Make the files writable by group mercury.
 umask 002
 
+# Host to use to build the release of the day.
+ROTD_HOST=earth
+
 #-----------------------------------------------------------------------------#
 
 #
@@ -657,7 +660,7 @@ echo "test_mercury starting to create distribution at `date`" 1>&2
 
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
-case $HOST in earth)
+case $HOST in $ROTD_HOST)
 	# The tests on earth are run with `--intermodule-optimization',
 	# so we need to do a `mmake realclean' before building the C files
 	# for the source distribution. The extra compilation time for
@@ -866,7 +869,7 @@ cd ..
 
 : update the unstable release
 
-case $HOST in murlibobo)
+case $HOST in $ROTD_HOST)
 	rsh $BETA_FTPHOST \
 		"rm -f $BETA_FTPDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
 	rsh $BETA_FTPHOST \
@@ -981,7 +984,7 @@ case $status in
 	: if we get this far, then it worked.
 	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
 	date >> $TESTDIR/logs/success."$TEST_ID"
-	case $HOST in earth)
+	case $HOST in $ROTD_HOST)
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
 	    rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
@@ -1021,7 +1024,7 @@ esac
 
 # Now rebuild the index files on the www site
 case $HOST in 
-    murlibobo)
+    $ROTD_HOST)
 	echo "test_mercury generating www index files, starting at `date`" 1>&2
 	(
 	cd $BETA_WEBDIR_TOP
