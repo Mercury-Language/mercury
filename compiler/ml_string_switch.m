@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -115,7 +115,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	%
 	% Generate the following local constant declarations:
 	%	static const int next_slots_table = { <NextSlots> };
-	%	static const MR_String string_table = { <Strings> };
+	%	static const MR_String string_table[] = { <Strings> };
 	%
 	ml_gen_info_new_const(NextSlotsSeq),
 	ml_format_static_const_name("next_slots_table", NextSlotsSeq,
