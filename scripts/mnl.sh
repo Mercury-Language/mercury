@@ -12,7 +12,8 @@ options=
 
 while true; do
 	case "$1" in
-		-u)	options="$options $1 $2"
+		-u|-o|-F)
+			options="$options $1 $2"
 			shift 2
 			;;
 		-*)	options="$options $1"
