@@ -7,8 +7,9 @@ print *
 browse 1; ls; quit
 set -AP format flat
 print -f 1
-print -p 1
+print -r 1
 print -v 1
+print -p 1
 print --xyzzy 1
 browse 1; print; quit
 browse -f 1; ls; quit

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -54,8 +54,12 @@
 	%
 :- type portray_format
 	--->	flat
-	;	pretty
-	;	verbose.
+	;	raw_pretty	% calls pprint module directly, without first 
+				% attempting to manipulate the term in any way.
+	;	verbose
+	;	pretty.		% It allows the user to specify the maximum 
+				% number of lines which the term has to be 
+				% printed within.
 
 :- type format_params
 	--->	format_params(
@@ -110,8 +114,9 @@
 	% and -v, in that order.
 	%
 :- pred browser_info__set_param(bool::in, bool::in, bool::in, bool::in,
-		bool::in, bool::in, setting::in, browser_persistent_state::in,
-		browser_persistent_state::out) is det.
+		bool::in, bool::in, bool::in, setting::in, 
+		browser_persistent_state::in, browser_persistent_state::out) 
+		is det.
 
 %---------------------------------------------------------------------------%
 
@@ -127,40 +132,40 @@
 	%
 
 :- pred set_param_depth(bool::in, bool::in, bool::in, bool::in, bool::in,
-		bool::in, int::in, browser_persistent_state::in,
+		bool::in, bool::in, int::in, browser_persistent_state::in,
 		browser_persistent_state::out) is det.
-:- pragma export(set_param_depth(in, in, in, in, in, in, in, in, out),
+:- pragma export(set_param_depth(in, in, in, in, in, in, in, in, in, out),
 		"ML_BROWSE_set_param_depth").
 
-set_param_depth(P, B, A, F, Pr, V, Depth) -->
-	browser_info__set_param(P, B, A, F, Pr, V, depth(Depth)).
+set_param_depth(P, B, A, F, Pr, V, NPr, Depth) -->
+	browser_info__set_param(P, B, A, F, Pr, V, NPr,  depth(Depth)).
 
 :- pred set_param_size(bool::in, bool::in, bool::in, bool::in, bool::in,
-		bool::in, int::in, browser_persistent_state::in,
+		bool::in, bool::in, int::in, browser_persistent_state::in,
 		browser_persistent_state::out) is det.
-:- pragma export(set_param_size(in, in, in, in, in, in, in, in, out),
+:- pragma export(set_param_size(in, in, in, in, in, in, in, in, in, out),
 		"ML_BROWSE_set_param_size").
 
-set_param_size(P, B, A, F, Pr, V, Size) -->
-	browser_info__set_param(P, B, A, F, Pr, V, size(Size)).
+set_param_size(P, B, A, F, Pr, NPr, V, Size) -->
+	browser_info__set_param(P, B, A, F, Pr, V, NPr, size(Size)).
 
 :- pred set_param_width(bool::in, bool::in, bool::in, bool::in, bool::in,
-		bool::in, int::in, browser_persistent_state::in,
+		bool::in, bool::in, int::in, browser_persistent_state::in,
 		browser_persistent_state::out) is det.
-:- pragma export(set_param_width(in, in, in, in, in, in, in, in, out),
+:- pragma export(set_param_width(in, in, in, in, in, in, in, in, in, out),
 		"ML_BROWSE_set_param_width").
 
-set_param_width(P, B, A, F, Pr, V, Width) -->
-	browser_info__set_param(P, B, A, F, Pr, V, width(Width)).
+set_param_width(P, B, A, F, Pr, V, NPr, Width) -->
+	browser_info__set_param(P, B, A, F, Pr, V, NPr, width(Width)).
 
 :- pred set_param_lines(bool::in, bool::in, bool::in, bool::in, bool::in,
-		bool::in, int::in, browser_persistent_state::in,
+		bool::in, bool::in, int::in, browser_persistent_state::in,
 		browser_persistent_state::out) is det.
-:- pragma export(set_param_lines(in, in, in, in, in, in, in, in, out),
+:- pragma export(set_param_lines(in, in, in, in, in, in, in, in, in, out),
 		"ML_BROWSE_set_param_lines").
 
-set_param_lines(P, B, A, F, Pr, V, Lines) -->
-	browser_info__set_param(P, B, A, F, Pr, V, lines(Lines)).
+set_param_lines(P, B, A, F, Pr, V, NPr, Lines) -->
+	browser_info__set_param(P, B, A, F, Pr, V, NPr, lines(Lines)).
 
 :- pred set_param_format(bool::in, bool::in, bool::in, portray_format::in,
 		browser_persistent_state::in, browser_persistent_state::out)
@@ -172,7 +177,7 @@ set_param_format(P, B, A, Format) -->
 	%
 	% Any format flags are ignored for this parameter.
 	%
-	browser_info__set_param(P, B, A, no, no, no, format(Format)).
+	browser_info__set_param(P, B, A, no, no, no, no, format(Format)).
 
 %---------------------------------------------------------------------------%
 
@@ -211,8 +216,9 @@ browser_info__get_format_params(Info, Caller, Format, Params) :-
 	--->	caller_params(
 			default_format		:: portray_format,
 			flat_params		:: format_params,
-			pretty_params		:: format_params,
-			verbose_params		:: format_params
+			raw_pretty_params	:: format_params,
+			verbose_params		:: format_params,
+			pretty_params		:: format_params
 		).
 
 	% Initialise the persistent settings with default values.  The
@@ -244,37 +250,42 @@ browser_info__init_persistent_state(State) :-
 
 caller_type_print_defaults(Params) :-
 	DefaultFormat = flat,
-	Flat	= format_params(3, 10, 80, 25),
-	Pretty	= format_params(3, 10, 80, 25),
-	Verbose	= format_params(3, 10, 80, 25),
-	Params	= caller_params(DefaultFormat, Flat, Pretty, Verbose).
+	Flat	  = format_params(3, 10, 80, 25),
+	RawPretty = format_params(3, 10, 80, 25),
+	Verbose	  = format_params(3, 10, 80, 25),
+	Pretty    = format_params(3, 10, 80, 25),
+	Params = caller_params(DefaultFormat, Flat, RawPretty, Verbose, Pretty).
 
 :- pred caller_type_browse_defaults(caller_params).
 :- mode caller_type_browse_defaults(out) is det.
 
 caller_type_browse_defaults(Params) :-
 	DefaultFormat = verbose,
-	Flat	= format_params(10, 30, 80, 25),
-	Pretty	= format_params(10, 30, 80, 25),
-	Verbose	= format_params(10, 30, 80, 25),
-	Params	= caller_params(DefaultFormat, Flat, Pretty, Verbose).
+	Flat	  = format_params(10, 30, 80, 25),
+	RawPretty = format_params(10, 30, 80, 25),
+	Verbose	  = format_params(10, 30, 80, 25),
+	Pretty    = format_params(10, 30, 80, 25),
+	Params = caller_params(DefaultFormat, Flat, RawPretty, Verbose, Pretty).
 
 :- pred caller_type_print_all_defaults(caller_params).
 :- mode caller_type_print_all_defaults(out) is det.
 
 caller_type_print_all_defaults(Params) :-
 	DefaultFormat = flat,
-	Flat	= format_params(3, 10, 80, 2),
-	Pretty	= format_params(3, 10, 80, 2),
-	Verbose	= format_params(3, 10, 80, 5),
-	Params	= caller_params(DefaultFormat, Flat, Pretty, Verbose).
+	Flat	  = format_params(3, 10, 80, 2),
+	RawPretty = format_params(3, 10, 80, 2),
+	Verbose   = format_params(3, 10, 80, 5),
+	Pretty = format_params(3, 10, 80, 2),
+	Params = caller_params(DefaultFormat, Flat, RawPretty, Verbose, Pretty).
 
-browser_info__set_param(P0, B0, A0, F0, Pr0, V0, Setting, State0, State) :-
+browser_info__set_param(P0, B0, A0, F0, Pr0, V0, NPr0, Setting, State0, State):-
 	default_all_yes(P0, B0, A0, P, B, A),
-	default_all_yes(F0, Pr0, V0, F, Pr, V),
-	maybe_set_param(P, F, Pr, V, Setting, State0 ^ print_params, PParams),
-	maybe_set_param(B, F, Pr, V, Setting, State0 ^ browse_params, BParams),
-	maybe_set_param(A, F, Pr, V, Setting, State0 ^ print_all_params,
+	default_all_yes(F0, Pr0, V0, NPr0, F, Pr, V, NPr),
+	maybe_set_param(P, F, Pr, V, NPr, Setting, State0 ^ print_params, 
+			PParams),
+	maybe_set_param(B, F, Pr, V, NPr, Setting, State0 ^ browse_params, 
+			BParams),
+	maybe_set_param(A, F, Pr, V, NPr, Setting, State0 ^ print_all_params,
 			AParams),
 	State = browser_persistent_state(PParams, BParams, AParams).
 
@@ -300,24 +311,51 @@ default_all_yes(A0, B0, C0, A, B, C) :-
 		C = C0
 	).
 
-:- pred maybe_set_param(bool, bool, bool, bool, setting, caller_params,
-		caller_params).
-:- mode maybe_set_param(in, in, in, in, in, in, out) is det.
+:- pred default_all_yes(bool, bool, bool, bool, bool, bool, bool, bool).
+:- mode default_all_yes(in, in, in, in, out, out, out, out) is det.
 
-maybe_set_param(no, _, _, _, _, Params, Params).
-maybe_set_param(yes, F, Pr, V, Setting, Params0, Params) :-
+default_all_yes(A0, B0, C0, D0, A, B, C, D) :-
+	%
+	% If none of the flags are set, the command by default
+	% applies to _all_ caller types/formats.
+	%
+	(
+		A0 = no,
+		B0 = no,
+		C0 = no,
+		D0 = no
+	->
+		A = yes,
+		B = yes,
+		C = yes,
+		D = yes
+	;
+		A = A0,
+		B = B0,
+		C = C0,
+		D = D0
+	).
+
+:- pred maybe_set_param(bool, bool, bool, bool, bool, setting, caller_params,
+		caller_params).
+:- mode maybe_set_param(in, in, in, in, in, in, in, out) is det.
+
+maybe_set_param(no, _, _, _, _, _, Params, Params).
+maybe_set_param(yes, F, Pr, V, NPr, Setting, Params0, Params) :-
 	(
 		Setting = format(NewFormat)
 	->
 		Params = Params0 ^ default_format := NewFormat
 	;
 		maybe_set_param_2(F, Setting, Params0 ^ flat_params, FParams),
-		maybe_set_param_2(Pr, Setting, Params0 ^ pretty_params,
+		maybe_set_param_2(Pr, Setting, Params0 ^ raw_pretty_params,
 				PrParams),
 		maybe_set_param_2(V, Setting, Params0 ^ verbose_params,
 				VParams),
+		maybe_set_param_2(NPr, Setting, Params0 ^ pretty_params,
+				NPrParams),
 		Params = caller_params(Params0 ^ default_format, FParams,
-				PrParams, VParams)
+				PrParams, VParams, NPrParams)
 	).
 
 :- pred maybe_set_param_2(bool, setting, format_params, format_params).
@@ -343,8 +381,9 @@ get_caller_params(State, print_all, State ^ print_all_params).
 :- mode get_caller_format_params(in, in, out) is det.
 
 get_caller_format_params(Params, flat, Params ^ flat_params).
-get_caller_format_params(Params, pretty, Params ^ pretty_params).
+get_caller_format_params(Params, raw_pretty, Params ^ raw_pretty_params).
 get_caller_format_params(Params, verbose, Params ^ verbose_params).
+get_caller_format_params(Params, pretty, Params ^ pretty_params).
 
 %---------------------------------------------------------------------------%
 

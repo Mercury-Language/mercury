@@ -6,7 +6,7 @@ mdb> goto 3
 mdb> print *
        HeadVar__1             	big(big(big(small, ./2, small), .(1, ./2), small), .(1, .(2, ./2)), big(big(small, ./2, big/3), ./2, small))
 mdb> browse 1
-browser> set format pretty
+browser> set format raw_pretty
 browser> set depth 10
 browser> ls
 big(
@@ -143,6 +143,41 @@ big(
   big(big(small, ./2, small), .(1, ./2), small), 
   .(1, .(2, ./2)), 
   big(big(small, ./2, big/3), .(1, ./2), small))
+browser> set format pretty
+browser> set lines 4
+browser> set width 40
+browser> ls
+big(
+  big(big/3, .(1, ./2), small), 
+  .(1, .(2, .(3, []))), 
+  big(big/3, .(1, ./2), small))
+browser> set width 80
+browser> ls
+big(
+  big(big(small, .(1, []), small), .(1, .(2, [])), small), 
+  .(1, .(2, .(3, []))), 
+  big(big(small, .(1, ./2), big/3), .(1, .(2, .(3, .(4, ./2)))), small))
+browser> set lines 12
+browser> set width 40
+browser> ls
+big(
+  big(
+    big(small, .(1, []), small), 
+    .(1, .(2, [])), 
+    small), 
+  .(1, .(2, .(3, []))), 
+  big(
+    big(small, .(1, ./2), big/3), 
+    .(1, .(2, .(3, .(4, .(5, ./2))))), 
+    small))
+browser> cd 3
+browser> set lines 4
+browser> set width 30
+browser> ls
+big(
+  big(small, ./2, big/3), 
+  .(1, .(2, .(3, ./2))), 
+  small)
 browser> quit
 mdb> continue
 big(big(big(small, [1], small), [1, 2], small), [1, 2, 3], big(big(small, [1, 2, 3, 4], big(small, [1, 2, 3, 4, 5], small)), [1, 2, 3, 4, 5, 6], small)).

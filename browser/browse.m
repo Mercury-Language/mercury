@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -82,7 +82,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module mdb__parse, mdb__util, mdb__frame.
+:- import_module mdb__parse, mdb__util, mdb__frame, mdb__sized_pretty.
 :- import_module string, list, parser, require, std_util, int, char, pprint.
 :- import_module bool.
 
@@ -294,8 +294,8 @@ set_browse_param(Setting, Info0, Info) :-
 	% XXX We can't yet give options to the `set' command.
 	%
 	No = bool__no,
-	browser_info__set_param(No, No, No, No, No, No, Setting, Info0 ^ state,
-			NewState),
+	browser_info__set_param(No, No, No, No, No, No, No, Setting, 
+			Info0 ^ state, NewState),
 	Info = Info0 ^ state := NewState.
 
 :- pred help(debugger::in, io__state::di, io__state::uo) is det.
@@ -317,7 +317,8 @@ help(Debugger) -->
 "\th              -- help\n",
 "\n",
 "-- settings:\n",
-"--    size; depth; path; format (flat pretty verbose); width; lines\n",
+"--    size; depth; path; format (flat raw_pretty verbose pretty); width; ",
+"lines\n",
 "--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n",
 "\n"],
 		HelpMessage) },
@@ -342,11 +343,14 @@ portray(Debugger, Caller, MaybeFormat, Info) -->
 			{ Format = flat },
 			portray_flat(Debugger, SubUniv, Params)
 		;
-			{ Format = pretty },
-			portray_pretty(Debugger, SubUniv, Params)
+			{ Format = raw_pretty },
+			portray_raw_pretty(Debugger, SubUniv, Params)
 		;
 			{ Format = verbose },
 			portray_verbose(Debugger, SubUniv, Params)
+		;
+			{ Format = pretty },
+			portray_pretty(Debugger, SubUniv, Params)
 		)
 	;
 		write_string_debugger(Debugger, "error: no such subterm")
@@ -393,13 +397,22 @@ portray_verbose(Debugger, Univ, Params) -->
 			Params ^ width, Params ^ lines, Str) },
 	write_string_debugger(Debugger, Str).
 
+:- pred portray_raw_pretty(debugger, univ, format_params, io__state, io__state).
+:- mode portray_raw_pretty(in, in, in, di, uo) is det.
+
+portray_raw_pretty(Debugger, Univ, Params) -->
+	{ term_to_string_raw_pretty(Univ, Params ^ width, 
+			Params ^ depth, Str) },
+	write_string_debugger(Debugger, Str).
+
+
 :- pred portray_pretty(debugger, univ, format_params, io__state, io__state).
 :- mode portray_pretty(in, in, in, di, uo) is det.
 
 portray_pretty(Debugger, Univ, Params) -->
-	{ term_to_string_pretty(Univ, Params ^ width, Params ^ depth, Str) },
+	{ sized_pretty__univ_to_string_line(Univ, Params ^ width, 
+			Params ^ lines, Str) },
 	write_string_debugger(Debugger, Str).
-
 
 	% The maximum estimated size for which we use `io__write'.
 :- pred max_print_size(int::out) is det.
@@ -509,10 +522,10 @@ term_compress(Univ, Str) :-
 % provides no way of doing this.
 %
 
-:- pred term_to_string_pretty(univ, int, int, string).
-:- mode term_to_string_pretty(in, in, in, out) is det.
+:- pred term_to_string_raw_pretty(univ, int, int, string).
+:- mode term_to_string_raw_pretty(in, in, in, out) is det.
 
-term_to_string_pretty(Univ, Width, MaxDepth, Str) :-
+term_to_string_raw_pretty(Univ, Width, MaxDepth, Str) :-
 	Value = univ_value(Univ),
 	Doc = to_doc(MaxDepth, Value),
 	Str = to_string(Width, Doc).
@@ -866,11 +879,14 @@ print_format_debugger(external, X) -->
 		{ X = flat },
 		send_term_to_socket(browser_str("flat"))
 	;
-		{ X = pretty },
-		send_term_to_socket(browser_str("pretty"))
+		{ X = raw_pretty },
+		send_term_to_socket(browser_str("raw_pretty"))
 	;
 		{ X = verbose },
 		send_term_to_socket(browser_str("verbose"))
+	;
+		{ X = pretty },
+		send_term_to_socket(browser_str("pretty"))
 	).
 
 :- pred send_term_to_socket(term_browser_response, io__state, io__state).
