@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,28 +125,17 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 	%
 	(
 		% check if variable has a higher-order type
-		type_is_higher_order(TypeOfX, PredOrFunc, EvalMethod,
-			PredArgTypes),
-		ConsId0 = cons(PName, _),
-		% but in case we are redoing mode analysis, make sure
-		% we don't mess with the address constants for type_info
-		% fields created by polymorphism.m
-		Unification0 \= construct(_, code_addr_const(_, _),
-			_, _, _, _, _),
-		Unification0 \= deconstruct(_,
-				code_addr_const(_, _), _, _, _, _)
+		type_is_higher_order(TypeOfX, _, EvalMethod, PredArgTypes),
+		ConsId0 = pred_const(PredId, ProcId, _)
 	->
 		%
 		% convert the pred term to a lambda expression
 		%
 		mode_info_get_varset(ModeInfo0, VarSet0),
 		mode_info_get_context(ModeInfo0, Context),
-		mode_info_get_predid(ModeInfo0, ThisPredId),
-		module_info_pred_info(ModuleInfo0, ThisPredId, ThisPredInfo),
-		pred_info_typevarset(ThisPredInfo, TVarSet),
-		convert_pred_to_lambda_goal(PredOrFunc, EvalMethod,
-			X0, ConsId0, PName, ArgVars0, PredArgTypes, TVarSet,
-			Unification0, UnifyContext, GoalInfo0, Context,
+		convert_pred_to_lambda_goal(EvalMethod,
+			X0, PredId, ProcId, ArgVars0, PredArgTypes,
+			UnifyContext, GoalInfo0, Context,
 			ModuleInfo0, VarSet0, VarTypes0,
 			Functor0, VarSet, VarTypes),
 		mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),

@@ -377,8 +377,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% It's also only valid if all the inputs in the Yi precede the
 		% outputs.  It's also not valid if any of the Xi are in the Yi.
 
-		LambdaGoal = call(PredId0, ProcId0, CallVars,
-					_, _, PredName0) - _,
+		LambdaGoal = call(PredId0, ProcId0, CallVars, _, _, _) - _,
 		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0,
 			Call_PredInfo, Call_ProcInfo),
 
@@ -441,8 +440,6 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		ArgVars = InitialVars,
 		PredId = PredId0,
 		ProcId = ProcId0,
-		PredName = PredName0,
-		NumArgVars = NumInitialVars,
 		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes,
 			ModuleInfo0, UniModes),
 		%
@@ -576,8 +573,8 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo)
 	),
-	Functor = functor(cons(PredName, NumArgVars), ArgVars),
 	ConsId = pred_const(PredId, ProcId, EvalMethod),
+	Functor = functor(ConsId, ArgVars),
 
 	RLExprnId = no,
 	Unification = construct(Var, ConsId, ArgVars, UniModes,

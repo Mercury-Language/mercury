@@ -7,8 +7,8 @@
 :- pred aditi_update_syntax(aditi__state::aditi_di,
 	aditi__state::aditi_uo) is det.
 
-:- pred aditi_update_derived_relation(aditi__state::aditi_di,
-	aditi__state::aditi_uo) is det.
+
+
 
 :- pred aditi_update_types(aditi__state::aditi_di,
 	aditi__state::aditi_uo) is det.
@@ -89,8 +89,8 @@ aditi_update_syntax -->
 	aditi_bulk_modify(q/2, ModifyQ),
 	aditi_bulk_modify(func q/2, ModifyQ, foo).
 
-aditi_update_derived_relation -->
-	aditi_insert(anc(_, 1, 2)).	
+
+
 
 aditi_update_types -->
 	aditi_insert(p(_, 1)),

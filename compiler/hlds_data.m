@@ -35,7 +35,8 @@
 			;	pred_const(pred_id, proc_id,
 					lambda_eval_method)
 			;	code_addr_const(pred_id, proc_id)
-				% Used for constructing type_infos.
+				% No longer used. code_addr_const cons_ids
+				% were once used to construct type_infos.
 				% Note that a pred_const is for a closure
 				% whereas a code_addr_const is just an address.
 			;	type_ctor_info_const(module_name, string, int)

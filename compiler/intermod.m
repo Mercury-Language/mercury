@@ -446,28 +446,8 @@ intermod__traverse_goal(disj(Goals0, SM) - Info, disj(Goals, SM) - Info,
 		DoWrite) -->
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
 
-intermod__traverse_goal(
-	call(PredId0, B, Args, D, MaybeUnifyContext, PredName0) - Info,
-	call(PredId, B, Args, D, MaybeUnifyContext, PredName) - Info, DoWrite)
-		-->
-	%
-	% Fully module-qualify the pred name
-	%
-	intermod_info_get_module_info(ModuleInfo),
-	intermod_info_get_var_types(VarTypes),
-	intermod_info_get_tvarset(TVarSet),
-	( { invalid_pred_id(PredId0) } ->
-		{ map__apply_to_list(Args, VarTypes, ArgTypes) },
-		{ typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
-			TVarSet, PredName0, PredName1, PredId) }
-	;
-		{ PredId = PredId0 },
-		{ PredName1 = PredName0 }
-	),	
-	{ unqualify_name(PredName1, UnqualPredName) },
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_module(PredInfo, PredModule) },
-	{ PredName = qualified(PredModule, UnqualPredName) },
+intermod__traverse_goal(Goal, Goal, DoWrite) -->
+	{ Goal = call(PredId, _, _, _, _, _) - _ },
 
 	%
 	% Ensure that the called predicate will be exported.
@@ -720,54 +700,14 @@ intermod__module_qualify_unify_rhs(_LVar,
 	% Fully module-qualify the right-hand-side of a unification.
 	% For function calls and higher-order terms, call intermod__add_proc
 	% so that the predicate or function will be exported if necessary.
-intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
+intermod__module_qualify_unify_rhs(_LVar, functor(Functor, Vars),
 				functor(Functor, Vars), DoWrite) -->
-	intermod_info_get_module_info(ModuleInfo),
-	{ module_info_get_predicate_table(ModuleInfo, PredTable) },
-	intermod_info_get_tvarset(TVarSet),
-	intermod_info_get_var_types(VarTypes),
 	(
-		% Is it a higher-order function call?
-		% (higher-order predicate calls are transformed into
-		% higher_order_call goals by make_hlds.m).
-		{ Functor0 = cons(unqualified(ApplyName), _) },
-		{ ApplyName = "apply"
-		; ApplyName = ""
-		},
-		{ list__length(Vars, ApplyArity) },
-		{ ApplyArity >= 1 }
-	->
-		{ Functor = Functor0 },
-		{ DoWrite = yes }
-	;
-		%
-		% Is it a function call?
-		%
-		{ Functor0 = cons(FuncName, Arity) },
-		{ predicate_table_search_func_sym_arity(PredTable,
-				FuncName, Arity, PredIds) },
-		{ list__append(Vars, [LVar], FuncArgs) },
-		{ map__apply_to_list(FuncArgs, VarTypes, FuncArgTypes) },
-		{ typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-			TVarSet, FuncArgTypes, PredId, QualifiedFuncName) }
-	->
-		%
-		% Yes, it is a function call.
-		% Fully module-qualify it.
-		% Make sure that the called function will be exported.
-		%
-		{ Functor = cons(QualifiedFuncName, Arity) },
-		intermod__add_proc(PredId, DoWrite)
-	;
 		%
 		% Is this a higher-order predicate or higher-order function
 		% term?
 		%
-		{ Functor0 = cons(PredName, Arity) },
-		intermod_info_get_var_types(VarTypes),
-		{ map__lookup(VarTypes, LVar, LVarType) },
-		{ type_is_higher_order(LVarType, PredOrFunc,
-			EvalMethod, PredArgTypes) }
+		{ Functor = pred_const(PredId, _, EvalMethod) }
 	->
 		( { EvalMethod = (aditi_top_down) } ->
 			% XXX Predicates which build this type of lambda
@@ -776,49 +716,25 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 			% bytecode fragment to use. The best way to handle
 			% these is probably to add some sort of lookup table
 			% to Aditi. 
-			{ DoWrite = no },
-			{ Functor = Functor0 }
+			{ DoWrite = no }
 		;
 			%
 			% Yes, the unification creates a higher-order term.
 			% Make sure that the predicate/function is exported.
 			%
-			{ map__apply_to_list(Vars, VarTypes, Types) },
-			{ list__append(Types, PredArgTypes, ArgTypes) },
-			{ get_pred_id_and_proc_id(PredName, PredOrFunc,
-				TVarSet, ArgTypes, ModuleInfo,
-				PredId, _ProcId) },
-			intermod__add_proc(PredId, DoWrite),
-			%
-			% Fully module-qualify it.
-			%
-			{ unqualify_name(PredName, UnqualPredName) },
-			{ predicate_module(ModuleInfo, PredId, Module) },
-			{ QualifiedPredName =
-				qualified(Module, UnqualPredName) },
-			{ Functor = cons(QualifiedPredName, Arity) }
+			intermod__add_proc(PredId, DoWrite)
 		)
 	;
 		%
-		% Is it a functor symbol for which we can add
-		% a module qualifier?
+		% It's an ordinary constructor, or a constant of a builtin
+		% type, so just leave it alone.
 		%
-		{ Functor0 = cons(ConsName, ConsArity) },
-		{ map__lookup(VarTypes, LVar, VarType) },
-		{ type_to_type_id(VarType, TypeId, _) },
-		{ TypeId = qualified(TypeModule, _) - _ }
-	->
+		% Constructors are module qualified by post_typecheck.m.
 		%
-		% Fully module-qualify it
+		% Function calls and higher-order function applications
+		% are transformed into ordinary calls and higher-order calls
+		% by post_typecheck.m, so they can't occur here.
 		%
-		{ unqualify_name(ConsName, UnqualConsName) },
-		{ Functor = cons(qualified(TypeModule, UnqualConsName),
-				ConsArity) },
-		{ DoWrite = yes }
-	;
-		% It is a constant of a builtin type.
-		% No module qualification needed.
-		{ Functor = Functor0 },
 		{ DoWrite = yes }
 	).
 

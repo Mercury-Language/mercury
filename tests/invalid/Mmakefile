@@ -14,6 +14,7 @@ include ../Mmake.common
 MULTIMODULE_SOURCES= \
 	aditi_errors.m \
 	aditi_state_errors.m \
+	aditi_update_derived_relation.m \
 	aditi_update_errors.m \
 	aditi_update_mode_errors.m \
 	duplicate_instance_2.m \
@@ -138,6 +139,7 @@ SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 
 MCFLAGS-aditi_errors =		--aditi --no-intermodule-optimization
 MCFLAGS-aditi_state_errors =	--aditi --no-intermodule-optimization
+MCFLAGS-aditi_update_derived_relation =	--aditi --no-intermodule-optimization
 MCFLAGS-aditi_update_errors =	--aditi --no-intermodule-optimization
 MCFLAGS-aditi_update_mode_errors = --aditi --no-intermodule-optimization
 MCFLAGS-any_mode	=	--infer-types

@@ -2113,8 +2113,10 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 				list__length(ArgVars)),
 			ArgVars, VarSet, ModuleInfo, AppendVarnums)
 	;
-		{ ConsId = code_addr_const(_, _) },
-		{ error("hlds_out__write_functor_cons_id: code_addr_const") }
+		{ ConsId = code_addr_const(PredId, ProcId) },
+		io__write_string("code_addr_const("),
+		hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId),
+		io__write_string(")")
 	;
 		{ ConsId = type_ctor_info_const(Module, Name, Arity) },
 		io__write_string("type_ctor_info("""),

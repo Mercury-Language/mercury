@@ -1111,13 +1111,12 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo) -->
 			{ Result = specialized(ExtraTypeInfoGoals0, Goal1) },
 			{
 				Goal1 = call(NewPredId0, NewProcId0,
-						NewArgs0, _, _, NewName0),
+						NewArgs0, _, _, _),
 				list__remove_suffix(NewArgs0,
 					UncurriedArgs, NewArgs1)
 			->
 				NewPredId = NewPredId0,
 				NewProcId = NewProcId0,
-				NewName = NewName0,
 				NewArgs = NewArgs1
 			;
 				error("maybe_specialize_pred_const")	
@@ -1137,8 +1136,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo) -->
 			{ Unify = construct(LVar, NewConsId,
 				NewArgs, UniModes, HowToConstruct,
 				CellIsUnique, MaybeExprn) },
-			{ Functor = cons(NewName, list__length(NewArgs)) },
-			{ Goal2 = unify(LVar, functor(Functor, NewArgs),
+			{ Goal2 = unify(LVar, functor(NewConsId, NewArgs),
 				UniMode, Unify, Context) },
 
 			% Make sure any constants in the

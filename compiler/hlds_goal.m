@@ -297,9 +297,6 @@
 	% unify(prog_var, unify_rhs, _, _, _), but mode analysis replaces
 	% these with various special cases (construct/deconstruct/assign/
 	% simple_test/complicated_unify).
-	% The cons_id for functor/2 cannot be a pred_const, code_addr_const,
-	% or type_ctor_info_const, since none of these can be created when
-	% the unify_rhs field is used.
 :- type unify_rhs
 	--->	var(prog_var)
 	;	functor(cons_id, list(prog_var))

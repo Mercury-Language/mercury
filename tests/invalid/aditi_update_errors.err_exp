@@ -179,6 +179,4 @@ aditi_update_errors.m:173:   type error: variable `ModifyQ' has type `((aditi_bo
 aditi_update_errors.m:173:   expected type was `(aditi_bottom_up pred((aditi:state), int, int, (aditi:state), int, int))'.
 aditi_update_errors.m:026: Error: no clauses for
 aditi_update_errors.m:026:   predicate `aditi_update_errors:anc/3'.
-aditi_update_errors.m:093: In `aditi_insert' of predicate `anc/3':
-aditi_update_errors.m:093:   error: the modified predicate is not a base relation.
 For more information, try recompiling with `-E'.
