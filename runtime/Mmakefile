@@ -56,6 +56,7 @@ HDRS		=	\
 			mercury_overflow.h	\
 			mercury_prof.h		\
 			mercury_prof_mem.h	\
+			mercury_reg_workarounds.h	\
 			mercury_regorder.h	\
 			mercury_regs.h		\
 			mercury_signal.h	\
@@ -113,6 +114,7 @@ CFILES		= 	\
 			mercury_misc.c		\
 			mercury_prof.c		\
 			mercury_prof_mem.c	\
+			mercury_reg_workarounds.c	\
 			mercury_regs.c		\
 			mercury_signal.c	\
 			mercury_stack_trace.c	\

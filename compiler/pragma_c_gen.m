@@ -382,14 +382,19 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Code fragments to obtain and release the global lock
 	%
+	code_info__get_module_info(ModuleInfo),
 	{ ThreadSafe = thread_safe ->
 		ObtainLock = pragma_c_raw_code(""),
 		ReleaseLock = pragma_c_raw_code("")
 	;
-		ObtainLock =
-			pragma_c_raw_code("\tMR_OBTAIN_GLOBAL_C_LOCK();\n"),
-		ReleaseLock =
-			pragma_c_raw_code("\tMR_RELEASE_GLOBAL_C_LOCK();\n")
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_name(PredInfo, Name),
+		string__append_list(["\tMR_OBTAIN_GLOBAL_C_LOCK(""",
+			Name, """);\n"], ObtainLockStr),
+		ObtainLock = pragma_c_raw_code(ObtainLockStr),
+		string__append_list(["\tMR_RELEASE_GLOBAL_C_LOCK(""",
+			Name, """);\n"], ReleaseLockStr),
+		ReleaseLock = pragma_c_raw_code(ReleaseLockStr)
 	},
 
 	%
@@ -447,7 +452,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% join all the components of the pragma_c together
 	%
 	{ Components = [InputComp, SaveRegsComp, ObtainLock, C_Code_Comp,
-			CheckR1_Comp, ReleaseLock, RestoreRegsComp,
+			ReleaseLock, CheckR1_Comp, RestoreRegsComp,
 			OutputComp] },
 	{ PragmaCCode = node([
 		pragma_c(Decls, Components, MayCallMercury, MaybeFailLabel, no)

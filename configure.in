@@ -1147,6 +1147,32 @@ if test "$mercury_cv_has_tempnam" = yes; then
 fi
 AC_SUBST(IO_HAVE_TEMPNAM)
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(to see if we can handle contexts blocking on IO)
+AC_CACHE_VAL(mercury_cv_can_do_pending_io,
+	AC_TRY_RUN([
+	#include <sys/types.h>
+	#include <sys/time.h>
+	int main() {
+		fd_set f;
+		struct timeval zero;
+		int err;
+
+		FD_ZERO(&f);
+		zero.tv_sec = 0;
+		zero.tv_usec = 0;
+		err = select(1, &f, &f, &f, &zero);
+		exit(err != 0);
+	}],
+	[mercury_cv_can_do_pending_io=yes],
+	[mercury_cv_can_do_pending_io=no],
+	[mercury_cv_can_do_pending_io=no])
+)
+AC_MSG_RESULT($mercury_cv_can_do_pending_io)
+if test "$mercury_cv_can_do_pending_io" = yes; then
+	AC_DEFINE(MR_CAN_DO_PENDING_IO)
+fi
+AC_SUBST(MR_CAN_DO_PENDING_IO)
+#-----------------------------------------------------------------------------#
 #
 # For Irix 5, gcc labels don't work with shared libraries,
 # so if we're using gcc labels, we need to use non-shared libraries,

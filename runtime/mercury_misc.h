@@ -10,6 +10,7 @@
 **			fatal_error(),
 **			checked_malloc(),
 **			MR_memcpy
+**			MR_fd_zero
 */
 
 #ifndef	MERCURY_MISC_H

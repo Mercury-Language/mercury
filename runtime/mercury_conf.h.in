@@ -233,6 +233,12 @@
 */
 #undef MR_CANNOT_USE_STRUCTURE_ASSIGNMENT
 
+/*
+** To handle contexts suspended on IO operations we use the select() system
+** call and supporting data structures which while POSIX, are not ANSI.
+*/
+#undef MR_CAN_DO_PENDING_IO
+
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_conf_param.h"

@@ -959,14 +959,17 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 % to make sure that the compiler doesn't issue any determinism warnings
 % for them.
 
-:- pragma c_code(semidet_succeed, will_not_call_mercury,
+:- pragma c_code(semidet_succeed, [will_not_call_mercury, thread_safe],
 		"SUCCESS_INDICATOR = TRUE;").
-:- pragma c_code(semidet_fail, will_not_call_mercury,
+:- pragma c_code(semidet_fail, [will_not_call_mercury, thread_safe],
 		"SUCCESS_INDICATOR = FALSE;").
-:- pragma c_code(cc_multi_equal(X::in, Y::out), will_not_call_mercury,
+:- pragma c_code(cc_multi_equal(X::in, Y::out),
+               [will_not_call_mercury, thread_safe],
 		"Y = X;").
-:- pragma c_code(cc_multi_equal(X::di, Y::uo), will_not_call_mercury,
+:- pragma c_code(cc_multi_equal(X::di, Y::uo),
+               [will_not_call_mercury, thread_safe],
 		"Y = X;").
+
 %-----------------------------------------------------------------------------%
 
 	% The type `std_util:type_info/0' happens to use much the same
