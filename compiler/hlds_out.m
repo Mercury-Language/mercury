@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -370,12 +370,15 @@ hlds_out__write_hlds(Indent, Module) -->
 		module_info_preds(Module, PredTable),
 		module_info_types(Module, TypeTable),
 		module_info_insts(Module, InstTable),
-		module_info_modes(Module, ModeTable)
+		module_info_modes(Module, ModeTable),
+		module_info_classes(Module, ClassTable)
 	},
 
 	hlds_out__write_header(Indent, Module),
 	io__write_string("\n"),
 	hlds_out__write_types(Indent, TypeTable),
+	io__write_string("\n"),
+	hlds_out__write_classes(Indent, ClassTable),
 	io__write_string("\n"),
 	hlds_out__write_insts(Indent, InstTable),
 	io__write_string("\n"),
@@ -500,20 +503,13 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 
 	hlds_out__write_procs(Indent, AppendVarnums, ModuleInfo, PredId,
 		ImportStatus, ProcTable),
-	io__write_string("\n"),
-	
-	io__write_string("\n% Class Table:\n"),
-	{ module_info_classes(ModuleInfo, ClassTable) },
-		% XXX fix this up.
-	io__print(ClassTable).
+	io__write_string("\n").
 
 :- pred hlds_out__write_marker_list(list(marker), io__state, io__state).
 :- mode hlds_out__write_marker_list(in, di, uo) is det.
 
-hlds_out__write_marker_list([]) --> [].
-hlds_out__write_marker_list([Marker | Markers]) -->
-	hlds_out__write_marker(Marker),
-	hlds_out__write_marker_list(Markers).
+hlds_out__write_marker_list(Markers) -->
+	io__write_list(Markers, ", ", hlds_out__write_marker).
 
 hlds_out__marker_name(infer_type, "infer_type").
 hlds_out__marker_name(infer_modes, "infer_modes").
@@ -1869,35 +1865,47 @@ hlds_out__write_constructor(Tvarset, Name - Args) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred hlds_out__write_classes(int, class_table, io__state, io__state).
+:- mode hlds_out__write_classes(in, in, di, uo) is det.
+
+hlds_out__write_classes(Indent, ClassTable) -->
+		% XXX fix this up.
+	hlds_out__write_indent(Indent),
+	io__write_string("%-------- Classes --------\n"),
+	hlds_out__write_indent(Indent),
+	io__write_string("% "),
+	io__print(ClassTable),
+	io__nl.
+
+%-----------------------------------------------------------------------------%
+
 :- pred hlds_out__write_insts(int, inst_table, io__state, io__state).
 :- mode hlds_out__write_insts(in, in, di, uo) is det.
 
-hlds_out__write_insts(Indent, _X) -->
+hlds_out__write_insts(Indent, _InstTable) -->
+		% XXX fix this up.
 	hlds_out__write_indent(Indent),
 	io__write_string("%-------- Insts --------\n"),
 	hlds_out__write_indent(Indent),
-	io__write_string("%%% Not yet implemented, sorry\n").
+	io__write_string("%%% Not yet implemented, sorry.\n").
+	% io__write_string("% ").
+	% io__print(InstTable),
+	% io__nl.
 
 %-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_modes(int, mode_table, io__state, io__state).
 :- mode hlds_out__write_modes(in, in, di, uo) is det.
 
-hlds_out__write_modes(Indent, _X) -->
+hlds_out__write_modes(Indent, _ModeTable) -->
+		% XXX fix this up.
 	hlds_out__write_indent(Indent),
 	io__write_string("%-------- Modes --------\n"),
 	hlds_out__write_indent(Indent),
-	io__write_string("%%% Not yet implemented, sorry\n").
-
-%-----------------------------------------------------------------------------%
-
-:- pred hlds_out__write_mode_list(int, list(mode), io__state, io__state).
-:- mode hlds_out__write_mode_list(in, in, di, uo) is det.
-
-hlds_out__write_mode_list(Indent, _X) -->
-	hlds_out__write_indent(Indent),
-	% XXX
-	io__write_string("\n").
+	io__write_string("%%% Not yet implemented, sorry.\n").
+	% io__write_string("% "),
+	% io__print(ModeTable),
+	% io__nl.
 
 %-----------------------------------------------------------------------------%
 
@@ -1938,6 +1946,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_varset(Proc, VarSet) },
 	{ proc_info_headvars(Proc, HeadVars) },
 	{ proc_info_argmodes(Proc, HeadModes) },
+	{ proc_info_maybe_arglives(Proc, MaybeArgLives) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
 	{ proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize) },
@@ -1954,14 +1963,15 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	io__write_string(" ("),
 	hlds_out__write_determinism(InferredDeterminism),
 	io__write_string("):\n"),
-	hlds_out__write_indent(Indent),
 
 	
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	( { string__contains_char(Verbose, 't') } ->
+		hlds_out__write_indent(Indent),
 		io__write_string("% Arg size properties: "),
 		termination__write_maybe_arg_size_info(MaybeArgSize, yes),
 		io__nl,
+		hlds_out__write_indent(Indent),
 		io__write_string("% Termination properties: "),
 		termination__write_maybe_termination_info(MaybeTermination,
 			yes),
@@ -1970,6 +1980,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		[]
 	),
 
+	hlds_out__write_indent(Indent),
 	hlds_out__write_var_types(Indent, VarSet, AppendVarnums,
 		VarTypes, TVarSet),
 	hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap,
@@ -1980,6 +1991,15 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ varset__init(ModeVarSet) },
 	mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName),
 			HeadModes, DeclaredDeterminism, ModeContext),
+
+	( { MaybeArgLives = yes(ArgLives) } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("% arg lives: "),
+		io__print(ArgLives),
+		io__nl
+	;
+		[]
+	),
 
 	(
 		{ ImportStatus = pseudo_imported },
