@@ -229,43 +229,41 @@ term__get_string(term_functor(term_string(String), _, _), String).
 :- term__unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
 
 term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
-	(if some [BindingOfX]
+	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
-	then
-		(if some [BindingOfY]
+	->
+		( %%% if some [BindingOfY]
 			map__search(Bindings0, Y, BindingOfY)
-		then
+		->
 			% both X and Y already have bindings - just
 			% unify the terms they are bound to
 			term__unify(BindingOfX, BindingOfY, Bindings0, Bindings)
-		else
+		;
 			% Y is a variable which hasn't been bound yet
-			(if BindingOfX = term_variable(Y) then
-				Bindings = Bindings0
-			else
-				not term__occurs(BindingOfX, Y, Bindings0),
+			( BindingOfX = term_variable(Y) ->
+			 	Bindings = Bindings0
+			;
+				\+ term__occurs(BindingOfX, Y, Bindings0),
 				map__set(Bindings0, Y, BindingOfX, Bindings)
 			)
 		)
-	else
-		(if some [BindingOfY2]
+	;
+		( %%% if some [BindingOfY2]
 			map__search(Bindings0, Y, BindingOfY2)
-		then
+		->
 			% X is a variable which hasn't been bound yet
-			(if BindingOfY2 = term_variable(X) then
+			( BindingOfY2 = term_variable(X) ->
 				Bindings = Bindings0
-			else
-				not term__occurs(BindingOfY2, X, Bindings0),
+			;
+				\+ term__occurs(BindingOfY2, X, Bindings0),
 				map__set(Bindings0, X, BindingOfY2, Bindings)
 			)
-		else
+		;
 			% both X and Y are unbound variables -
 			% bind one to the other
-			(if
-				X = Y
-			then
+			( X = Y ->
 				Bindings = Bindings0
-			else
+			;
 				map__set(Bindings0, X, term_variable(Y),
 					Bindings)
 			)
@@ -273,24 +271,24 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 	).
 
 term__unify(term_variable(X), term_functor(F, As, C), Bindings0, Bindings) :-
-	(if some [BindingOfX]
+	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
-	then
+	->
 		term__unify(BindingOfX, term_functor(F, As, C), Bindings0,
 			Bindings)
-	else
-		not term__occurs_list(As, X, Bindings0),
+	;
+		\+ term__occurs_list(As, X, Bindings0),
 		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
 	).
 
 term__unify(term_functor(F, As, C), term_variable(X), Bindings0, Bindings) :-
-	(if some [BindingOfX]
+	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
-	then
-		not term__occurs_list(As, X, Bindings0),
+	->
+		\+ term__occurs_list(As, X, Bindings0),
 		term__unify(term_functor(F, As, C), BindingOfX, Bindings0,
 			Bindings)
-	else
+	;
 		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
 	).
 
