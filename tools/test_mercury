@@ -48,6 +48,7 @@ case $HOST in
 	murlibobo)	OPTIMIZE=-O5 ;;
 	kryten) 	OPTIMIZE=-O1 ;;
 	mercury) 	OPTIMIZE=-O3 ;;
+	hydra)		OPTIMIZE=-O2 ;;
 	muse)		OPTIMIZE=-O0 ;;
 	munta)		OPTIMIZE=-O0 ;;
 esac
@@ -78,6 +79,7 @@ case $HOST in
 	munta)		PARALLEL=-j2 ;; # out of four CPUs
 	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
 	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
+	hydra)		PARALLEL=-j2 ;; # out of two CPUs
 	mercury) 	PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
@@ -152,7 +154,7 @@ set -x	# trace execution
 cd $DIR || { false; exit 1; }
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
-	murlibobo|kryten|mercury)
+	murlibobo|kryten|mercury|hydra)
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
 		;;
@@ -270,7 +272,7 @@ case $HOST in
 	kryten|murlibobo)
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	mercury)
+	mercury|hydra)
 		GRADES="asm_fast.gc.tr"
 		;;
 	*)
@@ -380,7 +382,7 @@ case $HOST in
 		GRADES="reg.gc asm_fast asm_fast.gc
 			reg.gc.prof asm_fast.gc.prof"
 		;;
-	mercury)
+	mercury|hydra)
 		GRADES="asm_fast.gc asm_fast \
 			asm_fast.gc.prof asm_fast.prof"
 		;;
