@@ -115,6 +115,10 @@ root=`/bin/pwd | sed 's:/mount/munkora/mercury:/home/mercury:'`
 PATH=$root/tools:$PATH
 export PATH
 
+# Try the command given by the environment variable RMSTAGECMD to delete
+# stage directories. Since this command may not always work due to
+# security considerations (.rhost files), we execute /bin/rm -fr afterwards
+# in any case.
 if test "$RMSTAGECMD" = ""
 then
 	RMSTAGECMD="/bin/rm -fr"
@@ -152,6 +156,7 @@ then
 		$RMSTAGECMD $root/stage2_sicstus/library < /dev/null &
 		wait
 		$RMSTAGECMD $root/stage2_sicstus/* < /dev/null
+		/bin/rm -fr $root/stage2_sicstus/* < /dev/null
 	fi
 
 	set +x
@@ -279,6 +284,7 @@ then
 		$RMSTAGECMD $root/stage2_sicstus/library < /dev/null &
 		wait
 		$RMSTAGECMD $root/stage2_sicstus/* < /dev/null
+		/bin/rm -fr $root/stage2_sicstus/* < /dev/null
 		exit 0
 	fi
 
@@ -314,6 +320,7 @@ else
 	$RMSTAGECMD $root/stage2/library < /dev/null &
 	wait
 	$RMSTAGECMD $root/stage2/* < /dev/null
+	/bin/rm -fr $root/stage2/* < /dev/null
 fi
 
 set +x
@@ -438,6 +445,7 @@ else
 	$RMSTAGECMD $root/stage3/library < /dev/null &
 	wait
 	$RMSTAGECMD $root/stage3/* < /dev/null
+	/bin/rm -fr $root/stage3/* < /dev/null
 fi
 
 echo linking stage 3... 1>&2
@@ -536,6 +544,7 @@ else
 	$RMSTAGECMD $root/stage3/library < /dev/null &
 	wait
 	$RMSTAGECMD $root/stage3/* < /dev/null
+	/bin/rm -fr $root/stage3/* < /dev/null
 fi
 
 # since we may have removed the stage3 library, use the one in stage2
@@ -572,7 +581,6 @@ then
 else
 	test_status=0
 fi
-
 
 echo "finishing at `date`"
 
