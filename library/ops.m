@@ -170,6 +170,7 @@ ops__op_table("import_type", before, fx, 1199).
 % ops__op_table("insert", before, fy, 1175).
 ops__op_table("inst", before, fx, 1199).
 ops__op_table("is", after, xfx, 700).
+ops__op_table("lambda", before, fxy, 950).
 % ops__op_table("lib", before, fy, 900).
 % ops__op_table("listing", before, fy, 900).
 % ops__op_table("man", before, fy, 900).
