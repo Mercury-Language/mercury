@@ -75,7 +75,7 @@
 :- type type_and_mode	--->	type_only(type)
 			;	type_and_mode(type, mode).
 
-:- type pragma --->		c_header_code(string)
+:- type (pragma) --->		c_header_code(string)
 			;	c_code(string)
 			;	c_code(sym_name, 
 					list(pragma_var), varset, string)
@@ -83,6 +83,8 @@
 			;	memo(sym_name, int)
 				% Predname, Arity
 			;	inline(sym_name, int)
+				% Predname, Arity
+			;	obsolete(sym_name, int)
 				% Predname, Arity
 			;	export(sym_name, list(mode), string).
 				% Predname, Modes, C Function

@@ -1562,6 +1562,12 @@ parse_pragma_type("memo", PragmaTerms, ErrorTerm, _VarSet, Result) :-
 			Pragma = memo(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
+parse_pragma_type("obsolete", PragmaTerms, ErrorTerm, _VarSet, Result) :-
+	parse_simple_pragma("obsolete",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = obsolete(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
 :- pred parse_simple_pragma(string, pred(sym_name, int, pragma),
 			list(term), term, maybe1(item)).
 :- mode parse_simple_pragma(in, pred(in, in, out) is det, in, in, out) is det.

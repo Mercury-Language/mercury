@@ -30,7 +30,8 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, det_report, det_util, det_analysis.
+:- import_module hlds_module, hlds_goal, hlds_data.
+:- import_module det_report, det_util, det_analysis.
 :- import_module globals, options, passes_aux.
 :- import_module bool, set, map, require, std_util.
 
@@ -134,8 +135,19 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, FV), _, InstMap0, DetInfo,
 simplify__goal_2(higher_order_call(A, B, C, D, E, F), _, _, _,
 		 higher_order_call(A, B, C, D, E, F), []).
 
-simplify__goal_2(call(A, B, C, D, E, F, G), _, _, _,
-		 call(A, B, C, D, E, F, G), []).
+simplify__goal_2(call(PredId, B, C, D, E, F, G), GoalInfo, _, DetInfo,
+		 call(PredId, B, C, D, E, F, G), Msgs) :-
+	%
+	% check for calls to predicates with `pragma obsolete' declarations
+	%
+	det_info_get_module_info(DetInfo, ModuleInfo),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_marker_list(PredInfo, Markers),
+	( list__member(request(obsolete), Markers) ->
+		Msgs = [warn_obsolete(PredId, GoalInfo)]
+	;
+		Msgs = []
+	).
 
 simplify__goal_2(unify(LT, RT0, M, U, C), _, InstMap0, DetInfo,
 		 unify(LT, RT, M, U, C), Msgs) :-

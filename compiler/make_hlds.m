@@ -178,6 +178,10 @@ add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 		add_pred_marker(Module0, "inline", Name, Arity, Context,
 			[request(inline)], Module)
 	;
+		{ Pragma = obsolete(Name, Arity) },
+		add_pred_marker(Module0, "obsolete", Name, Arity, Context,
+			[request(obsolete)], Module)
+	;
 		% XXX should handle pragma(export) for functions better
 		{ Pragma = export(Name, Modes, C_Function) },
 		{ module_info_get_predicate_table(Module0, PredTable) },
@@ -2409,7 +2413,7 @@ undefined_pred_or_func_error(Name, Arity, Context, Description) -->
 	hlds_out__write_pred_call_id(Name/Arity),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("  without preceding `pred' or `func' declaration").
+	io__write_string("  without preceding `pred' or `func' declaration\n").
 
 :- pred undefined_mode_error(sym_name, int, term__context, string,
 				io__state, io__state).

@@ -379,6 +379,10 @@ det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), GoalInfo, _, SolnContext,
 		DetInfo, _, _,
 		call(PredId, ModeId, A, B, C, N, F), Detism, Msgs) :-
 	det_lookup_detism(DetInfo, PredId, ModeId, Detism),
+	%
+	% Make sure we don't try to call a committed-choice pred
+	% from a non-committed-choice context.
+	%
 	determinism_components(Detism, _, NumSolns),
 	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
 		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism,

@@ -19,7 +19,9 @@
 :- import_module hlds_module, hlds_pred, hlds_goal, det_util.
 :- import_module io.
 
-:- type det_msg	--->	multidet_disj(hlds__goal_info, list(hlds__goal))
+:- type det_msg	--->
+			% warnings
+			multidet_disj(hlds__goal_info, list(hlds__goal))
 		;	det_disj(hlds__goal_info, list(hlds__goal))
 		;	semidet_disj(hlds__goal_info, list(hlds__goal))
 		;	zero_soln_disj(hlds__goal_info, list(hlds__goal))
@@ -28,6 +30,11 @@
 		;	ite_cond_cannot_succeed(hlds__goal_info)
 		;	negated_goal_cannot_fail(hlds__goal_info)
 		;	negated_goal_cannot_succeed(hlds__goal_info)
+		;	warn_obsolete(pred_id, hlds__goal_info)
+				% warning about calls to predicates
+				% for which there is a `:- pragma obsolete'
+				% declaration.
+			% errors
 		;	cc_pred_in_wrong_context(hlds__goal_info, determinism,
 				pred_id, proc_id)
 		;	higher_order_cc_pred_in_wrong_context(hlds__goal_info,
@@ -826,6 +833,12 @@ det_report_msg(negated_goal_cannot_succeed(GoalInfo), _, warning) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot succeed.\n").
+det_report_msg(warn_obsolete(PredId, GoalInfo), ModuleInfo, warning) -->
+	{ goal_info_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Warning: call to obsolete "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(".\n").
 det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, ModeId), 
 		ModuleInfo, error) -->
 	det_report_pred_proc_id(ModuleInfo, PredId, ModeId, _ProcContext),

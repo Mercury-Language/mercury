@@ -124,15 +124,25 @@
 	--->	infer_type	% Requests type inference for the predicate
 				% These markers are inserted by make_hlds
 				% for undeclared predicates.
+				% The `done' status could be meaningful,
+				% but it is currently not used.
+	;	obsolete	% Requests warnings if this predicate is used.
+				% Used for pragma(obsolete).
+				% The `done' status is not meaningful.
 	;	inline		% Requests that this be predicate be inlined.
+				% Used for pragma(inline).
 				% Since the transformation affects *other*
-				% predicates, the done status is not meaningful
+				% predicates, the `done' status is not
+				% meaningful
 	;	dnf		% Requests that this predicate be transformed
 				% into disjunctive normal form.
+				% Used for pragma(memo).
 	;	magic		% Requests that this predicate be transformed
 				% using the magic set transformation
+				% Used for pragma(memo).
 	;	memo.		% Requests that this predicate be evaluated
 				% using memoing.
+				% Used for pragma(memo).
 
 :- type marker_status
 	--->	request(marker)

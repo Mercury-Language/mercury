@@ -114,7 +114,7 @@ a variable live if its value will be used later on in the computation.
 
 % The following predicates are used by unique_modes.m.
 
-:- import_module mode_info, mode_errors.
+:- import_module mode_info, mode_errors, clause_to_proc.
 
 	% If there were any errors recorded in the mode_info,
 	% report them to the user now.
@@ -1197,7 +1197,8 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		% predicate
 	mode_info_get_preds(ModeInfo0, Preds),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	map__lookup(Preds, PredId, PredInfo),
+	map__lookup(Preds, PredId, PredInfo0),
+	maybe_add_default_mode(PredInfo0, PredInfo),
 	pred_info_procedures(PredInfo, Procs),
 	map__keys(Procs, ProcIds),
 

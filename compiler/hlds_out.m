@@ -424,6 +424,8 @@ hlds_out__write_marker(dnf) -->
 	io__write_string("dnf").
 hlds_out__write_marker(magic) -->
 	io__write_string("magic").
+hlds_out__write_marker(obsolete) -->
+	io__write_string("obsolete").
 hlds_out__write_marker(memo) -->
 	io__write_string("memo").
 
