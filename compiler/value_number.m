@@ -105,7 +105,7 @@ value_number__main(Instrs0, Instrs) -->
 	%
 	% Mkframe operations also change curfr, and therefore get the
 	% same treatment. We also apply this treatment to assignments
-	% to the control slots in, nondet stack frames, since otherwise
+	% to the control slots in nondet stack frames, since otherwise
 	% a bug in the rest of value numbering may cause them to be
 	% improperly deleted.
 
@@ -139,12 +139,6 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 			LabelInstr = label(FalseLabel) - "vn false label",
 			list__append(IfInstrs, [LabelInstr | Instrs1], Instrs)
 		)
-	; Uinstr0 = label(_) ->
-		% If we have seen a label, then the next incr_hp
-		% need not have a label placed in front of it.
-		value_number__prepare_for_vn(Instrs0, ProcLabel,
-			no, AllocSet, BreakSet, N0, N, Instrs1),
-		Instrs = [Instr0 | Instrs1]
 	; Uinstr0 = incr_hp(_, _, _) ->
 		( SeenAlloc = yes ->
 			N1 is N0 + 1,
@@ -347,6 +341,8 @@ value_number__optimize_fragment(Instrs0, LiveMap, Params, ParEntries, LabelNo0,
 		{ opt_util__count_incr_hp(Instrs0, NumIncrs) },
 		{ NumIncrs >= 2 }
 	->
+		vn_debug__cost_header_msg("fragment with the error"),
+		vn_debug__dump_instrs(Instrs0),
 		{ error("instruction sequence with several incr_hps in value_number__optimize_fragment") }
 	;
 		value_number__optimize_fragment_2(Instrs0, LiveMap, Params,
