@@ -78,6 +78,7 @@ tc_loop.out: tc_loop
 	else \
 		sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
 			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
+			-e 's/std_util.m:[0-9]*/std_util.m:NNNN/g' \
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
