@@ -359,7 +359,8 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 	proc_info_arg_info(ProcInfo, ArgInfos),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, Args),
 	code_info__build_input_arg_list(Args, ArgList),
-	code_exprn__init_state(ArgList, Varset, ExprnInfo),
+	globals__get_options(Globals, Options),
+	code_exprn__init_state(ArgList, Varset, Options, ExprnInfo),
 	stack__init(Continue),
 	stack__init(StoreMapStack0),
 	stack__init(PushedVals0),
@@ -823,7 +824,9 @@ code_info__remake_with_store_map -->
 	{ map__overlay(CallInfo, StoreMap, LvalMap0) },
 	{ map__select(LvalMap0, Vars, LvalMap) },
 	{ map__to_assoc_list(LvalMap, VarLvals) },
-	{ code_exprn__init_state(VarLvals, Varset, Exprn) },
+	code_info__get_globals(Globals),
+	{ globals__get_options(Globals, Options) },
+	{ code_exprn__init_state(VarLvals, Varset, Options, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 %---------------------------------------------------------------------------%
@@ -843,7 +846,9 @@ code_info__remake_with_call_info -->
 	code_info__get_call_info(CallInfo),
 	{ map__select(CallInfo, Vars, LvalMap) },
 	{ map__to_assoc_list(LvalMap, VarLvals) },
-	{ code_exprn__init_state(VarLvals, Varset, Exprn) },
+	code_info__get_globals(Globals),
+	{ globals__get_options(Globals, Options) },
+	{ code_exprn__init_state(VarLvals, Varset, Options, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 %---------------------------------------------------------------------------%

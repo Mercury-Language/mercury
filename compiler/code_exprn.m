@@ -68,12 +68,12 @@
 
 :- interface.
 
-:- import_module llds, list, varset, std_util, tree.
+:- import_module llds, list, varset, std_util, tree, options.
 
 :- type exprn_info.
 
-:- pred code_exprn__init_state(assoc_list(var, lval), varset, exprn_info).
-:- mode code_exprn__init_state(in, in, out) is det.
+:- pred code_exprn__init_state(assoc_list(var, lval), varset, option_table, exprn_info).
+:- mode code_exprn__init_state(in, in, in, out) is det.
 
 :- pred code_exprn__clobber_regs(list(var), exprn_info, exprn_info).
 :- mode code_exprn__clobber_regs(in, in, out) is det.
@@ -124,17 +124,18 @@
 			varset,		% all the variables and their names
 			var_map,	% what each variable stands for
 			bag(reg),	% the 'in use' markers for regs
-			set(reg)	% extra markers for acquired regs
+			set(reg),	% extra markers for acquired regs
+			option_table
 		).
 
 %------------------------------------------------------------------------------%
 
-code_exprn__init_state(Initializations, Varset, ExprnInfo) :-
+code_exprn__init_state(Initializations, Varset, Opts, ExprnInfo) :-
 	map__init(Vars0),
 	bag__init(Regs0),
 	code_exprn__init_state_2(Initializations, Vars0, Vars, Regs0, Regs),
 	set__init(Acqu),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu).
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opts).
 
 :- pred code_exprn__init_state_2(assoc_list(var, lval), var_map, var_map,
 							bag(reg), bag(reg)).
@@ -466,6 +467,9 @@ code_exprn__rem_arg_reg_dependencies([M|Ms]) -->
 
 code_exprn__var_becomes_dead(Var) -->
 	code_exprn__get_vars(Vars0),
+	code_exprn__get_options(Options),
+	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
+	{ options__lookup_bool_option(Options, asm_labels, ASM) },
 	(
 		{ map__search(Vars0, Var, Stat) }
 	->
@@ -478,7 +482,7 @@ code_exprn__var_becomes_dead(Var) -->
 			code_exprn__rem_rval_list_reg_dependencies(RvalList0),
 			(
 				{ code_exprn__member_expr_is_constant(RvalList0,
-							Vars0, Rval7) }
+							Vars0,  NLG, ASM, Rval7) }
 			->
 				{ Rval0 = Rval7 }
 			;
@@ -638,80 +642,87 @@ code_exprn__select_reg([R|Rs], Rval) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__expr_is_constant(rval, var_map, rval).
-:- mode code_exprn__expr_is_constant(in, in, out) is semidet.
+:- pred code_exprn__expr_is_constant(rval, var_map, bool, bool, rval).
+:- mode code_exprn__expr_is_constant(in, in, in, in, out) is semidet.
 
-code_exprn__expr_is_constant(const(Const), _Vars, Rval) :-
+code_exprn__expr_is_constant(const(Const), _Vars,
+				NonLocalGotos, AsmLabels, Rval) :-
 	(
 		Const = address_const(CodeAddress)
 	->
 		(
 			CodeAddress = label(_)
 		->
-			Rval = const(Const)
+			true
 		;
-			CodeAddress = imported(_)
+			CodeAddress = succip
 		->
-			Rval = const(Const)
-		;
 			fail
+		;
+			(
+				NonLocalGotos = no
+			;
+				AsmLabels = yes
+			)
 		)
 	;
-		Rval = const(Const)
-	).
+		true
+	),
+	Rval = const(Const).
 
-code_exprn__expr_is_constant(unop(Op, Expr0), Vars, unop(Op, Expr)) :-
-	code_exprn__expr_is_constant(Expr0, Vars, Expr).
+code_exprn__expr_is_constant(unop(Op, Expr0), Vars, NLG, ASM, unop(Op, Expr)) :-
+	code_exprn__expr_is_constant(Expr0, Vars, NLG, ASM, Expr).
 
 code_exprn__expr_is_constant(binop(Op, Expr1, Expr2), Vars,
-					binop(Op, Expr3, Expr4)) :-
-	code_exprn__expr_is_constant(Expr1, Vars, Expr3),
-	code_exprn__expr_is_constant(Expr2, Vars, Expr4).
+					NLG, ASM, binop(Op, Expr3, Expr4)) :-
+	code_exprn__expr_is_constant(Expr1, Vars, NLG, ASM, Expr3),
+	code_exprn__expr_is_constant(Expr2, Vars, NLG, ASM, Expr4).
 
-code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, mkword(Tag, Expr)) :-
-	code_exprn__expr_is_constant(Expr0, Vars, Expr).
+code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, NLG, ASM, mkword(Tag, Expr)) :-
+	code_exprn__expr_is_constant(Expr0, Vars, NLG, ASM, Expr).
 
 code_exprn__expr_is_constant(create(Tag, Args0, Label), Vars,
-					create(Tag, Args, Label)) :-
-	code_exprn__args_are_constant(Args0, Vars, Args).
+					NLG, ASM, create(Tag, Args, Label)) :-
+	code_exprn__args_are_constant(Args0, Vars, NLG, ASM, Args).
 
-code_exprn__expr_is_constant(var(Var), Vars, Rval) :-
+code_exprn__expr_is_constant(var(Var), Vars, NLG, ASM, Rval) :-
 	map__search(Vars, Var, Stat),
 	(
 		Stat = cached(Rval0),
-		code_exprn__expr_is_constant(Rval0, Vars, Rval)
+		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, Rval)
 	;
 		Stat = evaled(Rvals),
 		set__to_sorted_list(Rvals, RvalList),
-		code_exprn__member_expr_is_constant(RvalList, Vars, Rval)
+		code_exprn__member_expr_is_constant(RvalList, Vars, NLG, ASM, Rval)
 	).
 
 :- pred code_exprn__args_are_constant(list(maybe(rval)), var_map,
-						list(maybe(rval))).
-:- mode code_exprn__args_are_constant(in, in, out) is semidet.
+						bool, bool, list(maybe(rval))).
+:- mode code_exprn__args_are_constant(in, in, in, in, out) is semidet.
 
-code_exprn__args_are_constant([], _Vars, []).
-code_exprn__args_are_constant([Arg0 | Args0], Vars, [Arg | Args]) :-
+code_exprn__args_are_constant([], _Vars, _NLG, _ASM, []).
+code_exprn__args_are_constant([Arg0 | Args0], Vars, NLG, ASM, [Arg | Args]) :-
 	(
 		Arg0 = no,
 		Arg = no
 	;
 		Arg0 = yes(Rval0),
-		code_exprn__expr_is_constant(Rval0, Vars, Rval),
+		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, Rval),
 		Arg = yes(Rval)
 	),
-	code_exprn__args_are_constant(Args0, Vars, Args).
+	code_exprn__args_are_constant(Args0, Vars, NLG, ASM, Args).
 
-:- pred code_exprn__member_expr_is_constant(list(rval), var_map, rval).
-:- mode code_exprn__member_expr_is_constant(in, in, out) is semidet.
+:- pred code_exprn__member_expr_is_constant(list(rval), var_map,
+							bool, bool, rval).
+:- mode code_exprn__member_expr_is_constant(in, in, in, in, out) is semidet.
 
-code_exprn__member_expr_is_constant([Rval0|Rvals0], Vars, Rval) :-
+code_exprn__member_expr_is_constant([Rval0|Rvals0], Vars, NLG, ASM, Rval) :-
 	(
-		code_exprn__expr_is_constant(Rval0, Vars, Rval1)
+		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, Rval1)
 	->
 		Rval = Rval1
 	;
-		code_exprn__member_expr_is_constant(Rvals0, Vars, Rval)
+		code_exprn__member_expr_is_constant(Rvals0, Vars, NLG, ASM, Rval)
 	).
 
 %------------------------------------------------------------------------------%
@@ -755,12 +766,15 @@ code_exprn__place_var(Var, Lval, Code) -->
 
 code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
+	code_exprn__get_options(Options),
+	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
+	{ options__lookup_bool_option(Options, asm_labels, ASM) },
 	(
 		{ exprn_aux__vars_in_rval(Exprn0, []) }
 	->
 		{ error("code_exprn__place_var: cached exprn with no vars!") }
 	;
-		{ code_exprn__expr_is_constant(Exprn0, Vars0, Exprn) }
+		{ code_exprn__expr_is_constant(Exprn0, Vars0, NLG, ASM, Exprn) }
 	->
 			% move stuff out of the way
 		code_exprn__clear_lval(Lval, ClearCode),
@@ -808,6 +822,9 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 
 code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
+	code_exprn__get_options(Options),
+	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
+	{ options__lookup_bool_option(Options, asm_labels, ASM) },
 	(
 		{ set__member(lval(Lval), Rvals0) }
 	->
@@ -837,7 +854,7 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ code_exprn__construct_code(Lval, VarName, Rval, ExprnCode) }
 	;
 		{set__to_sorted_list(Rvals0, RvalList0) },
-		{ code_exprn__member_expr_is_constant(RvalList0, Vars0, Rval1) }
+		{ code_exprn__member_expr_is_constant(RvalList0, Vars0, NLG, ASM, Rval1) }
 	->
 			% move stuff out of the way
 		code_exprn__clear_lval(Lval, ClearCode),
@@ -1169,33 +1186,46 @@ code_exprn__get_var_name(Var, Name) -->
 :- pred code_exprn__set_acquired(set(reg), exprn_info, exprn_info).
 :- mode code_exprn__set_acquired(in, in, out) is det.
 
+:- pred code_exprn__get_options(option_table, exprn_info, exprn_info).
+:- mode code_exprn__get_options(out, in, out) is det.
+
+:- pred code_exprn__set_options(option_table, exprn_info, exprn_info).
+:- mode code_exprn__set_options(in, in, out) is det.
+
 code_exprn__get_varset(Varset, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(Varset, _Vars, _Regs, _Acqu).
+	ExprnInfo = exprn_info(Varset, _Vars, _Regs, _Acqu, _Opt).
 
 code_exprn__set_varset(Varset, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(_Varset, Vars, Regs, Acqu),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu).
+	ExprnInfo0 = exprn_info(_Varset, Vars, Regs, Acqu, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
 
 code_exprn__get_vars(Vars, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(_Varset, Vars, _Regs, _Acqu).
+	ExprnInfo = exprn_info(_Varset, Vars, _Regs, _Acqu, _Opt).
 
 code_exprn__set_vars(Vars, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(Varset, _Vars, Regs, Acqu),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu).
+	ExprnInfo0 = exprn_info(Varset, _Vars, Regs, Acqu, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
 
 code_exprn__get_regs(Regs, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(_Varset, _Vars, Regs, _Acqu).
+	ExprnInfo = exprn_info(_Varset, _Vars, Regs, _Acqu, _Opt).
 
 code_exprn__set_regs(Regs, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(Varset, Vars, _Regs, Acqu),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu).
+	ExprnInfo0 = exprn_info(Varset, Vars, _Regs, Acqu, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
 
 code_exprn__get_acquired(Acqu, ExprnInfo, ExprnInfo) :-
-	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, Acqu).
+	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, Acqu, _Opt).
 
 code_exprn__set_acquired(Acqu, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(Varset, Vars, Regs, _Acqu),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu).
+	ExprnInfo0 = exprn_info(Varset, Vars, Regs, _Acqu, Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
+
+code_exprn__get_options(Opt, ExprnInfo, ExprnInfo) :-
+	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, _Acqu, Opt).
+
+code_exprn__set_options(Opt, ExprnInfo0, ExprnInfo) :-
+	ExprnInfo0 = exprn_info(Varset, Vars, Regs, Acqu, _Opt),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
