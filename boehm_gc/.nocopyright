@@ -1,3 +1,4 @@
+BCC_MAKEFILE
 MacOS.c
 add_gc_prefix.c
 allchblk.c
