@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -71,6 +71,36 @@
 						% ctor definition in the
 						% original source code
 		).
+
+%-----------------------------------------------------------------------------%
+
+:- type ctor_field_table == map(ctor_field_name, list(hlds_ctor_field_defn)).
+
+:- type hlds_ctor_field_defn
+	---> hlds_ctor_field_defn(
+		prog_context,	% context of the field definition
+		import_status,
+		type_id,	% type containing the field
+		cons_id,	% constructor containing the field
+		int		% argument number (counting from 1)
+	).
+
+	%
+	% Field accesses are expanded into inline unifications by
+	% post_typecheck.m after typechecking has worked out which 
+	% field is being referred to.
+	%
+	% Function declarations and clauses are not generated for these
+	% because it would be difficult to work out how to mode them.
+	%
+	% Users can supply type and mode declarations, for example
+	% to export a field of an abstract data type or to allow
+	% taking the address of a field access function.
+	%
+:- type field_access_type
+	--->	get
+	;	set
+	.
 
 %-----------------------------------------------------------------------------%
 

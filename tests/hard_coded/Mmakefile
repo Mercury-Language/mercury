@@ -86,6 +86,7 @@ PROGS=	\
 	quantifier2 \
 	quoting_bug_test \
 	rational_test \
+	record_syntax \
 	redoip_clobber \
 	relation_test \
 	remove_file \

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,6 +61,14 @@
 	%	(currently ":", but may eventually change to ".")
 :- pred prog_out__sym_name_to_string(sym_name, string).
 :- mode prog_out__sym_name_to_string(in, out) is det.
+
+	% sym_name_to_string(SymName, String):
+	%	convert a symbol name and arity to a "<Name>/<Arity>" string,
+	%	with module qualifiers separated by
+	%	the standard Mercury module qualifier operator
+	%	(currently ":", but may eventually change to ".")
+:- pred prog_out__sym_name_and_arity_to_string(sym_name_and_arity, string).
+:- mode prog_out__sym_name_and_arity_to_string(in, out) is det.
 
 	% sym_name_to_string(SymName, Separator, String):
 	%	convert a symbol name to a string,
@@ -230,6 +238,11 @@ prog_out__sym_name_to_string_2(qualified(ModuleSpec,Name), Separator) -->
 	[Separator, Name].
 prog_out__sym_name_to_string_2(unqualified(Name), _) -->
 	[Name].
+
+prog_out__sym_name_and_arity_to_string(SymName/Arity, String) :-
+	prog_out__sym_name_to_string(SymName, SymNameString),
+	string__int_to_string(Arity, ArityString),
+	string__append_list([SymNameString, "/", ArityString], String).
 
 	% write out a module specifier
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -629,7 +629,13 @@
 			list(constructor_arg)
 		).
 
-:- type constructor_arg	==	pair(string, type).
+:- type constructor_arg	==
+		pair(
+			maybe(ctor_field_name),
+			type
+		).
+
+:- type ctor_field_name == sym_name.
 
 	% An equality_pred specifies the name of a user-defined predicate
 	% used for equality on a type.  See the chapter on them in the

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -437,7 +437,7 @@
 
 :- import_module typecheck, llds, prog_io.
 :- import_module type_util, mode_util, quantification, instmap, prog_out.
-:- import_module code_util, unify_proc, prog_util, make_hlds.
+:- import_module code_util, unify_proc, prog_util.
 :- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
 :- import_module clause_to_proc.
 :- import_module globals, options.

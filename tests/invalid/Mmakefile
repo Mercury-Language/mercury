@@ -52,6 +52,7 @@ SOURCES= \
 	prog_io_erroneous.m \
 	qual_basic_test2.m \
 	qualified_cons_id2.m \
+	record_syntax_errors.m \
 	some.m \
 	spurious_mode_error.m \
 	test_nested.m \
@@ -96,6 +97,7 @@ MCFLAGS-missing_interface_import = --make-interface
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-no_exports = 		--halt-at-warn
 MCFLAGS-sub_c = 		--verbose-error-messages
+MCFLAGS-record_syntax_errors =	--verbose-error-messages
 
 # The bug is caught when generating dependencies, so it is
 # easiest just to do that step.

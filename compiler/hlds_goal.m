@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -733,6 +733,10 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 :- pred goal_info_init(hlds_goal_info).
 :- mode goal_info_init(out) is det.
 
+:- pred goal_info_init(prog_context, hlds_goal_info).
+:- mode goal_info_init(in, out) is det.
+
+
 :- pred goal_info_init(set(prog_var), instmap_delta, determinism,
 		hlds_goal_info).
 :- mode goal_info_init(in, in, in, out) is det.
@@ -948,6 +952,12 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 :- pred set_goal_contexts(prog_context, hlds_goal, hlds_goal).
 :- mode set_goal_contexts(in, in, out) is det.
 
+	% Create the hlds_goal for a unification, filling in all the as yet
+	% unknown slots with dummy values.
+:- pred create_atomic_unification(prog_var, unify_rhs, prog_context,
+			unify_main_context, unify_sub_contexts, hlds_goal).
+:- mode create_atomic_unification(in, in, in, in, in, out) is det.
+
 	%
 	% Produce a goal to construct a given constant.
 	% These predicates all fill in the non-locals, instmap_delta
@@ -1020,7 +1030,7 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 
 :- implementation.
 
-:- import_module det_analysis, type_util.
+:- import_module det_analysis, prog_util, type_util.
 :- import_module require, string, term, varset.
 
 goal_info_init(GoalInfo) :-
@@ -1036,6 +1046,10 @@ goal_info_init(GoalInfo) :-
 	GoalInfo = goal_info(PreBirths, PostBirths, PreDeaths, PostDeaths,
 		Detism, InstMapDelta, Context, NonLocals, no, Features,
 		no_resume_point, []).
+
+goal_info_init(Context, GoalInfo) :-
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) :-
 	goal_info_init(GoalInfo0),
@@ -1406,6 +1420,17 @@ set_goal_contexts_2(Context, bi_implication(LHS0, RHS0),
 		bi_implication(LHS, RHS)) :-
 	set_goal_contexts(Context, LHS0, LHS),
 	set_goal_contexts(Context, RHS0, RHS).
+
+%-----------------------------------------------------------------------------%
+
+create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
+		Goal) :-
+	UMode = ((free - free) -> (free - free)),
+	Mode = ((free -> free) - (free -> free)),
+	UnifyInfo = complicated_unify(UMode, can_fail, []),
+	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
+	goal_info_init(Context, GoalInfo),
+	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 

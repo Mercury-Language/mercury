@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,7 +61,7 @@
 :- implementation.
 
 :- import_module code_aux, code_util, hlds_goal, hlds_data, prog_data, instmap.
-:- import_module dependency_graph, det_analysis, excess, make_hlds, mode_util.
+:- import_module dependency_graph, det_analysis, excess, mode_util.
 :- import_module require, map, list, string, int, bool, std_util, term, varset.
 
 	% Traverse the module structure.

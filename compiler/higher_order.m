@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,7 +36,7 @@
 :- implementation.
 
 :- import_module hlds_pred, hlds_goal, hlds_data, instmap, (inst).
-:- import_module code_util, globals, make_hlds, mode_util, goal_util.
+:- import_module code_util, globals, mode_util, goal_util.
 :- import_module type_util, options, prog_data, prog_out, quantification.
 :- import_module mercury_to_mercury, inlining, polymorphism, prog_util.
 :- import_module special_pred, passes_aux.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
-:- import_module modes, mode_util, make_hlds, quantification, instmap.
+:- import_module modes, mode_util, quantification, instmap.
 :- import_module prog_data, switch_detection, det_util, inst_match.
 :- import_module switch_detection, term, varset.
 

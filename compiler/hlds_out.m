@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,6 +82,9 @@
 :- pred hlds_out__write_simple_call_id(pred_or_func, sym_name, arity,
 	io__state, io__state).
 :- mode hlds_out__write_simple_call_id(in, in, in, di, uo) is det.
+
+:- pred hlds_out__simple_call_id_to_string(simple_call_id, string).
+:- mode hlds_out__simple_call_id_to_string(in, out) is det.
 
 	% Write "argument %i of call to pred_or_func `foo/n'".
 :- pred hlds_out__write_call_arg_id(call_id, int, io__state, io__state).
@@ -365,6 +368,15 @@ hlds_out__write_simple_call_id(PredOrFunc, Name, Arity) -->
 hlds_out__simple_call_id_to_sym_name_and_arity(PredOrFunc - SymName/Arity,
 		SymName/OrigArity) :-
 	adjust_func_arity(PredOrFunc, OrigArity, Arity).
+
+hlds_out__simple_call_id_to_string(CallId, String) :-
+	hlds_out__simple_call_id_to_sym_name_and_arity(CallId, NameArity),
+	CallId = PredOrFunc - _,
+	( PredOrFunc = predicate, PorFString = "predicate"
+	; PredOrFunc = function, PorFString = "function"
+	),
+	prog_out__sym_name_and_arity_to_string(NameArity, NameArityString),
+	string__append_list([PorFString, " `", NameArityString, "'"], String).
 
 hlds_out__write_call_id(call(PredCallId)) -->
 	hlds_out__write_simple_call_id(PredCallId).
