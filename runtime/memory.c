@@ -330,7 +330,7 @@ static void setup_mprotect(void)
 	heap_zone_left = heap_zone_size;
 	heap_zone = (char *) (heapend) - heap_zone_size;
 	if (heap_zone_size > 0
-	&& mprotect(heap_zone, heap_zone_size, MY_PROT) != 0)
+	&& mprotect(heap_zone, heap_zone_size, MY_PROT) < 0)
 	{
 		perror("Mercury runtime: cannot protect heap redzone");
 		exit(1);
@@ -339,7 +339,7 @@ static void setup_mprotect(void)
 	detstack_zone_left = detstack_zone_size;
 	detstack_zone = (char *) (detstackend) - detstack_zone_size;
 	if (detstack_zone_size > 0
-	&& mprotect(detstack_zone, detstack_zone_size, MY_PROT) != 0)
+	&& mprotect(detstack_zone, detstack_zone_size, MY_PROT) < 0)
 	{
 		perror("Mercury runtime: cannot protect detstack redzone");
 		exit(1);
@@ -348,7 +348,7 @@ static void setup_mprotect(void)
 	nondstack_zone_left = nondstack_zone_size;
 	nondstack_zone = (char *) (nondstackend) - nondstack_zone_size;
 	if (nondstack_zone_size > 0
-	&& mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) != 0)
+	&& mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) < 0)
 	{
 		perror("Mercury runtime: cannot protect nondstack redzone");
 		exit(1);
@@ -403,7 +403,7 @@ static bool try_munprotect(void *addr)
 					(void *) heap_zone, (void *) new_zone);
 
 			if (mprotect(heap_zone, new_zone-heap_zone,
-				PROT_READ|PROT_WRITE) != 0)
+				PROT_READ|PROT_WRITE) < 0)
 			{
 				perror("Mercury runtime: cannot unprotect heap");
 				exit(1);
@@ -447,7 +447,7 @@ static bool try_munprotect(void *addr)
 			}
 
 			if (mprotect(detstack_zone, new_zone-detstack_zone,
-				PROT_READ|PROT_WRITE) != 0)
+				PROT_READ|PROT_WRITE) < 0)
 			{
 				perror("Mercury runtime: cannot unprotect detstack");
 				exit(1);
@@ -491,7 +491,7 @@ static bool try_munprotect(void *addr)
 			}
 
 			if (mprotect(nondstack_zone, new_zone-nondstack_zone,
-				PROT_READ|PROT_WRITE) != 0)
+				PROT_READ|PROT_WRITE) < 0)
 			{
 				perror("Mercury runtime: cannot unprotect nondstack\n");
 				exit(1);
