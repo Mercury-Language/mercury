@@ -655,13 +655,10 @@ type_has_user_defined_equality_pred(ModuleInfo, Type, SymName) :-
 	% include arguments with these types.
 
 type_util__is_dummy_argument_type(Type) :-
-	Type = term__functor(term__atom(FunctorName), [
+	Type = term__functor(term__atom(":"), [
 			term__functor(term__atom(ModuleName), [], _),
 			term__functor(term__atom(TypeName), TypeArgs, _)
 		], _),
-	(	FunctorName = "."
-	;	FunctorName = ":"
-	),
 	list__length(TypeArgs, TypeArity),
 	type_util__is_dummy_argument_type_2(ModuleName, TypeName, TypeArity).
 

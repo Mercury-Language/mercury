@@ -264,7 +264,7 @@ ops__op_table("-", before, fx, 200).		% standard ISO Prolog
 ops__op_table("--->", after, xfy, 1179).	% Mercury extension
 ops__op_table("-->", after, xfx, 1200).		% standard ISO Prolog
 ops__op_table("->", after, xfy, 1050).		% standard ISO Prolog
-ops__op_table(".", after, yfx, 10).		% Mercury extension
+ops__op_table(".", after, xfy, 600).		% traditional Prolog (not ISO)
 ops__op_table("/", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("//", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("/\\", after, yfx, 500).		% standard ISO Prolog
