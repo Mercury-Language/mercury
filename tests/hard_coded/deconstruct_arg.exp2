@@ -134,22 +134,22 @@ functor 'a' arity 0 []
 deconstruct limited deconstruct 3 of a
 functor 'a' arity 0 []
 
-std_util    functor: 3.14159000000000/0
-deconstruct functor: 3.14159000000000/0
-std_util    argument 0 of 3.14159000000000 doesn't exist
-deconstruct argument 0 of 3.14159000000000 doesn't exist
-std_util    argument 1 of 3.14159000000000 doesn't exist
-deconstruct argument 1 of 3.14159000000000 doesn't exist
-std_util    argument 2 of 3.14159000000000 doesn't exist
-deconstruct argument 2 of 3.14159000000000 doesn't exist
-std_util    deconstruct: functor 3.14159000000000 arity 0
+std_util    functor: 0.12345678901234566/0
+deconstruct functor: 0.12345678901234566/0
+std_util    argument 0 of 0.12345678901234566 doesn't exist
+deconstruct argument 0 of 0.12345678901234566 doesn't exist
+std_util    argument 1 of 0.12345678901234566 doesn't exist
+deconstruct argument 1 of 0.12345678901234566 doesn't exist
+std_util    argument 2 of 0.12345678901234566 doesn't exist
+deconstruct argument 2 of 0.12345678901234566 doesn't exist
+std_util    deconstruct: functor 0.12345678901234566 arity 0
 []
-deconstruct deconstruct: functor 3.14159000000000 arity 0
+deconstruct deconstruct: functor 0.12345678901234566 arity 0
 []
-std_util    limited deconstruct 3 of 3.14159000000000
-functor 3.14159000000000 arity 0 []
-deconstruct limited deconstruct 3 of 3.14159000000000
-functor 3.14159000000000 arity 0 []
+std_util    limited deconstruct 3 of 0.12345678901234566
+functor 0.12345678901234566 arity 0 []
+deconstruct limited deconstruct 3 of 0.12345678901234566
+functor 0.12345678901234566 arity 0 []
 
 std_util    functor: 4/0
 deconstruct functor: 4/0

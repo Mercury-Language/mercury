@@ -14,15 +14,20 @@
 
 #ifdef MR_USE_SINGLE_PREC_FLOAT
   typedef float MR_Float;
+  #define MR_FLT_MIN_PRECISION	7
+  #define MR_FLT_FMT		"%f"
 #else
   typedef double MR_Float;
+  #define MR_FLT_MIN_PRECISION	15
+  #define MR_FLT_FMT		"%lf"
 #endif
+#define MR_FLT_MAX_PRECISION	(MR_FLT_MIN_PRECISION + 2)
 
 #ifdef MR_BOXED_FLOAT 
 
-#define MR_word_to_float(w) 	(* (MR_Float *) (w))
+#define MR_word_to_float(w)	(* (MR_Float *) (w))
 
-#define MR_FLOAT_WORDS 		((sizeof(MR_Float) + sizeof(MR_Word) - 1) \
+#define MR_FLOAT_WORDS		((sizeof(MR_Float) + sizeof(MR_Word) - 1) \
 					/ sizeof(MR_Word))
 
 #ifdef MR_CONSERVATIVE_GC
@@ -89,6 +94,25 @@
   #endif /* not __GNUC__ */
 
 #endif /* not MR_BOXED_FLOAT */
+
+/*
+** The size of the buffer to pass to MR_sprintf_float.
+**
+** Longest possible string for %#.*g format is `-n.nnnnnnE-mmmm', which
+** has size  PRECISION + MAX_EXPONENT_DIGITS + 5 (for the `-', `.', `E',
+** '-', and '\\0').  PRECISION is at most 20, and MAX_EXPONENT_DIGITS is
+** at most 5, so we need at most 30 chars.  80 is way more than enough.
+*/
+#define MR_SPRINTF_FLOAT_BUF_SIZE   80
+
+#define MR_float_to_string(Float, String)			\
+	do {							\
+		char buf[MR_SPRINTF_FLOAT_BUF_SIZE];		\
+		MR_sprintf_float(buf, Float);			\
+		MR_make_aligned_string_copy(Str, buf);		\
+	} while (0)
+
+void MR_sprintf_float(char *buf, MR_Float f);
 
 MR_Integer MR_hash_float(MR_Float);
 

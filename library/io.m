@@ -4410,8 +4410,8 @@ io__putback_byte(_, _) -->
 	io__write_float(Val::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
-	ML_sprintf_float(buf, Val);
+	char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
+	MR_sprintf_float(buf, Val);
 	if (ML_fprintf(mercury_current_text_output, ""%s"", buf) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
@@ -4677,8 +4677,8 @@ io__binary_stream_offset(_, _) -->
 		[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
-	ML_sprintf_float(buf, Val);
+	char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
+	MR_sprintf_float(buf, Val);
 	if (ML_fprintf(stream, ""%s"", buf) < 0) {
 		mercury_output_error(stream);
 	}

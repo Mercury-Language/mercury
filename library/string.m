@@ -2771,9 +2771,7 @@ is_exponent('E').
 	** For efficiency reasons we duplicate the C implementation
 	** of string__lowlevel_float_to_string
 	*/
-	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
-	ML_sprintf_float(buf, Flt);
-	MR_make_aligned_string_copy(Str, buf);
+	MR_float_to_string(Flt, Str);
 }").
 
 	% XXX The unsafe_promise_unique is needed because in
@@ -2833,9 +2831,7 @@ max_precision = min_precision + 2.
 	** Note any changes here will require the same changes in
 	** string__float_to_string.
 	*/
-	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
-	ML_sprintf_float(buf, Flt);
-	MR_make_aligned_string_copy(Str, buf);
+	MR_float_to_string(Flt, Str);
 }").
 
 :- pragma foreign_proc("C#",
@@ -2855,67 +2851,6 @@ string__lowlevel_float_to_string(_, _) :-
 	% matching foreign_proc version.
 	private_builtin__sorry("string__lowlevel_float_to_string").
 
-:- pragma foreign_decl(c, "
-#ifdef MR_USE_SINGLE_PREC_FLOAT
-  #define ML_MIN_PRECISION	7
-  #define ML_FMT		""%f""
-#else
-  #define ML_MIN_PRECISION	15
-  #define ML_FMT		""%lf""
-#endif
-#define ML_MAX_PRECISION	(ML_MIN_PRECISION + 2)
-
-/*
-** The size of the buffer to pass to ML_sprintf_float.
-**
-** Longest possible string for %#.*g format is `-n.nnnnnnE-mmmm', which
-** has size  PRECISION + MAX_EXPONENT_DIGITS + 5 (for the `-', `.', `E',
-** '-', and '\\0').  PRECISION is at most 20, and MAX_EXPONENT_DIGITS is
-** at most 5, so we need at most 30 chars.  80 is way more than enough.
-*/
-#define ML_SPRINTF_FLOAT_BUF_SIZE	80
-
-void ML_sprintf_float(char *buf, MR_Float f);
-").
-
-:- pragma foreign_code(c, "
-/*
-** ML_sprintf_float(buf, f)
-**
-** fills buff with the string representation of the float, f, such that
-** the string representation has enough precision to represent the
-** float, f.
-**
-** Note that buf must have size at least ML_SPRINTF_FLOAT_BUF_SIZE.
-*/
-void
-ML_sprintf_float(char *buf, MR_Float f)
-{
-	MR_Float round = 0.0;
-	int 	 i = ML_MIN_PRECISION;
-
-	/*
-	** Print the float at increasing precisions until the float
-	** is round-trippable.
-	*/
-	do {
-		sprintf(buf, ""%#.*g"", i, f);
-		if (i >= ML_MAX_PRECISION) {
-			/*
-			** This should be sufficient precision to
-			** round-trip any value.  Don't bother checking
-			** whether it can actually be round-tripped,
-			** since if it can't, this is a bug in the C
-			** implementation.
-			*/
-			break;
-		}
-		sscanf(buf, ML_FMT, &round);
-		i++;
-	} while (round != f);
-}
-").
-
 :- pragma export(string__to_float(in, out), "ML_string_to_float").
 :- pragma foreign_proc("C",
 	string__to_float(FloatString::in, FloatVal::out),
@@ -2928,7 +2863,7 @@ ML_sprintf_float(char *buf, MR_Float f)
 	char   	tmpc;
 	SUCCESS_INDICATOR =
 		(!MR_isspace(FloatString[0])) &&
-		(sscanf(FloatString, ML_FMT ""%c"", &FloatVal, &tmpc) == 1);
+		(sscanf(FloatString, MR_FLT_FMT ""%c"", &FloatVal, &tmpc) == 1);
 		/* MR_TRUE if sscanf succeeds, MR_FALSE otherwise */
 }").
 

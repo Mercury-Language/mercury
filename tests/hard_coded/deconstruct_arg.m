@@ -71,8 +71,8 @@ main -->
 	test_all(qwerty(5)), newline,
 		% test characters
 	test_all('a'), newline,
-		% test floats
-	test_all(3.14159), newline,
+		% test a float which requires 17 digits of precision
+	test_all(0.12345678901234566), newline,
 		% test integers
 	test_all(4), newline,
 		% test univ.

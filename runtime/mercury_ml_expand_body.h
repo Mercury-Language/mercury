@@ -676,13 +676,13 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_FUNCTOR_FIELD
             {
                 MR_Word     data_word;
-                char        buf[500];
+                char        buf[MR_SPRINTF_FLOAT_BUF_SIZE];
                 MR_Float    f;
                 char        *str;
 
                 data_word = *data_word_ptr;
                 f = MR_word_to_float(data_word);
-                sprintf(buf, "%#.15g", f);
+                MR_sprintf_float(buf, f);
                 MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
                     (strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word));
                 strcpy(str, buf);

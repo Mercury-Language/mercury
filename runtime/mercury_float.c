@@ -46,3 +46,41 @@ MR_hash_float(MR_Float f)
 	}
 	return (h >= 0 ? h : -h);
 }
+
+/*
+** MR_sprintf_float(buf, f)
+**
+** fills buff with the string representation of the float, f, such that
+** the string representation has enough precision to represent the
+** float, f.
+**
+** Note that buf must have size at least ML_SPRINTF_FLOAT_BUF_SIZE.
+*/
+void
+MR_sprintf_float(char *buf, MR_Float f)
+{
+	MR_Float round = 0.0;
+	int 	 i = MR_FLT_MIN_PRECISION;
+
+	/*
+	** Print the float at increasing precisions until the float
+	** is round-trippable.
+	*/
+	do {
+		sprintf(buf, "%#.*g", i, f);
+		if (i >= MR_FLT_MAX_PRECISION) {
+			/*
+			** This should be sufficient precision to
+			** round-trip any value.  Don't bother checking
+			** whether it can actually be round-tripped,
+			** since if it can't, this is a bug in the C
+			** implementation.
+			*/
+			break;
+		}
+		sscanf(buf, MR_FLT_FMT, &round);
+		i++;
+	} while (round != f);
+
+    return;
+}
