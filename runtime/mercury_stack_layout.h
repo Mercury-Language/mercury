@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -679,8 +679,8 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_Word			*MR_exec_proc_rep;
 	MR_TrieNode		MR_exec_tabling_pointer;
 	MR_Table_Info		MR_exec_table_info;
-	const MR_int_least16_t	*MR_exec_head_var_nums;
-	const MR_int_least16_t	*MR_exec_used_var_names;
+	const MR_uint_least16_t	*MR_exec_head_var_nums;
+	const MR_uint_least16_t	*MR_exec_used_var_names;
 	MR_int_least16_t	MR_exec_num_head_vars;
 	MR_int_least16_t	MR_exec_max_named_var_num;
 	MR_int_least16_t	MR_exec_max_r_num;
