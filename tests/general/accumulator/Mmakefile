@@ -37,7 +37,7 @@ PROGS=		base		\
 	# Accumulators aren't introduced for -O5
 	# this is just a temp workaround
 override EXTRA_MCFLAGS =
-MCFLAGS = -d39  --introduce-accumulators --optimize-constructor-last-call
+MCFLAGS = -d accum --introduce-accumulators --optimize-constructor-last-call
 
     # programs which aren't working.
 NOT_WORKING =
