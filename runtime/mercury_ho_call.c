@@ -57,19 +57,6 @@ ENDINIT
 #define MR_CLASS_METHOD_CALL_INPUTS	4
 
 /*
-** The following entries are obsolete, and are kept for bootstrapping only.
-*/
-
-Define_extern_entry(do_call_det_closure);
-Define_extern_entry(do_call_semidet_closure);
-Define_extern_entry(do_call_nondet_closure);
-Define_extern_entry(do_call_old_closure);
-
-Define_extern_entry(do_call_det_class_method);
-Define_extern_entry(do_call_semidet_class_method);
-Define_extern_entry(do_call_nondet_class_method);
-
-/*
 ** These are the real implementations of higher order calls and method calls.
 */
 
@@ -90,19 +77,8 @@ Define_extern_entry(mercury__compare_3_3);
 Declare_label(mercury__compare_3_0_i1);
 
 BEGIN_MODULE(call_module)
-	init_entry_ai(do_call_det_closure);
-	init_entry_ai(do_call_semidet_closure);
-	init_entry_ai(do_call_nondet_closure);
-	init_entry_ai(do_call_old_closure);
-
 	init_entry_ai(mercury__do_call_closure);
-
-	init_entry_ai(do_call_det_class_method);
-	init_entry_ai(do_call_semidet_class_method);
-	init_entry_ai(do_call_nondet_class_method);
-
 	init_entry_ai(mercury__do_call_class_method);
-
 	init_entry_ai(mercury__unify_2_0);
 	init_entry_ai(mercury__index_2_0);
 	init_entry_ai(mercury__compare_3_0);
@@ -110,48 +86,6 @@ BEGIN_MODULE(call_module)
 	init_entry_ai(mercury__compare_3_2);
 	init_entry_ai(mercury__compare_3_3);
 BEGIN_CODE
-
-Define_entry(do_call_det_closure);
-	tailcall(ENTRY(mercury__do_call_closure),
-		LABEL(do_call_det_closure));
-Define_entry(do_call_semidet_closure);
-	tailcall(ENTRY(mercury__do_call_closure),
-		LABEL(do_call_semidet_closure));
-Define_entry(do_call_nondet_closure);
-	tailcall(ENTRY(mercury__do_call_closure),
-		LABEL(do_call_nondet_closure));
-
-Define_entry(do_call_old_closure);
-{
-	Word	closure;
-	int	i, num_in_args, num_extra_args;
-
-	closure = r1; /* The closure */
-	num_in_args = MR_field(0, closure, 0); /* number of input args */
-	num_extra_args = r2; /* number of immediate input args */
-
-	save_registers();
-
-	if (num_in_args < MR_HO_CALL_INPUTS) {
-		for (i = 1; i <= num_extra_args; i++) {
-			virtual_reg(i + num_in_args) =
-				virtual_reg(i + MR_HO_CALL_INPUTS);
-		}
-	} else if (num_in_args > MR_HO_CALL_INPUTS) {
-		for (i = num_extra_args; i>0; i--) {
-			virtual_reg(i + num_in_args) =
-				virtual_reg(i + MR_HO_CALL_INPUTS);
-		}
-	} /* else do nothing because i == MR_HO_CALL_INPUTS */
-
-	for (i = 1; i <= num_in_args; i++) {
-		virtual_reg(i) = MR_field(0, closure, i + 1); /* copy args */
-	}
-
-	restore_registers();
-
-	tailcall((Code *) MR_field(0, closure, 1), LABEL(do_call_det_closure));
-}
 
 Define_entry(mercury__do_call_closure);
 {
@@ -161,14 +95,6 @@ Define_entry(mercury__do_call_closure);
 	int		i;
 
 	closure = (MR_Closure *) r1;
-
-	/* This check is for bootstrapping only. */
-	if (((Word) closure->MR_closure_layout) < 1024) {
-		/* we found an old-style closure, call the old handler */
-		tailcall(ENTRY(do_call_old_closure),
-			LABEL(mercury__do_call_closure));
-	}
-
 	num_extra_args = r2;
 	num_hidden_args = closure->MR_closure_num_hidden_args;
 
@@ -197,16 +123,6 @@ Define_entry(mercury__do_call_closure);
 	tailcall(closure->MR_closure_code,
 		LABEL(mercury__do_call_closure));
 }
-
-Define_entry(do_call_det_class_method);
-	tailcall(ENTRY(mercury__do_call_class_method),
-		LABEL(do_call_det_class_method));
-Define_entry(do_call_semidet_class_method);
-	tailcall(ENTRY(mercury__do_call_class_method),
-		LABEL(do_call_semidet_class_method));
-Define_entry(do_call_nondet_class_method);
-	tailcall(ENTRY(mercury__do_call_class_method),
-		LABEL(do_call_nondet_class_method));
 
 	/*
 	** r1: the typeclass_info
@@ -274,11 +190,10 @@ unify_start:
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
 
 #ifdef	MR_CTOR_REP_STATS
-	MR_ctor_rep_unify[MR_get_new_type_ctor_rep(
-				type_ctor_info->type_ctor_rep)]++;
+	MR_ctor_rep_unify[type_ctor_info->type_ctor_rep]++;
 #endif
 
-	switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
+	switch (type_ctor_info->type_ctor_rep) {
 
 			/*
 			** For notag and equiv types, we should probably
@@ -508,11 +423,10 @@ Define_entry(mercury__index_2_0);
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
 
 #ifdef	MR_CTOR_REP_STATS
-	MR_ctor_rep_index[MR_get_new_type_ctor_rep(
-				type_ctor_info->type_ctor_rep)]++;
+	MR_ctor_rep_index[type_ctor_info->type_ctor_rep]++;
 #endif
 
-	switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
+	switch (type_ctor_info->type_ctor_rep) {
 
 			/*
 			** For notag and equiv types, we should probably
@@ -707,11 +621,10 @@ compare_start:
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
 
 #ifdef	MR_CTOR_REP_STATS
-	MR_ctor_rep_compare[MR_get_new_type_ctor_rep(
-				type_ctor_info->type_ctor_rep)]++;
+	MR_ctor_rep_compare[type_ctor_info->type_ctor_rep]++;
 #endif
 
-	switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
+	switch (type_ctor_info->type_ctor_rep) {
 
 			/*
 			** For notag and equiv types, we should probably

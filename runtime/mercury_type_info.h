@@ -64,7 +64,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)	\
-	assert(MR_RTTI_VERSION__INITIAL <= typector->type_ctor_version \
+	assert(MR_RTTI_VERSION__USEREQ <= typector->type_ctor_version \
 		&& typector->type_ctor_version <= MR_RTTI_VERSION__USEREQ)
 
 /*---------------------------------------------------------------------------*/
@@ -955,13 +955,6 @@ typedef struct MR_TypeCtorInfo_struct *MR_TypeCtorInfo;
 
 #define MR_TYPE_CTOR_INFO_GET_TYPE_MODULE_NAME(TypeCtorInfo)		\
 	((TypeCtorInfo)->type_ctor_module_name)
-
-/*---------------------------------------------------------------------------*/
-
-	/* Functions for handling previous versions of the RTTI code */
-
-MR_TypeCtorRepresentation
-MR_get_new_type_ctor_rep(MR_TypeCtorInfo type_ctor_info);
 
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_TYPEINFO_H */

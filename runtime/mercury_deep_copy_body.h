@@ -48,7 +48,7 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
     layout_entry = type_ctor_info->type_ctor_layout[data_tag];
     entry_value = (Word *) MR_strip_tag(layout_entry);
 
-    switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
+    switch (type_ctor_info->type_ctor_rep) {
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             new_data = data;    /* just a copy of the actual item */

@@ -684,30 +684,3 @@ void mercury_sys_init_type_info(void) {
 }
 
 /*---------------------------------------------------------------------------*/
-
-	/* Functions for handling previous versions of the RTTI code */
-
-	/*
-	** After updating the type_ctor_rep enumeration to add user
-	** defined equality alternatives, we need to convert old
-	** type_ctor_reps into the new type_ctor_rep.
-	*/
-MR_TypeCtorRepresentation
-MR_get_new_type_ctor_rep(MR_TypeCtorInfo type_ctor_info)
-{
-	MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(type_ctor_info);
-	if (type_ctor_info->type_ctor_version < MR_RTTI_VERSION__USEREQ) {
-		if (type_ctor_info->type_ctor_rep < 3) {
-			return type_ctor_info->type_ctor_rep * 2;
-		} else {
-			return type_ctor_info->type_ctor_rep + 3;
-		}
-	} else {
-		return type_ctor_info->type_ctor_rep;
-	}
-}
-
-/*---------------------------------------------------------------------------*/
-
-
-

@@ -486,11 +486,11 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
         printf("ENTRY %p %x, data rep: %d\n",
-            table, data, MR_get_new_type_ctor_rep(type_ctor_info));
+            table, data, type_ctor_info->type_ctor_rep);
     }
 #endif  /* MR_TABLE_DEBUG */
 
-    switch (MR_get_new_type_ctor_rep(type_ctor_info)) {
+    switch (type_ctor_info->type_ctor_rep) {
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ: 
 	{
