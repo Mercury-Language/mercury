@@ -8,6 +8,7 @@
 #define	MEMORY_H
 
 #include "regs.h"
+#include "std.h"
 
 /* these cannot be changed without lots of modifications elsewhere */
 #define MAX_REAL_REG 32		/* r1 .. r32 */
