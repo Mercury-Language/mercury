@@ -435,6 +435,7 @@ then
 	cd library
 	$LN_S $root/library/[a-l]*.m .
 	$LN_S $root/library/[m-z]*.m .
+	$LN_S $root/library/library_strong_name.sn .
 	cp $root/library/Mmake* .
 	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/stage2
@@ -669,6 +670,7 @@ then
 	cd library
 	$LN_S $root/library/[a-l]*.m .
 	$LN_S $root/library/[m-z]*.m .
+	$LN_S $root/library/library_strong_name.sn .
 	cp $root/library/Mmake* .
 	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/stage3
