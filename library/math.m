@@ -233,9 +233,7 @@
 	#define	ML_FLOAT_PI		3.1415926535897932384
 	#define	ML_FLOAT_LN2		0.69314718055994530941
 
-/*
 	void ML_math_domain_error(const char *where);
-*/
 
 "). % end pragma foreign_decl
 
