@@ -1296,7 +1296,13 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile0,
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(invoked_by_mmc_make, MMCMake),
-	{ DontWriteDFile = DontWriteDFile0 `or` MMCMake },
+	{ DontWriteDFile1 = DontWriteDFile0 `or` MMCMake },
+
+	% Don't write the `.d' file when making the `.opt' file because
+	% we can't work out the full transitive implementation dependencies.
+	globals__io_lookup_bool_option(make_optimization_interface,
+		MakeOptInt),
+	{ DontWriteDFile = DontWriteDFile1 `or` MakeOptInt },
 
 	{ module_imports_get_module_name(ModuleImports0, Module) },
 
