@@ -513,6 +513,13 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	option_implies(procid_stack_layout, basic_stack_layout, bool(yes)),
 	option_implies(agc_stack_layout, basic_stack_layout, bool(yes)),
 
+	% dupelim.m doesn't preserve label layout structures
+	% (e.g. it can change the return address in a call
+	% to a different label whose code is the same but
+	% which has a different label layout structure),
+	% so we need to disable it when tracing.
+	option_implies(procid_stack_layout, optimize_dups, bool(no)),
+
 	% XXX deforestation does not perform folding on polymorphic
 	% predicates correctly with --body-typeinfo-liveness.
 	option_implies(body_typeinfo_liveness, deforestation, bool(no)),
