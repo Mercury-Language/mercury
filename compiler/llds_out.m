@@ -62,11 +62,10 @@
 :- pred llds_out__name_mangle(string, string).
 :- mode llds_out__name_mangle(in, out) is det.
 
-	% Produces a string of the form Module__Name, unless Module__
-	% is already a prefix of Name.
+	% Produces a string of the form Module__Name.
 
-:- pred llds_out__maybe_qualify_name(string, string, string).
-:- mode llds_out__maybe_qualify_name(in, in, out) is det.
+:- pred llds_out__qualify_name(string, string, string).
+:- mode llds_out__qualify_name(in, in, out) is det.
 
 :- pred output_c_quoted_string(string, io__state, io__state).
 :- mode output_c_quoted_string(in, di, uo) is det.
@@ -2196,7 +2195,7 @@ get_proc_label(special_proc(Module, PredName, TypeModule, TypeName, TypeArity,
 	% we need to qualify it with both the module name of the
 	% type, and also (if it is different) the module name of the
 	% current module.
-	llds_out__maybe_qualify_name(MangledTypeModule, MangledTypeName,
+	llds_out__qualify_name(MangledTypeModule, MangledTypeName,
 		QualifiedMangledTypeName),
 	llds_out__maybe_qualify_name(MangledModule, QualifiedMangledTypeName,
 		FullyQualifiedMangledTypeName),
@@ -2227,7 +2226,7 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 	->
 		LabelName0 = Name0
 	;
-		llds_out__maybe_qualify_name(DeclaringModule, Name0,
+		llds_out__qualify_name(DeclaringModule, Name0,
 			LabelName0)
 	),
 	(
@@ -2861,6 +2860,15 @@ llds_out__convert_to_valid_c_identifier(String, Name) :-
 		llds_out__convert_to_valid_c_identifier_2(String, Name0),
 		string__append("f", Name0, Name)
 	).
+
+llds_out__qualify_name(Module0, Name0, Name) :-
+	string__append_list([Module0, "__", Name0], Name).
+
+	% Produces a string of the form Module__Name, unless Module__
+	% is already a prefix of Name.
+
+:- pred llds_out__maybe_qualify_name(string, string, string).
+:- mode llds_out__maybe_qualify_name(in, in, out) is det.
 
 llds_out__maybe_qualify_name(Module0, Name0, Name) :-
 	string__append(Module0, "__", UnderscoresModule),

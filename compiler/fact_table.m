@@ -2398,7 +2398,7 @@ write_fact_table_numfacts(PredName, NumFacts, OutputStream, C_HeaderCode) -->
 make_fact_table_identifier(qualified(ModuleName, PredName), Identifier) :-
 	llds_out__name_mangle(ModuleName, MangledModuleName),
 	llds_out__name_mangle(PredName, MangledPredName),
-	llds_out__maybe_qualify_name(MangledModuleName, MangledPredName,
+	llds_out__qualify_name(MangledModuleName, MangledPredName,
 		Identifier).
 
 make_fact_table_identifier(unqualified(PredName), Identifier) :-

@@ -775,7 +775,7 @@ opt_debug__dump_proclabel(special_proc(Module, Pred, TypeModule,
 	string__int_to_string(Arity, A_str),
 	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),
-	llds_out__maybe_qualify_name(TypeModule, Type, TypeName),
+	llds_out__qualify_name(TypeModule, Type, TypeName),
 	string__append_list([Module, "_", Pred, "_",
 		TypeName, "_", A_str, "_", M_str], Str).
 
