@@ -264,6 +264,9 @@ $(os_subdir)%.dll : %.cs
 
 $(os_subdir)%.dll : %.il
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
+
+mercury.sn:
+	cp $(MERC_DLL_DIR)/mercury.sn .
 endif
 
 # For --split-c-files, we generate the .$O files directly from the .m files.

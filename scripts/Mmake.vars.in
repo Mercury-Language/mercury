@@ -165,7 +165,7 @@ MERC_DLL_DIR    = @LIBDIR@/lib/ilc/@FULLARCH@
 # into bytecode.
 MS_ILASM		= @ILASM@
 ALL_MS_ILASMFLAGS= $(MS_ILASMFLAGS) $(EXTRA_MS_ILASMFLAGS) \
-		$(TARGET_MS_ILASMFLAGS) $(LIB_MS_ILASMFLAGS)
+		$(TARGET_MS_ILASMFLAGS) $(LIB_MS_ILASMFLAGS) $(ILASM_KEYFLAG)
 MS_ILASMFLAGS	=
 EXTRA_MS_ILASMFLAGS =
 LIB_MS_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
@@ -394,6 +394,11 @@ TARGET_MS_ILASMFLAGS = \
    $(maybe-base-MS_ILASMFLAGS-$(findstring undefined,$(origin MS_ILASMFLAGS-$*)))
 maybe-base-MS_ILASMFLAGS- = $(MS_ILASMFLAGS-$*)
 maybe-base-MS_ILASMFLAGS-undefined =
+
+ILASM_KEYFLAG = \
+  $(maybe-target-ILASM_KEYFLAG-$(findstring undefined,$(origin ILASM_KEYFLAG-$*)))
+maybe-target-ILASM_KEYFLAG- = $(ILASM_KEYFLAG-$*)
+maybe-target-ILASM_KEYFLAG-undefined =
 
 # Support for compiling Mercury programs with Prolog will probably be
 # dropped one of these days, so it's probably not worth bothering with these.

@@ -2050,6 +2050,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		]),
 
 		globals__io_get_target(Target),
+		globals__io_lookup_bool_option(sign_assembly, SignAssembly),
 		globals__io_get_globals(Globals),
 
 			
@@ -2069,21 +2070,39 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			[]
 		),
 		
+		{ ContainsForeignCode = contains_foreign_code(LangSet)
+		; ContainsForeignCode = unknown,
+			get_item_list_foreign_code(Globals, Items, LangSet)
+		; ContainsForeignCode = no_foreign_code,
+			set__init(LangSet)
+		},
 		(
 			{ Target = il },
-			{
-				ContainsForeignCode = 
-					contains_foreign_code(LangSet)
-			;
-				ContainsForeignCode = unknown,
-				get_item_list_foreign_code(Globals, Items,
-					LangSet),
-				not set__empty(LangSet)
-			}
+			{ not set__empty(LangSet) }
 		->
 			{ Langs = set__to_sorted_list(LangSet) },
 			list__foldl(write_foreign_dependency_for_il(DepStream,
 				ModuleName, AllDeps), Langs)
+		;
+			[]
+		),
+
+			% If we are signing the assembly, then we will
+			% need the strong key to sign the il file with
+			% so add a dependency that the il file requires
+			% the strong name file `mercury.sn'.
+			% Also add the variable ILASM_KEYFLAG-<module> which
+			% is used to build the command line for ilasm.
+		( { Target = il, SignAssembly = yes } ->
+			{ prog_out__sym_name_to_string(ModuleName,
+					ModuleNameString) },
+			module_name_to_file_name(ModuleName, ".il",
+					no, IlFileName),
+			
+			io__write_strings(DepStream, [
+				"ILASM_KEYFLAG-", ModuleNameString,
+						" = /keyf=mercury.sn\n",
+				IlFileName, " : mercury.sn\n"])
 		;
 			[]
 		),
@@ -4027,7 +4046,9 @@ referenced_dlls(Module, Modules0) = Modules :-
 			then
 				unqualified("mercury")
 			else
-				M
+					% A sub module is located in the
+					% top level assembly.
+				unqualified(outermost_qualifier(M))
 			)
 		),
 		Modules = list__remove_dups(list__map(F, Modules0))

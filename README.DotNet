@@ -138,6 +138,13 @@ Currently each top level Mercury module is placed into its own assembly.
 For example, module.m will be placed into the assembly `module', while
 module.sub.m will also be placed into the assembly `module'.
 
+To create a strongly named assemblies in Mercury you need to pass the
+--sign-assembly flag to the Mercury compiler.  Note that this flag needs
+to be also passed when generating the dependencies for the module being
+compiled.  Currently we use the same strong name as used by the mercury
+standard library to sign all the Mercury modules, at a later date we
+hope to lift this restriction.
+
 -----------------------------------------------------------------------------
 
 RESOURCES

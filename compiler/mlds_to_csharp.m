@@ -106,6 +106,13 @@ generate_csharp_code(MLDS) -->
 	generate_foreign_header_code(mercury_module_name_to_mlds(ModuleName),
 		ForeignCode),
 
+	globals__io_lookup_bool_option(sign_assembly, SignAssembly),
+	( { SignAssembly = yes },
+		io__write_string("[assembly:System.Reflection.AssemblyKeyFileAttribute(\"mercury.sn\")]\n")
+	; { SignAssembly = no },
+		[]
+	),
+
 	{ Namespace0 = get_class_namespace(ClassName) },
 	{ list__reverse(Namespace0) = [Head | Tail] ->
 		Namespace = list__reverse([Head ++ "__csharp_code" | Tail])

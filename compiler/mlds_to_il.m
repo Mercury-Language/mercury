@@ -203,9 +203,12 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 			".", AssemblyName),
 	get_il_data_rep(ILDataRep, IO0, IO1),
 	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm, IO1, IO2),
-	globals__io_lookup_bool_option(verifiable_code, VerifiableCode, IO2, IO3),
+	globals__io_lookup_bool_option(verifiable_code,
+			VerifiableCode, IO2, IO3),
 	globals__io_lookup_bool_option(il_byref_tailcalls, ByRefTailCalls,
-			IO3, IO),
+			IO3, IO4),
+	globals__io_lookup_bool_option(sign_assembly, SignAssembly,
+			IO4, IO),
 
 	IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports,
 			ILDataRep, DebugIlAsm, VerifiableCode, ByRefTailCalls),
@@ -249,7 +252,8 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 			ForeignCodeAssemblerRefs),
 		AssemblerRefs = list__append(ForeignCodeAssemblerRefs, Imports)
 	),
-	generate_extern_assembly(AssemblyName, AssemblerRefs, ExternAssemblies),
+	generate_extern_assembly(AssemblyName, SignAssembly,
+			AssemblerRefs, ExternAssemblies),
 	Namespace = [namespace(NamespaceName, ILDecls)],
 	ILAsm = list__condense([ThisAssembly, ExternAssemblies, Namespace]).
 
@@ -3461,15 +3465,21 @@ il_system_namespace_name = "System".
 %-----------------------------------------------------------------------------
 
 	% Generate extern decls for any assembly we reference.
-:- pred mlds_to_il__generate_extern_assembly(string, mlds__imports, list(decl)).
-:- mode mlds_to_il__generate_extern_assembly(in, in, out) is det.
+:- pred mlds_to_il__generate_extern_assembly(string::in, bool::in,
+		mlds__imports::in, list(decl)::out) is det.
 
-mlds_to_il__generate_extern_assembly(CurrentAssembly, Imports, AllDecls) :-
+mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
+		Imports, AllDecls) :-
+	( SignAssembly = yes,
+		AsmDecls = mercury_strong_name_assembly_decls
+	; SignAssembly = no,
+		AsmDecls = []
+	),
 	Gen = (pred(Import::in, Decl::out) is semidet :-
 		AsmName = mlds_module_name_to_assembly_name(Import),
 		( AsmName = assembly(Assembly),
 			Assembly \= "mercury",
-			Decl = [extern_assembly(Assembly, [])]
+			Decl = [extern_assembly(Assembly, AsmDecls)]
 		; AsmName = module(ModuleName, Assembly),
 			( Assembly = CurrentAssembly ->
 				ModuleStr = ModuleName ++ ".dll",
@@ -3477,7 +3487,7 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, Imports, AllDecls) :-
 					extern_module(ModuleStr)]
 			;
 				Assembly \= "mercury",
-				Decl = [extern_assembly(Assembly, [])]
+				Decl = [extern_assembly(Assembly, AsmDecls)]
 			)
 		)
 	),
@@ -3505,6 +3515,17 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, Imports, AllDecls) :-
 				int8(0xe0), int8(0x3b), int8(0xe0), int8(0x95)
 			])
 		]) | Decls].
+
+:- func mercury_strong_name_assembly_decls = list(assembly_decl).
+
+mercury_strong_name_assembly_decls
+	= [
+		version(0, 0, 0, 0),
+		public_key_token([
+			int8(0x22), int8(0x8C), int8(0x16), int8(0x7D),
+			int8(0x12), int8(0xAA), int8(0x0B), int8(0x0B)
+		])
+	].
 
 %-----------------------------------------------------------------------------
 

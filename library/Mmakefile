@@ -337,7 +337,7 @@ install_init: $(STD_LIB_NAME).init install_lib_dirs
 ifneq (,$(findstring il,$(GRADE)))
 
 .PHONY: install_library
-install_library: mercury.dll install_grade_dirs install_gac
+install_library: mercury.dll install_grade_dirs install_gac install_strong_name
 	cp `vpath_find $(library.foreign_dlls) $(library.dlls) \
 		mercury.dll` $(INSTALL_MERC_LIB_DIR)
 
@@ -347,6 +347,11 @@ install_library: mercury.dll install_grade_dirs install_gac
 .PHONY: install_gac
 install_gac: mercury.dll
 	gacutil -i mercury.dll
+
+.PHONY: install_strong_name
+install_strong_name: library_strong_name.sn
+	cp `vpath_find library_strong_name.sn` \
+		$(INSTALL_MERC_LIB_DIR)/mercury.sn
 	
 else
 

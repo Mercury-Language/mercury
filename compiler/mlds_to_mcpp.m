@@ -116,6 +116,13 @@ generate_mcplusplus_code(MLDS) -->
 		"extern ""C"" int _fltused=0;\n",
 		"\n"]),
 
+	globals__io_lookup_bool_option(sign_assembly, SignAssembly),
+	( { SignAssembly = yes },
+		io__write_string("[assembly:System::Reflection::AssemblyKeyFileAttribute(\"mercury.sn\")];\n")
+	; { SignAssembly = no },
+		[]
+	),
+
 	{ Namespace0 = get_class_namespace(ClassName) },
 	{ list__reverse(Namespace0) = [Head | Tail] ->
 		Namespace = list__reverse([Head ++ "__cpp_code" | Tail])
