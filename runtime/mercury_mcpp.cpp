@@ -130,6 +130,7 @@ __gc public class Constants {
     static int MR_TYPECTOR_REP_NOTAG_GROUND		=27;
     static int MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ	=28;
     static int MR_TYPECTOR_REP_EQUIV_GROUND		=29;
+    static int MR_TYPECTOR_REP_TUPLE			=30;
 
     static int MR_SECTAG_NONE				= 0;
     static int MR_SECTAG_LOCAL				= 1;

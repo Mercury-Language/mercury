@@ -117,6 +117,24 @@ get_ftn_ptr_type_ctor_info_unify() {
 }
 
 .method public static default int32 
+get_ftn_ptr_tuple_compare() {
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
+	do_compare__tuple_0_0(
+		class [mscorlib]System.Object[]&,
+		class [mscorlib]System.Object, class [mscorlib]System.Object)
+	ret
+}
+
+.method public static default int32 
+get_ftn_ptr_tuple_unify() {
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
+	do_unify__tuple_0_0(
+		class [mscorlib]System.Object, class [mscorlib]System.Object)
+	ret
+}
+
+
+.method public static default int32 
 get_ftn_ptr_pred_compare() {
 	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__pred_0_0(

@@ -2955,6 +2955,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 				; Name = "c_pointer", Arity = 0
 				; Name = "pred", Arity = 0
 				; Name = "func", Arity = 0
+				; Name = "tuple", Arity = 0
 				)
 			; LibModuleName0 = "array", 
 				(

@@ -514,6 +514,9 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** MR_TYPE_CTOR_REP_DU_USEREQ, the exact representation depends on the tag
 ** value -- lookup the tag value in type_ctor_layout to find out this
 ** information.
+**
+** Any changes in this definition might also require changes in
+** runtime/mercury_mcpp.{h,cpp}
 */
 
 typedef enum {

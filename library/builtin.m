@@ -649,6 +649,7 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, void, 0, MR_TYPECTOR_REP_VOID)
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, float, 0, MR_TYPECTOR_REP_FLOAT) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, func, 0, MR_TYPECTOR_REP_PRED) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, pred, 0, MR_TYPECTOR_REP_PRED) 
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE) 
 
 static int
 __Unify____int_0_0(MR_Integer x, MR_Integer y)
@@ -704,6 +705,14 @@ __Unify____pred_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
 		""called unify for `pred' type"");
+	return 0;
+}
+
+static int
+__Unify____tuple_0_0(MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called unify for `tuple' type"");
 	return 0;
 }
 
@@ -785,6 +794,14 @@ __Compare____pred_0_0(MR_Word_Ref result,
 		""called compare/3 for `pred' type"");
 }
 
+static void
+__Compare____tuple_0_0(MR_Word_Ref result,
+	MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called compare/3 for `pred' type"");
+}
+
 /*
 ** Unification procedures with the arguments boxed.
 ** These are just wrappers which call the unboxed version.
@@ -851,6 +868,14 @@ do_unify__pred_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
 		""called unify for `pred' type"");
+	return 0;
+}
+
+static int
+do_unify__tuple_0_0(MR_Box x, MR_Box y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called unify for `tuple' type"");
 	return 0;
 }
 
@@ -923,6 +948,14 @@ do_compare__pred_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 	mercury::runtime::Errors::fatal_error(
 		""called compare/3 for pred type"");
 }
+
+static void
+do_compare__tuple_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called compare/3 for tuple type"");
+}
+
 
 ").
 
