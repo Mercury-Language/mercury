@@ -1,7 +1,8 @@
        1:      1  1 CALL DET   interpreter:main/2-0 
 mtrace> valid commands are:
 a, EOF:			abort the current execution.
-b module pred:		set breakpoint in module:pred.
+b <module> <name>:	set a breakpoint on the predicate
+			or function <module>:<name>.
 c:			continue to end of program, not printing the trace.
 C:			continue to end of program, printing the trace.
 f:			finish this call, not printing the trace.
@@ -10,11 +11,11 @@ F:			finish this call, printing the trace.
 <N> G:			go to event #N, printing the trace.
 p:			print the variables live at this point.
 r:			continue until forward execution is resumed.
-[<N>] s, [N] CR:	skip N events, not printing the trace.
-[<N>] S:		skip N events, printing the trace.
+[<N>] [s]:		skip N events, not printing the trace (default: N=1).
+[<N>] S:		skip N events, printing the trace (default: N=1).
 ?:			list all the breakpoints.
-+ N:			enable breakpoint #N.
-- N:			disable breakpoint #N.
++ <N>:			enable breakpoint #N.
+- <N>:			disable breakpoint #N.
 mtrace> Pure Prolog Interpreter.
 
 Consulting file `interpreter.m'...
