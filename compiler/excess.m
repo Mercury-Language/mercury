@@ -129,8 +129,16 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		GoalExpr0 = conj(Goals0),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
 		excess_assignments_in_conj(Goals0, [], [], NonLocals,
-					Goals, ElimVars),
-		conj_list_to_goal(Goals, GoalInfo0, Goal)
+			Goals1, ElimVars1, no, FoundPragma),
+		(
+			FoundPragma = yes,
+			Goal = conj(Goals0) - GoalInfo0,
+			ElimVars = ElimVars0
+		;
+			FoundPragma = no,
+			conj_list_to_goal(Goals1, GoalInfo0, Goal),
+			ElimVars = ElimVars1
+		)
 	;
 		GoalExpr0 = disj(Goals0),
 		excess_assignments_in_disj(Goals0, ElimVars0, Goals, ElimVars),
@@ -138,12 +146,12 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	;
 		GoalExpr0 = not(NegGoal0),
 		excess_assignments_in_goal(NegGoal0, ElimVars0,
-						NegGoal, ElimVars),
+			NegGoal, ElimVars),
 		Goal = not(NegGoal) - GoalInfo0
 	;
 		GoalExpr0 = switch(Var, CanFail, Cases0),
 		excess_assignments_in_switch(Cases0, ElimVars0,
-						Cases, ElimVars),
+			Cases, ElimVars),
 		Goal = switch(Var, CanFail, Cases) - GoalInfo0
 	;
 		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
@@ -154,7 +162,7 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	;
 		GoalExpr0 = some(Var, SubGoal0),
 		excess_assignments_in_goal(SubGoal0, ElimVars0,
-					   SubGoal, ElimVars),
+			SubGoal, ElimVars),
 		Goal = some(Var, SubGoal) - GoalInfo0
 	;
 		GoalExpr0 = call(_, _, _, _, _, _, _),
@@ -179,16 +187,23 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	% substitution has been made, the second assignment V_4 = V_6
 	% is left alone.
 
-:- pred excess_assignments_in_conj(list(hlds__goal), list(hlds__goal),
-	list(var), set(var), list(hlds__goal), list(var)).
-:- mode excess_assignments_in_conj(in, in, in, in, out, out) is det.
+	% We cannot apply substitutions to pragmas, since the substitution
+	% would not affect the C code provided by the programmer. We therefore
+	% look for pragmas, and if any are found, the caller should disregard
+	% the output of this predicate and use the original conjunction.
 
-excess_assignments_in_conj([], RevGoals, ElimVars, _, Goals, ElimVars) :-
+:- pred excess_assignments_in_conj(list(hlds__goal), list(hlds__goal),
+	list(var), set(var), list(hlds__goal), list(var), bool, bool).
+:- mode excess_assignments_in_conj(in, in, in, in, out, out, in, out) is det.
+
+excess_assignments_in_conj([], RevGoals, ElimVars, _, Goals, ElimVars,
+		FoundPragma, FoundPragma) :-
 	list__reverse(RevGoals, Goals).
 excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
-		Goals, ElimVars) :-
+		Goals, ElimVars, FoundPragma0, FoundPragma) :-
+	Goal0 = GoalExpr0 - _,
 	(
-		Goal0 = unify(_, _, _, Unif, _) - _,
+		GoalExpr0 = unify(_, _, _, Unif, _),
 		Unif = assign(LeftVar, RightVar),
 		( \+ set__member(LeftVar, NonLocals) ->
 			LocalVar = LeftVar, ReplacementVar = RightVar
@@ -202,14 +217,20 @@ excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
 		map__set(Subn0, LocalVar, ReplacementVar, Subn),
 		goal_util__rename_vars_in_goals(Goals0, Subn, Goals1),
 		goal_util__rename_vars_in_goals(RevGoals0, Subn, RevGoals1),
-		ElimVars1 = [LocalVar | ElimVars0]
+		ElimVars1 = [LocalVar | ElimVars0],
+		FoundPragma1 = FoundPragma0
 	;
 		Goals1 = Goals0,
 		excess_assignments_in_goal(Goal0, ElimVars0, Goal1, ElimVars1),
-		RevGoals1 = [Goal1 | RevGoals0]
+		RevGoals1 = [Goal1 | RevGoals0],
+		( GoalExpr0 = pragma_c_code(_, _, _, _, _) ->
+			FoundPragma1 = yes
+		;
+			FoundPragma1 = FoundPragma0
+		)
 	),
 	excess_assignments_in_conj(Goals1, RevGoals1, ElimVars1,
-		NonLocals, Goals, ElimVars).
+		NonLocals, Goals, ElimVars, FoundPragma1, FoundPragma).
 
 %-----------------------------------------------------------------------------%
 
