@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,12 +102,6 @@
 %  	It would be nice to use impure functions in DCG goals as well as
 %  	normal unifications.  
 %
-%  	We could give better error messages for impure calls inside
-%  	closures.  It's possible to give the context of these calls,
-%  	although we should be careful to pinpoint these as the source of
-%  	the error (no impurity allowed in closures) rather than as
-%  	errors to be corrected.
-%
 %  	It might be nice to allow
 %  		X = impure some_impure_fuc(Arg1, Arg2, ...)
 %	syntax as well.  But there are advantages to having the
@@ -176,6 +170,7 @@
 %  Get a purity name as a string.
 :- pred purity_name(purity, string).
 :- mode purity_name(in, out) is det.
+:- mode purity_name(out, in) is semidet.
 
 %  Update a goal info to reflect the specified purity
 :- pred add_goal_info_purity_feature(hlds_goal_info, purity, hlds_goal_info).
@@ -606,12 +601,11 @@ compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
 		GoalExpr, GoalInfo, _InClosure, Purity) -->
 	(
-		{ GenericCall0 = higher_order(_, _, _) },
-		{ Purity = pure },
+		{ GenericCall0 = higher_order(_, Purity, _, _) },
 		{ GoalExpr = generic_call(GenericCall0, Args, Modes0, Det) }
 	;
 		{ GenericCall0 = class_method(_, _, _, _) },
-		{ Purity = pure },
+		{ Purity = pure }, % XXX this is wrong!
 		{ GoalExpr = generic_call(GenericCall0, Args, Modes0, Det) }
 	;
 		{ GenericCall0 = aditi_builtin(Builtin0, CallId0) },
@@ -648,13 +642,13 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
 		ActualPurity) -->
 	{ Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext) },
 	(
-		{ RHS0 = lambda_goal(F, EvalMethod, FixModes, H, Vars,
-			Modes0, K, Goal0 - Info0) }
+		{ RHS0 = lambda_goal(LambdaPurity, F, EvalMethod,
+			FixModes, H, Vars, Modes0, K, Goal0 - Info0) }
 	->
-		{ RHS = lambda_goal(F, EvalMethod, modes_are_ok, H, Vars,
-			Modes, K, Goal - Info0) },
-		compute_expr_purity(Goal0, Goal, Info0, yes, Purity),
-		error_if_closure_impure(GoalInfo, Purity),
+		{ RHS = lambda_goal(LambdaPurity, F, EvalMethod,
+			modes_are_ok, H, Vars, Modes, K, Goal - Info0) },
+		compute_expr_purity(Goal0, Goal, Info0, yes, GoalPurity),
+		check_closure_purity(GoalInfo, LambdaPurity, GoalPurity),
 
 		VarTypes =^ vartypes,
 
@@ -689,7 +683,9 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
 				LambdaVarTypes, Modes0, Modes)
 		},
 		{ GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext) },
-		{ ActualPurity = pure }
+		% the unification itself is always pure,
+		% even if the lambda expression body is impure
+		{ ActualPurity = (pure) }
 	;
 		{ RHS0 = functor(ConsId, _, Args) } 
 	->
@@ -712,14 +708,14 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
 			{ Goal1 = Unif0 - GoalInfo }
 		),
 		( 
-			{ Goal1 \= unify(_, _, _, _, _) - _ }
+			{ Goal1 = unify(_, _, _, _, _) - _ }
 		->
-			compute_goal_purity(Goal1, Goal,
-				InClosure, ActualPurity)
-		;
 			check_higher_order_purity(GoalInfo, ConsId,
 				Var, Args, ActualPurity),
 			{ Goal = Goal1 }
+		;
+			compute_goal_purity(Goal1, Goal,
+				InClosure, ActualPurity)
 		),
 		{ Goal = GoalExpr - _ }
 	;
@@ -780,11 +776,15 @@ compute_expr_purity(shorthand(_), _, _, _, _) -->
 	list(prog_var), purity, purity_info, purity_info).
 :- mode check_higher_order_purity(in, in, in, in, out, in, out) is det.
 check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity) -->
+	%
+	% Check that the purity of the ConsId matches the purity of the
+	% variable's type.
+	%
 	VarTypes =^ vartypes,
 	{ map__lookup(VarTypes, Var, TypeOfVar) },
 	( 
 		{ ConsId = cons(PName, _) },
-		{ type_is_higher_order(TypeOfVar, PredOrFunc,
+		{ type_is_higher_order(TypeOfVar, TypePurity, PredOrFunc,
 			_EvalMethod, VarArgTypes) }
 	->
 		PredInfo =^ pred_info,
@@ -798,35 +798,33 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity) -->
 		->
 			{ module_info_pred_info(ModuleInfo,
 				CalleePredId, CalleePredInfo) },
-			{ pred_info_get_purity(CalleePredInfo, Purity) },
-			( { Purity = pure } ->
-				[]
-			;
-				{ goal_info_get_context(GoalInfo,
-					CallContext) },
-				{ Message = missing_body_impurity_error(
-						CallContext, CalleePredId) },
-				purity_info_add_message(error(Message))
-			)
+			{ pred_info_get_purity(CalleePredInfo, CalleePurity) },
+			check_closure_purity(GoalInfo, TypePurity,
+				CalleePurity)
 		;
 			% If we can't find the type of the function, 
 			% it's because typecheck couldn't give it one.
 			% Typechecking gives an error in this case, we
 			% just keep silent.
-			{ Purity = pure }
-		),
-		{ ActualPurity = Purity }
-	;
-		{ infer_goal_info_purity(GoalInfo, DeclaredPurity) },
-		( { DeclaredPurity \= pure } ->
-			{ goal_info_get_context(GoalInfo, Context) },
-			{ Message = impure_unification_expr_error(Context,
-					DeclaredPurity) },
-			purity_info_add_message(error(Message))
-		;
 			[]
-		),
-		{ ActualPurity = pure }
+		)
+	;
+		[]
+	),
+
+	% The unification itself is always pure,
+	% even if it is a unification with an impure higher-order term.
+	{ ActualPurity = pure },
+
+	% Check for a bogus purity annotation on the unification
+	{ infer_goal_info_purity(GoalInfo, DeclaredPurity) },
+	( { DeclaredPurity \= pure } ->
+		{ goal_info_get_context(GoalInfo, Context) },
+		{ Message = impure_unification_expr_error(Context,
+				DeclaredPurity) },
+		purity_info_add_message(error(Message))
+	;
+		[]
 	).
 
 	% the possible results of a purity check
@@ -923,7 +921,8 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity,
 	{ module_info_pred_info(ModuleInfo, PredId, CalleePredInfo) },
 	{ pred_info_get_purity(CalleePredInfo, ActualPurity) },
 	( 
-		% The purity should match the declaration
+		% The purity of the callee should match the
+		% purity declared at the call
 		{ ActualPurity = DeclaredPurity }
 	->
 		[]
@@ -943,11 +942,8 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity,
 			% class methods or instance methods --- it just
 			% means that the predicate provided as an
 			% implementation was more pure than necessary.
-			%
-			% We don't warn about exaggerated impurity
-			% decls in c_code -- this is just because we
-			% assume they are pure, but you can declare them
-			% to be impure.
+			% Likewise, we don't warn about exaggerated
+			% impurity decls on closures.
 		{ pred_info_get_markers(PredInfo, Markers) },
 		{ 
 			check_marker(Markers, class_method) 
@@ -1156,7 +1152,8 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	
 :- type post_typecheck_error
 	--->	missing_body_impurity_error(prog_context, pred_id)
-	;	impure_closure(prog_context, purity)
+	;	closure_purity_error(prog_context, purity, purity)
+		% closure_purity_error(Context, DeclaredPurity, ActualPurity)
 	;	impure_unification_expr_error(prog_context, purity)
 	;	aditi_builtin_error(aditi_builtin_error)
 	.
@@ -1174,8 +1171,10 @@ report_post_typecheck_message(ModuleInfo, error(Message)) -->
 		{ Message = missing_body_impurity_error(Context, PredId) },
 		error_missing_body_impurity_decl(ModuleInfo, PredId, Context)
 	;
-		{ Message = impure_closure(Context, Purity) },
-		report_error_impure_closure(Context, Purity)
+		{ Message = closure_purity_error(Context, DeclaredPurity,
+			ActualPurity) },
+		report_error_closure_purity(Context, DeclaredPurity,
+			ActualPurity)
 	;
 		{ Message = impure_unification_expr_error(Context, Purity) },
 		impure_unification_expr_error(Context, Purity)
@@ -1251,35 +1250,35 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
 		io__write_string("' is sufficient.\n")
 	).
 	
-:- pred error_if_closure_impure(hlds_goal_info, purity,
+:- pred check_closure_purity(hlds_goal_info, purity, purity,
 		purity_info, purity_info).	
-:- mode error_if_closure_impure(in, in, in, out) is det.
+:- mode check_closure_purity(in, in, in, in, out) is det.
 
-error_if_closure_impure(GoalInfo, Purity) -->
-	( { Purity = pure } ->
-		[]
-	;
+check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity) -->
+	( { ActualPurity `less_pure` DeclaredPurity } ->
 		{ goal_info_get_context(GoalInfo, Context) },
-		purity_info_add_message(
-			error(impure_closure(Context, Purity)))
-	).
-
-:- pred report_error_impure_closure(prog_context, purity,
-		io__state, io__state).
-:- mode report_error_impure_closure(in, in, di, uo) is det.
-
-report_error_impure_closure(Context, Purity) -->
-	prog_out__write_context(Context),
-	io__write_string("Purity error in closure: closure is "),
-	write_purity(Purity),
-	io__write_string(".\n"),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
-		prog_out__write_context(Context),
-		io__write_string("  All closures must be pure.\n")
-	;   
+		purity_info_add_message(error(closure_purity_error(Context,
+			DeclaredPurity, ActualPurity)))
+	;
+		% we don't bother to warn if the DeclaredPurity is less
+		% pure than the ActualPurity; that would lead to too many
+		% spurious warnings.
 		[]
 	).
+
+:- pred report_error_closure_purity(prog_context, purity, purity,
+		io__state, io__state).
+:- mode report_error_closure_purity(in, in, in, di, uo) is det.
+
+report_error_closure_purity(Context, _DeclaredPurity, ActualPurity) -->
+	prog_out__write_context(Context),
+	io__write_string("Purity error in closure: closure body is "),
+	write_purity(ActualPurity),
+	io__write_string(",\n"),
+	prog_out__write_context(Context),
+	io__write_string("  but closure was not declared `"),
+	write_purity(ActualPurity),
+	io__write_string(".'\n").
 
 :- pred write_context_and_pred_id(module_info, pred_info, pred_id,
 				  io__state, io__state).

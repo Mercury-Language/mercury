@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -707,7 +707,10 @@ equiv_type__replace_in_pred_type(PredName, PredOrFunc, Context, EqvMap,
 		equiv_type__replace_in_type(WithType0, TypeVarSet2,
 			EqvMap, WithType, TypeVarSet,
 			Info2, Info3),
-		( type_is_higher_order(WithType, PredOrFunc, _, ExtraTypes0) ->
+		(
+			type_is_higher_order(WithType, _Purity, PredOrFunc,
+				_EvalMethod, ExtraTypes0)
+		->
 			ExtraTypes = ExtraTypes0,
 			Errors0 = []
 		;

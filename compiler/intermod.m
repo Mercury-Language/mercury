@@ -691,8 +691,8 @@ intermod__add_proc_2(PredId, DoWrite) -->
 intermod__module_qualify_unify_rhs(_, var(Var), var(Var), yes) --> [].
 
 intermod__module_qualify_unify_rhs(_LVar,
-		lambda_goal(A,EvalMethod,C,D,E,Modes,G,Goal0),
-		lambda_goal(A,EvalMethod,C,D,E,Modes,G,Goal), DoWrite) -->
+		lambda_goal(A,B,EvalMethod,C,D,E,Modes,G,Goal0),
+		lambda_goal(A,B,EvalMethod,C,D,E,Modes,G,Goal), DoWrite) -->
 	( { EvalMethod = (aditi_top_down) } ->
 		% XXX Predicates which build this type of lambda expression
 		% can't be exported because the importing modules have

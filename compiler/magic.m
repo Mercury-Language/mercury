@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 University of Melbourne.
+% Copyright (C) 1998-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -570,7 +570,7 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 	{ type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
 	{ partition_args(ModuleInfo, ArgModes, ArgModes, InputModes, _) },
 	{ partition_args(ModuleInfo, ArgModes, ArgTypes, InputTypes, _) },
-	{ construct_higher_order_type(predicate, (aditi_bottom_up),
+	{ construct_higher_order_type((pure), predicate, (aditi_bottom_up),
 		InputTypes, Type) },
 	{ GetOutputMode = lambda([ArgMode::in, OutputMode::out] is det, (
 			mode_get_insts(ModuleInfo, ArgMode, _, OutputInst),
@@ -947,7 +947,7 @@ magic__interface_call_args([MagicInput | MagicInputs], MagicTypes, MagicModes,
 		%
 		{ list__index1_det(MagicTypes, CurrVar, MagicType) },
 		{ 
-			type_is_higher_order(MagicType, predicate,
+			type_is_higher_order(MagicType, (pure), predicate,
 				(aditi_bottom_up), ArgTypes1)
 		->
 			ArgTypes = ArgTypes1
@@ -1050,7 +1050,7 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 
 	map__apply_to_list(InputArgs, VarTypes0, InputVarTypes),
 
-	construct_higher_order_type(predicate, (aditi_bottom_up),
+	construct_higher_order_type((pure), predicate, (aditi_bottom_up),
 		InputVarTypes, ClosureVarType),
 	list__map(magic_util__mode_to_output_mode(ModuleInfo0),
 		InputArgModes, MagicArgModes),
@@ -1072,7 +1072,7 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 		InputGoalInfo),
 	list__length(InputArgs, Arity),
 	InputGoal = generic_call(
-		higher_order(ClosureVar, predicate, Arity),
+		higher_order(ClosureVar, (pure), predicate, Arity),
 		InputArgs, MagicArgModes, nondet) - InputGoalInfo,
 
 	ClosureInst = ground(shared,
@@ -1357,7 +1357,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 			nondet, GoalInfo0) },
 		{ list__length(InputArgs0, Arity) },
 		{ Goal0 = generic_call(
-			higher_order(CurrPredVar, predicate, Arity),
+			higher_order(CurrPredVar, (pure), predicate, Arity),
 			InputArgs0, OutputModes0, nondet) - GoalInfo0 },
 		( { IsContext = yes(ArgsAL) } ->
 			% Create assignments to assign to the extra arguments.

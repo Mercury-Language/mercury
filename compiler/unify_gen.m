@@ -505,7 +505,7 @@ unify_gen__generate_construction_2(
 		{ EvalMethod = normal },
 		{ Args = [CallPred | CallArgs] },
 		{ ProcHeadVars = [ProcPred | ProcArgs] },
-		{ ProcInfoGoal = generic_call(higher_order(ProcPred, _, _),
+		{ ProcInfoGoal = generic_call(higher_order(ProcPred, _, _, _),
 			ProcArgs, _, CallDeterminism) - _GoalInfo },
 		{ determinism_to_code_model(CallDeterminism, CallCodeModel) },
 			% Check that the code models are compatible.

@@ -445,7 +445,7 @@ traverse_goal_2(Goal0, Goal) -->
 	{ Goal0 = generic_call(GenericCall, Args, _, _) - GoalInfo },
 	(
 		{
-			GenericCall = higher_order(Var, _, _),
+			GenericCall = higher_order(Var, _, _, _),
 			MaybeMethod = no
 		;
 			GenericCall = class_method(Var, Method, _, _),
@@ -1088,7 +1088,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo) -->
 		{ map__contains(NewPreds, proc(PredId, ProcId)) },
 		{ proc_info_vartypes(ProcInfo0, VarTypes0) },
 		{ map__lookup(VarTypes0, LVar, LVarType) },
-		{ type_is_higher_order(LVarType, _, _, ArgTypes) }
+		{ type_is_higher_order(LVarType, _, _, _, ArgTypes) }
 	->
 		% Create variables to represent
 		{ proc_info_create_vars_from_types(ProcInfo0,
@@ -1326,7 +1326,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 			% able to do user guided type specialization.
 			CalleeStatus \= imported(_),
 			CalleeStatus \= external(_),
-			type_is_higher_order(CalleeArgType, _, _, _)
+			type_is_higher_order(CalleeArgType, _, _, _, _)
 		;
 			true
 		)
@@ -2078,7 +2078,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
 		HaveSpecialPreds = yes,
 		find_special_proc(SpecialPredType, SpecialId,
 			SymName, SpecialPredId, SpecialProcId, Info0, Info),
-		( type_is_higher_order(SpecialPredType, _, _, _) ->
+		( type_is_higher_order(SpecialPredType, _, _, _, _) ->
 			% builtin_*_pred are special cases which
 			% doesn't need the type-info arguments.
 			CallArgs = SpecialPredArgs

@@ -5471,8 +5471,8 @@ warn_singletons_in_unify(X, functor(_ConsId, _, Vars), GoalInfo,
 	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
-warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, _Eval, _Fix, _NonLocals,
-				LambdaVars, _Modes, _Det, LambdaGoal),
+warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval, _Fix,
+			_NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
 			GoalInfo, QuantVars, VarSet, CallPredId, MI) -->
 	%
 	% warn if any lambda-quantified variables occur only in the quantifier
@@ -6395,26 +6395,13 @@ transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 			  Modes = [],
 			  Det = erroneous,
 
-			  GenericCall = higher_order(PredVar,
+			  GenericCall = higher_order(PredVar, Purity,
 			  	predicate, Arity),
 			  Call = generic_call(GenericCall,
 			  	RealHeadVars, Modes, Det),
 
-			  hlds_goal__generic_call_id(GenericCall, CallId),
-			  Purity1 = pure
-			},
-			(
-				{ Purity = pure }
-			->
-				[]
-			;
-				prog_out__write_context(Context),
-				io__write_string("Warning: unnecessary `"),
-				write_purity(Purity),
-				io__write_string("' marker.\n"),
-				prog_out__write_context(Context),
-				io__write_string("  Higher-order goals are always pure.\n")
-			)
+			  hlds_goal__generic_call_id(GenericCall, CallId)
+			}
 		;
 			{
 			  % initialize some fields to junk
@@ -6424,13 +6411,12 @@ transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 			  MaybeUnifyContext = no,
 			  Call = call(PredId, ModeId, HeadVars, not_builtin,
 				      MaybeUnifyContext, Name),
-			  CallId = call(predicate - Name/Arity),
-			  Purity1 = Purity
+			  CallId = call(predicate - Name/Arity)
 			}
 		),
 		{ goal_info_init(Context, GoalInfo0) },
 		{ add_goal_info_purity_feature(GoalInfo0,
-			Purity1, GoalInfo) },
+			Purity, GoalInfo) },
 		{ Goal0 = Call - GoalInfo },
 
 		{ record_called_pred_or_func(predicate, Name, Arity,
@@ -7196,7 +7182,7 @@ transform_aditi_insert_delete_modify(Descr, InsertDelMod, Args0, Context,
 
 		% Build the lambda expression for the modification condition.
 		{ make_atomic_unification(LambdaVar,
-			lambda_goal(LambdaPredOrFunc, EvalMethod,
+			lambda_goal((pure), LambdaPredOrFunc, EvalMethod,
 				FixModes, LambdaNonLocals,
 				HeadArgs, LambdaModes, Detism, PredGoal),
 			Context, MainContext, [], LambdaConstruct,
@@ -7888,6 +7874,7 @@ unravel_unification_2(term__variable(X), RHS,
 		parse_lambda_expression(LambdaExpressionTerm,
 			Vars0, Modes0, Det0)
 	    ->
+	    	LambdaPurity = (pure),
 		PredOrFunc = predicate,
 		EvalMethod = EvalMethod0, Vars1 = Vars0,
 		Modes1 = Modes0, Det1 = Det0, GoalTerm1 = GoalTerm0
@@ -7896,7 +7883,8 @@ unravel_unification_2(term__variable(X), RHS,
 		% same semantics as lambda expressions, different syntax
 		% (the original lambda expression syntax is now deprecated)
 		parse_rule_term(Context, RHS, HeadTerm0, GoalTerm1),
-		term__coerce(HeadTerm0, HeadTerm),
+		term__coerce(HeadTerm0, HeadTerm1),
+		parse_purity_annotation(HeadTerm1, LambdaPurity, HeadTerm),
 		(
 			parse_pred_expression(HeadTerm, EvalMethod0,
 				Vars0, Modes0, Det0)
@@ -7917,8 +7905,8 @@ unravel_unification_2(term__variable(X), RHS,
 		{ Det = Det1 },
 		{ term__coerce(GoalTerm1, GoalTerm) },
 		{ parse_goal(GoalTerm, VarSet1, ParsedGoal, VarSet2) },
-		build_lambda_expression(X, PredOrFunc, EvalMethod, Vars1,
-			Modes, Det, ParsedGoal, VarSet2,
+		build_lambda_expression(X, LambdaPurity, PredOrFunc,
+			EvalMethod, Vars1, Modes, Det, ParsedGoal, VarSet2,
 			Context, MainContext, SubContext, Goal, VarSet,
 			Info2, Info, SInfo1),
 		{ SInfo = SInfo1 }
@@ -7930,7 +7918,8 @@ unravel_unification_2(term__variable(X), RHS,
 		% as a DCG goal.
 		F = term__atom("-->"),
 		Args = [PredTerm0, GoalTerm0],
-		term__coerce(PredTerm0, PredTerm),
+		term__coerce(PredTerm0, PredTerm1),
+		parse_purity_annotation(PredTerm1, DCGLambdaPurity, PredTerm),
 		parse_dcg_pred_expression(PredTerm, EvalMethod,
 			Vars0, Modes0, Det)
 	    }
@@ -7942,8 +7931,8 @@ unravel_unification_2(term__variable(X), RHS,
 			ParsedGoal, DCG0, DCGn, VarSet2) },
 		{ list__append(Vars0, [term__variable(DCG0),
 				term__variable(DCGn)], Vars1) },
-		build_lambda_expression(X, predicate, EvalMethod, Vars1,
-			Modes, Det, ParsedGoal, VarSet2,
+		build_lambda_expression(X, DCGLambdaPurity, predicate,
+			EvalMethod, Vars1, Modes, Det, ParsedGoal, VarSet2,
 			Context, MainContext, SubContext, Goal0, VarSet,
 			Info1, Info, SInfo1),
 		{ SInfo = SInfo1 },
@@ -8101,6 +8090,19 @@ unravel_unification_2(term__variable(X), RHS,
 		)
 	).
 
+:- pred parse_purity_annotation(term(T), purity, term(T)).
+:- mode parse_purity_annotation(in, out, out) is det.
+parse_purity_annotation(Term0, Purity, Term) :-
+	(
+		Term0 = term__functor(term__atom(PurityName), [Term1], _),
+		purity_name(Purity0, PurityName)
+	->
+		Purity = Purity0,
+		Term = Term1
+	;
+		Purity = (pure),
+		Term = Term0
+	).
 
 	% Handle `f(...) = X' in the same way as `X = f(...)'.
 
@@ -8165,14 +8167,15 @@ make_hlds__qualify_lambda_mode_list(Modes0, Modes, Context, Info0, Info) -->
 	transform_info, io__state, io__state).
 :- mode check_expr_purity(in, in, in, out, di, uo) is det.
 check_expr_purity(Purity, Context, Info0, Info) -->
-		( { Purity \= pure } ->
-			impure_unification_expr_error(Context, Purity),
-			{ module_info_incr_errors(Info0 ^ module_info,
-				ModuleInfo) },
-			{ Info = Info0 ^ module_info := ModuleInfo }
-		;
-			{ Info = Info0 }
-		).
+	( { Purity \= pure } ->
+		impure_unification_expr_error(Context, Purity),
+		{ module_info_incr_errors(Info0 ^ module_info,
+			ModuleInfo) },
+		{ Info = Info0 ^ module_info := ModuleInfo }
+	;
+		{ Info = Info0 }
+	).
+
 %-----------------------------------------------------------------------------%
 
 	% Parse a term of the form `Head :- Body', treating
@@ -8194,15 +8197,16 @@ parse_rule_term(Context, RuleTerm, HeadTerm, GoalTerm) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_lambda_expression(prog_var, pred_or_func, lambda_eval_method,
-		list(prog_term), list(mode), determinism, goal, prog_varset,
+:- pred build_lambda_expression(prog_var, purity, pred_or_func,
+		lambda_eval_method, list(prog_term), list(mode), determinism,
+		goal, prog_varset,
 		prog_context, unify_main_context, unify_sub_contexts,
 		hlds_goal, prog_varset, transform_info, transform_info,
 		svar_info, io__state, io__state).
-:- mode build_lambda_expression(in, in, in, in, in, in, in, in,
+:- mode build_lambda_expression(in, in, in, in, in, in, in, in, in,
 		in, in, in, out, out, in, out, in, di, uo) is det.
 
-build_lambda_expression(X, PredOrFunc, EvalMethod, Args0, Modes, Det,
+build_lambda_expression(X, Purity, PredOrFunc, EvalMethod, Args0, Modes, Det,
 		ParsedGoal, VarSet0, Context, MainContext, SubContext,
 		Goal, VarSet, Info1, Info, SInfo0) -->
 	%
@@ -8310,9 +8314,9 @@ build_lambda_expression(X, PredOrFunc, EvalMethod, Args0, Modes, Det,
 		{ set__to_sorted_list(LambdaGoalVars2, LambdaNonLocals) },
 
 		{ make_atomic_unification(X,
-			lambda_goal(PredOrFunc, EvalMethod, modes_are_ok,
-				LambdaNonLocals, LambdaVars, Modes, Det,
-				HLDS_Goal),
+			lambda_goal(Purity, PredOrFunc, EvalMethod,
+				modes_are_ok, LambdaNonLocals, LambdaVars,
+				Modes, Det, HLDS_Goal),
 			Context, MainContext, SubContext, Goal, Info3, Info) }
 	).
 
@@ -8366,7 +8370,7 @@ make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
 		Rhs = var(_),
 		Info = Info0
 	;
-		Rhs = lambda_goal(_, _, _, _, _, _, _, _),
+		Rhs = lambda_goal(_, _, _, _, _, _, _, _, _),
 		Info = Info0
 	;
 		Rhs = functor(ConsId, _, _),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -183,7 +183,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	(
 		GoalExpr = generic_call(GenericCallType, 
 			ArgVars, ArgModes, Detism),
-		( GenericCallType = higher_order(PredVar, _, _) ->
+		( GenericCallType = higher_order(PredVar, _, _, _) ->
 			bytecode_gen__higher_order_call(PredVar, ArgVars,
 				ArgModes, Detism, ByteInfo0, Code),
 			ByteInfo = ByteInfo0

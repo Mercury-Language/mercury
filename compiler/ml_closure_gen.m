@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -685,6 +685,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
+	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_arg_types(PredInfo, ProcArgTypes) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ proc_info_headvars(ProcInfo, ProcHeadVars) },
@@ -752,7 +753,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ HigherOrderArgTypes = list__duplicate(list__length(WrapperArgTypes),
 		c_pointer_type) },
 	{ LambdaEvalMethod = normal },
-	{ construct_higher_order_type(PredOrFunc, LambdaEvalMethod,
+	{ construct_higher_order_type(Purity, PredOrFunc, LambdaEvalMethod,
 		HigherOrderArgTypes, ClosureActualType) },
 	ml_gen_maybe_gc_trace_code(ClosureArgName, ClosureArgDeclType,
 		ClosureActualType, Context, ClosureArgGCTraceCode),

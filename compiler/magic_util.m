@@ -737,12 +737,12 @@ magic_util__get_input_var(MagicTypes, CurrVar, InputVar, ArgTypes,
 		ProcInfo0, ProcInfo) :-
 	list__index1_det(MagicTypes, CurrVar, MagicType),
 	(
-		type_is_higher_order(MagicType, predicate,
+		type_is_higher_order(MagicType, (pure), predicate,
 			(aditi_bottom_up), ArgTypes1)
 	->
 		ArgTypes = ArgTypes1,
-		construct_higher_order_type(predicate, (aditi_bottom_up),
-			ArgTypes, ClosureType),
+		construct_higher_order_type((pure), predicate,
+			(aditi_bottom_up), ArgTypes, ClosureType),
 		proc_info_create_var_from_type(ProcInfo0, ClosureType, no,
 			InputVar, ProcInfo)
 	;
@@ -1310,7 +1310,7 @@ magic_util__traverse_type(IsTopLevel, Parents, ArgType, Errors0, Errors) -->
 	magic_info_get_module_info(ModuleInfo),
 	( { type_is_atomic(ArgType, ModuleInfo) } ->
 		{ Errors = Errors0 }
-	; { type_is_higher_order(ArgType, _, _, _) } ->
+	; { type_is_higher_order(ArgType, _, _, _, _) } ->
 		% Higher-order types are not allowed.
 		{ set__insert(Errors0, higher_order, Errors) }
 	; { type_is_tuple(ArgType, TupleArgTypes) } ->

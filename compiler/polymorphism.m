@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -284,12 +284,12 @@
 :- mode polymorphism__get_special_proc(in, in, in, out, out, out) is semidet.
 
 	% convert a higher-order pred term to a lambda goal
-:- pred convert_pred_to_lambda_goal(lambda_eval_method,
+:- pred convert_pred_to_lambda_goal(purity, lambda_eval_method,
 		prog_var, pred_id, proc_id, list(prog_var), list(type),
 		unify_context, hlds_goal_info, context,
 		module_info, prog_varset, map(prog_var, type),
 		unify_rhs, prog_varset, map(prog_var, type)).
-:- mode convert_pred_to_lambda_goal(in, in, in, in, in, in, in, 
+:- mode convert_pred_to_lambda_goal(in, in, in, in, in, in, in, in, 
 		in, in, in, in, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -300,6 +300,7 @@
 :- import_module hlds__hlds_data, check_hlds__typecheck, ll_backend__llds.
 :- import_module parse_tree__prog_io.
 :- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module check_hlds__purity.
 :- import_module hlds__quantification, hlds__instmap, parse_tree__prog_out.
 :- import_module ll_backend__code_util, check_hlds__unify_proc.
 :- import_module parse_tree__prog_util.
@@ -1208,7 +1209,7 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 		polymorphism__process_unify_functor(XVar, ConsId, Args, Mode,
 			Unification0, UnifyContext, GoalInfo0, Goal)
 	;
-		{ Y = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+		{ Y = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			ArgVars0, LambdaVars, Modes, Det, LambdaGoal0) },
 		%
 		% for lambda expressions, we must recursively traverse the
@@ -1224,7 +1225,7 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 		{ set__to_sorted_list(NonLocalTypeInfos,
 				NonLocalTypeInfosList) },
 		{ list__append(NonLocalTypeInfosList, ArgVars0, ArgVars) },
-		{ Y1 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+		{ Y1 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			ArgVars, LambdaVars, Modes, Det, LambdaGoal) },
                 { goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
 		{ set__union(NonLocals0, NonLocalTypeInfos, NonLocals) },
@@ -1344,7 +1345,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 	%
 
 		% check if variable has a higher-order type
-		type_is_higher_order(TypeOfX, _,
+		type_is_higher_order(TypeOfX, Purity, _PredOrFunc,
 			EvalMethod, PredArgTypes),
 		ConsId0 = pred_const(PredId, ProcId, _)
 	->
@@ -1353,7 +1354,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		%
 		poly_info_get_varset(PolyInfo0, VarSet0),
 		goal_info_get_context(GoalInfo0, Context),
-		convert_pred_to_lambda_goal(EvalMethod,
+		convert_pred_to_lambda_goal(Purity, EvalMethod,
 			X0, PredId, ProcId, ArgVars0, PredArgTypes,
 			UnifyContext, GoalInfo0, Context,
 			ModuleInfo0, VarSet0, VarTypes0,
@@ -1432,7 +1433,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			Unification, UnifyContext) - GoalInfo
 	).
 
-convert_pred_to_lambda_goal(EvalMethod, X0, PredId, ProcId,
+convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
 		ArgVars0, PredArgTypes, UnifyContext, GoalInfo0, Context,
 		ModuleInfo0, VarSet0, VarTypes0,
 		Functor, VarSet, VarTypes) :-
@@ -1473,6 +1474,8 @@ convert_pred_to_lambda_goal(EvalMethod, X0, PredId, ProcId,
 	goal_info_set_context(LambdaGoalInfo0, Context,
 			LambdaGoalInfo1),
 	goal_info_set_nonlocals(LambdaGoalInfo1, LambdaNonLocals,
+			LambdaGoalInfo2),
+	add_goal_info_purity_feature(LambdaGoalInfo2, Purity,
 			LambdaGoalInfo),
 	LambdaGoal = LambdaGoalExpr - LambdaGoalInfo,
 
@@ -1499,7 +1502,7 @@ convert_pred_to_lambda_goal(EvalMethod, X0, PredId, ProcId,
 	% construct the lambda expression
 	%
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	Functor = lambda_goal(PredOrFunc, EvalMethod, modes_are_ok,
+	Functor = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
 		ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
 
 :- pred make_fresh_vars(list(type), prog_varset, map(prog_var, type),
@@ -2689,7 +2692,13 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 	% (i.e. types which are not type variables)
 	%
 	(
-		( type_is_higher_order(Type, PredOrFunc, _, TypeArgs0) ->
+		(
+			% XXX FIXME (RTTI for higher-order impure code)
+			% we should not ignore Purity here;
+			% it should get included in the RTTI.
+			type_is_higher_order(Type, _Purity, PredOrFunc, _,
+				TypeArgs0)
+		->
 			TypeArgs = TypeArgs0,
 			hlds_out__pred_or_func_to_str(PredOrFunc,
 				PredOrFuncStr),

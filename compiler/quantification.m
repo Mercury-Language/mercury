@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -621,12 +621,12 @@ implicitly_quantify_unify_rhs(functor(_, _, ArgVars) @ RHS, Reuse,
 	},
 	quantification__set_nonlocals(Vars).
 implicitly_quantify_unify_rhs(
-		lambda_goal(PredOrFunc, EvalMethod, FixModes, LambdaNonLocals0,
-			LambdaVars0, Modes, Det, Goal0),
+		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			LambdaNonLocals0, LambdaVars0, Modes, Det, Goal0),
 		_, Unification0,
 		Context,
-		lambda_goal(PredOrFunc, EvalMethod, FixModes, LambdaNonLocals,
-			LambdaVars, Modes, Det, Goal),
+		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			LambdaNonLocals, LambdaVars, Modes, Det, Goal),
 		Unification
 		) -->
 	%
@@ -1043,7 +1043,7 @@ quantification__unify_rhs_vars(NonLocalsToRecompute,
 		insert_list(Set0, ArgVars, Set)
 	).
 quantification__unify_rhs_vars(NonLocalsToRecompute,
-		lambda_goal(_POrF, _E, _F, _N, LambdaVars, _M, _D, Goal), 
+		lambda_goal(_P, _POrF, _E, _F, _N, LambdaVars, _M, _D, Goal), 
 		_, Set, LambdaSet0, Set, LambdaSet) :-
 	% Note that the NonLocals list is not counted, since all the 
 	% variables in that list must occur in the goal.

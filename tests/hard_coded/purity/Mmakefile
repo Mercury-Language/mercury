@@ -7,7 +7,9 @@ THIS_DIR = hard_coded/purity
 PURITY_PROGS= \
 	purity \
 	impure_func_t1 \
-	impure_func_t6 
+	impure_func_t5_fixed2 \
+	impure_func_t6 \
+	impure_pred_t1_fixed3
 
 # We currently don't do any testing in grade java on this directory.
 ifneq "$(findstring java,$(GRADE))" ""

@@ -698,7 +698,7 @@ propagate_ctor_info(bound(Uniq, BoundInsts0), Type, _Constructors, ModuleInfo,
 	).
 propagate_ctor_info(ground(Uniq, none), Type, Constructors, ModuleInfo, Inst)
 		:-
-	( type_is_higher_order(Type, function, _, ArgTypes) ->
+	( type_is_higher_order(Type, _Purity, function, _, ArgTypes) ->
 		default_higher_order_func_inst(ArgTypes, ModuleInfo,
 			HigherOrderInstInfo),
 		Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
@@ -713,7 +713,7 @@ propagate_ctor_info(ground(Uniq, higher_order(PredInstInfo0)), Type, _Ctors,
 	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
 	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
 	(
-		type_is_higher_order(Type, PredOrFunc, _, ArgTypes),
+		type_is_higher_order(Type, _Purity, PredOrFunc, _, ArgTypes),
 		list__same_length(ArgTypes, Modes0)
 	->
 		propagate_types_into_mode_list(ArgTypes, ModuleInfo,
@@ -762,7 +762,7 @@ propagate_ctor_info_lazily(bound(Uniq, BoundInsts0), Type0, Subst,
 propagate_ctor_info_lazily(ground(Uniq, none), Type0, Subst, ModuleInfo, Inst)
 		:-
 	apply_type_subst(Type0, Subst, Type),
-	( type_is_higher_order(Type, function, _, ArgTypes) ->
+	( type_is_higher_order(Type, _Purity, function, _, ArgTypes) ->
 		default_higher_order_func_inst(ArgTypes, ModuleInfo,
 			HigherOrderInstInfo),
 		Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
@@ -782,7 +782,7 @@ propagate_ctor_info_lazily(ground(Uniq, higher_order(PredInstInfo0)), Type0,
 	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
 	apply_type_subst(Type0, Subst, Type),
 	(
-		type_is_higher_order(Type, PredOrFunc, _, ArgTypes),
+		type_is_higher_order(Type, _Purity, PredOrFunc, _, ArgTypes),
 		list__same_length(ArgTypes, Modes0)
 	->
 		propagate_types_into_mode_list(ArgTypes, ModuleInfo,
@@ -1274,7 +1274,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
 	( 
 		RecomputeAtomic = no,
 		goal_is_atomic(Goal0),
-		Goal0 \= unify(_,lambda_goal(_,_,_,_,_,_,_,_),_,_,_)
+		Goal0 \= unify(_,lambda_goal(_,_,_,_,_,_,_,_,_),_,_,_)
 			% Lambda expressions always need to be processed.
 	->
 		Goal = Goal0,
@@ -1390,16 +1390,16 @@ recompute_instmap_delta_2(Atomic, unify(A, Rhs0, UniMode0, Uni, E), GoalInfo,
 		unify(A, Rhs, UniMode, Uni, E), VarTypes, InstMap0,
 		InstMapDelta) -->
 	(
-		{ Rhs0 = lambda_goal(PorF, EvalMethod, FixModes, NonLocals,
-			LambdaVars, Modes, Det, Goal0) }
+		{ Rhs0 = lambda_goal(Purity, PorF, EvalMethod, FixModes,
+			NonLocals, LambdaVars, Modes, Det, Goal0) }
 	->
 		ModuleInfo0 =^ module_info,
 		{ instmap__pre_lambda_update(ModuleInfo0, LambdaVars, Modes,
 			InstMap0, InstMap) },
 		recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes,
 			InstMap, _),
-		{ Rhs = lambda_goal(PorF, EvalMethod, FixModes, NonLocals,
-			LambdaVars, Modes, Det, Goal) }
+		{ Rhs = lambda_goal(Purity, PorF, EvalMethod, FixModes,
+			NonLocals, LambdaVars, Modes, Det, Goal) }
 	;
 		{ Rhs = Rhs0 }
 	),
@@ -1794,8 +1794,8 @@ strip_builtin_qualifiers_from_inst_name(typed_inst(Type, InstName0),
 strip_builtin_qualifiers_from_ground_inst_info(none, none).
 strip_builtin_qualifiers_from_ground_inst_info(higher_order(Pred0),
 		higher_order(Pred)) :-
-	Pred0 = pred_inst_info(Uniq, Modes0, Det),
-	Pred = pred_inst_info(Uniq, Modes, Det),
+	Pred0 = pred_inst_info(PorF, Modes0, Det),
+	Pred = pred_inst_info(PorF, Modes, Det),
 	strip_builtin_qualifiers_from_mode_list(Modes0, Modes).
 
 %-----------------------------------------------------------------------------%

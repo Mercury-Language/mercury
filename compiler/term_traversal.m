@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -443,7 +443,7 @@ unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
 	params_get_functor_info(Params, FunctorInfo),
 	params_get_var_types(Params, VarTypes),
 	map__lookup(VarTypes, OutVar, Type),
-	\+ type_is_higher_order(Type, _, _, _),
+	\+ type_is_higher_order(Type, _, _, _, _),
 	( type_to_ctor_and_args(Type, TypeCtor, _) ->
 		params_get_module_info(Params, Module),
 		functor_norm(FunctorInfo, TypeCtor, ConsId, Module,

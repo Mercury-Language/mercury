@@ -25,10 +25,12 @@ purity.m:078: In call to semipure predicate `purity.semi/0':
 purity.m:078:   purity error: call must be preceded by `semipure' indicator.
 purity.m:112: In call to impure predicate `purity.imp1/1':
 purity.m:112:   purity error: call must be preceded by `impure' indicator.
-purity.m:112: Purity error in closure: closure is impure.
+purity.m:112: Purity error in closure: closure body is impure,
+purity.m:112:   but closure was not declared `impure.'
 purity.m:118: In call to semipure predicate `purity.semi/0':
 purity.m:118:   purity error: call must be preceded by `semipure' indicator.
-purity.m:118: Purity error in closure: closure is semipure.
+purity.m:118: Purity error in closure: closure body is semipure,
+purity.m:118:   but closure was not declared `semipure.'
 purity.m:093: In unification predicate for type (purity.e8):
 purity.m:093:   purity error: predicate is impure.
 purity.m:093:   It must be pure.

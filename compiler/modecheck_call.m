@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,7 +102,8 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Modes, Det,
 			GroundInstInfo = none,
 			mode_info_get_var_types(ModeInfo0, VarTypes),
 			map__lookup(VarTypes, PredVar, Type),
-			type_is_higher_order(Type, function, _, ArgTypes),
+			type_is_higher_order(Type, _Purity, function, _,
+				ArgTypes),
 			PredInstInfo = pred_inst_info_standard_func_mode(
 					list__length(ArgTypes))
 		),

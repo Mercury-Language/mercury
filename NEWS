@@ -9,6 +9,7 @@ Changes to the Mercury language:
 * Field access syntax can now be used at the top-level in func and mode
   declarations and in the head of a clause for a user-defined field access
   function.
+* We now support impure higher-order code.
 
 Changes to the Mercury compiler:
 * It's now easier to use shared libraries on Linux/x86 systems
@@ -46,6 +47,17 @@ Changes to the Mercury language:
   	:- func a ^ f(b) = c.
 	:- mode a ^ f(b) = c is <detism>.
 	A ^ f(B) = ...
+
+* Mercury's support for impure code now also includes support for
+  impure higher-order code.
+  
+  Specifically, impurity annotations can be used on higher-order types,
+  lambda expressions, and higher-order calls; higher-order terms are
+  permitted to call impure or semipure code provided that they are
+  appropriately annotated as such.
+
+  For details, see the "Higher-order impurity" section of the "Impurity"
+  chapter of the Mercury Language Reference Manual.
 
 Changes to the Mercury standard library:
 

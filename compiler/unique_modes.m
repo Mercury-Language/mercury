@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -444,7 +444,7 @@ unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
 	},
 
 	{
-		GenericCall = higher_order(_, _, _),
+		GenericCall = higher_order(_, _, _, _),
 		ArgOffset = 1
 	;
 		% Class method calls are introduced by the compiler

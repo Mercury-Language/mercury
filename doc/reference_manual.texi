@@ -7366,13 +7366,14 @@ with the standard library.  Newcomers to Mercury are hence encouraged to
 @strong{skip this section}.
 
 @menu
-* Purity levels::       Choosing the right level of purity.
-* Purity ordering::     How purity levels are ordered 
-* Impurity semantics::  What impure code means.
-* Declaring impurity::  Declaring predicates impure.
-* Impure calls::        Marking a call as impure.
-* Promising purity::    Promising that a predicate is pure.
-* Impurity Example::    A simple example using impurity.
+* Purity levels::       	Choosing the right level of purity.
+* Purity ordering::     	How purity levels are ordered 
+* Impurity semantics::  	What impure code means.
+* Declaring impurity::  	Declaring predicates impure.
+* Impure calls::        	Marking a call as impure.
+* Promising purity::    	Promising that a predicate is pure.
+* Impurity Example::    	A simple example using impurity.
+* Higher-order impurity::    	Using impurity with higher-order code.
 @end menu
 
 
@@ -7623,6 +7624,102 @@ max_solution(Generator, Max) :-
             fail
         ;   semipure Max = get_max
         ).
+@end example
+
+@node Higher-order impurity
+@section Using impurity with higher-order code
+
+Higher-order code can manipulate impure or semipure predicates and functions,
+provided that explicit purity annotations are used in three places:
+on the higher-order types, on lambda expressions, and on higher-order calls.
+(There are no purity annotations on higher-order insts and modes, however.)
+
+@menu
+* Purity annotations on higher-order types::
+* Purity annotations on lambda expressions::
+* Purity annotations on higher-order calls::
+@end menu
+
+@node Purity annotations on higher-order types
+@subsection Purity annotations on higher-order types
+
+Ordinary higher-order types, such as @samp{pred(T1, T2)} and
+@samp{func(T1, T2) = T}, represent only pure predicates or pure functions.
+But for each ordinary higher-order type @var{Foo}, there are two corresponding
+types @samp{semipure @var{Foo}} and @samp{impure @var{Foo}}.  These types
+can be used for higher-order code that needs to manipulate impure or
+semipure procedures.  For example the type @samp{impure func(int) = int}
+represents impure functions from @samp{int} to @samp{int}.
+
+There are no implicit conversions and no subtyping relationship between
+ordinary higher-order types and the corresponding impure or semipure
+higher-order types.  However, a value of an ordinary higher-order
+type can be explicit ``converted'' to a value of an impure (or semipure)
+higher-order type by wrapping it in an impure (or semipure)
+lambda expression that just calls the pure higher-order term.
+
+@node Purity annotations on lambda expressions
+@subsection Purity annotations on lambda expressions
+
+Purity annotations are required on lambda expressions that call
+semipure or impure code.
+Lambda expressions can be declared as @samp{semipure} or @samp{impure}
+by including such an annotation before the @samp{pred} or @samp{func}
+identifier in the lambda expression.  Such lambda expressions have
+the corresponding @samp{semipure} or @samp{impure} higher-order type.
+For example, the expression
+
+@example
+	(impure func(X) = Y :- semipure get_max(Y), impure set_max(X))
+@end example
+
+@noindent
+is an example of an impure function lambda expression with type
+@samp{(impure func(int) = int)}, and the expression
+
+@example
+	(impure pred(X::in, Y::out) is det :-
+		semipure get_max(Y),
+		impure set_max(X))
+@end example
+is an example of an impure predicate lambda expression
+with type @samp{impure pred(int, int)}.
+
+@node Purity annotations on higher-order calls
+@subsection Purity annotations on higher-order calls
+
+Any calls to impure or semipure higher-order terms must be explicitly
+annotated as such.  For impure or semipure higher-order predicates,
+the annotation is indicated by putting @samp{impure} or @samp{semipure}
+before the call.  For example:
+
+@example
+	:- func foo(impure pred(int)) = int.
+	:- mode foo(in(pred(out) is det)) = out is det.
+
+	foo(ImpurePred) = X1 + X2 :-
+		% using higher-order syntax
+		impure ImpurePred(X1),
+		% using the call/N syntax
+		impure call(ImpurePred, X2).
+@end example
+
+For calling impure or semipure higher-order functions, the notation is
+different than what you might expect.  In addition to using an @samp{impure}
+or @samp{semipure} operator on the unification which invokes the higher-order
+function application, you must also use @samp{impure_apply}
+or @samp{semipure_apply} rather than using @samp{apply} or higher-order syntax.
+@c XXX it would be nicer to change the implementation to support
+@c     nice syntax, rather than documenting this hack
+For example:
+
+@example
+	:- func map(impure func(T1) = T2, list(T1)) = list(T2).
+
+	map(_ImpureFunc, []) = [].
+	map(ImpureFunc, [X|Xs]) = [Y|Ys] :-
+		impure Y = impure_apply(ImpureFunc, X),
+		impure Ys = map(ImpureFunc, Ys).
 @end example
 
 @node Pragmas

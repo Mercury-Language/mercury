@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -94,7 +94,7 @@
 	.
 
 :- type generic_call_id
-	--->	higher_order(pred_or_func, arity)
+	--->	higher_order(purity, pred_or_func, arity)
 	;	class_method(class_id, simple_call_id)
 	;	aditi_builtin(aditi_builtin, simple_call_id)
 	.

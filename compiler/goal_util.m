@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -451,10 +451,10 @@ goal_util__rename_unify_rhs(functor(Functor, E, ArgVars0), Must, Subn,
 			functor(Functor, E, ArgVars)) :-
 	goal_util__rename_var_list(ArgVars0, Must, Subn, ArgVars).
 goal_util__rename_unify_rhs(
-	    lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals0,
+	    lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes, NonLocals0,
 			Vars0, Modes, Det, Goal0),
 	    Must, Subn, 
-	    lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals,
+	    lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes, NonLocals,
 			Vars, Modes, Det, Goal)) :-
 	goal_util__rename_var_list(NonLocals0, Must, Subn, NonLocals),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
@@ -502,8 +502,8 @@ goal_util__rename_unify(complicated_unify(Modes, Cat, TypeInfoVars),
 		map(prog_var, prog_var), generic_call).
 :- mode goal_util__rename_generic_call(in, in, in, out) is det.
 
-goal_util__rename_generic_call(higher_order(Var0, PredOrFunc, Arity),
-		Must, Subn, higher_order(Var, PredOrFunc, Arity)) :-
+goal_util__rename_generic_call(higher_order(Var0, Purity, PredOrFunc, Arity),
+		Must, Subn, higher_order(Var, Purity, PredOrFunc, Arity)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var).
 goal_util__rename_generic_call(class_method(Var0, Method, ClassId, MethodId),
 		Must, Subn, class_method(Var, Method, ClassId, MethodId)) :-
@@ -671,13 +671,13 @@ goal_util__rhs_goal_vars(var(X), Set0, Set) :-
 goal_util__rhs_goal_vars(functor(_Functor, _, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 goal_util__rhs_goal_vars(
-		lambda_goal(_, _, _, NonLocals, LambdaVars, _M, _D, Goal - _), 
-		Set0, Set) :-
+	    lambda_goal(_, _, _, _, NonLocals, LambdaVars, _M, _D, Goal - _), 
+	    Set0, Set) :-
 	set__insert_list(Set0, NonLocals, Set1),
 	set__insert_list(Set1, LambdaVars, Set2),
 	goal_util__goal_vars_2(Goal, Set2, Set).
 
-goal_util__generic_call_vars(higher_order(Var, _, _), [Var]).
+goal_util__generic_call_vars(higher_order(Var, _, _, _), [Var]).
 goal_util__generic_call_vars(class_method(Var, _, _, _), [Var]).
 goal_util__generic_call_vars(aditi_builtin(_, _), []).
 

@@ -1,0 +1,6 @@
+impure_func_t5_fixed.m:022: In clause for `main(di, uo)':
+impure_func_t5_fixed.m:022:   in argument 2 (i.e. argument 1 of the called function) of impure higher-order function call:
+impure_func_t5_fixed.m:022:   mode error: variable `V_12' has instantiatedness `free',
+impure_func_t5_fixed.m:022:   expected instantiatedness was `ground'.
+impure_func_t5_fixed.m:022:   The goal could not be reordered, because it was impure.
+For more information, try recompiling with `-E'.

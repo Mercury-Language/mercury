@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 University of Melbourne.
+% Copyright (C) 1998-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1111,8 +1111,8 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 	% Check that two `generic_call' goals are equivalent.
 :- pred match_generic_call(generic_call::in, generic_call::in) is semidet.
 
-match_generic_call(higher_order(_, PredOrFunc, Arity),
-		higher_order(_, PredOrFunc, Arity)).
+match_generic_call(higher_order(_, Purity, PredOrFunc, Arity),
+		higher_order(_, Purity, PredOrFunc, Arity)).
 match_generic_call(class_method(_, MethodNum, ClassId, CallId),
 		class_method(_, MethodNum, ClassId, CallId)).
 match_generic_call(aditi_builtin(Builtin1, CallId),

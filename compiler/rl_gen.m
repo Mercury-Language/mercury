@@ -206,7 +206,7 @@ rl_gen__scc_list_input_args(EntryPoint, ArgNo, ArgModes, ArgTypes,
 		rl_info_get_module_info(ModuleInfo),
 		( { mode_is_input(ModuleInfo, Mode) } ->
 			(
-				{ type_is_higher_order(Type, predicate,
+				{ type_is_higher_order(Type, (pure), predicate,
 					(aditi_bottom_up), PredArgTypes) } 
 			->
 				rl_info_get_new_temporary(schema(PredArgTypes),
@@ -926,7 +926,7 @@ rl_gen__goal_is_aditi_call(ModuleInfo, Goal, CallGoal, MaybeNegGoals) :-
 		MaybeNegGoals = no
 	; 
 		% XXX check that the var is an input relation variable.
-		Goal = generic_call(higher_order(_, predicate, _),
+		Goal = generic_call(higher_order(_, (pure), predicate, _),
 			_, _, _) - _,
 		CallGoal = Goal,
 		MaybeNegGoals = no
@@ -967,7 +967,8 @@ rl_gen__collect_call_info(CallGoal, MaybeNegGoals, DBCall) -->
 		{ DBCall = db_call(called_pred(PredProcId), MaybeNegGoals, 
 				InputArgs, OutputArgs, GoalInfo) }
 	;
-		{ CallGoal = generic_call(higher_order(Var, predicate, _),
+		{ CallGoal = generic_call(
+			higher_order(Var, (pure), predicate, _),
 			Args, ArgModes, _) - GoalInfo }
 	->
 		{ CallId = ho_called_var(Var) },
@@ -1717,7 +1718,7 @@ rl_gen__aggregate(InputRelationArg, UpdateAcc, ComputeInitial,
 		% for the UpdateAcc and ComputeInitial parameters
 		% is `aditi_top_down', and the InputRelationArg
 		% is `aditi_bottom_up'.
-		{ type_is_higher_order(ComputeInitialType, 
+		{ type_is_higher_order(ComputeInitialType, (pure),
 			predicate, _, ComputeInitialArgTypes) },
 		{ ComputeInitialArgTypes = [GrpByType, _NGrpByType, AccType] }
 	->

@@ -35,14 +35,14 @@
 :- pred type_ctor_is_atomic(type_ctor, module_info).
 :- mode type_ctor_is_atomic(in, in) is semidet.
 
-	% type_is_higher_order(Type, PredOrFunc, ArgTypes) succeeds iff
-	% Type is a higher-order predicate or function type with the specified
-	% argument types (for functions, the return type is appended to the
-	% end of the argument types).
-
-:- pred type_is_higher_order(type, pred_or_func,
+	% type_is_higher_order(Type, Purity, PredOrFunc, ArgTypes, EvalMeth):
+	% succeeds iff Type is a higher-order predicate or function type with
+	% the specified argument types (for functions, the return type is
+	% appended to the end of the argument types), purity, and
+	% evaluation method.
+:- pred type_is_higher_order(type, purity, pred_or_func,
 		lambda_eval_method, list(type)).
-:- mode type_is_higher_order(in, out, out, out) is semidet.
+:- mode type_is_higher_order(in, out, out, out, out) is semidet.
 
 	% Succeed if the given type is a tuple type, returning
 	% the argument types.
@@ -51,8 +51,9 @@
 
 	% type_ctor_is_higher_order(TypeCtor, PredOrFunc) succeeds iff
 	% TypeCtor is a higher-order predicate or function type.
-:- pred type_ctor_is_higher_order(type_ctor, pred_or_func, lambda_eval_method).
-:- mode type_ctor_is_higher_order(in, out, out) is semidet.
+:- pred type_ctor_is_higher_order(type_ctor, purity, pred_or_func,
+		lambda_eval_method).
+:- mode type_ctor_is_higher_order(in, out, out, out) is semidet.
 
 	% type_ctor_is_tuple(TypeCtor) succeeds iff TypeCtor is a tuple type.
 :- pred type_ctor_is_tuple(type_ctor).
@@ -157,17 +158,17 @@
 :- pred construct_type(type_ctor, list(type), (type)).
 :- mode construct_type(in, in, out) is det.
 
-:- pred construct_higher_order_type(pred_or_func, lambda_eval_method,
+:- pred construct_higher_order_type(purity, pred_or_func, lambda_eval_method,
 		list(type), (type)).
-:- mode construct_higher_order_type(in, in, in, out) is det.
+:- mode construct_higher_order_type(in, in, in, in, out) is det.
 
-:- pred construct_higher_order_pred_type(lambda_eval_method,
+:- pred construct_higher_order_pred_type(purity, lambda_eval_method,
 		list(type), (type)).
-:- mode construct_higher_order_pred_type(in, in, out) is det.
+:- mode construct_higher_order_pred_type(in, in, in, out) is det.
 
-:- pred construct_higher_order_func_type(lambda_eval_method,
+:- pred construct_higher_order_func_type(purity, lambda_eval_method,
 		list(type), (type), (type)).
-:- mode construct_higher_order_func_type(in, in, in, out) is det.
+:- mode construct_higher_order_func_type(in, in, in, in, out) is det.
 
 	% Construct builtin types.
 :- func int_type = (type).
@@ -493,7 +494,10 @@
 :- implementation.
 
 :- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_util, libs__options, libs__globals.
+:- import_module parse_tree__prog_util.
+:- import_module check_hlds__purity.
+:- import_module libs__options, libs__globals.
+
 :- import_module char, int, string.
 :- import_module assoc_list, require, varset.
 
@@ -571,7 +575,7 @@ classify_type_ctor(ModuleInfo, TypeCtor, Type) :-
 		Type = float_type
 	; TypeCtor = unqualified("string") - 0 ->
 		Type = str_type
-	; type_ctor_is_higher_order(TypeCtor, _, _) ->
+	; type_ctor_is_higher_order(TypeCtor, _, _, _) ->
 		Type = pred_type
 	; type_ctor_is_tuple(TypeCtor) ->
 		Type = tuple_type
@@ -581,7 +585,28 @@ classify_type_ctor(ModuleInfo, TypeCtor, Type) :-
 		Type = user_type
 	).
 
-type_is_higher_order(Type, PredOrFunc, EvalMethod, PredArgTypes) :-
+type_is_higher_order(Type, Purity, PredOrFunc, EvalMethod, PredArgTypes) :-
+	(
+		Type = term__functor(term__atom(PurityName), [BaseType], _),
+		purity_name(Purity0, PurityName),
+		type_is_higher_order_2(BaseType,
+			PredOrFunc0, EvalMethod0, PredArgTypes0)
+	->
+		Purity = Purity0,
+		PredOrFunc = PredOrFunc0,
+		EvalMethod = EvalMethod0,
+		PredArgTypes = PredArgTypes0
+	;
+		Purity = (pure),
+		type_is_higher_order_2(Type,
+			PredOrFunc, EvalMethod, PredArgTypes)
+	).
+
+% This parses a higher-order type without any purity indicator.
+:- pred type_is_higher_order_2(type, pred_or_func,
+		lambda_eval_method, list(type)).
+:- mode type_is_higher_order_2(in, out, out, out) is semidet.
+type_is_higher_order_2(Type, PredOrFunc, EvalMethod, PredArgTypes) :-
 	(
 		Type = term__functor(term__atom("="),
 			[FuncEvalAndArgs, FuncRetType], _)
@@ -595,10 +620,6 @@ type_is_higher_order(Type, PredOrFunc, EvalMethod, PredArgTypes) :-
 			Type, EvalMethod, PredArgTypes),
 		PredOrFunc = predicate
 	).
-
-type_is_tuple(Type, ArgTypes) :-
-	type_to_ctor_and_args(Type, TypeCtor, ArgTypes),
-	type_ctor_is_tuple(TypeCtor).
 
 	% From the type of a lambda expression, work out how it should
 	% be evaluated and extract the argument types.
@@ -622,20 +643,8 @@ get_lambda_eval_method_and_args(PorFStr, Type0, EvalMethod, ArgTypes) :-
 		)
 	).
 
-type_ctor_is_higher_order(SymName - _Arity, PredOrFunc, EvalMethod) :-
-	(
-		SymName = qualified(unqualified(EvalMethodStr), PorFStr),
-		(
-			EvalMethodStr = "aditi_bottom_up",
-			EvalMethod = (aditi_bottom_up)
-		;
-			EvalMethodStr = "aditi_top_down",
-			EvalMethod = (aditi_top_down)
-		)
-	;
-		SymName = unqualified(PorFStr),
-		EvalMethod = normal
-	),
+type_ctor_is_higher_order(SymName - _Arity, Purity, PredOrFunc, EvalMethod) :-
+	get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr),
 	(
 		PorFStr = "pred",
 		PredOrFunc = predicate
@@ -643,6 +652,39 @@ type_ctor_is_higher_order(SymName - _Arity, PredOrFunc, EvalMethod) :-
 		PorFStr = "func",
 		PredOrFunc = function
 	).
+
+:- pred get_purity_and_eval_method(sym_name::in, purity::out,
+		lambda_eval_method::out,
+		string::out) is semidet.
+get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
+	(
+		SymName = qualified(unqualified(Qualifier), PorFStr),
+		(
+			Qualifier = "aditi_bottom_up",
+			EvalMethod = (aditi_bottom_up),
+			Purity = (pure)
+		;
+			Qualifier = "aditi_top_down",
+			EvalMethod = (aditi_top_down),
+			Purity = (pure)
+		;
+			Qualifier = "impure",
+			Purity = (impure),
+			EvalMethod = normal
+		;
+			Qualifier = "semipure",
+			Purity = (semipure),
+			EvalMethod = normal
+		)
+	;
+		SymName = unqualified(PorFStr),
+		EvalMethod = normal,
+		Purity = (pure)
+	).
+
+type_is_tuple(Type, ArgTypes) :-
+	type_to_ctor_and_args(Type, TypeCtor, ArgTypes),
+	type_ctor_is_tuple(TypeCtor).
 
 type_ctor_is_tuple(unqualified("{}") - _).
 
@@ -718,7 +760,7 @@ type_to_ctor_and_args(Type, SymName - Arity, Args) :-
 	% their arguments don't directly correspond to the
 	% arguments of the term.
 	(
-		type_is_higher_order(Type, PredOrFunc,
+		type_is_higher_order(Type, Purity, PredOrFunc,
 			EvalMethod, PredArgTypes) 
 	->
 		Args = PredArgTypes,
@@ -731,17 +773,28 @@ type_to_ctor_and_args(Type, SymName - Arity, Args) :-
 			PredOrFunc = function,
 			PorFStr = "func"
 		),
+		SymName0 = unqualified(PorFStr),
 		(
 			EvalMethod = (aditi_bottom_up),
-			SymName = qualified(unqualified("aditi_bottom_up"),
-					PorFStr)
+			insert_module_qualifier("aditi_bottom_up", SymName0,
+				SymName1)
 		;
 			EvalMethod = (aditi_top_down),
-			SymName = qualified(unqualified("aditi_top_down"),
-					PorFStr)
+			insert_module_qualifier("aditi_top_down", SymName0,
+				SymName1)
 		;
 			EvalMethod = normal,
-			SymName = unqualified(PorFStr)
+			SymName1 = SymName0
+		),
+		(
+			Purity = (pure),
+			SymName = SymName1
+		;
+			Purity = (semipure),
+			insert_module_qualifier("semipure", SymName1, SymName)
+		;
+			Purity = (impure),
+			insert_module_qualifier("impure", SymName1, SymName)
 		)
 	;
 		sym_name_and_args(Type, SymName, Args),
@@ -762,34 +815,56 @@ type_to_ctor_and_args(Type, SymName - Arity, Args) :-
 	).
 
 construct_type(TypeCtor, Args, Type) :-
-	( type_ctor_is_higher_order(TypeCtor, PredOrFunc, EvalMethod) ->
-		construct_higher_order_type(PredOrFunc, EvalMethod, Args, Type)
+	(
+		type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc,
+			EvalMethod)
+	->
+		construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
+			Args, Type)
 	;
 		TypeCtor = SymName - _,
 		construct_qualified_term(SymName, Args, Type)
 	).
 
-construct_higher_order_type(PredOrFunc, EvalMethod, ArgTypes, Type) :-
+construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes, Type) :-
 	(
 		PredOrFunc = predicate,
-		construct_higher_order_pred_type(EvalMethod, ArgTypes, Type)
+		construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes,
+			Type)
 	;
 		PredOrFunc = function,
 		pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
-		construct_higher_order_func_type(EvalMethod, FuncArgTypes,
-			FuncRetType, Type)
+		construct_higher_order_func_type(Purity, EvalMethod,
+			FuncArgTypes, FuncRetType, Type)
 	).
 
-construct_higher_order_pred_type(EvalMethod, ArgTypes, Type) :-
+construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, Type) :-
 	construct_qualified_term(unqualified("pred"),
 		ArgTypes, Type0),
-	qualify_higher_order_type(EvalMethod, Type0, Type).
+	qualify_higher_order_type(EvalMethod, Type0, Type1),
+	Type = add_purity_annotation(Purity, Type1).
 
-construct_higher_order_func_type(EvalMethod, ArgTypes, RetType, Type) :-
+construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType, Type) :-
 	construct_qualified_term(unqualified("func"), ArgTypes, Type0),
 	qualify_higher_order_type(EvalMethod, Type0, Type1),
-	Type = term__functor(term__atom("="), [Type1, RetType],
-			term__context_init).
+	Type2 = term__functor(term__atom("="), [Type1, RetType],
+			term__context_init),
+	Type = add_purity_annotation(Purity, Type2).
+
+:- func add_purity_annotation(purity, (type)) = (type).
+add_purity_annotation(Purity, Type0) = Type :-
+	(
+		Purity = (pure),
+		Type = Type0
+	;
+		Purity = (semipure),
+		Type = term__functor(term__atom("semipure"), [Type0],
+				term__context_init)
+	;
+		Purity = (impure),
+		Type = term__functor(term__atom("impure"), [Type0],
+				term__context_init)
+	).
 
 :- pred qualify_higher_order_type(lambda_eval_method, (type), (type)).
 :- mode qualify_higher_order_type(in, in, out) is det.
@@ -1743,7 +1818,7 @@ maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity, MaybeTypes)
 maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
 	(
 		MaybeType = yes(Type),
-		type_is_higher_order(Type, _, _, Types)
+		type_is_higher_order(Type, _, _, _, Types)
 	->
 		MaybeTypes = list__map(func(T) = yes(T), Types)
 	;

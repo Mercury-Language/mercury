@@ -7,8 +7,10 @@ PROGS= \
 	impure_func_t3 \
 	impure_func_t4 \
 	impure_func_t5 \
+	impure_func_t5_fixed \
 	impure_func_t7 \
 	impure_pred_t1 \
+	impure_pred_t1_fixed \
 	impure_pred_t2 \
 	purity \
 	purity_nonsense \

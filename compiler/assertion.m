@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -602,10 +602,10 @@ equal_unification(var(A), var(B), Subst0, Subst) :-
 equal_unification(functor(ConsId, E, VarsA), functor(ConsId, E, VarsB),
 		Subst0, Subst) :-
 	equal_vars(VarsA, VarsB, Subst0, Subst).
-equal_unification(lambda_goal(PredOrFunc, EvalMethod, FixModes, NLVarsA, LVarsA,
-			Modes, Det, GoalA),
-		lambda_goal(PredOrFunc, EvalMethod, FixModes, NLVarsB, LVarsB,
-			Modes, Det, GoalB),
+equal_unification(lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			NLVarsA, LVarsA, Modes, Det, GoalA),
+		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			NLVarsB, LVarsB, Modes, Det, GoalB),
 		Subst0, Subst) :-
 	equal_vars(NLVarsA, NLVarsB, Subst0, Subst1),
 	equal_vars(LVarsA, LVarsB, Subst1, Subst2),
@@ -835,7 +835,7 @@ assertion__in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
 	;
 		{ error("assertion__in_interface_check_unify_rhs: type_to_ctor_and_args failed.") }
 	).
-assertion__in_interface_check_unify_rhs(lambda_goal(_,_,_,_,_,_,_,Goal),
+assertion__in_interface_check_unify_rhs(lambda_goal(_,_,_,_,_,_,_,_,Goal),
 		_Var, _Context, PredInfo, Module0, Module) -->
 	assertion__in_interface_check(Goal, PredInfo, Module0, Module).
 

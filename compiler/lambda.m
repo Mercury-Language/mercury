@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -232,14 +232,14 @@ lambda__process_goal(Goal0 - GoalInfo0, Goal) -->
 
 lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 			Unify - GoalInfo) -->
-	( { Y = lambda_goal(PredOrFunc, EvalMethod, _, NonLocalVars, Vars, 
-			Modes, Det, LambdaGoal0) } ->
+	( { Y = lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocalVars,
+			Vars, Modes, Det, LambdaGoal0) } ->
 		% first, process the lambda goal recursively, in case it
 		% contains some nested lambda expressions.
 		lambda__process_goal(LambdaGoal0, LambdaGoal1),
 
 		% then, convert the lambda expression into a new predicate
-		lambda__process_lambda(PredOrFunc, EvalMethod, Vars,
+		lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars,
 			Modes, Det, NonLocalVars, LambdaGoal1, 
 			Unification, Y1, Unification1),
 		{ Unify = unify(XVar, Y1, Mode, Unification1, Context) }
@@ -303,14 +303,14 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 	lambda__process_goal(Goal0, Goal),
 	lambda__process_cases(Cases0, Cases).
 
-:- pred lambda__process_lambda(pred_or_func, lambda_eval_method,
+:- pred lambda__process_lambda(purity, pred_or_func, lambda_eval_method,
 		list(prog_var), list(mode), determinism, list(prog_var),
 		hlds_goal, unification, unify_rhs, unification,
 		lambda_info, lambda_info).
-:- mode lambda__process_lambda(in, in, in, in, in, in, in, in, out, out,
+:- mode lambda__process_lambda(in, in, in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
+lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		OrigNonLocals0, LambdaGoal, Unification0, Functor,
 		Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
@@ -501,6 +501,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		list__append(ArgModes1, Modes, AllArgModes),
 		map__apply_to_list(AllArgVars, VarTypes, ArgTypes),
 
+		purity_to_markers(Purity, LambdaMarkers0),
 		( 
 			% Pass through the aditi markers for 
 			% aggregate query closures.
@@ -530,18 +531,20 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 				; Marker = aditi_no_memo
 				)),
 				MarkerList0, MarkerList),
-			marker_list_to_markers(MarkerList, LambdaMarkers)
+			LambdaMarkers = list__foldl((func(LMs0, Mrk) = LMs :-
+				add_marker(Mrk, LMs0, LMs)),
+				MarkerList, LambdaMarkers0)
 		;
 			EvalMethod = (aditi_bottom_up)
 		->
-			marker_list_to_markers([aditi], LambdaMarkers)
+			add_marker(LambdaMarkers0, aditi, LambdaMarkers)
 		;
 			EvalMethod = (aditi_top_down)
 		->
-			marker_list_to_markers([(aditi_top_down)],
+			add_marker(LambdaMarkers0, aditi_top_down,
 				LambdaMarkers)
 		; 
-			init_markers(LambdaMarkers)
+			LambdaMarkers = LambdaMarkers0
 		),
 
 		% Now construct the proc_info and pred_info for the new
@@ -562,7 +565,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		set__init(Assertions),
 
 		pred_info_create(ModuleName, PredName, TVarSet, ExistQVars,
-			ArgTypes, true, LambdaContext, local, LambdaMarkers,
+			ArgTypes, true, LambdaContext, local, LambdaMarkers,  
 			PredOrFunc, Constraints, Owner, Assertions, ProcInfo,
 			ProcId, PredInfo),
 

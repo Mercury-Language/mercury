@@ -1,11 +1,7 @@
-impure_pred_t1.m:020: In call to impure predicate `impure_pred_t1.get_counter/2':
-impure_pred_t1.m:020:   purity error: call must be preceded by `impure' indicator.
-impure_pred_t1.m:012: In predicate `impure_pred_t1.main/2':
-impure_pred_t1.m:012:   purity error: predicate is impure.
-impure_pred_t1.m:012:   It must be declared `impure' or promised pure.
-impure_pred_t1.m:021: In clause for `main(di, uo)':
-impure_pred_t1.m:021:   mode error in unification of `Y' and `impure_pred_t1.foo(X)'.
-impure_pred_t1.m:021:   Variable `Y' has instantiatedness `free',
-impure_pred_t1.m:021:   term `impure_pred_t1.foo(X)'
-impure_pred_t1.m:021:   has instantiatedness `impure_pred_t1.foo(free)'.
+impure_pred_t1.m:020: In clause for predicate `impure_pred_t1.main/2':
+impure_pred_t1.m:020:   in argument 1 of functor `foo/1':
+impure_pred_t1.m:020:   type error in unification of argument
+impure_pred_t1.m:020:   and constant `get_counter'.
+impure_pred_t1.m:020:   argument has type `pred(int, int)',
+impure_pred_t1.m:020:   constant `get_counter' has type `(impure pred(int, int))'.
 For more information, try recompiling with `-E'.

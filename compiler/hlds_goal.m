@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -219,6 +219,7 @@
 :- type generic_call
 	--->	higher_order(
 			prog_var,
+			purity,
 			pred_or_func,	% call/N (pred) or apply/N (func)
 			arity		% number of arguments (including the
 					% higher-order term)
@@ -302,6 +303,7 @@
 			list(prog_var)
 		)
 	;	lambda_goal(
+			purity,
 			pred_or_func,
 			lambda_eval_method,
 					% should be `normal' except for
@@ -1106,15 +1108,15 @@
 % Predicates dealing with generic_calls
 %
 
-hlds_goal__generic_call_id(higher_order(_, PorF, Arity),
-		generic_call(higher_order(PorF, Arity))).
+hlds_goal__generic_call_id(higher_order(_, Purity, PorF, Arity),
+		generic_call(higher_order(Purity, PorF, Arity))).
 hlds_goal__generic_call_id(
 		class_method(_, _, ClassId, MethodId),
 		generic_call(class_method(ClassId, MethodId))).
 hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 		generic_call(aditi_builtin(Builtin, Name))).
 
-generic_call_pred_or_func(higher_order(_, PredOrFunc, _)) = PredOrFunc.
+generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
 generic_call_pred_or_func(class_method(_, _, _, CallId)) =
 	simple_call_id_pred_or_func(CallId).
 generic_call_pred_or_func(aditi_builtin(_, CallId)) =

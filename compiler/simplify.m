@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -726,13 +726,17 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		simplify_do_calls(Info0),
 		% XXX We should do duplicate call elimination for
 		% class method calls here.
-		GenericCall = higher_order(Closure, _, _)
+		GenericCall = higher_order(Closure, Purity, _, _),
+		% XXX Should we handle semipure higher-order calls too?
+		Purity = (pure)
 	->
 		common__optimise_higher_order_call(Closure, Args, Modes, Det,
 			Goal0, GoalInfo, Goal, Info0, Info)
 	;
 		simplify_do_warn_calls(Info0),
-		GenericCall = higher_order(Closure, _, _)
+		GenericCall = higher_order(Closure, Purity, _, _),
+		% XXX Should we handle impure/semipure higher-order calls too?
+		Purity = (pure)
 	->
 		% We need to do the pass, for the warnings, but we ignore
 		% the optimized goal and instead use the original one.
@@ -782,7 +786,7 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		true_goal(Context, Goal - GoalInfo),
 		Info = Info0
 	;
-		RT0 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+		RT0 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal0)
 	->
 		simplify_info_enter_lambda(Info0, Info1),
@@ -803,8 +807,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		simplify__goal(LambdaGoal0, LambdaGoal, Info3, Info4),
 		simplify_info_set_common_info(Info4, Common1, Info5),
 		simplify_info_set_instmap(Info5, InstMap1, Info6),
-		RT = lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals,
-			Vars, Modes, LambdaDeclaredDet, LambdaGoal),
+		RT = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal),
 		simplify_info_leave_lambda(Info6, Info),
 		Goal = unify(LT0, RT, M, U0, C),
 		GoalInfo = GoalInfo0
@@ -1359,7 +1363,7 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		{ simplify__call_generic_unify(TypeInfoVar, XVar, YVar,
 			ModuleInfo, Context, GoalInfo0, Call) }
 
-	; { type_is_higher_order(Type, _, _, _) } ->
+	; { type_is_higher_order(Type, _, _, _, _) } ->
 		%
 		% convert higher-order unifications into calls to
 		% builtin_unify_pred (which calls error/1)

@@ -1237,7 +1237,7 @@ recompilation__usage__find_items_used_by_type(Type) -->
 		(
 			% Unqualified type-ids are builtin types.
 			{ TypeCtor = qualified(_, _) - _ },
-			\+ { type_ctor_is_higher_order(TypeCtor, _, _) }
+			\+ { type_ctor_is_higher_order(TypeCtor, _, _, _) }
 		->
 			recompilation__usage__maybe_record_item_to_process(
 				(type), TypeCtor)

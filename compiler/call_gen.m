@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -268,7 +268,7 @@ call_gen__extra_livevals(Reg, FirstInput, ExtraLiveVals) :-
 		ExtraLiveVals = []
 	).
 
-call_gen__generic_call_info(_, higher_order(PredVar, _, _),
+call_gen__generic_call_info(_, higher_order(PredVar, _, _, _),
 		do_call_closure, [PredVar - arg_info(1, top_in)], 4).
 call_gen__generic_call_info(_, class_method(TCVar, _, _, _),
 		do_call_class_method, [TCVar - arg_info(1, top_in)], 5).
@@ -325,7 +325,7 @@ call_gen__aditi_insert_delete_modify_info(modify(bulk),
 	list(prog_var)::in, list(prog_var)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-call_gen__generic_call_nonvar_setup(higher_order(_, _, _),
+call_gen__generic_call_nonvar_setup(higher_order(_, _, _, _),
 		InVars, OutVars, Code) -->
 	code_info__clobber_regs([reg(r, 2), reg(r, 3)]),
 	{ list__length(InVars, NInVars) },

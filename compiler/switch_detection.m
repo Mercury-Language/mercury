@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -198,7 +198,7 @@ detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _,
 detect_switches_in_goal_2(unify(A,RHS0,C,D,E), __GoalInfo, InstMap0,
 		VarTypes, ModuleInfo, unify(A,RHS,C,D,E)) :-
 	(
-		RHS0 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+		RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocals, Vars, Modes, Det, Goal0)
 	->
 		% we need to insert the initial insts for the lambda
@@ -207,7 +207,7 @@ detect_switches_in_goal_2(unify(A,RHS0,C,D,E), __GoalInfo, InstMap0,
 			Vars, Modes, InstMap0, InstMap1),
 		detect_switches_in_goal(Goal0, InstMap1, VarTypes, ModuleInfo,
 			Goal),
-		RHS = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+		RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocals, Vars, Modes, Det, Goal)
 	;
 		RHS = RHS0

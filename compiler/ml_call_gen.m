@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,7 +178,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 	% compute the function address
 	%
 	(
-		{ GenericCall = higher_order(ClosureVar, _PredOrFunc,
+		{ GenericCall = higher_order(ClosureVar, _Purity, _PredOrFunc,
 			_Arity) },
 		ml_gen_var(ClosureVar, ClosureLval),
 		{ FieldId = offset(const(int_const(1))) },

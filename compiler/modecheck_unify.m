@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -133,7 +133,8 @@ modecheck_unification(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
 	%
 	(
 		% check if variable has a higher-order type
-		type_is_higher_order(TypeOfX, _, EvalMethod, PredArgTypes),
+		type_is_higher_order(TypeOfX, Purity, _, EvalMethod,
+			PredArgTypes),
 		ConsId0 = pred_const(PredId, ProcId, _)
 	->
 		%
@@ -141,7 +142,7 @@ modecheck_unification(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
 		%
 		mode_info_get_varset(ModeInfo0, VarSet0),
 		mode_info_get_context(ModeInfo0, Context),
-		convert_pred_to_lambda_goal(EvalMethod,
+		convert_pred_to_lambda_goal(Purity, EvalMethod,
 			X0, PredId, ProcId, ArgVars0, PredArgTypes,
 			UnifyContext, GoalInfo0, Context,
 			ModuleInfo0, VarSet0, VarTypes0,
@@ -164,7 +165,7 @@ modecheck_unification(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
 	).
 
 modecheck_unification(X, 
-		lambda_goal(PredOrFunc, EvalMethod, _, ArgVars,
+		lambda_goal(Purity, PredOrFunc, EvalMethod, _, ArgVars,
 			Vars, Modes0, Det, Goal0),
 		Unification0, UnifyContext, _GoalInfo, 
 		unify(X, RHS, Mode, Unification, UnifyContext),
@@ -313,8 +314,8 @@ modecheck_unification(X,
 		% Now modecheck the unification of X with the lambda-expression.
 		%
 
-		RHS0 = lambda_goal(PredOrFunc, EvalMethod, modes_are_ok,
-				ArgVars, Vars, Modes, Det, Goal),
+		RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod,
+				modes_are_ok, ArgVars, Vars, Modes, Det, Goal),
 		modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
 				Det, RHS0, Unification0, Mode,
 				RHS, Unification, ModeInfo12, ModeInfo)
@@ -335,7 +336,7 @@ modecheck_unification(X,
 			error("modecheck_unification(lambda): very strange var")
 		),
 			% return any old garbage
-		RHS = lambda_goal(PredOrFunc, EvalMethod, modes_are_ok,
+		RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
 				ArgVars, Vars, Modes0, Det, Goal0),
 		Mode = (free -> free) - (free -> free),
 		Unification = Unification0
@@ -959,7 +960,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		%
 		% check that we're not trying to do a higher-order unification
 		%
-		type_is_higher_order(Type, PredOrFunc, _, _)
+		type_is_higher_order(Type, _, PredOrFunc, _, _)
 	->
 		% We do not want to report this as an error
 		% if it occurs in a compiler-generated
@@ -1057,7 +1058,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 			instmap__is_reachable(InstMap)
 		->
 			( 
-				RHS0 = lambda_goal(_, EvalMethod, _,
+				RHS0 = lambda_goal(_, _, EvalMethod, _,
 					_, _, _, _, Goal),
 				Goal = call(PredId, ProcId, _, _, _, _) - _
 			->
@@ -1173,7 +1174,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 			CanFail = can_fail,
 			mode_info_get_instmap(ModeInfo0, InstMap0),
 			( 
-				type_is_higher_order(TypeOfX, PredOrFunc,
+				type_is_higher_order(TypeOfX, _, PredOrFunc,
 					_, _),
 				instmap__is_reachable(InstMap0)
 			->

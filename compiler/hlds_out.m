@@ -462,7 +462,8 @@ hlds_out__write_call_id(generic_call(GenericCallId)) -->
 :- pred hlds_out__write_generic_call_id(generic_call_id, io__state, io__state).
 :- mode hlds_out__write_generic_call_id(in, di, uo) is det.
 
-hlds_out__write_generic_call_id(higher_order(PredOrFunc, _)) -->
+hlds_out__write_generic_call_id(higher_order(Purity, PredOrFunc, _)) -->
+	write_purity_prefix(Purity),
 	io__write_string("higher-order "),
 	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(" call").
@@ -528,8 +529,8 @@ hlds_out__write_arg_number(call(PredOrFunc - _/Arity), ArgNum) -->
 		io__write_string("argument "),
 		io__write_int(ArgNum)
 	).
-hlds_out__write_arg_number(generic_call(higher_order(PredOrFunc, Arity)),
-		ArgNum) -->
+hlds_out__write_arg_number(generic_call(
+		higher_order(_Purity, PredOrFunc, Arity)), ArgNum) -->
 	( { PredOrFunc = function, ArgNum = Arity } ->
 		io__write_string("the return value")
 	;
@@ -922,15 +923,15 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			VarTypes, TVarSet),
 
 		( { Clauses \= [] } ->
-			% Never write the clauses out verbosely -
+			% XXX FIXME Never write the clauses out verbosely -
 			% disable the dump_hlds_options option before writing
 			% them, and restore its initial value afterwards
-			globals__io_set_option(dump_hlds_options, string("")),
+			% globals__io_set_option(dump_hlds_options, string("")),
 			hlds_out__write_clauses(Indent, ModuleInfo, PredId,
 				VarSet, AppendVarnums, HeadVars, PredOrFunc,
-				Clauses, no),
-			globals__io_set_option(dump_hlds_options,
-				string(Verbose))
+				Clauses, no)
+			% globals__io_set_option(dump_hlds_options,
+			% 	string(Verbose))
 		;
 			[]
 		)
@@ -1493,7 +1494,7 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, _, _),
 		ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
 		% XXX we should print more info here
     ( 
-	{ GenericCall = higher_order(PredVar, PredOrFunc, _) },
+	{ GenericCall = higher_order(PredVar, Purity, PredOrFunc, _) },
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	hlds_out__write_indent(Indent),
 	(
@@ -1504,6 +1505,7 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, _, _),
 		;
 			[]
 		),
+		write_purity_prefix(Purity),
 		hlds_out__write_functor(term__atom("call"),
 				[PredVar|ArgVars], VarSet, AppendVarnums)
 	;
@@ -1517,6 +1519,7 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, _, _),
 		),
 		{ pred_args_to_func_args([PredVar | ArgVars],
 			FuncArgVars, FuncRetVar) },
+		write_purity_prefix(Purity),
 		mercury_output_var(FuncRetVar, VarSet, AppendVarnums),
 		io__write_string(" = "),
 		hlds_out__write_functor(term__atom("apply"), FuncArgVars,
@@ -2229,12 +2232,13 @@ hlds_out__write_unify_rhs_3(functor(ConsId0, IsExistConstruct, ArgVars),
 	).
 
 hlds_out__write_unify_rhs_3(
-		lambda_goal(PredOrFunc, EvalMethod, _, NonLocals, Vars, Modes,
-		Det, Goal),
+		lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocals, Vars,
+			Modes, Det, Goal),
 		ModuleInfo, VarSet, InstVarSet, AppendVarnums, Indent,
 		MaybeType, TypeQual)
 		-->
 	{ Indent1 is Indent + 1 },
+	write_purity_prefix(Purity),
 	{
 		EvalMethod = normal,
 		EvalStr = ""

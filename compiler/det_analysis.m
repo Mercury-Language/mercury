@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -594,7 +594,7 @@ det_infer_goal_2(generic_call(GenericCall, ArgVars, Modes, Det0),
 det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		DetInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
 	(
-		RT0 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+		RT0 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal0)
 	->
 		(
@@ -613,7 +613,7 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
 				Goal, GoalInfo, DetInfo, Msgs2),
 		list__append(Msgs1, Msgs2, Msgs3),
-		RT = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+		RT = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal)
 	;
 		RT = RT0,

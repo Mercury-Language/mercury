@@ -839,7 +839,7 @@ qualify_type(Type0, Type, Info0, Info) -->
 		( { is_builtin_atomic_type(TypeCtor0) } ->
 			{ TypeCtor = TypeCtor0 },
 			{ Info1 = Info0 }
-		; { type_ctor_is_higher_order(TypeCtor0, _, _) } ->
+		; { type_ctor_is_higher_order(TypeCtor0, _, _, _) } ->
 			{ TypeCtor = TypeCtor0 },
 			{ Info1 = Info0 }
 		; { type_ctor_is_tuple(TypeCtor0) } ->

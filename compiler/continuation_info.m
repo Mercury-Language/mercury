@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -522,7 +522,7 @@ continuation_info__some_arg_is_higher_order(PredInfo) :-
 	pred_info_arg_types(PredInfo, ArgTypes),
 	some([Type], (
 		list__member(Type, ArgTypes),
-		type_is_higher_order(Type, _, _, _)
+		type_is_higher_order(Type, _, _, _, _)
 	)).
 
 %-----------------------------------------------------------------------------%

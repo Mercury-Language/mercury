@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,7 +125,7 @@ interpret_unify(X, functor(ConsId, _, ArgVars), Subst0, Subst) :-
 	term__var_list_to_term_list(ArgVars, ArgTerms),
 	cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
 	term__unify(term__variable(X), RhsTerm, Subst0, Subst).
-interpret_unify(_X, lambda_goal(_POrF, _Method, _Fix, _NonLocals,
+interpret_unify(_X, lambda_goal(_Purity, _POrF, _Method, _Fix, _NonLocals,
 			_Vars, _Modes, _Det, _Goal), Subst0, Subst) :-
 		% For ease of implementation we just ignore unifications with
 		% lambda terms.  This is a safe approximation, it just

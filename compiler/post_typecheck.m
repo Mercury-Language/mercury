@@ -623,7 +623,7 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
 			pred_info_clauses_info(CallerPredInfo, ClausesInfo),
 			clauses_info_vartypes(ClausesInfo, VarTypes),
 			map__lookup(VarTypes, HOArg, HOArgType),
-			type_is_higher_order(HOArgType,
+			type_is_higher_order(HOArgType, _Purity,
 				_, EvalMethod, ArgTypes0),
 			EvalMethod \= normal
 		->
@@ -1173,9 +1173,16 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		%
 		% Is the function symbol apply/N or ''/N,
 		% representing a higher-order function call?
+		% Or the impure/semipure equivalents impure_apply/N
+		% and semipure_apply/N?
+		% (XXX FIXME We should use nicer syntax for impure apply/N.)
 		%
 		ConsId0 = cons(unqualified(ApplyName), _),
-		( ApplyName = "apply" ; ApplyName = "" ),
+		( ApplyName = "apply", Purity = (pure)
+		; ApplyName = "", Purity = (pure)
+		; ApplyName = "impure_apply", Purity = (impure)
+		; ApplyName = "semipure_apply", Purity = (semipure)
+		),
 		Arity >= 1,
 		ArgVars0 = [FuncVar | FuncArgVars]
 	->
@@ -1190,7 +1197,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		Det = erroneous,
 		adjust_func_arity(function, Arity, FullArity),
 		HOCall = generic_call(
-			higher_order(FuncVar, function, FullArity),
+			higher_order(FuncVar, Purity, function, FullArity),
 			ArgVars, Modes, Det),
 
 		PredInfo = PredInfo0,
@@ -1264,7 +1271,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% or function constant?
 		%
 		ConsId0 = cons(Name, _),
-		type_is_higher_order(TypeOfX, PredOrFunc,
+		type_is_higher_order(TypeOfX, _Purity, PredOrFunc,
 			EvalMethod, HOArgTypes),
 
 		%

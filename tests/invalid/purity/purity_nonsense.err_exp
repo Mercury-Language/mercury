@@ -6,10 +6,12 @@ purity_nonsense.m:012: Error: clause for predicate `purity_nonsense.e12/0'
 purity_nonsense.m:012:   without preceding `pred' declaration.
 purity_nonsense.m:013: Error: clause for predicate `purity_nonsense.e13/0'
 purity_nonsense.m:013:   without preceding `pred' declaration.
-purity_nonsense.m:018: Warning: unnecessary `impure' marker.
-purity_nonsense.m:018:   Higher-order goals are always pure.
 purity_nonsense.m:008: Error: no clauses for
 purity_nonsense.m:008:   predicate `purity_nonsense.undefined/0'.
+purity_nonsense.m:018: In clause for predicate `purity_nonsense.e14/1':
+purity_nonsense.m:018:   in argument 1 (i.e. the predicate term) of impure higher-order predicate call:
+purity_nonsense.m:018:   type error: variable `P' has type `(pred)',
+purity_nonsense.m:018:   expected type was `(impure (pred))'.
 purity_nonsense.m:012: In clause for predicate `purity_nonsense.e12/0':
 purity_nonsense.m:012:   in argument 1 of call to predicate `impure/1':
 purity_nonsense.m:012:   error: the language construct \\+/1 should be
@@ -42,6 +44,4 @@ purity_nonsense.m:013:   in argument 1 of functor `semipure/1':
 purity_nonsense.m:013:   error: undefined symbol `semi/0'.
 purity_nonsense.m:013: In clause for predicate `purity_nonsense.e13/0':
 purity_nonsense.m:013:   error: `semipure' marker in an inappropriate place.
-purity_nonsense.m:015: In predicate `purity_nonsense.e14/1':
-purity_nonsense.m:015:   warning: declared `impure' but actually pure.
 For more information, try recompiling with `-E'.

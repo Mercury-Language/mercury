@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 University of Melbourne.
+% Copyright (C) 2000-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -192,7 +192,7 @@ prog_rep__represent_goal_expr(generic_call(GenericCall, Args, _, _),
 		GoalInfo, InstMap0, Info, Rep) :-
 	list__map(term__var_to_int, Args, ArgsRep),
 	(
-		GenericCall = higher_order(PredVar, _, _),
+		GenericCall = higher_order(PredVar, _, _, _),
 		term__var_to_int(PredVar, PredVarRep),
 		AtomicGoalRep = higher_order_call_rep(PredVarRep, ArgsRep)
 	;

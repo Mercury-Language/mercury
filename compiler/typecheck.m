@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1302,10 +1302,10 @@ typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
 	{ hlds_goal__generic_call_id(GenericCall0, CallId) },
 	typecheck_info_set_called_predid(CallId),
 	(
-		{ GenericCall0 = higher_order(PredVar, _, _) },
+		{ GenericCall0 = higher_order(PredVar, Purity, _, _) },
 		{ GenericCall = GenericCall0 },
 		checkpoint("higher-order call"),
-		typecheck_higher_order_call(PredVar, Args)
+		typecheck_higher_order_call(PredVar, Purity, Args)
 	;
 		{ GenericCall0 = class_method(_, _, _, _) },
 		{ error("typecheck_goal_2: unexpected class method call") }
@@ -1390,14 +1390,14 @@ ensure_vars_have_a_type(Vars) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_higher_order_call(prog_var, list(prog_var),
+:- pred typecheck_higher_order_call(prog_var, purity, list(prog_var),
 		typecheck_info, typecheck_info).
-:- mode typecheck_higher_order_call(in, in, typecheck_info_di, 
+:- mode typecheck_higher_order_call(in, in, in, typecheck_info_di, 
 				typecheck_info_uo) is det.
 
-typecheck_higher_order_call(PredVar, Args) -->
+typecheck_higher_order_call(PredVar, Purity, Args) -->
 	{ list__length(Args, Arity) },
-	{ higher_order_pred_type(Arity, normal,
+	{ higher_order_pred_type(Purity, Arity, normal,
 		TypeVarSet, PredVarType, ArgTypes) },
 		% The class context is empty because higher-order predicates
 		% are always monomorphic.  Similarly for ExistQVars.
@@ -1406,41 +1406,43 @@ typecheck_higher_order_call(PredVar, Args) -->
 	typecheck_var_has_polymorphic_type_list([PredVar|Args], TypeVarSet,
 		ExistQVars, [PredVarType|ArgTypes], ClassContext).
 
-:- pred higher_order_pred_type(int, lambda_eval_method,
+:- pred higher_order_pred_type(purity, int, lambda_eval_method,
 		tvarset, type, list(type)).
-:- mode higher_order_pred_type(in, in, out, out, out) is det.
+:- mode higher_order_pred_type(in, in, in, out, out, out) is det.
 
-	% higher_order_pred_type(N, EvalMethod,
+	% higher_order_pred_type(Purity, N, EvalMethod,
 	%	TypeVarSet, PredType, ArgTypes):
 	% Given an arity N, let TypeVarSet = {T1, T2, ..., TN},
-	% PredType = `EvalMethod pred(T1, T2, ..., TN)', and
+	% PredType = `Purity EvalMethod pred(T1, T2, ..., TN)', and
 	% ArgTypes = [T1, T2, ..., TN].
 
-higher_order_pred_type(Arity, EvalMethod, TypeVarSet, PredType, ArgTypes) :-
+higher_order_pred_type(Purity, Arity, EvalMethod, TypeVarSet, PredType,
+		ArgTypes) :-
 	varset__init(TypeVarSet0),
 	varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet),
 	term__var_list_to_term_list(ArgTypeVars, ArgTypes),
-	construct_higher_order_type(predicate, EvalMethod, ArgTypes, PredType).
+	construct_higher_order_type(Purity, predicate, EvalMethod, ArgTypes,
+		PredType).
 
-:- pred higher_order_func_type(int, lambda_eval_method,
+:- pred higher_order_func_type(purity, int, lambda_eval_method,
 		tvarset, type, list(type), type).
-:- mode higher_order_func_type(in, in, out, out, out, out) is det.
+:- mode higher_order_func_type(in, in, in, out, out, out, out) is det.
 
-	% higher_order_func_type(N, EvalMethod, TypeVarSet,
+	% higher_order_func_type(Purity, N, EvalMethod, TypeVarSet,
 	%	FuncType, ArgTypes, RetType):
 	% Given an arity N, let TypeVarSet = {T0, T1, T2, ..., TN},
-	% FuncType = `EvalMethod func(T1, T2, ..., TN) = T0',
+	% FuncType = `Purity EvalMethod func(T1, T2, ..., TN) = T0',
 	% ArgTypes = [T1, T2, ..., TN], and
 	% RetType = T0.
 
-higher_order_func_type(Arity, EvalMethod, TypeVarSet,
+higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
 		FuncType, ArgTypes, RetType) :-
 	varset__init(TypeVarSet0),
 	varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet1),
 	varset__new_var(TypeVarSet1, RetTypeVar, TypeVarSet),
 	term__var_list_to_term_list(ArgTypeVars, ArgTypes),
 	RetType = term__variable(RetTypeVar),
-	construct_higher_order_func_type(EvalMethod,
+	construct_higher_order_func_type(Purity, EvalMethod,
 		ArgTypes, RetType, FuncType).
 
 %-----------------------------------------------------------------------------%
@@ -1487,7 +1489,7 @@ typecheck_aditi_builtin_2(CallId, Args,
 	{ CallId = PredOrFunc - _ },
 	{ InsertDeleteAdjustArgTypes = 
 	    lambda([RelationArgTypes::in, UpdateArgTypes::out] is det, (
-			construct_higher_order_type(PredOrFunc,
+			construct_higher_order_type((pure), PredOrFunc,
 				EvalMethod, RelationArgTypes, ClosureType),
 			UpdateArgTypes = [ClosureType]
 	    )) },
@@ -1499,7 +1501,7 @@ typecheck_aditi_builtin_2(CallId, Args,
 	    lambda([RelationArgTypes::in, AditiModifyTypes::out] is det, (
 			list__append(RelationArgTypes, RelationArgTypes,
 				ClosureArgTypes),
-			construct_higher_order_pred_type(EvalMethod,
+			construct_higher_order_pred_type((pure), EvalMethod,
 				ClosureArgTypes, ClosureType),
 			AditiModifyTypes = [ClosureType]
 	    )) },
@@ -2391,11 +2393,11 @@ typecheck_unification(X, functor(F, E, As), functor(F, E, As)) -->
 	typecheck_unify_var_functor(X, F, As),
 	perform_context_reduction(OrigTypeAssignSet).
 typecheck_unification(X, 
-		lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals, Vars,
-			Modes, Det, Goal0),
-		lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals, Vars,
-			Modes, Det, Goal)) -->
- 	typecheck_lambda_var_has_type(PredOrFunc, EvalMethod, X, Vars),
+		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			NonLocals, Vars, Modes, Det, Goal0),
+		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			NonLocals, Vars, Modes, Det, Goal)) -->
+ 	typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, X, Vars),
 	typecheck_goal(Goal0, Goal).
 
 :- pred typecheck_unify_var_var(prog_var, prog_var,
@@ -2835,15 +2837,15 @@ apply_var_renaming_to_var(RenameSubst, Var0, Var) :-
 	% checks that `Var' has type `pred(T1, T2, ...)' where
 	% T1, T2, ... are the types of the `ArgVars'.
 
-:- pred typecheck_lambda_var_has_type(pred_or_func, lambda_eval_method,
+:- pred typecheck_lambda_var_has_type(purity, pred_or_func, lambda_eval_method,
 		prog_var, list(prog_var), typecheck_info, typecheck_info).
-:- mode typecheck_lambda_var_has_type(in, in, in, in, typecheck_info_di, 
+:- mode typecheck_lambda_var_has_type(in, in, in, in, in, typecheck_info_di, 
 		typecheck_info_uo) is det.
 
-typecheck_lambda_var_has_type(PredOrFunc, EvalMethod, Var,
+typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, Var,
 		ArgVars, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet0),
-	typecheck_lambda_var_has_type_2(TypeAssignSet0,
+	typecheck_lambda_var_has_type_2(TypeAssignSet0, Purity,
 		PredOrFunc, EvalMethod, Var, ArgVars, [], TypeAssignSet),
 	(
 		TypeAssignSet = [],
@@ -2861,21 +2863,21 @@ typecheck_lambda_var_has_type(PredOrFunc, EvalMethod, Var,
 			TypeAssignSet, TypeCheckInfo)
 	).
 
-:- pred typecheck_lambda_var_has_type_2(type_assign_set, 
+:- pred typecheck_lambda_var_has_type_2(type_assign_set, purity,
 		pred_or_func, lambda_eval_method, prog_var, list(prog_var),
 		type_assign_set, type_assign_set).
-:- mode typecheck_lambda_var_has_type_2(in, in, in, in, in, in, out) is det.
+:- mode typecheck_lambda_var_has_type_2(in, in, in, in, in, in, in, out) is det.
 
-typecheck_lambda_var_has_type_2([], _, _, _, _) --> [].
-typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0],
+typecheck_lambda_var_has_type_2([], _, _, _, _, _) --> [].
+typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0], Purity,
 				PredOrFunc, EvalMethod, Var, ArgVars) -->
 	{ type_assign_get_types_of_vars(ArgVars, TypeAssign0, ArgVarTypes,
 					TypeAssign1) },
-	{ construct_higher_order_type(PredOrFunc,
+	{ construct_higher_order_type(Purity, PredOrFunc,
 		EvalMethod, ArgVarTypes, LambdaType) },
 	type_assign_var_has_type(TypeAssign1, Var, LambdaType),
 	typecheck_lambda_var_has_type_2(TypeAssignSet0,
-		PredOrFunc, EvalMethod, Var, ArgVars).
+		Purity, PredOrFunc, EvalMethod, Var, ArgVars).
 
 :- pred type_assign_get_types_of_vars(list(prog_var), type_assign, list(type),
 					type_assign).
@@ -3001,6 +3003,7 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 	pred_info_get_class_context(PredInfo, ClassContext),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
 			CompleteArgTypes),
+	pred_info_get_purity(PredInfo, Purity),
 	(
 		IsPredOrFunc = predicate,
 		PredArity >= FuncArity,
@@ -3013,7 +3016,7 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 			list__split_list(FuncArity, CompleteArgTypes,
 				ArgTypes, PredTypeParams)
 		->
-			construct_higher_order_pred_type(normal,
+			construct_higher_order_pred_type(Purity, normal,
 					PredTypeParams, PredType),
 			ConsInfo = cons_type_info(PredTypeVarSet,
 					PredExistQVars,
@@ -3026,7 +3029,7 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 			% operations and also to Aditi aggregates.
 			pred_info_get_markers(PredInfo, Markers),
 			( check_marker(Markers, aditi) ->
-				construct_higher_order_pred_type(
+				construct_higher_order_pred_type(Purity,
 					(aditi_bottom_up), PredTypeParams,
 					PredType2),
 				ConsInfo2 = cons_type_info(PredTypeVarSet,
@@ -3058,9 +3061,9 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 			( FuncArgTypeParams = [] ->
 				FuncType = FuncReturnTypeParam
 			;
-				construct_higher_order_func_type(normal,
-					FuncArgTypeParams, FuncReturnTypeParam,
-					FuncType)	
+				construct_higher_order_func_type(Purity,
+					normal, FuncArgTypeParams,
+					FuncReturnTypeParam, FuncType)	
 			),
 			ConsInfo = cons_type_info(PredTypeVarSet,
 					PredExistQVars,
@@ -3084,10 +3087,15 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 
 builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 	Functor = cons(unqualified(ApplyName), _),
-	( ApplyName = "apply" ; ApplyName = "" ),
+	( ApplyName = "apply", Purity = (pure)
+	; ApplyName = "", Purity = (pure)
+	% XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
+	; ApplyName = "impure_apply", Purity = (impure)
+	; ApplyName = "semipure_apply", Purity = (semipure)
+	),
 	Arity >= 1,
 	Arity1 is Arity - 1,
-	higher_order_func_type(Arity1, normal, TypeVarSet,
+	higher_order_func_type(Purity, Arity1, normal, TypeVarSet,
 		FuncType, ArgTypes, RetType),
 	ExistQVars = [],
 	Constraints = constraints([], []),

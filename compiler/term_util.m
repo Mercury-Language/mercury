@@ -577,7 +577,7 @@ lookup_proc_arg_size_info(Module, PredProcId, MaybeArgSize) :-
 horder_vars([Arg | Args], VarType) :-
 	(
 		map__lookup(VarType, Arg, Type),
-		type_is_higher_order(Type, _, _, _)
+		type_is_higher_order(Type, _, _, _, _)
 	;
 		horder_vars(Args, VarType)
 	).

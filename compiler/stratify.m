@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -371,7 +371,7 @@ higher_order_check_goal(generic_call(GenericCall, _Vars, _Modes, _Det),
 	(
 		{ Negated = yes },
 		{ HighOrderLoops = yes },
-		{ GenericCall = higher_order(_, _, _), Msg = "higher order"
+		{ GenericCall = higher_order(_, _, _, _), Msg = "higher order"
 		; GenericCall = class_method(_, _, _, _), Msg = "class method"
 		}
 	->
@@ -719,7 +719,7 @@ higherorder_in_out1([Type|Types], [Mode|Modes], Module, HOIn0, HOIn,
 		% XXX : will have to use a more general check for higher
 		% order constants in parameters user could hide higher
 		% order consts in a data structure etc..
-		type_is_higher_order(Type, _, _, _)
+		type_is_higher_order(Type, _, _, _, _)
 	->	
 		(
 			mode_is_input(Module, Mode) 
@@ -764,8 +764,9 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), Calls,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_PredOrFunc, _EvalMethod, _Fix, _NonLocals,
-				_Vars, _Modes, _Determinism, Goal - _GoalInfo)
+		RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _Fix,
+			_NonLocals, _Vars, _Modes, _Determinism,
+			Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, [], CalledProcs),
 		set__insert_list(HasAT0, CalledProcs, HasAT)
@@ -866,8 +867,9 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), Calls0,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_PredOrFunc, _EvalMethod, _Fix, _NonLocals,
-				_Vars, _Modes, _Determinism, Goal - _GoalInfo)
+		RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _Fix,
+			_NonLocals, _Vars, _Modes, _Determinism,
+			Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, Calls0, Calls)
 	;

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -261,11 +261,12 @@ canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs) :-
 	%
 	% All variable arity type constructors are builtins.
 	% At the moment, we have three: pred, func, and tuple.
+	% XXX FIXME we should also encode purity in the RTTI!
 
 :- pred type_is_var_arity((type)::in, var_arity_ctor_id::out) is semidet.
 
 type_is_var_arity(Type, VarArityCtorId) :-
-	( type_is_higher_order(Type, PredOrFunc, _, _) ->
+	( type_is_higher_order(Type, _Purity, PredOrFunc, _, _) ->
 		(
 			PredOrFunc = predicate,
 			VarArityCtorId = pred_type_info
