@@ -763,9 +763,9 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 				InstMap2, VarTypes, Det1,
 				Unification0, ModeInfo4,
 				Unification1, ModeInfo5),
-		split_complicated_subunifies(InstMap1, Unification1, ArgVars0,
-					Unification, ArgVars, ExtraGoals,
-					ModeInfo5, ModeInfo6),
+		split_complicated_subunifies(InstMap1, InstMap2, Unification1,
+				ArgVars0, Unification, ArgVars, ExtraGoals,
+				ModeInfo5, ModeInfo6),
 		% XXX We force the var rather than unify it with its
 		%     previous inst.  This is right, isn't it.
 		modecheck_force_set_var_inst(X, Inst, ModeInfo6, ModeInfo7),
@@ -860,21 +860,22 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	% complicated unifications.  If they are, we split them out
 	% into separate unifications by introducing fresh variables here.
 
-:- pred split_complicated_subunifies(instmap, unification, list(var),
-			unification, list(var), extra_goals,
+:- pred split_complicated_subunifies(instmap, instmap, unification,
+			list(var), unification, list(var), extra_goals,
 			mode_info, mode_info).
-:- mode split_complicated_subunifies(in, in, in, out, out, out,
+:- mode split_complicated_subunifies(in, in, in, in, out, out, out,
 			mode_info_di, mode_info_uo) is det.
 
-split_complicated_subunifies(InstMapBefore, Unification0, ArgVars0,
-				Unification, ArgVars, ExtraGoals) -->
+split_complicated_subunifies(InstMapBefore, InstMapAfter, Unification0,
+			ArgVars0, Unification, ArgVars, ExtraGoals) -->
 	(
 		{ Unification0 = deconstruct(X, ConsId, ArgVars0, ArgModes0,
 			Det) }
 	->
 		(
 			split_complicated_subunifies_2(ArgVars0, ArgModes0,
-				ArgVars1, ArgModes, ExtraGoals1, InstMapBefore)
+				ArgVars1, ArgModes, ExtraGoals1, InstMapBefore,
+				InstMapAfter)
 		->
 			{ ArgVars = ArgVars1 },
 			{ Unification = deconstruct(X, ConsId, ArgVars,
@@ -891,14 +892,14 @@ split_complicated_subunifies(InstMapBefore, Unification0, ArgVars0,
 
 :- pred split_complicated_subunifies_2(list(var), list(uni_mode),
 			list(var), list(uni_mode), extra_goals,
-			instmap, mode_info, mode_info).
-:- mode split_complicated_subunifies_2(in, in, out, out, out, in,
+			instmap, instmap, mode_info, mode_info).
+:- mode split_complicated_subunifies_2(in, in, out, out, out, in, in,
 			mode_info_di, mode_info_uo) is semidet.
 
-split_complicated_subunifies_2([], [], [], [], no_extra_goals, _) --> [].
+split_complicated_subunifies_2([], [], [], [], no_extra_goals, _, _) --> [].
 split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 			Vars, UniModes, ExtraGoals,
-			InstMapBefore, ModeInfo0, ModeInfo) :-
+			InstMapBefore, InstMapAfter, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_inst_table(ModeInfo0, InstTable),
 	UniMode0 = (InitialInstX - InitialInstY -> FinalInstX - FinalInstY),
@@ -906,10 +907,12 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 	map__lookup(VarTypes0, Var0, VarType),
 	(
 		% YYY Check this!
-		inst_has_representation(InitialInstX, InstMapBefore,
-				InstTable, VarType, ModuleInfo),
-		inst_has_representation(InitialInstY, InstMapBefore,
-				InstTable, VarType, ModuleInfo)
+		insts_to_arg_mode(InstTable, ModuleInfo, InitialInstX,
+			InstMapBefore, FinalInstX, InstMapAfter, VarType,
+			top_in),
+		insts_to_arg_mode(InstTable, ModuleInfo, InitialInstY,
+			InstMapBefore, FinalInstY, InstMapAfter, VarType,
+			top_in)
 	->
 		% introduce a new variable `Var'
 		mode_info_get_varset(ModeInfo0, VarSet0),
@@ -988,14 +991,14 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		% recursive call to handle the remaining variables...
 		split_complicated_subunifies_2(Vars0, UniModes0,
 				Vars1, UniModes1, ExtraGoals1, InstMapBefore,
-				ModeInfo7, ModeInfo),
+				InstMapAfter, ModeInfo7, ModeInfo),
 		Vars = [Var | Vars1],
 		UniModes = [UniMode | UniModes1],
 		append_extra_goals(ExtraGoals0, ExtraGoals1, ExtraGoals)
 	;
 		split_complicated_subunifies_2(Vars0, UniModes0,
 				Vars1, UniModes1, ExtraGoals, InstMapBefore,
-				ModeInfo0, ModeInfo),
+				InstMapAfter, ModeInfo0, ModeInfo),
 		Vars = [Var0 | Vars1],
 		UniModes = [UniMode0 | UniModes1]
 	).
