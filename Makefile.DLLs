@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997 The University of Melbourne. 
+# Copyright (C) 1997-1998 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -109,11 +109,13 @@ CYGWIN32_LIBS = $(shell echo					\
 
 # Making relocatable DLLs doesn't seem to work.
 # Note quite sure why.  The --image-base values below
-# where chosen at random, they seem to work on my machine.
+# where chosen at random, the first two at least seem to work on my machine.
 RELOCATABLE=no
-LDFLAGS-libgc +=	--image-base=0x2345000
-LDFLAGS-libmer +=	--image-base=0x1234000
-LDFLAGS-libmercury +=	--image-base=0x3456000
+LDFLAGS-libgc +=	  --image-base=0x2345000
+LDFLAGS-libmer_rt +=	  --image-base=0x1234000
+LDFLAGS-libmer_std +=	  --image-base=0x3456000
+LDFLAGS-libmer_trace +=	  --image-base=0x4567000
+LDFLAGS-libmer_browser += --image-base=0x5678000
 
 ifeq "$(strip $(RELOCATABLE))" "yes"
 

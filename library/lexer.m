@@ -60,7 +60,8 @@
 
 :- pred lexer__string_get_token_list(string, offset, token_list, posn, posn).
 :- mode lexer__string_get_token_list(in, in, out, in, out) is det.
-% lexer__string_get_token_list(String, MaxOffset, Tokens, InitialPos, FinalPos):
+% lexer__string_get_token_list(String, MaxOffset, Tokens,
+%		InitialPos, FinalPos):
 %	Scan a list of tokens from a string,
 %	starting at the current offset specified by InitialPos.
 %	Keep scanning until either we encounter either an `end' token

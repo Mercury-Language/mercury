@@ -46,11 +46,10 @@
 	;	num_data_elems
 	;	size_data_elems.
 
-:- type trace_level.
-
-:- pred trace_level_trace_interface(trace_level::in, bool::out) is det.
-:- pred trace_level_trace_ports(trace_level::in, bool::out) is det.
-:- pred trace_level_trace_returns(trace_level::in, bool::out) is det.
+:- type trace_level
+	--->	none
+	;	shallow
+	;	deep.
 
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
@@ -100,9 +99,14 @@
 	% More complex options
 
 	% Check if static code addresses are available in the
-	% current grade of compilation
+	% current grade of compilation.
 
 :- pred globals__have_static_code_addresses(globals::in, bool::out) is det.
+
+	% Check if we should include variable information in the layout
+	% structures of call return sites.
+
+:- pred globals__want_return_var_layouts(globals::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -169,29 +173,6 @@
 :- import_module exprn_aux.
 :- import_module map, std_util, io, require.
 
-:- type trace_level
-	--->	none
-	;	interface
-	;	interface_ports
-	;	interface_ports_returns.
-
-trace_level_trace_interface(none, no).
-trace_level_trace_interface(interface, yes).
-trace_level_trace_interface(interface_ports, yes).
-trace_level_trace_interface(interface_ports_returns, yes).
-
-trace_level_trace_ports(none, no).
-trace_level_trace_ports(interface, no).
-trace_level_trace_ports(interface_ports, yes).
-trace_level_trace_ports(interface_ports_returns, yes).
-
-trace_level_trace_returns(none, no).
-trace_level_trace_returns(interface, no).
-trace_level_trace_returns(interface_ports, no).
-trace_level_trace_returns(interface_ports_returns, yes).
-
-%-----------------------------------------------------------------------------%
-
 convert_gc_method("none", none).
 convert_gc_method("conservative", conservative).
 convert_gc_method("accurate", accurate).
@@ -223,12 +204,11 @@ convert_termination_norm("num-data-elems", num_data_elems).
 convert_termination_norm("size-data-elems", size_data_elems).
 
 convert_trace_level("minimum", no, none).
-convert_trace_level("minimum", yes, interface).
-convert_trace_level("interfaces", _, interface).
-convert_trace_level("most", _, interface_ports).
-convert_trace_level("all", _, interface_ports_returns).
+convert_trace_level("minimum", yes, shallow).
+convert_trace_level("shallow", _, shallow).
+convert_trace_level("deep", _, deep).
 convert_trace_level("default", no, none).
-convert_trace_level("default", yes, interface_ports).
+convert_trace_level("default", yes, deep).
 
 %-----------------------------------------------------------------------------%
 
@@ -316,6 +296,26 @@ globals__have_static_code_addresses_2(OptionTable, IsConst) :-
 		NonLocalGotos),
 	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
 	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+
+globals__want_return_var_layouts(Globals, WantReturnLayouts) :-
+	% We need to generate layout info for call return labels
+	% if we are using accurate gc or if the user wants uplevel printing.
+	(
+		(
+			globals__get_gc_method(Globals, GC_Method),
+			GC_Method = accurate
+		;
+			globals__lookup_bool_option(Globals, trace_return,
+				TraceReturn),
+			TraceReturn = yes,
+			globals__get_trace_level(Globals, TraceLevel),
+			TraceLevel \= none
+		)
+	->
+		WantReturnLayouts = yes
+	;
+		WantReturnLayouts = no
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

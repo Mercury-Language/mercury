@@ -669,7 +669,7 @@ The second is that Mercury terms may contain function applications,
 higher-order function applications, and lambda expressions.
 
 A data-term is either a variable, a data-functor, a higher-order
-function application, or a lambda expression.
+function application, a conditional expression, or a lambda expression.
 
 A data-functor is an integer, a float, a string, a character literal
 (any single-character name), a name, or a compound data-term.
@@ -679,6 +679,20 @@ function application and whose arguments are data-terms.
 If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
+
+A conditional expression is an expression of either of the two following
+forms
+
+@example
+(if @var{Goal} then @var{Expression1} else @var{Expression2})
+(@var{Goal} -> @var{Expression1} ; @var{Expression2})
+@end example
+
+@noindent
+@var{Goal} is a goal; @var{Expression1} and @var{Expression2} are
+both data-terms. The semantics of a conditional expression is that
+if @var{Goal} is true, then the expression has the meaning of
+@var{Expression1}, else the expression has the meaning of @var{Expression2}.
 
 A lambda expression is a compound term of one of the following forms
 
@@ -733,7 +747,7 @@ apply(@var{Func}, @var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN})
 
 @noindent
 where @var{N} >= 0, @var{Func} is a term of type
-@samp{func(T1, T2, ..., Tn) = T}, @var{FuncVar} is a variable
+@samp{func(T1, T2, @dots{}, Tn) = T}, @var{FuncVar} is a variable
 of that type, and
 @var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN} are terms of types
 @samp{T1}, @samp{T2}, @dots{}, @samp{Tn}. 
@@ -1199,7 +1213,7 @@ the (type and) mode declarations of the function length and predicate append
 are as follows:
 
 @example
-:- func length(list(T) = int.
+:- func length(list(T)) = int.
 :- mode length(in_listskel) = out.
 :- mode length(out_listskel) = in.
 
@@ -1518,6 +1532,11 @@ no              erroneous       det             multi
 yes             failure         semidet         nondet
 @end example
 
+(Note: the "Can fail?" column here indicates only whether the procedure
+can fail before producing at least one solution; attempts to find a
+@emph{second} solution to a particular call, e.g. for a procedure
+with determinism @samp{multi}, are always allowed to fail.)
+
 The determinism of each mode of a predicate or function
 is indicated by an annotation on the mode declaration.
 For example:
@@ -1632,7 +1651,8 @@ whether the goal can fail without producing a solution,
 and the maximum number of solutions of the goal (0, 1, or more).
 If the inference process below reports that a goal can succeed more than once,
 but the goal generates no outputs that are visible from outside the goal,
-the final determinism of the goal
+and the goal is not impure (@pxref{Impurity}),
+then the final determinism of the goal
 will be based on the goal succeeding at most once,
 since the compiler will implicitly prune away any duplicate solutions.
 
@@ -1789,7 +1809,7 @@ p(A, B) :-
 @end example
 
 @noindent
-@samp{p/0} can have more than one solution
+@samp{p/2} can have more than one solution
 only if @samp{something_complicated} can succeed.)
 Sometimes, the rules specified by the Mercury language
 for determinism inference will infer a determinism
@@ -2015,7 +2035,7 @@ specify a user-defined equality predicate for user-defined types:
 
 @example
 :- type set(T) ---> set(list(T))
-	where equality is set_equals.
+        where equality is set_equals.
 @end example
 
 @noindent
@@ -2026,8 +2046,8 @@ be defined in terms of a @samp{subset} predicate.
 @example
 :- pred set_equals(set(T)::in, set(T)::in) is semidet.
 set_equals(S1, S2) :-
-	subset(S1, S2),
-	subset(S2, S1).
+        subset(S1, S2),
+        subset(S2, S1).
 @end example
 
 A type declaration for a type @var{T} may contain a
@@ -2730,12 +2750,24 @@ limitations.
 
 @itemize @bullet
 @item
-if you mix an @samp{import_module} declaration for a parent module
+If you mix an @samp{import_module} declaration for a parent module
 with a @samp{use_module} declaration for the child, or vice versa,
 then the compiler may report some spurious errors.
 @item
+The compiler sometimes reports spurious errors if you
+define an equivalence type in a sub-module and export it
+as abstract type.
+@item
+When using nested modules,
+the Mercury build tool Mmake sometimes tries to build things in the
+wrong order and hence reports spurious errors about @samp{.int*} files
+not being found.  In these cases, simply typing @samp{mmake} again will
+usually solve the problem.
+@item
 Using @samp{mmake} to do parallel makes (e.g. @samp{mmake --jobs 2})
-doesn't always work correctly in the case of nested sub-modules.
+doesn't always work correctly if you're using nested sub modules.
+(The work-around is to use separate sub-modules instead of nested
+sub-modules, i.e. to put the sub-modules in separate source files.)
 @end itemize
 
 @node Type classes
@@ -2916,7 +2948,7 @@ distance(A, B, Distance) :-
 
 In the above example, the @code{distance} predicate is able to calculate the
 distance between any two points, regardless of their representation, as long
-as the @code{x_coord} and @code{y_coord} operations have been defined.  These
+as the @code{coords} operation has been defined.  These
 constraints are checked at compile time.
 
 @node Type class constraints on typeclass declarations
@@ -2939,7 +2971,7 @@ types with a particular set of numerical operations defined:
         func mult(T::in, T::in) = (T::out) is det,      % '*'/2 (forward mode)
         func negative(T::in) = (T::out) is det,         % '-'/1 (forward mode)
         func inverse(T::in) = (T::out) is semidet       % multiplicative 
-							% inverse
+                                                        % inverse
 ].
 @end example
 
@@ -3193,10 +3225,103 @@ See the @samp{samples/c_interface} directory in the Mercury distribution.
 @node Calling C code from Mercury
 @subsection Calling C code from Mercury
 
+There are two slightly different mechanisms for calling C code from Mercury:
+@samp{pragma import} and @samp{pragma c_code}.  @samp{pragma import}
+allows you to call C functions from Mercury.  @samp{pragma c_code}
+allows you to implement Mercury procedures using arbitrary fragments
+of C code.  @samp{pragma import} is usually simpler, but
+@samp{pragma c_code} is a bit more flexible.
+
+@c
+@c We can't use "@samp" or even "`...'" in node names -- if we use
+@c either, then texi2dvi barfs.  So the node names are
+@c e.g. "pragma import" rather than "@samp{pragma import}".
+@c
+@menu
+* pragma import::             Importing C functions
+* pragma c_code::             Defining Mercury procedures using C code
+* Nondet pragma c_code::      Using @samp{pragma c_code} for Mercury procedures
+                              that can have more than one solution.
+* C code attributes::         Describing properties of C functions or C code.
+* Purity and side effects::   Explains when side effects are allowed.
+@end menu
+
+@node pragma import
+@subsubsection pragma import
+
 A declaration of the form
 
 @example
-:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...),
+:- pragma import(@var{Pred}(@var{Mode1}, @var{Mode2}, @dots{}),
+                 @var{Attributes}, "@var{C_Name}").
+@end example
+
+@noindent
+or
+
+@example
+:- pragma import(@var{Func}(@var{Mode1}, @var{Mode2}, @dots{}) = @var{Mode},
+                 @var{Attributes}, "@var{C_Name}").
+@end example
+
+@noindent
+imports a C function for use by Mercury.
+@var{Pred} or @var{Func} must specify the name of a previously declared
+Mercury predicate or function, and @var{Mode1}, @var{Mode2}, @dots{},
+and (for functions) @var{Mode} must specify one of the
+modes of that predicate or function.  There must be no clauses
+for the specified Mercury procedure; instead, any calls to that
+procedure will be executed by calling the C function named
+@var{C_Name}.  The @var{Attributes} argument is optional; if present,
+it specifies properties of the given C function (see @pxref{C code attributes}).
+
+For example, the following code imports the C function @samp{cos()}
+as the Mercury function @samp{cos/1}:
+
+@example
+:- func cos(float) = float.
+:- pragma import(cos(in) = out, [will_not_call_mercury], "cos").
+@end example
+
+The interface to the C function for a given Mercury procedure is
+determined as follows.  Mercury types are converted to C types
+according to the rules in @xref{Passing data to and from C}.
+Mercury arguments declared with input modes are passed by value to the
+C function.  For output arguments, the Mercury implementation will pass
+to the C function an address in which to store the result. 
+If the Mercury procedure can fail, then its C function should return a
+truth value of type @samp{Integer} indicating success or failure:
+non-zero indicates success, and zero indicates failure.
+If the Mercury procedure is a Mercury function that cannot fail, and
+the function result has an output mode, then the C function should
+return the Mercury function result value.
+Otherwise the function result is appended as an extra argument.
+Arguments of type @samp{io__state} or @samp{store__store(_)} are not
+passed at all; that's because these types represent mutable state, and
+in C modifications to mutable state are done via side effects, rather
+than argument passing.
+
+If you use @samp{pragma import} for a polymorphically typed Mercury procedure,
+the compiler will prepend one @samp{type_info} argument to the parameters
+passed to the C function for each polymorphic type variable in the
+Mercury procedure's type signature.  The values passed in these arguments
+will be the same as the values that would be obtained using the Mercury
+@samp{type_of} function in the Mercury standard library module @samp{std_util}.
+These values may be useful in case the C function wishes to in turn call
+another polymorphic Mercury procedure (@pxref{Calling Mercury code from C}).
+
+You may not give a @samp{pragma import} declaration for a procedure
+with determinism @samp{nondet} or @samp{multi}.
+(It is however possible to define a @samp{nondet} or @samp{multi} procedure
+using @samp{pragma c_code} -- see @pxref{Nondet pragma c_code}).
+
+@node pragma c_code
+@subsubsection pragma c_code
+
+A declaration of the form
+
+@example
+:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}),
         @var{Attributes}, @var{C_Code}).
 @end example
 
@@ -3204,8 +3329,8 @@ A declaration of the form
 or
 
 @example
-:- pragma c_code(@var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...) = (@var{Var}::@var{Mode}),
-        may_call_mercury, @var{C_Code}).
+:- pragma c_code(@var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}) = (@var{Var}::@var{Mode}),
+        @var{Attributes}, @var{C_Code}).
 @end example
 
 @noindent
@@ -3213,7 +3338,9 @@ means that any calls to the specified mode of @var{Pred} or @var{Func}
 will result in execution of the C code given in @var{C_Code}.
 The C code fragment may refer to the specified variables
 (@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
-directly by name.
+directly by name.  These variables will have C types corresponding
+to their Mercury types, as determined by the rules specified in
+@xref{Passing data to and from C}.
 
 The C code fragment may declare local variables, but it should not
 declare any static variables unless there is also a Mercury
@@ -3223,20 +3350,19 @@ inline the procedure by duplicating the C code fragment for each call,
 which would result in the program having multiple instances of the
 static variable, rather than a single shared instance.
 
-If there is a @code{pragma c_code} declaration for a mode of a predicate
-or function, then that mode of the predicate may not have determinism
-@samp{multi} or @samp{nondet}, there must not be any clauses for that
-predicate or function, and there must be a @code{pragma c_code} declaration
-for every mode of the predicate or function.
+If there is a @code{pragma import} or @code{pragma c_code} declaration for a
+mode of a predicate or function, then there must not be any clauses for that
+predicate or function, and there must be a @code{pragma c_code} 
+or @code{pragma import} declaration for every mode of the predicate or function.
 
 For example, the following piece of code defines a Mercury function
 @samp{sin/1} which calls the C function @samp{sin()} of the same name.
 
 @example
 :- func sin(float) = float.
-:- pragma c_code(sin(X::in) = Sin::out),
-	may_call_mercury,
-	"Sin = sin(X);").
+:- pragma c_code(sin(X::in) = (Sin::out),
+        [may_call_mercury],
+        "Sin = sin(X);").
 @end example
 
 If the C code does not recursively invoke Mercury code,
@@ -3245,25 +3371,6 @@ in place of @samp{may_call_mercury} in the declarations above.
 This allows the compiler to use a slightly more efficient calling convention.
 (If you use this form, and the C code @emph{does} invoke Mercury code,
 then the behaviour is undefined --- your program may misbehave or crash.)
-
-All Mercury implementations must support the attributes described below.
-They may also support additional attributes.
-
-The attributes which must be supported by all implementations
-are as follows:
-
-@table @asis
-
-@item @samp{may_call_mercury}/@samp{will_not_call_mercury} declares
-whether or not execution inside this C code may call back into Mercury
-or not.
-
-@item @samp{thread_safe}/@samp{not_thread_safe} declares whether or not
-it is safe for multiple threads to execute this C code concurrently.
-C code that is not thread_safe has code inserted around it to obtain
-and release a mutex.  All non-thread-safe C code shares a single mutex.
-
-@end table
 
 The C code in a @code{pragma c_code} declaration
 for any procedure whose determinism indicates that it could fail
@@ -3275,7 +3382,7 @@ For example:
 :- mode string__contains_char(in, in) is semidet.
 
 :- pragma c_code(string__contains_char(Str::in, Ch::in),
-        will_not_call_mercury,
+        [will_not_call_mercury],
         "SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
 @end example
 
@@ -3292,7 +3399,182 @@ succeeds, the C code must set the values of all output arguments
 before returning.  If the procedure fails, the C code need only
 set @code{SUCCESS_INDICATOR} to false (zero).
 
-Note that procedures implemented in C must still be ``pure'',
+@node Nondet pragma c_code
+@subsubsection Nondet pragma c_code
+
+For procedures that can return more than one result on backtracking,
+i.e. those with determinism @samp{nondet} or @samp{multi},
+the form of @samp{pragma c_code} declaration described previously
+does not suffice.  Instead, you should use a declaration of the form
+shown below:
+
+@example
+:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}),
+        @var{Attributes}, local_vars(@var{LocalVars}), first_code(@var{FirstCode}),
+        retry_code(@var{RetryCode}), common_code(@var{CommonCode})).
+@end example
+
+@noindent
+or
+
+@example
+:- pragma c_code(@var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}) = (@var{Var}::@var{Mode}),
+        @var{Attributes}, local_vars(@var{LocalVars}), first_code(@var{FirstCode}),
+        retry_code(@var{RetryCode}), common_code(@var{CommonCode})).
+@end example
+
+@noindent
+Here @var{FirstCode}, @var{RetryCode}, and @var{CommonCode} are all
+Mercury strings containing C code.
+@var{FirstCode} will be executed whenever the Mercury procedure is called.
+@var{RetryCode} will be executed whenever a given call to the procedure
+is re-entered on backtracking to find subsequent solutions.
+The @samp{common_code(@var{CommonCode})} argument is optional; if present,
+@var{CommonCode} will be executed after each execution of
+@var{FirstCode} or @var{RetryCode}.
+
+The code that is executed on each call or retry should finish by
+executing one of the three macros @samp{FAIL}, @samp{SUCCEED}, or
+@samp{SUCCEED_LAST}.  The @samp{FAIL} macro indicates that the call has
+failed; the call will not be retried.  The @samp{SUCCEED} macro
+indicates that the call has succeeded, and that there may be more
+solutions; the call may be retried on backtracking.  The
+@samp{SUCCEED_LAST} macro indicates that the call has succeeded, but
+that there are no more solutions after this one; the call will not be
+retried.
+
+@var{LocalVars} is a sequence of struct member declarations which are
+used to hold any state which needs to be preserved in case of backtracking
+or passed between the different C code fragments.
+The code fragments @var{FirstCode}, @var{RetryCode}, and @var{CommonCode}
+may use the macro @samp{LOCALS}, which is defined to be a pointer to a struct
+containing the fields specified by @var{LocalVars}, to access this saved state.
+
+Note @var{RetryCode} and @var{CommonCode} may not access the input
+variables -- only @var{FirstCode} should access the input variables.
+If @var{RetryCode} or @var{CommonCode} need to access any of the input
+variables, then @var{FirstCode} should copy the values needed to the
+@var{LocalVars}.
+
+The following example shows how you can use a state variable to
+keep track of the next alternative to return.
+
+@example
+%
+% This example implements the equivalent of
+%     foo(X) :- X = 20 ; X = 10 ; X = 42 ; X = 99 ; fail.
+%
+:- pred foo(int).
+:- mode foo(out) is multi.
+:- pragma c_code(foo(X::out), [will_not_call_mercury, thread_safe],
+        local_vars("
+                int state;
+        "),
+        first_code("
+                LOCALS->state = 0;
+        "),
+	retry_code("
+                LOCALS->state++;
+        "),
+        common_code("
+                switch (LOCALS->state) @{
+                        case 1: X = 20; SUCCEED; break;
+                        case 2: X = 10; SUCCEED; break;
+                        case 3: X = 42; SUCCEED; break;
+                        case 4: X = 99; SUCCEED; break;
+                        case 5: FAIL; break;
+                @}
+        ")
+).
+@end example
+
+@noindent
+The next example is a more realistic example;
+it shows how you could implement the reverse
+mode of @samp{string__append}, which returns
+all possible ways of splitting a string into
+two pieces, using @samp{pragma c_code}.
+
+@example
+:- pred string__append(string, string, string).
+:- mode string__append(out, out, in) is multi.
+:- pragma c_code(string__append(S1::out, S2::out, S3::in),
+                [will_not_call_mercury, thread_safe],
+        local_vars("
+                String s;
+                size_t len;
+                size_t count;
+        "),
+        first_code("
+                LOCALS->s = S3;
+                LOCALS->len = strlen(S3);
+                LOCALS->count = 0;
+        "),
+        retry_code("
+                LOCALS->count++;
+        "),
+        common_code("
+                S1 = copy_substring(LOCALS->s, 0, LOCALS->count);
+                S2 = copy_substring(LOCALS->s, LOCALS->count + 1,
+                                               LOCALS->len);
+                if (LOCALS->count < LOCALS->len) @{
+                        SUCCEED;
+                @} else @{
+                        SUCCEED_LAST;
+                @}
+        ")
+).
+@end example
+
+@node C code attributes
+@subsubsection C code attributes
+
+As described above, @samp{pragma import} and @samp{pragma c_code}
+declarations may include a list of attributes describing properties
+of the given C function or C code.
+All Mercury implementations must support the attributes listed below.
+They may also support additional attributes.
+
+The attributes which must be supported by all implementations
+are as follows:
+
+@table @asis
+
+@item @samp{may_call_mercury}/@samp{will_not_call_mercury}
+This attribute declares whether or not execution inside this C code may
+call back into Mercury or not.  The default, in case neither is specified,
+is @samp{may_call_mercury}.  Specifying @samp{will_not_call_mercury}
+may allow the compiler to generate more efficient code.
+If you specify @samp{will_not_call_mercury},
+but the C code @emph{does} invoke Mercury code, then the behaviour is
+undefined.
+
+@item @samp{thread_safe}/@samp{not_thread_safe}
+This attribute declares whether or not it is safe for multiple threads
+to execute this C code concurrently.
+The default, in case neither is specified, is @samp{not_thread_safe}.
+If the C code is declared @samp{thread_safe}, then the Mercury implementation
+is permitted to execute the code concurrently from multiple threads without
+taking any special precautions.  If the C code is declared
+@samp{not_thread_safe},
+then the Mercury implementation must not invoke the code concurrently from
+multiple threads.  If the Mercury implementation does use multithreading,
+then it must take appropriate steps to prevent this.
+(The experimental multithreaded version of the current
+University of Melbourne Mercury implementation protects
+@samp{not_thread_safe} code using a mutex:
+C code that is not thread-safe has code inserted around it to obtain
+and release a mutex.  All non-thread-safe C code shares a single mutex.]
+@c XXX this can cause deadlocks if not_thread_safe C code calls
+@c     Mercury which calls C
+
+@end table
+
+@node Purity and side effects
+@subsubsection Purity and side effects
+
+Note that procedures implemented in C using either
+@samp{pragma import} or @samp{pragma c_code} must still be ``pure'',
 unless declared otherwise (@pxref{Impurity}), and they must
 be type-correct and mode-correct.  (Determinism-correctness
 is also required, but it follows from the rules already stated
@@ -3318,7 +3600,7 @@ the Mercury library predicate @samp{io__write_string/3}:
 :- mode c_write_string(in, di, uo) is det.
 
 :- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
-        may_call_mercury,
+        [may_call_mercury],
         "puts(S); IO = IO0;").
 @end example
 
@@ -3408,14 +3690,14 @@ other languages that can interface to C, e.g. C++).
 A declaration of the form
 
 @example
-:- pragma export(@var{Pred}(@var{Mode1}, @var{Mode2}, ...), "@var{C_Name_1}").
+:- pragma export(@var{Pred}(@var{Mode1}, @var{Mode2}, @dots{}), "@var{C_Name_1}").
 @end example
 
 @noindent
 or
 
 @example
-:- pragma export(@var{Func}(@var{Mode1}, @var{Mode2}, ...) = @var{Mode}, "@var{C_Name_2}").
+:- pragma export(@var{Func}(@var{Mode1}, @var{Mode2}, @dots{}) = @var{Mode}, "@var{C_Name_2}").
 @end example
 
 @noindent
@@ -3429,6 +3711,9 @@ Each such C function is the C interface to the specified mode of
 the specified Mercury predicate or function.
 
 The interface to a Mercury procedure is determined as follows.
+(The rules here are just the converse of the rules for @samp{pragma import}).
+Mercury types are converted to C types according to the rules in
+@xref{Passing data to and from C}.
 Input arguments are passed by value.  For output arguments, the
 caller must pass the address in which to store the result.
 If the Mercury procedure can fail, then its C interface function
@@ -3508,6 +3793,13 @@ Mercury variables of type @code{int}, @code{float}, @code{char}, or
 given by the corresponding typedef.  Mercury variables of any other
 type are passed as a @samp{Word}, which in the current implementation
 is a typedef for an unsigned type whose size is the same size as a pointer.
+(Note: it would in fact be better for each Mercury type to map to a distinct
+abstract type in C, since that would be more type-safe, and thus we may
+change this in a future release.  We advise programmers who are manipulating
+Mercury types in C code to use typedefs for each user-defined Mercury type,
+and to treat each such type as an abstract data type.  This is good style
+and it will also minimize any compatibility problems if and when we do change
+this.)
 
 Mercury lists can be manipulated by C code using the following macros,
 which are defined by the Mercury implementation.
@@ -3554,11 +3846,11 @@ between C functions which are called from Mercury.  For example:
 ");
 
 :- pragma c_code(initialise_complicated_structure(Structure::uo),
-        may_call_mercury,
+        [may_call_mercury],
         "Structure = init_struct();").
 
 :- pragma c_code(do_calculation(Value::in, Structure0::di, Structure::uo,
-        may_call_mercury,
+        [may_call_mercury],
         "Structure = perform_calculation(Value, Structure0);").
 @end example
 
@@ -3777,10 +4069,11 @@ by simply calling @samp{MR_trail_function()} to add a function trail
 entry whenever you create a delayed goal, and putting the appropriate
 check for floundering in the @samp{MR_commit} and @samp{MR_solve} cases
 of your function.
-(For examples of this, see the @samp{ML_cfloat_untrail_func()}
+The Mercury distribution includes some examples of this:
+see the @samp{ML_cfloat_untrail_func()}
 function in the file @samp{extras/clpr/cfloat.m} and the
-@samp{ML_var_untrail_func} function in the file
-@samp{extras/trailed_update/var.m} in the Mercury distribution.)
+@samp{ML_var_untrail_func()} function in the file
+@samp{extras/trailed_update/var.m}.)
 If your function does detect floundering, then it should print
 an error message and then abort execution.
 
@@ -3805,7 +4098,7 @@ redundant trailing.
 @itemx @bullet{} @code{MR_null_choicepoint_id()}
 Prototypes:
 @example
-typedef ... MR_ChoicepointId;
+typedef @dots{} MR_ChoicepointId;
 MR_ChoicepointId MR_current_choicepoint_id(void);
 MR_ChoicepointId MR_null_choicepoint_id(void);
 @end example
@@ -3991,14 +4284,14 @@ A predicate is declared to be impure or semipure by preceding the word
 or @code{semipure}, respectively.  That is, a declaration of the form:
 
 @example
-:- impure pred @var{Pred}(@var{Arguments...}).
+:- impure pred @var{Pred}(@var{Arguments}@dots{}).
 @end example
 
 @noindent
 or
 
 @example
-:- semipure pred @var{Pred}(@var{Arguments...}).
+:- semipure pred @var{Pred}(@var{Arguments}@dots{}).
 @end example
 
 @noindent
@@ -4055,17 +4348,17 @@ and so is not useful as is.  It is meant only as an example.
 
 :- impure pred init_max is det.
 :- pragma c_code(init_max,
-        will_not_call_mercury,
+        [will_not_call_mercury],
         "max = INT_MIN;").
 
 :- impure pred set_max(int::in) is det.
 :- pragma c_code(set_max(X::in),
-        will_not_call_mercury,
+        [will_not_call_mercury],
         "if (X > max) max = X;").
 
 :- semipure pred get_max(int::out) is det.
 :- pragma c_code(get_max(X::out),
-        will_not_call_mercury,
+        [will_not_call_mercury],
         "X = max;").
 
 :- pragma promise_pure(max_solution/2).
@@ -4194,7 +4487,7 @@ The University of Melbourne Mercury implementation supports the following
 additional pragmas:
 
 @menu
-* Fact tables::         	Support for very large tables of facts.
+* Fact tables::                 Support for very large tables of facts.
 * Tabled evaluation::		Support for automatically recording previously
 				calculated results and detecting or avoiding
 				certain kinds of infinite loops.
@@ -4268,6 +4561,14 @@ does no loop checking, @samp{pragma loop_check} checks for loops
 and reports runtime errors, while @samp{pragma minimal_model}
 computes the ``minimal model'' semantics.
 
+@c XXX we should fix this bug...
+@cartouche
+@strong{Warning:}
+The current implementation of @samp{pragma minimal_model} is broken:
+the generated code sometimes produces incorrect results.  It should
+not be used.
+@end cartouche
+
 The syntax for each of these declarations is
 
 @example
@@ -4326,6 +4627,7 @@ This ensures that code which does not use tabling does not pay any
 runtime overheads from the more complicated execution mechanism
 required by (minimal model) tabling.
 
+@cartouche
 @strong{Please note:}
 the current implementation of tabling does not support all the
 possible compilation grades (see the "Compilation model options"
@@ -4334,6 +4636,11 @@ implementation.  In particular, if you enable the use of trailing,
 or if you select a garbage collection method other than the default
 (conservative), then any use of tabling will result in a
 ``Sorry, not implemented'' error at runtime.
+
+@c XXX we should fix this bug...
+@strong{Reminder}: the current implementation of
+@samp{pragma minimal_model} is broken.
+@end cartouche
 
 @node Termination analysis
 @subsection Termination analysis
@@ -4455,7 +4762,7 @@ of Melbourne, Melbourne, Australia, 1997.  Available from
 @unnumberedsec [4]
 K. Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
 for Well-Founded Evaluation of Normal Logic Programs},
-PhD thesis, SUNY at Stony Brook, 1996.  Available from
+PhD thesis, SUNY at Stony Brook, 1996.  Available from @* 
 <http://www.cs.kuleuven.ac.be/~kostis/Thesis/thesis.ps.gz>.
 
 @node [5]

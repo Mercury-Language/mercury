@@ -90,6 +90,11 @@
 	% Auxiliary output options
 		;	assume_gmake
 		;	trace
+		;	trace_internal
+		;	trace_return
+		;	trace_redo
+		;	trace_optimized
+		;	stack_trace_higher_order
 		;	generate_bytecode
 		;	generate_prolog
 		;	prolog_dialect
@@ -97,7 +102,8 @@
 		;	auto_comments
 		;	show_dependency_graph
 		;	dump_hlds
-		;	verbose_dump_hlds
+		;	dump_hlds_alias
+		;	dump_hlds_options
 	% Language semantics options
 		;	reorder_conj
 		;	reorder_disj
@@ -149,6 +155,7 @@
 		;	unboxed_float
 		;	sync_term_size % in words
 		;	type_layout
+		;	max_jump_table_size
 	% Options for internal use only
 	% (the values of these options are implied by the
 	% settings of other options)
@@ -219,6 +226,8 @@
 		;	optimize_unused_args
 		;	intermod_unused_args
 		;	optimize_higher_order
+		;	type_specialization
+		;	higher_order_size_limit
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
 		;	constant_propagation
@@ -374,6 +383,11 @@ option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
+	trace_internal		-	bool(yes),
+	trace_return		-	bool(yes),
+	trace_redo		-	bool(yes),
+	trace_optimized		-	bool(no),
+	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
@@ -381,7 +395,8 @@ option_defaults_2(aux_output_option, [
 	auto_comments		-	bool(no),
 	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
-	verbose_dump_hlds	-	string("")
+	dump_hlds_alias		-	string(""),
+	dump_hlds_options	-	string("")
 ]).
 option_defaults_2(language_semantics_option, [
 	strict_sequential	-	special,
@@ -441,6 +456,8 @@ option_defaults_2(compilation_model_option, [
 					% of writing) - will usually be over-
 					% ridden by a value from configure.
 	type_layout		-	bool(yes),
+	max_jump_table_size	-	int(0),
+					% 0 indicates any size.
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
@@ -537,6 +554,8 @@ option_defaults_2(optimization_option, [
 	optimize_unused_args	-	bool(no),
 	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
+	type_specialization	-	bool(no),
+	higher_order_size_limit	-	int(20),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
 	deforestation		-	bool(no),
@@ -613,7 +632,7 @@ option_defaults_2(miscellaneous_option, [
 short_option('c', 			compile_only).
 short_option('C', 			compile_to_c).
 short_option('d', 			dump_hlds).
-short_option('D', 			verbose_dump_hlds).
+short_option('D', 			dump_hlds_alias).
 short_option('e', 			errorcheck_only).
 short_option('E', 			verbose_errors).
 short_option('G', 			convert_to_goedel).
@@ -703,6 +722,12 @@ long_option("output-grade-string",	output_grade_string).
 % aux output options
 long_option("assume-gmake",		assume_gmake).
 long_option("trace",			trace).
+long_option("trace-internal",		trace_internal).
+long_option("trace-return",		trace_return).
+long_option("trace-redo",		trace_redo).
+long_option("trace-optimised",		trace_optimized).
+long_option("trace-optimized",		trace_optimized).
+long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
 long_option("generate-Prolog",		generate_prolog).
@@ -711,7 +736,8 @@ long_option("line-numbers",		line_numbers).
 long_option("auto-comments",		auto_comments).
 long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
-long_option("verbose-dump-hlds",	verbose_dump_hlds).
+long_option("dump-hlds-alias",		dump_hlds_alias).
+long_option("dump-hlds-options",	dump_hlds_options).
 
 % language semantics options
 long_option("reorder-conj",		reorder_conj).
@@ -759,6 +785,7 @@ long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
+long_option("max-jump-table-size",	max_jump_table_size).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
@@ -841,6 +868,9 @@ long_option("optimise-unused-args",	optimize_unused_args).
 long_option("intermod-unused-args",	intermod_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
+long_option("type-specialization",	type_specialization).
+long_option("type-specialisation",	type_specialization).
+long_option("higher-order-size-limit",	higher_order_size_limit).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
@@ -879,7 +909,7 @@ long_option("try-switch-size",		try_switch_size).
 long_option("binary-switch-size",	binary_switch_size).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("middle-rec",		middle_rec).
-long_option("simple_neg",		simple_neg).
+long_option("simple-neg",		simple_neg).
 long_option("follow-vars",		follow_vars).
 long_option("allow-hijacks",		allow_hijacks).
 
@@ -1150,7 +1180,7 @@ opt_level(3, _, [
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
-	%deforestation		-	bool(yes), % causes an abort
+	deforestation		-	bool(yes),
 	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
@@ -1375,11 +1405,25 @@ options_help_aux_output -->
 		"\tWhen generating `.dep' files, generate Makefile",
 		"\tfragments that use only the features of standard make;",
 		"\tdo not assume the availability of GNU Make extensions.",
-		"--trace {minimum, interfaces, all, default}",
+		"--trace {minimum, shallow, deep, default}",
 		"\tGenerate code that includes the specified level", 
 		"\tof execution tracing.",
-		"\tSee the [XXX not yet written!] chapter of the",
-		"\tMercury User's Guide for details.",
+		"\tSee the Debugging chapter of the Mercury User's Guide for details.",
+		"--no-trace-internal",
+		"\tDo not generate code for internal events even if the trace",
+		"\tlevel is deep.",
+		"--no-trace-return",
+		"\tDo not generate trace information for call return sites.",
+		"\tPrevents the printing of the values of variables in ancestors",
+		"\tof the current call.",
+		"--no-trace-redo",
+		"\tDo not generate code to trace REDO events.",
+		"--trace-optimized",
+		"\tDo not disable optimizations that can change the trace.",
+		"--stack-trace-higher-order",
+		"\tEnable stack traces through predicates and functions with",
+		"\thigher-order arguments, even if stack tracing is not",
+		"\tsupported in general.",
 		"--generate-bytecode",
 		"\tOutput a bytecode form of the module for use",
 		"\tby an experimental debugger.",
@@ -1402,7 +1446,12 @@ options_help_aux_output -->
 		"\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.",
 		"\tStage numbers range from 1-99.",
 		"\tMultiple dump options accumulate.",
-		"-D, --verbose-dump-hlds <fields>",
+% This option is for developers only
+%		"-D, --dump-hlds-alias <dump-alias>",
+%		"\tWith `--dump-hlds', include extra detail in the dump.",
+%		"\tEach dump alias is shorthand for a set of option letters.",
+%		"\tThe list of aliases is in handle_options.m",
+		"--dump-hlds-options <options>",
 		"\tWith `--dump-hlds', include extra detail in the dump.",
 		"\tEach type of detail is included in the dump if its",
 		"\tcorresponding letter occurs in the option argument",
@@ -1617,7 +1666,13 @@ your program compiled with different options.
 		"\tDon't output base_type_layout structures or references",
 		"\tto them. (The C code also needs to be compiled with",
 		"\t`-DNO_TYPE_LAYOUT').",
-	
+
+		"--max-jump-table-size",
+		"\tThe maximum number of entries a jump table can have.",
+		"\tThe special value 0 indicates the table size is unlimited.",
+		"\tThis option can be useful to avoid exceeding fixed limits",
+		"\timposed by some C compilers.\n",
+
 		% This is a developer only option.
 %		"--basic-stack-layout",
 %		"(This option is not for general use.)",
@@ -1700,7 +1755,8 @@ options_help_code_generation -->
 
 		"--c-debug",
 		"\tEnable debugging of the generated C code.",
-		"\t(This has the same effect as `--cflags -g'.)",
+		"\t(This has the same effect as",
+		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
 
 		"--fact-table-max-array-size <n>",
 		"\tSpecify the maximum number of elements in a single",
@@ -1812,7 +1868,14 @@ options_help_hlds_hlds_optimization -->
 		"\t`--intermodule-optimization'.",
 
 		"--optimize-higher-order",
-		"\tEnable specialization higher-order predicates.",
+		"\tEnable specialization of higher-order predicates.",
+		"--type-specialization",
+		"\tEnable specialization of polymorphic predicates.",
+		"--higher-order-size-limit",
+		"\tSet the maximum goal size of specialized versions created by",
+		"\t`--optimize-higher-order' and `--type-specialization'.",
+		"\tGoal size is measured as the number of calls, unifications",
+		"\tand branched goals.",
 		"--optimize-constructor-last-call",
 		"\tEnable the optimization of ""last"" calls that are followed by",
 		"\tconstructor application.",

@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
-:- import_module assoc_list, bool, list, set, term, std_util.
+:- import_module bool, list, set, map, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -84,6 +84,9 @@
 						% qualified with the basename.
 			bool,			% Should this item be exported
 						% from this Mercury module?
+						% XXX Actually this field is
+						% redundant; see linkage/2
+						% in llds_out.m.
 			list(maybe(rval)),	% The arguments of the create.
 			list(pred_proc_id)	% The procedures referenced.
 						% Used by dead_proc_elim.
@@ -418,37 +421,51 @@
 	% the non-conservative garbage collector.
 :- type liveinfo
 	--->	live_lvalue(
-			lval,
-				% What stackslot/reg does
-				% this lifeinfo structure
+			layout_locn,
+				% What location does this lifeinfo structure
 				% refer to?
 			live_value_type,
 				% What is the type of this live value?
-			string,
-				% What is the name of the variable stored here?
-				% The empty string if this lval does not
-				% store a variable.
-			assoc_list(tvar, lval)
-				% Where are the typeinfos that determine the
-				% types of the actual parameters of the type
-				% parameters of this type (if it is
-				% polymorphic), and the type variable
-				% for each one.
+			map(tvar, set(layout_locn))
+				% For each tvar that is a parameter of the
+				% type of this value, give the set of
+				% locations where the type_info variable
+				% describing the actual type bound to the
+				% type parameter may be found.
+				%
+				% We record all the locations of the typeinfo,
+				% in case different paths of arriving a this
+				% program point leave the typeinfo in different
+				% sets of locations. However, there must be at
+				% least type_info location that is valid
+				% along all paths leading to this point.
 		).
+
+	% For an explanation of this type, see the comment on
+	% stack_layout__represent_locn.
+:- type layout_locn
+	--->	direct(lval)
+	;	indirect(lval, int).
 
 	% live_value_type describes the different sorts of data that
 	% can be considered live.
 :- type live_value_type 
-	--->	succip		% a stored succip
-	;	curfr		% a stored curfr
-	;	maxfr		% a stored maxfr
-	;	redoip
-	;	redofr
-	;	hp
-	;	var(type, inst)	% a variable
-	;	unwanted.	% something we don't need, or used as
-				% a placeholder for non-accurate gc.
-	
+	--->	succip				% A stored succip.
+	;	curfr				% A stored curfr.
+	;	maxfr				% A stored maxfr.
+	;	redoip				% A stored redoip.
+	;	redofr				% A stored redofr.
+	;	hp				% A stored heap pointer.
+	;	var(var, string, type, inst)	% A variable (the var number
+						% and name are for execution
+						% tracing; we have to store
+						% the name here because when
+						% we want to use the
+						% live_value_type, we won't
+						% have access to the varset).
+	;	unwanted.			% Something we don't need,
+						% or at least don't need
+						% information about.
 
 	% An lval represents a data location or register that can be used
 	% as the target of an assignment.
@@ -704,22 +721,28 @@
 	;	exported(proc_label).	% exported from Mercury module
 
 :- type code_addr
-	--->	label(label)		% a label defined in this Mercury module
-	;	imported(proc_label)	% a label from another Mercury module
-	;	succip			% the address in the `succip' register
-	;	do_succeed(bool)	% the bool is `yes' if there are any
+	--->	label(label)		% A label defined in this Mercury
+					% module.
+	;	imported(proc_label)	% A label from another Mercury module.
+	;	succip			% The address in the `succip'
+					% register.
+	;	do_succeed(bool)	% The bool is `yes' if there are any
 					% alternatives left.  If the bool is
 					% `no', we do a succeed_discard()
 					% rather than a succeed().
 	;	do_redo
 	;	do_fail
+	;	do_trace_redo_fail
+					% A label in the runtime, the code
+					% at which calls MR_trace with a
+					% REDO event and then fails.
 	;	do_det_closure
 	;	do_semidet_closure
 	;	do_nondet_closure
 	;	do_det_class_method
 	;	do_semidet_class_method
 	;	do_nondet_class_method
-	;	do_not_reached.		% we should never jump to this address
+	;	do_not_reached.		% We should never jump to this address.
 
 	% A proc_label is a label used for the entry point to a procedure.
 	% The defining module is the module that provides the code for the

@@ -13,10 +13,11 @@
 % This causes edits to be dropped if they contain changes which only
 % add, delete or change blank lines.
 
-% TO DO: What is a blank line, exactly, and does its definition change
+% TO DO: What exactly is a blank line, and does its definition change
 %        if --ignore-space-change or --ignore-all-space have been
 %        specified?  At the moment, we define a blank line to be a line
-%        containing zero or more whitespace characters.
+%        containing zero or more whitespace characters.  Check if this is
+%        correct or not.
 
 %-----------------------------------------------------------------------------%
 
@@ -87,13 +88,12 @@ range_has_only_blank_lines(First, Last, File) :-
 		(
 			file__get_line(File, First, Line),
 			string__to_char_list(Line, Chars),
-			(
+			all [C] (
 				list__member(C, Chars)
 			=>
 				char__is_whitespace(C)
 			),
-			Next is First + 1,
-			range_has_only_blank_lines(Next, Last, File)
+			range_has_only_blank_lines(First + 1, Last, File)
 		)
 	).
 

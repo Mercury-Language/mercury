@@ -61,12 +61,14 @@
 
 :- type code_info.
 
-		% Create a new code_info structure.
+		% Create a new code_info structure. Also return the
+		% outermost resumption point, and the number of stack slot
+		% (if any) that contains the from_full tracing flag.
 :- pred code_info__init(varset, set(var), stack_slots, bool, globals,
 	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
-	int, resume_point_info, code_info).
+	int, resume_point_info, maybe(int), code_info).
 :- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in,
-	out, out) is det.
+	out, out, out) is det.
 
 		% Get the globals table.
 :- pred code_info__get_globals(globals, code_info, code_info).
@@ -151,12 +153,10 @@
 :- pred code_info__set_exprn_info(exprn_info, code_info, code_info).
 :- mode code_info__set_exprn_info(in, in, out) is det.
 
-:- pred code_info__get_temps_in_use(map(lval, slot_contents),
-	code_info, code_info).
+:- pred code_info__get_temps_in_use(set(lval), code_info, code_info).
 :- mode code_info__get_temps_in_use(out, in, out) is det.
 
-:- pred code_info__set_temps_in_use(map(lval, slot_contents),
-	code_info, code_info).
+:- pred code_info__set_temps_in_use(set(lval), code_info, code_info).
 :- mode code_info__set_temps_in_use(in, in, out) is det.
 
 :- pred code_info__get_fail_info(fail_info, code_info, code_info).
@@ -187,11 +187,13 @@
 :- pred code_info__set_max_temp_slot_count(int, code_info, code_info).
 :- mode code_info__set_max_temp_slot_count(in, in, out) is det.
 
-:- pred code_info__get_avail_temp_slots(set(lval), code_info, code_info).
-:- mode code_info__get_avail_temp_slots(out, in, out) is det.
+:- pred code_info__get_temp_content_map(map(lval, slot_contents),
+	code_info, code_info).
+:- mode code_info__get_temp_content_map(out, in, out) is det.
 
-:- pred code_info__set_avail_temp_slots(set(lval), code_info, code_info).
-:- mode code_info__set_avail_temp_slots(in, in, out) is det.
+:- pred code_info__set_temp_content_map(map(lval, slot_contents),
+	code_info, code_info).
+:- mode code_info__set_temp_content_map(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -240,9 +242,12 @@
 		exprn_info,	% A map storing the information about
 				% the status of each known variable.
 				% (Known vars = forward live vars + zombies)
-		map(lval, slot_contents),
-				% The temp locations in use on the stack
-				% and what they contain (for gc).
+		set(lval),	% The set of temporary locations currently in
+				% use. These lvals must be all be keys in the
+				% map of temporary locations ever used, which
+				% is one of the persistent fields below. Any
+				% keys in that map which are not in this set
+				% are free for reuse.
 		fail_info,	% Information about how to manage failures.
 
 		% PERSISTENT fields
@@ -257,18 +262,27 @@
 		int,		% The maximum number of extra
 				% temporary stackslots that have been
 				% used during the procedure.
-		set(lval)	% Stack variables that have been used
-				% for temporaries and are now again
-				% available for reuse.
+		map(lval, slot_contents)
+				% The temporary locations that have ever been
+				% used on the stack, and what they contain.
+				% Once we have used a stack slot to store
+				% e.g. a ticket, we never reuse that slot
+				% to hold something else, e.g. a saved hp.
+				% This policy prevents us from making such
+				% conflicting choices in parallel branches,
+				% which would make it impossible to describe
+				% to gc what the slot contains after the end
+				% of the branched control structure.
 	).
 
 %---------------------------------------------------------------------------%
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, Instmap, FollowVars,
-		ModuleInfo, CellCount, ResumePoint, CodeInfo) :-
+		PredId, ProcId, ProcInfo, Instmap, FollowVars, ModuleInfo,
+		CellCount, ResumePoint, MaybeFromFullSlot, CodeInfo) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
+	proc_info_interface_code_model(ProcInfo, CodeModel),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, Args),
 	arg_info__build_input_arg_list(Args, ArgList),
 	globals__get_options(Globals, Options),
@@ -285,19 +299,13 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	),
 	DummyFailInfo = fail_info(ResumePoints, resume_point_unknown,
 		may_be_different, not_inside_non_condition, Hijack),
-	set__init(AvailSlots),
-	map__init(TempsInUse),
+	map__init(TempContentMap),
+	set__init(TempsInUse),
 	set__init(Zombies),
 	map__init(LayoutMap),
-	code_info__max_var_slot(StackSlots, VarSlotCount0),
-	proc_info_interface_code_model(ProcInfo, CodeModel),
-	(
-		CodeModel = model_non
-	->
-		VarSlotCount is VarSlotCount0 + 1
-	;
-		VarSlotCount = VarSlotCount0
-	),
+	code_info__max_var_slot(StackSlots, VarSlotMax),
+	trace__reserved_slots(ProcInfo, Globals, FixedSlots),
+	int__max(VarSlotMax, FixedSlots, SlotMax),
 	CodeInfo0 = code_info(
 		Globals,
 		ModuleInfo,
@@ -305,7 +313,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		ProcId,
 		ProcInfo,
 		Varset,
-		VarSlotCount,
+		SlotMax,
 		no,
 
 		Liveness,
@@ -320,27 +328,28 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		SaveSuccip,
 		LayoutMap,
 		0,
-		AvailSlots
+		TempContentMap
 	),
-	globals__get_trace_level(Globals, TraceLevel),
-	code_info__init_maybe_trace_info(TraceLevel, ModuleInfo, ProcInfo,
-		MaybeFailVars, CodeInfo0, CodeInfo1),
+	code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
+		MaybeFailVars, MaybeFromFullSlot, CodeInfo0, CodeInfo1),
 	code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint,
 		CodeInfo1, CodeInfo).
 
-:- pred code_info__init_maybe_trace_info(trace_level, module_info, proc_info,
-	maybe(set(var)), code_info, code_info).
-:- mode code_info__init_maybe_trace_info(in, in, in, out, in, out) is det.
+:- pred code_info__init_maybe_trace_info(globals, module_info, proc_info,
+	maybe(set(var)), maybe(int), code_info, code_info).
+:- mode code_info__init_maybe_trace_info(in, in, in, out, out, in, out) is det.
 
-code_info__init_maybe_trace_info(TraceLevel, ModuleInfo, ProcInfo,
-		MaybeFailVars) -->
-	( { trace_level_trace_interface(TraceLevel, yes) } ->
-		trace__setup(TraceLevel, TraceInfo),
+code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
+		MaybeFailVars, MaybeFromFullSlot) -->
+	{ globals__get_trace_level(Globals, TraceLevel) },
+	( { TraceLevel \= none } ->
+		trace__setup(Globals, MaybeFromFullSlot, TraceInfo),
 		code_info__set_maybe_trace_info(yes(TraceInfo)),
 		{ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) },
 		{ MaybeFailVars = yes(FailVars) }
 	;
-		{ MaybeFailVars = no }
+		{ MaybeFailVars = no },
+		{ MaybeFromFullSlot = no }
 	).
 
 %---------------------------------------------------------------------------%
@@ -421,7 +430,7 @@ code_info__get_max_temp_slot_count(PE, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
 		_, _, _, _, _, _, _, _, _, _, PE, _).
 
-code_info__get_avail_temp_slots(PF, CI, CI) :-
+code_info__get_temp_content_map(PF, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
 		_, _, _, _, _, _, _, _, _, _, _, PF).
 
@@ -499,7 +508,7 @@ code_info__set_max_temp_slot_count(PE, CI0, CI) :-
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
 		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF).
 
-code_info__set_avail_temp_slots(PF, CI0, CI) :-
+code_info__set_temp_content_map(PF, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
 		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, _ ),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
@@ -546,11 +555,11 @@ code_info__set_avail_temp_slots(PF, CI0, CI) :-
 	code_info, code_info).
 :- mode code_info__lookup_type_defn(in, out, in, out) is det.
 
-	% Given a list of type variables, find the lvals where the
-	% corresponding type_infos and typeclass_infos are being stored.
-:- pred code_info__find_type_infos(list(var), assoc_list(var, lval),
-	code_info, code_info).
-:- mode code_info__find_type_infos(in, out, in, out) is det.
+	% For each type variable in the given list, find out where the
+	% typeinfo var for that type variable is.
+:- pred code_info__find_typeinfos_for_tvars(list(tvar),
+	map(tvar, set(layout_locn)), code_info, code_info).
+:- mode code_info__find_typeinfos_for_tvars(in, out, in, out) is det.
 
 	% Given a constructor id, and a variable (so that we can work out the
 	% type of the constructor), determine correct tag (representation)
@@ -574,6 +583,11 @@ code_info__set_avail_temp_slots(PF, CI0, CI) :-
 :- pred code_info__get_pred_proc_arginfo(pred_id, proc_id, list(arg_info),
 	code_info, code_info).
 :- mode code_info__get_pred_proc_arginfo(in, in, out, in, out) is det.
+
+	% Get the set of variables currently needed by the resume
+	% points of enclosing goals.
+:- pred code_info__current_resume_point_vars(set(var), code_info, code_info).
+:- mode code_info__current_resume_point_vars(out, in, out) is det.
 
 :- pred code_info__variable_to_string(var, string, code_info, code_info).
 :- mode code_info__variable_to_string(in, out, in, out) is det.
@@ -703,29 +717,42 @@ code_info__lookup_type_defn(Type, TypeDefn) -->
 	{ module_info_types(ModuleInfo, TypeTable) },
 	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
 
-code_info__find_type_infos([], []) --> [].
-code_info__find_type_infos([TVar | TVars], [TVar - Lval | Lvals]) -->
+code_info__find_typeinfos_for_tvars(TypeVars, TypeInfoDataMap) -->
+	code_info__variable_locations(VarLocs),
+	code_info__get_varset(VarSet),
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
-	{
-		map__search(TypeInfoMap, TVar, Locn)
-	->
-		type_info_locn_var(Locn, Var)
-	;
-		error("cannot find var for type variable")
-	},
-	{ proc_info_stack_slots(ProcInfo, StackSlots) },
-	(
-		{ map__search(StackSlots, Var, Lval0) }
-	->
-		{ Lval = Lval0 }
-	;
-		code_info__variable_to_string(Var, VarString),
-		{ string__format("code_info__find_type_infos: can't find lval for type_info var %s",
-			[s(VarString)], ErrStr) },
-		{ error(ErrStr) }
-	),
-	code_info__find_type_infos(TVars, Lvals).
+	{ map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns) },
+	{ FindLocn = lambda([TypeInfoLocn::in, Locns::out] is det, (
+		type_info_locn_var(TypeInfoLocn, TypeInfoVar),
+		(
+			map__search(VarLocs, TypeInfoVar, TypeInfoRvalSet)
+		->
+			ConvertRval = lambda([Locn::out] is nondet, (
+				set__member(Rval, TypeInfoRvalSet),
+				Rval = lval(Lval),
+				( 
+					TypeInfoLocn = typeclass_info(_,
+						FieldNum),
+					Locn = indirect(Lval, FieldNum)
+				;
+					TypeInfoLocn = type_info(_),
+					Locn = direct(Lval)
+				)
+			)),
+			solutions_set(ConvertRval, Locns)
+		;
+			varset__lookup_name(VarSet, TypeInfoVar, VarString),
+			string__format("%s: %s %s",
+				[s("code_info__find_typeinfos_for_tvars"),
+				s("can't find lval for type_info var"),
+				s(VarString)], ErrStr),
+			error(ErrStr)
+		)
+	)) },
+	{ list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns) },
+	{ map__from_corresponding_lists(TypeVars, TypeInfoVarLocns,
+		TypeInfoDataMap) }.
 
 code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 	code_info__variable_type(Var, Type),
@@ -755,11 +782,6 @@ code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
 	{ proc_info_arg_info(ProcInfo, ArgInfo) }.
 
-%---------------------------------------------------------------------------%
-
-:- pred code_info__current_resume_point_vars(set(var), code_info, code_info).
-:- mode code_info__current_resume_point_vars(out, in, out) is det.
-
 code_info__current_resume_point_vars(ResumeVars) -->
 	code_info__get_fail_info(FailInfo),
 	{ FailInfo = fail_info(ResumePointStack, _, _, _, _) },
@@ -767,8 +789,6 @@ code_info__current_resume_point_vars(ResumeVars) -->
 	{ code_info__pick_first_resume_point(ResumePointInfo, ResumeMap, _) },
 	{ map__keys(ResumeMap, ResumeMapVarList) },
 	{ set__list_to_set(ResumeMapVarList, ResumeVars) }.
-
-%---------------------------------------------------------------------------%
 
 code_info__variable_to_string(Var, Name) -->
 	code_info__get_varset(Varset),
@@ -925,7 +945,16 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 			"some but not all branches inside a non condition"),
 		FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr,
 			CondEnv0, Hijack),
-		code_info__set_fail_info(FailInfo, EndCodeInfo1, EndCodeInfo)
+		code_info__set_fail_info(FailInfo, EndCodeInfo1, EndCodeInfoA),
+
+			% Make sure the "temps in use" set at the end of the
+			% branched control structure includes every slot
+			% in use at the end of any branch.
+		code_info__get_temps_in_use(TempsInUse0, EndCodeInfo0, _),
+		code_info__get_temps_in_use(TempsInUse1, EndCodeInfo1, _),
+		set__union(TempsInUse0, TempsInUse1, TempsInUse),
+		code_info__set_temps_in_use(TempsInUse, EndCodeInfoA,
+			EndCodeInfo)
 	},
 	{ MaybeEnd = yes(branch_end_info(EndCodeInfo)) }.
 
@@ -2572,12 +2601,12 @@ code_info__pickup_zombies(Zombies) -->
 :- pred code_info__restore_hp(lval, code_tree, code_info, code_info).
 :- mode code_info__restore_hp(in, out, in, out) is det.
 
-:- pred code_info__restore_and_discard_hp(lval, code_tree,
-	code_info, code_info).
-:- mode code_info__restore_and_discard_hp(in, out, in, out) is det.
+:- pred code_info__release_hp(lval, code_info, code_info).
+:- mode code_info__release_hp(in, in, out) is det.
 
-:- pred code_info__discard_hp(lval, code_info, code_info).
-:- mode code_info__discard_hp(in, in, out) is det.
+:- pred code_info__restore_and_release_hp(lval, code_tree,
+	code_info, code_info).
+:- mode code_info__restore_and_release_hp(in, out, in, out) is det.
 
 :- pred code_info__maybe_save_hp(bool, code_tree, maybe(lval),
 	code_info, code_info).
@@ -2587,12 +2616,12 @@ code_info__pickup_zombies(Zombies) -->
 	code_info, code_info).
 :- mode code_info__maybe_restore_hp(in, out, in, out) is det.
 
-:- pred code_info__maybe_restore_and_discard_hp(maybe(lval), code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_restore_and_discard_hp(in, out, in, out) is det.
+:- pred code_info__maybe_release_hp(maybe(lval), code_info, code_info).
+:- mode code_info__maybe_release_hp(in, in, out) is det.
 
-:- pred code_info__maybe_discard_hp(maybe(lval), code_info, code_info).
-:- mode code_info__maybe_discard_hp(in, in, out) is det.
+:- pred code_info__maybe_restore_and_release_hp(maybe(lval), code_tree,
+	code_info, code_info).
+:- mode code_info__maybe_restore_and_release_hp(in, out, in, out) is det.
 
 :- pred code_info__save_ticket(code_tree, lval, code_info, code_info).
 :- mode code_info__save_ticket(out, out, in, out) is det.
@@ -2601,19 +2630,17 @@ code_info__pickup_zombies(Zombies) -->
 	code_info, code_info).
 :- mode code_info__reset_ticket(in, in, out, in, out) is det.
 
-:- pred code_info__reset_and_discard_ticket(lval, reset_trail_reason, code_tree,
-	code_info, code_info).
+:- pred code_info__release_ticket(lval, code_info, code_info).
+:- mode code_info__release_ticket(in, in, out) is det.
+
+:- pred code_info__reset_and_discard_ticket(lval, reset_trail_reason,
+	code_tree, code_info, code_info).
 :- mode code_info__reset_and_discard_ticket(in, in, out, in, out) is det.
 
-	% Same as reset_and_discard_ticket, but don't release the temp slot.
-	% Used for cases where the temp slot might still be needed again
-	% on backtracking and thus can't be reused in the code that follows.
-:- pred code_info__reset_and_pop_ticket(lval, reset_trail_reason,
+:- pred code_info__reset_discard_and_release_ticket(lval, reset_trail_reason,
 	code_tree, code_info, code_info).
-:- mode code_info__reset_and_pop_ticket(in, in, out, in, out) is det.
-
-:- pred code_info__discard_ticket(lval, code_tree, code_info, code_info).
-:- mode code_info__discard_ticket(in, out, in, out) is det.
+:- mode code_info__reset_discard_and_release_ticket(in, in, out, in, out)
+	is det.
 
 :- pred code_info__maybe_save_ticket(bool, code_tree, maybe(lval),
 	code_info, code_info).
@@ -2623,20 +2650,17 @@ code_info__pickup_zombies(Zombies) -->
 	code_tree, code_info, code_info).
 :- mode code_info__maybe_reset_ticket(in, in, out, in, out) is det.
 
+:- pred code_info__maybe_release_ticket(maybe(lval), code_info, code_info).
+:- mode code_info__maybe_release_ticket(in, in, out) is det.
+
 :- pred code_info__maybe_reset_and_discard_ticket(maybe(lval),
 	reset_trail_reason, code_tree, code_info, code_info).
 :- mode code_info__maybe_reset_and_discard_ticket(in, in, out, in, out) is det.
 
-:- pred code_info__maybe_reset_and_pop_ticket(maybe(lval),
+:- pred code_info__maybe_reset_discard_and_release_ticket(maybe(lval),
 	reset_trail_reason, code_tree, code_info, code_info).
-:- mode code_info__maybe_reset_and_pop_ticket(in, in, out, in, out) is det.
-
-:- pred code_info__maybe_discard_ticket(maybe(lval), code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_discard_ticket(in, out, in, out) is det.
-
-:- pred code_info__save_maxfr(lval, code_tree, code_info, code_info).
-:- mode code_info__save_maxfr(out, out, in, out) is det.
+:- mode code_info__maybe_reset_discard_and_release_ticket(in, in, out, in, out)
+	is det.
 
 %---------------------------------------------------------------------------%
 
@@ -2644,17 +2668,25 @@ code_info__pickup_zombies(Zombies) -->
 
 code_info__save_hp(Code, HpSlot) -->
 	code_info__acquire_temp_slot(lval(hp), HpSlot),
-	{ Code = node([mark_hp(HpSlot) - "Save heap pointer"]) }.
+	{ Code = node([
+		mark_hp(HpSlot) - "Save heap pointer"
+	]) }.
 
 code_info__restore_hp(HpSlot, Code) -->
-	{ Code = node([restore_hp(lval(HpSlot)) - "Restore heap pointer"]) }.
+	{ Code = node([
+		restore_hp(lval(HpSlot)) - "Restore heap pointer"
+	]) }.
 
-code_info__discard_hp(HpSlot) -->
+code_info__release_hp(HpSlot) -->
 	code_info__release_temp_slot(HpSlot).
 
-code_info__restore_and_discard_hp(HpSlot, Code) -->
-	{ Code = node([restore_hp(lval(HpSlot)) - "Restore heap pointer"]) },
-	code_info__discard_hp(HpSlot).
+code_info__restore_and_release_hp(HpSlot, Code) -->
+	{ Code = node([
+		restore_hp(lval(HpSlot)) - "Release heap pointer"
+	]) },
+	code_info__release_hp(HpSlot).
+
+%---------------------------------------------------------------------------%
 
 code_info__maybe_save_hp(Maybe, Code, MaybeHpSlot) -->
 	( { Maybe = yes } ->
@@ -2672,44 +2704,50 @@ code_info__maybe_restore_hp(MaybeHpSlot, Code) -->
 		{ Code = empty }
 	).
 
-code_info__maybe_restore_and_discard_hp(MaybeHpSlot, Code) -->
+code_info__maybe_release_hp(MaybeHpSlot) -->
 	( { MaybeHpSlot = yes(HpSlot) } ->
-		code_info__restore_and_discard_hp(HpSlot, Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__maybe_discard_hp(MaybeHpSlot) -->
-	( { MaybeHpSlot = yes(HpSlot) } ->
-		code_info__discard_hp(HpSlot)
+		code_info__release_hp(HpSlot)
 	;
 		[]
 	).
 
+code_info__maybe_restore_and_release_hp(MaybeHpSlot, Code) -->
+	( { MaybeHpSlot = yes(HpSlot) } ->
+		code_info__restore_and_release_hp(HpSlot, Code)
+	;
+		{ Code = empty }
+	).
+
+%---------------------------------------------------------------------------%
+
 code_info__save_ticket(Code, TicketSlot) -->
 	code_info__acquire_temp_slot(ticket, TicketSlot),
-	{ Code = node([store_ticket(TicketSlot) - "Save trail state"]) }.
+	{ Code = node([
+		store_ticket(TicketSlot) - "Save trail state"
+	]) }.
 
 code_info__reset_ticket(TicketSlot, Reason, Code) -->
-	{ Code = node([reset_ticket(lval(TicketSlot), Reason) - "Reset trail"]) }.
+	{ Code = node([
+		reset_ticket(lval(TicketSlot), Reason) - "Reset trail"
+	]) }.
+
+code_info__release_ticket(TicketSlot) -->
+	code_info__release_temp_slot(TicketSlot).
 
 code_info__reset_and_discard_ticket(TicketSlot, Reason, Code) -->
-	code_info__release_temp_slot(TicketSlot),
 	{ Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
 		discard_ticket - "Pop ticket stack"
 	]) }.
 
-code_info__reset_and_pop_ticket(TicketSlot, Reason, Code) -->
+code_info__reset_discard_and_release_ticket(TicketSlot, Reason, Code) -->
 	{ Code = node([
-		reset_ticket(lval(TicketSlot), Reason) -
-			"Restore trail (but don't release this stack slot)",
+		reset_ticket(lval(TicketSlot), Reason) - "Release trail",
 		discard_ticket - "Pop ticket stack"
-	]) }.
+	]) },
+	code_info__release_temp_slot(TicketSlot).
 
-code_info__discard_ticket(TicketSlot, Code) -->
-	code_info__release_temp_slot(TicketSlot),
-	{ Code = node([discard_ticket - "Pop ticket stack"]) }.
+%---------------------------------------------------------------------------%
 
 code_info__maybe_save_ticket(Maybe, Code, MaybeTicketSlot) -->
 	( { Maybe = yes } ->
@@ -2727,6 +2765,13 @@ code_info__maybe_reset_ticket(MaybeTicketSlot, Reason, Code) -->
 		{ Code = empty }
 	).
 
+code_info__maybe_release_ticket(MaybeTicketSlot) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__release_ticket(TicketSlot)
+	;
+		[]
+	).
+
 code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->
 	( { MaybeTicketSlot = yes(TicketSlot) } ->
 		code_info__reset_and_discard_ticket(TicketSlot, Reason, Code)
@@ -2734,23 +2779,14 @@ code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->
 		{ Code = empty }
 	).
 
-code_info__maybe_reset_and_pop_ticket(MaybeTicketSlot, Reason, Code) -->
+code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
+		Code) -->
 	( { MaybeTicketSlot = yes(TicketSlot) } ->
-		code_info__reset_and_pop_ticket(TicketSlot, Reason, Code)
+		code_info__reset_discard_and_release_ticket(TicketSlot, Reason,
+			Code)
 	;
 		{ Code = empty }
 	).
-
-code_info__maybe_discard_ticket(MaybeTicketSlot, Code) -->
-	( { MaybeTicketSlot = yes(TicketSlot) } ->
-		code_info__discard_ticket(TicketSlot, Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__save_maxfr(MaxfrSlot, Code) -->
-	code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
-	{ Code = node([assign(MaxfrSlot, lval(maxfr)) - "Save maxfr"]) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3054,8 +3090,10 @@ code_info__generate_stack_livevals(Args, LiveVals) -->
 	{ set__to_sorted_list(Vars, VarList) },
 	{ set__init(LiveVals0) },
 	code_info__generate_var_livevals(VarList, LiveVals0, LiveVals1),
-	code_info__get_temps_in_use(TempsSet),
-	{ map__to_assoc_list(TempsSet, Temps) },
+	code_info__get_temps_in_use(TempsInUse),
+	code_info__get_temp_content_map(TempContentMap),
+	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
+	{ map__to_assoc_list(TempsInUseContentMap, Temps) },
 	{ code_info__generate_temp_livevals(Temps, LiveVals1, LiveVals) }.
 
 :- pred code_info__generate_var_livevals(list(var), set(lval), set(lval),
@@ -3088,21 +3126,13 @@ code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	code_info__generate_var_livelvals(VarList, LiveVals0, LiveVals1),
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__get_globals(Globals),
-	{ globals__get_gc_method(Globals, GC_Method) },
-	{ globals__get_trace_level(Globals, TraceLevel) },
-	{
-		( GC_Method = accurate
-		; trace_level_trace_returns(TraceLevel, yes)
-		)
-	->
-		NeedVarInfo = yes
-	;
-		NeedVarInfo = no
-	},
-	code_info__livevals_to_livelvals(LiveVals2, NeedVarInfo, 
+	{ globals__want_return_var_layouts(Globals, WantReturnVarLayout) },
+	code_info__livevals_to_livelvals(LiveVals2, WantReturnVarLayout, 
 		AfterCallInstMap, LiveVals3),
-	code_info__get_temps_in_use(TempsSet),
-	{ map__to_assoc_list(TempsSet, Temps) },
+	code_info__get_temps_in_use(TempsInUse),
+	code_info__get_temp_content_map(TempContentMap),
+	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
+	{ map__to_assoc_list(TempsInUseContentMap, Temps) },
 	{ code_info__generate_temp_livelvals(Temps, LiveVals3, LiveVals) }.
 
 :- pred code_info__generate_var_livelvals(list(var),
@@ -3121,7 +3151,9 @@ code_info__generate_var_livelvals([V | Vs], Vals0, Vals) -->
 
 code_info__generate_temp_livelvals([], LiveInfo, LiveInfo).
 code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0, 
-		[live_lvalue(Slot, LiveValueType, "", []) | LiveInfo1]) :-
+		[live_lvalue(direct(Slot), LiveValueType, Empty) | LiveInfo1])
+		:-
+	map__init(Empty),
 	code_info__get_live_value_type(StoredLval, LiveValueType),
 	code_info__generate_temp_livelvals(Slots, LiveInfo0, LiveInfo1).
 
@@ -3130,25 +3162,26 @@ code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0,
 :- mode code_info__livevals_to_livelvals(in, in, in, out, in, out) is det.
 
 code_info__livevals_to_livelvals([], _, _, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], NeedVarInfo,
+code_info__livevals_to_livelvals([Lval - Var | Ls], WantReturnVarLayout,
 		AfterCallInstMap, [LiveLval | Lives]) -->
 	code_info__get_varset(VarSet),
-	{ varset__lookup_name(VarSet, Var, Name) },
 	(
-		{ NeedVarInfo = yes }
+		{ WantReturnVarLayout = yes }
 	->
 		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
+		{ varset__lookup_name(VarSet, Var, Name) },
 
 		code_info__variable_type(Var, Type),
 		{ type_util__vars(Type, TypeVars) },
-		code_info__find_type_infos(TypeVars, TypeParams),
-		{ LiveLval = live_lvalue(Lval, var(Type, Inst), Name,
-			TypeParams) }
+		code_info__find_typeinfos_for_tvars(TypeVars, TypeParams),
+		{ LiveLval = live_lvalue(direct(Lval),
+			var(Var, Name, Type, Inst), TypeParams) }
 	;
-		{ LiveLval = live_lvalue(Lval, unwanted, Name, []) }
+		{ map__init(Empty) },
+		{ LiveLval = live_lvalue(direct(Lval), unwanted, Empty) }
 	),
-	code_info__livevals_to_livelvals(Ls, NeedVarInfo, AfterCallInstMap, 
-		Lives).
+	code_info__livevals_to_livelvals(Ls, WantReturnVarLayout,
+		AfterCallInstMap, Lives).
 
 :- pred code_info__get_live_value_type(slot_contents, live_value_type).
 :- mode code_info__get_live_value_type(in, out) is det.
@@ -3201,7 +3234,7 @@ code_info__get_live_value_type(trace_data, unwanted).
 	% hold the succip.
 	%
 	% Nondet stack frames also have the local variables above the
-	% temporaries, but contain several fixed frames on top, and the
+	% temporaries, but contain several fixed slots on top, and the
 	% saved succip is stored in one of these.
 	%
 	% For both kinds of stack frames, the slots holding variables
@@ -3248,28 +3281,36 @@ code_info__get_live_value_type(trace_data, unwanted).
 :- implementation.
 
 code_info__acquire_temp_slot(Item, StackVar) -->
-	code_info__get_avail_temp_slots(AvailSlots0),
-	( { set__remove_least(AvailSlots0, StackVarPrime, AvailSlots) } ->
-		{ StackVar = StackVarPrime },
-		code_info__set_avail_temp_slots(AvailSlots)
+	code_info__get_temps_in_use(TempsInUse0),
+	{ IsTempUsable = lambda([TempContent::in, Lval::out] is semidet, (
+		TempContent = Lval - ContentType,
+		ContentType = Item,
+		\+ set__member(Lval, TempsInUse0)
+	)) },
+	code_info__get_temp_content_map(TempContentMap0),
+	{ map__to_assoc_list(TempContentMap0, TempContentList) },
+	{ list__filter_map(IsTempUsable, TempContentList, UsableLvals) },
+	(
+		{ UsableLvals = [UsableLval | _] },
+		{ StackVar = UsableLval }
 	;
+		{ UsableLvals = [] },
 		code_info__get_var_slot_count(VarSlots),
 		code_info__get_max_temp_slot_count(TempSlots0),
 		{ TempSlots is TempSlots0 + 1 },
 		{ Slot is VarSlots + TempSlots },
 		code_info__stack_variable(Slot, StackVar),
-		code_info__set_max_temp_slot_count(TempSlots)
+		code_info__set_max_temp_slot_count(TempSlots),
+		{ map__det_insert(TempContentMap0, StackVar, Item,
+			TempContentMap) },
+		code_info__set_temp_content_map(TempContentMap)
 	),
-	code_info__get_temps_in_use(TempsInUse0),
-	{ map__det_insert(TempsInUse0, StackVar, Item, TempsInUse) },
+	{ set__insert(TempsInUse0, StackVar, TempsInUse) },
 	code_info__set_temps_in_use(TempsInUse).
 
 code_info__release_temp_slot(StackVar) -->
-	code_info__get_avail_temp_slots(AvailSlots0),
-	{ set__insert(AvailSlots0, StackVar, AvailSlots) },
-	code_info__set_avail_temp_slots(AvailSlots),
 	code_info__get_temps_in_use(TempsInUse0),
-	{ map__delete(TempsInUse0, StackVar, TempsInUse) },
+	{ set__delete(TempsInUse0, StackVar, TempsInUse) },
 	code_info__set_temps_in_use(TempsInUse).
 
 %---------------------------------------------------------------------------%
@@ -3320,10 +3361,9 @@ code_info__max_var_slot_2([L | Ls], Max0, Max) :-
 code_info__stack_variable(Num, Lval) -->
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
-		{ Num1 is Num - 1 },		% framevars start at zero
-		{ Lval = framevar(Num1) }
+		{ Lval = framevar(Num) }
 	;
-		{ Lval = stackvar(Num) }	% stackvars start at one
+		{ Lval = stackvar(Num) }
 	).
 
 :- pred code_info__stack_variable_reference(int, rval, code_info, code_info).
@@ -3332,10 +3372,9 @@ code_info__stack_variable(Num, Lval) -->
 code_info__stack_variable_reference(Num, mem_addr(Ref)) -->
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
-		{ Num1 is Num - 1 },		% framevars start at zero
-		{ Ref = framevar_ref(Num1) }
+		{ Ref = framevar_ref(Num) }
 	;
-		{ Ref = stackvar_ref(Num) }	% stackvars start at one
+		{ Ref = stackvar_ref(Num) }
 	).
 
 %---------------------------------------------------------------------------%

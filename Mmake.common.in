@@ -59,6 +59,7 @@ INSTALL_TEXT_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
 INSTALL_PS_DIR 		= $(INSTALL_PREFIX)/lib/mercury/doc
 INSTALL_MAN_DIR 	= $(INSTALL_PREFIX)/man
 INSTALL_HTML_DIR 	= $(INSTALL_PREFIX)/lib/mercury/html
+INSTALL_MDB_DOC_DIR 	= $(INSTALL_PREFIX)/lib/mercury/mdb
 
 # Specify the Mercury compiler to use for bootstrapping
 MC			= @BOOTSTRAP_MC@
@@ -164,9 +165,25 @@ INSTALL_SP_ARCH_DIR 	= $(INSTALL_LIBDIR)/sicstus/$(FULLARCH)
 SCRIPTS_DIR = $(MERCURY_DIR)/scripts
 RUNTIME_DIR = $(MERCURY_DIR)/runtime
 LIBRARY_DIR = $(MERCURY_DIR)/library
+TRACE_DIR = $(MERCURY_DIR)/trace
+BROWSER_DIR = $(MERCURY_DIR)/browser
 BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
 COMPILER_DIR = $(MERCURY_DIR)/compiler
 UTIL_DIR = $(MERCURY_DIR)/util
+
+# The names of the various libraries.
+# The archives and shared object objects have a "lib" prefix and a ".a" or
+# ".so" (or ".dll") suffix around these names; the initialization files
+# have just a ".init" suffix. (The trace library does not have a .init file,
+# since it contains no Mercury code.)
+#
+# If you change these, you will also need to change scripts/ml.in,
+# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
+# and tools/linear.
+RT_LIB_NAME = mer_rt
+STD_LIB_NAME = mer_std
+TRACE_LIB_NAME = mer_trace
+BROWSER_LIB_NAME = mer_browser
 
 # Options to pass to the Mercury compiler
 MCFLAGS	= --no-infer-all --halt-at-warn

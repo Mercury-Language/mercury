@@ -1118,15 +1118,15 @@ list__merge_and_remove_dups(P, [H1|T1], [H2|T2], L) :-
 	(
 		C = (<),
 		L = [H1|T],   
-		list__merge(P, T1, [H2|T2], T)
+		list__merge_and_remove_dups(P, T1, [H2|T2], T)
 	;
 		C = (=),
 		L = [H1 | T],
-		list__merge(P, T1, T2, T)
+		list__merge_and_remove_dups(P, T1, T2, T)
 	;
 		C = (>),
 		L = [H2|T],   
-		list__merge(P, [H1|T1], T2, T)
+		list__merge_and_remove_dups(P, [H1|T1], T2, T)
 	).
 
 

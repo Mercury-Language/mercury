@@ -205,6 +205,8 @@ process_module_defn(module(_), Info, Info).
 process_module_defn(include_module(_), Info, Info).
 process_module_defn(interface, Info0, Info) :-
 	mq_info_set_import_status(Info0, exported, Info).
+process_module_defn(private_interface, Info0, Info) :-
+	mq_info_set_import_status(Info0, exported_to_submodules, Info).
 process_module_defn(implementation, Info0, Info) :-
 	mq_info_set_import_status(Info0, local, Info).
 process_module_defn(imported, Info0, Info) :-
@@ -363,6 +365,8 @@ update_import_status(interface, Info0, Info, yes) :-
 	mq_info_set_import_status(Info0, exported, Info).
 update_import_status(implementation, Info0, Info, yes) :-
 	mq_info_set_import_status(Info0, local, Info).
+update_import_status(private_interface, Info0, Info, yes) :-
+	mq_info_set_import_status(Info0, exported_to_submodules, Info).
 update_import_status(imported, Info, Info, no).
 update_import_status(used, Info, Info, no).
 update_import_status(external(_), Info, Info, yes).

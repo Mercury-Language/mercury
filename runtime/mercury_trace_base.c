@@ -1,4 +1,8 @@
 /*
+INIT mercury_sys_init_trace
+ENDINIT
+*/
+/*
 ** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -14,10 +18,7 @@
 */
 
 #include "mercury_imp.h"
-#include "mercury_trace.h"
-#include "mercury_trace_util.h"
-#include "mercury_trace_internal.h"
-#include "mercury_trace_external.h"
+#include "mercury_trace_base.h"
 #include "mercury_engine.h"
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
@@ -30,7 +31,7 @@
 ** This variable is set in mercury_wrapper.c and never modified afterwards.
 */
 
-MR_trace_type	MR_trace_handler = MR_TRACE_INTERNAL;
+MR_Trace_Type	MR_trace_handler = MR_TRACE_INTERNAL;
 
 /*
 ** Compiler generated tracing code will check whether MR_trace_enabled is true,
@@ -89,6 +90,68 @@ Unsigned	MR_trace_event_number = 0;
 
 Bool		MR_trace_from_full = 1;
 
+#ifdef	MR_TRACE_HISTOGRAM
+
+int		*MR_trace_histogram_all = NULL;
+int		*MR_trace_histogram_exp = NULL;
+int		MR_trace_histogram_max  = 0;
+int		MR_trace_histogram_hwm  = 0;
+
+#define	MR_TRACE_HISTOGRAM_FILENAME	".mercury_histogram"
+
+#endif
+
+Code *
+MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
+	const char * path, int max_mr_num)
+{
+	bool		maybe_from_full;
+	Unsigned	seqno;
+	Unsigned	depth;
+
+	if (! MR_trace_enabled) {
+		return NULL;
+	}
+
+	/* in case MR_sp or MR_curfr is transient */
+	restore_transient_registers();
+
+	maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
+	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
+		if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {
+			return NULL;
+		}
+
+		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
+		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
+	} else {
+		if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {
+			return NULL;
+		}
+
+		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
+		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
+	}
+
+	return (*MR_trace_func_ptr)(layout, port, seqno, depth,
+			path, max_mr_num);
+}
+
+Code *
+MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
+	Word seqno, Word depth, const char * path, int max_mr_num)
+{
+	fatal_error("This executable is not set up for debugging.\n"
+		"Rebuild the <main>_init.c file, "
+		"and give the -t flag to c2init when you do so.\n"
+		"If you are using mmake, you can do this by including "
+		"-t in C2INIT_FLAGS.\n"
+		"For further details, please see the Debugging chapter"
+		"of the Mercury User's Guide.\n");
+	/*NOTREACHED*/
+	return NULL;
+}
+
 void
 MR_trace_init(void)
 {
@@ -134,6 +197,33 @@ MR_trace_report(FILE *fp)
 
 		fprintf(fp, "Last trace event was event #%ld.\n",
 			(long) MR_trace_event_number);
+
+#ifdef	MR_TRACE_HISTOGRAM
+		{
+			FILE	*hfp;
+
+			hfp = fopen(MR_TRACE_HISTOGRAM_FILENAME, "w");
+			if (hfp != NULL) {
+				MR_trace_print_histogram(hfp, "All-inclusive",
+					MR_trace_histogram_all,
+					MR_trace_histogram_hwm);
+				if (fclose(hfp) == 0) {
+					fprintf(fp, "Event histogram put into "
+						"file `%s'.\n",
+						MR_TRACE_HISTOGRAM_FILENAME);
+				} else {
+					fprintf(fp, "Cannot put event "
+						"histogram into `%s': %s."
+						MR_TRACE_HISTOGRAM_FILENAME,
+						strerror(errno));
+				}
+			} else {
+				fprintf(fp, "Cannot open `%s': %s.\n"
+					MR_TRACE_HISTOGRAM_FILENAME,
+					strerror(errno));
+			}
+		}
+#endif	/* MR_TRACE_HISTOGRAM */
 	}
 }
 
@@ -152,4 +242,59 @@ MR_trace_report_raw(int fd)
 			(long) MR_trace_event_number);
 		write(fd, buf, strlen(buf));
 	}
+}
+
+#ifdef	MR_TRACE_HISTOGRAM
+
+void
+MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
+{
+	int	i;
+
+	fprintf(fp, "%s histogram\n", which);
+	for (i = 1; i <= max; i++) {
+		fprintf(fp, "depth %4d: %10d", i, histogram[i]);
+		if (i + 1 <= max && histogram[i] != 0) {
+			fprintf(fp, ", branching factor %7.2f\n",
+				(float) histogram[i+1] / (float) histogram[i]);
+		} else {
+			fprintf(fp, "\n");
+		}
+	}
+}
+
+#endif	/* MR_TRACE_HISTOGRAM */
+
+Define_extern_entry(MR_do_trace_redo_fail);
+
+BEGIN_MODULE(MR_trace_labels_module)
+	init_entry_ai(MR_do_trace_redo_fail);
+BEGIN_CODE
+
+Define_entry(MR_do_trace_redo_fail);
+#if 0
+	/* For use in case this ever needs to be debugged again. */
+	printf("MR_curfr = %p\n", MR_curfr);
+	printf("MR_redofr_slot(MR_curfr) = %p\n", MR_redofr_slot(MR_curfr));
+	printf("&MR_redo_layout_framevar(MR_redofr_slot(MR_curfr) = %p\n",
+		&MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
+	printf("MR_redo_layout_framevar(MR_redofr_slot(MR_curfr) = %p\n",
+		MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
+#endif
+	{
+		Code *MR_jumpaddr;
+		save_transient_registers();
+		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
+			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)),
+			MR_PORT_REDO, "", 0);
+		restore_transient_registers();
+		if (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);
+	}
+	fail();
+
+END_MODULE
+
+void mercury_sys_init_trace(void); /* suppress gcc warning */
+void mercury_sys_init_trace(void) {
+	MR_trace_labels_module();
 }

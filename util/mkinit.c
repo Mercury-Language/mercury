@@ -44,6 +44,7 @@ static char **files;
 static bool output_main_func = TRUE;
 static bool c_files_contain_extra_inits = FALSE;
 static bool need_initialization_code = FALSE;
+static bool need_tracing = FALSE;
 
 static int num_modules = 0;
 static int num_errors = 0;
@@ -80,7 +81,6 @@ static const char header2[] =
 static const char mercury_funcs[] =
 	"\n"
 	"Declare_entry(%s);\n"
-	"Declare_entry(mercury__io__print_3_0);\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
 	"extern char *GC_stackbottom;\n"
@@ -134,24 +134,30 @@ static const char mercury_funcs[] =
 	"#endif\n"
 	"	MR_library_initializer = ML_io_init_state;\n"
 	"	MR_library_finalizer = ML_io_finalize_state;\n"
-	"	MR_library_trace_browser = ENTRY(mercury__io__print_3_0);\n"
+	"	MR_io_stdin_stream = ML_io_stdin_stream;\n"
+	"	MR_io_stdout_stream = ML_io_stdout_stream;\n"
+	"	MR_io_stderr_stream = ML_io_stderr_stream;\n"
+	"	MR_io_print_to_cur_stream = ML_io_print_to_cur_stream;\n"
+	"	MR_io_print_to_stream = ML_io_print_to_stream;\n"
 	"#ifdef MR_USE_EXTERNAL_DEBUGGER\n"
 	"	MR_type_name = ML_type_name;\n"
 	"	MR_DI_output_current_vars = ML_DI_output_current_vars;\n"
   	"	MR_DI_output_current_nth_var = ML_DI_output_current_nth_var;\n"
-	"	MR_DI_output_current_live_var_names =
-			ML_DI_output_current_live_var_names;\n"
+	"	MR_DI_output_current_live_var_names = "
+			"ML_DI_output_current_live_var_names;\n"
 	"	MR_DI_output_current_slots = ML_DI_output_current_slots;\n"
   	"	MR_DI_get_var_number = ML_DI_get_var_number;\n"
 	"	MR_DI_found_match = ML_DI_found_match;\n"
 	"	MR_DI_read_request_from_socket = ML_DI_read_request_from_socket;\n"
 	"#endif\n"
+	"	MR_trace_func_ptr = %s;\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
 	"#endif\n"
 	"	program_entry_point = ENTRY(%s);\n"
 	"\n"
-	"	return mercury_runtime_init(argc, argv);\n"
+	"	mercury_runtime_init(argc, argv);\n"
+	"	return;\n"
 	"}\n"
 	"\n"
 	"void\n"
@@ -260,7 +266,7 @@ static void
 parse_options(int argc, char *argv[])
 {
 	int	c;
-	while ((c = getopt(argc, argv, "c:ilw:x")) != EOF) {
+	while ((c = getopt(argc, argv, "c:iltw:x")) != EOF) {
 		switch (c) {
 		case 'c':
 			if (sscanf(optarg, "%d", &maxcalls) != 1)
@@ -273,6 +279,11 @@ parse_options(int argc, char *argv[])
 
 		case 'l':
 			output_main_func = FALSE;
+			break;
+
+		case 't':
+			need_tracing = TRUE;
+			need_initialization_code = TRUE;
 			break;
 
 		case 'w':
@@ -297,7 +308,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-		"Usage: mkinit [-c maxcalls] [-w entry] [-l] [-x] files...\n");
+		"Usage: mkinit [-c maxcalls] [-w entry] [-i] [-l] [-t] [-x] files...\n");
 	exit(1);
 }
 
@@ -367,7 +378,10 @@ output_main_init_function(void)
 static void 
 output_main(void)
 {
-	printf(mercury_funcs, entry_point, entry_point);
+	const char *trace_func;
+
+	trace_func = (need_tracing ? "MR_trace_real" : "MR_trace_fake");
+	printf(mercury_funcs, entry_point, trace_func, entry_point);
 	if (output_main_func) {
 		fputs(main_func, stdout);
 	}

@@ -76,4 +76,6 @@
 
 #include	"mercury_grade.h"
 
+#include	"mercury_bootstrap.h"
+
 #endif /* not MERCURY_IMP_H */

@@ -274,15 +274,10 @@ Define_extern_entry(mercury____Compare___array__array_1_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___array__array_1_0);
 #endif
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___array__array_1_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___array__array_1_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___array__array_1_0);
-#ifdef MR_USE_SOLVE_EQUAL
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____SolveEqual___array__array_1_0);
-#endif
 
 #ifdef  USE_TYPE_LAYOUT
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_array__base_type_layout_array_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_array__base_type_layout_array_1 = {
@@ -290,6 +285,7 @@ const struct mercury_data_array__base_type_layout_array_1_struct {
 		mkbody(TYPELAYOUT_ARRAY_VALUE))
 };
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_array__base_type_functors_array_1_struct {
 	Integer f1;
 } mercury_data_array__base_type_functors_array_1 = {
@@ -302,11 +298,11 @@ Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);
 
 BEGIN_MODULE(array_module_builtins)
-	init_entry_sl(mercury____Unify___array__array_1_0);
-	init_entry_sl(mercury____Index___array__array_1_0);
-	init_entry_sl(mercury____Compare___array__array_1_0);
+	init_entry(mercury____Unify___array__array_1_0);
+	init_entry(mercury____Index___array__array_1_0);
+	init_entry(mercury____Compare___array__array_1_0);
 #ifdef MR_USE_SOLVE_EQUAL
-	init_entry_sl(mercury____SolveEqual___array__array_1_0);
+	init_entry(mercury____SolveEqual___array__array_1_0);
 #endif
 BEGIN_CODE
 

@@ -13,6 +13,9 @@
 #ifndef	MERCURY_SIGNAL_H
 #define	MERCURY_SIGNAL_H
 
+#include "mercury_types.h"
+#include "mercury_std.h"
+
 	/*
 	** MR_setup_signal sets a signal handler (handler) to handle
 	** signals of the given signal type (sig).  

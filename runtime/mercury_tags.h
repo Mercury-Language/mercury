@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -56,12 +56,14 @@
 #endif /* ! HIGHTAGS */
 
 /*
-** the result of mkword() is cast to (const Word *), not to (Word)
+** the result of mkword() is cast to (Word *), not to (Word)
 ** because mkword() may be used in initializers for static constants
 ** and casts from pointers to integral types are not valid
-** constant-expressions in ANSI C.
+** constant-expressions in ANSI C.  It cannot be (const Word *) because
+** some ANSI C compilers won't allow assignments where the RHS is of type
+** const and the LHS is not declared const.
 */
-#define	mkword(t, p)	((const Word *)((const char *)(p) + (t)))
+#define	mkword(t, p)	((Word *)((char *)(p) + (t)))
 
 #define	field(t, p, i)		((Word *) body((p), (t)))[i]
 #define	const_field(t, p, i)	((const Word *) body((p), (t)))[i]

@@ -151,13 +151,47 @@
 %
 
 	% Maximum floating-point number
+	%
+	% max = (1 - radix ** mantissa_digits) * radix ** max_exponent
+	%
 :- func float__max = float.
 
 	% Minimum normalised floating-point number
+	%
+	% min = radix ** (min_exponent - 1)
+	%
 :- func float__min = float.
 
 	% Smallest number x such that 1.0 + x \= 1.0
+	% This represents the largest relative spacing of two
+	% consecutive floating point numbers.
+	%
+	% epsilon = radix ** (1 - mantissa_digits)
 :- func float__epsilon = float.
+
+	% Radix of the floating-point representation.
+	% In the literature, this is sometimes referred to as `b'.
+	%
+:- func float__radix = int.
+
+	% The number of base-radix digits in the mantissa.  In the
+	% literature, this is sometimes referred to as `p' or `t'.
+	%
+:- func float__mantissa_digits = int.
+
+	% Minimum negative integer such that:
+	%	radix ** (min_exponent - 1)
+	% is a normalised floating-point number.  In the literature,
+	% this is sometimes referred to as `e_min'.
+	%
+:- func float__min_exponent = int.
+
+	% Maximum integer such that:
+	%	radix ** (max_exponent - 1)
+	% is a normalised floating-point number.  In the literature,
+	% this is sometimes referred to as `e_max'.
+	%
+:- func float__max_exponent = int.
 
 %---------------------------------------------------------------------------%
 
@@ -236,6 +270,22 @@
 	% Smallest number x such that 1.0 + x \= 1.0
 :- pred float__epsilon(float).
 :- mode float__epsilon(out) is det.
+
+	% Radix of the floating-point representation.
+:- pred float__radix(int).
+:- mode float__radix(out) is det.
+
+	% The number of base-radix digits in the mantissa.
+:- pred float__mantissa_digits(int).
+:- mode float__mantissa_digits(out) is det.
+
+	% Smallest exponent of a normalised floating-point number.
+:- pred float__min_exponent(int).
+:- mode float__min_exponent(out) is det.
+
+	% Largest exponent of a normalised floating-point number.
+:- pred float__max_exponent(int).
+:- mode float__max_exponent(out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -316,9 +366,8 @@ float(Int) = Float :-
 
 	% float__ceiling_to_int(X, Ceil) is true if Ceil is the
 	% smallest integer not less than X.
-:- pragma c_code(
-	float__ceiling_to_int(X :: in, Ceil :: out),
-	will_not_call_mercury,
+:- pragma c_code(float__ceiling_to_int(X :: in, Ceil :: out),
+	[will_not_call_mercury, thread_safe],
 "
 	Ceil = (Integer) ceil(X);
 ").
@@ -327,9 +376,8 @@ float__ceiling_to_int(X) = Ceil :- float__ceiling_to_int(X, Ceil).
 
 	% float__floor_to_int(X, Floor) is true if Floor is the
 	% largest integer not greater than X.
-:- pragma c_code(
-	float__floor_to_int(X :: in, Floor :: out),
-	will_not_call_mercury,
+:- pragma c_code(float__floor_to_int(X :: in, Floor :: out),
+	[will_not_call_mercury, thread_safe],
 "
 	Floor = (Integer) floor(X);
 ").
@@ -339,9 +387,8 @@ float__floor_to_int(X) = Floor :- float__floor_to_int(X, Floor).
 	% float__round_to_int(X, Round) is true if Round is the
 	% integer closest to X.  If X has a fractional value of
 	% 0.5, it is rounded up.
-:- pragma c_code(
-	float__round_to_int(X :: in, Round :: out),
-	will_not_call_mercury,
+:- pragma c_code(float__round_to_int(X :: in, Round :: out),
+	[will_not_call_mercury, thread_safe],
 "
 	Round = (Integer) floor(X + 0.5);
 ").
@@ -350,9 +397,8 @@ float__round_to_int(X) = Round :- float__round_to_int(X, Round).
 
 	% float__truncate_to_int(X, Trunc) is true if Trunc is
 	% the integer closest to X such that |Trunc| =< |X|.
-:- pragma c_code(
-	float__truncate_to_int(X :: in, Trunc :: out),
-	will_not_call_mercury,
+:- pragma c_code(float__truncate_to_int(X :: in, Trunc :: out),
+	[will_not_call_mercury, thread_safe],
 "
 	Trunc = (Integer) X;
 ").
@@ -415,9 +461,8 @@ float__pow( X, Exp, Ans) :-
 
 float__pow(X, Exp) = Pow :- float__pow(X, Exp, Pow).
 
-:- pragma c_code(
-	float__hash(F::in, H::out),
-	will_not_call_mercury,
+:- pragma c_code(float__hash(F::in, H::out),
+	[will_not_call_mercury, thread_safe],
 "
 	H = hash_float(F);
 ").
@@ -433,35 +478,78 @@ float__hash(F) = H :- float__hash(F, H).
 
 :- pragma c_header_code("
 
+	#define	ML_FLOAT_RADIX	FLT_RADIX	/* There is no DBL_RADIX. */
+
 	#if defined USE_SINGLE_PREC_FLOAT
-		#define	MERCURY_FLOAT_MAX	FLT_MAX
-		#define	MERCURY_FLOAT_MIN	FLT_MIN
-		#define	MERCURY_FLOAT_EPSILON	FLT_EPSILON
+		#define	ML_FLOAT_MAX		FLT_MAX
+		#define	ML_FLOAT_MIN		FLT_MIN
+		#define	ML_FLOAT_EPSILON	FLT_EPSILON
+		#define	ML_FLOAT_MANT_DIG	FLT_MANT_DIG
+		#define	ML_FLOAT_MIN_EXP	FLT_MIN_EXP
+		#define	ML_FLOAT_MAX_EXP	FLT_MAX_EXP
 	#else
-		#define	MERCURY_FLOAT_MAX	DBL_MAX
-		#define	MERCURY_FLOAT_MIN	DBL_MIN
-		#define	MERCURY_FLOAT_EPSILON	DBL_EPSILON
+		#define	ML_FLOAT_MAX		DBL_MAX
+		#define	ML_FLOAT_MIN		DBL_MIN
+		#define	ML_FLOAT_EPSILON	DBL_EPSILON
+		#define	ML_FLOAT_MANT_DIG	DBL_MANT_DIG
+		#define	ML_FLOAT_MIN_EXP	DBL_MIN_EXP
+		#define	ML_FLOAT_MAX_EXP	DBL_MAX_EXP
 	#endif
 
 ").
 
 	% Maximum floating-point number
-:- pragma c_code(float__max(Max::out), will_not_call_mercury,
-	"Max = MERCURY_FLOAT_MAX;").
+:- pragma c_code(float__max(Max::out),
+		[will_not_call_mercury, thread_safe],
+	"Max = ML_FLOAT_MAX;").
 
 float__max = Max :- float__max(Max).
 
 	% Minimum normalised floating-point number */
-:- pragma c_code(float__min(Min::out), will_not_call_mercury,
-	"Min = MERCURY_FLOAT_MIN;").
+:- pragma c_code(float__min(Min::out),
+		[will_not_call_mercury, thread_safe],
+	"Min = ML_FLOAT_MIN;").
 
 float__min = Min :- float__min(Min).
 
 	% Smallest x such that x \= 1.0 + x
-:- pragma c_code(float__epsilon(Eps::out), will_not_call_mercury,
-	"Eps = MERCURY_FLOAT_EPSILON;").
+:- pragma c_code(float__epsilon(Eps::out),
+		[will_not_call_mercury, thread_safe],
+	"Eps = ML_FLOAT_EPSILON;").
 
 float__epsilon = Epsilon :- float__epsilon(Epsilon).
+
+	% Radix of the floating-point representation.
+:- pragma c_code(float__radix(Radix::out),
+		[will_not_call_mercury, thread_safe],
+	"Radix = ML_FLOAT_RADIX;").
+
+float__radix = Radix :- float__radix(Radix).
+
+	% The number of base-radix digits in the mantissa.
+:- pragma c_code(float__mantissa_digits(MantDig::out),
+		[will_not_call_mercury, thread_safe],
+	"MantDig = ML_FLOAT_MANT_DIG;").
+
+float__mantissa_digits = MantissaDig :- float__mantissa_digits(MantissaDig).
+
+	% Minimum negative integer such that:
+	%	radix ** (min_exponent - 1)
+	% is a normalised floating-point number.
+:- pragma c_code(float__min_exponent(MinExp::out),
+		[will_not_call_mercury, thread_safe],
+	"MinExp = ML_FLOAT_MIN_EXP;").
+
+float__min_exponent = MinExponent :- float__min_exponent(MinExponent).
+
+	% Maximum integer such that:
+	%	radix ** (max_exponent - 1)
+	% is a normalised floating-point number.
+:- pragma c_code(float__max_exponent(MaxExp::out),
+		[will_not_call_mercury, thread_safe],
+	"MaxExp = ML_FLOAT_MIN_EXP;").
+
+float__max_exponent = MaxExponent :- float__max_exponent(MaxExponent).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

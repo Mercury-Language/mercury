@@ -22,7 +22,7 @@
 */
 #include "mercury_conf.h" /* for USE_DLLS */
 #if USE_DLLS
-  #include "libmer_dll.h"
+  #include "libmer_rt_dll.h"
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -83,6 +83,7 @@ extern	int	mercury_terminate(void);
 				   mercury_runtime_main(),
 				   mercury_runtime_terminate(),
 				   etc. */
+#include "mercury_trace_base.h"	/* for MR_trace_port */
 
 #ifdef CONSERVATIVE_GC
   #include "gc.h"
@@ -91,33 +92,59 @@ extern	int	mercury_terminate(void);
 /*
 ** mercury_main() takes the address of the following predicates/functions,
 ** which are defined elsewhere.
+**
+** These declarations duplicate some of the contents of the automatically
+** generated header files for some of the library modules, and therefore
+** represent a potential double maintenance problem. At the moment we
+** accept this because it avoids having the runtime rely on the library.
+** However, the dependence on browser/debugger_interface.m is unnecessary,
+** since the only code that relies on the ML_DI_* variables below is
+** in the trace directory, which is allowed to rely on the browser
+** directory.
 */
-Declare_entry(mercury__main_2_0);		/* in the user's program */
-extern	void	mercury_init_io(void);		/* in the Mercury library */
-extern	void	ML_io_init_state(void);		/* in the Mercury library */
-extern	void	ML_io_finalize_state(void);	/* in the Mercury library */
 
+/* in the user's program */
+Declare_entry(mercury__main_2_0);
 
-/* in library/debugger_interface.m */
-void	ML_DI_output_current_vars(Word, Word, Word);
-		/* normally ML_DI_output_current_vars (output_current_vars/4) */
-void	ML_DI_output_current_nth_var(Word, Word);
-		/* normally ML_DI_output_current_nth_var (output_current_nth_var/3) */
-void	ML_DI_output_current_live_var_names(Word, Word, Word);
-		/* normally ML_DI_output_current_live_var_names 
-					   (output_current_live_var_names/5) */
-void	ML_DI_output_current_slots(Integer, Integer, Integer, Word, String,
-		String, Integer, Integer, Integer, String, Word);
-		/* normally ML_DI_output_current_slots (output_current_slots/13) */
-bool	ML_DI_found_match(Integer, Integer, Integer, Word, String, String,
-		Integer, Integer, Integer, Word, String, Word);
-		/* normally ML_DI_found_match (found_match/12) */
-Integer	ML_DI_get_var_number(Word);
-void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
+/* in library/io.h */
+extern	void	mercury_init_io(void);
+extern	void	ML_io_init_state(void);
+extern	void	ML_io_finalize_state(void);
+extern	void	ML_io_stderr_stream(Word *);
+extern	void	ML_io_stdout_stream(Word *);
+extern	void	ML_io_stdin_stream(Word *);
+extern	void	ML_io_print_to_cur_stream(Word, Word);
+extern	void	ML_io_print_to_stream(Word, Word, Word);
+
+/* in browser/debugger_interface.h */
+extern	void	ML_DI_output_current_vars(Word, Word, Word);
+		/* output_current_vars/4 */
+extern	void	ML_DI_output_current_nth_var(Word, Word);
+		/* output_current_nth_var/3 */
+extern	void	ML_DI_output_current_live_var_names(Word, Word, Word);
+		/* output_current_live_var_names/5 */
+extern	void	ML_DI_output_current_slots(Integer, Integer, Integer, Word,
+		String, String, Integer, Integer, Integer, String, Word);
+		/* output_current_slots/13 */
+extern	bool	ML_DI_found_match(Integer, Integer, Integer, Word, String,
+		String, Integer, Integer, Integer, Word, String, Word);
+		/* found_match/12 */
+extern	Integer	ML_DI_get_var_number(Word);
+extern	void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
 
 /* in library/std_util.m  */
-String	ML_type_name(Word);
+extern	String	ML_type_name(Word);
 
+/* in runtime/mercury_trace_base.c */
+extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *, MR_Trace_Port,
+			Unsigned, Unsigned, const char *, int);
+
+/* in trace/mercury_trace.c */
+extern	Code	*MR_trace_real(const MR_Stack_Layout_Label *, MR_Trace_Port,
+			Unsigned, Unsigned, const char *, int);
+
+/* in library/std_util.h  */
+extern	String	ML_type_name(Word);
 
 #endif /* not MERCURY_INIT_H */
 

@@ -467,6 +467,14 @@
 :- pred pragma_allowed_in_interface(pragma_type, bool).
 :- mode pragma_allowed_in_interface(in, out) is det.
 
+	% Given a module name and a list of the items in that module,
+	% this procedure checks if the module doesn't export anything,
+	% and if so, and --warn-nothing-exported is set, it reports
+	% a warning.
+
+:- pred check_for_no_exports(item_list, module_name, io__state, io__state).
+:- mode check_for_no_exports(in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -713,7 +721,7 @@ make_interface(SourceFileName, ModuleName, Items0) -->
 							InterfaceItems3) },
 			check_for_clauses_in_interface(InterfaceItems3,
 							InterfaceItems),
-			check_for_no_exports(InterfaceItems, ModuleName),
+			check_int_for_no_exports(InterfaceItems, ModuleName),
 			write_interface_file(ModuleName, ".int",
 							InterfaceItems),
 			{ get_short_interface(InterfaceItems,
@@ -848,12 +856,25 @@ pragma_allowed_in_interface(terminates(_, _), yes).
 pragma_allowed_in_interface(does_not_terminate(_, _), yes).
 pragma_allowed_in_interface(check_termination(_, _), yes).
 
-:- pred check_for_no_exports(item_list, module_name, io__state, io__state).
-:- mode check_for_no_exports(in, in, di, uo) is det.
+check_for_no_exports(Items, ModuleName) -->
+	globals__io_lookup_bool_option(warn_nothing_exported, ExportWarning),
+	( { ExportWarning = no } ->
+		[]
+	;
+		{ get_interface(Items, no, InterfaceItems) },
+		check_int_for_no_exports(InterfaceItems, ModuleName)
+	).
 
-check_for_no_exports([], ModuleName) -->
+	% Given a module name and a list of the items in that module's
+	% interface, this procedure checks if the module doesn't export
+	% anything, and if so, and --warn-nothing-exported is set, it reports
+	% a warning.
+:- pred check_int_for_no_exports(item_list, module_name, io__state, io__state).
+:- mode check_int_for_no_exports(in, in, di, uo) is det.
+
+check_int_for_no_exports([], ModuleName) -->
 	warn_no_exports(ModuleName).
-check_for_no_exports([Item - _Context | Items], ModuleName) -->
+check_int_for_no_exports([Item - _Context | Items], ModuleName) -->
 	(
 		{ Item = nothing
 		; Item = module_defn(_, ModuleDefn),
@@ -861,7 +882,7 @@ check_for_no_exports([Item - _Context | Items], ModuleName) -->
 		}
 	->
 		% nothing useful - keep searching
-		check_for_no_exports(Items, ModuleName)
+		check_int_for_no_exports(Items, ModuleName)
 	;
 		% we found something useful - don't issue the warning
 		[]
@@ -991,15 +1012,18 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 		PublicChildren, FactDeps, Module0) },
 
 		% If this module has any seperately-compiled sub-modules,
-		% then we need to make everything in this module exported.
+		% then we need to make everything in this module
+		% exported_to_submodules.  We do that by splitting
+		% out the declarations and putting them in a special
+		% `:- private_interface' section.
 	{ get_children(Items0, Children) },
 	{ Children = [] ->
 		Module1 = Module0
 	;
 		split_clauses_and_decls(Items0, Clauses, Decls),
-		make_pseudo_decl(interface, InterfaceDecl),
+		make_pseudo_decl(private_interface, PrivateInterfaceDecl),
 		make_pseudo_decl(implementation, ImplementationDecl),
-		list__append([InterfaceDecl | Decls],
+		list__append([PrivateInterfaceDecl | Decls],
 			[ImplementationDecl | Clauses], Items1),
 		module_imports_set_items(Module0, Items1, Module1)
 	},
@@ -1538,6 +1562,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				"ifneq ($(RM_C),:)\n",
 				ObjFileName, " : ", SourceFileName, "\n",
 				"\t$(MMAKE_MAKE_CMD) $(MFLAGS) ",
+					"MC=""$(MC)"" ",
+					"ALL_MCFLAGS=""$(ALL_MCFLAGS)"" ",
 					"ALL_GRADEFLAGS=""$(ALL_GRADEFLAGS)"" ",
 					CFileName, "\n",
 				"\t$(MGNUC) $(ALL_GRADEFLAGS) ",
@@ -1546,6 +1572,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				"\t$(RM_C) ", CFileName, "\n",
 				PicObjFileName, " : ", SourceFileName, "\n",
 				"\t$(MMAKE_MAKE_CMD) $(MFLAGS) ",
+					"MC=""$(MC)"" ",
+					"ALL_MCFLAGS=""$(ALL_MCFLAGS)"" ",
 					"ALL_GRADEFLAGS=""$(ALL_GRADEFLAGS)"" ",
 					CFileName, "\n",
 				"\t$(MGNUC) $(ALL_GRADEFLAGS) ",
@@ -1803,7 +1831,7 @@ generate_dependencies(ModuleName, DepsMap0) -->
 	{ module_imports_get_error(ModuleImports, Error) },
 	( { Error = fatal } ->
 		{ prog_out__sym_name_to_string(ModuleName, ModuleString) },
-		{ string__append_list(["fatal error reading module `",
+		{ string__append_list(["can't read source file for module `",
 			ModuleString, "'."], Message) },
 		report_error(Message)
 	;
@@ -2424,8 +2452,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		InitCFileName, " : ", DepFileName, "\n",
-		"\t$(C2INIT) $(ALL_C2INITFLAGS) $(", MakeVarName, ".cs) > ",
-			InitCFileName, "\n\n"
+		"\t$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) $(",
+			MakeVarName, ".cs) > ", InitCFileName, "\n\n"
 	]),
 
 	module_name_to_file_name(SourceModuleName, ".nu", yes, NU_ExeFileName),
@@ -2732,12 +2760,44 @@ lookup_dependencies(Module, DepsMap0, Search, Done, ModuleImports, DepsMap) -->
 		{ map__lookup(DepsMap, Module, deps(Done, ModuleImports)) }
 	).
 
+	%
+	% insert_into_deps_map/3:
+	%
+	% Insert a new entry into the deps_map.
+	% If the module already occured in the deps_map, then we just
+	% replace the old entry (presumed to be a dummy entry) with the
+	% new one.
+	%
+	% This can only occur for sub-modules which have
+	% been imported before their parent module was imported:
+	% before reading a module and inserting it into the
+	% deps map, we check if it was already there, but
+	% when we read in the module, we try to insert not just
+	% that module but also all the nested sub-modules inside
+	% that module.  If a sub-module was previously imported,
+	% then it may already have an entry in the deps_map.
+	% However, unless the sub-module is defined both as a
+	% separate sub-module and also as a nested sub-module,
+	% the previous entry will be a dummy entry that we inserted
+	% after trying to read the source file and failing.
+	%
+	% XXX We could make some effort here to catch the case where a
+	% module is defined as both a separate sub-module and also
+	% as a nested sub-module.  However, that doesn't seem worthwhile,
+	% since not all such cases would arrive here anyway --
+	% it would be nice to catch that case but this is not the
+	% place to catch it.
+	% (Currently for that case we just ignore the file containing the
+	% separate sub-module.  Since we don't consider the
+	% file containing the separate sub-module to be part of the
+	% program's source, there's no duplicate definition, and thus
+	% no requirement to report any error message.)
+	%
 :- pred insert_into_deps_map(module_imports, deps_map, deps_map).
 :- mode insert_into_deps_map(in, in, out) is det.
 insert_into_deps_map(ModuleImports, DepsMap0, DepsMap) :-
 	module_imports_get_module_name(ModuleImports, ModuleName),
-	map__det_insert(DepsMap0, ModuleName, deps(no, ModuleImports),
-		DepsMap).
+	map__set(DepsMap0, ModuleName, deps(no, ModuleImports), DepsMap).
 
 	% Read a module to determine the (direct) dependencies
 	% of that module and any nested sub-modules it contains.
@@ -3079,11 +3139,11 @@ The error message should come out like this
 very_long_name.m:123: In module `very_long_name':
 very_long_name.m:123:   error in `import_module' declaration:
 very_long_name.m:123:   module `parent_module:sub_module' is inaccessible.
-very_long_name.m:123:   Either there was no `import_module' or `use_module'
-very_long_name.m:123:   declaration importing module `parent_module',
-very_long_name.m:123:   or the interface for module `parent_module'
-very_long_name.m:123:   does not contain an `include_module' declaration
-very_long_name.m:123:   for module `sub_module'.
+very_long_name.m:123:   Either there was no prior `import_module' or 
+very_long_name.m:123:  `use_module' declaration to import module
+very_long_name.m:123:   `parent_module', or the interface for module
+very_long_name.m:123:   `parent_module' does not contain an `include_module'
+very_long_name.m:123:   declaration for module `sub_module'.
 */
 
 report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
@@ -3108,21 +3168,21 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
-		io__write_string("  Either there was no `import_module' or "),
-		io__write_string("`use_module'\n"),
+		io__write_string("  Either there was no prior "),
+		io__write_string("`import_module' or\n"),
 		prog_out__write_context(Context),
-		io__write_string("  declaration to import module `"),
+		io__write_string("  `use_module' declaration to import "),
+		io__write_string("module\n"),
+		prog_out__write_context(Context),
+		io__write_string("  `"),
 		prog_out__write_sym_name(ParentModule),
-		io__write_string("',\n"),
+		io__write_string("', or the interface for module\n"),
 		prog_out__write_context(Context),
-		io__write_string("  or the interface for module `"),
+		io__write_string("  `"),
 		prog_out__write_sym_name(ParentModule),
-		io__write_string("\n"),
+		io__write_string("' does not contain an `include_module'\n"),
 		prog_out__write_context(Context),
-		io__write_strings(["  does not contain an `include_module' ",
-					"declaration\n"]),
-		prog_out__write_context(Context),
-		io__write_string("  for module `"),
+		io__write_string("  declaration for module `"),
 		io__write_string(SubModule),
 		io__write_string("'.\n")
 	;
@@ -3505,6 +3565,7 @@ report_error_implementation_in_interface(ModuleName, Context) -->
 
 :- pred get_interface(item_list, bool, item_list).
 :- mode get_interface(in, in, out) is det.
+
 get_interface(Items0, IncludeImported, Items) :-
 	get_interface_2(Items0, no, IncludeImported, [], RevItems),
 	list__reverse(RevItems, Items).

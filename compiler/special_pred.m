@@ -111,11 +111,19 @@ special_pred_info(solve_equal, Type,
 
 special_pred_get_type("__Unify__", Types, T) :-
 	list__reverse(Types, [T | _]).
+special_pred_get_type("unify", Types, T) :-
+	list__reverse(Types, [T | _]).
 special_pred_get_type("__Index__", Types, T) :-
+	list__reverse(Types, [_, T | _]).
+special_pred_get_type("index", Types, T) :-
 	list__reverse(Types, [_, T | _]).
 special_pred_get_type("__Compare__", Types, T) :-
 	list__reverse(Types, [T | _]).
+special_pred_get_type("compare", Types, T) :-
+	list__reverse(Types, [T | _]).
 special_pred_get_type("__SolveEqual__", Types, T) :-
+	list__reverse(Types, [T | _]).
+special_pred_get_type("solve_equal", Types, T) :-
 	list__reverse(Types, [T | _]).
 
 

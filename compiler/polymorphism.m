@@ -12,7 +12,7 @@
 % typeclasses, using higher-order predicates, and also invokes
 % `lambda__transform_lambda' to handle lambda expressions by creating new
 % predicates for them.
-%
+
 % XXX The way the code in this module handles existential type classes
 % and type class constraints is a bit ad-hoc, in general; there are
 % definitely parts of this code (marked with XXXs below) that could
@@ -33,8 +33,8 @@
 % Representation of type information:
 %
 % IMPORTANT: ANY CHANGES TO THE DOCUMENTATION HERE MUST BE REFLECTED BY
-% SIMILAR CHANGES TO THE #defines IN "runtime/type_info.h"
-% AND VICE VERSA.
+% SIMILAR CHANGES TO THE #defines IN "runtime/mercury_type_info.h" AND
+% TO THE TYPE SPECIALIZATION CODE IN "compiler/higher_order.m".
 %
 % Type information is represented using one or two cells. The cell which
 % is always present is the base_type_info structure, laid out like this:
@@ -191,9 +191,10 @@
 %		  * ...
 %		  * type info #n
 %
-% The base_type_info is produced statically, and there is one for each instance
-% declaration. For each constraint on the instance declaration, the
-% corresponding typeclass info is stored in the second part.
+% The base_typeclass_info is produced statically, and there is one for
+% each instance declaration. For each constraint on the instance
+% declaration, the corresponding typeclass_info is stored in the second
+% part.
 %
 % eg. for the following program:
 %
@@ -202,27 +203,27 @@
 %	:- instance  foo(list(T)) <= foo(T) where [...].
 %
 %	The typeclass_info for foo(int) is:
-%		The base_type_info:
+%		The base_typeclass_info:
 %		  * 0 (arity of the instance declaration) 
 %		  * pointer to method #1
 %		    ...
 %		  * pointer to method #n
 %
-%		The type_info:
+%		The typeclass_info:
 %		  * a pointer to the base typeclass info
-%		  * type info for int
+%		  * type_info for int
 %
 %	The typeclass_info for foo(list(T)) is:
-%		The base_type_info:
+%		The base_typeclass_info:
 %		  * 1 (arity of the instance declaration)
 %		  * pointer to method #1
 %		    ...
 %		  * pointer to method #n
 %
-%		The type_info contains:
+%		The typeclass_info contains:
 %		  * a pointer to the base typeclass info
 %		  * typeclass info for foo(T)
-%		  * type info for list(T)
+%		  * type_info for list(T)
 %
 % If the "T" for the list is known, the whole typeclass_info will be static
 % data. When we do not know until runtime, the typeclass_info is constructed
@@ -241,8 +242,8 @@
 %
 %	p(X) :- q([X], 0), r(X, 0).
 %
-% We add an extra argument for each typeclass constraint, and one argument for
-% each unconstrained type variable.
+% We add an extra argument for each type class constraint, and one
+% argument for each unconstrained type variable.
 %
 %	:- pred p(typeclass_info(foo(T1)), T1).
 %	:- pred q(typeclass_info(foo(T2)), typeclass_info(bar(T3)), T2, T3).
@@ -259,7 +260,7 @@
 %			...
 %			),
 %		TypeClassInfoT2 = typeclass_info(
-%			BaseClassTypeInfoT2,
+%			BaseTypeClassInfoT2,
 %			TypeClassInfoT1,
 %			<type_info for list(T1)>),
 %		BaseTypeClassInfoT3 = base_typeclass_info(
@@ -270,7 +271,7 @@
 %			...
 %			),
 %		TypeClassInfoT3 = typeclass_info(
-%			BaseClassTypeInfoT3,
+%			BaseTypeClassInfoT3,
 %			<type_info for int>),
 %		q(TypeClassInfoT2, TypeClassInfoT3, [X], 0),
 %		BaseTypeClassInfoT4 = baseclass_type_info(
@@ -310,7 +311,7 @@
 :- module polymorphism.
 :- interface.
 
-:- import_module hlds_module, prog_data.
+:- import_module hlds_module, hlds_pred, prog_data, special_pred.
 :- import_module io.
 
 :- pred polymorphism__process_module(module_info, module_info,
@@ -323,17 +324,50 @@
 	% is much simpler to avoid introducing type_info arguments for it.
 	% Since both of these are really just assignment unifications, it
 	% is desirable to generate them inline.
+	% There are also some predicates in private_builtin.m to
+	% manipulate typeclass_infos which don't need their type_infos.
 :- pred polymorphism__no_type_info_builtin(module_name, string, int).
 :- mode polymorphism__no_type_info_builtin(in, in, out) is semidet.
+
+	% From the type of a typeclass_info variable find the class_constraint
+	% about which the variable carries information, failing if the
+	% type is not a valid typeclass_info type.
+:- pred polymorphism__typeclass_info_class_constraint((type),
+		class_constraint).
+:- mode polymorphism__typeclass_info_class_constraint(in, out) is semidet.
+
+	% From the type of a type_info variable find the type about which
+	% the type_info carries information, failing if the type is not a
+	% valid type_info type.
+:- pred polymorphism__type_info_type((type), (type)).
+:- mode polymorphism__type_info_type(in, out) is semidet.
+
+	% Succeed if the predicate is one of the predicates defined in
+	% library/private_builtin.m to extract type_infos or typeclass_infos
+	% from typeclass_infos.
+:- pred polymorphism__is_typeclass_info_manipulator(module_info,
+		pred_id, typeclass_info_manipulator).
+:- mode polymorphism__is_typeclass_info_manipulator(in, in, out) is semidet.
+
+:- type typeclass_info_manipulator
+	--->	type_info_from_typeclass_info
+	;	superclass_from_typeclass_info
+	.
+
+	% Look up the pred_id and proc_id for a type specific
+	% unification/comparison/index predicate.
+:- pred polymorphism__get_special_proc(type, special_pred_id,
+		module_info, sym_name, pred_id, proc_id).
+:- mode polymorphism__get_special_proc(in, in, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda).
-:- import_module type_util, mode_util, quantification, instmap.
-:- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
+:- import_module hlds_goal, hlds_data, llds, (lambda).
+:- import_module type_util, mode_util, quantification, instmap, prog_io.
+:- import_module code_util, unify_proc, prog_util, make_hlds.
 :- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
 
 :- import_module bool, int, string, list, set, map.
@@ -407,7 +441,7 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 %	write_proc_progress_message("% Transforming polymorphism for ",
 %				PredId, ProcId, ModuleInfo0, IO0, IO1),
 
-	polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, 
+	polymorphism__process_proc(ProcId, ProcInfo0, PredInfo0, 
 		ModuleInfo0, ProcInfo, PredInfo1, ModuleInfo1, IO0, IO1),
 
 	pred_info_procedures(PredInfo1, ProcTable1),
@@ -425,6 +459,12 @@ polymorphism__no_type_info_builtin(MercuryBuiltin, "unsafe_type_cast", 2) :-
 polymorphism__no_type_info_builtin(MercuryBuiltin,
 		"unsafe_promise_unique", 2) :-
 	mercury_public_builtin_module(MercuryBuiltin).
+polymorphism__no_type_info_builtin(MercuryBuiltin,
+		"superclass_from_typeclass_info", 3) :-
+	mercury_private_builtin_module(MercuryBuiltin).
+polymorphism__no_type_info_builtin(MercuryBuiltin,
+		"type_info_from_typeclass_info", 3) :-
+	mercury_private_builtin_module(MercuryBuiltin).
 
 %---------------------------------------------------------------------------%
 
@@ -478,13 +518,13 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 %---------------------------------------------------------------------------%
 
 
-:- pred polymorphism__process_proc(proc_id, proc_info, pred_id, pred_info,
+:- pred polymorphism__process_proc(proc_id, proc_info, pred_info,
 			module_info, proc_info, pred_info, module_info,
 			io__state, io__state).
-:- mode polymorphism__process_proc(in, in, in, in, in, out, out, out,
+:- mode polymorphism__process_proc(in, in, in, in, out, out, out,
 			di, uo) is det.
 
-polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, ModuleInfo0,
+polymorphism__process_proc(ProcId, ProcInfo0, PredInfo0, ModuleInfo0,
 				ProcInfo, PredInfo, ModuleInfo, IO0, IO) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	init_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, Info0),
@@ -514,7 +554,7 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, ModuleInfo0,
 		% and type-infos for existentially quantified type vars
 		%
 		polymorphism__produce_existq_tvars(
-			PredId, PredInfo0, ProcId, ProcInfo0,
+			PredInfo0, ProcInfo0,
 			UnconstrainedTVars, ExtraTypeInfoHeadVars,
 			ExistTypeClassInfoHeadVars,
 			Goal1, Goal2, Info2, Info3),
@@ -610,13 +650,9 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 	poly_info_get_type_info_map(PolyInfo1, TypeInfoMap1),
 	map__keys(TypeInfoMap1, ExistConstrainedTVars),
 
-		% the above call inserts entries into the typeinfo map
-		% which we don't want, so we must reset it
-	map__init(TypeInfoMap2),
-	poly_info_set_type_info_map(TypeInfoMap2, PolyInfo1, PolyInfo2),
 	polymorphism__make_typeclass_info_head_vars(UnivConstraints,
-		UnivHeadTypeClassInfoVars, PolyInfo2, PolyInfo3),
-	poly_info_get_type_info_map(PolyInfo3, TypeInfoMap3),
+		UnivHeadTypeClassInfoVars, PolyInfo1, PolyInfo2),
+	poly_info_get_type_info_map(PolyInfo2, TypeInfoMap3),
 	map__keys(TypeInfoMap3, UnivConstrainedTVars),
 
 	list__append(UnivHeadTypeClassInfoVars, ExistHeadTypeClassInfoVars,
@@ -634,7 +670,7 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 		UnconstrainedUnivTVars = UnconstrainedTVars,
 		UnconstrainedExistTVars = [],
 		ExistHeadTypeInfoVars = [],
-		PolyInfo4 = PolyInfo3
+		PolyInfo3 = PolyInfo2
 	;
 		list__delete_elems(UnconstrainedTVars, ExistQVars,
 			UnconstrainedUnivTVars),
@@ -642,10 +678,10 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 			UnconstrainedExistTVars),
 		polymorphism__make_head_vars(UnconstrainedExistTVars,
 			ArgTypeVarSet, ExistHeadTypeInfoVars,
-			PolyInfo3, PolyInfo4)
+			PolyInfo2, PolyInfo3)
 	),
 	polymorphism__make_head_vars(UnconstrainedUnivTVars, ArgTypeVarSet,
-		UnivHeadTypeInfoVars, PolyInfo4, PolyInfo5),
+		UnivHeadTypeInfoVars, PolyInfo3, PolyInfo4),
 	list__append(UnivHeadTypeInfoVars, ExistHeadTypeInfoVars,
 		ExtraHeadTypeInfoVars),
 
@@ -678,15 +714,21 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 	%
 	ToLocn = lambda([TheVar::in, TheLocn::out] is det,
 			TheLocn = type_info(TheVar)),
+
 	list__map(ToLocn, UnivHeadTypeInfoVars, UnivTypeLocns),
 	map__det_insert_from_corresponding_lists(TypeInfoMap3,
-		UnconstrainedUnivTVars, UnivTypeLocns, TypeInfoMap6),
-	poly_info_set_type_info_map(TypeInfoMap6, PolyInfo5, PolyInfo6),
+		UnconstrainedUnivTVars, UnivTypeLocns, TypeInfoMap4),
+
+	list__map(ToLocn, ExistHeadTypeInfoVars, ExistTypeLocns),
+	map__det_insert_from_corresponding_lists(TypeInfoMap4,
+		UnconstrainedExistTVars, ExistTypeLocns, TypeInfoMap5),
+
+	poly_info_set_type_info_map(TypeInfoMap5, PolyInfo4, PolyInfo5),
 
 	% Make a map of the locations of the typeclass_infos
 	map__from_corresponding_lists(UnivConstraints,
 			UnivHeadTypeClassInfoVars, TypeClassInfoMap),
-	poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo6, PolyInfo).
+	poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo5, PolyInfo).
 
 
 % XXX the following code ought to be rewritten to handle
@@ -698,13 +740,13 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 % for existentially quantified type variables in the head
 %
 :- pred polymorphism__produce_existq_tvars(
-			pred_id, pred_info, proc_id, proc_info,
+			pred_info, proc_info,
 			list(tvar), list(var), list(var), hlds_goal, hlds_goal,
 			poly_info, poly_info).
-:- mode polymorphism__produce_existq_tvars(in, in, in, in, in, in, in, in, out,
+:- mode polymorphism__produce_existq_tvars(in, in, in, in, in, in, out,
 			in, out) is det.
 
-polymorphism__produce_existq_tvars(PredId, PredInfo, ProcId, ProcInfo,
+polymorphism__produce_existq_tvars(PredInfo, ProcInfo,
 		UnconstrainedTVars, TypeInfoHeadVars,
 		ExistTypeClassInfoHeadVars, Goal0, Goal, Info0, Info) :-
 	poly_info_get_var_types(Info0, VarTypes0),
@@ -716,7 +758,7 @@ polymorphism__produce_existq_tvars(PredId, PredInfo, ProcId, ProcInfo,
 	% Figure out the bindings for any existentially quantified
 	% type variables in the head.
 	%
-	ClassContext = constraints(_UnivConstraints, ExistConstraints),
+	ClassContext = constraints(_UnivConstraints, ExistConstraints0),
 	( map__is_empty(VarTypes0) ->
 		% this can happen for compiler-generated procedures
 		map__init(TypeSubst)
@@ -736,22 +778,17 @@ polymorphism__produce_existq_tvars(PredId, PredInfo, ProcId, ProcInfo,
 	% generate code to produce values for any existentially quantified
 	% typeclass-info variables in the head
 	%
-	map__init(Subst),
 	ExistQVarsForCall = [],
 	Goal0 = _ - GoalInfo,
 	goal_info_get_context(GoalInfo, Context),
+	apply_rec_subst_to_constraint_list(TypeSubst, ExistConstraints0,
+		ExistConstraints),
 	polymorphism__make_typeclass_info_vars(	
-		ExistConstraints, Subst, TypeSubst, ExistQVarsForCall, Context,
-		hlds_class_proc(PredId, ProcId),
-		hlds_class_proc(NewPredId, NewProcId),
+		ExistConstraints, ExistQVarsForCall, Context,
 		ExistTypeClassVars, ExtraTypeClassGoals,
-		_ExistConstrainedTVars, Info0, Info1),
-	% sanity check
-	( PredId = NewPredId, ProcId = NewProcId ->
-		true
-	;
-		error("polymorphism.m: impossible specialization")
-	),
+		Info0, Info1),
+	polymorphism__update_typeclass_infos(ExistConstraints,
+		ExistTypeClassVars, Info1, Info2),
 	polymorphism__assign_var_list(
 		ExistTypeClassInfoHeadVars, ExistTypeClassVars,
 		ExtraTypeClassUnifyGoals),
@@ -773,7 +810,7 @@ polymorphism__produce_existq_tvars(PredId, PredInfo, ProcId, ProcInfo,
 	term__apply_substitution_to_list(UnconstrainedTVarTerms,
 		TypeSubst, ActualTypes),
 	polymorphism__make_type_info_vars(ActualTypes, UnivQTVars, Context,
-		TypeInfoVars, ExtraTypeInfoGoals, Info1, Info),
+		TypeInfoVars, ExtraTypeInfoGoals, Info2, Info),
 	polymorphism__assign_var_list(TypeInfoHeadVars, TypeInfoVars,
 		ExtraTypeInfoUnifyGoals),
 	list__condense([[Goal0],
@@ -838,8 +875,7 @@ polymorphism__process_goal(Goal0 - GoalInfo0, Goal, IO0, IO) -->
 
 	% We don't need to add type-infos for higher-order calls,
 	% since the type-infos are added when the closures are
-	% constructed, not when they are called.  (Or at least I
-	% think we don't... -fjh.)
+	% constructed, not when they are called.
 polymorphism__process_goal_expr(higher_order_call(A, B, C, D, E, F),
 		GoalInfo, higher_order_call(A, B, C, D, E, F) - GoalInfo,
 		IO, IO)
@@ -875,17 +911,16 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 		{ list__member(SpecialPredId, SpecialPredIds) }
 	->
 		{ poly_info_get_module_info(Info0, ModuleInfo) },
-		{ classify_type(Type, ModuleInfo, TypeCategory) },
-		{ polymorphism__get_special_proc(TypeCategory, Type,
-			SpecialPredId, ModuleInfo, Name, PredId1, ProcId1) }
+		{ polymorphism__get_special_proc(Type, SpecialPredId,
+			ModuleInfo, Name, PredId, ProcId) }
 	;
-		{ PredId1 = PredId0 },
-		{ ProcId1 = ProcId0 },
+		{ PredId = PredId0 },
+		{ ProcId = ProcId0 },
 		{ Name = Name0 }
 	),
 
-	polymorphism__process_call(PredId1, ProcId1, ArgVars0, GoalInfo,
-		PredId, ProcId, ArgVars, _ExtraVars, CallGoalInfo, ExtraGoals),
+	polymorphism__process_call(PredId, ArgVars0, GoalInfo,
+		ArgVars, _ExtraVars, CallGoalInfo, ExtraGoals),
 
 	{ Call = call(PredId, ProcId, ArgVars, Builtin, UnifyContext, Name)
 		- CallGoalInfo },
@@ -922,10 +957,11 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			;
 				error("polymorphism.m: can't find `builtin:unify/2'")
 			},
-			% XXX Bug! - we should check that the mode is (in, in),
-			%     and report an error (e.g. "unification of
-			%     polymorphically typed variables in partially
-			%     instantiated mode") if it isn't
+			{ Mode = XMode - YMode },
+			{ require(mode_is_fully_input(ModuleInfo, XMode),
+				"Sorry, not implemented: polymorphic unification in mode other than (in, in)") },
+			{ require(mode_is_fully_input(ModuleInfo, YMode),
+				"Sorry, not implemented: polymorphic unification in mode other than (in, in)") },
 			{ hlds_pred__in_in_unification_proc_id(ProcId) },
 			{ map__lookup(TypeInfoMap, TypeVar, TypeInfoLocn) },
 			{ SymName = unqualified("unify") },
@@ -1008,7 +1044,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			{ error("polymorphism: type_to_type_id failed") }
 		)
 	; 
-		{ Y = lambda_goal(PredOrFunc, ArgVars, Vars,
+		{ Y = lambda_goal(PredOrFunc, ArgVars, LambdaVars,
 			Modes, Det, LambdaGoal0) }
 	->
 		% for lambda expressions, we must recursively traverse the
@@ -1019,8 +1055,9 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		% existentially typed
 		{ ExistQVars = [] },
 		polymorphism__fixup_lambda_quantification(LambdaGoal1,
-				ExistQVars, LambdaGoal, NonLocalTypeInfos),
-		polymorphism__process_lambda(PredOrFunc, Vars, Modes,
+				ArgVars, LambdaVars, ExistQVars,
+				LambdaGoal, NonLocalTypeInfos),
+		polymorphism__process_lambda(PredOrFunc, LambdaVars, Modes,
 				Det, ArgVars, NonLocalTypeInfos, LambdaGoal,
 				Unification, Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
@@ -1059,11 +1096,11 @@ polymorphism__process_goal_expr(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 	polymorphism__process_goal(B0, B, IO1, IO2),
 	polymorphism__process_goal(C0, C, IO2, IO).
 
-polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
-		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode),
-		GoalInfo, Goal, IO, IO) -->
-	polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo,
-		PredId, ProcId, ArgVars, ExtraVars, CallGoalInfo, ExtraGoals),
+polymorphism__process_goal_expr(Goal0, GoalInfo, Goal, IO, IO) -->
+	{ Goal0 = pragma_c_code(IsRecursive, PredId, ProcId,
+		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode) },
+	polymorphism__process_call(PredId, ArgVars0, GoalInfo,
+		ArgVars, ExtraVars, CallGoalInfo, ExtraGoals),
 
 	%
 	% insert the type_info vars into the arg-name map,
@@ -1073,71 +1110,94 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 	=(Info0),
 	{ poly_info_get_module_info(Info0, ModuleInfo) },
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_arg_types(PredInfo, PredTypeVarSet, ExistQVars,
-			PredArgTypes) },
+
+	{ pred_info_module(PredInfo, PredModule) },
+	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_arity(PredInfo, PredArity) },
+
+
+	(
+		{ polymorphism__no_type_info_builtin(PredModule,
+			PredName, PredArity)  }
+	->
+		{ Goal = Goal0 - GoalInfo }
+	;
+		{ list__length(ExtraVars, NumExtraVars) },
+		{ polymorphism__process_c_code(PredInfo, NumExtraVars,
+			OrigArgTypes0, OrigArgTypes, ArgInfo0, ArgInfo) },
+
+		%
+		% plug it all back together
+		%
+		{ Call = pragma_c_code(IsRecursive, PredId, ProcId, ArgVars,
+			ArgInfo, OrigArgTypes, PragmaCode) - CallGoalInfo },
+		{ list__append(ExtraGoals, [Call], GoalList) },
+		{ conj_list_to_goal(GoalList, GoalInfo, Goal) }
+	).
+
+
+:- pred polymorphism__process_c_code(pred_info, int, list(type), list(type),
+	list(maybe(pair(string, mode))), list(maybe(pair(string, mode)))).
+:- mode polymorphism__process_c_code(in, in, in, out, in, out) is det.
+
+polymorphism__process_c_code(PredInfo, NumExtraVars, OrigArgTypes0,
+		OrigArgTypes, ArgInfo0, ArgInfo) :-
+	pred_info_arg_types(PredInfo, PredTypeVarSet, ExistQVars,
+			PredArgTypes),
 
 		% Find out which variables are constrained (so that we don't
 		% add type-infos for them.
-	{ pred_info_get_class_context(PredInfo, constraints(UnivCs, ExistCs)) },
-	{ GetConstrainedVars = lambda([ClassConstraint::in, CVars::out] is det,
+	pred_info_get_class_context(PredInfo, constraints(UnivCs, ExistCs)),
+	GetConstrainedVars = lambda([ClassConstraint::in, CVars::out] is det,
 		(
 			ClassConstraint = constraint(_, CTypes),
 			term__vars_list(CTypes, CVars)
 		)
-	) },
-	{ list__map(GetConstrainedVars, UnivCs, UnivVars0) },
-	{ list__condense(UnivVars0, UnivConstrainedVars) },
-	{ list__map(GetConstrainedVars, ExistCs, ExistVars0) },
-	{ list__condense(ExistVars0, ExistConstrainedVars) },
+	),
+	list__map(GetConstrainedVars, UnivCs, UnivVars0),
+	list__condense(UnivVars0, UnivConstrainedVars),
+	list__map(GetConstrainedVars, ExistCs, ExistVars0),
+	list__condense(ExistVars0, ExistConstrainedVars),
 
-	{ term__vars_list(PredArgTypes, PredTypeVars0) },
-	{ list__remove_dups(PredTypeVars0, PredTypeVars1) },
-	{ list__delete_elems(PredTypeVars1, UnivConstrainedVars, 
-		PredTypeVars2) },
-	{ list__delete_elems(PredTypeVars2, ExistConstrainedVars, 
-		PredTypeVars) },
+	term__vars_list(PredArgTypes, PredTypeVars0),
+	list__remove_dups(PredTypeVars0, PredTypeVars1),
+	list__delete_elems(PredTypeVars1, UnivConstrainedVars, 
+		PredTypeVars2),
+	list__delete_elems(PredTypeVars2, ExistConstrainedVars, 
+		PredTypeVars),
 
 		% sanity check
-	{ list__length(ExtraVars, NV) },
-	{ list__length(UnivCs, NUCs) },
-	{ list__length(ExistCs, NECs) },
-	{ NCs is NUCs + NECs },
-	{ list__length(PredTypeVars, NTs) },
-	{ NEVs is NCs + NTs },
-	{ require(unify(NEVs, NV), 
-		"list length mismatch in polymorphism processing pragma_c") },
+	list__length(UnivCs, NUCs),
+	list__length(ExistCs, NECs),
+	NCs is NUCs + NECs,
+	list__length(PredTypeVars, NTs),
+	NEVs is NCs + NTs,
+	require(unify(NEVs, NumExtraVars), 
+		"list length mismatch in polymorphism processing pragma_c"),
 
-	{ polymorphism__c_code_add_typeinfos(
+	polymorphism__c_code_add_typeinfos(
 			PredTypeVars, PredTypeVarSet, ExistQVars, 
-			ArgInfo0, ArgInfo1) },
-	{ polymorphism__c_code_add_typeclass_infos(
-			UnivCs, ExistCs, PredTypeVarSet, ArgInfo1, ArgInfo) },
+			ArgInfo0, ArgInfo1),
+	polymorphism__c_code_add_typeclass_infos(
+			UnivCs, ExistCs, PredTypeVarSet, ArgInfo1, ArgInfo),
 
 	%
 	% insert type_info/typeclass_info types for all the inserted 
 	% type_info/typeclass_info vars into the arg-types list
 	%
-	{ mercury_private_builtin_module(PrivateBuiltin) },
-	{ MakeType = lambda([TypeVar::in, TypeInfoType::out] is det,
+	mercury_private_builtin_module(PrivateBuiltin),
+	MakeType = lambda([TypeVar::in, TypeInfoType::out] is det,
 		construct_type(qualified(PrivateBuiltin, "type_info") - 1,
-			[term__variable(TypeVar)], TypeInfoType)) },
-	{ list__map(MakeType, PredTypeVars, TypeInfoTypes) },
-	{ MakeTypeClass = lambda([_::in, TypeClassInfoType::out] is det,
+			[term__variable(TypeVar)], TypeInfoType)),
+	list__map(MakeType, PredTypeVars, TypeInfoTypes),
+	MakeTypeClass = lambda([_::in, TypeClassInfoType::out] is det,
 		construct_type(qualified(PrivateBuiltin, "typeclass_info") - 0,
-			[], TypeClassInfoType)) },
-	{ list__map(MakeTypeClass, UnivCs, UnivTypes) },
-	{ list__map(MakeTypeClass, ExistCs, ExistTypes) },
-	{ list__append(TypeInfoTypes, OrigArgTypes0, OrigArgTypes1) },
-	{ list__append(ExistTypes, OrigArgTypes1, OrigArgTypes2) },
-	{ list__append(UnivTypes, OrigArgTypes2, OrigArgTypes) },
-
-	%
-	% plug it all back together
-	%
-	{ Call = pragma_c_code(IsRecursive, PredId, ProcId, ArgVars,
-			ArgInfo, OrigArgTypes, PragmaCode) - CallGoalInfo },
-	{ list__append(ExtraGoals, [Call], GoalList) },
-	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
+			[], TypeClassInfoType)),
+	list__map(MakeTypeClass, UnivCs, UnivTypes),
+	list__map(MakeTypeClass, ExistCs, ExistTypes),
+	list__append(TypeInfoTypes, OrigArgTypes0, OrigArgTypes1),
+	list__append(ExistTypes, OrigArgTypes1, OrigArgTypes2),
+	list__append(UnivTypes, OrigArgTypes2, OrigArgTypes).
 
 :- pred polymorphism__c_code_add_typeclass_infos(
 		list(class_constraint), list(class_constraint), 
@@ -1237,21 +1297,21 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases], IO0, IO) -->
 % existential/universal type_infos and type_class_infos
 % in a more consistent manner.
 
-:- pred polymorphism__process_call(pred_id, proc_id, list(var), hlds_goal_info,
-		pred_id, proc_id, list(var), list(var), hlds_goal_info,
+:- pred polymorphism__process_call(pred_id, list(var), hlds_goal_info,
+		list(var), list(var), hlds_goal_info,
 		list(hlds_goal), poly_info, poly_info).
-:- mode polymorphism__process_call(in, in, in, in,
-		out, out, out, out, out, out, in, out) is det.
+:- mode polymorphism__process_call(in, in, in,
+		out, out, out, out, in, out) is det.
 
-polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
-		PredId, ProcId, ArgVars, ExtraVars, GoalInfo, ExtraGoals,
+polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
+		ArgVars, ExtraVars, GoalInfo, ExtraGoals,
 		Info0, Info) :-
 
 	poly_info_get_var_types(Info0, VarTypes),
 	poly_info_get_typevarset(Info0, TypeVarSet0),
 	poly_info_get_module_info(Info0, ModuleInfo),
 
-	module_info_pred_info(ModuleInfo, PredId0, PredInfo),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars0,
 		PredArgTypes0),
 	pred_info_get_class_context(PredInfo, PredClassContext0),
@@ -1289,8 +1349,6 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
 				PredName, PredArity)
 		)
 	->
-		PredId = PredId0,
-		ProcId = ProcId0,
 		ArgVars = ArgVars0,
 		GoalInfo = GoalInfo0,
 		ExtraGoals = [],
@@ -1303,7 +1361,7 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
 				TypeSubst1) ->
 			TypeSubst = TypeSubst1
 		;
-		error("polymorphism__process_call: type unification failed")
+		error("polymorphism__process_goal_expr: type unification failed")
 		),
 
 		apply_subst_to_constraints(Subst, PredClassContext0,
@@ -1317,21 +1375,22 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
 		goal_info_get_context(GoalInfo0, Context),
 		PredClassContext1 = constraints(UniversalConstraints1,
 				ExistentialConstraints1),
-		polymorphism__make_typeclass_info_vars(	
-			UniversalConstraints1, Subst, TypeSubst,
-			PredExistQVars, Context,
-			hlds_class_proc(PredId0, ProcId0),
-			hlds_class_proc(PredId, ProcId),
-			UnivTypeClassVars, ExtraTypeClassGoals,
-			UnivConstrainedTVars, Info1, Info2),
 
-			% compute which type variables were constrained
-			% by the existential type class constraints
+			% compute which type variables are constrained
+			% by the type class constraints
 		constraint_list_get_tvars(ExistentialConstraints1,
 			ExistConstrainedTVars),
+		constraint_list_get_tvars(UniversalConstraints1,
+			UnivConstrainedTVars),
 
-		list__append(UnivTypeClassVars, ExistTypeClassVars,
-			ExtraTypeClassVars),
+		apply_rec_subst_to_constraint_list(TypeSubst,
+			UniversalConstraints1, UniversalConstraints2),
+
+		polymorphism__make_typeclass_info_vars(	
+			UniversalConstraints2,
+			PredExistQVars, Context,
+			UnivTypeClassVars, ExtraTypeClassGoals,
+			Info1, Info2),
 
 			% Make variables to hold any existentially
 			% quantified typeclass_infos in the call,
@@ -1344,6 +1403,9 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
 		polymorphism__update_typeclass_infos(
 			ExistentialConstraints, ExistTypeClassVars,
 			Info3, Info4),
+
+		list__append(UnivTypeClassVars, ExistTypeClassVars,
+			ExtraTypeClassVars),
 		
 			% No need to make typeinfos for the constrained vars
 		list__delete_elems(PredTypeVars1, UnivConstrainedTVars,
@@ -1391,10 +1453,17 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
 		goal_info_get_instmap_delta(GoalInfo1, InstmapDelta0),
 		AddInstDelta = lambda([TVar::in, IMD0::in, IMD::out] is det, (
 			map__lookup(TypeVarMap, TVar, TypeInfoLocn),
-			type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-			instmap_delta_set(IMD0, TypeInfoVar,
-				ground(shared, no), IMD)
-			)),
+			(
+				TypeInfoLocn = type_info(TypeInfoVar),
+				instmap_delta_set(IMD0, TypeInfoVar,
+					ground(shared, no), IMD)
+			;
+				TypeInfoLocn = typeclass_info(_, _),
+				% the instmap delta for the type class info
+				% variable will be added by AddTCInstDelta
+				% (below)
+				IMD = IMD0
+			))),
 		AddTCInstDelta = lambda([Constraint::in, IMD0::in, IMD::out]
 					is det, (
 			map__lookup(TypeClassVarMap, Constraint,
@@ -1415,9 +1484,24 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
 
 polymorphism__update_typeclass_infos(Constraints, Vars, Info0, Info) :-
 	poly_info_get_typeclass_info_map(Info0, TypeClassInfoMap0),
-	map__det_insert_from_corresponding_lists(TypeClassInfoMap0,
-		Constraints, Vars, TypeClassInfoMap),
+	insert_typeclass_info_locns( Constraints, Vars, TypeClassInfoMap0, 
+		TypeClassInfoMap),
 	poly_info_set_typeclass_info_map(TypeClassInfoMap, Info0, Info).
+
+:- pred insert_typeclass_info_locns(list(class_constraint), list(var), 
+	map(class_constraint, var), map(class_constraint, var)).
+:- mode insert_typeclass_info_locns(in, in, in, out) is det.
+
+insert_typeclass_info_locns([], [], TypeClassInfoMap, TypeClassInfoMap).
+insert_typeclass_info_locns([C|Cs], [V|Vs], TypeClassInfoMap0, 
+		TypeClassInfoMap) :-
+	map__set(TypeClassInfoMap0, C, V, TypeClassInfoMap1),
+	insert_typeclass_info_locns(Cs, Vs, 
+	TypeClassInfoMap1, TypeClassInfoMap).
+insert_typeclass_info_locns([], [_|_], _, _) :-
+	error("polymorphism:insert_typeclass_info_locns").
+insert_typeclass_info_locns([_|_], [], _, _) :-
+	error("polymorphism:insert_typeclass_info_locns").
 
 %-----------------------------------------------------------------------------%
 
@@ -1468,20 +1552,27 @@ polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal,
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
 	).
 
-:- pred polymorphism__fixup_lambda_quantification(hlds_goal, existq_tvars,
+:- pred polymorphism__fixup_lambda_quantification(hlds_goal,
+		list(var), list(var), existq_tvars,
 		hlds_goal, set(var), poly_info, poly_info).
-:- mode polymorphism__fixup_lambda_quantification(in, in, out, out, in, out)
-		is det.
+:- mode polymorphism__fixup_lambda_quantification(in, in, in, in, out, out,
+		in, out) is det.
 
 %
 % If the lambda goal we are processing is polymorphically typed,
 % may need to fix up the quantification (non-local variables)
 % so that it includes the type-info variables and type-class-info
-% variables for any polymorphically typed variables in the non-locals set.
+% variables for any polymorphically typed variables in the non-locals set
+% or in the arguments (either the lambda vars or the implicit curried
+% argument variables).  Including typeinfos for arguments which are
+% not in the non-locals set of the goal, i.e. unused arguments, is
+% necessary only if typeinfo_liveness is set, but we do it always,
+% since we don't have the options available here, and the since
+% cost is pretty minimal.
 %
 
-polymorphism__fixup_lambda_quantification(Goal0, ExistQVars, Goal,
-		NewOutsideVars, Info0, Info) :-
+polymorphism__fixup_lambda_quantification(Goal0, ArgVars, LambdaVars,
+		ExistQVars, Goal, NewOutsideVars, Info0, Info) :-
 	poly_info_get_type_info_map(Info0, TypeVarMap),
 	poly_info_get_typeclass_info_map(Info0, TypeClassVarMap),
 	( map__is_empty(TypeVarMap) ->
@@ -1491,12 +1582,15 @@ polymorphism__fixup_lambda_quantification(Goal0, ExistQVars, Goal,
 	;
 		poly_info_get_varset(Info0, VarSet0),
 		poly_info_get_var_types(Info0, VarTypes0),
-		goal_util__extra_nonlocal_typeinfos(TypeVarMap,
-			TypeClassVarMap, VarTypes0, ExistQVars, Goal0,
-			NewOutsideVars),
 		Goal0 = _ - GoalInfo0,
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		set__union(NewOutsideVars, NonLocals, OutsideVars),
+		set__insert_list(NonLocals, ArgVars, NonLocalsPlusArgs0),
+		set__insert_list(NonLocalsPlusArgs0, LambdaVars,
+			NonLocalsPlusArgs),
+		goal_util__extra_nonlocal_typeinfos(TypeVarMap,
+			TypeClassVarMap, VarTypes0, ExistQVars,
+			NonLocalsPlusArgs, NewOutsideVars),
+		set__union(NonLocals, NewOutsideVars, OutsideVars),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
@@ -1557,129 +1651,85 @@ polymorphism__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 % Constraints which are already in the TypeClassInfoMap are assumed to
 % have already had their typeclass_infos initialized; for them, we
 % just return the variable in the TypeClassInfoMap.
-%
-% If the called predicate is a class method, and we know which instance
-% it is, then instead of creating a type_info variable for the type class
-% instance, we just return the pred_proc_id for that instance.
-% Otherwise we return the original pred_proc_id unchanged.
 
 :- pred polymorphism__make_typeclass_info_vars(list(class_constraint),
-	substitution, tsubst, existq_tvars, term__context,
-	hlds_class_proc, hlds_class_proc,
-	list(var), list(hlds_goal), list(tvar),
+	existq_tvars, term__context,
+	list(var), list(hlds_goal),
 	poly_info, poly_info).
-:- mode polymorphism__make_typeclass_info_vars(in, in, in, in, in, in, out,
-	out, out, out, in, out) is det.
+:- mode polymorphism__make_typeclass_info_vars(in, in, in,
+	out, out, in, out) is det.
 
-polymorphism__make_typeclass_info_vars(PredClassContext, Subst, TypeSubst, 
-		ExistQVars, Context, PredProcId0, PredProcId,
-		ExtraVars, ExtraGoals, ConstrainedTVars, Info0, Info) :-
+polymorphism__make_typeclass_info_vars(PredClassContext,
+		ExistQVars, Context,
+		ExtraVars, ExtraGoals, Info0, Info) :-
 
 		% initialise the accumulators
 	ExtraVars0 = [],
 	ExtraGoals0 = [],
-	ConstrainedTVars0 = [],
-
-		% The PredProcId is set to `yes(_)' for the first call only,
-		% because we can only specialize method calls if we know
-		% which instance of the method's type class it is; knowing
-		% the instances for any of the other type class constraints
-		% on a method doesn't help us specialize the call.
-	MaybePredProcId0 = yes(PredProcId0),
 
 		% do the work
 	polymorphism__make_typeclass_info_vars_2(PredClassContext, 
-		Subst, TypeSubst, ExistQVars, Context,
-		MaybePredProcId0, MaybePredProcId,
+		ExistQVars, Context,
 		ExtraVars0, ExtraVars1, 
 		ExtraGoals0, ExtraGoals1,
-		ConstrainedTVars0, ConstrainedTVars, 
 		Info0, Info),
 	
 		% We build up the vars and goals in reverse order
 	list__reverse(ExtraVars1, ExtraVars),
-	list__reverse(ExtraGoals1, ExtraGoals),
-
-		% If we succeeded in specializing this call, then use
-		% the specialization, otherwise use the original call.
-	( MaybePredProcId = yes(PredProcId1) ->
-		PredProcId = PredProcId1
-	;
-		PredProcId = PredProcId0
-	).
+	list__reverse(ExtraGoals1, ExtraGoals).
 
 % Accumulator version of the above.
 :- pred polymorphism__make_typeclass_info_vars_2(
-	list(class_constraint), substitution, tsubst,
+	list(class_constraint),
 	existq_tvars, term__context,
-	maybe(hlds_class_proc), maybe(hlds_class_proc),
 	list(var), list(var), 
 	list(hlds_goal), list(hlds_goal), 
-	list(var), list(var),
 	poly_info, poly_info).
-:- mode polymorphism__make_typeclass_info_vars_2(in, in, in, in, in,
-	in, out, in, out, in, out, in, out, in, out) is det.
+:- mode polymorphism__make_typeclass_info_vars_2(in, in, in,
+	in, out, in, out, in, out) is det.
 
-polymorphism__make_typeclass_info_vars_2([], _Subst, _TypeSubst, _ExistQVars,
-		_Context, MaybePredProcId, MaybePredProcId,
-		ExtraVars, ExtraVars, 
+polymorphism__make_typeclass_info_vars_2([], _ExistQVars,
+		_Context, ExtraVars, ExtraVars, 
 		ExtraGoals, ExtraGoals, 
-		ConstrainedTVars, ConstrainedTVars,
 		Info, Info).
-polymorphism__make_typeclass_info_vars_2([C|Cs], Subst, TypeSubst, ExistQVars,
-		Context, MaybePredProcId0, MaybePredProcId,
-		ExtraVars0, ExtraVars,
+polymorphism__make_typeclass_info_vars_2([C|Cs], ExistQVars,
+		Context, ExtraVars0, ExtraVars,
 		ExtraGoals0, ExtraGoals, 
-		ConstrainedTVars0, ConstrainedTVars,
 		Info0, Info) :-
-	polymorphism__make_typeclass_info_var(C, Subst, TypeSubst, ExistQVars,
-			Context, MaybePredProcId0, MaybePredProcId,
-			ExtraGoals0, ExtraGoals1, 
-			ConstrainedTVars0, ConstrainedTVars1,
+	polymorphism__make_typeclass_info_var(C, ExistQVars,
+			Context, ExtraGoals0, ExtraGoals1, 
 			Info0, Info1, MaybeExtraVar),
 	maybe_insert_var(MaybeExtraVar, ExtraVars0, ExtraVars1),
-	polymorphism__make_typeclass_info_vars_2(Cs, Subst, TypeSubst,
-			ExistQVars, Context, no, _,
+	polymorphism__make_typeclass_info_vars_2(Cs,
+			ExistQVars, Context, 
 			ExtraVars1, ExtraVars,
 			ExtraGoals1, ExtraGoals, 
-			ConstrainedTVars1, ConstrainedTVars,
 			Info1, Info).
 
 :- pred polymorphism__make_typeclass_info_var(class_constraint,
-	substitution, tsubst, existq_tvars, term__context,
-	maybe(hlds_class_proc), maybe(hlds_class_proc),
-	list(hlds_goal), list(hlds_goal), list(var), list(var),
+	existq_tvars, term__context,
+	list(hlds_goal), list(hlds_goal),
 	poly_info, poly_info, maybe(var)). 
-:- mode polymorphism__make_typeclass_info_var(in, in, in, in, in, in, out,
-	in, out, in, out, in, out, out) is det.
+:- mode polymorphism__make_typeclass_info_var(in, in, in, in, out,
+	in, out, out) is det.
 
-polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst, ExistQVars,
-		Context, MaybePredProcId0, MaybePredProcId,
-		ExtraGoals0, ExtraGoals, ConstrainedTVars0, ConstrainedTVars, 
+polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
+		Context, ExtraGoals0, ExtraGoals, 
 		Info0, Info, MaybeVar) :-
-	Constraint = constraint(ClassName, NewConstrainedTypes),
-	list__length(NewConstrainedTypes, ClassArity),
+	Constraint = constraint(ClassName, ConstrainedTypes),
+	list__length(ConstrainedTypes, ClassArity),
 	ClassId = class_id(ClassName, ClassArity),
-	term__vars_list(NewConstrainedTypes, NewConstrainedTVars),
-	list__append(NewConstrainedTVars, ConstrainedTVars0, ConstrainedTVars),
-	term__apply_substitution_to_list(NewConstrainedTypes, TypeSubst, 
-		ConstrainedTypes0),
-	% we need to maintain the invariant that types in class constraints
-	% do not contain any information in their term__context fields
-	strip_term_contexts(ConstrainedTypes0, ConstrainedTypes),
-	NewC = constraint(ClassName, ConstrainedTypes),
 
-	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet0, TypeInfoMap0, 
+	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeInfoMap0, 
 		TypeClassInfoMap0, Proofs, PredName, ModuleInfo),
 
 	(
-		map__search(TypeClassInfoMap0, NewC, Location)
+		map__search(TypeClassInfoMap0, Constraint, Location)
 	->
 			% We already have a typeclass_info for this constraint
 		ExtraGoals = ExtraGoals0,
 		Var = Location,
 		MaybeVar = yes(Var),
-		MaybePredProcId = no,
 		Info = Info0
 	;
 			% We don't have the typeclass_info as a parameter to
@@ -1687,169 +1737,112 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst, ExistQVars,
 			% somewhere else
 
 			% Work out how to make it
-		map__lookup(Proofs, NewC, Proof),
+		map__lookup(Proofs, Constraint, Proof),
 		(
 				% We have to construct the typeclass_info
 				% using an instance declaration
-			Proof = apply_instance(ProofInstanceDefn, InstanceNum),
+			Proof = apply_instance(InstanceNum),
 
-				% The subst has already been applied to these
-				% constraints in typecheck.m
-			ProofInstanceDefn = hlds_instance_defn(_,
-				InstanceConstraints, _, _, _, _, _),
+			module_info_instances(ModuleInfo, InstanceTable),
+			map__lookup(InstanceTable, ClassId, InstanceList),
+			list__index1_det(InstanceList, InstanceNum,
+				ProofInstanceDefn),
 
-			%
-			% Check whether the callee is a class method,
-			% and that this contraint is the first constraint
-			% in that callee's constraint list (the one for
-			% its own type class).
-			% If so, specialize the call by replacing the
-			% generic class method call with a direct call
-			% to the class method for this instance.
-			%
+			ProofInstanceDefn = hlds_instance_defn(_, _,
+				InstanceConstraints0, InstanceTypes0, _, _, 
+				InstanceTVarset, SuperClassProofs0),
+
+				% We can ignore the typevarset because all the
+				% type variables that are created are bound.
+				% When we call type_list_subsumes then apply
+				% the resulting bindings.
+			varset__merge_subst(TypeVarSet, InstanceTVarset,
+				_NewTVarset, RenameSubst),
+			term__apply_substitution_to_list(InstanceTypes0,
+				RenameSubst, InstanceTypes),
 			(
-				% check that this constraint is the
-				% first constraint in the callee's
-				% constraint list
-				MaybePredProcId0 = yes(PredProcId0),
-
-				% check that the called pred is a class method
-				PredProcId0 = hlds_class_proc(PredId0, _),
-				module_info_pred_info(ModuleInfo, PredId0,
-						PredInfo),
-				pred_info_get_markers(PredInfo, Markers),
-				check_marker(Markers, class_method),
-
-				% enabling this optimisation causes a bug
-				% where implied instances are concerned. 
-				% When the class method call is inlined, the
-				% extra typeclass_infos from the instance
-				% declaration are not included. Until that
-				% bug is fixed, we will disable the
-				% optimisation.
-				semidet_fail
+				type_list_subsumes(InstanceTypes,
+					ConstrainedTypes, InstanceSubst0)
 			->
-				% Get the class methods, and figure out
-				% the method number of this class method.
-				module_info_classes(ModuleInfo, ClassTable),
-				map__lookup(ClassTable, ClassId, ClassDefn),
-				ClassDefn = hlds_class_defn(_, _, ClassMethods,
-						_, _),
-				( list__nth_member_search(ClassMethods,
-						PredProcId0, MethodNum0) ->
-					MethodNum = MethodNum0
-				;
-					error("poly: nth_member_search failed")
-				),
-
-				% Get the instance methods, and lookup
-				% the pred for the corresponding method number.
-				% (NB. We can't use ProofInstanceDefn,
-				% because its MaybeInstanceMethods field
-				% has not been updated (is still `no').)
-				module_info_instances(ModuleInfo,
-					InstanceTable),
-				map__lookup(InstanceTable, ClassId,
-					InstanceDefns),
-				list__index1_det(InstanceDefns, InstanceNum,
-					InstanceDefn),
-				InstanceDefn = hlds_instance_defn(_, _, _, _,
-					MaybeInstanceMethods, _, _),
-				( MaybeInstanceMethods = yes(InstanceMethods0)
-				->
-					InstanceMethods = InstanceMethods0
-				;
-					error("poly: no instance methods")
-				),
-				list__index1_det(InstanceMethods, MethodNum,
-					InstanceMethod),
-				MaybePredProcId = yes(InstanceMethod),
-				MaybeVar = no,
-				ExtraGoals = ExtraGoals0,
-				Info = Info0
+				InstanceSubst = InstanceSubst0
 			;
+				error("poly: wrong instance decl")
+			),
 
-					% Make the type_infos for the types
-					% that are constrained by this. These
-					% are packaged in the typeclass_info
-				term__apply_substitution_to_list(
-					ConstrainedTypes, VarTypes0,
-					RenamedConstrainedTypes),
-				polymorphism__make_type_info_vars(
-					RenamedConstrainedTypes, ExistQVars,
-					Context, InstanceExtraTypeInfoVars,
-					TypeInfoGoals,
-					Info0, Info1),
+			apply_subst_to_constraint_list(RenameSubst,
+				InstanceConstraints0, InstanceConstraints1),
+			apply_rec_subst_to_constraint_list(InstanceSubst,
+				InstanceConstraints1, InstanceConstraints),
+			apply_subst_to_constraint_proofs(RenameSubst,
+				SuperClassProofs0, SuperClassProofs1),
+			apply_rec_subst_to_constraint_proofs(InstanceSubst,
+				SuperClassProofs1, SuperClassProofs),
 
-					% Make the typeclass_infos for the
-					% constraints from the context of the
-					% instance decl.
-				polymorphism__make_typeclass_info_vars_2(
-					InstanceConstraints, Subst, TypeSubst, 
-					ExistQVars, Context, no, _,
-					[], InstanceExtraTypeClassInfoVars, 
-					ExtraGoals0, ExtraGoals1, 
-					[], _,
-					Info1, Info2),
+				% Make the type_infos for the types
+				% that are constrained by this. These
+				% are packaged in the typeclass_info
+			polymorphism__make_type_info_vars(
+				ConstrainedTypes, ExistQVars, Context, 
+				InstanceExtraTypeInfoVars, TypeInfoGoals,
+				Info0, Info1),
 
-				polymorphism__construct_typeclass_info(
-					InstanceExtraTypeInfoVars, 
-					InstanceExtraTypeClassInfoVars, 
-					ClassId, InstanceNum,
-					ExistQVars,
-					Var, NewGoals, 
-					Info2, Info),
+				% Make the typeclass_infos for the
+				% constraints from the context of the
+				% instance decl.
+			polymorphism__make_typeclass_info_vars_2(
+				InstanceConstraints,
+				ExistQVars, Context,
+				[], InstanceExtraTypeClassInfoVars, 
+				ExtraGoals0, ExtraGoals1, 
+				Info1, Info2),
 
-				MaybeVar = yes(Var),
-				MaybePredProcId = no,
+			polymorphism__construct_typeclass_info(
+				InstanceExtraTypeInfoVars, 
+				InstanceExtraTypeClassInfoVars, 
+				ClassId, Constraint, InstanceNum,
+				ConstrainedTypes,
+				SuperClassProofs, ExistQVars, Var, NewGoals, 
+				Info2, Info),
 
-					% Oh, yuck. The type_info goals have
-					% already been reversed, so lets
-					% reverse them back.
-				list__reverse(TypeInfoGoals, RevTypeInfoGoals),
+			MaybeVar = yes(Var),
 
-				list__append(ExtraGoals1, RevTypeInfoGoals,
-					ExtraGoals2),
-				list__append(NewGoals, ExtraGoals2, ExtraGoals)
-			)
+				% Oh, yuck. The type_info goals have
+				% already been reversed, so lets
+				% reverse them back.
+			list__reverse(TypeInfoGoals, RevTypeInfoGoals),
+
+			list__append(ExtraGoals1, RevTypeInfoGoals,
+				ExtraGoals2),
+			list__append(NewGoals, ExtraGoals2, ExtraGoals)
 		;
 				% We have to extract the typeclass_info from
 				% another one
-			Proof = superclass(SubClassConstraint0),
+			Proof = superclass(SubClassConstraint),
 
 				% First create a variable to hold the new
 				% typeclass_info 
 			unqualify_name(ClassName, ClassNameString),
-			polymorphism__new_typeclass_info_var(VarSet0, VarTypes0,
-				ClassNameString, Var, VarSet1, VarTypes1),
+			polymorphism__new_typeclass_info_var(VarSet0,
+				VarTypes0, Constraint, ClassNameString,
+				Var, VarSet1, VarTypes1),
 
 			MaybeVar = yes(Var),
-			MaybePredProcId = no,
 
 				% Then work out where to extract it from
-			SubClassConstraint0 = 
-				constraint(SubClassName, SubClassTypes0),
-			term__apply_substitution_to_list(SubClassTypes0, Subst,
-				SubClassTypes1),
-			% we need to maintain the invariant that types in
-			% class constraints do not contain any information
-			% in their term__context fields
-			strip_term_contexts(SubClassTypes1, SubClassTypes),
 			SubClassConstraint = 
 				constraint(SubClassName, SubClassTypes),
 			list__length(SubClassTypes, SubClassArity),
 			SubClassId = class_id(SubClassName, SubClassArity),
 
-			Info1 = poly_info(VarSet1, VarTypes1, TypeVarSet0, 
+			Info1 = poly_info(VarSet1, VarTypes1, TypeVarSet, 
 				TypeInfoMap0, TypeClassInfoMap0, Proofs, 
 				PredName, ModuleInfo),
 
 				% Make the typeclass_info for the subclass
 			polymorphism__make_typeclass_info_var(
-				SubClassConstraint, Subst, TypeSubst, 
-				ExistQVars, Context, no, _,
+				SubClassConstraint,
+				ExistQVars, Context,
 				ExtraGoals0, ExtraGoals1, 
-				[], _,
 				Info1, Info2,
 				MaybeSubClassVar), 
 			( MaybeSubClassVar = yes(SubClassVar0) ->
@@ -1866,20 +1859,9 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst, ExistQVars,
 
 				% Work out which superclass typeclass_info to
 				% take
-			ToTerm = lambda([TheVar::in, TheTerm::out] is det,
-				(
-					TheTerm = term__variable(TheVar)
-				)),
-			list__map(ToTerm, SubClassVars, SubClassVarTerms),
-			(
-				type_list_subsumes(SubClassVarTerms,
-					SubClassTypes, SubTypeSubst0)
-			->
-				SubTypeSubst0 = SubTypeSubst
-			;
-				error("polymorphism__make_typeclass_info_var")
-			),
-			apply_rec_subst_to_constraint_list(SubTypeSubst,
+			map__from_corresponding_lists(SubClassVars,
+				SubClassTypes, SubTypeSubst),
+			apply_subst_to_constraint_list(SubTypeSubst,
 				SuperClasses0, SuperClasses),
 			(
 				list__nth_member_search(SuperClasses,
@@ -1904,18 +1886,22 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst, ExistQVars,
 				% inserting a call to
 				% superclass_from_typeclass_info in
 				% private_builtin.
+				% Note that superclass_from_typeclass_info
+				% does not need extra type_info arguments
+				% even though its declaration is polymorphic.
 
 				% Make the goal for the call
-			varset__init(Empty),
+			varset__init(DummyTVarSet0),
+			varset__new_var(DummyTVarSet0, TCVar, DummyTVarSet),
 			mercury_private_builtin_module(PrivateBuiltin),
 			ExtractSuperClass = qualified(PrivateBuiltin, 
 					  "superclass_from_typeclass_info"),
 			construct_type(qualified(PrivateBuiltin,
-					"typeclass_info") - 0,
-					[], TypeClassInfoType),
+				"typeclass_info") - 1, [term__variable(TCVar)],
+				TypeClassInfoType),
 			construct_type(unqualified("int") - 0, [], IntType),
 			get_pred_id_and_proc_id(ExtractSuperClass, predicate, 
-				Empty, 
+				DummyTVarSet, 
 				[TypeClassInfoType, IntType, TypeClassInfoType],
 				ModuleInfo, PredId, ProcId),
 			Call = call(PredId, ProcId, 
@@ -1941,21 +1927,18 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst, ExistQVars,
 	).
 
 :- pred polymorphism__construct_typeclass_info(list(var), list(var), class_id, 
-	int, existq_tvars, var, list(hlds_goal), poly_info, poly_info).
-:- mode polymorphism__construct_typeclass_info(in, in, in, in, in, out, out, 
-	in, out) is det.
+	class_constraint, int, 
+	list(type), map(class_constraint, constraint_proof),
+	existq_tvars, var, list(hlds_goal), poly_info, poly_info).
+:- mode polymorphism__construct_typeclass_info(in, in, in, in, in, in, in, in,
+	out, out, in, out) is det.
 
 polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
-		ClassId, InstanceNum, ExistQVars,
+		ClassId, Constraint, InstanceNum,
+		InstanceTypes, SuperClassProofs, ExistQVars,
 		NewVar, NewGoals, Info0, Info) :-
 
 	poly_info_get_module_info(Info0, ModuleInfo),
-
-	module_info_instances(ModuleInfo, InstanceTable),
-	map__lookup(InstanceTable, ClassId, InstanceList),
-	list__index1_det(InstanceList, InstanceNum, InstanceDefn),
-	InstanceDefn = hlds_instance_defn(_, _, InstanceTypes, _, _, _, 
-		SuperClassProofs),
 
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
@@ -1976,15 +1959,15 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 	unqualify_name(ClassName, ClassNameString),
 	polymorphism__new_typeclass_info_var(VarSet0, VarTypes0,
-		ClassNameString, BaseVar, VarSet1, VarTypes1),
-
-	base_typeclass_info__make_instance_string(InstanceTypes,
-		InstanceString),
+		Constraint, ClassNameString, BaseVar, VarSet1, VarTypes1),
 
 		% XXX I don't think we actually need to carry the module name
 		% around.
 	ModuleName = unqualified("some bogus module name"),
-	ConsId = base_typeclass_info_const(ModuleName, ClassId, InstanceString),
+	base_typeclass_info__make_instance_string(InstanceTypes,
+		InstanceString),
+	ConsId = base_typeclass_info_const(ModuleName, ClassId,
+		InstanceNum, InstanceString),
 	BaseTypeClassInfoTerm = functor(ConsId, []),
 
 		% create the construction unification to initialize the variable
@@ -2013,7 +1996,7 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 		% introduce a new variable
 	polymorphism__new_typeclass_info_var(VarSet1, VarTypes1,
-		ClassNameString, NewVar, VarSet, VarTypes),
+		Constraint, ClassNameString, NewVar, VarSet, VarTypes),
 
 		% create the construction unification to initialize the
 		% variable
@@ -2038,7 +2021,7 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
-	InstConsId = cons( qualified(PrivateBuiltin, "typeclass_info"), 
+	InstConsId = cons(qualified(PrivateBuiltin, "typeclass_info"), 
 		NumArgVars),
 	instmap_delta_from_assoc_list(
 		[NewVar - 
@@ -2066,35 +2049,43 @@ polymorphism__get_arg_superclass_vars(ClassDefn, InstanceTypes,
 
 	poly_info_get_proofs(Info0, Proofs),
 
-	poly_info_get_varset(Info0, VarSet0),
-	ClassDefn = hlds_class_defn(SuperClasses, ClassVars, _, ClassVarSet, _),
+	poly_info_get_typevarset(Info0, TVarSet0),
+	ClassDefn = hlds_class_defn(SuperClasses0, ClassVars0, 
+		_, ClassTVarSet, _),
+	varset__merge_subst(TVarSet0, ClassTVarSet, TVarSet1, Subst),
+	poly_info_set_typevarset(TVarSet1, Info0, Info1),
+
+	map__apply_to_list(ClassVars0, Subst, ClassVars1),
+	term__vars_list(ClassVars1, ClassVars),
 	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
-	varset__merge_subst(VarSet0, ClassVarSet, VarSet1, Subst),
-	poly_info_set_varset(VarSet1, Info0, Info1),
+
+	apply_subst_to_constraint_list(Subst, SuperClasses0, SuperClasses1),
+	apply_rec_subst_to_constraint_list(TypeSubst, SuperClasses1,
+		SuperClasses),
 
 	poly_info_set_proofs(SuperClassProofs, Info1, Info2),
-	polymorphism__make_superclasses_from_proofs(SuperClasses, Subst,
-		TypeSubst, ExistQVars, [], NewGoals, Info2, Info3,
+	polymorphism__make_superclasses_from_proofs(SuperClasses,
+		ExistQVars, [], NewGoals, Info2, Info3,
 		[], NewVars),
 
 	poly_info_set_proofs(Proofs, Info3, Info).
 
 
 :- pred polymorphism__make_superclasses_from_proofs(list(class_constraint), 
-	substitution, tsubst, existq_tvars, list(hlds_goal), list(hlds_goal), 
+	existq_tvars, list(hlds_goal), list(hlds_goal), 
 	poly_info, poly_info, list(var), list(var)).
-:- mode polymorphism__make_superclasses_from_proofs(in, in, in, in, in, out, 
+:- mode polymorphism__make_superclasses_from_proofs(in, in, in, out, 
 	in, out, in, out) is det.
 
-polymorphism__make_superclasses_from_proofs([], _, _, _,
+polymorphism__make_superclasses_from_proofs([], _,
 		Goals, Goals, Info, Info, Vars, Vars).
-polymorphism__make_superclasses_from_proofs([C|Cs], Subst, TypeSubst,
+polymorphism__make_superclasses_from_proofs([C|Cs],
 		ExistQVars, Goals0, Goals, Info0, Info, Vars0, Vars) :-
-	polymorphism__make_superclasses_from_proofs(Cs, Subst, TypeSubst,
+	polymorphism__make_superclasses_from_proofs(Cs,
 		ExistQVars, Goals0, Goals1, Info0, Info1, Vars0, Vars1),
 	term__context_init(Context),
-	polymorphism__make_typeclass_info_var(C, Subst, TypeSubst,
-		ExistQVars, Context, no, _, Goals1, Goals, [], _, Info1, Info,
+	polymorphism__make_typeclass_info_var(C,
+		ExistQVars, Context, Goals1, Goals, Info1, Info,
 		MaybeVar),
 	maybe_insert_var(MaybeVar, Vars1, Vars).
 
@@ -2393,12 +2384,9 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 
 	CountUnifyGoal = CountUnify - CountGoalInfo.
 
-:- pred polymorphism__get_special_proc(builtin_type, type, special_pred_id,
-				module_info, sym_name, pred_id, proc_id).
-:- mode polymorphism__get_special_proc(in, in, in, in, out, out, out) is det.
-
-polymorphism__get_special_proc(TypeCategory, Type, SpecialPredId, ModuleInfo,
+polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 			PredName, PredId, ProcId) :-
+	classify_type(Type, ModuleInfo, TypeCategory),
 	( TypeCategory = user_type ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
 		( type_to_type_id(Type, TypeId, _TypeArgs) ->
@@ -2452,7 +2440,7 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 	->
 		PredId = PredId1
 	;
-		error("polymorphism__get_pred_id: pred_id lookup failed")
+		error("polymorphism__get_builtin_pred_id: pred_id lookup failed")
 	).
 
 	% Create a unification for a type_info or base_type_info variable:
@@ -2608,7 +2596,7 @@ polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
 	varset__name_var(VarSet1, Var, Name, VarSet),
 	mercury_private_builtin_module(PrivateBuiltin),
 	construct_type(qualified(PrivateBuiltin, Symbol) - 1, [Type],
-			UnifyPredType),
+		UnifyPredType),
 	map__set(VarTypes0, Var, UnifyPredType, VarTypes).
 
 %---------------------------------------------------------------------------%
@@ -2637,58 +2625,51 @@ extract_type_info(Type, TypeVar, TypeClassInfoVar, Index, Goals,
 
 extract_type_info_2(Type, _TypeVar, TypeClassInfoVar, Index, ModuleInfo, Goals,
 		TypeInfoVar, VarSet0, VarTypes0, TypeInfoLocns0,
-		VarSet, VarTypes, TypeInfoLocns) :-
+		VarSet, VarTypes, TypeInfoLocns0) :-
 
 		% We need a tvarset to pass to get_pred_id_and_proc_id
-	varset__init(TVarSet0),
-	varset__new_var(TVarSet0, TVar, TVarSet),
+	varset__init(DummyTVarSet0),
 
 	mercury_private_builtin_module(PrivateBuiltin),
 	ExtractTypeInfo = qualified(PrivateBuiltin,
 				"type_info_from_typeclass_info"),
-	construct_type(qualified(PrivateBuiltin, "typeclass_info") - 0, [],
-		TypeClassInfoType),
+
+		% We pretend that the `constraint' field of the
+		% `typeclass_info' type is a type variable for the purposes of
+		% locating `private_builtin:type_info_from_typeclass_info'.
+	varset__new_var(DummyTVarSet0, DummyTypeClassTVar, DummyTVarSet1),
+	construct_type(qualified(PrivateBuiltin, "typeclass_info") - 1,
+		[term__variable(DummyTypeClassTVar)], TypeClassInfoType),
+
 	construct_type(unqualified("int") - 0, [], IntType),
+
+	varset__new_var(DummyTVarSet1, DummyTVar, DummyTVarSet),
 	construct_type(qualified(PrivateBuiltin, "type_info") - 1,
-		[term__variable(TVar)], TypeInfoType),
-	get_pred_id_and_proc_id(ExtractTypeInfo, predicate, TVarSet, 
+		[term__variable(DummyTVar)], TypeInfoType),
+	get_pred_id_and_proc_id(ExtractTypeInfo, predicate, DummyTVarSet, 
 		[TypeClassInfoType, IntType, TypeInfoType],
 		ModuleInfo, PredId, ProcId),
+	
 	polymorphism__make_count_var(Index, VarSet0, VarTypes0, IndexVar,
 		IndexGoal, VarSet1, VarTypes1),
 
 	polymorphism__new_type_info_var(Type, "type_info", VarSet1, VarTypes1,
-		TypeInfoVar, VarSet2, VarTypes2),
+		TypeInfoVar, VarSet, VarTypes),
 
-		% We have to put an extra type_info at the front of the call to
-		% type_info_from_typeclass_info, and pass it a bogus value
-		% because the pred has a type parameter... even though we are
-		% actually _extracting_ the type_info.  Existential typing of
-		% type_info_from_typeclass_info would fix this.
-	polymorphism__new_type_info_var(Type, "type_info", VarSet2, VarTypes2,
-		DummyTypeInfoVar, VarSet, VarTypes),
-
-		% Now we put a dummy value in the dummy type-info variable.
-	polymorphism__init_with_int_constant(DummyTypeInfoVar, 0,
-		DummyTypeInfoGoal),
-
-		% Make the goal info for the call
-	set__list_to_set([DummyTypeInfoVar, TypeClassInfoVar, IndexVar,
-		TypeInfoVar], NonLocals),
+		% Make the goal info for the call.
+		% `type_info_from_typeclass_info' does not require an extra
+		% type_info argument even though its declaration is
+		% polymorphic.
+	set__list_to_set([TypeClassInfoVar, IndexVar, TypeInfoVar], NonLocals),
 	instmap_delta_from_assoc_list([TypeInfoVar - ground(shared, no)],
 		InstmapDelta),
 	goal_info_init(NonLocals, InstmapDelta, det, GoalInfo),
 
 	Call = call(PredId, ProcId, 
-		[DummyTypeInfoVar, TypeClassInfoVar, IndexVar, TypeInfoVar],
+		[TypeClassInfoVar, IndexVar, TypeInfoVar],
 		not_builtin, no, ExtractTypeInfo) - GoalInfo,
 
-	Goals = [IndexGoal, DummyTypeInfoGoal, Call],
-
-		% Update the location of the type_info so that we don't go to
-		% the bother of re-extracting it.
-	map__det_update(TypeInfoLocns0, TVar, type_info(TypeInfoVar),
-		TypeInfoLocns).
+	Goals = [IndexGoal, Call].
 
 %-----------------------------------------------------------------------------%
 
@@ -2735,8 +2716,8 @@ polymorphism__make_typeclass_info_head_vars_2([C|Cs],
 
 		% Make a new variable to contain the dictionary for this
 		% typeclass constraint
-	polymorphism__new_typeclass_info_var(VarSet0, VarTypes0, ClassName,
-		Var, VarSet1, VarTypes1),
+	polymorphism__new_typeclass_info_var(VarSet0, VarTypes0, C,
+		ClassName, Var, VarSet1, VarTypes1),
 	ExtraHeadVars1 = [Var | ExtraHeadVars0],
 
 		% Find all the type variables in the constraint, and remember
@@ -2789,21 +2770,76 @@ polymorphism__make_typeclass_info_head_vars_2([C|Cs],
 is_pair(_).
 
 :- pred polymorphism__new_typeclass_info_var(varset, map(var, type), 
-		string, var, 
+		class_constraint, string, var, 
 		varset, map(var, type)).
-:- mode polymorphism__new_typeclass_info_var(in, in, in, out, out, out) is det.
+:- mode polymorphism__new_typeclass_info_var(in, in,
+		in, in, out, out, out) is det.
 
-polymorphism__new_typeclass_info_var(VarSet0, VarTypes0, ClassName, 
-		Var, VarSet, VarTypes) :-
+polymorphism__new_typeclass_info_var(VarSet0, VarTypes0, Constraint,
+		ClassString, Var, VarSet, VarTypes) :-
 	% introduce new variable
 	varset__new_var(VarSet0, Var, VarSet1),
-	string__append("TypeClassInfo_for_", ClassName, Name),
+	string__append("TypeClassInfo_for_", ClassString, Name),
 	varset__name_var(VarSet1, Var, Name, VarSet),
 
-	mercury_private_builtin_module(PrivateBuiltin),
-	construct_type(qualified(PrivateBuiltin, "typeclass_info") - 0,
-					[], DictionaryType),
+	polymorphism__build_typeclass_info_type(Constraint, DictionaryType),
 	map__set(VarTypes0, Var, DictionaryType, VarTypes).
+
+:- pred polymorphism__build_typeclass_info_type(class_constraint, (type)).
+:- mode polymorphism__build_typeclass_info_type(in, out) is det.
+
+polymorphism__build_typeclass_info_type(Constraint, DictionaryType) :-
+	Constraint = constraint(SymName, ArgTypes),
+
+	% `constraint/n' is not really a type - it is a representation of a
+	% class constraint about which a typeclass_info holds information.
+	% `type_util:type_to_type_id' treats it as a type variable.
+	construct_qualified_term(SymName, [], ClassNameTerm),
+	mercury_private_builtin_module(PrivateBuiltin),
+	construct_qualified_term(qualified(PrivateBuiltin, "constraint"),
+		[ClassNameTerm | ArgTypes], ConstraintTerm),
+
+	construct_type(qualified(PrivateBuiltin, "typeclass_info") - 1,
+		[ConstraintTerm], DictionaryType).
+
+%---------------------------------------------------------------------------%
+
+polymorphism__typeclass_info_class_constraint(TypeClassInfoType, Constraint) :-
+	mercury_private_builtin_module(PrivateBuiltin),
+	type_to_type_id(TypeClassInfoType,
+		qualified(PrivateBuiltin, "typeclass_info") - 1,
+		[ConstraintTerm]),
+
+	% type_to_type_id fails on `constraint/n', so we use
+	% `sym_name_and_args' instead.
+	mercury_private_builtin_module(PrivateBuiltin),
+	sym_name_and_args(ConstraintTerm,
+		qualified(PrivateBuiltin, "constraint"),
+		[ClassNameTerm | ArgTypes]),
+	sym_name_and_args(ClassNameTerm, ClassName, []),
+	Constraint = constraint(ClassName, ArgTypes).
+
+polymorphism__type_info_type(TypeInfoType, Type) :-
+	mercury_private_builtin_module(PrivateBuiltin),
+	type_to_type_id(TypeInfoType,
+		qualified(PrivateBuiltin, "type_info") - 1,
+		[Type]).
+
+%---------------------------------------------------------------------------%
+
+polymorphism__is_typeclass_info_manipulator(ModuleInfo,
+		PredId, TypeClassManipulator) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	mercury_private_builtin_module(PrivateBuiltin),
+	pred_info_module(PredInfo, PrivateBuiltin),
+	pred_info_name(PredInfo, PredName),
+	(
+		PredName = "type_info_from_typeclass_info",
+		TypeClassManipulator = type_info_from_typeclass_info
+	;
+		PredName = "superclass_from_typeclass_info",
+		TypeClassManipulator = superclass_from_typeclass_info
+	).
 
 %---------------------------------------------------------------------------%
 

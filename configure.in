@@ -57,6 +57,8 @@ NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
 AC_SUBST(PREFIX)
 AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
+DEFAULT_MERCURY_DEBUGGER_INIT_DIR=$LIBDIR/mdb
+AC_SUBST(DEFAULT_MERCURY_DEBUGGER_INIT_DIR)
 #-----------------------------------------------------------------------------#
 case "$host" in
 	mips-sgi-irix5.*)
@@ -79,11 +81,13 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
 		:- implementation.
-		main --> io__write_string("Hello, world\n").
+		main --> 
+			io__write_string(promise_only_solution(hello)).
 
-		:- impure pred foo(int).
-		:- mode foo(in) is semidet.
-		:- pragma c_code(foo(_X::in), "").
+		:- pred hello(string).
+		:- mode hello(out) is cc_multi.
+		hello("Hello, world\n").
+		hello("Hello, world\n").
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
@@ -202,10 +206,10 @@ MERCURY_MSG("looking for a way to create temporary files...")
 AC_PATH_PROG(MKTEMP,mktemp)
 if test "$MKTEMP" != ""; then
 	# check that it really works
-	TMPFILE=`mktemp /tmp/configure.XXXXXX`
+	TMPFILE="`mktemp /tmp/configure.XXXXXX < /dev/null`"
 	case "$TMPFILE" in 
-		"") MKTEMP="" ;;
-		*) rm -f $TMPFILE ;;
+		/tmp/configure.*) rm -f $TMPFILE ;;
+		*) MKTEMP="" ;;
 	esac
 fi
 if test "$MKTEMP" = ""; then
@@ -375,9 +379,9 @@ fi
 #
 # check the basics of sigcontext_struct
 #
-AC_MSG_CHECKING(for working \`sigcontext_struct')
-AC_CACHE_VAL(mercury_cv_sigcontext_struct,
-mercury_cv_sigcontext_struct=no
+AC_MSG_CHECKING(for working \`sigcontext_struct' in second arg)
+AC_CACHE_VAL(mercury_cv_sigcontext_struct_2arg,
+mercury_cv_sigcontext_struct_2arg=no
 AC_TRY_RUN([
 /* see runtime/memory.c for documentation of this code */
 
@@ -390,6 +394,8 @@ AC_TRY_RUN([
 #ifdef HAVE_ASM_SIGCONTEXT
 #include <asm/sigcontext.h>
 #endif
+
+#include "mercury_faultaddr.h"
 
 #include <stdio.h>
 
@@ -407,13 +413,82 @@ int main() {
 }
 
 void handler(int signum, struct sigcontext_struct context) {
-	if (signum == SIGSEGV && (int *) context.cr2 == FAULT_ADDRESS) {
+	int *addr;
+	addr = (int *) MR_GET_FAULT_ADDR(context);
+	if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
 		exit(0);
 	} else {
 		exit(1);
 	}
-}], [mercury_cv_sigcontext_struct=yes], [true], [true]))
-AC_MSG_RESULT($mercury_cv_sigcontext_struct)
+}], [mercury_cv_sigcontext_struct_2arg=yes], [true], [true]))
+AC_MSG_RESULT($mercury_cv_sigcontext_struct_2arg)
+
+if test $mercury_cv_sigcontext_struct_2arg = no; then
+	#
+	# check for a sigcontext_struct in the third argument of
+	# the signal handler (Linux-68k has this).
+	#
+	AC_MSG_CHECKING(for working \`sigcontext_struct' in third arg)
+	AC_CACHE_VAL(mercury_cv_sigcontext_struct_3arg,
+	mercury_cv_sigcontext_struct_3arg=no
+
+	AC_TRY_RUN([
+	/* see runtime/mercury_memory.c for documentation of this code */
+
+	#define sigcontext_struct sigcontext
+
+	#define __KERNEL__
+	#include <signal.h>
+	#undef __KERNEL__
+
+	#ifdef HAVE_ASM_SIGCONTEXT
+	#include <asm/sigcontext.h>
+	#endif
+
+	#include "mercury_faultaddr.h"
+
+	#include <stdio.h>
+
+	extern void handler(int signum, int code, struct
+		sigcontext_struct info);
+
+	#define FAULT_ADDRESS ((int *)112)
+
+	int main() {
+		signal(SIGSEGV, (void (*)(int))handler);
+
+		/* provoke a SIGSEGV */
+		(*FAULT_ADDRESS)++;
+
+		exit(1);
+	}
+
+	void handler(int signum, int code, struct sigcontext_struct context) {
+		int *addr;
+		addr = (int *) MR_GET_FAULT_ADDR(context);
+		if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
+			exit(0);
+		} else {
+			exit(1);
+		}
+	}], [mercury_cv_sigcontext_struct_3arg=yes], [true], [true]))
+	AC_MSG_RESULT($mercury_cv_sigcontext_struct_3arg)
+else
+	mercury_cv_sigcontext_struct_3arg=no
+fi
+
+mercury_cv_sigcontext_struct=no
+
+if test $mercury_cv_sigcontext_struct_2arg = yes; then
+	mercury_cv_sigcontext_struct=yes
+	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT_2ARG)
+fi
+
+if test $mercury_cv_sigcontext_struct_3arg = yes; then
+	mercury_cv_sigcontext_struct=yes
+	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT_3ARG)
+fi
+
 if test $mercury_cv_sigcontext_struct = yes; then
 	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT)
 	AC_DEFINE(HAVE_SIGINFO)
@@ -437,9 +512,16 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	#include <asm/sigcontext.h>
 	#endif
 
+	#include "mercury_faultaddr.h"
+
 	#include <stdio.h>
 
-	extern void handler(int signum, struct sigcontext_struct info);
+	#if HAVE_SIGCONTEXT_STRUCT_3ARG
+	extern void handler(int signum, int code, 
+			struct sigcontext_struct context);
+	#else
+	extern void handler(int signum, struct sigcontext_struct context);
+	#endif
 
 	#define FAULT_ADDRESS ((int *)112)
 
@@ -452,11 +534,16 @@ if test $mercury_cv_sigcontext_struct = yes; then
 		exit(1);
 	}
 
-	void handler(int signum, struct sigcontext_struct info) {
-		if (signum == SIGSEGV &&
-			(int *) info.cr2 == FAULT_ADDRESS &&
-			(long) info.eip != 0)
-		{
+	#if HAVE_SIGCONTEXT_STRUCT_3ARG
+	void handler(int signum, int code, struct sigcontext_struct context) {
+	#else
+	void handler(int signum, struct sigcontext_struct context) {
+	#endif
+		int *addr;
+		long pc;
+		addr = (int *) MR_GET_FAULT_ADDR(context);
+		pc = (long) context.eip;
+		if (signum == SIGSEGV && addr == FAULT_ADDRESS && pc != 0) {
 			exit(0);
 		} else {
 			exit(1);
@@ -740,7 +827,7 @@ if test "$mercury_cv_low_tag_bits" -lt 2; then
 	else
 		MERCURY_MSG("rebuilding with fewer tag bits")
 		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c profiler/*.c
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 if test "$mercury_cv_low_tag_bits" -gt 2; then
@@ -750,7 +837,7 @@ if test "$mercury_cv_low_tag_bits" -gt 2; then
 	else
 		MERCURY_MSG("rebuilding with extra tag bits")
 		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c profiler/*.c
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
@@ -864,7 +951,7 @@ if test "$mercury_cv_unboxed_floats" = yes; then
 	else
 		MERCURY_MSG("rebuilding with unboxed floats")
 		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c profiler/*.c
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 if test "$mercury_cv_unboxed_floats" = yes; then
@@ -1104,6 +1191,20 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		mercury_cv_asm_labels=no
 		mercury_cv_gcc_labels=no
 		;;
+	sparc*)
+		case "`$CC --version`" in
+		    egcs*)
+		    	# I don't know if _both_ of these are needed
+			CFLAGS_FOR_GOTOS="-fno-gcse -fno-function-cse"
+			;;
+		    gcc-2.8*)
+			AC_MSG_WARN(*** Mercury might not work with " \
+				"gcc 2.8 on sparc!)
+			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
+			CFLAGS_FOR_GOTOS="-fno-function-cse"
+			;;
+		esac
+		;;
 esac
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)
@@ -1331,7 +1432,7 @@ if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
 		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
 		MERCURY_MSG("compiler and library will be rebuilt with new grade")
 		MERCURY_MSG("installation may take a long time")
-		rm -f library/*.c compiler/*.c profiler/*.c
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 else
 	MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
@@ -1497,6 +1598,34 @@ if test $mercury_cv_cannot_grok_asm_type_directive = "yes"; then
 	AC_DEFINE(MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE)
 fi
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
+AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
+AC_TRY_RUN([
+changequote(<<,>>) 
+
+/* USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
+/* We define USE_GCC_NONLOCAL_GOTOS because some platforms (e.g. SPARCs) */
+/* cannot have USE_GCC_GLOBAL_REGISTERS without it. */
+#define	USE_GCC_GLOBAL_REGISTERS
+#define USE_GCC_NONLOCAL_GOTOS
+#include "mercury_imp.h"
+#include "trace/mercury_trace_spy.h"
+
+MR_Spy_Point	spied_procs[2];
+
+int main() {
+	spied_procs[1] = spied_procs[0];
+	exit(0);
+changequote([,]) 
+}],
+[mercury_cv_cannot_use_structure_assignment=no],
+[mercury_cv_cannot_use_structure_assignment=yes],
+[mercury_cv_cannot_use_structure_assignment=yes]))
+AC_MSG_RESULT($mercury_cv_cannot_use_structure_assignment)
+if test $mercury_cv_cannot_use_structure_assignment = "yes"; then
+	AC_DEFINE(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT)
+fi
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # We ought to use $target here rather than $host - but we don't
 # support cross-compilation at the moment anyhow.
@@ -1516,6 +1645,10 @@ USE_DLLS=no
 
 case "$host" in
 	i?86-*-linux|i?86-*-linux-gnu)
+		AC_MSG_RESULT(yes)
+		EXT_FOR_SHARED_LIB=so
+		;;
+	m68*-linux|m68*-linux-gnu)
 		AC_MSG_RESULT(yes)
 		EXT_FOR_SHARED_LIB=so
 		;;
@@ -1621,9 +1754,24 @@ case "$host" in
 		;;
 esac
 
+#
+# This sets the default value of RM_C, which should be either `rm' to
+# remove the intermediate C files, or `:' to keep them.
+#
+# If RM_C is set to `rm', then unfortunately Mmake needs to invoke
+# make recursively, and this causes several problems:
+#	(1) it causes performance problems, particularly on MS-Windows
+#	(2) it can break parallel makes, because there are race
+#           conditions involved when you invoke make recursively
+#	    in a parallel make
+#
+# Therefore by default we currently keep the intermediate C files.
+#
+DEFAULT_RM_C=:
+
 case $EXT_FOR_PIC_OBJECTS in
 	o)
-		LIBRARY_RM_C=rm
+		LIBRARY_RM_C=$DEFAULT_RM_C
 		;;
 	*)
 		# If we're going to be building both `.pic_o' files
@@ -1645,6 +1793,7 @@ AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
+AC_SUBST(DEFAULT_RM_C)
 AC_SUBST(LIBRARY_RM_C)
 if test $USE_DLLS = "yes"; then
 	AC_DEFINE(USE_DLLS)
@@ -1663,15 +1812,17 @@ AC_SUBST(BOOTSTRAP_MC)
 top=`pwd`
 INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
 PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
+FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
+AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
-scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
+scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
-scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
-scripts/mkfifo_using_mknod bindist/bindist.build_vars
+scripts/mdb scripts/mdbrc scripts/msc scripts/msl scripts/msp
+scripts/sicstus_conv scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
 for header in $CONFIG_HEADERS ; do
 	if test "$header" = "runtime/mercury_conf.h"; then

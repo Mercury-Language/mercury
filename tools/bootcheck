@@ -24,6 +24,10 @@ Options:
 		Copy the runtime directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
+	-g, --copy-boehm-gc
+		Copy the bohem_gc directory instead of linking it.
+		This is necessary if one wants to bootcheck a grade
+		that is not compatible with the standard one.
 	-p, --copy-profiler
 		Copy the profiler directory instead of linking it.
 		This is sometimes necessary for bootstrapping
@@ -62,12 +66,25 @@ outfile=""
 runtests=true
 do_bootcheck=true
 copy_runtime=false
+copy_boehm_gc=false
 copy_profiler=false
 keep_stage_2=false
 keep_stage_3=false
 keep_stage_2_sicstus=false
 test_sicstus=false
-use_subdirs=${MMAKE_USE_SUBDIRS=no}
+if [ -d compiler/Mercury ]; then
+	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
+else
+	use_subdirs=${MMAKE_USE_SUBDIRS=no}
+fi
+
+# If you change these, you will also need to change scripts/ml.in,
+# scripts/c2init.in, Mmake.common.in, tools/binary, tools/binary_step
+# and tools/linear.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+TRACE_LIB_NAME=mer_trace
+BROWSER_LIB_NAME=mer_browser
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -104,6 +121,9 @@ while [ $# -gt 0 ]; do
 
 	-r|--copy-runtime)
 		copy_runtime=true ;;
+
+	-g|--copy-boehm-gc)
+		copy_boehm_gc=true ;;
 
 	-s|--sicstus)
 		test_sicstus=true ;;
@@ -158,7 +178,7 @@ export MMAKE_USE_SUBDIRS
 
 # Turn off the debugger, since accidentally leaving it on will result
 # in user interaction every time we any any version of the compiler
-# that wwas compiled with tracing. This has happened to me accidentally 
+# that was compiled with tracing. This has happened to me accidentally 
 # one too many times - zs.
 if echo $MERCURY_OPTIONS | grep '\-Di' > /dev/null
 then
@@ -243,7 +263,13 @@ then
 	ln -s $root/library/[m-z]*.m .
 	ln -s $root/library/*.nl .
 	cp $root/library/Mmake* .
-	ln -s $root/library/libmercury.init .
+	ln -s $root/library/$STD_LIB_NAME.init .
+	cd $root/stage2_sicstus
+	mkdir browser
+	cd browser
+	ln -s $root/browser/*.m .
+	cp $root/browser/Mmake* .
+	ln -s $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage2_sicstus
 	if "$copy_runtime"
 	then
@@ -258,14 +284,38 @@ then
 		cp $root/runtime/Mmake* .
 		ln -s $root/runtime/machdeps .
 		cd $root/stage2_sicstus
+		rm trace
+		mkdir trace
+		cd trace
+		ln -s $root/trace/*.h .
+		ln -s $root/trace/*.c .
+		cp $root/trace/Mmake* .
+		cd $root/stage2_sicstus
 	else
 		ln -s $root/runtime .
+		ln -s $root/trace .
 	fi
-	ln -s $root/boehm_gc .
+	if "$copy_boehm_gc"
+	then
+		# Remove symbolic link to the stage 1 boehm_gc if it's present,
+		# which it can be with the -2 option.
+		rm boehm_gc
+		mkdir boehm_gc
+		cd boehm_gc
+		ln -s $root/boehm_gc/*.h .
+		ln -s $root/boehm_gc/*.c .
+		ln -s $root/boehm_gc/*.s .
+		ln -s $root/boehm_gc/includes .
+		cp $root/boehm_gc/Mmake* .
+		cp $root/boehm_gc/Makefile .
+		cd $root/stage2_sicstus
+	else
+		ln -s $root/boehm_gc .
+	fi
 	ln -s $root/doc .
 	ln -s $root/scripts .
 	ln -s $root/util .
-	if test "$copy_profiler" = "true"
+	if "$copy_profiler"
 	then
 		mkdir profiler
 		cd profiler
@@ -292,8 +342,8 @@ then
 
 	if
 		cd stage2_sicstus &&
-		mmake $mmake_opts depend_library depend_compiler \
-			depend_profiler &&
+		mmake $mmake_opts depend_library depend_browser \
+			depend_compiler depend_profiler &&
 		cd $root
 	then
 		echo "building of SICStus stage 2 dependencies successful"
@@ -320,6 +370,17 @@ then
 	cd $root
 
 	if
+		cd stage2_sicstus/browser &&
+		mmake $mmake_opts $jfactor cs
+	then
+		echo "building of SICStus stage 2 browser successful"
+	else
+		echo "building of SICStus stage 2 browser not successful"
+		exit 1
+	fi
+	cd $root
+
+	if
 		cd stage2_sicstus/compiler &&
 		mmake $mmake_opts $jfactor cs
 	then
@@ -338,7 +399,7 @@ then
 		exec > "$outfile"	# redirect stdout to $outfile
 	fi
 
-	for dir in library compiler; do
+	for dir in library browser compiler; do
 	    for file in stage2/$dir/${cs_subdir}*.c; do
 		diff -u $file \
 			stage2_sicstus/${cs_subdir}$dir/`basename $file` ||
@@ -364,7 +425,6 @@ then
 		/bin/rm -fr $root/stage2_sicstus/.[a-zA-Z]* < /dev/null
 		exit 0
 	fi
-
 fi
 
 if $do_bootcheck
@@ -374,6 +434,8 @@ then
 		echo "building of stage 1 successful"
 	else
 		cd $root/library;
+		mmake depend
+		cd $root/browser;
 		mmake depend
 		cd $root/compiler;
 		mmake depend
@@ -434,10 +496,19 @@ then
 	ln -s $root/library/[m-z]*.m .
 	ln -s $root/library/*.nl .
 	cp $root/library/Mmake* .
-	ln -s $root/library/libmercury.init .
+	ln -s $root/library/$STD_LIB_NAME.init .
 	cd $root/stage2
-	if test "$copy_runtime" = "true"
+	mkdir browser
+	cd browser
+	ln -s $root/browser/*.m .
+	cp $root/browser/Mmake* .
+	ln -s $root/browser/$BROWSER_LIB_NAME.init .
+	cd $root/stage2
+	if "$copy_runtime"
 	then
+		# Remove symbolic link to the stage 1 runtime if it's present,
+		# which it can be with the -2 option.
+		rm runtime
 		mkdir runtime
 		cd runtime
 		ln -s $root/runtime/*.h .
@@ -446,14 +517,36 @@ then
 		cp $root/runtime/Mmake* .
 		ln -s $root/runtime/machdeps .
 		cd $root/stage2
+		rm trace
+		mkdir trace
+		cd trace
+		ln -s $root/trace/*.h .
+		ln -s $root/trace/*.c .
+		cp $root/trace/Mmake* .
+		cd $root/stage2
 	else
 		ln -s $root/runtime .
+		ln -s $root/trace .
 	fi
-	ln -s $root/boehm_gc .
+	if "$copy_boehm_gc"
+	then
+		mkdir boehm_gc
+		cd boehm_gc
+		ln -s $root/boehm_gc/*.h .
+		ln -s $root/boehm_gc/*.c .
+		ln -s $root/boehm_gc/*.s .
+		ln -s $root/boehm_gc/includes .
+		cp $root/boehm_gc/Mmake* .
+		cp $root/boehm_gc/Makefile .
+		ln -s $root/boehm_gc/machdeps .
+		cd $root/stage2
+	else
+		ln -s $root/boehm_gc .
+	fi
 	ln -s $root/doc .
 	ln -s $root/scripts .
 	ln -s $root/util .
-	if test "$copy_profiler" = "true"
+	if "$copy_profiler"
 	then
 		mkdir profiler
 		cd profiler
@@ -486,8 +579,8 @@ then
 		exit 1
 	fi
 
-	if (cd stage2 && mmake $mmake_opts depend_library depend_compiler \
-		depend_profiler)
+	if (cd stage2 && mmake $mmake_opts depend_library depend_browser \
+		depend_compiler depend_profiler)
 	then
 		echo "building of stage 2 dependencies successful"
 	else
@@ -510,6 +603,22 @@ then
 		exit 1
 	fi
 
+	if (cd stage2/browser && mmake $mmake_opts $jfactor RM_C=: library)
+	then
+		echo "building of stage 2 browser successful"
+	else
+		echo "building of stage 2 browser not successful"
+		exit 1
+	fi
+
+	if (cd stage2 && mmake $mmake_opts $jfactor trace)
+	then
+		echo "building of stage 2 trace successful"
+	else
+		echo "building of stage 2 trace not successful"
+		exit 1
+	fi
+
 	if (cd stage2/compiler && mmake $mmake_opts $jfactor RM_C=: mercury_compile)
 	then
 		echo "building of stage 2 compiler successful"
@@ -529,15 +638,14 @@ then
 		exit 1
 	fi
 
+	# We can remove the library object files now,
+	# but we will keep the compiler objects for a while longer
 	if $keep_objs
 	then
 		true
 	else
 		/bin/rm -f $root/stage2/library/[a-l]*.o < /dev/null
 		/bin/rm -f $root/stage2/library/[m-z]*.o < /dev/null
-		/bin/rm -f $root/stage2/compiler/[a-l]*.o < /dev/null
-		/bin/rm -f $root/stage2/compiler/[i-s]*.o < /dev/null
-		/bin/rm -f $root/stage2/compiler/[t-z]*.o < /dev/null
 	fi
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
@@ -580,11 +688,18 @@ then
 	ln -s $root/library/[m-z]*.m .
 	ln -s $root/library/*.nl .
 	cp $root/library/Mmake* .
-	ln -s $root/library/libmercury.init .
+	ln -s $root/library/$STD_LIB_NAME.init .
+	cd $root/stage3
+	mkdir browser
+	cd browser
+	ln -s $root/browser/*.m .
+	cp $root/browser/Mmake* .
+	ln -s $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage3
 	ln -s $root/boehm_gc .
 	ln -s $root/doc .
 	ln -s $root/runtime .
+	ln -s $root/trace .
 	ln -s $root/scripts .
 	ln -s $root/util .
 	ln -s $root/profiler .
@@ -602,7 +717,7 @@ then
 	cd $root
 	set -x
 
-	if (cd stage3 && mmake $mmake_opts depend_library depend_compiler)
+	if (cd stage3 && mmake $mmake_opts depend_library depend_browser depend_compiler)
 	then
 		echo "building of stage 3 dependencies successful"
 	else
@@ -625,6 +740,29 @@ then
 		exit 1
 	fi
 
+	# We delay deleting the stage 2 compiler objects until now,
+	# so that if (a) an error manifests itself during the creation
+	# of the stage 3 library, and (b) this error can be fixed by
+	# changing the runtime, a bootcheck -2, which requires a relink,
+	# will not have to expensively recreate the stage 2 compiler objects.
+
+	if $keep_objs
+	then
+		true
+	else
+		/bin/rm -f $root/stage2/compiler/[a-l]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[i-s]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[t-z]*.o < /dev/null
+	fi
+
+	if (cd stage3/browser && mmake $mmake_opts $jfactor cs)
+	then
+		echo "building of stage 3 browser successful"
+	else
+		echo "building of stage 3 browser not successful"
+		exit 1
+	fi
+
 	if (cd stage3/compiler && mmake $mmake_opts $jfactor cs)
 	then
 		echo "building of stage 3 compiler successful"
@@ -641,7 +779,7 @@ then
 		exec > "$outfile"	# redirect stdout to $outfile
 	fi
 
-	for dir in library compiler; do
+	for dir in library browser compiler; do
 		for file in stage2/$dir/${cs_subdir}*.c; do
 		    diff -u $file stage3/$dir/${cs_subdir}`basename $file` ||
 			diff_status=1
@@ -672,38 +810,99 @@ fi
 
 if $runtests
 then
-	# use everything from stage 2
+	# Use everything from stage 2, unless we copied the runtime.
+	# In that case, the grades of stage 1 & 2 may be different,
+	# which means we have a choice between
+	#
+	# (a) using the stage 2 runtime and library, and the stage 2 flags, or
+	# (b) using the stage 1 runtime and library, and the default flags
+	#
+	# Some tests/ directories have several dozen executables. Compiling
+	# all these with debugging on yields far too many large (14 Mb +)
+	# executables. Since stage 2 is much more likely to have flags
+	# that turn on debugging, we prefer alternative (b).
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
 	export MERCURY_COMPILER
 
-	MERCURY_INT_DIR=$root/stage2/library
-	export MERCURY_INT_DIR
+	if $copy_runtime
+	then
+		MERCURY_INT_DIR=$root/library
+		export MERCURY_INT_DIR
 
-	MERCURY_LIBS="$root/stage2/library/libmercury.a
-                $root/stage2/runtime/libmer.a
-                $root/stage2/boehm_gc/libgc.a
-                -lm"
-	export MERCURY_LIBS
+		MERCURY_LIBS="
+			$root/trace/lib$TRACE_LIB_NAME.a
+			$root/browser/lib$BROWSER_LIB_NAME.a
+			$root/library/lib$STD_LIB_NAME.a
+			$root/runtime/lib$RT_LIB_NAME.a
+			$root/boehm_gc/libgc.a
+			-lm"
+		export MERCURY_LIBS
 
-	MERCURY_ALL_C_INCL_DIRS="-I$root/stage2/runtime
-		-I$root/stage2/boehm_gc
-		-I$root/stage2/boehm_gc/include"
-	export MERCURY_ALL_C_INCL_DIRS
+		MERCURY_ALL_C_INCL_DIRS="-I$root/trace
+			-I$root/runtime
+			-I$root/boehm_gc
+			-I$root/boehm_gc/include"
+		export MERCURY_ALL_C_INCL_DIRS
 
-	MMAKE_DIR="$root/stage2/scripts"
-	export MMAKE_DIR
+		MMAKE_DIR="$root/scripts"
+		export MMAKE_DIR
 
-	MERCURY_MOD_LIB_MODS="$root/stage2/runtime/runtime.init
-		$root/stage2/library/libmercury.init"
-	export MERCURY_MOD_LIB_MODS
+		MERCURY_MOD_LIB_MODS="
+			$root/browser/$BROWSER_LIB_NAME.init
+			$root/library/$STD_LIB_NAME.init
+			$root/runtime/$RT_LIB_NAME.init"
+		export MERCURY_MOD_LIB_MODS
 
-		# for mkinit, mmc, mgnuc, ml etc
-	PATH=$root/stage2/util:$root/stage2/scripts:$PATH
-	export PATH
+			# for mkinit, mmc, mgnuc, ml etc
+		PATH=$root/util:$root/scripts:$PATH
+		export PATH
+	else
+		MERCURY_INT_DIR=$root/stage2/library
+		export MERCURY_INT_DIR
+
+		MERCURY_LIBS="
+			$root/stage2/trace/lib$TRACE_LIB_NAME.a
+			$root/stage2/browser/lib$BROWSER_LIB_NAME.a
+			$root/stage2/library/lib$STD_LIB_NAME.a
+			$root/stage2/runtime/lib$RT_LIB_NAME.a
+			$root/stage2/boehm_gc/libgc.a
+			-lm"
+		export MERCURY_LIBS
+
+		MERCURY_ALL_C_INCL_DIRS="-I$root/stage2/trace
+			-I$root/stage2/runtime
+			-I$root/stage2/boehm_gc
+			-I$root/stage2/boehm_gc/include"
+		export MERCURY_ALL_C_INCL_DIRS
+
+		MMAKE_DIR="$root/stage2/scripts"
+		export MMAKE_DIR
+
+		MERCURY_MOD_LIB_MODS="
+			$root/stage2/browser/$BROWSER_LIB_NAME.init
+			$root/stage2/library/$STD_LIB_NAME.init
+			$root/stage2/runtime/$RT_LIB_NAME.init"
+		export MERCURY_MOD_LIB_MODS
+
+			# for mkinit, mmc, mgnuc, ml etc
+		PATH=$root/stage2/util:$root/stage2/scripts:$PATH
+		export PATH
+	fi
+
+	# We need to give tests/debugger access to the mdbrc and mdb_doc
+	# files in the doc and scripts directories, without hardcoding their
+	# pathnames. We must also compensate for scripts/mdbrc having hardcoded
+	# within it the *installed* pathname of mdb_doc and not its current
+	# pathname.
+	cat $root/doc/mdb_doc > $root/scripts/test_mdbrc
+	sed -e '/^source/d' $root/scripts/mdbrc >> $root/scripts/test_mdbrc
+	MERCURY_DEBUGGER_INIT=$root/scripts/test_mdbrc
+	export MERCURY_DEBUGGER_INIT
 
 	if test -d ../tests
 	then
+		cp $root/doc/mdb_command_test.inp ../tests/debugger
 		if test "$testdir" = ""
 		then
 			cd ../tests
@@ -716,6 +915,7 @@ then
 		cd $root
 	elif test -d tests
 	then
+		cp $root/doc/mdb_command_test.inp tests/debugger
 		if test "$testdir" = ""
 		then
 			cd tests

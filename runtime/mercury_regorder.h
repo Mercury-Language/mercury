@@ -23,17 +23,20 @@
 #define MERCURY_REGORDER_H
 
 /*
+** If we are using an engine base register, then shift all
+** the machine registers across by 1, and allocate mr0 to
+** MR_engine_base
+*/
+#if defined(MR_THREAD_SAFE) && NUM_REAL_REGS > 0
+
+
+/*
+** r1 .. r32: the general-purpose Mercury registers.
+**
 ** If you modify the r<N> to mr<N> mapping, make sure that you update
 ** the definition of MR_VIRTUAL_REG_MAP_BODY below and BOTH copies of
 ** the definitions of r1-r32.
 */
-#if defined(MR_THREAD_SAFE) && NUM_REAL_REGS > 0
-
-	/*
-	** If we are using an engine base register, then shift all
-	** the machine registers across by 1, and allocate mr0 to
-	** MR_engine_base
-	*/
 #define r1		count_usage(R_RN(1), mr3)
 #define r2		count_usage(R_RN(2), mr4)
 #define r3		count_usage(R_RN(3), mr5)
@@ -70,22 +73,32 @@
 	/* Keep this in sync with the actual defintions below */
 #define MR_real_reg_number_sp MR_real_reg_number_mr1
 
-#define MR_engine_base	LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
-
 /*
+** The special-purpose Mercury registers:
+**	hp, sp, succip, etc.
+**
 ** If you modify the following block, make sure that you update
 ** the definitions of MR_NUM_SPECIAL_REG, MR_MAX_SPECIAL_REG_MR,
 ** and MR_saved_*.
 */
+
+/*
+** first, the "very special" registers -- these may go in real machine regs
+*/
+#define MR_engine_base	LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
 #define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr2))
 #define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr6))
 #define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr1))
 #define MR_curfr	LVALUE_CAST(Word *, count_usage(MR_CF_RN, mr9))
 #define MR_maxfr	LVALUE_CAST(Word *, count_usage(MR_MF_RN, mr10))
+/*
+** next, the remainder of the special registers -- these go in the
+** fake_reg array, or in some cases in ordinary global variables.
+*/
 #define MR_sol_hp	LVALUE_CAST(Word *, count_usage(MR_SOL_HP_RN, mr(38)))
 #define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(39)))
 #define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
-			count_usage(MR_MIN_HP_REC, mr40))
+			count_usage(MR_MIN_HP_REC, mr(40)))
 #define MR_global_hp	LVALUE_CAST(Word *,	\
 			count_usage(MR_GLOBAL_HP_RN, mr(41)))
 
@@ -93,10 +106,17 @@
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
 
-/* the number of special, non rN registers */
+/*
+** the number of "very special" registers, i.e. special registers that can
+** be allocated in real machine registers:
+** MR_engine_base, MR_succip, MR_hp, MR_sp, MR_curfr, MR_maxfr
+*/
+#define MR_NUM_VERY_SPECIAL_REG	6
+
+/* the number of special-purpose Mercury registers */
 #define MR_NUM_SPECIAL_REG	12
 
-/* the maximum mrN number of special, non rN registers */
+/* the maximum mrN number of special registers */
 #define	MR_MAX_SPECIAL_REG_MR	41
 
 /*
@@ -152,6 +172,11 @@
 
 #else /* !MR_THREAD_SAFE or NUM_REAL_REGS == 0 */
 
+/*
+** If you modify the r<N> to mr<N> mapping, make sure that you update
+** the definition of MR_VIRTUAL_REG_MAP_BODY below and BOTH copies of
+** the definitions of r1-r32.
+*/
 #define r1		count_usage(R_RN(1), mr2)
 #define r2		count_usage(R_RN(2), mr3)
 #define r3		count_usage(R_RN(3), mr4)
@@ -185,29 +210,48 @@
 #define r31		count_usage(R_RN(31), mr35)
 #define r32		count_usage(R_RN(32), mr36)
 
+	/* Keep this in sync with the actual defintions below */
+#define MR_real_reg_number_sp MR_real_reg_number_mr0
+
 /*
+** The special-purpose Mercury registers:
+**	hp, sp, succip, etc.
+**
 ** If you modify the following block, make sure that you update
 ** the definitions of MR_NUM_SPECIAL_REG, MR_MAX_SPECIAL_REG_MR,
 ** and MR_saved_*.
 */
-#define MR_real_reg_number_sp MR_real_reg_number_mr0
 
+/*
+** first, the "very special" registers -- these may go in real machine regs
+*/
 #define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr1))
 #define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr5))
 #define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
 #define MR_curfr	LVALUE_CAST(Word *, count_usage(MR_CF_RN, mr8))
 #define MR_maxfr	LVALUE_CAST(Word *, count_usage(MR_MF_RN, mr9))
+/*
+** next, the remainder of the special registers -- these go in the
+** fake_reg array, or in some cases in ordinary global variables.
+*/
 #define MR_sol_hp	LVALUE_CAST(Word *, count_usage(MR_SOL_HP_RN, mr(37)))
 #define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(38)))
 #define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
-			count_usage(MR_MIN_HP_REC, mr39))
+			count_usage(MR_MIN_HP_REC, mr(39)))
 #define MR_global_hp	LVALUE_CAST(Word *,	\
 			count_usage(MR_GLOBAL_HP_RN, mr(40)))
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
 
-/* the number of special, non rN registers */
+/*
+** the number of "very special" registers, i.e. special registers that can
+** be allocated in real machine registers:
+** MR_succip, MR_hp, MR_sp, MR_curfr, MR_maxfr
+*/
+#define MR_NUM_VERY_SPECIAL_REG	5
+
+/* the number of special registers */
 #define MR_NUM_SPECIAL_REG	11
 
 /* the maximum mrN number of special, non rN registers */
@@ -265,12 +309,5 @@
 }
 
 #endif
-
-/* for backwards compatibility */
-#define succip		MR_succip
-#define hp		MR_hp
-#define sp		MR_sp
-#define curfr		MR_curfr
-#define maxfr		MR_maxfr
 
 #endif /* not MERCURY_REGORDER_H */

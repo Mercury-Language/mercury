@@ -14,9 +14,10 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs mint \
+SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
 	  sicstus_conv mtags vpath_find mercury_update_interface \
 	  mkfifo_using_mknod
+DEBUGGER_SCRIPTS = mdbrc
 NUPROLOG_SCRIPTS = mnc mnl mnp
 SICSTUS_SCRIPTS = msc msl msp
 
@@ -32,16 +33,20 @@ SICSTUS_SCRIPTS = msc msl msp
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(SCRIPTS) $(NUPROLOG_SCRIPTS) $(SICSTUS_SCRIPTS) Mmake.vars
+all: $(SCRIPTS) $(DEBUGGER_SCRIPTS)
+all: $(NUPROLOG_SCRIPTS) $(SICSTUS_SCRIPTS) Mmake.vars
 
 #-----------------------------------------------------------------------------#
 
-ml mgnuc: init_grade_options.sh-subr parse_grade_options.sh-subr
+ml mgnuc: init_grade_options.sh-subr
+ml mgnuc: parse_grade_options.sh-subr 
+ml mgnuc: final_grade_options.sh-subr 
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: install_mmake install_scripts $(INSTALL_NUPROLOG) $(INSTALL_SICSTUS)
+install: install_mmake install_scripts install_debugger_scripts
+install: $(INSTALL_NUPROLOG) $(INSTALL_SICSTUS)
 
 .PHONY: install_mmake
 install_mmake: Mmake.vars Mmake.rules
@@ -52,10 +57,18 @@ install_mmake: Mmake.vars Mmake.rules
 .PHONY: install_scripts
 install_scripts: $(SCRIPTS)
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	# we remove the installed `mmake' script before (re)installing it
+	# to avoid overwriting the script while it is running
+	-rm -f $(INSTALL_BINDIR)/mmake
 	cp $(SCRIPTS) $(INSTALL_BINDIR) 
 	for file in $(SCRIPTS); do \
 		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
+
+.PHONY: install_debugger_scripts
+install_debugger_scripts: $(DEBUGGER_SCRIPTS)
+	[ -d $(INSTALL_LIBDIR)/mdb ] || mkdir -p $(INSTALL_LIBDIR)/mdb
+	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
 
 .PHONY: install_nuprolog
 install_nuprolog: $(NUPROLOG_SCRIPTS)
@@ -79,7 +92,8 @@ install_sicstus: $(SICSTUS_SCRIPTS)
 uninstall:
 	-rm -r $(INSTALL_LIBDIR)/mmake
 	-cd $(INSTALL_BINDIR) && \
-	rm $(SCRIPTS) $(SICSTUS_SCRIPTS) $(NUPROLOG_SCRIPTS)
+		rm $(SCRIPTS) $(SICSTUS_SCRIPTS) $(NUPROLOG_SCRIPTS)
+	-cd $(INSTALL_LIBDIR)/mdb && rm $(DEBUGGER_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
 

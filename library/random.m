@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -12,6 +12,8 @@
 % uses a threaded random-number supply. It could be made non-unique, but
 % since each thread returns the same list of random numbers, in the interests
 % of safety, it is declared with (backtrackable) unique modes.
+% The coefficients used in the implementation were taken from Numerical
+% Recipes in C (Press et al), and are originally due to Knuth.
 %
 %---------------------------------------------------------------------------%
 
@@ -64,7 +66,7 @@
 :- pred random__params(int, int, int).	% a, c, m
 :- mode random__params(out, out, out) is det.
 
-random__params(2416, 374441, 1771875).
+random__params(9301, 49297, 233280).
 
 random__init(I0, RS) :-
 	copy(I0, RS).

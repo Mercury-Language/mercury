@@ -29,8 +29,6 @@ NUM_REAL_R_TEMPS=@NUM_REAL_R_TEMPS@
 HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
 HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
 DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
-MERCURY_LPSOLVE=${MERCURY_LPSOLVE=@PREFIX@/bin/lp_solve}
-export MERCURY_LPSOLVE
 
 # The default optimization level should be after
 # all the options that describe the machine configuration.

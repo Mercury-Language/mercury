@@ -35,6 +35,8 @@
 
 % The following are used by the compiler, to implement polymorphism.
 % They should not be used in programs.
+% Changes here may also require changes in compiler/polymorphism.m,
+% compiler/higher_order.m and runtime/mercury_type_info.{c,h}.
 
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_index_int(int::in, int::out) is det.
@@ -94,26 +96,32 @@
 :- type type_info(T) ---> type_info(base_type_info(T) /*, ... */).
 :- type base_type_info(T) ---> base_type_info(int /*, ... */).
 
+	% The type variable in these types isn't really a type variable,
+	% it's a place for polymorphism.m to put a representation of the
+	% class constraint about which the typeclass_info carries information.
+	%
 	% Note that, since these types look to the compiler as though they
 	% are candidates to become no_tag types, special code is required in
 	% type_util:type_is_no_tag_type/3.
 
-:- type typeclass_info ---> typeclass_info(base_typeclass_info /*, ... */). 
-:- type base_typeclass_info ---> typeclass_info(int /*, ... */). 
+:- type typeclass_info(T) ---> typeclass_info(base_typeclass_info(T)
+						/*, ... */). 
+:- type base_typeclass_info(_) ---> typeclass_info(int /*, ... */). 
 
-	% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo)  
+	% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo)
 	% extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
 	% type_info in the typeclass_info
 	% 
 	% Note: Index must be equal to the number of the desired type_info 
 	% plus the number of superclasses for this class.
-:- pred type_info_from_typeclass_info(typeclass_info, int, type_info(T)).
+:- pred type_info_from_typeclass_info(typeclass_info(_), int, type_info(T)).
 :- mode type_info_from_typeclass_info(in, in, out) is det.
 
-	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)  
+	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)
 	% extracts SuperClass from TypeClassInfo where TypeInfo is the Indexth
 	% superclass of the class.
-:- pred superclass_from_typeclass_info(typeclass_info, int, typeclass_info).
+:- pred superclass_from_typeclass_info(typeclass_info(_),
+		int, typeclass_info(_)).
 :- mode superclass_from_typeclass_info(in, in, out) is det.
 
 	% the builtin < operator on ints, used in the code generated
@@ -128,9 +136,11 @@
 :- mode builtin_int_gt(in, in) is semidet.
 :- external(builtin_int_gt/2).
 
+%-----------------------------------------------------------------------------%
 %
 % The following predicates are used in code transformed by the table_gen pass
 % of the compiler. The predicates fall into three categories :
+% 
 % 1) 	Predicates to do lookups or insertions into the tables. This group
 %	also contains function to create and initialise tables. There are
 % 	currently two types of table used by the tabling system. 1) A subgoal
@@ -155,12 +165,12 @@
 % structures. Because the tables are persistent through backtracking, this
 % causes the predicates to become impure. The predicates with the semipure
 % directive only examine the trees but do not have any side effects.
-% 
+%
 
 	% This type is used as a generic table: it can in fact represent two
 	% types, either a subgoal_table or an answer_table. The subgoal_table
 	% and answer_table types are differentiated by what they have at the
-	% table nodes but not by the actual underling trie structure.
+	% table nodes but not by the actual underlying trie structure.
 :- type ml_table.
 
 	% This type is used in contexts where a node of a subgoal table is
@@ -177,8 +187,6 @@
 	% This type is used in contexts where an answer block is expected.
 :- type ml_answer_block.
 
-
-
 	% This is a dummy predicate: its pred_proc_id, but not its code, 
 	% is used. See the comment in compiler/table_gen.m for more 
 	% information. 
@@ -190,13 +198,9 @@
 :- impure pred table_setup(ml_subgoal_table_node, ml_subgoal_table_node).
 :- mode table_setup(in, out) is det.
 
-
-
 	% Return all of the answer blocks stored in the given table.
 :- semipure pred table_return_all_ans(ml_subgoal_table_node, ml_answer_block).
 :- mode table_return_all_ans(in, out) is nondet.
-
-
 
 	% Returns true if the given nondet table has returned some of its
 	% answers.
@@ -208,7 +212,6 @@
 :- semipure pred table_have_all_ans(ml_subgoal_table_node).
 :- mode table_have_all_ans(in) is semidet.
 
-
 	% Mark a table as having some answers.
 :- impure pred table_mark_have_some_ans(ml_subgoal_table_node).
 :- mode table_mark_have_some_ans(in) is det.
@@ -216,7 +219,6 @@
 	% Make a table as having all of its answers.
 :- impure pred table_mark_have_all_ans(ml_subgoal_table_node).
 :- mode table_mark_have_all_ans(in) is det.
-
 
 	% currently being evaluated (working on an answer).
 :- semipure pred table_working_on_ans(ml_subgoal_table_node).
@@ -227,7 +229,6 @@
 :- semipure pred table_not_working_on_ans(ml_subgoal_table_node).
 :- mode table_not_working_on_ans(in) is semidet.
 
-
 	% Mark the subgoal represented by the given table as currently 
 	% being evaluated (working on an answer).
 :- impure pred table_mark_as_working(ml_subgoal_table_node).
@@ -237,14 +238,10 @@
 	% not being evaluated (working on an answer).
 :- impure pred table_mark_done_working(ml_subgoal_table_node).
 :- mode table_mark_done_working(in) is det.
-	
-
 
 	% Report an error message about the current subgoal looping. 
 :- pred table_loopcheck_error(string).
 :- mode table_loopcheck_error(in) is erroneous.
-
-
 
 %
 % The following table_lookup_insert... predicates lookup or insert the second
@@ -280,12 +277,10 @@
 :- impure pred table_lookup_insert_poly(ml_table, T, ml_table).
 :- mode table_lookup_insert_poly(in, in, out) is det.
 
-
 	% Return true if the subgoal represented by the given table has an
 	% answer. NOTE : this is only used for det and semidet procedures.
 :- semipure pred table_have_ans(ml_subgoal_table_node).
 :- mode table_have_ans(in) is semidet. 
-
 
 	% Save the fact the the subgoal has succeeded in the given table.
 :- impure pred table_mark_as_succeeded(ml_subgoal_table_node).
@@ -294,7 +289,6 @@
 	% Save the fact the the subgoal has failed in the given table.
 :- impure pred table_mark_as_failed(ml_subgoal_table_node).
 :- mode table_mark_as_failed(in) is det.
-
 
 	% Return true if the subgoal represented by the given table has a
 	% true answer. NOTE : this is only used for det and semidet 
@@ -306,7 +300,6 @@
 	% failed. NOTE : this is only used for semidet procedures.
 :- semipure pred table_has_failed(ml_subgoal_table_node).
 :- mode table_has_failed(in) is semidet.
-
 
 	% Create an answer block with the given number of slots and add it
 	% to the given table.
@@ -343,13 +336,12 @@
 :- impure pred table_save_any_ans(ml_answer_block, int, T).
 :- mode table_save_any_ans(in, in, in) is det.
 
-
 	% Restore an integer answer from the given answer block at the 
 	% given offset. 
 :- semipure pred table_restore_int_ans(ml_answer_block, int, int).
 :- mode table_restore_int_ans(in, in, out) is det.
 
-	% Restore a character answer from the given answer block at the     
+	% Restore a character answer from the given answer block at the   
 	% given offset.
 :- semipure pred table_restore_char_ans(ml_answer_block, int, character).
 :- mode table_restore_char_ans(in, in, out) is det.
@@ -368,7 +360,6 @@
 	% given offset.
 :- semipure pred table_restore_any_ans(ml_answer_block, int, T).
 :- mode table_restore_any_ans(in, in, out) is det.
-
 
 	% Return the table of answers already return to the given nondet
 	% table. 
@@ -398,6 +389,21 @@
 	% to them.
 :- impure pred table_resume(ml_subgoal_table_node).
 :- mode table_resume(in) is det. 
+
+	% These equivalences should be local to private_builtin. However,
+	% at the moment table_gen.m assumes that it can use a single variable
+	% sometimes as an ml_table and other times as an ml_subgoal_table_node
+	% (e.g. by giving the output of table_lookup_insert_int as input to
+	% table_have_all_ans). The proper fix would be for table_gen.m to
+	% use additional variables and insert unsafe casts. However, this
+	% would require significant work for no real gain, so for now
+	% we fix the problem by exposing the equivalences to code generated
+	% by table_gen.m.
+:- type ml_table == c_pointer.
+:- type ml_subgoal_table_node == c_pointer.
+:- type ml_answer_table_node == c_pointer.
+:- type ml_answer_slot == c_pointer.
+:- type ml_answer_block == c_pointer.
 
 %-----------------------------------------------------------------------------%
 
@@ -534,17 +540,11 @@ compare_error :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type ml_table == c_pointer.
-:- type ml_subgoal_table_node == c_pointer.
-:- type ml_answer_table_node == c_pointer.
-:- type ml_answer_slot == c_pointer.
-:- type ml_answer_block == c_pointer.
-
 :- pragma c_header_code("
 
 #include ""mercury_deep_copy.h""
 #include ""mercury_type_info.h""
-	
+
 	/* Used to mark the status of the table */
 #define ML_UNINITIALIZED	0
 #define ML_WORKING_ON_ANS	1
@@ -555,70 +555,69 @@ compare_error :-
 	** succeeded. */
 
 ").
-	
+
 	% This is a dummy procedure that never actually gets called.
 	% See the comments in table_gen.m for its purpose.
 :- pragma c_code(get_table(_T::out), will_not_call_mercury, "").
 
 :- pragma c_code(table_working_on_ans(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) == ML_WORKING_ON_ANS);
+	SUCCESS_INDICATOR = (*((Word *) T) == ML_WORKING_ON_ANS);
 ").
 
 :- pragma c_code(table_not_working_on_ans(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) != ML_WORKING_ON_ANS);
+	SUCCESS_INDICATOR = (*((Word *) T) != ML_WORKING_ON_ANS);
 ").
 
 :- pragma c_code(table_mark_as_working(T::in), will_not_call_mercury, "
-	*((Word*) T) = ML_WORKING_ON_ANS;
+	*((Word *) T) = ML_WORKING_ON_ANS;
 ").
 
 :- pragma c_code(table_mark_done_working(T::in), will_not_call_mercury, "
-	*((Word*) T) = ML_UNINITIALIZED;
+	*((Word *) T) = ML_UNINITIALIZED;
 ").
-
 
 table_loopcheck_error(Message) :-
 	error(Message).
 
-
 :- pragma c_code(table_lookup_insert_int(T0::in, I::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_INT((Word**)T0, I);
+	MR_DEBUG_NEW_TABLE_INT(T, T0, I);
 ").
 
 :- pragma c_code(table_lookup_insert_char(T0::in, C::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_CHAR((Word **) T0, C);
+	MR_DEBUG_NEW_TABLE_CHAR(T, T0, C);
 ").
 
 :- pragma c_code(table_lookup_insert_string(T0::in, S::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_STRING((Word **) T0, S);
+	MR_DEBUG_NEW_TABLE_STRING(T, T0, S);
 ").
 
 :- pragma c_code(table_lookup_insert_float(T0::in, F::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_FLOAT((Word **) T0, F);
+	MR_DEBUG_NEW_TABLE_FLOAT(T, T0, F);
 ").
 
 :- pragma c_code(table_lookup_insert_enum(T0::in, R::in, V::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_ENUM((Word **) T0, R, V);
+	MR_DEBUG_NEW_TABLE_ENUM(T, T0, R, V);
 ").
 
 :- pragma c_code(table_lookup_insert_user(T0::in, V::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_ANY((Word **) T0, TypeInfo_for_T, V);
+	MR_DEBUG_NEW_TABLE_ANY(T, T0, TypeInfo_for_T, V);
 ").
 
 :- pragma c_code(table_lookup_insert_poly(T0::in, V::in, T::out), 
 		will_not_call_mercury, "
-	Word T1 = (Word) MR_TABLE_TYPE_INFO((Word **) T0, TypeInfo_for_T);
-	T = (Word) MR_TABLE_ANY((Word **) T1, TypeInfo_for_T, V);
+	Word T1;
+	MR_DEBUG_NEW_TABLE_TYPEINFO(T1, T0, TypeInfo_for_T);
+	MR_DEBUG_NEW_TABLE_ANY(T, T1, TypeInfo_for_T, V);
 ").
 
 :- pragma c_code(table_have_ans(T::in), will_not_call_mercury, "
-	if (*((Word*) T) == ML_FAILED || *((Word*) T) >= ML_SUCCEEDED) {
+	if (*((Word *) T) == ML_FAILED || *((Word *) T) >= ML_SUCCEEDED) {
 		SUCCESS_INDICATOR = TRUE;
 	} else {
 		SUCCESS_INDICATOR = FALSE;
@@ -626,11 +625,11 @@ table_loopcheck_error(Message) :-
 ").
 
 :- pragma c_code(table_has_succeeded(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) >= ML_SUCCEEDED)
+	SUCCESS_INDICATOR = (*((Word *) T) >= ML_SUCCEEDED)
 ").
 
 :- pragma c_code(table_has_failed(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) == ML_FAILED);
+	SUCCESS_INDICATOR = (*((Word *) T) == ML_FAILED);
 ").
 
 :- pragma c_code(table_create_ans_block(T0::in, Size::in, T::out) ,"
@@ -685,13 +684,12 @@ extern MR_STATIC_CODE_CONST struct
 ").
 
 :- pragma c_code(table_mark_as_succeeded(T::in), will_not_call_mercury, "
-	*((Word*) T) = ML_SUCCEEDED;
+	*((Word *) T) = ML_SUCCEEDED;
 ").
 
 :- pragma c_code(table_mark_as_failed(T::in), will_not_call_mercury, "
-	*((Word*) T) = ML_FAILED;
+	*((Word *) T) = ML_FAILED;
 ").
-
 
 :- pragma c_code(table_restore_int_ans(T::in, Offset::in, I::out), 
 		will_not_call_mercury, "
@@ -717,7 +715,6 @@ extern MR_STATIC_CODE_CONST struct
 		will_not_call_mercury, "
 	V = (Word) MR_TABLE_GET_ANSWER(Offset, T);
 ").
-
 
 :- pragma c_header_code("
 
@@ -751,7 +748,7 @@ typedef enum {
 	have_all_ans
 } TableStatus;
 
-/* Used to save info about a single subgoal in the table */  
+/* Used to save info about a single subgoal in the table */
 typedef struct {
 	TableStatus status;		/* Status of subgoal */
 	Word answer_table;		/* Table of answers returned by the
@@ -772,7 +769,7 @@ typedef struct {
 					   copy */
 	Word *det_stack_bottom;		/* Pointer to the bottom point of
 					   the det stack from which to copy */
-					   
+					 
 } NondetTable;
 
 	/* Flag used to indicate the answer has been returned */
@@ -783,30 +780,27 @@ typedef struct {
 	** Cast a Word to a NondetTable*: saves on typing and improves 
 	** readability. 
 	*/
-#define NON_TABLE(T)  (*(NondetTable **)T)
+#define NON_TABLE(T)  (*(NondetTable **) T)
 ").
-
 
 :- pragma c_code(table_setup(T0::in, T::out), will_not_call_mercury, "
 	/* Init the table if this is the first time me see it */
 	if (NON_TABLE(T0) == NULL) {
-		NON_TABLE(T0) = (NondetTable *) table_allocate(
+		NondetTable *table = (NondetTable *) table_allocate_bytes(
 			sizeof(NondetTable));
-		NON_TABLE(T0)->status = have_no_ans;
-		NON_TABLE(T0)->answer_table = (Word) NULL;
-		NON_TABLE(T0)->num_ans = 0;
-		NON_TABLE(T0)->answer_list = list_empty();
-		NON_TABLE(T0)->answer_list_tail =
-			&NON_TABLE(T0)->answer_list;
-		NON_TABLE(T0)->suspend_list = list_empty();
-		NON_TABLE(T0)->suspend_list_tail =
-			&NON_TABLE(T0)->suspend_list;
-		NON_TABLE(T0)->non_stack_bottom = curprevfr;
-		NON_TABLE(T0)->det_stack_bottom = MR_sp;
+		table->status = have_no_ans;
+		table->answer_table = (Word) NULL;
+		table->num_ans = 0;
+		table->answer_list = list_empty();
+		table->answer_list_tail = &table->answer_list;
+		table->suspend_list = list_empty();
+		table->suspend_list_tail = &table->suspend_list;
+		table->non_stack_bottom = MR_prevfr_slot(MR_curfr);
+		table->det_stack_bottom = MR_sp;
+		NON_TABLE(T0) = table;
 	}
 	T = T0;
 ").
-
 
 table_return_all_ans(T, A) :-
 	semipure table_return_all_ans_list(T, AnsList),
@@ -818,7 +812,7 @@ table_return_all_ans(T, A) :-
 
 :- pragma c_code(table_return_all_ans_list(T::in, A::out),
 		 will_not_call_mercury, "
-	A = NON_TABLE(T)->answer_list;
+	A = (Word) NON_TABLE(T)->answer_list;
 ").
 
 :- semipure pred table_return_all_ans_2(ml_table, ml_table).
@@ -826,7 +820,7 @@ table_return_all_ans(T, A) :-
 
 :- pragma c_code(table_return_all_ans_2(P::in, A::out), 
 		will_not_call_mercury, "
-	A = (Word) &((AnswerListNode*) P)->ans;
+	A = (Word) &((AnswerListNode *) P)->ans;
 ").
 
 :- pragma c_code(table_get_ans_table(T::in, AT::out), 
@@ -843,10 +837,8 @@ table_return_all_ans(T, A) :-
 ").
 
 :- pragma c_code(table_has_not_returned(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) == ML_ANS_NOT_RET);
+	SUCCESS_INDICATOR = (*((Word *) T) == ML_ANS_NOT_RET);
 ").
-
-
 
 :- pragma c_code(table_mark_have_all_ans(T::in), will_not_call_mercury, "
 	NON_TABLE(T)->status = have_all_ans; 
@@ -859,7 +851,6 @@ table_return_all_ans(T, A) :-
 :- pragma c_code(table_mark_as_returned(T::in), will_not_call_mercury, "
 	*((Word *) T) = ML_ANS_RET;
 ").
-
 
 :- external(table_suspend/2).
 :- external(table_resume/1).
@@ -878,36 +869,44 @@ table_return_all_ans(T, A) :-
 ** It is also important to note that the answers are returned not from the 
 ** procedure that was originally called (table_suspend) but from the procedure
 ** table_resume. So essentially what is below is the code to do the initial 
-** fail; the code to return the answers is in table_resume.  
-*/ 	
+** fail; the code to return the answers is in table_resume.
+*/ 
 Define_extern_entry(mercury__table_suspend_2_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__table_suspend_2_0);
+MR_MAKE_PROC_LAYOUT(mercury__table_suspend_2_0,
+	MR_DETISM_NON, 0, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""private_builtin"", ""table_suspend"", 2, 0);
 BEGIN_MODULE(table_suspend_module)
 	init_entry_sl(mercury__table_suspend_2_0);
 BEGIN_CODE
 
 Define_entry(mercury__table_suspend_2_0);
+	/*
+	** This frame is not used in table_suspend, but it is copied
+	** to the suspend list as part of the saved nondet stack fragment,
+	** and it *will* be used when table_resume copies back the nondet
+	** stack fragment.
+	*/
 	mkframe(mercury__table_suspend/2, 0, ENTRY(do_fail));
 {
+	NondetTable *table = NON_TABLE(r1);
 	Word *non_stack_top =  MR_maxfr;
 	Word *det_stack_top =  MR_sp;
-	Word *non_stack_bottom = NON_TABLE(r1)->non_stack_bottom;
-	Word *det_stack_bottom = NON_TABLE(r1)->det_stack_bottom;
+	Word *non_stack_bottom = table->non_stack_bottom;
+	Word *det_stack_bottom = table->det_stack_bottom;
 	Word non_stack_delta = non_stack_top - non_stack_bottom;
 	Word det_stack_delta = det_stack_top - det_stack_bottom;
 	Word ListNode;
-	SuspendListNode *Node = table_allocate(sizeof(SuspendListNode));
+	SuspendListNode *Node = table_allocate_bytes(sizeof(SuspendListNode));
+	Node->last_ret_ans = &table->answer_list;
 
-	Node->last_ret_ans = &(NON_TABLE(r1)->answer_list);
-	
 	Node->non_stack_block_size = non_stack_delta;
-	Node->non_stack_block = table_allocate(non_stack_delta);
-	table_copy_mem((void *)Node->non_stack_block, (void *)non_stack_bottom, 
-		non_stack_delta);	
-		
+	Node->non_stack_block = table_allocate_words(non_stack_delta);
+	table_copy_words(Node->non_stack_block, non_stack_bottom,
+		non_stack_delta);
+
 	Node->det_stack_block_size = det_stack_delta;
-	Node->det_stack_block = table_allocate(det_stack_delta);
-	table_copy_mem((void *)Node->det_stack_block, (void *)det_stack_bottom, 
+	Node->det_stack_block = table_allocate_words(det_stack_delta);
+	table_copy_words(Node->det_stack_block, det_stack_bottom,
 		det_stack_delta);
 
 	Node->succ_ip = MR_succip;
@@ -915,11 +914,28 @@ Define_entry(mercury__table_suspend_2_0);
 	Node->cur_fr = MR_curfr;
 	Node->max_fr = MR_maxfr;
 
-	ListNode = MR_table_list_cons(Node, *NON_TABLE(r1)->suspend_list_tail);
-	*NON_TABLE(r1)->suspend_list_tail = ListNode;
-	NON_TABLE(r1)->suspend_list_tail = &list_tail(ListNode);
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""suspension saves consumer stack: %d non, %d det\\n"",
+			non_stack_delta, det_stack_delta);
+		printf(""non region from %p to %p, det region from ""
+			""%p to %p\\n"",
+			(void *) non_stack_bottom,
+			(void *) MR_maxfr,
+			(void *) det_stack_bottom,
+			(void *) MR_sp);
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\\n"",
+			(void *) MR_succip, (void *) MR_sp,
+			(void *) MR_maxfr, (void *) MR_curfr);
+	}
+#endif
+
+	assert(list_is_empty(*table->suspend_list_tail));
+	ListNode = MR_table_list_cons(Node, list_empty());
+	*table->suspend_list_tail = ListNode;
+	table->suspend_list_tail = &list_tail(ListNode);
 }
-	fail();	
+	fail();
 END_MODULE
 
 /*
@@ -935,26 +951,26 @@ typedef struct {
 	Word *non_stack_block;
 	Word det_stack_block_size;
 	Word *det_stack_block;
-	
+
 	Code *succ_ip;
 	Word *s_p;
 	Word *cur_fr;
 	Word *max_fr;
 
 	Word changed;
-	Word num_ans, new_num_ans;
+	Word num_ans;
+	Word new_num_ans;
 	Word suspend_list;
 	SuspendListNode *suspend_node;
 	Word ans_list;
 	AnswerListNode *ansNode;
 } ResumeStackNode;
 
-
 Integer ML_resumption_sp = -1;
 Word ML_resumption_stack_size = 4;	/* Half the initial size of 
 					   the stack in ResumeStackNode's */
 
-ResumeStackNode** ML_resumption_stack = NULL;
+ResumeStackNode **ML_resumption_stack = NULL;
 
 #define ML_RESUME_PUSH()						\\
 	do {								\\
@@ -963,16 +979,16 @@ ResumeStackNode** ML_resumption_stack = NULL;
 				ML_resumption_stack == NULL) 		\\
 		{							\\
 			ML_resumption_stack_size =			\\
-				ML_resumption_stack_size*2;		\\
-			ML_resumption_stack = table_reallocate(		\\
+				ML_resumption_stack_size * 2;		\\
+			ML_resumption_stack = table_reallocate_bytes(	\\
 				ML_resumption_stack,			\\
-				ML_resumption_stack_size*sizeof(	\\
-					ResumeStackNode*));		\\
+				ML_resumption_stack_size * sizeof(	\\
+					ResumeStackNode *));		\\
 		}							\\
-		ML_resumption_stack[ML_resumption_sp] = table_allocate(	\\
-			sizeof(ResumeStackNode));			\\
+		ML_resumption_stack[ML_resumption_sp] = 		\\
+			table_allocate_bytes(sizeof(ResumeStackNode));	\\
 	} while (0)
-	
+
 #define ML_RESUME_POP()							\\
 	do {								\\
 		if (ML_resumption_sp < 0) {				\\
@@ -985,6 +1001,29 @@ ResumeStackNode** ML_resumption_stack = NULL;
 #define ML_RESUME_VAR							\\
 	ML_resumption_stack[ML_resumption_sp]
 
+#ifdef	MR_DEBUG_RESUME
+  /*
+  ** The ML_RESUME_DEBUG_VAR variable is not actually used.
+  ** Its only purpose is to provide something that can be put
+  ** onto a gdb command line without making it overflow :-(.
+  **
+  ** Therefore MR_DEBUG_RESUME should never be enabled except when
+  ** debugging table_resume.
+  */
+
+  ResumeStackNode	*ML_RESUME_DEBUG_VAR;
+
+  #define	ML_SET_RESUME_DEBUG_VARS()				\\
+	do {								\\
+		ML_RESUME_DEBUG_VAR = ML_resumption_stack[ML_resumption_sp];\\
+	} while (0)
+
+#else
+
+  #define	ML_SET_RESUME_DEBUG_VARS()
+
+#endif
+
 /*
 ** The procedure defined below restores answers to suspended nodes. It 
 ** works by restoring the states saved when calls to table_suspend were
@@ -994,7 +1033,7 @@ ResumeStackNode** ML_resumption_stack = NULL;
 ** This procedure iterates until it has returned all answers to all
 ** suspend nodes. The iteration is a fixpoint type as each time an answer
 ** is returned to a suspended node it has the chance of introducing more
-** answers and/or suspended nodes.  
+** answers and/or suspended nodes.
 */
 Define_extern_entry(mercury__table_resume_1_0);
 Declare_label(mercury__table_resume_1_0_ChangeLoop);
@@ -1003,25 +1042,24 @@ Declare_label(mercury__table_resume_1_0_SolutionsListLoop);
 Declare_label(mercury__table_resume_1_0_AnsListLoop);
 Declare_label(mercury__table_resume_1_0_AnsListLoopDone1);
 Declare_label(mercury__table_resume_1_0_AnsListLoopDone2);
-Declare_label(mercury__table_resume_1_0_SkipAns);
 Declare_label(mercury__table_resume_1_0_RedoPoint);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_PROC_LAYOUT(mercury__table_resume_1_0,
+	MR_DETISM_NON, MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""private_builtin"", ""table_resume"", 1, 0);
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_ChangeLoop, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_ChangeLoopDone, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_SolutionsListLoop, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_AnsListLoop, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_AnsListLoopDone1, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_AnsListLoopDone2, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
-	mercury__table_resume_1_0_SkipAns, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_RedoPoint, mercury__table_resume_1_0);
 
 BEGIN_MODULE(table_resume_module)
@@ -1032,29 +1070,32 @@ BEGIN_MODULE(table_resume_module)
 	init_label_sl(mercury__table_resume_1_0_AnsListLoop);
 	init_label_sl(mercury__table_resume_1_0_AnsListLoopDone1);
 	init_label_sl(mercury__table_resume_1_0_AnsListLoopDone2);
-	init_label_sl(mercury__table_resume_1_0_SkipAns);
 	init_label_sl(mercury__table_resume_1_0_RedoPoint);
 BEGIN_CODE
 
 Define_entry(mercury__table_resume_1_0);
 	/* Check that we have answers to return and nodes to return 
 	   them to. */
-	if (list_is_empty(NON_TABLE(r1)->answer_list) ||
-			list_is_empty(NON_TABLE(r1)->suspend_list)) 
+	if (list_is_empty(NON_TABLE(r1)->answer_list))
+		/* we should free the suspend list */
 		proceed(); 
-	
 
-	/* Save the current state. */	
+	if (list_is_empty(NON_TABLE(r1)->suspend_list)) 
+		proceed(); 
+
+	/* Save the current state. */
 	ML_RESUME_PUSH();
 	ML_RESUME_VAR->table = NON_TABLE(r1);
-	ML_RESUME_VAR->non_stack_block_size = (char *) MR_maxfr -
-		(char *) ML_RESUME_VAR->table->non_stack_bottom;
-	ML_RESUME_VAR->det_stack_block_size = (char *) MR_sp - 
-		(char *) ML_RESUME_VAR->table->det_stack_bottom;
+	ML_RESUME_VAR->non_stack_block_size =
+		MR_maxfr - ML_RESUME_VAR->table->non_stack_bottom;
+	ML_RESUME_VAR->det_stack_block_size =
+		MR_sp - ML_RESUME_VAR->table->det_stack_bottom;
 	ML_RESUME_VAR->succ_ip = MR_succip;
 	ML_RESUME_VAR->s_p = MR_sp;
 	ML_RESUME_VAR->cur_fr = MR_curfr;
 	ML_RESUME_VAR->max_fr = MR_maxfr;
+
+	ML_SET_RESUME_DEBUG_VARS();
 
 #ifdef MR_USE_TRAIL
 	/*
@@ -1066,59 +1107,77 @@ Define_entry(mercury__table_resume_1_0);
 #endif
 
 	ML_RESUME_VAR->changed = 1;
-	
-	ML_RESUME_VAR->non_stack_block = (Word *) table_allocate(
+
+	ML_RESUME_VAR->non_stack_block = (Word *) table_allocate_words(
 		ML_RESUME_VAR->non_stack_block_size);
-	table_copy_mem(ML_RESUME_VAR->non_stack_block, 
+	table_copy_words(ML_RESUME_VAR->non_stack_block, 
 		ML_RESUME_VAR->table->non_stack_bottom, 
 		ML_RESUME_VAR->non_stack_block_size);
-	
-	ML_RESUME_VAR->det_stack_block = (Word *) table_allocate(
+
+	ML_RESUME_VAR->det_stack_block = (Word *) table_allocate_words(
 		ML_RESUME_VAR->det_stack_block_size);
-	table_copy_mem(ML_RESUME_VAR->det_stack_block, 
+	table_copy_words(ML_RESUME_VAR->det_stack_block, 
 		ML_RESUME_VAR->table->det_stack_bottom, 
 		ML_RESUME_VAR->det_stack_block_size);
 
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""resumption saves generator stack: %d non, %d det\\n"",
+			ML_RESUME_VAR->non_stack_block_size,
+			ML_RESUME_VAR->det_stack_block_size);
+		printf(""non region from %p to %p, det region ""
+			""from %p to %p\\n"",
+			(void *) ML_RESUME_VAR->table->non_stack_bottom,
+			(void *) MR_maxfr,
+			(void *) ML_RESUME_VAR->table->det_stack_bottom,
+			(void *) MR_sp);
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\\n"",
+			(void *) MR_succip, (void *) MR_sp,
+			(void *) MR_maxfr, (void *) MR_curfr);
+	}
+#endif
+
 	/* If the number of ans or suspended nodes has changed. */
 Define_label(mercury__table_resume_1_0_ChangeLoop);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	if (! ML_RESUME_VAR->changed)
 		GOTO_LABEL(mercury__table_resume_1_0_ChangeLoopDone);
-		
+
 	ML_RESUME_VAR->suspend_list = ML_RESUME_VAR->table->suspend_list;
 
 	ML_RESUME_VAR->changed = 0;
 	ML_RESUME_VAR->num_ans = ML_RESUME_VAR->table->num_ans;
 
-	/* For each of the suspended nodes */	
+	/* For each of the suspended nodes */
 Define_label(mercury__table_resume_1_0_SolutionsListLoop);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	if (list_is_empty(ML_RESUME_VAR->suspend_list))
 		GOTO_LABEL(mercury__table_resume_1_0_ChangeLoop);
 
-	ML_RESUME_VAR->suspend_node = (SuspendListNode *)list_head(
+	ML_RESUME_VAR->suspend_node = (SuspendListNode *) list_head(
 		ML_RESUME_VAR->suspend_list);
-	
-	ML_RESUME_VAR->ans_list = *ML_RESUME_VAR->suspend_node->
-			last_ret_ans;
-	
+
+	ML_RESUME_VAR->ans_list = *ML_RESUME_VAR->suspend_node->last_ret_ans;
+
 	if (list_is_empty(ML_RESUME_VAR->ans_list))
 		GOTO_LABEL(mercury__table_resume_1_0_AnsListLoopDone2);
-			
-	ML_RESUME_VAR->ansNode = (AnswerListNode *)list_head(
-		ML_RESUME_VAR->ans_list);
 
+	ML_RESUME_VAR->ansNode = (AnswerListNode *) list_head(
+		ML_RESUME_VAR->ans_list);
 
 	/* 
 	** Restore the state of the suspended node and return the answer 
 	** through the redoip we saved when the node was originally 
 	** suspended 
 	*/ 
-	
-								
-	table_copy_mem(ML_RESUME_VAR->table->non_stack_bottom, 
+
+	table_copy_words(ML_RESUME_VAR->table->non_stack_bottom, 
 		ML_RESUME_VAR->suspend_node->non_stack_block,
 		ML_RESUME_VAR->suspend_node->non_stack_block_size);
-				
-	table_copy_mem(ML_RESUME_VAR->table->det_stack_bottom, 
+
+	table_copy_words(ML_RESUME_VAR->table->det_stack_bottom, 
 		ML_RESUME_VAR->suspend_node->det_stack_block,
 		ML_RESUME_VAR->suspend_node->det_stack_block_size);
 
@@ -1127,65 +1186,92 @@ Define_label(mercury__table_resume_1_0_SolutionsListLoop);
 	MR_curfr = ML_RESUME_VAR->suspend_node->cur_fr;
 	MR_maxfr = ML_RESUME_VAR->suspend_node->max_fr;
 
-	bt_redoip(maxfr) = LABEL(mercury__table_resume_1_0_RedoPoint);
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""resumption restores consumer stack: ""
+			""%d non, %d det\\n"",
+			ML_RESUME_VAR->suspend_node->non_stack_block_size,
+			ML_RESUME_VAR->suspend_node->det_stack_block_size);
+		printf(""non region from %p to %p, det region ""
+			""from %p to %p\\n"",
+			(void *) ML_RESUME_VAR->table->non_stack_bottom,
+			(void *) (ML_RESUME_VAR->table->non_stack_bottom
+				+ ML_RESUME_VAR->suspend_node->
+				non_stack_block_size),
+			(void *) ML_RESUME_VAR->table->det_stack_bottom,
+			(void *) (ML_RESUME_VAR->table->det_stack_bottom
+				+ ML_RESUME_VAR->suspend_node->
+				det_stack_block_size));
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\\n"",
+			(void *) MR_succip, (void *) MR_sp,
+			(void *) MR_maxfr, (void *) MR_curfr);
+	}
+#endif
+
+	MR_redoip_slot(MR_maxfr) = LABEL(mercury__table_resume_1_0_RedoPoint);
+	MR_redofr_slot(MR_maxfr) = MR_maxfr;
 
 	/* 
-	** For each answer not returned to the node whose state we are
-	** currently in.
+	** Return each answer not previously returned to the node
+	** whose state we are currently in.
 	*/
 Define_label(mercury__table_resume_1_0_AnsListLoop);
-#ifdef COMPACT_ARGS	
+	ML_SET_RESUME_DEBUG_VARS();
+
+#ifdef COMPACT_ARGS
 	r1 = (Word) &ML_RESUME_VAR->ansNode->ans;
 #else
 	r2 = (word) &ML_RESUME_VAR->ansNode->ans;
 #endif
 
 	/* 
-	** Return the answer though the point where suspend should have
+	** Return the answer through the point where suspend should have
 	** returned.
 	*/
 	succeed();
 
 Define_label(mercury__table_resume_1_0_RedoPoint);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	update_prof_current_proc(LABEL(mercury__table_resume_1_0));
-	
+
 	ML_RESUME_VAR->ans_list = list_tail(ML_RESUME_VAR->ans_list);
 
 	if (list_is_empty(ML_RESUME_VAR->ans_list))
 		GOTO_LABEL(mercury__table_resume_1_0_AnsListLoopDone1);
 
-	ML_RESUME_VAR->ansNode = (AnswerListNode *)list_head(
+	ML_RESUME_VAR->ansNode = (AnswerListNode *) list_head(
 		ML_RESUME_VAR->ans_list);
 
 	GOTO_LABEL(mercury__table_resume_1_0_AnsListLoop);
 
 Define_label(mercury__table_resume_1_0_AnsListLoopDone1);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	if (ML_RESUME_VAR->num_ans == ML_RESUME_VAR->table->num_ans)
 		ML_RESUME_VAR->changed = 0;
 	else 
 		ML_RESUME_VAR->changed = 1;
-	
 
-	ML_RESUME_VAR->suspend_node->last_ret_ans =
-		 &ML_RESUME_VAR->ans_list;
+	ML_RESUME_VAR->suspend_node->last_ret_ans = &ML_RESUME_VAR->ans_list;
 
 Define_label(mercury__table_resume_1_0_AnsListLoopDone2);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	ML_RESUME_VAR->suspend_list = list_tail(ML_RESUME_VAR->suspend_list);
 	GOTO_LABEL(mercury__table_resume_1_0_SolutionsListLoop);
 
-Define_label(mercury__table_resume_1_0_SkipAns);
-	ML_RESUME_VAR->ans_list = list_tail(ML_RESUME_VAR->ans_list);
-	GOTO_LABEL(mercury__table_resume_1_0_AnsListLoop);
-	
 Define_label(mercury__table_resume_1_0_ChangeLoopDone);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	/* Restore the original state we had when this proc was called */ 
-	
-	table_copy_mem(ML_RESUME_VAR->table->non_stack_bottom, 
+
+	table_copy_words(ML_RESUME_VAR->table->non_stack_bottom, 
 		ML_RESUME_VAR->non_stack_block,
 		ML_RESUME_VAR->non_stack_block_size);
 	table_free(ML_RESUME_VAR->non_stack_block);
 
-	table_copy_mem(ML_RESUME_VAR->table->det_stack_bottom, 
+	table_copy_words(ML_RESUME_VAR->table->det_stack_bottom, 
 		ML_RESUME_VAR->det_stack_block,
 		ML_RESUME_VAR->det_stack_block_size);
 	table_free(ML_RESUME_VAR->det_stack_block);
@@ -1195,27 +1281,193 @@ Define_label(mercury__table_resume_1_0_ChangeLoopDone);
 	MR_curfr = ML_RESUME_VAR->cur_fr;
 	MR_maxfr = ML_RESUME_VAR->max_fr;
 
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""resumption restores generator stack:""
+				"" %d non, %d det\\n"",
+			ML_RESUME_VAR->non_stack_block_size,
+			ML_RESUME_VAR->det_stack_block_size);
+		printf(""non region from %p to %p, det region ""
+			""from %p to %p\\n"",
+			(void *) ML_RESUME_VAR->table->non_stack_bottom,
+			(void *) (ML_RESUME_VAR->table->non_stack_bottom +
+				ML_RESUME_VAR->non_stack_block_size),
+			(void *) ML_RESUME_VAR->table->det_stack_bottom,
+			(void *) (ML_RESUME_VAR->table->det_stack_bottom +
+				ML_RESUME_VAR->det_stack_block_size));
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\\n"",
+			(void *) MR_succip, (void *) MR_sp,
+			(void *) MR_maxfr, (void *) MR_curfr);
+	}
+#endif
+
 	ML_RESUME_POP();
-	
+
 	proceed();
 END_MODULE
+
+#undef	ML_SET_RESUME_DEBUG_VARS
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
 INIT sys_init_table_suspend_module
 INIT sys_init_table_resume_module
 */
+
+extern ModuleFunc table_suspend_module;
+extern ModuleFunc table_resume_module;
+
 void sys_init_table_suspend_module(void);
 	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_table_suspend_module(void) {
-	extern ModuleFunc table_suspend_module;
 	table_suspend_module();
 }
 void sys_init_table_resume_module(void);
 	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_table_resume_module(void) {
-	extern ModuleFunc table_resume_module;
 	table_resume_module();
+}
+
+").
+
+
+	% The definitions for base_type_info/1 and type_info/1.
+
+:- pragma c_code("
+
+Define_extern_entry(mercury____Unify___private_builtin__type_info_1_0);
+Define_extern_entry(mercury____Index___private_builtin__type_info_1_0);
+Define_extern_entry(mercury____Compare___private_builtin__type_info_1_0);
+
+extern const struct
+	mercury_data_private_builtin__base_type_layout_type_info_1_struct 
+	mercury_data_private_builtin__base_type_layout_type_info_1;
+extern const struct
+	mercury_data_private_builtin__base_type_functors_type_info_1_struct
+	mercury_data_private_builtin__base_type_functors_type_info_1;
+
+	/*
+	** For most purposes, base_type_info can be treated just like
+	** type_info.  The code that handles type_infos can also handle
+	** base_type_infos.
+	*/
+
+MR_STATIC_CODE_CONST struct
+mercury_data_private_builtin__base_type_info_base_type_info_1_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+} mercury_data_private_builtin__base_type_info_base_type_info_1 = {
+	((Integer) 1),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Unify___private_builtin__type_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Index___private_builtin__type_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Compare___private_builtin__type_info_1_0)),
+	(const Word *) &
+		mercury_data_private_builtin__base_type_layout_type_info_1,
+	(const Word *) &
+		mercury_data_private_builtin__base_type_functors_type_info_1,
+	(const Word *) string_const(""private_builtin"", 15),
+	(const Word *) string_const(""base_type_info"", 14)
+};
+
+MR_STATIC_CODE_CONST struct
+mercury_data_private_builtin__base_type_info_type_info_1_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+	const Word *f5;
+	const Word *f6;
+	const Word *f7;
+	const Word *f8;
+} mercury_data_private_builtin__base_type_info_type_info_1 = {
+	((Integer) 1),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Unify___private_builtin__type_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Index___private_builtin__type_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Compare___private_builtin__type_info_1_0)),
+	(const Word *) &
+		mercury_data_private_builtin__base_type_layout_type_info_1,
+	(const Word *) &
+		mercury_data_private_builtin__base_type_functors_type_info_1,
+	(const Word *) string_const(""private_builtin"", 15),
+	(const Word *) string_const(""type_info"", 9)
+};
+
+
+const struct mercury_data_private_builtin__base_type_layout_type_info_1_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_private_builtin__base_type_layout_type_info_1 = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(MR_TYPELAYOUT_TYPEINFO_VALUE))
+};
+
+const struct mercury_data_private_builtin__base_type_functors_type_info_1_struct {
+	Integer f1;
+} mercury_data_private_builtin__base_type_functors_type_info_1 = {
+	MR_TYPEFUNCTORS_SPECIAL
+};
+
+BEGIN_MODULE(type_info_module)
+	init_entry(mercury____Unify___private_builtin__type_info_1_0);
+	init_entry(mercury____Index___private_builtin__type_info_1_0);
+	init_entry(mercury____Compare___private_builtin__type_info_1_0);
+BEGIN_CODE
+Define_entry(mercury____Unify___private_builtin__type_info_1_0);
+{
+	/*
+	** Unification for type_info.
+	**
+	** The two inputs are in the registers named by unify_input[12].
+	** The success/failure indication should go in unify_output.
+	*/
+	int comp;
+	save_transient_registers();
+	comp = MR_compare_type_info(unify_input1, unify_input2);
+	restore_transient_registers();
+	unify_output = (comp == COMPARE_EQUAL);
+	proceed();
+}
+
+Define_entry(mercury____Index___private_builtin__type_info_1_0);
+	index_output = -1;
+	proceed();
+
+Define_entry(mercury____Compare___private_builtin__type_info_1_0);
+{
+	/*
+	** Comparison for type_info:
+	**
+	** The two inputs are in the registers named by compare_input[12].
+	** The result should go in compare_output.
+	*/
+	int comp;
+	save_transient_registers();
+	comp = MR_compare_type_info(unify_input1, unify_input2);
+	restore_transient_registers();
+	compare_output = comp;
+	proceed();
+}
+END_MODULE
+
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_type_info_module
+*/
+extern ModuleFunc type_info_module;
+void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_type_info_module(void) {
+	type_info_module();
 }
 
 ").
@@ -1224,19 +1476,19 @@ void sys_init_table_resume_module(void) {
 		will_not_call_mercury, "
 	Word ListNode;
 	Word ans_num;
-	AnswerListNode *n = table_allocate(sizeof(AnswerListNode));
-	
-	++(NON_TABLE(T)->num_ans);
-	ans_num = NON_TABLE(T)->num_ans;
+	NondetTable *table = NON_TABLE(T);
+	AnswerListNode *n = table_allocate_bytes(sizeof(AnswerListNode));
+
+	++table->num_ans;
+	ans_num = table->num_ans;
 	n->ans_num = ans_num;
 	n->ans = 0;
-	ListNode = MR_table_list_cons(n, *NON_TABLE(T)->answer_list_tail);
-	*NON_TABLE(T)->answer_list_tail = ListNode; 
-	NON_TABLE(T)->answer_list_tail = &list_tail(ListNode);
+	ListNode = MR_table_list_cons(n, *table->answer_list_tail);
+	*table->answer_list_tail = ListNode; 
+	table->answer_list_tail = &list_tail(ListNode);
 
 	Slot = (Word) &n->ans;
 ").
-
 
 :- end_module private_builtin.
 

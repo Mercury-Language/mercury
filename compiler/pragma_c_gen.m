@@ -524,14 +524,15 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	{ output_descs_from_arg_info(OutArgs, OutputDescs) },
 
 	code_info__get_module_info(ModuleInfo),
-	{ predicate_module(ModuleInfo, PredId, ModuleName) },
-	{ predicate_name(ModuleInfo, PredId, PredName) },
-	{ predicate_arity(ModuleInfo, PredId, Arity) },
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_module(PredInfo, ModuleName) },
+	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_arity(PredInfo, Arity) },
 	{ pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId,
 		StructName) },
 	{ SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS") },
 	{ string__format("\tLOCALS = (struct %s *) (
-		(char *) (curfr - MR_ORDINARY_SLOTS - NONDET_FIXED_SIZE)
+		(char *) (curfr - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
 		- sizeof(struct %s));\n",
 		[s(StructName), s(StructName)],
 		InitSaveStruct) },
@@ -606,6 +607,11 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			% is small enough for its duplication not to have
 			% a significant effect on code size. (This form
 			% generates slightly faster code.)
+			% However, if `pragma no_inline' is specified,
+			% then we don't duplicate the code unless the
+			% programmer asked for it -- the code may contain
+			% static variable declarations, so duplicating it
+			% could change the semantics.
 
 			% We use the number of semicolons in the code
 			% as an indication how many C statements it has
@@ -614,6 +620,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			Treat = duplicate
 		;
 			Treat = automatic,
+			\+ pred_info_requested_no_inlining(PredInfo),
 			CountSemis = lambda([Char::in, Count0::in, Count::out]
 				is det,
 				( Char = (;) ->

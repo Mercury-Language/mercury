@@ -198,13 +198,7 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	(
-		(
-			pred_info_is_exported(PredInfo)
-		;
-			pred_info_is_pseudo_exported(PredInfo),
-			% only the (in, in) mode of a unification is exported
-			hlds_pred__in_in_unification_proc_id(ProcId)
-		)
+		procedure_is_exported(PredInfo, ProcId)
 	->
 		(
 			Immed = no,
@@ -673,7 +667,7 @@ code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
 code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
 code_util__cons_id_to_tag(base_type_info_const(M,T,A), _, _,
 		base_type_info_constant(M,T,A)).
-code_util__cons_id_to_tag(base_typeclass_info_const(M,C,N), _, _,
+code_util__cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _,
 		base_typeclass_info_constant(M,C,N)).
 code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(

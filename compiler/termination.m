@@ -390,10 +390,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	->
 		ProcTable2 = ProcTable1
 	;
-		( ImportStatus = exported
-		; ImportStatus = local
-		; ImportStatus = pseudo_exported
-		)
+		status_defined_in_this_module(ImportStatus, yes)
 	->
 		( check_marker(Markers, terminates) ->
 			change_procs_termination_info(ProcIds, yes,
@@ -402,11 +399,8 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 			ProcTable2 = ProcTable0
 		)
 	;
-		( ImportStatus = imported
-		; ImportStatus = opt_imported
-		; ImportStatus = pseudo_imported  % should this be here?
-		)
-	->
+		% Not defined in this module.
+
 		% All of the predicates that are processed in this section
 		% are imported in some way.
 		% With imported predicates, any 'check_termination'
@@ -435,13 +429,6 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 		ArgSizeInfo = infinite([Context - ArgSizeError]),
 		change_procs_arg_size_info(ProcIds, no, ArgSizeInfo,
 			ProcTable1, ProcTable2)
-	;
-%		( ImportStatus = abstract_imported
-%		; ImportStatus = abstract_exported
-%		),
-		% This should not happen, as procedures are being processed
-		% here, and these import_status' refer to abstract types.
-		error("termination__check_preds: Unexpected import status")
 	),
 	( check_marker(Markers, does_not_terminate) ->
 		RequestError = Context - does_not_term_pragma(PredId),

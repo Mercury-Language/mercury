@@ -220,15 +220,6 @@
 :- mode term__is_ground(in) is semidet.
 %	term__is_ground(Term) is true iff Term contains no variables.
 
-:- pred term__compare(comparison_result, term, term, substitution).
-:- mode term__compare(out, in, in, in) is semidet.
-%	term__compare(Comparison, Term1, Term2, Bindings) is true iff
-%		there is a binding of Comparison to <, =, or > such
-%		that the binding holds for the two ground terms Term1
-%		and Term2 with respect to the bindings in Bindings.
-%		Fails if Term1 or Term2 is not ground (with respect to
-%		the bindings in Bindings).
-
 %-----------------------------------------------------------------------------%
 
 	% To manage a supply of variables, use the following 2 predicates.
@@ -286,6 +277,31 @@
 :- pred term__var_list_to_term_list(list(var), list(term)).
 :- mode term__var_list_to_term_list(in, out) is det.
 :- mode term__var_list_to_term_list(out, in) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+	% This predidicate is being phased out, because of the problem
+	% mentioned in the "BEWARE:" below.
+:- pragma obsolete(term__compare/4).
+:- pred term__compare(comparison_result, term, term, substitution).
+:- mode term__compare(out, in, in, in) is semidet.
+%	term__compare(Comparison, Term1, Term2, Bindings) is true iff
+%		there is a binding of Comparison to <, =, or > such
+%		that the binding holds for the two ground terms Term1
+%		and Term2 with respect to the bindings in Bindings.
+%		Fails if Term1 or Term2 is not ground (with respect to
+%		the bindings in Bindings).
+%		BEWARE: the comparison does not ignore the term__contexts
+%		in the terms.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

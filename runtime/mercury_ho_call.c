@@ -68,6 +68,7 @@ Define_extern_entry(mercury__compare_3_3);
 Declare_label(mercury__compare_3_0_i1);
 Define_extern_entry(mercury__solve_equal_2_0);
 
+/*
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_closure)
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_closure)
 MR_MAKE_STACK_LAYOUT_ENTRY(do_call_nondet_closure)
@@ -85,25 +86,51 @@ MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_2)
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_3)
 MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__compare_3_0, 1)
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__solve_equal_2_0)
+*/
 
+#ifdef	COMPACT_ARGS
+  /*
+  ** With compact args, all these methods just do some data shuffling
+  ** and then a tailcall. They never have stack frames, and therefore
+  ** do not participate in stack traces.
+  */
+#else
+  /*
+  ** With simple args, some of these procedures make proper calls,
+  ** and thus have stack frames.
+  */
+  MR_MAKE_PROC_LAYOUT(mercury__index_2_0,
+	MR_DETISM_DET, 2, MR_LIVE_LVAL_STACKVAR(2),
+	MR_PREDICATE, ""builtin"", ""index"", 2, 0);
+  MR_MAKE_INTERNAL_LAYOUT(mercury__index_2_0, 1);
+  MR_MAKE_PROC_LAYOUT(mercury__compare_3_0,
+	MR_DETISM_DET, 2, MR_LIVE_LVAL_STACKVAR(2),
+	MR_PREDICATE, ""builtin"", ""compare"", 3, 0);
+  MR_MAKE_INTERNAL_LAYOUT(mercury__compare_3_0, 1);
+#endif
 
 BEGIN_MODULE(call_module)
-	init_entry(do_call_det_closure);
-	init_entry(do_call_semidet_closure);
-	init_entry(do_call_nondet_closure);
+	init_entry_ai(do_call_det_closure);
+	init_entry_ai(do_call_semidet_closure);
+	init_entry_ai(do_call_nondet_closure);
 
-	init_entry(do_call_det_class_method);
-	init_entry(do_call_semidet_class_method);
-	init_entry(do_call_nondet_class_method);
+	init_entry_ai(do_call_det_class_method);
+	init_entry_ai(do_call_semidet_class_method);
+	init_entry_ai(do_call_nondet_class_method);
 
-	init_entry(mercury__unify_2_0);
-	init_entry(mercury__index_2_0);
+	init_entry_ai(mercury__unify_2_0);
+#ifdef	COMPACT_ARGS
+	init_entry_ai(mercury__index_2_0);
+	init_entry_ai(mercury__compare_3_0);
+#else
+	init_entry_sl(mercury__index_2_0);
 	init_label_sl(mercury__index_2_0_i1);
-	init_entry(mercury__compare_3_0);
-	init_entry(mercury__compare_3_1);
-	init_entry(mercury__compare_3_2);
-	init_entry(mercury__compare_3_3);
+	init_entry_sl(mercury__compare_3_0);
 	init_label_sl(mercury__compare_3_0_i1);
+#endif
+	init_entry_ai(mercury__compare_3_1);
+	init_entry_ai(mercury__compare_3_2);
+	init_entry_ai(mercury__compare_3_3);
 	init_entry(mercury__solve_equal_2_0);
 BEGIN_CODE
 
@@ -265,7 +292,7 @@ Define_entry(do_call_semidet_class_method);
 	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i) =
+			virtual_reg(i + num_arg_typeclass_infos) =
 				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
 	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
@@ -304,7 +331,7 @@ Define_entry(do_call_nondet_class_method);
 	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i) =
+			virtual_reg(i + num_arg_typeclass_infos) =
 				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
 	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
@@ -443,27 +470,18 @@ Define_entry(mercury__index_2_0);
 #ifdef	COMPACT_ARGS
 	tailcall(index_pred, LABEL(mercury__index_2_0));
 #else
-	push(MR_succip);
-	push(type_arity);
+	incr_sp_push_msg(2, "mercury__index_2_0");
+	MR_stackvar(2) = (Word) MR_succip;
+	MR_stackvar(1) = type_arity;
 	call(index_pred, LABEL(mercury__index_2_0_i1), 
 		LABEL(mercury__index_2_0));
-#endif
 }
-/*
-** Since mod2c declares this label, we must define it,
-** even though it is not needed with COMPACT_ARGS.
-*/
 Define_label(mercury__index_2_0_i1);
 {
-#ifdef	COMPACT_ARGS
-	fatal_error("mercury__index_2_0_i1 reached in COMPACT_ARGS mode");
-#else
-	int	type_arity;
-
-	type_arity = pop();
-	MR_succip = (Code *) pop();
+	MR_succip = (Code *) MR_stackvar(2);
 	save_registers();
-	r3 = virtual_reg(type_arity + 2);
+	r3 = virtual_reg(MR_stackvar(1) + 2);
+	decr_sp_pop_msg(2);
 	proceed();
 #endif
 }
@@ -552,27 +570,18 @@ Define_entry(mercury__compare_3_3);
 #ifdef	COMPACT_ARGS
 	tailcall(compare_pred, LABEL(mercury__compare_3_3));
 #else
-	push(MR_succip);
-	push(type_arity);
+	incr_sp_push_msg(2, "mercury__index_2_0");
+	MR_stackvar(2) = (Word) MR_succip;
+	MR_stackvar(1) = type_arity;
 	call(compare_pred, LABEL(mercury__compare_3_0_i1),
 		LABEL(mercury__compare_3_3));
-#endif
 }
-/*
-** Since mod2c declares this label, we must define it,
-** even though it is not needed with COMPACT_ARGS.
-*/
 Define_label(mercury__compare_3_0_i1);
 {
-#ifdef	COMPACT_ARGS
-	fatal_error("mercury__compare_3_0_i1 reached in COMPACT_ARGS mode");
-#else
-	int	type_arity;
-
-	type_arity = pop();
-	MR_succip = (Code *) pop();
+	MR_succip = (Code *) MR_stackvar(2);
 	save_registers();
-	r2 = virtual_reg(type_arity + 1);
+	r2 = virtual_reg(MR_stackvar(1) + 1);
+	decr_sp_pop_msg(2);
 	proceed();
 #endif
 }

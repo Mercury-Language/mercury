@@ -95,13 +95,6 @@
 **	and the debugger to print stack traces. This effect is achieved by
 **	including MR_STACK_TRACE in the mangled grade (see mercury_grade.h).
 **
-** MR_STACK_TRACE_THIS_MODULE
-**	Include the layout information needed by error/1 and the debugger
-**	to print stack traces. Unlike MR_STACK_TRACE, this does not affect
-**	the mangled grade, so it can be specified on a module-by-module basis.
-**	(When a stack trace encounters a stack frame created by code from a
-**	module which does not have layout information, the trace stops.)
-**
 ** MR_REQUIRE_TRACING
 **	Require that all Mercury procedures linked in should be compiled
 **	with at least interface tracing.  This effect is achieved
@@ -187,6 +180,14 @@
 ** Enables profiling of memory usage.
 */
 
+/*
+** Experimental options:
+**
+** MR_TRACE_HISTOGRAM
+** Enable this if you want to count the number of execution tracing events
+** at various call depths.
+*/
+
 /*---------------------------------------------------------------------------*/
 /*
 ** Settings of configuration parameters which can be passed on
@@ -204,17 +205,20 @@
 ** Configuration parameters whose values are determined by the settings
 ** of other configuration parameters.  These parameters should not be
 ** set on the command line.
+**
+** You must make sure that you don't test the value of any of these parameters
+** before its conditional definition.
 */
 
 /*
-** MR_USE_STACK_LAYOUTS -- stack layouts are in use, generate stack
-**                         layout structures.
+** Static code addresses are available unless using gcc non-local gotos,
+** without assembler labels.
 */
-#ifdef MR_USE_STACK_LAYOUTS
-  #error "MR_USE_STACK_LAYOUTS should not be defined on the command line"
+#ifdef MR_STATIC_CODE_ADDRESSES
+  #error "MR_STATIC_CODE_ADDRESSES should not be defined on the command line"
 #endif
-#if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_STACK_TRACE_THIS_MODULE)
-  #define MR_USE_STACK_LAYOUTS
+#if !defined(USE_GCC_NONLOCAL_GOTOS) || defined(USE_ASM_LABELS)
+  #define MR_STATIC_CODE_ADDRESSES
 #endif
 
 /*
@@ -226,19 +230,8 @@
 #ifdef MR_INSERT_LABELS
   #error "MR_INSERT_LABELS should not be defined on the command line"
 #endif
-#if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS) || defined(MR_STACK_TRACE_THIS_MODULE)
+#if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS)
   #define MR_INSERT_LABELS
-#endif
-
-/*
-** Static code addresses are available unless using gcc non-local gotos,
-** without assembler labels.
-*/
-#ifdef MR_STATIC_CODE_ADDRESSES
-  #error "MR_STATIC_CODE_ADDRESSES should not be defined on the command line"
-#endif
-#if !defined(USE_GCC_NONLOCAL_GOTOS) || defined(USE_ASM_LABELS)
-  #define MR_STATIC_CODE_ADDRESSES
 #endif
 
 /*

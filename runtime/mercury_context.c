@@ -1,5 +1,5 @@
 /*
-INIT mercury_sys_init_context
+INIT mercury_scheduler_wrapper
 ENDINIT
 */
 /*
@@ -20,7 +20,7 @@ ENDINIT
 
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
-#include "mercury_engine.h"	/* for `memdebug' */
+#include "mercury_engine.h"	/* for `MR_memdebug' */
 
 MR_Context	*MR_runqueue_head;
 MR_Context	*MR_runqueue_tail;
@@ -100,10 +100,10 @@ init_context(MR_Context *c)
 	}
 	c->context_maxfr = c->nondetstack_zone->min;
 	c->context_curfr = c->nondetstack_zone->min;
-	bt_redoip(c->context_curfr) = ENTRY(do_not_reached);
-	bt_prevfr(c->context_curfr) = NULL;
-	bt_succip(c->context_curfr) = ENTRY(do_not_reached);
-	bt_succfr(c->context_curfr) = NULL;
+	MR_redoip_slot(c->context_curfr) = ENTRY(do_not_reached);
+	MR_prevfr_slot(c->context_curfr) = NULL;
+	MR_succip_slot(c->context_curfr) = ENTRY(do_not_reached);
+	MR_succfr_slot(c->context_curfr) = NULL;
 
 #ifdef MR_USE_TRAIL
 	if (c->trail_zone != NULL) {
@@ -160,13 +160,10 @@ flounder(void)
 	fatal_error("computation floundered");
 }
 
-/*
-INIT mercury_scheduler_wrapper
-ENDINIT
-*/
+Define_extern_entry(do_runnext);
 
 BEGIN_MODULE(scheduler_module)
-	init_entry(do_runnext);
+	init_entry_ai(do_runnext);
 BEGIN_CODE
 
 Define_entry(do_runnext);

@@ -421,7 +421,14 @@ parser__parse_simple_term(Token, Context, Priority, Term) -->
 	%	atom --> open_list, close_list
 	%	atom --> open_curly, close_curly
 	% term --> variable		% priority 0
-	% term -->
+	% term --> atom, open_ct, arg_list, close
+	%	arg_list --> arg
+	%	arg_list --> arg, comma, arg_list
+	% term --> open, term, close
+	% term --> open_ct, term, close
+	% term --> term, op, term	% with various conditions
+	% term --> op, term		% with various conditions
+	% term --> term, op		% with various conditions
 
 :- pred parser__parse_simple_term_2(token, token_context, int, parse(term),
 				parser__state, parser__state).
@@ -502,9 +509,9 @@ parser__parse_simple_term_2(open_ct, Context, Prec, Term) -->
 	parser__parse_simple_term_2(open, Context, Prec, Term).
 
 parser__parse_simple_term_2(open_list, Context, _, Term) -->
+	parser__get_term_context(Context, TermContext),
 	( parser__get_token(close_list) ->
-		parser__get_term_context(Context, TermContext),
-		{ Term = ok(term__functor(term__atom("[]"), [], TermContext)) }
+		parser__parse_special_atom("[]", TermContext, Term)
 	;
 		parser__parse_list(Term)
 	).
@@ -512,7 +519,7 @@ parser__parse_simple_term_2(open_list, Context, _, Term) -->
 parser__parse_simple_term_2(open_curly, Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
 	( parser__get_token(close_curly) ->
-		{ Term = ok(term__functor(term__atom("{}"), [], TermContext)) }
+		parser__parse_special_atom("{}", TermContext, Term)
 	;
 		parser__parse_term(SubTerm0),
 		( { SubTerm0 = ok(SubTerm) } ->
@@ -527,6 +534,25 @@ parser__parse_simple_term_2(open_curly, Context, _, Term) -->
 			% propagate error upwards
 			{ Term = SubTerm0 }
 		)
+	).
+
+:- pred parser__parse_special_atom(string, term__context, parse(term),
+		parser__state, parser__state).
+:- mode parser__parse_special_atom(in, in, out, in, out) is det.
+
+parser__parse_special_atom(Atom, TermContext, Term) -->
+	( parser__get_token(open_ct) ->
+		parser__parse_args(Args0),
+		(	{ Args0 = ok(Args) },
+			{ Term = ok(term__functor(term__atom(Atom),
+				Args, TermContext)) }
+		;
+			% propagate error upwards
+			{ Args0 = error(Message, Tokens) },
+			{ Term = error(Message, Tokens) }
+		)
+	;
+		{ Term = ok(term__functor(term__atom(Atom), [], TermContext)) }
 	).
 
 :- pred parser__parse_list(parse(term), parser__state, parser__state).

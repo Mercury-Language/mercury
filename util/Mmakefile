@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne.
+# Copyright (C) 1995-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -16,14 +16,15 @@ include $(MERCURY_DIR)/Mmake.common
 #-----------------------------------------------------------------------------#
 
 MGNUC   = MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
-CFLAGS	= -I$(RUNTIME_DIR) $(EXTRA_CFLAGS)
+CFLAGS	= -I$(RUNTIME_DIR) $(EXTRA_CFLAGS) -O0
 # we need -I ../runtime for "mercury_getopt.h"
+# the -O0 is to get around a stupid compiler bug in gcc 2.7.2.3 on cyclone
 
-PROGS=mkinit mdemangle
+PROGS=mkinit mdemangle info_to_mdb
 
 #-----------------------------------------------------------------------------#
 
-all: $(PROGS)
+all:	$(PROGS)
 
 .c:
 	$(MGNUC) --grade $(GRADE) $(CFLAGS) -o $@ $<

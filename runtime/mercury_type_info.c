@@ -26,7 +26,7 @@ const struct mercury_data___base_type_layout_pred_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_pred_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_PREDICATE_VALUE))
+		mkbody(MR_TYPELAYOUT_PREDICATE_VALUE))
 };
 
 	/* base_type_functors for `pred' */
@@ -131,15 +131,9 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 Define_extern_entry(mercury__builtin_unify_pred_2_0);
 Define_extern_entry(mercury__builtin_index_pred_2_0);
 Define_extern_entry(mercury__builtin_compare_pred_3_0);
-Declare_label(mercury__builtin_compare_pred_3_0_i4);
-
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__builtin_unify_pred_2_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__builtin_index_pred_2_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__builtin_compare_pred_3_0)
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_compare_pred_3_0, 4)
 
 BEGIN_MODULE(mercury__builtin_unify_pred_module)
-	init_entry(mercury__builtin_unify_pred_2_0);
+	init_entry_ai(mercury__builtin_unify_pred_2_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_unify_pred'/2 in mode 0 */
@@ -150,7 +144,7 @@ END_MODULE
 
 
 BEGIN_MODULE(mercury__builtin_index_pred_module)
-	init_entry(mercury__builtin_index_pred_2_0);
+	init_entry_ai(mercury__builtin_index_pred_2_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_index_pred'/2 in mode 0 */
@@ -160,7 +154,7 @@ Define_entry(mercury__builtin_index_pred_2_0);
 END_MODULE
 
 BEGIN_MODULE(mercury__builtin_compare_pred_module)
-	init_entry(mercury__builtin_compare_pred_3_0);
+	init_entry_ai(mercury__builtin_compare_pred_3_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_compare_pred'/3 in mode 0 */
@@ -590,28 +584,30 @@ MR_categorize_data(Word functors_indicator, Word layout_entry)
 			int builtin_type = unmkbody(strip_tag(layout_entry));
 
 			switch (builtin_type) {
-				case TYPELAYOUT_UNASSIGNED_VALUE:
+				case MR_TYPELAYOUT_UNASSIGNED_VALUE:
 					return MR_DATAREP_UNKNOWN;
-				case TYPELAYOUT_UNUSED_VALUE:
+				case MR_TYPELAYOUT_UNUSED_VALUE:
 					return MR_DATAREP_UNKNOWN;
-				case TYPELAYOUT_STRING_VALUE:
+				case MR_TYPELAYOUT_STRING_VALUE:
 					return MR_DATAREP_STRING;
-				case TYPELAYOUT_FLOAT_VALUE:
+				case MR_TYPELAYOUT_FLOAT_VALUE:
 					return MR_DATAREP_FLOAT;
-				case TYPELAYOUT_INT_VALUE:
+				case MR_TYPELAYOUT_INT_VALUE:
 					return MR_DATAREP_INT;
-				case TYPELAYOUT_CHARACTER_VALUE:
+				case MR_TYPELAYOUT_CHARACTER_VALUE:
 					return MR_DATAREP_CHAR;
-				case TYPELAYOUT_PREDICATE_VALUE:
+				case MR_TYPELAYOUT_PREDICATE_VALUE:
 					return MR_DATAREP_PRED;
-				case TYPELAYOUT_VOID_VALUE:
+				case MR_TYPELAYOUT_VOID_VALUE:
 					return MR_DATAREP_VOID;
-				case TYPELAYOUT_ARRAY_VALUE:
+				case MR_TYPELAYOUT_ARRAY_VALUE:
 					return MR_DATAREP_ARRAY;
-				case TYPELAYOUT_TYPEINFO_VALUE:
+				case MR_TYPELAYOUT_TYPEINFO_VALUE:
 					return MR_DATAREP_TYPEINFO;
-				case TYPELAYOUT_C_POINTER_VALUE:
+				case MR_TYPELAYOUT_C_POINTER_VALUE:
 					return MR_DATAREP_C_POINTER;
+				case MR_TYPELAYOUT_TYPECLASSINFO_VALUE:
+					return MR_DATAREP_TYPECLASSINFO;
 				default: 
 					return MR_DATAREP_UNKNOWN;
 			}

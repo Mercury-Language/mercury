@@ -66,7 +66,8 @@
 % Tag 0 - 	CONST   Word = 9	- array
 % Tag 0 - 	CONST   Word = 10	- type_info
 % Tag 0 - 	CONST   Word = 11	- c_pointer
-% 			Words 12 - 1024 reserved for future use
+% Tag 0 - 	CONST   Word = 12	- type_class_info
+% 			Words 13 - 1024 reserved for future use
 % Tag 0 - 	CONST   Word = 1024+	- constant(s) 
 % 					  word is pointer to enum
 % 					  vector.
@@ -346,7 +347,7 @@ base_type_layout__construct_base_type_data([], LayoutInfo, LayoutInfo).
 base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 		LayoutInfo0, LayoutInfo) :-
 	BaseGenInfo = base_gen_layout(TypeId, ModuleName, TypeName, TypeArity,
-		Status, HldsType),
+		_Status, HldsType),
 	base_type_layout__set_type_id(LayoutInfo0, TypeId, LayoutInfo1),
 	hlds_data__get_type_defn_body(HldsType, TypeBody),
 	(
@@ -401,13 +402,16 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 			)
 		)
 	),	
-	(
-		( Status = exported ; Status = abstract_exported )
-	->
-		Exported = yes
-	;
-		Exported = no
-	),
+
+	%
+	% Note: base_type_layouts and base_type_functors are never exported,
+	% because they should only be accessed via the base_type_info in
+	% the same module.
+	% Accesses to the base_type_layout for a type exported from a
+	% different module should be done via that type's base_type_info,
+	% which will be exported if the type was exported/abstract_exported.
+	%
+	Exported = no,
 
 		% pure abstract types have no layout definition.
 	( 
@@ -1083,8 +1087,21 @@ base_type_layout__generate_pseudo_type_info(Type, yes(Rval), LayoutInfo0,
 
 base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 	(
-		type_to_type_id(Type, TypeId, TypeArgs)
+		type_to_type_id(Type, TypeId, TypeArgs0)
 	->
+		(
+			% The argument to typeclass_info types is not
+			% a type - it encodes the class constraint.
+			mercury_private_builtin_module(PrivateBuiltin),
+			TypeId = qualified(PrivateBuiltin, TName) - _,
+			( TName = "typeclass_info"
+			; TName = "base_typeclass_info"	
+			)
+		->
+			TypeArgs = []
+		;
+			TypeArgs = TypeArgs0
+		),
 		( 
 			% For higher order types: they all refer to the
 			% defined pred_0 base_type_info, have an extra

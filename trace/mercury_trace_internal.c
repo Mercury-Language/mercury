@@ -107,21 +107,11 @@ typedef enum {
 	STOP_INTERACTING
 } MR_Next;
 
-typedef	enum {
-	VAR_NUMBER,
-	VAR_NAME
-} MR_Var_Spec_Kind;
-
-typedef struct {
-	MR_Var_Spec_Kind	MR_var_spec_kind;
-	int			MR_var_spec_number; /* valid if VAR_NUMBER */
-	const char		*MR_var_spec_name;  /* valid if VAR_NAME   */
-} MR_Var_Spec;
-
 static	void	MR_trace_internal_ensure_init(void);
-static	void	MR_trace_internal_init_from_env(void);
-static	void	MR_trace_internal_init_from_local(void);
-static	void	MR_trace_internal_init_from_home_dir(void);
+static	bool	MR_trace_internal_init_from_env(const char *env_var);
+static	bool	MR_trace_internal_init_from_file(const char *filename);
+static	bool	MR_trace_internal_init_from_env_dir(const char *env_var,
+			const char *filename);
 static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			const MR_Stack_Layout_Label *layout,
 			Word *saved_regs, MR_Event_Details *event_details,
@@ -137,11 +127,8 @@ static	bool	MR_trace_options_when_action(MR_Spy_When *when,
 static	bool	MR_trace_options_quiet(bool *verbose,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
-static	bool	MR_trace_options_detailed(bool *detailed, char ***words,
-			int *word_count, const char *cat, const char *item);
 static	bool	MR_trace_options_confirmed(bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
-static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_retry(const MR_Stack_Layout_Label *layout,
 			Word *saved_regs, MR_Event_Details *event_details,
 			int seqno, int depth, int *max_mr_num,
@@ -158,21 +145,16 @@ static	void	MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout,
 static	const char *MR_trace_browse_check_level(const MR_Stack_Layout_Label
 			*top_layout, Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-			Word *saved_regs, int ancestor_level,
-			MR_Var_Spec which_var);
+			Word *saved_regs, int ancestor_level, int which_var);
 static	void	MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 			Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_var(const char *name,
 			const MR_Stack_Layout_Var *var,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
 			Word *type_params);
-static	const char *MR_trace_validate_var_count(const MR_Stack_Layout_Label
-			*layout, int *var_count_ptr);
-static	const char *MR_trace_find_var(const MR_Stack_Layout_Label *layout,
-			MR_Var_Spec var_spec, int *which_var_ptr);
 
 static	const char *MR_trace_read_help_text(void);
-static	bool	MR_trace_is_number(const char *word, int *value);
+static	bool	MR_trace_is_number(char *word, int *value);
 static	bool	MR_trace_is_number_prefix(char *word, char **suffix,
 			int *value);
 static	const char *MR_trace_parse_line(char *line,
@@ -288,62 +270,95 @@ MR_trace_internal_ensure_init(void)
 			MR_scroll_limit = n;
 		}
 
-		MR_trace_internal_init_from_env();
-		MR_trace_internal_init_from_local();
-		MR_trace_internal_init_from_home_dir();
+		/*
+		** Look for an initialization file in the following places,
+		** in order:
+		** 
+		** - the file named by the MERCURY_DEBUGGER_INIT environment
+		**   variable, which can be set by the user
+		**
+		** - the file .mdbrc in the current directory
+		**
+		** - the file .mdbrc in the user's home directory
+		**
+		** - the file named by the DEFAULT_MERCURY_DEBUGGER_INIT
+		**   environment variable, which is set by the mdb script
+		**   to point to the system's default init script
+		**
+		** We stop as soon as we find and source one.
+		**
+		** XXX Several aspects of how we find these locations
+		** are too Unix specific.
+		*/
+
+		if (! (MR_trace_internal_init_from_env("MERCURY_DEBUGGER_INIT")
+		|| MR_trace_internal_init_from_file(MDBRC_FILENAME)
+		|| MR_trace_internal_init_from_env_dir("HOME", MDBRC_FILENAME)
+		|| MR_trace_internal_init_from_env(
+				"DEFAULT_MERCURY_DEBUGGER_INIT")))
+		{
+			printf("mdb: warning, "
+				"cannot find any initialization file.\n");
+		}
 
 		MR_trace_internal_initialized = TRUE;
 	}
 }
 
-static void
-MR_trace_internal_init_from_env(void)
+static bool
+MR_trace_internal_init_from_env(const char *env_var)
 {
 	char	*init;
 
-	init = getenv("MERCURY_DEBUGGER_INIT");
+	init = getenv(env_var);
 	if (init != NULL) {
-		(void) MR_trace_source(init);
-		/* If the source failed, the error message has been printed. */
+		return MR_trace_source(init);
+	} else {
+		return FALSE;
 	}
 }
 
-static void
-MR_trace_internal_init_from_local(void)
+static bool
+MR_trace_internal_init_from_file(const char *filename)
 {
 	FILE	*fp;
 
-	if ((fp = fopen(MDBRC_FILENAME, "r")) != NULL) {
+	if ((fp = fopen(filename, "r")) != NULL) {
 		MR_trace_source_from_open_file(fp);
 		fclose(fp);
+		return TRUE;
+	} else {
+		return FALSE;
 	}
 }
 
-static void
-MR_trace_internal_init_from_home_dir(void)
+static bool
+MR_trace_internal_init_from_env_dir(const char *env_var, const char *filename)
 {
 	char	*env;
 	char	*buf;
 	int	len;
 	FILE	*fp;
 
-	/* XXX This code is too Unix specific. */
-
-	env = getenv("HOME");
+	env = getenv(env_var);
 	if (env == NULL) {
-		return;
+		return FALSE;
 	}
 
-	buf = checked_malloc(strlen(env) + strlen(MDBRC_FILENAME) + 2);
+	/* XXX This code is too Unix specific. */
+	buf = checked_malloc(strlen(env) + strlen(filename) + 2);
 	(void) strcpy(buf, env);
 	(void) strcat(buf, "/");
-	(void) strcat(buf, MDBRC_FILENAME);
+	(void) strcat(buf, filename);
 	if ((fp = fopen(buf, "r")) != NULL) {
 		MR_trace_source_from_open_file(fp);
 		fclose(fp);
+		free(buf);
+		return TRUE;
+	} else {
+		free(buf);
+		return FALSE;
 	}
-
-	free(buf);
 }
 
 static MR_Next
@@ -438,7 +453,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			cmd->MR_trace_stop_event = MR_trace_event_number + n;
 			goto return_stop_interacting;
 		} else {
-			MR_trace_usage("forward", "step");
+			MR_trace_help_cat_item("forward", "step");
 		}
 	} else if (streq(words[0], "goto")) {
 		cmd->MR_trace_strict = TRUE;
@@ -458,7 +473,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					"to a past event.\n");
 			}
 		} else {
-			MR_trace_usage("forward", "goto");
+			MR_trace_help_cat_item("forward", "goto");
 		}
 	} else if (streq(words[0], "finish")) {
 		int	stop_depth;
@@ -476,7 +491,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else if (word_count == 1) {
 			stop_depth = depth;
 		} else {
-			MR_trace_usage("forward", "finish");
+			MR_trace_help_cat_item("forward", "finish");
 			goto return_keep_interacting;
 		}
 
@@ -502,7 +517,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("This command is a no-op from this port.\n");
 			}
 		} else {
-			MR_trace_usage("forward", "return");
+			MR_trace_help_cat_item("forward", "return");
 		}
 	} else if (streq(words[0], "forward")) {
 		cmd->MR_trace_strict = TRUE;
@@ -519,7 +534,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("This command is a no-op from this port.\n");
 			}
 		} else {
-			MR_trace_usage("forward", "forward");
+			MR_trace_help_cat_item("forward", "forward");
 		}
 	} else if (streq(words[0], "mindepth")) {
 		int	newdepth;
@@ -537,7 +552,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			cmd->MR_trace_stop_depth = newdepth;
 			goto return_stop_interacting;
 		} else {
-			MR_trace_usage("forward", "mindepth");
+			MR_trace_help_cat_item("forward", "mindepth");
 		}
 	} else if (streq(words[0], "maxdepth")) {
 		int	newdepth;
@@ -555,7 +570,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			cmd->MR_trace_stop_depth = newdepth;
 			goto return_stop_interacting;
 		} else {
-			MR_trace_usage("forward", "maxdepth");
+			MR_trace_help_cat_item("forward", "maxdepth");
 		}
 	} else if (streq(words[0], "continue")) {
 		cmd->MR_trace_strict = FALSE;
@@ -582,7 +597,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			}
 			goto return_stop_interacting;
 		} else {
-			MR_trace_usage("forward", "continue");
+			MR_trace_help_cat_item("forward", "continue");
 		}
 	} else if (streq(words[0], "retry")) {
 		int	stop_depth;
@@ -592,7 +607,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else if (word_count == 1) {
 			stop_depth = depth;
 		} else {
-			MR_trace_usage("backward", "retry");
+			MR_trace_help_cat_item("backward", "retry");
 			goto return_keep_interacting;
 		}
 
@@ -630,7 +645,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("%s.\n", problem);
 			}
 		} else {
-			MR_trace_usage("browsing", "level");
+			MR_trace_help_cat_item("browsing", "level");
 		}
 	} else if (streq(words[0], "up")) {
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
@@ -654,7 +669,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("%s.\n", problem);
 			}
 		} else {
-			MR_trace_usage("browsing", "up");
+			MR_trace_help_cat_item("browsing", "up");
 		}
 	} else if (streq(words[0], "down")) {
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
@@ -678,65 +693,50 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("%s.\n", problem);
 			}
 		} else {
-			MR_trace_usage("browsing", "down");
+			MR_trace_help_cat_item("browsing", "down");
 		}
 	} else if (streq(words[0], "vars")) {
 		if (word_count == 1) {
 			MR_trace_list_vars(layout, saved_regs,
 				*ancestor_level);
 		} else {
-			MR_trace_usage("browsing", "vars");
+			MR_trace_help_cat_item("browsing", "vars");
 		}
 	} else if (streq(words[0], "print")) {
 		if (word_count == 2) {
-			MR_Var_Spec	var_spec;
-
-			if streq(words[1], "*") {
+			if (MR_trace_is_number(words[1], &n)) {
+				MR_trace_browse_one(layout, saved_regs,
+					*ancestor_level, n);
+			} else if streq(words[1], "*") {
 				MR_trace_browse_all(layout, saved_regs,
 					*ancestor_level);
-			} else if (MR_trace_is_number(words[1], &n)) {
-				var_spec.MR_var_spec_kind = VAR_NUMBER;
-				var_spec.MR_var_spec_number = n;
-				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, var_spec);
 			} else {
-				var_spec.MR_var_spec_kind = VAR_NAME;
-				var_spec.MR_var_spec_name = words[1];
-				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, var_spec);
+				MR_trace_help_cat_item("browsing", "print");
 			}
 		} else {
-			MR_trace_usage("browsing", "print");
+			MR_trace_help_cat_item("browsing", "print");
 		}
 	} else if (streq(words[0], "stack")) {
-		bool	include_trace_data;
-
-		include_trace_data = FALSE;
-		if (! MR_trace_options_detailed(&include_trace_data,
-				&words, &word_count, "browsing", "stack"))
-		{
-			; /* the usage message has already been printed */
-		} else if (word_count == 1) {
+		if (word_count == 1) {
 			const char	*result;
 
 			do_init_modules();
 			result = MR_dump_stack_from_layout(stdout,
 					layout->MR_sll_entry,
 					MR_saved_sp(saved_regs),
-					MR_saved_curfr(saved_regs),
-					include_trace_data);
+					MR_saved_curfr(saved_regs));
 			if (result != NULL) {
 				printf("%s.\n", result);
 			}
 		} else {
-			MR_trace_usage("browsing", "stack");
+			MR_trace_help_cat_item("browsing", "stack");
 		}
 	} else if (streq(words[0], "current")) {
 		if (word_count == 1) {
 			MR_trace_event_print_internal_report(layout, port,
 				seqno, depth, path);
 		} else {
-			MR_trace_usage("browsing", "current");
+			MR_trace_help_cat_item("browsing", "current");
 		}
 	} else if (streq(words[0], "break")) {
 		MR_Proc_Spec	spec;
@@ -785,7 +785,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("There is no such procedure.\n");
 			}
 		} else {
-			MR_trace_usage("breakpoint", "break");
+			MR_trace_help_cat_item("breakpoint", "break");
 		}
 	} else if (streq(words[0], "enable")) {
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
@@ -805,7 +805,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("There no break points yet.\n");
 			}
 		} else {
-			MR_trace_usage("breakpoint", "enable");
+			MR_trace_help_cat_item("breakpoint", "enable");
 		}
 	} else if (streq(words[0], "disable")) {
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
@@ -825,7 +825,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("There no break points yet.\n");
 			}
 		} else {
-			MR_trace_usage("breakpoint", "disable");
+			MR_trace_help_cat_item("breakpoint", "disable");
 		}
 	} else if (streq(words[0], "register")) {
 		bool	verbose;
@@ -837,21 +837,21 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else if (word_count == 1) {
 			MR_register_all_modules_and_procs(stdout, verbose);
 		} else {
-			MR_trace_usage("breakpoint", "register");
+			MR_trace_help_cat_item("breakpoint", "register");
 		}
 	} else if (streq(words[0], "modules")) {
 		if (word_count == 1) {
 			MR_register_all_modules_and_procs(stdout, TRUE);
 			MR_dump_module_list(stdout);
 		} else {
-			MR_trace_usage("breakpoint", "modules");
+			MR_trace_help_cat_item("breakpoint", "modules");
 		}
 	} else if (streq(words[0], "procedures")) {
 		if (word_count == 2) {
 			MR_register_all_modules_and_procs(stdout, TRUE);
 			MR_dump_module_procs(stdout, words[1]);
 		} else {
-			MR_trace_usage("breakpoint", "procedures");
+			MR_trace_help_cat_item("breakpoint", "procedures");
 		}
 	} else if (streq(words[0], "printlevel")) {
 		if (word_count == 2) {
@@ -874,7 +874,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 						"`all'.\n");
 				}
 			} else {
-				MR_trace_usage("parameter",
+				MR_trace_help_cat_item("parameter",
 					"printlevel");
 			}
 		} else if (word_count == 1) {
@@ -897,7 +897,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					break;
 			}
 		} else {
-			MR_trace_usage("parameter", "printlevel");
+			MR_trace_help_cat_item("parameter", "printlevel");
 		}
 	} else if (streq(words[0], "scroll")) {
 		if (word_count == 2) {
@@ -918,7 +918,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 						"%d.\n", MR_scroll_limit);
 				}
 			} else {
-				MR_trace_usage("parameter", "scroll");
+				MR_trace_help_cat_item("parameter", "scroll");
 			}
 		} else if (word_count == 1) {
 			printf("Scroll control is ");
@@ -930,7 +930,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			printf(", scroll window size is %d.\n",
 				MR_scroll_limit);
 		} else {
-			MR_trace_usage("parameter", "scroll");
+			MR_trace_help_cat_item("parameter", "scroll");
 		}
 	} else if (streq(words[0], "echo")) {
 		if (word_count == 2) {
@@ -945,7 +945,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					printf("Command echo enabled.\n");
 				}
 			} else {
-				MR_trace_usage("parameter", "echo");
+				MR_trace_help_cat_item("parameter", "echo");
 			}
 		} else if (word_count == 1) {
 			printf("Command echo is ");
@@ -955,7 +955,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				printf("off.\n");
 			}
 		} else {
-			MR_trace_usage("parameter", "echo");
+			MR_trace_help_cat_item("parameter", "echo");
 		}
 	} else if (streq(words[0], "alias")) {
 		if (word_count == 1) {
@@ -987,7 +987,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					words[1]);
 			}
 		} else {
-			MR_trace_usage("parameter", "unalias");
+			MR_trace_help_cat_item("parameter", "unalias");
 		}
 	} else if (streq(words[0], "document_category")) {
 		int		slot;
@@ -996,9 +996,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 
 		help_text = MR_trace_read_help_text();
 		if (word_count != 3) {
-			MR_trace_usage("help", "document_category");
+			MR_trace_help_cat_item("help", "document_category");
 		} else if (! MR_trace_is_number(words[1], &slot)) {
-			MR_trace_usage("help", "document_category");
+			MR_trace_help_cat_item("help", "document_category");
 		} else {
 			msg = MR_trace_add_cat(words[2], slot, help_text);
 			if (msg != NULL) {
@@ -1013,9 +1013,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 
 		help_text = MR_trace_read_help_text();
 		if (word_count != 4) {
-			MR_trace_usage("help", "document");
+			MR_trace_help_cat_item("help", "document");
 		} else if (! MR_trace_is_number(words[2], &slot)) {
-			MR_trace_usage("help", "document");
+			MR_trace_help_cat_item("help", "document");
 		} else {
 			msg = MR_trace_add_item(words[1], words[3], slot,
 				help_text);
@@ -1033,7 +1033,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else if (word_count == 3) {
 			MR_trace_help_cat_item(words[1], words[2]);
 		} else {
-			MR_trace_usage("help", "help");
+			MR_trace_help_cat_item("help", "help");
 		}
 #ifdef	MR_TRACE_HISTOGRAM
 	} else if (streq(words[0], "histogram_all")) {
@@ -1056,7 +1056,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				}
 			}
 		} else {
-			MR_trace_usage("exp", "histogram_all");
+			MR_trace_help_cat_item("exp", "histogram_all");
 		}
 	} else if (streq(words[0], "histogram_exp")) {
 		if (word_count == 2) {
@@ -1078,7 +1078,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				}
 			}
 		} else {
-			MR_trace_usage("exp", "histogram_exp");
+			MR_trace_help_cat_item("exp", "histogram_exp");
 		}
 	} else if (streq(words[0], "clear_histogram")) {
 		if (word_count == 1) {
@@ -1086,7 +1086,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				MR_trace_histogram_exp[i] = 0;
 			}
 		} else {
-			MR_trace_usage("exp", "clear_histogram");
+			MR_trace_help_cat_item("exp", "clear_histogram");
 		}
 #endif	/* MR_TRACE_HISTOGRAM */
 	} else if (streq(words[0], "nondet_stack")) {
@@ -1095,7 +1095,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_dump_nondet_stack_from_layout(stdout,
 				MR_saved_maxfr(saved_regs));
 		} else {
-			MR_trace_usage("developer", "nondet_stack");
+			MR_trace_help_cat_item("developer", "nondet_stack");
 		}
 	} else if (streq(words[0], "stack_regs")) {
 		if (word_count == 1) {
@@ -1104,7 +1104,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				MR_saved_curfr(saved_regs),
 				MR_saved_maxfr(saved_regs));
 		} else {
-			MR_trace_usage("developer", "stack_regs");
+			MR_trace_help_cat_item("developer", "stack_regs");
 		}
 	} else if (streq(words[0], "source")) {
 		if (word_count == 2) {
@@ -1114,7 +1114,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			*/
 			(void) MR_trace_source(words[1]);
 		} else {
-			MR_trace_usage("misc", "source");
+			MR_trace_help_cat_item("misc", "source");
 		}
 	} else if (streq(words[0], "quit")) {
 		bool	confirmed;
@@ -1155,7 +1155,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				exit(EXIT_SUCCESS);
 			}
 		} else {
-			MR_trace_usage("misc", "quit");
+			MR_trace_help_cat_item("misc", "quit");
 		}
 	} else {
 		printf("Unknown command `%s'. "
@@ -1180,8 +1180,7 @@ static struct MR_option MR_trace_strict_print_opts[] =
 	{ "none",	FALSE,	NULL,	'n' },
 	{ "some",	FALSE,	NULL,	's' },
 	{ "nostrict",	FALSE,	NULL,	'N' },
-	{ "strict",	FALSE,	NULL,	'S' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "strict",	FALSE,	NULL,	'S' }
 };
 
 static bool
@@ -1217,7 +1216,7 @@ MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 				break;
 
 			default:
-				MR_trace_usage(cat, item);
+				MR_trace_help_cat_item(cat, item);
 				return FALSE;
 		}
 	}
@@ -1233,8 +1232,7 @@ static struct MR_option MR_trace_when_action_opts[] =
 	{ "entry",	FALSE,	NULL,	'e' },
 	{ "interface",	FALSE,	NULL,	'i' },
 	{ "print",	FALSE,	NULL,	'P' },
-	{ "stop",	FALSE,	NULL,	'S' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "stop",	FALSE,	NULL,	'S' }
 };
 
 static bool
@@ -1270,40 +1268,7 @@ MR_trace_options_when_action(MR_Spy_When *when, MR_Spy_Action *action,
 				break;
 
 			default:
-				MR_trace_usage(cat, item);
-				return FALSE;
-		}
-	}
-
-	*words = *words + MR_optind - 1;
-	*word_count = *word_count - MR_optind + 1;
-	return TRUE;
-}
-
-static struct MR_option MR_trace_detailed_opts[] =
-{
-	{ "detailed",	FALSE,	NULL,	'd' },
-	{ NULL,		FALSE,	NULL,	0 }
-};
-
-static bool
-MR_trace_options_detailed(bool *detailed, char ***words, int *word_count,
-	const char *cat, const char *item)
-{
-	int	c;
-
-	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "d",
-			MR_trace_detailed_opts, NULL)) != EOF)
-	{
-		switch (c) {
-
-			case 'd':
-				*detailed = TRUE;
-				break;
-
-			default:
-				MR_trace_usage(cat, item);
+				MR_trace_help_cat_item(cat, item);
 				return FALSE;
 		}
 	}
@@ -1334,7 +1299,7 @@ MR_trace_options_confirmed(bool *confirmed, char ***words, int *word_count,
 				break;
 
 			default:
-				MR_trace_usage(cat, item);
+				MR_trace_help_cat_item(cat, item);
 				return FALSE;
 		}
 	}
@@ -1347,8 +1312,7 @@ MR_trace_options_confirmed(bool *confirmed, char ***words, int *word_count,
 static struct MR_option MR_trace_quiet_opts[] =
 {
 	{ "quiet",	FALSE,	NULL,	'q' },
-	{ "verbose",	FALSE,	NULL,	'v' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "verbose",	FALSE,	NULL,	'v' }
 };
 
 static bool
@@ -1372,7 +1336,7 @@ MR_trace_options_quiet(bool *verbose, char ***words, int *word_count,
 				break;
 
 			default:
-				MR_trace_usage(cat, item);
+				MR_trace_help_cat_item(cat, item);
 				return FALSE;
 		}
 	}
@@ -1380,15 +1344,6 @@ MR_trace_options_quiet(bool *verbose, char ***words, int *word_count,
 	*words = *words + MR_optind - 1;
 	*word_count = *word_count - MR_optind + 1;
 	return TRUE;
-}
-
-static void
-MR_trace_usage(const char *cat, const char *item)
-/* cat is unused now, but could be used later */
-{
-
-	printf("mdb: %s: usage error -- type `help %s' for help.\n",
-		item, item);
 }
 
 static void
@@ -1562,8 +1517,7 @@ MR_print_spy_point(int spy_point_num)
 		MR_spy_points[spy_point_num]->spy_enabled ? "+" : "-",
 		MR_spy_action_string(MR_spy_points[spy_point_num]->spy_action),
 		MR_spy_when_string(MR_spy_points[spy_point_num]->spy_when));
-	MR_print_proc_id(stdout, MR_spy_points[spy_point_num]->spy_proc,
-		NULL, NULL, NULL);
+	MR_print_proc_id_for_debugger(MR_spy_points[spy_point_num]->spy_proc);
 }
 
 static void
@@ -1589,9 +1543,12 @@ MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, Word *saved_regs,
 		return;
 	}
 
-	problem = MR_trace_validate_var_count(level_layout, &var_count);
-	if (problem != NULL) {
-		printf("mdb: %s.\n", problem);
+	var_count = (int) level_layout->MR_sll_var_count;
+	if (var_count < 0) {
+		printf("mdb: there is no information about live variables\n");
+		return;
+	} else if (var_count == 0) {
+		printf("mdb: there are no live variables\n");
 		return;
 	}
 
@@ -1608,38 +1565,28 @@ MR_trace_browse_check_level(const MR_Stack_Layout_Label *top_layout,
 	Word				*base_sp;
 	Word				*base_curfr;
 	const char 			*problem;
-	const MR_Stack_Layout_Label	*label_layout;
-	const MR_Stack_Layout_Entry	*entry;
 
 	base_sp = MR_saved_sp(saved_regs);
 	base_curfr = MR_saved_curfr(saved_regs);
-	label_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
-			&base_sp, &base_curfr, &problem);
-
-	if (label_layout == NULL) {
+	if (MR_find_nth_ancestor(top_layout, ancestor_level,
+			&base_sp, &base_curfr, &problem) == NULL)
+	{
 		return problem;
 	} else {
-		entry = label_layout->MR_sll_entry;
-		printf("%4d ", ancestor_level);
-		MR_print_proc_id(stdout, entry, "", base_sp, base_curfr);
-		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			return NULL;
-		} else {
-			return "this procedure does not have debugging info";
-		}
+		return NULL;
 	}
 }
 
 static void
 MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs, int ancestor_level, MR_Var_Spec var_spec)
+	Word *saved_regs, int ancestor_level, int which_var)
 {
 	const MR_Stack_Layout_Label	*level_layout;
 	Word				*base_sp;
 	Word				*base_curfr;
 	Word				*type_params;
 	Word				*valid_saved_regs;
-	int				which_var;
+	int				var_count;
 	const MR_Stack_Layout_Vars	*vars;
 	const char 			*problem;
 
@@ -1649,23 +1596,26 @@ MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
 				&base_sp, &base_curfr, &problem);
 
 	if (level_layout == NULL) {
-		printf("mdb: %s.\n", problem);
+		printf("%s\n", problem);
 		return;
 	}
 
-	problem = MR_trace_find_var(level_layout, var_spec, &which_var);
-	if (problem != NULL) {
-		printf("mdb: %s.\n", problem);
+	var_count = (int) level_layout->MR_sll_var_count;
+	if (var_count < 0) {
+		printf("mdb: there is no information about live variables\n");
+		return;
+	} else if (which_var >= var_count) {
+		printf("mdb: there is no such variable\n");
 		return;
 	}
 
+	vars = &level_layout->MR_sll_var_info;
 	if (ancestor_level == 0) {
 		valid_saved_regs = saved_regs;
 	} else {
 		valid_saved_regs = NULL;
 	}
 
-	vars = &level_layout->MR_sll_var_info;
 	type_params = MR_materialize_typeinfos_base(vars,
 				valid_saved_regs, base_sp, base_curfr);
 	MR_trace_browse_var(MR_name_if_present(vars, which_var),
@@ -1694,13 +1644,16 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 				&base_sp, &base_curfr, &problem);
 
 	if (level_layout == NULL) {
-		printf("mdb: %s.\n", problem);
+		printf("%s\n", problem);
 		return;
 	}
 
-	problem = MR_trace_validate_var_count(level_layout, &var_count);
-	if (problem != NULL) {
-		printf("mdb: %s.\n", problem);
+	var_count = (int) level_layout->MR_sll_var_count;
+	if (var_count < 0) {
+		printf("mdb: there is no information about live variables\n");
+		return;
+	} else if (var_count == 0) {
+		printf("mdb: there are no live variables\n");
 		return;
 	}
 
@@ -1775,77 +1728,6 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	printf("\n");
 }
 
-static const char *
-MR_trace_validate_var_count(const MR_Stack_Layout_Label *layout,
-	int *var_count_ptr)
-{
-	*var_count_ptr = (int) layout->MR_sll_var_count;
-	if (*var_count_ptr < 0) {
-		return "there is no information about live variables";
-	} else if (*var_count_ptr == 0) {
-		return "there are no live variables";
-	} else {
-		return NULL;
-	}
-}
-
-/*
-** Find and validate the number of a variable given by a variable
-** specification in the given layout. If successful, return the
-** number of the variable in *which_var_ptr, and a NULL string;
-** otherwise a return a string containing an error message.
-*/
-
-static const char *
-MR_trace_find_var(const MR_Stack_Layout_Label *layout,
-	MR_Var_Spec var_spec, int *which_var_ptr)
-{
-	int		var_count;
-	const char 	*problem;
-
-	problem = MR_trace_validate_var_count(layout, &var_count);
-	if (problem != NULL) {
-		return problem;
-	}
-
-	if (var_spec.MR_var_spec_kind == VAR_NUMBER) {
-		*which_var_ptr = var_spec.MR_var_spec_number;
-		if (*which_var_ptr >= var_count) {
-			return "there is no such variable";
-		} else {
-			return NULL;	/* represents success */
-		}
-	} else if (var_spec.MR_var_spec_kind == VAR_NAME) {
-		const MR_Stack_Layout_Vars	*vars;
-		const char 			*name;
-		bool				collision = FALSE;
-		int				i;
-
-		vars = &layout->MR_sll_var_info;
-		*which_var_ptr = -1;
-		name = var_spec.MR_var_spec_name;
-		for (i = 0; i < var_count; i++) {
-			if (streq(name, MR_name_if_present(vars, i))) {
-				if (*which_var_ptr >= 0) {
-					collision = TRUE;
-				}
-
-				*which_var_ptr = i;
-			}
-		}
-
-		if (*which_var_ptr < 0) {
-			return "there is no variable with that name";
-		} else if (collision) {
-			return "variable name is not unique";
-		} else {
-			return NULL;	/* represents success */
-		}
-	} else {
-		return "internal error: bad var_spec kind";
-	}
-}
-
 /*
 ** Read lines until we find one that contains only "end".
 ** Return the lines concatenated together.
@@ -1886,13 +1768,12 @@ MR_trace_read_help_text(void)
 }
 
 /*
-** Is the string pointed to by word a natural number,
-** i.e. a sequence of digits?
+** Is the string pointed to by word an integer?
 ** If yes, return its value in *value.
 */
 
 static bool
-MR_trace_is_number(const char *word, int *value)
+MR_trace_is_number(char *word, int *value)
 {
 	if (MR_isdigit(*word)) {
 		*value = *word - '0';
@@ -2315,7 +2196,14 @@ MR_trace_event_print_internal_report(const MR_Stack_Layout_Label *layout,
 		(long) MR_trace_event_number, (long) seqno, (long) depth);
 
 	MR_trace_print_port(port);
-	MR_print_proc_id(stdout, layout->MR_sll_entry, path, NULL, NULL);
+
+	/*
+	** The following should be a full identification of the procedure
+	** provided (a) there was no intermodule optimization and (b) we are
+	** not interested in tracing compiler-generated procedures.
+	*/
+
+	MR_print_proc_id(stdout, layout->MR_sll_entry, path);
 }
 
 static void

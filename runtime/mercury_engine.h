@@ -34,33 +34,35 @@
 ** Global flags that control the behaviour of the Mercury engine(s)
 */
 
-extern	bool	debugflag[];
+extern	bool	MR_debugflag[];
 
-#define	PROGFLAG	0
-#define	GOTOFLAG	1
-#define	CALLFLAG	2
-#define	HEAPFLAG	3
-#define	DETSTACKFLAG	4
-#define	NONDSTACKFLAG	5
-#define	FINALFLAG	6
-#define	MEMFLAG		7
-#define	SREGFLAG	8
-#define	TRACEFLAG	9
-#define	DETAILFLAG	10
-#define	MAXFLAG		11
-/* DETAILFLAG should be the last real flag */
+#define	MR_PROGFLAG		0
+#define	MR_GOTOFLAG		1
+#define	MR_CALLFLAG		2
+#define	MR_HEAPFLAG		3
+#define	MR_DETSTACKFLAG		4
+#define	MR_NONDSTACKFLAG	5
+#define	MR_FINALFLAG		6
+#define	MR_MEMFLAG		7
+#define	MR_SREGFLAG		8
+#define	MR_TRACEFLAG		9
+#define	MR_TABLEFLAG		10
+#define	MR_DETAILFLAG		11
+#define	MR_MAXFLAG		12
+/* MR_DETAILFLAG should be the last real flag */
 
-#define	progdebug	debugflag[PROGFLAG]
-#define	gotodebug	debugflag[GOTOFLAG]
-#define	calldebug	debugflag[CALLFLAG]
-#define	heapdebug	debugflag[HEAPFLAG]
-#define	detstackdebug	debugflag[DETSTACKFLAG]
-#define	nondstackdebug	debugflag[NONDSTACKFLAG]
-#define	finaldebug	debugflag[FINALFLAG]
-#define	memdebug	debugflag[MEMFLAG]
-#define	sregdebug	debugflag[SREGFLAG]
-#define	tracedebug	debugflag[TRACEFLAG]
-#define	detaildebug	debugflag[DETAILFLAG]
+#define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
+#define	MR_gotodebug		MR_debugflag[MR_GOTOFLAG]
+#define	MR_calldebug		MR_debugflag[MR_CALLFLAG]
+#define	MR_heapdebug		MR_debugflag[MR_HEAPFLAG]
+#define	MR_detstackdebug	MR_debugflag[MR_DETSTACKFLAG]
+#define	MR_nondstackdebug	MR_debugflag[MR_NONDSTACKFLAG]
+#define	MR_finaldebug		MR_debugflag[MR_FINALFLAG]
+#define	MR_memdebug		MR_debugflag[MR_MEMFLAG]
+#define	MR_sregdebug		MR_debugflag[MR_SREGFLAG]
+#define	MR_tracedebug		MR_debugflag[MR_TRACEFLAG]
+#define	MR_tabledebug		MR_debugflag[MR_TABLEFLAG]
+#define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 
 	/* 
 	** MR_setjmp and MR_longjmp are wrappers around setjmp and longjmp 
@@ -219,7 +221,7 @@ typedef struct MR_mercury_engine_struct {
 	MemoryZone	*debug_heap_zone;
   #endif
 #endif
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 	MemoryZone	*dumpstack_zone;
 	int		dumpindex;
 #endif

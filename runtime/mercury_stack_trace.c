@@ -54,6 +54,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 	fprintf(stderr, "Stack dump follows:\n");
 
+	do_init_modules();
 	label = MR_lookup_internal_by_addr(success_pointer);
 	if (label == NULL) {
 		fprintf(stderr, "internal label not found\n");
@@ -80,6 +81,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	Word				*stack_trace_sp;
 	Word				*stack_trace_curfr;
 
+	do_init_modules();
 	MR_dump_stack_record_init();
 
 	stack_trace_sp = det_stack_pointer;
@@ -119,6 +121,12 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 	const MR_Stack_Layout_Label	*return_label_layout;
 	int				i;
 
+	if (ancestor_level < 0) {
+		*problem = "no such stack frame";
+		return NULL;
+	}
+
+	do_init_modules();
 	*problem = NULL;
 	for (i = 0; i < ancestor_level && label_layout != NULL; i++) {
 		(void) MR_stack_walk_step(label_layout->MR_sll_entry,
@@ -171,7 +179,8 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 			return STEP_ERROR_AFTER;
 		}
 
-		success = (Code *) field(0, *stack_trace_sp_ptr, -number);
+		success = (Code *) MR_based_stackvar(*stack_trace_sp_ptr,
+					number);
 		*stack_trace_sp_ptr = *stack_trace_sp_ptr -
 			entry_layout->MR_sle_stack_slots;
 	} else {
@@ -185,7 +194,7 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 
 	label = MR_lookup_internal_by_addr(success);
 	if (label == NULL) {
-		*problem_ptr = "reached label with no stack trace info";
+		*problem_ptr = "reached unknown label";
 		return STEP_ERROR_AFTER;
 	}
 
@@ -203,6 +212,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 {
 	int	frame_size;
 
+	do_init_modules();
+
 	/*
 	** Change the >= below to > if you don't want the trace to include
 	** the bottom frame created by mercury_wrapper.c (whose redoip/redofr
@@ -212,13 +223,15 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 	while (base_maxfr >= MR_nondet_stack_trace_bottom) {
 		frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
 		if (frame_size == MR_NONDET_TEMP_SIZE) {
-			fprintf(fp, "%p: nondet temp\n", base_maxfr);
+			fprintf(fp, "%p: nondet temp, %d words\n",
+				base_maxfr, frame_size);
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: %p\n",
 				MR_redofr_slot(base_maxfr));
 		} else if (frame_size == MR_DET_TEMP_SIZE) {
-			fprintf(fp, "%p: nondet temp\n", base_maxfr);
+			fprintf(fp, "%p: nondet temp, %d words\n",
+				base_maxfr, frame_size);
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: %p\n",
@@ -226,7 +239,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 			fprintf(fp, " detfr:  %p\n",
 				MR_detfr_slot(base_maxfr));
 		} else {
-			fprintf(fp, "%p: ordinary\n", base_maxfr);
+			fprintf(fp, "%p: ordinary, %d words\n",
+				base_maxfr, frame_size);
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: %p\n",
@@ -286,15 +300,72 @@ MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	fprintf(fp, "%9d ", start_level);
 
 	if (count > 1) {
-		fprintf(fp, " %3d*", count);
+		fprintf(fp, " %3d* ", count);
 	} else {
-		fprintf(fp, "%5s", "");
+		fprintf(fp, "%5s ", "");
 	}
 
-	fprintf(fp, " %s:%s/%ld-%ld (%s)\n",
-		entry_layout->MR_sle_def_module,
-		entry_layout->MR_sle_name,
-		(long) entry_layout->MR_sle_arity,
-		(long) entry_layout->MR_sle_mode,
-		detism_names[entry_layout->MR_sle_detism]);
+	MR_print_proc_id(fp, entry_layout, NULL);
+}
+
+void
+MR_print_proc_id_for_debugger(const MR_Stack_Layout_Entry *entry_layout)
+{
+	MR_print_proc_id(stdout, entry_layout, NULL);
+}
+
+void
+MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
+	const char *extra)
+{
+	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
+		fatal_error("cannot print procedure id without layout");
+	}
+
+	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+		fprintf(fp, "%s for %s:%s/%ld-%ld",
+			entry->MR_sle_comp.MR_comp_pred_name,
+			entry->MR_sle_comp.MR_comp_type_module,
+			entry->MR_sle_comp.MR_comp_type_name,
+			(long) entry->MR_sle_comp.MR_comp_arity,
+			(long) entry->MR_sle_comp.MR_comp_mode);
+
+		if (strcmp(entry->MR_sle_comp.MR_comp_type_module,
+				entry->MR_sle_comp.MR_comp_def_module) != 0)
+		{
+			fprintf(fp, " {%s}",
+				entry->MR_sle_comp.MR_comp_def_module);
+		}
+	} else {
+		if (entry->MR_sle_user.MR_user_pred_or_func == MR_PREDICATE) {
+			fprintf(fp, "pred");
+		} else if (entry->MR_sle_user.MR_user_pred_or_func ==
+				MR_FUNCTION)
+		{
+			fprintf(fp, "func");
+		} else {
+			fatal_error("procedure is not pred or func");
+		}
+
+		fprintf(fp, " %s:%s/%ld-%ld",
+			entry->MR_sle_user.MR_user_decl_module,
+			entry->MR_sle_user.MR_user_name,
+			(long) entry->MR_sle_user.MR_user_arity,
+			(long) entry->MR_sle_user.MR_user_mode);
+
+		if (strcmp(entry->MR_sle_user.MR_user_decl_module,
+				entry->MR_sle_user.MR_user_def_module) != 0)
+		{
+			fprintf(fp, " {%s}",
+				entry->MR_sle_user.MR_user_def_module);
+		}
+	}
+
+	fprintf(fp, " (%s)", detism_names[entry->MR_sle_detism]);
+
+	if (extra != NULL) {
+		fprintf(fp, " %s\n", extra);
+	} else {
+		fprintf(fp, "\n");
+	}
 }

@@ -168,7 +168,7 @@ globals__io_get_globals(Globals) -->
 	}.
 
 globals__io_set_globals(Globals) -->
-	{ copy(Globals, UniqGlobals) },
+	{ unsafe_promise_unique(Globals, UniqGlobals) },
 	{ type_to_univ(UniqGlobals, UnivGlobals) },
 	io__set_globals(UnivGlobals).
 

@@ -159,7 +159,8 @@
 
 :- implementation.
 
-:- import_module hlds_goal, prog_util, type_util, code_util.
+:- import_module post_typecheck.
+:- import_module hlds_goal, prog_util, type_util, modules, code_util.
 :- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc, special_pred, inst_match.
@@ -263,33 +264,47 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 	(
 		{ pred_info_is_imported(PredInfo0) }
 	->
-		{ Error1 = Error0 },
-		{ ModuleInfo1 = ModuleInfo0 },
+		{ Error2 = Error0 },
+		{ ModuleInfo2 = ModuleInfo0 },
 		{ Changed2 = Changed0 }
 	;
 		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0, 
-			MaybePredInfo, Changed1),
-		{
-			MaybePredInfo = yes(PredInfo),
-			Error1 = Error0,
-			map__det_update(Preds0, PredId, PredInfo, Preds),
-			module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1)
+			PredInfo1, Error1, Changed1),
+		(
+			{ Error1 = no },
+			{ map__det_update(Preds0, PredId, PredInfo1, Preds) },
+			{ module_info_set_preds(ModuleInfo0, Preds,
+				ModuleInfo2) }
 		;
-			MaybePredInfo = no,
-			Error1 = yes,
-			module_info_remove_predid(ModuleInfo0, PredId,
-				ModuleInfo1)
-		},
+			{ Error1 = yes },
+			%
+			% if we get an error, we need to call
+			% post_typecheck__finish_ill_typed_pred on the
+			% pred, to ensure that its mode declaration gets
+			% properly module qualified; then we call
+			% `remove_predid', so that the predicate's definition
+			% will be ignored by later passes (the declaration
+			% will still be used to check any calls to it).
+			%
+			post_typecheck__finish_ill_typed_pred(ModuleInfo0,
+				PredId, PredInfo1, PredInfo),
+			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
+			{ module_info_set_preds(ModuleInfo0, Preds,
+				ModuleInfo1) },
+			{ module_info_remove_predid(ModuleInfo1, PredId,
+				ModuleInfo2) }
+		),
+		{ bool__or(Error0, Error1, Error2) },
 		{ bool__or(Changed0, Changed1, Changed2) }
 	),
-	typecheck_pred_types_2(PredIds, ModuleInfo1, ModuleInfo, 
-		Error1, Error, Changed2, Changed).
+	typecheck_pred_types_2(PredIds, ModuleInfo2, ModuleInfo, 
+		Error2, Error, Changed2, Changed).
 
 :- pred typecheck_pred_type(pred_id, pred_info, module_info,
-	maybe(pred_info), bool, io__state, io__state).
-:- mode typecheck_pred_type(in, in, in, out, out, di, uo) is det.
+		pred_info, bool, bool, io__state, io__state).
+:- mode typecheck_pred_type(in, in, in, out, out, out, di, uo) is det.
 
-typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
+typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		IOState0, IOState) :-
 	(
 	    % Compiler-generated predicates are created already type-correct,
@@ -308,7 +323,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	    ;
 	        PredInfo = PredInfo0
 	    ),
-	    MaybePredInfo = yes(PredInfo),
+	    Error = no,
 	    Changed = no,
 	    IOState = IOState0
 	;
@@ -334,12 +349,13 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				VarTypes, HeadVars, Clauses0),
 			pred_info_set_clauses_info(PredInfo0, ClausesInfo,
 				PredInfo),
-			MaybePredInfo = yes(PredInfo),
+			Error = no,
 			Changed = no
 		;
 			report_error_no_clauses(PredId, PredInfo0, ModuleInfo,
 			    IOState0, IOState),
-			MaybePredInfo = no,
+			PredInfo = PredInfo0,
+			Error = yes,
 			Changed = no
 		)
 	    ;
@@ -392,10 +408,11 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				TypeCheckInfo3),
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo3, TypeCheckInfo4),
-		typecheck_info_get_final_info(TypeCheckInfo4, ExistQVars0,
-				TypeVarSet, HeadTypeParams2, InferredVarTypes0,
-				InferredTypeConstraints0, ConstraintProofs,
-				TVarRenaming, ExistTypeRenaming),
+		typecheck_info_get_final_info(TypeCheckInfo4, HeadTypeParams1, 
+				ExistQVars0, TypeVarSet, HeadTypeParams2,
+				InferredVarTypes0, InferredTypeConstraints0,
+				ConstraintProofs, TVarRenaming,
+				ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
 		ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
 				InferredVarTypes, HeadVars, Clauses),
@@ -512,13 +529,6 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 			Changed = no
 		),
 		typecheck_info_get_found_error(TypeCheckInfo4, Error),
-		(
-			Error = yes,
-			MaybePredInfo = no
-		;
-			Error = no,
-			MaybePredInfo = yes(PredInfo)
-		),
 		typecheck_info_get_io_state(TypeCheckInfo4, IOState)
 	    )
 	).
@@ -2813,10 +2823,13 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 
 %-----------------------------------------------------------------------------%
 
-% typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars,
+% typecheck_info_get_final_info(TypeCheckInfo, 
+% 		OldHeadTypeParams, OldExistQVars,
 %		NewTypeVarSet, New* ..., TypeRenaming, ExistTypeRenaming):
 %	extracts the final inferred types from TypeCheckInfo.
 %
+%	OldHeadTypeParams should be the type variables from the head of the
+%	predicate.
 %	OldExistQVars should be the declared existentially quantified
 %	type variables (if any).
 %	New* is the newly inferred types, in NewTypeVarSet.
@@ -2826,16 +2839,17 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %	applying TypeRenaming) to rename existential type variables
 %	in OldExistQVars.
 
-:- pred typecheck_info_get_final_info(typecheck_info, existq_tvars,
+:- pred typecheck_info_get_final_info(typecheck_info, list(tvar), existq_tvars,
 		tvarset, existq_tvars, map(var, type),
 		class_constraints, map(class_constraint, constraint_proof),
 		map(tvar, tvar), map(tvar, tvar)).
-:- mode typecheck_info_get_final_info(in, in, out, out, out, out, out, out, out)
-		is det.
+:- mode typecheck_info_get_final_info(in, in, in, 
+		out, out, out, out, out, out, out) is det.
 
-typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
-		NewHeadTypeParams, NewVarTypes, NewTypeConstraints,
-		NewConstraintProofs, TSubst, ExistTypeRenaming) :-
+typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars, 
+		NewTypeVarSet, NewHeadTypeParams, NewVarTypes,
+		NewTypeConstraints, NewConstraintProofs, TSubst,
+		ExistTypeRenaming) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
 		type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
@@ -2851,11 +2865,11 @@ typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
 		expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
 
 		%
-		% figure out how we should renaming the existential types
+		% figure out how we should rename the existential types
 		% in the type declaration (if any)
 		%
-		get_existq_tvar_renaming(OldExistQVars, TypeBindings,
-			ExistTypeRenaming),
+		get_existq_tvar_renaming(OldHeadTypeParams, OldExistQVars,
+			TypeBindings, ExistTypeRenaming),
 
 		%
 		% We used to just use the OldTypeVarSet that we got
@@ -2875,12 +2889,21 @@ typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
 		% in the inferred types, plus any existentially typed
 		% variables that will remain in the declaration.
 		%
+		% There may also be some type variables in the HeadTypeParams
+		% which do not occur in the type of any variable (e.g. this
+		% can happen in the case of code containing type errors).
+		% We'd better keep those, too, to avoid errors
+		% when we apply the TSubst to the HeadTypeParams.
+		% (XXX should we do the same for TypeConstraints and
+		% ConstraintProofs too?)
+		%
 		map__values(VarTypes, Types),
 		term__vars_list(Types, TypeVars0),
 		map__keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
 		list__delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
 			ExistQVarsToRemain),
-		list__append(ExistQVarsToRemain, TypeVars0, TypeVars1),
+		list__condense([ExistQVarsToRemain, HeadTypeParams, TypeVars0],
+			TypeVars1),
 		list__sort_and_remove_dups(TypeVars1, TypeVars),
 		%
 		% Next, create a new typevarset with the same number of
@@ -2915,19 +2938,23 @@ typecheck_info_get_final_info(TypeCheckInfo, OldExistQVars, NewTypeVarSet,
 
 %
 % We rename any existentially quantified type variables which
-% get mapped to other type variables.
+% get mapped to other type variables, unless they are mapped to 
+% universally quantified type variables from the head of the predicate.
 %
-:- pred get_existq_tvar_renaming(existq_tvars, tsubst, map(tvar, tvar)).
-:- mode get_existq_tvar_renaming(in, in, out) is det.
+:- pred get_existq_tvar_renaming(list(tvar), existq_tvars, tsubst, 
+	map(tvar, tvar)).
+:- mode get_existq_tvar_renaming(in, in, in, out) is det.
 
-get_existq_tvar_renaming(ExistQVars, TypeBindings, ExistTypeRenaming) :-
+get_existq_tvar_renaming(OldHeadTypeParams, ExistQVars, TypeBindings,
+		ExistTypeRenaming) :-
 	MaybeAddToMap = lambda([TVar::in, Renaming0::in, Renaming::out] is det,
 		(
 			term__apply_rec_substitution(term__variable(TVar),
 				TypeBindings, Result),
 			(
 				Result = term__variable(NewTVar),
-				NewTVar \= TVar
+				NewTVar \= TVar,
+				\+ list__member(NewTVar, OldHeadTypeParams)
 			->
 				map__det_insert(Renaming0, TVar, NewTVar,
 					Renaming)
@@ -2959,8 +2986,8 @@ expand_types([Var | Vars], TypeSubst, VarTypes0, VarTypes) :-
 
 % apply a type variable renaming to a class constraint proof
 
-rename_constraint_proof(_TSubst, apply_instance(Instance, Num),
-				apply_instance(Instance, Num)).
+rename_constraint_proof(_TSubst, apply_instance(Num),
+				apply_instance(Num)).
 rename_constraint_proof(TSubst, superclass(ClassConstraint0),
 			superclass(ClassConstraint)) :-
 	apply_variable_renaming_to_constraint(TSubst, ClassConstraint0,
@@ -3167,10 +3194,10 @@ report_unsatisfiable_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :
 			list__sort_and_remove_dups(UnprovenConstraints1,
 				UnprovenConstraints),
 			prog_out__write_context(Context, IO0, IO1),
-			io__write_string("  ", IO1, IO2),
-			io__write_list(UnprovenConstraints, ", ",
+			io__write_string("  `", IO1, IO2),
+			io__write_list(UnprovenConstraints, "', `",
 				mercury_output_constraint(VarSet), IO2, IO3),
-			io__write_string(".\n", IO3, IO)
+			io__write_string("'.\n", IO3, IO)
 		)),
 
 		% XXX this won't be very pretty when there are
@@ -3394,23 +3421,23 @@ find_matching_instance_rule(Instances, ClassName, Types, TVarSet,
 
 find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 		NewTVarSet, Proofs0, Proofs, NewConstraints) :-
-	I = hlds_instance_defn(ModuleName, NewConstraints0, InstanceTypes0,
-		Interface, PredProcIds, InstanceNames, SuperClassProofs),
+	I = hlds_instance_defn(_Status, _Context, NewConstraints0, 
+		InstanceTypes0, _Interface, _PredProcIds, InstanceNames,
+		_SuperClassProofs),
 	(
 		varset__merge_subst(TVarSet, InstanceNames, NewTVarSet0,
 			RenameSubst),
-		term__apply_rec_substitution_to_list(InstanceTypes0,
+		term__apply_substitution_to_list(InstanceTypes0,
 			RenameSubst, InstanceTypes),
 		type_list_subsumes(InstanceTypes, Types, Subst)
 	->
-		apply_rec_subst_to_constraint_list(RenameSubst, NewConstraints0,
-			NewConstraints1),
-		apply_rec_subst_to_constraint_list(Subst, NewConstraints1,
-			NewConstraints),
 		NewTVarSet = NewTVarSet0,
-		NewProof = apply_instance(hlds_instance_defn(ModuleName,
-			NewConstraints, InstanceTypes, Interface, PredProcIds,
-			InstanceNames, SuperClassProofs), N0),
+		apply_subst_to_constraint_list(RenameSubst, 
+			NewConstraints0, NewConstraints1),
+		apply_rec_subst_to_constraint_list(Subst, 
+			NewConstraints1, NewConstraints),
+
+		NewProof = apply_instance(N0),
 		Constraint = constraint(ClassName, Types),
 		map__set(Proofs0, Constraint, NewProof, Proofs)
 	;
@@ -3658,8 +3685,8 @@ convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 				% or universal constraints on the declaration
 				% of the predicate we are analyzing.
 			map(class_constraint,	% for each constraint
-			    constraint_proof)	% constraint found to be 
-						% redundant, why is it so?
+			    constraint_proof)	% found to be redundant, 
+			    			% why is it so?
 		).
 
 %-----------------------------------------------------------------------------%
@@ -4679,9 +4706,49 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 			[]
 		)
 	;
+		{ PredName = unqualified("some"), Arity = 2 }
+	->
+		io__write_string(
+		    "  syntax error in existential quantification: first\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+		    "  argument of `some' should be a list of variables.\n")
+	;
 		io__write_string("  error: undefined predicate `"),
 		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string("'.\n")
+		io__write_string("'"),
+		( { PredName = qualified(ModQual, _) } ->
+			maybe_report_missing_import(TypeCheckInfo, ModQual)
+		;
+			io__write_string(".\n")
+		)
+	).
+
+:- pred maybe_report_missing_import(typecheck_info, module_specifier,
+		io__state, io__state).
+:- mode maybe_report_missing_import(typecheck_info_no_io, in, di, uo) is det.
+
+maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
+	{ typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo) },
+	{ module_info_name(ModuleInfo, ThisModule) },
+	{ module_info_get_imported_module_specifiers(ModuleInfo,
+		ImportedModules) },
+	(
+		% the visible modules are the current module, any
+		% imported modules, and any ancestor modules.
+		{ ModuleQualifier \= ThisModule },
+		{ \+ set__member(ModuleQualifier, ImportedModules) },
+		{ get_ancestors(ThisModule, ParentModules) },
+		{ \+ list__member(ModuleQualifier, ParentModules) }
+	->
+		io__write_string("\n"),
+		{ typecheck_info_get_context(TypeCheckInfo, Context) },
+		prog_out__write_context(Context),
+		io__write_string("  (the module `"),
+		mercury_output_bracketed_sym_name(ModuleQualifier),
+		io__write_string("' has not been imported).\n")
+	;
+		io__write_string(".\n")
 	).
 
 :- pred report_error_func_instead_of_pred(typecheck_info, pred_call_id,
@@ -4872,7 +4939,16 @@ report_error_undef_cons(TypeCheckInfo, Functor, Arity) -->
 			{ strip_builtin_qualifier_from_cons_id(Functor, 
 				Functor1) },
 			hlds_out__write_cons_id(Functor1),
-			io__write_string("'.\n")
+			io__write_string("'"),
+			(
+				{ Functor = cons(Constructor, _) },
+				{ Constructor = qualified(ModQual, _) }
+			->
+				maybe_report_missing_import(TypeCheckInfo,
+					ModQual)
+			;
+				io__write_string(".\n")
+			)
 		)
 	).
 
@@ -4909,6 +4985,8 @@ language_builtin("<=", 2).
 language_builtin("call", _).
 language_builtin("impure", 1).
 language_builtin("semipure", 1).
+language_builtin("all", 2).
+language_builtin("some", 2).
 
 :- pred write_call_context(term__context, pred_call_id, int, unify_context,
 				io__state, io__state).

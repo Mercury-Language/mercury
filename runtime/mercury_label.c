@@ -18,9 +18,9 @@
 
 #include	"mercury_label.h"
 
-#include	"mercury_table.h"	/* for `Table' */
+#include	"mercury_hash_table.h"	/* for `MR_Hash_Table' and its ops */
 #include	"mercury_prof.h"	/* for prof_output_addr_decl() */
-#include	"mercury_engine.h"	/* for `progdebug' */
+#include	"mercury_engine.h"	/* for `MR_progdebug' */
 #include	"mercury_wrapper.h"	/* for do_init_modules() */
 
 /*
@@ -62,7 +62,7 @@ static	const void	*internal_addr(const void *internal);
 static	bool		equal_addr(const void *addr1, const void *addr2);
 static	int		hash_addr(const void *addr);
 
-static	Table		internal_addr_table = {INTERNAL_SIZE, NULL,
+static	MR_Hash_Table	internal_addr_table = {INTERNAL_SIZE, NULL,
 				internal_addr, hash_addr, equal_addr};
 
 void 
@@ -79,7 +79,7 @@ MR_do_init_label_tables(void)
 					* sizeof(MR_Entry));
 #endif
 
-		init_table(internal_addr_table);
+		MR_init_hash_table(internal_addr_table);
 
 		done = TRUE;
 	}
@@ -100,7 +100,7 @@ MR_insert_entry_label(const char *name, Code *addr,
 #endif
 
 #ifdef	MR_LOWLEVEL_DEBUG
-	if (progdebug) {
+	if (MR_progdebug) {
 		printf("recording entry label %s at %p\n", name, addr);
 	}
 #endif
@@ -201,7 +201,7 @@ MR_insert_internal_label(const char *name, Code *addr,
 	internal->i_name = name;
 
 #ifdef	MR_LOWLEVEL_DEBUG
-	if (progdebug) {
+	if (MR_progdebug) {
 		printf("inserting internal label %s at %p\n", name, addr);
 	}
 #endif
@@ -209,7 +209,7 @@ MR_insert_internal_label(const char *name, Code *addr,
 	/* two labels at same location will happen quite often */
 	/* when the code generated between them turns out to be empty */
 
-	(void) insert_table(internal_addr_table, internal);
+	(void) MR_insert_hash_table(internal_addr_table, internal);
 }
 
 MR_Internal *
@@ -219,12 +219,12 @@ MR_lookup_internal_by_addr(const Code *addr)
 	do_init_modules();
 
 #ifdef	MR_LOWLEVEL_DEBUG
-	if (progdebug) {
+	if (MR_progdebug) {
 		printf("looking for internal label at %p\n", addr);
 	}
 #endif
 
-	return (MR_Internal *) lookup_table(internal_addr_table, addr);
+	return (MR_Internal *) MR_lookup_hash_table(internal_addr_table, addr);
 }
 
 static const void *
@@ -248,5 +248,6 @@ hash_addr(const void *addr)
 void
 MR_process_all_internal_labels(void f(const void *))
 {
-	process_all_entries(internal_addr_table, f);
+	MR_do_init_label_tables();
+	MR_process_all_entries(internal_addr_table, f);
 }

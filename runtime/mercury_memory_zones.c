@@ -44,8 +44,6 @@
   #include <sys/ucontext.h>
 #endif
 
-#include "mercury_trace.h"
-
 #ifdef MR_THREAD_SAFE
   #include "mercury_thread.h"
 #endif

@@ -19,15 +19,10 @@
 #define entry(label) paste(_entry_,label)
 #define skip(label) paste(skip_,label)
 
-#if defined(MR_USE_STACK_LAYOUTS)
-  #define MR_ENTRY_LAYOUT(label)	(const MR_Stack_Layout_Entry *) (Word) \
-	&(paste(mercury_data__layout__,label))
-  #define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) (Word) \
-	&(paste(mercury_data__layout__,label))
-#else
-  #define MR_ENTRY_LAYOUT(label)	(const MR_Stack_Layout_Entry *) NULL
-  #define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) NULL
-#endif
+#define MR_ENTRY_LAYOUT(label)		(const MR_Stack_Layout_Entry *) (Word) \
+				&(paste(mercury_data__layout__,label))
+#define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) (Word) \
+				&(paste(mercury_data__layout__,label))
 
 /*
 ** Taking the address of a label can inhibit gcc's optimization,
@@ -36,43 +31,46 @@
 ** or if we need the label address for profiling or
 ** accurate garbage collection.
 **
-** The versions of the macros below with the _sl suffix assume that the label
-** that they are applied to has a stack layout record; the versions without
-** do not. This governs whether they try to pass the address of this record
-** to insert_entry().
+** The versions of the macros below with the _ai or _sl suffix always insert
+** the label into the label table, the difference between them being that
+** the _ai variant does not include a layout structure. If the label *has*
+** a layout structure, use the _sl variant.
 */
 
+#define make_label_ai(n, a, l)		MR_insert_internal_label(n, a, NULL)
+#define make_label_sl(n, a, l)		MR_insert_internal_label(n, a, \
+						MR_INTERNAL_LAYOUT(l))
+
+#define make_local_ai(n, a, l)		MR_insert_internal_label(n, a, NULL)
+#define make_local_sl(n, a, l)		MR_insert_internal_label(n, a, \
+						MR_INTERNAL_LAYOUT(l))
+
+#define make_entry_ai(n, a, l)		MR_insert_entry_label(n, a, NULL)
+#define make_entry_sl(n, a, l)		MR_insert_entry_label(n, a, \
+						MR_ENTRY_LAYOUT(l))
+
 #if defined(MR_INSERT_LABELS)
-  #define make_label(n, a, l)		MR_insert_internal_label(n, a, NULL)
-  #define make_label_sl(n, a, l)	\
-  		MR_insert_internal_label(n, a, MR_INTERNAL_LAYOUT(l))
+  #define make_label(n, a, l)		make_label_ai(n, a, l)
 #else
   #define make_label(n, a, l)		/* nothing */
-  #define make_label_sl(n, a, l)	/* nothing */
 #endif
 
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
-  #define make_local(n, a, l)		MR_insert_internal_label(n, a, NULL)
-  #define make_local_sl(n, a, l)	\
-  		MR_insert_internal_label(n, a, MR_INTERNAL_LAYOUT(l))
+  #define make_local(n, a, l)		make_local_ai(n, a, l)
 #else 
   #define make_local(n, a, l)		/* nothing */
-  #define make_local_sl(n, a, l)	/* nothing */
 #endif
 
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
-  #define make_entry(n, a, l)		MR_insert_entry_label(n, a, NULL)
-  #define make_entry_sl(n, a, l)	\
-  		MR_insert_entry_label(n, a, MR_ENTRY_LAYOUT(l))
+  #define make_entry(n, a, l)		make_entry_ai(n, a, l)
 #else
   #define make_entry(n, a, l)		/* nothing */
-  #define make_entry_sl(n, a, l)	/* nothing */
 #endif
 
 #ifdef SPLIT_C_FILES
-#define MODULE_STATIC_OR_EXTERN extern
+  #define MR_MODULE_STATIC_OR_EXTERN extern
 #else
-#define MODULE_STATIC_OR_EXTERN static
+  #define MR_MODULE_STATIC_OR_EXTERN static
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -111,10 +109,12 @@
   #define ASM_FALLTHROUGH(label) \
   	goto skip(label);
 
-#elif defined(__i386__)
+#elif defined(__i386__) || defined(__mc68000__)
 
   /*
   ** The following hack works around a stack leak on the i386.
+  ** (and apparently the 68000 too).
+  **
   ** The problem is that gcc pushes function parameters onto
   ** the stack when calling C functions such as GC_malloc(),
   ** and only restores the stack pointer in the epilogue.
@@ -135,10 +135,17 @@
   **
   ** I know this is awful.  It wasn't _my_ idea to use non-local gotos ;-)
   */
-  #define ASM_JUMP(label)				\
+  #if defined(__i386__)
+    #define ASM_JUMP(label)				\
   	{ register int stack_pointer __asm__("esp");	\
   	__asm__("" : : "g"(stack_pointer)); }		\
   	goto *(label)
+  #elif defined(__mc68000__)
+    #define ASM_JUMP(label)				\
+  	{ register int stack_pointer __asm__("sp");	\
+  	__asm__("" : : "g"(stack_pointer)); }		\
+  	goto *(label)
+  #endif
 
   /*
   ** That hack above needs to be done for all non-local jumps,
@@ -178,7 +185,9 @@
     ** setjmp()/longjmp() will do that for us automatically,
     ** precisely because it is a callee-save register.
     */
-    #define INLINE_ASM_FIXUP_REGS     				\
+    #if defined(__i386__)
+
+      #define INLINE_ASM_FIXUP_REGS     			\
     	"	call 0f\n"     					\
     	"0:\n"       						\
     	"	popl %%ebx\n"     				\
@@ -192,6 +201,17 @@
 		/* tell gcc we clobber ebx and memory */	\
     		: : : "%ebx", "memory"
 #endif
+    #elif defined(__mc68000__)
+
+	/*
+	**  This piece of magic thanks to Roman Hodek
+	**  <Roman.Hodek@informatik.uni-erlangen.de>
+	*/ 
+
+      #define INLINE_ASM_FIXUP_REGS \
+        "       lea (%%pc,_GLOBAL_OFFSET_TABLE_@GOTPC),%%a5\n" : : : "memory"
+
+    #endif
 
     /*
     ** It is safe to fall through into INLINE_ASM_FIXUP_REGS,
@@ -448,8 +468,8 @@
   ** macro are for.
   */
   #define BEGIN_MODULE(module_name)	\
-	MODULE_STATIC_OR_EXTERN void module_name(void); \
-	MODULE_STATIC_OR_EXTERN void module_name(void) { \
+	MR_MODULE_STATIC_OR_EXTERN void module_name(void); \
+	MR_MODULE_STATIC_OR_EXTERN void module_name(void) { \
 		PRETEND_ADDRESS_IS_USED(module_name); \
 		PRETEND_ADDRESS_IS_USED(&& paste(module_name, _dummy_label)); \
 		paste(module_name,_dummy_label): \
@@ -486,6 +506,9 @@
     #define init_entry(label)	\
 	PRETEND_ADDRESS_IS_USED(&&label); \
 	make_entry(stringify(label), label, label)
+    #define init_entry_ai(label)	\
+	PRETEND_ADDRESS_IS_USED(&&label); \
+	make_entry_ai(stringify(label), label, label)
     #define init_entry_sl(label)	\
 	PRETEND_ADDRESS_IS_USED(&&label); \
 	make_entry_sl(stringify(label), label, label)
@@ -516,6 +539,9 @@
     #define init_entry(label)	\
 	make_entry(stringify(label), &&label, label);	\
 	entry(label) = &&label
+    #define init_entry_ai(label)	\
+	make_entry_ai(stringify(label), &&label, label);	\
+	entry(label) = &&label
     #define init_entry_sl(label)	\
 	make_entry_sl(stringify(label), &&label, label);	\
 	entry(label) = &&label
@@ -534,19 +560,20 @@
 	}	\
 	label:	\
 	{
-  #define init_local(label)	make_local(stringify(label), &&label, label)
-  #define init_local_sl(label)	make_local_sl(stringify(label), &&label, label)
+  #define init_local(label)	\
+  	make_local(stringify(label), &&entry(label), label)
+  #define init_local_ai(label)	\
+  	make_local_ai(stringify(label), &&entry(label), label)
+  #define init_local_sl(label)	\
+  	make_local_sl(stringify(label), &&entry(label), label)
   #define Define_label(label)	Define_local(label)
   #define Declare_label(label)	/* no declaration required */
-  #ifdef MR_INSERT_LABELS
-   #define init_label(label)	\
+  #define init_label(label)	\
 	make_label(stringify(label), &&entry(label), label)
-   #define init_label_sl(label)	\
+  #define init_label_ai(label)	\
+	make_label_ai(stringify(label), &&entry(label), label)
+  #define init_label_sl(label)	\
 	make_label_sl(stringify(label), &&entry(label), label)
-  #else
-   #define init_label(label)	make_label(stringify(label), &&label, label)
-   #define init_label_sl(label)	make_label_sl(stringify(label), &&label, label)
-  #endif
 
   #define LOCAL(label)		(&&entry(label))
   #define LABEL(label)		(&&entry(label))
@@ -554,7 +581,10 @@
   #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
   #define GOTO_STATIC(label) 	GOTO(STATIC(label))
   #define GOTO_LOCAL(label) 	GOTO_LABEL(label)
-  #define GOTO_LABEL(label) 	do { debuggoto(&&label); goto label; } while(0)
+  #define GOTO_LABEL(label) 	do {					\
+  					debuggoto(LABEL(label));	\
+					goto label;			\
+				} while(0)
 
   /*
   ** GOTO_LABEL(label) is the same as GOTO(LABEL(label)) except
@@ -568,8 +598,8 @@
   typedef Code * ModuleFunc(void);
 
   #define BEGIN_MODULE(module_name)	\
-		MODULE_STATIC_OR_EXTERN Code* module_name(void); \
-		MODULE_STATIC_OR_EXTERN Code* module_name(void) {
+	MR_MODULE_STATIC_OR_EXTERN Code* module_name(void); \
+	MR_MODULE_STATIC_OR_EXTERN Code* module_name(void) {
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 
@@ -585,6 +615,7 @@
 	}				\
 	static Code* label(void) {
   #define init_entry(label)	make_entry(stringify(label), label, label)
+  #define init_entry_ai(label)	make_entry_ai(stringify(label), label, label)
   #define init_entry_sl(label)	make_entry_sl(stringify(label), label, label)
 
   #define Declare_local(label)	static Code *label(void)
@@ -593,6 +624,7 @@
 	}				\
 	static Code* label(void) {
   #define init_local(label)	make_local(stringify(label), label, label)
+  #define init_local_ai(label)	make_local_ai(stringify(label), label, label)
   #define init_local_sl(label)	make_local_sl(stringify(label), label, label)
 
   #define Declare_label(label)	static Code *label(void)
@@ -601,6 +633,7 @@
 	}				\
 	static Code* label(void) {
   #define init_label(label)	make_label(stringify(label), label, label)
+  #define init_label_ai(label)	make_label_ai(stringify(label), label, label)
   #define init_label_sl(label)	make_label_sl(stringify(label), label, label)
 
   #define ENTRY(label) 		((Code *) (label))

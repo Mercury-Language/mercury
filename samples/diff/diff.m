@@ -4,8 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% Main author: bromage
-% Simplified by Marnix Klooster <marnix@worldonline.nl>
+% Main authors: bromage, Marnix Klooster <marnix@worldonline.nl>
 
 % Something very similar to the standard diff utility.  Sort of.  :-)
 
@@ -21,7 +20,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module options, lcss, diff_out, globals, filter.
+:- import_module options, myers, diff_out, globals, filter, match.
 :- import_module string, list, file, std_util, require, getopt.
 
 %-----------------------------------------------------------------------------%
@@ -81,8 +80,15 @@ main_2([]) -->
 main_2([Fname1 | Rest]) -->
 	( { Rest = [Fname2 | _] },
 		( { Fname1 = Fname2 } ->
-		% There are no differences between identical files.
-			[]
+			% Not sure why anyone would want to diff two
+			% files with the same name, but just in case...
+			( { Fname1 = "-" } ->
+				file__read_input(Fname1, Contents1),
+				{ Contents1 = Contents2 }
+			;
+				file__read_file(Fname1, Contents1),
+				{ Contents1 = Contents2 }
+			)
 		;
 			% If either file is "-", simply use standard input.
 			% (Note: Both can't be "-" since that was dealt with
@@ -97,17 +103,17 @@ main_2([Fname1 | Rest]) -->
 			% Otherwise read the files normally.
 				file__read_file(Fname1, Contents1),
 				file__read_file(Fname2, Contents2)
-			),
-			% Now do the diff.
-			( { Contents1 = ok(File1), Contents2 = ok(File2) } ->
-				diff__do_diff(File1, File2)
-			; { Contents1 = error(Msg) } ->
-				usage_io_error(Msg)
-			; { Contents2 = error(Msg) } ->
-				usage_io_error(Msg)
-			;
-				{ error("main2") }
 			)
+		),
+		% Now do the diff.
+		( { Contents1 = ok(File1), Contents2 = ok(File2) } ->
+			diff__do_diff(File1, File2)
+		; { Contents1 = error(Msg) } ->
+			usage_io_error(Msg)
+		; { Contents2 = error(Msg) } ->
+			usage_io_error(Msg)
+		;
+			{ error("main2") }
 		)
 	; { Rest = [] },
 		usage_error("missing operand")
@@ -118,10 +124,13 @@ main_2([Fname1 | Rest]) -->
 	% diff__do_diff takes the files plus all the command
 	% line options and determines what to do with them.
 	%
-	% At the moment, we're organised into three passes:
+	% At the moment, we're organised into four passes:
 	%
-	%	- diff_by_lcss takes the two files and produces
-	%	  a diff using the LCSS algorithm.
+	%	- build_matches determines which lines from the
+	%	  input files match (using the appropriate command-
+	%	  line options).
+	%	- diff_by_myers takes the matches produced and
+	%	  computes a diff between them.
 	%	- filter_diff analyses the diff, filtering out
 	%	  any edits which the user said that they didn't
 	%	  want to see (using the appropriate command-line
@@ -129,17 +138,11 @@ main_2([Fname1 | Rest]) -->
 	%	- display_diff outputs the diff in whatever output
 	%	  format the user chose.
 	%
-	% TO DO: Options like --ignore-case are probably best handled
-	%        by a pass taking place _before_ the diff algorithm is
-	%        run.  This pass would have the benefit of determining
-	%        whether or not there are any differences or not, in
-	%        the case where the output style chosen doesn't require
-	%        output if there is no diff.  It would also speed up
-	%        the --brief output style.
 :- pred diff__do_diff(file, file, io__state, io__state).
 :- mode diff__do_diff(in, in, di, uo) is det.
 diff__do_diff(File1, File2) -->
-	{ diff_by_lcss(File1, File2, Diff0) },
+	build_matches(File1, File2, FileX, FileY),
+	diff_by_myers(FileX, FileY, Diff0),
 	filter_diff(Diff0, File1, File2, Diff),
 	display_diff(File1, File2, Diff).
 

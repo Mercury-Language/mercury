@@ -49,14 +49,15 @@
 	;	brief
 	;	ifdef
 	;	side_by_side
+	;	cvs_merge_conflict
 
 	% Output options
 	;	show_c_function		% Not handled (and unlikely to be soon)
 	;	show_function_line	% Not handled (and unlikely to be soon)
 	;	label
 	;	width
-	;	expand_tabs		% Not handled
-	;	initial_tab		% Not handled
+	;	expand_tabs
+	;	initial_tab
 	;	paginate		% Not handled (and unlikely to be soon)
 	;	left_column
 	;	suppress_common_lines
@@ -65,16 +66,16 @@
 	% Matching options
 	;	new_file		% Not handled (and unlikely to be soon)
 	;	unidirectional_new_file	% Not handled (and unlikely to be soon)
-	;	ignore_case		% Not handled
-	;	ignore_all_space	% Not handled
-	;	ignore_space_change	% Not handled
+	;	ignore_case
+	;	ignore_all_space
+	;	ignore_space_change
 
 	% Diff options
-	;	minimal			% Accepted but ignored
+	;	minimal
 	;	speed_large_files	% Accepted but ignored
 	;	file_split_speed_hack	% Accepted but ignored (GNU diff
-					% does this too, so let's not feel
-					% too bad about it)
+					% ignores this too, so let's not
+					% feel too bad about it)
 
 	% Change filter options
 	;	ignore_matching_lines	% Not handled (and unlikely to be soon)
@@ -148,6 +149,7 @@ long_option("version",			version).
 long_option("ignore-all-space",		ignore_all_space).
 long_option("exclude",			exclude).
 long_option("side-by-side",		side_by_side).
+long_option("cvs-merge-conflict",	cvs_merge_conflict).
 long_option("left-column",		left_column).
 long_option("suppress-common-lines",	suppress_common_lines).
 long_option("sdiff-merge-assist",	sdiff_merge_assist).
@@ -218,6 +220,7 @@ option_defaults(rcs,				bool(no)).
 option_defaults(brief,				bool(no)).
 option_defaults(ifdef,				maybe_string(no)).
 option_defaults(side_by_side,			bool(no)).
+option_defaults(cvs_merge_conflict,		bool(no)).
 
 	% Output options
 option_defaults(show_c_function,		bool_special).
@@ -225,7 +228,7 @@ option_defaults(show_function_line,		string_special).
 option_defaults(label,				accumulating([])).
 option_defaults(width,				int(130)).
 option_defaults(expand_tabs,			bool(no)).
-option_defaults(initial_tab,			bool_special).
+option_defaults(initial_tab,			bool(no)).
 option_defaults(paginate,			bool_special).
 option_defaults(left_column,			bool(no)).
 option_defaults(suppress_common_lines,		bool(no)).
@@ -234,9 +237,9 @@ option_defaults(sdiff_merge_assist,		bool(no)).
 	% Matching options
 option_defaults(new_file,			bool_special).
 option_defaults(unidirectional_new_file,	bool_special).
-option_defaults(ignore_case,			bool_special).
-option_defaults(ignore_all_space,		bool_special).
-option_defaults(ignore_space_change,		bool_special).
+option_defaults(ignore_case,			bool(no)).
+option_defaults(ignore_all_space,		bool(no)).
+option_defaults(ignore_space_change,		bool(no)).
 
 	% Diff options
 option_defaults(minimal,			bool(no)).
@@ -247,7 +250,7 @@ option_defaults(file_split_speed_hack,		bool(no)).
 option_defaults(ignore_matching_lines,		string_special).
 option_defaults(ignore_blank_lines,		bool(no)).
 
-	% Directory comparison options
+	% Directory comparison options (none of these are handled)
 option_defaults(starting_file,			string_special).
 option_defaults(recursive,			bool_special).
 option_defaults(report_identical_files,		bool_special).
@@ -296,10 +299,6 @@ special_handler(show_c_function, _, _, error(Msg)) :-
 	Msg = "Option not handled: --show-c-function".
 special_handler(show_function_line, _, _, error(Msg)) :-
 	Msg = "Option not handled: --show-function-line".
-special_handler(expand_tabs, _, _, error(Msg)) :-
-	Msg = "Option not handled: --expand-tabs".
-special_handler(initial_tab, _, _, error(Msg)) :-
-	Msg = "Option not handled: --initial-tab".
 special_handler(paginate, _, _, error(Msg)) :-
 	Msg = "Option not handled: --paginate".
 special_handler(sdiff_merge_assist, _, _, error(Msg)) :-
@@ -308,12 +307,6 @@ special_handler(new_file, _, _, error(Msg)) :-
 	Msg = "Option not handled: --new-file".
 special_handler(unidirectional_new_file, _, _, error(Msg)) :-
 	Msg = "Option not handled: --unidirectional-new-file".
-special_handler(ignore_case, _, _, error(Msg)) :-
-	Msg = "Option not handled: --ignore-case".
-special_handler(ignore_all_space, _, _, error(Msg)) :-
-	Msg = "Option not handled: --ignore-all-space".
-special_handler(ignore_space_change, _, _, error(Msg)) :-
-	Msg = "Option not handled: --ignore-space-change".
 special_handler(speed_large_files, _, _, error(Msg)) :-
 	Msg = "Option not handled: --speed-large-files".
 special_handler(ignore_matching_lines, _, _, error(Msg)) :-
@@ -392,44 +385,47 @@ postprocess_output_style(OptionTable, Style) :-
 		map__search(OptionTable, rcs, bool(UseRCS)),
 		map__search(OptionTable, brief, bool(UseBrief)),
 		map__search(OptionTable, ifdef, maybe_string(UseIfdef)),
-		map__search(OptionTable, side_by_side, bool(UseSideBySide))
+		map__search(OptionTable, side_by_side, bool(UseSideBySide)),
+		map__search(OptionTable, cvs_merge_conflict, bool(CVS))
 	->
 		postprocess_output_style_2(UseHelp, UseVersion, UseContext,
 			UseUnified, UseEd, UseForwardEd, UseRCS, UseBrief,
-			UseIfdef, UseSideBySide,
+			UseIfdef, UseSideBySide, CVS,
 			Style)
 	;
 		error("postprocess_output_style")
 	).
 
 :- pred postprocess_output_style_2(bool, bool, maybe(int), maybe(int), bool,
-		bool, bool, bool, maybe(string), bool,
+		bool, bool, bool, maybe(string), bool, bool,
 		diff_out__output_style).
-:- mode postprocess_output_style_2(in, in, in, in, in, in, in, in, in, in,
+:- mode postprocess_output_style_2(in, in, in, in, in, in, in, in, in, in, in,
 		out) is semidet.
 
-postprocess_output_style_2(no, no, no, no, no, no, no, no, no, no,
+postprocess_output_style_2(no, no, no, no, no, no, no, no, no, no, no,
 					normal).
-postprocess_output_style_2(yes, no, no, no, no, no, no, no, no, no,
+postprocess_output_style_2(yes, no, no, no, no, no, no, no, no, no, no,
 					help_only).
-postprocess_output_style_2(no, yes, no, no, no, no, no, no, no, no,
+postprocess_output_style_2(no, yes, no, no, no, no, no, no, no, no, no,
 					version_only).
-postprocess_output_style_2(no, no, yes(C), no, no, no, no, no, no, no,
+postprocess_output_style_2(no, no, yes(C), no, no, no, no, no, no, no, no,
 					context(C)).
-postprocess_output_style_2(no, no, no, yes(U), no, no, no, no, no, no,
+postprocess_output_style_2(no, no, no, yes(U), no, no, no, no, no, no, no,
 					unified(U)).
-postprocess_output_style_2(no, no, no, no, yes, no, no, no, no, no,
+postprocess_output_style_2(no, no, no, no, yes, no, no, no, no, no, no,
 					ed).
-postprocess_output_style_2(no, no, no, no, no, yes, no, no, no, no,
+postprocess_output_style_2(no, no, no, no, no, yes, no, no, no, no, no,
 					forward_ed).
-postprocess_output_style_2(no, no, no, no, no, no, yes, no, no, no,
+postprocess_output_style_2(no, no, no, no, no, no, yes, no, no, no, no,
 					rcs).
-postprocess_output_style_2(no, no, no, no, no, no, no, yes, no, no,
+postprocess_output_style_2(no, no, no, no, no, no, no, yes, no, no, no,
 					brief).
-postprocess_output_style_2(no, no, no, no, no, no, no, no, yes(Sym), no,
+postprocess_output_style_2(no, no, no, no, no, no, no, no, yes(Sym), no, no,
 					ifdef(Sym)).
-postprocess_output_style_2(no, no, no, no, no, no, no, no, no, yes,
+postprocess_output_style_2(no, no, no, no, no, no, no, no, no, yes, no,
 					side_by_side).
+postprocess_output_style_2(no, no, no, no, no, no, no, no, no, no, yes,
+					cvs_merge_conflict).
 
 %-----------------------------------------------------------------------------%
 
@@ -465,7 +461,6 @@ options_help -->
 	io__write_string("\nMatching options:\n"),
 	io__write_string("\t-d, --minimal\n"),
 	io__write_string("\t\tTry hard to find as small a set of changes as possible.\n"),
-	io__write_string("\t\t(Currently a no-op --- we always produce the minimal set.)\n"),
 	io__write_string("\t-B, --ignore-blank-lines\n"),
 	io__write_string("\t\tIgnore changes whose lines are all blank.\n").
 

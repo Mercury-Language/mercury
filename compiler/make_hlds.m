@@ -222,12 +222,24 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 	( { module_defn_update_import_status(ModuleDefn, Status1) } ->
 		{ Status = Status1 },
 		{ Module = Module0 }
-	; { ModuleDefn = import(module(_)) } ->
+	; { ModuleDefn = import(module(Specifiers)) } ->
 		{ Status = Status0 },
-		{ Module = Module0 }
-	; { ModuleDefn = use(module(_)) } ->
+		{ Status = item_status(IStat, _) },
+		( { IStat = local ; IStat = exported } ->
+			{ module_add_imported_module_specifiers(Specifiers,
+				Module0, Module) }
+		;
+			{ Module = Module0 }
+		)
+	; { ModuleDefn = use(module(Specifiers)) } ->
 		{ Status = Status0 },
-		{ Module = Module0 }
+		{ Status = item_status(IStat, _) },
+		( { IStat = local ; IStat = exported } ->
+			{ module_add_imported_module_specifiers(Specifiers,
+				Module0, Module) }
+		;
+			{ Module = Module0 }
+		)
 	; { ModuleDefn = include_module(_) } ->
 		{ Status = Status0 },
 		{ Module = Module0 }
@@ -452,6 +464,8 @@ module_defn_update_import_status(interface,
 		item_status(exported, may_be_unqualified)).
 module_defn_update_import_status(implementation,
 		item_status(local, may_be_unqualified)).
+module_defn_update_import_status(private_interface,
+		item_status(exported_to_submodules, may_be_unqualified)).
 module_defn_update_import_status(imported, 
 		item_status(imported, may_be_unqualified)).
 module_defn_update_import_status(used, 
@@ -1006,8 +1020,12 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
-			report_warning(StdErr, 
-	"Warning: undiscriminated union types (`+') not implemented.\n"),
+			io__write_string(
+	"Sorry, not implemented: undiscriminated union type.\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+	"(The syntax for type equivalence is `:- type t1 == t2'.)\n"),
+			io__set_exit_status(1),
 			io__set_output_stream(OldStream, _)
 		;
 			% XXX we can't handle abstract exported
@@ -1066,6 +1084,7 @@ combine_status_2(imported, Status2, Status) :-
 combine_status_2(local, Status2, Status) :-
 	combine_status_local(Status2, Status).
 combine_status_2(exported, _Status2, exported).
+combine_status_2(exported_to_submodules, _Status2, exported_to_submodules).
 combine_status_2(opt_imported, _Status2, opt_imported).
 combine_status_2(abstract_imported, Status2, Status) :-
 	combine_status_abstract_imported(Status2, Status).
@@ -1490,8 +1509,8 @@ module_add_instance_defn(Module0, Constraints, Name, Types, Interface, VarSet,
 		{ map__search(Classes, Key, _) }
 	->
 		{ map__init(Empty) },
-		{ NewValue = hlds_instance_defn(Status, Constraints, Types,
-			Interface, no, VarSet, Empty) },
+		{ NewValue = hlds_instance_defn(Status, Context, Constraints, 
+			Types, Interface, no, VarSet, Empty) },
 		{ map__lookup(Instances0, Key, Values) },
 		{ map__det_update(Instances0, Key, [NewValue|Values], 
 			Instances) },
@@ -1785,9 +1804,10 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives, 
 		MaybeDet, Context, ArgsMethod, PredInfo, ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
+	pred_info_arg_types(PredInfo0, ArgTypes),
 	next_mode_id(Procs0, MaybeDet, ModeId),
-	proc_info_init(Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
-		MaybeDet, Context, ArgsMethod, NewProc),
+	proc_info_init(Arity, ArgTypes, ArgModes, MaybeDeclaredArgModes,
+		MaybeArgLives, MaybeDet, Context, ArgsMethod, NewProc),
 	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
@@ -1842,7 +1862,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	(
 		{ MaybeDet = no }
 	->
-		( { pred_info_is_exported(PredInfo0) } ->
+		{ pred_info_import_status(PredInfo0, ImportStatus) },
+		( { status_is_exported(ImportStatus, yes) } ->
 			unspecified_det_for_exported(PredName, Arity,
 				PredOrFunc, MContext)
 		;

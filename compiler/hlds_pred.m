@@ -15,8 +15,8 @@
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
 :- import_module purity, globals.
-:- import_module bool, list, set, map, std_util, term, varset.
 :- import_module term_util.
+:- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
 
@@ -170,7 +170,31 @@
 	;	pseudo_exported % the converse of pseudo_imported
 				% this means that only the (in, in) mode
 				% of a unification is exported
-	;	local.		% defined in the implementation of this module
+	;	exported_to_submodules
+				% defined in the implementation of this module,
+				% and thus in a sense local,
+				% but the module contains sub-modules,
+				% so the entity needs to be exported
+				% to those sub-modules
+	;	local.		% defined in the implementation of this module,
+				% and the module does not contain any
+				% sub-modules.
+
+	% returns yes if the status indicates that the item was
+	% in any way exported -- that is, if it could be used
+	% by any other module, or by sub-modules of this module.
+:- pred status_is_exported(import_status::in, bool::out) is det.
+
+	% returns yes if the status indicates that the item was
+	% in any way imported -- that is, if it was defined in
+	% some other module, or in a sub-module of this module.
+	% This is the opposite of status_defined_in_this_module.
+:- pred status_is_imported(import_status::in, bool::out) is det.
+
+	% returns yes if the status indicates that the item was
+	% defined in this module.  This is the opposite of
+	% status_is_imported.
+:- pred status_defined_in_this_module(import_status::in, bool::out) is det.
 
 	% N-ary functions are converted into N+1-ary predicates.
 	% (Clauses are converted in make_hlds, but calls to functions
@@ -250,11 +274,23 @@
 	.
 
 :- type type_info_locn	
-	--->	type_info(var)		% it is a normal type info 
-					% (ie. the type is not constrained)
+	--->	type_info(var)
+				% It is a normal type_info, i.e. the type
+				% is not constrained.
+
 	;	typeclass_info(var, int).
-					% it is packed inside a typeclass_info,
-					% and is at the given offset
+				% The type_info is packed inside a
+				% typeclass_info. If the int is N, it is
+				% the Nth type_info inside the typeclass_info,
+				% but there may be several superclass pointers
+				% before the block of type_infos, so it won't
+				% be the Nth word of the typeclass_info.
+				%
+				% To find the type_info inside the
+				% typeclass_info, use the predicate
+				% type_info_from_typeclass_info from Mercury
+				% code; from C code use the macro
+				% MR_typeclass_info_superclass_info.
 
 	% type_info_locn_var(TypeInfoLocn, Var): 
 	% 	Var is the variable corresponding to the TypeInfoLocn. Note 
@@ -265,18 +301,20 @@
 :- pred type_info_locn_set_var(type_info_locn::in, var::in, 
 		type_info_locn::out) is det.
 
-	% hlds_pred__define_new_pred(Goal, CallGoal, Args, InstMap, PredName,
-	% 	TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
+	% hlds_pred__define_new_pred(Goal, CallGoal, Args, ExtraArgs, InstMap,
+	% 	PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
 	%	VarSet, Markers, ModuleInfo0, ModuleInfo, PredProcId)
 	%
 	% Create a new predicate for the given goal, returning a goal to 
-	% call the created predicate.
-:- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var),
+	% call the created predicate. ExtraArgs is the list of extra
+	% type_infos and typeclass_infos required by --typeinfo-liveness
+	% which were added to the front of the argument list.
+:- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var), list(var),
 		instmap, string, tvarset, map(var, type),
 		class_constraints, map(tvar, type_info_locn),
 		map(class_constraint, var), varset, pred_markers, 
 		module_info, module_info, pred_proc_id).
-:- mode hlds_pred__define_new_pred(in, out, in, in, in, in, in,
+:- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in,
 		in, in, in, in, in, in, out, out) is det.
 
 	% Various predicates for accessing the information stored in the
@@ -374,9 +412,18 @@
 
 :- pred pred_info_is_pseudo_imported(pred_info::in) is semidet.
 
+	% pred_info_is_exported does *not* include predicates which are
+	% exported_to_submodules or pseudo_exported
 :- pred pred_info_is_exported(pred_info::in) is semidet.
 
+:- pred pred_info_is_exported_to_submodules(pred_info::in) is semidet.
+
 :- pred pred_info_is_pseudo_exported(pred_info::in) is semidet.
+
+	% procedure_is_exported includes all modes of exported or
+	% exported_to_submodules predicates, plus the in-in mode
+	% for pseudo_exported unification predicates.
+:- pred procedure_is_exported(pred_info::in, proc_id::in) is semidet.
 
 	% Set the import_status of the predicate to `imported'.
 	% This is used for `:- external(foo/2).' declarations.
@@ -488,6 +535,30 @@ hlds_pred__in_in_unification_proc_id(0).
 invalid_pred_id(-1).
 
 invalid_proc_id(-1).
+
+status_is_exported(imported,			no).
+status_is_exported(abstract_imported,		no).
+status_is_exported(pseudo_imported,		no).
+status_is_exported(opt_imported,		no).
+status_is_exported(exported,			yes).
+status_is_exported(abstract_exported,		yes).
+status_is_exported(pseudo_exported,		yes).
+status_is_exported(exported_to_submodules,	yes).
+status_is_exported(local,			no).
+
+status_is_imported(Status, Imported) :-
+	status_defined_in_this_module(Status, InThisModule),
+	bool__not(InThisModule, Imported).
+
+status_defined_in_this_module(imported,			no).
+status_defined_in_this_module(abstract_imported,	no).
+status_defined_in_this_module(pseudo_imported,		no).
+status_defined_in_this_module(opt_imported,		no).
+status_defined_in_this_module(exported,			yes).
+status_defined_in_this_module(abstract_exported,	yes).
+status_defined_in_this_module(pseudo_exported,		yes).
+status_defined_in_this_module(exported_to_submodules,	yes).
+status_defined_in_this_module(local,			yes).
 
 	% The information specific to a predicate, as opposed to a procedure.
 	% (Functions count as predicates.)
@@ -612,9 +683,15 @@ pred_info_non_imported_procids(PredInfo, ProcIds) :-
 
 pred_info_exported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
-	( ImportStatus = exported ->
+	(
+		( ImportStatus = exported
+		; ImportStatus = exported_to_submodules
+		)
+	->
 		pred_info_procids(PredInfo, ProcIds)
-	; ImportStatus = pseudo_exported ->
+	;
+		ImportStatus = pseudo_exported
+	->
 		ProcIds = [0]
 	;
 		ProcIds = []
@@ -685,9 +762,23 @@ pred_info_is_exported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	ImportStatus = exported.
 
+pred_info_is_exported_to_submodules(PredInfo) :-
+	pred_info_import_status(PredInfo, ImportStatus),
+	ImportStatus = exported_to_submodules.
+
 pred_info_is_pseudo_exported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	ImportStatus = pseudo_exported.
+
+procedure_is_exported(PredInfo, ProcId) :-
+	(
+		pred_info_is_exported(PredInfo)
+	;
+		pred_info_is_exported_to_submodules(PredInfo)
+	;
+		pred_info_is_pseudo_exported(PredInfo),
+		hlds_pred__in_in_unification_proc_id(ProcId)
+	).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
@@ -839,9 +930,9 @@ markers_to_marker_list(Markers, Markers).
 
 %-----------------------------------------------------------------------------%
 
-hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, InstMap0, PredName, TVarSet, 
-		VarTypes0, ClassContext, TVarMap, TCVarMap, VarSet0, 
-		Markers, ModuleInfo0, ModuleInfo, PredProcId) :-
+hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
+		PredName, TVarSet, VarTypes0, ClassContext, TVarMap, TCVarMap,
+		VarSet0, Markers, ModuleInfo0, ModuleInfo, PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -856,13 +947,15 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, InstMap0, PredName, TVarSet,
 	globals__lookup_bool_option(Globals, typeinfo_liveness,
 		TypeInfoLiveness),
 	( TypeInfoLiveness = yes ->
+		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap,
-			VarTypes0, ExistQVars, Goal0, ExtraTypeInfos0),
-		set__delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos),
-		set__to_sorted_list(ExtraTypeInfos, ExtraArgs),
-		list__append(ExtraArgs, ArgVars0, ArgVars)
+			VarTypes0, ExistQVars, NonLocals, ExtraTypeInfos0),
+		set__delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos1),
+		set__to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
+		list__append(ExtraTypeInfos, ArgVars0, ArgVars)
 	;
-		ArgVars = ArgVars0
+		ArgVars = ArgVars0,
+		ExtraTypeInfos = []
 	),
 
 	goal_info_get_context(GoalInfo, Context),
@@ -928,10 +1021,10 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 :- interface.
 
-:- pred proc_info_init(arity, list(mode), maybe(list(mode)),
+:- pred proc_info_init(arity, list(type), list(mode), maybe(list(mode)),
 	maybe(list(is_live)), maybe(determinism), term__context, 
 	args_method, proc_info).
-:- mode proc_info_init(in, in, in, in, in, in, in, out) is det.
+:- mode proc_info_init(in, in, in, in, in, in, in, in, out) is det.
 
 :- pred proc_info_set(maybe(determinism), varset, map(var, type), list(var),
 	list(mode), maybe(list(is_live)), hlds_goal, term__context,
@@ -1181,17 +1274,17 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	% This is what `det_analysis.m' wants. det_analysis.m
 	% will later provide the correct inferred determinism for it.
 
-proc_info_init(Arity, Modes, DeclaredModes, MaybeArgLives,
+proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 		MaybeDet, MContext, ArgsMethod, NewProc) :-
-	map__init(BodyTypes),
-	goal_info_init(GoalInfo),
 	varset__init(BodyVarSet0),
 	make_n_fresh_vars("HeadVar__", Arity, BodyVarSet0,
 		HeadVars, BodyVarSet),
+	map__from_corresponding_lists(HeadVars, Types, BodyTypes),
 	InferredDet = erroneous,
 	map__init(StackSlots),
 	set__init(InitialLiveness),
 	ArgInfo = [],
+	goal_info_init(GoalInfo),
 	ClauseBody = conj([]) - GoalInfo,
 	CanProcess = yes,
 	map__init(TVarsMap),

@@ -12,6 +12,11 @@
 **	Debugging support for accurate garbage collection.
 */
 
+#include "mercury_types.h"		/* for Word */
+#include "mercury_label.h"		/* for MR_Internal */
+#include "mercury_memory_zones.h"	/* for MemoryZone */
+#include "mercury_accurate_gc.h"	/* for MR_RootList */
+
 /*---------------------------------------------------------------------------*/
 
 /*

@@ -26,15 +26,6 @@
 #include "mercury_std.h"		/* for bool */
 
 
-/* these cannot be changed without lots of modifications elsewhere */
-#define MAX_REAL_REG 32		/* r1 .. r32 */
-#define NUM_SPECIAL_REG 5	/* succip, sp, hp, maxfr, curfr */
-
-/* this can be changed at will, including by -D options to the C compiler */
-#ifndef MAX_VIRTUAL_REG
-#define MAX_VIRTUAL_REG	1024
-#endif
-
 #ifdef	MR_LOWLEVEL_DEBUG
 extern	MemoryZone	*dumpstack_zone;
 extern	int		dumpindex;
@@ -51,6 +42,7 @@ extern	int		dumpindex;
 ** For these functions, see the comments in mercury_memory.c and 
 ** mercury_engine.c 
 */
+
 extern	void	init_memory(void);
 extern	void	init_heap(void);
 extern	void	debug_memory(void);
@@ -82,7 +74,6 @@ extern	void	*allocate_bytes(size_t numbytes);
 
 void deallocate_memory(void *);
 
-
 /*
 ** checked_malloc() and checked_realloc() are like the standard C
 ** malloc() and realloc() functions, except that the return values
@@ -94,16 +85,22 @@ void deallocate_memory(void *);
 */
 
 #include <stddef.h>	/* for size_t */
-void *checked_malloc(size_t n);
-void *checked_realloc(void *old, size_t n);
+void	*checked_malloc(size_t n);
+void	*checked_realloc(void *old, size_t n);
+
+/*
+** MR_copy_string makes a copy of the given string with checked_malloc.
+*/
+
+char	*MR_copy_string(const char *s);
 
 /*
 ** `unit' is the size of the minimum unit of memory we allocate (in bytes).
 ** `page_size' is the size of a single page of memory.
 */
 
-extern size_t          unit;
-extern size_t          page_size;
+extern	size_t          unit;
+extern	size_t          page_size;
 
 /*
 ** Users need to call MR_add_root() for any global variable which

@@ -315,6 +315,10 @@ io__read(Result) -->
 		Result = ok(Term)
 	}.
 
+	% In Prolog, strings and lists of chars are the same.
+io__read_line_as_string(S, Result) -->
+	io__read_line(S, Result).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

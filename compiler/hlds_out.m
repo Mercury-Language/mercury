@@ -217,7 +217,7 @@ hlds_out__cons_id_to_string(float_const(_), "<float>").
 hlds_out__cons_id_to_string(pred_const(_, _), "<pred>").
 hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
 hlds_out__cons_id_to_string(base_type_info_const(_, _, _), "<base_type_info>").
-hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _), 
+hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
 	"<base_typeclass_info>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
@@ -238,7 +238,7 @@ hlds_out__write_cons_id(code_addr_const(_PredId, _ProcId)) -->
 	io__write_string("<code_addr>").
 hlds_out__write_cons_id(base_type_info_const(_, _, _)) -->
 	io__write_string("<base_type_info>").
-hlds_out__write_cons_id(base_typeclass_info_const(_, _, _)) -->
+hlds_out__write_cons_id(base_typeclass_info_const(_, _, _, _)) -->
 	io__write_string("<base_typeclass_info>").
 
 	% The code of this predicate duplicates the functionality of
@@ -251,7 +251,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	( { special_pred_name_arity(Kind, _, Name, Arity) } ->	
+	( { special_pred_name_arity(Kind, _, Name, Arity) } ->
 		{ special_pred_description(Kind, Descr) },
 		io__write_string(Descr),
 		io__write_string(" for type "),
@@ -378,7 +378,7 @@ hlds_out__write_hlds(Indent, Module) -->
 	io__write_string("\n"),
 	hlds_out__write_header(Indent, Module),
 	io__write_string("\n"),
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'T') } ->
 		hlds_out__write_types(Indent, TypeTable),
 		io__write_string("\n"),
@@ -397,7 +397,7 @@ hlds_out__write_hlds(Indent, Module) -->
 		hlds_out__write_modes(Indent, ModeTable),
 		io__write_string("\n")
 	;
-		io__write_string("\n")  
+		io__write_string("\n")
 	),
 	hlds_out__write_preds(Indent, Module, PredTable),
 	io__write_string("\n"),
@@ -438,19 +438,21 @@ hlds_out__write_preds(Indent, ModuleInfo, PredTable) -->
 :- mode hlds_out__write_preds_2(in, in, in, in, di, uo) is det.
 
 hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
-        globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+        globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	(
 		{ PredIds0 = [PredId|PredIds] }
 	->
 		{ map__lookup(PredTable, PredId, PredInfo) },
-		( 	
-			{ pred_info_is_imported(PredInfo) } 
+		(
+			{ \+ string__contains_char(Verbose, 'I') },
+			{ pred_info_is_imported(PredInfo) }
 		->
 			[]
 		;
 			% for pseudo-imported predicates (i.e. unification
 			% preds), only print them if we are using a local
 			% mode for them
+			{ \+ string__contains_char(Verbose, 'I') },
 			{ pred_info_is_pseudo_imported(PredInfo) },
 			{ pred_info_procids(PredInfo, ProcIds) },
 			{ hlds_pred__in_in_unification_proc_id(ProcId) },
@@ -458,9 +460,9 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		->
 			[]
 		;
-			% We dump unification predicates if suboption 
-			% 'U' is on. We don't really need that 
-			% information to understand how the program has 
+			% We dump unification predicates if suboption
+			% 'U' is on. We don't really need that
+			% information to understand how the program has
 			% been transformed.
 			{ \+ string__contains_char(Verbose, 'U') },
 			{ pred_info_arity(PredInfo, Arity) },
@@ -498,12 +500,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_get_constraint_proofs(PredInfo, Proofs) },
 	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_head_type_params(PredInfo, HeadTypeParams) },
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'C') } ->
-		% Information about predicates is dumped if 'C' 
+		% Information about predicates is dumped if 'C'
 		% suboption is on.
 		mercury_output_pred_type(TVarSet, ExistQVars,
-				qualified(Module, PredName), 
+				qualified(Module, PredName),
 				ArgTypes, no, Purity, ClassContext, Context)
 	;
 		[]
@@ -530,7 +532,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		( { map__is_empty(Proofs) } ->
 			[]
 		;
-			hlds_out__write_constraint_proofs(Indent, VarSet,
+			hlds_out__write_constraint_proofs(Indent, TVarSet,
 				Proofs),
 			io__write_string("\n")
 		)
@@ -558,12 +560,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			VarTypes, TVarSet),
 
 		% Never write the clauses out verbosely -
-		% disable the verbose_dump_hlds option before writing them,
+		% disable the dump_hlds_options option before writing them,
 		% and restore its initial value afterwards
-		globals__io_set_option(verbose_dump_hlds, string("")),
+		globals__io_set_option(dump_hlds_options, string("")),
 		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadVars, PredOrFunc, Clauses, no),
-		globals__io_set_option(verbose_dump_hlds, string(Verbose))
+		globals__io_set_option(dump_hlds_options, string(Verbose))
 	;
 		[]
 	),
@@ -624,7 +626,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 		),
 		Indent1 is Indent + 1
 	},
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'm') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Modes for which this clause applies: "),
@@ -713,7 +715,7 @@ hlds_out__write_goal(Goal, ModuleInfo, VarSet, AppendVarnums,
 
 hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		Indent, Follow, TypeQual) -->
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'c') } ->
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ term__context_file(Context, FileName) },
@@ -902,13 +904,12 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 	;
 		[]
 	),
-	( { string__contains_char(Verbose, 'g') }
-	->	
+	( { string__contains_char(Verbose, 'g') } ->
 		{ goal_info_get_features(GoalInfo, Features) },
 		{ set__to_sorted_list(Features, Flist) },
-		(   { Flist = [] } ->
+		( { Flist = [] } ->
 			[]
-		;   
+		;
 			hlds_out__write_indent(Indent),
 			io__write_string("% Goal features:  "),
 			io__write(Flist),
@@ -974,7 +975,7 @@ hlds_out__write_goal_2(if_then_else(Vars, Cond, Then, Else, _), ModuleInfo,
 		Indent1, "", TypeQual),
 	hlds_out__write_indent(Indent),
 	io__write_string("else\n"),
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	(
 		{ Verbose \= "" },
 		{ Else = if_then_else(_, _, _, _, _) - _ }
@@ -1005,7 +1006,7 @@ hlds_out__write_goal_2(not(Goal), ModuleInfo, VarSet, AppendVarnums,
 hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, AppendVarnums,
 		Indent, Follow, TypeQual) -->
 	( { List = [Goal | Goals] } ->
-		globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+		globals__io_lookup_string_option(dump_hlds_options, Verbose),
 		( { Verbose \= "" } ->
 			{ Indent1 is Indent + 1 },
 			hlds_out__write_indent(Indent),
@@ -1073,9 +1074,10 @@ hlds_out__write_goal_2(disj(List, _), ModuleInfo, VarSet, AppendVarnums,
 hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
 		_ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
 		% XXX we should print more info here
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	hlds_out__write_indent(Indent),
-	(	{ PredOrFunc = predicate },
+	(
+		{ PredOrFunc = predicate },
 		( { string__contains_char(Verbose, 'l') } ->
 			io__write_string("% higher-order predicate call\n"),
 			hlds_out__write_indent(Indent)
@@ -1106,7 +1108,7 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
 hlds_out__write_goal_2(class_method_call(TCInfoVar, _, ArgVars, _, _, _),
 		_ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
 		% XXX we should print more info here too
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	hlds_out__write_indent(Indent),
 	( { string__contains_char(Verbose, 'l') } ->
 		io__write_string("% class method call"),
@@ -1122,7 +1124,7 @@ hlds_out__write_goal_2(class_method_call(TCInfoVar, _, ArgVars, _, _, _),
 hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 			MaybeUnifyContext, PredName),
 		ModuleInfo, VarSet, AppendVarnums, Indent, Follow, TypeQual) -->
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'b') } ->
 		(
 			{ Builtin = inline_builtin },
@@ -1202,7 +1204,7 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 	},
 	hlds_out__write_unify_rhs_2(B, ModuleInfo, VarSet, AppendVarnums,
 		Indent, Follow, VarType, TypeQual),
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'u') } ->
 		(
 			% don't output bogus info if we haven't been through
@@ -1378,7 +1380,7 @@ hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo,
 		io__write_string(" ("),
 		mercury_output_vars(ArgVars, VarSet, AppendVarnums),
 		io__write_string(")\n"),
-		globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+		globals__io_lookup_string_option(dump_hlds_options, Verbose),
 		( { string__contains_char(Verbose, 'a') } ->
 			hlds_out__write_indent(Indent),
 			io__write_string("% arg-modes "),
@@ -1460,7 +1462,7 @@ hlds_out__write_unify_rhs_3(
 	;
 		[]
 	),
-        globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+        globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'n') } ->
 		( { NonLocals \= [] } ->
 			hlds_out__write_indent(Indent1),
@@ -1475,10 +1477,20 @@ hlds_out__write_unify_rhs_3(
 	).
 
 hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums) -->
+	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums,
+		not_next_to_graphic_token).
+
+:- pred hlds_out__write_functor(const, list(var), varset, bool, needs_quotes,
+	io__state, io__state).
+:- mode hlds_out__write_functor(in, in, in, in, in, di, uo) is det.
+
+hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums, 
+		NextToGraphicToken) -->
 	{ term__context_init(Context) },
 	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
 	{ Term = term__functor(Functor, ArgTerms, Context) },
-	mercury_output_term(Term, VarSet, AppendVarnums).
+	mercury_output_term(Term, VarSet, AppendVarnums, NextToGraphicToken).
+
 
 :- pred hlds_out__write_qualified_functor(module_name, const, list(var),
 		varset, bool, io__state, io__state).
@@ -1488,7 +1500,8 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 		AppendVarnums) -->
 	mercury_output_bracketed_sym_name(ModuleName),
 	io__write_string(":"),
-	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums).
+	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums,
+		next_to_graphic_token).
 
 hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 	(
@@ -1532,10 +1545,10 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 		io__write_string(")")
 	;
 		{ ConsId = base_typeclass_info_const(Module,
-			class_id(Name, Arity), Instance) },
+			class_id(Name, Arity), _, Instance) },
 		io__write_string("base_typeclass_info("""),
 		prog_out__write_sym_name(Module),
-		io__write_string(""", """),
+		io__write_string(""", "),
 		io__write_string("class_id("),
 		prog_out__write_sym_name(Name),
 		io__write_string(", "),
@@ -1727,12 +1740,16 @@ hlds_out__write_import_status(opt_imported) -->
 	io__write_string("opt_imported").
 hlds_out__write_import_status(pseudo_imported) -->
 	io__write_string("pseudo_imported").
+hlds_out__write_import_status(exported_to_submodules) -->
+	io__write_string("exported_to_submodules").
 
 :- pred hlds_out__write_var_types(int, varset, bool, map(var, type), varset,
 	io__state, io__state).
 :- mode hlds_out__write_var_types(in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_var_types(Indent, VarSet, AppendVarnums, VarTypes, TVarSet) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% variable types map:\n"),
 	{ map__keys(VarTypes, Vars) },
 	hlds_out__write_var_types_2(Vars, Indent, VarSet, AppendVarnums,
 		VarTypes, TVarSet).
@@ -1767,12 +1784,12 @@ hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap, VarSet,
 	hlds_out__write_indent(Indent),
 	io__write_string("% type_info varmap:\n"),
 	{ map__keys(TypeInfoMap, TypeVars) },
-	hlds_out__write_typeinfo_varmap_2(TypeVars, Indent, AppendVarnums, 
+	hlds_out__write_typeinfo_varmap_2(TypeVars, Indent, AppendVarnums,
 		TypeInfoMap, VarSet, TVarSet).
 
-:- pred hlds_out__write_typeinfo_varmap_2(list(tvar), int, bool, 
+:- pred hlds_out__write_typeinfo_varmap_2(list(tvar), int, bool,
 	map(tvar, type_info_locn), varset, tvarset, io__state, io__state).
-:- mode hlds_out__write_typeinfo_varmap_2(in, in, in, in, in, in, di, uo) 
+:- mode hlds_out__write_typeinfo_varmap_2(in, in, in, in, in, in, di, uo)
 	is det.
 
 hlds_out__write_typeinfo_varmap_2([], _, _, _, _, _) --> [].
@@ -1810,6 +1827,32 @@ hlds_out__write_typeinfo_varmap_2([TVar | TVars], Indent, AppendVarnums,
 
 	hlds_out__write_typeinfo_varmap_2(TVars, Indent, AppendVarnums,
 		TypeInfoMap, VarSet, TVarSet).
+
+:- pred hlds_out__write_typeclass_info_varmap(int, bool,
+	map(class_constraint, var), varset, tvarset, io__state, io__state).
+:- mode hlds_out__write_typeclass_info_varmap(in, in,
+	in, in, in, di, uo) is det.
+
+hlds_out__write_typeclass_info_varmap(Indent, AppendVarnums,
+		TypeClassInfoVarMap, VarSet, TVarSet) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% typeclass_info varmap:\n"),
+	map__foldl(hlds_out__write_typeclass_info_varmap_2(Indent,
+		AppendVarnums, VarSet, TVarSet), TypeClassInfoVarMap).
+
+:- pred hlds_out__write_typeclass_info_varmap_2(int, bool,
+	varset, tvarset, class_constraint, var, io__state, io__state).
+:- mode hlds_out__write_typeclass_info_varmap_2(in, in,
+	in, in, in, in, di, uo) is det.
+
+hlds_out__write_typeclass_info_varmap_2(Indent, AppendVarnums, VarSet, TVarSet,
+		Constraint, Var) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% "),
+	mercury_output_constraint(TVarSet, Constraint),
+	io__write_string(" -> "),
+	mercury_output_var(Var, VarSet, AppendVarnums),
+	io__nl.
 
 :- pred hlds_out__write_stack_slots(int, stack_slots, varset, bool,
 	io__state, io__state).
@@ -1866,7 +1909,7 @@ hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
 	% Write the context
 
 	io__write_char('\n'),
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'c') } ->
 		{ term__context_file(Context, FileName) },
 		{ term__context_line(Context, LineNumber) },
@@ -1997,7 +2040,7 @@ hlds_out__write_classes(Indent, ClassTable) -->
 		hlds_out__write_class_defn(Indent)),
 	io__nl.
 
-:- pred hlds_out__write_class_defn(int, pair(class_id, hlds_class_defn), 
+:- pred hlds_out__write_class_defn(int, pair(class_id, hlds_class_defn),
 			io__state, io__state).
 :- mode hlds_out__write_class_defn(in, in, di, uo) is det.
 
@@ -2063,7 +2106,7 @@ hlds_out__write_class_proc(hlds_class_proc(PredId, ProcId)) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred hlds_out__write_superclasses(int, superclass_table, 
+:- pred hlds_out__write_superclasses(int, superclass_table,
 	io__state, io__state).
 :- mode hlds_out__write_superclasses(in, in, di, uo) is det.
 
@@ -2075,7 +2118,7 @@ hlds_out__write_superclasses(Indent, SuperClassTable) -->
 		hlds_out__write_superclass(Indent)),
 	io__nl.
 
-:- pred hlds_out__write_superclass(int, pair(class_id, list(subclass_details)), 
+:- pred hlds_out__write_superclass(int, pair(class_id, list(subclass_details)),
 			io__state, io__state).
 :- mode hlds_out__write_superclass(in, in, di, uo) is det.
 
@@ -2092,7 +2135,7 @@ hlds_out__write_superclass(Indent, ClassId - SubClassDetailsList) -->
 	io__write_list(SubClassDetailsList, "\n",
 		hlds_out__write_subclass_details(Indent, ClassId)).
 
-:- pred hlds_out__write_subclass_details(int, class_id, subclass_details, 
+:- pred hlds_out__write_subclass_details(int, class_id, subclass_details,
 			io__state, io__state).
 :- mode hlds_out__write_subclass_details(in, in, in, di, uo) is det.
 
@@ -2131,7 +2174,7 @@ hlds_out__write_instances(Indent, InstanceTable) -->
 		hlds_out__write_instance_defns(Indent)),
 	io__nl.
 
-:- pred hlds_out__write_instance_defns(int, 
+:- pred hlds_out__write_instance_defns(int,
 	pair(class_id, list(hlds_instance_defn)), io__state, io__state).
 :- mode hlds_out__write_instance_defns(in, in, di, uo) is det.
 
@@ -2148,16 +2191,16 @@ hlds_out__write_instance_defns(Indent, ClassId - InstanceDefns) -->
 	io__write_list(InstanceDefns, "\n",
 		hlds_out__write_instance_defn(Indent)).
 
-:- pred hlds_out__write_instance_defn(int, hlds_instance_defn, 
+:- pred hlds_out__write_instance_defn(int, hlds_instance_defn,
 			io__state, io__state).
 :- mode hlds_out__write_instance_defn(in, in, di, uo) is det.
 
 hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 
-	{ InstanceDefn = hlds_instance_defn(_, Constraints, Types, Interface,
+	{ InstanceDefn = hlds_instance_defn(_, Context,
+		Constraints, Types, Interface,
 		_MaybeClassInterface, VarSet, Proofs) },
 
-	/*
 	{ term__context_file(Context, FileName) },
 	{ term__context_line(Context, LineNumber) },
 	( { FileName \= "" } ->
@@ -2170,7 +2213,6 @@ hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 	;
 		[]
 	),
-	*/
 
 		% curry the varset for term_io__write_variable/4
 	{ PrintTerm = lambda([TypeName::in, IO0::di, IO::uo] is det,
@@ -2269,6 +2311,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize) },
 	{ proc_info_get_maybe_termination_info(Proc, MaybeTermination) },
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
+	{ proc_info_typeclass_info_varmap(Proc, TypeClassInfoMap) },
 	{ proc_info_args_method(Proc, ArgsMethod) },
 	{ Indent1 is Indent + 1 },
 
@@ -2282,8 +2325,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	hlds_out__write_determinism(InferredDeterminism),
 	io__write_string("):\n"),
 
-	
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 't') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Arg size properties: "),
@@ -2303,6 +2345,8 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		VarTypes, TVarSet),
 	hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap,
 		VarSet, TVarSet),
+	hlds_out__write_typeclass_info_varmap(Indent, AppendVarnums,
+		TypeClassInfoMap, VarSet, TVarSet),
 
 	io__write_string("% args method: "),
 	hlds_out__write_args_method(ArgsMethod),
@@ -2454,7 +2498,7 @@ hlds_out__write_constraint_proofs(Indent, VarSet, Proofs) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% Proofs: \n"),
 	{ map__to_assoc_list(Proofs, ProofsList) },
-	io__write_list(ProofsList, "\n", 
+	io__write_list(ProofsList, "\n",
 		hlds_out__write_constraint_proof(Indent, VarSet)).
 
 :- pred hlds_out__write_constraint_proof(int, varset,
@@ -2467,7 +2511,7 @@ hlds_out__write_constraint_proof(Indent, VarSet, Constraint - Proof) -->
 	mercury_output_constraint(VarSet, Constraint),
 	io__write_string(": "),
 	(
-		{ Proof = apply_instance(_, Num) },
+		{ Proof = apply_instance(Num) },
 		io__write_string("apply instance decl #"),
 		io__write_int(Num)
 	;
@@ -2475,6 +2519,6 @@ hlds_out__write_constraint_proof(Indent, VarSet, Constraint - Proof) -->
 		io__write_string("super class of "),
 		mercury_output_constraint(VarSet, Super)
 	).
-	
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -489,23 +489,22 @@ Define_extern_entry(mercury__std_util__builtin_aggregate_4_5);
 Declare_label(mercury__std_util__builtin_aggregate_4_0_i1);
 Declare_label(mercury__std_util__builtin_aggregate_4_0_i2);
 Declare_label(mercury__std_util__builtin_aggregate_4_0_i3);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_1);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_2);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_3);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_4);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_5);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__std_util__builtin_aggregate_4_0, 1);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__std_util__builtin_aggregate_4_0, 2);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__std_util__builtin_aggregate_4_0, 3);
+
+MR_MAKE_PROC_LAYOUT(mercury__std_util__builtin_aggregate_4_0,
+	MR_DETISM_MULTI, MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""std_util"", ""builtin_aggregate"", 4, 0);
+
+MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 1);
+MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 2);
+MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 3);
 
 BEGIN_MODULE(builtin_aggregate_module)
 	init_entry_sl(mercury__std_util__builtin_aggregate_4_0);
-	init_entry_sl(mercury__std_util__builtin_aggregate_4_1);
-	init_entry_sl(mercury__std_util__builtin_aggregate_4_2);
-	init_entry_sl(mercury__std_util__builtin_aggregate_4_3);
-	init_entry_sl(mercury__std_util__builtin_aggregate_4_4);
-	init_entry_sl(mercury__std_util__builtin_aggregate_4_5);
+	init_entry(mercury__std_util__builtin_aggregate_4_1);
+	init_entry(mercury__std_util__builtin_aggregate_4_2);
+	init_entry(mercury__std_util__builtin_aggregate_4_3);
+	init_entry(mercury__std_util__builtin_aggregate_4_4);
+	init_entry(mercury__std_util__builtin_aggregate_4_5);
 	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i1);
 	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i2);
 	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i3);
@@ -521,7 +520,7 @@ BEGIN_CODE
 ** the address of the respective deep copy routines).
 **
 ** The type_info structures will be in r1 and r2, the closures will be in
-** r3 and r4, and the 'initial value' will be in r5, with both caling
+** r3 and r4, and the 'initial value' will be in r5, with both calling
 ** conventions. The output should go either in r6 (for the normal parameter
 ** convention) or r1 (for the compact parameter convention).
 */
@@ -559,14 +558,14 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 
 #ifndef USE_TYPE_LAYOUT
 	fatal_error(""builtin_aggregate/4 not supported with this grade ""
-		    ""on this system.\n""
-		""Try using a `.gc' (conservative gc) grade.\n"");
+		    ""on this system.\\n""
+		""Try using a `.gc' (conservative gc) grade.\\n"");
 #endif
 
 /*
 ** In order to implement any sort of code that requires terms to survive
 ** backtracking, we need to (deeply) copy them out of the heap and into some
-** other area before backtracking.  The obious thing to do then is just call
+** other area before backtracking.  The obvious thing to do then is just call
 ** the generator predicate, let it run to completion, and copy its result into
 ** another memory area (call it the solutions heap) before forcing
 ** backtracking.  When we get the next solution, we do the same, this time
@@ -624,17 +623,20 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 ** Finally, we store the collection of solutions so far in sofar_fv.
 */
 
-#define saved_hp_fv		(framevar(0))
-#define saved_solhp_fv		(framevar(1))
-#define collector_pred_fv	(framevar(2))
-#define sofar_fv		(framevar(3))
-#define element_type_info_fv	(framevar(4))
-#define collection_type_info_fv	(framevar(5))
 #ifdef MR_USE_TRAIL
-  #define saved_trail_ticket_fv	(framevar(6))
   #define num_framevars		7
 #else
   #define num_framevars		6
+#endif
+
+#define saved_hp_fv		(MR_framevar(1))
+#define saved_solhp_fv		(MR_framevar(2))
+#define collector_pred_fv	(MR_framevar(3))
+#define sofar_fv		(MR_framevar(4))
+#define element_type_info_fv	(MR_framevar(5))
+#define collection_type_info_fv	(MR_framevar(6))
+#ifdef MR_USE_TRAIL
+  #define saved_trail_ticket_fv	(MR_framevar(7))
 #endif
 
 	/*
@@ -765,13 +767,14 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	succeed_discard();
 }
 
+#undef num_framevars
 #undef saved_hp_fv
 #undef saved_solhp_fv
 #undef collector_pred_fv
 #undef sofar_fv
 #undef element_type_info_fv
 #undef collection_type_info_fv
-#undef num_framevars
+#undef saved_trail_ticket_fv
 
 #else
 
@@ -783,13 +786,16 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 ** make deep copies of the solutions.  This is a `copy-zero' implementation ;-)
 */
 
-#define collector_pred_fv	(framevar(0))
-#define sofar_fv		(framevar(1))
 #ifdef MR_USE_TRAIL
-  #define saved_trail_ticket_fv	(framevar(2))
   #define num_framevars		3
 #else
   #define num_framevars		2
+#endif
+
+#define collector_pred_fv	(MR_framevar(1))
+#define sofar_fv		(MR_framevar(2))
+#ifdef MR_USE_TRAIL
+  #define saved_trail_ticket_fv	(MR_framevar(3))
 #endif
 
 	/* create a nondet stack frame with two slots, to hold the collector
@@ -869,17 +875,18 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	builtin_aggregate_output = sofar_fv;
  	succeed_discard();
  
+#undef num_framevars
 #undef collector_pred_fv
 #undef sofar_fv
-#undef num_framevars
+#undef saved_trail_ticket_fv
 
 #endif
- 
+
+END_MODULE
+
 #undef builtin_aggregate_output
 #undef swap_heap_and_solutions_heap
 
-END_MODULE
- 
 /* Ensure that the initialization code for the above module gets run. */
 /*
 INIT sys_init_builtin_aggregate_module
@@ -956,9 +963,9 @@ det_univ_to_type(Univ, X) :-
 	;
 		UnivTypeName = type_name(univ_type(Univ)),
 		ObjectTypeName = type_name(type_of(X)),
-		string__append_list(["det_univ_to_type: conversion failed\n",
+		string__append_list(["det_univ_to_type: conversion failed\\n",
 			"\tUniv Type: ", UnivTypeName,
-			"\n\tObject Type: ", ObjectTypeName], ErrorString),
+			"\\n\tObject Type: ", ObjectTypeName], ErrorString),
 		error(ErrorString)
 	).
 
@@ -1046,6 +1053,7 @@ det_univ_to_type(Univ, X) :-
 
 #ifdef  USE_TYPE_LAYOUT
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_std_util__base_type_layout_univ_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_std_util__base_type_layout_univ_0 = {
@@ -1053,12 +1061,14 @@ const struct mercury_data_std_util__base_type_layout_univ_0_struct {
 		mkbody(TYPELAYOUT_UNIV_VALUE))
 };
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_std_util__base_type_functors_univ_0_struct {
 	Integer f1;
 } mercury_data_std_util__base_type_functors_univ_0 = {
 	MR_TYPEFUNCTORS_UNIV
 };
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_std_util__base_type_layout_type_info_0_struct
 {
 	TYPE_LAYOUT_FIELDS
@@ -1067,6 +1077,7 @@ const struct mercury_data_std_util__base_type_layout_type_info_0_struct
 		mkbody(TYPELAYOUT_TYPEINFO_VALUE))
 };
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct
 mercury_data_std_util__base_type_functors_type_info_0_struct {
 	Integer f1;
@@ -1079,16 +1090,19 @@ mercury_data_std_util__base_type_functors_type_info_0_struct {
 Define_extern_entry(mercury____Unify___std_util__univ_0_0);
 Define_extern_entry(mercury____Index___std_util__univ_0_0);
 Define_extern_entry(mercury____Compare___std_util__univ_0_0);
-Declare_label(mercury____Compare___std_util__univ_0_0_i1);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___std_util__univ_0_0);
 #endif
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___std_util__univ_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__univ_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__univ_0_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury____Compare___std_util__univ_0_0, 1);
-#ifdef MR_USE_SOLVE_EQUAL
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____SolveEqual___std_util__univ_0_0);
+
+#ifndef	COMPACT_ARGS
+
+Declare_label(mercury____Compare___std_util__univ_0_0_i1);
+
+MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
+	MR_DETISM_DET, 1, MR_LIVE_LVAL_STACKVAR(1),
+	MR_PREDICATE, ""std_util"", ""compare_univ"", 3, 0);
+MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
+
 #endif
 
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
@@ -1097,27 +1111,25 @@ Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___std_util__type_info_0_0);
 #endif
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___std_util__type_info_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__type_info_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__type_info_0_0);
-#ifdef MR_USE_SOLVE_EQUAL
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____SolveEqual___std_util__type_info_0_0);
-#endif
 
 BEGIN_MODULE(unify_univ_module)
-	init_entry_sl(mercury____Unify___std_util__univ_0_0);
-	init_entry_sl(mercury____Index___std_util__univ_0_0);
+	init_entry(mercury____Unify___std_util__univ_0_0);
+	init_entry(mercury____Index___std_util__univ_0_0);
+#ifdef	COMPACT_ARGS
+	init_entry(mercury____Compare___std_util__univ_0_0);
+#else
 	init_entry_sl(mercury____Compare___std_util__univ_0_0);
 	init_label_sl(mercury____Compare___std_util__univ_0_0_i1);
+#endif
 #ifdef MR_USE_SOLVE_EQUAL
-	init_entry_sl(mercury____SolveEqual___std_util__univ_0_0);
+	init_entry(mercury____SolveEqual___std_util__univ_0_0);
 #endif
 
-	init_entry_sl(mercury____Unify___std_util__type_info_0_0);
-	init_entry_sl(mercury____Index___std_util__type_info_0_0);
-	init_entry_sl(mercury____Compare___std_util__type_info_0_0);
+	init_entry(mercury____Unify___std_util__type_info_0_0);
+	init_entry(mercury____Index___std_util__type_info_0_0);
+	init_entry(mercury____Compare___std_util__type_info_0_0);
 #ifdef MR_USE_SOLVE_EQUAL
-	init_entry_sl(mercury____SolveEqual___std_util__type_info_0_0);
+	init_entry(mercury____SolveEqual___std_util__type_info_0_0);
 #endif
 
 BEGIN_CODE
@@ -1197,6 +1209,7 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	** If the types are the same, then invoke the generic compare/3
 	** predicate on the unwrapped args.
 	*/
+
 #ifdef	COMPACT_ARGS
 	r1 = typeinfo1;
 	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
@@ -1210,25 +1223,26 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	r1 = typeinfo1;
 	r4 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	r3 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
+	incr_sp_push_msg(1, ""mercury____Compare___std_util__univ_0_0"");
+	MR_stackvar(1) = MR_succip;
 	{
 		Declare_entry(mercury__compare_3_0);
 		call(ENTRY(mercury__compare_3_0),
 			LABEL(mercury____Compare___std_util__univ_0_0_i1),
 			LABEL(mercury____Compare___std_util__univ_0_0));
 	}
-#endif
 }
 Define_label(mercury____Compare___std_util__univ_0_0_i1);
+{
 	update_prof_current_proc(
 		LABEL(mercury____Compare___std_util__univ_0_0));
 
-#ifdef	COMPACT_ARGS
-	fatal_error(""mercury____Compare___std_util__univ_0_0_i1 reached in COMPACT_ARGS mode"");
-#else
 	/* shuffle the return value into the right register */
 	r1 = r2;
+	MR_succip = MR_stackvar(1);
 	proceed();
 #endif
+}
 
 #ifdef MR_USE_SOLVE_EQUAL
 Define_entry(mercury____SolveEqual___std_util__univ_0_0);
@@ -2258,8 +2272,9 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                  * then we can just use the code for simple tags.
                  */
             data_value = (Word) ((Word *) data_value + 1);
-            entry_value = MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
-                entry_value, secondary_tag);
+            entry_value = (Word)
+	    	MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+		    entry_value, secondary_tag);
             entry_value = strip_tag(entry_value);
         }   /* fallthru */
 
@@ -2703,6 +2718,21 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	free(info.type_info_vector);
 
 }").
+
+%-----------------------------------------------------------------------------%
+
+	% This predicate returns the type_info for the type std_util:type_info.
+	% It is intended for use from C code, since Mercury code can access
+	% this type_info easily enough even without this predicate.
+:- pred get_type_info_for_type_info(type_info).
+:- mode get_type_info_for_type_info(out) is det.
+
+:- pragma export(get_type_info_for_type_info(out),
+	"ML_get_type_info_for_type_info").
+
+get_type_info_for_type_info(TypeInfo) :-
+	Type = type_of(1),
+	TypeInfo = type_of(Type).
 
 %-----------------------------------------------------------------------------%
 

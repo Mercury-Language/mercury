@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -37,7 +37,7 @@ map__det_insert(Map0, K, V, Map) :-
 % map__det_insert_error is a separate predicate because it is handy
 % to be able to set a spy point on it...
 map__det_insert_error(_Map, _K, _V) :-
-	error("map__det_insert: key not found").
+	error("map__det_insert: key already present").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

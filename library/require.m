@@ -49,7 +49,7 @@ require(Goal, Message) :-
 
 :- pragma c_header_code("
 #include <stdio.h>
-#include ""mercury_trace.h""
+#include ""mercury_trace_base.h""
 #include ""mercury_stack_trace.h""
 ").
 
@@ -72,8 +72,6 @@ error(Message) :-
 :- pragma c_code("
 
 Define_extern_entry(mercury__require__error_internal_1_0);
-
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__require__error_internal_1_0);
 
 BEGIN_MODULE(require_internal_module)
         init_entry(mercury__require__error_internal_1_0);

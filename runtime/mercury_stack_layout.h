@@ -9,12 +9,15 @@
 
 /*
 ** mercury_stack_layout.h -
-**	Definitions for the stack layout data structures. 
+**	Definitions for the stack layout data structures.
 **
 ** NOTE: The constants and data-structures used here need to be kept in
 ** sync with the ones generated in the compiler. If you change anything here,
 ** you may need to change compiler/stack_layout.m as well.
 */
+
+#include "mercury_types.h"
+#include "mercury_types.h"
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -66,26 +69,33 @@ typedef	Word MR_Determinism;
 */
 
 /*
-** MR_Live_Lval is a Word which describes an lval. This includes:
-** 	- stack slots, registers, and special lvals such as succip, hp,
-** 	  etc.
+** MR_Live_Lval is a Word which describes an location. This includes
+** lvals such as stack slots, general registers, and special registers
+** such as succip, hp, etc, as well as locations whose address is given
+** as a particular word offset from the memory address found in an lval.
 **
-** MR_Live_Lval is encoded using an 8 bit low tag, the rest of the word is a 
-** data field describing which stack slot number or register number.
+** What kind of of location an MR_Live_Lval refers to is encoded using
+** a low tag with MR_LIVE_LVAL_TAGBITS bits; the type MR_Lval_Type describes
+** the different tag values. The interpretation of the rest of the word
+** depends on the location type:
 **
-**  Lval		Tag	Rest
-**  r(Num)		 0	Num
-**  f(Num)		 1	Num
-**  stackvar(Num)	 2	Num
-**  framevar(Num)	 3	Num
+**  Locn		Tag	Rest
+**  r(Num)		 0	Num (register number)
+**  f(Num)		 1	Num (register number)
+**  stackvar(Num)	 2	Num (stack slot number)
+**  framevar(Num)	 3	Num (stack slot number)
 **  succip		 4
 **  maxfr		 5
 **  curfr		 6
 **  hp			 7
 **  sp			 8
-**  unknown		 9		(The location is not known)
+**  indirect(Base, N)	 9	See below
+**  unknown		10	(The location is not known)
 **
-** The type MR_Lval_Type describes the different tag values.
+** For indirect references, the word exclusive of the tag consists of
+** (a) an integer with MR_LIVE_LVAL_OFFSETBITS bits giving the number of
+** words to offset and (b) a MR_Live_Lval value giving the location of
+** the base address. This MR_Live_Lval valud will *not* have an indirect tag.
 **
 ** This data is generated in compiler/stack_layout.m, which must be kept
 ** in sync with the constants defined here.
@@ -93,7 +103,7 @@ typedef	Word MR_Determinism;
 
 typedef Word MR_Live_Lval;
 
-typedef enum { 
+typedef enum {
 	MR_LVAL_TYPE_R,
 	MR_LVAL_TYPE_F,
 	MR_LVAL_TYPE_STACKVAR,
@@ -103,16 +113,36 @@ typedef enum {
 	MR_LVAL_TYPE_CURFR,
 	MR_LVAL_TYPE_HP,
 	MR_LVAL_TYPE_SP,
+	MR_LVAL_TYPE_INDIRECT,
 	MR_LVAL_TYPE_UNKNOWN 
 } MR_Lval_Type;
 
-#define MR_LIVE_LVAL_TAGBITS	8
+/* This must be in sync with stack_layout__tag_bits */
+#define MR_LIVE_LVAL_TAGBITS	4
 
-#define MR_LIVE_LVAL_TYPE(Lval) 			\
-	((MR_Lval_Type) (((Word) Lval) & ((1 << MR_LIVE_LVAL_TAGBITS) - 1)))
+#define MR_LIVE_LVAL_TYPE(Locn) 				\
+	((MR_Lval_Type) (((Word) Locn) & ((1 << MR_LIVE_LVAL_TAGBITS) - 1)))
 
-#define MR_LIVE_LVAL_NUMBER(Lval) 			\
-	((int) ((Word) Lval) >> MR_LIVE_LVAL_TAGBITS)
+#define MR_LIVE_LVAL_NUMBER(Locn) 				\
+	((int) ((Word) Locn) >> MR_LIVE_LVAL_TAGBITS)
+
+/* This must be in sync with stack_layout__offset_bits */
+#define MR_LIVE_LVAL_OFFSETBITS	6
+
+#define MR_LIVE_LVAL_INDIRECT_OFFSET(LocnNumber) 		\
+	((int) ((LocnNumber) & ((1 << MR_LIVE_LVAL_OFFSETBITS) - 1)))
+
+#define MR_LIVE_LVAL_INDIRECT_BASE_LVAL(LocnNumber)		\
+	(((Word) (LocnNumber)) >> MR_LIVE_LVAL_OFFSETBITS)
+
+#define	MR_LIVE_LVAL_STACKVAR(n)				\
+	((Word) ((n) << MR_LIVE_LVAL_TAGBITS) + MR_LVAL_TYPE_STACKVAR)
+
+#define	MR_LIVE_LVAL_FRAMEVAR(n)				\
+	((Word) ((n) << MR_LIVE_LVAL_TAGBITS) + MR_LVAL_TYPE_FRAMEVAR)
+
+#define	MR_LIVE_LVAL_R_REG(n)					\
+	((Word) ((n) << MR_LIVE_LVAL_TAGBITS) + MR_LVAL_TYPE_R)
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -126,7 +156,7 @@ typedef enum {
 **
 ** The data is encoded such that low values (less than
 ** TYPELAYOUT_MAX_VARINT) represent succip, hp, etc.  Higher values
-** represent data variables, and are pointers to a 2 word cell, 
+** represent data variables, and are pointers to a 2 word cell,
 ** containing a pseudo type_info and an instantiation represention.
 **
 ** This data is generated in compiler/stack_layout.m, which must be kept
@@ -135,16 +165,16 @@ typedef enum {
 
 typedef Word MR_Live_Type;
 
-typedef enum { 
+typedef enum {
 	MR_LIVE_TYPE_SUCCIP,
 	MR_LIVE_TYPE_HP,
 	MR_LIVE_TYPE_CURFR,
 	MR_LIVE_TYPE_MAXFR,
 	MR_LIVE_TYPE_REDOIP,
-	MR_LIVE_TYPE_UNWANTED 
+	MR_LIVE_TYPE_UNWANTED
 } MR_Lval_NonVar;
 
-typedef struct { 
+typedef struct {
 	Word	*pseudo_type_info;
 	Word	inst;	/* not yet used; currently always -1 */
 } MR_Var_Shape_Info;
@@ -189,10 +219,16 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 	MR_Live_Lval		*MR_slvs_tvars;
 } MR_Stack_Layout_Vars;
 
-#define	MR_name_if_present(vars, i)					\
-				((vars->MR_slvs_names != NULL		\
-				&& vars->MR_slvs_names[(i)] != NULL)	\
-				? vars->MR_slvs_names[(i)]		\
+#define	MR_name_if_present(vars, i)					    \
+				((vars->MR_slvs_names != NULL		    \
+				&& vars->MR_slvs_names[(i)] != NULL)	    \
+				? strchr(vars->MR_slvs_names[(i)], ':') + 1 \
+				: "")
+
+#define	MR_numbered_name_if_present(vars, i)				    \
+				((vars->MR_slvs_names != NULL	 	    \
+				&& vars->MR_slvs_names[(i)] != NULL)	    \
+				? vars->MR_slvs_names[(i)]		    \
 				: "")
 
 /*-------------------------------------------------------------------------*/
@@ -222,7 +258,37 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 ** if MR_ENTRY_LAYOUT_HAS_PROC_ID(entry) evaluates to true.
 ** Group (3) is present and meaningful
 ** if MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) evaluates to true.
+**
+** Group (2) fields have a different interpretation if the procedure is
+** compiler-generated. You can test whether this is the case by using the macro
+** MR_ENTRY_LAYOUT_COMPILER_GENERATED, but only after checking that
+** MR_ENTRY_LAYOUT_HAS_PROC_ID is true.
+**
+** For further details on the semantics of the fields, see stack_layout.m.
 */
+
+typedef struct MR_Stack_Layout_User_Proc_Struct {
+	MR_PredFunc		MR_user_pred_or_func;
+	ConstString		MR_user_decl_module;
+	ConstString		MR_user_def_module;
+	ConstString		MR_user_name;
+	Integer			MR_user_arity;
+	Integer			MR_user_mode;
+} MR_Stack_Layout_User_Proc;
+
+typedef struct MR_Stack_Layout_Compiler_Proc_Struct {
+	ConstString		MR_comp_type_name;
+	ConstString		MR_comp_type_module;
+	ConstString		MR_comp_def_module;
+	ConstString		MR_comp_pred_name;
+	Integer			MR_comp_arity;
+	Integer			MR_comp_mode;
+} MR_Stack_Layout_Compiler_Proc;
+
+typedef union MR_Stack_Layout_Proc_Id_Union {
+	MR_Stack_Layout_User_Proc	MR_proc_user;
+	MR_Stack_Layout_Compiler_Proc	MR_proc_comp;
+} MR_Stack_Layout_Proc_Id;
 
 typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* stack traversal group */
@@ -232,49 +298,102 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	MR_Live_Lval		MR_sle_succip_locn;
 
 	/* proc id group */
-	MR_PredFunc		MR_sle_pred_or_func;
-	String			MR_sle_decl_module;
-	String			MR_sle_def_module;
-	String			MR_sle_name;
-	Integer			MR_sle_arity;
-	Integer			MR_sle_mode;
+	MR_Stack_Layout_Proc_Id	MR_sle_proc_id;
 
 	/* exec trace group */
 	struct MR_Stack_Layout_Label_Struct
 				*MR_sle_call_label;
+	int			MR_sle_maybe_from_full;
 } MR_Stack_Layout_Entry;
 
+#define	MR_sle_user	MR_sle_proc_id.MR_proc_user
+#define	MR_sle_comp	MR_sle_proc_id.MR_proc_comp
+
 #define	MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)			\
-		((int) entry->MR_sle_pred_or_func >= 0)
+		((Word) entry->MR_sle_user.MR_user_pred_or_func != -1)
 
 #define	MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)			\
 		(MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)		\
 		&& entry->MR_sle_call_label != NULL)
 
+#define	MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)		\
+		((Unsigned) entry->MR_sle_user.MR_user_pred_or_func \
+		> MR_FUNCTION)
+
 /*
-** Define a stack layout for a label that you know very little about.
-** It is just a generic entry label, no useful information, except
-** the code address for the label.
+** Define a layout structure for a procedure, containing information
+** for the first two groups of fields.
+**
+** The slot count and the succip location parameters do not have to be
+** supplied for procedures that live on the nondet stack, since for such
+** procedures the size of the frame can be deduced from the prevfr field
+** and the location of the succip is fixed.
+**
+** An unknown slot count should be signalled by MR_ENTRY_NO_SLOT_COUNT.
+** An unknown succip location should be signalled by MR_LVAL_TYPE_UNKNOWN.
+**
+** For the procedure identification, we always use the same module name
+** for the defining and declaring modules, since procedures whose code
+** is hand-written as C modules cannot be inlined in other Mercury modules.
 */ 
 
-#ifdef MR_USE_STACK_LAYOUTS
-  #define MR_MAKE_STACK_LAYOUT_ENTRY(l) 				\
-  const struct mercury_data__layout__##l##_struct {			\
-	Code	*f1;							\
-	Integer	f2;							\
-	Integer	f3;							\
-	Integer	f4;							\
-	Integer	f5;							\
-  } mercury_data__layout__##l = {					\
-	STATIC(l),							\
-	(Integer) -1, 	/* Unknown determinism */			\
-	(Integer) -1,	/* Unknown number of stack slots */		\
-        (Integer) MR_LVAL_TYPE_UNKNOWN,	/* Unknown succip location */	\
-	(Integer) -1, 	/* The procid component is not present */	\
-  };
-#else
-  #define MR_MAKE_STACK_LAYOUT_ENTRY(l)        
-#endif	/* MR_USE_STACK_LAYOUTS */
+#define	MR_ENTRY_NO_SLOT_COUNT		-1
+
+#define MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn,		\
+		pf, module, name, arity, mode) 				\
+	MR_Stack_Layout_Entry mercury_data__layout__##entry = {		\
+		STATIC(entry),						\
+		detism,							\
+		slots,							\
+		succip_locn,						\
+		{{							\
+			pf,						\
+			module,						\
+			module,						\
+			name,						\
+			arity,						\
+			mode						\
+		}},							\
+		NULL							\
+	}
+
+/*
+** In procedures compiled with execution tracing, three items are stored
+** in stack slots with fixed numbers. They are:
+**
+**	the event number of the call event,
+**	the call number, and
+**	the call depth.
+**
+** The following macros will access them. They can be used whenever
+** MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) is true; which set you should use
+** depends on the determinism of the procedure.
+**
+** These macros have to be kept in sync with compiler/trace.m.
+*/
+
+#define MR_event_num_framevar(base_curfr)    MR_based_framevar(base_curfr, 1)
+#define MR_call_num_framevar(base_curfr)     MR_based_framevar(base_curfr, 2)
+#define MR_call_depth_framevar(base_curfr)   MR_based_framevar(base_curfr, 3)
+
+#define MR_event_num_stackvar(base_sp)	     MR_based_stackvar(base_sp, 1)
+#define MR_call_num_stackvar(base_sp)	     MR_based_stackvar(base_sp, 2)
+#define MR_call_depth_stackvar(base_sp)	     MR_based_stackvar(base_sp, 3)
+
+/*
+** In model_non procedures compiled with an execution trace options that
+** require REDO events, one other item is stored in a fixed stack slot.
+** This is
+**
+**	the address of the layout structure for the redo event
+**
+** The following macro will access it. This macro should be used only from
+** within the code that calls MR_trace for the REDO event.
+**
+** This macros have to be kept in sync with compiler/trace.m.
+*/
+
+#define MR_redo_layout_framevar(base_curfr)  MR_based_framevar(base_curfr, 4)
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -305,57 +424,34 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 #endif
 
 /*
-** Define a stack layout for an internal label. Need to supply the
-** label name (l) and the entry label name (e).
-**
-** The only useful information in this structure is the code address
-** and the reference to the entry for this label.
-*/ 
-
-#ifdef MR_USE_STACK_LAYOUTS
-  #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)		\
-  const struct mercury_data__layout__##l##_struct {			\
-	const Word *f1;							\
-	UNKNOWN_INTERNAL_LABEL_FIELD					\
-	Integer f3;							\
-  } mercury_data__layout__##l = {					\
-	(const Word *) &mercury_data__layout__##e,			\
-	UNKNOWN_INTERNAL_LABEL_NUMBER					\
-	(Integer) -1		/* No information about live values */	\
-  };
-#else
-  #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)        
-#endif	/* MR_USE_STACK_LAYOUTS */
-
-/*
 ** Define a stack layout for an internal label.
-** Need to supply the label name (l) and the number (x), eg for
-** label_name_i3, x is 3. It is assumed the entry label for that
-** corresponds to this label is the label name without the _iX suffix.
 **
-** (MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY, above, is a little
-** more general than MR_MAKE_STACK_LAYOUT_INTERNAL. This macro can
-** only describe relationships between labels that have the same
-** base -- MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY can create layouts
-** for internal labels no matter what the name of the entry layout is).
+** The MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY variant allows you to specify
+** the label name (l) and the entry label name (e) independently, which
+** means that it can be used for labels in code fragments which are
+** simultaneously part of several procedures. (Some hand-written code
+** in the library is like this; the different procedures usually differ
+** only in attributes such as the uniqueness of their arguments.)
 **
-** The only useful information in this structure is the code address
-** and the reference to the entry for this label.
+** The MR_MAKE_INTERNAL_LAYOUT variant assumes that the internal label
+** is in the procedure named by the entry label.
+**
+** The only useful information in the structures created by these macros
+** is the reference to the procedure layout, which allows you to find the
+** stack frame size and the succip location, thereby enabling stack tracing.
+**
+** For the native garbage collector, we will need to add meaningful
+** live value information as well to these macros.
 */ 
 
-#ifdef MR_USE_STACK_LAYOUTS
-  #define MR_MAKE_STACK_LAYOUT_INTERNAL(e, x)				\
-  const struct mercury_data__layout__##e##_i##x##_struct {		\
-	const Word *f1;							\
-	UNKNOWN_INTERNAL_LABEL_FIELD					\
-	Integer f3;							\
-  } mercury_data__layout__##e##_i##x = {				\
-	(const Word *) &mercury_data__layout__##e,			\
-	UNKNOWN_INTERNAL_LABEL_NUMBER					\
-	(Integer) -1		/* No information about live values */	\
-  };
-#else
-  #define MR_MAKE_STACK_LAYOUT_INTERNAL(l, x)        
-#endif	/* MR_USE_STACK_LAYOUTS */
+#define MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(l, e)			\
+	MR_Stack_Layout_Label mercury_data__layout__##l = {		\
+		&mercury_data__layout__##e,				\
+		UNKNOWN_INTERNAL_LABEL_NUMBER				\
+		(Integer) -1	/* No information about live values */	\
+	}
+
+#define MR_MAKE_INTERNAL_LAYOUT(e, n)					\
+	MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(e##_i##n, e)
 
 #endif /* not MERCURY_STACK_LAYOUT_H */

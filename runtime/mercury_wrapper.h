@@ -5,15 +5,17 @@
 */
 
 /*
-** mercury_wrapper.h - defines the interface to wrapper.c.
-** See wrapper.c for documentation.
+** mercury_wrapper.h - defines the interface to mercury_wrapper.c.
+** See mercury_wrapper.c for documentation.
 */
 
 #ifndef	MERCURY_WRAPPER_H
 #define	MERCURY_WRAPPER_H
 
-#include <stddef.h>	/* for `size_t' */
-#include "mercury_std.h"	/* for `bool' */
+#include <stddef.h>			/* for `size_t' */
+#include "mercury_std.h"		/* for `bool' */
+#include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' */
+#include "mercury_trace_base.h"		/* for `MR_trace_port' */
 
 /*
 ** mercury_runtime_init() does some stuff to initialize the garbage collector
@@ -40,11 +42,16 @@ extern	int	mercury_runtime_terminate(void);
 ** The address_of_foo pointers are set to the address of
 ** the corresponding foo.
 */
-extern	Code *		program_entry_point; /* normally mercury__main_2_0; */
+extern	Code 		*program_entry_point; /* normally mercury__main_2_0; */
 
 extern	void		(*MR_library_initializer)(void);
 extern	void		(*MR_library_finalizer)(void);
-extern	Code		*MR_library_trace_browser;
+
+extern	void		(*MR_io_stderr_stream)(Word *);
+extern	void		(*MR_io_stdout_stream)(Word *);
+extern	void		(*MR_io_stdin_stream)(Word *);
+extern	void		(*MR_io_print_to_cur_stream)(Word, Word);
+extern	void		(*MR_io_print_to_stream)(Word, Word, Word);
 
 extern	void		(*address_of_mercury_init_io)(void);
 extern	void		(*address_of_init_modules)(void);
@@ -55,42 +62,59 @@ extern	void		(*address_of_init_gc)(void);
 
 /*
 ** Similarly, these are for the debugger interface; they're defined in
-** library/debugger_interface.m.
+** browser/debugger_interface.m.
+** XXX These are obsolete; the browser can call the ML_ versions directly.
 */
-void	(*MR_DI_output_current_vars)(Word, Word, Word);
-		/* normally ML_DI_output_current_vars (output_current_vars/3) */
-void	(*MR_DI_output_current_nth_var)(Word, Word);
-		/* normally ML_DI_output_current_nth_var 
-						 (output_current_nth_var/2) */
-void	(*MR_DI_output_current_live_var_names)(Word, Word, Word);
-		/* normally ML_DI_output_current_live_var_names
-					   (output_current_live_var_names/5) */
-void	(*MR_DI_output_current_slots)(Integer, Integer, Integer, Word, String,
-		String, Integer, Integer, Integer, String, Word);
-		/* normally ML_DI_output_current_slots (output_current_slots/13) */
-bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String, String,
-		Integer, Integer, Integer, Word, String, Word);
-		/* normally ML_DI_found_match (found_match/12) */
-int	(*MR_DI_get_var_number)(Word);
-		/* normally ML_DI_get_var_number (get_var_number/1) */
-void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
-		/* normally ML_DI_read_request_from_socket
-		   (read_request_from_socket/5) */
+extern	void	(*MR_DI_output_current_vars)(Word, Word, Word);
+		/* output_current_vars/3 */
+extern	void	(*MR_DI_output_current_nth_var)(Word, Word);
+		/* output_current_nth_var/2 */
+extern	void	(*MR_DI_output_current_live_var_names)(Word, Word, Word);
+		/* output_current_live_var_names/5 */
+extern	void	(*MR_DI_output_current_slots)(Integer, Integer, Integer, Word,
+		String, String, Integer, Integer, Integer, String, Word);
+		/* output_current_slots/13 */
+extern	bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String,
+		String, Integer, Integer, Integer, Word, String, Word);
+		/* found_match/12 */
+extern	int	(*MR_DI_get_var_number)(Word);
+		/* get_var_number/1 */
+extern	void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
+		/* read_request_from_socket/5 */
 
 /*
-** ML_type_name() is defined in library/std_util.m and use in
-** runtime/mercury_trace_external.c
+** ML_type_name() is defined in library/std_util.m and used in
+** trace/mercury_trace_external.c.
+** XXX This is obsolete; the tracer can call the ML_ version directly.
 */
 
-String	(*MR_type_name)(Word);
+extern	String	(*MR_type_name)(Word);
 		/* normally ML_type_name (type_name/1) */ 
 
+/*
+** XXX This is obsolete too.
+** This variable has been replaced by MR_io_print_to_*_stream,
+** but the installed mkinit executable may still generate references to it.
+** We must therefore keep it until all obsolete mkinit executables have
+** been retired.
+*/
+
+extern	Code	*MR_library_trace_browser;
+
+/*
+** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c), or
+** MR_trace_fake (runtime/mercury_trace_base.c),
+** depending on whether tracing was enabled when creating the _init.c
+** file.  It is called from MR_trace (runtime/mercury_trace_base.c).
+*/
+extern	Code    *(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *,
+			MR_Trace_Port, Unsigned, Unsigned, const char *, int);
 
 extern	void		do_init_modules(void);
 
-extern	const char *	progname;
+extern	const char	*progname;
 extern	int		mercury_argc;
-extern	char **		mercury_argv;
+extern	char		**mercury_argv;
 extern	int		mercury_exit_status;
 
 /* sizes of the data areas, *including* the red zone size */

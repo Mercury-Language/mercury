@@ -11,10 +11,33 @@
 % Higher mathematical operations.  (The basics are in float.m.)
 % The predicates in this module are not yet implemented in Prolog.
 %
-% Domain errors are currently handled by a program abort.  This is
-% because Mercury currently does not have exceptions built in.
+% By default, domain errors are currently handled by a program abort.
+% This is because Mercury currently does not have exceptions built in.
 % Exception-handling would be nice, but it's kind of low on the
 % priority scale.
+%
+% For better performance, it is possible to disable the Mercury domain
+% checking by compiling with `--intermodule-optimization' and the C macro
+% symbol `ML_OMIT_MATH_DOMAIN_CHECKS' defined, e.g. by using
+% `MCFLAGS=--intermodule-optimization' and
+% `MGNUCFLAGS=-DML_OMIT_MATH_DOMAIN_CHECKS' in your Mmakefile,
+% or by compiling with the command
+% `mmc --intermodule-optimization --cflags -DML_OMIT_MATH_DOMAIN_CHECKS'.
+%
+% For maximum performance, all Mercury domain checking can be disabled by
+% recompiling this module using `MGNUCFLAGS=-DML_OMIT_MATH_DOMAIN_CHECKS'
+% or `mmc --cflags -DML_OMIT_MATH_DOMAIN_CHECKS' as above. You can
+% either recompile the entire library, or just copy `math.m' to your
+% application's source directory and link with it directly instead of as
+% part of the library.
+%
+% Note that the above performance improvements are semantically safe,
+% since the C math library and/or floating point hardware perform these
+% checks for you.  The benefit of having the Mercury library perform the
+% checks instead is that Mercury will tell you in which function or
+% predicate the error occurred, as well as giving you a stack trace if
+% that is enabled; with the checks disabled you only have the information
+% that the floating-point exception signal handler gives you.
 %
 %---------------------------------------------------------------------------%
 
@@ -176,30 +199,38 @@
 
 	/*
 	** Mathematical constants.
+	**
+	** The maximum number of significant decimal digits which
+	** can be packed into an IEEE-754 extended precision
+	** floating point number is 18.  Therefore 20 significant
+	** decimal digits for these constants should be plenty.
 	*/
 
-	#define	MERCURY_FLOAT__E		2.7182818284590452354
-	#define	MERCURY_FLOAT__PI		3.1415926535897932384
-	#define	MERCURY_FLOAT__LN2		0.69314718055994530941
+	#define	ML_FLOAT_E		2.7182818284590452354
+	#define	ML_FLOAT_PI		3.1415926535897932384
+	#define	ML_FLOAT_LN2		0.69314718055994530941
 
-	void mercury_domain_error(const char *where);
+	void ML_math_domain_error(const char *where);
 
 "). % end pragma c_header_code
 
 :- pragma c_code("
 
+	#include ""mercury_trace_base.h""
 	#include <stdio.h>
 
 	/*
 	** Handle domain errors.
 	*/
 	void
-	mercury_domain_error(const char *where)
+	ML_math_domain_error(const char *where)
 	{
 		fflush(stdout);
 		fprintf(stderr,
-			""Software error: Domain error in call to `%s'\n"",
+			""Software error: Domain error in call to `%s'\\n"",
 			where);
+		MR_trace_report(stderr);
+		MR_dump_stack(MR_succip, MR_sp, MR_curfr);
 		exit(1);
 	}
 
@@ -210,12 +241,12 @@
 %
 	% Pythagoras' number
 :- pragma c_code(math__pi = (Pi::out), [will_not_call_mercury, thread_safe],"
-	Pi = MERCURY_FLOAT__PI;
+	Pi = ML_FLOAT_PI;
 ").
 
 	% Base of natural logarithms
 :- pragma c_code(math__e = (E::out), [will_not_call_mercury, thread_safe],"
-	E = MERCURY_FLOAT__E;
+	E = ML_FLOAT_E;
 ").
 
 %
@@ -253,9 +284,9 @@
 :- pragma c_code(math__truncate(X::in) = (Trunc::out),
 		[will_not_call_mercury, thread_safe],"
 	if (X < 0.0) {
-	    Trunc = ceil(X);
+		Trunc = ceil(X);
 	} else {
-	    Trunc = floor(X);
+		Trunc = floor(X);
 	}
 ").
 
@@ -267,10 +298,12 @@
 %		X >= 0
 %
 :- pragma c_code(math__sqrt(X::in) = (SquareRoot::out),
-		[will_not_call_mercury, thread_safe],"
+		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X < 0.0) {
-	    mercury_domain_error(""math__sqrt"");
+		ML_math_domain_error(""math__sqrt"");
 	}
+#endif
 	SquareRoot = sqrt(X);
 ").
 
@@ -283,18 +316,22 @@
 %		X = 0 implies Y > 0
 %
 :- pragma c_code(math__pow(X::in, Y::in) = (Res::out),
-		[will_not_call_mercury, thread_safe],"
+		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X < 0.0) {
-	    mercury_domain_error(""math__pow"");
+		ML_math_domain_error(""math__pow"");
 	}
 	if (X == 0.0) {
-	    if (Y <= 0.0) {
-		mercury_domain_error(""math__pow"");
-	    }
-	    Res = 0.0;
+		if (Y <= 0.0) {
+			ML_math_domain_error(""math__pow"");
+		}
+		Res = 0.0;
 	} else {
-	    Res = pow(X, Y);
+		Res = pow(X, Y);
 	}
+#else
+	Res = pow(X, Y);
+#endif
 ").
 
 %
@@ -314,10 +351,12 @@
 %		X > 0
 %
 :- pragma c_code(math__ln(X::in) = (Log::out),
-		[will_not_call_mercury, thread_safe],"
+		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X <= 0.0) {
-	    mercury_domain_error(""math__ln"");
+		ML_math_domain_error(""math__ln"");
 	}
+#endif
 	Log = log(X);
 ").
 
@@ -329,9 +368,12 @@
 %		X > 0
 %
 :- pragma c_code(math__log10(X::in) = (Log10::out),
-		[will_not_call_mercury, thread_safe],"
-	if (X <= 0.0)
-	    mercury_domain_error(""math__log10"");
+		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+	if (X <= 0.0) {
+		ML_math_domain_error(""math__log10"");
+	}
+#endif
 	Log10 = log10(X);
 ").
 
@@ -343,11 +385,13 @@
 %		X > 0
 %
 :- pragma c_code(math__log2(X::in) = (Log2::out),
-		[will_not_call_mercury, thread_safe],"
+		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X <= 0.0) {
-	    mercury_domain_error(""math__log2"");
+		ML_math_domain_error(""math__log2"");
 	}
-	Log2 = log(X) / MERCURY_FLOAT__LN2;
+#endif
+	Log2 = log(X) / ML_FLOAT_LN2;
 ").
 
 %
@@ -360,13 +404,15 @@
 %		B \= 1
 %
 :- pragma c_code(math__log(B::in, X::in) = (Log::out),
-		[will_not_call_mercury, thread_safe],"
+		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X <= 0.0 || B <= 0.0) {
-	    mercury_domain_error(""math__log"");
+		ML_math_domain_error(""math__log"");
 	}
 	if (B == 1.0) {
-	    mercury_domain_error(""math__log"");
+		ML_math_domain_error(""math__log"");
 	}
+#endif
 	Log = log(X)/log(B);
 ").
 
@@ -402,10 +448,12 @@
 %		X must be in the range [-1,1]
 %
 :- pragma c_code(math__asin(X::in) = (ASin::out),
-		[will_not_call_mercury, thread_safe],"
+		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X < -1.0 || X > 1.0) {
-	    mercury_domain_error(""math__asin"");
+		ML_math_domain_error(""math__asin"");
 	}
+#endif
 	ASin = asin(X);
 ").
 
@@ -417,10 +465,12 @@
 %		X must be in the range [-1,1]
 %
 :- pragma c_code(math__acos(X::in) = (ACos::out),
-		[will_not_call_mercury, thread_safe],"
+		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X < -1.0 || X > 1.0) {
-	    mercury_domain_error(""math__acos"");
+		ML_math_domain_error(""math__acos"");
 	}
+#endif
 	ACos = acos(X);
 ").
 
@@ -660,11 +710,11 @@
 %
 	% Pythagoras' number
 :- pragma c_code(math__pi(Pi::out), [will_not_call_mercury, thread_safe],
-		"Pi = MERCURY_FLOAT__PI;").
+		"Pi = ML_FLOAT_PI;").
 
 	% Base of natural logarithms
 :- pragma c_code(math__e(E::out), [will_not_call_mercury, thread_safe],
-		"E = MERCURY_FLOAT__E;").
+		"E = ML_FLOAT_E;").
 
 %
 % math__ceiling(X, Ceil) is true if Ceil is the smallest integer
@@ -699,9 +749,9 @@
 :- pragma c_code(math__truncate(X::in, Trunc::out),
 		[will_not_call_mercury, thread_safe], "
 	if (X < 0.0) {
-	    Trunc = ceil(X);
+		Trunc = ceil(X);
 	} else {
-	    Trunc = floor(X);
+		Trunc = floor(X);
 	}
 ").
 
@@ -714,9 +764,11 @@
 %
 :- pragma c_code(math__sqrt(X::in, SquareRoot::out),
 		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X < 0.0) {
-	    mercury_domain_error(""math__sqrt"");
+		ML_math_domain_error(""math__sqrt"");
 	}
+#endif
 	SquareRoot = sqrt(X);
 ").
 
@@ -730,17 +782,21 @@
 %
 :- pragma c_code(math__pow(X::in, Y::in, Res::out),
 		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X < 0.0) {
-	    mercury_domain_error(""math__pow"");
+		ML_math_domain_error(""math__pow"");
 	}
 	if (X == 0.0) {
-	    if (Y <= 0.0) {
-		mercury_domain_error(""math__pow"");
-	    }
-	    Res = 0.0;
+		if (Y <= 0.0) {
+			ML_math_domain_error(""math__pow"");
+		}
+		Res = 0.0;
 	} else {
-	    Res = pow(X, Y);
+		Res = pow(X, Y);
 	}
+#else
+	Res = pow(X, Y);
+#endif
 ").
 
 %
@@ -761,9 +817,11 @@
 %
 :- pragma c_code(math__ln(X::in, Log::out),
 		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X <= 0.0) {
-	    mercury_domain_error(""math__ln"");
+		ML_math_domain_error(""math__ln"");
 	}
+#endif
 	Log = log(X);
 ").
 
@@ -776,8 +834,11 @@
 %
 :- pragma c_code(math__log10(X::in, Log10::out),
 		[will_not_call_mercury, thread_safe], "
-	if (X <= 0.0)
-	    mercury_domain_error(""math__log10"");
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+	if (X <= 0.0) {
+		ML_math_domain_error(""math__log10"");
+	}
+#endif
 	Log10 = log10(X);
 ").
 
@@ -790,10 +851,12 @@
 %
 :- pragma c_code(math__log2(X::in, Log2::out),
 		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X <= 0.0) {
-	    mercury_domain_error(""math__log2"");
+		ML_math_domain_error(""math__log2"");
 	}
-	Log2 = log(X) / MERCURY_FLOAT__LN2;
+#endif
+	Log2 = log(X) / ML_FLOAT_LN2;
 ").
 
 %
@@ -807,12 +870,14 @@
 %
 :- pragma c_code(math__log(B::in, X::in, Log::out),
 		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X <= 0.0 || B <= 0.0) {
-	    mercury_domain_error(""math__log"");
+		ML_math_domain_error(""math__log"");
 	}
 	if (B == 1.0) {
-	    mercury_domain_error(""math__log"");
+		ML_math_domain_error(""math__log"");
 	}
+#endif
 	Log = log(X)/log(B);
 ").
 
@@ -825,7 +890,7 @@
 ").
 
 %
-% math__cos(X, Sin) is true if Cos is the cosine of X.
+% math__cos(X, Cos) is true if Cos is the cosine of X.
 %
 :- pragma c_code(math__cos(X::in, Cos::out),
 		[will_not_call_mercury, thread_safe], "
@@ -849,9 +914,11 @@
 %
 :- pragma c_code(math__asin(X::in, ASin::out),
 		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X < -1.0 || X > 1.0) {
-	    mercury_domain_error(""math__asin"");
+		ML_math_domain_error(""math__asin"");
 	}
+#endif
 	ASin = asin(X);
 ").
 
@@ -864,9 +931,11 @@
 %
 :- pragma c_code(math__acos(X::in, ACos::out),
 		[will_not_call_mercury, thread_safe], "
+#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
 	if (X < -1.0 || X > 1.0) {
-	    mercury_domain_error(""math__acos"");
+		ML_math_domain_error(""math__acos"");
 	}
+#endif
 	ACos = asin(X);
 ").
 

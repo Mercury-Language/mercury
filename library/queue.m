@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -165,7 +165,14 @@ queue__length(On - Off, Length) :-
 queue__list_to_queue(List, [] - List).
 
 queue__delete_all(On0 - Off0, Elem, On - Off) :-
-	list__delete_all(On0, Elem, On),
-	list__delete_all(Off0, Elem, Off).
+	list__delete_all(On0, Elem, On1),
+	list__delete_all(Off0, Elem, Off1),
+	( Off1 = [] ->
+		list__reverse(On1, Off),
+		On = []
+	;
+		On = On1,
+		Off = Off1
+	).
 
 %--------------------------------------------------------------------------%

@@ -9,9 +9,11 @@
 */
 
 #include "mercury_imp.h"
-#include "mercury_trace_util.h"
+#include "mercury_layout_util.h"
 #include "mercury_deep_copy.h"
 #include "mercury_agc_debug.h"
+
+#ifdef NATIVE_GC
 
 /*
 ** Function prototypes.
@@ -26,6 +28,8 @@ static	void	dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone,
 void
 MR_agc_dump_roots(MR_RootList roots)
 {
+	Word	saved_regs[MAX_FAKE_REG];
+
 	fflush(NULL);
 	fprintf(stderr, "Dumping roots\n");
 
@@ -40,17 +44,21 @@ MR_agc_dump_roots(MR_RootList roots)
 		** the saved registers).
 		*/
 		restore_registers();
-		MR_copy_regs_to_saved_regs(MAX_REAL_REG + NUM_SPECIAL_REG);
+		/* XXX this is unsafe -- should use MAX_FAKE_REG */
+		MR_copy_regs_to_saved_regs(MAX_REAL_REG + MR_NUM_SPECIAL_REG,
+			saved_regs);
 
 		MR_hp = MR_ENGINE(debug_heap_zone->min);
 		MR_virtual_hp = MR_ENGINE(debug_heap_zone->min);
 
 		fflush(NULL);
-		MR_trace_write_variable((Word) roots->type_info, *roots->root);
+		MR_write_variable((Word) roots->type_info, *roots->root);
 		fflush(NULL);
 		fprintf(stderr, "\n");
 
-		MR_copy_saved_regs_to_regs(MAX_REAL_REG + NUM_SPECIAL_REG);
+		/* XXX this is unsafe -- should use MAX_FAKE_REG */
+		MR_copy_saved_regs_to_regs(MAX_REAL_REG + MR_NUM_SPECIAL_REG,
+			saved_regs);
 		save_registers();
 		roots = roots->next;
 	}
@@ -61,12 +69,13 @@ void
 MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 	Word *stack_pointer, Word *current_frame)
 {
+	Word saved_regs[MAX_FAKE_REG];
 	int i, var_count;
 	const MR_Stack_Layout_Vars *vars;
 	Word *type_params, type_info, value;
 	MR_Stack_Layout_Entry *entry_layout;
 	const MR_Stack_Layout_Label *layout;
-	Code *success_ip;
+	const Code *success_ip;
 	bool top_frame = TRUE;
 
 	layout = label->i_layout;
@@ -87,8 +96,14 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 		var_count = layout->MR_sll_var_count;
 		vars = &(layout->MR_sll_var_info);
 
-		type_params = MR_trace_materialize_typeinfos_base(vars,
-			top_frame, stack_pointer, current_frame);
+		/*
+		** XXX For the top stack frame, we should pass a pointer to
+		** a filled-in saved_regs instead of NULL. For other stack
+		** frames, passing NULL is fine, since output arguments are
+		** not live yet for any call except the top one.
+		*/
+		type_params = MR_materialize_typeinfos_base(vars,
+			NULL, stack_pointer, current_frame);
 
 		for (i = 0; i < var_count; i++) {
 			MR_Stack_Layout_Var sl_var;
@@ -113,23 +128,30 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 			** registers).
 			*/
 			restore_registers();
+			/* XXX this is unsafe -- should use MAX_FAKE_REG */
 			MR_copy_regs_to_saved_regs(MAX_REAL_REG +
-				NUM_SPECIAL_REG);
+				MR_NUM_SPECIAL_REG, saved_regs);
 
 			MR_hp = MR_ENGINE(debug_heap_zone->min);
 			MR_virtual_hp = MR_ENGINE(debug_heap_zone->min);
 
-			if (MR_trace_get_type_and_value_base(&sl_var, 
-					top_frame, stack_pointer,
+			/*
+			** XXX We must pass NULL here because the registers
+			** have not been saved. This is probably a bug;
+			** Tyson should look into it.
+			*/
+			if (MR_get_type_and_value_base(&sl_var, 
+					NULL, stack_pointer,
 					current_frame, type_params,
 					&type_info, &value)) {
 				printf("\t");
-				MR_trace_write_variable(type_info, value);
+				MR_write_variable(type_info, value);
 				printf("\n");
 			}
 
+			/* XXX this is unsafe -- should use MAX_FAKE_REG */
 			MR_copy_saved_regs_to_regs(MAX_REAL_REG +
-				NUM_SPECIAL_REG);
+				MR_NUM_SPECIAL_REG, saved_regs);
 			save_registers();
 #endif	/* MR_DEBUG_AGC_PRINT_VARS */
 
@@ -154,7 +176,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 			}
 			                                
 			success_ip = (Code *) 
-				based_detstackvar(stack_pointer, number);
+				MR_based_stackvar(stack_pointer, number);
 			stack_pointer = stack_pointer - 
 				entry_layout->MR_sle_stack_slots;
 			label = MR_lookup_internal_by_addr(success_ip);
@@ -191,13 +213,13 @@ dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 			break;
 
 		case MR_LVAL_TYPE_STACKVAR:
-			value = based_detstackvar(stack_pointer, locn_num);
+			value = MR_based_stackvar(stack_pointer, locn_num);
 			have_value = TRUE;
 			fprintf(stderr, "stackvar%d", locn_num);
 			break;
 
 		case MR_LVAL_TYPE_FRAMEVAR:
-			value = bt_var(current_frame, locn_num);
+			value = MR_based_framevar(current_frame, locn_num);
 			have_value = TRUE;
 			fprintf(stderr, "framevar%d", locn_num);
 			break;
@@ -222,6 +244,12 @@ dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 			fprintf(stderr, "sp");
 			break;
 
+		case MR_LVAL_TYPE_INDIRECT:
+			fprintf(stderr, "offset %d from ",
+				MR_LIVE_LVAL_INDIRECT_OFFSET(locn_num));
+			/* XXX Tyson will have to complete this */
+			/* based on what he wants this function to do */
+
 		case MR_LVAL_TYPE_UNKNOWN:
 			fprintf(stderr, "unknown");
 			break;
@@ -241,4 +269,6 @@ dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 		}
 	}
 }
+
+#endif /* NATIVE_GC */
 

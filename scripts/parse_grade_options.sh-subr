@@ -135,7 +135,22 @@
 		#	compiler/handle_options.m
 		#	scripts/ml.in
 
+	    asm_labels=false
+	    non_local_gotos=false
+	    global_regs=false
 	    gc_method=none
+	    profile_time=false
+	    profile_calls=false
+	    profile_memory=false
+	    use_trail=false
+	    reserve_tag=false
+	    use_solve_equal=false
+	    args_method=compact
+	    stack_trace=false
+	    require_tracing=false
+	    low_level_debug=false
+	    thread_safe=false
+
 	    grade_pieces=`echo $grade | tr '.' ' '`
 	    for grade_piece in $grade_pieces
 	    do

@@ -116,9 +116,38 @@
 % It is used to work around limitations in the current support for unique
 % modes.  `unsafe_promise_unique(X, Y)' is the same as `Y = X' except that
 % the compiler will assume that `Y' is unique.
+%
+% Note that misuse of this predicate may lead to unsound results:
+% if there is more than one reference to the data in question,
+% i.e. it is not `unique', then the behaviour is undefined.
+% (If you lie to the compiler, the compiler will get its revenge!)
 
 :- pred unsafe_promise_unique(T, T).
 :- mode unsafe_promise_unique(in, uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+% A call to the function `promise_only_solution(Pred)' constitutes a
+% promise on the part of the caller that `Pred' has at most one solution,
+% i.e. that `not some [X1, X2] (Pred(X1), Pred(X2), X1 \= X2)'.
+% `promise_only_solution(Pred)' presumes that this assumption is
+% satisfied, and returns the X for which Pred(X) is true, if
+% there is one.
+%
+% You can use `promise_only_solution' as a way of 
+% introducing `cc_multi' or `cc_nondet' code inside a
+% `det' or `semidet' procedure.
+%
+% Note that misuse of this function may lead to unsound results:
+% if the assumption is not satisfied, the behaviour is undefined.
+% (If you lie to the compiler, the compiler will get its revenge!)
+
+:- func promise_only_solution(pred(T)) = T.
+:- mode promise_only_solution(pred(out) is cc_multi) = out is det.
+:- mode promise_only_solution(pred(out) is cc_nondet) = out is semidet.
+
+%-----------------------------------------------------------------------------%
+
 
 % We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
 % backwards compatibility with Prolog systems.  But of course it only works
@@ -183,6 +212,24 @@
 
 %-----------------------------------------------------------------------------%
 
+promise_only_solution(Pred) = OutVal :-
+        call(cc_cast(Pred), OutVal).
+
+:- func cc_cast(pred(T)) = pred(T).
+:- mode cc_cast(pred(out) is cc_nondet) = out(pred(out) is semidet) is det.
+:- mode cc_cast(pred(out) is cc_multi) = out(pred(out) is det) is det.
+
+:- pragma c_code(cc_cast(X :: (pred(out) is cc_multi)) =
+                        (Y :: out(pred(out) is det)),
+                [will_not_call_mercury, thread_safe],
+                "Y = X;").
+:- pragma c_code(cc_cast(X :: (pred(out) is cc_nondet)) =
+                        (Y :: out(pred(out) is semidet)),
+                [will_not_call_mercury, thread_safe],
+                "Y = X;").
+
+%-----------------------------------------------------------------------------%
+
 !.
 !(X, X).
 
@@ -206,6 +253,7 @@
 
 	/* base_type_layout for `int' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_layout_int_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_int_0 = {
@@ -215,6 +263,7 @@ const struct mercury_data___base_type_layout_int_0_struct {
 
 	/* base_type_layout for `character' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_layout_character_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_character_0 = {
@@ -224,6 +273,7 @@ const struct mercury_data___base_type_layout_character_0_struct {
 
 	/* base_type_layout for `string' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_layout_string_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_string_0 = {
@@ -233,6 +283,7 @@ const struct mercury_data___base_type_layout_string_0_struct {
 
 	/* base_type_layout for `float' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_layout_float_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_float_0 = {
@@ -242,6 +293,7 @@ const struct mercury_data___base_type_layout_float_0_struct {
 
 	/* base_type_layout for `void' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_layout_void_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___base_type_layout_void_0 = {
@@ -253,6 +305,7 @@ const struct mercury_data___base_type_layout_void_0_struct {
 
 	/* base_type_functors for `int' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_functors_int_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_int_0 = {
@@ -261,6 +314,7 @@ const struct mercury_data___base_type_functors_int_0_struct {
 
 	/* base_type_functors for `character' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_functors_character_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_character_0 = {
@@ -269,6 +323,7 @@ const struct mercury_data___base_type_functors_character_0_struct {
 
 	/* base_type_functors for `string' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_functors_string_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_string_0 = {
@@ -277,6 +332,7 @@ const struct mercury_data___base_type_functors_string_0_struct {
 
 	/* base_type_functors for `float' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_functors_float_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_float_0 = {
@@ -285,6 +341,7 @@ const struct mercury_data___base_type_functors_float_0_struct {
 
 	/* base_type_functors for `void' */
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data___base_type_functors_void_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_void_0 = {
@@ -512,8 +569,6 @@ aliasing, and in particular the lack of support for `ui' modes.
 :- pragma c_code("
 Define_extern_entry(mercury__copy_2_0);
 Define_extern_entry(mercury__copy_2_1);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__copy_2_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__copy_2_1);
 
 BEGIN_MODULE(copy_module)
 	init_entry(mercury__copy_2_0);
@@ -576,6 +631,7 @@ void sys_init_copy_module(void) {
 
 #ifdef  USE_TYPE_LAYOUT
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_builtin__base_type_layout_c_pointer_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_builtin__base_type_layout_c_pointer_0 = {
@@ -583,6 +639,7 @@ const struct mercury_data_builtin__base_type_layout_c_pointer_0_struct {
 		mkbody(TYPELAYOUT_C_POINTER_VALUE))
 };
 
+MR_MODULE_STATIC_OR_EXTERN
 const struct
 mercury_data_builtin__base_type_functors_c_pointer_0_struct {
 	Integer f1;
@@ -597,12 +654,6 @@ Define_extern_entry(mercury____Index___builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___builtin__c_pointer_0_0);
-#endif
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___builtin__c_pointer_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___builtin__c_pointer_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___builtin__c_pointer_0_0);
-#ifdef MR_USE_SOLVE_EQUAL
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____SolveEqual___builtin__c_pointer_0_0);
 #endif
 
 BEGIN_MODULE(unify_c_pointer_module)

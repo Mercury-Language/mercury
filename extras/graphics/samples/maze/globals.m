@@ -1,3 +1,13 @@
+%------------------------------------------------------------------------------
+%
+% file: globals.m
+% author: conway, June 1997
+%
+% This source file is hereby placed in the public domain. -conway (the author).
+%
+%------------------------------------------------------------------------------
+%
+
 :- module globals.
 
 :- interface.
@@ -20,7 +30,7 @@
 init_globals -->
 	{ my_map_init(Map) },
 	{ type_to_univ(Map, UMap1) },
-	{ copy(UMap1, UMap) },
+	{ unsafe_promise_unique(UMap1, UMap) },
 	io__set_globals(UMap).
 
 get_global(Name, Value) -->
@@ -58,7 +68,7 @@ set_global(Name, Value) -->
 		{ type_to_univ(Value, UValue) },
 		{ map__set(Map0, Name, UValue, Map) },
 		{ type_to_univ(Map, UMap1) },
-		{ copy(UMap1, UMap) },
+		{ unsafe_promise_unique(UMap1, UMap) },
 		io__set_globals(UMap)
 	;
 		{ error("globals: global store stuffed up") }

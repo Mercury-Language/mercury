@@ -140,24 +140,20 @@ base_type_info__construct_base_type_infos([], _, []).
 base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 		ModuleInfo, [CModule | CModules]) :-
 	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName, TypeArity,
-		Status, Elim, Procs),
+		_Status, Elim, Procs),
 	base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, 
 		PredAddrArgs),
 	ArityArg = yes(const(int_const(TypeArity))),
-	( 	
-		( Status = exported ; Status = abstract_exported
-		; Status = imported 	% XXX this is an old hack to make it
-					% work for `term__context', which was
-					% once defined in mercury_builtin.m,
-					% but whose base_type_info was
-					% generated in term.m. 
-					% It's probably not needed anymore.
-		)
-	->
-		Exported = yes
-	;
-		Exported = no
-	),
+
+/******
+It would be more efficient if we could make base_type_infos local,
+but linkage/2 in llds_out.m requires that we make them all exported
+if any of them are exported, so that we can compute the linkage
+from the data_name, for use in forward declarations.
+	status_is_exported(Status, Exported),
+******/
+	Exported = yes,
+
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, type_layout, TypeLayoutOption),
 	(

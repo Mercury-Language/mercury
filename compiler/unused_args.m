@@ -55,7 +55,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, hlds_out, type_util, instmap.
 :- import_module code_util, globals, make_hlds, mercury_to_mercury, mode_util.
 :- import_module options, prog_data, prog_out, quantification, special_pred.
-:- import_module passes_aux, inst_match, modules.
+:- import_module passes_aux, inst_match, modules, polymorphism.
 
 :- import_module assoc_list, bool, char, int, list, map, require.
 :- import_module set, std_util, string, term, varset. 
@@ -258,7 +258,14 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		module_info_globals(ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, typeinfo_liveness, 
 			TypeinfoLiveness),
-		( TypeinfoLiveness = yes ->
+		( 
+			TypeinfoLiveness = yes,
+			pred_info_module(PredInfo, PredModule),
+			pred_info_name(PredInfo, PredName),
+			pred_info_arity(PredInfo, PredArity),
+			\+ polymorphism__no_type_info_builtin(PredModule,
+				PredName, PredArity)
+		->
 			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
 			setup_typeinfo_deps(Vars, VarTypes, 
 				proc(PredId, ProcId), TVarMap, VarDep2,
@@ -933,24 +940,24 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 		(
 				% fix up special pred names
 			special_pred_get_type(Name0, ArgTypes0, Type),
-			type_to_type_id(Type, TypeId0, _)
+			type_to_type_id(Type, TypeId, _)
 		->
-			TypeId = TypeId0
+			type_util__type_id_module(ModuleInfo,
+				TypeId, TypeModule),
+			type_util__type_id_name(ModuleInfo, TypeId, TypeName),
+			type_util__type_id_arity(ModuleInfo,
+				TypeId, TypeArity),
+			string__int_to_string(TypeArity, TypeAr),
+			prog_out__sym_name_to_string(TypeModule,
+				TypeModuleString0),
+			string__replace_all(TypeModuleString0, ":", "__",
+				TypeModuleString),
+			string__append_list([Name0, "_", TypeModuleString,
+				"__", TypeName, "_", TypeAr], Name1)
 		;
-			string__append_list(["unused_args:make_new_pred_info\n",
-					"cannot make label for special pred `",
-					Name0, "'."], Message),
-			error(Message)
-		),
-		type_util__type_id_module(ModuleInfo, TypeId, TypeModule),
-		type_util__type_id_name(ModuleInfo, TypeId, TypeName),
-		type_util__type_id_arity(ModuleInfo, TypeId, TypeArity),
-		string__int_to_string(TypeArity, TypeAr),
-		prog_out__sym_name_to_string(TypeModule, TypeModuleString0),
-		string__replace_all(TypeModuleString0, ":", "__",
-			TypeModuleString),
-		string__append_list( [Name0, "_", TypeModuleString, "__",
-			TypeName, "_", TypeAr], Name1)
+			% The special predicate has already been specialised.
+			Name1 = Name0
+		)
 	;
 		Name1 = Name0
 	),
@@ -971,7 +978,6 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 		Markers, GoalType, PredOrFunc, ClassContext, EmptyProofs,
 		PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
-
 
 	% Replace the goal in the procedure with one to call the given
 	% pred_id and proc_id.
@@ -1499,7 +1505,9 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 write_unused_args_to_opt_file(no, _, _, _) --> [].
 write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs) -->
 	(
-		{ pred_info_is_exported(PredInfo) },
+		( { pred_info_is_exported(PredInfo) }
+		; { pred_info_is_exported_to_submodules(PredInfo) }
+		),
 		{ UnusedArgs \= [] }
 	->
 		{ pred_info_module(PredInfo, Module) },
