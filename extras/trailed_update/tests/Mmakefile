@@ -15,17 +15,15 @@ CFLAGS=-g -I..
 MLFLAGS=-g
 
 # Link in the trailed_update library from ..
-MCFLAGS += -I.. $(EXTRA_MCFLAGS)
-MLFLAGS += -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
-MLLIBS = -ltrailed_update $(EXTRA_MLLIBS)
+MCFLAGS += -I..
+MLFLAGS += --mercury-libs static
+MLOBJS = ../libtrailed_update.a
 VPATH = ..:$(MMAKE_VPATH)
 C2INITARGS = ../trailed_update.init
 
 # We need the following to use shared libraries on Linux
 #MGNUCFLAGS += -DPIC_REG
 #MLFLAGS += --shared
-
-MLFLAGS += --static
 
 #-----------------------------------------------------------------------------#
 
