@@ -21,9 +21,9 @@
 
 /*
 ** This enum should EXACTLY match the definition of the `trace_port_type'
-** type in browser/debugger_interface, the definition of the predicates
-** `llds_out__trace_port_to_{int,string}', and port names list in the C source
-** file of this module.
+** type in browser/util.m, the definition of the predicates
+** `llds_out__trace_port_to_{int,string}', and the port names list
+** in the C source file of this module (mercury_trace_base.c).
 */
 
 typedef	enum {

@@ -21,6 +21,7 @@
 	;	exit
 	;	redo
 	;	fail
+	;	exception
 	;	ite_cond
 	;	ite_then
 	;	ite_else
@@ -31,7 +32,6 @@
 	;	switch
 	;	nondet_pragma_first
 	;	nondet_pragma_later
-	;	exception
 	.
 
 :- type goal_path_string == string.
