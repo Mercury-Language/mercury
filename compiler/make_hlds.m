@@ -4219,11 +4219,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 		% easier when redefining builtins to use normal Mercury code.
 		pred_info_is_builtin(PredInfo1)
 	->
-		% XXX commented out while the change to builtin_ops
-		% to add term_size_prof_builtin.term_size_plus is bootstrapped
-		% prog_out__write_context(Context),
-		% report_warning("Warning: clause for builtin.\n"),
-		true
+		prog_out__write_context(Context, !IO),
+		report_warning("Warning: clause for builtin.\n", !IO)
 	;
 		pred_info_clauses_info(PredInfo1, Clauses0),
 		pred_info_typevarset(PredInfo1, TVarSet0),
