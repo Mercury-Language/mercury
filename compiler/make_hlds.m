@@ -926,6 +926,13 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 		varset__init(ArgVarSet0),
 		make_n_fresh_vars("HeadVar__", Arity,
 			ArgVarSet0, Args, ArgVarSet),
+		% XXX We could use explicit type qualifications here
+		% for the argument types, but explicit type qualification
+		% doesn't work correctly with type inference due to
+		% a bug somewhere in typecheck.m -- the explicitly declared
+		% types are not kept in sync with the predicate's tvarset
+		% after the first pass of type checking.
+		% map__from_corresponding_lists(Args, Types, VarTypes0).
 		map__init(VarTypes0),
 		goal_info_init(GoalInfo0),
 		set__list_to_set(Args, NonLocals),
