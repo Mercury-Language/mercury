@@ -9,7 +9,7 @@
 :- module opt_debug.
 
 :- interface.
-:- import_module llds, value_number, opt_util, list, std_util, int.
+:- import_module llds, value_number, vn_util, opt_util, list, std_util, int.
 
 :- pred opt_debug__dump_tables(vn_tables, string).
 :- mode opt_debug__dump_tables(in, out) is det.
@@ -23,11 +23,17 @@
 :- pred opt_debug__dump_vn_to_rval(assoc_list(vn, vnrval), string).
 :- mode opt_debug__dump_vn_to_rval(in, out) is det.
 
-:- pred opt_debug__dump_vn_to_uses(assoc_list(vn, int), string).
+:- pred opt_debug__dump_vn_to_uses(assoc_list(vn, list(vn_src)), string).
 :- mode opt_debug__dump_vn_to_uses(in, out) is det.
 
 :- pred opt_debug__dump_vn_to_locs(assoc_list(vn, list(vnlval)), string).
 :- mode opt_debug__dump_vn_to_locs(in, out) is det.
+
+:- pred opt_debug__dump_uses_list(list(vn_src), string).
+:- mode opt_debug__dump_uses_list(in, out) is det.
+
+:- pred opt_debug__dump_use(vn_src, string).
+:- mode opt_debug__dump_use(in, out) is det.
 
 :- pred opt_debug__dump_vn(vn, string).
 :- mode opt_debug__dump_vn(in, out) is det.
@@ -134,7 +140,7 @@ opt_debug__dump_vn_to_uses([], "").
 opt_debug__dump_vn_to_uses([Vn - Uses | Vn_to_uses_list], Str) :-
 	opt_debug__dump_vn_to_uses(Vn_to_uses_list, Tail_str),
 	opt_debug__dump_vn(Vn, Vn_str),
-	string__int_to_string(Uses, Uses_str),
+	opt_debug__dump_uses_list(Uses, Uses_str),
 	string__append_list([Vn_str, " -> ", Uses_str, "\n", Tail_str], Str).
 
 opt_debug__dump_vn_to_locs([], "").
@@ -143,6 +149,22 @@ opt_debug__dump_vn_to_locs([Vn - Vn_locs | Vn_to_locs_list], Str) :-
 	opt_debug__dump_vn(Vn, Vn_str),
 	opt_debug__dump_vn_locs(Vn_locs, Vn_locs_str),
 	string__append_list([Vn_str, " -> ", Vn_locs_str, "\n", Tail_str], Str).
+
+opt_debug__dump_uses_list([], "").
+opt_debug__dump_uses_list([Use | Uses], Str) :-
+	opt_debug__dump_use(Use, Str1),
+	opt_debug__dump_uses_list(Uses, Str2),
+	string__append_list([Str1, ", ", Str2], Str).
+
+opt_debug__dump_use(src_ctrl(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["src_ctrl(", N_str, ")"], Str).
+opt_debug__dump_use(src_liveval(Vnlval), Str) :-
+	opt_debug__dump_vnlval(Vnlval, Vnlval_str),
+	string__append_list(["src_liveval(", Vnlval_str, ")"], Str).
+opt_debug__dump_use(src_vn(Vn), Str) :-
+	opt_debug__dump_vn(Vn, Vn_str),
+	string__append_list(["src_ctrl(", Vn_str, ")"], Str).
 
 opt_debug__dump_vn(Vn, Str) :-
 	string__int_to_string(Vn, Str).
