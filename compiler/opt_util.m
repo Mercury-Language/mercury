@@ -20,6 +20,10 @@
 :- type tailmap == map(label, list(instruction)).
 :- type succmap == map(label, bool).
 
+:- pred opt_util__get_prologue(list(instruction), proc_label,
+	list(instruction), list(instruction)).
+:- mode opt_util__get_prologue(in, out, out, out) is det.
+
 :- pred opt_util__gather_comments(list(instruction),
 	list(instruction), list(instruction)).
 :- mode opt_util__gather_comments(in, out, out) is det.
@@ -297,6 +301,26 @@
 
 :- implementation.
 :- import_module map, require, exprn_aux.
+
+opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs) :-
+	opt_util__gather_comments(Instrs0, Comments1, Instrs1),
+	(
+		Instrs1 = [Instr1 | Instrs2],
+		Instr1 = label(FirstLabel) - _
+	->
+		( FirstLabel = exported(ProcLabelPrime) ->
+			ProcLabel = ProcLabelPrime
+		; FirstLabel = local(ProcLabelPrime) ->
+			ProcLabel = ProcLabelPrime
+		;
+			error("procedure begins with bad label type")
+		),
+		opt_util__gather_comments(Instrs2, Comments2, Instrs3),
+		list__append(Comments1, Comments2, Comments),
+		Instrs = [Instr1 | Instrs3]
+	;
+		error("procedure does not begin with label")
+	).
 
 opt_util__gather_comments(Instrs0, Comments, Instrs) :-
 	(

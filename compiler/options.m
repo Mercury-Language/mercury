@@ -187,7 +187,7 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
-	vndebug			- 	int(0)
+	vndebug			- 	int(3)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -264,7 +264,7 @@ option_defaults_2(optimization_option, [
 	req_density		-	int(25),
 	dense_switch_size	-	int(4),
 	string_switch_size	-	int(8),
-	tag_switch_size		-	int(4),
+	tag_switch_size		-	int(3),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
 	specialize		-	bool(yes),

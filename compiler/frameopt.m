@@ -63,26 +63,9 @@
 	% saves we introduced.
 
 frameopt__main(Instrs0, Instrs, FillDelaySlot, TeardownMap, Mod) :-
-	opt_util__gather_comments(Instrs0, Comment1, Instrs1),
+	opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs2),
 	(
-		Instrs1 = [Instr1prime | Instrs2prime],
-		Instr1prime = label(FirstLabelPrime) - _
-	->
-		Instr1 = Instr1prime,
-		Instrs2 = Instrs2prime,
-		FirstLabel = FirstLabelPrime,
-		( FirstLabel = exported(ProcLabelPrime) ->
-			ProcLabel = ProcLabelPrime
-		; FirstLabel = local(ProcLabelPrime) ->
-			ProcLabel = ProcLabelPrime
-		;
-			error("procedure begins with bad label type")
-		)
-	;
-		error("procedure does not begin with label")
-	),
-	opt_util__gather_comments(Instrs2, Comment2, Instrs3),
-	(
+		Instrs2 = [LabelInstr | Instrs3],
 		frameopt__detstack_setup(Instrs3, FrameSize, Body0),
 		livemap__build(Instrs0, no, Livemap)
 	->
@@ -103,7 +86,7 @@ frameopt__main(Instrs0, Instrs, FillDelaySlot, TeardownMap, Mod) :-
 		frameopt__insert_late_setups(Body1, InsertMap, comment(""),
 			Body2),
 		list__append(Body2, Extra, Body3),
-		list__condense([Comment1, [Instr1], Comment2, Body3], Instrs4),
+		list__append(Comments, [LabelInstr | Body3], Instrs4),
 		( Instrs4 = Instrs0 ->
 			Instrs = Instrs0,
 			Mod = no

@@ -39,24 +39,113 @@
 :- implementation.
 
 :- import_module vn_table, vn_block, vn_order, vn_flush.
-:- import_module vn_temploc, vn_cost, vn_debug, vn_util.
-:- import_module globals, options, peephole, livemap, opt_util, opt_debug.
+:- import_module vn_temploc, vn_cost, vn_debug, vn_util, opt_debug.
+:- import_module globals, options, peephole, livemap, code_util, opt_util.
 :- import_module set, map, bimap, require, int, string, std_util.
 
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
 
 value_number__main(Instrs0, Instrs) -->
-	{ livemap__build(Instrs0, Ccode, Livemap) },
+	{ opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs1) },
+	{ opt_util__new_label_no(Instrs1, 1000, N0) },
+	{ vn__prepare_for_vn(Instrs1, ProcLabel, N0, Instrs2) },
+	{ livemap__build(Instrs2, Ccode, Livemap) },
 	vn__livemap_msg(Livemap),
 	(
 		{ Ccode = no },
-		vn__procedure(Instrs0, Livemap, Instrs)
+		vn__procedure(Instrs2, Livemap, Instrs3),
+		{ list__append(Comments, Instrs3, Instrs) }
 	;
 		% Don't perform value numbering if there is a c_code or a 
 		% pragma_c in the instructions.
 		{ Ccode = yes },
 		{ Instrs = Instrs0 }
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Instructions such as if_val(tag(r1) == 1 && field(1, r1, N) = X)
+	% pose a problem for value numbering. The field reference will be
+	% extracted into a register before the if, and this extraction will
+	% cause an unaligned access if done before the tag test. Similar
+	% problems can arise even if the code before the && does not contain
+	% a tag operator, since this may have been applied earlier.
+	%
+	% By converting all boolean operations in if_vals into multiple
+	% if_vals, we are preventing this from happening. 
+
+:- pred vn__prepare_for_vn(list(instruction), proc_label, int,
+	list(instruction)).
+:- mode vn__prepare_for_vn(in, in, in, out) is det.
+
+vn__prepare_for_vn([], _, _, []).
+vn__prepare_for_vn([Instr0 | Instrs0], ProcLabel, N0, Instrs) :-
+	Instr0 = Uinstr0 - _Comment,
+	(
+		Uinstr0 = if_val(Test, TrueAddr)
+	->
+		( Instrs0 = [label(FalseLabelPrime) - _ | _] ->
+			FalseLabel = FalseLabelPrime,
+			FalseAddr = label(FalseLabel),
+			N1 = N0
+		;
+			FalseLabel = local(ProcLabel, N0),
+			FalseAddr = label(FalseLabel),
+			N1 is N0 + 1
+		),
+		vn__breakup_complex_if(Test, TrueAddr, FalseAddr, FalseAddr,
+			ProcLabel, N1, N2, IfInstrs),
+		vn__prepare_for_vn(Instrs0, ProcLabel, N2, Instrs1),
+		( N1 = N0 ->
+			list__append(IfInstrs, Instrs1, Instrs)
+		;
+			LabelInstr = label(FalseLabel) - "vn false label",
+			list__append(IfInstrs, [LabelInstr | Instrs1], Instrs)
+		)
+	;
+		vn__prepare_for_vn(Instrs0, ProcLabel, N0, Instrs1),
+		Instrs = [Instr0 | Instrs1]
+	).
+
+:- pred vn__breakup_complex_if(rval, code_addr, code_addr, code_addr,
+	proc_label, int, int, list(instruction)).
+:- mode vn__breakup_complex_if(in, in, in, in, in, in, out, out) is det.
+
+vn__breakup_complex_if(Test, TrueAddr, FalseAddr, NextAddr,
+		ProcLabel, N0, N, Instrs) :-
+	( Test = binop(and, Test1, Test2) ->
+		NewLabel = local(ProcLabel, N0),
+		NewAddr = label(NewLabel),
+		N1 is N0 + 1,
+		vn__breakup_complex_if(Test1, NewAddr, FalseAddr,
+			NewAddr, ProcLabel, N1, N2, Instrs1),
+		vn__breakup_complex_if(Test2, TrueAddr, FalseAddr,
+			NextAddr, ProcLabel, N2, N, Instrs2),
+		list__append(Instrs1, [label(NewLabel) - "" | Instrs2], Instrs)
+	; Test = binop(or, Test1, Test2) ->
+		NewLabel = local(ProcLabel, N0),
+		NewAddr = label(NewLabel),
+		N1 is N0 + 1,
+		vn__breakup_complex_if(Test1, TrueAddr, NewAddr,
+			NewAddr, ProcLabel, N1, N2, Instrs1),
+		vn__breakup_complex_if(Test2, TrueAddr, FalseAddr,
+			NextAddr, ProcLabel, N2, N, Instrs2),
+		list__append(Instrs1, [label(NewLabel) - "" | Instrs2], Instrs)
+	; Test = unop(not, Test1) ->
+		vn__breakup_complex_if(Test1, FalseAddr, TrueAddr, NextAddr,
+			ProcLabel, N0, N, Instrs)
+	;
+		N = N0,
+		( NextAddr = FalseAddr ->
+			Instrs = [if_val(Test, TrueAddr) - ""]
+		; NextAddr = TrueAddr ->
+			code_util__neg_rval(Test, NegTest),
+			Instrs = [if_val(NegTest, FalseAddr) - ""]
+		;
+			Instrs = [if_val(Test, TrueAddr) - "",
+				goto(FalseAddr) - ""]
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -137,8 +226,6 @@ vn__optimize_block(Instrs0, Livemap, ParEntries, LabelNo0, LabelNo, Instrs,
 
 vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
 	(
-		{ vn__separate_tag_test(Instrs0, Instrs1) },
-		%
 		% Value numbering currently combines multiple heap pointer
 		% increments into a single heap pointer increment.  If we're
 		% using conservative garbage collection, this would create
@@ -147,16 +234,16 @@ vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
 		% performance).  Hence, if GC=conservative we must not
 		% perform value numbering on a block that contains more
 		% than one heap pointer increment.
-		%
+
 		globals__io_get_gc_method(GC),
 		{ GC = conservative ->
-			opt_util__count_incr_hp(Instrs1, NumIncrs),
+			opt_util__count_incr_hp(Instrs0, NumIncrs),
 			NumIncrs < 2
 		;
 			true
 		}
 	->
-		vn__optimize_fragment_2(Instrs1, Livemap, ParEntries,
+		vn__optimize_fragment_2(Instrs0, Livemap, ParEntries,
 			LabelNo0, Tuple, Instrs)
 	;
 		{ Instrs = Instrs0 },
@@ -182,9 +269,9 @@ vn__optimize_fragment_2(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -
 
 	{ vn__build_uses(Liveset, Ctrlmap, VnTables0, VnTables1) },
 
-	vn__order(Liveset, VnTables1, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe),
+	vn__order(Liveset, VnTables1, SeenIncr, Ctrl, Ctrlmap, Flushmap, Res),
 	(
-		{ Maybe = yes(VnTables2 - Order) },
+		{ Res = success(VnTables2, Order) },
 		{ vn__max_real_regs(MaxRealRegs) },
 		{ vn__max_real_temps(MaxRealTemps) },
 		{ vn__init_templocs(MaxRealRegs, MaxRealTemps,
@@ -232,40 +319,37 @@ vn__optimize_fragment_2(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -
 			{ Tuple = Tuple0 }
 		)
 	;
-		{ Maybe = no },
+		{ Res = failure(_LastLabel) },
 		vn__try_again(Instrs0, Livemap, LabelNo, Instrs),
 		{ vn__build_block_info(Instrs0, Livemap, ParEntries,	
 			LabelNo0, _, _, _, Tuple) }
 	).
 
-:- pred vn__separate_tag_test(list(instruction), list(instruction)).
-% :- mode vn__separate_tag_test(di, uo) is semidet.
-:- mode vn__separate_tag_test(in, out) is semidet.
+%-----------------------------------------------------------------------------%
 
-vn__separate_tag_test([], []).
-vn__separate_tag_test([Instr0 | Instrs0], Instrs) :-
-	vn__separate_tag_test(Instrs0, Instrs1),
-	Instr0 = Uinstr0 - Comment,
+:- pred vn__try_again(list(instruction), livemap, int, list(instruction),
+	io__state, io__state).
+:- mode vn__try_again(in, in, in, out, di, uo) is det.
+
+vn__try_again([], _, _, []) --> [].
+vn__try_again([Instr0 | Instrs0], Livemap, LabelNo0, Instrs) -->
 	(
-		Uinstr0 = if_val(binop(and, Test1, Test2), _Addr),
-		Test1 = binop(eq, unop(tag, Rval), unop(mktag, const(int_const(Tag)))),
-		Test2 = binop(eq, lval(field(Tag, Rval, _Index)), _FieldVal)
+		{ Instr0 = Uinstr0 - _ },
+		{
+			Uinstr0 = if_val(_, _)
+		;
+			Uinstr0 = restore_hp(_)
+		;
+			Uinstr0 = mark_hp(_)
+		}
 	->
-		% separating these tests would require introducing nested ifs,
-		% which would break up the extended basic block
-		fail
+		vn__restart_msg(Instr0),
+		vn__optimize_fragment(Instrs0, Livemap, [], LabelNo0,
+			_, Instrs1),
+		{ Instrs = [Instr0 | Instrs1] }
 	;
-		Uinstr0 = if_val(unop(not, binop(and, Test1, Test2)), Addr),
-		Test1 = binop(eq, unop(tag, Rval), unop(mktag, const(int_const(Tag)))),
-		Test2 = binop(eq, lval(field(Tag, Rval, Index)), FieldVal)
-	->
-		New1 = binop(ne, unop(tag, Rval), unop(mktag, const(int_const(Tag)))),
-		New2 = binop(ne, lval(field(Tag, Rval, Index)), FieldVal),
-		If1 = if_val(New1, Addr) - Comment,
-		If2 = if_val(New2, Addr) - Comment,
-		Instrs = [If1, If2 | Instrs1]
-	;
-		Instrs = [Instr0 | Instrs1]
+		vn__try_again(Instrs0, Livemap, LabelNo0, Instrs1),
+		{ Instrs = [Instr0 | Instrs1] }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -898,31 +982,6 @@ vn__convert_back_modframe([Instr0 | Instrs0], [Instr | Instrs]) :-
 		Instr = modframe(Redoip) - "recovered modframe"
 	;
 		Instr = Instr0
-	).
-
-:- pred vn__try_again(list(instruction), livemap, int, list(instruction),
-	io__state, io__state).
-:- mode vn__try_again(in, in, in, out, di, uo) is det.
-
-vn__try_again([], _, _, []) --> [].
-vn__try_again([Instr0 | Instrs0], Livemap, LabelNo0, Instrs) -->
-	(
-		{ Instr0 = Uinstr0 - _ },
-		{
-			Uinstr0 = if_val(_, _)
-		;
-			Uinstr0 = restore_hp(_)
-		;
-			Uinstr0 = mark_hp(_)
-		}
-	->
-		vn__order_restart_msg(Instr0),
-		vn__optimize_fragment(Instrs0, Livemap, [], LabelNo0,
-			_, Instrs1),
-		{ Instrs = [Instr0 | Instrs1] }
-	;
-		vn__try_again(Instrs0, Livemap, LabelNo0, Instrs1),
-		{ Instrs = [Instr0 | Instrs1] }
 	).
 
 %-----------------------------------------------------------------------------%

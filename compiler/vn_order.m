@@ -17,8 +17,11 @@
 :- import_module vn_type, vn_table.
 :- import_module llds, list.
 
+:- type order_result	--->	success(vn_tables, list(vn_node))
+			;	failure(maybe(label)).
+
 :- pred vn__order(vnlvalset, vn_tables, bool, int, ctrlmap, flushmap,
-	maybe(pair(vn_tables, list(vn_node))), io__state, io__state).
+	order_result, io__state, io__state).
 :- mode vn__order(in, in, in, in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -30,12 +33,12 @@
 
 %-----------------------------------------------------------------------------%
 
-vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe) -->
+vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Result) -->
 	vn__order_start_msg(Ctrlmap, Flushmap, VnTables0),
+	{ vn__req_order(Ctrlmap, Flushmap, SeenIncr, VnTables0, no,
+		Problem, MustSuccmap0, MustPredmap0) },
 	(
-		{ vn__req_order(Ctrlmap, Flushmap, SeenIncr, VnTables0,
-			MustSuccmap0, MustPredmap0) }
-	->
+		{ Problem = no },
 		{ set__to_sorted_list(Liveset, Livelist) },
 		{ vn__prod_cons_order(Livelist, VnTables0, VnTables1,
 			MustSuccmap0, MustSuccmap1,
@@ -63,9 +66,10 @@ vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe) -->
 		{ vn__reorder_noops(Order0, VnTables2, Order) },
 
 		vn__order_order_msg(Order),
-		{ Maybe = yes(VnTables2 - Order) }
+		{ Result = success(VnTables2, Order) }
 	;
-		{ Maybe = no }
+		{ Problem = yes(MaybeLabel) },
+		{ Result = failure(MaybeLabel) }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -77,54 +81,80 @@ vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe) -->
 	% part of the order of nodes, which is that a vnlval that is live
 	% at a side branch must be produced before that side branch.
 
-:- pred vn__req_order(ctrlmap, flushmap, bool, vn_tables,
-	relmap(vn_node), relmap(vn_node)).
-:- mode vn__req_order(in, in, in, in, out, out) is semidet.
+:- pred vn__req_order(ctrlmap, flushmap, bool, vn_tables, maybe(label),
+	maybe(maybe(label)), relmap(vn_node), relmap(vn_node)).
+:- mode vn__req_order(in, in, in, in, in, out, out, out) is det.
 
-vn__req_order(Ctrlmap, Flushmap, SeenIncr, VnTables,
+vn__req_order(Ctrlmap, Flushmap, SeenIncr, VnTables, LastLabel, Problem,
 		MustSuccmap, MustPredmap) :-
 	map__init(MustSuccmap0),
 	map__init(MustPredmap0),
-	vn__req_order_2(0, Ctrlmap, Flushmap, SeenIncr, VnTables,
-		MustSuccmap0, MustSuccmap, MustPredmap0, MustPredmap).
+	vn__req_order_2(0, Ctrlmap, Flushmap, SeenIncr, VnTables, LastLabel,
+		Problem, MustSuccmap0, MustSuccmap, MustPredmap0, MustPredmap).
 
 :- pred vn__req_order_2(int, ctrlmap, flushmap, bool, vn_tables,
+	maybe(label), maybe(maybe(label)),
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-% :- mode vn__req_order_2(in, in, in, in, in, di, uo, di, uo) is semidet.
-:- mode vn__req_order_2(in, in, in, in, in, in, out, in, out) is semidet.
+% :- mode vn__req_order_2(in, in, in, in, in, di, uo, di, uo) is det.
+:- mode vn__req_order_2(in, in, in, in, in, in, out, in, out, in, out) is det.
 
-vn__req_order_2(Ctrl, Ctrlmap, Flushmap, Heapop0, VnTables,
+vn__req_order_2(Ctrl, Ctrlmap, Flushmap, Heapop0, VnTables, LastLabel, Problem,
 		MustSuccmap0, MustSuccmap, MustPredmap0, MustPredmap) :-
 	( map__search(Ctrlmap, Ctrl, VnInstr) ->
 		( VnInstr = vn_mark_hp(_) ->
-			Heapop0 = no,
 			Heapop1 = yes
 		; VnInstr = vn_restore_hp(_) ->
-			Heapop0 = no,
 			Heapop1 = yes
 		;
-			Heapop1 = Heapop0
+			Heapop1 = no
 		),
-		map__lookup(Flushmap, Ctrl, FlushEntry),
-		( Ctrl > 0 ->
-			PrevCtrl is Ctrl - 1,
-			vn__add_link(node_ctrl(PrevCtrl), node_ctrl(Ctrl),
-				MustSuccmap0, MustSuccmap1,
-				MustPredmap0, MustPredmap1)
+		(
+			Heapop0 = yes,
+			Heapop1 = yes
+		->
+			MustSuccmap = MustSuccmap0,
+			MustPredmap = MustPredmap0,
+			Problem = yes(LastLabel)
 		;
-			vn__add_node(node_ctrl(Ctrl),
-				MustSuccmap0, MustSuccmap1,
-				MustPredmap0, MustPredmap1)
-		),
-		map__to_assoc_list(FlushEntry, FlushList),
-		vn__record_ctrl_deps(FlushList, node_ctrl(Ctrl), VnTables,
-			MustSuccmap1, MustSuccmap2, MustPredmap1, MustPredmap2),
-		NextCtrl is Ctrl + 1,
-		vn__req_order_2(NextCtrl, Ctrlmap, Flushmap, Heapop1, VnTables,
-			MustSuccmap2, MustSuccmap, MustPredmap2, MustPredmap)
+			( VnInstr = vn_label(Label) ->
+				CurLabel = yes(Label)
+			;
+				CurLabel = LastLabel
+			),
+			bool__or(Heapop0, Heapop1, Heapop2),
+			map__lookup(Flushmap, Ctrl, FlushEntry),
+			( Ctrl > 0 ->
+				PrevCtrl is Ctrl - 1,
+				vn__add_link(node_ctrl(PrevCtrl),
+					node_ctrl(Ctrl),
+					MustSuccmap0, MustSuccmap1,
+					MustPredmap0, MustPredmap1)
+			;
+				vn__add_node(node_ctrl(Ctrl),
+					MustSuccmap0, MustSuccmap1,
+					MustPredmap0, MustPredmap1)
+			),
+			(
+				map__to_assoc_list(FlushEntry, FlushList),
+				vn__record_ctrl_deps(FlushList, node_ctrl(Ctrl),
+					VnTables, MustSuccmap1, MustSuccmap2,
+					MustPredmap1, MustPredmap2)
+			->
+				NextCtrl is Ctrl + 1,
+				vn__req_order_2(NextCtrl, Ctrlmap, Flushmap,
+					Heapop2, VnTables, CurLabel, Problem,
+					MustSuccmap2, MustSuccmap,
+					MustPredmap2, MustPredmap)
+			;
+				MustSuccmap = MustSuccmap1,
+				MustPredmap = MustPredmap1,
+				Problem = yes(LastLabel)
+			)
+		)
 	;
 		MustSuccmap = MustSuccmap0,
-		MustPredmap = MustPredmap0
+		MustPredmap = MustPredmap0,
+		Problem = no
 	).
 
 :- pred vn__record_ctrl_deps(assoc_list(vnlval, vn), vn_node, vn_tables,
