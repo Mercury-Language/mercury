@@ -179,7 +179,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % the set of recursive calls.
             %
         InvArgs0 = inv_args(ModuleInfo0, HeadVars, HeadVarModes, RecCalls),
-        InvArgs  = InvArgs0 `difference` UniquelyUsedVars,
+        InvArgs  = InvArgs0 `delete_elems` UniquelyUsedVars,
 
             % Given the invariant args, we can calculate the set
             % of invariant goals and vars.
@@ -197,8 +197,8 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             %
         dont_hoist(ModuleInfo0, InvGoals1, DontHoistGoals, DontHoistVars),
 
-        InvGoals = InvGoals1 `difference` DontHoistGoals,
-        InvVars  = InvVars1  `difference` DontHoistVars,
+        InvGoals = InvGoals1 `delete_elems` DontHoistGoals,
+        InvVars  = InvVars1  `delete_elems` DontHoistVars,
 
             % We only apply the optimization if the set of invariant goals
             % is non-empty.
@@ -211,7 +211,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % between the whole invariant var set and the set of
             % invariant args.
             %
-        ComputedInvVars = InvVars `difference` InvArgs,
+        ComputedInvVars = InvVars `delete_elems` InvArgs,
 
             % We need to calculate the initial instmap for the aux
             % proc by applying the instmap_deltas from the InvGoals
@@ -252,12 +252,6 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
         ProcInfo   = ProcInfo0,
         ModuleInfo = ModuleInfo0
     ).
-
-%------------------------------------------------------------------------------%
-
-:- func list(T) `difference` list(T) = list(T).
-
-Xs `difference` Ys = Xs `delete_elems` Ys.
 
 %------------------------------------------------------------------------------%
 
