@@ -555,10 +555,22 @@ esac
 
 case $use_thread_libs in
 	true)
+		# For Linux, Irix, Solaris, and HPUX,
+		# the thread-enabled version of the Boehm
+		# collector contains a reference to dlopen(), so 
+		# if threads are enabled, we need to link with the
+		# appropriate extra library for that (-ldl on Linux
+		# and Solaris, -lrt on HPUX, and nothing on Irix).
+		# XXX That should only be done if conservative GC
+		#     is enabled.
+
 		case "$FULLARCH" in
  		*-osf*)		THREAD_LIBS="-lpthreads -lmach -lc_r" ;;
-		*-linux*)	THREAD_LIBS="-lpthread" ;;
+		*-linux*)	THREAD_LIBS="-lpthread -ldl" ;;
 		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
+		### We don't yet support threads on HPUX and IRIX
+		### *-hpux*)	THREAD_LIBS="-lpthread -lrt" ;;
+		### *-irix*)	THREAD_LIBS="-lpthread" ;;
 		*cygwin*)
 			case $COMPILER in
 				cl)	ARCH_OPTS="/MD"
