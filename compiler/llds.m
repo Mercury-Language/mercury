@@ -552,7 +552,7 @@ output_rval_decls(var(_)) -->
 output_rval_decls(mkword(_, Rval)) --> 
 	output_rval_decls(Rval).
 output_rval_decls(const(Const)) -->
-	( { Const = pred_constant(CodeAddress) } ->
+	( { Const = pred_const(CodeAddress) } ->
 		output_code_addr_decls(CodeAddress)
 	;
 		[]
