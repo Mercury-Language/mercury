@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,17 +51,17 @@
 #ifndef MR_HIGHLEVEL_CODE
 	MR_Context	*ctxt;
 	ctxt = MR_create_context();
-	ctxt->resume = &&spawn_call_back_to_mercury_cc_multi;
+	ctxt->MR_ctxt_resume = &&spawn_call_back_to_mercury_cc_multi;
 		/* Store the closure on the top of the new context's stack. */
-	*(ctxt->context_sp) = Goal;
-	ctxt->next = NULL;
+	*(ctxt->MR_ctxt_sp) = Goal;
+	ctxt->MR_ctxt_next = NULL;
 	MR_schedule(ctxt);
 	if (0) {
 spawn_call_back_to_mercury_cc_multi:
 		MR_save_registers();
 			/* Get the closure from the top of the stack */
 		call_back_to_mercury_cc_multi(*((MR_Word *)MR_sp));
-		MR_destroy_context(MR_ENGINE(this_context));
+		MR_destroy_context(MR_ENGINE(MR_eng_this_context));
 		MR_runnext();
 	}
 #else
@@ -75,9 +75,10 @@ spawn_call_back_to_mercury_cc_multi:
 		[will_not_call_mercury, thread_safe], "{
 		/* yield() */
 #ifndef MR_HIGHLEVEL_CODE
-	MR_save_context(MR_ENGINE(this_context));
-	MR_ENGINE(this_context)->resume = &&yield_skip_to_the_end;
-	MR_schedule(MR_ENGINE(this_context));
+	MR_save_context(MR_ENGINE(MR_eng_this_context));
+	MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
+		&&yield_skip_to_the_end;
+	MR_schedule(MR_ENGINE(MR_eng_this_context));
 	MR_runnext();
 yield_skip_to_the_end:
 #endif
