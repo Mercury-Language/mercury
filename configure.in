@@ -2254,20 +2254,32 @@ case "$host" in
 		yes)
 			AC_MSG_RESULT(yes)
 			EXT_FOR_SHARED_LIB=so
-			AC_MSG_CHECKING(for ld-linux.so)
+			AC_MSG_CHECKING(if linker supports --no-undefined)
+			rm -f conftest*
 			echo "int main(void) { return 0; }" > conftest.c
-			$CC -o conftest conftest.c
-			ld_linux=`ldd ./conftest | awk '/ld-linux/{print $1;}'`
-			case $ld_linux in /lib/ld-linux.so*)
-				AC_MSG_RESULT($ld_linux)
+			$CC -Wl,--no-undefined -o conftest conftest.c
+			if test -f conftest; then
+				AC_MSG_RESULT(yes)
 				ERROR_UNDEFINED="-Wl,--no-undefined"
-				SHARED_LIBS="$SHARED_LIBS $ld_linux"
-				SHARED_LIBS_SH="$SHARED_LIBS_SH $ld_linux"
-				;;
-			*)
+
+				AC_MSG_CHECKING(for ld-linux.so)
+				rm -f conftest*
+				echo "int main(void) { return 0; }" > conftest.c
+				$CC -o conftest conftest.c
+				ld_linux=`ldd ./conftest | \
+					awk '/ld-linux/{print $1;}'`
+				case $ld_linux in /lib/ld-linux.so*)
+					AC_MSG_RESULT($ld_linux)
+					SHARED_LIBS="$SHARED_LIBS $ld_linux"
+					SHARED_LIBS_SH="$SHARED_LIBS_SH $ld_linux"
+					;;
+				*)
+					AC_MSG_RESULT(no)
+					;;
+				esac
+			else
 				AC_MSG_RESULT(no)
-				;;
-			esac
+			fi
 			rm -f conftest*
 			;;
 		*)
