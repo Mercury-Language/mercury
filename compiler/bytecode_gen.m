@@ -566,17 +566,24 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 	(
 		ConsId = cons(Functor, Arity),
 		(
-			Functor = unqualified(FunctorName)
+			% Everything other than characters should
+			% be module qualified.
+			Functor = unqualified(FunctorName),
+			string__to_char_list(FunctorName, FunctorList),
+			( FunctorList = [Char] ->
+				ByteConsId = char_const(Char)
+			;	
+				error("bytecode_gen__map_cons_id: unqualified cons_id is not a char_const")
+			)
 		;
-			% Should have been transformed into a function call
-			% or pred_const.
-			Functor = qualified(_, _),
-			error("bytecode_gen__map_cons_id: qualified cons_id")
-		),
-		bytecode_gen__get_var_type(ByteInfo, Var, Type),
-		code_util__cons_id_to_tag(ConsId, Type, ModuleInfo, ConsTag),
-		bytecode_gen__map_cons_tag(ConsTag, ByteConsTag),
-		ByteConsId = cons(FunctorName, Arity, ByteConsTag)
+			Functor = qualified(ModuleName, FunctorName),
+			bytecode_gen__get_var_type(ByteInfo, Var, Type),
+			code_util__cons_id_to_tag(ConsId,
+				Type, ModuleInfo, ConsTag),
+			bytecode_gen__map_cons_tag(ConsTag, ByteConsTag),
+			ByteConsId = cons(ModuleName, FunctorName,
+				Arity, ByteConsTag)
+		)
 	;
 		ConsId = int_const(IntVal),
 		ByteConsId = int_const(IntVal)

@@ -70,7 +70,8 @@
 			;	not_supported
 			.
 
-:- type byte_cons_id	--->	cons(string, arity, byte_cons_tag)
+:- type byte_cons_id	--->	cons(byte_module_id, string,
+					arity, byte_cons_tag)
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float)
@@ -80,6 +81,7 @@
 					arity, byte_proc_id)
 			;	base_type_info_const(byte_module_id, string,
 					int)
+			;	char_const(char)
 			.
 
 :- type byte_var_info	--->	var_info(string, type).
@@ -119,7 +121,7 @@
 :- implementation.
 
 :- import_module hlds_pred.
-:- import_module library, int, string, require.
+:- import_module char, library, int, string, require.
 
 :- pred bytecode__version(int::out) is det.
 
@@ -676,8 +678,9 @@ debug_label_id(LabelId) -->
 :- pred output_cons_id(byte_cons_id, io__state, io__state).
 :- mode output_cons_id(in, di, uo) is det.
 
-output_cons_id(cons(Functor, Arity, Tag)) -->
+output_cons_id(cons(ModuleId, Functor, Arity, Tag)) -->
 	output_byte(0),
+	output_string(ModuleId),
 	output_string(Functor),
 	output_two_byte(Arity),
 	output_tag(Tag).
@@ -707,12 +710,17 @@ output_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
 	output_module_id(ModuleId),
 	output_string(TypeName),
 	output_byte(TypeArity).
+output_cons_id(char_const(Char)) -->
+	output_byte(7),
+	{ char__to_int(Char, Byte) },
+	output_byte(Byte).
 
 :- pred debug_cons_id(byte_cons_id, io__state, io__state).
 :- mode debug_cons_id(in, di, uo) is det.
 
-debug_cons_id(cons(Functor, Arity, Tag)) -->
+debug_cons_id(cons(ModuleId, Functor, Arity, Tag)) -->
 	debug_string("functor"),
+	debug_string(ModuleId),
 	debug_string(Functor),
 	debug_int(Arity),
 	debug_tag(Tag).
@@ -742,6 +750,10 @@ debug_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
 	debug_module_id(ModuleId),
 	debug_string(TypeName),
 	debug_int(TypeArity).
+debug_cons_id(char_const(Char)) -->
+	debug_string("char_const"),
+	{ string__from_char_list([Char], String) },
+	debug_string(String).
 
 %---------------------------------------------------------------------------%
 
