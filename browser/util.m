@@ -136,6 +136,8 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 		MR_free(line);
 		Success = 1;
 	}
+
+	IO = IO0;
 ").
 
 util__trace_get_command(Prompt, Result) -->
