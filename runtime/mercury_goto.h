@@ -485,14 +485,20 @@
   ** cannot be live, when in fact they really are).
   ** That is what the two occurrences of the PRETEND_ADDRESS_IS_USED
   ** macro are for.
-  ** We also need to include at least one `goto *' with an unknown
+  ** For versions of gcc later than egcs 1.1.2 (which corresponds to gcc 2.91,
+  ** according to __GNUC_MINOR__), and in particular for gcc 2.95,
+  ** we also need to include at least one `goto *' with an unknown
   ** target, so that gcc doesn't optimize away all the labels
   ** because it thinks they are unreachable.
   ** The dummy_identify_function() function just returns the address
   ** passed to it, so `goto *dummy_identify_function(&& dummy_label); dummy_label:'
   ** is the same as `goto dummy_label; label:', i.e. it just falls through.
+  ** For older versions of gcc, we don't do this, since it adds significantly
+  ** to the code size.
   */
-  #define BEGIN_MODULE(module_name)					\
+  #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 91)
+    /* gcc version > egcs 1.1.2 */
+    #define BEGIN_MODULE(module_name)					\
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void);		\
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void) {		\
 		PRETEND_ADDRESS_IS_USED(module_name);			\
@@ -501,9 +507,18 @@
 			&&paste(module_name,_dummy_label));		\
 		paste(module_name,_dummy_label):			\
 		{
-  /* initialization code for module goes here */
+  #else /* gcc version <= egcs 1.1.2 */
+    #define BEGIN_MODULE(module_name)					\
+	MR_MODULE_STATIC_OR_EXTERN void module_name(void);		\
+	MR_MODULE_STATIC_OR_EXTERN void module_name(void) {		\
+		PRETEND_ADDRESS_IS_USED(module_name);			\
+		PRETEND_ADDRESS_IS_USED(&&paste(module_name,_dummy_label)); \
+		paste(module_name,_dummy_label):			\
+		{
+  #endif /* gcc version <= egcs 1.1.2 */
+  /* initialization code for module goes between BEGIN_MODULE and BEGIN_CODE */
   #define BEGIN_CODE } return; {
-  /* body of module goes here */
+  /* body of module goes between BEGIN_CODE and END_MODULE */
   #define END_MODULE } }
 
 
