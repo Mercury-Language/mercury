@@ -1,5 +1,11 @@
 %-----------------------------------------------------------------------------%
-:- module unsafe.
+% Copyright (C) 1997 The University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+% File: unsafe.m
+% Author: fjh
+% Stability: low
 %-----------------------------------------------------------------------------%
 
 /*
@@ -16,6 +22,7 @@
 
 %-----------------------------------------------------------------------------%
 
+:- module unsafe.
 :- interface.
 :- import_module io.
 
@@ -56,15 +63,13 @@
 unsafe_perform_io(P::(pred(di, uo) is det)),
 	may_call_mercury,
 "{
-	Word dummy_io_state = 0;
-	call_io_pred_det(P, dummy_io_state, &dummy_io_state);
+	call_io_pred_det(P);
 }").
 :- pragma c_code(
 unsafe_perform_io(P::(pred(di, uo) is cc_multi)),
 	may_call_mercury,
 "{
-	Word dummy_io_state = 0;
-	call_io_pred_cc_multi(P, dummy_io_state, &dummy_io_state);
+	call_io_pred_cc_multi(P);
 }").
 
 :- pred call_io_pred(pred(io__state, io__state), io__state, io__state).

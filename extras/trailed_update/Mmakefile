@@ -1,6 +1,19 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
 GRADE = asm_fast.gc.tr
+
+# enable C debugging
 RM_C = :
+MGNUCFLAGS = -g
+MLFLAGS = -g
 
 MAIN_TARGET = libtrailed_update
 
 depend : trailed_update.depend
+
+# We need this to use shared libraries on Linux
+ML = ml --mercury-libs shared

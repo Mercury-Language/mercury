@@ -1,27 +1,46 @@
 #-----------------------------------------------------------------------------#
+# Copyright (C) 1997 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
 
 MAIN_TARGET = all
 
 # We need to use a grade with trailing
 GRADE = asm_fast.gc.tr
 
+MCFLAGS = --infer-all
+
+MGNUCFLAGS=-g
+RM_C=:
+MLFLAGS=-g
+
 # Link in the trailed_update library from ..
-MCFLAGS = -I.. $(EXTRA_MCFLAGS)
-MLFLAGS = -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
+MCFLAGS += -I.. $(EXTRA_MCFLAGS)
+MLFLAGS += -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
 MLLIBS = -ltrailed_update $(EXTRA_MLLIBS)
 VPATH = ..:$(MMAKE_VPATH)
 C2INITFLAGS = ../trailed_update.init
 %_init.c: $(C2INITFLAGS)
 
+# We need the following to use shared libraries on Linux
+# MGNUCFLAGS += -DPIC_REG
+# ML = ml --mercury-libs shared
+
+ML = ml --mercury-libs static
+MLLIBS = ../libtrailed_update.a
+
 #-----------------------------------------------------------------------------#
 
-PROGS	=	interpreter vqueens
+PROGS	=	interpreter vqueens tests
 
 DEPENDS =	$(PROGS:%=%.depend)
 CS	=	$(PROGS:%=%.c)
 RESS	=	$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
+
+$(PROGS): ../libtrailed_update.a
 
 %.out: %
 	./$< > $@ 2>&1;

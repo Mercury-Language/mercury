@@ -1,0 +1,12 @@
+test_delaying_1: no
+test_delaying_2: yes
+var.m: warning: goal floundered.
+X = alias(free(<delayed goal>))
+Y = alias(free)
+test_delaying_1: no
+test_delaying_2: yes
+test_delaying_3: var.m: warning: goal floundered.
+yes: X = alias(free(<delayed goal>)), Y = alias(free)
+test_delaying_4: var.m: warning: goal floundered.
+yes: X = alias(free(<delayed goal>))
+Done.

@@ -6,7 +6,7 @@
 %
 % File: tr_store.m. 
 % Main author: fjh.
-% Stability: low.
+% Stability: medium.
 %
 % This file provides facilities for manipulating mutable backtrackable stores.
 % This is a backtrackable version of the standard library module `store.m';
@@ -206,6 +206,10 @@ ref_functor(Ref, Functor, Arity) -->
 	/* ML_arg() is defined in std_util.m */
 	bool ML_arg(Word term_type_info, Word *term, Word argument_index,
 			Word *arg_type_info, Word **argument_ptr);
+
+	/* ML_compare_type_info() is defined in std_util.m */
+	int ML_compare_type_info(Word type_info_1, Word type_info_2);
+
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::mdi, S::muo),

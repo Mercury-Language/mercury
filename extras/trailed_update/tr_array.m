@@ -6,7 +6,7 @@
 
 % File: tr_array.m
 % Main authors: fjh
-% Stability: medium-low
+% Stability: medium
 
 % This module provides backtrackable destructive update operations on arrays.
 
