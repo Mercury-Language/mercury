@@ -146,6 +146,7 @@ AC_SUBST(CONFIG_LIBDIR)
 
 case "$host" in 
 	i386-pc-solaris2.8)	link_static_opt= ;;
+	*powerpc*apple*darwin*) link_static_opt= ;;
 	*)			link_static_opt="--linkage static" ;;
 esac
 
@@ -197,6 +198,7 @@ EOF
 		# Test for the `--read-config-file-2003-03-01' option
 		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
 		$BOOTSTRAP_MC \
+			--verbose \
 			--read-config-file-2003-03-01 \
 			--halt-at-warn $link_static_opt conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
