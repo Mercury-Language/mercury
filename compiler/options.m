@@ -636,7 +636,8 @@ option_defaults_2(aux_output_option, [
 	dump_rl			-	bool(no),
 	dump_rl_bytecode	-	bool(no),
 	sign_assembly		-	bool(no),
-	separate_assemblies	-	bool(no),
+		% XXX should default to no but currently broken
+	separate_assemblies	-	bool(yes),
 	generate_schemas	-	bool(no)
 ]).
 option_defaults_2(language_semantics_option, [
@@ -945,7 +946,7 @@ option_defaults_2(target_code_compilation_option, [
 % IL
 		% We default to the version of the library that came
 		% with Beta2.
-	dotnet_library_version	-	string("1.0.2411.0")
+	dotnet_library_version	-	string("1.0.3300.0")
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -2168,11 +2169,13 @@ options_help_aux_output -->
 		"\tTo use assemblies created with this command all the Mercury",
 		"\tmodules must be compiled with this option enabled.",
 		"\tThis option is specific to the IL backend, and is likely",
-		"\tto be deprecated at a later date.",
+		"\tto be deprecated at a later date."
 
+		/* XXX currently broken.
 		"--separate-assemblies",
 		"\tPlace sub-modules in separate assemblies.",
 		"\tThis option is specific to the IL backend."
+		*/
 	]).
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
