@@ -18,6 +18,8 @@ typedef void	Code;
 
 #define	WORDSIZE	sizeof(Word)
 
+#define IF(cond, val)	((cond) ? ((val),(void)0) : (void)0)
+
 /* DEFINITIONS FOR THE LABEL TABLE */
 
 typedef struct s_entry
@@ -112,8 +114,8 @@ extern	Code	*dofastnegproceed;
 #ifdef __GNUC__
 
 #define LABEL(label)		(&&label)
-#ifdef SPEED
-#define GOTO(label)		goto *(label)
+#if SPEED
+#define GOTO(label)		do { goto *(label); } while(0)
 #else
 #define GOTO(label)		do { assert(label); goto *(label); } while(0)
 #endif
@@ -121,11 +123,7 @@ extern	Code	*dofastnegproceed;
 #else
 
 #define LABEL(label)		(label)
-#ifdef SPEED
-#define GOTO(label)		return (label)
-#else
 #define GOTO(label)		do { assert(label); return (label); } while(0)
-#endif
 
 #endif
 
@@ -415,8 +413,6 @@ extern	Word	*cpstackmin;
 #define	debugmsg3(msg, arg1, arg2, arg3)	((void)0)
 
 #else
-
-#define IF(cond, val)	((cond) ? ((val),(void)0) : (void)0)
 
 #define	debugcr1(val0, hp) \
 	IF (heapdebug, cr1_msg(val0, hp))
