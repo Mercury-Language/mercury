@@ -323,8 +323,11 @@ else
 		GRADE=none.gc
 	fi
 fi
-echo "using GRADE=$GRADE"
+echo "using GRADE=$GRADE to compile the compiler"
 AC_SUBST(GRADE)
+DEFAULT_GRADE=GRADE
+echo "using DEFAULT_GRADE=$GRADE as the default grade for applications"
+AC_SUBST(DEFAULT_GRADE)
 
 LIBGRADES="debug none"
 if test $mercury_cv_gcc_labels = yes; then
@@ -347,7 +350,7 @@ fi
 for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
-echo "using LIBGRADES=$LIBGRADES"
+echo "using LIBGRADES=$LIBGRADES as the set of library grades to install"
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
