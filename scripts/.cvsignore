@@ -4,3 +4,4 @@ Mmake.vars
 mdb mdbrc test_mdbrc
 canonical_grade
 mercury.bat
+mdprof
