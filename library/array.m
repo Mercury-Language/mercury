@@ -83,9 +83,6 @@
 	% order.  Fails if the element is not present.  If the
 	% element to be found appears multiple times, the index of
 	% the first occurrence is returned.
-	% call/N currently does not allow output arguments to come
-	% before input arguments, so you can't just pass compare/3
-	% in here. :-(
 :- pred array__bsearch(array(T), T, pred(T, T, comparison_result), int).
 :- mode array__bsearch(in, in, pred(in, in, out) is det, out) is semidet.
 
