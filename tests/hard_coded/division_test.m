@@ -61,15 +61,15 @@ rem_test(Num, Div, _Quot, Rem) :-
 
 :- pred div_test(int::in, int::in, int::in, int::in) is semidet.
 div_test(Num, Div, Quot, _Rem) :-
-	Num // Div = Quot,
-	(-Num) // Div = -Quot - 1,
-	(-Num) // (-Div) = Quot,
-	Num // (-Div) = -Quot - 1.
+	Num div Div = Quot,
+	(-Num) div Div = -Quot - 1,
+	(-Num) div (-Div) = Quot,
+	Num div (-Div) = -Quot - 1.
 
 :- pred mod_test(int::in, int::in, int::in, int::in) is semidet.
 mod_test(Num, Div, _Quot, Rem) :-
 	Num mod Div = Rem,
-	(-Num) mod Div = Num - Rem,
-	(-Num) mod (-Div) = Rem,
-	Num mod (-Div) = Num - Rem.
+	(-Num) mod Div = Div - Rem,
+	(-Num) mod (-Div) = -Rem,
+	Num mod (-Div) = -(Div - Rem).
 
