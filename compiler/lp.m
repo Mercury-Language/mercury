@@ -172,10 +172,10 @@ lp_solve2(Eqns0, Dir, Obj0, Result, IO0, IO, Info0, Info) :-
 
 one_phase(Obj0, Obj, VarNums, Tableau0, Result, IO0, IO) :-
 	insert_coeffs(Obj, 0, VarNums, Tableau0, Tableau1),
-	GetObjVar = lambda([V::out] is nondet, (
+	GetObjVar = (pred(V::out) is nondet :-
 		list__member(X, Obj0),
 		X = V - _Cof
-	)),
+	),
 	solutions(GetObjVar, ObjVars),
 	optimize(ObjVars, Tableau1, _, Result, IO0, IO).
 
@@ -213,10 +213,10 @@ two_phase(Obj0, Obj, ArtVars, VarNums, Tableau0, Result, IO0, IO) :-
 			get_basis_vars(Tableau3, BasisVars),
 			ensure_zero_obj_coeffs(BasisVars,
 					Tableau3, Tableau4),
-			GetObjVar = lambda([V::out] is nondet, (
+			GetObjVar = (pred(V::out) is nondet :-
 				list__member(X, Obj0),
 				X = V - _Cof
-			)),
+			),
 			solutions(GetObjVar, ObjVars),
 			optimize(ObjVars, Tableau4, _, Result, IO1, IO)
 		)
@@ -300,12 +300,7 @@ negate_equation(eqn(Coeffs0, Op0, Const0), eqn(Coeffs, Op, Const)) :-
 	;
 		Op0 = (>=), Op = (=<)
 	),
-	Neg = lambda([Pair0::in, Pair::out] is det, (
-		Pair0 = V - X0,
-		X = -X0,
-		Pair = V - X
-	)),
-	list__map(Neg, Coeffs0, Coeffs),
+	Coeffs = list__map((func(V - X) = V - (-X)), Coeffs0),
 	Const = -Const0.
 
 :- pred simplify(equation, equation).
@@ -319,10 +314,10 @@ simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
 
 simplify_coeffs(Coeffs0, Coeffs) :-
 	map__init(CoeffMap0),
-	AddCoeff = lambda([Pair::in, Map0::in, Map::out] is det, (
+	AddCoeff = (pred(Pair::in, Map0::in, Map::out) is det :-
 		Pair = Var - Coeff,
 		add_var(Map0, Var, Coeff, Map)
-	)),
+	),
 	list__foldl(AddCoeff, Coeffs0, CoeffMap0, CoeffMap),
 	map__to_assoc_list(CoeffMap, Coeffs).
 
@@ -371,7 +366,7 @@ expand_urs_vars([Var - Coeff|Rest], Vars, Coeffs0, Coeffs) :-
 :- mode collect_vars(in, in, out) is det.
 
 collect_vars(Eqns, Obj, Vars) :-
-	GetVar = lambda([Var::out] is nondet, (
+	GetVar = (pred(Var::out) is nondet :-
 		(
 			list__member(Eqn, Eqns),
 			Eqn = eqn(Coeffs, _, _),
@@ -381,7 +376,7 @@ collect_vars(Eqns, Obj, Vars) :-
 			list__member(Pair, Obj),
 			Pair = Var - _
 		)
-	)),
+	),
 	solutions(GetVar, VarList),
 	set__list_to_set(VarList, Vars).
 
@@ -460,12 +455,12 @@ extract_obj_var(Tab, Var, Map0, Map) :-
 
 extract_obj_var2(Tab, Var, Val) :-
 	var_col(Tab, Var, Col),
-	GetCell = lambda([Val0::out] is nondet, (
+	GetCell = (pred(Val0::out) is nondet :-
 		all_rows(Tab, Row),
 		index(Tab, Row, Col, 1.0),
 		rhs_col(Tab, RHS),
 		index(Tab, Row, RHS, Val0)
-	)),
+	),
 	solutions(GetCell, Solns),
 	( Solns = [Val1] ->
 		Val = Val1
@@ -478,7 +473,7 @@ extract_obj_var2(Tab, Var, Val) :-
 
 simplex(A0, A, Result, IO0, IO) :-
 	AllColumns = all_cols(A0),
-	MinAgg = lambda([Col::in, Min0::in, Min::out] is det, (
+	MinAgg = (pred(Col::in, Min0::in, Min::out) is det :-
 		(
 			Min0 = no,
 			index(A0, 0, Col, MinVal),
@@ -496,7 +491,7 @@ simplex(A0, A, Result, IO0, IO) :-
 				Min = Min0
 			)
 		)
-	)),
+	),
 	aggregate(AllColumns, MinAgg, no, MinResult),
 	(
 		MinResult = no,
@@ -506,7 +501,7 @@ simplex(A0, A, Result, IO0, IO) :-
 	;
 		MinResult = yes(Q - _Val),
 		AllRows = all_rows(A0),
-		MaxAgg = lambda([Row::in, Max0::in, Max::out] is det, (
+		MaxAgg = (pred(Row::in, Max0::in, Max::out) is det :-
 			(
 				Max0 = no,
 				index(A0, Row, Q, MaxVal),
@@ -533,7 +528,7 @@ simplex(A0, A, Result, IO0, IO) :-
 					Max = Max0
 				)
 			)
-		)),
+		),
 		aggregate(AllRows, MaxAgg, no, MaxResult),
 		(
 			MaxResult = no,
@@ -559,12 +554,12 @@ ensure_zero_obj_coeffs([V|Vs], Tableau0, Tableau) :-
 	( Val = 0.0 ->
 		ensure_zero_obj_coeffs(Vs, Tableau0, Tableau)
 	;
-		FindOne = lambda([P::out] is nondet, (
+		FindOne = (pred(P::out) is nondet :-
 			all_rows(Tableau0, R),
 			index(Tableau0, R, Col, ValF0),
 			ValF0 \= 0.0,
 			P = R - ValF0
-		)),
+		),
 		solutions(FindOne, Ones),
 		(
 			Ones = [Row - Fac0|_],
@@ -583,24 +578,24 @@ ensure_zero_obj_coeffs([V|Vs], Tableau0, Tableau) :-
 fix_basis_and_rem_cols([], Tab, Tab).
 fix_basis_and_rem_cols([V|Vs], Tab0, Tab) :-
 	var_col(Tab0, V, Col),
-	BasisAgg = lambda([R::in, Ones0::in, Ones::out] is det, (
+	BasisAgg = (pred(R::in, Ones0::in, Ones::out) is det :-
 		index(Tab0, R, Col, Val),
 		( Val = 0.0 ->
 			Ones = Ones0
 		;
 			Ones = [Val - R|Ones0]
 		)
-	)),
+	),
 	aggregate(all_rows(Tab0), BasisAgg, [], Res),
 	(
 		Res = [1.0 - Row]
 	->
-		PivGoal = lambda([Col1::out] is nondet, (
+		PivGoal = (pred(Col1::out) is nondet :-
 			all_cols(Tab0, Col1),
 			Col \= Col1,
 			index(Tab0, Row, Col1, Zz),
 			Zz \= 0.0
-		)),
+		),
 		solutions(PivGoal, PivSolns),
 		(
 			PivSolns = [],
@@ -626,37 +621,37 @@ fix_basis_and_rem_cols([V|Vs], Tab0, Tab) :-
 
 pivot(P, Q, A0, A) :-
 	index(A0, P, Q, Apq),
-	MostCells = lambda([Cell::out] is nondet, (
+	MostCells = (pred(Cell::out) is nondet :-
 		all_rows0(A0, J),
 		J \= P,
 		all_cols0(A0, K),
 		K \= Q,
 		Cell = cell(J, K)
-	)),
-	ScaleCell = lambda([Cell::in, T0::in, T::out] is det, (
+	),
+	ScaleCell = (pred(Cell::in, T0::in, T::out) is det :-
 		Cell = cell(J, K),
 		index(T0, J, K, Ajk),
 		index(T0, J, Q, Ajq),
 		index(T0, P, K, Apk),
 		NewAjk = Ajk - Apk * Ajq / Apq,
 		set_index(T0, J, K, NewAjk, T)
-	)),
+	),
 	aggregate(MostCells, ScaleCell, A0, A1),
-	QColumn = lambda([Cell::out] is nondet, (
+	QColumn = (pred(Cell::out) is nondet :-
 		all_rows0(A1, J),
 		Cell = cell(J, Q)
-	)),
-	Zero = lambda([Cell::in, T0::in, T::out] is det, (
+	),
+	Zero = (pred(Cell::in, T0::in, T::out) is det :-
 		Cell = cell(J, K),
 		set_index(T0, J, K, 0.0, T)
-	)),
+	),
 	aggregate(QColumn, Zero, A1, A2),
 	PRow = all_cols0(A2),
-	ScaleRow = lambda([K::in, T0::in, T::out] is det, (
+	ScaleRow = (pred(K::in, T0::in, T::out) is det :-
 		index(T0, P, K, Apk),
 		NewApk = Apk / Apq,
 		set_index(T0, P, K, NewApk, T)
-	)),
+	),
 	aggregate(PRow, ScaleRow, A2, A3),
 	set_index(A3, P, Q, 1.0, A).
 
@@ -665,12 +660,12 @@ pivot(P, Q, A0, A) :-
 
 row_op(Scale, From, To, A0, A) :-
 	AllCols = all_cols0(A0),
-	AddRow = lambda([Col::in, T0::in, T::out] is det, (
+	AddRow = (pred(Col::in, T0::in, T::out) is det :-
 		index(T0, From, Col, X),
 		index(T0, To, Col, Y),
 		Z = Y + (Scale * X),
 		set_index(T0, To, Col, Z, T)
-	)),
+	),
 	aggregate(AllCols, AddRow, A0, A).
 
 %------------------------------------------------------------------------------%
@@ -805,23 +800,23 @@ remove_col(C, Tableau0, Tableau) :-
 :- mode get_basis_vars(in, out) is det.
 
 get_basis_vars(Tab, Vars) :-
-	BasisCol = lambda([C::out] is nondet, (
+	BasisCol = (pred(C::out) is nondet :-
 		all_cols(Tab, C),
-		NonZeroGoal = lambda([P::out] is nondet, (
+		NonZeroGoal = (pred(P::out) is nondet :-
 			all_rows(Tab, R),
 			index(Tab, R, C, Z),
 			Z \= 0.0,
 			P = R - Z
-		)),
+		),
 		solutions(NonZeroGoal, Solns),
 		Solns = [_ - 1.0]
-	)),
+	),
 	solutions(BasisCol, Cols),
-	BasisVars = lambda([V::out] is nondet, (
+	BasisVars = (pred(V::out) is nondet :-
 		list__member(Col, Cols),
 		Tab = tableau(_, _, VarCols, _, _, _, _),
 		map__member(VarCols, V, Col)
-	)),
+	),
 	solutions(BasisVars, Vars).
 
 %------------------------------------------------------------------------------%
@@ -858,13 +853,13 @@ show_cell(Tableau, Row, Col) -->
 :- mode lp_info_init(in, in, out) is det.
 
 lp_info_init(Varset0, URSVars, LPInfo) :-
-	Introduce = lambda([Orig::in, VP0::in, VP::out] is det, (
+	Introduce = (pred(Orig::in, VP0::in, VP::out) is det :-
 		VP0 = VS0 - VM0,
 		varset__new_var(VS0, V1, VS1),
 		varset__new_var(VS1, V2, VS),
 		map__set(VM0, Orig, V1 - V2, VM),
 		VP = VS - VM
-	)),
+	),
 	map__init(URSMap0),
 	list__foldl(Introduce, URSVars, Varset0 - URSMap0, Varset - URSMap),
 	LPInfo = lp(Varset, URSMap, [], []).
