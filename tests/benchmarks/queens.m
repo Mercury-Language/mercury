@@ -4,7 +4,7 @@
 
 :- interface.
 
-:- import_module list, int, io, printlist.
+:- import_module list, int, io.
 
 :- pred main1(list(int)).
 :- mode main1(out) is nondet.
@@ -13,6 +13,8 @@
 :- mode main(di, uo) is cc_multi.
 
 :- implementation.
+
+:- import_module printlist.
 
 main1(Out) :-	
 	data(Data),
