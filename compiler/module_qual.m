@@ -277,7 +277,8 @@ module_qualify_item(func_mode(A, SymName, Modes0, Mode0, C, D) - Context,
 
 module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
 						Info0, Info, yes) -->
-	qualify_pragma(Pragma0, Pragma, Info0, Info).
+	{ mq_info_set_error_context(Info0, (pragma) - Context, Info1) },
+	qualify_pragma(Pragma0, Pragma, Info1, Info).
 module_qualify_item(nothing - Context, nothing - Context,
 						Info, Info, yes) --> [].
 
@@ -669,6 +670,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 	;	func(id)
 	; 	pred_mode(id)
 	;	func_mode(id)
+	;	(pragma)
 	;	lambda_expr
 	;	type_qual.
 
@@ -750,6 +752,8 @@ write_error_context2(func_mode(Id)) -->
 	write_id(Id).
 write_error_context2(lambda_expr) -->
 	io__write_string("mode declaration for lambda expression").
+write_error_context2(pragma) -->
+	io__write_string("pragma").
 write_error_context2(type_qual) -->
 	io__write_string("explicit type qualification").
 
