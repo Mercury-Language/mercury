@@ -16,7 +16,7 @@
 
 Help="\
 Name: ml - Mercury Linker
-Usage: ml [<ml options>] [<gcc options] files...
+Usage: ml [<ml options>] [-- <gcc options>] files...
 Options:
 	-h, --help
 		Print this help message.
