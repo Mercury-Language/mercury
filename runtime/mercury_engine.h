@@ -5,20 +5,20 @@
 */
 
 /*
-** engine.h - definitions for the Mercury runtime engine.
+** mercury_engine.h - definitions for the Mercury runtime engine.
 **
 ** For documentation, see the comments in engine.mod.
 */
 
-#ifndef	ENGINE_H
-#define	ENGINE_H
+#ifndef	MERCURY_ENGINE_H
+#define	MERCURY_ENGINE_H
 
 #include <setjmp.h>
 
-#include "std.h"		/* for `bool' */
-#include "mercury_types.h"	/* for `Code *' */
-#include "goto.h"		/* for `Define_entry()' */
-#include "regs.h"		/* for NUM_REAL_REGS */
+#include "mercury_std.h"		/* for `bool' */
+#include "mercury_types.h"		/* for `Code *' */
+#include "mercury_goto.h"		/* for `Define_entry()' */
+#include "mercury_regs.h"		/* for NUM_REAL_REGS */
 
 #define	PROGFLAG	0
 #define	GOTOFLAG	1
@@ -146,4 +146,4 @@ Declare_entry(do_reset_framevar0_fail);
 Declare_entry(do_succeed);
 Declare_entry(do_not_reached);
 
-#endif /* not ENGINE_H */
+#endif /* not MERCURY_ENGINE_H */

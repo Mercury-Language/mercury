@@ -5,7 +5,7 @@
 */
 
 /*
-** getopt.h - declares the interface to the system function getopt()
+** mercury_getopt.h - declares the interface to the system function getopt()
 **
 ** We use this file rather than the system's <getopt.h>
 ** because different systems have different ideas about
@@ -13,8 +13,8 @@
 ** Also, some systems might have getopt() but not <getopt.h>.
 */
 
-#ifndef	GETOPT_H
-#define	GETOPT_H
+#ifndef	MERCURY_GETOPT_H
+#define	MERCURY_GETOPT_H
 
 #define	GETOPTHUH	'?'
 #define	GETOPTDONE	(-1)
@@ -26,4 +26,4 @@ extern int	opterr;
 extern int	optind;
 extern int	optopt;
 
-#endif /* not GETOPT_H */
+#endif /* not MERCURY_GETOPT_H */

@@ -5,14 +5,14 @@
 */
 
 /*
-** table.h - defines the interface to the hash table module.
+** mercury_table.h - defines the interface to the hash table module.
 */
 
-#ifndef	TABLE_H
-#define	TABLE_H
+#ifndef	MERCURY_TABLE_H
+#define	MERCURY_TABLE_H
 
-#include "std.h"	/* for bool */
-#include "dlist.h"	/* for List */
+#include "mercury_std.h"	/* for bool */
+#include "mercury_dlist.h"	/* for List */
 
 typedef	struct	s_table {
 	int		ta_size;
@@ -39,4 +39,4 @@ extern	bool	tab_insert_table(const Table *, void *);
 extern	List	*tab_get_all_entries(const Table *);
 extern	int	tab_str_to_int(const char *);
 
-#endif /* not TABLE_H */
+#endif /* not MERCURY_TABLE_H */

@@ -4,16 +4,16 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* stacks.h - definitions for manipulation the det and nondet stacks */
+/* mercury_stacks.h - definitions for manipulation the det and nondet stacks */
 
-#ifndef STACKS_H
-#define STACKS_H
+#ifndef MERCURY_STACKS_H
+#define MERCURY_STACKS_H
 
-#include "regs.h"
+#include "mercury_regs.h"
 #include "mercury_types.h"
-#include "overflow.h"
-#include "debug.h"
-#include "goto.h"
+#include "mercury_overflow.h"
+#include "mercury_debug.h"
+#include "mercury_goto.h"
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
@@ -172,4 +172,4 @@
 				GOTO(curredoip);		\
 			} while (0)
 
-#endif /* not STACKS_H */
+#endif /* not MERCURY_STACKS_H */

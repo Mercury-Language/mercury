@@ -43,7 +43,7 @@ typedef void			Code;	/* code addresses are `void *' */
 /* continuation function type, for --high-level-C option */
 typedef void (*Cont) (void);
 
-/* spinlocks -- see spinlock.h */
+/* spinlocks -- see mercury_spinlock.h */
 typedef Word	SpinLock;
 
 /*

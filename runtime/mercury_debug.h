@@ -4,10 +4,10 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* debug.h - definitions for debugging messages */
+/* mercury_debug.h - definitions for debugging messages */
 
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifndef MERCURY_DEBUG_H
+#define MERCURY_DEBUG_H
 
 #ifdef DEBUG_ON
 	#define DEBUG(X) X
@@ -133,5 +133,5 @@
 #define	debugmsg3(msg, arg1, arg2, arg3) \
 	IF (progdebug, (printf(msg, arg1, arg2, arg3)))
 
-#endif
+#endif /* not MERCURY_DEBUG_H */
 

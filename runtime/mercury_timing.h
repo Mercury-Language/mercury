@@ -5,13 +5,13 @@
 */
 
 /*
-** timing.h - interface to timing routines.
+** mercury_timing.h - interface to timing routines.
 **	Defines `MR_CLOCK_TICKS_PER_SECOND'
 **	and `MR_get_user_cpu_miliseconds()'.
 */
 
-#ifndef TIMING_H
-#define TIMING_H
+#ifndef MERCURY_TIMING_H
+#define MERCURY_TIMING_H
 
 #include "mercury_conf.h"
 
@@ -44,4 +44,4 @@
 */
 int MR_get_user_cpu_miliseconds(void);
 
-#endif /* TIMING_H */
+#endif /* MERCURY_TIMING_H */

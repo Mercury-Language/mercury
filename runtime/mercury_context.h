@@ -5,7 +5,7 @@
 */
 
 /*
-** context.h - defines Mercury multithreading stuff.
+** mercury_context.h - defines Mercury multithreading stuff.
 **
 ** A Context is like a thread. It contains a detstack, a nondetstack, a trail,
 ** the various pointers that refer to them, a succip, and a thread-
@@ -40,18 +40,18 @@
 ** to wake suspended processes.
 */
 
-#ifndef CONTEXT_H
-#define CONTEXT_H
+#ifndef MERCURY_CONTEXT_H
+#define MERCURY_CONTEXT_H
 
-#include "regs.h"		/* for hp. Must come before system headers. */
+#include "mercury_regs.h"		/* for hp. Must come before system headers. */
 
 #include <sys/types.h>		/* for pid_t */
 
 #include "mercury_types.h"	/* for Word */
 #include "mercury_trail.h"	/* for MR_TrailEntry */
-#include "memory.h"		/* for MemoryZone */
-#include "spinlock.h"		/* for SpinLock */
-#include "goto.h"		/* for GOTO() */
+#include "mercury_memory.h"		/* for MemoryZone */
+#include "mercury_spinlock.h"		/* for SpinLock */
+#include "mercury_goto.h"		/* for GOTO() */
 
 /*
 ** If we have parallelism switched on (PARALLEL is defined),
@@ -135,7 +135,7 @@ struct CONTEXT {
 ** structures. If the MemoryZone pointers are not NULL,
 ** then they point to allocated MemoryZones, which will
 ** need to be reinitialized, but have space allocated to
-** them. (see comments in memory.h about reset_zone())
+** them. (see comments in mercury_memory.h about reset_zone())
 */
 extern	Context **free_context_list_ptr;
 
@@ -391,5 +391,5 @@ Declare_entry(do_runnext);
 		fatal_error("join_and_continue not implemented");	\
 	} while (0)
 
-#endif
+#endif /* not MERCURY_CONTEXT_H */
 

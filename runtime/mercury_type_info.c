@@ -14,8 +14,8 @@ ENDINIT
 **	type_functors tables needed by the Mercury runtime system..
 */
 
-#include "imp.h"
-#include "type_info.h"
+#include "mercury_imp.h"
+#include "mercury_type_info.h"
 
 /*---------------------------------------------------------------------------*/
 

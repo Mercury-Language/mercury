@@ -4,15 +4,15 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* calls.h - definitions for calls and returns */
+/* mercury_calls.h - definitions for calls and returns */
 
-#ifndef CALLS_H
-#define CALLS_H
+#ifndef MERCURY_CALLS_H
+#define MERCURY_CALLS_H
 
-#include "regs.h"	/* for MR_succip */
-#include "goto.h"	/* calls are implemented using gotos */
-#include "debug.h"	/* we need to debug them */
-#include "prof.h"	/* we need to profile them */
+#include "mercury_regs.h"	/* for MR_succip */
+#include "mercury_goto.h"	/* calls are implemented using gotos */
+#include "mercury_debug.h"	/* we need to debug them */
+#include "mercury_prof.h"	/* we need to profile them */
 
 #define	noprof_localcall(label, succ_cont)			\
 		do {						\
@@ -127,4 +127,4 @@
 			GOTO(MR_succip);			\
 		} while (0)
 
-#endif /* not CALLS_H */
+#endif /* not MERCURY_CALLS_H */

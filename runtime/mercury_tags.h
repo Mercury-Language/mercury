@@ -5,12 +5,12 @@
 */
 
 /*
-** tags.h - defines macros for tagging and untagging words.
+** mercury_tags.h - defines macros for tagging and untagging words.
 ** Also defines macros for accessing the Mercury list type from C.
 */
 
-#ifndef TAGS_H
-#define TAGS_H
+#ifndef MERCURY_TAGS_H
+#define MERCURY_TAGS_H
 
 #include <limits.h>		/* for `CHAR_BIT' */
 #include "mercury_conf.h"	/* for `LOW_TAG_BITS' */
@@ -107,4 +107,4 @@
 						body((pt), TAG_VAR);	\
 			} while(0)
 
-#endif	/* not TAGS_H */
+#endif	/* not MERCURY_TAGS_H */

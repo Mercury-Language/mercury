@@ -5,15 +5,15 @@
 */
 
 /*
-** wrapper.h - defines the interface to wrapper.mod.
+** mercury_wrapper.h - defines the interface to wrapper.mod.
 ** See wrapper.mod for documentation.
 */
 
-#ifndef	WRAPPER_H
-#define	WRAPPER_H
+#ifndef	MERCURY_WRAPPER_H
+#define	MERCURY_WRAPPER_H
 
 #include <stddef.h>	/* for `size_t' */
-#include "std.h"	/* for `bool' */
+#include "mercury_std.h"	/* for `bool' */
 
 /*
 ** mercury_runtime_init() does some stuff to initialize the garbage collector
@@ -95,4 +95,4 @@ enum MR_TimeProfileMethod {
 extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
-#endif /* not WRAPPER_H */
+#endif /* not MERCURY_WRAPPER_H */

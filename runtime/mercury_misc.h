@@ -4,10 +4,10 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* misc.h - debugging messages, fatal_error(), and checked_malloc() */
+/* mercury_misc.h - debugging messages, fatal_error(), and checked_malloc() */
 
-#ifndef	MISC_H
-#define	MISC_H
+#ifndef	MERCURY_MISC_H
+#define	MERCURY_MISC_H
 
 #include "mercury_types.h"	/* for `Code *' */
 
@@ -63,8 +63,10 @@ extern	void	printlabel(/* const */ Code *w);
 #endif
 extern	void	fatal_error(const char *msg) NO_RETURN;
 
-/* XXX checked_malloc() should be moved to memory.h or heap.h */
+/* 
+** XXX checked_malloc() should be moved to mercury_memory.h or mercury_heap.h
+*/
 #include <stddef.h>	/* for size_t */
 void *checked_malloc(size_t n);
 
-#endif /* not MISC_H */
+#endif /* not MERCURY_MISC_H */

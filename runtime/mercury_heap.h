@@ -4,13 +4,13 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* heap.h - definitions for manipulating the Mercury heap */
+/* mercury_heap.h - definitions for manipulating the Mercury heap */
 
-#ifndef HEAP_H
-#define HEAP_H
+#ifndef MERCURY_HEAP_H
+#define MERCURY_HEAP_H
 
 #include "mercury_types.h"	/* for `Word' */
-#include "context.h"		/* for min_heap_reclamation_point() */
+#include "mercury_context.h"	/* for min_heap_reclamation_point() */
 
 #ifdef CONSERVATIVE_GC
 
@@ -97,7 +97,7 @@
 /*
 ** When restoring hp, we must make sure that we don't truncate the heap
 ** further than it is safe to. We can only truncate it as far as
-** min_heap_reclamation_point. See the comments in context.h next to
+** min_heap_reclamation_point. See the comments in mercury_context.h next to
 ** the set_min_heap_reclamation_point() macro.
 */
 #define	restore_hp(src)	(						\
@@ -189,4 +189,4 @@
 					save_transient_registers();	\
 				} while (0)
 
-#endif /* not HEAP_H */
+#endif /* not MERCURY_HEAP_H */

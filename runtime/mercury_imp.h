@@ -5,7 +5,7 @@
 */
 
 /*
-** imp.h - defines the interface to the Mercury abstract machine.
+** mercury_imp.h - defines the interface to the Mercury abstract machine.
 **
 ** IMPORTANT: this must be the *first* header file that is #included.
 ** It must come before any system header files.  This is because on some
@@ -16,8 +16,8 @@
 ** This file just #includes most of the other Mercury runtime header files.
 */
 
-#ifndef IMP_H
-#define IMP_H
+#ifndef MERCURY_IMP_H
+#define MERCURY_IMP_H
 
 /*
 ** The #include of "mercury_conf.h" must come before the `#ifdef USE_DLLS',
@@ -33,36 +33,36 @@
   #include "libmer_dll.h"
 #endif
 
-#include	"regs.h"	/* must come before system headers */
+#include	"mercury_regs.h"	/* must come before system headers */
 
-#include	"std.h"
+#include	"mercury_std.h"
 
 #include	"mercury_types.h"
 #include	"mercury_string.h"
 #include	"mercury_float.h"
 
-#include	"tags.h"
-#include	"goto.h"
-#include	"calls.h"
-#include	"engine.h"
+#include	"mercury_tags.h"
+#include	"mercury_goto.h"
+#include	"mercury_calls.h"
+#include	"mercury_engine.h"
 
-#include	"memory.h"
-#include	"heap.h"
-#include	"stacks.h"
-#include	"overflow.h"
+#include	"mercury_memory.h"
+#include	"mercury_heap.h"
+#include	"mercury_stacks.h"
+#include	"mercury_overflow.h"
 
-#include	"label.h"
-#include	"wrapper.h"
-#include	"context.h"
-#include	"type_info.h"
+#include	"mercury_label.h"
+#include	"mercury_wrapper.h"
+#include	"mercury_context.h"
+#include	"mercury_type_info.h"
 #ifdef MR_USE_TRAIL
 #include	"mercury_trail.h"
 #endif
 
-#include	"debug.h"
-#include	"prof.h"
-#include	"misc.h"
+#include	"mercury_debug.h"
+#include	"mercury_prof.h"
+#include	"mercury_misc.h"
 
 #include	"mercury_grade.h"
 
-#endif /* not IMP_H */
+#endif /* not MERCURY_IMP_H */

@@ -5,12 +5,12 @@
 */
 
 /*
-** regorder.h - defines the mapping from the Mercury abstract machine
+** mercury_regorder.h - defines the mapping from the Mercury abstract machine
 ** registers (r1, r2, ..., hp, sp, etc.) to the underlying intermediate-level
 ** abstract machine memory (mr0, mr1, ...).
 **
-** This file should be #included from "regs.h" and nowhere else.
-** The reason this is separate from "regs.h" is so that it could,
+** This file should be #included from "mercury_regs.h" and nowhere else.
+** The reason this is separate from "mercury_regs.h" is so that it could,
 ** at least in theory, be generated automatically based on
 ** profiling feedback from the register usage counts for a particular
 ** application.  However, currently we don't do that.
@@ -19,8 +19,8 @@
 ** NUM_REAL_R_REGS in ../configure.in.
 */
 
-#ifndef REGORDER_H
-#define REGORDER_H
+#ifndef MERCURY_REGORDER_H
+#define MERCURY_REGORDER_H
 
 #define r1		count_usage(R_RN(1), mr2)
 #define r2		count_usage(R_RN(2), mr3)
@@ -109,4 +109,4 @@
 	36, \
 }
 
-#endif /* not REGORDER_H */
+#endif /* not MERCURY_REGORDER_H */

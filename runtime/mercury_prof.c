@@ -10,18 +10,18 @@
 **	Main Author : petdr
 */
 
-#include        "imp.h"
+#include        "mercury_imp.h"
 
 #include	<stdio.h>
 #include	<unistd.h>
 #include	<errno.h>
 #include	<string.h>
 
-#include	"prof.h"
+#include	"mercury_prof.h"
 
-#include        "std.h"
-#include	"prof_mem.h"
-#include	"timing.h"
+#include        "mercury_std.h"
+#include	"mercury_prof_mem.h"
+#include	"mercury_timing.h"
 
 #if defined(PROFILE_TIME)
 

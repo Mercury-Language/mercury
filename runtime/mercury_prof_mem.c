@@ -19,9 +19,9 @@
 
 #include <stdio.h>
 
-#include "prof_mem.h"
+#include "mercury_prof_mem.h"
 
-#include "std.h"	/* for newmem() */
+#include "mercury_std.h"	/* for newmem() */
 
 /*----------------------------------------------------------------------------*/
 

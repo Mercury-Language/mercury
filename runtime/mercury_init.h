@@ -5,16 +5,16 @@
 */
 
 /*
-** init.h - this file declares stuff defined in the automatically generated
-** *_init.c files.  This is also the interface used by C code that
-** wishes to interface to Mercury.
+** mercury_init.h - this file declares stuff defined in the
+** automatically generated *_init.c files.  This is also the interface
+** used by C code that wishes to interface to Mercury.
 **
 ** It also declares some stuff that is used in the automatically
 ** generate *_init.c files.
 */
 
-#ifndef	INIT_H
-#define	INIT_H
+#ifndef	MERCURY_INIT_H
+#define	MERCURY_INIT_H
 
 /*
 ** The following must come before any definitions of global variables.
@@ -76,9 +76,9 @@ extern	int	mercury_terminate(void);
 ** by C programs that wish to interface to Mercury.
 */
 
-#include "goto.h"		/* for Declare_entry */
+#include "mercury_goto.h"		/* for Declare_entry */
 #include "mercury_types.h"	/* for `Word' */
-#include "wrapper.h"		/* for do_init_modules,
+#include "mercury_wrapper.h"		/* for do_init_modules,
 				   mercury_runtime_init(),
 				   mercury_runtime_main(),
 				   mercury_runtime_terminate(),
@@ -97,6 +97,6 @@ extern	void	mercury_init_io(void);		/* in the Mercury library */
 extern	void	ML_io_init_state(void);		/* in the Mercury library */
 extern	void	ML_io_finalize_state(void);	/* in the Mercury library */
 
-#endif /* not INIT_H */
+#endif /* not MERCURY_INIT_H */
 
 /*---------------------------------------------------------------------------*/

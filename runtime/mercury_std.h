@@ -9,8 +9,8 @@
 **	bool, TRUE, FALSE, min(), max(), streq(), etc.
 */
 
-#ifndef STD_H
-#define STD_H
+#ifndef MERCURY_STD_H
+#define MERCURY_STD_H
 
 #include <stdlib.h>	/* for size_t */
 #include <assert.h>	/* for assert() */
@@ -38,7 +38,7 @@
 
 #define	ungetchar(c)		ungetc(c, stdin)
 
-/* XXX these should go in memory.h or heap.h */
+/* XXX these should go in mercury_memory.h or mercury_heap.h */
 #define make(t)			((t *) newmem(sizeof(t)))
 #define make_many(t, n)		((t *) newmem((n) * sizeof(t)))
 #define resize_many(t, p, n)	((t *) resizemem((p), (n) * sizeof(t)))
@@ -60,9 +60,9 @@
 #endif
 
 
-/* XXX these should go in memory.h or heap.h */
+/* XXX these should go in mercury_memory.h or mercury_heap.h */
 extern	void	*newmem(size_t);
 extern	void	*resizemem(void *, size_t);
 extern	void	oldmem(void *);
 
-#endif /* not STD_H */
+#endif /* not MERCURY_STD_H */

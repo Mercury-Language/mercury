@@ -14,13 +14,13 @@
 
 #include	"mercury_conf.h"
 
-#include	"label.h"
+#include	"mercury_label.h"
 
-#include	"imp.h"		/* we need libmer_globals.h for Windows DLLs */
-#include	"table.h"	/* for `Table' */
-#include	"prof.h"	/* for prof_output_addr_decls() */
-#include	"engine.h"	/* for `progdebug' */
-#include	"wrapper.h"	/* for do_init_modules() */
+#include	"mercury_imp.h"		/* we need libmer_globals.h for Windows DLLs */
+#include	"mercury_table.h"	/* for `Table' */
+#include	"mercury_prof.h"	/* for prof_output_addr_decls() */
+#include	"mercury_engine.h"	/* for `progdebug' */
+#include	"mercury_wrapper.h"	/* for do_init_modules() */
 
 static	const void	*entry_name(const void *entry);
 static	const void	*entry_addr(const void *entry);

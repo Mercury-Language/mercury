@@ -4,13 +4,13 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* goto.h - definitions for the "portable assembler" non-local gotos */
+/* mercury_goto.h - definitions for the "portable assembler" non-local gotos */
 
-#ifndef GOTO_H
-#define GOTO_H
+#ifndef MERCURY_GOTO_H
+#define MERCURY_GOTO_H
 
 #include "mercury_types.h"	/* for `Code *' */
-#include "debug.h"		/* for debuggoto() */
+#include "mercury_debug.h"	/* for debuggoto() */
 
 /*
 ** Taking the address of a label can inhibit gcc's optimization,
@@ -582,4 +582,4 @@
 	}
 #define AND ,	/* used to separate the labels */
 
-#endif /* not GOTO_H */
+#endif /* not MERCURY_GOTO_H */

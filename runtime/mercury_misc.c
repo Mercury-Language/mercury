@@ -4,10 +4,10 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include	"imp.h"
-#include	"dlist.h"
-#include	"regs.h"
-#include	"misc.h"
+#include	"mercury_imp.h"
+#include	"mercury_dlist.h"
+#include	"mercury_regs.h"
+#include	"mercury_misc.h"
 
 #include	<stdio.h>
 
@@ -489,7 +489,7 @@ checked_malloc(size_t n)
 }
 
 /*
-**  Note that hash_string is actually defined as a macro in imp.h,
+**  Note that hash_string is actually defined as a macro in mercury_imp.h,
 **  if we're using GNU C.  We define it here whether or not we're using
 **  gcc, so that users can easily switch between gcc and cc without
 **  rebuilding the libraries.

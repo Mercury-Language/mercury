@@ -4,8 +4,8 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#ifndef REGS_H
-#define REGS_H
+#ifndef MERCURY_REGS_H
+#define MERCURY_REGS_H
 
 #include "mercury_conf.h"
 #include "mercury_types.h"
@@ -52,7 +52,7 @@
 ** Since the set of most frequently used Mercury virtual machine
 ** registers can be different for each program, we want to make
 ** this mapping as easy to change as possible. This is why the
-** map is in a minimal header file, regorder.h.
+** map is in a minimal header file, mercury_regorder.h.
 */
 
 #if defined(USE_GCC_GLOBAL_REGISTERS)
@@ -91,9 +91,9 @@
   #define count_usage(num,reg)		(reg)
 #endif
 
-#include	"regorder.h"
+#include	"mercury_regorder.h"
 
-/* regorder.h defines r1 .. r32; now define r(n) for n > 32 */
+/* mercury_regorder.h defines r1 .. r32; now define r(n) for n > 32 */
 
 #define r(n) mr((n) + NUM_SPECIAL_REG - 1)
 
@@ -162,4 +162,4 @@ extern	Word	set_reg(int, Word);
 #define	MR_MIN_SOL_HP_REC	(MR_ORD_RN + 9)
 #define MAX_RN			(MR_ORD_RN + 10)
 
-#endif /* not REGS_H */
+#endif /* not MERCURY_REGS_H */

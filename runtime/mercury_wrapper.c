@@ -27,16 +27,16 @@ ENDINIT
 **	various cleanups that are needed to terminate cleanly.
 */
 
-#include	"imp.h"
+#include	"mercury_imp.h"
 
 #include	<stdio.h>
 #include	<ctype.h>
 #include	<string.h>
 
-#include	"timing.h"
-#include	"getopt.h"
-#include	"init.h"
-#include	"dummy.h"
+#include	"mercury_timing.h"
+#include	"mercury_getopt.h"
+#include	"mercury_init.h"
+#include	"mercury_dummy.h"
 
 /* global variables concerned with testing (i.e. not with the engine) */
 

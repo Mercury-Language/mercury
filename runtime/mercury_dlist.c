@@ -9,8 +9,8 @@
 */
 
 #include	<stdio.h>
-#include	"std.h"
-#include	"dlist.h"
+#include	"mercury_std.h"
+#include	"mercury_dlist.h"
 
 /*
 **	Make an empty list.

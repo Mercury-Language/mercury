@@ -8,9 +8,9 @@
 ** This module defines the deep_copy() function.
 */
 
-#include "imp.h"
-#include "deep_copy.h"
-#include "type_info.h"
+#include "mercury_imp.h"
+#include "mercury_deep_copy.h"
+#include "mercury_type_info.h"
 
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
 

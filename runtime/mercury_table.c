@@ -20,9 +20,9 @@
 #endif
 
 #include	<stdio.h>
-#include	"std.h"
-#include	"dlist.h"
-#include	"table.h"
+#include	"mercury_std.h"
+#include	"mercury_dlist.h"
+#include	"mercury_table.h"
 
 /*
 **	Initialize a table.

@@ -5,7 +5,7 @@
 */
 
 /*
-** conf.h.in -
+** mercury_conf.h.in -
 **	Various configuration parameters, determined automatically by
 **	the auto-configuration script.
 */
@@ -15,8 +15,8 @@
 ** for reasons explained in imp.h.
 */
 
-#ifndef CONF_H
-#define CONF_H
+#ifndef MERCURY_CONF_H
+#define MERCURY_CONF_H
 
 /*
 ** WORD_TYPE: the base type for the definition of Word.
@@ -195,4 +195,4 @@
 */
 #undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
 
-#endif /* CONF_H */
+#endif /* MERCURY_CONF_H */

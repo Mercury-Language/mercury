@@ -6,8 +6,8 @@
 
 /* deepcopy.h - declares the deep_copy() function. */
 
-#ifndef	DEEP_COPY_H
-#define	DEEP_COPY_H
+#ifndef	MERCURY_DEEP_COPY_H
+#define	MERCURY_DEEP_COPY_H
 
 #include "mercury_types.h"	/* for `Word' */
 
@@ -62,4 +62,4 @@
 Word deep_copy(Word data, Word *type_info, Word *lower_limit, 
 	Word *upper_limit);
 
-#endif /* not DEEP_COPY_H */
+#endif /* not MERCURY_DEEP_COPY_H */

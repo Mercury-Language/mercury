@@ -5,7 +5,8 @@
 */
 
 /*
-** memory.h - general memory-allocation related stuff for the Mercury runtime.
+** mercury_memory.h - 	general memory-allocation related stuff for the
+**			Mercury runtime.
 **
 ** This defines the different memory areas used by the Mercury runtime,
 ** including the det & nondet stacks, the heap (and solutions heap),
@@ -14,15 +15,15 @@
 ** and for allocating (possibly shared) memory.
 */
 
-#ifndef	MEMORY_H
-#define	MEMORY_H
+#ifndef	MERCURY_MEMORY_H
+#define	MERCURY_MEMORY_H
 
-#include "regs.h"		/* for NUM_REAL_REGS */
+#include "mercury_regs.h"		/* for NUM_REAL_REGS */
 
 #include <stdlib.h>		/* for size_t */
 
 #include "mercury_types.h"	/* for Word */
-#include "std.h"		/* for bool */
+#include "mercury_std.h"		/* for bool */
 
 
 /* these cannot be changed without lots of modifications elsewhere */
@@ -231,4 +232,4 @@ extern	void	*allocate_bytes(size_t numbytes);
 
 void deallocate_memory(void *);
 
-#endif /* not MEMORY_H */
+#endif /* not MERCURY_MEMORY_H */

@@ -4,8 +4,8 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include "imp.h"
-#include "regs.h"
+#include "mercury_imp.h"
+#include "mercury_regs.h"
 
 #include <stdio.h>
 

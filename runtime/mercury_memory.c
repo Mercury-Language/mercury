@@ -32,7 +32,7 @@
 #ifdef USE_DLLS
   #include "libmer_dll.h"
 #endif
-#include "regs.h"	/* must come first, due to global register vars */
+#include "mercury_regs.h"	/* must come first, due to global register vars */
 #include "mercury_conf.h"	/* must come second */
 
 #ifdef HAVE_SIGCONTEXT_STRUCT
@@ -83,7 +83,7 @@
   #include <sys/ucontext.h>
 #endif
 
-#include "imp.h"
+#include "mercury_imp.h"
 
 /*---------------------------------------------------------------------------*/
 

@@ -4,10 +4,10 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* overflow.h - definitions for overflow checks */
+/* mercury_overflow.h - definitions for overflow checks */
 
-#ifndef OVERFLOW_H
-#define OVERFLOW_H
+#ifndef MERCURY_OVERFLOW_H
+#define MERCURY_OVERFLOW_H
 
 #define IF(cond, val)	((cond) ? ((val), (void)0) : (void)0)
 
@@ -21,8 +21,8 @@
 
 #else /* not SPEED */
 
-#include "regs.h"
-#include "misc.h"	/* for fatal_error() */
+#include "mercury_regs.h"
+#include "mercury_misc.h"	/* for fatal_error() */
 
 #define	heap_overflow_check()					\
 			(					\
@@ -75,4 +75,4 @@
 
 #endif /* not SPEED */
 
-#endif /* not OVERFLOW_H */
+#endif /* not MERCURY_OVERFLOW_H */

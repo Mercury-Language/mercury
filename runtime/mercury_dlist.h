@@ -5,11 +5,11 @@
 */
 
 /*
-** dlist.h - defines a doubly-linked list type.
+** mercury_dlist.h - defines a doubly-linked list type.
 */
 
-#ifndef	DLIST_H
-#define	DLIST_H
+#ifndef	MERCURY_DLIST_H
+#define	MERCURY_DLIST_H
 
 /*
 ** The lists we use are doubly-linked.
@@ -68,4 +68,4 @@ extern	int	length(const List *);
 extern	void	dlist_delete(List *, List *, void (*)(void *));
 extern	void	oldlist(List *, void (*)(void *));
 
-#endif /* not DLIST_H */
+#endif /* not MERCURY_DLIST_H */

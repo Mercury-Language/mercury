@@ -8,15 +8,15 @@ ENDINIT
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include	"imp.h"
+#include	"mercury_imp.h"
 
 #include	<stdio.h>
 #include 	<string.h>
 #include	<setjmp.h>
 
-#include	"engine.h"
+#include	"mercury_engine.h"
 
-#include	"dummy.h"
+#include	"mercury_dummy.h"
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
@@ -88,7 +88,7 @@ init_engine(void)
 **	That will copy the real registers we use to the fake_reg array.
 **
 **	Beware, however, that if you are planning to return to C code
-**	that did not #include "regs.h" (directly or via e.g. "imp.h"),
+**	that did not #include "mercury_regs.h" (directly or via e.g. "mercury_imp.h"),
 **	and you have fiddled with the Mercury registers or invoked
 **	call_engine() or anything like that, then you will need to
 **	save the real registers that C is using before modifying the

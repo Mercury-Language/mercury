@@ -4,10 +4,10 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* prof.h -- definitions for profiling */
+/* mercury_prof.h -- definitions for profiling */
 
-#ifndef PROF_H
-#define PROF_H
+#ifndef MERCURY_PROF_H
+#define MERCURY_PROF_H
 
 #include "mercury_types.h"	/* for `Code *' */
 
@@ -46,4 +46,4 @@ extern	void	prof_output_addr_pair_table(void);
 extern	void	prof_output_addr_decls(const char *, const Code *);
 extern	void	prof_output_addr_table(void);
 
-#endif	/* not PROF_H */
+#endif	/* not MERCURY_PROF_H */

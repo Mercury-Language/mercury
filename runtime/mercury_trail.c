@@ -11,12 +11,12 @@
 ** restored on backtracking.
 */
 
-#include "imp.h"
+#include "mercury_imp.h"
 
 #include "mercury_trail.h"
 
-#include "memory.h"
-#include "misc.h"
+#include "mercury_memory.h"
+#include "mercury_misc.h"
 
 #ifdef MR_USE_TRAIL
 

@@ -8,8 +8,8 @@
 ** spinlock.c - defines the code for locking and unlocking spin locks.
 */
 
-#include "imp.h"
-#include "spinlock.h"
+#include "mercury_imp.h"
+#include "mercury_spinlock.h"
 
 void 
 do_spinlock(Word *l)

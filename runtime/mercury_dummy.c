@@ -4,8 +4,8 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include "dummy.h"
-#include "imp.h"	/* we need libmer_globals.h for Windows DLLs */
+#include "mercury_dummy.h"
+#include "mercury_imp.h"	/* we need libmer_globals.h for Windows DLLs */
 
 /*
 ** This dummy function is in a file of its own to ensure

@@ -5,14 +5,14 @@
 */
 
 /*
-** prof_mem.h - defines memory allocation functions used to hold
+** mercury_prof_mem.h - defines memory allocation functions used to hold
 ** the tables of profiling counts.
 **
 ** Author: petdr
 */
 
-#ifndef PROF_MEM_H
-#define PROF_MEM_H
+#ifndef MERCURY_PROF_MEM_H
+#define MERCURY_PROF_MEM_H
 
 #include <stddef.h>	/* for size_t */
 
@@ -27,4 +27,4 @@ void *prof_malloc(size_t);
 
 #define prof_make(t)	((t *) prof_malloc(sizeof(t)))
 
-#endif /* not PROF_MEM_H */
+#endif /* not MERCURY_PROF_MEM_H */

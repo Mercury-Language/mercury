@@ -5,15 +5,15 @@
 */
 
 /*
-** label.h defines the interface to the label table, which is a pair of
+** mercury_label.h defines the interface to the label table, which is a pair of
 ** hash tables mapping from procedure names to addresses and vice versa.
 */
 
-#ifndef	LABEL_H
-#define	LABEL_H
+#ifndef	MERCURY_LABEL_H
+#define	MERCURY_LABEL_H
 
 #include "mercury_types.h"	/* for `Code *' */
-#include "dlist.h"		/* for `List' */
+#include "mercury_dlist.h"		/* for `List' */
 
 typedef struct s_label {
 	const char	*e_name;   /* name of the procedure	     */
@@ -30,4 +30,4 @@ extern  int 	entry_table_size;
 	/* expected number of entries in the table */
 	/* we allocate 8 bytes per entry */
 
-#endif /* not LABEL_H */
+#endif /* not MERCURY_LABEL_H */

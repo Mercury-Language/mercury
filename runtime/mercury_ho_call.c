@@ -28,7 +28,7 @@ ENDINIT
 ** eventual destinations.
 */
 
-#include "imp.h"
+#include "mercury_imp.h"
 
 Define_extern_entry(do_call_det_closure);
 Declare_label(det_closure_return);

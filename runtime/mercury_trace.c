@@ -12,7 +12,7 @@
 ** available from http://www.irisa.fr/lande/ducasse.
 */
 
-#include "imp.h"
+#include "mercury_imp.h"
 #include "mercury_trace.h"
 #include <stdio.h>
 

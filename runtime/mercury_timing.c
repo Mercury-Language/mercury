@@ -11,11 +11,11 @@
 **	Timing routines.
 */
 
-#include "imp.h"
+#include "mercury_imp.h"
 
 #include <sys/times.h>		/* for times() and `struct tms' */
 
-#include "timing.h"
+#include "mercury_timing.h"
 
 int
 MR_get_user_cpu_miliseconds(void)
