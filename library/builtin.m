@@ -444,7 +444,7 @@ END_MODULE
 INIT sys_init_builtin_types_module
 */
 extern ModuleFunc builtin_types_module;
-extern void mercury__builtin__init(void);
+extern void mercury__private_builtin__init(void);
 void sys_init_builtin_types_module(void);
 void sys_init_builtin_types_module(void) {
 
