@@ -1067,9 +1067,12 @@ Result = 'field1 :='(Arg1, Term, NewField1)
 @subsection Unification expressions
 
 A unification expression is an expression of the form
+
 @example
 X @@ Y
 @end example
+
+@noindent
 where @var{X} and @var{Y} are data-terms.
 
 The semantics of a unification expression is that @var{X} and @var{Y}
@@ -1984,6 +1987,7 @@ For example, given the mode names defined by
         listskel >> listskel.
 @end example
 
+@noindent
 the (type and) mode declarations of the function length and predicate append
 are as follows:
 
@@ -2045,6 +2049,7 @@ Note that with the usual definition of append, the mode
 :- mode append(in_listskel, in_listskel, out_listskel).
 @end example
 
+@noindent
 would not be allowed, since it would create aliasing between the
 different arguments --- on success of the predicate, the list elements
 would be free variables but they would not be distinct.
@@ -4146,6 +4151,7 @@ A type class constraint is of the form:
         <= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
 @end example
 
+@noindent
 where @var{Typeclass} is the name of a type class and @var{TypeVariable} is 
 a type variable that appears in the predicate's or function's type signature.
 
@@ -4580,6 +4586,7 @@ make_list = List :-
 		'new cons'(String, nil))).
 @end example
 
+@noindent
 while the function @samp{process_list} below applies the @samp{show}
 method of the @samp{showable} class to the values in such a list.
 
@@ -5029,14 +5036,17 @@ or @samp{pragma foreign_proc} declaration, use a declaration of the form
 :- pragma foreign_import_module("@var{Lang}", @var{ImportedModule}).
 @end example
 
+@noindent
 where @var{ImportedModule} is the name of the module containing
 the @samp{pragma export} declarations.
 
 If @var{Lang} is @code{"C"} this is equivalent to
+
 @example
 :- pragma foreign_decl("C", "#include ""@var{ImportedModule.h}""").
 @end example
 
+@noindent
 where @file{@var{ImportedModule}.h} is the automatically generated
 header file containing the C declarations for the predicates
 and functions exported to C.
@@ -5959,9 +5969,12 @@ declaration, for example
 @end example
 
 This is equivalent to
+
 @example
 :- pragma c_header_code("#include ""imported_module.h""").
 @end example
+
+@noindent
 but it tells the implementation that the object file for the
 module containing the @samp{pragma c_import_module} declaration
 should not be built before @file{imported_module.h} is built.
@@ -7247,6 +7260,7 @@ compiler to prove termination of a given predicate or function.
 @example
 :- pragma terminates(@var{Name}/@var{Arity}).
 @end example
+
 This declaration may be used to inform the compiler that this predicate
 or function is guaranteed to terminate for any input.  This is useful
 when the compiler cannot prove termination of some predicates or 
@@ -7256,6 +7270,7 @@ termination of other predicates or functions.
 @example
 :- pragma does_not_terminate(@var{Name}/@var{Arity}).
 @end example
+
 This declaration may be used to inform the compiler that this predicate
 does not necessarily terminate.  This is useful for procedures defined
 using the C interface, which the compiler assumes to terminate by
@@ -7264,6 +7279,7 @@ default.
 @example
 :- pragma check_termination(@var{Name}/@var{Arity}).
 @end example
+
 This pragma forces the compiler to prove termination of this predicate.
 If it cannot prove the termination of the specified predicate or
 function then the compiler will quit with an error message.
@@ -7502,6 +7518,7 @@ will abort if this occurs.
 Predicate and function names in Aditi update goals may be module qualified.
 
 The examples make use of the following declarations:
+
 @example
 :- pred p(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma base_relation(p/3).
@@ -7572,6 +7589,7 @@ is a syntax error.
 @sp 1
 
 Examples:
+
 @example
 insert_example_1(DB0, DB) :-
         aditi_insert(p(_, 1, 2), DB0, DB).
@@ -7653,14 +7671,15 @@ on the lambda expression.
 @samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
 @end itemize
 
-@c Don't delete the blank lines here -- they are needed for readability.
-@c @sp commands have no effect on the info file.
+@sp 1
+
+The form
+
 @example
-
-
 aditi_bulk_insert((@var{PredName}(@var{DB1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
 @end example 
 
+@noindent
 is equivalent to 
 
 @example
@@ -7669,17 +7688,18 @@ Closure = (aditi_bottom_up
 aditi_bulk_insert(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
 @end example 
 
-bulk_insert_example_1, bulk_insert_example_2 and bulk_insert_example_3 below
-are all equivalent.
+@noindent
+and likewise for the function version.  For instance, the examples
+bulk_insert_example_1, bulk_insert_example_2 and bulk_insert_example_3
+below are all equivalent.
 
-@c Don't delete the blank lines here -- they are needed for readability.
-@c @sp commands have no effect on the info file.
+Similarly, the form
+
 @example
-
-
 aditi_bulk_delete((@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
 @end example 
 
+@noindent
 is equivalent to
 
 @example
@@ -7691,11 +7711,14 @@ DeleteClosure = (aditi_bottom_up
 aditi_bulk_delete(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
 @end example 
 
+@noindent
+and likewise for the function version.  For instance
 bulk_delete_example_1 and bulk_delete_example_2 below are equivalent.
 
 @sp 2
 
 Examples:
+
 @example
 bulk_insert_example_1(DB0, DB) :-
         aditi_bulk_insert(p(DB1, X, Y) :- ancestor(DB1, X, Y), DB0, DB).
@@ -7840,7 +7863,8 @@ being modified.
 
 @sp 2
 
-The first syntax can be rewritten into the second:
+The forms using @samp{==>} can be considered as syntactic sugar for the
+form using @var{PredOrFunc} @var{PredName}/@var{Arity}:
 
 @example
 aditi_bulk_modify(
@@ -7851,6 +7875,7 @@ aditi_bulk_modify(
         @var{DB0}, @var{DB}).
 @end example
 
+@noindent
 is equivalent to
 
 @example
@@ -7863,15 +7888,17 @@ ModifyClosure =
 aditi_bulk_modify(pred @var{PredName}/@var{PredArity}, ModifyClosure, DB0, DB).
 @end example
 
-@c Don't delete the blank lines here -- they are needed for readability.
-@c @sp commands have no effect on the info file.
+@noindent
+and likewise for the function version.
+
+The bulk modify operation
+
 @example
-
-
 aditi_bulk_modify(pred p/3, Closure, DB0, DB).
 @end example
 
-is almost equivalent to
+@noindent
+is almost equivalent to a bulk delete followed by a bulk insert:
 
 @example
 DeleteClosure =
@@ -7886,13 +7913,16 @@ aditi_bulk_delete(pred p/3, DeleteClosure, DB0, DB1),
 aditi_bulk_insert(pred p/3, InsertClosure, DB1, DB).
 @end example
 
-They are not quite equivalent because @var{InsertClosure}
+@noindent
+However, they are not quite equivalent,
+because in the bulk modify operation @var{InsertClosure}
 is executed using the contents of @samp{p/3} before the deletion
 is applied.
 
 @sp 2
 
 Examples:
+
 @example
 bulk_modify_example_1(DB0, DB) :-
         aditi_bulk_modify(
