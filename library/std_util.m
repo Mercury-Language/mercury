@@ -111,6 +111,14 @@
 :- type pair(T1, T2)	--->	(T1 - T2).
 :- type pair(T)		==	pair(T,T).
 
+	% Return the first element of the pair.
+:- pred fst(pair(X,Y)::in, X::out) is det.
+:- func fst(pair(X,Y)) = X.
+
+	% Return the second element of the pair.
+:- pred snd(pair(X,Y)::in, Y::out) is det.
+:- func snd(pair(X,Y)) = Y.
+
 %-----------------------------------------------------------------------------%
 
 % solutions/2 collects all the solutions to a predicate and
@@ -460,6 +468,14 @@
 
 pair(X, Y, X-Y).
 ****/
+fst(X-_Y) = X.
+fst(P,X) :-
+	X = fst(P).
+
+snd(_X-Y) = Y.
+snd(P,X) :-
+	X = snd(P).
+
 
 maybe_pred(Pred, X, Y) :-
 	(
