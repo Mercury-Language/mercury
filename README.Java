@@ -131,14 +131,34 @@ Q. What features are not yet implemented?
 
 A. The following standard library modules are completely unimplemented:
 
-	benchmarking
 	construct
 	deconstruct
-	store
 	type_desc
 
    Type classes are not yet fully supported, nor are Mercury-level debugging
    and profiling for the Java back-end.
+
+   In addition, the following individual procedures are incompletely
+   implemented:
+
+	benchmarking.report_stats/0:
+	benchmarking.report_full_memory_stats/0:
+		Memory usage statistics are not yet available, and cpu time
+		is obtained via native code as per time.m.
+
+	store.arg_ref/5:
+	store.new_arg_ref/5:
+		Due to the absence of RTTI, dynamic type checking is missing
+		for these predicates.  They should be used with care.
+
+	time.clock/3:
+	time.clocks_per_sec/0:
+	time.times/7:
+	time.clk_tck/0:
+		Because the current Java APIs do not provide any way of
+		implementing these procedures in pure Java, we have implemented
+		them using a native code library implemented in C and accessed
+		via JNI.  This approach sacrifices some portability.
 
 Q. So how do I enable Java-level debugging?
 
