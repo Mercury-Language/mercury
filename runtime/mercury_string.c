@@ -56,7 +56,7 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 	      
 	MR_allocate_aligned_string_msg(result, strlen(p),
 			proclabel);
-	strcpy((char *) result, p);
+	strcpy(result, p);
 
 #ifdef HAVE_VSNPRINTF
 	MR_free(p);
