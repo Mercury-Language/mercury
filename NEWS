@@ -296,11 +296,34 @@ Changes to the Mercury implementation:
   PCs running Linux).  But in theory it should work fine on other
   platforms too.
 
+* The old back-end now generates faster code at low optimization levels.
+
+* The compiler is now a little bit faster.
+
 * The names of some of the `--enable-*' options to `configure' have changed.
 
   See the output of `configure --help' for details.
 
 Changes to the development environment:
+
+* The debugger has been improved in several respects:
+
+  - It has some new forward movement commands:
+    * `next' steps over a call, like gdb's `next' command;
+    * `exception' skips forward until an exception is thrown.
+  - It can perform retry across I/O.
+  - It can now print parts of terms, and fields of terms can be
+    specified by field name as well as by position number.
+  - It has a more flexible mechanism for setting browsing parameters.
+  - It now handles ambiguous procedure specifications in "break"
+    commands gracefully.
+  - The state of the debugger can now be saved and restored, using the
+    `save' and `source' commands (respectively).
+
+  For details, see the documentation of the `next', `exception',
+  `break', `set', and `save' commands in the "Debugger commands" section
+  of the "Debugging" chapter of the Mercury User's Guide.  (The changes
+  to `retry' and `print' have unfortunately not been documented yet.)
 
 * Several improvements have been made to `mtags' to make it easier to
   find predicate/function definitions and to improve support for
