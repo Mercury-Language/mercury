@@ -12,13 +12,10 @@
 
 /*
 The handling of `any' insts is not complete.  (See also inst_util.m)
-It would be nice to allow `free', `bound' and `ground' to
-match `any', but right now we don't.
+It would be nice to allow `free' to match `any', but right now we don't.
 The reason is that although the mode analysis would be pretty
 straight-forward, generating the correct code is quite a bit trickier.
-In fact, much of the mode analysis code in this file is already
-done, just commented out with the remark "not yet".
-In addition, modes.m would have to be changed to handle the implicit
+modes.m would have to be changed to handle the implicit
 conversions from `free'/`bound'/`ground' to `any' at
 
 	(1) procedure calls (this is just an extension of implied modes)
@@ -27,6 +24,11 @@ conversions from `free'/`bound'/`ground' to `any' at
 
 Since that is not yet done, we currently require the user to
 insert explicit calls to initialize constraint variables.
+
+We do allow `bound' and `ground' to match `any', based on the
+assumption that `bound' and `ground' are represented in the same
+way as `any', i.e. that we use the type system rather than the
+mode system to distinguish between different representations.
 */
 
 %-----------------------------------------------------------------------------%
@@ -286,11 +288,11 @@ inst_matches_initial_3(any(_), free, _, _).
 inst_matches_initial_3(free, any(_), _, _).
 */
 inst_matches_initial_3(free, free, _, _).
-/* not yet:
 inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
-	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
-*/
+	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo),
+	/* we do not yet allow `free' to match `any' */
+	bound_inst_list_is_ground_or_any(ListA, ModuleInfo).
 inst_matches_initial_3(bound(_Uniq, _List), free, _, _).
 inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
 		Expansions) :-
@@ -308,10 +310,8 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
 	Uniq = mostly_unique,
 	bound_inst_list_is_ground(List, ModuleInfo),
 	bound_inst_list_is_mostly_unique(List, ModuleInfo).
-/* not yet:
 inst_matches_initial_3(ground(UniqA, _PredInst), any(UniqB), _, _) :-
 	unique_matches_initial(UniqA, UniqB).
-*/
 inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _).
 inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
@@ -329,9 +329,7 @@ inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _) :-
 		% I don't know what this should do.
 		% Abstract insts aren't really supported.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
-/* not yet:
 inst_matches_initial_3(abstract_inst(_,_), any(shared), _, _).
-*/
 inst_matches_initial_3(abstract_inst(_,_), free, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				ModuleInfo, Expansions) :-
@@ -519,12 +517,11 @@ inst_matches_final_3(any(UniqA), any(UniqB), _, _) :-
 inst_matches_final_3(free, any(_), _, _).
 ***/
 inst_matches_final_3(free, free, _, _).
-/*
-not yet:
-inst_matches_final_3(bound(UniqA, ListA), any(UniqB), ModuleInfo, Expansions) :-
+inst_matches_final_3(bound(UniqA, ListA), any(UniqB), ModuleInfo, _) :-
 	unique_matches_final(UniqA, UniqB),
-	bound_inst_list_matches_uniq(ListA, UniqB).
-*/
+	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo),
+	/* we do not yet allow `free' to match `any' */
+	bound_inst_list_is_ground_or_any(ListA, ModuleInfo).
 inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
 		Expansions) :-
 	unique_matches_final(UniqA, UniqB),
@@ -534,10 +531,8 @@ inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo,
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, ModuleInfo),
 	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
-/* not yet:
-inst_matches_final_3(ground(UniqA, _), any(UniqB), ModuleInfo, Expansions) :-
+inst_matches_final_3(ground(UniqA, _), any(UniqB), _ModuleInfo, _Expansions) :-
 	unique_matches_final(UniqA, UniqB).
-*/
 inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 			_Exps) :-
 	unique_matches_final(UniqA, UniqB),
@@ -552,9 +547,7 @@ inst_matches_final_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
 	maybe_pred_inst_matches_final(PredInstA, PredInstB,
 		ModuleInfo, Expansions),
 	unique_matches_final(UniqA, UniqB).
-/* not yet:
 inst_matches_final_2(abstract_inst(_, _), any(shared), _, _).
-*/
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo, Expansions) :-
 	inst_list_matches_final(ArgsA, ArgsB, ModuleInfo, Expansions).

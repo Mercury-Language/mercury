@@ -12,14 +12,10 @@
 
 /*
 The handling of `any' insts is not complete.  (See also inst_match.m)
-Currently we don't allow any unifications with variables of mode `any'.
-The reason is that although the mode analysis would be pretty
-straight-forward, generating the correct code is quite a bit trickier.
-In fact, much of the mode analysis code in this file is already
-done, just commented out with the remark "not yet".
-The exception is abstract unification, which hasn't been done.
-In addition, modes.m would have to be changed to handle the implicit
-conversions from `free'/`bound'/`ground' to `any' at
+
+The major limitation is that we don't allow `free' to be passed
+where `any' is expected.  To handle that, modes.m would have to be
+changed to handle the implicit conversions from `free' to `any' at
 
 	(1) procedure calls (this is just an extension of implied modes)
 	(2) the end of branched goals
@@ -27,6 +23,17 @@ conversions from `free'/`bound'/`ground' to `any' at
 
 Since that is not yet done, we currently require the user to
 insert explicit calls to initialize constraint variables.
+
+Another limitation is that we don't allow any unifications between functors
+and variables of mode `any'; the reason for that is that I have no
+idea what code we should generate for them.  Currently `any' insts
+are only used for abstract types, so the type system should prevent
+any unification between functors and variables of mode `any'.
+
+Another limitation is that currently code generation assumes that insts
+`bound', `ground', and `any' are all represented the same way.
+That works fine for the CLP(R) interface but might not be ideal
+in the general case.
 */
 
 %-----------------------------------------------------------------------------%
@@ -207,7 +214,7 @@ abstractly_unify_inst_3(live, free,     ground(UniqY, PredInst), Real, M,
 
 abstractly_unify_inst_3(live, bound(UniqX, List0), any(UniqY),  Real, M0,
 					bound(Uniq, List), Det, M) :-
-	Real = fake_unify, % we do not yet support it for real_unifies
+	allow_unify_bound_any(Real),
 	unify_uniq(live, Real, semidet, UniqX, UniqY, Uniq),
 	make_any_bound_inst_list(List0, live, UniqY, Real, M0,
 			List, Det1, M),
@@ -305,7 +312,7 @@ abstractly_unify_inst_3(dead, free, Inst, _, M, Inst, det, M).
 
 abstractly_unify_inst_3(dead, bound(UniqX, List0), any(UniqY), Real, M0,
 					bound(Uniq, List), Det, M) :-
-	Real = fake_unify, % we do not yet support it for real_unifies
+	allow_unify_bound_any(Real),
 	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq),
 	make_any_bound_inst_list(List0, live, UniqY, Real, M0,
 					List, Det1, M),
@@ -344,7 +351,7 @@ abstractly_unify_inst_3(dead, bound(Uniq, List), abstract_inst(N,As),
 
 abstractly_unify_inst_3(dead, ground(UniqX, yes(PredInst)), any(UniqY), Real, M,
 				ground(Uniq, yes(PredInst)), semidet, M) :-
-	Real = fake_unify, % we do not yet support it for real_unifies
+	allow_unify_bound_any(Real),
 	unify_uniq(live, Real, semidet, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(dead, ground(Uniq, yes(PredInst)), free, _Real, M,
@@ -830,7 +837,7 @@ make_ground_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real, ModuleInfo0,
 make_any_inst(not_reached, _, _, _, M, not_reached, erroneous, M).
 make_any_inst(any(Uniq0), IsLive, Uniq1, Real, M, any(Uniq),
 		semidet, M) :-
-	Real = fake_unify, % not yet supported for real_unifies
+	allow_unify_bound_any(Real),
 	unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
 make_any_inst(free, IsLive, Uniq0, Real, M, any(Uniq), det, M) :-
 	unify_uniq(IsLive, Real, det, unique, Uniq0, Uniq).
@@ -843,14 +850,14 @@ make_any_inst(free(T), IsLive, Uniq, Real, M,
 	Any = typed_inst(T, unify_inst(IsLive, free, any(Uniq), Real)).
 make_any_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, Real, M0,
 		bound(Uniq, BoundInsts), Det, M) :-
-	Real = fake_unify, % not yet supported for real_unifies
+	allow_unify_bound_any(Real),
 	unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq),
 	make_any_bound_inst_list(BoundInsts0, IsLive, Uniq1, Real, M0,
 					BoundInsts, Det1, M),
 	det_par_conjunction_detism(Det1, semidet, Det).
 make_any_inst(ground(Uniq0, PredInst), IsLive, Uniq1, Real, M,
 		ground(Uniq, PredInst), semidet, M) :-
-	Real = fake_unify, % not yet supported for real_unifies
+	allow_unify_bound_any(Real),
 	unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
 make_any_inst(inst_var(_), _, _, _, _, _, _, _) :-
 	error("free inst var").
@@ -1168,6 +1175,16 @@ make_mostly_uniq_inst_list([Inst0 | Insts0], ModuleInfo0,
 		[Inst | Insts], ModuleInfo) :-
 	make_mostly_uniq_inst(Inst0, ModuleInfo0, Inst, ModuleInfo1),
 	make_mostly_uniq_inst_list(Insts0, ModuleInfo1, Insts, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+	% Should we allow unifications between bound (or ground) insts
+	% and `any' insts?
+	% Previously we only allowed this for fake_unifies,
+	% but now we allow it for real_unifies too.
+
+:- pred allow_unify_bound_any(unify_is_real::in) is det.
+allow_unify_bound_any(_) :- true.
 
 %-----------------------------------------------------------------------------%
 
