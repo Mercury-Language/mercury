@@ -37,8 +37,8 @@
 
 		% Create a new code_info structure.
 :- pred code_info__init(int, varset, liveness_info, call_info, bool,
-				pred_id, proc_id, module_info, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, out) is det.
+			pred_id, proc_id, proc_info, module_info, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, out) is det.
 
 		% Generate the next local label in sequence.
 :- pred code_info__get_next_label(label, code_info, code_info).
@@ -170,6 +170,10 @@
 							code_info, code_info).
 :- mode code_info__cons_id_to_abstag(in, in, out, in, out) is det.
 
+:- pred code_info__cons_id_to_tag(var, cons_id, cons_tag,
+							code_info, code_info).
+:- mode code_info__cons_id_to_tag(in, in, out, in, out) is det.
+
 :- pred code_info__get_stackslot_count(int, code_info, code_info).
 :- mode code_info__get_stackslot_count(out, in, out) is det.
 
@@ -198,6 +202,9 @@
 :- pred code_info__register_variables(reg, set(var), code_info, code_info).
 :- mode code_info__register_variables(in, out, in, out) is semidet.
 
+:- pred code_info__get_proc_info(proc_info, code_info, code_info).
+:- mode code_info__get_proc_info(out, in, out) is det.
+
 :- pred code_info__get_succip_used(bool, code_info, code_info).
 :- mode code_info__get_succip_used(out, in, out) is det.
 
@@ -223,8 +230,9 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module require, list, map, bimap, tree, int.
-:- import_module string, varset, term.
+:- import_module string, require, list, map, bimap, tree, int.
+:- import_module varset, term.
+:- import_module type_util.
 
 :- type code_info	--->
 		code_info(
@@ -243,7 +251,7 @@
 					% what is stored in each register.
 			variable_info,	% A map storing the information about
 					% the status of each variable.
-			unit,		% Unused
+			proc_info,	% The proc_info for the this procedure.
 			bool,		% do we need to store succip?
 			fall_through,	% The fallthrough label for semi-
 					% deterministic code.
@@ -273,7 +281,7 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
-					PredId, ProcId, ModuleInfo, C) :-
+				PredId, ProcId, ProcInfo, ModuleInfo, C) :-
 	code_info__init_register_info(PredId, ProcId,
 					ModuleInfo, RegisterInfo),
 	code_info__init_variable_info(PredId, ProcId,
@@ -288,7 +296,7 @@ code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
 		ProcId,
 		RegisterInfo,
 		VariableInfo,
-		unit,
+		ProcInfo,
 		SaveSuccip,
 		FallThough,
 		ModuleInfo,
@@ -972,8 +980,53 @@ code_info__reenter_lvals(Var, [L|Ls]) -->
 
 %---------------------------------------------------------------------------%
 
+	% XXX cons_id_to_abstag is obsolete - all calls
+	% should be replaced by calls to cons_id_to_tag
+
 code_info__cons_id_to_abstag(_Var, _ConsId, AbsTag) -->
 	{ AbsTag = simple(3) }. % XXX stub
+
+%---------------------------------------------------------------------------%
+
+	% Given a constructor id, and a variable (so that we can work out the
+	% type of the constructor), determine correct tag (representation)
+	% of that constructor.
+
+:- code_info__cons_id_to_tag(_, X, _, _, _) when X. % NU-Prolog indexing.
+
+code_info__cons_id_to_tag(_Var, int_const(X), int_constant(X)) --> [].
+code_info__cons_id_to_tag(_Var, float_const(X), float_constant(X)) --> [].
+code_info__cons_id_to_tag(_Var, string_const(X), string_constant(X)) --> [].
+code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
+		%
+		% Use the variable to determine the type
+		%
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ map__lookup(VarTypes, Var, Type) },
+		%
+		% Given the type, determine the type_id
+		%
+	{ Type = term__functor(ConsName, Args, _Context) ->
+		list__length(Args, Arity),
+		make_type_id(ConsName, Arity, TypeId)
+	;
+		error("unification with polymorphically typed variable?")
+	},
+		%
+		% Given the type_id, lookup up the constructor tag
+		% table for that type
+		%
+	code_info__get_module_info(ModuleInfo),
+	{ module_info_types(ModuleInfo, TypeTable) },
+	{ map__lookup(TypeTable, TypeId, TypeDefn) },
+	{ TypeDefn = hlds__type_defn(_, _, du_type(_, ConsTable0, _), _, _) ->
+		ConsTable = ConsTable0
+	;
+		error("code_info__cons_id_to_tag: type is not d.u. type?")
+	},
+		% Finally look up the cons_id in the table
+	{ map__lookup(ConsTable, cons(Name, Arity), Tag) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1502,6 +1555,9 @@ code_info__get_variables(H, CI, CI) :-
 code_info__set_variables(H, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+
+code_info__get_proc_info(I, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _).
 
 code_info__get_succip_used(J, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, J, _, _, _).

@@ -407,8 +407,11 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	== map(cons_id, cons_tag).
 
 :- type cons_tag
-	--->	enum_tag(int)
-			% Just like an enum constant in C
+	--->	string_constant(string)
+	;	float_constant(float)
+	;	int_constant(int)
+			% This is used for enumerations and character
+			% constants as well as for int constants.
 	;	simple_tag(tag_bits)	
 			% This is for constants or functors which only
 			% require a simple (two-bit) tag.

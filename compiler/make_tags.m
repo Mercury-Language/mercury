@@ -82,7 +82,7 @@ assign_constructor_tags(Ctors, CtorTags, IsEnum) :-
 assign_enum_constants([], _, CtorTags, CtorTags).
 assign_enum_constants([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
 	create_cons_id(Name, Args, ConsId),
-	Tag = enum_tag(Val),
+	Tag = int_constant(Val),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	Val1 is Val + 1,
 	assign_enum_constants(Rest, Val1, CtorTags1, CtorTags).

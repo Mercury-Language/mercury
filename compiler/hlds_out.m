@@ -240,8 +240,16 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	},
 	{ ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_var_types(Indent, VarSet, VarTypes, TVarSet),
+
+		% Never write the clauses out verbosely -
+		% Temporarily disable the verbose_dump_hlds option
+	globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+	globals__set_option(verbose_dump_hlds, bool(no)),
 	hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars,
 			Clauses),
+		% Re-enable it
+	globals__set_option(verbose_dump_hlds, bool(Verbose)),
+
 	hlds_out__write_procs(Indent, ModuleInfo, PredId, Imported, ProcTable),
 	io__write_string("\n").
 
@@ -277,8 +285,8 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clause) -->
 		),
 		Indent1 is Indent + 1
 	},
-	globals__lookup_option(very_verbose, bool(VeryVerbose)),
-	( { VeryVerbose = yes } ->
+	globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+	( { Verbose = yes } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Modes for which this clause applies: "),
 		hlds_out__write_intlist(Modes),
@@ -362,17 +370,17 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		io__write_string("% determinism: "),
 		{ goal_info_inferred_determinism(GoalInfo, Category) },
 		hlds_out__write_category(Category),
-		mercury_output_newline(Indent),
-		io__write_string("% new insts: "),
-		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-		hlds_out__write_instmap(InstMapDelta, VarSet),
 		mercury_output_newline(Indent)
 	;
 		[]
 	),
 	hlds_out__write_goal_2(Goal, ModuleInfo, VarSet, Indent),
-	mercury_output_newline(Indent),
 	( { Verbose = yes } ->
+		mercury_output_newline(Indent),
+		io__write_string("% new insts: "),
+		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+		hlds_out__write_instmap(InstMapDelta, VarSet),
+		mercury_output_newline(Indent),
 		{ goal_info_post_delta_liveness(GoalInfo, PostBirths - PostDeaths) },
 		{ set__to_sorted_list(PostBirths, PostBirthList) },
 		{ set__to_sorted_list(PostDeaths, PostDeathList) },

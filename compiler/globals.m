@@ -20,13 +20,21 @@
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 
+:- pred globals__set_options(globals::in, option_table::in, globals::out)
+	is det.
+
 :- pred globals__lookup_option(option::in, option_data::out,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__set_option(option::in, option_data::in,
 			io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module map, std_util, io.
+
+%-----------------------------------------------------------------------------%
 
 	% currently the only global data is the option table
 
@@ -36,6 +44,8 @@ globals__init(Globals, Globals).
 
 globals__get_options(Globals, Globals).
 
+globals__set_options(_, Globals, Globals).
+
 %-----------------------------------------------------------------------------%
 
 globals__lookup_option(Option, OptionData) -->
@@ -43,5 +53,14 @@ globals__lookup_option(Option, OptionData) -->
 	{ univ_to_type(UnivGlobals, Globals) },
 	{ globals__get_options(Globals, OptionTable) },
 	{ map__search(OptionTable, Option, OptionData) }.
+
+globals__set_option(Option, OptionData) -->
+	io__get_globals(UnivGlobals0),
+	{ univ_to_type(UnivGlobals0, Globals0) },
+	{ globals__get_options(Globals0, OptionTable0) },
+	{ map__set(OptionTable0, Option, OptionData, OptionTable) },
+	{ globals__set_options(Globals0, OptionTable, Globals) },
+	{ type_to_univ(Globals, UnivGlobals) },
+	io__set_globals(UnivGlobals).
 
 %-----------------------------------------------------------------------------%
