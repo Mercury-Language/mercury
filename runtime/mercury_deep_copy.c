@@ -319,7 +319,7 @@ deep_copy_arg(Word data, Word *term_type_info, Word *arg_pseudo_type_info,
 }
 
 
-Word *
+static Word *
 deep_copy_type_info(Word *type_info, Word *lower_limit, Word *upper_limit)
 {
 	if (in_range(type_info)) {

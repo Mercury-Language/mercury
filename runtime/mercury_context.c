@@ -28,10 +28,16 @@ MR_Context	*MR_runqueue;
   MercuryCond	*MR_runqueue_cond;
 #endif
 
-
+/*
+** free_context_list is a global linked list of unused context
+** structures. If the MemoryZone pointers are not NULL,
+** then they point to allocated MemoryZones, which will
+** need to be reinitialized, but have space allocated to
+** them. (see comments in mercury_memory.h about reset_zone())
+*/
 static MR_Context *free_context_list = NULL;
 #ifdef	MR_THREAD_SAFE
-  static	MercuryLock *free_context_list_lock;
+  static MercuryLock *free_context_list_lock;
 #endif
 
 void

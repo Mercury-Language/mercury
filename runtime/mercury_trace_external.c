@@ -79,9 +79,9 @@ sprintf(Name, "%s%05d", SOCKET_PATH, getpid());
 socket(unix, stream, Sock),
 bind(sock, Name, Socket_file),
 if (do_it_manually) {
-	printf("user: you must do
-			setenv MERCURY_INET_DEBUGGER_SOCKET Name
-		and then run the program");
+	printf( "user: you must do\n"
+	        "	setenv MERCURY_INET_DEBUGGER_SOCKET Name\n"
+		"and then run the program\n");
 	... just wait for the user do it ...
 } else {
 	fork()

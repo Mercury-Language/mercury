@@ -67,22 +67,22 @@ Define_extern_entry(mercury__compare_3_2);
 Define_extern_entry(mercury__compare_3_3);
 Declare_label(mercury__compare_3_0_i1);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_closure);
-MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_closure);
-MR_MAKE_STACK_LAYOUT_ENTRY(do_call_nondet_closure);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_closure)
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_closure)
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_nondet_closure)
 
-MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_class_method);
-MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_class_method);
-MR_MAKE_STACK_LAYOUT_ENTRY(do_call_nondet_class_method);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_class_method)
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_class_method)
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_nondet_class_method)
 
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__unify_2_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__index_2_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__index_2_0, 1);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_1);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_2);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_3);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__compare_3_0, 1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__unify_2_0)
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__index_2_0)
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__index_2_0, 1)
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_0)
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_1)
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_2)
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_3)
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__compare_3_0, 1)
 
 
 BEGIN_MODULE(call_module)
@@ -461,7 +461,7 @@ Define_label(mercury__index_2_0_i1);
 	int	type_arity;
 
 	type_arity = pop();
-	MR_succip = pop();
+	MR_succip = (Code *) pop();
 	save_registers();
 	r3 = virtual_reg(type_arity + 2);
 	proceed();
@@ -570,7 +570,7 @@ Define_label(mercury__compare_3_0_i1);
 	int	type_arity;
 
 	type_arity = pop();
-	MR_succip = pop();
+	MR_succip = (Code *) pop();
 	save_registers();
 	r2 = virtual_reg(type_arity + 1);
 	proceed();

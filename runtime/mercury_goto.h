@@ -573,40 +573,40 @@
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 
-  #define Declare_entry(label)		extern void *label(void)
-  #define Declare_static(label)		static void *label(void)
-  #define Define_extern_entry(label)	void *label(void)
-  #define Define_entry(label)	\
-		GOTO(label);	\
-	}			\
+  #define Declare_entry(label)		extern Code *label(void)
+  #define Declare_static(label)		static Code *label(void)
+  #define Define_extern_entry(label)	Code *label(void)
+  #define Define_entry(label)		\
+		GOTO_LABEL(label);	\
+	}				\
 	Code* label(void) {
-  #define Define_static(label)	\
-		GOTO(label);	\
-	}			\
+  #define Define_static(label)		\
+		GOTO_LABEL(label);	\
+	}				\
 	static Code* label(void) {
   #define init_entry(label)	make_entry(stringify(label), label, label)
   #define init_entry_sl(label)	make_entry_sl(stringify(label), label, label)
 
   #define Declare_local(label)	static Code *label(void)
-  #define Define_local(label)	\
-		GOTO(label);	\
-	}			\
+  #define Define_local(label)		\
+		GOTO_LABEL(label);	\
+	}				\
 	static Code* label(void) {
   #define init_local(label)	make_local(stringify(label), label, label)
   #define init_local_sl(label)	make_local_sl(stringify(label), label, label)
 
   #define Declare_label(label)	static Code *label(void)
-  #define Define_label(label)	\
-		GOTO(label);	\
-	}			\
+  #define Define_label(label)		\
+		GOTO_LABEL(label);	\
+	}				\
 	static Code* label(void) {
   #define init_label(label)	make_label(stringify(label), label, label)
   #define init_label_sl(label)	make_label_sl(stringify(label), label, label)
 
-  #define ENTRY(label) 		(label)
-  #define STATIC(label) 	(label)
-  #define LOCAL(label)		(label)
-  #define LABEL(label)		(label)
+  #define ENTRY(label) 		((Code *) (label))
+  #define STATIC(label) 	((Code *) (label))
+  #define LOCAL(label)		((Code *) (label))
+  #define LABEL(label)		((Code *) (label))
   /*
   ** The call to debuggoto() is in the driver function in mercury_engine.c,
   ** which is why the following definitions have no debuggoto().

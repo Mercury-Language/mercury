@@ -84,23 +84,25 @@ typedef Word ** AnswerBlock;
 
 #ifdef CONSERVATIVE_GC
 
-  #define table_allocate(Size)						\
-	GC_malloc(Size);
+  #define table_allocate(size)						\
+	GC_malloc(size)
 
-  #define table_reallocate(Pointer, Size)				\
-	GC_realloc(Pointer, Size);
+  #define table_reallocate(pointer, size)				\
+	GC_realloc(pointer, size)
 
-  #define table_free(Pointer)						\
-	GC_free(Pointer);
+  #define table_free(pointer)						\
+	GC_free(pointer)
 
   #define MR_table_list_cons(h, t) list_cons((h),(t))
 
 #else /* not CONSERVATIVE_GC */
 
   #define table_allocate(Size)						\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), NULL)
+	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(void *) NULL)
   #define table_reallocate(Pointer, Size)				\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), NULL)
+	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(void *) NULL)
   #define table_free(Pointer)						\
 	fatal_error("Sorry, not implemented: tabling in non-GC grades")
 
@@ -111,24 +113,31 @@ typedef Word ** AnswerBlock;
 #endif /* CONSERVATIVE_GC */
 
 #define table_copy_mem(Dest, Source, Size)				\
-	memcpy(Dest, Source, Size);
+	memcpy(Dest, Source, Size)
 
 #ifdef MR_TABLE_DEBUG
 
 #include <stdio.h>
-#include <varargs.h>
+#include <stdarg.h>
 
-static void table_printf(const char *format, ...)
+/* XXX should move this to mercury_tabling.c */
+
+static void
+table_printf(const char *format, ...)
 {
 	va_list list;
 	
 	va_start(list);
 	vprintf(format, list);
+	va_end(list);
 }
 
 #else /* not MR_TABLE_DEBUG */
 
-static void table_printf(const char *format, ...)
+/* XXX should move this to mercury_tabling.c */
+
+static void
+table_printf(const char *format, ...)
 {
 }
 

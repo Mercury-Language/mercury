@@ -839,10 +839,10 @@ Declare_label(global_success);
 Declare_label(global_fail);
 Declare_label(all_done);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(do_interpreter);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(global_success, do_interpreter);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(global_fail, do_interpreter);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(all_done, do_interpreter);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_interpreter)
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(global_success, do_interpreter)
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(global_fail, do_interpreter)
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(all_done, do_interpreter)
 
 BEGIN_MODULE(interpreter_module)
 	init_entry(do_interpreter);

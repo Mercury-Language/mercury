@@ -244,9 +244,9 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 void
 setup_signals(void)
 {
-	MR_setup_signal(SIGBUS, bus_handler, TRUE,
+	MR_setup_signal(SIGBUS, (Code *) bus_handler, TRUE,
 		"Mercury runtime: cannot set SIGBUS handler");
-	MR_setup_signal(SIGSEGV, segv_handler, TRUE,
+	MR_setup_signal(SIGSEGV, (Code *) segv_handler, TRUE,
 		"Mercury runtime: cannot set SIGSEGV handler");
 }
 

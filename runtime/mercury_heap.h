@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -76,11 +76,17 @@
   #define mark_hp(dest)		((void)0)
   #define restore_hp(src)	((void)0)
 
-			/* we use `hp' as a convenient temporary here */
-  #define hp_alloc(count) \
-		(incr_hp(MR_hp, (count)), MR_hp += (count), (void)0)
-  #define hp_alloc_atomic(count) \
-		(incr_hp_atomic(MR_hp, (count)), MR_hp += (count), (void)0)
+			/* we use `MR_hp' as a convenient temporary here */
+  #define hp_alloc(count) (						\
+		incr_hp(LVALUE_CAST(Word, MR_hp), (count)),		\
+		MR_hp += (count),					\
+		(void)0							\
+	)
+  #define hp_alloc_atomic(count)					\
+		incr_hp_atomic(LVALUE_CAST(Word, MR_hp), (count)), 	\
+		MR_hp += (count),					\
+		(void)0							\
+	)
 
 #else /* not CONSERVATIVE_GC */
 
@@ -98,29 +104,29 @@
   #define mark_hp(dest)		((dest) = (Word) MR_hp)
 
   /*
-  ** When restoring hp, we must make sure that we don't truncate the heap
+  ** When restoring MR_hp, we must make sure that we don't truncate the heap
   ** further than it is safe to. We can only truncate it as far as
   ** min_heap_reclamation_point. See the comments in mercury_context.h next to
   ** the set_min_heap_reclamation_point() macro.
   */
   #define	restore_hp(src)	(					\
-  			LVALUE_CAST(Word,MR_hp) = (src),		\
+  			LVALUE_CAST(Word, MR_hp) = (src),		\
   			(void)0						\
   		)
 
   /*
   #define	restore_hp(src)	(					\
-  			LVALUE_CAST(Word,MR_hp) =			\
+  			LVALUE_CAST(Word, MR_hp) =			\
   			  ( (Word) MR_min_hp_rec < (src) ?		\
   			  (src) : (Word) MR_min_hp_rec ),		\
   			(void)0						\
   		)
   */
   
-  #define hp_alloc(count)  incr_hp(hp,count)
-  #define hp_alloc_atomic(count) incr_hp_atomic(count)
+  #define hp_alloc(count)  	 incr_hp(LVALUE_CAST(Word, MR_hp), count)
+  #define hp_alloc_atomic(count) incr_hp_atomic(LVALUE_CAST(Word, MR_hp), count)
   
-  #endif /* not CONSERVATIVE_GC */
+#endif /* not CONSERVATIVE_GC */
   
 #ifdef	PROFILE_MEMORY
   #define tag_incr_hp_msg(dest, tag, count, proclabel, type)		\

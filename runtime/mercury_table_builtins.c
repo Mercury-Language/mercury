@@ -66,9 +66,9 @@ next_prime(Word old_size)
 	}
 
 	if (i < NUM_OF_PRIMES) {
-		return (primes[i]);
+		return primes[i];
 	} else { 
-		return (2 * old_size - 1);
+		return 2 * old_size - 1;
 	}
 }
 
@@ -278,7 +278,7 @@ MR_string_hash_lookup_or_add(TrieNode t, String key)
 		*t = table;
 	}
 
-	hash = hash_string(key);
+	hash = hash_string((Word) key);
 	bucket = hash % SIZE(table);
 
 	p = BUCKET(table, bucket);
@@ -314,7 +314,8 @@ MR_string_hash_lookup_or_add(TrieNode t, String key)
 		for (i = 0; i < old_size; i++) {
 			q = BUCKET(table, i);
 			if (q) {
-				re_hash(new_table, hash_string(q->key), q); 
+				re_hash(new_table, 
+					hash_string((Word) q->key), q); 
 			}
 		}
 		

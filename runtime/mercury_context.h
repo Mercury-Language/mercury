@@ -129,15 +129,6 @@ struct MR_context_struct {
 typedef MR_Context Context;	/* for backwards compatibility */
 
 /*
-** free_context_list is a global linked list of unused context
-** structures. If the MemoryZone pointers are not NULL,
-** then they point to allocated MemoryZones, which will
-** need to be reinitialized, but have space allocated to
-** them. (see comments in mercury_memory.h about reset_zone())
-*/
-extern	MR_Context *free_context_list;
-
-/*
 ** the runqueue is a linked list of contexts that are
 ** runnable.
 */

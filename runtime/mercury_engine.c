@@ -33,7 +33,7 @@ static	void	call_engine_inner(Code *entry_point);
 #ifndef USE_GCC_NONLOCAL_GOTOS
   static Code	*engine_done(void);
   static Code	*engine_init_registers(void);
-  MR_MAKE_STACK_LAYOUT_ENTRY(engine_done);
+  MR_MAKE_STACK_LAYOUT_ENTRY(engine_done)
 #endif
 
 bool	debugflag[MAXFLAG];
@@ -396,7 +396,7 @@ static Code *
 engine_init_registers(void)
 {
 	restore_transient_registers();
-	MR_succip = engine_done;
+	MR_succip = (Code *) engine_done;
 	return NULL;
 }
 
@@ -409,10 +409,9 @@ engine_init_registers(void)
 
 #define NUM_PREV_FPS	40
 
-typedef	void	(*FuncPtr)(void);
 typedef Code	*Func(void);
 
-static FuncPtr	prev_fps[NUM_PREV_FPS];
+static Code 	*prev_fps[NUM_PREV_FPS];
 static int	prev_fp_index = 0;
 
 void 
@@ -443,34 +442,34 @@ call_engine_inner(Code *entry_point)
 	*/
 
 	fp = engine_init_registers;
-	fp = (*fp)();
-	fp = entry_point;
+	fp = (Func *) (*fp)();
+	fp = (Func *) entry_point;
 
 #if !defined(MR_DEBUG_GOTOS)
 if (!tracedebug) {
 	for (;;)
 	{
-		fp = (*fp)();
-		fp = (*fp)();
-		fp = (*fp)();
-		fp = (*fp)();
-		fp = (*fp)();
-		fp = (*fp)();
-		fp = (*fp)();
-		fp = (*fp)();
+		fp = (Func *) (*fp)();
+		fp = (Func *) (*fp)();
+		fp = (Func *) (*fp)();
+		fp = (Func *) (*fp)();
+		fp = (Func *) (*fp)();
+		fp = (Func *) (*fp)();
+		fp = (Func *) (*fp)();
+		fp = (Func *) (*fp)();
 	}
 } else
 #endif
 	for (;;)
 	{
-		prev_fps[prev_fp_index] = (FuncPtr) fp;
+		prev_fps[prev_fp_index] = (Code *) fp;
 
 		if (++prev_fp_index >= NUM_PREV_FPS)
 			prev_fp_index = 0;
 
 		debuggoto(fp);
 		debugsreg();
-		fp = (*fp)();
+		fp = (Func *) (*fp)();
 	}
 } /* end call_engine_inner() */
 #endif /* not USE_GCC_NONLOCAL_GOTOS */
@@ -494,11 +493,11 @@ Define_extern_entry(do_succeed);
 Define_extern_entry(do_last_succeed);
 Define_extern_entry(do_not_reached);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(do_redo);
-MR_MAKE_STACK_LAYOUT_ENTRY(do_fail);
-MR_MAKE_STACK_LAYOUT_ENTRY(do_succeed);
-MR_MAKE_STACK_LAYOUT_ENTRY(do_last_succeed);
-MR_MAKE_STACK_LAYOUT_ENTRY(do_not_reached);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_redo)
+MR_MAKE_STACK_LAYOUT_ENTRY(do_fail)
+MR_MAKE_STACK_LAYOUT_ENTRY(do_succeed)
+MR_MAKE_STACK_LAYOUT_ENTRY(do_last_succeed)
+MR_MAKE_STACK_LAYOUT_ENTRY(do_not_reached)
 
 BEGIN_MODULE(special_labels_module)
 	init_entry(do_redo);

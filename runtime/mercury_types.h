@@ -16,15 +16,20 @@
 #include <stdio.h>	/* for `FILE' */
 
 /* 
-** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*)
-** this is assured by the autoconfiguration script
+** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*);
+** this is ensured by the autoconfiguration script.
 */
 
 typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
 typedef unsigned WORD_TYPE	Unsigned;
 typedef WORD_TYPE		Bool;
-typedef void			Code;	/* code addresses are `void *' */
+
+/*
+** `Code *' is used as a generic pointer-to-label type that can point
+** to any label defined using the Define_* macros in mercury_goto.h.
+*/
+typedef void			Code;
 
 /*
 ** Float64 is required for the bytecode.
