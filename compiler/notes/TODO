@@ -21,36 +21,42 @@ typechecking
 
 - see also wish list comments at the start of typecheck.nl
 
-modes analysis
---------------
+mode analysis
+-------------
+
+- handle implied modes
+
+- handle higher-order pred modes
+
+- handle unique modes (some research issues re backtracking)
+
+- handle polymorphic modes (some research issues?)
 
 - detect incorrect usage of `bound(...)' insts.
 
 - handle undefined insts/modes gracefully
 
-- handle unique modes!
-
-- handle polymorphic modes
+- split construct/deconstruct unifications into their atomic
+  "micro-unification" pieces when necessary.
 
 - see also comments at the start of modes.nl
 
 general
 -------
 
-- tail recursion optimization (vanilla) and also pass-by-reference
-  tail recursion.
+- tail recursion optimization using pass-by-reference argument conventions
 
-- modes.nl:
-  split construct/deconstruct unifications into their atomic
-  "micro-unification" pieces when necessary.
+- other specializations, e.g. if argument is known to be bound to
+  f(X,Y), then just pass X and Y in registers
 
 - warn about predicates with no clauses.
 
 - warn about predicates with no modes.
 
-- handle abstract insts in the same way abstract types are handled (???)
+- handle abstract insts in the same way abstract types are handled (a research
+  issue)
 
-- test & debug the determinism analysis 
+- switch detection: handle chained head unifications by abstract interpretation
 
 - improve efficiency of implicit quantification
 
@@ -59,6 +65,9 @@ general
   overlapping scopes.
 
 - optimization of various sorts
+
+- Combining heap pointer increments in straight-line code into
+  a single increment
 
 - array.nl: write a predicate to resize arrays.
 
@@ -88,6 +97,8 @@ code generation:
 general
 -------
 
+- switch detection: handle multi-level indexing
+
 - handle module qualifiers properly
 
 - more work on module system, separate compilation, and the multiple
@@ -101,6 +112,23 @@ general
 	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
 	change prog_io.nl to parse this construct and call io__op
 	accordingly.
+
+- optional warning for any implicit quantifiers whose scope is not
+  the entire clause
+
+- warn about multiple calls to a predicate with the same input arguments,
+  because this is likely to be a programming mistake.
+  eg.
+
+	p(...) :-
+		...
+		q(InA, InB, OutC, OutD),
+		...
+		q(InA, InB, OutE, OutF).
+
+  should result in
+
+	Warning: redundant call to `q(InA, InB, _, _)'
 
 - better error handling
 
