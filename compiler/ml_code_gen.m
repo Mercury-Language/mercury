@@ -655,8 +655,21 @@ ml_gen_local_var_decls(Goal, VarSet, VarTypes, HeadVars) =
 	set__delete_list(AllVarsSet, HeadVars, LocalVarsSet),
 	set__to_sorted_list(LocalVarsSet, LocalVars),
 	MLDS_Context = mlds__make_context(Context),
-	MLDS_LocalVars = list__map(ml_gen_local_var_decl(VarSet, VarTypes,
-				MLDS_Context), LocalVars).
+	MLDS_LocalVars0 = list__map(ml_gen_local_var_decl(VarSet, VarTypes,
+				MLDS_Context), LocalVars),
+	MLDS_SucceededVar = ml_gen_succeeded_var_decl(MLDS_Context),
+	MLDS_LocalVars = [MLDS_SucceededVar | MLDS_LocalVars0].
+
+	% Generate the declaration for the built-in `succeeded' variable.
+	%
+:- func ml_gen_succeeded_var_decl(mlds__context) = mlds__defn.
+ml_gen_succeeded_var_decl(Context) = MLDS_Defn :-
+	Name = data(var("succeeded")),
+	ml_bool_type(Type),
+	MaybeInitializer = no,
+	Defn = data(Type, MaybeInitializer),
+	DeclFlags = ml_gen_var_decl_flags,
+	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
 
 	% Generate the declaration for a local variable.
 	%
@@ -989,12 +1002,16 @@ ml_gen_arg_list(Vars, Modes, InputRvals, OutputLvals) -->
 			{ OutputLvals = [VarLval | OutputLvals1] },
 	************/
 		;
-			{ InputRvals = [mem_addr(VarLval) | InputRvals1] },
+			{ InputRvals = [ml_gen_mem_addr(VarLval) | InputRvals1] },
 			{ OutputLvals = OutputLvals1 }
 		)
 	;
 		{ error("ml_gen_arg_list: length mismatch") }
 	).
+
+:- func ml_gen_mem_addr(mlds__lval) = mlds__rval.
+ml_gen_mem_addr(Lval) =
+	(if Lval = mem_ref(Rval) then Rval else mem_addr(Lval)).
 
 %-----------------------------------------------------------------------------%
 %

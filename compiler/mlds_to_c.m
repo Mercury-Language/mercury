@@ -79,7 +79,8 @@ mlds_output_hdr_file(Indent, MLDS) -->
 	mlds_output_hdr_start(Indent, ModuleName), io__nl,
 	mlds_output_hdr_imports(Indent, Imports), io__nl,
 	mlds_output_c_hdr_decls(Indent, ForeignCode), io__nl,
-	mlds_output_decls(Indent, PublicDefns), io__nl,
+	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
+	mlds_output_decls(Indent, MLDS_ModuleName, PublicDefns), io__nl,
 	mlds_output_hdr_end(Indent, ModuleName).
 
 :- pred defn_is_public(mlds__defn).
@@ -128,8 +129,9 @@ mlds_output_src_file(Indent, MLDS) -->
 	mlds_output_src_imports(Indent, Imports), io__nl,
 	mlds_output_c_decls(Indent, ForeignCode), io__nl,
 	mlds_output_c_defns(Indent, ForeignCode), io__nl,
-	mlds_output_decls(Indent, PrivateDefns), io__nl,
-	mlds_output_defns(Indent, Defns), io__nl,
+	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
+	mlds_output_decls(Indent, MLDS_ModuleName, PrivateDefns), io__nl,
+	mlds_output_defns(Indent, MLDS_ModuleName, Defns), io__nl,
 	mlds_output_src_end(Indent, ModuleName).
 
 :- pred mlds_output_hdr_start(int, mercury_module_name, io__state, io__state).
@@ -212,42 +214,46 @@ mlds_output_c_defns(_, _) --> [].
 %
 
 
-:- pred mlds_output_decls(int, mlds__defns, io__state, io__state).
-:- mode mlds_output_decls(in, in, di, uo) is det.
+:- pred mlds_output_decls(int, mlds_module_name, mlds__defns,
+		io__state, io__state).
+:- mode mlds_output_decls(in, in, in, di, uo) is det.
 
-mlds_output_decls(Indent, Defns) -->
-	list__foldl(mlds_output_decl(Indent), Defns).
+mlds_output_decls(Indent, ModuleName, Defns) -->
+	list__foldl(mlds_output_decl(Indent, ModuleName), Defns).
 
-:- pred mlds_output_defns(int, mlds__defns, io__state, io__state).
-:- mode mlds_output_defns(in, in, di, uo) is det.
+:- pred mlds_output_defns(int, mlds_module_name, mlds__defns,
+		io__state, io__state).
+:- mode mlds_output_defns(in, in, in, di, uo) is det.
 
-mlds_output_defns(Indent, Defns) -->
-	list__foldl(mlds_output_defn(Indent), Defns).
+mlds_output_defns(Indent, ModuleName, Defns) -->
+	list__foldl(mlds_output_defn(Indent, ModuleName), Defns).
 
 
-:- pred mlds_output_decl(int, mlds__defn, io__state, io__state).
-:- mode mlds_output_decl(in, in, di, uo) is det.
+:- pred mlds_output_decl(int, mlds_module_name, mlds__defn,
+		io__state, io__state).
+:- mode mlds_output_decl(in, in, in, di, uo) is det.
 
-mlds_output_decl(Indent, Defn) -->
+mlds_output_decl(Indent, ModuleName, Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
 	mlds_output_context(Context),
 	mlds_indent(Indent),
 	mlds_output_decl_flags(Flags),
-	mlds_output_decl_body(Indent, Name, DefnBody).
+	mlds_output_decl_body(Indent, qual(ModuleName, Name), DefnBody).
 
-:- pred mlds_output_defn(int, mlds__defn, io__state, io__state).
-:- mode mlds_output_defn(in, in, di, uo) is det.
+:- pred mlds_output_defn(int, mlds_module_name, mlds__defn,
+		io__state, io__state).
+:- mode mlds_output_defn(in, in, in, di, uo) is det.
 
-mlds_output_defn(Indent, Defn) -->
+mlds_output_defn(Indent, ModuleName, Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
 	mlds_output_context(Context),
 	mlds_indent(Indent),
 	mlds_output_decl_flags(Flags),
-	mlds_output_defn_body(Indent, Name, DefnBody).
+	mlds_output_defn_body(Indent, qual(ModuleName, Name), DefnBody).
 
 
-:- pred mlds_output_decl_body(int, mlds__entity_name, mlds__entity_defn,
-			io__state, io__state).
+:- pred mlds_output_decl_body(int, mlds__qualified_entity_name,
+		mlds__entity_defn, io__state, io__state).
 :- mode mlds_output_decl_body(in, in, in, di, uo) is det.
 
 mlds_output_decl_body(Indent, Name, DefnBody) -->
@@ -265,8 +271,8 @@ mlds_output_decl_body(Indent, Name, DefnBody) -->
 	),
 	io__write_string(";\n").
 
-:- pred mlds_output_defn_body(int, mlds__entity_name, mlds__entity_defn,
-			io__state, io__state).
+:- pred mlds_output_defn_body(int, mlds__qualified_entity_name,
+		mlds__entity_defn, io__state, io__state).
 :- mode mlds_output_defn_body(in, in, in, di, uo) is det.
 
 mlds_output_defn_body(Indent, Name, DefnBody) -->
@@ -299,14 +305,14 @@ mlds_output_context(Context) -->
 % Code to output type declarations/definitions
 %
 
-:- pred mlds_output_class(int, mlds__entity_name, mlds__class,
+:- pred mlds_output_class(int, mlds__qualified_entity_name, mlds__class,
 		io__state, io__state).
 :- mode mlds_output_class(in, in, in, di, uo) is erroneous.
 
 mlds_output_class(_Indent, _Name, _ClassDefn) -->
 	{ error("NYI 3") }.
 
-:- pred mlds_output_class_decl(int, mlds__entity_name, mlds__class,
+:- pred mlds_output_class_decl(int, mlds__qualified_entity_name, mlds__class,
 		io__state, io__state).
 :- mode mlds_output_class_decl(in, in, in, di, uo) is erroneous.
 
@@ -318,16 +324,16 @@ mlds_output_class_decl(_Indent, _Name, _ClassDefn) -->
 % Code to output data declarations/definitions
 %
 
-:- pred mlds_output_data_decl(mlds__entity_name, mlds__type,
+:- pred mlds_output_data_decl(mlds__qualified_entity_name, mlds__type,
 			io__state, io__state).
 :- mode mlds_output_data_decl(in, in, di, uo) is det.
 
 mlds_output_data_decl(Name, Type) -->
 	mlds_output_type(Type),
 	io__write_char(' '),
-	mlds_output_name(Name).
+	mlds_output_fully_qualified_name(Name, mlds_output_name).
 
-:- pred mlds_output_data_defn(mlds__entity_name, mlds__type,
+:- pred mlds_output_data_defn(mlds__qualified_entity_name, mlds__type,
 			maybe(mlds__initializer), io__state, io__state).
 :- mode mlds_output_data_defn(in, in, in, di, uo) is det.
 
@@ -378,8 +384,8 @@ mlds_output_pred_proc_id(proc(PredId, ProcId)) -->
 	io__write_int(ProcIdNum),
 	io__write_string(" */\n").
 
-:- pred mlds_output_func(int, entity_name, func_params, maybe(statement),
-			io__state, io__state).
+:- pred mlds_output_func(int, qualified_entity_name, func_params,
+		maybe(statement), io__state, io__state).
 :- mode mlds_output_func(in, in, in, in, di, uo) is det.
 
 mlds_output_func(Indent, Name, Signature, MaybeBody) -->
@@ -391,10 +397,10 @@ mlds_output_func(Indent, Name, Signature, MaybeBody) -->
 		{ MaybeBody = yes(Body) },
 		io__write_string("\n"),
 		% require Body0 = statement(block(_, _), _)
-		mlds_output_statement(Indent, Body)
+		mlds_output_statement(Indent, Name, Body)
 	).
 
-:- pred mlds_output_func_decl(int, entity_name, func_params, 
+:- pred mlds_output_func_decl(int, qualified_entity_name, func_params, 
 			io__state, io__state).
 :- mode mlds_output_func_decl(in, in, in, di, uo) is det.
 
@@ -408,26 +414,27 @@ mlds_output_func_decl(Indent, Name, Signature) -->
 		{ error("mlds_output_func: multiple return types") }
 	),
 	io__write_char(' '),
-	mlds_output_name(Name),
-	mlds_output_params(Indent, Parameters).
+	mlds_output_fully_qualified_name(Name, mlds_output_name),
+	mlds_output_params(Indent, Name, Parameters).
 
-:- pred mlds_output_params(int, assoc_list(entity_name, mlds__type),
-				io__state, io__state).
-:- mode mlds_output_params(in, in, di, uo) is det.
+:- pred mlds_output_params(int, qualified_entity_name,
+		assoc_list(entity_name, mlds__type), io__state, io__state).
+:- mode mlds_output_params(in, in, in, di, uo) is det.
 
-mlds_output_params(Indent, Parameters) -->
+mlds_output_params(Indent, FuncName, Parameters) -->
 	io__write_char('('),
-	io__write_list(Parameters, ", ", mlds_output_param(Indent)),
+	io__write_list(Parameters, ", ", mlds_output_param(Indent, FuncName)),
 	io__write_char(')').
 
-:- pred mlds_output_param(int, pair(mlds__entity_name, mlds__type),
-		io__state, io__state).
-:- mode mlds_output_param(in, in, di, uo) is det.
+:- pred mlds_output_param(int, qualified_entity_name,
+		pair(mlds__entity_name, mlds__type), io__state, io__state).
+:- mode mlds_output_param(in, in, in, di, uo) is det.
 
-mlds_output_param(_Indent, Name - Type) -->
+mlds_output_param(_Indent, qual(ModuleName, _FuncName), Name - Type) -->
 	mlds_output_type(Type),
 	io__write_char(' '),
-	mlds_output_name(Name).
+	mlds_output_fully_qualified_name(qual(ModuleName, Name),
+		mlds_output_name).
 
 %-----------------------------------------------------------------------------%
 %
@@ -608,52 +615,55 @@ mlds_output_abstractness(concrete) --> [].
 % Code to output statements
 %
 
-:- pred mlds_output_statements(int, list(mlds__statement),
-				io__state, io__state).
-:- mode mlds_output_statements(in, in, di, uo) is det.
+:- pred mlds_output_statements(int, qualified_entity_name,
+		list(mlds__statement), io__state, io__state).
+:- mode mlds_output_statements(in, in, in, di, uo) is det.
 
-mlds_output_statements(Indent, Statements) -->
-	list__foldl(mlds_output_statement(Indent), Statements).
+mlds_output_statements(Indent, FuncName, Statements) -->
+	list__foldl(mlds_output_statement(Indent, FuncName), Statements).
 
-:- pred mlds_output_statement(int, mlds__statement, io__state, io__state).
-:- mode mlds_output_statement(in, in, di, uo) is det.
+:- pred mlds_output_statement(int, qualified_entity_name, mlds__statement,
+		io__state, io__state).
+:- mode mlds_output_statement(in, in, in, di, uo) is det.
 
-mlds_output_statement(Indent, mlds__statement(Statement, Context)) -->
+mlds_output_statement(Indent, FuncName, mlds__statement(Statement, Context)) -->
 	mlds_output_context(Context),
-	mlds_output_stmt(Indent, Statement).
+	mlds_output_stmt(Indent, FuncName, Statement).
 
-:- pred mlds_output_stmt(int, mlds__stmt, io__state, io__state).
-:- mode mlds_output_stmt(in, in, di, uo) is det.
+:- pred mlds_output_stmt(int, qualified_entity_name, mlds__stmt,
+		io__state, io__state).
+:- mode mlds_output_stmt(in, in, in, di, uo) is det.
 
 	%
 	% sequence
 	%
-mlds_output_stmt(Indent, block(Defns, Statements)) -->
+mlds_output_stmt(Indent, FuncName, block(Defns, Statements)) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 	( { Defns \= [] } ->
-		mlds_output_defns(Indent + 1, Defns),
+		{ FuncName = qual(ModuleName, _) },
+		mlds_output_defns(Indent + 1, ModuleName, Defns),
 		io__write_string("\n")
 	;
 		[]
 	),
-	mlds_output_statements(Indent + 1, Statements),
+	mlds_output_statements(Indent + 1, FuncName, Statements),
 	mlds_indent(Indent),
 	io__write_string("}\n").
 
 	%
 	% iteration
 	%
-mlds_output_stmt(Indent, while(Cond, Statement, no)) -->
+mlds_output_stmt(Indent, FuncName, while(Cond, Statement, no)) -->
 	mlds_indent(Indent),
 	io__write_string("while ("),
 	mlds_output_rval(Cond),
 	io__write_string(")\n"),
-	mlds_output_statement(Indent + 1, Statement).
-mlds_output_stmt(Indent, while(Cond, Statement, yes)) -->
+	mlds_output_statement(Indent + 1, FuncName, Statement).
+mlds_output_stmt(Indent, FuncName, while(Cond, Statement, yes)) -->
 	mlds_indent(Indent),
 	io__write_string("do {\n"),
-	mlds_output_statement(Indent + 1, Statement),
+	mlds_output_statement(Indent + 1, FuncName, Statement),
 	mlds_indent(Indent),
 	io__write_string("} while ("),
 	mlds_output_rval(Cond),
@@ -662,7 +672,7 @@ mlds_output_stmt(Indent, while(Cond, Statement, yes)) -->
 	%
 	% selection (see also computed_goto)
 	%
-mlds_output_stmt(Indent, if_then_else(Cond, Then0, MaybeElse)) -->
+mlds_output_stmt(Indent, FuncName, if_then_else(Cond, Then0, MaybeElse)) -->
 	%
 	% we need to take care to avoid problems caused by the
 	% dangling else ambiguity
@@ -679,11 +689,11 @@ mlds_output_stmt(Indent, if_then_else(Cond, Then0, MaybeElse)) -->
 	io__write_string("if ("),
 	mlds_output_rval(Cond),
 	io__write_string(")\n"),
-	mlds_output_statement(Indent + 1, Then),
+	mlds_output_statement(Indent + 1, FuncName, Then),
 	( { MaybeElse = yes(Else) } ->
 		mlds_indent(Indent),
 		io__write_string("else\n"),
-		mlds_output_statement(Indent + 1, Else)
+		mlds_output_statement(Indent + 1, FuncName, Else)
 	;
 		[]
 	).
@@ -691,7 +701,7 @@ mlds_output_stmt(Indent, if_then_else(Cond, Then0, MaybeElse)) -->
 	%
 	% transfer of control
 	%
-mlds_output_stmt(Indent, label(LabelName)) -->
+mlds_output_stmt(Indent, _FuncName, label(LabelName)) -->
 	%
 	% Note: MLDS allows labels at the end of blocks.
 	% C doesn't.  Hence we need to insert a semi-colon after the colon
@@ -700,12 +710,12 @@ mlds_output_stmt(Indent, label(LabelName)) -->
 	mlds_indent(Indent - 1),
 	mlds_output_label_name(LabelName),
 	io__write_string(":;\n").
-mlds_output_stmt(Indent, goto(LabelName)) -->
+mlds_output_stmt(Indent, _FuncName, goto(LabelName)) -->
 	mlds_indent(Indent),
 	io__write_string("goto "),
 	mlds_output_label_name(LabelName),
 	io__write_string(";\n").
-mlds_output_stmt(Indent, computed_goto(Expr, Labels)) -->
+mlds_output_stmt(Indent, _FuncName, computed_goto(Expr, Labels)) -->
 	% XXX for GNU C, we could output potentially more efficient code
 	% by using an array of labels; this would tell the compiler that
 	% it didn't need to do any range check.
@@ -732,8 +742,8 @@ mlds_output_stmt(Indent, computed_goto(Expr, Labels)) -->
 	%
 	% function call/return
 	%
-mlds_output_stmt(Indent, call(_Signature, Func, MaybeObject, Args, Results,
-				IsTailCall)) -->
+mlds_output_stmt(Indent, _FuncName, call(_Signature, Func, MaybeObject,
+		Args, Results, IsTailCall)) -->
 	mlds_indent(Indent),
 	( { IsTailCall = tail_call } ->
 		io__write_string("return ")
@@ -759,7 +769,7 @@ mlds_output_stmt(Indent, call(_Signature, Func, MaybeObject, Args, Results,
 	io__write_list(Args, ", ", mlds_output_rval),
 	io__write_string(");\n").
 
-mlds_output_stmt(Indent, return(Results)) -->
+mlds_output_stmt(Indent, _FuncName, return(Results)) -->
 	mlds_indent(Indent),
 	io__write_string("return"),
 	( { Results = [] } ->
@@ -781,7 +791,7 @@ mlds_output_stmt(Indent, return(Results)) -->
 	%
 	% atomic statements
 	%
-mlds_output_stmt(Indent, atomic(AtomicStatement)) -->
+mlds_output_stmt(Indent, _FuncName, atomic(AtomicStatement)) -->
 	mlds_output_atomic_stmt(Indent, AtomicStatement).
 
 :- pred mlds_output_label_name(mlds__label, io__state, io__state).
@@ -1171,11 +1181,11 @@ mlds_indent(N) -->
 *****/
 
 /**************************
-% An mlds__module_name specifies the name of an mlds package or class.
-:- type mlds__module_name.
+% An mlds_module_name specifies the name of an mlds package or class.
+:- type mlds_module_name.
 
 % An mlds__package_name specifies the name of an mlds package.
-:- type mlds__package_name == mlds__module_name.
+:- type mlds__package_name == mlds_module_name.
 
 % Given the name of a Mercury module, return the name of the corresponding
 % MLDS package.
