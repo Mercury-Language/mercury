@@ -140,8 +140,6 @@ while true; do
 	shift
 done
 
-set -x
-
 # include the file `final_grade_options.sh-subr'
 @FINAL_GRADE_OPTIONS@
 
