@@ -256,6 +256,10 @@
 					% it is packed inside a typeclass_info,
 					% and is at the given offset
 
+	% type_info_locn_var(TypeInfoLocn, Var): 
+	% 	Var is the variable corresponding to the TypeInfoLocn. Note 
+	% 	that this does *not* mean that Var is a type_info; it may be
+	% 	a typeclass_info in which the type_info is nested.
 :- pred type_info_locn_var(type_info_locn::in, var::out) is det.
 
 :- pred type_info_locn_set_var(type_info_locn::in, var::in, 
