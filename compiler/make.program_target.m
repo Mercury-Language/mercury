@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -486,7 +486,7 @@ install_library(MainModuleName, Succeeded, Info0, Info) -->
 		IntsSucceeded, Info1, Info2),
 
 	globals__io_get_globals(Globals),
-	{ compute_grade(Globals, Grade) },
+	{ grade_directory_component(Globals, Grade) },
         install_library_grade_files(LinkSucceeded, Grade, MainModuleName,
 		AllModules, GradeSucceeded, Info2, Info3),
 	(
