@@ -136,7 +136,7 @@ GC_API void (* GC_finalizer_notifier) GC_PROTO((void));
 			/* thread, which will call GC_invoke_finalizers */
 			/* in response.					*/
 
-GC_API int GC_dont_gc;	/* != 0 ==> Dont collect.  In versions 7.2a1+,	*/
+GC_API int GC_dont_gc;	/* != 0 ==> Dont collect.  In versions 6.2a1+,	*/
 			/* this overrides explicit GC_gcollect() calls.	*/
 			/* Used as a counter, so that nested enabling	*/
 			/* and disabling work correctly.  Should	*/
@@ -243,6 +243,7 @@ GC_API unsigned long GC_time_limit;
  * allocation, since unlike the regular allocation routines, GC_local_malloc
  * is not self-initializing.  If you use GC_local_malloc you should arrange
  * to call this somehow (e.g. from a constructor) before doing any allocation.
+ * For win32 threads, it needs to be called explicitly.
  */
 GC_API void GC_init GC_PROTO((void));
 
@@ -346,17 +347,21 @@ GC_API void GC_clear_roots GC_PROTO((void));
 GC_API void GC_add_roots GC_PROTO((char * low_address,
 				   char * high_address_plus_1));
 
+/* Remove a root segment.  Wizards only. */
+GC_API void GC_remove_roots GC_PROTO((char * low_address, 
+    char * high_address_plus_1));
+
 /* Add a displacement to the set of those considered valid by the	*/
 /* collector.  GC_register_displacement(n) means that if p was returned */
 /* by GC_malloc, then (char *)p + n will be considered to be a valid	*/
-/* pointer to n.  N must be small and less than the size of p.		*/
+/* pointer to p.  N must be small and less than the size of p.		*/
 /* (All pointers to the interior of objects from the stack are		*/
 /* considered valid in any case.  This applies to heap objects and	*/
 /* static data.)							*/
 /* Preferably, this should be called before any other GC procedures.	*/
 /* Calling it later adds to the probability of excess memory		*/
 /* retention.								*/
-/* This is a no-op if the collector was compiled with recognition of	*/
+/* This is a no-op if the collector has recognition of			*/
 /* arbitrary interior pointers enabled, which is now the default.	*/
 GC_API void GC_register_displacement GC_PROTO((GC_word n));
 
@@ -398,7 +403,7 @@ GC_API size_t GC_get_total_bytes GC_PROTO((void));
 /* ineffective.								*/
 GC_API void GC_disable GC_PROTO((void));
 
-/* Reenable garbage collection.  GC_diable() and GC_enable() calls 	*/
+/* Reenable garbage collection.  GC_disable() and GC_enable() calls 	*/
 /* nest.  Garbage collection is enabled if the number of calls to both	*/
 /* both functions is equal.						*/
 GC_API void GC_enable GC_PROTO((void));
@@ -876,9 +881,8 @@ GC_PTR GC_malloc_many(size_t lb);
 extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
 #endif /* THREADS && !SRC_M3 */
 
-#if defined(GC_WIN32_THREADS)
+#if defined(GC_WIN32_THREADS) && !defined(__CYGWIN32__) && !defined(__CYGWIN__)
 # include <windows.h>
-# include <winbase.h>
 
   /*
    * All threads must be created using GC_CreateThread, so that they will be
@@ -887,7 +891,7 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
    * and does then use DllMain to keep track of thread creations.  But new code
    * should be built to call GC_CreateThread.
    */
-  HANDLE WINAPI GC_CreateThread(
+   GC_API HANDLE WINAPI GC_CreateThread(
       LPSECURITY_ATTRIBUTES lpThreadAttributes,
       DWORD dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress,
       LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId );
@@ -909,7 +913,7 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
 #  endif
 # endif /* defined(_WIN32_WCE) */
 
-#endif /* defined(GC_WIN32_THREADS) */
+#endif /* defined(GC_WIN32_THREADS)  && !cygwin */
 
 /*
  * If you are planning on putting
@@ -922,7 +926,7 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
 		       extern void GC_noop(void *, void *); \
 		       GC_noop(&end, &etext); }
 #else
-# if defined(__CYGWIN32__) && defined(GC_USE_DLL) || defined (_AIX)
+# if defined(__CYGWIN32__) && defined(GC_DLL) || defined (_AIX)
     /*
      * Similarly gnu-win32 DLLs need explicit initialization, as does AIX.
      * (We can't use DATASTART and DATAEND here, because gc_private.h
@@ -935,7 +939,11 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
                GC_add_roots((void *)&_bss_start__, (void *)&_data_end__); \
     }
 # else
+#  if defined(__APPLE__) && defined(__MACH__) || defined(GC_WIN32_THREADS)
+#   define GC_INIT() { GC_init(); }
+#  else
 #   define GC_INIT()
+#  endif
 # endif
 #endif
 

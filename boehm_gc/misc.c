@@ -59,7 +59,7 @@
 #          if defined(GC_WIN32_THREADS) 
 #             if defined(GC_PTHREADS)
 		  pthread_mutex_t GC_allocate_ml = PTHREAD_MUTEX_INITIALIZER;
-#	      elif !defined(GC_NOT_DLL) && (defined(_DLL) || defined(GC_DLL))
+#	      elif defined(GC_DLL)
 		 __declspec(dllexport) CRITICAL_SECTION GC_allocate_ml;
 #	      else
 		 CRITICAL_SECTION GC_allocate_ml;
@@ -483,7 +483,13 @@ void GC_init()
     DISABLE_SIGNALS();
 
 #if defined(GC_WIN32_THREADS) && !defined(GC_PTHREADS)
-    if (!GC_is_initialized) InitializeCriticalSection(&GC_allocate_ml);
+    if (!GC_is_initialized) {
+#     if (_WIN32_WINNT >= 0x0403)
+	InitializeCriticalSectionAndSpinCount (&GC_allocate_ml, 4000)
+#     else
+	InitializeCriticalSection (&GC_allocate_ml);
+#     endif
+    }
 #endif /* MSWIN32 */
 
     LOCK();
@@ -500,6 +506,15 @@ void GC_init()
 	  GC_init_parallel();
 	}
 #   endif /* PARALLEL_MARK || THREAD_LOCAL_ALLOC */
+
+#   if defined(DYNAMIC_LOADING) && defined(DARWIN)
+    {
+        /* This must be called WITHOUT the allocation lock held
+        and before any threads are created */
+        extern void GC_init_dyld();
+        GC_init_dyld();
+    }
+#   endif
 }
 
 #if defined(MSWIN32) || defined(MSWINCE)
@@ -512,17 +527,6 @@ void GC_init()
 
 extern void GC_setpagesize();
 
-#ifdef UNIX_LIKE
-
-extern void GC_set_and_save_fault_handler GC_PROTO((void (*handler)(int)));
-
-static void looping_handler(sig)
-int sig;
-{
-    GC_err_printf1("Caught signal %d: looping in handler\n", sig);
-    for(;;);
-}
-#endif
 
 #ifdef MSWIN32
 extern GC_bool GC_no_win32_dlls;
@@ -537,6 +541,35 @@ void GC_exit_check GC_PROTO((void))
 
 #ifdef SEARCH_FOR_DATA_START
   extern void GC_init_linux_data_start GC_PROTO((void));
+#endif
+
+#ifdef UNIX_LIKE
+
+extern void GC_set_and_save_fault_handler GC_PROTO((void (*handler)(int)));
+
+static void looping_handler(sig)
+int sig;
+{
+    GC_err_printf1("Caught signal %d: looping in handler\n", sig);
+    for(;;);
+}
+
+static GC_bool installed_looping_handler = FALSE;
+
+void maybe_install_looping_handler()
+{
+    /* Install looping handler before the write fault handler, so we	*/
+    /* handle write faults correctly.					*/
+      if (!installed_looping_handler && 0 != GETENV("GC_LOOP_ON_ABORT")) {
+        GC_set_and_save_fault_handler(looping_handler);
+        installed_looping_handler = TRUE;
+      }
+}
+
+#else /* !UNIX_LIKE */
+
+# define maybe_install_looping_handler()
+
 #endif
 
 void GC_init_inner()
@@ -603,11 +636,7 @@ void GC_init_inner()
         }
       }
     }
-#   ifdef UNIX_LIKE
-      if (0 != GETENV("GC_LOOP_ON_ABORT")) {
-        GC_set_and_save_fault_handler(looping_handler);
-      }
-#   endif
+    maybe_install_looping_handler();
     /* Adjust normal object descriptor for extra allocation.	*/
     if (ALIGNMENT > GC_DS_TAGS && EXTRA_BYTES != 0) {
       GC_obj_kinds[NORMAL].ok_descriptor = ((word)(-ALIGNMENT) | GC_DS_LENGTH);
@@ -628,7 +657,8 @@ void GC_init_inner()
 #   if (defined(NETBSD) || defined(OPENBSD)) && defined(__ELF__)
 	GC_init_netbsd_elf();
 #   endif
-#   if defined(GC_PTHREADS) || defined(GC_SOLARIS_THREADS)
+#   if defined(GC_PTHREADS) || defined(GC_SOLARIS_THREADS) \
+       || defined(GC_WIN32_THREADS)
         GC_thr_init();
 #   endif
 #   ifdef GC_SOLARIS_THREADS
@@ -639,14 +669,14 @@ void GC_init_inner()
 	|| defined(GC_SOLARIS_THREADS)
       if (GC_stackbottom == 0) {
 	GC_stackbottom = GC_get_stack_base();
-#       if defined(LINUX) && defined(IA64)
+#       if (defined(LINUX) || defined(HPUX)) && defined(IA64)
 	  GC_register_stackbottom = GC_get_register_stack_base();
 #       endif
       } else {
-#       if defined(LINUX) && defined(IA64)
+#       if (defined(LINUX) || defined(HPUX)) && defined(IA64)
 	  if (GC_register_stackbottom == 0) {
 	    WARN("GC_register_stackbottom should be set with GC_stackbottom", 0);
-	    /* The following is likely to fail, since we rely on 	*/
+	    /* The following may fail, since we may rely on	 	*/
 	    /* alignment properties that may not hold with a user set	*/
 	    /* GC_stackbottom.						*/
 	    GC_register_stackbottom = GC_get_register_stack_base();
@@ -654,9 +684,9 @@ void GC_init_inner()
 #	endif
       }
 #   endif
-    GC_ASSERT(sizeof (ptr_t) == sizeof(word));
-    GC_ASSERT(sizeof (signed_word) == sizeof(word));
-    GC_ASSERT(sizeof (struct hblk) == HBLKSIZE);
+    GC_STATIC_ASSERT(sizeof (ptr_t) == sizeof(word));
+    GC_STATIC_ASSERT(sizeof (signed_word) == sizeof(word));
+    GC_STATIC_ASSERT(sizeof (struct hblk) == HBLKSIZE);
 #   ifndef THREADS
 #     if defined(STACK_GROWS_UP) && defined(STACK_GROWS_DOWN)
   	ABORT(
@@ -778,8 +808,9 @@ void GC_enable_incremental GC_PROTO(())
     if (GC_incremental) goto out;
     GC_setpagesize();
     if (GC_no_win32_dlls) goto out;
-#   ifndef GC_SOLARIS_THREADS
-        GC_dirty_init();
+#   ifndef GC_SOLARIS_THREADS 
+      maybe_install_looping_handler();  /* Before write fault handler! */
+      GC_dirty_init();
 #   endif
     if (!GC_is_initialized) {
         GC_init_inner();
@@ -991,6 +1022,9 @@ GC_warn_proc GC_current_warn_proc = GC_default_warn_proc;
 {
     GC_warn_proc result;
 
+#   ifdef GC_WIN32_THREADS
+      GC_ASSERT(GC_is_initialized);
+#   endif
     LOCK();
     result = GC_current_warn_proc;
     GC_current_warn_proc = p;

@@ -62,14 +62,14 @@ unsigned flags;
     if (h == 0) {
 	result = 0;
     } else {
-	int total_bytes = BYTES_TO_WORDS(n_blocks * HBLKSIZE);
+	int total_bytes = n_blocks * HBLKSIZE;
 	if (n_blocks > 1) {
-	    GC_large_allocd_bytes += n_blocks * HBLKSIZE;
+	    GC_large_allocd_bytes += total_bytes;
 	    if (GC_large_allocd_bytes > GC_max_large_allocd_bytes)
 	        GC_max_large_allocd_bytes = GC_large_allocd_bytes;
 	}
 	result = (ptr_t) (h -> hb_body);
-	GC_words_wasted += total_bytes - lw;
+	GC_words_wasted += BYTES_TO_WORDS(total_bytes) - lw;
     }
     return result;
 }
