@@ -27,6 +27,7 @@ ALLOW_BROWSER_PREFIX=yes
 MERCURY_DIR=..
 LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
+-include Mmake.browser.params
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
@@ -38,8 +39,8 @@ MERCURY_MAIN_MODULES=$(BROWSER_LIB_NAME) browse_test declarative_test
 #-----------------------------------------------------------------------------#
 
 # Specify which compilers to use to compile the library.
-# Don't change these without good reason - if you want to
-# do a temporary change, change ../Mmake.params.
+# Don't change these without good reason - if you want to do a temporary
+# change, change ../Mmake.params, or create Mmake.browser.params.
 
 CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
 MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
