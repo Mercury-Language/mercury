@@ -81,6 +81,9 @@
 :- pred string__to_char_list(string, list(character)).
 :- mode string__to_char_list(in, out) is det.
 
+:- pred string__from_char_list(list(character), string).
+:- mode string__from_char_list(in, out) is det.
+
 :- pred string__to_int(string, int).
 :- mode string__to_int(in, out) is semidet.
 %	Convert a string (of digits) to an int. If the string contains
@@ -362,6 +365,10 @@ string__to_char_list(String, CharList) :-
 	string__to_int_list(String, IntList),
 	string__int_list_to_char_list(IntList, CharList).
 
+string__from_char_list(CharList, String) :-
+	string__char_list_to_int_list(CharList, IntList),
+	string__to_int_list(String, IntList).
+
 :- pred string__int_list_to_char_list(list(int), list(character)).
 :- mode string__int_list_to_char_list(in, out) is det.
 
@@ -373,6 +380,18 @@ string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
 		error("string__int_list_to_char_list: char_to_int failed")
 	),
 	string__int_list_to_char_list(Codes, Chars).
+
+:- pred string__char_list_to_int_list(list(character), list(int)).
+:- mode string__char_list_to_int_list(in, out) is det.
+
+string__char_list_to_int_list([], []).
+string__char_list_to_int_list([Char | Chars], [Code | Codes]) :-
+	( char_to_int(Char, Code0) ->
+		Code = Code0
+	;
+		error("string__char_list_to_int_list: char_to_int failed")
+	),
+	string__char_list_to_int_list(Chars, Codes).
 
 string__capitalize_first(S0, S) :-
 	( string__first_char(S0, C, S1) ->

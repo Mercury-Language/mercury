@@ -654,9 +654,10 @@ output_label(local(ProcLabel, Num)) -->
 
 	% XXX we need to do something with the module name.
 
-output_proc_label(proc(_Module, Pred, Arity, ModeNum0)) -->
+output_proc_label(proc(_Module, Pred0, Arity, ModeNum0)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),
+	{ llds__name_mangle(Pred0 ,Pred) },
 	io__write_string(Pred),
 	io__write_string("_"),
 	io__write_int(Arity),
@@ -1061,6 +1062,38 @@ llds__reg_to_string(f(N), Description) :-
 	string__int_to_string(N, N_String),
 	string__append("f(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
+
+
+	% XXX This is a quick hack!
+
+:- pred llds__name_mangle(string, string).
+:- mode llds__name_mangle(in, out) is det.
+
+llds__name_mangle(Pred0, Pred) :-
+	string__to_char_list(Pred0, CharList0),
+	llds__name_mangle_2(CharList0, CharList),
+	string__from_char_list(CharList, Pred).
+
+:- pred llds__name_mangle_2(list(character), list(character)).
+:- mode llds__name_mangle_2(in, out) is det.
+
+llds__name_mangle_2([], []).
+llds__name_mangle_2([C|Cs], Chars) :-
+	llds__mangle_char(C, Chars0),
+	llds__name_mangle_2(Cs, Chars1),
+	list__append(Chars0, Chars1, Chars).
+
+:- pred llds__mangle_char(character, list(character)).
+:- mode llds__mangle_char(in, out) is det.
+
+llds__mangle_char(C, Chars) :-
+	(
+		C = ('=')
+	->
+		Chars = ['_','_','e','q','_','_']
+	;
+		Chars = [C]
+	).
 
 :- end_module llds.
 

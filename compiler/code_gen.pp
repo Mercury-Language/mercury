@@ -94,9 +94,10 @@ generate_code(ModuleInfo, c_file(Name, [c_module(ModName, Procedures)])) -->
 		% now generate the code for each predicate
 	generate_pred_list_code(ModuleInfo, PredIDList, Requests0,
 			Procedures0, Requests),
-	unify_proc__generate_unification_procs(ModuleInfo, Requests,
-		UnifyProcs),
-	{ list__append(Procedures0, UnifyProcs, Procedures) }.
+	% unify_proc__generate_unification_procs(ModuleInfo, Requests,
+	% 	UnifyProcs),
+	% { list__append(Procedures0, UnifyProcs, Procedures) }.
+	{ Procedures = Procedures0 }.
 
 %
 % Generate a list of c_procedure structures for each mode of each

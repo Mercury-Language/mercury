@@ -35,7 +35,7 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification.
-:- import_module unify_proc.
+:- import_module unify_proc, type_util.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
@@ -429,7 +429,16 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 
 add_unify_pred(Module0, VarSet, Type, Ctors, Context, Status, Module) -->
 	{ module_info_name(Module0, ModuleName) },
-	{ PredName = unqualified("=") },
+	{ (
+		type_to_type_id(Type, TypeId0, _)
+	->
+		TypeId = TypeId0
+	;
+		error("Cannot find type name.")
+	) },
+	{ type_util__type_id_name(Module0, TypeId, TypeName) },
+	{ string__append(TypeName, "__eq__", PredName0) },
+	{ PredName = unqualified(PredName0) },
 	{ Arity = 2 },
 	{ Cond = true },
 	{ ArgTypes = [Type, Type] },
