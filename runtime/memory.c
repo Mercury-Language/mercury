@@ -190,6 +190,8 @@ MemoryZone *nondetstack_zone;
 static	size_t		unit;
 static	size_t		page_size;
 
+static void		debug_memory(void);
+
 static MemoryZone	*get_zone(void);
 static void		unget_zone(MemoryZone *zone);
 
@@ -266,7 +268,49 @@ init_memory(void)
 	init_memory_arena();
 	init_zones();
 	setup_signal();
+	if (memdebug) debug_memory();
 } /* end init_memory() */
+
+static void
+debug_memory(void)
+{
+	MemoryZone	*zone;
+
+	fprintf(stderr, "\n");
+	fprintf(stderr, "pcache_size  = %d (0x%x)\n",
+		pcache_size, pcache_size);
+	fprintf(stderr, "page_size    = %d (0x%x)\n",
+		page_size, page_size);
+	fprintf(stderr, "unit         = %d (0x%x)\n",
+		unit, unit);
+
+	fprintf(stderr, "\n");
+	fprintf(stderr, "fake_reg       = %p (offset %ld)\n",
+		(void *) fake_reg, (long) fake_reg & (unit-1));
+	fprintf(stderr, "\n");
+
+	for (zone = used_memory_zones; zone; zone = zone->next)
+	{
+		fprintf(stderr, "%-16s#%d-base	= %p\n",
+			zone->name, zone->id, (void *) zone->bottom);
+		fprintf(stderr, "%-16s#%d-min		= %p\n",
+			zone->name, zone->id, (void *) zone->min);
+		fprintf(stderr, "%-16s#%d-top		= %p\n",
+			zone->name, zone->id, (void *) zone->top);
+#ifdef HAVE_MPROTECT
+  #ifdef HAVE_SIGINFO
+		fprintf(stderr, "%-16s#%d-redzone	= %p\n",
+			zone->name, zone->id, (void *) zone->redzone);
+  #endif /* HAVE_SIGINFO */
+		fprintf(stderr, "%-16s#%d-hardmax		= %p\n",
+			zone->name, zone->id, (void *) zone->hardmax);
+#endif /* HAVE_MPROTECT */
+		fprintf(stderr, "%-16s#%d-size		= %lu\n",
+			zone->name, zone->id, (unsigned long)
+			((char *)zone->hardmax - (char *)zone->min));
+		fprintf(stderr, "\n");
+	}
+}
 
 /*
 ** init_memory_arena() allocates (if necessary) the top-level memory pool
