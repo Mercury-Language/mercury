@@ -3790,12 +3790,12 @@ io__make_temp(Dir, Prefix, Name) -->
 	} while (fd == -1 && errno == EEXIST &&
 		num_tries < MAX_TEMPNAME_TRIES);
 	if (fd == -1) {
-		ML_maybe_make_err_msg(TRUE, ""error opening temporary file"",
+		ML_maybe_make_err_msg(TRUE, ""error opening temporary file: "",
 			MR_PROC_LABEL, ErrorMessage);
 		Error = -1;
 	}  else {
 		err = close(fd);
-		ML_maybe_make_err_msg(err, ""error closing temporary file"",
+		ML_maybe_make_err_msg(err, ""error closing temporary file: "",
 			MR_PROC_LABEL, ErrorMessage);
 		Error = err;
 	}
