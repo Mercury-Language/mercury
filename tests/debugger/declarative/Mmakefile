@@ -23,6 +23,7 @@ DECLARATIVE_PROGS=		\
 	args			\
 	backtrack		\
 	big			\
+	browse_arg		\
 	comp_gen		\
 	deep_warning		\
 	family			\
@@ -104,6 +105,9 @@ backtrack.out: backtrack backtrack.inp
 
 big.out: big big.inp
 	$(MDB) ./big < big.inp > big.out 2>&1
+
+browse_arg.out: browse_arg browse_arg.inp
+	$(MDB) ./browse_arg < browse_arg.inp > browse_arg.out 2>&1
 
 comp_gen.out: comp_gen comp_gen.inp
 	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1

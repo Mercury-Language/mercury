@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,7 +162,8 @@ browse_atom_argument(Atom, ArgNum, User0, User) -->
 		{ list__index1(Args, ArgNum, MaybeArg) },
 		{ MaybeArg = yes(Arg) }
 	->
-		browse(Arg, User0^instr, User0^outstr, User0^browser, Browser),
+		browse(univ_value(Arg), User0^instr, User0^outstr,
+			User0^browser, Browser),
 		{ User = User0^browser := Browser }
 	;
 		io__write_string(User^outstr, "Invalid argument number\n"),
