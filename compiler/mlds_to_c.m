@@ -32,6 +32,7 @@
 
 :- implementation.
 
+:- import_module llds_out. % XXX needed for llds_out__name_mangle.
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules.
 :- import_module hlds_pred. % for `pred_proc_id'.
@@ -165,7 +166,16 @@ mlds_output_hdr_start(Indent, ModuleName) -->
 	io__write_string("/* :- interface. */\n"),
 	io__nl,
 	mlds_indent(Indent),
-	io__write_string("#include ""mercury_imp.h""\n\n").
+	io__write_string("#ifndef MR_HEADER_GUARD_"),
+	prog_out__write_sym_name(ModuleName),
+	io__nl,
+	mlds_indent(Indent),
+	io__write_string("#define MR_HEADER_GUARD_"),
+	prog_out__write_sym_name(ModuleName),
+	io__nl,
+	io__nl,
+	mlds_indent(Indent),
+	io__write_string("#include ""mercury.h""\n").
 
 :- pred mlds_output_src_start(indent, mercury_module_name,
 		io__state, io__state).
@@ -176,7 +186,7 @@ mlds_output_src_start(Indent, ModuleName) -->
 	mlds_indent(Indent),
 	io__write_string("/* :- module "),
 	prog_out__write_sym_name(ModuleName),
-	io__write_string(". */\n\n"),
+	io__write_string(". */\n"),
 	mlds_indent(Indent),
 	io__write_string("/* :- implementation. */\n"),
 	io__nl,
@@ -191,6 +201,11 @@ mlds_output_src_start(Indent, ModuleName) -->
 :- mode mlds_output_hdr_end(in, in, di, uo) is det.
 
 mlds_output_hdr_end(Indent, ModuleName) -->
+	mlds_indent(Indent),
+	io__write_string("#endif /* MR_HEADER_GUARD_"),
+	prog_out__write_sym_name(ModuleName),
+	io__write_string(" */\n"),
+	io__nl,
 	mlds_indent(Indent),
 	io__write_string("/* :- end_interface "),
 	prog_out__write_sym_name(ModuleName),
@@ -271,6 +286,13 @@ mlds_output_defns(Indent, ModuleName, Defns) -->
 mlds_output_decl(Indent, ModuleName, Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
 	mlds_indent(Context, Indent),
+	( { Name = data(_) } ->
+		% XXX for private data and private functions,
+		% we should use "static"
+		io__write_string("extern ")
+	;
+		[]
+	),
 	mlds_output_decl_flags(Flags),
 	mlds_output_decl_body(Indent, qual(ModuleName, Name), DefnBody).
 
@@ -589,30 +611,27 @@ mlds_output_param_type(_Name - Type) -->
 
 mlds_output_fully_qualified_name(qual(ModuleName, Name), OutputFunc) -->
 	{ SymName = mlds_module_name_to_sym_name(ModuleName) },
-	{ Separator = "__" },
-	{ sym_name_to_string(SymName, Separator, ModuleNameString) },
-	io__write_string(ModuleNameString),
-	io__write_string(Separator),
+	{ llds_out__sym_name_mangle(SymName, MangledModuleName) },
+	io__write_string(MangledModuleName),
+	io__write_string("__"),
 	OutputFunc(Name).
 
 :- pred mlds_output_module_name(mercury_module_name, io__state, io__state).
 :- mode mlds_output_module_name(in, di, uo) is det.
 
 mlds_output_module_name(ModuleName) -->
-	{ Separator = "__" },
-	{ sym_name_to_string(ModuleName, Separator, ModuleNameString) },
-	io__write_string(ModuleNameString).
+	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+	io__write_string(MangledModuleName).
 
 :- pred mlds_output_name(mlds__entity_name, io__state, io__state).
 :- mode mlds_output_name(in, di, uo) is det.
 
-% XXX FIXME!
-% XXX we should escape special characters
 % XXX we should avoid appending the arity, modenum, and seqnum
 %     if they are not needed.
 
 mlds_output_name(type(Name, Arity)) -->
-	io__format("%s_%d", [s(Name), i(Arity)]).
+	{ llds_out__name_mangle(Name, MangledName) },
+	io__format("%s_%d", [s(MangledName), i(Arity)]).
 mlds_output_name(data(DataName)) -->
 	mlds_output_data_name(DataName).
 mlds_output_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId)) -->
@@ -632,7 +651,8 @@ mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity)) -->
 	( { PredOrFunc = predicate, Suffix = "p" }
 	; { PredOrFunc = function, Suffix = "f" }
 	),
-	io__format("%s_%d_%s", [s(Name), i(Arity), s(Suffix)]),
+	{ llds_out__name_mangle(Name, MangledName) },
+	io__format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)]),
 	( { MaybeDefiningModule = yes(DefiningModule) } ->
 		io__write_string("_in__"),
 		mlds_output_module_name(DefiningModule)
@@ -641,7 +661,9 @@ mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity)) -->
 	).
 mlds_output_pred_label(special_pred(PredName, MaybeTypeModule,
 		TypeName, TypeArity)) -->
-	io__write_string(PredName),
+	{ llds_out__name_mangle(PredName, MangledPredName) },
+	{ llds_out__name_mangle(TypeName, MangledTypeName) },
+	io__write_string(MangledPredName),
 	io__write_string("__"),
 	( { MaybeTypeModule = yes(TypeModule) } ->
 		mlds_output_module_name(TypeModule),
@@ -649,25 +671,25 @@ mlds_output_pred_label(special_pred(PredName, MaybeTypeModule,
 	;
 		[]
 	),
-	io__write_string(TypeName),
+	io__write_string(MangledTypeName),
 	io__write_string("_"),
 	io__write_int(TypeArity).
 
 :- pred mlds_output_data_name(mlds__data_name, io__state, io__state).
 :- mode mlds_output_data_name(in, di, uo) is det.
 
-% XX some of these should probably be escaped
-
 mlds_output_data_name(var(Name)) -->
-	io__write_string(Name).
+	{ llds_out__name_mangle(Name, MangledName) },
+	io__write_string(MangledName).
 mlds_output_data_name(common(Num)) -->
 	io__write_string("common_"),
 	io__write_int(Num).
 mlds_output_data_name(type_ctor(BaseData, Name, Arity)) -->
+	{ llds_out__name_mangle(Name, MangledName) },
 	io__write_string("base_type_"),
 	io__write(BaseData),
 	io__write_string("_"),
-	io__write_string(Name),
+	io__write_string(MangledName),
 	io__write_string("_"),
 	io__write_int(Arity).
 mlds_output_data_name(base_typeclass_info(_ClassId, _InstanceId)) -->
@@ -1698,9 +1720,13 @@ mlds_output_proc_label(PredLabel - ProcId) -->
 :- mode mlds_output_data_addr(in, di, uo) is det.
 
 mlds_output_data_addr(data_addr(ModuleName, DataName)) -->
+	% XXX the cast to (Word) is needed for base_type_infos,
+	% but it might not be right for other data_addr values.
+	io__write_string("((Word) &"),
 	mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName)),
 	io__write_string("__"),
-	mlds_output_data_name(DataName).
+	mlds_output_data_name(DataName),
+	io__write_string(")").
 
 %-----------------------------------------------------------------------------%
 %

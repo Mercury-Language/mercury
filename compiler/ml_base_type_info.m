@@ -209,7 +209,15 @@ ml_base_type_info__construct_pred_addrs_2([proc(PredId, ProcId) | Procs],
         pred_info_module(PredInfo, PredModule),
         MLDS_Module = mercury_module_name_to_mlds(PredModule),
         QualifiedProcLabel = qual(MLDS_Module, PredLabel - ProcId),
-        ProcAddrArg = const(code_addr_const(proc(QualifiedProcLabel))),
+        ProcAddrRval = const(code_addr_const(proc(QualifiedProcLabel))),
+	%
+	% Convert the procedure address to a generic type.
+	% We need to use a generic type because since the actual type
+	% for the procedure will depend on how many type_info parameters
+	% it takes, which will depend on the type's arity.
+	%
+        PredParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
+        ProcAddrArg = unop(box(mlds__func_type(PredParams)), ProcAddrRval),
 	%
 	% recursively handle the remaining procedures
 	%

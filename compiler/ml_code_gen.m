@@ -597,6 +597,10 @@
 	%
 :- func ml_gen_pred_label(module_info, pred_id, proc_id) = mlds__pred_label.
 
+	% Generate the function prototype for a given procedure.
+	%
+:- func ml_gen_proc_params(module_info, pred_id, proc_id) = mlds__func_params.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1366,7 +1370,8 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	%
 	% insert the `closure_arg' parameter
 	%
-	{ ClosureArg = data(var("closure_arg")) - mlds__generic_env_ptr_type },
+	{ ClosureArgType = mlds__generic_env_ptr_type },
+	{ ClosureArg = data(var("closure_arg")) - ClosureArgType },
 	{ Params0 = mlds__func_params(ArgParams0, RetParam) },
 	{ Params = mlds__func_params([ClosureArg | ArgParams0], RetParam) },
 	{ Signature = mlds__get_func_signature(Params) },
@@ -1400,6 +1405,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
 		ArgModes, Context, InputRvals, OutputLvals, ConvArgDecls,
 		ConvOutputStatements),
+	{ ClosureRval = unop(unbox(ClosureArgType), lval(ClosureLval)) },
 
 	%
 	% Prepare to generate the call, passing the closure as the first
@@ -1411,7 +1417,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	%
 	{ ObjectRval = no },
 	{ DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
-		[lval(ClosureLval) | InputRvals], OutputLvals,
+		[ClosureRval | InputRvals], OutputLvals,
 		CodeModel, Context) },
 
 	( { ConvArgDecls = [], ConvOutputStatements = [] } ->
@@ -1676,8 +1682,19 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, Context,
 			%
 			% it's an input argument
 			%
+			{ type_util__is_dummy_argument_type(CallerType) ->
+				% The variable may not have been declared,
+				% so we need to generate a dummy value for it.
+				% Using `0' here is more efficient than
+				% using private_builtin__dummy_var, which is
+				% what ml_gen_var will have generated for this
+				% variable.
+				VarRval = const(int_const(0))
+			;
+				VarRval = lval(VarLval)
+			},
 			{ ml_gen_box_or_unbox_rval(CallerType, CalleeType,
-				lval(VarLval), ArgRval) },
+				VarRval, ArgRval) },
 			{ InputRvals = [ArgRval | InputRvals1] },
 			{ OutputLvals = OutputLvals1 },
 			{ ConvDecls = ConvDecls1 },
@@ -1792,18 +1809,24 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 		% argument lval
 		ml_qualify_var(ArgVarName, ArgLval),
 
-		% generate a statement to box/unbox the fresh variable
-		% and assign it to the output argument whose address
-		% we were passed.  Note that we swap the caller type
-		% and the callee type, since this is an output not
-		% an input, so the callee type is the source type
-		% and the caller type is the destination type.
-		{ ml_gen_box_or_unbox_rval(CalleeType, CallerType,
-			lval(ArgLval), ConvertedArgRval) },
-		{ AssignStmt = assign(VarLval, ConvertedArgRval) },
-		{ AssignStatement = mlds__statement(atomic(AssignStmt),
-			mlds__make_context(Context)) },
-		{ ConvStatements = [AssignStatement] }
+		( { type_util__is_dummy_argument_type(CallerType) } ->
+			% if it is a dummy argument type (e.g. io__state),
+			% then we don't need to bother assigning it
+			{ ConvStatements = [] }
+		;
+			% generate a statement to box/unbox the fresh variable
+			% and assign it to the output argument whose address
+			% we were passed.  Note that we swap the caller type
+			% and the callee type, since this is an output not
+			% an input, so the callee type is the source type
+			% and the caller type is the destination type.
+			{ ml_gen_box_or_unbox_rval(CalleeType, CallerType,
+				lval(ArgLval), ConvertedArgRval) },
+			{ AssignStmt = assign(VarLval, ConvertedArgRval) },
+			{ AssignStatement = mlds__statement(atomic(AssignStmt),
+				mlds__make_context(Context)) },
+			{ ConvStatements = [AssignStatement] }
+		)
 	).
 	
 %-----------------------------------------------------------------------------%
@@ -2871,7 +2894,7 @@ ml_gen_construct_rep(shared_local_tag(Bits1, Num1), _ConsId, Var, Args,
 		mkword(Bits1, unop(std_unop(mkbody), const(int_const(Num1)))),
 		Context) }.
 
-ml_gen_construct_rep(type_ctor_info_constant(ModuleName, TypeName, TypeArity),
+ml_gen_construct_rep(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
 		_ConsId, Var, Args, _ArgModes, Context,
 		[], [MLDS_Statement]) -->
 	( { Args = [] } ->
@@ -2880,6 +2903,17 @@ ml_gen_construct_rep(type_ctor_info_constant(ModuleName, TypeName, TypeArity),
 		{ error("ml_code_gen: type-info constant has args") }
 	),
 	ml_gen_var(Var, VarLval),
+	%
+	% Although the builtin types `int', `float', etc. are treated as part
+	% of the `builtin' module, for historical reasons they don't have
+	% any qualifiers at this point, so we need to add the `builtin'
+	% qualifier now.
+	%
+	{ ModuleName0 = unqualified("") ->
+		mercury_public_builtin_module(ModuleName)
+	;
+		ModuleName = ModuleName0
+	},
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
 	{ DataAddr = data_addr(MLDS_Module,
 		type_ctor(info, TypeName, TypeArity)) },
@@ -4057,8 +4091,6 @@ ml_gen_pred_label(ModuleInfo, PredId, ProcId) = MLDS_PredLabel :-
 
 	% Generate the function prototype for a procedure.
 	%
-:- func ml_gen_proc_params(module_info, pred_id, proc_id) = mlds__func_params.
-
 ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),
@@ -4213,19 +4245,30 @@ ml_gen_var_list([Var | Vars], [Lval | Lvals]) -->
 :- mode ml_gen_var(in, out, in, out) is det.
 
 ml_gen_var(Var, Lval) -->
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_output_vars(MLDSGenInfo, OutputVars) },
-	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
-	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
-	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ VarName = ml_gen_var_name(VarSet, Var) },
-	{ VarLval = var(qual(MLDS_Module, VarName)) },
-	% output variables are passed by reference...
-	{ list__member(Var, OutputVars) ->
-		Lval = mem_ref(lval(VarLval))
+	ml_variable_type(Var, Type),
+	( { type_util__is_dummy_argument_type(Type) } ->
+		%
+		% The variable won't have been declared, so
+		% we need to generate a dummy lval for this variable.
+		%
+		{ mercury_private_builtin_module(PrivateBuiltin) },
+		{ MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin) },
+		{ Lval = var(qual(MLDS_Module, "dummy_var")) }
 	;
-		Lval = VarLval
-	}.
+		=(MLDSGenInfo),
+		{ ml_gen_info_get_output_vars(MLDSGenInfo, OutputVars) },
+		{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
+		{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
+		{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
+		{ VarName = ml_gen_var_name(VarSet, Var) },
+		{ VarLval = var(qual(MLDS_Module, VarName)) },
+		% output variables are passed by reference...
+		{ list__member(Var, OutputVars) ->
+			Lval = mem_ref(lval(VarLval))
+		;
+			Lval = VarLval
+		}
+	).
 
 	% Lookup the types of a list of variables.
 	%
