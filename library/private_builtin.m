@@ -1042,7 +1042,7 @@ Define_entry(mercury__table_resume_1_0);
 	** We ought to save the trail state here --
 	** this is not yet implemented.
 	*/
-	MR_fatal_error(""Sorry, not implemented: ""
+	fatal_error(""Sorry, not implemented: ""
 		""can't have both tabling and trailing"");
 #endif
 
