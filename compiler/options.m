@@ -57,6 +57,7 @@
 		--->	warn_singleton_vars
 		;	warn_missing_det_decls
 		;	warn_det_decls_too_lax
+		;	warn_nothing_exported
 		;	inhibit_warnings
 	% Verbosity options
 		;	verbose
@@ -168,7 +169,8 @@ option_defaults_2(warning_option, [
 	inhibit_warnings	-	bool(no),
 	warn_singleton_vars	-	bool(yes),
 	warn_missing_det_decls	-	bool(yes),
-	warn_det_decls_too_lax	-	bool(yes)
+	warn_det_decls_too_lax	-	bool(yes),
+	warn_nothing_exported	-	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -326,6 +328,7 @@ long_option("line-numbers",		line_numbers).
 long_option("warn-singleton-variables",	warn_singleton_vars).
 long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
+long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("inhibit-warnings",		inhibit_warnings).
 long_option("typecheck-only",		typecheck_only).
 long_option("errorcheck-only",		errorcheck_only).
@@ -409,6 +412,8 @@ options_help -->
 	io__write_string("\t--no-warn-det-decls-too-lax\n"),
 	io__write_string("\t\tDon't warn about determinism declarations\n"),
 	io__write_string("\t\twhich could have been stricter.\n"),
+	io__write_string("\t--no-warn-nothing-exported\n"),
+	io__write_string("\t\tDon't warn about modules which export nothing.\n"),
 
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),

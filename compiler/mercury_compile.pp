@@ -167,7 +167,8 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 	( { InhibitWarnings = yes } ->
 		globals__io_set_option(warn_singleton_vars, bool(no)),
 		globals__io_set_option(warn_missing_det_decls, bool(no)),
-		globals__io_set_option(warn_det_decls_too_lax, bool(no))
+		globals__io_set_option(warn_det_decls_too_lax, bool(no)),
+		globals__io_set_option(warn_nothing_exported, bool(no))
 	;
 		[]
 	).
@@ -404,6 +405,7 @@ process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
 	globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
+	globals__io_lookup_bool_option(warn_nothing_exported, ExportWarning),
 	( { Error = fatal } ->
 		[]
 	; { MakeInterface = yes } ->
@@ -412,6 +414,24 @@ process_module_2(ModuleName) -->
 		write_interface_file(ModuleName, ".int", InterfaceItems),
 		{ get_short_interface(InterfaceItems, ShortInterfaceItems) },
 		write_interface_file(ModuleName, ".int2", ShortInterfaceItems),
+		( { ExportWarning = yes, 
+			InterfaceItems = ShortInterfaceItems }
+		->
+			{ string__append_list( [ ModuleName, ".m:1: Warning: Interface does not export anything."], WarnMssg) },
+			io__stderr_stream(StdErr),
+			io__write_string(StdErr, WarnMssg),
+			(
+				globals__io_lookup_bool_option(verbose_errors, V_Err),
+				{ V_Err = yes }
+			->
+				io__write_string(StdErr, "\t\tA file should contain at least one declaration that is \n\t\tnot \":- import_module\" in it's interface section(s)\n"),
+				io__write_string(StdErr, "\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a \":- pred\", \":- type\" or \n\t\t\":- mode\" declaration.\n")
+			;
+				[]
+			)
+		;
+			[]
+		),
 		touch_datestamp(ModuleName)
 	; { ConvertToMercury = yes } ->
 		{ string__append(ModuleName, ".ugly", OutputFileName) },
@@ -419,7 +439,7 @@ process_module_2(ModuleName) -->
 	; { ConvertToGoedel = yes } ->
 		convert_to_goedel(ModuleName, Items0)
 	;
-		{ get_dependencies(Items0, ImportedModules) },
+		get_dependencies(ModuleName, Items0, ImportedModules),
 
 			% Note that the module `mercury_builtin' is always
 			% automatically imported.  (Well, the actual name
@@ -1061,6 +1081,16 @@ process_module_short_interfaces([Import | Imports], Module0, Module) -->
 	% Given a module (well, a list of items),
 	% determine all the modules that it depends upon
 	% (both interface dependencies and also implementation dependencies).
+	%
+	% As this predicate does a full traversal of the module, I've bolted 
+	% on a function to check that there is something exported in the 
+	% interface section.
+	%
+	% The /2 predicate is the original, and the /5 has the warnings.
+	% If the /5 predicate were called from some/too many places, there 
+	% would be many repeated and/or inaccurate warnings.
+	%
+	% This does sacrifice some flexability for speed.
 
 :- pred get_dependencies(item_list, list(string)).
 :- mode get_dependencies(in, out) is det.
@@ -1079,6 +1109,90 @@ get_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
 		Deps1 = Deps0
 	),
 	get_dependencies_2(Items, Deps1, Deps).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_dependencies(string, item_list, list(string), io__state, io__state).
+:- mode get_dependencies(in, in, out, di, uo) is det.
+
+get_dependencies(ModuleName, Items, Deps) -->
+	{ get_dependencies_2_imp(Items, [], Deps, no, Found_useful_interface) },
+	globals__io_lookup_bool_option(warn_nothing_exported, ExportWarning),
+	( 	
+		{ Found_useful_interface = no, ExportWarning = yes }
+	->
+		{ string__append( ModuleName, ".m:1: Warning: interface does not export anything useful.\n", Message) },
+		% line 1 is used as there should both be one, and since it 
+		% is hard to give a line number for something that doesn't
+		% exist.  It would be acceptable to give the line-number of the
+		% last ":- implementation" declaration.
+		io__stderr_stream(StdErr),
+		io__write_string(StdErr, Message),
+		(
+			globals__io_lookup_bool_option(verbose_errors, V_Err),
+			{ V_Err = yes }
+		->
+			io__write_string(StdErr, "\t\tA file should contain at least one declaration that is \n\t\tnot \":- import_module\" in it's interface section(s)\n"),
+			io__write_string(StdErr, "\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a \":- pred\", \":- type\" or \n\t\t\":- mode\" declaration.\n")
+		;
+			[]
+		)
+	;
+		[]
+	).
+
+:- pred get_dependencies_2_imp(item_list, list(string), list(string), bool, bool).
+:- mode get_dependencies_2_imp(in, in, out, in, out) is det.
+
+get_dependencies_2_imp([], Deps, Deps, Useful_intf, Useful_intf).
+get_dependencies_2_imp([Item - _Context | Items], Deps0, Deps, 
+			Useful_intf_i, Useful_intf) :-
+	( 
+		Item = module_defn(_VarSet, import(module(Modules))) 
+	->
+		list__append(Deps0, Modules, Deps1)
+	;
+		Deps1 = Deps0
+	),
+	( 
+		Item = module_defn(_Varset, interface)
+	->
+		get_dependencies_2_int(Items, Deps1, Deps, Useful_intf_i,
+				Useful_intf)
+	;
+		get_dependencies_2_imp(Items, Deps1, Deps, Useful_intf_i, 
+				Useful_intf)
+	).
+
+:- pred get_dependencies_2_int(item_list, list(string), list(string), bool, bool).
+:- mode get_dependencies_2_int(in, in, out, in, out) is det.
+
+get_dependencies_2_int([], Deps, Deps, Useful_intf, Useful_intf).
+get_dependencies_2_int([Item - _Context | Items], Deps0, Deps, 
+			Useful_intf_i, Useful_intf) :-
+	(
+		Item = module_defn(_VarSet, import(module(Modules)))
+	->
+		list__append(Deps0, Modules, Deps1),
+		Useful_intf_i = Useful_intf_0
+	;
+		Item = nothing
+	->
+		Deps1 = Deps0,
+		Useful_intf_i = Useful_intf_0
+	;
+		Deps1 = Deps0,
+		Useful_intf_0 = yes 
+	),
+	( 
+		Item = module_defn(_Varset, implementation)
+	->
+		get_dependencies_2_imp(Items, Deps1, Deps, Useful_intf_i,
+				Useful_intf)
+	;
+		get_dependencies_2_int(Items, Deps1, Deps, Useful_intf_0,
+				Useful_intf)
+	).
 
 %-----------------------------------------------------------------------------%
 
