@@ -102,7 +102,7 @@ void call_engine(Code *entry_point)
 
 	if (!initialized)
 	{
-		makelabel("engine_done", LABEL(engine_done));
+		make_label("engine_done", LABEL(engine_done));
 		initialized = TRUE;
 	}
 }
