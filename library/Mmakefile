@@ -162,9 +162,9 @@ libmercury : tree234.o
 libmercury : libmercury.a libmercury.$(EXT_FOR_SHARED_LIB) libmercury.init
 
 libmercury$(DLL_DEF_LIB).a : $(library.os)
-	rm -f libmercury($DLL_DEF_LIB).a
-	ar cr libmercury($DLL_DEF_LIB).a $(library.os)
-	$(RANLIB) libmercury($DLL_DEF_LIB).a
+	rm -f libmercury$(DLL_DEF_LIB).a
+	ar cr libmercury$(DLL_DEF_LIB).a $(library.os)
+	$(RANLIB) libmercury$(DLL_DEF_LIB).a
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
