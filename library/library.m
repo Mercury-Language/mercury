@@ -242,6 +242,7 @@ mercury_std_library_module("sveqvclass").
 mercury_std_library_module("svmap").
 mercury_std_library_module("svqueue").
 mercury_std_library_module("svset").
+mercury_std_library_module("svvarset").
 mercury_std_library_module("table_builtin").
 mercury_std_library_module("term").
 mercury_std_library_module("term_io").
