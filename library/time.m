@@ -194,6 +194,7 @@
 	#define MR_update_io(r_src, r_dest)	((r_dest) = (r_src))
 
 	#include ""mercury_string.h"" /* for MR_make_aligned_string_copy() */
+	#include ""mercury_timing.h"" /* for MR_CLOCK_TICKS_PER_SECOND */
 ").
 
 % We use a no-tag wrapper type for time_t, rather than defining it as an
