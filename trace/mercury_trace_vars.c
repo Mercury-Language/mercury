@@ -15,6 +15,7 @@
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
 #include "mercury_layout_util.h"
+#include "mercury_stack_layout.h"
 #include "mercury_trace_vars.h"
 
 #include <stdio.h>
@@ -25,7 +26,6 @@
 typedef struct {
 	char				*MR_var_fullname;
 	char				*MR_var_basename;
-	char				*MR_var_basename_malloc;
 	int				MR_var_num_suffix;
 	bool				MR_var_has_suffix;
 	bool				MR_var_is_headvar;
@@ -153,6 +153,7 @@ MR_trace_set_level(int ancestor_level)
 	const MR_Stack_Layout_Label	*level_layout;
 	const MR_Stack_Layout_Entry	*entry;
 	const MR_Stack_Layout_Vars	*vars;
+	const MR_Var_Name		*var_info;
 	Word				*valid_saved_regs;
 	int				var_count;
 	Word				*type_params;
@@ -165,6 +166,8 @@ MR_trace_set_level(int ancestor_level)
 	char				*copy;
 	char				*s;
 	const char			*name;
+	const char			*string_table;
+	Integer				string_table_size;
 
 	problem = NULL;
 	top_layout = MR_point.MR_point_top_layout;
@@ -223,6 +226,10 @@ MR_trace_set_level(int ancestor_level)
 		return NULL;
 	}
 
+	if (vars->MR_slvs_names == NULL) {
+		return "there are no names for the live variables";
+	}
+
 	if (ancestor_level == 0) {
 		valid_saved_regs = MR_point.MR_point_top_saved_regs;
 	} else {
@@ -238,20 +245,36 @@ MR_trace_set_level(int ancestor_level)
 	for (slot = 0; slot < MR_point.MR_point_var_count; slot++) {
 		/* free the memory allocated by previous strdups */
 		free(MR_point.MR_point_vars[slot].MR_var_fullname);
-		free(MR_point.MR_point_vars[slot].MR_var_basename_malloc);
+		free(MR_point.MR_point_vars[slot].MR_var_basename);
 	}
+
+	string_table = entry->MR_sle_module_layout->MR_ml_string_table;
+	string_table_size =
+		entry->MR_sle_module_layout->MR_ml_string_table_size;
 
 	slot = 0;
 	for (i = 0; i < var_count; i++) {
-		name = MR_name_if_present(vars, i);
+		var_info = &vars->MR_slvs_names[i];
+
+		if (var_info->MR_var_num == 0) {
+			/* this value is not a variable */
+			continue;
+		}
+
+		if (var_info->MR_var_name_offset > string_table_size) {
+			fatal_error("array bounds error on string table");
+		}
+
+		name = string_table + var_info->MR_var_name_offset;
 		if (name == NULL || streq(name, "")) {
+			/* this value is a compiler-generated variable */
 			continue;
 		}
 
 		if (! MR_get_type_and_value_base(vars, i, valid_saved_regs,
 			base_sp, base_curfr, type_params, &type_info, &value))
 		{
-			/* this indicates that the value is not a variable */
+			/* this value is not a variable */
 			continue;
 		}
 
@@ -259,19 +282,16 @@ MR_trace_set_level(int ancestor_level)
 			continue;
 		}
 
+		MR_point.MR_point_vars[slot].MR_var_hlds_number =
+			var_info->MR_var_num;
+
 		copy = strdup(name);
 		MR_point.MR_point_vars[slot].MR_var_fullname = copy;
 		MR_point.MR_point_vars[slot].MR_var_value = value;
 		MR_point.MR_point_vars[slot].MR_var_type = type_info;
 
 		/* we need another copy we can cut apart */
-		copy = strdup(MR_numbered_name_if_present(vars, i));
-		MR_point.MR_point_vars[slot].MR_var_basename_malloc = copy;
-		s = strchr(copy, ':');
-		*s = '\0';
-		MR_point.MR_point_vars[slot].MR_var_hlds_number = atoi(copy);
-
-		copy = s + 1;
+		copy = strdup(name);
 		copylen = strlen(copy);
 		s = copy + copylen - 1;
 		while (s > copy && isdigit(*s)) {

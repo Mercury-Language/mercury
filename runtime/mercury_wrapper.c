@@ -186,6 +186,8 @@ Code	*MR_library_trace_browser;
 Code	*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *, MR_Trace_Port,
 		Unsigned, Unsigned, const char *, int);
 
+void	(*MR_register_module_layout)(const MR_Module_Layout *);
+
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
 #define	SAFETY_BUFFER_SIZE	1024	/* size of stack safety buffer */
