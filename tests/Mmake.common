@@ -95,7 +95,7 @@ ifneq "$(findstring java,$(GRADE))" ""
 
 else
 
-%.out: %$(EXT_FOR_EXE)
+%.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
 
