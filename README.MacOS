@@ -5,6 +5,7 @@ The version of tar in /usr/bin/tar on MacOS (10.1) doesn't work properly --
 it truncates long path names.  Make sure you use GNU tar, which is available
 in /sw/bin/gtar, when unpacking the Mercury source or binary distributions.
 (Also, make sure to use GNU tar if/when *building* such distributions!)
+The version of tar that comes with MacOS 10.3.3 doesn't have this problem.
 
 Apple's version of gcc includes support for precompiled headers.
 Unfortunately this support seems to be somewhat buggy, causing it
@@ -23,3 +24,6 @@ The following features are not yet supported on MacOS:
 	- shared libraries
 	- interactive queries in mdb
 	- the `--split-c-files' option to mmc
+
+The latest version of the compiler (as at 19 May 2004) doesn't compile
+with gcc 2.95.2 on MacOS 10.3.3, however it does with gcc 3.4.0.
