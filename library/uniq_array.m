@@ -83,7 +83,7 @@
 	% and returns the resulting uniq_array.
 	% It fails if the index is out of bounds.
 :- pred uniq_array__semidet_set(uniq_array(T), int, T, uniq_array(T)).
-:- mode uniq_array__semidet_set(uniq_array_ui, in, in, uniq_array_uo)
+:- mode uniq_array__semidet_set(uniq_array_di, in, in, uniq_array_uo)
 				is semidet.
 
 	% uniq_array__slow_set sets the nth element of a uniq_array,
@@ -92,7 +92,7 @@
 	% destructive update.
 	% It is an error if the index is out of bounds.
 :- pred uniq_array__slow_set(uniq_array(T), int, T, uniq_array(T)).
-:- mode uniq_array__slow_set(uniq_array_di, in, in, uniq_array_uo) is det.
+:- mode uniq_array__slow_set(uniq_array_ui, in, in, uniq_array_uo) is det.
 :- mode uniq_array__slow_set(in, in, in, uniq_array_uo) is det.
 
 	% uniq_array__semidet_slow_set sets the nth element of a uniq_array,
