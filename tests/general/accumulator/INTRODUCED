@@ -1,7 +1,6 @@
 	% mode  0 `base:AccFrom__pred__p__23__0/4' (det):
 	% mode  0 `call_in_base:AccFrom__pred__l__23__0/4' (det):
 	% mode  0 `chain:AccFrom__pred__pa__39__0/4' (det):
-	% mode  0 `chain:AccFrom__pred__pc__67__0/4' (det):
 	% mode  0 `construct:AccFrom__pred__p2__46__0/5' (det):
 	% mode  0 `dcg:AccFrom__pred__p__38__0/7' (det):
 	% mode  0 `disj:AccFrom__pred__p__47__0/3' (multi):

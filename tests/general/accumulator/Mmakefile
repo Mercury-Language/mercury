@@ -19,6 +19,7 @@ endif
 PROGS=		base		\
 		call_in_base	\
 		chain		\
+		commutative	\
 		construct	\
 		deconstruct	\
 		dcg		\
