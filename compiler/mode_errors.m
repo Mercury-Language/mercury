@@ -199,7 +199,7 @@
 :- import_module int, map, term_io, varset, term.
 :- import_module std_util, string, require.
 
-	% just dispatch on the diffferent sorts of mode errors
+	% just dispatch on the different sorts of mode errors
 
 report_mode_error(mode_error_disj(MergeContext, ErrorList), ModeInfo) -->
 	report_mode_error_disj(ModeInfo, MergeContext, ErrorList).
