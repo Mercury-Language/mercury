@@ -680,13 +680,13 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 	% in the second field.
 :- pragma(c_code, type_to_univ(Type::di, Univ::uo), "
 	incr_hp(Univ, 2);
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = TypeInfo_for_T;
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = Type;
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo_for_T;
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Type;
 ").
 :- pragma(c_code, type_to_univ(Type::in, Univ::out), "
 	incr_hp(Univ, 2);
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = TypeInfo_for_T;
-	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = Type;
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo_for_T;
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Type;
 ").
 
 	% Backward mode - convert from univ to type.
