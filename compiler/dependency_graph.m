@@ -50,7 +50,8 @@
 	% it if necessary.
 
 module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) :-
-	( module_info_dependency_info_built(ModuleInfo0) ->
+	module_info_get_maybe_dependency_info(ModuleInfo0, MaybeDepInfo),
+	( MaybeDepInfo = yes(_) ->
 	    ModuleInfo = ModuleInfo0
 	;
 	    dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo)
