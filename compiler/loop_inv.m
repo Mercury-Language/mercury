@@ -769,12 +769,13 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     hlds_pred__pred_info_get_origin(PredInfo, OrigOrigin),
 
     PredName = hlds_pred__pred_info_name(PredInfo),
+    PredOrFunc = hlds_pred__pred_info_is_pred_or_func(PredInfo),
     hlds_goal__goal_info_get_context(GoalInfo, Context),
     term__context_line(Context, Line),
     hlds_pred__proc_id_to_int(ProcId, ProcNo),
     AuxNamePrefix = string__format("loop_inv_%d", [i(ProcNo)]),
     prog_util__make_pred_name_with_context(ModuleName, AuxNamePrefix,
-            predicate, PredName, Line, 1, AuxPredSymName),
+            PredOrFunc, PredName, Line, 1, AuxPredSymName),
     (
         AuxPredSymName = unqualified(AuxPredName)
     ;

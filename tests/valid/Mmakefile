@@ -201,6 +201,11 @@ OTHER_PROGS= \
 DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
 
+	# This test requires debugging, which hasn't been
+	# implemented for the MLDS backend.
+LLDS_PROGS= \
+	untuple_bug
+
 # The following programs require that num_tag_bits >= 1
 RESERVE_TAG_PROGS = \
 	reserve_tag
@@ -273,7 +278,7 @@ else
 endif
 
 ifeq "$(filter hl% java% il%,$(GRADE))" ""
-	PROGS4 = $(PROGS3) $(DEEP_PROF_CAPABLE_PROGS)
+	PROGS4 = $(PROGS3) $(DEEP_PROF_CAPABLE_PROGS) $(LLDS_PROGS)
 else
 	PROGS4 = $(PROGS3)
 endif

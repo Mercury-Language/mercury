@@ -114,7 +114,7 @@
 :- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, list, map, require, std_util, string, svmap.
+:- import_module bool, counter, list, map, require, std_util, string, svmap.
 :- import_module svvarset, term, varset.
 
 	% The transform_map structure records which procedures were
@@ -152,13 +152,14 @@ untuple_arguments(!ModuleInfo, !IO) :-
 
 expand_args_in_module(!ModuleInfo, TransformMap) :-
 	module_info_predids(!.ModuleInfo, PredIds),
-	list__foldl2(expand_args_in_pred, PredIds,
-		!ModuleInfo, map__init, TransformMap).
+	list__foldl3(expand_args_in_pred, PredIds,
+		!ModuleInfo, map__init, TransformMap, counter__init(0), _).
 
 :- pred expand_args_in_pred(pred_id::in, module_info::in, module_info::out,
-	transform_map::in, transform_map::out) is det.
+	transform_map::in, transform_map::out, counter::in, counter::out)
+	is det.
 
-expand_args_in_pred(PredId, !ModuleInfo, !TransformMap) :-
+expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
 	module_info_types(!.ModuleInfo, TypeTable),
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
 	(
@@ -180,8 +181,8 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap) :-
 		at_least_one_expandable_type(ArgTypes, TypeTable)
 	->
 		ProcIds = pred_info_non_imported_procids(PredInfo),
-		list__foldl2(expand_args_in_proc(PredId), ProcIds,
-			!ModuleInfo, !TransformMap)
+		list__foldl3(expand_args_in_proc(PredId), ProcIds,
+			!ModuleInfo, !TransformMap, !Counter)
 	;
 		true
 	).
@@ -205,9 +206,10 @@ at_least_one_expandable_type([Type | Types], TypeTable) :-
 :- type untuple_map == map(prog_var, prog_vars).
 
 :- pred expand_args_in_proc(pred_id::in, proc_id::in, module_info::in,
-	module_info::out, transform_map::in, transform_map::out) is det.
+	module_info::out, transform_map::in, transform_map::out,
+	counter::in, counter::out) is det.
 
-expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap) :-
+expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
 	some [!ProcInfo] (
 		module_info_types(!.ModuleInfo, TypeTable),
 		module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
@@ -231,7 +233,8 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap) :-
 		requantify_proc(!ProcInfo),
 		recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
 
-		create_aux_pred(PredId, ProcId, PredInfo0, !.ProcInfo,
+		counter__allocate(Num, !Counter),
+		create_aux_pred(PredId, ProcId, PredInfo0, !.ProcInfo, Num,
 			AuxPredId, AuxProcId, CallAux,
 			AuxPredInfo, AuxProcInfo0, !ModuleInfo),
 		proc_info_set_maybe_untuple_info(
@@ -250,9 +253,13 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap) :-
 	type_table::in, untuple_map::out) is det.
 
 expand_args_in_proc_2(HeadVars0, ArgModes0, HeadVars, ArgModes,
-		!Goal, !VarSet, !VarTypes, TypeTable, UntupleMap) :-
+		Goal0, Goal - GoalInfo, !VarSet, !VarTypes, TypeTable,
+		UntupleMap) :-
 	expand_args_in_proc_3(HeadVars0, ArgModes0, ListOfHeadVars,
-		ListOfArgModes, !Goal, !VarSet, !VarTypes, [], TypeTable),
+		ListOfArgModes, Goal0, Goal - GoalInfo1, !VarSet,
+		!VarTypes, [], TypeTable),
+	goal_info_get_context(snd(Goal0), Context),
+	goal_info_set_context(GoalInfo1, Context, GoalInfo),
 	list__condense(ListOfHeadVars, HeadVars),
 	list__condense(ListOfArgModes, ArgModes),
 	build_untuple_map(HeadVars0, ListOfHeadVars, map__init, UntupleMap).
@@ -379,11 +386,11 @@ build_untuple_map([_|_], [], !_) :-
 	% See also create_aux_pred in loop_inv.m.
 	%
 :- pred create_aux_pred(pred_id::in, proc_id::in, pred_info::in,
-	proc_info::in, pred_id::out, proc_id::out, hlds_goal::out,
+	proc_info::in, int::in, pred_id::out, proc_id::out, hlds_goal::out,
 	pred_info::out, proc_info::out, module_info::in, module_info::out)
 	is det.
 
-create_aux_pred(PredId, ProcId, PredInfo, ProcInfo,
+create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 		AuxPredId, AuxProcId, CallAux, AuxPredInfo, AuxProcInfo,
 		ModuleInfo0, ModuleInfo) :-
 	module_info_name(ModuleInfo0, ModuleName),
@@ -404,12 +411,13 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo,
 	pred_info_get_origin(PredInfo, OrigOrigin),
 
 	PredName = pred_info_name(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	goal_info_get_context(GoalInfo, Context),
 	term__context_line(Context, Line),
 	proc_id_to_int(ProcId, ProcNo),
 	AuxNamePrefix = string__format("untupling_%d", [i(ProcNo)]),
 	make_pred_name_with_context(ModuleName, AuxNamePrefix,
-		predicate, PredName, Line, 1, AuxPredSymName),
+		PredOrFunc, PredName, Line, Counter, AuxPredSymName),
 	(
 		AuxPredSymName = unqualified(AuxPredName)
 	;
