@@ -799,8 +799,8 @@ value_number__remove_dead_nodes([Lval | Lvals], Vn_tables0, Vn_tables) :-
 		_Vn_to_rval_table0, _Vn_to_uses_table0,
 		_Vn_to_locs_table0, _Loc_to_vn_table0),
 	map__lookup(Lval_to_vn_table0, Lval, Vn),
-	value_number__unuse_vn(Vn, Vn_tables0, Vn_tables),
-	value_number__remove_dead_nodes(Lvals, Vn_tables0, Vn_tables).
+	value_number__unuse_vn(Vn, Vn_tables0, Vn_tables1),
+	value_number__remove_dead_nodes(Lvals, Vn_tables1, Vn_tables).
 
 % uncount all dead lvals
 % map from (livelvals U shared_vn U cond) to set of (shared_vn U origlvals)

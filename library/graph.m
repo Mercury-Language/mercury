@@ -125,9 +125,11 @@ graph__path(G, S, E) :-
 	graph__get_edges(G, Es),
 	map__lookup(Es, S, Arcs),
 	(
-		set__member(edge(_, E), Arcs)
+		set__member(E1, Arcs),
+		E1 = edge(_, E)
 	;
-		set__member(edge(_, N), Arcs),
+		set__member(E1, Arcs),
+		E1 = edge(_, N),
 		graph__path(G, N, E)
 	).
 

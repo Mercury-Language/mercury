@@ -124,8 +124,10 @@
 
 :- type unary_op	--->	mktag
 			;	tag
+			;	unmktag
 			;	mkbody
 			;	body
+			;	unmkbody
 			;	cast_to_unsigned
 			;	hash_string
 			;	bitwise_complement
@@ -778,10 +780,14 @@ output_unary_op(mktag) -->
 	io__write_string("mktag").
 output_unary_op(tag) -->
 	io__write_string("tag").
+output_unary_op(unmktag) -->
+	io__write_string("unmktag").
 output_unary_op(mkbody) -->
 	io__write_string("mkbody").
 output_unary_op(body) -->
 	io__write_string("body").
+output_unary_op(unmkbody) -->
+	io__write_string("unmkbody").
 output_unary_op(hash_string) -->
 	io__write_string("hash_string").
 output_unary_op(bitwise_complement) -->

@@ -711,7 +711,7 @@ code_info__flush_variable(Var, Code) -->
 			%	1. The mode analysis ensures that
 			%	the variable does not depend on
 			%	itself (occurs check!)
-			%	2. Code reordering guarentees that
+			%	2. Code reordering guarantees that
 			%	there is no other value that _requires_
 			%	this register.
 		(

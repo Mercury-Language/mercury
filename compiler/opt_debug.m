@@ -236,8 +236,10 @@ opt_debug__dump_const(pred_const(_CodeAddress), "pred_const(<code address>)").
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").
+opt_debug__dump_unop(unmktag, "unmktag").
 opt_debug__dump_unop(mkbody, "mkbody").
 opt_debug__dump_unop(body, "body").
+opt_debug__dump_unop(unmkbody, "unmkbody").
 opt_debug__dump_unop(not, "not").
 opt_debug__dump_unop(hash_string, "hash_string").
 opt_debug__dump_unop(bitwise_complement, "bitwise_complement").
