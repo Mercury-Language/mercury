@@ -14,7 +14,7 @@
 
 :- module stack.
 :- interface.
-:- import_module int, std_util.
+:- import_module int, std_util, list.
 
 :- type stack(_T).
 
@@ -43,6 +43,13 @@
 :- pred stack__push(stack(T), T, stack(T)).
 :- mode stack__push(in, in, out) is det.
 
+	% `stack__push_list(Stack0, Elems, Stack)' is true iff `Stack' 
+	% is the stack which results from pushing the elements of the
+	% list `Elems' onto the top of `Stack0'.
+
+:- pred stack__push_list(stack(T), list(T), stack(T)).
+:- mode stack__push_list(in, in, out) is det.
+
 	% `stack__top(Stack, Elem)' is true iff `Stack' is a non-empty
 	% stack whose top element is `Elem'.
 
@@ -57,7 +64,7 @@
 :- mode stack__pop(in, out, out) is semidet.
 
 	% `stack__pop_det' is like `stack__pop' except that it will
-	% call error/1 rather than failing if given an empty list.
+	% call error/1 rather than failing if given an empty stack.
 
 :- pred stack__pop_det(stack(T), T, stack(T)).
 :- mode stack__pop_det(in, out, out) is det.
@@ -85,6 +92,11 @@ stack__is_full(_) :-
 	semidet_fail.
 
 stack__push(Stack, Elem, [Elem | Stack]).
+
+stack__push_list(Stack, [], Stack).
+stack__push_list(Stack0, [Elem | Elems], Stack1) :-
+	stack__push(Stack0, Elem, Stack2),
+	stack__push_list(Stack2, Elems, Stack1).
 
 stack__top([Elem | _], Elem).
 
