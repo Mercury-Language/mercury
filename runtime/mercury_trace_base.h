@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -317,6 +317,10 @@ extern	void	MR_tracing_not_enabled(void);
 ** in *arg_list_ptr.
 ** This function uses the heap pointer, so calls to it must be wrapped
 ** with MR_save_transient_hp() and MR_restore_transient_hp().
+**
+** This function is called from the Mercury code in the debugger, in the
+** browser directory. It is here, not in the trace directory, because code
+** in the browser directory cannot call functions in the trace directory.
 */
 
 extern	const char
