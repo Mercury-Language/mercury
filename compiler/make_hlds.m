@@ -847,36 +847,44 @@ transform_goal((A0;B0), VarSet0, Subst, disj(L) - GoalInfo, VarSet) :-
 
 transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 
-	% fill unused slots with any old junk 
-	ModeId = 0,
-	Builtin = not_builtin,
+	% As a special case, transform `A \= B' into `not (A = B)'.
 
-	% the module name will be determined by typecheck.nl
-	% when it resolves predicate overloading
-	ModuleName = "",
-
-	term__apply_substitution(Goal0, Subst, Goal1),
-	( Goal1 = term__functor(term__atom(PredName0), Args0, _) ->
-		PredName = PredName0,
-		Args = Args0
+	( Goal0 = term__functor(term__atom("\\="), [LHS, RHS], _Context) ->
+		transform_goal(not([], unify(LHS, RHS)), VarSet0, Subst, Goal,
+			VarSet)
 	;
-		% If the called term is not an atom, then it is
-		% either a variable, or something stupid like a number.
-		% In the first case, we want to transform it to a call
-		% to builtin:call/1, and in the latter case, we
-		% In either case, we transform it to a call to call/1.
-		% The latter case will will be caught by the type-checker.
-		PredName = "call",
-		Args = [Goal1]
-	),
-	length(Args, Arity),
-	make_predid(ModuleName, unqualified(PredName), Arity, PredId),
-	make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
-	var_list_to_term_list(HeadVars, HeadArgs),
-	Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
-	goal_info_init(GoalInfo),
-	insert_arg_unifications(HeadVars, Args, call(PredId), Goal2,
-	 	VarSet1, Goal, VarSet).
+		% fill unused slots with any old junk 
+		ModeId = 0,
+		Builtin = not_builtin,
+
+		% the module name will be determined by typecheck.nl
+		% when it resolves predicate overloading
+		ModuleName = "",
+
+		term__apply_substitution(Goal0, Subst, Goal1),
+		( Goal1 = term__functor(term__atom(PredName0), Args0, _) ->
+			PredName = PredName0,
+			Args = Args0
+		;
+			% If the called term is not an atom, then it is
+			% either a variable, or something stupid like a number.
+			% In the first case, we want to transform it to a call
+			% to builtin:call/1, and in the latter case, we
+			% In either case, we transform it to a call to call/1.
+			% The latter case will will be caught by the
+			% type-checker.
+			PredName = "call",
+			Args = [Goal1]
+		),
+		length(Args, Arity),
+		make_predid(ModuleName, unqualified(PredName), Arity, PredId),
+		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
+		var_list_to_term_list(HeadVars, HeadArgs),
+		Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
+		goal_info_init(GoalInfo),
+		insert_arg_unifications(HeadVars, Args, call(PredId), Goal2,
+			VarSet1, Goal, VarSet)
+	).
 
 transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 	term__apply_substitution(A0, Subst, A),
