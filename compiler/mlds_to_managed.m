@@ -90,7 +90,7 @@ output_src_end(ModuleName) -->
 
 generate_code(Lang, MLDS) -->
 
-	{ MLDS = mlds(ModuleName, AllForeignCode, _Imports, Defns) },
+	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns) },
 	{ ClassName = class_name(mercury_module_name_to_mlds(ModuleName), 
 			wrapper_class_name) },
 
@@ -98,7 +98,7 @@ generate_code(Lang, MLDS) -->
 
 		% Output any generic header code specific to the target
 		% language.
-	output_language_specific_header_code(Lang, ModuleName),
+	output_language_specific_header_code(Lang, ModuleName, Imports),
 
 		% Get the foreign code for the required language.
 	{ ForeignCode = map__lookup(AllForeignCode, Lang) },
@@ -146,9 +146,10 @@ generate_code(Lang, MLDS) -->
 	io__nl.
 
 :- pred output_language_specific_header_code(foreign_language::in(managed_lang),
-		mercury_module_name::in, io::di, io::uo) is det.
+		mercury_module_name::in, mlds__imports::in,
+		io::di, io::uo) is det.
 
-output_language_specific_header_code(csharp, _ModuleName) -->
+output_language_specific_header_code(csharp, _ModuleName, _Imports) -->
 	io__write_strings([
 		% XXX We may be able to drop the mercury namespace soon,
 		% as there doesn't appear to be any llds generated code
@@ -163,14 +164,56 @@ output_language_specific_header_code(csharp, _ModuleName) -->
 	; { SignAssembly = no },
 		[]
 	).
-output_language_specific_header_code(managed_cplusplus, ModuleName) -->
+output_language_specific_header_code(managed_cplusplus, ModuleName, Imports) -->
+	get_il_data_rep(DataRep),
+	( { DataRep = il_data_rep(yes, _) } ->
+		io__write_string("#define MR_HIGHLEVEL_DATA\n")
+	;
+		[]
+	),
+
+	io__write_string("#using <mscorlib.dll>\n"),
+
+	( { mercury_std_library_module_name(ModuleName) } ->
+		io__write_strings([
+			"#using ""mercury_mcpp.dll""\n",
+			"#using ""mercury_il.dll""\n",
+			"#using ""private_builtin.dll""\n",
+			"#using ""builtin.dll""\n"])
+	;
+		[]
+	),
+
+	{ list__map(
+		(pred(Import::in, Result::out) is det :-
+		    ( Import = mercury_import(_, Name) ->
+			( is_std_lib_module(Name, StdLibName) ->
+			    ( mercury_std_library_module_name(ModuleName) ->
+				Str = StdLibName
+			    ;
+				Str = "mercury"
+			    )
+			;
+			    SymName = mlds_module_name_to_sym_name(Name),
+			    prog_out__sym_name_to_string(SymName, ".", Str)
+			),
+			Result = [Str]
+		    ;
+			Result = []
+		    )
+		), Imports, ImportListList) },
+	{ ActualImports = remove_dups(condense(ImportListList)) },
+
+	list__foldl((pred(I::in, di, uo) is det -->
+			io__write_string("#using """),
+			io__write_string(I),
+			io__write_string(".dll""\n")
+		), ActualImports),
+
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
 	io__write_strings([
-		"#using <mscorlib.dll>\n",
-		"#include ""mercury_mcpp.h""\n",
-		"#using ""mercury_mcpp.dll""\n",
-		"#using ""mercury_il.dll""\n",
 		"#using """, ModuleNameStr, ".dll""\n",
+		"#include ""mercury_mcpp.h""\n",
 
 		% XXX We have to use the mercury namespace, as
 		% llds_out still generates some of the code used

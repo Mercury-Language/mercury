@@ -379,6 +379,9 @@
 % MLDS package.
 :- func mlds_module_name_to_package_name(mlds_module_name) = sym_name.
 
+% Is the current module a member of the std library, is so which module is it?
+:- pred is_std_lib_module(mlds_module_name::in, string::out) is semidet.
+
 % Given an MLDS module name (e.g. `foo.bar'), append another class qualifier
 % (e.g. for a class `baz'), and return the result (e.g. `foo.bar.baz').
 % The `arity' argument specifies the arity of the class.
@@ -1772,6 +1775,13 @@ mercury_module_name_to_mlds(MercuryModule) = name(MLDS_Package, MLDS_Package) :-
 	;
 		MLDS_Package = MercuryModule
 	).
+
+is_std_lib_module(Module, UnqualifiedName) :-
+	Name = Module ^ module_name,
+	( Name = unqualified(UnqualifiedName)
+	; Name = qualified(unqualified("mercury"), UnqualifiedName)
+	),
+	mercury_std_library_module(UnqualifiedName).
 
 mlds_module_name_to_sym_name(Module) = Module ^ module_name.
 

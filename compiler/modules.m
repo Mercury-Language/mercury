@@ -45,6 +45,10 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Succeeds iff the module refered to by the module name is one
+	% of the modules in the standard library.
+:- pred mercury_std_library_module_name(module_name::in) is semidet.
+
 	% Succeeds iff the string is the (unqualified) name of one of the
 	% modules in the Mercury standard library.
 	%
@@ -685,6 +689,11 @@
 :- import_module getopt.
 
 %-----------------------------------------------------------------------------%
+
+mercury_std_library_module_name(unqualified(Name)) :-
+	mercury_std_library_module(Name).
+mercury_std_library_module_name(qualified(unqualified("mercury"), Name)) :-
+	mercury_std_library_module(Name).
 
 mercury_std_library_module("array").
 mercury_std_library_module("assoc_list").

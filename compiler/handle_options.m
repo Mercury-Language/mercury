@@ -328,6 +328,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%         XXX Previously static ground terms used to not work with
 	%             --high-level-data.  But this has been (mostly?) fixed now.
 	%             So we should investigate re-enabling static ground terms.
+	%   - intermodule optimization
+	%	  This is only required for high-level data and is needed
+	%	  so that equivalence types can be expanded.  They need to be
+	%	  expanded because .NET requires that the structural
+	%	  representation of a type is known at all times.
 	( { Target = il } ->
 		globals__io_set_gc_method(none),
 		globals__io_set_option(reclaim_heap_on_nondet_failure,
@@ -340,7 +345,15 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(num_tag_bits, int(0)),
 		globals__io_set_option(unboxed_enums, bool(no)),
 		globals__io_set_option(unboxed_no_tag_types, bool(no)),
-		globals__io_set_option(static_ground_terms, bool(no))
+		globals__io_set_option(static_ground_terms, bool(no)),
+
+		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+		( { HighLevelData = yes } ->
+			globals__io_set_option(intermodule_optimization,
+					bool(yes))
+		;
+			[]
+		)
 	;
 		[]
 	),
