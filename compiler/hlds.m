@@ -30,6 +30,12 @@
 				% mode_id.
 			;	call(pred_id, mode_id, list(term))
 
+				% Just before code generation, we
+				% do a pass over the hlds which recognizes
+				% the builtins and converts them to
+				% call_builtin(...).
+			;	call_builtin(buildin_id, list(term))
+
 				% Deterministic disjunctions are converted
 				% into case statements by the determinism
 				% analysis.
