@@ -35,7 +35,7 @@ libgc_la_LIBADD = @addobjs@ $(THREADLIBS)
 libgc_la_DEPENDENCIES = @addobjs@
 libgc_la_LDFLAGS = -version-info 1:1:0
 
-EXTRA_libgc_la_SOURCES = alpha_mach_dep.s \
+EXTRA_libgc_la_SOURCES = alpha_mach_dep.S \
 mips_sgi_mach_dep.S mips_ultrix_mach_dep.s powerpc_macosx_mach_dep.s \
 rs6000_mach_dep.s sparc_mach_dep.S sparc_netbsd_mach_dep.s \
 sparc_sunos4_mach_dep.s ia64_save_regs_in_stack.s
