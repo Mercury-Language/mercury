@@ -1054,14 +1054,8 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_dead_procs(HLDS46, Verbose, Stats, HLDS48),
 	mercury_compile__maybe_dump_hlds(HLDS48, "48", "dead_procs"),
 
-	% map_args_to_regs affects the interface to a predicate,
-	% so it must be done in one phase immediately before code generation
-
-	mercury_compile__map_args_to_regs(HLDS48, Verbose, Stats, HLDS49),
-	mercury_compile__maybe_dump_hlds(HLDS49, "49", "args_to_regs"),
-
-	{ HLDS50 = HLDS49 },
-	mercury_compile__maybe_dump_hlds(HLDS49, "50", "middle_pass").
+	{ HLDS50 = HLDS48 },
+	mercury_compile__maybe_dump_hlds(HLDS50, "50", "middle_pass").
 
 %-----------------------------------------------------------------------------%
 
@@ -1085,15 +1079,24 @@ mercury_compile__generate_rl_bytecode(ModuleInfo, Verbose, MaybeRLFile) -->
 % :- mode mercury_compile__backend_pass(di, uo, out, out, di, uo) is det.
 :- mode mercury_compile__backend_pass(in, out, out, out, di, uo) is det.
 
-mercury_compile__backend_pass(HLDS0, HLDS, GlobalData, LLDS) -->
+mercury_compile__backend_pass(HLDS50, HLDS, GlobalData, LLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+
+	% map_args_to_regs affects the interface to a predicate,
+	% so it must be done in one phase immediately before code generation
+
+	mercury_compile__map_args_to_regs(HLDS50, Verbose, Stats, HLDS51),
+	mercury_compile__maybe_dump_hlds(HLDS51, "51", "args_to_regs"),
+
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
 	(
 		{ TradPasses = no },
-		mercury_compile__backend_pass_by_phases(HLDS0, HLDS,
+		mercury_compile__backend_pass_by_phases(HLDS51, HLDS,
 			GlobalData, LLDS)
 	;
 		{ TradPasses = yes },
-		mercury_compile__backend_pass_by_preds(HLDS0, HLDS,
+		mercury_compile__backend_pass_by_preds(HLDS51, HLDS,
 			GlobalData, LLDS)
 	).
 
@@ -1104,11 +1107,11 @@ mercury_compile__backend_pass(HLDS0, HLDS, GlobalData, LLDS) -->
 :- mode mercury_compile__backend_pass_by_phases(in, out, out, out, di, uo)
 	is det.
 
-mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, GlobalData, LLDS) -->
+mercury_compile__backend_pass_by_phases(HLDS51, HLDS99, GlobalData, LLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_followcode(HLDS50, Verbose, Stats, HLDS52),
+	mercury_compile__maybe_followcode(HLDS51, Verbose, Stats, HLDS52),
 	mercury_compile__maybe_dump_hlds(HLDS52, "52", "followcode"),
 
 	mercury_compile__simplify(HLDS52, no, yes, Verbose, Stats, 
@@ -2235,11 +2238,11 @@ mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
 :- pred mercury_compile__mlds_backend(module_info, mlds, io__state, io__state).
 :- mode mercury_compile__mlds_backend(in, out, di, uo) is det.
 
-mercury_compile__mlds_backend(HLDS50, MLDS) -->
+mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__simplify(HLDS50, no, yes, Verbose, Stats, 
+	mercury_compile__simplify(HLDS51, no, yes, Verbose, Stats, 
 		process_all_nonimported_nonaditi_procs, HLDS53),
 	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
 
