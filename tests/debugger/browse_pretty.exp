@@ -6,7 +6,7 @@ mdb> goto 3
 mdb> print *
        Data (arg 1)           	big(big(big(small, [|]/2, small), [1, ...], small), [1, 2, 3], big(big/3, [|]/2, small))
 mdb> browse 1
-browser> set format raw_pretty
+browser> set format pretty
 browser> set depth 10
 browser> ls
 big(big(big(small, [1], small), [1, 2], small), [1, 2, 3], 
@@ -68,7 +68,7 @@ browser> set width 79
 browser> set depth 3
 browser> ls
 big(big(big(...), ...), [1, ...], ...)
-browser> set format pretty
+browser> set format raw_pretty
 browser> set lines 4
 browser> set width 40
 browser> ls

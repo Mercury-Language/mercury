@@ -3,6 +3,7 @@ register --quiet
 break p
 continue
 finish
+set depth 10
 dd
 browse 2
 ls

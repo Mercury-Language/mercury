@@ -690,18 +690,18 @@ portray_verbose(Debugger, BrowserTerm, Params, !IO) :-
 		Params ^ depth, Params ^ width, Params ^ lines, Str),
 	write_string_debugger(Debugger, Str, !IO).
 
-:- pred portray_raw_pretty(debugger::in, browser_term::in, format_params::in,
+:- pred portray_pretty(debugger::in, browser_term::in, format_params::in,
 	io::di, io::uo) is det.
 
-portray_raw_pretty(Debugger, BrowserTerm, Params, !IO) :-
-	browser_term_to_string_raw_pretty(BrowserTerm, Params ^ width,
+portray_pretty(Debugger, BrowserTerm, Params, !IO) :-
+	browser_term_to_string_pretty(BrowserTerm, Params ^ width,
 		Params ^ depth, Str),
 	write_string_debugger(Debugger, Str, !IO).
 
-:- pred portray_pretty(debugger::in, browser_term::in, format_params::in,
+:- pred portray_raw_pretty(debugger::in, browser_term::in, format_params::in,
 	io::di, io::uo) is cc_multi.
 
-portray_pretty(Debugger, BrowserTerm, Params, !IO) :-
+portray_raw_pretty(Debugger, BrowserTerm, Params, !IO) :-
 	io__get_stream_db(StreamDb, !IO),
 	BrowserDb = browser_db(StreamDb),
 	sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
@@ -1001,14 +1001,14 @@ browser_term_compress(BrowserDb, BrowserTerm, Str) :-
 % provides no way of doing this.
 %
 
-:- pred browser_term_to_string_raw_pretty(browser_term::in, int::in, int::in,
+:- pred browser_term_to_string_pretty(browser_term::in, int::in, int::in,
 	string::out) is det.
 
-browser_term_to_string_raw_pretty(plain_term(Univ), Width, MaxDepth, Str) :-
+browser_term_to_string_pretty(plain_term(Univ), Width, MaxDepth, Str) :-
 	Value = univ_value(Univ),
 	Doc = to_doc(MaxDepth, Value),
 	Str = to_string(Width, Doc).
-browser_term_to_string_raw_pretty(synthetic_term(Functor, Args, MaybeReturn),
+browser_term_to_string_pretty(synthetic_term(Functor, Args, MaybeReturn),
 		Width, MaxDepth, Str) :-
 	Doc = synthetic_term_to_doc(MaxDepth, Functor, Args, MaybeReturn),
 	Str = to_string(Width, Doc).
@@ -1602,7 +1602,8 @@ synthetic_term_to_doc(Depth, Functor, Args, MaybeReturn) = Doc :-
 						nest(2, ArgDocs)
 					) `<>`
 					nest(2, text(" = ") `<>`
-						to_doc(Depth - 1, Return)
+						to_doc(Depth - 1, 
+							univ_value(Return))
 					)
 				)
 			;

@@ -355,6 +355,16 @@ Changes to the Mercury debugger:
   We've added a new mdb command, `save_to_file', that saves a specified term
   to a specified file.
 
+* Ability to tell the declarative debugger to trust entire modules or 
+  individual predicates or functions.
+
+  We've added a `trust' command that lets the user tell the declarative 
+  debugger to assume that the code in certain modules and or predicates is
+  correct.
+
+* The "pretty" and "raw_pretty" print formats have had their names swapped, so
+  the "pretty" format is now prettier than the "raw_pretty" format.
+
 Changes to the compiler back-ends:
 
 * The .NET CLR back-end now bootstraps.

@@ -8,7 +8,7 @@ step
 finish
 set depth 20
 set size 201
-set format pretty
+set format raw_pretty
 p proc_body
 dd
 browse 1

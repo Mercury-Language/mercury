@@ -27,7 +27,10 @@ main(!IO) :-
 	print_file("browser_test.save.2", !IO),
 	% Clean up after the test.
 	io__remove_file("browser_test.save.1", _, !IO),
-	io__remove_file("browser_test.save.2", _, !IO).
+	io__remove_file("browser_test.save.2", _, !IO),
+	a_func(Data) = Data2,
+	write(Data2, !IO),
+	nl(!IO).
 
 :- pred big_data(big::out) is det.
 
@@ -103,3 +106,7 @@ print_file(FileName, !IO) :-
 		OpenRes = error(_),
 		io__write_string("open failed\n", !IO)
 	).
+
+:- func a_func(big) = big.
+
+a_func(_) = Big :- big_data(Big).

@@ -18,7 +18,7 @@ mdb> finish
       18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
 mdb> set depth 20
 mdb> set size 201
-mdb> set format pretty
+mdb> set format raw_pretty
 mdb> p proc_body
 	
 proc_rep(

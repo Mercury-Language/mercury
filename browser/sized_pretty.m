@@ -272,7 +272,7 @@ sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
 		LineWidth, Lines, String) :-
 	Params = measure_params(LineWidth),
 	functor_browser_term_cc(BrowserDb, BrowserTerm,
-		_Functor, Arity, _MaybeReturn),
+		_Functor, Arity, MaybeReturn),
 	(
 		Arity \= 0,
 		Lines \= 0,
@@ -284,7 +284,21 @@ sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
 		Limit = line_count(Lines)
 	),
 	annotate_with_size(BrowserDb, BrowserTerm, Params, Limit, AnnotTerm),
-	Doc = to_doc_sized(AnnotTerm),
+	(
+		MaybeReturn = yes,
+		BrowserTerm = synthetic_term(_, _, yes(ReturnValue))
+	->
+		annotate_with_size(BrowserDb, plain_term(ReturnValue), 
+			Params, Limit, AnnotReturn),
+		Doc = group(
+			to_doc_sized(AnnotTerm)
+			`<>` line 
+			`<>` nest(2, text(" = ")
+				`<>` to_doc_sized(AnnotReturn))
+		)
+	;
+		Doc = to_doc_sized(AnnotTerm)
+	),
 	String = pprint__to_string(LineWidth, Doc).
 
 %---------------------------------------------------------------------------%

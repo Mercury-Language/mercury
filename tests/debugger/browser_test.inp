@@ -5,16 +5,16 @@ continue
 finish
 delete *
 save_to_file 1 browser_test.save.1
-set format pretty
+set format raw_pretty
 print *
 set -A format verbose
 print *
 browse 1; ls; quit
 set -AP format flat
 print -f 1
-print -r 1
-print -v 1
 print -p 1
+print -v 1
+print -r 1
 print --xyzzy 1
 browse 1; print; quit
 browse -f 1; ls; quit
@@ -48,4 +48,11 @@ break list_data
 continue
 finish
 save_to_file Data browser_test.save.2
+break a_func
+continue
+finish
+print -p
+print -r
+print -v
+print -f
 continue
