@@ -43,9 +43,21 @@ files=`ls batch/$batch.mercury_compile.*.gz | sed 's:.gz::'`
 
 trap 'gzip $root/batch/$batch.mercury_compile.*[0-9] > /dev/null 2>&1; exit 0' 0 1 2 3 15 
 
+if test -x /usr/ucb/echo
+then
+	ECHO=/usr/ucb/echo
+else
+	ECHO=echo
+fi
+
 for file in $files
 do
-	cat `echo $file | sed 's/mercury_compile/params/'`
+	paramfile=`echo $file | sed 's/mercury_compile/params/'`
+	if test -r $paramfile
+	then
+		cat $paramfile
+	fi
+
 	gunzip $file.gz
 	MERCURY_COMPILER=$root/$file
 	export MERCURY_COMPILER
@@ -53,7 +65,7 @@ do
 	count=1
 	while test $count -le $limit
 	do
-		echo -n "$file "
+		$ECHO -n "$file "
 		$root/tools/dotime $cmd
 		count=`expr $count + 1`
 	done
