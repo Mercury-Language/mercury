@@ -492,8 +492,10 @@ opt_util__lval_refers_stackvars(maxfr, no).
 opt_util__lval_refers_stackvars(curredoip, no).
 opt_util__lval_refers_stackvars(hp, no).
 opt_util__lval_refers_stackvars(sp, no).
-opt_util__lval_refers_stackvars(field(_, Rval, _), Refers) :-
-	opt_util__rval_refers_stackvars(Rval, Refers).
+opt_util__lval_refers_stackvars(field(_, Rval, FieldNum), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers1),
+	opt_util__rval_refers_stackvars(FieldNum, Refers2),
+	bool__or(Refers1, Refers2, Refers).
 opt_util__lval_refers_stackvars(lvar(_), _) :-
 	error("found lvar in lval_refers_stackvars").
 opt_util__lval_refers_stackvars(temp(_), no).
@@ -504,6 +506,8 @@ opt_util__rval_refers_stackvars(var(_), _) :-
 	error("found var in rval_refers_stackvars").
 opt_util__rval_refers_stackvars(create(_, Rvals, _), Refers) :-
 	opt_util__rvals_refer_stackvars(Rvals, Refers).
+opt_util__rval_refers_stackvars(heap_alloc(Rval), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__rval_refers_stackvars(mkword(_, Baserval), Refers) :-
 	opt_util__rval_refers_stackvars(Baserval, Refers).
 opt_util__rval_refers_stackvars(const(_), no).
@@ -512,11 +516,7 @@ opt_util__rval_refers_stackvars(unop(_, Baserval), Refers) :-
 opt_util__rval_refers_stackvars(binop(_, Baserval1, Baserval2), Refers) :-
 	opt_util__rval_refers_stackvars(Baserval1, Refers1),
 	opt_util__rval_refers_stackvars(Baserval2, Refers2),
-	( ( Refers1 = yes ; Refers2 = yes ) ->
-		Refers = yes
-	;
-		Refers = no
-	).
+	bool__or(Refers1, Refers2, Refers).
 
 :- pred opt_util__rvals_refer_stackvars(list(maybe(rval)), bool).
 :- mode opt_util__rvals_refer_stackvars(in, out) is det.
@@ -606,7 +606,6 @@ opt_util__can_instr_branch_away(c_code(_), no).
 opt_util__can_instr_branch_away(if_val(_, _), yes).
 opt_util__can_instr_branch_away(incr_sp(_), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
-opt_util__can_instr_branch_away(incr_hp(_), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
 opt_util__can_instr_fall_through(livevals(_, _), yes).
@@ -623,7 +622,6 @@ opt_util__can_instr_fall_through(c_code(_), yes).
 opt_util__can_instr_fall_through(if_val(_, _), yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
-opt_util__can_instr_fall_through(incr_hp(_), yes).
 
 opt_util__instr_labels(comment(_), [], []).
 opt_util__instr_labels(livevals(_, _), [], []).
@@ -638,7 +636,6 @@ opt_util__instr_labels(goto(Addr), [], [Addr]).
 opt_util__instr_labels(computed_goto(_, Labels), Labels, []).
 opt_util__instr_labels(if_val(_, Addr), [], [Addr]).
 opt_util__instr_labels(c_code(_), [], []).
-opt_util__instr_labels(incr_hp(_), [], []).
 opt_util__instr_labels(incr_sp(_), [], []).
 opt_util__instr_labels(decr_sp(_), [], []).
 
@@ -650,7 +647,8 @@ opt_util__vnlval_access_vn(vn_maxfr, no).
 opt_util__vnlval_access_vn(vn_curredoip, no).
 opt_util__vnlval_access_vn(vn_hp, no).
 opt_util__vnlval_access_vn(vn_sp, no).
-opt_util__vnlval_access_vn(vn_field(_, Vn, _), yes(Vn)).
+opt_util__vnlval_access_vn(vn_field(_, _Vn1, _Vn2), _) :-
+	error("Zoltan please fixme!").
 opt_util__vnlval_access_vn(vn_temp(_), no).
 
 opt_util__livevals_addr(label(Label), Result) :-
@@ -690,7 +688,6 @@ opt_util__count_temps_instr(computed_goto(Rval, _), N0, N) :-
 opt_util__count_temps_instr(if_val(Rval, _), N0, N) :-
 	opt_util__count_temps_rval(Rval, N0, N).
 opt_util__count_temps_instr(c_code(_), N, N).
-opt_util__count_temps_instr(incr_hp(_), N, N).
 opt_util__count_temps_instr(incr_sp(_), N, N).
 opt_util__count_temps_instr(decr_sp(_), N, N).
 
@@ -700,8 +697,9 @@ opt_util__count_temps_instr(decr_sp(_), N, N).
 opt_util__count_temps_lval(Lval, N0, N) :-
 	( Lval = temp(T) ->
 		int__max(N0, T, N)
-	; Lval = field(_, Rval, _) ->
-		opt_util__count_temps_rval(Rval, N0, N)
+	; Lval = field(_, Rval, FieldNum) ->
+		opt_util__count_temps_rval(Rval, N0, N1),
+		opt_util__count_temps_rval(FieldNum, N1, N)
 	;
 		N = N0
 	).

@@ -44,6 +44,10 @@ vn__make_live(Rval, Livevals0, Livevals) :-
 		Rval = create(_, _, _),
 		Livevals = Livevals0
 	;
+		Rval = heap_alloc(Rval1),
+		vn__make_live_lval(hp, Livevals0, Livevals1),
+		vn__make_live(Rval1, Livevals1, Livevals)
+	;
 		Rval = mkword(_, Rval1),
 		vn__make_live(Rval1, Livevals0, Livevals)
 	;
@@ -63,9 +67,9 @@ vn__make_live(Rval, Livevals0, Livevals) :-
 
 vn__make_live_lval(Lval, Livevals0, Livevals) :-
 	bintree_set__insert(Livevals0, Lval, Livevals1),
-	% XXX should think about whether this is necessary
-	( Lval = field(_, Rval, _) ->
-		vn__make_live(Rval, Livevals1, Livevals)
+	( Lval = field(_, Rval1, Rval2) ->
+		vn__make_live(Rval1, Livevals1, Livevals2),
+		vn__make_live(Rval2, Livevals2, Livevals)
 	;
 		Livevals = Livevals1
 	).
@@ -530,8 +534,8 @@ vn__deep_unuse_vn_except(Vn, Except, Vn_tables0, Vn_tables) :-
 			map__lookup(Vn_to_rval_table0, Vn, Vn_rval),
 			(
 				Vn_rval = vn_origlval(Vn_lval),
-				(Vn_lval = vn_field(_Tag1, Sub_vn, _Slot1) ->
-					Sub_vns = [Sub_vn]
+				(Vn_lval = vn_field(_Tag1, Sub_vn1, Sub_vn2) ->
+					Sub_vns = [Sub_vn1, Sub_vn2]
 				;
 					Sub_vns = []
 				)
@@ -545,8 +549,8 @@ vn__deep_unuse_vn_except(Vn, Except, Vn_tables0, Vn_tables) :-
 				Vn_rval = vn_create(_Tag3, _Args, _Label),
 				Sub_vns = []
 			;
-				Vn_rval = vn_field(_Tag4, Sub_vn, _Slot4),
-				Sub_vns = [Sub_vn]
+				Vn_rval = vn_field(_Tag4, Sub_vn1, Sub_vn2),
+				Sub_vns = [Sub_vn1, Sub_vn2]
 			;
 				Vn_rval = vn_unop(_Unop, Sub_vn),
 				Sub_vns = [Sub_vn]
@@ -1062,12 +1066,14 @@ vn__no_heap_lval_to_vnlval(Lval, Vn_lval) :-
 	).
 
 vn__lval_to_vnlval(Lval, Use, Vn_lval, Vn_tables0, Vn_tables) :-
-	( vn__no_heap_lval_to_vnlval(Lval, Vn_lval) ->
+	( vn__no_heap_lval_to_vnlval(Lval, Vn_lval1) ->
+		Vn_lval = Vn_lval1,
 		Vn_tables = Vn_tables0
 	;
-		Lval = field(Tag, Rval, Slot),
-		vn__from_rval_find_vn(Rval, Use, Vn, Vn_tables0, Vn_tables),
-		Vn_lval = vn_field(Tag, Vn, Slot)
+		Lval = field(Tag, Rval1, Rval2),
+		vn__from_rval_find_vn(Rval1, Use, Vn1, Vn_tables0, Vn_tables1),
+		vn__from_rval_find_vn(Rval2, Use, Vn2, Vn_tables1, Vn_tables),
+		Vn_lval = vn_field(Tag, Vn1, Vn2)
 	).
 
 vn__point_vnlval_to_vn(Vn_lval, Vn, Vn_tables0, Vn_tables) :-
@@ -1105,11 +1111,11 @@ vn__is_const_expression(Vn, Vn_tables) :-
 :- pred vn__record_vn_use(vn, vn_tables, vn_tables).
 :- mode vn__record_vn_use(in, di, uo) is det.
 
-vn__record_vn_use(Vn, Vn_tables0, Vn_tables)
+vn__record_vn_use(Vn, Vn_tables0, Vn_tables) :-
 	Vn_tables0 = vn_tables(Next_vn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
-		Vn_to_locs_table0, Loc_to_vn_table0)
+		Vn_to_locs_table0, Loc_to_vn_table0),
 	map__lookup(Vn_to_uses_table0, Vn, Usecount),
 	Usecount1 is Usecount + 1,
 	map__set(Vn_to_uses_table0, Vn, Usecount1, Vn_to_uses_table1),
@@ -1125,7 +1131,7 @@ vn__record_first_vnrval(Vn_rval, Vn, Vn_tables0, Vn_tables) :-
 	Vn_tables0 = vn_tables(Next_vn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
-		Vn_to_locs_table0, Loc_to_vn_table0)
+		Vn_to_locs_table0, Loc_to_vn_table0),
 	Vn = Next_vn0,
 	Next_vn1 is Next_vn0 + 1,
 	map__set(Rval_to_vn_table0, Vn_rval, Vn, Rval_to_vn_table1),
@@ -1134,7 +1140,7 @@ vn__record_first_vnrval(Vn_rval, Vn, Vn_tables0, Vn_tables) :-
 	Vn_tables = vn_tables(Next_vn1,
 		Lval_to_vn_table0, Rval_to_vn_table1,
 		Vn_to_rval_table1, Vn_to_uses_table1,
-		Vn_to_locs_table0, Loc_to_vn_table0)
+		Vn_to_locs_table0, Loc_to_vn_table0).
 
 :- pred vn__record_first_vnlval(vn_lval, vn, vn_tables, vn_tables).
 :- mode vn__record_first_vnlval(in, out, di, uo) is det.

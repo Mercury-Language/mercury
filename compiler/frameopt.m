@@ -221,12 +221,6 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 		;
 			Uinstr0 = decr_sp(_),
 			error("decr_sp in frameopt__build_sets")
-		;
-			% XXX possible interaction with garbage collection
-			Uinstr0 = incr_hp(_),
-			frameopt__build_sets(Instrs0, FrameSize,
-				no, SetupFrame0, SetupSuccip0,
-				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		)
 	).
 
@@ -520,14 +514,6 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 		;
 			Uinstr0 = decr_sp(_),
 			error("decr_sp in frameopt__doit")
-		;
-			% XXX possible interaction with garbage collection
-			Uinstr0 = incr_hp(_),
-			frameopt__doit(Instrs0, FrameSize,
-				no, SetupFrame0, SetupSuccip0,
-				FrameSet, SuccipSet, TeardownMap,
-				ProcLabel, N0, N, Instrs1),
-			Instrs = [Instr0 | Instrs1]
 		)
 	).
 

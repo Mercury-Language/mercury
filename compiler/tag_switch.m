@@ -165,7 +165,7 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary,
 			EndLabel, FailLabel, Labels, CasesCode),
 		{ StagLoc = remote ->
 			% XXX reporting bug Index = field(Primary, Rval, 0)
-			Index = lval(field(Primary, Rval, 0))
+			Index = lval(field(Primary, Rval, const(int_const(0))))
 		;
 			Index = unop(unmkbody, Rval)
 		},
@@ -193,7 +193,7 @@ tag_switch__generate_secondary_tag_tests([Case0 | Cases0], Rval, Primary,
 		code_info__get_next_label(ElseLabel),
 		{ StagLoc = remote ->
 			TestCode = node([if_val(binop(ne,
-				lval(field(Primary, Rval, 0)),
+				lval(field(Primary, Rval, const(int_const(0)))),
 				const(int_const(Secondary))),
 				label(ElseLabel)) - "test remote sec tag only"])
 		;

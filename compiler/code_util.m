@@ -142,6 +142,7 @@ code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
 	(
 		( code_util__builtin_binop(PredName, Arity, _)
 		; code_util__builtin_unop(PredName, Arity, _)
+		; PredName = "call"
 		)
 	->
 		IsBuiltin = is_builtin

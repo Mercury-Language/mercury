@@ -4,6 +4,9 @@
 
 % Main author: zs.
 
+% XXX: I changed the incr_hp instruction to a heap_alloc rval.
+%	Are heap_alloc rvals handled properly? -fjh.
+
 % XXX: must include all heap locs among the dependencies of each ctrl node
 
 % XXX: when looking up live vals at labels, if it is not in vn_table,
@@ -52,7 +55,7 @@
 			;	vn_curredoip
 			;	vn_hp
 			;	vn_sp
-			;	vn_field(tag, vn, int)		% lval
+			;	vn_field(tag, vn, vn)		% lval
 			;	vn_temp(int).
 
 			% these lvals do not have vn_lval parallels
@@ -64,7 +67,8 @@
 			;	vn_mkword(tag, vn)		% rval
 			;	vn_const(rval_const)
 			;	vn_create(tag, list(maybe(rval)), int)
-			;       vn_field(tag, vn, int)		% rval
+			;	vn_heap_alloc(vn)		% rval
+			;       vn_field(tag, vn, vn)		% rval
 			;	vn_unop(unary_op, vn)		% rval
 			;	vn_binop(binary_op, vn, vn).	% rval, rval
 
@@ -188,7 +192,7 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
 	;
-		Uinstr = call(_, _),
+		Uinstr = call_closure(_, _),
 		opt_util__skip_comments(Moreinstrs, Moreinstrs1),
 		(
 			Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
@@ -201,6 +205,21 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 			Ccode1 = Ccode0
 		;
 			error("call not preceded by livevals")
+		)
+	;
+		Uinstr = call(_, _),
+		opt_util__skip_comments(Moreinstrs, Moreinstrs1),
+		(
+			Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
+			Nextinstr = Nextuinstr - Nextcomment,
+			Nextuinstr = livevals(yes, Livevals2prime)
+		->
+			Livevals2 = Livevals2prime,
+			Livemap1 = Livemap0,
+			Moreinstrs2 = Evenmoreinstrs,
+			Ccode1 = Ccode0
+		;
+			error("call_closure not preceded by livevals")
 		)
 	;
 		Uinstr = mkframe(_, _, _),
@@ -284,12 +303,6 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 	;
 		Uinstr = decr_sp(_),
 		Livevals2 = Livevals0,
-		Livemap1 = Livemap0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
-	;
-		Uinstr = incr_hp(_),
-		vn__make_live(lval(hp), Livevals0, Livevals2),
 		Livemap1 = Livemap0,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
@@ -426,6 +439,9 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 			Templocs0, Livevals0, Incrsp, Decrsp,
 			Ctrlmap0, Flushmap0, Ctrl0, [Instr0 | Prev], Instrs)
 	;
+		Uinstr0 = call_closure(_, _),
+		error("Zoltan please fixme (#2)")
+	;
 		Uinstr0 = call(ProcAddr, ReturnAddr),
 		vn__new_ctrl_node(vn_call(ProcAddr, ReturnAddr), Livemap,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
@@ -504,12 +520,6 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Templocs0, Livevals0,
 		vn__opt_block(Instrs0, Vn_tables0, Livemap,
 			Templocs0, Livevals0, Incrsp, N,
 			Ctrlmap0, Flushmap0, Ctrl0, [Instr0 | Prev], Instrs)
-	;
-		Uinstr0 = incr_hp(N),
-		vn__handle_instr(assign(hp, binop((+), lval(hp),
-			const(int_const(N)))) - Comment, Vn_tables0,
-			Livemap, Templocs0, Livevals0, Incrsp, Decrsp,
-			Ctrlmap0, Flushmap0, Ctrl0, Prev, Instrs0, Instrs)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -557,7 +567,8 @@ vn__flush_all_nodes(Livevals, Templocs0, Vn_tables0, Incrsp, Decrsp,
 		;
 			Instrs2 = Instrs1
 		),
-		vn__find_incr_hp(Instrs2, Instrs3),
+		error("Zoltan please fixme (#3)"),	% XXX
+		%%% vn__find_incr_hp(Instrs2, Instrs3),
 		( yes = no ->
 			Instrs4 = Instrs3
 		;
@@ -765,6 +776,10 @@ vn__find_links(Vn, Sink, Vn_tables0, Vn_tables,
 			Succmap = Succmap0,
 			Predmap = Predmap0,
 			Vn_tables = Vn_tables0
+		;
+			Vn_rval = vn_heap_alloc(Sub_vn),
+			vn__find_links(Sub_vn, Sink, Vn_tables0, Vn_tables,
+				Succmap0, Succmap, Predmap0, Predmap)
 		;
 			Vn_rval = vn_field(_Tag3, Sub_vn, _Slot),
 			vn__find_links(Sub_vn, Sink, Vn_tables0, Vn_tables,
@@ -1071,10 +1086,18 @@ vn__flush_vnrval(Vn_rval, Rval, Vn_tables0, Vn_tables, Templocs0, Templocs,
 		Templocs = Templocs0,
 		Instrs = []
 	;
-		Vn_rval = vn_field(Tag, Sub_vn1, Offset),
+		Vn_rval = vn_heap_alloc(Sub_vn1),
 		vn__flush_vn(Sub_vn1, Rval1, Vn_tables0, Vn_tables,
 			Templocs0, Templocs, Instrs),
-		Rval = lval(field(Tag, Rval1, Offset))
+		Rval = heap_alloc(Rval1)
+	;
+		Vn_rval = vn_field(Tag, Sub_vn1, Sub_vn2),
+		vn__flush_vn(Sub_vn1, Rval1, Vn_tables0, Vn_tables1,
+			Templocs0, Templocs1, Instrs1),
+		vn__flush_vn(Sub_vn2, Rval2, Vn_tables1, Vn_tables,
+			Templocs1, Templocs, Instrs2),
+		Rval = lval(field(Tag, Rval1, Rval2)),
+		list__append(Instrs1, Instrs2, Instrs)
 	;
 		Vn_rval = vn_unop(Unop, Sub_vn1),
 		vn__flush_vn(Sub_vn1, Rval1, Vn_tables0, Vn_tables,
@@ -1170,10 +1193,13 @@ vn__flush_access_path(Vn_lval, Lval, Vn_tables0, Vn_tables,
 		Templocs = Templocs0,
 		AccessInstrs = []
 	;
-		Vn_lval = vn_field(Tag, Vn, Offset),
-		vn__flush_vn(Vn, Rval, Vn_tables0, Vn_tables,
-			Templocs0, Templocs, AccessInstrs),
-		Lval = field(Tag, Rval, Offset)
+		Vn_lval = vn_field(Tag, Vn1, Vn2),
+		vn__flush_vn(Vn1, Rval1, Vn_tables0, Vn_tables1,
+			Templocs0, Templocs1, AccessInstrs1),
+		vn__flush_vn(Vn2, Rval2, Vn_tables1, Vn_tables,
+			Templocs1, Templocs, AccessInstrs2),
+		Lval = field(Tag, Rval1, Rval2),
+		list__append(AccessInstrs1, AccessInstrs2, AccessInstrs)
 	;
 		Vn_lval = vn_temp(Num),
 		Lval = temp(Num),
@@ -1323,6 +1349,8 @@ vn__insert_decr_sp(N, Instrs0, Instrs) :-
 		list__reverse(RevInstrs, Instrs)
 	).
 
+/*****
+	XXX Zoltan please fix this
 :- pred vn__find_incr_hp(list(instruction), list(instruction)).
 :- mode vn__find_incr_hp(in, out) is det.
 
@@ -1342,5 +1370,6 @@ vn__find_incr_hp([Instr0 | Instrs0], [Instr | Instrs]) :-
 		Instr = Instr0
 	),
 	vn__find_incr_hp(Instrs0, Instrs).
+******/
 
 %-----------------------------------------------------------------------------%

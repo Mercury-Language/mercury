@@ -205,6 +205,9 @@ opt_debug__dump_vn_rval(vn_create(T, MA, L), Str) :-
 	string__int_to_string(L, L_str),
 	string__append_list(["vn_create(", T_str, ", ", MA_str, ", ",
 		L_str, ")"], Str).
+opt_debug__dump_vn_rval(vn_heap_alloc(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["vn_heal_alloc(", N_str, ")"], Str).
 opt_debug__dump_vn_rval(vn_field(T, N, F), Str) :-
 	string__int_to_string(T, T_str),
 	string__int_to_string(N, N_str),

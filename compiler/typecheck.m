@@ -1595,15 +1595,16 @@ builtin_atomic_type(term__atom(String), "character") :-
 	string__char_to_string(_, String).
 
 	% builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :
-	%	instantiates PredConsInfoList to the set of cons_type_info
+	%	If Functor/Arity is a constant of a pred type,
+	%	instantiates the output parameters, otherwise fails.
+	%
+	%	Instantiates PredConsInfoList to the set of cons_type_info
 	%	structures for each predicate with name `Functor' and arity
 	%	greater than or equal to Arity.
 	%
-	%		PredTypeVarSet, PredTypeParams, ArgTypes) :-
-	%	If Functor/Arity is a constant of a pred type,
-	%	instantiates the output parameters, otherwise fails.
 	%	For example, functor `map__search/1' has type `pred(K,V)'
 	%	(hence PredTypeParams = [K,V]) and argument types [map(K,V)].
+
 
 :- pred builtin_pred_type(type_info, const, int, list(cons_type_info)).
 :- mode builtin_pred_type(type_info_ui, in, in, out)

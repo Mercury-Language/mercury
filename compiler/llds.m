@@ -84,11 +84,8 @@
 	;	incr_sp(int)
 			% increment the det stack pointer
 
-	;	decr_sp(int)
+	;	decr_sp(int).
 			% decrement the det stack pointer
-
-	;	incr_hp(int).
-			% increment the heap pointer
 
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots
@@ -99,7 +96,7 @@
 						% nondet stack frame
 			;	hp		% heap pointer
 			;	sp		% top of det stack
-			;	field(tag, rval, int)
+			;	field(tag, rval, rval)
 			;	lvar(var)
 			;	temp(int).	% only inside blocks
 
@@ -112,7 +109,9 @@
 				% and just reference the label.
 				% Only constant term create() rvals should
 				% get output, others will get transformed
-				% to incr_hp and mkword, etc.
+				% to mkword(Tag, heap_alloc(Size)) plus
+				% assignments to the fields
+			;	heap_alloc(rval)
 			;	mkword(tag, rval)
 			;	const(rval_const)
 			;	unop(unary_op, rval)
@@ -430,12 +429,6 @@ output_instruction(decr_sp(N)) -->
 	io__write_int(N),
 	io__write_string(");").
 
-output_instruction(incr_hp(N)) -->
-	io__write_string("\t"),
-	io__write_string("incr_hp("),
-	io__write_int(N),
-	io__write_string(");").
-
 :- pred output_livevals(list(lval), io__state, io__state).
 :- mode output_livevals(in, di, uo) is det.
 
@@ -485,6 +478,8 @@ output_rval_decls(unop(_, Rval)) -->
 output_rval_decls(binop(_, Rval1, Rval2)) -->
 	output_rval_decls(Rval1),
 	output_rval_decls(Rval2).
+output_rval_decls(heap_alloc(Rval)) -->
+	output_rval_decls(Rval).
 output_rval_decls(create(_Tag, ArgVals, Label)) -->
 	output_cons_arg_decls(ArgVals),
 	io__write_string("static const Word mercury_const_"),
@@ -527,7 +522,19 @@ output_cons_args([Arg | Args]) -->
 :- pred output_lval_decls(lval, io__state, io__state).
 :- mode output_lval_decls(in, di, uo) is det.
 
-output_lval_decls(_) --> [].	% currently no lvals require declarations
+output_lval_decls(field(_, Rval, FieldNum)) -->
+	output_rval_decls(Rval),
+	output_rval_decls(FieldNum).
+output_lval_decls(reg(_)) --> [].
+output_lval_decls(stackvar(_)) --> [].
+output_lval_decls(framevar(_)) --> [].
+output_lval_decls(succip) --> [].
+output_lval_decls(maxfr) --> [].
+output_lval_decls(curredoip) --> [].
+output_lval_decls(hp) --> [].
+output_lval_decls(sp) --> [].
+output_lval_decls(lvar(_)) --> [].
+output_lval_decls(temp(_)) --> [].
 
 :- pred output_code_addr_decls(code_addr, io__state, io__state).
 :- mode output_code_addr_decls(in, di, uo) is det.
@@ -780,6 +787,10 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_rval_lval(Lval).
+output_rval(heap_alloc(Exprn)) -->
+	io__write_string("heap_alloc("),
+	output_rval(Exprn),
+	io__write_string(")").
 output_rval(create(Tag, _Args, LabelNum)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
@@ -885,7 +896,7 @@ output_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string(", "),
 	output_rval(Rval),
 	io__write_string(", "),
-	io__write_int(FieldNum),
+	output_rval(FieldNum),
 	io__write_string(")").
 output_lval(lvar(_)) -->
 	{ error("Illegal to output an lvar") }.
@@ -933,7 +944,7 @@ output_rval_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string(", "),
 	output_rval(Rval),
 	io__write_string(", "),
-	io__write_int(FieldNum),
+	output_rval(FieldNum),
 	io__write_string(")").
 output_rval_lval(lvar(_)) -->
 	{ error("Illegal to output an lvar") }.

@@ -284,6 +284,7 @@ middle_rec__find_used_registers_instr(assign(Lval, Rval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
 	middle_rec__find_used_registers_rval(Rval, Used1, Used).
 middle_rec__find_used_registers_instr(call(_, _), Used, Used).
+middle_rec__find_used_registers_instr(call_closure(_, _), Used, Used).
 middle_rec__find_used_registers_instr(mkframe(_, _, _), Used, Used).
 middle_rec__find_used_registers_instr(modframe(_), Used, Used).
 middle_rec__find_used_registers_instr(label(_), Used, Used).
@@ -295,7 +296,6 @@ middle_rec__find_used_registers_instr(if_val(Rval, _), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_sp(_), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
-middle_rec__find_used_registers_instr(incr_hp(_), Used, Used).
 
 :- pred middle_rec__find_used_registers_lvals(list(lval), set(int), set(int)).
 :- mode middle_rec__find_used_registers_lvals(in, di, uo) is det.
@@ -311,8 +311,9 @@ middle_rec__find_used_registers_lvals([Lval | Lvals], Used0, Used) :-
 middle_rec__find_used_registers_lval(Lval, Used0, Used) :-
 	( Lval = reg(r(N)) ->
 		set__insert(Used0, N, Used)
-	; Lval = field(_, Rval, _) ->
-		middle_rec__find_used_registers_rval(Rval, Used0, Used)
+	; Lval = field(_, Rval, FieldNum) ->
+		middle_rec__find_used_registers_rval(Rval, Used0, Used1),
+		middle_rec__find_used_registers_rval(FieldNum, Used1, Used)
 	; Lval = lvar(_) ->
 		error("lvar found in middle_rec__find_used_registers_lval")
 	;
@@ -332,6 +333,9 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 	;
 		Rval = create(_, MaybeRvals, _),
 		middle_rec__find_used_registers_maybe_rvals(MaybeRvals, Used0, Used)
+	;
+		Rval = heap_alloc(Rval1),
+		middle_rec__find_used_registers_rval(Rval1, Used0, Used)
 	;
 		Rval = mkword(_, Rval1),
 		middle_rec__find_used_registers_rval(Rval1, Used0, Used)

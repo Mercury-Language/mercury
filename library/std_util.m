@@ -145,19 +145,11 @@ assoc_list__from_corresponding_lists_2([A|As], [B|Bs], [A - B|ABs]) :-
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
-bool__or(Bool1, Bool2, Bool3) :-
-	( Bool1 = yes ->
-		Bool3 = yes
-	;
-		Bool3 = Bool2
-	).
+bool__or(yes, _, yes).
+bool__or(no, Bool, Bool).
 
-bool__and(Bool1, Bool2, Bool3) :-
-	( Bool1 = no ->
-		Bool3 = no
-	;
-		Bool3 = Bool2
-	).
+bool__and(no, _, no).
+bool__and(yes, Bool, Bool).
 
 %-----------------------------------------------------------------------------%
 

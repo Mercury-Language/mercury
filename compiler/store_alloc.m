@@ -4,7 +4,7 @@
 :- module store_alloc.
 % Main author: conway.
 
-% Allocates the advisory storage location for each variable
+% Allocates the storage location for each variable
 % at the end of branched structures, so that the code generator
 % will generate code which puts the variable in the same place
 % in each branch.

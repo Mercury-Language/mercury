@@ -1,6 +1,9 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+% file: arg_info.nl
+% main author: fjh
+
 % This module is one of the pre-passes of the code generator.
 % It initializes the arg_info field of the proc_info structure in the HLDS,
 % which records for each argument of each procedure, whether the

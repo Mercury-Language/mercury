@@ -382,7 +382,7 @@ remove_invalid_reuse_slots([], _Live, _CallInfo, []).
 remove_invalid_reuse_slots([V|Vs], Live, CallInfo, Ws) :-
 	map__lookup(CallInfo, V, Slot),
 	(
-		% some [W] ( % XXX quantification bug
+		% some [W] (
 			set__member(W, Live),
 			map__search(CallInfo, W, Slot)
 		% )

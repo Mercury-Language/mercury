@@ -136,7 +136,8 @@ unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Rval, TestRval) :-
 	TestRval = binop(and,
 			binop(eq,	unop(tag, Rval),
 					unop(mktag, const(int_const(Bits)))), 
-			binop(eq,	lval(field(Bits, Rval, 0)),
+			binop(eq,	lval(field(Bits, Rval,
+						const(int_const(0)))),
 					const(int_const(Num)))).
 unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
 		TestRval) :-
@@ -202,16 +203,112 @@ unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
 		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
 unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
 		Var, Args, _Modes, Code) -->
-	( { Args = [] } ->
-		[]
-	;
-		{ error("Sorry, not implemented: higher order pred closures") }
-	),
-	{ Code = empty },
+
+		% XXX we need to handle the special case where
+		% the predicate is "call"
+
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_entry_label(ModuleInfo, PredId, ProcId,
-			CodeAddress) },
-	code_info__cache_expression(Var, const(pred_const(CodeAddress))).
+	{ module_info_preds(ModuleInfo, Preds) },
+	{ map__lookup(Preds, PredId, PredInfo) },
+	{ list__length(Args, NumArgs) },
+	{ pred_info_name(PredInfo, PredName) },
+	( { PredName = "call", Args = [CallPred | CallArgs] } ->
+		code_info__get_next_label(LoopEnd),
+		code_info__get_next_label(LoopStart),
+		code_info__get_free_register(LoopCounter),
+		code_info__get_free_register(NumOldArgs),
+		code_info__get_free_register(NewClosure),
+		{ NumOldArgsReg = reg(NumOldArgs) },
+		{ LoopCounterReg = reg(LoopCounter) },
+		{ NewClosureReg = reg(NewClosure) },
+		{ Zero = const(int_const(0)) },
+		{ One = const(int_const(1)) },
+		{ list__length(CallArgs, NumNewArgs) },
+		{ NumNewArgs_Rval = const(int_const(NumNewArgs)) },
+		{ NumNewArgsPlusTwo is NumNewArgs + 2 },
+		{ NumNewArgsPlusTwo_Rval =
+			const(int_const(NumNewArgsPlusTwo)) },
+		code_info__produce_variable(CallPred, Code1, OldClosure),
+		{ Code2 = node([
+			comment("build new closure from old closure") - "",
+			assign(NumOldArgsReg,
+				lval(field(0, OldClosure, Zero)))
+				- "get number of arguments",
+			assign(NewClosureReg, heap_alloc(
+				binop(+, OldClosure,
+				NumNewArgsPlusTwo_Rval)))
+				- "allocate new closure",
+			assign(field(0, lval(NewClosureReg), Zero),
+				binop(+, lval(NumOldArgsReg), NumNewArgs_Rval))
+				- "set new number of arguments",
+			assign(LoopCounterReg, Zero)
+				- "initialize loop counter",
+			label(LoopStart) - "start of loop",
+			assign(LoopCounterReg,
+				binop(+, lval(LoopCounterReg), One))
+				- "increment loop counter",
+			assign(field(0, lval(NewClosureReg),
+					lval(LoopCounterReg)),
+				lval(field(0, OldClosure,
+					lval(LoopCounterReg))))
+				- "copy old field",
+			if_val(binop(<, lval(LoopCounterReg),
+				lval(NumOldArgsReg)), label(LoopStart))
+				- "repeat the loop?",
+			label(LoopEnd) - "end of loop"
+		]) },
+		{ unify_gen__generate_extra_closure_args(CallArgs,
+			LoopCounterReg, NewClosureReg, Code3) },
+		{ Code = tree(Code1, tree(Code2, Code3)) },
+		{ Value = lval(NewClosureReg) }
+	;
+		{ Code = empty },
+		{ pred_info_procedures(PredInfo, Procs) },
+		{ map__lookup(Procs, ProcId, ProcInfo) },
+		{ proc_info_arg_info(ProcInfo, ArgInfo) },
+		{ code_util__make_entry_label(ModuleInfo, PredId, ProcId,
+				CodeAddress) },
+		code_info__get_next_label_number(LabelCount),
+		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
+		{ Vector = [yes(const(int_const(NumArgs))),
+				yes(const(pred_const(CodeAddress))) | PredArgs] },
+		{ Value = create(0, Vector, LabelCount) }
+	),
+	code_info__cache_expression(Var, Value).
+
+:- pred unify_gen__generate_extra_closure_args(list(var), lval, lval, code_tree).
+:- mode unify_gen__generate_extra_closure_args(in, in, in, out) is det.
+
+unify_gen__generate_extra_closure_args([], _, _, empty).
+unify_gen__generate_extra_closure_args([Var | Vars], LoopCounterReg,
+				NewClosureReg, tree(Code1, Code2)) :-
+	One = const(int_const(1)),
+	Code1 = node([
+		assign(LoopCounterReg,
+			binop(+, lval(LoopCounterReg), One))
+			- "increment argument counter",
+		assign(field(0, lval(NewClosureReg), lval(LoopCounterReg)),
+			var(Var))
+			- "set new argument field"
+	]),
+	unify_gen__generate_extra_closure_args(Vars, LoopCounterReg,
+		NewClosureReg, Code2).
+
+:- pred unify_gen__generate_pred_args(list(var), list(arg_info),
+					list(maybe(rval))).
+:- mode unify_gen__generate_pred_args(in, in, out) is det.
+
+unify_gen__generate_pred_args([], _, []).
+unify_gen__generate_pred_args([_|_], [], _) :-
+	error("unify_gen__generate_pred_args: insufficient args").
+unify_gen__generate_pred_args([Var|Vars], [ArgInfo|ArgInfos], [Rval|Rvals]) :-
+	ArgInfo = arg_info(_, ArgMode),
+	( ArgMode = top_in ->
+		Rval = yes(var(Var))
+	;
+		Rval = no
+	),
+	unify_gen__generate_pred_args(Vars, ArgInfos, Rvals).
 
 :- pred unify_gen__generate_cons_args(list(var), module_info, list(uni_mode),
 					list(maybe(rval))).
@@ -257,7 +354,7 @@ unify_gen__generate_cons_args_2([Var|Vars], ModuleInfo, [UniMode | UniModes],
 unify_gen__make_fields_and_argvars([], _, _, _, [], []).
 unify_gen__make_fields_and_argvars([Var|Vars], Lval, Field0, TagNum,
 							[F|Fs], [A|As]) :-
-	F = lval(field(TagNum, lval(Lval), Field0)),
+	F = lval(field(TagNum, lval(Lval), const(int_const(Field0)))),
 	A = ref(Var),
 	Field1 is Field0 + 1,
 	unify_gen__make_fields_and_argvars(Vars, Lval, Field1, TagNum, Fs, As).
