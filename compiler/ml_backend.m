@@ -78,6 +78,10 @@
 :- include_module mlds_to_ilasm.
 :- include_module mlds_to_managed.
 
+:- implementation.
+
+% :- import_module ll_backend. % Needed and imported in ml_closure_gen.m.
+
 :- end_module ml_backend.
 
 %-----------------------------------------------------------------------------%
