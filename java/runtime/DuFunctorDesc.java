@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001-2003 The University of Melbourne.
+// Copyright (C) 2001-2004 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -19,7 +19,7 @@ public class DuFunctorDesc {
 	//     yet, so this may not be correct.
 	public /*final*/ mercury.runtime.PseudoTypeInfo[] du_functor_arg_types;
 	public /*final*/ java.lang.String[] du_functor_arg_names;
-	public /*final*/ mercury.runtime.DuExistInfo[] du_functor_exist_info;
+	public /*final*/ mercury.runtime.DuExistInfo du_functor_exist_info;
 
 	public DuFunctorDesc(java.lang.String functor_name, int orig_arity,
 		int arg_type_contains_var, int sectag_locn, int primary,
@@ -42,6 +42,6 @@ public class DuFunctorDesc {
 			arg_types;
 		du_functor_arg_names = (java.lang.String []) arg_names;
 		du_functor_exist_info =
-			(mercury.runtime.DuExistInfo[]) exist_info;
+			(mercury.runtime.DuExistInfo) exist_info;
 	}
 }
