@@ -100,8 +100,12 @@
 	% the compiler thinks that it is semi-deterministic.  You can
 	% use calls to `semidet_succeed' to suppress warnings about
 	% determinism declarations which could be stricter.
+	% Similarly, `semidet_fail' is like `fail' except that its
+	% determinism is semidet rather than failure.
 
 :- pred semidet_succeed is semidet.
+
+:- pred semidet_fail is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -113,6 +117,8 @@
 :- external(type_to_univ/2).
 :- external(gc_call/1).		% currently only implemented for Prolog
 :- external(solutions/2).	% currently only implemented for Prolog
+:- external(semidet_fail/0).
+:- external(semidet_succeed/0).
 
 assoc_list__reverse_members([], []).
 assoc_list__reverse_members([K-V|KVs], [V-K|VKs]) :-
@@ -142,17 +148,5 @@ bool__or(no, Bool, Bool).
 
 bool__and(no, _, no).
 bool__and(yes, Bool, Bool).
-
-%-----------------------------------------------------------------------------%
-
-	% Some hacks to prevent compiler warnings.
-
-semidet_succeed :-
-	dummy(1).
-
-:- pred dummy(int).
-:- mode dummy(in) is semidet.
-
-dummy(1).
 
 %-----------------------------------------------------------------------------%
