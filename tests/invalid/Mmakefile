@@ -68,6 +68,10 @@ MCFLAGS-any_mode	=	--infer-types
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-missing_interface_import = --make-interface
 
+# The bug is caught when generating dependencies, so it is
+# easiest just to do that step.
+MCFLAGS-nested_impl_in_int =	--generate-dependencies
+
 DEPS=		$(SOURCES:%.m=%.dep)
 DEPENDS=	$(SOURCES:%.m=%.depend)
 ERRS=		$(SOURCES:%.m=%.err)
@@ -93,12 +97,8 @@ errs:	$(ERRS)
 
 # We only need to make the dependencies for test cases consisting of
 # multiple modules; currently the following are the only such cases.
-depend:	test_nested.depend nested_impl_in_int.depend
+depend:	test_nested.depend
 
-# The error in this file is actually reported even at make depend time,
-# so we need to ignore the return status.
-nested_impl_in_int.depend:
-	-$(MCD) $(ALL_MCDFLAGS) nested_impl_in_int
 
 clean:
 	rm -f *.err *.err_res
