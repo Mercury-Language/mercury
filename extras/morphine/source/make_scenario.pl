@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -35,11 +35,34 @@ patch_opium_files(FileName) :-
 
 	concat_string(["cp ", OPIUM_LIGTH_DIR, File, " ", SourceDir], Copy),
 	print(Copy),nl,
-	sh(Copy),
-
-	concat_string(["patch ", SourceDir, File, " ", SourceDir, PatchFile], Patch),
-	print(Patch),nl,
-	sh(Patch).
+	exec(Copy, []),
+	concat_string([SourceDir, File], AbsoluteFileName),
+	get_file_info(AbsoluteFileName, size, Size),
+	(	
+		concat_string(["patch ", AbsoluteFileName, " ", SourceDir, 
+			PatchFile], Patch),
+		print(Patch), nl,
+		exec(Patch, []), 
+		% Make sure the patch was applied
+		not get_file_info(AbsoluteFileName, size, Size), !
+	;
+		% Not all the patch commands use the same options; some use 
+		% "-i PatchFiles", some others don't...
+		% If the previous attempt to patch files fails, we try that:
+		concat_string(["patch -i ", SourceDir, PatchFile, " ", 
+			AbsoluteFileName], Patch2),
+		print(Patch2), nl,
+		exec(Patch2, []),
+		not get_file_info(AbsoluteFileName, size, Size), !
+	;
+		print("\n*** Unable to use `patch' system command."),
+		print("Make sure that you have `patch' installed "),
+		print("and in your PATH. If you already have a "),
+		print("version of `patch' installed, and it is "),
+		print("not working, then try using the GNU version "),
+		print("of patch instead.\n"),
+		abort
+	).
 
 patch_all_files :-
 	patch_opium_files(error),
@@ -94,6 +117,13 @@ patch_all_files :-
 	make(control_flow, morphine, [active, traceable, global], Source, OD),
 	make(help, morphine, [active, traceable, global], Source, OD),
 
+	concat_string([
+		"\nThe installation of Morphine succeeded!\n",
+		"Don't forget to add ", MorphineDir,"\nand ",
+		MorphineDir, "/bin to your PATH.\n",
+		"Make sure that the executables mmc and eclipse are ",
+		"accessible from your PATH too.\n"], SuccessMsg),
+	print(SuccessMsg),
 	halt.
 
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 1999 INRIA/INSA de Rennes.
+# Copyright (C) 1999-2000 INRIA/INSA de Rennes.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file License in the Morphine distribution.
 #
@@ -76,12 +76,6 @@ chmod a+x ${MERCURY_MORPHINE_DIR}/scripts/morphine
 
 echo "Compiling Morphine files..."
 eclipse -b ${MERCURY_MORPHINE_DIR}/source/make_scenario.pl
-
-echo ""
-echo "  Don't forget to add ${MERCURY_MORPHINE_DIR}/scripts and"
-echo "  ${MERCURY_MORPHINE_DIR}/bin to your PATH."
-echo "  Make sure that the executables mmc and eclipse are accessible "
-echo "  from your PATH too."
 
 
 
