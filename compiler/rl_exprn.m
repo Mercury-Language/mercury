@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,6 +84,7 @@
 :- import_module code_util, hlds_pred, hlds_data, inst_match.
 :- import_module instmap, mode_util, tree, type_util, prog_out.
 :- import_module rl_out, inlining, hlds_goal, prog_util, error_util.
+:- import_module inst_table.
 
 % Note: the reason that we need to import llds and builtin_ops here is that
 % we generate code for builtins by first converting the builtin to LLDS

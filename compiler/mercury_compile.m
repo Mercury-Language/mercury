@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -109,7 +109,7 @@ main_2(no, Args, Link) -->
 		),
 		globals__io_lookup_bool_option(statistics, Statistics),
 		( { Statistics = yes } ->
-			io__report_full_memory_stats
+			io__report_stats("full_memory_stats")
 		;
 			[]
 		)
