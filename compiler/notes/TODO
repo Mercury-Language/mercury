@@ -49,7 +49,8 @@ general
 - other specializations, e.g. if argument is known to be bound to
   f(X,Y), then just pass X and Y in registers
 
-- warn about predicates with no clauses.
+- warn about predicates with no clauses (requires improvements in the
+  module system handling).
 
 - warn about predicates with no modes.
 
@@ -100,8 +101,6 @@ code generation:
   macro which takes an extra string parameter identifying which
   routine allocated the memory.  Then we can do heap-allocation
   profiling to identify which routines use up all the bloody memory.
-
-- Generate constant compound terms at compile time rather than at runtime.
 
 general
 -------
