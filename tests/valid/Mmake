@@ -23,6 +23,7 @@ SOURCES= \
 	indexing.m \
 	loop.m \
 	name_mangling.m \
+	nondet_live.m \
 	semidet_disj.m \
 	stack_alloc.m \
 	switches.m \
