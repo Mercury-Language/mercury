@@ -94,7 +94,7 @@ MR_Unsigned	MR_trace_event_number = 0;
 ** control in the debugger when main/2 is called.
 */
 
-MR_Bool		MR_trace_from_full = TRUE;
+bool		MR_trace_from_full = TRUE;
 
 /*
 ** I/O tabling is documented in library/table_builtin.m
