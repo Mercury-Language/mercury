@@ -249,14 +249,14 @@ trace__setup(Globals, MaybeFromFullSlot, TraceInfo) -->
 		%
 		% Debugger code in the runtime is not interested in the
 		% call-from-full flag, so does not have to be in a fixed slot.
-		% Even if we put in a fixed slot, the runtime won't know
+		% Even if we put it in a fixed slot, the runtime won't know
 		% whether a procedure has interface or full tracing, and so it
 		% wouldn't know whether the slot was used for this purpose
 		% or not.
 		( CodeModel = model_non ->
 			( TraceRedo = yes ->
 				CallFromFullSlot = framevar(5),
-				MaybeFromFullSlot = yes(4)
+				MaybeFromFullSlot = yes(5)
 			;
 				CallFromFullSlot = framevar(4),
 				MaybeFromFullSlot = yes(4)
