@@ -942,7 +942,7 @@ and, on many platforms, it supports shared object libraries.
 @section Writing libraries
 
 A Mercury library is identified by a top-level module,
-which should contain all of the modules in that library.
+which should contain all of the modules in that library as sub-modules.
 It may be as simple as this @file{mypackage.m} file:
 
 @example
