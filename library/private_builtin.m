@@ -370,8 +370,7 @@ static MR_TypeInfo MR_typeclass_info_type_info(
 static MR_TypeInfo MR_typeclass_info_unconstrained_type_info(
 	MR_TypeClassInfo tcinfo, int index) 
 {
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	return 0;
+	return dynamic_cast<MR_Word> (tcinfo[index]);
 }
 
 static MR_TypeClassInfo MR_typeclass_info_superclass_info(
@@ -388,8 +387,7 @@ static MR_TypeClassInfo MR_typeclass_info_superclass_info(
 static MR_TypeClassInfo MR_typeclass_info_arg_typeclass_info(
 	MR_TypeClassInfo tcinfo, int index) 
 {
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	return 0;
+	return dynamic_cast<MR_Word> (tcinfo[index]);
 }
 
 ").
