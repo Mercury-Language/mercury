@@ -45,12 +45,13 @@
 		has_main, bool, io__state, io__state).
 :- mode il_assemble(in, in, in, in, out, di, uo) is det.
 
-	% il_assemble(ErrorStream, MCPPFile, DLLFile, HasMain, Succeeded).
+	% compile_managed_cplusplus_file(ErrorStream,
+	%		MCPPFile, DLLFile, Succeeded).
 :- pred compile_managed_cplusplus_file(io__output_stream,
 		file_name, file_name, bool, io__state, io__state).
 :- mode compile_managed_cplusplus_file(in, in, in, out, di, uo) is det.
 
-	% il_assemble(ErrorStream, C#File, DLLFile, HasMain, Succeeded).
+	% compile_csharp_file(ErrorStream, C#File, DLLFile, Succeeded).
 :- pred compile_csharp_file(io__output_stream, file_name, file_name,
 		bool, io__state, io__state).
 :- mode compile_csharp_file(in, in, in, out, di, uo) is det.
