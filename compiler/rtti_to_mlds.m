@@ -1182,9 +1182,9 @@ gen_rtti_id(ThisModuleName, tc_rtti_id(TCRttiName)) =
 
 gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
 	%
-	% Typeinfos are defined locally to each module.
-	% Other kinds of RTTI data are defining in the module
-	% corresponding to the type which they are for.
+	% Typeinfos and pseudo typeinfos are defined locally to each module.
+	% Other kinds of RTTI data are defined in the module that defines
+	% the type which they are for.
 	%
 	(
 		(
