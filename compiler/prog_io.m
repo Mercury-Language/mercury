@@ -1088,9 +1088,35 @@ process_func(ModuleName, VarSet, Term, Cond, MaybeDet, Result) :-
 process_func_2(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
 		Result) :-
 	( convert_type_and_mode_list(As0, As) ->
-		( convert_type_and_mode(ReturnTypeTerm, ReturnType) ->
-			Result = ok(func(VarSet, F, As, ReturnType, MaybeDet,
-					Cond))
+		( \+ verify_type_and_mode_list(As) ->
+			Result = error("some but not all arguments have modes",
+					FuncTerm)
+		; convert_type_and_mode(ReturnTypeTerm, ReturnType) ->
+			(
+				As = [type_and_mode(_, _) | _],
+				ReturnType = type_only(_)
+			->
+				Result = error(
+		"function arguments have modes, but function result doesn't",
+					FuncTerm)
+			;
+				As = [type_only(_) | _],
+				ReturnType = type_and_mode(_, _)
+			->
+				Result = error(
+		"function result has mode, but function arguments don't",
+					FuncTerm)
+			;
+				ReturnType = type_only(_),
+				MaybeDet = yes(_)
+			->
+				Result = error(
+"function declaration specifies a determinism but does not specify the mode",
+					FuncTerm)
+			;
+				Result = ok(func(VarSet, F, As, ReturnType,
+					MaybeDet, Cond))
+			)
 		;
 			Result = error(
 			"syntax error in return type of `:- func' declaration",
