@@ -26,6 +26,10 @@
 :- pred bag__insert(bag(T), T, bag(T)).
 :- mode bag__insert(in, in, out) is det.
 
+	% insert a list of values into a bag
+:- pred bag__insert_list(bag(T), list(T), bag(T)).
+:- mode bag__insert_list(in, in, out) is det.
+
 	% remove one occurrence of a particular value from a bag
 :- pred bag__remove(bag(T), T, bag(T)).
 :- mode bag__remove(in, in, out) is det.
@@ -53,48 +57,57 @@
 
 %---------------------------------------------------------------------------%
 
-bag__init(B) :-
-	map__init(B).
+bag__init(Bag) :-
+	map__init(Bag).
 
 %---------------------------------------------------------------------------%
 
-bag__insert(B0, I, B) :-
+bag__insert(Bag0, Item, Bag) :-
 	(
-		map__search(B0, I, C0)
+		map__search(Bag0, Item, Count0)
 	->
-		C is C0 + 1
+		Count is Count0 + 1
 	;
-		C = 1
+		Count = 1
 	),
-	map__set(B0, I, C, B).
+	map__set(Bag0, Item, Count, Bag).
 
 %---------------------------------------------------------------------------%
 
-bag__remove(B0, I, B) :-
+:- bag__insert_list(_, List, _) when List.
+
+bag__insert_list(Bag, [], Bag).
+bag__insert_list(Bag0, [Item|Items], Bag) :-
+	bag__insert(Bag0, Item, Bag1),
+	bag__insert_list(Bag1, Items, Bag).
+
+%---------------------------------------------------------------------------%
+
+bag__remove(Bag0, Item, Bag) :-
 	(
-		map__search(B0, I, C0)
+		map__search(Bag0, Item, Count0)
 	->
-		C is C0 - 1,
+		Count is Count0 - 1,
 		(
-			C > 0
+			Count > 0
 		->
-			map__set(B0, I, C, B)
+			map__set(Bag0, Item, Count, Bag)
 		;
-			map__delete(B0, I, B)
+			map__delete(Bag0, Item, Bag)
 		)
 	;
-		B = B0
+		Bag = Bag0
 	).
 
 %---------------------------------------------------------------------------%
 
-bag__remove_all(B0, I, B) :-
-	map__delete(B0, I, B).
+bag__remove_all(Bag0, Item, Bag) :-
+	map__delete(Bag0, Item, Bag).
 
 %---------------------------------------------------------------------------%
 
-bag__contains(I, B) :-
-	map__contains(B, I).
+bag__contains(Item, Bag) :-
+	map__contains(Bag, Item).
 
 %---------------------------------------------------------------------------%
 
