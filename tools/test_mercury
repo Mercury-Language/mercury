@@ -841,6 +841,7 @@ case $HOST in
 				GRADES="none.gc none none.gc.prof
 				none.prof none.gc.memprof none.gc.tr
 				hlc.gc hlc.par.gc" ;;
+		esac
 		;;
 
 	venus)
