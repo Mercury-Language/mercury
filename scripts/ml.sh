@@ -62,6 +62,7 @@ case @FULLARCH@ in
 		-rpath @LIBDIR@/lib/$GRADE/@FULLARCH@
 		-L$LIBDIR/$GRADE/@FULLARCH@
 		"
+		;;
 	*)
 		LIBDIR_OPTS="
 		-L$LIBDIR/@FULLARCH@
