@@ -684,6 +684,9 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- pred proc_info_maybe_declared_argmodes(proc_info, maybe(list(mode))).
 :- mode proc_info_maybe_declared_argmodes(in, out) is det.
 
+:- pred proc_info_declared_argmodes(proc_info, list(mode)).
+:- mode proc_info_declared_argmodes(in, out) is det.
+
 	% For a set of variables V, find all the type variables in the types 
 	% of the variables in V, and return set of typeinfo variables for 
 	% those type variables. (find all typeinfos for variables in V).
@@ -876,6 +879,14 @@ proc_info_typeinfo_varmap(ProcInfo, TVarMap) :-
 proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _,
 		_, _, _, _, _, _, _, MaybeArgModes).
+
+proc_info_declared_argmodes(ProcInfo, ArgModes) :-
+	proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
+	( MaybeArgModes = yes(ArgModes1) ->
+		ArgModes = ArgModes1
+	;
+		proc_info_argmodes(ProcInfo, ArgModes)
+	).
 
 % :- type proc_info	--->	procedure(
 % 				A	maybe(determinism),% _declared_ detism

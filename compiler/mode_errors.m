@@ -658,7 +658,7 @@ mode_info_write_context(ModeInfo) -->
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, Modes0) },
+	{ proc_info_declared_argmodes(ProcInfo, Modes0) },
 	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
 	{ pred_info_name(PredInfo, Name0) },
 	{ Name = unqualified(Name0) },

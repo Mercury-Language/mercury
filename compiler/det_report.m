@@ -697,7 +697,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 		),
 		{ pred_info_procedures(PredInfo, ProcTable) },
 		{ map__lookup(ProcTable, ModeId, ProcInfo) },
-		{ proc_info_argmodes(ProcInfo, ArgModes) },
+		{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
 		prog_out__write_context(Context),
 		io__write_string("  call to `"),
 		report_pred_name_mode(PredOrFunc, PredName, ArgModes),
