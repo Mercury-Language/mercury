@@ -51,7 +51,7 @@ DEBUG_OPTS="-g"
 grade=$DEFAULT_GRADE
 verbose=false
 
-while true; do
+while : ; do
     case "$1" in
 	--no-ansi)
 		ANSI_OPTS=
@@ -168,9 +168,13 @@ LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
 		;;
 esac
 
-if $verbose; then
+case $verbose in
+    true)
 	echo $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@"
-fi
+	;;
+    false)
+	;;
+esac
 exec $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
 	$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@"

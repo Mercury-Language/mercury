@@ -14,6 +14,8 @@
 # Options:
 # 	-v, --verbose
 #		Echo gcc command line before executing it
+# 	-g, --no-strip
+#		Do not strip debugging information
 #	-s <grade>, --grade <grade>
 #		Specify which grade of the Mercury library to link with.
 #		(The default grade is determined by `configure'.)
@@ -27,6 +29,7 @@ DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
 CC=${MERCURY_C_COMPILER=@CC@}
 
 verbose=false
+strip=true
 GRADE=$DEFAULT_GRADE
 
 while true; do
@@ -37,6 +40,12 @@ while true; do
 	-s|--grade)
 		shift
 		GRADE="$1"
+		shift ;;
+	--strip)
+		strip=true
+		shift ;;
+	-g|--no-strip)
+		strip=false
 		shift ;;
 	--no-libs)
 		MERCURY_LIBS=
@@ -64,6 +73,11 @@ case "$GRADE" in
 	*)
 		LIBGC=
 		;;
+esac
+
+case $strip in
+	true)	STRIP_OPTS="-s" ;;
+	false)  STRIP_OPTS="" ;;
 esac
 
 LIBS=${MERCURY_LIBS="-lmer -lmercury -lmer $LIBGC -lm"}
@@ -102,10 +116,12 @@ LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
 		;;
 esac
 
-if $verbose; then
-	echo $CC $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS "|"
-	echo "$DEMANGLER"
-fi
+case $verbose in
+	true)	echo $CC $STRIP_OPTS $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS "|"
+		echo "$DEMANGLER"
+		;;
+	false)	;;
+esac
 
 # we would like to just run $CC and pipe the result into $DEMANGLER,
 # but `$CC | $DEMANGLER' would return the wrong exit status, so
@@ -125,4 +141,4 @@ exec >$PIPE 2>&1
 rm -f $PIPE
 	# finally execute $CC;
 	# stdout & stderr will go via the pipe to $DEMANGLER and then to stderr
-exec $CC $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS
+exec $CC $STRIP_OPTS $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS
