@@ -65,7 +65,7 @@ install_info:
 .PHONY: install_scripts
 install_scripts:
 	echo "Installing scripts in $(INSTALL_BINDIR)"
-	test -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp $(INSTALL_SCRIPTS) $(INSTALL_BINDIR)
 	for file in $(INSTALL_SCRIPTS); do \
 		base=`basename $$file`; \
@@ -85,7 +85,7 @@ install_util:
 
 install_nuprolog:
 	echo "Installing NU-Prolog scripts in $(INSTALL_BINDIR)"
-	test -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp $(NUPROLOG_SCRIPTS) $(INSTALL_BINDIR)
 	for file in $(NUPROLOG_SCRIPTS); do \
 		base=`basename $$file`; \
@@ -96,7 +96,7 @@ install_nuprolog:
 .PHONY: install_sicstus
 install_sicstus:
 	echo "Installing SICStus-Prolog scripts in $(INSTALL_BINDIR)"
-	test -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp $(SICSTUS_SCRIPTS) $(INSTALL_BINDIR)
 	for file in $(NUPROLOG_SCRIPTS); do \
 		base=`basename $$file`; \
