@@ -37,8 +37,9 @@
 
 		% Create a new code_info structure.
 :- pred code_info__init(int, varset, liveness_info, call_info, bool,
-			pred_id, proc_id, proc_info, module_info, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, out) is det.
+				pred_id, proc_id, proc_info,
+					follow_vars, module_info, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, out) is det.
 
 		% Generate the next local label in sequence.
 :- pred code_info__get_next_label(label, code_info, code_info).
@@ -253,7 +254,9 @@
 					% deterministic code.
 			module_info,	% The module_info structure - you just
 					% never know when you might need it.
-			liveness_info
+			liveness_info,	% Variables that are live
+					% after this goal
+			follow_vars	% Follow Vars - where to put things
 	).
 
 :- type register_info	==	map(reg, register_stat).
@@ -277,7 +280,8 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
-				PredId, ProcId, ProcInfo, ModuleInfo, C) :-
+					PredId, ProcId, ProcInfo,
+						FollowVars, ModuleInfo, C) :-
 	code_info__init_register_info(PredId, ProcId,
 					ModuleInfo, RegisterInfo),
 	code_info__init_variable_info(PredId, ProcId,
@@ -296,7 +300,8 @@ code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
 		SaveSuccip,
 		FallThough,
 		ModuleInfo,
-		Liveness
+		Liveness,
+		FollowVars
 	).
 
 %---------------------------------------------------------------------------%
@@ -455,7 +460,7 @@ code_info__flush_variable(Var, Code) -->
 	(
 		{ VarStat = cached(Exprn, Target) }
 	->
-		code_info__target_to_lvalue(Target, Exprn, TargetReg),
+		code_info__target_to_lvalue(Target, Exprn, Var, TargetReg),
 			% Generate code to evaluate the expression.
 		code_info__generate_expression(Exprn, TargetReg, Code),
 			% Mark the register as taken, so that
@@ -577,6 +582,18 @@ code_info__generate_expression(mkword(Tag, Rval0), TargetReg, Code) -->
 		assign(TargetReg, mkword(Tag, Rval)) - "Tag a word"
 	]) },
 	{ Code = tree(Code0, Code1) }.
+code_info__generate_expression(mkbody(Rval0), TargetReg, Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code0),
+	{ Code1 = node([
+		assign(TargetReg, mkbody(Rval)) - "Tag a word"
+	]) },
+	{ Code = tree(Code0, Code1) }.
+code_info__generate_expression(body(Rval0), TargetReg, Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code0),
+	{ Code1 = node([
+		assign(TargetReg, body(Rval)) - "Tag a word"
+	]) },
+	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression(iconst(Int), TargetReg, Code) -->
 	{ Code = node([
 		assign(TargetReg, iconst(Int)) - "Make an integer const"
@@ -627,7 +644,7 @@ code_info__generate_expression_vars(var(Var), Result, Code) -->
 	;
 		{ VarStat = cached(Exprn, Target) }
 	->
-		code_info__target_to_lvalue(Target, Exprn, TargetReg),
+		code_info__target_to_lvalue(Target, Exprn, Var, TargetReg),
 		code_info__generate_expression(Exprn, TargetReg, Code),
 		(
 			{ TargetReg = reg(Reg) }
@@ -654,6 +671,12 @@ code_info__generate_expression_vars(create(Tag, Rvals0), create(Tag, Rvals),
 code_info__generate_expression_vars(mkword(Tag, Rval0), mkword(Tag, Rval),
 								Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
+code_info__generate_expression_vars(mktag(Rval0), mktag(Rval), Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code).
+code_info__generate_expression_vars(mkbody(Rval0), mkbody(Rval), Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code).
+code_info__generate_expression_vars(body(Rval0), body(Rval), Code) -->
+	code_info__generate_expression_vars(Rval0, Rval, Code).
 code_info__generate_expression_vars(iconst(Int), iconst(Int), empty) --> [].
 code_info__generate_expression_vars(sconst(Str), sconst(Str), empty) --> [].
 code_info__generate_expression_vars(field(Tag, Rval0, Field),
@@ -674,16 +697,23 @@ code_info__generate_expression_vars_2([R0|Rs0], [R|Rs], Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__target_to_lvalue(target_register, rval, lval, code_info,
-								code_info).
-:- mode code_info__target_to_lvalue(in, in, out, in, out) is det.
+:- pred code_info__target_to_lvalue(target_register, rval, var, lval,
+							code_info, code_info).
+:- mode code_info__target_to_lvalue(in, in, in, out, in, out) is det.
 
-code_info__target_to_lvalue(target(Lvalue), _Exprn, Lvalue) --> [].
-code_info__target_to_lvalue(none, Exprn, Lvalue) -->
+code_info__target_to_lvalue(target(Lvalue), _Exprn, _Var, Lvalue) --> [].
+code_info__target_to_lvalue(none, Exprn, Var, Lvalue) -->
 	(
 		code_info__evaluated_expression(Exprn, Lval0)
 	->
 		{ Lvalue = Lval0 }
+	;
+			% Look to see if we have a prefered
+			% target location XXX check reg is free.
+		code_info__get_follow_vars(Follow),
+		{ map__search(Follow, Var, Lval1) }
+	->
+		{ Lvalue = Lval1 }
 	;
 		code_info__get_free_register(Reg),
 		{ Lvalue = reg(Reg) }
@@ -1129,9 +1159,17 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 		code_info__get_variables(Variables),
 		{ map__contains(Variables, Var) }
 	->
-		code_info__generate_expression(var(Var), stackvar(Slot),
+		code_info__get_follow_vars(Follow),
+		(
+			{ map__search(Follow, Var, Lval) }
+		->
+			code_info__generate_expression(var(Var), Lval, Code0),
+			code_info__add_lvalue_to_variable(Lval, Var)
+		;
+			code_info__generate_expression(var(Var), stackvar(Slot),
 								Code0),
-		code_info__add_lvalue_to_variable(stackvar(Slot), Var),
+			code_info__add_lvalue_to_variable(stackvar(Slot), Var)
+		),
 		code_info__generate_forced_saves(VarSlots, RestCode),
 		{ Code = tree(Code0, RestCode) }
 	;
@@ -1140,7 +1178,14 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 			% procedures which never succeed.
 		code_info__variable_is_live(Var)
 	->
-		code_info__add_lvalue_to_variable(stackvar(Slot), Var),
+		code_info__get_follow_vars(Follow),
+		(
+			{ map__search(Follow, Var, Lval) }
+		->
+			code_info__add_lvalue_to_variable(Lval, Var)
+		;
+			code_info__add_lvalue_to_variable(stackvar(Slot), Var)
+		),
 		code_info__generate_forced_saves(VarSlots, Code)
 	;
 		code_info__generate_forced_saves(VarSlots, Code)
@@ -1180,7 +1225,14 @@ code_info__remake_code_info_2([V - S|VSs]) -->
 	(
 		code_info__variable_is_live(V)
 	->
-		code_info__add_lvalue_to_variable(stackvar(S), V)
+		code_info__get_follow_vars(Follow),
+		(
+			{ map__search(Follow, V, L) }
+		->
+			code_info__add_lvalue_to_variable(L, V)
+		;
+			code_info__add_lvalue_to_variable(stackvar(S), V)
+		)
 	;
 		{ true }
 	),
@@ -1282,6 +1334,13 @@ code_info__expression_dependencies(Var, binop(_, E0, E1), V0, V) -->
 	code_info__expression_dependencies(Var, E1, V1, V).
 code_info__expression_dependencies(Var, field(_, Rval,_), V0, V) -->
 	code_info__expression_dependencies(Var, Rval, V0, V).
+code_info__expression_dependencies(Var, mkword(_Tag, Rval), V0, V) -->
+	code_info__expression_dependencies(Var, Rval, V0, V).
+code_info__expression_dependencies(Var, mkbody(Rval), V0, V) -->
+	code_info__expression_dependencies(Var, Rval, V0, V).
+code_info__expression_dependencies(Var, body(Rval), V0, V) -->
+	code_info__expression_dependencies(Var, Rval, V0, V).
+code_info__expression_dependencies(_Var, mktag(_), V, V) --> [].
 code_info__expression_dependencies(Var, create(_Tag, Rvals), V0, V) -->
 	code_info__expressions_dependencies(Var, Rvals, V0, V).
 code_info__expression_dependencies(_Var, iconst(_), V, V) --> [].
@@ -1512,92 +1571,105 @@ code_info__remap_variables_2([Var|Vars], Lval) -->
 :- pred code_info__set_liveness_info(liveness_info, code_info, code_info).
 :- mode code_info__set_liveness_info(in, in, out) is det.
 
+:- pred code_info__get_follow_vars(follow_vars, code_info, code_info).
+:- mode code_info__get_follow_vars(out, in, out) is det.
+
+:- pred code_info__set_follow_vars(follow_vars, code_info, code_info).
+:- mode code_info__set_follow_vars(in, in, out) is det.
+
 code_info__get_stackslot_count(A, CI, CI) :-
-	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_stackslot_count(A, CI0, CI) :-
-	CI0 = code_info(_, B, C, D, E, F, G, H, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(_, B, C, D, E, F, G, H, I, J, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_label_count(B, CI, CI) :-
-	CI = code_info(_, B, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, B, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_label_count(B, CI0, CI) :-
-	CI0 = code_info(A, _, C, D, E, F, G, H, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, _, C, D, E, F, G, H, I, J, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_varset(C, CI, CI) :-
-	CI = code_info(_, _, C, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, C, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_varset(C, CI0, CI) :-
-	CI0 = code_info(A, B, _, D, E, F, G, H, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, _, D, E, F, G, H, I, J, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_call_info(D, CI, CI) :-
-	CI = code_info(_, _, _, D, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, D, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_call_info(D, CI0, CI) :-
-	CI0 = code_info(A, B, C, _, E, F, G, H, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, C, _, E, F, G, H, I, J, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_pred_id(E, CI, CI) :-
-	CI = code_info(_, _, _, _, E, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, E, _, _, _, _, _, _, _, _, _).
 
 code_info__set_pred_id(E, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, _, F, G, H, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, C, D, _, F, G, H, I, J, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_proc_id(F, CI, CI) :-
-	CI = code_info(_, _, _, _, _, F, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, F, _, _, _, _, _, _, _, _).
 
 code_info__set_proc_id(F, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, _, G, H, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, C, D, E, _, G, H, I, J, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_registers(G, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _, _).
 
 code_info__set_registers(G, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_variables(H, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, H, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, H, _, _, _, _, _, _).
 
 code_info__set_variables(H, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_proc_info(I, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _, _).
 
 code_info__get_succip_used(J, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, J, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, J, _, _, _, _).
 
 code_info__set_succip_used(J, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, _, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, _, K, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_fall_through(K, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, label(K), _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, label(K), _, _, _).
 
 code_info__set_fall_through(K, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, _, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, label(K), L, M).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, _, L, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, label(K), L, M, N).
 
 code_info__get_module_info(L, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, L, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, L, _, _).
 
 code_info__set_module_info(L, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, _, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, _, M, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 code_info__get_liveness_info(M, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, M).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, M, _).
 
 code_info__set_liveness_info(M, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
+
+code_info__get_follow_vars(N, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N).
+
+code_info__set_follow_vars(N, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
 %---------------------------------------------------------------------------%
 
@@ -1607,7 +1679,9 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__get_label_count(L, C1, _),
 	code_info__set_label_count(L, C0, C2),
 	code_info__get_succip_used(S, C1, _),
-	code_info__set_succip_used(S, C2, C).
+	code_info__set_succip_used(S, C2, C3),
+	code_info__get_follow_vars(F, C1, _),
+	code_info__set_follow_vars(F, C3, C).
 
 %---------------------------------------------------------------------------%
 

@@ -81,8 +81,26 @@ find_final_follow_vars(ProcInfo, Follow) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	map__init(Follow0),
-	find_follow_vars_in_call_2(ArgInfo, HeadVars, Follow0, Follow).
+	find_final_follow_vars_2(ArgInfo, HeadVars, Follow0, Follow).
 
+:- pred find_final_follow_vars_2(list(arg_info), list(var),
+						follow_vars, follow_vars).
+:- mode find_final_follow_vars_2(in, in, in, out) is det.
+
+find_final_follow_vars_2([], [], Follow, Follow).
+find_final_follow_vars_2([arg_info(Loc, Mode)|Args], [Var|Vars],
+							Follow0, Follow) :-
+	code_util__arg_loc_to_register(Loc, Reg),
+	(
+		Mode = top_out
+	->
+		map__set(Follow0, Var, reg(Reg), Follow1)
+	;
+		Follow0 = Follow1
+	),
+	find_final_follow_vars_2(Args, Vars, Follow1, Follow).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred find_follow_vars_in_goal(hlds__goal, module_info, follow_vars,
