@@ -59,6 +59,7 @@ BEGIN_CODE
 */
 
 mercury__builtin_solutions_2_0:
+mercury__builtin_solutions_2_1:
 
 /*
 ** The following algorithm is very straight-forward implementation
