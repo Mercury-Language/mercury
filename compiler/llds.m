@@ -44,7 +44,8 @@
 
 :- type rval		--->	lval(lval)
 			;	mkword(tag, reg)
-			;	const(integer)		% integer constants
+			;	iconst(integer)		% integer constants
+			;	sconst(string)		% string constants
 			;	binop(operator,rval,rval).
 
 :- type operator	--->	(+)
@@ -306,8 +307,9 @@ output_rval(binop(Op, X, Y)) -->
 	output_operator(Op),
 	output_rval(Y),
 	io__write_string(")").
-output_rval(const(N)) -->
+output_rval(iconst(N)) -->
 	io__write_int(N).
+% XXX sconsts are not handled yet.
 output_rval(mkword(Tag, Exprn)) -->
 	io__write_string("mkword("),
 	output_tag(Tag),
