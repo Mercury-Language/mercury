@@ -3,11 +3,12 @@ We are pleased to announce the first public release of the Mercury system.
 Mercury is a new, purely declarative logic programming language.
 Like Prolog and other existing logic programming languages, it is a
 very high-level language that allows programmers to concentrate on the
-problem rather the low-level details such as memory management.  Unlike
-Prolog, which is oriented towards exploratory programming, Mercury is
-designed for the construction of large, reliable, efficient software
-systems by teams of programmers.  As a consequence, programming in
-Mercury has a different flavor than programming in Prolog.
+problem rather than the low-level details such as memory management. 
+Unlike Prolog, which is oriented towards exploratory programming,
+Mercury is designed for the construction of large, reliable, efficient
+software systems by teams of programmers.  As a consequence,
+programming in Mercury has a different flavor than programming in
+Prolog.
 
 The main features of Mercury are:
 
@@ -149,7 +150,7 @@ This first Mercury distribution contains:
      o  the automatically generated C source for the compiler
         and the stardard library
      o  the runtime system (written in C)
-     o  hans Boehm's conservative garbage collector for C
+     o  Hans Boehm's conservative garbage collector for C
      o  some utility programs, including a make front-end for Mercury
 	with automatic dependency recomputation
      o  the Mercury language reference manual
