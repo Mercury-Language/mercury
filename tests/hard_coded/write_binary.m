@@ -92,8 +92,8 @@ test_discriminated -->
 
 test_polymorphism -->
 	io__write_string("TESTING POLYMORPHISM\n"),
-	do_test(poly_one([2399.3])),
-	do_test(poly_two(3)),
+	do_test(poly_one([2399.3]) `with_type` poly(list(float), int)),
+	do_test(poly_two(3) `with_type` poly(list(float), int)),
 	do_test(poly_three(3.33, 4, poly_one(9.11))).
 
 
@@ -136,13 +136,13 @@ test_builtins -->
 		% io__read_binary doesn't work for higher-order terms,
 		% so this test is expected to fail.
 	io__write_string("next text is expected to fail:\n"),
-	do_test(do_test),
+	do_test(do_test `with_type` pred(int, io, io)),
 
 	{ true }.
 
 test_other -->
 	io__write_string("TESTING OTHER TYPES\n"),
-	{ term__init_var_supply(VarSupply) },
+	{ term__init_var_supply(VarSupply `with_type` var_supply(generic)) },
 	{ term__create_var(VarSupply, Var, NewVarSupply) },
 	do_test(Var),
 	do_test(VarSupply),
@@ -150,7 +150,7 @@ test_other -->
 
 		% presently, at least, map is an equivalence and
 		% an abstract type.
-	{ map__init(Map) },
+	{ map__init(Map `with_type` map(int, string)) },
 	do_test(Map),
 
 		% a no tag type 
@@ -191,14 +191,18 @@ do_test_2(Term, TermRead) -->
 				{ Result = ok(TermRead0) },
 				{ TermRead0 = Term }
 			->
+				io__remove_file(FileName, _),
 				io__print("ok... "),
 				{ TermRead = TermRead0 }
 			;
+				io__remove_file(FileName, _),
 				{ throw("error reading term back in again") }
 			)
 		;
+			io__remove_file(FileName, _),
 			{ throw(InputRes) }
 		)
 	;
+		io__remove_file(FileName, _),
 		{ throw(OutputRes) }
 	).
