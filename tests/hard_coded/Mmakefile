@@ -82,6 +82,7 @@ PROGS=	\
 	pragma_c_code \
 	pragma_inline \
 	pragma_import \
+	pragma_export \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \

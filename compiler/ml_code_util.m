@@ -125,10 +125,12 @@
 % Routines for generating labels and entity names.
 %
 
-	% Generate the mlds__entity_name for the entry point function
-	% corresponding to a given procedure.
+	% Generate the mlds__entity_name and module name for the entry point
+	% function corresponding to a given procedure.
 	%
-:- func ml_gen_proc_label(module_info, pred_id, proc_id) = mlds__entity_name.
+:- pred ml_gen_proc_label(module_info, pred_id, proc_id,
+		mlds__entity_name, mlds_module_name).
+:- mode ml_gen_proc_label(in, in, in, out, out) is det.
 
 	% Generate an mlds__entity_name for a continuation function
 	% with the given sequence number.  The pred_id and proc_id
@@ -874,24 +876,30 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg) :-
 % Code for generating mlds__entity_names.
 %
 
-	% Generate the mlds__entity_name for the entry point function
-	% corresponding to a given procedure.
+	% Generate the mlds__entity_name and module name for the entry point
+	% function corresponding to a given procedure.
 	%
-ml_gen_proc_label(ModuleInfo, PredId, ProcId) = 
-	ml_gen_func_label(ModuleInfo, PredId, ProcId, no).
+ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name, MLDS_ModuleName) :-
+	ml_gen_func_label(ModuleInfo, PredId, ProcId, no,
+		MLDS_Name, MLDS_ModuleName).
 
 	% Generate an mlds__entity_name for a continuation function
 	% with the given sequence number.  The pred_id and proc_id
 	% specify the procedure that this continuation function
 	% is part of.
 	%
-ml_gen_nondet_label(ModuleInfo, PredId, ProcId, SeqNum) =
-	ml_gen_func_label(ModuleInfo, PredId, ProcId, yes(SeqNum)).
+ml_gen_nondet_label(ModuleInfo, PredId, ProcId, SeqNum) = MLDS_Name :-
+	ml_gen_func_label(ModuleInfo, PredId, ProcId, yes(SeqNum),
+		MLDS_Name, _MLDS_ModuleName).
 
-:- func ml_gen_func_label(module_info, pred_id, proc_id,
-		maybe(ml_label_func)) = mlds__entity_name.
-ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeSeqNum) = MLDS_Name :-
-	ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, _),
+:- pred ml_gen_func_label(module_info, pred_id, proc_id,
+		maybe(ml_label_func), mlds__entity_name, mlds_module_name).
+:- mode ml_gen_func_label(in, in, in, in, out, out) is det.
+
+ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeSeqNum,
+		MLDS_Name, MLDS_ModuleName) :-
+	ml_gen_pred_label(ModuleInfo, PredId, ProcId,
+		MLDS_PredLabel, MLDS_ModuleName),
 	MLDS_Name = function(MLDS_PredLabel, ProcId, MaybeSeqNum, PredId).
 
 	% Allocate a new function label and return an rval containing

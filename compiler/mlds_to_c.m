@@ -551,8 +551,8 @@ mlds_output_pragma_export_type(prefix, mlds__rtti_type(_)) -->
 	% Output the definition body for a pragma export when it is
 	% *NOT* a det function whose last arg is top_out.
 	%
-:- pred mlds_output_pragma_export_defn_body(mlds_module_name, mlds__entity_name,
-		func_params, io__state, io__state).
+:- pred mlds_output_pragma_export_defn_body(mlds_module_name,
+		mlds__qualified_entity_name, func_params, io__state, io__state).
 :- mode mlds_output_pragma_export_defn_body(in, in, in, di, uo) is det.
 
 mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
@@ -569,7 +569,7 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 		{ error("mlds_output_pragma_export: multiple return types") }
 	),
 
-	mlds_output_fully_qualified_name(qual(ModuleName, FuncName)),
+	mlds_output_fully_qualified_name(FuncName),
 	io__write_string("("),
 	io__write_list(Parameters, ", ",
 			mlds_output_name_with_cast(ModuleName)),
@@ -581,7 +581,8 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 	% det function whose last arg is top_out.
 	%
 :- pred mlds_output_pragma_export_func_defn_body(mlds_module_name,
-		mlds__entity_name, func_params, io__state, io__state).
+		mlds__qualified_entity_name, func_params,
+		io__state, io__state).
 :- mode mlds_output_pragma_export_func_defn_body(in, in, in, di, uo) is det.
 
 mlds_output_pragma_export_func_defn_body(ModuleName, FuncName, Signature) -->
@@ -604,7 +605,7 @@ mlds_output_pragma_export_func_defn_body(ModuleName, FuncName, Signature) -->
 
 		% Call the MLDS function.
 	io__write_string("\t"),
-	mlds_output_fully_qualified_name(qual(ModuleName, FuncName)),
+	mlds_output_fully_qualified_name(FuncName),
 	io__write_string("("),
 	write_func_args(ModuleName, Parameters),
 	io__write_string(");\n"),

@@ -734,7 +734,8 @@ ml_gen_pragma_export_proc(ModuleInfo,
 		pragma_exported_proc(PredId, ProcId, C_Name, ProgContext),
 		ML_Defn) :-
 
-	MLDS_Name = ml_gen_proc_label(ModuleInfo, PredId, ProcId),
+	ml_gen_proc_label(ModuleInfo, PredId, ProcId,
+		MLDS_Name, MLDS_ModuleName),
 	MLDS_FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 	MLDS_Context = mlds__make_context(ProgContext),
 
@@ -746,8 +747,8 @@ ml_gen_pragma_export_proc(ModuleInfo,
 		IsOutDetFunc = no
 	),
 
-	ML_Defn = ml_pragma_export(C_Name, MLDS_Name, MLDS_FuncParams,
-			MLDS_Context, IsOutDetFunc).
+	ML_Defn = ml_pragma_export(C_Name, qual(MLDS_ModuleName, MLDS_Name),
+			MLDS_FuncParams, MLDS_Context, IsOutDetFunc).
 
 
 	%
@@ -857,7 +858,7 @@ ml_gen_procs([ProcId | ProcIds], ModuleInfo, PredId, PredInfo, ProcTable)
 ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, Defns0, Defns) :-
 	proc_info_context(ProcInfo, Context),
 
-	MLDS_Name = ml_gen_proc_label(ModuleInfo, PredId, ProcId),
+	ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name, _ModuleName),
 	MLDS_Context = mlds__make_context(Context),
 	MLDS_DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
 	ml_gen_proc_defn(ModuleInfo, PredId, ProcId,
@@ -1947,8 +1948,9 @@ ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
 ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name, _Module) },
 	{ HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
-			name(ml_gen_proc_label(ModuleInfo, PredId, ProcId)),
+			name(MLDS_Name),
 			raw_target_code("\n")] }.
 
 

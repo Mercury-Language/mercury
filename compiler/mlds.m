@@ -618,7 +618,7 @@
 :- type mlds__pragma_export
 	---> ml_pragma_export(
 		string,			% Exported name
-		mlds__entity_name,	% MLDS name for exported entity
+		mlds__qualified_entity_name, % MLDS name for exported entity
 		mlds__func_params,	% MLDS function parameters
 		mlds__context,
 		bool			% is a det function with the
