@@ -1,0 +1,453 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+%
+% Author : Erwan Jahier <jahier@irisa.fr>
+%
+% This file implements all the predicates that deal with variables retrieval.
+
+
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: current_arg,
+	arg_list	: [ArgumentList],
+	arg_type_list	: [is_list_or_var],
+	abbrev		: _,
+	implementation	: current_arg_Op,
+	message		:
+"Gets or checks the values of the currently live arguments of the current \
+event. It will unify non-live arguments with the atom '-'.\n\
+Example: if the first argument of the current procedure is 2, the second is \
+[4, 6] and the third is not live, current_arg(Arg) will unify Arg with the \
+list [2, [4, 6], -].\n\
+\n\
+If you do not want to retrieve an argument (because it is very big for \
+example), you can use the atom '-': for example, current_arg([X, -, -]) will \
+only retrieve the first argument."
+	).
+
+current_arg_Op(Arg) :-
+	current(arity = Arity),
+	(
+		free(Arg),
+		current_vars(ListLiveArg, _),
+		generate_list_arg(0, Arity, ListLiveArg, Arg),
+		!
+	;
+		is_list(Arg),
+		% for example if Arg = [-,-,X,-,Y,-], we retrieve the argument 
+		% one by one (which is stupid if we have [X1, X2, X3] ...).
+		length(Arg, Length),
+		(
+			Arity == Length
+		->
+			current_live_var_names_and_types_ll(ListVarNames, _),
+			retrieve_one_by_one(ListVarNames, 1, Arg)
+		;
+			% for example if Arg = [X | _]
+			current_vars(ListLiveArg, _),
+			generate_list_arg(0, Arity, ListLiveArg, Arg),
+			!
+		)
+	).
+
+
+retrieve_one_by_one(ListVarNames, N, [Arg | TailArg]) :-
+	(
+		Arg == '-',
+		!
+	;
+		integer_to_headvar(N, HeadVar__N),
+		current_live_var(ListVarNames, HeadVar__N, RetrievedArg, _Type),
+		Arg = RetrievedArg
+	),
+	N1 is N + 1,
+	retrieve_one_by_one(ListVarNames, N1, TailArg).
+
+retrieve_one_by_one(_, _, []).
+
+
+% :- type live_var --->
+% 	live_var(
+% 		string,	% variable name
+% 		T,	% Variable value
+% 		string  % variable type
+% 		).
+
+%:- pred generate_list_arg(int, int, list(live_var), list(T)).
+%:- mode generate_list_arg(in, in, out, out) is det.
+	% This predicate take a list of live_var and outputs the list of the 
+	% current predicate arguments where non live arguments are replaced 
+	% by '-'.
+	% Ex: generate_list_arg(0, 3, [live_var("HeadVar2", 4, int)], [-, 4, -]).
+generate_list_arg(Max, Max, _, []) :-
+	!.
+
+generate_list_arg(N, Max, ListVar, [NewVar | NewTail]) :-
+	NN is N + 1,
+	( 
+		integer_to_headvar(NN, VarName),
+		member(live_var(VarName, Value, _Type), ListVar)
+	->
+		NewVar = Value,
+		generate_list_arg(NN, Max, ListVar, NewTail)
+	;
+		NewVar = '-',
+		generate_list_arg(NN, Max, ListVar, NewTail)
+	).
+
+%:- pred headvar_to_integer(string, integer).
+%:- mode headvar_to_integer(in, out) is semidet.
+	% Internal name of arguments of the current predicate are of the form
+	% "HeadVar__i". This predicate converts it into an integer.
+	% Example: headvar_to_integer(HeadVar__3, 3).
+headvar_to_integer(HeadVar, Int) :-
+	append_strings("HeadVar__", IntStr, HeadVar),
+	number_string(Int, IntStr).
+
+integer_to_headvar(Int, HeadVar) :-
+	number_string(Int, IntStr),
+	append_strings("HeadVar__", IntStr, HeadVar).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: current_arg_names,
+	arg_list	: [ListArgNames],
+	arg_type_list	: [is_list_or_var],
+	abbrev		: _,
+	implementation	: current_arg_names_Op,
+	message		:
+"Gets or checks the list of the names of the current procedure arguments. \
+Unify non-live arguments with the atom '-'."
+	).
+
+current_arg_names_Op(ListArgNames) :-
+	current_live_var_names_and_types(LVN),
+	current(arity = Arity),
+	generate_list_arg_names(0, Arity, LVN, ListArgNames).
+
+generate_list_arg_names(Max, Max, _, []) :-
+	!.
+
+generate_list_arg_names(N, Max, ListVar, [NewVarName | NewTail]) :-
+	NN is N + 1,
+	( 
+		integer_to_headvar(NN, VarName),
+		member(live_var_names_and_types(VarName, _), ListVar)
+	->
+		NewVarName = VarName,
+		generate_list_arg_names(NN, Max, ListVar, NewTail)
+	;
+		NewVarName = '-',
+		generate_list_arg_names(NN, Max, ListVar, NewTail)
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: current_arg_types,
+	arg_list	: [ListArgTypes],
+	arg_type_list	: [is_list_or_var],
+	abbrev		: _,
+	implementation	: current_arg_types_Op,
+	message		:
+"Gets or checks the list of the arguments types of the current procedure. \
+Unify non-live arguments with the atom '-'"
+	).
+
+current_arg_types_Op(ListArgTypes) :-
+	current_live_var_names_and_types(LVN),
+	current(arity = Arity),
+	generate_list_arg_types(0, Arity, LVN, ListArgTypes).
+
+generate_list_arg_types(Max, Max, _, []) :-
+	!.
+
+generate_list_arg_types(N, Max, ListVar, [NewVarType | NewTail]) :-
+	NN is N + 1,
+	( 
+		integer_to_headvar(NN, VarName),
+		member(live_var_names_and_types(VarName, VarType), ListVar)
+	->
+		NewVarType = VarType,
+		generate_list_arg_types(NN, Max, ListVar, NewTail)
+	;
+		NewVarType = '-',
+		generate_list_arg_types(NN, Max, ListVar, NewTail)
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: current_vars,
+	arg_list	: [LiveArgList, OtherLiveVarList],
+	arg_type_list	: [is_list_or_var, is_list_or_var],
+	abbrev		: _,
+	implementation	: current_vars_Op,
+	message		:
+"Gets or checks the values of the currently live (*) variables of the \
+current event. These variables are separated in two lists: one containing the \
+live arguments of the current predicate, one containing other currently live \
+variables.\n\
+\n\
+(*) We say that a variable is live at a given point of the execution if it has \
+been instantiated and if the result of that instantiation is still available \
+(which is not the case for for destructively updated variables).\
+"
+	).
+
+% :- pred current_vars(list(live_var), list(live_var)).
+% :- mode current_vars(out, out) is det.
+% :- mode current_vars(in, out) is semidet.
+% :- mode current_vars(out, in) is semidet.
+% :- mode current_vars(in ,in) is semidet.
+current_vars_Op(ListLiveArg, ListOtherLiveVar) :-
+	( 
+		(
+			not(free(ListOtherLiveVar)),
+			ListOtherLiveVar = '-'
+		;
+			not(free(ListOtherLiveVar)),
+			ListOtherLiveVar = '-'
+		)
+		% We retrieve the information about arguments only if it 
+		% is needed.
+	->
+		true
+	;
+		current_vars2(ListLiveArgRetrieved, ListOtherLiveVarRetrieved),
+		ListLiveArg = ListLiveArgRetrieved,
+		ListOtherLiveVar = ListOtherLiveVarRetrieved
+	).
+
+
+%:- pred current_vars2(list(live_var), list(live_var)).
+%:- mode current_vars2(out, out) is det.
+current_vars2(ListLiveArgRetrieved, ListOtherLiveVarRetrieved) :-
+	current_vars_ll(ListLiveVar, ListName),
+	% The Mercury side send us all the live variables so we separate 
+	% here the live variables that are arguments of the current 
+	% predicate (which internal name is of the form "HeadVar__i") from 
+	% the other live variables.
+	separate_live_args_from_live_var(ListLiveVar, ListName, 
+		ListArg, ListArgName, ListOtherVar , ListOtherVarName),
+	synthetise_list_univ_and_list_string(ListOtherVar, ListOtherVarName, 
+		ListOtherLiveVarRetrieved),
+	synthetise_list_univ_and_list_string(ListArg, ListArgName, 
+		ListLiveArgRetrieved).
+
+
+%:- pred separate_live_args_from_live_var(list(univ), list(string), 
+%	list(univ), list(string), list(univ), list(string) ).
+%:- mode separate_live_args_from_live_var(in, in, out, out, out, out) is det.
+	% Separates live arguments of the current predicate from other live
+	% variables.
+	% The list in input contains a list of 'univ(value - type)' that 
+	% describes
+	% live variables and a list of string of their corresponding internal
+	% variable name. When the variable name begins with "HeadVar__", we put
+	% its corresponding variable in the first output; and we put them
+	% on the second output list otherwise.
+separate_live_args_from_live_var([], [], [], [], [], []).
+separate_live_args_from_live_var([Var | TailVar], [VarName | TailVarName],
+		ListArg, ListArgName, ListOtherVar , ListOtherVarName) :-
+	separate_live_args_from_live_var(TailVar, TailVarName, 
+		TailListArg, TailListArgName, 
+		TailListOtherVar, TailListOtherVarName),
+	( append_strings("HeadVar__", _, VarName) ->
+		append([Var], TailListArg, ListArg),
+		append([VarName], TailListArgName, ListArgName),
+		ListOtherVar = TailListOtherVar,
+		ListOtherVarName = TailListOtherVarName
+	;
+		ListArg = TailListArg,
+		ListArgName = TailListArgName,
+		append([Var], TailListOtherVar, ListOtherVar),
+		append([VarName], TailListOtherVarName, ListOtherVarName)
+	).
+
+%:- pred synthetise_list_univ_and_list_string(list(univ), list(string), 
+%	list(live_var) ).
+%:- mode synthetise_list_univ_and_list_string(in, in, out) is det.
+	% Take a list of univ and a list of string of the same size and 
+	% synthetize it into a list of live_var. 
+
+synthetise_list_univ_and_list_string(L1, L2, Lout) :-
+	(
+		synthetise_list_univ_and_list_string2(L1, L2, Lout),
+		!
+	;
+		write("\nSoftware error in opium-M: "),
+		write("synthetise_list_univ_and_list_string failed.\n"),
+		abort
+	).
+
+synthetise_list_univ_and_list_string2(X, [Name | TailName], ListArgLive) :-
+	(
+	    X = [univ(Arg:Type) | TailArg],
+	    !
+	;
+	     X = [_| TailArg],
+	     Arg = 'error',
+	     Type = 'error',
+	     write("***** Can't retrieve that type of argument. "),
+	     write("This is a bug in Opium-M...\n")
+	 ),
+	synthetise_list_univ_and_list_string2(TailArg, TailName, ListArgLeft),
+	ListArgLive = [live_var(Name, Arg, Type) | ListArgLeft].
+
+synthetise_list_univ_and_list_string2([], [], []).
+
+% :- pred current_vars_ll(list(univ), list(string)).
+% :- mode current_vars_ll(out, out) is det.
+	% Retrieve the list of currently live variables and the list of their 
+	% internal name.
+current_vars_ll(ListLiveVar, ListName) :-
+	send_message_to_socket(current_vars),
+	read_message_from_socket(Response),
+	Response = current_vars(ListLiveVar, ListName).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: current_live_var,
+	arg_list	: [VarId, VarValue, VarType],
+	arg_type_list	: [is_string_or_integer_or_var, is_term, 
+				is_atom_or_var],
+	abbrev		: clv,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: current_live_var_Op,
+	parameters	: [],
+	message		:
+'Gets or checks the name, the value and the type of the currently live \
+variables. VarId can be a string representing the variable name or, if it is \
+an argument of the current procedure, an integer representing the rank the \
+argument.\n\
+Example: \
+current_live_var("HeadVar__3", VarValue, _Type) (or equivalently \
+current_live_var(3, VarValue, _Type)) binds VarValue with the \
+current value of the third argument of the current predicate if it exists \
+and if it is live, fails otherwise. \
+You can get all the live variables by querying \
+current_live_var(VarId, VarValue, VarType) and typing \";\" at the prompt to \
+search for other solutions. \
+You can also get the list of all the currently live variables of type int \
+with the Opium-M query \
+setof((Name, Value), current_live_var(Name, Value, int), List).\
+'
+	).
+
+
+% :- pred current_live_var(string_or_integer, atom).
+% :- mode current_live_var(in, out) is semidet.
+current_live_var_Op(VarId, VarValue, VarType) :-
+	( integer(VarId) ->
+		integer_to_headvar(VarId, VarName)
+	;
+		VarName = VarId
+	),
+	current_live_var_names_and_types_ll(ListVarNames, _),
+	current_live_var(ListVarNames, VarName, VarValue, VarType).
+
+
+current_live_var(ListVarNames, VarNames, Value, Type) :-
+	member(VarNames, ListVarNames),
+	get_internal_number(VarNames, ListVarNames, InternalNumber),
+	current_nth_var_ll(InternalNumber, X),
+	X = univ(Value : Type).
+
+get_internal_number(VarNames, ListVarNames, InternalNumber) :-	
+	% This predicate unifies InternalNumber with the rank of VarNames in 
+	% ListVarNames - 1.
+	get_internal_number(1, VarNames, ListVarNames, InternalNumber).
+
+
+get_internal_number(N, VarNames, [VarNames | _], N) :- !.
+get_internal_number(N, VarNames, [_ | ListVarNames], InternalNumber) :-
+	NN is N + 1,
+	get_internal_number(NN, VarNames, ListVarNames, InternalNumber).
+
+% :- pred current_nth_var_ll(int, univ).
+% :- mode current_nth_var_ll(in, out) is det.
+current_nth_var_ll(VarInternalNumber, Var) :-
+	send_message_to_socket(current_nth_var(VarInternalNumber)),
+	read_message_from_socket(Response),
+	Response = current_nth_var(Var).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: current_live_var_names_and_types,
+	arg_list	: [ListVarNames],
+	arg_type_list	: [is_list_or_var],
+	abbrev		: _,
+	implementation	: current_live_var_names_and_types_Op,
+	message		:
+"Gets or checks the list of names and types of the currently live variables. \
+Each live variable is represented by the term \
+live_var_names_and_types(VariableName, TypeOfTheVariable).\
+"
+	).
+
+
+% :- pred current_live_var_names_and_types(list(string)).
+% :- mode current_live_var_names_and_types(out) is det.
+current_live_var_names_and_types_Op(SynthetisedList) :-
+	current_live_var_names_and_types_ll(ListVarNames, ListType),
+	synthetise_var_names_list_and_type_list(ListVarNames, ListType, 
+		SynthetisedList).
+
+
+% :- type live_var_names_and_types --->
+% 	live_var_names_and_types(
+% 		int,	% internal variable representation 
+% 		string,	% Variable name
+% 		string  % variable type
+% 		).
+
+%:- pred synthetise_var_names_list_and_type_list(
+%	list(string), list(string), list(live_var_names_and_types)).
+%:- mode synthetise_var_names_list_and_type_list(in, in, out) is det.
+	% Merge the list of variables names and their type.
+synthetise_var_names_list_and_type_list([], [], []).
+synthetise_var_names_list_and_type_list([Var | TailVar], [Type | TailType], 
+		[Hout | Tout]) :-
+	Hout = live_var_names_and_types(Var, Type),
+	synthetise_var_names_list_and_type_list(TailVar, TailType, Tout).
+
+% :- pred current_live_var_names_and_types_ll(list(string), list(string)).
+% :- mode current_live_var_names_and_types_ll(out, out) is det.
+	% Outputs the list of the internal names of the currently live variables
+	% and a list of their corresponding types.
+current_live_var_names_and_types_ll(ListVarNames, ListType) :-
+	send_message_to_socket(current_live_var_names),
+	read_message_from_socket(Response),
+	Response = current_live_var_names(ListVarNames, ListType).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: current_live_var_names_and_types,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	implementation	: current_live_var_names_and_types_Op,
+	message		:
+"current_live_var_names_and_types/0 gets and displays the live variable names \
+and types. You can change this display by customizing the procedure \
+display_list_var_names.\
+"
+	).
+
+current_live_var_names_and_types_Op :-
+	current_live_var_names_and_types(List),
+	write(user, "Current live variable names are: \n"),
+	display_list_var_names(List),
+	flush(user).
+
+
+%------------------------------------------------------------------------------%
+

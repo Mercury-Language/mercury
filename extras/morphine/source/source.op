@@ -1,0 +1,425 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+% 
+% Author : Erwan Jahier <jahier@irisa.fr>
+%
+% This file implements the source scenario.
+
+
+opium_scenario(
+	name		: source,
+	files		: [source],
+	scenarios	: [],
+	message		:
+" Scenario source provides commands to retrieve and display Mercury source \
+(and intermediate) code.\
+"
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: listing,
+	arg_list	: [Module, ProcOrType, Listing],
+	arg_type_list	: [is_atom_or_string, is_mercury_proc_or_type, 
+				is_list_or_var],
+	abbrev		: ls,
+	interface	: button,
+	command_type	: opium,
+	implementation	: listing_Op,
+	parameters	: [],
+	message		:
+"Retrieves the source code of a Mercury procedure or a Mercury type \
+ProcOrType defined in the module Module and unifies it in Listing. \
+Module can be either a library or a user defined module.\
+\n\
+Note: to be able to retrieve library procedures or types with \
+listing/3, you need to have the source of the Mercury library somewhere \
+and you need \
+to make sure that the environment variable LIB_MERCURY has been set correctly \
+to the path of the Mercury library in the sh script Opium-M. \
+"
+	).
+
+% use the default library for library modules and the current dir for the user
+% modules.
+listing_Op(Module, Name, Listing) :-
+	listing2(Module, Name, Listing, list, source).
+%------------------------------------------------------------------------------%
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: listing,
+	arg_list	: [Module, PredOrFuncOrType],
+	arg_type_list	: [is_atom_or_string, is_mercury_proc_or_type],
+	abbrev		: ls,
+	interface	: button,
+	command_type	: opium,
+	implementation	: listing_Op,
+	parameters	: [],
+	message		:
+"listing/2 is the same command as listing/3 except it prints the listing \
+of the code on the standard output.\n\
+\n\
+Example:\n\
+1 - listing(foo, bar/3, List) unify List with the list of terms defining \
+the Mercury predicate bar/3. \n\
+2 - listing(\"~/dir/foo\", bar) will display all the predicates bar/n defined \
+in the module foo which is in \"~/dir/\" directory. \n\
+3 - listing(io, io__read/3) will display the source of the Mercury library \
+predicate io__read/3 defined in the Mercury module io.\n\
+"
+	).
+
+listing_Op(Module, Name) :-
+	listing2(Module, Name, _, stdo, source).
+%------------------------------------------------------------------------------%
+
+
+listing2(Module, Name, Listing, Where, FileType) :-
+    pathname(Module, ModulePath, ModuleName),
+    ( ModulePath \= "" ->
+        ( FileType = hlds ->
+            (  
+		concat_string([ModulePath, ModuleName], FullModuleName),
+                exists(FullModuleName) 
+	    ->
+                listing_module(ModulePath, ModuleName, Name, Listing, 
+			Where)
+            ;
+		concat_string([ModulePath, ModuleName], FullModuleName),
+		append_strings(FullModuleName2, ".hlds_dump.99-final", 
+			FullModuleName),
+                concat_string([ 
+                    "Unable to find the file %w in the directory %w. \n"
+		    "You need to compile the module %w.m with" 
+	            " \"-dfinal\"option.\n"
+			], Msg),
+		printf(help, Msg, [ModuleName, ModulePath, FullModuleName2])
+            )
+        ;
+            % FileType = source
+            (
+                concat_string([ModulePath, ModuleName, ".m"], Module_m),
+                exists(Module_m)
+            ->
+		( is_mercury_library_module(ModuleName) ->
+			concat_string([ModuleName, "__", Name], 
+				Name2Str),
+			atom_string(Name2, Name2Str)
+		;
+			Name2 = Name
+		),
+                listing_module(ModulePath, ModuleName, Name2, Listing, 
+			Where)
+            ;
+                concat_string([ 
+                    "Unable to find the module %w in the directory %w. \n"
+		    "You need to compile %w%w.m with \"-dfinal\" option.\n"
+			], Msg),
+		printf(help, Msg, [ModuleName, ModulePath, ModulePath, 
+			ModuleName])
+            )
+        )
+    ;
+        % ModulePath == "" 
+        ( FileType = hlds ->
+            ( 
+                append_strings(ModuleName2, ".hlds_dump.99-final", ModuleName),
+                is_mercury_library_module(ModuleName2)
+            ->
+                getenv("LIB_MERCURY", PathStr),
+                concat_string([PathStr, ModuleName], FileName),
+                ( exists(FileName) ->
+                    listing_module(PathStr, ModuleName, Name, Listing, 
+			Where)
+                ;
+ 		    append_strings(ModuleName2, ".hlds_dump.99-final", 
+			ModuleName),
+                    concat_string([ 
+                    "Unable to find the file %w in the directory %w. \n"
+		    "You need to compile the module %w%w.m with"
+		    "\"-dfinal\" option.\n"
+			], Msg),
+		     printf(help, Msg, [ModuleName, PathStr, PathStr, 
+			ModuleName2])
+                )
+            ;
+                % is not a Mercury procedure.
+                ( exists(ModuleName) ->
+                    listing_module("", ModuleName, Name, Listing, Where)
+                ;
+		    append_strings(ModuleName2, ".hlds_dump.99-final", 
+			ModuleName),
+                    concat_string([ 
+                    "Unable to find the module %w in the current directory. \n"
+		    "You need to compile %w.m with \"-dfinal\" option.\n"
+			], Msg),
+		   printf(help, Msg, [ModuleName, ModuleName2])
+                )
+            )
+        ;
+            % FileType = source
+            ( 
+                is_mercury_library_module(ModuleName)
+            ->
+                getenv("LIB_MERCURY", PathStr),
+                concat_string([PathStr, ModuleName, ".m"], FileName),
+		concat_string([ModuleName, "__", Name], Name2Str),
+		atom_string(Name2, Name2Str),
+                ( exists(FileName) ->
+                    listing_module(PathStr, ModuleName, Name2, Listing, 
+			Where)
+                ;
+                    printf(help, 
+                    "Unable to find the module %w in the directory %w. \n", 
+                    [ModuleName, PathStr])
+                )
+            ;
+                % is not a Mercury procedure.
+                ( 
+                    concat_string([ModuleName, ".m"], Module_m),
+                    exists(Module_m)
+                ->
+                    listing_module("", ModuleName, Name, Listing, Where)
+                ;
+                    printf(help, 
+                    "Unable to find the module %w in the current directory.\n", 
+                    [ModuleName])
+                )
+            )
+        )
+    ).
+
+
+listing_module(PathStr, ModuleStr, P/A, Listing, Where) :-
+	integer_atom(A, AAtom),
+	atom_string(AAtom, AStr),
+	atom_string(P, PStr),
+	concat_string(["listing ", PathStr, ModuleStr, " ", PStr, 
+		" ", AStr], Command), 
+	sh("rm -rf listing_output; touch listing_output"),
+	printf("%w.\n%b", command),
+	sh(Command),
+	( Where = list ->
+		% Put the terms in the list Listing
+		read_listing(Listing)
+	;
+		% Where = stdo
+		% Display the procedure on the standard output.	
+		Listing = [],
+		sh("cat listing_output")
+	).
+
+listing_module(PathStr, ModuleStr, P, Listing, Where) :-
+	atom_string(P, PStr),
+	concat_string(["listing ", PathStr, ModuleStr, " ", PStr], 
+		Command),
+	sh("rm -rf listing_output; touch listing_output"),
+	printf("%w.\n%b", Command),
+	sh(Command),
+	( Where = list ->
+		% Put the terms in the list Listing
+		read_listing(Listing)
+	;
+		% Where = stdo
+		% Display the procedure on the standard output.		
+		Listing = [],
+		sh("cat listing_output")
+	).
+
+
+% Output in Listing the list of the read terms in the file "listing_output".
+read_listing(Listing) :-
+	open("listing_output", read, stream),
+	read_all([], Listing2),
+	close(stream),
+	reverse(Listing2, Listing).
+
+read_all(ListingIn , ListingOut) :-
+	read_mercury_term(stream, Term),
+	(
+		Term = end_of_file,
+		ListingOut = ListingIn,
+		!
+	;
+		read_all([Term | ListingIn], ListingOut)
+	).
+	
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: listing_hlds,
+	arg_list	: [Module, PredOrFuncOrType, Listing],
+	arg_type_list	: [is_atom_or_string, is_mercury_proc_or_type, 
+				is_list_or_var],
+	abbrev		: _,
+	interface	: hidden,
+	command_type	: opium,
+	implementation	: listing_hlds_Op,
+	parameters	: [],
+	message		:
+"See listing_hlds/2."
+	).
+
+listing_hlds_Op(Module, Name, Listing) :-
+	pathname(Module, ModulePath, ModuleName),
+	concat_string([ModulePath, ModuleName, ".hlds_dump.99-final"], Module2),
+	listing2(Module2, Name, Listing, list, hlds).
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: listing_hlds,
+	arg_list	: [Module, PredOrFuncOrType],
+	arg_type_list	: [is_atom_or_string, is_mercury_proc_or_type],
+	abbrev		: _,
+	interface	: hidden,
+	command_type	: opium,
+	implementation	: listing_hlds_Op,
+	parameters	: [],
+	message		:
+
+"listing_hlds/2 and listing_hlds/3 are the same commands as listing/2 and \
+listing/3 except they will list the HLDS procedures instead of the source code. \
+To be able to list such HLDS code, you need to compile your module with \
+\"-dfinal\" option.\
+"
+	).
+
+listing_hlds_Op(Module, Name) :-
+	pathname(Module, ModulePath, ModuleName),
+	concat_string([ModulePath, ModuleName, ".hlds_dump.99-final"], Module2),
+	listing2(Module2, Name, _, stdo, hlds).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: listing_current_procedure,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: lcp,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: listing_current_procedure_Op,
+	parameters	: [],
+	message		:
+"listing_current_procedure/0 prints the source code of the current procedure \
+on the user window. If the current procedure is defined in a file that is not \
+in the current directory, you need to specify the path of this file with \
+listing_current_procedure/1.\
+").
+
+
+% :- pred listing_current_procedure.
+% :- mode listing_current_procedure is semidet.
+listing_current_procedure_Op :-
+	current(name = Name and decl_module = Module),
+	listing(Module, Name).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: listing_current_procedure,
+	arg_list	: [Path],
+	arg_type_list	: [atom],
+	abbrev		: lcp,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: listing_current_procedure_Op,
+	parameters	: [],
+	message		:
+"listing_current_procedure/1 is the same as listing_current_procedure/0 \
+except you specify the path of the module of the current procedure.\
+").
+
+% :- pred listing_current_procedure(atom).
+% :- mode listing_current_procedure(in) is semidet.
+listing_current_procedure_Op(Path) :-
+	current(name=Name),
+	current(decl_module=Module),
+	listing(Path, Module, Name).
+
+
+%------------------------------------------------------------------------------%
+opium_type(
+	name		: is_mercury_proc_or_type,
+	implementation	: is_mercury_proc_or_type_Op,
+	message		:
+"Type which succeeds if its argument is of the form Name or \
+Name/Arity, where Name is an atom and Arity an integer.\
+").
+
+
+is_mercury_proc_or_type_Op(Name/Arity) :-
+	atom(Name),
+	integer(Arity).
+
+is_mercury_proc_or_type_Op(Name) :-
+	atom(Name).
+
+
+%------------------------------------------------------------------------------%
+is_mercury_library_module("gc").                
+is_mercury_library_module("array").                
+is_mercury_library_module("int").                  
+is_mercury_library_module("rbtree").
+is_mercury_library_module("assoc_list").           
+is_mercury_library_module("integer").              
+is_mercury_library_module("relation").
+is_mercury_library_module("bag").                  
+is_mercury_library_module("io").                   
+is_mercury_library_module("require").
+is_mercury_library_module("benchmarking").         
+is_mercury_library_module("lexer").                
+is_mercury_library_module("set").
+is_mercury_library_module("bimap").                
+is_mercury_library_module("library").              
+is_mercury_library_module("set_bbbtree").
+is_mercury_library_module("bintree").              
+is_mercury_library_module("list").                 
+is_mercury_library_module("set_ordlist").
+is_mercury_library_module("bintree_set").          
+is_mercury_library_module("map").                  
+is_mercury_library_module("set_unordlist").
+is_mercury_library_module("bool").                 
+is_mercury_library_module("math").                 
+is_mercury_library_module("stack").
+is_mercury_library_module("bt_array"). 
+is_mercury_library_module("std_util").
+is_mercury_library_module("builtin").              
+is_mercury_library_module("multi_map").            
+is_mercury_library_module("store").
+is_mercury_library_module("char").                 
+is_mercury_library_module("ops").                  
+is_mercury_library_module("string").
+is_mercury_library_module("debugger_interface").   
+is_mercury_library_module("parser").  
+is_mercury_library_module("dir").                  
+is_mercury_library_module("pqueue").               
+is_mercury_library_module("swi_lib").
+is_mercury_library_module("eqvclass").             
+is_mercury_library_module("private_builtin").      
+is_mercury_library_module("term").
+is_mercury_library_module("float").                
+is_mercury_library_module("prolog").               
+is_mercury_library_module("term_io").
+is_mercury_library_module("getopt").               
+is_mercury_library_module("queue").                
+is_mercury_library_module("tree234").
+is_mercury_library_module("graph").                
+is_mercury_library_module("random").               
+is_mercury_library_module("varset").
+is_mercury_library_module("group").                
+is_mercury_library_module("rational").
+
+
+%------------------------------------------------------------------------------%
+opium_type(
+	name		: is_atom_or_string,
+	implementation	: is_atom_or_string_Op,
+	message		: 
+"Type which succeed for an atom or a string."
+	).
+
+is_atom_or_string_Op(X) :- atom(X), !.
+is_atom_or_string_Op(X) :- string(X).

@@ -1,0 +1,25 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+--- /soft/eclipse/eclipse4.1/lib_pd/opium_light/error.op	Sat Feb 20 16:09:16 1999
++++ error.op	Thu Nov  4 08:59:34 1999
+@@ -26,8 +26,8 @@
+ :- tool(check_arg_type/4, check_arg_type/5).
+ :- global check_arg_type/4.
+ :- call_explicit(traceable check_arg_type/4, sepia_kernel).
+-:- ((call(is_predicate(current_options/1), opium_kernel),
+-     call(current_options([active, traceable, _]), opium_kernel)) ->
++:- ((call(is_predicate(current_options/1), 'Opium-M'),
++     call(current_options([active, traceable, _]), 'Opium-M')) ->
+ 		call_explicit(unskipped check_arg_type/4, sepia_kernel)
+    	;
+ 		call_explicit(skipped check_arg_type/4, sepia_kernel)
+@@ -109,6 +109,9 @@
+ 	var(V),
+ 	!,
+ 	check_arg([V], Name, Type, NewVal, Mod).
++check_input(a, _, _, _, _) :-
++	!,
++	fail.
+ check_input(abort, _, _, _, _) :-
+ 	!,
+ 	fail.

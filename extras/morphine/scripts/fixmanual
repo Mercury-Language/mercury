@@ -1,0 +1,44 @@
+#!/bin/sh -
+# Fix the manual file
+
+ex $1 <<\EOF
+%s/_/\\_/g
+w
+q
+EOF
+ex $1 <<\EOF
+%s/</$<$/g
+w
+q
+EOF
+ex $1 <<\EOF
+%s/>/$>$/g
+w
+q
+EOF
+ex $1 <<\EOF
+#!/bin/sh
+# Copyright (C) 1999 INRIA/INSA.
+
+%s/\\==/$\\backslash$==/g
+w
+q
+EOF
+ex $1 <<\EOF
+%s/\\=/$\\backslash$=/g
+w
+q
+EOF
+ex $1 <<\EOF
+%s/=/$=$/g
+w
+q
+EOF
+ex $1 <<\EOF
+%s/\~/\\verb+\~+/g
+w
+q
+EOFex $1 <<\EOF
+
+
+

@@ -1,0 +1,252 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+% 
+% Author : Erwan Jahier
+% File   : control_flow.op
+%
+
+%------------------------------------------------------------------------------%
+opium_scenario(
+	name		: control_flow,
+	files		: [control_flow],
+	scenarios	: [collect],
+	message		:
+"Scenario that provides commands which generates various control flow graphs. \
+This scenario make use of the graph generator `dot' program (so you will need to \
+have dot available from your PATH environment variable to be able to use this \
+scenario)."
+	).
+
+%------------------------------------------------------------------------------%
+opium_parameter(
+	name		: ps_viewer,
+	arg_list	: [String],
+	arg_type_list	: [string],
+	parameter_type	: single,
+	default		: ["gv "],
+	commands	: [control_flow_graph, dynamic_call_graph],
+	message		: 
+"Parameter which sets the name of the command used to visualize the generated \
+post-script file."
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: control_flow_graph,
+	arg_list	: [ProgramCall],
+	arg_type_list	: [is_mercury_program_call],
+	abbrev		: cfg,
+	interface	: button,
+	command_type	: opium,
+	implementation	: control_flow_graph_Op,
+	parameters	: [ps_viewer],
+	message		:
+"This command generates a control flow graph of the Mercury program \
+execution."
+	).
+
+control_flow_graph_Op(Program) :-
+	( getval(state_of_opium, running) ->
+		abort_trace
+	;
+		true
+	),
+	run(Program),
+	generate_filename(Program, ".cfg.dot", ".cfg.ps", DotFile, PsFile),
+	generate_control_flow_graph(Graph),
+	display_graph(Graph, DotFile, PsFile).
+
+ 
+% :- type graph ---> list(edge(procedure, procedure)).
+%
+%:- pred generate_control_flow_graph(graph).
+%:- mode generate_control_flow_graph(out) is det.
+%
+generate_control_flow_graph(G) :-
+	getenv("MERCURY_OPIUM_DIR", OpiumDir),
+	append_strings(OpiumDir, "/source/collect__control_flow_graph", 
+		CollectFile),
+	collect(CollectFile, Result),
+	Result = collected_type(_,G).
+
+% This is the pure Opium-M version of generate_control_flow_graph that
+% I originally wrote and which is about 20 times as slow as the collect 
+% one:
+%
+% generate_control_flow_graph(G0, Proc, G) :-
+% 	( fget_np(port = [call, exit,redo,fail]) ->
+% 		current(proc_name = Name and arity = N),
+% 		CurrentProc = Name/N,
+% 		G1 = [edge(Proc, CurrentProc)|G0],
+% 		generate_control_flow_graph(G1, CurrentProc, G),
+% 		!
+% 	;
+% 		% end of the execution
+% 		remove_dupl(G0, G)
+% 	).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: dynamic_call_graph,
+	arg_list	: [ProgramCall],
+	arg_type_list	: [is_mercury_program_call],
+	abbrev		: dcg,
+	interface	: button,
+	command_type	: opium,
+	implementation	: dynamic_call_graph_Op,
+	parameters	: [ps_viewer],
+	message		:
+"This command generates a dynamic call  graph of the Mercury program \
+execution. We call a dynamic call graph  the dynamic slice of the (static)  \
+call graph, i.e. the calls that have effectively been done during the execution."
+	).
+
+dynamic_call_graph_Op(Program) :-
+	run(Program),
+	generate_filename(Program, ".dcg.dot", ".dcg.ps", DotFile, PsFile),
+	generate_dynamic_call_graph(Graph),
+	display_graph(Graph, DotFile, PsFile).
+
+%
+%:- pred generate_dynamic_call_graph(graph).
+%:- mode generate_dynamic_call_graph(out) is det.
+%
+
+generate_dynamic_call_graph(G) :-
+	getenv("MERCURY_OPIUM_DIR", OpiumDir),
+	append_strings(OpiumDir, "/source/collect__dynamic_call_graph", 
+		CollectFile),
+	collect(CollectFile, Result),
+	Result = collected_type(_,G).
+
+% This is the pure Opium-M version:
+%
+% generate_dynamic_call_graph(G0, G) :-
+% 	( fget_np(port = call) ->
+% 		current(proc_name = Name and arity = N),
+% 		ancestor(Anc),
+% 		CurrentProc = Name/N,
+% 		G1 = [edge(Anc, CurrentProc)|G0],
+% 		generate_dynamic_call_graph(G1, G),
+% 		!
+% 	;
+% 		% end of the execution
+% 		remove_dupl(G0, G)
+% 	).
+
+% ancestor(Anc) :-
+% 	current(stack = [_, List|_]),
+% 	member(proc(_,Name,Arity,_), List), 
+% 	Anc = Name/Arity,
+% 	!.
+% ancestor(none).
+
+%------------------------------------------------------------------------------%
+%
+%:- pred generate_filename(string, string, string, string, string).
+%:- mode generate_filename(in ,in, in, out, out) is det.
+%
+generate_filename(Program, DotExt, PsExt, DotFile, PsFile) :-
+	( string(Program) ->
+		ProgramStr = Program,
+		!
+	;
+		term_string(Program, ProgramStr)
+	),
+	decompose_path_call_and_args1(ProgramStr, _, ProgramCallStr, _),
+	append_strings(ProgramCallStr, DotExt, DotFile),
+	append_strings(ProgramCallStr, PsExt, PsFile).
+
+%:- pred display_graph(graph, string, string).
+%:- mode display_graph(in, in, in) is det.
+%
+display_graph(Graph, DotFile, PsFile) :- 
+	extract_proc_list_from_graph(Graph, ProcList),
+	open(DotFile, write, dotfile),
+	print(dotfile, "digraph G {\n\n"),
+	dump_proc(ProcList),
+	dump_graph(Graph),
+	print(dotfile, "}\n"),
+	close(dotfile),
+	compile_dot(DotFile, PsFile),
+	display_ps(PsFile).
+dump_proc([]).
+dump_proc([X|Xs]) :-
+	printf(dotfile, "\t  \t \"%w\"\n", [X]),
+	dump_proc2(Xs).
+
+
+dump_proc2([]) :- nl(dotfile).
+dump_proc2([X|Xs]) :-
+	printf(dotfile, "\t ; \t \"%w\"\n", [X]),
+	dump_proc2(Xs).
+
+dump_graph([]) :- nl(dotfile).
+dump_graph([edge(X,Y)|CG]) :-
+	printf(dotfile, "\t\"%w\" -> \"%w\";\n", [X,Y]),
+	dump_graph(CG).
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: compile_dot,
+	arg_list	: [DotFile, PsFile],
+	arg_type_list	: [string, string],
+	abbrev		: _,
+	implementation	: compile_dot_Op,
+	message		:
+"Primitive which applies `dot' to DotFile and outputs the resulting \
+post-script in PsFile."
+	).
+
+compile_dot_Op(DotFile, PsFile) :-
+	concat_string(["dot -Tps ", DotFile, " -o ", PsFile], Cmd),
+	print(Cmd), nl,
+	sh(Cmd).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: display_ps,
+	arg_list	: [PsFile],
+	arg_type_list	: [string],
+	abbrev		: _,
+	implementation	: display_ps_Op,
+	message		:
+"primitive which displays post-script files."
+	).
+
+display_ps_Op(PsFile) :-
+	ps_viewer(PsViewer),
+	concat_string([PsViewer, " ", PsFile, " &"], Cmd),
+	print(Cmd), nl,
+	sh(Cmd).
+
+
+%------------------------------------------------------------------------------%
+%
+% :- pred extract_proc_list_from_graph(graph, list(procedure)).
+% :- mode extract_proc_list_from_graph(in, out) is det.
+%
+extract_proc_list_from_graph(Graph, ProcList) :-
+	extract_proc_list_from_graph2(Graph, ProcList0),
+	remove_dupl(ProcList0, ProcList1),
+	reverse(ProcList1, ProcList).
+
+extract_proc_list_from_graph2([], []).
+extract_proc_list_from_graph2([edge(Proc,_)|Graph], [Proc|ProcList]) :-
+	extract_proc_list_from_graph2(Graph, ProcList).
+
+
+%------------------------------------------------------------------------------%
+% XXX I should write a tail recursive version of this predicate
+remove_dupl([], []).
+remove_dupl(L0, L) :-
+	L0 = [X|L1],
+	remove_dupl(L1, L2), 
+	( member(X, L2) ->
+		L = L2
+	 ;
+		L = [X|L2]
+	).   

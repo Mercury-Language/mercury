@@ -1,0 +1,30 @@
+# Copyright (C) 1999 INRIA/INSA.
+
+
+To install Opium-M, unzip and de-tar the file Opium-M-*.tar.gz, and run the
+script INSTALL-OPIUM-M. This will create in the scripts/ directory the
+script Opium-M that let you run Opium-M. 
+
+Add directories scripts/ and bin/ in your PATH environment variable. Make sure
+that the executables mmc and eclipse are also accessible from your PATH.
+
+
+The current release of Opium-M has been tested with the following
+configurations:
+- Architecture: sparc/Solaris2.[5,6,7] and i686/Linux2.0
+- ECLiPSe: 4.1 and later (1).
+- Mercury: later than 1999-03-12 release of the day.
+
+(1) make sure that the package eclipse_misc.tgz has been downloaded (i.e. if
+there exists a directory named `lib_pd' in the ECLiPSe installation directory);
+Opium-M needs it.
+
+(*) If you use one of those versions of ECLiPSe, you will need to add the
+following line in your .opium-m-rc file (that should be in your home
+directory): 
+":- set_parameter(socket_domain, [inet])."
+
+This is to work around a bug in ECLiPSe socket interface that has been fixed in
+version 4.1.
+
+				-o-

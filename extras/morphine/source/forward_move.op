@@ -1,0 +1,929 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+% 
+% Author : Erwan Jahier
+% File   : forward_move.op
+%
+% This file implements the fget\1 predicate.
+
+
+
+%------------------------------------------------------------------------------%
+% New operator to denotate intervals (ex: 2..9).
+% Also defined in Opium-M.pl 
+:- op(350, xfx, ..).
+
+% Also defined in Opium-M.pl and current_slots.op
+:- op(900, xfy, and).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: fget,
+	arg_list	: [AttributeConstraints],
+	arg_type_list	: [is_list_or_conj_of_attribute_constraints_fget],
+	abbrev		: fg,
+	interface	: button,
+	command_type	: trace,
+	implementation	: fget_Op,
+	parameters	: [],
+	message		:
+"Moves forwards through the execution until the first event that satisfy the \
+list of constraints specified in AttributeConstraints (*). \
+AttributeConstraints can be either a conjunction of attribute constraints, \
+separated by \"and\" (fget(AC1 and AC2 and ...))  or a list of constraints \
+(fget([AC1, AC2, ...])). \n\
+ \n\
+The different attributes for fget are :  \n\
+chrono: \n\
+    chronological event number of the event, \n\
+call: \n\
+    call event number of the event, \n\
+depth: \n\
+    depth in the proof three (number of ancestors - 1) of the event, \n\
+port: \n\
+    type of the event, \n\
+proc_type: \n\
+    tells if the current procedure is a predicate or a function, \n\
+decl_module: \n\
+    module name where the procedure is declared, \n\
+def_module: \n\
+    module name where the procedure is defined, \n\
+name: \n\
+    procedure name, \n\
+arity: \n\
+    procedure arity, \n\
+mode_number: \n\
+    procedure mode number, \n\
+proc: \n\
+    procedure ([proc_type->][decl_module:](name[/arity][-mode_number]) where \
+only the attribute name is mandatory), \n\
+det: \n\
+    procedure determinism, \n\
+goal_path: \n\
+    goal path of the call of the procedure.\n\
+\n\
+(*) An attribute constraint is a term of the form \"AttributeAlias = Term\" \
+where  \
+AttributeAlias is an alias of a Mercury event attribute and Term can be: \n\
+an exact value    (attribute = ground_term), \n\
+a negated value   (attribute = not(ground_term)), \n\
+a list of values  (attribute = [ground_term1, ground_term2, ... ]), \n\
+and for integer attributes (chrono, call, depth, arity), \n\
+an interval       (attribute = bottom..up). \n\
+Each attribute has a list of possible aliases that you can list with the \
+command list_alias_attributes/0.\n\
+\n\
+Example: the Opium-M goal fget(chrono = [20, 789] and depth = 3..6 and \
+proc = foo/2)  \
+will make the execution move forwards until the first event \
+which chronological event number is 20 or 789, depth is 3, 4, 5 or 6, \
+procedure name is foo and arity is not 2. \
+You can also use a list as an argument of fget: \
+fget([chrono=[20, 789], depth = 3..6, proc = foo/2]) will have the \
+same effect as the previous goal.\
+"
+	).
+
+
+fget_Op(ConjOrList) :-
+	getval(state_of_opium, running),
+	(
+		is_list(ConjOrList),
+		fget_1_list(ConjOrList)
+	;
+		% Transform the conjuct into a list if necessary
+		conj_to_list(ConjOrList, List),
+		fget_1_list(List)
+	).
+
+conj_to_list(Attr and TailConj, [Attr | TailList]) :-
+	conj_to_list(TailConj, TailList),
+	!.
+conj_to_list(Attr, List) :-
+	(
+		Attr = -,
+		List = [],
+		% To allow fget(-).
+		!
+	;
+		List = [Attr]
+	).
+
+
+% List is a list of attribute constraints (ex: [chrono = 4, pred = [foo, bar]]).
+% From that list, we make the call to fget_ll/13.
+fget_1_list(List) :-
+	fill_slot(chrono, List, Chrono),
+	fill_slot(call, List, Call),
+	fill_slot(depth, List, Depth),
+	fill_slot(port, List, Port),
+	fill_slot(def_module, List, DefModule),
+	( member(proc = Proc, List) ->
+		fill_slot_proc(Proc, ProcType, DeclModule, Name, 
+			Arity, ModeNumber)
+	;
+		
+		fill_slot(proc_type, List, ProcType),
+		fill_slot(decl_module, List, DeclModule),
+		fill_slot(name, List, Name),
+		fill_slot(arity, List, Arity),
+		fill_slot(mode_number, List, ModeNumber)
+	),
+	fill_slot(det, List, Det),
+	Args = '-',	% no forward filtering on arguments yet
+	fill_slot(goal_path, List, GoalPath),
+	fget_ll(Chrono, Call, Depth, Port, ProcType, DeclModule, DefModule, 
+		Name, Arity, ModeNumber, Det, Args, GoalPath).
+
+
+fill_slot(SlotName, [Head | Tail], Res) :-
+	Head = (SlotAlias = Value),
+	( is_alias_for(SlotName, SlotAlias) ->
+		Res = Value
+	;
+		fill_slot(SlotName, Tail, Res)
+	).
+fill_slot(SlotName, [], -).
+
+
+fill_slot_proc(Proc, ProcType, DeclModule, Pred, Arity, ModeNumber) :-
+	(
+		Proc = (PT->M:(P/A-MN)),
+		ProcType = PT,
+		DeclModule = M,
+		Pred = P,
+		Arity = A,
+		ModeNumber = MN,
+		!
+	;
+		Proc = M:(P/A-MN),
+		ProcType = -,
+		DeclModule = M,
+		Pred = P,
+		Arity = A,
+		ModeNumber = MN,
+		!
+	;
+		Proc = (PT->(P/A-MN)),
+		ProcType = PT,
+		DeclModule = -,
+		Pred = P,
+		Arity = A,
+		ModeNumber = MN,
+		!
+	;
+		Proc = (PT->M:(P-MN)),
+		ProcType = PT,
+		DeclModule = M,
+		Pred = P,
+		Arity = -,
+		ModeNumber = MN,
+		!
+	;
+		Proc = (PT->M:(P/A)),
+		ProcType = PT,
+		DeclModule = M,
+		Pred = P,
+		Arity = A,
+		ModeNumber = -,
+		!
+	;
+		Proc = (P/A-MN),
+		ProcType = -,
+		DeclModule = -,
+		Pred = P,
+		Arity = A,
+		ModeNumber = MN,
+		!
+	;
+		Proc = M:(P-MN),
+		ProcType = -,
+		DeclModule = M,
+		Pred = P,
+		Arity = -,
+		ModeNumber = MN,
+		!
+	;
+		Proc = M:(P/A),
+		ProcType = -,
+		DeclModule = M,
+		Pred = P,
+		Arity = A,
+		ModeNumber = -,
+		!
+	;
+		Proc = (PT->(P-MN)),
+		ProcType = PT,
+		DeclModule = -,
+		Pred = P,
+		Arity = -,
+		ModeNumber = MN,
+		!
+	;
+		Proc = (PT->(P/A)),
+		ProcType = PT,
+		DeclModule = -,
+		Pred = P,
+		Arity = A,
+		ModeNumber = -,
+		!
+	;
+		Proc = (PT->M:P),
+		ProcType = PT,
+		DeclModule = M,
+		Pred = P,
+		Arity = -,
+		ModeNumber = -,
+		!
+	;
+		Proc = (PT->P),
+		ProcType = PT,
+		DeclModule = -,
+		Pred = P,
+		Arity = -,
+		ModeNumber = -,
+		!
+	;
+		Proc = M:P,
+		ProcType = -,
+		DeclModule = M,
+		Pred = P,
+		Arity = -,
+		ModeNumber = -,
+		!
+	;
+		Proc = P/A,
+		ProcType = -,
+		DeclModule = -,
+		Pred = P,
+		Arity = A,
+		ModeNumber = -,
+		!
+	;
+		Proc = P-MN,
+		ProcType = -,
+		DeclModule = -,
+		Pred = P,
+		Arity = -,
+		ModeNumber = MN,
+		!
+	;
+		Proc = P,
+		ProcType = -,
+		DeclModule = -,
+		Pred = P,
+		Arity = -,
+		ModeNumber = -
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: det_fget,
+	arg_list	: [List],
+	arg_type_list	: [is_list_or_conj_of_attribute_constraints_fget],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: trace,
+	implementation	: det_fget_Op,
+	parameters	: [],
+	message		:
+"It is the deterministic version of fget/1.\
+"
+	).
+
+det_fget_Op(List) :-
+	fget_Op(List), 
+	!.
+
+%------------------------------------------------------------------------------%
+opium_type(
+	name		: is_list_or_conj_of_attribute_constraints_fget,
+	implementation	: is_list_or_conj_of_attribute_constraints_fget_Op,
+	message		: 
+"Type which succeeds for list or conjunctions of terms of the form: \
+\"AttributeAlias = Term\", where  AttributeAlias is an alias \
+of a Mercury event attribute and Term is a variable, \
+an exact value, a negated value, a list of values, or an interval \
+(Bottom..Up). \
+Example:\n\
+fget(chrono=[20, 789] and depth=3..6 and name=foo and arity=not(2)), \
+which can also be typed fget([chrono=[20, 789], depth=3..6, name=foo, \
+arity=not(2)])\
+"
+	).
+
+is_list_or_conj_of_attribute_constraints_fget_Op(ListOrConj) :-
+	(
+		is_list(ListOrConj),
+		is_list_of_attribute_constraints(ListOrConj),
+		!
+	;
+		is_conj_of_attribute_constraints(ListOrConj)
+	).
+
+is_list_of_attribute_constraints([]).
+is_list_of_attribute_constraints([H | T]) :-
+	H = (Alias = AttributeConstraints),
+	is_alias_for(Attribute, Alias),
+	is_a_fget_attribute_constraint(Attribute, AttributeConstraints),
+	is_list_of_attribute_constraints(T).
+
+is_conj_of_attribute_constraints(Alias = AttributeConstraints and Tail) :-
+	is_alias_for(Attribute, Alias),
+	is_a_fget_attribute_constraint(Attribute, AttributeConstraints),
+	is_conj_of_attribute_constraints(Tail).
+is_conj_of_attribute_constraints(Alias = AttributeConstraints) :-
+	is_alias_for(Attribute, Alias),
+	is_a_fget_attribute_constraint(Attribute, AttributeConstraints).
+is_conj_of_attribute_constraints(-).
+
+
+is_a_fget_attribute_constraint(Attribute, AttributeConstraints) :-
+	(
+		member(Attribute, [chrono, call, depth, arity, mode_number]),
+		is_integer_attribute(AttributeConstraints),
+		!
+	;
+		member(Attribute, [decl_module, def_module, name]),
+		is_atom_attribute(AttributeConstraints),
+		!
+	;
+		Attribute = proc_type,
+		is_proc_type_attribute(AttributeConstraints),
+		!
+	;
+		Attribute = proc,
+		is_proc(AttributeConstraints),
+		!
+	;
+		Attribute = goal_path,
+		is_goal_path_attribute(AttributeConstraints),
+		!
+	;
+		Attribute = port,
+		is_port_attribute(AttributeConstraints),
+		!
+	;
+		Attribute = det,
+		is_det_marker_attribute(AttributeConstraints)
+	).
+
+
+%------------------------------------------------------------------------------%
+% opium_command(
+% 	name		: fget,
+% 	arg_list	: [Chrono, Call, Depth, Port, Module, Predicate, Arity, 
+% 				ModeNumber, Deter, LiveArgs, GoalPath],
+% 	arg_type_list	: [is_integer_attribute, is_integer_attribute, 
+%				is_integer_attribute, is_port_attribute, 
+%				is_atom_attribute, is_atom_attribute,
+%				is_integer_attribute, is_integer_attribute, 
+%				is_det_marker_attribute, is_arg_attribute, 
+%				is_string_attribute],
+% 	abbrev		: fg,
+% 	interface	: menu,
+% 	command_type	: trace,
+% 	implementation	: fget_ll,
+% 	parameters	: [],
+% 	message		:
+% "Moves forwards through the execution until the first \
+% event which matches the specified attribute values or the end of the \
+% trace execution is encountered and print a trace event. This command is \
+% backtrackable \
+% \n\
+%  \n\
+% If an argument (corresponding to an attribute) is:\n\
+% \n\
+%   1) '-' or a variable: \n\
+% 	Pre-filtering does not take this attribute into account.\n\
+%   2) An exact value: \n\
+% 	Pre-filtering will check that the retrieved value of the current\n\
+% 	event unifies with the required value.\n\
+%   3) a negated value (not(v) or \\+(v)):\n\
+% 	Pre-filtering will check that the retrieved value of the current\n\
+% 	event does not unify with the required value.\n\
+%   4) A list of possible values ([v1, v2, ...]):\n\
+% 	Pre-filtering will check that the retrieved value of the current \n\
+% 	event unifies with one of the element of the list.\n\
+%  \n\
+%  For integer attributes (e.g. chrono, call, depth, arity, mode_number \n\
+%  and line_number, we can also specify:\n\
+% \n\
+%   *) An interval ('Bottom..Up'):\n\
+% 	Pre-filtering will check that the retrieved value of the current \n\
+% 	event unifies with one of the element of the interval.\n\
+% "
+% 	).
+
+fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, Pred, 
+	Arity, ModeNumber, Det, Arg, GoalPath) :-
+    (
+ 	( not(Port == '-') ->
+		convert_mercury_port_opium_port(MercuryPort, Port)
+	;
+		MercuryPort = '-'
+	),
+	( not(Det == '-') ->
+		convert_integer_determinism(IntDet, Det)
+	;
+		IntDet = '-'
+	),
+	( not(GoalPath == '-') ->
+		convert_goal_path_string_list(GoalPathList, GoalPath)
+	;
+		GoalPathList = '-'
+	),
+	
+	build_request_forward(Chrono, Call, Depth, MercuryPort, PredOrFunc, 
+		DeclModule, DefModule, Pred, Arity, ModeNumber, 
+		IntDet, Arg, GoalPathList, Request), 
+ 
+	send_message_to_socket(Request), 
+	read_message_from_socket(Response), 
+
+	(
+		Response = forward_move_match_found
+	->
+		true
+	;
+	% [EOT] Maybe the response should rather be eot to be homogeneous with 
+	% the response done to a current_slots query when eot is reached.
+		Response = forward_move_match_not_found 
+	->
+		write("last event is reached\n"),
+		setval(state_of_opium, eot),
+	% we should not end the connection anymore here when [EOT] is fix
+		end_connection,
+		fail
+	;
+		Response = error(ErrorMessage)
+	->
+		write(stderr, "Error in fget_ll/13 (forward_move.op)\n"),
+		write(stderr, "   An error occured in the Mercury process: "),
+		write(stderr, ErrorMessage),
+		opium_abort
+	;	
+		write(stderr, "Error in fget_ll/13 (forward_move.op)\n"),
+		write(stderr, "The Mercury process sends: "),
+		write(stderr, Response),
+		write(stderr, "\n"),
+		opium_abort
+	)
+   ;
+	% to make fget backtrackable.
+	( getval(state_of_opium, running) ->
+		fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, 
+			DefModule, Pred,  Arity, ModeNumber, Det, Arg, GoalPath)
+	;
+		fail, !
+	)
+   ).
+
+
+%------------------------------------------------------------------------------%
+% :- pred convert_goal_path_string_list(string, list(T)).
+% :- mode convert_goal_path_string_list(out, in) is semidet.
+% The Mercury process sends a string whereas we want to manipulate the goal 
+% path as a list. This predicate makes the conversion.
+convert_goal_path_string_list(String, List) :-
+	(
+		is_list_of_lists(List),
+		convert_goal_path_string_list_list(String, List),
+		!
+	;
+		is_negated_value(List, NegList),
+		convert_goal_path_string_list_exact(NegString, NegList),
+		String = not(NegString),
+		!
+	;
+		is_exact_value(List),
+		convert_goal_path_string_list_exact(String, List),
+		!
+	;
+		List == '-',
+		String = '-',
+		!
+	; 
+		% Should never occurs.
+		write(stderr, "Software error in Opium-M.\n"),
+		write(stderr, "--> convert_integer_determinism_/2\n"),
+		opium_abort	
+	). 
+
+% :- pred convert_goal_path_string_list_list(list(integer), list(determinism)).
+% :- mode convert_goal_path_string_list_list(out, in) is semidet.
+convert_goal_path_string_list_list([X | XTail], [Y | YTail]) :-
+	convert_goal_path_string_list_exact(X, Y),
+	convert_goal_path_string_list_list(XTail, YTail).
+convert_goal_path_string_list_list([], []).
+
+%:- pred convert_goal_path_string_list_exact(string, list(T)).
+%:- mode convert_goal_path_string_list_exact(out, in) is det.
+convert_goal_path_string_list_exact(String, [X|Xs]) :-
+	atom_string(X, Str),
+	append_strings(Str, ";",Str1),
+	convert_goal_path_string_list_exact(Str2, Xs),
+	append_strings(Str1, Str2, String).
+convert_goal_path_string_list_exact("", []).
+
+
+%------------------------------------------------------------------------------%
+% :- pred convert_integer_determinism(integer, determinism).
+% :- mode convert_integer_determinism(out, in) is semidet.
+convert_integer_determinism(IntDet, Det) :-
+	(
+		Det = '-',
+		IntDet = '-',
+		!
+	; 
+		is_list(Det),
+		convert_integer_determinism_list(IntDet, Det),
+		!
+	;
+		is_negated_value(Det, NegDet),
+		convert_integer_determinism_exact(NegIntDet, NegDet),
+		IntDet = not(NegIntDet),
+		!
+	;
+		is_exact_value(Det),
+		convert_integer_determinism_exact(IntDet, Det),
+		!
+	;
+		% Should never occurs.
+		write(stderr, "Software error in Opium-M.\n"),
+		write(stderr, "--> convert_integer_determinism_/2\n"),
+		opium_abort	
+	). 
+
+% :- pred convert_integer_determinism_list(list(integer), list(determinism)).
+% :- mode convert_integer_determinism_list(out, in) is semidet.
+% The mercury process sends an integer coding the determinism. This predicate
+% makes the conversion.
+convert_integer_determinism_list([IntDet | IntDetTail], [Det | DetTail]) :-
+	convert_integer_determinism_exact(IntDet, Det),
+	convert_integer_determinism_list(IntDetTail, DetTail).
+convert_integer_determinism_list([], []).
+
+
+% See runtime/mercury_stack_layout.h and compiler/stack_layout.m.
+%:- pred convert_integer_determinism_exact(integer, atom).
+%:- mode convert_integer_determinism_exact(out, in) is semidet.
+%:- mode convert_integer_determinism_exact(in, out) is semidet.
+convert_integer_determinism_exact(-, -) :-
+	!.
+convert_integer_determinism_exact(0, OpiumAtt) :-
+	(OpiumAtt = failure ; OpiumAtt = 'FAIL'),
+	!.
+convert_integer_determinism_exact(2, OpiumAtt) :-
+	(OpiumAtt = semidet ; OpiumAtt = 'SEMI'),
+	!.
+convert_integer_determinism_exact(3, OpiumAtt) :-
+	(OpiumAtt = nondet ; OpiumAtt = 'NON'),
+	!.
+convert_integer_determinism_exact(4, OpiumAtt) :-
+	(OpiumAtt = erroneous ; OpiumAtt = 'ERR'),
+	!.
+convert_integer_determinism_exact(6, OpiumAtt) :-
+	(OpiumAtt = det ; OpiumAtt = 'DET'),
+	!.
+convert_integer_determinism_exact(7, OpiumAtt) :-
+	(OpiumAtt = multidet ; OpiumAtt = 'MUL'),
+	!.
+convert_integer_determinism_exact(10, OpiumAtt) :-
+	(OpiumAtt = cc_nondet ; OpiumAtt = 'CCNON'),
+	!.
+convert_integer_determinism_exact(14, OpiumAtt) :-
+	(OpiumAtt = cc_multidet ; OpiumAtt = 'CCMUL'),
+	!.
+
+
+%------------------------------------------------------------------------------%
+%:- pred convert_mercury_port_opium_port(mercury_port, opium_port).
+%:- mode convert_mercury_port_opium_port(out, in) is det.
+convert_mercury_port_opium_port(Mport, Oport) :-
+	(
+		Oport = '-',
+		Mport = '-',
+		!
+	; 
+		is_list(Oport),
+		convert_mercury_port_opium_port_list(Mport, Oport),
+		!
+	;
+		is_negated_value(Oport, NegOport),
+		convert_mercury_port_opium_port(NegMport, NegOport),
+		Mport = not(NegMport),
+		!
+	;
+		is_exact_value(Oport),
+		convert_mercury_port_opium_port_exact(Mport, Oport),
+		!
+	;
+		write(stderr, "Software error in Opium-M !\n"),
+		write(stderr, "--> convert_mercury_port_opium_port/2 \n"),
+		opium_abort	
+	). 
+
+%:- pred convert_mercury_port_opium_port_list(list(mercury_port), 
+%	list(opium_port)).
+%:- mode convert_mercury_port_opium_port_list(out, in) is semidet.
+convert_mercury_port_opium_port_list([], []).
+convert_mercury_port_opium_port_list([Mport | MportTail], 
+    [Oport | OportTail]) :-
+	convert_mercury_port_opium_port_exact(Mport, Oport),
+	convert_mercury_port_opium_port_list(MportTail, OportTail).
+
+%:- pred convert_mercury_port_opium_port_exact(trace_port_type, atom).
+%:- mode convert_mercury_port_opium_port_exact(in, out) is semidet.
+%:- mode convert_mercury_port_opium_port_exact(out, in) is semidet.
+convert_mercury_port_opium_port_exact(-, -) :- 
+	!.
+convert_mercury_port_opium_port_exact(call, Ocall) :- 
+	(Ocall = call ; Ocall = 'CALL'),
+	!.
+convert_mercury_port_opium_port_exact(exit, Oexit) :- 
+	(Oexit = exit ; Oexit = 'EXIT'),
+	!.
+convert_mercury_port_opium_port_exact(redo, Oredo) :-  
+	(Oredo = redo ; Oredo = 'REDO'),
+	!.
+convert_mercury_port_opium_port_exact(fail, Ofail) :-  
+	(Ofail = fail ; Ofail = 'FAIL'),
+	!.
+convert_mercury_port_opium_port_exact(ite_cond, Ocond) :-  
+	(Ocond = cond ; Ocond = 'COND'),
+	!.
+convert_mercury_port_opium_port_exact(ite_then, Othen) :-  
+	(Othen = then ; Othen = 'THEN'),
+	!.
+convert_mercury_port_opium_port_exact(ite_else, Oelse) :-  
+	(Oelse = else ; Oelse = 'ELSE'),
+	!.
+convert_mercury_port_opium_port_exact(neg_enter, Oneg_enter) :-  
+	(Oneg_enter = neg_enter ; Oneg_enter = 'NEGE'),
+	!.
+convert_mercury_port_opium_port_exact(neg_success, Oneg_success) :-  
+	(Oneg_success = neg_success ; Oneg_success = 'NEGS'),
+	!.
+convert_mercury_port_opium_port_exact(neg_failure, Oneg_failure) :-  
+	(Oneg_failure = neg_failure ; Oneg_failure = 'NEGF'),
+	!.
+convert_mercury_port_opium_port_exact(disj, Odisj) :-  
+	(Odisj = disj ; Odisj = 'DISJ'),
+	!.
+convert_mercury_port_opium_port_exact(switch, Oswitch) :-  
+	(Oswitch = switch ; Oswitch = 'SWITCH' ; Oswitch = 'SWTC'),
+	!.
+convert_mercury_port_opium_port_exact(nondet_pragma_first, Ofirst) :-  
+	(Ofirst = first ; Ofirst = 'FIRST' ; Ofirst = 'FRST'),
+	!.
+convert_mercury_port_opium_port_exact(nondet_pragma_later, Olater) :-  
+	(Olater = later ; Olater =  'LATER' ; Olater = 'LATR'),
+	!.
+convert_mercury_port_opium_port_exact(exception, Oexception) :-  
+	(Oexception = exception ; Oexception =  'EXCEPTION' ; 
+		Oexception = 'EXCP'),
+	!.
+
+
+%------------------------------------------------------------------------------%
+% :- pred build_request_forward(atom, ..., atom, request_type)
+% :- mode build_request_forward(in, ..., in, out) is semidet.
+build_request_forward(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, 
+	DefModule, Name, Arity, ModeNumber, Determinism, Arg, GoalPath, 
+	Request) :-
+	
+	attribute_to_match(Chrono, ChronoMatch),
+	attribute_to_match(Call, CallMatch),
+	attribute_to_match(Depth, DepthMatch),
+	attribute_to_match(Port, PortMatch),
+	attribute_to_match(PredOrFunc, PredOrFuncMatch),
+	attribute_to_match_str(DeclModule, DeclModuleMatch),
+	attribute_to_match_str(DefModule, DefModuleMatch),
+	attribute_to_match_str(Name, NameMatch),
+	attribute_to_match(Arity, ArityMatch),
+	attribute_to_match(ModeNumber, ModeNumberMatch),
+	attribute_to_match(Determinism, DeterminismMatch),
+	% attribute_to_match(Arg, ArgMatch),
+	ArgMatch = nop,		% XXX we currently don't handle arguments 
+				% filtering
+	attribute_to_match_gp(GoalPath, GoalPathMatch),
+
+	Request = forward_move(
+			ChronoMatch, 
+			CallMatch, 
+			DepthMatch, 
+			PortMatch, 
+			match_user_pred(PredOrFuncMatch, DeclModuleMatch), 
+			DefModuleMatch, 
+			NameMatch, 
+			ArityMatch, 
+			ModeNumberMatch, 
+			DeterminismMatch, 
+			ArgMatch, 
+			GoalPathMatch).
+
+
+% :- pred attribute_to_match(attribute, attribute_match_type).
+% :- mode attribute_to_match(in, out) is (semi)det.
+attribute_to_match(Attribute, AttributeMatch) :-
+	(
+		Attribute = '-',
+		AttributeMatch = nop,
+		!
+	; 
+		is_list(Attribute),
+		AttributeMatch = list(Attribute),
+		!
+	;
+		is_negated_value(Attribute, AttributeNeg),
+		AttributeMatch = neg(AttributeNeg),
+		!
+	;
+		is_interval(Attribute, L, H),
+		AttributeMatch = interval(L, H),
+		!
+	;
+		is_exact_value(Attribute),
+		AttributeMatch = exact(Attribute),
+		!
+	;
+		write(stderr, "Software error in Opium-M !\n"),
+		write(stderr, "--> attribute_to_match/2 \n"),
+		opium_abort	
+	).
+
+
+% :- pred is_list_of_lists(attribute).
+% :- mode is_list_of_lists(in) is semidet.
+is_list_of_lists([X|Xs]) :-
+	is_list(X),
+	is_list_of_lists(Xs).
+
+is_list_of_lists([]).
+
+
+% :- pred is_negated_value(attribute, attribute).
+% :- mode is_negated_value(in, out) is semidet.
+is_negated_value(Attribute, AttributeNeg) :-
+	Attribute = not(AttributeNeg) 
+	; 
+	Attribute = (\+ AttributeNeg).
+
+
+% :- pred is_interval(attribute, integer, integer).
+% :- mode is_interval(in, out, out) is semidet.
+is_interval(Attribute, Bottom, Up) :-
+	not(free(Attribute)),
+	Attribute = Bottom .. Up,
+	not(free(Bottom)), 
+	not(free(Up)).
+
+
+% :- pred is_exact_value(attribute).
+% :- mode is_exact_value(in) is semidet.
+is_exact_value(Attribute) :-
+	Attribute = ValueAttribute, 
+	not(nonground(ValueAttribute)).
+
+
+% :- pred attribute_to_match_str(attribute, attribute_match_type).
+% :- mode attribute_to_match_str(in, out) is (semi)det.
+	% For string attributes (name, decl_module, def_module), we need to 
+	% convert atoms (foo) into _quoted_ string ('"foo"') before 
+	% sending it to Mercury.
+attribute_to_match_str(Attribute, AttributeMatch) :-
+	(
+		Attribute = '-'
+	-> 
+		AttributeMatch = nop
+	; 
+		is_list(Attribute) 
+	-> 
+		maplist(atom_string, Attribute, AttrStr),
+		maplist(quote_string, AttrStr, AttrStrQuoted),
+		AttributeMatch = list(AttrStrQuoted)
+	;
+		is_negated_value(Attribute, AttributeNeg) 
+	-> 
+		atom_string(AttributeNeg, AttrNegStr),
+		quote_string(AttrNegStr, AttrNegStrQuoted),
+		AttributeMatch = neg(AttrNegStrQuoted)
+	;
+		is_exact_value(Attribute) 
+	-> 
+		atom_string(Attribute, AttrStr),
+		quote_string(AttrStr, AttrStrQuoted),
+		AttributeMatch = exact(AttrStrQuoted)
+	;
+		write(stderr, "error in forward_move/attribute_to_match_str\n"),
+		opium_abort	
+	).
+
+
+%:- pred quote_string(string, atom).
+%:- mode quote_string(in, out) is det.
+quote_string(String, StringQuoted):- 
+	concat_string(["\"", String, "\""], String2),
+	atom_string(StringQuoted, String2).
+
+
+% X Duplicated code: attribute_to_match, attribute_to_match_str and
+% attribute_to_match_gp are nearly the same.
+% :- pred attribute_to_match_gp(attribute, attribute_match_type).
+% :- mode attribute_to_match_gp(in, out) is (semi)det.
+attribute_to_match_gp(Attribute, AttributeMatch) :-
+	(
+		Attribute = '-',
+		AttributeMatch = nop,
+		!
+	; 
+		is_list(Attribute), 
+		maplist(quote_string, Attribute, AttrQuoted),
+		AttributeMatch = list(AttrQuoted),
+		!
+	;
+		is_negated_value(Attribute, AttributeNeg), 
+		quote_string(AttributeNeg , AttrNegQuoted),
+		AttributeMatch = neg(AttrNegQuoted),
+		!
+	;
+		is_exact_value(Attribute),
+		quote_string(Attribute, AttrQuoted),
+		AttributeMatch = exact(AttrQuoted),
+		!
+	;
+		write(stderr, "Software error in Opium-M !\n"),
+		write(stderr, "--> attribute_to_match_gp/2 \n"),
+		opium_abort	
+	).
+
+det_fget_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, 
+		Pred, Arity, ModeNumber, Deter, LiveArgs, GoalPath) :-
+	fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, 
+		Pred, Arity, ModeNumber, Deter, LiveArgs, GoalPath), 
+	!.
+
+%------------------------------------------------------------------------------%
+% "fget/8 is the same as fget/11 except that the decl_module, predicate name, 
+% arity and mode number attributes are replaced by a procedure attribute.
+% 
+% Useless ?
+%
+% :- pred fget_Op(attribute, ..., attribute).
+% :- mode fget_Op(?, ...,?) is nondet.
+fget_8(Chrono, Call, Depth, Port, PredOrFunc, DefModule, '-', Det, Arg, 
+		GoalPath) :-
+	fget_ll(Chrono, Call, Depth, Port, PredOrFunc, '-', DefModule, '-', 
+		'-', '-', Det, Arg, GoalPath).
+
+fget_8(Chrono, Call, Depth, Port, PredOrFunc, DefModule, 
+		DeclModule:Pred/Arity-ModeNumber, Det, Arg, GoalPath) :-
+	fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, 
+		DefModule, Pred, Arity, ModeNumber, Det, Arg, GoalPath).
+
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: retry,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	interface	: button,
+	command_type	: trace,
+	implementation	: retry_Op,
+	parameters	: [],
+	message		:
+"Restarts execution at the call port of the current goal.\
+\n\
+The command will fail unless the values of all the input arguments are \
+available at the current port. (The compiler will keep the values of the input \
+arguments of traced procedures as long as possible, but it cannot keep them \
+beyond the point where they are destructively updated.) \n\
+\n\
+The debugger can perform a retry only from an exit or fail port; only at these \
+ports does the debugger have enough information to figure out how to reset the \
+stacks. If the debugger is not at such a port when a retry command is given, \
+the debugger will continue forward execution until it reaches an exit or fail \
+port of the call to be retried before it performs the retry. This may require \
+a noticeable amount of time. \
+"
+	).
+
+retry_Op :-
+	getval(state_of_opium, running),
+	send_message_to_socket(retry),
+	read_message_from_socket(Message), 
+	( 
+		Message = ok 
+	; 
+		Message = error(ErrorMessage),
+		write(ErrorMessage), 
+		nl,
+		fail
+	),
+	!.
+

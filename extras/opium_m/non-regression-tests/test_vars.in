@@ -1,0 +1,8 @@
+write("\n**************************************************"),
+	write("\n**** Testing test_vars.m...\n"),
+	run(test_vars),
+	goto(3),
+	current(arg = Arg),
+	write(Arg), !,
+	no_trace,
+	write("test_vars: ok.\n").

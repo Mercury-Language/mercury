@@ -1,0 +1,24 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+% 
+% Author : Erwan Jahier <jahier@irisa.fr>
+%
+% define a monitor that collect solutions
+
+:- import_module list.
+
+:- type collected_type == list(solutions).
+:- type solutions ---> sol(procedure, arguments).
+
+initialize([]).
+
+filter(Event, AccIn, AccOut, continue) :-
+	( 
+		port(Event) = call,
+		not(member(sol(proc(Event), arguments(Event)), AccIn))
+	->
+		AccOut = [sol(proc(Event), arguments(Event))|AccIn]
+	;
+		AccOut = AccIn
+	).
+

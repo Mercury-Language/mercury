@@ -1,0 +1,424 @@
+[Opium-M 1]: 
+**************************************************
+******** Non regression test for Opium-M *********
+**************************************************
+
+**************************************************
+**** Display the first 20 events:
+Start debugging queens program.
+				       
+---------------------------------
+[./queens ...]			       
+				       
+  1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
+  2:  2 [2] call data(-) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+  4:  3 [2] call queen([1, 2, 3, 4, 5], -) [] 
+  5:   4 [3] call qperm([1, 2, 3, 4, 5], -) [] 
+  6:   4 [3] switch qperm([1, 2, 3, 4, 5], -) [s1] 
+  7:    5 [4] call qdelete(-, [1, 2, 3, 4, 5], -) [] 
+  8:    5 [4] disj qdelete(-, [1, 2, 3, 4, 5], -) [c2, d1] 
+  9:    5 [4] exit qdelete(1, [1, 2, 3, 4, 5], [2, 3, 4, 5]) [] 
+ 10:    6 [4] call qperm([2, 3, 4, 5], -) [] 
+ 11:    6 [4] switch qperm([2, 3, 4, 5], -) [s1] 
+ 12:     7 [5] call nondet (predicate) {queens} queens: qdelete(-, [2, 3, 4, 5] {list__list(int)}, -)/3-0 [] 
+ 13:     7 [5] disj nondet (predicate) {queens} queens: qdelete(-, [2, 3, 4, 5] {list__list(int)}, -)/3-0 [c2, d1] 
+ 14:     7 [5] exit nondet (predicate) {queens} queens: qdelete(2 {int}, [2, 3, 4, 5] {list__list(int)}, [3, 4, 5] {list__list(int)})/3-0 [] 
+ 15:     8 [5] call nondet (predicate) {queens} queens: qperm([3, 4, 5] {list__list(int)}, -)/2-0 [] 
+ 16:     8 [5] switch nondet (predicate) {queens} queens: qperm([3, 4, 5] {list__list(int)}, -)/2-0 [s1] 
+ 17:      9 [6] call nondet (predicate) {queens} queens: qdelete(-, [3, 4, 5] {list__list(int)}, -)/3-0 [] 
+ 18:      9 [6] disj nondet (predicate) {queens} queens: qdelete(-, [3, 4, 5] {list__list(int)}, -)/3-0 [c2, d1] 
+ 19:      9 [6] exit nondet (predicate) {queens} queens: qdelete(3 {int}, [3, 4, 5] {list__list(int)}, [4, 5] {list__list(int)})/3-0 [] 
+ 20:      10 [6] call nondet (predicate) {queens} queens: qperm([4, 5] {list__list(int)}, -)/2-0 [] 
+[1, 3, 5, 2, 4]
+
+---------------------------------
+End of connection with the traced program
+ok.
+
+C = 11
+C2 = 20
+[Opium-M 2]: 
+**************************************************
+**** Testing toggle/1...
+run(./, queens,  )
+Start debugging queens program.
+				       
+---------------------------------
+[./queens ...]			       
+				       
+  1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle chrono attribute:
+ 2 [2] exit data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle call attribute:
+  3:  [2] exit data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle port attribute:
+  3:  2 [2] data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle depth attribute:
+  3:  2 exit data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle deter attribute:
+  3:  2 [2] exit det data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle proc_type attribute:
+  3:  2 [2] exit (predicate) data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle decl_module attribute:
+  3:  2 [2] exit queens: data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle def_module attribute:
+  3:  2 [2] exit {queens} data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle name attribute:
+  3:  2 [2] exit ([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle arity attribute:
+  3:  2 [2] exit data([1, 2, 3, 4, 5])/1 [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle mode_number attribute:
+  3:  2 [2] exit data([1, 2, 3, 4, 5])-0 [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle arg attribute:
+  3:  2 [2] exit data() [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle local_vars attribute:
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle type attribute:
+  3:  2 [2] exit data([1, 2, 3, 4, 5] {list__list(int)}) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+toggle goal_path attribute:
+  3:  2 [2] exit data([1, 2, 3, 4, 5])
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+no (more) solution.
+[Opium-M 3]: [1, 3, 5, 2, 4]
+
+---------------------------------
+End of connection with the traced program
+toggle: ok.
+[Opium-M 4]: 
+**************************************************
+**** Testing one by one variable retrieval...
+run(./, queens,  )
+Start debugging queens program.
+				       
+---------------------------------
+[./queens ...]			       
+				       
+  1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
+673:  3 [2] exit queen([1, 2, 3, 4, 5], [1, 3, 5, 2, 4]) [] 
+[live_var_names_and_types(HeadVar__1, list:list(int)), live_var_names_and_types(HeadVar__2, list:list(int))]
+[1, 2, 3, 4, 5][1, 3, 5, 2, 4]
+
+---------------------------------
+End of connection with the traced program
+one by one variable retrieval: ok.
+
+List = [live_var_names_and_types("HeadVar__1", "list:list(int)"), live_var_names_and_types("HeadVar__2", "list:list(int)")]
+VarName = "HeadVar__1"
+Var = [1, 2, 3, 4, 5]
+[Opium-M 5]: 
+**************************************************
+**** Testing current...
+run(./, queens,  )
+Start debugging queens program.
+				       
+---------------------------------
+[./queens ...]			       
+				       
+  1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
+673:  3 [2] exit queen([1, 2, 3, 4, 5], [1, 3, 5, 2, 4]) [] 
+current_live_var: [(HeadVar__1, [1, 2, 3, 4, 5], list : list(int)), (HeadVar__2, [1, 3, 5, 2, 4], list : list(int))]
+chrono = 673
+call = 3
+depth = 2
+port = exit
+pred_or_func = predicate
+def_module = queens
+decl_module = queens
+name = queen
+arity = 2
+proc = predicate -> queens : queen / 2 - 0
+det = nondet
+goal_path = []
+args = [[1, 2, 3, 4, 5], [1, 3, 5, 2, 4]]
+arg_names = [HeadVar__1, HeadVar__2]
+arg_types = [list:list(int), list:list(int)]
+vars = [live_var(HeadVar__1, [1, 2, 3, 4, 5], list : list(int)), live_var(HeadVar__2, [1, 3, 5, 2, 4], list : list(int))]
+var_names_and_types = [live_var_names_and_types(HeadVar__1, list:list(int)), live_var_names_and_types(HeadVar__2, list:list(int))]
+non_arg_vars = []
+
+predicate -> queens : queen / 2 - 0
+queens : queen / 2 - 0
+predicate -> queen / 2 - 0
+predicate -> queens : queen - 0
+predicate -> queens : queen / 2
+queen / 2 - 0
+queens : queen - 0
+queens : queen / 2
+predicate -> queen - 0
+predicate -> queen / 2
+predicate -> queens : queen
+predicate -> queen
+queens : queen
+queen / 2
+queen - 0
+predicate -> queens : queen / 2 - 0[1, 3, 5, 2, 4]
+
+---------------------------------
+End of connection with the traced program
+current: ok.
+
+Name = Name
+Value = Value
+Type = Type
+List = [("HeadVar__1", [1, 2, 3, 4, 5], list : list(int)), ("HeadVar__2", [1, 3, 5, 2, 4], list : list(int))]
+Xchrono = 673
+Xcall = 3
+Xdepth = 2
+Xport = exit
+Xpred_or_func = predicate
+Xdef_module = queens
+Xdecl_module = queens
+Xname = queen
+Xarity = 2
+Xproc = predicate -> queens : queen / 2 - 0
+Xdet = nondet
+Xgoal_path = []
+Xargs = [[1, 2, 3, 4, 5], [1, 3, 5, 2, 4]]
+Xarg_names = ["HeadVar__1", "HeadVar__2"]
+Xarg_types = ["list:list(int)", "list:list(int)"]
+Xvars = [live_var("HeadVar__1", [1, 2, 3, 4, 5], list : list(int)), live_var("HeadVar__2", [1, 3, 5, 2, 4], list : list(int))]
+Xvar_names_and_types = [live_var_names_and_types("HeadVar__1", "list:list(int)"), live_var_names_and_types("HeadVar__2", "list:list(int)")]
+Xnon_arg_vars = []
+PT1 = predicate
+M1 = queens
+P1 = queen
+A1 = 2
+MN1 = 0
+M2 = queens
+P2 = queen
+A2 = 2
+MN2 = 0
+PT3 = predicate
+P3 = queen
+A3 = 2
+MN3 = 0
+PT4 = predicate
+M4 = queens
+P4 = queen
+MN4 = 0
+PT5 = predicate
+M5 = queens
+P5 = queen
+A5 = 2
+P6 = queen
+A6 = 2
+MN6 = 0
+M7 = queens
+P7 = queen
+MN7 = 0
+M8 = queens
+P8 = queen
+A8 = 2
+PT9 = predicate
+P9 = queen
+MN9 = 0
+PT10 = predicate
+P10 = queen
+A10 = 2
+PT11 = predicate
+M11 = queens
+P11 = queen
+PT12 = predicate
+P12 = queen
+M13 = queens
+P13 = queen
+P14 = queen
+A14 = 2
+P15 = queen
+MN15 = 0
+P16 = predicate -> queens : queen / 2 - 0
+[Opium-M 6]: 
+**************************************************
+**** Testing retry/1...
+run(./, queens,  )
+Start debugging queens program.
+				       
+---------------------------------
+[./queens ...]			       
+				       
+  1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
+673:  3 [2] exit queen([1, 2, 3, 4, 5], [1, 3, 5, 2, 4]) [] 
+  4:  3 [2] call queen([1, 2, 3, 4, 5], -) [] 
+[1, 3, 5, 2, 4]
+
+---------------------------------
+End of connection with the traced program
+retry: ok.
+[Opium-M 7]: 
+**************************************************
+**** Testing stack dumps...
+run(./, queens,  )
+Start debugging queens program.
+				       
+---------------------------------
+[./queens ...]			       
+				       
+  1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
+  3:  2 [2] exit data([1, 2, 3, 4, 5]) [] 
+
+Level 0: (chrono=2, call=2, depth=2) pred queens:data/1-0 (det) 
+Level 1: (chrono=1, call=1, depth=1) pred queens:main/2-0 (cc_multi) 
+[1, 3, 5, 2, 4]
+
+---------------------------------
+End of connection with the traced program
+stack: ok.
+
+Stack = [[level(0), detail(2, 2, 2), pred, proc("queens", "data", 1, 0), det("det")], [level(1), detail(1, 1, 1), pred, proc("queens", "main", 2, 0), det("cc_multi")]]
+[Opium-M 8]: 
+**************************************************
+**** Testing the term browser...
+run(./, queens,  )
+Start debugging queens program.
+				       
+---------------------------------
+[./queens ...]			       
+				       
+  1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
+397:        83 [8] exit nodiag(1, 5, []) [] 
+browser> 1
+
+browser> browser> Commands are:
+	ls [path]      -- list subterm (expanded)
+	cd [path]      -- cd current subterm (default is root)
+	help           -- show this help message
+	set var value  -- set a setting
+	set            -- show settings
+	print          -- show single line representation of current term
+	quit           -- quit browser
+SICStus Prolog style commands are:
+	p              -- print
+	< [n]          -- set depth (default is 10)
+	^ [path]       -- cd [path]
+	?              -- help
+	h              -- help
+
+-- settings:
+--    size; depth; path; format (flat pretty verbose); clipx; clipy
+--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1
+
+browser> Commands are:
+	ls [path]      -- list subterm (expanded)
+	cd [path]      -- cd current subterm (default is root)
+	help           -- show this help message
+	set var value  -- set a setting
+	set            -- show settings
+	print          -- show single line representation of current term
+	quit           -- quit browser
+SICStus Prolog style commands are:
+	p              -- print
+	< [n]          -- set depth (default is 10)
+	^ [path]       -- cd [path]
+	?              -- help
+	h              -- help
+
+-- settings:
+--    size; depth; path; format (flat pretty verbose); clipx; clipy
+--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1
+
+browser> Commands are:
+	ls [path]      -- list subterm (expanded)
+	cd [path]      -- cd current subterm (default is root)
+	help           -- show this help message
+	set var value  -- set a setting
+	set            -- show settings
+	print          -- show single line representation of current term
+	quit           -- quit browser
+SICStus Prolog style commands are:
+	p              -- print
+	< [n]          -- set depth (default is 10)
+	^ [path]       -- cd [path]
+	?              -- help
+	h              -- help
+
+-- settings:
+--    size; depth; path; format (flat pretty verbose); clipx; clipy
+--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1
+
+browser> Max depth is: 3
+Max size is: 10
+X clip is: 79
+Y clip is: 25
+Current path is: /
+Print format is verbose
+browser> browser> browser> Max depth is: 2
+Max size is: 10
+X clip is: 79
+Y clip is: 25
+Current path is: /
+Print format is pretty
+browser> 1
+browser> 1
+browser> [1, 3, 5, 2, 4]
+
+---------------------------------
+End of connection with the traced program
+browser: ok.
+[Opium-M 9]: 
+**************************************************
+**** Testing collect...
+run(./, queens,  )
+Start debugging queens program.
+				       
+---------------------------------
+[./queens ...]			       
+				       
+  1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
+[1, 3, 5, 2, 4]
+Compiling collect.m...
+mmc --grade asm_fast.gc -O6 -c --pic-reg collect.m
+ml --grade asm_fast.gc --make-shared-lib --pic-reg -o collect.so collect.o
+
+---------------------------------
+End of connection with the traced program
+[sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([5, 2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([3, 5, 2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([1, 3, 5, 2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list", 3, 0), [univ([1, 3, 5, 2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(4 : int), univ(1 : int), univ([] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(2 : int), univ(2 : int), univ([] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(2 : int), univ(1 : int), univ([4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([2, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(5 : int), univ(3 : int), univ([] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(5 : int), univ(2 : int), univ([4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(5 : int), univ(1 : int), univ([2, 4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([5, 2, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(3 : int), univ(4 : int), univ([] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(3 : int), univ(3 : int), univ([4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(3 : int), univ(2 : int), univ([2, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(3 : int), univ(1 : int), univ([5, 2, 4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([3, 5, 2, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(3 : int), univ([2, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(2 : int), univ([5, 2, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([3, 5, 2, 4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 3, 5, 2, 4] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([2, 4] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([2, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(3 : int), univ(1 : int), univ([4, 5, 2] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([3, 4, 5, 2] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(4 : int), univ([2] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(3 : int), univ([5, 2] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(2 : int), univ([4, 5, 2] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([3, 4, 5, 2] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 3, 4, 5, 2] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([2] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([2] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(4 : int), univ([5] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(3 : int), univ([2, 5] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(2 : int), univ([4, 2, 5] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([3, 4, 2, 5] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 3, 4, 2, 5] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([2, 5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([2, 5] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(3 : int), univ(1 : int), univ([2, 5, 4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([3, 2, 5, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(5 : int), univ([] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(4 : int), univ([4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(3 : int), univ([5, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(2 : int), univ([2, 5, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([3, 2, 5, 4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 3, 2, 5, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(3 : int), univ([4, 5] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(2 : int), univ([2, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([3, 2, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 3, 2, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([2, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([2, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([2, 5, 4, 3] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 2, 5, 4, 3] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([2, 5, 3, 4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 2, 5, 3, 4] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([3, 4] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([3, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([2, 4, 5, 3] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 2, 4, 5, 3] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([3] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([3] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([2, 4, 3, 5] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 2, 4, 3, 5] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([3, 5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([3, 5] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([2, 3, 5, 4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 2, 3, 5, 4] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([4] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([4] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(1 : int), univ(1 : int), univ([2, 3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([1, 2, 3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([5] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([2, 3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([2, 3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qdelete", 3, 0), [univ([1, 2, 3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "qperm", 2, 0), [univ([1, 2, 3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "queen", 2, 0), [univ([1, 2, 3, 4, 5] : list : list(int))]), sol(proc(predicate, "queens", "data", 1, 0), []), sol(proc(predicate, "queens", "main", 2, 0), [univ(state('<<c_pointer>>') : io : state)])]collect: ok.
+
+Result = [sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([5, 2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([3, 5, 2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list_2", 3, 0), [univ([1, 3, 5, 2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "print_list", 3, 0), [univ([1, 3, 5, 2, 4] : list : list(int)), univ(state('<<c_pointer>>') : io : state)]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(4 : int), univ(1 : int), univ([] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(2 : int), univ(2 : int), univ([] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(2 : int), univ(1 : int), univ([4] : list : list(int))]), sol(proc(predicate, "queens", "safe", 1, 0), [univ([2, 4] : list : list(int))]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(5 : int), univ(3 : int), univ([] : ... : ...)]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(5 : int), univ(2 : int), univ(... : ...)]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(5 : int), univ(... : ...), univ(...)]), sol(proc(predicate, "queens", "safe", 1, 0), [univ(... : ...)]), sol(proc(predicate, "queens", "nodiag", 3, 0), [univ(...), ...]), sol(proc(...), [...]), sol(...), ...]     More? (;) 
+[Opium-M 10]: 
+**************************************************
+**** Testing other Opium commands...
+apropos(window)
+    man
+    manual
+    latex_manual
+    window_command
+    opium_command_in_module
+    print_man
+
+man(apropos)
+
+apropos(Name)    {a}
+Command which displays all the commands, primitives, procedures, parameters, or types for which Name is a substring of.
+Example: 
+[Opium-M]: apropos man.
+    man
+    manual
+    latex_manual
+    window_command
+    opium_command_in_module
+    print_man
+
+Name 	: atom
+type of command : opium
+scenario : help (GloLoc in Opium-M)
+
+ok.
+**************************************************
+[Opium-M 11]: 
+bye

@@ -1,0 +1,464 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+% 
+% Author : Erwan Jahier
+% File   : collect.op
+%
+% This file implements the collect command.
+%
+% There are several things to do in order to be able to execute a 
+% collect/1 command:
+% 1) create a file that will that contain the definition of collected_type, 
+%	initialize/1 and filter/4,
+% 2) generate `collect.m' from this file (generate_collect/1),
+% 3) compile collect.m (compile_collect/0),
+% 4) dynamically link it with the current execution (dyn_link_collect/0).
+% 5) run the command (run_command/1).
+
+opium_scenario(
+	name		: collect,
+	files		: [collect],
+	scenarios	: [],
+	message		:
+"Scenario that implements the collect/2 monitoring command that collects \
+runtime information from Mercury program executions. It is intended to let \
+users easily implement their own monitors with acceptable performances.\n\
+\n\
+To use it, users just need to define 4 things in a file, using the Mercury \
+syntax:\n\
+	(1) a `collected_type' which is the type of the collecting  \n\
+	   variable that will contain the result of the monitoring\n\
+	   activity.\n\
+	(2) The predicate initialize/1 which initializes this collecting \n\
+	   variable. initialize/1 should follow the \n\
+	   following declarations:\n\
+		:- pred initialize(collected_type).\n\
+		:- mode initialize(out) is det.\n\
+	(3) The predicate filter/4 which updates the collecting variable \n\
+	   at each execution event. filter/4 also outputs a variable that  \n\
+	   indicates whether to stop collecting. If this variable is set to \n\
+	   `stop', the collect process stops; if it is set to `continue', it \n\
+	   continues. If this variable is always set to `continue', the \n\
+	   collecting will process until the last event is reached. filter/4 \n\
+	   should follow the following declarations:\n\
+		:- pred filter(event, collected_type, collected_type, \n\
+			stop_or_continue).\n\
+		:- mode filter(in, acc_in, acc_out, out) is det.\n\
+	   where `acc_in' and `acc_out' have `in' and `out' respectively\n\
+	   as default values.\n\
+	(4) And optionally the mode definition of `acc_in' and `acc_out'\n\
+	   in one want to override their default values.\n\
+\n\
+The event type is defined as follows (for more detail about the meaning of \
+each event attributes, please refer to the Reference Manual):\n\
+\n\
+:- type event ---> \n\
+	event(\n\
+		event_number,\n\
+		call_number,\n\
+		depth_number,\n\
+		trace_port_type,\n\
+		pred_or_func,\n\
+		declarated_module_name,\n\
+		defined_module_name,	\n\
+		proc_name,\n\
+		arity,\n\
+		mode_number,\n\
+		determinism,\n\
+		goal_path_string).\n\
+\n\
+:- type event_number == int.\n\
+:- type call_number == int.\n\
+:- type depth_number == int.\n\
+:- type trace_port_type\n\
+	--->	call\n\
+	;	exit\n\
+	;	redo\n\
+	;	fail\n\
+	;	ite_cond\n\
+	;	ite_then\n\
+	;	ite_else\n\
+	;	neg_enter\n\
+	;	neg_success\n\
+	;	neg_failure\n\
+	;	disj\n\
+	;	switch\n\
+	;	nondet_pragma_first\n\
+	;	nondet_pragma_later\n\
+	;	exception.\n\
+:- type pred_or_func\n\
+	--->	predicate\n\
+	;	function.\n\
+:- type declarated_module_name == string.\n\
+:- type defined_module_name == string.\n\
+:- type proc_name == string.\n\
+:- type arity == int.\n\
+:- type mode_number == int.\n\
+:- type determinism == int. \n\
+:- type goal_path_string == string.\n\
+:- type procedure ---> proc(\n\
+	pred_or_func, \n\
+	declarated_module_name, \n\
+	proc_name, \n\
+	arity, \n\
+	mode_number).\n\
+:- type arguments == list(univ).\n\
+\n\
+Here are functions that eases the access of the event attributes:\n\
+\n\
+:- func chrono(event::in) = (event_number::out) is det.\n\
+:- func call(event::in) = (call_number::out) is det.\n\
+:- func depth(event::in) = (depth_number::out) is det.\n\
+:- func port(event::in) = (trace_port_type::out) is det.\n\
+:- func proc_type(event::in) = (pred_or_func::out) is det.\n\
+:- func decl_module(event::in) = (declarated_module_name::out) is det.\n\
+:- func def_module(event::in) = (defined_module_name::out) is det.\n\
+:- func proc_name(event::in) = (proc_name::out) is det.\n\
+:- func proc_arity(event::in) = (arity::out) is det.\n\
+:- func proc_mode_number(event::in) = (mode_number::out) is det.\n\
+:- func proc(event::in) = (procedure::out) is det.\n\
+:- func determinism(event::in) = (determinism::out) is det.\n\
+:- func goal_path(event::in) = (goal_path_string::out) is det.\n\
+:- func arguments(event::in) = (arguments::out) is det. (*)\n\
+\n\
+(*) To be able to retrieve arguments, you to need to have the opium parameter \n\
+`collect_arg' set to yes (`man collect_arg.' for more details).\n\
+\n\
+Then, this file is used to generate the Mercury module `collect.m', \
+which is compiled and dynamically linked with the current execution. \
+When a `collect' request is made from the external debugger, a variable \
+of type collected_type is first initialized (with initialize/1) and \
+then updated (with filter/4) for all the events of the remaining \
+execution. When the fourth argument of filter is equal to yes, or when \
+the end of the execution is reached, the last value of \
+the collecting variable is send to Opium-M.\n\
+\n\
+collect/2 can be seen as fold/4 meta-predicate except that (1) the \
+initialization and the updating of the accumulator is done via Mercury \
+predicates defined in a separate file (2) it does not take a list as \
+argument but operates on the fly on a list of events (3) ."
+	).
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: collect,
+	arg_list	: [File, Result],
+	arg_type_list	: [is_atom_or_string, is_atom_or_var],
+	abbrev		: _,
+	interface	: button,
+	command_type	: opium,
+	implementation	: collect_Op,
+	parameters	: [collect_arg],
+	message		:
+"If File contains the implementation of the Mercury predicates initialize/1 \
+and filter/4, collect(File, Result) calls filter/4 with each event of the \
+execution and an accumulator initialized by initialize/1, and returns the \
+final value in Result.\n\
+\n\
+Here is an example of a simple monitor that counts calls.\n\
+If a file `count_call' contains the following statements:\n\
+`\n\
+	:- import_module int.\n\
+	:- type collected_type == int.\n\
+\n\
+	initialize(0).\n\
+\n\
+	filter(Event, AccIn, AccOut, continue) :-\n\
+		( port(Event) = call ->\n\
+			AccOut = AccIn + 1\n\
+		;\n\
+			AccOut = AccIn\n\
+		).\n\
+'\n\
+Then the command `collect(count_call, Result)' will unify Result with the \
+number of calls that occur during the program execution.\
+"
+	).
+
+collect_Op(File, Result) :-
+	check_a_program_is_running("collect/2"),
+	(
+		% File might be an atom or a string.
+		string(File),
+		append_strings(File, ".so", File_so),
+		!
+	;
+		atom_string(File, FileStr),
+		append_strings(FileStr, ".so", File_so)
+	),
+	( 
+		% We don't generate again collect.so if the collect input 
+		% file has already been collected and if it has not been 
+		% modified.
+		get_file_info(File, mtime, Time),
+		get_file_info(File_so, mtime, Time_so),
+		Time < Time_so,
+		concat_string(["cp ", File_so, " collect.so"], Cmd1),
+		sh(Cmd1),
+		!
+	;
+		generate_collect(File),
+		compile_collect,
+		concat_string(["cp collect.so ", File_so], Cmd2),
+		sh(Cmd2)
+	),
+	dyn_link_collect,
+	run_collect(Result).
+
+%------------------------------------------------------------------------------%
+
+opium_parameter(
+	name		: collect_arg,
+	arg_list	: [YesOrNo],
+	arg_type_list	: [member([yes, no])],
+	parameter_type	: single,
+	default		: [no],
+	commands	: [collect],
+	message		: 
+"Parameter which tells whether it is possible to use arguments/1 within \
+collect:filter/4. If you do not use arguments, it is better to set this \
+parameter to `no' since when arguments are very big, it might slow down \
+the execution of collect a lot."
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: compile_collect,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	implementation	: compile_collect_Op,
+	message		:
+"Compile the module `collect.m'."
+	).
+
+compile_collect_Op :-
+	write("Compiling collect.m...\n"),
+	sh("rm -f collect.so  collect.o"),
+	current_grade(Grade),
+	concat_string([
+		"mmc --grade ", 
+		Grade,
+		" -O6",
+		" -c --pic-reg collect.m"], Command1), 
+	print(Command1), nl,
+	sh(Command1),
+	exists("collect.o"),
+	concat_string([
+		"ml --grade ", 
+		Grade, 
+		" --make-shared-lib ",
+		"--pic-reg -o collect.so collect.o"], Command2),
+	print(Command2), nl,
+	sh(Command2), 
+	exists("collect.so"),
+	!,
+	opium_write_debug("collect.m has been compiled successfully.\n").
+
+compile_collect_Op :-
+	write("\n\n***** Compilation of module collect failed.\n"),
+	abort.
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: current_grade,
+	arg_list	: [Grade],
+	arg_type_list	: [var],
+	abbrev		: _,
+	implementation	: current_grade_Op,
+	message		:
+"Retrieves the grade the current program execution has been compiled with."
+	).
+
+current_grade_Op(Grade) :-
+	check_a_program_is_running("current_grade/1"),
+	send_message_to_socket(current_grade),
+	read_message_from_socket(grade(Grade)).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: generate_collect,
+	arg_list	: [File],
+	arg_type_list	: [is_atom_or_var],
+	abbrev		: _,
+	implementation	: generate_collect_Op,
+	message		:
+"Generates a Mercury module named `collect.m' from file File; File should \
+contain the definition of the accumulator type (collected_type), \
+initialize/1 and filter/4 predicates."
+	).
+
+generate_collect_Op(File) :-
+	sh("rm -f collect.m"),
+	open("collect.m", write, collect),
+	getenv("MERCURY_OPIUM_DIR", OpiumDir),
+	append_strings(OpiumDir, "/source/collect.in", CollectIn),
+	open(CollectIn, read, collect_in),
+	open(File, read, collect_body),
+	read_string(collect_in, "", _, In),
+	read_string(collect_body, "", _, Body),
+	write(collect, In),
+	write(collect, ""),
+	write(collect, "\n\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n"),
+	( 
+		is_there_any_mode_declaration(File)
+	;
+		% Add a mode definition of `acc_in' and `acc_out' if not
+		% present in File.
+		write(collect, ":- mode acc_in :: in.\n"),
+		write(collect, ":- mode acc_out :: out.\n\n")
+	),
+	write(collect, Body),
+	close(collect),
+	close(collect_in).
+
+	
+% Check if there is a mode definition of `acc_in' and `acc_out' in the 
+% file `File'. Those are to let users specify di and uo as modes for filter.
+is_there_any_mode_declaration(File) :-
+	open(File, read, S),
+	(
+		is_there_any_mode_declaration_do(S),
+		close(S), 
+		!
+	;
+		close(S),
+		fail
+	).
+
+is_there_any_mode_declaration_do(S) :-
+	read_mercury_term(S, Term),
+	(
+		Term =.. [':-', ModeDecl|_],
+		term_string(ModeDecl, ModeDeclStr),
+		(
+			substring(ModeDeclStr, "mode ::(acc_in",_),
+			!
+		;
+			substring(ModeDeclStr, "mode ::(acc_out",_)
+		)
+	;
+		Term = end_of_file,
+		!,
+		fail
+	;
+		is_there_any_mode_declaration_do(S)
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: dyn_link_collect,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	implementation	: dyn_link_collect_Op,
+	message		:
+"Dynamically links the collect module with the currently run program."
+	).
+
+dyn_link_collect_Op :-
+	check_a_program_is_running("dyn_link_collect/0"),
+	(
+		exists("collect.so"),
+		!
+	;
+		exists("collect.m"),
+		compile_collect,
+		exists("collect.so"),
+		!
+	;
+		write("Can't find `collect.m'; you should "),
+		write("use generate_collect/1 primitive before.\n"),
+		fail
+	),
+	send_message_to_socket(link_collect("\"./collect.so\"")),
+	read_message_from_socket(Result),
+	( Result = link_collect_succeeded ->
+		opium_write_debug("collect.so has been linked successfully.\n")
+	;
+		print("**** collect.so has not been linked.\n"),
+		abort
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: run_collect,
+	arg_list	: [Result],
+	arg_type_list	: [var],
+	abbrev		: _,
+	implementation	: run_collect_Op,
+	message		:
+"Executes the collect command provided that collect.m has been correctly, \
+generated, compiled and dynamically linked with the current program \
+execution."
+	).
+
+run_collect_Op(Result) :-
+	check_a_program_is_running("run_collect/1"),
+	( 
+		collect_arg(yes),
+		send_message_to_socket(collect_arg_on),
+		read_message_from_socket(collect_arg_on_ok),
+		!
+	;
+		collect_arg(no),
+		send_message_to_socket(collect_arg_off),
+		read_message_from_socket(collect_arg_off_ok),
+		!
+	;
+		print("Error in run_collect_Op.\n"),
+		abort
+	),
+	send_message_to_socket(collect),
+	read_message_from_socket(CollectLinked),
+	( 
+		CollectLinked == collect_linked,
+		read_message_from_socket(Msg),
+		( 
+			Msg = collected(Result),
+			read_message_from_socket(IsExecutionContinuing),
+			(
+				IsExecutionContinuing = execution_continuing,
+				!
+			;
+				IsExecutionContinuing =  execution_terminated,
+				end_connection
+			),
+			!
+		;
+			print("unexpected message from the Mercury "),
+			printf("process: %w\n", [Result]),
+			end_connection,
+			abort
+		),
+		!
+	;
+		CollectLinked == collect_not_linked,
+		print("You can't call run_collect/1; "),
+		print("The collect module has not been linked with "),
+		print("the current execution (cf dyn_link_collect/0).\n"),
+		!,
+		fail
+	;
+		write("unexpected message from the Mercury "),
+		printf("process: %w\n", [CollectLinked]),
+		end_connection,
+		abort
+	).
+
+
+check_a_program_is_running(CommandStr) :-
+	(
+		getval(state_of_opium, State),
+		State = running,
+		!
+	;
+		printf("You can't call %w; no program is running.\n", 
+			[CommandStr]),
+		fail
+	).
+

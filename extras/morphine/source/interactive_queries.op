@@ -1,0 +1,218 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+% 
+% Author : Erwan Jahier
+% File   : interactive_queries.op
+%
+
+%------------------------------------------------------------------------------%
+
+opium_scenario(
+	name		: interactive_queries,
+	files		: [interactive_queries],
+	scenarios	: [],
+	message		:
+"Scenario that handles interactive queries."
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: query,
+	arg_list	: [ModuleList],
+	arg_type_list	: [is_list],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: query_Op,
+	parameters	: [],
+	message : 
+"The commands query/1, cc_query/1 and io_query/1 allow you to type in queries \
+(goals) interactively in the debugger. When you use one of these commands, the \
+debugger will respond with a query prompt (`?-' or `run <--'), at which you \
+can type in a goal; the debugger will the compile and execute the goal and \
+display the answer(s). You can return from the query prompt to the Opium-M \
+prompt by typing the end-of-file indicator (typically control-D or \
+control-Z), or by typing `quit.'. \n\
+\n\
+The list of module names passed down in the argument of the query specify which \
+modules will be imported. Note that you can also add new modules to the list \
+of imports directly at the query prompt, by using a command of the form \
+`[module]', e.g. `[int]'. You need to import all the modules that \
+define symbols used in your query. Queries can only use symbols that are \
+exported from a module; entities which are declared in a module's \
+implementation section only  cannot be used. \n\
+\n\
+The three variants differ in what kind of goals they allow. For goals which \
+perform I/O, you need to use `io_query/1'; this lets you type in the goal \
+using DCG syntax. For goals which don't do I/O, but which have determinism \
+`cc_nondet' or `cc_multi', you need to use `cc_query/1'; this finds only one \
+solution to the specified goal. For all other goals, you can use plain \
+`query/1', which finds all the solutions to the goal. \
+\n\
+For `query/1' and `cc_query/1', the debugger will print out all the variables \
+in the goal using `io__write'. The goal must bind all of its variables to \
+ground terms, otherwise you will get a mode error. \n\
+\n\
+The current implementation works by compiling the queries on-the-fly and then \
+dynamically linking them into the program being debugged.  Thus it may take a \
+little while for your query to be executed. Each query will be written to a \
+file named `query.m' in the current directory, so make sure you don't name \
+your source file `query.m'. Note that dynamic linking may not be supported \
+on some systems; if you are using a system for which dynamic linking is not \
+supported, you will get an error message when you try to run these commands."
+	).
+
+% Most of this documentation is duplicated from the documentation
+% in mercury/doc/user_guide.texi.
+
+query_Op(ModuleList) :-
+	any_query(ModuleList, query).
+
+any_query(ModuleList, QueryType) :-
+	( not getval(state_of_opium, running) ->
+		write("No program is running, you can't make a query.\n")
+	;
+		true
+	),
+	% strings need to quoted before being sent.
+	maplist(quote_string, ModuleList, QuotedList),
+	Message =.. [QueryType, QuotedList],
+	send_message_to_socket(Message),
+	loop_for_queries(QueryType).
+
+
+loop_for_queries(QueryType) :-
+	display_query_prompt(QueryType),
+	read(Term),
+	( Term = options(String) ->
+		quote_string(String, QuotedString),
+		Term2 = options(QuotedString)
+	;
+		Term2 = Term
+	),
+	send_message_to_socket(Term2),
+	nl,
+	read_message_from_socket(Response),
+	get_parameter(debug_opium, OnOff),
+	( OnOff == on ->
+		printf("response to query = %w\n", [Response])
+	;
+		true
+	),
+	( 
+		( Response == iq_eof ; Response == iq_quit ),
+		write("End of the interactive queries session.\n"),
+		!
+	;
+		Response = iq_imported(ImportedMod),
+		write("The currently imported modules are "), 
+		print(ImportedMod),
+		nl,
+		loop_for_queries(QueryType),
+		!
+	;
+		Response = iq_error(ErrorMsg),
+		printf("%w\n", ErrorMsg),
+		loop_for_queries(QueryType),
+		!
+	;
+		Response == iq_ok,
+		nl,
+		loop_for_queries(QueryType),
+		!
+	;
+		% Should never occur
+		printf("Bad message from interactive_query:query_", []),
+		printf("external/7: %w.\n", Response),
+		fail
+	).
+
+display_query_prompt(query) :-
+	write("\n?- ").
+
+display_query_prompt(cc_query) :-
+	write("\n?- ").
+
+display_query_prompt(io_query) :-
+	write("\nrun <-- ").
+
+
+quote_string(String, StringQuoted):- 
+	concat_string(["\"", String, "\""], String2),
+	atom_string(StringQuoted, String2).
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: cc_query,
+	arg_list	: [ModuleList],
+	arg_type_list	: [is_list],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: cc_query_Op,
+	parameters	: [],
+	message : 
+
+"cf query/1."
+	).
+
+cc_query_Op(ModuleList) :-
+	any_query(ModuleList, cc_query).
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: io_query,
+	arg_list	: [ModuleList],
+	arg_type_list	: [is_list],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: io_query_Op,
+	parameters	: [],
+	message : 
+
+"cf query/1."
+	).
+
+io_query_Op(ModuleList) :-
+	any_query(ModuleList, io_query).
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: mmc_options,
+	arg_list	: [String],
+	arg_type_list	: [string],
+	abbrev		: _,
+	interface	: menu,
+	command_type	: opium,
+	implementation	: mmc_options_Op,
+	parameters	: [],
+	message : 
+"This command sets the options that will be passed to `mmc' to compile your \
+query when you use one of the query commands: `query/1', `cc_query/2', or \
+`io_query/3'. For example, if a query results in a compile error, it may \
+sometimes be helpful to use mmc_options(\"--verbose-errors\").\
+"
+	).
+
+
+mmc_options_Op(Options) :- 
+	( not getval(state_of_opium, running) ->
+		write("No program is running, you can't set mmc options.\n")
+	;
+		true
+	),
+	quote_string(Options, QuotedOptions),
+	send_message_to_socket(mmc_options(QuotedOptions)),
+	read_message_from_socket(Response),
+	printf("response to query = %w\n", [Response]),	
+	(
+		Response == mmc_options_ok,
+		nl
+	;
+		% Should never occur
+		write("Bad message from the Mercury proccess.\n"),
+		write("mmc_options_ok expected.\n"),
+		fail
+	).

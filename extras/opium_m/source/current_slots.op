@@ -1,0 +1,686 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+%
+% Author : Erwan Jahier <jahier@irisa.fr>
+%
+% This file implements all the predicates that deal with non-argument 
+% attributes retrieval.
+
+
+% The same declaration has been done in forward_move.op
+:- op(900, xfy, and).
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: current,
+	arg_list	: [AttributesConjunctOrList],
+	arg_type_list	: [is_list_or_conj_of_attributes_current],
+	abbrev		: curr,
+	interface	: button,
+	command_type	: opium,
+	implementation	: current_Op,
+	parameters	: [],
+	message		:
+"Gets or checks the values of the event attributes specified in \
+AttributesConjunctOrList. AttributesConjunctOrList is a conjunction or a list \
+of terms of the form attribute = Value. \n\
+If Value is a free variable, it is unified with the current value of the \
+attribute. \
+If Value is a ground term, the current value of the attribute is retrieved and \
+checked against Value.\n\
+\n\
+The different attributes for current/1 are :  \n\
+ \n\
+chrono: \n\
+    chronological event number of the event, \n\
+call: \n\
+    call event number of the event, \n\
+depth: \n\
+    depth in the proof three (number of ancestors - 1) of the event, \n\
+port: \n\
+    type of the event, \n\
+proc_type: \n\
+    tells if the current procedure is a predicate or a function, \n\
+decl_module: \n\
+    module name where the procedure is declared, \n\
+def_module: \n\
+    module name where the procedure is defined, \n\
+name: \n\
+    procedure name, \n\
+arity: \n\
+    procedure arity, \n\
+mode_number: \n\
+    procedure mode number, \n\
+proc: \n\
+    procedure ([proc_type->][decl_module:](name[/arity][-mode_number]) where \
+only the attribute name is mandatory), \n\
+det: \n\
+    procedure determinism, \n\
+goal_path: \n\
+    goal path of the call of the procedure, \n\
+args: \n\
+    list of procedure arguments (*), \n\
+arg_names: \n\
+    list of procedure argument names, \n\
+arg_types: \n\
+    list of procedure argument types, \n\
+vars: \n\
+    list of the currently live variables, \n\
+var_names_and_types: \n\
+    list of the currently live variable names and types, \n\
+local_vars: \n\
+    list of the currently non-argument local live variables. \n\
+stack: \n\
+    list of the stack element. \n\
+\n\
+For example, \
+current(chrono = Chrono and name = Name)  (or current([chrono = Chrono, \
+name = Name])) will unify Chrono with the chronological \
+event number and Name with the procedure name of the current event. \
+current(depth = 3) will succeed iff the depth of the current event is 3. \
+current(args = [Arg1, -, -]) will unify Arg1 with the first argument of the \
+current procedure if is live. \n\
+ \n\
+(*) non lived arguments are unified with '-' and if you do not want to retrieve \
+all the arguments (because one of them is very big for example), \
+you can use the atom '-': for example, current(arg = [X, -, -]) will only \
+retrieve \
+the first argument. Note that current(arg = [X, _, _] will have the same \
+behaviour, but arguments will be retrieved through the socket."
+	).
+
+current_Op(ListOrConj) :-
+	getval(state_of_opium, running),
+	(
+		is_list(ListOrConj),
+		current_list(ListOrConj),
+		!
+	;
+		conj_to_list(ListOrConj, List),
+		current_list(List)
+	),
+	!.
+
+current_list([H|T]) :-
+	% We retrieve attributes one by one which is quite ineffective only if we 
+	% have a lot of attributes to retrieve. In that case, it is better to 
+	% use current_attributes/13.
+	current_one(H),
+	current_list(T),
+	!.
+current_list([]).
+
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		: current_attributes,
+	arg_list	: [Chrono, Call, Depth, Port, PredOrFunc, DeclModule, 
+				DefModule, Name, Arity, ModeNumber, Det, 
+				GoalPath /* , LineNumber */],
+	arg_type_list	: [is_integer_or_var, is_integer_or_var,
+				is_integer_or_var, is_port_or_var, 
+				is_atom_or_var, is_atom_or_var, 
+				is_atom_or_var, is_atom_or_var,
+				is_integer_or_var, is_integer_or_var,
+				is_det_marker_or_var, is_goal_path_or_var 
+				/* , is_integer_or_var */],
+	abbrev		: _,
+	implementation	: current_attributes_Op,
+	message		:
+"current_attributes/12 retrieves all the event attributes except the argument \
+attributes."
+	).
+
+% :- pred current_attributes(atom, ..., atom).
+% :- mode current_attributes(?, ..., ?) is nondet.
+	% Determinism is coded by an integer so we need to wrap the
+	% the call of current_attributes with determinism conversion.
+current_attributes_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, 
+		DefModule, Name, Arity, ModeNumber, Det, GoalPath /* , 
+		LineNumber */) :-
+    		
+	send_message_to_socket(current_slots),
+	read_message_from_socket(Response),
+	(
+		Response = current_slots_comp(RetrievedChrono, RetrievedCall, 
+				RetrievedDepth, RetrievedPort,
+				RetrievedTypeNameStr, RetrievedTypeModuleStr,
+				RetrievedDefModuleStr, RetrievedNameStr, 
+				RetrievedArity, RetrievedModeNumber, 
+				RetrievedDeterminism, RetrievedGoalPath
+				/*, RetrievedLineNumber */ )
+	->
+		write("The current event is compiler generated event, "),
+		write("they are not handled yet in Opium-M.\n"),
+		fail
+		% XXX 
+		% Anyway, this should never arrive here as long as we 
+		% do not send any forward_move_comp requests.
+	;
+		Response = current_slots_user(RetrievedChrono, RetrievedCall, 
+				RetrievedDepth, RetrievedPort,
+				RetrievedPredOrFunc, RetrievedDeclModuleStr,
+				RetrievedDefModuleStr, RetrievedNameStr, 
+				RetrievedArity, RetrievedModeNumber, 
+				RetrievedDeterminism, RetrievedGoalPath
+				/*, RetrievedLineNumber */ )
+	->
+		% for 'decl_module', 'def_module' and 'name' attributes, 
+		% Mercury sends string whereas we prefer to manipulate 
+		% Prolog atoms; so we convert them.
+		atom_string(RetrievedDeclModule, 
+			RetrievedDeclModuleStr),
+		atom_string(RetrievedDefModule, RetrievedDefModuleStr),
+		atom_string(RetrievedName, RetrievedNameStr),
+		
+		% for 'det' attributes, Mercury process sends an integer that
+		% codes the determinism. 
+		( not(Det == '-') ->
+			convert_integer_determinism_exact(
+				RetrievedDeterminism, UncodedDet)
+		;
+			% No use to pay the cost of the conversion if it
+			% needed
+			true
+		),
+
+		% for 'port' attribute, the name the Mercury process sends is 
+		% not the ones we use at the Opium-M side.
+		( not(Port == '-') ->
+			convert_mercury_port_opium_port_exact(
+				RetrievedPort, OpiumPort)
+		;
+			true
+		),
+
+		% for 'goal_path' attribute, Mercury sends a string whereas 
+		% we want a list.
+		( not(GoalPath == '-') ->
+			convert_goal_path_string_to_list(RetrievedGoalPath, 
+			GoalPathList)
+		;
+			true
+		),
+
+		% For each argument of current_attributes, if it is
+		%	* '-', we do nothing.
+		%	* a variable, it is unified with the retrieved value.
+		%	* an instantiated term, we check if the retrieved value 
+		%	  is the same.
+		unify_attribute(RetrievedChrono, Chrono),
+		unify_attribute(RetrievedCall, Call),
+		unify_attribute(RetrievedDepth, Depth),
+		unify_attribute(OpiumPort, Port),
+		unify_attribute(RetrievedPredOrFunc, PredOrFunc),
+		unify_attribute(RetrievedDeclModule, DeclModule),
+		unify_attribute(RetrievedDefModule, DefModule),
+		unify_attribute(RetrievedName, Name),
+		unify_attribute(RetrievedArity, Arity),
+		unify_attribute(RetrievedModeNumber, ModeNumber),
+		unify_attribute(UncodedDet, Det),
+		unify_attribute(GoalPathList, GoalPath)
+		/*, unify_attribute(RetrievedLineNumber, LineNumber) */
+	;
+	%	I should uncomment that when [EOT] is fix.
+	%	Response = eot
+	%->
+	%	write(stderr, "eot: you can't retrieve any attributes"),
+	%	fail
+	%;
+		Response = error(ErrorMessage)
+	->
+		write(stderr, "Error in current_attributes/11 (current_slots.op)\n"),
+		write(stderr, "   An error occured in the Mercury process: "),
+		write(stderr, ErrorMessage),
+		opium_abort
+	 ;
+		write(stderr, "Error in current_attributes/11 (current_slots.op)\n"),
+		write(stderr, "The Mercury process sends: "),
+		write(Response),
+		write(stderr, "\n"),
+		opium_abort
+	).
+
+
+% :- pred unify_attribute(atom, atom).
+% :- mode unify_attribute(in, out) is det.
+% :- mode unify_attribute(in, in) is semidet.
+	% If Attribute is free, binds it with RetrievedAttribute.
+	% If Attribute is '-', just succeeds.
+	% If Attribute is bound and different from '-', check if Attribute and 
+	% RetrievedAttribute unifies.
+unify_attribute(RetrievedAttribute, Attribute) :-
+	( 
+		free(Attribute),
+		Attribute = RetrievedAttribute,
+		!
+	; 
+		Attribute = '-',
+		!
+	;
+		Attribute = RetrievedAttribute
+	).
+
+		
+%:- pred convert_goal_path_string_to_list(string, list(T)).
+%:- mode convert_goal_path_string_to_list(in, out) is det.
+convert_goal_path_string_to_list("", []) :- !.
+convert_goal_path_string_to_list(String, [X|Xs]) :-
+	find_next_point_dot(String, N),
+	N1 is N - 1,
+	substring(String, 1, N1, Str),
+	append_strings(Str, ";", S1),
+	append_strings(S1, NewString, String),
+	atom_string(X, Str),
+	convert_goal_path_string_to_list(NewString, Xs).
+
+% find the position of the first point dot in the string String.
+find_next_point_dot(String, Position) :-
+	generate(Position),
+	substring(String, Position, 1, ";"),
+	!.
+
+generate(N) :-
+	generate(1, N).
+generate(N, M) :-
+	(
+		M = N
+	;
+		T is N + 1,
+		generate(T, M)
+	).
+
+
+%------------------------------------------------------------------------------%
+current_one(Attribute = X) :-
+	is_alias_for(stack, Attribute),
+	stack1(X),
+	!.
+
+current_one(Attribute = X) :-
+	is_alias_for(args, Attribute),
+	current_arg(X),
+	!.
+
+current_one(Attribute = X) :-
+	is_alias_for(arg_names, Attribute),
+	current_arg_names(X),
+	!.
+
+current_one(Attribute = X) :-
+	is_alias_for(arg_types, Attribute),
+	current_arg_types(X),
+	!.
+
+current_one(Attribute = Z) :-
+	is_alias_for(vars, Attribute),
+	current_vars(X, Y),
+	append(X, Y, Z),
+	!.
+
+current_one(Attribute = LVN) :-
+	is_alias_for(var_names_and_types, Attribute),
+	current_live_var_names_and_types(LVN),
+	!.
+
+current_one(Attribute = OtherVar) :-
+	is_alias_for(local_vars, Attribute),
+	current_vars(_, OtherVar),
+	!.
+
+current_one(Attribute = Chrono) :-
+	is_alias_for(chrono, Attribute),
+	current_attributes(Chrono, -, -, -, -, -, -, -, -, -, -, - /*, - */),
+	!.
+
+current_one(Attribute = Call) :-
+	is_alias_for(call, Attribute),
+	current_attributes(-, Call, -, -, -, -, -, -, -, -, -, - /*, - */),
+	!.
+
+current_one(Attribute = Depth) :-
+	is_alias_for(depth, Attribute),
+	current_attributes(-, -, Depth, -, -, -, -, -, -, -, -, - /*, - */),
+	!.
+
+current_one(Attribute = Port) :-
+	is_alias_for(port, Attribute),
+	current_attributes(-, -, -, Port, -, -, -, -, -, -, -, - /*, - */),
+	!.
+
+current_one(Attribute = PredOrFunc) :-
+	is_alias_for(proc_type, Attribute),
+	current_attributes(-, -, -, -, PredOrFunc, -, -, -, -, -, -, - 
+		/*, - */),
+	!.
+
+current_one(Attribute = DeclModule) :-
+	is_alias_for(decl_module, Attribute),
+	current_attributes(-, -, -, -, -, DeclModule, -, -, -, -, -, - 
+		/*, - */),
+	!.
+
+current_one(Attribute = DefModule) :-
+	is_alias_for(def_module, Attribute),
+	current_attributes(-, -, -, -, -, -, DefModule, -, -, -, -, - /*, - */),
+	!.
+
+current_one(Attribute = Name) :-
+	is_alias_for(name, Attribute),
+	current_attributes(-, -, -, -, -, -, -, Name, -, -, -, - /*, - */),
+	!.
+
+current_one(Attribute = Arity) :-
+	is_alias_for(arity, Attribute),
+	current_attributes(-, -, -, -, -, -, -, -, Arity, -, -, - /*, - */),
+	!.
+
+current_one(Attribute = ModeNumber) :-
+	is_alias_for(mode_number, Attribute),
+	current_attributes(-, -, -, -, -, -, -, -, -, ModeNumber, -, - 
+		/*, - */),
+	!.
+
+current_one(Attribute = Proc) :-
+	is_alias_for(proc, Attribute),
+	(
+		free(Proc),
+		current_attributes(-,-,-,-, PT, M, -, N, A, MN,-,- /*,-*/),
+		Proc =  (PT->(M:(N/A-MN))),
+		!
+	;
+		Proc = N,
+		is_atom_or_var(N),
+		current_attributes(-,-,-,-, -, -, -, N, -, -,-,- /*,-*/),!
+	;
+		Proc = (PT->N),
+		is_atom_or_var(N),
+		is_atom_or_var(PT),
+		current_attributes(-,-,-,-, PT, -, -, N, -, -,-,- /*,-*/),
+		!
+	;
+		Proc = M:N,
+		current_attributes(-,-,-,-, -, M, -, N, -, -,-,- /*,-*/),
+		!
+	;
+		Proc = N/A,
+		current_attributes(-,-,-,-, -, -, -, N, A,-,-,- /*,-*/),
+		!
+	;
+		Proc = N-MN,
+		is_atom_or_var(N),
+		is_atom_or_var(MN),
+		current_attributes(-,-,-,-, -, -, -, N,-, MN,-,- /*,-*/),
+		!
+	;
+		Proc = (N/A-MN),
+		is_atom_or_var(N),
+		is_atom_or_var(A),
+		is_atom_or_var(MN),
+		current_attributes(-,-,-,-, -, -, -, N, A, MN,-,- /*,-*/),
+		!
+	;
+		Proc = M:(N-MN),
+		current_attributes(-,-,-,-, -, M, -, N, -, MN,-,- /*,-*/),
+		!
+	;
+		Proc = M:(N/A),
+		current_attributes(-,-,-,-, -, M, -, N, A, -,-,- /*,-*/),
+		!
+	;
+		Proc = (PT->(N-MN)),
+		current_attributes(-,-,-,-, PT, -, -, N, -, MN,-,- /*,-*/),
+		!
+	;
+		Proc = (PT->(N/A)),
+		current_attributes(-,-,-,-, PT, -, -, N, A, -,-,- /*,-*/),
+		!
+	;
+		Proc = (PT->M:N),
+		current_attributes(-,-,-,-, PT, M, -, N, -, -,-,- /*,-*/),
+		!
+	;
+		Proc = M:(N/A-MN),
+		current_attributes(-,-,-,-, -, M, -, N, A, MN,-,- /*,-*/),
+		!
+	;
+		Proc = (PT->(N/A-MN)),
+		current_attributes(-,-,-,-, PT, -, -, N, A, MN,-,- /*,-*/),
+		!
+	;
+		Proc = (PT->M:(N-MN)),
+		current_attributes(-,-,-,-, PT, M, -, N, -, MN,-,- /*,-*/),
+		!
+	;
+		Proc = (PT->M:(N/A)),
+		current_attributes(-,-,-,-, PT, M, -, N, A, -,-,- /*,-*/),
+		!
+	;
+		Proc = (PT->M:(N/A-MN)),
+		current_attributes(-,-,-,-, PT, M, -, N, A, MN,-,- /*,-*/)
+	).
+
+
+current_one(Attribute = Determinism) :-
+	is_alias_for(det, Attribute),
+	current_attributes(-, -, -, -, -, -, -, -, -, -, Determinism, - 
+		/*, - */),
+	!.
+
+current_one(Attribute = GoalPath) :-
+	is_alias_for(goal_path, Attribute),
+	current_attributes(-, -, -, -, -, -, -, -, -, -, -, GoalPath /*, - */),
+	!.
+
+
+% current_one(line_number = LineNumber) :-
+%	is_alias_for(, Attribute),
+% 	current_attributes(-, -, -, -, -, -, -, -, -, -, -, -, LineNumber),
+%	!.
+
+%------------------------------------------------------------------------------%
+opium_type(
+	name		: is_list_or_conj_of_attributes_current,
+	implementation	: is_list_or_conj_of_attributes_current_Op,
+	message		: 
+"Type which succeeds for list or conjunctions of terms of the form: \
+\"AttributeAlias = Term\", where  AttributeAlias is an alias of a Mercury \
+event attribute and Term is a variable or a possible \
+value for the corresponding attribute.\n\
+Example:\n\
+current(name = Name and decl_module = module1), current([port = call, name = \
+Name]).\
+"
+	).
+
+is_list_or_conj_of_attributes_current_Op(ListOrConj) :-
+	(
+		is_list(ListOrConj),
+		is_list_of_attributes(ListOrConj),
+		!
+	;
+		is_conj_of_attributes(ListOrConj)
+	).
+
+
+is_list_of_attributes([]).
+is_list_of_attributes([H | T]) :-
+	H = (Alias = Term),
+	is_alias_for(Attribute, Alias),
+	is_a_current_attribute(Attribute, Term),
+	is_list_of_attributes(T).
+
+
+is_conj_of_attributes(Alias = Term) :-
+	is_alias_for(Attribute, Alias),
+	is_a_current_attribute(Attribute, Term).
+is_conj_of_attributes(Alias = Term and Tail) :-
+	is_alias_for(Attribute, Alias),
+	is_a_current_attribute(Attribute, Term),
+	is_conj_of_attributes(Tail).
+	
+
+is_a_current_attribute(Attribute, Term) :-
+	(
+		member(Attribute, [chrono, call, depth, arity, mode_number]),
+		is_integer_or_var(Term),
+		!
+	;
+		member(Attribute, [decl_module, def_module, name, proc_type]),
+		is_atom_or_var(Term),
+		!
+	;
+		Attribute = proc,
+		is_proc_or_var(Term),
+		!
+	;
+		Attribute = goal_path,
+		is_goal_path_or_var(Term),
+		!
+	;
+		Attribute = port,
+		is_port_or_var(Term),
+		!
+	;
+		member(Attribute, [args, arg_names, arg_types]),
+		is_list_or_var(Term),
+		!
+	;
+		Attribute = det,
+		is_det_marker_or_var(Term),
+		!
+	;
+		member(Attribute, [vars, var_names_and_types, local_vars]),
+		is_term(Term),
+		!
+	;
+		Attribute = stack,
+		is_list_or_var(Term)
+	).
+
+%------------------------------------------------------------------------------%
+% opium_command(
+% 	name		: stack,
+% 	arg_list	: [List],
+% 	arg_type_list	: [is_list_or_var],
+% 	abbrev		: _,
+% 	interface	: button,
+% 	command_type	: opium,
+% 	implementation	: stack_Op,
+% 	parameters	: [],
+% 	message		:
+% "Retrieves the ancestors stack of the call specified by the current \
+% event. This command will report an error message if there is no stack trace \
+% information available about any ancestor. \
+% "
+% 	).
+
+stack1(Stack) :-
+	stack_ll_Op(Stackll),
+	stack_hl(Stackll, [], [], Stack).
+
+stack_hl([], _, Stack, Stack).
+stack_hl([level(N)|Tail], Level, Stack0, Stack) :-
+	append([[level(N)|Level]], Stack0, Stack1),
+	stack_hl(Tail, [],  Stack1, Stack).
+
+stack_hl([X|Tail], Level, Stack0, Stack) :-
+	stack_hl(Tail, [X|Level], Stack0, Stack).
+
+stack_ll_Op(StackList) :-
+	getval(state_of_opium, running),
+	send_message_to_socket(stack),
+	read_message_until_end_stack([], StackList),
+ 	read_message_from_socket(Message), 
+	( 
+		Message = ok,
+		!
+	; 
+		Message = error(ErrorMessage),
+		printf(trace, "\nUnable to retrieve all the ancestors; %w.\n", 
+			ErrorMessage)
+	),
+	!.
+
+stack_ll_Op(_) :-
+	write("You can't get any stack ; no program is running.\n"),
+	fail.
+
+read_message_until_end_stack(ListIn, ListOut) :-
+	read_message_from_socket(Message),
+	( Message = end_stack ->
+		ListOut = ListIn
+	;
+		List = [Message|ListIn],
+		read_message_until_end_stack(List, ListOut)
+	).
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: stack,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	interface	: button,
+	command_type	: opium,
+	implementation	: stack_Op,
+	parameters	: [],
+	message		:
+"Displays the ancestors stack."
+	).
+
+stack_Op :-
+	stack_ll_Op(StackList),
+	reverse(StackList, StackListRev),
+	display_stack(StackListRev).
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		:  nondet_stack,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	implementation	: nondet_stack_Op,
+	message		:
+"Prints the contents of the fixed attributes of the frames on the nondet \
+stack. This command is intended to be of use only to developers \
+of the Mercury implementation."
+	).
+
+nondet_stack_Op :-
+	getval(state_of_opium, running),
+	send_message_to_socket(nondet_stack),
+	read_message_from_socket(ok),
+	!.
+
+nondet_stack_Op :-
+	write("You can't get the nondet stack ; no program is running.\n"),
+	fail.
+
+%------------------------------------------------------------------------------%
+opium_primitive(
+	name		:  stack_regs,
+	arg_list	: [],
+	arg_type_list	: [],
+	abbrev		: _,
+	implementation	: stack_regs_Op,
+	message		:
+"Prints the contents of the virtual machine registers that point to the det \
+and nondet stacks. This command is intended to be of use only to developers \
+of the Mercury implementation."
+	).
+
+stack_regs_Op :-
+	getval(state_of_opium, running),
+	send_message_to_socket(stack_regs),
+	read_message_from_socket(Message),
+	Message = stack_regs(SP, CURFR, MAXFR),
+	printf(trace, "\nsp = %p, curfr = %p, maxfr = %p\n", 
+		[SP, CURFR, MAXFR]),
+	!.
+
+stack_regs_Op :-
+	write("You can't get the registers stack ; no program is running.\n"),
+	fail.
+

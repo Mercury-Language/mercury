@@ -1,0 +1,82 @@
+%------------------------------------------------------------------------------%
+% Copyright (C) 1999 INRIA/INSA.
+% 
+% Author : Erwan Jahier
+% File   : browse.op
+%
+
+
+%------------------------------------------------------------------------------%
+opium_command(
+	name		: browse,
+	arg_list	: [VarName],
+	arg_type_list	: [string],
+	abbrev		: _,
+	interface	: button,
+	command_type	: opium,
+	implementation	: browse_Op,
+	parameters	: [],
+	message		:
+"Call the Mercury term browser. Type `help' at the browser prompt to get \
+on-line help"
+).
+
+browse_Op(VarName) :-
+	quote_string(VarName, VarNameQuoted),
+	send_message_to_socket(browse(VarNameQuoted)),
+	browser_loop.
+
+browser_loop :-
+	print("browser> "), flush(user),
+	( read_and_check(Command) ->
+		atom_string(Command, CommandStr),
+		quote_string(CommandStr, CommandStrQuoted),
+		send_message_to_socket(external_request(CommandStrQuoted)),
+		read_loop(Msg)
+	;
+		send_message_to_socket(external_request('"help"')),
+		read_loop(Msg)
+	),
+	(
+		Msg = browser_quit,
+		read_message_from_socket(browser_end),
+		!
+	;
+		Msg = browser_end_command,
+		!,
+		browser_loop
+	;
+		Msg = error(ErrorMsg),
+		print(ErrorMsg), nl,
+		!,
+		browser_loop
+	;
+		print("Msg = "), print(Msg),
+		print("\n************** Error in browse.op\n")
+	).
+
+read_loop(MsgOut) :- 
+	read_message_from_socket(Msg),
+	(
+		Msg = browser_str(Str),
+		print(Str),
+		!,
+		read_loop(MsgOut)
+	;
+		Msg = browser_int(N),
+		print(N),
+		!,
+		read_loop(MsgOut)
+	;
+		Msg = browser_nl,
+		nl,
+		!,
+		read_loop(MsgOut)
+	;
+		% Msg = browser_quit, browser_end_command, error().
+		MsgOut = Msg
+	).
+
+read_and_check(Command) :-
+	read_string("\n", _, String),
+	atom_string(Command, String).
