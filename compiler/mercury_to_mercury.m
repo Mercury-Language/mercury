@@ -1195,9 +1195,9 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
 mercury_output_pragma_decl(PredName, Arity, PragmaName) -->
 	io__write_string(":- pragma "),
 	io__write_string(PragmaName),
-	io__write_string("("),
-	mercury_output_sym_name(PredName),
-	io__write_string("/"),
+	io__write_string("(("),
+	mercury_output_bracketed_sym_name(PredName),
+	io__write_string(")/"),
 	io__write_int(Arity),
 	io__write_string(").\n").
 
