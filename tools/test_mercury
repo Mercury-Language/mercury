@@ -671,7 +671,7 @@ case $HOST in mars)
 	mercury_cv_bits_per_word=32 \
 	mercury_cv_unboxed_floats=no \
 	sh configure --prefix=$INSTALL_DIR &&
-	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" $PARALLEL' tar &&
+	mmake MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' $PARALLEL" tar &&
 	cd .. &&
 	rm -f $UNSTABLE/* &&
 	mv mercury-compiler-$version.tar.gz	\
