@@ -755,6 +755,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			  }
 			case MR_REQUEST_NO_TRACE:
 				cmd->MR_trace_cmd = MR_CMD_TO_END;
+				external_debugger_mode = MR_searching;
 				goto done;
 
 			case MR_REQUEST_LINK_COLLECT:
