@@ -3848,6 +3848,18 @@ mercury_close(MercuryFile* mf)
 
 #endif /* ! MR_NEW_MERCURYFILE_STRUCT */
 
+#ifndef MR_CONSERVATIVE_GC
+  		/*
+		** For the accurate GC or no GC cases,
+		** we need to explicitly deallocate the memory here,
+		** to avoid a memory leak.
+		** Note that the accurate collector won't reclaim
+		** io_streams, since the io__stream type is defined
+		** as a foreign_type.
+		*/
+  		MR_GC_FREE(mf);
+#endif /* !MR_CONSERVATIVE_GC */
+
 	}
 }
 

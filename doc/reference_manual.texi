@@ -5503,6 +5503,11 @@ Currently only integer and pointer types are accepted as foreign_types;
 at a later date we plan to lift this restriction and allow enum, struct
 and floating point types.
 
+@c XXX No point documenting this until `--gc accurate'
+@c     is officially supported.
+@c With @samp{--gc accurate}, foreign_types which are C pointer types
+@c must not point to the Mercury heap.
+
 If the @var{MercuryTypeName} is the type of a parameter of a procedure
 defined using @samp{pragma foreign_proc},
 it will be passed to the foreign_proc's foreign language code
