@@ -136,7 +136,9 @@ SINGLEMODULE_PROGS= \
 	vars_in_wrong_places \
 	with_type
 
-# we do not yet pass the following tests:
+# XXX we do not yet pass the following tests:
+#	foreign_decl_line_number (due to some errors being reported in .c
+#		files and .mh files rather than in .m files)
 #	duplicate_instance_3 (the error is only detected when doing
 #		normal static linking; the error goes undetected
 #		when doing dynamic linking, or when the library
@@ -172,6 +174,24 @@ include Mercury.options
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
 		> $*.err 2>&1; \
 	then false; else true; fi
+
+# For foreign_decl_line_number, the exact output is somewhat dependent
+# on the C compiler, etc.  So we just grep the output for "#error" to
+# make sure that it contains the lines that we expect.  That way we don't
+# fail this test if there is some additional output (e.g. spurious warnings
+# in system header files).  We also pipe the output through `sort -u'
+# to eliminate duplicates; this avoids spurious failures in cases where
+# the C foreign_proc code is inlined by the Mercury compiler.
+# We also pipe it through sed to remove "Mercury/cs/"; this
+# avoids spurious failures with --use-subdirs.
+foreign_decl_line_number.err: foreign_decl_line_number.m
+	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		foreign_decl_line_number.m \
+		> foreign_decl_line_number.err.orig 2>&1; \
+	then false; else true; fi
+	grep '#error' foreign_decl_line_number.err.orig | \
+		sed 's@Mercury/cs/@@g' | sort -u \
+		> foreign_decl_line_number.err
 
 # For duplicate_instance_{1,2}, the error is only caught at link time.
 # So we need to use a different rule for that.

@@ -1,5 +1,4 @@
-foreign_decl_line_number.m:18: warning: no semicolon at end of struct or union
-foreign_decl_line_number.m:18: parse error before `int'
-foreign_decl_line_number.m:19: warning: type defaults to `int' in declaration of `bug'
-foreign_decl_line_number.m:19: warning: data definition has no type or storage class
-For more information, try recompiling with `-E'.
+foreign_decl_line_number.m:14: #error Error in foreign decl
+foreign_decl_line_number.m:18: #error Error in foreign code
+foreign_decl_line_number.m:23: #error Error in foreign type
+foreign_decl_line_number.m:34: #error Error in foreign proc

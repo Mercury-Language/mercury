@@ -8,14 +8,28 @@
 
 :- implementation.
 
-main -->
-	io__write_string("Hello\n").
+main --> foo(_).
 
 :- pragma foreign_decl("C", "
-	/* Missing ; in struct def */
-typedef struct {
-	int	missing_semicolon_here
-	int	x;
-} bug;
+#error Error in foreign decl
 ").
-	
+
+:- pragma foreign_code("C", "
+#error Error in foreign code
+").
+
+:- type my_foreign_type.
+:- pragma foreign_type("C", my_foreign_type, "
+#error Error in foreign type
+").
+
+:- pragma export(bar(out,di,uo), "bar").
+:- pred bar(my_foreign_type::out, io::di,io::uo) is det.
+bar(X) --> foo(X).
+
+:- pred foo(my_foreign_type::out, io::di,io::uo) is det.
+:- pragma foreign_proc("C", foo(_output::out, _io0::di, _io::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+#error Error in foreign proc
+").
