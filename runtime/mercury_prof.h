@@ -22,6 +22,8 @@
 ** so that it can credit the time to the appropriate procedure.
 */
 
+extern MR_Code *	volatile	MR_prof_current_proc;
+
 /*
 ** A pointer to the "Prof.Decl" file.
 */
