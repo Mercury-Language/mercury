@@ -1136,15 +1136,26 @@ det_report_unify_context(Context, UnifyContext, MiscInfo, LT, RT) -->
 	prog_out__write_context(Context),
 	{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
 	{ proc_info_variables(ProcInfo, Varset) },
-	( { varset__lookup_name(Varset, LT, _) } ->
-		io__write_string("  unification of `"),
-		mercury_output_var(LT, Varset),
-		io__write_string("' and `")
-	;
-		io__write_string("  unification with `")
-	),
 	{ MiscInfo = misc_info(ModuleInfo, _, _) },
-	hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3),
+	(
+		{ varset__lookup_name(Varset, LT, _) }
+	->
+		(
+			{ RT = var(RV) },
+			\+ { varset__lookup_name(Varset, RV, _) }
+		->
+			io__write_string("  unification with `"),
+			mercury_output_var(LT, Varset)
+		;
+			io__write_string("  unification of `"),
+			mercury_output_var(LT, Varset),
+			io__write_string("' and `"),
+			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3)
+		)
+	;
+		io__write_string("  unification with `"),
+		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3)
+	),
 	io__write_string("' ").
 
 :- pred det_report_pred_name_mode(string, list((mode)), io__state, io__state).

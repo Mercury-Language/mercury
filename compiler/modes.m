@@ -375,7 +375,7 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 		%
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	mode_info_get_vars_instmap(ModeInfo1, NonLocals, InstMap0),
-	modecheck_goal_2(Goal0, NonLocals, Goal, ModeInfo1, ModeInfo),
+	modecheck_goal_2(Goal0, GoalInfo0, Goal, ModeInfo1, ModeInfo),
 		%
 		% save the changes in instantiation of the non-local vars
 		%
@@ -383,11 +383,18 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
 
-:- pred modecheck_goal_2(hlds__goal_expr, set(var), hlds__goal_expr,
+% :- pred compute_liveness_delta(set(var), set(var), delta_liveness).
+% :- mode compute_liveness_delta(in, in, out) is det.
+% 
+% compute_liveness_delta(Liveness0, Liveness, Births - Deaths) :-
+% 	set__difference(Liveness0, Liveness, Deaths),
+% 	set__difference(Liveness, Liveness0, Births).
+
+:- pred modecheck_goal_2(hlds__goal_expr, hlds__goal_info, hlds__goal_expr,
 			mode_info, mode_info).
 :- mode modecheck_goal_2(in, in, out, mode_info_di, mode_info_uo) is det.
 
-modecheck_goal_2(conj(List0), _NonLocals, conj(List)) -->
+modecheck_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
 	mode_checkpoint(enter, "conj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] }
@@ -396,20 +403,22 @@ modecheck_goal_2(conj(List0), _NonLocals, conj(List)) -->
 	),
 	mode_checkpoint(exit, "conj").
 
-modecheck_goal_2(disj(List0), NonLocals, disj(List)) -->
+modecheck_goal_2(disj(List0), GoalInfo0, disj(List)) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] },
 		mode_info_set_instmap(unreachable)
 	;
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		modecheck_disj_list(List0, List, InstMapList),
 		instmap_merge(NonLocals, InstMapList, disj)
 	),
 	mode_checkpoint(exit, "disj").
 
-modecheck_goal_2(if_then_else(Vs, A0, B0, C0), NonLocals,
+modecheck_goal_2(if_then_else(Vs, A0, B0, C0), GoalInfo0,
 		if_then_else(Vs, A, B, C)) -->
 	mode_checkpoint(enter, "if-then-else"),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ goal_get_nonlocals(B0, B_Vars) },
 	{ goal_get_nonlocals(C0, C_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
@@ -429,8 +438,9 @@ modecheck_goal_2(if_then_else(Vs, A0, B0, C0), NonLocals,
 	instmap_merge(NonLocals, [InstMapB, InstMapC], if_then_else),
 	mode_checkpoint(exit, "if-then-else").
 
-modecheck_goal_2(not(A0), NonLocals, not(A)) -->
+modecheck_goal_2(not(A0), GoalInfo0, not(A)) -->
 	mode_checkpoint(enter, "not"),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
 	mode_info_lock_vars(NonLocals),
 	modecheck_goal(A0, A),
@@ -444,7 +454,7 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	mode_checkpoint(exit, "some").
 
 modecheck_goal_2(call(PredId, _, Args0, _, Context, PredName, Follow),
-		NonLocals, Goal) -->
+		GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "call"),
 	{ list__length(Args0, Arity) },
 	mode_info_set_call_context(call(PredName/Arity)),
@@ -454,12 +464,12 @@ modecheck_goal_2(call(PredId, _, Args0, _, Context, PredName, Follow),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	{ code_util__is_builtin(ModuleInfo, PredId, Mode, Builtin) },
 	{ Call = call(PredId, Mode, Args, Builtin, Context, PredName, Follow) },
-	{ handle_extra_goals(Call, ExtraGoals, NonLocals, Args0, Args,
+	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
 				ModeInfo0, ModeInfo, Goal) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
 
-modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), NonLocals, Goal)
+modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 		-->
 	mode_checkpoint(enter, "unify"),
 	mode_info_set_call_context(unify(UnifyContext)),
@@ -470,19 +480,20 @@ modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), NonLocals, Goal)
 	{ Unify = unify(A, B, Mode, UnifyInfo, UnifyContext) },
 	{ unify_rhs_vars(B0, B0Vars) },
 	{ unify_rhs_vars(B, BVars) },
-	{ handle_extra_goals(Unify, ExtraGoals, NonLocals,
+	{ handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
 				[A0|B0Vars], [A|BVars],
 				ModeInfo0, ModeInfo, Goal) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 
-modecheck_goal_2(switch(Var, CanFail, Cases0), NonLocals,
+modecheck_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
 		switch(Var, CanFail, Cases)) -->
 	mode_checkpoint(enter, "switch"),
 	( { Cases0 = [] } ->
 		{ Cases = [] },
 		mode_info_set_instmap(unreachable)
 	;
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		modecheck_case_list(Cases0, Var, Cases, InstMapList),
 		instmap_merge(NonLocals, InstMapList, disj)
 	),
@@ -504,25 +515,25 @@ unify_rhs_vars(lambda_goal(LambdaVars, _Goal - GoalInfo), Vars) :-
 	% handle_extra_goals combines MainGoal and ExtraGoals into a single
 	% hlds__goal_expr.
 
-:- pred handle_extra_goals(hlds__goal_expr, pair(list(hlds__goal)), set(var),
-			list(var), list(var), mode_info, mode_info,
-			hlds__goal_expr).
+:- pred handle_extra_goals(hlds__goal_expr, pair(list(hlds__goal)),
+		hlds__goal_info, list(var), list(var),
+		mode_info, mode_info, hlds__goal_expr).
 :- mode handle_extra_goals(in, in, in, in, in, mode_info_ui, mode_info_ui, out)
 	is det.
 
-handle_extra_goals(MainGoal, ExtraGoals, NonLocals0, Args0, Args,
+handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
 		ModeInfo0, ModeInfo, Goal) :-
 	% did we introduced any extra variables (and code)?
 	( ExtraGoals = [] - [] ->
 		Goal = MainGoal	% no
 	;
 		% recompute the new set of non-local variables for the main goal
+		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 		set__list_to_set(Args0, OldArgVars),
 		set__list_to_set(Args, NewArgVars),
 		set__difference(NewArgVars, OldArgVars, IntroducedVars),
 		set__union(NonLocals0, IntroducedVars, OutsideVars),
 		set__intersect(NewArgVars, OutsideVars, NonLocals),
-		goal_info_init(GoalInfo0),
 		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 
 		% compute the instmap delta for the main goal
@@ -533,11 +544,25 @@ handle_extra_goals(MainGoal, ExtraGoals, NonLocals0, Args0, Args,
 		goal_info_set_instmap_delta(GoalInfo1, DeltaInstMap, GoalInfo),
 
 		% combine the main goal and the extra goals into a conjunction
-		Goal0 = MainGoal - GoalInfo ,
-		ExtraGoals = BeforeGoals - AfterGoals ,
+		Goal0 = MainGoal - GoalInfo,
+		ExtraGoals = BeforeGoals0 - AfterGoals0,
+		goal_info_context(GoalInfo0, Context),
+		handle_extra_goals_contexts(BeforeGoals0, Context, BeforeGoals),
+		handle_extra_goals_contexts(AfterGoals0, Context, AfterGoals),
 		list__append(BeforeGoals, [Goal0 | AfterGoals], GoalList),
 		Goal = conj(GoalList)
 	).
+
+:- pred handle_extra_goals_contexts(list(hlds__goal), term__context,
+	list(hlds__goal)).
+:- mode handle_extra_goals_contexts(in, in, out) is det.
+
+handle_extra_goals_contexts([], _Context, []).
+handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
+	Goal0 = Expr - GoalInfo0,
+	Goal  = Expr - GoalInfo,
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	handle_extra_goals_contexts(Goals0, Context, Goals).
 
 	% Return Result = yes if the called predicate is known to never succeed.
 

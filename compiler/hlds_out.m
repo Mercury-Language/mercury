@@ -399,6 +399,14 @@ hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
 hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
+		{ goal_info_context(GoalInfo, Context) },
+		{ term__context_file(Context, FileName) },
+		( { FileName = "" } ->
+			prog_out__write_context(Context),
+			mercury_output_newline(Indent)
+		;
+			[]
+		),
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
 		( { NonLocalsList \= [] } ->
