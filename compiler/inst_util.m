@@ -2418,36 +2418,21 @@ inst_table_create_sub(InstTable0, NewInstTable, Sub, InstTable) :-
 
 	maybe_inst_det_table_apply_sub(UnifyInstTable0, NewUnifyInstTable,
 		UnifyInstTable, Sub),
-
 	merge_inst_table_apply_sub(MergeInstTable0, NewMergeInstTable,
 		MergeInstTable, Sub),
-
 	substitution_inst_table_apply_sub(SubInstTable0, NewSubInstTable,
 		SubInstTable, Sub),
-
 	maybe_inst_det_table_apply_sub(GroundInstTable0, NewGroundInstTable,
 		GroundInstTable, Sub),
+	maybe_inst_det_table_apply_sub(AnyInstTable0, NewAnyInstTable,
+		AnyInstTable, Sub),
+	maybe_inst_table_apply_sub(SharedInstTable0, NewSharedInstTable,
+		SharedInstTable, Sub),
+	maybe_inst_table_apply_sub(MostlyUniqInstTable0,
+		NewMostlyUniqInstTable, MostlyUniqInstTable, Sub),
+	maybe_inst_table_apply_sub(ClobberedInstTable0,
+		NewClobberedInstTable, ClobberedInstTable, Sub),
 
-	( map__is_empty(NewAnyInstTable) ->
-		AnyInstTable = AnyInstTable0
-	;
-		error("NYI: inst_table_create_sub (any_inst_table)")
-	),
-	( map__is_empty(NewSharedInstTable) ->
-		SharedInstTable = SharedInstTable0
-	;
-		error("NYI: inst_table_create_sub (shared_inst_table)")
-	),
-	( map__is_empty(NewMostlyUniqInstTable) ->
-		MostlyUniqInstTable = MostlyUniqInstTable0
-	;
-		error("NYI: inst_table_create_sub (mostly_uniq_inst_table)")
-	),
-	( map__is_empty(NewClobberedInstTable) ->
-		ClobberedInstTable = ClobberedInstTable0
-	;
-		error("NYI: inst_table_create_sub (clobbered_inst_table)")
-	),
 	inst_table_set_all_tables(InstTable0, SubInstTable, UnifyInstTable,
 		MergeInstTable, GroundInstTable, AnyInstTable,
 		SharedInstTable, MostlyUniqInstTable, ClobberedInstTable, IKT,
@@ -2459,7 +2444,7 @@ inst_table_create_sub(InstTable0, NewInstTable, Sub, InstTable) :-
 :- mode maybe_inst_table_apply_sub(in, in, out, in) is det.
 
 maybe_inst_table_apply_sub(Table0, NewTable, Table, Sub) :-
-	( map__is_empty(Table0) ->
+	( map__is_empty(NewTable) ->
 		% Optimise common case
 		Table = Table0
 	;
@@ -2490,7 +2475,7 @@ maybe_inst_table_apply_sub_2([InstName0 - Inst0 | Rest], Table0, Table, Sub) :-
 :- mode maybe_inst_det_table_apply_sub(in, in, out, in) is det.
 
 maybe_inst_det_table_apply_sub(Table0, NewTable, Table, Sub) :-
-	( map__is_empty(Table0) ->
+	( map__is_empty(NewTable) ->
 		% Optimise common case
 		Table = Table0
 	;
