@@ -27,6 +27,9 @@
 :- pred prog_out__write_context(prog_context, io__state, io__state).
 :- mode prog_out__write_context(in, di, uo) is det.
 
+:- pred prog_out__context_to_string(prog_context, string).
+:- mode prog_out__context_to_string(in, out) is det.
+
 	% XXX This pred should be deleted, and all uses replaced with
 	% XXX error_util:write_error_pieces, once zs has committed that
 	% XXX error_util.m.
@@ -107,39 +110,46 @@ prog_out__write_message(Msg - Term) -->
 	% error message.
 
 prog_out__write_context(Context) -->
-	prog_out__write_context_2(Context, _).
+	{ prog_out__context_to_string(Context, ContextMessage) },
+	io__write_string(ContextMessage).
 
-:- pred prog_out__write_context_2(prog_context, int, io__state, io__state).
-:- mode prog_out__write_context_2(in, out, di, uo) is det.
+%-----------------------------------------------------------------------------%
 
-prog_out__write_context_2(Context, Length) -->
-	{ term__context_file(Context, FileName) },
-	{ term__context_line(Context, LineNumber) },
-	( { FileName = "" } ->
-		{ Length = 0 }
+	% Write to a string the information in term context (at the moment,
+	% just the line number) in a form suitable for the beginning of an
+	% error message.
+
+prog_out__context_to_string(Context, ContextMessage) :-
+	term__context_file(Context, FileName),
+	term__context_line(Context, LineNumber),
+	( FileName = "" ->
+		ContextMessage = ""
 	;
-		{ string__format("%s:%03d: ", [s(FileName), i(LineNumber)],
-			ContextMessage) }, 
-		io__write_string(ContextMessage),
-		{ string__length(ContextMessage, Length) }
+		string__format("%s:%03d: ", [s(FileName), i(LineNumber)],
+			ContextMessage)
 	).
 
 %-----------------------------------------------------------------------------%
 
 prog_out__write_strings_with_context(Context, Strings) -->
-	prog_out__write_strings_with_context_2(Context, Strings, 0).
+	{ prog_out__context_to_string(Context, ContextMessage) },
+	{ string__length(ContextMessage, ContextLength) },
+	prog_out__write_strings_with_context_2(ContextMessage,
+			ContextLength, Strings, 0).
 
-:- pred prog_out__write_strings_with_context_2(prog_context, list(string), int,
+:- pred prog_out__write_strings_with_context_2(string, int, list(string), int,
 	io__state, io__state).
-:- mode prog_out__write_strings_with_context_2(in, in, in, di, uo) is det.
+:- mode prog_out__write_strings_with_context_2(in, in, in, in, di, uo) is det.
 
-prog_out__write_strings_with_context_2(_Context, [], _) --> [].
-prog_out__write_strings_with_context_2(Context, [S|Ss], N0) -->
+prog_out__write_strings_with_context_2(_ContextMessage, _ContextLength,
+		[], _) --> [].
+prog_out__write_strings_with_context_2(ContextMessage, ContextLength,
+		[S|Ss], N0) -->
 	{ string__length(S, MessageLength) },
 	(
 		{ N0 = 0 }
 	->
-		prog_out__write_context_2(Context, ContextLength),
+		io__write_string(ContextMessage),
 		io__write_string("  "),
 		io__write_string(S),
 		{ N is ContextLength + MessageLength },
@@ -157,7 +167,8 @@ prog_out__write_strings_with_context_2(Context, [S|Ss], N0) -->
 		{ N = 0 },
 		{ Rest = [S|Ss] }
 	),
-	prog_out__write_strings_with_context_2(Context, Rest, N).
+	prog_out__write_strings_with_context_2(ContextMessage,
+			ContextLength, Rest, N).
 
 
 :- pred num_columns(int::out) is det.

@@ -949,10 +949,19 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 				error("polymorphism.m: can't find `builtin:unify/2'")
 			},
 			{ Mode = XMode - YMode },
-			{ require(mode_is_fully_input(ModuleInfo, XMode),
-				"Sorry, not implemented: polymorphic unification in mode other than (in, in)") },
-			{ require(mode_is_fully_input(ModuleInfo, YMode),
-				"Sorry, not implemented: polymorphic unification in mode other than (in, in)") },
+			{
+				mode_is_fully_input(ModuleInfo, XMode),
+				mode_is_fully_input(ModuleInfo, YMode)
+			->
+				true
+			;
+				goal_info_get_context(GoalInfo, GoalContext),
+				context_to_string(GoalContext, ContextMsg),
+				string__append(ContextMsg,
+"Sorry, not implemented: polymorphic unification in mode other than (in, in)",
+						ErrorMsg),
+				error(ErrorMsg)
+			},
 			{ hlds_pred__in_in_unification_proc_id(ProcId) },
 			{ map__lookup(TypeInfoMap, TypeVar, TypeInfoLocn) },
 			{ SymName = unqualified("unify") },
