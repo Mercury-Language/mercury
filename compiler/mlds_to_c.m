@@ -32,6 +32,7 @@
 
 :- implementation.
 
+:- import_module llds. % XXX needed for C interface types
 :- import_module llds_out. % XXX needed for llds_out__name_mangle.
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules.
@@ -245,20 +246,42 @@ mlds_output_src_end(Indent, ModuleName) -->
 		io__state, io__state).
 :- mode mlds_output_c_hdr_decls(in, in, di, uo) is det.
 
-% XXX not yet implemented
-mlds_output_c_hdr_decls(_, _) --> [].
+mlds_output_c_hdr_decls(Indent, ForeignCode) -->
+	% XXX we don't yet handle `pragma export' decls
+	{ ForeignCode = mlds__foreign_code(RevHeaderCode, _RevBodyCode,
+		_ExportDefns) },
+	{ HeaderCode = list__reverse(RevHeaderCode) },
+	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent)).
+
+:- pred mlds_output_c_hdr_decl(indent, c_header_code, io__state, io__state).
+:- mode mlds_output_c_hdr_decl(in, in, di, uo) is det.
+
+mlds_output_c_hdr_decl(_Indent, Code - Context) -->
+	mlds_output_context(mlds__make_context(Context)),
+	io__write_string(Code).
 
 :- pred mlds_output_c_decls(indent, mlds__foreign_code, io__state, io__state).
 :- mode mlds_output_c_decls(in, in, di, uo) is det.
 
-% XXX not yet implemented
+% all of the declarations go in the header file or as c_code
 mlds_output_c_decls(_, _) --> [].
 
 :- pred mlds_output_c_defns(indent, mlds__foreign_code, io__state, io__state).
 :- mode mlds_output_c_defns(in, in, di, uo) is det.
 
-% XXX not yet implemented
-mlds_output_c_defns(_, _) --> [].
+mlds_output_c_defns(Indent, ForeignCode) -->
+	% XXX export decls
+	{ ForeignCode = mlds__foreign_code(_RevHeaderCode, RevBodyCode,
+		_ExportDefns) },
+	{ BodyCode = list__reverse(RevBodyCode) },
+	io__write_list(BodyCode, "\n", mlds_output_c_defn(Indent)).
+
+:- pred mlds_output_c_defn(indent, user_c_code, io__state, io__state).
+:- mode mlds_output_c_defn(in, in, di, uo) is det.
+
+mlds_output_c_defn(_Indent, user_c_code(Code, Context)) -->
+	mlds_output_context(mlds__make_context(Context)),
+	io__write_string(Code).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1409,18 +1432,16 @@ mlds_output_atomic_stmt(_Indent, trail_op(_TrailOp), _) -->
 	%
 	% foreign language interfacing
 	%
-mlds_output_atomic_stmt(_Indent, target_code(_TargetLang, _CodeString), _) -->
-	{ error("mlds_to_c.m: sorry, target_code not implemented") }.
-/*
-		target_code(target_lang, string)
-			% Do whatever is specified by the string,
-			% which can be any piece of code in the specified
-			% target language (C, assembler, or whatever)
-			% that does not have any non-local flow of control.
-*/
+mlds_output_atomic_stmt(_Indent, target_code(TargetLang, CodeString), Context) -->
+	( { TargetLang = lang_C } ->
+		mlds_output_context(Context),
+		io__write_string(CodeString)
+	;
+		{ error("mlds_to_c.m: sorry, target_code only works for lang_C") }
+	).
 
-:- pred mlds_output_init_args(list(rval), list(mlds__type), mlds__context,
-		int, mlds__lval, tag, indent, io__state, io__state).
+:- pred mlds_output_init_args(list(mlds__rval), list(mlds__type), mlds__context,
+		int, mlds__lval, mlds__tag, indent, io__state, io__state).
 :- mode mlds_output_init_args(in, in, in, in, in, in, in, di, uo) is det.
 
 mlds_output_init_args([_|_], [], _, _, _, _, _) -->
@@ -1752,7 +1773,7 @@ mlds_output_rval_const(data_addr_const(DataAddr)) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mlds_output_tag(tag, io__state, io__state).
+:- pred mlds_output_tag(mlds__tag, io__state, io__state).
 :- mode mlds_output_tag(in, di, uo) is det.
 
 mlds_output_tag(Tag) -->

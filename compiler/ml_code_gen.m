@@ -611,6 +611,7 @@
 
 :- import_module ml_base_type_info.
 :- import_module llds. % XXX needed for `code_model'.
+:- import_module export, llds_out. % XXX needed for pragma C code
 :- import_module code_util. % XXX needed for `code_util__compiler_generated'.
 			    % and `code_util__cons_id_to_tag'.
 :- import_module goal_util.
@@ -640,12 +641,13 @@ ml_code_gen(ModuleInfo, MLDS) -->
 :- mode ml_gen_foreign_code(in, out, di, uo) is det.
 
 ml_gen_foreign_code(ModuleInfo, MLDS_ForeignCode) -->
+	{ module_info_get_c_header(ModuleInfo, C_Header_Info) },
+	{ module_info_get_c_body_code(ModuleInfo, C_Body_Info) },
+	{ ConvBody = (func(S - C) = user_c_code(S, C)) },
+	{ User_C_Code = list__map(ConvBody, C_Body_Info) },
 	%
 	% XXX not yet implemented -- this is just a stub
 	%
-	{ module_info_get_c_header(ModuleInfo, C_Header_Info) },
-	{ module_info_get_c_body_code(ModuleInfo, _C_Body_Info) },
-	{ User_C_Code = [] },
 	{ C_Exports = [] },
 	{ MLDS_ForeignCode = mlds__foreign_code(C_Header_Info, User_C_Code,
 			C_Exports) }.
@@ -1296,9 +1298,13 @@ ml_gen_goal_expr(disj(Goals, _), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	ml_gen_disj(Goals, CodeModel, Context, MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(par_conj(_Goals, _SM), _, _, _, _) -->
-	% XXX not yet implemented
-	{ sorry("parallel conjunction") }.
+ml_gen_goal_expr(par_conj(Goals, _SM), CodeModel, Context,
+		MLDS_Decls, MLDS_Statements) -->
+	%
+	% XXX currently we treat parallel conjunction the same as
+	%     sequential conjunction -- parallelism is not yet implemented
+	%
+	ml_gen_conj(Goals, CodeModel, Context, MLDS_Decls, MLDS_Statements).
 
 ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
 		Context, MLDS_Decls, MLDS_Statements) -->
@@ -1330,14 +1336,351 @@ ml_gen_goal_expr(unify(_A, _B, _, Unification, _), CodeModel, Context,
 	ml_gen_unification(Unification, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(pragma_c_code(_, _, _, _, _ArgNames, _, _PragmaCode),
-		_, _, [], []) -->
-	[].
-%	{ sorry("C interface") }.
+ml_gen_goal_expr(pragma_c_code(Attributes,
+                PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, PragmaImpl),
+		CodeModel, OuterContext, MLDS_Decls, MLDS_Statements) -->
+        (
+                { PragmaImpl = ordinary(C_Code, _MaybeContext) },
+                ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
+                        PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+                        C_Code, OuterContext, MLDS_Decls, MLDS_Statements)
+        ;
+                { PragmaImpl = nondet( _, _, _, _, _, _, _, _, _) },
+		{ sorry("nondet pragma c_code") }
+		/*
+                { PragmaImpl = nondet(
+                        Fields, FieldsContext, First, FirstContext,
+                        Later, LaterContext, Treat, Shared, SharedContext) },
+                ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
+                        PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+                        Fields, FieldsContext, First, FirstContext,
+                        Later, LaterContext, Treat, Shared, SharedContext,
+                        MLDS_Decls, MLDS_Statements)
+		*/
+        ).
 
 ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% these should have been expanded out by now
 	{ error("ml_gen_goal_expr: unexpected bi_implication") }.
+
+:- pred ml_gen_ordinary_pragma_c_code(code_model, pragma_c_code_attributes,
+		pred_id, proc_id, list(prog_var), list(maybe(pair(string, mode))),
+		list(prog_type), string, prog_context,
+		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_ordinary_pragma_c_code(in, in, in, in, in, in, 
+		in, in, in, out, out, in, out) is det.
+
+	% We generate code of the following form:
+	%
+	% model_det pragma_c_code:
+	%
+	%	{
+	% 		<declaration of one local variable for each arg>
+	%
+	%		<assign input args>
+	%		<obtain global lock>
+	%		<c code>
+	%		<release global lock>
+	%		<assign output args>
+	%	}
+	%		
+	% model_semi pragma_c_code:
+	%
+	%	{
+	% 		<declaration of one local variable for each arg>
+	%		#define SUCCESS_INDICATOR <succeeded>
+	%
+	%		<assign input args>
+	%		<obtain global lock>
+	%		<c code>
+	%		<release global lock>
+	%		if (SUCCESS_INDICATOR) {
+	%			<assign output args>
+	%		}
+	%	}
+	%		
+	% Note that we generate this code directly as
+	% `target_code(lang_C, <string>)' instructions in the MLDS.
+	% It would probably be nicer to encode more of the structure
+	% in the MLDS, so that (a) we could do better MLDS optimization
+	% and (b) so that the generation of C code strings could be
+	% isolated in mlds_to_c.m.  Also we will need to do something
+	% different for targets other than C, e.g. when compiling to
+	% Java.
+	%
+ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
+		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
+		C_Code, Context, MLDS_Decls, MLDS_Statements) -->
+	%
+	% Combine all the information about the each arg
+	%
+	{ ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes,
+		ArgList) },
+
+	%
+	% Generate <declaration of one local variable for each arg>
+	%
+	{ ml_gen_pragma_c_decls(ArgList, ArgDeclsList) },
+
+	%
+	% Generate code to set the values of the input variables.
+	%
+	list__map_foldl(ml_gen_pragma_c_input_arg, ArgList, AssignInputsList),
+
+	%
+	% Generate code to assign the values of the output variables.
+	%
+	list__map_foldl(ml_gen_pragma_c_output_arg, ArgList, AssignOutputsList),
+
+	%
+	% Generate code fragments to obtain and release the global lock
+	% (this is used for ensuring thread safety in a concurrent
+	% implementation)
+	% XXX we should only generate these if the `parallel' option
+	% was enabled
+	%
+	=(MLDSGenInfo),
+	{ thread_safe(Attributes, ThreadSafe) },
+	{ ThreadSafe = thread_safe ->
+		ObtainLock = "",
+		ReleaseLock = ""
+	;
+		ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo),
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_name(PredInfo, Name),
+		llds_out__quote_c_string(Name, MangledName),
+		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
+			MangledName, """);\n"], ObtainLock),
+		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
+			MangledName, """);\n"], ReleaseLock)
+	},
+
+	%
+	% Put it all together
+	%
+	{ string__append_list(ArgDeclsList, ArgDecls) },
+	{ string__append_list(AssignInputsList, AssignInputsCode) },
+	{ string__append_list(AssignOutputsList, AssignOutputsCode) },
+	( { CodeModel = model_det } ->
+		{ string__append_list([
+				"{\n",
+				ArgDecls,
+				"\n",
+				AssignInputsCode,
+				ObtainLock,
+				"\t\t{\n",
+				C_Code,
+				"\n\t\t}\n",
+				ReleaseLock,
+				AssignOutputsCode,
+				"}\n"],
+			Combined_C_Code) }
+	; { CodeModel = model_semi } ->
+		ml_success_lval(SucceededLval),
+		{ ml_gen_c_code_for_rval(lval(SucceededLval), SucceededVar) },
+		{ DefineSuccessIndicator = string__format(
+			"#define SUCCESS_INDICATOR = %s\n",
+			[s(SucceededVar)]) },
+		{ MaybeAssignOutputsCode = string__format(
+			"\tif (SUCCESS_INDICATOR) {\n%s\n\t}",
+			[s(AssignOutputsCode)]) },
+		{ UndefSuccessIndicator = "#undef SUCCESS_INDICATOR" },
+		{ string__append_list([
+				"{\n",
+				ArgDecls,
+				DefineSuccessIndicator,
+				"\n",
+				AssignInputsCode,
+				ObtainLock,
+				"\t\t{\n",
+				C_Code,
+				"\n\t\t}\n",
+				ReleaseLock,
+				MaybeAssignOutputsCode,
+				UndefSuccessIndicator,
+				"}\n"],
+			Combined_C_Code) }
+	;
+		{ error("ml_gen_ordinary_pragma_c_code: unexpected code model") }
+	),
+	{ C_Code_Stmt = target_code(lang_C, Combined_C_Code) },
+	{ C_Code_Statement = mlds__statement(atomic(C_Code_Stmt),
+		mlds__make_context(Context)) },
+	{ MLDS_Statements = [C_Code_Statement] },
+	{ MLDS_Decls = [] }.
+
+%---------------------------------------------------------------------------%
+
+%
+% we gather all the information about each pragma_c argument
+% together into this struct
+%
+
+:- type ml_c_arg
+	--->	ml_c_arg(
+			prog_var,
+			maybe(pair(string, mode)),	% name and mode
+			prog_type	% original type before
+					% inlining/specialization
+					% (the actual type may be an instance
+					% of this type, if this type is
+					% polymorphic).
+		).
+
+:- pred ml_make_c_arg_list(list(prog_var)::in,
+		list(maybe(pair(string, mode)))::in, list(prog_type)::in,
+		list(ml_c_arg)::out) is det.
+
+ml_make_c_arg_list(Vars, ArgDatas, Types, ArgList) :-
+	( Vars = [], ArgDatas = [], Types = [] ->
+		ArgList = []
+	; Vars = [V|Vs], ArgDatas = [N|Ns], Types = [T|Ts] ->
+		Arg = ml_c_arg(V, N, T),
+		ml_make_c_arg_list(Vs, Ns, Ts, Args),
+		ArgList = [Arg | Args]
+	;
+		error("ml_code_gen:make_c_arg_list - length mismatch")
+	).
+
+%---------------------------------------------------------------------------%
+
+% ml_gen_pragma_c_decls generates C code to declare the arguments
+% for a `pragma c_code' declaration.
+%
+:- pred ml_gen_pragma_c_decls(list(ml_c_arg)::in, list(string)::out) is det.
+
+ml_gen_pragma_c_decls([], []).
+ml_gen_pragma_c_decls([Arg|Args], [Decl|Decls]) :-
+	ml_gen_pragma_c_decl(Arg, Decl),
+	ml_gen_pragma_c_decls(Args, Decls).
+
+% ml_gen_pragma_c_decl generates C code to declare an argument
+% of a `pragma c_code' declaration.
+%
+:- pred ml_gen_pragma_c_decl(ml_c_arg::in, string::out) is det.
+
+ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), DeclString) :-
+	(
+		MaybeNameAndMode = yes(ArgName - _Mode),
+		\+ var_is_singleton(ArgName)
+	->
+		export__type_to_type_string(Type, TypeString),
+		string__format("\t%s %s;\n", [s(TypeString), s(ArgName)],
+			DeclString)
+	;
+		% if the variable doesn't occur in the ArgNames list,
+		% it can't be used, so we just ignore it
+		DeclString = ""
+	).
+
+%-----------------------------------------------------------------------------%
+
+% var_is_singleton determines whether or not a given pragma_c variable
+% is singleton (i.e. starts with an underscore)
+%
+% Singleton vars should be ignored when generating the declarations for
+% pragma_c arguments because:
+%
+%	- they should not appear in the C code
+% 	- they could clash with the system name space
+%
+:- pred var_is_singleton(string) is semidet.
+:- mode var_is_singleton(in) is semidet.
+
+var_is_singleton(Name) :-
+	string__first_char(Name, '_', _).
+
+%-----------------------------------------------------------------------------%
+
+% ml_gen_pragma_c_input_arg generates C code to assign the value of an input
+% arg for a `pragma c_code' declaration.
+%
+:- pred ml_gen_pragma_c_input_arg(ml_c_arg::in, string::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
+		AssignInputString) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	(
+		{ MaybeNameAndMode = yes(ArgName - Mode) },
+		{ \+ var_is_singleton(ArgName) },
+		{ mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_in) }
+	->
+		ml_variable_type(Var, VarType),
+		ml_gen_var(Var, VarLval),
+		{ type_util__is_dummy_argument_type(VarType) ->
+			% The variable may not have been declared,
+			% so we need to generate a dummy value for it.
+			% Using `0' here is more efficient than
+			% using private_builtin__dummy_var, which is
+			% what ml_gen_var will have generated for this
+			% variable.
+			Var_ArgName = "0"
+		;
+			ml_gen_box_or_unbox_rval(VarType, OrigType, lval(VarLval),
+				ArgRval),
+			ml_gen_c_code_for_rval(ArgRval, Var_ArgName)
+		},
+		{ string__format("\t%s = %s;\n", [s(ArgName), s(Var_ArgName)],
+			AssignInputString) }
+	;
+		% if the variable doesn't occur in the ArgNames list,
+		% it can't be used, so we just ignore it
+		{ AssignInputString = "" }
+	).
+
+% ml_gen_pragma_c_output_arg generates C code to assign the value of an output
+% arg for a `pragma c_code' declaration.
+%
+:- pred ml_gen_pragma_c_output_arg(ml_c_arg::in, string::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
+		AssignOutputString) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	(
+		{ MaybeNameAndMode = yes(ArgName - Mode) },
+		{ \+ var_is_singleton(ArgName) },
+		{ \+ type_util__is_dummy_argument_type(OrigType) },
+		{ mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out) }
+	->
+		ml_variable_type(Var, VarType),
+		ml_gen_var(Var, VarLval),
+		{ ml_gen_box_or_unbox_rval(OrigType, VarType, lval(VarLval),
+			ArgRval) },
+		{ ml_gen_c_code_for_rval(ArgRval, Var_ArgName) },
+		{ string__format("\t%s = %s;\n", [s(Var_ArgName), s(ArgName)],
+			AssignOutputString) }
+	;
+		% if the variable doesn't occur in the ArgNames list,
+		% it can't be used, so we just ignore it
+		{ AssignOutputString = "" }
+	).
+
+	%
+	% XXX this is a bit of a hack --
+	% for `pragma c_code', we generate the C code for an mlds__rval
+	% directly rather than going via the MLDS
+	%
+:- pred ml_gen_c_code_for_rval(mlds__rval::in, string::out) is det.
+ml_gen_c_code_for_rval(ArgRval, Var_ArgName) :-
+	( ArgRval = lval(var(qual(ModuleName, VarName))) ->
+		SymName = mlds_module_name_to_sym_name(ModuleName),
+		llds_out__sym_name_mangle(SymName, MangledModuleName),
+		llds_out__name_mangle(VarName, MangledVarName),
+		string__append_list([MangledModuleName, "__",
+			MangledVarName], Var_ArgName)
+	; ArgRval = lval(mem_ref(lval(var(qual(ModuleName, VarName))))) ->
+		SymName = mlds_module_name_to_sym_name(ModuleName),
+		llds_out__sym_name_mangle(SymName, MangledModuleName),
+		llds_out__name_mangle(VarName, MangledVarName),
+		string__append_list(["*", MangledModuleName, "__",
+			MangledVarName], Var_ArgName)
+	;
+		sorry("complicated pragma c_code")
+	).
 
 %-----------------------------------------------------------------------------%
 %
