@@ -1,5 +1,5 @@
 This document describes the allocation system we are moving towards;
-it is not implemented yet.
+it is only partially implemented as yet.
 
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
@@ -15,18 +15,29 @@ different matter; see a later part of this document.) These four sets are
 - the post-birth set
 - the post-death set
 
-The goal that contains the first occurrence of a variable on a particular
-computation path will have that variable in its pre-birth set;
-the goal that contains the last occurrence of a variable on a particular
-computation path will have that variable in its post-death set.
-(The different arms of a disjunction or a switch are different computation
+The goal that contains the first value-giving occurrence of a variable
+on a particular computation path will have that variable in its pre-birth set;
+the goal that contains the last value-using occurrence of a variable on
+a particular computation path will have that variable in its post-death set.
+
+The different arms of a disjunction or a switch are different computation
 paths. The condition and then parts of an if-then-else on the one hand
 and the else part of that if-then-else on the other hand are also different
-computation paths.)
+computation paths.
+
+An occurrence is value-giving if it requires the code generator to associate
+some value with the variable. At the moment, the only value-giving occurrences
+are those that bind the variable. In the future, occurrences that don't bind
+the variable but give the address where it should later be put may also be
+considered value-giving occurrences.
+
+An occurrence is value-using if it requires access to some value the code
+generator associates with the variable. At the moment we consider all
+occurrences to be value-using; this is a conservative approximation.
 
 Mode correctness requires that all branches of a branched control structure
-define the same set of variables; the exceptions are branches that cannot
-succeed, as indicated by the instmap at the end of the branch being
+define the same set of nonlocal variables; the exceptions are branches that
+cannot succeed, as indicated by the instmap at the end of the branch being
 unreachable. Such branches are considered by mode analysis to "produce"
 any variable they are required to produce by parallel branches.
 To make it easier to write code that tracks the liveness of variables,
@@ -43,11 +54,11 @@ control structure will be the same, modulo variables local to each branch.
 
 We can optimize the treatment of variables that are live inside a branched
 control structure but not after, because it is possible for the variable
-to occur in one branch without occurring in the other branches.
+to be used in one branch without also being used in some other branches.
 Each variable that is live before the branched structure but not after
-must die in the branched structure. Branches in which the variable occurs
+must die in the branched structure. Branches in which the variable is used
 will include the variable in the post-death set of one of their subgoals.
-As far as branches in which the variable does not occur are concerned, the
+As far as branches in which the variable is not used are concerned, the
 variable becomes dead to forward execution as soon as control enters the
 branch.  In such circumstances, we therefore include the variable in the
 pre-death set of the goal representing the branch. (See below for the method
@@ -127,7 +138,7 @@ arg_info list.
 Resumption points
 
 We handle these through the resume_point field in goal infos. During the
-store_map pass, we fill in this field for every goal that establishes
+liveness pass, we fill in this field for every goal that establishes
 a point at which execution may resume after backtracking. This means
 the conditions of if-then-elses (the resumption point is the start of
 the else part), every disjunct in a disjunction except the last (the
@@ -158,10 +169,11 @@ first store map to its location according to the second store map
 of a variable). The idea is that any failure that occurs while all these
 variables are guaranteed to still be in their original locations can be
 implemented as a jump directly to the second label, while failures at
-other points (including those from to the right of the disjunct itself)
+other points (including those from to the right of the disjunct itself,
+as well as failures from semidet or nondet calls inside the disjunct)
 will jump (directly or indirectly via a redo() or fail()) to the first
 label. The section on backward liveness below discusses how we make sure
-that at these points all the variables in the cont-lives set are actually
+that at these points all the variables in the resume_point set are actually
 in their stack slots.
 
 We can omit the first label and the code following it up to but not including
@@ -174,17 +186,22 @@ more than once even if the goal concerned contains only inline builtins,
 since in that case we may backtrack to the next disjunct after leaving
 the current disjunct.
 
-It is an invariant that in a disjunction, the cont-lives field of one
-disjunct must contain all the variables included in the cont-lives fields
+We can omit the second label if we can guarantee that it will never be
+jumped to, directly or indirectly. We can give this guarantee if the goal
+concerned has no failure points before a construct (such as a call)
+that requires all the resumption point variables to be stored on the stack.
+
+It is an invariant that in a disjunction, the resume_point field of one
+disjunct must contain all the variables included in the resume_point fields
 of later disjuncts.
 
 When one control structure that establishes a resumption point occurs inside
-another one, all the variables included in the relevant cont-lives of the
-outer construct must appear in *all* the cont-lives fields associated
+another one, all the variables included in the relevant resume_point of the
+outer construct must appear in *all* the resume_point fields associated
 with the inner construct. This is necessary to make sure that in establishing
 the inner resumption point, we do not destroy the values of the variables
 needed to restart forward execution at the resumption point established
-by the outer construct. (See the section on backward liveness below.)
+by the outer construct. (See the section on resumption liveness below.)
 
 When one control structure which establishes a resumption point occurs after
 but not inside another one, there is no such requirement; see the section
@@ -217,33 +234,22 @@ There are three kinds of goals that can introduce nondeterminism: nondet
 disjunctions, nondet calls and nondet higher order calls. All code that
 executes after one of these constructs must take care not to destroy the
 variables that are needed to resume in those constructs. (We are *not*
-talking here about preserving variables needed for later disjuncts.)
+talking here about preserving variables needed for later disjuncts;
+that is discussed in the next section.)
 
 The variables needed to resume after nondet calls and higher order calls
 are the variables saved across the call in the normal fashion. The variables
 needed to resume after nondet disjunctions are the variables included in
-any of the cont-lives sets associated with the disjuncts of the disjunction.
+any of the resume_point sets associated with the disjuncts of the disjunction.
 
 The achievement of this objective is in two parts. First, the code generator
 makes sure that each of these variables is flushed to its stack slot before
 control leaves the construct that introduces nondeterminism. For calls and
 higher order calls this is done as part of the call mechanism. For nondet
-disjunctions, by the end of every disjunct, every variable in the cont-lives
-for that disjunct must be in its stack slot. If a variable is forward live
-at the end of the disjunct, the code generator will put code to move it
-to its stack slot (if it isn't there already). If the variable is not forward
-live at the end of the disjunct, then it must have died sometime in the
-disjunct. We arrange for the variable to be flushed to its stack slot
-at the point(s) of its death (the disjunct may have inside it a branched
-control structure; if the variable dies inside that structure, it will die
-inside each branch). The way we do this is that when entering a disjunct
-of a nondet disjunction (except the last), we push the cont-lives onto
-a stack maintained in code_info. When we make a variable dead, we consult
-the top entry on this stack. If the variable being made dead is in that set,
-we emit code to flush it to its stack slot. For this scheme to work, it must
-be an invariant that each entry on this stack includes all the other entries
-below it as subsets. Apart from this check, the code generator hangs onto
-the values of a variable only if the variable is forward live.
+disjunctions, the code generator emits code at the end of every disjunct
+to copy every variable in the resume_point set for that disjunct into its
+stack slot, if it isn't there already. (The mechanism whereby these variables
+survive to this point is discussed in the next section.)
 
 Second, the stack slot allocation pass makes sure that each of the variables
 needed to resume in a construct that introduces nondeterminism is allocated
@@ -252,6 +258,50 @@ backtrack to that construct. Normally, this is all following code, but if
 the construct that introduced the nondeterminism is inside a cut (a some
 that changes determinism), then it means only the following code inside
 the cut.
+
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+
+RESUMPTION LIVENESS
+
+Variables whose values are needed when execution resumes at a resumption point
+may become dead in the goal that establishes the resumption point. Some points
+of failure that may cause backtracking to the resumption point may occur
+after some of these variables have become dead wrt forward liveness.
+However, when generating the failure code the code generator must know
+the current locations of these variables so it can pick the correct label
+to branch to (and possibly generate some code to shuffle the variables
+to the locations expected at the picked label).
+
+When entering a goal that establishes a resumption point, the code generator
+pushes the set of variables that are needed at that resumption point onto
+a resumption point variables stack inside code_info. When we make a variable
+dead, we consult the top entry on this stack. If the variable being made dead
+is in that set, we do not forget about it; we just insert it into a set of
+zombie variables.
+
+To allow a test of membership in the top element of this stack to function
+as a test of membership of *any* element of this stack, we enforce the
+invariant that each entry on this stack includes all the other entries
+below it as subsets.
+
+At the end of the goal that established the resumption point, after popping
+the resumption point stack, the code generator will attempt to kill all the
+zombie variables again (after saving them on the stack if we can backtrack
+to the resumption point from the following code, which is possible only for
+nondet disjunctions). Any zombie variables that are occur in the next
+entry of the resumption point stack will stay zombies; any that don't occur
+there will finally die (i.e. the code generator will forget about them,
+and release the space they occupy.)
+
+The sets of zombie variables and forward live variables are always
+disjoint, since a variable is not made a zombie until it is no longer
+forward live.
+
+It is an invariant that at any point in the code generator, the code
+generator's "set of known variables" is the union of "set of zombie
+variables" maintained by the code generator and the set of forward
+live variables as defined in the forward liveness section above.
 
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
@@ -314,7 +364,7 @@ field may omit any mention of these variables. This also makes it easier
 to merge follow_vars fields at the starts of branched control structures.
 If some branches want a variable in a register, their wishes should take
 precedence over the wishes of the branches that wish the variable to be
-in its stack slot or in which the variable does not occur at all.
+in its stack slot or in which the variable is not used at all.
 
 When the code generator picks a random free register, it should try to avoid
 registers that are needed variables in the follow_vars map.
