@@ -115,13 +115,15 @@ not live at that point.
 
 The store_map pass uses the advisory information left by the follow_vars pass
 to fill in these fields with definitive information. The definitive store maps
-cover exactly the set of variables live at the end of the branched structure,
-and they guarantee that no two variables are allocated the same location.
+guarantee that no two variables are allocated the same location, and they
+cover exactly the set of variables forward live at the end of the branched
+structure, plus the variables that are in the resume set of any enclosing
+resume point (see below).
 
 The passes of the backend following store_map must not do anything to
 invalidate this invariant, which means that they must not rearrange the code
 or touch the field. The code generator will use these fields to know what
-variables to put where when flushing the expression cache at the ends of
+variables to put where when flushing the expression cache at the end of
 each branch in a branched structure.
 
 -----------------------------------------------------------------------------
@@ -144,7 +146,7 @@ the conditions of if-then-elses (the resumption point is the start of
 the else part), every disjunct in a disjunction except the last (the
 resumption point is the start of the next disjunct), and goals inside
 negations (the resumption point is the start of the code following the
-negated goal). The value of this field will be the set of variables
+negated goal). The value of this field will give the set of variables
 whose values may be needed when execution resumes at that point.
 Note that for the purposes of handling resumption points, it does not
 matter whether any part of an if-then-else, disjunction or negation
@@ -155,12 +157,12 @@ The reason is that as an optimization, each conceptual resumption point
 is associated with either one or two labels, and if there are two labels,
 these will differ in where they expect these variables to be. The
 the failure continuation stack entry created by the code generator
-that describes the resumption point will associate a store map with
-each label, with each store map assigning a location to each variable
-included in the resume_point set.
+that describes the resumption point will associate a resume map with
+each label, with each resume map assigning a location to each variable
+included in the resume vars set.
 
-The usual case has two labels. The store map of the first label maps each
-variable to its stack slot, while the store map of the second label maps
+The usual case has two labels. The resume map of the first label maps each
+variable to its stack slot, while the resume map of the second label maps
 each variable to the location it was occupying on entry to the goal.
 The code emitted at the resumption point will have, in order, the first
 label, code that moves each variable from its location according to the
@@ -180,16 +182,19 @@ We can omit the first label and the code following it up to but not including
 the second label if we can guarantee that the first label will never be
 jumped to, directly or indirectly. We can give this guarantee for negated
 goals, conditions in if-then-elses and disjuncts in disjunctions that cannot
-succeed more than once if the goal concerned contains only inline builtins.
-We cannot give this guarantee for disjuncts in disjunctions that can succeed
-more than once even if the goal concerned contains only inline builtins,
-since in that case we may backtrack to the next disjunct after leaving
-the current disjunct.
+succeed more than once if the goal concerned cannot flush any variable to
+the stack (which means it contains only inline builtins). We cannot give
+this guarantee for disjuncts in disjunctions that can succeed more than once
+even if the goal concerned contains only inline builtins, since in that case
+we may backtrack to the next disjunct after leaving the current disjunct.
 
 We can omit the second label if we can guarantee that it will never be
 jumped to, directly or indirectly. We can give this guarantee if the goal
 concerned has no failure points before a construct (such as a call)
 that requires all the resumption point variables to be stored on the stack.
+
+The resume_locs part of the resume_point field will say which labels
+will be needed.
 
 It is an invariant that in a disjunction, the resume_point field of one
 disjunct must contain all the variables included in the resume_point fields
@@ -289,10 +294,10 @@ At the end of the goal that established the resumption point, after popping
 the resumption point stack, the code generator will attempt to kill all the
 zombie variables again (after saving them on the stack if we can backtrack
 to the resumption point from the following code, which is possible only for
-nondet disjunctions). Any zombie variables that are occur in the next
-entry of the resumption point stack will stay zombies; any that don't occur
-there will finally die (i.e. the code generator will forget about them,
-and release the space they occupy.)
+nondet disjunctions). Any zombie variables that occur in the next entry of
+the resumption point stack will stay zombies; any that don't occur there
+will finally die (i.e. the code generator will forget about them, and
+release the space they occupy.)
 
 The sets of zombie variables and forward live variables are always
 disjoint, since a variable is not made a zombie until it is no longer
