@@ -230,7 +230,10 @@
 		% input to the output, otherwise make the output a reference
 		% to the input. To introduce this, the compiler must know that
 		% there are no later references in the code to the input
-		% relation.
+		% relation. Base relations and named temporaries are always
+		% copied, because they have an implicit reference in the
+		% database's `relation name -> relation contents' mapping. 
+		%
 		% Make sure the output has the given set of indexes, even
 		% if it isn't copied.
 		make_unique(
@@ -268,10 +271,20 @@
 						% accumulator for each tuple.
 		)	
 	;
-		% Make sure the relation has the given index.
+		% Assign the input relation to the output, ensuring
+		% that the output has the appropriate indexes.
+		% If the input relation is a base relation, this will
+		% copy the input to the output. This sounds expensive,
+		% but currently in all cases where an index is added
+		% to something that might be a base relation, a copy
+		% needs to be made anyway because the relation is
+		% destructively updated by a uniondiff operation --
+		% all that will happen is that the make_unique instruction
+		% later will not need to make a copy.
+		%
 		% We don't include a remove_index operation because it
 		% would be very expensive and probably not very useful.
-		add_index(output_rel)
+		add_index(output_rel, relation_id)
 	;
 		% Empty a relation. This will be expensive for permanent
 		% relations due to logging.
@@ -669,7 +682,8 @@ rl__instr_relations(sort(output_rel(Output, _), Input, _) - _,
 rl__instr_relations(init(output_rel(Rel, _)) - _, [], [Rel]).
 rl__instr_relations(insert_tuple(output_rel(Output, _), Input, _) - _,
 		[Input], [Output]).
-rl__instr_relations(add_index(output_rel(Rel, _)) - _, [Rel], [Rel]).
+rl__instr_relations(add_index(output_rel(Output, _), Input) - _,
+		[Input], [Output]).
 rl__instr_relations(clear(Rel) - _, [], [Rel]).
 rl__instr_relations(unset(Rel) - _, [], [Rel]).
 rl__instr_relations(label(_) - _, [], []).

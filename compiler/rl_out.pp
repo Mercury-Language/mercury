@@ -643,8 +643,28 @@ rl_out__generate_instr(sort(Output, Input, Attrs) - _, Code) -->
 		node([rl_PROC_expr(CompareExprn)])
 	)) },
 	rl_out__generate_stream_instruction(Output, InstrCode, Code).
-rl_out__generate_instr(add_index(output_rel(Rel, Indexes)) - _, Code) -->
-	rl_out__add_indexes_to_rel(may_have_index, Rel, Indexes, Code).
+rl_out__generate_instr(add_index(output_rel(Rel, Indexes), Input) - _,
+		Code) -->
+	% Generated as 
+	% if (is_permanent(Input) and !has_index(Input, Indexes)) {
+	% 	copy(Output, Input);
+	% } else {
+	%	ref(Output, Input);
+	% 	if (has_index(Input, Indexes)) {
+	%		;
+	%	} else {
+	%		rl_PROC_add_index(Output, Indexes);
+	%	}
+	% }
+	%
+	rl_out__generate_test_for_non_indexed_permanent(Input,
+		Indexes, CondCode),
+	rl_out__generate_instr(copy(output_rel(Rel, Indexes), Input) - "",
+		ThenCode),
+	rl_out__generate_instr(ref(Rel, Input) - "", RefCode),
+	rl_out__add_indexes_to_rel(may_have_index, Rel, Indexes, IndexCode),
+	{ ElseCode = tree(RefCode, IndexCode) },
+	rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code).
 rl_out__generate_instr(clear(Rel) - _, Code) -->
 	rl_out_info_get_relation_addr(Rel, Addr),
 	{ Code = node([rl_PROC_clear(Addr)]) }.
@@ -723,19 +743,17 @@ rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 	) }.
 rl_out__generate_instr(make_unique(OutputRel, Input) - Comment, Code) -->
 	% 	if (one_reference(InputRel)) {
-	% 		OutputRel = ref(InputRel)
+	% 		OutputRel = add_index(InputRel)
 	% 	} else {
 	% 		OutputRel = copy(InputRel)
 	%	}
 	rl_out_info_get_relation_addr(Input, InputAddr),
 	{ CondCode = node([rl_PROC_one_reference(InputAddr)]) },
 
-	{ OutputRel = output_rel(Output, _) },
-	rl_out__generate_instr(ref(Output, Input) - Comment, ThenCode0),
 	% We may not need to generate this instruction - rl_sort.m
 	% has enough information to work out whether this is actually needed.
-	rl_out__generate_instr(add_index(OutputRel) - Comment, ThenCode1),
-	{ ThenCode = tree(ThenCode0, ThenCode1) },
+	rl_out__generate_instr(add_index(OutputRel, Input) - Comment,
+		ThenCode),
 
 	rl_out__generate_instr(copy(OutputRel, Input) - Comment, ElseCode),
 
@@ -757,7 +775,7 @@ rl_out__generate_instr(call(ProcName, Inputs, OutputRels, SaveRels) - _,
 	rl_out_info_assign_const(string(ProcNameStr), ProcNameConst),
 	rl_out_info_return_tmp_vars(SaveTmpVars, SaveClearCode),
 	rl_out_info_return_tmp_vars(OverlapTmpVars, OverlapClearCode),
-	rl_out__add_indexes_to_rels(does_not_have_index,
+	rl_out__add_indexes_to_rels_copy_permanents(may_have_index,
 		OutputRels, IndexCode),
 	{ Code =
 		tree(SaveCode,
@@ -1448,6 +1466,40 @@ rl_out__index_attr_to_string(Attr, Str) :-
 	;	does_not_have_index
 	.
 
+:- pred rl_out__add_indexes_to_rels_copy_permanents(check_index::in, 
+		list(output_rel)::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__add_indexes_to_rels_copy_permanents(CheckIndex,
+		OutputRels, IndexCode) -->
+	list__foldl2(rl_out__add_indexes_to_rel_copy_permanent(CheckIndex),
+		OutputRels, empty, IndexCode).
+
+:- pred rl_out__add_indexes_to_rel_copy_permanent(check_index::in,
+		output_rel::in, byte_tree::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__add_indexes_to_rel_copy_permanent(CheckIndex,
+		OutputRel, Code0, Code) -->
+	{ OutputRel = output_rel(Output, Indexes) },
+	(
+		{ Indexes = [] },
+		{ Code = Code0 }
+	;
+		{ Indexes = [_ | _] },
+		rl_out__generate_test_for_non_indexed_permanent(Output,
+			Indexes, CondCode),
+	
+		% Copy the base relation, because queries can't add
+		% indexes to a base relation.
+		rl_out__generate_instr(copy(OutputRel, Output) - "",
+			CopyCode),	
+
+		rl_out__add_indexes_to_rel(CheckIndex, Output,
+			Indexes, IndexCode),
+		rl_out__generate_ite(CondCode, CopyCode, IndexCode, Code)
+	).
+
 :- pred rl_out__add_indexes_to_rels(check_index::in,
 		list(output_rel)::in, byte_tree::out,
 		rl_out_info::in, rl_out_info::out) is det.
@@ -1491,6 +1543,54 @@ rl_out__add_indexes_to_rel(CheckIndex, Output,
 	rl_out__add_indexes_to_rel(CheckIndex,
 		OutputAddr, Indexes, IndexCode1),
 	{ IndexCode = tree(IndexCode0, IndexCode1) }.
+
+	% Test whether the input relation is a base relation which does
+	% not have one of the given indexes. If we are going to add
+	% the indexes, the base relation needs to be copied (queries should
+	% never add indexes to base relations).
+:- pred rl_out__generate_test_for_non_indexed_permanent(relation_id::in,
+		list(index_spec)::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_test_for_non_indexed_permanent(Input, Indexes, CondCode) -->
+	rl_out_info_get_relation_addr(Input, InputAddr),
+	{ GenerateHasIndexCode =
+	    (pred(Index::in, HasIndexCode::out, Info0::in, Info::out) is det :-
+			rl_out__index_spec_to_string(Index, IndexStr),
+			rl_out_info_assign_const(string(IndexStr), IndexConst,
+				Info0, Info),
+			HasIndexCode = node([
+				rl_PROC_not,
+				rl_PROC_has_index(InputAddr, IndexConst)
+			])
+	    ) },
+	list__map_foldl(GenerateHasIndexCode, Indexes, IndexTests),
+
+	{
+		IndexTests = [IndexTest | IndexTests1],
+		CombineTest =
+			(pred(Test1::in, CombinedCode0::in,
+					CombinedCode::out) is det :-
+				CombinedCode =
+					tree(node([rl_PROC_or]),
+					tree(Test1,
+					CombinedCode0
+				))
+			),
+		list__foldl(CombineTest, IndexTests1,
+			IndexTest, IndexTestCode),
+		CondCode =
+			tree(node([
+				rl_PROC_and,
+				rl_PROC_is_permanent(InputAddr)
+			]),
+			IndexTestCode
+		)
+	;
+		IndexTests = [],
+		error(
+	"rl_out__generate_test_for_non_indexed_permanent: no indexes")
+	}.
 
 %-----------------------------------------------------------------------------%
 
@@ -1568,14 +1668,13 @@ rl_out__maybe_materialise(OutputRel, Input, Code) -->
 		%
 		rl_out__generate_instr(copy(OutputRel, Input) - "", Code)
 	;
-		rl_out__generate_instr(ref(Output, Input) - "", RefCode),
 		( { Indexes = [] } ->
-			{ IndexCode = empty }
+			rl_out__generate_instr(ref(Output, Input) - "", Code)
 		;
-			rl_out__generate_instr(add_index(OutputRel) - "",
-				IndexCode)
-		),
-		{ Code = tree(RefCode, IndexCode) }
+			rl_out__generate_instr(
+				add_index(OutputRel, Input) - "",
+				Code)
+		)
 	).
 
 %-----------------------------------------------------------------------------%

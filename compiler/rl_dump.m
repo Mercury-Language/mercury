@@ -257,9 +257,10 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	io__nl.
 
 rl_dump__write_instruction(_ModuleInfo, RelationInfo,
-		add_index(OutputRel) - Comment) -->
-	io__write_string("add_index("),
-	rl_dump__write_output_rel(RelationInfo, OutputRel),
+		add_index(Output, Input) - Comment) -->
+	rl_dump__write_output_rel(RelationInfo, Output),
+	io__write_string(" = add_index("),
+	rl_dump__write_relation_id(RelationInfo, Input),
 	io__write_string(")."),
 	rl_dump__write_comment(Comment),
 	io__nl.
@@ -601,8 +602,8 @@ rl_dump__write_output_rel(RelationInfo, output_rel(RelationId, Indexes)) -->
 		relation_id::in, io__state::di, io__state::uo) is det.
 
 rl_dump__write_relation_id(_, RelationId) -->
-	io__write_string("Rel_"),
-	io__write_int(RelationId).
+	{ rl__relation_id_to_string(RelationId, RelationIdStr) },
+	io__write_string(RelationIdStr).
 
 :- pred rl_dump__verbose_write_relation_id(
 		map(relation_id, relation_info)::in,

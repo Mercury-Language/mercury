@@ -172,7 +172,8 @@ rl_sort__proc_2(IO0, IO) -->
 	;	index(index_spec)	
 	.
 
-:- type relation_sort_map == map(relation_id, map(sort_index, sort_req)).
+:- type relation_sort_map == map(relation_id, sort_req_map).
+:- type sort_req_map == map(sort_index, sort_req).
 :- type var_sort_map == map(int, set(relation_id)).
 
 	% Possible sortednesses for each sortedness variable.
@@ -300,57 +301,140 @@ rl_sort__confluence(CalledBlockId - CalledSortData0,
 :- pred rl_sort__merge_maps(map(T, set(U))::in, map(T, set(U))::in, 
 		map(T, set(U))::out) is det.
 
-rl_sort__merge_maps(Map1, Map2, Map) :-
-	AddToMap =
-	    lambda([Key::in, Value::in, MergedMap0::in, MergedMap::out] is det, 
-	    (
-	    	( map__search(MergedMap0, Key, Value0) ->
-			set__union(Value0, Value, MergedValue),
-			map__det_update(MergedMap0, Key,
-				MergedValue, MergedMap)
-		;
-			map__det_insert(MergedMap0, Key, Value, MergedMap)
-		)
-	    )),
-	map__foldl(AddToMap, Map2, Map1, Map).
+rl_sort__merge_maps(Map1, Map2, NewMap) :-
+	UnionValues =
+		(pred(_::in, Value1::in, Value2::in, Value::out) is semidet :-
+			set__union(Value1, Value2, Value)
+		),
+	Id = (pred(_::in, Value::in, Value::out) is semidet),
+	merge_map_keys(UnionValues, Id, Map1, Map2, NewMap).
+
+:- pred merge_map_keys(pred(K, V, V, V)::(pred(in, in, in, out) is semidet),
+		pred(K, V, V)::(pred(in, in, out) is semidet),
+		map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
+
+merge_map_keys(UnionValues, Id, Map1, Map2, MergedMap) :-
+	map__keys(Map1, Keys1),
+	map__keys(Map2, Keys2),
+	list__append(Keys1, Keys2, Keys),
+	list__sort_and_remove_dups(Keys, SortedKeys),
+	map__init(MergedMap0),
+	list__foldl(merge_map_key(UnionValues, Id, Map1, Map2),
+		SortedKeys, MergedMap0, MergedMap).
+
+:- pred merge_map_key(pred(K, V, V, V)::(pred(in, in, in, out) is semidet),
+		pred(K, V, V)::(pred(in, in, out) is semidet),
+		map(K, V)::in, map(K, V)::in, K::in,
+		map(K, V)::in, map(K, V)::out) is det.
+
+merge_map_key(Merge, Single, Map1, Map2, Key, MergedMap0, MergedMap) :-
+	maybe_map_search(Map1, Key, MaybeValue1),
+	maybe_map_search(Map2, Key, MaybeValue2),
+	(
+		merge_maybes(Merge, Single, Key, MaybeValue1, MaybeValue2,
+			Value)
+	->
+		map__det_insert(MergedMap0, Key, Value, MergedMap)
+	;
+		MergedMap = MergedMap0
+	).
+
+:- pred maybe_map_search(map(K, V)::in, K::in, maybe(V)::out) is det.
+
+maybe_map_search(Map, Key, MaybeValue) :-
+	( map__search(Map, Key, Value) ->
+		MaybeValue = yes(Value)
+	;
+		MaybeValue = no
+	).
+
+:- pred merge_maybes(pred(K, V, V, V)::(pred(in, in, in, out) is semidet),
+		pred(K, V, V)::(pred(in, in, out) is semidet),
+		K::in, maybe(V)::in, maybe(V)::in, V::out) is semidet.
+
+merge_maybes(Merge, _, K, yes(V1), yes(V2), V) :- Merge(K, V1, V2, V).
+merge_maybes(_, Single, K, yes(V1), no, V) :- Single(K, V1, V).
+merge_maybes(_, Single, K, no, yes(V2), V) :- Single(K, V2, V).
+
+:- pred rl_sort__semidet_merge_sort_maps(relation_sort_map::in,
+		relation_sort_map::in, relation_sort_map::out) is semidet.
+
+rl_sort__semidet_merge_sort_maps(A, B, C) :-
+	rl_sort__merge_sort_maps(A, B, C),
+	semidet_succeed.
 
 :- pred rl_sort__merge_sort_maps(relation_sort_map::in, relation_sort_map::in,
 		relation_sort_map::out) is det.
 
-rl_sort__merge_sort_maps(SortSpecs, Specs0, Specs) :-
+rl_sort__merge_sort_maps(RelSortMap1, RelSortMap2, RelSortMap) :-
+	MergeValues = semidet_merge_sort_req_map,
+	SingleValue = semidet_definite_to_maybe_sort_req_map,
+	merge_map_keys(MergeValues, SingleValue,
+		RelSortMap1, RelSortMap2, RelSortMap).
 
-	MergeMaps =
-	    lambda([Key::in, Value1::in, MergedMap0::in, MergedMap::out] is det,
-	    (
-	    	( map__search(MergedMap0, Key, Value0) ->
-			rl_sort__merge_sort_maps_2(Value1, Value0, Value),
-			map__det_update(MergedMap0, Key, Value, MergedMap)
-		;
-			map__det_insert(MergedMap0, Key, Value1, MergedMap)
-		)
-	    )),
-	map__foldl(MergeMaps, SortSpecs, Specs0, Specs).
+:- pred rl_sort__semidet_merge_sort_req_map(relation_id::in, sort_req_map::in,
+		sort_req_map::in, sort_req_map::out) is semidet.
 
-:- pred rl_sort__merge_sort_maps_2(map(sort_index, sort_req)::in, 
-	map(sort_index, sort_req)::in, map(sort_index, sort_req)::out) is det. 
+rl_sort__semidet_merge_sort_req_map(A, B, C, D) :-
+	rl_sort__merge_sort_req_map(A, B, C, D),
+	semidet_succeed.
 
-rl_sort__merge_sort_maps_2(Map0, Map1, Map) :-
-	MergeMaps =
-	    lambda([Spec::in, Req1::in, MergedMap0::in, MergedMap::out] is det,
-	    (
-	    	( map__search(MergedMap0, Spec, Req0) ->
-			rl_sort__merge_sort_reqs(Req0, Req1, Req),
-			map__det_update(MergedMap0, Spec, Req, MergedMap)
-		;
-			map__det_insert(MergedMap0, Spec, Req1, MergedMap)
-		)
-	    )),
-	map__foldl(MergeMaps, Map0, Map1, Map).
+:- pred rl_sort__merge_sort_req_map(relation_id::in, sort_req_map::in,
+		sort_req_map::in, sort_req_map::out) is det.
 
-:- pred rl_sort__merge_sort_reqs(sort_req::in,
+rl_sort__merge_sort_req_map(_, SortReqMap1, SortReqMap2, SortReqMap) :-
+	MergeValue = rl_sort__semidet_merge_sort_reqs,
+	SingleValue = rl_sort__semidet_definite_to_maybe_sort_req,
+	merge_map_keys(MergeValue, SingleValue, SortReqMap1,
+		SortReqMap2, SortReqMap).
+
+:- pred rl_sort__union_sort_req_map(relation_id::in, sort_req_map::in,
+		sort_req_map::in, sort_req_map::out) is det.
+
+rl_sort__union_sort_req_map(_, SortReqMap1, SortReqMap2, SortReqMap) :-
+	MergeValue = rl_sort__semidet_merge_sort_reqs,
+	SingleValue = (pred(_::in, X::in, X::out) is semidet),
+	merge_map_keys(MergeValue, SingleValue, SortReqMap1,
+		SortReqMap2, SortReqMap).
+
+:- pred semidet_definite_to_maybe_sort_req_map(relation_id::in,
+		sort_req_map::in, sort_req_map::out) is semidet.
+
+semidet_definite_to_maybe_sort_req_map(A, B, C) :-
+	definite_to_maybe_sort_req_map(A, B, C),
+	semidet_succeed.
+
+:- pred definite_to_maybe_sort_req_map(relation_id::in,
+		sort_req_map::in, sort_req_map::out) is det.
+
+definite_to_maybe_sort_req_map(_, SortReqMap0, SortReqMap) :-
+	map__map_values(rl_sort__definite_to_maybe_sort_req,
+		SortReqMap0, SortReqMap).
+
+:- pred rl_sort__semidet_definite_to_maybe_sort_req(sort_index::in,
+		sort_req::in, sort_req::out) is semidet.
+
+rl_sort__semidet_definite_to_maybe_sort_req(A, B, C) :-
+	rl_sort__definite_to_maybe_sort_req(A, B, C),
+	semidet_succeed.
+
+:- pred rl_sort__definite_to_maybe_sort_req(sort_index::in, sort_req::in,
+		sort_req::out) is det.
+
+rl_sort__definite_to_maybe_sort_req(_, sort_req(_, BlockIds),
+		sort_req(maybe, BlockIds)).
+
+:- pred rl_sort__semidet_merge_sort_reqs(sort_index::in, sort_req::in,
+		sort_req::in, sort_req::out) is semidet.
+
+rl_sort__semidet_merge_sort_reqs(A, B, C, D) :-
+	rl_sort__merge_sort_reqs(A, B, C, D),
+	semidet_succeed.
+
+:- pred rl_sort__merge_sort_reqs(sort_index::in, sort_req::in,
 		sort_req::in, sort_req::out) is det.
 
-rl_sort__merge_sort_reqs(Req0, Req1, Req) :-
+rl_sort__merge_sort_reqs(_, Req0, Req1, Req) :-
 	Req0 = sort_req(Definite0, BlockIds0),
 	Req1 = sort_req(Definite1, BlockIds1),
 	set__union(BlockIds0, BlockIds1, BlockIds),
@@ -413,7 +497,7 @@ rl_sort__add_relation_sortedness_map(NewSortSpecs, RelationId,
 		map__keys(SortSpecs0, Specs0),
 		set__sorted_list_to_set(Specs0, SpecSet0),
 		rl_sort__get_vars(SpecSet0, Vars0),
-		rl_sort__merge_sort_maps_2(NewSortSpecs,
+		rl_sort__union_sort_req_map(RelationId, NewSortSpecs,
 			SortSpecs0, SortSpecs),
 		map__det_update(RelMap0, RelationId, SortSpecs, RelMap)
 	;
@@ -700,7 +784,7 @@ rl_sort__instr_needed(BlockId, aggregate(_Output, Input, _, _) - _) -->
 	% An aggregate's input is sorted on both attributes.
 	rl_sort__add_relation_sortedness(BlockId,
 		sort(attributes([1 - ascending, 2 - ascending])), Input).
-rl_sort__instr_needed(_BlockId, add_index(_Output) - _) --> [].
+rl_sort__instr_needed(_BlockId, add_index(_Output, _) - _) --> [].
 rl_sort__instr_needed(_, clear(_) - _) --> [].
 rl_sort__instr_needed(_, unset(Relation) - _) -->
 	rl_sort__unset_relation(Relation).
@@ -871,7 +955,7 @@ rl_sort__instr_avail(BlockId, aggregate(Output, _Input, _, _) - _) -->
 	rl_sort__add_relation_sortedness(BlockId,
 		sort(attributes([1 - ascending, 2 - ascending])), OutputRel),
 	rl_sort__handle_output_indexing(BlockId, Output).
-rl_sort__instr_avail(BlockId, add_index(Output) - _) -->
+rl_sort__instr_avail(BlockId, add_index(Output, _) - _) -->
 	rl_sort__handle_output_indexing(BlockId, Output).
 rl_sort__instr_avail(_, clear(_) - _) --> [].
 rl_sort__instr_avail(_, unset(Relation) - _) -->
@@ -1385,7 +1469,7 @@ find_definite_sort_specs(SortMap, SortSpecs) :-
 	(pred(SortIndex::in, SortReq::in, Specs0::in, Specs::out) is det :-
 		(
 			SortReq = sort_req(definite, _),
-			(
+			%(
 				SortIndex = sort(SortSpec),
 				SortSpec = attributes(SortAttrs),
 				\+ (
@@ -1399,6 +1483,9 @@ find_definite_sort_specs(SortMap, SortSpecs) :-
 					list__member(SortAttr, SortAttrs),
 					SortAttr = _ - descending
 				)
+			/*
+				% If a relation is definitely indexed, we
+				% should be doing an indexed join.
 			;
 				% B-tree indexed relations are sorted
 				% on the indexed attributes.
@@ -1413,6 +1500,7 @@ find_definite_sort_specs(SortMap, SortSpecs) :-
 					SortDirs, SortAttrs),
 				SortSpec = attributes(SortAttrs)
 			)
+			*/
 		->
 			Specs = [SortSpec | Specs0]
 		;
@@ -1656,16 +1744,16 @@ rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId,
 		Instr, Instrs0, Instrs) -->
 	=(sort_info(sortedness(RelSortMap, _), _, _)),
 	(
-		{ Instr = add_index(OutputRel0) - Comm }
+		{ Instr = add_index(OutputRel0, Input) - Comm }
 	->
 		{ rl_sort__map_output_rel(RelSortMap, rl_sort__map_spec,
 			OutputRel0, OutputRel) },
 		{ OutputRel = output_rel(Relation, NeededIndexes) },
 		{ NeededIndexes = [] ->
-			Instrs = Instrs0
+			Instrs = [ref(Relation, Input) - Comm | Instrs0]
 		;
 			Instrs = [add_index(output_rel(Relation, 
-				NeededIndexes)) - Comm | Instrs0]
+				NeededIndexes), Input) - Comm | Instrs0]
 		}
 	;
 		{ Instr = sort(Output0, Input, SortSpec) - Comm }
@@ -1690,8 +1778,7 @@ rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId,
 			list__foldl2(
 			    rl_sort__add_indexing_and_remove_useless_ops_instr(
 			    	BlockId),
-				[add_index(Output) - Comm,
-				ref(OutputRel, Input) - Comm],
+				[add_index(Output, Input) - Comm],
 				Instrs0, Instrs)
 		;
 			{ SpecNeeded = yes },
@@ -1915,8 +2002,8 @@ rl_sort__map_sort_and_index_specs(OutputPred, _, _,
 		aggregate(Output, B, C, D) - E) :-
 	call(OutputPred, Output0, Output).
 rl_sort__map_sort_and_index_specs(OutputPred, _, _,
-		add_index(Output0) - Comm,
-		add_index(Output) - Comm) :-
+		add_index(Output0, Input) - Comm,
+		add_index(Output, Input) - Comm) :-
 	call(OutputPred, Output0, Output).
 rl_sort__map_sort_and_index_specs(_, _, _, Instr, Instr) :-
 	Instr = clear(_) - _.

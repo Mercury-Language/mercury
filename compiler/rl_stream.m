@@ -443,7 +443,8 @@ rl_stream__must_materialise_rels(insert_tuple(Output, _, _) - _,
 	rl_stream__output_is_indexed(Output, Materialise).
 
 	% Indexed relations must always be materialised.
-rl_stream__must_materialise_rels(add_index(output_rel(Rel, _)) - _, [Rel]).
+rl_stream__must_materialise_rels(add_index(output_rel(Output, _), Input) - _,
+		[Input, Output]).
 rl_stream__must_materialise_rels(clear(Rel) - _, [Rel]).
 rl_stream__must_materialise_rels(ref(_, _) - _, []).
 rl_stream__must_materialise_rels(copy(output_rel(Output, _), Input) - _,

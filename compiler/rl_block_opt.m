@@ -186,9 +186,10 @@ rl_block_opt__build_dag(aggregate(Output, Input, Initial, Update) - _) -->
 	rl_block_opt__add_dag_node([Output], [InputNode],
 		aggregate(InputNode, Initial, Update), _).
 
-rl_block_opt__build_dag(add_index(output_rel(Rel, Index)) - _) -->
-	rl_block_opt__lookup_relation(Rel, RelNode),
-	rl_block_opt__add_index_to_node(RelNode, Index).
+rl_block_opt__build_dag(
+		add_index(Output, Input) - _) -->
+	rl_block_opt__lookup_relation(Input, InputNode),
+	rl_block_opt__set_output_rel_id(Output, InputNode).
 
 rl_block_opt__build_dag(clear(_) - _) -->
 	{ error("rl_block_opt__build_dag: clear") }.
@@ -1306,7 +1307,7 @@ rl_block_opt__get_node_outputs(Instr, NonLocalRels, [OutputNode | OutputNodes],
 	{ OutputNode = output_node(Schema, Index, AllOutputs0) },
 	{ set__intersect(AllOutputs0, NonLocalRels, NonLocalOutputs0) },
 	{ Instr = input(InputRel1) ->
-		% Don't assigning the input relation to itself. 
+		% Don't assign the input relation to itself. 
 		set__delete(NonLocalOutputs0, InputRel1, NonLocalOutputs)
 	;
 		NonLocalOutputs = NonLocalOutputs0
@@ -1460,15 +1461,13 @@ rl_block_opt__generate_instr(_, NodeOutputs, _, input(Input), Instrs) -->
 	{ OutputRel = output_rel(Output, Indexes) },
 
 	{ Indexes = [] ->
-		IndexInstrs = []
+		( Output = Input ->
+			Instrs = []
+		;
+			Instrs = [ref(Output, Input) - ""]
+		)
 	;
-		IndexInstrs = [add_index(OutputRel) - ""]
-	},
-
-	{ Output = Input ->
-		Instrs = IndexInstrs
-	;
-		Instrs = [ref(Output, Input) - "" | IndexInstrs]
+		Instrs = [add_index(OutputRel, Input) - ""]
 	}.
 
 %-----------------------------------------------------------------------------%
