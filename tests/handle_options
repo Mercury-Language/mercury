@@ -2,7 +2,9 @@ usage="\
 Usage: $0 [options]
 Options:
 	-f <mcflags>, --flags <mcflags>
-		Pass MCFLAGS=<mcflags> as an option to \`mmake check'.
+		Pass EXTRA_MCFLAGS=<mcflags> as an option to \`mmake check'.
+	-c <cflags>, --cflags <cflags>
+		Pass EXTRA_CFLAGS=<cflags> as an option to \`mmake check'.
 	-g <grade>, --grade <grade>
 		Pass GRADE=<grade> as an option to \`mmake check'.
 	-j <num-jobs>, --jobs <num-jobs>
@@ -11,16 +13,23 @@ Options:
 
 jfactor=""
 flagsopt=""
+cflagsopt=""
 gradeopt=""
 fflag=""
+cflag=""
 gflag=""
 
 while [ $# -gt 0 ]; do
 	case "$1" in
 
+	-c|--cflags)
+		cfflag="-c $2"
+		cflagsopt="EXTRA_CFLAGS=$2"
+		shift ;;
+
 	-f|--flags)
 		fflag="-f $2"
-		flagsopt="MCFLAGS=$2"
+		flagsopt="EXTRA_MCFLAGS=$2"
 		shift ;;
 
 	-g|--grade)
