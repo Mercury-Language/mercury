@@ -373,6 +373,9 @@ io__get_line_number(LineNumber) -->
 	{ currentInput(Stream) },
 	{ lineCount(Stream, LineNumber) }.
 
+io__get_line_number(Stream, LineNumber) -->
+	{ lineCount(Stream, LineNumber) }.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
