@@ -70,8 +70,13 @@
 	% multiplication
 :- func int * int = int.
 :- mode in  * in  = uo  is det.
-:- mode uo  * in  = in  is det.
-:- mode in  * uo  = in  is det.
+/*
+% XXX need to change code_util.m before adding these modes
+:- mode in  * in  = in  is semidet.
+:- mode in  * in  = uo  is det.
+:- mode uo  * in  = in  is semidet.
+:- mode in  * uo  = in  is semidet.
+*/
 
 	% subtraction
 :- func int - int = int.
@@ -88,8 +93,6 @@
 	% (if it doesn't, file a bug report)
 :- func int // int = int.
 :- mode in  // in  = uo  is det.
-:- mode uo  // in  = in  is det.
-:- mode in  // uo  = in  is det.
 
 	% left shift
 :- func int << int = int.
