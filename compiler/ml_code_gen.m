@@ -364,6 +364,39 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Code for negation
+%
+
+% model_det negation
+%		<not(Goal)>
+%	===>
+%	{
+%		bool succeeded;
+%		<succeeded = Goal>
+%		/* now ignore the value of succeeded,
+%		   which we know will be FALSE */
+%	}
+
+% model_semi negation, model_det goal:
+%		<succeeded = not(Goal)>
+%	===>
+%	{
+%		bool succeeded;
+%		<succeeded = Goal>
+%		succeeded = FALSE;
+%	}
+
+% model_semi negation, model_semi goal:
+%		<succeeded = not(Goal)>
+%	===>
+%	{
+%		bool succeeded;
+%		<succeeded = Goal>
+%		succeeded = !succeeded;
+%	}
+
+%-----------------------------------------------------------------------------%
+%
 % Code for deconstruction unifications
 %
 
@@ -404,11 +437,9 @@
 %		- switches
 % TODO:
 %	- commits
-%	- negation
 %	- c_code pragmas
 %	- construction of compound terms
 %	- XXX construct/deconstruct/complicated unifications
-%	- calls to builtin predicates
 %	- construction of closures, and higher-order calls
 %	- class method calls
 %	- type declarations for user-defined types
@@ -627,10 +658,17 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId) = MLDS_ProcDefnBody :-
 
 	MLDSGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
 	MLDS_Params = ml_gen_params(ModuleInfo, PredId, ProcId),
+	( CodeModel = model_non ->
+		% set up the initial success continuation
+		ml_cont_rval(Cont, MLDSGenInfo0, MLDSGenInfo1),
+		ml_gen_info_push_success_cont(Cont, MLDSGenInfo1, MLDSGenInfo2)
+	;
+		MLDSGenInfo2 = MLDSGenInfo0
+	),
 	MLDS_LocalVars = ml_gen_local_var_decls(Goal, VarSet, VarTypes,
 			HeadVars),
 	ml_gen_proc_body(CodeModel, Goal, MLDS_Decls0, MLDS_Statements,
-			MLDSGenInfo0, _MLDSGenInfo),
+			MLDSGenInfo2, _MLDSGenInfo),
 	MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
 	MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements, Context),
 	MLDS_ProcDefnBody = mlds__function(yes(proc(PredId, ProcId)),
@@ -869,9 +907,9 @@ ml_gen_goal_expr(if_then_else(_Vars, Cond, Then, Else, _),
 	ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 			MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(not(_Goal), _, _, _, _) -->
-	% XXX not yet implemented
-	{ sorry("negation") }.
+ml_gen_goal_expr(not(Goal), CodeModel, Context,
+		MLDS_Decls, MLDS_Statements) -->
+	ml_gen_negation(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements).
 
 ml_gen_goal_expr(conj(Goals), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
@@ -1517,6 +1555,71 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		{ MLDS_Decls = [ThenFunc | CondDecls] },
 		{ MLDS_Statements = list__append(
 			[SetSuccessFalse | CondStatements], [IfStatement]) }
+	).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for negation
+%
+
+:- pred ml_gen_negation(hlds_goal, code_model, prog_context,
+		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_negation(in, in, in, out, out, in, out) is det.
+
+ml_gen_negation(Cond, CodeModel, Context,
+		MLDS_Decls, MLDS_Statements) -->
+	{ Cond = _ - CondGoalInfo },
+	{ goal_info_get_code_model(CondGoalInfo, CondCodeModel) },
+	(
+		% model_det negation:
+		%		<not(Goal)>
+		%	===>
+		%	{
+		%		bool succeeded;
+		%		<succeeded = Goal>
+		%		/* now ignore the value of succeeded,
+		%		   which we know will be FALSE */
+		%	}
+		{ CodeModel = model_det },
+		ml_gen_goal(model_semi, Cond, MLDS_Decls, MLDS_Statements)
+	;
+		% model_semi negation, model_det goal:
+		%		<succeeded = not(Goal)>
+		%	===>
+		%	{
+		%		bool succeeded;
+		%		<succeeded = Goal>
+		%		succeeded = FALSE;
+		%	}
+		{ CodeModel = model_semi, CondCodeModel = model_det },
+		ml_gen_goal(model_det, Cond, CondDecls, CondStatements),
+		ml_gen_set_success(const(false), Context, SetSuccessFalse),
+		{ MLDS_Decls = CondDecls },
+		{ MLDS_Statements = list__append(CondStatements,
+			[SetSuccessFalse]) }
+	;
+		% model_semi negation, model_semi goal:
+		%		<succeeded = not(Goal)>
+		%	===>
+		%	{
+		%		bool succeeded;
+		%		<succeeded = Goal>
+		%		succeeded = !succeeded;
+		%	}
+		{ CodeModel = model_semi, CondCodeModel = model_semi },
+		ml_gen_goal(model_semi, Cond, CondDecls, CondStatements),
+		ml_gen_test_success(Succeeded),
+		ml_gen_set_success(unop(not, Succeeded), Context,
+			InvertSuccess),
+		{ MLDS_Decls = CondDecls },
+		{ MLDS_Statements = list__append(CondStatements,
+			[InvertSuccess]) }
+	;
+		{ CodeModel = model_semi, CondCodeModel = model_non },
+		{ error("ml_gen_negation: nondet cond") }
+	;
+		{ CodeModel = model_non },
+		{ error("ml_gen_negation: nondet negation") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2535,6 +2638,18 @@ ml_gen_set_success(Value, Context, MLDS_Statement) -->
 	{ MLDS_Stmt = atomic(Assign) },
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 		mlds__make_context(Context)) }.
+
+	% Return the rval for the current function's `cont' argument.
+	% (The `cont' argument is a continuation function that
+	% will be called when a model_non goal succeeds.)
+	%
+:- pred ml_cont_rval(mlds__rval, ml_gen_info, ml_gen_info).
+:- mode ml_cont_rval(out, in, out) is det.
+ml_cont_rval(ContRval) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
+	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
+	{ ContRval = lval(var(qual(MLDS_Module, "cont"))) }.
 
 	% Generate code to call the current success continuation.
 	% This is used for generating success when in a model_non context.
