@@ -140,7 +140,6 @@ static void demangle(char *name) {
 	** strip off the `fn__' prefix, if any
 	*/
 	if (strip_prefix(&start, func_prefix)) {
-
 		pred_or_func = "function";
 	} else {
 		pred_or_func = "predicate";
@@ -180,6 +179,31 @@ static void demangle(char *name) {
 	if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 		goto wrong_format;
 	}
+
+	/*
+	** Now start processing from the start of the string again.
+	** Check whether the start of the string matches the name of
+	** one of the special compiler-generated predicates; if so,
+	** set the `category' to the appropriate value and then
+	** skip past the prefix.
+	*/
+
+	if (strip_prefix(&start, unify)) {
+		category = UNIFY;
+	} else if (strip_prefix(&start, compare)) {
+		category = COMPARE;
+		if (mode_num != 0) goto wrong_format;
+	} else if (strip_prefix(&start, mindex)) {
+		category = INDEX;
+		if (mode_num != 0) goto wrong_format;
+	} else {
+		category = ORDINARY;
+	}
+
+	/*
+	** Fix any ascii codes mangled in the predicate name
+	*/
+	start = fix_mangled_ascii(start, &end);
 
 	/*
 	** Process the mangling introduced by unused_args.m.
@@ -234,26 +258,6 @@ static void demangle(char *name) {
 	*end = '\0';
 
 	/*
-	** Now start processing from the start of the string again.
-	** Check whether the start of the string matches the name of
-	** one of the special compiler-generated predicates; if so,
-	** set the `category' to the appropriate value and then
-	** skip past the prefix.
-	*/
-
-	if (strip_prefix(&start, unify)) {
-		category = UNIFY;
-	} else if (strip_prefix(&start, compare)) {
-		category = COMPARE;
-		if (mode_num != 0) goto wrong_format;
-	} else if (strip_prefix(&start, mindex)) {
-		category = INDEX;
-		if (mode_num != 0) goto wrong_format;
-	} else {
-		category = ORDINARY;
-	}
-
-	/*
 	** Separate the module name from the type name for the compiler
 	** generated predicates.
 	*/
@@ -272,11 +276,6 @@ static void demangle(char *name) {
 			goto wrong_format;
 		}
 	}
-
-	/*
-	** Fix any ascii codes mangled in the predicate name
-	*/
-	start = fix_mangled_ascii(start, &end);
 
 	/*
 	** Now, finally, we can print the demangled symbol name
@@ -448,7 +447,7 @@ static bool cut_trailing_underscore_integer(char *str, char **real_end,
 	if (end == str || *(--end) != '_') {
 		return FALSE;
 	}
-    *end = '\0';
+	*end = '\0';
 	*real_end = end;
 	return TRUE;
 }
@@ -519,8 +518,8 @@ static char *fix_mangled_ascii(char *str, char **real_end)
 		}
 		buf[count] = '\0';
 		strcpy(str, buf);
+		*real_end = str + count;
 	}
-	*real_end = end;
 	return str;
 }
 
@@ -528,11 +527,13 @@ static char *fix_mangled_ascii(char *str, char **real_end)
 static bool check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2)
 {
+	const size_t suffix_len = sizeof_suffix - 1;
+
 	return (
-		position + 1 - sizeof_suffix > start 
+		position - suffix_len >= start 
 		&& sscanf(position + 1, "%d", mode_num2) == 1
-		&& strncmp(position + 2 - sizeof_suffix,
-			suffix, sizeof_suffix - 1) == 0
+		&& strncmp(position - suffix_len + 1,
+			suffix, suffix_len) == 0
 	);
 }
 	
