@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -108,8 +108,8 @@
 :- func math__pow(float, float) = float.
 :- mode math__pow(in, in) = out is det.
 
-	% math__exp(X) = Exp is true if Exp is X raised to the
-	% power of e.
+	% math__exp(X) = Exp is true if Exp is e raised to the
+	% power of X.
 :- func math__exp(float) = float.
 :- mode math__exp(in) = out is det.
 
