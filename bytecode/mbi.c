@@ -1,5 +1,5 @@
 /*
- *	$Id: mbi.c,v 1.2 1997-02-11 07:52:16 aet Exp $
+ *	$Id: mbi.c,v 1.3 1997-02-11 08:03:55 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -20,7 +20,7 @@ heapsize	= 0;
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id";
+rcs_id[]	= "$Id: mbi.c,v 1.3 1997-02-11 08:03:55 aet Exp $";
 
 static void
 usage(void);
