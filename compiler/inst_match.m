@@ -956,9 +956,9 @@ abstractly_unify_inst_2(IsLive, InstA, InstB, UnifyIsReal, ModuleInfo0,
 abstractly_unify_inst_3(live, not_reached, _, _,	M, not_reached, det, M).
 
 abstractly_unify_inst_3(live, any(UniqX), any(UniqY), Real, M,
-					any(Uniq), det, M) :-
+					any(Uniq), semidet, M) :-
 	Real = fake_unify,
-	unify_uniq(live, Real, det, UniqX, UniqY, Uniq).
+	unify_uniq(live, Real, semidet, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(live, any(UniqX), free, Real, M,
 					any(Uniq), det, M) :-
@@ -1021,7 +1021,7 @@ abstractly_unify_inst_3(live, ground(Uniq0, yes(PredInst)), free, Real, M,
 
 abstractly_unify_inst_3(live, ground(UniqX, yes(_)), bound(UniqY, BoundInsts0),
 		Real, M0, bound(Uniq, BoundInsts), semidet, M) :-
-	unify_uniq(dead, Real, det, UniqX, UniqY, Uniq),
+	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqX, Real, M0,
 			BoundInsts, M).
 
@@ -1072,9 +1072,9 @@ abstractly_unify_inst_3(live, abstract_inst(Name, ArgsA),
 abstractly_unify_inst_3(dead, not_reached, _, _, M, not_reached, det, M).
 
 abstractly_unify_inst_3(dead, any(UniqX), any(UniqY), Real, M,
-					any(Uniq), det, M) :-
+					any(Uniq), semidet, M) :-
 	Real = fake_unify,
-	unify_uniq(dead, Real, det, UniqX, UniqY, Uniq).
+	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(dead, any(UniqX), free, _Real, M,
 					any(UniqX), det, M).
@@ -1174,6 +1174,8 @@ abstractly_unify_inst_3(dead, abstract_inst(Name, ArgsA),
 	% with clobbered is not allowed for semidet unifications,
 	% unless they are "fake".
 	%
+	% The only way this predicate can abort is if a clobbered value
+	% is live.
 	% The only way this predicate can fail (indicating a unique mode error)
 	% is if we are attempting to unify with a clobbered value, and
 	% this was a "real" unification, not a "fake" one,
