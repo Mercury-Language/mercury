@@ -1,0 +1,22 @@
+NEWS for Mercury release 0.4
+----------------------------
+
+Higher-order predicates and lambda expressions are now implemented.
+(This means that `call/{1,2,3}' and `solutions/2' are now useable.)
+Unique modes are now partially implemented.
+Unifications with partially instantiated modes are now implemented.
+The installation process is more standard (configure; make; make install).
+Autoconfiguration is a bit more robust.
+`msc' and `mnc' now produce somewhat smaller object files.
+Error messages are a little better in some cases.
+Fixed a few code generation bugs.
+Ported to DEC Alpha/OSF.
+We generate better code for calls to `\='.
+We generate better code for `compare/3'.
+A few other new optimizations.
+The profiler now works (documentation is sparse, though - see profiler/README).
+Some new library predicates, including `string__format' (like C's sprintf).
+`set__join/2' has been renamed as `set__power_union/2'.
+`list__sort/2' has been renamed as `list__sort_and_remove_dups/2'.
+There is a new `list__sort/2' which does *not* remove duplicates.
+
