@@ -511,7 +511,8 @@
 :- mode string__sub_string_search(in, in, out) is semidet.
 %	string__sub_string_search(String, SubString, Index).
 %	`Index' is the position in `String' where the first occurrence of
-%	`SubString' begins.
+%	`SubString' begins.  Indices start at zero, so if `SubString'
+%	is a prefix of `String', this will return Index = 0.
 
 :- func string__format(string, list(string__poly_type)) = string.
 :- pred string__format(string, list(string__poly_type), string).
@@ -1312,25 +1313,35 @@ string__combine_hash(H0, X, H) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	Index = WholeString->IndexOf(SubString);
+	SUCCESS_INDICATOR = (Index >= 0);
 }").
 
+% This is only used if there is no matching foreign_proc definition
 string__sub_string_search(String, SubString, Index) :-
-	sub_string_search_2(String, SubString, 0, length(String), Index).
+	sub_string_search_2(String, SubString, 0, length(String),
+		length(SubString), Index).
 
 	% Brute force string searching.  For short Strings this is
 	% good; for longer strings Boyer-Moore is much better.
 	%
-:- pred sub_string_search_2(string::in, string::in, int::in, int::in,
+:- pred sub_string_search_2(string::in, string::in, int::in, int::in, int::in,
 		int::out) is semidet.
 
-sub_string_search_2(String, SubString, I, Length, Index) :-
+sub_string_search_2(String, SubString, I, Length, SubLength, Index) :-
 	( if
 		I < Length,
-		string__prefix(String, SubString)
+		% XXX This is inefficient --
+		%     there is no (in, in, in) = in is semidet
+		%     mode of string__substring, so this ends up
+		%     calling the (in, in, in) = out mode and then
+		%     doing the unification.  This will create a lot
+		%     of unnecessary garbage.
+		string__substring(String, I, SubLength) = SubString
 	  then
 	  	Index = I
 	  else
-	  	sub_string_search_2(String, SubString, I + 1, Length, Index)
+	  	sub_string_search_2(String, SubString, I + 1,
+			Length, SubLength, Index)
 	).
 
 %-----------------------------------------------------------------------------%
