@@ -28,6 +28,7 @@ SOURCES= \
 	higher_order.m \
 	higher_order2.m \
 	higher_order3.m \
+	ho_inst.m \
 	implied_mode.m \
 	indexing.m \
 	intermod_lambda.m \
