@@ -58,6 +58,7 @@ case $# in
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
 		--bits-per-word "$BITS_PER_WORD" \
 		--bytes-per-word "$BYTES_PER_WORD" \
+		--dotnet-library-version "$MS_DOTNET_LIBRARY_VERSION" \
 		$HAVE_DELAY_SLOT \
 		$HAVE_BOXED_FLOATS \
 		$DEFAULT_OPT_LEVEL \
@@ -77,6 +78,7 @@ case $# in
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
 		--bits-per-word "$BITS_PER_WORD" \
 		--bytes-per-word "$BYTES_PER_WORD" \
+		--dotnet-library-version "$MS_DOTNET_LIBRARY_VERSION" \
 		$HAVE_DELAY_SLOT \
 		$HAVE_BOXED_FLOATS \
 		$DEFAULT_OPT_LEVEL \

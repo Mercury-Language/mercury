@@ -119,12 +119,12 @@ if test "$BOOTSTRAP_MC" != ""; then
 		").
 EOF
 	if
-		# Test for the `--no-warn-inferred-erroneous' option.
-	 	echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
-	 	$BOOTSTRAP_MC \
-            --no-warn-inferred-erroneous \
+		# Test for the `--dotnet-library-version' option.
+		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
+		$BOOTSTRAP_MC \
+			--dotnet-library-version 1.0.3300.0 \
 			--halt-at-warn $link_flags conftest \
-		 	</dev/null >&AC_FD_CC 2>&1 &&
+			</dev/null >&AC_FD_CC 2>&1 &&
 		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
 	then
 		AC_MSG_RESULT(yes)
@@ -1755,10 +1755,10 @@ AC_MSG_RESULT($mercury_cv_profiling)
 AC_MSG_CHECKING(if C compiler is egcs)
 case "`$CC --version < /dev/null 2>&1`" in
     egcs-*)
-    	mercury_cv_egcs=yes
+	mercury_cv_egcs=yes
 	;;
     *)
-    	mercury_cv_egcs=no
+	mercury_cv_egcs=no
 	;;
 esac
 AC_MSG_RESULT($mercury_cv_egcs)
