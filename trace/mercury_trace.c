@@ -656,6 +656,26 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_saved_curfr(saved_regs) = base_curfr;
 	MR_saved_maxfr(saved_regs) = base_maxfr;
 
+	/*
+	** If the retried call is shallow traced, it must have been called from
+	** a deep traced region, since otherwise we wouldn't have had
+	** sufficient information to retry it. Since the retry may have been
+	** executed from a deep traced procedure called from deep within
+	** a shallow traced region, MR_trace_from_full may now be FALSE.
+	** We therefore reset it to TRUE.
+	**
+	** The only case where this assignment does not faithfully recreate the
+	** situation that existed at the time the retried call was originally
+	** executed is when the retried call is deep traced but was called from
+	** inside a shallow traced region. However, this difference will not
+	** affect the behavior of either the called procedure (since deep
+	** traced procedures do not pay attention to the initial value of
+	** MR_trace_from_full) or its caller (since all callers expect that
+	** the callee may clobber MR_trace_from_full).
+	*/
+
+	MR_trace_from_full = TRUE;
+
 	if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
 		MR_Long_Lval	location;
 		MR_Word		*this_frame;
