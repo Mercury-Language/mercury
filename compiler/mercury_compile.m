@@ -515,8 +515,6 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    )
 	).
 
-
-
 :- pred mercury_compile__maybe_write_optfile(bool::in, module_info::in,
 		module_info::out, io__state::di, io__state::uo) is det.
 
@@ -567,7 +565,6 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 		{ HLDS = HLDS0 }
 	).
 
-
 :- pred mercury_compile__output_trans_opt_file(module_info, 
 	io__state, io__state).
 :- mode mercury_compile__output_trans_opt_file(in, di, uo) is det.
@@ -583,7 +580,6 @@ mercury_compile__output_trans_opt_file(HLDS25) -->
 
 	trans_opt__write_optfile(HLDS28).
 	
-
 :- pred mercury_compile__frontend_pass_2(module_info, module_info,
 	bool, io__state, io__state).
 % :- mode mercury_compile__frontend_pass_2(di, uo, out, di, uo) is det.
@@ -977,7 +973,6 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		{ ModuleInfo = ModuleInfo5 }
 	).
 	
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1167,7 +1162,7 @@ mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, HLDS) -->
 	process_all_nonimported_procs(
 		update_proc_error(simplify__proc(Simplify)),
 		HLDS0, HLDS),
-	maybe_write_string(Verbose, "% done\n"),
+	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
 
 %-----------------------------------------------------------------------------%
@@ -1469,7 +1464,6 @@ mercury_compile__map_args_to_regs(HLDS0, Verbose, Stats, HLDS) -->
 	{ generate_arg_info(HLDS0, Args, HLDS) },
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
-
 
 :- pred mercury_compile__maybe_saved_vars(module_info, bool, bool,
 	module_info, io__state, io__state).

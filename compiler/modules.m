@@ -821,7 +821,7 @@ maybe_output_module_order(Module, DepsOrdering) -->
 			io__write_list(OrdStream, DepsOrdering, "\n\n", 
 					write_module_scc(OrdStream)),
 			io__close_output(OrdStream),
-			maybe_write_string(Verbose, "% done\n")
+			maybe_write_string(Verbose, "% done.\n")
 		;
 			{ string__append_list(["can't open file `", 
 	    			OrdFileName, "' for output."], OrdMessage) },
@@ -965,7 +965,7 @@ generate_dependencies_write_dep_file(Module, DepsMap) -->
 	( { DepResult = ok(DepStream) } ->
 		generate_dep_file(Module, DepsMap, DepStream),
 		io__close_output(DepStream),
-		maybe_write_string(Verbose, "% done\n")
+		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ string__append_list(["can't open file `", DepFileName,
 			"' for output."], DepMessage) },
