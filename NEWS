@@ -101,3 +101,4 @@ NEWS since Mercury release 0.7
   Thanks to the people from Mission Critical, in particular Renaud Paquay,
   for providing the original version. 
 
+* We've added a new predicate to bag.m, bag__to_list/2.
