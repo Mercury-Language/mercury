@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -369,7 +369,18 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 				% infix manner.
 			{ Op0 = "`" }
 		->
-			parser__get_token(name(Op), _),
+			parser__get_token(OpToken, _),
+			(
+				{ OpToken = name(NameOp) }
+			->
+				{ Op = NameOp },
+				{ VariableTerm = [] }
+			;
+				{ OpToken = variable(VariableOp) },
+				{ Op = "" },
+				parser__add_var(VariableOp, Var),
+				{ VariableTerm = [term__variable(Var)] }
+			),
 			parser__get_token(name("`"), _),
 
 			{ OpPriority = 100 },
@@ -377,6 +388,7 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 			{ RightAssoc = x }
 		;
 			{ Op = Op0 },
+			{ VariableTerm = [] },
 			parser__get_ops_table(OpTable),
 			{ ops__lookup_infix_op(OpTable, Op,
 					OpPriority, LeftAssoc, RightAssoc) }
@@ -390,7 +402,8 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 		( { RightTerm0 = ok(RightTerm) } ->
 			parser__get_term_context(Context, TermContext),
 			{ OpTerm = term__functor(term__atom(Op),
-				[LeftTerm, RightTerm], TermContext) },
+				append(VariableTerm, [LeftTerm, RightTerm]),
+				TermContext) },
 			parser__parse_rest(MaxPriority, IsArg, OpPriority,
 				OpTerm, Term)
 		;
