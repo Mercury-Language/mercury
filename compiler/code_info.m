@@ -1440,7 +1440,7 @@ code_info__generate_commit(RedoLab, Commit) -->
 	]) },
 	{ SuccessCode = tree(
 		RestoreMaxfr,
-		tree(RestoreRedoip, RestoreCurfr)
+		tree(tree(RestoreRedoip, RestoreCurfr), PopCode)
 	) },
 	{ FailCode = tree(
 		tree(tree(RedoLabCode, RestoreCurfr), FailureContCode),
