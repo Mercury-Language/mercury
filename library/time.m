@@ -35,7 +35,7 @@
 % many times is returned as Time.
 
 :- pred benchmark_det(pred(T1, T2), T1, T2, int, int).
-:- mode benchmark_det(pred(in, out) is det, in, out, in, out) is det.
+:- mode benchmark_det(pred(in, out) is det, in, out, in, out) is cc_multi.
 
 % benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
 % the nondet predicate Pred. benchmark_nondet is similar to benchmark_det,
@@ -45,7 +45,7 @@
 % all solutions of Pred with input In Repeats times is returned as Time.
 
 :- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
-:- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out) is det.
+:- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out) is cc_multi.
 
 :- implementation.
 
