@@ -12,3 +12,8 @@ unify(X, X).
 index(_F, _I) :-
 	error("mercury_builtin.nu.nl: index/2 called").
 
+builtin_float_plus(X, Y, Z) :- Z is X + Y.
+builtin_float_minus(X, Y, Z) :- Z is X - Y.
+builtin_float_times(X, Y, Z) :- Z is X * Y.
+builtin_float_divide(X, Y, Z) :- Z is X / Y.
+
