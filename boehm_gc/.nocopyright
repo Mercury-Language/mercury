@@ -62,6 +62,7 @@ mips_ultrix_mach_dep.s
 rs6000_mach_dep.s
 sparc_mach_dep.s
 sparc_sunos4_mach_dep.s
+gc_cpp.cc
 gc.mak
 README.alpha
 README.amiga
