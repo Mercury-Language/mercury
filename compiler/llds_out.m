@@ -2347,7 +2347,20 @@ output_rval(mkword(Tag, Exprn)) -->
 	output_rval_as_type(Exprn, word),
 	io__write_string(")").
 output_rval(lval(Lval)) -->
-	output_lval(Lval).
+	% if a field is used as an rval, then we need to use
+	% the const_field() macro, not the field() macro,
+	% to avoid warnings about discarding const.
+	( { Lval = field(Tag, Rval, FieldNum) } ->
+		io__write_string("const_field("),
+		output_tag(Tag),
+		io__write_string(", "),
+		output_rval(Rval),
+		io__write_string(", "),
+		output_rval(FieldNum),
+		io__write_string(")")
+	;
+		output_lval(Lval)
+	).
 output_rval(create(Tag, _Args, _Unique, LabelNum)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
