@@ -3,13 +3,6 @@
 TODO LIST:
 ----------
 
-typechecking
-------------
-
-- improve error messages for unification of var & functor
-
-- see also wish list comments at the start of typecheck.m
-
 mode analysis
 -------------
 
@@ -70,6 +63,11 @@ module system
 
 WISH LIST
 ---------
+
+typechecking
+------------
+
+- see wish list comments at the start of typecheck.m
 
 mode analysis:
 --------------
