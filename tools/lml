@@ -1,0 +1,50 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# This shell script allows you to execute a version of the Mercury linker
+# that will link with the libraries that you have built in a workspace.
+#
+# You can use this with `mmake' as follows:
+#
+#	WORKSPACE=$HOME/mer/ws1 PATH=$WORKSPACE/tools:$PATH mmake MC=lmc ML=lml
+#
+# If you want to track down some C level bug, you can ask this script to
+# pass -g to the C compiler and to the linker by setting the environment
+# variable MMC_CDEBUG to the string "true".
+
+if test ! -d $WORKSPACE
+then
+	echo "workspace $WORKSPACE does not exist"
+fi
+
+if test -s $WORKSPACE/boehm_gc/libgc.a
+then
+	gclib="$WORKSPACE/boehm_gc/libgc.a"
+elif test -s $WORKSPACE/boehm_gc/libpar_gc.a
+then
+	gclib="$WORKSPACE/boehm_gc/libpar_gc.a"
+elif test -s $WORKSPACE/boehm_gc/libgc_prof.a
+then
+	gclib="$WORKSPACE/boehm_gc/libgc_prof.a"
+else
+	echo "$WORKSPACE/boehm_gc does not have a gc library"
+fi
+
+MERCURY_LIBS="$WORKSPACE/trace/libmer_trace.a $WORKSPACE/browser/libmer_browser.a $WORKSPACE/library/libmer_std.a $WORKSPACE/runtime/libmer_rt.a $gclib -lm"
+export MERCURY_LIBS
+
+PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
+export PATH
+
+if test "$MMC_CDEBUG" != ""
+then
+	CDEBUG_FLAGS="--no-strip"
+else
+	CDEBUG_FLAGS=""
+fi
+
+ml $CDEBUG_FLAGS "$@"
