@@ -1,4 +1,0 @@
-duplicate_instance_1.opt:003: Error: multiply defined (or overlapping) instance
-duplicate_instance_1.opt:003: declarations for class `duplicate_instance_1:foo/1'.
-duplicate_instance_2.m:010: Previous instance declaration was here.
-For more information, try recompiling with `-E'.
