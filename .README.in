@@ -2,7 +2,7 @@ This directory contains the source distribution for the University of Melbourne
 Mercury compiler, version @VERSION@.
 
 	The Mercury implementation is free software, but it is Copyright
-	(C) 1993-1999 The University of Melbourne.  It is distributed
+	(C) 1993-2001 The University of Melbourne.  It is distributed
 	under the terms of the GNU General Public License.  See the file
 	COPYING for copying permission.
 
@@ -22,6 +22,7 @@ by Hans Boehm:
 	Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
 	Copyright (c) 1991-1995 by Xerox Corporation.  All rights reserved.
 	Copyright (c) 1996-1999 by Silicon Graphics.  All rights reserved.
+	Copyright (c) 1999 by Hewlett-Packard Company. All rights reserved.
 
 	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 	EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.

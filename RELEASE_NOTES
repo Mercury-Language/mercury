@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 0.9.1 of the Mercury system.
+We are pleased to announce the release of version 0.10 of the Mercury system.
 
 Mercury is a new general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -142,14 +142,17 @@ systems known to us.  However, the system does not need these
 extensions, and will work in their absence.
 
 The current Mercury system has been tested extensively on Solaris 2.x,
-IRIX 5.x, OSF/1.1, and Linux, and is also known to run on Ultrix 4.3,
-BSDI 1.1, AIX, and HPUX; it should run without too many changes on
-other Unix variants as well.  It also runs on Windows 95 and Windows
-NT, using the Cygwin library.  If you do encounter any problems,
-please report them to <mercury-bugs@cs.mu.oz.au> (see the BUGS file).
+OSF/1.1, and Linux, and has in the past been known to run on IRIX 5.x,
+Ultrix 4.3, BSDI 1.1, AIX, and HPUX; it should run without too many
+changes on other Unix variants as well.  It also runs on Windows 95
+and Windows NT, using the Cygwin library.  If you do encounter any
+problems, please report them to <mercury-bugs@cs.mu.oz.au> (see the
+BUGS file).
 
-The current source distribution uses gcc as the compiler.  We require gcc
-version 2.6.3 or higher.  You will also need GNU make version 3.69 or higher.
+We recommend that you use gcc as the C compiler, preferably gcc
+version 2.95.2 or later.  If you're using gcc, you will need at least
+version 2.7.2 or higher, except on Solaris, where you need version
+2.95 or higher.  You will also need GNU make version 3.69 or higher.
 
 The Mercury distribution is split into three parts.
 The "mercury-compiler" distribution contains:
@@ -172,16 +175,25 @@ The "mercury-compiler" distribution contains:
      o  some sample Mercury programs
 
 The "mercury-extras" distribution contains some extra libraries for:
-     o  processing HTML forms using the CGI interface
-     o  arithmetic on complex and imaginary numbers
-     o  graphics using Tk and OpenGL
      o  lazy evaluation
      o  dynamic linking
-     o  POSIX interface
      o  backtrackable (trailed) destructive update
-     o  an ODBC database interface
+     o  concurrency
+     o  arithmetic
+        -  arithmetic on complex and imaginary numbers
+        -  a CLP(R) interface, i.e. constraint solving over real numbers
+     o  a set of generic stream type classes
+     o  UIs:
+        -  graphics using Tk and OpenGL
+        -  text interfaces using curses
+        -  processing HTML forms using the CGI interface
+     o  interfacing:
+        -  XML parsing
+        -  POSIX interface
+        -  an ODBC database interface
+and
      o  the Morphine trace analysis system
-     o  a CLP(R) interface, i.e. constraint solving over real numbers
+     o  Moose, a parser generator for Mercury.
 
 The "mercury-tests" distribution contains a test suite.
 
