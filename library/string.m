@@ -274,7 +274,8 @@
 %	p	int	integer
 %
 %	An option of zero will cause any padding to be zeros rather than spaces.
-%	A '-' will cause the output to be right-justified in its 'space'. 
+%	A '-' will cause the output to be left-justified in its 'space'. 
+%	(With a `-', the default is for fields to be right-justified.)
 %	A '+' forces a sign to be printed.  This is not sensible for string and
 %	character output.  A ' ' causes a space to be printed before a thing
 %	if there is no sign there.  The other option is the '#', which 
