@@ -157,6 +157,11 @@
 :- pred map__optimize(map(K, V), map(K, V)).
 :- mode map__optimize(in, out) is det.
 
+	% Remove the smallest item from the map, fail if 
+	% the map is empty.
+:- pred map__remove_smallest(map(K, V), K, V, map(K, V)).
+:- mode map__remove_smallest(in, out, out, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- import_module tree234.
@@ -253,7 +258,7 @@ map__count(Map, Count) :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX innefficient
+	% XXX inefficient
 
 map__inverse_search(Map, V, K) :-
 	tree234__tree234_to_assoc_list(Map, AssocList),
@@ -333,6 +338,11 @@ map__apply_to_list([], _, []).
 map__apply_to_list([K | Ks], Map, [V | Vs]) :-
 	map__lookup(Map, K, V),
 	map__apply_to_list(Ks, Map, Vs).
+
+%-----------------------------------------------------------------------------%
+
+map__remove_smallest(Map0, K, V, Map) :-
+	tree234__remove_smallest(Map0, K, V, Map).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
