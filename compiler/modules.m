@@ -3060,7 +3060,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_lib_file_name("lib", ModuleName, ".install_hdrs", no,
 				LibInstallHdrsTargetName),
 	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
-	( { HighLevelCode = yes } ->
+	globals__io_get_target(Target),
+	( { HighLevelCode = yes, ( Target = c ; Target = asm ) } ->
 		%
 		% XXX  Note that we install the header files in two places:
 		% in the `inc' directory, so that the C compiler will find
