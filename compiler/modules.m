@@ -4231,13 +4231,22 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			ExeFileName, ".exe : ", "$(", MakeVarName, ".dlls) ",
 			"$(", MakeVarName, ".foreign_dlls)\n"] },
 	{ Else = ["else\n"] },
+
+	io__write_strings(DepStream, [
+			"ifneq ($(EXT_FOR_EXE),)\n",
+			".PHONY	", ExeFileName, "\n",
+			ExeFileName, " : ", ExeFileName, "$(EXT_FOR_EXE)\n",
+			"endif\n"
+	]),
+
 	{ MainRule =
-		[ExeFileName, " : $(", MakeVarName, ".cs_or_ss) ",
+		[ExeFileName, "$(EXT_FOR_EXE) : $(", MakeVarName, ".cs_or_ss) ",
 			"$(", MakeVarName, ".os) ",
 			InitObjFileName, " ", All_MLObjsString, " ",
 			All_MLLibsDepString, "\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) ",
-			"-o ", ExeFileName, " ", InitObjFileName, " \\\n",
+			"-o ", ExeFileName, "$(EXT_FOR_EXE) ",
+			InitObjFileName, " \\\n",
 		"\t	$(", MakeVarName, ".os) ", All_MLObjsString,
 			" $(ALL_MLLIBS)\n"]
 	},

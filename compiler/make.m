@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -264,18 +264,8 @@ make__process_args(OptionArgs, Targets0) -->
 	%
 	% Classify the remaining targets.
 	%
-	{ list__filter_map(classify_target(Globals), NonDependTargets,
-		ClassifiedTargets, InvalidTargets) },
-
-	%
-	% Report errors for unknown targets.
-	%
-	list__foldl(
-		(pred(InvalidTarget::in, di, uo) is det -->
-			io__write_string("** Unknown target: "),
-			io__write_string(InvalidTarget),
-			io__write_string(".\n")
-		), InvalidTargets),
+	{ list__map(classify_target(Globals), NonDependTargets,
+		ClassifiedTargets) },
 
 	{ ShouldRebuildDeps = yes },
 	{ MakeInfo0 = make_info(map__init, map__init,
@@ -289,8 +279,7 @@ make__process_args(OptionArgs, Targets0) -->
 	% Build the targets, stopping on any errors if
 	% `--keep-going' was not set.
 	%
-	( { InvalidTargets = [] ; KeepGoing = yes } ->
-	    foldl2_maybe_stop_at_error(KeepGoing,
+	foldl2_maybe_stop_at_error(KeepGoing,
 		(pred(Target::in, Success0::out, Info0::in, Info::out,
 		    		di, uo) is det -->
 		    { Target = ModuleName - TargetType },
@@ -309,12 +298,9 @@ make__process_args(OptionArgs, Targets0) -->
 			make_misc_target(ModuleName - MiscTargetType,
 			    	Success0, Info0, Info)
 		    )
-		), ClassifiedTargets, Success, MakeInfo0, _MakeInfo)
-	;
-		{ Success = no }
-	),
+		), ClassifiedTargets, Success, MakeInfo0, _MakeInfo),
 
-	( { InvalidTargets \= [] ; Success = no } ->
+	( { Success = no } ->
 		io__set_exit_status(1)
 	;
 		[]
@@ -330,7 +316,7 @@ make__process_args(OptionArgs, Targets0) -->
 	.
 
 :- pred classify_target(globals::in, string::in,
-		pair(module_name, target_type)::out) is semidet.
+		pair(module_name, target_type)::out) is det.
 
 classify_target(Globals, FileName, ModuleName - TargetType) :-
     (
@@ -413,12 +399,8 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 	TargetType = misc_target(build_library),
 	file_name_to_module_name(ModuleNameStr, ModuleName)
     ;
-	globals__lookup_string_option(Globals, executable_file_extension, "")
-    ->
 	TargetType = linked_target(executable),
 	file_name_to_module_name(FileName, ModuleName)
-    ;
-    	fail
     ).
 
 :- pred search_backwards_for_dot(string::in, int::in, int::out) is semidet.
