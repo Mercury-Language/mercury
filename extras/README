@@ -1,6 +1,10 @@
 This directory contains various additional libraries, tools,
 and so forth that are not part of the Mercury standard library.
 
+Most of these can be built by running the commands `mmake depend' and
+then `mmake' in the relevant subdirectory, and many can be installed by
+running `mmake install'.
+
 cgi		A couple of Mercury library modules for doing HTML forms
 		programming using CGI (Common Gateway Interface).
 
