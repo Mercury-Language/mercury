@@ -865,6 +865,9 @@ hlds_out__write_category(Indent, semideterministic) -->
 hlds_out__write_category(Indent, nondeterministic) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("nondeterministic\n").
+hlds_out__write_category(Indent, unspecified) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("unspecified\n").
 
 hlds_out__write_indent(X, Iostate0, Iostate) :-
 	(if

@@ -128,7 +128,7 @@
 
 	% XXX need to pass FoundError to all steps
 
-typecheck(Module0, FoundError, Module) -->
+typecheck(Module0, Module, FoundError) -->
 	io__write_string("Checking for undefined types...\n"),
 	check_undefined_types(Module0, Module1),
 	io__write_string("Checking for circularly defined types...\n"),
@@ -183,7 +183,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 			output, output, di, uo).
 
 typecheck_clause_list([], _PredId, _TypeVarSet, _ArgTypes, _ModuleInfo, Error,
-			Error, [])
+			[], Error)
 		--> [].
 typecheck_clause_list([Clause0|Clauses0], PredId, TypeVarSet, ArgTypes,
 		ModuleInfo, Error0, [Clause|Clauses], Error) -->
@@ -382,7 +382,7 @@ type_assign_var_has_type(TypeAssign0, VarId, Type,
 		map__search(VarTypes0, VarId, VarType)
 	then
 		(if some [TypeAssign1]
-			type_unify(TypeAssign0, VarType, Type, TypeAssign)
+			type_unify(TypeAssign0, VarType, Type, TypeAssign1)
 		then
 			TypeAssignSet = [TypeAssign1 | TypeAssignSet0]
 		else
@@ -413,10 +413,10 @@ typecheck_term_has_type(term_variable(Var), Type, TypeInfo0, TypeInfo) :-
 
 typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 	length(As, Arity),
-	typeinfo_get_ctor_list(TypeInfo, cons(F, Arity), ConsDefnList),
+	typeinfo_get_ctor_list(TypeInfo, F, Arity, ConsDefnList),
 	typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet0),
-	typecheck_cons_has_type(TypeAssignSet0, ConsDefnList, As, Type,  [],
-		TypeAssignSet),
+	typecheck_cons_has_type(TypeAssignSet0, ConsDefnList, As, Type,
+		TypeInfo, [], TypeAssignSet),
 	(if
 		TypeAssignSet = [],
 		(not TypeAssignSet0 = [])
@@ -488,11 +488,11 @@ type_assign_cons_has_type([ConsDefn | ConsDefns], TypeAssign0, Args, Type,
 type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
 		TypeAssignSet0, TypeAssignSet) :-
 
-	ConsDefn = hlds__cons_defn(ArgTypes, TypeId, _Context),
+	ConsDefn = hlds__cons_defn(ArgTypes, TypeId, Context),
 
 		% construct the type of this constructor
 	type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-	type_id_to_type(TypeId, TypeVarSet0, ConsType, TypeVarSet),
+	type_id_to_type(TypeId, Context, TypeVarSet0, ConsType, TypeVarSet),
 	type_assign_set_typevarset(TypeAssign0, TypeVarSet, TypeAssign1),
 	( type_assign_unify_type(TypeAssign1, ConsType, Type, TypeAssign2) ->
 		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign2,
@@ -522,7 +522,7 @@ type_assign_term_has_type(term_variable(V), Type, TypeAssign, _TypeInfo) -->
 type_assign_term_has_type(term_functor(F, Args, _Context), Type, TypeAssign,
 		TypeInfo) -->
 	{ length(Args, Arity) },
-	{ typeinfo_get_ctor_list(TypeInfo, cons(F, Arity), ConsDefnList) },
+	{ typeinfo_get_ctor_list(TypeInfo, F, Arity, ConsDefnList) },
 	type_assign_cons_has_type(ConsDefnList, TypeAssign, Args, Type,
 		TypeInfo).
 
@@ -541,9 +541,18 @@ typecheck_unification(X, Y, TypeInfo0, TypeInfo) :-
 		[], TypeAssignSet),
 		% XXX report errors properly!!
 	( TypeAssignSet = [], not (TypeAssignSet0 = []) ->
-		write('XXX Type error in unification\n')
+		typeinfo_get_predid(TypeInfo0, PredId),
+		typeinfo_get_context(TypeInfo0, Context),
+		typeinfo_get_varset(TypeInfo0, VarSet),
+		typeinfo_get_io_state(TypeInfo0, IOState0),
+		report_error_unif(PredId, Context, VarSet, X, Y,
+				IOState0, IOState1),
+		typeinfo_set_io_state(TypeInfo0, IOState1, TypeInfo1),
+		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo2)
+	;
+		TypeInfo2 = TypeInfo0
 	),
-	typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo).
+	typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo).
 
 
 	% iterate over all the possible type assignments.
@@ -632,17 +641,7 @@ type_assign_unify_term(term_variable(X), term_variable(Y), TypeAssign0,
 type_assign_unify_term(term_functor(Functor, Args, _), term_variable(Y),
 		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 	length(Args, Arity),
-	typeinfo_get_ctors(TypeInfo, Ctors),
-	require(ground(Ctors), "error 1"),
-	require(ground(Functor), "error 2"),
-	require(ground(Arity), "error 3"),
-	(if some [ConsDefnList0]
-		map__search(Ctors, cons(Functor, Arity), ConsDefnList0)
-	then
-		ConsDefnList = ConsDefnList0
-	else
-		ConsDefnList = []
-	),
+	typeinfo_get_ctor_list(TypeInfo, Functor, Arity, ConsDefnList),
 	type_assign_unify_var_functor(ConsDefnList, Args, Y, TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet).
 
@@ -675,11 +674,11 @@ type_assign_unify_var_functor([], _, _, _, _, TypeAssignSet, TypeAssignSet).
 type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 	
-	ConsDefn = hlds__cons_defn(ArgTypes, TypeId, _Context),
+	ConsDefn = hlds__cons_defn(ArgTypes, TypeId, Context),
 
 		% construct the type of this constructor
 	type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-	type_id_to_type(TypeId, TypeVarSet0, ConsType, TypeVarSet),
+	type_id_to_type(TypeId, Context, TypeVarSet0, ConsType, TypeVarSet),
 	type_assign_set_typevarset(TypeAssign0, TypeVarSet, TypeAssign1),
 
 		% unify the type of Var with the type of the constructor
@@ -687,41 +686,57 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 	(if some [TypeY]
 		map__search(VarTypes0, Y, TypeY)
 	then
-		type_assign_unify_type(TypeAssign1, ConsType, TypeY,
-					TypeAssign2)
+		(if some [TypeAssign2]
+			type_assign_unify_type(TypeAssign1, ConsType, TypeY,
+						TypeAssign2)
+		then
+			TypeAssignSet1 = [TypeAssign2 | TypeAssignSet0],
+			% check that the types of the arguments matches the
+			% specified arg types for this constructor
+			type_assign_term_has_type_list(Args, ArgTypes,
+				TypeAssign2, TypeInfo,
+				TypeAssignSet1, TypeAssignSet2)
+		else
+			% the top-level types didn't unify - no need to
+			% check the types of the arguments, since this
+			% type-assignment has already been rules out
+			TypeAssignSet2 = TypeAssignSet0
+		)
 	else
 		map__set(VarTypes0, Y, ConsType, VarTypes),
-		type_assign_set_var_types(TypeAssign1, VarTypes, TypeAssign2)
-	),
+		type_assign_set_var_types(TypeAssign1, VarTypes, TypeAssign3),
+		TypeAssignSet1 = [TypeAssign3 | TypeAssignSet0],
 
-		% check that the types of the arguments matches the
-		% specified arg types for this constructor
-	type_assign_term_has_type_list(Args, ArgTypes, TypeAssign2, TypeInfo,
-		TypeAssignSet0, TypeAssignSet1),
+			% check that the types of the arguments matches the
+			% specified arg types for this constructor
+		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign2,
+			TypeInfo, TypeAssignSet1, TypeAssignSet2)
+	),
 
 		% recursively handle all the other possible constructors
 		% that match this functor.
 	type_assign_unify_var_functor(ConsDefns, Args, Y, TypeAssign0,
-		TypeInfo, TypeAssignSet1, TypeAssignSet).
+		TypeInfo, TypeAssignSet2, TypeAssignSet).
 
 %-----------------------------------------------------------------------------%
 
 	% Given a type id (such as list/1), construct a type term
 	% (such as list(T)) corresponding to that type.
 
-:- pred type_id_to_type(type_id, tvarset, type, tvarset).
-:- mode type_id_to_type(input, input, output, output).
+:- pred type_id_to_type(type_id, term__context, tvarset, type, tvarset).
+:- mode type_id_to_type(input, input, input, output, output).
 
-type_id_to_type(qualified(_Module, Name) - Arity, TypeVarSet0, Type,
+type_id_to_type(qualified(_Module, Name) - Arity, Context, TypeVarSet0, Type,
 		TypeVarSet) :-
 	Const = term_atom(Name),
 	make_n_fresh_var_terms(TypeVarSet0, Arity, TypeVarSet, TypeArgs),
-	Type = term_functor(Const, TypeArgs).
+	Type = term_functor(Const, TypeArgs, Context).
 
-type_id_to_type(unqualified(Name) - Arity, TypeVarSet0, Type, TypeVarSet) :-
+type_id_to_type(unqualified(Name) - Arity, Context, TypeVarSet0, Type,
+		TypeVarSet) :-
 	Const = term_atom(Name),
 	make_n_fresh_var_terms(TypeVarSet0, Arity, TypeVarSet, TypeArgs),
-	Type = term_functor(Const, TypeArgs).
+	Type = term_functor(Const, TypeArgs, Context).
 
 %-----------------------------------------------------------------------------%
 
@@ -732,7 +747,8 @@ make_n_fresh_var_terms(VarSet0, N, VarSet, VarTerms) :-
 	(if
 		N = 0
 	then
-		VarTerms = []
+		VarTerms = [],
+		VarSet = VarSet0
 	else
 		N1 is N - 1,
 		varset__new_var(VarSet0, VarId, VarSet1),
@@ -915,53 +931,54 @@ find_undef_type_bodies([TypeId | TypeIds], TypeDefns) -->
 
 	% Find any undefined types used in the given type definition.
 
-:- pred find_undef_type_body(hlds__type_body, context, type_table,
+:- pred find_undef_type_body(hlds__type_body, error_context, type_table,
 				io__state, io__state).
 :- mode find_undef_type_body(input, input, input, di, uo).
 
-find_undef_type_body(eqv_type(Type), Context, TypeDefns) -->
-	find_undef_type(Type, Context, TypeDefns).
-find_undef_type_body(uu_type(Types), Context, TypeDefns) -->
-	find_undef_type_list(Types, Context, TypeDefns).
-find_undef_type_body(du_type(Constructors), Context, TypeDefns) -->
-	find_undef_type_du_body(Constructors, Context, TypeDefns).
-find_undef_type_body(abstract_type, _Context, _TypeDefns) --> [].
+find_undef_type_body(eqv_type(Type), ErrorContext, TypeDefns) -->
+	find_undef_type(Type, ErrorContext, TypeDefns).
+find_undef_type_body(uu_type(Types), ErrorContext, TypeDefns) -->
+	find_undef_type_list(Types, ErrorContext, TypeDefns).
+find_undef_type_body(du_type(Constructors), ErrorContext, TypeDefns) -->
+	find_undef_type_du_body(Constructors, ErrorContext, TypeDefns).
+find_undef_type_body(abstract_type, _ErrorContext, _TypeDefns) --> [].
 
 	% Find any undefined types in a list of types.
 
-:- pred find_undef_type_list(list(type), context, type_table,
+:- pred find_undef_type_list(list(type), error_context, type_table,
 				io__state, io__state).
 :- mode find_undef_type_list(input, input, input, di, uo).
 
-find_undef_type_list([], _Context, _TypeDefns) --> [].
-find_undef_type_list([Type|Types], Context, TypeDefns) -->
-	find_undef_type(Type, Context, TypeDefns),
-	find_undef_type_list(Types, Context, TypeDefns).
+find_undef_type_list([], _ErrorContext, _TypeDefns) --> [].
+find_undef_type_list([Type|Types], ErrorContext, TypeDefns) -->
+	find_undef_type(Type, ErrorContext, TypeDefns),
+	find_undef_type_list(Types, ErrorContext, TypeDefns).
 
 	% Find any undefined types in a list of contructors
 	% (the constructors for a discrimiated union type).
 
-:- pred find_undef_type_du_body(list(constructor), context, type_table,
+:- pred find_undef_type_du_body(list(constructor), error_context, type_table,
 				io__state, io__state).
 :- mode find_undef_type_du_body(input, input, input, di, uo).
 
-find_undef_type_du_body([], _Context, _TypeDefns) --> [].
-find_undef_type_du_body([Constructor | Constructors], Context, TypeDefns) -->
+find_undef_type_du_body([], _ErrorContext, _TypeDefns) --> [].
+find_undef_type_du_body([Constructor | Constructors], ErrorContext,
+		TypeDefns) -->
 	{ Constructor = _Functor - ArgTypes },
-	find_undef_type_list(ArgTypes, Context, TypeDefns),
-	find_undef_type_du_body(Constructors, Context, TypeDefns).
+	find_undef_type_list(ArgTypes, ErrorContext, TypeDefns),
+	find_undef_type_du_body(Constructors, ErrorContext, TypeDefns).
 
 	% Find any undefined types used in type.
 	% The type itself may be undefined, and also
 	% any type arguments may also be undefined.
 	% (eg. the type `undef1(undef2, undef3)' should generate 3 errors.)
 
-:- pred find_undef_type(type, context, type_table,
+:- pred find_undef_type(type, error_context, type_table,
 				io__state, io__state).
 :- mode find_undef_type(input, input, input, di, uo).
 
-find_undef_type(term_variable(_), _Context, _TypeDefns) --> [].
-find_undef_type(term_functor(F, As, _), Context, TypeDefns) -->
+find_undef_type(term_variable(_), _ErrorContext, _TypeDefns) --> [].
+find_undef_type(term_functor(F, As, _), ErrorContext, TypeDefns) -->
 	{ length(As, Arity) },
 	{ make_type_id(F, Arity, TypeId) },
 	(if
@@ -969,11 +986,11 @@ find_undef_type(term_functor(F, As, _), Context, TypeDefns) -->
 		  not is_builtin_type(TypeId)
 		}
 	then
-		report_undef_type(TypeId, Context)
+		report_undef_type(TypeId, ErrorContext)
 	else
 		[]
 	),
-	find_undef_type_list(As, Context, TypeDefns).
+	find_undef_type_list(As, ErrorContext, TypeDefns).
 
 %-----------------------------------------------------------------------------%
 
@@ -995,30 +1012,30 @@ make_type_id(term_string(_), _, "<error>" - 0) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type context ---> type(type_id) ; pred(pred_id).
+:- type error_context ---> type(type_id) ; pred(pred_id).
 
 	% Output an error message about an undefined type
 	% in the specified context.
 
-:- pred report_undef_type(type_id, context, io__state, io__state).
-:- mode report_undef_type(input, context, di, uo).
-report_undef_type(TypeId, Context) -->
+:- pred report_undef_type(type_id, error_context, io__state, io__state).
+:- mode report_undef_type(input, error_context, di, uo).
+report_undef_type(TypeId, ErrorContext) -->
 	io__write_string("Undefined type "),
 	write_type_id(TypeId),
 	io__write_string(" used in definition of "),
-	write_context(Context),
+	write_error_context(ErrorContext),
 	io__write_string(".\n").
 
 	% Output a description of the context where an undefined type was
 	% used.
 
-:- pred write_context(context, io__state, io__state).
-:- mode write_context(input, di, uo).
+:- pred write_error_context(error_context, io__state, io__state).
+:- mode write_error_context(input, di, uo).
 
-write_context(pred(PredId)) -->
+write_error_context(pred(PredId)) -->
 	io__write_string("predicate "),
 	write_pred_id(PredId).
-write_context(type(TypeId)) -->
+write_error_context(type(TypeId)) -->
 	io__write_string("type "),
 	write_type_id(TypeId).
 
@@ -1196,7 +1213,29 @@ typeinfo_get_predid(typeinfo(_,_,_,_,PredId,_,_,_,_,_), PredId).
 :- pred typeinfo_get_context(type_info, term__context).
 :- mode typeinfo_get_context(input, output).
 
-typeinfo_get_context(typeinfo(_,_,_,_,Context,_,_,_,_,_), Context).
+typeinfo_get_context(typeinfo(_,_,_,_,_,Context,_,_,_,_), Context).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_get_typevarset(type_info, varset).
+:- mode typeinfo_get_typevarset(input, output).
+
+typeinfo_get_typevarset(typeinfo(_,_,_,_,_,_,TypeVarSet,_,_,_), TypeVarSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_set_typevarset(type_info, varset, type_info).
+:- mode typeinfo_set_typevarset(typeinfo_di, input, typeinfo_uo).
+
+typeinfo_set_typevarset( typeinfo(A,B,C,D,E,F,_,H,I,J), TypeVarSet,
+			typeinfo(A,B,C,D,E,F,TypeVarSet,H,I,J)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_get_varset(type_info, varset).
+:- mode typeinfo_get_varset(input, output).
+
+typeinfo_get_varset(typeinfo(_,_,_,_,_,_,_,VarSet,_,_), VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -1216,28 +1255,6 @@ typeinfo_set_type_assign_set( typeinfo(A,B,C,D,E,F,G,H,_,J), TypeAssignSet,
 
 %-----------------------------------------------------------------------------%
 
-:- pred typeinfo_get_varset(type_info, varset).
-:- mode typeinfo_get_varset(input, output).
-
-typeinfo_get_varset(typeinfo(_,_,_,_,_,_,_,VarSet,_,_), VarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typeinfo_get_typevarset(type_info, varset).
-:- mode typeinfo_get_typevarset(input, output).
-
-typeinfo_get_typevarset(typeinfo(_,_,_,_,_,_,TypeVarSet,_,_,_), TypeVarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typeinfo_set_typevarset(type_info, varset, type_info).
-:- mode typeinfo_set_typevarset(typeinfo_di, input, typeinfo_uo).
-
-typeinfo_set_typevarset( typeinfo(A,B,C,D,E,F,_,H,I,J), TypeVarSet,
-			typeinfo(A,B,C,D,E,F,TypeVarSet,H,I,J)).
-
-%-----------------------------------------------------------------------------%
-
 :- pred typeinfo_set_found_error(type_info, bool, type_info).
 :- mode typeinfo_set_found_error(typeinfo_di, input, typeinfo_uo).
 
@@ -1246,17 +1263,29 @@ typeinfo_set_found_error( typeinfo(A,B,C,D,E,F,G,H,I,_), FoundError,
 
 %-----------------------------------------------------------------------------%
 
-:- pred typeinfo_get_ctor_list(type_info, cons_id, list(hlds__cons_defn)).
-:- mode typeinfo_get_ctor_list(input, input, output).
+:- pred typeinfo_get_ctor_list(type_info, const, int, list(hlds__cons_defn)).
+:- mode typeinfo_get_ctor_list(input, input, input, output).
 
-typeinfo_get_ctor_list(TypeInfo, ConsId, ConsDefnList) :-
+typeinfo_get_ctor_list(TypeInfo, Functor, Arity, ConsDefnList) :-
 	typeinfo_get_ctors(TypeInfo, Ctors),
-	(if some [ConsDefnList0]
-		map__search(Ctors, ConsId, ConsDefnList0)
-	then
-		ConsDefnList = ConsDefnList0
-	else
-		ConsDefnList = []
+	(
+		Functor = term_atom(Name),
+		map__search(Ctors, cons(Name, Arity), ConsDefnList0)
+	->
+		ConsDefnList1 = ConsDefnList0
+	;
+		ConsDefnList1 = []
+	),
+	(
+		 Arity = 0,
+		 builtin_type(Functor, BuiltInType)
+	->
+		term__context_init("<builtin>", 0, Context),
+		TypeId = unqualified(BuiltInType) - 0,
+		ConsDefn = hlds__cons_defn([], TypeId, Context),
+		ConsDefnList = [ConsDefn | ConsDefnList1]
+	;
+		ConsDefnList = ConsDefnList1
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1324,12 +1353,29 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- pred report_error_unif(pred_id, term__context, varset, term, term,
+			io__state, io__state).
+:- mode report_error_unif(input, input, input, input, input, di, uo).
+
+report_error_unif(PredId, Context, VarSet, X, Y) -->
+	prog_out__write_context(Context),
+	io__write_string("type error in clause for predicate `"),
+	write_pred_id(PredId),
+	io__write_string("':\n"),
+	io__write_string("error in unification of `"),
+	io__write_term(VarSet, X),
+	io__write_string("' and `"),
+	io__write_term(VarSet, Y),
+	io__write_string("'.\n").
+
+%-----------------------------------------------------------------------------%
+
 :- pred report_error_var(pred_id, term__context, varset, var, type, 
 			io__state, io__state).
 :- mode report_error_var(input, input, input, input, input, di, uo).
 
 report_error_var(PredId, Context, VarSet, VarId, Type) -->
-	write_context(Context),
+	prog_out__write_context(Context),
 	io__write_string("type error in clause for predicate `"),
 	write_pred_id(PredId),
 	io__write_string("':\n"),
@@ -1348,7 +1394,7 @@ report_error_var(PredId, Context, VarSet, VarId, Type) -->
 :- mode report_error_cons(input, input, input, input, input, di, uo).
 
 report_error_cons(PredId, Context, Functor, Arity, Type) -->
-	write_context(Context),
+	prog_out__write_context(Context),
 	io__write_string("type error in clause for predicate `"),
 	write_pred_id(PredId),
 	io__write_string("':\n"),

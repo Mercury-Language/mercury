@@ -93,7 +93,7 @@ io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
 	( { varset__lookup_name(VarSet0, Id, Name) } ->
 		{ N = N0 },
 		{ VarSet = VarSet0 },
-		io_write_string(Name)
+		io__write_string(Name)
 	;
 		% XXX problems with name clashes
 
@@ -101,7 +101,7 @@ io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
 		{ string__append("_", Num, VarName) },
 		{ varset__name_var(VarSet0, Id, VarName, VarSet) },
 		{ N is N0 + 1 },
-		io_write_string(VarName)
+		io__write_string(VarName)
 	).
 io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 	(
