@@ -35,18 +35,19 @@ MSL	=	MERCURY_SP_LIB_DIR=. \
 
 # The library is always built with --intermodule-optimization to make sure
 # that the `.opt' files are available.
+# The --intermodule-optimizations are commented out for now because of a bug.
 MCD	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--generate-dependencies --intermodule-optimization
+			--generate-dependencies #--intermodule-optimization
 MCI	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --make-interface
 MCG	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--compile-to-c --intermodule-optimization
+			--compile-to-c #--intermodule-optimization
 MCS	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --split-c-files -c \
 		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)" \
-		--intermodule-optimization
+		#--intermodule-optimization
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
 
