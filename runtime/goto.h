@@ -236,6 +236,7 @@
 	make_entry(stringify(label), label)
 
     #define ENTRY(label) 	(&label)
+    #define STATIC(label) 	(&label)
 
     #define JUMP(label)		ASM_JUMP(label)
 
@@ -259,6 +260,7 @@
 	make_entry(stringify(label), &&label);	\
 	entry(label) = &&label
     #define ENTRY(label) 	(entry(label))
+    #define STATIC(label) 	(entry(label))
 
     #ifdef __i386__
       /* see comment in definition of ASM_JUMP */
@@ -284,6 +286,7 @@
   #define LABEL(label)		(&&entry(label))
   #define GOTO(label)		do { debuggoto(label); JUMP(label); } while(0)
   #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
+  #define GOTO_STATIC(label) 	GOTO(STATIC(label))
   #define GOTO_LOCAL(label) 	GOTO_LABEL(label)
   #define GOTO_LABEL(label) 	do { debuggoto(&&label); goto label; } while(0)
 
@@ -332,11 +335,13 @@
   #define init_label(label)	make_label(stringify(label), label)
 
   #define ENTRY(label) 		(label)
+  #define STATIC(label) 	(label)
   #define LOCAL(label)		(label)
   #define LABEL(label)		(label)
   #define GOTO(label)		return (label)
 				/* the call to debuggoto() is in engine.mod */
   #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
+  #define GOTO_STATIC(label) 	GOTO(STATIC(label))
   #define GOTO_LOCAL(label) 	GOTO(LOCAL(label))
   #define GOTO_LABEL(label) 	GOTO(LABEL(label))
 
