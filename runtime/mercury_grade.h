@@ -32,7 +32,7 @@
 
 /* paste 9 macros together */
 #define MR_PASTE10(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10) \
-				MR_PASTE8_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)
+				MR_PASTE10_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)
 #define MR_PASTE10_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10) \
 				p1##p2##p3##p4##p5##p6##p7##p8##p9##p10
 
