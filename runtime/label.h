@@ -17,7 +17,7 @@ typedef struct s_label
 ** Therefore we want to do it only if we're debugging.
 */
 
-#ifdef SPEED
+#if defined(SPEED) && !defined(DEBUG_GOTOS)
 #define	makelabel(n, a)	/* nothing */
 #else
 #define	makelabel(n, a)	makeentry((n),(a))

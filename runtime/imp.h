@@ -53,7 +53,8 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
   #define ENTRY(predname) 	predname
   #define LABEL(label)		(label)
-  #define GOTO(label)		do { debuggoto(label); return (label); } while(0)
+  #define GOTO(label)		do { return (label); } while(0)
+				/* the call to debuggoto() is in engine.mod */
   #define GOTO_LABEL(label) 	GOTO(LABEL(label))
 
 #endif
@@ -493,6 +494,18 @@ extern	int	hash_string(const char *);
 
 /* DEFINITIONS FOR DEBUGGING MESSAGES */
 
+#if defined(SPEED) && !defined(DEBUG_GOTOS)
+
+#define	debuggoto(label)			((void)0)
+
+#else
+
+#define	debuggoto(label) \
+	(assert(label), \
+	IF (gotodebug, (save_transient_registers(), goto_msg(label))))
+
+#endif
+
 #ifdef	SPEED
 
 #define	debugcr1(val0, hp)			((void)0)
@@ -513,7 +526,6 @@ extern	int	hash_string(const char *);
 #define	debugcall(proc, succ_cont)		((void)0)
 #define	debugtailcall(proc)			((void)0)
 #define	debugproceed()				((void)0)
-#define	debuggoto(label)			((void)0)
 #define	debugmsg0(msg)				((void)0)
 #define	debugmsg1(msg, arg1)			((void)0)
 #define	debugmsg2(msg, arg1, arg2)		((void)0)
@@ -574,10 +586,6 @@ extern	int	hash_string(const char *);
 
 #define	debugproceed() \
 	IF (calldebug, (save_transient_registers(), proceed_msg()))
-
-#define	debuggoto(label) \
-	(assert(label), \
-	IF (gotodebug, (save_transient_registers(), goto_msg(label))))
 
 #define	debugmsg0(msg) \
 	IF (progdebug, (printf(msg)))

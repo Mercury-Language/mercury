@@ -264,6 +264,7 @@ void call_engine(Code *entry_point)
 	fp = (*fp)();
 	fp = entry_point;
 
+#if defined(SPEED) && !defined(DEBUG_GOTOS)
 	for(;;) {
 		fp = (*fp)();
 		fp = (*fp)();
@@ -274,6 +275,12 @@ void call_engine(Code *entry_point)
 		fp = (*fp)();
 		fp = (*fp)();
 	}
+#else
+	for(;;) {
+		debuggoto(fp);
+		fp = (*fp)();
+	}
+#endif
 }
 #endif /* not USE_GCC_NONLOCAL_GOTOS */
 
