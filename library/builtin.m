@@ -490,12 +490,12 @@ Using `pragma c_code' doesn't work, due to the lack of support for
 aliasing, and in particular the lack of support for `ui' modes.
 :- pragma c_code(copy(Value::ui, Copy::uo), "
 	save_transient_registers();
-	Copy = deep_copy(Value, TypeInfo_for_T, NULL, NULL);
+	Copy = deep_copy(&Value, TypeInfo_for_T, NULL, NULL);
 	restore_transient_registers();
 ").
 :- pragma c_code(copy(Value::in, Copy::uo), "
 	save_transient_registers();
-	Copy = deep_copy(Value, TypeInfo_for_T, NULL, NULL);
+	Copy = deep_copy(&Value, TypeInfo_for_T, NULL, NULL);
 	restore_transient_registers();
 ").
 *************/
@@ -531,7 +531,7 @@ Define_entry(mercury__copy_2_1);
 	value = r2;
 
 	save_transient_registers();
-	copy = deep_copy(value, (Word *) type_info, NULL, NULL);
+	copy = deep_copy(&value, (Word *) type_info, NULL, NULL);
 	restore_transient_registers();
 
 #ifdef	COMPACT_ARGS

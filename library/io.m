@@ -2242,7 +2242,7 @@ io__report_full_memory_stats -->
 :- pragma export(io__init_state(di, uo), "ML_io_init_state").
 
 io__init_state -->
-	io__gc_init,
+	io__gc_init(type_of(StreamNames), type_of(Globals)),
 	{ map__init(StreamNames) },
 	{ ops__init_op_table(OpTable) },
 	{ type_to_univ("<globals>", Globals) },
@@ -2264,14 +2264,17 @@ io__finalize_state -->
 	% we don't bother.)
 	[].
 
-:- pred io__gc_init(io__state, io__state).
-:- mode io__gc_init(di, uo) is det.
+:- pred io__gc_init(type_info, type_info, io__state, io__state).
+:- mode io__gc_init(in, in, di, uo) is det.
 
-:- pragma c_code(io__gc_init(IO0::di, IO::uo), "
+:- pragma c_code(io__gc_init(StreamNamesType::in, UserGlobalsType::in,
+		IO0::di, IO::uo), "
 	/* for Windows DLLs, we need to call GC_INIT() from each DLL */
 #ifdef CONSERVATIVE_GC
 	GC_INIT();
 #endif
+	MR_add_root(&ML_io_stream_names, (Word *) StreamNamesType);
+	MR_add_root(&ML_io_user_globals, (Word *) UserGlobalsType);
 	update_io(IO0, IO);
 ").
 

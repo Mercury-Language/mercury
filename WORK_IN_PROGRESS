@@ -28,6 +28,11 @@ which are not yet completed:
 * We now allow programmers to give names to the arguments of constructor
   function symbols.  (Disabled, due to lack of a suitable operator.)
 
+* There is a new garbage collector that does accurate garbage
+  collection (.agc grade).  It is currently limited to deterministic
+  code, and needs a great deal of tuning and optimization.  It also
+  needs testing.
+
 We also have some code that goes at least some part of the way towards
 implementing the features below.   However, for these features, the
 code has not yet been committed and thus is not part of the standard
