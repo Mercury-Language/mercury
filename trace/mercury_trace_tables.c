@@ -33,11 +33,10 @@ static	const MR_Module_Layout	*MR_search_module_info(const char *name);
 static	void	MR_insert_module_info(const MR_Module_Layout *);
 static	void	MR_process_matching_procedures_in_module(
 			const MR_Module_Layout *module, MR_Proc_Spec *spec,
-			void f(void *, const MR_Stack_Layout_Entry *),
-			void *);
-static	void	MR_process_line_layouts(MR_Module_File_Layout *file_layout,
-			int line, MR_file_line_callback callback_func,
-			int callback_arg);
+			void f(void *, const MR_Proc_Layout *), void *);
+static	void	MR_process_line_layouts(const MR_Module_File_Layout
+			*file_layout, int line,
+			MR_file_line_callback callback_func, int callback_arg);
 
 void
 MR_register_all_modules_and_procs(FILE *fp, bool verbose)
@@ -119,8 +118,8 @@ void
 MR_process_file_line_layouts(const char *file, int line,
 	MR_file_line_callback callback_func, int callback_arg)
 {
-	int			i, j;
-	MR_Module_File_Layout	*file_layout;
+	int				i, j;
+	const MR_Module_File_Layout	*file_layout;
 
 	for (i = 0; i < MR_module_info_next; i++) {
 		for (j = 0; j < MR_module_infos[i]->MR_ml_filename_count; j++)
@@ -136,7 +135,7 @@ MR_process_file_line_layouts(const char *file, int line,
 }
 
 static void
-MR_process_line_layouts(MR_Module_File_Layout *file_layout, int line,
+MR_process_line_layouts(const MR_Module_File_Layout *file_layout, int line,
 	MR_file_line_callback callback_func, int callback_arg)
 {
 	int			k;
@@ -312,12 +311,12 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 #define	MR_INIT_MATCH_PROC_SIZE		8
 
 static void
-MR_register_matches(void *data, const MR_Stack_Layout_Entry *entry)
+MR_register_matches(void *data, const MR_Proc_Layout *entry)
 {
 	MR_Matches_Info	*m;
 
 	m = (MR_Matches_Info *) data;
-	MR_ensure_room_for_next(m->match_proc, const MR_Stack_Layout_Entry *,
+	MR_ensure_room_for_next(m->match_proc, const MR_Proc_Layout *,
 		MR_INIT_MATCH_PROC_SIZE);
 	m->match_procs[m->match_proc_next] = entry;
 	m->match_proc_next++;
@@ -341,12 +340,12 @@ MR_search_for_matching_procedures(MR_Proc_Spec *spec)
 */
 
 typedef struct {
-	const MR_Stack_Layout_Entry	*matching_entry;
-	bool	 			match_unique;
+	const MR_Proc_Layout	*matching_entry;
+	bool	 		match_unique;
 } MR_Match_Info;
 
 static void
-MR_register_match(void *data, const MR_Stack_Layout_Entry *entry)
+MR_register_match(void *data, const MR_Proc_Layout *entry)
 {
 	MR_Match_Info	*m;
 
@@ -358,7 +357,7 @@ MR_register_match(void *data, const MR_Stack_Layout_Entry *entry)
 	}
 }
 
-const MR_Stack_Layout_Entry *
+const MR_Proc_Layout *
 MR_search_for_matching_procedure(MR_Proc_Spec *spec, bool *unique)
 {
 	MR_Match_Info	m;
@@ -372,8 +371,7 @@ MR_search_for_matching_procedure(MR_Proc_Spec *spec, bool *unique)
 
 void
 MR_process_matching_procedures(MR_Proc_Spec *spec,
-	void f(void *, const MR_Stack_Layout_Entry *),
-	void *data)
+	void f(void *, const MR_Proc_Layout *), void *data)
 {
 	if (spec->MR_proc_module != NULL) {
 		const MR_Module_Layout	*module;
@@ -411,11 +409,10 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 
 static void
 MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
-	MR_Proc_Spec *spec, void f(void *, const MR_Stack_Layout_Entry *),
-	void *data)
+	MR_Proc_Spec *spec, void f(void *, const MR_Proc_Layout *), void *data)
 {
-	const MR_Stack_Layout_Entry	*cur_entry;
-	int				j;
+	const MR_Proc_Layout	*cur_entry;
+	int			j;
 
 	for (j = 0; j < module->MR_ml_proc_count; j++) {
 		cur_entry = module->MR_ml_procs[j];
@@ -430,8 +427,7 @@ MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
 }
 
 void
-MR_print_proc_id_for_debugger(FILE *fp,
-	const MR_Stack_Layout_Entry *entry_layout)
+MR_print_proc_id_for_debugger(FILE *fp, const MR_Proc_Layout *entry_layout)
 {
 	MR_print_proc_id(fp, entry_layout);
 	fprintf(fp, "\n");
@@ -442,7 +438,7 @@ MR_label_layout_stats(FILE *fp)
 {
 	const MR_Module_Layout		*module_layout;
 	const MR_Module_File_Layout	*file_layout;
-	const MR_Stack_Layout_Label	*label_layout;
+	const MR_Label_Layout		*label_layout;
 	int				module_num, file_num, label_num;
 	MR_Trace_Port			port;
 	int				total;

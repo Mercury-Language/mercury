@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000 The University of Melbourne.
+** Copyright (C) 1994-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -88,7 +88,7 @@ MR_do_init_label_tables(void)
 
 void
 MR_insert_entry_label(const char *name, MR_Code *addr,
-	const MR_Stack_Layout_Entry *entry_layout)
+	const MR_Proc_Layout *entry_layout)
 {
 	MR_do_init_label_tables();
 
@@ -203,7 +203,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
 
 void
 MR_insert_internal_label(const char *name, MR_Code *addr,
-	const MR_Stack_Layout_Label *label_layout)
+	const MR_Label_Layout *label_layout)
 {
 	MR_Internal	*internal;
 

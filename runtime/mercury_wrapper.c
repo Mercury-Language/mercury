@@ -224,7 +224,7 @@ void	(*MR_DI_read_request_from_socket)(MR_Word, MR_Word *, MR_Integer *);
 
 MR_Code	*MR_library_trace_browser;
 
-MR_Code	*(*volatile MR_trace_func_ptr)(const MR_Stack_Layout_Label *);
+MR_Code	*(*volatile MR_trace_func_ptr)(const MR_Label_Layout *);
 
 void	(*MR_address_of_trace_interrupt_handler)(void);
 

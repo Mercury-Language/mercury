@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -54,7 +54,7 @@ int			MR_most_recent_spy_point = -1;
 */
 
 typedef struct {
-	const MR_Stack_Layout_Entry	*spy_proc;
+	const MR_Proc_Layout		*spy_proc;
 	MR_Spy_Point			*spy_points;
 } MR_Spied_Proc;
 
@@ -73,8 +73,8 @@ static	int		MR_spied_proc_max = 0;
 */
 
 typedef struct {
-	const MR_Stack_Layout_Label	*spy_label;
-	int				spy_point_num;
+	const MR_Label_Layout	*spy_label;
+	int			spy_point_num;
 } MR_Spied_Label;
 
 static	MR_Spied_Label	*MR_spied_labels;
@@ -87,12 +87,10 @@ static	int		MR_spied_label_max = 0;
 /**************************************************************************/
 
 static	int	MR_compare_addr(const void *address1, const void *address2);
-static	int	MR_search_spy_table_for_proc(const MR_Stack_Layout_Entry
-			*entry);
-static	int	MR_search_spy_table_for_label(const MR_Stack_Layout_Label
-			*label);
-static	void	MR_add_line_spy_point_callback(const MR_Stack_Layout_Label
-			*label, int spy_point_num);
+static	int	MR_search_spy_table_for_proc(const MR_Proc_Layout *entry);
+static	int	MR_search_spy_table_for_label(const MR_Label_Layout *label);
+static	void	MR_add_line_spy_point_callback(const MR_Label_Layout *label,
+			int spy_point_num);
 static	int	MR_compare_spied_labels(const void *, const void *);
 
 /*
@@ -126,7 +124,7 @@ MR_compare_addr(const void *address1, const void *address2)
 */
 
 static int
-MR_search_spy_table_for_proc(const MR_Stack_Layout_Entry *entry)
+MR_search_spy_table_for_proc(const MR_Proc_Layout *entry)
 {
 	int	slot;
 	bool	found;
@@ -146,7 +144,7 @@ MR_search_spy_table_for_proc(const MR_Stack_Layout_Entry *entry)
 */
 
 static int
-MR_search_spy_table_for_label(const MR_Stack_Layout_Label *label)
+MR_search_spy_table_for_label(const MR_Label_Layout *label)
 {
 	int	slot;
 	bool	found;
@@ -161,17 +159,17 @@ MR_search_spy_table_for_label(const MR_Stack_Layout_Label *label)
 }
 
 bool
-MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
+MR_event_matches_spy_point(const MR_Label_Layout *layout,
 	MR_Trace_Port port, MR_Spy_Action *action_ptr)
 {
-	int				slot;
-	bool				enabled;
-	MR_Spy_Point			*point;
-	MR_Spy_Action			action;
-	const MR_Stack_Layout_Label	*parent;
-	const char			*problem;
-	MR_Word				*base_sp;
-	MR_Word				*base_curfr;
+	int			slot;
+	bool			enabled;
+	MR_Spy_Point		*point;
+	MR_Spy_Action		action;
+	const MR_Label_Layout	*parent;
+	const char		*problem;
+	MR_Word			*base_sp;
+	MR_Word			*base_curfr;
 
 	enabled = FALSE;
 	action = MR_SPY_PRINT;
@@ -290,7 +288,7 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 
 int
 MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
-	const MR_Stack_Layout_Entry *entry, const MR_Stack_Layout_Label *label)
+	const MR_Proc_Layout *entry, const MR_Label_Layout *label)
 {
 	MR_Spy_Point	*point;
 	int		point_slot;
@@ -391,8 +389,7 @@ MR_add_line_spy_point(MR_Spy_Action action,
 }
 
 static void
-MR_add_line_spy_point_callback(const MR_Stack_Layout_Label *label,
-	int spy_point_num)
+MR_add_line_spy_point_callback(const MR_Label_Layout *label, int spy_point_num)
 {
 	int	spied_label_slot;
 

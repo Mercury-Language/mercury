@@ -19,7 +19,7 @@
 
 :- import_module llds, builtin_ops, prog_data, hlds_data, rl_file.
 :- import_module globals.
-:- import_module list, set_bbbtree, bool, io, std_util.
+:- import_module bool, std_util, list, map, io.
 
 	% Given a 'c_file' structure, output the LLDS code inside it
 	% into one or more .c files, depending on the setting of the
@@ -27,9 +27,8 @@
 	% labels that have layout structures. The third gives the Aditi-RL
 	% code for the module.
 
-:- pred output_llds(c_file, set_bbbtree(label), maybe(rl_file),
-		io__state, io__state).
-:- mode output_llds(in, in, in, di, uo) is det.
+:- pred output_llds(c_file::in, map(label, data_addr)::in, maybe(rl_file)::in,
+	io__state::di, io__state::uo) is det.
 
 	% output_c_file_intro_and_grade(SourceFileName, Version)
 	% outputs a comment which includes the settings used to generate
@@ -84,6 +83,10 @@
 	% arguments are as above.
 
 :- pred output_data_addr_decls(data_addr::in, string::in, string::in,
+	int::in, int::out, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
+
+:- pred output_data_addrs_decls(list(data_addr)::in, string::in, string::in,
 	int::in, int::out, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
@@ -201,9 +204,6 @@
 	% Convert a label to a string description of the stack layout
 	% structure of that label.
 
-:- pred llds_out__make_stack_layout_name(label, string).
-:- mode llds_out__make_stack_layout_name(in, out) is det.
-
 	% Returns the name of the initialization function
 	% for a given module.
 
@@ -215,12 +215,6 @@
 
 :- pred llds_out__make_rl_data_name(module_name, string).
 :- mode llds_out__make_rl_data_name(in, out) is det.
-
-:- pred llds_out__trace_port_to_string(trace_port, string).
-:- mode llds_out__trace_port_to_string(in, out) is det.
-
-:- pred llds_out__trace_port_to_num(trace_port, int).
-:- mode llds_out__trace_port_to_num(in, out) is det.
 
 	% The following are exported to rtti_out. It may be worthwhile
 	% to put these in a new module (maybe llds_out_util).
@@ -262,13 +256,13 @@
 
 :- implementation.
 
-:- import_module rtti, rtti_out, options, trace_params.
+:- import_module rtti, rtti_out, layout, layout_out, options, trace_params.
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules.
 :- import_module c_util.
 
 :- import_module int, char, string, std_util.
-:- import_module map, set, bintree_set, assoc_list, require.
+:- import_module set, bintree_set, assoc_list, require.
 :- import_module varset, term.
 :- import_module library.	% for the version number.
 
@@ -312,7 +306,7 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile) -->
 	).
 
 :- pred output_split_user_foreign_codes(list(user_foreign_code)::in,
-	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_user_foreign_codes([], _, _, _, Num, Num) --> [].
@@ -326,7 +320,7 @@ output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
 		C_HeaderLines, StackLayoutLabels, Num1, Num).
 
 :- pred output_split_c_exports(list(foreign_export)::in,
-	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_c_exports([], _, _, _, Num, Num) --> [].
@@ -340,7 +334,7 @@ output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_vars(list(comp_gen_c_var)::in,
-	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_vars([], _, _, _, Num, Num) --> [].
@@ -353,7 +347,7 @@ output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_datas(list(comp_gen_c_data)::in,
-	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_datas([], _, _, _, Num, Num) --> [].
@@ -366,7 +360,7 @@ output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_modules(list(comp_gen_c_module)::in,
-	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_modules([], _, _, _, Num, Num) --> [].
@@ -380,7 +374,7 @@ output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_c_file_init(module_name, list(comp_gen_c_module),
-	list(comp_gen_c_data), set_bbbtree(label), maybe(rl_file),
+	list(comp_gen_c_data), map(label, data_addr), maybe(rl_file),
 	io__state, io__state).
 :- mode output_split_c_file_init(in, in, in, in, in, di, uo) is det.
 
@@ -454,7 +448,7 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 convert_bool_to_string(no, "no").
 convert_bool_to_string(yes, "yes").
 
-:- pred output_single_c_file(c_file, maybe(int), set_bbbtree(label),
+:- pred output_single_c_file(c_file, maybe(int), map(label, data_addr),
 	maybe(rl_file), io__state, io__state).
 :- mode output_single_c_file(in, in, in, in, di, uo) is det.
 
@@ -516,7 +510,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 	).
 
 :- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
-	list(comp_gen_c_data)::in, set_bbbtree(label)::in,
+	list(comp_gen_c_data)::in, map(label, data_addr)::in,
 	io__state::di, io__state::uo) is det.
 
 output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
@@ -616,16 +610,16 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 
 :- pred module_defines_label_with_layout(comp_gen_c_module::in,
-	set_bbbtree(label)::in) is semidet.
+	map(label, data_addr)::in) is semidet.
 
 module_defines_label_with_layout(Module, StackLayoutLabels) :-
 		% Checking whether the set is empty or not
 		% allows us to avoid calling gather_c_module_labels.
-	\+ set_bbbtree__empty(StackLayoutLabels),
+	\+ map__is_empty(StackLayoutLabels),
 	Module = comp_gen_c_module(_, Procedures),
 	gather_c_module_labels(Procedures, Labels),
 	list__member(Label, Labels),
-	set_bbbtree__member(Label, StackLayoutLabels).
+	map__search(StackLayoutLabels, Label, _).
 
 :- pred output_init_bunch_defs(list(list(comp_gen_c_module))::in,
 	module_name::in, string::in, int::in, bool::in,
@@ -715,12 +709,12 @@ output_type_tables_init_list([Data | Datas], SplitFiles) -->
 output_debugger_init_list_decls([]) --> [].
 output_debugger_init_list_decls([Data | Datas]) -->
 	(
-		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
-		{ DataName = module_layout }
+		{ Data = layout_data(LayoutData) },
+		{ LayoutData = module_layout_data(ModuleName, _, _, _, _, _) }
 	->
 		{ decl_set_init(DeclSet0) },
-		output_data_addr_decls(data_addr(ModuleName, DataName), "", "",
-			0, _, DeclSet0, _DeclSet)
+		output_data_addr_decls(layout_addr(module_layout(ModuleName)),
+			"", "", 0, _, DeclSet0, _DeclSet)
 	;
 		[]
 	),
@@ -736,13 +730,13 @@ output_debugger_init_list_decls([Data | Datas]) -->
 output_debugger_init_list([]) --> [].
 output_debugger_init_list([Data | Datas]) -->
 	(
-		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
-		{ DataName = module_layout }
+		{ Data = layout_data(LayoutData) },
+		{ LayoutData = module_layout_data(ModuleName, _, _, _, _, _) }
 	->
 		io__write_string("\t\tif (MR_register_module_layout != NULL) {\n"),
 		io__write_string("\t\t\t(*MR_register_module_layout)("),
-		io__write_string("(MR_Module_Layout *)\n\t\t\t\t&"),
-		output_data_addr(ModuleName, DataName),
+		io__write_string("\n\t\t\t\t&"),
+		output_layout_name(module_layout(ModuleName)),
 		io__write_string(");\n\t\t}\n")
 	;
 		[]
@@ -851,9 +845,11 @@ output_c_data_type_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	{ decl_set_insert(DeclSet0, DeclId, DeclSet) }.
 output_c_data_type_def(rtti_data(RttiData), DeclSet0, DeclSet) -->
 	output_rtti_data_decl(RttiData, DeclSet0, DeclSet).
+output_c_data_type_def(layout_data(LayoutData), DeclSet0, DeclSet) -->
+	output_layout_data_decl(LayoutData, DeclSet0, DeclSet).
 
 :- pred output_comp_gen_c_module_list(list(comp_gen_c_module)::in,
-	set_bbbtree(label)::in, decl_set::in, decl_set::out,
+	map(label, data_addr)::in, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
 output_comp_gen_c_module_list([], _, DeclSet, DeclSet) --> [].
@@ -864,13 +860,14 @@ output_comp_gen_c_module_list([Module | Modules], StackLayoutLabels,
 	output_comp_gen_c_module_list(Modules, StackLayoutLabels,
 		DeclSet1, DeclSet).
 
-:- pred output_comp_gen_c_module(comp_gen_c_module::in, set_bbbtree(label)::in,
+:- pred output_comp_gen_c_module(comp_gen_c_module::in, map(label, data_addr)::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
 output_comp_gen_c_module(comp_gen_c_module(ModuleName, Procedures),
 		StackLayoutLabels, DeclSet0, DeclSet) -->
 	io__write_string("\n"),
-	output_c_procedure_list_decls(Procedures, DeclSet0, DeclSet),
+	output_c_procedure_list_decls(Procedures, StackLayoutLabels,
+		DeclSet0, DeclSet),
 	io__write_string("\n"),
 	io__write_string("MR_BEGIN_MODULE("),
 	io__write_string(ModuleName),
@@ -953,38 +950,8 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	{ decl_set_insert(DeclSet1, DeclId, DeclSet) }.
 output_comp_gen_c_data(rtti_data(RttiData), DeclSet0, DeclSet) -->
 	output_rtti_data_defn(RttiData, DeclSet0, DeclSet).
-
-llds_out__trace_port_to_string(call, "MR_PORT_CALL").
-llds_out__trace_port_to_string(exit, "MR_PORT_EXIT").
-llds_out__trace_port_to_string(redo, "MR_PORT_REDO").
-llds_out__trace_port_to_string(fail, "MR_PORT_FAIL").
-llds_out__trace_port_to_string(exception, "MR_PORT_EXCEPTION").
-llds_out__trace_port_to_string(ite_cond, "MR_PORT_COND").
-llds_out__trace_port_to_string(ite_then, "MR_PORT_THEN").
-llds_out__trace_port_to_string(ite_else, "MR_PORT_ELSE").
-llds_out__trace_port_to_string(neg_enter,   "MR_PORT_NEG_ENTER").
-llds_out__trace_port_to_string(neg_success, "MR_PORT_NEG_SUCCESS").
-llds_out__trace_port_to_string(neg_failure, "MR_PORT_NEG_FAILURE").
-llds_out__trace_port_to_string(disj,   "MR_PORT_DISJ").
-llds_out__trace_port_to_string(switch, "MR_PORT_SWITCH").
-llds_out__trace_port_to_string(nondet_pragma_first, "MR_PORT_PRAGMA_FIRST").
-llds_out__trace_port_to_string(nondet_pragma_later, "MR_PORT_PRAGMA_LATER").
-
-llds_out__trace_port_to_num(call, 0).
-llds_out__trace_port_to_num(exit, 1).
-llds_out__trace_port_to_num(redo, 2).
-llds_out__trace_port_to_num(fail, 3).
-llds_out__trace_port_to_num(exception, 4).
-llds_out__trace_port_to_num(ite_cond, 5).
-llds_out__trace_port_to_num(ite_then, 6).
-llds_out__trace_port_to_num(ite_else, 7).
-llds_out__trace_port_to_num(neg_enter,   8).
-llds_out__trace_port_to_num(neg_success, 9).
-llds_out__trace_port_to_num(neg_failure, 10).
-llds_out__trace_port_to_num(disj,   11).
-llds_out__trace_port_to_num(switch, 12).
-llds_out__trace_port_to_num(nondet_pragma_first, 13).
-llds_out__trace_port_to_num(nondet_pragma_later, 14).
+output_comp_gen_c_data(layout_data(LayoutData), DeclSet0, DeclSet) -->
+	output_layout_data_defn(LayoutData, DeclSet0, DeclSet).
 
 :- pred output_user_foreign_code_list(list(user_foreign_code)::in,
 	io__state::di, io__state::uo) is det.
@@ -1060,7 +1027,7 @@ output_exported_c_functions([F | Fs]) -->
 	io__write_string(F),
 	output_exported_c_functions(Fs).
 
-:- pred output_c_label_decl_list(list(label), set_bbbtree(label),
+:- pred output_c_label_decl_list(list(label), map(label, data_addr),
 		decl_set, decl_set, io__state, io__state).
 :- mode output_c_label_decl_list(in, in, in, out, di, uo) is det.
 
@@ -1070,16 +1037,15 @@ output_c_label_decl_list([Label | Labels], StackLayoutLabels,
 	output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet1),
 	output_c_label_decl_list(Labels, StackLayoutLabels, DeclSet1, DeclSet).
 
-:- pred output_c_label_decl(label, set_bbbtree(label), decl_set, decl_set,
-		io__state, io__state).
-:- mode output_c_label_decl(in, in, in, out, di, uo) is det.
+:- pred output_c_label_decl(label::in, map(label, data_addr)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
 output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet) -->
 	%
 	% Declare the stack layout entry for this label, if needed.
 	%
-	( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-		output_stack_layout_decl(Label, DeclSet0, DeclSet1)
+	( { map__search(StackLayoutLabels, Label, DataAddr) } ->
+		output_stack_layout_decl(DataAddr, DeclSet0, DeclSet1)
 	;
 		{ DeclSet1 = DeclSet0 }
 	),
@@ -1114,32 +1080,13 @@ output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet) -->
 	output_label(Label),
 	io__write_string(");\n").
 
-:- pred output_stack_layout_decl(label, decl_set, decl_set,
-		io__state, io__state).
-:- mode output_stack_layout_decl(in, in, out, di, uo) is det.
+:- pred output_stack_layout_decl(data_addr::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
 
-output_stack_layout_decl(Label, DeclSet0, DeclSet) -->
-	{ Label = local(_, _) ->
-		DataName = internal_layout(Label)
-	;
-		DataName = proc_layout(Label)
-	},
-	{ ProcLabel = get_proc_label(Label) },
-	{ ModuleName = get_defining_module_name(ProcLabel) },
-	{ DataAddr = data_addr(ModuleName, DataName) },
+output_stack_layout_decl(DataAddr, DeclSet0, DeclSet) -->
 	output_data_addr_decls(DataAddr, "", "", 0, _, DeclSet0, DeclSet).
 
-:- func get_proc_label(label) = proc_label.
-get_proc_label(exported(ProcLabel)) = ProcLabel.
-get_proc_label(local(ProcLabel)) = ProcLabel.
-get_proc_label(c_local(ProcLabel)) = ProcLabel.
-get_proc_label(local(_, ProcLabel)) = ProcLabel.
-
-:- func get_defining_module_name(proc_label) = module_name.
-get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
-get_defining_module_name(special_proc(ModuleName, _, _, _, _, _)) = ModuleName.
-
-:- pred output_c_label_init_list(list(label), set_bbbtree(label),
+:- pred output_c_label_init_list(list(label), map(label, data_addr),
 	io__state, io__state).
 :- mode output_c_label_init_list(in, in, di, uo) is det.
 
@@ -1148,13 +1095,13 @@ output_c_label_init_list([Label | Labels], StackLayoutLabels) -->
 	output_c_label_init(Label, StackLayoutLabels),
 	output_c_label_init_list(Labels, StackLayoutLabels).
 
-:- pred output_c_label_init(label, set_bbbtree(label), io__state, io__state).
+:- pred output_c_label_init(label, map(label, data_addr), io__state, io__state).
 :- mode output_c_label_init(in, in, di, uo) is det.
 
 output_c_label_init(Label, StackLayoutLabels) -->
-	{ set_bbbtree__member(Label, StackLayoutLabels) ->
+	{ map__search(StackLayoutLabels, Label, DataAddr) ->
 		SuffixOpen = "_sl(",
-		( label_is_proc_entry(Label, yes) ->
+		( DataAddr = layout_addr(proc_layout(_, _)) ->
 			% Labels whose stack layouts are proc layouts may need
 			% to have the code address in that layout initialized
 			% at run time (if code addresses are not static).
@@ -1201,35 +1148,35 @@ label_is_proc_entry(c_local(_), yes).
 label_is_proc_entry(local(_), yes).
 label_is_proc_entry(exported(_), yes).
 
-:- pred output_c_procedure_list_decls(list(c_procedure), decl_set, decl_set,
-	io__state, io__state).
-:- mode output_c_procedure_list_decls(in, in, out, di, uo) is det.
+:- pred output_c_procedure_list_decls(list(c_procedure)::in,
+	map(label, data_addr)::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
 
-output_c_procedure_list_decls([], DeclSet, DeclSet) --> [].
-output_c_procedure_list_decls([Proc | Procs], DeclSet0, DeclSet) -->
-	output_c_procedure_decls(Proc, DeclSet0, DeclSet1),
-	output_c_procedure_list_decls(Procs, DeclSet1, DeclSet).
+output_c_procedure_list_decls([], _, DeclSet, DeclSet) --> [].
+output_c_procedure_list_decls([Proc | Procs], StackLayoutLabels,
+		DeclSet0, DeclSet) -->
+	output_c_procedure_decls(Proc, StackLayoutLabels, DeclSet0, DeclSet1),
+	output_c_procedure_list_decls(Procs, StackLayoutLabels,
+		DeclSet1, DeclSet).
 
-:- pred output_c_procedure_list(list(c_procedure), bool, bool,
-				io__state, io__state).
-:- mode output_c_procedure_list(in, in, in, di, uo) is det.
+:- pred output_c_procedure_list(list(c_procedure)::in, bool::in, bool::in,
+	io__state::di, io__state::uo) is det.
 
 output_c_procedure_list([], _, _) --> [].
 output_c_procedure_list([Proc | Procs], PrintComments, EmitCLoops) -->
 	output_c_procedure(Proc, PrintComments, EmitCLoops),
 	output_c_procedure_list(Procs, PrintComments, EmitCLoops).
 
-:- pred output_c_procedure_decls(c_procedure, decl_set, decl_set,
-				io__state, io__state).
-:- mode output_c_procedure_decls(in, in, out, di, uo) is det.
+:- pred output_c_procedure_decls(c_procedure::in, map(label, data_addr)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_c_procedure_decls(Proc, DeclSet0, DeclSet) -->
+output_c_procedure_decls(Proc, StackLayoutLabels, DeclSet0, DeclSet) -->
 	{ Proc = c_procedure(_Name, _Arity, _PredProcId, Instrs, _, _, _) },
-	output_instruction_list_decls(Instrs, DeclSet0, DeclSet).
+	output_instruction_list_decls(Instrs, StackLayoutLabels,
+		DeclSet0, DeclSet).
 
-:- pred output_c_procedure(c_procedure, bool, bool,
-	io__state, io__state).
-:- mode output_c_procedure(in, in, in, di, uo) is det.
+:- pred output_c_procedure(c_procedure::in, bool::in, bool::in,
+	io__state::di, io__state::uo) is det.
 
 output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	{ Proc = c_procedure(Name, Arity, proc(_, ProcId), Instrs, _, _, _) },
@@ -1375,34 +1322,36 @@ llds_out__is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_instruction_list_decls(list(instruction), decl_set, decl_set,
-					io__state, io__state).
-:- mode output_instruction_list_decls(in, in, out, di, uo) is det.
+:- pred output_instruction_list_decls(list(instruction)::in,
+	map(label, data_addr)::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
 
-output_instruction_list_decls([], DeclSet, DeclSet) --> [].
-output_instruction_list_decls([Instr0 - _Comment0 | Instrs],
+output_instruction_list_decls([], _, DeclSet, DeclSet) --> [].
+output_instruction_list_decls([Instr0 - _Comment0 | Instrs], StackLayoutLabels,
 		DeclSet0, DeclSet) -->
-	output_instruction_decls(Instr0, DeclSet0, DeclSet1),
-	output_instruction_list_decls(Instrs, DeclSet1, DeclSet).
+	output_instruction_decls(Instr0, StackLayoutLabels,
+		DeclSet0, DeclSet1),
+	output_instruction_list_decls(Instrs, StackLayoutLabels,
+		DeclSet1, DeclSet).
 
-:- pred output_instruction_decls(instr, decl_set, decl_set,
-	io__state, io__state).
-:- mode output_instruction_decls(in, in, out, di, uo) is det.
+:- pred output_instruction_decls(instr::in, map(label, data_addr)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_instruction_decls(comment(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(livevals(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(block(_TempR, _TempF, Instrs),
+output_instruction_decls(comment(_), _, DeclSet, DeclSet) --> [].
+output_instruction_decls(livevals(_), _, DeclSet, DeclSet) --> [].
+output_instruction_decls(block(_TempR, _TempF, Instrs), StackLayoutLabels,
 		DeclSet0, DeclSet) -->
-	output_instruction_list_decls(Instrs, DeclSet0, DeclSet).
-output_instruction_decls(assign(Lval, Rval), DeclSet0, DeclSet) -->
+	output_instruction_list_decls(Instrs, StackLayoutLabels,
+		DeclSet0, DeclSet).
+output_instruction_decls(assign(Lval, Rval), _, DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(call(Target, ContLabel, _, _, _, _),
+output_instruction_decls(call(Target, ContLabel, _, _, _, _), _,
 		DeclSet0, DeclSet) -->
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(ContLabel, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(c_code(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(mkframe(FrameInfo, FailureContinuation),
+output_instruction_decls(c_code(_), _, DeclSet, DeclSet) --> [].
+output_instruction_decls(mkframe(FrameInfo, FailureContinuation), _,
 		DeclSet0, DeclSet) -->
 	(
 		{ FrameInfo = ordinary_frame(_, _, yes(Struct)) },
@@ -1437,51 +1386,55 @@ output_instruction_decls(mkframe(FrameInfo, FailureContinuation),
 	),
 	output_code_addr_decls(FailureContinuation, "", "", 0, _,
 		DeclSet1, DeclSet).
-output_instruction_decls(label(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(goto(CodeAddr), DeclSet0, DeclSet) -->
+output_instruction_decls(label(_), _, DeclSet, DeclSet) --> [].
+output_instruction_decls(goto(CodeAddr), _, DeclSet0, DeclSet) -->
 	output_code_addr_decls(CodeAddr, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(computed_goto(Rval, _Labels), DeclSet0, DeclSet) -->
+output_instruction_decls(computed_goto(Rval, _Labels), _,
+		DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(if_val(Rval, Target), DeclSet0, DeclSet) -->
+output_instruction_decls(if_val(Rval, Target), _, DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(incr_hp(Lval, _Tag, Rval, _), DeclSet0, DeclSet) -->
+output_instruction_decls(incr_hp(Lval, _Tag, Rval, _), _,
+		DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(mark_hp(Lval), DeclSet0, DeclSet) -->
+output_instruction_decls(mark_hp(Lval), _, DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(restore_hp(Rval), DeclSet0, DeclSet) -->
+output_instruction_decls(restore_hp(Rval), _, DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(free_heap(Rval), DeclSet0, DeclSet) -->
+output_instruction_decls(free_heap(Rval), _, DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(store_ticket(Lval), DeclSet0, DeclSet) -->
+output_instruction_decls(store_ticket(Lval), _, DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(reset_ticket(Rval, _Reason), DeclSet0, DeclSet) -->
+output_instruction_decls(reset_ticket(Rval, _Reason), _, DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(discard_ticket, DeclSet, DeclSet) --> [].
-output_instruction_decls(prune_ticket, DeclSet, DeclSet) --> [].
-output_instruction_decls(mark_ticket_stack(Lval), DeclSet0, DeclSet) -->
+output_instruction_decls(discard_ticket, _, DeclSet, DeclSet) --> [].
+output_instruction_decls(prune_ticket, _, DeclSet, DeclSet) --> [].
+output_instruction_decls(mark_ticket_stack(Lval), _, DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(prune_tickets_to(Rval), DeclSet0, DeclSet) -->
+output_instruction_decls(prune_tickets_to(Rval), _, DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
-output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
+output_instruction_decls(incr_sp(_, _), _, DeclSet, DeclSet) --> [].
+output_instruction_decls(decr_sp(_), _, DeclSet, DeclSet) --> [].
 output_instruction_decls(pragma_c(_, Comps, _, _, MaybeLayoutLabel, _, _),
-		DeclSet0, DeclSet) -->
+		StackLayoutLabels, DeclSet0, DeclSet) -->
 	( { MaybeLayoutLabel = yes(Label) } ->
-		output_stack_layout_decl(Label, DeclSet0, DeclSet1)
+		{ map__lookup(StackLayoutLabels, Label, DataAddr) },
+		output_stack_layout_decl(DataAddr, DeclSet0, DeclSet1)
 	;
 		{ DeclSet1 = DeclSet0 }
 	),
 	output_pragma_c_component_list_decls(Comps, DeclSet1, DeclSet).
-output_instruction_decls(init_sync_term(Lval, _), DeclSet0, DeclSet) -->
+output_instruction_decls(init_sync_term(Lval, _), _, DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(fork(Child, Parent, _), DeclSet0, DeclSet) -->
+output_instruction_decls(fork(Child, Parent, _), _, DeclSet0, DeclSet) -->
 	output_code_addr_decls(label(Child), "", "", 0, _, DeclSet0, DeclSet2),
 	output_code_addr_decls(label(Parent), "", "", 0, _, DeclSet2, DeclSet).
-output_instruction_decls(join_and_terminate(Lval), DeclSet0, DeclSet) -->
+output_instruction_decls(join_and_terminate(Lval), _, DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(join_and_continue(Lval, Label), DeclSet0, DeclSet) -->
+output_instruction_decls(join_and_continue(Lval, Label), _, DeclSet0, DeclSet)
+		-->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(label(Label), "", "", 0, _, DeclSet1, DeclSet).
 
@@ -2410,7 +2363,8 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 				% addresses.
 			{ StaticCode = no },
 			{ DeclId = data_addr(DataAddr) },
-			{ data_addr_would_include_code_address(DataAddr, yes) }
+			{ data_addr_would_include_code_address(DataAddr)
+				= yes }
 		->
 			[]
 		;
@@ -2458,23 +2412,20 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 	% that will have to be overridden with the real code address at
 	% initialization time.
 
-:- pred data_addr_would_include_code_address(data_addr, bool).
-:- mode data_addr_would_include_code_address(in, out) is det.
+:- func data_addr_would_include_code_address(data_addr) = bool.
 
-data_addr_would_include_code_address(data_addr(_, DataName), CodeAddr) :-
-	data_name_would_include_code_address(DataName, CodeAddr).
-data_addr_would_include_code_address(rtti_addr(_, RttiName), CodeAddr) :-
-	rtti_name_would_include_code_addr(RttiName, CodeAddr).
+data_addr_would_include_code_address(data_addr(_, DataName)) =
+	data_name_would_include_code_address(DataName).
+data_addr_would_include_code_address(rtti_addr(_, RttiName)) =
+	rtti_name_would_include_code_addr(RttiName).
+data_addr_would_include_code_address(layout_addr(LayoutName)) =
+	layout_name_would_include_code_addr(LayoutName).
 
-:- pred data_name_would_include_code_address(data_name, bool).
-:- mode data_name_would_include_code_address(in, out) is det.
+:- func data_name_would_include_code_address(data_name) = bool.
 
-data_name_would_include_code_address(common(_),                 no).
-data_name_would_include_code_address(base_typeclass_info(_, _), yes).
-data_name_would_include_code_address(module_layout,             no).
-data_name_would_include_code_address(proc_layout(_),            yes).
-data_name_would_include_code_address(internal_layout(_),        no).
-data_name_would_include_code_address(tabling_pointer(_),        no).
+data_name_would_include_code_address(common(_)) =                 no.
+data_name_would_include_code_address(base_typeclass_info(_, _)) = yes.
+data_name_would_include_code_address(tabling_pointer(_)) =        no.
 
 :- pred output_decl_id(decl_id, io__state, io__state).
 :- mode output_decl_id(in, di, uo) is det.
@@ -2966,8 +2917,19 @@ output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, N0, N) -->
 	;
 		{ DataAddr = rtti_addr(RttiTypeId, RttiVarName) },
 		output_rtti_addr_storage_type_name(RttiTypeId, RttiVarName, no)
+	;
+		{ DataAddr = layout_addr(LayoutName) },
+		output_layout_name_storage_type_name(LayoutName, no)
 	),
 	io__write_string(";\n").
+
+output_data_addrs_decls([], _, _, N, N, DeclSet, DeclSet) --> [].
+output_data_addrs_decls([DataAddr | DataAddrs], FirstIndent, LaterIndent,
+		N0, N, DeclSet0, DeclSet) -->
+	output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, N0, N1,
+		DeclSet0, DeclSet1),
+	output_data_addrs_decls(DataAddrs, FirstIndent, LaterIndent, N1, N,
+		DeclSet1, DeclSet).
 
 c_data_linkage_string(Globals, DefaultLinkage, BeingDefined, LinkageStr) :-
 	globals__lookup_bool_option(Globals, split_c_files, SplitFiles),
@@ -3025,8 +2987,8 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 			LinkageStr) },
 		io__write_string(LinkageStr),
 
-		{ data_name_would_include_code_address(DataVarName,
-			InclCodeAddr) },
+		{ InclCodeAddr =
+			data_name_would_include_code_address(DataVarName) },
 		{ c_data_const_string(Globals, InclCodeAddr, ConstStr) },
 		io__write_string(ConstStr),
 
@@ -3042,9 +3004,6 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 
 data_name_linkage(common(_),                 static).
 data_name_linkage(base_typeclass_info(_, _), extern).
-data_name_linkage(module_layout,             static).
-data_name_linkage(proc_layout(_),            static).
-data_name_linkage(internal_layout(_),        static).
 data_name_linkage(tabling_pointer(_),        static).
 
 %-----------------------------------------------------------------------------%
@@ -3316,14 +3275,6 @@ output_code_addr(do_aditi_bulk_modify) -->
 output_code_addr(do_not_reached) -->
 	io__write_string("MR_ENTRY(MR_do_not_reached)").
 
-	% The code should be kept in sync with output_data_addr/2 below.
-llds_out__make_stack_layout_name(Label, Name) :-
-	llds_out__get_label(Label, yes, LabelName),
-	string__append_list([
-		"mercury_data__layout__",
-		LabelName
-	], Name).
-
 	% Output a maybe data address, with a `no' meaning NULL.
 
 :- pred output_maybe_data_addr(maybe(data_addr)::in,
@@ -3368,6 +3319,8 @@ output_data_addr(data_addr(ModuleName, DataName)) -->
 	output_data_addr(ModuleName, DataName).
 output_data_addr(rtti_addr(RttiTypeId, RttiName)) -->
 	output_rtti_addr(RttiTypeId, RttiName).
+output_data_addr(layout_addr(LayoutName)) -->
+	output_layout_name(LayoutName).
 
 mercury_data_prefix = "mercury_data_".
 
@@ -3391,24 +3344,6 @@ output_data_addr(ModuleName, VarName) -->
 			% module
 		{ VarName = base_typeclass_info(ClassId, TypeNames) },
 		output_base_typeclass_info_name(ClassId, TypeNames)
-	;
-		{ VarName = module_layout },
-		io__write_string(mercury_data_prefix),
-		io__write_string("_module_layout_"),
-		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
-		io__write_string(MangledModuleName)
-	;
-		% Keep this code in sync with make_stack_layout_name/3.
-		{ VarName = proc_layout(Label) },
-		io__write_string(mercury_data_prefix),
-		io__write_string("_layout__"),
-		output_label(Label)
-	;
-		% Keep this code in sync with make_stack_layout_name/3.
-		{ VarName = internal_layout(Label) },
-		io__write_string(mercury_data_prefix),
-		io__write_string("_layout__"),
-		output_label(Label)
 	;
 		{ VarName = tabling_pointer(ProcLabel) },
 		io__write_string("mercury_var__tabling__"),

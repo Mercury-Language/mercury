@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -28,7 +28,8 @@
 	;	branch_on_failure.
 
 :- pred unify_gen__generate_unification(code_model::in, unification::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 :- pred unify_gen__generate_tag_test(prog_var::in, cons_id::in, test_sense::in,
 	label::out, code_tree::out, code_info::in, code_info::out) is det.
@@ -41,7 +42,7 @@
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
 :- import_module globals, options, continuation_info, stack_layout.
-:- import_module rl.
+:- import_module rl, trace.
 
 :- import_module term, bool, string, int, list, map, require, std_util.
 
@@ -50,7 +51,7 @@
 
 %---------------------------------------------------------------------------%
 
-unify_gen__generate_unification(CodeModel, Uni, Code) -->
+unify_gen__generate_unification(CodeModel, Uni, GoalInfo, Code) -->
 	{ CodeModel = model_non ->
 		error("nondet unification in unify_gen__generate_unification")
 	;
@@ -67,7 +68,7 @@ unify_gen__generate_unification(CodeModel, Uni, Code) -->
 		{ Uni = construct(Var, ConsId, Args, Modes, _, _, AditiInfo) },
 		( code_info__variable_is_forward_live(Var) ->
 			unify_gen__generate_construction(Var, ConsId,
-				Args, Modes, AditiInfo, Code)
+				Args, Modes, AditiInfo, GoalInfo, Code)
 		;
 			{ Code = empty }
 		)
@@ -271,27 +272,30 @@ unify_gen__generate_tag_rval_2(shared_local_tag(Bits, Num), Rval,
 
 :- pred unify_gen__generate_construction(prog_var::in, cons_id::in,
 	list(prog_var)::in, list(uni_mode)::in, maybe(rl_exprn_id)::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
-unify_gen__generate_construction(Var, Cons, Args, Modes, AditiInfo, Code) -->
+unify_gen__generate_construction(Var, Cons, Args, Modes, AditiInfo, GoalInfo,
+		Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
 	unify_gen__generate_construction_2(Tag, Var, Args,
-		Modes, AditiInfo, Code).
+		Modes, AditiInfo, GoalInfo, Code).
 
 :- pred unify_gen__generate_construction_2(cons_tag::in, prog_var::in, 
 	list(prog_var)::in, list(uni_mode)::in, maybe(rl_exprn_id)::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 unify_gen__generate_construction_2(string_constant(String),
-		Var, _Args, _Modes, _, empty) -->
+		Var, _Args, _Modes, _, _, empty) -->
 	code_info__assign_const_to_var(Var, const(string_const(String))).
 unify_gen__generate_construction_2(int_constant(Int),
-		Var, _Args, _Modes, _, empty) -->
+		Var, _Args, _Modes, _, _, empty) -->
 	code_info__assign_const_to_var(Var, const(int_const(Int))).
 unify_gen__generate_construction_2(float_constant(Float),
-		Var, _Args, _Modes, _, empty) -->
+		Var, _Args, _Modes, _, _, empty) -->
 	code_info__assign_const_to_var(Var, const(float_const(Float))).
-unify_gen__generate_construction_2(no_tag, Var, Args, Modes, _, Code) -->
+unify_gen__generate_construction_2(no_tag, Var, Args, Modes, _, _, Code) -->
 	( { Args = [Arg], Modes = [Mode] } ->
 		code_info__variable_type(Arg, Type),
 		unify_gen__generate_sub_unify(ref(Var), ref(Arg),
@@ -301,7 +305,7 @@ unify_gen__generate_construction_2(no_tag, Var, Args, Modes, _, Code) -->
 		"unify_gen__generate_construction_2: no_tag: arity != 1") }
 	).
 unify_gen__generate_construction_2(unshared_tag(Ptag),
-		Var, Args, Modes, _, Code) -->
+		Var, Args, Modes, _, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	unify_gen__var_types(Args, ArgTypes),
 	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
@@ -310,7 +314,7 @@ unify_gen__generate_construction_2(unshared_tag(Ptag),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	code_info__assign_cell_to_var(Var, Ptag, Rvals, VarTypeMsg, Code).
 unify_gen__generate_construction_2(shared_remote_tag(Ptag, Sectag),
-		Var, Args, Modes, _, Code) -->
+		Var, Args, Modes, _, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	unify_gen__var_types(Args, ArgTypes),
 	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
@@ -321,11 +325,11 @@ unify_gen__generate_construction_2(shared_remote_tag(Ptag, Sectag),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	code_info__assign_cell_to_var(Var, Ptag, Rvals, VarTypeMsg, Code).
 unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
-		Var, _Args, _Modes, _, empty) -->
+		Var, _Args, _Modes, _, _, empty) -->
 	code_info__assign_const_to_var(Var,
 		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
 unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
-		TypeName, TypeArity), Var, Args, _Modes, _, empty) -->
+		TypeName, TypeArity), Var, Args, _Modes, _, _, empty) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -335,7 +339,7 @@ unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
 	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
-		ClassId, Instance), Var, Args, _Modes, _, empty) -->
+		ClassId, Instance), Var, Args, _Modes, _, _, empty) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -344,7 +348,7 @@ unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 	code_info__assign_const_to_var(Var, const(data_addr_const(data_addr(
 		ModuleName, base_typeclass_info(ClassId, Instance))))).
 unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
-		Var, Args, _Modes, _, empty) -->
+		Var, Args, _Modes, _, _, empty) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -356,7 +360,7 @@ unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
 	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
-		Var, Args, _Modes, _, empty) -->
+		Var, Args, _Modes, _, _, empty) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -367,7 +371,7 @@ unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 	code_info__assign_const_to_var(Var, const(code_addr_const(CodeAddr))).
 unify_gen__generate_construction_2(
 		pred_closure_tag(PredId, ProcId, EvalMethod),
-		Var, Args, _Modes, _AditiInfo, Code) -->
+		Var, Args, _Modes, _AditiInfo, GoalInfo, Code) -->
 	% This code constructs or extends a closure.
 	% The structure of closures is defined in runtime/mercury_ho_call.h.
 
@@ -534,10 +538,21 @@ unify_gen__generate_construction_2(
 		),
 		{ continuation_info__generate_closure_layout(
 			ModuleInfo, PredId, ProcId, ClosureInfo) },
+		{ module_info_name(ModuleInfo, ModuleName) },
+		{ goal_info_get_context(GoalInfo, Context) },
+		{ term__context_file(Context, FileName) },
+		{ term__context_line(Context, LineNumber) },
+		{ goal_info_get_goal_path(GoalInfo, GoalPath) },
+		{ trace__path_to_string(GoalPath, GoalPathStr) },
+		code_info__get_cur_proc_label(CallerProcLabel),
+		code_info__get_next_closure_seq_no(SeqNo),
 		code_info__get_cell_counter(C0),
-		{ stack_layout__construct_closure_layout(ProcLabel,
-			ClosureInfo, ClosureLayoutMaybeRvals,
-			ClosureLayoutArgTypes, C0, C) },
+		{ stack_layout__construct_closure_layout(CallerProcLabel,
+			SeqNo, ClosureInfo, ProcLabel, ModuleName,
+			FileName, LineNumber, GoalPathStr,
+			ClosureLayoutMaybeRvals, ClosureLayoutArgTypes,
+			Data, C0, C) },
+		code_info__add_closure_layout(Data),
 		code_info__set_cell_counter(C),
 		code_info__get_next_cell_number(ClosureLayoutCellNo),
 		{ Reuse = no },

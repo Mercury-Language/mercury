@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 :- import_module prog_data, (inst).
 :- import_module hlds_pred, hlds_goal, hlds_data.
-:- import_module code_model, rtti, builtin_ops.
+:- import_module code_model, rtti, layout, builtin_ops.
 :- import_module tree.
 
 :- import_module bool, assoc_list, list, map, set, std_util, counter.
@@ -80,6 +80,9 @@
 :- pred global_data_update_proc_layout(global_data::in,
 	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
 
+:- pred global_data_add_new_closure_layouts(global_data::in,
+	list(comp_gen_c_data)::in, global_data::out) is det.
+
 :- pred global_data_add_new_non_common_static_datas(global_data::in,
 	list(comp_gen_c_data)::in, global_data::out) is det.
 
@@ -94,6 +97,9 @@
 
 :- pred global_data_get_all_proc_layouts(global_data::in,
 	list(proc_layout_info)::out) is det.
+
+:- pred global_data_get_all_closure_layouts(global_data::in,
+	list(comp_gen_c_data)::out) is det.
 
 :- pred global_data_get_all_non_common_static_data(global_data::in,
 	list(comp_gen_c_data)::out) is det.
@@ -154,6 +160,9 @@
 		)
 	;	rtti_data(
 			rtti_data
+		)
+	;	layout_data(
+			layout_data
 		).
 
 :- type comp_gen_c_module
@@ -895,21 +904,15 @@
 :- type data_addr
 	--->	data_addr(module_name, data_name)
 			% module name; which var
-	;	rtti_addr(rtti_type_id, rtti_name).
+	;	rtti_addr(rtti_type_id, rtti_name)
 			% type id; which var
+	;	layout_addr(layout_name).
 
 :- type data_name
 	--->	common(int)
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
-	;	module_layout
-			% Layout information for the current module.
-	;	proc_layout(label)
-			% Layout structure for the procedure with the given
-			% entry label.
-	;	internal_layout(label)
-			% Layout structure for the given internal label.
 	;	tabling_pointer(proc_label).
 			% A variable that contains a pointer that points to
 			% the table used to implement memoization, loopcheck
@@ -1077,6 +1080,10 @@
 	% (floats may be bigger than a word, but if so, they are boxed)
 :- pred llds__type_is_word_size_as_arg(llds_type::in, bool::out) is det.
 
+:- func get_proc_label(label) = proc_label.
+
+:- func get_defining_module_name(proc_label) = module_name.
+
 :- implementation.
 
 :- import_module require.
@@ -1237,6 +1244,14 @@ llds__type_is_word_size_as_arg(data_ptr,     yes).
 llds__type_is_word_size_as_arg(code_ptr,     yes).
 llds__type_is_word_size_as_arg(word,         yes).
 
+get_proc_label(exported(ProcLabel)) = ProcLabel.
+get_proc_label(local(ProcLabel)) = ProcLabel.
+get_proc_label(c_local(ProcLabel)) = ProcLabel.
+get_proc_label(local(_, ProcLabel)) = ProcLabel.
+
+get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
+get_defining_module_name(special_proc(ModuleName, _, _, _, _, _)) = ModuleName.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1245,105 +1260,85 @@ llds__type_is_word_size_as_arg(word,         yes).
 
 :- type global_data
 	--->	global_data(
-			proc_var_map,		% Information about the global
+			proc_var_map		:: proc_var_map,
+						% Information about the global
 						% variables defined by each
 						% procedure.
-			proc_layout_map,	% Information about the
+			proc_layout_map		:: proc_layout_map,
+						% Information about the
 						% layout structures defined
 						% by each procedure.
-			list(comp_gen_c_data)	% The list of global data
+			closure_layouts		:: list(comp_gen_c_data),
+						% The list of all closure
+						% layouts generated in this
+						% module. While all closure
+						% layouts are different from
+						% all other comp_gen_c_datas,
+						% it is possible, although
+						% unlikely, for two closures
+						% to have the same layout.
+			non_common_data		:: list(comp_gen_c_data)
+						% The list of global data
 						% structures that do not need
 						% to be checked by llds_common,
 						% because their construction
 						% ensures no overlaps.
 		).
 
-global_data_init(global_data(EmptyDataMap, EmptyLayoutMap, [])) :-
+global_data_init(global_data(EmptyDataMap, EmptyLayoutMap, [], [])) :-
 	map__init(EmptyDataMap),
 	map__init(EmptyLayoutMap).
 
-global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar,
-		GlobalData) :-
-	global_data_get_proc_var_map(GlobalData0, ProcVarMap0),
+global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar, GlobalData) :-
+	ProcVarMap0 = GlobalData0 ^ proc_var_map,
 	map__det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
-	global_data_set_proc_var_map(GlobalData0, ProcVarMap,
-		GlobalData).
+	GlobalData = GlobalData0 ^ proc_var_map := ProcVarMap.
 
 global_data_add_new_proc_layout(GlobalData0, PredProcId, ProcLayout,
 		GlobalData) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
+	ProcLayoutMap0 = GlobalData0 ^ proc_layout_map,
 	map__det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
-		GlobalData).
+	GlobalData = GlobalData0 ^ proc_layout_map := ProcLayoutMap.
 
 global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayout,
 		GlobalData) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
+	ProcLayoutMap0 = GlobalData0 ^ proc_layout_map,
 	map__det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
-		GlobalData).
+	GlobalData = GlobalData0 ^ proc_layout_map := ProcLayoutMap.
+
+global_data_add_new_closure_layouts(GlobalData0, NewClosureLayouts,
+		GlobalData) :-
+	ClosureLayouts0 = GlobalData0 ^ closure_layouts,
+	list__append(NewClosureLayouts, ClosureLayouts0, ClosureLayouts),
+	GlobalData = GlobalData0 ^ closure_layouts := ClosureLayouts.
 
 global_data_add_new_non_common_static_datas(GlobalData0, NewNonCommonStatics,
 		GlobalData) :-
-	global_data_get_non_common_static_data(GlobalData0, NonCommonStatics0),
+	NonCommonStatics0 = GlobalData0 ^ non_common_data,
 	list__append(NewNonCommonStatics, NonCommonStatics0, NonCommonStatics),
-	global_data_set_non_common_static_data(GlobalData0, NonCommonStatics,
-		GlobalData).
+	GlobalData = GlobalData0 ^ non_common_data := NonCommonStatics.
 
-global_data_maybe_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
+global_data_maybe_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
+	ProcLayoutMap = GlobalData ^ proc_layout_map,
 	map__search(ProcLayoutMap, PredProcId, ProcLayout).
 
-global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
+global_data_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
+	ProcLayoutMap = GlobalData ^ proc_layout_map,
 	map__lookup(ProcLayoutMap, PredProcId, ProcLayout).
 
 global_data_get_all_proc_vars(GlobalData, ProcVars) :-
-	global_data_get_proc_var_map(GlobalData, ProcVarMap),
+	ProcVarMap = GlobalData ^ proc_var_map,
 	map__values(ProcVarMap, ProcVars).
 
 global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
-	global_data_get_proc_layout_map(GlobalData, ProcLayoutMap),
+	ProcLayoutMap = GlobalData ^ proc_layout_map,
 	map__values(ProcLayoutMap, ProcLayouts).
 
+global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) :-
+	ClosureLayouts = GlobalData ^ closure_layouts.
+
 global_data_get_all_non_common_static_data(GlobalData, NonCommonStatics) :-
-	global_data_get_non_common_static_data(GlobalData, NonCommonStatics).
-
-%-----------------------------------------------------------------------------%
-
-:- pred global_data_get_proc_var_map(global_data::in, proc_var_map::out)
-	is det.
-:- pred global_data_get_proc_layout_map(global_data::in, proc_layout_map::out)
-	is det.
-:- pred global_data_get_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::out) is det.
-:- pred global_data_set_proc_var_map(global_data::in, proc_var_map::in,
-	global_data::out) is det.
-:- pred global_data_set_proc_layout_map(global_data::in, proc_layout_map::in,
-	global_data::out) is det.
-:- pred global_data_set_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::in, global_data::out) is det.
-
-global_data_get_proc_var_map(GD, A) :-
-	GD = global_data(A, _, _).
-
-global_data_get_proc_layout_map(GD, B) :-
-	GD = global_data(_, B, _).
-
-global_data_get_non_common_static_data(GD, C) :-
-	GD = global_data(_, _, C).
-
-global_data_set_proc_var_map(GD0, A, GD) :-
-	GD0 = global_data(_, B, C),
-	GD  = global_data(A, B, C).
-
-global_data_set_proc_layout_map(GD0, B, GD) :-
-	GD0 = global_data(A, _, C),
-	GD  = global_data(A, B, C).
-
-global_data_set_non_common_static_data(GD0, C, GD) :-
-	GD0 = global_data(A, B, _),
-	GD  = global_data(A, B, C).
+	NonCommonStatics = GlobalData ^ non_common_data.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

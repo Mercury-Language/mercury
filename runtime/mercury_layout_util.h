@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -9,7 +9,7 @@
 
 #include "mercury_std.h"
 #include "mercury_types.h"		/* for MR_Word, etc. */
-#include "mercury_stack_layout.h"	/* for MR_Stack_Layout_Vars, etc. */
+#include "mercury_stack_layout.h"	/* for MR_Label_Layout, etc. */
 #include "mercury_type_info.h"		/* for MR_TypeInfoParams, etc. */
 
 /*
@@ -21,17 +21,17 @@ extern	void	MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs);
 extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 
 /*
-** A MR_Stack_Layout_Vars describes the variables that are live at a given
+** A MR_Label_Layout describes the variables that are live at a given
 ** program point. Some of the types of these variables may contain type
 ** variables. Since the values of those type variables are not known until
-** runtime, the MR_Stack_Layout_Vars cannot include full typeinfos for the
+** runtime, the MR_Label_Layout cannot include full typeinfos for the
 ** variables. Instead, it contains pseudo-typeinfos, in which some parts
 ** of some typeinfo structures may contain an indication "this data is
 ** not available at compile time, but at runtime it will be in this location".
 **
-** MR_materialize_typeinfos takes as input a MR_Stack_Layout_Vars
-** structure. It returns a vector of typeinfos which has one entry for each
-** pseudo-typeinfo in the MR_Stack_Layout_Vars structure, with this typeinfo
+** MR_materialize_typeinfos takes as input a MR_Label_Layout structure.
+** It returns a vector of typeinfos which has one entry for each
+** pseudo-typeinfo in the MR_Label_Layout structure, with this typeinfo
 ** being the pseudo-typeinfo with the runtime-only information substituted in.
 ** Since type variable numbers start at one, the element of this array at
 ** index zero will not have a type_info in it.  We store a dummy type_ctor_info
@@ -49,10 +49,10 @@ extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 */ 
 
 extern	MR_TypeInfoParams	MR_materialize_typeinfos(
-					const MR_Stack_Layout_Vars *vars,
+					const MR_Label_Layout *label_layout,
 					MR_Word *saved_regs);
 extern	MR_TypeInfoParams	MR_materialize_typeinfos_base(
-					const MR_Stack_Layout_Vars *vars,
+					const MR_Label_Layout *label_layout,
 					MR_Word *saved_regs,
 					MR_Word *base_sp, MR_Word *base_curfr);
 
@@ -115,18 +115,18 @@ extern	MR_Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
 ** be allocated on the Mercury heap.
 */
 
-extern	bool	MR_get_type_and_value(const MR_Stack_Layout_Vars *vars,
+extern	bool	MR_get_type_and_value(const MR_Label_Layout *label_layout,
 			int var, MR_Word *saved_regs, MR_TypeInfo *type_params,
 			MR_TypeInfo *type_info, MR_Word *value);
-extern	bool	MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars,
+extern	bool	MR_get_type_and_value_base(const MR_Label_Layout *label_layout,
 			int var, MR_Word *saved_regs,
 			MR_Word *base_sp, MR_Word *base_curfr,
 			MR_TypeInfo *type_params, MR_TypeInfo *type_info,
 			MR_Word *value);
-extern	bool	MR_get_type(const MR_Stack_Layout_Vars *vars, int var,
+extern	bool	MR_get_type(const MR_Label_Layout *label_layout, int var,
 			MR_Word *saved_regs, MR_TypeInfo *type_params,
 			MR_TypeInfo *type_info);
-extern	bool	MR_get_type_base(const MR_Stack_Layout_Vars *vars, int var,
+extern	bool	MR_get_type_base(const MR_Label_Layout *label_layout, int var,
 			MR_Word *saved_regs, MR_Word *base_sp,
 			MR_Word *base_curfr, MR_TypeInfo *type_params,
 			MR_TypeInfo *type_info);

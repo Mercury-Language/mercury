@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2000 The University of Melbourne.
+** Copyright (C) 1999-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -91,19 +91,19 @@ typedef struct {
 */
 
 typedef struct {
-	const MR_Stack_Layout_Label	*MR_point_top_layout;
-	MR_Word				*MR_point_top_saved_regs;
-	MR_Trace_Port			MR_point_top_port;
-	const char			*MR_point_problem;
-	int				MR_point_level;
-	const MR_Stack_Layout_Entry	*MR_point_level_entry;
-	const char			*MR_point_level_filename;
-	int				MR_point_level_linenumber;
-	MR_Word				*MR_point_level_base_sp;
-	MR_Word				*MR_point_level_base_curfr;
-	int				MR_point_var_count;
-	int				MR_point_var_max;
-	MR_Var_Details			*MR_point_vars;
+	const MR_Label_Layout	*MR_point_top_layout;
+	MR_Word			*MR_point_top_saved_regs;
+	MR_Trace_Port		MR_point_top_port;
+	const char		*MR_point_problem;
+	int			MR_point_level;
+	const MR_Proc_Layout	*MR_point_level_entry;
+	const char		*MR_point_level_filename;
+	int			MR_point_level_linenumber;
+	MR_Word			*MR_point_level_base_sp;
+	MR_Word			*MR_point_level_base_curfr;
+	int			MR_point_var_count;
+	int			MR_point_var_max;
+	MR_Var_Details		*MR_point_vars;
 } MR_Point;
 
 static	bool		MR_trace_type_is_ignored(
@@ -221,7 +221,7 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 }
 
 void
-MR_trace_init_point_vars(const MR_Stack_Layout_Label *top_layout,
+MR_trace_init_point_vars(const MR_Label_Layout *top_layout,
 	MR_Word *saved_regs, MR_Trace_Port port)
 {
 	MR_point.MR_point_top_layout = top_layout;
@@ -237,10 +237,9 @@ MR_trace_set_level(int ancestor_level)
 	const char			*problem;
 	MR_Word				*base_sp;
 	MR_Word				*base_curfr;
-	const MR_Stack_Layout_Label	*top_layout;
-	const MR_Stack_Layout_Label	*level_layout;
-	const MR_Stack_Layout_Entry	*entry;
-	const MR_Stack_Layout_Vars	*vars;
+	const MR_Label_Layout		*top_layout;
+	const MR_Label_Layout		*level_layout;
+	const MR_Proc_Layout		*entry;
 	MR_Word				*valid_saved_regs;
 	int				var_count;
 	MR_TypeInfo			*type_params;
@@ -281,8 +280,7 @@ MR_trace_set_level(int ancestor_level)
 		return problem;
 	}
 
-	vars = &level_layout->MR_sll_var_info;
-	if (! MR_has_valid_var_count(vars)) {
+	if (! MR_has_valid_var_count(level_layout)) {
 		return "there is no information about live variables";
 	}
 
@@ -306,8 +304,8 @@ MR_trace_set_level(int ancestor_level)
 	MR_point.MR_point_level_base_sp = base_sp;
 	MR_point.MR_point_level_base_curfr = base_curfr;
 
-	if (MR_has_valid_var_info(vars)) {
-		var_count = MR_all_desc_var_count(vars);
+	if (MR_has_valid_var_info(level_layout)) {
+		var_count = MR_all_desc_var_count(level_layout);
 	} else {
 		/*
 		** If the count of variables is zero, then the rest of the
@@ -323,7 +321,7 @@ MR_trace_set_level(int ancestor_level)
 		return NULL;
 	}
 
-	if (vars->MR_slvs_var_nums == NULL) {
+	if (level_layout->MR_sll_var_nums == NULL) {
 		return "there are no names for the live variables";
 	}
 
@@ -335,7 +333,7 @@ MR_trace_set_level(int ancestor_level)
 		valid_saved_regs = NULL;
 	}
 
-	type_params = MR_materialize_typeinfos_base(vars,
+	type_params = MR_materialize_typeinfos_base(level_layout,
 				valid_saved_regs, base_sp, base_curfr);
 
 	MR_ensure_big_enough(var_count, MR_point.MR_point_var, 
@@ -356,7 +354,7 @@ MR_trace_set_level(int ancestor_level)
 		int	var_num;
 		int	offset;
 
-		var_num = vars->MR_slvs_var_nums[i];
+		var_num = level_layout->MR_sll_var_nums[i];
 
 		if (var_num == 0) {
 			/* this value is not a variable */
@@ -379,13 +377,14 @@ MR_trace_set_level(int ancestor_level)
 			continue;
 		}
 
-		pseudo_type_info = MR_var_pti(vars, i);
+		pseudo_type_info = MR_var_pti(level_layout, i);
 		if (MR_trace_type_is_ignored(pseudo_type_info)) {
 			continue;
 		}
 
-		if (! MR_get_type_and_value_base(vars, i, valid_saved_regs,
-			base_sp, base_curfr, type_params, &type_info, &value))
+		if (! MR_get_type_and_value_base(level_layout, i,
+			valid_saved_regs, base_sp, base_curfr,
+			type_params, &type_info, &value))
 		{
 			/* this value is not a variable */
 			continue;
@@ -533,7 +532,7 @@ MR_trace_current_level(void)
 }
 
 void
-MR_trace_current_level_details(const MR_Stack_Layout_Entry **entry_ptr,
+MR_trace_current_level_details(const MR_Proc_Layout **entry_ptr,
 	const char **filename_ptr, int *linenumber_ptr,
 	MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr)
 {

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -32,7 +32,7 @@ typedef struct MR_Event_Info_Struct {
 	MR_Unsigned			MR_call_seqno;
 	MR_Unsigned			MR_call_depth;
 	MR_Trace_Port			MR_trace_port;
-	const MR_Stack_Layout_Label	*MR_event_sll;
+	const MR_Label_Layout		*MR_event_sll;
 	const char 			*MR_event_path;
 	MR_Word				MR_saved_regs[MR_MAX_FAKE_REG];
 	int				MR_max_mr_num;

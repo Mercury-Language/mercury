@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2000 The University of Melbourne.
+** Copyright (C) 1993-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -150,10 +150,10 @@ extern	MR_Integer	ML_DI_get_var_number(MR_Word);
 extern	MR_String	ML_type_name(MR_Word);
 
 /* in runtime/mercury_trace_base.c */
-extern	MR_Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
 
 /* in trace/mercury_trace.c */
-extern	MR_Code	*MR_trace_real(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace_real(const MR_Label_Layout *);
 extern	void	MR_trace_interrupt_handler(void);
 
 /* in trace/mercury_trace_tables.c */

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -58,14 +58,14 @@ extern	void	MR_dump_stack(MR_Code *success_pointer,
 */
 
 typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
-				const MR_Stack_Layout_Entry *proc_layout,
+				const MR_Proc_Layout *proc_layout,
 				int count, int level,
 				MR_Word *base_sp, MR_Word * base_curfr,
 				const char *filename, int linenumber,
 				const char *goal_path, bool context_mismatch);
 
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
-				const MR_Stack_Layout_Label *label_layout,
+				const MR_Label_Layout *label_layout,
 				MR_Word *det_stack_pointer,
 				MR_Word *current_frame,
 				bool include_trace_data,
@@ -97,8 +97,8 @@ extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
 **	and problem will point to an error message.
 */
 
-extern	const MR_Stack_Layout_Label *MR_find_nth_ancestor(
-			const MR_Stack_Layout_Label *label_layout,
+extern	const MR_Label_Layout *MR_find_nth_ancestor(
+			const MR_Label_Layout *label_layout,
 			int ancestor_level, MR_Word **stack_trace_sp,
 			MR_Word **stack_trace_curfr, const char **problem);
 
@@ -127,8 +127,8 @@ typedef enum {
 } MR_Stack_Walk_Step_Result;
 
 extern  MR_Stack_Walk_Step_Result
-MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
-		const MR_Stack_Layout_Label **return_label_layout,
+MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
+		const MR_Label_Layout **return_label_layout,
 		MR_Word **stack_trace_sp_ptr, MR_Word **stack_trace_curfr_ptr,
 		const char **problem_ptr);
 
@@ -164,7 +164,7 @@ extern	const char *MR_detism_names[];
 ** it returns FALSE.
 */
 
-extern	bool	MR_find_context(const MR_Stack_Layout_Label *label,
+extern	bool	MR_find_context(const MR_Label_Layout *label,
 			const char **fileptr, int *lineptr);
 
 /*
@@ -180,12 +180,12 @@ extern	bool	MR_find_context(const MR_Stack_Layout_Label *label,
 */
 
 extern	void	MR_print_call_trace_info(FILE *fp,
-			const MR_Stack_Layout_Entry *entry,
+			const MR_Proc_Layout *entry,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 extern	void	MR_maybe_print_call_trace_info(FILE *fp,
 			bool include_trace_data,
-			const MR_Stack_Layout_Entry *entry,
+			const MR_Proc_Layout *entry,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
@@ -195,15 +195,14 @@ extern	void	MR_maybe_print_call_trace_info(FILE *fp,
 ** the caller can put something else after the procedure id on the same line.
 */
 
-extern	void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry);
+extern	void	MR_print_proc_id(FILE *fp, const MR_Proc_Layout *entry);
 
 /*
 ** MR_print_proc_spec prints a string that uniquely specifies the given
 ** procedure to the debugger.
 */
 
-extern	void	MR_print_proc_spec(FILE *fp,
-			const MR_Stack_Layout_Entry *entry);
+extern	void	MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry);
 
 /*
 ** MR_print_proc_id_trace_and_context prints an identification of the given
@@ -222,7 +221,7 @@ typedef	enum {
 
 extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
 			bool include_trace_data, MR_Context_Position pos,
-			const MR_Stack_Layout_Entry *entry,
+			const MR_Proc_Layout *entry,
 			MR_Word *base_sp, MR_Word *base_curfr, const char *path,
 			const char *filename, int lineno, bool print_parent,
 			const char *parent_filename, int parent_lineno,
@@ -233,7 +232,7 @@ extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
 */
 
 extern	void	MR_dump_stack_record_print(FILE *fp,
-			const MR_Stack_Layout_Entry *entry_layout, int count,
+			const MR_Proc_Layout *entry_layout, int count,
 			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
 			const char *goal_path, bool context_mismatch);

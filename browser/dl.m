@@ -108,21 +108,10 @@ open(FileName, Mode, Scope, Result) -->
 #endif
 }").
 
-:- type closure_layout
-	--->	closure_layout(
-			int,
-			string,
-			string,
-			string,
-			int,
-			int,
-			int
-		).
-
 	% closures for the LLDS backend
 :- type ll_closure
 	--->	ll_closure(
-			closure_layout,
+			c_pointer,	% really MR_Closure_Layout
 			c_pointer,	% the address of the procedure to call
 			int		% the number of curried arguments;
 					% always zero, for closures created
@@ -132,7 +121,7 @@ open(FileName, Mode, Scope, Result) -->
 	% closures for the --high-level-code (MLDS) backend
 :- type hl_closure
 	--->	hl_closure(
-			closure_layout,
+			c_pointer,	% really MR_Closure_Layout
 			c_pointer,	% the wrapper function;
 					% this gets passed the closure
 					% as an argument
@@ -160,22 +149,65 @@ mercury_sym(Handle, MercuryProc0, Result) -->
 		%
 		( high_level_code ->
 			NumCurriedInputArgs = 1,
-			ClosureLayout = closure_layout(0, "unknown", "unknown",
-				"unknown", -1, -1, -1),
+			ClosureLayout = make_closure_layout,
 			HL_Closure = hl_closure(ClosureLayout,
 				dl__generic_closure_wrapper,
 				NumCurriedInputArgs, Address),
 			private_builtin__unsafe_type_cast(HL_Closure, Value)
 		;
 			NumCurriedInputArgs = 0,
-			ClosureLayout = closure_layout(0, "unknown", "unknown",
-				"unknown", -1, -1, -1),
+			ClosureLayout = make_closure_layout,
 			LL_Closure = ll_closure(ClosureLayout, Address,
 				NumCurriedInputArgs),
 			private_builtin__unsafe_type_cast(LL_Closure, Value)
 		),
 		Result = ok(Value)
 	}.
+
+:- pragma foreign_decl("C",
+"
+#include ""mercury_ho_call.h""
+extern	int	ML_DL_closure_counter;
+").
+
+:- pragma foreign_code("C",
+"
+int	ML_DL_closure_counter = 0;
+").
+
+:- func make_closure_layout = c_pointer.
+
+:- pragma foreign_code("C", make_closure_layout = (ClosureLayout::out),
+	[will_not_call_mercury, thread_safe],
+"{
+	extern	int			ML_DL_closure_counter;
+	MR_Closure_Id			*closure_id;
+	MR_Closure_Dyn_Link_Layout	*closure_layout;
+	char				buf[80];
+
+	/* create a goal path that encodes a unique id for this closure */
+	ML_DL_closure_counter++;
+	sprintf(buf, ""@%d;"", ML_DL_closure_counter);
+
+	closure_id = MR_GC_NEW(MR_Closure_Id);
+	closure_id->proc_id.MR_proc_user.MR_user_pred_or_func = MR_PREDICATE;
+	closure_id->proc_id.MR_proc_user.MR_user_decl_module = ""unknown"";
+	closure_id->proc_id.MR_proc_user.MR_user_def_module = ""unknown"";
+	closure_id->proc_id.MR_proc_user.MR_user_name = ""unknown"";
+	closure_id->proc_id.MR_proc_user.MR_user_arity = -1;
+	closure_id->proc_id.MR_proc_user.MR_user_mode = -1;
+	closure_id->module_name = ""dl"";
+	closure_id->file_name = __FILE__;
+	closure_id->line_number = __LINE__;
+	closure_id->goal_path = strdup(buf);
+
+	closure_layout = MR_GC_NEW(MR_Closure_Dyn_Link_Layout);
+	closure_layout->closure_id = closure_id;
+	closure_layout->type_params = NULL;
+	closure_layout->num_all_args = 0;
+
+	ClosureLayout = (MR_Word) closure_layout;
+}").
 
 :- pragma c_header_code("
 extern MR_Box MR_CALL ML_DL_generic_closure_wrapper(void *closure,

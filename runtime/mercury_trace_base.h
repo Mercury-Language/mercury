@@ -65,8 +65,8 @@ extern	const char 			*MR_port_names[];
 ** after the event. (NULL means it should continue as usual.)
 */
 
-extern	MR_Code	*MR_trace(const MR_Stack_Layout_Label *);
-extern	MR_Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace(const MR_Label_Layout *);
+extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
 
 /*
 ** MR_trace_init() is called from mercury_runtime_init()

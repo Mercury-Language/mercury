@@ -43,7 +43,7 @@
 :- func trace_level_none = trace_level.
 
 	% This is used to represent the trace level in the module layout.
-:- func trace_level_rep(trace_level) = int.
+:- func trace_level_rep(trace_level) = string.
 
 :- implementation.
 
@@ -239,11 +239,11 @@ wrap_port(Port, port(Port)).
 
 	% If this is modified, then the corresponding code in
 	% runtime/mercury_stack_layout.h needs to be updated.
-trace_level_rep(none) = 0.
-trace_level_rep(shallow) = 1.
-trace_level_rep(deep) = 2.
-trace_level_rep(decl) = 3.
-trace_level_rep(decl_rep) = 4.
+trace_level_rep(none)	  = "MR_TRACE_LEVEL_NONE".
+trace_level_rep(shallow)  = "MR_TRACE_LEVEL_SHALLOW".
+trace_level_rep(deep)	  = "MR_TRACE_LEVEL_DEEP".
+trace_level_rep(decl)	  = "MR_TRACE_LEVEL_DECL".
+trace_level_rep(decl_rep) = "MR_TRACE_LEVEL_DECL_REP".
 
 %-----------------------------------------------------------------------------%
 

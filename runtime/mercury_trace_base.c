@@ -3,7 +3,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -139,7 +139,7 @@ const char	*MR_port_names[] =
 };
 
 MR_Code *
-MR_trace(const MR_Stack_Layout_Label *layout)
+MR_trace(const MR_Label_Layout *layout)
 {
 	if (! MR_trace_enabled) {
 		return NULL;
@@ -164,7 +164,7 @@ MR_tracing_not_enabled(void)
 }
 
 MR_Code *
-MR_trace_fake(const MR_Stack_Layout_Label *layout)
+MR_trace_fake(const MR_Label_Layout *layout)
 {
 	MR_tracing_not_enabled();
 	/*NOTREACHED*/
@@ -363,7 +363,7 @@ MR_define_entry(MR_do_trace_redo_fail_shallow);
 	{
 		MR_Code	*MR_jumpaddr;
 		MR_save_transient_registers();
-		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
+		MR_jumpaddr = MR_trace((const MR_Label_Layout *)
 			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
 		MR_restore_transient_registers();
 		if (MR_jumpaddr != NULL) {
@@ -389,7 +389,7 @@ MR_define_entry(MR_do_trace_redo_fail_deep);
 	{
 		MR_Code	*MR_jumpaddr;
 		MR_save_transient_registers();
-		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
+		MR_jumpaddr = MR_trace((const MR_Label_Layout *)
 			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
 		MR_restore_transient_registers();
 		if (MR_jumpaddr != NULL) {

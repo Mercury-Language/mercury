@@ -218,9 +218,9 @@
 
 :- implementation.
 
-:- import_module continuation_info, trace_params, type_util, llds_out, tree.
-:- import_module (inst), instmap, inst_match, code_util, mode_util, options.
-:- import_module code_model.
+:- import_module continuation_info, trace_params, llds_out, layout_out, tree.
+:- import_module type_util, (inst), instmap, inst_match, mode_util.
+:- import_module code_model, code_util, options.
 
 :- import_module list, bool, int, string, map, std_util, require, term, varset.
 
@@ -543,8 +543,8 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		MaybeRedoLabel = yes(RedoLayoutLabel),
 		trace__redo_layout_slot(CodeModel, RedoLayoutLval),
 		trace__stackref_to_string(RedoLayoutLval, RedoLayoutStr),
-		llds_out__make_stack_layout_name(RedoLayoutLabel,
-			LayoutAddrStr),
+		LayoutAddrStr =
+			layout_out__make_label_layout_name(RedoLayoutLabel),
 		string__append_list([
 			FillSlotsUptoIoSeq, "\n",
 			"\t\t", RedoLayoutStr,
@@ -802,7 +802,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 		VarLocs, ProcInfo, TvarDataMap),
 	set__list_to_set(VarInfoList, VarInfoSet),
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
-	llds_out__get_label(Label, yes, LabelStr),
+	LabelStr = layout_out__make_label_layout_name(Label),
 	DeclStmt = "\t\tMR_Code *MR_jumpaddr;\n",
 	SaveStmt = "\t\tMR_save_transient_registers();\n",
 	RestoreStmt = "\t\tMR_restore_transient_registers();\n",
@@ -810,8 +810,8 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 	},
 	{ string__append_list([
 		"\t\tMR_jumpaddr = MR_trace(\n",
-		"\t\t\t(const MR_Stack_Layout_Label *)\n",
-		"\t\t\t&mercury_data__layout__", LabelStr, ");\n"],
+		"\t\t\t(const MR_Label_Layout *)\n",
+		"\t\t\t&", LabelStr, ");\n"],
 		CallStmt) },
 	code_info__add_trace_layout_for_label(Label, Context, Port, Path,
 		LayoutLabelInfo),

@@ -15,7 +15,7 @@
 #include "mercury_regs.h"		/* needs to come first */
 #include <stddef.h>			/* for `size_t' */
 #include "mercury_std.h"		/* for `bool' */
-#include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' etc */
+#include "mercury_stack_layout.h"	/* for `MR_Label_Layout' etc */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
 #include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
 
@@ -140,7 +140,7 @@ extern	MR_Code		*MR_library_trace_browser;
 */
 
 extern	MR_Code		*(*volatile MR_trace_func_ptr)(
-				const MR_Stack_Layout_Label *);
+				const MR_Label_Layout *);
 
 /*
 ** If the init file was built with tracing enabled, then

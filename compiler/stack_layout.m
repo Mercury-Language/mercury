@@ -1,292 +1,27 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 University of Melbourne.
+% Copyright (C) 1997-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% This module generates the LLDS code that defines global constants to
-% hold the `stack_layout' structures of the stack frames defined by the
-% current module.
-%
-% The tables generated have a number of `create' rvals within them.
-% llds_common.m converts these into static data structures.
-%
-% We can create several types of stack layouts. Which kind we generate
-% depends on the values of several options.
-%
+% File: stack_layout.m.
 % Main authors: trd, zs.
 %
-% NOTE: If you make changes in this file, you may also need to modify
-% runtime/mercury_stack_layout.h.
+% This module generates label, procedure, module and closure layout structures
+% for code in the current module for the LLDS backend. Layout structures are
+% used by the parts of the runtime system that need to look at the stacks
+% (and sometimes the registers) and make sense of their contents. The parts
+% of the runtime system that need to do this include exception handling,
+% the debugger, and (eventually) the accurate garbage collector.
 %
-%---------------------------------------------------------------------------%
-%
-% Data Structure: procedure layouts
-%
-% If the option basic_stack_layout is set, we generate a MR_Stack_Layout_Entry
-% for each procedure. This will be stored in the global variable whose name is
-%	mercury_data__layout__mercury__<proc_label>.
-%
-% This structure contains up to three groups of fields. The first group,
-% which contains information that enables the stack to be traversed, is always
-% present. The second group, which identifies the procedure in terms that are
-% meaningful to both humans and machines, will be generated only if the option
-% procid_stack_layout is set, i.e. if we are doing stack tracing, execution
-% tracing or profiling. The third group, which contains information
-% specifically intended for the debugger, will be generated only if the option
-% trace_stack_layout is set.
-%
-% The distinguished value -1 in the first field of the second group
-% indicates that the later fields are not present.
-%
-% The distinguished value NULL in the first field of the third group
-% indicates that the later fields are not present.
-%
-%---------------------------------------------------------------------------%
-%
-% The first group contains the following fields:
-%
-%	MR_Code			*MR_sle_code_addr;
-%	MR_Long_Lval		MR_sle_succip_locn;
-%	MR_int_least16_t	MR_sle_stack_slots;
-%	MR_Determinism		MR_sle_detism;
-%
-% The code_addr field points to the start of the procedure's code.
-%
-% The succip_locn field encoded the location of the saved succip if it is saved
-% in a general purpose stack slot. If the succip is saved in a specal purpose
-% stack slot (as it is for model_non procedures) or if the procedure never
-% saves the succip (as in leaf procedures), this field will contain -1.
-%
-% The stack_slots field gives the number of general purpose stack slots
-% in the procedure.
-%
-% The detism field encodes the determinism of the procedure.
-%
-%---------------------------------------------------------------------------%
-%
-% The second group contains one field:
-%
-%	MR_Stack_Layout_Proc_Id	MR_sle_proc_id;
-%
-% This field is a union. The usual alternative of which identifies ordinary
-% procedures, while the other alternative identifies automatically generated 
-% unification, comparison and index functions. The meanings of the fields
-% in both forms are the same as in procedure labels. The runtime system can
-% figure out which form is present by testing the value of the first slot,
-% as the acceptable ranges of values of the first fields (which are the same
-% size) are disjoint.
-%
-%---------------------------------------------------------------------------%
-%
-% The third group contains the following fields:
-%
-%	struct MR_Stack_Layout_Label_Struct	*MR_sle_call_label;
-%	struct MR_Module_Layout_Struct		*MR_sle_module_layout;
-%	MR_Word					MR_sle_proc_rep;
-%	MR_int_least16_t			*MR_sle_used_var_names;
-%	MR_int_least16_t			MR_sle_max_var_num;
-%	MR_int_least16_t			MR_sle_max_r_num;
-%	MR_int_least8_t				MR_sle_maybe_from_full;
-%	MR_int_least8_t				MR_sle_maybe_io_seq;
-%	MR_int_least8_t				MR_sle_maybe_trail;
-%	MR_int_least8_t				MR_sle_maybe_maxfr;
-%	MR_EvalMethod				MR_sle_eval_method:8;
-%	MR_int_least8_t				MR_sle_maybe_call_table;
-%	MR_int_least8_t				MR_sle_maybe_decl_debug;
-%
-% The call_label field points to the label layout structure for the label
-% associated with the call event at the entry to the procedure. The purpose
-% of this field is to allow the runtime debugger to find out which variables
-% are where on entry, so it can reexecute the procedure if asked to do so
-% and if the values of the required variables are still available.
-%
-% The module_layout field points to the module info structure of the module
-% containing the procedure. This allows the debugger access to the string table
-% stored there, as well the table associating source-file contexts with labels.
-%
-% The proc_rep field contains a representation of the body of the procedure
-% as a Mercury term of type goal_rep, defined in program_representation.m.
-% If will be 0 if no such representation is available.
-%
-% The used_var_names field points to an array that contains offsets
-% into the string table, with the offset at index i-1 giving the name of
-% variable i (since variable numbers start at one). If a variable has no name
-% or cannot be referred to from an event, the offset will be zero, at which
-% offset the string table will contain an empty string. The string table
-% is restricted to be small enough to be addressed with 16 bits;
-% a string is reserved near the start for a string that says "too many
-% variables". Stack_layout.m will generate a reference to this string
-% instead of generating an offset that does not fit into 16 bits.
-% Therefore using the stored offset to index into the string table
-% is always safe.
-%
-% The max_var_num field gives the number of elements in the used_var_names
-% table.
-%
-% The max_r_num field tells the debugger which Mercury abstract machine
-% registers need saving in MR_trace: besides the special registers, it is
-% the general-purpose registers rN for values of N up to and including the
-% value of this field. Note that this field contains an upper bound; in
-% general, there will be calls to MR_trace at which the number of the highest
-% numbered general purpose (i.e. rN) registers is less than this. However,
-% storing the upper bound gets us almost all the benefit (of not saving and
-% restoring all the thousand rN registers) for a small fraction of the static
-% space cost of storing the actual number in label layout structures.
-%
-% If the procedure is compiled with deep tracing, the maybe_from_full field
-% will contain a negative number. If it is compiled with shallow tracing,
-% it will contain the number of the stack slot that holds the flag that says
-% whether this incarnation of the procedure was called from deeply traced code
-% or not. (The determinism of the procedure decides whether the stack slot
-% refers to a stackvar or a framevar.)
-%
-% If the procedure has an I/O state argument, the maybe_io_seq field will
-% contain the number of the stack slot that holds the value the I/O action
-% counter had on entry to this procedure.
-%
-% If trailing is not enabled, the maybe_trail field will contain a negative
-% number. If it is enabled, it will contain number of the first of two stack
-% slots used for checkpointing the state of the trail on entry to the
-% procedure. The first contains the trail pointer, the second the ticket.
-%
-% If the procedure lives on the nondet stack, or if it cannot create any
-% temporary nondet stack frames, the maybe_maxfr field will contain a negative
-% number. If it lives on the det stack, and can create temporary nondet stack
-% frames, it will contain the number number of the stack slot that contains the
-% value of maxfr on entry, for use in executing the retry debugger command
-% from the middle of the procedure.
-%
-% The eval_method field contains a representation of the evaluation method
-% used by the procedure. The retry command needs this information if it is
-% to reset the call tables of the procedure invocations being retried.
-%
-% If --trace-decl is not set, the maybe_decl field will contain a negative
-% number. If it is set, it will contain the number of the first of two stack
-% slots used by the declarative debugger; the other slot is the next higher
-% numbered one. (The determinism of the procedure decides whether the stack
-% slot refers to a stackvar or a framevar.)
-%
-%---------------------------------------------------------------------------%
-%
-% Data Structure: label layouts
-%
-% If the option basic_stack_layout is set, we generate stack layout tables
-% for some labels internal to the procedure. This table will be stored in the
-% global variable whose name is
-%	mercury_data__layout__mercury__<proc_label>_i<label_number>.
-% This table has the following format:
-%
-%	proc layout		(Word *) - pointer to the layout structure of
-%				the procedure containing this label
-% 	trace port		(int_least16) - a representation of the trace
-%				port associated with the label, or -1
-% 	goal path		(int_least16) - an index into the module's
-%				string table giving the goal path associated
-%				with the trace port of the label, or -1
-% 	# of live data items	(Integer) - an encoded representation of
-%				the number of live data items at the label
-% 	live data types locns 	(void *) - pointer to an area of memory
-%				containing information about where the live
-%				data items are and what their types are
-% 	live data var nums	(int_least16 *) - pointer to vector of ints
-%				giving the HLDS var numbers (if any) of live
-%				data items
-%	type parameters		(MR_Long_Lval *) - pointer to vector of
-%			 	MR_Long_Lval giving the locations of the
-%				typeinfos for the type parameters that may
-%				be referred to by the types of the live data
-%				items; the first word of the vector is an
-%				integer giving the number of entries in the
-%				vector; a NULL pointer means no type parameters
-%
-% The layout of the memory area containing information about the locations
-% and types of live data items is somewhat complicated, due to our desire
-% to make this information compact. We can represent a location in one of
-% two ways, as an 8-bit MR_Short_Lval or as a 32-bit MR_Long_Lval.
-% We prefer representing a location as an MR_Short_Lval, but of course
-% not all locations can be represented in this way, so those other locations
-% are represented as MR_Long_Lvals.
-%
-% The field containing the number of live data items is encoded by the
-% formula (#Long << short_count_bits + #Short), where #Short is the number
-% data items whose descriptions fit into an MR_Short_Lval and #Long is the
-% number of data items whose descriptions do not. (The field is not an integer
-% so that people who attempt to use it without going through the decoding
-% macros in runtime/mercury_stack_layout.h get an error from the C compiler.
-% The number of distinct values that fit into a uint_least_t also fits into
-% 8 bits, but since some locations hold the value of more than one variable
-% at a time, not all the values need to be distinct; this is why
-% short_count_bits is more than 8.)
-%
-% The memory area contains three vectors back to back. The first vector
-% has #Long + #Short word-sized elements, each of which is a pointer to a
-% MR_PseudoTypeInfo giving the type of a live data item, with a small
-% integer instead of a pointer representing a special kind of live data item
-% (e.g. a saved succip or hp). The second vector is an array of #Long
-% MR_Long_Lvals, and the third is an array of #Short MR_Short_Lvals,
-% each of which describes a location. The pseudotypeinfo pointed to by
-% the slot at subscript i in the first vector describes the type of
-% the data stored in slot i in the second vector if i < #Long, and
-% the type of the data stored in slot i - #Long in the third vector
-% otherwise.
-%
-% The live data pair vector will have an entry for each live variable.
-% The entry will give the location of the variable and its type.
-%
-% The live data var nums vector pointer may be NULL. If it is not, the vector
-% will have an entry consisting of a 16-bit number for each live data item.
-% This is either the live data item's HLDS variable number, or one of two
-% special values. Zero means that the live data item is not a variable
-% (e.g. it is a saved copy of succip). The largest possible 16-bit number
-% on the other hand means "the number of this variable does not fit into
-% 16 bits". With the exception of these special values, the value in this
-% slot uniquely identifies the variable.
-%
-% If the number of type parameters is not zero, we store the number,
-% so that the code that needs the type parameters can materialize
-% all the type parameters from their location descriptions in one go.
-% This is an optimization, since the type parameter vector could simply
-% be indexed on demand by the type variable's variable number stored within
-% pseudo-typeinfos inside the elements of the live data pairs vectors.
-%
-% Since we allocate type variable numbers sequentially, the type parameter
-% vector will usually be dense. However, after all variables whose types
-% include e.g. type variable 2 have gone out of scope, variables whose
-% types include type variable 3 may still be around. In cases like this,
-% the entry for type variable 2 will be zero; this signals to the code
-% in the internal debugger that materializes typeinfo structures that
-% this typeinfo structure need not be materialized.
-%
-% We need detailed information about the variables that are live at an
-% internal label in two kinds of circumstances. Stack layout information
-% will be present only for labels that fall into one or both of these
-% circumstances.
-%
-% -	The option trace_stack_layout is set, and the label represents
-%	a traced event at which variable info is needed (call, exit,
-%	or entrance to one branch of a branched control structure;
-%	fail events have no variable information).
-%
-% -	The option agc_stack_layout is set or the trace level specifies
-%	a capability for uplevel printing, and the label represents
-% 	a point where execution can resume after a procedure call or
-%	after backtracking.
-%
-% For labels that do not fall into one of these two categories, the
-% "# of live vars" field will be negative to indicate the absence of
-% information about the variables live at this label, and the last
-% four fields will not be present.
-%
-% For labels that do fall into one of these two categories, the
-% "# of live vars" field will hold the number of live variables, which
-% will not be negative. If it is zero, the last four fields will not be
-% present. Even if it is not zero, however, the pointer to the live data
-% names vector will be NULL unless the label is used in execution tracing.
-%
-% XXX: Presently, inst information is ignored. We also do not yet enable
-% procid stack layouts for profiling, since profiling does not yet use
-% stack layouts.
+% The tables we generate are mostly of (Mercury) types defined in layout.m,
+% which are turned into C code (global variable declarations and
+% initializations) by layout_out.m. However, these data structures also have
+% a number of `create' rvals within them; llds_common.m converts these into
+% static data structures.
+% 
+% The C types of the structures we generate are defined and documented in
+% runtime/mercury_stack_layout.h. 
 %
 %---------------------------------------------------------------------------%
 
@@ -294,25 +29,26 @@
 
 :- interface.
 
-:- import_module continuation_info, hlds_module, llds.
-:- import_module std_util, list, set_bbbtree, counter.
+:- import_module prog_data, continuation_info, hlds_module, llds.
+:- import_module std_util, list, map, counter.
 
 :- pred stack_layout__generate_llds(module_info::in, module_info::out,
-	global_data::in,
-	list(comp_gen_c_data)::out, list(comp_gen_c_data)::out,
-	set_bbbtree(label)::out) is det.
+	global_data::in, list(comp_gen_c_data)::out,
+	list(comp_gen_c_data)::out, map(label, data_addr)::out) is det.
 
-:- pred stack_layout__construct_closure_layout(proc_label::in,
-	closure_layout_info::in, list(maybe(rval))::out,
-	create_arg_types::out, counter::in, counter::out) is det.
+:- pred stack_layout__construct_closure_layout(proc_label::in, int::in,
+	closure_layout_info::in, proc_label::in, module_name::in,
+	string::in, int::in, string::in, list(maybe(rval))::out,
+	create_arg_types::out, comp_gen_c_data::out,
+	counter::in, counter::out) is det.
 
 :- implementation.
 
 :- import_module globals, options, llds_out, trace_params, trace.
 :- import_module hlds_data, hlds_goal, hlds_pred.
-:- import_module prog_data, prog_util, prog_out, instmap.
-:- import_module prog_rep, static_term.
-:- import_module rtti, ll_pseudo_type_info, (inst), code_util.
+:- import_module prog_util, prog_out, instmap.
+:- import_module prog_rep, static_term, layout_out.
+:- import_module rtti, layout, ll_pseudo_type_info, (inst), code_util.
 :- import_module assoc_list, bool, string, int, require.
 :- import_module map, term, set, varset.
 
@@ -335,7 +71,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	globals__get_trace_level(Globals, TraceLevel),
 	globals__get_trace_suppress(Globals, TraceSuppress),
 	globals__have_static_code_addresses(Globals, StaticCodeAddr),
-	set_bbbtree__init(LayoutLabels0),
+	map__init(LayoutLabels0),
 
 	map__init(StringMap0),
 	map__init(LabelTables0),
@@ -349,59 +85,40 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	stack_layout__lookup_string_in_table("<too many variables>", _,
 		LayoutInfo1, LayoutInfo2),
 	list__foldl(stack_layout__construct_layouts, ProcLayoutList,
-		LayoutInfo2, LayoutInfo3),
-		% This version of the layout info structure is final in all
-		% respects except the cell count.
-	ProcLayouts = LayoutInfo3 ^ proc_layouts,
-	InternalLayouts = LayoutInfo3 ^ internal_layouts,
-	LayoutLabels = LayoutInfo3 ^ label_set,
-	ProcLayoutArgs = LayoutInfo3 ^ proc_layout_args,
-	StringTable = LayoutInfo3 ^ string_table,
-	LabelTables = LayoutInfo3 ^ label_tables,
+		LayoutInfo2, LayoutInfo),
+	ModuleInfo = LayoutInfo ^ module_info,
+	ProcLayouts = LayoutInfo ^ proc_layouts,
+	InternalLayouts = LayoutInfo ^ internal_layouts,
+	LayoutLabels = LayoutInfo ^ label_set,
+	ProcLayoutNames = LayoutInfo ^ proc_layout_name_list,
+	StringTable = LayoutInfo ^ string_table,
+	LabelTables = LayoutInfo ^ label_tables,
 	StringTable = string_table(_, RevStringList, StringOffset),
 	list__reverse(RevStringList, StringList),
 	stack_layout__concat_string_list(StringList, StringOffset,
 		ConcatStrings),
 
+	PossiblyDynamicLayouts = ProcLayouts,
 	( TraceLayout = yes ->
-		Exported = no,	% ignored; see linkage/2 in llds_out.m
-		list__length(ProcLayoutList, NumProcLayouts),
 		module_info_name(ModuleInfo0, ModuleName),
-		llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
-		stack_layout__get_next_cell_number(ProcVectorCellNum,
-			LayoutInfo3, LayoutInfo4),
-		Reuse = no,
-		ProcLayoutVector = create(0, ProcLayoutArgs,
-			uniform(yes(data_ptr)), must_be_static, 
-			ProcVectorCellNum, "proc_layout_vector", Reuse),
 		globals__lookup_bool_option(Globals, rtti_line_numbers,
 			LineNumbers),
-		( LineNumbers = yes ->
+		(
+			LineNumbers = yes,
 			EffLabelTables = LabelTables
 		;
+			LineNumbers = no,
 			map__init(EffLabelTables)
 		),
 		stack_layout__format_label_tables(EffLabelTables,
-			NumSourceFiles, SourceFileVectors,
-			LayoutInfo4, LayoutInfo),
-		Rvals = [yes(const(string_const(ModuleNameStr))),
-			yes(const(int_const(StringOffset))),
-			yes(const(multi_string_const(StringOffset,
-				ConcatStrings))),
-			yes(const(int_const(NumProcLayouts))),
-			yes(ProcLayoutVector),
-			yes(const(int_const(NumSourceFiles))),
-			yes(SourceFileVectors),
-			yes(const(int_const(trace_level_rep(TraceLevel))))],
-		ModuleLayouts = comp_gen_c_data(ModuleName, module_layout,
-			Exported, Rvals, uniform(no), []),
-		StaticLayouts = [ModuleLayouts | InternalLayouts]
+			SourceFileLayouts),
+		ModuleLayout = layout_data(module_layout_data(ModuleName,
+			StringOffset, ConcatStrings, ProcLayoutNames,
+			SourceFileLayouts, TraceLevel)),
+		StaticLayouts = [ModuleLayout | InternalLayouts]
 	;
-		StaticLayouts = InternalLayouts,
-		LayoutInfo = LayoutInfo3
-	),
-	PossiblyDynamicLayouts = ProcLayouts,
-	stack_layout__get_module_info(ModuleInfo, LayoutInfo, _).
+		StaticLayouts = InternalLayouts
+	).
 
 :- pred stack_layout__valid_proc_layout(proc_layout_info::in) is semidet.
 
@@ -414,6 +131,12 @@ stack_layout__valid_proc_layout(ProcLayoutInfo) :-
 	;
 		ProcLabel = special_proc(_, _, _, _, _, _)
 	).
+
+:- pred stack_layout__data_addr_to_maybe_rval(data_addr::in, maybe(rval)::out)
+	is det.
+
+stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
+	Rval = const(data_addr_const(DataAddr)).
 
 %---------------------------------------------------------------------------%
 
@@ -453,119 +176,28 @@ stack_layout__valid_proc_layout(ProcLayoutInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred stack_layout__format_label_tables(map(string, label_table)::in,
-	int::out, rval::out, stack_layout_info::in, stack_layout_info::out)
-	is det.
+:- pred stack_layout__format_label_tables(map(string, label_table)::in, 
+	list(file_layout_data)::out) is det.
 
-stack_layout__format_label_tables(LabelTableMap, NumSourceFiles,
-		SourceFilesVector, LayoutInfo0, LayoutInfo) :-
+stack_layout__format_label_tables(LabelTableMap, SourceFileLayouts) :-
 	map__to_assoc_list(LabelTableMap, LabelTableList),
-	list__length(LabelTableList, NumSourceFiles),
-	list__map_foldl(stack_layout__format_label_table, LabelTableList,
-		SourceFileRvals, LayoutInfo0, LayoutInfo1),
-	stack_layout__get_next_cell_number(SourceFileVectorCellNum,
-		LayoutInfo1, LayoutInfo),
-	Reuse = no,
-	SourceFilesVector = create(0, SourceFileRvals,
-		uniform(yes(data_ptr)), must_be_static, 
-		SourceFileVectorCellNum, "source_files_vector", Reuse).
+	list__map(stack_layout__format_label_table, LabelTableList,
+		SourceFileLayouts).
 
 :- pred stack_layout__format_label_table(pair(string, label_table)::in,
-	maybe(rval)::out, stack_layout_info::in, stack_layout_info::out) is det.
+	file_layout_data::out) is det.
 
-stack_layout__format_label_table(FileName - LineNoMap, yes(SourceFileVector),
-		LayoutInfo0, LayoutInfo) :-
+stack_layout__format_label_table(FileName - LineNoMap,
+		file_layout_data(FileName, FilteredList)) :-
 		% This step should produce a list ordered on line numbers.
 	map__to_assoc_list(LineNoMap, LineNoList),
 		% And this step should preserve that order.
 	stack_layout__flatten_label_table(LineNoList, [], FlatLineNoList),
-	list__length(FlatLineNoList, VectorLength),
-	stack_layout__get_module_name(CurrentModule, LayoutInfo0, LayoutInfo1),
-
-	ProjectLineNos = (pred(LabelInfo::in, LineNoRval::out) is det :-
-		LabelInfo = LineNo - (_Label - _IsReturn),
-		LineNoRval = yes(const(int_const(LineNo)))
+	Filter = (pred(LineNoInfo::in, FilteredLineNoInfo::out) is det :-
+		LineNoInfo = LineNo - (Label - _IsReturn),
+		FilteredLineNoInfo = LineNo - Label
 	),
-	ProjectLabels = (pred(LabelInfo::in, LabelRval::out) is det :-
-		LabelInfo = _LineNo - (Label - _IsReturn),
-		DataAddr = data_addr(CurrentModule, internal_layout(Label)),
-		LabelRval = yes(const(data_addr_const(DataAddr)))
-	),
-% See the comment below.
-%	ProjectCallees = lambda([LabelInfo::in, CalleeRval::out] is det, (
-%		LabelInfo = _LineNo - (_Label - IsReturn),
-%		(
-%			IsReturn = not_a_return,
-%			CalleeRval = yes(const(int_const(0)))
-%		;
-%			IsReturn = unknown_callee,
-%			CalleeRval = yes(const(int_const(1)))
-%		;
-%			IsReturn = known_callee(Label),
-%			code_util__extract_proc_label_from_label(Label,
-%				ProcLabel),
-%			(
-%				ProcLabel = proc(ModuleName, _, _, _, _, _)
-%			;
-%				ProcLabel = special_proc(ModuleName, _, _,
-%					_, _, _)
-%			),
-%			DataAddr = data_addr(ModuleName, proc_layout(Label)),
-%			CalleeRval = yes(const(data_addr_const(DataAddr)))
-%		)
-%	)),
-
-	list__map(ProjectLineNos, FlatLineNoList, LineNoRvals),
-	stack_layout__get_next_cell_number(LineNoVectorCellNum,
-		LayoutInfo1, LayoutInfo2),
-	Reuse = no,
-	LineNoVector = create(0, LineNoRvals,
-		uniform(yes(int_least16)), must_be_static, 
-		LineNoVectorCellNum, "line_number_vector", Reuse),
-
-	list__map(ProjectLabels, FlatLineNoList, LabelRvals),
-	stack_layout__get_next_cell_number(LabelsVectorCellNum,
-		LayoutInfo2, LayoutInfo3),
-	LabelsVector = create(0, LabelRvals,
-		uniform(yes(data_ptr)), must_be_static, 
-		LabelsVectorCellNum, "label_vector", Reuse),
-
-% We do not include the callees vector in the table because it makes references
-% to the proc layouts of procedures from other modules without knowing whether
-% those modules were compiled with debugging. This works only if all procedures
-% always have a proc layout structure, which we don't want to require yet.
-%
-% Callees vectors would allow us to use faster code to check at every event
-% whether a breakpoint applies to that event, in the usual case that no context
-% breakpoint is on a line contains a higher order call. Instead of always
-% searching a separate data structure, as we now do, to check for the
-% applicability of context breakpoints, the code could search this data
-% structure only if the proc layout matched the proc layout of the caller
-% Since we already search a table of proc layouts in order to check for plain,
-% non-context breakpoints on procedures, this would incur no extra cost
-% in most cases.
-%
-%	list__map(ProjectCallees, FlatLineNoList, CalleeRvals),
-%	stack_layout__get_next_cell_number(CalleesVectorCellNum,
-%		LayoutInfo3, LayoutInfo4),
-%	CalleesVector = create(0, CalleeRvals,
-%		uniform(no), must_be_static, 
-%		CalleesVectorCellNum, "callee_vector", Reuse),
-
-	SourceFileRvals = [
-		yes(const(string_const(FileName))),
-		yes(const(int_const(VectorLength))),
-		yes(LineNoVector),
-		yes(LabelsVector)
-%		yes(CalleesVector)
-	],
-	stack_layout__get_next_cell_number(SourceFileVectorCellNum,
-		LayoutInfo3, LayoutInfo),
-	SourceFileVector = create(0, SourceFileRvals,
-		initial([1 - yes(string), 1 - yes(integer),
-			2 - yes(data_ptr)], none),
-		must_be_static, 
-		SourceFileVectorCellNum, "source_file_vector", Reuse).
+	list__map(Filter, FlatLineNoList, FilteredList).
 
 :- pred stack_layout__flatten_label_table(
 	assoc_list(int, list(line_no_info))::in,
@@ -604,26 +236,47 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 		VarSet, VarTypes, InternalMap) },
 	{ map__to_assoc_list(InternalMap, Internals) },
 	stack_layout__set_cur_proc_named_vars(map__init),
-	list__foldl(stack_layout__construct_internal_layout(EntryLabel),
-		Internals),
+
+	{ code_util__extract_proc_label_from_label(EntryLabel, ProcLabel) },
+	stack_layout__get_procid_stack_layout(ProcIdLayout0),
+	{ bool__or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout) },
+	( { ProcIdLayout = yes } ->
+		{ UserOrCompiler = proc_label_user_or_compiler(ProcLabel) },
+		stack_layout__get_trace_stack_layout(TraceLayout),
+		{
+			TraceLayout = yes,
+			Kind = proc_layout_exec_trace(UserOrCompiler)
+		;
+			TraceLayout = no,
+			Kind = proc_layout_proc_id(UserOrCompiler)
+		}
+	;
+		{ Kind = proc_layout_traversal }
+	),
+
+	{ ProcLayoutName = proc_layout(ProcLabel, Kind) },
+
+	list__foldl2(stack_layout__construct_internal_layout(ProcLayoutName),
+		Internals, [], InternalLayouts),
 	stack_layout__get_cur_proc_named_vars(NamedVars),
 	stack_layout__get_label_tables(LabelTables0),
-	{ list__foldl(stack_layout__update_label_table, Internals,
+	{ list__foldl(stack_layout__update_label_table, InternalLayouts,
 		LabelTables0, LabelTables) },
 	stack_layout__set_label_tables(LabelTables),
-	stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
-		SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
-		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
-		VarSet, VarTypes, NamedVars).
+	stack_layout__construct_proc_layout(EntryLabel, ProcLabel, Detism,
+		StackSlots, SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
+		Goal, InstMap, TraceSlotInfo, VarSet, VarTypes, NamedVars,
+		Kind).
 
 %---------------------------------------------------------------------------%
 
-	% Add the given label to the module-wide label tables.
+	% Add the given label layout to the module-wide label tables.
 
-:- pred stack_layout__update_label_table(pair(label, internal_layout_info)::in,
+:- pred stack_layout__update_label_table(
+	pair(pair(label, label_vars), internal_layout_info)::in,
 	map(string, label_table)::in, map(string, label_table)::out) is det.
 
-stack_layout__update_label_table(Label - InternalInfo,
+stack_layout__update_label_table((Label - LabelVars) - InternalInfo,
 		LabelTables0, LabelTables) :-
 	InternalInfo = internal_layout_info(Port, _, Return),
 	(
@@ -636,35 +289,36 @@ stack_layout__update_label_table(Label - InternalInfo,
 		;
 			IsReturn = unknown_callee
 		),
-		stack_layout__update_label_table_2(Label, Context, IsReturn,
-			LabelTables0, LabelTables)
+		stack_layout__update_label_table_2(Label, LabelVars,
+			Context, IsReturn, LabelTables0, LabelTables)
 	;
 		Port = yes(trace_port_layout_info(Context, _, _, _)),
 		stack_layout__context_is_valid(Context)
 	->
-		stack_layout__update_label_table_2(Label, Context,
-			not_a_return, LabelTables0, LabelTables)
+		stack_layout__update_label_table_2(Label, LabelVars,
+			Context, not_a_return, LabelTables0, LabelTables)
 	;
 		LabelTables = LabelTables0
 	).
 
-:- pred stack_layout__update_label_table_2(label::in, context::in,
-	is_label_return::in,
+:- pred stack_layout__update_label_table_2(label::in, label_vars::in,
+	context::in, is_label_return::in,
 	map(string, label_table)::in, map(string, label_table)::out) is det.
 
-stack_layout__update_label_table_2(Label, Context, IsReturn,
+stack_layout__update_label_table_2(Label, LabelVars, Context, IsReturn,
 		LabelTables0, LabelTables) :-
 	term__context_file(Context, File),
 	term__context_line(Context, Line),
 	( map__search(LabelTables0, File, LabelTable0) ->
+		LabelLayout = label_layout(Label, LabelVars),
 		( map__search(LabelTable0, Line, LineInfo0) ->
-			LineInfo = [Label - IsReturn | LineInfo0],
+			LineInfo = [LabelLayout - IsReturn | LineInfo0],
 			map__det_update(LabelTable0, Line, LineInfo,
 				LabelTable),
 			map__det_update(LabelTables0, File, LabelTable,
 				LabelTables)
 		;
-			LineInfo = [Label - IsReturn],
+			LineInfo = [LabelLayout - IsReturn],
 			map__det_insert(LabelTable0, Line, LineInfo,
 				LabelTable),
 			map__det_update(LabelTables0, File, LabelTable,
@@ -672,7 +326,8 @@ stack_layout__update_label_table_2(Label, Context, IsReturn,
 		)
 	; stack_layout__context_is_valid(Context) ->
 		map__init(LabelTable0),
-		LineInfo = [Label - IsReturn],
+		LabelLayout = label_layout(Label, LabelVars),
+		LineInfo = [LabelLayout - IsReturn],
 		map__det_insert(LabelTable0, Line, LineInfo, LabelTable),
 		map__det_insert(LabelTables0, File, LabelTable, LabelTables)
 	;
@@ -708,23 +363,31 @@ stack_layout__context_is_valid(Context) :-
 
 	% Construct a procedure-specific layout.
 
-:- pred stack_layout__construct_proc_layout(label::in, determinism::in,
-	int::in, maybe(int)::in, eval_method::in, maybe(label)::in, int::in,
-	hlds_goal::in, instmap::in, trace_slot_info::in, bool::in,
-	prog_varset::in, vartypes::in, map(int, string)::in,
+:- pred stack_layout__construct_proc_layout(label::in, proc_label::in,
+	determinism::in, int::in, maybe(int)::in, eval_method::in,
+	maybe(label)::in, int::in, hlds_goal::in, instmap::in,
+	trace_slot_info::in, prog_varset::in, vartypes::in,
+	map(int, string)::in, proc_layout_kind::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
+stack_layout__construct_proc_layout(EntryLabel, ProcLabel, Detism, StackSlots,
 		MaybeSuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg, Goal,
-		InstMap, TraceSlotInfo, ForceProcIdLayout, VarSet, VarTypes,
-		UsedVarNames) -->
+		InstMap, TraceSlotInfo, VarSet, VarTypes, UsedVarNames, Kind)
+		-->
 	{
-		MaybeSuccipLoc = yes(Location0)
+		MaybeSuccipLoc = yes(Location)
 	->
-		Location = Location0
+		( determinism_components(Detism, _, at_most_many) ->
+			SuccipLval = framevar(Location)
+		;
+			SuccipLval = stackvar(Location)
+		),
+		stack_layout__represent_locn_as_int(direct(SuccipLval),
+			SuccipInt),
+		MaybeSuccipInt = yes(SuccipInt)
 	;
-			% Use a dummy location of -1 if there is
-			% no succip on the stack.
+			% Use a dummy location 1 if there is no succip slot
+			% on the stack.
 			%
 			% This case can arise in two circumstances.
 			% First, procedures that use the nondet stack
@@ -749,169 +412,85 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 			%
 			% Future uses of stack layouts will have to have
 			% similar constraints.
-		Location = -1
+		MaybeSuccipInt = no
 	},
 	stack_layout__get_static_code_addresses(StaticCodeAddr),
 	{ StaticCodeAddr = yes ->
-		CodeAddrRval = const(code_addr_const(label(EntryLabel)))
+		MaybeEntryLabel = yes(EntryLabel)
 	;
-		% This is a lie; the slot will be filled in for real
-		% at initialization time.
-		CodeAddrRval = const(int_const(0))
+		MaybeEntryLabel = no
 	},
-	{ determinism_components(Detism, _, at_most_many) ->
-		SuccipLval = framevar(Location)
+	{ TraversalGroup = proc_layout_stack_traversal(MaybeEntryLabel,
+		MaybeSuccipInt, StackSlots, Detism) },
+	(
+		{ Kind = proc_layout_traversal },
+		{ MaybeRest = no_proc_id }
 	;
-		SuccipLval = stackvar(Location)
-	},
-	{ stack_layout__represent_locn_as_int(direct(SuccipLval), SuccipRval) },
-	{ StackSlotsRval = const(int_const(StackSlots)) },
-	{ stack_layout__represent_determinism(Detism, DetismRval) },
-	{ TraversalRvals = [yes(CodeAddrRval), yes(SuccipRval),
-		yes(StackSlotsRval), yes(DetismRval)] },
-	{ TraversalArgTypes = [1 - yes(code_ptr), 1 - yes(uint_least32),
-		2 - yes(uint_least16)] },
-
-	stack_layout__get_procid_stack_layout(ProcIdLayout0),
-	{ bool__or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout) },
-	( { ProcIdLayout = yes } ->
-		{ code_util__extract_proc_label_from_label(EntryLabel,
-			ProcLabel) },
-		{ stack_layout__construct_procid_rvals(ProcLabel, IdRvals,
-			IdArgTypes) },
+		{ Kind = proc_layout_proc_id(_) },
+		{ MaybeRest = proc_id_only }
+	;
+		{ Kind = proc_layout_exec_trace(_) },
 		stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel,
 			MaxTraceReg, Goal, InstMap, TraceSlotInfo, VarSet,
-			VarTypes, UsedVarNames, TraceRvals, TraceArgTypes),
-		{ list__append(IdRvals, TraceRvals, IdTraceRvals) },
-		{ IdTraceArgTypes = initial(IdArgTypes, TraceArgTypes) }
-	;
-		% Indicate the absence of the proc id and exec trace fields.
-		{ IdTraceRvals = [yes(const(int_const(-1)))] },
-		{ IdTraceArgTypes = initial([1 - yes(integer)], none) }
+			VarTypes, UsedVarNames, ExecTrace),
+		{ MaybeRest = proc_id_and_exec_trace(ExecTrace) }
 	),
 
-	{ Exported = no },	% XXX With the new profiler, we will need to
-				% set this to `yes' if the profiling option
-				% is given and if the procedure is exported.
-				% Beware however that linkage/2 in llds_out.m
-				% assumes that this is `no'.
-	{ list__append(TraversalRvals, IdTraceRvals, Rvals) },
-	{ ArgTypes = initial(TraversalArgTypes, IdTraceArgTypes) },
-	stack_layout__get_module_name(ModuleName),
-	{ CDataName = proc_layout(EntryLabel) },
-	{ CData = comp_gen_c_data(ModuleName, CDataName, Exported,
-		Rvals, ArgTypes, []) },
-	stack_layout__add_proc_layout_data(CData, CDataName, EntryLabel).
+	{ ProcLayout = proc_layout_data(ProcLabel, TraversalGroup, MaybeRest) },
+	{ Data = layout_data(ProcLayout) },
+	{ LayoutName = proc_layout(ProcLabel, Kind) },
+	stack_layout__add_proc_layout_data(Data, LayoutName, EntryLabel).
 
 :- pred stack_layout__construct_trace_layout(eval_method::in, maybe(label)::in,
 	int::in, hlds_goal::in, instmap::in, trace_slot_info::in,
 	prog_varset::in, vartypes::in, map(int, string)::in,
-	list(maybe(rval))::out, create_arg_types::out,
+	proc_layout_exec_trace::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel, MaxTraceReg,
 		Goal, InstMap, TraceSlotInfo, VarSet, VarTypes, UsedVarNameMap,
-		Rvals, ArgTypes) -->
-	stack_layout__get_trace_stack_layout(TraceLayout),
-	( { TraceLayout = yes } ->
-		stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
-			VarNameCount, VarNameVector),
-		stack_layout__get_trace_level(TraceLevel),
-		stack_layout__get_trace_suppress(TraceSuppress),
-		{ trace_needs_proc_body_reps(TraceLevel, TraceSuppress)
-			= BodyReps },
-		(
-			{ BodyReps = no },
-			{ GoalRepRval = yes(const(int_const(0))) }
-		;
-			{ BodyReps = yes },
-			stack_layout__get_module_info(ModuleInfo0),
-			{ prog_rep__represent_goal(Goal, InstMap, VarTypes,
-				ModuleInfo0, GoalRep) },
-			{ type_to_univ(GoalRep, GoalRepUniv) },
-			stack_layout__get_cell_counter(CellCounter0),
-			{ static_term__term_to_rval(GoalRepUniv, GoalRepRval,
-				CellCounter0, CellCounter) },
-			stack_layout__set_cell_counter(CellCounter)
-		),
-		stack_layout__get_module_info(ModuleInfo),
-		{
-		( MaybeCallLabel = yes(CallLabel) ->
-			module_info_name(ModuleInfo, ModuleName),
-			CallRval = yes(const(data_addr_const(
-					data_addr(ModuleName,
-						internal_layout(CallLabel)))))
-		;
-			error("stack_layout__construct_trace_layout: call label not present")
-		),
-		ModuleRval = yes(const(data_addr_const(
-				data_addr(ModuleName, module_layout)))),
-		MaxTraceRegRval = yes(const(int_const(MaxTraceReg))),
-		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
-			MaybeIoSeqSlot, MaybeTrailSlots, MaybeMaxfrSlot,
-			MaybeCallTableSlot, MaybeDeclSlots),
-		EvalMethodInt =
-			stack_layout__represent_eval_method(EvalMethod),
-		EvalMethodRval = yes(const(int_const(EvalMethodInt))),
-		( MaybeFromFullSlot = yes(FromFullSlot) ->
-			FromFullRval = yes(const(int_const(FromFullSlot)))
-		;
-			FromFullRval = yes(const(int_const(-1)))
-		),
-		( MaybeIoSeqSlot = yes(IoSeqSlot) ->
-			IoSeqRval = yes(const(int_const(IoSeqSlot)))
-		;
-			IoSeqRval = yes(const(int_const(-1)))
-		),
-		( MaybeTrailSlots = yes(FirstTrailSlot) ->
-			TrailRval = yes(const(int_const(FirstTrailSlot)))
-		;
-			TrailRval = yes(const(int_const(-1)))
-		),
-		( MaybeMaxfrSlot = yes(MaxfrSlot) ->
-			MaxfrRval = yes(const(int_const(MaxfrSlot)))
-		;
-			MaxfrRval = yes(const(int_const(-1)))
-		),
-		( MaybeCallTableSlot = yes(CallTableSlot) ->
-			CallTableRval = yes(const(int_const(CallTableSlot)))
-		;
-			CallTableRval = yes(const(int_const(-1)))
-		),
-		( MaybeDeclSlots = yes(DeclSlot) ->
-			DeclRval = yes(const(int_const(DeclSlot)))
-		;
-			DeclRval = yes(const(int_const(-1)))
-		),
-		Rvals = [CallRval, ModuleRval, GoalRepRval, VarNameVector,
-			VarNameCount, MaxTraceRegRval,
-			FromFullRval, IoSeqRval, TrailRval, MaxfrRval,
-			EvalMethodRval, CallTableRval, DeclRval],
-		ArgTypes = initial([
-			4 - yes(data_ptr),
-			2 - yes(int_least16),
-			7 - yes(int_least8)],
-			none)
-		}
+		ExecTrace) -->
+	stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
+		MaxVarNum, VarNameVector),
+	stack_layout__get_trace_level(TraceLevel),
+	stack_layout__get_trace_suppress(TraceSuppress),
+	{ trace_needs_proc_body_reps(TraceLevel, TraceSuppress)
+		= BodyReps },
+	(
+		{ BodyReps = no },
+		{ MaybeGoalRepRval = no }
 	;
-		% Indicate the absence of the trace layout fields.
-		{ Rvals = [yes(const(int_const(0)))] },
-		{ ArgTypes = initial([1 - yes(integer)], none) }
-	).
-
-:- func stack_layout__represent_eval_method(eval_method) = int.
-
-stack_layout__represent_eval_method(eval_normal)     = 0.
-stack_layout__represent_eval_method(eval_loop_check) = 1.
-stack_layout__represent_eval_method(eval_memo)       = 2.
-stack_layout__represent_eval_method(eval_minimal)    = 3.
-stack_layout__represent_eval_method(eval_table_io)   = 4.
+		{ BodyReps = yes },
+		stack_layout__get_module_info(ModuleInfo),
+		{ prog_rep__represent_goal(Goal, InstMap, VarTypes,
+			ModuleInfo, GoalRep) },
+		{ type_to_univ(GoalRep, GoalRepUniv) },
+		stack_layout__get_cell_counter(CellCounter0),
+		{ static_term__term_to_rval(GoalRepUniv, MaybeGoalRepRval,
+			CellCounter0, CellCounter) },
+		stack_layout__set_cell_counter(CellCounter)
+	),
+	{ MaybeCallLabel = yes(CallLabelPrime) ->
+		CallLabel = CallLabelPrime
+	;
+		error("stack_layout__construct_trace_layout: call label not present")
+	},
+	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
+		MaybeIoSeqSlot, MaybeTrailSlots, MaybeMaxfrSlot,
+		MaybeCallTableSlot, MaybeDeclSlots) },
+		% The label associated with an event must have variable info.
+	{ CallLabelLayout = label_layout(CallLabel, label_has_var_info) },
+	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeGoalRepRval,
+		VarNameVector, MaxVarNum, MaxTraceReg,
+		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlots,
+		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
+		MaybeDeclSlots) }.
 
 :- pred stack_layout__construct_var_name_vector(prog_varset::in,
-	map(int, string)::in, maybe(rval)::out, maybe(rval)::out,
+	map(int, string)::in, int::out, list(int)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, Count, Vector)
+stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, Count, Offsets)
 		-->
 	stack_layout__get_trace_level(TraceLevel),
 	stack_layout__get_trace_suppress(TraceSuppress),
@@ -926,118 +505,47 @@ stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, Count, Vector)
 		{ NeedsAllNames = no },
 		{ map__to_assoc_list(UsedVarNameMap, VarNames) }
 	),
-	(
-		{ VarNames = [FirstVar - _ | _] }
-	->
+	( { VarNames = [FirstVar - _ | _] } ->
 		stack_layout__construct_var_name_rvals(VarNames, 1,
-			FirstVar, MaxVar, Rvals),
-		{ Count = yes(const(int_const(MaxVar))) },
-		stack_layout__get_cell_counter(C0),
-		{ counter__allocate(CNum, C0, C) },
-		stack_layout__set_cell_counter(C),
-		{ Reuse = no },
-		{ Vector = yes(create(0, Rvals, uniform(yes(uint_least16)),
-			must_be_static, CNum,
-			"stack_layout_var_names_vector", Reuse)) }
+			FirstVar, Count, Offsets)
 	;
-		{ Count = yes(const(int_const(0))) },
-		{ Vector = yes(const(int_const(0))) }
+		{ Count = 0 },
+		{ Offsets = [] }
 	).
 
 :- pred stack_layout__construct_var_name_rvals(assoc_list(int, string)::in,
-	int::in, int::in, int::out, list(maybe(rval))::out,
+	int::in, int::in, int::out, list(int)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_var_name_rvals([], _CurNum, MaxNum, MaxNum, []) --> [].
 stack_layout__construct_var_name_rvals([Var - Name | VarNames1], CurNum,
-		MaxNum0, MaxNum, MaybeRvals) -->
+		MaxNum0, MaxNum, [Offset | Offsets1]) -->
 	( { Var = CurNum } ->
 		stack_layout__lookup_string_in_table(Name, Offset),
-		{ Rval = const(int_const(Offset)) },
 		{ MaxNum1 = Var },
 		{ VarNames = VarNames1 }
 	;
-		{ Rval = const(int_const(0)) },
+		{ Offset = 0 },
 		{ MaxNum1 = MaxNum0 },
 		{ VarNames = [Var - Name | VarNames1] }
 	),
 	stack_layout__construct_var_name_rvals(VarNames, CurNum + 1,
-		MaxNum1, MaxNum, MaybeRvals1),
-	{ MaybeRvals = [yes(Rval) | MaybeRvals1] }.
+		MaxNum1, MaxNum, Offsets1).
 
 %---------------------------------------------------------------------------%
 
-:- pred stack_layout__construct_procid_rvals(proc_label::in,
-	list(maybe(rval))::out, initial_arg_types::out) is det.
+	% Construct the layout describing a single internal label
+	% for accurate GC and/or execution tracing.
 
-stack_layout__construct_procid_rvals(ProcLabel, Rvals, ArgTypes) :-
-	(
-		ProcLabel = proc(DefModule, PredFunc, DeclModule,
-			PredName, Arity, ProcId),
-		stack_layout__represent_pred_or_func(PredFunc, PredFuncCode),
-		prog_out__sym_name_to_string(DefModule, DefModuleString),
-		prog_out__sym_name_to_string(DeclModule, DeclModuleString),
-		proc_id_to_int(ProcId, Mode),
-		Rvals = [
-				yes(const(int_const(PredFuncCode))),
-				yes(const(string_const(DeclModuleString))),
-				yes(const(string_const(DefModuleString))),
-				yes(const(string_const(PredName))),
-				yes(const(int_const(Arity))),
-				yes(const(int_const(Mode)))
-			],
-		ArgTypes = [1 - yes(integer), 3 - yes(string),
-				2 - yes(int_least16)]
-	;
-		ProcLabel = special_proc(DefModule, PredName, TypeModule,
-			TypeName, Arity, ProcId),
-		prog_out__sym_name_to_string(TypeModule, TypeModuleString),
-		prog_out__sym_name_to_string(DefModule, DefModuleString),
-		proc_id_to_int(ProcId, Mode),
-		Rvals = [
-				yes(const(string_const(TypeName))),
-				yes(const(string_const(TypeModuleString))),
-				yes(const(string_const(DefModuleString))),
-				yes(const(string_const(PredName))),
-				yes(const(int_const(Arity))),
-				yes(const(int_const(Mode)))
-			],
-		ArgTypes = [4 - yes(string), 2 - yes(int_least16)]
-	).
-
-:- pred stack_layout__represent_pred_or_func(pred_or_func::in, int::out) is det.
-
-stack_layout__represent_pred_or_func(predicate, 0).
-stack_layout__represent_pred_or_func(function, 1).
-
-%---------------------------------------------------------------------------%
-
-	% Construct the layout describing a single internal label.
-
-:- pred stack_layout__construct_internal_layout(label::in,
+:- pred stack_layout__construct_internal_layout(layout_name::in,
 	pair(label, internal_layout_info)::in,
+	assoc_list(pair(label, label_vars), internal_layout_info)::in,
+	assoc_list(pair(label, label_vars), internal_layout_info)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_internal_layout(EntryLabel, Label - Internal) -->
-		% generate the required rvals
-	stack_layout__get_module_name(ModuleName),
-	{ EntryAddrRval = const(data_addr_const(data_addr(ModuleName,
-		proc_layout(EntryLabel)))) },
-	stack_layout__construct_internal_rvals(Internal, VarInfoRvals,
-		VarInfoRvalTypes),
-	{ LayoutRvals = [yes(EntryAddrRval) | VarInfoRvals] },
-	{ ArgTypes = initial([1 - no], VarInfoRvalTypes) },
-	{ CData = comp_gen_c_data(ModuleName, internal_layout(Label),
-		no, LayoutRvals, ArgTypes, []) },
-	stack_layout__add_internal_layout_data(CData, Label).
-
-	% Construct the rvals required for accurate GC or for tracing.
-
-:- pred stack_layout__construct_internal_rvals(internal_layout_info::in,
-	list(maybe(rval))::out, create_arg_types::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
-stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
+stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
+		LabelLayouts, [(Label - LabelVars) - Internal | LabelLayouts])
+		-->
 	{ Internal = internal_layout_info(Trace, Resume, Return) },
 	(
 		{ Trace = no },
@@ -1048,7 +556,6 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 		{ TraceLayout = layout_label_info(TraceLiveVarSet,
 			TraceTypeVarMap) }
 	),
-	{ TraceArgTypes = [2 - yes(int_least16)] },
 	{
 		Resume = no,
 		set__init(ResumeLiveVarSet),
@@ -1061,9 +568,10 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 	(
 		{ Trace = yes(trace_port_layout_info(_, Port, GoalPath, _)) },
 		{ Return = no },
-		{ llds_out__trace_port_to_num(Port, PortNum) },
+		{ MaybePort = yes(Port) },
 		{ trace__path_to_string(GoalPath, GoalPathStr) },
-		stack_layout__lookup_string_in_table(GoalPathStr, GoalPathNum)
+		stack_layout__lookup_string_in_table(GoalPathStr, GoalPathNum),
+		{ MaybeGoalPath = yes(GoalPathNum) }
 	;
 		{ Trace = no },
 		{ Return = yes(ReturnInfo) },
@@ -1071,7 +579,7 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 			% structures when we process exception events.
 			% (Since exception events are interface events,
 			% the goal path field is not meaningful then.)
-		{ llds_out__trace_port_to_num(exception, PortNum) },
+		{ MaybePort = yes(exception) },
 			% We only ever use the goal path fields of these
 			% layout structures when we process "fail" commands
 			% in the debugger.
@@ -1082,7 +590,8 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 		->
 			{ trace__path_to_string(GoalPath, GoalPathStr) },
 			stack_layout__lookup_string_in_table(GoalPathStr,
-				GoalPathNum)
+				GoalPathNum),
+			{ MaybeGoalPath = yes(GoalPathNum) }
 		;
 				% If tracing is enabled, then exactly one of
 				% the calls for which this label is a return
@@ -1090,20 +599,18 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 				% do, then tracing is not enabled, and
 				% therefore the goal path of this label will
 				% not be accessed.
-			{ GoalPathNum = 0 }
+			{ MaybeGoalPath = no }
 		)
 	;
 		{ Trace = no },
 		{ Return = no },
-		{ PortNum = -1 },
-		{ GoalPathNum = -1 }
+		{ MaybePort = no },
+		{ MaybeGoalPath = no }
 	;
 		{ Trace = yes(_) },
 		{ Return = yes(_) },
 		{ error("label has both trace and return layout info") }
 	),
-	{ TraceRvals = [yes(const(int_const(PortNum))),
-			yes(const(int_const(GoalPathNum)))] },
 	stack_layout__get_agc_stack_layout(AgcStackLayout),
 	{
 		Return = no,
@@ -1113,10 +620,12 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 		Return = yes(return_layout_info(_, ReturnLayout)),
 		ReturnLayout = layout_label_info(ReturnLiveVarSet0,
 			ReturnTypeVarMap0),
-		( AgcStackLayout = yes ->
+		(
+			AgcStackLayout = yes,
 			ReturnLiveVarSet = ReturnLiveVarSet0,
 			ReturnTypeVarMap = ReturnTypeVarMap0
 		;
+			AgcStackLayout = no,
 			% This set of variables must be for uplevel printing
 			% in execution tracing, so we are interested only
 			% in (a) variables, not temporaries, (b) only named
@@ -1135,12 +644,8 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 		{ Resume = no },
 		{ Return = no }
 	->
-			% The -1 says that there is no info available
-			% about variables at this label. (Zero would say
-			% that there are no variables live at this label,
-			% which may not be true.)
-		{ RvalList = [yes(const(int_const(-1)))] },
-		{ ArgTypes = initial([1 - yes(integer)], none) }
+		{ MaybeVarInfo = no },
+		{ LabelVars = label_has_no_var_info }
 	;
 			% XXX ignore differences in insts inside var_infos
 		{ set__union(TraceLiveVarSet, ResumeLiveVarSet, LiveVarSet0) },
@@ -1149,39 +654,36 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 			TypeVarMap0) },
 		{ map__union(set__intersect, TypeVarMap0, ReturnTypeVarMap,
 			TypeVarMap) },
-		stack_layout__construct_livelval_rvals(LiveVarSet,
-			TypeVarMap, LivelvalRvalList, LivelvalArgTypes),
-		{ append(TraceRvals, LivelvalRvalList, RvalList) },
-		{ ArgTypes = initial(TraceArgTypes, LivelvalArgTypes) }
-	).
+		stack_layout__construct_livelval_rvals(LiveVarSet, TypeVarMap,
+			EncodedLength, LiveValRval, NamesRval, TypeParamRval),
+		{ VarInfo = label_var_info(EncodedLength, 
+			LiveValRval, NamesRval, TypeParamRval) },
+		{ MaybeVarInfo = yes(VarInfo) },
+		{ LabelVars = label_has_var_info }
+	),
+
+	{ LayoutData = label_layout_data(Label, ProcLayoutName,
+		MaybePort, MaybeGoalPath, MaybeVarInfo) },
+	{ CData = layout_data(LayoutData) },
+	{ LayoutName = label_layout(Label, LabelVars) },
+	stack_layout__add_internal_layout_data(CData, Label, LayoutName).
 
 %---------------------------------------------------------------------------%
 
 :- pred stack_layout__construct_livelval_rvals(set(var_info)::in,
-	map(tvar, set(layout_locn))::in, list(maybe(rval))::out,
-	create_arg_types::out, stack_layout_info::in, stack_layout_info::out)
-	is det.
+	map(tvar, set(layout_locn))::in, int::out, rval::out, rval::out,
+	rval::out, stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap,
-		RvalList, ArgTypes) -->
+stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap, EncodedLength,
+		LiveValRval, NamesRval, TypeParamRval) -->
 	{ set__to_sorted_list(LiveLvalSet, LiveLvals) },
-	{ list__length(LiveLvals, Length) },
-	( { Length > 0 } ->
-		{ stack_layout__sort_livevals(LiveLvals, SortedLiveLvals) },
-		stack_layout__construct_liveval_arrays(SortedLiveLvals,
-			VarLengthRval, LiveValRval, NamesRval),
-		stack_layout__get_cell_counter(C0),
-		{ stack_layout__construct_tvar_vector(TVarLocnMap,
-			TypeParamRval, C0, C) },
-		stack_layout__set_cell_counter(C),
-		{ RvalList = [yes(VarLengthRval), yes(LiveValRval),
-			yes(NamesRval), yes(TypeParamRval)] },
-		{ ArgTypes = initial([1 - yes(integer), 3 - yes(data_ptr)],
-			none) }
-	;
-		{ RvalList = [yes(const(int_const(0)))] },
-		{ ArgTypes = initial([1 - yes(integer)], none) }
-	).
+	{ stack_layout__sort_livevals(LiveLvals, SortedLiveLvals) },
+	stack_layout__construct_liveval_arrays(SortedLiveLvals,
+		EncodedLength, LiveValRval, NamesRval),
+	stack_layout__get_cell_counter(C0),
+	{ stack_layout__construct_tvar_vector(TVarLocnMap,
+		TypeParamRval, C0, C) },
+	stack_layout__set_cell_counter(C).
 
 :- pred stack_layout__construct_tvar_vector(map(tvar, set(layout_locn))::in,
 	rval::out, counter::in, counter::out) is det.
@@ -1303,7 +805,7 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 		;
 			error("tvar has empty set of locations")
 		),
-		stack_layout__represent_locn_as_int(Locn, Rval),
+		stack_layout__represent_locn_as_int_rval(Locn, Rval),
 		stack_layout__construct_type_param_locn_vector(TVarLocns,
 			NextSlot, VectorTail),
 		Vector = [yes(Rval) | VectorTail]
@@ -1339,10 +841,10 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	% and a corresponding vector of variable names.
 
 :- pred stack_layout__construct_liveval_arrays(list(var_info)::in,
-	rval::out, rval::out, rval::out,
+	int::out, rval::out, rval::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
+stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
 		TypeLocnVector, NumVector) -->
 	{ int__pow(2, stack_layout__short_count_bits, BytesLimit) },
 	stack_layout__construct_liveval_array_infos(VarInfos,
@@ -1352,9 +854,8 @@ stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
 	{ list__length(ByteArrayInfo, ByteArrayLength) },
 	{ list__append(IntArrayInfo, ByteArrayInfo, AllArrayInfo) },
 
-	{ EncodedLength is IntArrayLength << stack_layout__short_count_bits
+	{ EncodedLength = IntArrayLength << stack_layout__short_count_bits
 		+ ByteArrayLength },
-	{ LengthRval = const(int_const(EncodedLength)) },
 
 	{ SelectLocns = (pred(ArrayInfo::in, MaybeLocnRval::out) is det :-
 		ArrayInfo = live_array_info(LocnRval, _, _, _),
@@ -1424,7 +925,7 @@ stack_layout__construct_liveval_array_infos([VarInfo | VarInfos],
 			BytesSoFar + 1, BytesLimit, IntVars, ByteVars0),
 		{ ByteVars = [Var | ByteVars0] }
 	;
-		{ stack_layout__represent_locn_as_int(Locn, LocnRval) },
+		{ stack_layout__represent_locn_as_int_rval(Locn, LocnRval) },
 		{ Var = live_array_info(LocnRval, TypeRval, TypeRvalType,
 			VarNumRval) },
 		stack_layout__construct_liveval_array_infos(VarInfos,
@@ -1479,22 +980,26 @@ stack_layout__convert_var_to_int(Var, VarNum) :-
 	% with runtime/mercury_ho_call.h, which contains macros to access
 	% the data structures we build here.
 
-stack_layout__construct_closure_layout(ProcLabel, ClosureLayoutInfo,
-		Rvals, ArgTypes, C0, C) :-
-	stack_layout__construct_procid_rvals(ProcLabel, ProcIdRvals,
-		ProcIdTypes),
-	ClosureLayoutInfo = closure_layout_info(ClosureArgs,
-		TVarLocnMap),
+stack_layout__construct_closure_layout(CallerProcLabel, SeqNo,
+		ClosureLayoutInfo, ClosureProcLabel,
+		ModuleName, FileName, LineNumber, GoalPath,
+		Rvals, ArgTypes, Data, C0, C) :-
+	DataAddr = layout_addr(
+		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
+	Data = layout_data(closure_proc_id_data(CallerProcLabel, SeqNo,
+		ClosureProcLabel, ModuleName, FileName, LineNumber, GoalPath)),
+	MaybeProcIdRval = yes(const(data_addr_const(DataAddr))),
+	ProcIdType = 1 - yes(data_ptr),
+	ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
 	stack_layout__construct_closure_arg_rvals(ClosureArgs,
-		ClosureArgRvals, ClosureArgTypes, C0, C1),
+		MaybeClosureArgRvals, ClosureArgTypes, C0, C1),
 	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
 		C1, C),
-	TVarVectorRvals = [yes(TVarVectorRval)],
-	TVarVectorTypes = [1 - yes(data_ptr)],
-	list__append(TVarVectorRvals, ClosureArgRvals, LayoutRvals),
-	list__append(ProcIdRvals, LayoutRvals, Rvals),
-	ArgTypes = initial(ProcIdTypes, initial(TVarVectorTypes,
-		initial(ClosureArgTypes, none))).
+	MaybeTVarVectorRval = yes(TVarVectorRval),
+	TVarVectorType = 1 - yes(data_ptr),
+	Rvals = [MaybeProcIdRval, MaybeTVarVectorRval | MaybeClosureArgRvals],
+	ArgTypes = initial([ProcIdType, TVarVectorType | ClosureArgTypes],
+		none).
 
 :- pred stack_layout__construct_closure_arg_rvals(list(closure_arg_info)::in,
 	list(maybe(rval))::out, initial_arg_types::out,
@@ -1529,7 +1034,7 @@ stack_layout__construct_closure_arg_rval(ClosureArg,
 	ExistQTvars = [],
 	NumUnivQTvars = -1,
 
-	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type, 
+	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
 		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType, C0, C).
 
 %---------------------------------------------------------------------------%
@@ -1617,25 +1122,28 @@ stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 	% A more general representation that would allow more indirection
 	% would be much harder to fit into one machine word.
 
-:- pred stack_layout__represent_locn_as_int(layout_locn, rval).
-:- mode stack_layout__represent_locn_as_int(in, out) is det.
+:- pred stack_layout__represent_locn_as_int_rval(layout_locn::in, rval::out)
+	is det.
 
-stack_layout__represent_locn_as_int(direct(Lval), Rval) :-
-	stack_layout__represent_lval(Lval, Word),
+stack_layout__represent_locn_as_int_rval(Locn, Rval) :-
+	stack_layout__represent_locn_as_int(Locn, Word),
 	Rval = const(int_const(Word)).
-stack_layout__represent_locn_as_int(indirect(Lval, Offset), Rval) :-
+
+:- pred stack_layout__represent_locn_as_int(layout_locn::in, int::out) is det.
+
+stack_layout__represent_locn_as_int(direct(Lval), Word) :-
+	stack_layout__represent_lval(Lval, Word).
+stack_layout__represent_locn_as_int(indirect(Lval, Offset), Word) :-
 	stack_layout__represent_lval(Lval, BaseWord),
 	require((1 << stack_layout__long_lval_offset_bits) > Offset,
 	"stack_layout__represent_locn: offset too large to be represented"),
 	BaseAndOffset is (BaseWord << stack_layout__long_lval_offset_bits)
 		+ Offset,
-	stack_layout__make_tagged_word(lval_indirect, BaseAndOffset, Word),
-	Rval = const(int_const(Word)).
+	stack_layout__make_tagged_word(lval_indirect, BaseAndOffset, Word).
 
 	% Construct a four byte representation of an lval.
 
-:- pred stack_layout__represent_lval(lval, int).
-:- mode stack_layout__represent_lval(in, out) is det.
+:- pred stack_layout__represent_lval(lval::in, int::out) is det.
 
 stack_layout__represent_lval(reg(r, Num), Word) :-
 	stack_layout__make_tagged_word(lval_r_reg, Num, Word).
@@ -1804,9 +1312,15 @@ stack_layout__byte_bits = 8.
 	% The 2 bit is set iff the max number of solutions is more than zero.
 	% The 1 bit is set iff the max number of solutions is more than one.
 
-:- pred stack_layout__represent_determinism(determinism::in, rval::out) is det.
+:- pred stack_layout__represent_determinism_rval(determinism::in, rval::out)
+	is det.
 
-stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
+stack_layout__represent_determinism_rval(Detism, const(int_const(Code))) :-
+	stack_layout__represent_determinism(Detism, Code).
+
+:- pred stack_layout__represent_determinism(determinism::in, int::out) is det.
+
+stack_layout__represent_determinism(Detism, Code) :-
 	(
 		Detism = det,
 		Code = 6		/* 0110 */
@@ -1847,7 +1361,7 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 	;	unknown_callee
 	;	not_a_return.
 
-:- type line_no_info == pair(label, is_label_return).
+:- type line_no_info == pair(layout_name, is_label_return).
 
 :- type label_table == map(int, list(line_no_info)).
 
@@ -1862,13 +1376,12 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 		static_code_addresses	:: bool, % have static code addresses?
 		proc_layouts		:: list(comp_gen_c_data),
 		internal_layouts	:: list(comp_gen_c_data),
-		label_set		:: set_bbbtree(label),
+		label_set		:: map(label, data_addr),
 					   % The set of labels (both entry
 					   % and internal) with layouts.
-		proc_layout_args	:: list(maybe(rval)),
+		proc_layout_name_list	:: list(layout_name),
 					   % The list of proc_layouts in
-					   % the module, represented as create
-					   % args.
+					   % the module.
 		string_table		:: string_table,
 		label_tables		:: map(string, label_table),
 					   % Maps each filename that
@@ -1910,7 +1423,7 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 :- pred stack_layout__get_internal_layout_data(list(comp_gen_c_data)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred stack_layout__get_label_set(set_bbbtree(label)::out,
+:- pred stack_layout__get_label_set(map(label, data_addr)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 :- pred stack_layout__get_string_table(string_table::out,
@@ -1950,33 +1463,33 @@ stack_layout__get_cell_counter(CellCounter) -->
 	stack_layout__get_module_info(ModuleInfo),
 	{ module_info_get_cell_counter(ModuleInfo, CellCounter) }.
 
-:- pred stack_layout__add_proc_layout_data(comp_gen_c_data::in, data_name::in,
-	label::in, stack_layout_info::in, stack_layout_info::out) is det.
+:- pred stack_layout__add_proc_layout_data(comp_gen_c_data::in,
+	layout_name::in, label::in,
+	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__add_proc_layout_data(NewProcLayout, NewDataName, NewLabel,
+stack_layout__add_proc_layout_data(ProcLayout, ProcLayoutName, Label,
 		LI0, LI) :-
 	ProcLayouts0 = LI0 ^ proc_layouts,
-	ProcLayouts = [NewProcLayout | ProcLayouts0],
+	ProcLayouts = [ProcLayout | ProcLayouts0],
 	LabelSet0 = LI0 ^ label_set,
-	set_bbbtree__insert(LabelSet0, NewLabel, LabelSet),
-	ModuleInfo = LI0 ^ module_info,
-	module_info_name(ModuleInfo, ModuleName),
-	NewProcLayoutArg = yes(const(data_addr_const(
-		data_addr(ModuleName, NewDataName)))),
-	ProcLayoutArgs0 = LI0 ^ proc_layout_args,
-	ProcLayoutArgs = [NewProcLayoutArg | ProcLayoutArgs0],
+	map__det_insert(LabelSet0, Label, layout_addr(ProcLayoutName),
+		LabelSet),
+	ProcLayoutNames0 = LI0 ^ proc_layout_name_list,
+	ProcLayoutNames = [ProcLayoutName | ProcLayoutNames0],
 	LI = (((LI0 ^ proc_layouts := ProcLayouts)
 		^ label_set := LabelSet)
-		^ proc_layout_args := ProcLayoutArgs).
+		^ proc_layout_name_list := ProcLayoutNames).
 
 :- pred stack_layout__add_internal_layout_data(comp_gen_c_data::in,
-	label::in, stack_layout_info::in, stack_layout_info::out) is det.
+	label::in, layout_name::in, stack_layout_info::in,
+	stack_layout_info::out) is det.
 
-stack_layout__add_internal_layout_data(NewInternalLayout, NewLabel, LI0, LI) :-
+stack_layout__add_internal_layout_data(InternalLayout, Label, LayoutName,
+		LI0, LI) :-
 	InternalLayouts0 = LI0 ^ internal_layouts,
-	InternalLayouts = [NewInternalLayout | InternalLayouts0],
+	InternalLayouts = [InternalLayout | InternalLayouts0],
 	LabelSet0 = LI0 ^ label_set,
-	set_bbbtree__insert(LabelSet0, NewLabel, LabelSet),
+	map__det_insert(LabelSet0, Label, layout_addr(LayoutName), LabelSet),
 	LI = ((LI0 ^ internal_layouts := InternalLayouts)
 		^ label_set := LabelSet).
 

@@ -401,13 +401,13 @@ MR_trace_internal_init_from_home_dir(void)
 static void
 MR_trace_set_level_and_report(int ancestor_level, bool detailed)
 {
-	const char			*problem;
-	const MR_Stack_Layout_Entry	*entry;
-	MR_Word				*base_sp;
-	MR_Word				*base_curfr;
-	const char			*filename;
-	int				lineno;
-	int				indent;
+	const char		*problem;
+	const MR_Proc_Layout	*entry;
+	MR_Word			*base_sp;
+	MR_Word			*base_curfr;
+	const char		*filename;
+	int			lineno;
+	int			indent;
 
 	problem = MR_trace_set_level(ancestor_level);
 	if (problem == NULL) {
@@ -504,7 +504,7 @@ MR_trace_do_noop(void)
 */
 
 static void
-MR_mdb_print_proc_id(void *data, const MR_Stack_Layout_Entry *entry_layout)
+MR_mdb_print_proc_id(void *data, const MR_Proc_Layout *entry_layout)
 {
 	FILE	*fp = data;
 	MR_print_proc_id_for_debugger(fp, entry_layout);
@@ -577,8 +577,8 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-	const MR_Stack_Layout_Label	*layout;
-	MR_Word 				*saved_regs;
+	const MR_Label_Layout	*layout;
+	MR_Word 		*saved_regs;
 
 	layout = event_info->MR_event_sll;
 	saved_regs = event_info->MR_saved_regs;
@@ -1756,7 +1756,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("help", "help");
 		}
 	} else if (streq(words[0], "proc_body")) {
-		const MR_Stack_Layout_Entry	*entry;
+		const MR_Proc_Layout	*entry;
 
 		entry = event_info->MR_event_sll->MR_sll_entry;
 		if (entry->MR_sle_proc_rep == 0) {
@@ -2947,12 +2947,12 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 static void
 MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 {
-	const MR_Stack_Layout_Label	*parent;
-	const char			*filename, *parent_filename;
-	int				lineno, parent_lineno;
-	const char			*problem; /* not used */
-	MR_Word				*base_sp, *base_curfr;
-	int				indent;
+	const MR_Label_Layout	*parent;
+	const char		*filename, *parent_filename;
+	int			lineno, parent_lineno;
+	const char		*problem; /* not used */
+	MR_Word			*base_sp, *base_curfr;
+	int			indent;
 
 	lineno = 0;
 	parent_lineno = 0;

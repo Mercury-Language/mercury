@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -332,9 +332,9 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		GlobalData1 = GlobalData0
 	),
 
-	code_info__get_non_common_static_data(NonCommonStatics, CodeInfo, _),
-	global_data_add_new_non_common_static_datas(GlobalData1,
-		NonCommonStatics, GlobalData2),
+	code_info__get_closure_layouts(ClosureLayouts, CodeInfo, _),
+	global_data_add_new_closure_layouts(GlobalData1, ClosureLayouts,
+		GlobalData2),
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
 	maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		ProcLabel, GlobalData2, GlobalData),
@@ -1086,8 +1086,9 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 :- pred code_gen__generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
 	code_model::in, code_tree::out, code_info::in, code_info::out) is det.
 
-code_gen__generate_goal_2(unify(_, _, _, Uni, _), _, CodeModel, Code) -->
-	unify_gen__generate_unification(CodeModel, Uni, Code).
+code_gen__generate_goal_2(unify(_, _, _, Uni, _), GoalInfo, CodeModel, Code)
+		-->
+	unify_gen__generate_unification(CodeModel, Uni, GoalInfo, Code).
 code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, Code) -->
 	code_gen__generate_goals(Goals, CodeModel, Code).
 code_gen__generate_goal_2(par_conj(Goals, _SM), GoalInfo, CodeModel, Code) -->

@@ -1035,8 +1035,8 @@ static MR_Code *
 MR_trace_throw(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 	MR_Word *current_frame)
 {
-	const MR_Internal		*label;
-	const MR_Stack_Layout_Label	*return_label_layout;
+	const MR_Internal	*label;
+	const MR_Label_Layout	*return_label_layout;
 
 	/*
 	** Find the layout info for the stack frame pointed to by MR_succip
@@ -1049,7 +1049,7 @@ MR_trace_throw(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 	return_label_layout = label->i_layout;
 
 	while (return_label_layout != NULL) {
-		const MR_Stack_Layout_Entry	*entry_layout;
+		const MR_Proc_Layout		*entry_layout;
 		MR_Code 			*MR_jumpaddr;
 		MR_Stack_Walk_Step_Result	result;
 		const char			*problem;

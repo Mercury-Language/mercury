@@ -2328,6 +2328,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },
+	{ global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) },
 	{ CommonableData0 = StaticLayouts },
 	( { CommonData = yes } ->
 		{ llds_common(Procs0, CommonableData0, ModuleName, Procs1,
@@ -2340,7 +2341,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	%
 	% Next we put it all together and output it to one or more C files.
 	%
-	{ list__condense([CommonableData, NonCommonStaticData,
+	{ list__condense([CommonableData, NonCommonStaticData, ClosureLayouts,
 		TypeCtorTables, TypeClassInfos, PossiblyDynamicLayouts],
 		AllData) },
 	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, GlobalVars,
@@ -2463,7 +2464,7 @@ mercury_compile__combine_chunks_2([Chunk | Chunks], ModuleName, Num,
 	mercury_compile__combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
 :- pred mercury_compile__output_llds(module_name, c_file,
-	set_bbbtree(llds__label), maybe(rl_file), bool, bool,
+	map(llds__label, llds__data_addr), maybe(rl_file), bool, bool,
 	io__state, io__state).
 :- mode mercury_compile__output_llds(in, in, in, in, in, in, di, uo) is det.
 
