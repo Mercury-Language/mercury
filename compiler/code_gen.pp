@@ -691,7 +691,7 @@ code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
 	{ error("Disjunction cannot occur in deterministic code.") }.
 code_gen__generate_det_goal_2(not(_), _GoalInfo, _Instr) -->
-	{ error("Negation cannot occur in deterministic code.") }.
+	{ error("Negation in deterministic code is not yet implemented.") }.
 code_gen__generate_det_goal_2(
 		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Instr) -->
@@ -864,6 +864,37 @@ code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
 :- mode code_gen__generate_negation(in, out, in, out) is det.
 
 code_gen__generate_negation(Goal, Code) -->
+		% for a negated simple test, we see if
+		% we can do a more efficient mechanism that
+		% doesn't require a cache flush.
+	(
+		{ Goal = unify(_, _, _, simple_test(L,R), _) - _ },
+		code_info__can_generate_direct_branch(CodeAddr)
+	->
+		code_info__produce_variable(L, Code0, ValA),
+		code_info__produce_variable(R, Code1, ValB),
+		code_info__variable_type(L, Type),
+		{ Type = term__functor(term__atom("string"), [], _) ->
+			Op = str_eq
+		; Type = term__functor(term__atom("float"), [], _) ->
+			Op = float_eq
+		;
+			Op = eq
+		},
+		{ TestCode = node([
+			if_val(binop(Op, ValA, ValB), CodeAddr) -
+				"test inequality"
+		]) },
+		{ Code = tree(Code0, tree(Code1, TestCode)) }
+	;
+		code_gen__generate_negation_general(Goal, Code)
+	).
+
+:- pred code_gen__generate_negation_general(hlds__goal, code_tree,
+					code_info, code_info).
+:- mode code_gen__generate_negation_general(in, out, in, out) is det.
+
+code_gen__generate_negation_general(Goal, Code) -->
 	code_info__get_globals(Globals),
 	{ Goal = _NotGoal - GoalInfo },
 	{ goal_info_cont_lives(GoalInfo, Lives) },

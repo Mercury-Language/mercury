@@ -375,6 +375,9 @@
 :- pred code_info__set_nondet_lives(set(var), code_info, code_info).
 :- mode code_info__set_nondet_lives(in, in, out) is det.
 
+:- pred code_info__can_generate_direct_branch(code_addr, code_info, code_info).
+:- mode code_info__can_generate_direct_branch(out, in, out) is semidet.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -1294,6 +1297,15 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 		{ Code = node([ if_val(Rval, FailureAddress) -
 					"Test for failure" ]) }
 	).
+
+%---------------------------------------------------------------------------%
+
+code_info__can_generate_direct_branch(CodeAddr) -->
+	code_info__failure_cont(failure_cont(known(no), no, FailureMap)),
+	{ FailureMap = [Map - CodeAddr|_] },
+	{ map__is_empty(Map) }.
+
+%---------------------------------------------------------------------------%
 
 :- pred code_info__pick_failure(assoc_list(map(var, set(rval)), code_addr),
 			code_addr, code_info, code_info).
