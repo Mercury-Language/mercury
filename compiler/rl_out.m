@@ -1093,13 +1093,15 @@ rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 	% must be done as a materialise of each tuple into the new
 	% relation rather than just as a copy of the files.
 	rl_out_info_get_relation_addr(InputRel, InputAddr),
-	{ OutputRel = output_rel(Output, Indexes) },
+	{ OutputRel = output_rel(Output, _) },
 	rl_out_info_get_relation_addr(Output, OutputAddr),
+
+	% The code for the `init' instruction
+	% will also add any necessary indexes.
 	rl_out__generate_instr(init(OutputRel) - "", InitCode),
-	rl_out__add_indexes_to_rel(Output, Indexes, IndexCode),
+
 	{ Code = 
 		tree(InitCode,
-		tree(node(IndexCode),
 		node([
 			rl_PROC_materialise,
 			rl_PROC_stream,
@@ -1108,7 +1110,7 @@ rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 			rl_PROC_var_list_cons(OutputAddr, 0),
 			rl_PROC_var_list_nil
 		])
-	)) }.
+	) }.
 rl_out__generate_instr(make_unique(OutputRel, InputRel) - Comment,
 		Code) -->
 	% This should eventually do something like:
