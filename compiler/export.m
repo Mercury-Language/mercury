@@ -70,7 +70,7 @@
 :- import_module parse_tree__modules.
 :- import_module hlds__hlds_pred, check_hlds__type_util.
 :- import_module hlds__error_util.
-:- import_module backend_libs__code_model.
+:- import_module backend_libs__code_model, backend_libs__c_util.
 :- import_module ll_backend__code_gen, ll_backend__code_util.
 :- import_module ll_backend__llds_out, ll_backend__arg_info.
 :- import_module libs__globals, libs__options.
@@ -677,10 +677,7 @@ export__produce_header_file(ForeignExportDecls, ModuleName, HeaderExt) -->
 			"\n"]),
 
 		( { MaybeForeignDecls = yes(ForeignDecls) } ->
-			io__write_strings(["#ifndef ", decl_guard(ModuleName),
-				"\n#define", decl_guard(ModuleName), "\n"]),
-			list__foldl(output_foreign_decl, ForeignDecls),
-			io__write_string("#endif\n")
+			list__foldl(output_foreign_decl, ForeignDecls)
 		;
 			[]
 		),
@@ -729,10 +726,14 @@ export__produce_header_file_2([E|ExportedProcs]) -->
 
 :- pred output_foreign_decl(foreign_decl_code::in, io::di, io::uo) is det.
 
-export__output_foreign_decl(foreign_decl_code(Lang, Code, _Context)) -->
+export__output_foreign_decl(foreign_decl_code(Lang, Code, Context)) -->
 	( { Lang = c } ->
+		{ term__context_file(Context, FileName) },
+		{ term__context_line(Context, LineNumber) },
+		c_util__set_line_num(FileName, LineNumber),
 		io__write_string(Code),
-		io__nl
+		io__nl,
+		c_util__reset_line_num
 	;
 		[]
 	).

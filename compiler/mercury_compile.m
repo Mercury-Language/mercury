@@ -3283,7 +3283,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 :- mode mercury_compile__construct_c_file(in, in, in, in, in, out, out, di, uo)
 	is det.
 
-mercury_compile__construct_c_file(_Module,
+mercury_compile__construct_c_file(Module,
 		C_InterfaceInfo, Procedures, GlobalVars,
 		AllData, CFile, ComponentCount) -->
 	{ C_InterfaceInfo = foreign_interface_info(ModuleSymName,
@@ -3306,8 +3306,14 @@ mercury_compile__construct_c_file(_Module,
 	list__map_foldl(make_foreign_import_header_code, C_Includes,
 		C_HeaderCode1),
 
-	{ make_decl_guards(ModuleSymName, Start, End) },
-	{ C_HeaderCode = [End | C_HeaderCode0] ++ [Start | C_HeaderCode1] },
+		% If the current module contains a foreign_type then all the
+		% declarations will be placed into the header (.mh) file, so
+		% only keep the foreign imports.
+	{ module_info_contains_foreign_type(Module) ->
+		C_HeaderCode = C_HeaderCode1
+	;
+		C_HeaderCode = C_HeaderCode0 ++ C_HeaderCode1
+	},
 
 	{ CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode,
 		C_ExportDefns, GlobalVars, AllData, ChunkedModules) },
@@ -3318,16 +3324,6 @@ mercury_compile__construct_c_file(_Module,
 	{ list__length(ChunkedModules, CompGenCodeCount) },
 	{ ComponentCount is UserCCodeCount + ExportCount
 		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount }.
-
-:- pred make_decl_guards(sym_name::in,
-		foreign_decl_code::out, foreign_decl_code::out) is det.
-
-make_decl_guards(ModuleName, StartGuard, EndGuard) :-
-	Define = decl_guard(ModuleName),
-	Start = "#ifndef " ++ Define ++ "\n#define " ++ Define ++ "\n",
-	End = "#endif",
-	StartGuard = foreign_decl_code(c, Start, term__context_init),
-	EndGuard = foreign_decl_code(c, End, term__context_init).
 
 :- pred make_foreign_import_header_code(foreign_import_module,
 		foreign_decl_code, io__state, io__state).

@@ -193,10 +193,6 @@
 :- mode foreign_language_module_name(in, in) = out is semidet.
 :- mode foreign_language_module_name(in, in(lang_gen_ext_file)) = out is det.
 
-	% The name of the #define which can be used to guard declarations with
-	% to prevent entities being declared twice.
-:- func decl_guard(sym_name) = string.
-
 :- implementation.
 
 :- import_module list, map, assoc_list, std_util, string, varset, int, term.
@@ -690,14 +686,6 @@ to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
 	).
 to_type_string(il, mercury(_Type)) = _ :-
 	sorry(this_file, "to_type_string for il").
-
-%-----------------------------------------------------------------------------%
-
-:- import_module ll_backend__llds_out.
-
-decl_guard(ModuleName) = UppercaseModuleName ++ "_DECL_GUARD" :-
-	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
-	string__to_upper(MangledModuleName, UppercaseModuleName).
 
 %-----------------------------------------------------------------------------%
 

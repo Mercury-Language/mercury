@@ -551,10 +551,7 @@ mlds_output_c_hdr_decls(_ModuleName, Indent, ForeignCode) -->
 	{ ForeignCode = mlds__foreign_code(RevHeaderCode, _RevImports,
 		_RevBodyCode, _ExportDefns) },
 	{ HeaderCode = list__reverse(RevHeaderCode) },
-	io__write_strings(["#ifndef ", decl_guard(ModuleName),
-		"\n#define", decl_guard(ModuleName), "\n"]),
-	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent)),
-	io__write_string("#endif\n").
+	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent)).
 
 :- pred mlds_output_c_hdr_decl(indent,
 	foreign_decl_code, io__state, io__state).
