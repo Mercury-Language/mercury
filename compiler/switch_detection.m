@@ -35,7 +35,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, modes, mode_util, type_util, prog_io.
-:- import_module list, assoc_list, map, set, std_util, term, require.
+:- import_module int, list, assoc_list, map, set, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
 
