@@ -26,7 +26,7 @@ DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
 # INSTALL_WEBDIR).
 
 .PHONY: install
-install: library-chapters.texi split_html ps 
+install: $(DOCS_ALL)
 	[ -d $(INSTALL_WEB_SUBDIR) ] || mkdir -p $(INSTALL_WEB_SUBDIR)
 	cp $(DOCS_ALL) $(INSTALL_WEB_SUBDIR)
 
