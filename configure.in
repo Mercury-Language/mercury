@@ -675,7 +675,7 @@ AC_SUBST(BOOTSTRAP_MC)
 
 # XXX compiler/conf.m - problems with bootstrapping
 
-AC_OUTPUT(Mmake.common scripts/mc scripts/mcn scripts/mcs scripts/mprof
+AC_OUTPUT(Mmake.common scripts/mc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
