@@ -778,7 +778,7 @@ abstractly_unify_inst_2(IsLive, InstA, InstB, UnifyIsReal, ModuleInfo0,
 				inst, determinism, module_info).
 :- mode abstractly_unify_inst_3(in, in, in, in, in, out, out, out) is semidet.
 
-:- abstractly_unify_inst_3(A, B, C, _, _, _, _) when A and B and C.
+:- abstractly_unify_inst_3(A, B, C, _, _, _, _, _) when A and B and C.
 
 abstractly_unify_inst_3(live, not_reached, _, _,	M, not_reached, det, M).
 
@@ -1499,7 +1499,7 @@ inst_list_is_ground_or_dead([Inst | Insts], [Live | Lives], ModuleInfo) :-
 :- mode abstractly_unify_bound_inst_list(in, in, in, in, in,
 		out, out, out) is semidet.
 
-:- abstractly_unify_bound_inst_list(_, Xs, Ys, _, _, _, _)
+:- abstractly_unify_bound_inst_list(_, Xs, Ys, _, _, _, _, _)
 	when Xs and Ys. % Index
 
 abstractly_unify_bound_inst_list(_, [], [], _, ModuleInfo, [], det, ModuleInfo).
@@ -1578,41 +1578,60 @@ abstractly_unify_inst_list_lives([X|Xs], [Y|Ys], [Live|Lives], Real,
 
 %-----------------------------------------------------------------------------%
 
+	% Succeed iff the specified inst contains (directly or indirectly)
+	% the specified inst_name.
+
 :- pred inst_contains_instname(inst, module_info, inst_name).
 :- mode inst_contains_instname(in, in, in) is semidet.
 
-inst_contains_instname(defined_inst(InstName1), ModuleInfo, InstName) :-
+inst_contains_instname(Inst, ModuleInfo, InstName) :-
+	set__init(Expansions),
+	inst_contains_instname_2(Inst, ModuleInfo, Expansions, InstName).
+
+:- pred inst_contains_instname_2(inst, module_info, set(inst_name), inst_name).
+:- mode inst_contains_instname_2(in, in, in, in) is semidet.
+
+inst_contains_instname_2(defined_inst(InstName1), ModuleInfo, Expansions0,
+		InstName) :-
 	(
 		InstName = InstName1
 	;
+		\+ set__member(InstName1, Expansions0),
 		inst_lookup(ModuleInfo, InstName1, Inst1),
-		inst_contains_instname(Inst1, ModuleInfo, InstName)
-	).
-inst_contains_instname(bound(_Uniq, ArgInsts), ModuleInfo, InstName) :-
-	bound_inst_list_contains_instname(ArgInsts, ModuleInfo, InstName).
-
-:- pred bound_inst_list_contains_instname(list(bound_inst), module_info,
-						inst_name).
-:- mode bound_inst_list_contains_instname(in, in, in) is semidet.
-
-bound_inst_list_contains_instname([BoundInst|BoundInsts], ModuleInfo,
-		InstName) :-
-	BoundInst = functor(_Functor, ArgInsts),
-	(
-		inst_list_contains_instname(ArgInsts, ModuleInfo, InstName)
-	;
-		bound_inst_list_contains_instname(BoundInsts, ModuleInfo,
+		set__insert(Expansions0, InstName1, Expansions),
+		inst_contains_instname_2(Inst1, ModuleInfo, Expansions,
 			InstName)
 	).
+inst_contains_instname_2(bound(_Uniq, ArgInsts), ModuleInfo, Expansions,
+		InstName) :-
+	bound_inst_list_contains_instname(ArgInsts, ModuleInfo, Expansions,
+		InstName).
 
-:- pred inst_list_contains_instname(list(inst), module_info, inst_name).
-:- mode inst_list_contains_instname(in, in, in) is semidet.
+:- pred bound_inst_list_contains_instname(list(bound_inst), module_info,
+						set(inst_name), inst_name).
+:- mode bound_inst_list_contains_instname(in, in, in, in) is semidet.
 
-inst_list_contains_instname([Inst|Insts], ModuleInfo, InstName) :-
+bound_inst_list_contains_instname([BoundInst|BoundInsts], ModuleInfo,
+		Expansions, InstName) :-
+	BoundInst = functor(_Functor, ArgInsts),
 	(
-		inst_contains_instname(Inst, ModuleInfo, InstName)
+		inst_list_contains_instname(ArgInsts, ModuleInfo, Expansions,
+			InstName)
 	;
-		inst_list_contains_instname(Insts, ModuleInfo, InstName)
+		bound_inst_list_contains_instname(BoundInsts, ModuleInfo,
+			Expansions, InstName)
+	).
+
+:- pred inst_list_contains_instname(list(inst), module_info, set(inst_name),
+					inst_name).
+:- mode inst_list_contains_instname(in, in, in, in) is semidet.
+
+inst_list_contains_instname([Inst|Insts], ModuleInfo, Expansions, InstName) :-
+	(
+		inst_contains_instname_2(Inst, ModuleInfo, Expansions, InstName)
+	;
+		inst_list_contains_instname(Insts, ModuleInfo, Expansions,
+			InstName)
 	).
 
 %-----------------------------------------------------------------------------%
