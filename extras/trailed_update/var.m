@@ -27,7 +27,7 @@
 %-----------------------------------------------------------------------------%
 :- module var.
 :- interface.
-:- import_module io.
+:- import_module io, std_util.
 
 	% A `var(T)' is a Prolog-style variable that holds a value of type T.
 :- type var(T).
@@ -133,7 +133,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 %-----------------------------------------------------------------------------%
-:- import_module std_util, bool.
+:- import_module bool.
 :- import_module unsafe, io.
 :- import_module require.
 
