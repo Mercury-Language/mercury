@@ -309,7 +309,6 @@
 
 :- import_module hlds_goal, hlds_module, hlds_pred, hlds_data.
 :- import_module prog_data, special_pred.
-:- import_module globals, options.
 
 :- import_module io, list, term, map.
 
@@ -438,6 +437,7 @@
 :- import_module code_util, unify_proc, prog_util, make_hlds.
 :- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
 :- import_module clause_to_proc.
+:- import_module globals, options.
 
 :- import_module bool, int, string, set, map.
 :- import_module term, varset, std_util, require, assoc_list.
