@@ -398,8 +398,7 @@ c_gen_proc_name(ModuleInfo, PredId, ProcId) -->
 	io__write_string("_"),
 	io__write_int(Arity),
 	io__write_string("_"),
-	{ proc_id_to_int(ProcId, ProcInt) },
-	{ ModeNum is ProcInt mod 10000 },	% strip off the priority
+	{ proc_id_to_int(ProcId, ModeNum) },
 	io__write_int(ModeNum).
 
 :- pred c_gen_select_output_vars(module_info, list(var), list(mode), list(var)).

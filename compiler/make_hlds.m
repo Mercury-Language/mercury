@@ -1681,61 +1681,15 @@ preds_add_implicit(PredicateTable0,
 		error("preds_add_implicit")
 	).
 
-	% This is a quick hack, especially the trick with
-	% determinism_priority.  Efficiency could be improved -
+	% This is a quick hack, efficiency could be improved --
 	% we should probably store the next available ModeId rather
 	% than recomputing it all the time.
+	% The unused second argument is there for obsolete historical reasons.
 
-next_mode_id(Procs, MaybeDet, ModeId) :-
+next_mode_id(Procs, _MaybeDet, ModeId) :-
 	map__to_assoc_list(Procs, List),
-	list__length(List, ModeId0),
-	(
-		MaybeDet = no,
-		determinism_priority_unspecified(Priority)
-	;
-		MaybeDet = yes(Det),
-		determinism_priority(Det, Priority)
-	),
-	determinism_priority_step(Step),
-	( ModeId0 >= Step ->
-		error("too many modes per predicate")
-	;
-		true
-	),
-	ModeInt is ModeId0 + Priority,
+	list__length(List, ModeInt),
 	proc_id_to_int(ModeId, ModeInt).
-
-	% If we can call a predicate in either of two different modes,
-	% we should prefer to call it in a deterministic mode
-	% rather than a non-deterministic one, and we should prefer
-	% to call it in a semideterministic mode rather than a deterministic
-	% one.  Also we should prefer a nondet mode rather than a multidet mode.
-	% Higher numbers mean lower priority.
-	% This works because mode analysis tries each mode in turn,
-	% starting with the lowest-numbered modes.
-	% XXX This is obsolete!
-
-:- pred determinism_priority(determinism, int).
-:- mode determinism_priority(in, out) is det.
-
-determinism_priority(semidet, 0).
-determinism_priority(failure, 0).
-determinism_priority(det, 10000).
-determinism_priority(erroneous, 10000).
-determinism_priority(cc_nondet, 30000).
-determinism_priority(nondet, 40000).
-determinism_priority(cc_multidet, 50000).
-determinism_priority(multidet, 60000).
-
-:- pred determinism_priority_unspecified(int).
-:- mode determinism_priority_unspecified(out) is det.
-
-determinism_priority_unspecified(20000).
-
-:- pred determinism_priority_step(int).
-:- mode determinism_priority_step(out) is det.
-
-determinism_priority_step(10000).
 
 %-----------------------------------------------------------------------------%
 

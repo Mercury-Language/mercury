@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,11 +64,8 @@ special_pred_name_arity(unify, "unify", "__Unify__", 2).
 special_pred_name_arity(index, "index", "__Index__", 2).
 special_pred_name_arity(compare, "compare", "__Compare__", 3).
 
-	% mode num is 0 for semidet, 10000 for det
-	% see make_hlds.m
-special_pred_mode_num(unify, 0).
-special_pred_mode_num(index, 10000).
-special_pred_mode_num(compare, 10000).
+	% mode num for special procs is always 0 (the first mode)
+special_pred_mode_num(_, 0).
 
 special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In], semidet) :-
 	in_mode(In).

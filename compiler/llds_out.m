@@ -625,7 +625,7 @@ output_c_procedure_decls(Proc, DeclSet0, DeclSet) -->
 
 output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	{ Proc = c_procedure(Name, Arity, proc(_PredId, ProcId), Instrs) },
-	{ proc_id_to_int(ProcId, ModeNum0) },
+	{ proc_id_to_int(ProcId, ModeNum) },
 	( { PrintComments = yes } ->
 		io__write_string("\n/*-------------------------------------"),
 		io__write_string("------------------------------------*/\n")
@@ -639,7 +639,6 @@ output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	io__write_string("'/"),
 	io__write_int(Arity),
 	io__write_string(" in mode "),
-	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
 	io__write_int(ModeNum),
 	io__write_string(" */\n"),
 	{ llds_out__find_caller_label(Instrs, CallerLabel) },
@@ -2386,8 +2385,7 @@ llds_out__get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 	),
 	string__int_to_string(OrigArity, ArityString),
 	proc_id_to_int(ModeNum0, ModeInt),
-	ModeNum is ModeInt mod 10000,		% strip off the priority
-	string__int_to_string(ModeNum, ModeNumString),
+	string__int_to_string(ModeInt, ModeNumString),
 	string__append_list([LabelName, "_", ArityString, "_", ModeNumString], 
 		ProcLabelString).
 
@@ -2403,8 +2401,7 @@ llds_out__get_proc_label(special_proc(Module, PredName, TypeModule,
 	% figure out the ModeNumString
 	string__int_to_string(TypeArity, TypeArityString),
 	proc_id_to_int(ModeNum0, ModeInt),
-	ModeNum is ModeInt mod 10000,		% strip off the priority
-	string__int_to_string(ModeNum, ModeNumString),
+	string__int_to_string(ModeInt, ModeNumString),
 
 	% mangle all the relevent names
 	llds_out__name_mangle(Module, MangledModule),

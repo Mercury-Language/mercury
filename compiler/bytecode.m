@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -663,15 +663,13 @@ debug_pred_id(PredId) -->
 :- mode output_proc_id(in, di, uo) is det.
 
 output_proc_id(ProcId) -->
-	{ ModeId is ProcId mod 10000 },
-	output_byte(ModeId).
+	output_byte(ProcId).
 
 :- pred debug_proc_id(byte_proc_id, io__state, io__state).
 :- mode debug_proc_id(in, di, uo) is det.
 
 debug_proc_id(ProcId) -->
-	{ ModeId is ProcId mod 10000 },
-	debug_int(ModeId).
+	debug_int(ProcId).
 
 %---------------------------------------------------------------------------%
 

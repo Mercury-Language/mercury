@@ -1777,7 +1777,7 @@ modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext, ModuleInfo,
 	list__length(ArgVars, Arity),
 	predicate_table_search_pred_m_n_a(PredicateTable, Module, Name, Arity,
 		[PredId]),
-	hlds_pred__proc_id_to_int(ModeId, 10000), % first mode, must be `det'
+	hlds_pred__proc_id_to_int(ModeId, 0), % first mode
 	Call = call(PredId, ModeId, ArgVars, not_builtin, CallUnifyContext,
 		qualified(Module, Name)),
 	goal_info_init(GoalInfo0),

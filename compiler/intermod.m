@@ -868,10 +868,8 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ CompareProcId =
 		 lambda([ProcId1::in, ProcId2::in, Result::out] is det, (
 			proc_id_to_int(ProcId1, ProcInt1),
-			ActualProcId1 is ProcInt1 mod 10000,
 			proc_id_to_int(ProcId2, ProcInt2),
-			ActualProcId2 is ProcInt2 mod 10000,
-			compare(Result, ActualProcId1, ActualProcId2)
+			compare(Result, ProcInt1, ProcInt2)
 		)) },
 	{ list__sort(CompareProcId, ProcIds, SortedProcIds) },
 	intermod__write_pred_modes(Procs, qualified(Module, Name),

@@ -275,8 +275,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId) -->
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(" mode "),
-	{ proc_id_to_int(ProcId, ProcInt) },
-	{ ModeNum is ProcInt mod 10000 },
+	{ proc_id_to_int(ProcId, ModeNum) },
 	io__write_int(ModeNum).
 
 hlds_out__write_call_id(PredOrFunc, Name/Arity) -->

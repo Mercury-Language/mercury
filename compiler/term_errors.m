@@ -511,9 +511,7 @@ term_errors__describe_one_pred_name(PredId, Module, Piece) :-
 
 term_errors__describe_one_proc_name(proc(PredId, ProcId), Module, Piece) :-
 	term_errors__describe_one_pred_name(PredId, Module, PredPiece),
-	proc_id_to_int(ProcId, ProcIdInt0),
-	% strip off the "priority"
-	ProcIdInt is ProcIdInt0 mod 10000,
+	proc_id_to_int(ProcId, ProcIdInt),
 	string__int_to_string(ProcIdInt, ProcIdPart),
 	string__append_list([
 		PredPiece,

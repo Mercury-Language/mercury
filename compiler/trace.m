@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -106,8 +106,7 @@ trace__generate_event_code(Port, TraceInfo, TraceCode) -->
 	Comma = ", ",
 	trace__port_to_string(Port, PortStr),
 	trace__code_model_to_string(CodeModel, CodeModelStr),
-	proc_id_to_int(ProcId, ProcInt),
-	ModeNum is ProcInt mod 10000,
+	proc_id_to_int(ProcId, ModeNum),
 	string__int_to_string(ModeNum, ModeNumStr),
 	( trace__port_path(Port, Path) ->
 		trace__path_to_string(Path, PathStr)
