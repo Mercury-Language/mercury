@@ -2464,8 +2464,13 @@ mlds_output_target_code_component(_ModuleName, Context,
 	mlds_output_lval(Lval),
 	io__write_string("\n").
 mlds_output_target_code_component(ModuleName, _Context, name(Name)) -->
-	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
-	
+	% Note: `name(Name)' target_code_components are used to
+	% generate the #define for `MR_PROC_LABEL'.
+	% The fact that they're used in a #define means that we can't do
+	% an mlds_output_context(Context) here, since #line directives
+	% aren't allowed inside #defines.
+	mlds_output_fully_qualified_name(qual(ModuleName, Name)),
+	io__write_string("\n").
 
 :- pred mlds_output_init_args(list(mlds__rval), list(mlds__type), mlds__context,
 		int, mlds__lval, mlds__tag, indent, io__state, io__state).

@@ -921,8 +921,11 @@ XXX Full exception handling support is not yet implemented.
 			% raw_target_code holds C code that the
 			% compiler has generated.  To ensure that
 			% following `#line' directives work OK,
-			% the string in a raw_target_code must
-			% end in `\n' (or `\n' followed by whitespace).
+			% either the string in a raw_target_code must
+			% end in `\n' (or `\n' followed by whitespace),
+			% or the following target_code_component must be 
+			% a `name(Name)' component, for which we do not
+			% output #line directives.
 	;	target_code_input(mlds__rval)
 	;	target_code_output(mlds__lval)
 	;	name(mlds__entity_name)
