@@ -2059,7 +2059,7 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		},
 		{ string__format(" = %s%s;\n", [s(RHS_Cast), s(ArgName)],
 			AssignFromArgName) },
-		{ string__format("\t%s", [s(LHS_Cast)], AssignTo) },
+		{ string__format("\t%s\n", [s(LHS_Cast)], AssignTo) },
 		{ AssignOutput = [
 			raw_target_code(AssignTo),
 			target_code_output(ArgLval),
