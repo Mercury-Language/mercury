@@ -135,19 +135,24 @@ main -->
 		{ MaybeMCFlags = yes(MCFlags) },
 		handle_options(MCFlags ++ Args0, MaybeError,
 	    		OptionArgs0, NonOptionArgs, Link),
-		
-		%
-		% When computing the option arguments to pass
-		% to `--make', only include the command-line
-		% arguments, not the contents of DEFAULT_MCFLAGS.
-		%
-		globals__io_lookup_bool_option(make, Make),
-		{ Make = yes ->
-			process_options(Args0, OptionArgs, _, _)
+		(
+			{ MaybeError = no },
+			%
+			% When computing the option arguments to pass
+			% to `--make', only include the command-line
+			% arguments, not the contents of DEFAULT_MCFLAGS.
+			%
+			globals__io_lookup_bool_option(make, Make),
+			{ Make = yes ->
+				process_options(Args0, OptionArgs, _, _)
+			;
+				% OptionArgs is only used with `--make'.
+				OptionArgs = OptionArgs0
+			}
 		;
-			% OptionArgs is only used with `--make'.
-			OptionArgs = OptionArgs0
-		},
+			{ MaybeError = yes(_) },
+			{ OptionArgs = OptionArgs0 }
+		),
 		main_2(MaybeError, OptionArgs, NonOptionArgs, Link)
 	;
 		{ MaybeMCFlags = no },
