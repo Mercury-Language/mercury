@@ -311,6 +311,17 @@ case $HOST in
 			hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc \
 			hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
 		;;
+	hg)
+		CONFIG_OPTS=""
+		case $C_COMPILER in asm)
+			INSTALL_GRADE="hlc.gc"
+			INSTALL_LIBGRADES="asm_fast.gc asm_fast \
+				asm_fast.gc.prof asm_fast.prof  \
+				asm_fast.gc.memprof asm_fast.gc.tr \
+				asm_fast.gc.tr.debug hlc.par.gc"
+			;;
+		esac
+		;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -426,18 +437,33 @@ cd mercury || { false; exit 1; }
 	esac
 # fi
 
+# We allow "asm" as a special value for the C_COMPILER
+# variable; it means to build with `--target asm'.
+# $CC holds the name of the real C compiler.
+
+case $C_COMPILER in
+	asm)
+		CC=gcc
+		target_opts="--target asm"
+		;;
+	*)
+		CC="$C_COMPILER"
+		target_opts=""
+		;;
+esac
+export CC
+
 autoconf || { false; exit 1; }
 rm -f config.cache
-CC=$C_COMPILER
-export CC
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
-mmake depend $PARALLEL || { false; exit 1; }
-mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
+mmake $target_opts depend $PARALLEL || { false; exit 1; }
+mmake $target_opts realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
-mmake depend $PARALLEL || { false; exit 1; }
-version=`mmake version` || { false; exit 1; }
-fullarch=`mmake fullarch` || { false; exit 1; }
-tools/bootcheck -k -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
+mmake $target_opts depend $PARALLEL || { false; exit 1; }
+version=`mmake $target_opts version` || { false; exit 1; }
+fullarch=`mmake $target_opts fullarch` || { false; exit 1; }
+tools/bootcheck $target_opts -k -r -p -t $PARALLEL ||
+	$install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
 #-----------------------------------------------------------------------------#
@@ -471,13 +497,17 @@ case $status in 0)
     # again, look back in the CVS archives for version 1.114 to see
     # the necessary code.
 
-    mmake install MMAKEFLAGS=$PARALLEL || status=1
+    # Note that we don't pass $target_opts when doing `mmake install_grades';
+    # that wouldn't work, since many of the grades can only be built with
+    # `--target c'.
+    mmake $target_opts install_main MMAKEFLAGS=$PARALLEL || status=1
+    mmake install_grades MMAKEFLAGS=$PARALLEL || status=1
     case "$INSTALL_GRADE" in
 	hl*)
 	    	# --split-c-files is not supported for the hl* grades
 	    	;;
-	*)	mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL ||
-	    		status=1
+	*)	mmake install_split_library \
+			LIBGRADES= MMAKEFLAGS=$PARALLEL || status=1
 		;;
     esac
 
@@ -636,7 +666,8 @@ case $HOST in
 	hg)
 		GRADES="asm_fast.gc asm_fast
 			asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			asm_fast.gc.memprof asm_fast.gc.tr
+			asm_fast.gc.tr.debug
 			asm_fast.par.gc hlc.gc"
 		;;
 
@@ -650,7 +681,8 @@ case $HOST in
 		case $C_COMPILER in
 			gcc)	GRADES="asm_fast.gc asm_fast
 				asm_fast.gc.prof asm_fast.prof
-				asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+				asm_fast.gc.memprof asm_fast.gc.tr
+				asm_fast.gc.tr.debug
 				hlc.gc hlc.par.gc" ;;
 			*)	GRADES="none.gc none none.gc.prof
 				none.prof none.gc.memprof none.gc.tr
@@ -693,7 +725,8 @@ do
 		$PARALLEL || status=1
 	case $grade in
 		*.memprof*)
-			# we need to set LD_BIND_NOW=1 for profiling on DEC Alpha
+			# we need to set LD_BIND_NOW=1
+			# for profiling on DEC Alpha
 			(cd benchmarks &&
 			touch poly.m &&
 			mmake poly.depend &&
@@ -726,6 +759,16 @@ do
 			;;
 	esac
 done
+case $HOST in hg)
+	echo "test_mercury starting tests for --target asm at `date`" 1>&2
+	# XXX Note that some of these tests are currently expected to fail
+	# with `--target asm' (in particular the tests of tabling and
+	# nested modules), so we don't set status=1 if these tests fail.
+	./runtests --target asm -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" \
+		-g hlc.gc -m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
+		$PARALLEL
+	;;
+esac
 cd ..
 
 #-----------------------------------------------------------------------------#
