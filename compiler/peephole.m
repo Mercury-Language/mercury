@@ -205,6 +205,8 @@ peephole__jumpopt_instr_list([Instr0|Moreinstrs0], Previnstr,
 		  Moreinstrs0 = [label(Iftargetlabel) - _|_] ->
 			% eliminating the goto (by the local peephole pass)
 			% is better than shortcircuiting it here
+			% PROVIDED the test will succeed most of the time
+			% we could use profiling feedback here XXX
 			Newinstrs = [Instr0],
 			Mod0 = no
 		; map__search(Procmap, Targetlabel, Between) ->
@@ -456,13 +458,7 @@ peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, _Procmap,
 	%	mkframe(D, S, _)	=>	mkframe(D, S, Redoip)
 	%	<straightline instrs>		<straightline instrs>
 	%	modframe(Redoip)
-
-peephole__opt_instr_2(mkframe(Descr, Slots, _), Comment, _Procmap,
-		Instrs0, Instrs) :-
-	opt_util__next_modframe(Instrs0, [], Redoip, Skipped, Rest),
-	list__append(Skipped, Rest, Instrs1),
-	Instrs = [mkframe(Descr, Slots, Redoip) - Comment | Instrs1].
-
+	%
 	% if a `mkframe' is followed by a test that can fail, we try to
 	% swap the two instructions to avoid doing the mkframe unnecessarily.
 	%
@@ -474,36 +470,44 @@ peephole__opt_instr_2(mkframe(Descr, Slots, _), Comment, _Procmap,
 	%
 	%	mkframe(D, S, label)	=>	mkframe(D, S, label)
 	%	if_val(test, redo)		if_val(test, label)
+	%
+	% these two patterns are mutually exclusive because if_val is not
+	% straigh-line code.
 
 peephole__opt_instr_2(mkframe(Descr, Slots, Redoip), Comment, _Procmap,
 		Instrs0, Instrs) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	Instrs1 = [Instr1 | Instrs2],
-	Instr1 = if_val(Test, Target) - Comment2,
-	(
-		Redoip = do_fail,
-		( Target = do_redo ; Target = do_fail)
-	->
-		Instrs = [if_val(Test, do_redo) - Comment2,
-			mkframe(Descr, Slots, do_fail) - Comment | Instrs2]
+	( opt_util__next_modframe(Instrs0, [], Newredoip, Skipped, Rest) ->
+		list__append(Skipped, Rest, Instrs1),
+		Instrs = [mkframe(Descr, Slots, Newredoip) - Comment | Instrs1]
 	;
-		Redoip = label(_)
-	->
+		opt_util__skip_comments_livevals(Instrs0, Instrs1),
+		Instrs1 = [Instr1 | Instrs2],
+		Instr1 = if_val(Test, Target) - Comment2,
 		(
-			Target = do_fail
+			Redoip = do_fail,
+			( Target = do_redo ; Target = do_fail)
 		->
 			Instrs = [if_val(Test, do_redo) - Comment2,
-				mkframe(Descr, Slots, Redoip) - Comment | Instrs2]
+				mkframe(Descr, Slots, do_fail) - Comment | Instrs2]
 		;
-			Target = do_redo
+			Redoip = label(_)
 		->
-			Instrs = [mkframe(Descr, Slots, Redoip) - Comment,
-				if_val(Test, Redoip) - Comment2 | Instrs2]
+			(
+				Target = do_fail
+			->
+				Instrs = [if_val(Test, do_redo) - Comment2,
+					mkframe(Descr, Slots, Redoip) - Comment | Instrs2]
+			;
+				Target = do_redo
+			->
+				Instrs = [mkframe(Descr, Slots, Redoip) - Comment,
+					if_val(Test, Redoip) - Comment2 | Instrs2]
+			;
+				fail
+			)
 		;
 			fail
 		)
-	;
-		fail
 	).
 
 %-----------------------------------------------------------------------------%
