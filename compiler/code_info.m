@@ -375,8 +375,8 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
 		MaybeFailVars = no,
 		EffLiveness = Liveness
 	),
-		var_locn__init_state(ArgList, EffLiveness, VarSet,
-			StackSlots, FollowVars, Options, VarLocnInfo),
+	var_locn__init_state(ArgList, EffLiveness, VarSet,
+		StackSlots, FollowVars, Options, VarLocnInfo),
 	stack__init(ResumePoints),
 	globals__lookup_bool_option(Globals, allow_hijacks, AllowHijack),
 	(
