@@ -353,6 +353,7 @@ compute_grade(Globals, Grade) :-
 	globals__get_gc_method(Globals, GC_Method),
 	globals__lookup_bool_option(Globals, profile_time, ProfileTime),
 	globals__lookup_bool_option(Globals, profile_calls, ProfileCalls),
+	globals__lookup_bool_option(Globals, profile_memory, ProfileMemory),
 	globals__lookup_bool_option(Globals, use_trail, UseTrail),
 /*
 % These vary from machine to machine, and (for backwards compatibility,
@@ -392,15 +393,33 @@ compute_grade(Globals, Grade) :-
 	),
 	( ProfileTime = yes ->
 		( ProfileCalls = yes ->
-			Part4 = ".prof"
-		; 
-			Part4 = ".proftime"
+			( ProfileMemory = yes ->
+				Part4 = ".profall"
+			; 
+				Part4 = ".prof"
+			)
+		;
+			( ProfileMemory = yes ->
+				Part4 = ".profmemtime" /* not allowed */
+					/* `ml' will catch the error */
+			; 
+				Part4 = ".proftime" /* currently useless */
+			)
 		)
 	;
 		( ProfileCalls = yes ->
-			Part4 = ".profcalls"
+			( ProfileMemory = yes ->
+				Part4 = ".memprof"
+			; 
+				Part4 = ".profcalls"
+			)
 		; 
-			Part4 = ""
+			( ProfileMemory = yes ->
+				Part4 = ".profmem" /* not allowed */
+					/* `ml' will catch the error */
+			; 
+				Part4 = ""
+			)
 		)
 	),
 	( UseTrail = yes ->
@@ -496,19 +515,33 @@ convert_grade_option(Grade0) -->
 	( { string__remove_suffix(Grade12, ".prof", Grade13) } ->
 		{ Grade14 = Grade13 },
 		set_bool_opt(profile_time, yes),
-		set_bool_opt(profile_calls, yes)
+		set_bool_opt(profile_calls, yes),
+		set_bool_opt(profile_memory, no)
 	; { string__remove_suffix(Grade12, ".proftime", Grade13) } ->
 		{ Grade14 = Grade13 },
 		set_bool_opt(profile_time, yes),
-		set_bool_opt(profile_calls, no)
+		set_bool_opt(profile_calls, no),
+		set_bool_opt(profile_memory, no)
 	; { string__remove_suffix(Grade12, ".profcalls", Grade13) } ->
 		{ Grade14 = Grade13 },
 		set_bool_opt(profile_time, no),
-		set_bool_opt(profile_calls, yes)
+		set_bool_opt(profile_calls, yes),
+		set_bool_opt(profile_memory, no)
+	; { string__remove_suffix(Grade12, ".profall", Grade13) } ->
+		{ Grade14 = Grade13 },
+		set_bool_opt(profile_time, yes),
+		set_bool_opt(profile_calls, yes),
+		set_bool_opt(profile_memory, yes)
+	; { string__remove_suffix(Grade12, ".memprof", Grade13) } ->
+		{ Grade14 = Grade13 },
+		set_bool_opt(profile_time, no),
+		set_bool_opt(profile_calls, yes),
+		set_bool_opt(profile_memory, yes)
 	;
 		{ Grade14 = Grade12 },
 		set_bool_opt(profile_time, no),
-		set_bool_opt(profile_calls, no)
+		set_bool_opt(profile_calls, no),
+		set_bool_opt(profile_memory, no)
 	),
 	% part 3
 	( { string__remove_suffix(Grade14, ".gc", Grade15) } ->

@@ -160,10 +160,12 @@
 	;	if_val(rval, code_addr)
 			% If rval is true, then goto code_addr.
 
-	;	incr_hp(lval, maybe(tag), rval)
+	;	incr_hp(lval, maybe(tag), rval, string)
 			% Get a memory block of a size given by an rval
 			% and put its address in the given lval,
 			% possibly after tagging it with a given tag.
+			% The string gives the name of the type constructor
+			% of the memory cell for use in memory profiling.
 
 	;	mark_hp(lval)
 			% Tell the heap sub-system to store a marker
@@ -383,7 +385,7 @@
 		% `var' rvals are used during code generation,
 		% but should not be present in the LLDS at any
 		% stage after code generation.
-	;	create(tag, list(maybe(rval)), bool, int)
+	;	create(tag, list(maybe(rval)), bool, int, string)
 		% create(Tag, Arguments, IsUnique, LabelNumber):
 		% A `create' instruction is used during code generation
 		% for creating a term, either on the heap or
@@ -402,6 +404,10 @@
 		% The label number is needed for the case when
 		% we can construct the term at compile-time
 		% and just reference the label.
+		%
+		% The last argument gives the name of the type constructor
+		% of the function symbol of which this is a cell, for use
+		% in memory profiling.
 	;	mkword(tag, rval)
 		% given a pointer and a tag,
 		% mkword returns a tagged pointer
@@ -617,7 +623,7 @@ llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
 	error("var unexpected in llds__rval_type").
-llds__rval_type(create(_, _, _, _), data_ptr).
+llds__rval_type(create(_, _, _, _, _), data_ptr).
 	%
 	% Note that create and mkword must both be of type data_ptr,
 	% not of type word, to ensure that static consts containing

@@ -1277,8 +1277,8 @@ for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
 
-# add `.prof' (--profiling) grades, or, if time profiling is not supported,
-# a `.profcalls' (--profile-calls) grade.
+# add `.prof' (--profiling) grades, if time profiling is supported,
+# and a `.memprof' (--memory-profiling) grade.
 if test $mercury_cv_profiling = yes; then
 	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
 	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof $DEFAULT_GRADE_NOGC.prof"
@@ -1286,9 +1286,8 @@ if test $mercury_cv_profiling = yes; then
 		GRADE_NOGC="`echo $GRADE | sed 's/\.gc$//'`"
 		LIBGRADES="$LIBGRADES $GRADE.prof $GRADE_NOGC.prof"
 	fi
-else
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.profcalls"
 fi
+LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
 
 # add `.tr' (--trailing) grades
 LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"

@@ -87,6 +87,12 @@ main_2(no, Args, Link) -->
 			;
 				[]
 			)
+		),
+		globals__io_lookup_bool_option(statistics, Statistics),
+		( { Statistics = yes } ->
+			io__report_full_memory_stats
+		;
+			[]
 		)
 	).
 

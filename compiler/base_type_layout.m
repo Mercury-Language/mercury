@@ -528,9 +528,11 @@ base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, Unique, CellNumber,
 		MaxTags < 4
 	->
 		Rvals = [yes(const(int_const(Tag))), 
-			yes(create(0, Rvals0, Unique, CellNumber))]
+			yes(create(0, Rvals0, Unique, CellNumber,
+				"type_layout"))]
 	;
-		Rvals = [yes(create(Tag, Rvals0, Unique, CellNumber))]
+		Rvals = [yes(create(Tag, Rvals0, Unique, CellNumber,
+			"type_layout"))]
 	).
 
 	% Encode a cons tag (simple or complicated) in rvals.
@@ -983,7 +985,8 @@ base_type_layout__functors_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 		LayoutInfo),
 	base_type_layout__functors_value(enum, EnumIndicator),
 	EnumRval = yes(const(int_const(EnumIndicator))),
-	CreateRval = yes(create(0, VectorRvals, no, NextCellNumber)),
+	CreateRval = yes(create(0, VectorRvals, no, NextCellNumber,
+		"type_layout")),
 	Rvals = [EnumRval, CreateRval].
 
 	% base_type_functors of a no_tag:
@@ -1004,7 +1007,8 @@ base_type_layout__functors_no_tag(SymName, Type, LayoutInfo0,
 
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo1,
 		LayoutInfo),
-	CreateRval = yes(create(0, VectorRvals, no, NextCellNumber)),
+	CreateRval = yes(create(0, VectorRvals, no, NextCellNumber,
+		"type_layout")),
 
 	base_type_layout__functors_value(no_tag, NoTagIndicator),
 	NoTagRval = yes(const(int_const(NoTagIndicator))),
@@ -1035,7 +1039,7 @@ base_type_layout__functors_du(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 			base_type_layout__get_next_cell_number(NextCellNumber,
 				LayoutInfoB, LayoutInfoC),
 			VectorRval = yes(create(0, VectorRvalList, no, 
-				NextCellNumber)),
+				NextCellNumber, "type_layout")),
 			Rvals1 = [VectorRval | Rvals0],
 			NewAcc = Rvals1 - LayoutInfoC)),
 		ConsList, [] - LayoutInfo0, VectorRvals - LayoutInfo),
@@ -1109,7 +1113,7 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 		list__append(RealArityArg, PseudoArgs1, PseudoArgs),
 
 		Pseudo = create(0, [Pseudo0 | PseudoArgs], no, 
-			CNum0)
+			CNum0, "type_layout")
 	;
 		type_util__var(Type, Var)
 	->
@@ -1131,7 +1135,7 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 
 base_type_layout__remove_create(Rval0, Rval) :-
 	(
-		Rval0 = create(_, [PTI], _, _)
+		Rval0 = create(_, [PTI], _, _, _)
 	->
 		Rval = PTI
 	;

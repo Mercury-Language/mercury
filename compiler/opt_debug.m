@@ -531,7 +531,7 @@ opt_debug__dump_vnrval(vn_mkword(T, N), Str) :-
 opt_debug__dump_vnrval(vn_const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["vn_const(", C_str, ")"], Str).
-opt_debug__dump_vnrval(vn_create(T, MA, _U, L), Str) :-
+opt_debug__dump_vnrval(vn_create(T, MA, _U, L, _M), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	string__int_to_string(L, L_str),
@@ -618,7 +618,7 @@ opt_debug__dump_rval(mkword(T, N), Str) :-
 opt_debug__dump_rval(const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["const(", C_str, ")"], Str).
-opt_debug__dump_rval(create(T, MA, U, L), Str) :-
+opt_debug__dump_rval(create(T, MA, U, L, _), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	(
@@ -839,7 +839,7 @@ opt_debug__dump_instr(if_val(Rval, CodeAddr), Str) :-
 	opt_debug__dump_rval(Rval, R_str),
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["if_val(", R_str, ", ", C_str, ")"], Str).
-opt_debug__dump_instr(incr_hp(Lval, MaybeTag, Size), Str) :-
+opt_debug__dump_instr(incr_hp(Lval, MaybeTag, Size, _), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	(
 		MaybeTag = no,

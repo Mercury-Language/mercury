@@ -527,7 +527,7 @@ vn_flush__generate_assignment(Vnlval, Vn, Forbidden0, VnTables0, VnTables,
 vn_flush__get_incr_hp([], _, _) :-
 	error("could not find incr_hp").
 vn_flush__get_incr_hp([Instr0 | Instrs0], IncrHp, Instrs) :-
-	( Instr0 = incr_hp(_, _, _) - _ ->
+	( Instr0 = incr_hp(_, _, _, _) - _ ->
 		IncrHp = Instr0,
 		Instrs = Instrs0
 	;
@@ -689,8 +689,8 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 		Templocs = Templocs0,
 		Instrs = []
 	;
-		Vnrval = vn_create(Tag, MaybeRvals, Unique, Label),
-		Rval = create(Tag, MaybeRvals, Unique, Label),
+		Vnrval = vn_create(Tag, MaybeRvals, Unique, Label, Msg),
+		Rval = create(Tag, MaybeRvals, Unique, Label, Msg),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		Instrs = []
@@ -847,7 +847,8 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 	),
 
 	vn_table__set_current_value(Vnlval, AssignedVn, VnTables4, VnTables),
-	Instr = incr_hp(Lval, MaybeTag, Rval) - "",
+	Instr = incr_hp(Lval, MaybeTag, Rval, "origin_lost_in_value_number")
+		- "",
 	list__condense([IncrInstrs, SaveInstrs, [Instr]], Instrs).
 
 %-----------------------------------------------------------------------------%
@@ -892,7 +893,7 @@ vn_flush__hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 			Templocs = Templocs0,
 			Instrs = []
 		;
-			Vnrval = vn_create(_, _, _, _),
+			Vnrval = vn_create(_, _, _, _, _),
 			error("create in calculation of new hp")
 		;
 			Vnrval = vn_unop(_, _),

@@ -11,7 +11,7 @@
 % The tables generated have a number of `create' rvals within them,
 % these are removed by llds_common.m to create static structures.
 %
-% Author: trd
+% Author: trd.
 %
 %---------------------------------------------------------------------------%
 %
@@ -219,7 +219,7 @@ stack_layout__construct_liveval_pairs(LiveLvals, Rval) -->
 		RvalsList),
 	{ list__condense(RvalsList, Rvals) },
 	stack_layout__get_next_cell_number(CNum),
-	{ Rval = create(0, Rvals, no, CNum) }.
+	{ Rval = create(0, Rvals, no, CNum, "stack_layout_pair") }.
 
 	% Construct a pair of (lval, live_value_type) representations.
 
@@ -231,17 +231,13 @@ stack_layout__construct_liveval_pair(Lval - LiveValueType, Rvals) -->
 	{ stack_layout__represent_lval(Lval, Rval0) },
 	stack_layout__represent_live_value_type(LiveValueType, Rval1),
 	{ Rvals = [yes(Rval0), yes(Rval1)] }.
-	
 
 %---------------------------------------------------------------------------%
-
 
 	% The constants here should be kept in sync with constants in
 	% the runtime system:
 	% 	mercury_accurate_gc.h - contains macros to access these
 	%			 	constants.
-
-
 
 	% Construct a representation of a live_value_type.
 	%
@@ -273,7 +269,8 @@ stack_layout__represent_live_value_type(var(Type, _Inst), Rval) -->
 		% XXX hack - don't yet write out insts
 	{ Rval1 = const(int_const(-1)) },
 	stack_layout__get_next_cell_number(CNum2),
-	{ Rval = create(0, [yes(Rval0), yes(Rval1)], no, CNum2) }.
+	{ Rval = create(0, [yes(Rval0), yes(Rval1)], no, CNum2,
+		"stack_layout_pair") }.
 
 	% Construct a representation of an lval.
 
@@ -301,7 +298,6 @@ stack_layout__represent_lval(hp, Rval) :-
 stack_layout__represent_lval(sp, Rval) :-
 	stack_layout__make_tagged_rval(8, 0, Rval).
 
-
 stack_layout__represent_lval(temp(_, _), _) :-
 	error("stack_layout: continuation live value stored in temp register").
 
@@ -321,7 +317,6 @@ stack_layout__represent_lval(mem_ref(_), _) :-
 stack_layout__represent_lval(lvar(_), _) :-
 	error("stack_layout: continuation live value stored in lvar").
 
-
 	% Some things in this module are encoded using a low tag.
 	% This is not done using the normal compiler mkword, but by
 	% doing the bit shifting here.
@@ -340,7 +335,6 @@ stack_layout__make_tagged_rval(Tag, Value, Rval) :-
 stack_layout__make_tagged_word(Tag, Value, TaggedValue) :-
 	stack_layout__tag_bits(Bits),
 	TaggedValue = (Value << Bits) + Tag.
-
 
 	% Construct a represntation of  the code model.
 
@@ -363,7 +357,6 @@ stack_layout__represent_code_model(CodeModel, Rval) -->
 stack_layout__code_model(model_det, 0).
 stack_layout__code_model(model_semi, 0).
 stack_layout__code_model(model_non, 1).
-
 
 :- pred stack_layout__tag_bits(int::out) is det.
 stack_layout__tag_bits(8).

@@ -63,7 +63,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_pred, prog_data, code_util.
-:- import_module mode_util, code_aux, hlds_out, tree.
+:- import_module mode_util, type_util, code_aux, hlds_out, tree.
 :- import_module bool, string, int, map, term, require, std_util.
 
 :- type uni_val		--->	ref(var)
@@ -264,9 +264,12 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
 		RVals) },
 	{ Code = empty },
+	code_info__variable_type(Var, VarType),
+	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
-	code_info__cache_expression(Var, create(SimpleTag, RVals, no, CellNo)).
+	{ Expr = create(SimpleTag, RVals, no, CellNo, VarTypeMsg) },
+	code_info__cache_expression(Var, Expr).
 unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
@@ -277,9 +280,12 @@ unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
 	{ Code = empty },
+	code_info__variable_type(Var, VarType),
+	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
-	code_info__cache_expression(Var, create(Bits0, RVals, no, CellNo)).
+	{ Expr = create(Bits0, RVals, no, CellNo, VarTypeMsg) },
+	code_info__cache_expression(Var, Expr).
 unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
 		Var, _Args, _Modes, Code) -->
 	{ Code = empty },
@@ -373,7 +379,7 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 				- "get number of arguments",
 			incr_hp(NewClosure, no,
 				binop(+, lval(NumOldArgs),
-				NumNewArgsPlusTwo_Rval))
+				NumNewArgsPlusTwo_Rval), "closure")
 				- "allocate new closure",
 			assign(field(0, lval(NewClosure), Zero),
 				binop(+, lval(NumOldArgs), NumNewArgs_Rval))
@@ -412,7 +418,7 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [yes(const(int_const(NumArgs))),
 			yes(const(code_addr_const(CodeAddress))) | PredArgs] },
-		{ Value = create(0, Vector, no, CellNo) }
+		{ Value = create(0, Vector, no, CellNo, "closure") }
 	),
 	code_info__cache_expression(Var, Value).
 
@@ -725,6 +731,28 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 		code_info__cache_expression(Lvar, var(Rvar))
 	;
 		{ true }
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred unify_gen__var_type_msg(type, string).
+:- mode unify_gen__var_type_msg(in, out) is det.
+
+unify_gen__var_type_msg(Type, Msg) :-
+	( type_util__type_to_type_id(Type, TypeId, _) ->
+		TypeId = TypeSym - TypeArity,
+		(
+			TypeSym = qualified(ModuleName, TypeName),
+			string__append_list([ModuleName, ":", TypeName],
+				TypeSymStr)
+		;
+			TypeSym = unqualified(TypeName),
+			TypeSymStr = TypeName
+		),
+		string__int_to_string(TypeArity, TypeArityStr),
+		string__append_list([TypeSymStr, "/", TypeArityStr], Msg)
+	;
+		error("type is still a type variable in var_type_msg")
 	).
 
 %---------------------------------------------------------------------------%

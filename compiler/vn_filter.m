@@ -144,7 +144,7 @@ vn_filter__user_instr(computed_goto(Rval, _), yes(Rval)).
 vn_filter__user_instr(if_val(Rval, _), yes(Rval)).
 vn_filter__user_instr(c_code(_), _):-
 	error("inappropriate instruction in vn__filter").
-vn_filter__user_instr(incr_hp(_, _, Rval), yes(Rval)).
+vn_filter__user_instr(incr_hp(_, _, Rval, _), yes(Rval)).
 vn_filter__user_instr(mark_hp(_), no).
 vn_filter__user_instr(restore_hp(Rval), yes(Rval)).
 vn_filter__user_instr(store_ticket(_), no).
@@ -192,8 +192,8 @@ vn_filter__replace_in_user_instr(if_val(Rval0, Label), Temp, Defn,
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(c_code(_), _, _, _):-
 	error("inappropriate instruction in vn__filter").
-vn_filter__replace_in_user_instr(incr_hp(Lval, Tag, Rval0), Temp, Defn,
-		incr_hp(Lval, Tag, Rval)) :-
+vn_filter__replace_in_user_instr(incr_hp(Lval, Tag, Rval0, Msg), Temp, Defn,
+		incr_hp(Lval, Tag, Rval, Msg)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(mark_hp(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
@@ -238,7 +238,7 @@ vn_filter__defining_instr(computed_goto(_, _), no).
 vn_filter__defining_instr(if_val(_, _), no).
 vn_filter__defining_instr(c_code(_), _):-
 	error("inappropriate instruction in vn__filter").
-vn_filter__defining_instr(incr_hp(Lval, _, _), yes(Lval)).
+vn_filter__defining_instr(incr_hp(Lval, _, _, _), yes(Lval)).
 vn_filter__defining_instr(mark_hp(Lval), yes(Lval)).
 vn_filter__defining_instr(restore_hp(_), no).
 vn_filter__defining_instr(store_ticket(Lval), yes(Lval)).
@@ -284,8 +284,8 @@ vn_filter__replace_in_defining_instr(if_val(_, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(c_code(_), _, _, _):-
 	error("inappropriate instruction in vn__filter").
-vn_filter__replace_in_defining_instr(incr_hp(Lval0, Tag, Rval), Temp, Defn,
-		incr_hp(Lval, Tag, Rval)) :-
+vn_filter__replace_in_defining_instr(incr_hp(Lval0, Tag, Rval, Msg), Temp, Defn,
+		incr_hp(Lval, Tag, Rval, Msg)) :-
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
 vn_filter__replace_in_defining_instr(mark_hp(Lval0), Temp, Defn,
 		mark_hp(Lval)) :-
@@ -360,8 +360,8 @@ vn_filter__replace_in_rval(lval(Lval0), Temp, Defn, Rval) :-
 	).
 vn_filter__replace_in_rval(var(_), _, _, _) :-
 	error("found var in vn_filter__replace_in_rval").
-vn_filter__replace_in_rval(create(Tag, Args, Unique, Label), _, _,
-		create(Tag, Args, Unique, Label)).
+vn_filter__replace_in_rval(create(Tag, Args, Unique, Label, Msg), _, _,
+		create(Tag, Args, Unique, Label, Msg)).
 vn_filter__replace_in_rval(mkword(Tag, Rval0), Temp, Defn, mkword(Tag, Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_rval(const(Const), _, _, const(Const)).

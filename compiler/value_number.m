@@ -141,7 +141,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 			LabelInstr = label(FalseLabel) - "vn false label",
 			list__append(IfInstrs, [LabelInstr | Instrs1], Instrs)
 		)
-	; Uinstr0 = incr_hp(_, _, _) ->
+	; Uinstr0 = incr_hp(_, _, _, _) ->
 		( SeenAlloc = yes ->
 			N1 is N0 + 1,
 			NewLabel = local(ProcLabel, N0),
@@ -1082,7 +1082,7 @@ value_number__boundary_instr(goto(_), yes).
 value_number__boundary_instr(computed_goto(_, _), yes).
 value_number__boundary_instr(c_code(_), yes).
 value_number__boundary_instr(if_val(_, _), yes).
-value_number__boundary_instr(incr_hp(_, _, _), no).
+value_number__boundary_instr(incr_hp(_, _, _, _), no).
 value_number__boundary_instr(mark_hp(_), no).
 value_number__boundary_instr(restore_hp(_), no).
 value_number__boundary_instr(store_ticket(_), no).

@@ -795,7 +795,7 @@ output_instruction_decls(computed_goto(Rval, _Labels), DeclSet0, DeclSet) -->
 output_instruction_decls(if_val(Rval, Target), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(incr_hp(Lval, _Tag, Rval), DeclSet0, DeclSet) -->
+output_instruction_decls(incr_hp(Lval, _Tag, Rval, _), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
 output_instruction_decls(mark_hp(Lval), DeclSet0, DeclSet) -->
@@ -1008,21 +1008,26 @@ output_instruction(if_val(Rval, Target), ProfInfo) -->
 	io__write_string(")\n\t\t"),
 	output_goto(Target, CallerLabel).
 
-output_instruction(incr_hp(Lval, MaybeTag, Rval), _) -->
+output_instruction(incr_hp(Lval, MaybeTag, Rval, TypeMsg), ProfInfo) -->
 	(
 		{ MaybeTag = no },
-		io__write_string("\tincr_hp("),
+		io__write_string("\tincr_hp_msg("),
 		output_lval_as_word(Lval)
 	;
 		{ MaybeTag = yes(Tag) },
-		io__write_string("\ttag_incr_hp("),
+		io__write_string("\ttag_incr_hp_msg("),
 		output_lval_as_word(Lval),
 		io__write_string(", "),
 		output_tag(Tag)
 	),
 	io__write_string(", "),
 	output_rval_as_type(Rval, word),
-	io__write_string(");\n").
+	io__write_string(", "),
+	{ ProfInfo = CallerLabel - _ },
+	output_label(CallerLabel),
+	io__write_string(", """),
+	io__write_string(TypeMsg),
+	io__write_string(""");\n").
 
 output_instruction(mark_hp(Lval), _) -->
 	io__write_string("\tmark_hp("),
@@ -1459,7 +1464,7 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 	    { N = N2 },
 	    { DeclSet = DeclSet2 }
 	).
-output_rval_decls(create(_Tag, ArgVals, _, Label), FirstIndent, LaterIndent,
+output_rval_decls(create(_Tag, ArgVals, _, Label, _), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
 	( { set__member(CreateLabel, DeclSet0) } ->
@@ -2592,7 +2597,7 @@ output_rval(lval(Lval)) -->
 	;
 		output_lval(Lval)
 	).
-output_rval(create(Tag, _Args, _Unique, CellNum)) -->
+output_rval(create(Tag, _Args, _Unique, CellNum, _Msg)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
 	% XXX we should change the definition of mkword()

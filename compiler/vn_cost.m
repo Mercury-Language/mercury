@@ -134,7 +134,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
-		Uinstr = incr_hp(Lval, MaybeTag, Rval),
+		Uinstr = incr_hp(Lval, MaybeTag, Rval, _),
 		vn_type__costof_assign(Params, AssignCost),
 		vn_cost__lval_cost(Lval, Params, LvalCost),
 		vn_cost__rval_cost(Rval, Params, RvalCost),
@@ -292,7 +292,7 @@ vn_cost__rval_cost(Rval, Params, Cost) :-
 		Rval = var(_),
 		error("var found in rval_cost")
 	;
-		Rval = create(_, _, _, _),
+		Rval = create(_, _, _, _, _),
 		Cost = 0
 	;
 		Rval = mkword(_, Rval1),

@@ -85,8 +85,10 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 
 		% Generate code which does the hash table lookup
 	{
-		NextSlotsTable = create(0, NextSlots, no, NextSlotsTableNo),
-		StringTable = create(0, Strings, no, StringTableNo),
+		NextSlotsTable = create(0, NextSlots, no, NextSlotsTableNo,
+			"string_switch_next_slots_table"),
+		StringTable = create(0, Strings, no, StringTableNo,
+			"string_switch_string_table"),
 		HashLookupCode = node([
 			comment("hashed string switch") -
 			  "",

@@ -223,8 +223,11 @@ NEWS since release 0.7.3:
 
   See the "Using Prolog" section of the Mercury User's Guide for details.
 
-* The profiler now supports profiling just user time, or profiling
+* The Mercury profiler has a number of new features.
+
+  The profiler now supports profiling just user time, or profiling
   real (elapsed) time, rather than profiling user + system time.
+  We've also added support for memory profiling.
 
   See the "Profiling" chapter of the Mercury User's Guide for details.
 

@@ -677,7 +677,7 @@ possible_targets(if_val(_, CodeAddr), Targets) :-
 	;
 		Targets = []
 	).
-possible_targets(incr_hp(_, _, _), []).
+possible_targets(incr_hp(_, _, _, _), []).
 possible_targets(mark_hp(_), []).
 possible_targets(restore_hp(_), []).
 possible_targets(store_ticket(_), []).
@@ -1288,8 +1288,8 @@ substitute_labels_instr(if_val(Rval, CodeAddr0), LabelMap,
 	;
 		CodeAddr = CodeAddr0
 	).
-substitute_labels_instr(incr_hp(Lval, Tag, Rval), _,
-		incr_hp(Lval, Tag, Rval)).
+substitute_labels_instr(incr_hp(Lval, Tag, Rval, Msg), _,
+		incr_hp(Lval, Tag, Rval, Msg)).
 substitute_labels_instr(mark_hp(Lval), _, mark_hp(Lval)).
 substitute_labels_instr(restore_hp(Rval), _, restore_hp(Rval)).
 substitute_labels_instr(store_ticket(Lval), _, store_ticket(Lval)).

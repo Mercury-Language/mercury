@@ -227,7 +227,8 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			Livevals3 = Livevals1
 		;
 			Found = no,
-			livemap__make_live_in_rvals([Rval], Livevals1, Livevals2),
+			livemap__make_live_in_rvals([Rval],
+				Livevals1, Livevals2),
 			( CodeAddr = label(Label) ->
 				livemap__insert_label_livevals([Label],
 					Livemap0, Livevals2, Livevals3)
@@ -244,7 +245,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Livemap = Livemap0,
 		Ccode = Ccode0
 	;
-		Uinstr0 = incr_hp(Lval, _Tag, Rval),
+		Uinstr0 = incr_hp(Lval, _, Rval, _),
 
 		% Make dead the variable assigned, but make any variables
 		% needed to access it live. Make the variables in the size
@@ -255,7 +256,8 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 
 		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals([Rval | Rvals], Livevals1, Livevals),
+		livemap__make_live_in_rvals([Rval | Rvals],
+			Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
@@ -391,7 +393,7 @@ livemap__make_live_in_rval(lval(Lval), Live0, Live) :-
 	),
 	opt_util__lval_access_rvals(Lval, AccessRvals),
 	livemap__make_live_in_rvals(AccessRvals, Live1, Live).
-livemap__make_live_in_rval(create(_, _, _, _), Live, Live).
+livemap__make_live_in_rval(create(_, _, _, _, _), Live, Live).
 	% All terms inside creates in the optimizer must be static.
 livemap__make_live_in_rval(mkword(_, Rval), Live0, Live) :-
 	livemap__make_live_in_rval(Rval, Live0, Live).

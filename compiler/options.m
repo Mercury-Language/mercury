@@ -109,9 +109,12 @@
 		;	gcc_global_registers
 		;	asm_labels
 		;	gc
-		;	profiling
+		;	profiling		% profile_time + profile_calls
+		;	time_profiling		% profile_time + profile_calls
+		;	memory_profiling	% profime_mem + profile_calls
 		;	profile_calls
 		;	profile_time
+		;	profile_memory
 		;	use_trail
 		;	pic_reg
 		;	debug
@@ -354,8 +357,11 @@ option_defaults_2(compilation_model_option, [
 	asm_labels		-	bool(yes),
 	gc			-	string("conservative"),
 	profiling		-	bool_special,
+	time_profiling		-	special,
+	memory_profiling	-	special,
 	profile_calls		-	bool(no),
 	profile_time		-	bool(no),
+	profile_memory		-	bool(no),
 	use_trail		-	bool(no),
 	pic_reg			-	bool(no),
 	debug			-	bool(no),
@@ -648,8 +654,11 @@ long_option("asm-labels",		asm_labels).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
 long_option("profiling",		profiling).
+long_option("time-profiling",		time_profiling).
+long_option("memory-profiling",		memory_profiling).
 long_option("profile-calls",		profile_calls).
 long_option("profile-time",		profile_time).
+long_option("profile-memory",		profile_memory).
 long_option("use-trail",		use_trail).
 long_option("pic-reg",			pic_reg).
 long_option("debug",			debug).
@@ -831,12 +840,21 @@ special_handler(grade, string(Grade), OptionTable0, Result) :-
 	( convert_grade_option(Grade, OptionTable0, OptionTable) ->
 		Result = ok(OptionTable)
 	;
-		string__append_list(["invalid Grade `", Grade, "'"], Msg),
+		string__append_list(["invalid grade `", Grade, "'"], Msg),
 		Result = error(Msg)
 	).
 special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(Value), OptionTable1),
-	map__set(OptionTable1, profile_calls, bool(Value), OptionTable).
+	map__set(OptionTable1, profile_calls, bool(Value), OptionTable2),
+        map__set(OptionTable2, profile_memory, bool(no), OptionTable).
+special_handler(time_profiling, none, OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, profile_time, bool(yes), OptionTable1),
+	map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
+        map__set(OptionTable2, profile_memory, bool(no), OptionTable).
+special_handler(memory_profiling, none, OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, profile_time, bool(no), OptionTable1),
+	map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
+        map__set(OptionTable2, profile_memory, bool(yes), OptionTable).
 special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, inline_simple, bool(Value), OptionTable1),
 	map__set(OptionTable1, inline_single_use, bool(Value), OptionTable2),
@@ -1312,22 +1330,40 @@ options_help_compilation_model -->
 	io__write_string("\t\tEnable use of a trail.\n"),
 	io__write_string("\t\tThis is necessary for interfacing with constraint solvers,\n"),
 	io__write_string("\t\tor for backtrackable destructive update.\n"),
-	io__write_string("\t--profiling\t\t"),
+	io__write_string("\t-p, --profiling, --time-profiling\t\t"),
 	io__write_string("\t(grade modifier: `.prof')\n"),
-	io__write_string("\t\tEnable profiling.  Insert profiling hooks in the\n"),
+	io__write_string("\t\tEnable time and call profiling.  Insert profiling hooks in the\n"),
 	io__write_string("\t\tgenerated code, and also output some profiling\n"),
 	io__write_string("\t\tinformation (the static call graph) to the file\n"),
 	io__write_string("\t\t`<module>.prof'.\n"),
+	io__write_string("\t--memory-profiling\t\t"),
+	io__write_string("\t(grade modifier: `.memprof')\n"),
+	io__write_string("\t\tEnable memory and call profiling.\n"),
+/*****************
+XXX The following options are not documented,
+because they are currently not useful.
+The idea was for you to be able to use --profile-calls
+and --profile-time seperately, but that doesn't work
+because compiling with --profile-time instead of
+--profile-calls results in different code addresses, 
+so you can't combine the data from versions of
+your program compiled with different options.
+
 	io__write_string("\t--profile-calls\t\t"),
 	io__write_string("\t(grade modifier: `.profcalls')\n"),
-	io__write_string("\t\tSimilar to --profiling, except that only gathers\n"),
+	io__write_string("\t\tSimilar to `--profiling', except that only gathers\n"),
 	io__write_string("\t\tcall counts, not timing information.\n"),
-	io__write_string("\t\tUseful on systems where time profiling is not supported\n"),
-	io__write_string("\t\t(e.g. MS Windows).\n"),
+	io__write_string("\t\tUseful on systems where time profiling is not supported,\n"),
+	io__write_string("\t\tbut not as useful as `--memory-profiling'.\n"),
 	io__write_string("\t--profile-time\t\t"),
 	io__write_string("\t(grade modifier: `.proftime')\n"),
-	io__write_string("\t\tSimilar to --profiling, except that only gathers\n"),
+	io__write_string("\t\tSimilar to `--profiling', except that it only gathers\n"),
 	io__write_string("\t\ttiming information, not call counts.\n"),
+	io__write_string("\t--profile-memory\t\t"),
+	io__write_string("\t(grade modifier: `.profmem')\n"),
+	io__write_string("\t\tSimilar to `--memory-profiling', except that it only gathers\n"),
+	io__write_string("\t\tmemory usage information, not call counts.\n"),
+********************/
 	io__write_string("\t--debug\t\t\t"),
 	io__write_string("\t(grade modifier: `.debug')\n"),
 	io__write_string("\t\tEnable debugging.\n"),

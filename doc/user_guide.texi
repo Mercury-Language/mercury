@@ -1052,6 +1052,7 @@ Mercury implementation does not require that.
 * Creating the profile::            How to create profile data.
 * Displaying the profile::          How to display the profile data.
 * Analysis of results::             How to interpret the output.
+* Memory profiling::                Profiling memory usage rather than time.
 @end menu
 
 @node Profiling introduction
@@ -1124,11 +1125,11 @@ so on Windows you must explicitly specify @samp{-Tr}.
 
 The next step is to run your program.  The profiling version of your
 program will collect profiling information during execution, and
-save this information in the files @samp{Prof.Counts}, @samp{Prof.Decls},
-and @samp{Prof.CallPair}.
-(@samp{Prof.Decl} contains the names of the procedures and their
-associated addresses, @samp{Prof.CallPair} records the number of times
-each procedure was called by each different caller, and @samp{Prof.Counts}
+save this information in the files @file{Prof.Counts}, @file{Prof.Decls},
+and @file{Prof.CallPair}.
+(@file{Prof.Decl} contains the names of the procedures and their
+associated addresses, @file{Prof.CallPair} records the number of times
+each procedure was called by each different caller, and @file{Prof.Counts}
 records the number of times that execution was in each procedure
 when a profiling interrupt occurred.)
 
@@ -1321,7 +1322,39 @@ slightly different meanings.  For the parent procedures the self and descendent
 time represent the proportion of the current procedure's self and descendent 
 time due to that parent.  These times are obtained using the assumption that
 each call contributes equally to the total time of the current procedure.
-@c XXX is that really true? Do we really make that assumption?
+
+@node Memory profiling
+@section Memory profiling
+
+It is also possible to profile memory allocation.  To enable memory
+profiling, your program must be built with memory profiling enabled,
+using the @samp{--memory-profiling} option.  Then, as with time
+profiling, you run your program to create the profiling data.
+This will be stored in the files @file{Prof.MemoryWords}
+@file{Prof.MemoryCells}, @file{Prof.Decls}, and @file{Prof.CallPair}.
+
+To create the profile, you need to invoke @samp{mprof} with the
+@samp{-m} (@samp{--profile memory-words}) option.  This will profile
+the amount of memory allocated, measured in units of words. 
+(A word is 4 bytes on a 32-bit architecture, and 8 bytes on a 64-bit
+architecture.)
+
+Alternatively, you can use @samp{mprof}'s @samp{-M}
+(@samp{--profile memory-cells}) option.  This will profile memory in
+units of ``cells''.  A cell is a group of words allocated together in a
+single allocation, to hold a single object.  Selecting this option this
+will therefore profile the number of memory allocations, while ignoring
+the size of each memory allocation.
+
+With memory profiling, just as with time profiling,
+you can use the @samp{-c} (@samp{--call-graph}) option to display
+call graph profiles in addition to flat profiles.
+
+Note that Mercury's memory profiler will only tell you about
+allocation, not about deallocation (garbage collection).
+It can tell you how much memory was allocated by each procedure,
+but it won't tell you how long the memory was live for,
+or how much of that memory was garbage-collected.
 
 @node Invocation
 @chapter Invocation
@@ -1792,12 +1825,24 @@ None.
 @item @samp{.prof}
 @code{--profiling}.
 
-@item @samp{.proftime}
-@code{--profile-time}.
+@item @samp{.memprof}
+@code{--memory-profiling}.
 
-@item @samp{.profcalls}
-@code{--profile-calls}.
-
+@c The following are undocumented because
+@c they are basically useless... documenting
+@c them would just confuse people.
+@c
+@c @item @samp{.profall}
+@c @code{--profile-calls --profile-time --profile-memory}.
+@c (not recommended because --profile-memory interferes with
+@c --profile-time)
+@c 
+@c @item @samp{.proftime}
+@c @code{--profile-time}.
+@c 
+@c @item @samp{.profcalls}
+@c @code{--profile-calls}.
+@c 
 @item @samp{.tr}
 @code{--use-trail}.
 
@@ -1845,17 +1890,27 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
-@item @code{--profiling} (grades: any grade containing @samp{.prof})
-Enable profiling.  Insert profiling hooks in the
+@item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})
+Enable time profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
 @samp{@var{module}.prof}.  @xref{Profiling}.
 
 @sp 1
+@item @code{--memory-profiling} (grades: any grade containing @samp{.memprof})
+Enable memory profiling.  Insert memory profiling hooks in the
+generated code, and also output some profiling
+information (the static call graph) to the file
+@samp{@var{module}.prof}.  @xref{Memory profiling}.
+
+@ignore
+	The following are basically useless, hence undocumented.
+
+@sp 1
 @item @code{--profile-calls} (grades: any grade containing @samp{.profcalls})
 Similar to @samp{--profiling}, except that this option only gathers
 call counts, not timing information.  Useful on systems where time
-profiling is not supported (e.g. MS Windows).
+profiling is not supported -- but not as useful as @samp{--memory-profiling}.
 
 @sp 1
 @item @code{--profile-time} (grades: any grade containing @samp{.proftime})
@@ -1863,12 +1918,15 @@ Similar to @samp{--profiling}, except that this option only gathers
 timing information, not call counts.  For the results to be useful,
 call counts for an identical run of your program need to be gathered
 using @samp{--profiling} or @samp{--profile-calls}. 
+XXX this doesn't work, because the code addresses change.
 The only advantage of using @samp{--profile-time} and @samp{--profile-calls}
 to gather timing information and call counts in seperate runs,
 rather than just using @samp{--profiling} to gather them both at once,
 is that the former method can give slightly more accurate timing results.
 because with the latter method the code inserted to record call counts
 has a small effect on the execution speed.
+
+@end ignore
 
 @sp 1
 @item @code{--debug} (grades: any grade containing @samp{.debug})

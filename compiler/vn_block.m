@@ -274,7 +274,7 @@ vn_block__handle_instr(if_val(Rval, Target),
 	vn_block__new_ctrl_node(vn_if_val(Vn, Target), Livemap,
 		Params, VnTables1, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(incr_hp(Lval, MaybeTag, Rval),
+vn_block__handle_instr(incr_hp(Lval, MaybeTag, Rval, _),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		_SeenIncr, SeenIncr, Tuple0, Tuple) :-
 	(
@@ -881,7 +881,7 @@ vn_block__is_ctrl_instr(goto(_), yes).
 vn_block__is_ctrl_instr(computed_goto(_, _), yes).
 vn_block__is_ctrl_instr(c_code(_), no).
 vn_block__is_ctrl_instr(if_val(_, _), yes).
-vn_block__is_ctrl_instr(incr_hp(_, _, _), no).
+vn_block__is_ctrl_instr(incr_hp(_, _, _, _), no).
 vn_block__is_ctrl_instr(mark_hp(_), yes).
 vn_block__is_ctrl_instr(restore_hp(_), yes).
 vn_block__is_ctrl_instr(store_ticket(_), yes).

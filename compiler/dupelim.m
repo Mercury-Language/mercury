@@ -167,8 +167,8 @@ dupelim__replace_labels_instr(if_val(Rval0, Target0), Replmap,
 		if_val(Rval, Target)) :-
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval),
 	dupelim__replace_labels_code_addr(Target0, Replmap, Target).
-dupelim__replace_labels_instr(incr_hp(Lval0, MaybeTag, Rval0), Replmap,
-		incr_hp(Lval, MaybeTag, Rval)) :-
+dupelim__replace_labels_instr(incr_hp(Lval0, MaybeTag, Rval0, Msg), Replmap,
+		incr_hp(Lval, MaybeTag, Rval, Msg)) :-
 	dupelim__replace_labels_lval(Lval0, Replmap, Lval),
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_instr(mark_hp(Lval0), Replmap, mark_hp(Lval)) :-
@@ -228,8 +228,8 @@ dupelim__replace_labels_lval(mem_ref(Rval0), Replmap, mem_ref(Rval)) :-
 dupelim__replace_labels_rval(lval(Lval0), Replmap, lval(Lval)) :-
 	dupelim__replace_labels_lval(Lval0, Replmap, Lval).
 dupelim__replace_labels_rval(var(Var), _, var(Var)).
-dupelim__replace_labels_rval(create(Tag, Rvals, Unique, N), _,
-		create(Tag, Rvals, Unique, N)).
+dupelim__replace_labels_rval(create(Tag, Rvals, Unique, N, Msg), _,
+		create(Tag, Rvals, Unique, N, Msg)).
 dupelim__replace_labels_rval(mkword(Tag, Rval0), Replmap, mkword(Tag, Rval)) :-
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_rval(const(Const0), Replmap, const(Const)) :-

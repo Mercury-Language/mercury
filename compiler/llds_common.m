@@ -208,9 +208,9 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = if_val(Rval, Target)
 	;
 		% unlikely to find anything to share, but why not try?
-		Instr0 = incr_hp(Lval, MaybeTag, Rval0),
+		Instr0 = incr_hp(Lval, MaybeTag, Rval0, Msg),
 		llds_common__process_rval(Rval0, Info0, Info, Rval),
-		Instr = incr_hp(Lval, MaybeTag, Rval)
+		Instr = incr_hp(Lval, MaybeTag, Rval, Msg)
 	;
 		Instr0 = mark_hp(_),
 		Instr = Instr0,
@@ -267,7 +267,7 @@ llds_common__process_rval(Rval0, Info0, Info, Rval) :-
 		Rval0 = var(_),
 		error("var rval found in llds_common__process_rval")
 	;
-		Rval0 = create(Tag, Args, Unique, _LabelNo),
+		Rval0 = create(Tag, Args, Unique, _LabelNo, _Msg),
 		( Unique = no ->
 			llds_common__process_create(Tag, Args, Info0,
 				Info, Rval)

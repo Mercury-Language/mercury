@@ -40,7 +40,8 @@
 :- type vnrval		--->	vn_origlval(vnlval)
 			;	vn_mkword(tag, vn)
 			;	vn_const(rval_const)
-			;	vn_create(tag, list(maybe(rval)), bool, int)
+			;	vn_create(tag, list(maybe(rval)),
+					bool, int, string)
 			;	vn_unop(unary_op, vn)
 			;	vn_binop(binary_op, vn, vn)
 			;	vn_stackvar_addr(int)
@@ -175,7 +176,7 @@ vn_type__costof_heapref(vn_params(_, _, _, _, _, _, _, _, HeapCost),
 
 vn_type__vnrval_type(vn_origlval(Lval), Type) :-
 	vn_type__vnlval_type(Lval, Type).
-vn_type__vnrval_type(vn_create(_, _, _, _), data_ptr).
+vn_type__vnrval_type(vn_create(_, _, _, _, _), data_ptr).
 vn_type__vnrval_type(vn_mkword(_, _), data_ptr). % see comment in llds.m
 vn_type__vnrval_type(vn_const(Const), Type) :-
 	llds__const_type(Const, Type).
