@@ -215,7 +215,7 @@ MR_trace_source_open_server(MR_Trace_Source_Server *server,
 	/*
 	** Find the end of the string and append the '.' and pid.
 	*/
-	i = base_len + i + strlen(name + base_len + i);
+	i = base_len + 1 + strlen(name + base_len + 1);
 	sprintf(name + i, ".%ld", (long) getpid());
 #else
 	i = 0;
