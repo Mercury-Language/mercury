@@ -297,7 +297,9 @@ process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
 	globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
-	( { MakeInterface = yes } ->
+	( { Error = fatal } ->
+		[]
+	; { MakeInterface = yes } ->
 		{ get_interface(Items0, InterfaceItems0) },
 		check_for_clauses_in_interface(InterfaceItems0, InterfaceItems),
 		write_interface_file(ModuleName, ".int", InterfaceItems),
@@ -324,11 +326,11 @@ process_module_2(ModuleName) -->
 		{ list__append(Items0,
 			[module_defn(VarSet, imported) - Context], Items1) },
 		{ dir__basename(ModuleName, BaseModuleName) },
-		{ Module0 = module(BaseModuleName, [], [], Items1, Error) },
+		{ Module0 = module(BaseModuleName, [], [], Items1, no) },
 		process_module_interfaces([BuiltinModule | ImportedModules], 
 			[], Module0, Module),
 		{ Module = module(_, _, _, _, Error2) },
-		( { Error2 = no } ->
+		( { Error = no, Error2 = no } ->
 			mercury_compile(Module)
 		;
 			[]
@@ -428,9 +430,9 @@ write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
 		io__close_output(DepStream),
 		maybe_write_string(Verbose, " done.\n")
 	;
-		io__write_string("\nError: can't open file `"),
-		io__write_string(DependencyFileName),
-		io__write_string("' for output\n")
+		{ string__append_list(["can't open file `", DependencyFileName,
+				"' for output"], Message) },
+		report_error(Message)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -440,21 +442,27 @@ write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
 
 generate_dependencies(Module) -->
 	{ string__append(Module, ".dep", DepFileName) },
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Creating auto-dependency file `"),
+	maybe_write_string(Verbose, DepFileName),
+	maybe_write_string(Verbose, "'...\n"),
 	io__open_output(DepFileName, Result),
 	( { Result = ok(DepStream) } ->
 		{ map__init(DepsMap) },
 		generate_dependencies_2([Module], Module, DepsMap, DepStream),
-		io__close_output(DepStream)
+		io__close_output(DepStream),
+		maybe_write_string(Verbose, "% done\n")
 	;
-		io__write_string("\nError: can't open file `"),
-		io__write_string(DepFileName),
-		io__write_string("' for output\n")
+		{ string__append_list(["can't open file `", DepFileName,
+				"' for output"], Message) },
+		report_error(Message)
 	).
 
 :- type deps_map == map(string, deps).
 :- type deps
 	---> deps(
 		bool,		% have we processed this module yet?
+		module_error,	% if we did, where there any errors?
 		list(string),	% interface dependencies
 		list(string)	% implementation dependencies
 	).
@@ -469,7 +477,8 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, "'.\n"),
 
-	{ map__keys(DepsMap, Modules) },
+	{ map__keys(DepsMap, Modules0) },
+	{ select_ok_modules(Modules0, DepsMap, Modules) },
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".srcs = "),
@@ -528,7 +537,7 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ".os) "),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, "_init.o\n"),
-	io__write_string(DepStream, "\t$(ML) $(MLFLAGS) -o "),
+	io__write_string(DepStream, "\t$(ML) -s $(GRADE) $(MLFLAGS) -o "),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, " "),
 	io__write_string(DepStream, ModuleName),
@@ -556,6 +565,17 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".nos)\n\n"),
 
+	io__write_string(DepStream, "clean_progs: clean_"),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, "\n\n"),
+
+	io__write_string(DepStream, "clean_"),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ":\n"),
+	io__write_string(DepStream, "\trm -f "),
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, "\n\n"),
+
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".check : $("),
 	io__write_string(DepStream, ModuleName),
@@ -571,7 +591,7 @@ generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
 	% Look up the module's dependencies, and determine whether
 	% it has been processed yet.
 	%
-	lookup_dependencies(Module, DepsMap0, Done, ImplDeps, IntDeps,
+	lookup_dependencies(Module, DepsMap0, Done, Error, ImplDeps, IntDeps,
 				DepsMap1),
 	%
 	% If the module hadn't been processed yet, compute it's
@@ -581,16 +601,11 @@ generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
 	% generate, and mark it as having been processed.
 	%
 	( { Done = no } ->
-		{ map__set(DepsMap1, Module, deps(yes, IntDeps, ImplDeps),
-			DepsMap2) },
+		{ map__set(DepsMap1, Module,
+			deps(yes, Error, IntDeps, ImplDeps), DepsMap2) },
 		transitive_dependencies(IntDeps, DepsMap2, SecondaryDeps,
 			DepsMap),
 		write_dependency_file(Module, ImplDeps, SecondaryDeps),
-		% io__write_string(DepStream, Module),
-		% io__write_string(DepStream, ".err :"),
-		% write_dependencies_list(ImplDeps, ".int", DepStream),
-		% write_dependencies_list(SecondaryDeps, ".int2", DepStream),
-		% io__write_string(DepStream, "\n"),
 		{ list__append(ImplDeps, Modules, Modules2) }
 	;
 		{ DepsMap = DepsMap1 },
@@ -600,6 +615,21 @@ generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
 	% Recursively process the remaining modules
 	%
 	generate_dependencies_2(Modules2, ModuleName, DepsMap, DepStream).
+
+%-----------------------------------------------------------------------------%
+
+:- pred select_ok_modules(list(string), deps_map, list(string)).
+:- mode select_ok_modules(in, in, out) is det.
+
+select_ok_modules([], _, []).
+select_ok_modules([Module | Modules0], DepsMap, Modules) :-
+	map__lookup(DepsMap, Module, deps(_, Error, _, _)),
+	( Error = fatal ->
+		Modules = Modules1
+	;
+		Modules = [Module | Modules1]
+	),
+	select_ok_modules(Modules0, DepsMap, Modules1).
 
 %-----------------------------------------------------------------------------%
 
@@ -631,7 +661,8 @@ transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Deps, DepsMap)
 		{ Modules1 = Modules0 }
 	;
 		{ set__insert(Deps0, Module, Deps1) },
-		lookup_dependencies(Module, DepsMap0, _, IntDeps, _, DepsMap1),
+		lookup_dependencies(Module, DepsMap0,
+					_, _, IntDeps, _, DepsMap1),
 		{ list__append(IntDeps, Modules0, Modules1) }
 	),
 	transitive_dependencies_2(Modules1, Deps1, DepsMap1, Deps, DepsMap).
@@ -642,35 +673,38 @@ transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Deps, DepsMap)
 	% If we don't know its dependencies, read the
 	% module and save the dependencies in the dependency map.
 
-:- pred lookup_dependencies(string, deps_map, bool, list(string), list(string),
-				deps_map, io__state, io__state).
-:- mode lookup_dependencies(in, in, out, out, out, out, di, uo) is det.
+:- pred lookup_dependencies(string, deps_map,
+		bool, module_error, list(string), list(string), deps_map,
+		io__state, io__state).
+:- mode lookup_dependencies(in, in, out, out, out, out, out, di, uo) is det.
 
-lookup_dependencies(Module, DepsMap0, Done, IntDeps, ImplDeps, DepsMap) -->
+lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
+		-->
 	(
 		{ map__search(DepsMap0, Module,
-			deps(Done0, IntDeps0, ImplDeps0)) }
+			deps(Done0, Error0, IntDeps0, ImplDeps0)) }
 	->
 		{ Done = Done0 },
+		{ Error = Error0 },
 		{ IntDeps = IntDeps0 },
 		{ ImplDeps = ImplDeps0 },
 		{ DepsMap = DepsMap0 }
 	;
-		read_dependencies(Module, ImplDeps, IntDeps),
-		{ map__set(DepsMap0, Module, deps(no, IntDeps, ImplDeps),
+		read_dependencies(Module, ImplDeps, IntDeps, Error),
+		{ map__set(DepsMap0, Module, deps(no, Error, IntDeps, ImplDeps),
 			DepsMap) },
 		{ Done = no }
 	).
 
 	% Read a module to determine it's dependencies.
 	
-:- pred read_dependencies(string, list(string), list(string),
+:- pred read_dependencies(string, list(string), list(string), module_error,
 				io__state, io__state).
-:- mode read_dependencies(in, out, out, di, uo) is det.
+:- mode read_dependencies(in, out, out, out, di, uo) is det.
 
-read_dependencies(Module, InterfaceDeps, ImplementationDeps) -->
-	io__gc_call(read_mod(Module, ".nl", "Reading module", Items,
-			_Error)),
+read_dependencies(Module, InterfaceDeps, ImplementationDeps, Error) -->
+	io__gc_call(read_mod_ignore_errors(Module, ".nl",
+			"Getting dependencies for module", Items, Error)),
 	{ get_dependencies(Items, ImplementationDeps0) },
 	{ get_interface(Items, InterfaceItems) },
 	{ get_dependencies(InterfaceItems, InterfaceDeps) },
@@ -712,7 +746,8 @@ check_for_clauses_in_interface([Item0 | Items0], Items) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_mod(string, string, string, item_list, bool, io__state, io__state).
+:- pred read_mod(string, string, string, item_list, module_error,
+		io__state, io__state).
 :- mode read_mod(in, in, in, out, out, di, uo) is det.
 
 read_mod(ModuleName, Extension, Descr, Items, Error) -->
@@ -726,21 +761,40 @@ read_mod(ModuleName, Extension, Descr, Items, Error) -->
 	maybe_flush_output(VeryVerbose),
 	{ string__append(ModuleName, Extension, FileName) },
 	prog_io__read_module(FileName, Module, Error, Messages, Items),
-	( { Error = yes } ->
+	( { Error = fatal } ->
+		maybe_write_string(VeryVerbose, "fatal error(s).\n")
+	; { Error = yes } ->
 		maybe_write_string(VeryVerbose, "parse error(s).\n")
 	;
 		maybe_write_string(VeryVerbose, "successful parse.\n")
 	),
 	prog_out__write_messages(Messages).
 
-:- pred read_mod_short_interface(string, string, item_list, bool,
+:- pred read_mod_ignore_errors(string, string, string, item_list, module_error,
+		io__state, io__state).
+:- mode read_mod_ignore_errors(in, in, in, out, out, di, uo) is det.
+
+read_mod_ignore_errors(ModuleName, Extension, Descr, Items, Error) -->
+	{ dir__basename(ModuleName, Module) },
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	maybe_write_string(VeryVerbose, "% "),
+	maybe_write_string(VeryVerbose, Descr),
+	maybe_write_string(VeryVerbose, " `"),
+	maybe_write_string(VeryVerbose, Module),
+	maybe_write_string(VeryVerbose, "'... "),
+	maybe_flush_output(VeryVerbose),
+	{ string__append(ModuleName, Extension, FileName) },
+	prog_io__read_module(FileName, Module, Error, _Messages, Items),
+	maybe_write_string(VeryVerbose, "done.\n").
+
+:- pred read_mod_short_interface(string, string, item_list, module_error,
 				io__state, io__state).
 :- mode read_mod_short_interface(in, in, out, out, di, uo) is det.
 
 read_mod_short_interface(Module, Descr, Items, Error) -->
 	read_mod(Module, ".int2", Descr, Items, Error).
 
-:- pred read_mod_interface(string, string, item_list, bool,
+:- pred read_mod_interface(string, string, item_list, module_error,
 				io__state, io__state).
 :- mode read_mod_interface(in, in, out, out, di, uo) is det.
 
@@ -791,7 +845,7 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 			read_mod_interface(Import,
 				"Reading interface for module", Items1, Error1)
 		),
-		{ ( Error1 = yes ->
+		{ ( Error1 \= no ->
 			Error2 = yes
 		;
 			Error2 = Error0
@@ -801,7 +855,11 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		maybe_report_stats(Statistics),
 
 		{ get_dependencies(Items1, IndirectImports1) },
-		{ DirectImports1 = [Import | DirectImports0] },
+		( { Error1 = fatal } ->
+			{ DirectImports1 = DirectImports0 }
+		;
+			{ DirectImports1 = [Import | DirectImports0] }
+		),
 		{ list__append(IndirectImports0, IndirectImports1,
 			IndirectImports2) },
 		{ list__append(Items0, Items1, Items2) },
@@ -837,7 +895,7 @@ process_module_short_interfaces([Import | Imports], Module0, Module) -->
 				"Reading short interface for module",
 					Items1, Error1)
 		),
-		{ ( Error1 = yes ->
+		{ ( Error1 \= no ->
 			Error2 = yes
 		;
 			Error2 = Error0
@@ -1090,6 +1148,7 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 	;
 		{ DoCodeGen = no }
 	),
+	{ bool__or(DoCodeGen, no, _) },	% hack to resolve type ambiguity
 
 	( { DoCodeGen = yes } ->
 		mercury_compile__compute_liveness(HLDS7, HLDS8),

@@ -282,12 +282,19 @@
 %-----------------------------------------------------------------------------%
 
 	% read_module(ModuleName, Error, Messages, Program)
-	% reads and parses the module 'ModuleName'.  Error is `yes'
-	% if a syntax error was detected and `no' otherwise,
-	% Messages is a list of warning/error messages,
-	% and Program is the parse tree.
+	% reads and parses the module 'ModuleName'.  Error is `fatal'
+	% if the file coudn't be opened, `yes'
+	% if a syntax error was detected, and `no' otherwise.
+	% Messages is a list of warning/error messages.
+	% Program is the parse tree.
 
-:- pred prog_io__read_module(string, string, bool, message_list, item_list,
+:- type module_error
+	--->	no	% no errors
+	;	yes	% some syntax errors
+	;	fatal.	% couldn't open the file
+
+:- pred prog_io__read_module(string, string,
+				module_error, message_list, item_list,
 				io__state, io__state).
 :- mode prog_io__read_module(in, in, out, out, out, di, uo) is det.
 
@@ -347,7 +354,7 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 		  string__append(Message2, "'", Message),
 		  dummy_term(Term),
 		  Messages = [Message - Term],
-		  Error = yes,
+		  Error = fatal,
 		  Items = []
 		}
 	).
@@ -399,10 +406,9 @@ get_end_module(RevItems0, RevItems, EndModule) :-
 	% and that the end_module declaration (if any) is correct,
 	% and construct the final parsing result.
 
-:- pred check_begin_module(string, message_list, item_list, bool,
-			   module_end, string, message_list, item_list, bool).
-:- mode check_begin_module(in, in, in, in, in, in,
-				out, out, out) is det.
+:- pred check_begin_module(string, message_list, item_list, module_error,
+		module_end, string, message_list, item_list, module_error).
+:- mode check_begin_module(in, in, in, in, in, in, out, out, out) is det.
 
 check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
 		Messages, Items, Error) :-
@@ -489,7 +495,8 @@ dummy_term_with_context(Context, Term) :-
 	% which may be a declaration or a clause.
 
 
-:- pred read_all_items(message_list, item_list, bool, io__state, io__state).
+:- pred read_all_items(message_list, item_list, module_error,
+			io__state, io__state).
 :- mode read_all_items(out, out, out, di, uo) is det.
 
 read_all_items(Messages, Items, Error) -->
@@ -511,8 +518,8 @@ read_all_items(Messages, Items, Error) -->
 	% implementation unless the compiler is smart enough to inline
 	% read_items_loop_2.
 
-:- pred read_items_loop(message_list, item_list, bool, message_list,
-			item_list, bool, io__state, io__state).
+:- pred read_items_loop(message_list, item_list, module_error, message_list,
+			item_list, module_error, io__state, io__state).
 :- mode read_items_loop(in, in, in, out, out, out, di, uo) is det.
 
 read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
@@ -522,7 +529,8 @@ read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
 %-----------------------------------------------------------------------------%
 
 :- pred read_items_loop_2(maybe_item_or_eof, message_list, item_list,
-	bool, message_list, item_list, bool, io__state, io__state).
+			module_error, message_list, item_list, module_error,
+			io__state, io__state).
 :- mode read_items_loop_2(in, in, in, in, out, out, out, di, uo) is det.
 
 % do a switch on the type of the next item

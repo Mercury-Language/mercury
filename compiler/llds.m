@@ -509,10 +509,15 @@ output_livevals([Lval|Lvals]) -->
 :- mode output_gc_livevals(in, di, uo) is det.
 
 output_gc_livevals(LiveVals) -->
-	io__write_string("/*\n"),
-	io__write_string(" * Garbage collection livevals info\n"),
-	output_gc_livevals_2(LiveVals),
-	io__write_string(" */").
+	globals__io_lookup_bool_option(mod_comments, PrintModComments),
+	( { PrintModComments = yes } ->
+		io__write_string("/*\n"),
+		io__write_string(" * Garbage collection livevals info\n"),
+		output_gc_livevals_2(LiveVals),
+		io__write_string(" */")
+	;
+		[]
+	).
 
 :- pred output_gc_livevals_2(list(liveinfo), io__state, io__state).
 :- mode output_gc_livevals_2(in, di, uo) is det.

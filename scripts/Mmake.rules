@@ -1,0 +1,202 @@
+#-----------------------------------------------------------------------------#
+
+# Mmake.rules - rules for building Mercury programs
+
+#-----------------------------------------------------------------------------#
+
+default_target: main_target
+
+#-----------------------------------------------------------------------------#
+
+.SUFFIXES: .m .nl .no .err .int .int2 .dep .depend .doit .ugly .hlds_dump \
+		.date .c .nu .o .mod .pp .s .garb .h
+
+.PRECIOUS: %.date
+
+# All the builtin rules must use $@ as the target, so that they work
+# when $(VPATH) is set.
+
+.pp.nl:
+	@-[ ! -f $@ ] || chmod +w $@
+	sed '/^#if *NU_PROLOG/,/^#endif/s/.*//' $< > $@
+	@-chmod -w $@
+.pp.m:
+	@-[ ! -f $@ ] || chmod +w $@
+	sed '/^#if *NU_PROLOG/,/^#endif/s/.*//' $< > $@
+	@-chmod -w $@
+
+.nl.no:
+	$(MNC) $(MNCFLAGS) -o $@ $<
+.m.no:
+	$(MNC) $(MNCFLAGS) -o $@ $<
+
+# The `touch' is necessary, since otherwise if
+# the old .err file was of size zero and
+# the new .err file is also of size zero,
+# the time-stamp doesn't get updated!
+# (Is that a bug in unix? In bash?)
+.nl.err:
+	$(MC) $(MCFLAGS) $< > $@ 2>&1
+	@touch $@
+.m.err:
+	$(MC) $(MCFLAGS) $< > $@ 2>&1
+	@touch $@
+
+# do not remove the whitespace in the following two rules!
+
+.date.int:
+	
+
+.date.int2:
+	
+
+.nl.date:
+	$(MC) --make-interface $(MCFLAGS) $(MCINTFLAGS) $<
+.m.date:
+	$(MC) --make-interface $(MCFLAGS) $(MCINTFLAGS) $<
+
+.nl.garb:
+	$(MCG) --garbage-collection accurate $(MCFLAGS) $<
+.m.garb:
+	$(MCG) --garbage-collection accurate $(MCFLAGS) $<
+
+.nl.ugly:
+	$(MC) --convert-to-mercury $(MCFLAGS) $<
+.m.ugly:
+	$(MC) --convert-to-mercury $(MCFLAGS) $<
+
+.nl.hlds_dump:
+	$(MC) --dump-hlds $(MCFLAGS) $<
+.m.hlds_dump:
+	$(MC) --dump-hlds $(MCFLAGS) $<
+
+.nl.depend:
+	@-[ ! -f $*.dep ] || chmod +w $*.dep
+	$(MC) --generate-dependencies $(MCFLAGS) $<
+	@-chmod -w $*.dep
+.m.depend:
+	@-[ ! -f $*.dep ] || chmod +w $*.dep
+	$(MC) --generate-dependencies $(MCFLAGS) $<
+	@-chmod -w $*.dep
+
+.dep.doit:
+	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
+	tee tmp | \
+	grep 'srcs *=' | \
+	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \
+		-e 's/\.nl/,/g' \
+		-e 's/$$/ portray ]./' \
+		> $@
+
+.nl.mod:
+	rm -f $*.mod
+	$(MCG) -s $(GRADE) $(MCFLAGS) $< > $*.err2 2>&1
+.m.mod:
+	rm -f $*.mod
+	$(MCG) -s $(GRADE) $(MCFLAGS) $< > $*.err2 2>&1
+
+
+.mod.c:
+	[ -f $< ] && $(MOD2C) -s$(GRADE) $(MOD2CFLAGS) $< > $@
+
+.mod.h:
+	[ -f $< ] && $(MOD2H) -s$(GRADE) $(MOD2HFLAGS) $< > $@
+
+.c.o:
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -c $< -o $@
+
+.c.s:
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -S $< -o $@
+
+.s.o:
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -c $< -o $@
+
+#-----------------------------------------------------------------------------#
+
+# Suppress some GNU make builtin rules, since they don't work
+
+%:%.o
+%:%.c
+%:%.s
+%:%.mod	
+%.o:%.mod
+# .mod is not Modula-2! ;-)
+
+#-----------------------------------------------------------------------------#
+
+# Clean up some mess
+
+# You can attach new dependencies to the `clean' and `realclean' targets
+# to make them clean up more than just the stuff listed here.
+
+.PHONY: clean
+clean:	clean_no clean_ns clean_err clean_err2 clean_ints clean_ugly \
+	clean_hlds_dump clean_mod clean_c clean_o clean_s
+
+.PHONY: clean_no
+clean_no:
+	-rm -f *.no
+	
+.PHONY: clean_ns
+clean_ns:
+	-rm -f *.ns
+	
+.PHONY: clean_err
+clean_err:
+	-rm -f *.err
+
+.PHONY: clean_err2
+clean_err2:
+	-rm -f *.err2
+
+.PHONY: clean_ints
+clean_ints:
+	-rm -f *.int *.int2 *.date
+
+.PHONY: clean_ugly
+clean_ugly:
+	-rm -f *.ugly
+
+.PHONY: clean_hlds_dump
+clean_hlds_dump:
+	-rm -f *.hlds_dump*
+
+.PHONY: clean_c
+clean_c:
+	-rm -f *.c
+
+.PHONY: clean_mod
+clean_mod:
+	-rm -f *.mod
+
+.PHONY: clean_o
+clean_o:
+	-rm -f *.o
+
+.PHONY: clean_s
+clean_s:
+	-rm -f *.s
+
+.PHONY: realclean
+realclean: clean clean_deps clean_nu clean_saves clean_progs
+
+.PHONY: clean_deps
+clean_deps:
+	-rm -f *.dep *.d
+
+.PHONY: clean_nu
+clean_nu:
+	-rm -f *.nu
+
+.PHONY: clean_saves
+clean_saves:
+	-rm -f *.save
+
+.PHONY: clean_progs
+clean_progs: clean_a_out
+
+.PHONY: clean_a_out
+clean_a_out:
+	-rm -f a.out
+
+#-----------------------------------------------------------------------------#

@@ -1458,11 +1458,16 @@ mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	),
 	mode_info_set_io_state(ModeInfo0, IOState, ModeInfo).
 
+:- pred bool(bool::in) is det.
+bool(_).
+
 :- pred mode_checkpoint_2(port, string, mode_info, io__state, io__state).
 :- mode mode_checkpoint_2(in, in, mode_info_ui, di, uo) is det.
 
 mode_checkpoint_2(Port, Msg, ModeInfo) -->
 	{ mode_info_get_errors(ModeInfo, Errors) },
+	{ bool(Detail) },	% explicit type qualification needed to
+				% resolve type ambiguity
 	( { Port = enter } ->
 		io__write_string("Enter "),
 		{ Detail = yes }

@@ -165,7 +165,7 @@ option_defaults_2(output_option, [
 	verbose_dump_hlds	-	bool(no),
 	generate_code		-	bool(no),
 	line_numbers		-	bool(no),
-	mod_comments		-	bool(yes)
+	mod_comments		-	bool(no)
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
