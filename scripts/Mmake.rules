@@ -125,7 +125,7 @@ clean: sub_clean
 sub_clean:
 	for dep in *.dep ; do \
 		if test "$$dep" != '*.dep' ; then \
-			mmake "`basename $$dep .dep`.clean" ;
+			mmake "`basename $$dep .dep`.clean" ; \
 		fi ; \
 	done
 
@@ -136,7 +136,7 @@ realclean: sub_realclean
 sub_realclean:
 	for dep in *.dep ; do \
 		if test "$$dep" != '*.dep' ; then \
-			mmake "`basename $$dep .dep`.realclean" ;
+			mmake "`basename $$dep .dep`.realclean" ; \
 		fi ; \
 	done
 
@@ -147,7 +147,7 @@ clean_nu: sub_clean_nu
 sub_clean_nu:
 	for dep in *.dep ; do \
 		if test "$$dep" != '*.dep' ; then \
-			mmake "`basename $$dep .dep`.clean_nu" ;
+			mmake "`basename $$dep .dep`.clean_nu" ; \
 		fi ; \
 	done
 
@@ -158,7 +158,7 @@ clean_sicstus: sub_clean_sicstus
 sub_clean_sicstus:
 	for dep in *.dep ; do \
 		if test "$$dep" != '*.dep' ; then \
-			mmake "`basename $$dep .dep`.clean_sicstus" ;
+			mmake "`basename $$dep .dep`.clean_sicstus" ; \
 		fi ; \
 	done
 
