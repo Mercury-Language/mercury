@@ -72,8 +72,16 @@ browser_test.out: browser_test browser_test.inp
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1
 
+# The exception_vars test is supposed to return a non-zero
+# exit status, since it exits by throwing an exception.
 exception_vars.out: exception_vars exception_vars.inp
-	$(MDB) ./exception_vars < exception_vars.inp > exception_vars.out 2>&1
+	if $(MDB) ./exception_vars < exception_vars.inp		\
+		> exception_vars.out 2>&1;			\
+	then							\
+		true;						\
+	else							\
+		false;						\
+	fi
 
 existential_type_classes.out: existential_type_classes \
 			existential_type_classes.inp
