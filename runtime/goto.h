@@ -219,7 +219,7 @@
 #endif
 
 /*
-** INLINE_ASM_GLOBALIZE_LABEL is an assembler string to
+** INLINE_ASM_ENTRY_LABEL_TYPE is an assembler string to
 ** declare the "type" of a label as function (i.e. code), not data,
 ** if this is needed.
 */
