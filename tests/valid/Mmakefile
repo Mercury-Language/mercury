@@ -168,6 +168,7 @@ OTHER_PROGS= \
 	spurious_purity_warning \
 	stack_alloc \
 	static \
+	state_var_bug \
 	subtype_switch \
 	switch_detection_bug \
 	switch_detection_bug2 \

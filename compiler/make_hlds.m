@@ -8191,9 +8191,9 @@ substitute_var(Subst, Var0) = Var :-
 
 %-----------------------------------------------------------------------------%
 
-% get_rev_conj(Goal, Conj0, Subst, Conj) :
+% get_rev_conj(Goal, Subst, RevConj0, RevConj) :
 % 	Goal is a tree of conjuncts.  Flatten it into a list (applying Subst),
-%	append Conj0, and return the result in reverse order in Conj.
+%	reverse it, append RevConj0, and return the result in RevConj.
 
 :- pred get_rev_conj(goal::in, prog_substitution::in, list(hlds_goal)::in,
 	list(hlds_goal)::out, prog_varset::in, prog_varset::out,
@@ -8213,9 +8213,9 @@ get_rev_conj(Goal, Subst, RevConj0, RevConj, !VarSet, !Info, !SInfo, !IO) :-
 		RevConj = list__reverse(ConjList) ++ RevConj0
 	).
 
-% get_rev_par_conj(Goal, ParConj0, Subst, ParConj) :
+% get_rev_par_conj(Goal, Subst, RevParConj0, RevParConj) :
 % 	Goal is a tree of conjuncts.  Flatten it into a list (applying Subst),
-%	append ParConj0, and return the result in reverse order in ParConj.
+%	reverse it, append RevParConj0, and return the result in RevParConj.
 
 :- pred get_rev_par_conj(goal::in, prog_substitution::in, list(hlds_goal)::in,
 	list(hlds_goal)::out, prog_varset::in, prog_varset::out,
@@ -9016,20 +9016,20 @@ this_file = "make_hlds.m".
 :- type svar_info
 	--->	svar_info(
 			ctxt		::	svar_ctxt,
+
 			num		::	int,
-				%
 				% This is used to number state variables and
 				% is incremented for each source-level
 				% conjunct.
+
 			external_dot	::	svar_map,
-				%
 				% The "read only" state variables in
 				% scope (e.g. external state variables
 				% visible from within a lambda body or
 				% condition of an if-then-else expression.)
+
 			dot		::	svar_map,
 			colon		::	svar_map
-				%
 				% The "read/write" state variables in scope.
 		).
 
@@ -9430,24 +9430,22 @@ add_then_arm_specific_unifiers(_, [],
 		Thens, Thens, VarSet, VarSet).
 
 add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
-		SInfo0, SInfoC, SInfoT0, SInfoT,
-		Thens0, Thens, VarSet0, VarSet) :-
-	( if /* the condition refers to !:X, but the then-goal doesn't */
+		SInfo0, SInfoC, !SInfoT, !Thens, !VarSet) :-
+	( if % the condition refers to !:X, but the then-goal doesn't
 	     SInfoC  ^ dot ^ elem(StateVar) \= SInfo0 ^ dot ^ elem(StateVar),
-	     SInfoT0 ^ dot ^ elem(StateVar)  = SInfoC ^ dot ^ elem(StateVar)
+	     !.SInfoT ^ dot ^ elem(StateVar)  = SInfoC ^ dot ^ elem(StateVar)
 	  then
-	  	Dot0    = SInfoT0 ^ dot ^ det_elem(StateVar),
-		new_dot_state_var(StateVar, Dot, VarSet0, VarSet1,
-			SInfoT0, SInfoT1),
-		Thens1  = [svar_unification(Context, Dot, Dot0) | Thens0]
+	  	% add a new unifier !:X = !.X
+	  	Dot0    = !.SInfoT ^ dot ^ det_elem(StateVar),
+		new_colon_state_var(StateVar, Dot, !VarSet, !SInfoT),
+		!:Thens = [svar_unification(Context, Dot, Dot0) | !.Thens],
+		prepare_for_next_conjunct(set__make_singleton_set(StateVar),
+			!VarSet, !SInfoT)
 	  else
-	  	SInfoT1 = SInfoT0,
-		Thens1  = Thens0,
-		VarSet1 = VarSet0
+	  	true
 	),
 	add_then_arm_specific_unifiers(Context, StateVars,
-		SInfo0, SInfoC, SInfoT1, SInfoT,
-		Thens1, Thens, VarSet1, VarSet).
+		SInfo0, SInfoC, !SInfoT, !Thens, !VarSet).
 
 %------------------------------------------------------------------------------%
 
