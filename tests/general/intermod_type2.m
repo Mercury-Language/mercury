@@ -19,7 +19,7 @@
 
 :- type curse	== store(my_store_type).
 
-:- type win == mutvar(window, my_store_type).
+:- type win == store_mutvar(window, my_store_type).
 
 :- type window
 	--->	win(
