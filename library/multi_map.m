@@ -78,28 +78,28 @@
 :- pred multi_map__det_insert(multi_map(K, V)::in, K::in, V::in,
 	multi_map(K, V)::out) is det.
 
-	% Update (add) the value corresponding to a given key
-	% Fail if the key doesn't already exist.
+	% Update (add) the value corresponding to a given key.
+	% Fail if the key does not already exist.
 	%
 :- pred multi_map__update(multi_map(K, V)::in, K::in, V::in,
 	multi_map(K, V)::out) is semidet.
 
-	% Update (add) the value corresponding to a given key
-	% Abort if the key doesn't already exist.
+	% Update (add) the value corresponding to a given key.
+	% Abort if the key does not already exist.
 	%
 :- func multi_map__det_update(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map__det_update(multi_map(K, V)::in, K::in, V::in,
 	multi_map(K, V)::out) is det.
 
-	% Update (replace) the value corresponding to a given key
-	% Abort if the key doesn't already exist.
+	% Update (replace) the value corresponding to a given key.
+	% Abort if the key does not already exist.
 	%
 :- func multi_map__det_replace(multi_map(K, V), K, list(V)) = multi_map(K, V).
 :- pred multi_map__det_replace(multi_map(K, V)::in, K::in, list(V)::in,
 	multi_map(K, V)::out) is det.
 
 	% Update (add) value if the key is already present, otherwise
-	% insert new key and value.
+	% insert the new key and value.
 	%
 :- func multi_map__set(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map__set(multi_map(K, V)::in, K::in, V::in, multi_map(K, V)::out)
@@ -109,7 +109,7 @@
 :- pred multi_map__add(multi_map(K, V)::in, K::in, V::in, multi_map(K, V)::out)
 	is det.
 
-	% Given a multi_map, return a list of all the keys in the multi_map
+	% Given a multi_map, return a list of all the keys in the multi_map.
 	%
 :- func multi_map__keys(multi_map(K, _V)) = list(K).
 :- pred multi_map__keys(multi_map(K, _V)::in, list(K)::out) is det.
@@ -174,7 +174,7 @@
 	multi_map(K, V)::out) is semidet.
 
 	% Delete a key-value pair from a multi_map and return the value.
-	% abort if the key is not present.
+	% Abort if the key is not present.
 	%
 :- pred multi_map__det_remove(multi_map(K, V)::in, K::in, list(V)::out,
 	multi_map(K, V)::out) is det.
