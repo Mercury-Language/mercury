@@ -283,7 +283,8 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 
 	{ string__append(ModuleName, Suffix, OutputFileName) },
 	{ string__append(OutputFileName, ".tmp", TmpOutputFileName) },
-	convert_to_mercury(ModuleName, TmpOutputFileName, InterfaceItems),
+	{ dir__basename(ModuleName, BaseModuleName) },
+	convert_to_mercury(BaseModuleName, TmpOutputFileName, InterfaceItems),
 
 		% invoke the shell script `mercury_update_interface'
 		% to update <Module>.int from <Module>.int.tmp if
