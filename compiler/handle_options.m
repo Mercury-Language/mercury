@@ -42,7 +42,9 @@ handle_options(MaybeError, Args, Link) -->
 	% dump_arguments(Args0),
 	{ OptionOps = option_ops(short_option, long_option,
 		option_defaults, special_handler) },
-	{ getopt__process_options(OptionOps, Args0, Args, Result) },
+	% default to optimization level `-O2'
+	{ Args1 = ["-O2" | Args0] },
+	{ getopt__process_options(OptionOps, Args1, Args, Result) },
 	% io__write_string("final arguments\n"),
 	% dump_arguments(Args),
 	postprocess_options(Result, MaybeError),
