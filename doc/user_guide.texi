@@ -3592,6 +3592,12 @@ When using @samp{--smart-recompilation}, output messages
 explaining why a module needs to be recompiled.
 
 @sp 1
+@item --find-all-recompilation-reasons
+@findex --find-all-recompilation-reasons
+Find all the reasons why a module needs to be recompiled,
+not just the first.  Implies @samp{--verbose-recompilation}.
+
+@sp 1
 @item -S
 @itemx --statistics
 @findex -S

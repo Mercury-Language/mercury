@@ -27,7 +27,7 @@ MCFLAGS-typeclass_method_pragma_r = --no-halt-at-warn
 # The `override' is needed because otherwise make ignores the assignment if
 # EXTRA_MCFLAGS is set on the command line, as it is for the nightly tests.
 override EXTRA_MCFLAGS += --no-intermodule-optimization --smart-recompilation \
-			--verbose-recompilation
+			--find-all-recompilation-reasons
 
 # This module tests recompilation of a module which depends on a module
 # for which no version numbers have been computed.

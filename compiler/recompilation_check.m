@@ -67,9 +67,11 @@
 recompilation_check__should_recompile(ModuleName, FindTargetFiles,
 		FindTimestampFiles, Info ^ modules_to_recompile,
 		Info ^ read_modules) -->
+	globals__io_lookup_bool_option(find_all_recompilation_reasons,
+			FindAll),
 	{ Info0 = recompilation_check_info(ModuleName, no, [], map__init,
 			init_item_id_set(map__init, map__init, map__init),
-			set__init, some([])) },
+			set__init, some([]), FindAll, []) },
 	recompilation_check__should_recompile_2(no, FindTargetFiles,
 		FindTimestampFiles, ModuleName, Info0, Info).
 	
@@ -100,15 +102,8 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 		    ),
 		    Result),
 		(
-			{ Result = succeeded(Info4) },
-			FindTimestampFiles(ModuleName, TimestampFiles),
-			list__foldl(touch_datestamp, TimestampFiles),
-			write_recompilation_message(
-			    (pred(di, uo) is det -->
-				io__write_string("Not recompiling module "),
-				prog_out__write_sym_name(ModuleName),
-				io__write_string(".\n")
-			    ))
+			{ Result = succeeded(Info3) },
+			{ Reasons = Info3 ^ recompilation_reasons }
 		;
 			{ Result = failed },
 			{ error("recompilation_check__should_recompile_2") }
@@ -121,13 +116,28 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 			},
 			{ RecompileException =
 				recompile_exception(Reason, Info3) },
-			write_recompilation_message(
-			    (pred(di, uo) is det -->
-				write_recompile_reason(ModuleName, Reason)
-			    )),
-			{ add_module_to_recompile(ModuleName, Info3, Info4) }
+			{ Reasons = [Reason] }
 		),
 
+		( { Reasons = [] } ->
+			FindTimestampFiles(ModuleName, TimestampFiles),
+			write_recompilation_message(
+			    (pred(di, uo) is det -->
+				io__write_string("Not recompiling module "),
+				prog_out__write_sym_name(ModuleName),
+				io__write_string(".\n")
+			    )),
+			list__foldl(touch_datestamp, TimestampFiles),
+			{ Info4 = Info3 }
+		;
+			{ add_module_to_recompile(ModuleName, Info3, Info4) },
+			write_recompilation_message(
+			    (pred(di, uo) is det -->
+				list__foldl(
+					write_recompile_reason(ModuleName),
+					list__reverse(Reasons))
+			    ))
+		),
 		io__set_input_stream(OldInputStream, VersionStream),
 		io__close_input(VersionStream),
 
@@ -207,7 +217,7 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 		% For inline sub-modules we don't need to check
 		% the module timestamp because we've already checked
 		% the timestamp for the parent module.
-		[]
+		{ Info3 = Info0 }
 	;
 		%
 		% If the module has changed, recompile.
@@ -222,11 +232,10 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 		->
 			record_read_file(ModuleName,
 				ModuleTimestamp ^ timestamp := NewTimestamp,
-				Items, Error, FileName, Info0, RecompileInfo0),
-			RecompileInfo =
-				RecompileInfo0 ^ modules_to_recompile := (all),
-			throw(recompile_exception(module_changed(FileName),
-					RecompileInfo))
+				Items, Error, FileName, Info0, Info1),
+			Info2 = Info1 ^ modules_to_recompile := (all),
+			record_recompilation_reason(module_changed(FileName),
+				Info2, Info3)	
 		;
 			( Error \= no_module_errors
 			; MaybeNewTimestamp = no
@@ -238,14 +247,14 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 				    ++ FileName ++ "'."),
 				Info0)
 		;
-			true
+			Info3 = Info0
 		}
 	),
 
 	%
 	% Find out whether this module has any inline sub-modules.
 	%
-	read_term_check_for_error_or_eof(Info0, "inline sub-modules",
+	read_term_check_for_error_or_eof(Info3, "inline sub-modules",
 		SubModulesTerm),
 	{ 
 		SubModulesTerm = term__functor(term__atom("sub_modules"),
@@ -256,44 +265,44 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 			),
 			SubModuleTerms, SubModules)
 	->
-		Info1 = Info0 ^ sub_modules := SubModules
+		Info4 = Info3 ^ sub_modules := SubModules
 	;
 		Reason1 = syntax_error(get_term_context(SubModulesTerm),
 				"error in sub_modules term"),
-		throw_syntax_error(Reason1, Info0)
+		throw_syntax_error(Reason1, Info3)
 	},
 
 	%
 	% Check whether the output files are present and up-to-date.
 	%
-	FindTargetFiles(Info1 ^ module_name, TargetFiles),
-	list__foldl(
-	    (pred(TargetFile::in, di, uo) is det -->
+	FindTargetFiles(Info4 ^ module_name, TargetFiles),
+	list__foldl2(
+	    (pred(TargetFile::in, RInfo0::in, RInfo::out, di, uo) is det -->
 		io__file_modification_time(TargetFile, TargetModTimeResult),
-		(
-			{ TargetModTimeResult = ok(TargetModTime) },
-			{ compare(TargetModTimeCompare,
+		{
+			TargetModTimeResult = ok(TargetModTime),
+			compare(TargetModTimeCompare,
 				time_t_to_timestamp(TargetModTime),
-				RecordedTimestamp) },
-			{ TargetModTimeCompare = (>) }
+				RecordedTimestamp),
+			TargetModTimeCompare = (>)
 		->
-			[]
+			RInfo = RInfo0
 		;
-			{ Reason2 = output_file_not_up_to_date(TargetFile) },
-			{ throw(recompile_exception(Reason2, Info1)) }
-		)
-	    ), TargetFiles),
+			Reason2 = output_file_not_up_to_date(TargetFile),
+			record_recompilation_reason(Reason2, RInfo0, RInfo)
+		}
+	    ), TargetFiles, Info4, Info5),
 
 	%
 	% Read in the used items, used for checking for
 	% ambiguities with new items.
 	%
-	read_term_check_for_error_or_eof(Info1, "used items",
+	read_term_check_for_error_or_eof(Info5, "used items",
 		UsedItemsTerm),
-	{ parse_used_items(Info1, UsedItemsTerm, UsedItems) },
-	{ Info2 = Info1 ^ used_items := UsedItems },
+	{ parse_used_items(Info5, UsedItemsTerm, UsedItems) },
+	{ Info6 = Info5 ^ used_items := UsedItems },
 
-	read_term_check_for_error_or_eof(Info2, "used classes",
+	read_term_check_for_error_or_eof(Info6, "used classes",
 		UsedClassesTerm),
 	{ 
 		UsedClassesTerm = term__functor(term__atom("used_classes"),
@@ -305,14 +314,14 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 				UsedClass = ClassName - ClassArity
 			), UsedClassTerms, UsedClasses)
 	->
-		Info3 = Info2 ^ used_typeclasses :=
+		Info7 = Info6 ^ used_typeclasses :=
 					set__list_to_set(UsedClasses)
 	;
 		Reason3 = syntax_error(get_term_context(UsedClassesTerm),
 				"error in used_typeclasses term"),
-		throw_syntax_error(Reason3, Info2)
+		throw_syntax_error(Reason3, Info6)
 	},
-	check_imported_modules(Info3, Info).
+	check_imported_modules(Info7, Info).
 
 
 %-----------------------------------------------------------------------------%
@@ -693,8 +702,8 @@ check_imported_module(Term, Info0, Info) -->
 				UsedItemsTerm, VersionNumbers,
 				OtherItems, Info1, Info)
 		;
-			throw(recompile_exception(
-				module_changed(FileName), Info1))
+			record_recompilation_reason(module_changed(FileName),
+				Info1, Info)
 		)
 	;
 		Error \= no_module_errors
@@ -768,10 +777,9 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
 	{ set__difference(set__intersect(UsedClasses, ModuleInstances),
 		UsedInstances, AddedInstances) },
 	( { [AddedInstance | _] = set__to_sorted_list(AddedInstances) } ->
-		=(Info),
 		{ Reason1 = changed_or_added_instance(ModuleName,
 				AddedInstance) },
-		{ throw(recompile_exception(Reason1, Info)) }
+		record_recompilation_reason(Reason1)
 	;
 		[]
 	).
@@ -800,17 +808,15 @@ check_item_version_numbers(ModuleName, UsedVersionNumbers,
 			( { NewVersionNumber = UsedVersionNumber } ->
 				[]
 			;
-				=(Info),
 				{ Reason = changed_item(
 					make_item_id(ModuleName, ItemType,
 						NameArity)) },
-				{ throw(recompile_exception(Reason, Info)) }
+				record_recompilation_reason(Reason)
 			)
 		;
-			=(Info),
 			{ Reason = removed_item(make_item_id(ModuleName,
 						ItemType, NameArity)) },
-			{ throw(recompile_exception(Reason, Info)) }
+			record_recompilation_reason(Reason)
 		)
 	    ),
 	    extract_ids(UsedVersionNumbers, ItemType)).
@@ -832,13 +838,11 @@ check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
 			;
 				{ Reason = changed_or_added_instance(
 					ModuleName, ClassId) },
-				=(Info),
-				{ throw(recompile_exception(Reason, Info)) }
+				record_recompilation_reason(Reason)
 			)
 		;
 			{ Reason = removed_instance(ModuleName, ClassId) },
-			=(Info),
-			{ throw(recompile_exception(Reason, Info)) }
+			record_recompilation_reason(Reason)
 		)
 	    ), UsedInstanceVersionNumbers).
 
@@ -1037,8 +1041,7 @@ check_for_simple_item_ambiguity(ItemType, Name, NeedQualifier, SymName, Arity,
 		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity), 
 				[item_id(ItemType, OldMatchingName - Arity)]
 			) },
-		=(Info),
-		{ throw(recompile_exception(Reason, Info)) }
+		record_recompilation_reason(Reason)
 	;
 		[]
 	).
@@ -1077,8 +1080,7 @@ check_for_pred_or_func_ambiguity(ItemType, Name, NeedQualifier,
 		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity), 
 				AmbiguousDecls
 		) },
-		=(Info),
-		{ throw(recompile_exception(Reason, Info)) }
+		record_recompilation_reason(Reason)
 	;
 		[]
 	).
@@ -1230,8 +1232,7 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
 				ResolvedCtor,
 				set__to_sorted_list(OldResolvedCtors)
 			) },
-		=(Info),
-		{ throw(recompile_exception(Reason, Info)) }
+		record_recompilation_reason(Reason)
 	;
 		[]
 	).
@@ -1246,7 +1247,9 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
 		read_modules :: read_modules,
 		used_items :: resolved_used_items,
 		used_typeclasses :: set(item_name),
-		modules_to_recompile :: modules_to_recompile
+		modules_to_recompile :: modules_to_recompile,
+		collect_all_reasons :: bool,
+		recompilation_reasons :: list(recompile_reason)
 	).
 
 :- type recompile_exception
@@ -1494,6 +1497,17 @@ get_term_context(Term) =
 		Context
 	;
 		term__context_init
+	).
+
+:- pred record_recompilation_reason(recompile_reason::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
+
+record_recompilation_reason(Reason, Info0, Info) :-
+	( Info0 ^ collect_all_reasons = yes ->
+		Info = Info0 ^ recompilation_reasons :=
+				[Reason | Info0 ^ recompilation_reasons]
+	;
+		throw(recompile_exception(Reason, Info0))
 	).
 
 :- pred throw_syntax_error(recompile_reason::in,

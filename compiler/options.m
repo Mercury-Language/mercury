@@ -77,6 +77,7 @@
 		;	very_verbose
 		;	verbose_errors
 		;	verbose_recompilation
+		;	find_all_recompilation_reasons
 		;	verbose_make
 		;	statistics
 		;	debug_types
@@ -577,6 +578,8 @@ option_defaults_2(verbosity_option, [
 	very_verbose		-	bool(no),
 	verbose_errors		-	bool(no),
 	verbose_recompilation	-	bool(no),
+	find_all_recompilation_reasons -
+					bool(no),
 	verbose_make		-	bool(yes),
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
@@ -1047,6 +1050,8 @@ long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
 long_option("verbose-error-messages",	verbose_errors).
 long_option("verbose-recompilation",	verbose_recompilation).
+long_option("find-all-recompilation-reasons",
+					find_all_recompilation_reasons).
 long_option("verbose-make",		verbose_make).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
@@ -1958,8 +1963,11 @@ options_help_verbosity -->
 %		"\tOutput progress messages about the progress of the",
 %		"\t`--make' option.",
 		"--verbose-recompilation",
-		"\tWhen using `--smart-recompilation', output messages\n",
+		"\tWhen using `--smart-recompilation', output messages",
 		"\texplaining why a module needs to be recompiled.",
+		"--find-all-recompilation-reasons",
+		"\tFind all the reasons why a module needs to be recompiled,",
+		"\tnot just the first.  Implies `--verbose-recompilation'.",
 		"-S, --statistics",
 		"\tOutput messages about the compiler's time/space usage.",
 		"\tAt the moment this option implies `--no-trad-passes', so you get",

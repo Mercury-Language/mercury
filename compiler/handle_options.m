@@ -431,6 +431,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 
 	option_implies(smart_recompilation, generate_item_version_numbers,
 			bool(yes)),
+	option_implies(find_all_recompilation_reasons, verbose_recompilation,
+			bool(yes)),
 	
 	%
 	% Disable `--smart-recompilation' for compilation options
