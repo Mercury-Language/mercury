@@ -2,9 +2,11 @@
 #
 # A program to test different versions of the compiler.
 
-usage="Usage: speedtest [-c cmd] [-nN] batchname"
+usage="Usage: speedtest [-c cmd] [-dns] batchname"
 limit=4
 cmd="mmc -C -O2 -I../compiler make_hlds.m"
+debug=false
+size=false
 
 while test $# -gt 0
 do
@@ -15,10 +17,16 @@ do
 	-c*)
 		cmd="` expr $1 : '-c\(.*\)' `" ;;
 
+	-d)
+		debug=true ;;
+
 	-n)
 		limit="$2" ; shift ;;
 	-n*)
 		limit="` expr $1 : '-n\(.*\)' `" ;;
+
+	-s)
+		size=true ;;
 
 	-*)	echo "$0: unknown option \`$1'" 2>&1
 		echo $usage
@@ -65,6 +73,11 @@ do
 		cat $paramfile
 	fi
 
+	if $size
+	then
+		size $file
+	fi
+
 	MERCURY_COMPILER=$root/$file
 	export MERCURY_COMPILER
 	cd trial
@@ -72,7 +85,12 @@ do
 	while test $count -le $limit
 	do
 		$ECHO -n "$file "
-		$root/tools/dotime $cmd
+		if $debug
+		then
+			echo "c" | $root/tools/dotime mdb $cmd
+		else
+			$root/tools/dotime $cmd
+		fi
 		count=`expr $count + 1`
 	done
 	cd $root
