@@ -4,6 +4,10 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+
+#ifndef TYPE_INFO_H
+#define TYPE_INFO_H
+
 /*
 ** Decide which type_info representation we will use.
 **
@@ -62,14 +66,26 @@
 ** *depends* on OFFSET_FOR_COUNT being 0.
 */
 
+
 #define OFFSET_FOR_COUNT 0
 #define OFFSET_FOR_UNIFY_PRED 1
 #define OFFSET_FOR_INDEX_PRED 2
 #define OFFSET_FOR_COMPARE_PRED 3
 #define OFFSET_FOR_TERM_TO_TYPE_PRED 4
 #define OFFSET_FOR_TYPE_TO_TERM_PRED 5
-/* #define OFFSET_FOR_ARG_TYPE_INFOS 6 */
-#define OFFSET_FOR_ARG_TYPE_INFOS 4
+
+/* 
+** USE_TYPE_TO_TERM is presently undefined. Code may break if it is
+** just redefined here - changes also need to be made to the compiler.
+*/
+
+#ifdef USE_TYPE_TO_TERM
+	#define OFFSET_FOR_ARG_TYPE_INFOS 6 
+	#define OFFSET_FOR_BASE_TYPE_LAYOUT 6 
+#else
+	#define OFFSET_FOR_ARG_TYPE_INFOS 4
+	#define OFFSET_FOR_BASE_TYPE_LAYOUT 4
+#endif
 
 #define COMPARE_EQUAL 0
 #define COMPARE_LESS 1
@@ -117,4 +133,89 @@
 #define compare_output  r1
 #define index_input     r1
 #define index_output    r2
+#endif
+
+
+/*
+** Definitions and macros for base_type_layout definition.
+**
+** See compiler/base_type_layout.m for more information.
+**
+** If we don't have enough tags, we have to encode layouts
+** less densely. The make_typelayout macro does this, and
+** is intended for handwritten code. Compiler generated
+** code can (and does) just create two rvals instead of one. 
+**
+*/
+
+#if TAGBITS >= 2
+	#define make_typelayout(Tag, Value) \
+		((Word *) (Integer) mkword(mktag(Tag), Value))
+#else
+	#define make_typelayout(Tag, Value) \
+		((Word *) (Integer) Tag), ((Word *) (Integer) Value)
+#endif
+
+/*
+** Typelayouts for builtins often defined as 8 indentical
+** values (8 because that's the highest number of tag values
+** we use at the moment). 
+*/
+
+#define make_typelayout_for_all_tags(Tag, Value) \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value)
+
+/* 
+** Tags in type_layout structures.
+** 
+** These definitions are intended for use in handwritten
+** C code. 
+**
+** Some of the type-layout tags are shared.
+*/
+
+#define TYPELAYOUT_CONST_TAG		0
+#define TYPELAYOUT_COMP_CONST_TAG	0 
+#define TYPELAYOUT_SIMPLE_TAG		1
+#define TYPELAYOUT_COMPLICATED_TAG	2
+#define TYPELAYOUT_EQUIV_TAG		3
+#define TYPELAYOUT_NO_TAG		3 
+
+/* 
+** Values in type_layout structures,
+** presently the values of CONST_TAG words.
+**
+** Also indended for use in handwritten C code.
+**
+*/
+
+#define TYPELAYOUT_CONST_VALUE		((Integer) 0)
+#define TYPELAYOUT_UNUSED_VALUE		((Integer) 1)
+#define TYPELAYOUT_STRING_VALUE		((Integer) 2)
+#define TYPELAYOUT_FLOAT_VALUE		((Integer) 3)
+#define TYPELAYOUT_INT_VALUE		((Integer) 4)
+#define TYPELAYOUT_CHARACTER_VALUE	((Integer) 5)
+#define TYPELAYOUT_UNIV_VALUE		((Integer) 6)
+#define TYPELAYOUT_PREDICATE_VALUE	((Integer) 7)
+
+/* 
+** Number of defined builtins and reserved values.
+*/
+
+#define TYPELAYOUT_BUILTINS		19
+
+/* 
+** Highest allowed type variable number
+** (corresponds with argument number of type parameter).
+*/
+
+#define TYPELAYOUT_MAX_VARINT		1024
+
 #endif
