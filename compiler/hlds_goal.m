@@ -774,6 +774,9 @@
 	--->	constraint	% This is included if the goal is
 				% a constraint.  See constraint.m
 				% for the definition of this.
+	;	from_head	% This goal was originally in the head of the
+				% clause, and was put into the body by the
+				% superhomogeneous form transformation.
 	;	(impure)	% This goal is impure.  See hlds_pred.m.
 	;	(semipure)	% This goal is semipure.  See hlds_pred.m.
 	;	not_impure_for_determinism

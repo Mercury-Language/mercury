@@ -79,6 +79,11 @@
 :- pred goal_util__generic_call_vars(generic_call::in, list(prog_var)::out)
 	is det.
 
+	% Attach the given goal features to the given goal and all its
+	% subgoals.
+:- pred goal_util__attach_features_to_all_goals(list(goal_feature)::in,
+	hlds_goal::in, hlds_goal::out) is det.
+
 	%
 	% goal_util__extra_nonlocal_typeinfos(TypeInfoMap, TypeClassInfoMap,
 	%		VarTypes, ExistQVars, NonLocals, NonLocalTypeInfos):
@@ -693,6 +698,74 @@ goal_util__generic_call_vars(aditi_builtin(_, _), []).
 
 %-----------------------------------------------------------------------------%
 
+attach_features_to_all_goals(Features, Goal0, Goal) :-
+	Goal0 = GoalExpr0 - GoalInfo0,
+	attach_features_goal_expr(Features, GoalExpr0, GoalExpr),
+	goal_info_add_features(Features, GoalInfo0, GoalInfo),
+	Goal = GoalExpr - GoalInfo.
+
+:- pred attach_features_to_case(list(goal_feature)::in,
+	case::in, case::out) is det.
+
+attach_features_to_case(Features, case(ConsId, Goal0), case(ConsId, Goal)) :-
+	attach_features_to_all_goals(Features, Goal0, Goal).
+
+:- pred attach_features_goal_expr(list(goal_feature)::in,
+	hlds_goal_expr::in, hlds_goal_expr::out) is det.
+
+attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
+	(
+		GoalExpr0 = conj(Goals0),
+		list__map(attach_features_to_all_goals(Features),
+			Goals0, Goals),
+		GoalExpr = conj(Goals)
+	;
+		GoalExpr0 = par_conj(Goals0),
+		list__map(attach_features_to_all_goals(Features),
+			Goals0, Goals),
+		GoalExpr = par_conj(Goals)
+	;
+		GoalExpr0 = disj(Goals0),
+		list__map(attach_features_to_all_goals(Features),
+			Goals0, Goals),
+		GoalExpr = disj(Goals)
+	;
+		GoalExpr0 = switch(Var, CanFail, Cases0),
+		list__map(attach_features_to_case(Features), Cases0, Cases),
+		GoalExpr = switch(Var, CanFail, Cases)
+	;
+		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+		attach_features_to_all_goals(Features, Cond0, Cond),
+		attach_features_to_all_goals(Features, Then0, Then),
+		attach_features_to_all_goals(Features, Else0, Else),
+		GoalExpr = if_then_else(Vars, Cond, Then, Else)
+	;
+		GoalExpr0 = not(Goal0),
+		attach_features_to_all_goals(Features, Goal0, Goal),
+		GoalExpr = not(Goal)
+	;
+		GoalExpr0 = some(Vars, CanRemove, Goal0),
+		attach_features_to_all_goals(Features, Goal0, Goal),
+		GoalExpr = some(Vars, CanRemove, Goal)
+	;
+		GoalExpr0 = call(_, _, _, _, _, _),
+		GoalExpr = GoalExpr0
+	;
+		GoalExpr0 = generic_call(_, _, _, _),
+		GoalExpr = GoalExpr0
+	;
+		GoalExpr0 = unify(_, _, _, _, _),
+		GoalExpr = GoalExpr0
+	;
+		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+		GoalExpr = GoalExpr0
+	;
+		GoalExpr0 = shorthand(_),
+		GoalExpr = GoalExpr0
+	).
+
+%-----------------------------------------------------------------------------%
+
 goal_util__extra_nonlocal_typeinfos(TypeVarMap, TypeClassVarMap, VarTypes,
 		ExistQVars, NonLocals, NonLocalTypeInfos) :-
 	set__to_sorted_list(NonLocals, NonLocalsList),
@@ -746,19 +819,20 @@ goals_size([Goal | Goals], Size) :-
 	Size = Size1 + Size2.
 
 clause_list_size(Clauses, GoalSize) :-
-	GetClauseSize =
-		(pred(Clause::in, Size0::in, Size::out) is det :-
-			Clause = clause(_, ClauseGoal, _, _),
-			goal_size(ClauseGoal, ClauseSize),
-			Size = Size0 + ClauseSize
-		),
-	list__foldl(GetClauseSize, Clauses, 0, GoalSize0),
+	list__foldl(clause_size_increment, Clauses, 0, GoalSize0),
 	( Clauses = [_] ->
 		GoalSize = GoalSize0
 	;
 		% Add one for the disjunction.
 		GoalSize = GoalSize0 + 1
 	).
+
+:- pred clause_size_increment(clause::in, int::in, int::out) is det.
+
+clause_size_increment(Clause, Size0, Size) :-
+	Clause = clause(_, ClauseGoal, _, _),
+	goal_size(ClauseGoal, ClauseSize),
+	Size = Size0 + ClauseSize.
 
 :- pred cases_size(list(case)::in, int::out) is det.
 
