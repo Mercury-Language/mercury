@@ -261,7 +261,7 @@ static void init_zones()
 	/*
 	** Allocate the MemoryZone table.
 	*/
-	zone_table = allocate_bytes(MAX_ZONES * sizeof(MemoryZone));
+	zone_table = allocate_array(MemoryZone, MAX_ZONES);
 
 	/*
 	** Initialize the MemoryZone table.
