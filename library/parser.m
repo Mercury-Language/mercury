@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -131,6 +131,12 @@
 :- type parse(T)
 	--->	ok(T)
 	;	error(string, token_list).
+
+	% Are we parsing an ordinary term, an argument or a list element?
+:- type term_kind
+	--->	ordinary_term
+	;	argument
+	;	list_elem.
 
 %-----------------------------------------------------------------------------%
 
@@ -285,7 +291,8 @@ parser__parse_whole_term(Term) -->
 
 parser__parse_term(Term) -->
 	parser__get_ops_table(OpTable),
-	parser__parse_term_2(ops__max_priority(OpTable) + 1, no, Term).
+	parser__parse_term_2(ops__max_priority(OpTable) + 1, ordinary_term,
+		Term).
 
 :- pred parser__parse_arg(parse(term(T)), parser__state(Ops, T),
 		parser__state(Ops, T)) <= op_table(Ops).
@@ -293,27 +300,36 @@ parser__parse_term(Term) -->
 
 parser__parse_arg(Term) -->
 	parser__get_ops_table(OpTable),
-	parser__parse_term_2(ops__arg_priority(OpTable), yes, Term).
+	parser__parse_term_2(ops__arg_priority(OpTable), argument, Term).
 
-:- pred parser__parse_term_2(int, bool, parse(term(T)),
+
+:- pred parser__parse_list_elem(parse(term(T)), parser__state(Ops, T),
+		parser__state(Ops, T)) <= op_table(Ops).
+:- mode parser__parse_list_elem(out, in, out) is det.
+
+parser__parse_list_elem(Term) -->
+	parser__get_ops_table(OpTable),
+	parser__parse_term_2(ops__arg_priority(OpTable), list_elem, Term).
+
+:- pred parser__parse_term_2(int, term_kind, parse(term(T)),
 	parser__state(Ops, T), parser__state(Ops, T)) <= op_table(Ops).
 :- mode parser__parse_term_2(in, in, out, in, out) is det.
 
-parser__parse_term_2(MaxPriority, IsArg, Term) -->
-	parser__parse_left_term(MaxPriority, IsArg, LeftPriority, LeftTerm0),
+parser__parse_term_2(MaxPriority, TermKind, Term) -->
+	parser__parse_left_term(MaxPriority, TermKind, LeftPriority, LeftTerm0),
 	( { LeftTerm0 = ok(LeftTerm) } ->
-		parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm,
-			Term)
+		parser__parse_rest(MaxPriority, TermKind, LeftPriority,
+			LeftTerm, Term)
 	;
 		% propagate error upwards
 		{ Term = LeftTerm0 }
 	).
 
-:- pred parser__parse_left_term(int, bool, int, parse(term(T)),
+:- pred parser__parse_left_term(int, term_kind, int, parse(term(T)),
 	parser__state(Ops, T), parser__state(Ops, T)) <= op_table(Ops).
 :- mode parser__parse_left_term(in, in, out, out, in, out) is det.
 
-parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
+parser__parse_left_term(MaxPriority, TermKind, OpPriority, Term) -->
 	( parser__get_token(Token, Context) ->
 		(
 			% check for unary minus of integer
@@ -351,10 +367,11 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 			{ parser__adjust_priority(RightRightAssoc,
 					BinOpPriority, RightRightPriority) },
 			{ OpPriority = BinOpPriority },
-			parser__parse_term_2(RightPriority, IsArg, RightResult),
+			parser__parse_term_2(RightPriority, TermKind,
+				RightResult),
 			( { RightResult = ok(RightTerm) } ->
-				parser__parse_term_2(RightRightPriority, IsArg,
-							RightRightResult),
+				parser__parse_term_2(RightRightPriority,
+					TermKind, RightRightResult),
 				( { RightRightResult = ok(RightRightTerm) } ->
 					parser__get_term_context(Context,
 						TermContext),
@@ -383,7 +400,8 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 		->
 			{ parser__adjust_priority(RightAssoc, UnOpPriority,
 							RightPriority) },
-			parser__parse_term_2(RightPriority, IsArg, RightResult),
+			parser__parse_term_2(RightPriority, TermKind,
+				RightResult),
 			{ OpPriority = UnOpPriority },
 			( { RightResult = ok(RightTerm) } ->
 				parser__get_term_context(Context, TermContext),
@@ -404,16 +422,22 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 		{ OpPriority = 0 }
 	).
 
-:- pred parser__parse_rest(int, bool, int, term(T), parse(term(T)),
+:- pred parser__parse_rest(int, term_kind, int, term(T), parse(term(T)),
 	parser__state(Ops, T), parser__state(Ops, T)) <= op_table(Ops).
 :- mode parser__parse_rest(in, in, in, in, out, in, out) is det.
 
-parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
+parser__parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term) -->
 	(
 		% infix op
 		parser__get_token(Token, Context),
-		{ Token = comma, IsArg = no ->
+		{
+			Token = comma,
+			TermKind = ordinary_term,
 			Op0 = ","
+		;
+			Token = ht_sep,
+			TermKind \= list_elem,
+			Op0 = "|"
 		;
 			Token = name(Op0)
 		},
@@ -454,14 +478,14 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 	->
 		{ parser__adjust_priority(RightAssoc, OpPriority,
 					RightPriority) },
-		parser__parse_term_2(RightPriority, IsArg, RightTerm0),
+		parser__parse_term_2(RightPriority, TermKind, RightTerm0),
 		( { RightTerm0 = ok(RightTerm) } ->
 			parser__get_term_context(Context, TermContext),
 			{ OpTerm = term__functor(term__atom(Op),
 				list__append(VariableTerm,
 					[LeftTerm, RightTerm]),
 				TermContext) },
-			parser__parse_rest(MaxPriority, IsArg, OpPriority,
+			parser__parse_rest(MaxPriority, TermKind, OpPriority,
 				OpTerm, Term)
 		;
 			% propagate error upwards
@@ -478,7 +502,8 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 		parser__get_term_context(Context, TermContext),
 		{ OpTerm = term__functor(term__atom(Op), [LeftTerm],
 			TermContext) },
-		parser__parse_rest(MaxPriority, IsArg, OpPriority, OpTerm, Term)
+		parser__parse_rest(MaxPriority, TermKind, OpPriority, OpTerm,
+			Term)
 	;
 		{ Term = ok(LeftTerm) }
 	).
@@ -673,7 +698,7 @@ parser__parse_special_atom(Atom, TermContext, Term) -->
 :- mode parser__parse_list(out, in, out) is det.
 
 parser__parse_list(List) -->
-	parser__parse_arg(Arg0),
+	parser__parse_list_elem(Arg0),
 	( { Arg0 = ok(Arg) } ->
 	    ( parser__get_token(Token, Context) ->
 		parser__get_term_context(Context, TermContext),
