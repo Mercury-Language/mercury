@@ -4740,7 +4740,7 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	write_typecheck_info_context(TypeCheckInfo),
 	(
-		{ PredName = unqualified("->"), Arity = 2 }
+		{ PredName = unqualified("->"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `->' without `;'.\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
@@ -4755,15 +4755,15 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 			[]
 		)
 	;
-		{ PredName = unqualified("else"), Arity = 2 }
+		{ PredName = unqualified("else"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: unmatched `else'.\n")
 	;
-		{ PredName = unqualified("if"), Arity = 2 }
+		{ PredName = unqualified("if"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `if' without `then' or `else'.\n")
 	;
-		{ PredName = unqualified("then"), Arity = 2 }
+		{ PredName = unqualified("then"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `then' without `if' or `else'.\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
