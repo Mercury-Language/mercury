@@ -1591,7 +1591,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	{ GC_Method = conservative ->
 		GC_Opt = "-DCONSERVATIVE_GC "
 	; GC_Method = accurate ->
-		GC_Opt = "-DNATIVE_GC"
+		GC_Opt = "-DNATIVE_GC "
 	;
 		GC_Opt = ""
 	},
