@@ -108,6 +108,7 @@
 		;	errorcheck_only
 		;	target_code_only
 		;	compile_only
+		;	compile_to_shared_lib
 		;	aditi_only
 		;	output_grade_string
 	% Auxiliary output options
@@ -664,6 +665,7 @@ option_defaults_2(output_option, [
 	errorcheck_only		-	bool(no),
 	target_code_only	-	bool(no),
 	compile_only		-	bool(no),
+	compile_to_shared_lib	-	bool(no),
 	aditi_only		-	bool(no),
 	output_grade_string	-	bool(no)
 ]).
@@ -1213,6 +1215,7 @@ long_option("typecheck-only",		typecheck_only).
 long_option("errorcheck-only",		errorcheck_only).
 long_option("target-code-only",		target_code_only).
 long_option("compile-only",		compile_only).
+long_option("compile-to-shared-lib",	compile_to_shared_lib).
 long_option("aditi-only",		aditi_only).
 long_option("output-grade-string",	output_grade_string).
 
@@ -2244,6 +2247,9 @@ options_help_output -->
 		"-c, --compile-only",
 		"\tGenerate C code in `<module>.c' and object code in `<module>.o'",
 		"\tbut do not attempt to link the named modules.",
+		% --compile-to-shared-lib is intended only for use
+		% by the debugger's interactive query facility,
+		% so it isn't documented.
 		"--aditi-only",
 		"\tWrite Aditi-RL bytecode to `<module>.rlo' and",
 		"\tdo not compile to C.",

@@ -1994,8 +1994,8 @@ otherwise you will get a mode error.
 The current implementation works by compiling the queries on-the-fly
 and then dynamically linking them into the program being debugged.
 Thus it may take a little while for your query to be executed.
-Each query will be written to a file named @file{query.m} in the current
-directory, so make sure you don't name your source file @file{query.m}.
+Each query will be written to a file named @file{mdb_query.m} in the current
+directory, so make sure you don't name your source file @file{mdb_query.m}.
 Note that dynamic linking may not be supported on some systems;
 if you are using a system for which dynamic linking is not supported,
 you will get an error message when you try to run these commands.

@@ -737,22 +737,36 @@ link_module_list(Modules, Succeeded) -->
 	( { MakeLibCmdOK = no } ->
     	    { Succeeded = no }
 	;
-	    { list__map(
-	    	(pred(ModuleStr::in, ModuleName::out) is det :-
+	    globals__io_lookup_bool_option(compile_to_shared_lib,
+			CompileToSharedLib),
+	    { TargetType =
+		(CompileToSharedLib = yes -> shared_library ; executable) },
+    	    ( { TargetType = executable } ->
+		{ list__map(
+		    (pred(ModuleStr::in, ModuleName::out) is det :-
 			dir__basename(ModuleStr, ModuleStrBase),
 			file_name_to_module_name(ModuleStrBase, ModuleName)
-		),
-		Modules, ModuleNames) },
-	    { MustCompile = yes },
-	    make_init_obj_file(OutputStream,
-	    	MustCompile, MainModuleName, ModuleNames, InitObjResult),
+		    ),
+		    Modules, ModuleNames) },
+		{ MustCompile = yes },
+		make_init_obj_file(OutputStream, MustCompile, MainModuleName,
+			ModuleNames, InitObjResult)
+	    ;
+	       	{ InitObjResult = yes("") }
+	    ),
 	    (
 	    	{ InitObjResult = yes(InitObjFileName) },
 		globals__io_lookup_accumulating_option(link_objects,
 			ExtraLinkObjectsList),
-	        link(OutputStream, executable, MainModuleName,
-	    	    [InitObjFileName | ObjectsList] ++ ExtraLinkObjectsList,
-		    Succeeded)
+		{ AllObjects0 = ObjectsList ++ ExtraLinkObjectsList },
+		{ AllObjects =
+			( InitObjFileName = "" ->
+				AllObjects0
+			;
+				[InitObjFileName | AllObjects0]
+			) },
+	        link(OutputStream, TargetType, MainModuleName,
+	    	    AllObjects, Succeeded)
 	    ;
 		{ InitObjResult = no },
 		{ Succeeded = no }

@@ -121,17 +121,17 @@ List = [3, 1, 2], true ;
 List = [3, 2, 1], true ;
 fail.
 No (more) solutions.
-?- <stdin>:012: In clause for predicate `query:run/2':
+?- <stdin>:012: In clause for predicate `mdb_query:run/2':
 <stdin>:012:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:014: In clause for predicate `query:run/2':
+<stdin>:014: In clause for predicate `mdb_query:run/2':
 <stdin>:014:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:012: In clause for predicate `query:run/2':
+<stdin>:012: In clause for predicate `mdb_query:run/2':
 <stdin>:012:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:015: In clause for predicate `query:run/2':
+<stdin>:015: In clause for predicate `mdb_query:run/2':
 <stdin>:015:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:026: In clause for predicate `query:query/2':
+<stdin>:026: In clause for predicate `mdb_query:query/2':
 <stdin>:026:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:001: In clause for predicate `query:query/2':
+<stdin>:001: In clause for predicate `mdb_query:query/2':
 <stdin>:001:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:026: Inferred :- pred query((list:list(int)), (list:list(int))).
 <stdin>:026: Inferred :- mode query(out, out) is nondet.
@@ -140,24 +140,24 @@ List = [2, 1, 3], _2 = [1, 3], true ;
 List = [2, 3, 1], _2 = [3, 1], true ;
 fail.
 No (more) solutions.
-?- <stdin>:012: In clause for predicate `query:run/2':
+?- <stdin>:012: In clause for predicate `mdb_query:run/2':
 <stdin>:012:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:014: In clause for predicate `query:run/2':
+<stdin>:014: In clause for predicate `mdb_query:run/2':
 <stdin>:014:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:012: In clause for predicate `query:run/2':
+<stdin>:012: In clause for predicate `mdb_query:run/2':
 <stdin>:012:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:015: In clause for predicate `query:run/2':
+<stdin>:015: In clause for predicate `mdb_query:run/2':
 <stdin>:015:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:026: In clause for predicate `query:query/2':
+<stdin>:026: In clause for predicate `mdb_query:query/2':
 <stdin>:026:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:001: In clause for predicate `query:query/2':
+<stdin>:001: In clause for predicate `mdb_query:query/2':
 <stdin>:001:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:026: Inferred :- pred query((list:list(int)), (list:list(int))).
 <stdin>:026: Inferred :- mode query(out, out) is nondet.
 qperm([1,2,3], List), List = [4 | _].
 fail.
 No (more) solutions.
-?- <stdin>:001: In clause for predicate `query:query/1':
+?- <stdin>:001: In clause for predicate `mdb_query:query/1':
 <stdin>:001:   in argument 1 of call to predicate `qperm/2':
 <stdin>:001:   in argument 2 of functor `[|]/2':
 <stdin>:001:   in argument 2 of functor `[|]/2':
@@ -167,12 +167,11 @@ No (more) solutions.
 <stdin>:001:   argument has type `int',
 <stdin>:001:   constant `"foo"' has type `string'.
 For more information, try recompiling with `-E'.
-** Error making `query.c'.
 qperm([1,2,"foo"], List).
 Compilation error(s) occurred.
 ?- <stdin>:026: Inferred :- pred query((list:list(int))).
 <stdin>:014: In clause for `run(di, uo)':
-<stdin>:014:   in call to predicate `query:query/1':
+<stdin>:014:   in call to predicate `mdb_query:query/1':
 <stdin>:014:   mode error: arguments `List'
 <stdin>:014:   have insts `free',
 <stdin>:014:   which does not match any of the valid modes for
@@ -182,7 +181,6 @@ Compilation error(s) occurred.
 <stdin>:026:   mode error: variable `HeadVar__2' has instantiatedness `free',
 <stdin>:026:   expected instantiatedness was `ground'.
 For more information, try recompiling with `-E'.
-** Error making `query.c'.
 qperm(List, [1]).
 Compilation error(s) occurred.
 ?- quit.
@@ -196,25 +194,25 @@ X = [], Y = ['a', 'b', 'c'], true.
 <stdin>:017: Inferred :- mode query(out) is nondet.
 qperm([1,2,3], List).
 List = [1, 2, 3], true.
-?- <stdin>:011: In clause for predicate `query:run/2':
+?- <stdin>:011: In clause for predicate `mdb_query:run/2':
 <stdin>:011:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:012: In clause for predicate `query:run/2':
+<stdin>:012: In clause for predicate `mdb_query:run/2':
 <stdin>:012:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:017: In clause for predicate `query:query/2':
+<stdin>:017: In clause for predicate `mdb_query:query/2':
 <stdin>:017:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:001: In clause for predicate `query:query/2':
+<stdin>:001: In clause for predicate `mdb_query:query/2':
 <stdin>:001:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:017: Inferred :- pred query((list:list(int)), (list:list(int))).
 <stdin>:017: Inferred :- mode query(out, out) is nondet.
 qperm([1,2,3], List), List = [2 | _].
 List = [2, 1, 3], _2 = [1, 3], true.
-?- <stdin>:011: In clause for predicate `query:run/2':
+?- <stdin>:011: In clause for predicate `mdb_query:run/2':
 <stdin>:011:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:012: In clause for predicate `query:run/2':
+<stdin>:012: In clause for predicate `mdb_query:run/2':
 <stdin>:012:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:017: In clause for predicate `query:query/2':
+<stdin>:017: In clause for predicate `mdb_query:query/2':
 <stdin>:017:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:001: In clause for predicate `query:query/2':
+<stdin>:001: In clause for predicate `mdb_query:query/2':
 <stdin>:001:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:017: Inferred :- pred query((list:list(int)), (list:list(int))).
 <stdin>:017: Inferred :- mode query(out, out) is nondet.

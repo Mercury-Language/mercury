@@ -8,11 +8,12 @@
 % author: fjh
 % A module to invoke interactive queries using dynamic linking.
 %
-% This module reads in a query, writes out Mercury code for it to `query.m',
-% invokes the Mercury compiler mmc to compile `query.m' to `libquery.so',
-% dynamically loads in the object code for the module `query'
-% from the file `libquery.so', looks up the address of the
-% procedure query/2 in that module, and then calls that procedure.
+% This module reads in a query, writes out Mercury code for it to
+% `mdb_query.m', invokes the Mercury compiler mmc to compile `query.m'
+% to `libmdb_query.so', dynamically loads in the object code for the module
+% `mdb_query' from the file `libmdb_query.so', looks up the address of the
+% procedure query/2 in that module, calls that procedure, and then
+% cleans up the generated files.
 
 :- module mdb__interactive_query.
 :- interface.
@@ -166,7 +167,7 @@ term_to_list(term__functor(term__atom("[|]"),
 :- pred run_query(options, prog, io__state, io__state).
 :- mode run_query(in, in, di, uo) is det.
 run_query(Options, Program) -->
-	{ SourceFile = "query.m" },
+	{ SourceFile = query_module_name ++ ".m" },
 	io__get_environment_var("MERCURY_OPTIONS", MAYBE_MERCURY_OPTIONS),
 	(if { MAYBE_MERCURY_OPTIONS = yes(MERCURY_OPTIONS) } then	
 		io__set_environment_var("MERCURY_OPTIONS", ""),
@@ -223,7 +224,7 @@ open_output_file(File, Stream) -->
 
 write_prog_to_stream(prog(QueryType, Imports, Term, VarSet)) -->
 	io__write_string("
-			:- module query.
+			:- module mdb_query.
 			:- interface.
 			:- import_module io.
 			:- pred run(io__state::di, io__state::uo) is cc_multi.
@@ -431,18 +432,25 @@ compile_file(Options, Succeeded) -->
 		"--no-warn-simple-code --no-warn-det-decls-too-lax ",
 		"--output-compile-error-lines 10000 ",
 		"--link-flags --allow-undefined ", Options,
-		" --make libquery.so"], Command) },
+		" --compile-to-shared-lib ", query_module_name],
+		Command) },
 	invoke_system_command(Command, Succeeded).
 
 :- pred cleanup_query(options, state, state).
 :- mode cleanup_query(in, di, uo) is det.
 
-cleanup_query(Options) -->
-	invoke_system_command(
-		string__append_list(["mmc --grade ", grade_option, " ",
-			Options, " --make query.realclean"]),
+cleanup_query(_Options) -->
+	io__remove_file(query_module_name ++ ".m", _),
+	io__remove_file(query_module_name ++ ".d", _),
+	io__remove_file("Mercury/ds/" ++ query_module_name ++ ".d", _),
+	io__remove_file(query_module_name ++ ".c", _),
+	io__remove_file("Mercury/cs/" ++ query_module_name ++ ".c", _),
+	io__remove_file(query_module_name ++ ".c_date", _),
+	io__remove_file("Mercury/c_dates/" ++ query_module_name ++ ".c_date",
 		_),
-	io__remove_file("query.m", _).
+	io__remove_file(query_module_name ++ ".o", _),
+	io__remove_file("Mercury/os/" ++ query_module_name ++ ".o", _),
+	io__remove_file("lib" ++ query_module_name ++ ".so", _).
 
 :- func grade_option = string.
 %
@@ -492,6 +500,10 @@ invoke_system_command(Command, Succeeded) -->
 % dynamically load the shared object and execute the query
 %
 
+:- func query_module_name = string.
+
+query_module_name = "mdb_query".
+
 :- pred dynamically_load_and_run(io__state::di, io__state::uo) is det.
 
 dynamically_load_and_run -->
@@ -499,7 +511,8 @@ dynamically_load_and_run -->
 	% Load in the object code for the module `query' from
 	% the file `libquery.so'.
 	%
-	dl__open("./libquery.so", lazy, local, MaybeHandle),
+	dl__open("./lib" ++ query_module_name ++ ".so",
+		lazy, local, MaybeHandle),
 	(	
 		{ MaybeHandle = error(Msg) },
 		print("dlopen failed: "), print(Msg), nl
@@ -509,8 +522,8 @@ dynamically_load_and_run -->
 		% Look up the address of the first mode (mode number 0)
 		% of the predicate run/2 in the module query.
 		%
-		{ QueryProc = mercury_proc(predicate, unqualified("query"),
-					"run", 2, 0) },
+		{ QueryProc = mercury_proc(predicate,
+				unqualified(query_module_name), "run", 2, 0) },
 		dl__mercury_sym(Handle, QueryProc, MaybeQuery),
 		(
 			{ MaybeQuery = error(Msg) },
