@@ -714,6 +714,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
  	
 	/* discard the frame we made */
 	succeed_discard();
+}
 
 #undef saved_hp_fv
 #undef saved_solhp_fv
