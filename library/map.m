@@ -47,7 +47,6 @@
 
 	% Search map for key.
 :- pred map__search(map(K,V), K, V).
-:- mode map__search(in, in, in) is semidet.	% implied
 :- mode map__search(in, in, out) is semidet.
 
 	% Search map for key, but abort if search fails.
