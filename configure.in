@@ -393,6 +393,7 @@ AC_EGREP_CPP(yes,
 ] AC_MSG_RESULT(no))
 
 if test "$ac_microsoft" = "yes" ; then
+	# Use MS-style file names and command-line options
 	OBJ_SUFFIX="obj"
 	LIB_SUFFIX="lib"
 	LIB_PREFIX="lib"
@@ -412,6 +413,7 @@ if test "$ac_microsoft" = "yes" ; then
 	RANLIB="echo"
 	AC_SUBST(RANLIB)
 else
+	# Use Unix-style file names and command-line options
 	OBJ_SUFFIX="o"
 	LIB_SUFFIX="a"
 	LIB_PREFIX=""
@@ -1517,6 +1519,13 @@ case $ac_cv_prog_gcc in yes)
     esac
     case "$host" in
 	mips-sgi-irix5.*)
+		# Non-local gotos don't work with shared libraries on Irix 5,
+		# which causes lots of complications.
+		# Now that we have the hlc back-end, it's not worth
+		# supporting them.
+		MERCURY_MSG("Mercury no longer supports gcc non-local on Irix 5")
+		mercury_cv_asm_labels=no
+		mercury_cv_gcc_labels=no
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -non_shared -mno-abicalls"
 		LIBRARY_PATH_FOR_GOTOS="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
 		;;
@@ -1898,6 +1907,7 @@ case "$host" in
 ###	# the Boehm garbage collector doesn't support threads on that platform
 ###	# XXX probably we should enable it but report an error if you try to
 ###	#     use an *.par.gc* grade
+###	# XXX is this fixed in the Boehm collector now?
 ###	*-osf*)
 ###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE"
 ###		;;
@@ -1922,99 +1932,136 @@ AC_SUBST(CFLAGS_FOR_THREADS)
 #-----------------------------------------------------------------------------#
 
 #
-# figure out the most efficient base grade to use.
+# Figure out which is the best grade to use for various different purposes.
+# In particular, choose the default grade for compiling applications.
 #
+
+# BEST_LLDS_BASE_GRADE is the most efficient of the LLDS->C base grades.
+
 if test $mercury_cv_asm_labels = yes; then
 	if test $mercury_cv_gcc_model_fast = yes; then
-		BEST_GRADE=asm_fast
+		BEST_LLDS_BASE_GRADE=asm_fast
 	else
-		BEST_GRADE=asm_jump
+		BEST_LLDS_BASE_GRADE=asm_jump
 	fi
 elif test $mercury_cv_gcc_labels = yes; then
 	if test $mercury_cv_gcc_model_fast = yes; then
-		BEST_GRADE=fast
+		BEST_LLDS_BASE_GRADE=fast
 	else
-		BEST_GRADE=jump
+		BEST_LLDS_BASE_GRADE=jump
 	fi
 else
 	if test $mercury_cv_gcc_model_reg = yes; then
-		BEST_GRADE=reg
+		BEST_LLDS_BASE_GRADE=reg
 	else
-		BEST_GRADE=none
+		BEST_LLDS_BASE_GRADE=none
 	fi
 fi
 
-# We can't use grade jump.gc or fast.gc unless we have a working Mercury
-# compiler to bootstrap with, since the C code generated for the other
-# grades won't work in grade jump.gc or fast.gc.
+# BEST_DEBUG_BASE_GRADE is the most efficient base grade that supports
+# debugging (`--trace deep').
 
-DESIRED_GRADE=$BEST_GRADE.gc
-GRADE=$DESIRED_GRADE
-if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
-	if test "$BOOTSTRAP_MC" = ""; then
-		if test "$DESIRED_GRADE" = jump.gc; then
-			GRADE=none.gc
+BEST_DEBUG_BASE_GRADE=$BEST_LLDS_BASE_GRADE
+
+# DEFAULT_BASE_GRADE is the best overall base grade; it should be reasonably
+# efficient, and it should support debugging unless that would compromise
+# efficiency too much.
+
+case $BEST_LLDS_BASE_GRADE in
+	none|fast|jump)
+		DEFAULT_BASE_GRADE=hlc
+		;;
+	asm_fast|asm_jump|reg)
+		DEFAULT_BASE_GRADE=$BEST_LLDS_BASE_GRADE
+		;;
+	*)
+		AC_MSG_ERROR(invalid BEST_LLDS_BASE_GRADE $BEST_LLDS_BASE_GRADE)
+		;;
+esac
+
+# DEFAULT_GRADE is the default grade used to compile applications.
+# This is the same as DEFAULT_BASE_GRADE except that we also want to
+# enable conservative garbage collection by default.
+
+DEFAULT_GRADE=$DEFAULT_BASE_GRADE.gc
+
+MERCURY_MSG("using grade \`$DEFAULT_GRADE' as the default grade for applications")
+AC_SUBST(DEFAULT_GRADE)
+
+#-----------------------------------------------------------------------------#
+
+#
+# Choose which grade to use for the compiler.
+#
+
+# BEST_GRADE_FOR_COMPILER is the best grade for compiling
+# the Mercury compiler, if there is already an installed Mercury compiler.
+
+case $BEST_LLDS_BASE_GRADE in
+	asm_fast)
+		BEST_GRADE_FOR_COMPILER=asm_fast.gc
+		;;
+	*)
+		BEST_GRADE_FOR_COMPILER=hlc.gc
+		;;
+esac
+
+# BOOTSTRAP_GRADE is the most efficient grade which we can use to bootstrap
+# the compiler from the source distribution, if there is no installed Mercury
+# compiler.  This grade needs to be one for which the C files are
+# compatible with the C files that we ship in the source distribution,
+# which are generated with grade asm_fast.gc.
+
+# In order to be compatible with grade asm_fast.gc, it needs to be an LLDS
+# grade.  We generate the same C code for the base LLDS grades, except that a
+# couple of them (fast and jump) don't support code addresses in static
+# initializers.
+
+case $BEST_LLDS_BASE_GRADE in
+	jump|fast)
+		if test $mercury_cv_gcc_model_reg = yes; then
+			BOOTSTRAP_GRADE=reg.gc
 		else
-			GRADE=reg.gc
+			BOOTSTRAP_GRADE=none.gc
 		fi
+		;;
+	*)
+		BOOTSTRAP_GRADE=$BEST_LLDS_BASE_GRADE.gc
+		;;
+esac
+
+# Choose whether to use $BOOTSTRAP_GRADE or $BEST_GRADE_FOR_COMPILER,
+# and if necessary remove the installed 
+
+if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
+	if test "$BOOTSTRAP_MC" = ""; then
+		GRADE="$BOOTSTRAP_GRADE"
 		AC_MSG_WARN(Mercury compiler not yet installed -" \
-				"cannot use grade \`$DESIRED_GRADE')
-		AC_MSG_WARN(using \`GRADE=$GRADE' to compile the compiler)
+				"cannot use grade \`$BEST_GRADE_FOR_COMPILER')
+		AC_MSG_WARN(using grade \`$GRADE' to compile the compiler)
 		AC_MSG_WARN(*** after installation is complete you" \
 				"should reinstall from scratch)
 		AC_MSG_WARN(*** so you can use the more efficient" \
-				"grade \`$DESIRED_GRADE')
+				"grade \`$BEST_GRADE_FOR_COMPILER')
 	else
-		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
+		GRADE=$BEST_GRADE_FOR_COMPILER
+		MERCURY_MSG("using grade \`$GRADE' to compile the compiler")
 		MERCURY_MSG("compiler and library will be rebuilt with new grade")
 		MERCURY_MSG("installation may take a long time")
-		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
+		find library compiler browser profiler deep_profiler \
+			-name \*.c -o -name \*.c_date | xargs rm
 	fi
 else
-	# If we are using the MS compiler we want to install all the
-	# none.* and hlc.* grades.  The easiest way to do this is to
-	# pretend we want to use the none.gc grade and then override it
-	# later.
-	if test $ac_microsoft = no; then
-		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
-	fi
+	GRADE=$BEST_GRADE_FOR_COMPILER
+	MERCURY_MSG("using grade \`$GRADE' to compile the compiler")
 fi
+AC_SUBST(GRADE)
 
-if test "$DEFAULT_GRADE" = ""; then
-	DEFAULT_GRADE=$GRADE
-	# For Irix 5.x, shared libraries are incompatible
-	# with gcc non-local gotos.
-	# We prefer to use shared libraries by default
-	case "$host" in mips-sgi-irix5.*)
-		case $ac_cv_prog_gcc in yes)
-			DEFAULT_GRADE=reg.gc
-			;;
-		esac
-		;;
-	esac
-fi
+#-----------------------------------------------------------------------------#
 
 #
-# Figure out which grades to use if --enable-inefficient-grades is specified.
+# Define options for selecting which grades of the library to install
 #
-ALL_LIBGRADES="none"
-if test $mercury_cv_gcc_model_reg = yes; then
-	ALL_LIBGRADES="$ALL_LIBGRADES reg"
-fi
-if test $mercury_cv_gcc_labels = yes; then
-	ALL_LIBGRADES="$ALL_LIBGRADES jump"
-	if test $mercury_cv_gcc_model_fast = yes; then
-		ALL_LIBGRADES="$ALL_LIBGRADES fast"
-	fi
-fi
-if test $mercury_cv_asm_labels = yes; then
-	if test $mercury_cv_gcc_labels = yes; then
-		ALL_LIBGRADES="$ALL_LIBGRADES asm_jump"
-	fi
-	if test $mercury_cv_gcc_model_fast = yes; then
-		ALL_LIBGRADES="$ALL_LIBGRADES asm_fast"
-	fi
-fi
 
 AC_ARG_ENABLE(inefficient-grades,
 [  --enable-inefficient-grades
@@ -2026,8 +2073,8 @@ AC_ARG_ENABLE(most-grades,
 enable_most_grades="$enableval",enable_most_grades=yes)
 
 AC_ARG_ENABLE(nogc-grades,
-[  --disable-nogc-grades   do not install no-gc versions of the library],
-enable_nogc_grades="$enableval",enable_nogc_grades=yes)
+[  --enable-nogc-grades   install no-gc versions of the library],
+enable_nogc_grades="$enableval",enable_nogc_grades=no)
 
 AC_ARG_ENABLE(prof-grades,
 [  --disable-prof-grades   do not install profiling versions of the library],
@@ -2066,15 +2113,50 @@ if test "$enable_most_grades" = no; then
 	enable_mm_grades=no
 	enable_hlc_prof_grades=no
 	enable_par_grades=no
+	enable_dotnet_grades=no
 fi
+
+#-----------------------------------------------------------------------------#
+
+#
+# Choose which grades of the library to install
+#
+
+# Compute all the LLDS base grades.
+ALL_LLDS_BASE_GRADES="none"
+if test $mercury_cv_gcc_model_reg = yes; then
+	ALL_LLDS_BASE_GRADES="$ALL_LLDS_BASE_GRADES reg"
+fi
+if test $mercury_cv_gcc_labels = yes; then
+	ALL_LLDS_BASE_GRADES="$ALL_LLDS_BASE_GRADES jump"
+	if test $mercury_cv_gcc_model_fast = yes; then
+		ALL_LLDS_BASE_GRADES="$ALL_LLDS_BASE_GRADES fast"
+	fi
+fi
+if test $mercury_cv_asm_labels = yes; then
+	if test $mercury_cv_gcc_labels = yes; then
+		ALL_LLDS_BASE_GRADES="$ALL_LLDS_BASE_GRADES asm_jump"
+	fi
+	if test $mercury_cv_gcc_model_fast = yes; then
+		ALL_LLDS_BASE_GRADES="$ALL_LLDS_BASE_GRADES asm_fast"
+	fi
+fi
+
+# Start with the selected LLDS base grades:
+# normally just the best LLDS base grade,
+# unless --enable-inefficient-grades was selected,
+# in which case we use all the LLDS grades.
 
 if test "$enable_inefficient_grades" = yes; then
-	BASE_LIBGRADES="$ALL_LIBGRADES"
+	BASE_LIBGRADES="$ALL_LLDS_BASE_GRADES"
 else
-	BASE_LIBGRADES="$BEST_GRADE"
+	BASE_LIBGRADES="$BEST_LLDS_BASE_GRADE"
 fi
 
-# find all `.gc' (--conservative-gc) grades
+# Find all the corresponding `.gc' (--conservative-gc) grades.
+# Use both `.gc' and non-`.gc' versions, unless --disable-nogc-grades was set,
+# in which case use only the `.gc' versions.
+
 GC_LIBGRADES=""
 for grade in $BASE_LIBGRADES; do
 	GC_LIBGRADES="$GC_LIBGRADES $grade.gc"
@@ -2086,84 +2168,103 @@ else
 	LIBGRADES="$GC_LIBGRADES"
 fi
 
+# Add `hlc' (--high-level-code, i.e. MLDS back-end) grades
+LIBGRADES="$LIBGRADES hlc.gc"
+if test "$enable_inefficient_grades" = yes -a "$GCC" = yes ; then
+    LIBGRADES="$LIBGRADES hlc_nest.gc"
+fi
+
+# Add grades for profiling.
 if test "$enable_prof_grades" = yes; then
-	# add `.prof' (--profiling) grades, if time profiling is supported,
+	# Add `.prof' (--profiling) grades, if time profiling is supported.
+	# We want to allow profiling of any installed grade which is likely
+	# to be the most efficient grade for some application.
+	# This means we want to support time profiling for
+	#	- both GC and non-GC grades
+	#	  since non-GC grades might be best for some applications.
+	#	- both LLDS and hlc grades
+	# It's also convenient if we support a time profiling variant of
+	# the default grade, if this is not the same as the most efficient
+	# grade.
 	if test $mercury_cv_profiling = yes; then
+		# Start with profiling versions of the default grade
+		LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.prof"
 		if test "$enable_nogc_grades" = yes; then
-			DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
-			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof $DEFAULT_GRADE_NOGC.prof"
-		else
-			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof"
+			LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.prof"
 		fi
-		if test $GRADE != $DEFAULT_GRADE; then
+		# Add profiling versions of the best LLDS grade,
+		# if this is different than the default grade
+		if test $BEST_LLDS_BASE_GRADE != $DEFAULT_BASE_GRADE; then
+			LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.prof"
 			if test "$enable_nogc_grades" = yes; then
-				GRADE_NOGC="`echo $GRADE | sed 's/\.gc$//'`"
-				LIBGRADES="$LIBGRADES $GRADE.prof $GRADE_NOGC.prof"
-			else
-				LIBGRADES="$LIBGRADES $GRADE.prof"
+				LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.prof"
+			fi
+		fi
+		# Add profiling versions of the hlc grade,
+		# if this is different than the ones added above.
+		if test $enable_hlc_prof_grades = "yes" &&
+		   test hlc != $DEFAULT_BASE_GRADE &&
+		   test hlc != $BEST_LLDS_BASE_GRADE
+		then
+			LIBGRADES="$LIBGRADES hlc.gc.prof"
+			if test "$enable_nogc_grades" = yes; then
+				LIBGRADES="$LIBGRADES hlc.prof"
 			fi
 		fi
 	fi
 
-	# add a `.memprof' (--memory-profiling) grade
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
+	# Add a `.memprof' (--memory-profiling) grade.
+	# Hopefully memory allocation should be pretty much
+	# independent of the grade, so we don't need to support
+	# both GC and non-GC versions, or both LLDS and MLDS versions.
+	LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.memprof"
 
-	# add a `.profdeep' (--deep-profiling) grade,
+	# Add a `.profdeep' (--deep-profiling) grade,
 	# if deep profiling is enabled.
 	if test $mercury_cv_enable_deep_profiler = yes; then
-		LIBGRADES="$LIBGRADES $DEFAULT_GRADE.profdeep"
+		LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.profdeep"
 	fi
 fi
 
 if test "$enable_trail_grades" = yes; then
 	# add `.tr' (--trailing) grades
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"
+	LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.tr"
 	if test "$enable_inefficient_grades" = yes; then
 		if test "$enable_nogc_grades" = yes; then
-			DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
-			LIBGRADES="$LIBGRADES $DEFAULT_GRADE_NOGC.tr"
+			LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.tr"
 		else
 			LIBGRADES="$LIBGRADES"
 		fi
-		if test $mercury_cv_profiling = yes -a "$enable_prof_grades" = yes; then
-			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof.tr"
+		if test $mercury_cv_profiling = yes &&
+		   test "$enable_prof_grades" = yes
+		then
+			LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.prof.tr"
 		fi
 	fi
 fi
 
 # add `.mm' (--minimal-model) grades
 if test "$enable_mm_grades" = yes; then
-	LIBGRADES="$LIBGRADES $BEST_GRADE.gc.mm $BEST_GRADE.gc.mm.debug"
+	LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.mm \
+		$BEST_LLDS_BASE_GRADE.gc.mm.debug"
 fi
 
 # add `.debug' (--debug) grades
-LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
+LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.tr.debug"
 
-# add `hlc' (--high-level-code, i.e. MLDS back-end) grades
-if test "$enable_inefficient_grades" = yes -a "$GCC" = yes ; then
-    LIBGRADES="$LIBGRADES hlc.gc hlc_nest.gc"
-else
-    LIBGRADES="$LIBGRADES hlc.gc"
+# Add the .par (thread-safe) grade
+if test "$enable_par_grades" = yes; then
+	LIBGRADES="$LIBGRADES hlc.par.gc"
 fi
 
+# add .NET back-end grades
 if test $mercury_cv_microsoft_dotnet = yes -a "$enable_dotnet_grades" = yes
 then
+    # XXX we should be using `il' rather than `ilc'
     LIBGRADES="$LIBGRADES ilc"
 fi
 
-if test $enable_hlc_prof_grades = "yes" -o $ac_microsoft = "yes"; then
-	# add `.prof' (--profiling) grades, if time profiling is supported,
-	# and a `.memprof' (--memory-profiling) grade.
-	if test $mercury_cv_profiling = yes -a "$enable_prof_grades" = yes; then
-		LIBGRADES="$LIBGRADES hlc.gc.prof"
-	fi
-	LIBGRADES="$LIBGRADES hlc.gc.memprof"
-fi
-
-if test "$enable_par_grades" = yes; then
-	# Add the .par grade
-	LIBGRADES="$LIBGRADES hlc.par.gc"
-fi
+# Allow the user to override the default list of library grades
 
 if test "$enable_libgrades_given" = yes; then
 	if test "$enable_libgrades" = no; then
@@ -2206,22 +2307,18 @@ if test "$enable_libgrades_given" = yes; then
 	fi
 fi
 
-# If we are using the Microsoft compiler then use hlc.gc as the default
-# grade.
-if test $ac_microsoft = yes; then
-	GRADE=hlc.gc
-	DEFAULT_GRADE=hlc.gc
-	MERCURY_MSG("\`GRADE=$GRADE' to compile the compiler")
+MERCURY_MSG("using \`$LIBGRADES' as the set of library grades to install")
+
+# Remove GRADE from LIBGRADES.  This is done because `mmake install_main'
+# will have already installed the libraries for grade GRADE.
+# We can only do this if GRADE is the same as DEFAULT_GRADE,
+# because LIBGRADES is used both for installing the compiler, which
+# gets build in grade GRADE, and also for installing user libraries,
+# which (presumably) get built in in DEFAULT_GRADE.
+if test $GRADE = $DEFAULT_GRADE; then
+	LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 fi
-AC_SUBST(GRADE)
 
-# Output default grade
-MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
-AC_SUBST(DEFAULT_GRADE)
-
-# remove GRADE from LIBGRADES
-LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
-MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
 
 LIBGRADE_OPTS=
 for libgrade in $LIBGRADES
@@ -2586,15 +2683,18 @@ case "$host" in
 		# -fpic not needed on IRIX, since it is the default
 		CFLAGS_FOR_PIC=
 		EXT_FOR_PIC_OBJECTS=o
-		# shared libraries only work for reg.gc or none.gc
-		if test "$GRADE" = reg.gc || test "$GRADE" = none.gc; then
+		# shared libraries are incompatible with gcc non-local gotos,
+		case "$GRADE" in
+		reg.gc | none.gc | hlc.gc)
 			AC_MSG_RESULT(yes)
 			EXT_FOR_SHARED_LIB=so
-		else
+			;;
+		*)
 			EXT_FOR_SHARED_LIB=a
 			AC_MSG_RESULT(no)
 			AC_MSG_RESULT(Read README.IRIX-5)
-		fi
+			;;
+		esac
 		;;
 	*-cygwin*)
 		# disabled for now, since it hasn't been tested
