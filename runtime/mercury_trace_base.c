@@ -255,7 +255,10 @@ MR_trace_write_label_exec_counts(FILE *fp)
                 {
                     id = &proc->MR_sle_user;
                     if (proc != prev_proc) {
-                        fprintf(fp, "proc %c ",
+                        fprintf(fp, "proc ");
+                        MR_trace_write_quoted_atom(fp,
+                            id->MR_user_def_module);
+                        fprintf(fp, " %c ",
                             ( id->MR_user_pred_or_func == MR_PREDICATE
                                 ? 'p' : 'f'));
                         MR_trace_write_quoted_atom(fp,

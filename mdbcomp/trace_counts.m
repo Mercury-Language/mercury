@@ -107,19 +107,21 @@ read_proc_trace_counts(HeaderLineNum, HeaderLine, !TraceCounts, !IO) :-
 	(if
 		TokenList =
 			token_cons(name("proc"), _,
+			token_cons(name(DefModuleStr), _,
 			token_cons(name(PredOrFuncStr), _,
-			token_cons(name(ModuleStr), _,
+			token_cons(name(DeclModuleStr), _,
 			token_cons(name(Name), _,
 			token_cons(integer(Arity), _,
 			token_cons(integer(Mode), _,
-			token_nil)))))),
+			token_nil))))))),
 		string_to_pred_or_func(PredOrFuncStr, PredOrFunc)
 	then
-		string_to_sym_name(ModuleStr, ".", ModuleName),
+		string_to_sym_name(DefModuleStr, ".", DefModuleName),
+		string_to_sym_name(DeclModuleStr, ".", DeclModuleName),
 		% At the moment runtime/mercury_trace_base.c doesn't
 		% write out data for 'special' procedures.
-		ProcLabel = proc(ModuleName, PredOrFunc, ModuleName, Name,
-				Arity, Mode),
+		ProcLabel = proc(DefModuleName, PredOrFunc, DeclModuleName,
+				Name, Arity, Mode),
 		% For whatever reason some of the trace counts for a single
 		% procedure or function can be split over multiple spans.
 		% We collate them as if they appeared in a single span.
