@@ -10,18 +10,14 @@ include ../Mmake.common
 #-----------------------------------------------------------------------------#
 
 .PHONY: libgc
-libgc: libgc.a libgc.so
+libgc: submake
 
-libgc.a: gc.a
-	rm -f libgc.a
-	ln -s gc.a libgc.a
+libgc.a: submake
 
 libgc.so: submake
 
-gc.a: submake
-
 submake: force
-	unset MAKEFLAGS; $(MAKE) $(MMAKEFLAGS) gc.a libgc.so
+	unset MAKEFLAGS; $(MAKE) $(MMAKEFLAGS) libgc.a libgc.$(SO)
 
 .PHONY: force
 force:
@@ -39,10 +35,10 @@ install_headers: gc.h
 	cp `vpath_find gc.h` $(INSTALL_INC_DIR)
 
 .PHONY: install_lib
-install_lib: libgc.a libgc.so
+install_lib: libgc.a libgc.$(SO)
 	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
 		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
-	cp `vpath_find libgc.a libgc.so` $(INSTALL_MERC_GC_LIB_DIR)
+	cp `vpath_find libgc.a libgc.$(SO)` $(INSTALL_MERC_GC_LIB_DIR)
 
 #-----------------------------------------------------------------------------#
 

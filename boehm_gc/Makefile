@@ -124,6 +124,10 @@ $(OBJS) test.o dyn_load.o dyn_load_sunos53.o: $(srcdir)/gc_priv.h $(srcdir)/gc_h
 
 mark.o typd_mlc.o finalize.o: $(srcdir)/gc_mark.h
 
+libgc.a: gc.a
+	rm -f libgc.a
+	ln -s gc.a libgc.a
+
 gc.a: $(OBJS) dyn_load.o
 	rm -f on_sparc_sunos5
 	./if_mach SPARC SUNOS5 touch on_sparc_sunos5
