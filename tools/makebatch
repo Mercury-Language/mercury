@@ -67,14 +67,14 @@ then
 	needcflags=true
 else
 	needcflags=false
-endif
+fi
 
 if test -r batch/$batch.GRADE
 then
 	needgrade=true
 else
 	needgrade=false
-endif
+fi
 
 if test -f Mmake.stage.params
 then
