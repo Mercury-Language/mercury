@@ -1733,11 +1733,11 @@ output_instruction(if_val(Rval, Target), ProfInfo) -->
 output_instruction(incr_hp(Lval, MaybeTag, Rval, TypeMsg), ProfInfo) -->
 	(
 		{ MaybeTag = no },
-		io__write_string("\tincr_hp_msg("),
+		io__write_string("\tMR_incr_hp_msg("),
 		output_lval_as_word(Lval)
 	;
 		{ MaybeTag = yes(Tag) },
-		io__write_string("\ttag_incr_hp_msg("),
+		io__write_string("\tMR_tag_incr_hp_msg("),
 		output_lval_as_word(Lval),
 		io__write_string(", "),
 		output_tag(Tag)
@@ -1752,17 +1752,17 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval, TypeMsg), ProfInfo) -->
 	io__write_string(""");\n").
 
 output_instruction(mark_hp(Lval), _) -->
-	io__write_string("\tmark_hp("),
+	io__write_string("\tMR_mark_hp("),
 	output_lval_as_word(Lval),
 	io__write_string(");\n").
 
 output_instruction(restore_hp(Rval), _) -->
-	io__write_string("\trestore_hp("),
+	io__write_string("\tMR_restore_hp("),
 	output_rval_as_type(Rval, word),
 	io__write_string(");\n").
 
 output_instruction(free_heap(Rval), _) -->
-	io__write_string("\tfree_heap("),
+	io__write_string("\tMR_free_heap("),
 	output_rval_as_type(Rval, data_ptr),
 	io__write_string(");\n").
 
