@@ -136,6 +136,30 @@ $(optdates_subdir)%.optdate : %.m
 $(trans_opt_dates_subdir)%.trans_opt_date : %.m
 	$(MCTOI) $(ALL_MCTOIFLAGS) $<
 
+# Be very careful about changing the following rules.
+# The `@:' is a silent do-nothing command.
+# It is used to force GNU Make to recheck the timestamp
+# on the target file.  (It is a pity that GNU Make doesn't
+# have a way of handling these sorts of rules in a nicer manner.)
+
+$(int0s_subdir)%.int0 : $(date0s_subdir)%.date0
+	@:
+
+$(ints_subdir)%.int : $(dates_subdir)%.date
+	@:
+
+$(int2s_subdir)%.int2 : $(dates_subdir)%.date
+	@:
+
+$(int3s_subdir)%.int3 : $(date3s_subdir)%.date3
+	@:
+
+$(opts_subdir)%.opt : $(optdates_subdir)%.optdate
+	@:
+
+$(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
+	@:
+
 #-----------------------------------------------------------------------------#
 #
 # Rules for compiling Mercury source files
