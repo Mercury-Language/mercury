@@ -1491,18 +1491,23 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
 	;
 		%
 		% With the high-level data representation,
-		% we always used named fields.
+		% we always used named fields, except for
+		% tuple types.
 		% 
 		HighLevelData = yes,
-		FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
-		(
-			ConsId = cons(ConsName, ConsArity)
-		->
-			unqualify_name(ConsName, UnqualConsName),
-			FieldId = ml_gen_field_id(VarType,
-				UnqualConsName, ConsArity, FieldName)
+		( type_is_tuple(VarType, _) ->
+			FieldId = offset(const(int_const(Offset)))
 		;
-			error("ml_gen_unify_args: invalid cons_id")
+			FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
+			(
+				ConsId = cons(ConsName, ConsArity)
+			->
+				unqualify_name(ConsName, UnqualConsName),
+				FieldId = ml_gen_field_id(VarType,
+					UnqualConsName, ConsArity, FieldName)
+			;
+				error("ml_gen_unify_args: invalid cons_id")
+			)
 		)
 	},
 	{
