@@ -56,7 +56,9 @@ case $HOST in
 	murlibobo)	OPTIMIZE=-O5 ;;
 	kryten) 	OPTIMIZE=-O1 ;;
 	taifun) 	OPTIMIZE=-O1 ;;
+	rimmer) 	OPTIMIZE=-O1 ;;
 	quicksilver) 	OPTIMIZE=-O3 ;;
+	hg) 		OPTIMIZE=-O4 ;;
 	hydra)		OPTIMIZE=-O2 ;;
 	muse)		OPTIMIZE=-O0 ;;
 	munta)		OPTIMIZE=-O0 ;;
@@ -69,8 +71,11 @@ TEST_CFLAGS=""
 
 TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
-INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
-### INSTALL_DIR=/home/mercury/public/mercury-0.8/$FULLARCH
+
+case $HOST in
+	hg)	INSTALL_DIR=/home/hg/public/mercury-latest/$FULLARCH ;;
+	*)	INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH ;;
+esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
 BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
@@ -95,12 +100,14 @@ PATH="$INSTALL_DIR/bin:$PATH"
 PARALLEL=
 case $HOST in
 	kryten) 	PARALLEL=-j3 ;; # out of four CPUs
+	rimmer) 	PARALLEL=-j2 ;; # out of two CPUs
 	muse)		PARALLEL=-j2 ;; # out of four CPUs
 	munta)		PARALLEL=-j2 ;; # out of four CPUs
 	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
 	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
 	hydra)		PARALLEL=-j2 ;; # out of two CPUs
 	quicksilver) 	PARALLEL= ;; 	# one CPU
+	hg) 		PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
@@ -110,7 +117,7 @@ BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/mercury-latest/$FULLARCH/lib/mer
 # df (disk free) command
 DF=df
 case $HOST in
-	kryten|taifun)	DF="df -k" ;;
+	kryten|taifun|rimmer)	DF="df -k" ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -191,7 +198,7 @@ set -x	# trace execution
 cd $DIR || { false; exit 1; }
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
-	murlibobo|kryten|quicksilver|hydra)
+	murlibobo|kryten|taifun|quicksilver|hg|hydra)
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
 		;;
@@ -315,7 +322,7 @@ case $HOST in
 	kryten|murlibobo)
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	quicksilver|hydra)
+	hg|quicksilver|hydra|taifun)
 		GRADES="asm_fast.gc.tr"
 		;;
 	*)
@@ -428,7 +435,7 @@ case $HOST in
 			asm_fast.gc asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.tr"
 		;;
-	taifun)
+	taifun|rimmer)
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr
 			asm_fast.gc.tr.debug"
@@ -437,7 +444,7 @@ case $HOST in
 		GRADES="reg.gc asm_fast asm_fast.gc
 			reg.gc.prof asm_fast.gc.prof"
 		;;
-	quicksilver|hydra)
+	hg|quicksilver|hydra)
 		GRADES="asm_fast.gc asm_fast \
 			asm_fast.gc.prof asm_fast.prof"
 		;;
@@ -471,7 +478,7 @@ do
 				EXTRA_MLFLAGS="-static" &&
 			./poly > poly.$grade.out &&
 			mprof -v -m -c > poly.$grade.mprof 2>&1  &&
-			diff -c poly.mprof-exp poly.$grade.mprof &&
+			(diff -u poly.mprof-exp poly.$grade.mprof || true) &&
 			cp Prof.CallPair poly.$grade.CallPair &&
 			cp Prof.MemoryWords poly.$grade.MemoryWords &&
 			cp Prof.MemoryCells poly.$grade.MemoryCells &&
