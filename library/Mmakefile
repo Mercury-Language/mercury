@@ -297,6 +297,10 @@ $(os_subdir)std_util.$O \
 $(os_subdir)std_util.pic_o \
 	: ../runtime/mercury_stack_layout.h
 
+$(os_subdir)std_util.$O \
+$(os_subdir)std_util.pic_o \
+	: ../runtime/mercury_ml_expand_body.h
+
 #-----------------------------------------------------------------------------#
 
 realclean_local:
