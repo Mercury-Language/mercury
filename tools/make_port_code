@@ -197,34 +197,34 @@ do
                 echo
                 echo "extern void MR_CALL"
                 echo "${prefix}${hlcname}("
-                echo -n "    "
+                line="    "
                 n=1
                 for arg in ${inputs} ${outputs}
                 do
                     if test $n -gt 1
                     then
-                        echo -n ", void *arg${n}"
+                        line="${line}, void *arg${n}"
                     else
-                        echo -n "void *arg${n}"
+                        line="${line}void *arg${n}"
                     fi
                     n=`expr $n + 1`
                 done
-                echo ");"
+                echo "${line});"
                 echo "void MR_CALL"
                 echo "${prefix}${hlcname}("
-                echo -n "    "
+                line="    "
                 n=1
                 for arg in ${inputs} ${outputs}
                 do
                     if test $n -gt 1
                     then
-                        echo -n ", void *arg${n}"
+                        line="${line}, void *arg${n}"
                     else
-                        echo -n "void *arg${n}"
+                        line="${line}void *arg${n}"
                     fi
                     n=`expr $n + 1`
                 done
-                echo ")"
+                echo "${line})"
                 echo "{ MR_fatal_error(\"call to ${prefix}${hlcname}\"); }"
             ) >> ${tmp_hlc}
         done
