@@ -71,11 +71,10 @@
 	% unify(term = term), but mode analysis replaces
 	% these with various special cases.
 
-:- type unification	--->	(term = term)	% before mode analysis
-
+:- type unification	--->	
 				% Y = f(X) where the top node of Y is output,
 				% written as Y := f(X).
-			;	construct(var, const, list(var), list(mode))
+				construct(var, const, list(var), list(mode))
 
 				% Y = f(X) where the top node of Y is input,
 				% written Y == f(X).
