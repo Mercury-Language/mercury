@@ -10,6 +10,63 @@ else
 	LIBDIR="$prefix/lib/mercury"
 fi
 AC_SUBST(LIBDIR)
+#-----------------------------------------------------------------------------#
+GNU_MAKE=
+echo looking for GNU Make...
+AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
+if test "$GNU_MAKE" != ""; then
+	case "`$GNU_MAKE -v bogus 2>&1`" in
+		"GNU Make"*)
+			;;
+		*)
+			GNU_MAKE=
+	esac
+fi
+if test "$GNU_MAKE" = ""; then
+	AC_MSG_ERROR(cannot find GNU Make)
+else
+	echo "found GNU Make: $GNU_MAKE"
+fi
+AC_SUBST(GNU_MAKE)
+#-----------------------------------------------------------------------------#
+INSTALL_SICSTUS=
+SP=
+echo "looking for SICStus Prolog..."
+AC_PROGRAMS_CHECK(SP,sp prolog)
+if test "$SP" != ""; then
+	case "`echo 'prolog_flag(version, V, V), write(V), nl, halt.' |
+			$SP 2>&1`" in
+		SICStus*)
+			INSTALL_SICSTUS=install_sicstus
+			;;
+	esac
+fi
+if test "$INSTALL_SICSTUS" = ""; then
+	AC_MSG_WARN(SICStus Prolog not found)
+else
+	echo "found SICStus Prolog: $SP"
+fi
+AC_SUBST(INSTALL_SICSTUS)
+#-----------------------------------------------------------------------------#
+INSTALL_NUPROLOG=
+NP=
+
+echo "looking for NU-Prolog..."
+AC_PROGRAMS_CHECK(NP,np)
+if test "$NP" != ""; then
+	case "`$NP < /dev/null 2>&1`" in
+		NU-Prolog*)
+			INSTALL_NUPROLOG=install_nuprolog
+			;;
+	esac
+fi
+if test "$INSTALL_NUPROLOG" = ""; then
+	AC_MSG_WARN(NU-Prolog not found)
+else
+	echo "found NU-Prolog: $NP"
+fi
+AC_SUBST(INSTALL_NUPROLOG)
+#-----------------------------------------------------------------------------#
 AC_PROG_CC
 CFLAGS="-I runtime $CFLAGS"
 AC_PROG_CPP
@@ -266,7 +323,7 @@ else
 		GRADE=none.gc
 	fi
 fi
-echo "Using GRADE=$GRADE"
+echo "using GRADE=$GRADE"
 AC_SUBST(GRADE)
 
 LIBGRADES="debug none"
@@ -290,7 +347,7 @@ fi
 for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
-echo "Using LIBGRADES=$LIBGRADES"
+echo "using LIBGRADES=$LIBGRADES"
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
@@ -316,33 +373,6 @@ AC_SUBST(LINK_SHARED_OBJ)
 AC_SUBST(PIC)
 AC_SUBST(PIC_O)
 AC_SUBST(SO)
-#-----------------------------------------------------------------------------#
-INSTALL_SICSTUS=
-SP=
-echo looking for SICStus Prolog:
-AC_PROGRAMS_CHECK(SP,sp prolog)
-if test "$SP" != ""; then
-	case "`$SP < /dev/null 2>&1`" in
-		SICStus*)
-			INSTALL_SICSTUS=install_sicstus
-			;;
-	esac
-fi
-AC_SUBST(INSTALL_SICSTUS)
-#-----------------------------------------------------------------------------#
-INSTALL_NUPROLOG=
-NP=
-
-echo looking for NU-Prolog:
-AC_PROGRAMS_CHECK(NP,np)
-if test "$NP" != ""; then
-	case "`$NP < /dev/null` 2>&1" in
-		NU-Prolog*)
-			INSTALL_NUPROLOG=install_nuprolog
-			;;
-	esac
-fi
-AC_SUBST(INSTALL_NUPROLOG)
 #-----------------------------------------------------------------------------#
 
 AC_OUTPUT(Mmake.common scripts/mc scripts/mcn scripts/mcs
