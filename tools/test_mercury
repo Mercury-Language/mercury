@@ -558,7 +558,6 @@ esac
 [ -d mercury/extras/clpr/CVS ] ||
 (cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 	set_status "clpr checkout"
-;;
 
 : make sure the installation directory exists
 [ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
