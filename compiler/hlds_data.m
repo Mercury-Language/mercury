@@ -39,7 +39,7 @@
 				% module name, type name, type arity
 			;	base_typeclass_info_const(module_name,
 					class_id, int, string)
-				% module name of instace declaration
+				% module name of instance declaration
 				% (not filled in so that link errors result
 				% from overlapping instances),
 				% class name and arity,
