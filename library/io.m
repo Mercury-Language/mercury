@@ -905,9 +905,9 @@ io__read_anything(X) -->
 	).
 
 io__read_anything(Stream, X) -->
-	io__set_output_stream(Stream, OrigStream),
+	io__set_input_stream(Stream, OrigStream),
 	io__read_anything(X),
-	io__set_output_stream(OrigStream, _Stream).
+	io__set_input_stream(OrigStream, _Stream).
 
 io__ignore_whitespace(Result) -->
 	io__input_stream(Stream),
@@ -972,9 +972,9 @@ io__write_anything(X) -->
 io__write_anything(Stream, X) -->
 	{ type_to_term(X, Term) },
 	{ varset__init(VarSet) },
-	io__set_input_stream(Stream, OrigStream),
+	io__set_output_stream(Stream, OrigStream),
 	term_io__write_term(VarSet, Term),
-	io__set_input_stream(OrigStream, _Stream).
+	io__set_output_stream(OrigStream, _Stream).
 
 %-----------------------------------------------------------------------------%
 
