@@ -197,7 +197,7 @@ parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
 		% After foreign_proc has bootstrapped and the library has
 		% been updated to use foreign_proc where appropriate, we
 		% should uncomment this code and remove Check2, Check3,
-		% Check5, Check6 and the other defintion of CheckLength. 
+		% Check5, Check6 and the other definition of CheckLength. 
 /*
 	CheckLength = (func(PTermsLen, ForeignLanguage) = Res :- 
 		( 
