@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1997 The University of Melbourne.
+# Copyright (C) 1996-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -18,7 +18,7 @@ INSTALL_MAN_DIR = $(INSTALL_PREFIX)/man
 INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 			scripts/mercury_update_interface scripts/mgnuc \
 			scripts/mint scripts/ml scripts/mmake scripts/mprof \
-			scripts/mkfifo_using_mknod
+			scripts/mdb scripts/mkfifo_using_mknod
 
 SICSTUS_SCRIPTS		= scripts/msc scripts/msl \
 			scripts/msp scripts/sicstus_conv

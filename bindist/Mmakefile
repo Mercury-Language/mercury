@@ -24,7 +24,8 @@ README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
 		  ../VERSION
 
-SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr ../scripts/Mmake.rules
+SCRIPT_FILES	= ../scripts/*.in ../scripts/mdb ../scripts/*.sh-subr \
+		  ../scripts/Mmake.rules
 
 CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
 
