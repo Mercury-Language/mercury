@@ -665,7 +665,7 @@ export__produce_header_file(C_ExportDecls, ModuleName, HeaderExt) -->
 			"\n",
 			"#endif /* ", GuardMacroName, " */\n"]),
 		io__set_output_stream(OutputStream, _),
-		io__close_output(OutputStream)
+		io__close_output(FileStream)
 	;
 		io__progname_base("export.m", ProgName),
 		io__write_string("\n"),
