@@ -41,7 +41,7 @@ prog_out__write_message(Msg - Term) -->
 	(if %%% some [_Context]		% NU-Prolog DCG inconsistency
 		{ Term = term_functor(term_atom(""), [], _Context) }
 	then
-		io__write_string(".")
+		io__write_string(".\n")
 	else
 		io__write_string(": "),
 		{ varset__init(VarSet) }, % XXX variable names in error messages

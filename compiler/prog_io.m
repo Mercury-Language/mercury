@@ -355,7 +355,7 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
         )
     else
 	dummy_term(Term2),
-        ThisError = "module should start with a ':- module' declaration" -
+        ThisError = "module should start with a `:- module' declaration" -
 				Term2,
         Result = error([ThisError | Messages0])
     ).
