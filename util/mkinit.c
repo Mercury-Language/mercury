@@ -61,6 +61,7 @@ int main(int argc, char **argv)
 	int	maxmodule;
 	int	init_strlen;
 	int	endinit_strlen;
+	int	errors;
 	FILE	*cfile;
 
 	while ((c = getopt(argc, argv, "c:w:")) != EOF)
@@ -101,13 +102,15 @@ int main(int argc, char **argv)
 	fputs("static void init_modules_0(void)\n", stdout);
 	fputs("{\n", stdout);
 
+	errors = 0;
 	for (filenum = optind; filenum < argc; filenum++)
 	{
 		cfile = fopen(argv[filenum], "r");
 		if (cfile == (FILE *) NULL)
 		{
 			perror(argv[filenum]);
-			exit(1);
+			errors++;
+			continue;
 		}
 
 		while (getline(cfile, line, MAXLINE) > 0)
@@ -166,6 +169,13 @@ int main(int argc, char **argv)
 
 	printf("\n\tdefault_entry = ENTRY(%s);\n", default_entry);
 	fputs("}\n", stdout);
+
+	if (errors > 0)
+	{
+		fputs("forced syntax error:\n", stdout);
+		fputs("there were errors in the generation of this file\n", stdout);
+		exit(1);
+	}
 
 	exit(0);
 }
