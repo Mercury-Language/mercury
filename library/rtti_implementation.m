@@ -751,24 +751,28 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 	ArgTypes = FunctorDesc ^ functor_arg_types,
 	PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, Index),
+	get_type_and_extra_args(TypeInfo, PseudoTypeInfo, Term,
+		FunctorDesc, ExtraArgs, ArgTypeInfo),
 	( SecTagLocn = none ->
 		TagOffset = 0
 	;
 		TagOffset = 1
 	),
-	ArgTypeInfo = get_type(TypeInfo, PseudoTypeInfo, Term, FunctorDesc),
-	Arg = get_subterm(ArgTypeInfo, Term, Index, TagOffset).
+	RealArgsOffset = TagOffset + ExtraArgs,
+	Arg = get_subterm(ArgTypeInfo, Term, Index, RealArgsOffset).
 
-:- func get_type(type_info, P, T, du_functor_descriptor) = type_info.
+:- pred get_type_and_extra_args(type_info::in, P::in, T::in,
+	du_functor_descriptor::in, int::out, type_info::out) is det.
 
-get_type(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc) = (ArgTypeInfo) :-
+get_type_and_extra_args(TypeInfoParams, PseudoTypeInfo, Term,
+		FunctorDesc, ExtraArgs, ArgTypeInfo) :-
 	( 
 		typeinfo_is_variable(PseudoTypeInfo, VarNum)
 	->
-		ExpandedTypeInfo = get_type_info_for_var(TypeInfoParams,
-			VarNum, Term, FunctorDesc),
+		get_type_info_for_var(TypeInfoParams,
+			VarNum, Term, FunctorDesc, ExtraArgs, ExpandedTypeInfo),
 		( typeinfo_is_variable(ExpandedTypeInfo, _) ->
-			error("unbound type variable")
+			error("get_type_and_extra_args: unbound type variable")
 		;
 			ArgTypeInfo = ExpandedTypeInfo
 		)
@@ -792,26 +796,28 @@ get_type(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc) = (ArgTypeInfo) :-
 			(pred(I::in, TI0::in, TI::out) is det :-
 
 				PTI = get_pti_from_type_info(CastTypeInfo, I),
-				ETypeInfo = get_type(
-					TypeInfoParams, PTI, Term, FunctorDesc),
-						% this comparison is not
-						% right...???
+				get_type_and_extra_args(TypeInfoParams, PTI,
+					Term, FunctorDesc, _ExtraArgs,
+					ETypeInfo),
 				( 
 					same_pointer_value_untyped(
 						ETypeInfo, PTI)
 				->
 					TI = TI0
 				;
-					TI0 = std_util__yes(TypeInfo)
+					TI0 = std_util__yes(TypeInfo0)
 				->
+					unsafe_promise_unique(TypeInfo0,
+						TypeInfo1),
 					update_type_info_index(I, 
-						TypeInfo, ETypeInfo),
+						ETypeInfo, TypeInfo1, TypeInfo),
 					TI = std_util__yes(TypeInfo)
 				;
-					NewTypeInfo = new_type_info(
+					NewTypeInfo0 = new_type_info(
 						CastTypeInfo, UpperBound),
 					update_type_info_index(I, 
-						NewTypeInfo, ETypeInfo),
+						ETypeInfo, NewTypeInfo0, 
+						NewTypeInfo),
 					TI = std_util__yes(NewTypeInfo)
 				)
 			), ArgTypeInfo0, MaybeArgTypeInfo),
@@ -819,7 +825,8 @@ get_type(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc) = (ArgTypeInfo) :-
 			ArgTypeInfo = ArgTypeInfo1
 		;
 			ArgTypeInfo = CastTypeInfo
-		)
+		),
+		ExtraArgs = 0
 	).
 
 
@@ -832,12 +839,13 @@ pseudotypeinfo_get_higher_order_arity(_) = 1 :-
 	% Make a new type-info with the given arity, using the given type_info
 	% as the basis.
 
-:- func new_type_info(type_info, int) = type_info.
-new_type_info(TypeInfo::in, _::in) = (TypeInfo::out) :- 
+:- func new_type_info(type_info::in, int::in) = (type_info::uo) is det.
+new_type_info(TypeInfo::in, _::in) = (NewTypeInfo::uo) :- 
+	unsafe_promise_unique(TypeInfo, NewTypeInfo),
 	det_unimplemented("new_type_info").
 
 :- pragma foreign_proc("C#",
-	new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::out), [], "
+	new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo), [], "
 	NewTypeInfo = new object[Arity + 1];
 	System.Array.Copy(OldTypeInfo, NewTypeInfo, OldTypeInfo.Length);
 ").
@@ -876,16 +884,34 @@ get_pti_from_type_info(_::in, _::in) = (42::out) :-
 	%
 	% XXX existentially quantified vars are not yet handled.
 	
-:- func get_type_info_for_var(
-		type_info, int, T, du_functor_descriptor) = type_info.
+:- pred get_type_info_for_var(
+		type_info::in, int::in, T::in, du_functor_descriptor::in,
+		int::out, type_info::out) is det.
 
-get_type_info_for_var(TypeInfo, VarNum, _Term, _FunctorDesc) = ArgTypeInfo :-
+get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc,
+			ExtraArgs, ArgTypeInfo) :-
 	(
 		type_variable_is_univ_quant(VarNum) 
 	->
-		ArgTypeInfo = TypeInfo ^ type_info_index(VarNum)
+		ArgTypeInfo = TypeInfo ^ type_info_index(VarNum),
+		ExtraArgs = 0
 	;
-		error("get_type_info_for_var for exist quant vars")
+		ExistInfo = FunctorDesc ^ functor_exist_info,
+		ExtraArgs = (ExistInfo ^ exist_info_typeinfos_plain) + 
+			(ExistInfo ^ exist_info_tcis),
+
+		ExistVarNum = VarNum - pseudotypeinfo_exist_var_base - 1,
+		ExistLocn = ExistInfo ^ typeinfo_locns_index(ExistVarNum),
+		Slot = ExistLocn ^ exist_arg_num,
+		Offset = ExistLocn ^ exist_offset_in_tci,
+		
+		SlotMaybeTypeInfo = get_typeinfo_from_term(Term, Slot),
+		( Offset < 0 ->
+			ArgTypeInfo = SlotMaybeTypeInfo
+		;
+			ArgTypeInfo = typeclass_info_type_info(
+				SlotMaybeTypeInfo, Offset)
+		)
 	).
 
 
@@ -893,15 +919,7 @@ get_type_info_for_var(TypeInfo, VarNum, _Term, _FunctorDesc) = ArgTypeInfo :-
 
 :- func type_info_cast(T) = type_info.
 
-type_info_cast(X::in) = (unsafe_cast(X)::out) :-
-	det_unimplemented("type_info_cast").
-
-:- pragma foreign_proc("C#",
-	type_info_cast(PseudoTypeInfo::in) = (TypeInfo::out), [], "
-
-	TypeInfo = (object[]) PseudoTypeInfo;
-").
-
+type_info_cast(X) = unsafe_cast(X).
 
 	% Get a subterm term, given its type_info, the original term, its
 	% index and the start region size.
@@ -924,8 +942,7 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 :- pred typeinfo_is_variable(T::in, int::out) is semidet.
 
 typeinfo_is_variable(_::in, 42::out) :-
-	std_util__semidet_succeed,
-	det_unimplemented("typeinfo_is_variable").
+	semidet_unimplemented("typeinfo_is_variable").
 
 :- pragma foreign_proc("MC++",
 	typeinfo_is_variable(TypeInfo::in, VarNum::out), [], "
@@ -991,7 +1008,20 @@ pseudotypeinfo_max_var = 1024.
 		du_functor_secondary	= 5,
 		du_functor_ordinal	= 6,
 		du_functor_arg_types	= 7,
-		du_functor_exist_info	= 8
+		du_functor_arg_names	= 8,
+		du_functor_exist_info	= 9
+	}
+
+	enum exist_info_field_nums {
+		typeinfos_plain		= 0,
+		typeinfos_in_tci	= 1,
+		tcis			= 2,
+		typeinfo_locns		= 3
+	}
+
+	enum exist_locn_field_nums {
+		exist_arg_num			= 0,
+		exist_offset_in_tci		= 1
 	}
 
 ").
@@ -1065,6 +1095,10 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 :- type du_functor_descriptor ---> du_functor_descriptor(c_pointer).
 
 :- type arg_types ---> arg_types(c_pointer).
+
+:- type exist_info ---> exist_info(c_pointer).
+
+:- type typeinfo_locn ---> typeinfo_locn(c_pointer).
 
 :- func ptag_index(int, type_layout) = ptag_entry.
 
@@ -1140,6 +1174,106 @@ functor_arg_types(X::in) = (unsafe_cast(X)::out) :-
 			du_functor_field_nums.du_functor_arg_types];
 		
 ").
+
+:- func functor_exist_info(du_functor_descriptor) = exist_info.
+
+functor_exist_info(X::in) = (unsafe_cast(X)::out) :- 
+	det_unimplemented("functor_exist_info").
+
+:- pragma foreign_proc("C#",
+	functor_exist_info(FunctorDescriptor::in) = (ExistInfo::out), [], "
+	ExistInfo = (object[])
+		FunctorDescriptor[(int)
+			du_functor_field_nums.du_functor_exist_info];
+		
+").
+
+
+:- func typeinfo_locns_index(int, exist_info) = typeinfo_locn.
+
+typeinfo_locns_index(X::in, _::in) = (unsafe_cast(X)::out) :- 
+	det_unimplemented("typeinfo_locns_index").
+
+:- pragma foreign_proc("C#",
+	typeinfo_locns_index(X::in, ExistInfo::in) = (TypeInfoLocn::out), [], "
+
+	TypeInfoLocn = (object[]) ((object[]) ExistInfo[(int)
+			exist_info_field_nums.typeinfo_locns])[X];
+		
+").
+
+
+:- func exist_info_typeinfos_plain(exist_info) = int.
+
+exist_info_typeinfos_plain(X::in) = (unsafe_cast(X)::out) :- 
+	det_unimplemented("exist_info_typeinfos_plain").
+
+:- pragma foreign_proc("C#",
+	exist_info_typeinfos_plain(ExistInfo::in) = (TypeInfosPlain::out), [], "
+	TypeInfosPlain = (int)
+		ExistInfo[(int)
+			exist_info_field_nums.typeinfos_plain];
+").
+
+:- func exist_info_tcis(exist_info) = int.
+
+exist_info_tcis(X::in) = (unsafe_cast(X)::out) :- 
+	det_unimplemented("exist_info_tcis").
+
+:- pragma foreign_proc("C#",
+	exist_info_tcis(ExistInfo::in) = (TCIs::out), [], "
+	TCIs = (int) ExistInfo[(int)
+			exist_info_field_nums.tcis];
+").
+
+
+
+
+
+:- func exist_arg_num(typeinfo_locn) = int.
+
+exist_arg_num(X::in) = (unsafe_cast(X)::out) :- 
+	det_unimplemented("exist_arg_num").
+
+:- pragma foreign_proc("C#",
+	exist_arg_num(TypeInfoLocn::in) = (ArgNum::out), [], "
+	ArgNum = (int) TypeInfoLocn[(int) exist_locn_field_nums.exist_arg_num];
+		
+").
+
+:- func exist_offset_in_tci(typeinfo_locn) = int.
+
+exist_offset_in_tci(X::in) = (unsafe_cast(X)::out) :- 
+	det_unimplemented("exist_arg_num").
+
+:- pragma foreign_proc("C#",
+	exist_offset_in_tci(TypeInfoLocn::in) = (ArgNum::out), [], "
+	ArgNum = (int)
+		TypeInfoLocn[(int) exist_locn_field_nums.exist_offset_in_tci];
+		
+").
+
+:- func get_typeinfo_from_term(U, int) = type_info.
+
+get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :- 
+	det_unimplemented("get_typeinfo_from_term").
+
+:- pragma foreign_proc("C#",
+	get_typeinfo_from_term(Term::in, Index::in) = (TypeInfo::out), [], "
+	TypeInfo = (object[]) ((object[]) Term)[Index];
+").
+
+:- func typeclass_info_type_info(type_info, int) = type_info.
+
+typeclass_info_type_info(TypeClassInfo, Index) = unsafe_cast(TypeInfo) :-
+	private_builtin__type_info_from_typeclass_info(
+		unsafe_cast(TypeClassInfo)
+			`with_type` private_builtin__typeclass_info(int),
+		Index, TypeInfo
+			`with_type` private_builtin__type_info(int)).
+
+
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1156,13 +1290,17 @@ type_info_index(_::in, TypeInfo::in) = (TypeInfo::out) :-
 	TypeInfoAtIndex = (object[]) TypeInfo[X];
 ").
 
-update_type_info_index(_::in, _::in, _::in) :- 
+:- pred update_type_info_index(int::in, type_info::in, type_info::di,
+		type_info::uo) is det.
+
+update_type_info_index(_::in, _::in, X::di, X::uo) :- 
 	det_unimplemented("type_info_index").
 
-:- pred update_type_info_index(int::in, type_info::in, type_info::in) is det.
 :- pragma foreign_proc("C#",
-	update_type_info_index(X::in, OldTypeInfo::in, NewValue::in), [], "
+	update_type_info_index(X::in, NewValue::in, OldTypeInfo::di,
+		NewTypeInfo::uo), [], "
 	OldTypeInfo[X] = NewValue;
+	NewTypeInfo = OldTypeInfo;
 ").
 
 
@@ -1295,8 +1433,6 @@ det_unimplemented(S) :-
 "
 	VarOut = VarIn;
 ").
-
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
