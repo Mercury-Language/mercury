@@ -147,6 +147,14 @@
 :- pred getopt__lookup_string_option(option_table(Option), Option, string).
 :- mode getopt__lookup_string_option(in, in, out) is det.
 
+:- pred getopt__lookup_maybe_string_option(option_table(Option), Option,
+		maybe(string)).
+:- mode getopt__lookup_maybe_string_option(in, in, out) is det.
+
+:- pred getopt__lookup_accumulating_option(option_table(Option), Option,
+		list(string)).
+:- mode getopt__lookup_accumulating_option(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -588,6 +596,20 @@ getopt__lookup_string_option(OptionTable, Opt, Val) :-
 		Val = Val0
 	;
 		error("Expected string option and didn't get one.")
+	).
+
+getopt__lookup_maybe_string_option(OptionTable, Opt, Val) :-
+	( map__lookup(OptionTable, Opt, maybe_string(Val0)) ->
+		Val = Val0
+	;
+		error("Expected maybe_string option and didn't get one.")
+	).
+
+getopt__lookup_accumulating_option(OptionTable, Opt, Val) :-
+	( map__lookup(OptionTable, Opt, accumulating(Val0)) ->
+		Val = Val0
+	;
+		error("Expected accumulating option and didn't get one.")
 	).
 
 %-----------------------------------------------------------------------------%

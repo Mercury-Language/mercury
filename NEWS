@@ -192,3 +192,8 @@ DRAFT NEWS for Mercury release 0.7
     that also do I/O. Also, we've added have list__map_foldl/5, which is an
     amalgam of list__map/3 and list__foldl/4.
 
+  - We've added a new type of option data: maybe_string(maybe(string)). See
+    library/getopt.m for details. Also added to getopt are some missing
+    option-lookup predicates: getopt__lookup_accumulating_option/3 and
+    getopt__lookup_maybe_string_option/3.
+
