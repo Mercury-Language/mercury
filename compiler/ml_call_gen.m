@@ -26,7 +26,7 @@
 	% Generate MLDS code for an HLDS generic_call goal.
 	% This includes boxing/unboxing the arguments if necessary.
 :- pred ml_gen_generic_call(generic_call, list(prog_var), list(mode),
-		code_model, prog_context, mlds__defns, mlds__statements,
+		determinism, prog_context, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_generic_call(in, in, in, in, in, out, out, in, out) is det.
 
@@ -97,7 +97,7 @@
 
 :- implementation.
 
-:- import_module hlds_module.
+:- import_module hlds_module, hlds_data.
 :- import_module builtin_ops.
 :- import_module type_util, mode_util, error_util.
 :- import_module options, globals.
@@ -116,7 +116,7 @@
 	% XXX For typeclass method calls, we do some unnecessary
 	% boxing/unboxing of the arguments.
 	%
-ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
+ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	%
 	% allocate some fresh type variables to use as the Mercury types
@@ -136,6 +136,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ ArgNames = ml_gen_var_names(VarSet, ArgVars) },
 	{ PredOrFunc = generic_call_pred_or_func(GenericCall) },
+	{ determinism_to_code_model(Determinism, CodeModel) },
 	{ Params0 = ml_gen_params(ModuleInfo, ArgNames,
 		BoxedArgTypes, ArgModes, PredOrFunc, CodeModel) },
 
@@ -243,7 +244,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	{ ObjectRval = no },
 	{ DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncVarRval,
 		[ClosureRval | InputRvals], OutputLvals, OutputTypes,
-		CodeModel, Context) },
+		Determinism, Context) },
 
 	( { ConvArgDecls = [], ConvOutputStatements = [] } ->
 		DoGenCall(MLDS_Decls0, MLDS_Statements0)
@@ -352,8 +353,9 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	% to generate it.)
 	%
 	{ ObjectRval = no },
+	{ proc_info_interface_determinism(ProcInfo, Detism) },
 	{ DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
-		InputRvals, OutputLvals, OutputTypes, CodeModel, Context) },
+		InputRvals, OutputLvals, OutputTypes, Detism, Context) },
 
 	( { ConvArgDecls = [], ConvOutputStatements = [] } ->
 		DoGenCall(MLDS_Decls, MLDS_Statements)
@@ -392,16 +394,17 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	%
 :- pred ml_gen_mlds_call(mlds__func_signature, maybe(mlds__rval), mlds__rval,
 		list(mlds__rval), list(mlds__lval), list(mlds__type),
-		code_model, prog_context, mlds__defns, mlds__statements,
+		determinism, prog_context, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_mlds_call(in, in, in, in, in, in, in, in, out, out, in, out)
 		is det.
 
 ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
-		RetTypes0, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
+		RetTypes0, Detism, Context, MLDS_Decls, MLDS_Statements) -->
 	%
 	% append the extra arguments or return val for this code_model
 	%
+	{ determinism_to_code_model(Detism, CodeModel) },
 	(
 		{ CodeModel = model_non },
 		% create a new success continuation, if necessary
@@ -444,7 +447,14 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
 	%
 	% build the MLDS call statement
 	%
-	{ CallOrTailcall = call },
+	% if the called procedure has determinism `erroneous' or `failure',
+	% then it's always safe to make this call a tail call.
+	{ determinism_components(Detism, _, NumSolns) },
+	{ NumSolns = at_most_zero ->
+		CallOrTailcall = tail_call
+	;
+		CallOrTailcall = call
+	},
 	{ MLDS_Stmt = call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
 			CallOrTailcall) },
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,

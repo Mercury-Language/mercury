@@ -2012,7 +2012,7 @@ ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
 	{ determinism_to_code_model(Detism, CallCodeModel) },
 	{ require(unify(CodeModel, CallCodeModel),
 		"ml_gen_generic_call: code model mismatch") },
-	ml_gen_generic_call(GenericCall, Vars, Modes, CodeModel, Context,
+	ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
 		MLDS_Decls, MLDS_Statements).
 
 ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),

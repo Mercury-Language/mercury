@@ -21,8 +21,12 @@ EXCEPTION_PROGS = \
 
 #
 # XXX the following tests are not enabled because we do not pass them yet:
+#	looptest.m
+#		(fails in debugging grades, because debugging breaks
+#		tail recursion optimization)
 #	test_memo.m test_loop_check.m
-#       (those two tests test the combination of tabling and exceptions).
+#       	(those two tests test the combination of
+#		tabling and exceptions).
 #
 # Also currently the compiler has a bug where it generates
 # static ground terms even for things with `di' modes;
@@ -44,6 +48,8 @@ all: $(PROGS:.m=)
 check: $(PROGS:.m=.res)
 
 #-----------------------------------------------------------------------------#
+
+MCFLAGS-looptest = --infer-all
 
 # test_uncaught_exception is *supposed* to return an error exit status.
 # We also need to pipe the output through sed to avoid hard-coding
