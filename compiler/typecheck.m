@@ -2880,7 +2880,7 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		% in the inferred types, plus any existentially typed
 		% variables that will remain in the declaration.
 		%
-		% There may also be some types in the HeadTypeParams
+		% There may also be some type variables in the HeadTypeParams
 		% which do not occur in the type of any variable (e.g. this
 		% can happen in the case of code containing type errors).
 		% We'd better keep those, too, to avoid errors
