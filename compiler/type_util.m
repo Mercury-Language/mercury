@@ -515,16 +515,13 @@ type_is_higher_order(Type, PredOrFunc, EvalMethod, PredArgTypes) :-
 		Type = term__functor(term__atom("="),
 			[FuncEvalAndArgs, FuncRetType], _)
 	->
-		get_lambda_eval_method(FuncEvalAndArgs, EvalMethod,
-			FuncAndArgs),
-		FuncAndArgs = term__functor(term__atom("func"),
-			FuncArgTypes, _),
+		get_lambda_eval_method_and_args("func", FuncEvalAndArgs,
+			EvalMethod, FuncArgTypes),
 		list__append(FuncArgTypes, [FuncRetType], PredArgTypes),
 		PredOrFunc = function
 	;
-		get_lambda_eval_method(Type, EvalMethod, PredAndArgs),
-		PredAndArgs = term__functor(term__atom("pred"),
-					PredArgTypes, _),
+		get_lambda_eval_method_and_args("pred",
+			Type, EvalMethod, PredArgTypes),
 		PredOrFunc = predicate
 	).
 
@@ -533,25 +530,25 @@ type_is_tuple(Type, ArgTypes) :-
 	type_id_is_tuple(TypeId).
 
 	% From the type of a lambda expression, work out how it should
-	% be evaluated.
-:- pred get_lambda_eval_method((type), lambda_eval_method, (type)) is det.
-:- mode get_lambda_eval_method(in, out, out) is det.
+	% be evaluated and extract the argument types.
+:- pred get_lambda_eval_method_and_args(string, (type),
+		lambda_eval_method, list(type)) is det.
+:- mode get_lambda_eval_method_and_args(in, in, out, out) is semidet.
 
-get_lambda_eval_method(Type0, EvalMethod, Type) :-
-	( Type0 = term__functor(term__atom(MethodStr), [Type1], _) ->
-		( MethodStr = "aditi_bottom_up" ->
-			EvalMethod = (aditi_bottom_up),
-			Type = Type1
-		; MethodStr = "aditi_top_down" ->
-			EvalMethod = (aditi_top_down),
-			Type = Type1
-		;
-			EvalMethod = normal,
-			Type = Type0
-		)
-	;
+get_lambda_eval_method_and_args(PorFStr, Type0, EvalMethod, ArgTypes) :-
+	Type0 = term__functor(term__atom(Functor), Args, _),
+	( Functor = PorFStr ->
 		EvalMethod = normal,
-		Type = Type0
+		ArgTypes = Args
+	;	
+		Args = [Type1],
+		Type1 = term__functor(term__atom(PorFStr), ArgTypes, _),
+		( Functor = "aditi_bottom_up" ->
+			EvalMethod = (aditi_bottom_up)
+		;
+			Functor = "aditi_top_down",
+			EvalMethod = (aditi_top_down)
+		)
 	).
 
 type_id_is_higher_order(SymName - _Arity, PredOrFunc, EvalMethod) :-
@@ -637,15 +634,7 @@ type_id_is_enumeration(TypeId, ModuleInfo) :-
 	IsEnum = yes.
 
 type_to_type_id(Type, SymName - Arity, Args) :-
-	sym_name_and_args(Type, SymName0, Args1),
-
-	% `private_builtin:constraint' is introduced by polymorphism, and
-	% should only appear as the argument of a `typeclass:info/1' type.
-	% It behaves sort of like a type variable, so according to the
-	% specification of `type_to_type_id', it should cause failure.
-	% There isn't a definition in the type table.
-	mercury_private_builtin_module(PrivateBuiltin),
-	SymName \= qualified(PrivateBuiltin, "constraint"),
+	Type \= term__variable(_),
 
 	% higher order types may have representations where
 	% their arguments don't directly correspond to the
@@ -672,14 +661,25 @@ type_to_type_id(Type, SymName - Arity, Args) :-
 			EvalMethod = (aditi_top_down),
 			SymName = qualified(unqualified("aditi_top_down"),
 					PorFStr)
-			
 		;
 			EvalMethod = normal,
 			SymName = unqualified(PorFStr)
 		)
 	;
-		SymName = SymName0,
-		Args = Args1,
+		sym_name_and_args(Type, SymName, Args),
+
+		% `private_builtin:constraint' is introduced by polymorphism,
+		% and should only appear as the argument of a
+		% `typeclass:info/1' type.
+		% It behaves sort of like a type variable, so according to the
+		% specification of `type_to_type_id', it should cause failure.
+		% There isn't a definition in the type table.
+		\+ (
+			SymName = qualified(ModuleName, UnqualName),
+			UnqualName = "constraint",
+			mercury_private_builtin_module(PrivateBuiltin),
+			ModuleName = PrivateBuiltin	
+		),
 		list__length(Args, Arity)
 	).
 
@@ -749,16 +749,15 @@ make_type_id(term__atom(Name), Arity, unqualified(Name) - Arity).
 	% If the type is a du type, return the list of its constructors.
 
 type_constructors(Type, ModuleInfo, Constructors) :-
-	( type_is_tuple(Type, TupleArgTypes) ->
-		% tuples are never existentially typed.
+	type_to_type_id(Type, TypeId, TypeArgs),
+	( type_id_is_tuple(TypeId) ->
+		% Tuples are never existentially typed.
 		ExistQVars = [],	
 		ClassConstraints = [],
-		CtorArgs = list__map((func(ArgType) = no - ArgType),
-				TupleArgTypes),
+		CtorArgs = list__map((func(ArgType) = no - ArgType), TypeArgs),
 		Constructors = [ctor(ExistQVars, ClassConstraints,
 				unqualified("{}"), CtorArgs)]
 	;
-		type_to_type_id(Type, TypeId, TypeArgs),
 		module_info_types(ModuleInfo, TypeTable),
 		map__search(TypeTable, TypeId, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
@@ -771,17 +770,17 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 %-----------------------------------------------------------------------------%
 
 type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
-	( Type = term__functor(term__atom("character"), [], _) ->
+	type_to_type_id(Type, TypeId, _),
+	( TypeId = unqualified("character") - 0 ->
 		% XXX the following code uses the source machine's character
 		% size, not the target's, so it won't work if cross-compiling
 		% to a machine with a different size character.
 		char__max_char_value(MaxChar),
 		char__min_char_value(MinChar),
 		NumFunctors is MaxChar - MinChar + 1
-	; type_is_tuple(Type, _) ->
+	; type_id_is_tuple(TypeId) ->
 		NumFunctors = 1
 	;
-		type_to_type_id(Type, TypeId, _),
 		module_info_types(ModuleInfo, TypeTable),
 		map__search(TypeTable, TypeId, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
@@ -813,15 +812,17 @@ type_util__get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId,
 
 type_util__get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId,
 		ArgTypes) :-
+    (
+	type_to_type_id(VarType, TypeId, TypeArgs)
+    ->
 	(
 		% The argument types of a tuple cons_id are the
 		% arguments of the tuple type.
-		type_is_tuple(VarType, TupleTypeArgs)
+		type_id_is_tuple(TypeId)
 	->
-		ArgTypes = TupleTypeArgs
+		ArgTypes = TypeArgs
 	;
-		type_to_type_id(VarType, _, TypeArgs),
-		type_util__do_get_type_and_cons_defn(ModuleInfo, VarType,
+		type_util__do_get_type_and_cons_defn(ModuleInfo, TypeId,
 			ConsId, TypeDefn, ConsDefn),
 		ConsDefn = hlds_cons_defn(ExistQVars0, _Constraints0,
 				Args, _, _),
@@ -848,7 +849,10 @@ type_util__get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId,
 		term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes)
 	;
 		ArgTypes = []
-	).
+	)
+    ;
+    	ArgTypes = []
+    ).
 
 type_util__cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	type_to_type_id(VarType, TypeId, TypeArgs),
@@ -907,8 +911,9 @@ type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
 type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
 		TypeDefn, ConsDefn) :-
 	(
+		type_to_type_id(Type, TypeId, _),
 		type_util__do_get_type_and_cons_defn(ModuleInfo,
-			Type, ConsId, TypeDefn0, ConsDefn0)
+			TypeId, ConsId, TypeDefn0, ConsDefn0)
 	->
 		TypeDefn = TypeDefn0,
 		ConsDefn = ConsDefn0
@@ -917,12 +922,11 @@ type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
 	).
 
 :- pred type_util__do_get_type_and_cons_defn(module_info::in,
-		(type)::in, cons_id::in, hlds_type_defn::out,
+		type_id::in, cons_id::in, hlds_type_defn::out,
 		hlds_cons_defn::out) is semidet.
 
-type_util__do_get_type_and_cons_defn(ModuleInfo, VarType, ConsId,
+type_util__do_get_type_and_cons_defn(ModuleInfo, TypeId, ConsId,
 		TypeDefn, ConsDefn) :-
-	type_to_type_id(VarType, TypeId, _TypeArgs),
 	type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn),
 	module_info_types(ModuleInfo, Types),
 	map__lookup(Types, TypeId, TypeDefn).
@@ -942,12 +946,17 @@ type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn) :-
 %-----------------------------------------------------------------------------%
 
 type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
-		% Make sure no_tag_types are allowed
-	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, unboxed_no_tag_types, yes),
-		% Check for a single ctor with a single arg
-	type_constructors(Type, ModuleInfo, Ctors),
-	type_constructors_are_no_tag_type(Ctors, Ctor, ArgType).
+	type_to_type_id(Type, TypeId, TypeArgs),
+	module_info_no_tag_types(ModuleInfo, NoTagTypes),
+	map__search(NoTagTypes, TypeId, NoTagType),
+	NoTagType = no_tag_type(TypeParams0, Ctor, ArgType0),
+	( TypeParams0 = [] ->
+		ArgType = ArgType0
+	;
+		term__term_list_to_var_list(TypeParams0, TypeParams),
+		map__from_corresponding_lists(TypeParams, TypeArgs, Subn),
+		term__apply_substitution(ArgType0, Subn, ArgType)
+	).
 
 	% The checks for type_info and type_ctor_info
 	% are needed because those types lie about their

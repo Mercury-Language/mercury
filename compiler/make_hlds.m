@@ -1751,6 +1751,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	globals__io_get_globals(Globals),
 	{ convert_type_defn(TypeDefn, Globals, Name, Args, Body) },
 	{ list__length(Args, Arity) },
+	{ TypeId = Name - Arity },
 	{ Body = abstract_type ->
 		make_status_abstract(Status0, Status1)
 	;
@@ -1759,18 +1760,19 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	{ 
 		% the type is exported if *any* occurrence is exported,
 		% even a previous abstract occurrence
-		map__search(Types0, Name - Arity, OldDefn)
+		map__search(Types0, TypeId, OldDefn)
 	->
 		hlds_data__get_type_defn_status(OldDefn, OldStatus),
-		combine_status(Status1, OldStatus, Status)
+		combine_status(Status1, OldStatus, Status),
+		MaybeOldDefn = yes(OldDefn)
 	;
+		MaybeOldDefn = no,
 		Status = Status1 
 	},
 	{ hlds_data__set_type_defn(TVarSet, Args, Body, Status, Context, T) },
-	{ TypeId = Name - Arity },
 	(
 		% if there was an existing non-abstract definition for the type
-		{ map__search(Types0, TypeId, T2) },
+		{ MaybeOldDefn = yes(T2) },
 		{ hlds_data__get_type_defn_tvarset(T2, TVarSet_2) },
 		{ hlds_data__get_type_defn_tparams(T2, Params_2) },
 		{ hlds_data__get_type_defn_body(T2, Body_2) },
@@ -1820,7 +1822,26 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 				Ctors0, Ctors),
 			{ module_info_set_ctors(Module0, Ctors, Module1) },
 			{ module_info_set_ctor_field_table(Module1,
-				CtorFields, Module2) }
+				CtorFields, Module1a) },
+			globals__io_lookup_bool_option(unboxed_no_tag_types,
+				AllowNoTagTypes),
+
+			{
+				AllowNoTagTypes = yes,
+				type_constructors_are_no_tag_type(ConsList,
+					Name, CtorArgType)
+			->
+				NoTagType = no_tag_type(Args,
+					Name, CtorArgType),
+				module_info_no_tag_types(Module1a,
+					NoTagTypes0),
+				map__set(NoTagTypes0, TypeId, NoTagType,
+					NoTagTypes),
+				module_info_set_no_tag_types(Module1a,
+					NoTagTypes, Module2)
+			;
+				Module2 = Module1a
+			}
 		;
 			{ Module2 = Module0 }
 		),
