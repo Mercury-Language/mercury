@@ -28,6 +28,7 @@ HDRS		= access.h aux.h conf.h dlist.h debug.h dummy.h engine.h \
 MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h
 MODS		= engine.mod io_rt.mod wrapper.mod call.mod solutions.mod
+MOD_CS		= engine.c io_rt.c wrapper.c call.c solutions.c
 OBJS		= engine.o io_rt.o wrapper.o call.o solutions.o \
 		  access.o aux.o dlist.o dummy.o label.o \
 		  memory.o table.o timing.o
@@ -40,7 +41,7 @@ $(OBJS): $(HDRS) $(MACHHDRS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: lib
-lib: libmer.a libmer.$(SO)
+lib: libmer.a libmer.$(SO) runtime.init
 
 libmer.a: $(OBJS)
 	ar cr libmer.a $(OBJS)
@@ -49,27 +50,28 @@ libmer.a: $(OBJS)
 libmer.so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)
 
+runtime.init: $(MOD_CS)
+	cat $(MOD_CS) | grep '^INIT ' > runtime.init
+
 #-----------------------------------------------------------------------------#
 
 # installation rules
 
 .PHONY: install
-install: install_headers install_mods install_lib
+install: install_headers install_init install_lib
 
 .PHONY: install_headers
 install_headers: $(HDRS) $(MACHHDRS)
 	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
 	cp `vpath_find $(HDRS)` $(INSTALL_INC_DIR)
+	chmod +w $(INSTALL_INC_DIR)/conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
-.PHONY: install_mods
-install_mods:
+.PHONY: install_init
+install_init: runtime.init
 	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
-	for file in $(MODS); do \
-		grep '^BEGIN_MODULE' $$file \
-			> $(INSTALL_MODULE_DIR)/`basename $$file .mod`.c_init; \
-	done
+	cp `vpath_find runtime.init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_lib
 install_lib: libmer.a libmer.$(SO)
