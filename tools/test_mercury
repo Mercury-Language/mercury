@@ -189,7 +189,11 @@ mmake realclean $PARALLEL || status=1
 cd .. || { false; exit 1; }
 
 : install the compiler
-case $status in 0)
+# The test for status=0 below is commented out because the tests
+# can fail due to bugs in the installed library; in that case,
+# we need to install even though the tests fail, so that we can
+# install the fix.
+### case $status in 0)
     cd mercury/stage2 || { false; exit 1; }
     case $ARCH in
 	sgi)
@@ -243,7 +247,7 @@ case $status in 0)
 		;;
     esac
     cd ../.. || status=1
-esac
+### esac
 
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
