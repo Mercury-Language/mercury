@@ -1,6 +1,6 @@
 #!/bin/sh
 
-LIBDIR=${MERCURY_CLIB_DIR:-@LIBDIR@/lib}
+LIBDIR=${MERCURY_C_LIB_DIR:-@LIBDIR@/lib}
 
 GRADE=none
 case "$1" in
