@@ -323,7 +323,6 @@ det_term_to_type(Term, X) :-
 		error("det_term_to_type failed as term doesn't represent a valid ground value of the appropriate type")
 	).
 
-
 builtin_unify_int(X, X).
 
 builtin_index_int(X, X).
@@ -383,7 +382,7 @@ builtin_compare_string(R, S1, S2) :-
 	).
 
 builtin_term_to_type_string(
-	term__functor(term__string(String), _TermList, _Context), String).
+		term__functor(term__string(String), [], _Context), String).
 
 builtin_type_to_term_string(
 		String, term__functor(term__string(String), [], Context)) :- 

@@ -218,14 +218,7 @@ univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
 #include ""type_info.h""
 
-Declare_entry(mercury__unify_2_0);
-Declare_entry(mercury__compare_3_0);
-Declare_entry(mercury__index_3_0);
-Declare_entry(mercury__term_to_type_2_0);
-Declare_entry(mercury__type_to_term_2_0);
-
-int
-mercury_compare_type_info(Word type_info_1, Word type_info_2);
+int	mercury_compare_type_info(Word type_info_1, Word type_info_2);
 
 ").
 
@@ -239,8 +232,8 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2);
 int
 mercury_compare_type_info(Word type_info_1, Word type_info_2)
 {
-	int i, num_arg_types, comp;
-	Word unify_pred_1, unify_pred_2;
+	int	i, num_arg_types, comp;
+	Word	unify_pred_1, unify_pred_2;
 
 	/* First compare the addresses of the unify preds in the type_infos */
 	unify_pred_1 = field(mktag(0), type_info_1, OFFSET_FOR_UNIFY_PRED);
@@ -323,34 +316,34 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 
 /* The following 6 lines are temporary for bootstrapping */
 Define_extern_entry(mercury____Unify___univ_0_0);
+Define_extern_entry(mercury____Index___univ_0_0);
 Define_extern_entry(mercury____Compare___univ_0_0);
 Declare_label(mercury____Compare___univ_0_0_i1);
-Define_extern_entry(mercury____Index___univ_0_0);
-Define_extern_entry(mercury____Type_To_Term___univ_0_0);
 Define_extern_entry(mercury____Term_To_Type___univ_0_0);
+Define_extern_entry(mercury____Type_To_Term___univ_0_0);
 
 Define_extern_entry(mercury____Unify___std_util__univ_0_0);
+Define_extern_entry(mercury____Index___std_util__univ_0_0);
 Define_extern_entry(mercury____Compare___std_util__univ_0_0);
 Declare_label(mercury____Compare___std_util__univ_0_0_i1);
-Define_extern_entry(mercury____Index___std_util__univ_0_0);
-Define_extern_entry(mercury____Type_To_Term___std_util__univ_0_0);
 Define_extern_entry(mercury____Term_To_Type___std_util__univ_0_0);
+Define_extern_entry(mercury____Type_To_Term___std_util__univ_0_0);
 
 BEGIN_MODULE(unify_univ_module)
 	/* The following 6 lines are temporary for bootstrapping */
 	init_entry(mercury____Unify___univ_0_0);
+	init_entry(mercury____Index___univ_0_0);
 	init_entry(mercury____Compare___univ_0_0);
 	init_label(mercury____Compare___univ_0_0_i1);
-	init_entry(mercury____Index___univ_0_0);
-	init_entry(mercury____Type_To_Term___univ_0_0);
 	init_entry(mercury____Term_To_Type___univ_0_0);
+	init_entry(mercury____Type_To_Term___univ_0_0);
 
 	init_entry(mercury____Unify___std_util__univ_0_0);
+	init_entry(mercury____Index___std_util__univ_0_0);
 	init_entry(mercury____Compare___std_util__univ_0_0);
 	init_label(mercury____Compare___std_util__univ_0_0_i1);
-	init_entry(mercury____Index___std_util__univ_0_0);
-	init_entry(mercury____Type_To_Term___std_util__univ_0_0);
 	init_entry(mercury____Term_To_Type___std_util__univ_0_0);
+	init_entry(mercury____Type_To_Term___std_util__univ_0_0);
 BEGIN_CODE
 /* The next line is temporary for bootstrapping */
 Define_entry(mercury____Unify___univ_0_0);
@@ -385,8 +378,18 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	mercury__unify__x = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
 	mercury__unify__y = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	mercury__unify__typeinfo = typeinfo1;
-	tailcall(ENTRY(mercury__unify_2_0), LABEL(mercury____Unify___std_util__univ_0_0));
+	{
+		Declare_entry(mercury__unify_2_0);
+		tailcall(ENTRY(mercury__unify_2_0),
+			LABEL(mercury____Unify___std_util__univ_0_0));
+	}
 }
+
+/* The following line is temporary for bootstrapping */
+Define_entry(mercury____Index___univ_0_0);
+Define_entry(mercury____Index___std_util__univ_0_0);
+	r2 = -1;
+	proceed();
 
 /* The following line is temporary for bootstrapping */
 Define_entry(mercury____Compare___univ_0_0);
@@ -421,15 +424,21 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	r1 = typeinfo1;
 	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	r2 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	tailcall(ENTRY(mercury__compare_3_0),
-		LABEL(mercury____Compare___std_util__univ_0_0));
+	{
+		Declare_entry(mercury__compare_3_0);
+		tailcall(ENTRY(mercury__compare_3_0),
+			LABEL(mercury____Compare___std_util__univ_0_0));
+	}
 #else
 	r1 = typeinfo1;
 	r4 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	r3 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	call(ENTRY(mercury__compare_3_0),
-		LABEL(mercury____Compare___std_util__univ_0_0_i1),
-		LABEL(mercury____Compare___std_util__univ_0_0));
+	{
+		Declare_entry(mercury__compare_3_0);
+		call(ENTRY(mercury__compare_3_0),
+			LABEL(mercury____Compare___std_util__univ_0_0_i1),
+			LABEL(mercury____Compare___std_util__univ_0_0));
+	}
 #endif
 }
 /* The following line is temporary for bootstrapping */
@@ -442,12 +451,6 @@ Define_label(mercury____Compare___std_util__univ_0_0_i1);
 	r1 = r2;
 	proceed();
 #endif
-
-/* The following line is temporary for bootstrapping */
-Define_entry(mercury____Index___univ_0_0);
-Define_entry(mercury____Index___std_util__univ_0_0);
-	r2 = -1;
-	proceed();
 
 /* The following line is temporary for bootstrapping */
 Define_entry(mercury____Term_To_Type___univ_0_0);

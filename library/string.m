@@ -1650,12 +1650,6 @@ string__special_precision_and_width(-1).
 	strcpy(S3 + len_1, S2);
 }").
 
-:- pragma(c_header_code, "
-
-Declare_entry(mercury__string__append_3_3_xx);
-
-").
-
 :- pragma(c_code, "
 
 #ifdef	COMPACT_ARGS
@@ -1730,7 +1724,10 @@ void sys_init_string_append_module(void) {
 
 	maxfr = curprevfr;
 	curfr = cursuccfr;
-	GOTO(ENTRY(mercury__string__append_3_3_xx));
+	{
+		Declare_entry(mercury__string__append_3_3_xx);
+		GOTO(ENTRY(mercury__string__append_3_3_xx));
+	}
 ").
 
 /*-----------------------------------------------------------------------*/

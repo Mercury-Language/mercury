@@ -696,7 +696,7 @@
 :- pred io__set_op_table(ops__table, io__state, io__state).
 :- mode io__set_op_table(di, di, uo) is det.
 
-% For use by the Mercury runtime (io.mod):
+% For use by the Mercury runtime:
 
 :- type io__external_state.
 
@@ -1711,17 +1711,17 @@ void sys_init_io_run_module(void) {
 :- pragma(c_code, "
 
 Define_extern_entry(mercury____Unify___io__stream_0_0);
-Define_extern_entry(mercury____Compare___io__stream_0_0);
 Define_extern_entry(mercury____Index___io__stream_0_0);
-Define_extern_entry(mercury____Type_To_Term___io__stream_0_0);
+Define_extern_entry(mercury____Compare___io__stream_0_0);
 Define_extern_entry(mercury____Term_To_Type___io__stream_0_0);
+Define_extern_entry(mercury____Type_To_Term___io__stream_0_0);
 
 BEGIN_MODULE(io_stream_module)
 	init_entry(mercury____Unify___io__stream_0_0);
-	init_entry(mercury____Compare___io__stream_0_0);
 	init_entry(mercury____Index___io__stream_0_0);
-	init_entry(mercury____Type_To_Term___io__stream_0_0);
+	init_entry(mercury____Compare___io__stream_0_0);
 	init_entry(mercury____Term_To_Type___io__stream_0_0);
+	init_entry(mercury____Type_To_Term___io__stream_0_0);
 BEGIN_CODE
 
 Define_entry(mercury____Unify___io__stream_0_0);
@@ -1729,14 +1729,14 @@ Define_entry(mercury____Unify___io__stream_0_0);
 		((MercuryFile*) unify_input1 == (MercuryFile *) unify_input2);
 	proceed();
 
+Define_entry(mercury____Index___io__stream_0_0);
+	index_output = -1;
+	proceed();
+
 Define_entry(mercury____Compare___io__stream_0_0);
 	compare_output = ((compare_input1 < compare_input2) ? COMPARE_LESS :
 		          (compare_input1 > compare_input2) ? COMPARE_GREATER :
 			  				      COMPARE_EQUAL);
-	proceed();
-
-Define_entry(mercury____Index___io__stream_0_0);
-	index_output = -1;
 	proceed();
 
 Define_entry(mercury____Term_To_Type___io__stream_0_0);
