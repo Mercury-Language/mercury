@@ -17,7 +17,9 @@ realclean_local:
 	done
 
 # Smart recompilation doesn't yet work with --intermodule-optimization.
-EXTRA_MCFLAGS += --no-intermodule-optimization --smart-recompilation \
+# The `override' is needed because otherwise make ignores the assignment if
+# EXTRA_MCFLAGS is set on the command line, as it is for the nightly tests.
+override EXTRA_MCFLAGS += --no-intermodule-optimization --smart-recompilation \
 			--verbose-recompilation
 
 # This module tests recompilation of a module which depends on a module
