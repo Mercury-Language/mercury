@@ -6267,6 +6267,16 @@ This is necessary for interfacing with constraint solvers,
 or for backtrackable destructive update.
 This option is not yet supported for the IL or Java back-ends.
 
+@sp 1
+@item @code{--maybe-thread-safe @{yes, no@}}
+@findex --maybe-thread-safe
+Specify how to treate the @samp{maybe_thread_safe} foreign code
+attribute.  @samp{yes} means that a foreign procedure with the
+@samp{maybe_thread_safe} option is treated as thought is has a
+@samp{thread_safe} attribute.  @samp{no} means that the foreign
+procedure is treated as though it has a @samp{not_thread_safe}
+attribute.  The default is @samp{no}.
+
 @ifset aditi
 @sp 1
 @item --aditi

@@ -1443,6 +1443,8 @@ parse_threadsafe(term__functor(term__atom("thread_safe"), [], _),
     thread_safe).
 parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
     not_thread_safe).
+parse_threadsafe(term__functor(term__atom("maybe_thread_safe"), [], _),
+    maybe_thread_safe).
 
 :- pred parse_tabled_for_io(term::in, tabled_for_io::out) is semidet.
 

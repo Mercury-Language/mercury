@@ -100,11 +100,15 @@
 	% Map from module name to file name.
 :- type source_file_map == map(module_name, string).
 
+:- type maybe_thread_safe == bool.
+
 :- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_foreign_language(string::in, foreign_language::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
+:- pred convert_maybe_thread_safe(string::in, maybe_thread_safe::out)
+	is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -112,7 +116,8 @@
 
 :- pred globals__init(option_table::di, compilation_target::di, gc_method::di,
 	tags_method::di, termination_norm::di,
-	trace_level::di, trace_suppress_items::di, globals::uo) is det.
+	trace_level::di, trace_suppress_items::di, 
+	maybe_thread_safe::di, globals::uo) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 :- pred globals__get_target(globals::in, compilation_target::out) is det.
@@ -126,6 +131,8 @@
 :- pred globals__get_trace_suppress(globals::in, trace_suppress_items::out)
 	is det.
 :- pred globals__get_source_file_map(globals::in, maybe(source_file_map)::out)
+	is det.
+:- pred globals__get_maybe_thread_safe(globals::in, maybe_thread_safe::out)
 	is det.
 
 :- pred globals__set_options(option_table::in, globals::in, globals::out)
@@ -182,7 +189,7 @@
 :- pred globals__io_init(option_table::di, compilation_target::in,
 	gc_method::in, tags_method::in,
 	termination_norm::in, trace_level::in, trace_suppress_items::in,
-	io::di, io::uo) is det.
+	maybe_thread_safe::in, io::di, io::uo) is det.
 
 :- pred globals__io_get_target(compilation_target::out, io::di, io::uo) is det.
 :- pred globals__io_get_backend_foreign_languages(list(foreign_language)::out,
@@ -197,6 +204,8 @@
 	io::di, io::uo) is det.
 :- pred globals__io_get_trace_level(trace_level::out, io::di, io::uo) is det.
 :- pred globals__io_get_trace_suppress(trace_suppress_items::out,
+	io::di, io::uo) is det.
+:- pred globals__io_get_maybe_thread_safe(maybe_thread_safe::out,
 	io::di, io::uo) is det.
 
 :- pred globals__io_get_globals(globals::out, io::di, io::uo) is det.
@@ -280,6 +289,9 @@ convert_termination_norm("total", total).
 convert_termination_norm("num-data-elems", num_data_elems).
 convert_termination_norm("size-data-elems", size_data_elems).
 
+convert_maybe_thread_safe("yes", yes).
+convert_maybe_thread_safe("no",  no).
+
 foreign_language_string(c) = "C".
 foreign_language_string(managed_cplusplus) = "Managed C++".
 foreign_language_string(csharp) = "C#".
@@ -310,13 +322,15 @@ gc_is_conservative(automatic) = no.
 			trace_level 		:: trace_level,
 			trace_suppress_items	:: trace_suppress_items,
 			source_file_map		:: maybe(source_file_map),
-			have_printed_usage	:: bool
+			have_printed_usage	:: bool,
+			maybe_thread_safe	:: bool
 		).
 
 globals__init(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, TraceLevel, TraceSuppress,
+		TerminationNorm, TraceLevel, TraceSuppress, MaybeThreadSafe,
 	globals(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, TraceLevel, TraceSuppress, no, no)).
+		TerminationNorm, TraceLevel, TraceSuppress,
+		no, no, MaybeThreadSafe)).
 
 globals__get_options(Globals, Globals ^ options).
 globals__get_target(Globals, Globals ^ target).
@@ -326,6 +340,7 @@ globals__get_termination_norm(Globals, Globals ^ termination_norm).
 globals__get_trace_level(Globals, Globals ^ trace_level).
 globals__get_trace_suppress(Globals, Globals ^ trace_suppress_items).
 globals__get_source_file_map(Globals, Globals ^ source_file_map).
+globals__get_maybe_thread_safe(Globals, Globals ^ maybe_thread_safe).
 
 globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
 	globals__lookup_accumulating_option(Globals, backend_foreign_languages,
@@ -459,15 +474,18 @@ globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
 %-----------------------------------------------------------------------------%
 
 globals__io_init(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, TraceLevel, TraceSuppress) -->
+		TerminationNorm, TraceLevel, TraceSuppress,
+		MaybeThreadSafe) -->
 	{ copy(Target, Target1) },
 	{ copy(GC_Method, GC_Method1) },
 	{ copy(TagsMethod, TagsMethod1) },
 	{ copy(TerminationNorm, TerminationNorm1) },
 	{ copy(TraceLevel, TraceLevel1) },
 	{ copy(TraceSuppress, TraceSuppress1) },
+	{ copy(MaybeThreadSafe, MaybeThreadSafe1) },
 	{ globals__init(Options, Target1, GC_Method1, TagsMethod1,
-		TerminationNorm1, TraceLevel1, TraceSuppress1, Globals) },
+		TerminationNorm1, TraceLevel1, TraceSuppress1,
+		MaybeThreadSafe1, Globals) },
 	globals__io_set_globals(Globals).
 
 globals__io_get_target(Target) -->
@@ -493,6 +511,10 @@ globals__io_get_trace_level(TraceLevel) -->
 globals__io_get_trace_suppress(TraceSuppress) -->
 	globals__io_get_globals(Globals),
 	{ globals__get_trace_suppress(Globals, TraceSuppress) }.
+
+globals__io_get_maybe_thread_safe(MaybeThreadSafe, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	globals__get_maybe_thread_safe(Globals, MaybeThreadSafe).
 
 globals__io_get_globals(Globals) -->
 	io__get_globals(UnivGlobals),

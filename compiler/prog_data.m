@@ -905,7 +905,8 @@
 :- func foreign_language(pragma_foreign_proc_attributes) = foreign_language.
 :- func tabled_for_io(pragma_foreign_proc_attributes) = tabled_for_io.
 :- func legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
-:- func may_throw_exception(pragma_foreign_proc_attributes) = may_throw_exception.
+:- func may_throw_exception(pragma_foreign_proc_attributes) =
+	may_throw_exception.
 :- func ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
 :- func extra_attributes(pragma_foreign_proc_attributes)
 	= pragma_foreign_proc_extra_attributes.
@@ -960,10 +961,15 @@
 
 	% If thread_safe execution is enabled, then we need to put a mutex
 	% around the C code for each `pragma c_code' declaration, unless
-	% it's declared to be thread_safe.
+	% it's declared to be thread_safe.  If a piece of foreign code is
+	% declared to be maybe_thread_safe whether we put the mutex around
+	% the foreign code depends upon the `--maybe-thread-safe' compiler
+	% flag.
+	%
 :- type thread_safe
 	--->	not_thread_safe
-	;	thread_safe.
+	;	thread_safe
+	;	maybe_thread_safe.
 
 :- type tabled_for_io
 	--->	not_tabled_for_io
@@ -1715,6 +1721,9 @@ attributes_to_strings(Attrs) = StringList :-
 	;
 		ThreadSafe = thread_safe,
 		ThreadSafeStr = "thread_safe"
+	;
+		ThreadSafe = maybe_thread_safe,
+		ThreadSafeStr = "maybe_thread_safe"
 	),
 	(
 		TabledForIO = tabled_for_io,

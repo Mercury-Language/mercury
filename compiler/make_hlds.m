@@ -5053,8 +5053,27 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
 
-module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc, PVars, VarSet,
+module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
         PragmaImpl, Status, Context, !ModuleInfo, !QualInfo, !IO) :-
+    % 
+    % Begin by replacing any maybe_thread_safe foreign_proc attributes
+    % with the actual thread safety attributes which we get from the
+    % `--maybe-thread-safe' option.
+    %
+    globals__io_get_globals(Globals, !IO),
+    globals__get_maybe_thread_safe(Globals, MaybeThreadSafe),
+    ThreadSafe = Attributes0 ^ thread_safe,
+    ( ThreadSafe = maybe_thread_safe ->
+        (
+            MaybeThreadSafe = yes,
+            set_thread_safe(thread_safe, Attributes0, Attributes)
+        ;
+            MaybeThreadSafe = no,
+            set_thread_safe(not_thread_safe, Attributes0, Attributes)
+        )
+    ;
+        Attributes = Attributes0 
+    ),
     module_info_name(!.ModuleInfo, ModuleName),
     PragmaForeignLanguage = foreign_language(Attributes),
     list__length(PVars, Arity),

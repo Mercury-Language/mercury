@@ -5729,15 +5729,14 @@ or @samp{pragma promise_semipure} declaration (@pxref{Impurity}).
 If omitted, the clause specified by the @samp{foreign_proc} is
 assumed to be impure.
 
-@item @samp{thread_safe}/@samp{not_thread_safe}
+@item @samp{thread_safe}/@samp{not_thread_safe}/@samp{maybe_thread_safe}
 This attribute declares whether or not it is safe for multiple threads
 to execute this foreign language code concurrently.
-The default, in case neither is specified, is @samp{not_thread_safe}.
+The default, in case none is specified, is @samp{not_thread_safe}.
 If the foreign language code is declared @samp{thread_safe}, then the
 Mercury implementation is permitted to execute the code concurrently
-from multiple threads without taking any special precautions.  If the
-foreign language code is declared
-@samp{not_thread_safe},
+from multiple threads without taking any special precautions.
+If the foreign language code is declared @samp{not_thread_safe},
 then the Mercury implementation must not invoke the code concurrently from
 multiple threads.  If the Mercury implementation does use multithreading,
 then it must take appropriate steps to prevent this.
@@ -5749,6 +5748,12 @@ and release a mutex.  All non-thread-safe foreign language code shares a
 single mutex.)
 @c XXX this can cause deadlocks if not_thread_safe foreign language code calls
 @c     Mercury which calls foreign language code
+If the foreign language code is declared @samp{maybe_thread_safe} then
+whether the code is considered @samp{thread_safe} or @samp{not_thread_safe}
+depends upon a compiler flag.  This attribute is useful when the
+thread safety of the foreign code itself is conditional.
+The Melbourne Mercury compiler uses the @samp{--maybe-thread-safe}
+option to set the value of the @samp{maybe_thread_safe} attribute.
 @end table
 
 Additional attributes which are supported by the Melbourne Mercury

@@ -154,11 +154,11 @@ postprocess_options(error(ErrorMessage), [ErrorMessage], !IO).
 postprocess_options(ok(OptionTable0), Errors, !IO) :-
 	check_option_values(OptionTable0, OptionTable, Target, GC_Method,
 		TagsMethod, TermNorm, TraceLevel, TraceSuppress,
-		[], CheckErrors),
+		MaybeThreadSafe, [], CheckErrors),
 	( CheckErrors = [] ->
 		postprocess_options_2(OptionTable, Target, GC_Method,
 			TagsMethod, TermNorm, TraceLevel, TraceSuppress,
-			[], Errors, !IO)
+			MaybeThreadSafe, [], Errors, !IO)
 	;
 		Errors = CheckErrors
 	).
@@ -166,10 +166,11 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
 :- pred check_option_values(option_table::in, option_table::out,
 	compilation_target::out, gc_method::out, tags_method::out,
 	termination_norm::out, trace_level::out, trace_suppress_items::out,
-	list(string)::in, list(string)::out) is det.
+	maybe_thread_safe::out, list(string)::in, list(string)::out) is det.
 
 check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
-		TermNorm, TraceLevel, TraceSuppress, !Errors) :-
+		TermNorm, TraceLevel, TraceSuppress, MaybeThreadSafe,
+		!Errors) :-
 	map__lookup(OptionTable0, target, Target0),
 	(
 		Target0 = string(TargetStr),
@@ -263,6 +264,18 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
 		add_error("Invalid argument to option `--suppress-trace'.",
 			!Errors)
 	),
+	map__lookup(OptionTable0, maybe_thread_safe, MaybeThreadSafeOption),
+	( 
+		MaybeThreadSafeOption = string(MaybeThreadSafeString),
+		convert_maybe_thread_safe(MaybeThreadSafeString,
+			MaybeThreadSafe0)
+	->
+		MaybeThreadSafe = MaybeThreadSafe0
+	;
+		MaybeThreadSafe = no, % dummy
+		add_error("Invalid argument to option `--maybe-thread-safe'.",
+			!Errors)
+	),
 	map__lookup(OptionTable0, dump_hlds_alias, DumpAliasOption),
 	(
 		DumpAliasOption = string(DumpAlias),
@@ -290,14 +303,15 @@ add_error(Error, Errors0, Errors) :-
 
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
 	gc_method::in, tags_method::in, termination_norm::in,
-	trace_level::in, trace_suppress_items::in,
+	trace_level::in, trace_suppress_items::in, maybe_thread_safe::in,
 	list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
-		TermNorm, TraceLevel, TraceSuppress, !Errors) -->
+		TermNorm, TraceLevel, TraceSuppress, MaybeThreadSafe,
+		!Errors) -->
 	{ unsafe_promise_unique(OptionTable0, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod0,
-		TermNorm, TraceLevel, TraceSuppress),
+		TermNorm, TraceLevel, TraceSuppress, MaybeThreadSafe),
 
 	% Conservative GC implies --no-reclaim-heap-*
 	( { gc_is_conservative(GC_Method) = yes } ->

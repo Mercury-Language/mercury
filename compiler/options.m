@@ -252,6 +252,7 @@
 		;	use_minimal_model_own_stacks
 		;	minimal_model_debug
 		;	type_layout
+		;	maybe_thread_safe
 
 		% Data representation compilation model options
 		;	reserve_tag
@@ -919,6 +920,7 @@ option_defaults_2(compilation_model_option, [
 	gc			-	string("boehm"),
 	parallel		-	bool(no),
 	use_trail		-	bool(no),
+	maybe_thread_safe	-	string("no"),
 	use_minimal_model_stack_copy	-	bool(no),
 	use_minimal_model_own_stacks	-	bool(no),
 	minimal_model_debug	-	bool(no),
@@ -1583,6 +1585,7 @@ long_option("garbage-collection",	gc).
 long_option("parallel",			parallel).
 long_option("use-trail",		use_trail).
 long_option("type-layout",		type_layout).
+long_option("maybe-thread-safe",	maybe_thread_safe).
 long_option("aditi",			aditi).
 long_option("aditi-calls-mercury",	aditi_calls_mercury).
 	% Data representation options
@@ -3201,7 +3204,14 @@ options_help_compilation_model -->
 		"\tEnable use of a trail.",
 		"\tThis is necessary for interfacing with constraint solvers,",
 		"\tor for backtrackable destructive update.",
-		"\tThis option is not yet supported for the IL or Java back-ends."
+		"\tThis option is not yet supported for the IL or Java back-ends.",
+		"--maybe-thread-safe {yes, no}",
+		"\tSpecify how to treat the `maybe_thread_safe' foreign code",
+		"\tattribute.  `yes' means that a foreign procedure with the",
+		"\t`maybe_thread_safe' option is treated as though it has a",
+		"\t`thread_safe' attribute.  `no' means that the foreign",
+		"\tprocedure is treated as though it has a `not_thread_safe'",
+		"\tattribute.  The default is no."
 	]),
 
 	io__write_string("\n    LLDS back-end compilation model options:\n"),

@@ -373,7 +373,16 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	%
 	MayCallMercury = may_call_mercury(Attributes),
 	ThreadSafe = thread_safe(Attributes),
-
+	%
+	% The maybe_thread_safe attribute should have been changed
+	% to the real value by now.
+	%
+	( ThreadSafe = maybe_thread_safe ->
+		unexpected(this_file, "ordinary_pragma_c_code/12: " ++
+			"maybe_thread_safe encountered.")
+	;
+		true
+	),
 	%
 	% First we need to get a list of input and output arguments
 	%
@@ -512,6 +521,11 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 			MangledName, """);\n"], ReleaseLockStr),
 		ReleaseLock = pragma_c_raw_code(ReleaseLockStr,
 			live_lvals_info(set__init))
+	
+	;
+		ThreadSafe = maybe_thread_safe,
+		unexpected(this_file, "ordinary_pragma_c_code/12: " ++
+			"maybe_thread_safe encountered.")
 	),
 
 	%
