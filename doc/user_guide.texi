@@ -2433,6 +2433,11 @@ Do not generate code for REDO events.
 @item --trace-optimized
 Do not disable optimizations that can change the trace.
 
+@c --trace-decl is commented out in the absence of runtime support
+@c @item --trace-decl
+@c Make the generated tracing code include support
+@c for an experimental declarative debugger.
+
 @item --stack-trace-higher-order
 Enable stack traces through predicates and functions with
 higher-order arguments, even if stack tracing is not

@@ -68,11 +68,15 @@
 % The meanings of the fields in both forms are the same as in procedure labels.
 %
 % If the option trace_stack_layout is set, i.e. if we are doing execution
-% tracing, the table will also include two extra fields:
+% tracing, the table will also include three extra fields:
 %
 %	call trace info		(Word *) - pointer to label stack layout
-%	maybe from full		(Integer) - stack slot of the from_full
-%				flag, if the procedure is shallow traced
+%	maybe from full		(Integer) - number of the stack slot of
+%				the from_full flag, if the procedure is
+%				shallow traced
+%	maybe decl debug	(Integer) - number of the first of two
+%				stack slots used by the declarative debugger,
+%				if --trace-decl is set
 %
 % The first will point to the per-label layout info for the label associated
 % with the call event at the entry to the procedure. The purpose of this
@@ -82,11 +86,17 @@
 % (If trace_stack_layout is not set, this field will be present,
 % but it will be set to NULL.)
 %
-% If the procedure is compiled with deep tracing, the last field will contain
+% If the procedure is compiled with deep tracing, the second field will contain
 % a negative number. If it is compiled with shallow tracing, it will contain
 % the number of the stack slot that holds the flag that says whether this
 % incarnation of the procedure was called from deeply traced code or not.
 % (The determinism of the procedure decides whether the stack slot refers
+% to a stackvar or a framevar.)
+%
+% If --trace-decl is not set, the third field will contain a negative number.
+% If it is set, it will contain the number of the first of two stack slots
+% used by the declarative debugger; the other slot is the next higher numbered
+% one. (The determinism of the procedure decides whether the stack slot refers
 % to a stackvar or a framevar.)
 %
 % If the option basic_stack_layout is set, we generate stack layout tables
@@ -173,7 +183,7 @@
 
 :- implementation.
 
-:- import_module globals, options, continuation_info, llds_out.
+:- import_module globals, options, continuation_info, llds_out, trace.
 :- import_module hlds_data, hlds_pred, base_type_layout, prog_data, prog_out.
 :- import_module assoc_list, bool, string, int, require.
 :- import_module map, std_util, term, set.
@@ -234,10 +244,10 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules,
 
 stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism,
-		StackSlots, SuccipLoc, MaybeCallLabel, MaybeFromFullSlot,
+		StackSlots, SuccipLoc, MaybeCallLabel, TraceSlotInfo,
 		ForceProcIdLayout, InternalMap) },
 	stack_layout__construct_proc_layout(EntryLabel, Detism,
-		StackSlots, SuccipLoc, MaybeCallLabel, MaybeFromFullSlot,
+		StackSlots, SuccipLoc, MaybeCallLabel, TraceSlotInfo,
 		ForceProcIdLayout),
 	{ map__to_assoc_list(InternalMap, Internals) },
 	list__foldl(stack_layout__construct_internal_layout(EntryLabel),
@@ -248,11 +258,11 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	% Construct a procedure-specific layout.
 
 :- pred stack_layout__construct_proc_layout(label::in, determinism::in,
-	int::in, maybe(int)::in, maybe(label)::in, maybe(int)::in, bool::in,
-	stack_layout_info::in, stack_layout_info::out) is det.
+	int::in, maybe(int)::in, maybe(label)::in, trace_slot_info::in,
+	bool::in, stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
-		MaybeSuccipLoc, MaybeCallLabel, MaybeFromFullSlot,
+		MaybeSuccipLoc, MaybeCallLabel, TraceSlotInfo,
 		ForceProcIdLayout) -->
 	{
 		MaybeSuccipLoc = yes(Location0)
@@ -334,12 +344,19 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		;
 			error("stack_layout__construct_proc_layout: call label not present")
 		),
+		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
+			MaybeDeclSlots),
 		( MaybeFromFullSlot = yes(FromFullSlot) ->
 			FromFullRval = yes(const(int_const(FromFullSlot)))
 		;
 			FromFullRval = yes(const(int_const(-1)))
 		),
-		list__append(MaybeRvals1, [CallRval, FromFullRval],
+		( MaybeDeclSlots = yes(DeclSlot) ->
+			DeclRval = yes(const(int_const(DeclSlot)))
+		;
+			DeclRval = yes(const(int_const(-1)))
+		),
+		list__append(MaybeRvals1, [CallRval, FromFullRval, DeclRval],
 			MaybeRvals)
 	;
 		ProcIdLayout = yes

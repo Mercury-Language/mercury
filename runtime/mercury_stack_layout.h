@@ -304,6 +304,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	struct MR_Stack_Layout_Label_Struct
 				*MR_sle_call_label;
 	int			MR_sle_maybe_from_full;
+	int			MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
 
 #define	MR_sle_user	MR_sle_proc_id.MR_proc_user

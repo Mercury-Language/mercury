@@ -46,7 +46,8 @@
 
 :- interface.
 
-:- import_module llds, hlds_module, hlds_pred, hlds_data, prog_data, globals.
+:- import_module llds, hlds_module, hlds_pred, hlds_data, prog_data.
+:- import_module trace, globals.
 :- import_module set, map, list, std_util, bool.
 
 	%
@@ -72,11 +73,8 @@
 					% with the call event, whose stack
 					% layout says which variables were
 					% live and where on entry.
-			maybe(int),	% If the trace level is shallow,
-					% this contains the number of the
-					% stack slot containing the
-					% value of MR_trace_from_full
-					% at the time of the call.
+			trace_slot_info,% Info about the stack slots used
+					% for tracing.
 			bool,		% Do we require the procedure id
 					% section of the procedure layout
 					% to be present, even if the option
@@ -182,14 +180,14 @@
 	% Takes the pred_proc_id, entry label, the number of stack slots,
 	% the determinism of the proc, the stack slot of the succip
 	% in this proc (if there is one), the label of the call event
-	% (if there is such an event), the slot containing the saved from-full
-	% flag (if there is such a slot), a flag saying whether we definitely
-	% need a procedure id section in the procedure layout, as well as the
-	% layouts at all the trace event labels.
+	% (if there is such an event), info about the tracing slots of this
+	% proc, a flag saying whether we definitely need a procedure id
+	% section in the procedure layout, as well as the layouts at all
+	% the trace event labels.
 	%
 :- pred continuation_info__add_proc_info(pred_proc_id::in, label::in,
 	int::in, determinism::in, maybe(int)::in, maybe(label)::in,
-	maybe(int)::in, bool::in, proc_label_layout_info::in,
+	trace_slot_info::in, bool::in, proc_label_layout_info::in,
 	continuation_info::in, continuation_info::out) is det.
 
 	%
@@ -251,15 +249,14 @@ continuation_info__init(ContInfo) :-
 	% continuation_info. 
 	%
 continuation_info__add_proc_info(PredProcId, EntryLabel, StackSize,
-		Detism, SuccipLocation, MaybeTraceCallLabel,
-		MaybeFromFullSlot, ForceProcId, InternalMap,
-		ContInfo0, ContInfo) :-
+		Detism, SuccipLocation, MaybeTraceCallLabel, TraceSlotInfo,
+		ForceProcId, InternalMap, ContInfo0, ContInfo) :-
 	( map__contains(ContInfo0, PredProcId) ->
 		error("duplicate continuation_info for proc.")
 	;
 		LayoutInfo = proc_layout_info(EntryLabel, Detism, StackSize,
 			SuccipLocation, MaybeTraceCallLabel,
-			MaybeFromFullSlot, ForceProcId, InternalMap),
+			TraceSlotInfo, ForceProcId, InternalMap),
 		map__det_insert(ContInfo0, PredProcId, LayoutInfo, ContInfo)
 	).
 

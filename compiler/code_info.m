@@ -62,11 +62,11 @@
 :- type code_info.
 
 		% Create a new code_info structure. Also return the
-		% outermost resumption point, and the number of stack slot
-		% (if any) that contains the from_full tracing flag.
+		% outermost resumption point, and info about the non-fixed
+		% stack slots used for tracing purposes.
 :- pred code_info__init(varset, set(var), stack_slots, bool, globals,
 	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
-	int, resume_point_info, maybe(int), code_info).
+	int, resume_point_info, trace_slot_info, code_info).
 :- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in,
 	out, out, out) is det.
 
@@ -279,7 +279,7 @@
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, Instmap, FollowVars, ModuleInfo,
-		CellCount, ResumePoint, MaybeFromFullSlot, CodeInfo) :-
+		CellCount, ResumePoint, TraceSlotInfo, CodeInfo) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -331,25 +331,25 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		TempContentMap
 	),
 	code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
-		MaybeFailVars, MaybeFromFullSlot, CodeInfo0, CodeInfo1),
+		MaybeFailVars, TraceSlotInfo, CodeInfo0, CodeInfo1),
 	code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint,
 		CodeInfo1, CodeInfo).
 
 :- pred code_info__init_maybe_trace_info(globals, module_info, proc_info,
-	maybe(set(var)), maybe(int), code_info, code_info).
+	maybe(set(var)), trace_slot_info, code_info, code_info).
 :- mode code_info__init_maybe_trace_info(in, in, in, out, out, in, out) is det.
 
 code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
-		MaybeFailVars, MaybeFromFullSlot) -->
+		MaybeFailVars, TraceSlotInfo) -->
 	{ globals__get_trace_level(Globals, TraceLevel) },
 	( { TraceLevel \= none } ->
-		trace__setup(Globals, MaybeFromFullSlot, TraceInfo),
+		trace__setup(Globals, TraceSlotInfo, TraceInfo),
 		code_info__set_maybe_trace_info(yes(TraceInfo)),
 		{ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) },
 		{ MaybeFailVars = yes(FailVars) }
 	;
 		{ MaybeFailVars = no },
-		{ MaybeFromFullSlot = no }
+		{ TraceSlotInfo = trace_slot_info(no, no) }
 	).
 
 %---------------------------------------------------------------------------%

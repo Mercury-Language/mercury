@@ -202,7 +202,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% execution tracing.
 	code_info__init(VarSet, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, OutsideResumePoint, MaybeFromFullSlot,
+		ModuleInfo, CellCount0, OutsideResumePoint, TraceSlotInfo,
 		CodeInfo0),
 
 		% Generate code for the procedure.
@@ -235,7 +235,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 			no, EntryLabel),
 		continuation_info__add_proc_info(proc(PredId, ProcId),
 			EntryLabel, TotalSlots, Detism, MaybeSuccipSlot,
-			MaybeTraceCallLabel, MaybeFromFullSlot,
+			MaybeTraceCallLabel, TraceSlotInfo,
 			ForceProcId, LayoutInfo, ContInfo0, ContInfo)
 	;
 		ContInfo = ContInfo0
