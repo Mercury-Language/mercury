@@ -17,7 +17,7 @@
 
 :- module map.
 :- interface.
-:- import_module list, std_util.
+:- import_module list, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -36,6 +36,10 @@
 	% Search map for key.
 :- pred map__search(map(K,V), K, V).
 :- mode map__search(input, input, output).
+
+	% Search map for key, but abort if search fails.
+:- pred map__lookup(map(K,V), K, V).
+:- mode map__lookup(input, input, output).
 
 	% Search map for data.
 :- pred map__inverse_search(map(K,V), V, K).
@@ -97,6 +101,13 @@ map__contains(Map, K) :-
 
 map__search(Map, K, V) :-
 	bintree__search(Map, K, V).
+
+map__lookup(Map, K, V) :-
+	( bintree__search(Map, K, V1) ->
+		V = V1
+	;
+		error("map__lookup failed")
+	).
 
 map__insert(Map0, K, V, Map) :-
 	bintree__insert(Map0, K, V, Map).
