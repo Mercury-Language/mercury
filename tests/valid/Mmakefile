@@ -173,6 +173,7 @@ OTHER_PROGS= \
 	some_switch \
 	spurious_purity_warning \
 	stack_alloc \
+	stack_opt_simplify \
 	state_var_bug \
 	static \
 	subtype_switch \
