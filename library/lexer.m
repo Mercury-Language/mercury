@@ -556,7 +556,7 @@ lexer__get_variable(Chars, Token) -->
 		{ Token = variable(VariableName) }
 	; { Result = ok(Char) },
 		( { char__is_alnum_or_underscore(Char) } ->
-			lexer__get_name([Char | Chars], Token)
+			lexer__get_variable([Char | Chars], Token)
 		;
 			io__putback_char(Char),
 			{ lexer__rev_char_list_to_string(Chars, VariableName) },
