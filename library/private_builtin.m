@@ -643,7 +643,7 @@ static int
 do_unify__type_ctor_info_1_0(
 	MR_Word type_info, MR_Box x, MR_Box y)
 {
-	return mercury::private_builtin__c_code::mercury_code::__Unify____type_ctor_info_1_0(
+	return mercury::private_builtin__cpp_code::mercury_code::__Unify____type_ctor_info_1_0(
 		type_info, 
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));
@@ -653,7 +653,7 @@ static int
 do_unify__type_info_1_0(
 	MR_Word type_info, MR_Box x, MR_Box y)
 {
-	return mercury::private_builtin__c_code::mercury_code::__Unify____type_info_1_0(
+	return mercury::private_builtin__cpp_code::mercury_code::__Unify____type_info_1_0(
 		type_info,
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));
@@ -663,7 +663,7 @@ static int
 do_unify__typeclass_info_1_0(
 	MR_Word type_info, MR_Box x, MR_Box y)
 {
-	return mercury::private_builtin__c_code::mercury_code::__Unify____typeclass_info_1_0(
+	return mercury::private_builtin__cpp_code::mercury_code::__Unify____typeclass_info_1_0(
 		type_info, 
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));
@@ -674,7 +674,7 @@ do_unify__base_typeclass_info_1_0(
 	MR_Word type_info, MR_Box x, MR_Box y)
 {
 	return
-	mercury::private_builtin__c_code::mercury_code::__Unify____base_typeclass_info_1_0(
+	mercury::private_builtin__cpp_code::mercury_code::__Unify____base_typeclass_info_1_0(
 		type_info,
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));
@@ -684,7 +684,7 @@ static void
 do_compare__type_ctor_info_1_0(
 	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::private_builtin__c_code::mercury_code::__Compare____type_ctor_info_1_0(
+	mercury::private_builtin__cpp_code::mercury_code::__Compare____type_ctor_info_1_0(
 		type_info, result, 
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));
@@ -694,7 +694,7 @@ static void
 do_compare__type_info_1_0(
 	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::private_builtin__c_code::mercury_code::__Compare____type_info_1_0(
+	mercury::private_builtin__cpp_code::mercury_code::__Compare____type_info_1_0(
 		type_info, result,
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));
@@ -704,7 +704,7 @@ static void
 do_compare__typeclass_info_1_0(
 	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::private_builtin__c_code::mercury_code::__Compare____typeclass_info_1_0(
+	mercury::private_builtin__cpp_code::mercury_code::__Compare____typeclass_info_1_0(
 		type_info, result,
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));
@@ -714,7 +714,7 @@ static void
 do_compare__base_typeclass_info_1_0(
 	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::private_builtin__c_code::mercury_code::__Compare____base_typeclass_info_1_0(
+	mercury::private_builtin__cpp_code::mercury_code::__Compare____base_typeclass_info_1_0(
 		type_info, result,
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));

@@ -533,7 +533,7 @@ void sys_init_array_module_builtins(void) {
     static int
     do_unify__array_1_0(MR_Word type_info, MR_Box x, MR_Box y)
     {
-            return mercury::array__c_code::mercury_code::__Unify____array_1_0(
+            return mercury::array__cpp_code::mercury_code::__Unify____array_1_0(
                     type_info, 
                     dynamic_cast<MR_Array>(x),
                     dynamic_cast<MR_Array>(y));
@@ -543,7 +543,7 @@ void sys_init_array_module_builtins(void) {
     do_compare__array_1_0(
             MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
     {
-            mercury::array__c_code::mercury_code::__Compare____array_1_0(
+            mercury::array__cpp_code::mercury_code::__Compare____array_1_0(
                     type_info, result, 
                     dynamic_cast<MR_Array>(x),
                     dynamic_cast<MR_Array>(y));

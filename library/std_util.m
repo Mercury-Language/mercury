@@ -1343,7 +1343,7 @@ __Compare____type_desc_0_0(
 static int
 do_unify__type_desc_0_0(MR_Box x, MR_Box y)
 {
-    return mercury::std_util__c_code::mercury_code::__Unify____type_desc_0_0(
+    return mercury::std_util__cpp_code::mercury_code::__Unify____type_desc_0_0(
 	    dynamic_cast<MR_Word>(x),
 	    dynamic_cast<MR_Word>(y));
 }
@@ -1352,7 +1352,7 @@ static void
 do_compare__type_desc_0_0(
     MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-    mercury::std_util__c_code::mercury_code::__Compare____type_desc_0_0(
+    mercury::std_util__cpp_code::mercury_code::__Compare____type_desc_0_0(
 	    result,
 	    dynamic_cast<MR_Word>(x),
 	    dynamic_cast<MR_Word>(y));

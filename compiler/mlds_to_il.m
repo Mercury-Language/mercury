@@ -2100,7 +2100,7 @@ predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 	% If an mlds__var is not an argument or a local, what is it?
 	% We assume the given variable is a handwritten RTTI reference or a
 	% reference to some hand-written code in the
-	% modulename__c_code class.  This is OK so long as the
+	% modulename__cpp_code class.  This is OK so long as the
 	% code generator uses real 'field' lvals to reference
 	% fields in the modulename class.
 
@@ -2178,7 +2178,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 			)
 		)		  
 	->
-		string__append(LibModuleName0, "__c_code",
+		string__append(LibModuleName0, "__cpp_code",
 			LibModuleName),
 		ModuleName = mercury_module_name_to_mlds(
 			qualified(unqualified("mercury"), LibModuleName))
@@ -2834,7 +2834,7 @@ runtime_initialization_instrs = [
 :- func runtime_init_module_name = ilds__class_name.
 runtime_init_module_name = 
 	structured_name("mercury",
-		["mercury", "private_builtin__c_code", "mercury_code"]).
+		["mercury", "private_builtin__cpp_code", "mercury_code"]).
 
 :- func runtime_init_method_name = ilds__member_name.
 runtime_init_method_name = id("init_runtime").

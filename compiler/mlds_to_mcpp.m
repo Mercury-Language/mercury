@@ -118,7 +118,7 @@ generate_mcplusplus_code(MLDS) -->
 
 	{ Namespace0 = get_class_namespace(ClassName) },
 	{ list__reverse(Namespace0) = [Head | Tail] ->
-		Namespace = list__reverse([Head ++ "__c_code" | Tail])
+		Namespace = list__reverse([Head ++ "__cpp_code" | Tail])
 	;
 		Namespace = Namespace0
 	},
@@ -143,7 +143,7 @@ generate_mcplusplus_code(MLDS) -->
 
 		% Output the contents of foreign_proc declarations. 
 		% Put each one inside a method.
-	list__foldl(generate_method_c_code(
+	list__foldl(generate_method_mcpp_code(
 		mercury_module_name_to_mlds(ModuleName)), Defns),
 
 	io__write_string("};\n"),
@@ -198,15 +198,15 @@ generate_foreign_header_code(_ModuleName,
 			)					
 	)).
 
-:- pred generate_method_c_code(mlds_module_name, mlds__defn,
+:- pred generate_method_mcpp_code(mlds_module_name, mlds__defn,
 		io__state, io__state).
-:- mode generate_method_c_code(in, in, di, uo) is det.
+:- mode generate_method_mcpp_code(in, in, di, uo) is det.
 
 	% XXX we don't handle export
-generate_method_c_code(_, defn(export(_), _, _, _)) --> [].
-generate_method_c_code(_, defn(data(_), _, _, _)) --> [].
-generate_method_c_code(_, defn(type(_, _), _, _, _)) --> [].
-generate_method_c_code(ModuleName, 
+generate_method_mcpp_code(_, defn(export(_), _, _, _)) --> [].
+generate_method_mcpp_code(_, defn(data(_), _, _, _)) --> [].
+generate_method_mcpp_code(_, defn(type(_, _), _, _, _)) --> [].
+generate_method_mcpp_code(ModuleName, 
 		defn(function(PredLabel, ProcId, MaybeSeqNum, _PredId), 
 	_Context, _DeclFlags, Entity)) -->
 	( 

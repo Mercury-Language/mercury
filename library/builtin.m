@@ -422,7 +422,7 @@ void sys_init_builtin_types_module(void) {
 
 :- pragma foreign_code("MC++", "
 
-static void compare_3_p_0(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
+static void compare_3(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
 		MR_Box X, MR_Box Y) 
 {
 
@@ -503,25 +503,25 @@ static void compare_3_p_0(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res,
 	}
 }
 
-void compare_3_p_1(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
+void compare_3_m1(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
 		MR_Box X, MR_Box Y) 
 {
-	compare_3_p_0(TypeInfo_for_T, Res, X, Y);
+	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-void compare_3_p_2(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
+void compare_3_m2(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
 		MR_Box X, MR_Box Y) 
 {
-	compare_3_p_0(TypeInfo_for_T, Res, X, Y);
+	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-void compare_3_p_3(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
+void compare_3_m3(MR_TypeInfo TypeInfo_for_T, MR_Word_Ref Res, 
 		MR_Box X, MR_Box Y) 
 {
-	compare_3_p_0(TypeInfo_for_T, Res, X, Y);
+	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-void copy_2_p_0(MR_TypeInfo TypeInfo_for_T,
+void copy_2(MR_TypeInfo TypeInfo_for_T,
 		MR_Box X, MR_Ref(MR_Box) Y) 
 {
 	// XXX this needs to be implemented -- just using Clone() won't work
@@ -529,10 +529,10 @@ void copy_2_p_0(MR_TypeInfo TypeInfo_for_T,
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }
 
-void copy_2_p_1(MR_TypeInfo TypeInfo_for_T,
+void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
 		MR_Box X, MR_Ref(MR_Box) Y) 
 {
-	copy_2_p_0(TypeInfo_for_T, X, Y);
+	copy_2(TypeInfo_for_T, X, Y);
 }
 
 ").
@@ -785,7 +785,7 @@ __Compare____pred_0_0(MR_Word_Ref result,
 static int
 do_unify__int_0_0(MR_Box x, MR_Box y)
 {
-	return mercury::builtin__c_code::mercury_code::__Unify____int_0_0(
+	return mercury::builtin__cpp_code::mercury_code::__Unify____int_0_0(
 		mercury::runtime::Convert::ToInt32(x), 
 		mercury::runtime::Convert::ToInt32(y)); 
 }
@@ -793,7 +793,7 @@ do_unify__int_0_0(MR_Box x, MR_Box y)
 static int
 do_unify__string_0_0(MR_Box x, MR_Box y)
 {
-	return mercury::builtin__c_code::mercury_code::__Unify____string_0_0(
+	return mercury::builtin__cpp_code::mercury_code::__Unify____string_0_0(
 		dynamic_cast<MR_String>(x), 
 		dynamic_cast<MR_String>(y));
 }
@@ -801,7 +801,7 @@ do_unify__string_0_0(MR_Box x, MR_Box y)
 static int
 do_unify__float_0_0(MR_Box x, MR_Box y)
 {
-	return mercury::builtin__c_code::mercury_code::__Unify____float_0_0(
+	return mercury::builtin__cpp_code::mercury_code::__Unify____float_0_0(
 		mercury::runtime::Convert::ToDouble(x),
 		mercury::runtime::Convert::ToDouble(y));
 }
@@ -809,7 +809,7 @@ do_unify__float_0_0(MR_Box x, MR_Box y)
 static int
 do_unify__character_0_0(MR_Box x, MR_Box y)
 {
-	return mercury::builtin__c_code::mercury_code::__Unify____character_0_0(
+	return mercury::builtin__cpp_code::mercury_code::__Unify____character_0_0(
 		mercury::runtime::Convert::ToChar(x),
 		mercury::runtime::Convert::ToChar(y));
 }
@@ -825,7 +825,7 @@ do_unify__void_0_0(MR_Box x, MR_Box y)
 static int
 do_unify__c_pointer_0_0(MR_Box x, MR_Box y)
 {
-	return mercury::builtin__c_code::mercury_code::__Unify____c_pointer_0_0(
+	return mercury::builtin__cpp_code::mercury_code::__Unify____c_pointer_0_0(
 		dynamic_cast<MR_Word>(x), 
 		dynamic_cast<MR_Word>(y)); 
 }
@@ -854,7 +854,7 @@ do_unify__pred_0_0(MR_Box x, MR_Box y)
 static void
 do_compare__int_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::builtin__c_code::mercury_code::__Compare____int_0_0(result,
+	mercury::builtin__cpp_code::mercury_code::__Compare____int_0_0(result,
 		mercury::runtime::Convert::ToInt32(x),
 		mercury::runtime::Convert::ToInt32(y));
 }
@@ -862,7 +862,7 @@ do_compare__int_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 static void
 do_compare__string_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::builtin__c_code::mercury_code::__Compare____string_0_0(result,
+	mercury::builtin__cpp_code::mercury_code::__Compare____string_0_0(result,
 		dynamic_cast<MR_String>(x),
 		dynamic_cast<MR_String>(y));
 }
@@ -870,7 +870,7 @@ do_compare__string_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 static void
 do_compare__float_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::builtin__c_code::mercury_code::__Compare____float_0_0(result,
+	mercury::builtin__cpp_code::mercury_code::__Compare____float_0_0(result,
 		mercury::runtime::Convert::ToDouble(x),
 		mercury::runtime::Convert::ToDouble(y));
 }
@@ -879,7 +879,7 @@ static void
 do_compare__character_0_0(
 	MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::builtin__c_code::mercury_code::__Compare____character_0_0(
+	mercury::builtin__cpp_code::mercury_code::__Compare____character_0_0(
 		result, 
 		mercury::runtime::Convert::ToChar(x),
 		mercury::runtime::Convert::ToChar(y));
@@ -896,7 +896,7 @@ static void
 do_compare__c_pointer_0_0(
 	MR_Word_Ref result, MR_Box x, MR_Box y)
 {
-	mercury::builtin__c_code::mercury_code::__Compare____c_pointer_0_0(
+	mercury::builtin__cpp_code::mercury_code::__Compare____c_pointer_0_0(
 		result, 
 		dynamic_cast<MR_Word>(x),
 		dynamic_cast<MR_Word>(y));

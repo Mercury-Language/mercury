@@ -260,6 +260,7 @@ mercury_all.il: $(library.ils)
 	cat $(library.ils) > mercury_all.il	
 
 mercury.dll: $(HACK_ALL_DLLS) mercury_all.dll library_strong_name.sn
+	cp $(RUNTIME_DLLS) .
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll $(HACK_ALL_DLLS)
 
 

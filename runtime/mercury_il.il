@@ -46,7 +46,7 @@
 
 .method static default int32 
 get_ftn_ptr_typeclass_info_compare() {
-	ldftn void ['mercury'] 'mercury'.'private_builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_compare__typeclass_info_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -55,7 +55,7 @@ get_ftn_ptr_typeclass_info_compare() {
 
 .method static default int32 
 get_ftn_ptr_typeclass_info_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'private_builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_unify__typeclass_info_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object,
 		class [mscorlib]System.Object)
@@ -64,7 +64,7 @@ get_ftn_ptr_typeclass_info_unify() {
 
 .method static default int32 
 get_ftn_ptr_base_typeclass_info_compare() {
-	ldftn void ['mercury'] 'mercury'.'private_builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_compare__base_typeclass_info_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -73,7 +73,7 @@ get_ftn_ptr_base_typeclass_info_compare() {
 
 .method static default int32 
 get_ftn_ptr_base_typeclass_info_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'private_builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_unify__base_typeclass_info_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object,
 		class [mscorlib]System.Object)
@@ -82,7 +82,7 @@ get_ftn_ptr_base_typeclass_info_unify() {
 
 .method static default int32 
 get_ftn_ptr_type_info_compare() {
-	ldftn void ['mercury'] 'mercury'.'private_builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_compare__type_info_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -91,7 +91,7 @@ get_ftn_ptr_type_info_compare() {
 
 .method static default int32 
 get_ftn_ptr_type_info_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'private_builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_unify__type_info_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object,
 		class [mscorlib]System.Object)
@@ -100,7 +100,7 @@ get_ftn_ptr_type_info_unify() {
 
 .method static default int32 
 get_ftn_ptr_type_ctor_info_compare() {
-	ldftn void ['mercury'] 'mercury'.'private_builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_compare__type_ctor_info_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -109,7 +109,7 @@ get_ftn_ptr_type_ctor_info_compare() {
 
 .method static default int32 
 get_ftn_ptr_type_ctor_info_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'private_builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_unify__type_ctor_info_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object,
 		class [mscorlib]System.Object)
@@ -118,7 +118,7 @@ get_ftn_ptr_type_ctor_info_unify() {
 
 .method static default int32 
 get_ftn_ptr_pred_compare() {
-	ldftn void ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__pred_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -127,7 +127,7 @@ get_ftn_ptr_pred_compare() {
 
 .method static default int32 
 get_ftn_ptr_pred_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_unify__pred_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -135,7 +135,7 @@ get_ftn_ptr_pred_unify() {
 
 .method static default int32 
 get_ftn_ptr_func_compare() {
-	ldftn void ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__func_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -144,7 +144,7 @@ get_ftn_ptr_func_compare() {
 
 .method static default int32 
 get_ftn_ptr_func_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_unify__func_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -152,7 +152,7 @@ get_ftn_ptr_func_unify() {
 
 .method static default int32 
 get_ftn_ptr_float_compare() {
-	ldftn void ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__float_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -160,7 +160,7 @@ get_ftn_ptr_float_compare() {
 }
 .method static default int32 
 get_ftn_ptr_float_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_unify__float_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -168,7 +168,7 @@ get_ftn_ptr_float_unify() {
 
 .method static default int32 
 get_ftn_ptr_void_compare() {
-	ldftn void ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__void_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -176,7 +176,7 @@ get_ftn_ptr_void_compare() {
 }
 .method static default int32 
 get_ftn_ptr_void_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_unify__void_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -184,7 +184,7 @@ get_ftn_ptr_void_unify() {
 
 .method static default int32 
 get_ftn_ptr_c_pointer_compare() {
-	ldftn void ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__c_pointer_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -193,7 +193,7 @@ get_ftn_ptr_c_pointer_compare() {
 
 .method static default int32 
 get_ftn_ptr_c_pointer_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_unify__c_pointer_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -201,7 +201,7 @@ get_ftn_ptr_c_pointer_unify() {
 
 .method static default int32 
 get_ftn_ptr_string_compare() {
-	ldftn void ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__string_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -210,7 +210,7 @@ get_ftn_ptr_string_compare() {
 
 .method static default int32 
 get_ftn_ptr_string_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_unify__string_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -218,7 +218,7 @@ get_ftn_ptr_string_unify() {
 
 .method static default int32 
 get_ftn_ptr_character_compare() {
-	ldftn void ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__character_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -227,7 +227,7 @@ get_ftn_ptr_character_compare() {
 
 .method static default int32 
 get_ftn_ptr_character_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_unify__character_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -235,7 +235,7 @@ get_ftn_ptr_character_unify() {
 
 .method static default int32 
 get_ftn_ptr_int_compare() {
-	ldftn void ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_compare__int_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -244,7 +244,7 @@ get_ftn_ptr_int_compare() {
 
 .method static default int32 
 get_ftn_ptr_int_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'builtin__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'builtin__cpp_code'.'mercury_code'::
 	do_unify__int_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -252,7 +252,7 @@ get_ftn_ptr_int_unify() {
 
 .method static default int32 
 get_ftn_ptr_array_compare() {
-	ldftn void ['mercury'] 'mercury'.'array__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'array__cpp_code'.'mercury_code'::
 	do_compare__array_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -261,7 +261,7 @@ get_ftn_ptr_array_compare() {
 
 .method static default int32 
 get_ftn_ptr_array_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'array__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'array__cpp_code'.'mercury_code'::
 	do_unify__array_1_0(
 		class [mscorlib]System.Object[], class [mscorlib]System.Object,
 		class [mscorlib]System.Object)
@@ -270,7 +270,7 @@ get_ftn_ptr_array_unify() {
 
 .method static default int32 
 get_ftn_ptr_type_desc_compare() {
-	ldftn void ['mercury'] 'mercury'.'std_util__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'std_util__cpp_code'.'mercury_code'::
 	do_compare__type_desc_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -279,7 +279,7 @@ get_ftn_ptr_type_desc_compare() {
 
 .method static default int32 
 get_ftn_ptr_type_desc_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'std_util__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'std_util__cpp_code'.'mercury_code'::
 	do_unify__type_desc_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -287,7 +287,7 @@ get_ftn_ptr_type_desc_unify() {
 
 .method static default int32 
 get_ftn_ptr_univ_compare() {
-	ldftn void ['mercury'] 'mercury'.'std_util__c_code'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'std_util__cpp_code'.'mercury_code'::
 	do_compare__univ_0_0(
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -296,7 +296,7 @@ get_ftn_ptr_univ_compare() {
 
 .method static default int32 
 get_ftn_ptr_univ_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'std_util__c_code'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'std_util__cpp_code'.'mercury_code'::
 	do_unify__univ_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -571,7 +571,7 @@ get_ftn_ptr_univ_unify() {
 
 .class public 'Init' {
     .method static default void init_runtime() {
-        call void ['mercury']mercury.io.mercury_code::init_state_2_p_0()
+        call void ['mercury']mercury.io.mercury_code::init_state_2()
 	ret
     }
 }
