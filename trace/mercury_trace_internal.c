@@ -608,8 +608,8 @@ static  MR_bool     MR_trace_options_class_decl(MR_bool *print_methods,
                         MR_bool *print_instances, char ***words,
                         int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_all_procedures(MR_bool *separate,
-                        MR_bool *uci, char ***words, int *word_count,
-                        const char *cat, const char *item);
+                        MR_bool *uci, char **module, char ***words,
+                        int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_save_to_file(MR_bool *xml,
                         char ***words, int *word_count, const char *cat, 
                         const char *item);
@@ -5324,12 +5324,14 @@ MR_trace_cmd_all_procedures(char **words, int word_count,
     MR_bool         separate;
     MR_bool         uci;
     FILE            *fp;
+    char            *module;
 
     MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
 
     separate = MR_FALSE;
     uci = MR_FALSE;
-    if (! MR_trace_options_all_procedures(&separate, &uci,
+    module = NULL;
+    if (! MR_trace_options_all_procedures(&separate, &uci, &module,
         &words, &word_count, "developer", "all_procedures"))
     {
         ; /* the usage message has already been printed */
@@ -5343,7 +5345,7 @@ MR_trace_cmd_all_procedures(char **words, int word_count,
             return KEEP_INTERACTING;
         }
 
-        MR_dump_module_tables(fp, separate, uci);
+        MR_dump_module_tables(fp, separate, uci, module);
         if (fclose(fp) != 0) {
             fprintf(MR_mdb_err, "mdb: error writing to `%s': %s.\n",
                 filename, strerror(errno));
@@ -7161,19 +7163,20 @@ MR_trace_options_class_decl(MR_bool *print_methods, MR_bool *print_instances,
 
 static struct MR_option MR_trace_all_procedures_opts[] =
 {
-    { "separate",   MR_no_argument,     NULL,   's' },
-    { "uci",        MR_no_argument,     NULL,   'u' },
-    { NULL,         MR_no_argument,     NULL,   0 }
+    { "separate",   MR_no_argument,         NULL,   's' },
+    { "uci",        MR_no_argument,         NULL,   'u' },
+    { "module",     MR_required_argument,   NULL,   'm' },
+    { NULL,         MR_no_argument,         NULL,   0 }
 };
 
 static MR_bool
-MR_trace_options_all_procedures(MR_bool *separate, MR_bool *uci,
+MR_trace_options_all_procedures(MR_bool *separate, MR_bool *uci, char **module,
     char ***words, int *word_count, const char *cat, const char *item)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "su",
+    while ((c = MR_getopt_long(*word_count, *words, "sum:",
         MR_trace_all_procedures_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -7184,6 +7187,10 @@ MR_trace_options_all_procedures(MR_bool *separate, MR_bool *uci,
 
             case 'u':
                 *uci = MR_TRUE;
+                break;
+
+            case 'm':
+                *module = MR_optarg;
                 break;
 
             default:

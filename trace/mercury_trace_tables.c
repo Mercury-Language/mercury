@@ -54,6 +54,10 @@ static  int             MR_module_info_proc_count = 0;
 static  const MR_Module_Layout
                         *MR_search_module_info_by_name(const char *name);
 static  MR_Dlist        *MR_search_module_info_by_nickname(const char *name);
+static  const MR_Module_Layout
+                        *MR_search_module_info_by_unique_name(FILE *fp,
+                            const char *name);
+
 static  void            MR_insert_module_info(const MR_Module_Layout *module);
 static  void            MR_process_matching_procedures_in_module(
                             const MR_Module_Layout *module, MR_Proc_Spec *spec,
@@ -183,6 +187,37 @@ MR_search_module_info_by_nickname(const char *name)
     }
 }
 
+static const MR_Module_Layout *
+MR_search_module_info_by_unique_name(FILE *fp, const char *name)
+{
+    const MR_Module_Layout  *module;
+    const MR_Dlist          *modules;
+    const MR_Dlist          *element_ptr;
+
+    module = MR_search_module_info_by_name(name);
+    if (module == NULL) {
+        modules = MR_search_module_info_by_nickname(name);
+        if (modules == NULL) {
+            fprintf(fp,
+                "There is no debugging info about module `%s'\n", name);
+            return NULL;
+        } else if (MR_dlist_length(modules) != 1) {
+            fprintf(fp, "Module name `%s' is ambiguous.\n", name);
+            fprintf(fp, "The matches are:\n");
+            MR_for_dlist (element_ptr, modules) {
+                module = (const MR_Module_Layout *) MR_dlist_data(element_ptr);
+                fprintf(fp, "%s\n", module->MR_ml_name);
+            }
+
+            return NULL;
+        } else {
+            module = (const MR_Module_Layout *) MR_dlist_first(modules);
+        }
+    }
+
+    return module;
+}
+
 static void
 MR_insert_module_info(const MR_Module_Layout *module)
 {
@@ -265,22 +300,36 @@ MR_process_line_layouts(const MR_Module_File_Layout *file_layout, int line,
 }
 
 void
-MR_dump_module_tables(FILE *fp, MR_bool separate, MR_bool uci)
+MR_dump_module_tables(FILE *fp, MR_bool separate, MR_bool uci,
+    char *module_name)
 {
     int                     i, j;
+    const MR_Module_Layout  *module;
     const MR_Proc_Layout    *proc;
 
-    for (i = 0; i < MR_module_info_next; i++) {
-        for (j = 0; j < MR_module_infos[i]->MR_ml_proc_count; j++) {
-            proc = MR_module_infos[i]->MR_ml_procs[j];
-            if (uci || !MR_PROC_LAYOUT_IS_UCI(proc)) {
-                if (separate) {
-                    MR_print_proc_separate(fp, proc);
-                } else {
-                    MR_print_proc_id(fp, proc);
-                }
+    if (module_name != NULL) {
+        module = MR_search_module_info_by_unique_name(fp, module_name);
+        if (module == NULL) {
+            /* The error message has already been printed */
+            return;
+        }
+    } else {
+        module = NULL;
+    }
 
-                fprintf(fp, "\n");
+    for (i = 0; i < MR_module_info_next; i++) {
+        if (module == NULL || module == MR_module_infos[i]) {
+            for (j = 0; j < MR_module_infos[i]->MR_ml_proc_count; j++) {
+                proc = MR_module_infos[i]->MR_ml_procs[j];
+                if (uci || !MR_PROC_LAYOUT_IS_UCI(proc)) {
+                    if (separate) {
+                        MR_print_proc_separate(fp, proc);
+                    } else {
+                        MR_print_proc_id(fp, proc);
+                    }
+
+                    fprintf(fp, "\n");
+                }
             }
         }
     }
@@ -301,33 +350,17 @@ void
 MR_dump_module_procs(FILE *fp, const char *name)
 {
     const MR_Module_Layout  *module;
-    const MR_Dlist          *modules;
-    const MR_Dlist          *element_ptr;
-    int                     j;
+    int                     i;
 
-    module = MR_search_module_info_by_name(name);
+    module = MR_search_module_info_by_unique_name(fp, name);
     if (module == NULL) {
-        modules = MR_search_module_info_by_nickname(name);
-        if (modules == NULL) {
-            fprintf(fp,
-                "There is no debugging info about module `%s'\n", name);
-            return;
-        } else if (MR_dlist_length(modules) != 1) {
-            fprintf(fp, "Module name `%s' is ambiguous.\n", name);
-            fprintf(fp, "The matches are:\n");
-            MR_for_dlist (element_ptr, modules) {
-                module = (const MR_Module_Layout *) MR_dlist_data(element_ptr);
-                fprintf(fp, "%s\n", module->MR_ml_name);
-            }
-            return;
-        } else {
-            module = (const MR_Module_Layout *) MR_dlist_first(modules);
-        }
+        /* The error message has already been printed */
+        return;
     }
 
     fprintf(fp, "List of procedures in module `%s'\n\n", name);
-    for (j = 0; j < module->MR_ml_proc_count; j++) {
-        MR_print_proc_id_and_nl(fp, module->MR_ml_procs[j]);
+    for (i = 0; i < module->MR_ml_proc_count; i++) {
+        MR_print_proc_id_and_nl(fp, module->MR_ml_procs[i]);
     }
 }
 

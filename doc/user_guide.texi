@@ -3865,9 +3865,13 @@ it also lists all the methods of each type class.
 If the option @samp{-i} or @samp{--print-instance} option is given,
 it also lists all the instances of each type class.
 @sp 1
-@item all_procedures [-su] @var{filename}
+@item all_procedures [-su] [-m @var{modulename}] @var{filename}
 @kindex all_procedures (mdb command)
-Puts a list of all the debuggable procedures in the program
+In the absence of the @samp{-m} or @samp{--module} option,
+puts a list of all the debuggable procedures in the program
+into the named file.
+In the presence of the @samp{-m} or @samp{--module} option,
+puts a list of all the debuggable procedures in the names module
 into the named file.
 @sp 1
 If the @samp{-s} or @samp{--separate} option is given,

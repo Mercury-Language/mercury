@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002, 2004 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -54,7 +54,8 @@ extern	void		MR_process_file_line_layouts(const char *file,
 /*
 ** These functions print (parts of) the module info table.
 **
-** MR_dump_module_tables lists all procedures in all modules.
+** MR_dump_module_tables lists all procedures in all modules, unless
+** module is not NULL, in which case lists only procedures in the named module.
 ** Its output can be very big; it should be used only by developers,
 ** for debugging the debugger. The components of procedure names will be
 ** printed in separate fields if the separate argument is true, while the
@@ -67,7 +68,7 @@ extern	void		MR_process_file_line_layouts(const char *file,
 */
 
 extern	void		MR_dump_module_tables(FILE *fp, MR_bool separate,
-				MR_bool uci);
+				MR_bool uci, char *module);
 
 extern	void		MR_dump_module_list(FILE *fp);
 extern	void		MR_dump_module_procs(FILE *fp, const char *name);
