@@ -52,11 +52,17 @@
 %		any duplicates.
 %		L1 and L2 must be sorted.
 
+:- pred list__remove_adjacent_dups(list(T), list(T)).
+:- mode list__remove_adjacent_dups(in, out) is det.
+%	list__remove_adjacent_dups(L0, L) :
+%		L is the result of replacing every sequence of duplicate
+%		elements in L0 with a single such element.
+
 :- pred list__remove_dups(list(T), list(T)).
 :- mode list__remove_dups(in, out) is det.
 %	list__remove_dups(L0, L) :
-%		L is the result of replacing every sequence of duplicate
-%		elements in L0 with a single such element.
+%		L is the result of deleting the second and subsequent
+%		occurrences of every element that occurs twice in L.
 
 :- pred list__member(T, list(T)).
 :- mode list__member(in, in) is semidet.
@@ -327,7 +333,7 @@ list__delete([X | Xs], Y, [X | L]) :-
 
 list__sort(L0, L) :-
 	list__qsort(L0, [], L1),
-	list__remove_dups(L1, L).
+	list__remove_adjacent_dups(L1, L).
 
 :- pred list__qsort(list(T), list(T), list(T)).
 :- mode list__qsort(in, in, out) is det.
@@ -371,25 +377,21 @@ list__remove_dups_2([X|Xs], SoFar0, Zs) :-
 		Zs = [X|Ys]
 	).
 
-/*
-	% This implementation of list__remove_dups
-	% only works for sorted lists.
-list__remove_dups([], []).
-list__remove_dups([X|Xs], L) :-
-	list__remove_dups_2(Xs, X, L).
+list__remove_adjacent_dups([], []).
+list__remove_adjacent_dups([X|Xs], L) :-
+	list__remove_adjacent_dups_2(Xs, X, L).
 
-:- pred list__remove_dups_2(list(T), T, list(T)).
-:- mode list__remove_dups_2(in, in, out) is det.
+:- pred list__remove_adjacent_dups_2(list(T), T, list(T)).
+:- mode list__remove_adjacent_dups_2(in, in, out) is det.
 
-list__remove_dups_2([], X, [X]).
-list__remove_dups_2([X1|Xs], X0, L) :-
+list__remove_adjacent_dups_2([], X, [X]).
+list__remove_adjacent_dups_2([X1|Xs], X0, L) :-
 	(X0 = X1 ->
-		list__remove_dups_2(Xs, X1, L)
+		list__remove_adjacent_dups_2(Xs, X1, L)
 	;
 		L = [X0 | L0],
-		list__remove_dups_2(Xs, X1, L0)
+		list__remove_adjacent_dups_2(Xs, X1, L0)
 	).
-*/
 
 list__zip([], Bs, Bs).
 list__zip([A|As], Bs, [A|Cs]) :-
