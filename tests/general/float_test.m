@@ -20,13 +20,12 @@ main -->
 	test(3.0, 4.0),
 	test(41.0, -3.0),
 	test_constants,
-	% test_math_constants,
-	% test_rounding(2.7),
-	% test_rounding(-3.6),
-	% test_power(2.2),
-	% test_trig(0.5),
-	% test_inv_trig(0.6).
-	[].
+	test_math_constants,
+	test_rounding(2.7),
+	test_rounding(-3.6),
+	test_power(2.2),
+	test_trig(0.5),
+	test_inv_trig(0.6).
 
 :- pred test(float, float, io__state, io__state).
 :- mode test(in, in, di, uo) is det.
@@ -37,8 +36,7 @@ test(X, Y) -->
 		Times = X * Y,
 		Minus = X - Y,
 		Divide = X / Y,
-		% math__pow(X, Y, Pow)
-		true
+		Pow = math__pow(X, Y)
 	},
 	write_message("X: ", X),
 	write_message("Y: ", Y),
@@ -46,8 +44,7 @@ test(X, Y) -->
 	write_message("X * Y: ", Times),
 	write_message("X - Y: ", Minus),
 	write_message("X / Y: ", Divide),
-	% write_message("X ^ Y: ", Pow).
-	[].
+	write_message("X ^ Y: ", Pow).
 
 :- pred write_message(string, float, io__state, io__state).
 :- mode write_message(in, in, di, uo) is det.
