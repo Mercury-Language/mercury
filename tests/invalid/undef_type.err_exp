@@ -1,4 +1,5 @@
-undef_type.m:  1: Warning: interface for module `undef_type' does not export anything.
+undef_type.m:001: Warning: interface for module `undef_type' does not export
+undef_type.m:001:   anything.
 undef_type.m:003: In definition of type `undef_type.t1'/0:
 undef_type.m:003:   error: undefined type `undef1'/0.
 undef_type.m:010: In definition of predicate `undef_type.q'/1:

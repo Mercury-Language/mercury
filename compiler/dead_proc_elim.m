@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,12 +67,13 @@
 :- implementation.
 
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__passes_aux.
-:- import_module hlds__error_util.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__llds.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_util.
 
 :- import_module int, string, list, set, queue, bool, require.
@@ -717,7 +718,7 @@ dead_proc_elim__eliminate_proc(Pass, PredId, Keep, WarnForThisProc, ElimInfo,
 :- mode warn_dead_proc(in, in, in, in, di, uo) is det.
 
 warn_dead_proc(PredId, ProcId, Context, ModuleInfo, !IO) :-
-	error_util__describe_one_proc_name(ModuleInfo, proc(PredId, ProcId),
+	describe_one_proc_name(ModuleInfo, proc(PredId, ProcId),
 		ProcName),
 	Components = [words("Warning:"), fixed(ProcName),
 			words("is never called.")],

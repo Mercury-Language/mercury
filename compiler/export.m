@@ -72,16 +72,16 @@
 :- implementation.
 
 :- import_module backend_libs__code_model.
+:- import_module backend_libs__c_util.
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__proc_label.
-:- import_module backend_libs__c_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__arg_info.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 
 :- import_module term, varset.

@@ -10,36 +10,34 @@
 % This module contains code that can be helpful in the formatting of
 % error messages.
 %
+% Given a context, a starting indentation level and a list of words,
+% print an error message that looks like this:
+%
+% module.m:10: first line of error message blah blah blah
+% module.m:10:   second line of error message blah blah blah
+% module.m:10:   third line of error message blah blah blah
+%
+% The words will be packed into lines as tightly as possible,
+% with spaces between each pair of words, subject to the constraints
+% that every line starts with a context, followed by Indent+1 spaces
+% on the first line and Indent+3 spaces on later lines, and that every
+% line contains at most 79 characters (unless a long single word
+% forces the line over this limit).
+%
+% The caller supplies the list of words to be printed in the form
+% of a list of error message components. Each component may specify
+% a string to printed exactly as it is, or it may specify a string
+% containing a list of words, which may be broken at white space.
+%
 %-----------------------------------------------------------------------------%
 
-:- module hlds__error_util.
+:- module parse_tree__error_util.
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module assoc_list, char, io, list, std_util.
-
-	% Given a context, a starting indentation level and a list of words,
-	% print an error message that looks like this:
-	%
-	% module.m:10: first line of error message blah blah blah
-	% module.m:10:   second line of error message blah blah blah
-	% module.m:10:   third line of error message blah blah blah
-	%
-	% The words will be packed into lines as tightly as possible,
-	% with spaces between each pair of words, subject to the constraints
-	% that every line starts with a context, followed by Indent+1 spaces
-	% on the first line and Indent+3 spaces on later lines, and that every
-	% line contains at most 79 characters (unless a long single word
-	% forces the line over this limit).
-	%
-	% The caller supplies the list of words to be printed in the form
-	% of a list of error message components. Each component may specify
-	% a string to printed exactly as it is, or it may specify a string
-	% containing a list of words, which may be broken at white space.
+:- import_module char, io, list, std_util.
 
 :- type format_component
 	--->	fixed(string)	% This string should appear in the output
@@ -51,18 +49,22 @@
 				% white space may be rearranged and line
 				% breaks may be inserted.
 
+	;	sym_name(sym_name)
+				% The output should contain the string form of
+				% the sym_name, surrounded by `' quotes.
+
 	;	nl.		% Insert a line break if there has been text
 				% output since the last line break.
 
 	% Convert a list of strings into a list of format_components,
 	% suitable for displaying as an error message.
-:- pred error_util__list_to_pieces(list(string)::in,
+:- pred list_to_pieces(list(string)::in,
 	list(format_component)::out) is det.
 
 	% Convert a list of lists of format_components into a list of
 	% format_components separated by commas, with the last two
 	% elements separated by `and'.
-:- func error_util__component_lists_to_pieces(list(list(format_component))) =
+:- func component_lists_to_pieces(list(list(format_component))) =
 	list(format_component).
 
 	% Display the given error message, without a context and with standard
@@ -83,43 +85,15 @@
 :- pred write_error_pieces_maybe_with_context(maybe(prog_context)::in, int::in,
 	list(format_component)::in, io::di, io::uo) is det.
 
-	% Report a warning, and set the exit status to error if the
-	% --halt-at-warn option is set. This predicate does the same thing as
-	% prog_io_util__report_warning, except that it does a nicer job of
-	% displaying the warning message.
-:- pred report_warning(prog_context::in, int::in, list(format_component)::in,
-	io::di, io::uo) is det.
+:- func describe_sym_name(sym_name) = string.
 
-	% Predicates to convert a predicate names to strings.
+:- func describe_sym_name_and_arity(sym_name_and_arity) = string.
 
-:- pred error_util__describe_one_pred_name(module_info::in, pred_id::in,
-	string::out) is det.
-
-:- pred error_util__describe_several_pred_names(module_info::in,
-	list(pred_id)::in, list(format_component)::out) is det.
-
-:- pred error_util__describe_one_proc_name(module_info::in, pred_proc_id::in,
-	string::out) is det.
-
-:- pred error_util__describe_several_proc_names(module_info::in,
-	list(pred_proc_id)::in, list(format_component)::out) is det.
-
-:- pred error_util__describe_one_call_site(module_info::in,
-	pair(pred_proc_id, prog_context)::in, string::out) is det.
-
-:- pred error_util__describe_several_call_sites(module_info::in,
-	assoc_list(pred_proc_id, prog_context)::in,
-	list(format_component)::out) is det.
-
-:- func error_util__describe_sym_name(sym_name) = string.
-
-:- func error_util__describe_sym_name_and_arity(sym_name_and_arity) = string.
-
-:- func error_util__pred_or_func_to_string(pred_or_func) = string.
+:- func pred_or_func_to_string(pred_or_func) = string.
 
 	% Append a punctuation character to a message, avoiding unwanted
 	% line splitting between the message and the punctuation.
-:- func error_util__append_punctuation(list(format_component), char) =
+:- func append_punctuation(list(format_component), char) =
 	list(format_component).
 
 	% report_error_num_args(MaybePredOrFunc, Arity, CorrectArities).
@@ -147,6 +121,24 @@
 	%
 :- pred unexpected(string::in, string::in) is erroneous.
 
+	% Record the fact that a warning has been issued; set the exit status
+	% to error if the --halt-at-warn option is set.
+:- pred record_warning(io::di, io::uo) is det.
+
+	% Report a warning, and set the exit status to error if the
+	% --halt-at-warn option is set.
+:- pred report_warning(string::in, io::di, io::uo) is det.
+
+	% Report a warning to the specified stream, and set the exit status
+	% to error if the --halt-at-warn option is set.
+:- pred report_warning(io__output_stream::in, string::in, io::di, io::uo)
+	is det.
+
+	% Report a warning, and set the exit status to error if the
+	% --halt-at-warn option is set.
+:- pred report_warning(prog_context::in, int::in, list(format_component)::in,
+	io::di, io::uo) is det.
+
 :- implementation.
 
 :- import_module parse_tree__prog_out.
@@ -156,33 +148,24 @@
 
 :- import_module bool, io, list, term, char, string, int, require.
 
-error_util__list_to_pieces([], []).
-error_util__list_to_pieces([Elem], [words(Elem)]).
-error_util__list_to_pieces([Elem1, Elem2],
+list_to_pieces([], []).
+list_to_pieces([Elem], [words(Elem)]).
+list_to_pieces([Elem1, Elem2],
 		[fixed(Elem1), words("and"), fixed(Elem2)]).
-error_util__list_to_pieces([Elem1, Elem2, Elem3 | Elems], Pieces) :-
+list_to_pieces([Elem1, Elem2, Elem3 | Elems], Pieces) :-
 	string__append(Elem1, ",", Piece1),
-	error_util__list_to_pieces([Elem2, Elem3 | Elems], Pieces1),
+	list_to_pieces([Elem2, Elem3 | Elems], Pieces1),
 	Pieces = [fixed(Piece1) | Pieces1].
 
-error_util__component_lists_to_pieces([]) = [].
-error_util__component_lists_to_pieces([Components]) = Components.
-error_util__component_lists_to_pieces([Components1, Components2]) =
+component_lists_to_pieces([]) = [].
+component_lists_to_pieces([Components]) = Components.
+component_lists_to_pieces([Components1, Components2]) =
 		list__condense([Components1, [words("and")], Components2]).
-error_util__component_lists_to_pieces(
+component_lists_to_pieces(
 		[Components1, Components2, Components3 | Components]) =
 	list__append(append_punctuation(Components1, ','),
-		error_util__component_lists_to_pieces(
+		component_lists_to_pieces(
 			[Components2, Components3 | Components])).
-
-report_warning(Context, Indent, Components, !IO) :-
-	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
-	( HaltAtWarn = yes ->
-		io__set_exit_status(1, !IO)
-	;
-		true
-	),
-	write_error_pieces(Context, Indent, Components, !IO).
 
 write_error_pieces_plain(Components, !IO) :-
 	write_error_pieces_maybe_with_context(yes, no, 0, Components, !IO).
@@ -311,12 +294,21 @@ convert_components_to_word_list([Component | Components], Words0,
 		break_into_words(WordsStr, Words0, Words1),
 		Paras1 = Paras0
 	;
+		Component = sym_name(SymName),
+		Words1 = [sym_name_to_word(SymName) | Words0],
+		Paras1 = Paras0
+	;
 		Component = nl,
 		list__reverse(Words0, Words),
 		Paras1 = [Words | Paras0],
 		Words1 = []
 	),
 	convert_components_to_word_list(Components, Words1, Paras1, Paras).
+
+:- func sym_name_to_word(sym_name) = string.
+
+sym_name_to_word(SymName) = "`" ++ SymStr ++ "'" :-
+	sym_name_to_string(SymName, SymStr).
 
 :- pred break_into_words(string::in, list(string)::in, list(string)::out)
 	is det.
@@ -438,86 +430,22 @@ get_later_words([Word | Words], OldLen, MaxLen, Line0, Line, RestWords) :-
 
 %-----------------------------------------------------------------------------%
 
-	% The code of this predicate duplicates the functionality of
-	% hlds_out__write_pred_id. Changes here should be made there as well.
-
-error_util__describe_one_pred_name(Module, PredId, Piece) :-
-	module_info_pred_info(Module, PredId, PredInfo),
-	ModuleName = pred_info_module(PredInfo),
-	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
-	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
-	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	PredOrFuncPart = pred_or_func_to_string(PredOrFunc),
-	adjust_func_arity(PredOrFunc, OrigArity, Arity),
-	(
-		pred_info_get_goal_type(PredInfo, promise(PromiseType))
-	->
-		Piece = "`" ++ promise_to_string(PromiseType) ++ "' declaration"
-	;
-		string__int_to_string(OrigArity, ArityPart),
-		string__append_list([
-			PredOrFuncPart,
-			" `",
-			ModuleNameString,
-			".",
-			PredName,
-			"/",
-			ArityPart,
-			"'"], Piece)
-	).
-
-error_util__describe_several_pred_names(Module, PredId, Pieces) :-
-	list__map(error_util__describe_one_pred_name(Module), PredId, Pieces0),
-	error_util__list_to_pieces(Pieces0, Pieces).
-
-error_util__describe_one_proc_name(Module, proc(PredId, ProcId), Piece) :-
-	error_util__describe_one_pred_name(Module, PredId, PredPiece),
-	proc_id_to_int(ProcId, ProcIdInt),
-	string__int_to_string(ProcIdInt, ProcIdPart),
-	string__append_list([
-		PredPiece,
-		" mode ",
-		ProcIdPart
-		], Piece).
-
-error_util__describe_several_proc_names(Module, PPIds, Pieces) :-
-	list__map(error_util__describe_one_proc_name(Module), PPIds, Pieces0),
-	error_util__list_to_pieces(Pieces0, Pieces).
-
-error_util__describe_one_call_site(Module, PPId - Context, Piece) :-
-	error_util__describe_one_proc_name(Module, PPId, ProcName),
-	term__context_file(Context, FileName),
-	term__context_line(Context, LineNumber),
-	string__int_to_string(LineNumber, LineNumberPart),
-	string__append_list([
-		ProcName,
-		" at ",
-		FileName,
-		":",
-		LineNumberPart
-		], Piece).
-
-error_util__describe_several_call_sites(Module, Sites, Pieces) :-
-	list__map(error_util__describe_one_call_site(Module), Sites, Pieces0),
-	error_util__list_to_pieces(Pieces0, Pieces).
-
-error_util__describe_sym_name_and_arity(SymName / Arity) =
+describe_sym_name_and_arity(SymName / Arity) =
 		string__append_list(["`", SymNameString,
 			"/", string__int_to_string(Arity), "'"]) :-
 	sym_name_to_string(SymName, SymNameString).
 
-error_util__describe_sym_name(SymName) =
+describe_sym_name(SymName) =
 		string__append_list(["`", SymNameString, "'"]) :-
 	sym_name_to_string(SymName, SymNameString).
 
-error_util__pred_or_func_to_string(predicate) = "predicate".
-error_util__pred_or_func_to_string(function) = "function".
+pred_or_func_to_string(predicate) = "predicate".
+pred_or_func_to_string(function) = "function".
 
-error_util__append_punctuation([], _) = _ :-
-	error("error_util__append_punctuation: " ++
+append_punctuation([], _) = _ :-
+	error("append_punctuation: " ++
 		"appending punctuation after nothing").
-error_util__append_punctuation([Piece0], Punc) = [Piece] :-
+append_punctuation([Piece0], Punc) = [Piece] :-
 	% Avoid unwanted line splitting between the message
 	% and the punctuation.
 	(
@@ -527,12 +455,16 @@ error_util__append_punctuation([Piece0], Punc) = [Piece] :-
 		Piece0 = fixed(String),
 		Piece = fixed(string__append(String, char_to_string(Punc)))
 	;
+		Piece0 = sym_name(SymName),
+		String = sym_name_to_word(SymName),
+		Piece = fixed(string__append(String, char_to_string(Punc)))
+	;
 		Piece0 = nl,
-		error("error_util__append_punctutation: " ++
+		error("append_punctutation: " ++
 			"appending punctuation after newline")
 	).
-error_util__append_punctuation([Piece1, Piece2 | Pieces], Punc) =
-	[Piece1 | error_util__append_punctuation([Piece2 | Pieces], Punc)].
+append_punctuation([Piece1, Piece2 | Pieces], Punc) =
+	[Piece1 | append_punctuation([Piece2 | Pieces], Punc)].
 
 %-----------------------------------------------------------------------------%
 
@@ -581,3 +513,23 @@ unexpected(Module, What) :-
 	string__format("%s: Unexpected: %s",
 		[s(Module), s(What)], ErrorMessage),
 	error(ErrorMessage).
+
+record_warning(!IO) :-
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+	( HaltAtWarn = yes ->
+		io__set_exit_status(1, !IO)
+	;
+		true
+	).
+
+report_warning(Message, !IO) :-
+	record_warning(!IO),
+	io__write_string(Message, !IO).
+
+report_warning(Stream, Message, !IO) :-
+	record_warning(!IO),
+	io__write_string(Stream, Message, !IO).
+
+report_warning(Context, Indent, Components, !IO) :-
+	record_warning(!IO),
+	write_error_pieces(Context, Indent, Components, !IO).

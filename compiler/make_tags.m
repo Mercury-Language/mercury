@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-2003 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,9 +81,9 @@
 :- implementation.
 
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_util.
 
 :- import_module int, map, std_util, require.

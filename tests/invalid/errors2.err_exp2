@@ -1,4 +1,5 @@
-errors2.m:  1: Warning: interface for module `errors2' does not export anything.
+errors2.m:001: Warning: interface for module `errors2' does not export
+errors2.m:001:   anything.
 errors2.m:009: Error: clause for predicate `errors2.bind_type_param/1'
 errors2.m:009:   without preceding `pred' declaration.
 errors2.m:052: In clause for predicate `errors2.type_error_4/0':

@@ -1712,9 +1712,9 @@ XXX Full exception handling support is not yet implemented.
 :- implementation.
 
 :- import_module backend_libs__foreign.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
 :- import_module libs__globals.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 
 :- import_module int, term, string, require.

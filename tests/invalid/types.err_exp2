@@ -1,4 +1,4 @@
-types.m:  1: Warning: interface for module `types' does not export anything.
+types.m:001: Warning: interface for module `types' does not export anything.
 types.m:003: Error: constructor `types.a/0' for type `types.t/0' multiply defined.
 types.m:003: Error: constructor `types.f/1' for type `types.t/0' multiply defined.
 types.m:017: Error: clause for predicate `types.r/0'

@@ -124,11 +124,11 @@
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
-:- import_module hlds__error_util.
-:- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
 :- import_module hlds__instmap.
 :- import_module hlds__quantification.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.

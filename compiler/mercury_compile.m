@@ -134,7 +134,6 @@
 :- import_module backend_libs__compile_target_code.
 :- import_module backend_libs__name_mangle.
 :- import_module check_hlds__goal_path.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_out.
@@ -149,6 +148,7 @@
 :- import_module make.
 :- import_module make__options_file.
 :- import_module make__util.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,6 +191,7 @@
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_data.
@@ -999,14 +1000,14 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) -->
 	io__state::di, io__state::uo) is det.
 
 warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
-		DeclPurity, AcutalPurity) -->
+		DeclPurity, ActualPurity) -->
 	{ pred_info_context(PredInfo, Context) },
 	write_context_and_pred_id(ModuleInfo, PredInfo, PredId),
 	prog_out__write_context(Context),
 	report_warning("  warning: declared `"),
 	write_purity(DeclPurity),
 	io__write_string("' but actually "),
-	write_purity(AcutalPurity),
+	write_purity(ActualPurity),
 	io__write_string(".\n").
 
 :- pred warn_unnecessary_promise_pure(module_info::in, pred_info::in,

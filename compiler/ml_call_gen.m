@@ -125,12 +125,12 @@
 :- import_module backend_libs__builtin_ops.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ml_backend__ml_closure_gen.
+:- import_module parse_tree__error_util.
 
 :- import_module bool, int, string, std_util, term, varset, require, map.
 

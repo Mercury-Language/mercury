@@ -1,4 +1,5 @@
-prog_io_erroneous.m:  1: Warning: interface for module `prog_io_erroneous' does not export anything.
+prog_io_erroneous.m:001: Warning: interface for module `prog_io_erroneous' does
+prog_io_erroneous.m:001:   not export anything.
 prog_io_erroneous.m:012: Error: no clauses for
 prog_io_erroneous.m:012:   predicate `prog_io_erroneous.q/2'.
 For more information, try recompiling with `-E'.

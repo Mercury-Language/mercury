@@ -1,4 +1,5 @@
-funcs_as_preds.m:  1: Warning: interface for module `funcs_as_preds' does not export anything.
+funcs_as_preds.m:001: Warning: interface for module `funcs_as_preds' does not
+funcs_as_preds.m:001:   export anything.
 funcs_as_preds.m:017: Error: clause for function `funcs_as_preds.null/1'
 funcs_as_preds.m:017:   without preceding `func' declaration.
 funcs_as_preds.m:021: Error: clause for function `funcs_as_preds.car/1'

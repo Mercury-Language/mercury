@@ -79,12 +79,12 @@
 
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ml_backend__ml_code_util.
 :- import_module ml_backend__ml_util.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,6 +79,7 @@
 
 :- pred convert_trace_suppress(string::in, trace_suppress_items::out)
 	is semidet.
+:- func default_trace_suppress = trace_suppress_items.
 
 	% These functions check for various properties of the global
 	% trace level.
@@ -283,6 +284,8 @@ convert_trace_suppress(SuppressString, SuppressItemSet) :-
 :- pred char_is_comma(char::in) is semidet.
 
 char_is_comma(',').
+
+default_trace_suppress = set__init.
 
 :- func convert_port_name(string) = trace_port is semidet.
 

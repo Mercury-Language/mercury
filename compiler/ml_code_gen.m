@@ -784,7 +784,6 @@
 :- import_module backend_libs__foreign. % XXX needed for pragma foreign code
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_pred.
@@ -796,6 +795,7 @@
 :- import_module ml_backend__ml_switch_gen.
 :- import_module ml_backend__ml_type_gen.
 :- import_module ml_backend__ml_unify_gen.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_util.
 

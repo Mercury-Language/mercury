@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -47,7 +47,6 @@
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__name_mangle.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
@@ -59,6 +58,7 @@
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__trace.
+:- import_module parse_tree__error_util.
 
 :- import_module bool, string, int, assoc_list, set, map, require, term.
 

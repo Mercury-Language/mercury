@@ -1,7 +1,7 @@
 errors.m:010: Warning: module should start with a `:- module' declaration.
 errors.m:060: Error: free type parameter in RHS of type definition: f(_1).
 errors.m:061: Error: free type parameter in RHS of type definition: f(_1).
-errors.m:  1: Warning: interface for module `errors' does not export anything.
+errors.m:001: Warning: interface for module `errors' does not export anything.
 errors.m:001: Warning: module `int' is imported using both
 errors.m:001:   `:- import_module' and `:- use_module' declarations.
 errors.m:051: In definition of type `errors.du_type_which_references_undefined_type'/0:

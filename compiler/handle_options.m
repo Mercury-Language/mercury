@@ -24,36 +24,33 @@
 :- import_module list, bool, getopt, std_util, io.
 
 	% handle_options(Args, MaybeError, OptionArgs, NonOptionArgs, Link).
-:- pred handle_options(list(string), maybe(string), list(string),
-		list(string), bool, io__state, io__state).
-:- mode handle_options(in, out, out, out, out, di, uo) is det.
+:- pred handle_options(list(string)::in, maybe(string)::out, list(string)::out,
+	list(string)::out, bool::out, io::di, io::uo) is det.
 
 	% process_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable).
 	%
 	% Process the options, but don't do any post-processing or
 	% modify the globals. This is mainly useful for separating
 	% the list of arguments into option and non-option arguments.
-:- pred process_options(list(string), list(string), list(string),
-			maybe_option_table(option)).
-:- mode process_options(in, out, out, out) is det.
+:- pred process_options(list(string)::in, list(string)::out, list(string)::out,
+	maybe_option_table(option)::out) is det.
 
 	% usage_error(Descr, Message)
 	%
 	% Display the description of the error location, the error message
 	% and then a usage message.
-:- pred usage_error(string::in, string::in,
-		io__state::di, io__state::uo) is det.
+:- pred usage_error(string::in, string::in, io::di, io::uo) is det.
 
 	% usage_error(Message)
 	%
 	% Display error message and then usage message
-:- pred usage_error(string::in, io__state::di, io__state::uo) is det.
+:- pred usage_error(string::in, io::di, io::uo) is det.
 
 	% Display usage message.
-:- pred usage(io__state::di, io__state::uo) is det.
+:- pred usage(io::di, io::uo) is det.
 
 	% Display long usage message for help
-:- pred long_usage(io__state::di, io__state::uo) is det.
+:- pred long_usage(io::di, io::uo) is det.
 
 	% Given the current set of options, figure out
 	% which grade to use.
@@ -74,6 +71,7 @@
 
 :- import_module libs__trace_params.
 :- import_module parse_tree.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_io_util.
 
 :- import_module char, dir, int, string, map, set, library.
@@ -92,13 +90,13 @@ handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
 			GenerateDependencies),
 		globals__io_lookup_bool_option(make_interface, MakeInterface),
 		globals__io_lookup_bool_option(make_private_interface,
-						MakePrivateInterface),
+			MakePrivateInterface),
 		globals__io_lookup_bool_option(make_short_interface,
-						MakeShortInterface),
+			MakeShortInterface),
 		globals__io_lookup_bool_option(make_optimization_interface,
-						MakeOptimizationInt),
+			MakeOptimizationInt),
 		globals__io_lookup_bool_option(make_transitive_opt_interface,
-						MakeTransOptInt),
+			MakeTransOptInt),
 		globals__io_lookup_bool_option(convert_to_mercury,
 			ConvertToMercury),
 		globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
@@ -131,18 +129,16 @@ handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
 process_options(Args0, OptionArgs, Args, Result) :-
 	OptionOps = option_ops(short_option, long_option,
 		option_defaults, special_handler),
-	getopt__process_options(OptionOps, Args0,
-		OptionArgs, Args, Result).
+	getopt__process_options(OptionOps, Args0, OptionArgs, Args, Result).
 
-:- pred dump_arguments(list(string), io__state, io__state).
-:- mode dump_arguments(in, di, uo) is det.
+:- pred dump_arguments(list(string)::in, io::di, io::uo) is det.
 
-dump_arguments([]) --> [].
-dump_arguments([Arg | Args]) -->
-	io__write_string("<"),
-	io__write_string(Arg),
-	io__write_string(">\n"),
-	dump_arguments(Args).
+dump_arguments([], !IO).
+dump_arguments([Arg | Args], !IO) :-
+	io__write_string("<", !IO),
+	io__write_string(Arg, !IO),
+	io__write_string(">\n", !IO),
+	dump_arguments(Args, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -150,117 +146,151 @@ dump_arguments([Arg | Args]) -->
 % and process implications among the options (i.e. situations where setting
 % one option implies setting/unsetting another one).
 
-:- pred postprocess_options(maybe_option_table(option), maybe(string),
-	io__state, io__state).
-:- mode postprocess_options(in, out, di, uo) is det.
+:- pred postprocess_options(maybe_option_table(option)::in, maybe(string)::out,
+	io::di, io::uo) is det.
 
-postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
-postprocess_options(ok(OptionTable), Error) -->
-    { map__lookup(OptionTable, target, Target0) },
-    (
-        { Target0 = string(TargetStr) },
-        { convert_target(TargetStr, Target) }
-    ->
-        { map__lookup(OptionTable, gc, GC_Method0) },
-        (
-            { GC_Method0 = string(GC_MethodStr) },
-            { convert_gc_method(GC_MethodStr, GC_Method) }
-        ->
-            { map__lookup(OptionTable, tags, TagsMethod0) },
-            (
-                { TagsMethod0 = string(TagsMethodStr) },
-                { convert_tags_method(TagsMethodStr, TagsMethod) }
-            ->
-                { map__lookup(OptionTable, fact_table_hash_percent_full,
-                    PercentFull) },
-                (
-                    { PercentFull = int(Percent) },
-                    { Percent >= 1 },
-                    { Percent =< 100 }
-                ->
-                    { map__lookup(OptionTable, termination_norm,
-                        TermNorm0) },
-                    (
-                        { TermNorm0 = string(TermNormStr) },
-                        { convert_termination_norm(TermNormStr, TermNorm) }
-                    ->
-                        { map__lookup(OptionTable, trace, Trace) },
-                        { map__lookup(OptionTable, require_tracing,
-                            RequireTracingOpt) },
-                        { map__lookup(OptionTable, decl_debug,
-                            DeclDebugOpt) },
-                        (
-                            { Trace = string(TraceStr) },
-                            { RequireTracingOpt = bool(RequireTracing) },
-                            { DeclDebugOpt = bool(DeclDebug) },
-                            { convert_trace_level(TraceStr, RequireTracing,
-                                DeclDebug, MaybeTraceLevel) }
-                        ->
-                            (
-                                { MaybeTraceLevel = yes(TraceLevel) },
-                                { map__lookup(OptionTable, suppress_trace,
-                                    Suppress) },
-                                (
-                                    { Suppress = string(SuppressStr) },
-                                    { convert_trace_suppress(SuppressStr,
-                                        TraceSuppress) }
-                                ->
-                                    { map__lookup(OptionTable, dump_hlds_alias,
-                                        DumpAliasOption) },
-                                    (
-                                        { DumpAliasOption = string(DumpAlias) },
-                                        { DumpAlias = "" }
-                                    ->
-                                        postprocess_options_2(OptionTable,
-                                            Target, GC_Method, TagsMethod,
-                                            TermNorm, TraceLevel,
-                                            TraceSuppress, Error)
-                                    ;
-                                        { DumpAliasOption = string(DumpAlias) },
-                                        { convert_dump_alias(DumpAlias,
-                                            DumpOptions) }
-                                    ->
-                                        { map__set(OptionTable,
-                                            dump_hlds_options,
-                                            string(DumpOptions),
-                                            NewOptionTable) },
-                                        postprocess_options_2(NewOptionTable,
-                                            Target, GC_Method, TagsMethod,
-                                            TermNorm, TraceLevel,
-                                            TraceSuppress, Error)
-                                    ;
-                                        { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
-                                    )
-                                ;
-                                    { Error = yes("Invalid argument to option `--suppress-trace'.") }
-                                )
-                            ;
-                                { MaybeTraceLevel = no },
-                                { Error = yes("Specified trace level is not compatible with grade") }
-                            )
-                        ;
-                            { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', `decl', `rep' or `default').") }
-                        )
-                    ;
-                        { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
-                    )
-                ;
-                    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
-                )
-            ;
-                { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
-            )
-        ;
-            { Error = yes("Invalid GC option (must be `none', `conservative', `boehm', `mps', `accurate', or `automatic')") }
-	)
-    ;
-        { Error = yes("Invalid target option (must be `c', `asm', `il', or `java')") }
-    ).
+postprocess_options(error(ErrorMessage), yes(ErrorMessage), !IO).
+postprocess_options(ok(OptionTable0), MaybeError, !IO) :-
+	check_option_values(OptionTable0, OptionTable, Target, GC_Method,
+		TagsMethod, TermNorm, TraceLevel, TraceSuppress, [], Errors),
+	( Errors = [] ->
+		postprocess_options_2(OptionTable, Target, GC_Method,
+			TagsMethod, TermNorm, TraceLevel, TraceSuppress,
+			MaybeError, !IO)
+	;
+		Error = string__join_list("\n", Errors),
+		MaybeError = yes(Error)
+	).
+
+:- pred check_option_values(option_table::in, option_table::out,
+	compilation_target::out, gc_method::out, tags_method::out,
+	termination_norm::out, trace_level::out, trace_suppress_items::out,
+	list(string)::in, list(string)::out) is det.
+
+check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
+		TermNorm, TraceLevel, TraceSuppress, !Errors) :-
+	map__lookup(OptionTable0, target, Target0),
+	(
+		Target0 = string(TargetStr),
+		convert_target(TargetStr, TargetPrime)
+	->
+		Target = TargetPrime
+	;
+		Target = c,		% dummy
+		add_error("Invalid target option " ++
+			"(must be `c', `asm', `il', or `java')", !Errors)
+	),
+	map__lookup(OptionTable0, gc, GC_Method0),
+	(
+		GC_Method0 = string(GC_MethodStr),
+		convert_gc_method(GC_MethodStr, GC_MethodPrime)
+	->
+		GC_Method = GC_MethodPrime
+	;
+		GC_Method = none,	% dummy
+		add_error("Invalid GC option (must be `none', " ++
+			"`conservative', `boehm', `mps', `accurate', " ++
+			"or `automatic')", !Errors)
+	),
+	map__lookup(OptionTable0, tags, TagsMethod0),
+	(
+		TagsMethod0 = string(TagsMethodStr),
+		convert_tags_method(TagsMethodStr, TagsMethodPrime)
+	->
+		TagsMethod = TagsMethodPrime
+	;
+		TagsMethod = none,	% dummy
+		add_error("Invalid tags option " ++
+			"(must be `none', `low' or `high')", !Errors)
+	),
+	map__lookup(OptionTable0, fact_table_hash_percent_full, PercentFull),
+	(
+		PercentFull = int(Percent),
+		Percent >= 1,
+		Percent =< 100
+	->
+		true
+	;
+		add_error("Invalid argument to option " ++
+			"`--fact-table-hash-percent-full'\n\t" ++
+			"(must be an integer between 1 and 100)", !Errors)
+	),
+	map__lookup(OptionTable0, termination_norm, TermNorm0),
+	(
+		TermNorm0 = string(TermNormStr),
+		convert_termination_norm(TermNormStr, TermNormPrime)
+	->
+		TermNorm = TermNormPrime
+	;
+		TermNorm = simple,	% dummy
+		add_error("Invalid argument to option " ++
+			"`--termination-norm'\n\t(must be " ++
+			"`simple', `total' or  `num-data-elems').", !Errors)
+	),
+	map__lookup(OptionTable0, trace, Trace),
+	map__lookup(OptionTable0, require_tracing, RequireTracingOpt),
+	map__lookup(OptionTable0, decl_debug, DeclDebugOpt),
+	(
+		Trace = string(TraceStr),
+		RequireTracingOpt = bool(RequireTracing),
+		DeclDebugOpt = bool(DeclDebug),
+		convert_trace_level(TraceStr, RequireTracing, DeclDebug,
+			MaybeTraceLevel)
+	->
+		(
+			MaybeTraceLevel = yes(TraceLevel)
+		;
+			MaybeTraceLevel = no,
+			TraceLevel = trace_level_none,	% dummy
+			add_error("Specified trace level is not " ++
+				"compatible with grade", !Errors)
+		)
+	;
+		TraceLevel = trace_level_none,	% dummy
+		add_error("Invalid argument to option `--trace'\n\t" ++
+			"(must be `minimum', `shallow', `deep', `decl', " ++
+			"`rep' or `default').", !Errors)
+	),
+	map__lookup(OptionTable0, suppress_trace, Suppress),
+	(
+		Suppress = string(SuppressStr),
+		convert_trace_suppress(SuppressStr, TraceSuppressPrime)
+	->
+		TraceSuppress = TraceSuppressPrime
+	;
+		TraceSuppress = default_trace_suppress,	% dummy
+		add_error("Invalid argument to option `--suppress-trace'.",
+			!Errors)
+	),
+	map__lookup(OptionTable0, dump_hlds_alias, DumpAliasOption),
+	(
+		DumpAliasOption = string(DumpAlias),
+		DumpAlias = ""
+	->
+		OptionTable = OptionTable0
+	;
+		DumpAliasOption = string(DumpAlias),
+		convert_dump_alias(DumpAlias, DumpOptions)
+	->
+		map__set(OptionTable0, dump_hlds_options, string(DumpOptions),
+			OptionTable)
+	;
+		OptionTable = OptionTable0,	% dummy
+		add_error("Invalid argument to option `--hlds-dump-alias'.",
+			!Errors)
+	).
+
+:- pred add_error(string::in, list(string)::in, list(string)::out) is det.
+
+add_error(Error, Errors0, Errors) :-
+	% We won't be appending enough errors for the quadratic complexity
+	% of repeated appends to be a problem.
+	list__append(Errors0, [Error], Errors).
 
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
-    gc_method::in, tags_method::in, termination_norm::in,
-    trace_level::in, trace_suppress_items::in, maybe(string)::out,
-    io__state::di, io__state::uo) is det.
+	gc_method::in, tags_method::in, termination_norm::in,
+	trace_level::in, trace_suppress_items::in, maybe(string)::out,
+	io::di, io::uo) is det.
 
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		TermNorm, TraceLevel, TraceSuppress, Error) -->
@@ -1356,7 +1386,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% code generator, because sometimes the same option has different
 	% meanings and implications in the two backends.
 	%
-:- pred postprocess_options_lowlevel(io__state::di, io__state::uo) is det.
+:- pred postprocess_options_lowlevel(io::di, io::uo) is det.
 
 postprocess_options_lowlevel -->
 		% The low level code generator assumes that const(_) rvals are
@@ -1380,7 +1410,7 @@ postprocess_options_lowlevel -->
 % If the SourceBoolOption is set to yes, then the ImpliedOption is set
 % to ImpliedOptionValue.
 :- pred option_implies(option::in, option::in, option_data::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 option_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
@@ -1395,7 +1425,7 @@ option_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 % If the SourceBoolOption is set to no, then the ImpliedOption is set
 % to ImpliedOptionValue.
 :- pred option_neg_implies(option::in, option::in, option_data::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
@@ -1410,7 +1440,7 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 % If the SourceBoolOption is set to yes, and RequiredOption is not set
 % to RequiredOptionValue, then report a usage error.
 :- pred option_requires(option::in, option::in, option_data::in,
-		string::in, io__state::di, io__state::uo) is det.
+	string::in, io::di, io::uo) is det.
 
 option_requires(SourceOption, RequiredOption, RequiredOptionValue,
 		ErrorMessage) -->
@@ -1427,22 +1457,21 @@ option_requires(SourceOption, RequiredOption, RequiredOptionValue,
 	% and `--no-target-code-only'). Disable smart recompilation
 	% if such an option is set, maybe issuing a warning.
 :- pred maybe_disable_smart_recompilation(bool::in, option::in, bool::in,
-		string::in, io__state::di, io__state::uo) is det.
+	string::in, io__state::di, io__state::uo) is det.
 
 maybe_disable_smart_recompilation(Smart, ConflictingOption,
-		ValueToDisableSmart, OptionDescr) -->
-	globals__io_lookup_bool_option(ConflictingOption, Value),
+		ValueToDisableSmart, OptionDescr, !IO) :-
+	globals__io_lookup_bool_option(ConflictingOption, Value, !IO),
 	(
-		{ Smart = yes },
-		{ Value = ValueToDisableSmart }
+		Smart = yes,
+		Value = ValueToDisableSmart
 	->
-		disable_smart_recompilation(OptionDescr)
+		disable_smart_recompilation(OptionDescr, !IO)
 	;
-		[]
+		true
 	).
 
-:- pred disable_smart_recompilation(string::in,
-		io__state::di, io__state::uo) is det.
+:- pred disable_smart_recompilation(string::in, io::di, io::uo) is det.
 
 disable_smart_recompilation(OptionDescr) -->
 	globals__io_set_option(smart_recompilation, bool(no)),
@@ -1463,45 +1492,48 @@ disable_smart_recompilation(OptionDescr) -->
 		[]
 	).
 
-usage_error(ErrorDescr, ErrorMessage) -->
-	write_program_name,
-	io__write_string(ErrorDescr),
-	io__nl,
-	usage_error(ErrorMessage).
+usage_error(ErrorDescr, ErrorMessage, !IO) :-
+	write_program_name(!IO),
+	io__write_string(ErrorDescr, !IO),
+	io__nl(!IO),
+	usage_error(ErrorMessage, !IO).
 
-usage_error(ErrorMessage) -->
-	write_program_name,
-	io__write_string(ErrorMessage),
-	io__write_string("\n"),
-	io__set_exit_status(1),
-	usage.
+usage_error(ErrorMessage, !IO) :-
+	write_program_name(!IO),
+	io__write_string(ErrorMessage, !IO),
+	io__write_string("\n", !IO),
+	io__set_exit_status(1, !IO),
+	usage(!IO).
 
 :- pred write_program_name(io__state::di, io__state::uo) is det.
 
-write_program_name -->
-	io__progname_base("mercury_compile", ProgName),
-	io__write_string(ProgName),
-	io__write_string(": ").
+write_program_name(!IO) :-
+	io__progname_base("mercury_compile", ProgName, !IO),
+	io__write_string(ProgName, !IO),
+	io__write_string(": ", !IO).
 
-usage -->
-	{ library__version(Version) },
+usage(!IO) :-
+	library__version(Version),
  	io__write_strings([
 		"Mercury Compiler, version ", Version, "\n",
 		"Copyright (C) 1993-2004 The University of Melbourne\n",
 		"Usage: mmc [<options>] <arguments>\n",
 		"Use `mmc --help' for more information.\n"
-	]).
+	], !IO).
 
-long_usage -->
-	{ library__version(Version) },
- 	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1993-2004 The University of Melbourne\n"),
-	io__write_string("Usage: mmc [<options>] <arguments>\n"),
-	io__write_string("Arguments:\n"),
-	io__write_string("\tArguments ending in `.m' are assumed to be source file names.\n"),
-	io__write_string("\tArguments that do not end in `.m' are assumed to be module names.\n"),
-	io__write_string("Options:\n"),
-	options_help.
+long_usage(!IO) :-
+	library__version(Version),
+ 	io__write_strings(["Mercury Compiler, version ", Version, "\n"], !IO),
+ 	io__write_string("Copyright (C) 1993-2004 " ++
+		"The University of Melbourne\n", !IO),
+	io__write_string("Usage: mmc [<options>] <arguments>\n", !IO),
+	io__write_string("Arguments:\n", !IO),
+	io__write_string("\tArguments ending in `.m' " ++
+		"are assumed to be source file names.\n", !IO),
+	io__write_string("\tArguments that do not end in `.m' " ++
+		"are assumed to be module names.\n", !IO),
+	io__write_string("Options:\n", !IO),
+	options_help(!IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1565,9 +1597,8 @@ convert_grade_option(GradeString, Options0, Options) :-
 		)
 	), Components, Options1, Options, NoComps, _FinalComps).
 
-:- pred add_option_list(list(pair(option, option_data)), option_table,
-		option_table).
-:- mode add_option_list(in, in, out) is det.
+:- pred add_option_list(list(pair(option, option_data))::in, option_table::in,
+	option_table::out) is det.
 
 add_option_list(CompOpts, Opts0, Opts) :-
 	list__foldl((pred(Opt::in, Opts1::in, Opts2::out) is det :-
@@ -1583,10 +1614,8 @@ grade_directory_component(Globals, Grade) :-
 	% implied by the file names (.pic_o vs .o, `.a' vs `.so').
 	%
 	(
-		string__sub_string_search(Grade0,
-			".picreg", PicRegIndex),
-		string__split(Grade0, PicRegIndex,
-			LeftPart, RightPart0),
+		string__sub_string_search(Grade0, ".picreg", PicRegIndex),
+		string__split(Grade0, PicRegIndex, LeftPart, RightPart0),
 		string__append(".picreg", RightPart, RightPart0)
 	->
 		Grade = LeftPart ++ RightPart
@@ -1605,8 +1634,8 @@ compute_grade(Globals, Grade) :-
 		construct_string(Components, Grade)
 	).
 
-:- pred construct_string(list(pair(grade_component, string)), string).
-:- mode construct_string(in, out) is det.
+:- pred construct_string(list(pair(grade_component, string))::in, string::out)
+	is det.
 
 construct_string([], "").
 construct_string([_ - Bit|Bits], Grade) :-
@@ -1619,9 +1648,8 @@ construct_string([_ - Bit|Bits], Grade) :-
 		Grade = Bit
 	).
 
-:- pred compute_grade_components(option_table,
-		list(pair(grade_component, string))).
-:- mode compute_grade_components(in, out) is det.
+:- pred compute_grade_components(option_table::in,
+	list(pair(grade_component, string))::out) is det.
 
 compute_grade_components(Options, GradeComponents) :-
 	solutions((pred(CompData::out) is nondet :-
@@ -1653,7 +1681,7 @@ compute_grade_components(Options, GradeComponents) :-
 	), GradeComponents).
 
 :- pred grade_component_table(string, grade_component,
-		list(pair(option, option_data)), maybe(list(option_data))).
+	list(pair(option, option_data)), maybe(list(option_data))).
 :- mode grade_component_table(in, out, out, out) is semidet.
 :- mode grade_component_table(out, in, out, out) is multi.
 :- mode grade_component_table(out, out, out, out) is multi.
@@ -1828,8 +1856,7 @@ grade_component_table("strce", trace,
 	[stack_trace - bool(yes), require_tracing - bool(no),
 	decl_debug - bool(no)], no).
 
-:- pred reset_grade_options(option_table, option_table).
-:- mode reset_grade_options(in, out) is det.
+:- pred reset_grade_options(option_table::in, option_table::out) is det.
 
 reset_grade_options(Options0, Options) :-
 	aggregate(grade_start_values,
@@ -1868,8 +1895,7 @@ split_grade_string(GradeStr, Components) :-
 	string__to_char_list(GradeStr, Chars),
 	split_grade_string_2(Chars, Components).
 
-:- pred split_grade_string_2(list(char), list(string)).
-:- mode split_grade_string_2(in, out) is semidet.
+:- pred split_grade_string_2(list(char)::in, list(string)::out) is semidet.
 
 split_grade_string_2([], []).
 split_grade_string_2(Chars, Components) :-
@@ -1885,8 +1911,7 @@ split_grade_string_2(Chars, Components) :-
 		RestComponents = []
 	).
 
-:- pred char_is_not(char, char).
-:- mode char_is_not(in, in) is semidet.
+:- pred char_is_not(char::in, char::in) is semidet.
 
 char_is_not(A, B) :-
 	A \= B.
@@ -1901,8 +1926,7 @@ char_is_not(A, B) :-
 %
 % You are welcome to add more aliases.
 
-:- pred convert_dump_alias(string, string).
-:- mode convert_dump_alias(in, out) is semidet.
+:- pred convert_dump_alias(string::in, string::out) is semidet.
 
 convert_dump_alias("ALL", "abcdfgilmnprstuvCDIMPTU").
 convert_dump_alias("all", "abcdfgilmnprstuvCMPT").

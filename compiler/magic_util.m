@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 University of Melbourne.
+% Copyright (C) 1998-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,12 +125,13 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
 :- import_module parse_tree__inst.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -1757,7 +1758,7 @@ magic_util__report_errors(Errors, ModuleInfo, Verbose) -->
 magic_util__report_error(ModuleInfo, Verbose,
 		argument_error(Error, Arg, proc(PredId, _)) - Context) -->
 
-	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
 	{ string__append_list(["In Aditi ", PredName, ":"], PredNamePiece) },
 	{ magic_util__error_arg_id_piece(Arg, ArgPiece) },
 	{ magic_util__report_argument_error(Context, Error, ArgPiece,
@@ -1766,7 +1767,7 @@ magic_util__report_error(ModuleInfo, Verbose,
 
 magic_util__report_error(ModuleInfo, _Verbose,
 		nonspecific_polymorphism(proc(PredId, _), _) - Context) -->
-	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
 	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
 	{ SecondPart = [words("the code uses polymorphism or type-classes"),
 			words("which are not supported by Aditi.")] },
@@ -1774,7 +1775,7 @@ magic_util__report_error(ModuleInfo, _Verbose,
 
 magic_util__report_error(ModuleInfo, _Verbose,
 		curried_argument(proc(PredId, _)) - Context) -->
-	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
 	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
 	{ SecondPart = [words("sorry, curried closure arguments are not"),
 			words("implemented for Aditi procedures."),
@@ -1784,7 +1785,7 @@ magic_util__report_error(ModuleInfo, _Verbose,
 magic_util__report_error(ModuleInfo, _Verbose,
 		non_removeable_aditi_state(proc(PredId, _), VarSet, Vars)
 			- Context) -->
-	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
 	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
 	{ Vars = [_] ->
 		VarPiece = words("variable"),
@@ -1801,7 +1802,7 @@ magic_util__report_error(ModuleInfo, _Verbose,
 
 magic_util__report_error(ModuleInfo, Verbose,
 		context_error(Error, proc(PredId, _ProcId)) - Context) -->
-	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
 	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
 	{ SecondPart = [words("with `:- pragma context(...)' declaration:"),
 		nl, words("error: recursive rule is not linear.\n")] },
@@ -1814,9 +1815,9 @@ magic_util__report_error(ModuleInfo, Verbose,
 magic_util__report_error(ModuleInfo, _Verbose,
 		mutually_recursive_context(PredProcId,
 			OtherPredProcIds) - Context) -->
-	{ error_util__describe_one_proc_name(ModuleInfo,
+	{ describe_one_proc_name(ModuleInfo,
 		PredProcId, ProcPiece) },
-	{ error_util__describe_several_proc_names(ModuleInfo,
+	{ describe_several_proc_names(ModuleInfo,
 		OtherPredProcIds, OtherProcPieces) },
 	{ list__condense(
 		[[words("Error: procedure"), words(ProcPiece), words("with a"),
@@ -1827,7 +1828,7 @@ magic_util__report_error(ModuleInfo, _Verbose,
 
 magic_util__report_error(ModuleInfo, _Verbose,
 		mixed_scc(PredProcIds) - Context) -->
-	{ error_util__describe_several_proc_names(ModuleInfo,
+	{ describe_several_proc_names(ModuleInfo,
 		PredProcIds, SCCPieces) },
 	{ list__condense([
 		[words("In the strongly connected component consisting of")],

@@ -64,7 +64,6 @@
 :- import_module backend_libs__rtti.
 :- import_module backend_libs__type_class_info.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
@@ -75,6 +74,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__code_util.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.

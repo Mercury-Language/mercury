@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,12 +14,10 @@
 % Most parsing predicates must check for errors. They return either the
 % item(s) they were looking for, or an error indication.
 %
-% Most of the parsing predicates return a `maybe1(T)'
-% or a `maybe2(T1, T2)', which will either be the
-% `ok(ParseTree)' (or `ok(ParseTree1, ParseTree2)'),
-% if the parse is successful, or `error(Message, Term)'
-% if it is not.  The `Term' there should be the term which
-% is syntactically incorrect.
+% Most of the parsing predicates return a `maybe1(T)' or a `maybe2(T1, T2)',
+% which will either be the `ok(ParseTree)' (or `ok(ParseTree1, ParseTree2)'),
+% if the parse is successful, or `error(Message, Term)' if it is not.
+% The `Term' there should be the term which is syntactically incorrect.
 
 :- module parse_tree__prog_io_util.
 
@@ -28,10 +26,11 @@
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, map, std_util, term, io.
+:- import_module list, map, std_util, term.
 
-:- type maybe2(T1, T2)	--->	error(string, term)
-			;	ok(T1, T2).
+:- type maybe2(T1, T2)
+	--->	error(string, term)
+	;	ok(T1, T2).
 
 :- type maybe3(T1, T2, T3)
 	--->	error(string, term)
@@ -57,113 +56,85 @@
 :- type parser(T) == pred(term, maybe1(T)).
 :- mode parser    :: pred(in, out) is det.
 
-:- pred add_context(maybe1(item), prog_context, maybe_item_and_context).
-:- mode add_context(in, in, out) is det.
+:- pred add_context(maybe1(item)::in, prog_context::in,
+	maybe_item_and_context::out) is det.
 
 %
 % Various predicates to parse small bits of syntax.
 % These predicates simply fail if they encounter a syntax error.
 %
 
-:- pred parse_list_of_vars(term(T), list(var(T))).
-:- mode parse_list_of_vars(in, out) is semidet.
+:- pred parse_list_of_vars(term(T)::in, list(var(T))::out) is semidet.
 
 	% Parse a list of quantified variables, splitting it into
 	% state variables and ordinary logic variables, respectively.
 	%
-:- pred parse_quantifier_vars(term(T), list(var(T)), list(var(T))).
-:- mode parse_quantifier_vars(in, out, out) is semidet.
+:- pred parse_quantifier_vars(term(T)::in, list(var(T))::out,
+	list(var(T))::out) is semidet.
 
-:- pred parse_name_and_arity(module_name, term(_T), sym_name, arity).
-:- mode parse_name_and_arity(in, in, out, out) is semidet.
+:- pred parse_name_and_arity(module_name::in, term(_T)::in,
+	sym_name::out, arity::out) is semidet.
 
-:- pred parse_name_and_arity(term(_T), sym_name, arity).
-:- mode parse_name_and_arity(in, out, out) is semidet.
+:- pred parse_name_and_arity(term(_T)::in, sym_name::out, arity::out)
+	is semidet.
 
-:- pred parse_pred_or_func_name_and_arity(module_name,
-		term(_T), pred_or_func, sym_name, arity).
-:- mode parse_pred_or_func_name_and_arity(in, in, out, out, out) is semidet.
+:- pred parse_pred_or_func_name_and_arity(module_name::in,
+	term(_T)::in, pred_or_func::out, sym_name::out, arity::out) is semidet.
 
-:- pred parse_pred_or_func_name_and_arity(term(_T), pred_or_func,
-		sym_name, arity).
-:- mode parse_pred_or_func_name_and_arity(in, out, out, out) is semidet.
+:- pred parse_pred_or_func_name_and_arity(term(_T)::in, pred_or_func::out,
+	sym_name::out, arity::out) is semidet.
 
-:- pred parse_pred_or_func_and_args(maybe(module_name), term(_T), term(_T),
-		string, maybe_pred_or_func(term(_T))).
-:- mode parse_pred_or_func_and_args(in, in, in, in, out) is det.
+:- pred parse_pred_or_func_and_args(maybe(module_name)::in, term(_T)::in,
+	term(_T)::in, string::in, maybe_pred_or_func(term(_T))::out) is det.
 
-:- pred parse_pred_or_func_and_args(term(_T), pred_or_func, sym_name,
-		list(term(_T))).
-:- mode parse_pred_or_func_and_args(in, out, out, out) is semidet.
+:- pred parse_pred_or_func_and_args(term(_T)::in, pred_or_func::out,
+	sym_name::out, list(term(_T))::out) is semidet.
 
-:- pred convert_type(term(T), type).
-:- mode convert_type(in, out) is det.
+:- pred convert_type(term(T)::in, (type)::out) is det.
 
 :- type allow_constrained_inst_var
 	--->	allow_constrained_inst_var
 	;	no_allow_constrained_inst_var.
 
-:- pred convert_mode_list(allow_constrained_inst_var, list(term), list(mode)).
-:- mode convert_mode_list(in, in, out) is semidet.
+:- pred convert_mode_list(allow_constrained_inst_var::in, list(term)::in,
+	list(mode)::out) is semidet.
 
-:- pred convert_mode(allow_constrained_inst_var, term, mode).
-:- mode convert_mode(in, in, out) is semidet.
+:- pred convert_mode(allow_constrained_inst_var::in, term::in, (mode)::out)
+	is semidet.
 
-:- pred convert_inst_list(allow_constrained_inst_var, list(term), list(inst)).
-:- mode convert_inst_list(in, in, out) is semidet.
+:- pred convert_inst_list(allow_constrained_inst_var::in, list(term)::in,
+	list(inst)::out) is semidet.
 
-:- pred convert_inst(allow_constrained_inst_var, term, inst).
-:- mode convert_inst(in, in, out) is semidet.
+:- pred convert_inst(allow_constrained_inst_var::in, term::in, (inst)::out)
+	is semidet.
 
-:- pred standard_det(string, determinism).
-:- mode standard_det(in, out) is semidet.
+:- pred standard_det(string::in, determinism::out) is semidet.
 
 	% convert a "disjunction" (bunch of terms separated by ';'s) to a list
 
-:- pred disjunction_to_list(term(T), list(term(T))).
-:- mode disjunction_to_list(in, out) is det.
+:- pred disjunction_to_list(term(T)::in, list(term(T))::out) is det.
 
 	% convert a "conjunction" (bunch of terms separated by ','s) to a list
 
-:- pred conjunction_to_list(term(T), list(term(T))).
-:- mode conjunction_to_list(in, out) is det.
+:- pred conjunction_to_list(term(T)::in, list(term(T))::out) is det.
 
 	% list_to_conjunction(Context, First, Rest, Term).
 	% convert a list to a "conjunction" (bunch of terms separated by ','s)
 
-:- pred list_to_conjunction(prog_context, term(T), list(term(T)), term(T)).
-:- mode list_to_conjunction(in, in, in, out) is det.
+:- pred list_to_conjunction(prog_context::in, term(T)::in, list(term(T))::in,
+	term(T)::out) is det.
 
 	% convert a "sum" (bunch of terms separated by '+' operators) to a list
 
-:- pred sum_to_list(term(T), list(term(T))).
-:- mode sum_to_list(in, out) is det.
+:- pred sum_to_list(term(T)::in, list(term(T))::out) is det.
 
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of things.
 
-:- pred parse_list(parser(T), term, maybe1(list(T))).
-:- mode parse_list(parser, in, out) is det.
+:- pred parse_list(parser(T)::parser, term::in, maybe1(list(T))::out) is det.
 
-:- pred map_parser(parser(T), list(term), maybe1(list(T))).
-:- mode map_parser(parser, in, out) is det.
-
-% The following /3, /4 and /5 predicates are to be used for reporting
-% warnings to stderr.  This is preferable to using io__write_string, as
-% this checks the halt-at-warn option.
-%
-% This predicate is best used by predicates that do not have access to
-% module_info for a particular module.  It sets the exit status to error
-% when a warning is encountered in a module, and the --halt-at-warn
-% option is set.
-
-:- pred report_warning(string::in, io__state::di, io__state::uo) is det.
-
-:- pred report_warning(io__output_stream::in, string::in, io__state::di,
-                      io__state::uo) is det.
-
-:- pred report_warning(string::in, int::in, string::in, io__state::di,
-                      io__state::uo) is det.
+:- pred map_parser(parser(T)::parser, list(term)::in, maybe1(list(T))::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -212,7 +183,7 @@ parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
 
 parse_pred_or_func_and_args(Term, PredOrFunc, SymName, ArgTerms) :-
 	parse_pred_or_func_and_args(no, Term, Term, "",
-		ok(SymName, ArgTerms0 - MaybeRetTerm)), 
+		ok(SymName, ArgTerms0 - MaybeRetTerm)),
 	(
 		MaybeRetTerm = yes(RetTerm),
 		PredOrFunc = function,
@@ -253,7 +224,7 @@ parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
 
 parse_list_of_vars(term__functor(term__atom("[]"), [], _), []).
 parse_list_of_vars(term__functor(term__atom("[|]"),
-		[Head, Tail], _), [V|Vs]) :-
+		[Head, Tail], _), [V | Vs]) :-
 	Head = term__variable(V),
 	parse_list_of_vars(Tail, Vs).
 
@@ -262,27 +233,26 @@ convert_type(T0, T) :-
 
 	% Strip out the prog_context fields, replacing them with empty
 	% prog_context (as obtained by term__context_init/1)
-	% in a type or list of types. 
+	% in a type or list of types.
 	%
 	% This is necessary to allow maps indexed by class constraints.
 	% Also, the version number computation for smart recompilation
 	% relies on being able to unify program items, which won't
 	% work if the types in the items contain context information.
-:- func strip_prog_context(term(T)) = term(T).	
+:- func strip_prog_context(term(T)) = term(T).
 
 strip_prog_context(term__variable(V)) = term__variable(V).
-strip_prog_context(term__functor(F, As, _)) = 
-		term__functor(F,
-			list__map(strip_prog_context, As),
-			term__context_init).
+strip_prog_context(term__functor(F, As, _)) =
+	term__functor(F,
+		list__map(strip_prog_context, As),
+		term__context_init).
 
 convert_mode_list(_, [], []).
-convert_mode_list(AllowConstrainedInstVar, [H0|T0], [H|T]) :-
+convert_mode_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 	convert_mode(AllowConstrainedInstVar, H0, H),
 	convert_mode_list(AllowConstrainedInstVar, T0, T).
 
-
-	% 
+	%
 	% The new operator for mode declarations is >>.
 	% Previously we used ->, but this required a high-precedence
 	% operator such as :: for the :- mode delcaration.
@@ -294,8 +264,8 @@ convert_mode_list(AllowConstrainedInstVar, [H0|T0], [H|T]) :-
 	%
 convert_mode(AllowConstrainedInstVar, Term, Mode) :-
 	(
-		( 
-			Term = term__functor(term__atom(">>"), 
+		(
+			Term = term__functor(term__atom(">>"),
 				[InstA, InstB], _)
 		;
 			Term = term__functor(term__atom("->"),
@@ -355,7 +325,7 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
 	).
 
 convert_inst_list(_, [], []).
-convert_inst_list(AllowConstrainedInstVar, [H0|T0], [H|T]) :-
+convert_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 	convert_inst(AllowConstrainedInstVar, H0, H),
 	convert_inst_list(AllowConstrainedInstVar, T0, T).
 
@@ -411,7 +381,8 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
 	; Name = "bound", Args0 = [Disj] ->
 		parse_bound_inst_list(AllowConstrainedInstVar, Disj, shared,
 			Result)
-/* `bound_unique' is for backwards compatibility - use `unique' instead */
+	% `bound_unique' is for backwards compatibility
+	% - use `unique' instead
 	; Name = "bound_unique", Args0 = [Disj] ->
 		parse_bound_inst_list(AllowConstrainedInstVar, Disj, unique,
 			Result)
@@ -457,14 +428,13 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
 
 	% A "simple" builtin inst is one that has no arguments and no special
 	% syntax.
-:- pred convert_simple_builtin_inst(string, list(term), inst).
-:- mode convert_simple_builtin_inst(in, in, out) is semidet.
+:- pred convert_simple_builtin_inst(string::in, list(term)::in, (inst)::out)
+	is semidet.
 
 convert_simple_builtin_inst(Name, [], Inst) :-
 	convert_simple_builtin_inst_2(Name, Inst).
 
-:- pred convert_simple_builtin_inst_2(string, inst).
-:- mode convert_simple_builtin_inst_2(in, out) is semidet.
+:- pred convert_simple_builtin_inst_2(string::in, (inst)::out) is semidet.
 
 	% `free' insts
 convert_simple_builtin_inst_2("free", free).
@@ -498,7 +468,7 @@ standard_det("erroneous", erroneous).
 standard_det("failure", failure).
 
 :- pred parse_bound_inst_list(allow_constrained_inst_var::in, term::in,
-		uniqueness::in, (inst)::out) is semidet.
+	uniqueness::in, (inst)::out) is semidet.
 
 parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness,
 		bound(Uniqueness, Functors)) :-
@@ -513,17 +483,16 @@ parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness,
 		F2 = functor(ConsId, _)
 	).
 
-:- pred convert_bound_inst_list(allow_constrained_inst_var, list(term),
-		list(bound_inst)).
-:- mode convert_bound_inst_list(in, in, out) is semidet.
+:- pred convert_bound_inst_list(allow_constrained_inst_var::in, list(term)::in,
+	list(bound_inst)::out) is semidet.
 
 convert_bound_inst_list(_, [], []).
-convert_bound_inst_list(AllowConstrainedInstVar, [H0|T0], [H|T]) :-
+convert_bound_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 	convert_bound_inst(AllowConstrainedInstVar, H0, H),
 	convert_bound_inst_list(AllowConstrainedInstVar, T0, T).
 
-:- pred convert_bound_inst(allow_constrained_inst_var, term, bound_inst).
-:- mode convert_bound_inst(in, in, out) is semidet.
+:- pred convert_bound_inst(allow_constrained_inst_var::in, term::in,
+	bound_inst::out) is semidet.
 
 convert_bound_inst(AllowConstrainedInstVar, InstTerm, functor(ConsId, Args)) :-
 	InstTerm = term__functor(Functor, Args0, _),
@@ -556,23 +525,22 @@ sum_to_list(Term, List) :-
 	% general predicate to convert terms separated by any specified
 	% operator into a list
 
-:- pred binop_term_to_list(string, term(T), list(term(T))).
-:- mode binop_term_to_list(in, in, out) is det.
+:- pred binop_term_to_list(string::in, term(T)::in, list(term(T))::out) is det.
 
 binop_term_to_list(Op, Term, List) :-
 	binop_term_to_list_2(Op, Term, [], List).
 
-:- pred binop_term_to_list_2(string, term(T), list(term(T)), list(term(T))).
-:- mode binop_term_to_list_2(in, in, in, out) is det.
+:- pred binop_term_to_list_2(string::in, term(T)::in, list(term(T))::in,
+	list(term(T))::out) is det.
 
-binop_term_to_list_2(Op, Term, List0, List) :-
+binop_term_to_list_2(Op, Term, !List) :-
 	(
 		Term = term__functor(term__atom(Op), [L, R], _Context)
 	->
-		binop_term_to_list_2(Op, R, List0, List1),
-		binop_term_to_list_2(Op, L, List1, List)
+		binop_term_to_list_2(Op, R, !List),
+		binop_term_to_list_2(Op, L, !List)
 	;
-		List = [Term|List0]
+		!:List = [Term | !.List]
 	).
 
 parse_list(Parser, Term, Result) :-
@@ -580,55 +548,23 @@ parse_list(Parser, Term, Result) :-
 	map_parser(Parser, List, Result).
 
 map_parser(_, [], ok([])).
-map_parser(Parser, [X|Xs], Result) :-
+map_parser(Parser, [X | Xs], Result) :-
 	call(Parser, X, X_Result),
 	map_parser(Parser, Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
 
 	% If a list of things contains multiple errors, then we only
 	% report the first one.
-:- pred combine_list_results(maybe1(T), maybe1(list(T)), maybe1(list(T))).
-:- mode combine_list_results(in, in, out) is det.
+:- pred combine_list_results(maybe1(T)::in, maybe1(list(T))::in,
+	maybe1(list(T))::out) is det.
 
 combine_list_results(error(Msg, Term), _, error(Msg, Term)).
 combine_list_results(ok(_), error(Msg, Term), error(Msg, Term)).
-combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
+combine_list_results(ok(X), ok(Xs), ok([X | Xs])).
 
 %-----------------------------------------------------------------------------%
 
-report_warning(Message) -->
-	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
-	( { HaltAtWarn = yes } ->
-		io__set_exit_status(1)
-	;
-		[]
-	),
-	io__write_string(Message).
-
-report_warning(Stream, Message) -->
-	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
-	( { HaltAtWarn = yes } ->
-		io__set_exit_status(1)
-	;
-		[]
-	),
-	io__write_string(Stream, Message).
-
-report_warning(FileName, LineNum, Message) -->
-	{ string__format("%s:%3d: Warning: %s\n",
-		[s(FileName), i(LineNum), s(Message)], FullMessage) },
-	io__write_string(FullMessage),
-	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
-	( { HaltAtWarn = yes } ->
-		io__set_exit_status(1)
-	;
-		[]
-	).
-
-%------------------------------------------------------------------------------%
-
 parse_quantifier_vars(functor(atom("[]"),  [],     _), [],  []).
-
 parse_quantifier_vars(functor(atom("[|]"), [H, T], _), SVs, Vs) :-
 	(
 		H   = functor(atom("!"), [variable(SV)], _),

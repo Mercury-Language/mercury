@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000,2002-2003 The University of Melbourne.
+% Copyright (C) 1999-2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -160,15 +160,16 @@
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module hlds__assertion.
-:- import_module hlds__error_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
@@ -244,8 +245,8 @@ process_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 		->
 			{ ModuleInfo = ModuleInfo1 }
 		;
-			{ error_util__describe_one_pred_name(ModuleInfo1,
-					PredId, PredName) },
+			{ describe_one_pred_name(ModuleInfo1, PredId,
+				PredName) },
 			{ pred_info_context(PredInfo, Context) },
 
 			error_util__write_error_pieces(Context, 0,
@@ -335,7 +336,7 @@ output_warnings([W | Ws], VarSet, ModuleInfo) -->
 
 output_warning(warn(Context, PredId, VarA, VarB), VarSet, ModuleInfo,
 		Context, Formats) :-
-	error_util__describe_one_pred_name(ModuleInfo, PredId, PredStr),
+	describe_one_pred_name(ModuleInfo, PredId, PredStr),
 
 	varset__lookup_name(VarSet, VarA, VarAStr0),
 	varset__lookup_name(VarSet, VarB, VarBStr0),

@@ -164,7 +164,6 @@
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__rtti.		% for rtti__addr_to_string.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_pred.	% for proc_id_to_int and invalid_pred_id
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
@@ -174,6 +173,7 @@
 				% derived classes
 :- import_module ml_backend__ml_util.
 :- import_module ml_backend__mlds_to_c.	% to handle C foreign_code
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.

@@ -87,7 +87,6 @@
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
@@ -98,6 +97,7 @@
 :- import_module ml_backend__ml_code_gen.
 :- import_module ml_backend__ml_type_gen.
 :- import_module ml_backend__ml_util.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_util.
 
 :- import_module int, string, map, require, term, varset.

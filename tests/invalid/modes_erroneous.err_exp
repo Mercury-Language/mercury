@@ -1,4 +1,5 @@
-modes_erroneous.m:  1: Warning: interface for module `modes_erroneous' does not export anything.
+modes_erroneous.m:001: Warning: interface for module `modes_erroneous' does not
+modes_erroneous.m:001:   export anything.
 modes_erroneous.m:009: In clause for `p((ground -> ground), (free -> ground))':
 modes_erroneous.m:009:   in argument 1 of call to predicate `modes_erroneous.p/2':
 modes_erroneous.m:009:   mode error: variable `V_5' has instantiatedness `free',

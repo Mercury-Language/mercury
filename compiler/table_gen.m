@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -251,9 +251,9 @@
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_out.
@@ -268,6 +268,7 @@
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__follow_code.
 :- import_module ll_backend__llds.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
@@ -490,8 +491,7 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
 
 report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) -->
 	{ pred_info_context(PredInfo, Context) },
-	{ error_util__describe_one_proc_name(ModuleInfo, proc(PredId, ProcId),
-		Name) },
+	{ describe_one_proc_name(ModuleInfo, proc(PredId, ProcId), Name) },
 	{ Msg = [fixed(Name), words("contains untabled I/O primitive.")] },
 	error_util__write_error_pieces(Context, 0, Msg).
 

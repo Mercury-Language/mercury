@@ -106,8 +106,8 @@
 :- implementation.
 
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
+:- import_module parse_tree__error_util.
 
 :- import_module assoc_list, bool, int, require, string.
 

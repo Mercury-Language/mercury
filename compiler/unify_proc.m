@@ -140,7 +140,6 @@
 :- import_module check_hlds__switch_detection.
 :- import_module check_hlds__type_util.
 :- import_module check_hlds__unique_modes.
-:- import_module hlds__error_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
@@ -149,6 +148,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_out.

@@ -5,5 +5,6 @@ Error: atom expected in `:- pred' declaration: _1.
 vars_in_wrong_places.m:006: Error: atom expected in `:- func' declaration: _1 = int.
 Error: atom expected in `:- mode' declaration: _1.
 vars_in_wrong_places.m:008: Error: atom expected in function `:- mode' declaration: _1 = int.
-vars_in_wrong_places.m:  1: Warning: interface for module `vars_in_wrong_places' does not export anything.
+vars_in_wrong_places.m:001: Warning: interface for module
+vars_in_wrong_places.m:001:   `vars_in_wrong_places' does not export anything.
 For more information, try recompiling with `-E'.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -46,7 +46,6 @@
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
@@ -59,6 +58,7 @@
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__layout.
 :- import_module ll_backend__stack_layout.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 

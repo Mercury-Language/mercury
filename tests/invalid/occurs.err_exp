@@ -1,4 +1,4 @@
-occurs.m:  1: Warning: interface for module `occurs' does not export anything.
+occurs.m:001: Warning: interface for module `occurs' does not export anything.
 occurs.m:008: In clause for predicate `occurs.p/0':
 occurs.m:008:   warning: variable `X' occurs only once in this scope.
 occurs.m:008: In clause for `p':

@@ -1,2 +1,3 @@
-no_exports.m:  1: Warning: interface for module `no_exports' does not export anything.
+no_exports.m:001: Warning: interface for module `no_exports' does not export
+no_exports.m:001:   anything.
 For more information, try recompiling with `-E'.

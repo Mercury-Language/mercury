@@ -75,13 +75,13 @@
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__type_ctor_info.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__layout_out.
 :- import_module ll_backend__llds.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 

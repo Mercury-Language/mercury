@@ -139,11 +139,12 @@
 
 :- implementation.
 
-:- import_module hlds__error_util.
+:- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_out.
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_out.
 :- import_module term.
@@ -163,13 +164,12 @@ term_errors__report_term_errors(SCC, Errors, Module) -->
 	{ get_context_from_scc(SCC, Module, Context) },
 	( { SCC = [PPId] } ->
 		{ Pieces0 = [words("Termination of")] },
-		{ error_util__describe_one_proc_name(Module, PPId, PredName) },
+		{ describe_one_proc_name(Module, PPId, PredName) },
 		{ list__append(Pieces0, [fixed(PredName)], Pieces1) },
 		{ Single = yes(PPId) }
 	;
 		{ Pieces0 = [words("Termination of the mutually recursive procedures")] },
-		{ error_util__describe_several_proc_names(Module, SCC,
-			ProcNamePieces) },
+		{ describe_several_proc_names(Module, SCC, ProcNamePieces) },
 		{ list__append(Pieces0, ProcNamePieces, Pieces1) },
 		{ Single = no }
 	),
@@ -203,14 +203,13 @@ term_errors__report_arg_size_errors(SCC, Errors, Module) -->
 	{ get_context_from_scc(SCC, Module, Context) },
 	( { SCC = [PPId] } ->
 		{ Pieces0 = [words("Termination constant of")] },
-		{ error_util__describe_one_proc_name(Module, PPId, ProcName) },
+		{ describe_one_proc_name(Module, PPId, ProcName) },
 		{ list__append(Pieces0, [fixed(ProcName)], Pieces1) },
 		{ Single = yes(PPId) }
 	;
 		{ Pieces0 = [words("Termination constants"),
 			words("of the mutually recursive procedures")] },
-		{ error_util__describe_several_proc_names(Module, SCC,
-			ProcNamePieces) },
+		{ describe_several_proc_names(Module, SCC, ProcNamePieces) },
 		{ list__append(Pieces0, ProcNamePieces, Pieces1) },
 		{ Single = no }
 	),
@@ -294,12 +293,11 @@ term_errors__description(inf_call(CallerPPId, CalleePPId),
 		Piece1 = words("It")
 	;
 		Single = no,
-		error_util__describe_one_proc_name(Module, CallerPPId,
-			ProcName),
+		describe_one_proc_name(Module, CallerPPId, ProcName),
 		Piece1 = fixed(ProcName)
 	),
 	Piece2 = words("calls"),
-	error_util__describe_one_proc_name(Module, CalleePPId, CalleePiece),
+	describe_one_proc_name(Module, CalleePPId, CalleePiece),
 	Pieces3 = [words("with an unbounded increase"),
 		words("in the size of the input arguments.")],
 	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
@@ -312,12 +310,11 @@ term_errors__description(can_loop_proc_called(CallerPPId, CalleePPId),
 		Piece1 = words("It")
 	;
 		Single = no,
-		error_util__describe_one_proc_name(Module, CallerPPId,
-			ProcName),
+		describe_one_proc_name(Module, CallerPPId, ProcName),
 		Piece1 = fixed(ProcName)
 	),
 	Piece2 = words("calls"),
-	error_util__describe_one_proc_name(Module, CalleePPId, CalleePiece),
+	describe_one_proc_name(Module, CalleePPId, CalleePiece),
 	Pieces3 = [words("which could not be proven to terminate.")],
 	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
@@ -334,12 +331,11 @@ term_errors__description(horder_args(CallerPPId, CalleePPId), Single, Module,
 		Piece1 = words("It")
 	;
 		Single = no,
-		error_util__describe_one_proc_name(Module, CallerPPId,
-			ProcName),
+		describe_one_proc_name(Module, CallerPPId, ProcName),
 		Piece1 = fixed(ProcName)
 	),
 	Piece2 = words("calls"),
-	error_util__describe_one_proc_name(Module, CalleePPId, CalleePiece),
+	describe_one_proc_name(Module, CalleePPId, CalleePiece),
 	Pieces3 = [words("with one or more higher order arguments.")],
 	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
@@ -351,12 +347,11 @@ term_errors__description(inf_termination_const(CallerPPId, CalleePPId),
 		Piece1 = words("It")
 	;
 		Single = no,
-		error_util__describe_one_proc_name(Module, CallerPPId,
-			ProcName),
+		describe_one_proc_name(Module, CallerPPId, ProcName),
 		Piece1 = fixed(ProcName)
 	),
 	Piece2 = words("calls"),
-	error_util__describe_one_proc_name(Module, CalleePPId, CalleePiece),
+	describe_one_proc_name(Module, CalleePPId, CalleePiece),
 	Pieces3 = [words("which has a termination constant of infinity.")],
 	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
@@ -370,16 +365,14 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		;
 			% XXX this should never happen (but it does)
 			% error("not_subset outside this SCC"),
-			error_util__describe_one_proc_name(Module, ProcPPId,
-				PPIdPiece),
+			describe_one_proc_name(Module, ProcPPId, PPIdPiece),
 			Pieces1 = [words("The set of"),
 				words("output supplier variables of"),
 				fixed(PPIdPiece)]
 		)
 	;
 		Single = no,
-		error_util__describe_one_proc_name(Module, ProcPPId,
-			PPIdPiece),
+		describe_one_proc_name(Module, ProcPPId, PPIdPiece),
 		Pieces1 = [words("The set of output supplier variables of"),
 			fixed(PPIdPiece)]
 	),
@@ -399,7 +392,7 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 
 term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
 	( CallSites = [DirectCall] ->
-		error_util__describe_one_call_site(Module, DirectCall, Site),
+		describe_one_call_site(Module, DirectCall, Site),
 		Pieces = [words("At the recursive call to"),
 			fixed(Site),
 			words("the arguments are"),
@@ -407,8 +400,7 @@ term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
 	;
 		Pieces1 = [words("In the recursive cycle"),
 			words("through the calls to")],
-		error_util__describe_several_call_sites(Module, CallSites,
-			SitePieces),
+		describe_several_call_sites(Module, CallSites, SitePieces),
 		Pieces2 = [words("the arguments are"),
 			words("not guaranteed to decrease in size.")],
 		list__condense([Pieces1, SitePieces, Pieces2], Pieces)
@@ -441,8 +433,7 @@ term_errors__description(does_not_term_pragma(PredId), Single, Module,
 		Piece2 = words("it.")
 	;
 		Single = no,
-		error_util__describe_one_pred_name(Module, PredId,
-			Piece2Nodot),
+		describe_one_pred_name(Module, PredId, Piece2Nodot),
 		string__append(Piece2Nodot, ".", Piece2Str),
 		Piece2 = fixed(Piece2Str)
 	),

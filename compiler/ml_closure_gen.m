@@ -83,10 +83,10 @@
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_module.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.

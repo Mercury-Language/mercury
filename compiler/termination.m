@@ -90,14 +90,15 @@
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_out.
 :- import_module hlds__passes_aux.
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_out.
@@ -206,8 +207,8 @@ check_foreign_code_attributes_2([PPId], !Module, !IO) :-
 				proc_info_set_maybe_termination_info(
 					yes(can_loop([TermErr])), ProcInfo0,
 					ProcInfo),
-				error_util__describe_one_proc_name(!.Module,
-					PPId, ProcName),
+				describe_one_proc_name(!.Module, PPId,
+					ProcName),
 				Piece1 = words("has a `pragma terminates'"),
 				Piece2 = words("declaration but also has the"),
 				Piece3 = words("`does_not_terminate' foreign"),
@@ -231,8 +232,7 @@ check_foreign_code_attributes_2([PPId], !Module, !IO) :-
 			    proc_info_set_maybe_termination_info(
 			        yes(can_loop(TermErrs)),
 			        ProcInfo0, ProcInfo),
-			    error_util__describe_one_proc_name(!.Module,
-			        PPId, ProcName),
+			    describe_one_proc_name(!.Module, PPId, ProcName),
 			    Piece1 = words("has a `pragma does_not_terminate'"),
 			    Piece2 = words("declaration but also has the"),
 			    Piece3 = words("`terminates' foreign code"),
@@ -317,8 +317,8 @@ check_scc_pragmas_are_consistent(SCC, !Module, !IO) :-
 			
 			PredIds = list__map((func(proc(PredId, _)) = PredId), 
 				SCCTerminationKnown),
-			error_util__describe_several_pred_names(!.Module, 
-				PredIds, PredNames),	
+			describe_several_pred_names(!.Module, PredIds,
+				PredNames),	
 			Piece1 = words(
 				"are mutually recursive but some of their"),
 			Piece2 = words(

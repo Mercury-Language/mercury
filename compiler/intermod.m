@@ -2303,7 +2303,7 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 			make_pseudo_decl(opt_imported),
 			[], NewIndirectDeps, [], NewImplIndirectDeps,
 			Module3, Module4),
-	process_module_short_interfaces_and_implementations_transitively(
+	process_module_short_interfaces_and_impls_transitively(
 			ReadModules, NewIndirectDeps ++ NewImplIndirectDeps,
 			".int2",
 			make_pseudo_decl(opt_imported),

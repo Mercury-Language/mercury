@@ -70,7 +70,6 @@
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__rtti.		% for rtti__addr_to_string.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_pred.	% for pred_proc_id.
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
@@ -81,6 +80,7 @@
 :- import_module ml_backend__ml_type_gen.	% for ml_gen_type_name
 :- import_module ml_backend__ml_util.
 :- import_module ml_backend__rtti_to_mlds.	% for mlds_rtti_type_name.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.

@@ -342,7 +342,7 @@
 :- import_module libs__tree.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__exprn_aux.
-:- import_module hlds__error_util.
+:- import_module parse_tree__error_util.
 
 :- import_module int, string, bag, require, getopt, varset, term.
 

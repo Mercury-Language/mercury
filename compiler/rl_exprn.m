@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 University of Melbourne.
+% Copyright (C) 1998-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -135,8 +135,9 @@
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
+:- import_module parse_tree__error_util.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
@@ -984,8 +985,7 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 
 rl_exprn__call_not_implemented_error(Context, 
 		ModuleInfo, PredId, ProcId, ErrorDescr) :-
-	error_util__describe_one_proc_name(ModuleInfo,
-		proc(PredId, ProcId), ProcName),
+	describe_one_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName),
 	prog_out__context_to_string(Context, ContextStr),
 	string__append_list(
 		[

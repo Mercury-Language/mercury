@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,6 @@
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__type_util.
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_pred. % for `pred_proc_id'.
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
@@ -46,6 +45,7 @@
 :- import_module ml_backend__ml_code_util.
 :- import_module ml_backend__ml_util.
 :- import_module ml_backend__mlds_to_managed.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.

@@ -43,11 +43,11 @@
 :- implementation.
 
 :- import_module backend_libs__builtin_ops.
-:- import_module hlds__error_util.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ml_backend__ml_code_util.
 :- import_module ml_backend__ml_util.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 

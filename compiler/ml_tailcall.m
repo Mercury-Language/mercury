@@ -76,10 +76,10 @@
 
 :- implementation.
 
-:- import_module hlds__error_util.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
 :- import_module ml_backend__ml_util.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 
 :- import_module string, int, list, std_util.

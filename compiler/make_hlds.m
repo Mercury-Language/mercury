@@ -104,10 +104,9 @@
 :- import_module check_hlds__mode_errors.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
-:- import_module check_hlds__type_util.
 :- import_module check_hlds__typecheck.
+:- import_module check_hlds__type_util.
 :- import_module check_hlds__unify_proc.
-:- import_module hlds__error_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_goal.
@@ -120,6 +119,7 @@
 :- import_module ll_backend.
 :- import_module ll_backend__fact_table.
 :- import_module ll_backend__llds.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.

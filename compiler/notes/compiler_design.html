@@ -275,7 +275,8 @@ such as pretty-printing.
 
 	The modules prog_out.m and mercury_to_mercury.m contain predicates
 	for printing the parse tree.  prog_util.m contains some utility
-	predicates for manipulating the parse tree.
+	predicates for manipulating the parse tree, while error_util.m
+	contains predicates for printing nicely formatting error messages.
 
 <li><p> imports and exports are handled at this point (modules.m)
 
@@ -405,24 +406,27 @@ various library routines which are used by other modules that manipulate
 the HLDS:
 
 <dl>
-	<dt> hlds_code_util.m
-	     <dd> Utility routines for use during HLDS generation.
+<dt> hlds_code_util.m
+<dd> Utility routines for use during HLDS generation.
 
-	<dt> goal_form.m
-	     <dd> Contains predicates for determining whether
-	          HLDS goals match various criteria.
+<dt> goal_form.m
+<dd> Contains predicates for determining whether
+HLDS goals match various criteria.
 
-	<dt> goal_util.m
-	     <dd> Contains various miscellaneous utility predicates for
-	          manipulating HLDS goals, e.g. for renaming variables.
+<dt> goal_util.m
+<dd> Contains various miscellaneous utility predicates for manipulating
+HLDS goals, e.g. for renaming variables.
 
-	<dt> passes_aux.m
-	     <dd> Contains code to write progress messages, and higher-order
-		code to traverse all the predicates defined in the current
-		module and do something with each one.
+<dt> passes_aux.m
+<dd> Contains code to write progress messages, and higher-order code
+to traverse all the predicates defined in the current module
+and do something with each one.
 
-	<dt> error_util.m:
-	     <dd> Utility routines for printing nicely formatted error messages.
+<dt> hlds_error_util.m:
+<dd> Utility routines for printing nicely formatted error messages
+for symptoms involving HLDS data structures.
+For symptoms involving only structures defined in prog_data,
+use parse_tree__error_util.
 </dl>
 
 <h4> 2. Semantic analysis and error checking </h4>
@@ -1521,6 +1525,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2003-12-01 15:56:05 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2004-03-19 10:19:37 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
