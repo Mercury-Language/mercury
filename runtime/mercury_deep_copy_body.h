@@ -202,6 +202,14 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                 /* copy pointer to code for closure */
                 new_closure[1] = data_value[1];
 
+#if 0		
+		/*
+		** XXX THIS IS WRONG.  We don't have any information
+		** about the types of the things in closures.
+		** The pred type only tells us about the arguments
+		** which have not yet been applied, not the ones
+		** in the closure.
+		*/
                 /* copy arguments */
                 for (i = 0; i < args; i++) {
                     new_closure[i + 2] = copy(&data_value[i + 2],
@@ -209,6 +217,9 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                         type_info[i + TYPEINFO_OFFSET_FOR_PRED_ARGS],
                         lower_limit, upper_limit);
                 }
+#else
+		fatal_error("sorry, not implemented: cannot copy closure");
+#endif
                 new_data = (Word) new_closure;
                 leave_forwarding_pointer(data_ptr, new_data);
             } else {
