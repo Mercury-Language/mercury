@@ -59,6 +59,12 @@ void call_msg(const Word *proc, const Word *succcont)
 	printf("continuation "); printlabel((Word) succcont);
 }
 
+void tailcall_msg(const Word *proc)
+{
+	printf("\ntail calling "); printlabel((Word) proc);
+	printf("continuation "); printlabel((Word) succip);
+}
+
 void proceed_msg(void)
 {
 	printf("\nreturning from determinate procedure\n");
@@ -113,7 +119,7 @@ void dumpcpstack()
 	printf("\ncpstack dump\n");
 	for (cp = maxcp; cp > cpstackmin; cp = (Word *) cp[PREVCP])
 	{
-		if ((cp - (Word *)cp[PREVCP]) == RECLAIM_SIZE)
+		if ((cp - (Word *) cp[PREVCP]) == RECLAIM_SIZE)
 		{
 			printf("reclaim frame at ptr %p, offset %3d words\n",
 				cp, cp - cpstackmin);
@@ -231,17 +237,21 @@ PrintRegFunc	*regtable[MAXENTRIES][16] =
 	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
 /* MEMBER_1 */
-	{ printlabel, printlist, printint, printint,
+	{ printlabel, printint, printlist, FNULL,
 	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
 /* MEMBER_2 */
-	{ printlabel, printlist, printint, printint,
+	{ printlabel, printint, printlist, FNULL,
 	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
 /* MKLIST_1 */
 	{ printlabel, printlist, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
 /* Q_1 */
+	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* NEG_NOT_Q_1 */
 	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
 	FNULL, FNULL, FNULL, FNULL,
 	FNULL, printcpstack, printcpstack, printcpstack },
@@ -254,6 +264,14 @@ PrintRegFunc	*regtable[MAXENTRIES][16] =
 	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL,
 	FNULL, printcpstack, printcpstack, printcpstack },
+/* ONEDET_1 */
+	{ printlabel, printint, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* MEMDET_1 */
+	{ printlabel, printlist, printint, printint,
+	FNULL, FNULL, printheap, printstack,
+	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
 };
 
 void printregs(const char *msg)

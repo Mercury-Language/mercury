@@ -28,7 +28,8 @@ enum {
 	NEG_NOT_Q,
 	INT_1,
 	HEAP_1,
-
+	ONETEN_1,
+	MEMDET_1,
 	MAXENTRIES
 };
 
@@ -90,6 +91,7 @@ extern	int	repcounter;
 
 extern	Code	*dofail;
 extern	Code	*doresethpfail;
+extern	Code	*doresetcpvar0fail;
 extern	Code	*doredo;
 
 #define	WORDSIZE	4
@@ -132,19 +134,19 @@ extern	Code	*doredo;
 
 /* the offsets used by choice points */
 #define	cpprednm	(const char *) curcp[PREDNM]
-#define	cpsuccip	(Code *) curcp[SUCCIP]
-#define	cpsucccp	(Word *) curcp[SUCCCP]
 #define	cpredoip	(Code *) curcp[REDOIP]
 #define	cpprevcp	(Word *) curcp[PREVCP]
+#define	cpsuccip	(Code *) curcp[SUCCIP]
+#define	cpsucccp	(Word *) curcp[SUCCCP]
 #define	cpvar(n)	curcp[SAVEVAL-n]
 
 /* the offsets used by reclaim points */
-#define	recprednm	(const char *) curcp[PREDNM]
-#define	recredoip	(Code *) curcp[REDOIP]
-#define	recprevcp	(Word *) curcp[PREVCP]
-#define	recsavehp	(Word *) curcp[SAVEHP]
+#define	recprednm	(const char *) maxcp[PREDNM]
+#define	recredoip	(Code *) maxcp[REDOIP]
+#define	recprevcp	(Word *) maxcp[PREVCP]
+#define	recsavehp	(Word *) maxcp[SAVEHP]
 
-#define	RECLAIM_SIZE	(4 * sizeof(Word))
+#define	RECLAIM_SIZE	4				/* units: words */
 
 #define	stackvar(n)	sp[-n]
 
@@ -157,11 +159,11 @@ extern	Code	*doredo;
 				succcp = curcp;			\
 				maxcp += (-SAVEVAL + n);	\
 				curcp = maxcp;			\
-				cpprednm = prednm;		\
-				cpsuccip = succip;		\
-				cpredoip = redoip;		\
-				cpsucccp = succcp;		\
-				cpprevcp = prevcp;		\
+				curcp[PREDNM] = (Word) prednm;	\
+				curcp[REDOIP] = (Word) redoip;	\
+				curcp[PREVCP] = (Word) prevcp;	\
+				curcp[SUCCIP] = (Word) succip;	\
+				curcp[SUCCCP] = (Word) succcp;	\
 				debugmkcp();			\
 				cpstack_overflow_check();	\
 			} while (0)
@@ -172,11 +174,10 @@ extern	Code	*doredo;
 								\
 				prevcp = maxcp;			\
 				maxcp += 4;			\
-				curcp = maxcp;			\
-				recprednm = prednm;		\
-				recredoip = doresethpfail;	\
-				recprevcp = prevcp;		\
-				recsavehp = hp;			\
+				maxcp[PREDNM] = (Word) prednm;	\
+				maxcp[REDOIP] = (Word) doresethpfail;\
+				maxcp[PREVCP] = (Word) prevcp;	\
+				maxcp[SAVEHP] = (Word) hp;	\
 				debugmkreclaim();		\
 				cpstack_overflow_check();	\
 			} while (0)
@@ -218,6 +219,17 @@ extern	Code	*doredo;
 			do {					\
 				debugcall(entries[entry].e_addr, succcont);\
 				succip = succcont;		\
+				goto *entries[entry].e_addr;	\
+			} while (0)
+
+#define	tailcall(proc)	do {					\
+				debugtailcall(proc);		\
+				goto *proc;			\
+			} while (0)
+
+#define	tailcallentry(entry, succcont)				\
+			do {					\
+				debugtailcall(entries[entry].e_addr);\
 				goto *entries[entry].e_addr;	\
 			} while (0)
 
@@ -274,6 +286,8 @@ extern	Code	*doredo;
 #define	debugredo()						\
 			do { } while (0)
 #define	debugcall(proc, succcont)				\
+			do { } while (0)
+#define	debugtailcall(proc)					\
 			do { } while (0)
 #define	debugproceed()						\
 			do { } while (0)
@@ -386,6 +400,11 @@ extern	Code	*doredo;
 				if (calldebug)			\
 					call_msg(proc, succcont);\
 			} while (0)
+#define	debugtailcall(proc)					\
+			do {					\
+				if (calldebug)			\
+					tailcall_msg(proc);	\
+			} while (0)
 #define	debugproceed()	do {					\
 				if (calldebug)			\
 					proceed_msg();		\
@@ -463,9 +482,11 @@ extern	int	which;
 
 extern	Entry	entries[];
 
-/* For each entry point, a table function pointers which indicate
-   which function should be called by debugregs() to print out
-   each register. */
+/*
+** For each entry point, a table function pointers which indicate
+** which function should be called by debugregs() to print out
+** each register.
+*/
 
 typedef void PrintRegFunc(Word);
 extern	PrintRegFunc * regtable[MAXENTRIES][16];
@@ -498,6 +519,7 @@ extern	void	succeed_msg(void);
 extern	void	fail_msg(void);
 extern	void	redo_msg(void);
 extern	void	call_msg(const Word *proc, const Word *succcont);
+extern	void	tailcall_msg(const Word *proc);
 extern	void	proceed_msg(void);
 extern	void	push_msg(Word val, const Word *addr);
 extern	void	pop_msg(Word val, const Word *addr);
