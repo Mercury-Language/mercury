@@ -20,7 +20,7 @@
 :- import_module llds.
 :- import_module io.
 
-	% Given a 'c_file' structure, open the appropriate .mod file
+	% Given a 'c_file' structure, open the appropriate .c file
 	% and output the code into that file.
 
 :- pred output_c_file(c_file, io__state, io__state).
