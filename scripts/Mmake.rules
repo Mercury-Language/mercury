@@ -155,7 +155,7 @@ clean_o:
 
 .PHONY: clean_s
 clean_s:
-	-rm -f *.s
+	$(CLEAN_S)
 
 .PHONY: realclean
 realclean: clean clean_deps clean_nu clean_progs clean_libs
