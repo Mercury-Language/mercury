@@ -919,9 +919,9 @@ each procedure was called by each different caller, and @samp{Prof.Counts}
 records the number of times that execution was in each procedure
 when a profiling interrupt occurred.)
 
-It would be nice if there was a way to combine profiling data from
-multiple runs of the same program, but unfortunately there is not yet
-any way to do that.
+It is also possible to combine profiling results from multiple runs of
+your program.  You can do by running your program several times, and
+typing @samp{mprof_merge_counts} after each run.
 
 Due to a known timing-related bug in our code, you may occasionally get
 segmentation violations when running your program with time profiling enabled.

@@ -14,7 +14,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SCRIPTS = mmake mmc mod2c c2init mgnuc ml mprof mint \
+SCRIPTS = mmake mmc mod2c c2init mgnuc ml mprof mprof_merge_runs mint \
 	  sicstus_conv mtags vpath_find mercury_update_interface \
 	  mkfifo_using_mknod
 NUPROLOG_SCRIPTS = mnc mnl mnp
@@ -31,6 +31,10 @@ SICSTUS_SCRIPTS = msc msl msp
 
 .PHONY: all
 all: $(SCRIPTS) $(NUPROLOG_SCRIPTS) $(SICSTUS_SCRIPTS) Mmake.vars
+
+#-----------------------------------------------------------------------------#
+
+ml mgnuc: init_grade_options.sh-subr parse_grade_options.sh-subr
 
 #-----------------------------------------------------------------------------#
 
