@@ -1276,11 +1276,11 @@ string__combine_hash(H0, X, H) :-
 	}
 }").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	string__sub_string_search(WholeString::in, SubString::in, Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	Index = WholeString->IndexOf(SubString);
+	Index = WholeString.IndexOf(SubString);
 	SUCCESS_INDICATOR = (Index >= 0);
 }").
 
@@ -1758,10 +1758,10 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 "
 	SUCCESS_INDICATOR = MR_TRUE;
 ").
-:- pragma foreign_proc("MC++", using_sprintf,
+:- pragma foreign_proc("C#", using_sprintf,
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	SUCCESS_INDICATOR = MR_FALSE;
+	SUCCESS_INDICATOR = false;
 ").
 
 	% Construct a format string suitable to passing to sprintf.
@@ -2874,25 +2874,25 @@ max_precision = min_precision + 2.
 		/* MR_TRUE if sscanf succeeds, MR_FALSE otherwise */
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__to_float(FloatString::in, FloatVal::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	// leading or trailing whitespace is not allowed
-	if (FloatString->Length == 0 ||
-	    System::Char::IsWhiteSpace(FloatString, 0) ||
-	    System::Char::IsWhiteSpace(FloatString, FloatString->Length - 1))
+	if (FloatString.Length == 0 ||
+	    System.Char.IsWhiteSpace(FloatString, 0) ||
+	    System.Char.IsWhiteSpace(FloatString, FloatString.Length - 1))
 	{
-	    SUCCESS_INDICATOR = MR_FALSE;
+	    SUCCESS_INDICATOR = false;
 	} else {
 	    /*
-	    ** XXX should we also catch System::OverflowException?
+	    ** XXX should we also catch System.OverflowException?
 	    */
 	    try {
-	        FloatVal = System::Convert::ToDouble(FloatString);
-	        SUCCESS_INDICATOR = MR_TRUE;
-	    } catch (System::FormatException *e) {
-	        SUCCESS_INDICATOR = MR_FALSE;
+	        FloatVal = System.Convert.ToDouble(FloatString);
+	        SUCCESS_INDICATOR = true;
+	    } catch (System.FormatException e) {
+	        SUCCESS_INDICATOR = false;
 	    }
 	}
 }").
@@ -2912,11 +2912,11 @@ max_precision = min_precision + 2.
 "
 	SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__contains_char(Str::in, Ch::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	SUCCESS_INDICATOR = (Str->IndexOf(Ch) != -1);
+	SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);
 ").
 string__contains_char(String, Char) :-
 	string__contains_char(String, Char, 0, string__length(String)).
@@ -2970,11 +2970,11 @@ string__index(Str, Index, Char) :-
 	*/
 	SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__index_check(Index::in, Length::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
+	SUCCESS_INDICATOR = ((uint) Index < (uint) Length);
 ").
 string__index_check(Index, Length) :-
 	Index >= 0,
@@ -2988,11 +2988,11 @@ string__index_check(Index, Length) :-
 "
 	Ch = Str[Index];
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	string__unsafe_index(Str::in, Index::in, Ch::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Ch = Str->get_Chars(Index);
+	Ch = Str[Index];
 ").
 string__unsafe_index(Str, Index, Char) :-
 	( string__first_char(Str, First, Rest) ->
@@ -3057,17 +3057,17 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 		MR_set_char(Str, Index, Ch);
 	}
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__set_char(Ch::in, Index::in, Str0::in, Str::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if (Index >= Str0->get_Length()) {
-		SUCCESS_INDICATOR = MR_FALSE;
+	if (Index >= Str0.Length) {
+		SUCCESS_INDICATOR = false;
 	} else {
-		Str = System::String::Concat(Str0->Substring(0, Index),
-			System::Convert::ToString(Ch), 
-			Str0->Substring(Index + 1));
-		SUCCESS_INDICATOR = MR_TRUE;
+		Str = System.String.Concat(Str0.Substring(0, Index),
+			System.Convert.ToString(Ch), 
+			Str0.Substring(Index + 1));
+		SUCCESS_INDICATOR = true;
 	}
 ").
 string__set_char(Ch, Index, Str0, Str) :-
@@ -3093,17 +3093,17 @@ string__set_char(Ch, Index, Str0, Str) :-
 	}
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if (Index >= Str0->get_Length()) {
-		SUCCESS_INDICATOR = MR_FALSE;
+	if (Index >= Str0.Length) {
+		SUCCESS_INDICATOR = false;
 	} else {
-		Str = System::String::Concat(Str0->Substring(0, Index),
-			System::Convert::ToString(Ch), 
-			Str0->Substring(Index + 1));
-		SUCCESS_INDICATOR = MR_TRUE;
+		Str = System.String.Concat(Str0.Substring(0, Index),
+			System.Convert.ToString(Ch), 
+			Str0.Substring(Index + 1));
+		SUCCESS_INDICATOR = true;
 	}
 ").
 */
@@ -3123,13 +3123,13 @@ string__set_char(Ch, Index, Str0, Str) :-
 	strcpy(Str, Str0);
 	MR_set_char(Str, Index, Ch);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Str = System::String::Concat(Str0->Substring(0, Index),
-		System::Convert::ToString(Ch), 
-		Str0->Substring(Index + 1));
+	Str = System.String.Concat(Str0.Substring(0, Index),
+		System.Convert.ToString(Ch), 
+		Str0.Substring(Index + 1));
 ").
 
 /*
@@ -3144,13 +3144,13 @@ string__set_char(Ch, Index, Str0, Str) :-
 	Str = Str0;
 	MR_set_char(Str, Index, Ch);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Str = System::String::Concat(Str0->Substring(0, Index),
-		System::Convert::ToString(Ch), 
-		Str0->Substring(Index + 1));
+	Str = System.String.Concat(Str0.Substring(0, Index),
+		System.Convert.ToString(Ch), 
+		Str0.Substring(Index + 1));
 ").
 */
 
@@ -3166,11 +3166,11 @@ string__set_char(Ch, Index, Str0, Str) :-
 "
 	Length = strlen(Str);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__length(Str::in, Length::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Length = Str->get_Length();
+	Length = Str.Length;
 ").
 :- pragma foreign_proc("Java",
 	string__length(Str::in, Length::uo),
@@ -3189,11 +3189,11 @@ string__set_char(Ch, Index, Str0, Str) :-
 "
 	Length = strlen(Str);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__length(Str::ui, Length::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Length = Str->get_Length();
+	Length = Str.Length;
 ").
 :- pragma foreign_proc("Java",
 	string__length(Str::ui, Length::uo),
@@ -3241,11 +3241,11 @@ string__append(S1::out, S2::out, S3::in) :-
 	);
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__append_iii(S1::in, S2::in, S3::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	SUCCESS_INDICATOR = S3->Equals(System::String::Concat(S1, S2));
+	SUCCESS_INDICATOR = S3.Equals(System.String.Concat(S1, S2));
 }").
 
 string__append_iii(X, Y, Z) :-
@@ -3275,15 +3275,15 @@ string__append_iii(X, Y, Z) :-
 	}
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__append_ioi(S1::in, S2::uo, S3::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	if (S3->StartsWith(S1)) {
-		S2 = S3->Remove(0, S1->Length);
-		SUCCESS_INDICATOR = MR_TRUE;
+	if (S3.StartsWith(S1)) {
+		S2 = S3.Remove(0, S1.Length);
+		SUCCESS_INDICATOR = true;
 	} else {
-		SUCCESS_INDICATOR = MR_FALSE;
+		SUCCESS_INDICATOR = false;
 	}
 }").
 
@@ -3304,11 +3304,11 @@ string__append_ioi(X, Y, Z) :-
 	strcpy(S3 + len_1, S2);
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__append_iio(S1::in, S2::in, S3::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	S3 = System::String::Concat(S1, S2);
+	S3 = System.String.Concat(S1, S2);
 }").
 
 string__append_iio(X, Y, Z) :-
@@ -3350,12 +3350,12 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 	strcpy(S2, S3 + S1Len);
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	S1 = S3->Substring(0, S1Len);
-	S2 = S3->Substring(S1Len);
+	S1 = S3.Substring(0, S1Len);
+	S2 = S3.Substring(S1Len);
 ").
 
 string__append_ooi_3(S1Len, _S3Len, S1, S2, S3) :-
@@ -3429,11 +3429,11 @@ strchars(I, End, Str) =
 	memcpy(SubString, Str + Start, Count);
 	SubString[Count] = '\\0';
 }").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	SubString = Str->Substring(Start, Count);
+	SubString = Str.Substring(Start, Count);
 }").
 
 /*
@@ -3472,22 +3472,21 @@ strchars(I, End, Str) =
 	}
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__split(Str::in, Count::in, Left::uo, Right::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_Integer len;
-	MR_Word tmp;
+	int len;
 	if (Count <= 0) {
-		Left = S"""";
+		Left = """";
 		Right = Str;
 	} else {
-		len = Str->get_Length();
+		len = Str.Length;
 		if (Count > len) {
 			Count = len;
 		}
-		Left = Str->Substring(0, Count);
-		Right = Str->Substring(Count);
+		Left = Str.Substring(0, Count);
+		Right = Str.Substring(Count);
 	}
 }").
 
@@ -3538,15 +3537,15 @@ string__split(Str, Count, Left, Right) :-
 		strcmp(Str + 1, Rest) == 0
 	);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__first_char(Str::in, First::in, Rest::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	MR_Integer len = Str->get_Length();
+	in len = Str.Length;
 	SUCCESS_INDICATOR = (
 		len > 0 &&
-		Str->get_Chars(0) == First &&
-		System::String::Compare(Str, 1, Rest, 0, len) == 0
+		Str[0] == First &&
+		System.String.Compare(Str, 1, Rest, 0, len) == 0
 	);
 ").
 
@@ -3560,17 +3559,17 @@ string__split(Str, Count, Left, Right) :-
 	First = Str[0];
 	SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + 1, Rest) == 0);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__first_char(Str::in, First::uo, Rest::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	MR_Integer len = Str->get_Length();
+	int len = Str.Length;
 	if (len > 0) {
 		SUCCESS_INDICATOR = 
-			(System::String::Compare(Str, 1, Rest, 0, len) == 0);
-		First = Str->get_Chars(0);
+			(System.String.Compare(Str, 1, Rest, 0, len) == 0);
+		First = Str[0];
 	} else {
-		SUCCESS_INDICATOR = MR_FALSE;
+		SUCCESS_INDICATOR = false;
 	}
 ").
 
@@ -3595,16 +3594,16 @@ string__split(Str, Count, Left, Right) :-
 		SUCCESS_INDICATOR = MR_TRUE;
 	}
 }").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__first_char(Str::in, First::in, Rest::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_Integer len = Str->get_Length();
+	int len = Str.Length;
 	if (len > 0) {
-		SUCCESS_INDICATOR = (First == Str->get_Chars(0));
-		Rest = (Str)->Substring(1);
+		SUCCESS_INDICATOR = (First == Str[0]);
+		Rest = (Str).Substring(1);
 	} else {
-		SUCCESS_INDICATOR = MR_FALSE;
+		SUCCESS_INDICATOR = false;
 	}
 }").
 
@@ -3630,16 +3629,16 @@ string__split(Str, Count, Left, Right) :-
 		SUCCESS_INDICATOR = MR_TRUE;
 	}
 }").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	string__first_char(Str::in, First::uo, Rest::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	if (Str->get_Length() == 0) {
-		SUCCESS_INDICATOR = MR_FALSE;
+	if (Str.Length == 0) {
+		SUCCESS_INDICATOR = false;
 	} else {
-		First = Str->get_Chars(0);
-		Rest = (Str)->Substring(1);
-		SUCCESS_INDICATOR = MR_TRUE;
+		First = Str[0];
+		Rest = (Str).Substring(1);
+		SUCCESS_INDICATOR = true;
         }
 }").
 
@@ -3655,13 +3654,13 @@ string__split(Str, Count, Left, Right) :-
 	Str[0] = First;
 	strcpy(Str + 1, Rest);
 }").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	string__first_char(Str::uo, First::in, Rest::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_String FirstStr;
-	FirstStr = new System::String(First, 1);
-	Str = System::String::Concat(FirstStr, Rest);
+	string FirstStr;
+	FirstStr = new System.String(First, 1);
+	Str = System.String.Concat(FirstStr, Rest);
 }").
 
 %-----------------------------------------------------------------------------%
