@@ -49,6 +49,9 @@
 :- pred set__equal(set(T), set(T)).
 :- mode set__equal(in, in) is semidet.
 
+:- pred set__empty(set(T)).
+:- mode set__empty(in) is semidet.
+
 	% `set__subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
 
 :- pred set__subset(set(T), set(T)).
@@ -65,13 +68,6 @@
 :- pred set__member(T, set(T)).
 :- mode set__member(in, in) is semidet.
 :- mode set__member(out, in) is nondet.
-
-	% set__a_member(X, Set) is true iff X is a member of Set,
-	% but succeeds at most once in the (out,in) mode.
-
-:- pred set__a_member(T, set(T)).
-:- mode set__a_member(in, in) is semidet.
-:- mode set__a_member(out, in) is semidet.
 
 	% `set__insert(Set0, X, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.
@@ -116,6 +112,9 @@
 
 :- pred set__remove_list(set(T), list(T), set(T)).
 :- mode set__remove_list(in, in, out) is det.
+
+:- pred set__remove_least(set(T), T, set(T)).
+:- mode set__remove_least(in, out, out) is semidet.
 
 	% `set_union(SetA, SetB, Set)' is true iff `Set' is the union of
 	% `SetA' and `SetB'.  If the sets are known to be of different
@@ -173,6 +172,8 @@ set__equal(S1, S2) :-
 	set__subset(S1, S2),
 	set__subset(S2, S1).
 
+set__empty([]).
+
 set__subset([], _).
 set__subset([E|S0], S1) :-
 	set__member(E, S1),
@@ -183,8 +184,6 @@ set__superset(S0, S1) :-
 
 set__member(E, S) :-
 	member(E, S).
-
-set__a_member(E, [E|_]).
 
 :- set__delete_list(_, Xs, _) when Xs.
 
@@ -206,6 +205,10 @@ set__remove_list(S0, [X | Xs], S) :-
 
 set__remove(Set0, Elem, Set) :-
 	delete_all(Set0, Elem, Set).
+
+set__remove_least(Set0, E, Set) :-
+	Set0 = [_|_],	% fail early on an empty set
+	set__to_sorted_list(Set0, [E|Set]).
 
 set__union(Set0, Set1, Set) :-
 	append(Set1, Set0, Set).
