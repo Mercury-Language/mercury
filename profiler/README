@@ -3,26 +3,17 @@ PROFILING
 1. BUILDING PROFILED APPLICATIONS
 
 To build an application with profiling turned on you need to make sure
-the following conditions hold about the library files (boehm_gc, runtime
-and library).
+the following conditions hold about the library files (in the
+directories `boehm_gc', `runtime', and `library').
 
-The runtime and library libraries must be built with profiling enabled.
+The `runtime' and `library' libraries must be built with profiling enabled,
+and the `boehm_gc' library must be build without `-DNO_SIGNALS'.
 To do this add the line 
-	PROFFLAGS       =       -DPROFILE_TIME -DPROFILE_CALLS
-to the Mmake.params file.
 
-Then rebuild the libraries from scratch.  A non-guaranteed quicker way to 
-do this is just to delete all the object files which causes a recompilation
-of all the c code with the correct flags enabled.
+	EXTRA_CFLAGS = -DPROFILE_TIME -DPROFILE_CALLS -UNO_SIGNALS
 
-For the boehm_gc library you must ensure that in the makefile the CFLAGS line
-is similar to the one below.
-	CFLAGS = -DSILENT # -DNO_SIGNALS
-The -DNO_SIGNALS must be commented out as this ensures that no profiling
-signals can wreck a malloc.  Then rebuild the library.
-
-
-
+to the Mmake.params file.  Delete any existing object files (*.o) in
+those directories, and then rebuild the libraries.
 
 2. DISPLAYING THE PROFILE
 
@@ -53,8 +44,4 @@ NB. If you don't have all of the prof files including the library ones,
 NB. Also at the moment you also have to delete the line 
 	0	1
     from the file Prof.Counts.  Problem soon to be rectified.
-
-
-3. FILES GENERATED
-
 
