@@ -13,8 +13,12 @@ The shell scripts use the following environment variables.
 		Filename of the Mercury `nc'-compatibility file (nc_builtin.nl)
 
 	MERCURY_LIB_DIR
-		Directory for the NU-Prolog object files (*.no) of the
+		Directory for the NU-Prolog object files (*.no) for the
 		Mercury library
+
+	MERCURY_LIB_OBJS
+		List of the NU-Prolog object files (*.no) for the Mercury
+		library
 
 	MERCURY_COMPILER
 		Filename of the Mercury Compiler
