@@ -68,19 +68,21 @@
 		;	vndebug
 	% Output options
 		;	make_interface
-		;	show_dependency_graph
 		;	generate_dependencies
 		;	convert_to_mercury
 		;	convert_to_goedel
-		;	modecheck
-		;	dump_hlds
-		;	verbose_dump_hlds
+		;	typecheck_only
 		;	errorcheck_only
 		;	compile_to_c
 		;	compile_only
+	% Auxiliary output options
 		;	line_numbers
 		;	auto_comments
+		;	show_dependency_graph
+		;	dump_hlds
+		;	verbose_dump_hlds
 		;	profiling
+		;	output_file_name
 	% Code generation options
 		;	trad_passes
 		;	lazy_code
@@ -96,6 +98,7 @@
 		;	cc
 		;	cflags
 		;	c_include_directory
+		;	link_flags
 		;	gcc_non_local_gotos
 		;	gcc_global_registers
 		;	asm_labels
@@ -182,7 +185,7 @@ option_defaults_2(output_option, [
 	make_interface		-	bool(no),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
-	modecheck		-	bool(yes),
+	typecheck_only		-	bool(no),
 	errorcheck_only		-	bool(no),
 	compile_to_c		-	bool(no),
 	compile_only		-	bool(no),
@@ -192,7 +195,8 @@ option_defaults_2(output_option, [
 	verbose_dump_hlds	-	bool(no),
 	line_numbers		-	bool(no),
 	auto_comments		-	bool(no),
-	profiling		-	bool(no)
+	profiling		-	bool(no),
+	output_file_name	-	string("")
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
@@ -209,6 +213,7 @@ option_defaults_2(code_gen_option, [
 	cc			-	string("gcc"),
 	cflags			-	string(""),
 	c_include_directory	-	string(""),
+	link_flags		-	string(""),
 	gcc_non_local_gotos	-	bool(yes),
 	gcc_global_registers	-	bool(yes),
 	asm_labels		-	bool(yes)
@@ -268,12 +273,14 @@ short_option('l', 			line_numbers).
 short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
 short_option('O', 			c_optimize).
+short_option('o', 			output_file_name).
 % short_option('p', 			polymorphism).
 short_option('p', 			profiling).
 short_option('P', 			convert_to_mercury).
 short_option('s', 			grade).
 short_option('S', 			statistics).
 short_option('T', 			debug_types).
+short_option('t', 			typecheck_only).
 short_option('v', 			verbose).
 short_option('V', 			very_verbose).
 % short_option('x', 			smart_indexing).
@@ -308,7 +315,7 @@ long_option("warn-singleton-variables",	warn_singleton_vars).
 long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("inhibit-warnings",		inhibit_warnings).
-long_option("modecheck",		modecheck).
+long_option("typecheck-only",		typecheck_only).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
 long_option("vndebug",			vndebug).
@@ -330,6 +337,8 @@ long_option("compile-to-C",		compile_to_c).
 long_option("compile-only",		compile_only).
 long_option("cc",			cc).
 long_option("cflags",			cflags).
+long_option("link-flags",		link_flags).
+long_option("output-file",		output_file_name).
 long_option("c-include-directory",	c_include_directory).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
 long_option("gcc-global-registers",	gcc_global_registers).
@@ -427,9 +436,10 @@ options_help -->
 	io__write_string("\t-P, --convert-to-mercury\n"),
 	io__write_string("\t\tConvert to Mercury. Output to file `<module>.ugly'\n"),
 	io__write_string("\t\tThis option acts as a Mercury ugly-printer.\n"),
-	io__write_string("\t-m-, --no-modecheck\n"),
-	io__write_string("\t\tDon't invoke the mode analysis pass of the compiler. Just\n"),
-	io__write_string("\t\tcheck that the code is syntactically correct and type-correct.\n"),
+	io__write_string("\t-t, --typecheck-only\n"),
+	io__write_string("\t\tJust check that the code is syntactically correct and\n"),
+	io__write_string("\t\ttype-correct. Don't check modes or determism,\n"),
+	io__write_string("\t\tand don't generate any code.\n"),
 	io__write_string("\t-e, --errorcheck-only\n"),
 	io__write_string("\t\tCheck the module for errors, but do not generate any code.\n"),
 	io__write_string("\t-C, --compile-to-c\n"),
@@ -455,6 +465,10 @@ options_help -->
 	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
 	% io__write_string("\t--profiling\n"),
 	% io__write_string("\t\tOutput to file <module>.prof the profiling info.\n"),
+	io__write_string("\t-o <filename>, --output-file <filename>\n"),
+	io__write_string("\t\tSpecify the name of the final executable.\n"),
+	io__write_string("\t\t(The default executable name is the same as the name\n"),
+	io__write_string("\t\tof the first module on the command line.)\n"),
 
 	io__write_string("\nCode generation options\n"),
 	io__write_string("\t--no-trad-passes\n"),
@@ -475,7 +489,7 @@ options_help -->
 	io__write_string("\t--gc {none, conservative, accurate}\n"),
 	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
 	io__write_string("\t\tSpecify which method of garbage collection to use\n"),
-	io__write_string("\t\t (default: none). `accurate' GC is not yet implemented.\n"),
+	io__write_string("\t\t (default: conservative). `accurate' GC is not yet implemented.\n"),
 	io__write_string("\t--no-follow-code\n"),
 	io__write_string("\t\tDon't migrate builtin goals into branched goals.\n"),
 	io__write_string("\t--no-follow-vars\n"),
@@ -505,8 +519,13 @@ options_help -->
 	io__write_string("\t\tSpecify the directory containing the Mercury C header files.\n"),
 	io__write_string("\t--cflags <options>\n"),
 	io__write_string("\t\tSpecify options to be passed to the C compiler.\n"),
-	% io__write_string("\t--debug\n"),
-	% io__write_string("\t\tEnable debugging.\n"),
+	io__write_string("\t--link-flags <options>\n"),
+	io__write_string("\t\tSpecify options to be passed to the linker.\n"),
+	io__write_string("\t--debug\n"),
+	io__write_string("\t\tEnable debugging.\n"),
+	io__write_string("\t\tDebugging support is currently extremely primitive.\n"),
+	io__write_string("\t\tWe recommend that you use instead use `mnp' or `msp'.\n"),
+	io__write_string("\t\tSee the Mercury User's Guide for details.\n"),
 
 	io__write_string("\nOptimization Options\n"),
 	io__write_string("\t--no-optimize\n"),
@@ -574,7 +593,7 @@ options_help -->
 	io__write_string("\t\tseverely stress the C compiler on large modules.\n"),
 	% io__write_string("\t--constraint-propagation\n"),
 	% io__write_string("\t\tEnable the C-tranformation.  (Doesn't work.)\n"),
-	io__write_string("\t--no-c-optimize\n"),
+	io__write_string("\t-O-, --no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),

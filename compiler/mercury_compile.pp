@@ -274,7 +274,7 @@ usage -->
 			"Copyright (C) 1995 University of Melbourne\n"),
 	io__write_string(StdErr, "Usage: "),
 	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, " [<options>] <module>\n"),
+	io__write_string(StdErr, " [<options>] <module(s)>\n"),
 	io__write_string(StdErr, "Use `"),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " --help' for more information.\n").
@@ -286,7 +286,7 @@ long_usage -->
  	io__write_string("Copyright (C) 1995 University of Melbourne\n"),
 	io__write_string("Usage: "),
 	io__write_string(ProgName),
-	io__write_string(" [<options>] <module>\n"),
+	io__write_string(" [<options>] <module(s)>\n"),
 	io__write_string("Options:\n"),
 	options_help.
 
@@ -310,6 +310,7 @@ main_2(no, Args) -->
 		globals__io_lookup_bool_option(make_interface, MakeInterface),
 		globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
 		globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
+		globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		globals__io_lookup_bool_option(compile_to_c, CompileToC),
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
@@ -320,6 +321,7 @@ main_2(no, Args) -->
 				MakeInterface = no,
 				ConvertToMercury = no,
 				ConvertToGoedel = no,
+				TypecheckOnly = no,
 				ErrorcheckOnly = no,
 				CompileToC = no,
 				CompileOnly = no,
@@ -1286,8 +1288,8 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 	mercury_compile__maybe_dump_hlds(HLDS2, "2", "typecheck"),
 	{ bool__not(FoundTypeError, Proceed1) },
 
-	globals__io_lookup_bool_option(modecheck, DoModeCheck),
-	( { DoModeCheck = yes, FoundTypeError = no } ->
+	globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
+	( { TypecheckOnly = no, FoundTypeError = no } ->
 		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),
@@ -2142,10 +2144,20 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 mercury_compile__link_module_list(Modules) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Statistics),
-	( { Modules = [Module | _] } ->
+	globals__io_lookup_string_option(output_file_name, OutputFile0),
+	( { OutputFile0 = "" } ->
+	    ( { Modules = [Module | _] } ->
+		{ OutputFile = Module }
+	    ;
+	        { error("link_module_list: no modules") }
+	    )
+	;
+	    { OutputFile = OutputFile0 }
+	),
+	    
 	    % create the initialization C file
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
-	    { string__append(Module, "_init.c", C_Init_File) },
+	    { string__append(OutputFile, "_init.c", C_Init_File) },
 	    { join_string_list(Modules, ".c ", ["> ", C_Init_File],
 				MkInitCmd0) },
 	    { string__append_list(["c2init " | MkInitCmd0], MkInitCmd) },
@@ -2164,8 +2176,11 @@ mercury_compile__link_module_list(Modules) -->
 	            maybe_write_string(Verbose, "% Linking...\n"),
 		    { join_string_list(Modules, ".o ", [], ObjectList) },
 		    globals__io_lookup_string_option(grade, Grade),
-		    { string__append_list(["ml -s ", Grade, " -o ", Module, " ",
-				Module, "_init.o " | ObjectList], LinkCmd) },
+		    globals__io_lookup_string_option(link_flags, LinkFlags),
+		    { string__append_list(
+			["ml -s ", Grade, " -o ", OutputFile, " ",
+			OutputFile, "_init.o ", LinkFlags, " " | ObjectList],
+			LinkCmd) },
 		    mercury_compile__invoke_system_command(LinkCmd, LinkCmdOK),
 		    maybe_report_stats(Statistics),
 		    ( { LinkCmdOK = no } ->
@@ -2174,10 +2189,7 @@ mercury_compile__link_module_list(Modules) -->
 			[]
 		    )
 		)
-	    )
-	;
-	    { error("link_module_list: no modules") }
-	).
+	    ).
 
 :- pred join_string_list(list(string), string, list(string), list(string)).
 :- mode join_string_list(in, in, in, out) is det.
