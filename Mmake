@@ -86,10 +86,10 @@ stage_1: all
 .PHONY: stage_2
 stage_2:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	[ -d stage_2 ] || mkdir stage2
 	cp compiler/mercury_compile compiler/*.c library/*.c stage2
@@ -99,10 +99,10 @@ stage_2:
 .PHONY: stage_3
 stage_3:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	[ -d stage_3 ] || mkdir stage3
 	cp compiler/mercury_compile compiler/*.c library/*.c stage3
@@ -112,10 +112,10 @@ stage_3:
 .PHONY: stage_4
 stage_4:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile" \
 	$(SUBDIR_MMAKE)
 	[ -d stage_4 ] || mkdir stage4
 	cp compiler/mercury_compile compiler/*.c library/*.c stage4
