@@ -122,7 +122,7 @@
 // will be used by the code generator as an lval, so we use
 // private_builtin:dummy_var as that lval.
 
-MR_Word dummy_var;
+static MR_Word dummy_var;
 
 ").
 
