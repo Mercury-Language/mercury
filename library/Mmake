@@ -62,7 +62,7 @@ nuprolog : ints library.nu $(library.nos) $(NU_LIBRARY_NOS) \
 			nc_builtin.nl np_builtin.nl
 
 .PHONY: sicstus
-sicstus : ints sicstus_compile library.sicstus.debug
+sicstus : ints sicstus_compile library.sicstus library.sicstus.debug
 
 #-----------------------------------------------------------------------------#
 
