@@ -541,14 +541,14 @@ traverse_goal(_, generic_call(GenericCall, Args, _, _), UseInf0, UseInf) :-
 
 % handle pragma foreign_proc(...) -
 % only those arguments which have names can be used in the foreign code.
-traverse_goal(_, foreign_proc(_, _, _, Args, _, _),
+traverse_goal(_, foreign_proc(_, _, _, Args, ExtraArgs, _),
 		UseInf0, UseInf) :-
 	ArgIsUsed = (pred(Arg::in, Var::out) is semidet :-
 			Arg = foreign_arg(Var, MaybeNameAndMode, _),
 			MaybeNameAndMode = yes(_)
 		),
-	list__filter_map(ArgIsUsed, Args, UsedArgs),
-	set_list_vars_used(UseInf0, UsedArgs, UseInf).
+	list__filter_map(ArgIsUsed, Args ++ ExtraArgs, UsedVars),
+	set_list_vars_used(UseInf0, UsedVars, UseInf).
 
 % cases to handle all the different types of unification
 traverse_goal(_, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
