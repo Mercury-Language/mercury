@@ -64,7 +64,7 @@
 %	corresponding types and default values.
 %
 % :- pred special_handler(option::in, special_data::in,
-%	option_table::in, maybe_option_table::out) is semidet.
+%	option_table::in, maybe_option_table(_)::out) is semidet.
 %	This predicate is invoked whenever getopt finds an option
 %	(long or short) designated as special, with special_data holding
 %	the argument of the option (if any). The predicate can change the
