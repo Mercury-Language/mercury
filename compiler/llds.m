@@ -317,6 +317,8 @@ output_tag(Tag) -->
 :- pred output_rval(rval, io__state, io__state).
 :- mode output_rval(in, di, uo).
 
+	% XXX it looks like there's lots of unhandled cases here.
+
 output_rval(binop(Op, X, Y)) -->
 	io__write_string("("),
 	output_rval(X),

@@ -11,9 +11,9 @@
 :- import_module int, string, std_util, list, io.
 
 :- type option_data	--->	bool(bool)
-			;	int(int)	% not yet implemented
-			;	string(string)	% not yet implemented
-			;	accumulating(list(string)). % not yet imp.
+			;	int(int)
+			;	string(string)
+			;	accumulating(list(string)).
 		
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
@@ -35,7 +35,8 @@
 			;	generate_code
 			;	builtin_module
 			;	make_interface
-			;	heap_space.
+			;	heap_space
+			;	search_directories.
 
 :- implementation.
 
@@ -48,7 +49,8 @@ option_defaults([
 	generate_code	-	bool(no),
 	builtin_module	-	string("mercury_builtin"),
 	make_interface	-	bool(no),
-	heap_space	-	int(0)
+	heap_space	-	int(0),
+	search_directories -	accumulating(["."])
 ]).
 
 short_option('v', 		verbose).
@@ -60,6 +62,7 @@ short_option('g', 		generate_code).
 short_option('b', 		builtin_module).
 short_option('i', 		make_interface).
 short_option('h', 		heap_space).
+short_option('I', 		search_directories).
 
 long_option("verbose",		verbose).
 long_option("very-verbose",	very_verbose).
@@ -70,6 +73,7 @@ long_option("generate-code",	generate_code).
 long_option("builtin-module",	builtin_module).
 long_option("make-interface",	make_interface).
 long_option("heap-space",	heap_space).
+long_option("search-directory",	search_directories).
 
 options_help -->
 	io__write_string(StdErr, "\t-v, --verbose\n"),
@@ -94,7 +98,9 @@ options_help -->
 	io__write_string(StdErr, "\t\tPre-allocate <n> kilobytes of heap space.\n"),
 	io__write_string(StdErr, "\t\tUse this option to avoid NU-Prolog's\n"),
 	io__write_string(StdErr, "\t\t\t\"Panic: growing stacks has required shifting the heap\"\n"),
-	io__write_string(StdErr, "\t\tmessage.\n").
+	io__write_string(StdErr, "\t\tmessage.\n"),
+	io__write_string(StdErr, "\t-I <dir>, --search-directory <dir>\n"),
+	io__write_string(StdErr, "\t\tAppend <dir> to the list of directories to be searched for \n\t\timported modules.\n").
 
 maybe_report_stats(yes) --> io__report_stats.
 maybe_report_stats(no) --> [].

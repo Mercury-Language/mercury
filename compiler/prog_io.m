@@ -52,6 +52,7 @@
 :- module prog_io.
 :- interface.
 :- import_module string, int, list, varset, term, io, term_io.
+:- import_module globals, options.
 
 %-----------------------------------------------------------------------------%
 
@@ -288,7 +289,8 @@
 % late-input modes.)
 
 prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
-	io__see(FileName, R),
+	lookup_option(search_directories, accumulating(Dirs)),
+	search_for_file(Dirs, FileName, R),
 	( { R = ok } ->
 		read_all_items(RevMessages, RevItems0, Error0),
 		{
@@ -313,6 +315,26 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 		}
 	).
 
+:- pred search_for_file(list(string), string, res, io__state, io__state).
+:- mode search_for_file(in, in, out, di, uo).
+
+search_for_file([Dir | Dirs], FileName, R) -->
+	% xxx Operating system dependency -- assumptions about "." and "/".
+	% This will work on Unix and even on DOS, but maybe
+	% there are operating systems somewhere for which this won't work.
+
+	( { Dir = "." } ->
+		{ ThisFileName = FileName }
+	;
+		{ string__append(Dir, "/", Tmp1) },
+		{ string__append(Tmp1, FileName, ThisFileName) }
+	),
+	io__see(ThisFileName, R0),
+	( { R0 = ok } ->
+		{ R = ok }
+	;
+		search_for_file(Dirs, FileName, R)
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -59,6 +59,14 @@
 :- pred bintree__to_list(bintree(K,V), list(pair(K,V))).
 :- mode bintree__to_list(in, out).
 
+	% count the number of elements in a tree
+:- pred bintree__count(bintree(_K,_V), int).
+:- mode bintree__count(in, out).
+
+	% count the depth of a tree
+:- pred bintree__depth(bintree(_K,_V), int).
+:- mode bintree__depth(in, out).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -320,5 +328,21 @@ bintree__keys_2(empty, List, List).
 bintree__keys_2(tree(K, _V, Left, Right), List0, List) :-
 	bintree__keys_2(Right, List0, List1),
 	bintree__keys_2(Left, [K | List1], List).
+
+%-----------------------------------------------------------------------------%
+
+bintree__count(empty, 0).
+bintree__count(tree(_K, _V, Left, Right), Count) :-
+	bintree__count(Right, RightCount),
+	bintree__count(Left, LeftCount),
+	ChildCount is LeftCount + RightCount,
+	Count is ChildCount + 1.
+
+bintree__depth(empty, 0).
+bintree__depth(tree(_K, _V, Left, Right), Depth) :-
+	bintree__depth(Right, RightDepth),
+	bintree__depth(Left, LeftDepth),
+	int__max(LeftDepth, RightDepth, SubDepth),
+	Depth is SubDepth + 1.
 
 %-----------------------------------------------------------------------------%

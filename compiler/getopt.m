@@ -166,6 +166,7 @@ process_option(Flag, Args0, OptionTable0, Args, Result) :-
 process_option_2(bool(_), Flag, Args0, OptionTable0, Args, Result) :-
 	map__set(OptionTable0, Flag, bool(yes), OptionTable1),
 	process_options_2(Args0, OptionTable1, Args, Result).
+
 process_option_2(string(_), Flag, Args0, OptionTable0, Args, Result) :-
 	( Args0 = [Arg | Args1] ->
 		map__set(OptionTable0, Flag, string(Arg), OptionTable1),
@@ -174,6 +175,7 @@ process_option_2(string(_), Flag, Args0, OptionTable0, Args, Result) :-
 		Args = Args0,
 		Result = error("option requires an argument")
 	).
+
 process_option_2(int(_), Flag, Args0, OptionTable0, Args, Result) :-
 	( Args0 = [Arg | Args1] ->
 		( string__to_int(Arg, IntArg) ->
@@ -187,6 +189,17 @@ process_option_2(int(_), Flag, Args0, OptionTable0, Args, Result) :-
 	;
 		Args = Args0,
 				% XXX improve error message
+		Result = error("option requires an argument")
+	).
+
+process_option_2(accumulating(List0), Flag, Args0, OptionTable0, Args, Result)
+		:-
+	( Args0 = [Arg | Args1] ->
+		append(List0, [Arg], List),
+		map__set(OptionTable0, Flag, accumulating(List), OptionTable1),
+		process_options_2(Args1, OptionTable1, Args, Result)
+	;
+		Args = Args0,
 		Result = error("option requires an argument")
 	).
 
