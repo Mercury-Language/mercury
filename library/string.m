@@ -214,8 +214,11 @@
 :- mode string__format(in, in, out) is det.
 %
 %	A function similar to sprintf() in C.  
-%	string__format("%s %i %c %f\n", [s("Square-root of"), i(2), c('='), 
-%			f(1.41)], "Square-root of 2 = 1.41\n").
+%	For example,
+%		string__format("%s %i %c %f\n",
+%			[s("Square-root of"), i(2), c('='), f(1.41)], String)
+%	will return
+%		String = "Square-root of 2 = 1.41\n".
 %
 %	All the normal options available in C are supported, ie Flags [0+-# ],
 %	a field width (or *) '.' precision (could be a '*'), and a length
@@ -247,7 +250,7 @@
 %	modifies the output string's format.  These options are normally put 
 %	directly after the '%'.
 %
-%	Note:	A string may print incorretly if you specify a precision longer
+%	Note:	A string may print incorrectly if you specify a precision longer
 %		than the string, and '0' padding.
 %
 %		%x will print with uppercase hex numbers.
@@ -259,7 +262,7 @@
 %
 %		%.*z is buggy, and doesn't work currently. (z is conv. char.)
 %
-%		Compiles, but does not run under either Nu-prolog or sicstus.
+%		Compiles, but does not run under either NU-Prolog or SICStus.
 %
 
 
@@ -673,12 +676,9 @@ string__combine_hash(H0, X, H) :-
 	H2 is H1 ^ H0,
 	H is H2 ^ X.
 
-
-%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%
+%-----------------------------------------------------------------------------%
 
 %	XXXXX when string__to_lower exits, fix %x option.
-
 
 string__format( Fstring, Poly_list, Ostring ) :-
 	(
@@ -689,7 +689,6 @@ string__format( Fstring, Poly_list, Ostring ) :-
 		string__to_char_list(Fstring, Clist),
 		string__format_2(Clist, Poly_list, Ostring)
 	).
-
 
 :- pred	string__format_2(list(char), list(string__poly_type), string).
 :- mode string__format_2(in, in, out) is det.
@@ -715,7 +714,6 @@ string__format_2( [Achar|As], Vars_in, Ostring) :-
 		string__format_2(As, Vars_in, Temp_out),
 		string__first_char(Ostring, Achar, Temp_out)
 	).
-
 
 :- pred string__format_top_convert_variable( list(char), list(char), 
 		list(string__poly_type), list(string__poly_type), string).
@@ -764,25 +762,22 @@ string__format_top_convert_variable( F_chars_in, F_chars_out,
 %
 %	Conv_c_inhange conversion character.
 %
-%	Idealy the outer "->" symbols could be removed, the last case given
+%	Ideally the outer "->" symbols could be removed, the last case given
 %	a guard, and the compiler accept thi  as det, rather than non-det.
 %
 :- pred string__format_mod_conv_char( int, string__poly_type, char, char).
 :- mode string__format_mod_conv_char( in, in, out, in) is det.
 string__format_mod_conv_char( Precision, Poly_var, Conv_c_out, Conv_c_in) :- 
-	(
-	Conv_c_in = 'i'
-	->
+	( Conv_c_in = 'i' ->
 		Conv_c_out = 'd'		% %d = %i
-	;
-	Conv_c_in = 'g'			%g is either %e of %f
-	->
-		(Poly_var = f(F)
-		->
+	; Conv_c_in = 'g' ->			% %g is either %e of %f
+		( Poly_var = f(F) ->
 			string__float_abs(F, Ft),
 			int__pow(10, Precision, P),
 			int__to_float(P, Pe),
-			( builtin_float_gt(Ft, 0.0001), builtin_float_gt(Pe, Ft)
+			(
+				builtin_float_gt(Ft, 0.0001),
+				builtin_float_gt(Pe, Ft)
 			->
 				Conv_c_out = 'f'
 			;
@@ -791,15 +786,14 @@ string__format_mod_conv_char( Precision, Poly_var, Conv_c_out, Conv_c_in) :-
 		;
 			error("string__format:  %g without a f(Float).")
 		)
-	;
-	Conv_c_in = 'G'			%G is either %E of %f
-	->
-		(Poly_var = f(F)
-		->
+	; Conv_c_in = 'G' ->			%G is either %E of %f
+		( Poly_var = f(F) ->
 			string__float_abs(F, Ft),
 			int__pow(10, Precision, P),
 			int__to_float(P, Pe),
-			( builtin_float_gt(Ft, 0.0001), builtin_float_gt(Pe, Ft)
+			(
+				builtin_float_gt(Ft, 0.0001),
+				builtin_float_gt(Pe, Ft)
 			->
 				Conv_c_out = 'f'
 			;
@@ -811,8 +805,6 @@ string__format_mod_conv_char( Precision, Poly_var, Conv_c_out, Conv_c_in) :-
 	;
 		Conv_c_out = Conv_c_in
 	).
-
-
 
 %	This function glances at the input-modification flags, only applicable
 %	with a more complicated type system
@@ -837,7 +829,6 @@ string__format_do_mod_char( Char_mods, C_out, C_in) :-
 	;
 		C_out = C_in
 	).
-
 
 %
 %	Change Width or Precision vaalue, if '*' was spcified
@@ -899,7 +890,7 @@ string__do_conversion_hack(Conv_c, Poly_t, Ostring, Precision, Flags,
 		string__int_to_string(I, S),
 		string__format_int_precision(S, Ostring, Precision, _),
 		(
-		I < 0
+			I < 0
 		->
 			Mv_width is 1
 		;
@@ -968,7 +959,7 @@ string__do_conversion_hack(Conv_c, Poly_t, Ostring, Precision, Flags,
 				Pfix_len = 0
 			)
 		),
-		(I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
+		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
 	;
 	Conv_c = 'u' ,
 		Poly_t = i(I),
@@ -1018,8 +1009,8 @@ string__do_conversion_hack(Conv_c, Poly_t, Ostring, Precision, Flags,
 :- pred string__do_conversion_fail(char).
 :- mode string__do_conversion_fail(in) is erroneous.
 string__do_conversion_fail(Conv_c) :-
-	string__format("%s %%%c, without a correct poly-varable.", 
-		[s("string__format:  statement has used type"), c(Conv_c)],
+	string__format("%s `%%%c', without a correct poly-variable.", 
+		[s("string__format: statement has used type"), c(Conv_c)],
 		Error_message),
 	error(Error_message).
 
