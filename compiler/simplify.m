@@ -476,7 +476,9 @@ simplify__enforce_invariant(GoalInfo0, GoalInfo, Info0, Info) :-
 
 simplify__goal_2(conj(Goals0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	simplify_info_get_instmap(Info0, InstMap0),
-	simplify__conj(Goals0, [], Goals, GoalInfo0, Info0, Info1),
+	simplify__excess_assigns_in_conj(GoalInfo0,
+		Goals0, Goals1, Info0, Info1a),
+	simplify__conj(Goals1, [], Goals, GoalInfo0, Info1a, Info1),
 	simplify_info_set_instmap(Info1, InstMap0, Info2),
 	( Goals = [] ->
 		goal_info_get_context(GoalInfo0, Context),
@@ -1561,18 +1563,11 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 		),
 		list__reverse(RevGoals, Goals)
 	    ;
-		simplify__excess_assigns(Goal1, ConjInfo,
-			Goals0, Goals1, RevGoals0, RevGoals1,
-			GoalNeeded, Info1, Info2),
-		( GoalNeeded = yes ->
-			simplify__conjoin_goal_and_rev_goal_list(Goal1,
-				RevGoals1, RevGoals2)
-		;
-			RevGoals2 = RevGoals1
-		),
-		simplify_info_update_instmap(Info2, Goal1, Info3),
-		simplify__conj(Goals1, RevGoals2, Goals,
-			ConjInfo, Info3, Info)
+		simplify__conjoin_goal_and_rev_goal_list(Goal1,
+			RevGoals0, RevGoals1),
+		simplify_info_update_instmap(Info1, Goal1, Info2),
+		simplify__conj(Goals0, RevGoals1, Goals,
+			ConjInfo, Info2, Info)
 	    )
 	).
 
@@ -1610,26 +1605,18 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 		RevGoals0, RevGoals, GoalNeeded, Info0, Info) :-
 	(
 		simplify_do_excess_assigns(Info0),
-		Goal0 = unify(_, _, _, Unif, _) - _,
-		goal_info_get_nonlocals(ConjInfo, NonLocals),
-		Unif = assign(LeftVar, RightVar),
-		( \+ set__member(LeftVar, NonLocals) ->
-			LocalVar = LeftVar, ReplacementVar = RightVar
-		; \+ set__member(RightVar, NonLocals) ->
-			LocalVar = RightVar, ReplacementVar = LeftVar
-		;
-			fail
-		)
+		goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
+		map__init(Subn0),
+		goal_is_excess_assign(ConjNonLocals, Goal0, Subn0, Subn)
 	->
 		GoalNeeded = no,
-		map__init(Subn0),
-		map__det_insert(Subn0, LocalVar, ReplacementVar, Subn),
 		goal_util__rename_vars_in_goals(Goals0, no,
 			Subn, Goals),
 		goal_util__rename_vars_in_goals(RevGoals0, no,
 			Subn, RevGoals),
 		simplify_info_get_varset(Info0, VarSet0),
-		varset__delete_var(VarSet0, LocalVar, VarSet),
+		map__keys(Subn0, RemovedVars),
+		varset__delete_vars(VarSet0, RemovedVars, VarSet),
 		simplify_info_set_varset(Info0, VarSet, Info)
 	;
 		GoalNeeded = yes,
@@ -1637,6 +1624,98 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 		RevGoals = RevGoals0,
 		Info = Info0
 	).
+
+
+:- pred simplify__excess_assigns_in_conj(hlds_goal_info::in,
+		list(hlds_goal)::in, list(hlds_goal)::out,
+		simplify_info::in, simplify_info::out) is det.
+
+simplify__excess_assigns_in_conj(ConjInfo, Goals0, Goals,
+		Info0, Info) :-
+	( simplify_do_excess_assigns(Info0) ->
+		goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
+		map__init(Subn0),
+		simplify__find_excess_assigns_in_conj(ConjNonLocals,
+			Goals0, [], RevGoals, Subn0, Subn1),
+		( map__is_empty(Subn1) ->
+			Goals = Goals0,
+			Info = Info0
+		;
+			renaming_transitive_closure(Subn1, Subn),
+			list__reverse(RevGoals, Goals1),
+			MustSub = no,
+			goal_util__rename_vars_in_goals(Goals1, MustSub,
+				Subn, Goals),
+			simplify_info_get_varset(Info0, VarSet0),
+			map__keys(Subn0, RemovedVars),
+			varset__delete_vars(VarSet0, RemovedVars, VarSet),
+			simplify_info_set_varset(Info0, VarSet, Info)
+		)
+	;
+		Goals = Goals0,
+		Info = Info0
+	).
+
+:- type var_renaming == map(prog_var, prog_var).
+
+:- pred simplify__find_excess_assigns_in_conj(set(prog_var)::in,
+	list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+	var_renaming::in, var_renaming::out) is det.
+
+simplify__find_excess_assigns_in_conj(_, [], RevGoals, RevGoals,
+			Subn, Subn).
+simplify__find_excess_assigns_in_conj(ConjNonLocals, [Goal | Goals],
+			RevGoals0, RevGoals, Subn0, Subn) :-
+	( goal_is_excess_assign(ConjNonLocals, Goal, Subn0, Subn1) ->
+		RevGoals1 = RevGoals0,
+		Subn2 = Subn1
+	;
+		RevGoals1 = [Goal | RevGoals0],
+		Subn2 = Subn0
+	),
+	simplify__find_excess_assigns_in_conj(ConjNonLocals, Goals,
+		RevGoals1, RevGoals, Subn2, Subn).
+
+:- pred goal_is_excess_assign(set(prog_var)::in, hlds_goal::in,
+	var_renaming::in, var_renaming::out) is semidet.
+
+goal_is_excess_assign(ConjNonLocals, Goal0, Subn0, Subn) :-
+	Goal0 = unify(_, _, _, Unif, _) - _,
+	Unif = assign(LeftVar0, RightVar0),
+
+	%
+	% Check if we've already substituted
+	% one or both of the variables.
+	%
+	find_renamed_var(Subn0, LeftVar0, LeftVar),
+	find_renamed_var(Subn0, RightVar0, RightVar),
+	( \+ set__member(LeftVar, ConjNonLocals) ->
+		map__det_insert(Subn0, LeftVar, RightVar, Subn)
+	; \+ set__member(RightVar, ConjNonLocals) ->
+		map__det_insert(Subn0, RightVar, LeftVar, Subn)
+	;
+		fail
+	).
+
+:- pred find_renamed_var(var_renaming, prog_var, prog_var).
+:- mode find_renamed_var(in, in, out) is det.
+
+find_renamed_var(Subn, Var0, Var) :-
+	( map__search(Subn, Var0, Var1) ->
+		find_renamed_var(Subn, Var1, Var)
+	;
+		Var = Var0
+	).
+
+	% Collapse chains of renamings.
+:- pred renaming_transitive_closure(var_renaming, var_renaming).
+:- mode renaming_transitive_closure(in, out) is det.
+
+renaming_transitive_closure(VarRenaming0, VarRenaming) :-
+	map__map_values(
+		(pred(_::in, Value0::in, Value::out) is det :-
+			find_renamed_var(VarRenaming0, Value0, Value)
+		), VarRenaming0, VarRenaming).
 
 %-----------------------------------------------------------------------------%
 
