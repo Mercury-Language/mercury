@@ -969,6 +969,7 @@ then
 	echo "finishing stage3 at `date`"
 else
 	diff_status=0
+	check_namespace_status=0
 	echo "building of stages 1 and 2 skipped"
 fi
 
