@@ -138,9 +138,7 @@
 	% addresses, the third component is in two parts: a list of function
 	% symbols so represented, and a table indexed by the primary tag for
 	% all the other function symbols. The runtime system must check every
-	% element on the list before looking at tn /var/spool/htdig.  Also
-	% improve error reporting.        than /var/spool/htdig.  Also improve
-	% error reporting.he primary tag.
+	% element on the list before looking at the primary tag.
 	%
 	% For notag types, the single functor descriptor fills the roles of
 	% the second, third and fourth components.
@@ -1049,21 +1047,26 @@ type_ctor_details_num_ptags(enum(_, _, _, _)) = -1.
 type_ctor_details_num_ptags(du(_, _, PtagMap, _)) = LastPtag + 1 :-
 	map__keys(PtagMap, Ptags),
 	list__last_det(Ptags, LastPtag).
-type_ctor_details_num_ptags(reserved(_, _, _, PtagMap, _)) = LastPtag + 1 :-
+type_ctor_details_num_ptags(reserved(_, _, _, PtagMap, _)) = NumPtags :-
 	map__keys(PtagMap, Ptags),
-	list__last_det(Ptags, LastPtag).
+	( Ptags = [] ->
+		NumPtags = -1
+	;
+		list__last_det(Ptags, LastPtag),
+		NumPtags = LastPtag + 1
+	).
 type_ctor_details_num_ptags(notag(_, _)) = -1.
 type_ctor_details_num_ptags(eqv(_)) = -1.
 type_ctor_details_num_ptags(builtin(_)) = -1.
 type_ctor_details_num_ptags(impl_artifact(_)) = -1.
 type_ctor_details_num_ptags(foreign) = -1.
 
-type_ctor_details_num_functors(enum(_, EnumFunctors, _, _)) =
-	list__length(EnumFunctors).
-type_ctor_details_num_functors(du(_, DuFunctors, _, _)) =
-	list__length(DuFunctors).
-type_ctor_details_num_functors(reserved(_, ResFunctors, _, _, _)) =
-	list__length(ResFunctors).
+type_ctor_details_num_functors(enum(_, Functors, _, _)) =
+	list__length(Functors).
+type_ctor_details_num_functors(du(_, Functors, _, _)) =
+	list__length(Functors).
+type_ctor_details_num_functors(reserved(_, Functors, _, _, _)) =
+	list__length(Functors).
 type_ctor_details_num_functors(notag(_, _)) = 1.
 type_ctor_details_num_functors(eqv(_)) = -1.
 type_ctor_details_num_functors(builtin(_)) = -1.
