@@ -100,7 +100,7 @@
  	;	csharp
  	;	managed_cplusplus
 % 	;	java
-% 	;	il
+ 	;	il
 	.
 
 :- type pred_or_func
@@ -537,6 +537,15 @@
 		pragma_foreign_proc_attributes).
 :- mode set_tabled_for_io(in, in, out) is det.
 
+
+:- pred add_extra_attribute(pragma_foreign_proc_attributes, 
+		pragma_foreign_proc_extra_attribute,
+		pragma_foreign_proc_attributes).
+:- mode add_extra_attribute(in, in, out) is det.
+
+:- func extra_attributes(pragma_foreign_proc_attributes)
+	= pragma_foreign_proc_extra_attributes.
+
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another
 	% more efficient one for the case when we know that the C code will
@@ -561,6 +570,13 @@
 	  	% variable, name, mode
 		% we explicitly store the name because we need the real
 		% name in code_gen
+
+
+:- type pragma_foreign_proc_extra_attribute
+	--->	max_stack_size(int).
+
+:- type pragma_foreign_proc_extra_attributes == 
+	list(pragma_foreign_proc_extra_attribute).
 
 %-----------------------------------------------------------------------------%
 %
@@ -962,17 +978,22 @@
 
 :- implementation.
 
+:- import_module string.
+
 :- type pragma_foreign_proc_attributes
 	--->	attributes(
 			foreign_language 	:: foreign_language,
 			may_call_mercury	:: may_call_mercury,
 			thread_safe		:: thread_safe,
-			tabled_for_io		:: tabled_for_io
+			tabled_for_io		:: tabled_for_io,
+			extra_attributes	:: 
+				list(pragma_foreign_proc_extra_attribute)
 		).
+
 
 default_attributes(Language, 
 	attributes(Language, may_call_mercury, not_thread_safe, 
-		not_tabled_for_io)).
+		not_tabled_for_io, [])).
 
 may_call_mercury(Attrs, Attrs ^ may_call_mercury).
 
@@ -998,7 +1019,8 @@ attributes_to_strings(Attrs, StringList) :-
 	% We ignore Lang because it isn't an attribute that you can put
 	% in the attribute list -- the foreign language specifier string
 	% is at the start of the pragma.
-	Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO),
+	Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
+			ExtraAttributes),
 	(
 		MayCallMercury = may_call_mercury,
 		MayCallMercuryStr = "may_call_mercury"
@@ -1020,6 +1042,16 @@ attributes_to_strings(Attrs, StringList) :-
 		TabledForIO = not_tabled_for_io,
 		TabledForIOStr = "not_tabled_for_io"
 	),
-	StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr].
+	StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr] ++
+		list__map(extra_attribute_to_string, ExtraAttributes).
+
+add_extra_attribute(Attributes0, NewAttribute,
+	Attributes0 ^ extra_attributes := 
+		[NewAttribute | Attributes0 ^ extra_attributes]).
+
+:- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute) 
+	= string.
+extra_attribute_to_string(max_stack_size(Size)) =
+	"max_stack_size(" ++ string__int_to_string(Size) ++ ")".
 
 %-----------------------------------------------------------------------------%

@@ -364,7 +364,8 @@ gen_init_fn_defns(MLDS_ModuleName, GlobalInfo0, GlobalInfo) -->
 		qual(MLDS_ModuleName, Name),
 		SymbolTable, LabelTable) },
 	{ term__context_init(Context) },
-	{ FuncBody = mlds__statement(block([], []), mlds__make_context(Context)) },
+	{ FuncBody = mlds__statement(block([], []),
+		mlds__make_context(Context)) },
 	gcc__start_function(GCC_FuncDecl),
 	gen_statement(DefnInfo, FuncBody),
 	gcc__end_function.

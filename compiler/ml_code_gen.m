@@ -2163,30 +2163,31 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	% Put it all together
 	%
 	{ Starting_C_Code = list__condense([
-			[raw_target_code("{\n")],
+			[raw_target_code("{\n", [])],
 			HashDefine,
 			ArgDeclsList,
-			[raw_target_code("\tstruct {\n"),
-			user_target_code(LocalVarsDecls, LocalVarsContext),
-			raw_target_code("\n"),
-			raw_target_code("\t} MR_locals;\n"),
-			raw_target_code("\tMR_Bool MR_succeeded = FALSE;\n"),
-			raw_target_code("\tMR_Bool MR_done = FALSE;\n"),
-			raw_target_code("\n"),
-			raw_target_code(HashDefines),
-			raw_target_code("\n")],
+			[raw_target_code("\tstruct {\n", []),
+			user_target_code(LocalVarsDecls, LocalVarsContext, []),
+			raw_target_code("\n", []),
+			raw_target_code("\t} MR_locals;\n", []),
+			raw_target_code("\tMR_Bool MR_succeeded = FALSE;\n",
+				[]),
+			raw_target_code("\tMR_Bool MR_done = FALSE;\n", []),
+			raw_target_code("\n", []),
+			raw_target_code(HashDefines, []),
+			raw_target_code("\n", [])],
 			AssignInputsList,
-			[raw_target_code(ObtainLock),
-			raw_target_code("\t{\n"),
-			user_target_code(FirstCode, FirstContext),
-			raw_target_code("\n\t;}\n"),
-			raw_target_code("\twhile (1) {\n"),
-			raw_target_code("\t\t{\n"),
-			user_target_code(SharedCode, SharedContext),
-			raw_target_code("\n\t\t;}\n"),
-			raw_target_code("#undef MR_PROC_LABEL\n"),
-			raw_target_code(ReleaseLock),
-			raw_target_code("\t\tif (MR_succeeded) {\n")],
+			[raw_target_code(ObtainLock, []),
+			raw_target_code("\t{\n", []),
+			user_target_code(FirstCode, FirstContext, []),
+			raw_target_code("\n\t;}\n", []),
+			raw_target_code("\twhile (1) {\n", []),
+			raw_target_code("\t\t{\n", []),
+			user_target_code(SharedCode, SharedContext, []),
+			raw_target_code("\n\t\t;}\n", []),
+			raw_target_code("#undef MR_PROC_LABEL\n", []),
+			raw_target_code(ReleaseLock, []),
+			raw_target_code("\t\tif (MR_succeeded) {\n", [])],
 			AssignOutputsList
 	]) },
 	=(MLDSGenInfo),
@@ -2214,16 +2215,16 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 		{ error("ml_gen_nondet_pragma_c_code: unexpected code model") }
 	),
 	{ Ending_C_Code = [
-			raw_target_code("\t\t}\n"),
-			raw_target_code("\t\tif (MR_done) break;\n"),
-			raw_target_code(ObtainLock),
-			raw_target_code("\t\t{\n"),
-			user_target_code(LaterCode, LaterContext),
-			raw_target_code("\n\t\t;}\n"),
-			raw_target_code("\t}\n"),
-			raw_target_code("\n"),
-			raw_target_code(HashUndefs),
-			raw_target_code("}\n")
+			raw_target_code("\t\t}\n", []),
+			raw_target_code("\t\tif (MR_done) break;\n", []),
+			raw_target_code(ObtainLock, []),
+			raw_target_code("\t\t{\n", []),
+			user_target_code(LaterCode, LaterContext, []),
+			raw_target_code("\n\t\t;}\n", []),
+			raw_target_code("\t}\n", []),
+			raw_target_code("\n", []),
+			raw_target_code(HashUndefs, []),
+			raw_target_code("}\n", [])
 	] },
 	{ Starting_C_Code_Stmt = inline_target_code(lang_C, Starting_C_Code) },
 	{ Starting_C_Code_Statement = mlds__statement(
@@ -2264,6 +2265,10 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
 		ml_gen_ordinary_pragma_csharp_proc(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
+	; { Lang = il },
+		ml_gen_ordinary_pragma_il_proc(CodeModel, Attributes,
+			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	).
 
 :- pred ml_gen_ordinary_pragma_csharp_proc(code_model, 
@@ -2293,6 +2298,139 @@ ml_gen_ordinary_pragma_csharp_proc(_CodeModel, Attributes,
 	{ MLDS_Statements = [
 		mlds__statement(atomic(OutlineStmt), MLDSContext)
 		] },
+	{ MLDS_Decls = [] }.
+
+:- pred ml_gen_ordinary_pragma_il_proc(code_model, 
+	pragma_foreign_proc_attributes, pred_id, proc_id, list(prog_var),
+	list(maybe(pair(string, mode))), list(prog_type), string, prog_context,
+	mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_ordinary_pragma_il_proc(in, in, in, in, in, in, in, in, in,
+	out, out, in, out) is det.
+
+ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
+	PredId, ProcId, ArgVars, _ArgDatas, OrigArgTypes,
+	ForeignCode, Context, MLDS_Decls, MLDS_Statements) -->
+
+	{ MLDSContext = mlds__make_context(Context) },
+
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+			_PredInfo, ProcInfo) },
+	{ proc_info_varset(ProcInfo, VarSet) },
+%	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	% note that for headvars we must use the types from
+	% the procedure interface, not from the procedure body
+	{ HeadVarTypes = map__from_corresponding_lists(ArgVars,
+		OrigArgTypes) },
+	{ ml_gen_info_get_byref_output_vars(MLDSGenInfo, ByRefOutputVars) },
+	{ ml_gen_info_get_value_output_vars(MLDSGenInfo, CopiedOutputVars) },
+	{ module_info_name(ModuleInfo, ModuleName) },
+	{ MLDSModuleName = mercury_module_name_to_mlds(ModuleName) },
+
+
+	% XXX in the code to marshall parameters, fjh says:
+	% we need to handle the case where the types in the procedure interface
+	% are polymorphic, but the types of the vars in the `foreign_proc' HLDS
+	% goal are concrete instances of those types, which can happen when the
+	% procedure is inlined or specialized.  The assignment that you
+	% generate here with ml_gen_assign won't be type-correct.  In general
+	% you may need to box/unbox the arguments.
+
+		% Generate statements to assign by-ref output arguments
+	{ list__filter_map(	
+		(pred(Var::in, Statement::out) is semidet :- 
+			map__lookup(HeadVarTypes, Var, Type),
+			not type_util__is_dummy_argument_type(Type),
+			VarName = mlds__var_name(VarNameString, _MangleInt),
+			MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
+
+			VarName = ml_gen_var_name(VarSet, Var),
+			QualVarName = qual(MLDSModuleName, VarName),
+			OutputVarLval = mem_ref(lval(
+				var(QualVarName, MLDSType)), MLDSType),
+
+			NonMangledVarName = mlds__var_name(VarNameString, no),
+			QualLocalVarName= qual(MLDSModuleName,
+				NonMangledVarName),
+			LocalVarLval = var(QualLocalVarName, MLDSType),
+
+			Statement = ml_gen_assign(OutputVarLval,
+				lval(LocalVarLval), Context)
+		), ByRefOutputVars, ByRefAssignStatements) },
+
+		% Generate statements to assign copied output arguments
+	{ list__filter_map(	
+		(pred(Var::in, Statement::out) is semidet :- 
+			map__lookup(HeadVarTypes, Var, Type),
+			not type_util__is_dummy_argument_type(Type),
+			VarName = mlds__var_name(VarNameString, _MangleInt),
+			MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
+
+			VarName = ml_gen_var_name(VarSet, Var),
+			QualVarName = qual(MLDSModuleName, VarName),
+				% this line differs from above
+			OutputVarLval = var(QualVarName, MLDSType),
+
+			NonMangledVarName = mlds__var_name(VarNameString, no),
+			QualLocalVarName= qual(MLDSModuleName,
+				NonMangledVarName),
+			LocalVarLval = var(QualLocalVarName, MLDSType),
+
+			Statement = ml_gen_assign(OutputVarLval,
+				lval(LocalVarLval), Context)
+		), CopiedOutputVars, CopiedOutputStatements) },
+
+
+		% Generate declarations for all the variables, and
+		% initializers for input variables.
+	{ list__map_foldl(
+		(pred(Var::in, MLDS_Defn::out, Box0::in, Box::out) is det :- 
+			map__lookup(HeadVarTypes, Var, Type),
+			VarName = ml_gen_var_name(VarSet, Var),
+			VarName = mlds__var_name(VarNameString, _MangleInt),
+			NonMangledVarName = mlds__var_name(VarNameString, no),
+				% Dummy arguments are just mapped to integers,
+				% since they shouldn't be used in any
+				% way that requires them to have a real value.
+			( type_util__is_dummy_argument_type(Type) ->
+				Initializer = no_initializer,
+				MLDSType = mlds__native_int_type,
+				Box0 = Box
+			; list__member(Var, ByRefOutputVars) ->
+				Initializer = no_initializer,
+				MLDSType = mercury_type_to_mlds_type(
+					ModuleInfo, Type),
+				Box0 = Box
+			; list__member(Var, CopiedOutputVars) ->
+				Initializer = no_initializer,
+				MLDSType = mercury_type_to_mlds_type(
+					ModuleInfo, Type),
+				Box0 = Box
+			;
+				MLDSType = mercury_type_to_mlds_type(
+					ModuleInfo, Type),
+				QualVarName = qual(MLDSModuleName, VarName),
+				Initializer = init_obj(
+					lval(var(QualVarName, MLDSType))),
+				Box0 = Box
+			),
+			MLDS_Defn = ml_gen_mlds_var_decl(
+				var(NonMangledVarName), MLDSType,
+				Initializer, MLDSContext) 
+		), ArgVars, VarLocals, [], BoxStatements) },
+
+	{ OutlineStmt = inline_target_code(lang_il, [
+		user_target_code(ForeignCode, yes(Context),
+			get_target_code_attributes(il,
+				Attributes ^ extra_attributes)) 
+		]) },
+
+	{ ILCodeFragment = mlds__statement(atomic(OutlineStmt), MLDSContext) },
+	{ MLDS_Statements = [statement(block(VarLocals, 
+		BoxStatements ++ [ILCodeFragment] ++ ByRefAssignStatements
+			++ CopiedOutputStatements),
+		mlds__make_context(Context))] },
 	{ MLDS_Decls = [] }.
 
 
@@ -2405,43 +2543,43 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 	%
 	( { CodeModel = model_det } ->
 		{ Starting_C_Code = list__condense([
-			[raw_target_code("{\n")],
+			[raw_target_code("{\n", [])],
 			HashDefine,
 			ArgDeclsList,
-			[raw_target_code("\n")],
+			[raw_target_code("\n", [])],
 			AssignInputsList,
-			[raw_target_code(ObtainLock),
-			raw_target_code("\t\t{\n"),
-			user_target_code(C_Code, yes(Context)),
-			raw_target_code("\n\t\t;}\n"),
-			raw_target_code("#undef MR_PROC_LABEL\n"),
-			raw_target_code(ReleaseLock)],
+			[raw_target_code(ObtainLock, []),
+			raw_target_code("\t\t{\n", []),
+			user_target_code(C_Code, yes(Context), []),
+			raw_target_code("\n\t\t;}\n", []),
+			raw_target_code("#undef MR_PROC_LABEL\n", []),
+			raw_target_code(ReleaseLock, [])],
 			AssignOutputsList
 		]) },
-		{ Ending_C_Code = [raw_target_code("}\n")] }
+		{ Ending_C_Code = [raw_target_code("}\n", [])] }
 	; { CodeModel = model_semi } ->
 		ml_success_lval(SucceededLval),
 		{ Starting_C_Code = list__condense([
-			[raw_target_code("{\n")],
+			[raw_target_code("{\n", [])],
 			HashDefine,
 			ArgDeclsList,
-			[raw_target_code("\tMR_Bool SUCCESS_INDICATOR;\n"),
-			raw_target_code("\n")],
+			[raw_target_code("\tMR_Bool SUCCESS_INDICATOR;\n", []),
+			raw_target_code("\n", [])],
 			AssignInputsList,
-			[raw_target_code(ObtainLock),
-			raw_target_code("\t\t{\n"),
-			user_target_code(C_Code, yes(Context)),
-			raw_target_code("\n\t\t;}\n"),
-			raw_target_code("#undef MR_PROC_LABEL\n"),
-			raw_target_code(ReleaseLock),
-			raw_target_code("\tif (SUCCESS_INDICATOR) {\n")],
+			[raw_target_code(ObtainLock, []),
+			raw_target_code("\t\t{\n", []),
+			user_target_code(C_Code, yes(Context), []),
+			raw_target_code("\n\t\t;}\n", []),
+			raw_target_code("#undef MR_PROC_LABEL\n", []),
+			raw_target_code(ReleaseLock, []),
+			raw_target_code("\tif (SUCCESS_INDICATOR) {\n", [])],
 			AssignOutputsList
 		]) },
 		{ Ending_C_Code = [
-			raw_target_code("\t}\n"),
+			raw_target_code("\t}\n", []),
 			target_code_output(SucceededLval),
-			raw_target_code(" = SUCCESS_INDICATOR;\n"),
-			raw_target_code("}\n")
+			raw_target_code(" = SUCCESS_INDICATOR;\n", []),
+			raw_target_code("}\n", [])
 		] }
 	;
 		{ error("ml_gen_ordinary_pragma_c_code: unexpected code model") }
@@ -2503,9 +2641,20 @@ ml_gen_hash_define_mr_proc_label(HashDefine) -->
 	{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
 	{ ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name,
 			MLDS_Module) },
-	{ HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
+	{ HashDefine = [raw_target_code("#define MR_PROC_LABEL ", []),
 			name(qual(MLDS_Module, MLDS_Name)),
-			raw_target_code("\n")] }.
+			raw_target_code("\n", [])] }.
+
+
+:- func get_target_code_attributes(foreign_language,
+		pragma_foreign_proc_extra_attributes) = target_code_attributes.
+get_target_code_attributes(_, []) = [].
+get_target_code_attributes(Lang, [max_stack_size(N) | Xs]) = 
+	( Lang = il ->
+		[max_stack_size(N) | get_target_code_attributes(Lang, Xs)]
+	;
+		[]
+	).
 
 
 %---------------------------------------------------------------------------%
@@ -2585,7 +2734,7 @@ ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), Decl) -->
 		% it can't be used, so we just ignore it
 		DeclString = ""
 	},
-	{ Decl = raw_target_code(DeclString) }.
+	{ Decl = raw_target_code(DeclString, []) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -2676,9 +2825,9 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			[s(ArgName), s(Cast)],
 			AssignToArgName) },
 		{ AssignInput = [
-			raw_target_code(AssignToArgName),
+			raw_target_code(AssignToArgName, []),
 			target_code_input(ArgRval),
-			raw_target_code(";\n")
+			raw_target_code(";\n", [])
 		] }
 	;
 		% if the variable doesn't occur in the ArgNames list,
@@ -2757,9 +2906,9 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			AssignFromArgName) },
 		{ string__format("\t%s\n", [s(LHS_Cast)], AssignTo) },
 		{ AssignOutput = [
-			raw_target_code(AssignTo),
+			raw_target_code(AssignTo, []),
 			target_code_output(ArgLval),
-			raw_target_code(AssignFromArgName)
+			raw_target_code(AssignFromArgName, [])
 		] }
 	;
 		% if the variable doesn't occur in the ArgNames list,

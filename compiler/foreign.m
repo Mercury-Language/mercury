@@ -77,7 +77,7 @@
 :- import_module require.
 
 :- import_module hlds_pred, hlds_module, type_util, mode_util.
-:- import_module code_model.
+:- import_module code_model, globals.
 
 foreign__filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
 	list__filter((pred(foreign_decl_code(Lang, _, _)::in) is semidet :-
@@ -125,6 +125,8 @@ foreign__extrude_pragma_implementation(TargetLang, _PragmaVars,
 				
 		; ForeignLanguage = csharp,
 			error("unimplemented: calling C# foreign code from C backend")
+		; ForeignLanguage = il,
+			error("unimplemented: calling IL foreign code from C backend")
 		; ForeignLanguage = c,
 			Impl = Impl0,
 			ModuleInfo = ModuleInfo0
@@ -137,6 +139,8 @@ foreign__extrude_pragma_implementation(TargetLang, _PragmaVars,
 			ModuleInfo = ModuleInfo0
 		; ForeignLanguage = csharp,
 			error("unimplemented: calling C# foreign code from MC++ backend")
+		; ForeignLanguage = il,
+			error("unimplemented: calling IL foreign code from MC++ backend")
 		; ForeignLanguage = c,
 			Impl = Impl0,
 			ModuleInfo = ModuleInfo0
@@ -149,6 +153,19 @@ foreign__extrude_pragma_implementation(TargetLang, _PragmaVars,
 			ModuleInfo = ModuleInfo0
 		; ForeignLanguage = c,
 			error("unimplemented: calling C foreign code from MC++ backend")
+		; ForeignLanguage = il,
+			error("unimplemented: calling IL foreign code from MC++ backend")
+		)
+	; TargetLang = il ->
+		( ForeignLanguage = managed_cplusplus,
+			error("unimplemented: calling MC++ foreign code from IL backend")
+		; ForeignLanguage = csharp,
+			error("unimplemented: calling C# foreign code from MC++ backend")
+		; ForeignLanguage = c,
+			error("unimplemented: calling C foreign code from MC++ backend")
+		; ForeignLanguage = il,
+			Impl = Impl0,
+			ModuleInfo = ModuleInfo0
 		)
 	;
 		error("extrude_pragma_implementation: unsupported foreign language")
@@ -157,12 +174,9 @@ foreign__extrude_pragma_implementation(TargetLang, _PragmaVars,
 	% XXX we haven't implemented these functions yet.
 	% What is here is only a guide
 :- func make_pred_name(foreign_language, sym_name) = string.
-make_pred_name(c, SymName) = 
-	"mercury_c__" ++ make_pred_name_rest(c, SymName).
-make_pred_name(managed_cplusplus, SymName) = 
-	"mercury_cpp__" ++ make_pred_name_rest(managed_cplusplus, SymName).
-make_pred_name(csharp, SymName) = 
-	"mercury_csharp__" ++ make_pred_name_rest(managed_cplusplus, SymName).
+make_pred_name(Lang, SymName) = 
+	"mercury_" ++ simple_foreign_language_string(Lang) ++ "__" ++ 
+		make_pred_name_rest(Lang, SymName).
 
 :- func make_pred_name_rest(foreign_language, sym_name) = string.
 make_pred_name_rest(c, _SymName) = "some_c_name".
@@ -170,6 +184,7 @@ make_pred_name_rest(managed_cplusplus, qualified(ModuleSpec, Name)) =
 	make_pred_name_rest(managed_cplusplus, ModuleSpec) ++ "__" ++ Name.
 make_pred_name_rest(managed_cplusplus, unqualified(Name)) = Name.
 make_pred_name_rest(csharp, _SymName) = "some_csharp_name".
+make_pred_name_rest(il, _SymName) = "some_il_name".
 
 
 make_pragma_import(PredInfo, ProcInfo, C_Function, Context,

@@ -49,6 +49,7 @@ into another language, under the above conditions for modified versions.
 @author Peter Schachte
 @author Simon Taylor
 @author Chris Speirs
+@author Tyson Dowd
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995-2001 The University of Melbourne.
@@ -96,6 +97,8 @@ into another language, under the above conditions for modified versions.
                       collections.
 * Semantics::         Declarative and operational semantics of Mercury
                       programs.
+* Foreign language interface:: Calling code written in other programming
+  			languages from Mercury code
 * C interface::       The C interface allows C code to be called
                       from Mercury code, and vice versa.
 * Impurity::          Users can write impure Mercury code.
@@ -4672,6 +4675,232 @@ Future implementations of Mercury may wish to offer other operational semantics.
 For example, they may wish to provide semantics in which function
 evaluation is lazy, rather than strict; semantics with a guaranteed
 fair search rule; and so forth.
+
+@node Foreign language interface
+@chapter Foreign language interface
+
+@menu
+* Calling foreign code from Mercury::  How to implement a Mercury predicate
+				       or function as a call to code
+				       written in a different
+				       programming language.
+* Adding foreign declarations::        How to add declarations of
+  				       enities in other programming
+				       languages.
+* Adding foreign definitions::         How to add definitions of entities
+  				       enities in other programming
+				       languages.
+* Language specific bindings::         Information specific to each
+  				       foreign language.
+@end menu
+
+This chapter documents the new foreign language interface.
+This interface is not yet complete, and is not fully supported.
+It is documented here as an aid to the Mercury language developers.
+See the @pxref{C interface} chapter for the existing, supported C
+interface for Mercury.
+
+The syntax, documentation, behaviour and semantics described in this
+chapter are subject to change without notice.
+
+@node Calling foreign code from Mercury
+@section Calling foreign code from Mercury
+
+Mercury procedures can be implemented using fragments of foreign language
+code using @samp{pragma foreign_proc}.
+
+@menu
+* pragma foreign_proc::         Defining Mercury procedures using foreign code.
+* Foreign code attributes::   	Describing properties of foreign
+				functions or code.
+@end menu
+
+@node pragma foreign_proc
+@subsection pragma foreign_proc
+
+A declaration of the form
+
+@example
+:- pragma foreign_proc("@var{Lang}", @var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}),
+        @var{Attributes}, @var{Foreign_Code}).
+@end example
+
+@noindent
+or
+
+@example
+:- pragma foreign_proc("@var{Lang}", @var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}) = (@var{Var}::@var{Mode}),
+        @var{Attributes}, @var{Foreign_Code}).
+@end example
+
+@noindent
+means that any calls to the specified mode of @var{Pred} or @var{Func}
+will result in execution of the foreign code given in @var{Foreign_Code}
+written in language @var{Lang}, if @var{Lang} is selected as the foreign
+language code by this implementation. 
+See the ``Foreign Language Interface'' chapter of the
+Mercury User's Guide, for more information about how the implementation
+selects the approriate @samp{foreign_proc} to use.
+
+The foreign code fragment may refer to the specified variables
+(@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
+directly by name.
+It is an error for a variable to occur more than once in the argument list.
+These variables will have foreign language types
+corresponding to their Mercury types, as determined by language and
+implementation specific rules.
+
+Additional restrictions on the foreign language interface code
+depend on the foreign language and compilation options.
+For more information, including the list of supported foreign languages and 
+the strings used to identify them, see the language specific information
+in the ``Foreign Language Interface'' chapter of the
+Mercury User's Guide.
+
+If there is one @code{pragma foreign_proc} declaration for any
+mode of a predicate or function, then there must be either a mode
+specific clause, or a @code{pragma foreign_proc} 
+@c or @code{pragma import} 
+declaration for every mode of the predicate or function.
+
+Here's an example of code using @samp{pragma foreign_proc}:
+The following code defines a Mercury function
+@samp{sin/1} which calls the C function @samp{sin()} of the same name.
+
+@example
+:- func sin(float) = float.
+:- pragma foreign_proc("C", sin(X::in) = (Sin::out),
+        [may_call_mercury],
+        "Sin = sin(X);").
+@end example
+
+If the foreign language code does not recursively invoke Mercury code,
+as in the above example, then you can use @samp{will_not_call_mercury}
+in place of @samp{may_call_mercury} in the declarations above.
+This allows the compiler to use a slightly more efficient calling convention.
+(If you use this form, and the C code @emph{does} invoke Mercury code,
+then the behaviour is undefined --- your program may misbehave or crash.)
+
+
+@node Foreign code attributes
+@subsection Foreign code attributes
+
+As described above, 
+@c @samp{pragma import} and 
+@samp{pragma foreign_proc}
+declarations may include a list of attributes describing properties
+of the given foreign function or code.
+All Mercury implementations must support the attributes listed below.
+They may also support additional attributes.
+
+The attributes which must be supported by all implementations
+are as follows:
+
+@table @asis
+
+@item @samp{may_call_mercury}/@samp{will_not_call_mercury}
+This attribute declares whether or not execution inside this foreign
+language code may call back into Mercury or not.  The default, in case
+neither is specified, is @samp{may_call_mercury}.
+Specifying @samp{will_not_call_mercury} may allow the compiler to
+generate more efficient code.
+If you specify @samp{will_not_call_mercury},
+but the foreign language code @emph{does} invoke Mercury code, then the
+behaviour is undefined.
+
+@item @samp{thread_safe}/@samp{not_thread_safe}
+This attribute declares whether or not it is safe for multiple threads
+to execute this foreign language code concurrently.
+The default, in case neither is specified, is @samp{not_thread_safe}.
+If the foreign language code is declared @samp{thread_safe}, then the
+Mercury implementation is permitted to execute the code concurrently
+from multiple threads without taking any special precautions.  If the
+foreign language code is declared
+@samp{not_thread_safe},
+then the Mercury implementation must not invoke the code concurrently from
+multiple threads.  If the Mercury implementation does use multithreading,
+then it must take appropriate steps to prevent this.
+(The experimental multithreaded version of the current
+University of Melbourne Mercury implementation protects
+@samp{not_thread_safe} code using a mutex:
+C code that is not thread-safe has code inserted around it to obtain
+and release a mutex.  All non-thread-safe foreign language code shares a
+single mutex.)
+@c XXX this can cause deadlocks if not_thread_safe foreign language code calls
+@c     Mercury which calls foreign language code
+@end table
+
+Additional attributes which are supported by the Melbourne Mercury
+compiler are as follows:
+
+@table @asis
+
+@item @samp{max_stack_size(Size)}
+This attribute declares the maximum stack usage of a particular piece of
+code.  The unit that @samp{Size} is measured in depends upon foreign language
+being used.  
+Currently this attribute is only used (and is in fact required) by the 
+@samp{IL} foreign language interface, and is measured in units of stack
+items.
+
+@end table
+
+@c -----------------------------------------------------------------------
+
+@node Adding foreign declarations
+@section Adding foreign declarations
+
+Foreign language declarations (such as type declarations, header file
+inclusions or macro defintions) can included in the Mercury source file as
+part of a @samp{foreign_decl} declaration of the form
+
+@example
+:- pragma foreign_decl("@var{Lang}", @var{DeclCode}).
+@end example
+
+The semantics of @samp{foreign_decl} depend upon the implementation and
+foreign language used. 
+
+@node Adding foreign definitions
+@section Adding foreign definitions
+
+Definitions of foreign language entities (such as functions or global
+variables) may be included using a declaration of the form
+
+@example
+:- pragma foreign_code("@var{Lang}", @var{Code}).
+@end example
+
+The semantics of @samp{foreign_code} depend upon the implementation and
+foreign language used. 
+
+@c -----------------------------------------------------------------------
+
+@node Language specific bindings
+@section Language specific bindings
+
+Note that these bindings are specific to the Melbourne Mercury compiler,
+other compilers may choose to implement a different set of bindings.
+
+@table @asis
+
+@item @samp{C}
+Use the string "C" to set the foreign language to C.
+
+@item @samp{Managed C++}
+Use the string "MC++" to set the foreign language to Managed C++.
+
+@item @samp{C#}
+Use the string "C#" to set the foreign language to C#.
+
+@item @samp{IL}
+Use the string "IL" to set the foreign language to IL.
+
+@end table
+
+Each of these foreign language interfaces requires that an appropriate
+compiler be installed.
+
 
 @node C interface
 @chapter C interface

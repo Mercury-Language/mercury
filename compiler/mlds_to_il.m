@@ -289,7 +289,8 @@ rename_defn(defn(Name, Context, Flags, Entity0))
 
 rename_statement(statement(block(Defns, Stmts), Context))
 	= statement(block(list__map(rename_defn, Defns),
-			list__map(rename_statement, Stmts)), Context).
+			list__map(rename_statement, Stmts)),
+			Context).
 rename_statement(statement(while(Rval, Loop, IterateOnce), Context))
 	= statement(while(rename_rval(Rval),
 			rename_statement(Loop), IterateOnce), Context).
@@ -1182,7 +1183,8 @@ statements_to_il([ S | Statements], tree(Instrs0, Instrs1)) -->
 :- pred statement_to_il(mlds__statement, instr_tree, il_info, il_info).
 :- mode statement_to_il(in, out, in, out) is det.
 
-statement_to_il(statement(block(Defns, Statements), Context), Instrs) -->
+statement_to_il(statement(block(Defns, Statements), Context),
+		Instrs) -->
 	il_info_get_module_name(ModuleName),
 	il_info_get_next_block_id(BlockId),
 	{ list__map(defn_to_local(ModuleName), Defns, Locals) },
@@ -1193,13 +1195,14 @@ statement_to_il(statement(block(Defns, Statements), Context), Instrs) -->
 	DataRep =^ il_data_rep,
 	{ list__map((pred((K - V)::in, (K - W)::out) is det :- 
 		W = mlds_type_to_ilds_type(DataRep, V)), Locals, ILLocals) },
+	{ Scope = scope(ILLocals) },
 	{ Instrs = tree__list([
 			context_node(Context),
-			instr_node(start_block(scope(ILLocals), BlockId)),
+			instr_node(start_block(Scope, BlockId)),
 			InitInstrsTree,
 			comment_node("block body"),
 			BlockInstrs,
-			node([end_block(scope(ILLocals), BlockId)])
+			node([end_block(Scope, BlockId)])
 			]) },
 	il_info_remove_locals(Locals).
 
@@ -1490,7 +1493,8 @@ atomic_statement_to_il(outline_foreign_proc(Lang, ReturnLvals, _Code),
 			"outline foreign proc -- already called") }
 	).
 
-atomic_statement_to_il(inline_target_code(_Lang, _Code), node(Instrs)) --> 
+	% XXX we assume lang_C is MC++
+atomic_statement_to_il(inline_target_code(lang_C, _Code), Instrs) --> 
 	il_info_get_module_name(ModuleName),
 	( no =^ method_foreign_lang  ->
 			% XXX we hardcode managed C++ here
@@ -1506,9 +1510,9 @@ atomic_statement_to_il(inline_target_code(_Lang, _Code), node(Instrs)) -->
 			% XXX this is incorrect for functions, which might
 			% return a useful value.
 		{ RetType = void ->
-			StoreReturnInstr = []
+			StoreReturnInstr = empty
 		;
-			StoreReturnInstr = [stloc(name("succeeded"))]
+			StoreReturnInstr = instr_node(stloc(name("succeeded")))
 		},
 		MethodName =^ method_name,
 		{ assoc_list__keys(Params, TypeParams) },
@@ -1516,16 +1520,28 @@ atomic_statement_to_il(inline_target_code(_Lang, _Code), node(Instrs)) -->
 			Num::in, Num + 1::out) is det :-
 				Instr = ldarg(index(Num))),
 			TypeParams, LoadInstrs, 0, _) },
-		{ list__condense(
-			[[comment("inline target code -- call handwritten version")],
-			LoadInstrs,
-			[call(get_static_methodref(ClassName, MethodName, 
-				RetType, TypeParams))],
-			StoreReturnInstr	
-			], Instrs) }
+		{ Instrs = tree__list([
+			comment_node("inline target code -- call handwritten version"),
+			node(LoadInstrs),
+			instr_node(call(get_static_methodref(ClassName,
+				MethodName, RetType, TypeParams))),
+			StoreReturnInstr
+			]) }
 	;
-		{ Instrs = [comment("inline target code -- already called")] }
+		{ Instrs = comment_node("inline target code -- already called") }
 	).
+atomic_statement_to_il(inline_target_code(lang_il, Code), Instrs) --> 
+	{ Instrs = inline_code_to_il_asm(Code) }.
+atomic_statement_to_il(inline_target_code(lang_java_bytecode, _), _) --> 
+	{ unexpected(this_file, "lang_java_bytecode") }.
+atomic_statement_to_il(inline_target_code(lang_java_asm, _), _) --> 
+	{ unexpected(this_file, "lang_java_asm") }.
+atomic_statement_to_il(inline_target_code(lang_asm, _), _) --> 
+	{ unexpected(this_file, "lang_asm") }.
+atomic_statement_to_il(inline_target_code(lang_GNU_C, _), _) --> 
+	{ unexpected(this_file, "lang_GNU_C") }.
+atomic_statement_to_il(inline_target_code(lang_C_minus_minus, _), _) --> 
+	{ unexpected(this_file, "lang_C_minus_minus") }.
 
 
 atomic_statement_to_il(trail_op(_), node(Instrs)) --> 
@@ -1672,6 +1688,49 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, _CtorName,
 			]) }
 		).
 
+:- func inline_code_to_il_asm(list(target_code_component)) = instr_tree.
+inline_code_to_il_asm([]) = empty.
+inline_code_to_il_asm([T | Ts]) = tree(Instrs, Rest) :-
+	( 
+		T = user_target_code(Code, MaybeContext, Attrs),
+		( yes(max_stack_size(N)) = get_max_stack_attribute(Attrs) ->
+			Instrs = tree__list([
+				( MaybeContext = yes(Context) ->
+					context_node(mlds__make_context(
+						Context))
+				;
+					empty
+				),
+				instr_node(il_asm_code(Code, N))
+				])
+		;
+			error(this_file ++ ": max_stack_size not set")
+		)
+	;
+		T = raw_target_code(Code, Attrs),
+		( yes(max_stack_size(N)) = get_max_stack_attribute(Attrs) ->
+			Instrs = instr_node(il_asm_code(Code, N))
+		;
+			error(this_file ++ ": max_stack_size not set")
+		)
+	;
+		T = target_code_input(_),
+		Instrs = empty
+	;
+		T = target_code_output(_),
+		Instrs = empty
+	;
+		T = name(_),
+		Instrs = empty
+	),
+	Rest = inline_code_to_il_asm(Ts).
+
+:- func get_max_stack_attribute(target_code_attributes) =
+		maybe(target_code_attribute).
+get_max_stack_attribute([]) = no.
+get_max_stack_attribute([X | _Xs]) = yes(X) :- X = max_stack_size(_).
+
+	
 :- pred get_all_load_store_lval_instrs(list(lval), instr_tree, instr_tree,
 		il_info, il_info).
 :- mode get_all_load_store_lval_instrs(in, out, out, in, out) is det.

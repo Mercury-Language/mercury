@@ -1029,10 +1029,10 @@ fixup_case_cond(match_range(Low0, High0), match_range(Low, High)) -->
 		target_code_component, elim_info, elim_info).
 :- mode fixup_target_code_component(in, out, in, out) is det.
 
-fixup_target_code_component(raw_target_code(Code),
-		raw_target_code(Code)) --> [].
-fixup_target_code_component(user_target_code(Code, Context),
-		user_target_code(Code, Context)) --> [].
+fixup_target_code_component(raw_target_code(Code, Attrs),
+		raw_target_code(Code, Attrs)) --> [].
+fixup_target_code_component(user_target_code(Code, Context, Attrs),
+		user_target_code(Code, Context, Attrs)) --> [].
 fixup_target_code_component(target_code_input(Rval0),
 		target_code_input(Rval)) -->
 	fixup_rval(Rval0, Rval).

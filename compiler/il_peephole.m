@@ -233,13 +233,13 @@ match(ldc(Type, Const), [stloc(Var)| Instrs0], Instrs) :-
 	Instrs = list__append(Replacement, Rest).
 
 	% Two patterns begin with start_scope.
-match(start_block(scope(Locals), Id), Instrs0, Instrs) :-
+match(start_block(scope(Locals), Id)) -->
 	( 
-		match2(start_block(scope(Locals), Id), Instrs0, Instrs1)
+		match_start_scope_1(start_block(scope(Locals), Id))
 	->
-		Instrs = Instrs1
+		[]
 	;	
-		match3(start_block(scope(Locals), Id), Instrs0, Instrs)
+		match_start_scope_2(start_block(scope(Locals), Id))
 	).
 
 	% If this is a scope with a local variable that is stored to but not
@@ -251,9 +251,9 @@ match(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 	% stloc(X) patterns.
 	% This could be more efficient if it stopped looking outside the
 	% enclosing scope.
-:- pred match2(instr, instrs, instrs).
-:- mode match2(in, in, out) is semidet.
-match2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
+:- pred match_start_scope_1(instr, instrs, instrs).
+:- mode match_start_scope_1(in, in, out) is semidet.
+match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 
 		% Is this variable a local that is unused?
 	IsUnusedLocal = (pred(V::in) is semidet :-
@@ -267,6 +267,7 @@ match2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 			X \= ldloc(V),
 			X \= ldloca(V)
 		), Instrs0, _, [])
+
 	),
 
 		% A producer, which finds "dup" and returns the rest of
@@ -304,6 +305,8 @@ match2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 		R = V - Pre0 - Pre - Post
 	),
 
+	no_handwritten_code(Instrs0, Id),
+
 		% Keep looking for "dups" until it is followed by a
 		% suitable stloc.
 	keep_looking(FindDup, FindStloc, Instrs0, [] - [], Result, _Left),
@@ -325,9 +328,12 @@ match2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 	% it.
 	% This could be more efficient if it stopped looking outside the
 	% enclosing scope.
-:- pred match3(instr, instrs, instrs).
-:- mode match3(in, in, out) is semidet.
-match3(start_block(scope(Locals), Id), Instrs0, Instrs) :-
+:- pred match_start_scope_2(instr, instrs, instrs).
+:- mode match_start_scope_2(in, in, out) is semidet.
+match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
+
+	no_handwritten_code(Instrs0, Id),
+
 		% The pattern
 	list__filter((pred(VarName - _Type::in) is semidet :-
 		Var = name(VarName),
@@ -341,6 +347,7 @@ match3(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 		), Instrs0, _, [])),
 		Locals, UnusedLocals, UsedLocals),
 	UnusedLocals \= [],
+
 
 		% Comment and replacement
 	list__map((pred(VarName - _Type::in, Comment::out) is det :-
@@ -369,6 +376,36 @@ match4(start_block(scope([]), _), Instrs0, Instrs) :-
 
 
 %-----------------------------------------------------------------------------%
+
+	% Succeeds if there is no handwritten code within the current block.
+	% (excluding sub-blocks).
+:- pred no_handwritten_code(instrs::in, int::in) is semidet.
+
+no_handwritten_code([], _).
+no_handwritten_code([Instr | Instrs], Id) :-
+	( Instr = il_asm_code(_, _) ->
+		fail
+	; Instr = end_block(_, Id) ->
+		true
+	; Instr = start_block(_, SkipId) ->
+		InstrsAfterBlock = skip_over_block(Instrs, SkipId),
+		no_handwritten_code(InstrsAfterBlock, Id)
+	; 
+		no_handwritten_code(Instrs, Id)
+	).
+
+	% Skips over a block until the end of the block (with Id matching
+	% the given Id) is found.
+:- func skip_over_block(instrs, int) = instrs.
+skip_over_block([], _) = []. 
+skip_over_block([Instr | Instrs], Id) = 
+	( Instr = end_block(_, Id) ->
+		Instrs
+	;
+		skip_over_block(Instrs, Id)
+	).
+
+
 
 	% Skip over all the comments.
 :- pred skip_comments(instrs::in, instrs::out, instrs::out) is det.
@@ -426,6 +463,7 @@ can_call(calli(_)) 				= yes.
 can_call(callvirt(_)) 				= yes.
 can_call(jmp(_)) 				= yes.
 can_call(newobj(_))			 	= yes.
+can_call(il_asm_code(_, _))		 	= yes.
 
 can_call(comment(_Comment)) 			= no. 
 can_call(label(_Label)) 			= no. 
@@ -524,6 +562,7 @@ equivalent_to_nop(end_block(scope(_), _))	 	= yes.
 equivalent_to_nop(nop) 					= yes. 
 equivalent_to_nop(context(_, _)) 			= yes. 
 
+equivalent_to_nop(il_asm_code(_, _)) 			= no. 
 equivalent_to_nop(start_block(try, _))			= no.
 equivalent_to_nop(end_block(try, _))			= no.
 equivalent_to_nop(start_block(catch(_), _))		= no.
@@ -618,6 +657,11 @@ equivalent_to_nop(unbox(_Type)) 			= no.
 
 	% These instructions can branch control flow.
 :- func can_branch(instr) = bool.
+
+	% XXX we should refine what we mean by can_branch -- it seems to only
+	% mean local branching to local labels (which il_asm_code shouldn't do)
+	% but we will be conservative for now.
+can_branch(il_asm_code(_, _))				= yes.
 can_branch(br(_)) 					= yes.
 can_branch(brtrue(_))					= yes.
 can_branch(brfalse(_))					= yes.

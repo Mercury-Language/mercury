@@ -189,9 +189,11 @@
 	% This should probably be the same as params.
 :- type locals == assoc_list(ilds__id, ilds__type).
 
-	% blocks can be just scope for locals, or can 
-	% introduce try or catch code.
+	% blocks can be just scope for locals, can surround a block of
+	% handwritten code, or can introduce try or catch code.
 :- type blocktype 
+
+		% scope just introduces a scope for local variables
 	--->	scope(locals)
 	;	try
 	;	catch(class_name).
@@ -213,6 +215,9 @@
 	;	end_block(blocktype, blockid)		% end block
 	;	context(string, int)			% context of following 
 							% code (filename, line)
+	;	il_asm_code(string, int)		% a slab of handwritten
+							% IL assembler (with
+							% max stack size)
 
 	% BASE INSTRUCTIONS
 
@@ -374,8 +379,18 @@ calculate_max_stack(Instrs) =
 calculate_max_stack_2([], _, Max) = Max.
 calculate_max_stack_2([I | Instrs], Current, Max) =  
 		calculate_max_stack_2(Instrs, NewCurrent, NewMax) :-
-	NewCurrent = Current + get_stack_difference(I),
-	NewMax = max(NewCurrent, Max).
+
+		% If there is handwritten code, it might increase the
+		% current stack height by its maximum, but it will then 
+		% pop the stack leaving nothing on the stack (so Current
+		% remains the same).
+	( I = il_asm_code(_, HandwrittenMax) ->
+		NewCurrent = Current,
+		NewMax = max(Current + HandwrittenMax, Max)
+	;
+		NewCurrent = Current + get_stack_difference(I),
+		NewMax = max(NewCurrent, Max)
+	).
 
 	% Return the difference in stack height after an instruction is
 	% executed.
@@ -389,6 +404,7 @@ get_stack_difference(start_block(try, _)) 			= 0.
 get_stack_difference(start_block(catch(_), _)) 			= 1.
 get_stack_difference(context(_, _)) 				= 0.
 get_stack_difference(label(_Label)) 				= 0. 
+get_stack_difference(il_asm_code(_, _))				= 0.
 
 get_stack_difference(add(_Overflow, _Signed))	 		= -1. 
 get_stack_difference((and)) 					= -1. 

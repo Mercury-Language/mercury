@@ -768,7 +768,7 @@
 	%
 	% sequence
 	%
-		block(mlds__defns, list(mlds__statement))
+		block(mlds__defns, list(mlds__statement))	
 
 	%
 	% iteration
@@ -1148,15 +1148,17 @@ XXX Full exception handling support is not yet implemented.
 	;	lang_GNU_C
 	;	lang_C_minus_minus
 	;	lang_asm
+	;	lang_il
 	;	lang_java_asm
 	;	lang_java_bytecode
 	.
 
 :- type target_code_component
-	--->	user_target_code(string, maybe(prog_context))
+	--->	user_target_code(string, maybe(prog_context),
+				target_code_attributes)
 			% user_target_code holds C code from
 			% the user's `pragma c_code' declaration
-	;	raw_target_code(string)
+	;	raw_target_code(string, target_code_attributes)
 			% raw_target_code holds C code that the
 			% compiler has generated.  To ensure that
 			% following `#line' directives work OK,
@@ -1169,6 +1171,11 @@ XXX Full exception handling support is not yet implemented.
 	;	target_code_output(mlds__lval)
 	;	name(mlds__qualified_entity_name)
 	.
+
+:- type target_code_attributes == list(target_code_attribute).
+
+:- type target_code_attribute
+	--->	max_stack_size(int).
 
 	%
 	% constructor id

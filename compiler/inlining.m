@@ -944,6 +944,11 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 :- pred ok_to_inline_language(foreign_language::in, compilation_target::in)
 	is semidet.
 ok_to_inline_language(c, c).
+% ok_to_inline_language(il, il). % 
+% XXX we need to fix the handling of parameter marhsalling for inlined code
+% before we can enable this -- see the comments in
+% ml_gen_ordinary_pragma_il_proc in ml_code_gen.m.
+%
 % ok_to_inline_language(java, java). % foreign_language = java not implemented
 % ok_to_inline_language(asm, asm).   % foreign_language = asm not implemented
 % We could define a language "C/C++" (c_slash_cplusplus) which was the

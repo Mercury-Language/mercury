@@ -204,14 +204,17 @@ convert_foreign_language_2("managed c++", managed_cplusplus).
 convert_foreign_language_2("c#", csharp).
 convert_foreign_language_2("csharp", csharp).
 convert_foreign_language_2("c sharp", csharp).
+convert_foreign_language_2("il", il).
 
 foreign_language_string(c) = "C".
 foreign_language_string(managed_cplusplus) = "Managed C++".
 foreign_language_string(csharp) = "C#".
+foreign_language_string(il) = "IL".
 
 simple_foreign_language_string(c) = "c".
 simple_foreign_language_string(managed_cplusplus) = "cpp". % XXX mcpp is better
 simple_foreign_language_string(csharp) = "csharp".
+simple_foreign_language_string(il) = "il".
 
 convert_gc_method("none", none).
 convert_gc_method("conservative", conservative).

@@ -854,6 +854,9 @@ output_instruction(PrintComments, Instr, Info0, Info) -->
 :- pred output_instr(instr::in, ilasm_info::in, ilasm_info::out,
 	io__state::di, io__state::uo) is det.
 
+output_instr(il_asm_code(Code, _MaxStack), I, I) --> 
+	io__write_string(Code).
+
 output_instr(comment(Comment), I, I) --> 
 	output_comment_string(Comment).
 

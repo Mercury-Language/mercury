@@ -549,6 +549,8 @@ mlds_output_c_defn(_Indent, user_foreign_code(managed_cplusplus, _, _)) -->
 	{ sorry(this_file, "foreign code other than C") }.
 mlds_output_c_defn(_Indent, user_foreign_code(csharp, _, _)) -->
 	{ sorry(this_file, "foreign code other than C") }.
+mlds_output_c_defn(_Indent, user_foreign_code(il, _, _)) -->
+	{ sorry(this_file, "foreign code other than C") }.
 
 :- pred mlds_output_pragma_export_decl(mlds_module_name, indent,
 		mlds__pragma_export, io__state, io__state).
@@ -2494,7 +2496,7 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo,
 :- mode mlds_output_target_code_component(in, in, di, uo) is det.
 
 mlds_output_target_code_component(Context,
-		user_target_code(CodeString, MaybeUserContext)) -->
+		user_target_code(CodeString, MaybeUserContext, _Attrs)) -->
 	( { MaybeUserContext = yes(UserContext) } ->
 		mlds_to_c__output_context(mlds__make_context(UserContext))
 	;
@@ -2502,7 +2504,8 @@ mlds_output_target_code_component(Context,
 	),
 	io__write_string(CodeString),
 	io__write_string("\n").
-mlds_output_target_code_component(Context, raw_target_code(CodeString)) -->
+mlds_output_target_code_component(Context, raw_target_code(CodeString,
+		_Attrs)) -->
 	mlds_to_c__output_context(Context),
 	io__write_string(CodeString).
 mlds_output_target_code_component(Context, target_code_input(Rval)) -->

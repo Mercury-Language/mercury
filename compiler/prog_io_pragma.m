@@ -327,10 +327,10 @@ parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
 					PredAndVarsTerm)
 			)
 	        ;
-		    MaybeFlags = error(FlagsError, ErrorTerm),
+		    MaybeFlags = error(FlagsError, FlagsErrorTerm),
 		    ErrMsg = "-- invalid third argument: ",
 		    Res = error(InvalidDeclStr ++ ErrMsg ++ FlagsError,
-			ErrorTerm)
+			FlagsErrorTerm)
 		)
 	    ;
 		ErrMsg = "-- invalid fourth argument, expecting string containing foreign code",
@@ -516,16 +516,16 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 		parse_pragma_foreign_proc_attributes_term(ForeignLanguage, 
 			FlagsTerm, MaybeFlags),
 		( 
-			MaybeFlags = ok(Flags)
-		->
+			MaybeFlags = ok(Flags),
 			parse_pragma_foreign_code(ModuleName, Flags,
 				PredAndVarsTerm, ordinary(Code, yes(Context)),
 				VarSet, Res)
 	        ; 
+			MaybeFlags = error(FlagsErr, FlagsErrTerm),
 			parse_pragma_foreign_proc_attributes_term(
-				ForeignLanguage, PredAndVarsTerm, MaybeFlags),
+				ForeignLanguage, PredAndVarsTerm, MaybeFlags2),
 			(
-				MaybeFlags = ok(Flags),
+				MaybeFlags2 = ok(Flags),
 			    % XXX we should issue a warning; this syntax is
 			    % deprecated We will continue to accept this if
 			    % c_code is used, but not with foreign_code
@@ -541,10 +541,10 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 						PredAndVarsTerm)
 				)	
 			;
-				MaybeFlags = error(FlagsErr, ErrTerm),
+				MaybeFlags2 = error(_, _),
 				ErrMsg = "-- invalid third argument: ",
 				Res = error(InvalidDeclStr ++ ErrMsg ++
-					FlagsErr, ErrTerm)
+					FlagsErr, FlagsErrTerm)
 			)
 		)
 	    ;
@@ -1126,7 +1126,8 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 	--->	may_call_mercury(may_call_mercury)
 	;	thread_safe(thread_safe)
 	;	tabled_for_io(tabled_for_io)
-	;	aliasing.
+	;	aliasing
+	;	max_stack_size(int).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language, term, 
 		maybe1(pragma_foreign_proc_attributes)).
@@ -1177,17 +1178,51 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Term,
 					AttrList)
 			->
 				set_tabled_for_io(Attributes2, tabled_for_io,
-					Attributes)
+					Attributes3)
 			;
-				Attributes = Attributes2
+				Attributes3 = Attributes2
 			),
-			MaybeAttributes = ok(Attributes)
+			ExtraAttrs = list__filter_map(
+				attribute_to_extra_attribute, AttrList),
+			list__foldl(
+				(pred(EAttr::in, Attrs0::in,
+						Attrs::out) is det :- 
+					add_extra_attribute(Attrs0, EAttr,
+						Attrs)),
+				ExtraAttrs, Attributes3, Attributes),
+				MaybeAttributes = check_required_attributes(
+					ForeignLanguage, Attributes, Term)
 		)
 	;
 		ErrMsg = "expecting a foreign proc attribute or list of attributes",
 		MaybeAttributes = error(ErrMsg, Term)
 	).
 
+
+	% Check whether all the required attributes have been set for
+	% a particular language
+:- func check_required_attributes(foreign_language,
+		pragma_foreign_proc_attributes, term)
+	= maybe1(pragma_foreign_proc_attributes).
+
+check_required_attributes(c, Attrs, _Term) = ok(Attrs).
+check_required_attributes(managed_cplusplus, Attrs, _Term) = ok(Attrs).
+check_required_attributes(csharp, Attrs, _Term) = ok(Attrs).
+check_required_attributes(il, Attrs, Term) = Res :-
+	( [] = list__filter_map(
+		(func(X) = X is semidet :- X = max_stack_size(_)),
+		Attrs ^ extra_attributes)
+	->
+		Res = error(
+			"expecting max_stack_size attribute for IL code", Term)
+	;
+		Res = ok(Attrs)
+	).
+
+:- func attribute_to_extra_attribute(collected_pragma_foreign_proc_attribute)
+	= pragma_foreign_proc_extra_attribute is semidet.
+
+attribute_to_extra_attribute(max_stack_size(Size)) = max_stack_size(Size).
 
 
 :- pred parse_pragma_foreign_proc_attributes_term0(term,
@@ -1224,6 +1259,8 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
 		Flag = tabled_for_io(TabledForIo)
 	; parse_aliasing(Term) ->
 		Flag = aliasing
+	; parse_max_stack_size(Term, Size) ->
+		Flag = max_stack_size(Size)
 	;
 		fail
 	).
@@ -1266,6 +1303,14 @@ parse_tabled_for_io(term__functor(term__atom("not_tabled_for_io"), [], _),
 parse_aliasing(term__functor(term__atom("no_aliasing"), [], _)).
 parse_aliasing(term__functor(term__atom("unknown_aliasing"), [], _)).
 parse_aliasing(term__functor(term__atom("alias"), [_Types, _Alias], _)).
+
+
+:- pred parse_max_stack_size(term::in, int::out) is semidet.
+
+parse_max_stack_size(term__functor(
+		term__atom("max_stack_size"), [SizeTerm], _), Size) :-
+	SizeTerm = term__functor(term__integer(Size), [], _).
+
 
 % parse a pragma foreign_code declaration
 
