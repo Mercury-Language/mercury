@@ -58,6 +58,7 @@ PROGS=	\
 	nested3 \
 	no_fully_strict \
 	no_inline \
+	nondet_ctrl_vn \
 	nullary_ho_func \
 	parent \
 	parent2 \
@@ -88,7 +89,7 @@ PROGS=	\
 
 # The following is required to make the test cases
 #	nested, nested2, and nested3
-# work reliabily with parallel makes -- without this they occaisionally fail.
+# work reliabily with parallel makes -- without this they occasionally fail.
 RM_C = :
 
 #-----------------------------------------------------------------------------#
@@ -100,6 +101,7 @@ MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-ho_order2	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
+MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-rnd		=	-O6
 
 # In grade `none' with options `-O1 --opt-space' on kryten
