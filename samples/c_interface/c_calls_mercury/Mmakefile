@@ -17,10 +17,10 @@ MLOBJS=c_main.o
 
 #-----------------------------------------------------------------------------#
 
-c_main.o: mercury_lib.h c_main.h
+c_main.o: mercury_lib.mh c_main.h
 
 # make sure that `mmake clean' removes c_main.o
 clean_local:
-	rm -f c_main.o mercury_lib.h
+	rm -f c_main.o
 
 #-----------------------------------------------------------------------------#
