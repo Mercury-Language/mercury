@@ -783,9 +783,9 @@ inlining__rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet,
 		CalledGoal, Goal) :-
 	map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
 	varset__vars(CalleeVarSet, CalleeListOfVars),
-	goal_util__create_variables(CalleeListOfVars, VarSet0,
-		VarTypes1, Subn0, CalleeVarTypes, CalleeVarSet,
-		VarSet, VarTypes, Subn),
+	goal_util__create_variables(CalleeListOfVars,
+		CalleeVarSet, CalleeVarTypes,
+		VarSet0, VarSet, VarTypes1, VarTypes, Subn0, Subn),
 	goal_util__must_rename_vars_in_goal(CalledGoal, Subn, Goal).
 
 %-----------------------------------------------------------------------------%

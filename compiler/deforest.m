@@ -1442,9 +1442,10 @@ deforest__match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
 	proc_info_varset(FirstProcInfo, FirstVersionVarSet),	
 	proc_info_vartypes(FirstProcInfo, FirstVersionVarTypes),
 
-	goal_util__create_variables(FirstVersionVars, VarSet0, VarTypes0,
-		FirstRenaming0, FirstVersionVarTypes, FirstVersionVarSet,
-		VarSet, VarTypes, FirstRenaming),
+	goal_util__create_variables(FirstVersionVars,
+		FirstVersionVarSet, FirstVersionVarTypes,
+		VarSet0, VarSet, VarTypes0, VarTypes,
+		FirstRenaming0, FirstRenaming),
 	goal_util__must_rename_vars_in_goal(FirstVersionGoal, FirstRenaming,
 			RenamedFirstVersionGoal),
 
