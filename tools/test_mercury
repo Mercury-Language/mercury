@@ -12,7 +12,7 @@ echo "test_mercury starting at `date`" 1>&2
 
 case $# in
 	5)	HOST=$1; ARCH=$2; FULLARCH=$3; BRANCH=$4; C_COMPILER=$5 ;;
-	*)	echo "Usage: $0 host arch fullarch c_compiler" 1>&2; exit 1 ;;
+	*)	echo "Usage: $0 host arch fullarch branch c_compiler" 1>&2; exit 1 ;;
 esac
 
 PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/mercury/public/cron/.path`"
@@ -928,7 +928,7 @@ do
 			cp Prof.MemoryWords poly.$grade.MemoryWords &&
 			cp Prof.MemoryCells poly.$grade.MemoryCells &&
 			cp Prof.Decl poly.$grade.Decl) ||
-			set_status "benchmarks/poly in grade *.memprof*
+			set_status "benchmarks/poly in grade *.memprof*"
 			;;
 	esac
 	echo "test_mercury finished tests for grade $grade at `date`" 1>&2
