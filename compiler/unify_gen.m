@@ -401,11 +401,11 @@ unify_gen__generate_det_sub_unify(L, R, M, Code) -->
 		{ mode_is_input(ModuleInfo, (LI -> LF)) },
 		{ mode_is_input(ModuleInfo, (RI -> RF)) }
 	->
+		{ error("Det unifications may not contain tests") }
 		% XXX We should perhaps just emit empty code here,
 		% since the unification must be something like `1 = 1'?
-		% { error("Det unifications may not contain tests") }
-		{ Code = node([ c_code("abort();") -
-			"Error - det argument sub-unify is a test???" ]) }
+		% { Code = node([ c_code("abort();") -
+		% 	"Error - det argument sub-unify is a test???" ]) }
 	;
 			% Input - Output== assignment ->
 		{ mode_is_input(ModuleInfo, (LI -> LF)) },
