@@ -1,0 +1,50 @@
+Prehistory
+----------
+
+We designed the Mercury execution algorithm in October 1993. We started
+working on a Mercury compiler in December 1993. Semantic analysis
+started working around May 1994. We started generating code around
+August 1994; we started work on optimizations very soon after. The
+compiler successfully compiled itself on 24 February 1995.
+
+
+Mercury 0.1, April 8 1995
+-------------------------
+Initial beta-test release. 
+Very resource-hungry, not very well documented.
+
+
+Mercury 0.2, April 18 1995
+--------------------------
+Much better error messages for determinism errors, much
+faster compilation, much lower memory requirements for bootstrapping.
+The C compilation is much faster and requires much less memory since we
+now by default compile to one C function per procedure, but we also
+improved the speed of the Mercury compiler itself by nearly 40% by
+implementing some library predicates much more efficiently.
+
+
+Mercury 0.2.5, 1 June 1995
+--------------------------
+Much better syntax error messages.
+Better documentation, now including a library reference manual.
+Added a GNU autoconf configuration script.
+Ported to Irix 5.
+Added `multidet'.  
+Enabled the use of tag bits in combination with conservative garbage
+collection (this improved the speed of the compiler by about 20%).
+Compile directly to C rather than via the old .mod files, which were
+post-processed by a Perl script (improves compilation speed, removes
+dependency on Perl).
+Lots of bug fixes.
+
+Mercury 0.3
+-----------
+Better type error messages.
+Better determinism error messages.
+Only recompiles <module>_init.c after `mmake depend', rather than after
+anything changes.
+Ported to ULTRIX (N.B. - ULTRIX's /bin/sh sucks).
+A few minor efficiency improvements.
+A few bug fixes.
+
