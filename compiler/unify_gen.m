@@ -56,7 +56,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module string, tree, int, map, require, std_util.
+:- import_module code_aux, string, tree, int, map, require, std_util.
 :- import_module prog_io, mode_util, hlds_out, term.
 
 :- type uni_val		--->	ref(var)
@@ -106,13 +106,52 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 
 unify_gen__generate_tag_test(Var, ConsId, Code) -->
 	code_info__produce_variable(Var, VarCode, Rval),
+	(
+		{ ConsId = cons(_, Arity) },
+		{ Arity > 0 }
+	->
+		code_info__variable_type(Var, Type),
+		code_aux__lookup_type_defn(Type, TypeDefn),
+		{ TypeDefn = hlds__type_defn(_, _, du_type(_, ConsTable, _), _, _) ->  
+			map__to_assoc_list(ConsTable, ConsList),
+			(
+				ConsList = [ConsId - _, OtherConsId - _],
+				OtherConsId = cons(_, 0)
+			->
+				Reverse = yes(OtherConsId)
+			;
+				ConsList = [OtherConsId - _, ConsId - _],
+				OtherConsId = cons(_, 0)
+			->
+				Reverse = yes(OtherConsId)
+			;
+				Reverse = no
+			)
+		;
+			Reverse = no
+		}
+	;
+		{ Reverse = no }
+	),
 	code_info__variable_to_string(Var, VarName),
 	{ hlds_out__cons_id_to_string(ConsId, ConsIdName) },
-	{ string__append_list(["checking that ", VarName,
+	(
+		{ Reverse = no },
+		{ string__append_list(["checking that ", VarName,
 			" has functor ", ConsIdName], Comment) },
-	{ CommentCode = node([comment(Comment) - ""]) },
-	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	{ unify_gen__generate_tag_rval_2(Tag, Rval, TestRval) },
+		{ CommentCode = node([comment(Comment) - ""]) },
+		code_info__cons_id_to_tag(Var, ConsId, Tag),
+		{ unify_gen__generate_tag_rval_2(Tag, Rval, TestRval) }
+	;
+		{ Reverse = yes(TestConsId) },
+		{ string__append_list(["checking that ", VarName,
+			" has functor ", ConsIdName, " (inverted test)"],
+			Comment) },
+		{ CommentCode = node([comment(Comment) - ""]) },
+		code_info__cons_id_to_tag(Var, TestConsId, Tag),
+		{ unify_gen__generate_tag_rval_2(Tag, Rval, NegTestRval) },
+		{ code_util__neg_rval(NegTestRval, TestRval) }
+	),
 	code_info__generate_test_and_fail(TestRval, TestCode),
 	{ Code = tree(VarCode, tree(CommentCode, TestCode)) }.
 

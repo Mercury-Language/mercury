@@ -353,7 +353,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		)
 	;
-		Target = do_succeed,
+		Target = do_succeed(_),
 		error("succeed in frameopt__setup_if")
 	;
 		Target = do_redo,

@@ -92,9 +92,9 @@
 	bool).
 :- mode opt_util__is_sdproceed_next_sf(in, out, out) is semidet.
 
- 	% Is a succeed instruction (i.e. a goto(do_succeed) instruction)
+ 	% Is a succeed instruction (i.e. a goto(do_succeed(_)) instruction)
  	% next in the instruction list? If yes, return the instructions
-	% up to the succed.
+	% up to and including the succeed.
 
 :- pred opt_util__is_succeed_next(list(instruction), list(instruction)).
 :- mode opt_util__is_succeed_next(in, out) is semidet.
@@ -105,6 +105,15 @@
 :- pred opt_util__is_forkproceed_next(list(instruction), map(label, bool),
 	list(instruction)).
 :- mode opt_util__is_forkproceed_next(in, in, out) is semidet.
+
+ 	% Does the following code consist of straighline instructions
+	% except possibly if_val(..., dofail), and then a succeed?
+	% If yes, then return all the instructions up to the succeed,
+	% and all the following instructions.
+
+:- pred opt_util__straight_alternative(list(instruction), list(instruction),
+	list(instruction)).
+:- mode opt_util__straight_alternative(in, out, out) is semidet.
 
 	% Remove the assignment to r1 from the list returned by
 	% opt_util__is_sdproceed_next.
@@ -176,6 +185,9 @@
 
 :- pred opt_util__count_temps_instr_list(list(instruction), int, int).
 :- mode opt_util__count_temps_instr_list(in, in, out) is det.
+
+:- pred opt_util__count_temps_instr(instr, int, int).
+:- mode opt_util__count_temps_instr(in, in, out) is det.
 
 	% See whether an lval references any stackvars.
 
@@ -338,7 +350,7 @@ opt_util__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 		fail
 	).
 
-opt_util__is_proceed_next(Instrs0, Instrs_between) :-
+opt_util__is_proceed_next(Instrs0, InstrsBetween) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	( Instr1 = assign(succip, lval(stackvar(_))) - _ ->
@@ -366,12 +378,12 @@ opt_util__is_proceed_next(Instrs0, Instrs_between) :-
 	),
 	Instrs7 = [Instr7 | _],
 	Instr7 = goto(succip, _) - _,
-	Instrs_between = [Instr1use, Instr3use, Instr5use].
+	InstrsBetween = [Instr1use, Instr3use, Instr5use].
 
-opt_util__is_sdproceed_next(Instrs0, Instrs_between) :-
-	opt_util__is_sdproceed_next_sf(Instrs0, Instrs_between, _).
+opt_util__is_sdproceed_next(Instrs0, InstrsBetween) :-
+	opt_util__is_sdproceed_next_sf(Instrs0, InstrsBetween, _).
 
-opt_util__is_sdproceed_next_sf(Instrs0, Instrs_between, Success) :-
+opt_util__is_sdproceed_next_sf(Instrs0, InstrsBetween, Success) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	( Instr1 = assign(succip, lval(stackvar(_))) - _ ->
@@ -409,9 +421,9 @@ opt_util__is_sdproceed_next_sf(Instrs0, Instrs_between, Success) :-
 	),
 	Instrs9 = [Instr9 | _],
 	Instr9 = goto(succip, _) - _,
-	Instrs_between = [Instr1use, Instr3use, Instr5, Instr7use].
+	InstrsBetween = [Instr1use, Instr3use, Instr5, Instr7use].
 
-opt_util__is_succeed_next(Instrs0, Instrs_between) :-
+opt_util__is_succeed_next(Instrs0, InstrsBetweenIncl) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	( Instr1 = livevals(_) - _ ->
@@ -422,8 +434,8 @@ opt_util__is_succeed_next(Instrs0, Instrs_between) :-
 		Instrs3 = Instrs1
 	),
 	Instrs3 = [Instr3 | _],
-	Instr3 = goto(do_succeed, _) - _,
-	Instrs_between = [Instr1use].
+	Instr3 = goto(do_succeed(_), _) - _,
+	InstrsBetweenIncl = [Instr1use, Instr3].
 
 	% When we return Between, we are implicitly assuming that
 	% the other continuation' instruction sequence is the same
@@ -443,6 +455,36 @@ opt_util__is_forkproceed_next(Instrs0, Succmap, Between) :-
 		BranchSuccess = no,
 		opt_util__is_sdproceed_next_sf(Instrs2, Between, FallSuccess),
 		FallSuccess = yes
+	;
+		fail
+	).
+
+opt_util__straight_alternative(Instrs0, Between, After) :-
+	opt_util__straight_alternative_2(Instrs0, [], BetweenRev, After),
+	list__reverse(BetweenRev, Between).
+
+:- pred opt_util__straight_alternative_2(list(instruction), list(instruction),
+	list(instruction), list(instruction)).
+:- mode opt_util__straight_alternative_2(in, in, out, out) is semidet.
+
+opt_util__straight_alternative_2([Instr0 | Instrs0], Between0, Between,
+		After) :-
+	Instr0 = Uinstr0 - _,
+	(
+		(
+			opt_util__can_instr_branch_away(Uinstr0, no)
+		;
+			Uinstr0 = if_val(_, CodeAddr),
+			( CodeAddr = do_fail ; CodeAddr = do_redo )
+		)
+	->
+		opt_util__straight_alternative_2(Instrs0, [Instr0 | Between0],
+			Between, After)
+	;
+		Uinstr0 = goto(do_succeed(no), do_succeed(no))
+	->
+		Between = Between0,
+		After = Instrs0
 	;
 		fail
 	).
@@ -751,7 +793,7 @@ opt_util__livevals_addr(label(Label), Result) :-
 	).
 opt_util__livevals_addr(imported(_), yes).
 opt_util__livevals_addr(succip, yes).
-opt_util__livevals_addr(do_succeed, yes).
+opt_util__livevals_addr(do_succeed(_), yes).
 opt_util__livevals_addr(do_redo, no).
 opt_util__livevals_addr(do_fail, no).
 
@@ -759,9 +801,6 @@ opt_util__count_temps_instr_list([], N, N).
 opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], N0, N) :-
 	opt_util__count_temps_instr(Uinstr, N0, N1),
 	opt_util__count_temps_instr_list(Instrs, N1, N).
-
-:- pred opt_util__count_temps_instr(instr, int, int).
-:- mode opt_util__count_temps_instr(in, in, out) is det.
 
 opt_util__count_temps_instr(comment(_), N, N).
 opt_util__count_temps_instr(livevals(_), N, N).

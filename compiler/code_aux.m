@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Auxiliary code generator module. Unlike code_aux, it imports code_info.
+% Auxiliary code generator module. Unlike code_util, it imports code_info.
 %
 % Main authors: conway, zs.
 %
@@ -34,11 +34,14 @@
 :- pred code_aux__explain_call_info(map(var, lval), varset, string).
 :- mode code_aux__explain_call_info(in, in, out) is det.
 
+:- pred code_aux__lookup_type_defn(type, hlds__type_defn, code_info, code_info).
+:- mode code_aux__lookup_type_defn(in, out, di, uo) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module term, std_util.
+:- import_module term, type_util, std_util, require.
 
 code_aux__contains_only_builtins(Goal - _GoalInfo) :-
 	code_aux__contains_only_builtins_2(Goal).
@@ -201,5 +204,17 @@ code_aux__explain_call_info_2([Var - Lval | Rest], VarSet, String0, String) :-
 	),
 	string__append_list([VarString, "\t ->\t", LvalString, "\n", String1],
 		String).
+
+%---------------------------------------------------------------------------%
+
+code_aux__lookup_type_defn(Type, TypeDefn) -->
+	code_info__get_module_info(ModuleInfo),
+	{ type_to_type_id(Type, TypeIdPrime, _) ->
+		TypeId = TypeIdPrime
+	;
+		error("unknown type in code_aux__lookup_type_defn")
+	},
+	{ module_info_types(ModuleInfo, TypeTable) },
+	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
 
 %---------------------------------------------------------------------------%

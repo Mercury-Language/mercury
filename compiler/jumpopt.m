@@ -159,10 +159,9 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 				"shortcircuit"], Newinstrs),
 			Mod0 = yes
 		;
-			map__search(Succmap, TargetLabel, Between)
+			map__search(Succmap, TargetLabel, BetweenIncl)
 		->
-			list__append(Between, [goto(do_succeed, do_succeed) -
-				"shortcircuit"], Newinstrs),
+			Newinstrs = BetweenIncl,
 			Mod0 = yes
 		;
 			map__search(Instrmap, TargetLabel, TargetInstr)

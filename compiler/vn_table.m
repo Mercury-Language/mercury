@@ -254,14 +254,11 @@ vn__add_new_use(Vn, NewUse, Vn_tables0, Vn_tables) :-
 		list__member(NewUse, Uses0),
 		\+ NewUse = src_access(_)
 	->
-		opt_debug__write("\n"),
 		opt_debug__dump_tables(Vn_tables0, T_str),
-		opt_debug__write(T_str),
-		opt_debug__write("\n"),
 		opt_debug__dump_use(NewUse, U_str),
-		opt_debug__write(U_str),
-		opt_debug__write("\n"),
-		error("new use already known")
+		string__append_list(["\n", T_str, "\n", U_str, "\n",
+			"new use already known"], Msg),
+		error(Msg)
 	;
 		Uses1 = [NewUse | Uses0]
 	),

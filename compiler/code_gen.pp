@@ -768,7 +768,7 @@ code_gen__generate_non_epilog(Instr) -->
 		livevals(LiveArgs) - ""
 	]) },
 	{ ExitCode = tree(LiveValCode, node([
-		goto(do_succeed, do_succeed) - "Succeed"
+		goto(do_succeed(no), do_succeed(no)) - "Succeed"
 	])) },
 	{ EStart = node([comment("Start of procedure epilogue") - ""]) },
 	{ EEnd = node([comment("End of procedure epilogue") - ""]) },

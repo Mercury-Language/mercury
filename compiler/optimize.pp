@@ -181,7 +181,7 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 		;
 			[]
 		),
-		{ value_number__main(Instructions0, Instructions1) }
+		value_number__main(Instructions0, Instructions1)
 	;
 		{ Instructions1 = Instructions0 }
 	),

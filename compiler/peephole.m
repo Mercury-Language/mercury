@@ -322,12 +322,29 @@ peephole__match(mkframe(Descr, Slots, Redoip1), Comment,
 	%	<straightline instrs>		<straightline instrs>
 	%	modframe(Redoip2)
 
-peephole__match(modframe(_), Comment,
+	% If a modframe(do_fail) is followed by straighline instructions,
+	% except possibly for if_val with do_fail or do_redo as target,
+	% until a goto to do_succeed(no), then we can discard the nondet
+	% stack frame early.
+
+peephole__match(modframe(Redoip), Comment,
 		_Procmap, _Forkmap, Instrs0, Instrs) :-
-	opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
-	opt_util__touches_nondet_ctrl(Skipped, no),
-	list__append(Skipped, Rest, Instrs1),
-	Instrs = [modframe(Redoip2) - Comment | Instrs1].
+	(
+		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
+		opt_util__touches_nondet_ctrl(Skipped, no)
+	->
+		list__append(Skipped, Rest, Instrs1),
+		Instrs = [modframe(Redoip2) - Comment | Instrs1]
+	;
+		Redoip = do_fail,
+		opt_util__straight_alternative(Instrs0, Between, After)
+	->
+		list__condense([Between,
+			[goto(do_succeed(yes), do_succeed(yes)) -
+			"early discard"], After], Instrs)
+	;
+		fail
+	).
 
 	% If a decr_sp immediately follows an incr_sp of the same amount,
 	% the two cancel out.

@@ -201,7 +201,7 @@
 	--->		label(label)
 	;		imported(proc_label)
 	;		succip
-	;		do_succeed
+	;		do_succeed(bool)
 	;		do_redo
 	;		do_fail.
 
@@ -226,6 +226,11 @@
 
 :- pred llds__binary_op_to_string(binary_op, string).
 :- mode llds__binary_op_to_string(in, out) is det.
+
+	% Output an instruction (used for debugging).
+
+:- pred output_instruction(instr, io__state, io__state).
+:- mode output_instruction(in, di, uo) is det.
 
 	% Output a label (used by garbage collection).
 
@@ -330,9 +335,6 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 		[]
 	),
 	output_instruction_list(Instructions).
-
-:- pred output_instruction(instr, io__state, io__state).
-:- mode output_instruction(in, di, uo) is det.
 
 output_instruction(comment(Comment)) -->
 	globals__io_lookup_bool_option(mod_comments, PrintModComments),
@@ -631,7 +633,7 @@ output_lval_decls(temp(_)) --> [].
 
 output_code_addr_decls(succip) --> [].
 output_code_addr_decls(do_fail) --> [].
-output_code_addr_decls(do_succeed) --> [].
+output_code_addr_decls(do_succeed(_)) --> [].
 output_code_addr_decls(do_redo) --> [].
 output_code_addr_decls(label(_)) --> [].
 output_code_addr_decls(imported(ProcLabel)) -->
@@ -650,8 +652,14 @@ output_goto(succip, _) -->
 	io__write_string("proceed();").
 output_goto(do_fail, _) -->
 	io__write_string("fail();").
-output_goto(do_succeed, _) -->
-	io__write_string("succeed();").
+output_goto(do_succeed(Last), _) -->
+	(
+		{ Last = no },
+		io__write_string("succeed();")
+	;
+		{ Last = yes },
+		io__write_string("succeed_discard();")
+	).
 output_goto(do_redo, _) -->
 	io__write_string("redo();").
 output_goto(imported(ProcLabel), CallerAddr) -->
@@ -732,8 +740,14 @@ output_code_addr(succip) -->
 	io__write_string("succip").
 output_code_addr(do_fail) -->
 	io__write_string("ENTRY(do_fail)").
-output_code_addr(do_succeed) -->
-	io__write_string("ENTRY(do_succeed)").
+output_code_addr(do_succeed(Last)) -->
+	(
+		{ Last = no },
+		io__write_string("ENTRY(do_succeed)")
+	;
+		{ Last = yes },
+		io__write_string("ENTRY(do_last_succeed)")
+	).
 output_code_addr(do_redo) -->
 	io__write_string("ENTRY(do_redo)").
 output_code_addr(label(Label)) -->

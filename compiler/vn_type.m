@@ -48,7 +48,8 @@
 			;	node_origlval(vnlval)
 			;	node_ctrl(int).
 
-:- type vn_instr	--->	vn_call(code_addr, code_addr, code_addr, 
+:- type vn_instr	--->	vn_livevals(lvalset)
+			;	vn_call(code_addr, code_addr, code_addr, 
 					list(liveinfo))
 			;	vn_call_closure(bool, code_addr, list(liveinfo))
 			;	vn_mkframe(string, int, code_addr)
@@ -62,12 +63,18 @@
 			;	vn_incr_sp(int)
 			;	vn_decr_sp(int).
 
-:- type livemap == map(label, lvalset).
-:- type lvalset == bintree_set(lval).
-:- type vnlvalset == bintree_set(vnlval).
+:- type parentry	==	pair(lval, list(rval)).
+:- type parallel	--->	parallel(label, label, list(parentry)).
 
-:- type ctrlmap		== map(int, vn_instr).
-:- type flushmap	== map(int, flushmapentry).
-:- type flushmapentry	== map(vnlval, vn).
+:- type livemap		==	map(label, lvalset).
+:- type lvalset		==	bintree_set(lval).
+:- type vnlvalset	==	bintree_set(vnlval).
+
+:- type ctrlmap		==	map(int, vn_instr).
+:- type flushmap	==	map(int, flushmapentry).
+:- type flushmapentry	==	map(vnlval, vn).
+:- type parmap		==	map(int, list(parallel)).
+
+:- type vn_ctrl_tuple	--->	tuple(int, ctrlmap, flushmap, int, parmap).
 
 % There is no implementation section.

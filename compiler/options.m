@@ -52,6 +52,7 @@
 		;	statistics
 		;	debug_types
 		;	debug_modes
+		;	vndebug
 	% Output options
 		;	make_interface
 		;	make_call_graph
@@ -149,7 +150,8 @@ option_defaults_2(verbosity_option, [
 	verbose_errors		-	bool(no),
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
-	debug_modes		- 	bool(no)
+	debug_modes		- 	bool(no),
+	vndebug			- 	int(0)
 ]).
 option_defaults_2(output_option, [
 		% Output Options
@@ -273,6 +275,7 @@ long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("modecheck",		modecheck).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
+long_option("vndebug",			vndebug).
 long_option("generate-dependencies",	generate_dependencies).
 long_option("tags",			tags).
 long_option("follow-code",		follow_code).
@@ -348,6 +351,8 @@ options_help -->
 	io__write_string("\t\tOutput detailed debugging traces of the type checking.\n"),
 	io__write_string("\t-N, --debug-modes\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the mode checking.\n"),
+	io__write_string("\t--vndebug <n>\n"),
+	io__write_string("\t\tOutput detailed debugging traces of value numbering.\n"),
 
 	io__write_string("\nOutput Options:\n"),
 	io__write_string("\t-M, --generate-dependencies\n"),

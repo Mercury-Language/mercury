@@ -10,12 +10,11 @@
 
 :- interface.
 
-:- import_module vn_type.
+:- import_module vn_type, vn_table.
 :- import_module llds, list, bintree_set, int.
 
 :- implementation.
 
-:- import_module vn_table.
 :- import_module string, require, std_util, map.
 
 %-----------------------------------------------------------------------------%
@@ -489,6 +488,9 @@ vn__build_uses(Livevals, Ctrlmap, Vn_tables0, Vn_tables) :-
 vn__build_uses_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
 	( map__search(Ctrlmap, Ctrl, VnInstr) ->
 		(
+			VnInstr = vn_livevals(_),
+			Vn_tables1 = Vn_tables0
+		;
 			VnInstr = vn_call(_, _, _, _),
 			Vn_tables1 = Vn_tables0
 		;
@@ -548,10 +550,28 @@ vn__build_uses_from_livevals([], Vn_tables, Vn_tables).
 vn__build_uses_from_livevals([Live | Liveslist], Vn_tables0, Vn_tables) :-
 	vn__lookup_desired_value(Live, Vn, Vn_tables0),
 	vn__record_use(Vn, src_liveval(Live), Vn_tables0, Vn_tables1),
-	vn__vnlval_access_vns(Live, SubVns),
-	vn__record_use_list(SubVns, src_access(Live),
-		Vn_tables1, Vn_tables2),
+	vn__record_access([Live], Vn_tables1, Vn_tables2),
 	vn__build_uses_from_livevals(Liveslist, Vn_tables2, Vn_tables).
+
+:- pred vn__record_access(list(vnlval), vn_tables, vn_tables).
+:- mode vn__record_access(in, di, uo) is det.
+
+vn__record_access([], Vn_tables, Vn_tables).
+vn__record_access([Vnlval | Vnlvals], Vn_tables0, Vn_tables) :-
+	vn__vnlval_access_vns(Vnlval, SubVns),
+	vn__record_use_list(SubVns, src_access(Vnlval), Vn_tables0, Vn_tables1),
+	vn__record_access_vns(SubVns, Vn_tables1, Vn_tables2),
+	vn__record_access(Vnlvals, Vn_tables2, Vn_tables).
+
+:- pred vn__record_access_vns(list(vn), vn_tables, vn_tables).
+:- mode vn__record_access_vns(in, di, uo) is det.
+
+vn__record_access_vns(_, Vn_tables, Vn_tables).
+% vn__record_access_vns([], Vn_tables, Vn_tables).
+% vn__record_access_vns([Vn | Vns], Vn_tables0, Vn_tables) :-
+% 	vn__vnlval_access_vns(Vnlval, SubVns),
+% 	vn__record_use_list(SubVns, src_access(Vnlval), Vn_tables0, Vn_tables1),
+% 	vn__record_access_vns(Vnlvals, Vn_tables1, Vn_tables).
 
 :- pred vn__record_use(vn, vn_src, vn_tables, vn_tables).
 :- mode vn__record_use(in, in, di, uo) is det.
@@ -563,9 +583,7 @@ vn__record_use(Vn, Src, Vn_tables0, Vn_tables) :-
 		vn__lookup_defn(Vn, Vnrval, Vn_tables1),
 		(
 			Vnrval = vn_origlval(Vnlval),
-			vn__vnlval_access_vns(Vnlval, SubVns),
-			vn__record_use_list(SubVns, src_access(Vnlval),
-				Vn_tables1, Vn_tables)
+			vn__record_access([Vnlval], Vn_tables1, Vn_tables)
 		;
 			Vnrval = vn_mkword(_, SubVn),
 			vn__record_use(SubVn, src_vn(Vn),
@@ -598,228 +616,6 @@ vn__record_use_list([], _Src, Vn_tables, Vn_tables).
 vn__record_use_list([Vn | Vns], Src, Vn_tables0, Vn_tables) :-
 	vn__record_use(Vn, Src, Vn_tables0, Vn_tables1),
 	vn__record_use_list(Vns, Src, Vn_tables1, Vn_tables).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- interface.
-
-:- pred vn__block_cost(list(instruction), int).
-:- mode vn__block_cost(in, out) is det.
-
-:- implementation.
-
-vn__block_cost(Instrs, Cost) :-
-	list__reverse(Instrs, Rev),
-	vn__block_cost_2(Rev, 0, Assigns, 0, Ops, 0, StackRefs, 0, HeapRefs),
-	AssignCost is Assigns * 1,
-	OpsCost is Ops * 1,
-	StackCost is StackRefs * 2,
-	HeapCost is HeapRefs * 2,
-	Cost1 is AssignCost + OpsCost,
-	Cost2 is StackCost + HeapCost,
-	Cost is Cost1 + Cost2.
-
-:- pred vn__block_cost_2(list(instruction), int, int, int, int, int, int,
-	int, int).
-:- mode vn__block_cost_2(in, in, out, in, out, in, out, in, out) is det.
-
-vn__block_cost_2([], A, A, O, O, S, S, H, H).
-vn__block_cost_2([Uinstr - _Comment | Instrs],  A0, A, O0, O, S0, S, H0, H) :-
-	(
-		Uinstr = comment(_),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = livevals(_),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = block(_, _),
-		error("block found in vn_block_cost")
-	;
-		Uinstr = assign(Lval, Rval),
-		A1 is A0 + 1,
-		vn__lval_cost(Lval, O0, O1, S0, S1, H0, H1),
-		vn__rval_cost(Rval, O1, O2, S1, S2, H1, H2)
-	;
-		Uinstr = call(_, _, _, _),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = call_closure(_, _, _),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = mkframe(_, _, _),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = modframe(_),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = label(_),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = goto(_, _),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = computed_goto(Rval, _),
-		A1 = A0,
-		vn__rval_cost(Rval, O0, O2, S0, S2, H0, H2)
-	;
-		Uinstr = c_code(_),
-		error("c_code found in vn_block_cost")
-	;
-		Uinstr = if_val(Rval, _),
-		vn__rval_cost(Rval, O0, O1, S0, S1, H0, H1),
-		% count the earlier instructions twice,
-		% to favor code sequences that move code after ifs
-		vn__block_cost_2(Instrs, A0, A1, O1, O2, S1, S2, H1, H2)
-	;
-		Uinstr = incr_hp(Lval, _, Rval),
-		A1 is A0 + 2,
-		vn__lval_cost(Lval, O0, O1, S0, S1, H0, H1),
-		vn__lval_cost(Lval, O1, O2, S1, S2, H1, H2)
-	;
-		Uinstr = mark_hp(Lval),
-		A1 = A0,
-		vn__lval_cost(Lval, O0, O2, S0, S2, H0, H2)
-	;
-		Uinstr = restore_hp(Rval),
-		A1 = A0,
-		vn__rval_cost(Rval, O0, O2, S0, S2, H0, H2)
-	;
-		Uinstr = incr_sp(_),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	;
-		Uinstr = decr_sp(_),
-		A1 = A0,
-		O2 = O0,
-		S2 = S0,
-		H2 = H0
-	),
-	vn__block_cost_2(Instrs, A1, A, O2, O, S2, S, H2, H).
-
-:- pred vn__lval_cost(lval, int, int, int, int, int, int).
-:- mode vn__lval_cost(in, in, out, in, out, in, out) is det.
-
-vn__lval_cost(Lval, O0, O, S0, S, H0, H) :-
-	(
-		Lval = reg(_),
-		O = O0,
-		S = S0,
-		H = H0
-	;
-		Lval = stackvar(_),
-		O = O0,
-		S is S0 + 1,
-		H = H0
-	;
-		Lval = framevar(_),
-		O = O0,
-		S is S0 + 1,
-		H = H0
-	;
-		Lval = succip,
-		O = O0,
-		S = S0,
-		H = H0
-	;
-		Lval = maxfr,
-		O = O0,
-		S = S0,
-		H = H0
-	;
-		Lval = curfr,
-		O = O0,
-		S = S0,
-		H = H0
-	;
-		Lval = redoip(Rval),
-		S1 is S0 + 1,
-		vn__rval_cost(Rval, O0, O, S1, S, H0, H)
-	;
-		Lval = hp,
-		O = O0,
-		S = S0,
-		H = H0
-	;
-		Lval = sp,
-		O = O0,
-		S = S0,
-		H = H0
-	;
-		Lval = field(_, Rval1, Rval2),
-		H1 is H0 + 1,
-		vn__rval_cost(Rval1, O0, O1, S0, S1, H1, H2),
-		vn__rval_cost(Rval2, O1, O, S1, S, H2, H)
-	;
-		Lval = lvar(_),
-		error("lvar found in lval_cost")
-	;
-		Lval = temp(_),
-		O = O0,
-		S = S0,
-		H = H0
-	).
-
-:- pred vn__rval_cost(rval, int, int, int, int, int, int).
-:- mode vn__rval_cost(in, in, out, in, out, in, out) is det.
-
-vn__rval_cost(Rval, O0, O, S0, S, H0, H) :-
-	(
-		Rval = lval(Lval),
-		vn__lval_cost(Lval, O0, O, S0, S, H0, H)
-	;
-		Rval = var(_),
-		error("var found in rval_cost")
-	;
-		Rval = create(_, _, _),
-		O = O0,
-		S = S0,
-		H = H0
-	;
-		Rval = mkword(_, Rval1),
-		O1 is O0 + 1,
-		vn__rval_cost(Rval1, O1, O, S0, S, H0, H)
-	;
-		Rval = const(_),
-		O = O0,
-		S = S0,
-		H = H0
-	;
-		Rval = unop(_, Rval1),
-		O1 is O0 + 1,
-		vn__rval_cost(Rval1, O1, O, S0, S, H0, H)
-	;
-		Rval = binop(_, Rval1, Rval2),
-		O1 is O0 + 1,
-		vn__rval_cost(Rval1, O1, O2, S0, S1, H0, H1),
-		vn__rval_cost(Rval2, O2, O, S1, S, H1, H)
-	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

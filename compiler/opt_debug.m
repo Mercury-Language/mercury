@@ -112,6 +112,9 @@
 :- pred opt_debug__dump_rval(rval, string).
 :- mode opt_debug__dump_rval(in, out) is det.
 
+:- pred opt_debug__dump_rvals(list(rval), string).
+:- mode opt_debug__dump_rvals(in, out) is det.
+
 :- pred opt_debug__dump_const(rval_const, string).
 :- mode opt_debug__dump_const(in, out) is det.
 
@@ -245,6 +248,8 @@ opt_debug__dump_ctrl_list([N - VnInstr | Ctrllist], Str) :-
 	opt_debug__dump_ctrl_list(Ctrllist, Str2),
 	string__append_list([N_str, " -> ", Vni_str, "\n", Str2], Str).
 
+opt_debug__dump_vninstr(vn_livevals(_), Str) :-
+	string__append_list(["livevals(...)"], Str).
 opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
@@ -533,6 +538,12 @@ opt_debug__dump_rval(binop(O, N1, N2), Str) :-
 	string__append_list(["binop(", O_str, ", ", N1_str, ", ",
 		N2_str, ")"], Str).
 
+opt_debug__dump_rvals([], "").
+opt_debug__dump_rvals([Rval | Rvals], Str) :-
+	opt_debug__dump_rval(Rval, R_str),
+	opt_debug__dump_rvals(Rvals, S_str),
+	string__append_list([R_str, ", ", S_str], Str).
+
 opt_debug__dump_const(true, "true").
 opt_debug__dump_const(false, "false").
 opt_debug__dump_const(int_const(I), Str) :-
@@ -576,7 +587,14 @@ opt_debug__dump_code_addr(label(Label), Str) :-
 opt_debug__dump_code_addr(imported(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, Str).
 opt_debug__dump_code_addr(succip, "succip").
-opt_debug__dump_code_addr(do_succeed, "do_succeed").
+opt_debug__dump_code_addr(do_succeed(Last), Str) :-
+	(
+		Last = no,
+		Str = "do_succeed"
+	;
+		Last = yes,
+		Str = "do_last_succeed"
+	).
 opt_debug__dump_code_addr(do_redo, "do_redo").
 opt_debug__dump_code_addr(do_fail, "do_fail").
 
