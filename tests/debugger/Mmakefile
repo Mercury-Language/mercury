@@ -29,7 +29,8 @@ DEBUGGER_PROGS=	\
 	mdb_command_test		\
 	multi_parameter			\
 	queens				\
-	shallow
+	shallow				\
+	polymorphic_output
 
 # The following tests are disabled, since currently they get some spurious
 # failures if readline support is enabled:

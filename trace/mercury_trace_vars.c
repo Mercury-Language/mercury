@@ -105,7 +105,7 @@ typedef struct {
 	MR_Var_Details			*MR_point_vars;
 } MR_Point;
 
-static	bool	MR_trace_type_is_ignored(MR_TypeInfo type_info);
+static	bool	MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info);
 static	int	MR_trace_compare_var_details(const void *arg1,
 			const void *arg2);
 static	void	MR_trace_browse_var(FILE *out, MR_Var_Details *var,
@@ -180,13 +180,18 @@ MR_trace_ignored_type_ctors[] =
 };
 
 static bool
-MR_trace_type_is_ignored(MR_TypeInfo type_info)
+MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 {
 	MR_TypeCtorInfo	type_ctor_info;
 	int		ignore_type_ctor_count;
 	int		i;
 
-	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
+		return FALSE;
+	}
+
+	type_ctor_info =
+		MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
 	ignore_type_ctor_count =
 		sizeof(MR_trace_ignored_type_ctors) / sizeof(Word *);
 
@@ -226,6 +231,7 @@ MR_trace_set_level(int ancestor_level)
 	MR_TypeInfo			*type_params;
 	Word				value;
 	MR_TypeInfo			type_info;
+	MR_PseudoTypeInfo		pseudo_type_info;
 	int				i;
 	int				slot;
 	int				slot_max;
@@ -349,14 +355,15 @@ MR_trace_set_level(int ancestor_level)
 			continue;
 		}
 
+		pseudo_type_info = MR_var_pti(vars, i);
+		if (MR_trace_type_is_ignored(pseudo_type_info)) {
+			continue;
+		}
+
 		if (! MR_get_type_and_value_base(vars, i, valid_saved_regs,
 			base_sp, base_curfr, type_params, &type_info, &value))
 		{
 			/* this value is not a variable */
-			continue;
-		}
-
-		if (MR_trace_type_is_ignored(type_info)) {
 			continue;
 		}
 
