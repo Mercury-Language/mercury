@@ -65,7 +65,7 @@ typedef	MR_ConsumerListNode			*MR_ConsumerList;
 ** important that all members be the same size; this is why the simple table
 ** status field is an (unsigned) integer, not an enum.
 **
-** The integer field is by generic code that does not know what kind of node
+** The integer field is for generic code that does not know what kind of node
 ** the node will be; this means initialization. A value of zero means the node
 ** is uninitialized; this must be true for all members. (Also, see below on
 ** duplicate detection.)
@@ -86,7 +86,7 @@ typedef	MR_ConsumerListNode			*MR_ConsumerList;
 ** the chain of trie nodes given by the input arguments of the tabled subgoal,
 ** will be overwritten by a pointer to the answer block containing the output
 ** arguments when the goal succeeds; the MR_SIMPLETABLE_SUCCEEDED status code
-** is used only when the goal has no outputs, and this no answer block.
+** is used only when the goal has no outputs, and thus no answer block.
 ** This is why MR_SIMPLETABLE_SUCCEEDED must have the highest value, and
 ** why code looking at MR_simpletable_status must test for success with
 ** "table->MR_simpletable_status >= MR_SIMPLETABLE_SUCCEEDED".
