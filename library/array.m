@@ -1299,8 +1299,8 @@ samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
 
     ( if I > Hi then
 
-        A = B0,
-        B = A0
+        A = A0,
+        B = B0
 
       else if N > 0 then
 
