@@ -163,7 +163,6 @@
 
 :- pred builtin_plus(int, int, int).
 :- mode builtin_plus(in, in, uo) is det.
-:- mode builtin_plus(in, in, uo) is det.
 
 :- pred builtin_unary_plus(int, int).
 :- mode builtin_unary_plus(in, uo) is det.
