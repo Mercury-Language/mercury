@@ -5,11 +5,11 @@
 . handle_options
 
 root=`pwd`
-for dir in benchmark general
+for dir in benchmarks general
 do
 	cd $dir
 	mmake $jfactor realclean
 	mmake $jfactor depend
-	mmake $jfactor exp
+	mmake $jfactor HAVE_NUPROLOG=yes exp
 	cd $root
 done

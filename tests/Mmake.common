@@ -2,17 +2,9 @@
 
 MGNUCFLAGS=-g
 
-# the following code tests for the presence of NU-Prolog
-# by trying to invoke `np' and seeing if it the output
-# starts with the text "NU-Prolog".
-HAVE_NUPROLOG=$(shell \
-	if [ "`expr \"`sh -c 'np' 2>&1 < /dev/null`\" : \(NU-Prolog\)`" \
-		= NU-Prolog ]; \
-	then \
-		echo yes; \
-	else \
-		echo no; \
-	fi)
+# override this with `mmake HAVE_NUPROLOG=yes'
+# if you want to rebuild the `.exp' files.
+HAVE_NUPROLOG=no
 
 #-----------------------------------------------------------------------------#
 
@@ -43,3 +35,6 @@ clean_res:
 	rm -f *.res
 
 #-----------------------------------------------------------------------------#
+
+test:
+	@echo $(HAVE_NUPROLOG)
