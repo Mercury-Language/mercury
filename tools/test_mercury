@@ -24,6 +24,7 @@ PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/egcs-1.1b/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
+PATH="/home/mercury/public/$FULLARCH:$PATH"
 PATH="/home/mercury/public/$HOST:$PATH"
 export PATH
 
@@ -231,6 +232,7 @@ cd $DIR || { false; exit 1; }
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
 	murlibobo|kryten|taifun|quicksilver|hg|hydra)
+		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
 		;;
@@ -524,7 +526,7 @@ do
 				EXTRA_MLFLAGS="-static" &&
 			./poly > poly.$grade.out &&
 			mprof -v -m -c > poly.$grade.mprof 2>&1  &&
-			(diff -u poly.mprof-exp poly.$grade.mprof || true) &&
+			{ diff -u poly.mprof-exp poly.$grade.mprof || true; } &&
 			cp Prof.CallPair poly.$grade.CallPair &&
 			cp Prof.MemoryWords poly.$grade.MemoryWords &&
 			cp Prof.MemoryCells poly.$grade.MemoryCells &&
@@ -569,26 +571,38 @@ case $HOST in
 		fullname=$fullarch
 		;;
 esac
+# cvs does not allow `.' in tag names, so we use `_' instead
+fullname_tag=`echo $fullname | tr . _`
 
 {
 	cd $DIR/mercury &&
 	mmake bindist &&
 	cd .. &&
-	( [ -d $UNSTABLE ] || mkdir $UNSTABLE ) &&
+	{ [ -d $UNSTABLE ] || mkdir $UNSTABLE; } &&
 	rm -f $UNSTABLE/mercury-*.$fullname.tar.gz &&
 	mv mercury/mercury-$version.$fullarch.tar.gz \
-		$UNSTABLE/mercury-$version.$fullname.tar.gz
+		$UNSTABLE/mercury-$version.$fullname.tar.gz &&
+	:
+	echo "test_mercury tagging stable rotd, starting at `date`" 1>&2 &&
+	cvs rtag -d unstable-rotd-$fullname_tag mercury clpr tests &&
+	cvs tag unstable-rotd-$fullname_tag mercury tests &&
+	echo "test_mercury tagging unstable rotd, finished at `date`" 1>&2
 } || status=1
 
 case $status in
     0) {
     	cd $DIR &&
-	( [ -d $STABLE ] || mkdir $STABLE ) &&
+	{ [ -d $STABLE ] || mkdir $STABLE; } &&
 	rm -f $STABLE/mercury-*.$fullname.tar.gz &&
-	$LN $UNSTABLE/mercury-$version.$fullname.tar.gz $STABLE &&
+	$LN $UNSTABLE/mercury-$version.$fullname.tar.gz \
+		$STABLE/mercury-$version.$fullname.tar.gz &&
 	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullname.tar.gz" &&
 	rcp $STABLE/mercury-$version.$fullname.tar.gz \
-		$BETA_FTPHOST:$BETA_FTPDIR
+		$BETA_FTPHOST:$BETA_FTPDIR &&
+	echo "test_mercury tagging stable rotd, starting at `date`" 1>&2 &&
+	cvs rtag -d stable-rotd-$fullname_tag mercury clpr tests &&
+	cvs tag stable-rotd-$fullname_tag mercury tests &&
+	echo "test_mercury tagging stable rotd, finished at `date`" 1>&2
        } || status=1
     ;;
 esac
