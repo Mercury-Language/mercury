@@ -607,7 +607,7 @@ code_exprn__rem_lval_reg_dependencies(Lval) -->
 		{ Lval = reg(_, _) }
 	->
 		code_exprn__get_regs(Regs0),
-		{ bag__remove(Regs0, Lval, Regs) },
+		{ bag__delete(Regs0, Lval, Regs) },
 		code_exprn__set_regs(Regs)
 	;
 		{ Lval = field(_Tag, Rval0, Rval1) }
@@ -1566,7 +1566,7 @@ code_exprn__get_spare_reg(RegType, Lval) -->
 
 code_exprn__get_spare_reg_2(RegType, N0, Regs, Lval) :-
 	TrialLval = reg(RegType, N0),
-	( bag__contains(TrialLval, Regs) ->
+	( bag__contains(Regs, TrialLval) ->
 		N1 is N0 + 1,
 		code_exprn__get_spare_reg_2(RegType, N1, Regs, Lval)
 	;
@@ -1587,7 +1587,7 @@ code_exprn__acquire_reg(Type, Lval) -->
 code_exprn__acquire_reg_prefer_given(Type, Pref, Lval) -->
 	code_exprn__get_regs(Regs0),
 	{ PrefLval = reg(Type, Pref) },
-	( { bag__contains(PrefLval, Regs0) } ->
+	( { bag__contains(Regs0, PrefLval) } ->
 		code_exprn__get_spare_reg(Type, Lval)
 	;
 		{ Lval = PrefLval }
@@ -1606,9 +1606,9 @@ code_exprn__release_reg(Lval) -->
 		{ set__delete(Acqu0, Lval, Acqu) },
 		code_exprn__set_acquired(Acqu),
 		code_exprn__get_regs(Regs0),
-		{ bag__remove(Regs0, Lval, Regs) },
+		{ bag__delete(Regs0, Lval, Regs) },
 		(
-			{ bag__contains(Lval, Regs) }
+			{ bag__contains(Regs, Lval) }
 		->
 			{ error("code_exprn__release_reg: reg still has references") }
 		;
@@ -1628,7 +1628,7 @@ code_exprn__lock_reg(Reg) -->
 
 code_exprn__unlock_reg(Reg) -->
 	code_exprn__get_regs(Regs0),
-	{ bag__remove(Regs0, Reg, Regs) },
+	{ bag__delete(Regs0, Reg, Regs) },
 	code_exprn__set_regs(Regs).
 
 %------------------------------------------------------------------------------%
