@@ -930,10 +930,13 @@ mercury_compile__maybe_optimize_higher_order(HLDS0, HLDS) -->
 :- mode mercury_compile__maybe_do_inlining(in, out, di, uo) is det.
 
 mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(inlining, Inlining),
 	globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
+	globals__io_lookup_bool_option(inline_simple, Simple),
+	globals__io_lookup_bool_option(inline_single_use, SingleUse),
+	globals__io_lookup_int_option(inline_threshold, Threshold),
 	(
-		{ Inlining = yes, ErrorCheckOnly = no }
+		{ ErrorCheckOnly = no },
+		{ Simple = yes ; SingleUse = yes ; Threshold > 0 }
 	->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Inlining...\n"),

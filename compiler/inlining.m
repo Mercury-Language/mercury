@@ -22,14 +22,17 @@
 
 :- implementation.
 
-:- import_module prog_io, hlds_pred, hlds_goal.
+:- import_module prog_io, hlds_pred, hlds_goal, globals, options.
 :- import_module dead_proc_elim, type_util, mode_util, goal_util.
 :- import_module passes_aux, code_aux.
 
-:- import_module list, assoc_list, map, set, std_util.
+:- import_module bool, int, list, assoc_list, map, set, std_util.
 :- import_module term, varset, require.
 
 %-----------------------------------------------------------------------------%
+
+:- type inline_params	--->	params(bool, bool, int).
+				% simple, single_use, threshold
 
 	% Traverse the module structure, calling `inlining__do_inlining'
 	% for each procedure body.
@@ -38,48 +41,61 @@ inlining(ModuleInfo0, ModuleInfo) -->
 	{ dead_proc_elim__analyze(ModuleInfo0, NeededMap) },
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	{ set__init(InlinedProcs0) },
-	inlining__mark_in_preds(PredIds, ModuleInfo0, NeededMap, 
+	globals__io_lookup_bool_option(inline_simple, Simple),
+	globals__io_lookup_bool_option(inline_single_use, SingleUse),
+	globals__io_lookup_int_option(inline_threshold, Threshold),
+	{ Params = params(Simple, SingleUse, Threshold) },
+	inlining__mark_in_preds(PredIds, ModuleInfo0, NeededMap, Params,
 		InlinedProcs0, InlinedProcs),
 	{ inlining__in_preds(PredIds, InlinedProcs, ModuleInfo0, ModuleInfo) }.
 
 :- pred inlining__mark_in_preds(list(pred_id), module_info, needed_map,
-	set(pred_proc_id), set(pred_proc_id), io__state, io__state).
-:- mode inlining__mark_in_preds(in, in, in, in, out, di, uo) is det.
+	inline_params, set(pred_proc_id), set(pred_proc_id),
+	io__state, io__state).
+:- mode inlining__mark_in_preds(in, in, in, in, in, out, di, uo) is det.
 
-inlining__mark_in_preds([], _, _, InlinedProcs, InlinedProcs) --> [].
-inlining__mark_in_preds([PredId | PredIds], ModuleInfo, NeededMap,
+inlining__mark_in_preds([], _, _, _, InlinedProcs, InlinedProcs) --> [].
+inlining__mark_in_preds([PredId | PredIds], ModuleInfo, NeededMap, Params,
 		InlinedProcs0, InlinedProcs) -->
 	{ module_info_preds(ModuleInfo, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	inlining__mark_in_procs(ProcIds, PredId, ModuleInfo, NeededMap,
+	inlining__mark_in_procs(ProcIds, PredId, ModuleInfo, NeededMap, Params,
 		InlinedProcs0, InlinedProcs1),
-	inlining__mark_in_preds(PredIds, ModuleInfo, NeededMap,
+	inlining__mark_in_preds(PredIds, ModuleInfo, NeededMap, Params,
 		InlinedProcs1, InlinedProcs).
 
-:- pred inlining__mark_in_procs(list(proc_id), pred_id, module_info, needed_map,
-	set(pred_proc_id), set(pred_proc_id), io__state, io__state).
-:- mode inlining__mark_in_procs(in, in, in, in, in, out, di, uo) is det.
+:- pred inlining__mark_in_procs(list(proc_id), pred_id, module_info,
+	needed_map, inline_params, set(pred_proc_id), set(pred_proc_id),
+	io__state, io__state).
+:- mode inlining__mark_in_procs(in, in, in, in, in, in, out, di, uo) is det.
 
-inlining__mark_in_procs([], _, _, _, InlinedProcs, InlinedProcs) --> [].
-inlining__mark_in_procs([ProcId | ProcIds], PredId, ModuleInfo, NeededMap,
-		InlinedProcs0, InlinedProcs) -->
+inlining__mark_in_procs([], _, _, _, _, InlinedProcs, InlinedProcs) --> [].
+inlining__mark_in_procs([ProcId | ProcIds], PredId, ModuleInfo,
+		NeededMap, Params, InlinedProcs0, InlinedProcs) -->
 	(
+		{ Params = params(Simple, SingleUse, Threshold) },
 		{ PredProcId = proc(PredId, ProcId) },
 		(
-			{ map__search(NeededMap, PredProcId, Needed) },
-			{ Needed = yes(NumUses) },
-			% This can never happen; this form of inlining
-			% is disabled at the moment XXX
-			{ NumUses = -1 }
-		;
 				% this heuristic could be improved
 			{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 			{ pred_info_procedures(PredInfo, Procs) },
 			{ map__lookup(Procs, ProcId, ProcInfo) },
 			{ proc_info_goal(ProcInfo, CalledGoal) },
-			{ code_aux__contains_only_builtins(CalledGoal) },
-			{ code_aux__goal_is_flat(CalledGoal) }
+			(
+				{ Simple = yes },
+				{ inlining__simple_goal(CalledGoal) }
+			;
+				{ map__search(NeededMap, PredProcId, Needed) },
+				{ Needed = yes(NumUses) },
+				{ goal_size(CalledGoal, Size) },
+				{ Size * NumUses =< Threshold }
+			)
+		;
+			{ SingleUse = yes },
+			{ map__search(NeededMap, PredProcId, Needed) },
+			{ Needed = yes(NumUses) },
+			{ NumUses = 1 }
 		)
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
@@ -87,8 +103,20 @@ inlining__mark_in_procs([ProcId | ProcIds], PredId, ModuleInfo, NeededMap,
 	;
 		{ InlinedProcs1 = InlinedProcs0 }
 	),
-	inlining__mark_in_procs(ProcIds, PredId, ModuleInfo, NeededMap,
+	inlining__mark_in_procs(ProcIds, PredId, ModuleInfo, NeededMap, Params,
 		InlinedProcs1, InlinedProcs).
+
+:- pred inlining__simple_goal(hlds__goal).
+:- mode inlining__simple_goal(in) is semidet.
+
+inlining__simple_goal(Goal) :-
+	(
+		code_aux__contains_only_builtins(Goal),
+		code_aux__goal_is_flat(Goal)
+	;
+		goal_size(Goal, Size),
+		Size < 5
+	).
 
 :- pred inlining__mark_proc_as_inlined(pred_proc_id, module_info,
 	set(pred_proc_id), set(pred_proc_id), io__state, io__state).
@@ -364,7 +392,7 @@ inlining__should_inline_proc(PredId, ProcId, Builtin, InlinedProcs,
 	\+ hlds__is_builtin_is_internal(Builtin),
 
 	% don't try to inline imported predicates, since we don't
-	% have the code for them. 
+	% have the code for them.
 	% (We don't yet support cross-module inlining.)
 
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),

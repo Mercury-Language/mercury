@@ -635,8 +635,6 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 		{ CallModel = semidet },
 		{ RuntimeAddr = do_semidet_closure }
 	;
-		% XXX for the time being,
-		% assume a nondet closure call cannot be a tail call
 		{ CodeModel = model_non },
 		code_info__failure_cont(failure_cont(IsKnown, _, FailureMap)),
 		(

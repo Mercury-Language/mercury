@@ -27,7 +27,7 @@
 :- interface.
 
 :- import_module hlds_goal, llds.
-:- import_module list, map, bool.
+:- import_module bool, int, list, map.
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
 	%	NewGoalList).
@@ -55,8 +55,13 @@
 :- mode goal_util__create_variables(in, in, in, in, in, in, out, out, out)
 		is det.
 
+	% See whether the goal is a branched structure.
 :- pred goal_util__goal_is_branched(hlds__goal_expr).
 :- mode goal_util__goal_is_branched(in) is semidet.
+
+	% Return an indication of the size of the goal.
+:- pred goal_size(hlds__goal, int).
+:- mode goal_size(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -367,3 +372,44 @@ goal_util__goal_is_branched(switch(_, _, _, _)).
 goal_util__goal_is_branched(disj(_, _)).
 
 %-----------------------------------------------------------------------------%
+
+goal_size(GoalExpr - _, Size) :-
+	goal_expr_size(GoalExpr, Size).
+
+:- pred goal_expr_size(hlds__goal_expr, int).
+:- mode goal_expr_size(in, out) is det.
+
+:- pred goals_size(list(hlds__goal), int).
+:- mode goals_size(in, out) is det.
+
+goals_size([], 0).
+goals_size([Goal | Goals], Size1 + Size2) :-
+	goal_size(Goal, Size1),
+	goals_size(Goals, Size2).
+
+:- pred cases_size(list(case), int).
+:- mode cases_size(in, out) is det.
+
+cases_size([], 0).
+cases_size([case(_, Goal) | Cases], Size1 + Size2) :-
+	goal_size(Goal, Size1),
+	cases_size(Cases, Size2).
+
+goal_expr_size(conj(Goals), Size) :-
+	goals_size(Goals, Size).
+goal_expr_size(disj(Goals, _), Size + 1) :-
+	goals_size(Goals, Size).
+goal_expr_size(switch(_, _, Goals, _), Size + 1) :-
+	cases_size(Goals, Size).
+goal_expr_size(if_then_else(_, Cond, Then, Else, _), Size) :-
+	goal_size(Cond, Size1),
+	goal_size(Then, Size2),
+	goal_size(Else, Size3),
+	Size is Size1 + Size2 + Size3 + 1.
+goal_expr_size(not(Goal), Size + 1) :-
+	goal_size(Goal, Size).
+goal_expr_size(some(_, Goal), Size + 1) :-
+	goal_size(Goal, Size).
+goal_expr_size(call(_, _, _, _, _, _, _), 1).
+goal_expr_size(unify(_, _, _, _, _), 1).
+goal_expr_size(pragma_c_code(_, _, _, _, _), 1).

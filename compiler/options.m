@@ -118,7 +118,9 @@
 		;	opt_level
 		;	opt_space	% default is to optimize time
 	%	- HLDS
-		;	inlining
+		;	inline_simple
+		;	inline_single_use
+		;	inline_threshold
 		;	common_struct
 		;	common_goal
 		;	constraint_propagation
@@ -325,7 +327,9 @@ option_defaults_2(optimization_option, [
 	opt_level		-	int_special,
 	opt_space		-	special,
 % HLDS
-	inlining		-	bool(no),
+	inline_simple		-	bool(no),
+	inline_single_use	-	bool(no),
+	inline_threshold	-	int(0),
 	common_struct		-	bool(no),
 	common_goal		-	bool(yes),
 		% commmon_goal is not really an optimization, since
@@ -522,7 +526,9 @@ long_option("optimize-space",		opt_space).
 long_option("optimise-space",		opt_space).
 
 % HLDS->HLDS optimizations
-long_option("inlining",			inlining).
+long_option("inline-simple",		inline_simple).
+long_option("inline-single-use",	inline_single_use).
+long_option("inline-threshold",		inline_threshold).
 long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
 long_option("excess-assign",		excess_assign).
@@ -731,7 +737,12 @@ opt_level(2, _, [
 	optimize_repeat		-	int(3),
 	optimize_dups		-	bool(yes),
 	follow_code		-	bool(yes),
-	inlining		-	bool(yes),
+	inline_simple		-	bool(yes),
+	inline_single_use	-	bool(no),	% yes when the problem
+							% caused by inlining
+							% parse_dcg_goal is
+							% solved.
+	inline_threshold	-	int(10),
 	common_struct		-	bool(yes),
 	simple_neg		-	bool(yes)
 ]).
@@ -1036,8 +1047,15 @@ options_help -->
 	io__write_string("\t\tincrease code size.\n"),
 
 	io__write_string("\n    High-level (HLDS->HLDS) optimizations:\n"),
-	io__write_string("\t--no-inlining\n"),
+	io__write_string("\t--no-inline-simple\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
+	io__write_string("\t--no-inline-single-use\n"),
+	io__write_string("\t\tDisable the inlining of procedures called only once.\n"),
+	io__write_string("\t--inline-threshold <threshold>\n"),
+	io__write_string("\t\tInline a procedure if its size (measured roughly\n"),
+	io__write_string("\t\tin terms of the number of connectives in its internal form),\n"),
+	io__write_string("\t\tmultiplied by the number of times it is called,\n"),
+	io__write_string("\t\tis below the given threshold.\n"),
 	io__write_string("\t--no-common-struct\n"),
 	io__write_string("\t\tDisable optimization of common term structures.\n"),
 	io__write_string("\t--no-common-goal\n"),
