@@ -14,7 +14,7 @@
 :- mode meta_parse_list(pred(in, out, out) is semidet, out, in, out) is det.
 
 :- implementation.
-:- import_module mercury_builtin, int, string.
+:- import_module builtin, int, string.
 
 main -->
 	{P = lambda([I::in, O::out, N::out] is semidet, one_or_two(N, I, O))},

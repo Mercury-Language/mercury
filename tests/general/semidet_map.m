@@ -14,7 +14,7 @@
 :- mode meta_semidet_map(pred(in, out) is semidet, in, out) is det.
 
 :- implementation.
-:- import_module mercury_builtin, int, string.
+:- import_module builtin, int, string.
 
 main -->
 	( {meta_semidet_map(pos_inc, [0, 1], [X, Y])} ->
