@@ -2,9 +2,14 @@ NEWS for Mercury release 0.5
 ----------------------------
 
 * We now support shared libraries for IRIX 5.
-* In portable C mode, we generate better code for loops.
+* We now allow the use of compilers other than gcc -
+  see the user's guide for details.
+  We don't recommend the use of compilers other than gcc,
+  since the inability to use gcc's special features will
+  most likely lead to much less efficient code.
+* In portable C mode, we now generate better code for loops.
 * We've made a few other minor improvements in the generated code.
 * Unary plus and minus are now implemented.
 * Corrected a lot of typos in the documentation.
-* Fixed a few bugs.
+* Fixed quite a few bugs.
 
