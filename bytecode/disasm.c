@@ -1,9 +1,9 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: disasm.c,v 1.14 1997-07-27 14:59:21 fjh Exp $
+** $Id: disasm.c,v 1.15 2000-10-09 08:30:53 petdr Exp $
 */
 
 /* Imports */
@@ -21,7 +21,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: disasm.c,v 1.14 1997-07-27 14:59:21 fjh Exp $";
+rcs_id[]	= "$Id: disasm.c,v 1.15 2000-10-09 08:30:53 petdr Exp $";
 
 static void
 print_bytecode(MB_Bytecode bytecode);
@@ -587,7 +587,8 @@ binop_table[] = {
 	"float_lt",
 	"float_gt",
 	"float_le",
-	"float_ge"
+	"float_ge",
+	"body"
 };
 
 static const char*
@@ -610,7 +611,6 @@ unop_table[] = {
 	"tag",
 	"unmktag",
 	"mkbody",
-	"body",
 	"unmkbody",
 	"cast_to_unsigned",
 	"hash_string",
