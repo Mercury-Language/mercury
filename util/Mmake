@@ -11,23 +11,20 @@ MAIN_TARGET=all
 #-----------------------------------------------------------------------------#
 
 MERCURY_DIR=..
-include ../Mmake.common
+include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-MGNUC	= ../scripts/mgnuc
-CFLAGS	= -I ../runtime
+MGNUC	= $(SCRIPTS_DIR)/mgnuc
+CFLAGS	= -I $(RUNTIME_DIR)
 # we need -I ../runtime for "getopt.h"
 
 #-----------------------------------------------------------------------------#
 
 all: mkinit mdemangle
 
-mkinit:	mkinit.c
-	$(MGNUC) -s $(GRADE) $(CFLAGS) -o mkinit mkinit.c
-
-mdemangle: mdemangle.c
-	$(MGNUC) -s $(GRADE) $(CFLAGS) -o mdemangle mdemangle.c
+.c:
+	$(MGNUC) --grade $(GRADE) $(CFLAGS) -o $@ $<
 
 #-----------------------------------------------------------------------------#
 
