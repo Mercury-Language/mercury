@@ -185,33 +185,23 @@ mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_type_defn(module_info, varset, hlds__type_defn, condition,
-			term__context, module_info, io__state, io__state).
-:- mode module_add_type_defn(input, input, input, input, input, output, di, uo).
-module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
-	{ moduleinfo_types(Module0, Types0) },
-	types_add(Types0, VarSet, TypeDefn, Cond, Context, Types),
-	{ moduleinfo_set_types(Module0, Types, Module) }.
-
-:- pred type_name_args(type_defn, sym_name, list(type_param), hlds__type_body).
-:- mode type_name_args(input, output, output, output).
-
-type_name_args(du_type(Name, Args, Body), Name, Args, du_type(Body)).
-type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
-type_name_args(eqv_type(Name, Args, Body), Name, Args, eqv_type(Body)).
-
 :- pred types_add(type_table, varset, type_defn, condition, term__context,
 		type_table, io__state, io__state).
 :- mode types_add(input, input, input, input, input, output, di, uo).
 
-types_add(Types0, VarSet, TypeDefn, Cond, Context, Types) -->
+:- pred module_add_type_defn(module_info, varset, hlds__type_defn, condition,
+			term__context, module_info, io__state, io__state).
+:- mode module_add_type_defn(input, input, input, input, input, output, di, uo).
+
+module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
+	{ moduleinfo_types(Module0, Types0) },
 	{ type_name_args(TypeDefn, Name, Args, Body),
 	  length(Args, Arity),
 	  T = hlds__type_defn(VarSet, Args, Body, Cond, Context) },
 	(if %%% some [T2]
 		{ map__search(Types0, Name - Arity, T2) }
 	then
-		{ Types = Types0 },
+		{ Module = Module0 },
 		(if 
 			{ type_is_compat(T, T2) }
 		then
@@ -220,14 +210,51 @@ types_add(Types0, VarSet, TypeDefn, Cond, Context, Types) -->
 			multiple_def_error(Name, Arity, "type", Context)
 		)
 	else
-		{ map__insert(Types0, Name - Arity, T, Types) }
+		{ TypeId = Name - Arity,
+		  map__insert(Types0, TypeId, T, Types),
+		 (if some [ConsList]
+			Body = du_type(ConsList)
+		  then
+			moduleinfo_ctors(Module0, Ctors0),
+			ctors_add(ConsList, TypeId, Context, Ctors0, Ctors),
+			moduleinfo_set_ctors(Module0, Ctors, Module1)
+		  else
+			Module1 = Module0
+		  ),
+		  moduleinfo_set_types(Module1, Types, Module)
+		}
 	).
+
+:- pred type_name_args(type_defn, sym_name, list(type_param), hlds__type_body).
+:- mode type_name_args(input, output, output, output).
+
+type_name_args(du_type(Name, Args, Body), Name, Args, du_type(Body)).
+type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
+type_name_args(eqv_type(Name, Args, Body), Name, Args, eqv_type(Body)).
 
 :- pred type_is_compat(hlds__type_defn, hlds__type_defn).
 :- mode type_is_compat(input, input).
 
 type_is_compat( hlds__type_defn(_, Args, Body, _, _),
 		hlds__type_defn(_, Args, Body, _, _)).
+
+:- pred ctors_add(list(constructor), type_id, term__context, cons_table,
+			cons_table).
+:- mode ctors_add(input, input, input, input, output).
+
+ctors_add([], _TypeId, _Context, Ctors, Ctors).
+ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) :-
+	make_cons_id(Name, Args, TypeId, ConsId),
+	ConsDefn = hlds__cons_defn(Args, TypeId, Context),
+	% XXX warning/error for duplicates
+	map__set(Ctors0, ConsId, ConsDefn, Ctors1),
+	ctors_add(Rest, TypeId, Context, Ctors1, Ctors).
+
+:- pred make_cons_id(sym_name, list(type), type_id, cons_id).
+:- mode make_cons_id(input, input, input, output).
+
+make_cons_id(Name, Args, TypeId, cons(Name, Arity, TypeId)) :-
+	length(Args, Arity).
 
 %-----------------------------------------------------------------------------%
 

@@ -29,7 +29,8 @@
 					pred_table,
 					type_table,
 					inst_table,
-					mode_table
+					mode_table,
+					cons_table
 				).
 
 %-----------------------------------------------------------------------------%
@@ -83,7 +84,7 @@
 			;	semideterministic	% just functional
 			;	nondeterministic.	% neither
 
-:- type pred_id 	--->	pred(string, string, int).
+:- type pred_id 	--->	pred(module_name, string, int).
 			%	module, predname, arity
 
 :- export_type pred_table.
@@ -125,6 +126,14 @@
 
 :- export_type inst_table.
 :- type inst_table	=	map(inst_id, hlds__inst_defn).
+
+%-----------------------------------------------------------------------------%
+
+:- type cons_id		--->	cons(sym_name, int, type_id).
+				% name, arity, result type
+
+:- export_type cons_table.
+:- type cons_table	=	map(cons_id, hlds__cons_defn).
 
 %-----------------------------------------------------------------------------%
 
@@ -177,7 +186,7 @@
 				% etc.	XXX
 
 :- export_type case.
-:- type case		--->	case(const, list(var), hlds__goal).
+:- type case		--->	case(cons_id, list(var), hlds__goal).
 			%	functor to match with, arguments to extract,
 			%	goal to execute if match succeeds.
 
@@ -189,11 +198,11 @@
 :- type unification	--->	
 				% Y = f(X) where the top node of Y is output,
 				% written as Y := f(X).
-				construct(var, const, list(var), list(mode))
+				construct(var, cons_id, list(var), list(mode))
 
 				% Y = f(X) where the top node of Y is input,
 				% written Y == f(X).
-			;	deconstruct(var, const, list(var), list(mode))
+			;	deconstruct(var, cons_id, list(var), list(mode))
 
 				% Y = X where the top node of Y is output,
 				% written Y := X.
@@ -220,7 +229,8 @@
 
 :- type goal_info	--->	goalinfo(
 					map(var_id, is_live)
-		% maybe			map(var_id, inst_id)
+		%%% maybe later:	map(var_id, inst)
+		%%% maybe later:	category	% nondeterm?
 				).
 
 :- export_type is_live.
@@ -228,7 +238,7 @@
 
 %-----------------------------------------------------------------------------%
 
-	% This is how type and modes are represented.
+	% This is how type, modes and constructors are represented.
 	% The parts that are not defined here (eg. type_param, constructor,
 	% type) are represented in the same way as in prog_io.nl,
 	% and are defined there.
@@ -261,6 +271,13 @@
 
 :- type hlds__mode_defn --->	hlds__mode_defn(varset, list(inst_param),
 					mode, condition, term__context).
+
+:- type hlds__cons_defn	--->	hlds__cons_defn(
+					%%% maybe: varset,
+					list(type),	% arg types
+					type_id,	% result type
+					term__context
+				).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -299,6 +316,12 @@
 :- pred moduleinfo_modeids(module_info, list(mode_id)).
 :- mode moduleinfo_modeids(input, output).
 
+:- pred moduleinfo_ctors(module_info, mode_table).
+:- mode moduleinfo_ctors(input, output).
+
+:- pred moduleinfo_consids(module_info, list(cons_id)).
+:- mode moduleinfo_consids(input, output).
+
 :- pred moduleinfo_set_name(module_info, string, module_info).
 :- mode moduleinfo_set_name(input, input, output).
 
@@ -314,73 +337,88 @@
 :- pred moduleinfo_set_modes(module_info, mode_table, module_info).
 :- mode moduleinfo_set_modes(input, input, output).
 
+:- pred moduleinfo_set_ctors(module_info, cons_table, module_info).
+:- mode moduleinfo_set_ctors(input, input, output).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 	% A predicate which creates an empty module
 
-moduleinfo_init(Name, module(Name, Preds, Types, Insts, Modes)) :-
+moduleinfo_init(Name, module(Name, Preds, Types, Insts, Modes, Ctors)) :-
 	map__init(Preds),
 	map__init(Types),
 	map__init(Insts),
-	map__init(Modes).
+	map__init(Modes),
+	map__init(Ctors).
 
 	% Various access predicates which extract different pieces
 	% of info from the module_info data structure.
 
 moduleinfo_name(ModuleInfo, Name) :-
-	ModuleInfo = module(Name, _Preds, _Types, _Insts, _Modes).
+	ModuleInfo = module(Name, _Preds, _Types, _Insts, _Modes, _Ctors).
 
 moduleinfo_preds(ModuleInfo, Preds) :-
-	ModuleInfo = module(_Name, Preds, _Types, _Insts, _Modes).
+	ModuleInfo = module(_Name, Preds, _Types, _Insts, _Modes, _Ctors).
 
 moduleinfo_predids(ModuleInfo, PredIDs) :-
-	ModuleInfo = module(_Name, Preds, _Types, _Insts, _Modes),
+	ModuleInfo = module(_Name, Preds, _Types, _Insts, _Modes, _Ctors),
 	map__keys(Preds, PredIDs).
 
 moduleinfo_types(ModuleInfo, Types) :-
-	ModuleInfo = module(_Name, _Preds, Types, _Insts, _Modes).
+	ModuleInfo = module(_Name, _Preds, Types, _Insts, _Modes, _Ctors).
 
 moduleinfo_typeids(ModuleInfo, TypeIDs) :-
-	ModuleInfo = module(_Name, _Preds, Types, _Insts, _Modes),
+	ModuleInfo = module(_Name, _Preds, Types, _Insts, _Modes, _Ctors),
 	map__keys(Types, TypeIDs).
 
 moduleinfo_insts(ModuleInfo, Insts) :-
-	ModuleInfo = module(_Name, _Preds, _Types, Insts, _Modes).
+	ModuleInfo = module(_Name, _Preds, _Types, Insts, _Modes, _Ctors).
 
 moduleinfo_instids(ModuleInfo, InstIDs) :-
-	ModuleInfo = module(_Name, _Preds, _Types, Insts, _Modes),
+	ModuleInfo = module(_Name, _Preds, _Types, Insts, _Modes, _Ctors),
 	map__keys(Insts, InstIDs).
 
 moduleinfo_modes(ModuleInfo, Modes) :-
-	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes).
+	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes, _Ctors).
 
 moduleinfo_modeids(ModuleInfo, ModeIDs) :-
-	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes),
+	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes, _Ctors),
 	map__keys(Modes, ModeIDs).
+
+moduleinfo_ctors(ModuleInfo, Ctors) :-
+	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes, Ctors).
+
+moduleinfo_consids(ModuleInfo, ConsIDs) :-
+	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes, Ctors),
+	map__keys(Ctors, ConsIDs).
 
 	% Various predicates which modify the module_info data structure.
 
 moduleinfo_set_name(ModuleInfo0, Name, ModuleInfo) :-
-	ModuleInfo0 = module(_, Preds, Types, Insts, Modes),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes).
+	ModuleInfo0 = module(_, Preds, Types, Insts, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
-	ModuleInfo0 = module(Name, _, Types, Insts, Modes),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes).
+	ModuleInfo0 = module(Name, _, Types, Insts, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_types(ModuleInfo0, Types, ModuleInfo) :-
-	ModuleInfo0 = module(Name, Preds, _, Insts, Modes),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes).
+	ModuleInfo0 = module(Name, Preds, _, Insts, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_insts(ModuleInfo0, Insts, ModuleInfo) :-
-	ModuleInfo0 = module(Name, Preds, Types, _, Modes),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes).
+	ModuleInfo0 = module(Name, Preds, Types, _, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
-	ModuleInfo0 = module(Name, Preds, Types, Insts, _),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes).
+	ModuleInfo0 = module(Name, Preds, Types, Insts, _, Ctors),
+	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
+
+moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
+	ModuleInfo0 = module(Name, Preds, Types, Insts, Modes, _),
+	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
