@@ -1218,13 +1218,10 @@ contains more detailed documentation.
 To use the debugger, you must
 first compile your program with debugging enabled.
 You can do this by using
-@c XXX .decldebug isn't usefully different from .debug
-@c one of the @samp{--debug} and @samp{--decl-debug} options
-the @samp{--debug} option
+one of the @samp{--debug} or @samp{--decl-debug} options
 when invoking @samp{mmc},
 or by including @samp{GRADEFLAGS = --debug}
-@c XXX .decldebug isn't usefully different from .debug
-@c or @samp{GRADEFLAGS = --decl-debug}
+or @samp{GRADEFLAGS = --decl-debug}
 in your @file{Mmakefile}.
 
 @findex --debug
@@ -1653,12 +1650,10 @@ allowing you to examine the state of the computation and issue commands.
 Mercury supports two broad ways of preparing a program for debugging.
 The simpler way is to compile a program in a debugging grade,
 which you can do directly by specifying a grade
-that includes the word ``debug'' (e.g.@: @samp{asm_fast.gc.debug}),
-@c XXX .decldebug isn't usefully different from .debug
-@c or indirectly by specifying one of the @samp{--debug} or @samp{--decl-debug}
-@c grade options to the compiler, linker, and other tools
-or indirectly by specifying the @samp{--debug}
-grade option to the compiler, linker, and other tools
+that includes the word ``debug'' or ``decldebug'' 
+(e.g.@: @samp{asm_fast.gc.debug}, or @samp{asm_fast.gc.decldebug}),
+or indirectly by specifying one of the @samp{--debug} or @samp{--decl-debug}
+grade options to the compiler, linker, and other tools
 (in particular @code{mmc}, @code{mgnuc}, @code{ml}, and @code{c2init}).
 If you follow this way,
 and accept the default settings of the various compiler options
@@ -1666,6 +1661,14 @@ that control the selection of trace events (which are described below),
 you will be assured of being able to get control
 at every execution point that represents a potential trace event,
 which is very convenient.
+
+The ``decldebug'' grades improve declarative debugging by tracking 
+the source of marked subterms (see @ref{Improving the search}).
+Doing this substantially increases the size of executables so these
+grades should only be used when the subterm dependency tracking feature
+of the declarative debugger is required.
+Note that declarative debugging, with the exception of the subterm dependency
+tracking features, also works in the .debug grades.
 
 The two drawbacks of using a debugging grade
 are the large size of the resulting executables,
@@ -1707,10 +1710,7 @@ The declarative debugger can use this extra information
 to help it avoid asking unnecessary questions,
 so this trace level has the effect of better declarative debugging
 at the cost of increased executable size.
-@c XXX The following line is commented out because we don't currently mention
-@c the effect of this trace level in the declarative debugging section; this
-@c will change when term dependency tracking is documented:
-@c For more details see @ref{Declarative debugging}.
+For more details see @ref{Declarative debugging}.
 @item shallow
 A procedure compiled with trace level @samp{shallow}
 will generate interface events
@@ -4050,7 +4050,7 @@ Currently the declarative debugger can operate in one of two modes when
 searching for a bug.  The mode to use can be specified as an option to the
 @samp{dd} command.  See @ref{Declarative debugging mdb commands} for
 information on how to do this.  The specified search mode will always be used
-unless a sub-term is marked or the user hasn't answered `no' to any questions
+unless a subterm is marked or the user hasn't answered `no' to any questions
 yet (In which case top-down search is used until `no' is answered to at least
 one question).
 
@@ -4166,6 +4166,12 @@ debugger with a @samp{dd} command and then mark the input term you are
 interested in.  The next question should be about the call that bound the term.
 Issue a @samp{pd} command at this point to return to the procedural debugger.
 It will now show the final event of the call that bound the term.
+
+Note that this feature is only available if the executable is compiled
+in a .decldebug grade or with the @samp{--trace rep} option.  If a module
+is compiled with the @samp{--trace rep} option but other modules in the
+program are not then you will not be able to track subterms through those
+other modules.  
 
 @subsubsection Trusting predicates, functions and modules
 
@@ -5697,8 +5703,7 @@ The set of aspects and their alternatives are:
 @cindex .agc (grade modifier)
 @cindex .rt (grade modifier)
 @cindex .debug (grade modifier)
-@c XXX .decldebug isn't usefully different from .debug
-@c @cindex .decldebug (grade modifier)
+@cindex .decldebug (grade modifier)
 @cindex .par (grade modifier)
 @cindex prof (grade modifier)
 @cindex memprof (grade modifier)
@@ -5708,8 +5713,7 @@ The set of aspects and their alternatives are:
 @cindex agc (grade modifier)
 @cindex rt (grade modifier)
 @cindex debug (grade modifier)
-@c XXX .decldebug isn't usefully different from .debug
-@c @cindex decldebug (grade modifier)
+@cindex decldebug (grade modifier)
 @cindex par (grade modifier)
 @table @asis
 @item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
@@ -5733,9 +5737,7 @@ The set of aspects and their alternatives are:
 @samp{rt} (the default is no reserved tag)
 
 @item What debugging features to enable:
-@c XXX .decldebug isn't usefully different from .debug
-@c @samp{debug} and @samp{decldebug} (the default is no debugging features).
-@samp{debug} (the default is no debugging features).
+@samp{debug} and @samp{decldebug} (the default is no debugging features).
 
 @item Whether to use a thread-safe version of the runtime environment:
 @samp{par} (the default is a non-thread-safe environment).
@@ -5859,9 +5861,8 @@ and grade modifier; they are followed by descriptions of those options.
 @item @samp{.debug}
 @code{--debug}.
 
-@c XXX .decldebug isn't usefully different from .debug
-@c @item @samp{.decldebug}
-@c @code{--decl-debug}.
+@item @samp{.decldebug}
+@code{--decl-debug}.
 
 @end table
 
@@ -6001,16 +6002,13 @@ Enables the inclusion in the executable of code and data structures
 that allow the program to be debugged with @samp{mdb} (@pxref{Debugging}).
 This option is not yet supported for the @samp{--high-level-code} back-ends.
 
-@c XXX .decldebug isn't usefully different from .debug
-@c @sp 1
-@c @item @code{--decl-debug} (grades: any grade containing @samp{.decldebug})
-@c @findex --decl-debug
-@c @cindex Debugging
-@c Enables the inclusion in the executable of code and data structures
-@c that allow the program to be debugged
-@c with the declarative debugging facilities of @samp{mdb}
-@c (@pxref{Debugging}).
-@c This option is not yet supported for the @samp{--high-level-code} back-ends.
+@sp 1
+@item @code{--decl-debug} (grades: any grade containing @samp{.decldebug})
+@findex --decl-debug
+@cindex Debugging
+Enables the inclusion in the executable of code and data structures
+that allow subterm dependency tracking in the declarative debugger.
+This option is not yet supported for the @samp{--high-level-code} back-ends.
 
 @sp 1
 @item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})
