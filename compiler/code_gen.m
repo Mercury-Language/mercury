@@ -928,7 +928,7 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 		% if-then-elses.
 
 	code_info__make_known_failure_cont(ResumeVars, ResumeLocs, no,
-		no, _, ModContCode),
+		ModContCode),
 
 		% Maybe save the heap state current before the condition;
 		% this ought to be after we make the failure continuation

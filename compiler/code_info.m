@@ -988,11 +988,12 @@ code_info__succip_is_used -->
 :- pred code_info__manufacture_failure_cont(bool, code_info, code_info).
 :- mode code_info__manufacture_failure_cont(in, in, out) is det.
 
+	% make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet, Code):
 	% Push a new failure continuation onto the stack.
 
 :- pred code_info__make_known_failure_cont(set(var), resume_locs, bool,
-	bool, bool, code_tree, code_info, code_info).
-:- mode code_info__make_known_failure_cont(in, in, in, in, out, out, in, out)
+	code_tree, code_info, code_info).
+:- mode code_info__make_known_failure_cont(in, in, in, out, in, out)
 	is det.
 
 	% Generate some code to restore the current redoip, by looking
@@ -1123,6 +1124,23 @@ code_info__fail_cont_is_known(FailContInfo) :-
 code_info__fail_cont_is_unknown(FailContInfo) :-
 	FailContInfo = nondet(unknown, _).
 
+:- pred code_info__have_temp_frame(fail_stack).
+:- mode code_info__have_temp_frame(in) is semidet.
+
+	% have_temp_frame should succeed iff we have created
+	% a temp frame on the nondet stack.  It traverses
+	% the entire failure continuation stack, looking for
+	% any failure continuations with the temp frame maybe(label)
+	% set to yes(_).
+
+code_info__have_temp_frame(FailStack0) :-
+	stack__pop(FailStack0, FailContInfo, FailStack1),
+	(
+		FailContInfo = failure_cont(nondet(_, yes(_)), _)
+	;
+		code_info__have_temp_frame(FailStack1)
+	).
+
 %---------------------------------------------------------------------------%
 
 code_info__manufacture_failure_cont(IsNondet) -->
@@ -1144,7 +1162,7 @@ code_info__manufacture_failure_cont(IsNondet) -->
 %---------------------------------------------------------------------------%
 
 code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
-		HaveTempFrame0, HaveTempFrame, ModContCode) -->
+		ModContCode) -->
 	code_info__get_next_label(OrigLabel),
 	code_info__get_next_label(StackLabel),
 	{ OrigAddr = label(OrigLabel) },
@@ -1155,7 +1173,6 @@ code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
 
 		{ IsNondet = no },
 		{ TempFrameCode = empty },
-		{ HaveTempFrame = HaveTempFrame0 },
 		{ FailContInfo = semidet }
 	;
 		% In nondet continuations we may use the redoip
@@ -1169,36 +1186,55 @@ code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
 		(
 			{ code_info__fail_cont_is_unknown(OrigInfo) }
 		->
+			%
+			% If the failure continuation is unknown,
+			% then we need to create a new temporary frame
+			% so that we can make it known
+			%
 			code_info__get_next_label(RedoLabel),
 			{ MaybeRedoLabel = yes(RedoLabel) },
 			{ RedoAddr = label(RedoLabel) },
+				% this code could be better
+				% (mkframe is a bit of a sledge hammer)
+			{ TempFrameCode = node([
+				mkframe("temp frame", 1, RedoAddr)
+					- "create a temporary frame",
+				assign(curfr, lval(succfr(lval(maxfr))))
+					- "restore curfr after mkframe"
+			]) }
+		;
+			%
+			% The failure continuation is known.
+			% But did we create a temp frame?
+			%
+			code_info__get_fail_stack(FailStack),
 			(
-				{ HaveTempFrame0 = no }
+				{ code_info__have_temp_frame(FailStack) }
 			->
-					% this code could be better
-					% (mkframe is a bit of a sledge hammer)
-				{ TempFrameCode = node([
-					mkframe("temp frame", 1, RedoAddr)
-						- "create a temporary frame",
-					assign(curfr, lval(succfr(lval(maxfr))))
-						- "restore curfr after mkframe"
-				]) }
-			;
+				%
+				% If we created a temp frame, then
+				% we will need to restore curfr on redo,
+				% so we set the failure continuation to
+				% the RedoAddr rather than the usual
+				% StackAddr.  (generate_failure_cont will
+				% generate code for it that restores curfr.)
+				%
+				code_info__get_next_label(RedoLabel),
+				{ MaybeRedoLabel = yes(RedoLabel) },
+				{ RedoAddr = label(RedoLabel) },
 				{ TempFrameCode = node([
 					assign(redoip(lval(maxfr)),
 					    const(code_addr_const(RedoAddr)))
-				- "Set failure continuation on temp frame"
+				    - "Set failure continuation on temp frame"
 				]) }
-			),
-			{ HaveTempFrame = yes }
-		;
-			{ MaybeRedoLabel = no },
-			{ TempFrameCode = node([
-				assign(redoip(lval(maxfr)),
-					const(code_addr_const(StackAddr))) -
-					"Set failure continuation"
-			]) },
-			{ HaveTempFrame = HaveTempFrame0 }
+			;
+				{ MaybeRedoLabel = no },
+				{ TempFrameCode = node([
+					assign(redoip(lval(maxfr)),
+					    const(code_addr_const(StackAddr)))
+				    - "Set failure continuation"
+				]) }
+			)
 		),
 		{ FailContInfo = nondet(known, MaybeRedoLabel) }
 	),

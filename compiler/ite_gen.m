@@ -71,7 +71,7 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 		{ error("condition of an if-then-else has no resume point") }
 	),
 	code_info__make_known_failure_cont(ResumeVars, ResumeLocs, no,
-		no, _, ModContCode),
+		ModContCode),
 		% The next line is to enable Cond to pass the
 		% pre_goal_update sanity check
 	{ goal_info_set_resume_point(CondInfo0, no_resume_point, CondInfo) },
@@ -172,7 +172,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		{ error("condition of an if-then-else has no resume point") }
 	),
 	code_info__make_known_failure_cont(ResumeVars, ResumeLocs, NondetCond,
-		no, _, ModContCode),
+		ModContCode),
 		% The next line is to enable Cond to pass the
 		% pre_goal_update sanity check
 	{ goal_info_set_resume_point(CondInfo0, no_resume_point, CondInfo) },
