@@ -1323,8 +1323,18 @@ XXX Full exception handling support is not yet implemented.
 		% per_instance flag set).
 
 :- type mlds__unary_op
-	--->	box(mlds__type)
+			% box(MLDSType)
+			% convert from MLDSType to mlds__generic_type,
+			% by boxing if necessary, or just casting if not
+	--->	box(mlds__type)	
+
+			% unbox(MLDSType)
+			% convert from mlds__generic_type to MLDSType,
+			% applying the inverse transformation to box/1,
+			% i.e. unboxing if boxing was necessary,
+			% and just casting otherwise.
 	;	unbox(mlds__type)
+		
 			% cast(MLDSType):
 			% Coerce the type of the rval to be MLDSType.
 			% XXX it might be worthwhile adding the 
