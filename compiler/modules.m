@@ -2960,8 +2960,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 				"$(", MakeVarName, ".hs) ",
 				"install_lib_dirs\n",
 			"\tfor hdr in $(", MakeVarName, ".hs); do \\\n",
-			"\t	$(INSTALL) $$hdr $(INSTALL_INC_DIR)\\\n",
-			"\t	$(INSTALL) $$hdr $(INSTALL_INT_DIR)\\\n",
+			"\t	$(INSTALL) $$hdr $(INSTALL_INC_DIR); \\\n",
+			"\t	$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\\n",
 			"\tdone\n\n"
 		])
 	;
