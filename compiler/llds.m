@@ -699,8 +699,8 @@
 			% assumed to truncate toward zero
 	;	(mod)	% remainder (w.r.t. truncating integer division)
 			% XXX `mod' should be renamed `rem'
-	;	(<<)	% left shift
-	;	(>>)	% right shift
+	;	(<<)	% unchecked left shift
+	;	(>>)	% unchecked right shift
 	;	(&)	% bitwise and
 	;	('|')	% bitwise or
 	;	(^)	% bitwise xor
