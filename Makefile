@@ -16,7 +16,7 @@ SHELL=		/bin/sh
 MMAKE=		MMAKE_DIR=`pwd`/scripts scripts/mmake 
 MMAKE_SUBDIR=	MMAKE_DIR=`pwd`/../scripts ../scripts/mmake $(PARALLEL)
 
-PARALLEL=-j2
+# PARALLEL=-j2
 
 #-----------------------------------------------------------------------------#
 
