@@ -91,6 +91,9 @@
 
 #endif
 
+#ifdef MR_RESERVE_TAG
+#define	MR_TAG_VAR		MR_mktag(MR_RAW_TAG_VAR)
+#endif
 #define	MR_TAG_NIL		MR_mktag(MR_RAW_TAG_NIL)
 #define	MR_TAG_CONS		MR_mktag(MR_RAW_TAG_CONS)
 

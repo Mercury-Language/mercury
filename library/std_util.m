@@ -2264,7 +2264,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     ** the RHS, so it may not work in all cases...
     */
 
-    if (data_tag == TAG_VAR && type_ctor_layout_entry ==
+    if (data_tag == MR_TAG_VAR && type_ctor_layout_entry ==
 		    mkword(mktag(0), (Word *) mkbody((Integer) 1))) {
 	/*
 	** We assume this is a Herbrand variable.  First check whether
@@ -2277,7 +2277,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	data_word = *(Word *) data_value;
 	data_tag = tag(data_word);
 
-	if (data_tag == TAG_VAR) {
+	if (data_tag == MR_TAG_VAR) {
 	    info->functor = ""<unbound>"";
 	    info->argument_vector = NULL;
 	    info->type_info_vector = NULL;
