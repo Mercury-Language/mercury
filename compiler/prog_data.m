@@ -56,6 +56,8 @@
 			cl_body			:: goal
 		)
 
+		% `:- type ...':
+		% a definition of a type, or a declaration of an abstract type.
 	; 	type_defn(
 			td_tvarset		:: tvarset,
 			td_ctor_name		:: sym_name,
@@ -64,6 +66,8 @@
 			td_cond			:: condition
 		)
 
+		% `:- inst ... = ...':
+		% a definition of an inst.
 	; 	inst_defn(
 			id_varset		:: inst_varset,
 			id_inst_name		:: sym_name,
@@ -72,6 +76,8 @@
 			id_cond			:: condition
 		)
 
+		% `:- mode ... = ...':
+		% a definition of a mode.
 	; 	mode_defn(
 			md_varset		:: inst_varset,
 			md_mode_name		:: sym_name,
@@ -85,6 +91,10 @@
 			module_defn_module_defn	:: module_defn
 		)
 
+		% `:- pred ...' or `:- func ...':
+		% a predicate or function declaration.
+		% This specifies the type of the predicate or function,
+		% and it may optionally also specify the mode and determinism.
 	; 	pred_or_func(
 			pf_tvarset		:: tvarset,
 			pf_instvarset		:: inst_varset,
@@ -104,6 +114,8 @@
 		%	sugar that is expanded by equiv_type.m
 		%	equiv_type.m will set these fields to `no'.
 
+		% `:- mode ...':
+		% a mode declaration for a predicate or function.
 	; 	pred_or_func_mode(
 			pfm_instvarset		:: inst_varset,
 			pfm_which		:: maybe(pred_or_func),
@@ -626,7 +638,17 @@
 	--->	abstract
 	;	concrete(list(class_method)).
 
+	% The name class_method is a slight misnomer;
+	% this type actually represents any declaration
+	% that occurs in the body of a type class definition.
+	% Such declarations may either declare class methods,
+	% or they may declare modes of class methods.
 :- type class_method
+		% pred_or_func(...) here represents a `pred ...' or `func ...'
+		% declaration in a type class body, which declares
+		% a predicate or function method.  Such declarations
+		% specify the type of the predicate or function,
+		% and may optionally also specify the mode and determinism.
 	--->	pred_or_func(tvarset, inst_varset, existq_tvars, pred_or_func,
 			sym_name, list(type_and_mode), maybe(type),
 			maybe(inst), maybe(determinism),
@@ -636,6 +658,9 @@
 		%	PredOrFunc, PredName, ArgTypes, WithType, Determinism,
 		%	Cond, Purity, ClassContext, Context
 
+		% pred_or_func_mode(...) here represents a `mode ...'
+		% declaration in a type class body.  Such a declaration
+		% declares a mode for one of the type class methods.
 	; 	pred_or_func_mode(inst_varset, maybe(pred_or_func), sym_name,
 			list(mode), maybe(inst), maybe(determinism),
 			condition, prog_context)
