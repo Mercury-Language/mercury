@@ -285,9 +285,9 @@ static void usage(void)
 	printf("-sh<n> \t\tallocate n kb for the heap\n");
 	printf("-sd<n> \t\tallocate n kb for the det stack\n");
 	printf("-sn<n> \t\tallocate n kb for the nondet stack\n");
-	printf("-zh<n> \t\tallocate n kb for the heap redzone");
-	printf("-zd<n> \t\tallocate n kb for the det stack redzone");
-	printf("-zn<n> \t\tallocate n kb for the nondet stack redzone");
+	printf("-zh<n> \t\tallocate n kb for the heap redzone\n");
+	printf("-zd<n> \t\tallocate n kb for the det stack redzone\n");
+	printf("-zn<n> \t\tallocate n kb for the nondet stack redzone\n");
 	printf("-p<n> \t\tprimary cache size in (k)bytes\n");
 	printf("-r<n> \t\trepeat n times\n");
 	printf("-w<name> \tcall predicate with given name\n");
