@@ -1,3 +1,8 @@
+# I have modified this file - fjh.
+# I added the libgc.a target, added the `include ../Mmake.common' line,
+# and changed the rule for libgc.so to use the $(LINK_SHARED_LIB) macro
+# defined in ../Mmake.common.
+
 include ../Mmake.common
 
 # Primary targets:

@@ -1,3 +1,4 @@
+/* I have modified this file slightly to avoid some compiler warnings - fjh. */
 /* 
  * Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
  * Copyright (c) 1991-1994 by Xerox Corporation.  All rights reserved.
