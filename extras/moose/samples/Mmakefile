@@ -1,0 +1,18 @@
+
+.SUFFIXES: .m .moo
+
+default_target : all
+
+depend : try_alpha.depend try_expr.depend
+
+try_alpha.depend: alpha.m
+try_expr.depend: expr.m
+
+all: try_alpha try_expr cgram.m small.m
+
+.moo.m:
+	../moose $<
+
+realclean:
+	rm -f alpha.m expr.m small.m cgram.m 
+

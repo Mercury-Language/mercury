@@ -1,0 +1,10 @@
+# GRADE = asm_fast.gc.debug
+# GRADE = asm_fast.gc.prof
+
+# MCFLAGS = -O6
+# MCFLAGS = --intermodule-optimization -O6
+
+default_target : moose
+
+depend : moose.depend
+

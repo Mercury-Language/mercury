@@ -1,0 +1,11 @@
+
+Doesn't give good error messages if :- action is used but the rule
+doesn't exist. 
+
+Doesn't give good error messages for misplaced semicolons.
+
+	:- rule init_declarator(init_declarator).
+	init_declarator(init_declarator(D, Init)) --->
+        	  declarator(D) ; { Init = no }.
+
+

@@ -1,0 +1,28 @@
+To make moose useful:
+	- use fact tables or at least split the action table into
+	  separate shift and reduce tables so that the Mercury compiler
+	  doesn't choke.
+	
+	- construct canonical LR or LALR tables rather than SLR tables.
+
+Cosmetic improvements:
+	- handle errors in the input better by faking declarations for
+	  undeclared productions; faking a clause for declared nonterminals
+	  with no clauses ; faking declarations and a clause (eg A -> epsilon)
+	  for nonterminals that get used but have no clauses and no
+	  declaration.
+
+	- provide the ability to dump a list of the terminal symbols.
+
+	- make the various dumps go to files other than the .m file.
+	
+Wish list:
+	- introduce new nonterminals for disjunctions in productions.
+	  This is quite difficult because it requres correct computation
+	  of the nonlocal variables of goals (including all the nasty
+	  cases like pred expressions).
+
+	- Implement the groovey PDA algorithms suggested by Andrew.
+
+	- compile away the tables.
+
