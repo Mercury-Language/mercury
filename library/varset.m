@@ -87,6 +87,13 @@
 :- pred varset__merge_subst(varset, varset, varset, substitution).
 :- mode varset__merge_subst(in, in, out, out).
 
+	% get the bindings for all the bound variables.
+:- pred varset__get_bindings(varset, substitution).
+:- mode varset__get_bindings(in, out).
+
+	% set the bindings for all the bound variables.
+:- pred varset__set_bindings(varset, substitution, varset).
+:- mode varset__set_bindings(in, in, out).
 
 %-----------------------------------------------------------------------------%
 
@@ -186,6 +193,12 @@ varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 %-----------------------------------------------------------------------------%
 
 varset__lookup_vars(varset(_,_,Subst), Subst).
+
+%-----------------------------------------------------------------------------%
+
+varset__get_bindings(varset(_,_,Subst), Subst).
+
+varset__set_bindings(varset(C, N, _), S, varset(C, N, S)).
 
 %-----------------------------------------------------------------------------%
 
