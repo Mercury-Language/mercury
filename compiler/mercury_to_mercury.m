@@ -350,27 +350,27 @@ mercury_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, Context) -->
 	io__set_output_stream(OldStream, _).
 
 mercury_output_type_defn_2(abstract_type(Name, Args), VarSet, Context) -->
-	io__write_string(":- type ("),
+	io__write_string(":- type "),
 	{ unqualify_name(Name, Name2) },
 	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
-	io__write_string(").\n").
+	io__write_string(".\n").
 
 mercury_output_type_defn_2(eqv_type(Name, Args, Body), VarSet, Context) -->
-	io__write_string(":- type ("),
+	io__write_string(":- type "),
 	{ unqualify_name(Name, Name2) },
 	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
-	io__write_string(") == "),
+	io__write_string(" == "),
 	mercury_output_term(Body, VarSet),
 	io__write_string(".\n").
 
 mercury_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
-	io__write_string(":- type ("),
+	io__write_string(":- type "),
 	{ unqualify_name(Name, Name2) },
 	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
-	io__write_string(")\n\t--->\t"),
+	io__write_string("\n\t--->\t"),
 	mercury_output_ctors(Ctors, VarSet),
 	io__write_string(".\n").
 
@@ -882,6 +882,7 @@ mercury_binary_prefix_op("gAll").
 :- pred mercury_infix_op(string).
 :- mode mercury_infix_op(in) is semidet.
 
+mercury_infix_op("--->").
 mercury_infix_op("-->").
 mercury_infix_op(":-").
 mercury_infix_op("::").
@@ -939,6 +940,11 @@ mercury_unary_prefix_op(":-").
 mercury_unary_prefix_op("?-").
 mercury_unary_prefix_op("pred").
 mercury_unary_prefix_op("type").
+mercury_unary_prefix_op("module").
+mercury_unary_prefix_op("end_module").
+mercury_unary_prefix_op("import_module").
+mercury_unary_prefix_op("mode").
+mercury_unary_prefix_op("inst").
 mercury_unary_prefix_op("useIf").
 mercury_unary_prefix_op("::").
 mercury_unary_prefix_op("delete").
