@@ -59,7 +59,7 @@ c_get_meaning_of_life(42.0).
 	IO = IO0;
 ").
 c_write_float(F) -->
-	io__format("%f\n", [f(F)]).
+	io__format("%.1f\n", [f(F)]).
 
 :- pragma(c_header_code, "#include <math.h>").
 
