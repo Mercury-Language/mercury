@@ -1932,7 +1932,9 @@ io__finalize_state -->
 
 :- pragma c_code(io__gc_init(IO0::di, IO::uo), "
 	/* for Windows DLLs, we need to call GC_INIT() from each DLL */
+#ifdef CONSERVATIVE_GC
 	GC_INIT();
+#endif
 	update_io(IO0, IO);
 ").
 
