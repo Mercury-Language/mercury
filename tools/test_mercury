@@ -657,9 +657,12 @@ echo "test_mercury starting to create distribution at `date`" 1>&2
 
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
-case $HOST in mars)
-	# XXX This mmake realclean was needed when the source distribution
-	# was built on murlibobo. Is it needed now?
+case $HOST in earth)
+	# The tests on earth are run with `--intermodule-optimization',
+	# so we need to do a `mmake realclean' before building the C files
+	# for the source distribution. The extra compilation time for
+	# `--intermodule-optimization' is probably not acceptable for the
+	# source distribution.
 	{ cd $DIR/mercury &&
 	mmake realclean MMAKEFLAGS=$PARALLEL &&
 	(cd $DIR/tests &&
@@ -978,7 +981,7 @@ case $status in
 	: if we get this far, then it worked.
 	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
 	date >> $TESTDIR/logs/success."$TEST_ID"
-	case $HOST in murlibobo)
+	case $HOST in earth)
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
 	    rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
