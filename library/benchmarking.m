@@ -219,7 +219,7 @@ ML_report_stats(void)
 #else
 	fprintf(stderr, 
 		""\\nHeap: %.3fk"",
-		((char *) MR_hp - (char *) eng->heap_zone->min) / 1024.0
+		((char *) MR_hp - (char *) eng->MR_eng_heap_zone->min) / 1024.0
 	);
 #endif
 
