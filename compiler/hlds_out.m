@@ -34,7 +34,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module prog_data, llds, instmap, term.
-:- import_module io, bool, list, term.
+:- import_module io, bool, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -267,18 +267,20 @@ hlds_out__cons_id_to_string(cons(SymName, Arity), String) :-
 	),
 	string__int_to_string(Arity, ArityString),
 	string__append_list([SymNameString, "/", ArityString], String).
+
 hlds_out__cons_id_to_string(int_const(Int), String) :-
 	string__int_to_string(Int, String).
+	
 hlds_out__cons_id_to_string(string_const(String), S) :-
 	string__append_list(["""", String, """"], S).
+
 hlds_out__cons_id_to_string(float_const(_), "<float>").
 hlds_out__cons_id_to_string(pred_const(_, _, _), "<pred>").
 hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
 hlds_out__cons_id_to_string(type_ctor_info_const(_, _, _), "<type_ctor_info>").
 hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
 	"<base_typeclass_info>").
-hlds_out__cons_id_to_string(tabling_pointer_const(_, _),
-	"<tabling_pointer>").
+hlds_out__cons_id_to_string(tabling_pointer_const(_, _), "<tabling_pointer>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
 	prog_out__write_sym_name_and_arity(SymName / Arity).
@@ -376,8 +378,10 @@ hlds_out__write_generic_call_id(higher_order(PredOrFunc, _)) -->
 	io__write_string("higher-order "),
 	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(" call").
+
 hlds_out__write_generic_call_id(class_method(_ClassId, MethodId)) -->
 	hlds_out__write_simple_call_id(MethodId).
+
 hlds_out__write_generic_call_id(
 		aditi_builtin(AditiBuiltin, CallId)) -->
 	{ hlds_out__aditi_builtin_name(AditiBuiltin, Name) },
@@ -450,6 +454,7 @@ hlds_out__write_arg_number(generic_call(higher_order(PredOrFunc, Arity)),
 hlds_out__write_arg_number(generic_call(class_method(_, _)), ArgNum) -->
 	io__write_string("argument "),
 	io__write_int(ArgNum).
+
 hlds_out__write_arg_number(generic_call(aditi_builtin(Builtin, CallId)),
 		ArgNum) -->
 	hlds_out__write_aditi_builtin_arg_number(Builtin, CallId, ArgNum).
@@ -461,6 +466,7 @@ hlds_out__write_arg_number(generic_call(aditi_builtin(Builtin, CallId)),
 hlds_out__write_aditi_builtin_arg_number(aditi_call(_, _, _, _), _, ArgNum) -->
 	io__write_string("argument "),
 	io__write_int(ArgNum).
+
 hlds_out__write_aditi_builtin_arg_number(aditi_insert(_),
 		_ - _/Arity, ArgNum) -->
 	io__write_string("argument "),
@@ -470,26 +476,31 @@ hlds_out__write_aditi_builtin_arg_number(aditi_insert(_),
 	;
 		io__write_int(ArgNum - Arity + 1)
 	).
+
 hlds_out__write_aditi_builtin_arg_number(aditi_delete(_, pred_term),
 		_, ArgNum) -->
 	io__write_string("argument "),
 	io__write_int(ArgNum).
+
 hlds_out__write_aditi_builtin_arg_number(aditi_delete(_, sym_name_and_closure),
 		_, ArgNum) -->
 	% The original goal had a sym_name/arity
 	% at the front of the argument list.
 	io__write_string("argument "),
 	io__write_int(ArgNum + 1).
+
 hlds_out__write_aditi_builtin_arg_number(aditi_bulk_operation(_, _),
 		_, ArgNum) -->
 	% The original goal had a sym_name/arity
 	% at the front of the argument list.
 	io__write_string("argument "),
 	io__write_int(ArgNum + 1).
+
 hlds_out__write_aditi_builtin_arg_number(aditi_modify(_, pred_term),
 		_, ArgNum) -->
 	io__write_string("argument "),
-	io__write_int(ArgNum).	
+	io__write_int(ArgNum).
+
 hlds_out__write_aditi_builtin_arg_number(aditi_modify(_, sym_name_and_closure),
 		_, ArgNum) -->
 	% The original goal had a sym_name/arity
@@ -499,6 +510,7 @@ hlds_out__write_aditi_builtin_arg_number(aditi_modify(_, sym_name_and_closure),
 
 hlds_out__write_pred_or_func(predicate) -->
 	io__write_string("predicate").
+
 hlds_out__write_pred_or_func(function) -->
 	io__write_string("function").
 
@@ -521,14 +533,15 @@ hlds_out__write_unify_context(First0,
 	prog_context, bool, io__state, io__state).
 :- mode hlds_out__write_unify_main_context(in, in, in, out, di, uo) is det.
 
-hlds_out__write_unify_main_context(First, explicit, _, First) -->
-	[].
+hlds_out__write_unify_main_context(First, explicit, _, First) --> [].
 hlds_out__write_unify_main_context(First, head(ArgNum), Context, no) -->
 	hlds_out__write_in_argument(First, ArgNum, Context),
 	io__write_string(" of clause head:\n").
+
 hlds_out__write_unify_main_context(First, head_result, Context, no) -->
 	hlds_out__start_in_message(First, Context),
 	io__write_string("function result term of clause head:\n").
+
 hlds_out__write_unify_main_context(First, call(CallId, ArgNum), Context, no) -->
 	hlds_out__start_in_message(First, Context),
 	hlds_out__write_call_arg_id(CallId, ArgNum),
@@ -1586,6 +1599,7 @@ hlds_out__write_var_name_list([Var - Name]) -->
 	hlds_out__write_varnum(Var),
 	io__write_string(" - "),
 	io__write_string(Name).
+
 hlds_out__write_var_name_list([Var1 - Name1, VarName2 | Vars]) -->
 	hlds_out__write_varnum(Var1),
 	io__write_string(" - "),
@@ -1723,6 +1737,7 @@ hlds_out__aditi_builtin_name(aditi_bulk_operation(BulkOp, _), Name) :-
 		BulkOp = delete,
 		Name = "aditi_bulk_delete"
 	).
+
 hlds_out__aditi_builtin_name(aditi_modify(_, _), "aditi_modify").
 
 :- pred hlds_out__write_unification(unification, module_info, prog_varset,
@@ -1737,6 +1752,7 @@ hlds_out__write_unification(assign(X, Y), _, ProgVarSet, _InstVarSet,
 	io__write_string(" := "),
 	mercury_output_var(Y, ProgVarSet, AppendVarnums),
 	io__write_string("\n").
+
 hlds_out__write_unification(simple_test(X, Y), _, ProgVarSet, _, AppendVarnums,
 		Indent) -->
 	hlds_out__write_indent(Indent),
@@ -1745,6 +1761,7 @@ hlds_out__write_unification(simple_test(X, Y), _, ProgVarSet, _, AppendVarnums,
 	io__write_string(" == "),
 	mercury_output_var(Y, ProgVarSet, AppendVarnums),
 	io__write_string("\n").
+
 hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes, _, _, _),
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent) -->
 	hlds_out__write_indent(Indent),
@@ -1753,6 +1770,7 @@ hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes, _, _, _),
 	io__write_string(" := "),
 	hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes,
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent).
+
 hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 		CanFail), ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums,
 		Indent) -->
@@ -1767,6 +1785,7 @@ hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 	!,
 	hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes,
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent).
+
 hlds_out__write_unification(complicated_unify(Mode, CanFail, TypeInfoVars),
 		_ModuleInfo, ProgVarSet, InstVarSet, AppendVarNums, Indent) -->
 	hlds_out__write_indent(Indent),
@@ -1846,6 +1865,7 @@ hlds_out__write_unify_rhs_3(functor(ConsId, ArgVars), ModuleInfo, VarSet, _,
 	;
 		[]
 	).
+
 hlds_out__write_unify_rhs_3(
 		lambda_goal(PredOrFunc, EvalMethod, _, NonLocals, Vars, Modes,
 		Det, Goal),
@@ -2051,6 +2071,7 @@ hlds_out__write_var_modes([Var|Vars], [Mode|Modes], VarSet, InstVarSet,
 	),
 	hlds_out__write_var_modes(Vars, Modes, VarSet, InstVarSet,
 		AppendVarnums).
+
 hlds_out__write_var_modes([], [_|_], _, _, _) -->
 	{ error("hlds_out__write_var_modes: length mis-match") }.
 hlds_out__write_var_modes([_|_], [], _, _, _) -->
@@ -2435,6 +2456,7 @@ hlds_out__write_type_params(Tvarset, [P]) -->
 	io__write_string("("),
 	term_io__write_term(Tvarset, P),
 	io__write_string(")").
+
 hlds_out__write_type_params(Tvarset, [P | Ps]) -->
 	{ Ps = [_ | _] },
 	io__write_string("("),
@@ -2470,12 +2492,15 @@ hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, _Tags, _Enum,
 		[]
 	),
 	io__write_string(".\n").
+	
 hlds_out__write_type_body(_Indent, _Tvarset, uu_type(_)) -->
 	{ error("hlds_out__write_type_body: undiscriminated union found") }.
+
 hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type)) -->
 	io__write_string(" == "),
 	term_io__write_term(Tvarset, Type),
 	io__write_string(".\n").
+
 hlds_out__write_type_body(_Indent, _Tvarset, abstract_type) -->
 	io__write_string(".\n").
 
@@ -2485,10 +2510,12 @@ hlds_out__write_type_body(_Indent, _Tvarset, abstract_type) -->
 
 hlds_out__write_constructors(_Indent, _Tvarset, []) -->
 	{ error("hlds_out__write_constructors: empty constructor list?") }.
+
 hlds_out__write_constructors(Indent, Tvarset, [C]) -->
 	hlds_out__write_indent(Indent),
 	io__write_char('\t'),
 	mercury_output_ctor(C, Tvarset).
+
 hlds_out__write_constructors(Indent, Tvarset, [C | Cs]) -->
 	{ Cs = [_ | _] },
 	hlds_out__write_indent(Indent),
@@ -2575,6 +2602,7 @@ hlds_out__write_class_defn(Indent, ClassId - ClassDefn) -->
 	% Just output the class methods as pred_ids and proc_ids because
 	% its probably not that useful to have the names. If that information
 	% is needed, it shouldn't be a very difficult fix.
+
 :- pred hlds_out__write_class_proc(hlds_class_proc, io__state, io__state).
 :- mode hlds_out__write_class_proc(in, di, uo) is det.
 
