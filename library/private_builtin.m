@@ -1426,7 +1426,7 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	*/
 	int comp;
 	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
+	comp = MR_compare_type_info(compare_input1, compare_input2);
 	restore_transient_registers();
 	compare_output = comp;
 	proceed();
