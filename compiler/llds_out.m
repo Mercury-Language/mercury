@@ -3613,12 +3613,6 @@ output_rval_as_type(Rval, DesiredType) -->
 	( { types_match(DesiredType, ActualType) } ->
 		% no casting needed
 		output_rval(Rval)
-	; { Rval = unop(cast_to_unsigned, _) } ->
-		% cast_to_unsigned overrides the ordinary type
-		% XXX this is a bit of a hack; we should probably
-		% eliminate cast_to_unsigned and instead use
-		% special unsigned operators
-		output_rval(Rval)
 	;
 		% We need to convert to the right type first.
 		% Convertions to/from float must be treated specially;
@@ -3794,6 +3788,16 @@ XXX broken for C == minint
 		output_binary_op(Op),
 		io__write_string(" "),
 		output_rval(Y),
+		io__write_string(")")
+	;
+		{ c_util__unsigned_compare_op(Op, OpStr) }
+	->
+		io__write_string("("),
+		output_rval_as_type(X, unsigned),
+		io__write_string(" "),
+		io__write_string(OpStr),
+		io__write_string(" "),
+		output_rval_as_type(Y, unsigned),
 		io__write_string(")")
 	;
 		io__write_string("("),

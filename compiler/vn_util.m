@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -217,14 +217,10 @@ vn_util__vnrval_to_vn(Vnrval, Vn, VnTables0, VnTables) :-
 :- pred vn_util__vnrval_may_share_vn(vnrval).
 :- mode vn_util__vnrval_may_share_vn(in) is semidet.
 
-vn_util__vnrval_may_share_vn(Vnrval) :-
-	(
-		Vnrval = vn_unop(cast_to_unsigned, _)
-	->
-		fail
-	;
-		true
-	).
+vn_util__vnrval_may_share_vn(_Vnrval) :-
+	% Currently any vnrval may share vn.
+	% We used to fail here for `cast_to_unsigned' operators.
+	semidet_succeed.
 
 	% Simplify the vnrval by partially evaluating expressions involving
 	% constants. To make this simpler, swap the arguments of commutative
@@ -774,6 +770,11 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			false, Vnrval),
 		VnTables = VnTables0
 	;
+		Binop = unsigned_le,
+		vn_util__simplify_int_compare_op(unsigned_le, Vn1, Vnrval1,
+			Vn2, Vnrval2, true, Vnrval),
+		VnTables = VnTables0
+	;
 		Binop = (float_eq),
 		vn_util__simplify_float_compare_op(float_eq, Vn1, Vnrval1,
 			Vn2, Vnrval2, true, Vnrval),
@@ -905,6 +906,25 @@ vn_util__simplify_float_compare_op(ComparePred, Vn1, Vnrval1, Vn2, Vnrval2,
 		)
 	;
 		vn_util__const_if_equal_vns(Vn1, Vn2, ResultIfEqual, Vnrval)
+	).
+
+	% unsigned_le(X, Y) performs an unsigned less-than-or-equal
+	% comparison.  It should succeed iff the C expression
+	% `(MR_Unsigned)(X) < (MR_Unsigned)(Y)' evaluates to true.
+:- pred unsigned_le(int::in, int::in) is semidet.
+unsigned_le(X, Y) :-
+	( X < 0, Y >= 0 ->
+		% when cast to unsigned, X will be a big positive number,
+		% and Y will be smaller, so we must fail
+		fail
+	; X >= 0, Y < 0 ->
+		% when cast to unsigned, Y will be a big positive number,
+		% and X will be smaller, so we must succeed
+		true
+	;
+		% if they both have the same sign, then we can just do
+		% an ordinary comparison.
+		X =< Y
 	).
 
 :- pred float_eq(float::in, float::in) is semidet.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,7 +26,6 @@
 	;	unmktag
 	;	mkbody
 	;	unmkbody
-	;	cast_to_unsigned
 	;	hash_string
 	;	bitwise_complement
 	;	(not).
@@ -56,10 +55,17 @@
 	;	str_gt
 	;	str_le
 	;	str_ge
-	;	(<)	% integer comparions
+	;	(<)	% signed integer comparions
 	;	(>)
 	;	(<=)
 	;	(>=)
+	;	unsigned_le	% unsigned integer comparison
+		% Note that the arguments to `unsigned_le' are just ordinary
+		% (signed) Mercury ints, but it does the comparison as
+		% if they were first cast to an unsigned type, so e.g.
+		% binary(unsigned_le, int_const(1), int_const(-1) returns true,
+		% since (MR_Unsigned) 1 <= (MR_Unsigned) -1).
+
 	;	float_plus
 	;	float_minus
 	;	float_times

@@ -1304,7 +1304,6 @@ unaryop_to_il(std_unop(unmktag), _, comment_node("unmktag (a no-op)")) --> [].
 unaryop_to_il(std_unop(mkbody),	_, comment_node("mkbody (a no-op)")) --> [].
 unaryop_to_il(std_unop(unmkbody), _, comment_node("unmkbody (a no-op)")) --> [].
 
-unaryop_to_il(std_unop(cast_to_unsigned), _, instr_node(conv(uint32))) --> [].
 		% XXX implement this using string__hash
 unaryop_to_il(std_unop(hash_string), _,
 	throw_unimplemented("unimplemented hash_string unop")) --> [].
@@ -1461,6 +1460,8 @@ binaryop_to_il((<), node([clt(signed)])) --> [].
 binaryop_to_il((>), node([cgt(signed)])) --> [].
 binaryop_to_il((<=), node([cgt(signed), ldc(int32, i(0)), ceq])) --> [].
 binaryop_to_il((>=), node([clt(signed), ldc(int32, i(0)), ceq])) --> [].
+binaryop_to_il(unsigned_le, node([cgt(unsigned), ldc(int32, i(0)), ceq])) -->
+	[].
 
 	% Floating pointer operations.
 binaryop_to_il(float_plus, throw_unimplemented("floating point")) --> [].

@@ -866,7 +866,6 @@ opt_debug__dump_unop(unmkbody, "unmkbody").
 opt_debug__dump_unop(not, "not").
 opt_debug__dump_unop(hash_string, "hash_string").
 opt_debug__dump_unop(bitwise_complement, "bitwise_complement").
-opt_debug__dump_unop(cast_to_unsigned, "cast_to_unsigned").
 
 opt_debug__dump_binop(Op, String) :-
 	llds_out__binary_op_to_string(Op, String).

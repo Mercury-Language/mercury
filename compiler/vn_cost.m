@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -397,7 +397,10 @@ vn_cost__assign_cost_binop(body).
 :- pred vn_cost__zero_cost_unop(unary_op).
 :- mode vn_cost__zero_cost_unop(in) is semidet.
 
-vn_cost__zero_cost_unop(cast_to_unsigned).
+% This assumes that we're using low tags.
+% For high tags, it should be mkbody and unmkbody instead.
+vn_cost__zero_cost_unop(mktag).
+vn_cost__zero_cost_unop(unmktag).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

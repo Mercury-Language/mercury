@@ -67,7 +67,7 @@
 %	- implement annotation in gcc tree to force tailcalls
 %	- improve code for switches with default_is_unreachable.
 %	  (We already do a reasonably good job, so this is a low priority.)
-%	  One way would be to implement computed_goto and cast_to_unsigned,
+%	  One way would be to implement computed_goto and unsigned_le,
 %	  and change target_supports_computed_goto_2(asm) in ml_switch_gen.m
 %	  to `yes'.
 %
@@ -3113,11 +3113,6 @@ build_unop_expr(unmkbody, Arg, Expr) -->
 	gcc__build_int(TagBits, TagBitsExpr),
 	gcc__build_binop(gcc__rshift_expr, 'MR_intptr_t',
 		Arg, TagBitsExpr, Expr).
-build_unop_expr(cast_to_unsigned, _, _) -->
-	% cast_to_unsigned is only needed for dense (computed_goto) switches,
-	% and we set target_supports_computed_goto to no for this target,
-	% so we shouldn't get any of these
-	{ unexpected(this_file, "cast_to_unsigned") }.
 build_unop_expr(hash_string, Arg, Expr) -->
 	gcc__build_func_addr_expr(gcc__hash_string_func_decl,
 		HashStringFuncExpr),
@@ -3146,6 +3141,25 @@ build_std_binop(BinaryOp, Arg1, Arg2, DefnInfo, Expr) -->
 		gcc__build_int(0, Zero),
 		gcc__build_binop(CorrespondingIntOp, gcc__boolean_type_node,
 			GCC_Call, Zero, Expr)
+	; { unsigned_compare_op(BinaryOp, _GCC_BinaryOp) } ->
+		% XXX This is not implemented yet, because we don't have
+		% 'MR_Unsigned'.  But unsigned_le is only needed for dense
+		% (computed_goto) switches, and we set
+		% target_supports_computed_goto to no for this target,
+		% so we shouldn't get any of these.
+		{ unexpected(this_file, "unsigned comparison operator") }
+		/***
+		%
+		% Treat unsigned comparison operators specially:
+		% convert the arguments to unsigned.
+		%
+		build_rval(Arg1, DefnInfo, GCC_Arg1),
+		build_rval(Arg2, DefnInfo, GCC_Arg2),
+		gcc__convert_type(GCC_Arg1, 'MR_Unsigned', GCC_UnsignedArg1),
+		gcc__convert_type(GCC_Arg2, 'MR_Unsigned', GCC_UnsignedArg2),
+		gcc__build_binop(GCC_BinaryOp, gcc__boolean_type_node,
+			GCC_UnsignedArg1, GCC_UnsignedArg2, Expr)
+		***/
 	;
 		%
 		% the usual case: just build a gcc tree node for the expr.
@@ -3165,6 +3179,10 @@ string_compare_op(str_lt, gcc__lt_expr).
 string_compare_op(str_gt, gcc__gt_expr).
 string_compare_op(str_le, gcc__le_expr).
 string_compare_op(str_ge, gcc__ge_expr).
+
+:- pred unsigned_compare_op(builtin_ops__binary_op, gcc__op).
+:- mode unsigned_compare_op(in, out) is semidet.
+unsigned_compare_op(unsigned_le, gcc__le_expr).
 
 	% Convert one of our operators to the corresponding
 	% gcc operator.  Also compute the gcc return type.
@@ -3202,6 +3220,7 @@ convert_binary_op((<),		gcc__lt_expr,	     gcc__boolean_type_node).
 convert_binary_op((>),		gcc__gt_expr,	     gcc__boolean_type_node).
 convert_binary_op((<=),		gcc__le_expr,	     gcc__boolean_type_node).
 convert_binary_op((>=),		gcc__ge_expr,	     gcc__boolean_type_node).
+convert_binary_op(unsigned_le, _, _) :- unexpected(this_file, "unsigned_le").
 convert_binary_op(float_plus,	gcc__plus_expr,	     'MR_Float').
 convert_binary_op(float_minus,	gcc__minus_expr,     'MR_Float').
 convert_binary_op(float_times,	gcc__mult_expr,	     'MR_Float').

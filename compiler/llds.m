@@ -1159,7 +1159,6 @@ llds__unop_return_type(tag, word).
 llds__unop_return_type(unmktag, word).
 llds__unop_return_type(mkbody, word).
 llds__unop_return_type(unmkbody, word).
-llds__unop_return_type(cast_to_unsigned, unsigned).
 llds__unop_return_type(hash_string, integer).
 llds__unop_return_type(bitwise_complement, integer).
 llds__unop_return_type(not, bool).
@@ -1169,7 +1168,6 @@ llds__unop_arg_type(tag, word).
 llds__unop_arg_type(unmktag, word).
 llds__unop_arg_type(mkbody, word).
 llds__unop_arg_type(unmkbody, word).
-llds__unop_arg_type(cast_to_unsigned, word).
 llds__unop_arg_type(hash_string, word).
 llds__unop_arg_type(bitwise_complement, integer).
 llds__unop_arg_type(not, bool).
@@ -1199,6 +1197,7 @@ llds__binop_return_type((<), bool).
 llds__binop_return_type((>), bool).
 llds__binop_return_type((<=), bool).
 llds__binop_return_type((>=), bool).
+llds__binop_return_type(unsigned_le, bool).
 llds__binop_return_type(float_plus, float).
 llds__binop_return_type(float_minus, float).
 llds__binop_return_type(float_times, float).
