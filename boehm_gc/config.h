@@ -510,12 +510,17 @@
 #   endif
 #   ifdef LINUX
 #	define OS_TYPE "LINUX"
-	extern int etext;
-#       define DATASTART ((ptr_t)((((word) (&etext)) + 0xfff) & ~0xfff))
 #	define STACKBOTTOM ((ptr_t)0xc0000000)
 #	define MPROTECT_VDB
 #       ifdef __ELF__
 #            define DYNAMIC_LOADING
+	     extern int _etext;
+#            define DATASTART ((ptr_t)((((word) (&_etext)) + 0xfff) & ~0xfff))
+	     extern int _end;
+#	     define DATAEND (&_end)
+#	else
+	     extern int etext;
+#            define DATASTART ((ptr_t)((((word) (&etext)) + 0xfff) & ~0xfff))
 #       endif
 #   endif
 #   ifdef CYGWIN32
