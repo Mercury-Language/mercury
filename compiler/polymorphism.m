@@ -330,15 +330,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 		% rename apart
-		% XXX this merge may be a performance bottleneck:
-		% it gets executed O(m) times,
-		% each merge takes O(size of PredTypeVarSet) = O(n) insertions,
-		% each insertion takes O(log(n)) for the search plus
-		% (in the worst case, if all the types are named "T")
-		% O((size of TypeVarSet0)^2) = O(p)
-		% So overall it's O(m * n * p^2) < o(s*2).
-		% (m = number of preds, n = args per pred, p = size of preds,
-		% s = total size of the module = m * p)
+		% (this merge might be a performance bottleneck?)
 	varset__merge(TypeVarSet0, PredTypeVarSet, PredArgTypes0,
 			TypeVarSet, PredArgTypes),
 	term__vars_list(PredArgTypes, PredTypeVars0),

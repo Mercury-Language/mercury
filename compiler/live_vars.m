@@ -178,6 +178,8 @@ detect_live_vars_in_goal_2(
 	(
 		Builtin = is_builtin
 	->
+		% XXX is this correct???
+		% What about nondet builtin goals (e.g. call/1)?
 		LiveSets = LiveSets0,
 		ExtraLives = ExtraLives0
 	;
