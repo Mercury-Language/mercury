@@ -105,7 +105,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% about how the structure of this closure.
 	%
 	ml_gen_closure_layout(PredId, ProcId, Context,
-		ClosureLayoutRval, ClosureLayoutType,
+		ClosureLayoutRval0, ClosureLayoutType0,
 		ClosureLayoutDecls),
 
 	%
@@ -131,13 +131,15 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 
 	%
 	% put all the extra arguments of the closure together
-	% Note that we need to box these arguments, except for
-	% the closure layout, which is already a reference type.
+	% Note that we need to box these arguments.
 	%
 	{ NumArgsRval = unop(box(NumArgsType0), NumArgsRval0) },
 	{ NumArgsType = mlds__generic_type },
 	{ WrapperFuncRval = unop(box(WrapperFuncType0), WrapperFuncRval0) },
 	{ WrapperFuncType = mlds__generic_type },
+	{ ClosureLayoutRval = unop(box(ClosureLayoutType0),
+			ClosureLayoutRval0) },
+	{ ClosureLayoutType = mlds__generic_type },
 	{ ExtraArgRvals = [ClosureLayoutRval, WrapperFuncRval, NumArgsRval] },
 	{ ExtraArgTypes = [ClosureLayoutType, WrapperFuncType, NumArgsType] },
 

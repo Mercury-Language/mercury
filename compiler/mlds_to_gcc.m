@@ -3047,6 +3047,24 @@ build_unop(box(Type), Rval, DefnInfo, GCC_Expr) -->
 		build_call(gcc__box_float_func_decl, [Rval], DefnInfo,
 			GCC_Expr)
 	;
+		{ Type = mlds__array_type(_) }
+	->
+		% When boxing arrays, we need to take the address of the array.
+		% This implies that the array must be an lval.
+		% But we also allow null arrays as a special case;
+		% boxing a null array results in a null pointer.
+		( { Rval = const(null(_)) } ->
+			{ PtrRval = const(null(mlds__generic_type)) },
+			build_rval(PtrRval, DefnInfo, GCC_Expr)
+		; { Rval = lval(ArrayLval) } ->
+			{ PtrRval = mem_addr(ArrayLval) },
+			build_cast_rval(mlds__generic_type, PtrRval, DefnInfo,
+				GCC_Expr)
+		;
+			{ unexpected(this_file,
+				"boxing non-lval, non-null array") }
+		)
+	;
 		build_cast_rval(mlds__generic_type, Rval, DefnInfo, GCC_Expr)
 	).
 build_unop(unbox(Type), Rval, DefnInfo, GCC_Expr) -->
