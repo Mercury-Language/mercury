@@ -1,5 +1,5 @@
 pragma_c_code_and_clauses1.m:009: Error: `:- pragma c_code' declaration for predicate `pragma_c_code_and_clauses1:foo/1'
-pragma_c_code_and_clauses1.m:009:   with clauses preceding.
+pragma_c_code_and_clauses1.m:009:   with preceding clauses.
 pragma_c_code_and_clauses1.m:005: In `foo(in)':
 pragma_c_code_and_clauses1.m:005:   error: determinism declaration not satisfied.
 pragma_c_code_and_clauses1.m:005:   Declared `multi', inferred `semidet'.
