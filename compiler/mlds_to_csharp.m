@@ -270,6 +270,13 @@ write_csharp_statement(statement(Statement, _Context)) -->
 			{ sorry(this_file, "multiple return values") }
 		)
 	;
+		{ Statement = atomic(assign(LVal, RVal)) } 
+	->
+		write_csharp_lval(LVal),
+		io__write_string(" = "),
+		write_csharp_rval(RVal),
+		io__write_string(";\n")
+	;
 		{ functor(Statement, SFunctor, _Arity) },
 		{ sorry(this_file, "csharp output for " ++ SFunctor) }
 	).

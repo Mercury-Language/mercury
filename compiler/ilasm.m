@@ -1044,7 +1044,7 @@ output_instr(ldarg(name(Id)), I, I) -->
 	% Lots of short forms for loading integer.
 	% XXX Should probably put the magic numbers in functions.
 output_instr(ldc(Type, Const), I, I) -->
-	( { Type = int32, Const = i(IntConst) }  ->
+	( { ( Type = int32 ; Type = bool ), Const = i(IntConst) }  ->
 		( { IntConst < 8, IntConst >= 0 } ->
 			io__write_string("ldc.i4."),
 			io__write_int(IntConst)

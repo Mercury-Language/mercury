@@ -1962,11 +1962,13 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 }
 ").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out),
 		will_not_call_mercury, "
 {
-	mercury::runtime::Errors::SORRY(""make_type"");
+	mercury.runtime.Errors.SORRY(""make_type"");
+	// XXX this is required to keep the C# compiler quiet
+	SUCCESS_INDICATOR = false;
 }
 ").
 
@@ -2404,9 +2406,6 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 		will_not_call_mercury, "
 {
 	mercury.runtime.Errors.SORRY(""foreign code for make_type"");
-	// XXX this is required to keep the C# compiler quiet, but we should 
-	// really fix the interface to semidet C#
-	succeeded = 1;
 }
 ").
 
@@ -2417,10 +2416,12 @@ type_ctor_name_and_arity(TypeCtorDesc0::in, TypeCtorModuleName::out,
 		TypeCtorModuleName, TypeCtorName, TypeCtorArity).
 
 
-:- pragma foreign_proc("MC++", num_functors(_TypeInfo::in) = (_Functors::out),
+:- pragma foreign_proc("C#", num_functors(_TypeInfo::in) = (Functors::out),
 	will_not_call_mercury, "
 {
-	mercury::runtime::Errors::SORRY(""foreign code for num_functors"");
+	mercury.runtime.Errors.SORRY(""foreign code for num_functors"");
+	// XXX keep the C# compiler quiet
+	Functors = 0;
 }
 ").
 
@@ -2446,9 +2447,8 @@ type_ctor_name_and_arity(TypeCtorDesc0::in, TypeCtorModuleName::out,
 {
 	mercury.runtime.Errors.SORRY(""foreign code for construct"");
 	_Term = null;
-	// XXX this is required to keep the C# compiler quiet, but we should 
-	// really fix the interface to semidet C#
-	succeeded = 1;
+	// XXX this is required to keep the C# compiler quiet
+	SUCCESS_INDICATOR = false;
 }
 ").
 
@@ -3459,9 +3459,8 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         will_not_call_mercury, "
 {
 	mercury.runtime.Errors.SORRY(""foreign code for arg"");
-	// XXX this is required to keep the C# compiler quiet, but we should 
-	// really fix the interface to semidet C#
-	succeeded = 1;
+	// XXX this is required to keep the C# compiler quiet
+	SUCCESS_INDICATOR = false;
 }").
 
 :- pragma foreign_proc("C#",
@@ -3469,9 +3468,8 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         will_not_call_mercury, "
 {
 	mercury.runtime.Errors.SORRY(""foreign code for argument"");
-	// XXX this is required to keep the C# compiler quiet, but we should 
-	// really fix the interface to semidet C#
-	succeeded = 1;
+	// XXX this is required to keep the C# compiler quiet
+	SUCCESS_INDICATOR = false;
 }").
 
 det_arg(Type, ArgumentIndex) = Argument :-

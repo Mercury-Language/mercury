@@ -487,7 +487,6 @@ is(X, X).
 
 ").
 
-
 :- pragma foreign_proc("C", int__max_int(Max::out),
 		[will_not_call_mercury, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
@@ -544,21 +543,14 @@ is(X, X).
 	Bits = ML_BITS_PER_INT;
 ").
 
-:- pragma foreign_proc("MC++", int__quot_bits_per_int(Int::in) = (Div::out),
-		[will_not_call_mercury, thread_safe], "
-	Div = Int / ML_BITS_PER_INT;
-").
+int__quot_bits_per_int(Int::in) = (Result::out) :-
+	Result = Int // int__bits_per_int.
 
-:- pragma foreign_proc("MC++", int__times_bits_per_int(Int::in) = (Result::out),
-		[will_not_call_mercury, thread_safe], "
-	Result = Int * ML_BITS_PER_INT;
-").
+int__times_bits_per_int(Int::in) = (Result::out) :-
+	Result = Int * int__bits_per_int.
 
-:- pragma foreign_proc("MC++", int__rem_bits_per_int(Int::in) = (Rem::out),
-		[will_not_call_mercury, thread_safe], "
-	Rem = Int % ML_BITS_PER_INT;
-").
-
+int__rem_bits_per_int(Int::in) = (Result::out) :-
+	Result = Int rem int__bits_per_int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

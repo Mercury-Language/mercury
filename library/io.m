@@ -2747,8 +2747,18 @@ io__progname_base(DefaultName, PrognameBase) -->
 	io__progname(DefaultName, Progname),
 	{ dir__basename(Progname, PrognameBase) }.
 
+
+	% XXX we call a pred version of io__get_stream_id, which is a
+	% bit inelegant.  We should either fix the MC++ interface so you
+	% can implement functions, or implement everything in this
+	% module in C#.
+
+io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
+
+:- pred io__get_stream_id(io__stream::in, io__stream_id::out) is det.
+
 :- pragma foreign_proc("C",
-	io__get_stream_id(Stream::in) = (Id::out), 
+	io__get_stream_id(Stream::in, Id::out), 
 		will_not_call_mercury, "
 	/* 
 	** Most of the time, we can just use the pointer to the stream
@@ -2767,7 +2777,7 @@ io__progname_base(DefaultName, PrognameBase) -->
 ").
 
 :- pragma foreign_proc("MC++",
-	io__get_stream_id(Stream::in) = (Id::out), 
+	io__get_stream_id(Stream::in, Id::out), 
 		will_not_call_mercury, "
 	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile,
 		MR_word_to_c_pointer(Stream));

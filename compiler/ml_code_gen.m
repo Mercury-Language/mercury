@@ -2308,7 +2308,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
 	% we generate a call to an out-of-line procedure that contains
 	% the user's code.
 
-ml_gen_ordinary_pragma_csharp_proc(_CodeModel, Attributes,
+ml_gen_ordinary_pragma_csharp_proc(CodeModel, Attributes,
 		_PredId, _ProcId, _ArgVars, _ArgDatas, _OrigArgTypes,
 		ForeignCode, Context, MLDS_Decls, MLDS_Statements) -->
 	{ foreign_language(Attributes, ForeignLang) },
@@ -2319,10 +2319,37 @@ ml_gen_ordinary_pragma_csharp_proc(_CodeModel, Attributes,
 	{ OutlineStmt = outline_foreign_proc(ForeignLang, OutputVarLvals,
 		ForeignCode) },
 
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ module_info_name(ModuleInfo, ModuleName) },
+	{ MLDSModuleName = mercury_module_name_to_mlds(ModuleName) },
+
+		% If the code is semidet, we should copy SUCCESS_INDICATOR 
+		% out into "suceess".
+	
+	ml_success_lval(SucceededLval),
+
+	{ CodeModel = model_semi ->
+		SuccessIndicatorVarName = var_name("SUCCESS_INDICATOR", no),
+		SuccessIndicatorDecl = ml_gen_mlds_var_decl(
+			var(SuccessIndicatorVarName),
+			mlds__native_bool_type,
+			no_initializer, MLDSContext),
+		SuccessIndicatorLval = var(qual(MLDSModuleName,
+			SuccessIndicatorVarName), mlds__native_bool_type),
+		SuccessIndicatorStatement = ml_gen_assign(SucceededLval,
+			lval(SuccessIndicatorLval), Context),
+		SuccessVarLocals = [SuccessIndicatorDecl],
+		SuccessIndicatorStatements = [SuccessIndicatorStatement]
+	;
+		SuccessVarLocals = [],
+		SuccessIndicatorStatements = []
+	},
+
 	{ MLDS_Statements = [
-		mlds__statement(atomic(OutlineStmt), MLDSContext)
+		mlds__statement(atomic(OutlineStmt), MLDSContext) |
+		SuccessIndicatorStatements
 		] },
-	{ MLDS_Decls = [] }.
+	{ MLDS_Decls = SuccessVarLocals }.
 
 :- pred ml_gen_ordinary_pragma_il_proc(code_model, 
 	pragma_foreign_proc_attributes, pred_id, proc_id, list(prog_var),

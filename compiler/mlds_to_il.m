@@ -51,7 +51,6 @@
 %     we should (this can occur in nondet C code). 
 % [ ] ml_gen_call_current_success_cont_indirectly should be merged with
 % 	similar code for doing copy-in/copy-out.
-% [ ] Try to use the IL bool type for the true/false rvals.
 % [ ] Add an option to do overflow checking.
 % [ ] Should replace hard-coded of int32 with a more abstract name such
 %     as `mercury_int_il_type'.
@@ -1756,7 +1755,8 @@ atomic_statement_to_il(outline_foreign_proc(Lang, ReturnLvals, _Code),
 
 		( { ReturnLvals = [] } ->
 			% If there is a return type, but no return value, it
-			% must be a semidet predicate so put it in succeeded.
+			% must be a semidet predicate so put it in 
+			% SUCCESS_INDICATOR.
 			% XXX it would be better to get the code generator
 			% to tell us this is the case directly
 			{ LoadInstrs = empty },
@@ -1764,7 +1764,7 @@ atomic_statement_to_il(outline_foreign_proc(Lang, ReturnLvals, _Code),
 				StoreInstrs = empty
 			;
 				StoreInstrs = instr_node(
-					stloc(name("succeeded")))
+					stloc(name("SUCCESS_INDICATOR")))
 			}
 		; { ReturnLvals = [ReturnLval] } ->
 			get_load_store_lval_instrs(ReturnLval,
@@ -1810,7 +1810,7 @@ atomic_statement_to_il(inline_target_code(lang_C, _Code), Instrs) -->
 			% return a useful value.
 		{ RetType = void ->
 			StoreReturnInstr = empty
-		; RetType = simple_type(int32) ->
+		; RetType = simple_type(bool) ->
 			StoreReturnInstr = instr_node(stloc(name("succeeded")))
 		;
 			sorry(this_file, "functions in MC++")
@@ -2169,12 +2169,11 @@ load(mkword(_Tag, _Rval), Instrs) -->
 	% characters, etc.
 load(const(Const), Instrs) -->
 	DataRep =^ il_data_rep,
-		% XXX is there a better way to handle true and false
-		% using IL's bool type?
+		% true and false are just the integers 1 and 0
 	{ Const = true,
-		Instrs = instr_node(ldc(int32, i(1)))
+		Instrs = instr_node(ldc(bool, i(1)))
 	; Const = false,
-		Instrs = instr_node(ldc(int32, i(0)))
+		Instrs = instr_node(ldc(bool, i(0)))
 	; Const = string_const(Str),
 		Instrs = instr_node(ldstr(Str))
 	; Const = int_const(Int),
@@ -2886,8 +2885,7 @@ mlds_type_to_ilds_type(_, mlds__commit_type) = il_commit_type.
 mlds_type_to_ilds_type(ILDataRep, mlds__generic_env_ptr_type) =
 	ILDataRep^il_envptr_type.
 
-	% XXX we ought to use the IL bool type
-mlds_type_to_ilds_type(_, mlds__native_bool_type) = ilds__type([], int32).
+mlds_type_to_ilds_type(_, mlds__native_bool_type) = ilds__type([], bool).
 
 mlds_type_to_ilds_type(_, mlds__native_char_type) = ilds__type([], char).
 
