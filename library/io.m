@@ -822,6 +822,8 @@
 
 %-----------------------------------------------------------------------------%
 
+% File handling predicates
+
 :- pred io__tmpnam(string, io__state, io__state).
 :- mode io__tmpnam(out, di, uo) is det.
 	% io__tmpnam(Name, IO0, IO) binds `Name' to a temporary
@@ -843,6 +845,20 @@
 	% io__remove_file(FileName, Result, IO0, IO) attempts to remove the
 	% file `FileName', binding Result to ok/0 if it succeeds, or
 	% error/1 if it fails.
+	% If `FileName' names a file that is currently open,
+	% the behaviour is implementation-dependent.
+
+:- pred io__rename_file(string, string, io__res, io__state, io__state).
+:- mode io__rename_file(in, in, out, di, uo) is det.
+	% io__rename_file(OldFileName, NewFileName, Result, IO0, IO)
+	% attempts to rename the file `OldFileName' as `NewFileName',
+	% binding Result to ok/0 if it succeeds, or error/1 if it fails.
+	% If `OldFileName' names a file that is currently open,
+	% the behaviour is implementation-dependent.
+	% If `NewFileName' names a file that already exists
+	% the behaviour is also implementation-dependent;
+	% on some systems, the file previously named `NewFileName' will be
+	% deleted and replaced with the file previously named `OldFileName'.
 
 %-----------------------------------------------------------------------------%
 
@@ -2720,38 +2736,78 @@ io__tmpnam(Name) -->
 
 /*---------------------------------------------------------------------------*/
 
+:- pragma c_header_code("
+
+#include <string.h>
+#include <errno.h>
+
+/*
+** ML_maybe_make_err_msg(was_error, msg, error_msg):
+**	if `was_error' is true, then append `msg' and `strerror(errno)'
+**	to give `error_msg'; otherwise, set `error_msg' to NULL.
+**
+** This is defined as a macro rather than a C function
+** to avoid worrying about the `hp' register being
+** invalidated by the function call.
+*/
+#define ML_maybe_make_err_msg(was_error, msg, error_msg)		\\
+	do {								\\
+		char *errno_msg;					\\
+		size_t len;						\\
+		Word tmp;						\\
+									\\
+		if (was_error) {					\\
+			errno_msg = strerror(errno);			\\
+			len = strlen(msg) + strlen(errno_msg);		\\
+			incr_hp_atomic(tmp,				\\
+				(len + sizeof(Word)) / sizeof(Word));	\\
+			(error_msg) = (char *)tmp;			\\
+			strcpy((error_msg), msg);			\\
+			strcat((error_msg), errno_msg);			\\
+		} else {						\\
+			(error_msg) = NULL;				\\
+		}							\\
+	} while(0)
+
+").
+
 io__remove_file(FileName, Result, IO0, IO) :-
 	io__remove_file_2(FileName, Res, ResString, IO0, IO),
-	( Res < 0 ->
+	( Res \= 0 ->
 		Result = error(ResString)
 	;
 		Result = ok
 	).
 
-
 :- pred io__remove_file_2(string, int, string, io__state, io__state).
 :- mode io__remove_file_2(in, out, out, di, uo) is det.
 
-%#include <string.h>
-%#include <errno.h>
-%#include "prof.h" % for strerror
-:- pragma(c_code, io__remove_file_2(FileName::in, RetVal::out, RetStr::out,
-		IO0::di, IO::uo), "{
-	Word tmp;
-	char *buf;
-
+:- pragma c_code(io__remove_file_2(FileName::in, RetVal::out, RetStr::out,
+		IO0::di, IO::uo), will_not_call_mercury,
+"{
 	RetVal = remove(FileName);
-
-	if (RetVal < 0) {
-		buf = strerror(errno);
-		incr_hp_atomic(tmp,(strlen(buf)+sizeof(Word)) / sizeof(Word));
-		RetStr = (char *)tmp;
-		strcpy(RetStr, buf);
-	} else {
-		RetStr = NULL;
-	}
+	ML_maybe_make_err_msg(RetVal != 0, ""remove failed: "", RetStr);
 	update_io(IO0, IO);
 }").
 
+io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
+	io__rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),
+	( Res \= 0 ->
+		Result = error(ResString)
+	;
+		Result = ok
+	).
+
+:- pred io__rename_file_2(string, string, int, string, io__state, io__state).
+:- mode io__rename_file_2(in, in, out, out, di, uo) is det.
+
+:- pragma c_code(io__rename_file_2(OldFileName::in, NewFileName::in,
+		RetVal::out, RetStr::out, IO0::di, IO::uo),
+		will_not_call_mercury,
+"{
+	RetVal = rename(OldFileName, NewFileName);
+	ML_maybe_make_err_msg(RetVal != 0, ""rename failed: "", RetStr);
+	update_io(IO0, IO);
+}").
 
 /*---------------------------------------------------------------------------*/
