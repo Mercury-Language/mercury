@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2004 The University of Melbourne.
+** Copyright (C) 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -686,7 +686,16 @@ try_again:
                 **
                 ** We don't know how to copy it, so we have to abort.
                 */
-                MR_fatal_error("Cannot copy foreign type");
+                char    *buf;
+                int     len;
+
+                len = strlen(type_ctor_info->MR_type_ctor_module_name) +
+                        strlen(type_ctor_info->MR_type_ctor_name) + 100;
+                buf = (char *) MR_malloc(len);
+                sprintf(buf, "Cannot copy foreign type %s.%s",
+                        type_ctor_info->MR_type_ctor_module_name,
+                        type_ctor_info->MR_type_ctor_name);
+                MR_fatal_error(buf);
             }
         }
         return new_data;
