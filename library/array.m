@@ -16,7 +16,7 @@
 
 :- module array.
 :- interface.
-:- import_module list, term.
+:- import_module list.
 
 :- type array(T).
 
