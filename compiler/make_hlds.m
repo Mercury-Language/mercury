@@ -2495,9 +2495,10 @@ unravel_unification(term__variable(X), term__variable(Y), Context,
 	%	NewVar3 = A3.
 	% In the trivial case `X = c', no unravelling occurs.
 
-unravel_unification(term__variable(X), term__functor(F, Args, FunctorContext),
+unravel_unification(term__variable(X), Rhs,
 			Context, MainContext, SubContext, VarSet0,
 			Goal, VarSet, Info0, Info) -->
+	{ Rhs = term__functor(F, Args, FunctorContext) },
 	(
 		% Handle explicit type qualification.
 		{ semidet_fail },
@@ -2612,21 +2613,37 @@ unravel_unification(term__variable(X), term__functor(F, Args, FunctorContext),
 		{ goal_info_init(GoalInfo0) },
 		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 		{ Goal = IfThenElse - GoalInfo }
-	; { Args = [] } ->
-		{ create_atomic_unification(X, functor(F, []),
-			Context, MainContext, SubContext, Goal) },
-		{ VarSet = VarSet0 },
-		{ Info = Info0 }
 	;
-		{ make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1) },
-		{ create_atomic_unification(X, functor(F, HeadVars),
-			Context, MainContext, SubContext, Goal0) },
-		{ list__length(Args, Arity) },
-		{ make_functor_cons_id(F, Arity, ConsId) },
-		{ ArgContext = functor(ConsId, MainContext, SubContext) },
-		append_arg_unifications(HeadVars, Args,
+		{ parse_qualified_term(Rhs, "", MaybeFunctor) },
+		(
+			{ MaybeFunctor = ok(FunctorName, FunctorArgs) },
+			{ list__length(FunctorArgs, Arity) },
+			{ ConsId = cons(FunctorName, Arity) }
+		;
+			% float, int or string constant
+			% 	- any errors will be caught by typechecking
+			{ MaybeFunctor = error(_, _) },
+			{ list__length(Args, Arity) },
+			{ make_functor_cons_id(F, Arity, ConsId) },
+			{ FunctorArgs = Args }
+		),
+		( { FunctorArgs = [] } ->
+			{ create_atomic_unification(X, functor(ConsId, []),
+				Context, MainContext, SubContext, Goal) },
+			{ VarSet = VarSet0 },
+			{ Info = Info0 }
+		;
+			{ make_fresh_arg_vars(FunctorArgs, VarSet0,
+				HeadVars, VarSet1) },
+			{ create_atomic_unification(X,
+				functor(ConsId, HeadVars), Context,
+				MainContext, SubContext, Goal0) },
+			{ ArgContext = functor(ConsId,
+				MainContext, SubContext) },
+			append_arg_unifications(HeadVars, FunctorArgs,
 				FunctorContext, ArgContext, Goal0,
 				VarSet1, Goal, VarSet, Info0, Info)
+		)
 	).
 
 	% Handle `f(...) = X' in the same way as `X = f(...)'.

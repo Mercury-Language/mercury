@@ -124,6 +124,12 @@
 :- pred parse_func_expression(term, list(term), list(mode), determinism).
 :- mode parse_func_expression(in, out, out, out) is semidet.
 
+	% parse_qualified_term takes a term and an error message,
+	% and returns a sym_name and a list of argument terms.
+	% Returns an error on ill-formed input.
+:- pred parse_qualified_term(term, string, maybe_functor).
+:- mode parse_qualified_term(in, in, out) is det.
+
 :- type maybe_functor	== 	maybe2(sym_name, list(term)).
 :- type maybe2(T1, T2)	--->	error(string, term)
 			;	ok(T1, T2).
@@ -2994,9 +3000,6 @@ parse_qualified_term(DefaultModName, Term, Msg, Result) :-
             Result = error(ErrorMsg, Term)
         )
     ).
-
-:- pred parse_qualified_term(term, string, maybe_functor).
-:- mode parse_qualified_term(in, in, out) is det.
 
 parse_qualified_term(Term, Msg, Result) :-
 	parse_qualified_term("", Term, Msg, Result).

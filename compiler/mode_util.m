@@ -1037,9 +1037,8 @@ ex_propagate_ctor_info(defined_inst(InstName), Type, _, _,
 constructors_to_bound_insts([], _, _, []).
 constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
 		[BoundInst | BoundInsts]) :-
-	Ctor = Name0 - Args,
+	Ctor = Name - Args,
 	type_list_to_inst_list(Args, Uniq, Insts),
-	unqualify_name(Name0, Name),
 	list__length(Insts, Arity),
 	BoundInst = functor(cons(Name, Arity), Insts),
 	constructors_to_bound_insts(Ctors, Uniq, ModuleInfo, BoundInsts).

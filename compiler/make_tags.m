@@ -80,7 +80,7 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 			% (unless it is type_info/1)
 			Ctors = [SingleFunc - [SingleArg]],
 			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
-			SingleConsId \= cons("type_info", 1)
+			SingleConsId \= cons(unqualified("type_info"), 1)
 		->
 			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
 		; NumTagBits = 0 ->
@@ -226,8 +226,7 @@ split_constructors([Ctor | Ctors], Constants, Functors) :-
 :- pred create_cons_id(sym_name, list(_), cons_id).
 :- mode create_cons_id(in, in, out) is det.
 
-create_cons_id(SymName, Args, cons(Name, Arity)) :-
-	unqualify_name(SymName, Name),
+create_cons_id(SymName, Args, cons(SymName, Arity)) :-
 	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%

@@ -248,8 +248,8 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 	set__delete_list(NonLocals0, Vars, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars1),
 	( 
-		LambdaGoal = call(PredId0, ProcId0, CallVars, _, _, PredName, _)
-					- _,
+		LambdaGoal = call(PredId0, ProcId0, CallVars,
+					_, _, PredName0, _) - _,
 		list__remove_suffix(CallVars, Vars, InitialVars),
 
 		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0, _,
@@ -278,8 +278,9 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		ArgVars = InitialVars,
 		PredId = PredId0,
 		ProcId = ProcId0,
-		unqualify_name(PredName, PName),
-		ModuleInfo = ModuleInfo0
+		PredName = PredName0,
+		ModuleInfo = ModuleInfo0,
+		list__length(ArgVars, NumArgVars)
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate
@@ -298,7 +299,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		string__int_to_string(LambdaCount, LambdaCountStr),
 		string__append("__LambdaGoal__", LambdaCountStr, PName0),
 		string__append(ModuleName, PName0, PName),
-		PredName = unqualified(PName),
+		PredName = qualified(ModuleName, PName),
 		goal_info_context(LambdaGoalInfo, LambdaContext),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
@@ -353,7 +354,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo)
 	),
-	Functor = functor(term__atom(PName), ArgVars),
+	Functor = functor(cons(PredName, NumArgVars), ArgVars),
 	ConsId = pred_const(PredId, ProcId),
 	Unification = construct(Var, ConsId, ArgVars, UniModes).
 

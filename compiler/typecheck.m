@@ -1402,7 +1402,7 @@ typecheck_unify_var_var(X, Y, TypeInfo0, TypeInfo) :-
 			TypeInfo)
 	).
 
-:- pred typecheck_unify_var_functor(var, const, list(var),
+:- pred typecheck_unify_var_functor(var, cons_id, list(var),
 					type_info, type_info).
 :- mode typecheck_unify_var_functor(in, in, in, type_info_di, type_info_uo)
 	is det.
@@ -1823,13 +1823,13 @@ type_assign_unify_type(TypeAssign0, HeadTypeParams, X, Y, TypeAssign) :-
 	%	instantiates TypeName to the name of that type,
 	%	otherwise fails.
 
-:- pred builtin_atomic_type(const, string).
+:- pred builtin_atomic_type(cons_id, string).
 :- mode builtin_atomic_type(in, out) is semidet.
 
-builtin_atomic_type(term__integer(_), "int").
-builtin_atomic_type(term__float(_), "float").
-builtin_atomic_type(term__string(_), "string").
-builtin_atomic_type(term__atom(String), "character") :-
+builtin_atomic_type(int_const(_), "int").
+builtin_atomic_type(float_const(_), "float").
+builtin_atomic_type(string_const(_), "string").
+builtin_atomic_type(cons(unqualified(String), 0), "character") :-
 	string__char_to_string(_, String).
 
 	% builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :
@@ -1844,14 +1844,14 @@ builtin_atomic_type(term__atom(String), "character") :-
 	%	(hence PredTypeParams = [K,V]) and argument types [map(K,V)].
 
 
-:- pred builtin_pred_type(type_info, const, int, list(cons_type_info)).
+:- pred builtin_pred_type(type_info, cons_id, int, list(cons_type_info)).
 :- mode builtin_pred_type(type_info_ui, in, in, out) is semidet.
 
 builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :-
-	Functor = term__atom(Name),
+	Functor = cons(SymName, _),
 	type_info_get_module_info(TypeInfo, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	( predicate_table_search_name(PredicateTable, Name, PredIdList) ->
+	( predicate_table_search_sym(PredicateTable, SymName, PredIdList) ->
 		predicate_table_get_preds(PredicateTable, Preds),
 		make_pred_cons_info_list(TypeInfo, PredIdList, Preds, Arity,
 			ModuleInfo, [], PredConsInfoList)
@@ -1958,11 +1958,11 @@ make_pred_cons_info(TypeInfo, PredId, PredTable, FuncArity,
 	% If so, bind ConsTypeInfos to a singleton list containing
 	% the appropriate type for apply/N of the specified Arity.
 
-:- pred builtin_apply_type(type_info, const, int, list(cons_type_info)).
+:- pred builtin_apply_type(type_info, cons_id, int, list(cons_type_info)).
 :- mode builtin_apply_type(type_info_ui, in, in, out) is semidet.
 
 builtin_apply_type(_TypeInfo, Functor, Arity, ConsTypeInfos) :-
-	Functor = term__atom("apply"),
+	Functor = cons(unqualified("apply"), _),
 	Arity >= 2,
 	Arity1 is Arity - 1,
 	higher_order_func_type(Arity1, TypeVarSet, FuncType, ArgTypes, RetType),
@@ -2323,7 +2323,7 @@ type_info_set_pred_import_status( type_info(A,B,C,D,E,F,G,H,I,J,K,L,_),
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_get_ctor_list(type_info, const, int, list(cons_type_info)).
+:- pred type_info_get_ctor_list(type_info, cons_id, int, list(cons_type_info)).
 :- mode type_info_get_ctor_list(type_info_ui, in, in, out) is det.
 
 type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsInfoList) :-
@@ -2336,7 +2336,8 @@ type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsInfoList) :-
 			ConsInfoList)
 	).
 
-:- pred type_info_get_ctor_list_2(type_info, const, int, list(cons_type_info)).
+:- pred type_info_get_ctor_list_2(type_info, cons_id,
+		int, list(cons_type_info)).
 :- mode type_info_get_ctor_list_2(type_info_ui, in, in, out) is det.
 
 type_info_get_ctor_list_2(TypeInfo, Functor, Arity, ConsInfoList) :-
@@ -2345,8 +2346,10 @@ type_info_get_ctor_list_2(TypeInfo, Functor, Arity, ConsInfoList) :-
 	% us a list of possible cons_type_infos.
 	type_info_get_ctors(TypeInfo, Ctors),
 	(
-		Functor = term__atom(Name),
-		map__search(Ctors, cons(Name, Arity), HLDS_ConsDefnList)
+		% Qualified functors can only be function calls or
+		% higher-order predicate constants.
+		Functor = cons(unqualified(_), Arity),
+		map__search(Ctors, Functor, HLDS_ConsDefnList)
 	->
 		convert_cons_defn_list(TypeInfo, HLDS_ConsDefnList,
 			ConsInfoList0)
@@ -2607,7 +2610,7 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
 :- pred report_error_functor_type(type_info, var, list(cons_type_info),
-					const, int,
+					cons_id, int,
 					type_assign_set,
 					io__state, io__state).
 :- mode report_error_functor_type(type_info_no_io, in, in, in, in, in,
@@ -2720,7 +2723,7 @@ report_error_lambda_var(TypeInfo, PredOrFunc, Var, ArgVars, TypeAssignSet) -->
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
 :- pred report_error_functor_arg_types(type_info, var, list(cons_type_info),
-					const, list(var),
+					cons_id, list(var),
 					type_assign_set,
 					io__state, io__state).
 :- mode report_error_functor_arg_types(type_info_no_io, in, in, in, in, in,
@@ -2743,7 +2746,7 @@ report_error_functor_arg_types(TypeInfo, Var, ConsDefnList, Functor, Args,
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  and term `"),
-	hlds_out__write_functor(Functor, Args, VarSet),
+	hlds_out__write_functor_cons_id(Functor, Args, VarSet),
 	io__write_string("':\n"),
 	prog_out__write_context(Context),
 	io__write_string("  type error in argument(s) of "),
@@ -2785,19 +2788,16 @@ write_argument_name(VarSet, VarId) -->
 		io__write_string("argument")
 	).
 
-:- pred write_functor_name(const, int, io__state, io__state).
+:- pred write_functor_name(cons_id, int, io__state, io__state).
 :- mode write_functor_name(in, in, di, uo) is det.
 
 write_functor_name(Functor, Arity) -->
 	( { Arity = 0 } ->
-		io__write_string("constant `"),
-		term_io__write_constant(Functor)
+		io__write_string("constant `")
 	;
-		io__write_string("functor `"),
-		term_io__write_constant(Functor),
-		io__write_string("/"),
-		io__write_int(Arity)
+		io__write_string("functor `")
 	),
+	hlds_out__write_cons_id(Functor),
 	io__write_string("'").
 
 :- pred write_type_of_var(type_info, type_assign_set, var,
@@ -2817,7 +2817,7 @@ write_type_of_var(_TypeInfo, TypeAssignSet, Var) -->
 		io__write_string(" }")
 	).
 
-:- pred write_type_of_functor(const, int, term__context, list(cons_type_info),
+:- pred write_type_of_functor(cons_id, int, term__context, list(cons_type_info),
 				io__state, io__state).
 :- mode write_type_of_functor(in, in, in, in, di, uo) is det.
 
@@ -2841,7 +2841,7 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList) -->
 		io__write_string(" }")
 	).
 
-:- pred write_cons_type(cons_type_info, const, term__context,
+:- pred write_cons_type(cons_type_info, cons_id, term__context,
 			io__state, io__state).
 :- mode write_cons_type(in, in, in, di, uo) is det.
 
@@ -2849,7 +2849,17 @@ write_cons_type(cons_type_info(TVarSet, ConsType0, ArgTypes0), Functor, Context)
 		-->
 	{ strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes) },
 	( { ArgTypes \= [] } ->
-		{ Term = term__functor(Functor, ArgTypes, Context) },
+		{
+			cons_id_to_const(Functor, Const, _)
+		->
+			Term = term__functor(Const, ArgTypes, Context)
+		;
+			Functor = cons(SymName, _)
+		->
+			construct_qualified_term(SymName, ArgTypes, Term)
+		;
+			error("typecheck:write_cons_type - invalid cons_id")
+		},	
 		mercury_output_term(Term, TVarSet),
 		io__write_string(" :: ")
 	;
@@ -2858,7 +2868,7 @@ write_cons_type(cons_type_info(TVarSet, ConsType0, ArgTypes0), Functor, Context)
 	{ strip_builtin_qualifiers_from_type(ConsType0, ConsType) },
 	mercury_output_term(ConsType, TVarSet).
 
-:- pred write_cons_type_list(list(cons_type_info), const, int, term__context,
+:- pred write_cons_type_list(list(cons_type_info), cons_id, int, term__context,
 				io__state, io__state).
 :- mode write_cons_type_list(in, in, in, in, di, uo) is det.
 
@@ -3273,7 +3283,7 @@ report_error_pred_num_right_args([Arity | Arities]) -->
 	),
 	report_error_pred_num_right_args(Arities).
 
-:- pred report_error_undef_cons(type_info, const, int, io__state, io__state).
+:- pred report_error_undef_cons(type_info, cons_id, int, io__state, io__state).
 :- mode report_error_undef_cons(type_info_no_io, in, in, di, uo) is det.
 
 report_error_undef_cons(TypeInfo, Functor, Arity) -->
@@ -3288,9 +3298,20 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 	% check for some special cases, so that we can give
 	% clearer error messages
 	%
-	( { Functor = term__atom(Name), language_builtin(Name, Arity) } ->
+	(
+		{ Functor = cons(qualified(Module, Name), Arity) }
+	->
+			% qualified cons_ids can only be function calls
+			% or higher-order pred constants.
+		{ string__int_to_string(Arity, ArStr) },
+		io__write_strings(["  error: undefined predicate or function `",
+				Module, ":", Name, "'/", ArStr])
+	;
+		{ Functor = cons(unqualified(Name), _) },
+		{ language_builtin(Name, Arity) }
+	->
 		io__write_string("  error: the language construct "),
-		term_io__write_constant(Functor),
+		hlds_out__write_cons_id(Functor),
 		io__write_string("/"),
 		io__write_int(Arity),
 		io__write_string(" should be\n"),
@@ -3317,11 +3338,11 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 		;
 			[]
 		)
-	; { Functor = term__atom("else"), Arity = 2 } ->
+	; { Functor = cons(unqualified("else"), 2) } ->
 		io__write_string("  error: unmatched `else'.\n")
-	; { Functor = term__atom("if"), Arity = 2 } ->
+	; { Functor = cons(unqualified("if"), 2) } ->
 		io__write_string("  error: `if' without `then' or `else'.\n")
-	; { Functor = term__atom("then"), Arity = 2 } ->
+	; { Functor = cons(unqualified("then"), 2) } ->
 		io__write_string("  error: `then' without `if' or `else'.\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 		( { VerboseErrors = yes } ->
@@ -3334,7 +3355,7 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 		;
 			[]
 		)
-	; { Functor = term__atom("->"), Arity = 2 } ->
+	; { Functor = cons(unqualified("->"), 2) } ->
 		io__write_string("  error: `->' without `;'.\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 		( { VerboseErrors = yes } ->
@@ -3349,9 +3370,7 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 		)
 	;
 		io__write_string("  error: undefined symbol `"),
-		term_io__write_constant(Functor),
-		io__write_string("/"),
-		io__write_int(Arity),
+		hlds_out__write_cons_id(Functor),
 		io__write_string("'.\n")
 	).
 

@@ -125,6 +125,12 @@
 :- pred hlds_out__write_functor(const, list(var), varset, io__state, io__state).
 :- mode hlds_out__write_functor(in, in, in, di, uo) is det.
 
+	% print out a cons_id and arguments
+
+:- pred hlds_out__write_functor_cons_id(cons_id, list(var), varset,
+				io__state, io__state).
+:- mode hlds_out__write_functor_cons_id(in, in, in, di, uo) is det.
+
 	% print out the right-hand-side of a unification
 
 :- pred hlds_out__write_unify_rhs(unify_rhs, module_info, varset, int,
@@ -163,9 +169,16 @@ hlds_out__write_type_id(Name - Arity) -->
 	io__write_string("/"),
 	io__write_int(Arity).
 
-hlds_out__cons_id_to_string(cons(Name, Arity), String) :-
+hlds_out__cons_id_to_string(cons(SymName, Arity), String) :-
 	string__int_to_string(Arity, ArityString),
-	string__append_list(["'", Name, "'/", ArityString], String).
+	( 
+		SymName = unqualified(Name),	
+		string__append_list(["'", Name, "'/", ArityString], String)
+	;
+		SymName = qualified(Module, Name), 
+		string__append_list(["'", Module, ":",
+			Name, "'/", ArityString], String)
+	).
 hlds_out__cons_id_to_string(int_const(Int), String) :-
 	string__int_to_string(Int, String).
 hlds_out__cons_id_to_string(string_const(String), S) :-
@@ -175,7 +188,14 @@ hlds_out__cons_id_to_string(pred_const(_, _), "<pred>").
 hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
 hlds_out__cons_id_to_string(base_type_info_const(_, _, _), "<base_type_info>").
 
-hlds_out__write_cons_id(cons(Name, Arity)) -->
+hlds_out__write_cons_id(cons(SymName, Arity)) -->
+	(
+		{ SymName = qualified(Module, Name) },
+		io__write_string(Module),
+		io__write_string(":")
+	;
+		{ SymName = unqualified(Name) }
+	),
 	io__write_string(Name),
 	io__write_string("/"),
 	io__write_int(Arity).
@@ -947,9 +967,9 @@ hlds_out__write_unify_rhs(Rhs, ModuleInfo, VarSet, Indent) -->
 
 hlds_out__write_unify_rhs_2(var(Var), _, VarSet, _, _, _) -->
 	mercury_output_var(Var, VarSet).
-hlds_out__write_unify_rhs_2(functor(Functor, ArgVars), _,
+hlds_out__write_unify_rhs_2(functor(ConsId, ArgVars), _,
 			VarSet, _, MaybeType, TypeQual) -->
-	hlds_out__write_functor(Functor, ArgVars, VarSet),
+	hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet),
 	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
 		io__write_string(" TYPE_QUAL_OP "),
 		mercury_output_term(Type, TVarSet)
@@ -1010,6 +1030,18 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet) -->
 	io__write_string(ModuleName),
 	io__write_string(":"),
 	hlds_out__write_functor(Functor, ArgVars, VarSet).
+
+hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet) -->
+	( { cons_id_to_const(ConsId, Functor, _) } ->
+		hlds_out__write_functor(Functor, ArgVars, VarSet)
+	; { ConsId = cons(qualified(Module, Name), _) } ->
+		hlds_out__write_qualified_functor(Module,
+			term__atom(Name), ArgVars, VarSet)
+	;
+		% pred_const, code_addr_const and base_type_info_const
+		% shouldn't occur here.
+		{ error("hlds_out__write_unify_rhs_2: invalid unify_rhs") }
+	).
 
 hlds_out__write_var_modes([], [], _) --> [].
 hlds_out__write_var_modes([Var|Vars], [Mode|Modes], VarSet) -->

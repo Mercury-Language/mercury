@@ -83,9 +83,10 @@ update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
 
 interpret_unify(X, var(Y), Subst0, Subst) :-
 	term__unify(term__variable(X), term__variable(Y), Subst0, Subst).
-interpret_unify(X, functor(Functor, ArgVars), Subst0, Subst) :-
+interpret_unify(X, functor(ConsId, ArgVars), Subst0, Subst) :-
 	term__context_init(Context),
 	term__var_list_to_term_list(ArgVars, ArgTerms),
+	cons_id_to_const(ConsId, Functor, _),
 	term__unify(term__variable(X),
 		term__functor(Functor, ArgTerms, Context),
 		Subst0, Subst).

@@ -280,8 +280,7 @@ polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
 	->
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
 		{ polymorphism__get_special_proc(TypeCategory, SpecialPredId,
-			ModuleInfo, SpecificPredName, PredId, ProcId) },
-		{ Name = unqualified(SpecificPredName) }
+			ModuleInfo, Name, PredId, ProcId) }
 	;
 		{ PredId = PredId0 },
 		{ ProcId = ProcId0 },
@@ -756,7 +755,7 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 	CountConsId = int_const(Num),
 	CountUnification = construct(CountVar, CountConsId, [], []),
 
-	CountTerm = functor(term__integer(Num), []),
+	CountTerm = functor(CountConsId, []),
 	CountInst = bound(unique, [functor(int_const(Num), [])]),
 	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
 	CountUnifyContext = unify_context(explicit, []),
@@ -815,7 +814,10 @@ polymorphism__get_special_proc_list([Id | Ids],
 
 	Unification = construct(Var, ConsId, [], []),
 
-	Term = functor(term__atom(PredName2), []),
+	Term = functor(cons(PredName2, 0), []),
+
+		% XXX should this be:
+		% Inst = bound(unique, [functor(ConsId, [])]) ?
 	Inst = bound(unique, [functor(cons(PredName2, 0), [])]),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),
 	UnifyContext = unify_context(explicit, []),
@@ -839,11 +841,11 @@ polymorphism__get_special_proc_list([Id | Ids],
 		Vars, Goals, VarSet, VarTypes).
 
 :- pred polymorphism__get_special_proc(builtin_type, special_pred_id,
-					module_info, string, pred_id, proc_id).
+				module_info, sym_name, pred_id, proc_id).
 :- mode polymorphism__get_special_proc(in, in, in, out, out, out) is det.
 
 polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
-		PredName, PredId, ProcId) :-
+			PredName, PredId, ProcId) :-
 	( TypeCategory = user_type(Type) ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
 		( type_to_type_id(Type, TypeId, _TypeArgs) ->
@@ -853,14 +855,18 @@ polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
 			error(
 		"polymorphism__get_special_proc: type_to_type_id failed")
 		),
-		predicate_name(ModuleInfo, PredId, PredName)
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_module(PredInfo, Module),
+		pred_info_name(PredInfo, Name),
+		PredName = qualified(Module, Name)
 	;
 		polymorphism__get_category_name(TypeCategory, CategoryName),
 		special_pred_name_arity(SpecialPredId, SpecialName, _, Arity),
 		string__append_list(
-			["builtin_", SpecialName, "_", CategoryName], PredName),
-		polymorphism__get_builtin_pred_id(PredName, Arity, ModuleInfo,
-			PredId)
+			["builtin_", SpecialName, "_", CategoryName], Name),
+		polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo,
+			PredId),
+		PredName = unqualified(Name)
 	),
 	special_pred_mode_num(SpecialPredId, ProcId).
 
@@ -910,8 +916,8 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 			TypeInfoVar, TypeInfoGoal, VarSet, VarTypes) :-
 
-	ConsId = cons("type_info", 1),
-	TypeInfoTerm = functor(term__atom("type_info"), ArgVars),
+	ConsId = cons(unqualified("type_info"), 1),
+	TypeInfoTerm = functor(ConsId, ArgVars),
 
 	% introduce a new variable
 	polymorphism__new_type_info_var(Type, VarSet0, VarTypes0,
@@ -939,7 +945,7 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
-	InstConsId = cons("type_info", NumArgVars),
+	InstConsId = cons(unqualified("type_info"), NumArgVars),
 	map__set(InstMapping0, TypeInfoVar,
 		bound(unique, [functor(InstConsId, ArgInsts)]),
 		InstMapping),

@@ -1020,7 +1020,6 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	list__index1_det(HeadVars0, Index, LVar),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 					CalledPredInfo, CalledProcInfo),
-	pred_info_name(CalledPredInfo, Name),
 	pred_info_arg_types(CalledPredInfo, CalledTVarset, CalledArgTypes0),
 					
 	% Add the curried arguments to the procedure's argument list.
@@ -1092,7 +1091,9 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	list__append(HeadVars0, NewHeadVars, HeadVars1),
 
 	% Build the higher-order constant.
-	Rhs = functor(term__atom(Name), NewHeadVars0),
+	pred_info_module(CalledPredInfo, Module),
+	pred_info_name(CalledPredInfo, Name),
+	Rhs = functor(cons(qualified(Module, Name), NumArgs), NewHeadVars0),
 	Context = unify_context(head(Index), []),
 	mode_util__modes_to_uni_modes(CurriedArgModes1, CurriedArgModes1,
 					ModuleInfo, UniModes),

@@ -507,43 +507,46 @@ fix_function_or_higher_order_in_unify_rhs(_LVar,
 	{ user_inst_table_get_inst_defns(UserInsts, UserInstDefns) },
 	intermod__gather_proc_modes(ModuleInfo, ModeDefns,
 				UserInstDefns, Modes).
+
 	% Check if the functor is actually a function call or a higher-order
-	% pred constant.
-	% XXX - When module qualified function calls are implemented, adjust
-	% the output RHS to use the qualified name.
-fix_function_or_higher_order_in_unify_rhs(LVar, functor(Functor, Vars),
+	% pred constant. If so, module qualify.
+fix_function_or_higher_order_in_unify_rhs(LVar, functor(Functor0, Vars),
 				functor(Functor, Vars), DoWrite) -->
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_get_predicate_table(ModuleInfo, PredTable) },
-	{ list__length(Vars, Arity) },
 	intermod_info_get_tvarset(TVarSet),
 	intermod_info_get_var_types(VarTypes),
 	(
 		{
-		Functor = term__atom(PredName),
-		predicate_table_search_func_name_arity(PredTable, PredName,
+		Functor0 = cons(unqualified(FuncName), Arity),
+		predicate_table_search_func_name_arity(PredTable, FuncName,
 				Arity, PredIds),
 		list__append(Vars, [LVar], FuncArgs),
 		map__apply_to_list(FuncArgs, VarTypes, ArgTypes),
-		map__apply_to_list(FuncArgs, VarTypes, ArgTypes),
 		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-				TVarSet, ArgTypes, PredId, _FuncName)
+				TVarSet, ArgTypes, PredId, QualifiedFuncName)
 		}
 	->
+			% The unification is really a function call
+		{ Functor = cons(QualifiedFuncName, Arity) },
 		intermod_info_add_proc(PredId, DoWrite)
 	;
 		intermod_info_get_var_types(VarTypes),
 		{
+		Functor0 = cons(unqualified(PredName), Arity),
 		map__lookup(VarTypes, LVar, LVarType),
 		type_is_higher_order(LVarType, PredOrFunc, PredArgTypes),
-		list__length(Vars, Arity),
-		Functor = term__atom(PName),
-		get_pred_id_and_proc_id(PName, Arity, PredOrFunc, PredArgTypes,
-				ModuleInfo, PredId, _ProcId)	
+		get_pred_id_and_proc_id(PredName, Arity, PredOrFunc,
+			PredArgTypes, ModuleInfo, PredId, _ProcId)
 		}
 	->
+			% The unification creates a higher-order pred constant.
+		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+		{ pred_info_module(PredInfo, Module) },
+		{ Functor = cons(qualified(Module, PredName), Arity) },
 		intermod_info_add_proc(PredId, DoWrite)
 	;
+		{ Functor = Functor0 },
 		{ DoWrite = yes }
 	).
 

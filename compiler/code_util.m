@@ -120,7 +120,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module type_util, special_pred.
+:- import_module prog_data, type_util, special_pred.
 :- import_module bool, char, int, string, map, varset, require, std_util.
 
 %---------------------------------------------------------------------------%
@@ -577,7 +577,11 @@ code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
 code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
 code_util__cons_id_to_tag(base_type_info_const(M,T,A), _, _,
 		base_type_info_constant(M,T,A)).
-code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
+code_util__cons_id_to_tag(cons(qualified(_, _), _), _, _, _) :-
+	% should have been transformed into a function call or pred_const.
+	error("code_util__cons_id_to_tag - qualified cons_id").
+code_util__cons_id_to_tag(cons(unqualified(Name), Arity),
+			Type, ModuleInfo, Tag) :-
 	(
 			% handle the `character' type specially
 		Type = term__functor(term__atom("character"), [], _),
@@ -644,7 +648,7 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 			)
 		),
 			% Finally look up the cons_id in the table
-		map__lookup(ConsTable, cons(Name, Arity), Tag)
+		map__lookup(ConsTable, cons(unqualified(Name), Arity), Tag)
 	).
 
 %-----------------------------------------------------------------------------%

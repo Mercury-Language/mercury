@@ -25,7 +25,7 @@
 
 :- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
 
-:- type cons_id		--->	cons(string, arity)	% name, arity
+:- type cons_id		--->	cons(sym_name, arity)	% name, arity
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float)
@@ -82,19 +82,19 @@
 
 :- implementation.
 
-cons_id_to_const(cons(Name, Arity), term__atom(Name), Arity).
+:- import_module require.
+
+cons_id_to_const(cons(unqualified(Name), Arity), term__atom(Name), Arity).
 cons_id_to_const(int_const(Int), term__integer(Int), 0).
 cons_id_to_const(string_const(String), term__string(String), 0).
 cons_id_to_const(float_const(Float), term__float(Float), 0).
 
-make_functor_cons_id(term__atom(Name), Arity, cons(Name, Arity)).
+make_functor_cons_id(term__atom(Name), Arity, cons(unqualified(Name), Arity)).
 make_functor_cons_id(term__integer(Int), _, int_const(Int)).
 make_functor_cons_id(term__string(String), _, string_const(String)).
 make_functor_cons_id(term__float(Float), _, float_const(Float)).
 
-make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
-	list__length(Args, Arity).
-make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
+make_cons_id(SymName, Args, _TypeId, cons(SymName, Arity)) :-
 	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%

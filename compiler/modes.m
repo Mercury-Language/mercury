@@ -2141,7 +2141,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% been expanded.)
 		%
 		HowToCheckGoal \= check_unique_modes,
-		Name = term__atom("apply"),
+		Name = cons(unqualified("apply"), _),
 		Arity >= 2,
 		ArgVars0 = [FuncVar | FuncArgVars]
 	->
@@ -2166,21 +2166,30 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		HowToCheckGoal \= check_unique_modes,
 
 		% Find the set of candidate predicates which have the
-		% specified name and arity
-		% (XXX and module, if module-qualified)
-		Name = term__atom(PredName),
-		predicate_table_search_func_name_arity(PredTable, PredName,
-			Arity, PredIds),
+		% specified name and arity (and module, if module-qualified)
+		Name = cons(PredName, _),
+		(
+			PredName = unqualified(UnqualPName),
+			predicate_table_search_func_name_arity(PredTable,
+				UnqualPName, Arity, PredIds),
 
-		% Check if there any of the candidate predicates are functions,
-		% and have argument/return types which subsume the actual
-		% argument/return types of this function call
-		module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
-		pred_info_typevarset(PredInfo, TVarSet),
-		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
-		list__append(ArgTypes0, [TypeOfX], ArgTypes),
-		typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
-			TVarSet, ArgTypes, PredId, _PredName)
+			% Check if there any of the candidate functions,
+			% have argument/return types which subsume the actual
+			% argument/return types of this function call
+
+			module_info_pred_info(ModuleInfo0,
+					ThisPredId, PredInfo),
+			pred_info_typevarset(PredInfo, TVarSet),
+			map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
+			list__append(ArgTypes0, [TypeOfX], ArgTypes),
+			typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
+				TVarSet, ArgTypes, PredId, QualifiedFuncName)
+		;
+			PredName = qualified(FuncModule, UnqualName),
+			predicate_table_search_func_m_n_a(PredTable,
+				    FuncModule, UnqualName, Arity, [PredId]),
+			QualifiedFuncName = PredName
+		)
 	->
 		%
 		% Convert function calls into predicate calls:
@@ -2192,10 +2201,9 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		hlds__is_builtin_make_builtin(no, no, Builtin),
 		FuncCallUnifyContext = call_unify_context(X0,
 					functor(Name, ArgVars0), UnifyContext),
-		FuncName = unqualified(PredName),
 		map__init(Follow),
 		FuncCall = call(PredId, ProcId, ArgVars, Builtin,
-				yes(FuncCallUnifyContext), FuncName, Follow),
+			yes(FuncCallUnifyContext), QualifiedFuncName, Follow),
 		%
 		% now modecheck it
 		%
@@ -2227,7 +2235,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 
 		% check if variable has a higher-order pred type
 		type_is_higher_order(TypeOfX, PredOrFunc, PredArgTypes),
-		Name = term__atom(PName),
+		Name = cons(PName, _),
 		% but in case we are redoing mode analysis, make sure
 		% we don't mess with the address constants for type_info
 		% fields created by polymorphism.m
@@ -2248,15 +2256,44 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% Build up the hlds__goal_expr for the call that will form
 		% the lambda goal
 		%
-		get_pred_id_and_proc_id(PName, Arity,
-			PredOrFunc, PredArgTypes, ModuleInfo0, PredId, ProcId),
-		PredName = unqualified(PName),
+		(
+			PName = unqualified(UnqualPName),
+			get_pred_id_and_proc_id(UnqualPName, Arity, PredOrFunc,
+				PredArgTypes, ModuleInfo0, PredId, ProcId),
+			module_info_pred_info(ModuleInfo0, PredId, PredInfo),
+			pred_info_module(PredInfo, PredModule),
+			QualifiedPName = qualified(PredModule, UnqualPName)
+		;
+			PName = qualified(PredModule, UnqualName),
+			QualifiedPName = PName,
+			(
+				predicate_table_search_sym(PredTable,
+					PName, [PredId0]),
+				module_info_pred_info(ModuleInfo0, PredId0,
+					PredInfo),
+				pred_info_procids(PredInfo, [ProcId0])
+			->
+				ProcId = ProcId0,
+				PredId = PredId0
+			;
+				string__int_to_string(Arity, ArStr),
+				string__append_list([
+					"sorry, not implemented: ",
+					"taking address of ", "\n`",
+					PredModule, ":", UnqualName, "/",
+					ArStr, "' with multiple modes.\n",
+					"(use an explicit lambda expression instead)"],
+                            		Message),
+                    		error(Message)
+			)	
+		),
+		
 		hlds__is_builtin_make_builtin(no, no, Builtin),
 		map__init(Follow),
 		CallUnifyContext = call_unify_context(X0,
 					functor(Name, ArgVars0), UnifyContext),
 		LambdaGoalExpr = call(PredId, ProcId, Args, Builtin,
-				yes(CallUnifyContext), PredName, Follow),
+				yes(CallUnifyContext), QualifiedPName, Follow),
 
 		%
 		% construct a goal_info for the lambda goal, making sure 
@@ -2304,8 +2341,14 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% It's not a higher-order pred unification - just
 		% call modecheck_unify_functor to do the ordinary thing.
 		%
+		( cons_id_to_const(Name, Const0, _) ->
+			Const = Const0
+		;
+			% This should be caught by typecheck. 
+			error("sorry, not implemented: module qualified constructors")
+		),
 		mode_info_get_instmap(ModeInfo0, InstMap0),
-		modecheck_unify_functor(X0, Name, ArgVars0, Unification0,
+		modecheck_unify_functor(X0, Const, ArgVars0, Unification0,
 				ExtraGoals, Mode, ArgVars, Unification,
 				ModeInfo0, ModeInfo),
 		%
@@ -2984,7 +3027,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 		% the real cons_id will be computed by polymorphism.m;
 		% we just put in a dummy one for now
 		list__length(ArgVars, Arity),
-		ConsId = cons("__LambdaGoal__", Arity)
+		ConsId = cons(unqualified("__LambdaGoal__"), Arity)
 	),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_util__modes_to_uni_modes(ArgModes0, ArgModes0,
