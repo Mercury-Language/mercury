@@ -43,8 +43,8 @@ main_predicate([_ProgName | Args0]) -->
 main_predicate_2(error(ErrorMessage), _) -->
 	usage_error(ErrorMessage).
 
-main_predicate_2(ok(OptionTable), Args) -->
-	{ map__lookup(OptionTable, help, Help) },
+main_predicate_2(ok(OptionTable0), Args) -->
+	{ map__lookup(OptionTable0, help, Help) },
 	( { Help = bool(yes) } ->
 	    long_usage
 	; { Args = [] } ->
@@ -52,7 +52,7 @@ main_predicate_2(ok(OptionTable), Args) -->
         ;
 	    % work around for NU-Prolog memory management problems
 	    (
-		{ map__search(OptionTable, heap_space, int(HeapSpace)) }
+		{ map__search(OptionTable0, heap_space, int(HeapSpace)) }
 	    ->
 	        io__preallocate_heap_space(HeapSpace)
 	    ;
@@ -63,20 +63,30 @@ main_predicate_2(ok(OptionTable), Args) -->
 	    % enumeration types, initialize the global data, and then
 	    % process the modules
 
-	    { map__lookup(OptionTable, gc, GC_Method0) },
+	    { map__lookup(OptionTable0, gc, GC_Method0) },
 	    (
 		{ GC_Method0 = string(GC_Method_String) },
 		{ convert_gc_method(GC_Method_String, GC_Method) }
 	    ->
 			
-	        { map__lookup(OptionTable, tags, Tags_Method0) },
+	        { map__lookup(OptionTable0, tags, Tags_Method0) },
 	        ( 
 		    { Tags_Method0 = string(Tags_Method_String) },
 		    { convert_tags_method(Tags_Method_String, Tags_Method) }
 		->
-
-		    globals__io_init(OptionTable, GC_Method, Tags_Method),
-		    process_module_list(Args)
+		    { map__lookup(OptionTable0, grade, GradeOpt) },
+		    (   
+			{ GradeOpt = string(GradeString) },
+		        { convert_grade_option(GradeString, OptionTable0,
+				OptionTable) }
+		    ->
+		        globals__io_init(OptionTable, GC_Method, Tags_Method),
+		        process_module_list(Args)
+		    ;
+			usage_error(
+"Invalid grade option\n(must be `debug', `none', `reg', `jump', or `fast')"
+				)
+		    )
 		;
 		    usage_error(
 			"Invalid tags option (must be `none', `low' or `high')"
@@ -88,6 +98,42 @@ main_predicate_2(ok(OptionTable), Args) -->
 		)
 	    )
 	).
+
+:- pred convert_grade_option(string::in, option_table::in, option_table::out)
+	is semidet.
+
+convert_grade_option("") --> [].
+convert_grade_option("fast") -->
+	set_bool_opt(debug, no),
+	set_bool_opt(optimize, yes),
+	set_bool_opt(gcc_non_local_gotos, yes),
+	set_bool_opt(gcc_global_registers, yes).
+convert_grade_option("jump") -->
+	set_bool_opt(debug, no),
+	set_bool_opt(optimize, yes),
+	set_bool_opt(gcc_non_local_gotos, yes),
+	set_bool_opt(gcc_global_registers, no).
+convert_grade_option("reg") -->
+	set_bool_opt(debug, no),
+	set_bool_opt(optimize, yes),
+	set_bool_opt(gcc_non_local_gotos, no),
+	set_bool_opt(gcc_global_registers, yes).
+convert_grade_option("none") -->
+	set_bool_opt(debug, yes),
+	set_bool_opt(optimize, yes),
+	set_bool_opt(gcc_non_local_gotos, no),
+	set_bool_opt(gcc_global_registers, no).
+convert_grade_option("debug") -->
+	set_bool_opt(debug, yes),
+	set_bool_opt(optimize, no),
+	set_bool_opt(gcc_non_local_gotos, no),
+	set_bool_opt(gcc_global_registers, no).
+
+:- pred set_bool_opt(option, bool, option_table, option_table).
+:- mode set_bool_opt(in, in, in, out) is det.
+
+set_bool_opt(Option, Value, OptionTable0, OptionTable) :-
+	map__set(OptionTable0, Option, bool(Value), OptionTable).
 
 	% Display error message and then usage message
 :- pred usage_error(string::in, io__state::di, io__state::uo) is det.
@@ -1275,7 +1321,7 @@ mercury_compile__c_to_obj(Module, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Compiling `"),
 	maybe_write_string(Verbose, Module),
-	maybe_write_string(Verbose, ".c':"),
+	maybe_write_string(Verbose, ".c':\n"),
 	globals__io_lookup_string_option(cc, CC),
 	globals__io_lookup_string_option(cflags, CFLAGS),
 	globals__io_lookup_string_option(c_include_directory, C_INCL),

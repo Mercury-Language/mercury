@@ -215,8 +215,8 @@ short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
 short_option('O', 			optimize).
 short_option('P', 			convert_to_mercury).
-short_option('s', 			statistics).
-short_option('S', 			grade).
+short_option('S', 			statistics).
+short_option('s', 			grade).
 short_option('T', 			debug_types).
 short_option('v', 			verbose).
 short_option('x', 			smart_indexing).
@@ -350,6 +350,12 @@ options_help -->
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
 
 	io__write_string("\nCode generation options\n"),
+	io__write_string("\t-s {debug, none, reg, jump, fast}\n"),
+	io__write_string("\t--grade {debug, none, reg, jump, fast}\n"),
+	io__write_string("\t\tSelect the compilation model.  This is a convenient way of\n"),
+	io__write_string("\t\tselecting a setting for the --optimize, --gcc-global-registers,\n"),
+	io__write_string("\t\t--gcc-non-local-gotos, and --debug options simultaneously.\n"),
+
 	io__write_string("\t--gc {none, conservative, accurate}\n"),
 	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
 	io__write_string("\t\tSpecify which method of garbage collection to use.\n"),
@@ -379,7 +385,6 @@ options_help -->
 	io__write_string("\t\tSpecify options to be passed to the C compiler\n"),
 	io__write_string("\t--debug\n"),
 	io__write_string("\t\tEnable debugging.\n"),
-
 	io__write_string("\nOptimization Options\n"),
 	io__write_string("\t--no-peephole\n"),
 	io__write_string("\t\tDisable the peephole optimisation pass.\n"),
