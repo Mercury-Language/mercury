@@ -4,12 +4,12 @@
 
 . ../handle_options
 
-mmake $jfactor realclean > /dev/null 2>&1
-mmake $jfactor depend || exit 1
+mmake $gradeopt $jfactor realclean > /dev/null 2>&1
+mmake $gradeopt $jfactor depend || exit 1
 eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
 checkstatus=$?
 
-files=`mmake printtests`
+files=`mmake $gradeopt printtests`
 failed=""
 for file in $files
 do

@@ -7,13 +7,15 @@ include ../Mmake.common
 #-----------------------------------------------------------------------------#
 
 # please keep this list sorted
-SOURCES= \
+AGC_SOURCES= \
 	agc_graph.m \
 	agc_ho_pred.m \
 	agc_ite.m \
 	agc_unbound_typevars.m \
 	agc_unbound_typevars2.m \
-	agc_unused_in.m \
+	agc_unused_in.m 
+
+OTHER_SOURCES= \
 	compl_unify_bug.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
@@ -87,6 +89,19 @@ SOURCES= \
 #	assoc_list.m
 #	determinism.m
 #	mode_merge_insts.m
+
+
+# Not all grades can be used with accurate GC
+
+ifeq ($(GRADE),jump) 
+    SOURCES=$(OTHER_SOURCES)
+else
+    ifeq ($(GRADE),fast)
+        SOURCES=$(OTHER_SOURCES)
+    else
+        SOURCES=$(AGC_SOURCES) $(OTHER_SOURCES)
+    endif
+endif
 
 DEPS =	$(SOURCES:%.m=%.depend)
 OBJS =	$(SOURCES:%.m=%.o)
