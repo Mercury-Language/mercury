@@ -32,12 +32,14 @@ main -->
 
 :- pred p(int::in) is semidet.
 
+p(0).
 p(1).
 p(2).
 p(3).
 
 :- pred q(int::in) is semidet.
 
+q(0).
 q(4).
 q(5).
 q(6).
