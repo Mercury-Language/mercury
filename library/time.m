@@ -233,7 +233,7 @@ time__times(Tms, Result, IO0, IO) :-
 	CUt = (Integer) t.tms_cutime;
 	CSt = (Integer) t.tms_cstime;
 #else
-	Ret = -1
+	Ret = -1;
 #endif
 	update_io(IO0, IO);
 }").
