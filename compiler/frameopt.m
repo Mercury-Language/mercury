@@ -199,8 +199,14 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 				yes, no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
-			Uinstr0 = mkframe(_, _, _),
-			error("mkframe in frameopt__build_sets")
+			Uinstr0 = mkframe(_, _, Target),
+			frameopt__targeting_code_addr(Target,
+				SetupFrame0, FrameSet0, FrameSet1),
+			frameopt__targeting_code_addr(Target,
+				SetupSuccip0, SuccipSet0, SuccipSet1),
+			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+				First, SetupFrame0, SetupSuccip0,
+				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
 			Uinstr0 = modframe(Target),
 			frameopt__targeting_code_addr(Target,
