@@ -26,6 +26,8 @@ SICSTUS_SCRIPTS = msc msl msp
 
 .in:
 	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
+	# check to ensure there were no mispelt autoconf variable names
+	if grep -n '[^$$]@' $@; then false; else true; fi
 
 #-----------------------------------------------------------------------------#
 
