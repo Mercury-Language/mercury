@@ -213,10 +213,10 @@
 :- pred string__to_int(string::in, int::out) is semidet.
 
 	% Convert a string in the specified base (2-36) to an int. The
-	% string must contain only digits in the specified base, optionally
-	% preceded by a plus or minus sign. For bases > 10, digits 10 to 35
-	% are repesented by the letters A-Z or a-z. If the string does not
-	% match this syntax, the predicate fails.
+	% string must contain one or more digits in the specified base,
+	% optionally preceded by a plus or minus sign. For bases > 10,
+	% digits 10 to 35 are repesented by the letters A-Z or a-z. If
+	% the string does not match this syntax, the predicate fails.
 :- pred string__base_string_to_int(int::in, string::in, int::out) is semidet.
 
 	% Converts a signed base N string to an int; throws an exception
@@ -640,9 +640,11 @@ string__base_string_to_int(Base, String, Int) :-
 	string__index(String, 0, Char),
 	Len = string__length(String),
 	( Char = ('-') ->
+		Len > 1,
 		foldl_substring(accumulate_int(Base), String, 1, Len - 1, 0, N),
 		Int = -N
 	; Char = ('+') ->
+		Len > 1,
 		foldl_substring(accumulate_int(Base), String, 1, Len - 1, 0, N),
 		Int = N
 	;
