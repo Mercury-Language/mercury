@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,7 +21,7 @@
 typedef struct s_label {
 	const char	*e_name;   /* name of the procedure	     */
 	Code		*e_addr;   /* address of the code	     */
-	Word		*e_layout; /* layout info for the procedure  */
+	Word		*e_layout; /* layout info for the label      */
 } Label;
 
 extern	void	do_init_entries(void);
