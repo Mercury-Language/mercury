@@ -73,19 +73,12 @@ require(Goal, Message) :-
 report_lookup_error(Msg, K, V) :-
 	KeyType = type_name(type_of(K)),
 	ValueType = type_name(type_of(V)),
-	functor(K, Functor, Arity),
-	( Arity = 0 ->
-		FunctorStr = Functor
-	;
-		string__int_to_string(Arity, ArityStr),
-		string__append_list([Functor, "/", ArityStr], FunctorStr)
-	),
 	string__append_list(
 		[Msg,
 		"\n\tKey Type: ",
 		KeyType,
-		"\n\tKey Functor: ",
-		FunctorStr,
+		"\n\tKey Value: ",
+		string(K),
 		"\n\tValue Type: ",
 		ValueType
 		],
@@ -94,19 +87,12 @@ report_lookup_error(Msg, K, V) :-
 
 report_lookup_error(Msg, K) :-
 	KeyType = type_name(type_of(K)),
-	functor(K, Functor, Arity),
-	( Arity = 0 ->
-		FunctorStr = Functor
-	;
-		string__int_to_string(Arity, ArityStr),
-		string__append_list([Functor, "/", ArityStr], FunctorStr)
-	),
 	string__append_list(
 		[Msg,
 		"\n\tKey Type: ",
 		KeyType,
-		"\n\tKey Functor: ",
-		FunctorStr
+		"\n\tKey Value: ",
+		string(K)
 		],
 		ErrorString),
 	error(ErrorString).
