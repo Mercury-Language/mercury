@@ -889,9 +889,9 @@ mercury_compile(module(_, _, _, _, _)) -->
 	( { DoModeCheck = yes } ->
 		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
 
-		mercury_compile__detect_switches(HLDS3, HLDS5a),
+		mercury_compile__detect_switches(HLDS3, HLDS4),
 
-		mercury_compile__inlining(HLDS5a, HLDS5),
+		mercury_compile__inlining(HLDS4, HLDS5),
 
 		mercury_compile__maybe_migrate_followcode(HLDS5, HLDS6),
 
@@ -1159,8 +1159,9 @@ mercury_compile__compute_liveness(HLDS0, HLDS) -->
 :- mode mercury_compile__inlining(in, out, di, uo) is det.
 
 mercury_compile__inlining(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(inlining, Inlining),
 	(
-		globals__io_lookup_bool_option(inlining, yes)
+		{ Inlining = yes }
 	->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Inlining..."),

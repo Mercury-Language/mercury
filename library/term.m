@@ -213,12 +213,12 @@
 
 :- implementation.
 :- import_module std_util, require.
-:- import_module random.
+:- import_module bintree_set, random.
 
 %-----------------------------------------------------------------------------%
 
 :- type var		==	int.
-:- type var_supply	==	random__supply.
+:- type var_supply	--->	var_supply(bintree_set(int), random__supply).
 
 %-----------------------------------------------------------------------------%
 
@@ -534,7 +534,8 @@ term__apply_substitution_to_list([Term0 | Terms0], Substitution,
 term__init_var_supply(VarSupply) :-
 	random__init(0, VarSupply0),
 		% work-around because implied modes not yet implemented
-	VarSupply = VarSupply0.
+	bintree_set__init(OccuredVars),
+	VarSupply = var_supply(OccuredVars, VarSupply0).
 
 	% create a fresh [unique] variable.
 	% We number variables randomly, to help ensure that
@@ -542,7 +543,16 @@ term__init_var_supply(VarSupply) :-
 	% Let's hope that the random number generator has
 	% a long period before it starts repeating itself!
 term__create_var(VarSupply0, Var, VarSupply) :-
-	random__random(Var, VarSupply0, VarSupply).
+	VarSupply0 = var_supply(Occured0, RandSupply0),
+	random__random(Var, RandSupply0, RandSupply),
+	(
+		bintree_set__member(Var, Occured0)
+	->
+		error("Duplicate variable occured: get a better random number generator")
+	;
+		bintree_set__insert(Occured0, Var, Occured),
+		VarSupply = var_supply(Occured, RandSupply)
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -386,7 +386,8 @@
 					% number of extra temporary stackslots
 					% that have been pushed during the
 					% procedure
-			globals		% code generation options
+			globals,	% code generation options
+			stack(lval)	% the locations in use on the stack
 	).
 
 :- type register_info	==	map(reg, register_stat).
@@ -419,6 +420,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 					ModuleInfo, VariableInfo),
 	stack__init(Continue),
 	stack__init(StoreMapStack0),
+	stack__init(PushedVals0),
 	map__init(StoreMap),
 	stack__push(StoreMapStack0, StoreMap, StoreMapStack),
 	code_info__max_slot(CallInfo, SlotCount),
@@ -440,7 +442,8 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		Category,
 		Requests,
 		0 - 0,
-		Globals
+		Globals,
+		PushedVals0
 	).
 
 %---------------------------------------------------------------------------%
@@ -2305,6 +2308,9 @@ code_info__push_rval(Rval, Code) -->
 	code_info__get_stackslot_count(NumSlots),
 	{ Slot is Count + NumSlots },
 	code_info__stack_variable(Slot, StackVar),
+	code_info__get_pushed_values(VStack0),
+	{ stack__push(VStack0, StackVar, VStack) },
+	code_info__set_pushed_values(VStack),
 	{ Code = node([
 		assign(StackVar, Rval) - "Save value on the stack"
 	]) }.
@@ -2318,7 +2324,10 @@ code_info__push_rval(Rval, Code) -->
 code_info__pop_stack(empty) -->
 	code_info__get_push_count(Count0),
 	{ Count is Count0 - 1 },
-	code_info__set_push_count(Count).
+	code_info__set_push_count(Count),
+	code_info__get_pushed_values(VStack0),
+	{ stack__pop_det(VStack0, _, VStack) },
+	code_info__set_pushed_values(VStack).
 
 :- pred code_info__pop_lval(lval, code_tree, code_info, code_info).
 :- mode code_info__pop_lval(in, out, in, out) is det.
@@ -2327,6 +2336,9 @@ code_info__pop_lval(Lval, Code) -->
 	code_info__get_push_count(Count0),
 	{ Count is Count0 - 1 },
 	code_info__set_push_count(Count),
+	code_info__get_pushed_values(VStack0),
+	{ stack__pop_det(VStack0, _, VStack) },
+	code_info__set_pushed_values(VStack),
 	code_info__get_stackslot_count(NumSlots),
 	{ Slot is Count0 + NumSlots },
 	code_info__stack_variable(Slot, StackVar),
@@ -2461,7 +2473,9 @@ code_info__current_store_map(Map) -->
 code_info__generate_stack_livevals(LiveVals) -->
 	code_info__get_live_variables(LiveVars),
 	{ bintree_set__init(LiveVals0) },
-	code_info__generate_stack_livevals_2(LiveVars, LiveVals0, LiveVals).
+	code_info__generate_stack_livevals_2(LiveVars, LiveVals0, LiveVals1),
+	code_info__get_pushed_values(Pushed),
+	{ code_info__generate_livevals_3(Pushed, LiveVals1, LiveVals) }.
 
 :- pred code_info__generate_stack_livevals_2(list(var), bintree_set(lval),
 					bintree_set(lval),
@@ -2510,7 +2524,9 @@ code_info__filter_out_registers([V|Vs], Vals) :-
 
 code_info__generate_livevals(Code) -->
 	code_info__get_live_variables(LiveVars),
-	code_info__generate_livevals_2(LiveVars, LiveVals),
+	code_info__generate_livevals_2(LiveVars, LiveVals0),
+	code_info__get_pushed_values(Pushed),
+	{ code_info__generate_livevals_3(Pushed, LiveVals0, LiveVals) },
 	{ Code = node([livevals(yes, LiveVals) - ""]) }.
 
 :- pred code_info__generate_livevals_2(list(var), bintree_set(lval),
@@ -2530,6 +2546,21 @@ code_info__generate_livevals_2([V|Vs], Vals) -->
 		{ bintree_set__union(Vals1, Vals2, Vals) }
 	;
 		{ Vals = Vals1 }
+	).
+
+:- pred code_info__generate_livevals_3(stack(lval), bintree_set(lval),
+							bintree_set(lval)).
+:- mode code_info__generate_livevals_3(in, in, out) is det.
+
+code_info__generate_livevals_3(Stack0, Vals0, Vals) :-
+	(
+		stack__top(Stack0, Top)
+	->
+		bintree_set__insert(Vals0, Top, Vals1),
+		stack__pop_det(Stack0, _, Stack1),
+		code_info__generate_livevals_3(Stack1, Vals1, Vals)
+	;
+		Vals = Vals0
 	).
 
 %---------------------------------------------------------------------------%
@@ -2605,137 +2636,150 @@ code_info__request_unify(TypeId, UniMode) -->
 :- pred code_info__set_store_map(stack(map(var, lval)), code_info, code_info).
 :- mode code_info__set_store_map(in, in, out) is det.
 
+:- pred code_info__get_pushed_values(stack(lval), code_info, code_info).
+:- mode code_info__get_pushed_values(out, in, out) is det.
+
+:- pred code_info__set_pushed_values(stack(lval), code_info, code_info).
+:- mode code_info__set_pushed_values(in, in, out) is det.
+
 code_info__get_stackslot_count(A, CI, CI) :-
-	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_stackslot_count(A, CI0, CI) :-
-	CI0 = code_info(_, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(_, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_label_count(B, CI, CI) :-
-	CI = code_info(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_label_count(B, CI0, CI) :-
-	CI0 = code_info(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_varset(C, CI, CI) :-
-	CI = code_info(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_varset(C, CI0, CI) :-
-	CI0 = code_info(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_call_info(D, CI, CI) :-
-	CI = code_info(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_call_info(D, CI0, CI) :-
-	CI0 = code_info(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_pred_id(E, CI, CI) :-
-	CI = code_info(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_pred_id(E, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_proc_id(F, CI, CI) :-
-	CI = code_info(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_proc_id(F, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_registers(G, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_registers(G, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_variables(H, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__set_variables(H, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_proc_info(I, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_succip_used(J, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _, _, _, _).
 
 code_info__set_succip_used(J, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_fall_through(K, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _, _, _, _).
 
 code_info__set_fall_through(K, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_module_info(L, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, _, _, _).
 
 code_info__set_module_info(L, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_liveness_info(M, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _, _, _, _).
 
 code_info__set_liveness_info(M, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_store_map(N, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, _, _, _).
 
 code_info__set_store_map(N, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_proc_category(O, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _, _).
 
 code_info__get_requests(P, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _, _).
 
 code_info__set_requests(P, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _, Q, R, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_push_count(Q, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		Q - _, _).
+		Q - _, _, _).
 
 code_info__get_max_push_count(QMax, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_ - QMax, _).
+		_ - QMax, _, _).
 
 code_info__set_push_count(Q, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		_ - QMax0, R),
+		_ - QMax0, R, S),
 	int__max(QMax0, Q, QMax),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q - QMax, R).
+		Q - QMax, R, S).
 
 code_info__set_max_push_count(QMax, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q - _, R),
+		Q - _, R, S),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q - QMax, R).
+		Q - QMax, R, S).
 
 code_info__get_globals(R, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R, _).
 
 code_info__set_globals(R, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, _),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, _, S),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
+
+code_info__get_pushed_values(S, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, S).
+
+code_info__set_pushed_values(S, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, _),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 %---------------------------------------------------------------------------%
 
