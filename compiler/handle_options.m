@@ -1007,6 +1007,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
 	% `--constant-propagation' effectively inlines builtins.
 	option_neg_implies(inline_builtins, constant_propagation, bool(no)),
+	option_neg_implies(allow_inlining, constant_propagation, bool(no)),
 
 	% --no-reorder-conj implies --no-deforestation,
 	% --no-constraint-propagation and --no-local-constraint-propagation.
