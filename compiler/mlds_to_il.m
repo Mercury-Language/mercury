@@ -884,15 +884,11 @@ statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal),
 statement_to_il(statement(computed_goto(Rval, MLDSLabels), _Context), 
 		Instrs) -->
 	load(Rval, RvalLoadInstrs),
-	list__map_foldl(
-		(pred(_A::in, X::out, in, out) is det 
-			--> il_info_make_next_label(X)), MLDSLabels, Labels),
-	{ Targets = list__map(func(L) = label_target(L), Labels) },
-	{ LabelInstrs = list__map(func(L) = label(L), Labels) },
+	{ Targets = list__map(func(L) = label_target(L), MLDSLabels) },
 	{ Instrs = tree__list([
 		comment_node("computed goto"),
 		RvalLoadInstrs,
-		node([switch(Targets) | LabelInstrs])
+		instr_node(switch(Targets))
 		]) }.
 
 
@@ -1300,8 +1296,7 @@ unaryop_to_il(std_unop(unmktag), _, comment_node("unmktag (a no-op)")) --> [].
 unaryop_to_il(std_unop(mkbody),	_, comment_node("mkbody (a no-op)")) --> [].
 unaryop_to_il(std_unop(unmkbody), _, comment_node("unmkbody (a no-op)")) --> [].
 
-unaryop_to_il(std_unop(cast_to_unsigned), _,
-	throw_unimplemented("unimplemented cast_to_unsigned unop")) --> [].
+unaryop_to_il(std_unop(cast_to_unsigned), _, instr_node(conv(uint32))) --> [].
 		% XXX implement this using string__hash
 unaryop_to_il(std_unop(hash_string), _,
 	throw_unimplemented("unimplemented hash_string unop")) --> [].
@@ -2483,7 +2478,7 @@ runtime_initialization_instrs = [
 	].
 
 :- func runtime_init_module_name = ilds__class_name.
-runtime_init_module_name = ["mercury", "private_builtin"].
+runtime_init_module_name = ["mercury", "private_builtin__c_code"].
 
 :- func runtime_init_method_name = ilds__member_name.
 runtime_init_method_name = id("init_runtime").

@@ -918,7 +918,7 @@ output_instr(clt(Signed)) -->
 	output_signed(Signed).
 
 output_instr(conv(SimpleType)) --> 
-	io__write_string("conv"),
+	io__write_string("conv."),
 	output_simple_type_opcode(SimpleType).
 
 output_instr(div(Signed)) --> 
@@ -998,12 +998,13 @@ output_instr(sub(OverFlow, Signed)) -->
 	output_overflow(OverFlow),
 	output_signed(Signed).
 	
-	% XXX we really should implement this since we will use it
-	% eventually.
-output_instr(switch(_)) --> { error("output not implemented") }.
+output_instr(switch(Targets)) --> 
+	io__write_string("switch ("),
+	io__write_list(Targets, ", ", output_target),
+	io__write_string(")").
 
-	% XXX should be implemented
-output_instr(unaligned(_)) --> { error("output not implemented") }.
+output_instr(unaligned(_)) --> 
+	io__write_string("unaligned.").
 
 output_instr(box(Type)) --> 
 	io__write_string("box\t"),

@@ -588,7 +588,7 @@ write_il_simple_type_as_managed_cpp_type(class(ClassName)) -->
 	( { ClassName = il_generic_class_name } ->
 		io__write_string("MR_Box")
 	;
-		io__write_string("class "),
+		io__write_string("public class "),
 		write_managed_cpp_class_name(ClassName),
 		io__write_string(" *")
 	).
