@@ -479,6 +479,11 @@ call(Goal0, A, B, C, D, E, F, G, H, I, J) :-
 char__to_int(C, N) :-
 	atom_chars(C, [N]).
 
+% This predicate is defined in C in lexer.m
+lexer__rev_char_list_to_string(RevChars, String) :-
+	list__reverse(RevChars, Chars),
+	string__from_char_list(Chars, String).
+
 report_stats :-
 	statistics(global_stack, [Heap,_]),
 	statistics(program, [Program,_]),
