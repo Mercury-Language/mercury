@@ -1092,7 +1092,8 @@ polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
 	;
 		{ list__length(ExtraVars, NumExtraVars) },
 		{ polymorphism__process_c_code(PredInfo, NumExtraVars,
-			OrigArgTypes0, OrigArgTypes, ArgInfo0, ArgInfo) },
+			PragmaCode0, OrigArgTypes0, OrigArgTypes, 
+			ArgInfo0, ArgInfo) },
 
 		%
 		% Add the type info arguments to the list of variables
@@ -1608,11 +1609,12 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 
 %-----------------------------------------------------------------------------%
 
-:- pred polymorphism__process_c_code(pred_info, int, list(type), list(type),
+:- pred polymorphism__process_c_code(pred_info, int, pragma_foreign_code_impl,
+	list(type), list(type),
 	list(maybe(pair(string, mode))), list(maybe(pair(string, mode)))).
-:- mode polymorphism__process_c_code(in, in, in, out, in, out) is det.
+:- mode polymorphism__process_c_code(in, in, in, in, out, in, out) is det.
 
-polymorphism__process_c_code(PredInfo, NumExtraVars, OrigArgTypes0,
+polymorphism__process_c_code(PredInfo, NumExtraVars, Impl, OrigArgTypes0,
 		OrigArgTypes, ArgInfo0, ArgInfo) :-
 	pred_info_arg_types(PredInfo, PredTypeVarSet, ExistQVars,
 			PredArgTypes),
@@ -1648,10 +1650,11 @@ polymorphism__process_c_code(PredInfo, NumExtraVars, OrigArgTypes0,
 		"list length mismatch in polymorphism processing pragma_c"),
 
 	polymorphism__c_code_add_typeinfos(
-			PredTypeVars, PredTypeVarSet, ExistQVars, 
+			PredTypeVars, PredTypeVarSet, ExistQVars, Impl,
 			ArgInfo0, ArgInfo1),
 	polymorphism__c_code_add_typeclass_infos(
-			UnivCs, ExistCs, PredTypeVarSet, ArgInfo1, ArgInfo),
+			UnivCs, ExistCs, PredTypeVarSet, Impl,
+			ArgInfo1, ArgInfo),
 
 	%
 	% insert type_info/typeclass_info types for all the inserted 
@@ -1668,29 +1671,33 @@ polymorphism__process_c_code(PredInfo, NumExtraVars, OrigArgTypes0,
 
 :- pred polymorphism__c_code_add_typeclass_infos(
 		list(class_constraint), list(class_constraint), 
-		tvarset, list(maybe(pair(string, mode))),
+		tvarset, pragma_foreign_code_impl,
+		list(maybe(pair(string, mode))),
 		list(maybe(pair(string, mode)))). 
-:- mode polymorphism__c_code_add_typeclass_infos(in, in, in, in, out) is det.
+:- mode polymorphism__c_code_add_typeclass_infos(in, in, in, in, 
+		in, out) is det.
 
 polymorphism__c_code_add_typeclass_infos(UnivCs, ExistCs, 
-		PredTypeVarSet, ArgInfo0, ArgInfo) :-
+		PredTypeVarSet, Impl, ArgInfo0, ArgInfo) :-
 	in_mode(In),
 	out_mode(Out),
 	polymorphism__c_code_add_typeclass_infos_2(ExistCs, Out, 
-		PredTypeVarSet, ArgInfo0, ArgInfo1),
+		PredTypeVarSet, Impl, ArgInfo0, ArgInfo1),
 	polymorphism__c_code_add_typeclass_infos_2(UnivCs, In, 
-		PredTypeVarSet, ArgInfo1, ArgInfo).
+		PredTypeVarSet, Impl, ArgInfo1, ArgInfo).
 
 :- pred polymorphism__c_code_add_typeclass_infos_2(
 		list(class_constraint), mode,
-		tvarset, list(maybe(pair(string, mode))),
+		tvarset, pragma_foreign_code_impl,
+		list(maybe(pair(string, mode))),
 		list(maybe(pair(string, mode)))). 
-:- mode polymorphism__c_code_add_typeclass_infos_2(in, in, in, in, out) is det.  
-polymorphism__c_code_add_typeclass_infos_2([], _, _, ArgNames, ArgNames).
-polymorphism__c_code_add_typeclass_infos_2([C|Cs], Mode, TypeVarSet, 
+:- mode polymorphism__c_code_add_typeclass_infos_2(in, in, in, in, 
+	in, out) is det.  
+polymorphism__c_code_add_typeclass_infos_2([], _, _, _, ArgNames, ArgNames).
+polymorphism__c_code_add_typeclass_infos_2([C|Cs], Mode, TypeVarSet, Impl,
 		ArgNames0, ArgNames) :-
 	polymorphism__c_code_add_typeclass_infos_2(Cs, Mode, TypeVarSet, 
-		ArgNames0, ArgNames1),
+		Impl, ArgNames0, ArgNames1),
 	C = constraint(Name0, Types),
 	prog_out__sym_name_to_string(Name0, "__", Name),
 	term__vars_list(Types, TypeVars),
@@ -1703,39 +1710,79 @@ polymorphism__c_code_add_typeclass_infos_2([C|Cs], Mode, TypeVarSet,
 	list__map(GetName, TypeVars, TypeVarNames),
 	string__append_list(["TypeClassInfo_for_", Name|TypeVarNames],
 		C_VarName),
-	ArgNames = [yes(C_VarName - Mode) | ArgNames1].
+	(
+		% If the variable name corresponding to the
+		% typeclass-info isn't mentioned in the C code
+		% fragment, don't pass the variable to the
+		% C code at all.
+
+		foreign_code_does_not_use_variable(Impl, C_VarName)
+	->
+		ArgNames = [no | ArgNames1]
+	;
+		ArgNames = [yes(C_VarName - Mode) | ArgNames1]
+	).
 
 :- pred polymorphism__c_code_add_typeinfos(list(tvar),
-		tvarset, existq_tvars, list(maybe(pair(string, mode))),
+		tvarset, existq_tvars, pragma_foreign_code_impl,
+		list(maybe(pair(string, mode))),
 		list(maybe(pair(string, mode)))). 
-:- mode polymorphism__c_code_add_typeinfos(in, in, in, in, out) is det.
+:- mode polymorphism__c_code_add_typeinfos(in, in, in, in, in, out) is det.
 
 polymorphism__c_code_add_typeinfos(TVars, TypeVarSet,
-		ExistQVars, ArgNames0, ArgNames) :-
+		ExistQVars, Impl, ArgNames0, ArgNames) :-
 	list__filter(lambda([X::in] is semidet, (list__member(X, ExistQVars))),
 		TVars, ExistUnconstrainedVars, UnivUnconstrainedVars),
 	in_mode(In),
 	out_mode(Out),
 	polymorphism__c_code_add_typeinfos_2(ExistUnconstrainedVars, TypeVarSet,
-		Out, ArgNames0, ArgNames1),
+		Out, Impl, ArgNames0, ArgNames1),
 	polymorphism__c_code_add_typeinfos_2(UnivUnconstrainedVars, TypeVarSet,
-		In, ArgNames1, ArgNames).
+		In, Impl, ArgNames1, ArgNames).
 
 :- pred polymorphism__c_code_add_typeinfos_2(list(tvar),
-		tvarset, mode, list(maybe(pair(string, mode))),
+		tvarset, mode, pragma_foreign_code_impl,
+		list(maybe(pair(string, mode))),
 		list(maybe(pair(string, mode)))). 
-:- mode polymorphism__c_code_add_typeinfos_2(in, in, in, in, out) is det.
+:- mode polymorphism__c_code_add_typeinfos_2(in, in, in, in, in, out) is det.
 
-polymorphism__c_code_add_typeinfos_2([], _, _, ArgNames, ArgNames).
-polymorphism__c_code_add_typeinfos_2([TVar|TVars], TypeVarSet, Mode,
+polymorphism__c_code_add_typeinfos_2([], _, _, _, ArgNames, ArgNames).
+polymorphism__c_code_add_typeinfos_2([TVar|TVars], TypeVarSet, Mode, Impl,
 		ArgNames0, ArgNames) :-
 	polymorphism__c_code_add_typeinfos_2(TVars, TypeVarSet,
-		Mode, ArgNames0, ArgNames1),
+		Mode, Impl, ArgNames0, ArgNames1),
 	( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
 		string__append("TypeInfo_for_", TypeVarName, C_VarName),
-		ArgNames = [yes(C_VarName - Mode) | ArgNames1]
+		(
+			% If the variable name corresponding to the
+			% type-info isn't mentioned in the C code
+			% fragment, don't pass the variable to the
+			% C code at all.
+
+			foreign_code_does_not_use_variable(Impl, C_VarName)
+		->
+			ArgNames = [no | ArgNames1]
+		;
+			ArgNames = [yes(C_VarName - Mode) | ArgNames1]
+		)
 	;
 		ArgNames = [no | ArgNames1]
+	).
+
+:- pred foreign_code_does_not_use_variable(pragma_foreign_code_impl, string).
+:- mode foreign_code_does_not_use_variable(in, in) is semidet.
+
+foreign_code_does_not_use_variable(Impl, VarName) :-
+	(
+		Impl = ordinary(ForeignBody, _),
+		\+ string__sub_string_search(ForeignBody,
+			VarName, _)
+	;
+		Impl = nondet(FB1,_,FB2,_,FB3,_,_,FB4,_),
+		\+ string__sub_string_search(FB1, VarName, _),
+		\+ string__sub_string_search(FB2, VarName, _),
+		\+ string__sub_string_search(FB3, VarName, _),
+		\+ string__sub_string_search(FB4, VarName, _)
 	).
 
 :- pred polymorphism__process_goal_list(list(hlds_goal), list(hlds_goal),
