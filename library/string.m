@@ -676,7 +676,7 @@ string__foldl_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
 string__foldl_substring_2(Closure, String, I, Count, Acc0, Acc) :-
 	( if 0 < Count then
 		Closure(string__unsafe_index(String, I), Acc0, Acc1),
-		string__foldl_substring(Closure, String, I + 1, Count - 1,
+		string__foldl_substring_2(Closure, String, I + 1, Count - 1,
 			Acc1, Acc)
 	  else
 	  	Acc = Acc0
