@@ -4,7 +4,11 @@ NEWS since Mercury release 0.10.1
 Changes to the Mercury standard library:
 * We've fixed a bug in time.m. Type `tm' didn't store the day of the month,
   which meant that the functions which required that field (e.g. time__asctime,
- time__mktime) did not work.
+  time__mktime) did not work.
+
+  The order of the fields of type `time__tm' has been changed so that
+  comparison of values of type `tm' whose `tm_dst' fields are identical
+  is equivalent to comparison of the times those values represent.
 
 NEWS for Mercury release 0.10.1:
 --------------------------------

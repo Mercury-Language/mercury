@@ -39,17 +39,20 @@
 
 	% The `tm' type is a concrete type that represents calendar
 	% times, broken down into their constituent components.
+	% Comparison (via compare/3) of `tm' values whose `tm_dst'
+	% components are identical is equivalent to comparison of
+	% the times those `tm' values represent.
 :- type tm
 	---> tm(
+		tm_year :: int,		% Year (number since 1900)
+		tm_mon :: int,		% Month (number since January, 0-11)
+		tm_mday :: int,		% MonthDay (1-31)
+		tm_hour :: int,		% Hours (after midnight, 0-23)
+		tm_min :: int,		% Minutes (0-59)
 		tm_sec :: int,		% Seconds (0-61)
 					% (60 and 61 are for leap seconds)
-		tm_min :: int,		% Minutes (0-59)
-		tm_hour :: int,		% Hours (after midnight, 0-23)
-		tm_wday :: int,		% WeekDay (number since Sunday, 0-6)
-		tm_mday :: int,		% MonthDay (1-31)
 		tm_yday :: int,		% YearDay (number since Jan 1st, 0-365)
-		tm_mon :: int,		% Month (number since January, 0-11)
-		tm_year :: int,		% Year (number since 1900)
+		tm_wday :: int,		% WeekDay (number since Sunday, 0-6)
 		tm_dst :: maybe(dst)	% IsDST (is DST in effect?)
 	).
 
@@ -322,17 +325,16 @@ time__difftime(T1, T0) = Diff :-
 %:- func time__localtime(time_t) = tm.
 
 time__localtime(Time) = TM :-
-	time__c_localtime(Time, Sec, Min, Hrs, WD, MD, YD, Mnt, Yr, N),
-	TM = tm(Sec, Min, Hrs, WD, MD, YD, Mnt, Yr, int_to_maybe_dst(N)).
+	time__c_localtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
+	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
 
 :- pred time__c_localtime(int, int, int, int, int, int, int, int, int, int).
 :- mode time__c_localtime(in, out, out, out, out, out, out,
 		out, out, out) is det.
 
 :- pragma foreign_proc("C",
-	time__c_localtime(Time::in, Sec::out, Min::out, Hrs::out,
-                                   WD::out, MD::out, YD::out, Mnt::out,
-                                   Yr::out, N::out),
+	time__c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
+		Min::out, Sec::out, YD::out, WD::out, N::out),
 	[will_not_call_mercury],
 "{
 	struct tm* p;
@@ -356,9 +358,8 @@ time__localtime(Time) = TM :-
 }").
 
 :- pragma foreign_proc("MC++",
-	time__c_localtime(_Time::in, _Sec::out, _Min::out, _Hrs::out,
-                                   _WD::out, _MD::out, _YD::out, _Mnt::out,
-                                   _Yr::out, _N::out),
+	time__c_localtime(_Time::in, _Yr::out, _Mnt::out, _MD::out, _Hrs::out,
+		_Min::out, _Sec::out, _YD::out, _WD::out, _N::out),
 	[will_not_call_mercury],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
@@ -368,17 +369,16 @@ time__localtime(Time) = TM :-
 %:- func time__gmtime(time_t) = tm.
 
 time__gmtime(Time) = TM :-
-	time__c_gmtime(Time, Sec, Min, Hrs, WD, MD, YD, Mnt, Yr, N),
-	TM = tm(Sec, Min, Hrs, WD, MD, YD, Mnt, Yr, int_to_maybe_dst(N)).
+	time__c_gmtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
+	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
 
 :- pred time__c_gmtime(int, int, int, int, int, int, int, int, int, int).
 :- mode time__c_gmtime(in, out, out, out, out, out,
 			out, out, out, out) is det.
 
 :- pragma foreign_proc("C",
-	time__c_gmtime(Time::in, Sec::out, Min::out, Hrs::out,
-                                   WD::out, MD::out, YD::out, Mnt::out,
-                                   Yr::out, N::out),
+	time__c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
+		Min::out, Sec::out, YD::out, WD::out, N::out),
 	[will_not_call_mercury],
 "{
 	struct tm* p;
@@ -402,9 +402,8 @@ time__gmtime(Time) = TM :-
 }").
 
 :- pragma foreign_proc("MC++",
-	time__c_gmtime(_Time::in, _Sec::out, _Min::out, _Hrs::out,
-                                   _WD::out, _YD::out, _MD::out, _Mnt::out,
-                                   _Yr::out, _N::out),
+	time__c_gmtime(_Time::in, _Yr::out, _Mnt::out, _MD::out, _Hrs::out,
+		_Min::out, _Sec::out, _YD::out, _WD::out, _N::out),
 	[will_not_call_mercury],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
@@ -426,17 +425,16 @@ int_to_maybe_dst(N) = DST :-
 %:- func time__mktime(tm) = time_t.
 
 time__mktime(TM) = Time :-
-	TM = tm(Sec, Min, Hrs, WD, MD, YD, Mnt, Yr, DST),
-	time__c_mktime(Sec, Min, Hrs, WD, MD, YD, Mnt, Yr,
+	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
+	time__c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
 		maybe_dst_to_int(DST), Time).
 
 :- pred time__c_mktime(int, int, int, int, int, int, int, int, int, int).
 :- mode time__c_mktime(in, in, in, in, in, in, in, in, in, out) is det.
 
 :- pragma foreign_proc("C",
-	time__c_mktime(Sec::in, Min::in, Hrs::in, WD::in, MD::in,
-                                YD::in, Mnt::in, Yr::in,
-                                N::in, Time::out),
+	time__c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
+		YD::in, WD::in, N::in, Time::out),
 	[will_not_call_mercury],
  "{
 	struct tm t;
@@ -455,9 +453,8 @@ time__mktime(TM) = Time :-
 }").
 
 :- pragma foreign_proc("MC++",
-	time__c_mktime(_Sec::in, _Min::in, _Hrs::in, _WD::in,
-                                _YD::in, _MD::in, _Mnt::in, _Yr::in,
-                                _N::in, _Time::out),
+	time__c_mktime(_Yr::in, _Mnt::in, _MD::in, _Hrs::in,
+		_Min::in, _Sec::in, _YD::in, _WD::in, _N::in, _Time::out),
 	[will_not_call_mercury],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
@@ -479,16 +476,16 @@ maybe_dst_to_int(M) = N :-
 %:- func time__asctime(tm) = string.
 
 time__asctime(TM) = Str :-
-	TM = tm(Sec, Min, Hrs, WD, MD, YD, Mnt, Yr, DST),
-	time__c_asctime(Sec, Min, Hrs, WD, MD, YD, Mnt, Yr,
+	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
+	time__c_asctime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
 		maybe_dst_to_int(DST), Str).
 
 :- pred time__c_asctime(int, int, int, int, int, int, int, int, int, string).
 :- mode time__c_asctime(in, in, in, in, in, in, in, in, in, out) is det.
 
 :- pragma foreign_proc("C",
-	time__c_asctime(Sec::in, Min::in, Hrs::in, WD::in, MD::in,
-                                 YD::in, Mnt::in, Yr::in, N::in, Str::out),
+	time__c_asctime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
+		YD::in, WD::in, N::in, Str::out),
 	[will_not_call_mercury],
 "{
 	struct tm t;
@@ -510,9 +507,8 @@ time__asctime(TM) = Str :-
 }").
 
 :- pragma foreign_proc("MC++",
-	time__c_asctime(_Sec::in, _Min::in, _Hrs::in, _WD::in, _MD::in,
-                                 _YD::in, _Mnt::in, _Yr::in, _N::in,
-				 _Str::out),
+	time__c_asctime(_Yr::in, _Mnt::in, _MD::in, _Hrs::in,
+		_Min::in, _Sec::in, _YD::in, _WD::in, _N::in, _Str::out),
 	[will_not_call_mercury],
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
@@ -548,7 +544,6 @@ time__ctime(Time) = Str :-
 "{
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
-
 
 %-----------------------------------------------------------------------------%
 :- end_module time.
