@@ -542,7 +542,7 @@ output_main_init_function(void)
 static void 
 output_main(void)
 {
-	char *aditi_load_func;
+	const char *aditi_load_func;
 
 	if (aditi) {
 		aditi_load_func = "MR_do_load_aditi_rl_code";
