@@ -22,17 +22,14 @@
 
 	% Convert the MLDS to the specified foreign language and write
 	% it to a file.
-:- pred output_managed_code(foreign_language, mlds, io__state, io__state).
-:- mode output_managed_code(in(managed_lang), in, di, uo) is det.
+:- pred output_managed_code(foreign_language::in(managed_lang), mlds::in,
+	io::di, io::uo) is det.
 
 	% Print the header comments of the output module
-:- pred output_src_start(mercury_module_name, io__state, io__state).
-:- mode output_src_start(in, di, uo) is det.
+:- pred output_src_start(mercury_module_name::in, io::di, io::uo) is det.
 
 	% Print the footer commments of the output module
-:- pred output_src_end(mercury_module_name, io__state, io__state).
-:- mode output_src_end(in, di, uo) is det.
-
+:- pred output_src_end(mercury_module_name::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -222,8 +219,7 @@ output_language_specific_header_code(managed_cplusplus, ModuleName, Imports,
 			    )
 			;
 			    SymName = mlds_module_name_to_sym_name(Name),
-			    mdbcomp__prim_data__sym_name_to_string(SymName, 
-			    	".", Str)
+			    sym_name_to_string(SymName, ".", Str)
 			),
 			Result = [Str]
 		    ;
@@ -343,8 +339,7 @@ generate_foreign_code(Lang, _ModuleName, ForeignCode, !IO) :-
 	), !IO).
 
 :- pred generate_method_code(foreign_language::in(managed_lang),
-	mlds_module_name::in, mlds__defn::in,
-	io::di, io::uo) is det.
+	mlds_module_name::in, mlds__defn::in, io::di, io::uo) is det.
 
 generate_method_code(_, _, defn(export(_), _, _, _), !IO).
 generate_method_code(_, _, defn(data(_), _, _, _), !IO).
