@@ -29,6 +29,8 @@
 :- pred queue__init(queue(T)).
 :- mode queue__init(out) is det.
 
+:- func queue__init = queue(T).
+
 	% 'queue_equal(Q1, Q2)' is true iff Q1 and Q2 contain the same
 	% elements in the same order.
 
@@ -55,12 +57,16 @@
 :- pred queue__put(queue(T), T, queue(T)).
 :- mode queue__put(in, in, out) is det.
 
+:- func queue__put(queue(T), T) = queue(T).
+
 	% `queue__put_list(Queue0, Elems, Queue)' is true iff `Queue'
 	% is the queue which results from inserting the items in the
 	% list `Elems' into `Queue0'.
 
 :- pred queue__put_list(queue(T), list(T), queue(T)).
 :- mode queue__put_list(in, in, out) is det.
+
+:- func queue__put_list(queue(T), list(T)) = queue(T).
 
 	% `queue__first(Queue, Elem)' is true iff `Queue' is a non-empty
 	% queue whose first element is `Elem'.
@@ -82,6 +88,8 @@
 :- pred queue__length(queue(T), int).
 :- mode queue__length(in, out) is det.
 
+:- func queue__length(queue(T)) = int.
+
 	% `queue__list_to_queue(List, Queue)' is true iff `Queue' is a queue
 	% containing the elements of List, with the first element of List at
 	% the head of the queue.
@@ -89,11 +97,15 @@
 :- pred queue__list_to_queue(list(T), queue(T)).
 :- mode queue__list_to_queue(in, out) is det.
 
+:- func queue__list_to_queue(list(T)) = queue(T).
+
 	% `queue__delete_all(Queue0, Elem, Queue)' is true iff `Queue' is
 	% the same queue as `Queue0' with all occurences of `Elem' removed
 	% from it.
 :- pred queue__delete_all(queue(T), T, queue(T)).
 :- mode queue__delete_all(in, in, out) is det.
+
+:- func queue__delete_all(queue(T), T) = queue(T).
 
 %--------------------------------------------------------------------------%
 
@@ -179,25 +191,6 @@ queue__delete_all(On0 - Off0, Elem, On - Off) :-
 %--------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func queue__init = queue(T).
-
-:- func queue__put(queue(T), T) = queue(T).
-
-:- func queue__put_list(queue(T), list(T)) = queue(T).
-
-:- func queue__length(queue(T)) = int.
-
-:- func queue__list_to_queue(list(T)) = queue(T).
-
-:- func queue__delete_all(queue(T), T) = queue(T).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 queue__init = Q :-
 	queue__init(Q).

@@ -113,6 +113,8 @@
 :- pred snd(pair(X,Y)::in, Y::out) is det.
 :- func snd(pair(X,Y)) = Y.
 
+:- func pair(T1, T2) = pair(T1, T2).
+
 %-----------------------------------------------------------------------------%
 
 % solutions/2 collects all the solutions to a predicate and
@@ -127,13 +129,27 @@
 :- mode solutions(pred(out) is multi, out) is det.
 :- mode solutions(pred(out) is nondet, out) is det.
 
+:- func solutions(pred(T)) = list(T).
+:- mode solutions(pred(out) is multi) = out is det.
+:- mode solutions(pred(out) is nondet) = out is det.
+
 :- pred solutions_set(pred(T), set(T)).
 :- mode solutions_set(pred(out) is multi, out) is det.
 :- mode solutions_set(pred(out) is nondet, out) is det.
 
+:- func solutions_set(pred(T)) = set(T).
+:- mode solutions_set(pred(out) is multi) = out is det.
+:- mode solutions_set(pred(out) is nondet) = out is det.
+
 :- pred unsorted_solutions(pred(T), list(T)).
 :- mode unsorted_solutions(pred(out) is multi, out) is cc_multi.
 :- mode unsorted_solutions(pred(out) is nondet, out) is cc_multi.
+
+:- func aggregate(pred(T), func(T, U) = U, U) = U.
+:- mode aggregate(pred(out) is multi, func(in, in) = out is det,
+		in) = out is det.
+:- mode aggregate(pred(out) is nondet, func(in, in) = out is det,
+		in) = out is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -235,6 +251,28 @@
 
 %-----------------------------------------------------------------------------%
 
+    % General purpose higher-order programming constructs.
+
+    % compose(F, G, X) = F(G(X))
+    %
+    % Function composition.
+    % XXX It would be nice to have infix `o' or somesuch for this.
+:- func compose(func(T2) = T3, func(T1) = T2, T1) = T3.
+
+    % converse(F, X, Y) = F(Y, X)
+:- func converse(func(T1, T2) = T3, T2, T1) = T3.
+
+    % pow(F, N, X) = F^N(X)
+    %
+    % Function exponentiation.
+:- func pow(func(T) = T, int, T) = T.
+
+    % The identity function.
+    %
+:- func id(T) = T.
+
+%-----------------------------------------------------------------------------%
+
 	% maybe_pred(Pred, X, Y) takes a closure Pred which transforms an
 	% input semideterministically. If calling the closure with the input
 	% X succeeds, Y is bound to `yes(Z)' where Z is the output of the
@@ -242,6 +280,9 @@
 	%
 :- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
 :- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
+
+:- func maybe_func(func(T1) = T2, T1) = maybe(T2).
+:- mode maybe_func(func(in) = out is semidet, in) = out is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -3556,52 +3597,6 @@ get_type_info_for_type_info(TypeInfo) :-
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
 %   Function forms added.
-
-:- interface.
-
-:- func pair(T1, T2) = pair(T1, T2).
-
-:- func maybe_func(func(T1) = T2, T1) = maybe(T2).
-:- mode maybe_func(func(in) = out is semidet, in) = out is det.
-
-    % General purpose higher-order programming constructs.
-
-    % compose(F, G, X) = F(G(X))
-    %
-    % Function composition.
-    % XXX It would be nice to have infix `o' or somesuch for this.
-:- func compose(func(T2) = T3, func(T1) = T2, T1) = T3.
-
-    % converse(F, X, Y) = F(Y, X)
-:- func converse(func(T1, T2) = T3, T2, T1) = T3.
-
-    % pow(F, N, X) = F^N(X)
-    %
-    % Function exponentiation.
-:- func pow(func(T) = T, int, T) = T.
-
-    % The identity function.
-    %
-:- func id(T) = T.
-
-:- func solutions(pred(T)) = list(T).
-:- mode solutions(pred(out) is multi) = out is det.
-:- mode solutions(pred(out) is nondet) = out is det.
-
-:- func solutions_set(pred(T)) = set(T).
-:- mode solutions_set(pred(out) is multi) = out is det.
-:- mode solutions_set(pred(out) is nondet) = out is det.
-
-:- func aggregate(pred(T), func(T, U) = U, U) = U.
-:- mode aggregate(pred(out) is multi, func(in, in) = out is det,
-		in) = out is det.
-:- mode aggregate(pred(out) is nondet, func(in, in) = out is det,
-		in) = out is det.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 pair(X, Y) =
     X-Y.

@@ -34,23 +34,33 @@
 :- pred group__init(group(T)).
 :- mode group__init(out) is det.
 
+:- func group__init = group(T).
+
 	% Insert a set of elements into the group.
 
 :- pred group__insert(group(T), set(T), group(T)).
 :- mode group__insert(in, in, out) is det.
+
+:- func group__insert(group(T), set(T)) = group(T).
 
 	% Given an element, get the set containing that element.
 
 :- pred group__group(group(T), T, set(T)).
 :- mode group__group(in, in, out) is det.
 
+:- func group__group(group(T), T) = set(T).
+
 	% Convert the group to a set of sets.
 
 :- pred group__to_set(group(T), set(set(T))).
 :- mode group__to_set(in, out) is det.
 
+:- func group__to_set(group(T)) = set(set(T)).
+
 :- pred group__sets_and_keys(group(T), assoc_list(set(T), group__key)).
 :- mode group__sets_and_keys(in, out) is det.
+
+:- func group__sets_and_keys(group(T)) = assoc_list(set(T), group__key).
 
 	% Given an element, get the key for the group containing
 	% that element.
@@ -58,10 +68,14 @@
 :- pred group__group_key(group(T), T, group__key).
 :- mode group__group_key(in, in, out) is det.
 
+:- func group__group_key(group(T), T) = group__key.
+
 	% Given a group key, get the corresponding set of elements.
 
 :- pred group__key_group(group(T), group__key, set(T)).
 :- mode group__key_group(in, in, out) is det.
+
+:- func group__key_group(group(T), group__key) = set(T).
 
 	% Remove a set from the group, and return the set.
 
@@ -76,8 +90,12 @@
 :- pred group__largest_group_key(group(T), group__key).
 :- mode group__largest_group_key(in, out) is det.
 
+:- func group__largest_group_key(group(T)) = group__key.
+
 :- pred group__group_keys(group(T), list(group__key)).
 :- mode group__group_keys(in, out) is det.
+
+:- func group__group_keys(group(T)) = list(group__key).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -250,31 +268,6 @@ group__set_elements(G0, E, G) :-
 %---------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func group__init = group(T).
-
-:- func group__insert(group(T), set(T)) = group(T).
-
-:- func group__group(group(T), T) = set(T).
-
-:- func group__to_set(group(T)) = set(set(T)).
-
-:- func group__sets_and_keys(group(T)) = assoc_list(set(T), group__key).
-
-:- func group__group_key(group(T), T) = group__key.
-
-:- func group__key_group(group(T), group__key) = set(T).
-
-:- func group__largest_group_key(group(T)) = group__key.
-
-:- func group__group_keys(group(T)) = list(group__key).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 group__init = G :-
 	group__init(G).

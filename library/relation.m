@@ -28,6 +28,8 @@
 :- pred relation__init(relation(T)).
 :- mode relation__init(out) is det.
 
+:- func relation__init = relation(T).
+
 	% relation__add_element adds an element to the domain of a
 	% relation.  Return the old relation_key if one already
 	% exists.
@@ -44,6 +46,8 @@
 :- pred relation__lookup_element(relation(T), T, relation_key).
 :- mode relation__lookup_element(in, in, out) is det.
 
+:- func relation__lookup_element(relation(T), T) = relation_key.
+
 	% relation__search_key returns the domain element associated
 	% with a relation_key.  Fail if the relation_key is not valid.
 :- pred relation__search_key(relation(T), relation_key, T).
@@ -54,9 +58,13 @@
 :- pred relation__lookup_key(relation(T), relation_key, T).
 :- mode relation__lookup_key(in, in, out) is det.
 
+:- func relation__lookup_key(relation(T), relation_key) = T.
+
 	% relation__add adds an element to the relation.
 :- pred relation__add(relation(T), relation_key, relation_key, relation(T)).
 :- mode relation__add(in, in, in, out) is det.
+
+:- func relation__add(relation(T), relation_key, relation_key) = relation(T).
 
 	% relation__add_values adds an pair of values to the relation's
 	% domain and adds an element to the relation.
@@ -69,22 +77,33 @@
 :- pred relation__add_values(relation(T), T, T, relation(T)).
 :- mode relation__add_values(in, in, in, out) is det.
 
+:- func relation__add_values(relation(T), T, T) = relation(T).
+
 	% relation__add_assoc_list adds a list of elements to a
 	% relation.
 :- pred relation__add_assoc_list(relation(T),
 		assoc_list(relation_key, relation_key), relation(T)).
 :- mode relation__add_assoc_list(in, in, out) is det.
 
+:- func relation__add_assoc_list(relation(T),
+		assoc_list(relation_key, relation_key)) = relation(T).
+
 	% relation__remove removes an element from the relation.
 :- pred relation__remove(relation(T), relation_key, relation_key,
 		relation(T)).
 :- mode relation__remove(in, in, in, out) is det.
+
+:- func relation__remove(relation(T), relation_key, relation_key)
+		= relation(T).
 
 	% relation__remove_assoc_list removes a list of elements
 	% from a relation.
 :- pred relation__remove_assoc_list(relation(T),
 		assoc_list(relation_key, relation_key), relation(T)).
 :- mode relation__remove_assoc_list(in, in, out) is det.
+
+:- func relation__remove_assoc_list(relation(T),
+		assoc_list(relation_key, relation_key)) = relation(T).
 
 	% relation__lookup checks to see if an element is
 	% in the relation.
@@ -103,15 +122,21 @@
 :- pred relation__lookup_from(relation(T), relation_key, set(relation_key)).
 :- mode relation__lookup_from(in, in, out) is det.
 
+:- func relation__lookup_from(relation(T), relation_key) = set(relation_key).
+
 	% relation__lookup_to returns the set of elements
 	% x such that xRy, given some y.
 :- pred relation__lookup_to(relation(T), relation_key, set(relation_key)).
 :- mode relation__lookup_to(in, in, out) is det.
 
+:- func relation__lookup_to(relation(T), relation_key) = set(relation_key).
+
 	% relation__to_assoc_list turns a relation into a list of
 	% pairs of elements.
 :- pred relation__to_assoc_list(relation(T), assoc_list(T, T)).
 :- mode relation__to_assoc_list(in, out) is det.
+
+:- func relation__to_assoc_list(relation(T)) = assoc_list(T, T).
 
 	% relation__to_key_assoc_list turns a relation into a list of
 	% pairs of relation keys.
@@ -119,25 +144,36 @@
 	assoc_list(relation_key, relation_key)).
 :- mode relation__to_key_assoc_list(in, out) is det.
 
+:- func relation__to_key_assoc_list(relation(T))
+		= assoc_list(relation_key, relation_key).
+
 	% relation__from_assoc_list turns a list of pairs of
 	% elements into a relation.
 :- pred relation__from_assoc_list(assoc_list(T, T), relation(T)).
 :- mode relation__from_assoc_list(in, out) is det.
+
+:- func relation__from_assoc_list(assoc_list(T, T)) = relation(T).
 
 	% relation__domain finds the set of all elements in the
 	% domain of a relation.
 :- pred relation__domain(relation(T), set(T)).
 :- mode relation__domain(in, out) is det.
 
+:- func relation__domain(relation(T)) = set(T).
+
 	% relation__inverse(R, R') is true iff for all x, y
 	% in the domain of R, xRy if yR'x.
 :- pred relation__inverse(relation(T), relation(T)).
 :- mode relation__inverse(in, out) is det.
 
+:- func relation__inverse(relation(T)) = relation(T).
+
 	% relation__compose(R1, R2, R) is true if R is the
 	% composition of the relations R1 and R2.
 :- pred relation__compose(relation(T), relation(T), relation(T)).
 :- mode relation__compose(in, in, out) is det.
+
+:- func relation__compose(relation(T), relation(T)) = relation(T).
 
 	% relation__dfs(Rel, X, Dfs) is true if Dfs is a
 	% depth-first sorting of Rel starting at X.  The
@@ -147,6 +183,8 @@
 :- pred relation__dfs(relation(T), relation_key, list(relation_key)).
 :- mode relation__dfs(in, in, out) is det.
 
+:- func relation__dfs(relation(T), relation_key) = list(relation_key).
+
 	% relation__dfsrev(Rel, X, DfsRev) is true if DfsRev is a
 	% reverse depth-first sorting of Rel starting at X.  The
 	% set of elements in the list Dfs is exactly equal
@@ -154,6 +192,8 @@
 	% R* is the reflexive transitive closure of R.
 :- pred relation__dfsrev(relation(T), relation_key, list(relation_key)).
 :- mode relation__dfsrev(in, in, out) is det.
+
+:- func relation__dfsrev(relation(T), relation_key) = list(relation_key).
 
 	% relation__dfs(Rel, Dfs) is true if Dfs is a depth-
 	% first sorting of Rel, i.e. a list of the nodes in Rel
@@ -163,11 +203,15 @@
 :- pred relation__dfs(relation(T), list(relation_key)).
 :- mode relation__dfs(in, out) is det.
 
+:- func relation__dfs(relation(T)) = list(relation_key).
+
 	% relation__dfsrev(Rel, DfsRev) is true if DfsRev is a reverse 
 	% depth-first sorting of Rel.  ie DfsRev is the reverse of Dfs
 	% from relation__dfs/2.
 :- pred relation__dfsrev(relation(T), list(relation_key)).
 :- mode relation__dfsrev(in, out) is det.
+
+:- func relation__dfsrev(relation(T)) = list(relation_key).
 
 	% relation__dfs(Rel, X, Visit0, Visit, Dfs) is true 
 	% if Dfs is a depth-first sorting of Rel starting at 
@@ -199,17 +243,23 @@
 :- pred relation__components(relation(T), set(set(relation_key))).
 :- mode relation__components(in, out) is det.
 
+:- func relation__components(relation(T)) = set(set(relation_key)).
+
 	% relation__cliques(R, Cliques) is true if
 	% Cliques is the set of the strongly connected
 	% components (cliques) of R.
 :- pred relation__cliques(relation(T), set(set(relation_key))).
 :- mode relation__cliques(in, out) is det.
 
+:- func relation__cliques(relation(T)) = set(set(relation_key)).
+
 	% relation__reduced(R, Red) is true if Red is
 	% the reduced relation (relation of cliques)
 	% obtained from R.
 :- pred relation__reduced(relation(T), relation(set(T))).
 :- mode relation__reduced(in, out) is det.
+
+:- func relation__reduced(relation(T)) = relation(set(T)).
 
 	% relation__tsort(R, TS) is true if TS is a
 	% topological sorting of R.  It fails if R
@@ -222,6 +272,8 @@
 :- pred relation__atsort(relation(T), list(set(T))).
 :- mode relation__atsort(in, out) is det.
 
+:- func relation__atsort(relation(T)) = list(set(T)).
+
 	% relation__sc(R, SC) is true if SC is the
 	% symmetric closure of R.  In graph terms,
 	% symmetric closure is the same as turning
@@ -229,15 +281,21 @@
 :- pred relation__sc(relation(T), relation(T)).
 :- mode relation__sc(in, out) is det.
 
+:- func relation__sc(relation(T)) = relation(T).
+
 	% relation__tc(R, TC) is true if TC is the
 	% transitive closure of R.
 :- pred relation__tc(relation(T), relation(T)).
 :- mode relation__tc(in, out) is det.
 
+:- func relation__tc(relation(T)) = relation(T).
+
 	% relation__rtc(R, RTC) is true if RTC is the
 	% reflexive transitive closure of R.
 :- pred relation__rtc(relation(T), relation(T)).
 :- mode relation__rtc(in, out) is det.
+
+:- func relation__rtc(relation(T)) = relation(T).
 
 %------------------------------------------------------------------------------%
 
@@ -1058,67 +1116,6 @@ relation__add_cartesian_product_2(K1, [K2 | Ks2], RTC0, RTC) :-
 %------------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func relation__init = relation(T).
-
-:- func relation__lookup_element(relation(T), T) = relation_key.
-
-:- func relation__lookup_key(relation(T), relation_key) = T.
-
-:- func relation__add(relation(T), relation_key, relation_key) = relation(T).
-
-:- func relation__add_values(relation(T), T, T) = relation(T).
-
-:- func relation__add_assoc_list(relation(T), assoc_list(relation_key, relation_key)) = relation(T).
-
-:- func relation__remove(relation(T), relation_key, relation_key) = relation(T).
-
-:- func relation__remove_assoc_list(relation(T), assoc_list(relation_key, relation_key)) = relation(T).
-
-:- func relation__lookup_from(relation(T), relation_key) = set(relation_key).
-
-:- func relation__lookup_to(relation(T), relation_key) = set(relation_key).
-
-:- func relation__to_assoc_list(relation(T)) = assoc_list(T, T).
-
-:- func relation__to_key_assoc_list(relation(T)) = assoc_list(relation_key, relation_key).
-
-:- func relation__from_assoc_list(assoc_list(T, T)) = relation(T).
-
-:- func relation__domain(relation(T)) = set(T).
-
-:- func relation__inverse(relation(T)) = relation(T).
-
-:- func relation__compose(relation(T), relation(T)) = relation(T).
-
-:- func relation__dfs(relation(T), relation_key) = list(relation_key).
-
-:- func relation__dfsrev(relation(T), relation_key) = list(relation_key).
-
-:- func relation__dfs(relation(T)) = list(relation_key).
-
-:- func relation__dfsrev(relation(T)) = list(relation_key).
-
-:- func relation__components(relation(T)) = set(set(relation_key)).
-
-:- func relation__cliques(relation(T)) = set(set(relation_key)).
-
-:- func relation__reduced(relation(T)) = relation(set(T)).
-
-:- func relation__atsort(relation(T)) = list(set(T)).
-
-:- func relation__sc(relation(T)) = relation(T).
-
-:- func relation__tc(relation(T)) = relation(T).
-
-:- func relation__rtc(relation(T)) = relation(T).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 relation__init = R :-
 	relation__init(R).

@@ -25,20 +25,28 @@
 :- pred bag__init(bag(T)).
 :- mode bag__init(out) is det.
 
+:- func bag__init = bag(T).
+
 	% Insert a particular value in a bag.
 	%
 :- pred bag__insert(bag(T), T, bag(T)).
 :- mode bag__insert(in, in, out) is det.
+
+:- func bag__insert(bag(T), T) = bag(T).
 
 	% Insert a list of values into a bag.
 	%
 :- pred bag__insert_list(bag(T), list(T), bag(T)).
 :- mode bag__insert_list(in, in, out) is det.
 
+:- func bag__insert_list(bag(T), list(T)) = bag(T).
+
 	% Make a bag from a list.
 	%
 :- pred bag__from_list(list(T), bag(T)).
 :- mode bag__from_list(in, out) is det.
+
+:- func bag__from_list(list(T)) = bag(T).
 
 	% Given a bag, produce a sorted list containing all the values in
 	% the bag.  Each value will appear in the list the same number of
@@ -46,6 +54,8 @@
 	%
 :- pred bag__to_list(bag(T), list(T)).
 :- mode bag__to_list(in, out) is det.
+
+:- func bag__to_list(bag(T)) = list(T).
 
 	% Given a bag, produce a sorted list containing all the values in
 	% the bag.  Each value will appear in the list once, with the
@@ -55,11 +65,15 @@
 :- pred bag__to_assoc_list(bag(T), assoc_list(T, int)).
 :- mode bag__to_assoc_list(in, out) is det.
 
+:- func bag__to_assoc_list(bag(T)) = assoc_list(T, int).
+
 	% Given a bag, produce a sorted list with no duplicates
 	% containing all the values in the bag.
 	%
 :- pred bag__to_list_without_duplicates(bag(T), list(T)).
 :- mode bag__to_list_without_duplicates(in, out) is det.
+
+:- func bag__to_list_without_duplicates(bag(T)) = list(T).
 
 	% Remove one occurrence of a particular value from a bag.
 	% Fail if the item does not exist in the bag.
@@ -72,6 +86,8 @@
 	%
 :- pred bag__det_remove(bag(T), T, bag(T)).
 :- mode bag__det_remove(in, in, out) is det.
+
+:- func bag__det_remove(bag(T), T) = bag(T).
 
 	% Remove a list of values from a bag.  Duplicates are removed
 	% from the bag the appropriate number of times.  Fail if any
@@ -87,6 +103,8 @@
 :- pred bag__remove_list(bag(T), list(T), bag(T)).
 :- mode bag__remove_list(in, in, out) is semidet.
 
+:- func bag__det_remove_list(bag(T), list(T)) = bag(T).
+
 	% Remove a list of values from a bag.  Duplicates are removed
 	% from the bag the appropriate number of times.  Abort if any
 	% of the items in the list do not exist in the bag.
@@ -100,11 +118,15 @@
 :- pred bag__delete(bag(T), T, bag(T)).
 :- mode bag__delete(in, in, out) is det.
 
+:- func bag__delete(bag(T), T) = bag(T).
+
 	% Remove all occurrences of a particular value from a bag.
 	% Fail if the item does not exist in the bag.
 	%
 :- pred bag__remove_all(bag(T), T, bag(T)).
 :- mode bag__remove_all(in, in, out) is semidet.
+
+:- func bag__delete_all(bag(T), T) = bag(T).
 
 	% Delete all occurrences of a particular value from a bag.
 	%
@@ -121,6 +143,8 @@
 :- pred bag__count_value(bag(T), T, int).
 :- mode bag__count_value(in, in, out) is det.
 
+:- func bag__count_value(bag(T), T) = int.
+
 	% bag__subtract(Bag0, SubBag, Bag)
 	% subtracts SubBag from Bag0 to produce Bag
 	% each element in SubBag is removed from Bag0 to produce Bag.
@@ -131,6 +155,8 @@
 :- pred bag__subtract(bag(T), bag(T), bag(T)).
 :- mode bag__subtract(in, in, out) is det.
 
+:- func bag__subtract(bag(T), bag(T)) = bag(T).
+
 	% The third bag is the union of the first 2 bags.
 	% e.g. {1, 1, 2, 2} U {2, 2, 3, 3} = {1, 1, 2, 2, 2, 2, 3, 3}
 	% If the two input bags are known to be unequal in size, then
@@ -140,12 +166,16 @@
 :- pred bag__union(bag(T), bag(T), bag(T)).
 :- mode bag__union(in, in, out) is det.
 
+:- func bag__union(bag(T), bag(T)) = bag(T).
+
 	% The third bag is the intersection of the first 2 bags.  Every
 	% element in the third bag exists in both of the first 2 bags.
 	% e.g. bag__intersect({1, 2, 2, 3, 3}, {2, 2, 3, 4}, {2, 2, 3}).
 	%
 :- pred bag__intersect(bag(T), bag(T), bag(T)).
 :- mode bag__intersect(in, in, out) is det.
+
+:- func bag__intersect(bag(T), bag(T)) = bag(T).
 
 	% Fails if there is no intersection between the 2 bags.
 	% bag__intersect(A, B) :- bag__intersect(A, B, C), not bag__is_empty(C).
@@ -163,6 +193,8 @@
 	%
 :- pred bag__least_upper_bound(bag(T), bag(T), bag(T)).
 :- mode bag__least_upper_bound(in, in, out) is det.
+
+:- func bag__least_upper_bound(bag(T), bag(T)) = bag(T).
 
 	% Fails if the first bag is not a subbag of the second.
 	% bag__is_subbag(A, B). implies that every element in the bag A
@@ -446,49 +478,10 @@ bag__subset_compare(Res, A, B) :-
 		)
 	).
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func bag__init = bag(T).
-
-:- func bag__insert(bag(T), T) = bag(T).
-
-:- func bag__insert_list(bag(T), list(T)) = bag(T).
-
-:- func bag__from_list(list(T)) = bag(T).
-
-:- func bag__to_list(bag(T)) = list(T).
-
-:- func bag__to_assoc_list(bag(T)) = assoc_list(T, int).
-
-:- func bag__to_list_without_duplicates(bag(T)) = list(T).
-
-:- func bag__det_remove(bag(T), T) = bag(T).
-
-:- func bag__det_remove_list(bag(T), list(T)) = bag(T).
-
-:- func bag__delete(bag(T), T) = bag(T).
-
-:- func bag__delete_all(bag(T), T) = bag(T).
-
-:- func bag__count_value(bag(T), T) = int.
-
-:- func bag__subtract(bag(T), bag(T)) = bag(T).
-
-:- func bag__union(bag(T), bag(T)) = bag(T).
-
-:- func bag__intersect(bag(T), bag(T)) = bag(T).
-
-:- func bag__least_upper_bound(bag(T), bag(T)) = bag(T).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 bag__init = B :-
 	bag__init(B).

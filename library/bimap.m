@@ -32,6 +32,8 @@
 :- pred bimap__init(bimap(_,_)).
 :- mode bimap__init(out) is det.
 
+:- func bimap__init = bimap(_,_).
+
 	% Check whether a bimap is empty.
 :- pred bimap__is_empty(bimap(_,_)).
 :- mode bimap__is_empty(in) is semidet.
@@ -40,8 +42,12 @@
 :- mode bimap__search(in, in, out) is semidet.
 :- mode bimap__search(in, out, in) is semidet.
 
+:- func bimap__set(bimap(K,V), K, V) = bimap(K,V).
+
 :- pred bimap__lookup(bimap(K,V), K, V).
 :- mode bimap__lookup(in, in, out) is det.
+
+:- func bimap__lookup(bimap(K,V), K) = V.
 
 :- pred bimap__reverse_lookup(bimap(K,V), K, V).
 :- mode bimap__reverse_lookup(in, out, in) is det.
@@ -56,17 +62,25 @@
 :- pred bimap__ordinates(bimap(K, _V), list(K)).
 :- mode bimap__ordinates(in, out) is det.
 
+:- func bimap__ordinates(bimap(K, _V)) = list(K).
+
 	% Given a bimap, return a list of all the data values in the bimap
 :- pred bimap__coordinates(bimap(_K, V), list(V)).
 :- mode bimap__coordinates(in, out) is det.
+
+:- func bimap__coordinates(bimap(_K, V)) = list(V).
 
 	% convert a bimap to an association list
 :- pred bimap__to_assoc_list(bimap(K,V), assoc_list(K,V)).
 :- mode bimap__to_assoc_list(in, out) is det.
 
+:- func bimap__to_assoc_list(bimap(K,V)) = assoc_list(K,V).
+
 	% convert an association list to a bimap
 :- pred bimap__from_assoc_list(assoc_list(K,V), bimap(K,V)).
 :- mode bimap__from_assoc_list(in, out) is det.
+
+:- func bimap__from_assoc_list(assoc_list(K,V)) = bimap(K,V).
 
 /****
 	% delete a key-value pair from a bimap
@@ -76,6 +90,8 @@
 
 :- pred bimap__from_corresponding_lists(list(K), list(V), bimap(K, V)).
 :- mode bimap__from_corresponding_lists(in, in, out) is det.
+
+:- func bimap__from_corresponding_lists(list(K), list(V)) = bimap(K, V).
 ****/
 
 %-----------------------------------------------------------------------------%
@@ -135,29 +151,6 @@ bimap__from_assoc_list(L, bimap(O, C)) :-
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Functional forms added.
-
-:- interface.
-
-:- func bimap__init = bimap(_,_).
-
-:- func bimap__lookup(bimap(K,V), K) = V.
-
-:- func bimap__set(bimap(K,V), K, V) = bimap(K,V).
-
-:- func bimap__ordinates(bimap(K, _V)) = list(K).
-
-:- func bimap__coordinates(bimap(_K, V)) = list(V).
-
-:- func bimap__to_assoc_list(bimap(K,V)) = assoc_list(K,V).
-
-:- func bimap__from_assoc_list(assoc_list(K,V)) = bimap(K,V).
-
-%%% :- func bimap__from_corresponding_lists(list(K), list(V)) = bimap(K, V).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 bimap__init = BM :-
 	bimap__init(BM).

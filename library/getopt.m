@@ -175,23 +175,38 @@
 :- pred getopt__lookup_bool_option(option_table(Option), Option, bool).
 :- mode getopt__lookup_bool_option(in, in, out) is det.
 
+:- func getopt__lookup_bool_option(option_table(Option), Option) = bool.
+
 :- pred getopt__lookup_int_option(option_table(Option), Option, int).
 :- mode getopt__lookup_int_option(in, in, out) is det.
 
+:- func getopt__lookup_int_option(option_table(Option), Option) = int.
+
 :- pred getopt__lookup_string_option(option_table(Option), Option, string).
 :- mode getopt__lookup_string_option(in, in, out) is det.
+
+:- func getopt__lookup_string_option(option_table(Option), Option) = string.
 
 :- pred getopt__lookup_maybe_int_option(option_table(Option), Option,
 		maybe(int)).
 :- mode getopt__lookup_maybe_int_option(in, in, out) is det.
 
+:- func getopt__lookup_maybe_int_option(option_table(Option), Option) =
+		maybe(int).
+
 :- pred getopt__lookup_maybe_string_option(option_table(Option), Option,
 		maybe(string)).
 :- mode getopt__lookup_maybe_string_option(in, in, out) is det.
 
+:- func getopt__lookup_maybe_string_option(option_table(Option), Option) =
+		maybe(string).
+
 :- pred getopt__lookup_accumulating_option(option_table(Option), Option,
 		list(string)).
 :- mode getopt__lookup_accumulating_option(in, in, out) is det.
+
+:- func getopt__lookup_accumulating_option(option_table(Option), Option) =
+		list(string).
 
 %-----------------------------------------------------------------------------%
 
@@ -679,28 +694,6 @@ getopt__lookup_accumulating_option(OptionTable, Opt, Val) :-
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Functional forms added.
-
-:- interface.
-
-:- func getopt__lookup_bool_option(option_table(Option), Option) = bool.
-
-:- func getopt__lookup_int_option(option_table(Option), Option) = int.
-
-:- func getopt__lookup_string_option(option_table(Option), Option) = string.
-
-:- func getopt__lookup_maybe_int_option(option_table(Option), Option) =
-		maybe(int).
-
-:- func getopt__lookup_maybe_string_option(option_table(Option), Option) =
-		maybe(string).
-
-:- func getopt__lookup_accumulating_option(option_table(Option), Option) =
-		list(string).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 getopt__lookup_bool_option(OT, Opt) = B :-
 	getopt__lookup_bool_option(OT, Opt, B).

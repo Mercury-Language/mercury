@@ -12,9 +12,6 @@
 % The implementation represents sets using ordered lists.
 % This file just calls the equivalent predicates in set_ordlist.
 
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%	Function forms added.
-
 %--------------------------------------------------------------------------%
 
 :- module set.

@@ -26,6 +26,8 @@
 :- pred set_bbbtree__init(set_bbbtree(T)).
 :- mode set_bbbtree__init(uo) is det.
 
+:- func set_bbbtree__init = set_bbbtree(T).
+
 
         % `set_bbbtree__empty(Set) is true iff `Set' is contains no elements.
 
@@ -86,6 +88,8 @@
 :- mode set_bbbtree__singleton_set(in, in) is semidet.
 :- mode set_bbbtree__singleton_set(out, in) is det.
 
+:- func set_bbbtree__make_singleton_set(T) = set_bbbtree(T).
+
 
 	% `set_bbbtree__equal(SetA, SetB)' is true iff `SetA' and `SetB'
 	% contain the same elements.
@@ -101,6 +105,8 @@
 :- mode set_bbbtree__insert(di, di, uo) is det.
 :- mode set_bbbtree__insert(in, in, out) is det.
 
+:- func set_bbbtree__insert(set_bbbtree(T), T) = set_bbbtree(T).
+
 
 	% `set_bbbtree__insert_list(Set0, Xs, Set)' is true iff `Set' is
 	% the union of `Set0' and the set containing only the members of `Xs'.
@@ -108,6 +114,8 @@
 :- pred set_bbbtree__insert_list(set_bbbtree(T), list(T), set_bbbtree(T)).
 % :- mode set_bbbtree__insert_list(di, di, uo) is det.
 :- mode set_bbbtree__insert_list(in, in, out) is det.
+
+:- func set_bbbtree__insert_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
 
 
 	% `set_bbbtree__delete(Set0, X, Set)' is true iff `Set' is the relative
@@ -119,6 +127,8 @@
 :- mode set_bbbtree__delete(di, in, uo) is det.
 :- mode set_bbbtree__delete(in, in, out) is det.
 
+:- func set_bbbtree__delete(set_bbbtree(T), T) = set_bbbtree(T).
+
 
 	% `set_bbbtree__delete_list(Set0, Xs, Set)' is true iff `Set' is the
 	% relative complement of `Set0' and the set containing only the members
@@ -127,6 +137,8 @@
 :- pred set_bbbtree__delete_list(set_bbbtree(T), list(T), set_bbbtree(T)).
 % :- mode set_bbbtree__delete_list(di, in, uo) is det.
 :- mode set_bbbtree__delete_list(in, in, out) is det.
+
+:- func set_bbbtree__delete_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
 
 
 	% `set_bbbtree__remove(Set0, X, Set)' is true iff `Set0' contains `X',
@@ -170,6 +182,8 @@
 % :- mode set_bbbtree__list_to_set(di, uo) is det.
 :- mode set_bbbtree__list_to_set(in, out) is det.
 
+:- func set_bbbtree__list_to_set(list(T)) = set_bbbtree(T).
+
 
 	% `set_bbbtree__sorted_list_to_set(List, Set)' is true iff `Set' is the
 	% set containing only the members of `List'.
@@ -178,6 +192,8 @@
 :- pred set_bbbtree__sorted_list_to_set(list(T), set_bbbtree(T)).
 % :- mode set_bbbtree__sorted_list_to_set(di, uo) is det.
 :- mode set_bbbtree__sorted_list_to_set(in, out) is det.
+
+:- func set_bbbtree__sorted_list_to_set(list(T)) = set_bbbtree(T).
 
 
 	% `set_bbbtree__sorted_list_to_set_len(List, Set, N)' is true iff
@@ -200,6 +216,8 @@
 :- mode set_bbbtree__to_sorted_list(di, uo) is det.
 :- mode set_bbbtree__to_sorted_list(in, out) is det.
 
+:- func set_bbbtree__to_sorted_list(set_bbbtree(T)) = list(T).
+
 
 	% `set_bbbtree__union(SetA, SetB, Set)' is true iff `Set' is the union
 	% of `SetA' and `SetB'.
@@ -207,12 +225,16 @@
 :- pred set_bbbtree__union(set_bbbtree(T), set_bbbtree(T), set_bbbtree(T)).
 :- mode set_bbbtree__union(in, in, out) is det.
 
+:- func set_bbbtree__union(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
+
 
 	% `set_bbbtree__power_union(Sets, Set)' is true iff `Set' is the union
 	% of all the sets in `Sets'
 
 :- pred set_bbbtree__power_union(set_bbbtree(set_bbbtree(T)), set_bbbtree(T)).
 :- mode set_bbbtree__power_union(in, out) is det.
+
+:- func set_bbbtree__power_union(set_bbbtree(set_bbbtree(T))) = set_bbbtree(T).
 
 
 	% `set_bbbtree__intersect(SetA, SetB, Set)' is true iff `Set' is the
@@ -222,6 +244,8 @@
 					set_bbbtree(T)).
 :- mode set_bbbtree__intersect(in, in, out) is det.
 
+:- func set_bbbtree__intersect(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
+
 
 	% `set_bbbtree__power_intersect(Sets, Set) is true iff `Set' is the
 	% interscetion of the sets in `Sets'.
@@ -229,6 +253,9 @@
 :- pred set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T)),
 					set_bbbtree(T)).
 :- mode set_bbbtree__power_intersect(in, out) is det.
+
+:- func set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T)))
+		= set_bbbtree(T).
 
 
 	% `set_bbtree__difference(SetA, SetB, Set)' is true iff `Set' is the
@@ -238,6 +265,9 @@
 :- pred set_bbbtree__difference(set_bbbtree(T), set_bbbtree(T),
 					set_bbbtree(T)).
 :- mode set_bbbtree__difference(in, in, out) is det.
+
+:- func set_bbbtree__difference(set_bbbtree(T), set_bbbtree(T))
+		= set_bbbtree(T).
 
 
 	% `set_bbbtree__subset(SetA, SetB)' is true iff all the elements of
@@ -252,6 +282,15 @@
 
 :- pred set_bbbtree__superset(set_bbbtree(T), set_bbbtree(T)).
 :- mode set_bbbtree__superset(in, in) is semidet.
+
+:- func set_bbbtree__map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
+
+:- func set_bbbtree__filter_map(func(T1) = T2, set_bbbtree(T1))
+		= set_bbbtree(T2).
+
+:- mode set_bbbtree__filter_map(func(in) = out is semidet, in) = out is det.
+
+:- func set_bbbtree__fold(func(T1, T2) = T2, set_bbbtree(T1), T2) = T2.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -1210,48 +1249,6 @@ set_bbbtree__split_gt(tree(V, _N, L, R), X, Set, Ratio) :-
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
 %	Function forms added.
 
-:- interface.
-
-:- func set_bbbtree__list_to_set(list(T)) = set_bbbtree(T).
-
-:- func set_bbbtree__sorted_list_to_set(list(T)) = set_bbbtree(T).
-
-:- func set_bbbtree__to_sorted_list(set_bbbtree(T)) = list(T).
-
-:- func set_bbbtree__init = set_bbbtree(T).
-
-:- func set_bbbtree__make_singleton_set(T) = set_bbbtree(T).
-
-:- func set_bbbtree__insert(set_bbbtree(T), T) = set_bbbtree(T).
-
-:- func set_bbbtree__insert_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
-
-:- func set_bbbtree__delete(set_bbbtree(T), T) = set_bbbtree(T).
-
-:- func set_bbbtree__delete_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
-
-:- func set_bbbtree__union(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
-
-:- func set_bbbtree__power_union(set_bbbtree(set_bbbtree(T))) = set_bbbtree(T).
-
-:- func set_bbbtree__intersect(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
-
-:- func set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T))) = set_bbbtree(T).
-
-:- func set_bbbtree__difference(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
-
-:- func set_bbbtree__map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
-
-:- func set_bbbtree__filter_map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
-:- mode set_bbbtree__filter_map(func(in) = out is semidet, in) = out is det.
-
-:- func set_bbbtree__fold(func(T1, T2) = T2, set_bbbtree(T1), T2) = T2.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
-
 set_bbbtree__list_to_set(Xs) = S :-
 	set_bbbtree__list_to_set(Xs, S).
 
@@ -1295,10 +1292,12 @@ set_bbbtree__difference(S1, S2) = S3 :-
 	set_bbbtree__difference(S1, S2, S3).
 
 set_bbbtree__map(F, S1) = S2 :-
-	S2 = set_bbbtree__list_to_set(list__map(F, set_bbbtree__to_sorted_list(S1))).
+	S2 = set_bbbtree__list_to_set(list__map(F,
+			set_bbbtree__to_sorted_list(S1))).
 
 set_bbbtree__filter_map(PF, S1) = S2 :-
-	S2 = set_bbbtree__list_to_set(list__filter_map(PF, set_bbbtree__to_sorted_list(S1))).
+	S2 = set_bbbtree__list_to_set(list__filter_map(PF,
+			set_bbbtree__to_sorted_list(S1))).
 
 set_bbbtree__fold(F, S, A) = B :-
 	B = list__foldl(F, set_bbbtree__to_sorted_list(S), A).

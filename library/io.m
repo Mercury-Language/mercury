@@ -1034,6 +1034,7 @@
 %		signal kills the system call, then Result will be an error
 %		indicating which signal occured.
 
+:- func io__error_message(io__error) = string.
 :- pred io__error_message(io__error, string).
 :- mode io__error_message(in, out) is det.
 %	io__error_message(ErrorCode, ErrorMessage).
@@ -3819,19 +3820,10 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 
 /*---------------------------------------------------------------------------*/
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 %	Functional forms added.
-
-:- interface.
-
-:- func io__error_message(io__error) = string.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 io__error_message(Error) = Msg :-
 	io__error_message(Error, Msg).

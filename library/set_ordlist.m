@@ -25,11 +25,15 @@
 :- pred set_ordlist__list_to_set(list(T), set_ordlist(T)).
 :- mode set_ordlist__list_to_set(in, out) is det.
 
+:- func set_ordlist__list_to_set(list(T)) = set_ordlist(T).
+
 	% `set_ordlist__sorted_list_to_set(List, Set)' is true iff `Set' is
 	% the set containing only the members of `List'.  `List' must be sorted.
 
 :- pred set_ordlist__sorted_list_to_set(list(T), set_ordlist(T)).
 :- mode set_ordlist__sorted_list_to_set(in, out) is det.
+
+:- func set_ordlist__sorted_list_to_set(list(T)) = set_ordlist(T).
 
 	% `set_ordlist__to_sorted_list(Set, List)' is true iff `List' is the
 	% list of all the members of `Set', in sorted order.
@@ -37,10 +41,14 @@
 :- pred set_ordlist__to_sorted_list(set_ordlist(T), list(T)).
 :- mode set_ordlist__to_sorted_list(in, out) is det.
 
+:- func set_ordlist__to_sorted_list(set_ordlist(T)) = list(T).
+
 	% `set_ordlist__init(Set)' is true iff `Set' is an empty set.
 
 :- pred set_ordlist__init(set_ordlist(_T)).
 :- mode set_ordlist__init(uo) is det.
+
+:- func set_ordlist__init = set_ordlist(T).
 
 	% `set_ordlist__singleton_set(Set, Elem)' is true iff `Set' is the set
 	% containing just the single element `Elem'.
@@ -48,6 +56,8 @@
 :- pred set_ordlist__singleton_set(set_ordlist(T), T).
 :- mode set_ordlist__singleton_set(in, out) is semidet.
 :- mode set_ordlist__singleton_set(out, in) is det.
+
+:- func set_ordlist__make_singleton_set(T) = set_ordlist(T).
 
 	% `set_ordlist__equal(SetA, SetB)' is true iff
 	% `SetA' and `SetB' contain the same elements.
@@ -96,11 +106,15 @@
 :- mode set_ordlist__insert(di, di, uo) is det.
 :- mode set_ordlist__insert(in, in, out) is det.
 
+:- func set_ordlist__insert(set_ordlist(T), T) = set_ordlist(T).
+
 	% `set_ordlist__insert_list(Set0, Xs, Set)' is true iff `Set' is the
 	% union of `Set0' and the set containing only the members of `Xs'.
 
 :- pred set_ordlist__insert_list(set_ordlist(T), list(T), set_ordlist(T)).
 :- mode set_ordlist__insert_list(in, in, out) is det.
+
+:- func set_ordlist__insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
 	% `set_ordlist__delete(Set0, X, Set)' is true iff `Set' is the
 	% relative complement of `Set0' and the set containing only `X', i.e.
@@ -111,12 +125,16 @@
 % :- mode set_ordlist__delete(di, in, uo) is det.
 :- mode set_ordlist__delete(in, in, out) is det.
 
+:- func set_ordlist__delete(set_ordlist(T), T) = set_ordlist(T).
+
 	% `set_ordlist__delete_list(Set0, Xs, Set)' is true iff `Set' is the
 	% relative complement of `Set0' and the set containing only the members
 	% of `Xs'.
 
 :- pred set_ordlist__delete_list(set_ordlist(T), list(T), set_ordlist(T)).
 :- mode set_ordlist__delete_list(in, in, out) is det.
+
+:- func set_ordlist__delete_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
 	% `set_ordlist__remove(Set0, X, Set)' is true iff `Set0' contains `X',
 	% and `Set' is the relative complement of `Set0' and the set
@@ -150,12 +168,16 @@
 							set_ordlist(T)).
 :- mode set_ordlist__union(in, in, out) is det.
 
+:- func set_ordlist__union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
+
 	% `set_ordlist__power_union(A, B)' is true iff `B' is the union of
 	% all the sets in `A'
 
 :- pred set_ordlist__power_union(set_ordlist(set_ordlist(T)),
 							set_ordlist(T)).
 :- mode set_ordlist__power_union(in, out) is det.
+
+:- func set_ordlist__power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
 
 	% `set_ordlist__intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'. The efficiency of the intersection
@@ -166,12 +188,18 @@
 :- mode set_ordlist__intersect(in, in, out) is det.
 :- mode set_ordlist__intersect(in, in, in) is semidet.
 
+:- func set_ordlist__intersect(set_ordlist(T), set_ordlist(T))
+		= set_ordlist(T).
+
 	% `set_ordlist__power_intersect(A, B)' is true iff `B' is the
 	% intersection of all the sets in `A'.
 
 :- pred set_ordlist__power_intersect(set_ordlist(set_ordlist(T)),
 							set_ordlist(T)).
 :- mode set_ordlist__power_intersect(in, out) is det.
+
+:- func set_ordlist__power_intersect(set_ordlist(set_ordlist(T)))
+		= set_ordlist(T).
 
 	% `set_ordlist__difference(SetA, SetB, Set)' is true iff `Set' is the
 	% set containing all the elements of `SetA' except those that
@@ -181,11 +209,26 @@
 							set_ordlist(T)).
 :- mode set_ordlist__difference(in, in, out) is det.
 
+:- func set_ordlist__difference(set_ordlist(T), set_ordlist(T))
+		= set_ordlist(T).
+
 	% `set_ordlist__count(Set, Count)' is true iff `Set' has
 	% `Count' elements.
 
 :- pred set_ordlist__count(set_ordlist(T), int).
 :- mode set_ordlist__count(in, out) is det.
+
+:- func set_ordlist__count(set_ordlist(T)) = int.
+
+
+:- func set_ordlist__map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
+
+:- func set_ordlist__filter_map(func(T1) = T2, set_ordlist(T1))
+		= set_ordlist(T2).
+
+:- mode set_ordlist__filter_map(func(in) = out is semidet, in) = out is det.
+
+:- func set_ordlist__fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
 
 %--------------------------------------------------------------------------%
 
@@ -383,54 +426,10 @@ set_ordlist__difference([X|Xs], [Y|Ys], Set) :-
 set_ordlist__count(Set, Count) :-
 	list__length(Set, Count).
 
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
 %	Function forms added.
-
-:- interface.
-
-:- func set_ordlist__list_to_set(list(T)) = set_ordlist(T).
-
-:- func set_ordlist__sorted_list_to_set(list(T)) = set_ordlist(T).
-
-:- func set_ordlist__to_sorted_list(set_ordlist(T)) = list(T).
-
-:- func set_ordlist__init = set_ordlist(T).
-
-:- func set_ordlist__make_singleton_set(T) = set_ordlist(T).
-
-:- func set_ordlist__insert(set_ordlist(T), T) = set_ordlist(T).
-
-:- func set_ordlist__insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
-
-:- func set_ordlist__delete(set_ordlist(T), T) = set_ordlist(T).
-
-:- func set_ordlist__delete_list(set_ordlist(T), list(T)) = set_ordlist(T).
-
-:- func set_ordlist__union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
-
-:- func set_ordlist__power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
-
-:- func set_ordlist__intersect(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
-
-:- func set_ordlist__power_intersect(set_ordlist(set_ordlist(T))) = set_ordlist(T).
-
-:- func set_ordlist__difference(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
-
-:- func set_ordlist__count(set_ordlist(T)) = int.
-
-:- func set_ordlist__map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
-
-:- func set_ordlist__filter_map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
-:- mode set_ordlist__filter_map(func(in) = out is semidet, in) = out is det.
-
-:- func set_ordlist__fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 set_ordlist__list_to_set(Xs) = S :-
 	set_ordlist__list_to_set(Xs, S).
@@ -478,10 +477,12 @@ set_ordlist__count(S) = N :-
 	set_ordlist__count(S, N).
 
 set_ordlist__map(F, S1) = S2 :-
-	S2 = set_ordlist__list_to_set(list__map(F, set_ordlist__to_sorted_list(S1))).
+	S2 = set_ordlist__list_to_set(list__map(F,
+			set_ordlist__to_sorted_list(S1))).
 
 set_ordlist__filter_map(PF, S1) = S2 :-
-	S2 = set_ordlist__list_to_set(list__filter_map(PF, set_ordlist__to_sorted_list(S1))).
+	S2 = set_ordlist__list_to_set(list__filter_map(PF,
+			set_ordlist__to_sorted_list(S1))).
 
 set_ordlist__fold(F, S, A) = B :-
 	B = list__foldl(F, set_ordlist__to_sorted_list(S), A).

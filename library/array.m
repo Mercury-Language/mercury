@@ -28,9 +28,6 @@
 % part of the library.
 %
 
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%	Function forms added.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -75,10 +72,16 @@
 :- pred array__make_empty_array(array(T)).
 :- mode array__make_empty_array(array_uo) is det.
 
+:- func array__make_empty_array = array(T).
+:- mode array__make_empty_array = array_uo is det.
+
 	% array__init(Size, Init, Array) creates an array
 	% with bounds from 0 to Size-1, with each element initialized to Init.
 :- pred array__init(int, T, array(T)).
 :- mode array__init(in, in, array_uo) is det.
+
+:- func array__init(int, T) = array(T).
+:- mode array__init(in, in) = array_uo is det.
 
 	% array/1 is a function that constructs an array from a list.
 	% (It does the same thing as the predicate array__from_list/2.)
@@ -95,16 +98,28 @@
 :- mode array__min(array_ui, out) is det.
 :- mode array__min(in, out) is det.
 
+:- func array__min(array(_T)) = int.
+:- mode array__min(array_ui) = out is det.
+:- mode array__min(in) = out is det.
+
 	% array__max returns the upper bound of the array.
 :- pred array__max(array(_T), int).
 :- mode array__max(array_ui, out) is det.
 :- mode array__max(in, out) is det.
+
+:- func array__max(array(_T)) = int.
+:- mode array__max(array_ui) = out is det.
+:- mode array__max(in) = out is det.
 
 	% array__size returns the length of the array,
 	% i.e. upper bound - lower bound + 1.
 :- pred array__size(array(_T), int).
 :- mode array__size(array_ui, out) is det.
 :- mode array__size(in, out) is det.
+
+:- func array__size(array(_T)) = int.
+:- mode array__size(array_ui) = out is det.
+:- mode array__size(in) = out is det.
 
 	% array__bounds returns the upper and lower bounds of an array.
 	% Note: in this implementation, the lower bound is always zero.
@@ -126,6 +141,10 @@
 :- mode array__lookup(array_ui, in, out) is det.
 :- mode array__lookup(in, in, out) is det.
 
+:- func array__lookup(array(T), int) = T.
+:- mode array__lookup(array_ui, in) = out is det.
+:- mode array__lookup(in, in) = out is det.
+
 	% array__semidet_lookup returns the Nth element of an array.
 	% It fails if the index is out of bounds.
 :- pred array__semidet_lookup(array(T), int, T).
@@ -138,6 +157,8 @@
 :- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(array_di, in, in, array_uo) is det.
 
+:- func array__set(array(T), int, T) = array(T).
+:- mode array__set(array_di, in, in) = array_uo is det.
 
 	% array__semidet_set sets the nth element of an array,
 	% and returns the resulting array.
@@ -154,6 +175,10 @@
 :- mode array__slow_set(array_ui, in, in, array_uo) is det.
 :- mode array__slow_set(in, in, in, array_uo) is det.
 
+:- func array__slow_set(array(T), int, T) = array(T).
+:- mode array__slow_set(array_ui, in, in) = array_uo is det.
+:- mode array__slow_set(in, in, in) = array_uo is det.
+
 	% array__semidet_slow_set sets the nth element of an array,
 	% and returns the resulting array.  The initial array is not
 	% required to be unique, so the implementation may not be able to use
@@ -169,6 +194,10 @@
 :- mode array__copy(array_ui, array_uo) is det.
 :- mode array__copy(in, array_uo) is det.
 
+:- func array__copy(array(T)) = array(T).
+:- mode array__copy(array_ui) = array_uo is det.
+:- mode array__copy(in) = array_uo is det.
+
 	% array__resize(Array0, Size, Init, Array):
 	% The array is expanded or shrunk to make it fit
 	% the new size `Size'.  Any new entries are filled
@@ -176,18 +205,26 @@
 :- pred array__resize(array(T), int, T, array(T)).
 :- mode array__resize(array_di, in, in, array_uo) is det.
 
+:- func array__resize(array(T), int, T) = array(T).
+:- mode array__resize(array_di, in, in) = array_uo is det.
+
 	% array__shrink(Array0, Size, Array):
 	% The array is shrunk to make it fit the new size `Size'.
 	% It is an error if `Size' is larger than the size of `Array0'.
 :- pred array__shrink(array(T), int, array(T)).
 :- mode array__shrink(array_di, in, array_uo) is det.
 
+:- func array__shrink(array(T), int) = array(T).
+:- mode array__shrink(array_di, in) = array_uo is det.
 
 	% array__from_list takes a list,
 	% and returns an array containing those elements in
 	% the same order that they occured in the list.
 :- pred array__from_list(list(T), array(T)).
 :- mode array__from_list(in, array_uo) is det.
+
+:- func array__from_list(list(T)) = array(T).
+:- mode array__from_list(in) = array_uo is det.
 
 	% array__to_list takes an array and returns a list containing
 	% the elements of the array in the same order that they
@@ -196,6 +233,10 @@
 :- mode array__to_list(array_ui, out) is det.
 :- mode array__to_list(in, out) is det.
 
+:- func array__to_list(array(T)) = list(T).
+:- mode array__to_list(array_ui) = out is det.
+:- mode array__to_list(in) = out is det.
+
 	% array__fetch_items takes an array and a lower and upper
 	% index, and places those items in the array between these
 	% indices into a list.  It is an error if either index is
@@ -203,6 +244,9 @@
 :- pred array__fetch_items(array(T), int, int, list(T)).
 :- mode array__fetch_items(in, in, in, out) is det.
 
+:- func array__fetch_items(array(T), int, int) = list(T).
+:- mode array__fetch_items(array_ui, in, in) = out is det.
+:- mode array__fetch_items(in, in, in) = out is det.
 
 	% array__bsearch takes an array, an element to be found
 	% and a comparison predicate and returns the position of
@@ -215,10 +259,20 @@
 :- mode array__bsearch(array_ui, in, pred(in, in, out) is det, out) is det.
 :- mode array__bsearch(in, in, pred(in, in, out) is det, out) is det.
 
+:- func array__bsearch(array(T), T, func(T,T) = comparison_result) = maybe(int).
+:- mode array__bsearch(array_ui, in, func(in,in) = out is det) = out is det.
+:- mode array__bsearch(in, in, func(in,in) = out is det) = out is det.
+
 	% array__map(Closure, OldArray, NewArray) applys `Closure' to
 	% each of the elements of `OldArray' to create `NewArray'.
 :- pred array__map(pred(T1, T2), array(T1), array(T2)).
 :- mode array__map(pred(in, out) is det, array_di, array_uo) is det.
+
+:- func array__map(func(T1) = T2, array(T1)) = array(T2).
+:- mode array__map(func(in) = out is det, array_di) = array_uo is det.
+
+:- func array_compare(array(T), array(T)) = comparison_result.
+:- mode array_compare(in, in) = out is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -768,73 +822,6 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
 %	Function forms added.
-
-:- interface.
-
-:- func array__make_empty_array = array(T).
-:- mode array__make_empty_array = array_uo is det.
-
-:- func array__init(int, T) = array(T).
-:- mode array__init(in, in) = array_uo is det.
-
-:- func array__min(array(_T)) = int.
-:- mode array__min(array_ui) = out is det.
-:- mode array__min(in) = out is det.
-
-:- func array__max(array(_T)) = int.
-:- mode array__max(array_ui) = out is det.
-:- mode array__max(in) = out is det.
-
-:- func array__size(array(_T)) = int.
-:- mode array__size(array_ui) = out is det.
-:- mode array__size(in) = out is det.
-
-:- func array__lookup(array(T), int) = T.
-:- mode array__lookup(array_ui, in) = out is det.
-:- mode array__lookup(in, in) = out is det.
-
-:- func array__set(array(T), int, T) = array(T).
-:- mode array__set(array_di, in, in) = array_uo is det.
-
-:- func array__slow_set(array(T), int, T) = array(T).
-:- mode array__slow_set(array_ui, in, in) = array_uo is det.
-:- mode array__slow_set(in, in, in) = array_uo is det.
-
-:- func array__copy(array(T)) = array(T).
-:- mode array__copy(array_ui) = array_uo is det.
-:- mode array__copy(in) = array_uo is det.
-
-:- func array__resize(array(T), int, T) = array(T).
-:- mode array__resize(array_di, in, in) = array_uo is det.
-
-:- func array__shrink(array(T), int) = array(T).
-:- mode array__shrink(array_di, in) = array_uo is det.
-
-:- func array__from_list(list(T)) = array(T).
-:- mode array__from_list(in) = array_uo is det.
-
-:- func array__to_list(array(T)) = list(T).
-:- mode array__to_list(array_ui) = out is det.
-:- mode array__to_list(in) = out is det.
-
-:- func array__fetch_items(array(T), int, int) = list(T).
-:- mode array__fetch_items(array_ui, in, in) = out is det.
-:- mode array__fetch_items(in, in, in) = out is det.
-
-:- func array__bsearch(array(T), T, func(T,T) = comparison_result) = maybe(int).
-:- mode array__bsearch(array_ui, in, func(in,in) = out is det) = out is det.
-:- mode array__bsearch(in, in, func(in,in) = out is det) = out is det.
-
-:- func array__map(func(T1) = T2, array(T1)) = array(T2).
-:- mode array__map(func(in) = out is det, array_di) = array_uo is det.
-
-:- func array_compare(array(T), array(T)) = comparison_result.
-:- mode array_compare(in, in) = out is det.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 array__make_empty_array = A :-
 	array__make_empty_array(A).

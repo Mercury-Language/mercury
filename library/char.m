@@ -28,24 +28,29 @@
 
 :- instance enum(character).
 
+:- func char__to_int(char) = int.
 :- pred char__to_int(char, int).
 :- mode char__to_int(in, out) is det.
 :- mode char__to_int(in, in) is semidet.	% implied
 :- mode char__to_int(out, in) is semidet.
 	% Convert a character to it's corresponding numerical code.
 
+:- func char__max_char_value = int.
 :- pred char__max_char_value(int).
 :- mode char__max_char_value(out) is det.
 	% Returns the maximum numerical character code.
 
+:- func char__min_char_value = int.
 :- pred char__min_char_value(int).
 :- mode char__min_char_value(out) is det.
 	% Returns the minimum numerical character code.
 
+:- func char__to_upper(char) = char.
 :- pred char__to_upper(char, char).
 :- mode char__to_upper(in, out) is det.
 	% Convert a character to uppercase.
 
+:- func char__to_lower(char) = char.
 :- pred char__to_lower(char, char).
 :- mode char__to_lower(in, out) is det.
 	% Convert a character to lowercase.
@@ -115,6 +120,7 @@
 	% `DigitChar' is a decimal digit or uppercase letter
 	% whose value as a digit is `Int'.
 
+:- func char__det_int_to_digit(int) = char.
 :- pred char__det_int_to_digit(int, char).
 :- mode char__det_int_to_digit(in, out) is det.
 	% Returns a decimal digit or uppercase letter corresponding to the
@@ -445,25 +451,6 @@ char__min_char_value(0).
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 %       Functional forms added.
 
-:- interface.
-
-:- func char__to_int(char) = int.
-
-:- func char__max_char_value = int.
-
-:- func char__min_char_value = int.
-
-:- func char__to_upper(char) = char.
-
-:- func char__to_lower(char) = char.
-
-:- func char__det_int_to_digit(int) = char.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
-
 char__to_int(C) = N :-
 	char__to_int(C, N).
 
@@ -481,6 +468,4 @@ char__to_lower(C1) = C2 :-
 
 char__det_int_to_digit(N) = C :-
 	char__det_int_to_digit(N, C).
-
-
 

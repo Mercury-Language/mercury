@@ -46,12 +46,16 @@
 :- mode bintree__set(di, di, di, uo) is det.
 :- mode bintree__set(in, in, in, out) is det.
 
+:- func bintree__set(bintree(K,V), K, V) = bintree(K,V).
+
 :- pred bintree__search(bintree(K,V), K, V).
 :- mode bintree__search(in, in, in) is semidet.	% implied
 :- mode bintree__search(in, in, out) is semidet.
 
 :- pred bintree__lookup(bintree(K,V), K, V).
 :- mode bintree__lookup(in, in, out) is det.
+
+:- func bintree__lookup(bintree(K,V), K) = V.
 
 :- pred bintree__lower_bound_search(bintree(K,V), K, K, V).
 :- mode bintree__lower_bound_search(in, in, out, out) is semidet.
@@ -68,40 +72,60 @@
 :- pred bintree__delete(bintree(K,V), K, bintree(K,V)).
 :- mode bintree__delete(in, in, out) is det.
 
+:- func bintree__delete(bintree(K,V), K) = bintree(K,V).
+
 :- pred bintree__remove(bintree(K,V), K, V, bintree(K,V)).
 :- mode bintree__remove(in, in, out, out) is semidet.
 
 :- pred bintree__keys(bintree(K,_V), list(K)).
 :- mode bintree__keys(in, out) is det.
 
+:- func bintree__keys(bintree(K,_V)) = list(K).
+
 :- pred bintree__values(bintree(_K,V), list(V)).
 :- mode bintree__values(in, out) is det.
+
+:- func bintree__values(bintree(_K,V)) = list(V).
 
 :- pred bintree__from_list(assoc_list(K,V), bintree(K,V)).
 :- mode bintree__from_list(in, out) is det.
 
+:- func bintree__from_list(assoc_list(K,V)) = bintree(K,V).
+
 :- pred bintree__from_sorted_list(assoc_list(K,V), bintree(K,V)).
 :- mode bintree__from_sorted_list(in, out) is det.
+
+:- func bintree__from_sorted_list(assoc_list(K,V)) = bintree(K,V).
 
 :- pred bintree__from_corresponding_lists(list(K), list(V), bintree(K,V)).
 :- mode bintree__from_corresponding_lists(in, in, out) is det.
 
+:- func bintree__from_corresponding_lists(list(K), list(V)) = bintree(K,V).
+
 :- pred bintree__to_list(bintree(K,V), assoc_list(K,V)).
 :- mode bintree__to_list(in, out) is det.
+
+:- func bintree__to_list(bintree(K,V)) = assoc_list(K,V).
 
 	% count the number of elements in a tree
 :- pred bintree__count(bintree(_K,_V), int).
 :- mode bintree__count(in, out) is det.
 
+:- func bintree__count(bintree(_K,_V)) = int.
+
 	% count the depth of a tree
 :- pred bintree__depth(bintree(_K,_V), int).
 :- mode bintree__depth(in, out) is det.
+
+:- func bintree__depth(bintree(_K,_V)) = int.
 
 :- pred bintree__branching_factor(bintree(_K,_V), int, int).
 :- mode bintree__branching_factor(in, out, out) is det.
 
 :- pred bintree__balance(bintree(K, V), bintree(K, V)).
 :- mode bintree__balance(in, out) is det.
+
+:- func bintree__balance(bintree(K, V)) = bintree(K, V).
 
 %-----------------------------------------------------------------------------%
 
@@ -549,37 +573,6 @@ bintree__branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func bintree__set(bintree(K,V), K, V) = bintree(K,V).
-
-:- func bintree__lookup(bintree(K,V), K) = V.
-
-:- func bintree__delete(bintree(K,V), K) = bintree(K,V).
-
-:- func bintree__keys(bintree(K,_V)) = list(K).
-
-:- func bintree__values(bintree(_K,V)) = list(V).
-
-:- func bintree__from_list(assoc_list(K,V)) = bintree(K,V).
-
-:- func bintree__from_sorted_list(assoc_list(K,V)) = bintree(K,V).
-
-:- func bintree__from_corresponding_lists(list(K), list(V)) = bintree(K,V).
-
-:- func bintree__to_list(bintree(K,V)) = assoc_list(K,V).
-
-:- func bintree__count(bintree(_K,_V)) = int.
-
-:- func bintree__depth(bintree(_K,_V)) = int.
-
-:- func bintree__balance(bintree(K, V)) = bintree(K, V).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 bintree__set(BT1, K, V) = BT2 :-
 	bintree__set(BT1, K, V, BT2).
