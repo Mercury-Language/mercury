@@ -1,47 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head> 
-	<TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
-<H1> QuickCheck Tutorial 2 </H1>
-Files : 
+<body>
+<h1>QuickCheck Tutorial 2</h1>
+
+<p>
+Files:
 <a href="use20.m">use20.m</a>
 <a href="use21.m">use21.m</a>
 <a href="use22.m">use22.m</a>
-<a href="mymax.m">mymax.m</a><BR>
+<a href="mymax.m">mymax.m</a>
+<br>
 <a href="index.html">Back to main</a>
-<h3> Conditional law </h3>
 
-<pre>
+<h2>Conditional law</h2>
+
+<p>
 In general many laws hold only under certain conditions. Quickcheck provides
 an implication combinator to represent such conditional laws. Eg, the law 
-	X =< Y  => max x y == y 
+<pre>
+        X =&lt; Y  =&gt; max x y == y 
+</pre>
 can be represented by the definition :
-<h4>
-	:- func law(int, int) = property.
-	law(X, Y) = (X =< Y) `===>` (mymax(X, Y) `===` Y).
-</h4>
+<pre>
+        :- func law(int, int) = property.
+        law(X, Y) = (X =&lt; Y) `===&gt;` (mymax(X, Y) `===` Y).
+</pre>
 or alternatively can be represented as :
-<h4>
-	:- func law2(int, int) = property.
-	law2(X, Y) = is_less_equal(X, Y) `===>` (mymax(X, Y) `===` Y).
-			             
-	:- func is_less_equal(int, int) = bool.
-	is_less_equal(X, Y) = Bool :-
-		(if	X =< Y
-	  	 then
-			Bool = yes
-		 else
-			Bool = no
-		).
-</h4>
-The difference between law1 and law2 is the left argument of `===>`.
-(X =< Y) is type (pred) and is_less_equal(X, Y) returns type bool.
-`===>` is overloaded to take both types.
+<pre>
+        :- func law2(int, int) = property.
+        law2(X, Y) = is_less_equal(X, Y) `===&gt;` (mymax(X, Y) `===` Y).
+                                     
+        :- func is_less_equal(int, int) = bool.
+        is_less_equal(X, Y) = Bool :-
+                (if     X =&lt; Y
+                 then
+                        Bool = yes
+                 else
+                        Bool = no
+                ).
+</pre>
+The difference between law1 and law2 is the left argument of `===&gt;`.
+<samp>(X =&lt; Y)</samp> is of type (pred) whereas
+<samp>is_less_equal(X, Y)</samp> evaluates to type bool.
+`===&gt;` is overloaded to take both types.
  
     
-The complete use20.m :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+<p>
+The complete use20.m:
+
+<table border=0 width="100%" bgcolor="#eeeee0" summary="use20.m source code"><tr><td><pre>
 :- module use20.
 
 :- interface.
@@ -60,63 +70,66 @@ The complete use20.m :
 
 %---------------------------------------------------------------------------%
 
-main -->
-     	qcheck(qcheck__f(law), "testing mymax using `===>` for (pred)"),
-     	qcheck(qcheck__f(law2), "testing mymax using `===>` for bool").
+main --&gt;
+        qcheck(qcheck__f(law), "testing mymax using `===&gt;` for (pred)"),
+        qcheck(qcheck__f(law2), "testing mymax using `===&gt;` for bool").
 
 :- func law(int, int) = property.
-law(X, Y) = (X =< Y) `===>` (mymax(X, Y) `===` Y).
+law(X, Y) = (X =&lt; Y) `===&gt;` (mymax(X, Y) `===` Y).
 
 :- func law2(int, int) = property.
-law2(X, Y) = is_less_equal(X, Y) `===>` 
-			        (mymax(X, Y) `===` Y).
+law2(X, Y) = is_less_equal(X, Y) `===&gt;` 
+                                (mymax(X, Y) `===` Y).
 
 :- func is_less_equal(int, int) = bool.
 is_less_equal(X, Y) = Bool :-
-	(if	X =< Y
-  	 then
-		Bool = yes
-	 else
-		Bool = no
-	).
+        (if     X =&lt; Y
+         then
+                Bool = yes
+         else
+                Bool = no
+        ).
 </pre></tr></table>
 After running the program, test statistics will be something like:
-<h4>
-	Test Description : testing mymax using `===>` for (pred)
-	Number of test cases that succeeded : 52
-	Number of trivial tests : 0
-	Number of tests cases which failed the pre-condition : 48
-	Distributions of selected argument(s) : 
+<pre>
+        Test Description : testing mymax using `===&gt;` for (pred)
+        Number of test cases that succeeded : 52
+        Number of trivial tests : 0
+        Number of tests cases which failed the pre-condition : 48
+        Distributions of selected argument(s) : 
 
-	Test Description : testing mymax using `===>` for bool
-	Number of test cases that succeeded : 52
-	Number of trivial tests : 0
-	Number of tests cases which failed the pre-condition : 48
-	Distributions of selected argument(s) : 
-</h4>
+        Test Description : testing mymax using `===&gt;` for bool
+        Number of test cases that succeeded : 52
+        Number of trivial tests : 0
+        Number of tests cases which failed the pre-condition : 48
+        Distributions of selected argument(s) : 
+</pre>
 The default number of tests to run is 100. In the above test, 48/100 cases
 passed the invariant function, and none failed. However, there are 52/100 
 cases where the inputs failed the pre-condition.
 
+<p>
 Note that both test cases succeeded 52/100 and failed pre-condition 48/100. 
 qcheck.m seeds the random generator on local time, if qcheck is called twice 
 within the same second, the number generated will be the same.
 
+<p>
 The implication combinator can be compounded. For example, suppose mymax is 
 designed that if mymax(X, Y) is called, Y will never be zero. Thus test cases
 with Y=0 should also be disregarded (use21.m) : 
-<h4>
-	:- func law(int, int) = property.
-	law(X, Y) =  notzero(Y) `===>` ((X =< Y) `===>` (mymax(X, Y) `===` Y)).
+<pre>
+        :- func law(int, int) = property.
+        law(X, Y) =  notzero(Y) `===&gt;` ((X =&lt; Y) `===&gt;` (mymax(X, Y) `===` Y)).
 
-	:- pred notzero(int).
-	:- mode notzero(in) is semidet.
-	notzero(X) :- X \= 0.
-</h4>	 
+        :- pred notzero(int).
+        :- mode notzero(in) is semidet.
+        notzero(X) :- X \= 0.
+</pre>   
 
-The right argument of `===>` is also overload, as shown in use22.m :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+<p>
+The right argument of `===&gt;` is also overload, as shown in use22.m:
+
+<table border=0 width="100%" bgcolor="#eeeee0" summary="use22.m source code"><tr><td><pre>
 :- module use22.
 
 :- interface.
@@ -135,30 +148,31 @@ The right argument of `===>` is also overload, as shown in use22.m :
 
 %---------------------------------------------------------------------------%
 
-main -->
-     	qcheck(qcheck__f(law1), "passing property"),
-     	qcheck(qcheck__f(law2), "passing (func) = property").
+main --&gt;
+        qcheck(qcheck__f(law1), "passing property"),
+        qcheck(qcheck__f(law2), "passing (func) = property").
 
 :- func law1(int, int) = property.
-law1(X, Y) =  notzero(Y) `===>` qcheck__f( (func) = ((X // Y) `===` (X // Y)) ).
+law1(X, Y) =  notzero(Y) `===&gt;` qcheck__f( (func) = ((X // Y) `===` (X // Y)) ).
 
 :- func law2(int, int) = property.
-law2(X, Y) =  notzero(Y) `===>` ( (X // Y) `===` (X // Y) ).
+law2(X, Y) =  notzero(Y) `===&gt;` ( (X // Y) `===` (X // Y) ).
 
 :- pred notzero(int).
 :- mode notzero(in) is semidet.
 notzero(X) :- X \= 0.
 </pre></tr></table>
-The difference between law1/2 and law2/2 is the right argument of `===>`.
+The difference between law1/2 and law2/2 is the right argument of `===&gt;`.
 law1/2 passed (func), while law2/2 passed property. In law2/2, (X // Y) is
 always evaluated, which will cause error if Y is zero. However, in law1/2
-(X // Y) is not evaluated if `===>`'s left argument is 'bool:no' or 
+(X // Y) is not evaluated if `===&gt;`'s left argument is 'bool:no' or 
 '(pred):failure'.
 
-The implication combinator '===>' marks a test that has failed pre-condition 
+<p>The implication combinator `===&gt;` marks a test that has failed pre-condition 
 by inserting 'flag:condition' into the property in cases where the right
 argument is a property; in cases where the right argument is (func), then 
-`===>` will just return 'property:[condition]'.
+`===&gt;` will just return 'property:[condition]'.
 If the property list contains one or more 'condition', the test result is 
 ignored.
+</body>
 </html>

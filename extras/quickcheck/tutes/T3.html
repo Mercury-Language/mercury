@@ -1,49 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head> 
-        <TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
-<H1> QuickCheck Tutorial 3 </H1>
+<body>
+<p>
 Files : 
 <a href="use31.m">use31.m</a>
 <a href="use33.m">use33.m</a>
-<a href="nrev.m">nrev.m</a><BR>
+<a href="nrev.m">nrev.m</a>
+<br>
 <a href="index.html">Back to main</a>
-<h3> Monitoring Test Data - to_trivial/3 </h3>
 
-<pre>
+<h1>QuickCheck Tutorial 3</h1>
+<h2>Monitoring Test Data: <code>to_trivial/3</code></h2>
+
+<p>
 In Tutorial 1, the 3rd rule for reverse is that: 
-	reverse (reverse xs) = xs
-It's not much of a test if xs is empty list or list with only 1 element.
+<pre>
+        reverse (reverse xs) = xs
+</pre>
+It's not much of a test if <code>xs</code> is an empty list or a list with only 1 element.
 
+<p>
 Quickcheck can label a test being trivial via the function 
 to_trivial/3, which does not change the meaning of a law, but it classifies 
-some of the test cases. Without classifying the invariant function could be :
-<h4>
-	:- func testing1(list(float)) = property.
-	testing1(Xs) = 
-		nrev (nrev Xs) `===` Xs.
-</h4>
+some of the test cases.
+Without classifying, the invariant function could be:
+<pre>
+        :- func testing1(list(float)) = property.
+        testing1(Xs) = 
+                nrev (nrev Xs) `===` Xs.
+</pre>
 If the 1st argument of to_trivial/3 is equal to the 2nd argument, then that test
-case will be labeled trivial by pushing flag:trivial into the third argument 
-( which is a list of flags ). 
+case will be labeled trivial by pushing <code>flag:trivial</code> into the third argument 
+(which is a list of flags).
 testing2/1 treats empty list as trivial test.
-<h4>	
-	:- func testing2(list(float)) = property.
-	testing2(Xs) = 
-		to_trivial([], Xs, nrev (nrev Xs) `===` Xs).
-</h4>
-Use compounded to_trivial to also classify list of 1 element as trivial 
-<h4>
-	:- func testing3(list(float)) = property.
-	testing3(Xs) = 
+<pre>   
+        :- func testing2(list(float)) = property.
+        testing2(Xs) = 
+                to_trivial([], Xs, nrev (nrev Xs) `===` Xs).
+</pre>
+Use compounded to_trivial to also classify lists of 1 element as trivial 
+<pre>
+        :- func testing3(list(float)) = property.
+        testing3(Xs) = 
                 to_trivial(1, 
                            list_length(Xs), 
                            to_trivial([], Xs, nrev(nrev(Xs)) `===` Xs)
                           ).
-</h4>
-The complete code (use31.m) :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+</pre>
+The complete code (use31.m):
+
+<table border=0 width="100%" bgcolor="#eeeee0" summary="use31.m source code"><tr><td><pre>
 :- module use31.
 
 :- interface.
@@ -62,67 +71,71 @@ The complete code (use31.m) :
 
 %---------------------------------------------------------------------------%
 
-main -->
-     	qcheck(qcheck__f(testing1), "testing1"),
-     	qcheck(qcheck__f(testing2), "testing2"),
-     	qcheck(qcheck__f(testing3), "testing3").
+main --&gt;
+        qcheck(qcheck__f(testing1), "testing1"),
+        qcheck(qcheck__f(testing2), "testing2"),
+        qcheck(qcheck__f(testing3), "testing3").
 
 :- func testing1(list(float)) = property.
 testing1(Xs) = 
-	nrev(nrev(Xs)) `===` Xs.
-	
+        nrev(nrev(Xs)) `===` Xs.
+        
 :- func testing2(list(float)) = property.
 testing2(Xs) = 
-	to_trivial([], Xs, nrev(nrev(Xs)) `===` Xs).
+        to_trivial([], Xs, nrev(nrev(Xs)) `===` Xs).
 
 :- func testing3(list(float)) = property.
 testing3(Xs) = 
-	to_trivial(1, 
-		   list_length(Xs), 
+        to_trivial(1, 
+                   list_length(Xs), 
                    to_trivial([], Xs, nrev(nrev(Xs)) `===` Xs)
-		  ).
+                  ).
 </pre></tr></table>
 A sample output :
-<h4>
-	Test Description : testing1
-	Number of test cases that succeeded : 100
-	Number of trivial tests : 0
-	Number of tests cases which failed the pre-condition : 0
-	Distributions of selected argument(s) : 
+<pre>
+        Test Description : testing1
+        Number of test cases that succeeded : 100
+        Number of trivial tests : 0
+        Number of tests cases which failed the pre-condition : 0
+        Distributions of selected argument(s) : 
 
-	Test Description : testing2
-	Number of test cases that succeeded : 100
-	Number of trivial tests : 53
-	Number of tests cases which failed the pre-condition : 0
-	Distributions of selected argument(s) : 
+        Test Description : testing2
+        Number of test cases that succeeded : 100
+        Number of trivial tests : 53
+        Number of tests cases which failed the pre-condition : 0
+        Distributions of selected argument(s) : 
 
-	Test Description : testing3
-	Number of test cases that succeeded : 100
-	Number of trivial tests : 75
-	Number of tests cases which failed the pre-condition : 0
-	Distributions of selected argument(s) : 
-</h4>
+        Test Description : testing3
+        Number of test cases that succeeded : 100
+        Number of trivial tests : 75
+        Number of tests cases which failed the pre-condition : 0
+        Distributions of selected argument(s) : 
+</pre>
 Note test1, the original, has no trivial cases. With test2, 53/100 tests have 
 an empty list as its input. Test3 shows 75/100 tests have either an empty list
 or a list of only one element. It only tested 25/100 cases where the list is 
 longer than 1 element. 
 
 
-<h3> Monitoring Test Data - `>>>` </h3>
-The combinator `>>>` gathers all values that are passed to it, and prints out 
+<h2>Monitoring Test Data: <code>`&gt;&gt;&gt;`</code></h2>
+
+<p>The combinator <code>`&gt;&gt;&gt;`</code> gathers all values that are
+passed to it, and prints out 
 a histogram of these values.
-Let's use `>>>` to find out exactly what lists are generated for the previous 
-tests :
-<h4>
-	:- func testing4(list(float)) = property.
-	testing4(Xs) = 
-		list_length(Xs) `>>>` (nrev(nrev(Xs)) `===` Xs).
-</h4>
-The combinator `>>>` will convert its left argument to a univ, and push 
-info(univ) into the property list.
-The complete code (use31.m) :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+Let's use <code>`&gt;&gt;&gt;`</code> to find out exactly what lists are generated for the previous 
+tests:
+<pre>
+        :- func testing4(list(float)) = property.
+        testing4(Xs) = 
+                list_length(Xs) `&gt;&gt;&gt;` (nrev(nrev(Xs)) `===` Xs).
+</pre>
+
+<p>The combinator <code>`&gt;&gt;&gt;`</code> will convert its left
+argument to a univ, and push info(univ) into the property list.
+
+<p>The complete code (use31.m):
+
+<table border=0 width="100%" bgcolor="#eeeee0" summary="use31.m source code"><tr><td><pre>
 :- module use31.
 
 :- interface.
@@ -141,33 +154,33 @@ The complete code (use31.m) :
 
 %---------------------------------------------------------------------------%
 
-main -->
-     	qcheck(qcheck__f(testing1), "testing1"),
-     	qcheck(qcheck__f(testing2), "testing2"),
-     	qcheck(qcheck__f(testing3), "testing3"),
-     	qcheck(qcheck__f(testing4), "testing4").
+main --&gt;
+        qcheck(qcheck__f(testing1), "testing1"),
+        qcheck(qcheck__f(testing2), "testing2"),
+        qcheck(qcheck__f(testing3), "testing3"),
+        qcheck(qcheck__f(testing4), "testing4").
 
 :- func testing1(list(float)) = property.
 testing1(Xs) = 
-	nrev(nrev(Xs)) `===` Xs.
-	
+        nrev(nrev(Xs)) `===` Xs.
+        
 :- func testing2(list(float)) = property.
 testing2(Xs) = 
-	to_trivial([], Xs, nrev(nrev(Xs)) `===` Xs).
+        to_trivial([], Xs, nrev(nrev(Xs)) `===` Xs).
 
 :- func testing3(list(float)) = property.
 testing3(Xs) = 
-	to_trivial(1, 
-		   list_length(Xs), 
+        to_trivial(1, 
+                   list_length(Xs), 
                    to_trivial([], Xs, nrev(nrev(Xs)) `===` Xs)
-		  ).
+                  ).
 
 :- func testing4(list(float)) = property.
 testing4(Xs) = 
-	list_length(Xs) `>>>` (nrev(nrev(Xs)) `===` Xs).
+        list_length(Xs) `&gt;&gt;&gt;` (nrev(nrev(Xs)) `===` Xs).
 </pre></tr></table>
 A sample output :
-<h4>
+<pre>
 Test Description : testing1
 Number of test cases that succeeded : 100
 Number of trivial tests : 0
@@ -199,20 +212,20 @@ Distributions of selected argument(s) :
 16     2
 18     1
 53     0
-</h4>
-The display of testing4 shows that 	53 cases of length == 0
-					18 cases of length == 1
-					16 cases of length == 2
-					...etc...	
+</pre>
+The display of testing4 shows that      53 cases of length == 0
+                                        18 cases of length == 1
+                                        16 cases of length == 2
+                                        ...etc...       
 53+18 cases = 71 cases, which were marked trivial in testing3, likewise
 for testing2. The numbers will add up only if all the tests were run with
 the same random number seed. 
 
 
-The value passed to `>>>` does not have to be the same type, and `>>>` can 
-be compounded like to_trivial/3, eg (use33.m):
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+The value passed to `&gt;&gt;&gt;` does not have to be the same type, and `&gt;&gt;&gt;` can 
+be compounded like to_trivial/3, e.g. (use33.m):
+
+<table border=0 width="100%" bgcolor="#eeeee0" summary="use33.m source code"><tr><td><pre>
 :- module use33.
 
 :- interface.
@@ -231,27 +244,27 @@ be compounded like to_trivial/3, eg (use33.m):
 
 %---------------------------------------------------------------------------%
 
-main -->
-     	qcheck(qcheck__f(testing5), "testing5").
+main --&gt;
+        qcheck(qcheck__f(testing5), "testing5").
 
 :- func testing5(list(float)) = property.
 testing5(Xs) = 
-	odd_even(Xs) `>>>` 
-                     (list_length(Xs) `>>>` (nrev(nrev(Xs)) `===` Xs)).
+        odd_even(Xs) `&gt;&gt;&gt;` 
+                     (list_length(Xs) `&gt;&gt;&gt;` (nrev(nrev(Xs)) `===` Xs)).
 
 :- func odd_even(list(T)) = string.
 :- mode odd_even(in) = out is det.
 odd_even(Xs) = Y :-
-	(if	list_length(Xs) mod 2 = 1
-	 then
-		Y = "odd"
-	 else
-		Y = "even"
-	).
+        (if     list_length(Xs) mod 2 = 1
+         then
+                Y = "odd"
+         else
+                Y = "even"
+        ).
 </pre></tr></table>
 testing5 collects the list_length, and also collect "odd" or "even"
 A sample output :
-<h4>
+<pre>
 Test Description : testing5
 Number of test cases that succeeded : 100
 Number of trivial tests : 0
@@ -267,7 +280,8 @@ Distributions of selected argument(s) :
 39     "odd"
 47     0
 61     "even"
-</h4>
+</pre>
 
+</body>
 </html>
 

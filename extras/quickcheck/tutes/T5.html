@@ -1,76 +1,96 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head> 
-        <TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
+<body>
+<p>
 Files : 
-<a href="use51.m">use51.m</a><BR>
+<a href="use51.m">use51.m</a>
+<br>
 <a href="index.html">Back to main</a>
-<H1> QuickCheck Tutorial 5 </H1>
-<h3> Generators - Basic </h3>
 
-<pre>
+<H1> QuickCheck Tutorial 5 </H1>
+<h2> Generators - Basic </h2>
+
+<p>
 The invariant function is of the form 
-	:- func Invariant_Function_X(T,  T1, T2 ...) = property
+<pre>
+        :- func Invariant_Function_X(T,  T1, T2 ...) = property
         :- mode Invariant_Function_X(in, in, in ...) = out.
+</pre>
 Quickcheck generates random values for each input argument at run time.
 The following types have default generators:
-	- int	
-	- char
-	- float
-	- string 
-	- some functions (more detail in Tutorial 8)
-	- any type defined as a discriminated union, provided
-	  that all types in the body of the definition have
-	  default/custom generators
-	- any type defined as being equivalent to a type with a
-	  default/custom generator
+<ul>
+        <li> int   
+        <li> char
+        <li> float
+        <li> string 
+        <li> some functions (more detail in Tutorial 8)
+        <li> any type defined as a discriminated union, provided
+          that all types in the body of the definition have
+          default/custom generators
+        <li> any type defined as being equivalent to a type with a
+          default/custom generator
+</ul>
 
+<p>
 There is no code written to handle equivalent types. But it works 
 as if the compiler replaced all the equivalent types with their real type
 before compiling. 
 
+<p>
 The default generator for int is rand_int/2, which has distribution:
-50%	even distribution between [-100, 100]
-50%	even distribution between [-2^31, 2^31]
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+<table>
+<tr>
+<td> 50%
+<td> even distribution in the range [-100, 100]
+<tr>
+<td> 50%
+<td> even distribution in the range (-2^31, 2^31)
+        <br>(This will probably change to [int__min_int, int__max_int] in
+        a future version.)
+</table>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- func rand_int(rnd, rnd) = int.
 :- mode rand_int(in, out) = out is det.
 rand_int(BS0, BS) = Int :-
-	Temp = rand_allint(BS0, BS1) rem 2,
-	(if	Temp = 0 
-	 then
-		irange(-100, 100, Int, BS1, BS)
-	 else
-		Int = rand_allint(BS1, BS)
-	).  
+        Temp = rand_allint(BS0, BS1) rem 2,
+        (if     Temp = 0 
+         then
+                irange(-100, 100, Int, BS1, BS)
+         else
+                Int = rand_allint(BS1, BS)
+        ).  
 
 :- func rand_allint(rnd, rnd) = int.
 :- mode rand_allint(in, out) = out is det.
 rand_allint(BS0, BS) = Int :-
-	next(1, Sign, BS0, BS1),
-	next(31, TempInt, BS1, BS),
-	( Sign > 0 ->
-	    Int =  TempInt 
-	;
-	    Int = -TempInt
-	).
+        next(1, Sign, BS0, BS1),
+        next(31, TempInt, BS1, BS),
+        ( Sign &gt; 0 -&gt;
+            Int =  TempInt 
+        ;
+            Int = -TempInt
+        ).
 </pre></tr></table>
 Default for char is rand_char/2, with even spread over 
 char__to_int(Char, X) where X is (-1000, 1000).
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+<!-- Maybe insert `&cap; {I : some[C] char__to_int(C, I)}' or English comment. -->
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- func rand_char(rnd, rnd) = char.
 :- mode rand_char(in, out) = out is det.
 rand_char(RS0, RS) = Char :-
-       		Int = rand_allint(RS0, RS1) rem 1000,
-		(if	char__to_int(Char0, Int) 
-		 then
-		 	Char = Char0,
-			RS = RS1
-		 else
-		 	Char = rand_char(RS1, RS)
-		).
+                Int = rand_allint(RS0, RS1) rem 1000,
+                (if     char__to_int(Char0, Int) 
+                 then
+                        Char = Char0,
+                        RS = RS1
+                 else
+                        Char = rand_char(RS1, RS)
+                ).
 </pre></tr></table>
 Default for float is rand_float/2, which has roughly even 
 distribution over all discrete values for a 32-bit float.
@@ -78,14 +98,14 @@ If machine is less then 32bits, overfloat occurs. It should still
 cover all possible values, but may alter distribution.
 If machine is more than 32bits, rand_float/2 will miss some values 
 but retains even distribution. 
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- func rand_float(rnd, rnd) = float. 
 :- mode rand_float(in, out) = out is det.
 rand_float(BS0, BS) = Flt :-
-	next(31, Mant0, BS0, BS1),
+        next(31, Mant0, BS0, BS1),
         next(1, Sign, BS1, BS2),
-        ( Sign > 0 ->
+        ( Sign &gt; 0 -&gt;
             Mant = Mant0
         ;
             Mant = -Mant0
@@ -93,7 +113,7 @@ rand_float(BS0, BS) = Flt :-
         next(7, Exp, BS2, BS3),
         next(1, ExpSign, BS3, BS),
         Flt0 = float(Mant) * pow(2.0, Exp),
-        ( ExpSign > 0, Flt0 \= 0.0 ->
+        ( ExpSign &gt; 0, Flt0 \= 0.0 -&gt;
             Flt = 1.0/Flt0
         ;
             Flt = Flt0
@@ -101,27 +121,37 @@ rand_float(BS0, BS) = Flt :-
 </pre></tr></table>
 Default for string is rand_string/2, each element is generated by 
 rand_char/2. 
-0.9^0 * 0.1	chance being string length == 0
-0.9^1 * 0.1	chance being string length == 1
-0.9^2 * 0.1	chance being string length == 2 
-...etc... 	
-So the mean string length is Sum(0.1* 0.9^N * N) where N <- {0, infinity},
+<table summary="The probability of the string having length i is 0.9^i * 0.1.">
+<tr>
+ <td>0.9^0 * 0.1
+ <td>chance being string length == 0
+<tr>
+ <td>0.9^1 * 0.1
+ <td>chance being string length == 1
+<tr>
+ <td>0.9^2 * 0.1
+ <td>chance being string length == 2 
+<tr>
+ <td>...etc...       
+</table>
+So the mean string length is Sum(0.1* 0.9^N * N) where N &larr; {0, infinity},
 which converges to 9.
 
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre> 
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre> 
 :- func rand_string(rnd, rnd) = string.
 :- mode rand_string(in, out) = out is det.
 rand_string(RS0, RS) = X :-
-	     	gen(Charlist, [], [ {type_of(['A']), [{10,[]},{90,[]}]} ],
-		    [], RS0, RS),
-		string__from_char_list(Charlist,X).
+                gen(Charlist, [], [ {type_of(['A']), [{10,[]},{90,[]}]} ],
+                    [], RS0, RS),
+                string__from_char_list(Charlist,X).
 </pre></tr></table>
 Note that the default generator for stirng actually uses the default generator 
 for discriminated union (indirectly).
+
+<p>
 use51.m gives an illustration of generating int, char, float, string.
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- module use51.
 
 :- interface.
@@ -142,40 +172,42 @@ use51.m gives an illustration of generating int, char, float, string.
 
 %---------------------------------------------------------------------------%
 
-main -->
-     	qcheck(qcheck__f(junk), "just to show the inputs", 5, [], []).
+main --&gt;
+        qcheck(qcheck__f(junk), "just to show the inputs", 5, [], []).
 
 :- func junk(marks, char, float, string) = property.
 junk(A, B, C, D) = 
-	{A,B,C,D} `>>>` [yes].
+        {A,B,C,D} `&gt;&gt;&gt;` [yes].
 </pre></tr></table>
 There are a few thing to note about use51.m :
-<h4>
-	qcheck(qcheck__f(junk), "just to show the inputs", 5, [], []).
-</h4>
+<pre>
+        qcheck(qcheck__f(junk), "just to show the inputs", 5, [], []).
+</pre>
 The 3rd argument is an int, which specifies how many times to run. In this 
 example 5 tests are run , but the default is 100. The other auguments will
 be described later. 
-<h4>
-	junk(A, B, C, D) = 
-		{A,B,C,D} `>>>` [yes].
-</h4>
+<pre>
+        junk(A, B, C, D) = 
+                {A,B,C,D} `&gt;&gt;&gt;` [yes].
+</pre>
 the invariant function doesn't do any testing, it always succeeds. But 
-`>>>` collects all the inputs.
+`&gt;&gt;&gt;` collects all the inputs.
 A Sample output 
-<h4>
-	Test Description : just to show the inputs
-	Number of test cases that succeeded : 5
-	Number of trivial tests : 0
-	Number of tests cases which failed the pre-condition : 0
-	Distributions of selected argument(s) : 
-	1     {-50, '4', -3.55475907854864e+25, "\241r\371~~\316\002LJ~\204\246"}
-	1     {27, '\342', -311727734390784., "\377g.\001"}
-	1     {1389908257, '8', 2.63071847153664e+15, "\342"}
-	1     {-90973704, '<', -2.10559053720692e-22, ""}
-	1     {-896549770, 's', 7.72155851221736e+30, "[\230m\304\2561\254Q"}
-</h4>
+<pre>
+        Test Description : just to show the inputs
+        Number of test cases that succeeded : 5
+        Number of trivial tests : 0
+        Number of tests cases which failed the pre-condition : 0
+        Distributions of selected argument(s) : 
+        1     {-50, '4', -3.55475907854864e+25, "\241r\371~~\316\002LJ~\204\246"}
+        1     {27, '\342', -311727734390784., "\377g.\001"}
+        1     {1389908257, '8', 2.63071847153664e+15, "\342"}
+        1     {-90973704, '&lt;', -2.10559053720692e-22, ""}
+        1     {-896549770, 's', 7.72155851221736e+30, "[\230m\304\2561\254Q"}
+</pre>
 The char and string output doesn't look pretty, since most are not printable,
 eg: \342, \254 
 
 
+</body>
+</html>

@@ -1,54 +1,96 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
 <html>
 <head> 
-        <TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
+<body>
 <a href="index.html">Back to main</a>
-<H1> QuickCheck Tutorial 10 </H1>
-<h3> Summary - Generators </h3>
-<pre>
 
-Quickcheck is able to generate random values for each input 
+<h1>QuickCheck Tutorial 10</h1>
+
+<h2>Summary - Generators</h2>
+
+<p>
+QuickCheck is able to generate random values for each input 
 argument at run time, provided that there is a default/custom 
 generator for that type. The master seed for randomness is the
 current time.
 
-Quickcheck generates value via the following steps:
+<p>QuickCheck generates values via the following steps:
 
-	1	The master generator is called with 7 arguments.
-		Arg1	type_desc of the required term
-		Arg2	SF for the current term
-		Arg3	a list of all GF
-		Arg4	a list of all custom generators
-		Arg5	ouputs a univ of the generated term  
-		Arg6	random number supply input
-		Arg7	random number supply output
+<table>
+<tr>
+<td>1</td>
+<td>The master generator is called with 7 arguments:
+ <table>
+ <tr>
+ <td>Arg1</td> <td><code>type_desc</code> of the required term</td>
+ </tr>
+ <tr>
+ <td>Arg2</td> <td>SF for the current term</td>
+ </tr>
+ <tr>
+ <td>Arg3</td> <td>a list of all GF</td>
+ </tr>
+ <tr>
+ <td>Arg4</td> <td>a list of all custom generators</td>
+ </tr>
+ <tr>
+ <td>Arg5</td> <td>ouputs a univ of the generated term  </td>
+ </tr>
+ <tr>
+ <td>Arg6</td> <td>random number supply input</td>
+ </tr>
+ <tr>
+ <td>Arg7</td> <td>random number supply output</td>
+ </tr>
+ </table>
+</td>
+</tr>
 
-	2a	Quickcheck searches through the list of custom generators,
-		if there is a custum generator for the current term, then
-		call the custom generator with Arg1, 2, 3, 4, 6, 7.
-		The master generator will return what ever is returned by the 
-		custom generator.
+<tr>
+ <td>2a</td>
+ <td>QuickCheck searches through the list of custom generators,
+ if there is a custum generator for the current term, then
+ call the custom generator with Arg1, 2, 3, 4, 6, 7.
+ The master generator will return what ever is returned by the 
+ custom generator.</td>
+</tr>
+<tr>
+ <td>2b</td>
+ <td>If QuickCheck fails to locate a custom generator, then it will
+ classify the current term as of type int, char, float, string,
+ discriminated union, and other.</td>
+</tr>
+<tr>
+ <td>3b1</td>
+ <td>If it's type int, call rand_int/2 with Arg6 and Arg7</td>
+</tr>
+<tr>
+ <td>3b2</td>
+ <td>If it's type char, call rand_char/2 with Arg6 and Arg7</td>
+</tr>
+<tr>
+ <td>3b3</td>
+ <td>If it's type float, call rand_float/2 with Arg6 and Arg7</td>
+</tr>
+<tr>
+ <td>3b4</td>
+ <td>If it's type string, call rand_string/2 with Arg6 and Arg8</td>
+</tr>
+<tr>
+ <td>3b5</td>
+ <td>If it's type discriminated union, call rand_union/6 with 
+ Arg1, Arg2, Arg3, Arg4, Arg6, Arg7.</td>
+</tr>
+<tr>
+ <td>3b6</td>
+ <td>If it's classified as other, then call rand_function with Arg1,
+ Arg6 and Arg7.  Quickcheck will generates the appropriate value if  
+ Arg1 is of a function with arity 0 to 10.  Otherwise an error will
+ be thrown: "no default generator for this type".</td>
+</tr>
+</table>
 
- 	2b	If Quickcheck fails to locate a custom generator, then it will
-		classify the current term as of type int, char, float, string,
-		discriminated union, and other.
-	
-  	3b1	If it's type int, call rand_int/2 with Arg6 and Arg7
-	
-	3b2	If it's type char, call rand_char/2 with Arg6 and Arg7		
-			
-	3b3	If it's type float, call rand_float/2 with Arg6 and Arg7
-
-	3b4	If it's type string, call rand_string/2 with Arg6 and Arg8
-
-	3b5	If it's type discriminated union, call rand_union/6 with 
-		Arg1, Arg2, Arg3, Arg4, Arg6, Arg7.
-		
-	3b6	If it's classified as other, then call rand_function with Arg1,
-		Arg6 and Arg7. Quickcheck will generates the appropriate value if  
-		Arg1 is of a function with arity 0 to 10. Otherwise an error will
-		be thrown :
-			"no default generator for this type"
-
- 
-
+</body>
+</html>

@@ -1,78 +1,88 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
 <html>
 <head> 
-	<TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
-Files : 
+<body>
+Files:
 <a href="use.m">use.m</a>
 <a href="use1.m">use1.m</a>
 <a href="use11.m">use11.m</a>
 <a href="nrev.m">nrev.m</a>
-<a href="nrev2.m">nrev2.m</a><BR>
+<a href="nrev2.m">nrev2.m</a>
+<br>
 <a href="index.html">Back to main</a>
 
-<H1> QuickCheck Tutorial 1 </H1>
+<h1>QuickCheck Tutorial 1</h1>
 
-
-<pre>
-Quickcheck is a tool which aids the Mercury programmer in formulating and 
+<p>
+Quickcheck is a tool that aids the Mercury programmer in formulating and 
 testing properties of programs. The programmer must supply invariant 
 functions which test certain properties of the programs. Those invariant 
 functions can then be automatically tested on random inputs. It is 
 possible to alter the test data distribution or define a custom test 
 data generator.
 
+<p>
 In order to test the validity of a predicate/function via quickcheck, 
-you need the following components :
-	qcheck.m	--	quickcheck module             (supplied)
-	rnd.m 		--	required by quickcheck module (supplied)
-	XXX.m		--	module containing the predicate/function
-				the user is trying to validate
-	YYY.m		--	main module, which calls qcheck/4
+you need the following components:
+<dl>
+<dt>qcheck.m <dd>quickcheck module (supplied)
+<dt>rnd.m <dd>required by quickcheck module (supplied)
+<dt>XXX.m <dd>module containing the predicate/function the user is trying to validate
+<dt>YYY.m <dd>main module, which calls <code>qcheck</code>/4.
+</dl>
 
-A Simple Example 
-Let XXX.m be "nrev.m", which contains nrev/1 :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
-	:- func nrev(list(T)) = list(T).
-	:- mode nrev(in) = out is det.
-	nrev([]) = [].
-	nrev([X|Xs]) = Ys :- 
-		list__append(nrev(Xs), [X], Ys).
+<h2>A Simple Example</h2>
+
+<p>Let XXX.m be "nrev.m", which contains nrev/1:
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
+        :- func nrev(list(T)) = list(T).
+        :- mode nrev(in) = out is det.
+        nrev([]) = [].
+        nrev([X|Xs]) = Ys :- 
+                list__append(nrev(Xs), [X], Ys).
 </pre></tr></table>
 We want to test whether nrev/1 is properly implemented.
 
+<p>
 Let YYY.m be "use.m". It must contain a main/2, and an 
 invariant function. If nrev/1 is correctly implemented then it 
 should satisfy the following rules:
-<H4>
-	    reverse [x]	= [x]
-	reverse (xs+ys)	= reverse ys + reverse xs
-   reverse (reverse xs)	= xs
-</H4>
+<pre>
+            reverse [x] = [x]
+     reverse (xs ++ ys) = reverse(ys) ++ reverse(xs)
+   reverse (reverse xs) = xs
+</pre>
+
+<p>
 To test whether 2nd rule holds for nrev/1, define the invariant 
 function as :
-<H4>
-	testing(Xs, Ys) =
-        	nrev(Xs ++ Ys) `===` (nrev(Ys) ++ nrev(Xs)).
-</H4>
+<pre>
+        testing(Xs, Ys) =
+                nrev(Xs ++ Ys) `===` (nrev(Ys) ++ nrev(Xs)).
+</pre>
+
+<p>
 `===` function returns 'property:[yes]' if the left side equals 
 right side, 'property:[no]' otherwise. 
 In theory nrev/1 can take a list(T), however in order for  
 quickcheck to automatically generate Xs and Ys, the programmer must 
-specify a fixed type at which the law is to be tested, eg:
-<H4>	
-	:- func testing(list(int), list(int)) = property.
-				Or
-	:- func testing(list(char), list(char)) = property.
-</H4>
+specify a fixed type for which the law is to be tested, eg:
+<pre>
+        :- func testing(list(int), list(int)) = property.
+                                Or
+        :- func testing(list(char), list(char)) = property.
+</pre>
 Now define the main/2 as
-<H4>
-	main --- >
-		qcheck(qcheck_f(testing), "sample testing").
-</H4>
+<pre>
+        main --&gt;
+                qcheck(qcheck__f(testing), "sample testing").
+</pre>
 The complete use.m looks like this:
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 
 :- module use.
 
@@ -92,63 +102,65 @@ The complete use.m looks like this:
 
 %-------------------------------------------------------------------%
 
-main -->
-     	qcheck(qcheck__f(testing), "sample testing").
+main --&gt;
+        qcheck(qcheck__f(testing), "sample testing").
 
 %-------------------------------------------------------------------%
-% 	Invariant test functions
+%       Invariant test functions
 %-------------------------------------------------------------------%
 
 :- func testing(list(int), list(int)) = property.
 testing(Xs, Ys) = 
-	nrev(Xs ++ Ys) `===` (nrev(Ys) ++ nrev(Xs)).
+        nrev(Xs ++ Ys) `===` (nrev(Ys) ++ nrev(Xs)).
 </pre></tr></table>
 To compile the program, do "mmake use.depend", then "mmake use".
 After running, the statistics should be displayed like :
-<H4>
-	Test Description : sample testing
-	Number of test cases that succeeded : 100
-	Number of trivial tests : 0
-	Number of tests cases which failed the pre-condition : 0
-	Distributions of selected argument(s) : 
-</H4>
+<pre>
+        Test Description : sample testing
+        Number of test cases that succeeded : 100
+        Number of trivial tests : 0
+        Number of tests cases which failed the pre-condition : 0
+        Distributions of selected argument(s) : 
+</pre>
 nrev/1 passed 100 tests and failed none (ignore the last 3 lines
 for now).
 
+<p>
 If the invariant function is wrongly specified, or nrev/1 is not 
 properly implemented, then the statistics may look like :
-<H4>
-	Test description : sample testing
-	Falsifiable : 
-	[2]
-	[-2, 1]
-</H4>
+<pre>
+        Test description : sample testing
+        Falsifiable : 
+        [2]
+        [-2, 1]
+</pre>
 where running [2] as Xs and [-2, 1] as Ys failed the invariant function. 
 
+<p>
 Defining an invariant function which contains only functions is more 
 concise than one which contains predicates. Suppose that "nrev2.m" 
 defines a predicate version of reversing list: 
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
-	:- pred nrev2(list(T), list(T)).
-	:- mode nrev2(in, out) is det.
-	nrev2([], []).
-	nrev2([X|Xs], Ys):- 
-		nrev2(Xs, Reversed), 
-		list__append(Reversed, [X], Ys).
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
+        :- pred nrev2(list(T), list(T)).
+        :- mode nrev2(in, out) is det.
+        nrev2([], []).
+        nrev2([X|Xs], Ys):- 
+                nrev2(Xs, Reversed), 
+                list__append(Reversed, [X], Ys).
 </pre></tr></table>
 Then the invariant function looks like : 
-<h4>
-	testing2(Xs, Ys) = (Left `===` Right) :-
-		nrev2((Xs ++ Ys), Left),
-		nrev2(Ys, Part_a),
-		nrev2(Ys, Part_b),
-		Right = Part_a ++ Part_b.
-</h4>
+<pre>
+        testing2(Xs, Ys) = (Left `===` Right) :-
+                nrev2((Xs ++ Ys), Left),
+                nrev2(Ys, Part_a),
+                nrev2(Ys, Part_b),
+                Right = Part_a ++ Part_b.
+</pre>
 Above code is effectively the same as testing/2, however it requires a few extra
-lines to extract the intermediate values, (use1.m) :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+lines to extract the intermediate values, (use1.m):
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- module use1.
 
 :- interface.
@@ -167,26 +179,26 @@ lines to extract the intermediate values, (use1.m) :
 
 %-------------------------------------------------------------------%
 
-main -->
-     	qcheck(qcheck__f(testing2), "testing2").
+main --&gt;
+        qcheck(qcheck__f(testing2), "testing2").
 
 %-------------------------------------------------------------------%
-% 	Invariant test functions
+%       Invariant test functions
 %-------------------------------------------------------------------%
 
 :- func testing2(list(int), list(int)) = property.
 testing2(Xs, Ys) = (Left `===` Right) :-
-	nrev2((Xs ++ Ys), Left),
-	nrev2(Ys, Part_a),
-	nrev2(Xs, Part_b),
-	Right = Part_a ++ Part_b.
+        nrev2((Xs ++ Ys), Left),
+        nrev2(Ys, Part_a),
+        nrev2(Xs, Part_b),
+        Right = Part_a ++ Part_b.
 </pre></tr></table>
 An alternative to writing a separate invariant function is to
 use Mercury's syntax for higher order terms.  When doing this,
-the `with_type` operator can be useful to provide fixed types
+the <code>`with_type`</code> operator can be useful to provide fixed types
 for the arguments of the invariant function.  For example (use11.m):
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- module use11.
 
 :- interface.
@@ -205,41 +217,47 @@ for the arguments of the invariant function.  For example (use11.m):
 
 %--------------------------------------------------------------------------%
 
-main -->
+main --&gt;
     qcheck(qcheck__f(func(Xs `with_type` list(int), Ys `with_type` list(int))
-		     = nrev(Xs ++ Ys) `===` (nrev(Ys) ++ nrev(Xs))),
+                     = nrev(Xs ++ Ys) `===` (nrev(Ys) ++ nrev(Xs))),
            "sample testing").
 </pre></tr></table>
 
+<p>
 In YYY.m, the main/2 should be defined as :
-<h4>
-	main --->
-		qcheck(qcheck_f(Invariant_Function_X), Test_Desc_Y).
-</h4>
+<pre>
+        main --&gt;
+                qcheck(qcheck__f(Invariant_Function_X), Test_Desc_Y).
+</pre>
 Where Invariant_Function_X is a higher order term (function) and
 Test_Desc_Y is a string which describe/name/comment Invariant_Function_X.
 
+<p>
 The invariant function is of the form 
-<h4>
-	:- mode Invariant_Function_X(in, in, in ...) = out.
-</h4> 
+<pre>
+        :- mode Invariant_Function_X(in, in, in ...) = out.
+</pre> 
 The invariant function can only take 0 to 10 arguments, but the inputs can 
 be of any type. All invariant functions must return a property, which is just
 a list of flags.
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
         :- type property == list(flag).
 
-	:- type flag
-	     	--->    yes
-	       	;       no
-	        ;       trivial
+        :- type flag
+                ---&gt;    yes
+                ;       no
+                ;       trivial
                 ;       info(univ)
-	        ;       condition.
+                ;       condition.
 </pre></tr></table>
-What ever happens inside Invariant_Function_X, quickcheck does not care. If 
-the output does not contain 'flag:no' the invariant function is assumed to 
+
+<p>QuickCheck does not care what happens inside Invariant_Function_X. If 
+the output does not contain 'flag:no', the invariant function is assumed to 
 pass the testcase satisfactory.
 
-<a href="T4.html">Click here to get the details on each individual flag.</a>
+<p>See <a href="T4.html">part 4 of the tutorial</a> to get the details
+on each individual flag.
+
+</body>
 </html>

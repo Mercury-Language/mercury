@@ -1,88 +1,99 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head> 
-        <TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
-<H1> QuickCheck Tutorial 4 </H1>
-
+<body>
 <a href="index.html">Back to main</a>
-<h3> Summary - Invariant Function & Property </h3>
 
-<pre>
+<h1>QuickCheck Tutorial 4</h1>
+
+<h2>Summary - Invariant Function &amp; Property</h2>
+
+<p>
 The invariant function is of the form 
-	:- func Invariant_Function_X(T,  T1, T2 ...) = property
-        :- mode	Invariant_Function_X(in, in, in ...) = out.
-The inputs can be of most types (details next tutorial), however only arity 
-0 to 10 are implemented. The output must be property, defined as :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+<pre>
+        :- func Invariant_Function_X(T,  T1, T2 ...) = property
+        :- mode Invariant_Function_X(in, in, in ...) = out.
+</pre>
+
+<p>
+The inputs can be of most types (details next tutorial), but only arities
+0 to 10 are implemented. The output must be of type <code>property</code>, defined as:
+
+<table border=0 width="100%" bgcolor="#eeeee0" summary="Type definitions of flag and property."><tr><td><pre>
         :- type property == list(flag).
 
         :- type flag 
-                --->    yes
+                ---&gt;    yes
                 ;       no      
                 ;       trivial
                 ;       info(univ)      
                 ;       condition.
 </pre></tr></table>
-What ever happens inside Invariant_Function_X, quickcheck does not care; it only 
+
+<p>QuickCheck does not care what happens inside Invariant_Function_X; it only 
 looks at the output property. Any form of property is valid, in the sense that 
 the qcheck will not abort. However not all forms of property is sensible.   
 One could return [], or [yes, no, yes, no]. Quickcheck analyzes the property in
 the following order:
-	1	Firstly, qcheck determines whether the invariant function has 
-		failed. This only occurs if the property list contains at least
-		one 'flag:no' and does not contain 'flag:condition'. In this 
-		case the NOFLAG will be switched to 'bool:yes', and the message
-		"Falsifiable ... ..." is printed. Otherwise move to step 2.
-	2	qcheck will then test if the 'condition' flag (1 or more) is
-		in the property list. If it is, then the FAILEDCONDITION counter
-		is incremented and stops analyzing. If the 'condition' flag is 
-		not within the property list, then move to step 3.
-	3	qcheck increments the YES counter.
-	4	qcheck increments the TRIVIAL counter if it finds the 'trivial'
-		flag (1 or more) is within the list. 
-	5	Then qcheck gets all the info(univ) (if any) in the list and
-		merge that with the master list for distribution.
+<ol>
+        <li>    Firstly, qcheck determines whether the invariant function has 
+                failed. This only occurs if the property list contains at least
+                one 'flag:no' and does not contain 'flag:condition'. In this 
+                case the NOFLAG will be switched to 'bool:yes', and the message
+                "Falsifiable ... ..." is printed. Otherwise move to step 2.
+        <li>    qcheck will then test if the 'condition' flag (1 or more) is
+                in the property list. If it is, then the FAILEDCONDITION counter
+                is incremented and stops analyzing. If the 'condition' flag is 
+                not within the property list, then move to step 3.
+        <li>    qcheck increments the YES counter.
+        <li>    qcheck increments the TRIVIAL counter if it finds the 'trivial'
+                flag (1 or more) is within the list. 
+        <li>    Then qcheck gets all the info(univ) (if any) in the list and
+                merge that with the master list for distribution.
+</ol>
 So, [] will increase the YES counter, and [yes, no, yes, no] will switch the
 NOFLAG counter.
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- func T  `===` T  = property.
 :- mode in `===` in = out is det.
-Left `===` Right		Left == Right	return [yes]
-				Left != Right	return [no]
+Left `===` Right                Left == Right   return [yes]
+                                Left != Right   return [no]
 
-:- func (pred) `===>` property = property.
-:- mode in((pred) is semidet) `===>` in = out is det.
-Left `===>` Right		Left fails	return [condition | Right]
-				Left succeeds	return Right
+:- func (pred) `===&gt;` property = property.
+:- mode in((pred) is semidet) `===&gt;` in = out is det.
+Left `===&gt;` Right            Left fails      return [condition | Right]
+                                Left succeeds   return Right
 
-:- func bool `===>` property = property.
-:- mode in `===>` in = out is det.
-Left `===>` Right		Left == no	return [condition | Right]
-				Left == yes	return Right
+:- func bool `===&gt;` property = property.
+:- mode in `===&gt;` in = out is det.
+Left `===&gt;` Right            Left == no      return [condition | Right]
+                                Left == yes     return Right
 
-Note: 	:- type f0
-		---> f((func) = property).
+Note:   :- type f0
+                ---&gt; f((func) = property).
 
-:- func (pred) `===>` f0 = property.
-:- mode in((pred) is semidet) `===>` in = out is det.
-Left `===>` Right		Left fails	return [condition] 
-				Left succeeds	return apply(Right)
+:- func (pred) `===&gt;` f0 = property.
+:- mode in((pred) is semidet) `===&gt;` in = out is det.
+Left `===&gt;` Right            Left fails      return [condition] 
+                                Left succeeds   return apply(Right)
 
-:- func bool `===>` f0 = property.
-:- mode in `===>` in = out is det.
-Left `===>` Right		Left == no	return [condition]
-				Left == yes	return apply(Right)
+:- func bool `===&gt;` f0 = property.
+:- mode in `===&gt;` in = out is det.
+Left `===&gt;` Right            Left == no      return [condition]
+                                Left == yes     return apply(Right)
 
 :- func to_trivial(T, T, property) = property.
 :- mode to_trivial(in, in, in) = out is det.
-to_trivial(A, B, C)		A == B		return [trivial | C]
-				A != B		return C
+to_trivial(A, B, C)             A == B          return [trivial | C]
+                                A != B          return C
 
-:- func T `>>>` property = property. 
-:- mode in `>>>` in = out is det.
-Left `>>>` Right				return [ info(univ(Left)) | Right ]
+:- func T `&gt;&gt;&gt;` property = property. 
+:- mode in `&gt;&gt;&gt;` in = out is det.
+Left `&gt;&gt;&gt;` Right                               return [ info(univ(Left)) | Right ]
 </pre></tr></table>
 
-
+</body>
+</html>

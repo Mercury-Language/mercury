@@ -1,27 +1,32 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
 <html>
 <head> 
-        <TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
-Files : 
-<a href="use62.m">use62.m</a><BR>
+<body>
+<p>
+Files:
+<a href="use62.m">use62.m</a>
+<br>
 <a href="index.html">Back to main</a>
-<H1> QuickCheck Tutorial 6 </H1>
-<h3> Generators - Discriminated union &  Specific Frequency</h3>
-<pre>
+
+<h1>QuickCheck Tutorial 6</h1>
+<h2>Generators: Discriminated Union &amp; Specific Frequency</h2>
+
+<p>
 Default generator is able to generate discriminated unions provided that all types 
 in the body of the definition have default/custom generators. In default frequency 
 mode, all branches at each level have the same chance of being selected.
 
-<P> 
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- func rand_union(type_desc, list(frequency), list({type_desc, 
-		   list(frequency)}), list(user_gen_type), rnd, rnd) = univ.
+                   list(frequency)}), list(user_gen_type), rnd, rnd) = univ.
 :- mode rand_union(in,in,in,list_skel_in(user_gen_inst),in,out) = out is det.
 </pre></tr></table>
 use61.m shows the randomly generated value for the type bullet, with default
 frequency : 
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- module use61.
 
 :- interface.
@@ -39,47 +44,51 @@ frequency :
 :- import_module qcheck.
 
 %---------------------------------------------------------------------------%
-%	arbitrary user-defined types for testing purposes
+%       arbitrary user-defined types for testing purposes
 %---------------------------------------------------------------------------%
 
 :- type bullet 
-        --->    good(color) 
+        ---&gt;    good(color) 
         ;       inaccurate(color) 
-        ;      	defective(color).
+        ;       defective(color).
 
 :- type color
-	--->	black
-	;	white.	
+        ---&gt;    black
+        ;       white.  
 
 %---------------------------------------------------------------------------%
-main -->
+main --&gt;
         qcheck(qcheck__f(prop1), "even distribution", 1000, [], []).
 
 :- func prop1(bullet) = property.
-prop1(X) = X `>>>` [yes].
+prop1(X) = X `&gt;&gt;&gt;` [yes].
 </pre></tr></table>
 Sample output shows the expected distribution :
-<h4>
-	Test Description : even distribution
-	Number of test cases that succeeded : 1000
-	Number of trivial tests : 0
-	Number of tests cases which failed the pre-condition : 0
-	Distributions of selected argument(s) : 
-	150     inaccurate(white)
-	153     defective(black)
-	165     inaccurate(black)
-	176     good(white)
-	178     defective(white)
-	178     good(black)
-</h4>
+<pre>
+        Test Description : even distribution
+        Number of test cases that succeeded : 1000
+        Number of trivial tests : 0
+        Number of tests cases which failed the pre-condition : 0
+        Distributions of selected argument(s) : 
+        150     inaccurate(white)
+        153     defective(black)
+        165     inaccurate(black)
+        176     good(white)
+        178     defective(white)
+        178     good(black)
+</pre>
 
-<h3> Specific Frequency</h3>
-Specific Frequency changes a term's default frequency (which is evenly spread) 
+
+<h2>Specific Frequency</h2>
+
+<p>Specific Frequency changes a term's default frequency (which is evenly spread) 
 to one the user has provided. General Frequency changes a type's default frequency
 to one the user has provided. An example :
-<h4>
-	:- func Invariant_Function_X(bullet, bullet) = property. 
-</h4>
+<pre>
+        :- func Invariant_Function_X(bullet, bullet) = property. 
+</pre>
+
+<p>
 Different SF can be passed to the first and second bullet. For example, the first 
 bullet can have 80% chance of being black, while the second argument has 20% chance
 of being black. However there can only be one GF for each type. 
@@ -88,42 +97,53 @@ different frequencies for the same type, where GF doesn't allow.
 The draw back is that SF only goes as deep (down the branches) as the user
 defines it, and the amount of work blows up as the depth of branches increases.
 
+<p>
 Suppose there are two bullet manufacturers. 
-Company_W 's bullet are painted black, and 50% good ones, 10% inaccurate, 40% defective.    
-Company_B 's bullet are painted white, and 40% good ones, 30% inaccurate, 30% defective.
+Company_W's bullets are painted black; 50% are good, 10% inaccurate, 40% defective.    
+Company_B's bullets are painted white; 40% are good, 30% inaccurate, 30% defective.
 A good bullet always hits its target, inaccurate one misses 50% of time, defective bullet
 always misses. And color does affect performance.
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+<!-- XXX: The above is probably a typo; should probably say "colour itself doesn't affect performance". -->
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- type frequency
-	--->	{int, list(list(frequency))}.
+        ---&gt;    {int, list(list(frequency))}.
 </pre></tr></table>
 frequency defines the relative chance of a branch being selected, and gives information
 of that branch's sub-branches.
 list(frequency) contains distribution information about 1 discrimated union, ie: the list 
 must contain a frequency for each possible branch.
 list(list(frequency)) contains distribution information about a list of discrimated unions.
-<P>
-<table border=1 width=100%><tr><td><pre>
+
+<p>
 Let's try to describe Company_W's bullet, Bullet is discrimated union, so the list is 3 length long :
-	list(frequency)
+<pre>
+        list(frequency)
+</pre>
 There are 3 top level branches for Type Bullet, so the list is 3 length long :
-	[frequency_good, frequency_inaccurate, frequency_defective] 
+<pre>
+        [frequency_good, frequency_inaccurate, frequency_defective] 
 
-	:- type frequency 	= {int, list(list(frequency))}.
-	frequency_good		= {50,  ...something_good...}
-	frequency_inaccurate 	= {10,  ...something_inaccurate...}
-	frequency_defective 	= {40,  ...something_defective...}
+        :- type frequency       = {int, list(list(frequency))}.
+        frequency_good          = {50,  ...something_good...}
+        frequency_inaccurate    = {10,  ...something_inaccurate...}
+        frequency_defective     = {40,  ...something_defective...}
+</pre>
 
-Any int is a valid 1st argument of frequency, however negative numbers is viewed
-by qcheck as zeros.
+<p>
+Any int is a valid 1st argument of frequency.  (Negative numbers are treated
+by qcheck as zeros.)
 
-chance of good-bullet 	  is 50 / (50 + 10 + 40)
+<pre>
+chance of good-bullet     is 50 / (50 + 10 + 40)
 the chance of inaccurate  is 10 / (50 + 10 + 40)
 the chance of defective   is 40 / (50 + 10 + 40)
+</pre>
 
+<p>
 Another example (for type bullet):
 
+<pre>
 :- type frequency       = {int, list(list(frequency))}.
 frequency_good          = {5,  ...something_good...}
 frequency_inaccurate    = {1,  ...something_inaccurate...}
@@ -132,61 +152,80 @@ frequency_defective     = {4,  ...something_defective...}
 the chance of good-bullet is 5 / (5 + 1 + 4)
 the chance of inaccurate  is 1 / (5 + 1 + 4)
 the chance of defective   is 4 / (5 + 1 + 4)
+</pre>
 
-In both example the result distribution is the same. ie (50% good,
+<p>
+In both examples, the result distribution is the same (i.e. 50% good,
 10% inaccurate, 40% defective).
 
+<p>
 ...something_good... has format list(list(frequency)), and should describe the argument(s) of good/1.
 good/1 only has 1 arguments, thus the list of 1 element, 
-	[ info_color ]
+<pre>
+        [ info_color ]
+</pre>
+
+<p>
 info_color has format list(frequency), color has 2 branches, thus this list is of 2 elements.
-	[ frequency_black, frequency_white ] 
+<pre>
+        [ frequency_black, frequency_white ] 
 
-	:- type frequency 	= {int, list(list(frequency))}.
-	frequency_black		= {100, ...something_black...}
-	frequency_white 	= {0,   ...something_white...}
+        :- type frequency       = {int, list(list(frequency))}.
+        frequency_black         = {100, ...something_black...}
+        frequency_white         = {0,   ...something_white...}
+</pre>
 
+<p>
 something_black has format list(list(frequency)), and should describe the argument(s) of black/0.
 black/0 has no argument, thus the list is [], likewise for white/0.
 If instead of black/0, it's black/3, eg:
-<h4>
-	:- type color
-		--->	black(paint_manufacturer, warranty_type, warranty_provider)
-		;	white(paint_manufacturer, warranty_type, warranty_provider)	
-</h4>
+<pre>
+        :- type color
+                ---&gt;    black(paint_manufacturer, warranty_type, warranty_provider)
+                ;       white(paint_manufacturer, warranty_type, warranty_provider)     
+</pre>
 Then you can either use [] to use default frequeny for generating paint_manufacturer, warranty_type, 
 and warranty_provider. Or you can specify a list of 3 element ; each element describing the frequency
 of paint_manufacturer, warranty_type or warranty_provider.  
-	
-So far:	     info_color	= [ frequency_black, frequency_white ]
-			= [ {100, []}, 	{0, []}	]
-Then:	 frequency_good = {50,  ...something_good...}	
-			= {50,  [ info_color ] }
-			= {50,  [ [ {100, []}, 	{0, []}	] ] }
 
+<pre>
+So far:      info_color = [ frequency_black, frequency_white ]
+                        = [ {100, []},  {0, []} ]
+Then:    frequency_good = {50,  ...something_good...}   
+                        = {50,  [ info_color ] }
+                        = {50,  [ [ {100, []},  {0, []} ] ] }
+</pre>
+
+<p>
 in this case ...something_good..., ...something_inaccurate... and ...something_defective are the same, 
 since they all describe a list which contains Color that has the same distribution.
 
-So:	frequency_good 		= {50, [ [ {100, []}, {0, []} ] ] }
-	frequency_inaccurate 	= {10, [ [ {100, []}, {0, []} ] ] }
-	frequency_defective  	= {40, [ [ {100, []}, {0, []} ] ] }
+<pre>
+So:     frequency_good          = {50, [ [ {100, []}, {0, []} ] ] }
+        frequency_inaccurate    = {10, [ [ {100, []}, {0, []} ] ] }
+        frequency_defective     = {40, [ [ {100, []}, {0, []} ] ] }
 
-Then:		[frequency_good, frequency_inaccurate, frequency_defective] 
-	=	[ {50, [ [ {100, []}, {0, []} ] ] },
-		  {10, [ [ {100, []}, {0, []} ] ] },
-		  {40, [ [ {100, []}, {0, []} ] ] }
-		]
-  			
-For Company_W 's bullet , it's list(frequency) would be :
-		[frequency_good, frequency_inaccurate, frequency_defective] 
-	=	[ {40, [ [ {0, []}, {100, []} ] ] },
-		  {30, [ [ {0, []}, {100, []} ] ] },
-		  {30, [ [ {0, []}, {100, []} ] ] }
-		]
-</pre></tr></table>
-The complete code (use62.m) :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+Then:           [frequency_good, frequency_inaccurate, frequency_defective] 
+        =       [ {50, [ [ {100, []}, {0, []} ] ] },
+                  {10, [ [ {100, []}, {0, []} ] ] },
+                  {40, [ [ {100, []}, {0, []} ] ] }
+                ]
+</pre>
+
+<p>
+For Company_W's bullet, its list(frequency) would be :
+<pre>
+                [frequency_good, frequency_inaccurate, frequency_defective] 
+        =       [ {40, [ [ {0, []}, {100, []} ] ] },
+                  {30, [ [ {0, []}, {100, []} ] ] },
+                  {30, [ [ {0, []}, {100, []} ] ] }
+                ]
+</pre>
+
+<p>
+The complete code (use62.m):
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- module use62.
 
 :- interface.
@@ -204,29 +243,29 @@ The complete code (use62.m) :
 :- import_module qcheck, rnd.
 
 %---------------------------------------------------------------------------%
-%	arbitrary user-defined types for testing purposes
+%       arbitrary user-defined types for testing purposes
 %---------------------------------------------------------------------------%
 
 :- type bullet 
-        --->    good(color) 
+        ---&gt;    good(color) 
         ;       inaccurate(color) 
-        ;      	defective(color).
+        ;       defective(color).
 
 :- type color
-	--->	black
-	;	white.	
+        ---&gt;    black
+        ;       white.  
 
 %---------------------------------------------------------------------------%
 
-main -->
-	{ freq_B(B) },
-	{ freq_W(W) },
+main --&gt;
+        { freq_B(B) },
+        { freq_W(W) },
         qcheck(qcheck__f(prop2), "bullet fight", 10000, [[],B,W], []).
 
 :- pred freq_B(list(frequency)).
 :- mode freq_B(out) is det.
 freq_B(Out) :-
-	Out = [ {50, [ [ {100, []}, {0, []} ] ] },
+        Out = [ {50, [ [ {100, []}, {0, []} ] ] },
                 {10, [ [ {100, []}, {0, []} ] ] },
                 {40, [ [ {100, []}, {0, []} ] ] }
               ].
@@ -234,65 +273,66 @@ freq_B(Out) :-
 :- pred freq_W(list(frequency)).
 :- mode freq_W(out) is det.
 freq_W(Out) :-
-	Out = [ {40, [ [ {0, []}, {100, []} ] ] },
+        Out = [ {40, [ [ {0, []}, {100, []} ] ] },
                 {30, [ [ {0, []}, {100, []} ] ] },
                 {30, [ [ {0, []}, {100, []} ] ] }
               ].
 
 :- func prop2(int, bullet, bullet) = property.
-prop2(Seed, B, W) = fight(Seed, B, W) `>>>` 
-			({"ComB",B} `>>>` 
-				({"ComW", W} `>>>` [yes])
-			).
+prop2(Seed, B, W) = fight(Seed, B, W) `&gt;&gt;&gt;` 
+                        ({"ComB",B} `&gt;&gt;&gt;` 
+                                ({"ComW", W} `&gt;&gt;&gt;` [yes])
+                        ).
 
 :- func fight(int, bullet, bullet) = string.
 :- mode fight(in, in, in) = out is det.
 fight(Seed, B, W) = String :-
-	rnd__init(Seed, RS0),
-	B_hit = is_hit(B, RS0, RS1),
-	W_hit = is_hit(W, RS1, _),
-	(if		B_hit = W_hit
-	 then
-			String = "draw"
-	 else if	B_hit > W_hit
-	      then
-			String = "B win"
-	 else
-			String = "W win"
-	).
+        rnd__init(Seed, RS0),
+        B_hit = is_hit(B, RS0, RS1),
+        W_hit = is_hit(W, RS1, _),
+        (if             B_hit = W_hit
+         then
+                        String = "draw"
+         else if        B_hit &gt; W_hit
+              then
+                        String = "B win"
+         else
+                        String = "W win"
+        ).
 
 :- func is_hit(bullet, rnd, rnd) = int.
 :- mode is_hit(in, in, out) = out is det.
 is_hit(Bullet, RS0, RS) = Int :-
-	Temp = rand_allint(RS0, RS) rem 2,
-	(
-		Bullet = good(_),
-		Int = 1
-	;
-		Bullet = inaccurate(_),
-		(if	Temp = 0	
-		 then		
-			Int = 1
-		 else
-			Int = 0
-		)
-	;
-		Bullet = defective(_),
-		Int = 0
-	).
+        Temp = rand_allint(RS0, RS) rem 2,
+        (
+                Bullet = good(_),
+                Int = 1
+        ;
+                Bullet = inaccurate(_),
+                (if     Temp = 0        
+                 then           
+                        Int = 1
+                 else
+                        Int = 0
+                )
+        ;
+                Bullet = defective(_),
+                Int = 0
+        ).
 </pre></tr></table>
 In use62.m 
-<h4>
-main -->
+<pre>
+main --&gt;
          { freq_B(B) },
          { freq_W(W) },
          qcheck(qcheck__f(prop2), "bullet fight", 10000, [[],B,W], []).
-</h4>
+</pre>
 The 4th argument of qcheck/7 is for passing Specific Frequency. Because the
 invariant function has three input arguments, qcheck/7 's 4th argument must
 be list of 3.
-	[[],B,W]
+        [[],B,W]
 
+<p>
 The first argument of prop2/3 is of type int, and I've passed [] as 
 it's SF. When qcheck is trying to generate that int, it will completely
 ignore the [] since an int is not a discriminated union. In that sense, 
@@ -301,25 +341,26 @@ ie, a list(frequency). However the presence of [] will allow qcheck to
 recognize that [] is for the first argument, B is for the second argument and
 W is for the third argument.
 
+<p>
 A sample output:
-<h4>
-	Test Description : bullet fight
-	Number of test cases that succeeded : 10000
-	Number of trivial tests : 0
-	Number of tests cases which failed the pre-condition : 0
-	Distributions of selected argument(s) : 
-	909     {"ComB", inaccurate(black)}
-	2403     "B win"
-	2533   	 "W win"
-	2949     {"ComW", defective(white)}
-	3012     {"ComW", inaccurate(white)}
-	4017     {"ComB", defective(black)}
-	4039     {"ComW", good(white)}
-	5064     "draw"
-	5074     {"ComB", good(black)}
-</h4>
+<pre>
+        Test Description : bullet fight
+        Number of test cases that succeeded : 10000
+        Number of trivial tests : 0
+        Number of tests cases which failed the pre-condition : 0
+        Distributions of selected argument(s) : 
+        909     {"ComB", inaccurate(black)}
+        2403     "B win"
+        2533     "W win"
+        2949     {"ComW", defective(white)}
+        3012     {"ComW", inaccurate(white)}
+        4017     {"ComB", defective(black)}
+        4039     {"ComW", good(white)}
+        5064     "draw"
+        5074     {"ComB", good(black)}
+</pre>
 Regroup the output to make comparison :
-
+<pre>
 5074     {"ComB", good(black)
 909      {"ComB", inaccurate(black)}
 4017     {"ComB", defective(black)}
@@ -327,37 +368,45 @@ Regroup the output to make comparison :
 4039     {"ComW", good(white)}
 3012     {"ComW", inaccurate(white)}
 2949     {"ComW", defective(white)}
+</pre>
 
+<p>
 Note that ComB only makes black bullet; ComW only white. And their bullet quality is 
 what was expected of them.
 
+<pre>
 2403     "B win"
-2533   	 "W win"
+2533     "W win"
 5064     "draw"
+</pre>
 
-
+<p>
 Walk through in generating a Company_B 's bullet :  
 
-	1	The program first enters the generator with 
-		SF = [ 	{50, [ [ {100, []}, {0, []} ] ] },
-                	{10, [ [ {100, []}, {0, []} ] ] },
-                	{40, [ [ {100, []}, {0, []} ] ] }
-              	     ].
+<ol>
+ <li>   The program first enters the generator with 
+<pre>
+        SF = [  {50, [ [ {100, []}, {0, []} ] ] },
+                {10, [ [ {100, []}, {0, []} ] ] },
+                {40, [ [ {100, []}, {0, []} ] ] }
+             ].
+</pre>
 
-	2	Suppose the 3rd branch is selected, then qcheck will extract
-		[ {100, []}, {0, []} ] from {40, [ [ {100, []}, {0, []} ] ] }
+ <li>Suppose the 3rd branch is selected, then qcheck will extract
+ <tt>[ {100, []}, {0, []} ]</tt> from <tt>{40, [ [ {100, []}, {0, []} ] ] }</tt>.
 
-	3	It then calls the generator with SF =  [ {100, []}, {0, []} ] 
+ <li>   It then calls the generator with SF =  [ {100, []}, {0, []} ] 
 
-	4	So qcheck enters generator for the sub-branch (for color) with 
-		SF = [ {100, []}, {0, []} ]
-		
-	5	Suppose the 1st branch is selected, then qcheck will extract [] 
-		from {100, []}
+ <li>   So qcheck enters generator for the sub-branch (for color) with 
+                SF = [ {100, []}, {0, []} ]
+                
+ <li>   Suppose the 1st branch is selected, then qcheck will extract [] 
+                from {100, []}
 
-	6	Since constructor black/0 has no argument, the program will stop
-		the recursive call.
+ <li>   Since constructor black/0 has no argument, the program will stop
+                the recursive call.
 
+</ol>
 
-
-
+</body>
+</html>

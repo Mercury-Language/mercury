@@ -1,45 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head> 
-        <TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
-Files : 
-<a href="use91.m">use91.m</a><BR>
+<body>
+Files:
+<a href="use91.m">use91.m</a>
+<br>
 <a href="index.html">Back to main</a>
-<H1> QuickCheck Tutorial 9 </H1>
-<h3> User Defined generators</h3>
-<pre>
 
-The default generator will be called only if a user defined generator does not. 
+<h1>QuickCheck Tutorial 9</h1>
+
+<h2>User Defined generators</h2>
+
+<p>
+The default generator will be called only if a user-defined generator does not.
+<!-- XXX: Should the above be "does not exist"? -->
 The user definded generator must conform to the following format:
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- func gen_f(type_desc, list(frequency), list({type_desc, list(frequency)}),
               list(user_gen_type), rnd, rnd) = univ.
 :- mode gen_f(in, in, in, list_skel_in(user_gen_inst), in, out) = out is det.
 
 :- type user_gen_type 
-	--->	{ type_desc, 
-		  func(type_desc, list(frequency), 
-		       list({type_desc, list(frequency)}), 
-		       list(user_gen_type), rnd, rnd) = univ
-		}.
+        ---&gt;    { type_desc, 
+                  func(type_desc, list(frequency), 
+                       list({type_desc, list(frequency)}), 
+                       list(user_gen_type), rnd, rnd) = univ
+                }.
 
-	%	inst declaration for each user-defined generator	
+        %       inst declaration for each user-defined generator        
 :- inst user_gen_inst
-	=	bound({ ground, 
-		        func(in, in, in, 
-			     list_skel_in(user_gen_inst), in, out) = out is det
-		      }).
+        =       bound({ ground, 
+                        func(in, in, in, 
+                             list_skel_in(user_gen_inst), in, out) = out is det
+                      }).
 </pre></tr></table>
-The last two arguments of type rnd, are the random supply, in & out.
-(Ignore the rest of arguments) use91.m shows a user defined generator for type :
-<h4>
-	func fff(int) = int	
-	mode fff(in) = out
-				
-</h4>
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+The last two arguments of type rnd, are the random supply, in &amp; out.
+(Ignore the rest of arguments.)
+use91.m shows a user defined generator for type:
+<pre>
+        func fff(int) = int     
+        mode fff(in) = out                                
+</pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- module use91.
 
 :- interface.
@@ -56,99 +62,131 @@ The last two arguments of type rnd, are the random supply, in & out.
 :- import_module int, list, std_util.
 :- import_module qcheck, rnd.
 
-main -->
+main --&gt;
         qcheck(qcheck__f(prop1), "user function", 100, [], [], 
-	       [{type_of(some_function), gen_f}]),
+               [{type_of(some_function), gen_f}]),
         qcheck(qcheck__f(prop1), "no user function", 100, [], [], []). 
 
 :- func gen_f(type_desc, list(frequency), list({type_desc, list(frequency)}),
                 list(user_gen_type), rnd, rnd) = univ.
 :- mode gen_f(in, in, in, list_skel_in(user_gen_inst), in, out) = out is det.
 gen_f(_, _, _, _, RS, RS) = Univ :-
-	Univ = univ(some_function).
+        Univ = univ(some_function).
 
 :- func some_function(int) = int.
 :- mode some_function(in) = out is det.
 some_function(X) = Y :-
-	Y = 2 * X.
+        Y = 2 * X.
  
 :- func prop1(func(int)=int) = property.
 :- mode prop1(in(func(in)=out is det)) = out is det.
 prop1(FFF) = FFF(8) `===` (8 * 2).  
-
-Sample output:
-	Test Description : user function
-	Number of test cases that succeeded : 100
-	Number of trivial tests : 0
-	Number of tests cases which failed the pre-condition : 0
-	Distributions of selected argument(s) : 
-
-	Test description : no user function
-	Falsifiable : 
-	'&lt;&lt;predicate&gt;&gt;'
 </pre></tr></table>
 
-The user defined generator is gen_f/6, which ignores the first 4 arguments, and 
+<p>Sample output:
+<pre>
+        Test Description : user function
+        Number of test cases that succeeded : 100
+        Number of trivial tests : 0
+        Number of tests cases which failed the pre-condition : 0
+        Distributions of selected argument(s) : 
+
+        Test description : no user function
+        Falsifiable : 
+        '&lt;&lt;predicate&gt;&gt;'
+</pre>
+
+<p>The user defined generator is gen_f/6, which ignores the first 4 arguments, and 
 assigns rnd output equal to the input since gen_f doesn't use it.
-(all that was trivial, basiclly gen_f/6 ignores all of the inputs) And it returns 
+(All that was trivial, basically gen_f/6 ignores all of the inputs.)
+And it returns 
 some_function/1 in a univ.
 
-<h4>
+<pre>
 :- pred qcheck(T, string, int, list(list(frequency)),
-               list({type_desc, list(frequency)}), 
-               list(user_gen_type), io__state, io__state) <= testable(T). 
+               list({type_desc, list(frequency)}),
+               list(user_gen_type), io__state, io__state) &lt;= testable(T).
 :- mode qcheck(in, in, in, in, in, list_skel_in(user_gen_inst), di, uo) is det.  
 qcheck(qcheck__f(prop1), "user function", 100, [], [], 
-	       [{type_of(some_function), gen_f}]), 
-</h4>
+               [{type_of(some_function), gen_f}]), 
+</pre>
 qcheck/8 is used in use91.m. The last argument takes in the user-defined 
-generators. The format is list(user_gen_type), since there is only 1 user 
-defined generator, the list contains 1 element : {type_of(some_function), gen_f}.
-	type_of(some_function)	:	describes what type gen_f generates
-	gen_f			:	is the actual generator
- 
-the invariant function is true only if FFF(8) `===` (8 * 2). The 2nd test shows a random
-function will 'never' do that, but the 1st test with user defined generator will always 
+generators. The format is <code>list(user_gen_type)</code>, since there is only 1 user 
+defined generator, the list contains 1 element : <code>{type_of(some_function), gen_f}</code>.
+
+<table>
+<tr>
+ <td>type_of(some_function)</td>
+ <td>describes what type gen_f generates</td>
+</tr>
+<tr>
+ <td>gen_f</td>
+ <td>is the actual generator</td>
+</tr>
+</table>
+
+<p>The invariant function is true only if <code>FFF(8) `===` (8 * 2)</code>.
+The 2nd test shows a random
+function will "never" do that, but the 1st test with user defined generator will always 
 generate the functions Y = 2 * X
-<h4>
+<pre>
 :- func gen_f(type_desc, list(frequency), list({type_desc, list(frequency)}),
               list(user_gen_type), rnd, rnd) = univ.
 :- mode gen_f(in, in, in, list_skel_in(user_gen_inst), in, out) = out is det.
-</h4>
+</pre>
 
-1st input of type	type_desc	is the type_of of the current term the generator 
-					is required to generate. It could be useful if the
-					generator is able to generate more than one type,
-					thus the type_desc can be used to determine wihch 
-					one.
+<table>
+<thead>
+<tr>
+<th>Argument<br>number</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>type_desc</td>
+<td>The <code>type_of</code> of the current term that the generator
+is required to generate. It can be useful if the
+generator is able to generate more than one type,
+thus the <code>type_desc</code> can be used to determine which
+one.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>list(frequency)</td>
+<td>Specific frequency for this term; meaningless
+if the term is not a discriminated union. The  user 
+can choose to ignore the setting even if the term is
+a discriminated union.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>list({type_desc, list(frequency)})</td>
+<td>List of general frequency.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>list(user_gen_type)</td>
+<td>List of user-defined generators.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>rnd</td>
+<td>Random number supply.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>rnd</td>
+<td>Random number return.  Let return = supply if not used.</td>
+</tr>
+</table>
 
-2st input of type	list(frequency) is the specific frequency for this term, meaningless
-					if the term is not a discriminated union. The user 
-					can choose to ignore the setting even if the term is
-					a discriminated union.
+<p>Look at <code>rand_union/6</code> to find out how to write code that
+extracts/analyses specific frequency and general frequency.
+Look at <code>gen/7</code> to find out how to write code that
+extracts/analyses user-defined generators.
 
-3rd input of type	list({type_desc, list(frequency)}) 	is a list of general frequency
-
-4th input of type	list(user_gen_type)	is a list of user defined generators 
-				
-5th input of type	rnd		random number supply 
-
-6th input of type	rnd		random number return, let return = supply if not used.
-
-Look at rand_union/6 to find out how to write code which extracts/analyses specific frequency 
-and eneral frequency.
-Look at gen/7 to find out how to wrote code which extract/analysis user defined generators.
-
-
-
-
-
-
-
-
-
-
-
- 
-
-
+</body>
+</html>

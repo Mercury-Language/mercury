@@ -1,25 +1,34 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
 <html>
 <head> 
-        <TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
-Files : 
-<a href="use81.m">use81.m</a><BR>
+<body>
+<p>
+Files:
+<a href="use81.m">use81.m</a>
+<br>
 <a href="index.html">Back to main</a>
-<H1> QuickCheck Tutorial 8 </H1>
-<h3> Generators - Random Functions</h3>
-<pre>
 
+<h1>QuickCheck Tutorial 8</h1>
+
+<h2>Generators - Random Functions</h2>
+
+<p>
 Currently Quickcheck only has default generators for random functions that 
 have 0 to 10 inputs, 1 output, and is in forward mode. This generated function 
 can run on any type of inputs, but the output must be a type for which there is 
 a custom/default generator.
+
+<p>
 The output may be indepedent of zero or more of the input arguments.
 By this we mean that the value of an input argument may have no bearing upon the 
 calculation of the output. There is a 5% chance per argument of this occurring. 
 
+<p>
 An example (use81.m)
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- module use81.
 
 :- interface.
@@ -37,31 +46,31 @@ An example (use81.m)
 :- import_module qcheck, rnd.
 
 :- type strange(T1, T2)
-        --->    wierd(T1, T2, T1).
+        ---&gt;    wierd(T1, T2, T1).
 
-main -->
-	qcheck(qcheck__f(prop1), "prop1", 1000, [], []),
-	qcheck(qcheck__f(prop2), "prop2", 1000, [], []),
-	qcheck(qcheck__f(prop3), "prop3", 1000, [], []),
-	qcheck(qcheck__f(prop4), "prop4", 1000, [], []).
+main --&gt;
+        qcheck(qcheck__f(prop1), "prop1", 1000, [], []),
+        qcheck(qcheck__f(prop2), "prop2", 1000, [], []),
+        qcheck(qcheck__f(prop3), "prop3", 1000, [], []),
+        qcheck(qcheck__f(prop4), "prop4", 1000, [], []).
 
 :- func prop1( func(strange(int, char), int) = list(int) ) = property.
 :- mode prop1( in( func(in,in)=out is det) ) = out is det.
 prop1(FFF) = 
-	FFF(wierd(1, '0', 2), 999) `===` FFF(wierd(1, '0', 2), 999).
+        FFF(wierd(1, '0', 2), 999) `===` FFF(wierd(1, '0', 2), 999).
 
 :- func prop2(func(strange(int, char), int) = list(int)) = property.
 prop2(FFF) = 
-	(if	FFF(wierd(1, '0', 2), 999) = FFF(wierd(1, '0', 2), 888)
-	 then
-		[ info(univ("equal")) | [yes] ] 
-	 else
-		[ info(univ("not equal")) | [yes] ] 
-	).
+        (if     FFF(wierd(1, '0', 2), 999) = FFF(wierd(1, '0', 2), 888)
+         then
+                [ info(univ("equal")) | [yes] ] 
+         else
+                [ info(univ("not equal")) | [yes] ] 
+        ).
 
 :- func prop3(func(int) = int) = property.
 prop3(FFF) = 
-     	(if	FFF(1) = FFF(0)
+        (if     FFF(1) = FFF(0)
          then
                 [ info(univ("equal")) | [yes] ]
          else
@@ -70,16 +79,17 @@ prop3(FFF) =
         
 :- func prop4(func(int, int) = int) = property.
 prop4(FFF) = 
-     	(if	FFF(101, 10) = FFF(11, 15)
+        (if     FFF(101, 10) = FFF(11, 15)
          then
                 [ info(univ("equal")) | [yes] ]
          else
                 [ info(univ("not equal")) | [yes] ]
-	).	
+        ).      
 </pre></tr></table>
 
+<p>
 A sample output:
-<h4>
+<pre>
 Test Description : prop1
 Number of test cases that succeeded : 1000
 Number of trivial tests : 0
@@ -109,38 +119,32 @@ Number of tests cases which failed the pre-condition : 0
 Distributions of selected argument(s) : 
 1     "equal"
 999     "not equal"
-</h4>
+</pre>
 
+<p>
 prop1/1 just shows that given the same input, the output of the
 sample function is the same.
 
+<p>
 prop3/1 shows that given different input, the random function will 
 usually give different output (940/1000 cases). For the rest 60/1000 
 cases, either the output is independent of input (most likely). Or 
 it just so happens the output is the same for FFF(0) and FFF(1).
-(Noet 60/1000 is roughly 5%)
+(Note 60/1000 is roughly 5%)
 
+<p>
 prop2/1 shows 256/1000 cases shows that the random function returned the 
 same output for different inputs. The real differenct between prop3/1 and
 prop2/1 is that the output of prop2/1 is list(int), which means the chance
 of generating [] is high (50% chance), and that's where 256/1000 cases come 
 from.
 
-prop4/1 's random function takes two inputs, the chance of both inputs being
+<p>
+prop4/1's random function takes two inputs, the chance of both inputs being
 independent of output is less compare to a random function which only takes
-1 input. eg FFF(in)     = out, out independent of in is 5% chance
-	    FFF(in, in) = out, out independent of in is 5% * 5% chance
+1 input. e.g.:<br>
+ FFF(in)&nbsp;&nbsp;&nbsp;&nbsp; = out, out independent of in is 5% chance<br>
+ FFF(in, in) = out, out independent of in is 5% * 5% chance
 
- 
-
-
-
-
-
-
-
- 
-
-
-
-
+</body>
+</html>

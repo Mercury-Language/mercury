@@ -1,25 +1,35 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
 <html>
 <head> 
-        <TITLE> QuickCheck </TITLE>
+<title>QuickCheck</title>
 </head>
-Files : 
-<a href="use71.m">use71.m</a><BR>
+<body>
+<p>
+Files:
+<a href="use71.m">use71.m</a>
+<br>
 <a href="index.html">Back to main</a>
-<H1> QuickCheck Tutorial 7 </H1>
-<h3> Generators - General Frequency</h3>
-<pre>
 
+<h1>QuickCheck Tutorial 7</h1>
+
+<h2>Generators - General Frequency</h2>
+
+<p>
 General Frequency follows the ideas in Specific Frequency. You must understand
 the format of Specific Frequency in order to write General Frequency. However 
 the amount of work in GF is usually less then in SP. In GF, the user should 
 specify one level down in branches, where a practicl SP may be 3+ level down. 
 
-Back in Tutorial 3, an invariant function was written to test the law :
-	 reverse (reverse xs) = xs
-<h4>
+<p>
+Back in Tutorial 3, an invariant function was written to test the law:
+<pre>
+         reverse (reverse xs) = xs
+</pre>
+
+<pre>
 :- func testing4(list(float)) = property.
 testing4(Xs) = 
-         list_length(Xs) `>>>` (nrev(nrev(Xs)) `===` Xs).
+         list_length(Xs) `&gt;&gt;&gt;` (nrev(nrev(Xs)) `===` Xs).
 
 Test Description : testing4
 Number of test cases that succeeded : 100
@@ -34,77 +44,95 @@ Distributions of selected argument(s) :
 16     2
 18     1
 53     0
-</h4>
-The display of testing4 shows that      53 cases of lenggh == 0
-                                        18 cases of length == 1
-                                        16 cases of length == 2
-                                        ...etc...       
-The length of of the list is heavily biased towards the short end. In the limit with
+</pre>
+The display of testing4 shows that
+<pre>
+        53 cases of length == 0
+        18 cases of length == 1
+        16 cases of length == 2
+        ...etc...       
+</pre>
+The length of the list is heavily biased towards the short end. In the limit with
 even distribution along the branches, the list will have :
-50%	length == 0
-25%	length == 1
-12.5%	length == 2
-6.25%	length == 3
-3.125%	length == 4
-...etc... halfing the probability in eash step. 
-<h4>
-	:- type list(T) 
-		---> 	[] 
-		; 	[T | list(T)].
-</h4>
+<pre>
+50%     length == 0
+25%     length == 1
+12.5%   length == 2
+6.25%   length == 3
+3.125%  length == 4
+</pre>
+...etc... halving the probability in each step. 
+<pre>
+        :- type list(T) 
+                ---&gt;    [] 
+                ;       [T | list(T)].
+</pre>
 At any given length accumulated so far, there is a 50-50 chance of either 
 stopping there (if the first branch is chosen) or going on to a longer 
 list (if the second branch is chosen).
 
+<p>
 The 5th argument of qcheck/7 takes General Frequency, it's of type 
-	list({type_desc, list(frequency)})
-each element of the list contains the General Frequency for a type.
+<code>list({type_desc,&nbsp;list(frequency)})</code>.
+Each element of the list contains the General Frequency for a type.
 The list length can be increased if the 2nd branch if favoured over the 1st branch.
-<h4>
-From Tute6 :
+
+<p>From Tute6:
 frequency defines the relative chance of a branch being selected, plus information about that
 branch's sub-branches.
-list(frequency) contains distribution information about 1 discriminated union, ie: the list 
+list(frequency) contains distribution information about 1 discriminated union, i.e. the list 
 should contain frequencies for all possible branches.
 list(list(frequency)) contains distribution information about a list of discriminated unions.
-</h4>
+
+<p>
 A list is a discriminated union. To describe it, the correct format will be list(frequency),
 which matches the 2nd term of list({type_desc, list(frequency)})
+
 <P>
-<table border=1 width=100%><tr><td><pre>
 The list(frequency) for list(T) should have two elements, since the definition of list/1 has 
 two branches.
-	Output = [ frequency_a, frequency_b ]
+<pre>
+        Output = [ frequency_a, frequency_b ]
 
-	frequency_a = { 10, ...something_a... } 
-	frequency_b = { 90, ...something_b... }
-That is 10% take 1st branch, 90% take the 2nd branch.
+        frequency_a = { 10, ...something_a... }
+        frequency_b = { 90, ...something_b... }
+</pre>
+I.e. 10% take the 1st branch, 90% take the 2nd branch.
 
+<p>
 The constrctor []/0 takes no argument, thus something_a is [], ie:
 frequency_a = { 10, [] } 
 
+<p>
+<!-- Should the below become `[|](...)'? -->
 The 2nd branch constructor .(T, list(T)) takes 2 arguments. In specific frequency that would 
 mean a list of two elements (or choose defalut []) :
-	something_b = list(list(frequency)) = [ A, B ]
+<pre>
+        something_b = list(list(frequency)) = [ A, B ]
+</pre>
 In General Frequency the user can specify down more than 1 level, however it is not required 
 in this case. Define something_b = { 90, [] }.
 
+<p>
 Put it all together: 
-		list(frequency)
-	=	[ frequency_a, frequency_b ]
-	=	[ { 10, [] } , { 90, [] }  ]
+<pre>
+                list(frequency)
+        =       [ frequency_a, frequency_b ]
+        =       [ { 10, [] } , { 90, [] }  ]
 
 Then
-		{ type_desc, list(frequency) }
-	=	{ type_of([0.0]), [ { 10, [] } , { 90, [] }  ] }
+                { type_desc, list(frequency) }
+        =       { type_of([0.0]), [ { 10, [] } , { 90, [] }  ] }
+</pre>
 
+<p>
 Now for type list(float), there is 10% chance of selecting 1st branch, and 90% chance of selecting
 2nd branch at EVERY level.
-</pre></tr></table>
 
+<p>
 The complete code (use71.m) :
-<P>
-<table border=0 width=100% bgcolor=#eeeee0><tr><td><pre>
+
+<table border=0 width="100%" bgcolor="#eeeee0"><tr><td><pre>
 :- module use71.
 
 :- interface.
@@ -123,21 +151,21 @@ The complete code (use71.m) :
 
 %---------------------------------------------------------------------------%
 
-main -->
-	{ freq_list(F) },	
-     	qcheck(qcheck__f(testing4), "testing4", 1000, [], [F]).
+main --&gt;
+        { freq_list(F) },       
+        qcheck(qcheck__f(testing4), "testing4", 1000, [], [F]).
 
 :- pred freq_list({type_desc, list(frequency)}).
 :- mode freq_list(out) is det.
 freq_list(F) :-
-	F = { type_of([0.0]), [ { 10, [] } , { 90, [] }  ] }.
+        F = { type_of([0.0]), [ { 10, [] } , { 90, [] }  ] }.
 
 :- func testing4(list(float)) = property.
 testing4(Xs) = 
-	list_length(Xs) `>>>` (nrev(nrev(Xs)) `===` Xs).
+        list_length(Xs) `&gt;&gt;&gt;` (nrev(nrev(Xs)) `===` Xs).
 </pre></tr></table>
 A sample output shows the lists are much longer :
-<h4>
+<pre>
 Test Description : testing4
 Number of test cases that succeeded : 1000
 Number of trivial tests : 0
@@ -191,34 +219,41 @@ Distributions of selected argument(s) :
 72     2
 91     1
 95     0
-</h4>
+</pre>
 
+<p>
 Summary on default frequency, specific frequency, general frequency :
 
-1	Before Quickcheck generates a term, it considesr the term's type.
-	If it's not a discriminated union, all the frequency input is ignored 
-	and lost forever. 
-2	If it is a discriminated union, then Quickcheck generates the term 
-	according to the specific frequency. In cases where the specific 
-	frequency is [], then Quickcheck will search the general frequency 
-	list to find the matching type. 	
-3	If no matching type is found, then generate the term (at this level) evenly
-	eg:	:- type coin 
-			--->	small(face)
-			;	large(color).
-		:- type face
-			--->	head
-			;	tail.
-	The chance between small/large is even, but that doesn't mean chance 
-	between face:head/tail is even.
-4	If matching type is found, then Quickcheck copies that frequency information,
-	and treats that as the specific frequency. 
+<ol>
+ <li><p>Before Quickcheck generates a term, it considers the term's type.
+        If it's not a discriminated union, all the frequency input is ignored 
+        and lost forever. 
+ <li><p>If it is a discriminated union, then Quickcheck generates the term 
+        according to the specific frequency. In cases where the specific 
+        frequency is [], then Quickcheck will search the general frequency 
+        list to find the matching type.         
+ <li><p>If no matching type is found, then generate the term (at this level) evenly
+<pre>
+        eg:     :- type coin 
+                        ---&gt;    small(face)
+                        ;       large(color).
+                :- type face
+                        ---&gt;    head
+                        ;       tail.
+</pre>
+        The chance between small/large is even, but that doesn't mean chance 
+        between face:head/tail is even.
 
+ <li><p>If matching type is found, then Quickcheck copies that frequency information,
+        and treats that as the specific frequency. 
+</ol>
+
+<p>
 In the list(float) example: 
-<h4>
-	qcheck(qcheck__f(testing4), "testing4", 1000, [], [F])
-	F = { type_of([0.0]), [ { 10, [] } , { 90, [] }  ] }
-</h4>   	
+<pre>
+        qcheck(qcheck__f(testing4), "testing4", 1000, [], [F])
+        F = { type_of([0.0]), [ { 10, [] } , { 90, [] }  ] }
+</pre>          
 Quickcheck will first find [] as specific frequency (since [] is passed to qcheck), 
 so it will look in the general frequency list for the information on how to generate
 list(float). That information will be extracted. The function which generates 
@@ -229,30 +264,22 @@ be used only once, after that the specific frequency will be [] again. So if the
 as specific frequency, then it will find general frequency list contains information on 
 how to generate list(float). That information will be copied over...etc...
 That is:
-	0	enter generator
-	1	SF = [], 
-	2	search GF, found, [ { 10, [] } , { 90, [] }  ]
-	3	restart the generator with SF =  [ { 10, [] } , { 90, [] }  ]
-	4	SF = [ { 10, [] } , { 90, [] }  ], do not search GF
-	5	suppose 2nd branch is chosen, ie { 90, [] }
-		the sub-branch has SF = [] 
-		( If the 1st branch is chosen, then stop the looping. )
-	6	generate the sub-branch with SF = []
+<pre>
+        0       enter generator
+        1       SF = [], 
+        2       search GF, found, [ { 10, [] } , { 90, [] }  ]
+        3       restart the generator with SF =  [ { 10, [] } , { 90, [] }  ]
+        4       SF = [ { 10, [] } , { 90, [] }  ], do not search GF
+        5       suppose 2nd branch is chosen, ie { 90, [] }
+                the sub-branch has SF = [] 
+                ( If the 1st branch is chosen, then stop the looping. )
+        6       generate the sub-branch with SF = []
 
-	7	enter generator (for the sub-branch), SF = [], go back to step 1
+        7       enter generator (for the sub-branch), SF = [], go back to step 1
+</pre>
 
+<p>
 The actual code does not restart the generator.
 
-
-
-
-
-
-
-
-
- 
-
-
-
-
+</body>
+</html>
