@@ -40,6 +40,7 @@ PROGS=		\
 		io_regression \
 		liveness \
 		liveness2 \
+		map_corresponding \
 		mode_inf \
 		mode_inf_bug \
 		mode_inference_reorder \
@@ -66,7 +67,8 @@ PROGS=		\
 		string_test \
 		string_test_2 \
 		univ \
-		unreachable
+		unreachable \
+		unsafe_uniqueness
 
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.

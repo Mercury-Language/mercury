@@ -127,8 +127,8 @@ Changes to the Mercury standard library:
 
 * We've added a predicate version of `set__fold'.
 
-* We've added function versions of `ops__init_op_table'
-  and `ops__max_priority'.
+* We've added function versions of `builtin__unsafe_promise_unique',
+  `ops__init_op_table' and `ops__max_priority'.
 
 * We've added a version of `getopt__process_options' which returns
   the option arguments.

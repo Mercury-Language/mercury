@@ -126,6 +126,9 @@
 :- pred unsafe_promise_unique(T, T).
 :- mode unsafe_promise_unique(in, uo) is det.
 
+:- func unsafe_promise_unique(T) = T.
+:- mode unsafe_promise_unique(in) = uo is det.
+
 %-----------------------------------------------------------------------------%
 
 % A call to the function `promise_only_solution(Pred)' constitutes a
@@ -817,7 +820,7 @@ do_compare__tuple_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 
 %-----------------------------------------------------------------------------%
 
-% unsafe_promise_unique/2 is a compiler builtin.
+% unsafe_promise_unique is a compiler builtin.
 
 %-----------------------------------------------------------------------------%
 
