@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999 The University of Melbourne.
+# Copyright (C) 1999,2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -62,6 +62,33 @@ fi
 AC_SUBST(TERMCAP_LIBRARY)
 AC_SUBST(READLINE_LIBRARIES)
 
+])
+
+#-----------------------------------------------------------------------------#
+#
+# Microsoft.NET configuration
+#
+AC_DEFUN(MERCURY_CHECK_DOTNET,
+[
+AC_PATH_PROG(ILASM, ilasm)
+
+AC_MSG_CHECKING(for Microsoft.NET Framework SDK)
+AC_CACHE_VAL(mercury_cv_microsoft_dotnet, [
+if test "$ILASM" != ""; then
+	changequote(<<,>>) 
+	MS_DOTNET_SDK_DIR=`expr "$ILASM" : '\(.*\)[/\\]*[bB]in[/\\]*ilasm'`
+	changequote([,]) 
+	mercury_cv_microsoft_dotnet="yes"
+else
+	MS_DOTNET_SDK_DIR=""
+	mercury_cv_microsoft_dotnet="no"
+fi
+])
+AC_MSG_RESULT($mercury_cv_microsoft_dotnet)
+ILASM=`basename "$ILASM"`
+
+AC_SUBST(ILASM)
+AC_SUBST(MS_DOTNET_SDK_DIR)
 ])
 
 #-----------------------------------------------------------------------------#
