@@ -1187,7 +1187,11 @@ See the Mercury User's Guide for details.
 @section Code generation options
 @table @code
 @item --no-trad-passes
-Generate code by phases, not by predicates.
+The default --trad-passes completely processes each predicate
+before going on to the next predicate.
+This option tells the compiler
+to complete each phase of code generation on all predicates
+before going on the next phase on all predicates.
 
 @c @sp 1
 @c @item --no-polymorphism
