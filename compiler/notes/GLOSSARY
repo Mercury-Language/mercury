@@ -12,6 +12,18 @@ inst: instantiatedness.  An inst holds three different sorts of
       an inst records whether a value is unique, or whether
       it may be aliased.
 
+liveness: this term is used to mean two quite different things!
+	(1) There's a notion of liveness used in mode analysis:
+	a variable is live if either it or an alias might be
+	used later on in the computation.
+	(2) There's a different notion of liveness used for code generation:
+	a variable becomes live (is "born") when the register or stack
+	slot holding the variable first acquires a value, and dies when
+	that value will definitely not be needed again within this procedure.
+	This notion is low-level because it could depend on the low-level
+	representation details (in particular, `no_tag' representations
+	ought to affect liveness).
+
 mode: this has two meanings:
 	(1) a mapping from one instantiatedness to another
 		(the mode of a single variable)
