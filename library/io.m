@@ -199,12 +199,12 @@
 
 :- pred io__write_anything(T, io__state, io__state).
 :- mode io__write_anything(in, di, uo) is det.
-%		Writes it's argument to the current output stream.
+%		Writes its argument to the current output stream.
 %		The argument may be of (almost) any type.
 
 :- pred io__write_anything(io__output_stream, T, io__state, io__state).
 :- mode io__write_anything(in, in, di, uo) is det.
-%		Writes it's argument to the specified stream.
+%		Writes its argument to the specified stream.
 %		The argument may be of (almost) any type.
 
 :- pred io__flush_output(io__state, io__state).
