@@ -28,8 +28,8 @@
 :- implementation.
 
 :- import_module jumpopt, labelopt, dupelim, peephole.
-:- import_module frameopt, delay_slot, use_local_vars, options.
-:- import_module globals, passes_aux, opt_util, opt_debug.
+:- import_module frameopt, delay_slot, use_local_vars, reassign.
+:- import_module options, globals, passes_aux, opt_util, opt_debug.
 :- import_module wrap_blocks, hlds_pred, llds_out, continuation_info.
 
 :- import_module bool, int, string.
@@ -388,11 +388,12 @@ optimize__last(Instrs0, LayoutLabelSet, C, OptDebugInfo0, Instrs) -->
 	{ opt_util__find_first_label(Instrs0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
 
+	globals__io_lookup_bool_option(optimize_reassign, Reassign),
 	globals__io_lookup_bool_option(optimize_delay_slot, DelaySlot),
 	globals__io_lookup_bool_option(use_local_vars, UseLocalVars),
-	( { DelaySlot = yes ; UseLocalVars = yes } ->
+	( { Reassign = yes ; DelaySlot = yes ; UseLocalVars = yes } ->
 		% We must get rid of any extra labels added by other passes,
-		% since they can confuse both wrap_blocks and delay_slot.
+		% since they can confuse reassign, wrap_blocks and delay_slot.
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing labels for "),
 			io__write_string(LabelStr),
@@ -407,6 +408,21 @@ optimize__last(Instrs0, LayoutLabelSet, C, OptDebugInfo0, Instrs) -->
 		{ OptDebugInfo1 = OptDebugInfo0 },
 		{ Instrs1 = Instrs0 }
 	),
+	( { Reassign = yes } ->
+		( { VeryVerbose = yes } ->
+			io__write_string("% Optimizing reassign for "),
+			io__write_string(LabelStr),
+			io__write_string("\n")
+		;
+			[]
+		),
+		{ remove_reassign(Instrs1, Instrs2) },
+		optimize__maybe_opt_debug(Instrs2, C, "after reassign",
+			OptDebugInfo1, OptDebugInfo2)
+	;
+		{ OptDebugInfo2 = OptDebugInfo1 },
+		{ Instrs2 = Instrs1 }
+	),
 	( { DelaySlot = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing delay slot for "),
@@ -415,12 +431,12 @@ optimize__last(Instrs0, LayoutLabelSet, C, OptDebugInfo0, Instrs) -->
 		;
 			[]
 		),
-		{ fill_branch_delay_slot(Instrs1, Instrs2) },
-		optimize__maybe_opt_debug(Instrs2, C, "after delay slots",
-			OptDebugInfo1, OptDebugInfo2)
+		{ fill_branch_delay_slot(Instrs2, Instrs3) },
+		optimize__maybe_opt_debug(Instrs3, C, "after delay slots",
+			OptDebugInfo2, OptDebugInfo3)
 	;
-		{ OptDebugInfo2 = OptDebugInfo1 },
-		{ Instrs2 = Instrs1 }
+		{ OptDebugInfo3 = OptDebugInfo2 },
+		{ Instrs3 = Instrs2 }
 	),
 	( { UseLocalVars = yes } ->
 		( { VeryVerbose = yes } ->
@@ -430,9 +446,9 @@ optimize__last(Instrs0, LayoutLabelSet, C, OptDebugInfo0, Instrs) -->
 		;
 			[]
 		),
-		{ wrap_blocks(Instrs2, Instrs) },
+		{ wrap_blocks(Instrs3, Instrs) },
 		optimize__maybe_opt_debug(Instrs, C, "after wrap blocks",
-			OptDebugInfo2, _OptDebugInfo)
+			OptDebugInfo3, _OptDebugInfo)
 	;
-		{ Instrs = Instrs1 }
+		{ Instrs = Instrs3 }
 	).

@@ -5467,6 +5467,11 @@ Disable stack frame optimizations.
 Disable branch delay slot optimizations.
 
 @sp 1
+@item --optimize-reassign
+@findex --optimize-reassign
+Optimize away assignments to locations that already hold the assigned value.
+
+@sp 1
 @item --optimize-repeat @var{n}
 @findex --optimize-repeat
 Iterate most optimizations at most @var{n} times (default: 3).

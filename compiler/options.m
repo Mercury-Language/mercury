@@ -439,6 +439,7 @@
 %%% unused:	;	optimize_copyprop
 		;	optimize_frames
 		;	optimize_delay_slot
+		;	optimize_reassign
 		;	optimize_repeat
 	%	- RL
 		;	optimize_rl
@@ -926,6 +927,7 @@ option_defaults_2(optimization_option, [
 %%%	optimize_copyprop	-	bool(no),
 	optimize_frames		-	bool(no),
 	optimize_delay_slot	-	bool(no),
+	optimize_reassign	-	bool(no),
 	optimize_repeat		-	int(0),
 
 % LLDS -> C
@@ -1478,6 +1480,8 @@ long_option("optimize-frames",		optimize_frames).
 long_option("optimise-frames",		optimize_frames).
 long_option("optimize-delay-slot",	optimize_delay_slot).
 long_option("optimise-delay-slot",	optimize_delay_slot).
+long_option("optimize-reassign",	optimize_reassign).
+long_option("optimise-reassign",	optimize_reassign).
 long_option("optimize-repeat",		optimize_repeat).
 long_option("optimise-repeat",		optimize_repeat).
 
@@ -1867,6 +1871,7 @@ opt_level(3, _, [
 	deforestation		-	bool(yes),
 	local_constraint_propagation -	bool(yes),
 	constant_propagation	-	bool(yes),
+	optimize_reassign	-	bool(yes),
 	% Disabled until a bug in extras/trailed_update/var.m is resolved.
 	%introduce_accumulators	-	bool(yes),
 	optimize_repeat		-	int(4)
@@ -3059,6 +3064,9 @@ options_help_llds_llds_optimization -->
 		"\tDisable stack frame optimizations.",
 		"--no-optimize-delay-slot",
 		"\tDisable branch delay slot optimizations.",
+		"--optimize-reassign",
+		"\tOptimize away assignments to locations that already hold",
+		"\tthe assigned value.",
 		"--optimize-repeat <n>",
 		"\tIterate most optimizations at most <n> times (default: 3)."
 	]).
