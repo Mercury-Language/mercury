@@ -64,7 +64,7 @@ nuprolog : ints library.nu library.nu.debug $(library.nos) $(NU_LIBRARY_NOS) \
 			nc_builtin.nl
 
 .PHONY: sicstus
-sicstus : ints sicstus_compile library.sicstus library.sicstus.debug
+sicstus : ints sicstus_compile library.sicstus.debug
 
 #-----------------------------------------------------------------------------#
 
@@ -237,10 +237,9 @@ install_interpreter_nu: library.nu
 install_sicstus: install_interpreter_sicstus install_sicstus_compile
 
 .PHONY: install_interpreter_sicstus
-install_interpreter_sicstus: library.sicstus library.sicstus.debug
+install_interpreter_sicstus: library.sicstus.debug
 	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
-	cp `vpath_find library.sicstus library.sicstus.debug` \
-		$(INSTALL_SP_ARCH_DIR)
+	cp `vpath_find library.sicstus.debug` $(INSTALL_SP_ARCH_DIR)
 
 .PHONY: install_sicstus_compile
 install_sicstus_compile: sicstus_compile
