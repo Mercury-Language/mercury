@@ -72,25 +72,17 @@ ARCH="`expr $FULLARCH : '\([^-]*\)-.*' `"
 
 #-----------------------------------------------------------------------------#
 
+release_branch=0.11
 case "$BRANCH" in
     "")
         DAY=`date '+%e'`
         case $HOST in
-	    hg)
-		# XXX The release branch doesn't compile on hg due
-		# to problems with the GCC back-end.
-	    	BRANCH=latest
-		;;
-	    mundroo)
-		# release branch not yet installed.
-		BRANCH=latest
-		;;
 	    taifun|mundroo)
 	    	# For these hosts we only run 3 times a week.
 		# On Monday and Thursday, test the main branch.
 		# On Sunday, test the release branch.
 		case `date '+%w'` in
-			6)	BRANCH=0.10 ;;
+			6)	BRANCH=$release_branch ;;
 			*)	BRANCH=latest ;;
 		esac
 		;;
@@ -101,7 +93,7 @@ case "$BRANCH" in
 		# On even-numbered days, test the main branch.
 		#
 		case $DAY in
-			*[13579]) BRANCH=0.10 ;;
+			*[13579]) BRANCH=$release_branch ;;
 			*)	  BRANCH=latest ;;
 		esac
 		;;
@@ -113,7 +105,7 @@ case "$BRANCH" in
 		#
 		case $DAY in
 			*[13579]) BRANCH=latest ;;
-			*)	  BRANCH=0.10 ;;
+			*)	  BRANCH=$release_branch ;;
 		esac
 		;;
         esac
