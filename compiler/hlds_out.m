@@ -870,7 +870,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		io__write_string(", status: "),
 		hlds_out__write_import_status(ImportStatus),
 		io__write_string("\n"),
-		io__write_string("goal_type: "),
+		io__write_string("% goal_type: "),
 		{ pred_info_get_goal_type(PredInfo, GoalType) },
 		io__write(GoalType),
 		io__write_string("\n"),
