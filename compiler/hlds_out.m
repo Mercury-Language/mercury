@@ -714,8 +714,11 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		Indent, Follow, TypeQual),
 	( { string__contains_char(Verbose, 'i') } ->
 		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-		( { instmap_delta_changed_vars(InstMapDelta, Vars),
-				set__empty(Vars) } ->
+		(
+			{ instmap_delta_is_reachable(InstMapDelta) },
+			{ instmap_delta_changed_vars(InstMapDelta, Vars) },
+			{ set__empty(Vars) }
+		->
 			[]
 		;
 			hlds_out__write_indent(Indent),
