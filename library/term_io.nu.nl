@@ -28,10 +28,8 @@ term_io__current_ops(Ops) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- term_io__read_term(_, IO0, _) when IO0.
-term_io__read_term(Result) -->
-	parser__read_term(Result).
 /************
+:- term_io__read_term(_, IO0, _) when IO0.
 term_io__read_term(Result) -->
 	io__input_stream(Stream),
 	io__stream_name(Stream, StreamName),
