@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,14 +21,22 @@
 :- pred pd_util__goal_get_calls(hlds_goal::in,
 		list(pred_proc_id)::out) is det.
 
+	% Call constraint.m to transform a goal so that goals which
+	% can fail are executed as early as possible.
+:- pred pd_util__propagate_constraints(hlds_goal::in, hlds_goal::out,
+		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
+	
+	% Apply simplify.m to the goal.
 :- pred pd_util__simplify_goal(list(simplification)::in, hlds_goal::in,
 		hlds_goal::out, pd_info::pd_info_di,
 		pd_info::pd_info_uo) is det.
 
+	% Apply unique_modes.m to the goal.
 :- pred pd_util__unique_modecheck_goal(hlds_goal::in, hlds_goal::out,
 		list(mode_error_info)::out, pd_info::pd_info_di, 
 		pd_info::pd_info_uo) is det.
 
+	% Apply unique_modes.m to the goal.
 :- pred pd_util__unique_modecheck_goal(set(prog_var)::in, hlds_goal::in, 
 		hlds_goal::out, list(mode_error_info)::out, 
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
@@ -45,10 +53,12 @@
 		maybe(pd_branch_info(prog_var))::out, pd_info::pd_info_di,
 		pd_info::pd_info_uo) is det.
 
+	% Recompute the non-locals of the goal.
 :- pred pd_util__requantify_goal(hlds_goal::in, set(prog_var)::in,
 		hlds_goal::out, pd_info::pd_info_di, pd_info::pd_info_uo)
 		is det.
 
+	% Apply mode_util__recompute_instmap_delta to the goal.
 :- pred pd_util__recompute_instmap_delta(hlds_goal::in, hlds_goal::out, 
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
@@ -128,11 +138,12 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module pd_cost, hlds_data, instmap, mode_util.
+:- import_module det_analysis, constraint, pd_cost, hlds_data, instmap.
 :- import_module unused_args, inst_match, (inst), quantification, mode_util.
-:- import_module code_aux, purity, mode_info, unique_modes, term.
-:- import_module type_util, det_util, options, goal_util.
-:- import_module assoc_list, int, require, set.
+:- import_module code_aux, purity, mode_info, unique_modes, pd_debug.
+:- import_module type_util, det_util, det_analysis, options, goal_util.
+:- import_module det_report.
+:- import_module assoc_list, int, require, set, term.
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-
 	goal_to_conj_list(Goal0, GoalList),
@@ -141,6 +152,49 @@ pd_util__goal_get_calls(Goal0, CalledPreds) :-
 			CalledPred = proc(PredId, ProcId)
 		)),
 	list__filter_map(GetCalls, GoalList, CalledPreds).
+
+%-----------------------------------------------------------------------------%
+
+pd_util__propagate_constraints(Goal0, Goal) -->
+	pd_info_lookup_bool_option(local_constraint_propagation,
+		ConstraintProp),
+	( { ConstraintProp = yes } ->
+		pd_debug__message("%% Propagating constraints\n", []),
+		pd_debug__output_goal("before constraints\n", Goal0),	
+		pd_info_get_module_info(ModuleInfo0),
+		pd_info_get_proc_info(ProcInfo0),
+		pd_info_get_instmap(InstMap),
+		{ proc_info_vartypes(ProcInfo0, VarTypes0) },
+		{ proc_info_varset(ProcInfo0, VarSet0) },
+		{ constraint_info_init(ModuleInfo0, VarTypes0,
+			VarSet0, InstMap, CInfo0) },
+		{ Goal0 = _ - GoalInfo0 },
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		{ constraint__propagate_constraints_in_goal(Goal0, Goal1,
+			CInfo0, CInfo) },
+		{ constraint_info_deconstruct(CInfo, ModuleInfo,
+			VarTypes, VarSet, Changed) },
+		pd_info_set_module_info(ModuleInfo),
+		{ proc_info_set_vartypes(ProcInfo0, VarTypes, ProcInfo1) },
+		{ proc_info_set_varset(ProcInfo1, VarSet, ProcInfo) },
+		pd_info_set_proc_info(ProcInfo),
+		( { Changed = yes } ->
+			pd_debug__output_goal(
+				"after constraints, before recompute\n",
+				Goal1),
+			pd_util__requantify_goal(Goal1, NonLocals, Goal2),
+			pd_util__recompute_instmap_delta(Goal2, Goal3),
+			pd_util__rerun_det_analysis(Goal3, Goal4),
+		        { module_info_globals(ModuleInfo, Globals) },
+		        { simplify__find_simplifications(no,
+				Globals, Simplifications) },
+			pd_util__simplify_goal(Simplifications, Goal4, Goal)
+		;
+			{ Goal = Goal1 }
+		)
+	;
+		{ Goal = Goal0 }
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -272,6 +326,47 @@ pd_util__get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
 	),
 	pd_util__get_goal_live_vars_2(ModuleInfo, NonLocals, 
 		InstMap, InstMapDelta, Vars1, Vars).
+
+%-----------------------------------------------------------------------------%
+
+:- pred pd_util__rerun_det_analysis(hlds_goal::in, hlds_goal::out,
+		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
+
+pd_util__rerun_det_analysis(Goal0, Goal) -->
+	{ Goal0 = _ - GoalInfo0 },
+
+	{ goal_info_get_determinism(GoalInfo0, Det) },
+	{ det_get_soln_context(Det, SolnContext) },
+
+	% det_infer_goal looks up the proc_info in the module_info
+	% for the vartypes, so we'd better stick them back in the
+	% module_info.
+	pd_info_get_pred_proc_id(proc(PredId, ProcId)),
+	pd_info_get_pred_info(PredInfo),
+	pd_info_get_proc_info(ProcInfo),
+	pd_info_get_module_info(ModuleInfo0),
+	{ module_info_set_pred_proc_info(ModuleInfo0, PredId, ProcId,
+		PredInfo, ProcInfo, ModuleInfo) },
+	pd_info_set_module_info(ModuleInfo),
+
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ det_info_init(ModuleInfo, VarTypes, PredId, ProcId,
+		Globals, DetInfo) },
+	pd_info_get_instmap(InstMap),
+	{ det_infer_goal(Goal0, InstMap, SolnContext, DetInfo,
+		Goal, _, Msgs) },
+
+	%
+	% Make sure there were no errors.
+	%
+	pd_info_get_io_state(IO0),
+	{ disable_det_warnings(OptionsToRestore, IO0, IO1) },
+	{ det_report_msgs(Msgs, ModuleInfo, _, ErrCnt, IO1, IO2) },
+	{ restore_det_warnings(OptionsToRestore, IO2, IO) },
+	pd_info_set_io_state(IO),
+	{ require(unify(ErrCnt, 0),
+		"pd_util__rerun_det_analysis: determinism errors") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1029,7 +1124,19 @@ pd_util__can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
 	EarlierGoal = _ - EarlierGoalInfo,
 	LaterGoal = _ - LaterGoalInfo,
 
-		% Impure goals cannot be reordered.
+	goal_info_get_determinism(EarlierGoalInfo, EarlierDetism),
+	goal_info_get_determinism(LaterGoalInfo, LaterDetism),
+
+	% Check that the reordering would not violate determinism
+	% correctness by moving a goal out of a single solution context
+	% by placing a goal which can fail after it.
+	(
+		determinism_components(EarlierDetism, can_fail, _)
+	=>	
+		\+ determinism_components(LaterDetism, _, at_most_many_cc)
+	),
+
+	% Impure goals cannot be reordered.
 	\+ goal_info_is_impure(EarlierGoalInfo),
 	\+ goal_info_is_impure(LaterGoalInfo),
 
@@ -1059,7 +1166,7 @@ goal_depends_on_goal(_ - GoalInfo1, _ - GoalInfo2) :-
 	goal_info_get_nonlocals(GoalInfo2, NonLocals2),
 	set__intersect(ChangedVars1, NonLocals2, Intersection),
 	\+ set__empty(Intersection).
-	
+
 pd_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
 		EarlierGoal, LaterGoal) :-
 	EarlierGoal = _ - EarlierGoalInfo,

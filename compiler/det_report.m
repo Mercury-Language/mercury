@@ -113,6 +113,19 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type options_to_restore.
+
+	% Call this predicate before rerunning determinism analysis
+	% after an optimization pass to disable all warnings. Errors will
+	% still be reported.
+:- pred disable_det_warnings(options_to_restore, io__state, io__state).
+:- mode disable_det_warnings(out, di, uo) is det.
+
+:- pred restore_det_warnings(options_to_restore, io__state, io__state).
+:- mode restore_det_warnings(in, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
+
 :- type det_comparison	--->	tighter ; sameas ; looser.
 
 :- pred compare_determinisms(determinism, determinism, det_comparison).
@@ -128,8 +141,8 @@
 :- import_module code_util, passes_aux.
 :- import_module globals, options.
 
-:- import_module term, varset.
-:- import_module bool, int, map, set, std_util, require, string.
+:- import_module assoc_list, bool, int, map, set, std_util, require, string.
+:- import_module getopt, term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -1374,5 +1387,26 @@ det_report_context_lines([Context | Contexts], First) -->
 	),
 	io__write_int(Line),
 	det_report_context_lines(Contexts, no).
+
+%-----------------------------------------------------------------------------%
+
+:- type options_to_restore == assoc_list(option, option_data).
+
+disable_det_warnings(OptionsToRestore) -->
+	globals__io_lookup_option(warn_simple_code, WarnSimple),
+	globals__io_lookup_option(warn_det_decls_too_lax,
+		WarnDeclsTooLax),
+	globals__io_set_option(warn_simple_code, bool(no)),
+	globals__io_set_option(warn_det_decls_too_lax, bool(no)),
+	{ OptionsToRestore = [
+		warn_simple_code - WarnSimple,
+		warn_det_decls_too_lax - WarnDeclsTooLax
+	] }.
+
+restore_det_warnings(OptionsToRestore) -->
+	list__foldl(
+	    (pred((Option - Value)::in, di, uo) is det -->
+		globals__io_set_option(Option, Value)
+	    ), OptionsToRestore).
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,7 +47,7 @@
 :- implementation.
 
 :- import_module globals, hlds_module, hlds_out, instmap, options.
-:- import_module instmap, prog_out, goal_util.
+:- import_module instmap, prog_out, goal_util, mercury_to_mercury.
 :- import_module bool, io, set, std_util.
 
 pd_debug__do_io(Pred) -->
@@ -103,7 +103,7 @@ pd_debug__register_version(PredProcId, Version) -->
 
 pd_debug__output_version(ModuleInfo, PredProcId,
 		Version, WriteUnfoldedGoal) -->
-	{ Version = version_info(Goal - GoalInfo, _, _, _, InstMap, 
+	{ Version = version_info(Goal - GoalInfo, _, Args, _, InstMap, 
 			InitialCost, CostDelta, Parents, _) }, 
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	io__write_string(PredName),
@@ -127,9 +127,12 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 		PredId, ProcId, _, ProcInfo) },
 	{ proc_info_varset(ProcInfo, VarSet) },
 	{ instmap__restrict(InstMap, NonLocals, InstMap1) },
+	io__write_string(" args: "),
+	mercury_output_vars(Args, VarSet, yes),
+	io__nl,
 	hlds_out__write_instmap(InstMap1, VarSet, yes, 1),
 	io__nl,
-	hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, no, 1, "\n"),
+	hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, yes, 1, "\n"),
 	io__nl,
 	io__write_string("Parents: "),
 	{ set__to_sorted_list(Parents, ParentsList) },
@@ -140,7 +143,7 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 		{ proc_info_goal(ProcInfo, ProcGoal) },
 		io__write_string("Unfolded goal\n"),
 		hlds_out__write_goal(ProcGoal, 
-			ModuleInfo, VarSet, no, 1, "\n"),
+			ModuleInfo, VarSet, yes, 1, "\n"),
 		io__nl
 	;
 		[]

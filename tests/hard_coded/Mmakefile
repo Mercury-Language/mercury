@@ -22,6 +22,8 @@ ORDINARY_PROGS=	\
 	common_type_cast \
 	compare_spec \
 	comparison \
+	constraint \
+	constraint_order \
 	construct \
 	curry \
 	curry2 \
@@ -212,6 +214,8 @@ endif
 
 MCFLAGS-checked_nondet_tailcall	=	--checked-nondet-tailcalls
 MCFLAGS-bigtest		=	--intermodule-optimization -O3
+MCFLAGS-constraint	=	--constraint-propagation --enable-termination
+MCFLAGS-constraint_order =	--constraint-propagation --enable-termination
 MCFLAGS-lp		=	--intermodule-optimization -O3
 MCFLAGS-boyer		=	--infer-all
 MCFLAGS-func_test	=	--infer-all

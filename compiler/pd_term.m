@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,14 +45,20 @@
 	% (CallGoal1, BetweenGoals, CallGoal2) without the deforestation
 	% process looping.
 :- pred pd_term__global_check(module_info::in, hlds_goal::in,
-		list(hlds_goal)::in, hlds_goal::in,
+		list(hlds_goal)::in, maybe(hlds_goal)::in,
 		instmap::in, version_index::in, 
 		global_term_info::in, global_term_info::out, 
 		global_check_result::out) is det.
 
+	% A proc_pair holds the pred_proc_ids of the procedures called at
+	% the ends of a conjunction to be deforested.
+	% The maybe(pred_proc_id) is `no' in the case of a predicate
+	% created for constraint propagation.
+:- type proc_pair == pair(pred_proc_id, maybe(pred_proc_id)).
+
 :- type global_check_result
-	--->	ok(pair(pred_proc_id), int)
-	;	possible_loop(pair(pred_proc_id), int, pred_proc_id)
+	--->	ok(proc_pair, int)
+	;	possible_loop(proc_pair, int, pred_proc_id)
 	;	loop.
 
 	% Check whether a call can be unfolded without the
@@ -70,8 +76,8 @@
 	% Update the global termination information when we find
 	% out the pred_proc_id that has been assigned to a version.
 :- pred pd_term__update_global_term_info(global_term_info::in,
-		pair(pred_proc_id)::in, pred_proc_id::in, int::in,
-		global_term_info::out) is det.
+		proc_pair::in, pred_proc_id::in,
+		int::in, global_term_info::out) is det.
 
 :- type global_term_info. 
 :- type local_term_info.
@@ -98,10 +104,10 @@
 	% Map from a pair of procedures at the end of the conjunction
 	% to be deforested and the most recent ancestor with this pair
 	% of goals.
-:- type multiple_covering_goals == map(pair(pred_proc_id), 
-					pair(int, maybe(pred_proc_id))).
+:- type multiple_covering_goals ==
+		map(proc_pair, pair(int, maybe(pred_proc_id))).
 
-		% Mapping from argument to size.
+	% Mapping from argument to size.
 :- type pd_proc_term_info	== 	assoc_list(int, int).
 	
 %-----------------------------------------------------------------------------%
@@ -119,20 +125,27 @@ pd_term__get_proc_term_info(TermInfo, PredProcId, ProcTermInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, LaterGoal, 
+pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal, 
 		_InstMap, Versions, Info0, Info, Result) :-
 	Info0 = global_term_info(SingleGoalCover0, MultipleGoalCover0),
 	(
 		EarlierGoal = call(PredId1, ProcId1, _, _, _, _) - _,
-		LaterGoal = call(PredId2, ProcId2, _, _, _, _) - _,
 		Hd = lambda([List::in, Head::out] is semidet, 
 			List = [Head | _]),
 		expand_calls(Hd, Versions, proc(PredId1, ProcId1), 
 			FirstPredProcId),
-		expand_calls(list__last, Versions, proc(PredId2, ProcId2), 
-			LastPredProcId)
+		(
+			MaybeLaterGoal = yes(
+				call(PredId2, ProcId2, _, _, _, _) - _),
+			expand_calls(list__last, Versions,
+				proc(PredId2, ProcId2), LastPredProcId),
+			MaybeLastPredProcId = yes(LastPredProcId)
+		;
+			MaybeLaterGoal = no,
+			MaybeLastPredProcId = no
+		)
 	->
-		ProcPair = FirstPredProcId - LastPredProcId,
+		ProcPair = FirstPredProcId - MaybeLastPredProcId,
 		list__length(BetweenGoals, Length),
 		( 
 			map__search(MultipleGoalCover0, ProcPair, 

@@ -1355,9 +1355,10 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		TermInfo = no
 	),
 
+	MaybeDeclaredDetism = no,
 	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes, InstVarSet,
-		Detism, Goal0, Context, TVarMap, TCVarMap, IsAddressTaken,
-		ProcInfo0),
+		MaybeDeclaredDetism, Detism, Goal0, Context,
+		TVarMap, TCVarMap, IsAddressTaken, ProcInfo0),
 	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
 
 	set__init(Assertions),
@@ -1449,6 +1450,13 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	list(mode), inst_varset, determinism, hlds_goal, prog_context,
 	type_info_varmap, typeclass_info_varmap, is_address_taken, proc_info).
 :- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, in, out)
+	is det.
+
+:- pred proc_info_create(prog_varset, vartypes, list(prog_var),
+	list(mode), inst_varset, maybe(determinism), determinism,
+	hlds_goal, prog_context, type_info_varmap, typeclass_info_varmap,
+	is_address_taken, proc_info).
+:- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, in, in, out)
 	is det.
 
 :- pred proc_info_set_body(proc_info, prog_varset, vartypes,
@@ -1902,8 +1910,16 @@ proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		Liveness, TVarMap, TCVarsMap, eval_normal, ArgSizes,
 		Termination, no, IsAddressTaken, RLExprn, no, no, no).
 
-proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet, Detism,
-		Goal, Context, TVarMap, TCVarsMap, IsAddressTaken, ProcInfo) :-
+proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
+		Detism, Goal, Context, TVarMap, TCVarsMap,
+		IsAddressTaken, ProcInfo) :-
+	proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
+		yes(Detism), Detism, Goal, Context, TVarMap,
+		TCVarsMap, IsAddressTaken, ProcInfo).
+
+proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
+		MaybeDeclaredDetism, Detism, Goal, Context, TVarMap,
+		TCVarsMap, IsAddressTaken, ProcInfo) :-
 	map__init(StackSlots),
 	set__init(Liveness),
 	MaybeHeadLives = no,
@@ -1911,8 +1927,9 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet, Detism,
 	ModeErrors = [],
 	ProcInfo = procedure(VarSet, VarTypes, HeadVars, HeadModes, ModeErrors,
 		InstVarSet, MaybeHeadLives, Goal, Context, StackSlots,
-		yes(Detism), Detism, yes, [], Liveness, TVarMap, TCVarsMap,
-		eval_normal, no, no, no, IsAddressTaken, RLExprn, no, no, no).
+		MaybeDeclaredDetism, Detism, yes, [], Liveness, TVarMap,
+		TCVarsMap, eval_normal, no, no, no, IsAddressTaken,
+		RLExprn, no, no, no).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, ProcInfo) :-

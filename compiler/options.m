@@ -367,6 +367,7 @@
 		;	common_struct
 		;	common_goal
 		;	constraint_propagation
+		;	local_constraint_propagation
 		;	optimize_unused_args
 		;	intermod_unused_args
 		;	optimize_higher_order
@@ -796,6 +797,7 @@ option_defaults_2(optimization_option, [
 		% common_goal is not really an optimization, since
 		% it affects the semantics
 	constraint_propagation	-	bool(no),
+	local_constraint_propagation	-	bool(no),
 	optimize_duplicate_calls -	bool(no),
 	constant_propagation	-	bool(no),
 	excess_assign		-	bool(no),
@@ -1223,6 +1225,7 @@ long_option("delay-constructs",		delay_construct).
 long_option("prev-code",		prev_code).
 long_option("follow-code",		follow_code).
 long_option("constraint-propagation",	constraint_propagation).
+long_option("local-constraint-propagation",	local_constraint_propagation).
 long_option("optimize-unused-args",	optimize_unused_args).
 long_option("optimise-unused-args",	optimize_unused_args).
 long_option("intermod-unused-args",	intermod_unused_args).
@@ -1612,6 +1615,7 @@ opt_level(3, _, [
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
 	deforestation		-	bool(yes),
+	local_constraint_propagation -	bool(yes),
 	constant_propagation	-	bool(yes),
 	% Disabled until a bug in extras/trailed_update/var.m is resolved.
 	%introduce_accumulators	-	bool(yes),
@@ -2582,8 +2586,14 @@ options_help_hlds_hlds_optimization -->
 		"\tdetects only common deconstruction unifications.",
 		"\tDisabling this optimization reduces the class of predicates",
 		"\tthat the compiler considers to be deterministic.",
-	% 	"\t--constraint-propagation",
-	% 	"\t\tEnable the C-tranformation.  (Doesn't work.)",
+	 	"--constraint-propagation",
+	 	"\tEnable the constraint propagation transformation,",
+		"\twhich attemps to transform the code so that goals",
+		"\twhich can fail are executed as early as possible.",
+	 	"--local-constraint-propagation",
+		"\tEnable the constraint propagation transformation,",
+		"\tbut only rearrange goals within each procedure.",
+		"\tSpecialized versions of procedures will not be created.",
 		"--prev-code",
 		"\tMigrate into the start of branched goals.",
 		"--no-follow-code",

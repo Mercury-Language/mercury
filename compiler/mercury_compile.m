@@ -2567,8 +2567,21 @@ mercury_compile__maybe_do_inlining(HLDS0, Verbose, Stats, HLDS) -->
 
 mercury_compile__maybe_deforestation(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_lookup_bool_option(deforestation, Deforest),
-	( { Deforest = yes } ->
-		maybe_write_string(Verbose, "% Deforestation...\n"),
+
+	% --constraint-propagation implies --local-constraint-propagation.
+	globals__io_lookup_bool_option(local_constraint_propagation,
+		Constraints),
+	( { Deforest = yes ; Constraints = yes } ->
+		{ Deforest = no, Constraints = no, 
+			error("mercury_compile__maybe_deforestation")
+		; Deforest = yes, Constraints = yes,
+			Msg = "% Deforestation and constraint propagation...\n"
+		; Deforest = yes, Constraints = no,
+			Msg = "% Deforestation...\n"
+		; Deforest = no, Constraints = yes,
+			Msg = "% Constraint propagation...\n"
+		},
+		maybe_write_string(Verbose, Msg),
 		maybe_flush_output(Verbose),
 		deforestation(HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),

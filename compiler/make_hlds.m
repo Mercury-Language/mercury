@@ -2955,7 +2955,19 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
 				HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
 				HasForeignClauses),
-	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
+	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
+
+		%
+		% It's pointless but harmless to inline these clauses.
+		% The main purpose of the `no_inline' marker is to stop
+		% constraint propagation creating real infinite loops in
+		% the generated code when processing calls to these
+		% predicates. The code generator will still generate
+		% inline code for calls to these predicates.
+		%
+	pred_info_get_markers(PredInfo1, Markers0),
+	add_marker(Markers0, no_inline, Markers),
+	pred_info_set_markers(PredInfo1, Markers, PredInfo).
 
 %-----------------------------------------------------------------------------%
 

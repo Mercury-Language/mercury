@@ -554,9 +554,6 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <li> inlining (i.e. unfolding) of simple procedures (inlining.m)
 
-<li> pushing constraints as far left as possible (constraint.m);
-  this does not yet work.
-
 <li> deforestation and partial evaluation (deforest.m). This optimizes
   multiple traversals of data structures within a conjunction, and
   avoids creating intermediate data structures. It also performs
@@ -564,6 +561,9 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   deforest.m makes use of the following sub-modules
   (`pd_' stands for "partial deduction"):
   <ul>
+  <li>
+  constraint.m transforms goals so that goals which can fail
+  are executed earlier.
   <li>
   pd_cost.m contains some predicates to estimate the improvement
   caused by deforest.m.
@@ -1157,6 +1157,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2001-06-27 05:04:36 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-08-11 14:09:51 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -4771,6 +4771,8 @@ Optimization levels range from -1 to 6.
 Optimization level -1 disables all optimizations,
 while optimization level 6 enables all optimizations
 except for the cross-module optimizations listed below.
+Some experimental optimizations (for example constraint
+propagation) are not be enabled at any optimization level.
 
 In general, there is a trade-off between compilation speed and the
 speed of the generated code.  When developing, you should normally use
@@ -4932,9 +4934,17 @@ detects only common deconstruction unifications.
 Disabling this optimization reduces the class of predicates
 that the compiler considers to be deterministic.
 
-@c @item --constraint-propagation
-@c @findex --constraint-propagation
-@c Enable the constraint propagation transformation.
+@item --constraint-propagation
+@findex --constraint-propagation
+Enable the constraint propagation transformation,
+which attempts to transform the code so that goals
+which can fail are executed as early as possible.
+
+@item --local-constraint-propagation
+@findex --local-constraint-propagation
+Enable the constraint propagation transformation,
+but only rearrange goals within each procedure.
+Specialized versions of procedures will not be created.
 
 @c @sp 1
 @c @item --prev-code

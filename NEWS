@@ -57,6 +57,14 @@ Changes to the Mercury implementation:
   This change will break some existing programs, but that is easily fixed
   by adding any necessary `:- import_module' or `:- use_module' declarations.
 
+* We've added a new optimization pass -- constraint propagation.
+
+  Constraint propagation attempts to transform the code so
+  that goals which can fail are executed as early as possible.
+  It is enabled with the `--constraint-propagation' option
+  (or `--local-constraint-propagation' for a more restricted
+  version of the transformation).
+
 * The `--convert-to-goedel' option has been removed.
   It never really worked anyway.
 

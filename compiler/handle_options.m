@@ -593,8 +593,12 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		[]
 	),
 
-	% --no-reorder-conj implies --no-deforestation.
+	% --no-reorder-conj implies --no-deforestation,
+	% --no-constraint-propagation and --no-local-constraint-propagation.
 	option_neg_implies(reorder_conj, deforestation, bool(no)),
+	option_neg_implies(reorder_conj, constraint_propagation, bool(no)),
+	option_neg_implies(reorder_conj, local_constraint_propagation,
+		bool(no)),
 
 	% --stack-trace requires `procid' stack layouts
 	option_implies(stack_trace, procid_stack_layout, bool(yes)),
@@ -656,6 +660,12 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	% If we are doing type-specialization, we may as well take
 	% advantage of the declarations supplied by the programmer.
 	option_implies(type_specialization, user_guided_type_specialization,
+		bool(yes)),
+
+	% The local constraint propagation transformation (constraint.m)
+	% is a required part of the constraint propagation transformation
+	% performed by deforest.m.
+	option_implies(constraint_propagation, local_constraint_propagation,
 		bool(yes)),
 
 	% --intermod-unused-args implies --intermodule-optimization and

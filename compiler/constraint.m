@@ -1,357 +1,760 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % File: constraint.m
-% Main author: bromage.
-%
-% This module will eventually perform constraint propagation on
-% an entire module.  At the moment, though, it just does propagation
-% within a single goal.
+% Main author: stayl.
 %
 % The constraint propagation transformation attempts to improve
 % the efficiency of a generate-and-test style program by statically
 % scheduling constraints as early as possible, where a "constraint"
-% is any goal which has no output and can fail.
+% is any pure goal which has no outputs, can fail and cannot loop.
 %
-% XXX Code is broken.  Do not attempt to compile using the
-%     --constraint-propagation option!
 %-----------------------------------------------------------------------------%
 
 :- module constraint.
 
 :- interface.
 
-:- import_module hlds_module.
-:- import_module io.
+:- import_module hlds_goal, hlds_module, instmap, prog_data.
+:- import_module bool, map.
 
-:- pred constraint_propagation(module_info, module_info, io__state, io__state).
-:- mode constraint_propagation(in, out, di, uo) is det.
+:- type constraint_info.
+
+	% constraint__propagate_constraints_in_goal pushes constraints
+	% left and inward within a single goal. Specialized versions of
+	% procedures which are called with constrained outputs are created
+	% by deforest.m. Goals which deforest.m should try to propagate
+	% into calls are annotated with a `constraint' goal feature.
+:- pred constraint__propagate_constraints_in_goal(hlds_goal, hlds_goal,
+		constraint_info, constraint_info).
+:- mode constraint__propagate_constraints_in_goal(in, out, in, out) is det.
+
+:- pred constraint_info_init(module_info, map(prog_var, type), prog_varset,
+		instmap, constraint_info).
+:- mode constraint_info_init(in, in, in, in, out) is det.
+
+:- pred constraint_info_deconstruct(constraint_info, module_info,
+		map(prog_var, type), prog_varset, bool).
+:- mode constraint_info_deconstruct(in, out, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data.
-:- import_module mode_util, passes_aux, code_aux, prog_data, instmap.
-:- import_module delay_info, mode_info, inst_match, modes, mode_debug.
-:- import_module transform, options, globals, varset, term.
-:- import_module mercury_to_mercury, hlds_out, dependency_graph.
+:- import_module goal_util, hlds_pred, hlds_module, hlds_data.
+:- import_module mode_util, passes_aux, code_aux, inst_match, purity.
+:- import_module options, globals.
 
-:- import_module bool, list, map, set, std_util, assoc_list, string.
-:- import_module varset, term, require.
-
-:- type constraint == hlds_goal.
+:- import_module assoc_list, list, require, set, std_util.
+:- import_module string, term, varset.
 
 %-----------------------------------------------------------------------------%
 
-constraint_propagation(ModuleInfo0, ModuleInfo) -->
-	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1) },
-	{ module_info_dependency_info(ModuleInfo1, DepInfo) },
-	{ hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrd) },
-	constraint_propagation2(DepOrd, ModuleInfo1, ModuleInfo).
+constraint__propagate_constraints_in_goal(Goal0, Goal) -->
+	% We need to strip off any existing constraint markers first.
+	% Constraint markers are meant to indicate where a constraint
+	% is meant to be attached to a call, and that deforest.m should
+	% consider creating a specialized version for the call.
+	% If deforest.m rearranges the goal, the constraints may
+	% not remain next to the call.
+	{ Goal1 = strip_constraint_markers(Goal0) },
+	constraint__propagate_goal(Goal1, [], Goal).
 
-:- pred constraint_propagation2(dependency_ordering, module_info, module_info,
-				io__state, io__state).
-:- mode constraint_propagation2(in, in, out, di, uo) is det.
-constraint_propagation2([], ModuleInfo, ModuleInfo) --> [].
-constraint_propagation2([C | Cs], ModuleInfo0, ModuleInfo) -->
-	constraint_propagation3(C, ModuleInfo0, ModuleInfo1),
-	constraint_propagation2(Cs, ModuleInfo1, ModuleInfo).
+:- pred constraint__propagate_goal(hlds_goal, list(constraint),
+		hlds_goal, constraint_info, constraint_info).
+:- mode constraint__propagate_goal(in, in, out, in, out) is det.
 
-:- pred constraint_propagation3(list(pred_proc_id), module_info, module_info,
-				io__state, io__state).
-:- mode constraint_propagation3(in, in, out, di, uo) is det.
-constraint_propagation3([], ModuleInfo, ModuleInfo) --> [].
-constraint_propagation3([proc(Pred, Proc) | Rest], ModuleInfo0, ModuleInfo) -->
-	constraint__propagate_in_proc(Pred, Proc, ModuleInfo0, ModuleInfo1),
-	modecheck_proc(Proc, Pred, ModuleInfo1, ModuleInfo2, Errs, _Changed),
-	( { Errs \= 0 } ->
-	    { error("constraint_propagation3") }
+constraint__propagate_goal(Goal0, Constraints, Goal) -->
+	% We need to treat all single goals as conjunctions so that
+	% constraint__propagate_conj can move the constraints to the
+	% left of the goal if that is allowed.
+	{ goal_to_conj_list(Goal0, Goals0) },
+	constraint__propagate_conj(Goals0, Constraints, Goals),
+	{ goal_list_nonlocals(Goals, NonLocals) },
+	{ goal_list_instmap_delta(Goals, Delta) },
+	{ goal_list_determinism(Goals, ConjDetism) },
+	{ goal_info_init(NonLocals, Delta, ConjDetism, GoalInfo) },
+	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
+
+:- pred constraint__propagate_conj_sub_goal(hlds_goal, list(constraint),
+		hlds_goals, constraint_info, constraint_info).
+:- mode constraint__propagate_conj_sub_goal(in, in, out, 
+		in, out) is det.
+
+constraint__propagate_conj_sub_goal(Goal0, Constraints, Goals) -->
+	{ Goal0 = GoalExpr0 - _ },
+	( { goal_is_atomic(GoalExpr0) } ->
+		[]
 	;
-	    []
+		% If a non-empty list of constraints is pushed into a sub-goal,
+		% quantification, instmap_deltas and determinism need to be
+		% recomputed.
+		constraint_info_update_changed(Constraints)
 	),
-	constraint_propagation3(Rest, ModuleInfo2, ModuleInfo).
+	InstMap0 =^ instmap,
+	constraint__propagate_conj_sub_goal_2(Goal0, Constraints, Goals),
+	^ instmap := InstMap0.
+
+:- pred constraint__propagate_conj_sub_goal_2(hlds_goal, list(constraint),
+		list(hlds_goal), constraint_info, constraint_info).
+:- mode constraint__propagate_conj_sub_goal_2(in, in, out, in, out) is det.
+
+constraint__propagate_conj_sub_goal_2(conj(Goals0) - Info, Constraints, 
+		[conj(Goals) - Info]) -->
+	constraint__propagate_conj(Goals0, Constraints, Goals).
+
+constraint__propagate_conj_sub_goal_2(disj(Goals0, SM) - Info, Constraints,
+		[disj(Goals, SM) - Info]) -->
+	constraint__propagate_disj(Goals0, Constraints, Goals).
+
+constraint__propagate_conj_sub_goal_2(switch(Var, CanFail, Cases0, SM) - Info,
+		Constraints, [switch(Var, CanFail, Cases, SM) - Info]) -->
+	constraint__propagate_cases(Var, Cases0, Constraints, Cases).
+	
+constraint__propagate_conj_sub_goal_2(
+		if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
+		Constraints, 
+		[if_then_else(Vars, Cond, Then, Else, SM) - Info]) -->
+	InstMap0 =^ instmap,
+
+	% We can't safely propagate constraints into 
+	% the condition of an if-then-else, because that
+	% would change the answers generated by the procedure.
+	constraint__propagate_goal(Cond0, [], Cond),
+	constraint_info_update_goal(Cond),
+	constraint__propagate_goal(Then0, Constraints, Then),
+	^ instmap := InstMap0,
+	constraint__propagate_goal(Else0, Constraints, Else).
+
+	% XXX propagate constraints into par_conjs -- this isn't
+	% possible at the moment because par_conj goals must have
+	% determinism det.
+constraint__propagate_conj_sub_goal_2(par_conj(Goals0, SM) - GoalInfo,
+		Constraints0,
+		[par_conj(Goals, SM) - GoalInfo | Constraints]) -->
+	% Propagate constraints within the goals of the conjunction.
+	% constraint__propagate_disj treats its list of goals as
+	% independent rather than specifically disjoint, so we can
+	% use it to process a list of independent parallel conjuncts.
+	constraint__propagate_disj(Goals0, [], Goals),
+	{ constraint__flatten_constraints(Constraints0, Constraints) }.
+
+constraint__propagate_conj_sub_goal_2(some(Vars, CanRemove, Goal0) - GoalInfo,
+		Constraints, [some(Vars, CanRemove, Goal) - GoalInfo]) -->
+	constraint__propagate_goal(Goal0, Constraints, Goal).
+
+constraint__propagate_conj_sub_goal_2(not(NegGoal0) - GoalInfo, Constraints0,
+		[not(NegGoal) - GoalInfo | Constraints]) -->
+	% We can't safely propagate constraints into a negation,
+	% because that would change the answers computed by the
+	% procedure.
+	constraint__propagate_goal(NegGoal0, [], NegGoal),
+	{ constraint__flatten_constraints(Constraints0, Constraints) }.
+
+constraint__propagate_conj_sub_goal_2(Goal, Constraints0,
+		[Goal | Constraints]) -->
+	% constraint__propagate_conj will move the constraints
+	% to the left of the call if that is possible, so nothing
+	% needs to be done here.
+	{ Goal = call(_, _, _, _, _, _) - _ },
+	{ constraint__flatten_constraints(Constraints0, Constraints) }.
+
+constraint__propagate_conj_sub_goal_2(Goal, Constraints0,
+		[Goal | Constraints]) -->
+	{ Goal = generic_call(_, _, _, _) - _ },
+	{ constraint__flatten_constraints(Constraints0, Constraints) }.
+
+constraint__propagate_conj_sub_goal_2(Goal, Constraints0,
+		[Goal | Constraints]) -->
+	{ Goal = foreign_proc(_, _, _, _, _, _, _) - _ },
+	{ constraint__flatten_constraints(Constraints0, Constraints) }.
+
+constraint__propagate_conj_sub_goal_2(Goal, _, _) -->
+	{ Goal = shorthand(_) - _ },
+	{ error("constraint__propagate_conj_sub_goal_2: shorthand") }.
+
+constraint__propagate_conj_sub_goal_2(Goal, Constraints0,
+		[Goal | Constraints]) -->
+	{ Goal = unify(_, _, _, _, _) - _ },
+	{ constraint__flatten_constraints(Constraints0, Constraints) }.
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__propagate_in_proc(pred_id, proc_id, module_info,
-				module_info, io__state, io__state).
-:- mode constraint__propagate_in_proc(in, in, in, out, di, uo) is det.
-constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
-				IoState0, IoState) :-
-	module_info_preds(ModuleInfo0, PredTable0),
-	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, ProcTable0),
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
+	% Put the constant constructions in front of the constraint.
+:- pred constraint__flatten_constraints(list(constraint)::in,
+		list(hlds_goal)::out) is det.
 
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_varset(ProcInfo0, VarSet0),
-	varset__vars(VarSet0, VarList),
-	set__list_to_set(VarList, VarSet1),
-
-	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	proc_info_context(ProcInfo0, Context),
-	mode_info_init(IoState0, ModuleInfo0, PredId, ProcId,
-			Context, VarSet1, InstMap0, check_modes, ModeInfo0),
-
-	constraint__propagate_goal(Goal0, Goal, ModeInfo0, ModeInfo),
-
-	mode_info_get_io_state(ModeInfo, IoState),
-	mode_info_get_varset(ModeInfo, VarSet),
-	mode_info_get_var_types(ModeInfo, VarTypes),
-	mode_info_get_module_info(ModeInfo, ModuleInfo1),
-
-	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
-	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
-
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo).
+constraint__flatten_constraints(Constraints0, Goals) :-
+	list__map(lambda([Constraint::in, Lists::out] is det, (
+			Constraint = constraint(Goal, _, _, Constructs),
+			Lists = [Constructs, [Goal]]
+	)), Constraints0, GoalLists0),
+	list__condense(GoalLists0, GoalLists),
+	list__condense(GoalLists, Goals).
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__propagate_goal(hlds_goal, hlds_goal,
-					mode_info, mode_info).
-:- mode constraint__propagate_goal(in, out,
-					mode_info_di, mode_info_uo) is det.
+:- pred constraint__propagate_disj(list(hlds_goal), list(constraint),
+		list(hlds_goal), constraint_info, constraint_info).
+:- mode constraint__propagate_disj(in, in, out, 
+		in, out) is det.
 
-constraint__propagate_goal(Goal0 - GoalInfo, Goal - GoalInfo) -->
-	mode_info_dcg_get_instmap(InstMap0),
-	{ goal_info_get_instmap_delta(GoalInfo, DeltaInstMap) },
-	{ instmap__apply_instmap_delta(InstMap0, DeltaInstMap, InstMap) },
-	mode_info_set_instmap(InstMap),
-	constraint__propagate_goal_2(Goal0, Goal),
-	mode_info_set_instmap(InstMap).
-
-%-----------------------------------------------------------------------------%
-
-:- pred constraint__propagate_goal_2(hlds_goal_expr, hlds_goal_expr,
-				mode_info, mode_info).
-:- mode constraint__propagate_goal_2(in, out,
-					mode_info_di, mode_info_uo) is det.
-
-constraint__propagate_goal_2(conj(Goals0), conj(Goals)) -->
-	mode_checkpoint(enter, "conj"),
-	constraint__propagate_conj(Goals0, Goals),
-	mode_checkpoint(exit, "conj").
-
-constraint__propagate_goal_2(par_conj(_, _), par_conj(_, _)) -->
-	{ error("constraint__propagate_goal_2: par_conj not supported") }.
-
-constraint__propagate_goal_2(disj(Goals0, SM), disj(Goals, SM)) -->
-	mode_checkpoint(enter, "disj"),
-	constraint__propagate_disj(Goals0, Goals),
-	mode_checkpoint(exit, "disj").
-
-constraint__propagate_goal_2(switch(Var, Det, Cases0, SM),
-				switch(Var, Det, Cases, SM)) -->
-	mode_checkpoint(enter, "switch"),
-	constraint__propagate_cases(Cases0, Cases),
-	mode_checkpoint(exit, "switch").
-
-constraint__propagate_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
-			if_then_else(Vars, Cond, Then, Else, SM)) -->
-	mode_checkpoint(enter, "if_then_else"),
-	mode_info_dcg_get_instmap(InstMap0),
-	constraint__propagate_goal(Cond0, Cond),
-%	mode_info_dcg_get_instmap(InstMap1),
-	constraint__propagate_goal(Then0, Then),
-	mode_info_set_instmap(InstMap0),
-	constraint__propagate_goal(Else0, Else),
-	mode_checkpoint(exit, "if_then_else").
-
-constraint__propagate_goal_2(not(Goal0), not(Goal)) -->
-	mode_checkpoint(enter, "not"),
-	constraint__propagate_goal(Goal0, Goal),
-	mode_checkpoint(exit, "not").
-
-constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
-	mode_checkpoint(enter, "some"),
-	constraint__propagate_goal(Goal0, Goal),
-	mode_checkpoint(exit, "some").
-
-constraint__propagate_goal_2(
-		generic_call(A, B, C, D),
-		generic_call(A, B, C, D)) -->
-	mode_checkpoint(enter, "generic call"),
-	mode_checkpoint(exit, "generic call").
-
-constraint__propagate_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, Sym, Context),
-		call(PredId, ProcId, ArgVars, Builtin, Sym, Context)) -->
-	mode_checkpoint(enter, "call"),
-	mode_checkpoint(exit, "call").
-
-constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
-	mode_checkpoint(enter, "unify"),
-	mode_checkpoint(exit, "unify").
-
-constraint__propagate_goal_2(
-		pragma_c_code(A, B, C, D, E, F, G), 
-		pragma_c_code(A, B, C, D, E, F, G)) -->
-	mode_checkpoint(enter, "pragma_c_code"),
-	mode_checkpoint(exit, "pragma_c_code").
+constraint__propagate_disj([], _, []) --> [].
+constraint__propagate_disj([Goal0 | Goals0], Constraints, [Goal | Goals]) -->
+	InstMap0 =^ instmap,
+	constraint__propagate_goal(Goal0, Constraints, Goal),
+	^ instmap := InstMap0,
+	constraint__propagate_disj(Goals0, Constraints, Goals).
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__propagate_disj(list(hlds_goal), list(hlds_goal),
-				mode_info, mode_info).
-:- mode constraint__propagate_disj(in, out,
-				mode_info_di, mode_info_uo) is det.
+:- pred constraint__propagate_cases(prog_var, list(case), list(constraint), 
+			list(case), constraint_info, constraint_info).
+:- mode constraint__propagate_cases(in, in, in, out,
+			in, out) is det.
 
-constraint__propagate_disj([], []) --> [].
-constraint__propagate_disj([Goal0|Goals0], [Goal|Goals]) -->
-	mode_info_dcg_get_instmap(InstMap0),
-	constraint__propagate_goal(Goal0, Goal),
-	mode_info_set_instmap(InstMap0),
-	constraint__propagate_disj(Goals0, Goals).
-
-%-----------------------------------------------------------------------------%
-
-:- pred constraint__propagate_cases(list(case), list(case),
-				mode_info, mode_info).
-:- mode constraint__propagate_cases(in, out,
-				mode_info_di, mode_info_uo) is det.
-
-constraint__propagate_cases([], []) --> [].
-constraint__propagate_cases([case(Cons, Goal0)|Goals0],
-			[case(Cons, Goal)|Goals]) -->
-	mode_info_dcg_get_instmap(InstMap0),
-	constraint__propagate_goal(Goal0, Goal),
-	mode_info_set_instmap(InstMap0),
-	constraint__propagate_cases(Goals0, Goals).
+constraint__propagate_cases(_, [], _, []) --> [].
+constraint__propagate_cases(Var, [case(ConsId, Goal0) | Cases0], Constraints,
+			[case(ConsId, Goal) | Cases]) -->
+	InstMap0 =^ instmap,
+	constraint_info_bind_var_to_functor(Var, ConsId),
+	constraint__propagate_goal(Goal0, Constraints, Goal),
+	^ instmap := InstMap0,
+	constraint__propagate_cases(Var, Cases0, Constraints, Cases).
 
 %-----------------------------------------------------------------------------%
 
 	% constraint__propagate_conj detects the constraints in
 	% a conjunction and moves them to as early as possible
-	% in the list.
+	% in the list. Some effort is made to keep the constraints
+	% in the same order as they are encountered to increase
+	% the likelihood of folding recursive calls.
+:- pred constraint__propagate_conj(list(hlds_goal), list(constraint), 
+		list(hlds_goal), constraint_info, constraint_info).
+:- mode constraint__propagate_conj(in, in, out,
+		in, out) is det.
 
-:- pred constraint__propagate_conj(list(hlds_goal), list(hlds_goal),
-				mode_info, mode_info).
-:- mode constraint__propagate_conj(in, out,
-				mode_info_di, mode_info_uo) is det.
-
-constraint__propagate_conj(Goals0, Goals) -->
-	=(ModeInfo0),
-	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
-	{ delay_info__enter_conj(DelayInfo0, DelayInfo1) },
-	mode_info_set_delay_info(DelayInfo1),
-%	mode_info_add_goals_live_vars(Goals0),
-
-	mode_info_dcg_get_instmap(InstMap0),
-	constraint__find_constraints(Goals0, Goals1, Constraints1),
-	mode_info_set_instmap(InstMap0),
-%	constraint__distribute_constraints(Constraints1, Goals1, Goals),
-	{ list__append(Constraints1, Goals1, Goals2) },
-	transform__reschedule_conj(Goals2, Goals),
-
-	=(ModeInfo1),
-	{ mode_info_get_delay_info(ModeInfo1, DelayInfo2) },
-	{ delay_info__leave_conj(DelayInfo2, DelayedGoals, DelayInfo3) },
-	mode_info_set_delay_info(DelayInfo3),
-
-	( { DelayedGoals = [] } ->
-	    []
+constraint__propagate_conj(Goals0, Constraints, Goals) -->
+	constraint_info_update_changed(Constraints),
+	( { Goals0 = [] } ->
+		{ constraint__flatten_constraints(Constraints, Goals) }
+	; { Goals0 = [Goal0], Constraints = [] } ->
+		constraint__propagate_conj_sub_goal(Goal0, [], Goals)
 	;
-	    { error("constraint__propagate_conj") }
+		InstMap0 =^ instmap,
+		ModuleInfo =^ module_info,
+		VarTypes =^ vartypes,
+		{ constraint__annotate_conj_output_vars(Goals0, ModuleInfo,
+			VarTypes, InstMap0, [], RevGoals1) },
+		constraint__annotate_conj_constraints(ModuleInfo, RevGoals1, 
+			Constraints, [], Goals2),
+		constraint__propagate_conj_constraints(Goals2, [], Goals)
 	).
 
-:- pred constraint__find_constraints(list(hlds_goal), list(hlds_goal),
-				list(constraint), mode_info, mode_info).
-:- mode constraint__find_constraints(in, out, out,
-				mode_info_di, mode_info_uo) is det.
+	% Annotate each conjunct with the variables it produces.
+:- pred constraint__annotate_conj_output_vars(list(hlds_goal), module_info,
+		vartypes, instmap, annotated_conj, annotated_conj).
+:- mode constraint__annotate_conj_output_vars(in, in, in, in, in, out) is det.
 
-constraint__find_constraints([], [], []) --> [].
-constraint__find_constraints([Goal0 | Goals0], Goals, Constraints) -->
-	mode_info_dcg_get_instmap(InstMap0),
-	constraint__propagate_goal(Goal0, Goal1),
-%	mode_info_dcg_get_instmap(InstMap1),
-	{ Goal1 = Goal1Goal - Goal1Info },
-	( { Goal1Goal = conj(Goal1List) } ->
-	    { list__append(Goal1List, Goals0, Goals1) },
-	    mode_info_set_instmap(InstMap0),
-	    constraint__find_constraints(Goals1, Goals, Constraints)
-	;
-	    constraint__find_constraints(Goals0, Goals1, Constraints0),
-	    =(ModeInfo),
-	    ( { constraint__is_constraint(Goal1Info, ModeInfo) } ->
-		{ Constraints = [Goal1 | Constraints0] },
-		{ Goals = Goals1 }
-	    ;
-		{ Constraints = Constraints0 },
-		{ Goals = [Goal1 | Goals1] }
-	    )
-	).
-
-%:- pred constraint__distribute_constraints(list(constraint), list(hlds_goal),
-%			list(hlds_goal), mode_info, mode_info).
-%:- mode constraint__distribute_constraints(in, in, out,
-%			mode_info_di, mode_info_uo) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- pred constraint__is_constraint(hlds_goal_info, mode_info).
-:- mode constraint__is_constraint(in, mode_info_ui) is semidet.
-
-constraint__is_constraint(GoalInfo, ModeInfo) :-
-	goal_info_get_determinism(GoalInfo, Det),
-	constraint__determinism(Det),
-	constraint__no_output_vars(GoalInfo, ModeInfo).
-
-:- pred constraint__no_output_vars(hlds_goal_info, mode_info).
-:- mode constraint__no_output_vars(in, mode_info_ui) is semidet.
-
-constraint__no_output_vars(GoalInfo, ModeInfo) :-
+constraint__annotate_conj_output_vars([], _, _, _, RevGoals, RevGoals).
+constraint__annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes,
+		InstMap0, RevGoals0, RevGoals) :-
+	Goal = _ - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-	goal_info_get_nonlocals(GoalInfo, Vars),
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	mode_info_get_instmap(ModeInfo, InstMap),
-	instmap__no_output_vars(InstMap, InstMapDelta, Vars, ModuleInfo).
 
-	% constraint__determinism(Det) is true iff Det is
-	% a possible determinism of a constraint.  The
-	% determinisms which use a model_semi code model
-	% are obviously constraints.  Should erroneous
-	% also be treated as a constraint?
-:- pred constraint__determinism(determinism).
-:- mode constraint__determinism(in) is semidet.
-constraint__determinism(semidet).
-constraint__determinism(failure).
-% constraint__determinism(erroneous).	% maybe
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+	instmap_changed_vars(InstMap0, InstMap, VarTypes,
+		ModuleInfo, ChangedVars0),
+
+	instmap__vars_list(InstMap, InstMapVars),
+
+	% Restrict the set of changed variables down to the set
+	% for which the new inst is not an acceptable subsitute
+	% for the old. This is done to allow reordering of a goal which
+	% uses a variable with inst `ground(shared, no)' with
+	% a constraint which just adds information, changing the inst
+	% to `bound(shared, ...)'.
+	InCompatible = (pred(Var::in) is semidet :-
+			instmap__lookup_var(InstMap0, Var, InstBefore),
+			instmap_delta_search_var(InstMapDelta, Var, InstAfter),
+			\+ inst_matches_initial(InstAfter, InstBefore,
+				map__lookup(VarTypes, Var), ModuleInfo)
+		),
+	IncompatibleInstVars = set__list_to_set(
+			list__filter(InCompatible, InstMapVars)),
+
+	%
+	% This will consider variables with inst `any' to be bound by
+	% the goal, so goals which have non-locals with inst `any' will
+	% not be considered to be constraints. XXX This is too conservative.
+	%
+	Bound = (pred(Var::in) is semidet :-
+			instmap__lookup_var(InstMap0, Var, InstBefore),
+			instmap_delta_search_var(InstMapDelta, Var, InstAfter),
+			\+ inst_matches_binding(InstAfter, InstBefore,
+				map__lookup(VarTypes, Var), ModuleInfo)
+		),
+	BoundVars = set__list_to_set(list__filter(Bound, InstMapVars)),
+
+	% 
+	% Make sure that variables with inst `any' are placed in
+	% the changed vars set. XXX This is too conservative, but
+	% avoids unexpected reorderings.
+	%
+	set__union(ChangedVars0, BoundVars, ChangedVars),
+
+	AnnotatedConjunct = annotated_conjunct(Goal, ChangedVars, BoundVars,
+				IncompatibleInstVars),
+	constraint__annotate_conj_output_vars(Goals, ModuleInfo, VarTypes,
+		InstMap, [AnnotatedConjunct | RevGoals0], RevGoals).
 
 %-----------------------------------------------------------------------------%
 
-:- pred mode_info_write_string(string, mode_info, mode_info).
-:- mode mode_info_write_string(in, mode_info_di, mode_info_uo) is det.
+	% Conjunction annotated with the variables each conjunct
+	% changes the instantiatedness of.
+:- type annotated_conj == list(annotated_conjunct).
 
-mode_info_write_string(Msg, ModeInfo0, ModeInfo) :-
-	mode_info_get_io_state(ModeInfo0, IOState0),
-	io__write_string(Msg, IOState0, IOState),
-	mode_info_set_io_state(ModeInfo0, IOState, ModeInfo).
+:- type annotated_conjunct
+	---> annotated_conjunct(
+		hlds_goal,
 
-:- pred mode_info_write_goal(hlds_goal, int, mode_info, mode_info).
-:- mode mode_info_write_goal(in, in, mode_info_di, mode_info_uo) is det.
+			% All variables returned by instmap_changed_vars.
+		set(prog_var),
 
-mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-
-	mode_info_get_io_state(ModeInfo0, IOState0),
-%       globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
-%		IOState0, IOState1),
-	IOState0 = IOState1,
-	( semidet_succeed ->
-		mode_info_get_module_info(ModeInfo0, ModuleInfo),
-		mode_info_get_varset(ModeInfo0, VarSet),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, Indent,
-			"\n", IOState1, IOState)
+			% All variables returned by instmap_changed_vars for
+			% which inst_matches_binding(NewInst, OldInst) fails.
+		set(prog_var),
+
+			% Variables returned by instmap_changed_vars
+			% for which the new inst cannot be substituted
+			% for the old as an input to a goal
+			% (inst_matches_initial(NewInst, OldInst) fails).
+		set(prog_var)
+	).
+
+	% A constraint is a goal with no outputs which can fail and
+	% always terminates.
+:- type constraint
+	---> constraint(
+			% The constraint itself.
+		hlds_goal,
+
+			% All variables returned by instmap_changed_vars.
+		set(prog_var),
+
+			% Variables returned by instmap_changed_vars
+			% for which the new inst cannot be substituted
+			% for the old as an input to a goal
+			% (inst_matches_initial(NewInst, OldInst) fails).
+		set(prog_var),
+		
+			% Goals to construct constants used by the constraint.
+			% (as in X = 2, Y < X). These need to be propagated
+			% with the constraint.
+		list(hlds_goal)
+	).
+
+	% Conjunction annotated with constraining goals.
+:- type constrained_conj == assoc_list(hlds_goal, list(constraint)).
+
+	% Pass backwards over the conjunction, annotating each conjunct
+	% with the constraints that should be pushed into it.
+:- pred constraint__annotate_conj_constraints(module_info, annotated_conj,
+	list(constraint), constrained_conj, constrained_conj,
+	constraint_info, constraint_info).
+:- mode constraint__annotate_conj_constraints(in, in, in,
+	in, out, in, out) is det.
+
+constraint__annotate_conj_constraints(_, [], Constraints0, Goals0, Goals) -->
+	{ constraint__flatten_constraints(Constraints0, Constraints1) },
+	{ list__map(lambda([Goal::in, CnstrGoal::out] is det, (
+			CnstrGoal = Goal - []
+		)), Constraints1, Constraints) },
+	{ list__append(Constraints, Goals0, Goals) }.
+constraint__annotate_conj_constraints(ModuleInfo, 
+		[Conjunct | RevConjuncts0],
+		Constraints0, Goals0, Goals) -->
+	{ Conjunct = annotated_conjunct(Goal, ChangedVars,
+			OutputVars, IncompatibleInstVars) },
+	{ Goal = GoalExpr - GoalInfo },
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	(
+		% Propagate goals with no output variables which can fail.
+		% Propagating cc_nondet goals would be tricky, because we
+		% would need to be careful about reordering the constraints
+		% (the cc_nondet goal can't be moved before any goals
+		% which can fail).
+		% 
+		{ goal_info_get_determinism(GoalInfo, Detism) },
+		{ Detism = semidet
+		; Detism = failure
+		},
+
+		%
+		% XXX This is probably a bit too conservative. For
+		% example, `any->any' moded non-locals are considered
+		% to be outputs.
+		%
+		{ set__empty(OutputVars) },
+
+		% Don't propagate impure goals.
+		{ goal_info_is_pure(GoalInfo) },
+
+		% Don't propagate goals that can loop. 
+		{ code_aux__goal_cannot_loop(ModuleInfo, Goal) }
+	->
+		% It's a constraint, add it to the list of constraints
+		% to be attached to goals earlier in the conjunction.
+		{ Goals1 = Goals0 },
+		{ Constraint = constraint(GoalExpr - GoalInfo,
+				ChangedVars, IncompatibleInstVars, []) },
+		{ Constraints1 = [Constraint | Constraints0] }
 	;
-		IOState = IOState1
+		%
+		% Look for a simple goal which some constraint depends
+		% on which can be propagated backwards. This handles
+		% cases like X = 2, Y < X. This should only be done for
+		% goals which result in no execution at runtime, such
+		% as construction of static constants. Currently we only
+		% allow constructions of zero arity constants.
+		% 
+		% Make a renamed copy of the goal, renaming within
+		% the constraint as well, so that a copy of the constant
+		% doesn't need to be kept on the stack.
+		%
+		{ Goal = unify(_, _, _, Unify, _) - _ },
+		{ Unify = construct(ConstructVar, _, [], _, _, _, _) }
+	->
+		{ Goals1 = [Goal - [] | Goals0] },
+		constraint__add_constant_construction(ConstructVar, Goal,
+			Constraints0, Constraints1),
+
+		% If the constraint was the only use of the constant,
+		% the old goal can be removed. We need to rerun
+		% quantification to work that out.
+		^ changed := yes
+	;	
+		% Prune away the constraints after a goal
+		% which cannot succeed -- they can never be
+		% executed.
+		{ goal_info_get_determinism(GoalInfo, Detism) },
+		{ determinism_components(Detism, _, at_most_zero) }
+	->
+		constraint_info_update_changed(Constraints0),
+		{ Constraints1 = [] },
+		{ Goals1 = [Goal - [] | Goals0] }	
+	;
+		% Don't propagate constraints into or past impure goals.
+		{ Goal = _ - GoalInfo },
+		{ goal_info_is_impure(GoalInfo) }
+	->
+		{ Constraints1 = [] },
+		{ constraint__flatten_constraints(Constraints0,
+			ConstraintGoals) },
+		{ list__map(add_empty_constraints, [Goal | ConstraintGoals],
+			GoalsAndConstraints) },
+		{ list__append(GoalsAndConstraints, Goals0, Goals1) }
+	;
+		% Don't move goals which can fail before a goal which
+		% can loop if `--fully-strict' is set.
+		{ \+ code_aux__goal_cannot_loop(ModuleInfo, Goal) },
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__lookup_bool_option(Globals, fully_strict, yes) }
+	->
+		{ constraint__filter_dependent_constraints(NonLocals,
+			ChangedVars, Constraints0, DependentConstraints,
+			IndependentConstraints) },
+		{ constraint__flatten_constraints(IndependentConstraints,
+			IndependentConstraintGoals) },
+		{ list__map(add_empty_constraints, IndependentConstraintGoals,
+			GoalsAndConstraints) },
+		{ Goals1 = 
+			[attach_constraints(Goal, DependentConstraints)
+				| GoalsAndConstraints]
+			++ Goals0 },
+		{ Constraints1 = [] }
+	;
+		{ constraint__filter_dependent_constraints(NonLocals,
+			OutputVars, Constraints0, DependentConstraints,
+			IndependentConstraints) },
+		{ Constraints1 = IndependentConstraints },
+		{ Goals1 = [attach_constraints(Goal, DependentConstraints)
+				| Goals0] }
 	),
-	mode_info_set_io_state(ModeInfo0, IOState, ModeInfo).
+	constraint__annotate_conj_constraints(ModuleInfo, RevConjuncts0, 
+		Constraints1, Goals1, Goals).
+
+:- pred add_empty_constraints(hlds_goal::in,
+		pair(hlds_goal, list(constraint))::out) is det.
+
+add_empty_constraints(Goal, Goal - []).
+
+:- func attach_constraints(hlds_goal, list(constraint)) =
+		pair(hlds_goal, list(constraint)).
+
+attach_constraints(Goal, Constraints0) = Goal - Constraints :-
+        ( Goal = call(_, _, _, _, _, _) - _ ->
+                Constraints = list__map(
+                    (func(constraint(Goal0, B, C, Constructs0)) =
+                        constraint(add_constraint_feature(Goal0), B, C,
+                            list__map(add_constraint_feature, Constructs0))
+                    ), Constraints0)
+        ;
+                Constraints = Constraints0
+        ).
+
+:- func add_constraint_feature(hlds_goal) = hlds_goal.
+
+add_constraint_feature(Goal - GoalInfo0) = Goal - GoalInfo :-
+	goal_info_add_feature(GoalInfo0, constraint, GoalInfo).
+
+%-----------------------------------------------------------------------------%
+
+
+:- pred constraint__add_constant_construction(prog_var::in, hlds_goal::in,
+		list(constraint)::in, list(constraint)::out,
+		constraint_info::in, constraint_info::out) is det.
+
+constraint__add_constant_construction(_, _, [], []) --> [].
+constraint__add_constant_construction(ConstructVar, Construct0,
+		[Constraint0 | Constraints0],
+		[Constraint | Constraints]) -->
+	{ Constraint0 = constraint(ConstraintGoal0, ChangedVars,
+				IncompatibleInstVars, Constructs0) },
+	(
+		{ ConstraintGoal0 = _ - ConstraintInfo },
+		{ goal_info_get_nonlocals(ConstraintInfo,
+			ConstraintNonLocals) },
+		{ set__member(ConstructVar, ConstraintNonLocals) }
+	->
+		VarSet0 =^ varset,
+		VarTypes0 =^ vartypes,
+		{ varset__new_var(VarSet0, NewVar, VarSet) },
+		{ map__lookup(VarTypes0, ConstructVar, VarType) },
+		{ map__det_insert(VarTypes0, NewVar, VarType, VarTypes) },
+		^ varset := VarSet,
+		^ vartypes := VarTypes,
+		{ map__from_assoc_list([ConstructVar - NewVar], Subn) },
+		{ goal_util__rename_vars_in_goal(Construct0,
+			Subn, Construct) },
+		{ Constructs = [Construct | Constructs0] },
+		{ goal_util__rename_vars_in_goal(ConstraintGoal0,
+			Subn, ConstraintGoal) },
+		{ Constraint = constraint(ConstraintGoal, ChangedVars,
+				IncompatibleInstVars, Constructs) }
+	;
+		{ Constraint = Constraint0 }
+	),
+	constraint__add_constant_construction(ConstructVar, Construct0,
+		Constraints0, Constraints). 
+
+%-----------------------------------------------------------------------------%
+
+	% constraints__filter_dependent_constraints(GoalNonLocals,
+	%	GoalOutputVars, Constraints, DependentConstraints,
+	% 	IndependentConstraints)
+	%
+	% Find all constraints which depend on the output variables
+	% of the current goal in the conjunction being processed.
+	% The DependentConstraints should be pushed into the current goal.
+	% The IndependentConstraints should be moved to the left of
+	% the current goal, if the purity and termination properties
+	% of the current goal allow that.
+:- pred constraint__filter_dependent_constraints(set(prog_var), set(prog_var),
+		list(constraint), list(constraint), list(constraint)).
+:- mode constraint__filter_dependent_constraints(in, in, in,
+		out, out) is det.
+
+constraint__filter_dependent_constraints(NonLocals, GoalOutputVars,
+		Constraints, Dependent, Independent) :-
+	constraint__filter_dependent_constraints(NonLocals, GoalOutputVars,
+		Constraints, [], Dependent, [], Independent).
+
+:- pred constraint__filter_dependent_constraints(set(prog_var), set(prog_var),
+		list(constraint), list(constraint), list(constraint),
+		list(constraint), list(constraint)).
+:- mode constraint__filter_dependent_constraints(in, in, in,
+		in, out, in, out) is det.
+
+constraint__filter_dependent_constraints(_NonLocals, _OutputVars, [],
+		RevDependent, Dependent, RevIndependent, Independent) :-
+	list__reverse(RevDependent, Dependent),
+	list__reverse(RevIndependent, Independent).
+constraint__filter_dependent_constraints(NonLocals, GoalOutputVars,
+		[Constraint | Constraints], Dependent0, Dependent,
+		Independent0, Independent) :-
+	Constraint = constraint(ConstraintGoal, _, IncompatibleInstVars, _),
+	ConstraintGoal = _ - ConstraintGoalInfo,
+	goal_info_get_nonlocals(ConstraintGoalInfo, ConstraintNonLocals),
+
+	(
+		(
+			%
+			% A constraint is not independent of a goal
+			% if it uses any of the output variables
+			% of that goal.
+			%
+			set__intersect(ConstraintNonLocals, GoalOutputVars,
+				OutputVarsUsedByConstraint),
+			\+ set__empty(OutputVarsUsedByConstraint)
+		;
+			%
+			% A constraint is not independent of a goal
+			% if it changes the inst of a non-local of the goal
+			% in such a way that the new inst is incompatible
+			% with the old inst (e.g. by losing uniqueness),
+			%
+			set__intersect(NonLocals, IncompatibleInstVars,
+				IncompatibleInstVarsUsedByGoal),
+			\+ set__empty(IncompatibleInstVarsUsedByGoal)
+		;
+			% 
+			% A constraint is not independent of a goal if
+			% it uses any variables whose instantiatedness is
+			% changed by any the of the constraints already
+			% attached to the goal (the dependent constraints
+			% will be attached to the goal to be pushed into
+			% it by constraint__propagate_conj_sub_goal).
+			%
+			list__member(EarlierConstraint, Dependent0),
+			EarlierConstraint = constraint(_,
+				EarlierChangedVars, _, _),
+			set__intersect(EarlierChangedVars, ConstraintNonLocals,
+				EarlierConstraintIntersection),
+			\+ set__empty(EarlierConstraintIntersection)
+		)
+	->
+		Independent1 = Independent0,
+		Dependent1 = [Constraint | Dependent0]
+	;
+		Independent1 = [Constraint | Independent0],
+		Dependent1 = Dependent0
+	),
+	constraint__filter_dependent_constraints(NonLocals, GoalOutputVars,
+		Constraints, Dependent1, Dependent, Independent1, Independent).
+	
+%-----------------------------------------------------------------------------%
+
+	% Push the constraints into each conjunct.
+:- pred constraint__propagate_conj_constraints(constrained_conj,
+		list(hlds_goal), list(hlds_goal),
+		constraint_info, constraint_info).
+:- mode constraint__propagate_conj_constraints(in, in, out, in, out) is det.
+
+constraint__propagate_conj_constraints([], RevGoals, Goals) --> 
+	{ list__reverse(RevGoals, Goals) }.
+constraint__propagate_conj_constraints([Goal0 - Constraints | Goals0],
+		RevGoals0, RevGoals) -->
+	constraint__propagate_conj_sub_goal(Goal0, Constraints, GoalList1),
+	{ list__reverse(GoalList1, RevGoalList1) },
+	{ list__append(RevGoalList1, RevGoals0, RevGoals1) },
+	constraint_info_update_goal(Goal0),
+	constraint__propagate_conj_constraints(Goals0, RevGoals1, RevGoals).
+
+%-----------------------------------------------------------------------------%
+
+:- type constraint_info
+	---> constraint_info(
+		module_info :: module_info,
+		vartypes :: map(prog_var, type),
+		varset :: prog_varset,
+		instmap :: instmap,
+		changed :: bool			% has anything changed.
+	).
+
+constraint_info_init(ModuleInfo, VarTypes, VarSet, InstMap, ConstraintInfo) :-
+	ConstraintInfo = constraint_info(ModuleInfo, VarTypes, VarSet,
+		InstMap, no).
+
+constraint_info_deconstruct(ConstraintInfo, ModuleInfo,
+		VarTypes, VarSet, Changed) :-
+	ConstraintInfo = constraint_info(ModuleInfo, VarTypes, VarSet,
+		_, Changed).
+
+:- pred constraint_info_update_goal(hlds_goal::in,
+		constraint_info::in, constraint_info::out) is det.
+
+constraint_info_update_goal(_ - GoalInfo) -->
+	InstMap0 =^ instmap,
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
+	^ instmap := InstMap.
+
+:- pred constraint_info_bind_var_to_functor(prog_var::in, cons_id::in,
+		constraint_info::in, constraint_info::out) is det.
+
+constraint_info_bind_var_to_functor(Var, ConsId) -->
+	InstMap0 =^ instmap,
+	ModuleInfo0 =^ module_info,
+	VarTypes =^ vartypes,
+	{ map__lookup(VarTypes, Var, Type) },
+	{ instmap__bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
+		ModuleInfo0, ModuleInfo) },
+	^ instmap := InstMap,
+	^ module_info := ModuleInfo.
+
+	% If a non-empty list of constraints is pushed into a sub-goal,
+	% quantification, instmap_deltas and determinism need to be
+	% recomputed.
+:- pred constraint_info_update_changed(list(constraint)::in,
+		constraint_info::in, constraint_info::out) is det.
+
+constraint_info_update_changed(Constraints) -->
+	( { Constraints = [] } ->
+		[]
+	;
+		^ changed := yes
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Remove all `constraint' goal features from the goal_infos
+	% of all sub-goals of the given goal.
+:- func strip_constraint_markers(hlds_goal) = hlds_goal.
+
+strip_constraint_markers(Goal - GoalInfo0) =
+		strip_constraint_markers_expr(Goal) - GoalInfo :-
+	( goal_info_has_feature(GoalInfo0, constraint) ->
+		goal_info_remove_feature(GoalInfo0, constraint, GoalInfo)
+	;
+		GoalInfo = GoalInfo0
+	).
+
+:- func strip_constraint_markers_expr(hlds_goal_expr) = hlds_goal_expr.
+
+strip_constraint_markers_expr(conj(Goals)) =
+		conj(list__map(strip_constraint_markers, Goals)).
+strip_constraint_markers_expr(disj(Goals, SM)) =
+		disj(list__map(strip_constraint_markers, Goals), SM).
+strip_constraint_markers_expr(switch(Var, CanFail, Cases0, SM)) =
+		switch(Var, CanFail, Cases, SM) :-
+	Cases = list__map(
+		    (func(case(ConsId, Goal)) =
+			case(ConsId, strip_constraint_markers(Goal))
+		    ), Cases0).
+strip_constraint_markers_expr(not(Goal)) =
+		not(strip_constraint_markers(Goal)).
+strip_constraint_markers_expr(some(Vars, Remove, Goal)) =
+		some(Vars, Remove, strip_constraint_markers(Goal)).
+strip_constraint_markers_expr(if_then_else(Vars, If, Then, Else, SM)) =
+		if_then_else(Vars, strip_constraint_markers(If),
+			strip_constraint_markers(Then),
+			strip_constraint_markers(Else), SM).
+strip_constraint_markers_expr(par_conj(Goals, SM)) =
+		par_conj(list__map(strip_constraint_markers, Goals), SM).
+strip_constraint_markers_expr(Goal) = Goal :-
+	Goal = foreign_proc(_, _, _, _, _, _, _).
+strip_constraint_markers_expr(Goal) = Goal :-
+	Goal = generic_call(_, _, _, _).
+strip_constraint_markers_expr(Goal) = Goal :-
+	Goal = call(_, _, _, _, _, _).
+strip_constraint_markers_expr(Goal) = Goal :-
+	Goal = unify(_, _, _, _, _).
+strip_constraint_markers_expr(Goal) = Goal :-
+	Goal = shorthand(_).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
