@@ -508,7 +508,7 @@ code_info__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) -->
 	(
 		(	pred_info_is_imported(PredInfo)
 		;	ProcsPerFunc \= 0,
-			not (PredId = CurPredId, ProcId = CurProcId)
+			\+ (PredId = CurPredId, ProcId = CurProcId)
 		)
 	->
 		code_util__make_proc_label(ModuleInfo,
