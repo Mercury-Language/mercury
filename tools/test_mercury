@@ -1217,7 +1217,7 @@ case $status in
 		# Delete older stable versions that this one replaces
 	    rm -f $STABLE/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
 	    rm -f $STABLE/mercury-gcc-$version.tar.gz &&
-	    $LN $UNSTABLE/mercury-gcc-$version-unstable.tar.gz \
+	    $LN $UNSTABLE/mercury-gcc-$version.tar.gz \
 	        $STABLE/mercury-gcc-$version.tar.gz &&
 
 	    rsh $BETA_FTPHOST "\
