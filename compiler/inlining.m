@@ -364,7 +364,10 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
 
-		% Re-run determinism analysis if we have to.
+		% If the determinism of some sub-goals has changed,
+		% then we re-run determinism analysis, because
+		% propagating the determinism information through
+		% the procedure may lead to more efficient code.
 	( DetChanged = yes,	
 		globals__io_get_globals(Globals, IoState0, IoState),
 		det_infer_proc(PredId, ProcId, ModuleInfo1, ModuleInfo,
@@ -380,41 +383,33 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		inline_info).
 :- mode inlining__inlining_in_goal(in, out, in, out) is det.
 
-inlining__inlining_in_goal(Goal0 - GoalInfo, Goal - GoalInfo) -->
-	inlining__inlining_in_goal_2(Goal0, GoalInfo, Goal).
-
-%-----------------------------------------------------------------------------%
-
-:- pred inlining__inlining_in_goal_2(hlds_goal_expr, hlds_goal_info,
-		hlds_goal_expr, inline_info, inline_info).
-:- mode inlining__inlining_in_goal_2(in, in, out, in, out) is det.
-
-inlining__inlining_in_goal_2(conj(Goals0), _GoalInfo, conj(Goals)) -->
+inlining__inlining_in_goal(conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo) -->
 	inlining__inlining_in_conj(Goals0, Goals).
 
-inlining__inlining_in_goal_2(disj(Goals0, SM), _GoalInfo, disj(Goals, SM)) -->
+inlining__inlining_in_goal(disj(Goals0, SM) - GoalInfo,
+		disj(Goals, SM) - GoalInfo) -->
 	inlining__inlining_in_disj(Goals0, Goals).
 
-inlining__inlining_in_goal_2(switch(Var, Det, Cases0, SM), _GoalInfo,
-		switch(Var, Det, Cases, SM)) -->
+inlining__inlining_in_goal(switch(Var, Det, Cases0, SM) - GoalInfo,
+		switch(Var, Det, Cases, SM) - GoalInfo) -->
 	inlining__inlining_in_cases(Cases0, Cases).
 
-inlining__inlining_in_goal_2(
-		if_then_else(Vars, Cond0, Then0, Else0, SM), _GoalInfo,
-		if_then_else(Vars, Cond, Then, Else, SM)) -->
+inlining__inlining_in_goal(
+		if_then_else(Vars, Cond0, Then0, Else0, SM) - GoalInfo,
+		if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo) -->
 	inlining__inlining_in_goal(Cond0, Cond),
 	inlining__inlining_in_goal(Then0, Then),
 	inlining__inlining_in_goal(Else0, Else).
 
-inlining__inlining_in_goal_2(not(Goal0), _GoalInfo, not(Goal)) -->
+inlining__inlining_in_goal(not(Goal0) - GoalInfo, not(Goal) - GoalInfo) -->
 	inlining__inlining_in_goal(Goal0, Goal).
 
-inlining__inlining_in_goal_2(some(Vars, Goal0), _GoalInfo, some(Vars, Goal)) -->
+inlining__inlining_in_goal(some(Vars, Goal0) - GoalInfo,
+		some(Vars, Goal) - GoalInfo) -->
 	inlining__inlining_in_goal(Goal0, Goal).
 
-inlining__inlining_in_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
-		GoalInfo0, Goal, InlineInfo0, InlineInfo) :-
+inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
+		Sym) - GoalInfo0, Goal - GoalInfo, InlineInfo0, InlineInfo) :-
 
 	InlineInfo0 = inline_info(VarThresh, InlinedProcs, ModuleInfo,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
@@ -493,15 +488,15 @@ inlining__inlining_in_goal_2(
 			VarTypes0, Subn0, CalleeVarTypes, CalleeVarset,
 				VarSet, VarTypes, Subn),
 		goal_util__must_rename_vars_in_goal(CalledGoal, Subn,
-			Goal - GoalInfo1),
+			Goal - GoalInfo),
 
 			% If the inferred determinism of the called
 			% goal differs from the declared determinism,
-			% flag that we must re-run determinism checking
+			% flag that we should re-run determinism analysis
 			% on this proc.
 		goal_info_get_determinism(GoalInfo0, Determinism0),
-		goal_info_get_determinism(GoalInfo1, Determinism1),
-		( Determinism0 = Determinism1 ->
+		goal_info_get_determinism(GoalInfo, Determinism),
+		( Determinism0 = Determinism ->
 			DetChanged = DetChanged0
 		;
 			DetChanged = yes
@@ -513,6 +508,7 @@ inlining__inlining_in_goal_2(
 			TypeInfoVarMap)
 	;
 		Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
+		GoalInfo = GoalInfo0,
 		VarSet = VarSet0,
 		VarTypes = VarTypes0,
 		TypeVarSet = TypeVarSet0,
@@ -522,14 +518,14 @@ inlining__inlining_in_goal_2(
 	InlineInfo = inline_info(VarThresh, InlinedProcs, ModuleInfo,
 		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DetChanged).
 
-inlining__inlining_in_goal_2(higher_order_call(A, B, C, D, E), _GoalInfo,
-		higher_order_call(A, B, C, D, E)) --> [].
+inlining__inlining_in_goal(higher_order_call(A, B, C, D, E) - GoalInfo,
+		higher_order_call(A, B, C, D, E) - GoalInfo) --> [].
 
-inlining__inlining_in_goal_2(unify(A, B, C, D, E), _GoalInfo,
-		unify(A, B, C, D, E)) --> [].
+inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
+		unify(A, B, C, D, E) - GoalInfo) --> [].
 
-inlining__inlining_in_goal_2(pragma_c_code(A, B, C, D, E, F, G, H), _GoalInfo,
-		pragma_c_code(A, B, C, D, E, F, G, H)) --> [].
+inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G, H) - GoalInfo,
+		pragma_c_code(A, B, C, D, E, F, G, H) - GoalInfo) --> [].
 
 %-----------------------------------------------------------------------------%
 
