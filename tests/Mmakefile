@@ -1,4 +1,4 @@
-SUBDIRS = benchmarks general hard_coded invalid misc_tests tabling term valid warnings
+SUBDIRS = benchmarks debugger general hard_coded invalid misc_tests tabling term valid warnings
 NUPROLOG_SUBDIRS = benchmarks general
 
 main_target: check
