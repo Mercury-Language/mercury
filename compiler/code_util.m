@@ -294,7 +294,7 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 code_util__make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule,
 		PredModule, PredName, PredArity, ArgTypes, _PredId, ProcId,
-		_VarSet, _HeadVars, _ArgModes, _CodeModel,
+		_HeadVarsWithNames, _ArgModes, _CodeModel,
 		IsImported, _IsPseudoImported, _IsExported,
 		IsSpecialPredInstance),
 	(

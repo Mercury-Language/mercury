@@ -28,7 +28,7 @@
 :- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
 :- import_module backend_libs__code_model.
 
-:- import_module bool, list, std_util, map.
+:- import_module assoc_list, bool, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
 %
@@ -400,6 +400,8 @@
 		methods :: list(rtti_proc_label)
 	).
 
+:- type prog_var_name == string.
+
 	% The rtti_proc_label type holds all the information about a procedure
 	% that we need to compute the entry label for that procedure
 	% in the target language (the llds__code_addr or mlds__code_addr).
@@ -413,8 +415,8 @@
 			arg_types		::	list(type),
 			pred_id			::	pred_id,
 			proc_id			::	proc_id,
-			proc_varset		::	prog_varset,
-			proc_headvars		::	list(prog_var),
+			proc_headvars		::	assoc_list(prog_var,
+								prog_var_name),
 			proc_arg_modes		::	list(arg_mode),
 			proc_interface_code_model ::	code_model,
 			%
@@ -620,7 +622,7 @@
 :- import_module ll_backend__code_util.	% for code_util__compiler_generated
 :- import_module ll_backend__llds_out.	% for name_mangle and sym_name_mangle
 
-:- import_module int, string, require.
+:- import_module int, string, require, varset.
 
 rtti_data_to_name(type_ctor_info(TypeCtorData), RttiTypeCtor,
 		type_ctor_info) :-
@@ -731,14 +733,17 @@ rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	IsExported = (procedure_is_exported(PredInfo, ProcId) -> yes ; no),
 	IsSpecialPredInstance =
 		(code_util__compiler_generated(PredInfo) -> yes ; no),
+	ProcHeadVarsWithNames = list__map((func(Var) = Var - Name :-
+			Name = varset__lookup_name(ProcVarSet, Var)
+		), ProcHeadVars),
 	ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
 		PredName, Arity, ArgTypes, PredId, ProcId,
-		ProcVarSet, ProcHeadVars, ProcArgModes, ProcCodeModel,
+		ProcHeadVarsWithNames, ProcArgModes, ProcCodeModel,
 		IsImported, IsPseudoImp, IsExported, IsSpecialPredInstance).
 
 rtti__proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
 	ProcLabel = rtti_proc_label(_, _, _, _, _, _, PredId, ProcId,
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _).
 
 rtti__addr_to_string(RttiTypeCtor, RttiName, Str) :-
 	rtti__mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, A_str),

@@ -1140,13 +1140,15 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, MLGenInfo0, MLGenInfo) :-
 	% from the module_info, pred_id, and proc_id.
 	%
 ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId) = FuncParams :-
-	VarSet = RttiProcId^proc_varset,
 	HeadVars = RttiProcId^proc_headvars,
 	ArgTypes = RttiProcId^arg_types,
 	ArgModes = RttiProcId^proc_arg_modes,
 	PredOrFunc = RttiProcId^pred_or_func,
 	CodeModel = RttiProcId^proc_interface_code_model,
-	HeadVarNames = ml_gen_var_names(VarSet, HeadVars),
+	HeadVarNames = list__map((func(Var - Name) = Result :-
+			term__var_to_int(Var, N),
+			Result = mlds__var_name(Name, yes(N))
+		), HeadVars),
 	ml_gen_params_base(ModuleInfo, HeadVarNames, ArgTypes, ArgModes,
 		PredOrFunc, CodeModel, FuncParams, no, _).
 	
@@ -1434,7 +1436,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 		MLDS_Module) :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,	
 		PredName, PredArity, ArgTypes, PredId, ProcId,
-		_VarSet, _HeadVars, _ArgModes, CodeModel,
+		_HeadVarsWithNames, _ArgModes, CodeModel,
 		IsImported, _IsPseudoImported, _IsExported,
 		IsSpecialPredInstance),
 	(
