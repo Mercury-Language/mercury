@@ -74,7 +74,7 @@
 :- type unused_arg_info == map(pred_proc_id, list(int)).
 
 :- type warning_info --->
-		warning_info(term__context, string, int, list(string)).
+		warning_info(term__context, string, int, list(int)).
 			% context, pred name, arity, list of args to warn 
 
 
@@ -1057,7 +1057,7 @@ report_unused_args([warning_info(Context, Name, Arity, UnusedArgs)
 		[]
 	;
 		prog_out__write_context(Context),
-		io__write_string("In '"),
+		io__write_string("In `"),
 		io__write_string(Name), 
 		io__write_string(("'/")),
 		io__write_int(Arity),
@@ -1067,9 +1067,11 @@ report_unused_args([warning_info(Context, Name, Arity, UnusedArgs)
 		(
 			{ NumArgs = 1 }
 		->	
+			io__write_string("argument "),
 			output_arg_list(UnusedArgs),
 			io__write_string(" is unused.\n")
 		;
+			io__write_string("arguments "),
 			output_arg_list(UnusedArgs),
 			io__write_string(" are unused.\n")
 		)
@@ -1100,10 +1102,19 @@ create_warning_info(ModuleInfo, UnusedArgInfo, [PredId - ProcId | Rest],
 		pred_info_name(PredInfo, Name),
 		(
 			(
+				% Don't warn about builtins, i.e. index/2
+				% that have unused arguments.
 				code_util__predinfo_is_builtin(ModuleInfo,
 								PredInfo)
 			;
 				code_util__compiler_generated(PredInfo)
+			;
+				% Don't warn about lambda expressions not
+				% using arguments. (The warning message for
+				% these doesn't contain context, so it's 
+				% useless)
+				string__sub_string_search(Name,
+						"__LambdaGoal__", _)
 			;
 				% don't warn for a specialized version
 				% **** Remove this when the warning section gets
@@ -1116,22 +1127,18 @@ create_warning_info(ModuleInfo, UnusedArgInfo, [PredId - ProcId | Rest],
 				string__to_int(Id, _)
 			)
 		->	
-				% don't warn about builtins, i.e. index/2
-				% that have unused arguments
 			Warnings1 = Warnings0
 		;
 			pred_info_procedures(PredInfo, Procs),
 			map__lookup(Procs, ProcId, Proc),
 			proc_info_headvars(Proc, HeadVars),
-       			list__length(HeadVars, NumHeadVars),
-			proc_info_variables(Proc, Varset),
+			list__length(HeadVars, NumHeadVars),
 
 	       		% Strip off the extra type_info arguments inserted at
 			% the front by polymorphism.m
 			pred_info_arity(PredInfo, Arity),
 			NumToDrop is NumHeadVars - Arity,
-			adjust_unused_args(Varset, NumToDrop,
-					UnusedArgs0, HeadVars, UnusedArgs),
+			adjust_unused_args(NumToDrop, UnusedArgs0, UnusedArgs),
 			pred_info_context(PredInfo, Context),
 			(
 				UnusedArgs = []
@@ -1151,37 +1158,26 @@ create_warning_info(ModuleInfo, UnusedArgInfo, Rest, Warnings1, Warnings).
 
 
 	% adjust warning message for the presence of type_infos.
-:- pred adjust_unused_args(varset::in, int::in, list(int)::in, list(var)::in, 
-					list(string)::out) is det.
+:- pred adjust_unused_args(int::in, list(int)::in,  list(int)::out) is det.
 
-adjust_unused_args(_, _, [], _, []).
-adjust_unused_args(Varset, NumToDrop, [UnusedArgNo | UnusedArgNos0],
-					HeadVars, UnusedArgNames) :-
+adjust_unused_args(_, [], []).
+adjust_unused_args(NumToDrop, [UnusedArgNo | UnusedArgNos0], AdjUnusedArgs) :-
 	NewArg is UnusedArgNo - NumToDrop,
 	(
 		NewArg < 1
 	->
-		UnusedArgNames = UnusedArgNames1
+		AdjUnusedArgs = AdjUnusedArgs1
 	;
-		list__index1_det(HeadVars, UnusedArgNo, Var),
-		(
-			varset__lookup_name(Varset, Var, VarName0)
-		->	
-			VarName = VarName0
-		;
-			error("can't find name for headvar")
-		),
-		UnusedArgNames = [VarName | UnusedArgNames1]
+		AdjUnusedArgs = [NewArg | AdjUnusedArgs1]
 	),
-	adjust_unused_args(Varset, NumToDrop, UnusedArgNos0, HeadVars,
-							UnusedArgNames1).	
+	adjust_unused_args(NumToDrop, UnusedArgNos0, AdjUnusedArgs1).	
 
 
-:- pred output_arg_list(list(string)::in, io__state::di, io__state::uo) is det. 
+:- pred output_arg_list(list(int)::in, io__state::di, io__state::uo) is det. 
 
 output_arg_list([]) --> { error("output_list_int called with empty list") }.
 output_arg_list([Arg | Rest]) -->
-	io__write_string(Arg),
+	io__write_int(Arg),
 	(
 		{ Rest = [] } 
 	;	
@@ -1190,20 +1186,21 @@ output_arg_list([Arg | Rest]) -->
 	).
 
 
-:- pred output_arg_list_2(list(string)::in, io__state::di,
+:- pred output_arg_list_2(list(int)::in, io__state::di,
 						io__state::uo) is det.
 
 output_arg_list_2(Args) -->
 	(
 		{ Args = [First, Second | Rest] }
 	->
-		io__write_strings([", ", First]),
+		io__write_string(", "),
+		io__write_int(First),
 		output_arg_list_2([Second | Rest])
 	;
 		{ Args = [Last] }
 	->
 		io__write_string(" and "),
-		io__write_string(Last)
+		io__write_int(Last)
 	;
 		{ error("output_arg_list_2 called with empty list") }
 	).
