@@ -88,9 +88,9 @@ typedef struct {
 		Word *saved_sp;
 		Word *saved_curfr;
 		Word *saved_maxfr;
-		MR_IF_USE_TRAIL(Word *saved_trail_ptr;)
-		MR_IF_USE_TRAIL(Word *saved_ticket_counter;)
-		MR_IF_USE_TRAIL(Word *saved_ticket_high_water;)
+		MR_IF_USE_TRAIL(MR_TrailEntry *saved_trail_ptr;)
+		MR_IF_USE_TRAIL(Unsigned saved_ticket_counter;)
+		MR_IF_USE_TRAIL(Unsigned saved_ticket_high_water;)
 
 #if NUM_REAL_REGS > 0
 		Word regs[NUM_REAL_REGS];
