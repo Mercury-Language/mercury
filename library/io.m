@@ -1307,14 +1307,31 @@
 ").
 
 :- pragma foreign_code("MC++", "
+	// The ML_ prefixes here are not really needed,
+	// since the MC++ code all gets generated inside a class,
+	// but we keep them for consistency with the C code.
+
 #ifdef MR_HIGHLEVEL_DATA
-	static mercury::tree234::tree234_2 __gc	*ML_io_stream_names;
+	typedef mercury::tree234::tree234_2 __gc *ML_Map;
 #else
-	static MR_Word		ML_io_stream_names;
+	typedef MR_Word ML_Map;
 #endif
+
+	static ML_Map		ML_io_stream_names;
 	static MR_Univ		ML_io_user_globals;
-	static int next_id;
-	static System::Text::ASCIIEncoding *ascii_encoder;
+
+	// a counter used to generate unique stream ids
+	static int		ML_next_stream_id;
+
+	// This specifies the default encoding used for text files.
+	// It must be either ML_OS_text_encoding or ML_Unix_text_encoding.
+	//
+	// XXX The initial setting for this should be controlled
+	//     by an environment variable.  (This might require moving
+	//     the code which initializes mercury_stdin, etc.)
+	//
+	static ML_file_encoding_kind ML_default_text_encoding =
+		ML_OS_text_encoding;
 ").
 
 
@@ -1351,7 +1368,18 @@
 
 :- pred io__read_char_code(io__input_stream, int, io__state, io__state).
 :- mode io__read_char_code(in, out, di, uo) is det.
-%		Reads a character code from specified stream.
+%		Reads a character from specified stream,
+%		and returns the numerical value for that character
+%		(as from char__to_int).
+%		This may involve converting external character encodings
+%		into Mercury's internal character repesentation
+%		and (for text streams) converting OS line indicators,
+%		e.g. CR-LF for Windows, to '\n' characters.
+%		Returns -1 if at EOF, -2 if an error occurs.
+
+:- pred io__read_byte_val(io__input_stream, int, io__state, io__state).
+:- mode io__read_byte_val(in, out, di, uo) is det.
+%		Reads a byte from specified stream.
 %		Returns -1 if at EOF, -2 if an error occurs.
 
 :- pred io__call_system_code(string, int, string, io__state, io__state).
@@ -1362,11 +1390,16 @@
 %		Otherwise returns the raw exit status from the system()
 %		call.
 
-:- pred io__do_open(string, string, int, io__input_stream,
+:- pred io__do_open_binary(string, string, int, io__input_stream,
 			io__state, io__state).
-:- mode io__do_open(in, in, out, out, di, uo) is det.
-%	io__do_open(File, Mode, ResultCode, Stream, IO0, IO1).
+:- mode io__do_open_binary(in, in, out, out, di, uo) is det.
+:- pred io__do_open_text(string, string, int, io__input_stream,
+			io__state, io__state).
+:- mode io__do_open_text(in, in, out, out, di, uo) is det.
+%	io__do_open_binary(File, Mode, ResultCode, Stream, IO0, IO1):
+%	io__do_open_text(File, Mode, ResultCode, Stream, IO0, IO1):
 %		Attempts to open a file in the specified mode.
+%		The Mode is a string suitable for passing to fopen().
 %		Result is 0 for success, -1 for failure.
 
 :- semipure pred io__getenv(string, string).
@@ -1418,7 +1451,7 @@ io__read_byte(Result) -->
 	io__read_byte(Stream, Result).
 
 io__read_byte(Stream, Result) -->
-	io__read_char_code(Stream, Code),
+	io__read_byte_val(Stream, Code),
 	(
 		{ Code >= 0 }
 	->
@@ -1921,10 +1954,10 @@ make_err_msg(_, _) -->
 "{
 	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(Stream));
-	if (mf->stream->get_CanSeek()) {
-		Size = mf->stream->get_Length();
+	if (mf->stream->CanSeek) {
+		Size = mf->stream->Length;
 	} else {
-	       Size = -1;
+		Size = -1;
 	}
 	MR_update_io(IO0, IO);
 }").
@@ -2787,7 +2820,7 @@ io__convert_read_result(error(Error, _Line), error(io_error(Error))).
 % stream predicates
 
 io__open_input(FileName, Result) -->
-	io__do_open(FileName, "r", Result0, NewStream),
+	io__do_open_text(FileName, "r", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -2797,7 +2830,7 @@ io__open_input(FileName, Result) -->
 	).
 
 io__open_output(FileName, Result) -->
-	io__do_open(FileName, "w", Result0, NewStream),
+	io__do_open_text(FileName, "w", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -2807,7 +2840,7 @@ io__open_output(FileName, Result) -->
 	).
 
 io__open_append(FileName, Result) -->
-	io__do_open(FileName, "a", Result0, NewStream),
+	io__do_open_text(FileName, "a", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -2817,7 +2850,7 @@ io__open_append(FileName, Result) -->
 	).
 
 io__open_binary_input(FileName, Result) -->
-	io__do_open(FileName, "rb", Result0, NewStream),
+	io__do_open_binary(FileName, "rb", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -2827,7 +2860,7 @@ io__open_binary_input(FileName, Result) -->
 	).
 
 io__open_binary_output(FileName, Result) -->
-	io__do_open(FileName, "wb", Result0, NewStream),
+	io__do_open_binary(FileName, "wb", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -2837,7 +2870,7 @@ io__open_binary_output(FileName, Result) -->
 	).
 
 io__open_binary_append(FileName, Result) -->
-	io__do_open(FileName, "ab", Result0, NewStream),
+	io__do_open_binary(FileName, "ab", Result0, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
@@ -3240,7 +3273,6 @@ io__finalize_state -->
 		io__gc_init(_StreamNamesType::in, _UserGlobalsType::in,
 		IO0::di, IO::uo), [will_not_call_mercury, promise_pure], "
 	MR_update_io(IO0, IO);
-	ascii_encoder =	new System::Text::ASCIIEncoding();
 ").
 
 io__gc_init(_, _) --> [].
@@ -3381,39 +3413,54 @@ int		ML_fprintf(MercuryFile* mf, const char *format, ...);
 
 :- pragma foreign_decl("MC++", "
 
-	// XXX currently we only handle text streams.
-
 namespace mercury {
-namespace io__cpp_code {
-__gc struct MR_MercuryFileStruct {
-public:
-	// Note that stream reader and writer might be null, if they are
-	// currently unused.
+  namespace io__cpp_code {
+    __value enum ML_file_encoding_kind {
+	ML_OS_text_encoding,	// file stores characters,
+				// using the operating system's
+				// default encoding, and OS's
+				// usual line-ending convention
+				// (e.g. CR-LF for DOS/Windows).
+
+	ML_Unix_text_encoding,	// file stores characters,
+				// using the operating system's
+				// default encoding, but with the
+				// Unix line-ending convention.
+
+	ML_raw_binary		// file stores bytes
+    };
+
+    __gc struct MR_MercuryFileStruct {
+    public:
+	// Note that stream reader and writer are initialized lazily;
+	// that is, if the stream has not yet been used for reading,
+	// the `reader' field may be null.  Any code which accesses that
+	// field must check for null and initialize it if needed.
+	// Likewise for the `writer' field.
 
 	System::IO::Stream 	*stream; // The stream itself
 	System::IO::TextReader 	*reader; // A stream reader for reading it
 	System::IO::TextWriter 	*writer; // A stream writer for writing it
-	int		line_number;
-	int		id;
+	ML_file_encoding_kind	file_encoding; // DOS, Unix, or raw binary
+	int			line_number;
+	int			id;
 
-};
+    };
 
-typedef __gc struct MR_MercuryFileStruct *MR_MercuryFile;
-
-}
+    typedef __gc struct MR_MercuryFileStruct *MR_MercuryFile;
+  }
 }
 
 	// These macros aren't very safe -- they don't enforce
-	// safe casts in anyway.  Make sure you use them for good
-	// and not evil.
+	// safe casts in any way.  The point of using them is
+	// just to express the programmer's intent.
+	// Make sure you use them for good and not evil.
 #define ML_DownCast(Cast, Expr) dynamic_cast<Cast>(Expr)
 #define ML_UpCast(Cast, Expr) ((Cast) (Expr))
 
 #define MR_initial_io_state()	0	/* some random number */
 #define MR_update_io(r_src, r_dest)	(0)
 #define MR_final_io_state(r)
-
-
 ").
 
 :- pragma foreign_code("C", "
@@ -3467,46 +3514,43 @@ mercury_init_io(void)
 
 :- pragma foreign_code("MC++", "
 
-static MR_MercuryFile new_mercury_file(System::IO::Stream *stream,
-		int line_number) {
-	MR_MercuryFile mf = new MR_MercuryFileStruct();
-	mf->stream = stream;
-	mf->reader = NULL;
-	mf->writer = NULL;
-	mf->line_number = line_number;
-	mf->id = next_id++;
-	return mf;
-}
-
-static MR_MercuryFile new_open_mercury_file(System::IO::Stream *stream,
+static MR_MercuryFile
+mercury_file_init(System::IO::Stream *stream,
 		System::IO::TextReader *reader, System::IO::TextWriter *writer,
-		int line_number) {
+		ML_file_encoding_kind file_encoding)
+{
 	MR_MercuryFile mf = new MR_MercuryFileStruct();
 	mf->stream = stream;
 	mf->reader = reader;
 	mf->writer = writer;
-	mf->line_number = line_number;
-	mf->id = next_id++;
+	mf->file_encoding = file_encoding;
+	mf->line_number = 1;
+	mf->id = ML_next_stream_id++;
 	return mf;
 }
 
-	// XXX this will cause problems with GUI programs that have no
-	// consoles.
+	// Note: for Windows GUI programs, the Console is set to the
+	// equivalent of /dev/null.  This could perhaps be considered a
+	// problem.  But if so, it is a problem in Windows, not in Mercury --
+	// I don't think it is one that the Mercury implementation should
+	// try to solve.
 
 static MR_MercuryFile mercury_stdin =
-	new_open_mercury_file(System::Console::OpenStandardInput(),
-		System::Console::In, NULL, 1);
+	mercury_file_init(System::Console::OpenStandardInput(),
+	    System::Console::In, NULL, ML_default_text_encoding);
 static MR_MercuryFile mercury_stdout =
-	new_open_mercury_file(System::Console::OpenStandardOutput(),
-		NULL, System::Console::Out, 1);
+	mercury_file_init(System::Console::OpenStandardOutput(),
+	    NULL, System::Console::Out, ML_default_text_encoding);
 static MR_MercuryFile mercury_stderr =
-	new_open_mercury_file(System::Console::OpenStandardError(),
-		NULL, System::Console::Error, 1);
+	mercury_file_init(System::Console::OpenStandardError(),
+	    NULL, System::Console::Error, ML_default_text_encoding);
 
 static MR_MercuryFile mercury_stdin_binary =
-	new_mercury_file(0, 1);
+	mercury_file_init(System::Console::OpenStandardInput(),
+	    System::Console::In, NULL, ML_raw_binary);
 static MR_MercuryFile mercury_stdout_binary =
-	new_mercury_file(0, 1);
+	mercury_file_init(System::Console::OpenStandardOutput(),
+	    NULL, System::Console::Out, ML_raw_binary);
 
 static MR_MercuryFile mercury_current_text_input = mercury_stdin;
 static MR_MercuryFile mercury_current_text_output = mercury_stdout;
@@ -3538,7 +3582,8 @@ mercury_open(const char *filename, const char *openmode)
 :- pragma foreign_code("MC++", "
 
 MR_MercuryFile
-static mercury_open(MR_String filename, MR_String openmode)
+static mercury_open(MR_String filename, MR_String openmode,
+	ML_file_encoding_kind file_encoding)
 {
         MR_MercuryFile mf = new MR_MercuryFileStruct();
         System::IO::FileMode fa;
@@ -3576,7 +3621,9 @@ static mercury_open(MR_String filename, MR_String openmode)
         if (!stream) {
                 return 0;
         } else {
-                mf = new_mercury_file(stream, 1);
+		// we initialize the `reader' and `writer' fields to null;
+		// they will be filled in later if they are needed.
+                mf = mercury_file_init(stream, NULL, NULL, file_encoding);
                 return mf;
         }
 }
@@ -3645,18 +3692,66 @@ mercury_print_string(MercuryFile* mf, const char *s)
 
 :- pragma foreign_code("MC++", "
 
+// Any changes here should also be reflected in the code for
+// io__write_char, which (for efficiency) uses its own inline
+// code, rather than calling this function.
 static void
 mercury_print_string(MR_MercuryFile mf, MR_String s)
 {
-	unsigned char ByteArray __gc[] = ascii_encoder->GetBytes(s);
-	mf->stream->Write(ByteArray, 0, ByteArray->get_Length());
-	mf->stream->Flush();
+	//
+	// For the .NET back-end, strings are represented as Unicode.
+	// Text output streams (which may be connected to text files,
+	// or to the console) require a byte stream.
+	// This raises the question: how should we
+	// convert from Unicode to the byte sequence?
+	//
+	// We leave this up to the system, by just using the TextWriter
+	// associated with the file.  For the console, this will be
+	// System.Console.Out, which will use whatever encoding
+	// is appropriate for the console.  For a file, the TextWriter
+	// will use the System.Encoding.Default encoding, which
+	// will normally be an 8-bit national character set.
+	// If the Unicode string contains characters which can't be
+	// represented in this set, then the encoder will throw an exception.
+	//
+	// For files, we construct the TextWriter here, rather than at file
+	// open time, so that we don't try to construct TextWriters for
+	// input streams.
 
-        for (int i = 0; i < s->Length; i++) {
-                if (s->Chars[i] == '\\n') {
-                        mf->line_number++;
-                }
-        }
+	if (mf->writer == NULL) {
+		mf->writer = new System::IO::StreamWriter(mf->stream,
+			System::Text::Encoding::Default);
+		
+	}
+
+	switch (mf->file_encoding) {
+	case ML_raw_binary:
+	case ML_Unix_text_encoding:
+		mf->writer->Write(s);
+		for (int i = 0; i < s->Length; i++) {
+			if (s->Chars[i] == '\\n') {
+				mf->line_number++;
+			}
+		}
+		break;
+	case ML_OS_text_encoding:
+		//
+		// We can't just use the System.TextWriter.Write(String)
+		// method, since that method doesn't convert newline
+		// characters to the system's newline convention
+		// (e.g. CR-LF on Windows).
+		// Only the WriteLine(...) method handles those properly.
+		// So we have to output each character separately.
+		//
+		for (int i = 0; i < s->Length; i++) {
+			if (s->Chars[i] == '\\n') {
+				mf->line_number++;
+				mf->writer->WriteLine("""");
+			} else {
+				mf->writer->Write(s->Chars[i]);
+			}
+		}
+	}
 }
 
 ").
@@ -3693,23 +3788,114 @@ mercury_getc(MercuryFile* mf)
 static void
 mercury_print_binary_string(MR_MercuryFile mf, MR_String s)
 {
-	// XXX we should re-use the same stream writer...
-        System::IO::StreamWriter *w = new System::IO::StreamWriter(mf->stream);
-        w->Write(s);
-        w->Flush();
+	// sanity check
+	if (mf->file_encoding != ML_raw_binary) {
+		mercury::runtime::Errors::fatal_error(
+			""mercury_print_binary_string: ""
+			""file encoding is not raw binary"");
+	}
+
+	//
+	// For the .NET back-end, strings are represented as Unicode.
+	// Binary files are stored as byte sequences.  This raises the
+	// question: how should we convert from Unicode to the byte sequence?
+	//
+	// If the string that we are writing is a genuine character string,
+	// then probably the best thing to do is the same thing that we do
+	// for mercury_print_string(): do the conversion using
+	// the System.Encoding.Default encoding, which is the encoding
+	// corresponding to the system's code page (character set), which
+	// will normally be an 8-bit national character set.  If the Unicode
+	// string contains characters which can't be represented in this set,
+	// then the encoder will throw an exception.
+	//
+	// On the other hand, if the string contains binary values which
+	// are supposed to be used only for their binary value -- which may
+	// be the case if it was constructed using characters which have
+	// been obtained using `enum__from_int' (i.e. the reverse mode of
+	// `char__to_int'), then probably it would be better to just
+	// take the lower 8 bits of the Unicode values, and throw an
+	// exception if any of the other bits are set.
+	//
+	// The documentation for io__write_bytes doesn't make it clear
+	// which of these is the case.  It says ``the bytes are taken
+	// from a string'', but it doesn't say how.  I will assume
+	// that it means the bottom 8 bits of the Unicode value,
+	// just like io__write_byte takes the byte from the bottom 8 bits
+	// of the int value.
+
+#if 0
+	unsigned char byte_array __gc[] =
+		System::Text::Encoding::Default()->GetBytes(s);
+#else
+	int len = s->Length;
+	unsigned char byte_array __gc[] = new unsigned char __gc[len];
+	for (int i = 0; i < len; i++) {
+		byte_array[i] = s->get_Chars(i);
+		if (byte_array[i] != s->get_Chars(i)) {
+			mercury::runtime::Errors::SORRY(
+			""write_bytes: Unicode char does not fit in a byte"");
+		}
+	}
+#endif
+	mf->stream->Write(byte_array, 0, byte_array->Length);
 }
 
 ").
 
 :- pragma foreign_code("MC++", "
 
+// Read in a character.
+// This means reading in one or more bytes,
+// converting the bytes from the system's default encoding to Unicode,
+// and possibly converting CR-LF to newline.
+// Returns -1 on error or EOF.
 static int
 mercury_getc(MR_MercuryFile mf)
 {
-        int c = mf->stream->ReadByte();
-        if (c == '\\n') {
-                mf->line_number++;
-        }
+	int c;
+
+	if (mf->reader == NULL) {
+		mf->reader = new System::IO::StreamReader(mf->stream,
+				System::Text::Encoding::Default);
+	}
+
+	c = mf->reader->Read();
+	switch (mf->file_encoding) {
+	case ML_raw_binary:
+	case ML_Unix_text_encoding:
+		if (c == '\\n') {
+			mf->line_number++;
+		}
+		break;
+	case ML_OS_text_encoding:
+		// First, check if the character we've read matches
+		// System::Environment::NewLine.
+		// We assume that System::Environment::NewLine is non-null
+		// and that System::Environment::NewLine->Length > 0.
+		if (c == System::Environment::NewLine->get_Chars(0)) {
+			switch (System::Environment::NewLine->Length) {
+			case 1:
+				mf->line_number++;
+				c = '\\n';
+			case 2:
+				if (mf->reader->Peek() == System::
+					Environment::NewLine->get_Chars(1))
+				{
+					(void) mf->reader->Read();
+					mf->line_number++;
+					c = '\\n';
+				}
+				break;
+			default:
+				mercury::runtime::Errors::SORRY(
+					""mercury_getc: ""
+					""Environment::NewLine::Length ""
+					""is neither 1 nor 2"");
+			}
+		}
+		break;
+	}
         return c;
 }
 
@@ -3935,6 +4121,14 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 ").
 
 :- pragma foreign_proc("C", 
+	io__read_byte_val(File::in, ByteVal::out, IO0::di, IO::uo),
+		[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+	ByteVal = mercury_getc((MercuryFile *) File);
+	MR_update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("C", 
 	io__putback_char(File::in, Character::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure, tabled_for_io],
 "{
@@ -3971,8 +4165,18 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 ").
 
 :- pragma foreign_proc("MC++", 
+	io__read_byte_val(File::in, ByteVal::out, IO0::di, IO::uo),
+		[will_not_call_mercury, promise_pure], "
+	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile, 
+		MR_word_to_c_pointer(File));
+	ByteVal = mf->stream->ReadByte();
+	MR_update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("MC++", 
 	io__putback_char(File::in, Character::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure], "{
+	// XXX This is wrong; it doesn't handle CR-LF properly.
 
 	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile,
 		MR_word_to_c_pointer(File));
@@ -3986,7 +4190,6 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 :- pragma foreign_proc("MC++",
 	io__putback_byte(File::in, _Character::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure], "{
-
 	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(File));
 	mf->stream->Seek(-1, System::IO::SeekOrigin::Current);
@@ -3997,6 +4200,11 @@ io__read_char_code(_, _) -->
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	{ private_builtin__sorry("io__read_char_code") }.
+
+io__read_byte_val(_, _) -->
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	{ private_builtin__sorry("io__read_byte_val") }.
 
 io__putback_char(_, _) -->
 	% This version is only used for back-ends for which there is no
@@ -4104,12 +4312,27 @@ io__putback_byte(_, _) -->
 	io__write_char(Character::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-	System::IO::StreamWriter *w = new System::IO::StreamWriter(
-		mercury_current_text_output->stream);
-	w->Write(Character);
-	w->Flush();
+	/* See mercury_output_string() for comments */
+	if (mercury_current_text_output->writer == NULL) {
+		mercury_current_text_output->writer =
+			new System::IO::StreamWriter(
+				mercury_current_text_output->stream,
+				System::Text::Encoding::Default);
+	}
+	System::IO::TextWriter *w = mercury_current_text_output->writer;
 	if (Character == '\\n') {
+		switch (mercury_current_text_output->file_encoding) {
+		case ML_raw_binary:
+		case ML_Unix_text_encoding:
+			w->Write(Character);
+			break;
+		case ML_OS_text_encoding:
+			w->WriteLine("""");
+			break;
+		}
 		mercury_current_text_output->line_number++;
+	} else {
+		w->Write(Character);
 	}
 	MR_update_io(IO0, IO);
 ").
@@ -4131,15 +4354,11 @@ io__putback_byte(_, _) -->
 ").
 
 :- pragma foreign_proc("MC++",
-	io__write_byte(Byte::in, _IO0::di, _IO::uo),
+	io__write_byte(Byte::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-		// XXX something like this...
-	System::IO::StreamWriter *w = new System::IO::StreamWriter(
-		mercury_current_text_output->stream);
-	w->Write(Byte.ToString());
-	w->Flush();
+	mercury_current_binary_output->stream->WriteByte(Byte);
+	MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("MC++",
@@ -4374,10 +4593,26 @@ io__binary_stream_offset(_, _) -->
 "{
 	MR_MercuryFile stream = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(Stream));
-	System::IO::StreamWriter *w = new System::IO::StreamWriter(
-		mercury_current_binary_output->stream);
-	w->Write(Character);
-	w->Flush();
+	/* See mercury_output_string() for comments */
+	if (stream->writer == NULL) {
+		stream->writer = new System::IO::StreamWriter(stream->stream,
+			System::Text::Encoding::Default);
+	}
+	System::IO::TextWriter *w = stream->writer;
+	if (Character == '\\n') {
+		switch (stream->file_encoding) {
+		case ML_raw_binary:
+		case ML_Unix_text_encoding:
+			w->Write(Character);
+			break;
+		case ML_OS_text_encoding:
+			w->WriteLine("""");
+			break;
+		}
+		stream->line_number++;
+	} else {
+		w->Write(Character);
+	}
 	MR_update_io(IO0, IO);
 }").
 
@@ -4387,10 +4622,7 @@ io__binary_stream_offset(_, _) -->
 "{
 	MR_MercuryFile stream = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(Stream));
-	System::IO::StreamWriter *w = new System::IO::StreamWriter(
-		mercury_current_binary_output->stream);
-	w->Write(Val.ToString());
-	w->Flush();
+	mercury_print_string(stream, Val.ToString());
 	MR_update_io(IO0, IO);
 }").
 
@@ -4400,10 +4632,7 @@ io__binary_stream_offset(_, _) -->
 "{
 	MR_MercuryFile stream = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(Stream));
-	System::IO::StreamWriter *w = new System::IO::StreamWriter(
-		mercury_current_binary_output->stream);
-	w->Write(Val.ToString());
-	w->Flush();
+	mercury_print_string(stream, Val.ToString());
 	MR_update_io(IO0, IO);
 }").
 
@@ -4411,14 +4640,9 @@ io__binary_stream_offset(_, _) -->
 	io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-		// something like this...
 	MR_MercuryFile stream = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(Stream));
-	System::IO::StreamWriter *w = new System::IO::StreamWriter(
-		mercury_current_binary_output->stream);
-	w->Write(Byte.ToString());
-	w->Flush();
+	stream->stream->WriteByte(Byte);
 	MR_update_io(IO0, IO);
 }").
 
@@ -5036,7 +5260,18 @@ io__set_binary_output_stream(_, _) -->
 %	Attempts to open a file in the specified mode.
 %	ResultCode is 0 for success, -1 for failure.
 :- pragma foreign_proc("C",
-	io__do_open(FileName::in, Mode::in, ResultCode::out,
+	io__do_open_text(FileName::in, Mode::in, ResultCode::out,
+		Stream::out, IO0::di, IO::uo),
+		[will_not_call_mercury, promise_pure, tabled_for_io,
+			thread_safe],
+"
+	Stream = (MR_Word) mercury_open(FileName, Mode);
+	ResultCode = (Stream ? 0 : -1);
+	MR_update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("C",
+	io__do_open_binary(FileName::in, Mode::in, ResultCode::out,
 		Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
 			thread_safe],
@@ -5047,21 +5282,39 @@ io__set_binary_output_stream(_, _) -->
 ").
 
 :- pragma foreign_proc("MC++",
-	io__do_open(FileName::in, Mode::in, ResultCode::out,
+	io__do_open_text(FileName::in, Mode::in, ResultCode::out,
 		Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
 			thread_safe],
 "
-	MR_MercuryFile mf = mercury_open(FileName, Mode);
+	MR_MercuryFile mf = mercury_open(FileName, Mode,
+		ML_default_text_encoding);
 	MR_c_pointer_to_word(Stream, mf);
 	ResultCode = (mf ? 0 : -1);
 	MR_update_io(IO0, IO);
 ").
 
-io__do_open(_, _, _, _) -->
+:- pragma foreign_proc("MC++",
+	io__do_open_binary(FileName::in, Mode::in, ResultCode::out,
+		Stream::out, IO0::di, IO::uo),
+		[will_not_call_mercury, promise_pure, tabled_for_io,
+			thread_safe],
+"
+	MR_MercuryFile mf = mercury_open(FileName, Mode, ML_raw_binary);
+	MR_c_pointer_to_word(Stream, mf);
+	ResultCode = (mf ? 0 : -1);
+	MR_update_io(IO0, IO);
+").
+
+io__do_open_text(_, _, _, _) -->
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	{ private_builtin__sorry("io__do_open") }.
+	{ private_builtin__sorry("io__do_open_text") }.
+
+io__do_open_binary(_, _, _, _) -->
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	{ private_builtin__sorry("io__do_open_binary") }.
 
 io__close_input(Stream) -->
 	io__delete_stream_name(Stream),
@@ -5258,7 +5511,7 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	io__get_exit_status(ExitStatus::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	ExitStatus = System::Environment::get_ExitCode();
+	ExitStatus = System::Environment::ExitCode;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5266,7 +5519,7 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	io__set_exit_status(ExitStatus::in, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	System::Environment::set_ExitCode(ExitStatus);
+	System::Environment::ExitCode = ExitStatus;
 	MR_update_io(IO0, IO);
 ").
 
