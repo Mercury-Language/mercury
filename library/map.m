@@ -89,7 +89,7 @@ map__member(Map, K, V) :-
 	% The reason we don't just use member/2 is that we want to
 	% bootstrap this thing before we implement polymorphic modes.
 
-:- pred assoc_list_member(pair(K,V), list(pair(K,V))).
+:- pred assoc_list_member(map__pair(K,V), list(map__pair(K,V))).
 :- mode assoc_list_member(bound(ground - free) -> ground, input).
 :- mode assoc_list_member(bound(free - ground) -> ground, input).
 :- mode assoc_list_member(bound(free - free) -> ground, input).
@@ -160,7 +160,7 @@ map__to_assoc_list(M, M).
 
 %-----------------------------------------------------------------------------%
 
-	% delete a key -value pair from a map
+	% delete a key-value pair from a map
 
 :- pred map__delete(map(K,V), K, map(K,V)).
 :- mode map__delete(input, input, output).

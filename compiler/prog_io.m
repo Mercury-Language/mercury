@@ -78,16 +78,28 @@
 			; 	mode_defn(varset, mode_defn, condition)
 			; 	module_defn(varset, module_defn)
 			; 	pred(varset, sym_name, list(type_and_mode),
-					condition)
-				%      VarNames, PredName, ArgTypes, Cond
+					determinism, condition)
+				%      VarNames, PredName, ArgTypes,
+				%	Deterministicness, Cond
 			; 	rule(varset, sym_name, list(type), condition)
 				%      VarNames, PredName, ArgTypes, Cond
-			; 	mode(varset, sym_name, list(mode), condition)
-				%      VarNames, PredName, ArgModes, Cond
-			; 	error.
+			; 	mode(varset, sym_name, list(mode),
+					determinism, condition)
+				%      VarNames, PredName, ArgModes,
+				%	Deterministicness, Cond
+			;	nothing.
+				% used for items that should be ignored
+				% (currently only NU-Prolog `when' declarations,
+				% which are silently ignored for backwards
+				% compatibility).
 
 :- type type_and_mode	--->	type_only(type)
 			;	type_and_mode(type, mode).
+
+:- type determinism	--->	det
+			;	semidet
+			;	nondet
+			;	unspecified.
 
 %-----------------------------------------------------------------------------%
 
@@ -620,10 +632,10 @@ parse_goal_2( term_functor(term_atom("else"),[
 parse_goal_2( term_functor(term_atom("not"), [A0], _), not([],A) ) :-
 	parse_goal(A0, A).
 parse_goal_2( term_functor(term_atom("all"),[Vars0,A0],_),all(Vars,A) ):-
-	term_vars(Vars0, Vars),
+	term__vars(Vars0, Vars),
 	parse_goal(A0, A).
 parse_goal_2( term_functor(term_atom("some"),[Vars0,A0],_),some(Vars,A) ):-
-	term_vars(Vars0, Vars),
+	term__vars(Vars0, Vars),
 	parse_goal(A0, A).
 
 :- pred parse_some_vars_goal(term, vars, goal).
@@ -632,7 +644,7 @@ parse_some_vars_goal(A0, Vars, A) :-
 	(if some [Vars0, A1, Context]
 		A0 = term_functor(term_atom("some"), [Vars0,A1], Context)
 	then
-		term_vars(Vars0, Vars),
+		term__vars(Vars0, Vars),
 		parse_goal(A1, A)
 	else
 		Vars = [],
@@ -767,6 +779,11 @@ process_decl(VarSet, "end_module", [ModuleName], Result) :-
 	else
 		Result = error("module name expected", ModuleName)
 	).
+
+process_decl(VarSet, "when", [Goal, _Cond], Result) :-
+	% NU-Prolog `when' declarations are silently ignored for
+	% backwards compatibility.
+	Result = ok(nothing).
 
 :- pred parse_type_decl(varset, term, maybe(item)).
 :- mode parse_type_decl(input, input, output).
@@ -975,8 +992,8 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 	else
 	% check that all the variables in the body occur in the head
 	if	some [Var2] (
-			term_contains_var(Body, Var2),
-			not term_contains_var_list(Args, Var2)
+			term__contains_var(Body, Var2),
+			not term__contains_var_list(Args, Var2)
 		)
 	then
 		Result = error("Free type parameter in RHS of type definition",
@@ -1186,8 +1203,8 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	else
 	% check that all the variables in the body occur in the head
 	if	some [Var2] (
-			term_contains_var(Body, Var2),
-			not term_contains_var_list(Args, Var2)
+			term__contains_var(Body, Var2),
+			not term__contains_var_list(Args, Var2)
 		)
 	then
 		Result = error("Free inst parameter in RHS of inst definition",
@@ -1299,8 +1316,8 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	else
 	% check that all the variables in the body occur in the head
 	if	some [Var2] (
-			term_contains_var(Body, Var2),
-			not term_contains_var_list(Args, Var2)
+			term__contains_var(Body, Var2),
+			not term__contains_var_list(Args, Var2)
 		)
 	then
 		Result = error("Free inst parameter in RHS of mode definition",

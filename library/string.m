@@ -80,28 +80,28 @@ digit_to_string(7, "7").
 digit_to_string(8, "8").
 digit_to_string(9, "9").
 
-:- pred string_first_char(string, char, string).
-:- mode string_first_char(input, output, output).
-:- mode string_first_char(output, input, input).
+:- pred string__first_char(string, char, string).
+:- mode string__first_char(input, output, output).
+:- mode string__first_char(output, input, input).
 
-string_first_char([CharCode|String], Char, String) :-
+string__first_char([CharCode|String], Char, String) :-
 	name(Char, [CharCode]).
 
-:- pred string_capitalize_first(string, string).
-:- mode string_capitalize_first(input, output).
+:- pred string__capitalize_first(string, string).
+:- mode string__capitalize_first(input, output).
 
 string__capitalize_first(S0, S) :-
-	string_first_char(S0, C, S1),
+	string__first_char(S0, C, S1),
 	to_upper(C, UpperC),
-	string_first_char(S, UpperC, S1).
+	string__first_char(S, UpperC, S1).
 
-:- pred string_uncapitalize_first(string, string).
-:- mode string_uncapitalize_first(input, output).
+:- pred string__uncapitalize_first(string, string).
+:- mode string__uncapitalize_first(input, output).
 
 string__uncapitalize_first(S0, S) :-
-	string_first_char(S0, C, S1),
+	string__first_char(S0, C, S1),
 	to_lower(C, LowerC),
-	string_first_char(S, LowerC, S1).
+	string__first_char(S, LowerC, S1).
 
 :- pred to_upper(char, char).
 :- mode to_upper(char, char).

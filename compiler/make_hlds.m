@@ -80,6 +80,9 @@ add_item_decl(module_defn(_VarSet, _ModuleDefn), Context, Module, Module) -->
 	prog_out__write_context(Context),
 	io__write_string("warning: module declarations not yet implemented.\n").
 
+add_item_decl(nothing, _, Module, Module) -->
+	[].
+
 %-----------------------------------------------------------------------------%
 
 	% dispatch on the different types of items
@@ -94,6 +97,7 @@ add_item_clause(mode_defn(_, _, _), _, Module, Module) --> [].
 add_item_clause(pred(_, _, _, _), _, Module, Module) --> [].
 add_item_clause(mode(_, _, _, _), _, Module, Module) --> [].
 add_item_clause(module_defn(_, _), _, Module, Module) --> [].
+add_item_clause(nothing, _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 

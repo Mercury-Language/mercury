@@ -87,6 +87,7 @@ prog_out__write_item(clause(VarSet, SymName, Args, Body)) -->
 		io__write_string(".\n")
 	).
 	% XXX these are basically just debugging stubs
+prog_out__write_item(nothing) --> [].
 prog_out__write_item(module_defn(_VarSet, ModuleDefn)) -->
 	{ write(ModuleDefn), write('.'), nl }.
 prog_out__write_item(type_defn(_VarSet, Defn, _Condition)) -->

@@ -25,9 +25,9 @@
 :- export_pred	varset__init, varset__new_var, varset__name_var,
 		varset__lookup_name, varset__bind_var, varset__lookup_var.
 
-:- import_module int, string, map.
+:- import_module int, string, map, term.
 
-:- type var_id	==	int.
+:- type var_id	==	variable.
 :- type varset	--->	varset(var_id, map(var_id, string), map(var_id, term)).
 
 %-----------------------------------------------------------------------------%
@@ -71,8 +71,8 @@ varset__name_var(VarSet0, Id, Name, VarSet) :-
 %-----------------------------------------------------------------------------%
 
 	% lookup the name of a variable
-:- pred varset__name(varset, var_id, string).
-:- mode varset__name(input, input, output).
+:- pred varset__lookup_name(varset, var_id, string).
+:- mode varset__lookup_name(input, input, output).
 varset__lookup_name(varset(_, Names, _), Id, Name) :-
 	map__search(Names, Id, Name).
 
@@ -105,9 +105,9 @@ varset__merge(VarSet0, varset(MaxId, Names, Vals),
 		VarSet) :-
 	varset__merge_2(0, MaxId, Names, Vals, VarSet0, VarSet).
 
-:- pred varset__merge(var_id, var_id, map(var_id, string), map(var_id, term),
+:- pred varset__merge_2(var_id, var_id, map(var_id, string), map(var_id, term),
 			varset, varset).
-:- mode varset__merge(input, input, input, input, input, output).
+:- mode varset__merge_2(input, input, input, input, input, output).
 
 varset__merge_2(N, Max, Names, Vals, VarSet0, VarSet) :-
 	(if
