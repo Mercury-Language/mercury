@@ -339,6 +339,7 @@ esac
 AC_DEFINE_UNQUOTED(MR_HOSTNAMECMD, "$HOSTNAMECMD")
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
+MERCURY_CHECK_CC_NEEDS_TRAD_CPP
 AC_SUBST(CC)
 
 # AC_PROG_CC sets GCC to yes if $CC is GNU C.
