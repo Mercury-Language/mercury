@@ -355,21 +355,30 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	( { Verbose = yes } ->
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
-		io__write_string("% nonlocals: "),
-		mercury_output_vars(NonLocalsList, VarSet),
-		mercury_output_newline(Indent),
+		( { NonLocalsList \= [] } ->
+			io__write_string("% nonlocals: "),
+			mercury_output_vars(NonLocalsList, VarSet),
+			mercury_output_newline(Indent)
+		;
+			[]
+		),
 		{ goal_info_pre_delta_liveness(GoalInfo, PreBirths - PreDeaths) },
 		{ set__to_sorted_list(PreBirths, PreBirthList) },
 		{ set__to_sorted_list(PreDeaths, PreDeathList) },
-		io__write_string("% pre-births: "),
-		mercury_output_vars(PreBirthList, VarSet),
-		mercury_output_newline(Indent),
-		io__write_string("% pre-deaths: "),
-		mercury_output_vars(PreDeathList, VarSet),
-		mercury_output_newline(Indent),
-		io__write_string("% `local' determinism: "),
-		{ goal_info_get_local_determinism(GoalInfo, LocalCategory) },
-		hlds_out__write_category(LocalCategory),
+		( { PreBirthList \= [] } ->
+			io__write_string("% pre-births: "),
+			mercury_output_vars(PreBirthList, VarSet),
+			mercury_output_newline(Indent)
+		;
+			[]
+		),
+		( { PreDeathList \= [] } ->
+			io__write_string("% pre-deaths: "),
+			mercury_output_vars(PreDeathList, VarSet),
+			mercury_output_newline(Indent)
+		;
+			[]
+		),
 		mercury_output_newline(Indent),
 		io__write_string("% determinism: "),
 		{ goal_info_determinism(GoalInfo, Category) },
@@ -445,9 +454,18 @@ hlds_out__write_goal_2(if_then_else(Vars, A, B, C), ModuleInfo, VarSet, Indent)
 	hlds_out__write_goal(B, ModuleInfo, VarSet, Indent1),
 	mercury_output_newline(Indent),
 	io__write_string("else"),
-	mercury_output_newline(Indent1),
-	hlds_out__write_goal(C, ModuleInfo, VarSet, Indent1),
-	mercury_output_newline(Indent),
+	globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+	(
+		{ Verbose = no },
+		{ C = if_then_else(_, _, _, _) - _ }
+	->
+		io__write_string(" "),
+		hlds_out__write_goal(C, ModuleInfo, VarSet, Indent)
+	;
+		mercury_output_newline(Indent1),
+		hlds_out__write_goal(C, ModuleInfo, VarSet, Indent1),
+		mercury_output_newline(Indent)
+	),
 	io__write_string(")").
 
 hlds_out__write_goal_2(not(Vars, Goal), ModuleInfo, VarSet, Indent) -->
@@ -729,81 +747,6 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
 	;
 		[]
 	).
-
-/*********
-
-:- pred hlds_out__write_unification(int, unification, io__state, io__state).
-:- mode hlds_out__write_unification(in, in, di, uo) is det.
-
-hlds_out__write_unification(Indent, construct(VarId, ConsId, Vars, Modes)) -->
-	hlds_out__write_indent(Indent),
-	io__write_string("construct(\n"),
-	{ Indent1 is Indent + 1 },
-	io__write_anything(VarId),
-	hlds_out__write_consid(Indent1, ConsId),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_anything(Indent1, Vars),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_mode_list(Indent1, Modes),
-	io__write_string(")\n").
-hlds_out__write_unification(Indent, deconstruct(VarId, ConsId, Vars, Modes)) -->
-	hlds_out__write_indent(Indent),
-	io__write_string("deconstruct(\n"),
-	{ Indent1 is Indent + 1 },
-	io__write_anything(VarId),
-	hlds_out__write_consid(Indent1, ConsId),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_anything(Indent1, Vars),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_mode_list(Indent1, Modes),
-	io__write_string(")\n").
-hlds_out__write_unification(Indent, assign(VarId0, VarId1)) -->
-	hlds_out__write_indent(Indent),
-	io__write_string("assign("),
-	io__write_anything(VarId0),
-	io__write_string(", "),
-	io__write_anything(VarId1),
-	io__write_string(")\n").
-hlds_out__write_unification(Indent, simple_test(VarId0, VarId1)) -->
-	hlds_out__write_indent(Indent),
-	io__write_string("simple_test("),
-	io__write_anything(VarId0),
-	io__write_string(", "),
-	io__write_anything(VarId1),
-	io__write_string(")\n").
-hlds_out__write_unification(Indent, complicated_unify(Mode, VarId0, VarId1)) -->
-	hlds_out__write_indent(Indent),
-	io__write_string("complicated_unify(\n"),
-	{ Mode = (Mode1 - Mode2) },
-	hlds_out__write_mode(Indent, Mode1),
-	io__write_string(" - "),
-	hlds_out__write_mode(Indent, Mode2),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_indent(Indent),
-	io__write_anything(VarId0),
-	io__write_string("\n"),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_indent(Indent),
-	io__write_anything(VarId1),
-	io__write_string("\n"),
-	hlds_out__write_indent(Indent),
-	io__write_string(")\n").
-
-:- pred hlds_out__write_unimode(int, unify_mode, io__state, io__state).
-:- mode hlds_out__write_unimode(in, in, in, out) is det.
-
-hlds_out__write_unimode(Indent, X) -->
-	hlds_out__write_indent(Indent),
-	io__write_anything(X),
-	io__write_string("\n").
-
-***********/
 
 :- pred hlds_out__write_anything(int, _AnyType, io__state, io__state).
 :- mode hlds_out__write_anything(in, in, di, uo) is det.

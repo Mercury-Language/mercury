@@ -2014,8 +2014,8 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, VarTypes,
 	->
 		Unification = simple_test(X, Y)
 	;
-		% XXX some complicated unifies are deterministic
-		Determinism = semideterministic,
+		% XXX many complicated unifies are semideterministic!
+		Determinism = deterministic,
 		mode_get_insts(ModuleInfo, ModeX, IX, FX),
 		mode_get_insts(ModuleInfo, ModeY, IY, FY),
 		Unification = complicated_unify((IX - IY) -> (FX - FY),

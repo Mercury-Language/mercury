@@ -839,6 +839,7 @@ transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 			unify_sub_contexts
 		).
 
+		
 :- pred insert_arg_unifications(list(var), list(term), arg_context,
 				hlds__goal, varset, hlds__goal, varset).
 :- mode insert_arg_unifications(in, in, in, in, in, out, out) is det.
@@ -849,10 +850,10 @@ insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 		Goal = Goal0,
 		VarSet = VarSet0
 	;
+		Goal0 = _ - GoalInfo,
 		goal_to_conj_list(Goal0, List0),
 		insert_arg_unifications_2(HeadVars, Args, ArgContext, 0,
 			List0, VarSet0, List, VarSet),
-		goal_info_init(GoalInfo),
 		Goal = conj(List) - GoalInfo
 	).
 
@@ -874,13 +875,51 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 				UnifyMainContext, UnifySubContext),
 		unravel_unification(term__variable(Var), Arg, UnifyMainContext,
 				UnifySubContext, VarSet0, Goal, VarSet1),
-		( Goal = (conj(ConjList) - _) ->
-			list__append(ConjList, List1, List)
-		;
-			List = [Goal | List1]
-		),
+		goal_to_conj_list(Goal, ConjList),
+		list__append(ConjList, List1, List),
 		insert_arg_unifications_2(Vars, Args, Context, N1,
 				List0, VarSet1, List1, VarSet)
+	).
+
+:- pred append_arg_unifications(list(var), list(term), arg_context,
+				hlds__goal, varset, hlds__goal, varset).
+:- mode append_arg_unifications(in, in, in, in, in, out, out) is det.
+
+append_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
+			Goal, VarSet) :-
+	( HeadVars = [] ->
+		Goal = Goal0,
+		VarSet = VarSet0
+	;
+		Goal0 = _ - GoalInfo,
+		goal_to_conj_list(Goal0, List0),
+		append_arg_unifications_2(HeadVars, Args, ArgContext, 0,
+			List0, VarSet0, List, VarSet),
+		Goal = conj(List) - GoalInfo
+	).
+
+:- pred append_arg_unifications_2(list(var), list(term), arg_context, int,
+				list(hlds__goal), varset,
+				list(hlds__goal), varset).
+:- mode append_arg_unifications_2(in, in, in, in, in, in, out, out) is det.
+
+append_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
+append_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
+				List, VarSet) :-
+	N1 is N0 + 1,
+		% skip unifications of the form `X = X'
+	( Arg = term__variable(Var) ->
+		append_arg_unifications_2(Vars, Args, Context, N1,
+				List0, VarSet0, List, VarSet)
+	;
+		arg_context_to_unify_context(Context, N1,
+				UnifyMainContext, UnifySubContext),
+		unravel_unification(term__variable(Var), Arg, UnifyMainContext,
+				UnifySubContext, VarSet0, Goal, VarSet1),
+		goal_to_conj_list(Goal, ConjList),
+		list__append(List0, ConjList, List1),
+		append_arg_unifications_2(Vars, Args, Context, N1,
+				List1, VarSet1, List, VarSet)
 	).
 
 :- pred arg_context_to_unify_context(arg_context, int,
@@ -973,10 +1012,10 @@ unravel_unification(term__variable(X), term__variable(Y), MainContext,
 	% If we find a unification of the form
 	%	X = f(A1, A2, A3)
 	% we replace it with
+	%	X = f(NewVar1, NewVar2, NewVar3),
 	%	NewVar1 = A1,
 	%	NewVar2 = A2,
-	%	NewVar3 = A3,
-	%	X = f(NewVar1, NewVar2, NewVar3).
+	%	NewVar3 = A3.
 	% In the trivial case `X = c', no unravelling occurs.
 
 unravel_unification(term__variable(X), term__functor(F, Args, C), MainContext,
@@ -995,7 +1034,7 @@ unravel_unification(term__variable(X), term__functor(F, Args, C), MainContext,
 		list__length(Args, Arity),
 		make_functor_cons_id(F, Arity, ConsId),
 		ArgContext = functor(ConsId, MainContext, SubContext),
-		insert_arg_unifications(HeadVars, Args, ArgContext,
+		append_arg_unifications(HeadVars, Args, ArgContext,
 					Goal0, VarSet1, Goal, VarSet)
 	).
 
@@ -1007,8 +1046,8 @@ unravel_unification(term__functor(F, As, C), term__variable(Y), MC, SC,
 			VarSet0, Goal, VarSet).
 
 	% If we find a unification of the form `f1(...) = f2(...)',
-	% then we replace it with `NewVars1 = ..., NewVars2 = ...,
-	% Tmp = f1(NewVars1), Tmp = f2(NewVars2)'. 
+	% then we replace it with `Tmp = f1(NewVars1), Tmp = f2(NewVars2),
+	% NewVars1 = ..., NewVars2 = ...'. 
 	% Note that we can't simplify it yet, because we might simplify
 	% away type errors.
 
@@ -1037,9 +1076,9 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	goal_to_conj_list(Goal1, ConjList1),
 	list__append(ConjList0, ConjList1, ConjList),
 	Goal2 = conj(ConjList) - GoalInfo,
-	insert_arg_unifications(RightHeadVars, RightAs, RightArgContext,
+	append_arg_unifications(RightHeadVars, RightAs, RightArgContext,
 				Goal2, VarSet3, Goal3, VarSet4),
-	insert_arg_unifications(LeftHeadVars, LeftAs, LeftArgContext, Goal3,
+	append_arg_unifications(LeftHeadVars, LeftAs, LeftArgContext, Goal3,
 				VarSet4, Goal, VarSet).
 
 	% create the hlds__goal for a unification which cannot be

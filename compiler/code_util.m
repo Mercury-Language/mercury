@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module hlds, llds, code_info.
+:- import_module hlds, llds, code_info, term.
 
 :- pred code_util__make_entry_label(module_info, pred_id, proc_id, code_addr).
 :- mode code_util__make_entry_label(in, in, in, out) is det.
@@ -33,7 +33,11 @@
 :- mode is_to_op_and_vars(in, out, out, out) is semidet.
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
+:- import_module list.
+
+%---------------------------------------------------------------------------%
 
 code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
 	predicate_module(ModuleInfo, PredId, ModuleName),
@@ -74,8 +78,8 @@ atom_to_operator("=<", (<=)).
 %-----------------------------------------------------------------------------%
 
 is_to_op_and_vars(Is, Op, X, Y) :-
-	Is = term_functor(term_atom(OpStr), [term_variable(X),
-							term_variable(Y)], _),
+	Is = term__functor(term__atom(OpStr), [term__variable(X),
+							term__variable(Y)], _),
 	atom_to_operator(OpStr, Op).
 
 %-----------------------------------------------------------------------------%
