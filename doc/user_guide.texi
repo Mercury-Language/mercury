@@ -471,7 +471,7 @@ Another hazard is that NU-Prolog does not have a garbage collector.
 Mmake, short for ``Mercury Make'',
 is a tool for building Mercury programs
 that is built on top of ordinary or GNU Make @footnote{
-We aim to eventually add support for ordinary `Make' programs,
+We aim to eventually add support for ordinary ``Make'' programs,
 but currently only GNU Make is supported.}.
 With Mmake, building even a complicated Mercury program
 consisting of a number of modules is as simple as
@@ -981,7 +981,7 @@ an executable.
 @table @code
 @item -M
 @itemx --generate-dependencies
-Output `Make'-style dependencies for the module
+Output ``Make''-style dependencies for the module
 and all of its dependencies to @file{@var{module}.dep}.
 
 @sp 1
@@ -1049,7 +1049,8 @@ It works best if used in conjunction with the @samp{--no-optimize} option.
 @item -l
 @itemx --line-numbers
 Output source line numbers in the generated code.
-Only works with the -G and -M options.
+Only works with the @samp{--convert-to-goedel} and @samp{--convert-to-mercury}
+options.
 
 @sp 1
 @item --show-dependency-graph
@@ -1083,9 +1084,9 @@ Rather than setting them individually, you must
 specify them all at once by selecting a particular
 compilation model ("grade").
 
-@table @code
-@item -s @var{grade}
-@itemx --grade @var{grade}
+@table @asis
+@item @code{-s @var{grade}}
+@itemx @code{--grade @var{grade}}
 Select the compilation model. The @var{grade} should be one of
 @samp{debug}, @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
 @samp{fast}, @samp{asm_fast},
@@ -1139,36 +1140,37 @@ Instead, you should use the @samp{--grade} option to change the setting of
 these options.
 
 @sp 1
-@item --gcc-global-registers (grades: reg, fast, asm_fast)
-@itemx --no-gcc-global-registers (grades: debug, none, jump, asm_jump)
+@item @code{--gcc-global-registers} (grades: reg, fast, asm_fast)
+@itemx @code{--no-gcc-global-registers} (grades: debug, none, jump, asm_jump)
 Specify whether or not to use GNU C's global register variables extension.
 
 @sp 1
-@item --gcc-non-local-gotos (grades: jump, fast, asm_jump, asm_fast)
-@item --no-gcc-non-local-gotos (grades: debug, none, reg)
+@item @code{--gcc-non-local-gotos} (grades: jump, fast, asm_jump, asm_fast)
+@item @code{--no-gcc-non-local-gotos} (grades: debug, none, reg)
 Specify whether or not to use GNU C's ``labels as values'' extension.
 
 @sp 1
-@item --asm-labels (grades: asm_jump, asm_fast)
-@itemx --no-asm-labels (grades: debug, none, reg, jump, fast)
+@item @code{--asm-labels} (grades: asm_jump, asm_fast)
+@itemx @code{--no-asm-labels} (grades: debug, none, reg, jump, fast)
 Specify whether or not to use GNU C's asm extensions for inline assembler
 labels.
 
 @sp 1
-@item --gc @{none, conservative, accurate@}
-@itemx --garbage-collection @{none, conservative, accurate@}
+@item @code{--gc @{none, conservative, accurate@}}
+@itemx @code{--garbage-collection @{none, conservative, accurate@}}
 Specify which method of garbage collection to use.
-`.gc' grades use `--gc conservative', other grades use `--gc none'.
+@samp{.gc} grades use @samp{--gc conservative}, other grades use
+@samp{--gc none}.
 @samp{accurate} is not yet implemented.
 
 @sp 1
-@item --tags @{none, low, high@}
+@item @code{--tags @{none, low, high@}}
 (This option is not intended for general use.)
 Specify whether to use the low bits or the high bits of
 each word as tag bits (default: low).
 
 @sp 1
-@item --num-tag-bits @var{n}
+@item @code{--num-tag-bits @var{n}}
 (This option is not intended for general use.)
 Use @var{n} tag bits.  This option is required if you specify
 @samp{--tags high}.
@@ -1176,18 +1178,18 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
-@item --num-real-regs @var{n}
+@item @code{--num-real-regs @var{n}}
 (This option is not intended for general use.)
 Assume r1 up to r@var{n} are real machine registers.
 
 @sp 1
-@item --profiling (grades: any grade ending in `.prof')
+@item @code{--profiling} (grades: any grade ending in @samp{.prof})
 Enable profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
 @samp{@var{module}.prof}.  @xref{Profiling}.
 
-@item --debug (grades: debug)
+@item @code{--debug} (grades: debug)
 Enable debugging.
 Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
 to enable debugging of the generated C code. 
@@ -1384,6 +1386,7 @@ Disable the inlining of simple procedures.
 @c @item --no-specialize
 @c Disable the specialization of procedures.
 
+@sp 1
 @item --no-common-struct
 Disable optimization of common term structures.
 
