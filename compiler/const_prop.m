@@ -11,7 +11,6 @@
 % transforming them to simpler goals such as construction unifications.
 %
 % XXX We should check for overflow.
-% XXX Some of this code should be shared with vn_util__simplify_vnrval.
 % 
 %------------------------------------------------------------------------------%
 
