@@ -1013,16 +1013,16 @@ case $HOST in
 		fullname=i686-pc-linux-libc2.1-gnu-O4
 		;;
 	venus)	
-		fullname=i686-pc-linux-libc2.1-gnu-O5
+		fullname=i686-pc-linux-libc2.2-gnu-O5
 		;;
 	earth)	
-		fullname=i686-pc-linux-libc2.1-gnu-O5-intermod
+		fullname=i686-pc-linux-libc2.3-gnu-O5-intermod
 		;;
 	mars)	
-		fullname=i686-pc-linux-libc2.1-gnu-O5
+		fullname=i686-pc-linux-libc2.2-gnu-O5
 		;;
 	ceres)	
-		fullname=i686-pc-linux-libc2.1-gnu-O5-hlc
+		fullname=i686-pc-linux-libc2.2-gnu-O5-hlc
 		;;
 	roy)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
