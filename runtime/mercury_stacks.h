@@ -160,6 +160,7 @@
 					((MR_Word *) (fr))[MR_REDOIP])
 #define	MR_redofr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
 					((MR_Word *) (fr))[MR_REDOFR])
+#define	MR_succip_slot_addr(fr)	(&(((MR_Code **) (fr))[MR_SUCCIP]))
 #define	MR_succip_slot(fr)	MR_LVALUE_CAST(MR_Code *,		\
 					((MR_Word *) (fr))[MR_SUCCIP])
 #define	MR_succfr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\

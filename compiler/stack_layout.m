@@ -1419,7 +1419,7 @@ stack_layout__represent_lval_as_byte(hp, Byte) :-
 	stack_layout__locn_type_code(lval_hp, Val),
 	stack_layout__make_tagged_byte(3, Val, Byte).
 stack_layout__represent_lval_as_byte(sp, Byte) :-
-	stack_layout__locn_type_code(lval_succip, Val),
+	stack_layout__locn_type_code(lval_sp, Val),
 	stack_layout__make_tagged_byte(3, Val, Byte).
 
 :- pred stack_layout__make_tagged_byte(int::in, int::in, int::out) is semidet.

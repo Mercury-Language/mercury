@@ -233,8 +233,8 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
         *stack_trace_sp_ptr = *stack_trace_sp_ptr -
             entry_layout->MR_sle_stack_slots;
     } else {
-            success = MR_succip_slot(*stack_trace_curfr_ptr);
-            *stack_trace_curfr_ptr = MR_succfr_slot(*stack_trace_curfr_ptr);
+        success = MR_succip_slot(*stack_trace_curfr_ptr);
+        *stack_trace_curfr_ptr = MR_succfr_slot(*stack_trace_curfr_ptr);
     }
 
     return MR_stack_walk_succip_layout(success, return_label_layout,

@@ -103,7 +103,7 @@ size_t		MR_pnegstack_size =		  32;
 ** instead GCs are scheduled, based on MR_heap_margin_size (see below),
 ** by explicit calls to MR_GC_check()
 */
-#if defined(MR_ACCURATE_GC) && !defined(MR_HIGHLEVEL_CODE)
+#if defined(MR_NATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
   #ifdef MR_DEBUG_AGC_SMALL_HEAP
     size_t		MR_heap_zone_size =	  32;
   #else
@@ -1030,7 +1030,7 @@ process_options(int argc, char **argv)
 			break;
 
 		case MR_HEAP_EXPANSION_FACTOR:
-			if (sscanf(MR_optarg, "%f", &MR_heap_expansion_factor)
+			if (sscanf(MR_optarg, "%lf", &MR_heap_expansion_factor)
 					!= 1)
 			{
 				usage();

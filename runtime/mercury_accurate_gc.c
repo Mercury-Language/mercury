@@ -66,8 +66,8 @@ static	void	garbage_collect_roots(void);
 */
 
 #ifndef MR_HIGHLEVEL_CODE
-static MR_Code	*saved_success = (MR_Code *) NULL;
-static MR_Word	*saved_success_location = (MR_Word *) NULL;
+static MR_Code	*saved_success = NULL;
+static MR_Code **saved_success_location = NULL;
 static MR_bool	gc_scheduled = MR_FALSE;
 static MR_bool	gc_running = MR_FALSE;
 #endif
@@ -345,7 +345,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 		fprintf(stderr, "GC scheduled again. Replacing old scheduling,"
 			" and trying to schedule again.\n");
 #endif
-		*saved_success_location = (MR_Word) saved_success;
+		*saved_success_location = saved_success;
 	}
 	gc_scheduled = MR_TRUE;
 
@@ -361,32 +361,35 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 		/*
 		** Save the old succip and its location.
 		*/
-		saved_success_location = &MR_based_stackvar(sp_at_signal,
-			number);
-		saved_success = (MR_Code *) *saved_success_location;
+		saved_success_location = (MR_Code **)
+			&MR_based_stackvar(sp_at_signal, number);
+		saved_success = *saved_success_location;
 	} else {
 		/*
 		** XXX we ought to also overwrite the redoip,
 		**     otherwise we might miss failure-driven loops
 		**     which don't contain any returns.
 		*/
-		saved_success_location = &MR_based_framevar(curfr_at_signal,
-			number);
-		saved_success = (MR_Code *) *saved_success_location;
+		/*
+		** Save the old succip and its location.
+		*/
+		assert(location == -1); /* succip is saved in succip_slot */
+		saved_success_location = MR_succip_slot_addr(curfr_at_signal);
+		saved_success = *saved_success_location;
 	}
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
 	fprintf(stderr, "old succip: %ld (%lx) new: %ld (%lx)\n", 
 		(long) saved_success, (long) saved_success,
-		(long) ENTRY(mercury__garbage_collect_0_0),
-		(long) ENTRY(mercury__garbage_collect_0_0));
+		(long) MR_ENTRY(mercury__garbage_collect_0_0),
+		(long) MR_ENTRY(mercury__garbage_collect_0_0));
 #endif
 
 	/*
 	** Replace the old succip with the address of the
 	** garbage collector.
 	*/
-	*saved_success_location = (MR_Word) mercury__garbage_collect_0_0;
+	*saved_success_location = MR_ENTRY(mercury__garbage_collect_0_0);
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
 	fprintf(stderr, "Accurate GC scheduled.\n");
@@ -542,8 +545,12 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
         /* Get the type parameters from the stack frame. */
 
-	/* XXX We must pass NULL since the registers have not been saved */
-	/* XXX This is probably a bug; Tyson should look into it */
+	/*
+	** We must pass NULL here since the registers have not been saved;
+	** This should be OK, because none of the values used by a procedure
+	** will be stored in registers across a call, since we have no
+	** caller-save registers (they are all callee-save).
+	*/
         type_params = MR_materialize_type_params_base(label_layout,
             NULL, stack_pointer, current_frame);
         
@@ -587,7 +594,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
 	{
 		MR_Long_Lval            location;
-		MR_Long_Lval_Type            type;
+		MR_Long_Lval_Type       type;
 		int                     number;
 
 		location = proc_layout->MR_sle_succip_locn;
@@ -595,11 +602,18 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 		number = MR_LONG_LVAL_NUMBER(location);
 		if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
 			MR_fatal_error("can only handle stackvars");
-			}
-		
-		success_ip = (MR_Code *) MR_based_stackvar(stack_pointer, number);
-		stack_pointer = stack_pointer - 
-			proc_layout->MR_sle_stack_slots;
+		}
+		if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
+			success_ip = (MR_Code *)
+				MR_based_stackvar(stack_pointer, number);
+			stack_pointer = stack_pointer - 
+				proc_layout->MR_sle_stack_slots;
+		} else {
+			/* succip is saved in succip_slot */
+			assert(location == -1);
+			success_ip = MR_succip_slot(current_frame);
+			current_frame = MR_succfr_slot(current_frame);
+		}
 		label = MR_lookup_internal_by_addr(success_ip);
 	}
 
@@ -632,6 +646,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     */ 
     
     while (max_frame > MR_nondet_stack_trace_bottom) {
+#if 0
 	MR_bool registers_valid;
 	int frame_size;
 
@@ -655,6 +670,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 		fflush(NULL);
 	    }
 	}
+#endif
 	label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
 	stack_pointer = NULL; /* XXX ??? */
 
@@ -666,10 +682,14 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 		long_var_count = MR_long_desc_var_count(label_layout);
 		/* var_count = label_layout->MR_sll_var_count; */
 
-		/* 
-		** XXX We must pass NULL since the registers have not
-		** been saved. This is probably a bug; Tyson should look
-		** into it
+		/*
+		** We must pass NULL here since the registers have not been
+		** saved; This should be OK, because none of the values used
+		** by a procedure will be stored in registers across a call,
+		** since we have no caller-save registers (they are all
+		** callee-save).
+		** XXX Is it right to pass MR_redofr_slot(max_frame) here?
+		**     Why not just max_frame?
 		*/
 		type_params = MR_materialize_type_params_base(label_layout,
 		    NULL, stack_pointer, MR_redofr_slot(max_frame));
@@ -764,7 +784,9 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
       ** (which defaults to two) times the current usage,
       ** or the size at which we GC'd last time, whichever is larger.
       */
-      gc_heap_size = (size_t) (MR_heap_expansion_factor * new_heap_usage);
+      gc_heap_size = MR_round_up(
+	      	(size_t) (MR_heap_expansion_factor * new_heap_usage),
+		MR_unit);
       if (gc_heap_size < old_heap_space) {
 	      gc_heap_size = old_heap_space;
       }

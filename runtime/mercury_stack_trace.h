@@ -118,8 +118,8 @@ extern	const MR_Label_Layout *MR_find_nth_ancestor(
 ** MR_stack_walk_step:
 **	This function takes the entry_layout for the current stack
 **	frame (which is the topmost stack frame from the two stack
-**	pointers given), and moves down one stack frame, setting the
-**	stack pointers to their new levels.
+**	pointers given), and moves down one stack frame, i.e. to the
+**	caller's frame, setting the stack pointers to their new levels.
 **
 **	return_label_layout will be set to the stack_layout of the
 **	continuation label, or NULL if the bottom of the stack has
@@ -135,6 +135,11 @@ extern	const MR_Label_Layout *MR_find_nth_ancestor(
 **
 **	If a MR_stack_walk_step encounters a problem, it will set problem_ptr
 **	to point to a string representation of the error.
+**
+**	Note that for nondetermistic code, this function will only
+**	traverse the success continuations (via MR_succfr),
+**	not the frames which represent failure continuations
+**	(which would be accessible via MR_redofr).
 */
 
 typedef enum {
