@@ -5236,11 +5236,12 @@ insert_arg_unifications(HeadVars, Args, Context, ArgContext, ForPragmaC,
 		{ VarSet = VarSet0 },
 		{ Info = Info0 }
 	;
-		{ Goal0 = _ - GoalInfo },
+		{ Goal0 = _ - GoalInfo0 },
 		{ goal_to_conj_list(Goal0, List0) },
 		insert_arg_unifications_2(HeadVars, Args, Context, ArgContext,
 			ForPragmaC, 0, List0, VarSet0, List, VarSet,
 			Info0, Info),
+		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 		{ conj_list_to_goal(List, GoalInfo, Goal) }
 	).
 
