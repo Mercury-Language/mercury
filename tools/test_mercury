@@ -3,6 +3,8 @@
 # This script is used to run the nightly tests.
 # It is invoked from the `run_test' script.
 
+echo "test_mercury starting at `date`" 1>&2
+
 case $# in
 	3)	HOST=$1; ARCH=$2; FULLARCH=$3 ;;
 	*)	echo "Usage: $0 host arch fullarch" 1>&2; exit 1 ;;
@@ -110,6 +112,8 @@ esac
 
 #-----------------------------------------------------------------------------#
 
+echo "test_mercury starting cvs checkout at `date`" 1>&2
+
 set -x	# trace execution
 
 : checkout the sources and make sure the installation directory exists
@@ -172,6 +176,7 @@ case $HOST in
 esac
 for grade in $GRADES
 do
+	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
 	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
 		$PARALLEL || status=1
 	case $grade in
@@ -185,6 +190,9 @@ do
 			;;
 	esac
 done
+
+echo "test_mercury starting installation at `date`" 1>&2
+
 mmake realclean $PARALLEL || status=1
 cd .. || { false; exit 1; }
 
@@ -249,6 +257,8 @@ cd .. || { false; exit 1; }
     cd ../.. || status=1
 ### esac
 
+echo "test_mercury starting to create distribution at `date`" 1>&2
+
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
 case $HOST in murlibobo)
@@ -280,11 +290,13 @@ case $status in
 		ln mercury-latest-unstable.tar.gz mercury-latest-stable.tar.gz
 		;;
 	esac
+	echo "test_mercury exiting successfully at `date`" 1>&2
 	true
 	exit 0
 	;;
     *)
 	: one or more tests failed
+	echo "test_mercury exiting unsuccessfully at `date`" 1>&2
 	false
 	exit 1
 	;;
