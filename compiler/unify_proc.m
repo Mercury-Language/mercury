@@ -148,7 +148,11 @@ unify_proc__set_req_queue(unify_requests(A, B, _), ReqQueue,
 
 unify_proc__lookup_num(Requests, TypeId, UniMode, Num) :-
 	unify_proc__get_req_map(Requests, ReqMap),
-	map__lookup(ReqMap, TypeId - UniMode, Num).
+	( map__search(ReqMap, TypeId - UniMode, Num0) ->
+		Num = Num0
+	;
+		error("unify_proc.nl: sorry, complicated unifications with partially instantiated modes not implemented")
+	).
 
 %-----------------------------------------------------------------------------%
 
