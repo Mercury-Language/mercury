@@ -1096,7 +1096,7 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 		}
 
 		MR_TRACE_USE_HP(
-			tag_incr_hp(arg, MR_mktag(0), 2);
+			MR_tag_incr_hp(arg, MR_mktag(0), 2);
 		);
 		MR_field(MR_mktag(0), arg, UNIV_OFFSET_FOR_TYPEINFO) =
 				(MR_Word) arg_type;

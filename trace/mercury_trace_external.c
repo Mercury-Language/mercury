@@ -644,7 +644,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_STACK\n");
 				}
-				do_init_modules();
+				MR_do_init_modules();
 				message = MR_dump_stack_from_layout(
 					stdout, layout,
 					MR_saved_sp(saved_regs),
@@ -665,7 +665,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_NONDET_STACK\n");
 				}
-				do_init_modules();
+				MR_do_init_modules();
 				/* 
 			        ** XXX As in stack dump, we could send the
 				** output of this function on the socket. But
@@ -1112,7 +1112,7 @@ MR_trace_make_var_list(void)
 		}
 
 		MR_TRACE_USE_HP(
-			incr_hp(univ, 2);
+			MR_incr_hp(univ, 2);
 		);
 
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO)
@@ -1226,7 +1226,7 @@ MR_trace_make_nth_var(MR_Word debugger_request)
 		/* debugger_request should be of the form: 
 		   current_nth_var(var_number) */
 	MR_TRACE_USE_HP(
-		incr_hp(univ, 2);
+		MR_incr_hp(univ, 2);
 	);
 
 	problem = MR_trace_return_var_info(var_number, NULL,

@@ -50,7 +50,7 @@ MR_register_all_modules_and_procs(FILE *fp, bool verbose)
 			fflush(fp);
 		}
 
-		do_init_modules();
+		MR_do_init_modules();
 		done = TRUE;
 		if (verbose) {
 			fprintf(fp, "done.\n");
