@@ -33,7 +33,7 @@ case "$CC" in
     *gcc*)
 	ANSI_OPTS="-ansi"
 	CHECK_OPTS="
-	      -Wall -Wwrite-strings -Wpointer-arith -Wtraditional
+	      -Wall -Wwrite-strings -Wpointer-arith
 	      -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 
 # Note: we do not enable the following gcc warnings:
