@@ -1,3 +1,8 @@
+/*
+** Copyright (C) 1995 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
 #define r1		count_usage(R_RN(1), mr1)
 #define r2		count_usage(R_RN(2), mr2)
 #define r3		count_usage(R_RN(3), mr3)

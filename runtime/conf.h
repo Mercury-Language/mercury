@@ -1,4 +1,9 @@
 /*
+** Copyright (C) 1995 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+/*
 **	Various configuration parameters. Their meanings are:
 **
 **	HAVE_SYSCONF		the machine has the sysconf syscall.

@@ -1,6 +1,12 @@
 %{
 /*
-**	Scanner for the interface to the Ptah interpeter
+** Copyright (C) 1995 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+/*
+**	Scanner for the interface to the Mercury interpeter
+**	(This is unfinished.)
 */
 
 
