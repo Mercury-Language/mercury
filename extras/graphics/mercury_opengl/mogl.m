@@ -721,6 +721,7 @@
 :- pragma foreign_decl("C", "
 	#include <stdio.h>
 	#include <math.h>
+	#include <assert.h>
 	#include <GL/gl.h>
 ").
 
@@ -771,8 +772,7 @@ get_error(Err, !IO) :-
 	err = glGetError();
 
 	for (i=0; i < 7; i++)
-		if (errcodes[i] == err)
-		{
+		if (errcodes[i] == err) {
 			Err =  i;
 			break;
 		}
@@ -864,12 +864,9 @@ edge_flag(yes, !IO) :-
 	vertex2(X::in, Y::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glVertex2f((GLfloat) X, (GLfloat) Y);
-	}
-	else
-	{
+	} else {
 		glVertex2d((GLdouble) X, (GLdouble) Y);
 	}
 	IO = IO0;
@@ -879,12 +876,9 @@ edge_flag(yes, !IO) :-
 	vertex3(X::in, Y::in, Z::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glVertex3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
-	}
-	else
-	{
+	} else {
 		glVertex3d((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
 	}
 	IO = IO0;
@@ -894,12 +888,9 @@ edge_flag(yes, !IO) :-
 	vertex4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glVertex4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z, (GLfloat) W);
-	}
-	else
-	{
+	} else {
 		glVertex4d((GLdouble) X, (GLdouble) Y, (GLdouble) Z,
 			(GLdouble) W);
 	}
@@ -910,12 +901,9 @@ edge_flag(yes, !IO) :-
 	rect(X1::in, Y1::in, X2::in, Y2::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	if(sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glRectf((GLfloat) X1, (GLfloat) Y1, (GLfloat) X2, (GLfloat) Y2);
-	}
-	else
-	{
+	} else {
 		glRectd((GLdouble) X1, (GLdouble) Y1, (GLdouble) X2, 
 			(GLdouble) Y2);
 	}
@@ -928,12 +916,9 @@ edge_flag(yes, !IO) :-
 	tex_coord1(X::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glTexCoord1f((GLfloat) X);
-	}
-	else
-	{
+	} else {
 		glTexCoord1d((GLdouble) X);
 	}
 	IO = IO0;
@@ -943,12 +928,9 @@ edge_flag(yes, !IO) :-
 	tex_coord2(X::in, Y::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glTexCoord2f((GLfloat) X, (GLfloat) Y);
-	}
-	else
-	{
+	} else {
 		glTexCoord2d((GLdouble) X, (GLdouble) Y);
 	}
 	IO = IO0;
@@ -958,12 +940,9 @@ edge_flag(yes, !IO) :-
 	tex_coord3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glTexCoord3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
-	}
-	else
-	{
+	} else {
 		glTexCoord3d((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
 	}
 	IO = IO0;
@@ -973,13 +952,10 @@ edge_flag(yes, !IO) :-
 	tex_coord4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glTexCoord4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z,
 			(GLfloat) W);
-	}
-	else
-	{
+	} else {
 		glTexCoord4d((GLdouble) X, (GLdouble) Y, (GLdouble) Z,
 			(GLdouble) W);
 	}
@@ -992,12 +968,9 @@ edge_flag(yes, !IO) :-
 	normal3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glNormal3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
-	}
-	else
-	{
+	} else {
 		glNormal3d((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
 	}
 	IO = IO0;
@@ -1009,12 +982,9 @@ edge_flag(yes, !IO) :-
 	color3(R::in, G::in, B::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glColor3f((GLfloat) R, (GLfloat) G, (GLfloat) B);
-	}
-	else
-	{
+	} else {
 		glColor3d((GLdouble) R, (GLdouble) G, (GLdouble) B);
 	}
 	IO = IO0;
@@ -1024,12 +994,9 @@ edge_flag(yes, !IO) :-
 	color4(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glColor4f((GLfloat) R, (GLfloat) G, (GLfloat) B, (GLfloat) A);
-	}
-	else
-	{
+	} else {
 		glColor4d((GLdouble) R, (GLdouble) G, (GLdouble) B,
 			(GLdouble) A);
 	}
@@ -1040,12 +1007,9 @@ edge_flag(yes, !IO) :-
 	index(I::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	if(sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glIndexf((GLfloat) I);
-	}
-	else
-	{
+	} else {
 		glIndexd((GLdouble) I);
 	}
 	IO = IO0;
@@ -1134,9 +1098,9 @@ load_matrix(Matrix, !IO) :-
 		A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		GLfloat	a[16];
+
 		a[0] = (GLfloat) A1; a[1] = (GLfloat) A2;
 		a[2] = (GLfloat) A3; a[3] = (GLfloat) A4;
 		a[4] = (GLfloat) A5; a[5] = (GLfloat) A6;
@@ -1147,7 +1111,8 @@ load_matrix(Matrix, !IO) :-
 		a[14] = (GLfloat) A15; a[15] = (GLfloat) A16;
 		glLoadMatrixf(a);
 	} else {
-		GLdouble	a[16];
+		GLdouble a[16];
+
 		a[0] = (GLdouble) A1; a[1] = (GLdouble) A2;
 		a[2] = (GLdouble) A3; a[3] = (GLdouble) A4;
 		a[4] = (GLdouble) A5; a[5] = (GLdouble) A6;
@@ -1189,9 +1154,9 @@ mult_matrix(Matrix, !IO) :-
 		A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if (sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		GLfloat	a[16];
+
 		a[0] = (GLfloat) A1; a[1] = (GLfloat) A2;
 		a[2] = (GLfloat) A3; a[3] = (GLfloat) A4;
 		a[4] = (GLfloat) A5; a[5] = (GLfloat) A6;
@@ -1202,7 +1167,8 @@ mult_matrix(Matrix, !IO) :-
 		a[14] = (GLfloat) A15; a[15] = (GLfloat) A16;
 		glMultMatrixf(a);
 	} else {
-		GLdouble	a[16];
+		GLdouble a[16];
+		
 		a[0] = (GLdouble) A1; a[1] = (GLdouble) A2;
 		a[2] = (GLdouble) A3; a[3] = (GLdouble) A4;
 		a[4] = (GLdouble) A5; a[5] = (GLdouble) A6;
@@ -1228,8 +1194,7 @@ mult_matrix(Matrix, !IO) :-
 	rotate(Theta::in, X::in, Y::in, Z::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if(sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glRotatef((GLfloat) Theta,
 			(GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	} else {
@@ -1243,8 +1208,7 @@ mult_matrix(Matrix, !IO) :-
 	translate(X::in, Y::in, Z::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if(sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glTranslatef((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	} else {
 		glTranslated((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
@@ -1256,8 +1220,7 @@ mult_matrix(Matrix, !IO) :-
 	scale(X::in, Y::in, Z::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	if(sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glScalef((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	} else {
 		glScaled((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
@@ -1413,8 +1376,7 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
 	raster_pos2(X::in, Y::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 " 
-	if(sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glRasterPos2f((GLfloat) X, (GLfloat) Y);
 	} else {
 		glRasterPos2d((GLdouble) X, (GLdouble) Y);
@@ -1426,8 +1388,7 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
 	raster_pos3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 " 
-	if(sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glRasterPos3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	} else {
 		glRasterPos3d((GLdouble) X, (GLdouble) Y, (GLfloat) Z);
@@ -1439,8 +1400,7 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
 	raster_pos4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 " 
-	if(sizeof(MR_Float) == sizeof(GLfloat))
-	{
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
 		glRasterPos4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z,
 			(GLfloat) W);
 	} else {
@@ -2918,10 +2878,11 @@ is_enabled(Flag, IsEnabled, !IO) :-
 	is_enabled_2(FlagVal::in, Offset::in, R::out, IO0::di, IO::uo), 
 	[may_call_mercury, promise_pure],
 "
-	if(glIsEnabled(control_flag_flags[FlagVal] + Offset))
+	if (glIsEnabled(control_flag_flags[FlagVal] + Offset)) {
 		R = ML_bool_return_yes();
-	else
+	} else {
 		R = ML_bool_return_no();
+	}
 	IO = IO0;
 ").
 
