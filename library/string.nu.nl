@@ -93,3 +93,9 @@ string__contains_char(String, Char) :-
 	list__member(CharCode, List).
 
 %-----------------------------------------------------------------------------%
+
+string__from_rev_char_list(RevChars, Str) :-
+	list__reverse(RevChars, Chars),
+	string__from_char_list(Chars, Str).
+
+%-----------------------------------------------------------------------------%
