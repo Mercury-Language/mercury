@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -171,7 +171,7 @@ cgi__parse_form_entries(FormEntries) -->
 		cgi__parse_form_entries(Rest),
 		{ FormEntries = [Name - Value | Rest] }
 	;
-		{ FormEntries = [] }
+		{ FormEntries = [Name - Value] }
 	).
 
 :- pred cgi__parse_form_entry(string, string, list(char), list(char)).
