@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,7 +142,14 @@
 	% We keep all the other types abstract.
 
 :- type type_ctor_info ---> type_ctor_info(c_pointer).
+:- pragma foreign_type("Java", type_ctor_info,
+		"mercury.runtime.TypeCtorInfo_Struct").
+
 :- type type_info ---> type_info(c_pointer).
+:- pragma foreign_type("Java", type_info,
+		% XXX should this be "mercury.runtime.PseudoTypeInfo" instead?
+		"mercury.runtime.TypeInfo_Struct").
+
 :- type compare_pred ---> compare_pred(c_pointer).
 :- type type_layout ---> type_layout(c_pointer).
 :- type pred_type ---> pred_type(c_pointer).
@@ -463,6 +470,14 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_proc("Java",
+	get_type_info(_T::unused) = (TypeInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+" 
+	// XXX why is the cast needed here?
+	TypeInfo = (mercury.runtime.TypeInfo_Struct) TypeInfo_for_T;
+").
+
 :- pragma foreign_proc("C#",
 	get_type_info(_T::unused) = (TypeInfo::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -483,6 +498,13 @@ get_type_info(_) = _ :-
 	private_builtin__sorry("get_type_info").
 
 :- func get_var_arity_typeinfo_arity(type_info) = int.
+
+:- pragma foreign_proc("Java",
+	get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+" 
+	Arity = TypeInfo.args.length;
+").
 
 :- pragma foreign_proc("C#",
 	get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
@@ -1351,6 +1373,12 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 
 :- pred high_level_data is semidet.
 :- pragma promise_pure(high_level_data/0).
+:- pragma foreign_proc("Java",
+	high_level_data,
+	[will_not_call_mercury, thread_safe],
+"
+	succeeded = true;
+").
 :- pragma foreign_proc("C#",
 	high_level_data,
 	[will_not_call_mercury, thread_safe],
@@ -1729,18 +1757,26 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 ").
 
 :- type sectag_locn ---> none ; local ; remote ; variable.
+% :- pragma foreign_type("Java", sectag_locn, "mercury.runtime.Sectag_Locn").
 
 :- type du_sectag_alternatives ---> du_sectag_alternatives(c_pointer).
+:- pragma foreign_type("Java", du_sectag_alternatives,
+		"mercury.runtime.DuFunctorDesc[]").
 
 :- type ptag_entry ---> ptag_entry(c_pointer).
+:- pragma foreign_type("Java", ptag_entry, "mercury.runtime.DuPtagLayout").
 
 :- type arg_types ---> arg_types(c_pointer).
+:- pragma foreign_type("Java", arg_types, "mercury.runtime.PseudoTypeInfo[]").
 
 :- type arg_names ---> arg_names(c_pointer).
+:- pragma foreign_type("Java", arg_names, "java.lang.String[]").
 
 :- type exist_info ---> exist_info(c_pointer).
+:- pragma foreign_type("Java", exist_info, "mercury.runtime.DuExistInfo").
 
 :- type typeinfo_locn ---> typeinfo_locn(c_pointer).
+:- pragma foreign_type("Java", typeinfo_locn, "mercury.runtime.DuExistLocn").
 
 :- func ptag_index(int, type_layout) = ptag_entry.
 
@@ -2133,9 +2169,20 @@ unsafe_cast(_) = _ :-
 % TypeFunctors
 %
 :- type type_functors ---> type_functors(c_pointer).
+:- pragma foreign_type("Java", type_functors,
+		"mercury.runtime.TypeFunctors").
+
 :- type du_functor_desc ---> du_functor_desc(c_pointer).
+:- pragma foreign_type("Java", du_functor_desc,
+		"mercury.runtime.DuFunctorDesc").
+
 :- type enum_functor_desc ---> enum_functor_desc(c_pointer).
+:- pragma foreign_type("Java", enum_functor_desc,
+		"mercury.runtime.EnumFunctorDesc").
+
 :- type notag_functor_desc ---> notag_functor_desc(c_pointer).
+:- pragma foreign_type("Java", notag_functor_desc,
+		"mercury.runtime.NotagFunctorDesc").
 
 :- inst du == bound(du; du_usereq; reserved_addr; reserved_addr_usereq).
 :- inst enum == bound(enum ; enum_usereq).
