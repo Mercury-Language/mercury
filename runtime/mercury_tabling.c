@@ -451,7 +451,7 @@ MR_string_hash_lookup_or_add(MR_TrieNode t, String key)
 #define	key_cast		char *
 #define	table_type		MR_StringHashTableSlot
 #define	table_field		string_slot_ptr
-#define	hash(key)		(hash_string((Word) key))
+#define	hash(key)		(MR_hash_string((Word) key))
 #define	equal_keys(k1, k2)	(strtest(k1, k2) == 0)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef	key_format
