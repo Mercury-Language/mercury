@@ -1280,7 +1280,7 @@ esac
 
 # Now rebuild the index files on the ftp site
 echo "test_mercury generating ftp index files, starting at `date`" 1>&2
-rsh $BETA_FTPHOST "\
+ssh $BETA_FTPHOST "\
 	PATH=/home/mercury/public/cron/scripts:\$PATH &&
 	export PATH &&
 	( [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR ) &&
