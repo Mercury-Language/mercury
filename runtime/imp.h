@@ -158,8 +158,7 @@ extern	int	hash_string(const char *);
 				Word tmp;			\
 				tmp = r1;			\
 				switch(field(0, tmp, 0)) {	\
-					default: fatal_error("call_closure: too many arguments (> 32)"); \
-					case 32: r33 = field(0, tmp, 33); \
+					default: fatal_error("call_closure: too many arguments (>= 32)"); \
 					case 31: r32 = field(0, tmp, 32); \
 					case 30: r31 = field(0, tmp, 31); \
 					case 29: r30 = field(0, tmp, 30); \
