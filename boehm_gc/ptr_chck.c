@@ -16,8 +16,7 @@
  * preprocessor to validate C pointer arithmetic.
  */
 
-#include "private/gc_priv.h"
-#include "private/gc_mark.h"
+#include "private/gc_pmark.h"
 
 #ifdef __STDC__
 void GC_default_same_obj_print_proc(GC_PTR p, GC_PTR q)
@@ -266,23 +265,30 @@ ptr_t p;
     	    if (HBLKPTR(base) != HBLKPTR(p)) hhdr = HDR((word)p);
     	    descr = hhdr -> hb_descr;
     retry:
-    	    switch(descr & DS_TAGS) {
-    	        case DS_LENGTH:
+    	    switch(descr & GC_DS_TAGS) {
+    	        case GC_DS_LENGTH:
     	            if ((word)((ptr_t)p - (ptr_t)base) > (word)descr) goto fail;
     	            break;
-    	        case DS_BITMAP:
+    	        case GC_DS_BITMAP:
     	            if ((ptr_t)p - (ptr_t)base
     	                 >= WORDS_TO_BYTES(BITMAP_BITS)
     	                 || ((word)p & (sizeof(word) - 1))) goto fail;
     	            if (!((1 << (WORDSZ - ((ptr_t)p - (ptr_t)base) - 1))
     	            	  & descr)) goto fail;
     	            break;
-    	        case DS_PROC:
+    	        case GC_DS_PROC:
     	            /* We could try to decipher this partially. 	*/
     	            /* For now we just punt.				*/
     	            break;
-    	        case DS_PER_OBJECT:
-    	            descr = *(word *)((ptr_t)base + (descr & ~DS_TAGS));
+    	        case GC_DS_PER_OBJECT:
+		    if ((signed_word)descr >= 0) {
+    	              descr = *(word *)((ptr_t)base + (descr & ~GC_DS_TAGS));
+		    } else {
+		      ptr_t type_descr = *(ptr_t *)base;
+		      descr = *(word *)(type_descr
+			      - (descr - (GC_DS_PER_OBJECT
+					  - GC_INDIR_PER_OBJ_BIAS)));
+		    }
     	            goto retry;
     	    }
     	    return(p);
