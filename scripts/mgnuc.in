@@ -146,6 +146,9 @@ case "$grade" in
 esac
 
 case "$grade" in
+	*.agc)	GC_OPTS="-DNATIVE_GC"
+		grade="` expr $grade : '\(.*\).agc' `"
+		;;
 	*.gc)	GC_OPTS="-DCONSERVATIVE_GC"
 		grade="` expr $grade : '\(.*\).gc' `"
 		;;

@@ -12,7 +12,7 @@ main_target: $(MAIN_TARGET)
 
 # Beware that the order of suffixes is significant.
 .SUFFIXES: .pp .m .nl .no .err .int .int2 .int3 .dep .depend .doit .ugly \
-		.date .date3 .mod .c .nu .o .pic_o .i .s .garb .mod_h .ql .pl
+		.date .date3 .mod .c .nu .o .pic_o .i .s .garb .ql .pl
 
 .PRECIOUS: %.date
 
@@ -71,7 +71,7 @@ main_target: $(MAIN_TARGET)
 	
 
 .m.garb:
-	$(MCG) --garbage-collection accurate $(MCGFLAGS) $<
+	$(MCG) -s $(GRADE) --garbage-collection accurate $(MCGFLAGS) $<
 
 .m.ugly:
 	$(MC) --convert-to-mercury $(MCFLAGS) $<
@@ -104,11 +104,6 @@ main_target: $(MAIN_TARGET)
 
 .mod.c:
 	[ -f $< ] && $(MOD2C) -s$(GRADE) $(MOD2CFLAGS) $< > $@
-
-# the next rule will need changing (probably by Tyson)
-
-.mod.mod_h:
-	[ -f $< ] && $(MOD2H) -s$(GRADE) $(MOD2HFLAGS) $< > $@
 
 .c.o:
 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -c $< -o $@
