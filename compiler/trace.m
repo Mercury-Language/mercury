@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -917,7 +917,7 @@ trace__produce_vars([], _, _, Tvars, Tvars, [], empty) --> [].
 trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 		[VarInfo | VarInfos], tree(VarCode, VarsCode)) -->
 	trace__produce_var(Var, VarSet, InstMap, Tvars0, Tvars1,
-		VarInfos, VarsCode),
+		VarInfo, VarCode),
 	trace__produce_vars(Vars, VarSet, InstMap, Tvars1, Tvars,
 		VarInfos, VarsCode).
 
