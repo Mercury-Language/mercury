@@ -51,6 +51,12 @@
 	% Verbosity options
 		--->	verbose
 		;	very_verbose
+	% Profiler options
+		;	clockticks
+		;	dynamic_cg
+		;	countfile
+		;	pairfile
+		;	declfile
 	% Miscellaneous Options
 		;	help.
 
@@ -61,12 +67,15 @@
 
 :- type option_category
 	--->	verbosity_option
+	;	profiler_option
 	;	miscellaneous_option.
 
 option_defaults(OptionDefaults) :-
 	option_defaults_2(verbosity_option, VerbosityOptions),
+	option_defaults_2(profiler_option, ProfilerOptions),
 	option_defaults_2(miscellaneous_option, MiscellaneousOptions),
-	list__condense([VerbosityOptions, MiscellaneousOptions], OptionDefaults).
+	list__condense([VerbosityOptions, ProfilerOptions, MiscellaneousOptions]
+							, OptionDefaults).
 
 :- pred option_defaults_2(option_category::in,
 	list(pair(option, option_data))::out) is det.
@@ -76,6 +85,14 @@ option_defaults_2(verbosity_option, [
 	verbose			-	bool(no),
 	very_verbose		-	bool(no)
 ]).
+option_defaults_2(profiler_option, [
+		% General profiler options
+	clockticks		-	int(5),
+	dynamic_cg			-	bool(no),
+	countfile		-	string("Prof.Counts"),
+	pairfile		-	string("Prof.CallPair"),
+	declfile		-	string("Prof.Decl")
+]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
 	help 			-	bool(no)
@@ -83,13 +100,23 @@ option_defaults_2(miscellaneous_option, [
 
 
 	% please keep this in alphabetic order
+short_option('c',			clockticks).
+short_option('C',			countfile).
+short_option('d',			dynamic_cg).
+short_option('D',			declfile).
 short_option('h', 			help).
+short_option('P',			pairfile).
 short_option('v', 			verbose).
 short_option('V', 			very_verbose).
 
+long_option("call-pair-file",		pairfile).
+long_option("clock-ticks",		clockticks).
+long_option("count-file",		countfile).
+long_option("declaration-file",		declfile).
+long_option("help",			help).
+long_option("use-dynamic",		dynamic_cg).
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
-long_option("help",			help).
 
 
 options_help -->
