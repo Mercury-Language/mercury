@@ -76,7 +76,7 @@ typedef void			Code;
 #elif	MR_LONG_DOUBLE_IS_64_BIT
 	typedef	long double		Float64;
 #else
-	#error	For Mercury bytecode, we require 64-bit IEEE-754 floating point
+	#error	"For Mercury bytecode, we require 64-bit IEEE-754 floating point"
 #endif
 
 /*
