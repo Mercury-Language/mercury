@@ -1,7 +1,8 @@
+#include "mercury_lib.h"	/* must come first */
+
 #include <stdio.h>
 
 #include "c_main.h"
-#include "mercury_lib.h"
 
 typedef Word MercuryList;
 
