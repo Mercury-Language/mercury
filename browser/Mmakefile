@@ -95,6 +95,36 @@ all: library browse_test declarative_test
 depend:	$(DEPENDS)
 $(DEPENDS): Mercury.modules
 
+# This directory contains two libraries, mer_browser and mer_mdbcomp,
+# and mer_browser depends on mer_mdbcomp.  But Mmake will by default
+# assume that each library contains any file referenced from the
+# top-level module which occurs in the current directory, which leads
+# it to incorrectly assume that the mer_browser library should include
+# the mdbcomp.m and program_representation.m files.
+# To avoid this problem, we temporarily rename those files away
+# when building the dependencies for mer_browser.
+#
+# We use the phony .NOTPARALLEL target to disable parallel make,
+# to ensure that we don't try to execute any other rule while
+# the files are renamed.
+# We also need to be careful to ensure that the files get renamed
+# back properly even if making the dependencies fails or a signal occurs.
+# XXX This is all a bit hacky.
+
+.NOTPARALLEL:
+
+$(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
+	trap 'mv RENAMED_mdbcomp.m mdbcomp.m; \
+		mv RENAMED_program_representation.m program_representation.m; \
+		exit 1' 1 2 3 13 15; \
+	mv mdbcomp.m RENAMED_mdbcomp.m; \
+	mv program_representation.m RENAMED_program_representation.m ;\
+	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*; \
+	status=$$?; \
+	mv RENAMED_mdbcomp.m mdbcomp.m; \
+	mv RENAMED_program_representation.m program_representation.m; \
+	exit $$status
+
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
 # won't work without the Mercury.modules file.
