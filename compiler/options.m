@@ -2226,7 +2226,10 @@ opt_level(2, _, [
 	common_struct		-	bool(yes),
 	user_guided_type_specialization
 				-	bool(yes),
-	optimize_duplicate_calls -	bool(yes),
+	% XXX While inst `array' is defined as `ground', we
+	% can't optimize duplicate calls (we might combine
+	% calls to `array.init').
+	% optimize_duplicate_calls -	bool(yes),
 	simple_neg		-	bool(yes),
 
 	optimize_rl		-	bool(yes),
