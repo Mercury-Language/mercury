@@ -271,26 +271,12 @@ set_bbbtree__def_ratio(5).
 % Note:	set_bbbtree__concat4 and not set_bbbtree__concat3 represents the
 %	function concat3 mentioned in the report.
 %
-% Due to the presence of bugs in the compiler concerning destructive input and
-% unique modes some
-% predicates and modes are commented out. Once the bugs are removed the modes
-% should be uncommented. Although some commented out predicates can simply be
-% uncommented and their hacked versions deleted others will need to be
-% rewritten. Two examples are
-% 
-% Further more, some code is also commented out and
-% replaced by hacked versions. Once destructive input and unique output is
-% enabled these hacks must be removed to ensure consistency and the original
-% mode declarations and code uncommented. Unfortunately this 
-% guarantee that the original code will indeed work for such new modes without
-% modification.
-%
 % Predicates with the suffix `_r' in the names are predicates that accept an
 % integer as an additional last argument. This integer is a ratio that is
 % used to measure how much larger one tree is allowed to be compared to the
 % other before some rotations are performed to rebalance them. These predicates
 % are currently not exported but it maybe useful to do so so that users are
-% able to influence the rebalancing process by specifying ratios..
+% able to influence the rebalancing process by specifying ratios.
 %
 % NOTE :
 % The size of trees are measured in terms of number of elements and not height.
@@ -300,9 +286,17 @@ set_bbbtree__def_ratio(5).
 % that a few units.
 %
 % BUGS:
-% No known bugs exists.
-% There are bugs in the current compiler (17 / 8 / 95) which cause problems
-% with compilation of unique and destruction input modes.
+% Due to the presence of bugs in the compiler concerning destructive input and
+% unique modes some predicates and modes are commented out. Once the bugs are
+% removed the modes should be uncommented. Although some commented out
+% predicates can simply be uncommented and their hacked versions deleted
+% others will need to be rewritten. Three examples are the _r versions of
+% union, intersection and difference. They all make the calls
+% set_bbbtree__split_lt followed by set_bbbtree__split_gt with the right
+% tree. If the right tree is declared destructive input then either the
+% compiler must be smart enough to call set_bbbtree__split_lt
+% non-destructively followed by the call to set_bbbtree__split_gt
+% destructively or some rewriting must be done.
 %
 % IMPROVEMENTS:
 % Speed improvements may be possible by the implementation of specific
