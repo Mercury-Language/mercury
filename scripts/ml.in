@@ -31,9 +31,11 @@ EXT_FOR_SHARED_LIB=${MERCURY_EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"}
 LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ_SH@"}
 SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
-SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 TMPDIR=${TMPDIR=/tmp}
 MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
+# Note: the setting of SHARED_LIBS needs to come after the setting of MATH_LIB,
+# since @SHARED_LIBS_SH@ may refer to $MATH_LIB.
+SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS_SH@"}
 
 # When compiling in the hlc.gc grade using the Microsoft Visual C
 # compiler, the default maximum stack size of 4Mb is too low for a

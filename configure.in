@@ -224,7 +224,7 @@ AC_C_CROSS
 AC_RETSIGTYPE
 #-----------------------------------------------------------------------------#
 # Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.
-AC_CHECK_LIB(m,[MATH_LIB=-lm],[MATH_LIB=])
+AC_HAVE_LIBRARY(m,[MATH_LIB=-lm],[MATH_LIB=])
 AC_SUBST(MATH_LIB)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for use of a Microsoft compiler)
@@ -2018,7 +2018,8 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # see Mmake.common.in for documentation on the meaning of these variables
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
-SHARED_LIBS='`gcc -print-libgcc-file-name` $MATH_LIB -lc'
+SHARED_LIBS='`gcc -print-libgcc-file-name` $(MATH_LIB) -lc'
+SHARED_LIBS_SH='`gcc -print-libgcc-file-name` $MATH_LIB -lc'
 EXE_RPATH_OPT="-Wl,-rpath,"
 EXE_RPATH_SEP=" -Wl,-rpath,"
 SHLIB_RPATH_OPT="-Wl,-rpath,"
@@ -2055,7 +2056,8 @@ case "$host" in
 		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
-		SHARED_LIBS="$MATH_LIB -lc"	# don't link in libgcc.a
+		SHARED_LIBS="$(MATH_LIB) -lc"	# don't link in libgcc.a
+		SHARED_LIBS_SH="$MATH_LIB -lc"	# don't link in libgcc.a
 		LINK_SHARED_OBJ="$CC -G"
 		LINK_SHARED_OBJ_SH="$CC -G"
 		ERROR_UNDEFINED="-Wl,-z,defs"
@@ -2209,6 +2211,7 @@ AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(EXT_FOR_EXE)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
+AC_SUBST(SHARED_LIBS_SH)
 AC_SUBST(DEFAULT_RM_C)
 AC_SUBST(LIBRARY_RM_C)
 if test $USE_DLLS = "yes"; then
