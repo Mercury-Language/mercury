@@ -2275,16 +2275,16 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
 	{ foreign_language(Attributes, Lang) },
 	( { Lang = c },
 		ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
+			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	; { Lang = managed_cplusplus },
 		ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
+			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	; { Lang = csharp },
 		ml_gen_ordinary_pragma_csharp_proc(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
+			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	).
 
 :- pred ml_gen_ordinary_pragma_csharp_proc(code_model, 
