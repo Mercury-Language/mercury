@@ -686,9 +686,9 @@ dir__make_path_name(DirName, FileName) = DirName/FileName.
 :- pragma export(dir__make_path_name(in, in) = out, "ML_make_path_name").
 DirName0/FileName0 = PathName :-
     DirName = string__from_char_list(canonicalize_path_chars(
-    		string__to_char_list(DirName0))),
+                    string__to_char_list(DirName0))),
     FileName = string__from_char_list(canonicalize_path_chars(
-    		string__to_char_list(FileName0))),
+                    string__to_char_list(FileName0))),
     (
         dir__path_name_is_absolute(FileName)
     ->
@@ -711,10 +711,11 @@ DirName0/FileName0 = PathName :-
     ->
         error("dir./: second argument is a current drive relative path")
     ;
+        DirNameLength = length(DirName),
         (
             % Check for construction of relative paths of the form "C:foo".
             use_windows_paths,
-            length(DirName) = 2,
+            DirNameLength = 2,
             char__is_alpha(string__unsafe_index(DirName, 0)),
             string__unsafe_index(DirName, 1) = (':')
         ;
@@ -722,8 +723,13 @@ DirName0/FileName0 = PathName :-
             % On Windows \\foo (a UNC server specification) is
             % not equivalent to \foo (the directory X:\foo, where
             % X is the current drive).
-            dir__is_directory_separator(
-                string__unsafe_index(DirName, string__length(DirName) - 1))
+            ( DirNameLength \= 0 ->
+                dir__is_directory_separator(
+                        string__unsafe_index(DirName, DirNameLength - 1))
+            ;
+                        
+                fail
+            )
         )
     ->
         PathName = DirName ++ FileName
@@ -1232,7 +1238,6 @@ dir__open(DirName, Res, !IO) :-
 			ML_make_win32_dir_open_result_ok(Dir,
 				(MR_Word) file_data.cFileName, &Result);
 		}
-		MR_free(dir_pattern);
 	}
 
 #elif defined(MR_HAVE_OPENDIR) && defined(MR_HAVE_READDIR) && \\
