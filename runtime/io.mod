@@ -260,13 +260,46 @@ mercury__report_stats_0_0:
 	);
 	proceed();
 
+/*
+	:- pred type_to_univ(T, univ).
+	:- mode type_to_univ(in, out) is det.
+	:- mode type_to_univ(out, in) is semidet.
+*/
 mercury__type_to_univ_2_0:
-	r2 = r1;
+	/*
+	 *  Forward mode - convert from type to univ.
+	 *  On entry r1 contains unification pred for type T,
+	 *  and r2 contains the input argument of type T.
+	 *  On exit r3 contains the output argument of type univ.
+	 */
+	incr_hp(r3, 2); /* allocate heap space */
+	r3 = mkword(mktag(0), mkbody(r3)); /* tag pointer (this is a no-op) */
+	field(mktag(0), r3, 0) = r1;
+		/* set the first field to contain the address of the
+		   unification predicate */
+	field(mktag(0), r3, 1) = r2;
+		/* store the input argument in the second field */
 	proceed();
 
 mercury__type_to_univ_2_1:
-	r2 = r3;
-	r1 = TRUE;  /* for the moment, run-time type check not implemented */
+	/*
+	 *  Backward mode - convert from univ to type.
+	 *  On entry r2 contains unification pred for type T,
+	 *  and r4 contains the input argument of type univ.
+	 *  On successful exit r3 contains the output argument of type T;
+	 *  r1 is for the success/failure indication.
+	 *
+	 *  We check that the addresses of the unification predicates match.
+	 *  This will still give false positive results, because the
+	 *  unification procedure address may be the same even if the types
+	 *  are not - for example, for different enumeration types.
+	 */
+	if (field(mktag(0), r4, 1) != r2) {
+		r1 = FALSE;
+		proceed();
+	}
+	r3 = field(mktag(0), r4, 1);
+	r1 = TRUE;
 	proceed();
 
 /* from string.nl */
