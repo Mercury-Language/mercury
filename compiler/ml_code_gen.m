@@ -666,6 +666,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops.
 :- import_module passes_aux, modules.
+:- import_module globals, options.
 
 :- import_module bool, string, list, map, set, term, require, std_util.
 
@@ -1806,16 +1807,16 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 	% Generate code fragments to obtain and release the global lock
 	% (this is used for ensuring thread safety in a concurrent
 	% implementation)
-	% XXX we should only generate these if the `parallel' option
-	% was enabled
 	%
 	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_bool_option(Globals, parallel, Parallel) },
 	{ thread_safe(Attributes, ThreadSafe) },
-	{ ThreadSafe = thread_safe ->
-		ObtainLock = "",
-		ReleaseLock = ""
-	;
-		ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo),
+	{
+		Parallel = no,
+		ThreadSafe = not_thread_safe
+	->
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_name(PredInfo, Name),
 		llds_out__quote_c_string(Name, MangledName),
@@ -1823,6 +1824,9 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 			MangledName, """);\n"], ObtainLock),
 		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
 			MangledName, """);\n"], ReleaseLock)
+	;
+		ObtainLock = "",
+		ReleaseLock = ""
 	},
 
 	%
