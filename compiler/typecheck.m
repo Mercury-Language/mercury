@@ -4629,7 +4629,12 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst, ConstVars,
 		% Convert all the subclass_details into class_constraints by
 		% doing the appropriate variable renaming and applying the
 		% type variable bindings.
-	list__map(subclass_details_to_constraint(TVarSet, SuperClassTypes),
+		% If the unification of the type variables for a particular
+		% constraint fails then that constraint is eliminated because it
+		% cannot contribute to proving the constraint we are trying to
+		% prove.
+	list__filter_map(subclass_details_to_constraint(TVarSet,
+			SuperClassTypes),
 		SubClasses, SubClassConstraints),
 
 	(
@@ -4719,8 +4724,11 @@ find_first_match(Pred, [X|Xs], Result) :-
 		find_first_match(Pred, Xs, Result)
 	).
 
+	% subclass_details_to_constraint will fail iff the call to
+	% type_unify_list fails.
+
 :- pred subclass_details_to_constraint(tvarset::in, list(type)::in,
-		subclass_details::in, class_constraint::out) is det.
+		subclass_details::in, class_constraint::out) is semidet.
 
 subclass_details_to_constraint(TVarSet, SuperClassTypes,
 			SubClassDetails, SubC) :-
@@ -4740,17 +4748,11 @@ subclass_details_to_constraint(TVarSet, SuperClassTypes,
 		% Work out what the (renamed) vars from the
 		% typeclass declaration are bound to here
 	map__init(Empty),
-	(
-		type_unify_list(SuperVars, SuperClassTypes, [],
-			Empty, Bindings)
-	->
-		SubID = class_id(SubName, _SubArity),
-		term__apply_substitution_to_list(SubVars, Bindings,
-			SubClassTypes),
-		SubC = constraint(SubName, SubClassTypes)
-	;
-		error("subclass_details_to_constraint: type_unify_list failed")
-	).
+	type_unify_list(SuperVars, SuperClassTypes, [], Empty, Bindings),
+	SubID = class_id(SubName, _SubArity),
+	term__apply_substitution_to_list(SubVars, Bindings,
+		SubClassTypes),
+	SubC = constraint(SubName, SubClassTypes).
 
 	%
 	% check_satisfiability(Constraints, HeadTypeParams):
