@@ -212,9 +212,9 @@ AC_PROG_RANLIB
 AC_RETSIGTYPE
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror)
 #-----------------------------------------------------------------------------#
-AC_CHECK_HEADER(sys/siginfo.h, HAVE_SIGINFO_H=1)
-if test "$HAVE_SIGINFO_H" = 1; then
-	AC_DEFINE(HAVE_SIGINFO)
+AC_CHECK_HEADER(sys/siginfo.h, HAVE_SYS_SIGINFO_H=1)
+if test "$HAVE_SYS_SIGINFO_H" = 1; then
+	AC_DEFINE(HAVE_SYS_SIGINFO)
 fi
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(ucontext.h, HAVE_UCONTEXT_H=1)
@@ -228,6 +228,11 @@ else
 	fi
 fi
 #-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(asm/sigcontext.h, HAVE_ASM_SIGCONTEXT_H=1)
+if test "$HAVE_ASM_SIGCONTEXT_H" = 1; then
+	AC_DEFINE(HAVE_ASM_SIGCONTEXT)
+fi
+#-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/param.h, HAVE_SYS_PARAM_H=1)
 if test "$HAVE_SYS_PARAM_H" = 1; then
 	AC_DEFINE(HAVE_SYS_PARAM)
@@ -238,14 +243,22 @@ if test "$HAVE_SYS_TIME_H" = 1; then
 	AC_DEFINE(HAVE_SYS_TIME)
 fi
 #-----------------------------------------------------------------------------#
+#
+# check the basics of sigaction
+#
 if test "$ac_cv_func_sigaction" = yes; then
 	AC_MSG_CHECKING(for sigaction field name)
 	AC_CACHE_VAL(mercury_cv_sigaction_field,
 	AC_TRY_RUN([
+
 	#include <signal.h>
 	#include <stdlib.h>
+
+	#define FAULT_ADDRESS ((int *)64)
+
 	extern void handler(int signum, siginfo_t *info, void *context);
-	main() {
+
+	int main() {
 		struct sigaction act;
 		act.sa_flags = SA_SIGINFO | SA_RESTART;
 		act.sa_sigaction = handler;
@@ -253,21 +266,167 @@ if test "$ac_cv_func_sigaction" = yes; then
 			exit(1);
 		if (sigaction(SIGSEGV, &act, NULL) != 0)
 			exit(1);
-		exit(0);
+		/* provoke a SIGSEGV */
+		(*FAULT_ADDRESS)++;
+		exit(1);
 	}
+
 	void handler(int signum, siginfo_t *info, void *context) {
-		return;
+		if (signum == SIGSEGV &&
+		    info->si_signo == SIGSEGV &&
+		    info->si_code > 0 &&
+		    (int *)info->si_addr == FAULT_ADDRESS)
+		{
+			exit(0);
+		}
 	}],
 	[mercury_cv_sigaction_field=sa_sigaction],
 	[mercury_cv_sigaction_field=sa_handler],
 	[mercury_cv_sigaction_field=sa_handler]))
 	AC_MSG_RESULT($mercury_cv_sigaction_field)
 	AC_DEFINE_UNQUOTED(SIGACTION_FIELD,$mercury_cv_sigaction_field)
-#-----------------------------------------------------------------------------#
-	if test "$HAVE_SIGINFO_H" = 1 &&
-	   (test "$HAVE_UCONTEXT_H" = 1 || test "$HAVE_SYS_UCONTEXT_H" = 1)
-	then
-		AC_MSG_CHECKING(for pc access at signals)
+	if test $mercury_cv_sigaction_field = sa_handler; then
+		AC_DEFINE(HAVE_SIGINFO)
+	fi
+fi
+#
+# check the basics of sigcontext_struct
+#
+AC_MSG_CHECKING(for working sigcontext_struct)
+AC_CACHE_VAL(mercury_cv_sigcontext_struct,
+mercury_cv_sigcontext_struct=no
+AC_TRY_RUN([
+
+#define __KERNEL__
+#include <signal.h>
+#undef __KERNEL
+
+#ifdef HAVE_ASM_SIGCONTEXT
+#include <asm/sigcontext.h>
+#endif
+
+#include <stdio.h>
+
+extern void handler(int signum, struct sigcontext_struct info);
+
+#define FAULT_ADDRESS ((int *)64)
+
+int main() {
+	signal(SIGSEGV, (void (*)(int))handler);
+
+	/* provoke a SIGSEGV */
+	(*FAULT_ADDRESS)++;
+
+	exit(1);
+}
+
+void handler(int signum, struct sigcontext_struct context) {
+	if (signum == SIGSEGV && (int *) context.cr2 == FAULT_ADDRESS) {
+		exit(0);
+	}
+}], [mercury_cv_sigcontext_struct=yes], [true], [true]))
+AC_MSG_RESULT($mercury_cv_sigcontext_struct)
+if test $mercury_cv_sigcontext_struct = yes; then
+	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT)
+	AC_DEFINE(HAVE_SIGINFO)
+
+	#
+	# check for sigcontext_struct.eip
+	#
+	AC_MSG_CHECKING(for sigcontext_struct pc access at signals)
+	AC_CACHE_VAL(mercury_cv_pc_access,
+	mercury_cv_pc_access=no
+	AC_TRY_RUN([
+	#define __KERNEL__
+	#include <signal.h>
+	#undef __KERNEL
+
+	#ifdef HAVE_ASM_SIGCONTEXT
+	#include <asm/sigcontext.h>
+	#endif
+
+	#include <stdio.h>
+
+	extern void handler(int signum, struct sigcontext_struct info);
+
+	#define FAULT_ADDRESS ((int *)64)
+
+	int main() {
+		signal(SIGSEGV, (void (*)(int))handler);
+
+		/* provoke a SIGSEGV */
+		(*FAULT_ADDRESS)++;
+
+		exit(1);
+	}
+
+	void handler(int signum, struct sigcontext_struct info) {
+		if (signum == SIGSEGV &&
+			(int *) info.cr2 == FAULT_ADDRESS &&
+			(long) info.eip != 0)
+		{
+			exit(0);
+		}
+	}], [mercury_cv_pc_access=yes], [true], [true]))
+	AC_MSG_RESULT($mercury_cv_pc_access)
+else
+	AC_MSG_CHECKING(for siginfo_t)
+	AC_CACHE_VAL(mercury_cv_siginfo_t,
+	mercury_cv_siginfo_t=no
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <signal.h>
+	#ifdef HAVE_SYS_SIGINFO
+	#include <sys/siginfo.h>
+	#endif
+	#ifdef HAVE_UCONTEXT
+	#include <ucontext.h>
+	#endif
+	#ifdef HAVE_SYS_UCONTEXT
+	#include <sys/ucontext.h>
+	#endif
+	int save_signum = 0;
+	int save_cause;
+	int save_pc;
+	extern void handler(int signum, siginfo_t *info, void *context);
+	int main() {
+		struct sigaction act;
+		act.sa_flags = SA_SIGINFO | SA_RESTART;
+		act.$mercury_cv_sigaction_field = handler;
+		if (sigemptyset(&act.sa_mask) != 0)
+			exit(1);
+		if (sigaction(SIGSEGV, &act, NULL) != 0)
+			exit(1);
+		if (kill(getpid(), SIGSEGV) != 0)
+			exit(1);
+		if (save_signum == 0)
+			exit(1);
+		exit(0);
+	}
+	void handler(int signum, siginfo_t *info, void *context) {
+		save_signum = signum;
+		switch (info->si_code) {
+		case SEGV_MAPERR:	save_cause = info->si_code;
+					break;
+		case SEGV_ACCERR:	save_cause = info->si_code;
+					break;
+		}
+		switch (info->si_code) {
+		case BUS_ADRALN:	save_cause = info->si_code;
+					break;
+		case BUS_ADRERR:	save_cause = info->si_code;
+					break;
+		case BUS_OBJERR:	save_cause = info->si_code;
+					break;
+		}
+		save_cause = info->si_code;
+	}], [mercury_cv_siginfo_t=yes], [true], [true]))
+	AC_MSG_RESULT($mercury_cv_siginfo_t)
+	if test $mercury_cv_siginfo_t = yes; then
+		AC_DEFINE(HAVE_SIGINFO_T)
+		AC_DEFINE(HAVE_SIGINFO)
+
+		AC_MSG_CHECKING(for siginfo pc access at signals)
 		AC_CACHE_VAL(mercury_cv_pc_access,
 		mercury_cv_pc_access=no
 		AC_TRY_RUN([
@@ -283,7 +442,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 		int save_cause;
 		int save_pc;
 		extern void handler(int signum, siginfo_t *info, void *context);
-		main() {
+		int main() {
 			struct sigaction act;
 			act.sa_flags = SA_SIGINFO | SA_RESTART;
 			act.$mercury_cv_sigaction_field = handler;
@@ -299,20 +458,6 @@ if test "$ac_cv_func_sigaction" = yes; then
 		}
 		void handler(int signum, siginfo_t *info, void *context) {
 			save_signum = signum;
-			switch (info->si_code) {
-			case SEGV_MAPERR:	save_cause = info->si_code;
-						break;
-			case SEGV_ACCERR:	save_cause = info->si_code;
-						break;
-			}
-			switch (info->si_code) {
-			case BUS_ADRALN:	save_cause = info->si_code;
-						break;
-			case BUS_ADRERR:	save_cause = info->si_code;
-						break;
-			case BUS_OBJERR:	save_cause = info->si_code;
-						break;
-			}
 			save_cause = info->si_code;
 			/* Don't use array indexing - the square brackets
 			   are autoconf quote characters */
@@ -333,7 +478,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 		int save_cause;
 		int save_pc;
 		extern void handler(int signum, siginfo_t *info, void *context);
-		main() {
+		int main() {
 			struct sigaction act;
 			act.sa_flags = SA_SIGINFO | SA_RESTART;
 			act.$mercury_cv_sigaction_field = handler;
@@ -349,20 +494,6 @@ if test "$ac_cv_func_sigaction" = yes; then
 		}
 		void handler(int signum, siginfo_t *info, void *context) {
 			save_signum = signum;
-			switch (info->si_code) {
-			case SEGV_MAPERR:	save_cause = info->si_code;
-						break;
-			case SEGV_ACCERR:	save_cause = info->si_code;
-						break;
-			}
-			switch (info->si_code) {
-			case BUS_ADRALN:	save_cause = info->si_code;
-						break;
-			case BUS_ADRERR:	save_cause = info->si_code;
-						break;
-			case BUS_OBJERR:	save_cause = info->si_code;
-						break;
-			}
 			save_cause = info->si_code;
 			save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
 					+ CTX_EPC);
@@ -381,7 +512,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 		int save_cause;
 		int save_pc;
 		extern void handler(int signum, siginfo_t *info, void *context);
-		main() {
+		int main() {
 			struct sigaction act;
 			act.sa_flags = SA_SIGINFO | SA_RESTART;
 			act.$mercury_cv_sigaction_field = handler;
@@ -397,20 +528,6 @@ if test "$ac_cv_func_sigaction" = yes; then
 		}
 		void handler(int signum, siginfo_t *info, void *context) {
 			save_signum = signum;
-			switch (info->si_code) {
-			case SEGV_MAPERR:	save_cause = info->si_code;
-						break;
-			case SEGV_ACCERR:	save_cause = info->si_code;
-						break;
-			}
-			switch (info->si_code) {
-			case BUS_ADRALN:	save_cause = info->si_code;
-						break;
-			case BUS_ADRERR:	save_cause = info->si_code;
-						break;
-			case BUS_OBJERR:	save_cause = info->si_code;
-						break;
-			}
 			save_cause = info->si_code;
 			save_pc = ((ucontext_t *) context)->uc_mcontext.sc_pc;
 		}], [mercury_cv_pc_access=sc_pc;mercury_cv_pc_access_greg=no],
@@ -430,7 +547,7 @@ AC_MSG_CHECKING(for an integer type with the same size as a pointer)
 AC_CACHE_VAL(mercury_cv_word_type,
 	AC_TRY_RUN([
 	#include <stdio.h>
-	main() {
+	int main() {
 		FILE *fp;
 
 		fp = fopen("conftest.tags", "w");
@@ -459,7 +576,7 @@ AC_CACHE_VAL(mercury_cv_word_type,
 if test "$mercury_cv_word_type" = unknown; then
 	AC_TRY_RUN([
 	#include <stdio.h>
-	main() {
+	int main() {
 		FILE *fp;
 
 		fp = fopen("conftest.tags", "w");
