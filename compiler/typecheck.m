@@ -100,10 +100,6 @@
 :- pred typecheck(module_info, module_info, bool, io__state, io__state).
 :- mode typecheck(in, out, out, di, uo) is det.
 
-:- pred typecheck_pred_type(pred_id, pred_info, module_info,
-	maybe(pred_info), io__state, io__state).
-:- mode typecheck_pred_type(in, in, in, out, di, uo) is det.
-
 /*
 	Formally, typecheck(Module0, Module, FoundError, IO0, IO) is
 	intended to be true iff Module is Module0 annotated with the
@@ -163,29 +159,49 @@ typecheck(Module0, Module, FoundError) -->
 
 check_pred_types(Module0, Module, FoundError) -->
 	{ module_info_predids(Module0, PredIds) },
-	typecheck_pred_types_2(PredIds, Module0, Module, no, FoundError).
+	typecheck_to_fixpoint(PredIds, Module0, Module, FoundError),
+	write_inference_messages(PredIds, Module).
+
+	% Repeatedly typecheck the code for a group of predicates
+	% until a fixpoint is reached, or until some errors are detected.
+
+:- pred typecheck_to_fixpoint(list(pred_id), module_info, module_info, bool,
+			io__state, io__state).
+:- mode typecheck_to_fixpoint(in, in, out, out, di, uo) is det.
+
+typecheck_to_fixpoint(PredIds, Module0, Module, FoundError) -->
+	typecheck_pred_types_2(PredIds, Module0, Module1, no, FoundError1, no,
+		Changed),
+	( { Changed = no ; FoundError1 = yes } ->
+		{ Module = Module1 },
+		{ FoundError = FoundError1 }
+	;
+		typecheck_to_fixpoint(PredIds, Module1, Module, FoundError)
+	).
 
 %-----------------------------------------------------------------------------%
 
 	% Iterate over the list of pred_ids in a module.
 
 :- pred typecheck_pred_types_2(list(pred_id), module_info, module_info,
-	bool, bool, io__state, io__state).
-:- mode typecheck_pred_types_2(in, in, out, in, out, di, uo) is det.
+	bool, bool, bool, bool, io__state, io__state).
+:- mode typecheck_pred_types_2(in, in, out, in, out, in, out, di, uo) is det.
 
-typecheck_pred_types_2([], ModuleInfo, ModuleInfo, Error, Error) --> [].
+typecheck_pred_types_2([], ModuleInfo, ModuleInfo, Error, Error,
+			Changed, Changed) --> [].
 typecheck_pred_types_2([PredId | PredIds],
-		ModuleInfo0, ModuleInfo, Error0, Error) -->
+		ModuleInfo0, ModuleInfo, Error0, Error, Changed0, Changed) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	(
 		{ pred_info_is_imported(PredInfo0) }
 	->
 		{ Error1 = Error0 },
-		{ ModuleInfo1 = ModuleInfo0 }
+		{ ModuleInfo1 = ModuleInfo0 },
+		{ Changed2 = Changed0 }
 	;
 		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0,
-			MaybePredInfo),
+			MaybePredInfo, Changed1),
 		{
 			MaybePredInfo = yes(PredInfo1),
 			Error1 = Error0,
@@ -196,14 +212,20 @@ typecheck_pred_types_2([PredId | PredIds],
 			Error1 = yes,
 			module_info_remove_predid(ModuleInfo0, PredId,
 				ModuleInfo1)
-		}
+		},
+		{ bool__or(Changed0, Changed1, Changed2) }
 	),
-	typecheck_pred_types_2(PredIds, ModuleInfo1, ModuleInfo, Error1, Error).
+	typecheck_pred_types_2(PredIds, ModuleInfo1, ModuleInfo, Error1, Error,
+		Changed2, Changed).
 
-typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
+:- pred typecheck_pred_type(pred_id, pred_info, module_info,
+	maybe(pred_info), bool, io__state, io__state).
+:- mode typecheck_pred_type(in, in, in, out, out, di, uo) is det.
+
+typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		IOState0, IOState) :-
 	typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo0,
-		IOState0, IOState),
+		Changed, IOState0, IOState),
 	(
 		MaybePredInfo0 = no,
 		MaybePredInfo = no
@@ -215,10 +237,10 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 	).
 
 :- pred typecheck_pred_type_2(pred_id, pred_info, module_info,
-	maybe(pred_info), io__state, io__state).
-:- mode typecheck_pred_type_2(in, in, in, out, di, uo) is det.
+	maybe(pred_info), bool, io__state, io__state).
+:- mode typecheck_pred_type_2(in, in, in, out, out, di, uo) is det.
 
-typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
+typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		IOState0, IOState) :-
 	(
 	    % Compiler-generated predicates are created already type-correct,
@@ -233,9 +255,10 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 	        PredInfo = PredInfo0
 	    ),
 	    MaybePredInfo = yes(PredInfo),
+	    Changed = no,
 	    IOState = IOState0
 	;
-	    pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ArgTypes),
+	    pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ArgTypes0),
 	    pred_info_typevarset(PredInfo0, TypeVarSet0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
@@ -244,21 +267,50 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 	    ->
 	        report_error_no_clauses(PredId, PredInfo0, ModuleInfo,
 		    IOState0, IOState),
-	        MaybePredInfo = no
+	        MaybePredInfo = no,
+		Changed = no
 	    ;
 		write_pred_progress_message("% Type-checking ",
 			PredId, ModuleInfo, IOState0, IOState1),
-		term__vars_list(ArgTypes, HeadTypeParams),
+		pred_info_get_marker_list(PredInfo0, Markers),
+		( list__member(request(infer_type), Markers) ->
+			% For a predicate whose type is inferred,
+			% the predicate is allowed to bind the type
+			% variables in the head of the predicate's
+			% type declaration.  Such predicates are given an
+			% initial type declaration of 
+			% `pred foo(T1, T2, ..., TN)' by make_hlds.m.
+			Inferring = yes,
+			HeadTypeParams = []
+		;
+			Inferring = no,
+			term__vars_list(ArgTypes0, HeadTypeParams)
+		),
+		bool(Inferring), % dummy pred call to avoid type ambiguity
+		
 		type_info_init(IOState1, ModuleInfo, PredId,
 				TypeVarSet0, VarSet, VarTypes0, HeadTypeParams,
 				TypeInfo1),
-		typecheck_clause_list(Clauses0, HeadVars, ArgTypes, Clauses,
+		typecheck_clause_list(Clauses0, HeadVars, ArgTypes0, Clauses,
 				TypeInfo1, TypeInfo2),
 		type_info_get_final_info(TypeInfo2, TypeVarSet, VarTypes1),
 		map__optimize(VarTypes1, VarTypes),
 		ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
-		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo),
+		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo2),
+		( Inferring = no ->
+			PredInfo = PredInfo2,
+			Changed = no
+		;
+			map__apply_to_list(HeadVars, VarTypes, ArgTypes),
+			pred_info_set_arg_types(PredInfo1, TypeVarSet,
+				ArgTypes, PredInfo),
+			( identical_types_list(ArgTypes0, ArgTypes) ->
+				Changed = no
+			;
+				Changed = yes
+			)
+		),
 		type_info_get_found_error(TypeInfo2, Error),
 		(
 			Error = yes,
@@ -270,6 +322,10 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 		type_info_get_io_state(TypeInfo2, IOState)
 	    )
 	).
+
+	% bool/1 is used to avoid a type ambiguity
+:- pred bool(bool::in) is det.
+bool(_).
 
 %-----------------------------------------------------------------------------%
 
@@ -2156,7 +2212,56 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% The next section contains predicates for writing error diagnostics.
+% The next section contains predicates for writing diagnostics
+% (warnings and errors).
+
+%-----------------------------------------------------------------------------%
+
+	% write out the inferred `pred' or `func' declarations
+	% for a list of predicates.
+
+:- pred write_inference_messages(list(pred_id), module_info,
+				io__state, io__state).
+:- mode write_inference_messages(in, in, di, uo) is det.
+
+write_inference_messages([], _) --> [].
+write_inference_messages([PredId | PredIds], ModuleInfo) -->
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_get_marker_list(PredInfo, Markers) },
+	( { list__member(request(infer_type), Markers) } ->
+		write_inference_message(PredInfo)
+	;
+		[]
+	),
+	write_inference_messages(PredIds, ModuleInfo).
+
+	% write out the inferred `pred' or `func' declaration
+	% for a single predicate.
+
+:- pred write_inference_message(pred_info, io__state, io__state).
+:- mode write_inference_message(in, di, uo) is det.
+
+write_inference_message(PredInfo) -->
+	{ pred_info_name(PredInfo, PredName) },
+	{ Name = unqualified(PredName) },
+	{ pred_info_context(PredInfo, Context) },
+	{ pred_info_arg_types(PredInfo, VarSet, Types) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ MaybeDet = no },
+	prog_out__write_context(Context),
+	io__write_string("Inferred "),
+	(	{ PredOrFunc = predicate },
+		mercury_output_pred_type(VarSet, Name, Types, MaybeDet,
+			Context)
+	;	{ PredOrFunc = function },
+		( { list__reverse(Types, [RetType|RevArgTypes]) } ->
+			{ list__reverse(RevArgTypes, ArgTypes) },
+			mercury_output_func_type(VarSet, Name, ArgTypes,
+				RetType, MaybeDet, Context)
+		;
+			{ error("write_inference_message: function with no return type") }
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2931,6 +3036,14 @@ identical_types(Type1, Type2) :-
 	map__init(TypeSubst0),
 	type_unify(Type1, Type2, [], TypeSubst0, TypeSubst),
 	TypeSubst = TypeSubst0.
+
+:- pred identical_types_list(list(type), list(type)).
+:- mode identical_types_list(in, in) is semidet.
+
+identical_types_list([], []).
+identical_types_list([T1|T1s], [T2|T2s]) :-
+	identical_types(T1, T2),
+	identical_types_list(T1s, T2s).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

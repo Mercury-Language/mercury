@@ -409,6 +409,8 @@ hlds_out__write_marker_status(done(Marker)) -->
 :- pred hlds_out__write_marker(marker, io__state, io__state).
 :- mode hlds_out__write_marker(in, di, uo) is det.
 
+hlds_out__write_marker(infer_type) -->
+	io__write_string("infer_type").
 hlds_out__write_marker(inline) -->
 	io__write_string("inline").
 hlds_out__write_marker(dnf) -->

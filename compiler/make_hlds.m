@@ -257,7 +257,7 @@ add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
-		report_warning("warning: declaration not yet implemented.\n"),
+		report_warning("Warning: declaration not yet implemented.\n"),
 		io__set_output_stream(OldStream, _)
 	).
 
@@ -401,9 +401,9 @@ module_mark_as_external(PredName, Arity, PredOrFunc, Context,
 	->
 		{ module_mark_preds_as_external(PredIdList, Module0, Module) }
 	;
-		{ module_info_incr_errors(Module0, Module) },
-		undefined_pred_error(PredName, Arity, PredOrFunc, Context,	
-			"`external' declaration")
+		{ Module = Module0 },
+		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
+			Context, "`external' declaration")
 	).
 
 :- pred module_mark_preds_as_external(list(pred_id), module_info, module_info).
@@ -561,7 +561,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
 			report_warning(StdErr, 
-	"warning: undiscriminated union types (`+') not implemented.\n"),
+	"Warning: undiscriminated union types (`+') not implemented.\n"),
 			io__set_output_stream(OldStream, _)
 		;
 			[]
@@ -860,9 +860,10 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		% XXX should use PredOrFunc
 
 		% Lookup the pred declaration in the predicate table.
-		% If it's not there (or if it is ambiguous), print an
-		% error message and insert a dummy declaration for the
-		% predicate.
+		% If it's not there (or if it is ambiguous), optionally print a
+		% warning message and insert an implicit definition for the
+		% predicate; it is presumed to be local, and its type
+		% will be inferred automatically.
 
 	{ module_info_name(ModuleInfo0, ModuleName0) },
 	{ sym_name_get_module_name(PredName, ModuleName0, ModuleName) },
@@ -876,9 +877,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		{ PredicateTable1 = PredicateTable0 },
 		{ PredId = PredId0 }
 	;
-		% XXX we should record each error using module_info_incr_errors
-		undefined_pred_error(PredName, Arity, PredOrFunc, MContext,	
-			"mode declaration"),
+		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
+			MContext, "mode declaration"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, MContext,
 				PredOrFunc,
@@ -917,15 +917,15 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	{ add_new_proc(PredInfo0, Arity, Modes, MaybeDet, MContext,
 			PredInfo, _) },
 	{ map__set(Preds0, PredId, PredInfo, Preds) },
-	{ predicate_table_set_preds(PredicateTable0, Preds, PredicateTable) },
+	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo) }.
 
 	% Whenever there is a clause or mode declaration for an undeclared
 	% predicate, we add an implicit declaration
-	%	:- pred p(_, _, ..., _).
-	% for that predicate, so that calls to the pred don't get
-	% spurious errors.
+	%	:- pred p(T1, T2, ..., Tn).
+	% for that predicate; the real types will be inferred by
+	% type inference.
 
 :- pred preds_add_implicit(predicate_table, module_name, sym_name, arity,
 				term__context, pred_or_func,
@@ -941,15 +941,14 @@ preds_add_implicit(PredicateTable0,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
-		Context, ClausesInfo, local, no, none, PredOrFunc, PredInfo),
+		Context, ClausesInfo, local, no, none, PredOrFunc, PredInfo0),
+	pred_info_set_marker_list(PredInfo0, [request(infer_type)], PredInfo),
 	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
 		\+ predicate_table_search_m_n_a(PredicateTable0,
 			ModuleName, PName, Arity, _)
 	->
 		predicate_table_insert(PredicateTable0, PredInfo, PredId,
-			PredicateTable1),
-		predicate_table_remove_predid(PredicateTable1, PredId,
 			PredicateTable)
 	;	
 		error("preds_add_implicit")
@@ -1068,12 +1067,10 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 			ModuleName, PName, Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
-		{ PredicateTable1 = PredicateTable0 },
-		{ ModuleInfo1 = ModuleInfo0 }
+		{ PredicateTable1 = PredicateTable0 }
 	;
-		{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
-		undefined_pred_error(PredName, Arity, PredOrFunc, Context,
-			"clause"),
+		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
+			Context, "clause"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
 				PredOrFunc,
@@ -1085,13 +1082,13 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	( { pred_info_is_imported(PredInfo0) } ->
-		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 		clause_for_imported_pred_error(PredName, Arity, PredOrFunc, 
 			Context)
 	;
 		{ pred_info_get_goal_type(PredInfo0, pragmas) }
 	->
-		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 		prog_out__write_context(Context),
 		io__write_string("Error: clause for predicate `"),
 		hlds_out__write_pred_call_id(PredName/Arity),
@@ -1111,7 +1108,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		map__set(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
 			PredicateTable),
-		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
+		module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 			ModuleInfo)
 		},
 		% warn about singleton variables 
@@ -1177,12 +1174,10 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 			PName, Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
-		{ PredicateTable1 = PredicateTable0 },
-		{ ModuleInfo1 = ModuleInfo0 }
+		{ PredicateTable1 = PredicateTable0 }
 	;
-		{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
-		undefined_pred_error(PredName, Arity, PredOrFunc, Context, 
-				"pragma (c_code)"),
+		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
+			Context, "pragma (c_code)"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
 				PredOrFunc,
@@ -1196,7 +1191,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 	( 
 		{ pred_info_is_imported(PredInfo0) } 
 	->
-		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 		prog_out__write_context(Context),
 		io__write_string("Error: pragma(c_code, ...) declaration "),
 		io__write_string("for imported "),
@@ -1205,7 +1200,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 	;	
 		{ pred_info_get_goal_type(PredInfo0, clauses) }
 	->
-		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 		prog_out__write_context(Context),
 		io__write_string("Error: pragma(c_code, ...) declaration "),
 		io__write_string("for "),
@@ -1230,13 +1225,13 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 			{ pred_info_set_goal_type(PredInfo1, pragmas, 
 					PredInfo) },
 			{ map__set(Preds0, PredId, PredInfo, Preds) },
-			{ predicate_table_set_preds(PredicateTable0, Preds, 
+			{ predicate_table_set_preds(PredicateTable1, Preds, 
 				PredicateTable) },
 			{ module_info_set_predicate_table(ModuleInfo0, 
 				PredicateTable, ModuleInfo) },
 			maybe_warn_singletons(VarSet, PredName/Arity, Goal)
 		;
-			{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
+			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
@@ -2395,24 +2390,35 @@ multiple_def_error(Name, Arity, DefType, Context, OrigContext) -->
 	io__write_int(Arity),
 	io__write_string("'.\n").
 
-:- pred undefined_pred_error(sym_name, int, pred_or_func, term__context,
+:- pred maybe_undefined_pred_error(sym_name, int, pred_or_func, term__context,
 				string, io__state, io__state).
-:- mode undefined_pred_error(in, in, in, in, in, di, uo) is det.
+:- mode maybe_undefined_pred_error(in, in, in, in, in, di, uo) is det.
 
-undefined_pred_error(Name, Arity, PredOrFunc, Context, Description) -->
-	io__set_exit_status(1),
-	prog_out__write_context(Context),
-	io__write_string("Error: "),
-	io__write_string(Description),
-	io__write_string(" for "),
-	hlds_out__write_call_id(PredOrFunc, Name/Arity),
-	io__write_string(" without preceding `"),
-	(	{ PredOrFunc = predicate },
-		io__write_string("pred")
-	;	{ PredOrFunc = function },
-		io__write_string("func")
-	), !,
-	io__write_string("' declaration\n").
+% This is not considered an unconditional error anymore:
+% if there is no :- pred declaration, we just infer one,
+% unless the `--no-infer-types' option was specified.
+
+maybe_undefined_pred_error(Name, Arity, PredOrFunc, Context, Description) -->
+	globals__io_lookup_bool_option(infer_types, InferTypes),
+	( { InferTypes = yes } ->
+		[]
+	;
+		io__set_exit_status(1),
+		prog_out__write_context(Context),
+		io__write_string("Error: "),
+		io__write_string(Description),
+		io__write_string(" for "),
+		hlds_out__write_call_id(PredOrFunc, Name/Arity),
+		io__write_string("\n"),
+		prog_out__write_context(Context),
+		io__write_string("  without preceding `"),
+		(	{ PredOrFunc = predicate },
+			io__write_string("pred")
+		;	{ PredOrFunc = function },
+			io__write_string("func")
+		), !,
+		io__write_string("' declaration.\n")
+	).
 
 :- pred unspecified_det_warning(sym_name, arity, pred_or_func, term__context, 
 				io__state, io__state).

@@ -70,6 +70,10 @@
 		;	reorder_disj
 		;	fully_strict
 		;	strict_sequential
+		;	infer_types
+		;	infer_modes
+		;	infer_determinism
+		;	infer_all
 	% Compilation Model options
 		;	grade
 		;	gcc_non_local_gotos
@@ -244,7 +248,11 @@ option_defaults_2(language_semantics_option, [
 	strict_sequential	-	special,
 	reorder_conj		-	bool(yes),
 	reorder_disj		-	bool(yes),
-	fully_strict		-	bool(yes)
+	fully_strict		-	bool(yes),
+	infer_types		-	bool(yes),
+	infer_modes		-	bool(yes),
+	infer_determinism	-	bool(yes),
+	infer_all		-	bool_special
 ]).
 option_defaults_2(compilation_model_option, [
 		% Compilation model options (ones that affect binary
@@ -472,6 +480,11 @@ long_option("reorder-conj",		reorder_conj).
 long_option("reorder-disj",		reorder_disj).
 long_option("fully-strict",		fully_strict).
 long_option("strict-sequential",	strict_sequential).
+long_option("infer-all",		infer_all).
+long_option("infer-types",		infer_types).
+long_option("infer-modes",		infer_modes).
+long_option("infer-determinism",	infer_determinism).
+long_option("infer-det",		infer_determinism).
 
 % compilation model options
 long_option("grade",			grade).
@@ -623,6 +636,12 @@ special_handler(strict_sequential, none, OptionTable0, ok(OptionTable)) :-
 			reorder_conj 	-	bool(no),
 			reorder_disj 	-	bool(no),
 			fully_strict 	-	bool(yes)
+		], OptionTable0, OptionTable).
+special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
+	override_options([
+			infer_types 		-	bool(Infer),
+			infer_modes 		-	bool(Infer),
+			infer_determinism 	-	bool(Infer)
 		], OptionTable0, OptionTable).
 special_handler(opt_space, none, OptionTable0, ok(OptionTable)) :-
 	opt_space(OptionSettingsList),
@@ -905,6 +924,17 @@ options_help -->
 	io__write_string("\t\tExecute disjunctions strictly left-to-right.\n"),
 	io__write_string("\t\tfully-strict\n"),
 	io__write_string("\t\tDon't optimize away loops or calls to error/1.\n"),
+	io__write_string("\t--no-infer-types\n"),
+	io__write_string("\t\tIf there is no type declaration for a predicate or function,\n"),
+	io__write_string("\t\tdon't try to infer the type, just report an errror.\n"),
+
+	io__write_string("\t\n"),
+/****
+% The --no-infer-det option has not yet been implemented.
+	io__write_string("\t--no-infer-det, --no-infer-determinism\n"),
+	io__write_string("\t\tIf there is no determinism declaration for a procedure,\n"),
+	io__write_string("\t\tdon't try to infer the determinism, just report an errror.\n"),
+****/
 
 	io__write_string("\nCompilation model options:\n"),
 	io__write_string("\tThe following compilation options affect the generated\n"),

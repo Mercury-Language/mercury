@@ -121,7 +121,10 @@
 	% of normal C code, with a C code stub to link to the RL.
 
 :- type marker
-	--->	inline		% Requests that this be predicate be inlined.
+	--->	infer_type	% Requests type inference for the predicate
+				% These markers are inserted by make_hlds
+				% for undeclared predicates.
+	;	inline		% Requests that this be predicate be inlined.
 				% Since the transformation affects *other*
 				% predicates, the done status is not meaningful
 	;	dnf		% Requests that this predicate be transformed
