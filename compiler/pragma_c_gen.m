@@ -177,11 +177,8 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 	% is the context of the pragma_c_code line in the definition
 	% of that predicate.
 	code_info__get_module_info(ModuleInfo),
-	{ module_info_preds(ModuleInfo, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_procedures(PredInfo, ProcTable) },
-	{ map__lookup(ProcTable, ProcId, Proc) },
-	{ proc_info_goal(Proc, OrigGoal) },
+	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
+	{ proc_info_goal(ProcInfo, OrigGoal) },
 	{ OrigGoal = _ - OrigGoalInfo },
 	{ goal_info_get_context(OrigGoalInfo, Context) },
 

@@ -978,24 +978,25 @@ output_instruction(decr_sp(N), _) -->
 	%	<assignment to the output regs of the corresponding locals>
 	% }
 	%
-	% The printing of the #line directives is currently disabled.
-output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs, _Context), _) -->
-%	{ term__context_file(Context, File) },
-%	{ term__context_line(Context, Line) },
-%	% The context is unfortunately bogus for pragma_c_codes inlined
-%	% from a .opt file.
-%	(
-%		{ Line > 0 },
-%		{ File \= "" }
-%	->
-%		io__write_string("#line "),
-%		io__write_int(Line),
-%		io__write_string(" """),
-%		io__write_string(File),
-%		io__write_string("""\n")
-%	;
-%		[]
-%	),
+	% The printing of the #line directives is currently disabled;
+	% they are printed as comments instead.
+output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs, Context), _) -->
+	{ term__context_file(Context, File) },
+	{ term__context_line(Context, Line) },
+	% The context is unfortunately bogus for pragma_c_codes inlined
+	% from a .opt file.
+	(
+		{ Line > 0 },
+		{ File \= "" }
+	->
+		io__write_string("/* #line "),
+		io__write_int(Line),
+		io__write_string(" """),
+		io__write_string(File),
+		io__write_string(""" */\n")
+	;
+		[]
+	),
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	output_pragma_inputs(Inputs),

@@ -198,9 +198,11 @@
 
 	;	pragma_c(list(pragma_c_decl), list(pragma_c_input),
 			string, list(pragma_c_output), term__context).
-			% The local variable decs, placing the inputs in the
-			% variables, the c code, and where to
-			% find the outputs for pragma(c_code, ... ) decs.
+			% The local variable declarations, the info required
+			% for placing the inputs in the variables, the c code,
+			% the info required for picking up the outputs, and
+			% the context of the original appearance of the C code
+			% in the Mercury source.
 
 %	;	frame_pragma_c(list(pragma_c_decl), list(pragma_c_input),
 %			string, list(pragma_c_output), list(label), term__context).
