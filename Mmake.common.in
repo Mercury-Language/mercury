@@ -371,7 +371,7 @@ AWK = awk
 		2> /dev/null | $(AWK) '/[ \t]*#define/ { print $$2; }' | \
 		$(HEADER_CLEAN_FILTER) | sort -u > $*.actual
 	@comm -1 -3 $*.base $*.actual > $@
-	@rm $*.base $*.actual
+	@rm $*.base $*.actual $*.empty.c
 	@if cmp -s /dev/null $@; then \
 		true; \
 	else \
@@ -393,7 +393,7 @@ AWK = awk
 		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]'`_DECL_GUARD | \
 		$(HEADER_CLEAN_FILTER) | sort -u > $*.mactual
 	@comm -1 -3 $*.mbase $*.mactual > $@
-	@rm $*.mbase $*.mactual
+	@rm $*.mbase $*.mactual $*.mempty.c
 	@if cmp -s /dev/null $@; then \
 		true; \
 	else \
