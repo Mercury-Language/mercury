@@ -23,7 +23,8 @@ Usage:	c2init [options] *.c *.init ..."
 FULLARCH=@FULLARCH@
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 
-# include the file `parse_ml_options.sh-subr'
+# include the file `parse_ml_options.sh-subr', which in turn includes
+# the sh-subr files dealing with grades
 @PARSE_ML_OPTIONS@
 
 # include the file `canonical_grade.sh-subr'
