@@ -321,9 +321,8 @@ you can go ahead and execute it.  You may however wish to specify
 certain options to the Mercury runtime system.
 The Mercury runtime accepts
 options via the @samp{MERCURY_OPTIONS} environment variable.
-Setting @samp{MERCURY_OPTIONS} to @samp{-h}
-will list the available options.
 The most useful of these are the options that set the size of the stacks.
+(For the full list of available options, see @ref{Environment}.)
 
 The det stack and the nondet stack
 are allocated fixed sizes at program start-up.
@@ -984,10 +983,10 @@ It is also possible to build libraries of unrelated
 modules, so long as the top-level module imports all
 the necessary modules.  For example:
 
-	@example
-	:- module blah.
-	:- import_module fee, fie, foe, fum.
-	@end example
+@example
+:- module blah.
+:- import_module fee, fie, foe, fum.
+@end example
 
 @noindent
 This example defines a module @samp{blah}, which has
@@ -1782,6 +1781,15 @@ The @var{level} should be one of
 Output a bytecode form of the module for use
 by an experimental debugger.
 
+@item --generate-bytecode
+@c Output a bytecode version of the module
+@c into the @file{@var{module}.bytecode} file,
+@c and a human-readable version of the bytecode
+@c into the @file{@var{module}.bytedebug} file.
+@c The bytecode is for an experimental debugger.
+Output a bytecode form of the module for use
+by an experimental debugger.
+
 @item --generate-prolog
 Convert the program to Prolog.  Output to file @file{@var{module}.pl}
 or @file{@var{module}.nl} (depending the the dialect).
@@ -2168,8 +2176,8 @@ at the @samp{mdb} prompt.
 XXX We should document this in more detail.
 
 @sp 1
-@item @code{--args @{old, compact@}}
-@item @code{--arg-convention @{old, compact@}}
+@item @code{--args @{simple, compact@}}
+@item @code{--arg-convention @{simple, compact@}}
 (This option is not intended for general use.)
 Use the specified argument passing convention
 in the generated low-level C code.
