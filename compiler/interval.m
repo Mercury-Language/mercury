@@ -177,7 +177,6 @@
 
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
-:- import_module ll_backend.
 :- import_module hlds__arg_info.
 :- import_module hlds__code_model.
 :- import_module hlds__goal_util.
@@ -188,9 +187,10 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module ll_backend.
 :- import_module ll_backend__call_gen.
-:- import_module ll_backend__live_vars.
 :- import_module ll_backend__liveness.
+:- import_module ll_backend__live_vars.
 :- import_module ll_backend__store_alloc.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_type.

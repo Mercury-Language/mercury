@@ -220,11 +220,9 @@ output_float(Val, !IO) :-
 float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 	float_to_float64_bytes(Val, B0, B1, B2, B3, B4, B5, B6, B7).
 
-/*
-** Convert a `float' to the representation used in the bytecode.
-** That is, a sequence of eight bytes.
-*/
-
+	% Convert a `float' to the representation used in the bytecode.
+	% That is, a sequence of eight bytes.
+	%
 :- pred float_to_float64_bytes(float::in,
 	int::out, int::out, int::out, int::out,
 	int::out, int::out, int::out, int::out) is det.
@@ -239,7 +237,7 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 		unsigned char	*raw_mem_p;
 
 		float64 = (MR_Float64) FloatVal;
-		raw_mem_p = (unsigned char*) &float64;
+		raw_mem_p = (unsigned char *) &float64;
 
 		#if defined(MR_BIG_ENDIAN)
 			B0 = raw_mem_p[0];
