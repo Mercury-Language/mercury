@@ -417,10 +417,14 @@ mercury_compile(Module) -->
 		( { UnusedArgs = yes } ->
 			globals__io_set_option(optimize_unused_args, bool(no)),
 			mercury_compile__maybe_unused_args(HLDS21,
-				Verbose, Stats, _)
+				Verbose, Stats, HLDS22)
 	    	;
-			[]
-	    	)
+			{ HLDS22 = HLDS21 }
+	    	),
+		% magic sets can report errors.
+		mercury_compile__maybe_transform_dnf(HLDS22,
+			Verbose, Stats, HLDS23),
+		mercury_compile__maybe_magic(HLDS23, Verbose, Stats, _)
 	    ; { MakeOptInt = yes } ->
 		% only run up to typechecking when making the .opt file
 	    	[]
