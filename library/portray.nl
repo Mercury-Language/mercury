@@ -42,7 +42,47 @@ portray2(Term) :-
 		write(Term)
 	).
 
-spyHook(_,Term) :-
-	write(Term), writeln(.).
+spyHook(A,Term) :-
+	interactive_display(1, Term).
+
+interactive_display(Depth, Term) :-
+	( portray(Term) ->
+		true
+	;
+		write('<<'),
+		write(Term),
+		write('>>')
+	),
+	nl,
+	( nonvar(Term) ->
+		write(Depth),
+		write('> select arg to display (h for help): '),
+		flushOutput(user_output),
+		read(Num),
+		( Num = 'a' ->
+			write(Term), writeln('.')
+		; Num = 'e' ->
+			fail
+		; Num = 0 ->
+			true
+		; Num = 'h' ->
+			write('h = help'), nl,
+			write('0 = return (1 level)'), nl,
+			write('e = exit (all levels)'), nl,
+			write('a = display all'), nl,
+			write('<number> = display nth argument'), nl,
+			nl,
+			interactive_display(Depth, Term)
+		; arg(Num, Term, Arg) ->
+			Depth1 is Depth + 1,
+			interactive_display(Depth1, Arg),
+			interactive_display(Depth, Term)
+		;
+			write('Invalid response'), nl,
+			interactive_display(Depth, Term)
+		)
+	;
+		true
+	).
 
 %-----------------------------------------------------------------------------%
