@@ -157,13 +157,13 @@
 	--->	layout_label_info(
 			set(var_info),
 				% live vars and their locations/names
-			set(pair(tvar, lval))
+			map(tvar, set(layout_locn))
 				% locations of polymorphic type vars
 		).
 
 :- type var_info
 	--->	var_info(
-			lval,		% the location of the variable
+			layout_locn,	% the location of the variable
 			live_value_type % info about the variable
 		).
 
@@ -298,11 +298,11 @@ continuation_info__process_continuation(WantReturnInfo, Label - LiveInfoList,
 	),
 	( WantReturnInfo = yes ->
 		continuation_info__convert_return_data(LiveInfoList,
-			VarInfoSet, TypeInfoSet),
+			VarInfoSet, TypeInfoMap),
 		(
 			Return0 = no,
 			Return = yes(layout_label_info(VarInfoSet,
-				TypeInfoSet))
+				TypeInfoMap))
 		;
 				% If a var is known to be dead
 				% on return from one call, it
@@ -311,7 +311,7 @@ continuation_info__process_continuation(WantReturnInfo, Label - LiveInfoList,
 				% the same return address either.
 			Return0 = yes(layout_label_info(LV0, TV0)),
 			set__intersect(LV0, VarInfoSet, LV),
-			set__intersect(TV0, TypeInfoSet, TV),
+			map__intersect(set__intersect, TV0, TypeInfoMap, TV),
 			Return = yes(layout_label_info(LV, TV))
 		)
 	;
@@ -321,21 +321,22 @@ continuation_info__process_continuation(WantReturnInfo, Label - LiveInfoList,
 	map__set(Internals0, Label, Internal, Internals).
 
 :- pred continuation_info__convert_return_data(list(liveinfo)::in,
-	set(var_info)::out, set(pair(tvar, lval))::out) is det.
+	set(var_info)::out, map(tvar, set(layout_locn))::out) is det.
 
-continuation_info__convert_return_data(LiveInfos, VarInfoSet, TypeInfoSet) :-
+continuation_info__convert_return_data(LiveInfos, VarInfoSet, TypeInfoMap) :-
 	GetVarInfo = lambda([LiveLval::in, VarInfo::out] is det, (
 		LiveLval = live_lvalue(Lval, LiveValueType, _),
 		VarInfo = var_info(Lval, LiveValueType)
 	)),
 	list__map(GetVarInfo, LiveInfos, VarInfoList),
-	GetTypeInfo = lambda([LiveLval::in, TypeInfos::out] is det, (
-		LiveLval = live_lvalue(_, _, TypeInfos)
+	GetTypeInfo = lambda([LiveLval::in, LiveTypeInfoMap::out] is det, (
+		LiveLval = live_lvalue(_, _, LiveTypeInfoMap)
 	)),
-	list__map(GetTypeInfo, LiveInfos, TypeInfoListList),
-	list__condense(TypeInfoListList, TypeInfoList),
-	list__sort_and_remove_dups(TypeInfoList, SortedTypeInfoList),
-	set__sorted_list_to_set(SortedTypeInfoList, TypeInfoSet),
+	list__map(GetTypeInfo, LiveInfos, TypeInfoMapList),
+	map__init(Empty),
+	list__foldl(lambda([TIM1::in, TIM2::in, TIM::out] is det,
+		map__union(set__intersect, TIM1, TIM2, TIM)),
+		TypeInfoMapList, Empty, TypeInfoMap),
 	set__list_to_set(VarInfoList, VarInfoSet).
 
 :- pred continuation_info__filter_named_vars(list(liveinfo)::in,

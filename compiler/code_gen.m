@@ -655,7 +655,17 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
 		( { MaybeTraceInfo = yes(TraceInfo) } ->
 			trace__generate_external_event_code(exit, TraceInfo,
 				_, TypeInfoDatas, TraceExitCode),
-			{ assoc_list__values(TypeInfoDatas, TypeInfoLvals) }
+			{ map__values(TypeInfoDatas, TypeInfoLocnSets) },
+			{ FindBaseLvals = lambda([Lval::out] is nondet, (
+				list__member(LocnSet, TypeInfoLocnSets),
+				set__member(Locn, LocnSet),
+				(
+					Locn = direct(Lval)
+				;
+					Locn = indirect(Lval, _)
+				)
+			)) },
+			{ solutions(FindBaseLvals, TypeInfoLvals) }
 		;
 			{ TraceExitCode = empty },
 			{ TypeInfoLvals = [] }
@@ -886,8 +896,10 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
         ;
 		Instrn0 = call(Target, ReturnLabel, LiveVals0, CM)
 	->
+		map__init(Empty),
 		Instrn  = call(Target, ReturnLabel, 
-			[live_lvalue(stackvar(StackLoc), succip, []) |
+			[live_lvalue(direct(stackvar(StackLoc)),
+				succip, Empty) |
 			LiveVals0], CM)
 	;
 		Instrn = Instrn0

@@ -198,7 +198,10 @@ MR_lookup_live_lval_base(MR_Live_Lval locn, Word *saved_regs,
 	Word *base_sp, Word *base_curfr, bool *succeeded)
 {
 	int	locn_num;
+	int	offset;
 	Word	value;
+	Word	baseaddr;
+	Word	sublocn;
 
 	*succeeded = FALSE;
 	value = 0;
@@ -265,6 +268,23 @@ MR_lookup_live_lval_base(MR_Live_Lval locn, Word *saved_regs,
 			if (MR_print_locn) {
 				printf("sp");
 			}
+			break;
+
+		case MR_LVAL_TYPE_INDIRECT:
+			offset = MR_LIVE_LVAL_INDIRECT_OFFSET(locn_num);
+			sublocn = MR_LIVE_LVAL_INDIRECT_BASE_LVAL(locn_num);
+			if (MR_print_locn) {
+				printf("offset %d from ", offset);
+			}
+			baseaddr = MR_lookup_live_lval_base(sublocn,
+					saved_regs, base_sp, base_curfr,
+					succeeded);
+			if (! succeeded) {
+				break;
+			}
+			value = MR_typeclass_info_superclass_info(baseaddr,
+				offset);
+			*succeeded = TRUE;
 			break;
 
 		case MR_LVAL_TYPE_UNKNOWN:
@@ -368,6 +388,7 @@ MR_get_type_filtered(const MR_Stack_Layout_Var *var, Word *saved_regs,
 	const char *name, Word *type_info)
 {
 	return ((strncmp(name, "TypeInfo", 8) != 0)
+	       && (strncmp(name, "TypeClassInfo", 13) != 0)
 	       && (strncmp(name, "ModuleInfo", 10) != 0)
 	       && (strncmp(name, "HLDS", 4) != 0)
 	       && MR_get_type(var, saved_regs, NULL, type_info));
