@@ -24,25 +24,43 @@
 ** thus detecting area overflow.
 */
 
+/* the following should be derived by autoconf */
 #ifdef	__svr4__
-
-#include <sys/types.h>
-#include <sys/mman.h>
-
-#define	getpagesize()	sysconf(_SC_PAGESIZE)
-
-#else
-
-#define	memalign(a,s)	malloc(s)
-
-extern	int	getpagesize(void);
-
+#define	HAVE_MPROTECT
+#define	HAVE_SIGINFO
+#define	HAVE_SYSCONF
+#define	HAVE_MEMALIGN
 #endif
 
-#include <signal.h>
+#ifdef	HAVE_MPROTECT
+#include <sys/types.h>
+#include <sys/mman.h>
+#endif
 
-static	void	mer_sighandler(int);
+#ifdef	HAVE_SIGINFO
+#include <signal.h>
+#include <siginfo.h>
+#include <ucontext.h>
+static	void	complex_bushandler(int, siginfo_t *, void *);
+static	void	complex_segvhandler(int, siginfo_t *, void *);
+#else
+#include <signal.h>
+static	void	simple_sighandler(int);
+#endif
+
+#ifdef	HAVE_SYSCONF
+#define	getpagesize()	sysconf(_SC_PAGESIZE)
+#else
+extern	int	getpagesize(void);
+#endif
+
+#ifndef	HAVE_MEMALIGN
+#define	memalign(a,s)	malloc(s)
+#endif
+
 static	int	roundup(int, int);
+static	void	do_mprotect(void);
+static	void	do_signal(void);
 
 Word	unreal_reg_0;
 Word	unreal_reg_1;
@@ -257,22 +275,36 @@ void init_memory(void)
 		exit(0);
 	}
 
-#ifdef	__svr4__
+	do_mprotect();
+	do_signal();
+}
 
-	/*
-	** DESCRIPTION
-	**  The function mprotect() changes the  access  protections  on
-	**  the mappings specified by the range [addr, addr + len) to be
-	**  that specified by prot.  Legitimate values for prot are  the
-	**  same  as  those  permitted  for  mmap  and  are  defined  in
-	**  <sys/mman.h> as:
-	**
-	** PROT_READ    page can be read 
-	** PROT_WRITE   page can be written
-	** PROT_EXEC    page can be executed
-	** PROT_NONE    page can not be accessed
-	*/
+static int roundup(int value, int align)
+{
+	if ((value & (align - 1)) != 0)
+		value += align - (value & (align - 1));
 
+	return value;
+}
+
+#ifdef	HAVE_MPROTECT
+
+/*
+** DESCRIPTION
+**  The function mprotect() changes the  access  protections  on
+**  the mappings specified by the range [addr, addr + len) to be
+**  that specified by prot.  Legitimate values for prot are  the
+**  same  as  those  permitted  for  mmap  and  are  defined  in
+**  <sys/mman.h> as:
+**
+** PROT_READ    page can be read 
+** PROT_WRITE   page can be written
+** PROT_EXEC    page can be executed
+** PROT_NONE    page can not be accessed
+*/
+
+void do_mprotect(void)
+{
 	heap_zone = (char *) (heapend) - heap_zone_size;
 	if (mprotect(heap_zone, heap_zone_size, PROT_NONE) != 0)
 	{
@@ -293,31 +325,136 @@ void init_memory(void)
 		perror("cannot protect nondstack redzone");
 		exit(1);
 	}
+}
+
+#else
+
+void do_mprotect(void)
+{
+	heap_zone      = NULL;
+	detstack_zone  = NULL;
+	nondstack_zone = NULL;
+}
 
 #endif
 
-	if (signal(SIGBUS, mer_sighandler) == SIG_ERR)
+#ifdef	HAVE_SIGINFO
+
+void do_signal(void)
+{
+	struct sigaction	act;
+
+	act.sa_flags = SA_SIGINFO;
+	if (sigemptyset(&act.sa_mask) != 0)
+	{
+		perror("cannot set clear signal mask");
+		exit(1);
+	}
+
+	act.sa_sigaction = complex_bushandler;
+	if (sigaction(SIGBUS, &act, NULL) != 0)
 	{
 		perror("cannot set SIGBUS handler");
 		exit(1);
 	}
 
-	if (signal(SIGSEGV, mer_sighandler) == SIG_ERR)
+	act.sa_sigaction = complex_segvhandler;
+	if (sigaction(SIGSEGV, &act, NULL) != 0)
 	{
 		perror("cannot set SIGSEGV handler");
 		exit(1);
 	}
 }
 
-static int roundup(int value, int align)
+static void complex_bushandler(int sig, siginfo_t *info, void *context)
 {
-	if ((value & (align - 1)) != 0)
-		value += align - (value & (align - 1));
+	if (sig != SIGBUS || info->si_signo != SIGBUS)
+	{
+		printf("\n*** caught strange bus error ***\n");
+		exit(1);
+	}
 
-	return value;
+	printf("\n*** caught bus error ***\n");
+
+	if (info->si_code > 0)
+	{
+		printf("cause: ");
+		switch (info->si_code)
+		{
+
+	case BUS_ADRALN:	printf("invalid address alignment\n");
+	when BUS_ADRERR:	printf("non-existent physical address\n");
+	when BUS_OBJERR:	printf("object specific hardware error\n");
+	otherwise:		printf("unknown\n");
+
+		}
+
+		printf("address involved: %p\n", info->si_addr);
+	}
+
+	exit(1);
 }
 
-static void mer_sighandler(int sig)
+static void complex_segvhandler(int sig, siginfo_t *info, void *context)
+{
+	if (sig != SIGSEGV || info->si_signo != SIGSEGV)
+	{
+		printf("\n*** caught strange segmentation violation ***\n");
+		exit(1);
+	}
+
+	printf("\n*** caught segmentation violation ***\n");
+
+	if (info->si_code > 0)
+	{
+		printf("cause: ");
+		switch (info->si_code)
+		{
+
+	case SEGV_MAPERR:	printf("address not mapped to object\n");
+	when SEGV_ACCERR:	printf("invalid permissions for mapped object\n");
+	otherwise:		printf("unknown\n");
+
+		}
+
+		printf("address involved: %p\n", info->si_addr);
+
+		if (heap_zone != NULL && heap_zone <= info->si_addr
+		&& info->si_addr <= heap_zone + heap_zone_size)
+			printf("address is in heap red zone\n");
+		or (detstack_zone != NULL && detstack_zone <= info->si_addr
+		&& info->si_addr <= detstack_zone + detstack_zone_size)
+			printf("address is in detstack red zone\n");
+		or (nondstack_zone != NULL && nondstack_zone <= info->si_addr
+		&& info->si_addr <= nondstack_zone + nondstack_zone_size)
+			printf("address is in nondstack red zone\n");
+
+		printf("PC at the time: %d (%x)\n",
+			((ucontext_t *) context)->uc_mcontext.gregs[REG_PC],
+			((ucontext_t *) context)->uc_mcontext.gregs[REG_PC]);
+	}
+
+	exit(1);
+}
+
+#else
+
+void do_signal(void)
+{
+	if (signal(SIGBUS, simple_sighandler) == SIG_ERR)
+	{
+		perror("cannot set SIGBUS handler");
+		exit(1);
+	}
+
+	if (signal(SIGSEGV, simple_sighandler) == SIG_ERR)
+	{
+		perror("cannot set SIGSEGV handler");
+		exit(1);
+	}
+}
+
+static void simple_sighandler(int sig)
 {
 	switch (sig)
 	{
@@ -332,3 +469,5 @@ otherwise:	printf("*** caught unknown signal ***\n");
 
 	exit(1);
 }
+
+#endif

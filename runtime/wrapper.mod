@@ -99,6 +99,7 @@ static void process_options(int argc, char *argv[])
 	List	*ptr;
 	List	*label_list;
 	Label	*label;
+	FILE	*sfp;
 	char    input_name[256];
 
 	progname = argv[0];
@@ -117,12 +118,18 @@ static void process_options(int argc, char *argv[])
 
 		case 'c':	check_space = TRUE;
 
-		when 'l':	label_list = get_all_labels();
+		when 'l':	sfp = popen("sort -n", "w");
+				label_list = get_all_labels();
 				for_list (ptr, label_list)
 				{
 					label = (Label *) ldata(ptr);
-					printf("%s\n", label->e_name);
+					fprintf(sfp, "%u %x %s\n",
+						(unsigned) label->e_addr,
+						(unsigned) label->e_addr,
+						label->e_name);
 				}
+
+				pclose(sfp);
 
 		when 't':	use_own_timer = TRUE;
 
