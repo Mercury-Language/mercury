@@ -665,7 +665,7 @@ output_to_file(FileName, Action, Result) -->
 		io__set_output_stream(FileStream, OutputStream),
 		Action(ActionResult),
 		io__set_output_stream(OutputStream, _),
-		io__close_output(OutputStream),
+		io__close_output(FileStream),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats),
 		{ Result = yes(ActionResult) }
