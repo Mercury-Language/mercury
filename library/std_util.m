@@ -2249,8 +2249,9 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                  * then we can just use the code for simple tags.
                  */
             data_value = (Word) ((Word *) data_value + 1);
-            entry_value = MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
-                entry_value, secondary_tag);
+            entry_value = (Word)
+	    	MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+		    entry_value, secondary_tag);
             entry_value = strip_tag(entry_value);
         }   /* fallthru */
 

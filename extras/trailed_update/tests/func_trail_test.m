@@ -98,11 +98,11 @@ void leave_failing(int handle, MR_untrail_reason reason) {
 
 :- pragma c_code(enter(I::in), will_not_call_mercury, "
 	printf("">> enter (%d)\n"", (int) I);
-	MR_trail_function(leave_failing, I);
+	MR_trail_function(leave_failing, (void *) I);
 ").
 
 
 :- pragma c_code(leave(I::in), will_not_call_mercury, "
 	printf(""<< leave (%d)\n"", (int) I);
-	MR_trail_function(enter_failing, I);
+	MR_trail_function(enter_failing, (void *) I);
 ").

@@ -1294,16 +1294,18 @@ END_MODULE
 INIT sys_init_table_suspend_module
 INIT sys_init_table_resume_module
 */
+
+extern ModuleFunc table_suspend_module;
+extern ModuleFunc table_resume_module;
+
 void sys_init_table_suspend_module(void);
 	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_table_suspend_module(void) {
-	extern ModuleFunc table_suspend_module;
 	table_suspend_module();
 }
 void sys_init_table_resume_module(void);
 	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_table_resume_module(void) {
-	extern ModuleFunc table_resume_module;
 	table_resume_module();
 }
 

@@ -622,7 +622,7 @@ Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 	framevar(3) = 0;
 	mark_hp(framevar(5));
 #ifdef MR_USE_TRAIL
-	framevar(6) = MR_trail_ptr;
+	framevar(6) = (Word) MR_trail_ptr;
 #endif
 	framevar(4) = MR_get_user_cpu_miliseconds();
 
@@ -654,7 +654,7 @@ Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 	restore_hp(framevar(5));
 #ifdef MR_USE_TRAIL
 	/* ... and the trail pointer */
-	MR_trail_ptr = framevar(6);
+	MR_trail_ptr = (MR_TrailEntry *) framevar(6);
 #endif
 
 	/* are there any other iterations? */
@@ -717,7 +717,7 @@ Define_entry(mercury__benchmarking__benchmark_det_5_0);
 
 	incr_sp(BENCHMARK_DET_STACK_SLOTS);
 #ifdef MR_USE_TRAIL
-	detstackvar(7) = MR_trail_ptr;
+	detstackvar(7) = (Word) MR_trail_ptr;
 #endif
 	detstackvar(6) = (Word) succip;
 	mark_hp(detstackvar(5));
@@ -754,8 +754,9 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 		/* yes, so set up the call just like last time */
 #ifdef MR_USE_TRAIL
 		/* Restore the trail... */
-		MR_untrail_to(detstackvar(7), MR_undo);
-		MR_trail_ptr = detstackvar(7);
+		MR_TrailEntry *old_trail_ptr = (MR_TrailEntry *) detstackvar(7);
+		MR_untrail_to(old_trail_ptr, MR_undo);
+		MR_trail_ptr = old_trail_ptr;
 #endif
 		restore_hp(detstackvar(5));
 		r1 = detstackvar(1);

@@ -150,6 +150,12 @@
 		int	hi;						\
 		int	diff;						\
 									\
+		/*							\
+		** We initialize `element' here only to avoid gcc	\
+		** warnings about possibly accessing an uninitialized	\
+		** variable in code using MR_bsearch().			\
+		*/							\
+		(element) = 0;						\
 		lo = 0;							\
 		hi = (next) - 1;					\
 		(found) = FALSE;					\
