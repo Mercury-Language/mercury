@@ -1,0 +1,146 @@
+
+This file contains the relevant part of config/rs6000/rs6000.h from the
+GNU C source code which describes how each register is used.
+
+/* Standard register usage.  */
+
+/* Number of actual hardware registers.
+   The hardware registers are assigned numbers for the compiler
+   from 0 to just below FIRST_PSEUDO_REGISTER.
+   All registers that the compiler knows about must be given numbers,
+   even those that are not normally considered general registers.
+
+   RS/6000 has 32 fixed-point registers, 32 floating-point registers,
+   an MQ register, a count register, a link register, and 8 condition
+   register fields, which we view here as separate registers.
+
+   In addition, the difference between the frame and argument pointers is
+   a function of the number of registers saved, so we need to have a
+   register for AP that will later be eliminated in favor of SP or FP.
+   This is a normal register, but it is fixed.  */
+
+#define FIRST_PSEUDO_REGISTER 76
+
+/* 1 for registers that have pervasive standard uses
+   and are not available for the register allocator.
+
+   On RS/6000, r1 is used for the stack and r2 is used as the TOC pointer.  
+
+   cr5 is not supposed to be used.
+
+   On System V implementations, r13 is fixed and not available for use.  */
+
+#ifndef FIXED_R13
+#define FIXED_R13 0
+#endif
+
+#define FIXED_REGISTERS  \
+  {0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, FIXED_R13, 0, 0, \
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+   0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0}
+
+/* 1 for registers not available across function calls.
+   These must include the FIXED_REGISTERS and also any
+   registers that can be used without being saved.
+   The latter must include the registers where values are returned
+   and the register where structure-value addresses are passed.
+   Aside from that, you can include as many other registers as you like.  */
+
+#define CALL_USED_REGISTERS  \
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, FIXED_R13, 0, 0, \
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, \
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+   1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1}
+
+/* List the order in which to allocate registers.  Each register must be
+   listed once, even those in FIXED_REGISTERS.
+
+   We allocate in the following order:
+	fp0		(not saved or used for anything)
+	fp13 - fp2	(not saved; incoming fp arg registers)
+	fp1		(not saved; return value)
+ 	fp31 - fp14	(saved; order given to save least number)
+	cr1, cr6, cr7	(not saved or special)
+	cr0		(not saved, but used for arithmetic operations)
+	cr2, cr3, cr4	(saved)
+        r0		(not saved; cannot be base reg)
+	r9		(not saved; best for TImode)
+	r11, r10, r8-r4	(not saved; highest used first to make less conflict)
+	r3     		(not saved; return value register)
+	r31 - r13	(saved; order given to save least number)
+	r12		(not saved; if used for DImode or DFmode would use r13)
+	mq		(not saved; best to use it if we can)
+	ctr		(not saved; when we have the choice ctr is better)
+	lr		(saved)
+        cr5, r1, r2, ap	(fixed)  */
+
+#define REG_ALLOC_ORDER					\
+  {32, 							\
+   45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34,	\
+   33,							\
+   63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51,	\
+   50, 49, 48, 47, 46, 					\
+   69, 74, 75, 68, 70, 71, 72,				\
+   0,							\
+   9, 11, 10, 8, 7, 6, 5, 4,				\
+   3,							\
+   31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19,	\
+   18, 17, 16, 15, 14, 13, 12,				\
+   64, 66, 65, 						\
+   73, 1, 2, 67}
+
+/* True if register is floating-point.  */
+#define FP_REGNO_P(N) ((N) >= 32 && (N) <= 63)
+
+/* True if register is a condition register.  */
+#define CR_REGNO_P(N) ((N) >= 68 && (N) <= 75)
+
+/* True if register is an integer register.  */
+#define INT_REGNO_P(N) ((N) <= 31 || (N) == 67)
+
+/* How to refer to registers in assembler output.
+   This sequence is indexed by compiler's hard-register-number (see above).  */
+
+#define REGISTER_NAMES \
+ {"0", "1", "2", "3", "4", "5", "6", "7", 		\
+  "8", "9", "10", "11", "12", "13", "14", "15",		\
+  "16", "17", "18", "19", "20", "21", "22", "23",	\
+  "24", "25", "26", "27", "28", "29", "30", "31",	\
+  "0", "1", "2", "3", "4", "5", "6", "7",		\
+  "8", "9", "10", "11", "12", "13", "14", "15",		\
+  "16", "17", "18", "19", "20", "21", "22", "23",	\
+  "24", "25", "26", "27", "28", "29", "30", "31",	\
+  "mq", "lr", "ctr", "ap",				\
+  "0", "1", "2", "3", "4", "5", "6", "7" }
+
+/* Table of additional register names to use in user input.  */
+
+#define ADDITIONAL_REGISTER_NAMES \
+ {"r0",    0, "r1",    1, "r2",    2, "r3",    3,	\
+  "r4",    4, "r5",    5, "r6",    6, "r7",    7,	\
+  "r8",    8, "r9",    9, "r10",  10, "r11",  11,	\
+  "r12",  12, "r13",  13, "r14",  14, "r15",  15,	\
+  "r16",  16, "r17",  17, "r18",  18, "r19",  19,	\
+  "r20",  20, "r21",  21, "r22",  22, "r23",  23,	\
+  "r24",  24, "r25",  25, "r26",  26, "r27",  27,	\
+  "r28",  28, "r29",  29, "r30",  30, "r31",  31,	\
+  "fr0",  32, "fr1",  33, "fr2",  34, "fr3",  35,	\
+  "fr4",  36, "fr5",  37, "fr6",  38, "fr7",  39,	\
+  "fr8",  40, "fr9",  41, "fr10", 42, "fr11", 43,	\
+  "fr12", 44, "fr13", 45, "fr14", 46, "fr15", 47,	\
+  "fr16", 48, "fr17", 49, "fr18", 50, "fr19", 51,	\
+  "fr20", 52, "fr21", 53, "fr22", 54, "fr23", 55,	\
+  "fr24", 56, "fr25", 57, "fr26", 58, "fr27", 59,	\
+  "fr28", 60, "fr29", 61, "fr30", 62, "fr31", 63,	\
+  /* no additional names for: mq, lr, ctr, ap */	\
+  "cr0",  68, "cr1",  69, "cr2",  70, "cr3",  71,	\
+  "cr4",  72, "cr5",  73, "cr6",  74, "cr7",  75,	\
+  "cc",   68 }
+
+/* How to renumber registers for dbx and gdb.  */
+
+#define DBX_REGISTER_NUMBER(REGNO) (REGNO)
+
