@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -133,3 +133,54 @@ bimap__from_assoc_list(L, bimap(O, C)) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Functional forms added.
+
+:- interface.
+
+:- func bimap__init = bimap(_,_).
+
+:- func bimap__lookup(bimap(K,V), K) = V.
+
+:- func bimap__set(bimap(K,V), K, V) = bimap(K,V).
+
+:- func bimap__ordinates(bimap(K, _V)) = list(K).
+
+:- func bimap__coordinates(bimap(_K, V)) = list(V).
+
+:- func bimap__to_assoc_list(bimap(K,V)) = assoc_list(K,V).
+
+:- func bimap__from_assoc_list(assoc_list(K,V)) = bimap(K,V).
+
+%%% :- func bimap__from_corresponding_lists(list(K), list(V)) = bimap(K, V).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+bimap__init = BM :-
+	bimap__init(BM).
+
+bimap__lookup(BM, K) = V :-
+	bimap__lookup(BM, K, V).
+
+bimap__set(BM1, K, V) = BM2 :-
+	bimap__set(BM1, K, V, BM2).
+
+bimap__ordinates(BM) = Ks :-
+	bimap__ordinates(BM, Ks).
+
+bimap__coordinates(BM) = Vs :-
+	bimap__coordinates(BM, Vs).
+
+bimap__to_assoc_list(BM) = AL :-
+	bimap__to_assoc_list(BM, AL).
+
+bimap__from_assoc_list(AL) = BM :-
+	bimap__from_assoc_list(AL, BM).
+
+%%% bimap__from_corresponding_lists(Ks, Vs) = BM :-
+%%% 	bimap__from_corresponding_lists(Ks, Vs, BM).
+
+

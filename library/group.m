@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -247,3 +247,59 @@ group__set_elements(G0, E, G) :-
 	G = group(C, S, E).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func group__init = group(T).
+
+:- func group__insert(group(T), set(T)) = group(T).
+
+:- func group__group(group(T), T) = set(T).
+
+:- func group__to_set(group(T)) = set(set(T)).
+
+:- func group__sets_and_keys(group(T)) = assoc_list(set(T), group__key).
+
+:- func group__group_key(group(T), T) = group__key.
+
+:- func group__key_group(group(T), group__key) = set(T).
+
+:- func group__largest_group_key(group(T)) = group__key.
+
+:- func group__group_keys(group(T)) = list(group__key).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+group__init = G :-
+	group__init(G).
+
+group__insert(G1, S) = G2 :-
+	group__insert(G1, S, G2).
+
+group__group(G, T) = S :-
+	group__group(G, T, S).
+
+group__to_set(G) = SS :-
+	group__to_set(G, SS).
+
+group__sets_and_keys(G) = AL :-
+	group__sets_and_keys(G, AL).
+
+group__group_key(G, T) = K :-
+	group__group_key(G, T, K).
+
+group__key_group(G, K) = S :-
+	group__key_group(G, K, S).
+
+group__largest_group_key(G) = K :-
+	group__largest_group_key(G, K).
+
+group__group_keys(G) = Ks :-
+	group__group_keys(G, Ks).
+

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -298,3 +298,57 @@ eqvclass__make_partition([Element | Elements], Id, ElementMap0, ElementMap) :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func eqvclass__init = eqvclass(T).
+
+:- func eqvclass__ensure_element(eqvclass(T), T) = eqvclass(T).
+
+:- func eqvclass__new_element(eqvclass(T), T) = eqvclass(T).
+
+:- func eqvclass__ensure_equivalence(eqvclass(T), T, T) = eqvclass(T).
+
+:- func eqvclass__new_equivalence(eqvclass(T), T, T) = eqvclass(T).
+
+:- func eqvclass__partition_set(eqvclass(T)) = set(set(T)).
+
+:- func eqvclass__partition_list(eqvclass(T)) = list(set(T)).
+
+:- func eqvclass__partition_set_to_eqvclass(set(set(T))) = eqvclass(T).
+
+:- func eqvclass__partition_list_to_eqvclass(list(set(T))) = eqvclass(T).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+eqvclass__init = EC :-
+	eqvclass__init(EC).
+
+eqvclass__ensure_element(EC1, X) = EC2 :-
+	eqvclass__ensure_element(EC1, X, EC2).
+
+eqvclass__new_element(EC1, X) = EC2 :-
+	eqvclass__new_element(EC1, X, EC2).
+
+eqvclass__ensure_equivalence(EC1, X, Y) = EC2 :-
+	eqvclass__ensure_equivalence(EC1, X, Y, EC2).
+
+eqvclass__new_equivalence(EC1, X, Y) = EC2 :-
+	eqvclass__new_equivalence(EC1, X, Y, EC2).
+
+eqvclass__partition_set(EC) = S :-
+	eqvclass__partition_set(EC, S).
+
+eqvclass__partition_list(EC) = Xs :-
+	eqvclass__partition_list(EC, Xs).
+
+eqvclass__partition_set_to_eqvclass(S) = EC :-
+	eqvclass__partition_set_to_eqvclass(S, EC).
+
+eqvclass__partition_list_to_eqvclass(Xs) = EC :-
+	eqvclass__partition_list_to_eqvclass(Xs, EC).

@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -1196,5 +1196,101 @@ set_bbbtree__split_gt(tree(V, _N, L, R), X, Set, Ratio) :-
 		Set = R
 	).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cam.sri.com> 24/04/99
+%	Function forms added.
+
+:- interface.
+
+:- func set_bbbtree__list_to_set(list(T)) = set_bbbtree(T).
+
+:- func set_bbbtree__sorted_list_to_set(list(T)) = set_bbbtree(T).
+
+:- func set_bbbtree__to_sorted_list(set_bbbtree(T)) = list(T).
+
+:- func set_bbbtree__init = set_bbbtree(T).
+
+:- func set_bbbtree__make_singleton_set(T) = set_bbbtree(T).
+
+:- func set_bbbtree__insert(set_bbbtree(T), T) = set_bbbtree(T).
+
+:- func set_bbbtree__insert_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
+
+:- func set_bbbtree__delete(set_bbbtree(T), T) = set_bbbtree(T).
+
+:- func set_bbbtree__delete_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
+
+:- func set_bbbtree__union(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
+
+:- func set_bbbtree__power_union(set_bbbtree(set_bbbtree(T))) = set_bbbtree(T).
+
+:- func set_bbbtree__intersect(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
+
+:- func set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T))) = set_bbbtree(T).
+
+:- func set_bbbtree__difference(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
+
+:- func set_bbbtree__map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
+
+:- func set_bbbtree__filter_map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
+:- mode set_bbbtree__filter_map(func(in) = out is semidet, in) = out is det.
+
+:- func set_bbbtree__fold(func(T1, T2) = T2, set_bbbtree(T1), T2) = T2.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+set_bbbtree__list_to_set(Xs) = S :-
+	set_bbbtree__list_to_set(Xs, S).
+
+set_bbbtree__sorted_list_to_set(Xs) = S :-
+	set_bbbtree__sorted_list_to_set(Xs, S).
+
+set_bbbtree__to_sorted_list(S) = Xs :-
+	set_bbbtree__to_sorted_list(S, Xs).
+
+set_bbbtree__init = S :-
+	set_bbbtree__init(S).
+
+set_bbbtree__make_singleton_set(T) = S :-
+	set_bbbtree__singleton_set(S, T).
+
+set_bbbtree__insert(S1, T) = S2 :-
+	set_bbbtree__insert(S1, T, S2).
+
+set_bbbtree__insert_list(S1, Xs) = S2 :-
+	set_bbbtree__insert_list(S1, Xs, S2).
+
+set_bbbtree__delete(S1, T) = S2 :-
+	set_bbbtree__delete(S1, T, S2).
+
+set_bbbtree__delete_list(S1, Xs) = S2 :-
+	set_bbbtree__delete_list(S1, Xs, S2).
+
+set_bbbtree__union(S1, S2) = S3 :-
+	set_bbbtree__union(S1, S2, S3).
+
+set_bbbtree__power_union(SS) = S :-
+	set_bbbtree__power_union(SS, S).
+
+set_bbbtree__intersect(S1, S2) = S3 :-
+	set_bbbtree__intersect(S1, S2, S3).
+
+set_bbbtree__power_intersect(SS) = S :-
+	set_bbbtree__power_intersect(SS, S).
+
+set_bbbtree__difference(S1, S2) = S3 :-
+	set_bbbtree__difference(S1, S2, S3).
+
+set_bbbtree__map(F, S1) = S2 :-
+	S2 = set_bbbtree__list_to_set(list__map(F, set_bbbtree__to_sorted_list(S1))).
+
+set_bbbtree__filter_map(PF, S1) = S2 :-
+	S2 = set_bbbtree__list_to_set(list__filter_map(PF, set_bbbtree__to_sorted_list(S1))).
+
+set_bbbtree__fold(F, S, A) = B :-
+	B = list__foldl(F, set_bbbtree__to_sorted_list(S), A).
+

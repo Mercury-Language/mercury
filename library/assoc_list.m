@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -128,3 +128,35 @@ assoc_list__remove([K - V | KVs], Key, Value, Rest) :-
 	).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Functional forms added.
+
+:- interface.
+
+:- func assoc_list__reverse_members(assoc_list(K, V)) = assoc_list(V, K).
+
+:- func assoc_list__from_corresponding_lists(list(K), list(V)) = assoc_list(K,V).
+
+:- func assoc_list__keys(assoc_list(K, V)) = list(K).
+
+:- func assoc_list__values(assoc_list(K, V)) = list(V).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+assoc_list__reverse_members(AL1) = AL2 :-
+	assoc_list__reverse_members(AL1, AL2).
+
+assoc_list__from_corresponding_lists(Ks, Vs) = AL :-
+	assoc_list__from_corresponding_lists(Ks, Vs, AL).
+
+assoc_list__keys(AL) = Ks :-
+	assoc_list__keys(AL, Ks).
+
+assoc_list__values(AL) = Vs :-
+	assoc_list__values(AL, Vs).
+
+

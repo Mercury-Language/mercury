@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -676,3 +676,47 @@ getopt__lookup_accumulating_option(OptionTable, Opt, Val) :-
 	).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+% 	Functional forms added.
+
+:- interface.
+
+:- func getopt__lookup_bool_option(option_table(Option), Option) = bool.
+
+:- func getopt__lookup_int_option(option_table(Option), Option) = int.
+
+:- func getopt__lookup_string_option(option_table(Option), Option) = string.
+
+:- func getopt__lookup_maybe_int_option(option_table(Option), Option) =
+		maybe(int).
+
+:- func getopt__lookup_maybe_string_option(option_table(Option), Option) =
+		maybe(string).
+
+:- func getopt__lookup_accumulating_option(option_table(Option), Option) =
+		list(string).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+getopt__lookup_bool_option(OT, Opt) = B :-
+	getopt__lookup_bool_option(OT, Opt, B).
+
+getopt__lookup_int_option(OT, Opt) = N :-
+	getopt__lookup_int_option(OT, Opt, N).
+
+getopt__lookup_string_option(OT, Opt) = S :-
+	getopt__lookup_string_option(OT, Opt, S).
+
+getopt__lookup_maybe_int_option(OT, Opt) = MN :-
+	getopt__lookup_maybe_int_option(OT, Opt, MN).
+
+getopt__lookup_maybe_string_option(OT, Opt) =MS :-
+	getopt__lookup_maybe_string_option(OT, Opt, MS).
+
+getopt__lookup_accumulating_option(OT, Opt) =Ss :-
+	getopt__lookup_accumulating_option(OT, Opt, Ss).
+

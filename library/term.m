@@ -1088,3 +1088,165 @@ term__coerce_var(var(V), var(V)).
 
 term__coerce_var_supply(var_supply(Supply), var_supply(Supply)).
 
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+% Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func term__context_init = term__context.
+
+:- func term__init_var_supply = var_supply(T).
+
+:- func term__try_term_to_type(term(U)) = term_to_type_result(T, U).
+
+:- func term__det_term_to_type(term(_)) = T.
+
+:- func term__type_to_term(T) = term(_).
+
+:- func term__univ_to_term(univ) = term(_).
+
+:- func term__vars(term(T)) = list(var(T)).
+
+:- func term__vars_2(term(T), list(var(T))) = list(var(T)).
+
+:- func term__vars_list(list(term(T))) = list(var(T)).
+
+:- func term__substitute(term(T), var(T), term(T)) = term(T).
+
+:- func term__substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
+
+:- func term__substitute_corresponding(list(var(T)), list(term(T)), term(T)) = term(T).
+
+:- func term__substitute_corresponding_list(list(var(T)), list(term(T)), list(term(T))) = list(term(T)).
+
+:- func term__apply_rec_substitution(term(T), substitution(T)) = term(T).
+
+:- func term__apply_rec_substitution_to_list(list(term(T)), substitution(T)) = list(term(T)).
+
+:- func term__apply_substitution(term(T), substitution(T)) = term(T).
+
+:- func term__apply_substitution_to_list(list(term(T)), substitution(T)) = list(term(T)).
+
+:- func term__relabel_variable(term(T), var(T), var(T)) = term(T).
+
+:- func term__relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
+
+:- func term__apply_variable_renaming(term(T), map(var(T), var(T))) = term(T).
+
+:- func term__apply_variable_renaming_to_list(list(term(T)), map(var(T), var(T))) = list(term(T)).
+
+:- func term__var_to_int(var(T)) = int.
+
+:- func term__context_line(term__context) = int.
+
+:- func term__context_file(term__context) = string.
+
+:- func term__context_init(string, int) = term__context.
+
+:- func term__term_list_to_var_list(list(term(T))) = list(var(T)).
+
+:- func term__var_list_to_term_list(list(var(T))) = list(term(T)).
+
+:- func term__coerce(term(T)) = term(U).
+
+:- func term__coerce_var(var(T)) = var(U).
+
+:- func term__coerce_var_supply(var_supply(T)) = var_supply(U).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+term__context_init = C :-
+	term__context_init(C).
+
+term__init_var_supply = VS :-
+	term__init_var_supply(VS).
+
+term__try_term_to_type(T) = TTTR :-
+	term__try_term_to_type(T, TTTR).
+
+term__det_term_to_type(T1) = T2 :-
+	term__det_term_to_type(T1, T2).
+
+term__type_to_term(T1) = T2 :-
+	term__type_to_term(T1, T2).
+
+term__univ_to_term(U) = T :-
+	term__univ_to_term(U, T).
+
+term__vars(T) = Vs :-
+	term__vars(T, Vs).
+
+term__vars_2(T, Vs1) = Vs2 :-
+	term__vars_2(T, Vs1, Vs2).
+
+term__vars_list(Ts) = Vs :-
+	term__vars_list(Ts, Vs).
+
+term__substitute(T1, V, T2) = T3 :-
+	term__substitute(T1, V, T2, T3).
+
+term__substitute_list(Ts1, V, T) = Ts2 :-
+	term__substitute_list(Ts1, V, T, Ts2).
+
+term__substitute_corresponding(Vs, T1s, T) = T2 :-
+	term__substitute_corresponding(Vs, T1s, T, T2).
+
+term__substitute_corresponding_list(Vs, Ts1, Ts2) = Ts3 :-
+	term__substitute_corresponding_list(Vs, Ts1, Ts2, Ts3).
+
+term__apply_rec_substitution(T1, S) = T2 :-
+	term__apply_rec_substitution(T1, S, T2).
+
+term__apply_rec_substitution_to_list(Ts1, S) = Ts2 :-
+	term__apply_rec_substitution_to_list(Ts1, S, Ts2).
+
+term__apply_substitution(T1, S) = T2 :-
+	term__apply_substitution(T1, S, T2).
+
+term__apply_substitution_to_list(Ts1, S) = Ts2 :-
+	term__apply_substitution_to_list(Ts1, S, Ts2).
+
+term__relabel_variable(T1, V1, V2) = T2 :-
+	term__relabel_variable(T1, V1, V2, T2).
+
+term__relabel_variables(Ts1, V1, V2) = Ts2 :-
+	term__relabel_variables(Ts1, V1, V2, Ts2).
+
+term__apply_variable_renaming(T1, M) = T2 :-
+	term__apply_variable_renaming(T1, M, T2).
+
+term__apply_variable_renaming_to_list(Ts1, M) = Ts2 :-
+	term__apply_variable_renaming_to_list(Ts1, M, Ts2).
+
+term__var_to_int(V) = N :-
+	term__var_to_int(V, N).
+
+term__context_line(C) = N :-
+	term__context_line(C, N).
+
+term__context_file(C) = S :-
+	term__context_file(C, S).
+
+term__context_init(S, N) = C :-
+	term__context_init(S, N, C).
+
+term__term_list_to_var_list(Ts) = Vs :-
+	term__term_list_to_var_list(Ts, Vs).
+
+term__var_list_to_term_list(Vs) = Ts :-
+	term__var_list_to_term_list(Vs, Ts).
+
+term__coerce(T1) = T2 :-
+	term__coerce(T1, T2).
+
+term__coerce_var(V1) = V2 :-
+	term__coerce_var(V1, V2).
+
+term__coerce_var_supply(VS1) = VS2 :-
+	term__coerce_var_supply(VS1, VS2).
+

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -418,3 +418,38 @@ graph__set_edges(G0, E, G) :-
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
+%	Function forms added.
+
+:- interface.
+
+:- func graph__init = graph(N, A).
+
+:- func graph__find_matching_nodes(graph(N, A), N) = set(node(N)).
+
+:- func graph__node_contents(graph(N, A), node(N)) = N.
+
+:- func graph__successors(graph(N, A), node(N)) = set(node(N)).
+
+:- func graph__nodes(graph(N, A)) = set(node(N)).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+graph__init = G :-
+	graph__init(G).
+
+graph__find_matching_nodes(G, N) = S :-
+	graph__find_matching_nodes(G, N, S).
+
+graph__node_contents(G, N) = NI :-
+	graph__node_contents(G, N, NI).
+
+graph__successors(G, N) = S :-
+	graph__successors(G, N, S).
+
+graph__nodes(G) = S :-
+	graph__nodes(G,S).
+

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -1056,3 +1056,148 @@ relation__add_cartesian_product_2(K1, [K2 | Ks2], RTC0, RTC) :-
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
+% 	Function forms added.
+
+:- interface.
+
+:- func relation__init = relation(T).
+
+:- func relation__lookup_element(relation(T), T) = relation_key.
+
+:- func relation__lookup_key(relation(T), relation_key) = T.
+
+:- func relation__add(relation(T), relation_key, relation_key) = relation(T).
+
+:- func relation__add_values(relation(T), T, T) = relation(T).
+
+:- func relation__add_assoc_list(relation(T), assoc_list(relation_key, relation_key)) = relation(T).
+
+:- func relation__remove(relation(T), relation_key, relation_key) = relation(T).
+
+:- func relation__remove_assoc_list(relation(T), assoc_list(relation_key, relation_key)) = relation(T).
+
+:- func relation__lookup_from(relation(T), relation_key) = set(relation_key).
+
+:- func relation__lookup_to(relation(T), relation_key) = set(relation_key).
+
+:- func relation__to_assoc_list(relation(T)) = assoc_list(T, T).
+
+:- func relation__to_key_assoc_list(relation(T)) = assoc_list(relation_key, relation_key).
+
+:- func relation__from_assoc_list(assoc_list(T, T)) = relation(T).
+
+:- func relation__domain(relation(T)) = set(T).
+
+:- func relation__inverse(relation(T)) = relation(T).
+
+:- func relation__compose(relation(T), relation(T)) = relation(T).
+
+:- func relation__dfs(relation(T), relation_key) = list(relation_key).
+
+:- func relation__dfsrev(relation(T), relation_key) = list(relation_key).
+
+:- func relation__dfs(relation(T)) = list(relation_key).
+
+:- func relation__dfsrev(relation(T)) = list(relation_key).
+
+:- func relation__components(relation(T)) = set(set(relation_key)).
+
+:- func relation__cliques(relation(T)) = set(set(relation_key)).
+
+:- func relation__reduced(relation(T)) = relation(set(T)).
+
+:- func relation__atsort(relation(T)) = list(set(T)).
+
+:- func relation__sc(relation(T)) = relation(T).
+
+:- func relation__tc(relation(T)) = relation(T).
+
+:- func relation__rtc(relation(T)) = relation(T).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+relation__init = R :-
+	relation__init(R).
+
+relation__lookup_element(R, X) = K :-
+	relation__lookup_element(R, X, K).
+
+relation__lookup_key(R, K) = X :-
+	relation__lookup_key(R, K, X).
+
+relation__add(R1, K1, K2) = R2 :-
+	relation__add(R1, K1, K2, R2).
+
+relation__add_values(R1, X, Y) = R2 :-
+	relation__add_values(R1, X, Y, R2).
+
+relation__add_assoc_list(R1, AL) = R2 :-
+	relation__add_assoc_list(R1, AL, R2).
+
+relation__remove(R1, K1, K2) = R2 :-
+	relation__remove(R1, K1, K2, R2).
+
+relation__remove_assoc_list(R1, AL) = R2 :-
+	relation__remove_assoc_list(R1, AL, R2).
+
+relation__lookup_from(R, K) = S :-
+	relation__lookup_from(R, K, S).
+
+relation__lookup_to(R, K) = S :-
+	relation__lookup_to(R, K, S).
+
+relation__to_assoc_list(R) = AL :-
+	relation__to_assoc_list(R, AL).
+
+relation__to_key_assoc_list(R) = AL :-
+	relation__to_key_assoc_list(R, AL).
+
+relation__from_assoc_list(AL) = R :-
+	relation__from_assoc_list(AL, R).
+
+relation__domain(R) = S :-
+	relation__domain(R, S).
+
+relation__inverse(R1) = R2 :-
+	relation__inverse(R1, R2).
+
+relation__compose(R1, R2) = R3 :-
+	relation__compose(R1, R2, R3).
+
+relation__dfs(R, K) = Ks :-
+	relation__dfs(R, K, Ks).
+
+relation__dfsrev(R, K) = Ks :-
+	relation__dfsrev(R, K, Ks).
+
+relation__dfs(R) = Ks :-
+	relation__dfs(R, Ks).
+
+relation__dfsrev(R) = Ks :-
+	relation__dfsrev(R, Ks).
+
+relation__components(R) = KSS :-
+	relation__components(R, KSS).
+
+relation__cliques(R) = KSS :-
+	relation__cliques(R, KSS).
+
+relation__reduced(R1) = R2 :-
+	relation__reduced(R1, R2).
+
+relation__atsort(R) = Ss :-
+	relation__atsort(R, Ss).
+
+relation__sc(R1) = R2 :-
+	relation__sc(R1, R2).
+
+relation__tc(R1) = R2 :-
+	relation__tc(R1, R2).
+
+relation__rtc(R1) = R2 :-
+	relation__rtc(R1, R2).
+

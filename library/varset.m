@@ -555,3 +555,98 @@ varset__coerce(varset(S0, N0, B0), varset(S, N, B)) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
+%	Function forms added.
+
+:- interface.
+
+:- func varset__init = varset(T).
+
+:- func varset__delete_var(varset(T), var(T)) = varset(T).
+
+:- func varset__delete_vars(varset(T), list(var(T))) = varset(T).
+
+:- func varset__vars(varset(T)) = list(var(T)).
+
+:- func varset__name_var(varset(T), var(T), string) = varset(T).
+
+:- func varset__lookup_name(varset(T), var(T)) = string.
+
+:- func varset__lookup_name(varset(T), var(T), string) = string.
+
+:- func varset__bind_var(varset(T), var(T), term(T)) = varset(T).
+
+:- func varset__bind_vars(varset(T), substitution(T)) = varset(T).
+
+:- func varset__lookup_vars(varset(T)) = substitution(T).
+
+:- func varset__get_bindings(varset(T)) = substitution(T).
+
+:- func varset__set_bindings(varset(T), substitution(T)) = varset(T).
+
+:- func varset__create_name_var_map(varset(T)) = map(string, var(T)).
+
+:- func varset__var_name_list(varset(T)) = assoc_list(var(T), string).
+
+:- func varset__ensure_unique_names(list(var(T)), string, varset(T)) = varset(T).
+
+:- func varset__select(varset(T), set(var(T))) = varset(T).
+
+:- func varset__coerce(varset(T)) = varset(U).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+varset__init = VS :-
+	varset__init(VS).
+
+varset__delete_var(VS1, V) = VS2 :-
+	varset__delete_var(VS1, V, VS2).
+
+varset__delete_vars(VS1, Vs) = VS2 :-
+	varset__delete_vars(VS1, Vs, VS2).
+
+varset__vars(VS) = Vs :-
+	varset__vars(VS, Vs).
+
+varset__name_var(VS1, V, S) = VS2 :-
+	varset__name_var(VS1, V, S, VS2).
+
+varset__lookup_name(VS, V) = S :-
+	varset__lookup_name(VS, V, S).
+
+varset__lookup_name(VS1, V, S) = S2 :-
+	varset__lookup_name(VS1, V, S, S2).
+
+varset__bind_var(VS1, V, T) = VS2 :-
+	varset__bind_var(VS1, V, T, VS2).
+
+varset__bind_vars(VS1, S) = VS2 :-
+	varset__bind_vars(VS1, S, VS2).
+
+varset__lookup_vars(VS) = S :-
+	varset__lookup_vars(VS, S).
+
+varset__get_bindings(VS) = S :-
+	varset__get_bindings(VS, S).
+
+varset__set_bindings(VS1, S) = VS2 :-
+	varset__set_bindings(VS1, S, VS2).
+
+varset__create_name_var_map(VS) = M :-
+	varset__create_name_var_map(VS, M).
+
+varset__var_name_list(VS) = AL :-
+	varset__var_name_list(VS, AL).
+
+varset__ensure_unique_names(Vs, S1, VS1) = VS2 :-
+	varset__ensure_unique_names(Vs, S1, VS1, VS2).
+
+varset__select(VS1, S) = VS2 :-
+	varset__select(VS1, S, VS2).
+
+varset__coerce(VS1) = VS2 :-
+	varset__coerce(VS1, VS2).
+
