@@ -91,6 +91,7 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
+:- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
@@ -101,10 +102,6 @@
 :- import_module ml_backend__ml_type_gen.
 :- import_module ml_backend__ml_util.
 :- import_module parse_tree__prog_util.
-
-% XXX The following modules depend on the LLDS,
-% so ideally they should not be used here.
-:- import_module ll_backend__code_util.   % needed for `cons_id_to_tag'.
 
 :- import_module int, string, map, require, term, varset.
 :- import_module assoc_list, set.
@@ -540,7 +537,7 @@ target_supports_inheritence(asm) = no.
 ml_cons_id_to_tag(ConsId, Type, Tag) -->
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ code_util__cons_id_to_tag(ConsId, Type, ModuleInfo, Tag) }.
+	{ Tag = cons_id_to_tag(ConsId, Type, ModuleInfo) }.
 
 	% generate code to construct a new object
 :- pred ml_gen_compound(cons_tag, cons_id, prog_var, prog_vars,

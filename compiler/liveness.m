@@ -185,6 +185,7 @@
 % HLDS modules
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__polymorphism.
+:- import_module hlds__goal_form.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
@@ -195,7 +196,6 @@
 
 % LLDS modules
 :- import_module ll_backend__arg_info.
-:- import_module ll_backend__code_util.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__trace.
 
@@ -1304,7 +1304,7 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 	% By minimizing the number of labels we use, we also minimize
 	% the amount of data movement code we emit between such labels.
 	(
-		code_util__cannot_stack_flush(Cond1),
+		cannot_stack_flush(Cond1),
 		goal_info_get_code_model(GoalInfo0, CodeModel),
 		CodeModel \= model_non
 	->
@@ -1318,7 +1318,7 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 		% commits, which is why we choose to use stack_only here.
 		CondResumeLocs = stack_only
 	;
-		code_util__cannot_fail_before_stack_flush(Cond1)
+		cannot_fail_before_stack_flush(Cond1)
 	->
 		CondResumeLocs = stack_only
 	;
@@ -1352,9 +1352,9 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	% Figure out which entry labels we need at the resumption point.
 	% By minimizing the number of labels we use, we also minimize
 	% the amount of data movement code we emit between such labels.
-	( code_util__cannot_stack_flush(Goal1) ->
+	( cannot_stack_flush(Goal1) ->
 		ResumeLocs = orig_only
-	; code_util__cannot_fail_before_stack_flush(Goal1) ->
+	; cannot_fail_before_stack_flush(Goal1) ->
 		ResumeLocs = stack_only
 	;
 		ResumeLocs = stack_and_orig
@@ -1483,11 +1483,11 @@ detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
 	% the amount of data movement code we emit between such labels.
 	(
 		MayUseOrigOnly = yes,
-		code_util__cannot_stack_flush(Goal1)
+		cannot_stack_flush(Goal1)
 	->
 		ResumeLocs = orig_only
 	;
-		code_util__cannot_fail_before_stack_flush(Goal1)
+		cannot_fail_before_stack_flush(Goal1)
 	->
 		ResumeLocs = stack_only
 	;

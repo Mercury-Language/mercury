@@ -44,6 +44,7 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
 :- import_module hlds__goal_util.
+:- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
@@ -52,7 +53,6 @@
 :- import_module libs__tree.
 :- import_module ll_backend__arg_info.
 :- import_module ll_backend__call_gen.	% XXX for arg passing convention
-:- import_module ll_backend__code_util.	% XXX for cons_id_to_tag
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
@@ -706,8 +706,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			;
 				Functor = qualified(ModuleName, FunctorName)
 			),
-			code_util__cons_id_to_tag(ConsId,
-				Type, ModuleInfo, ConsTag),
+			ConsTag = cons_id_to_tag(ConsId, Type, ModuleInfo),
 			bytecode_gen__map_cons_tag(ConsTag, ByteConsTag),
 			ByteConsId = cons(ModuleName, FunctorName,
 				Arity, ByteConsTag)

@@ -19,12 +19,10 @@
 
 :- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
 
 :- import_module list, std_util.
 
@@ -77,20 +75,6 @@
 :- pred code_util__max_mentioned_reg(list(lval), int).
 :- mode code_util__max_mentioned_reg(in, out) is det.
 
-	% Determine whether a goal might allocate some heap space,
-	% i.e. whether it contains any construction unifications
-	% or predicate calls.  BEWARE that this predicate is only
-	% an approximation, used to decide whether or not to try to
-	% reclaim the heap space; currently it fails even for some
-	% goals which do allocate heap space, such as construction
-	% of boxed constants.
-
-:- pred code_util__goal_may_allocate_heap(hlds_goal).
-:- mode code_util__goal_may_allocate_heap(in) is semidet.
-
-:- pred code_util__goal_list_may_allocate_heap(list(hlds_goal)).
-:- mode code_util__goal_list_may_allocate_heap(in) is semidet.
-
 :- pred code_util__goal_may_alloc_temp_frame(hlds_goal).
 :- mode code_util__goal_may_alloc_temp_frame(in) is semidet.
 
@@ -102,46 +86,6 @@
 
 :- pred code_util__negate_the_test(list(instruction), list(instruction)).
 :- mode code_util__negate_the_test(in, out) is det.
-
-	% Find out how a function symbol (constructor) is represented
-	% in the given type.
-
-:- pred code_util__cons_id_to_tag(cons_id, type, module_info, cons_tag).
-:- mode code_util__cons_id_to_tag(in, in, in, out) is det.
-
-	% Succeed if execution of the given goal cannot encounter a context
-	% that causes any variable to be flushed to its stack slot.
-	% If such a goal needs a resume point, and that resume point cannot
-	% be backtracked to once control leaves the goal, then the only entry
-	% point we need for the resume point is the one with the resume
-	% variables in their original locations.
-
-:- pred code_util__cannot_stack_flush(hlds_goal).
-:- mode code_util__cannot_stack_flush(in) is semidet.
-
-	% Succeed if execution of the given goal cannot encounter a context
-	% that causes any variable to be flushed to its stack slot or to a
-	% register.
-
-:- pred code_util__cannot_flush(hlds_goal).
-:- mode code_util__cannot_flush(in) is semidet.
-
-	% Succeed if the given goal cannot fail before encountering a context
-	% that forces all variables to be flushed to their stack slots.
-	% If such a goal needs a resume point, the only entry point we need
-	% is the stack entry point.
-
-:- pred code_util__cannot_fail_before_stack_flush(hlds_goal).
-:- mode code_util__cannot_fail_before_stack_flush(in) is semidet.
-
-	% code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max)
-	% Given that we are in predicate PredId and procedure ProcId,
-	% return the minimum and maximum number of recursive calls that
-	% an execution of Goal may encounter.
-
-:- pred code_util__count_recursive_calls(hlds_goal, pred_id, proc_id,
-	int, int).
-:- mode code_util__count_recursive_calls(in, in, in, out, out) is det.
 
 	% These predicates return the set of lvals referenced in an rval
 	% and an lval respectively. Lvals referenced indirectly through
@@ -162,7 +106,6 @@
 
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__code_model.
-:- import_module check_hlds__type_util.
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
@@ -296,96 +239,6 @@ code_util__max_mentioned_reg_2([Lval | Lvals], MaxRegNum0, MaxRegNum) :-
 		MaxRegNum1 = MaxRegNum0
 	),
 	code_util__max_mentioned_reg_2(Lvals, MaxRegNum1, MaxRegNum).
-
-%-----------------------------------------------------------------------------%
-
-code_util__goal_may_allocate_heap(Goal) :-
-	code_util__goal_may_allocate_heap(Goal, yes).
-
-code_util__goal_list_may_allocate_heap(Goals) :-
-	code_util__goal_list_may_allocate_heap(Goals, yes).
-
-:- pred code_util__goal_may_allocate_heap(hlds_goal::in, bool::out) is det.
-
-code_util__goal_may_allocate_heap(Goal - _GoalInfo, May) :-
-	code_util__goal_may_allocate_heap_2(Goal, May).
-
-:- pred code_util__goal_may_allocate_heap_2(hlds_goal_expr::in, bool::out)
-	is det.
-
-code_util__goal_may_allocate_heap_2(generic_call(_, _, _, _), yes).
-code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _), May) :-
-	( Builtin = inline_builtin ->
-		May = no
-	;
-		May = yes
-	).
-code_util__goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
-	( Unification = construct(_,_,Args,_,_,_,_), Args = [_|_] ->
-		May = yes
-	;
-		May = no
-	).
-	% We cannot safely say that a foreign code fragment does not
-	% allocate memory without knowing all the #defined macros that
-	% expand to incr_hp and variants thereof.
-	% XXX although you could make it an attribute of the foreign code and
-	% trust the programmer
-code_util__goal_may_allocate_heap_2(foreign_proc(_,_,_,_,_,_,_), yes).
-code_util__goal_may_allocate_heap_2(some(_Vars, _, Goal), May) :-
-	code_util__goal_may_allocate_heap(Goal, May).
-code_util__goal_may_allocate_heap_2(not(Goal), May) :-
-	code_util__goal_may_allocate_heap(Goal, May).
-code_util__goal_may_allocate_heap_2(conj(Goals), May) :-
-	code_util__goal_list_may_allocate_heap(Goals, May).
-code_util__goal_may_allocate_heap_2(par_conj(_), yes).
-code_util__goal_may_allocate_heap_2(disj(Goals), May) :-
-	code_util__goal_list_may_allocate_heap(Goals, May).
-code_util__goal_may_allocate_heap_2(switch(_Var, _Det, Cases), May) :-
-	code_util__cases_may_allocate_heap(Cases, May).
-code_util__goal_may_allocate_heap_2(if_then_else(_Vars, C, T, E), May) :-
-	( code_util__goal_may_allocate_heap(C, yes) ->
-		May = yes
-	; code_util__goal_may_allocate_heap(T, yes) ->
-		May = yes
-	;
-		code_util__goal_may_allocate_heap(E, May)
-	).
-code_util__goal_may_allocate_heap_2(shorthand(ShorthandGoal), May) :-
-	code_util__goal_may_allocate_heap_2_shorthand(ShorthandGoal, May).
-
-:- pred code_util__goal_may_allocate_heap_2_shorthand(shorthand_goal_expr::in, 
-	bool::out) is det.
-	
-code_util__goal_may_allocate_heap_2_shorthand(bi_implication(G1, G2), May) :-
-	( code_util__goal_may_allocate_heap(G1, yes) ->
-		May = yes
-	;
-		code_util__goal_may_allocate_heap(G2, May)
-	).
-
-
-
-:- pred code_util__goal_list_may_allocate_heap(list(hlds_goal)::in, bool::out)
-	is det.
-
-code_util__goal_list_may_allocate_heap([], no).
-code_util__goal_list_may_allocate_heap([Goal | Goals], May) :-
-	( code_util__goal_may_allocate_heap(Goal, yes) ->
-		May = yes
-	;
-		code_util__goal_list_may_allocate_heap(Goals, May)
-	).
-
-:- pred code_util__cases_may_allocate_heap(list(case)::in, bool::out) is det.
-
-code_util__cases_may_allocate_heap([], no).
-code_util__cases_may_allocate_heap([case(_, Goal) | Cases], May) :-
-	( code_util__goal_may_allocate_heap(Goal, yes) ->
-		May = yes
-	;
-		code_util__cases_may_allocate_heap(Cases, May)
-	).
 
 %-----------------------------------------------------------------------------%
 
@@ -527,273 +380,6 @@ code_util__negate_the_test([Instr0 | Instrs0], Instrs) :-
 	;
 		code_util__negate_the_test(Instrs0, Instrs1),
 		Instrs = [Instr0 | Instrs1]
-	).
-
-%-----------------------------------------------------------------------------%
-
-code_util__cons_id_to_tag(int_const(X), _, _, int_constant(X)).
-code_util__cons_id_to_tag(float_const(X), _, _, float_constant(X)).
-code_util__cons_id_to_tag(string_const(X), _, _, string_constant(X)).
-code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
-code_util__cons_id_to_tag(pred_const(P,M,E), _, _, pred_closure_tag(P,M,E)).
-code_util__cons_id_to_tag(type_ctor_info_const(M,T,A), _, _,
-		type_ctor_info_constant(M,T,A)).
-code_util__cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _,
-		base_typeclass_info_constant(M,C,N)).
-code_util__cons_id_to_tag(tabling_pointer_const(PredId,ProcId), _, _,
-		tabling_pointer_constant(PredId,ProcId)).
-code_util__cons_id_to_tag(deep_profiling_proc_static(PPId), _, _,
-		deep_profiling_proc_static_tag(PPId)).
-code_util__cons_id_to_tag(table_io_decl(PPId), _, _, table_io_decl_tag(PPId)).
-code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
-	(
-			% handle the `character' type specially
-		Type = term__functor(term__atom("character"), [], _),
-		Name = unqualified(ConsName),
-	 	string__char_to_string(Char, ConsName)
-	->
-		char__to_int(Char, CharCode),
-		Tag = int_constant(CharCode)
-	;
-		% Tuples do not need a tag. Note that unary tuples are not
-		% treated as no_tag types. There's no reason why they
-		% couldn't be, it's just not worth the effort.
-		type_is_tuple(Type, _)
-	->
-		Tag = single_functor
-	;
-			% Use the type to determine the type_ctor
-		( type_to_ctor_and_args(Type, TypeCtor0, _) ->
-			TypeCtor = TypeCtor0
-		;
-			% the type-checker should ensure that this never happens
-			error("code_util__cons_id_to_tag: invalid type")
-		),
-
-			% Given the type_ctor, lookup up the constructor tag
-			% table for that type
-		module_info_types(ModuleInfo, TypeTable),
-		map__lookup(TypeTable, TypeCtor, TypeDefn),
-		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-		(
-			TypeBody = du_type(_, ConsTable0, _, _, _, _)
-		->
-			ConsTable = ConsTable0
-		;
-			% this should never happen
-			error(
-			"code_util__cons_id_to_tag: type is not d.u. type?"
-			)
-		),
-			% Finally look up the cons_id in the table
-		map__lookup(ConsTable, cons(Name, Arity), Tag)
-	).
-
-%-----------------------------------------------------------------------------%
-
-code_util__cannot_stack_flush(GoalExpr - _) :-
-	code_util__cannot_stack_flush_2(GoalExpr).
-
-:- pred code_util__cannot_stack_flush_2(hlds_goal_expr).
-:- mode code_util__cannot_stack_flush_2(in) is semidet.
-
-code_util__cannot_stack_flush_2(unify(_, _, _, Unify, _)) :-
-	Unify \= complicated_unify(_, _, _).
-code_util__cannot_stack_flush_2(call(_, _, _, BuiltinState, _, _)) :-
-	BuiltinState = inline_builtin.
-code_util__cannot_stack_flush_2(conj(Goals)) :-
-	code_util__cannot_stack_flush_goals(Goals).
-code_util__cannot_stack_flush_2(switch(_, _, Cases)) :-
-	code_util__cannot_stack_flush_cases(Cases).
-code_util__cannot_stack_flush_2(not(unify(_, _, _, Unify, _) - _)) :-
-	Unify \= complicated_unify(_, _, _).
-
-:- pred code_util__cannot_stack_flush_goals(list(hlds_goal)).
-:- mode code_util__cannot_stack_flush_goals(in) is semidet.
-
-code_util__cannot_stack_flush_goals([]).
-code_util__cannot_stack_flush_goals([Goal | Goals]) :-
-	code_util__cannot_stack_flush(Goal),
-	code_util__cannot_stack_flush_goals(Goals).
-
-:- pred code_util__cannot_stack_flush_cases(list(case)).
-:- mode code_util__cannot_stack_flush_cases(in) is semidet.
-
-code_util__cannot_stack_flush_cases([]).
-code_util__cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
-	code_util__cannot_stack_flush(Goal),
-	code_util__cannot_stack_flush_cases(Cases).
-
-%-----------------------------------------------------------------------------%
-
-code_util__cannot_flush(GoalExpr - _) :-
-	code_util__cannot_flush_2(GoalExpr).
-
-:- pred code_util__cannot_flush_2(hlds_goal_expr).
-:- mode code_util__cannot_flush_2(in) is semidet.
-
-code_util__cannot_flush_2(unify(_, _, _, Unify, _)) :-
-	Unify \= complicated_unify(_, _, _).
-code_util__cannot_flush_2(call(_, _, _, BuiltinState, _, _)) :-
-	BuiltinState = inline_builtin.
-code_util__cannot_flush_2(conj(Goals)) :-
-	code_util__cannot_flush_goals(Goals).
-
-:- pred code_util__cannot_flush_goals(list(hlds_goal)).
-:- mode code_util__cannot_flush_goals(in) is semidet.
-
-code_util__cannot_flush_goals([]).
-code_util__cannot_flush_goals([Goal | Goals]) :-
-	code_util__cannot_flush(Goal),
-	code_util__cannot_flush_goals(Goals).
-
-%-----------------------------------------------------------------------------%
-
-code_util__cannot_fail_before_stack_flush(GoalExpr - GoalInfo) :-
-	goal_info_get_determinism(GoalInfo, Detism),
-	determinism_components(Detism, CanFail, _),
-	( CanFail = cannot_fail ->
-		true
-	;
-		code_util__cannot_fail_before_stack_flush_2(GoalExpr)
-	).
-
-:- pred code_util__cannot_fail_before_stack_flush_2(hlds_goal_expr).
-:- mode code_util__cannot_fail_before_stack_flush_2(in) is semidet.
-
-code_util__cannot_fail_before_stack_flush_2(conj(Goals)) :-
-	code_util__cannot_fail_before_stack_flush_conj(Goals).
-
-:- pred code_util__cannot_fail_before_stack_flush_conj(list(hlds_goal)).
-:- mode code_util__cannot_fail_before_stack_flush_conj(in) is semidet.
-
-code_util__cannot_fail_before_stack_flush_conj([]).
-code_util__cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
-	Goal = GoalExpr - GoalInfo,
-	(
-		(
-			GoalExpr = call(_, _, _, BuiltinState, _, _),
-			BuiltinState \= inline_builtin
-		;
-			GoalExpr = generic_call(_, _, _, _)
-		)
-	->
-		true
-	;
-		goal_info_get_determinism(GoalInfo, Detism),
-		determinism_components(Detism, cannot_fail, _)
-	->
-		code_util__cannot_fail_before_stack_flush_conj(Goals)
-	;
-		fail
-	).
-
-%-----------------------------------------------------------------------------%
-
-code_util__count_recursive_calls(Goal - _, PredId, ProcId, Min, Max) :-
-	code_util__count_recursive_calls_2(Goal, PredId, ProcId, Min, Max).
-
-:- pred code_util__count_recursive_calls_2(hlds_goal_expr, pred_id, proc_id,
-	int, int).
-:- mode code_util__count_recursive_calls_2(in, in, in, out, out) is det.
-
-code_util__count_recursive_calls_2(not(Goal), PredId, ProcId, Min, Max) :-
-	code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max).
-code_util__count_recursive_calls_2(some(_, _, Goal),
-		PredId, ProcId, Min, Max) :-
-	code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max).
-code_util__count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
-code_util__count_recursive_calls_2(generic_call(_, _, _, _), _, _,
-		0, 0).
-code_util__count_recursive_calls_2(foreign_proc(_, _, _, _, _, _, _),
-		_, _, 0, 0).
-code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
-		PredId, ProcId, Count, Count) :-
-	(
-		PredId = CallPredId,
-		ProcId = CallProcId
-	->
-		Count = 1
-	;
-		Count = 0
-	).
-code_util__count_recursive_calls_2(conj(Goals), PredId, ProcId, Min, Max) :-
-	code_util__count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0,
-		Min, Max).
-code_util__count_recursive_calls_2(par_conj(Goals), PredId, ProcId,
-		Min, Max) :-
-	code_util__count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0,
-		Min, Max).
-code_util__count_recursive_calls_2(disj(Goals), PredId, ProcId, Min, Max) :-
-	code_util__count_recursive_calls_disj(Goals, PredId, ProcId, Min, Max).
-code_util__count_recursive_calls_2(switch(_, _, Cases), PredId, ProcId,
-		Min, Max) :-
-	code_util__count_recursive_calls_cases(Cases, PredId, ProcId, Min, Max).
-code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else),
-		PredId, ProcId, Min, Max) :-
-	code_util__count_recursive_calls(Cond, PredId, ProcId, CMin, CMax),
-	code_util__count_recursive_calls(Then, PredId, ProcId, TMin, TMax),
-	code_util__count_recursive_calls(Else, PredId, ProcId, EMin, EMax),
-	CTMin is CMin + TMin,
-	CTMax is CMax + TMax,
-	int__min(CTMin, EMin, Min),
-	int__max(CTMax, EMax, Max).
-code_util__count_recursive_calls_2(shorthand(_),
-		_, _, _, _) :-
-	% these should have been expanded out by now
-	error("code_util__count_recursive_calls_2: unexpected shorthand").
-
-:- pred code_util__count_recursive_calls_conj(list(hlds_goal),
-	pred_id, proc_id, int, int, int, int).
-:- mode code_util__count_recursive_calls_conj(in, in, in, in, in, out, out)
-	is det.
-
-code_util__count_recursive_calls_conj([], _, _, Min, Max, Min, Max).
-code_util__count_recursive_calls_conj([Goal | Goals], PredId, ProcId,
-		Min0, Max0, Min, Max) :-
-	code_util__count_recursive_calls(Goal, PredId, ProcId, Min1, Max1),
-	Min2 is Min0 + Min1,
-	Max2 is Max0 + Max1,
-	code_util__count_recursive_calls_conj(Goals, PredId, ProcId,
-		Min2, Max2, Min, Max).
-
-:- pred code_util__count_recursive_calls_disj(list(hlds_goal),
-	pred_id, proc_id, int, int).
-:- mode code_util__count_recursive_calls_disj(in, in, in, out, out) is det.
-
-code_util__count_recursive_calls_disj([], _, _, 0, 0).
-code_util__count_recursive_calls_disj([Goal | Goals], PredId, ProcId,
-		Min, Max) :-
-	( Goals = [] ->
-		code_util__count_recursive_calls(Goal, PredId, ProcId,
-			Min, Max)
-	;
-		code_util__count_recursive_calls(Goal, PredId, ProcId,
-			Min0, Max0),
-		code_util__count_recursive_calls_disj(Goals, PredId, ProcId,
-			Min1, Max1),
-		int__min(Min0, Min1, Min),
-		int__max(Max0, Max1, Max)
-	).
-
-:- pred code_util__count_recursive_calls_cases(list(case),
-	pred_id, proc_id, int, int).
-:- mode code_util__count_recursive_calls_cases(in, in, in, out, out) is det.
-
-code_util__count_recursive_calls_cases([], _, _, _, _) :-
-	error("empty cases in code_util__count_recursive_calls_cases").
-code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
-		Min, Max) :-
-	( Cases = [] ->
-		code_util__count_recursive_calls(Goal, PredId, ProcId,
-			Min, Max)
-	;
-		code_util__count_recursive_calls(Goal, PredId, ProcId,
-			Min0, Max0),
-		code_util__count_recursive_calls_cases(Cases, PredId, ProcId,
-			Min1, Max1),
-		int__min(Min0, Min1, Min),
-		int__max(Max0, Max1, Max)
 	).
 
 %-----------------------------------------------------------------------------%

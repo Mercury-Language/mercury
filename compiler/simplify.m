@@ -2495,7 +2495,7 @@ simplify_info_update_instmap(SI, Goal, SI^instmap := InstMap) :-
 
 simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-
 	(
-		( code_util__cannot_flush(Goal) 
+		( cannot_flush(Goal) 
 		; simplify_do_more_common(Info0)
 		)
 	->

@@ -32,13 +32,13 @@
 
 :- implementation.
 
+:- import_module hlds__goal_form.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_llds.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
 :- import_module ll_backend__code_gen.
-:- import_module ll_backend__code_util.
 :- import_module ll_backend__trace.
 :- import_module parse_tree__prog_data.
 
@@ -206,7 +206,7 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			% saved previously.
 		(
 			{ ReclaimHeap = yes },
-			{ code_util__goal_may_allocate_heap(Goal) },
+			{ goal_may_allocate_heap(Goal) },
 			{ MaybeHpSlot0 = no }
 		->
 			code_info__save_hp(SaveHpCode, HpSlot),

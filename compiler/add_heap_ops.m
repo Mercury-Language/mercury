@@ -41,12 +41,12 @@
 
 :- import_module backend_libs__code_model.
 :- import_module check_hlds__type_util.
+:- import_module hlds__goal_form.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__instmap.
 :- import_module hlds__quantification.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
@@ -124,7 +124,7 @@ goal_expr_add_heap_ops(disj(Goals0), GoalInfo, Goal - GoalInfo) -->
 	%
 	(
 		{ CodeModel = model_non
-		; code_util__goal_may_allocate_heap(FirstDisjunct)
+		; goal_may_allocate_heap(FirstDisjunct)
 		}
 	->
 		new_saved_hp_var(SavedHeapPointerVar),
@@ -180,7 +180,7 @@ goal_expr_add_heap_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
 	% save the heap pointer so that we can
 	% restore it if the condition fails.
 	%
-	( { code_util__goal_may_allocate_heap(Cond0) } ->
+	( { goal_may_allocate_heap(Cond0) } ->
 		new_saved_hp_var(SavedHeapPointerVar),
 		{ goal_info_get_context(GoalInfo, Context) },
 		gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal),
@@ -269,7 +269,7 @@ disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
 	%
 	(
 		{ MaybeSavedHeapPointerVar = no },
-		{ code_util__goal_may_allocate_heap(Goal) }
+		{ goal_may_allocate_heap(Goal) }
 	->
 		% Generate code to save the heap pointer
 		new_saved_hp_var(SavedHeapPointerVar),

@@ -49,6 +49,7 @@
 
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__hlds_code_util.
 :- import_module libs__options.
 :- import_module libs__trace_params.
 :- import_module libs__tree.
@@ -834,7 +835,7 @@ code_info__lookup_type_defn(Type, TypeDefn) -->
 code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 	code_info__variable_type(Var, Type),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__cons_id_to_tag(ConsId, Type, ModuleInfo, ConsTag) }.
+	{ ConsTag = cons_id_to_tag(ConsId, Type, ModuleInfo) }.
 
 %---------------------------------------------------------------------------%
 

@@ -36,13 +36,13 @@
 :- implementation.
 
 :- import_module backend_libs__builtin_ops.
+:- import_module hlds__goal_form.
 :- import_module hlds__hlds_llds.
 :- import_module hlds__instmap.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
 :- import_module ll_backend__code_gen.
-:- import_module ll_backend__code_util.
 :- import_module ll_backend__trace.
 :- import_module parse_tree__prog_data.
 
@@ -90,7 +90,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 	{ 
 		globals__lookup_bool_option(Globals,
 			reclaim_heap_on_semidet_failure, yes),
-		code_util__goal_may_allocate_heap(CondGoal)
+		goal_may_allocate_heap(CondGoal)
 	->
 		ReclaimHeap = yes
 	;
@@ -287,7 +287,7 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
 	{
 		globals__lookup_bool_option(Globals,
 			reclaim_heap_on_semidet_failure, yes),
-		code_util__goal_may_allocate_heap(Goal)
+		goal_may_allocate_heap(Goal)
 	->
 		ReclaimHeap = yes
 	;

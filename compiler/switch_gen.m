@@ -65,13 +65,13 @@
 
 :- import_module backend_libs__switch_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__goal_form.
 :- import_module hlds__hlds_llds.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
 :- import_module ll_backend__code_aux.
 :- import_module ll_backend__code_gen.
-:- import_module ll_backend__code_util.
 :- import_module ll_backend__dense_switch.
 :- import_module ll_backend__lookup_switch.
 :- import_module ll_backend__string_switch.
@@ -253,10 +253,8 @@ switch_gen__generate_all_cases(Cases0, Var, CodeModel, CanFail, GoalInfo,
 	->
 		code_info__get_pred_id(PredId),
 		code_info__get_proc_id(ProcId),
-		{ code_util__count_recursive_calls(Goal1, PredId, ProcId,
-			Min1, Max1) },
-		{ code_util__count_recursive_calls(Goal2, PredId, ProcId,
-			Min2, Max2) },
+		{ count_recursive_calls(Goal1, PredId, ProcId, Min1, Max1) },
+		{ count_recursive_calls(Goal2, PredId, ProcId, Min2, Max2) },
 		{
 			Max1 = 0,	% Goal1 is a base case
 			Min2 = 1	% Goal2 is probably singly recursive
