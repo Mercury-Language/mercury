@@ -33,6 +33,8 @@
   void MR_cond_signal(MercuryCond *cond);
   void MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
 
+  extern bool MR_debug_threads;
+
   #ifndef MR_DEBUG_THREADS
 	/*
 	** The following macros should be used once the
