@@ -1,10 +1,9 @@
-
 /*
 ** Copyright (C) 1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: util.c,v 1.6 1997-04-26 03:16:17 fjh Exp $
+** $Id: util.c,v 1.7 1997-04-26 05:57:12 fjh Exp $
 */
 
 
@@ -15,17 +14,18 @@
 #include	<stdarg.h>
 
 #include	"util.h"
+#include	"mem.h"
 
 
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: util.c,v 1.6 1997-04-26 03:16:17 fjh Exp $";
+rcs_id[]	= "$Id: util.c,v 1.7 1997-04-26 05:57:12 fjh Exp $";
 
 /* Implementation */
 
 void 
-util_error(const char *fmt, ...)
+MB_util_error(const char *fmt, ...)
 {
         va_list arg_p;
 
@@ -38,9 +38,9 @@ util_error(const char *fmt, ...)
 
 
 void
-fatal(const char* message)
+MB_fatal(const char* message)
 {
-	util_error(message);
+	MB_util_error(message);
 	fprintf(stderr, "NOTE: The program is aborting. "
 		 "Please keep the core file for diagnosis.\n");
 	abort();
@@ -48,19 +48,14 @@ fatal(const char* message)
 	return; /* not reached */
 }
 
-/*
-** XXX: Don't use this. We should be using only mem_malloc rather than
-** malloc directly.
-*/
-#if	0
 char*
-strdup(char* str)
+MB_strdup(const char* str)
 {
 	int	size;
 	char	*str2, *c_p;
 
 	size = strlen(str) + 1;
-	str2 = malloc(size); /* XXX: use mem_malloc */
+	str2 = MB_malloc(size);
 	for (c_p = str2; *str != '\0'; str++, c_p++)
 	{
 		*c_p = *str;
@@ -69,6 +64,3 @@ strdup(char* str)
 
 	return str2;
 }
-#endif	/* 0 */
-
-

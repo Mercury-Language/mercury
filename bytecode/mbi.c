@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mbi.c,v 1.6 1997-04-26 03:16:09 fjh Exp $
+** $Id: mbi.c,v 1.7 1997-04-26 05:56:56 fjh Exp $
 */
 
 /* Imports */
@@ -29,7 +29,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: mbi.c,v 1.6 1997-04-26 03:16:09 fjh Exp $";
+rcs_id[]	= "$Id: mbi.c,v 1.7 1997-04-26 05:56:56 fjh Exp $";
 
 static void
 usage(void);
@@ -96,7 +96,7 @@ main(int argc, char* argv[])
 #endif /* 0 */
 			} else {
 				/* XXX: Give better error message */
-				util_error("can not open file \"%s\"",
+				MB_util_error("can not open file \"%s\"",
 					filename);
 			}
 		} /* end for */

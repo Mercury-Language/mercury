@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mdis.c,v 1.5 1997-04-26 03:16:11 fjh Exp $
+** $Id: mdis.c,v 1.6 1997-04-26 05:56:59 fjh Exp $
 */
 
 /* Imports */
@@ -18,7 +18,7 @@
 #include	<mdis.h>
 
 static char
-rcs_id[]	= "$Id: mdis.c,v 1.5 1997-04-26 03:16:11 fjh Exp $";
+rcs_id[]	= "$Id: mdis.c,v 1.6 1997-04-26 05:56:59 fjh Exp $";
 
 /* Local declarations */
 static void
@@ -58,7 +58,7 @@ main(int argc, char* argv[])
 
 	/* If no arguments, then assume bytecode stream is on stdin */
 	if (optind == argc) {
-		disassemble(stdin);
+		MB_disassemble(stdin);
 	} else {
 		/* Process each bytecode file in order */
 		int 	i;
@@ -68,11 +68,10 @@ main(int argc, char* argv[])
 		for (i = optind; i < argc; i++) {
 			filename = argv[i];
 			if ((fp = fopen(filename, "r")) != NULL) {
-				disassemble(fp);
+				MB_disassemble(fp);
 			} else {
 				/* XXX: Give better error message */
-				util_error("can not open bytecode file \"%s\"",
-					filename);
+				MB_util_error("can not open bytecode file `%s'",					filename);
 			}
 		}
 	} /* end else */

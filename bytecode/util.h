@@ -4,43 +4,34 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: util.h,v 1.8 1997-04-26 03:16:18 fjh Exp $
+** $Id: util.h,v 1.9 1997-04-26 05:57:14 fjh Exp $
 */
 
 
-#ifndef UTIL_H
-#define	UTIL_H
+#ifndef MB_UTIL_H
+#define	MB_UTIL_H
 
 typedef int
-	Bool;
+	MB_Bool;
 
-typedef unsigned char
-	uchar;
-
-typedef unsigned short
-	ushort;
-
-typedef unsigned long
-	ulong;
-
-typedef unsigned int
-	uint;
-
-/* 
- * XXX: For some bizzare reason TRUE and FALSE are often defined by the C
- * libraries! Are they defined in pure POSIX or pure ANSI?
- */
+/*
+** Since TRUE and FALSE are not prefixed with `MB_',
+** we need to only define them if they are not defined elsewhere.
+** Even this might cause trouble, if some other header file included
+** after this one defines them as `enum { FALSE, TRUE };'.
+** It might be better to just prefix them with `MB_' like everything
+** else, even if it does look ugly...
+*/
 #ifndef TRUE
-#define	TRUE	1
+#define	TRUE		1
 #endif
-
 #ifndef FALSE
-#define	FALSE	0
+#define	FALSE		0
 #endif
 
-#define	INT_SIZE	(sizeof(int))
-#define	FLOAT_SIZE	(sizeof(float))
-#define	DOUBLE_SIZE	(sizeof(double))
+#define	MB_INT_SIZE	(sizeof(int))
+#define	MB_FLOAT_SIZE	(sizeof(float))
+#define	MB_DOUBLE_SIZE	(sizeof(double))
 
 /*
  *	For debugging. E.g. XXXdebug("Bad integer value", d, some_var).
@@ -58,21 +49,12 @@ typedef unsigned int
 #endif	/* DEBUGGING */
 
 void
-util_init(void);
+MB_util_error(const char *fmt, ...);
 
 void
-util_error(const char *fmt, ...);
+MB_fatal(const char* message);
 
-void
-fatal(const char* message);
-
-/*
- * Don't use strdup. See comment in util.c
- */
-#if	0
 char*
-strdup(char *str);
-#endif	/* 0 */
+MB_strdup(const char *str);
 
-
-#endif	/* UTIL_H */
+#endif	/* MB_UTIL_H */

@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: disasm.c,v 1.12 1997-04-26 03:16:05 fjh Exp $
+** $Id: disasm.c,v 1.13 1997-04-26 05:56:50 fjh Exp $
 */
 
 /* Imports */
@@ -21,37 +21,37 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: disasm.c,v 1.12 1997-04-26 03:16:05 fjh Exp $";
+rcs_id[]	= "$Id: disasm.c,v 1.13 1997-04-26 05:56:50 fjh Exp $";
 
 static void
-print_bytecode(Bytecode bytecode);
+print_bytecode(MB_Bytecode bytecode);
 
 static void
-print_cons_id(Cons_id cons_id);
+print_cons_id(MB_Cons_id cons_id);
 
 static void
-print_tag(Tag tag);
+print_tag(MB_Tag tag);
 
 static void
-print_var_dir(Var_dir var_dir);
+print_var_dir(MB_Var_dir var_dir);
 
 static void
-print_op_arg(Op_arg op_arg);
+print_op_arg(MB_Op_arg op_arg);
 
 static const char*
-bytecode_to_name(Byte bytecode_id);
+bytecode_to_name(MB_Byte bytecode_id);
 
 static const char*
-determinism_to_name(Byte determinism_id);
+determinism_to_name(MB_Byte determinism_id);
 
 static const char*
-binop_to_name(Byte binop);
+binop_to_name(MB_Byte binop);
 
 static const char*
-unop_to_name(Byte unop);
+unop_to_name(MB_Byte unop);
 
-static CString
-quote_cstring(CString str);
+static MB_CString
+quote_cstring(MB_CString str);
 
 /* Implementation */
 
@@ -59,14 +59,14 @@ quote_cstring(CString str);
 ** We emulate Zoltan's .bytedebug file format.
 */
 void
-disassemble(FILE* fp)
+MB_disassemble(FILE* fp)
 {
 	/*int		byte_count = 0; */
-	Short		bytecode_version_number = 0;
-	Bytecode	bytecode;
+	MB_Short	bytecode_version_number = 0;
+	MB_Bytecode	bytecode;
 
 	/* Read two-byte version number */
-	if (read_bytecode_version_number(fp, &bytecode_version_number)) {
+	if (MB_read_bytecode_version_number(fp, &bytecode_version_number)) {
 		printf("bytecode_version %d\n", bytecode_version_number);
 		/* XXX: We should check the version number is 
 		** what we expect. Should use major and minor version
@@ -74,10 +74,10 @@ disassemble(FILE* fp)
 		** Should have the module name in the bytecode.
 		*/
 	} else {
-		fatal("Failed to read bytecode version number");
+		MB_fatal("Failed to read bytecode version number");
 	}
 
-	while (read_bytecode(fp, &bytecode)) {
+	while (MB_read_bytecode(fp, &bytecode)) {
 		print_bytecode(bytecode);
 		/* 
 		** XXX: should free any heap data in the bytecode here
@@ -85,25 +85,25 @@ disassemble(FILE* fp)
 		*/
 		fflush(stdout);
 	} 
-} /* disassemble */
+} /* end disassemble() */
 
 
 static void
-print_bytecode(Bytecode bc)
+print_bytecode(MB_Bytecode bc)
 {
 	printf("%s", bytecode_to_name(bc.id));
 
 	switch (bc.id) {
-		case BC_enter_pred:
+		case MB_BC_enter_pred:
 			printf(" %s %d", bc.opt.enter_pred.pred_name,
 				bc.opt.enter_pred.proc_count);
 			break;
-		case BC_endof_pred:
+		case MB_BC_endof_pred:
 			/* No args */
 			break;
-		case BC_enter_proc: {
-			Short	i;
-			Short	len;
+		case MB_BC_enter_proc: {
+			MB_Short	i;
+			MB_Short	len;
 
 			printf(" %d %s %d %d %d", 
 				bc.opt.enter_proc.proc_id,
@@ -119,79 +119,79 @@ print_bytecode(Bytecode bc)
 			}
 			break;
 		}
-		case BC_endof_proc:
+		case MB_BC_endof_proc:
 			/* No args */
 			break;
-		case BC_label:
+		case MB_BC_label:
 			printf(" %d", bc.opt.label.label);
 			break;
-		case BC_enter_disjunction:
+		case MB_BC_enter_disjunction:
 			printf(" %d", bc.opt.enter_disjunction.end_label);
 			break;
-		case BC_endof_disjunction:
+		case MB_BC_endof_disjunction:
 			/* No args */
 			break;
-		case BC_enter_disjunct:
+		case MB_BC_enter_disjunct:
 			printf(" %d", bc.opt.enter_disjunct.next_label);
 			break;
-		case BC_endof_disjunct:
+		case MB_BC_endof_disjunct:
 			printf(" %d", bc.opt.endof_disjunct.label);
 			break;
-		case BC_enter_switch:
+		case MB_BC_enter_switch:
 			printf(" %d %d", bc.opt.enter_switch.var,
 				bc.opt.enter_switch.end_label
 			);
 			break;
-		case BC_endof_switch:
+		case MB_BC_endof_switch:
 			/* No args */
 			break;
-		case BC_enter_switch_arm:
+		case MB_BC_enter_switch_arm:
 			printf(" ");
 			print_cons_id(bc.opt.enter_switch_arm.cons_id);
 			printf(" %d", bc.opt.enter_switch_arm.next_label);
 			break;
-		case BC_endof_switch_arm:
+		case MB_BC_endof_switch_arm:
 			printf(" %d", bc.opt.endof_switch_arm.label);
 			break;
-		case BC_enter_if:
+		case MB_BC_enter_if:
 			printf(" %d %d %d",
 				bc.opt.enter_if.else_label,
 				bc.opt.enter_if.end_label,
 				bc.opt.enter_if.frame_ptr_tmp);
 			break;
-		case BC_enter_then:
+		case MB_BC_enter_then:
 			printf(" %d", bc.opt.enter_then.frame_ptr_tmp);
 			break;
-		case BC_endof_then:
+		case MB_BC_endof_then:
 			printf(" %d", bc.opt.endof_then.follow_label);
 			break;
-		case BC_endof_if:
+		case MB_BC_endof_if:
 			/* No args */
 			break;
-		case BC_enter_negation:
+		case MB_BC_enter_negation:
 			printf(" %d", bc.opt.enter_negation.end_label);
 			break;
-		case BC_endof_negation:
+		case MB_BC_endof_negation:
 			/* No args */
 			break;
-		case BC_enter_commit:
+		case MB_BC_enter_commit:
 			printf(" %d", bc.opt.enter_commit.temp);
 			break;
-		case BC_endof_commit:
+		case MB_BC_endof_commit:
 			printf(" %d", bc.opt.endof_commit.temp);
 			break;
-		case BC_assign:
+		case MB_BC_assign:
 			printf(" %d %d", bc.opt.assign.to_var,
 				bc.opt.assign.from_var);
 			break;
-		case BC_test:
+		case MB_BC_test:
 			printf(" %d %d",
 				bc.opt.test.var1,
 				bc.opt.test.var2);
 			break;
-		case BC_construct: {
-			Short	len;
-			Short	i;
+		case MB_BC_construct: {
+			MB_Short	len;
+			MB_Short	i;
 
 			printf(" %d ", bc.opt.construct.to_var);
 			print_cons_id(bc.opt.construct.consid);
@@ -204,9 +204,9 @@ print_bytecode(Bytecode bc)
 			}
 			break;
 		}
-		case BC_deconstruct: {
-			Short	len;
-			Short	i;
+		case MB_BC_deconstruct: {
+			MB_Short	len;
+			MB_Short	i;
 
 			printf(" %d ", bc.opt.deconstruct.from_var);
 			print_cons_id(bc.opt.deconstruct.consid);
@@ -219,9 +219,9 @@ print_bytecode(Bytecode bc)
 			}
 			break;
 		}
-		case BC_complex_construct: {
-			Short	len;
-			Short	i;
+		case MB_BC_complex_construct: {
+			MB_Short	len;
+			MB_Short	i;
 
 			printf(" %d ", bc.opt.complex_construct.to_var);
 			print_cons_id(bc.opt.complex_construct.consid);
@@ -234,9 +234,9 @@ print_bytecode(Bytecode bc)
 			}
 			break;
 		}
-		case BC_complex_deconstruct: {
-			Short	len;
-			Short	i;
+		case MB_BC_complex_deconstruct: {
+			MB_Short	len;
+			MB_Short	i;
 
 			printf(" %d ", bc.opt.complex_deconstruct.from_var);
 			print_cons_id(bc.opt.complex_deconstruct.consid);
@@ -249,22 +249,22 @@ print_bytecode(Bytecode bc)
 			}
 			break;
 		}
-		case BC_place_arg:
+		case MB_BC_place_arg:
 			printf(" %d %d", bc.opt.place_arg.to_reg,
 				bc.opt.place_arg.from_var);
 			break;
-		case BC_pickup_arg:
+		case MB_BC_pickup_arg:
 			printf(" %d %d", bc.opt.pickup_arg.from_reg,
 				bc.opt.pickup_arg.to_var);
 			break;
-		case BC_call:
+		case MB_BC_call:
 			printf(" %s %s %d %d",
 				bc.opt.call.module_id,
 				bc.opt.call.pred_id,
 				bc.opt.call.arity,
 				bc.opt.call.proc_id);
 			break;
-		case BC_higher_order_call:
+		case MB_BC_higher_order_call:
 			printf(" %d %d %d %s",
 				bc.opt.higher_order_call.pred_var,
 				bc.opt.higher_order_call.in_var_count,
@@ -272,7 +272,7 @@ print_bytecode(Bytecode bc)
 				determinism_to_name(bc.opt.
 					higher_order_call.det));
 			break;
-		case BC_builtin_binop:
+		case MB_BC_builtin_binop:
 			printf(" %s ", 
 				binop_to_name(bc.opt.builtin_binop.binop));
 			print_op_arg(bc.opt.builtin_binop.arg1);
@@ -280,63 +280,63 @@ print_bytecode(Bytecode bc)
 			print_op_arg(bc.opt.builtin_binop.arg2);
 			printf(" %d", bc.opt.builtin_binop.to_var);
 			break;
-		case BC_builtin_unop:
+		case MB_BC_builtin_unop:
 			printf(" %s ", 
 				unop_to_name(bc.opt.builtin_unop.unop));
 			print_op_arg(bc.opt.builtin_unop.arg);
 			printf(" %d", bc.opt.builtin_unop.to_var);
 			break;
-		case BC_builtin_bintest:
+		case MB_BC_builtin_bintest:
 			printf(" %s ", 
 				binop_to_name(bc.opt.builtin_bintest.binop));
 			print_op_arg(bc.opt.builtin_binop.arg1);
 			printf(" ");
 			print_op_arg(bc.opt.builtin_binop.arg2);
 			break;
-		case BC_builtin_untest:
+		case MB_BC_builtin_untest:
 			printf(" %s ", 
 				unop_to_name(bc.opt.builtin_untest.unop));
 			print_op_arg(bc.opt.builtin_unop.arg);
 			break;
-		case BC_semidet_succeed:
+		case MB_BC_semidet_succeed:
 			/* No args */
 			break;
-		case BC_semidet_success_check:
+		case MB_BC_semidet_success_check:
 			/* No args */
 			break;
-		case BC_fail:
+		case MB_BC_fail:
 			/* No args */
 			break;
-		case BC_context:
+		case MB_BC_context:
 			printf(" %d", bc.opt.context.line_number);
 			break;
-		case BC_not_supported:
+		case MB_BC_not_supported:
 			/* No args */
 			break;
-		case BC_noop:
+		case MB_BC_noop:
 			/* No args */
 			break;
 		default:
 			assert(FALSE); /*XXX*/
 			break;
-	} /* switch */
+	} /* end switch */
 
 	putchar('\n');
 
-} /* print_bytecode */
+} /* end print_bytecode() */
 
 
 static void
-print_cons_id(Cons_id cons_id)
+print_cons_id(MB_Cons_id cons_id)
 {
 	switch (cons_id.id) {
-		case CONSID_CONS:
+		case MB_CONSID_CONS:
 			printf("functor %s %s ", cons_id.opt.cons.module_id,
 				cons_id.opt.cons.string);
 			printf("%d ", cons_id.opt.cons.arity);
 			print_tag(cons_id.opt.cons.tag);
 			break;
-		case CONSID_INT_CONST:
+		case MB_CONSID_INT_CONST:
 			/*
 			** (This comment is labelled "CAST COMMENT".
 			** If you remove this comment, also
@@ -352,28 +352,29 @@ print_cons_id(Cons_id cons_id)
 			*/
 			printf("int_const %ld", (long) cons_id.opt.int_const);
 			break;
-		case CONSID_STRING_CONST:
-			printf("string_const \"%s\"", 
-				quote_cstring(cons_id.opt.string_const));
+		case MB_CONSID_STRING_CONST: {
+			MB_CString s = quote_cstring(cons_id.opt.string_const);
+			printf("string_const \"%s\"", s);
 			break;
-		case CONSID_FLOAT_CONST:
+		}
+		case MB_CONSID_FLOAT_CONST:
 			printf("float_const %.15g", cons_id.opt.float_const);
 			break;
-		case CONSID_PRED_CONST:
+		case MB_CONSID_PRED_CONST:
 			printf("%s", "pred_const ");
 			printf("%s ", cons_id.opt.pred_const.module_id);
 			printf("%s ", cons_id.opt.pred_const.pred_id);
 			printf("%d ", cons_id.opt.pred_const.arity);
 			printf("%d ", cons_id.opt.pred_const.proc_id);
 			break;
-		case CONSID_CODE_ADDR_CONST:
+		case MB_CONSID_CODE_ADDR_CONST:
 			printf("%s", "code_addr_const ");
 			printf("%s ", cons_id.opt.code_addr_const.module_id);
 			printf("%s ", cons_id.opt.code_addr_const.pred_id);
 			printf("%d ", cons_id.opt.code_addr_const.arity);
 			printf("%d ", cons_id.opt.code_addr_const.proc_id);
 			break;
-		case CONSID_BASE_TYPE_INFO_CONST:
+		case MB_CONSID_BASE_TYPE_INFO_CONST:
 			printf("%s", "base_type_info_const ");
 			printf("%s ", cons_id.opt.base_type_info_const
 				.module_id);
@@ -382,7 +383,7 @@ print_cons_id(Cons_id cons_id)
 			printf("%d ", cons_id.opt.base_type_info_const.
 				type_arity);
 			break;
-		case CONSID_CHAR_CONST:
+		case MB_CONSID_CHAR_CONST:
 			printf("%s", "char_const ");
 			/* XXX : fix so that char is printed sensibly */
 			printf("'%c'", cons_id.opt.char_const.ch);
@@ -394,13 +395,13 @@ print_cons_id(Cons_id cons_id)
 } /* end print_cons_id() */
 
 static void
-print_tag(Tag tag)
+print_tag(MB_Tag tag)
 {
 	switch (tag.id) {
-		case TAG_SIMPLE:
+		case MB_TAG_SIMPLE:
 			printf("%s %d", "simple_tag", tag.opt.primary);
 			break;
-		case TAG_COMPLICATED:
+		case MB_TAG_COMPLICATED:
 			/*
 			** See comment labelled "CAST COMMENT".
 			*/
@@ -408,7 +409,7 @@ print_tag(Tag tag)
 				tag.opt.pair.primary, 
 				(long) tag.opt.pair.secondary);
 			break;
-		case TAG_COMPLICATED_CONSTANT:
+		case MB_TAG_COMPLICATED_CONSTANT:
 			/*
 			** See comment labelled "CAST COMMENT".
 			*/
@@ -416,10 +417,10 @@ print_tag(Tag tag)
 				tag.opt.pair.primary, 
 				(long) tag.opt.pair.secondary);
 			break;
-		case TAG_ENUM:
+		case MB_TAG_ENUM:
 			printf("%s %d", "enum_tag", tag.opt.enum_tag);
 			break;
-		case TAG_NONE:
+		case MB_TAG_NONE:
 			printf("%s", "no_tag");
 			break;
 		default:
@@ -431,26 +432,26 @@ print_tag(Tag tag)
 } /* end print_tag() */
 
 static void
-print_var_dir(Var_dir var_dir)
+print_var_dir(MB_Var_dir var_dir)
 {
 	printf("<<var_dir>>"); /* XXX */
 	return;
 } /* end print_var_dir() */
 
 static void
-print_op_arg(Op_arg op_arg)
+print_op_arg(MB_Op_arg op_arg)
 {
 	switch (op_arg.id) {
-		case ARG_VAR:
+		case MB_ARG_VAR:
 			printf("var %d", op_arg.opt.var);
 			break;
-		case ARG_INT_CONST:
+		case MB_ARG_INT_CONST:
 			/*
 			** See comment labelled "CAST COMMENT".
 			*/
 			printf("int %ld", (long) op_arg.opt.int_const);
 			break;
-		case ARG_FLOAT_CONST:
+		case MB_ARG_FLOAT_CONST:
 			printf("float %f", op_arg.opt.float_const);
 			break;
 		default:
@@ -508,9 +509,9 @@ bytecode_table[] = {
 };
 
 static const char*
-bytecode_to_name(Byte bytecode_id)
+bytecode_to_name(MB_Byte bytecode_id)
 {
-	if (bytecode_id >= sizeof(bytecode_table) / sizeof(CString)) {
+	if (bytecode_id >= sizeof(bytecode_table) / sizeof(*bytecode_table)) {
 		return "<<unknown bytecode>>"; /*XXX*/
 	} else {
 		return bytecode_table[bytecode_id];
@@ -536,9 +537,11 @@ determinism_table[] = {
 ** Return a const string
 */
 static const char*
-determinism_to_name(Byte determinism_id)
+determinism_to_name(MB_Byte determinism_id)
 {
-	if (determinism_id >= sizeof(determinism_table) / sizeof(CString)) {
+	if (determinism_id >=
+		sizeof(determinism_table) / sizeof(*determinism_table))
+	{
 		return "<<unknown determinism>>"; /*XXX*/
 	} else {
 		return determinism_table[determinism_id];
@@ -573,7 +576,7 @@ binop_table[] = {
 	"str_ge",
 	"<",
 	">",
-	"=<",	/* XXX: In bytecode.m, this is "<=", which is wrong. */
+	"<=",
 	">=",
 	"float_plus",
 	"float_minus",
@@ -588,15 +591,15 @@ binop_table[] = {
 };
 
 static const char*
-binop_to_name(Byte binop)
+binop_to_name(MB_Byte binop)
 {
 	/* bounds check */
-	if (binop >= sizeof(binop_table) / sizeof(CString)) {
+	if (binop >= sizeof(binop_table) / sizeof(*binop_table)) {
 		return "<<unknown binop>>"; /*XXX*/
 	} else {
 		return binop_table[binop];
 	}
-} /* binop_to_name */
+} /* end binop_to_name() */
 
 /*
 **	XXX: Currently we depend on the order of elements in the table.
@@ -616,25 +619,26 @@ unop_table[] = {
 };
 
 static const char*
-unop_to_name(Byte unop)
+unop_to_name(MB_Byte unop)
 {
 	/* bounds check */
-	if (unop >= sizeof(unop_table) / sizeof(CString)) {
+	if (unop >= sizeof(unop_table) / sizeof(*unop_table)) {
 		return "<<unknown unop>>"; /*XXX*/
 	} else {
 		return unop_table[unop];
 	}
-} /* unop_to_name */
+} /* end unop_to_name() */
 
 
 /*
-** Return a quoted C String.
-** Allocs a string, which caller must free.
-** Uses a highwater-marked static string buffer.
+** Given a C string, returns a new string with all the special
+** characters escaped.
+** Uses a highwater-marked static string buffer:
+** the string returned lasts only until the next call to quote_cstring().
 ** XXX: put in util module?
 */
-static CString
-quote_cstring(CString str)
+static MB_CString
+quote_cstring(MB_CString str)
 {
 	static char	*str_s = NULL;
 	static int	str_size_s = 1;
@@ -643,7 +647,7 @@ quote_cstring(CString str)
 
 	/* Allocate initial static string */
 	if (NULL == str_s) {
-		str_s = malloc(sizeof(char) * str_size_s);
+		str_s = MB_new_array(char, str_size_s);
 	}
 
 	i = j = 0;
@@ -651,15 +655,14 @@ quote_cstring(CString str)
 		/* Check our static string is big enough */
 		if (i+2 > str_size_s) {
 			str_size_s *= 2; /* Double buffer size */
-			str_s = realloc(str_s, str_size_s * sizeof(char));
-			assert(str_s != NULL); /* XXX */
+			str_s = MB_resize_array(str_s, char, str_size_s);
 		}
 
 		/*
 		** According to K&R 2nd ed, page 194, string literals
 		** may not contain newline or double-quote; they must be
-		** quoted. (And of course the backslash must also be
-		** quoted. There is no mention of other limitations
+		** escaped. (And of course the backslash must also be
+		** escaped.)  There is no mention of other limitations
 		** on what characters may be within a string literal.
 		*/
 		switch(str[i]) {
@@ -678,11 +681,11 @@ quote_cstring(CString str)
 				i++;
 				break;
 			case '\0': {
-				CString		ret_str;
+				MB_CString		ret_str;
 
 				str_s[j] = '\0';
-				ret_str = malloc((strlen(str_s) + 1) 
-					* sizeof(char));
+				ret_str = MB_new_array(char,
+					strlen(str_s) + 1) ;
 				strcpy(ret_str, str_s);
 				return ret_str;
 			}
@@ -694,5 +697,3 @@ quote_cstring(CString str)
 		} /* end switch */
 	} /* end for */
 } /* end quote_cstring() */
-
-

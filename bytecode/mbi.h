@@ -3,10 +3,10 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mbi.h,v 1.4 1997-04-26 03:16:10 fjh Exp $
+** $Id: mbi.h,v 1.5 1997-04-26 05:56:58 fjh Exp $
 */
 
-#ifndef	MBI_H
-#define	MBI_H
+#ifndef	MB_MBI_H
+#define	MB_MBI_H
 
-#endif	/* ! MBI_H */
+#endif	/* ! MB_MBI_H */

@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mem.c,v 1.4 1997-04-26 03:16:13 fjh Exp $
+** $Id: mem.c,v 1.5 1997-04-26 05:57:03 fjh Exp $
 */
 
 /* Imports */
@@ -19,31 +19,30 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: mem.c,v 1.4 1997-04-26 03:16:13 fjh Exp $";
+rcs_id[]	= "$Id: mem.c,v 1.5 1997-04-26 05:57:03 fjh Exp $";
 
 /* 
  * Make sure the size of guard_bytes is a multiple of 8 to ensure we 
  * don't get unaligned accesses, even on 64-bit architectures.
  */
-static uchar
+static const unsigned char
 guard_bytes[] = {0xa5,0xa5,0xa5,0xa5,0xa5,0xa5,0xa5,0xa5};
 
 /* Implementation */
 
 void*
-mem_malloc(size_t size)
+MB_malloc(size_t size)
 {
 	size_t		real_size;
 	size_t		guard_size;
-	uchar		*real_mem, *mem;
+	unsigned char	*real_mem, *mem;
 
-	guard_size = sizeof(guard_bytes) / sizeof(uchar);
+	guard_size = sizeof(guard_bytes) / sizeof(*guard_bytes);
 	real_size = size + 2 * guard_size;
 	
 	real_mem = malloc(real_size);
-	if (real_mem == NULL)
-	{
-		fatal("mem.mem_alloc: malloc failed");
+	if (real_mem == NULL) {
+		MB_fatal("mem.MB_alloc: malloc failed");
 	}
 
 	/* 
@@ -52,14 +51,14 @@ mem_malloc(size_t size)
 	 */
 	
 	mem = real_mem + guard_size;
-	return (void*) mem;
+	return mem;
 }
 
 void
-mem_free(void *mem)
+MB_free(void *mem)
 {
 	size_t		guard_size;
-	uchar		*real_mem;
+	unsigned char	*real_mem;
 
 	/*
 	 * Check that the memory to be freed was actually allocated.
@@ -73,34 +72,32 @@ mem_free(void *mem)
 	 * XXX: Do this later...
 	 */
 
-	guard_size = sizeof(guard_bytes) / sizeof(uchar);
-	real_mem = (uchar*) mem - guard_size;
-	free((void*)real_mem);
+	guard_size = sizeof(guard_bytes) / sizeof(*guard_bytes);
+	real_mem = (unsigned char *) mem - guard_size;
+	free(real_mem);
 
 	return;
 }
 
 void*
-mem_realloc(void *mem, size_t size)
+MB_realloc(void *mem, size_t size)
 {
 
-	void	*newmem;
+	void	*new_mem;
 
 	/*
 	 * Check all allocated memory for corruption.
 	 * XXX: Do this later...
 	 */
 
-	newmem = mem_malloc(size);
-	memcpy(newmem, mem, size);
+	new_mem = MB_malloc(size);
+	memcpy(new_mem, mem, size);
 
 	/*
 	 * Check mem was actually allocated.
 	 * XXX: Do later...
 	 */
-	mem_free(mem);
+	MB_free(mem);
 
-	return newmem;
+	return new_mem;
 }
-
-

@@ -3,19 +3,35 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mem.h,v 1.4 1997-04-26 03:16:14 fjh Exp $
+** $Id: mem.h,v 1.5 1997-04-26 05:57:04 fjh Exp $
 */
 
-#ifndef MEMALLOC_H
-#define	MEMALLOC_H
+/*
+** This file provides memory allocation functions for use by the bytecode
+** utilities.
+*/
+
+#ifndef MB_MEMALLOC_H
+#define	MB_MEMALLOC_H
+
+/*
+** Do not use MB_malloc() or MB_realloc() directly, unless you want
+** to allocate raw memory.  Normally you should use the macros
+** MB_new(), MB_new_array(), and MB_resize_array() instead.
+*/
 
 void*
-mem_malloc(size_t size);
+MB_malloc(size_t size);
+
+void*
+MB_realloc(void *mem, size_t size);
 
 void
-mem_free(void *mem);
+MB_free(void *mem);
 
-void*
-mem_realloc(void *mem, size_t size);
+#define MB_new(type)		((type *) MB_malloc(sizeof(type)))
+#define MB_new_array(type, num)	((type *) MB_malloc((num) * sizeof(type)))
+#define MB_resize_array(array, type, num) \
+	((type *) MB_realloc((array), (num) * sizeof(type)))
 
-#endif	/* MEMALLOC_H */
+#endif	/* MB_MEMALLOC_H */

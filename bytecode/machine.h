@@ -3,17 +3,17 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: machine.h,v 1.4 1997-04-26 03:16:08 fjh Exp $
+** $Id: machine.h,v 1.5 1997-04-26 05:56:54 fjh Exp $
 */
 
-#ifndef MACHINE_H
-#define	MACHINE_H
+#ifndef MB_MACHINE_H
+#define	MB_MACHINE_H
 
-#define	MAX_REGISTERS	40
+#define	MB_MAX_REGISTERS	40
 
-#define	MAX_INT_STACK	10000
-#define	MAX_INT_HEAP	10000
-#define	MAX_CODE	10000
+#define	MB_MAX_INT_STACK	10000
+#define	MB_MAX_INT_HEAP		10000
+#define	MB_MAX_CODE		10000
 
 /*
 **	XXX: Currently we store full bloated bytecodes in the
@@ -31,11 +31,11 @@
 ** with compiled code.
 */
 typedef Word
-	Address;
+	MB_Address;
 
-typedef struct Machine {
+typedef struct MB_Machine_struct {
 
-	Word	reg[MAX_REGISTERS];	/* Machine registers */
+	Word	reg[MB_MAX_REGISTERS];	/* Machine registers */
 
 	Word	maxfr;		/* Top stack frame pointer */
 	Word	curfr;		/* Current stack frame pointer */
@@ -44,12 +44,12 @@ typedef struct Machine {
 	Word	hp;	/* Heap pointer */
 	Word	sp;	/* Stack pointer */
 
-	Word	stack[MAX_INT_STACK];	/* Interpreter stack */
-	Word	heap[MAX_INT_HEAP];	/* Interpreter heap */
+	Word	stack[MB_MAX_INT_STACK]; /* Interpreter stack */
+	Word	heap[MB_MAX_INT_HEAP];	/* Interpreter heap */
 
-	Bytecode
-		code[MAX_CODE];		/* Data area for storing bytecodes */
-} Machine;
+	MB_Bytecode
+		code[MB_MAX_CODE];	/* Data area for storing bytecodes */
+} MB_Machine;
 
 
-#endif	/* MACHINE_H */
+#endif	/* MB_MACHINE_H */
