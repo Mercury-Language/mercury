@@ -479,7 +479,8 @@ lib%.install_init: %.init install_lib_dirs
 	$(INSTALL) `vpath_find $*.init` $(INSTALL_MODULE_DIR)
 
 .PHONY: lib%.install_library
-lib%.install_library: lib%.a lib%.$(EXT_FOR_SHARED_LIB) install_grade_dirs
+lib%.install_library: lib%.a lib%.$(EXT_FOR_SHARED_LIB) \
+			install_grade_dirs lib%.install_grade_hdrs
 	$(INSTALL) `vpath_find lib$*.a lib$*.$(EXT_FOR_SHARED_LIB)` \
 			$(INSTALL_MERC_LIB_DIR)
 
@@ -494,8 +495,6 @@ lib%.install_grades:
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
-				exit 1; \
-			$(MMAKE) GRADE=$$grade lib$*.install_grade_hdrs || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \

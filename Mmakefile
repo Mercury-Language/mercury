@@ -432,7 +432,6 @@ install_grades: scripts
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
 		( cd library && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_grade_hdrs && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
 		( cd browser && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
