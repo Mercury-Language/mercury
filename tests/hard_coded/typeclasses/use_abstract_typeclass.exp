@@ -1,0 +1,5 @@
+43 is an integer.
+"Forty-three" is a string.
+[43] is a list, and its head is an integer.
+[[[], [43]]] is a list, and its head is a list, and its head is an empty list.
+tchok is a quux.

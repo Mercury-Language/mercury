@@ -62,7 +62,8 @@ PROGS=	\
 	type_spec \
 	unbound_tvar \
 	unqualified_method \
-	use_abstract_instance
+	use_abstract_instance \
+	use_abstract_typeclass
 
 TESTS = $(PROGS)
 SUBDIRS=
