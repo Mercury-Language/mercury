@@ -564,7 +564,11 @@ read_module(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
 		{ MaybeTimestamp = MaybeTimestamp0 }
 	;
 		{ ReadModules = ReadModules0 },
-		read_mod(ModuleName, ".m", "Reading module", yes,
+		% We don't search `--search-directories' for source files
+		% because that can result in the generated interface files
+		% being created in the wrong directory.
+		{ Search = no },
+		read_mod(ModuleName, ".m", "Reading module", Search,
 			ReturnTimestamp, Items, Error, FileName,
 			MaybeTimestamp)
 	),
@@ -591,7 +595,11 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
 		{ MaybeTimestamp = MaybeTimestamp0 }
 	;
 		{ ReadModules = ReadModules0 },
-		read_mod_from_file(FileName, ".m", "Reading file", yes,
+		% We don't search `--search-directories' for source files
+		% because that can result in the generated interface files
+		% being created in the wrong directory.
+		{ Search = no },
+		read_mod_from_file(FileName, ".m", "Reading file", Search,
 			ReturnTimestamp, Items, Error, ModuleName,
 			MaybeTimestamp),
 
