@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002, 2004 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -71,6 +71,11 @@ extern 	void	MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list,
 extern 	void	MR_trace_browse_external(MR_Word type_info, MR_Word value,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 #endif
+
+/*
+** Browse a term using an XML browser.
+*/
+extern	void	MR_trace_save_and_invoke_xml_browser(MR_Word browser_term);
 
 /*
 ** Display a term non-interactively.

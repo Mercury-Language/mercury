@@ -116,7 +116,9 @@
 	;	format(portray_format)
 	;	width(int)
 	;	lines(int)
-	;	num_io_actions(int).
+	;	num_io_actions(int)
+	;	xml_browser_cmd(string)
+	;	xml_tmp_filename(string).
 
 	% Initialise a new browser_info.  The optional portray_format
 	% overrides the default format.
@@ -145,11 +147,19 @@
 
 %---------------------------------------------------------------------------%
 
-	% An abstract data type that holds persistent browser settings.
+	% An data type that holds persistent browser settings.
 	% This state must be saved by the caller of the browse module
 	% between calls.
 	%
 :- type browser_persistent_state.
+
+:- func browser_persistent_state ^ xml_browser_cmd = maybe(string).
+:- func browser_persistent_state ^ xml_browser_cmd := maybe(string) =
+	browser_persistent_state. 
+
+:- func browser_persistent_state ^ xml_tmp_filename = maybe(string).
+:- func browser_persistent_state ^ xml_tmp_filename := maybe(string) =
+	browser_persistent_state. 
 
 	% Initialize the persistent browser state with default values.
 	%
@@ -272,6 +282,29 @@ set_param_format_from_mdb(P, B, A, Format) -->
 	%
 	browser_info__set_param(no, P, B, A, no, no, no, no, format(Format)).
 
+:- pred set_param_xml_browser_cmd_from_mdb(string::in, 
+	browser_persistent_state::in, browser_persistent_state::out) is det.
+:- pragma export(mdb.browser_info.set_param_xml_browser_cmd_from_mdb(in, in, 
+	out), "ML_BROWSE_set_param_xml_browser_cmd_from_mdb").
+
+set_param_xml_browser_cmd_from_mdb(Command, !Browser) :-
+	browser_info.set_param(no`with_type`bool, 
+		no`with_type`bool, no`with_type`bool, no`with_type`bool, 
+		no`with_type`bool, no`with_type`bool, no`with_type`bool, 
+		no`with_type`bool, xml_browser_cmd(Command), !Browser).
+
+:- pred set_param_xml_tmp_filename_from_mdb(string::in, 
+	browser_persistent_state::in, browser_persistent_state::out) is det.
+:- pragma export(mdb.browser_info.set_param_xml_tmp_filename_from_mdb(in, in, 
+	out), "ML_BROWSE_set_param_xml_tmp_filename_from_mdb").
+
+set_param_xml_tmp_filename_from_mdb(FileName, !Browser) :-
+	browser_info.set_param(no`with_type`bool, 
+		no`with_type`bool, no`with_type`bool, no`with_type`bool, 
+		no`with_type`bool, no`with_type`bool, no`with_type`bool, 
+		no`with_type`bool, xml_tmp_filename(FileName),
+		!Browser).
+
 	%
 	% The following exported functions allow C code to create
 	% Mercury values of type bool.
@@ -320,7 +353,13 @@ browser_info__get_format_params(Info, Caller, Format, Params) :-
 			print_params		:: caller_params,
 			browse_params		:: caller_params,
 			print_all_params	:: caller_params,
-			num_printed_io_actions	:: int
+			num_printed_io_actions	:: int,
+				% The command to lauch the user's
+				% prefered XML browser.
+			xml_browser_cmd		:: maybe(string),
+				% The file to save XML to before
+				% lauching the browser.
+			xml_tmp_filename	:: maybe(string)
 		).
 
 :- type caller_params
@@ -355,7 +394,7 @@ browser_info__init_persistent_state(State) :-
 	caller_type_browse_defaults(Browse),
 	caller_type_print_all_defaults(PrintAll),
 	State = browser_persistent_state(Print, Browse, PrintAll,
-		num_printed_io_actions_default).
+		num_printed_io_actions_default, no, no).
 
 :- pred caller_type_print_defaults(caller_params).
 :- mode caller_type_print_defaults(out) is det.
@@ -407,6 +446,10 @@ browser_info__set_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0,
 		Setting, State0, State) :-
 	( Setting = num_io_actions(NumIoActions) ->
 		State = State0 ^ num_printed_io_actions := NumIoActions
+	; Setting = xml_browser_cmd(CommandStr) ->
+		State = State0 ^ xml_browser_cmd := yes(CommandStr)
+	; Setting = xml_tmp_filename(CommandStr) ->
+		State = State0 ^ xml_tmp_filename := yes(CommandStr)
 	;
 		(
 			FromBrowser = no,
@@ -433,7 +476,8 @@ browser_info__set_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0,
 		maybe_set_param(B, F, Pr, V, NPr, Setting, BParams0, BParams),
 		maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
 		State = browser_persistent_state(PParams, BParams, AParams,
-			State0 ^ num_printed_io_actions)
+			State0 ^ num_printed_io_actions,
+			State0 ^ xml_browser_cmd, State0 ^ xml_tmp_filename)
 	).
 
 browser_info.set_param(FromBrowser, OptionTable, Setting, !State) :-
@@ -542,6 +586,10 @@ maybe_set_param_2(yes, width(W), Params, Params ^ width := W).
 maybe_set_param_2(yes, lines(L), Params, Params ^ lines := L).
 maybe_set_param_2(yes, num_io_actions(_), _, _) :-
 	error("maybe_set_param_2: num_io_actions").
+maybe_set_param_2(yes, xml_browser_cmd(_), _, _) :-
+	error("maybe_set_param_2: xml_browser_cmd").
+maybe_set_param_2(yes, xml_tmp_filename(_), _, _) :-
+	error("maybe_set_param_2: xml_tmp_filename").
 
 :- pred get_caller_params(browser_persistent_state::in, browse_caller_type::in,
 	caller_params::out) is det.

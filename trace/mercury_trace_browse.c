@@ -118,6 +118,19 @@ MR_trace_save_term_xml(const char *filename, MR_Word browser_term)
 }
 
 void
+MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
+{
+    MercuryFile mdb_out;
+    MercuryFile mdb_err;
+
+    MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+    MR_c_file_to_mercury_file(MR_mdb_err, &mdb_err);
+
+    ML_BROWSE_browse_term_xml(browser_term, &mdb_out, &mdb_err,
+        MR_trace_browser_persistent_state);
+}
+
+void
 MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 {
     MercuryFile mdb_in;
@@ -280,6 +293,8 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
     int                 width;
     int                 lines;
     MR_Browse_Format    new_format;
+    MR_String           aligned_value;
+    char                *copied_value;
 
     MR_trace_browse_ensure_init();
 
@@ -329,6 +344,30 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
         MR_TRACE_CALL_MERCURY(
             ML_BROWSE_set_param_lines_from_mdb(print, browse, print_all,
                 flat, raw_pretty, verbose, pretty, lines,
+                MR_trace_browser_persistent_state,
+                &MR_trace_browser_persistent_state);
+        );
+    }
+    else if (MR_streq(param, "xml_browser_cmd")) {
+        copied_value = (char*)MR_GC_malloc(strlen(value) + 1);
+        strcpy(copied_value, value);
+        MR_TRACE_USE_HP(
+            MR_make_aligned_string(aligned_value, copied_value);
+        );
+        MR_TRACE_CALL_MERCURY(
+            ML_BROWSE_set_param_xml_browser_cmd_from_mdb(aligned_value, 
+                MR_trace_browser_persistent_state,
+                &MR_trace_browser_persistent_state);
+        );
+    }
+    else if (MR_streq(param, "xml_tmp_filename")) {
+        copied_value = (char*)MR_GC_malloc(strlen(value) + 1);
+        strcpy(copied_value, value);
+        MR_TRACE_USE_HP(
+            MR_make_aligned_string(aligned_value, copied_value);
+        );
+        MR_TRACE_CALL_MERCURY(
+            ML_BROWSE_set_param_xml_tmp_filename_from_mdb(aligned_value, 
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );

@@ -161,6 +161,19 @@ handle_command(browse_arg(MaybeArgNum), UserQuestion, Response,
 		)
 	).
 
+handle_command(browse_xml_arg(MaybeArgNum), UserQuestion, Response, 
+		!User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	edt_node_trace_atoms(Question, _, FinalAtom),
+	(
+		MaybeArgNum = yes(ArgNum),
+		browse_xml_atom_argument(FinalAtom, ArgNum, !.User, !IO)
+	;
+		MaybeArgNum = no,
+		browse_xml_atom(FinalAtom, !.User, !IO)
+	),
+	query_user(UserQuestion, Response, !User, !IO).
+
 handle_command(print_arg(From, To), UserQuestion, Response, 
 		!User, !IO) :-
 	Question = get_decl_question(UserQuestion),
@@ -383,6 +396,19 @@ browse_decl_bug(Bug, MaybeArgNum, !User, !IO) :-
 		browse_atom(InitAtom, FinalAtom, _, !User, !IO)
 	).
 
+:- pred browse_xml_decl_bug(decl_bug::in, maybe(int)::in, user_state::in,
+	io::di, io::uo) is cc_multi.
+
+browse_xml_decl_bug(Bug, MaybeArgNum, User, !IO) :-
+	decl_bug_trace_atom(Bug, _, FinalAtom),
+	(
+		MaybeArgNum = yes(ArgNum),
+		browse_xml_atom_argument(FinalAtom, ArgNum, User, !IO)
+	;
+		MaybeArgNum = no,
+		browse_xml_atom(FinalAtom, User, !IO)
+	).
+
 :- pred browse_atom_argument(trace_atom::in, trace_atom::in, int::in, 
 	maybe(term_path)::out, user_state::in, user_state::out, 
 	io::di, io::uo) is cc_multi.
@@ -409,6 +435,25 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeMark, !User, !IO) :-
 		MaybeMark = no
 	).
 
+:- pred browse_xml_atom_argument(trace_atom::in, int::in, user_state::in, 
+	io::di, io::uo) is cc_multi.
+
+browse_xml_atom_argument(Atom, ArgNum, User, !IO) :-
+	Atom = atom(_, Args0),
+	maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
+	(
+		list.index1(Args, ArgNum, ArgInfo),
+		ArgInfo = arg_info(_, _, MaybeArg),
+		MaybeArg = yes(ArgRep),
+		term_rep.rep_to_univ(ArgRep, Arg)
+	->
+		save_and_browse_browser_term_xml(univ_to_browser_term(Arg),
+			User ^ outstr, User ^ outstr, User ^ browser, !IO)
+	;
+		io.write_string(User ^ outstr, "Invalid argument number\n",
+			!IO)
+	).
+
 :- pred browse_atom(trace_atom::in, trace_atom::in, maybe(term_path)::out,
 	user_state::in, user_state::out, io::di, io::uo) is cc_multi.
 
@@ -417,15 +462,30 @@ browse_atom(InitAtom, FinalAtom, MaybeMark, !User, !IO) :-
 	ProcLabel = get_proc_label_from_layout(ProcLayout),
 	get_user_arg_values(Args, ArgValues),
 	get_pred_attributes(ProcLabel, Module, Name, _, PredOrFunc),
-	Function = pred_to_bool(unify(PredOrFunc,function)),
+	IsFunction = pred_to_bool(unify(PredOrFunc, function)),
 	sym_name_to_string(Module, ".", ModuleStr),
 	BrowserTerm = synthetic_term_to_browser_term(ModuleStr ++ "." ++ Name, 
-		ArgValues, Function),
+		ArgValues, IsFunction),
 	browse_browser_term(BrowserTerm, !.User ^ instr, !.User ^ outstr,
 		yes(get_subterm_mode_from_atoms(InitAtom, FinalAtom)),
 		MaybeDirs, !.User ^ browser, Browser, !IO),
 	maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
 	!:User = !.User ^ browser := Browser.
+
+:- pred browse_xml_atom(trace_atom::in, user_state::in, io::di, io::uo) 
+	is cc_multi.
+
+browse_xml_atom(Atom, User, !IO) :-
+	Atom = atom(ProcLayout, Args),
+	ProcLabel = get_proc_label_from_layout(ProcLayout),
+	get_user_arg_values(Args, ArgValues),
+	get_pred_attributes(ProcLabel, Module, Name, _, PredOrFunc),
+	IsFunction = pred_to_bool(unify(PredOrFunc, function)),
+	sym_name_to_string(Module, ".", ModuleStr),
+	BrowserTerm = synthetic_term_to_browser_term(ModuleStr ++ "." ++ Name, 
+		ArgValues, IsFunction),
+	save_and_browse_browser_term_xml(BrowserTerm, User ^ outstr, 
+		User ^ outstr, User ^ browser, !IO).
 
 :- func get_subterm_mode_from_atoms(trace_atom, trace_atom, list(dir)) 
 	= browser_term_mode.
@@ -538,31 +598,61 @@ reverse_and_append([A | As], Bs, Cs) :-
 %-----------------------------------------------------------------------------%
 
 :- type user_command
-	--->	yes			% The node is correct.
-	;	no			% The node is incorrect.
-	;	inadmissible		% The node is inadmissible.
-	;	skip			% The user has no answer.
-	;	browse_arg(maybe(int))	% Browse the nth argument before
-					% answering.  Or browse the whole
-					% predicate/function if the maybe is 
-					% no.
-	;	browse_io(int)		% Browse the nth IO action before
-					% answering.
-	;	print_arg(int, int)	% Print the nth to the mth arguments
-					% before answering.
-	;	print_io(int, int)	% Print the nth to the mth IO actions
-					% before answering.
-	;	pd			% Commence procedural debugging from
-					% this point.
+			% The node is correct.
+	--->	yes			
+
+			% The node is erroneous.
+	;	no			
+
+			% The node is inadmissible.
+	;	inadmissible		
+
+			% The user has no answer.
+	;	skip			
+
+			% Browse the nth argument before answering.  Or browse
+			% the whole predicate/function if the maybe is no.
+	;	browse_arg(maybe(int))	
+
+			% Browse the argument using an XML browser.		
+	;	browse_xml_arg(maybe(int)) 
+
+			% Browse the nth IO action before answering.
+	;	browse_io(int)		
+			
+			% Print the nth to the mth arguments
+			% before answering.
+	;	print_arg(int, int)	
+
+			% Print the nth to the mth IO actions
+			% before answering.
+	;	print_io(int, int)	
+
+			% Commence procedural debugging from
+			% this point.
+	;	pd			
+					
+			% Set a browser option.
 	;	set(maybe_option_table(setting_option), setting) 
-					% Set a browser option.
-	;	trust_predicate		% Trust the predicate being asked 
-					% about.
-	;	trust_module		% Trust the module being asked about.
-	;	abort			% Abort this diagnosis session.
-	;	help			% Request help before answering.
-	;	empty_command		% User just pressed return.
-	;	illegal_command.	% None of the above.
+
+			% Trust the predicate being asked 
+			% about.
+	;	trust_predicate		
+			
+			% Trust the module being asked about.
+	;	trust_module		
+			
+			% Abort this diagnosis session.
+	;	abort			
+			
+			% Request help before answering.
+	;	help			
+
+			% User just pressed return.
+	;	empty_command		
+
+			% None of the above.
+	;	illegal_command.	
 
 :- pred user_help_message(user_state::in, io::di, io::uo) is det.
 
@@ -574,14 +664,17 @@ user_help_message(User, !IO) :-
 		"\tn\tno\t\tthe node is incorrect\n",
 		"\ti\tinadmissible\tthe input arguments are out of range\n",
 		"\ts\tskip\t\tskip this question\n",
-		"\tt [module]\ttrust [module]\tTrust the predicate/function ",
-		"about\n",
-		"\t\twhich the current question is being asked.  If the word\n",
+		"\tt [module]\ttrust [module]\t\n",
+		"\t\tTrust the predicate/function about which\n",
+		"\t\tthe current question is being asked.  If the word\n",
 		"\t\t`module' is given as an argument then trust all the\n",
 		"\t\tpredicates/functions in the same module as the\n",
 		"\t\tpredicate/function about which the current question is\n",
 		"\t\tbeing asked.\n",
-		"\tb [<n>]\tbrowse [<n>]\tbrowse the atom, or its nth argument\n",
+		"\tb [-x] [<n>]\tbrowse [-x] [<n>]\n",
+		"\t\tBrowse the atom, or its nth argument.\n",
+		"\t\tIf the `-x' or `--xml' option is given, then browse\n",
+		"\t\tthe term with an XML browser.\n",
 		"\tb io <n>\tbrowse io <n>\tbrowse the atom's nth I/O action\n",
 		"\tp <n>\tprint <n>\tprint the nth argument of the atom\n",
 		"\tp <n-m>\tprint <n-m>\tprint the nth to the mth arguments of the atom\n",
@@ -674,9 +767,20 @@ one_word_cmd(Cmd, []) = Cmd.
 
 :- func browse_arg_cmd(list(string)::in) = (user_command::out) is semidet.
 
-browse_arg_cmd([Arg]) = browse_arg(yes(ArgNum)) :-
-	string.to_int(Arg, ArgNum).
 browse_arg_cmd([]) = browse_arg(no).
+browse_arg_cmd([Arg]) = BrowseCmd :-
+	(
+		string.to_int(Arg, ArgNum)
+	->
+		BrowseCmd = browse_arg(yes(ArgNum))
+	;
+		( Arg = "-x" ; Arg = "--xml" ),
+		BrowseCmd = browse_xml_arg(no)
+	).
+browse_arg_cmd(["-x", Arg]) = browse_xml_arg(yes(ArgNum)) :-
+	string.to_int(Arg, ArgNum).
+browse_arg_cmd(["--xml", Arg]) = browse_xml_arg(yes(ArgNum)) :-
+	string.to_int(Arg, ArgNum).
 browse_arg_cmd(["io", Arg]) = browse_io(ArgNum) :-
 	string.to_int(Arg, ArgNum).
 
@@ -742,6 +846,11 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
 		Command = browse_arg(MaybeArgNum)
 	->
 		browse_decl_bug(Bug, MaybeArgNum, !User, !IO),
+		user_confirm_bug(Bug, Response, !User, !IO)
+	;
+		Command = browse_xml_arg(MaybeArgNum)
+	->
+		browse_xml_decl_bug(Bug, MaybeArgNum, !.User, !IO),
 		user_confirm_bug(Bug, Response, !User, !IO)
 	;
 		Command = browse_io(ActionNum)

@@ -44,6 +44,13 @@
 	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
 
+	% Dump the term as an XML file and launch the XML browser specified
+	% by the xml_browser_cmd field in the browser_persistent_state.
+	%
+:- pred browse__save_and_browse_browser_term_xml(browser_term::in,
+	io__output_stream::in, io__output_stream::in,
+	browser_persistent_state::in, io::di, io::uo) is cc_multi.
+
 	% As above, except that the supplied format will override the default.
 	% Again, this is exported to C code, so the browser term mode function
 	% can't be supplied.
@@ -168,6 +175,9 @@
 :- pragma export(save_term_to_file_xml(in, in, in, di, uo),
 	"ML_BROWSE_save_term_to_file_xml").
 
+:- pragma export(browse__save_and_browse_browser_term_xml(in, in, in, in, 
+	di, uo), "ML_BROWSE_browse_term_xml").
+
 %---------------------------------------------------------------------------%
 %
 % If the term browser is called from the internal debugger, input is
@@ -241,6 +251,20 @@ save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
 		).
 
 save_term_to_file_xml(FileName, BrowserTerm, OutStream, !IO) :-
+	maybe_save_term_to_file_xml(FileName, BrowserTerm, Result, !IO),
+	(
+		Result = ok
+	;
+		Result = error(Error),
+		io__error_message(Error, Msg),
+		io__write_string(OutStream, Msg, !IO),
+		io__nl(!IO)
+	).
+
+:- pred maybe_save_term_to_file_xml(string::in, browser_term::in,
+	io.res::out, io::di, io::uo) is cc_multi.
+
+maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
 	io__tell(FileName, FileStreamRes, !IO),
 	(
 		FileStreamRes = ok,
@@ -265,9 +289,82 @@ save_term_to_file_xml(FileName, BrowserTerm, OutStream, !IO) :-
 		),
 		io__told(!IO)
 	;
-		FileStreamRes = error(Error),
-		io__error_message(Error, Msg),
-		io__write_string(OutStream, Msg, !IO)
+		FileStreamRes = error(_)
+	).
+
+browse__save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State, 
+		!IO) :-
+	MaybeXMLBrowserCmd = State ^ xml_browser_cmd,
+	(
+		MaybeXMLBrowserCmd = yes(CommandStr),
+		MaybeTmpFileName = State ^ xml_tmp_filename,
+		(
+			MaybeTmpFileName = yes(TmpFileName),
+			io.write_string(OutStream, 
+				"Saving term to XML file...\n", !IO),
+			maybe_save_term_to_file_xml(TmpFileName, Term, 
+				SaveResult, !IO),
+			(
+				SaveResult = ok,
+				launch_xml_browser(OutStream, ErrStream,
+					CommandStr, !IO)
+			;
+				SaveResult = error(Error),
+				io.error_message(Error, Msg),
+				io.write_string(ErrStream, 
+					"Error opening file `" ++
+					TmpFileName ++ "': ", !IO),
+				io.write_string(ErrStream, Msg, !IO),
+				io.nl(!IO)
+			)
+		;
+			MaybeTmpFileName = no,
+			io.write_string(ErrStream, 
+				"mdb: You need to issue a " ++
+				"\"set xml_tmp_filename '<filename>'\" " ++
+				" command first.\n", !IO)
+		)
+	;
+		MaybeXMLBrowserCmd = no,
+		io.write_string(ErrStream, "mdb: You need to issue a " ++
+			"\"set xml_browser_cmd '<command>'\" " ++
+			" command first.\n", !IO)
+	).
+
+:- pred launch_xml_browser(io.output_stream::in, io.output_stream::in, 
+	string::in, io::di, io::uo) is det.
+
+launch_xml_browser(OutStream, ErrStream, CommandStr, !IO) :-
+	io.write_string(OutStream, "Launching XML browser "
+		++ "(this may take some time) ...\n", !IO),
+	% Flush the output stream, so output appears in the correct order
+	% for tests where the `cat' command is used as the XML browser.
+	io.flush_output(OutStream, !IO),
+	io.call_system_return_signal(CommandStr, Result, !IO),
+	(
+		Result = ok(ExitStatus),
+		(
+			ExitStatus = exited(ExitCode),
+			(
+				ExitCode = 0
+			->
+				true
+			;
+				io.write_string(ErrStream, 
+					"mdb: The command `" ++ CommandStr ++ 
+					"' terminated with a non-zero exit "++
+					"code.\n", !IO)
+			)
+		;
+			ExitStatus = signalled(_),
+			io.write_string(ErrStream, "mdb: The browser " ++
+				"was killed.\n", !IO)
+		)
+	;
+		Result = error(Error),
+		io.write_string(ErrStream, "mdb: Error launching browser"
+			++ ": " ++ string.string(Error) ++
+			".\n", !IO)
 	).
 
 :- pred save_univ(int::in, univ::in, io::di, io::uo) is cc_multi.

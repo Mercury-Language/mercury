@@ -195,13 +195,6 @@ static  MR_bool     MR_trace_internal_interacting = MR_FALSE;
 static  MR_bool     MR_print_optionals = MR_FALSE;
 
 /*
-** These variables tell mdb how to invoke the user's xml browser.
-*/
-
-static  char        *MR_xml_browser_command = NULL;
-static  char        *MR_xml_tmp_filename = NULL;
-
-/*
 ** This variable holds the name of a file which contains a list of 
 ** the file names of passing test case trace counts.
 */
@@ -715,7 +708,6 @@ static  const char  *MR_trace_browse_proc_body(MR_Event_Info *event_info,
                         MR_Browse_Format format);
 
 /* Functions to invoke the user's XML browser on terms or goals */
-static  void        MR_trace_save_and_invoke_xml_browser(MR_Word browser_term);
 static  void        MR_trace_browse_xml(MR_Word type_info, MR_Word value,
                         MR_Browse_Caller_Type caller, MR_Browse_Format format);
 static  void        MR_trace_browse_goal_xml(MR_ConstString name,
@@ -1313,37 +1305,6 @@ MR_trace_browse_internal(MR_Word type_info, MR_Word value,
 
         default:
             MR_fatal_error("MR_trace_browse_internal: unknown caller type");
-    }
-}
-
-static void
-MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
-{
-    if (MR_xml_tmp_filename != NULL && (!MR_streq(MR_xml_tmp_filename, ""))) {
-        fprintf(MR_mdb_out, "Saving term to XML file...\n");
-        fflush(MR_mdb_out);
-        MR_trace_save_term_xml(MR_xml_tmp_filename, browser_term);
-    } else {
-        fflush(MR_mdb_out);
-        fprintf(MR_mdb_err, "mdb: You need to issue a "
-            "\"set xml_tmp_filename '...'\" command first.\n");
-    }
-    
-    if (MR_xml_browser_command != NULL &&
-        (!MR_streq(MR_xml_browser_command, "")))
-    {
-        fprintf(MR_mdb_out, "Launching XML browser (this may take some time) "
-            "...\n");
-        fflush(MR_mdb_out);
-        if (system(MR_xml_browser_command) == -1) {
-            fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "\nmdb: Error invoking XML browser using "
-                "command:\n\"%s\"\n", MR_xml_browser_command);
-        }
-    } else {
-        fflush(MR_mdb_out);
-        fprintf(MR_mdb_err, "mdb: You need to issue a "
-            "\"set xml_browser_cmd '...'\" command first.\n");
     }
 }
 
@@ -2371,23 +2332,7 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Word             verbose_format;
     MR_Word             pretty_format;
 
-    if (word_count == 3 && MR_streq(words[1], "xml_browser_cmd")) {
-        if (MR_xml_browser_command == NULL) {
-            MR_xml_browser_command = (char*) malloc(strlen(words[2]) + 1);
-        } else {
-            MR_xml_browser_command = (char*) realloc(MR_xml_browser_command,
-                strlen(words[2]) + 1);
-        }
-        strcpy(MR_xml_browser_command, words[2]);
-    } else if (word_count == 3 && MR_streq(words[1], "xml_tmp_filename")) {
-        if (MR_xml_tmp_filename == NULL) {
-            MR_xml_tmp_filename = (char*) malloc(strlen(words[2]) + 1);
-        } else {
-            MR_xml_tmp_filename = (char*) realloc(MR_xml_tmp_filename,
-                strlen(words[2]) + 1);
-        }
-        strcpy(MR_xml_tmp_filename, words[2]);
-    } else if (word_count == 3 && MR_streq(words[1], "fail_trace_count")) {
+    if (word_count == 3 && MR_streq(words[1], "fail_trace_count")) {
         if (MR_dice_fail_trace_count_file == NULL) {
             MR_dice_fail_trace_count_file = (char*)malloc(strlen(words[2]) 
                 + 1);
