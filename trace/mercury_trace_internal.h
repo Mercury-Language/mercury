@@ -7,15 +7,12 @@
 #ifndef	MERCURY_TRACE_INTERNAL_H
 #define	MERCURY_TRACE_INTERNAL_H
 
-#include "mercury_conf.h"	/* for MR_USE_DECLARATIVE_DEBUGGER */
 #include "mercury_types.h"	/* for MR_Code */
 #include "mercury_trace.h"	/* for MR_Event_Info, etc. */
 #include "mercury_std.h"	/* for MR_bool */
 #include "mercury_trace_completion.h"	/* for MR_Make_Completer */
 
 #include <stdio.h>		/* for FILE */
-
-#ifdef  MR_USE_DECLARATIVE_DEBUGGER
 
 /*
 ** The following enum gives the possible modes that the declarative
@@ -41,8 +38,6 @@ typedef enum {
 */
 
 extern	MR_Trace_Mode	MR_trace_decl_mode;
-
-#endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 extern	MR_Code	*MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
 			MR_bool interactive, MR_Event_Info *event_info);

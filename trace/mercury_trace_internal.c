@@ -206,11 +206,7 @@ static const char	*MR_scope_report_msg[] = {
 	"MDB INTERNAL ERROR: scope set to MR_SPY_LINENO",
 };
 
-#ifdef	MR_USE_DECLARATIVE_DEBUGGER
-
 MR_Trace_Mode MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-
-#endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 typedef enum {
 	MR_MULTIMATCH_ASK, MR_MULTIMATCH_ALL, MR_MULTIMATCH_ONE
@@ -447,14 +443,12 @@ static MR_Next	MR_trace_cmd_quit(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
 
-#ifdef MR_USE_DECLARATIVE_DEBUGGER
 static MR_Next	MR_trace_cmd_dd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
 static MR_Next	MR_trace_cmd_dd_dd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
-#endif /* MR_USE_DECLARATIVE_DEBUGGER */
 
 static	void	MR_maybe_print_spy_point(int slot, const char *problem);
 static	void	MR_print_unsigned_var(FILE *fp, const char *var,
@@ -555,11 +549,9 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 		return MR_trace_event_internal_report(cmd, event_info);
 	}
 
-#ifdef	MR_USE_DECLARATIVE_DEBUGGER
 	if (MR_trace_decl_mode != MR_TRACE_INTERACTIVE) {
 		return MR_trace_decl_debug(cmd, event_info);
 	}
-#endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 	/*
 	** We want to make sure that the Mercury code used to implement some
@@ -3499,8 +3491,6 @@ MR_trace_cmd_quit(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	return KEEP_INTERACTING;
 }
 
-#ifdef	MR_USE_DECLARATIVE_DEBUGGER
-
 static MR_Next
 MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
@@ -3558,8 +3548,6 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	return KEEP_INTERACTING;
 }
-
-#endif  /* MR_USE_DECLARATIVE_DEBUGGER */
 
 static void
 MR_maybe_print_spy_point(int slot, const char *problem)
@@ -5163,12 +5151,10 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "misc", "quit", MR_trace_cmd_quit,
 		MR_trace_quit_cmd_args, NULL},
 
-#ifdef MR_USE_DECLARATIVE_DEBUGGER
 	{ "dd", "dd", MR_trace_cmd_dd,
 		NULL, MR_trace_null_completer},
 	{ "dd", "dd_dd", MR_trace_cmd_dd_dd,
 		NULL, MR_trace_filename_completer},
-#endif
 
 	/* End of doc/mdb_command_list. */
 	{ NULL, "NUMBER", NULL,

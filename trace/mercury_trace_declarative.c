@@ -30,8 +30,6 @@
 #include "mercury_imp.h"
 #include "mercury_trace_declarative.h"
 
-#ifdef MR_USE_DECLARATIVE_DEBUGGER
-
 #include "mercury_trace.h"
 #include "mercury_trace_browse.h"
 #include "mercury_trace_internal.h"
@@ -1516,5 +1514,3 @@ MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node)
 }
 
 #endif /* MR_DEBUG_DD_BACK_END */
-
-#endif /* defined(MR_USE_DECLARATIVE_DEBUGGER) */

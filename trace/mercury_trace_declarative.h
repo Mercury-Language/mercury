@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -10,8 +10,6 @@
 #include "mercury_imp.h"
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
-
-#ifdef MR_USE_DECLARATIVE_DEBUGGER
 
 /*
 ** When in declarative debugging mode, the internal debugger calls
@@ -45,5 +43,4 @@ typedef MR_Word MR_Trace_Node;
 #define MR_TRACE_STATUS_FAILED		(MR_Word) 1
 #define MR_TRACE_STATUS_UNDECIDED	(MR_Word) 2
 
-#endif  /* MR_USE_DECLARATIVE_DEBUGGER */
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

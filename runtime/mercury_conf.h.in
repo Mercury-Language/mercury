@@ -389,15 +389,6 @@
 #undef  MR_USE_EXTERNAL_DEBUGGER
 
 /*
-** MR_DISABLE_DECLARATIVE_DEBUGGER:
-**	Remove declarative debugging support from the internal
-**	debugger, even if it is compatible with the current grade.
-**	Whether the declarative debugger can be used or not is
-**	determined in runtime/mercury_conf_param.h.
-*/
-#undef	MR_DISABLE_DECLARATIVE_DEBUGGER
-
-/*
 ** MR_NO_USE_READLINE
 **	Set this if you want to prevent the debugger from using the GNU
 **	readline library for the command-line prompt.

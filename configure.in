@@ -2309,17 +2309,6 @@ AC_SUBST(LIBGRADES)
 AC_SUBST(LIBGRADE_OPTS)
 
 #-----------------------------------------------------------------------------#
-#
-# Add an option that disables declarative debugging support in the internal
-# debugger.  It is enabled by default.
-#
-AC_ARG_ENABLE(decl-debug,
-[  --disable-decl-debug    disable the declarative debugger],
-mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=yes)
-if test "$mercury_cv_enable_decl_debug" = "no"; then
-	AC_DEFINE(MR_DISABLE_DECLARATIVE_DEBUGGER)
-fi
-#-----------------------------------------------------------------------------#
 
 # Determine how many of the r registers (r1, r2, ...) are real registers.
 # Determine how many temporaries may be allocated real registers.
