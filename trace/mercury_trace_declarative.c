@@ -1224,7 +1224,7 @@ static MR_Unsigned	MR_io_action_map_cache_end;
 
 static	MR_Code *
 MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
-		MR_Event_Info *event_info, MR_Event_Details *event_details)
+	MR_Event_Info *event_info, MR_Event_Details *event_details)
 {
 	MR_Word			response;
 	MR_bool			bug_found;
@@ -1275,6 +1275,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		** This is a quick and dirty way to debug the front end.
 		*/
 		MR_trace_enabled = MR_TRUE;
+		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 	}
 
 	io_start = MR_edt_start_io_counter;
