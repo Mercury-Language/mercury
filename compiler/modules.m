@@ -449,6 +449,17 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 			"\t$(MCS) -s$(GRADE) $(MCSFLAGS) ", ModuleName, ".m\n"
 		]),
 
+		( { FactDeps = [_|_] } -> 
+			{ Lambda = lambda([S0::in, S::out] is det, 
+				string__append(S0, ".c ", S)) },
+			{ list__map(Lambda, FactDeps, Fact_C_Files) },
+			io__nl,
+			io__write_strings(DepStream, Fact_C_Files),
+			io__write_strings(DepStream, [": ",ModuleName,".o\n"])
+		;
+			[]
+		),
+
 		io__close_output(DepStream),
 		maybe_write_string(Verbose, " done.\n")
 	;
@@ -622,6 +633,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".cs = "),
 	write_compact_dependencies_list(Modules, ".c", Basis, DepStream),
+	write_dependencies_list(ExtraLinkObjs, ".c", DepStream),
 	io__write_string(DepStream, "\n\n"),
 
 	io__write_string(DepStream, ModuleName),
