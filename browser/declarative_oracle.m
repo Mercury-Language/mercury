@@ -47,7 +47,7 @@
 
 	% Produce a new oracle state.
 	%
-:- pred oracle_state_init(io__input_stream::in, io__output_stream::in, 
+:- pred oracle_state_init(io.input_stream::in, io.output_stream::in, 
 	browser_info.browser_persistent_state::in, oracle_state::out) is det.
 
 	% Add a module to the set of modules trusted by the oracle
@@ -88,8 +88,7 @@
 	% contents can be updated after user responses.
 	%
 :- pred query_oracle(decl_question(T)::in, oracle_response(T)::out,
-	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
-	is cc_multi.
+	oracle_state::in, oracle_state::out, io::di, io::uo) is cc_multi.
 
 	% Confirm that the node found is indeed an e_bug or an i_bug.  If
 	% the bug is overruled, force the oracle to forget everything
@@ -97,7 +96,7 @@
 	%
 :- pred oracle_confirm_bug(decl_bug::in, decl_evidence(T)::in,
 	decl_confirmation::out, oracle_state::in, oracle_state::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 	% Revise a question in the oracle's knowledge base so that the oracle
 	% will get an answer to the question from the user.
@@ -119,9 +118,9 @@
 
 :- implementation.
 
-:- import_module mdb__declarative_user.
-:- import_module mdb__util.
-:- import_module mdbcomp__prim_data.
+:- import_module mdb.declarative_user.
+:- import_module mdb.util.
+:- import_module mdbcomp.prim_data.
 
 :- import_module map, bool, std_util, set, int, bimap, counter, assoc_list,
 	exception, list.
@@ -152,8 +151,7 @@ make_user_question(Revised, DeclQuestion, UserQuestion) :-
 	).
 
 :- pred query_oracle_user(user_question(T)::in, oracle_response(T)::out,
-	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
-	is cc_multi.
+	oracle_state::in, oracle_state::out, io::di, io::uo) is cc_multi.
 
 query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
 	User0 = !.Oracle ^ user_state,
@@ -198,7 +196,7 @@ oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle, !IO) :-
 	(
 		Confirmation = overrule_bug
 	->
-		list__foldl(revise_oracle, Evidence, Oracle1, Oracle)
+		list.foldl(revise_oracle, Evidence, Oracle1, Oracle)
 	;
 		Oracle = Oracle1
 	).

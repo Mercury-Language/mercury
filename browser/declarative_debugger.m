@@ -262,8 +262,8 @@
 
 :- type diagnoser_state(R).
 
-:- pred diagnoser_state_init(io_action_map::in, io__input_stream::in,
-	io__output_stream::in, browser_info.browser_persistent_state::in,
+:- pred diagnoser_state_init(io_action_map::in, io.input_stream::in,
+	io.output_stream::in, browser_info.browser_persistent_state::in,
 	diagnoser_state(R)::out) is det.
 
 :- pred diagnosis(S::in, R::in, int::in, int::in, int::in,
@@ -271,7 +271,7 @@
 	diagnoser_state(R)::in, diagnoser_state(R)::out,
 	browser_info.browser_persistent_state::in,
 	browser_info.browser_persistent_state::out,
-	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
+	io::di, io::uo) is cc_multi <= annotated_trace(S, R).
 
 :- pred unravel_decl_atom(some_decl_atom::in, trace_atom::out,
 	list(io_action)::out) is det.
@@ -297,11 +297,11 @@
 
 :- implementation.
 
-:- import_module mdb__declarative_analyser.
-:- import_module mdb__declarative_edt.
-:- import_module mdb__declarative_oracle.
-:- import_module mdb__declarative_tree.
-:- import_module mdb__util.
+:- import_module mdb.declarative_analyser.
+:- import_module mdb.declarative_edt.
+:- import_module mdb.declarative_oracle.
+:- import_module mdb.declarative_tree.
+:- import_module mdb.util.
 
 :- import_module exception, int, map, bool.
 
@@ -330,9 +330,8 @@ get_decl_question_atom(unexpected_exception(_, init_decl_atom(Atom), _)) =
 			oracle_state	:: oracle_state
 		).
 
-:- pred diagnoser_get_analyser(diagnoser_state(R),
-		analyser_state(edt_node(R))).
-:- mode diagnoser_get_analyser(in, out) is det.
+:- pred diagnoser_get_analyser(diagnoser_state(R)::in,
+		analyser_state(edt_node(R))::out) is det.
 
 diagnoser_get_analyser(diagnoser(Analyser, _), Analyser).
 
@@ -342,8 +341,7 @@ diagnoser_get_analyser(diagnoser(Analyser, _), Analyser).
 diagnoser_set_analyser(Analyser, diagnoser(_, Oracle), 
 	diagnoser(Analyser, Oracle)).
 
-:- pred diagnoser_get_oracle(diagnoser_state(R), oracle_state).
-:- mode diagnoser_get_oracle(in, out) is det.
+:- pred diagnoser_get_oracle(diagnoser_state(R)::in, oracle_state::out) is det.
 
 diagnoser_get_oracle(diagnoser(_, Oracle), Oracle).
 
@@ -395,7 +393,7 @@ diagnosis(Store, NodeId, UseOldIoActionMap, IoActionStart, IoActionEnd,
 
 :- pred diagnosis_2(S::in, R::in, diagnoser_state(R)::in,
 	{diagnoser_response(R), diagnoser_state(R)}::out,
-	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
+	io::di, io::uo) is cc_multi <= annotated_trace(S, R).
 
 diagnosis_2(Store, NodeId, Diagnoser0, {Response, Diagnoser}, !IO) :-
 	Analyser0 = Diagnoser0 ^ analyser_state,
@@ -409,10 +407,10 @@ diagnosis_2(Store, NodeId, Diagnoser0, {Response, Diagnoser}, !IO) :-
 :- pred handle_analyser_response(S::in, analyser_response(edt_node(R))::in,
 	maybe(subterm_origin(edt_node(R)))::in, diagnoser_response(R)::out,
 	diagnoser_state(R)::in, diagnoser_state(R)::out, 
-	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
+	io::di, io::uo) is cc_multi <= annotated_trace(S, R).
 
 handle_analyser_response(_, no_suspects, _, no_bug_found, !Diagnoser, !IO) :-
-	io__write_string("No bug found.\n", !IO).
+	io.write_string("No bug found.\n", !IO).
 
 handle_analyser_response(Store, bug_found(Bug, Evidence), _, Response,
 		!Diagnoser, !IO) :-
@@ -426,9 +424,9 @@ handle_analyser_response(Store, oracle_question(Question), MaybeOrigin,
 		MaybeOrigin = yes(Origin),
 		Flag > 0
 	->
-		io__write_string("Origin: ", !IO),
+		io.write_string("Origin: ", !IO),
 		write_origin(wrap(Store), Origin, !IO),
-		io__nl(!IO)
+		io.nl(!IO)
 	;
 		true
 	),
@@ -457,7 +455,7 @@ handle_analyser_response(Store, revise(Question), _, Response, !Diagnoser, !IO)
 
 :- pred handle_oracle_response(S::in, oracle_response(edt_node(R))::in,
 	diagnoser_response(R)::out, diagnoser_state(R)::in,
-	diagnoser_state(R)::out, io__state::di, io__state::uo) 
+	diagnoser_state(R)::out, io::di, io::uo) 
 	is cc_multi <= annotated_trace(S, R).
 
 handle_oracle_response(Store, oracle_answer(Answer), Response, !Diagnoser, 
@@ -476,11 +474,11 @@ handle_oracle_response(Store, exit_diagnosis(Node), Response, !Diagnoser, !IO)
 	Response = symptom_found(Event).
 
 handle_oracle_response(_, abort_diagnosis, no_bug_found, !Diagnoser, !IO) :-
-	io__write_string("Diagnosis aborted.\n", !IO).
+	io.write_string("Diagnosis aborted.\n", !IO).
 
 :- pred confirm_bug(S::in, decl_bug::in, decl_evidence(T)::in,
 	diagnoser_response(R)::out, diagnoser_state(R)::in,
-	diagnoser_state(R)::out, io__state::di, io__state::uo) is cc_multi
+	diagnoser_state(R)::out, io::di, io::uo) is cc_multi
 	<= annotated_trace(S, R).
 
 confirm_bug(Store, Bug, Evidence, Response, !Diagnoser, !IO) :-
@@ -500,23 +498,23 @@ confirm_bug(Store, Bug, Evidence, Response, !Diagnoser, !IO) :-
 	).
 
 :- pred overrule_bug(S::in, diagnoser_response(R)::out, diagnoser_state(R)::in,
-	diagnoser_state(R)::out, io__state::di, io__state::uo) is cc_multi
+	diagnoser_state(R)::out, io::di, io::uo) is cc_multi
 	<= annotated_trace(S, R).
 
-overrule_bug(Store, Response, Diagnoser0, Diagnoser) -->
-	{ Analyser0 = Diagnoser0 ^ analyser_state },
-	{ revise_analysis(wrap(Store), AnalyserResponse, Analyser0, Analyser) },
-	{ Diagnoser1 = Diagnoser0 ^ analyser_state := Analyser },
-	{ debug_analyser_state(Analyser, MaybeOrigin) },
+overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
+	Analyser0 = Diagnoser0 ^ analyser_state,
+	revise_analysis(wrap(Store), AnalyserResponse, Analyser0, Analyser),
+	Diagnoser1 = Diagnoser0 ^ analyser_state := Analyser,
+	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
-		Response, Diagnoser1, Diagnoser).
+		Response, Diagnoser1, Diagnoser, !IO).
 
 %-----------------------------------------------------------------------------%
 
 	% Export a monomorphic version of diagnosis_state_init/4, to
 	% make it easier to call from C code.
 	%
-:- pred diagnoser_state_init_store(io__input_stream::in, io__output_stream::in,
+:- pred diagnoser_state_init_store(io.input_stream::in, io.output_stream::in,
 	browser_info.browser_persistent_state::in, 
 	diagnoser_state(trace_node_id)::out) is det.
 
@@ -524,7 +522,7 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser) -->
 		"MR_DD_decl_diagnosis_state_init").
 
 diagnoser_state_init_store(InStr, OutStr, Browser, Diagnoser) :-
-	diagnoser_state_init(map__init, InStr, OutStr, Browser, Diagnoser).
+	diagnoser_state_init(map.init, InStr, OutStr, Browser, Diagnoser).
 
 :- pred set_fallback_search_mode(
 	mdb.declarative_analyser.search_mode::in,
@@ -566,8 +564,8 @@ divide_and_query_search_mode =
 	diagnoser_state(trace_node_id)::in,
 	diagnoser_state(trace_node_id)::out, 
 	browser_info.browser_persistent_state::in, 
-	browser_info.browser_persistent_state::out, io__state::di, 
-	io__state::uo) is cc_multi.
+	browser_info.browser_persistent_state::out, io::di, io::uo) 
+	is cc_multi.
 
 :- pragma export(diagnosis_store(in, in, in, in, in, out, in, out, in, out, 
 	di, uo), "MR_DD_decl_diagnosis").
@@ -580,32 +578,31 @@ diagnosis_store(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
 	% Export some predicates so that C code can interpret the
 	% diagnoser response.
 	%
-:- pred diagnoser_bug_found(diagnoser_response(trace_node_id), event_number).
-:- mode diagnoser_bug_found(in, out) is semidet.
+:- pred diagnoser_bug_found(diagnoser_response(trace_node_id)::in, 
+	event_number::out) is semidet.
 
 :- pragma export(diagnoser_bug_found(in, out), "MR_DD_diagnoser_bug_found").
 
 diagnoser_bug_found(bug_found(Event), Event).
 
-:- pred diagnoser_symptom_found(diagnoser_response(trace_node_id), 
-	event_number).
-:- mode diagnoser_symptom_found(in, out) is semidet.
+:- pred diagnoser_symptom_found(diagnoser_response(trace_node_id)::in, 
+	event_number::out) is semidet.
 
 :- pragma export(diagnoser_symptom_found(in, out),
 	"MR_DD_diagnoser_symptom_found").
 
 diagnoser_symptom_found(symptom_found(Event), Event).
 
-:- pred diagnoser_no_bug_found(diagnoser_response(trace_node_id)).
-:- mode diagnoser_no_bug_found(in) is semidet.
+:- pred diagnoser_no_bug_found(diagnoser_response(trace_node_id)::in)
+	is semidet.
 
 :- pragma export(diagnoser_no_bug_found(in), "MR_DD_diagnoser_no_bug_found").
 
 diagnoser_no_bug_found(no_bug_found).
 
-:- pred diagnoser_require_subtree(diagnoser_response(trace_node_id), 
-	event_number, sequence_number, trace_node_id).
-:- mode diagnoser_require_subtree(in, out, out, out) is semidet.
+:- pred diagnoser_require_subtree(diagnoser_response(trace_node_id)::in, 
+	event_number::out, sequence_number::out, trace_node_id::out) 
+	is semidet.
 
 :- pragma export(diagnoser_require_subtree(in, out, out, out),
 		"MR_DD_diagnoser_require_subtree").
@@ -613,9 +610,8 @@ diagnoser_no_bug_found(no_bug_found).
 diagnoser_require_subtree(require_subtree(Event, SeqNo, CallPreceding), 
 	Event, SeqNo, CallPreceding).
 
-:- pred diagnoser_require_supertree(diagnoser_response(trace_node_id), 
-	event_number, sequence_number).
-:- mode diagnoser_require_supertree(in, out, out) is semidet.
+:- pred diagnoser_require_supertree(diagnoser_response(trace_node_id)::in, 
+	event_number::out, sequence_number::out) is semidet.
 
 :- pragma export(diagnoser_require_supertree(in, out, out),
 		"MR_DD_diagnoser_require_supertree").
@@ -690,12 +686,12 @@ get_trusted_list(Diagnoser, MDBCommandFormat, List) :-
 
 :- pred handle_diagnoser_exception(diagnoser_exception::in,
 	diagnoser_response(R)::out, diagnoser_state(R)::in,
-	diagnoser_state(R)::out, io__state::di, io__state::uo) is det.
+	diagnoser_state(R)::out, io::di, io::uo) is det.
 
 handle_diagnoser_exception(internal_error(Loc, Msg), Response, !Diagnoser, !IO)
 		:-
-	io__stderr_stream(StdErr, !IO),
-	io__write_string(StdErr, "An internal error has occurred; " ++
+	io.stderr_stream(StdErr, !IO),
+	io.write_string(StdErr, "An internal error has occurred; " ++
 		"diagnosis will be aborted.  Debugging\n" ++
 		"message follows:\n" ++ Loc ++ ": " ++ Msg ++ "\n" ++ 
 		"Please report bugs to mercury-bugs@cs.mu.oz.au.\n", !IO),
@@ -705,8 +701,8 @@ handle_diagnoser_exception(internal_error(Loc, Msg), Response, !Diagnoser, !IO)
 	Response = no_bug_found.
 
 handle_diagnoser_exception(io_error(Loc, Msg), Response, !Diagnoser, !IO) :-
-	io__stderr_stream(StdErr, !IO),
-	io__write_string(StdErr, "I/O error: "++Loc++": "++Msg++".\n"++
+	io.stderr_stream(StdErr, !IO),
+	io.write_string(StdErr, "I/O error: "++Loc++": "++Msg++".\n"++
 		"Diagnosis will be aborted.\n", !IO),
 	% Reset the analyser, in case it was left in an inconsistent state.
 	reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
@@ -715,7 +711,7 @@ handle_diagnoser_exception(io_error(Loc, Msg), Response, !Diagnoser, !IO) :-
 
 handle_diagnoser_exception(unimplemented_feature(Feature), Response, 
 		!Diagnoser, !IO) :-
-	io__write_string("Sorry, the diagnosis cannot continue because "++
+	io.write_string("Sorry, the diagnosis cannot continue because "++
 		"it requires support for\n"++
 		"the following: "++Feature++".\n"++
 		"The debugger is a work in progress, and this is not "++
@@ -727,8 +723,7 @@ handle_diagnoser_exception(unimplemented_feature(Feature), Response,
 
 %-----------------------------------------------------------------------------%
 
-:- pred decl_bug_get_event_number(decl_bug, event_number).
-:- mode decl_bug_get_event_number(in, out) is det.
+:- pred decl_bug_get_event_number(decl_bug::in, event_number::out) is det.
 
 decl_bug_get_event_number(e_bug(EBug), Event) :-
 	(
@@ -744,7 +739,7 @@ decl_bug_get_event_number(i_bug(IBug), Event) :-
 %-----------------------------------------------------------------------------%
 
 :- pred write_origin(wrap(S)::in, subterm_origin(edt_node(R))::in,
-	io__state::di, io__state::uo) is det <= annotated_trace(S, R).
+	io::di, io::uo) is det <= annotated_trace(S, R).
 
 write_origin(wrap(Store), Origin, !IO) :-
 	(Origin = output(dynamic(NodeId), ArgPos, TermPath) ->
@@ -752,15 +747,15 @@ write_origin(wrap(Store), Origin, !IO) :-
 		ProcId = get_proc_id_from_layout(
 			ExitNode ^ exit_atom ^ proc_layout),
 		ProcName = get_proc_name(ProcId),
-		io__write_string("output(", !IO),
-		io__write_string(ProcName, !IO),
-		io__write_string(", ", !IO),
-		io__write(ArgPos, !IO),
-		io__write_string(", ", !IO),
-		io__write(TermPath, !IO),
-		io__write_string(")", !IO)
+		io.write_string("output(", !IO),
+		io.write_string(ProcName, !IO),
+		io.write_string(", ", !IO),
+		io.write(ArgPos, !IO),
+		io.write_string(", ", !IO),
+		io.write(TermPath, !IO),
+		io.write_string(")", !IO)
 	;
-		io__write(Origin, !IO)
+		io.write(Origin, !IO)
 	).
 
 :- pragma foreign_code("C",
@@ -780,7 +775,7 @@ int	MR_DD_debug_origin = 0;
 extern	int	MR_DD_debug_origin;
 ").
 
-:- pred debug_origin(int::out, io__state::di, io__state::uo) is det.
+:- pred debug_origin(int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	debug_origin(Flag::out, IO0::di, IO::uo),
@@ -789,5 +784,5 @@ extern	int	MR_DD_debug_origin;
 	Flag = MR_DD_debug_origin;
 	IO = IO0;
 ").
-debug_origin(_) -->
-	{ private_builtin__sorry("declarative_debugger.debug_origin") }.
+debug_origin(_, !IO) :-
+	private_builtin.sorry("declarative_debugger.debug_origin").

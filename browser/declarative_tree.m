@@ -34,9 +34,8 @@
 	%
 :- type wrap(S) ---> wrap(S).
 
-:- pred edt_subtree_details(S, edt_node(R), event_number, sequence_number, R) 
-	<= annotated_trace(S, R).
-:- mode edt_subtree_details(in, in, out, out, out) is det.
+:- pred edt_subtree_details(S::in, edt_node(R)::in, event_number::out,
+	sequence_number::out, R::out) is det <= annotated_trace(S, R).
 
 :- pred trace_atom_subterm_is_ground(trace_atom::in, arg_pos::in, 
 	term_path::in) is semidet.
@@ -97,7 +96,7 @@ make_io_actions(IoActionMap, InitIoSeq, ExitIoSeq) =
 	( InitIoSeq = ExitIoSeq ->
 		[]
 	;
-		[map__lookup(IoActionMap, InitIoSeq) |
+		[map.lookup(IoActionMap, InitIoSeq) |
 			make_io_actions(IoActionMap, InitIoSeq + 1, ExitIoSeq)]
 	).
 
@@ -385,8 +384,7 @@ missing_answer_special_case(Atom) :-
 	ProcId = proc("std_util", predicate, "std_util", "builtin_aggregate", 
 		4, _).
 
-:- pred not_at_depth_limit(S, R) <= annotated_trace(S, R).
-:- mode not_at_depth_limit(in, in) is semidet.
+:- pred not_at_depth_limit(S::in, R::in) is semidet <= annotated_trace(S, R).
 
 not_at_depth_limit(Store, Ref) :-
 	call_node_from_id(Store, Ref, CallNode),
@@ -535,9 +533,8 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 	Next = step_left_in_contour(Store, Node),
 	contour_children(ContourType, Store, Next, StartId, Ns1, Ns).
 
-:- pred stratum_children(S, R, R, list(edt_node(R)), list(edt_node(R)))
-		<= annotated_trace(S, R).
-:- mode stratum_children(in, in, in, in, out) is det.
+:- pred stratum_children(S::in, R::in, R::in, list(edt_node(R))::in, 
+	list(edt_node(R))::out) is det <= annotated_trace(S, R).
 
 stratum_children(Store, NodeId, StartId, Ns0, Ns) :-
 	(
@@ -548,9 +545,8 @@ stratum_children(Store, NodeId, StartId, Ns0, Ns) :-
 		stratum_children_2(Store, NodeId, StartId, Ns0, Ns)
 	).
 
-:- pred stratum_children_2(S, R, R, list(edt_node(R)), list(edt_node(R)))
-	<= annotated_trace(S, R).
-:- mode stratum_children_2(in, in, in, in, out) is det.
+:- pred stratum_children_2(S::in, R::in, R::in, list(edt_node(R))::in, 
+	list(edt_node(R))::out) is det <= annotated_trace(S, R).
 
 stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
@@ -713,7 +709,7 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 		materialize_contour(Store, NodeId, Node, [], Contour0),
 		(
 			StartLoc = parent_goal(CallId, CallNode),
-			Contour = list__append(Contour0, [CallId - CallNode])
+			Contour = list.append(Contour0, [CallId - CallNode])
 		;
 			StartLoc = cur_goal,
 			Contour = Contour0
@@ -1063,12 +1059,12 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
 		Goal = conj_rep(Conjs),
 		add_paths_to_conjuncts(Conjs, Path, 1, ConjPaths),
 		MaybePrims = make_primitive_list(Store, 
-			list__append(ConjPaths, GoalPaths),
+			list.append(ConjPaths, GoalPaths),
 			Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, 
 			AllTraced, Primitives0)
 	;
 		Goal = some_rep(InnerGoal, MaybeCut),
-		InnerPath = list__append(Path, [exist(MaybeCut)]),
+		InnerPath = list.append(Path, [exist(MaybeCut)]),
 		InnerAndPath = goal_and_path(InnerGoal, InnerPath),
 		MaybePrims = make_primitive_list(Store, 
 			[InnerAndPath | GoalPaths],
@@ -1103,10 +1099,10 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
 				ContourHeadNode = later_disj(_, DisjPathStr, _)
 			),
 			path_from_string_det(DisjPathStr, DisjPath),
-			list__append(Path, PathTail, DisjPath),
+			list.append(Path, PathTail, DisjPath),
 			PathTail = [disj(N)]
 		->
-			list__index1_det(Disjs, N, Disj),
+			list.index1_det(Disjs, N, Disj),
 			DisjAndPath = goal_and_path(Disj, DisjPath),
 			MaybePrims = make_primitive_list(Store, [DisjAndPath |
 				GoalPaths], ContourTail, MaybeEnd, ArgNum,
@@ -1121,10 +1117,10 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
 			Contour = [_ - ContourHeadNode | ContourTail],
 			ContourHeadNode = switch(_, ArmPathStr),
 			path_from_string_det(ArmPathStr, ArmPath),
-			list__append(Path, PathTail, ArmPath),
+			list.append(Path, PathTail, ArmPath),
 			PathTail = [switch(N)]
 		->
-			list__index1_det(Arms, N, Arm),
+			list.index1_det(Arms, N, Arm),
 			ArmAndPath = goal_and_path(Arm, ArmPath),
 			MaybePrims = make_primitive_list(Store, [ArmAndPath |
 				GoalPaths], ContourTail, MaybeEnd, ArgNum,
@@ -1139,10 +1135,10 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
 			Contour = [_ - ContourHeadNode | ContourTail],
 			ContourHeadNode = cond(_, CondPathStr, _),
 			path_from_string_det(CondPathStr, CondPath),
-			list__append(Path, PathTail, CondPath),
+			list.append(Path, PathTail, CondPath),
 			PathTail = [ite_cond]
 		->
-			ThenPath = list__append(Path, [ite_then]),
+			ThenPath = list.append(Path, [ite_then]),
 			CondAndPath = goal_and_path(Cond, CondPath),
 			ThenAndPath = goal_and_path(Then, ThenPath),
 			MaybePrims = make_primitive_list(Store, [CondAndPath,
@@ -1155,10 +1151,10 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
 			cond_node_from_id(Store, ElseCondId, CondNode),
 			CondNode = cond(_, CondPathStr, _),
 			path_from_string_det(CondPathStr, CondPath),
-			list__append(Path, PathTail, CondPath),
+			list.append(Path, PathTail, CondPath),
 			PathTail = [ite_cond]
 		->
-			ElsePath = list__append(Path, [ite_else]),
+			ElsePath = list.append(Path, [ite_else]),
 			ElseAndPath = goal_and_path(Else, ElsePath),
 			MaybePrims = make_primitive_list(Store, [ElseAndPath |
 				GoalPaths], ContourTail, MaybeEnd, ArgNum,
@@ -1183,7 +1179,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
 		->
 			% The end of the primitive list is somewhere inside
 			% NegGoal.
-			NegPath = list__append(Path, [neg]),
+			NegPath = list.append(Path, [neg]),
 			NegAndPath = goal_and_path(NegGoal, NegPath),
 			MaybePrims = make_primitive_list(Store, [NegAndPath], 
 				ContourTail, MaybeEnd, ArgNum, TotalArgs,
@@ -1428,13 +1424,13 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 		MaybeNodeId),
 	(
 		AtomicGoal = unify_construct_rep(_CellVar, _Cons, FieldVars),
-		( list__member(Var0, BoundVars) ->
+		( list.member(Var0, BoundVars) ->
 			(
 				TermPath0 = [],
 				Origin = primitive_op(File, Line)
 			;
 				TermPath0 = [TermPathStep0 | TermPath],
-				list__index1_det(FieldVars, TermPathStep0,
+				list.index1_det(FieldVars, TermPathStep0,
 					Var),
 				traverse_primitives(Prims, Var, TermPath,
 					Store, ProcRep, Origin)
@@ -1445,8 +1441,8 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 		)
 	;
 		AtomicGoal = unify_deconstruct_rep(CellVar, _Cons, FieldVars),
-		( list__member(Var0, BoundVars) ->
-			( list__nth_member_search(FieldVars, Var0, Pos) ->
+		( list.member(Var0, BoundVars) ->
+			( list.nth_member_search(FieldVars, Var0, Pos) ->
 				traverse_primitives(Prims,
 					CellVar, [Pos | TermPath0],
 					Store, ProcRep, Origin)
@@ -1461,7 +1457,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 	;
 		AtomicGoal = unify_assign_rep(ToVar, FromVar),
 		% We handle assigns the same as we handle unsafe casts.
-		( list__member(Var0, BoundVars) ->
+		( list.member(Var0, BoundVars) ->
 			decl_require(unify(Var0, ToVar),
 				"traverse_primitives", "bad assign"),
 			traverse_primitives(Prims, FromVar, TermPath0,
@@ -1473,7 +1469,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 	;
 		AtomicGoal = unsafe_cast_rep(ToVar, FromVar),
 		% We handle unsafe casts the same as we handle assigns.
-		( list__member(Var0, BoundVars) ->
+		( list.member(Var0, BoundVars) ->
 			decl_require(unify(Var0, ToVar),
 				"traverse_primitives", "bad unsafe_cast"),
 			traverse_primitives(Prims, FromVar, TermPath0,
@@ -1484,7 +1480,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 		)
 	;
 		AtomicGoal = pragma_foreign_code_rep(_Args),
-		( list__member(Var0, BoundVars) ->
+		( list.member(Var0, BoundVars) ->
 			Origin = primitive_op(File, Line)
 		;
 			traverse_primitives(Prims, Var0, TermPath0,
@@ -1492,7 +1488,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 		)
 	;
 		AtomicGoal = unify_simple_test_rep(_LVar, _RVar),
-		( list__member(Var0, BoundVars) ->
+		( list.member(Var0, BoundVars) ->
 			throw(internal_error("traverse_primitives", "bad test"))
 		;
 			traverse_primitives(Prims, Var0, TermPath0,
@@ -1512,7 +1508,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 			Prims, Var0, TermPath0, Store, ProcRep, Origin)
 	;
 		AtomicGoal = builtin_call_rep(_, _, _),
-		( list__member(Var0, BoundVars) ->
+		( list.member(Var0, BoundVars) ->
 			Origin = primitive_op(File, Line)
 		;
 			traverse_primitives(Prims, Var0, TermPath0,
@@ -1535,7 +1531,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 
 traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 		Prims, Var, TermPath, Store, ProcRep, Origin) :-
-	( list__member(Var, BoundVars) ->
+	( list.member(Var, BoundVars) ->
 		Pos = find_arg_pos(Args, Var),
 		(
 			MaybeNodeId = yes(NodeId),
@@ -1557,7 +1553,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 add_paths_to_conjuncts([], _, _, []).
 add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
 		[goal_and_path(Goal, Path) | GoalAndPaths]) :-
-	list__append(ParentPath, [conj(N)], Path),
+	list.append(ParentPath, [conj(N)], Path),
 	add_paths_to_conjuncts(Goals, ParentPath, N + 1, GoalAndPaths).
 
 %-----------------------------------------------------------------------------%
@@ -1670,8 +1666,8 @@ trace_atom_subterm_is_ground(atom(_, Args), ArgPos, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred decl_require(pred, string, string).
-:- mode decl_require((pred) is semidet, in, in) is det.
+:- pred decl_require((pred)::in((pred) is semidet), string::in, string::in) 
+	is det.
 
 decl_require(Goal, Loc, Msg) :-
 	(

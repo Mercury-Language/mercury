@@ -25,48 +25,45 @@
 
 :- import_module list, std_util, map, require.
 
-main -->
-	process_arguments(MaybeFile),
+main(!IO) :-
+	process_arguments(MaybeFile, !IO),
 	(
-		{ MaybeFile = yes(File) }
+		MaybeFile = yes(File)
 	->
-		load_trace_node_map(File, Map, Key),
-		io__stdin_stream(StdIn),
-		io__stdout_stream(StdOut),
-		{ diagnoser_state_init(StdIn, StdOut, State) },
-		diagnosis(Map, Key, Response, State, _),
-		io__write_string("Diagnoser response:\n"),
-		io__write(Response),
-		io__nl
+		load_trace_node_map(File, Map, Key, !IO),
+		io.stdin_stream(StdIn, !IO),
+		io.stdout_stream(StdOut, !IO),
+		diagnoser_state_init(StdIn, StdOut, State),
+		diagnosis(Map, Key, Response, State, _, !IO),
+		io.write_string("Diagnoser response:\n", !IO),
+		io.write(Response, !IO),
+		io.nl(!IO)
 	;
-		usage
+		usage(!IO)
 	).
 
-:- pred process_arguments(maybe(io__input_stream),
-		io__state, io__state).
-:- mode process_arguments(out, di, uo) is det.
+:- pred process_arguments(maybe(io.input_stream)::out, io::di, io::uo) is det.
 
-process_arguments(MaybeFile) -->
-	io__command_line_arguments(Args),
+process_arguments(MaybeFile, !IO) :-
+	io.command_line_arguments(Args, !IO),
 	(
-		{ Args = [FileName] }
+		Args = [FileName]
 	->
-		io__open_input(FileName, Res),
+		io.open_input(FileName, Res, !IO),
 		(
-			{ Res = ok(File) }
+			Res = ok(File)
 		->
-			{ MaybeFile = yes(File) }
+			MaybeFile = yes(File)
 		;
-			{ MaybeFile = no }
+			MaybeFile = no
 		)
 	;
-		{ MaybeFile = no }
+		MaybeFile = no
 	).
 
-:- pred usage(io__state, io__state).
-:- mode usage(di, uo) is det.
+:- pred usage(io::di, io::uo) is det.
 
-usage -->
-	io__progname_base("declarative_test", Name),
-	io__write_strings(["Usage: ", Name, " <filename>\n"]).
+usage(!IO) :-
+	io.progname_base("declarative_test", Name, !IO),
+	io.write_strings(["Usage: ", Name, " <filename>\n"], !IO).
 
