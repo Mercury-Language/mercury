@@ -3,6 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
 /*
 ** mercury_trace_help.c
 **
@@ -56,11 +57,13 @@ MR_trace_add_item(const char *category, const char *item, int slot,
 	const char *text)
 {
 	Word	path;
+	char	*category_on_heap;
 
 	MR_trace_help_ensure_init();
 	restore_transient_registers();
+	make_aligned_string_copy(category_on_heap, category);
 	path = list_empty();
-	path = list_cons(category, path);
+	path = list_cons(category_on_heap, path);
 	save_transient_registers();
 	return MR_trace_help_add_node(path, item, slot, text);
 }
@@ -70,10 +73,16 @@ MR_trace_help_add_node(Word path, const char *name, int slot, const char *text)
 {
 	Word	result;
 	char	*msg;
+	char	*name_on_heap;
+	char	*text_on_heap;
+
+	restore_transient_registers();
+	make_aligned_string_copy(name_on_heap, name);
+	make_aligned_string_copy(text_on_heap, text);
+	save_transient_registers();
 
 	ML_HELP_add_help_node(MR_trace_help_system, path, slot,
-		(String) (Word) name, (String) (Word) text,
-		&result, &MR_trace_help_system);
+		name_on_heap, text_on_heap, &result, &MR_trace_help_system);
 
 	MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
 				MR_trace_help_system_type);
@@ -95,8 +104,15 @@ MR_trace_help(void)
 void
 MR_trace_help_word(const char *word)
 {
+	char	*word_on_heap;
+
 	MR_trace_help_ensure_init();
-	ML_HELP_name(MR_trace_help_system, (String) (Word) word,
+
+	restore_transient_registers();
+	make_aligned_string_copy(word_on_heap, word);
+	save_transient_registers();
+
+	ML_HELP_name(MR_trace_help_system, word_on_heap,
 		MR_trace_help_stdout);
 }
 
@@ -106,13 +122,19 @@ MR_trace_help_cat_item(const char *category, const char *item)
 	Word	path;
 	Word	result;
 	char	*msg;
+	char	*category_on_heap;
+	char	*item_on_heap;
 
 	MR_trace_help_ensure_init();
+
 	restore_transient_registers();
+	make_aligned_string_copy(category_on_heap, category);
+	make_aligned_string_copy(item_on_heap, item);
 	path = list_empty();
-	path = list_cons(item, path);
-	path = list_cons(category, path);
+	path = list_cons(item_on_heap, path);
+	path = list_cons(category_on_heap, path);
 	save_transient_registers();
+
 	ML_HELP_path(MR_trace_help_system, path, MR_trace_help_stdout, &result);
 	if (ML_HELP_result_is_error(result, &msg)) {
 		printf("internal error in the trace help system: %s\n", msg);
