@@ -45,6 +45,7 @@
 		;	warn_missing_opt_files
 		;	warn_non_stratification
 		;	warn_simple_code
+		;	warn_duplicate_calls
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -247,7 +248,8 @@ option_defaults_2(warning_option, [
 	warn_interface_imports	-	bool(no),
 	warn_non_stratification -	bool(no),
 	warn_missing_opt_files  -	bool(yes),
-	warn_simple_code	-	bool(yes)
+	warn_simple_code	-	bool(yes),
+	warn_duplicate_calls	-	bool(no)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -510,6 +512,7 @@ long_option("warn-interface-imports",	warn_interface_imports).
 long_option("warn-non-stratification",	warn_non_stratification).
 long_option("warn-missing-opt-files",	warn_missing_opt_files).
 long_option("warn-simple-code",		warn_simple_code).
+long_option("warn-duplicate-calls",	warn_duplicate_calls).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -997,8 +1000,11 @@ options_help_warning -->
 	io__write_string("\t\titself negatively through some path along its call graph.\n"),
 	io__write_string("\t--no-warn-simple-code\n"),
 	io__write_string("\t\tDisable warnings about constructs which are so\n"),
-	io__write_string("\t\tsimple that they are likely to be programming errors.\n").
-	
+	io__write_string("\t\tsimple that they are likely to be programming errors.\n"),
+	io__write_string("\t--warn-duplicate-calls\n"),
+	io__write_string("\t\tWarn about multiple calls to a predicate with the\n"),
+	io__write_string("\t\tsame input arguments.\n").
+
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
 
 options_help_verbosity -->

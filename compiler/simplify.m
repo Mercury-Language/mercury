@@ -46,7 +46,8 @@
 
 :- type simplify
 	---> 	simplify(
-			bool,	% produce warnings
+			bool,	% --warn-simple-code
+			bool,	% --warn-duplicate-calls
 			bool,	% run things that should be done once only
 			bool,	% attempt to merge adjacent switches 
 			bool,	% common subexpression elimination
@@ -80,18 +81,20 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0,
 		State1, State2),
 	( simplify_do_common(Info0) ->
-		Simplify = simplify(Warn, Once, Switch, _, Excess, Calls),
+		Simplify = simplify(Warn, WarnCalls, Once, 
+				Switch, _, Excess, Calls),
 		% On the first pass do common structure elimination and
 		% branch merging.
 		simplify_info_set_simplify(Info0,
-			simplify(Warn, no, Switch, yes, no, Calls), Info1),
+			simplify(Warn, WarnCalls, no, Switch, yes, no, Calls),
+			Info1),
 		simplify__proc_2(Proc0, Proc1, ModuleInfo0, ModuleInfo1,
 			Info1, Info2, State2, State3),
 		simplify_info_get_msgs(Info2, Msgs1),
 		proc_info_variables(Proc1, VarSet1),
 		proc_info_vartypes(Proc1, VarTypes1),
 		simplify_info_init(DetInfo,
-			simplify(Warn, Once, no, no, Excess, no),
+			simplify(Warn, WarnCalls, Once, no, no, Excess, no),
 			InstMap0, VarSet1, VarTypes1, Info3),
 		simplify_info_set_msgs(Info3, Msgs1, Info4),
 		%proc_info_goal(Proc1, OutGoal),
@@ -127,8 +130,8 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		State = State5
 	).
 
-:- pred simplify__proc_2(proc_info::in, proc_info::out, module_info::in, module_info::out,
-		simplify_info::in, simplify_info::out,
+:- pred simplify__proc_2(proc_info::in, proc_info::out, module_info::in,
+		module_info::out, simplify_info::in, simplify_info::out,
 		io__state::di, io__state::uo) is det.
 
 simplify__proc_2(Proc0, Proc, ModuleInfo0, ModuleInfo,
@@ -1182,6 +1185,7 @@ simplify_info_set_module_info(Info0, ModuleInfo, Info) :-
 :- interface.
 
 :- pred simplify_do_warn(simplify_info::in) is semidet.
+:- pred simplify_do_warn_calls(simplify_info::in) is semidet.
 :- pred simplify_do_once(simplify_info::in) is semidet.
 :- pred simplify_do_switch(simplify_info::in) is semidet.
 :- pred simplify_do_common(simplify_info::in) is semidet.
@@ -1192,22 +1196,25 @@ simplify_info_set_module_info(Info0, ModuleInfo, Info) :-
 
 simplify_do_warn(Info) :-
 	simplify_info_get_simplify(Info, Simplify),
-	Simplify = simplify(yes, _, _, _, _, _).
+	Simplify = simplify(yes, _, _, _, _, _, _).
+simplify_do_warn_calls(Info) :-
+	simplify_info_get_simplify(Info, Simplify),
+	Simplify = simplify(_, yes, _, _, _, _, _).
 simplify_do_once(Info) :-
 	simplify_info_get_simplify(Info, Simplify),
-	Simplify = simplify(_, yes, _, _, _, _).
+	Simplify = simplify(_, _, yes, _, _, _, _).
 simplify_do_switch(Info) :-
 	simplify_info_get_simplify(Info, Simplify),
-	Simplify = simplify(_, _, yes, _, _, _).
+	Simplify = simplify(_, _, _, yes, _, _, _).
 simplify_do_common(Info) :-
 	simplify_info_get_simplify(Info, Simplify), 
-	Simplify = simplify(_, _, _, yes, _, _).
+	Simplify = simplify(_, _, _, _, yes, _, _).
 simplify_do_excess_assigns(Info) :-
 	simplify_info_get_simplify(Info, Simplify),
-	Simplify = simplify(_, _, _, _, yes, _).
+	Simplify = simplify(_, _, _, _, _, yes, _).
 simplify_do_calls(Info) :-
 	simplify_info_get_simplify(Info, Simplify),
-	Simplify = simplify(_, _, _, _, _, yes).
+	Simplify = simplify(_, _, _, _, _, _, yes).
 
 :- pred simplify_info_update_instmap(simplify_info::in, hlds__goal::in,
 		simplify_info::out) is det.
