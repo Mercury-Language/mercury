@@ -1,6 +1,6 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
-% Copyright (C) 1997-2000, 2002 The University of Melbourne.
+% Copyright (C) 1997-2000, 2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -817,13 +817,14 @@ odbc__solutions(SQLString, Results) -->
 	% XXX optimize this when we have better support 
 	% for last call optimization.
 	odbc__do_aggregate(odbc__execute_statement(SQLString), 
-		cons, [], Results0),
+		odbc__cons, [], Results0),
 	{ list__reverse(Results0, Results) }.
 
 odbc__aggregate(SQLString, Accumulator, Acc0, Acc) -->
 	odbc__do_aggregate(odbc__execute_statement(SQLString), 
 		Accumulator, Acc0, Acc).
 
+	% XXX Remove this and use list.cons/3 after the next release.
 :- pred cons(T, list(T), list(T)).
 :- mode cons(in, in, out) is det.
 
@@ -2085,7 +2086,7 @@ odbc__tables(Qualifier, Owner, TableName, Tables) -->
 	{ odbc__convert_pattern_argument(TableName, TableStr, TableStatus) },
 	odbc__do_aggregate(odbc__sql_tables(QualifierStr, QualifierStatus,
 		OwnerStr, OwnerStatus, TableStr, TableStatus), 
-		cons, [], Results0),
+		odbc__cons, [], Results0),
 	{ list__reverse(Results0, Results) },
 	( { list__map(odbc__convert_table_desc, Results, Tables0) } ->
 		{ Tables = Tables0 }
