@@ -265,6 +265,14 @@ a variable live if its value will be used later on in the computation.
 :- type extra_goals
 	--->	no_extra_goals
 	;	extra_goals(
+			list(hlds_goal),	% goals to insert before
+						% the main goal
+			after_goals		% goals to append after
+						% the main goal
+		).
+:- type after_goals
+	--->	no_after_goals
+	;	after_goals(
 			instmap,		% instmap at end of main goal
 			list(hlds_goal)		% goals to append after
 						% the main goal
@@ -1005,33 +1013,62 @@ unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 	set__to_sorted_list(NonLocals, Vars).
 
 append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).
-append_extra_goals(extra_goals(InstMap, AfterGoals),
-		no_extra_goals, extra_goals(InstMap, AfterGoals)).
-append_extra_goals(extra_goals(InstMap0, AfterGoals0),
-			extra_goals(_InstMap1, AfterGoals1),
-			extra_goals(InstMap, AfterGoals)) :-
+append_extra_goals(extra_goals(BeforeGoals, AfterGoals),
+		no_extra_goals, extra_goals(BeforeGoals, AfterGoals)).
+append_extra_goals(extra_goals(BeforeGoals0, AfterGoals0),
+			extra_goals(BeforeGoals1, AfterGoals1),
+			extra_goals(BeforeGoals, AfterGoals)) :-
+	list__append(BeforeGoals0, BeforeGoals1, BeforeGoals),
+	append_after_goals(AfterGoals0, AfterGoals1, AfterGoals).
+
+:- pred append_after_goals(after_goals, after_goals, after_goals).
+:- mode append_after_goals(in, in, out) is det.
+
+append_after_goals(no_after_goals, AfterGoals, AfterGoals).
+append_after_goals(after_goals(InstMap, AfterGoals),
+		no_after_goals, after_goals(InstMap, AfterGoals)).
+append_after_goals(after_goals(InstMap0, AfterGoals0),
+			after_goals(_InstMap1, AfterGoals1),
+			after_goals(InstMap, AfterGoals)) :-
 	InstMap = InstMap0,
 	list__append(AfterGoals0, AfterGoals1, AfterGoals).
 
 handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
-		InstMapAtStart, _ModeInfo, Goal) :-
+		InstMapAtStart, ModeInfo, Goal) :-
 	% did we introduced any extra variables (and code)?
 	(
 		ExtraGoals = no_extra_goals,
 		Goal = MainGoal	% no
 	;
-		ExtraGoals = extra_goals(InstMapAfterMain, AfterGoals0),
+		ExtraGoals = extra_goals(BeforeGoals0, AfterGoalsInfo0),
+
+		% if there were any goals to be appended after the main goal,
+		% get them and the instmap after the main goal.
+		% If there are no goals to be append after the main goal, then
+		% the current instmap in the mode_info is the instmap
+		% after the main goal.
+		(
+			AfterGoalsInfo0 = after_goals(InstMapAfterMain,
+				AfterGoals0)
+		;
+			AfterGoalsInfo0 = no_after_goals,
+			mode_info_get_instmap(ModeInfo, InstMapAtEnd),
+			InstMapAfterMain = InstMapAtEnd,
+			AfterGoals0 = []
+		),
 
 		%
 		% We need to be careful to update the delta-instmaps
 		% correctly, using the appropriate instmaps:
 		%
 		%		% InstMapAtStart is here
+		%	 BeforeGoals,
+		%		% we don't know the instmap here,
+		%		% but as it happens we don't need it
 		%	 main goal,
 		%		% InstMapAfterMain is here
 		%	 AfterGoals
-		%		% _InstMapAtEnd (= the instmap from _ModeInfo)
-		%		% is here, but as it happens we don't need it
+		%		% InstMapAtEnd (from the ModeInfo) is here
 		%
 
 		% recompute the new set of non-local variables for the main goal
@@ -1051,8 +1088,9 @@ handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
 		% combine the main goal and the extra goals into a conjunction
 		Goal0 = MainGoal - GoalInfo,
 		goal_info_get_context(GoalInfo0, Context),
+		handle_extra_goals_contexts(BeforeGoals0, Context, BeforeGoals),
 		handle_extra_goals_contexts(AfterGoals0, Context, AfterGoals),
-		GoalList = [Goal0 | AfterGoals],
+		list__append(BeforeGoals, [Goal0 | AfterGoals], GoalList),
 		Goal = conj(GoalList)
 	).
 
@@ -1563,15 +1601,17 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 :- mode handle_implied_mode(in, in, in, in, in, in, out, in, out,
 				mode_info_di, mode_info_uo) is det.
 
-handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
+handle_implied_mode(Var0, VarInst0, VarInst, InitialInst0, FinalInst, Det,
 		Var, ExtraGoals0, ExtraGoals, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	inst_expand(ModuleInfo0, InitialInst0, InitialInst),
+	inst_expand(ModuleInfo0, VarInst0, VarInst1),
 	(
 		% If the initial inst of the variable matches_final
 		% the initial inst specified in the pred's mode declaration,
 		% then it's not a call to an implied mode, it's an exact
 		% match with a genuine mode.
-		inst_matches_final(VarInst0, InitialInst, ModuleInfo0)
+		inst_matches_final(VarInst1, InitialInst, ModuleInfo0)
 	->
 		Var = Var0,
 		ExtraGoals = ExtraGoals0,
@@ -1582,7 +1622,69 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		% instantiated vars, since that would require
 		% doing a partially instantiated deep copy, and we
 		% don't know how to do that yet.
-		( inst_is_bound(ModuleInfo0, InitialInst) ->
+		(
+			InitialInst = any(_),
+			inst_is_free(ModuleInfo0, VarInst1)
+		->
+			% This is the simple case of implied `any' modes,
+			% where the declared mode was `any -> ...'
+			% and the argument passed was `free'
+			
+			Var = Var0,
+
+			% Create code to initialize the variable to
+			% inst `any', by calling <mod>:<type>_init_any/1,
+			% where <mod>:<type> is the type of the variable.
+			% XXX We ought to use a more elegant method
+			% XXX than hard-coding the name `<foo>_init_any'.
+
+			mode_info_get_var_types(ModeInfo0, VarTypes0),
+			map__lookup(VarTypes0, Var, VarType),
+
+			mode_info_get_context(ModeInfo0, Context),
+			mode_info_get_mode_context(ModeInfo0, ModeContext),
+			mode_context_to_unify_context(ModeContext, ModeInfo0,
+				UnifyContext),
+			CallUnifyContext = yes(call_unify_context(
+						Var, var(Var), UnifyContext)),
+			( 
+				type_to_type_id(VarType, TypeId, _TypeArgs),
+				TypeId = qualified(TypeModule, TypeName) -
+						_TypeArity,
+				string__append(TypeName, "_init_any", PredName),
+				modes__build_call(TypeModule, PredName, [Var],
+					Context, CallUnifyContext, ModuleInfo0,
+					BeforeGoal - GoalInfo0)
+			->
+				set__singleton_set(NonLocals, Var),
+				goal_info_set_nonlocals(GoalInfo0,
+					NonLocals, GoalInfo1),
+				InstmapDeltaAL = [Var - InitialInst],
+				instmap_delta_from_assoc_list(InstmapDeltaAL,
+					InstmapDelta),
+				goal_info_set_instmap_delta(GoalInfo1,
+					InstmapDelta, GoalInfo),
+				NewExtraGoal = extra_goals(
+					[BeforeGoal - GoalInfo],
+					no_after_goals),
+				append_extra_goals(ExtraGoals0, NewExtraGoal,
+					ExtraGoals),
+				ModeInfo0 = ModeInfo
+			;
+				% If the type is a type variable,
+				% or there isn't any <mod>:<type>_init_any/1
+				% predicate, then give up.
+				ExtraGoals = ExtraGoals0,
+				set__singleton_set(WaitingVars, Var0),
+				mode_info_error(WaitingVars,
+					mode_error_implied_mode(Var0, VarInst0,
+					InitialInst),
+					ModeInfo0, ModeInfo
+				)
+			)
+		;
+			inst_is_bound(ModuleInfo0, InitialInst)
+		->
 			% This is the case we can't handle
 			Var = Var0,
 			ExtraGoals = ExtraGoals0,
@@ -1647,12 +1749,33 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 
 			% append the goals together in the appropriate order:
 			% ExtraGoals0, then NewUnify
-			NewUnifyExtraGoal = extra_goals(InstMapAfterMain,
-						[NewUnifyGoal - GoalInfo]),
+			NewUnifyExtraGoal = extra_goals([], after_goals(
+						InstMapAfterMain,
+						[NewUnifyGoal - GoalInfo])),
 			append_extra_goals(ExtraGoals0, NewUnifyExtraGoal,
 				ExtraGoals)
 		)
 	).
+
+:- pred modes__build_call(string, string, list(var),
+			term__context, maybe(call_unify_context), module_info,
+			hlds_goal).
+:- mode modes__build_call(in, in, in, in, in, in, out) is semidet.
+
+modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext, ModuleInfo,
+		Goal) :-
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	list__length(ArgVars, Arity),
+	predicate_table_search_pred_m_n_a(PredicateTable, Module, Name, Arity,
+		[PredId]),
+	hlds_pred__proc_id_to_int(ModeId, 10000), % first mode, must be `det'
+	Call = call(PredId, ModeId, ArgVars, not_builtin, CallUnifyContext,
+		qualified(Module, Name)),
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	Goal = Call - GoalInfo.
+
+%-----------------------------------------------------------------------------%
 
 mode_context_to_unify_context(unify(UnifyContext, _), _, UnifyContext).
 mode_context_to_unify_context(call(PredId, Arg), ModeInfo,

@@ -49,7 +49,7 @@
 :- implementation.
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds.
 :- import_module passes_aux, globals, options, code_util.
-:- import_module int, list, set, queue, map, bool, std_util, require.
+:- import_module int, string, list, set, queue, map, bool, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -680,6 +680,8 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	( 
 		pred_info_module(PredInfo, PredModule),
+		pred_info_name(PredInfo, PredName),
+		pred_info_arity(PredInfo, PredArity),
 		(
 			% Don't eliminate special preds since they won't
 			% be actually called from the HLDS until after 
@@ -695,9 +697,14 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			% aren't used.
 			\+ pred_info_is_imported(PredInfo), 
 			\+ pred_info_import_status(PredInfo, opt_imported)
+		;
+			% Don't eliminate <foo>_init_any/1 predicates;
+			% modes.m may insert calls to them to initialize
+			% variables from inst `free' to inst `any'.
+			string__remove_suffix(PredName, "_init_any", _),
+			PredArity = 1
 		)
 	->
-		pred_info_name(PredInfo, PredName),
 		set__insert(NeededNames0, qualified(PredModule, PredName), 
 			NeededNames),
 		queue__put(Q0, PredId, Q)

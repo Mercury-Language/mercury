@@ -759,8 +759,8 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 
 		% insert the new unification at
 		% the start of the extra goals
-		ExtraGoals0 = extra_goals(InstMapAfterMain,
-					[NewUnifyGoal - GoalInfo]),
+		ExtraGoals0 = extra_goals([], after_goals(InstMapAfterMain,
+					[NewUnifyGoal - GoalInfo])),
 
 		% recursive call to handle the remaining variables...
 		split_complicated_subunifies_2(Vars0, UniModes0,

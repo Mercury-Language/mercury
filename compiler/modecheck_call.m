@@ -241,7 +241,7 @@ modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
 			RevMatchingProcIds = [_|_],
 			list__reverse(RevMatchingProcIds, MatchingProcIds),
 			choose_best_match(MatchingProcIds, PredId, Procs,
-				TheProcId, ModeInfo2),
+				ArgVars0, TheProcId, ModeInfo2),
 			map__lookup(Procs, TheProcId, ProcInfo),
 			modecheck_end_of_call(ProcInfo, ArgVars0, ArgVars,
 				ExtraGoals, ModeInfo2, ModeInfo3)
@@ -450,6 +450,7 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 	pred_info_procedures(PredInfo, Procs),
 	map__lookup(Procs, ProcId, ProcInfo),
 	map__lookup(Procs, OtherProcId, OtherProcInfo),
+
 	%
 	% Compare the initial insts of the arguments
 	%
@@ -458,9 +459,10 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 	mode_list_get_initial_insts(OtherProcArgModes, ModuleInfo,
 							OtherInitialInsts),
-	compare_inst_list(InitialInsts, OtherInitialInsts, CompareInsts,
-		ModuleInfo),
+	compare_inst_list(InitialInsts, OtherInitialInsts, no,
+		CompareInsts, ModuleInfo),
 	CompareInsts = same,
+
 	%
 	% Compare the expected livenesses of the arguments
 	%
@@ -468,6 +470,7 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 	get_arg_lives(OtherProcArgModes, ModuleInfo, OtherProcArgLives),
 	compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
 	CompareLives = same,
+
 	%
 	% Compare the determinisms --
 	%	If both are cc_, or if both are not cc_,
@@ -491,13 +494,16 @@ to the following specification:
 	    less informative on input than other valid modes; eg,
 	    prefer an (in, in, out) mode over an (out, in, out) mode,
 	    but not necessarily over an (out, out, in) mode,
-	    and prefer a (free -> ...) mode over a (any -> ...) mode,
+	    and prefer a (ground -> ...) mode over a (any -> ...) mode,
 	    and prefer a (bound(f) -> ...) mode over a (ground -> ...) mode,
 	    and prefer a (... -> dead) mode over a (... -> not dead) mode.
 
-	    This is a partial order.
+	    Also prefer a (any -> ...) mode over a (free -> ...) mode,
+	    unless the actual argument is free, in which case prefer
+	    the (free -> ...) mode.
 
- 	2.  Prioritize them by determinism, according to the standard
+ 	2.  If neither is prefered over the other by step 1, then
+	    prioritize them by determinism, according to the standard
 	    partial order (best first):
 
  				erroneous
@@ -518,14 +524,14 @@ to the following specification:
 	;	same
 	;	incomparable.
 
-:- pred choose_best_match(list(proc_id), pred_id, proc_table, proc_id,
-				mode_info).
-:- mode choose_best_match(in, in, in, out,
+:- pred choose_best_match(list(proc_id), pred_id, proc_table, list(var),
+				proc_id, mode_info).
+:- mode choose_best_match(in, in, in, in, out,
 				mode_info_ui) is det.
 
-choose_best_match([], _, _, _, _) :-
+choose_best_match([], _, _, _, _, _) :-
 	error("choose_best_match: no best match").
-choose_best_match([ProcId | ProcIds], PredId, Procs, TheProcId,
+choose_best_match([ProcId | ProcIds], PredId, Procs, ArgVars, TheProcId,
 			ModeInfo) :-
 	%
 	% This ProcId is best iff there is no other proc_id which is better.
@@ -533,13 +539,14 @@ choose_best_match([ProcId | ProcIds], PredId, Procs, TheProcId,
 	(
 		\+ (
 			list__member(OtherProcId, ProcIds),
-			compare_proc(OtherProcId, ProcId, better,
+			compare_proc(OtherProcId, ProcId, ArgVars, better,
 					Procs, ModeInfo)
 		)
 	->
 		TheProcId = ProcId
 	;
-		choose_best_match(ProcIds, PredId, Procs, TheProcId, ModeInfo)
+		choose_best_match(ProcIds, PredId, Procs, ArgVars, TheProcId,
+				ModeInfo)
 	).
 
 	%
@@ -550,10 +557,10 @@ choose_best_match([ProcId | ProcIds], PredId, Procs, TheProcId,
 	% The code for this is similar to the code for
 	% modes_are_indistiguisable/4 above.
 	%
-:- pred compare_proc(proc_id, proc_id, match, proc_table, mode_info).
-:- mode compare_proc(in, in, out, in, mode_info_ui) is det.
+:- pred compare_proc(proc_id, proc_id, list(var), match, proc_table, mode_info).
+:- mode compare_proc(in, in, in, out, in, mode_info_ui) is det.
 
-compare_proc(ProcId, OtherProcId, Compare, Procs, ModeInfo) :-
+compare_proc(ProcId, OtherProcId, ArgVars, Compare, Procs, ModeInfo) :-
 	map__lookup(Procs, ProcId, ProcInfo),
 	map__lookup(Procs, OtherProcId, OtherProcInfo),
 	%
@@ -565,8 +572,9 @@ compare_proc(ProcId, OtherProcId, Compare, Procs, ModeInfo) :-
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 	mode_list_get_initial_insts(OtherProcArgModes, ModuleInfo,
 							OtherInitialInsts),
-	compare_inst_list(InitialInsts, OtherInitialInsts, CompareInsts,
-		ModuleInfo),
+	get_var_insts_and_lives(ArgVars, ModeInfo, ArgInitialInsts, _ArgLives),
+	compare_inst_list(InitialInsts, OtherInitialInsts, yes(ArgInitialInsts),
+		CompareInsts, ModuleInfo),
 	%
 	% Compare the expected livenesses of the arguments
 	%
@@ -590,17 +598,31 @@ compare_proc(ProcId, OtherProcId, Compare, Procs, ModeInfo) :-
 	combine_results(CompareInsts, CompareLives, Compare0),
 	prioritized_combine_results(Compare0, CompareDet, Compare).
 
-:- pred compare_inst_list(list(inst), list(inst), match, module_info).
-:- mode compare_inst_list(in, in, out, in) is det.
+:- pred compare_inst_list(list(inst), list(inst), maybe(list(inst)), match,
+				module_info).
+:- mode compare_inst_list(in, in, in, out, in) is det.
 
-compare_inst_list([], [], same, _).
-compare_inst_list([_|_], [], _, _) :-
-	error("compare_inst_list: length mis-match").
-compare_inst_list([], [_|_], _, _) :-
-	error("compare_inst_list: length mis-match").
-compare_inst_list([InstA | InstsA], [InstB | InstsB], Result, ModuleInfo) :-
-	compare_inst(InstA, InstB, Result0, ModuleInfo),
-	compare_inst_list(InstsA, InstsB, Result1, ModuleInfo),
+compare_inst_list(InstsA, InstsB, ArgInsts, Result, ModuleInfo) :-
+	( compare_inst_list_2(InstsA, InstsB, ArgInsts, Result0, ModuleInfo) ->
+		Result = Result0
+	;
+		error("compare_inst_list: length mis-match")
+	).
+
+:- pred compare_inst_list_2(list(inst), list(inst), maybe(list(inst)), match,
+				module_info).
+:- mode compare_inst_list_2(in, in, in, out, in) is semidet.
+
+compare_inst_list_2([], [], _, same, _).
+compare_inst_list_2([InstA | InstsA], [InstB | InstsB],
+		no, Result, ModuleInfo) :-
+	compare_inst(InstA, InstB, no, Result0, ModuleInfo),
+	compare_inst_list_2(InstsA, InstsB, no, Result1, ModuleInfo),
+	combine_results(Result0, Result1, Result).
+compare_inst_list_2([InstA | InstsA], [InstB | InstsB],
+		yes([ArgInst|ArgInsts]), Result, ModuleInfo) :-
+	compare_inst(InstA, InstB, yes(ArgInst), Result0, ModuleInfo),
+	compare_inst_list_2(InstsA, InstsB, yes(ArgInsts), Result1, ModuleInfo),
 	combine_results(Result0, Result1, Result).
 
 :- pred compare_liveness_list(list(is_live), list(is_live), match).
@@ -675,10 +697,10 @@ combine_results(incomparable, _, incomparable).
 	% 	prefer ground to any	(e.g. prefer in to in(any))
 	% 	prefer any to free	(e.g. prefer any->ground to out)
 
-:- pred compare_inst(inst, inst, match, module_info).
-:- mode compare_inst(in, in, out, in) is det.
+:- pred compare_inst(inst, inst, maybe(inst), match, module_info).
+:- mode compare_inst(in, in, in, out, in) is det.
 
-compare_inst(InstA, InstB, Result, ModuleInfo) :-
+compare_inst(InstA, InstB, MaybeArgInst, Result, ModuleInfo) :-
 	% inst_matches_initial(A,B) succeeds iff
 	%	A specifies at least as much information
 	%	and at least as much binding as B --
@@ -701,24 +723,59 @@ compare_inst(InstA, InstB, Result, ModuleInfo) :-
 		%
 		% We need to further disambiguate the cases involving
 		% `any' and `free', since `any' matches_initial `free'
-		% and vice versa, but we want to prefer `any'.
-		% We use matches_final, because `free' may match_final `any',
-		% but `any' does not match_final `free'.
+		% and vice versa.  For these cases, we want to take
+		% the actual inst of the argument into account:
+		% if the argument is `free', we should prefer `free',
+		% but otherwise, we should prefer `any'.
 		%
-		( inst_matches_final(InstA, InstB, ModuleInfo) ->
-			A_mf_B = yes
+		(
+			MaybeArgInst = no,
+			Result0 = same
 		;
-			A_mf_B = no
+			MaybeArgInst = yes(ArgInst),
+			(
+				inst_matches_final(ArgInst, InstA, ModuleInfo)
+			->
+				Arg_mf_A = yes
+			;
+				Arg_mf_A = no
+			),
+			(
+				inst_matches_final(ArgInst, InstB, ModuleInfo)
+			->
+				Arg_mf_B = yes
+			;
+				Arg_mf_B = no
+			),
+			( Arg_mf_A = yes, Arg_mf_B = no,  Result0 = better
+			; Arg_mf_A = no,  Arg_mf_B = yes, Result0 = worse
+			; Arg_mf_A = yes, Arg_mf_B = yes, Result0 = same
+			; Arg_mf_A = no,  Arg_mf_B = no,  Result0 = same
+			)
 		),
-		( inst_matches_final(InstB, InstA, ModuleInfo) ->
-			B_mf_A = yes
+		( Result0 = same ->
+			%
+			% if the actual arg inst is not available,
+			% or comparing with the arg inst doesn't help,
+			% then compare the two proc insts
+			%
+			( inst_matches_final(InstA, InstB, ModuleInfo) ->
+				A_mf_B = yes
+			;
+				A_mf_B = no
+			),
+			( inst_matches_final(InstB, InstA, ModuleInfo) ->
+				B_mf_A = yes
+			;
+				B_mf_A = no
+			),
+			( A_mf_B = yes, B_mf_A = no,  Result = better
+			; A_mf_B = no,  B_mf_A = yes, Result = worse
+			; A_mf_B = no,  B_mf_A = no,  Result = incomparable
+			; A_mf_B = yes, B_mf_A = yes, Result = same
+			)
 		;
-			B_mf_A = no
-		),
-		( A_mf_B = yes, B_mf_A = no,  Result = worse
-		; A_mf_B = no,  B_mf_A = yes, Result = better
-		; A_mf_B = yes, B_mf_A = yes, Result = same
-		; A_mf_B = no,  B_mf_A = no,  Result = incomparable
+			Result = Result0
 		)
 	).
 
