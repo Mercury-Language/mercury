@@ -44,11 +44,12 @@ extern	void	printnondstack(const Word *s);
 extern	void	dumpframe(/* const */ Word *);
 extern	void	dumpnondstack(void);
 extern	void	printlist(Word p);
-extern	void	printlabel(/* const */ Code *w);
 extern	void	printframe(const char *);
 extern	void	printregs(const char *msg);
 
 #endif
+
+extern	void	printlabel(/* const */ Code *w);
 
 #if 0 /* this used to be used for some hand-coded examples */
 extern	Word	do_mklist(int start, int len);
