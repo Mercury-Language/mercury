@@ -47,6 +47,10 @@ Changes to the compiler back-ends:
 
 Numerous minor improvements to the Mercury standard library.
 
+Changes to the extras distribution:
+* Major improvements to the OpenGL binding.
+* We've added a binding to GLUT (the GL utility toolkit).
+
 DETAILED LISTING
 ================
 
@@ -220,10 +224,6 @@ Changes to the Mercury standard library:
 * We've added some functions, rational.int/1, rational.from_integer/1,
   rational.from_integers/2 and rational.reciprocal/1 to rational.m
   The function rational.rational_from_integers/2 has been deprecated.
-
-Changes to the extras distribution:
-
-* Nothing yet.
 
 Changes to the Mercury compiler:
 

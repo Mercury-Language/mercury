@@ -11,13 +11,17 @@ and we'll see about incorporating enhancements in the main distribution.
                                 directory also contains `mtogl' which
                                 is a Mercury binding to Togl, a Tk widget
                                 for OpenGL.
+	
+	mercury_glut/		A Mercury binding to GLUT.
+					
 	samples/
 		calc/		A calculator that uses mercury_tcltk
 
-		maze/		Draws pretty mazes in 3D using OpenGL.
+		maze/		Draws pretty mazes in 3D using OpenGL
+				and Togl.
 
 		pent/		Places pentominoes on a board in 3D 
-				using OpenGL.
+				using OpenGL and Togl.
 
 We haven't worked out how to prevent the Tcl/Tk library from giving a
 tcl prompt when it enters the event loop. If you know how, let us know!

@@ -33,9 +33,10 @@ dynamic_linking
 		An interface to the C functions dlopen(), dlsym(), etc.
 		that are supported by most modern Unix systems.
 
-graphics	A couple of packages for doing graphics programming
-		and GUIs in Mercury: a Mercury interface to tcl/tk
-		and a Mercury binding to OpenGL.
+graphics	Some packages for doing graphics programming
+		and GUIs in Mercury: a Mercury interface to tcl/tk,
+		a Mercury binding to OpenGL and a Mercury binding to
+		GLUT.
 
 lazy_evaluation
 		A library module `lazy' containing support for optional
