@@ -787,14 +787,32 @@ mercury_output_cons_id(float_const(X), _) -->
 	io__write_float(X).
 mercury_output_cons_id(string_const(X), _) -->
 	io__write_strings(["""", X, """"]).
-mercury_output_cons_id(pred_const(_, _), _) -->
-	{ error("mercury_output_cons_id: pred_const") }.
-mercury_output_cons_id(code_addr_const(_, _), _) -->
-	{ error("mercury_output_cons_id: code_addr_const") }.
-mercury_output_cons_id(base_type_info_const(_, _, _), _) -->
-	{ error("mercury_output_cons_id: base_type_info_const") }.
+mercury_output_cons_id(pred_const(PredId, ProcId), _) -->
+	% XXX Sufficient, but probably should print this out in
+	%     name/arity form.
 
-:- mercury_output_mode_defn(_, X, _, _, _) when X. 	% NU-Prolog indexing.
+	{ pred_id_to_int(PredId, PredInt) },
+	{ proc_id_to_int(ProcId, ProcInt) },
+	io__write_string("<pred_const("),
+	io__write_int(PredInt),
+	io__write_string(", "),
+	io__write_int(ProcInt),
+	io__write_string(")>").
+mercury_output_cons_id(code_addr_const(PredId, ProcId), _) -->
+	% XXX Sufficient, but probably should print this out in
+	%     name/arity form.
+
+	{ pred_id_to_int(PredId, PredInt) },
+	{ proc_id_to_int(ProcId, ProcInt) },
+	io__write_string("<code_addr_const("),
+	io__write_int(PredInt),
+	io__write_string(", "),
+	io__write_int(ProcInt),
+	io__write_string(")>").
+mercury_output_cons_id(base_type_info_const(Module, Type, Arity), _) -->
+	{ string__int_to_string(Arity, ArityString) },
+	io__write_strings(["<base_type_info for ", Module, ":", Type, "/",
+		ArityString, ">"]).
 
 mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context) -->
 	io__write_string(":- mode ("),
