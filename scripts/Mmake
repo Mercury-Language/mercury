@@ -67,8 +67,8 @@ install_sicstus: $(SICSTUS_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
 
-clean_progs: clean_scripts
-	
+realclean: clean_scripts
+
 .PHONY: clean_scripts
 clean_scripts:
 	for file in *.in; do rm -f `basename $$file .in`; done
