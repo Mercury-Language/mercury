@@ -27,7 +27,7 @@ C2INITFLAGS=-w"`extract $(*:_init=) '' Entry`"
 
 clean: clean_out clean_exp clean_res clean_nl_init
 
-clean_mc: clean_mod clean_c clean_o clean_out clean_res
+clean_mc: clean_c clean_o clean_out clean_res
 
 clean_out:
 	rm -f *.out
