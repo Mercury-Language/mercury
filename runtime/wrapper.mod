@@ -10,17 +10,17 @@
 /* command-line options */
 
 /* size of data areas, in kilobytes */
-int		heap_size =     40960;
-int		detstack_size =   512;
-int		nondstack_size =  128;
+uint		heap_size =     40960;
+uint		detstack_size =   512;
+uint		nondstack_size =  128;
 
 /* size of the redzones at the end of data areas, in kilobytes */
-int		heap_zone_size =       16;
-int		detstack_zone_size =   16;
-int		nondstack_zone_size =  16;
+uint		heap_zone_size =       16;
+uint		detstack_zone_size =   16;
+uint		nondstack_zone_size =  16;
 
 /* primary cache size to optimize for */
-int		pcache_size =    8192;
+uint		pcache_size =    8192;
 
 /* other options */
 int		r1val = -1;
@@ -110,7 +110,6 @@ static void process_options(int argc, char **argv)
 	int	val;
 	List	*ptr;
 	List	*label_list;
-	Label	*label;
 
 	progname = argv[0];
 
@@ -134,6 +133,7 @@ static void process_options(int argc, char **argv)
 		when 'l':	label_list = get_all_labels();
 				for_list (ptr, label_list)
 				{
+					Label	*label;
 					label = (Label *) ldata(ptr);
 					printf("%u %x %s\n",
 						(unsigned) label->e_addr,
@@ -196,14 +196,18 @@ static void process_options(int argc, char **argv)
 		when 'r':	if (sscanf(optarg, "%d", &repeats) != 1)
 					usage();
 
-		when 'w':	which = lookup_label_name(optarg);
-				if (which == NULL)
+		when 'w': {
+				Label *which_label;
+				which_label = lookup_label_name(optarg);
+				if (which_label == NULL)
 				{
 					fprintf(stderr,
 						"predicate name %s unknown\n",
 						optarg);
 					exit(1);
 				}
+				which = which_label->e_addr;
+		}
 
 		when 's':	if (sscanf(optarg+1, "%d", &val) != 1)
 					usage();

@@ -111,8 +111,8 @@ static	int	page_size;
 void init_memory(void)
 {
 	char	*arena;
-	int	total_size;
-	int	fake_reg_offset, heap_offset, detstack_offset, nondstack_offset;
+	uint	total_size;
+	uint	fake_reg_offset, heap_offset, detstack_offset, nondstack_offset;
 
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
@@ -171,7 +171,7 @@ void init_memory(void)
 	}
 	arena = (char *) roundup((int) arena, unit);
 	
-	fake_reg_offset = (int) fake_reg % pcache_size;
+	fake_reg_offset = (uint) fake_reg % pcache_size;
 	heap_offset = (fake_reg_offset + pcache_size / 4) % pcache_size;
 	detstack_offset = (heap_offset + pcache_size / 4) % pcache_size;
 	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
@@ -182,7 +182,7 @@ void init_memory(void)
 	heap    = (Word *) arena;
 	heapmin = (Word *) ((char *) heap + heap_offset);
 	heapend = (Word *) ((char *) heap + heap_size + unit);
-	assert(((int) heapend) % unit == 0);
+	assert(((uint) heapend) % unit == 0);
 #endif
 
 #ifdef CONSERVATIVE_GC
@@ -192,12 +192,12 @@ void init_memory(void)
 #endif
 	detstackmin = (Word *) ((char *) detstack + detstack_offset);
 	detstackend = (Word *) ((char *) detstack + detstack_size + unit);
-	assert(((int) detstackend) % unit == 0);
+	assert(((uint) detstackend) % unit == 0);
 
 	nondstack    = detstackend;
 	nondstackmin = (Word *) ((char *) nondstack + nondstack_offset);
 	nondstackend = (Word *) ((char *) nondstack + nondstack_size + unit);
-	assert(((int) nondstackend) % unit == 0);
+	assert(((uint) nondstackend) % unit == 0);
 
 #ifndef	SPEED
 	nondstackmin[PREDNM] = (Word) "bottom";

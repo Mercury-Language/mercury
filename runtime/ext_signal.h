@@ -7,6 +7,7 @@
 
 #include	<sys/siginfo.h>
 
+#ifndef __sgi
 typedef struct {		/* signal set type */
 	unsigned long	__sigbits[4];
 } sigset_t;
@@ -93,6 +94,8 @@ extern int sigismember(const sigset_t *, int);
 extern int sigpending(sigset_t *);
 extern int sigprocmask(int, const sigset_t *, sigset_t *);
 extern int sigsuspend(const sigset_t *);
+
+#endif
 
 #endif /* HAVE_SIGINFO */
 

@@ -100,8 +100,7 @@ BEGIN_MODULE(io_module)
 BEGIN_CODE
 
 mercury__io__run_0_0:
-	incr_sp(1);
-	detstackvar(1) = (int) succip;
+        mkframe("mercury__io__run_0_0", 0, ENTRY(do_fail));
 	r1 = initial_external_state();
 	call(ENTRY(mercury__io__init_state_2_0),
 		LABEL(mercury__io__run_0_0_i1),
@@ -113,9 +112,7 @@ mercury__io__run_0_0_i1:
 		LABEL(mercury__io__run_0_0));
 mercury__io__run_0_0_i2:
 	final_io_state(r2);
-	LVALUE_CAST(Word, succip) = detstackvar(1);
-	decr_sp(1);
-	proceed();
+	succeed();
 
 /* input predicates */
 

@@ -6,15 +6,15 @@ extern	int	mercury_argc;
 extern	char **	mercury_argv;
 extern	int	mercury_exit_status;
 
-extern	int	heap_size;
-extern	int	detstack_size;
-extern	int	nondstack_size;
+extern	uint	heap_size;
+extern	uint	detstack_size;
+extern	uint	nondstack_size;
 
-extern	int	heap_zone_size;
-extern	int	detstack_zone_size;
-extern	int	nondstack_zone_size;
+extern	uint	heap_zone_size;
+extern	uint	detstack_zone_size;
+extern	uint	nondstack_zone_size;
 
-extern	int	pcache_size;
+extern	uint	pcache_size;
 
 extern	int	r1val;
 extern	int	r2val;
