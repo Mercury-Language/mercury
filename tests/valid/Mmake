@@ -66,26 +66,12 @@ PROGS =	$(SOURCES:%.m=%)
 
 all:	objs
 
-# we need to pass some options to really test middle_rec_labels.m
-middle_rec_labels.c: middle_rec_labels.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) --middle-rec --no-follow-vars \
-		middle_rec_labels.m > middle_rec_labels.err 2>&1
-
-two_way_unif.c: two_way_unif.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O-1 two_way_unif.m \
-		> two_way_unif.err 2>&1
-
-# The bug that simplify_bug.m tests for only occurred at -O-1
-simplify_bug.c:	simplify_bug.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O-1 \
-		simplify_bug.m > simplify_bug.err 2>&1
-
-compl_unify_bug.c: compl_unify_bug.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O3 \
-		compl_unify_bug.m > compl_unify_bug.err 2>&1
-
-vn_float.c: vn_float.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O5 vn_float.m > vn_float.err 2>&1
+# some regression tests only failed with particular options enabled
+MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
+MCFLAGS-two_way_unif		= -O-1
+MCFLAGS-simplify_bug		= -O-1
+MCFLAGS-compl_unify_bug		= -O3
+MCFLAGS-vn_float		= -O5
 
 # intermod_lambda.m needs inter-module optimization
 intermod_lambda.c:

@@ -66,9 +66,7 @@ PROGS=$(DETPROGS) $(NONDETPROGS)
 endif
 
 # mode_inf_bug needs to be compiled with `--infer-all'.
-mode_inf_bug.c: mode_inf_bug.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) --infer-all mode_inf_bug.m \
-		> mode_inf_bug.err 2>&1
+MCFLAGS-mode_inf_bug = --infer-all
 
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)

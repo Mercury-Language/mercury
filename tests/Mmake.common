@@ -1,5 +1,6 @@
 #-----------------------------------------------------------------------------#
 
+MCFLAGS = $(MCFLAGS-$*) $(EXTRA_MCFLAGS)
 MGNUCFLAGS=-g $(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
 
 # override this with `mmake HAVE_NUPROLOG=yes'

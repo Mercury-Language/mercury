@@ -20,7 +20,6 @@ PROGS=	qual_basic_test qual_is_test qual_adv_test \
 
 # some tests need to be compiled with particular options
 
-MCFLAGS			=	$(MCFLAGS-$*) $(EXTRA_MCFLAGS)
 MCFLAGS-func_test	=	--infer-all
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 
