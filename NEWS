@@ -33,7 +33,7 @@ Changes to the Mercury debugger:
 * Nothing yet.
 
 Changes to the compiler back-ends:
-* Nothing yet.
+* The .NET CLR back-end now bootstraps.
 
 Numerous minor improvements to the Mercury standard library.
 
@@ -152,8 +152,12 @@ Changes to the Mercury debugger:
 
 Changes to the compiler back-ends:
 
-* Nothing yet.
+* The .NET CLR back-end now bootstraps.
 
+  We've fixed a lot of bugs, and implemented a lot more of the Mercury
+  standard library.  As well as being able to bootstrap in grade `il',
+  we also now pass more than 90% of the applicable tests in the
+  Mercury test suite.  See README.DotNet for details.
 
 NEWS for Mercury 0.11
 ---------------------

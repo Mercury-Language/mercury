@@ -10,7 +10,7 @@ bytecode suitable for running in the .NET runtime system.
 The port is mostly complete, but some parts of the Mercury standard
 library are not yet implemented (for a full list see the FAQ below).
 However, enough is implemented correctly to bootstrap the Mercury
-compiler, and to pass about 98% of the applicable tests in the Mercury
+compiler, and to pass more than 90% of the applicable tests in the Mercury
 test suite.
 
 The port is currently targetted at the Microsoft .NET Framework SDK version 1.
@@ -237,10 +237,6 @@ A. The following standard library modules are completely unimplemented:
    are still not yet implemented:
 
 	io.binary_stream_offset/4
-	io.current_binary_input_stream/3
-	io.current_binary_output_stream/3
-	io.current_input_stream/3
-	io.current_output_stream/3
 	io.seek_binary_2/5
 	type_desc.make_type/2
 	type_desc.type_ctor/1
