@@ -336,5 +336,6 @@
 #define MR_TABLE_SAVE_ANSWER(table, offset, value, type_info)		\
 	do {								\
 		(table)->MR_answerblock[offset] =			\
-			MR_make_permanent((value), (type_info));	\
+			MR_make_permanent((value),			\
+					((Word *) (Word) &type_info));	\
 	} while(0)
