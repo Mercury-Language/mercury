@@ -2443,7 +2443,7 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo, delete_object(_Lval), _) -->
 	{ error("mlds_to_c.m: sorry, delete_object not implemented") }.
 
 mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
-	{ NewObject = new_object(Target, MaybeTag, Type, MaybeSize,
+	{ NewObject = new_object(Target, MaybeTag, _HasSecTag, Type, MaybeSize,
 		MaybeCtorName, Args, ArgTypes) },
 	mlds_indent(Indent),
 	io__write_string("{\n"),

@@ -406,8 +406,8 @@ rename_cond(match_range(RvalA, RvalB))
 rename_atomic(comment(S)) = comment(S).
 rename_atomic(assign(L, R)) = assign(rename_lval(L), rename_rval(R)).
 rename_atomic(delete_object(O)) = delete_object(rename_lval(O)).
-rename_atomic(new_object(L, Tag, Type, MaybeSize, Ctxt, Args, Types))
-	= new_object(rename_lval(L), Tag, Type, MaybeSize,
+rename_atomic(new_object(L, Tag, HasSecTag, Type, MaybeSize, Ctxt, Args, Types))
+	= new_object(rename_lval(L), Tag, HasSecTag, Type, MaybeSize,
 			Ctxt, list__map(rename_rval, Args), Types).
 rename_atomic(mark_hp(L)) = mark_hp(rename_lval(L)).
 rename_atomic(restore_hp(R)) = restore_hp(rename_rval(R)).
@@ -1876,8 +1876,8 @@ atomic_statement_to_il(delete_object(Target), Instrs) -->
 	get_load_store_lval_instrs(Target, LoadInstrs, StoreInstrs),
 	{ Instrs = tree__list([LoadInstrs, instr_node(ldnull), StoreInstrs]) }.
 
-atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, MaybeCtorName,
-		Args0, ArgTypes), Instrs) -->
+atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
+		MaybeCtorName, Args0, ArgTypes0), Instrs) -->
 	DataRep =^ il_data_rep,
 	( 
 		{ 
@@ -1911,25 +1911,24 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, MaybeCtorName,
 		;
 		 	{ ClassName = ClassName0 }
 		),
-		{ Type = mlds__generic_env_ptr_type ->
-			ILArgTypes = [],
+			% Skip the secondary tag, if any
+		{ HasSecTag = yes ->
+			(
+				ArgTypes0 = [_SecondaryTag | ArgTypes1],
+				Args0 = [_SecondaryTagVal | Args1]
+			->
+				Args = Args1,
+				ArgTypes = ArgTypes1
+			;
+				unexpected(this_file,
+					"newobj without secondary tag")
+			)
+		;
+			ArgTypes = ArgTypes0,
 			Args = Args0
-		;
-			% It must be a user-defined type.
-			% Skip the secondary tag.
-			% We assume there is always a secondary tag,
-			% since ml_type_gen always generates one
-			% if we have --tags none, which the IL back-end
-			% requires.
-			ArgTypes = [_SecondaryTag | ArgTypes1],
-			Args0 = [_SecondaryTagVal | Args1]
-		->
-			Args = Args1,
-			ILArgTypes = list__map(mlds_type_to_ilds_type(DataRep),
-				ArgTypes1)
-		;
-			sorry(this_file, "newobj without secondary tag")
 		},
+		{ ILArgTypes = list__map(mlds_type_to_ilds_type(DataRep),
+					ArgTypes) },
 		list__map_foldl(load, Args, ArgsLoadInstrsTrees),
 		{ ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees) },
 		get_load_store_lval_instrs(Target, LoadMemRefInstrs,
@@ -1970,7 +1969,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, MaybeCtorName,
 		{ Box = (pred(A - T::in, B::out) is det :- 
 			B = unop(box(T), A)   
 		) },
-		{ assoc_list__from_corresponding_lists(Args0, ArgTypes,
+		{ assoc_list__from_corresponding_lists(Args0, ArgTypes0,
 			ArgsAndTypes) },
 		{ list__map(Box, ArgsAndTypes, BoxedArgs) },
 	

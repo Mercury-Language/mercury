@@ -1772,8 +1772,8 @@ output_atomic_stmt(_Indent, _FuncInfo, delete_object(_Lval), _) -->
 	{ error("mlds_to_java.m: delete_object not supported in Java.") }.
 
 output_atomic_stmt(Indent, _FuncInfo, NewObject, Context) -->
-	{ NewObject = new_object(Target, _MaybeTag, Type, _MaybeSize,
-		MaybeCtorName, Args, ArgTypes) },
+	{ NewObject = new_object(Target, _MaybeTag, _HasSecTag, Type,
+		_MaybeSize, MaybeCtorName, Args, ArgTypes) },
 	
 	indent_line(Indent),
 	io__write_string("{\n"),

@@ -346,8 +346,9 @@ write_managed_cpp_statement(Statement) -->
 
 			% XXX This is not fully implemented
 		{ Statement = statement(atomic(
-			new_object(Target, _MaybeTag, Type, _MaybeSize, 
-				_MaybeCtorName, _Args, _ArgTypes)), _) },
+			new_object(Target, _MaybeTag, _HasSecTag, Type,
+				_MaybeSize, _MaybeCtorName,
+				_Args, _ArgTypes)), _) },
 		{ ClassName = mlds_type_to_ilds_class_name(ILDataRep, Type) }
 	->
 		write_managed_cpp_lval(Target),

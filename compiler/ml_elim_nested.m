@@ -429,7 +429,7 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 		NewObj = mlds__statement(
 				atomic(new_object(
 					var(EnvVar, EnvTypeName), 
-					no, EnvTypeName, no, no, [], [])),
+					no, no, EnvTypeName, no, no, [], [])),
 				Context),
 		InitEnv = mlds__statement(block([], 
 			[NewObj, InitEnv0]), Context),
@@ -980,10 +980,10 @@ fixup_atomic_stmt(assign(Lval0, Rval0), assign(Lval, Rval)) -->
 	fixup_rval(Rval0, Rval).
 fixup_atomic_stmt(delete_object(Lval0), delete_object(Lval)) -->
 	fixup_lval(Lval0, Lval).
-fixup_atomic_stmt(new_object(Target0, MaybeTag, Type, MaybeSize, MaybeCtorName,
-			Args0, ArgTypes),
-		new_object(Target, MaybeTag, Type, MaybeSize, MaybeCtorName,
-			Args, ArgTypes)) -->
+fixup_atomic_stmt(new_object(Target0, MaybeTag, HasSecTag, Type, MaybeSize,
+			MaybeCtorName, Args0, ArgTypes),
+		new_object(Target, MaybeTag, HasSecTag, Type, MaybeSize,
+			MaybeCtorName, Args, ArgTypes)) -->
 	fixup_lval(Target0, Target),
 	fixup_rvals(Args0, Args).
 fixup_atomic_stmt(mark_hp(Lval0), mark_hp(Lval)) -->
@@ -1516,8 +1516,8 @@ atomic_stmt_contains_var(assign(Lval, Rval), Name) :-
 	( lval_contains_var(Lval, Name)
 	; rval_contains_var(Rval, Name)
 	).
-atomic_stmt_contains_var(new_object(Target, _MaybeTag, _Type, _MaybeSize,
-			_MaybeCtorName, Args, _ArgTypes), Name) :-
+atomic_stmt_contains_var(new_object(Target, _MaybeTag, _HasSecTag, _Type,
+		_MaybeSize, _MaybeCtorName, Args, _ArgTypes), Name) :-
 	( lval_contains_var(Target, Name)
 	; rvals_contains_var(Args, Name)
 	).

@@ -2688,7 +2688,7 @@ gen_atomic_stmt(_DefnInfo, delete_object(_Lval), _) -->
 	{ sorry(this_file, "delete_object") }.
 
 gen_atomic_stmt(DefnInfo, NewObject, Context) -->
-	{ NewObject = new_object(Target, MaybeTag, Type, MaybeSize,
+	{ NewObject = new_object(Target, MaybeTag, _HasSecTag, Type, MaybeSize,
 		_MaybeCtorName, Args, ArgTypes) },
 
 	%

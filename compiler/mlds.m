@@ -355,8 +355,8 @@
 % Given an MLDS module name (e.g. `foo.bar'), append another class qualifier
 % (e.g. for a class `baz'), and return the result (e.g. `foo.bar.baz').
 % The `arity' argument specifies the arity of the class.
-:- func mlds__append_class_qualifier(mlds_module_name, mlds__class_name, arity) =
-	mlds_module_name.
+:- func mlds__append_class_qualifier(mlds_module_name, mlds__class_name,
+		arity) = mlds_module_name.
 
 % Append a wrapper class qualifier to the module name and leave the
 % package name unchanged.
@@ -1072,9 +1072,13 @@ XXX Full exception handling support is not yet implemented.
 			mlds__lval,	% The target to assign the new object's
 					% address to.
 			maybe(mlds__tag),
-					% A tag to tag the address with
-					% before assigning the result to the
-					% target.
+					% A (primary) tag to tag the address
+					% with before assigning the result to
+					% the target.
+			bool,		% Indicates whether or not there is
+					% a secondary tag.  If so, it will
+					% be stored as the first argument
+					% in the argument list (see below).
 			mlds__type,	% The type of the object being
 					% allocated.
 			maybe(mlds__rval),

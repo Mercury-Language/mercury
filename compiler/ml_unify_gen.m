@@ -487,7 +487,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% generate a `new_object' statement (or static constant)
 	% for the closure
 	%
-	ml_gen_new_object(no, Tag, QualifiedCtorId, Var, ExtraArgRvals, 
+	ml_gen_new_object(no, Tag, no, QualifiedCtorId, Var, ExtraArgRvals, 
 		ExtraArgTypes, ArgVars, ArgModes, HowToConstruct, Context,
 		MLDS_Decls, MLDS_Statements).
 
@@ -924,15 +924,17 @@ ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 	% If there is a secondary tag, it goes in the first field
 	%
 	{ MaybeSecondaryTag = yes(SecondaryTag) ->
+		HasSecTag = yes,
 		SecondaryTagRval = const(int_const(SecondaryTag)),
 		SecondaryTagType = mlds__native_int_type,
 		ExtraRvals = [SecondaryTagRval],
 		ExtraArgTypes = [SecondaryTagType]
 	;
+		HasSecTag = no,
 		ExtraRvals = [],
 		ExtraArgTypes = []
 	},
-	ml_gen_new_object(yes(ConsId), Tag, CtorName, Var,
+	ml_gen_new_object(yes(ConsId), Tag, HasSecTag, CtorName, Var,
 			ExtraRvals, ExtraArgTypes, ArgVars, ArgModes,
 			HowToConstruct, Context, MLDS_Decls, MLDS_Statements).
 
@@ -944,17 +946,17 @@ ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 	%	additional constants to insert at the start of the
 	%	argument list.
 	%
-:- pred ml_gen_new_object(maybe(cons_id), mlds__tag, ctor_name, prog_var,
+:- pred ml_gen_new_object(maybe(cons_id), mlds__tag, bool, ctor_name, prog_var,
 		list(mlds__rval), list(mlds__type), prog_vars,
 		list(uni_mode), how_to_construct,
 		prog_context, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_new_object(in, in, in, in, in, in, in, in, in, in, out, out,
+:- mode ml_gen_new_object(in, in, in, in, in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
-		ArgVars, ArgModes, HowToConstruct, Context,
-		MLDS_Decls, MLDS_Statements) -->
+ml_gen_new_object(MaybeConsId, Tag, HasSecTag, CtorName, Var,
+		ExtraRvals, ExtraTypes, ArgVars, ArgModes, HowToConstruct,
+		Context, MLDS_Decls, MLDS_Statements) -->
 	%
 	% Determine the variable's type and lval,
 	% the tag to use, and the types of the argument vars.
@@ -1000,9 +1002,9 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		% statement will also initialize the fields of this term
 		% with boxed versions of the specified arguments.
 		%
-		{ MakeNewObject = new_object(VarLval, MaybeTag, MLDS_Type,
-			yes(SizeInWordsRval), yes(CtorName), ArgRvals,
-			MLDS_ArgTypes) },
+		{ MakeNewObject = new_object(VarLval, MaybeTag, HasSecTag,
+			MLDS_Type, yes(SizeInWordsRval), yes(CtorName),
+			ArgRvals, MLDS_ArgTypes) },
 		{ MLDS_Stmt = atomic(MakeNewObject) },
 		{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 			mlds__make_context(Context)) },
