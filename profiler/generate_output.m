@@ -19,7 +19,7 @@
 :- module generate_output.
 
 :- interface.
-:- import_module float, int, string, map, io, prof_info.
+:- import_module float, int, string, map, io, prof_info, output_prof_info.
 
 :- pred generate_output__main(prof, map(string, int), output,  
 							io__state, io__state).
@@ -32,7 +32,6 @@
 
 :- implementation.
 :- import_module globals, options.
-:- import_module output_prof_info.
 :- import_module bool, list, rbtree, relation.
 
 % :- import_module writeln.
