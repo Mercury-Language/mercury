@@ -296,7 +296,7 @@ sys_init_type_desc_module_write_out_proc_statics(FILE *fp)
 
 :- pragma foreign_code("MC++", "
 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(types, type_desc, 0, 
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0, 
 	MR_TYPECTOR_REP_TYPEINFO)
 
 static int MR_compare_type_info(MR_Word t1, MR_Word t2) {
