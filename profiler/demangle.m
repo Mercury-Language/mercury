@@ -649,7 +649,7 @@ demangle_data -->
 :- mode format_data(in, in, in, in, out) is semidet.
 format_data(info, MaybeModule, Name, Arity, Result) :-
 	( MaybeModule = yes(Module) ->
-		string__format("<type_ctor_info for type `%s:%s/%d'>",
+		string__format("<type_ctor_info for type `%s.%s/%d'>",
 			[s(Module), s(Name), i(Arity)], Result)
 	;
 		string__format("<type_ctor_info for type `%s/%d'>",
@@ -657,7 +657,7 @@ format_data(info, MaybeModule, Name, Arity, Result) :-
 	).
 format_data(layout, MaybeModule, Name, Arity, Result) :-
 	( MaybeModule = yes(Module) ->
-		string__format("<type_ctor_layout for type `%s:%s/%d'>",
+		string__format("<type_ctor_layout for type `%s.%s/%d'>",
 			[s(Module), s(Name), i(Arity)], Result)
 	;
 		string__format("<type_ctor_layout for type `%s/%d'>",
@@ -665,7 +665,7 @@ format_data(layout, MaybeModule, Name, Arity, Result) :-
 	).
 format_data(functors, MaybeModule, Name, Arity, Result) :-
 	( MaybeModule = yes(Module) ->
-		string__format("<type_ctor_functors for type `%s:%s/%d'>",
+		string__format("<type_ctor_functors for type `%s.%s/%d'>",
 			[s(Module), s(Name), i(Arity)], Result)
 	;
 		string__format("<type_ctor_functors for type `%s/%d'>",
@@ -796,7 +796,7 @@ remove_int(Int) -->
 :- mode remove_int_2(in, out, in, out) is semidet.
 remove_int_2(Int0, Int) -->
 	( remove_digit(Next) ->
-		{ Int1 is Int0 * 10 + Next },
+		{ Int1 = Int0 * 10 + Next },
 		remove_int_2(Int1, Int)
 	;
 		{ Int = Int0 }
@@ -843,7 +843,7 @@ remove_maybe_module_prefix(MaybeModule, StringsToStopAt, String0, String) :-
 			remove_maybe_module_prefix(yes(SubModule),
 				StringsToStopAt, String1, String2)
 		->
-			string__append_list([Module, ":", SubModule],
+			string__append_list([Module, ".", SubModule],
 				QualifiedModule),
 			MaybeModule = yes(QualifiedModule),
 			String = String2
@@ -939,7 +939,7 @@ dcg_set(X, _, X).
 format_maybe_module(no, Name, QualifiedName) :-
 	string__format("%s", [s(Name)], QualifiedName).
 format_maybe_module(yes(Module), Name, QualifiedName) :-
-	string__format("%s:%s", [s(Module), s(Name)], QualifiedName).
+	string__format("%s.%s", [s(Module), s(Name)], QualifiedName).
 
 :- pred remove_trailing_int(int, string, string).
 :- mode remove_trailing_int(out, in, out) is semidet.
