@@ -615,7 +615,7 @@ then
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
 	export MERCURY_COMPILER
 
-	if test "$test_grade" != "$grade"
+	if test "$test_grade" = "$grade"
 	then
 		stage2_insert="stage2/"
 	else
