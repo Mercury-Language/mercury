@@ -199,12 +199,27 @@
 :- pred map__remove_smallest(map(K, V), K, V, map(K, V)).
 :- mode map__remove_smallest(in, out, out, out) is semidet.
 
-	% Perform an inorder tranversal of the map, applying
+	% Perform an inorder traversal of the map, applying
 	% an accumulator predicate for each key-value pair.
 :- pred map__foldl(pred(K, V, T, T), map(K, V), T, T).
 :- mode map__foldl(pred(in, in, in, out) is det, in, in, out) is det.
 :- mode map__foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
 :- mode map__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+
+	% Perform an inorder traversal of the map, applying
+	% an accumulator predicate with two accumulators for
+	% each key-value pair.
+	% (Although no more expressive than map__foldl, this is often
+	% a more convenient format, and a little more efficient).
+:- pred map__foldl2(pred(K, V, T, T, U, U), map(K, V), T, T, U, U).
+:- mode map__foldl2(pred(in, in, in, out, in, out) is det, 
+		in, in, out, in, out) is det.
+:- mode map__foldl2(pred(in, in, in, out, in, out) is semidet, 
+		in, in, out, in, out) is semidet.
+:- mode map__foldl2(pred(in, in, in, out, di, uo) is det,
+		in, in, out, di, uo) is det.
+:- mode map__foldl2(pred(in, in, di, uo, di, uo) is det,
+		in, di, uo, di, uo) is det.
 
 	% Apply a transformation predicate to all the values
 	% in a map.
@@ -491,6 +506,11 @@ map__foldl(Pred, Map, Acc0, Acc) :-
 
 %-----------------------------------------------------------------------------%
 
+map__foldl2(Pred, Map, Acc0, Acc) -->
+	tree234__foldl2(Pred, Map, Acc0, Acc).
+
+%-----------------------------------------------------------------------------%
+
 map__map_values(Pred, Map0, Map) :-
 	tree234__map_values(Pred, Map0, Map).
 
@@ -621,7 +641,11 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 :- func map__init = map(K, V).
 :- mode map__init = uo is det.
 
+:- func map__search(map(K,V), K) = V is semidet.
+
 :- func map__lookup(map(K,V), K) = V.
+
+:- func map__insert(map(K,V), K, V) = map(K,V) is semidet.
 
 :- func map__det_insert(map(K,V), K, V) = map(K,V).
 
@@ -629,6 +653,8 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 		map(K,V).
 
 :- func map__det_insert_from_assoc_list(map(K,V), assoc_list(K, V)) = map(K,V).
+
+:- func map__update(map(K,V), K, V) = map(K,V) is semidet.
 
 :- func map__det_update(map(K,V), K, V) = map(K,V).
 
@@ -688,8 +714,14 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 map__init = M :-
 	map__init(M).
 
+map__search(M, K) = V :-
+	map__search(M, K, V).
+
 map__lookup(M, K) = V :-
 	map__lookup(M, K, V).
+
+map__insert(M1, K, V) = M2 :-
+	map__insert(M1, K, V, M2).
 
 map__det_insert(M1, K, V) = M2 :-
 	map__det_insert(M1, K, V, M2).
@@ -699,6 +731,9 @@ map__det_insert_from_corresponding_lists(M1, Ks, Vs) = M2 :-
 
 map__det_insert_from_assoc_list(M1, AL) = M2 :-
 	map__det_insert_from_assoc_list(M1, AL, M2).
+
+map__update(M1, K, V) = M2 :-
+	map__update(M1, K, V, M2).
 
 map__det_update(M1, K, V) = M2 :-
 	map__det_update(M1, K, V, M2).

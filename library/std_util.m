@@ -156,6 +156,26 @@
 :- mode aggregate(pred(out) is nondet, pred(in, in, out) is det,
 		in, out) is det.
 
+	% aggregate2/6 generates all the solutions to a predicate,
+	% sorts them and removes duplicates, then applies an accumulator
+	% predicate to each solution in turn:
+	%
+	% aggregate2(Generator, Accumulator, AccA0, AccA, AccB0, AccB) <=>
+	%	solutions(Generator, Solutions),
+	%	list__foldl2(Accumulator, Solutions, AccA0, AccA, AccB0, AccB).
+	%
+
+:- pred aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
+:- mode aggregate2(pred(out) is multi, pred(in, in, out, in, out) is det,
+		in, out, in, out) is det.
+:- mode aggregate2(pred(out) is multi, pred(in, in, out, di, uo) is det,
+		in, out, di, uo) is det.
+:- mode aggregate2(pred(out) is nondet, pred(in, in, out, di, uo) is det,
+		in, out, di, uo) is det.
+:- mode aggregate2(pred(out) is nondet, pred(in, in, out, in, out) is det,
+		in, out, in, out) is det.
+
+
 	% unsorted_aggregate/4 generates all the solutions to a predicate
 	% and applies an accumulator predicate to each solution in turn.
 	% Declaratively, the specification is as follows:
@@ -957,6 +977,10 @@ cons(H, T, [H|T]).
 aggregate(Generator, Accumulator, Acc0, Acc) :-
 	solutions(Generator, Solutions),
 	list__foldl(Accumulator, Solutions, Acc0, Acc).
+
+aggregate2(Generator, Accumulator, Acc0, Acc) -->
+	{ solutions(Generator, Solutions) },
+	list__foldl2(Accumulator, Solutions, Acc0, Acc).
 
 unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 	builtin_aggregate(Generator, Accumulator, Acc0, Acc1),
@@ -3550,6 +3574,20 @@ get_type_info_for_type_info(TypeInfo) :-
     %
 :- func id(T) = T.
 
+:- func solutions(pred(T)) = list(T).
+:- mode solutions(pred(out) is multi) = out is det.
+:- mode solutions(pred(out) is nondet) = out is det.
+
+:- func solutions_set(pred(T)) = set(T).
+:- mode solutions_set(pred(out) is multi) = out is det.
+:- mode solutions_set(pred(out) is nondet) = out is det.
+
+:- func aggregate(pred(T), func(T, U) = U, U) = U.
+:- mode aggregate(pred(out) is multi, func(in, in) = out is det,
+		in) = out is det.
+:- mode aggregate(pred(out) is nondet, func(in, in) = out is det,
+		in) = out is det.
+
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
 
@@ -3574,3 +3612,11 @@ isnt(P, X) :-
 	not P(X).
 
 id(X) = X.
+
+solutions(P) = S :- solutions(P, S).
+
+solutions_set(P) = S :- solutions_set(P, S).
+
+aggregate(P, F, Acc0) = Acc :-
+	aggregate(P, (pred(X::in, A0::in, A::out) is det :- A = F(X, A0)),
+		Acc0, Acc).
