@@ -595,7 +595,7 @@ MR_define_entry(mercury__do_call_class_method);
 
 	for (i = num_extra_instance_args; i > 0; i--) {
 		MR_virtual_reg(i) = 
-			MR_typeclass_info_arg_typeclass_info(MR_virtual_reg(1),
+			MR_typeclass_info_extra_instance_arg(MR_virtual_reg(1),
 				i);
 	}
 
@@ -668,7 +668,7 @@ MR_define_entry(mercury__do_call_class_method_compact);
 
 	for (i = num_extra_instance_args; i > 0; i--) {
 		MR_virtual_reg(i) = 
-			MR_typeclass_info_arg_typeclass_info(MR_virtual_reg(1),
+			MR_typeclass_info_extra_instance_arg(MR_virtual_reg(1),
 				i);
 	}
 

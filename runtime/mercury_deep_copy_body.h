@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -827,7 +827,7 @@ copy_typeclass_info(MR_Word typeclass_info_param,
             MR_typeclass_info_num_extra_instance_args(typeclass_info)
                 - num_instance_constraints;
         num_super = MR_typeclass_info_num_superclasses(typeclass_info);
-        num_arg_typeinfos = MR_typeclass_info_num_type_infos(typeclass_info);
+        num_arg_typeinfos = MR_typeclass_info_num_params(typeclass_info);
         MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_typeclass_info),
             forwarding_pointer_size,
             forwarding_pointer_size + 1 /* for basetypeclass_info */

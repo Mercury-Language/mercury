@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -988,7 +988,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                                 arg_vector[locns[i].MR_exist_arg_num]);
                         } else {
                             MR_DEBUG_TABLE_TYPEINFO(table, (MR_TypeInfo)
-                                MR_typeclass_info_type_info(
+                                MR_typeclass_info_param_type_info(
                                     arg_vector[locns[i].MR_exist_arg_num],
                                     locns[i].MR_exist_offset_in_tci));
                         }

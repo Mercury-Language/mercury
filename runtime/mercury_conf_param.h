@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -131,6 +131,9 @@
 **
 **	Normally MR_CHECK_FOR_OVERFLOW is not set, since
 **	we trap overflows using mprotect().
+**
+** MR_CHECK_TYPECLASS_REFS
+** 	Check for improper use of typeclass_infos and base_typeclass_infos.
 */
 
 /*

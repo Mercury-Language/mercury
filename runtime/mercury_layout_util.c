@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -348,7 +348,8 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 			if (! *succeeded) {
 				break;
 			}
-			value = MR_typeclass_info_type_info(baseaddr, offset);
+			value = MR_typeclass_info_param_type_info(baseaddr,
+				offset);
 			*succeeded = MR_TRUE;
 			break;
 
@@ -456,7 +457,8 @@ MR_lookup_typeclass_info_long_lval(MR_Long_Lval locn, MR_Word typeclass_info,
 			if (! *succeeded) {
 				break;
 			}
-			value = MR_typeclass_info_type_info(baseaddr, offset);
+			value = MR_typeclass_info_param_type_info(baseaddr,
+				offset);
 			*succeeded = MR_TRUE;
 			break;
 
@@ -560,7 +562,8 @@ MR_lookup_answer_block_long_lval(MR_Long_Lval locn, MR_Word *answer_block,
 			if (! *succeeded) {
 				break;
 			}
-			value = MR_typeclass_info_type_info(baseaddr, offset);
+			value = MR_typeclass_info_param_type_info(baseaddr,
+				offset);
 			*succeeded = MR_TRUE;
 			break;
 
@@ -669,7 +672,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 			if (! *succeeded) {
 				break;
 			}
-			value = MR_typeclass_info_type_info(baseaddr,
+			value = MR_typeclass_info_param_type_info(baseaddr,
 				offset);
 			*succeeded = MR_TRUE;
 			break;

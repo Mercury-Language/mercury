@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2003 The University of Melbourne.
+** Copyright (C) 2000-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -306,12 +306,14 @@ start_label:
                             y_ti = (MR_TypeInfo)
                                 y_data_value[locns[i].MR_exist_arg_num];
                         } else {
-                            x_ti = (MR_TypeInfo) MR_typeclass_info_type_info(
-                                x_data_value[locns[i].MR_exist_arg_num],
-                                locns[i].MR_exist_offset_in_tci);
-                            y_ti = (MR_TypeInfo) MR_typeclass_info_type_info(
-                                y_data_value[locns[i].MR_exist_arg_num],
-                                locns[i].MR_exist_offset_in_tci);
+                            x_ti = (MR_TypeInfo)
+                                MR_typeclass_info_param_type_info(
+                                    x_data_value[locns[i].MR_exist_arg_num],
+                                    locns[i].MR_exist_offset_in_tci);
+                            y_ti = (MR_TypeInfo)
+                                MR_typeclass_info_param_type_info(
+                                    y_data_value[locns[i].MR_exist_arg_num],
+                                    locns[i].MR_exist_offset_in_tci);
                         }
                         MR_save_transient_registers();
                         result = MR_compare_type_info(x_ti, y_ti);

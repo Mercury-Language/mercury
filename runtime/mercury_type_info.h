@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -408,44 +408,149 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 /*---------------------------------------------------------------------------*/
 
 /*
-** Definitions for accessing the representation of the
-** Mercury typeclass_info.
+** Definitions for accessing typeclass_infos and base_typeclass_infos.
+** Their structure is described type_class_transformation.html in
+** compiler/notes.
+*/
+
+/*
+** Extract the base_typeclass_info from a typeclass_info.
+*/
+
+#define MR_typeclass_info_base(tci)                                 \
+    (*(MR_Word **)(tci))
+
+/*
+** The following macros look up fields of the base_typeclass_info in the given
+** typeclass_info. These fields yield information about the instance
+** declaration from which the given typeclass_info is constructed, or about the
+** type class declaration itself.
+**
+** MR_typeclass_info_num_instance_type_vars gives the number of type variables
+** in the head of the instance declaration that aren't constrained by type
+** class constraints on the instance declaration. (Soon, this will change to
+** simply the number of type variables in the head of the instance
+** declaration.)
+**
+** MR_typeclass_info_num_instance_constraints gives the number of constraints
+** on the instance declaration.
+**
+** MR_typeclass_info_num_extra_instance_args gives the sum of
+** MR_typeclass_info_num_instance_type_vars and
+** MR_typeclass_info_num_instance_constraints.
+**
+** MR_typeclass_info_num_superclasses gives the number of typeclass constraints
+** on the typeclass declaration.
+**
+** MR_typeclass_info_num_params gives the number of parameters of the typeclass
+** declaration, which perforce is also the number of parameters of the instance
+** declaration; in other words, the arity of the type class.
 */
 
 #define MR_typeclass_info_num_extra_instance_args(tci)              \
-    ((MR_Integer)(*(MR_Word **)(tci))[0])
+    ((MR_Integer) MR_typeclass_info_base(tci)[0])
 #define MR_typeclass_info_num_instance_constraints(tci)             \
-    ((MR_Integer)(*(MR_Word **)(tci))[1])
+    ((MR_Integer) MR_typeclass_info_base(tci)[1])
 #define MR_typeclass_info_num_superclasses(tci)                     \
-    ((MR_Integer)(*(MR_Word **)(tci))[2])
-#define MR_typeclass_info_num_type_infos(tci)                       \
-    ((MR_Integer)(*(MR_Word **)(tci))[3])
+    ((MR_Integer) MR_typeclass_info_base(tci)[2])
+#define MR_typeclass_info_num_params(tci)                           \
+    ((MR_Integer) MR_typeclass_info_base(tci)[3])
 #define MR_typeclass_info_num_methods(tci)                          \
-    ((MR_Integer)(*(MR_Word **)(tci))[4])
+    ((MR_Integer) MR_typeclass_info_base(tci)[4])
 #define MR_typeclass_info_class_method(tci, n)                      \
-    ((MR_Code *)(*(MR_Word **)tci)[(n+4)])
+    ((MR_Code *) MR_typeclass_info_base(tci)[(n+4)])
+
+#define MR_typeclass_info_num_instance_type_vars(tci)               \
+    ( MR_typeclass_info_num_extra_instance_args(tci)                \
+    - MR_typeclass_info_num_instance_constraints(tci))
 
 /*
-** The following have the same definitions. This is because
-** the call to MR_typeclass_info_arg_typeclass_info must already
-** have the number of unconstrained type variables for the instance
-** added to it.
+** MR_typeclass_info_instance_tvar_type_info returns a typeinfo for
+** one of the type variables in the instance declaration that isn't constrained
+** by a type class constraints on the instance declaration. (Soon, this will
+** change, as above.)
+**
+** MR_typeclass_info_arg_typeclass_info returns a typeclass_info for one of the
+** constrains on the instance declaration.
+**
+** MR_typeclass_info_extra_instance_arg returns either what
+** MR_typeclass_info_instance_tvar_type_info or
+** MR_typeclass_info_arg_typeclass_info returns, depending on the value of n
+** supplied.
+**
+** Except for the sanity checks, the following macros have the same
+** definitions. This is because calls to MR_typeclass_info_arg_typeclass_info
+** must already have the number of (unconstrained) type variables in the head
+** of the instance declaration added to it.
 */
-#define MR_typeclass_info_arg_typeclass_info(tci, n)                \
+
+#ifdef  MR_CHECK_TYPECLASS_REFS
+  #define MR_typeclass_info_extra_instance_arg(tci, n)              \
+    ((0 < (n) && (n) <= MR_typeclass_info_num_extra_instance_args(tci)) \
+    ? (((MR_Word *)(tci))[(n)])                                     \
+    : MR_typeclass_ref_error((tci), (n),                            \
+        "MR_typeclass_info_extra_instance_arg"))
+  #define MR_typeclass_info_instance_tvar_type_info(tci, n)         \
+    ((0 < (n) && (n) <= MR_typeclass_info_num_instance_type_vars(tci)) \
+    ? (((MR_Word *)(tci))[(n)])                                     \
+    : MR_typeclass_ref_error((tci), (n),                            \
+        "MR_typeclass_info_instance_tvar_type_info"))
+  #define MR_typeclass_info_arg_typeclass_info(tci, n)              \
+    ((MR_typeclass_info_num_instance_type_vars(tci) < (n)           \
+      && (n) <= MR_typeclass_info_num_extra_instance_args(tci))     \
+    ? (((MR_Word *)(tci))[(n)])                                     \
+    : MR_typeclass_ref_error((tci), (n),                            \
+        "MR_typeclass_info_arg_typeclass_info"))
+#else
+  #define MR_typeclass_info_extra_instance_arg(tci, n)              \
     (((MR_Word *)(tci))[(n)])
-#define MR_typeclass_info_unconstrained_type_info(tci, n)           \
+  #define MR_typeclass_info_instance_tvar_type_info(tci, n)         \
     (((MR_Word *)(tci))[(n)])
+  #define MR_typeclass_info_arg_typeclass_info(tci, n)              \
+    (((MR_Word *)(tci))[(n)])
+#endif
 
 /*
-** The following have the same definitions. This is because
-** the call to MR_typeclass_info_type_info must already have the
-** number of superclass_infos for the class added to it.
+** MR_typeclass_info_superclass_info return a typeclass_info for one of the
+** constraints on the typeclass declaration, i.e. for one this class's
+** superclasses.
+**
+** MR_typeclass_info_param_type_info returns a typeinfo for one the types
+** to which the type class constraint applies, i.e. for one of the types bound
+** to the type variables in the head of the type class declaration.
+**
+** Except for the sanity checks, the following macros have the same
+** definitions. This is because calls to MR_typeclass_info_param_type_info
+** must already have the number of superclasses for the class added to it.
 */
 
-#define MR_typeclass_info_superclass_info(tci, n)                   \
+#ifdef  MR_CHECK_TYPECLASS_REFS
+  #define MR_typeclass_info_superclass_info(tci, n)                 \
+    ((0 < (n) && (n) <= MR_typeclass_info_num_superclasses(tci))    \
+    ? (((MR_Word *)(tci))[                                          \
+        MR_typeclass_info_num_extra_instance_args(tci) + (n)])      \
+    : MR_typeclass_ref_error((tci), (n), "MR_typeclass_info_superclass_info"))
+  #define MR_typeclass_info_param_type_info(tci, n)                 \
+    ((MR_typeclass_info_num_superclasses(tci) < (n)                 \
+      && ((n) - MR_typeclass_info_num_superclasses(tci))            \
+        <= MR_typeclass_info_num_params(tci))                       \
+    ? (((MR_Word *)(tci))[                                          \
+        MR_typeclass_info_num_extra_instance_args(tci) + (n)])      \
+    : MR_typeclass_ref_error((tci), (n), "MR_typeclass_info_param_type_info"))
+#else
+  #define MR_typeclass_info_superclass_info(tci, n)                 \
     (((MR_Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
-#define MR_typeclass_info_type_info(tci, n)                         \
+  #define MR_typeclass_info_param_type_info(tci, n)                 \
     (((MR_Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
+#endif
+
+/*
+** Report an attempt to access a typeclass_info with incorrect parameters,
+** and abort. MR_typeclass_ref_error doesn't return; the return value is there
+** only to appease the C typechecker.
+*/
+
+extern  MR_Word MR_typeclass_ref_error(MR_Word tci, int n, const char *msg);
 
 /*---------------------------------------------------------------------------*/
 

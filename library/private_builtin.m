@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -345,7 +345,8 @@ typed_compare(R, X, Y) :-
 
 :- pragma foreign_code("C#", "
 
-public static object[] MR_typeclass_info_type_info(object[] tcinfo, int index)
+public static object[] MR_typeclass_info_param_type_info(object[] tcinfo,
+	int index)
 {
 	object[] tmp;
 	int t1;
@@ -354,7 +355,7 @@ public static object[] MR_typeclass_info_type_info(object[] tcinfo, int index)
 	t1 = System.Convert.ToInt32(tmp[0]) + index;
 	return (object[]) tcinfo[t1];
 }
-public static object[] MR_typeclass_info_unconstrained_type_info(
+public static object[] MR_typeclass_info_instance_tvar_type_info(
 	object[] tcinfo, int index) 
 {
 	return (object[]) tcinfo[index];
@@ -506,22 +507,22 @@ special__Compare____base_typeclass_info_1_0(
 		TypeInfo::out),
 			[will_not_call_mercury, promise_pure, thread_safe],
 "
-	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
+	TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C",
 	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
 		Index::in, TypeInfo::out),
-			[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	TypeInfo = MR_typeclass_info_unconstrained_type_info(TypeClassInfo,
+	TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo,
 			Index);
 ").
 
 :- pragma foreign_proc("C",
 	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
 		TypeClassInfo::out),
-			[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
@@ -530,7 +531,7 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
 	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
 		Index::in, TypeClassInfo::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
@@ -539,24 +540,24 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C#",
 	type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
 		TypeInfo::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
+	TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C#",
 	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
 		Index::in, TypeInfo::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	TypeInfo = MR_typeclass_info_unconstrained_type_info(TypeClassInfo,
+	TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo,
 			Index);
 ").
 
 :- pragma foreign_proc("C#",
 	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
 		TypeClassInfo::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
@@ -565,7 +566,7 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C#",
 	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
 		Index::in, TypeClassInfo::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);

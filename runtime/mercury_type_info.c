@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -124,7 +124,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 	if (offset < 0) {
 		return (MR_TypeInfo) data_value[slot];
 	} else {
-		return (MR_TypeInfo) MR_typeclass_info_type_info(
+		return (MR_TypeInfo) MR_typeclass_info_param_type_info(
 			data_value[slot], offset);
 	}
 }
@@ -487,4 +487,24 @@ MR_pseudo_type_info_vector_to_type_info_list(int arity,
 
 	MR_save_transient_registers();
 	return type_info_list;
+}
+
+MR_Word
+MR_typeclass_ref_error(MR_Word tci, int n, const char *msg)
+{
+	fprintf(stderr, "n1: # of extra instance args:   %d\n",
+		MR_typeclass_info_num_extra_instance_args(tci));
+	fprintf(stderr, "n1-n2: # of instance type vars: %d\n",
+		MR_typeclass_info_num_instance_type_vars(tci));
+	fprintf(stderr, "n2: # of instance constraints:  %d\n",
+		MR_typeclass_info_num_instance_constraints(tci));
+	fprintf(stderr, "n3: # of superclasses:          %d\n",
+		MR_typeclass_info_num_superclasses(tci));
+	fprintf(stderr, "n4: # of parameters:            %d\n",
+		MR_typeclass_info_num_params(tci));
+	fprintf(stderr, "access parameters: %s, %d\n", msg, n);
+	MR_fatal_error("typeclass_info reference error");
+
+	/* not reached */
+	return 0;
 }
