@@ -2894,9 +2894,10 @@ report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 			list__delete_elems(TheConstraints, DeclaredConstraints,
 				Unsatisfied),
 			prog_out__write_context(Context, IO0, IO1),
+			io__write_string("  ", IO1, IO2),
 			io__write_list(Unsatisfied, ", ",
-				mercury_output_constraint(TheVarSet), IO1, IO2),
-			io__write_char('\n', IO2, IO)
+				mercury_output_constraint(TheVarSet), IO2, IO3),
+			io__write_char('\n', IO3, IO)
 		)),
 
 		% XXX this won't be very pretty when there are
