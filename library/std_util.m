@@ -112,6 +112,61 @@
 
 %-----------------------------------------------------------------------------%
 
+        % functor, arg and expand take any type (including univ),
+	% and return representation information for that type.
+	%
+	% The string representation of the functor that functor and 
+	% expand return is:
+	% 	- for user defined types, the functor that is given
+	% 	  in the type defintion. For lists, this
+	% 	  means the functors ./2 and []/0 are used, even if
+	% 	  the list uses the [....] shorthand.
+	%	- for integers, the string is a base 10 number,
+	%	  positive integers have no sign.
+	%	- for floats, the string is a floating point,
+	%	  base 10 number, positive floating point numbers have
+	%	  no sign. 
+	%	- for strings, the string, inside double quotation marks
+	%	- for characters, the character inside single 
+	%	  quotation marks
+	%	- for predicates and functions, the string
+	%	  <<predicate>>
+
+	% functor(Data, Functor, Arity), given a data item (Data),
+	% binds Functor to a string representation of the functor
+	% and Arity to the arity of this data item.
+
+:- pred functor(T::in, string::out, int::out) is det.
+
+	% arg(Data, ArgumentIndex, Argument), given a data item (Data)
+	% and an argument index (ArgumentIndex), starting at 1 for the
+	% first argument, binds Argument to that argument of the functor
+	% of the data item. If the argument index is out of range -
+	% that is higher than the arity of the functor or lower than 1,
+	% arg/3 fails.
+	% The argument has the type univ. 
+
+:- pred arg(T::in, int::in, univ::out) is semidet.
+
+	% det_arg(Data, ArgumentIndex, Argument), given a data item (Data)
+	% and an argument index (ArgumentIndex), starting at 1 for the
+	% first argument, binds Argument to that argument of the functor
+	% of the data item. If the argument index is out of range -
+	% that is higher than the arity of the functor or lower than 1,
+	% det_arg/3 aborts. 
+
+:- pred det_arg(T::in, int::in, univ::out) is det.
+
+	% expand(Data, Functor, Arity, Arguments), given a data item (Data),
+	% binds Functor to a string representation of the functor,
+	% Arity to the arity of this data item, and Arguments to a list
+	% of arguments of the functor.
+	% The arguments in the list are each of type univ.
+
+:- pred expand(T::in, string::out, int::out, list(univ)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module require, set.
@@ -468,5 +523,574 @@ void sys_init_unify_univ_module(void) {
 }
 
 ").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma(c_code, "
+
+	/* 
+	 * Code for functor, arg and expand
+	 * 
+	 * This relies on some C primitives that take a type_info
+	 * and a data_word, and get a functor, arity, argument vector,
+	 * and argument type_info vector.
+	 */
+
+	/* Type definitions */
+
+typedef struct mercury_expand_info {
+	String functor;
+	int arity;
+	Word *argument_vector;
+	Word *type_info_vector;
+} expand_info;
+
+
+	/* Prototypes */
+
+static void mercury_expand(Word* type_info, Word data_word, expand_info *info);
+
+static void mercury_expand_const(Word data_value, Word entry_value,
+	expand_info *info);
+static void mercury_expand_enum(Word data_value, Word entry_value, 
+	expand_info *info);
+static void mercury_expand_simple(Word data_value, Word* arg_type_infos, 
+	Word * type_info, expand_info *info);
+static void mercury_expand_builtin(Word data_value, Word entry_value,
+	expand_info *info);
+static void mercury_expand_complicated(Word data_value, Word entry_value, 
+	Word * type_info, expand_info *info);
+
+static Word * create_type_info(Word *term_type_info, 
+	Word *arg_pseudo_type_info);
+
+/*
+ * Expand the given data using its type_info, find its
+ * functor, arity, argument vector and type_info vector.
+ * 
+ * The info.type_info_vector is allocated using malloc 
+ * It is the responsibility of the  caller to free this
+ * memory, and to copy any fields of this vector to
+ * the Mercury heap. The type_infos that the elements of
+ * this vector point to are either
+ * 	- already allocated on the heap.
+ * 	- constants (eg base_type_infos)
+ */
+
+void 
+mercury_expand(Word* type_info, Word data_word, expand_info *info)
+{
+	Word *base_type_info, *arg_type_info, *base_type_layout;
+	Word data_value, entry_value, base_type_layout_entry;
+	int entry_tag, data_tag; 
+
+	base_type_info = (Word *) type_info[0];
+
+		/* 
+		 * Find the base_type_info - type_infos for types with no args 
+		 * are themselves base_type_infos
+		 */
+
+	if(base_type_info == 0) {
+		base_type_info = type_info;
+	}
+
+		/* Retrieve base_type_layout */
+	base_type_layout = (Word *) base_type_info[OFFSET_FOR_BASE_TYPE_LAYOUT];
+
+	data_tag = tag(data_word);
+	data_value = body(data_word, data_tag);
+	
+	base_type_layout_entry = base_type_layout[data_tag];
+
+	entry_tag = tag(base_type_layout_entry);
+	entry_value = body(base_type_layout_entry, entry_tag);
+	
+	switch(entry_tag) {
+
+	case TYPELAYOUT_CONST_TAG: /* case TYPELAYOUT_COMP_CONST_TAG: */
+
+		/* Is it a builtin or a constant/enum? */ 
+
+		if (entry_value > TYPELAYOUT_MAX_VARINT) {
+
+			/* Check enum indicator */
+
+			if (((Word *) entry_value)[0]) {
+				mercury_expand_enum(data_word, entry_value, 
+					info);
+			} else {
+				data_value = unmkbody(data_value);
+				mercury_expand_const(data_value, entry_value, 
+					info);
+			}
+		} else {
+			entry_value = unmkbody(entry_value);
+			mercury_expand_builtin(data_word, entry_value,
+				info);
+		}
+		break;
+
+	case TYPELAYOUT_SIMPLE_TAG:
+		mercury_expand_simple(data_value, (Word *) entry_value, 
+			type_info, info);
+		break;
+
+	case TYPELAYOUT_COMPLICATED_TAG:
+		mercury_expand_complicated(data_value, entry_value, type_info,
+			info);
+		break;
+
+	case TYPELAYOUT_EQUIV_TAG: /* case TYPELAYOUT_NO_TAG: */
+	{
+		int allocated = 0; 
+
+#ifdef DEBUG_STD_UTIL__EXPAND
+		fprintf(stderr, ""Equivalent to:\n""); 
+#endif
+
+		/* is it equivalent to a type variable? */
+
+		if (entry_value < TYPELAYOUT_MAX_VARINT) {
+			arg_type_info = create_type_info(type_info, 
+				(Word *) entry_value);
+			mercury_expand(arg_type_info, data_word, info);
+		}
+			/* is it a no_tag type? */
+		else if (((Word *) entry_value)[0]) {
+			Word new_arg_vector; 
+			incr_hp(new_arg_vector, 1);
+			field(0, new_arg_vector, 0) = data_word;
+			mercury_expand_simple(new_arg_vector, 
+				(Word *) entry_value, type_info, info);
+		}
+			/* is it an equivalent type */
+		else {
+			arg_type_info = create_type_info(type_info, 
+				(Word *) ((Word *) entry_value)[1]);
+			mercury_expand(arg_type_info, data_word, info);
+		}
+
+	}
+	break;
+
+	default:
+		/* If this happens, the layout data is corrupt */
+
+		fatal_error(""Found unused tag value in expand"");
+	}
+}
+
+/*
+ * Expand a constant value.
+ */
+
+void
+mercury_expand_const(Word data_value, Word entry_value, expand_info *info) 
+{
+
+#ifdef DEBUG_STD_UTIL__EXPAND
+	fprintf(stderr, 
+		""This is a constant functor, %ld of %ld with this tag\n"",
+            data_value + 1, ((Word *) entry_value)[1]); 
+#endif
+
+	/* the functors are stored after the enum_indicator and
+	 * the number of functors
+	 */
+	info->functor = (String) ((Word *) entry_value)[data_value +
+		TYPELAYOUT_CONST_FUNCTOR_OFFSET];	
+	info->arity = 0;
+	info->argument_vector = NULL;
+	info->type_info_vector = NULL;
+}
+
+
+/*
+ * Expand an enum.
+ */
+
+void
+mercury_expand_enum(Word data_value, Word entry_value, expand_info *info) 
+{
+
+#ifdef DEBUG_STD_UTIL__EXPAND
+	fprintf(stderr, 
+		""This is a constant functor, %ld of %ld in this enum\n"",
+            data_value + 1, ((Word *) entry_value)[1]); 
+#endif
+
+	/* the functors are stored after the enum_indicator and
+	 * the number of functors
+	 */
+
+	info->functor = (String) ((Word *) entry_value)[data_value + 
+		TYPELAYOUT_ENUM_FUNCTOR_OFFSET];	
+	info->arity = 0;
+	info->argument_vector = NULL;
+	info->type_info_vector = NULL;
+}
+
+
+/*
+ * Expand a functor with arguments, which has a simple tag.
+ *
+ * Simple tags - type_layout points to an array containing
+ * the arity, then a pseudo-typeinfo for each argument, and type_info is
+ * the current type_info (the type of this data item).
+ *
+ * Data word points to an array of argument data.
+ *
+ */
+void 
+mercury_expand_simple(Word data_value, Word* arg_type_infos, Word * type_info,
+	expand_info *info)
+{
+	int i;
+
+	info->arity = arg_type_infos[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
+
+	info->functor = (String) arg_type_infos[info->arity + 
+		TYPELAYOUT_SIMPLE_FUNCTOR_OFFSET];
+	info->argument_vector = (Word *) data_value;
+
+	info->type_info_vector = checked_malloc(info->arity * sizeof(Word));
+
+	for (i = 0; i < info->arity ; i++) {
+		Word * arg_pseudo_type_info;
+
+		arg_pseudo_type_info = (Word *) arg_type_infos[i + 1];
+		info->type_info_vector[i] = (Word) create_type_info(type_info, 
+			(Word *) arg_pseudo_type_info);
+	}
+}
+
+/*
+ * Complicated tags - entry_value points to a vector containing: 
+ *	The number of sharers of this tag
+ *	A pointer to a simple tag structure (see mercury_print_simple)
+ *	for each sharer.
+ *
+ *	The data_value points to the actual sharer of this tag, 
+ *	which should be used as an index into the vector of pointers
+ *	into simple tag structures. The next n words the data_value
+ *	points to are the arguments of the functor.
+ */
+
+void
+mercury_expand_complicated(Word data_value, Word entry_value, Word * type_info,
+	expand_info *info)
+{
+	Word new_data_value, new_entry_value, new_entry_body,
+		new_entry_tag, secondary_tag;
+
+	secondary_tag = ((Word *) data_value)[0];
+
+#ifdef DEBUG_STD_UTIL__EXPAND
+	fprintf(stderr, ""This is %ld of %ld functors sharing this tag\n"",
+		secondary_tag + 1, ((Word *) entry_value)[0]); 
+#endif
+
+	new_entry_value = ((Word *) entry_value)[secondary_tag + 1];
+	new_entry_tag = tag(new_entry_value);
+	new_entry_body = body(new_entry_value, new_entry_tag);
+	new_data_value = (Word) ((Word *) data_value + 1);
+
+	mercury_expand_simple(new_data_value, (Word *) new_entry_body, 
+		type_info, info);
+}
+
+void
+mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
+{
+
+	switch ((int) entry_value) {
+	
+	case TYPELAYOUT_UNASSIGNED_VALUE:
+		fatal_error(""Attempt to use an UNASSIGNED tag in expand."");
+		break;
+
+	case TYPELAYOUT_UNUSED_VALUE:
+		fatal_error(""Attempt to use an UNUSED tag in expand."");
+		break;
+
+	case TYPELAYOUT_STRING_VALUE: {
+		/* XXX should escape characters correctly */
+
+		incr_hp_atomic((Word) info->functor, 
+			(strlen((String) data_value) + 2 + sizeof(Word)) 
+				/ sizeof(Word));
+		sprintf(info->functor, ""%c%s%c"", '""', 
+			(String) data_value, '""');
+
+		info->argument_vector = NULL;
+		info->type_info_vector = NULL;
+		info->arity = 0;
+		}
+		break;
+
+	case TYPELAYOUT_FLOAT_VALUE:
+	{
+		char buf[500];
+		Float f;
+
+		f = word_to_float(data_value);
+		sprintf(buf, ""%#.15g"", f);
+		incr_hp_atomic((Word) info->functor, 
+			(strlen(buf) + sizeof(Word)) / sizeof(Word));
+		strcpy(info->functor, buf);
+
+		info->argument_vector = NULL;
+		info->type_info_vector = NULL;
+		info->arity = 0;
+	}
+	break;
+
+	case TYPELAYOUT_INT_VALUE:
+	{
+		char buf[500];
+
+		sprintf(buf, ""%ld"", (long) data_value);
+		incr_hp_atomic((Word) info->functor, 
+			(strlen(buf) + sizeof(Word)) / sizeof(Word));
+		strcpy(info->functor, buf);
+
+		info->argument_vector = NULL;
+		info->type_info_vector = NULL;
+		info->arity = 0;
+	}
+	break;
+
+	case TYPELAYOUT_CHARACTER_VALUE:
+	{
+		incr_hp_atomic((Word) info->functor, 
+			(3 + sizeof(Word)) / sizeof(Word));
+
+		/* XXX should escape characters correctly */
+
+		sprintf(info->functor, ""\'%c\'"", (char) data_value);
+
+		info->argument_vector = NULL;
+		info->type_info_vector = NULL;
+		info->arity = 0;
+	}
+	break;
+
+	case TYPELAYOUT_UNIV_VALUE:
+
+		/* Univ is a two word structure, containing
+		 * type_info and data.
+		 */
+
+		mercury_expand((Word *) 
+			((Word *) data_value)[UNIV_OFFSET_FOR_TYPEINFO], 
+			((Word *) data_value)[UNIV_OFFSET_FOR_DATA], info);
+		break;
+
+	case TYPELAYOUT_PREDICATE_VALUE:
+	{
+		make_aligned_string(LVALUE_CAST(String, info->functor), 
+			""<<predicate>>"");
+		info->argument_vector = NULL;
+		info->type_info_vector = NULL;
+		info->arity = 0;
+	}
+	break;
+
+	default:
+		fatal_error(""Invalid tag value in expand"");
+		break;
+	}
+}
+
+
+	/* 
+	 * Given a type_info (term_type_info) which contains a
+	 * base_type_info pointer and possibly other type_infos
+	 * giving the values of the type parameters of this type,
+	 * and a pseudo-type_info (arg_pseudo_type_info), which contains a
+	 * base_type_info pointer and possibly other type_infos
+	 * giving EITHER
+	 * 	- the values of the type parameters of this type,
+	 * or	- an indication of the type parameter of the
+	 * 	  term_type_info that should be substituted here
+	 *
+	 * This returns a fully instantiated type_info, a version of the
+	 * arg_pseudo_type_info with all the type variables filled in.
+	 * We allocate memory for a new type_info on the Mercury heap,
+	 * copy the necessary information, and return a pointer to the
+	 * new type_info. 
+	 *
+	 * In the case where the argument's pseudo_type_info is a
+	 * base_type_info with no arguments, we don't copy the
+	 * base_type_info - we just return a pointer to it - no memory
+	 * is allocated. The caller can check this by looking at the
+	 * first cell of the returned pointer - if it is zero, this is a
+	 * base_type_info. Otherwise, it is an allocated copy of a
+	 * type_info.
+	 *
+	 */
+
+Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
+{
+	int i, arity;
+	Word base_type_info;
+	Word *type_info;
+
+		/* The arg_pseudo_type_info might be a polymorphic variable */
+
+	if ((Word) arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+		arg_pseudo_type_info = (Word *) 
+			term_type_info[(Word) arg_pseudo_type_info];
+	}
+
+	base_type_info = arg_pseudo_type_info[0];
+
+		/* no arguments - optimise common case */
+	if (base_type_info == 0) {
+
+		/* The only case where we don't allocate memory */
+		return arg_pseudo_type_info;
+	}
+
+	arity = ((Word *) base_type_info)[0];
+
+	incr_hp(type_info, (arity + 1));
+
+	for (i = 0; i <= arity; i++) {
+		if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
+			type_info[i] = term_type_info[arg_pseudo_type_info[i]];
+			if (type_info[i] < TYPELAYOUT_MAX_VARINT) {
+				fatal_error(""Error! Can't instantiate type variable."");
+			}
+		} else {
+			type_info[i] = arg_pseudo_type_info[i];
+		}
+	}
+	return type_info;
+}
+
+").
+
+%-----------------------------------------------------------------------------%
+
+	% Code for functor, arg and expand.
+
+:- pragma(c_code, functor(Type::in, Functor::out, Arity::out), " 
+{
+	expand_info info;
+	int len;
+
+	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
+
+		/* Copy functor onto the heap */
+	make_aligned_string(LVALUE_CAST(String, Functor), info.functor);
+
+	Arity = info.arity;
+
+	/* Free the allocated type_info_vector, since we don't need
+	 * it at all.
+	 */
+
+	free(info.type_info_vector);
+}").
+
+:- pragma(c_code, arg(Type::in, ArgumentIndex::in, Argument::out), " 
+{
+	expand_info info;
+	Word arg_pseudo_type_info;
+	int len;
+
+	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
+
+		/* Check range */
+	SUCCESS_INDICATOR = (ArgumentIndex > 0 && ArgumentIndex <= info.arity);
+	if (SUCCESS_INDICATOR) {
+
+			/* Allocate enough room for a univ */
+		incr_hp(Argument, 2);
+		arg_pseudo_type_info = info.type_info_vector[ArgumentIndex - 1];
+		if (arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
+				((Word *) TypeInfo_for_T)[arg_pseudo_type_info];
+		}
+		else {
+			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
+				arg_pseudo_type_info;
+		}
+		field(0, Argument, UNIV_OFFSET_FOR_DATA) = 
+			info.argument_vector[ArgumentIndex - 1];
+	}
+
+	/* Free the allocated type_info_vector, since we just copied
+	 * the argument we want onto the heap. 
+	 */
+
+	free(info.type_info_vector);
+
+}").
+
+det_arg(Type, ArgumentIndex, Argument) :-
+	(
+		arg(Type, ArgumentIndex, Argument0)
+	->
+		Argument = Argument0
+	;
+		error("det_arg : invalid argument")
+	).
+
+:- pragma(c_code, expand(Type::in, Functor::out, Arity::out, Arguments::out), " 
+{
+	expand_info info;
+	Word arg_pseudo_type_info;
+	Word Argument, tmp;
+	int i, len;
+
+	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
+
+		/* Get functor */
+	make_aligned_string(LVALUE_CAST(String, Functor), info.functor);
+
+		/* Get arity */
+	Arity = info.arity;
+
+		/* Build argument list */
+	Arguments = list_empty();
+	i = info.arity;
+
+	while (--i >= 0) {
+
+			/* Create an argument on the heap */
+		incr_hp(Argument, 2);
+
+			/* Join the argument to the front of the list */
+		Arguments = list_cons(Argument, Arguments);
+
+			/* Fill in the arguments */
+		arg_pseudo_type_info = info.type_info_vector[i];
+
+		if (arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+
+				/* It's a type variable, get its value */
+			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
+				((Word *) TypeInfo_for_T)[arg_pseudo_type_info];
+		}
+		else {
+				/* It's already a type_info */
+			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
+				arg_pseudo_type_info;
+		}
+			/* Fill in the data */
+		field(0, Argument, UNIV_OFFSET_FOR_DATA) = 
+			info.argument_vector[i];
+	}
+
+	/* Free the allocated type_info_vector, since we just copied
+	 * all its arguments onto the heap. 
+	 */
+
+	free(info.type_info_vector);
+
+}").
 
 %-----------------------------------------------------------------------------%
