@@ -233,9 +233,11 @@ compile_managed_cplusplus_file(ErrorStream, MCPPFileName, DLLFileName,
 	globals__io_lookup_accumulating_option(mcpp_flags, MCPPFlagsList, !IO),
 	join_string_list(MCPPFlagsList, "", "", " ", MCPPFlags),
 	globals__io_lookup_bool_option(target_debug, Debug, !IO),
-	( Debug = yes ->
+	(
+		Debug = yes,
 		DebugOpt = "/Zi "
 	;
+		Debug = no,
 		DebugOpt = ""
 	),
 
@@ -275,13 +277,15 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
 	CSharpFileName = string__replace_all(CSharpFileName0, "/", "\\\\"),
 
 	globals__io_lookup_bool_option(target_debug, Debug, !IO),
-	( Debug = yes ->
+	(
+		Debug = yes,
 		% XXX This needs testing before it can be enabled
 		% (see the comments for install_debug_library in
 		% library/Mmakefile).
 		% DebugOpt = "/debug+ /debug:full "
 		DebugOpt = ""
 	;
+		Debug = no,
 		DebugOpt = ""
 	),
 
@@ -953,15 +957,15 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
 
 	list__map_foldl(
 		(pred(ThisModule::in, CFileName::out, IO0::di, IO::uo) is det :-
-		module_name_to_file_name(ThisModule, ".c", no, CFileName,
-			IO0, IO)
+			module_name_to_file_name(ThisModule, ".c", no,
+				CFileName, IO0, IO)
 		), ModuleNames, CFileNameList, !IO),
 	join_quoted_string_list(CFileNameList, "", "", " ", CFileNames),
 
 	globals__io_lookup_accumulating_option(init_file_directories,
 		InitFileDirsList, !IO),
-	join_quoted_string_list(InitFileDirsList,
-		"-I ", "", " ", InitFileDirs),
+	join_quoted_string_list(InitFileDirsList, "-I ", "", " ",
+		InitFileDirs),
 
 	globals__io_lookup_accumulating_option(init_files, InitFileNamesList0,
 		!IO),
