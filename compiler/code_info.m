@@ -41,7 +41,6 @@
 
 :- import_module set, varset, stack.
 :- import_module string, require, char, bimap, tree, int.
-:- import_module unsafe, io.
 
 %---------------------------------------------------------------------------%
 
