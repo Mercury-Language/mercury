@@ -19,11 +19,26 @@ debugger_test.out: debugger_test debugger_test.inp
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	debugger_regs \
+STACK_LAYOUT_PROGS=	\
+	debugger_regs	\
 	debugger_test
+
+OTHER_PROGS=
 
 MCFLAGS-debugger_regs = --generate-trace
 MCFLAGS-debugger_test = --generate-trace
+
+# Not all grades can be used with stack layouts
+#
+ifeq ($(GRADE),jump) 
+	PROGS=$(OTHER_PROGS)
+else
+	ifeq ($(GRADE),fast)
+		PROGS=$(OTHER_PROGS)
+	else
+		PROGS=$(STACK_LAYOUT_PROGS) $(OTHER_PROGS)
+	endif
+endif
 
 #-----------------------------------------------------------------------------#
 
