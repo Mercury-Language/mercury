@@ -579,7 +579,7 @@ io__read_char(Stream, Result, IO_0, IO) :-
 
 io__read_word(Result) -->
 	io__input_stream(Stream),
-	io__read_line(Stream, Result).
+	io__read_word(Stream, Result).
 	
 io__read_word(Stream, Result) -->
 	io__read_char(Stream, CharResult),
@@ -592,14 +592,7 @@ io__read_word(Stream, Result) -->
 	;
 		{ CharResult = ok(Char) },
 		(
-			(
-				% XXX Need to add the rest of the ws chars
-				{ Char = '\n' } 
-			;
-				{ Char = '\t' }
-			;	
-				{ Char = ' ' }
-			)
+			{ char__is_whitespace(Char) }
 		->
 			io__putback_char(Stream, Char),
 			{ Result = ok([]) }
@@ -617,10 +610,7 @@ io__read_word(Stream, Result) -->
 			)
 		)	
 	).
-			
-			
-			
-	
+
 io__read_line(Result) -->
 	io__input_stream(Stream),
 	io__read_line(Stream, Result).

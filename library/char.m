@@ -46,6 +46,11 @@
 	% Lower is a lower-case letter and Upper is the corresponding
 	% upper-case letter.
 
+:- pred char__is_whitespace(char).
+:- mode char__is_whitespace(in) is semidet.
+	% True iff the character is whitespace, i.e. a space, tab,
+	% newline, carriage return, form-feed, or vertical tab.
+
 :- pred char__is_upper(char).
 :- mode char__is_upper(in) is semidet.
 	% True iff the character is an uppercase letter.
@@ -90,6 +95,13 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+char__is_whitespace(' ').
+char__is_whitespace('\t').
+char__is_whitespace('\n').
+char__is_whitespace('\r').
+char__is_whitespace('\f').
+char__is_whitespace('\v').
 
 char__is_alpha(Char) :-
 	( char__is_lower(Char) ->
