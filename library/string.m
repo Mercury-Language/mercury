@@ -264,7 +264,7 @@
 %	equal to the length of `String').
 
 :- func string ^ elem(int) = char.
-%	A synonym for index_dex/2:
+%	A synonym for index_det/2:
 %	String ^ elem(Index) = string__index_det(String, Index).
 
 :- func string__unsafe_index(string, int) = char.
@@ -279,7 +279,7 @@
 %	Use with care!
 
 :- func string ^ unsafe_elem(int) = char.
-%	A synonym for index_dex/2:
+%	A synonym for unsafe_index/2:
 %	String ^ unsafe_elem(Index) = string__unsafe_index(String, Index).
 
 :- func string__chomp(string) = string.
