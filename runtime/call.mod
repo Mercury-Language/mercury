@@ -24,18 +24,7 @@
 ** eventual destinations.
 */
 
-#include "regs.h"
-
-#include <assert.h>
-
-#include "mercury_types.h"
-#include "type_info.h"
-#include "calls.h"
-#include "stacks.h"
-#include "memory.h"			/* for fake_reg */
-#include "tags.h"			/* for field() */
-#include "misc.h"			/* for fatal_error() */
-#include "engine.h"			/* for do_fail */
+#include "imp.h"
 
 BEGIN_MODULE(call_module)
 
