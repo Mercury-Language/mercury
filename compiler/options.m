@@ -359,7 +359,7 @@ option_defaults_2(output_option, [
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	assume_gmake		-	bool(yes),
-	trace			-	string("minimal"),
+	trace			-	string("minimum"),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),

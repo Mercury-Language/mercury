@@ -128,12 +128,10 @@ postprocess_options(ok(OptionTable), Error) -->
                 { ArgsMethod0 = string(ArgsMethodStr) },
                 { convert_args_method(ArgsMethodStr, ArgsMethod) }
             ->
-                { map__lookup(OptionTable, prolog_dialect,
-                    PrologDialect0) },
+                { map__lookup(OptionTable, prolog_dialect, PrologDialect0) },
                 (
                     { PrologDialect0 = string(PrologDialectStr) },
-                    { convert_prolog_dialect(PrologDialectStr,
-                        PrologDialect) }
+                    { convert_prolog_dialect(PrologDialectStr, PrologDialect) }
                 ->
                     { map__lookup(OptionTable,
                         fact_table_hash_percent_full, PercentFull) },
@@ -146,14 +144,12 @@ postprocess_options(ok(OptionTable), Error) -->
                                 TermNorm0) },
                         ( 
                             { TermNorm0 = string(TermNormStr) },
-                            { convert_termination_norm(TermNormStr,
-                                    TermNorm) }
+                            { convert_termination_norm(TermNormStr, TermNorm) }
                         ->
                             { map__lookup(OptionTable, trace, Trace) },
                             (
                                 { Trace = string(TraceStr) },
-                                { convert_trace_level(TraceStr,
-                                    TraceLevel) }
+                                { convert_trace_level(TraceStr, TraceLevel) }
                             ->
                                 postprocess_options_2(OptionTable,
                                     GC_Method, TagsMethod, ArgsMethod,
