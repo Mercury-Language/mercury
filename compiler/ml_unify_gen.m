@@ -93,6 +93,7 @@
 :- import_module globals, options.
 
 :- import_module bool, int, string, list, map, require, std_util, term, varset.
+:- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
 
@@ -576,13 +577,13 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	{ Offset = ml_closure_arg_offset },
 	{ list__length(ArgVars, NumArgs) },
 	ml_gen_closure_wrapper(PredId, ProcId, Offset, NumArgs,
-		Context, WrapperFuncRval, WrapperFuncType),
+		Context, WrapperFuncRval0, WrapperFuncType0),
 
 	%
 	% Compute the rval which holds the number of arguments
 	%
-	{ NumArgsRval = const(int_const(NumArgs)) },
-	{ NumArgsType = mlds__native_int_type },
+	{ NumArgsRval0 = const(int_const(NumArgs)) },
+	{ NumArgsType0 = mlds__native_int_type },
 
 	%
 	% the pointer will not be tagged (i.e. the tag will be zero)
@@ -594,7 +595,13 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 
 	%
 	% put all the extra arguments of the closure together
+	% Note that we need to box these arguments, except for
+	% the closure layout, which is already a reference type.
 	%
+	{ NumArgsRval = unop(box(NumArgsType0), NumArgsRval0) },
+	{ NumArgsType = mlds__generic_type },
+	{ WrapperFuncRval = unop(box(WrapperFuncType0), WrapperFuncRval0) },
+	{ WrapperFuncType = mlds__generic_type },
 	{ ExtraArgRvals = [ClosureLayoutRval, WrapperFuncRval, NumArgsRval] },
 	{ ExtraArgTypes = [ClosureLayoutType, WrapperFuncType, NumArgsType] },
 
@@ -705,11 +712,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	% allocate some fresh type variables to use as the Mercury types
 	% of the boxed arguments
 	%
-	{ varset__init(TypeVarSet0) },
-	{ varset__new_vars(TypeVarSet0, ProcArity, ProcBoxedArgTypeVars,
-		_TypeVarSet) },
-	{ term__var_list_to_term_list(ProcBoxedArgTypeVars,
-		ProcBoxedArgTypes) },
+	{ ProcBoxedArgTypes = ml_make_boxed_types(ProcArity) },
 
 	%
 	% compute the parameters for the wrapper function
@@ -1058,10 +1061,28 @@ ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes,
 	% 
 	% If there is a secondary tag, it goes in the first field
 	%
+	=(Info),
 	{ MaybeSecondaryTag = yes(SecondaryTag) ->
 		HasSecTag = yes,
-		SecondaryTagRval = const(int_const(SecondaryTag)),
-		SecondaryTagType = mlds__native_int_type,
+		SecondaryTagRval0 = const(int_const(SecondaryTag)),
+		SecondaryTagType0 = mlds__native_int_type,
+		%
+		% With the low-level data representation,
+		% all fields -- even the secondary tag --
+		% are boxed, and so we need box it here.
+		%
+		ml_gen_info_get_module_info(Info, ModuleInfo),
+		module_info_globals(ModuleInfo, Globals),
+		globals__lookup_bool_option(Globals, highlevel_data,
+			HighLevelData),
+		( HighLevelData = no ->
+			SecondaryTagRval = unop(box(SecondaryTagType0),
+					SecondaryTagRval0),
+			SecondaryTagType = mlds__generic_type
+		;
+			SecondaryTagRval = SecondaryTagRval0,
+			SecondaryTagType = SecondaryTagType0
+		),
 		ExtraRvals = [SecondaryTagRval],
 		ExtraArgTypes = [SecondaryTagType]
 	;
@@ -1105,19 +1126,28 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		MaybeTag = yes(Tag)
 	},
 	ml_variable_types(ArgVars, ArgTypes),
-	list__map_foldl(ml_gen_type, ArgTypes, MLDS_ArgTypes0),
 
 	(
 		{ HowToConstruct = construct_dynamically },
 
 		%
-		% Generate rvals for the arguments
+		% Find out the types of the constructor arguments
+		% and generate rvals for them (boxing/unboxing if needed)
 		%
 		ml_gen_var_list(ArgVars, ArgLvals),
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-		{ ml_gen_cons_args(ArgLvals, ArgTypes, ArgModes, ModuleInfo,
-			ArgRvals0) },
+		{ MaybeConsId = yes(ConsId) ->
+			ConsArgTypes = constructor_arg_types(ConsId,
+				ArgTypes, Type, ModuleInfo)
+		;
+			% it's a closure
+			% in this case, the arguments are all boxed
+			ConsArgTypes = ml_make_boxed_types(
+					list__length(ArgTypes))
+		},
+		ml_gen_cons_args(ArgLvals, ArgTypes, ConsArgTypes, ArgModes,
+			ModuleInfo, ArgRvals0, MLDS_ArgTypes0),
 
 		%
 		% Insert the extra rvals at the start
@@ -1135,7 +1165,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		% Generate a `new_object' statement to dynamically allocate
 		% the memory for this term from the heap.  The `new_object'
 		% statement will also initialize the fields of this term
-		% with boxed versions of the specified arguments.
+		% with the specified arguments.
 		%
 		{ MakeNewObject = new_object(VarLval, MaybeTag, HasSecTag,
 			MLDS_Type, yes(SizeInWordsRval), MaybeCtorName,
@@ -1147,6 +1177,21 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		{ MLDS_Decls = [] }
 	;
 		{ HowToConstruct = construct_statically(StaticArgs) },
+
+		% XXX This code gets the types wrong
+		% for the --high-level-data case
+
+		list__map_foldl(ml_gen_type, ArgTypes, MLDS_ArgTypes0),
+		/****
+		XXX We ought to do something like this instead:
+		=(Info),
+		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+		{ ConsArgTypes = constructor_arg_types(CtorId,
+			ArgTypes, Type, ModuleInfo) },
+		list__map_foldl(ml_gen_field_type, ConsArgTypes,
+			MLDS_ArgTypes0),
+		...
+		*****/
 
 		%
 		% Generate rvals for the arguments
@@ -1255,6 +1300,101 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
 	).
 
+:- pred ml_type_as_field(prog_type, module_info, bool, prog_type).
+:- mode ml_type_as_field(in, in, in, out) is det.
+ml_type_as_field(FieldType, ModuleInfo, HighLevelData, BoxedFieldType) :-
+	(
+		%
+		% With the low-level data representation,
+		% we store all fields as boxed, so we ignore the
+		% original field type and instead generate a polymorphic
+		% type BoxedFieldType which we use for the type of the field.
+		% This type is used in the calls to
+		% ml_gen_box_or_unbox_rval to ensure that we
+		% box values when storing them into fields and
+		% unbox them when extracting them from fields.
+		%
+		% With the high-level data representation,
+		% we don't box everything, but for the MLDS->C and MLDS->asm
+		% back-ends we still need to box floating point fields
+		%
+		(
+			HighLevelData = no
+		;
+			HighLevelData = yes,
+			ml_must_box_field_type(FieldType, ModuleInfo)
+		)
+	->
+		varset__init(TypeVarSet0),
+		varset__new_var(TypeVarSet0, TypeVar, _TypeVarSet),
+		type_util__var(BoxedFieldType, TypeVar)
+	;
+		BoxedFieldType = FieldType
+	).
+
+:- func constructor_arg_types(cons_id, list(prog_type), prog_type,
+		module_info) = list(prog_type).
+
+constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
+	(
+		CtorId = cons(_, _),
+		\+ is_introduced_type_info_type(Type)
+	->
+			% Use the type to determine the type_id
+		( type_to_type_id(Type, TypeId0, _) ->
+			TypeId = TypeId0
+		;
+			% the type-checker should ensure that this never
+			% happens: the type for a ctor_id should never
+			% be a free type variable
+			unexpected(this_file,
+				"cons_id_to_arg_types: invalid type")
+		),
+
+		% Given the type_id, lookup up the constructor
+		(
+			type_util__get_cons_defn(ModuleInfo, TypeId, CtorId,
+				ConsDefn)
+		->
+			ConsDefn = hlds_cons_defn(_, _, ConsArgDefns, _, _),
+			assoc_list__values(ConsArgDefns, ConsArgTypes0),
+			%
+			% There may have been additional types inserted
+			% to hold the type_infos and type_class_infos
+			% for existentially quantified types.
+			% We can get these from the ArgTypes.
+			%
+			NumExtraArgs = list__length(ArgTypes) -
+					list__length(ConsArgTypes0),
+			ExtraArgTypes = list__take_upto(NumExtraArgs, ArgTypes),
+			ConsArgTypes = ExtraArgTypes ++ ConsArgTypes0
+		;
+			% If we didn't find a constructor definition,
+			% maybe that is because this type was a built-in
+			% tuple type
+			type_is_tuple(Type, _)
+		->
+			% In this case, the argument types are all fresh
+			% variables.  Note that we don't need to worry about
+			% using the right varset here, since all we really
+			% care about at this point is whether something is
+			% a type variable or not, not which type variable it
+			% is.
+			ConsArgTypes = ml_make_boxed_types(
+					list__length(ArgTypes))
+		;
+			% type_util__get_cons_defn shouldn't have failed
+			unexpected(this_file,
+				"cons_id_to_arg_types: get_cons_defn failed")
+		)
+	;
+		% For cases when CtorId \= cons(_, _) and it is not a tuple,
+		% as can happen e.g. for closures and type_infos,
+		% we assume that the arguments all have the right type already
+		% XXX is this the right thing to do?
+		ArgTypes = ConsArgTypes
+	).
+
 :- func ml_gen_mktag(int) = mlds__rval.
 ml_gen_mktag(Tag) = unop(std_unop(mktag), const(int_const(Tag))).
 
@@ -1289,11 +1429,17 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 		{ ConstDefns = [] }
 	;
 		%
-		% We need to handle floats specially,
+		% For the MLDS->C and MLDS->asm back-ends,
+		% we need to handle floats specially,
 		% since boxed floats normally get heap allocated,
 		% whereas for other types boxing is just a cast
 		% (casts are OK in static initializers,
 		% but calls to malloc() are not).
+		%
+		% [For the .NET and Java back-ends,
+		% this code currently never gets called,
+		% since currently we don't support static
+		% ground term optimization for those back-ends.]
 		%
 		{ Type = mercury_type(term__functor(term__atom("float"),
 				[], _), _, _)
@@ -1395,37 +1541,69 @@ ml_cons_name(HLDS_ConsId, QualifiedConsId) -->
 	),
 	{ QualifiedConsId = qual(ModuleName, ConsId) }.
 
-:- pred ml_gen_cons_args(list(mlds__lval), list(prog_type),
-		list(uni_mode), module_info, list(mlds__rval)).
-:- mode ml_gen_cons_args(in, in, in, in, out) is det.
-
-ml_gen_cons_args(Lvals, Types, Modes, ModuleInfo, Rvals) :-
-	( ml_gen_cons_args_2(Lvals, Types, Modes, ModuleInfo, Rvals0) ->
-		Rvals = Rvals0
-	;
-		error("ml_gen_cons_args: length mismatch")
-	).
-
 	% Create a list of rvals for the arguments
 	% for a construction unification.  For each argument which
 	% is input to the construction unification, we produce the
-	% corresponding lval, but if the argument is free,
-	% we produce a null value.
+	% corresponding lval, boxed or unboxed if needed,
+	% but if the argument is free, we produce a null value.
+	%
+:- pred ml_gen_cons_args(list(mlds__lval), list(prog_type), list(prog_type),
+		list(uni_mode), module_info,
+		list(mlds__rval), list(mlds__type), ml_gen_info, ml_gen_info).
+:- mode ml_gen_cons_args(in, in, in, in, in, out, out, in, out) is det.
 
-:- pred ml_gen_cons_args_2(list(mlds__lval), list(prog_type),
-		list(uni_mode), module_info, list(mlds__rval)).
-:- mode ml_gen_cons_args_2(in, in, in, in, out) is semidet.
-
-ml_gen_cons_args_2([], [], [], _, []).
-ml_gen_cons_args_2([Lval|Lvals], [Type|Types], [UniMode|UniModes],
-			ModuleInfo, [Rval|Rvals]) :-
-	UniMode = ((_LI - RI) -> (_LF - RF)),
-	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
-		Rval = lval(Lval)
+ml_gen_cons_args(Lvals, ArgTypes, ConsArgTypes, UniModes, ModuleInfo,
+		Rvals, MLDS_Types) -->
+	(
+		{ Lvals = [] },
+		{ ArgTypes = [] },
+		{ ConsArgTypes = [] },
+		{ UniModes = [] }
+	->
+		{ Rvals = [] },
+		{ MLDS_Types = [] }
 	;
-		Rval = const(null(mercury_type_to_mlds_type(ModuleInfo, Type)))
-	),
-	ml_gen_cons_args_2(Lvals, Types, UniModes, ModuleInfo, Rvals).
+		{ Lvals = [Lval | Lvals1] },
+		{ ArgTypes = [ArgType | ArgTypes1] },
+		{ ConsArgTypes = [ConsArgType | ConsArgTypes1] },
+		{ UniModes = [UniMode | UniModes1] }
+	->
+		%
+		% Figure out the type of the field.
+		% Note that for the MLDS->C and MLDS->asm back-ends,
+		% we need to box floating point fields.
+		%
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__lookup_bool_option(Globals, highlevel_data,
+			HighLevelData) },
+		{ ml_type_as_field(ConsArgType, ModuleInfo, HighLevelData,
+			BoxedArgType) },
+		{ MLDS_Type = mercury_type_to_mlds_type(ModuleInfo,
+				BoxedArgType) },
+		%
+		% Compute the value of the field
+		%
+		{ UniMode = ((_LI - RI) -> (_LF - RF)) },
+		(
+			{ mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType,
+				top_in) }
+		->
+			ml_gen_box_or_unbox_rval(ArgType, BoxedArgType,
+				lval(Lval), Rval)
+		;
+			{ Rval = const(null(MLDS_Type)) }
+		),
+		%
+		% Process the remaining arguments
+		%
+		ml_gen_cons_args(Lvals1, ArgTypes1, ConsArgTypes1, UniModes1,
+			ModuleInfo, Rvals1, MLDS_Types1),
+		{ Rvals = [Rval | Rvals1] },
+		{ MLDS_Types = [MLDS_Type | MLDS_Types1] }
+	;
+		{ unexpected(this_file,
+			"ml_gen_cons_args: length mismatch") }
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1636,10 +1814,7 @@ ml_field_names_and_types(Type, ConsId, ArgTypes, Fields) -->
 		{ list__length(ArgTypes, TupleArity) }
 	->
 		% The argument types for tuples are unbound type variables.
-		{ varset__init(TypeVarSet0) },
-		{ varset__new_vars(TypeVarSet0, TupleArity,
-			TVars, _TypeVarSet) },
-		{ term__var_list_to_term_list(TVars, FieldTypes) },
+		{ FieldTypes = ml_make_boxed_types(TupleArity) },
 		{ Fields = list__map(MakeUnnamedField, FieldTypes) }
 	;
 		=(Info),
@@ -1745,34 +1920,11 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
 			)
 		)
 	},
-	{
 		%
-		% With the low-level data representation,
-		% we store all fields as boxed, so we ignore the field
-		% type from `Field' and instead generate a polymorphic
-		% type BoxedFieldType which we use for the type of the field.
-		% This type is used in the calls to
-		% ml_gen_box_or_unbox_rval below to ensure that we
-		% box values when storing them into fields and
-		% unbox them when extracting them from fields.
+		% Box the field type, if needed
 		%
-		% With the high-level data representation,
-		% we don't box everything, but we still need
-		% to box floating point fields.
-		%
-		(
-			HighLevelData = no
-		;
-			HighLevelData = yes,
-			ml_must_box_field_type(FieldType, ModuleInfo)
-		)
-	->
-		varset__init(TypeVarSet0),
-		varset__new_var(TypeVarSet0, TypeVar, _TypeVarSet),
-		type_util__var(BoxedFieldType, TypeVar)
-	;
-		BoxedFieldType = FieldType
-	},
+	{ ml_type_as_field(FieldType, ModuleInfo, HighLevelData,
+		BoxedFieldType) },
 
 		%
 		% Generate lvals for the LHS and the RHS
@@ -2120,6 +2272,20 @@ ml_gen_field_id(Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
 	;
 		error("ml_gen_field_id: invalid type")
 	).
+
+%-----------------------------------------------------------------------------%
+
+	%
+	% allocate some fresh type variables to use as the Mercury types
+	% of boxed objects
+	%
+:- func ml_make_boxed_types(arity) = list(prog_type).
+ml_make_boxed_types(Arity) = BoxedTypes :-
+	varset__init(TypeVarSet0),
+	varset__new_vars(TypeVarSet0, Arity, BoxedTypeVars, _TypeVarSet),
+	term__var_list_to_term_list(BoxedTypeVars, BoxedTypes).
+
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 this_file = "ml_unify_gen.m".

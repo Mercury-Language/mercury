@@ -598,7 +598,8 @@ maybe_add_empty_ctor(Ctors0, Kind, Context) = Ctors :-
 		CtorFlags = init_decl_flags(public, per_instance, non_virtual,
 				overridable, modifiable, concrete),
 
-		CtorDefn = mlds__defn(export(".ctor"), Context, CtorFlags, Ctor),
+		CtorDefn = mlds__defn(export(".ctor"), Context, CtorFlags,
+				Ctor),
 		Ctors = [CtorDefn]
 	;
 		Ctors = Ctors0
@@ -1946,7 +1947,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 			instr_node(CallCtor),
 			StoreLvalInstrs
 			]) }
-	    ;
+	;
 			% Otherwise this is a generic mercury object -- we 
 			% use an array of System::Object to represent
 			% it.
@@ -1960,24 +1961,18 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 			%
 			%	dup
 			%	ldc <array index>
-			%	... load and box rval ...
+			%	... load rval ...
 			%	stelem System::Object
 			%
 			% Finally, after all the array elements have
 			% been set:
 			%
 			%	... store to memory reference ...
-			
-			% We need to do the boxing ourselves because
-			% MLDS hasn't done it.  We add boxing unops to
-			% the rvals.
-		{ Box = (pred(A - T::in, B::out) is det :- 
-			B = unop(box(T), A)   
-		) },
-		{ assoc_list__from_corresponding_lists(Args0, ArgTypes0,
-			ArgsAndTypes) },
-		{ list__map(Box, ArgsAndTypes, BoxedArgs) },
-	
+			%
+			% Note that the MLDS code generator is
+			% responsible for boxing/unboxing the
+			% arguments if needed.
+
 			% Load each rval 
 			% (XXX we do almost exactly the same code when
 			% initializing array data structures -- we
@@ -1993,7 +1988,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 			Arg = (Index + 1) - S
 		) },
 		=(State0),
-		{ list__map_foldl(LoadInArray, BoxedArgs, ArgsLoadInstrsTrees,
+		{ list__map_foldl(LoadInArray, Args0, ArgsLoadInstrsTrees,
 			0 - State0, _ - State) },
 		{ ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees) },
 		dcg_set(State),

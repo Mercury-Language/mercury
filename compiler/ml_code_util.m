@@ -332,7 +332,8 @@
 :- func ml_gen_field_name(maybe(ctor_field_name), int) = mlds__field_name.
 
 	% Succeed iff the specified type must be boxed when used as a field.
-	% We need to box types that are not word-sized, because the code
+	% For the MLDS->C and MLDS->asm back-ends,
+	% we need to box types that are not word-sized, because the code
 	% for `arg' etc. in std_util.m rely on all arguments being word-sized.
 :- pred ml_must_box_field_type(prog_type, module_info).
 :- mode ml_must_box_field_type(in, in) is semidet.
@@ -1572,8 +1573,12 @@ ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
 	).
 
 	% Succeed iff the specified type must be boxed when used as a field.
-	% We need to box types that are not word-sized, because the code
+	% For the MLDS->C and MLDS->asm back-ends,
+	% we need to box types that are not word-sized, because the code
 	% for `arg' etc. in std_util.m rely on all arguments being word-sized.
+	% XXX Currently we box such types even for the other MLDS based
+	% back-ends that don't need it, e.g. the .NET and Java back-ends.
+	% This routine should be modified to check the target.
 ml_must_box_field_type(Type, ModuleInfo) :-
 	classify_type(Type, ModuleInfo, Category),
 	( Category = float_type

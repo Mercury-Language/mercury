@@ -1118,14 +1118,20 @@ XXX Full exception handling support is not yet implemented.
 					% The types of the arguments to the
 					% constructor. 
 					%
-					% Note that currently we store all 
-					% fields as type mlds__generic_type.
-					% But the type here is the actual
-					% argument type, which does not
-					% have to be mlds__generic_type.
-					% It is the responsibility of the
-					% MLDS->target code output phase
-					% to box the arguments if necessary.
+					% Note that for --low-level-data, we box
+					% all fields of objects created with
+					% new_object, i.e. they are reprsented
+					% with type mlds__generic_type.
+					% We also do that for some fields
+					% even for --high-level-data
+					% (e.g. floating point fields for the
+					% MLDS->C and MLDS->asm back-ends).
+					% In such cases, the type here
+					% should be mlds__generic_type;
+					% it is the responsibility of the
+					% HLDS->MLDS code generator
+					% to insert code to box/unbox
+					% the arguments.
 					% 
 		)
 
@@ -1310,9 +1316,15 @@ XXX Full exception handling support is not yet implemented.
 				% The PtrType is the type of the pointer
 				% from which we are fetching the field.
 				%
-				% Note that currently we store all fields
-				% of objects created with new_object
-				% as type mlds__generic_type. For such objects,
+				% Note that for --low-level-data, we box
+				% all fields of objects created with
+				% new_object, i.e. they are reprsented
+				% with type mlds__generic_type.
+				% We also do that for some fields
+				% even for --high-level-data
+				% (e.g. floating point fields for the
+				% MLDS->C and MLDS->asm back-ends)
+				% In such cases,
 				% the type here should be mlds__generic_type,
 				% not the actual type of the field.
 				% If the actual type is different, then it

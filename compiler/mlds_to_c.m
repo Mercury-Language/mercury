@@ -2623,8 +2623,15 @@ mlds_output_init_args([], [], _, _, _, _, _) --> [].
 mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 		ArgNum, Target, Tag, Indent) -->
 	%
-	% Currently all fields of new_object instructions are
-	% represented as MR_Box, so we need to box them if necessary.
+	% The MR_hl_field() macro expects its argument to
+	% have type MR_Box, so we need to box the arguments
+	% if they aren't already boxed.  Hence the use of
+	% mlds_output_boxed_rval below.
+	%
+	% XXX For --high-level-data, we ought to generate
+	% assignments to the fields (or perhaps a call to
+	% a constructor function) rather than using the
+	% MR_hl_field() macro.
 	%
 	mlds_indent(Context, Indent),
 	io__write_string("MR_hl_field("),
@@ -2842,6 +2849,13 @@ mlds_output_cast(Type) -->
 	
 mlds_output_boxed_rval(Type, Exprn) -->
 	(
+		{ Type = mlds__generic_type
+		; Type = mlds__mercury_type(_, polymorphic_type, _)
+		}
+	->
+		% It already has type MR_Box, so no cast is needed
+		mlds_output_rval(Exprn)
+	;
 		{ Exprn = unop(cast(OtherType), InnerExprn) },
 		{ Type = OtherType }
 	->
