@@ -1,0 +1,9 @@
+include_parent: hello
+include_parent__nested: hello
+include_parent__nested: hello
+include_parent__separate: hello
+include_parent__separate: hello
+include_parent__separate: hello2
+include_parent__separate: hello2
+include_parent__separate: hello2
+include_parent__separate__nested: hello

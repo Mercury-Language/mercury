@@ -18,6 +18,7 @@ include ../../Mmake.common
 #
 
 PROGS=	\
+	use_submodule \
 	parent \
 	parent2 \
 	nested \
