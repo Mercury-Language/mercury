@@ -187,6 +187,9 @@ collapse_equivalences(TypeInfo) = NewTypeInfo :-
 
 :- pragma foreign_code("C#", "
 
+	// The field numbers of the contents of type_ctor_infos.
+	// Fill this in as you add new field accessors.
+
 	enum type_ctor_info_field_nums {
 		type_ctor_rep = 4,
 		type_ctor_module_name = 7,
