@@ -1373,7 +1373,9 @@ output_rval_decls(binop(_, Rval1, Rval2), DeclSet0, DeclSet) -->
 	%	static const Word * mercury_const_...[] = { (Word *)... };
 	%
 	% if the constant refers to any code addresses or data addresses.
-	% This includes string literals, and references to other constants.
+	% This includes string literals, and references to other constants,
+	% including boxed float consts.
+	%
 	% We output the original format if possible, since we want it
 	% to go in rdata if it can, because rdata is shared.
 	%
@@ -1393,9 +1395,11 @@ output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
 			    CodeAddrs \= []
 			;   
 			    % yes if the constant contains any string constants
-			    % or any sub-constants
+			    % or any float constants
+			    % or any sub-creates
 			    exprn_aux__args_contain_rval(ArgVals, Rval),
 			    (   Rval = const(string_const(_))
+			    ;   Rval = const(float_const(_))
 			    ;   Rval = create(_, _, Label1),
 				% every create contains a create - itself.
 				% We don't want to count that one,
