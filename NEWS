@@ -8,7 +8,7 @@ We have split the distribution into two parts, a `core' part and an
 Changes to the Mercury language:
 ********************************
 
-* We've added support for constraint handling.
+* We have added support for constraint handling.
 
   To support constraint handling, we've made the mode system a bit
   more flexible.  There is a new inst `any' for variables whose value
@@ -48,7 +48,7 @@ Changes to the Mercury language:
   (though rest assured that when we do have type classes,
   this feature will indeed be useful).
 
-* We've introduced new syntax to allow higher-order predicate expressions
+* We have introduced new syntax to allow higher-order predicate expressions
   to use DCG notation.
 
   For details, see the "Data-terms" section of the "Syntax" chapter
@@ -59,7 +59,7 @@ Changes to the Mercury language:
 Changes to the Mercury standard library:
 ****************************************
 
-* We've rewritten the `store' module to use unique modes.
+* We have rewritten the `store' module to use unique modes.
 
   The `store' module provides a declarative interface to mutable variables
   with destructive update.
@@ -70,19 +70,23 @@ Changes to the Mercury standard library:
   solutions and then aggregating them.  This allows you
   to print out solutions as they are found, for example.
 
-* We've added a few new predicates, namely list__takewhile/4,
+* We have added a few new predicates, namely list__takewhile/4,
   bag__to_list/2, and varset__new_named_var/4.
 
-* We've fixed a problem where io__call_system/4 was not returning the
+* We have changed the interface to lexer__get_token_list to use a more
+  efficient representation of lists of tokens. The functionality is
+  unchanged.
+
+* We have fixed a problem where io__call_system/4 was not returning the
   the exit code of the invoked command on some operating systems.
 
-* We've fixed a bug in relation__rtc/4.
+* We have fixed a bug in relation__rtc/4.
 
 
 New library packages in the `extras' distribution:
 **************************************************
 
-* We've added a CLP(R) interface.
+* We have added a CLP(R) interface.
 
   The new library package `cfloat_lib', in the extras/clpr directory,
   is a Mercury interface to the CLP(R) constraint solver.  The module
@@ -105,7 +109,7 @@ New library packages in the `extras' distribution:
   transparency -- the interface provided is a completely pure declarative
   interface.
 
-* We've added some support for Prolog-style variables and coroutining.
+* We have added some support for Prolog-style variables and coroutining.
 
   The module extras/trailed_updated/var.m provides a type `var(T)'
   which is a Prolog-style variable that holds a value of type T.
@@ -114,7 +118,7 @@ New library packages in the `extras' distribution:
   (dynamic scheduling).  The extras/trailed_update/samples subdirectory
   has an example of the use of freeze/2 to solve the N-queens problem.
 
-* We've added library modules for backtrackable destructive update.
+* We have added library modules for backtrackable destructive update.
 
   See the new modules `tr_array' and `tr_store' in the extras/trailed_update.
   These are versions of `array' and `store' that use trailed backtrackable
@@ -131,7 +135,7 @@ New library packages in the `extras' distribution:
 Changes to the Mercury compiler:
 ********************************
 
-* We've added support for termination analysis.
+* We have added support for termination analysis.
 
   For details, see the "Termination analysis" subsection of the
   "Implementation-dependent pragmas" section of the "Pragmas" chapter
@@ -149,12 +153,12 @@ Changes to the Mercury compiler:
 
   Details of the analysis is available in "Termination Analysis for
   Mercury" by Chris Speirs, Zoltan Somogyi and Harald Sondergaard. In P.
-  Van Hentenryck, editor, "Static Analysis: Proceedings of the 4th
+  Van Hentenryck, editor, "Static Analysis: Proceedings of the Fourth
   International Symposium", Lecture Notes in Computer Science. Springer,
   1997.  A longer version is available for download from
   <http://www.cs.mu.oz.au/publications/tr_db/mu_97_09.ps.gz>.
 
-* We've made it easier to use different compilation models ("grades").
+* We have made it easier to use different compilation models ("grades").
 
   The Mercury compiler (mmc), the Mercury front-end to GNU C (mgnuc),
   and the Mercury linker (ml) now figure out which grade to use based
@@ -165,7 +169,7 @@ Changes to the Mercury compiler:
   Attempts to mix object files compiled with different grades should now
   result in errors at link time rather than undefined behaviour.
 
-* We've improved the C interface.
+* We have improved the C interface.
 
   We now handle the case when `main' is defined in C rather than in Mercury
   slightly more cleanly -- there are functions mercury_init()
@@ -176,5 +180,5 @@ Changes to the Mercury compiler:
 
 * The compiler does a better job of constant-propagation optimization.
 
-* We've fixed a few minor bugs.
+* We have fixed a few minor bugs.
 
