@@ -207,7 +207,9 @@
 	% these with various special cases.
 
 :- export_type follow_vars.
-:- type follow_vars	--->	map(var, register).
+:- type follow_vars	==	map(var, register_slot).
+:- export_type register_slot.
+:- type register_slot		==	int.
 
 :- export_type unification.
 :- type unification	--->	
