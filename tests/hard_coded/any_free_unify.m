@@ -14,7 +14,17 @@ main -->
 	{ test_any_free_unify([], Result1) },
 	io__print(Result1), io__nl.
 
-:- solver type foo.
+:- solver type foo
+	where	representation is int,	
+		initialisation is init_foo,
+		ground         is ground,
+		any            is ground.
+
+:- pred init_foo(foo::out(any)) is det.
+:- pragma promise_pure(init_foo/1).
+init_foo(X) :-
+	impure X = 'representation to any foo/0'(42).
+
 
 :- pred test_any_free_unify(list(foo), bool).
 :- mode test_any_free_unify(in(list_skel(any)), out) is det.
