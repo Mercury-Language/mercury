@@ -231,7 +231,7 @@ set(BM, I) =
 
 clear(BM, I) =
     ( if in_range(BM, I)
-      then BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) /\ bitmask(I)
+      then BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) /\ \bitmask(I)
       else throw("bitmap__clear: out of range")
     ).
 
@@ -247,7 +247,7 @@ unsafe_set(BM, I) =
     BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) \/ bitmask(I).
 
 unsafe_clear(BM, I) =
-    BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) /\ bitmask(I).
+    BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) /\ \bitmask(I).
 
 unsafe_flip(BM, I) =
     BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) `xor` bitmask(I).
