@@ -23,6 +23,7 @@ NONDETPROGS=	commit_bug \
 		nondet_disj \
 		nondet_ite \
 		nondet_ite_3 \
+		nondet_ite_4 \
 		nondetlive \
 		partition \
 		semidet_lambda
