@@ -340,7 +340,7 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 	goal_info_post_delta_liveness(GoalInfo1, PostBirths0 - PostDeaths0),
 	goal_util__name_apart_set(PostBirths0, Must, Subn, PostBirths),
 	goal_util__name_apart_set(PostDeaths0, Must, Subn, PostDeaths),
-	goal_info_set_pre_delta_liveness(GoalInfo1, PostBirths - PostDeaths,
+	goal_info_set_post_delta_liveness(GoalInfo1, PostBirths - PostDeaths,
 						GoalInfo2),
 
 	goal_info_get_nonlocals(GoalInfo2, NonLocals0),
