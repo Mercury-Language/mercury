@@ -22,7 +22,7 @@
 
 :- import_module globals, options.
 :- import_module output_prof_info, prof_info.
-:- import_module float, int, io, list, map, rbtree, relation, string, std_util.
+:- import_module bool, float, int, io, list, map, rbtree, relation, string.
 
 :- pred generate_output__main(prof, map(string, int), output,  
 							io__state, io__state).

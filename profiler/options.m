@@ -14,7 +14,7 @@
 
 :- module options.
 :- interface.
-:- import_module int, string, io, std_util, getopt.
+:- import_module bool, int, string, io, std_util, getopt.
 
 :- type option	
 	% Verbosity options

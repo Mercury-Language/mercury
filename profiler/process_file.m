@@ -35,7 +35,7 @@
 
 :- import_module read.
 :- import_module globals, options.
-:- import_module int, require, std_util, string.
+:- import_module bool, int, require, std_util, string.
 :- import_module list, map.
 
 

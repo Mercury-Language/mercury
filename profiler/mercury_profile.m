@@ -35,7 +35,7 @@
 
 :- import_module process_file, call_graph, generate_output, propagate, output.
 :- import_module prof_info.
-:- import_module list, std_util, string, library.
+:- import_module bool, list, std_util, string, library.
 :- import_module options, getopt, globals.
 :- import_module relation.
 

@@ -35,7 +35,7 @@
 
 :- import_module read.
 :- import_module options, globals.
-:- import_module list, require, std_util.
+:- import_module list, require, bool, std_util.
 
 
 call_graph__main(Args, StaticCallGraph0, StaticCallGraph) -->
