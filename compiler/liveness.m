@@ -251,7 +251,7 @@ detect_liveness_in_disj([Goal0|Goals0], Liveness, ModuleInfo,
 	set__union(Union0, Liveness1, Union1),
 	detect_liveness_in_disj(Goals0, Liveness, ModuleInfo,
 							Union1, Union, Goals),
-	set__difference(Liveness1, Union, Residue),
+	set__difference(Union, Liveness1, Residue),
 	stuff_liveness_residue_into_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -267,7 +267,7 @@ detect_liveness_in_cases([case(Cons, Goal0)|Goals0], Liveness, ModuleInfo,
 	set__union(Union0, Liveness1, Union1),
 	detect_liveness_in_cases(Goals0, Liveness, ModuleInfo,
 							Union1, Union, Goals),
-	set__difference(Liveness1, Union, Residue),
+	set__difference(Union, Liveness1, Residue),
 	stuff_liveness_residue_into_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -334,14 +334,17 @@ detect_deadness_in_goal_2(not(Vars, Goal0), Deadness0, ModuleInfo,
 
 detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Deadness0,
 		ModuleInfo, Deadness, if_then_else(Vars, Cond, Then, Else)) :-
-	detect_deadness_in_goal(Then0, Deadness0, ModuleInfo, Deadness1, Then1),
-	detect_deadness_in_goal(Else0, Deadness0, ModuleInfo, Deadness2, Else1),
-	set__union(Deadness1, Deadness2, Deadness3),
-	detect_deadness_in_goal(Cond0, Deadness3, ModuleInfo, Deadness, Cond),
-	set__difference(Deadness2, Deadness1, Residue0),
-	stuff_deadness_residue_into_goal(Then1, Residue0, Then),
-	set__difference(Deadness1, Deadness2, Residue1),
-	stuff_deadness_residue_into_goal(Else1, Residue1, Else).
+	detect_deadness_in_goal(Then0, Deadness0, ModuleInfo,
+					DeadnessThen, Then1),
+	detect_deadness_in_goal(Else0, Deadness0, ModuleInfo,
+					DeadnessElse, Else1),
+	set__union(DeadnessThen, DeadnessElse, DeadnessThenElse),
+	detect_deadness_in_goal(Cond0, DeadnessThenElse, ModuleInfo,
+					Deadness, Cond),
+	set__difference(DeadnessElse, DeadnessThen, ResidueThen),
+	stuff_deadness_residue_into_goal(Then1, ResidueThen, Then),
+	set__difference(DeadnessThen, DeadnessElse, ResidueElse),
+	stuff_deadness_residue_into_goal(Else1, ResidueElse, Else).
 
 detect_deadness_in_goal_2(switch(Var, Det, Cases0), Deadness0,
 			ModuleInfo, Deadness, switch(Var, Det, Cases)) :-
@@ -395,7 +398,7 @@ detect_deadness_in_disj([Goal0|Goals0], Deadness, ModuleInfo,
 	set__union(Union0, Deadness1, Union1),
 	detect_deadness_in_disj(Goals0, Deadness, ModuleInfo,
 							Union1, Union, Goals),
-	set__difference(Deadness1, Union, Residue),
+	set__difference(Union, Deadness1, Residue),
 	stuff_deadness_residue_into_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -411,7 +414,7 @@ detect_deadness_in_cases([case(Cons, Goal0)|Goals0], Deadness0, ModuleInfo,
 	set__union(Union0, Deadness1, Union1),
 	detect_deadness_in_cases(Goals0, Deadness0, ModuleInfo,
 							Union1, Union, Goals),
-	set__difference(Deadness1, Union, Residue),
+	set__difference(Union, Deadness1, Residue),
 	stuff_deadness_residue_into_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -480,8 +483,6 @@ stuff_liveness_residue_into_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 	set__union(Births0, Residue, Births),
 	goal_info_set_post_delta_liveness(GoalInfo0, Births - Deaths, GoalInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred stuff_deadness_residue_into_goal(hlds__goal, liveness_info, hlds__goal).
