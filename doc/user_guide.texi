@@ -1686,7 +1686,9 @@ most C compilers have trouble compiling very large arrays.
 @item --fact-table-hash-percent-full @var{percentage}
 Specify how full the @samp{pragma fact_table} hash tables should be
 allowed to get.  Given as an integer percentage (valid range: 1 to 100,
-default: 90).
+default: 90).  A lower value means that the compiler will use
+larger tables, but there will generally be less hash collisions,
+so it may result in faster lookups.
 
 @end table
 
