@@ -1,0 +1,29 @@
+overloading.m:050: In clause for predicate `overloading:p/4':
+overloading.m:050:   in unification of variable `OptInfo'
+overloading.m:050:   and term `opt_info(MustHaveOwnSlot, EverOnStack, CurIntervalId, V_17, Counter1, StartMap0, EndMap0, VarsMap0, SuccMap0)':
+overloading.m:050:   type error in argument(s) of functor `opt_info/9'.
+overloading.m:050:   variable `OptInfo' has type `(overloading:opt_info)',
+overloading.m:050:   functor `opt_info/9' has type 
+overloading.m:050:   `opt_info((set:set((term:var((term:generic))))), (set:set((term:var((term:generic))))), (tree234:tree234((term:var((term:generic))), (tree234:tree234((overloading:goal_path), string)))), (overloading:interval_id), (counter:counter), (tree234:tree234((overloading:interval_id), (overloading:anchor))), (tree234:tree234((overloading:interval_id), (overloading:anchor))), (tree234:tree234((overloading:interval_id), (set:set((term:var((term:generic))))))), (tree234:tree234((overloading:interval_id), (list:list((overloading:interval_id)))))) :: (overloading:opt_info)',
+overloading.m:050:   variable `MustHaveOwnSlot' has type `(set:set((term:var((term:generic)))))',
+overloading.m:050:   variable `EverOnStack' has type `(set:set((term:var((term:generic)))))',
+overloading.m:050:   variable `CurIntervalId' has type `(overloading:interval_id)',
+overloading.m:050:   argument has type `'<any>'',
+overloading.m:050:   variable `Counter1' has type `(counter:counter)',
+overloading.m:050:   variable `StartMap0' has overloaded type {
+overloading.m:050:     (pred (tree234:tree234(V_V_1, V_V_2))),
+overloading.m:050:     (tree234:tree234(K, V))
+overloading.m:050:   },
+overloading.m:050:   variable `EndMap0' has overloaded type {
+overloading.m:050:     (pred (tree234:tree234((overloading:interval_id), (overloading:anchor)))),
+overloading.m:050:     (tree234:tree234((overloading:interval_id), (overloading:anchor)))
+overloading.m:050:   },
+overloading.m:050:   variable `VarsMap0' has overloaded type {
+overloading.m:050:     (pred (tree234:tree234((overloading:interval_id), (set:set((term:var((term:generic)))))))),
+overloading.m:050:     (tree234:tree234((overloading:interval_id), (set:set((term:var((term:generic)))))))
+overloading.m:050:   },
+overloading.m:050:   variable `SuccMap0' has overloaded type {
+overloading.m:050:     (pred (tree234:tree234(V_V_1, V_V_2))),
+overloading.m:050:     (tree234:tree234(K, V))
+overloading.m:050:   }.
+For more information, try recompiling with `-E'.

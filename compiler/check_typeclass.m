@@ -543,8 +543,8 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		prog_out__sym_name_to_string(ClassName, ClassNameString),
 		pred_or_func_to_string(PredOrFunc, PredOrFuncString),
 		string__int_to_string(Arity, ArityString),
-		mercury_type_list_to_string(InstanceVarSet, InstanceTypes,
-			InstanceTypesString),
+		InstanceTypesString = mercury_type_list_to_string(
+			InstanceVarSet, InstanceTypes),
 		string__append_list([
 			"In instance declaration for `",
 			ClassNameString, "(", InstanceTypesString, ")': ",
@@ -581,8 +581,8 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		prog_out__sym_name_to_string(ClassName, ClassNameString),
 		pred_or_func_to_string(PredOrFunc, PredOrFuncString),
 		string__int_to_string(Arity, ArityString),
-		mercury_type_list_to_string(InstanceVarSet, InstanceTypes,
-			InstanceTypesString),
+		InstanceTypesString = mercury_type_list_to_string(
+			InstanceVarSet, InstanceTypes),
 		string__append_list([
 			"In instance declaration for `",
 			ClassNameString, "(", InstanceTypesString, ")': ",
@@ -881,8 +881,8 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 	;
 		ClassId = class_id(ClassName, _ClassArity),
 		prog_out__sym_name_to_string(ClassName, ClassNameString),
-		mercury_type_list_to_string(InstanceVarSet2, InstanceTypes,
-			InstanceTypesString),
+		InstanceTypesString = mercury_type_list_to_string(
+			InstanceVarSet2, InstanceTypes),
 		constraint_list_to_string(ClassVarSet, UnprovenConstraints, 
 			ConstraintsString),
 		string__append_list([
@@ -900,7 +900,7 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 
 constraint_list_to_string(_, [], "").
 constraint_list_to_string(VarSet, [C|Cs], String) :-
-	mercury_constraint_to_string(VarSet, C, String0),
+	String0 = mercury_constraint_to_string(VarSet, C),
 	constraint_list_to_string_2(VarSet, Cs, String1),
 	string__append_list(["`", String0, "'", String1], String).
 
@@ -909,7 +909,7 @@ constraint_list_to_string(VarSet, [C|Cs], String) :-
 
 constraint_list_to_string_2(_VarSet, [], "").
 constraint_list_to_string_2(VarSet, [C|Cs], String) :-
-	mercury_constraint_to_string(VarSet, C, String0),
+	String0 = mercury_constraint_to_string(VarSet, C),
 	constraint_list_to_string_2(VarSet, Cs, String1),
 	string__append_list([", `", String0, "'", String1], String).
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -61,6 +61,9 @@
 %		Writes a constant (integer, float, string, or atom)
 %		to stdout.
 
+:- func term_io__format_constant(const) = string.
+	% Like term_io__write_constant, but return the result in a string.
+
 :- pred term_io__write_variable(var(T), varset(T), io__state, io__state).
 :- mode term_io__write_variable(in, in, di, uo) is det.
 %		Writes a variable to stdout.
@@ -70,10 +73,16 @@
 	% Given a string S, write S in double-quotes, with characters
 	% escaped if necessary, to stdout.
 
+:- func term_io__quoted_string(string) = string.
+	% Like term_io__quote_string, but return the result in a string.
+
 :- pred term_io__quote_atom(string, io__state, io__state).
 :- mode term_io__quote_atom(in, di, uo) is det.
 	% Given an atom-name A, write A, enclosed in single-quotes if necessary,
 	% with characters escaped if necessary, to stdout.
+
+:- func term_io__quoted_atom(string) = string.
+	% Like term_io__quote_atom, but return the result in a string.
 
 :- pred term_io__quote_char(char, io__state, io__state).
 :- mode term_io__quote_char(in, di, uo) is det.
@@ -85,11 +94,17 @@
 	% Given a character C, write C, escaped if necessary, to stdout.
 	% The character is not enclosed in quotes.
 
+:- func term_io__escaped_char(char) = string.
+	% Like term_io__write_escaped_char, but return the result in a string.
+
 :- pred term_io__write_escaped_string(string, io__state, io__state).
 :- mode term_io__write_escaped_string(in, di, uo) is det.
 	% Given a string S, write S, with characters
 	% escaped if necessary, to stdout.
 	% The string is not enclosed in quotes.
+
+:- func term_io__escaped_string(string) = string.
+	% Like term_io__write_escaped_char, but return the result in a string.
 
 	% `term_io__quote_single_char' is the old (misleading) name for
 	% `term_io__write_escaped_char'.  Use the latter instead.
@@ -116,11 +131,13 @@
 		io__state, io__state).
 :- mode term_io__quote_atom(in, in, di, uo) is det.
 
+:- func term_io__quoted_atom(string, adjacent_to_graphic_token) = string.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, require, list, string, int, char.
+:- import_module bool, std_util, require, list, string, int, char.
 :- import_module lexer, parser, ops.
 
 term_io__read_term(Result) -->
@@ -415,10 +432,24 @@ term_io__write_constant(term__integer(I), _) -->
 	io__write_int(I).
 term_io__write_constant(term__float(F), _) -->
 	io__write_float(F).
-term_io__write_constant(term__atom(A), NextToGraphicToken)  -->
+term_io__write_constant(term__atom(A), NextToGraphicToken) -->
 	term_io__quote_atom(A, NextToGraphicToken).
 term_io__write_constant(term__string(S), _) -->
 	term_io__quote_string(S).
+
+term_io__format_constant(Const) =
+	term_io__format_constant(Const, not_adjacent_to_graphic_token).
+
+:- func term_io__format_constant(const, adjacent_to_graphic_token) = string.
+
+term_io__format_constant(term__integer(I), _) =
+	string__int_to_string(I).
+term_io__format_constant(term__float(F), _) =
+	string__float_to_string(F).
+term_io__format_constant(term__atom(A), NextToGraphicToken) =
+	term_io__quoted_atom(A, NextToGraphicToken).
+term_io__format_constant(term__string(S), _) =
+	term_io__quoted_string(S).
 
 %-----------------------------------------------------------------------------%
 
@@ -430,33 +461,57 @@ term_io__quote_char(C) -->
 term_io__quote_atom(S) -->
 	term_io__quote_atom(S, not_adjacent_to_graphic_token).
 
+term_io__quoted_atom(S) =
+	term_io__quoted_atom(S, not_adjacent_to_graphic_token).
+
 term_io__quote_atom(S, NextToGraphicToken) -->
+	{ ShouldQuote = should_atom_be_quoted(S, NextToGraphicToken) },
+	( { ShouldQuote = no } ->
+		io__write_string(S)
+	;
+		io__write_char(''''),
+		term_io__write_escaped_string(S),
+		io__write_char('''')
+	).
+
+term_io__quoted_atom(S, NextToGraphicToken) = String :-
+	ShouldQuote = should_atom_be_quoted(S, NextToGraphicToken),
+	( ShouldQuote = no ->
+		String = S
+	;
+		ES = term_io__escaped_string(S),
+		String = string__append_list(["'", ES, "'"])
+	).
+
+:- func should_atom_be_quoted(string, adjacent_to_graphic_token) = bool.
+
+should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
 	(
 		% I didn't make these rules up: see ISO Prolog 6.3.1.3
 		% and 6.4.2.
 		(
 			% letter digit token (6.4.2)
-			{ string__first_char(S, FirstChar, Rest) },
-			{ char__is_lower(FirstChar) },
-			{ string__is_alnum_or_underscore(Rest) }
+			string__first_char(S, FirstChar, Rest),
+			char__is_lower(FirstChar),
+			string__is_alnum_or_underscore(Rest)
 		;
 			% semicolon token (6.4.2)
-			{ S = ";" }
+			S = ";"
 		;
 			% cut token (6.4.2)
-			{ S = "!" }
+			S = "!"
 		;
 			% graphic token (6.4.2)
-			{ string__to_char_list(S, Chars) },
-			{ \+ (  list__member(Char, Chars),
-				\+ lexer__graphic_token_char(Char)) },
-			{ Chars \= [] },
+			string__to_char_list(S, Chars),
+			\+ (  list__member(Char, Chars),
+				\+ lexer__graphic_token_char(Char)),
+			Chars \= [],
 			%
 			% We need to quote tokens starting with '#',
 			% because Mercury uses '#' to start source line
 			% number indicators.
 			% 
-			{ Chars \= ['#' | _] },
+			Chars \= ['#' | _],
 			%
 			% If the token could be the last token in a term,
 			% and the term could be followed with ".\n",
@@ -466,21 +521,19 @@ term_io__quote_atom(S, NextToGraphicToken) -->
 			% unquoted if we're sure it won't be adjacent
 			% to any graphic token.
 			%
-			{ NextToGraphicToken = not_adjacent_to_graphic_token }
+			NextToGraphicToken = not_adjacent_to_graphic_token
 		;
 			% 6.3.1.3: atom = open list, close list ;
-			{ S = "[]" }
+			S = "[]"
 		;
 			% 6.3.1.3: atom = open curly, close curly ;
-			{ S = "{}" }
+			S = "{}"
 		)
 	->
-		io__write_string(S)
+		ShouldQuote = no
 	;
 		% anything else must be output as a quoted token (6.4.2)
-		io__write_char(''''),
-		term_io__write_escaped_string(S),
-		io__write_char('''')
+		ShouldQuote = yes
 	).
 
 	% Note: the code here is similar to code in
@@ -492,8 +545,19 @@ term_io__quote_string(S) -->
 	term_io__write_escaped_string(S),
 	io__write_char('"').
 
+term_io__quoted_string(S) =
+	string__append_list(["""", term_io__escaped_string(S), """"]).
+
 term_io__write_escaped_string(String) -->
 	string__foldl(term_io__write_escaped_char, String).
+
+term_io__escaped_string(String) =
+	string__foldl(term_io__add_escaped_char, String, "").
+
+:- func term_io__add_escaped_char(char, string) = string.
+
+term_io__add_escaped_char(Char, String0) = String :-
+	String = string__append(String0, string__char_to_string(Char)).
 
 term_io__quote_single_char(Char) -->
 	term_io__write_escaped_char(Char).
@@ -511,6 +575,16 @@ term_io__write_escaped_char(Char) -->
 	;
 		{ mercury_escape_char(Char, String) },
 		io__write_string(String)
+	).
+
+term_io__escaped_char(Char) = String :-
+	( mercury_escape_special_char(Char, QuoteChar) ->
+		String = string__append("\\",
+			string__char_to_string(QuoteChar))
+	; is_mercury_source_char(Char) ->
+		String = string__char_to_string(Char)
+	;
+		mercury_escape_char(Char, String)
 	).
 
 :- pred mercury_escape_char(char, string).

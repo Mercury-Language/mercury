@@ -42,6 +42,11 @@ Changes to the Mercury standard library:
 
 * We've added a predicate version of `set__fold'.
 
+* We've added some functions to the term_io module to return printable
+  representations of term components as strings.
+
+* We've made the outputs of the string concatenation primitives unique.
+
 Changes to the Mercury implementation:
 * We've fixed a long-standing bug in the handling of module imports.
   Previously, if `module1' imported `module2' which imported `module3' in

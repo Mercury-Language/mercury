@@ -4665,14 +4665,14 @@ report_error_unif_var_var(TypeCheckInfo, X, Y, TypeAssignSet) -->
 	io__write_string("  `"),
 	mercury_output_var(X, VarSet, no),
 	io__write_string("'"),
-	write_type_of_var(TypeCheckInfo, TypeAssignSet, X),
+	write_type_of_var(TypeCheckInfo, Context, TypeAssignSet, X),
 	io__write_string(",\n"),
 
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	mercury_output_var(Y, VarSet, no),
 	io__write_string("'"),
-	write_type_of_var(TypeCheckInfo, TypeAssignSet, Y),
+	write_type_of_var(TypeCheckInfo, Context, TypeAssignSet, Y),
 	io__write_string(".\n"),
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
@@ -4705,7 +4705,7 @@ report_error_functor_type(TypeCheckInfo, Var, ConsDefnList, Functor, Arity,
 	prog_out__write_context(Context),
 	io__write_string("  "),
 	write_argument_name(VarSet, Var),
-	write_type_of_var(TypeCheckInfo, TypeAssignSet, Var),
+	write_type_of_var(TypeCheckInfo, Context, TypeAssignSet, Var),
 	io__write_string(",\n"),
 
 	prog_out__write_context(Context),
@@ -4765,7 +4765,7 @@ report_error_lambda_var(TypeCheckInfo, PredOrFunc, EvalMethod, Var, ArgVars,
 	prog_out__write_context(Context),
 	io__write_string("  "),
 	write_argument_name(VarSet, Var),
-	write_type_of_var(TypeCheckInfo, TypeAssignSet, Var),
+	write_type_of_var(TypeCheckInfo, Context, TypeAssignSet, Var),
 	io__write_string(",\n"),
 
 	prog_out__write_context(Context),
@@ -4869,7 +4869,8 @@ report_error_functor_arg_types(TypeCheckInfo, Var, ConsDefnList,
 			prog_out__write_context(Context),
 			io__write_string("  "),
 			write_argument_name(VarSet, Var),
-			write_type_of_var(TypeCheckInfo, TypeAssignSet, Var),
+			write_type_of_var(TypeCheckInfo, Context,
+				TypeAssignSet, Var),
 			io__write_string(",\n")
 		;
 			[]
@@ -4992,7 +4993,7 @@ write_types_of_vars([Var | Vars], VarSet, Context, TypeCheckInfo,
 	prog_out__write_context(Context),
 	io__write_string("  "),
 	write_argument_name(VarSet, Var),
-	write_type_of_var(TypeCheckInfo, TypeAssignSet, Var),
+	write_type_of_var(TypeCheckInfo, Context, TypeAssignSet, Var),
 	write_types_of_vars(Vars, VarSet, Context, TypeCheckInfo,
 		TypeAssignSet).
 
@@ -5031,21 +5032,23 @@ write_functor_name(Functor, Arity) -->
 		io__write_string("'")
 	).
 
-:- pred write_type_of_var(typecheck_info, type_assign_set, prog_var,
-				io__state, io__state).
-:- mode write_type_of_var(typecheck_info_no_io, in, in, di, uo) is det.
+:- pred write_type_of_var(typecheck_info, prog_context, type_assign_set,
+	prog_var, io__state, io__state).
+:- mode write_type_of_var(typecheck_info_no_io, in, in, in, di, uo) is det.
 
-write_type_of_var(_TypeCheckInfo, TypeAssignSet, Var) -->
+write_type_of_var(_TypeCheckInfo, Context, TypeAssignSet, Var) -->
 	{ get_type_stuff(TypeAssignSet, Var, TypeStuffList) },
-	( { TypeStuffList = [SingleTypeStuff] } ->
-		{ SingleTypeStuff = type_stuff(VType, TVarSet, TBinding) },
+	{ TypeStrs0 = list__map(typestuff_to_typestr, TypeStuffList) },
+	{ list__sort_and_remove_dups(TypeStrs0, TypeStrs) },
+	( { TypeStrs = [TypeStr] } ->
 		io__write_string(" has type `"),
-		write_type_b(VType, TVarSet, TBinding),
+		io__write_string(TypeStr),
 		io__write_string("'")
 	;
-		io__write_string(" has overloaded type { "),
-		write_type_stuff_list(TypeStuffList),
-		io__write_string(" }")
+		io__write_string(" has overloaded type {\n"),
+		write_types_list(Context, TypeStrs),
+		prog_out__write_context(Context),
+		io__write_string("  }")
 	).
 
 :- pred write_type_of_functor(cons_id, int, prog_context, list(cons_type_info),
@@ -5273,6 +5276,14 @@ write_type_b(Type, TypeVarSet, TypeBindings) -->
 	{ strip_builtin_qualifiers_from_type(Type2, Type3) },
 	mercury_output_term(Type3, TypeVarSet, no).
 
+:- func typestuff_to_typestr(type_stuff) = string.
+
+typestuff_to_typestr(TypeStuff) = TypeStr :-
+	TypeStuff = type_stuff(Type0, TypeVarSet, TypeBindings),
+	term__apply_rec_substitution(Type0, TypeBindings, Type1),
+	strip_builtin_qualifiers_from_type(Type1, Type),
+	TypeStr = mercury_term_to_string(Type, TypeVarSet, no).
+
 %-----------------------------------------------------------------------------%
 
 :- pred report_error_var(typecheck_info, prog_var, type, type_assign_set,
@@ -5371,11 +5382,20 @@ report_error_arg_var(TypeCheckInfo, VarId, ArgTypeAssignSet0) -->
 	),
 	write_args_type_assign_set_msg(ArgTypeAssignSet0, VarSet).
 
-:- pred write_type_stuff_list(list(type_stuff), io__state, io__state).
-:- mode write_type_stuff_list(in, di, uo) is det.
+:- pred write_types_list(prog_context::in, list(string)::in,
+	io__state::di, io__state::uo) is det.
 
-write_type_stuff_list(Ts) -->
-	io__write_list(Ts, ", ", write_type_stuff).
+write_types_list(_Context, []) --> [].
+write_types_list(Context, [Type | Types]) -->
+	prog_out__write_context(Context),
+	io__write_string("    "),
+	io__write_string(Type),
+	( { Types = [] } ->
+		io__write_string("\n")
+	;
+		io__write_string(",\n"),
+		write_types_list(Context, Types)
+	).
 
 :- pred write_type_stuff(type_stuff, io__state, io__state).
 :- mode write_type_stuff(in, di, uo) is det.

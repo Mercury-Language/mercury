@@ -170,6 +170,8 @@
 :- pred write_purity_prefix(purity, io__state, io__state).
 :- mode write_purity_prefix(in, di, uo) is det.
 
+:- func purity_prefix_to_string(purity) = string.
+
 %  Get a purity name as a string.
 :- pred purity_name(purity, string).
 :- mode purity_name(in, out) is det.
@@ -298,6 +300,14 @@ write_purity_prefix(Purity) -->
 	;
 		write_purity(Purity),
 		io__write_string(" ")
+	).
+
+purity_prefix_to_string(Purity) = String :-
+	( Purity = pure ->
+		String = ""
+	;
+		purity_name(Purity, PurityName),
+		String = string__append(PurityName, " ")
 	).
 
 write_purity(Purity) -->
