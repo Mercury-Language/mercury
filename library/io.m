@@ -195,9 +195,17 @@
 %		Retrieves the standard input stream.
 %		Does not modify the IO state.
 
+:- pred io__input_stream_name(string, io__state, io__state).
+:- mode io__input_stream_name(out, di, uo) is det.
+%	Retrieves the human-readable name associated with the current input
+%	stream.
+%	For file streams, this is the filename.
+%	For stdin this is the string "<standard input>".
+
 :- pred io__input_stream_name(io__input_stream, string, io__state, io__state).
 :- mode io__input_stream_name(in, out, di, uo) is det.
-%	Retrieves the human-readable name associated with an stream.
+%	Retrieves the human-readable name associated with the specified input
+%	stream.
 %	For file streams, this is the filename.
 %	For stdin this is the string "<standard input>".
 
@@ -266,9 +274,17 @@
 %		Retrieves the standard error stream.
 %		Does not modify the IO state.
 
+:- pred io__output_stream_name(string, io__state, io__state).
+:- mode io__output_stream_name(out, di, uo) is det.
+%	Retrieves the human-readable name associated with the current
+%	output stream.
+%	For file streams, this is the filename.
+%	For stdout this is the string "<standard input>".
+%	For stderr this is the string "<standard error>".
+
 :- pred io__output_stream_name(io__output_stream, string, io__state, io__state).
 :- mode io__output_stream_name(in, out, di, uo) is det.
-%	Retrieves the human-readable name associated with a stream.
+%	Retrieves the human-readable name associated with the specified stream.
 %	For file streams, this is the filename.
 %	For stdout this is the string "<standard input>".
 %	For stderr this is the string "<standard error>".
@@ -354,18 +370,18 @@
 
 :- type io__state
 	---> 	io__state(
-			io__stream_names,
-			io__stream_putback,
-			univ,
-			io__state_2
+			io__stream_names,	% map from stream to stream name
+			io__stream_putback,	% map from input stream to
+						% list of pushback characters
+			univ,			% for use by the application
+			io__external_state
 		).
 
 :- type io__stream_names ==	map(io__stream, string).
 
 :- type io__stream_putback ==	map(io__stream, list(character)).
 
-:- type io__state_2	---> 	old
-			;	current.
+:- type io__external_state.
 
 :- type io__input_stream ==	io__stream.
 :- type io__output_stream ==	io__stream.
@@ -620,7 +636,15 @@ io__tell(File, Result) -->
 
 % stream name predicates
 
+io__input_stream_name(Name) -->
+	io__input_stream(Stream),
+	io__stream_name(Stream, Name).
+
 io__input_stream_name(Stream, Name) -->
+	io__stream_name(Stream, Name).
+
+io__output_stream_name(Name) -->
+	io__output_stream(Stream),
 	io__stream_name(Stream, Name).
 
 io__output_stream_name(Stream, Name) -->
