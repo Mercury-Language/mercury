@@ -38,7 +38,6 @@
 
 :- pred set_bbbtree__size(set_bbbtree(T), int).
 :- mode set_bbbtree__size(in, out) is det.
-:- mode set_bbbtree__size(in, in) is semidet.
 
 
 	% `set_bbbtree__member(X, Set)' is true iff `X' is a member of `Set'.
@@ -884,10 +883,12 @@ set_bbbtree__superset(SetA, SetB) :-
 :- mode set_bbbtree__build_node(di, di, di, uo) is det.
 :- mode set_bbbtree__build_node(in, in, in, out) is det.
 
-set_bbbtree__build_node(X, L, R, tree(X, N, L, R)) :-
+set_bbbtree__build_node(X, L, R, Tree) :-
 	set_bbbtree__size(L, LSize),
 	set_bbbtree__size(R, RSize),
-	N is 1 + LSize + RSize.
+	N is 1 + LSize + RSize,
+	Tree0 = tree(X, N, L, R),
+	copy(Tree0, Tree).
 
 %------------------------------------------------------------------------------%
 
