@@ -6,6 +6,12 @@ include ../Mmake
 
 #-----------------------------------------------------------------------------#
 
+# uncomment the following line to test the performance
+# of the benchmarks (with I/O suppressed)
+# C2INITFLAGS=-w"`extract $(*:_init=) '' BenchEntry`"
+
+#-----------------------------------------------------------------------------#
+
 PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
 	tak query
 DEPENDS=$(PROGS:%=%.depend)
