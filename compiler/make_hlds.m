@@ -208,9 +208,20 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 	; { ModuleDefn = import(module(_)) } ->
 		{ Status = Status0 },
 		{ Module = Module0 }
-	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
-		{ Status = Status0 },
-		module_mark_as_external(Name, Arity, Context, Module0, Module)
+	; { ModuleDefn = external(External) } ->
+		( { External = name_arity(Name, Arity) } ->
+			{ Status = Status0 },
+			module_mark_as_external(Name, Arity, Context,
+				Module0, Module)
+		;
+			{ Status = Status0 },
+			{ Module = Module0 },
+			io__stderr_stream(StdErr),
+			io__set_output_stream(StdErr, OldStream),
+			prog_out__write_context(Context),
+			report_warning("Warning: `external' declaration requires arity.\n"),
+			io__set_output_stream(OldStream, _)
+		)
 	;
 		{ Status = Status0 },
 		{ Module = Module0 },
