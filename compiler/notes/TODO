@@ -8,20 +8,16 @@ followvars.nl
 
 - Make it work.
 
-codegen.nl
+code_gen.nl
 ----------
 
-- Look at liveness problems
-
-- semideterministic code generation (calls, switches, etc.)
+- some semideterministic code generation (mostly done)
 
 - nondeterministic code generation
 
 - handle string equality, string constants, etc.
 
 - types with constants only (enumerations) should be handled as ints.
-
-- test generation of all builtins
 
 typecheck.nl
 ------------
