@@ -179,6 +179,7 @@
 :- func alloc_func_decl = gcc__func_decl.	% GC_malloc()
 :- func strcmp_func_decl = gcc__func_decl.	% strcmp()
 :- func hash_string_func_decl = gcc__func_decl.	% MR_hash_string()
+:- func box_float_func_decl = gcc__func_decl.	% MR_box_float()
 :- func setjmp_func_decl = gcc__func_decl.	% __builtin_setjmp()
 :- func longjmp_func_decl = gcc__func_decl.	% __builtin_longjmp()
 
@@ -738,6 +739,12 @@
 	[will_not_call_mercury],
 "
 	Decl = (MR_Word) merc_hash_string_function_node;
+").
+
+:- pragma c_code(box_float_func_decl = (Decl::out),
+	[will_not_call_mercury],
+"
+	Decl = (MR_Word) merc_box_float_function_node;
 ").
 
 :- pragma c_code(setjmp_func_decl = (Decl::out),

@@ -1426,10 +1426,13 @@ build_rtti_type(notag_functor_desc, _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_notag_functor_name;
 	%     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
+	% XXX need to add the following field when I do a cvs update:
+	% /***MR_ConstString      MR_notag_functor_arg_name;***/
 	% } MR_NotagFunctorDesc;
 	build_struct_type("MR_NotagFunctorDesc",
 		['MR_ConstString'	- "MR_notag_functor_name",
 		 'MR_PseudoTypeInfo'	- "MR_notag_functor_arg_type"],
+		 %%% 'MR_ConstString'	- "MR_notag_functor_arg_name"],
 		GCC_Type).
 build_rtti_type(du_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
@@ -2491,7 +2494,8 @@ build_unop(box(Type), Rval, FuncInfo, GCC_Expr) -->
 	(
 		{ type_is_float(Type) }
 	->
-		{ sorry(this_file, "boxing of floats") }
+		build_call(gcc__box_float_func_decl, [Rval], FuncInfo,
+			GCC_Expr)
 	;
 		build_cast_rval(mlds__generic_type, Rval, FuncInfo, GCC_Expr)
 	).
