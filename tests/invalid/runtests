@@ -12,6 +12,7 @@ cat *.err_res > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
 	echo "the tests in the invalid directory succeeded"
+	rm -f .allres
 	exit 0
 else
 	echo "the tests in the invalid directory failed"
