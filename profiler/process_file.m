@@ -196,27 +196,24 @@ process_addr_2(TotalCounts0, ProfNodeMap0, TotalCounts, ProfNodeMap) -->
 		{ MaybeLabelAddr = yes(LabelAddr) },
 		read_int(Count),
 
-		% XXX This is a just a quick hack to avoid an error
-		% with the "0 1" line in the Prof.Counts file.
-		% Probably a better fix would be to ensure that 
-		% that line never gets generated.
-		% But really I have no idea what the right solution is. -fjh.
-		( { LabelAddr = 0 } ->
-			{ ProfNodeMap1 = ProfNodeMap0 },
-			{ TC1 = TotalCounts0 }
-		;
-
-			% Add to initial counts.
-			lookup_addr(ProfNodeMap0, LabelAddr, ProfNode0),
-			{ prof_node_get_initial_counts(ProfNode0, InitCount0) },
+		% Add to initial counts if we have a ProfNode structure
+		% for the address otherwise ignore it.
+		(
+			{map__search(ProfNodeMap0,LabelAddr, ProfNode0)}
+		->
+			{ prof_node_get_initial_counts(ProfNode0, 
+							InitCount0) },
 			{ InitCount is InitCount0 + Count },
-			{ prof_node_set_initial_counts(InitCount, ProfNode0,
-							ProfNode) },
+			{ prof_node_set_initial_counts(InitCount, 
+						ProfNode0, ProfNode) },
 			{ map__set(ProfNodeMap0, LabelAddr, ProfNode,
-				ProfNodeMap1) },
-
+							ProfNodeMap1) },
 			{ TC1 is TotalCounts0 + Count }
-
+		;
+			{ TC1 = TotalCounts0 },
+			{ ProfNodeMap1 = ProfNodeMap0 },
+			{ string__format("\nWarning address %d not found!  Ignoring address and continuing computation.\n", [ i(LabelAddr) ], String) },
+			io__write_string(String)
 		),
 
 		process_addr_2(TC1, ProfNodeMap1, TotalCounts, ProfNodeMap)
