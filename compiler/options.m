@@ -1497,7 +1497,7 @@ options_help_aux_output -->
 		"\tor `<module>.nl' (depending on the dialect).",
 		"--prolog-dialect {sicstus,nu}",
 		"\tTarget the named dialect if generating Prolog code.",
-		"-l, --line-numbers",
+		"-n, --line-numbers",
 		"\tOutput line numbers in the generated code.",
 		"\tOnly works with the `-G' and `-P' options.",
 		"--auto-comments",
