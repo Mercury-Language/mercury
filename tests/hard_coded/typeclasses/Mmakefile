@@ -20,6 +20,7 @@ TYPECLASSES_PROGS= \
 	extra_typeinfo \
 	func_default_mode_bug \
 	ground_constraint \
+	ground_constraint_2 \
 	ho_map \
 	implied_instance \
 	implied_instance_multi_constraint \
