@@ -169,7 +169,7 @@ then
 	ln -s $root/library/[m-z]*.m .
 	ln -s $root/library/*.nl .
 	cp $root/library/Mmake* .
-	ln -s $root/library/library.init .
+	ln -s $root/library/libmercury.init .
 	cd $root/stage2_sicstus
 	if test "$copy_runtime" = "true"
 	then
@@ -326,7 +326,7 @@ ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
 ln -s $root/library/*.nl .
 cp $root/library/Mmake* .
-ln -s $root/library/library.init .
+ln -s $root/library/libmercury.init .
 cd $root/stage2
 if test "$copy_runtime" = "true"
 then
@@ -445,7 +445,7 @@ ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
 ln -s $root/library/*.nl .
 cp $root/library/Mmake* .
-ln -s $root/library/library.init .
+ln -s $root/library/libmercury.init .
 cd $root/stage3
 ln -s $root/boehm_gc .
 ln -s $root/doc .

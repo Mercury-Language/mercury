@@ -152,7 +152,7 @@ mkdir library
 cd library
 ln -s $root/library/*.m .
 # ln -s $root/library/*.nl .
-ln -s $root/library/library.init .
+ln -s $root/library/libmercury.init .
 cp $root/library/Mmake* .
 cd $root/stage2
 if test "$copy_runtime" = "true"

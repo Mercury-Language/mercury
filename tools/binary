@@ -194,7 +194,7 @@ mkdir library
 cd library
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
-ln -s $root/library/library.init .
+ln -s $root/library/libmercury.init .
 cp $root/library/Mmake* .
 cd $root/stage2
 if test "$copy_runtime" = "true"
@@ -258,7 +258,7 @@ mkdir library
 cd library
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
-ln -s $root/library/library.init .
+ln -s $root/library/libmercury.init .
 cp $root/library/Mmake* .
 cd $root/stage3
 ln -s $root/boehm_gc .
