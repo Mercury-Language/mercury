@@ -139,8 +139,9 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 		!ModuleInfo, !GenMap, !IO) :-
 	proc_info_eval_method(ProcInfo0, EvalMethod),
 	( eval_method_requires_tabling_transform(EvalMethod) = yes ->
-		table_gen__transform_proc(EvalMethod, PredId, ProcId,
-			ProcInfo0, _, PredInfo0, _, !ModuleInfo, !GenMap, !IO)
+		table_gen__transform_proc_if_possible(EvalMethod, PredId,
+			ProcId, ProcInfo0, _, PredInfo0, _, !ModuleInfo,
+			!GenMap, !IO)
 	;
 		module_info_globals(!.ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, trace_table_io, yes),
@@ -361,7 +362,21 @@ table_gen__transform_proc_if_possible(EvalMethod, PredId, ProcId,
 		Msg = [words("Ignoring the pragma"), fixed(EvalMethodStr),
 			words("for"), fixed(Name), words("due to lack of"),
 			words("support on this back end."), nl],
-		error_util__write_error_pieces(Context, 0, Msg, !IO)
+		error_util__write_error_pieces(Context, 0, Msg, !IO),
+		% 
+		% XXX We set the evaluation method to eval_normal here
+		% to prevent problems in the ml code generator if we are
+		% compiling in a grade that does not support tabling. 
+		% (See ml_gen_maybe_add_table_var/6 in ml_code_gen.m for
+		%  further details.)
+		%
+		% We do this here rather than when processing the tabling
+		% pragmas (in make_hlds.m) so that we can still generate
+		% error message for misuses of the tabling pragmas.
+		%
+		proc_info_set_eval_method(eval_normal, !ProcInfo),
+		module_info_set_pred_proc_info(PredId, ProcId, !.PredInfo,
+			!.ProcInfo, !ModuleInfo)
 	).
 
 :- pred table_gen__transform_proc(eval_method::in, pred_id::in, proc_id::in,
