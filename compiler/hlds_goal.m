@@ -647,14 +647,20 @@
 	% We can think of the goal that defines a procedure to be a tree,
 	% whose leaves are primitive goals and whose interior nodes are
 	% compound goals. These two types describe the position of a goal
-	% in this tree. The first says which branch to take at an interior
-	% node (the integer counts start at one). The second gives the
-	% sequence of steps from the root to the given goal *in reverse order*,
-	% so that the step closest to the root is last.
+	% in this tree. A goal_path_step type says which branch to take at an
+	% interior node; the integer counts start at one. (For switches,
+	% the second int gives the total number of function symbols in the type
+	% of the switched-on var; for builtin types such as integer and string,
+	% for which this number is effectively infinite, we store a negative
+	% number.) The goal_path type gives the sequence of steps from the root
+	% to the given goal *in reverse order*, so that the step closest to
+	% the root is last. (Keeping the list in reverse order makes the
+	% common operations constant-time instead of linear in the length
+	% of the list.)
 
 :- type goal_path_step	--->	conj(int)
 			;	disj(int)
-			;	switch(int)
+			;	switch(int, int)
 			;	ite_cond
 			;	ite_then
 			;	ite_else

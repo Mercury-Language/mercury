@@ -468,7 +468,7 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 		{
 			Path = [LastStep | _],
 			(
-				LastStep = switch(_),
+				LastStep = switch(_, _),
 				PortPrime = switch
 			;
 				LastStep = disj(_),
@@ -786,7 +786,7 @@ trace__path_step_to_string(conj(N), Str) :-
 trace__path_step_to_string(disj(N), Str) :-
 	string__int_to_string(N, NStr),
 	string__append_list(["d", NStr, ";"], Str).
-trace__path_step_to_string(switch(N), Str) :-
+trace__path_step_to_string(switch(N, _), Str) :-
 	string__int_to_string(N, NStr),
 	string__append_list(["s", NStr, ";"], Str).
 trace__path_step_to_string(ite_cond, "?;").

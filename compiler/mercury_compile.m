@@ -43,7 +43,7 @@
 :- import_module check_typeclass, intermod, trans_opt, table_gen, (lambda).
 :- import_module type_ctor_info, termination, higher_order, accumulator.
 :- import_module inlining, deforest, dnf, magic, dead_proc_elim.
-:- import_module unused_args, lco.
+:- import_module unused_args, unneeded_code, lco.
 
 	% the LLDS back-end
 :- import_module saved_vars, liveness.
@@ -1043,8 +1043,11 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_unused_args(HLDS36, Verbose, Stats, HLDS39),
 	mercury_compile__maybe_dump_hlds(HLDS39, "39", "unused_args"),
 
-	mercury_compile__maybe_lco(HLDS39, Verbose, Stats, HLDS40),
-	mercury_compile__maybe_dump_hlds(HLDS40, "40", "lco"),
+	mercury_compile__maybe_unneeded_code(HLDS39, Verbose, Stats, HLDS40),
+	mercury_compile__maybe_dump_hlds(HLDS40, "40", "unneeded_code"),
+
+	mercury_compile__maybe_lco(HLDS40, Verbose, Stats, HLDS42), !,
+	mercury_compile__maybe_dump_hlds(HLDS42, "42", "lco"), !,
 
 	% DNF transformations should be after inlining.
 	mercury_compile__maybe_transform_dnf(HLDS40, Verbose, Stats, HLDS44),
@@ -1853,6 +1856,24 @@ mercury_compile__maybe_unused_args(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose, "% Finding unused arguments ...\n"),
 		maybe_flush_output(Verbose),
 		unused_args__process_module(HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
+	).
+
+:- pred mercury_compile__maybe_unneeded_code(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_unneeded_code(in, in, in, out, di, uo) is det.
+
+mercury_compile__maybe_unneeded_code(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(unneeded_code, UnneededCode),
+	( { UnneededCode = yes } ->
+		maybe_write_string(Verbose, "% Removing unneeded code from procedure bodies...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(
+			update_module_io(unneeded_code__process_proc_msg),
+			HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;

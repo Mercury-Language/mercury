@@ -294,6 +294,8 @@
 		;	optimize_unused_args
 		;	intermod_unused_args
 		;	optimize_higher_order
+		;	unneeded_code
+		;	unneeded_code_copy_limit
 		;	type_specialization
 		;	user_guided_type_specialization
 		;	higher_order_size_limit
@@ -659,6 +661,8 @@ option_defaults_2(optimization_option, [
 	optimize_unused_args	-	bool(no),
 	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
+	unneeded_code		-	bool(no),
+	unneeded_code_copy_limit	-	int(10),
 	type_specialization	-	bool(no),
 	user_guided_type_specialization	-	bool(no),
 	higher_order_size_limit	-	int(20),
@@ -1007,6 +1011,8 @@ long_option("optimise-unused-args",	optimize_unused_args).
 long_option("intermod-unused-args",	intermod_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
+long_option("unneeded-code",		unneeded_code).
+long_option("unneeded-code-copy-limit",	unneeded_code_copy_limit).
 long_option("type-specialization",	type_specialization).
 long_option("type-specialisation",	type_specialization).
 long_option("user-guided-type-specialization",
@@ -1269,6 +1275,7 @@ override_options([Option - Value | Settings], OptionTable0, OptionTable) :-
 :- pred opt_space(list(pair(option, option_data))::out) is det.
 
 opt_space([
+	unneeded_code_copy_limit -	int(1),
 	optimize_dead_procs	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(yes),
@@ -2132,6 +2139,16 @@ options_help_hlds_hlds_optimization -->
 
 		"--optimize-higher-order",
 		"\tEnable specialization of higher-order predicates.",
+		"--unneeded-code",
+		"\tRemove goals from computation paths where their outputs are",
+		"\tnot needed, provided the semantics options allow the deletion",
+		"\tor movement of the goal.",
+		"--unneeded-code-copy-limit",
+		"\tGives the maximum number of places to which a goal may be copied",
+		"\twhen removing it from computation paths on which its outputs are",
+		"\tnot needed. A value of zero forbids goal movement and allows only",
+		"\tgoal deletion; a value of one prevents any increase in the",
+		"\tsize of the code.",
 		"--type-specialization",
 		"\tEnable specialization of polymorphic predicates where the",
 		"\tpolymorphic types are known.",

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -247,13 +247,10 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		OptProcs1 = OptProcs0,
 		VarUsage1 = VarUsage0
 	;
-		proc_info_argmodes(ProcInfo, ArgModes),
-		proc_info_headvars(ProcInfo, HeadVars),
 		proc_info_vartypes(ProcInfo, VarTypes),
 		map__keys(VarTypes, Vars),
 		initialise_vardep(VarDep0, Vars, VarDep1),
-		setup_output_args(ModuleInfo, HeadVars,
-			ArgModes, VarDep1, VarDep2),
+		setup_output_args(ModuleInfo, ProcInfo, VarDep1, VarDep2),
 		
 		module_info_globals(ModuleInfo, Globals),
 		proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId,
@@ -327,32 +324,13 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0,
 
 	% Get output arguments for a procedure given the headvars and the
 	% argument modes, and set them as used.
-:- pred setup_output_args(module_info::in, list(prog_var)::in, list(mode)::in,
+:- pred setup_output_args(module_info::in, proc_info::in,
 			var_dep::in, var_dep::out) is det.
 
-setup_output_args(ModuleInfo, HVars, ArgModes, VarDep0, VarDep) :-
-	(
-		HVars = [Var | Vars], ArgModes = [Mode | Modes]
-	->
-		(
-			% Any argument which has its instantiatedness
-			% changed by the predicate is used.
-			mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-			\+ inst_matches_binding(Inst1, Inst2, ModuleInfo)
-		->
-			set_var_used(VarDep0, Var, VarDep1)		
-		;
-			VarDep1 = VarDep0	
-		),
-		setup_output_args(ModuleInfo, Vars, Modes, VarDep1, VarDep)
-	;
-		HVars = [], ArgModes = []
-	->
-		VarDep = VarDep0	
-	;
-		error("setup_output_args: invalid call")
-	).
-
+setup_output_args(ModuleInfo, ProcInfo, VarDep0, VarDep) :-
+	proc_info_instantiated_head_vars(ModuleInfo, ProcInfo,
+		ChangedInstHeadVars),
+	list__foldl(set_var_used, ChangedInstHeadVars, VarDep0, VarDep).
 
 	% searches for the dependencies of a variable, succeeds if the variable
 	%	is definitely used
@@ -391,9 +369,9 @@ add_aliases(UseInf0, Var, Aliases, UseInf) :-
 set_list_vars_used(UseInfo0, Vars, UseInfo) :-
 	map__delete_list(UseInfo0, Vars, UseInfo).
 
-:- pred set_var_used(var_dep::in, prog_var::in, var_dep::out) is det.
+:- pred set_var_used(prog_var::in, var_dep::in, var_dep::out) is det.
 
-set_var_used(UseInfo0, Var, UseInfo) :-
+set_var_used(Var, UseInfo0, UseInfo) :-
 	map__delete(UseInfo0, Var, UseInfo).
 
 
@@ -424,7 +402,7 @@ traverse_goal(ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
 
 % handle switch
 traverse_goal(ModuleInfo, switch(Var, _, Cases, _), UseInf0, UseInf) :-
-	set_var_used(UseInf0, Var, UseInf1),
+	set_var_used(Var, UseInf0, UseInf1),
 	list_case_to_list_goal(Cases, Goals),
 	traverse_list_of_goals(ModuleInfo, Goals, UseInf1, UseInf).
 
@@ -471,13 +449,13 @@ traverse_goal(_, pragma_c_code(_, _, _, Args, Names, _, _), UseInf0, UseInf) :-
 % cases to handle all the different types of unification
 traverse_goal(_, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
 		:-
-	set_var_used(UseInf0, Var1, UseInf1),
-	set_var_used(UseInf1, Var2, UseInf).
+	set_var_used(Var1, UseInf0, UseInf1),
+	set_var_used(Var2, UseInf1, UseInf).
 		
 traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
 	( local_var_is_used(UseInf0, Var1) ->
 		% if Var1 used to instantiate an output argument, Var2 used
-		set_var_used(UseInf0, Var2, UseInf)
+		set_var_used(Var2, UseInf0, UseInf)
 	;
 		add_aliases(UseInf0, Var2, [Var1], UseInf)
 	).
@@ -497,7 +475,7 @@ traverse_goal(ModuleInfo,
 		CanFail = can_fail	
 	->
 		% a deconstruction that can_fail uses its left arg
-		set_var_used(UseInf2, Var1, UseInf)
+		set_var_used(Var1, UseInf2, UseInf)
 	;
 		UseInf = UseInf2	
 	).
@@ -517,8 +495,8 @@ traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _, _), _),
 	% with --error-check-only and polymorphism has not been run.
 	% Complicated unifications should only be var-var.
 	( Rhs = var(RhsVar) ->
-		set_var_used(UseInf0, RhsVar, UseInf1),
-		set_var_used(UseInf1, Var, UseInf)
+		set_var_used(RhsVar, UseInf0, UseInf1),
+		set_var_used(Var, UseInf1, UseInf)
 	;
 		error("complicated unifications should only be var-var")
 	).
@@ -714,7 +692,7 @@ unused_args_check_all_vars(VarUsage, Changed0, Changed, [Var| Vars],
 			)
 		->
 			% set the current variable to used
-			set_var_used(LocalVars0, Var, LocalVars1),
+			set_var_used(Var, LocalVars0, LocalVars1),
 			Changed1 = yes
 		;
 			Changed1 = Changed0,

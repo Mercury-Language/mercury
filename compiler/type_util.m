@@ -169,6 +169,16 @@
 :- pred type_constructors(type, module_info, list(constructor)).
 :- mode type_constructors(in, in, out) is semidet.
 
+	% Given a type on which it is possible to have a complete switch,
+	% return the number of alternatives. (It is possible to have a complete
+	% switch on any du type and on the builtin type character. It is not
+	% feasible to have a complete switch on the builtin types integer,
+	% float, and switch. One cannot have a switch on an abstract type,
+	% and equivalence types will have been expanded out by the time
+	% we consider switches.)
+:- pred type_util__switch_type_num_functors(module_info::in, (type)::in,
+	int::out) is semidet.
+
 	% Work out the types of the arguments of a functor.
 	% Aborts if the functor is existentially typed.
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
@@ -374,8 +384,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module assoc_list, bool, int, require, std_util, string, varset.
+
 :- import_module prog_io, prog_io_goal, prog_util.
+:- import_module bool, char, int, string.
+:- import_module assoc_list, require, std_util, varset.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
 	sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
@@ -683,6 +695,25 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 	TypeBody = du_type(Constructors0, _, _, _),
 	substitute_type_args(TypeParams, TypeArgs, Constructors0,
 		Constructors).
+
+%-----------------------------------------------------------------------------%
+
+type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
+	( Type = term__functor(term__atom("character"), [], _) ->
+		% XXX the following code uses the source machine's character
+		% size, not the target's, so it won't work if cross-compiling
+		% to a machine with a different size character.
+		char__max_char_value(MaxChar),
+		char__min_char_value(MinChar),
+		NumFunctors is MaxChar - MinChar + 1
+	;
+		type_to_type_id(Type, TypeId, _),
+		module_info_types(ModuleInfo, TypeTable),
+		map__search(TypeTable, TypeId, TypeDefn),
+		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+		TypeBody = du_type(_, ConsTable, _, _),
+		map__count(ConsTable, NumFunctors)
+	).
 
 %-----------------------------------------------------------------------------%
 

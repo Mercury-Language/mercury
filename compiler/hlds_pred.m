@@ -20,7 +20,7 @@
 :- implementation.
 
 :- import_module code_aux, goal_util, make_hlds, prog_util.
-:- import_module mode_util, type_util, options.
+:- import_module inst_match, mode_util, type_util, options.
 :- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -1408,6 +1408,18 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 		list(type), list(prog_var), proc_info).
 :- mode proc_info_create_vars_from_types(in, in, out, out) is det.
 
+	% Given a procedure, return a list of all its headvars which are
+	% (further) instantiated by the procedure.
+:- pred proc_info_instantiated_head_vars(module_info, proc_info,
+		list(prog_var)).
+:- mode proc_info_instantiated_head_vars(in, in, out) is det.
+
+	% Given a procedure, return a list of all its headvars which are
+	% not (further) instantiated by the procedure.
+:- pred proc_info_uninstantiated_head_vars(module_info, proc_info,
+		list(prog_var)).
+:- mode proc_info_uninstantiated_head_vars(in, in, out) is det.
+
 	% Return true if the interface of the given procedure must include
 	% typeinfos for all the type variables in the types of the arguments.
 :- pred proc_interface_should_use_typeinfo_liveness(pred_info, proc_id,
@@ -1742,6 +1754,29 @@ proc_info_create_vars_from_types(ProcInfo0, Types, NewVars, ProcInfo) :-
 		NewVars, Types, VarTypes),
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo).
+
+proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_argmodes(ProcInfo, ArgModes),
+	assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
+	IsInstChanged = lambda([VarMode::in, Var::out] is semidet, (
+		VarMode = Var - Mode,
+		mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
+		\+ inst_matches_binding(Inst1, Inst2, ModuleInfo)
+	)),
+	list__filter_map(IsInstChanged, HeadVarModes, ChangedInstHeadVars).
+
+proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
+		UnchangedInstHeadVars) :-
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_argmodes(ProcInfo, ArgModes),
+	assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
+	IsInstUnchanged = lambda([VarMode::in, Var::out] is semidet, (
+		VarMode = Var - Mode,
+		mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
+		inst_matches_binding(Inst1, Inst2, ModuleInfo)
+	)),
+	list__filter_map(IsInstUnchanged, HeadVarModes, UnchangedInstHeadVars).
 
 proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
 		InterfaceTypeInfoLiveness) :-

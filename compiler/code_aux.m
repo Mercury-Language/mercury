@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,9 +25,21 @@
 :- pred code_aux__contains_only_builtins(hlds_goal).
 :- mode code_aux__contains_only_builtins(in) is semidet.
 
-	% Succeeds if the goal cannot loop or call error/1.
+	% Succeeds if the goal cannot loop forever.
 :- pred code_aux__goal_cannot_loop(module_info, hlds_goal).
 :- mode code_aux__goal_cannot_loop(in, in) is semidet.
+
+	% Succeeds if the goal cannot loop forever or throw an exception.
+:- pred code_aux__goal_cannot_loop_or_throw(hlds_goal).
+:- mode code_aux__goal_cannot_loop_or_throw(in) is semidet.
+
+	% Succeeds if the goal can loop forever.
+:- pred code_aux__goal_can_loop(module_info, hlds_goal).
+:- mode code_aux__goal_can_loop(in, in) is semidet.
+
+	% Succeeds if the goal can loop forever or throw an exception.
+:- pred code_aux__goal_can_loop_or_throw(hlds_goal).
+:- mode code_aux__goal_can_loop_or_throw(in) is semidet.
 
 	% code_aux__goal_is_flat(Goal) is true if Goal does not contain
 	% any branched structures (ie if-then-else or disjunctions or
@@ -108,43 +120,57 @@ code_aux__contains_only_builtins_list([Goal|Goals]) :-
 
 %-----------------------------------------------------------------------------%
 
+code_aux__goal_can_loop(ModuleInfo, Goal) :-
+	\+ code_aux__goal_cannot_loop(ModuleInfo, Goal).
+
+code_aux__goal_can_loop_or_throw(Goal) :-
+	\+ code_aux__goal_cannot_loop_or_throw(Goal).
+
 code_aux__goal_cannot_loop(ModuleInfo, Goal) :-
+	code_aux__goal_cannot_loop_aux(yes(ModuleInfo), Goal).
+
+code_aux__goal_cannot_loop_or_throw(Goal) :-
+	code_aux__goal_cannot_loop_aux(no, Goal).
+
+:- pred code_aux__goal_cannot_loop_aux(maybe(module_info), hlds_goal).
+:- mode code_aux__goal_cannot_loop_aux(in, in) is semidet.
+
+code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Goal) :-
 	Goal = GoalExpr - _,
-	code_aux__goal_cannot_loop_2(ModuleInfo, GoalExpr).
+	code_aux__goal_cannot_loop_expr(MaybeModuleInfo, GoalExpr).
 
-:- pred code_aux__goal_cannot_loop_2(module_info, hlds_goal_expr).
-:- mode code_aux__goal_cannot_loop_2(in, in) is semidet.
+:- pred code_aux__goal_cannot_loop_expr(maybe(module_info), hlds_goal_expr).
+:- mode code_aux__goal_cannot_loop_expr(in, in) is semidet.
 
-code_aux__goal_cannot_loop_2(ModuleInfo, conj(Goals)) :-
-	\+  (
-		list__member(Goal, Goals),
-		\+ code_aux__goal_cannot_loop(ModuleInfo, Goal)
-	).
-code_aux__goal_cannot_loop_2(ModuleInfo, disj(Goals, _)) :-
-	\+  (
-		list__member(Goal, Goals),
-		\+ code_aux__goal_cannot_loop(ModuleInfo, Goal)
-	).
-code_aux__goal_cannot_loop_2(ModuleInfo, switch(_Var, _Category, Cases, _)) :-
-	\+  (
-		list__member(Case, Cases),
+code_aux__goal_cannot_loop_expr(MaybeModuleInfo, conj(Goals)) :-
+	list__member(Goal, Goals) =>
+		code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Goal).
+code_aux__goal_cannot_loop_expr(MaybeModuleInfo, disj(Goals, _)) :-
+	list__member(Goal, Goals) =>
+		code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Goal).
+code_aux__goal_cannot_loop_expr(MaybeModuleInfo,
+		switch(_Var, _Category, Cases, _)) :-
+	list__member(Case, Cases) =>
+		(
 		Case = case(_, Goal),
-		\+ code_aux__goal_cannot_loop(ModuleInfo, Goal)
-	).
-code_aux__goal_cannot_loop_2(ModuleInfo, not(Goal)) :-
-	code_aux__goal_cannot_loop(ModuleInfo, Goal).
-code_aux__goal_cannot_loop_2(ModuleInfo, some(_Vars, _, Goal)) :-
-	code_aux__goal_cannot_loop(ModuleInfo, Goal).
-code_aux__goal_cannot_loop_2(ModuleInfo,
+		code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Goal)
+		).
+code_aux__goal_cannot_loop_expr(MaybeModuleInfo, not(Goal)) :-
+	code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Goal).
+code_aux__goal_cannot_loop_expr(MaybeModuleInfo, some(_Vars, _, Goal)) :-
+	code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Goal).
+code_aux__goal_cannot_loop_expr(MaybeModuleInfo,
 		if_then_else(_Vars, Cond, Then, Else, _)) :-
-	code_aux__goal_cannot_loop(ModuleInfo, Cond),
-	code_aux__goal_cannot_loop(ModuleInfo, Then),
-	code_aux__goal_cannot_loop(ModuleInfo, Else).
-code_aux__goal_cannot_loop_2(ModuleInfo, call(PredId, ProcId, _, _, _, _)) :-
+	code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Cond),
+	code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Then),
+	code_aux__goal_cannot_loop_aux(MaybeModuleInfo, Else).
+code_aux__goal_cannot_loop_expr(MaybeModuleInfo,
+		call(PredId, ProcId, _, _, _, _)) :-
+	MaybeModuleInfo = yes(ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
 	MaybeTermInfo = yes(cannot_loop).
-code_aux__goal_cannot_loop_2(_, unify(_, _, _, Uni, _)) :-
+code_aux__goal_cannot_loop_expr(_, unify(_, _, _, Uni, _)) :-
 	(
 		Uni = assign(_, _)
 	;
@@ -156,7 +182,6 @@ code_aux__goal_cannot_loop_2(_, unify(_, _, _, Uni, _)) :-
 	).
 		% Complicated unifies are _non_builtin_
 	
-
 %-----------------------------------------------------------------------------%
 
 code_aux__goal_is_flat(Goal - _GoalInfo) :-

@@ -3823,6 +3823,18 @@ This option implies @samp{--optimize-unused-args} and
 @samp{--intermodule-optimization}.
 
 @sp 1
+@item --unneeded-code
+Remove goals from computation paths where their outputs are not needed,
+provided the semantics options allow the deletion or movement of the goal.
+
+@sp 1
+@item --unneeded-code-copy-limit
+Gives the maximum number of places to which a goal may be copied
+when removing it from computation paths on which its outputs are not needed.
+A value of zero forbids goal movement and allows only goal deletion;
+a value of one prevents any increase in the size of the code.
+
+@sp 1
 @item --optimize-higher-order
 Specialize calls to higher-order predicates where
 the higher-order arguments are known.
