@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -777,25 +777,34 @@ typedef struct ML_ExceptionHandler_struct {
 	MR_Univ		exception;
 } ML_ExceptionHandler;
 
-/*
-** XXX This is currently not thread-safe!
-** The ML_exception_handler variable should be thread-local.
-*/
-ML_ExceptionHandler *ML_exception_handler;
+#ifndef MR_THREAD_SAFE
+  ML_ExceptionHandler	*ML_exception_handler;
+#endif
+
+#ifdef MR_THREAD_SAFE
+  #define ML_GET_EXCEPTION_HANDLER()	MR_GETSPECIFIC(MR_exception_handler_key)
+  #define ML_SET_EXCEPTION_HANDLER(val)	\
+  	pthread_setspecific(MR_exception_handler_key, (val))
+#else  /* !MR_THREAD_SAFE */
+  #define ML_GET_EXCEPTION_HANDLER()	ML_exception_handler
+  #define ML_SET_EXCEPTION_HANDLER(val)	ML_exception_handler = (val)
+#endif /* !MR_THREAD_SAFE */
 
 void MR_CALL
 mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
 {
-	if (ML_exception_handler == NULL) {
+	ML_ExceptionHandler *exception_handler = ML_GET_EXCEPTION_HANDLER();
+
+	if (exception_handler == NULL) {
 		ML_report_uncaught_exception((MR_Word) exception);
 		exit(EXIT_FAILURE);
 	} else {
 #ifdef	MR_DEBUG_JMPBUFS
 		fprintf(stderr, ""throw longjmp %p\\n"",
-			ML_exception_handler->handler);
+			exception_handler->handler);
 #endif
-		ML_exception_handler->exception = exception;
-		longjmp(ML_exception_handler->handler, 1);
+		exception_handler->exception = exception;
+		longjmp(exception_handler->handler, 1);
 	}
 }
 
@@ -880,8 +889,8 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 	ML_ExceptionHandler this_handler;
 	ML_DECLARE_AGC_HANDLER
 	
-	this_handler.prev = ML_exception_handler;
-	ML_exception_handler = &this_handler;
+	this_handler.prev = ML_GET_EXCEPTION_HANDLER();
+	ML_SET_EXCEPTION_HANDLER(&this_handler);
 
 	ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
 
@@ -891,7 +900,7 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 
 	if (setjmp(this_handler.handler) == 0) {
 		ML_call_goal_det_handcoded(type_info, pred, output);
-		ML_exception_handler = this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 	} else {
 #ifdef	MR_DEBUG_JMPBUFS
@@ -899,7 +908,7 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 			this_handler.handler);
 #endif
 
-		ML_exception_handler = this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 		ML_call_handler_det_handcoded(
 			ML_AGC_LOCAL(type_info), ML_AGC_LOCAL(handler_pred),
@@ -914,8 +923,8 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 	ML_ExceptionHandler this_handler;
 	ML_DECLARE_AGC_HANDLER
 
-	this_handler.prev = ML_exception_handler;
-	ML_exception_handler = &this_handler;
+	this_handler.prev = ML_GET_EXCEPTION_HANDLER();
+	ML_SET_EXCEPTION_HANDLER(&this_handler);
 
 	ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
 
@@ -926,7 +935,7 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 	if (setjmp(this_handler.handler) == 0) {
 		MR_bool result = ML_call_goal_semi_handcoded(type_info, pred,
 			output);
-		ML_exception_handler = this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 		return result;
 	} else {
@@ -935,7 +944,7 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 			this_handler.handler);
 #endif
 
-		ML_exception_handler = this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 		ML_call_handler_det_handcoded(
 			ML_AGC_LOCAL(type_info), ML_AGC_LOCAL(handler_pred),
@@ -962,7 +971,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 		** need to restore the previous exception
 		** handler before calling its continuation
 		*/
-		ML_exception_handler = this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		(*cont)();
 
 		/* 
@@ -971,11 +980,11 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 		** nondet goal.  Thus we need to re-establish
 		** its exception handler.
 		*/
-		ML_exception_handler = &this_handler;
+		ML_SET_EXCEPTION_HANDLER(&this_handler);
 	}
 
-	this_handler.prev = ML_exception_handler;
-	ML_exception_handler = &this_handler;
+	this_handler.prev = ML_GET_EXCEPTION_HANDLER();
+	ML_SET_EXCEPTION_HANDLER(&this_handler);
 
 	ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
 
@@ -986,7 +995,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	if (setjmp(this_handler.handler) == 0) {
 		ML_call_goal_non_handcoded(type_info, pred, output,
 			success_cont);
-		ML_exception_handler = this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 	} else {
 #ifdef	MR_DEBUG_JMPBUFS
@@ -994,7 +1003,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 			this_handler.handler);
 #endif
 
-		ML_exception_handler = this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 		ML_call_handler_det_handcoded(
 			ML_AGC_LOCAL(type_info), ML_AGC_LOCAL(handler_pred),
@@ -1021,7 +1030,7 @@ ML_catch_success_cont(void *env_ptr) {
 	** need to restore the previous exception
 	** handler before calling its continuation
 	*/
-	ML_exception_handler = env->this_handler.prev;
+	ML_SET_EXCEPTION_HANDLER(env->this_handler.prev);
 	(*env->cont)(env->cont_env);
 
 	/* 
@@ -1030,7 +1039,7 @@ ML_catch_success_cont(void *env_ptr) {
 	** nondet goal.  Thus we need to re-establish
 	** its exception handler.
 	*/
-	ML_exception_handler = &env->this_handler;
+	ML_SET_EXCEPTION_HANDLER(&env->this_handler);
 }
 
 void MR_CALL
@@ -1043,8 +1052,8 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	locals.cont = cont;
 	locals.cont_env = cont_env;
 
-	locals.this_handler.prev = ML_exception_handler;
-	ML_exception_handler = &locals.this_handler;
+	locals.this_handler.prev = ML_GET_EXCEPTION_HANDLER();
+	ML_SET_EXCEPTION_HANDLER(&locals.this_handler);
 
 	ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
 
@@ -1061,7 +1070,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 		** need to restore the previous exception
 		** handler 
 		*/
-		ML_exception_handler = locals.this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(locals.this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 		return;
 	} else {
@@ -1078,7 +1087,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 #endif
 
 
-		ML_exception_handler = locals.this_handler.prev;
+		ML_SET_EXCEPTION_HANDLER(locals.this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 		ML_call_handler_det_handcoded(
 			ML_AGC_LOCAL(type_info), ML_AGC_LOCAL(handler_pred),

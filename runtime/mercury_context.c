@@ -3,7 +3,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -66,6 +66,8 @@ MR_init_thread_stuff(void)
 	pthread_mutex_init(&MR_pending_contexts_lock, MR_MUTEX_ATTR);
 
 	MR_KEY_CREATE(&MR_engine_base_key, NULL);
+
+	MR_KEY_CREATE(&MR_exception_handler_key, NULL);
 
 #endif
 }

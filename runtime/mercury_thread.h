@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998, 2000 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000, 2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -102,6 +102,12 @@
 	** call back into Mercury deadlock could result.
 	*/
   extern MercuryLock MR_global_lock;
+
+  	/*
+	** MR_exception_handler_key stores a key which can be used to get
+	** the current exception handler for the current thread.
+	*/
+  extern MercuryThreadKey MR_exception_handler_key;
 
 #else /* not MR_THREAD_SAFE */
 
