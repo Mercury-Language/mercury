@@ -66,6 +66,8 @@ bool GC_debugging_started = FALSE;
 
 void (*GC_check_heap)() = (void (*)())0;
 
+void (*GC_start_call_back)() = (void (*)())0;
+
 ptr_t GC_stackbottom = 0;
 
 bool GC_dont_gc = 0;
@@ -73,12 +75,12 @@ bool GC_dont_gc = 0;
 bool GC_quiet = 0;
 
 /*ARGSUSED*/
-void * GC_default_oom_fn GC_PROTO((size_t bytes_requested))
+GC_PTR GC_default_oom_fn GC_PROTO((size_t bytes_requested))
 {
     return(0);
 }
 
-void * (*GC_oom_fn) GC_PROTO((size_t bytes_requested)) = GC_default_oom_fn;
+GC_PTR (*GC_oom_fn) GC_PROTO((size_t bytes_requested)) = GC_default_oom_fn;
 
 extern signed_word GC_mem_found;
 
@@ -153,12 +155,11 @@ extern signed_word GC_mem_found;
 	/* If we can fit the same number of larger objects in a block,	*/
 	/* do so.							*/ 
 	{
+	    size_t number_of_objs = BODY_SZ/word_sz;
+	    word_sz = BODY_SZ/number_of_objs;
 #	    ifdef ALIGN_DOUBLE
-#	        define INCR 2
-#	    else
-#		define INCR 1
+		word_sz &= ~1;
 #	    endif
-	    while (BODY_SZ/word_sz == BODY_SZ/(word_sz + INCR)) word_sz += INCR;
 	}
     	byte_sz = WORDS_TO_BYTES(word_sz);
 #	ifdef ADD_BYTE_AT_END
@@ -180,7 +181,11 @@ extern signed_word GC_mem_found;
  * sections of the stack whenever we get control.
  */
 word GC_stack_last_cleared = 0;	/* GC_no when we last did this */
-# define CLEAR_SIZE 213
+# ifdef THREADS
+#   define CLEAR_SIZE 2048
+# else
+#   define CLEAR_SIZE 213
+# endif
 # define DEGRADE_RATE 50
 
 word GC_min_sp;		/* Coolest stack pointer value from which we've */
@@ -239,7 +244,7 @@ ptr_t arg;
 {
     register word sp = (word)GC_approx_sp();  /* Hotter than actual sp */
 #   ifdef THREADS
-        word dummy[CLEAR_SIZE];;
+        word dummy[CLEAR_SIZE];
 #   else
     	register word limit;
 #   endif
@@ -392,6 +397,10 @@ size_t GC_get_bytes_since_gc GC_PROTO(())
 
 bool GC_is_initialized = FALSE;
 
+#if defined(SOLARIS_THREADS) || defined(IRIX_THREADS)
+    extern void GC_thr_init();
+#endif
+
 void GC_init()
 {
     DCL_LOCK_STATE;
@@ -408,9 +417,7 @@ void GC_init()
     extern void GC_init_win32();
 #endif
 
-#if defined(SOLARIS_THREADS) || defined(IRIX_THREADS)
-    extern void GC_thr_init();
-#endif
+extern void GC_setpagesize();
 
 void GC_init_inner()
 {
@@ -419,8 +426,13 @@ void GC_init_inner()
 #   endif
     
     if (GC_is_initialized) return;
+    GC_setpagesize();
+    GC_exclude_static_roots(beginGC_arrays, endGC_arrays);
 #   ifdef MSWIN32
  	GC_init_win32();
+#   endif
+#   if defined(LINUX) && defined(POWERPC)
+	GC_init_linuxppc();
 #   endif
 #   ifdef SOLARIS_THREADS
 	GC_thr_init();
@@ -457,9 +469,11 @@ void GC_init_inner()
         if ((word)(&dummy) > (word)GC_stackbottom) {
           GC_err_printf0(
           	"STACK_GROWS_DOWN is defd, but stack appears to grow up\n");
-          GC_err_printf2("sp = 0x%lx, GC_stackbottom = 0x%lx\n",
-          	   	 (unsigned long) (&dummy),
-          	   	 (unsigned long) GC_stackbottom);
+#	  ifndef UTS4  /* Compiler bug workaround */
+            GC_err_printf2("sp = 0x%lx, GC_stackbottom = 0x%lx\n",
+          	   	   (unsigned long) (&dummy),
+          	   	   (unsigned long) GC_stackbottom);
+#	  endif
           ABORT("stack direction 3\n");
         }
 #     else
@@ -488,10 +502,10 @@ void GC_init_inner()
     }
     
     /* Add initial guess of root sets.  Do this first, since sbrk(0)	*/
-    /* mightbe used.							*/
+    /* might be used.							*/
       GC_register_data_segments();
     GC_init_headers();
-        GC_bl_init();
+    GC_bl_init();
     GC_mark_init();
     if (!GC_expand_hp_inner((word)MINHINCR)) {
         GC_err_printf0("Can't start up: not enough memory\n");
@@ -549,6 +563,7 @@ void GC_enable_incremental GC_PROTO(())
     DISABLE_SIGNALS();
     LOCK();
     if (GC_incremental) goto out;
+    GC_setpagesize();
 #   ifdef MSWIN32
       {
         extern bool GC_is_win32s();
