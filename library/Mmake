@@ -105,7 +105,6 @@ os: $(library.os)
 cs: $(library.cs)
 
 library.pic_os=$(library.os:.o=.$(EXT_FOR_PIC_OBJECTS))
-library.dir_os=$(library.os:.o=.dir/*.o)
 
 #-----------------------------------------------------------------------------#
 
@@ -130,11 +129,6 @@ library.init: library.dep
 		grep '^INIT ' $$file; \
 		echo "INIT mercury__`basename $$file .m`__init"; \
 	done > library.init
-
-# libmercury.split.a is a version of libmercury.a that has been compiled
-# with `--split-c-files'.
-libmercury.split.a : $(library.dir_os)
-	ar cr libmercury.split.a $(library.dir_os)
 
 #-----------------------------------------------------------------------------#
 
@@ -231,6 +225,8 @@ install_library: libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)
 	cp `vpath_find libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
+# libmercury.split.a is a version of libmercury.a that has been compiled
+# with `--split-c-files'.
 .PHONY: install_split_library
 install_split_library: libmercury.split.a
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
