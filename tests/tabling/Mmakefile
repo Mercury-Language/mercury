@@ -25,6 +25,7 @@ NONDET_PROGS = \
 	coup \
 	coup2 \
 	coup3 \
+	coup4 \
 	coup_det_frame \
 	coup_no_commit \
 	coup_non_tabled_frame \

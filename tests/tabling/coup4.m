@@ -1,7 +1,9 @@
-% This is a test for whether multiple coups (change of leaders)
-% are correctly handled.
+% This is a test for whether a single coup that takes leadership away from
+% multiple generators is correctly handled.
+%
+% The code in this file is the same as coup3, except the order of clauses in r.
 
-:- module coup3.
+:- module coup4.
 
 :- interface.
 
@@ -60,11 +62,12 @@ r(X) :-
 	(
 	        X = 1		% r is its own leader at this point
 	;
-	        q(Y),		% here a coup takes place -- leader becomes q
-	        X = 4 * Y,
-	        X < 20
-	;
-		p(Y),		% another coup takes place -- leader becomes p
+		p(Y),		% here a coup takes place -- p becomes leader
+				% of both q and r
 		X = 5 * Y,
 		X < 20
+	;
+	        q(Y),
+	        X = 4 * Y,
+	        X < 20
 	).
