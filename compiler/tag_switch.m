@@ -29,19 +29,20 @@
 :- import_module map, tree, type_util, std_util, int, require.
 
 % where is the secondary tag (if any) for this primary tag value
-:- type stag_loc ---> none ; local ; remote.
+:- type stag_loc	--->	none ; local ; remote.
 
 % map secondary tag values (-1 stands for none) to their goal
-:- type tag_goal_map   == map(int, hlds__goal).
-:- type tag_goal_list  == assoc_list(int, hlds__goal).
+:- type tag_goal_map	==	map(int, hlds__goal).
+:- type tag_goal_list	==	assoc_list(int, hlds__goal).
 
 % map primary tag values to the set of their goals
-:- type tag_case_map   == map(tag_bits, pair(stag_loc, tag_goal_map)).
-:- type tag_case_list  == assoc_list(tag_bits, pair(stag_loc, tag_goal_map)).
+:- type tag_case_map	==	map(tag_bits, pair(stag_loc, tag_goal_map)).
+:- type tag_case_list	==	assoc_list(tag_bits,
+					pair(stag_loc, tag_goal_map)).
 
 % map primary tag values to the number of constructors sharing them
-:- type tag_count_map  == map(tag_bits, pair(stag_loc, int)).
-:- type tag_count_list == assoc_list(tag_bits, pair(stag_loc, int)).
+:- type tag_count_map	==	map(tag_bits, pair(stag_loc, int)).
+:- type tag_count_list	==	assoc_list(tag_bits, pair(stag_loc, int)).
 
 	% The idea is to generate two-level switches, first on the primary
 	% tag and then on the secondary tag. The first-level switch is always
@@ -171,7 +172,6 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary,
 			0, MaxSecondary, CodeModel,
 			EndLabel, FailLabel, Labels, CasesCode),
 		{ StagLoc = remote ->
-			% XXX reporting bug Index = field(Primary, Rval, 0)
 			Index = lval(field(Primary, Rval, const(int_const(0))))
 		;
 			Index = unop(unmkbody, Rval)

@@ -334,7 +334,7 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), InstMap0, MiscInfo, _, _,
 det_infer_goal_2(call(PredId, ModeId, Args, BuiltIn, Name, Follow),
 						_, MiscInfo, _, _,
 		call(PredId, ModeId, Args, BuiltIn, Name, Follow), Detism) :-
-	detism_lookup(MiscInfo, PredId, ModeId, Detism).
+	det_lookup_detism(MiscInfo, PredId, ModeId, Detism).
 
 	% unifications are either deterministic or semideterministic.
 	% (see det_infer_unify).
@@ -351,9 +351,8 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 		Goal, Detism) :-
 	det_infer_goal(Cond0, InstMap0, MiscInfo, Cond, InstMap1, CondDetism),
 	determinism_components(CondDetism, CondCanFail, CondSolns),
-	(
-		CondCanFail = cannot_fail,
-		% optimize away the `else' part
+	( CondCanFail = cannot_fail ->
+		% Optimize away the `else' part.
 		% (We should actually convert this to a _sequential_
 		% conjunction, because if-then-else has an ordering
 		% constraint, whereas conjunction doesn't; however,
@@ -365,16 +364,22 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 		list__append(CondList, ThenList, List),
 		det_infer_goal_2(conj(List), InstMap0, MiscInfo,
 			NonLocalVars, DeltaInstMap, Goal, Detism)
+	; CondSolns = at_most_zero ->
+		% Optimize away the condition and the `then' part.
+		% XXX We could give a warning if the condition
+		% contains a (possibly indirect) call to error.
+		Else0 = ElseGoal0 - _,
+		det_infer_goal_2(ElseGoal0, InstMap0, MiscInfo,
+			NonLocalVars, DeltaInstMap, Goal, Detism)
 	;
-		CondCanFail = can_fail,
 		det_infer_goal(Then0, InstMap1, MiscInfo, Then, _, ThenDetism),
 		det_infer_goal(Else0, InstMap0, MiscInfo, Else, _, ElseDetism),
 		Goal = if_then_else(Vars, Cond, Then, Else),
 		determinism_components(ThenDetism, ThenCanFail, ThenSolns),
 		determinism_components(ElseDetism, ElseCanFail, ElseSolns),
+		det_conjunction_maxsoln(CondSolns, ThenSolns, AllThenSolns),
+		det_switch_maxsoln(AllThenSolns, ElseSolns, Solns),
 		det_switch_canfail(ThenCanFail, ElseCanFail, CanFail),
-		det_switch_maxsoln(ThenSolns, ElseSolns, TailSolns),
-		det_conjunction_maxsoln(CondSolns, TailSolns, Solns),
 		determinism_components(Detism, CanFail, Solns)
 	).
 
@@ -393,53 +398,6 @@ det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _,
 
 	% explicit quantification isn't important, since we've already
 	% stored the _information about variable scope in the goal_info.
-
-det_infer_goal_2(some(Vars, Goal0), InstMap0, MiscInfo, _, _,
-			some(Vars, Goal), Det) :-
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
-
-	% detism_lookup(MiscInfo, PredId, ModeId, Category):
-	% 	Given the MiscInfo, and the PredId & ModeId of a procedure,
-	% 	look up the determinism of that procedure and return it
-	% 	in Category.
-
-:- pred detism_lookup(misc_info, pred_id, proc_id, determinism).
-:- mode detism_lookup(in, in, in, out) is det.
-
-detism_lookup(MiscInfo, PredId, ModeId, Detism) :-
-	MiscInfo = misc_info(ModuleInfo, _, _),
-	module_info_preds(ModuleInfo, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_procedures(PredInfo, ProcTable),
-	map__lookup(ProcTable, ModeId, ProcInfo),
-	proc_info_interface_determinism(ProcInfo, Detism).
-
-:- pred no_output_vars(set(var), instmap, instmap_delta, misc_info).
-:- mode no_output_vars(in, in, in, in) is semidet.
-
-no_output_vars(_, _, unreachable, _).
-no_output_vars(Vars, InstMap0, reachable(InstMapDelta), MiscInfo) :-
-	set__to_sorted_list(Vars, VarList),
-	MiscInfo = misc_info(ModuleInfo, _, _),
-	no_output_vars_2(VarList, InstMap0, InstMapDelta, ModuleInfo).
-
-:- pred no_output_vars_2(list(var), instmap, instmapping, module_info).
-:- mode no_output_vars_2(in, in, in, in) is semidet.
-
-no_output_vars_2([], _, _, _).
-no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
-	( map__search(InstMapDelta, Var, Inst) ->
-		% The instmap delta contains the variable, but the variable may
-		% still not be output, if the change is just an increase in
-		% information rather than an increase in instantiatedness.
-		% We use `inst_matches_final' to check that the new inst
-		% has only added information, not bound anything.
-		instmap_lookup_var(InstMap0, Var, Inst0),
-		inst_matches_final(Inst, Inst0, ModuleInfo)
-	;
-		true
-	),
-	no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
 
 :- pred det_infer_conj(list(hlds__goal), instmap, misc_info,
 	can_fail, soln_count, list(hlds__goal), determinism).
@@ -518,6 +476,75 @@ det_infer_unify(simple_test(_, _), _MiscInfo, semidet).
 
 det_infer_unify(complicated_unify(_, CanFail, _), _MiscInfo, Detism) :-
 	determinism_components(Detism, CanFail, at_most_one).
+
+det_infer_goal_2(some(Vars, Goal0), InstMap0, MiscInfo, _, _,
+			some(Vars, Goal), Det) :-
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
+
+%-----------------------------------------------------------------------------%
+
+	% det_lookup_detism(MiscInfo, PredId, ModeId, Category):
+	% 	Given the MiscInfo, and the PredId & ModeId of a procedure,
+	% 	look up the determinism of that procedure and return it
+	% 	in Category.
+
+:- pred det_lookup_detism(misc_info, pred_id, proc_id, determinism).
+:- mode det_lookup_detism(in, in, in, out) is det.
+
+det_lookup_detism(MiscInfo, PredId, ModeId, Detism) :-
+	MiscInfo = misc_info(ModuleInfo, _, _),
+	module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	pred_info_procedures(PredInfo, ProcTable),
+	map__lookup(ProcTable, ModeId, ProcInfo),
+	proc_info_interface_determinism(ProcInfo, Detism).
+
+:- pred det_misc_get_proc_info(misc_info, proc_info).
+:- mode det_misc_get_proc_info(in, out) is det.
+
+det_misc_get_proc_info(MiscInfo, ProcInfo) :-
+	MiscInfo = misc_info(ModuleInfo, PredId, ModeId),
+	module_info_preds(ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	pred_info_procedures(PredInfo, ProcTable),
+	map__lookup(ProcTable, ModeId, ProcInfo).
+
+% :- pred det_lookup_var_typedefn(module_info, proc_info, var, hlds__type_defn).
+% :- mode det_lookup_var_typedefn(in, in, in, out) is det.
+% 
+% det_lookup_var_typedefn(ModuleInfo, ProcInfo, Var, TypeDefn) :-
+%	proc_info_vartypes(ProcInfo, VarTypes),
+%	map__lookup(VarTypes, Var, Type),
+%	type_to_type_id(Type, TypeId, _),
+%	module_info_types(ModuleInfo, TypeTable),
+%	map__lookup(TypeTable, TypeId, TypeDefn).
+
+:- pred no_output_vars(set(var), instmap, instmap_delta, misc_info).
+:- mode no_output_vars(in, in, in, in) is semidet.
+
+no_output_vars(_, _, unreachable, _).
+no_output_vars(Vars, InstMap0, reachable(InstMapDelta), MiscInfo) :-
+	set__to_sorted_list(Vars, VarList),
+	MiscInfo = misc_info(ModuleInfo, _, _),
+	no_output_vars_2(VarList, InstMap0, InstMapDelta, ModuleInfo).
+
+:- pred no_output_vars_2(list(var), instmap, instmapping, module_info).
+:- mode no_output_vars_2(in, in, in, in) is semidet.
+
+no_output_vars_2([], _, _, _).
+no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
+	( map__search(InstMapDelta, Var, Inst) ->
+		% The instmap delta contains the variable, but the variable may
+		% still not be output, if the change is just an increase in
+		% information rather than an increase in instantiatedness.
+		% We use `inst_matches_final' to check that the new inst
+		% has only added information, not bound anything.
+		instmap_lookup_var(InstMap0, Var, Inst0),
+		inst_matches_final(Inst, Inst0, ModuleInfo)
+	;
+		true
+	),
+	no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -641,12 +668,11 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 				DeclaredDetism, InferredDetism),
 			{ module_info_incr_errors(ModuleInfo0,
 				ModuleInfo1) }
+			% XXX The error messages should say _why_
+			% a determinism declaration is wrong.
 		)
 	),
 	global_checking_pass_2(Rest, ModuleInfo1, ModuleInfo).
-
-	% XXX The error messages should say _why_ a determinism declaration
-	% is wrong.
 
 :- pred report_determinism_problem(pred_id, proc_id, module_info, string,
 	determinism, determinism, io__state, io__state).

@@ -734,7 +734,7 @@ next_mode_id(Procs, MaybeDet, ModeId) :-
 		determinism_priority(Det, Priority)
 	),
 	determinism_priority_step(Step),
-	( ModeId >= Step ->
+	( ModeId0 >= Step ->
 		error("too many modes per predicate")
 	;
 		true

@@ -413,9 +413,9 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		;
 			[]
 		),
-		io__write_string("% code model: "),
-		{ goal_info_get_code_model(GoalInfo, CodeModel) },
-		hlds_out__write_code_model(CodeModel),
+		io__write_string("% determinism: "),
+		{ goal_info_get_determinism(GoalInfo, Determinism) },
+		hlds_out__write_determinism(Determinism),
 		mercury_output_newline(Indent)
 	;
 		[]
