@@ -563,11 +563,9 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
 		->
 			map__keys(ConsTable, ConsIds),
 			det_diagnose_missing_consids(ConsIds, Cases, Missing),
-			cons_id_list_to_pieces(Missing, yes, MissingPieces),
-			list__append(MissingPieces, [words(".")],
-				PiecesTail),
+			cons_id_list_to_pieces(Missing, MissingPieces),
 			Pieces = [words("The switch on "), fixed(VarStr),
-				words("does not cover") | PiecesTail]
+				words("does not cover") | MissingPieces]
 		;
 			Pieces = [words("The switch on "), fixed(VarStr),
 				words("can fail.")]
@@ -815,20 +813,20 @@ det_diagnose_missing_consids([ConsId | ConsIds], Cases, Missing) :-
 		Missing = [ConsId | Missing0]
 	).
 
-:- pred cons_id_list_to_pieces(list(cons_id)::in, bool::in,
+:- pred cons_id_list_to_pieces(list(cons_id)::in,
 	list(format_component)::out) is det.
 
-cons_id_list_to_pieces([], _, []).
-cons_id_list_to_pieces([ConsId | ConsIds], First, Pieces) :-
+cons_id_list_to_pieces([], []).
+cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
 	ConsIdStr = cons_id_to_string(ConsId),
-	( First = yes ->
-		PiecesHead = [words(ConsIdStr)]
-	; ConsIds = [] ->
-		PiecesHead = [words(ConsIdStr), words(" and/or ")]
+	( ConsIds = [] ->
+		PiecesHead = [fixed(ConsIdStr ++ ".")]
+	; ConsIds = [_] ->
+		PiecesHead = [fixed(ConsIdStr), fixed("or")]
 	;
-		PiecesHead = [words(ConsIdStr ++ ",")]
+		PiecesHead = [fixed(ConsIdStr ++ ",")]
 	),
-	cons_id_list_to_pieces(ConsIds, no, PiecesTail),
+	cons_id_list_to_pieces(ConsIds, PiecesTail),
 	list__append(PiecesHead, PiecesTail, Pieces).
 
 %-----------------------------------------------------------------------------%
