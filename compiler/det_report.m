@@ -285,13 +285,14 @@ det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, Context, DetInfo,
 		Diagnosed) -->
 	det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed).
 
-det_diagnose_goal_2(disj(Goals, _), GoalInfo, Desired, _Actual, SwitchContext,
+det_diagnose_goal_2(disj(Goals, _), GoalInfo, Desired, Actual, SwitchContext,
 		DetInfo, Diagnosed) -->
-	det_diagnose_disj(Goals, Desired, SwitchContext, DetInfo, 0, Clauses,
-		Diagnosed1),
+	det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo, 0,
+		Clauses, Diagnosed1),
 	{ determinism_components(Desired, _, DesSolns) },
 	(
 		{ DesSolns \= at_most_many },
+		{ DesSolns \= at_most_many_cc },
 		{ Clauses > 1 }
 	->
 		{ goal_info_context(GoalInfo, Context) },
@@ -541,20 +542,34 @@ det_diagnose_conj([Goal | Goals], Desired, SwitchContext, DetInfo,
 	det_diagnose_conj(Goals, Desired, SwitchContext, DetInfo, Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
-:- pred det_diagnose_disj(list(hlds__goal), determinism,
+:- pred det_diagnose_disj(list(hlds__goal), determinism, determinism,
 	list(switch_context), det_info, int, int, bool, io__state, io__state).
-:- mode det_diagnose_disj(in, in, in, in, in, out, out, di, uo) is det.
+:- mode det_diagnose_disj(in, in, in, in, in, in, out, out, di, uo) is det.
 
-det_diagnose_disj([], _Desired, _SwitchContext, _DetInfo,
+det_diagnose_disj([], _Desired, _Actual, _SwitchContext, _DetInfo,
 		Clauses, Clauses, no) --> [].
-det_diagnose_disj([Goal | Goals], Desired, SwitchContext, DetInfo,
+det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
 		Clauses0, Clauses, Diagnosed) -->
-	{ determinism_components(Desired, _, DesiredSolns) },
-	{ determinism_components(ClauseDesired, can_fail, DesiredSolns) },
+	{ determinism_components(Actual, ActualCanFail, _) },
+	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
+	{ DesiredCanFail = cannot_fail, ActualCanFail = can_fail ->
+		% if the disjunction was declared to never fail,
+		% but we inferred that it might fail, then we
+		% want to print an error message for every disjunct
+		% that might fail
+		ClauseCanFail = cannot_fail
+	;	
+		% otherwise, either the disjunction is allowed to
+		% fail, or there is at least one disjunct that we
+		% inferred won't fail, so we don't want any error
+		% messages for the disjuncts that might fail
+		ClauseCanFail = can_fail
+	},
+	{ determinism_components(ClauseDesired, ClauseCanFail, DesiredSolns) },
 	det_diagnose_goal(Goal, ClauseDesired, SwitchContext, DetInfo,
 		Diagnosed1),
 	{ Clauses1 is Clauses0 + 1 },
-	det_diagnose_disj(Goals, Desired, SwitchContext, DetInfo,
+	det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo,
 		Clauses1, Clauses, Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
@@ -910,12 +925,13 @@ det_report_msg(warn_obsolete(PredId, GoalInfo), ModuleInfo, warning) -->
 	io__write_string("Warning: call to obsolete "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(".\n").
-det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, ModeId), 
+det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
 		ModuleInfo, error) -->
-	det_report_pred_proc_id(ModuleInfo, PredId, ModeId, _ProcContext),
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("Error: call to predicate with determinism `"),
+	io__write_string("  error: call to predicate `"),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string("' with determinism `"),
 	mercury_output_det(Detism),
 	io__write_string("'\n"),
 	prog_out__write_context(Context),
