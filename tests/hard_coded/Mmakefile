@@ -230,7 +230,8 @@ else
 	else
 		NONDET_C_PROGS = \
 			inline_nondet_pragma_c \
-			nondet_c
+			nondet_c \
+			nondet_pragma_c_bug
 	endif
 endif
 
