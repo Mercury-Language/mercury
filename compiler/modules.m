@@ -7030,7 +7030,8 @@ get_interface(ModuleName, IncludeImplTypes, Items0, Items) :-
     get_interface_and_implementation_2(IncludeImplTypes, Items0, no,
         [], RevItems, AddToImpl, unit, _),
     list__reverse(RevItems, Items1),
-    maybe_add_foreign_import_module(ModuleName, Items1, Items).
+    maybe_add_foreign_import_module(ModuleName, Items1, Items2),
+    order_items(Items2, Items).
 
 :- pred get_interface_and_implementation(module_name::in, bool::in,
     item_list::in, item_list::out, item_list::out) is det.
@@ -7161,7 +7162,8 @@ get_interface_and_implementation_2(IncludeImplTypes, [ItemAndContext | Rest],
 get_short_interface(Items0, Kind, Items) :-
     get_short_interface_2(Items0, Kind, [], RevItems),
     list__reverse(RevItems, Items1),
-    maybe_strip_import_decls(Items1, Items).
+    maybe_strip_import_decls(Items1, Items2),
+    order_items(Items2, Items).
 
 :- pred get_short_interface_2(item_list::in, short_interface_kind::in,
     item_list::in, item_list::out) is det.
@@ -7364,6 +7366,183 @@ maybe_strip_import_decls(!Items) :-
             (pred((ThisItem - _)::in) is semidet :-
                 ThisItem \= pragma(foreign_import_module(_, _))
             ), !Items)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % Put the given list of items into a sort of standard order. The idea is
+    % that just reordering the contents of e.g. an interface section without
+    % changing the set of exported entities should not cause a change in the
+    % interface files. The "sort of" is because we are not doing as good a job
+    % as we could. Unfortunately, doing significantly better is quite hard
+    % with the current representation of the module, which is just a list of
+    % items without further structure.
+    %
+:- pred order_items(item_list::in, item_list::out) is det.
+
+order_items(Items0, Items) :-
+    do_order_items(Items0, Items1),
+        % Delete any redundant :- interface and :- implementation markers
+        % at the end, to make Items as insensitive as we can to the number
+        % of interface sections in the source file. If some of the
+        % implementation sections are not empty, we won't be fully successful.
+    filter_unnecessary_flips(Items1, Items2),
+    list__reverse(Items2, RevItems2),
+    list__takewhile(interface_or_import_marker, RevItems2, _, RevItems),
+    list__reverse(RevItems, Items).
+
+:- pred interface_or_import_marker(item_and_context::in) is semidet.
+
+interface_or_import_marker(module_defn(_, interface) - _).
+interface_or_import_marker(module_defn(_, implementation) - _).
+
+:- pred filter_unnecessary_flips(item_list::in, item_list::out) is det.
+
+filter_unnecessary_flips([], []).
+filter_unnecessary_flips([Item], [Item]).
+filter_unnecessary_flips([Item1, Item2], [Item1, Item2]).
+filter_unnecessary_flips([Item1, Item2, Item3 | Items0], Items) :-
+    (
+        Item1 = module_defn(_, interface) - _,
+        Item2 = module_defn(_, implementation) - _,
+        Item3 = module_defn(_, interface) - _
+    ->
+        filter_unnecessary_flips([Item3 | Items0], Items)
+    ;
+        Item1 = module_defn(_, implementation) - _,
+        Item2 = module_defn(_, interface) - _,
+        Item3 = module_defn(_, implementation) - _
+    ->
+        filter_unnecessary_flips([Item3 | Items0], Items)
+    ;
+        filter_unnecessary_flips([Item2, Item3 | Items0], ItemsTail),
+        Items = [Item1 | ItemsTail]
+    ).
+
+    % Find a chunk of items which should in most cases (but unfortunately
+    % not all cases) be all the exported items, and put them in a standard
+    % order, with import_module and use_module items first in lexical order,
+    % then type, inst and mode definitions, again in lexical order, then
+    % pred and predmode declarations, in lexical order by sym_name, and
+    % finally all other items in the chunk. The chunk consists of the initial
+    % prefix of items for which this reordering is safe. The chunk will then
+    % be followed by the ordered versions of later chunks, if any.
+    %
+:- pred do_order_items(item_list::in, item_list::out) is det.
+
+do_order_items([], []).
+do_order_items([Item0 | Items0], OrderedItems) :-
+    ( chunkable(Item0) ->
+        list__takewhile(chunkable, Items0, FrontItems, RemainItems),
+        list__filter(reorderable, [Item0 | FrontItems],
+            ReorderableItems, NonReorderableItems),
+        list__filter(import_or_use, ReorderableItems,
+            ImportReorderableItems, NonImportReorderableItems),
+        list__filter(symname_orderable, NonReorderableItems,
+            SymNameItems, NonSymNameItems),
+            % We rely on the sort being stable to keep the items
+            % with the same sym_names in their original order.
+        list__sort(compare_by_symname, SymNameItems, OrderedSymNameItems),
+        do_order_items(RemainItems, OrderedRemainItems),
+        OrderedItems = list__sort(ImportReorderableItems) ++
+            list__sort(NonImportReorderableItems) ++
+            OrderedSymNameItems ++ NonSymNameItems ++ OrderedRemainItems
+    ;
+        do_order_items(Items0, OrderedItemsTail),
+        OrderedItems = [Item0 | OrderedItemsTail]
+    ).
+
+:- pred import_or_use(item_and_context::in) is semidet.
+
+import_or_use(module_defn(_, import(_)) - _).
+import_or_use(module_defn(_, use(_)) - _).
+
+    % The kinds of items for which reorderable succeeds can be arbitrarily
+    % reordered with respect to each other and with respect to other chunkable
+    % items in all kinds of interface files (.int, .int2, .int3, and .int0).
+    % This predicate is not relevant to .opt and .trans_opt files, since those
+    % are generated from the HLDS, not from item_lists.
+    %
+:- pred reorderable(item_and_context::in) is semidet.
+
+reorderable(module_defn(_, import(_)) - _).
+reorderable(module_defn(_, use(_)) - _).
+reorderable(pragma(export(_, _, _, _)) - _).
+reorderable(pragma(type_spec(_, _, _, _, _, _, _, _)) - _).
+reorderable(pragma(inline(_, _)) - _).
+reorderable(pragma(no_inline(_, _)) - _).
+reorderable(pragma(unused_args(_, _, _, _, _)) - _).
+reorderable(pragma(tabled(_, _, _, _, _)) - _).
+reorderable(pragma(reserve_tag(_, _)) - _).
+reorderable(pragma(promise_pure(_, _)) - _).
+reorderable(pragma(promise_semipure(_, _)) - _).
+reorderable(pragma(termination_info(_, _, _, _, _)) - _).
+reorderable(pragma(terminates(_, _)) - _).
+reorderable(pragma(does_not_terminate(_, _)) - _).
+reorderable(pragma(check_termination(_, _)) - _).
+reorderable(type_defn(_, _, _, _, _) - _).
+reorderable(inst_defn(_, _, _, _, _) - _).
+reorderable(mode_defn(_, _, _, _, _) - _).
+reorderable(promise(_, _, _, _) - _).
+reorderable(typeclass(_, _, _, _, _) - _).
+reorderable(instance(_, _, _, _, _, _) - _).
+
+    % Given a list of items for which chunkable succeeds, we need to keep
+    % the relative order of the non-reorderable items, but we can move the
+    % reorderable items around arbitrarily.
+    %
+:- pred chunkable(item_and_context::in) is semidet.
+
+chunkable(module_defn(_, import(_)) - _).
+chunkable(module_defn(_, use(_)) - _).
+chunkable(pragma(export(_, _, _, _)) - _).
+chunkable(pragma(type_spec(_, _, _, _, _, _, _, _)) - _).
+chunkable(pragma(inline(_, _)) - _).
+chunkable(pragma(no_inline(_, _)) - _).
+chunkable(pragma(unused_args(_, _, _, _, _)) - _).
+chunkable(pragma(tabled(_, _, _, _, _)) - _).
+chunkable(pragma(reserve_tag(_, _)) - _).
+chunkable(pragma(promise_pure(_, _)) - _).
+chunkable(pragma(promise_semipure(_, _)) - _).
+chunkable(pragma(termination_info(_, _, _, _, _)) - _).
+chunkable(pragma(terminates(_, _)) - _).
+chunkable(pragma(does_not_terminate(_, _)) - _).
+chunkable(pragma(check_termination(_, _)) - _).
+chunkable(type_defn(_, _, _, _, _) - _).
+chunkable(inst_defn(_, _, _, _, _) - _).
+chunkable(mode_defn(_, _, _, _, _) - _).
+chunkable(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _) - _).
+chunkable(pred_or_func_mode(_, _, _, _, _, _, _) - _).
+chunkable(promise(_, _, _, _) - _).
+chunkable(typeclass(_, _, _, _, _) - _).
+chunkable(instance(_, _, _, _, _, _) - _).
+
+    % Given a list of items for which symname_ordered succeeds, we need to keep
+    % the relative order of the items with the same sym_name as returned by
+    % symname_ordered, but the relative order of items with different sym_names
+    % doesn't matter.
+    %
+:- pred symname_ordered(item_and_context::in, sym_name::out) is semidet.
+
+symname_ordered(pred_or_func(_, _, _, _, Name, _, _, _, _, _, _, _) - _, Name).
+symname_ordered(pred_or_func_mode(_, _, Name, _, _, _, _) - _, Name).
+
+:- pred symname_orderable(item_and_context::in) is semidet.
+
+symname_orderable(ItemAndContext) :-
+    symname_ordered(ItemAndContext, _).
+
+:- pred compare_by_symname(item_and_context::in, item_and_context::in,
+    comparison_result::out) is det.
+
+compare_by_symname(ItemAndContextA, ItemAndContextB, Result) :-
+    (
+        symname_ordered(ItemAndContextA, SymNameA),
+        symname_ordered(ItemAndContextB, SymNameB)
+    ->
+        compare(Result, SymNameA, SymNameB)
+    ;
+        unexpected(this_file, "compare_by_symname: symname not found")
     ).
 
 %-----------------------------------------------------------------------------%
