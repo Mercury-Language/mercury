@@ -70,13 +70,13 @@ browser/$(deps_subdir)mer_browser.dep:
 .PHONY: dep_compiler
 dep_compiler: compiler/$(deps_subdir)top_level.dep
 
-compiler/$(deps_subdir)top_level.dep: library/$(deps_subdir)library.dep
+compiler/$(deps_subdir)top_level.dep: library/$(deps_subdir)mer_std.dep
 	+cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_profiler
 dep_profiler: profiler/$(deps_subdir)mercury_profile.dep
 
-profiler/$(deps_subdir)mercury_profile.dep: library/$(deps_subdir)library.dep
+profiler/$(deps_subdir)mercury_profile.dep: library/$(deps_subdir)mer_std.dep
 	+cd profiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_deep_profiler
@@ -87,10 +87,10 @@ else
 dep_deep_profiler:
 endif
 
-deep_profiler/$(deps_subdir)mdprof_cgi.dep: library/$(deps_subdir)library.dep
+deep_profiler/$(deps_subdir)mdprof_cgi.dep: library/$(deps_subdir)mer_std.dep
 	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_cgi.depend
 
-deep_profiler/$(deps_subdir)mdprof_server.dep: library/$(deps_subdir)library.dep
+deep_profiler/$(deps_subdir)mdprof_server.dep: library/$(deps_subdir)mer_std.dep
 	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_server.depend
 
 # depend_library MUST be done before depend_compiler and depend_profiler
