@@ -18,7 +18,7 @@
 :- implementation.
 :- import_module list, map, set, std_util.
 :- import_module mode_util, term, require, quantification.
-:- import_module arg_info, varset, code_aux, prog_io.
+:- import_module varset, code_aux, prog_io.
 
 %-----------------------------------------------------------------------------%
 
