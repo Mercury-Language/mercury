@@ -72,7 +72,7 @@ stored in the io__state, using the type globals defined in globals.m.
 	on the item_list rather than on the HLDS because it
 	turned out to be much easier to implement that way.
 
-* simplification
+* conversion to superhomogeneous form and into HLDS
 
 	make_hlds.m transforms the code into superhomogenous form,
 	and at the same time converts the parse tree into the HLDS.
@@ -149,12 +149,21 @@ in an HLDS goal.
 	  of the compiler)
 
 * indexing and determinism analysis
-
-	switch detection (switch_detection.m),
-	common goal hoisting (cse_detection.m)
-		Note that if cse_detection.m modifies the code,
-		it will re-run mode analysis and switch detection
-	determinism analysis (det_analysis.m and det_report.m)
+ 
+	- switch_detection.m transforms into switches those disjunctions
+	  in which several disjuncts test the same variable against different
+	  function symbols.
+	- cse_detection.m looks for disjunctions in which each disjunct tests
+	  the same variable against the same function symbols, and hoists any
+	  such unifications out of the disjunction.
+	  If cse_detection.m modifies the code,
+	  it will re-run mode analysis and switch detection
+	- det_analysis.m does annotations each goal with its determinism;
+	  it inserts cuts in the form of "some" goals wherever the determinisms
+	  and delta instantiations of the goals involved make it necessary.
+	  Any errors found during determinism analysis are reported by
+	  det_report.m.
+	  Det_util.m contains utility predicates used in several modules.
 
 * checking of unique modes (unique_modes.m)
 
@@ -163,6 +172,15 @@ in an HLDS goal.
 	Note that what unique_modes.m does is quite similar to
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
+
+* simplification (simplify.m)
+
+	simplify.m finds and exploits opportunities for simplifying the
+	internal form of the program, both to optimize the code and to
+	massage the code into a form the code generator will accept.
+	It also warns the programmer about any constructs that are so simple
+	that they should not have been included in the program in the first
+	place.
 
 3. High-level transformations
 
