@@ -935,7 +935,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
 			return MR_RETRY_ERROR;
 		}
 
-		if (proc_layout->MR_sle_eval_method != MR_EVAL_METHOD_MINIMAL)
+		if (MR_sle_eval_method(proc_layout) != MR_EVAL_METHOD_MINIMAL)
 		{
 			continue;
 		}
@@ -996,7 +996,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
 		label_layout = event_info->MR_event_sll;
 		proc_layout = label_layout->MR_sll_entry;
 
-		if (proc_layout->MR_sle_eval_method == MR_EVAL_METHOD_MINIMAL) {
+		if (MR_sle_eval_method(proc_layout) == MR_EVAL_METHOD_MINIMAL) {
 			return MR_RETRY_OK_FAIL_FIRST;
 		} else {
 			return MR_RETRY_OK_FINISH_FIRST;
@@ -1052,7 +1052,7 @@ MR_maybe_record_call_table(const MR_Stack_Layout_Entry *level_layout,
 				"in MR_maybe_record_call_table");
 	}
 
-	switch (level_layout->MR_sle_eval_method) {
+	switch (MR_sle_eval_method(level_layout)) {
 
 	case MR_EVAL_METHOD_NORMAL:
 		/* nothing to do */
