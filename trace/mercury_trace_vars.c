@@ -145,67 +145,63 @@ static  MR_Point        MR_point;
 ** do not export them. The types are a lie, but a safe lie.
 */
 
-#ifndef MR_HIGHLEVEL_CODE
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_private_builtin__type_ctor_info_type_info_1;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_private_builtin__type_ctor_info_type_ctor_info_1;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_private_builtin__type_ctor_info_typeclass_info_1;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_std_util__type_ctor_info_type_desc_0;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_std_util__type_ctor_info_type_ctor_desc_0;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_type_desc__type_ctor_info_type_desc_0;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_type_desc__type_ctor_info_type_ctor_desc_0;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_func_0;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_pred_0;
-  extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_void_0;
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 1);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 1);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 1);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(std_util, type_desc, 0);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(std_util, type_ctor_desc, 0);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(type_desc, type_desc, 0);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(type_desc, type_ctor_desc, 0);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(builtin, func, 0);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(builtin, pred, 0);
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(builtin, void, 0);
 
-  #ifdef MR_NATIVE_GC
-    extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_succip_0;
-    extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_hp_0;
-    extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_curfr_0;
-    extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_maxfr_0;
-    extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_redoip_0;
-    extern struct MR_TypeCtorInfo_Struct
-    mercury_data_builtin__type_ctor_info_redofr_0;
-  #endif
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_NATIVE_GC)
+  extern const struct MR_TypeCtorInfo_Struct
+    MR_TYPE_CTOR_INFO_NAME(builtin, succip, 0);
+  extern const struct MR_TypeCtorInfo_Struct
+    MR_TYPE_CTOR_INFO_NAME(builtin, hp, 0);
+  extern const struct MR_TypeCtorInfo_Struct
+    MR_TYPE_CTOR_INFO_NAME(builtin, curfr, 0);
+  extern const struct MR_TypeCtorInfo_Struct
+    MR_TYPE_CTOR_INFO_NAME(builtin, maxfr, 0);
+  extern const struct MR_TypeCtorInfo_Struct
+    MR_TYPE_CTOR_INFO_NAME(builtin, redoip, 0);
+  extern const struct MR_TypeCtorInfo_Struct
+    MR_TYPE_CTOR_INFO_NAME(builtin, redofr, 0);
 #endif
 
 static  MR_TypeCtorInfo
 MR_trace_always_ignored_type_ctors[] =
 {
-#ifndef MR_HIGHLEVEL_CODE
     /* we ignore these until the browser can handle their varying arity, */
     /* or their definitions are updated. XXX */
-    &mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
-    &mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 1),
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 1),
 
     /* we ignore these because they should never be needed */
-    &mercury_data_builtin__type_ctor_info_void_0,
+    &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),
 
-  #ifdef MR_NATIVE_GC
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_NATIVE_GC)
     /* we ignore these because they are not interesting */
-    &mercury_data_builtin__type_ctor_info_succip_0,
-    &mercury_data_builtin__type_ctor_info_hp_0,
-    &mercury_data_builtin__type_ctor_info_curfr_0,
-    &mercury_data_builtin__type_ctor_info_maxfr_0,
-    &mercury_data_builtin__type_ctor_info_redoip_0,
-    &mercury_data_builtin__type_ctor_info_redofr_0,
-  #endif
+    &MR_TYPE_CTOR_INFO_NAME(builtin, succip, 0),
+    &MR_TYPE_CTOR_INFO_NAME(builtin, hp, 0),
+    &MR_TYPE_CTOR_INFO_NAME(builtin, curfr, 0),
+    &MR_TYPE_CTOR_INFO_NAME(builtin, maxfr, 0),
+    &MR_TYPE_CTOR_INFO_NAME(builtin, redoip, 0),
+    &MR_TYPE_CTOR_INFO_NAME(builtin, redofr, 0),
 #endif
     /* dummy member */
     NULL
@@ -214,14 +210,12 @@ MR_trace_always_ignored_type_ctors[] =
 static  MR_TypeCtorInfo
 MR_trace_maybe_ignored_type_ctors[] =
 {
-#ifndef MR_HIGHLEVEL_CODE
     /*
     ** We can print values of these types (after a fashion),
     ** but users are usually not interested in their values.
     */
-    &mercury_data_private_builtin__type_ctor_info_type_info_1,
-    &mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
-#endif
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1),
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 1),
     /* dummy member */
     NULL
 };
