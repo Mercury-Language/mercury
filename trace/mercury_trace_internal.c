@@ -619,9 +619,10 @@ static	const char *MR_trace_browse_proc_body(MR_Event_Info *event_info,
 static	const char *MR_trace_read_help_text(void);
 static	const char *MR_trace_parse_line(char *line,
 			char ***words, int *word_max, int *word_count);
-static	int	MR_trace_break_into_words(char *line,
-			char ***words_ptr, int *word_max_ptr);
-static	int	MR_trace_break_off_one_word(char *line, int char_pos);
+static	const char *MR_trace_break_into_words(char *line, char ***words_ptr,
+			int *word_max_ptr, int *word_count_ptr);
+static	const char *MR_trace_break_off_one_word(char *line, int char_pos,
+			int *new_char_pos_ptr);
 static	void	MR_trace_expand_aliases(char ***words,
 			int *word_max, int *word_count);
 static	MR_bool	MR_trace_source(const char *filename, MR_bool ignore_errors);
@@ -6166,18 +6167,22 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 {
 	char		**raw_words;
 	int		raw_word_max;
-	char		raw_word_count;
+	int		raw_word_count;
 	static char	count_buf[MR_NUMBER_LEN + 1];
 	char		*s;
 	int		i;
+	const char	*problem;
 
 	/*
 	** Handle a possible number prefix on the first word on the line,
 	** separating it out into a word on its own.
 	*/
 
-	raw_word_count = MR_trace_break_into_words(line,
-				&raw_words, &raw_word_max);
+	problem = MR_trace_break_into_words(line, &raw_words, &raw_word_max,
+		&raw_word_count);
+	if (problem != NULL) {
+		return problem;
+	}
 
 	if (raw_word_count > 0 && MR_isdigit(*raw_words[0])) {
 		i = 0;
@@ -6242,13 +6247,16 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 ** and it is the responsibility of the caller to MR_free() it when appropriate.
 */
 
-static int
-MR_trace_break_into_words(char *line, char ***words_ptr, int *word_max_ptr)
+static const char *
+MR_trace_break_into_words(char *line, char ***words_ptr, int *word_max_ptr,
+	int *word_count)
 {
-	int	word_max;
-	char	**words;
-	int	token_number;
-	int	char_pos;
+	int		word_max;
+	char		**words;
+	int		token_number;
+	int		char_pos;
+	int		new_char_pos;
+	const char	*problem;
 
 	token_number = 0;
 	char_pos = 0;
@@ -6265,20 +6273,26 @@ MR_trace_break_into_words(char *line, char ***words_ptr, int *word_max_ptr)
 		if (line[char_pos] == '\0') {
 			*words_ptr = words;
 			*word_max_ptr = word_max;
-			return token_number;
+			*word_count = token_number;
+			return NULL;
 		}
 
 		MR_ensure_big_enough(token_number, word, char *,
 			MR_INIT_WORD_COUNT);
 		words[token_number] = line + char_pos;
-		char_pos = MR_trace_break_off_one_word(line, char_pos);
+		problem = MR_trace_break_off_one_word(line, char_pos,
+			&new_char_pos);
+		if (problem != NULL) {
+			return problem;
+		}
 
+		char_pos = new_char_pos;
 		token_number++;
 	}
 }
 
-static int
-MR_trace_break_off_one_word(char *line, int char_pos)
+static const char *
+MR_trace_break_off_one_word(char *line, int char_pos, int *new_char_pos_ptr)
 {
 	int		lag = 0;
 	MR_bool		quoted = MR_FALSE;
@@ -6298,10 +6312,7 @@ MR_trace_break_off_one_word(char *line, int char_pos)
 				lag++;
 				char_pos++;
 				if (line[char_pos] == '\0') {
-					MR_fatal_error(
-						"MR_trace_break_off_one_word: "
-						"unhandled backslash");
-				}
+					return "bad backslash"; }
 			}
 
 			if (lag) {
@@ -6312,7 +6323,7 @@ MR_trace_break_off_one_word(char *line, int char_pos)
 	}
 
 	if (quoted) {
-		MR_fatal_error("MR_trace_break_off_one_word: unmatched quote");
+		return "unmatched quote";
 	}
 
 	line[char_pos - lag] = '\0';
@@ -6320,7 +6331,8 @@ MR_trace_break_off_one_word(char *line, int char_pos)
 		char_pos++;
 	}
 
-	return char_pos;
+	*new_char_pos_ptr = char_pos;
+	return NULL;
 }
 
 static void
