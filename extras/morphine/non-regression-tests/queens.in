@@ -1,4 +1,4 @@
-write("\nCopyright (C) 1999-2000 INRIA/INSA de Rennes."),
+write("\nCopyright (C) 1999-2001 INRIA/INSA de Rennes."),
 write("\n**************************************************\n"),
 write("******** Non regression test for Morphine *********\n"),
 write("**************************************************\n\n"),
@@ -15,7 +15,7 @@ write("**************************************************\n"),
 	current(chrono=C2), 
 	C2 >= 20, !, 
 	no_trace,
-	write("ok.\n").
+	write("*** the first 20 events: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing toggle/1...\n"),
@@ -33,7 +33,7 @@ write("\n**************************************************"),
 	print_event,
 	fail.
         no_trace,
-	write("toggle: ok.\n").
+	write("*** toggle: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing one by one variable retrieval...\n"),
@@ -45,7 +45,7 @@ write("\n**************************************************"),
 	current_live_var(VarName, Var, _),
 	write_trace(Var), !,
 	no_trace,
-	write("one by one variable retrieval: ok.\n").
+	write("*** one by one variable retrieval: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing current...\n"),
@@ -147,7 +147,7 @@ write("\n**************************************************"),
 	current(proc =  P16), nl, 
 	write(P16), !,
  	no_trace,
-	write("current: ok.\n").
+	write("*** current: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing retry/1...\n"),
@@ -155,7 +155,7 @@ write("\n**************************************************"),
 	fget(name = queen and port = exit),
 	retry, !,
 	no_trace,
-	write("retry: ok.\n").
+	write("*** retry: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing stack dumps...\n"),
@@ -164,17 +164,18 @@ write("\n**************************************************"),
 	current(stack = Stack),
 	stack, !,
 	no_trace,
-	write("stack: ok.\n").
+	write("*** stack: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing the term browser...\n"),
 	rerun,
-	fget(name = nodiag and port = exit),
+	fget(name = data and port = exit),
 	open("browse.in", read, browse_stream),
 	set_stream(input, browse_stream),
 	browse("HeadVar__1"),
+	close(browse_stream),
 	no_trace,
-	write("browser: ok.\n").
+	write("*** browser: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing collect...\n"),
@@ -182,7 +183,7 @@ write("\n**************************************************"),
 	set_parameter(collect_arg, [yes]),
 	collect(solutions, Result),
 	writeq(Result),
-	write("collect: ok.\n").
+	write("\n*** collect: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing other Morphine commands...\n"),
@@ -190,6 +191,6 @@ write("\n**************************************************"),
 	apropos(man),
 	write("man(apropos)"), nl, 
 	man(apropos), 
-	write("ok.\n"),
+	write("*** other Morphine commands: ok.\n"),
 
 write("**************************************************\n").

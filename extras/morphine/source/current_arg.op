@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999,2001 INRIA/INSA de Rennes.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -61,7 +61,7 @@ retrieve_one_by_one(ListVarNames, N, [Arg | TailArg]) :-
 		!
 	;
 		integer_to_headvar(N, HeadVar__N),
-		current_live_var(ListVarNames, HeadVar__N, RetrievedArg, _Type),
+		current_live_var2(ListVarNames, HeadVar__N, RetrievedArg, _, _),
 		Arg = RetrievedArg
 	),
 	N1 is N + 1,
@@ -233,29 +233,31 @@ current_vars2(ListLiveArgRetrieved, ListOtherLiveVarRetrieved) :-
 	% here the live variables that are arguments of the current 
 	% predicate (which internal name is of the form "HeadVar__i") from 
 	% the other live variables.
-	separate_live_args_from_live_var(ListLiveVar, ListName, 
-		ListArg, ListArgName, ListOtherVar , ListOtherVarName),
+	current_live_var_names_and_types_ll(_, ListVarType),
+	split_list_of_live_args_and_vars(ListVarType, ListName, 
+		ListArgType, _, ListOtherVarType, _),
+	split_list_of_live_args_and_vars(ListLiveVar, ListName, 
+		ListArg, ListArgName, ListOtherVar, ListOtherVarName),
 	synthetise_list_univ_and_list_string(ListOtherVar, ListOtherVarName, 
-		ListOtherLiveVarRetrieved),
+		ListOtherVarType, ListOtherLiveVarRetrieved),
 	synthetise_list_univ_and_list_string(ListArg, ListArgName, 
-		ListLiveArgRetrieved).
+		ListArgType, ListLiveArgRetrieved).
 
 
-%:- pred separate_live_args_from_live_var(list(univ), list(string), 
+%:- pred split_list_of_live_args_and_vars(list(univ), list(string), 
 %	list(univ), list(string), list(univ), list(string) ).
-%:- mode separate_live_args_from_live_var(in, in, out, out, out, out) is det.
-	% Separates live arguments of the current predicate from other live
-	% variables.
-	% The list in input contains a list of 'univ(value - type)' that 
-	% describes
-	% live variables and a list of string of their corresponding internal
-	% variable name. When the variable name begins with "HeadVar__", we put
-	% its corresponding variable in the first output; and we put them
-	% on the second output list otherwise.
-separate_live_args_from_live_var([], [], [], [], [], []).
-separate_live_args_from_live_var([Var | TailVar], [VarName | TailVarName],
+%:- mode split_list_of_live_args_and_vars(in, in, out, out, out, out) is det.
+	% Splits live arguments from other live variables. 
+	% split_list_of_live_args_and_vars(L1, L2, L3, L4, L5, L6)
+	% splits the elements of the lists in input (L1 and L2) into L3, L4 and
+	% L5, L6 respectively. L2 contains Mercury variable internal names;
+	% for names beginning with "HeadVar__", the corresponding elements
+	% of L1 and L2 are put in L3 and L5; otherwise, they are put in L4 
+	% and L6.
+split_list_of_live_args_and_vars([], [], [], [], [], []).
+split_list_of_live_args_and_vars([Var | TailVar], [VarName | TailVarName],
 		ListArg, ListArgName, ListOtherVar , ListOtherVarName) :-
-	separate_live_args_from_live_var(TailVar, TailVarName, 
+	split_list_of_live_args_and_vars(TailVar, TailVarName, 
 		TailListArg, TailListArgName, 
 		TailListOtherVar, TailListOtherVarName),
 	( append_strings("HeadVar__", _, VarName) ->
@@ -276,9 +278,11 @@ separate_live_args_from_live_var([Var | TailVar], [VarName | TailVarName],
 	% Take a list of univ and a list of string of the same size and 
 	% synthetize it into a list of live_var. 
 
-synthetise_list_univ_and_list_string(L1, L2, Lout) :-
+synthetise_list_univ_and_list_string(UnivList, VarNameList, VarTypeList, 
+    Lout) :-
 	(
-		synthetise_list_univ_and_list_string2(L1, L2, Lout),
+		synthetise_list_univ_and_list_string2(UnivList, VarNameList, 
+		        VarTypeList,  Lout),
 		!
 	;
 		write("\nSoftware error in Morphine: "),
@@ -286,21 +290,23 @@ synthetise_list_univ_and_list_string(L1, L2, Lout) :-
 		abort
 	).
 
-synthetise_list_univ_and_list_string2(X, [Name | TailName], ListArgLive) :-
+synthetise_list_univ_and_list_string2(X, [Name | TailName], 
+    [TypeStr|TailType], ListArgLive) :-
 	(
-	    X = [univ(Arg:Type) | TailArg],
-	    !
+	        X = [univ_cons(Arg) | TailArg],
+	        !
 	;
-	     X = [_| TailArg],
-	     Arg = 'error',
-	     Type = 'error',
-	     write("***** Can't retrieve that type of argument. "),
-	     write("This is a bug in Morphine...\n")
+	        X = [_| TailArg],
+	        Arg = 'error',
+	        write("\n***** Can't retrieve that type of argument. "),
+	        write("This is a bug in Morphine...\n")
 	 ),
-	synthetise_list_univ_and_list_string2(TailArg, TailName, ListArgLeft),
+	synthetise_list_univ_and_list_string2(TailArg, TailName, TailType,
+	     ListArgLeft),
+	term_string(Type, TypeStr),
 	ListArgLive = [live_var(Name, Arg, Type) | ListArgLeft].
 
-synthetise_list_univ_and_list_string2([], [], []).
+synthetise_list_univ_and_list_string2([], [], [], []).
 
 % :- pred current_vars_ll(list(univ), list(string)).
 % :- mode current_vars_ll(out, out) is det.
@@ -351,15 +357,32 @@ current_live_var_Op(VarId, VarValue, VarType) :-
 	;
 		VarName = VarId
 	),
-	current_live_var_names_and_types_ll(ListVarNames, _),
-	current_live_var(ListVarNames, VarName, VarValue, VarType).
+	current_live_var_names_and_types_ll(ListVarNames, ListVarTypes),
+	current_live_var2(ListVarNames, ListVarTypes, VarName, VarValue, 
+	        VarType).
 
 
-current_live_var(ListVarNames, VarNames, Value, Type) :-
-	member(VarNames, ListVarNames),
-	get_internal_number(VarNames, ListVarNames, InternalNumber),
+current_live_var2(ListVarNames, ListVarTypes, VarName, Value, Type) :-
+	member(VarName, ListVarNames),
+	get_internal_number(VarName, ListVarNames, InternalNumber),
 	current_nth_var_ll(InternalNumber, X),
-	X = univ(Value : Type).
+	get_type_from_list_vars(VarName, ListVarNames, ListVarTypes, Type),
+	X = univ_cons(Value).
+
+% :- pred get_type_from_list_vars(string, list(string), list(string), string).
+% :- mode get_type_from_list_vars(in, in, in, out) is det.
+	% if ListVarNames is a list of variable names and ListVarTypes is the
+	% list of their corresponding type (in the same order), then
+	% get_type_from_list_vars(VarName, ListVarNames, ListVarTypes, Type) 
+	% outputs in Type the type of VarName.
+get_type_from_list_vars(Name, [VarName|TVarName], [VarType|TVarType], Type) :-
+	( Name = VarName ->
+	        term_string(Type, VarType)
+	; 
+	        get_type_from_list_vars(Name, TVarName, TVarType, Type)
+	).
+get_type_from_list_vars(_, [], [], 'bad_type').
+	% Should never occur.
 
 get_internal_number(VarNames, ListVarNames, InternalNumber) :-	
 	% This predicate unifies InternalNumber with the rank of VarNames in 
