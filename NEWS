@@ -115,6 +115,8 @@ DRAFT NEWS for Mercury release 0.7
     expand/4.  These are similar to Prolog's arg/3, functor/3,
     and '=..'.  (There is as yet no method for _constructing_
     terms of arbitrary type, however.)
+    XXX we need to fix the order of the arguments to arg/3 to
+    match the standard Prolog ordering
 
   - We have a new module called time.m XXX to make benchmarking easier.
     The predicate report_stats, which used to be in std_util, is now
