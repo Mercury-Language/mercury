@@ -135,7 +135,7 @@ DRAFT NEWS for Mercury release 0.7
 
   - The predicates term_to_type/2 and type_to_term/2 are now implemented.
 
-  - We have a new module called time.m XXX to make benchmarking easier.
+  - We have a new module called benchmarking.m to make benchmarking easier.
     The predicate report_stats, which used to be in std_util, is now
     in this module.
 

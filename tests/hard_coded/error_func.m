@@ -13,7 +13,7 @@ Software error: variable V_32 not found
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
-:- import_module list, int, require, time, string.
+:- import_module list, int, require, benchmarking, string.
 
 :- func first_denomination(int) = int.
 first_denomination(Kinds_of_coins) =
