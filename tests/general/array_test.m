@@ -32,7 +32,11 @@ test(Xs) -->
 		array__resize(A1, 15, 1000, A2),
 		array__to_list(A2, As2),
 		array__shrink(A2, 10, A3),
-		array__to_list(A3, As3)
+		array__to_list(A3, As3),
+		A4 = array__sort(array(1 `..` 10)),
+		array__to_list(A4, As4),
+		A5 = array__sort(array(list__reverse(1 `..` 10))),
+		array__to_list(A5, As5)
 	},
 	write_message_int_list("A0: ", As0),
 	write_message_int("AMax0: ", AMax0),
@@ -44,6 +48,8 @@ test(Xs) -->
 	write_message_int_list("A1: ", As1),
 	write_message_int_list("A2: ", As2),
 	write_message_int_list("A3: ", As3),
+	write_message_int_list("A4: ", As4),
+	write_message_int_list("A5: ", As5),
 	{
 		bt_array__from_list(0, Xs, B0),
 		bt_array__to_list(B0, Bs0),
