@@ -640,11 +640,11 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 :- pred bytecode_gen__map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
 
 bytecode_gen__map_cons_tag(no_tag, no_tag).
-bytecode_gen__map_cons_tag(simple_tag(Primary), simple_tag(Primary)).
-bytecode_gen__map_cons_tag(complicated_tag(Primary, Secondary),
-	complicated_tag(Primary, Secondary)).
-bytecode_gen__map_cons_tag(complicated_constant_tag(Primary, Secondary),
-	complicated_constant_tag(Primary, Secondary)).
+bytecode_gen__map_cons_tag(unshared_tag(Primary), unshared_tag(Primary)).
+bytecode_gen__map_cons_tag(shared_remote_tag(Primary, Secondary),
+	shared_remote_tag(Primary, Secondary)).
+bytecode_gen__map_cons_tag(shared_local_tag(Primary, Secondary),
+	shared_local_tag(Primary, Secondary)).
 bytecode_gen__map_cons_tag(string_constant(_), _) :-
 	error("string_constant cons tag for non-string_constant cons id").
 bytecode_gen__map_cons_tag(int_constant(IntVal), enum_tag(IntVal)).

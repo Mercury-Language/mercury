@@ -90,9 +90,9 @@
 :- type byte_var_info	--->	var_info(string, type).
 
 :- type byte_cons_tag	--->	no_tag
-			;	simple_tag(tag_bits)
-			;	complicated_tag(tag_bits, int)
-			;	complicated_constant_tag(tag_bits, int)
+			;	unshared_tag(tag_bits)
+			;	shared_remote_tag(tag_bits, int)
+			;	shared_local_tag(tag_bits, int)
 			;	enum_tag(int)
 			.
 
@@ -787,14 +787,14 @@ debug_cons_id(char_const(Char)) -->
 :- pred output_tag(byte_cons_tag, io__state, io__state).
 :- mode output_tag(in, di, uo) is det.
 
-output_tag(simple_tag(Primary)) -->
+output_tag(unshared_tag(Primary)) -->
 	output_byte(0),
 	output_byte(Primary).
-output_tag(complicated_tag(Primary, Secondary)) -->
+output_tag(shared_remote_tag(Primary, Secondary)) -->
 	output_byte(1),
 	output_byte(Primary),
 	output_int(Secondary).
-output_tag(complicated_constant_tag(Primary, Secondary)) -->
+output_tag(shared_local_tag(Primary, Secondary)) -->
 	output_byte(2),
 	output_byte(Primary),
 	output_int(Secondary).
@@ -807,15 +807,15 @@ output_tag(no_tag) -->
 :- pred debug_tag(byte_cons_tag, io__state, io__state).
 :- mode debug_tag(in, di, uo) is det.
 
-debug_tag(simple_tag(Primary)) -->
-	debug_string("simple_tag"),
+debug_tag(unshared_tag(Primary)) -->
+	debug_string("unshared_tag"),
 	debug_int(Primary).
-debug_tag(complicated_tag(Primary, Secondary)) -->
-	debug_string("complicated_tag"),
+debug_tag(shared_remote_tag(Primary, Secondary)) -->
+	debug_string("shared_remote_tag"),
 	debug_int(Primary),
 	debug_int(Secondary).
-debug_tag(complicated_constant_tag(Primary, Secondary)) -->
-	debug_string("complicated_constant_tag"),
+debug_tag(shared_local_tag(Primary, Secondary)) -->
+	debug_string("shared_local_tag"),
 	debug_int(Primary),
 	debug_int(Secondary).
 debug_tag(enum_tag(Enum)) -->

@@ -493,22 +493,23 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
 	    MR_DEBUG_TABLE_ENUM(table, functors, data);
             break;
         }
-        case MR_DATAREP_COMPLICATED_CONST: {
+        case MR_DATAREP_SHARED_LOCAL: {
 	    int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
 				layout_vector_for_tag);
 	    MR_DEBUG_TABLE_TAG(table, data_tag);
 	    MR_DEBUG_TABLE_ENUM(table, functors, unmkbody(data));
             break;
         }
-        case MR_DATAREP_SIMPLE: {
+        case MR_DATAREP_UNSHARED: {
             int arity, i;
             Word *argument_vector, *type_info_vector, *new_type_info;
 
             argument_vector = data_value;
 
-            arity = layout_vector_for_tag[TYPE_CTOR_LAYOUT_SIMPLE_ARITY_OFFSET];
+            arity = layout_vector_for_tag[
+		    	TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
             type_info_vector = &layout_vector_for_tag[
-		    		TYPE_CTOR_LAYOUT_SIMPLE_ARGS_OFFSET];
+	    		TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
 
 	    MR_DEBUG_TABLE_TAG(table, data_tag);
 
@@ -521,7 +522,7 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             }
             break;
         }
-        case MR_DATAREP_COMPLICATED: {
+        case MR_DATAREP_SHARED_REMOTE: {
             int arity, i;
             Word *argument_vector, *type_info_vector, *new_type_info;
             Word secondary_tag, num_sharers, *new_layout_vector;
@@ -529,14 +530,14 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             secondary_tag = *data_value;
             argument_vector = data_value + 1;
 
-            num_sharers = MR_TYPE_CTOR_LAYOUT_COMPLICATED_VECTOR_NUM_SHARERS(
+            num_sharers = MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_NUM_SHARERS(
             			layout_vector_for_tag);
             new_layout_vector =
-                MR_TYPE_CTOR_LAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+                MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
                     layout_vector_for_tag, secondary_tag);
-            arity = new_layout_vector[TYPE_CTOR_LAYOUT_SIMPLE_ARITY_OFFSET];
+            arity = new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
             type_info_vector =
-		    &new_layout_vector[TYPE_CTOR_LAYOUT_SIMPLE_ARGS_OFFSET];
+		    &new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
 
 	    MR_DEBUG_TABLE_TAG(table, data_tag);
 	    MR_DEBUG_TABLE_ENUM(table, num_sharers, secondary_tag);

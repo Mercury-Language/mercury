@@ -550,12 +550,12 @@ MR_categorize_data(Word functors_indicator, Word layout_entry)
 			return MR_DATAREP_ENUM;
 		case MR_TYPE_CTOR_FUNCTORS_DU: 
 			switch ((int) tag(layout_entry)) {
-				case TYPE_CTOR_LAYOUT_SIMPLE_TAG:
-					return MR_DATAREP_SIMPLE;
-				case TYPE_CTOR_LAYOUT_COMPLICATED_TAG:
-					return MR_DATAREP_COMPLICATED;
+				case TYPE_CTOR_LAYOUT_UNSHARED_TAG:
+					return MR_DATAREP_UNSHARED;
+				case TYPE_CTOR_LAYOUT_SHARED_REMOTE_TAG:
+					return MR_DATAREP_SHARED_REMOTE;
 				case TYPE_CTOR_LAYOUT_CONST_TAG:
-					return MR_DATAREP_COMPLICATED_CONST;
+					return MR_DATAREP_SHARED_LOCAL;
 				default:
 					return MR_DATAREP_UNKNOWN;
 			}

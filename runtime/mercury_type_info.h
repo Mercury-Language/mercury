@@ -225,9 +225,9 @@ typedef	Word	MR_PseudoTypeInfo;
 */
 
 #define TYPE_CTOR_LAYOUT_CONST_TAG		0
-#define TYPE_CTOR_LAYOUT_COMP_CONST_TAG	0 
-#define TYPE_CTOR_LAYOUT_SIMPLE_TAG		1
-#define TYPE_CTOR_LAYOUT_COMPLICATED_TAG	2
+#define TYPE_CTOR_LAYOUT_SHARED_LOCAL_TAG	0 
+#define TYPE_CTOR_LAYOUT_UNSHARED_TAG		1
+#define TYPE_CTOR_LAYOUT_SHARED_REMOTE_TAG	2
 #define TYPE_CTOR_LAYOUT_EQUIV_TAG		3
 #define TYPE_CTOR_LAYOUT_NO_TAG		3 
 
@@ -315,17 +315,17 @@ enum MR_TypeLayoutValue {
 ** Constant and enumeration values start at 0, so the functor
 ** is at OFFSET + const/enum value. 
 ** 
-** Functors for simple tags are at OFFSET + arity (the functor is
+** Functors for unshared tags are at OFFSET + arity (the functor is
 ** stored after all the argument info.
 **
 */
 
 #define TYPE_CTOR_LAYOUT_CONST_FUNCTOR_OFFSET		2
 #define TYPE_CTOR_LAYOUT_ENUM_FUNCTOR_OFFSET		2
-#define TYPE_CTOR_LAYOUT_SIMPLE_FUNCTOR_OFFSET	1
+#define TYPE_CTOR_LAYOUT_UNSHARED_FUNCTOR_OFFSET	1
 
-#define TYPE_CTOR_LAYOUT_SIMPLE_ARITY_OFFSET  	0
-#define TYPE_CTOR_LAYOUT_SIMPLE_ARGS_OFFSET       	1
+#define TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET  	0
+#define TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET       	1
 
 /*---------------------------------------------------------------------------*/
 
@@ -507,45 +507,48 @@ enum MR_TypeLayoutValue {
 
 	/*
 	** Macros to access the data in a discriminated union
-	** type_functors, the number of functors, and the simple_vector
+	** type_functors, the number of functors, and the functor descriptor
 	** for functor number N (where N starts at 1). 
 	*/
 
 #define MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_NUM_FUNCTORS	((Integer) 1)
-#define MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_FUNCTORS_VECTOR	((Integer) 2)
+#define MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_FUNCTOR_DESCRIPTORS	((Integer) 2)
 
 #define MR_TYPE_CTOR_FUNCTORS_DU_NUM_FUNCTORS(Functors)			\
 	((Functors)[MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_NUM_FUNCTORS])
 
 #define MR_TYPE_CTOR_FUNCTORS_DU_FUNCTOR_N(Functor, N)			\
 	((Word *) ((Functor)[						\
-		MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_FUNCTORS_VECTOR + N]))
+		MR_TYPE_CTOR_FUNCTORS_DU_OFFSET_FOR_FUNCTOR_DESCRIPTORS + N]))
 
 	/*
 	** Macros to access the data in a enumeration type_functors, the
 	** number of functors, and the enumeration vector.
 	*/
 
-#define MR_TYPE_CTOR_FUNCTORS_ENUM_OFFSET_FOR_FUNCTORS_VECTOR		((Integer) 1)
+#define MR_TYPE_CTOR_FUNCTORS_ENUM_OFFSET_FOR_ENUM_VECTOR	\
+		((Integer) 1)
 
-#define MR_TYPE_CTOR_FUNCTORS_ENUM_NUM_FUNCTORS(Functors)			\
+#define MR_TYPE_CTOR_FUNCTORS_ENUM_NUM_FUNCTORS(Functors)		\
 	MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(			\
-		MR_TYPE_CTOR_FUNCTORS_ENUM_FUNCTORS((Functors)))
+		MR_TYPE_CTOR_FUNCTORS_ENUM_VECTOR((Functors)))
 
-#define MR_TYPE_CTOR_FUNCTORS_ENUM_FUNCTORS(Functor)				\
-	((Word *) ((Functor)[MR_TYPE_CTOR_FUNCTORS_ENUM_OFFSET_FOR_FUNCTORS_VECTOR]))
+#define MR_TYPE_CTOR_FUNCTORS_ENUM_VECTOR(Functor)			\
+	((Word *) ((Functor)						\
+		[MR_TYPE_CTOR_FUNCTORS_ENUM_OFFSET_FOR_ENUM_VECTOR]))
 
 	/*
 	** Macros to access the data in a no_tag type_functors, the
-	** simple_vector for the functor (there can only be one functor
+	** functor descriptor for the functor (there can only be one functor
 	** with no_tags).
 	*/
 
-#define MR_TYPE_CTOR_FUNCTORS_NO_TAG_OFFSET_FOR_FUNCTORS_VECTOR	((Integer) 1)
+#define MR_TYPE_CTOR_FUNCTORS_NO_TAG_OFFSET_FOR_FUNCTOR_DESCRIPTOR \
+	((Integer) 1)
 
 #define MR_TYPE_CTOR_FUNCTORS_NO_TAG_FUNCTOR(Functors)			\
 	((Word *) ((Functors)						\
-		[MR_TYPE_CTOR_FUNCTORS_NO_TAG_OFFSET_FOR_FUNCTORS_VECTOR]))
+		[MR_TYPE_CTOR_FUNCTORS_NO_TAG_OFFSET_FOR_FUNCTOR_DESCRIPTOR]))
 
 	/*
 	** Macros to access the data in an equivalence type_functors,
@@ -554,16 +557,16 @@ enum MR_TypeLayoutValue {
 
 #define MR_TYPE_CTOR_FUNCTORS_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
 
-#define MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(Functors)				\
+#define MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(Functors)			\
 	((Functors)[MR_TYPE_CTOR_FUNCTORS_EQUIV_OFFSET_FOR_TYPE])
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** Macros and defintions for defining and dealing with the vectors
+** Macros and defintions for defining and dealing with the data structures
 ** created by type_ctor_layouts (these are the same vectors referred to
 ** by type_ctor_functors)
-** 	- the simple_vector, describing a single functor
+** 	- the functor descriptor, describing a single functor
 ** 	- the enum_vector, describing an enumeration
 ** 	- the no_tag_vector, describing a single functor 
 */
@@ -585,7 +588,7 @@ typedef struct {
 #define MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_IS_ENUM(Vector)			\
 	((MR_TypeLayout_EnumVector *) (Vector))->enum_or_comp_const
 
-#define MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(Vector)			\
+#define MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(Vector)		\
 	((MR_TypeLayout_EnumVector *) (Vector))->num_sharers
 
 #define MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(Vector, N)		\
@@ -593,48 +596,66 @@ typedef struct {
 
 
 	/*
-	** Macros for dealing with simple vectors.
+	** Macros for dealing with functor descriptors.
+	**
+	** XXX we might like to re-organize this structure so the
+	**     variable length component isn't such a pain.
 	*/
 
-#define MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARITY		((Integer) 0)
-#define MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARGS		((Integer) 1)
+typedef struct {
+	Integer		arity;
+	Word		arg1;		
+/* other functors follow, arity of them.
+** 	Word		arg2;
+** 	...
+**	ConstString	functorname;
+**	Word		tagbits;
+*/
+} MR_TypeLayout_FunctorDescriptor;
+
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARITY	\
+	((Integer) 0)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARGS	((Integer) 1)
 	/* Note, these offsets are from the end of the args */
-#define MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_NAME	((Integer) 1)
-#define MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_TAG	((Integer) 2)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_NAME	\
+		((Integer) 1)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_TAG	\
+		((Integer) 2)
 
-#define MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARITY(V)				\
-		((V)[MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARITY])
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V)			\
+		((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARITY])
 
-#define MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARGS(V)				\
-		(V + MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARGS)
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(V)			\
+		(V + MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_ARGS)
 
-#define MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(V)			\
-		((String) ((V)[MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARITY(V) +	\
-			MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_NAME]))
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(V)		\
+	((String) ((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V) + \
+	    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_NAME]))
 
-#define MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_TAG(V)				\
-		((Word) ((V)[MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARITY(V) +	\
-			MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_TAG]))
+#define MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TAG(V)			\
+	((Word) ((V)[MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(V) +	\
+		MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_OFFSET_FOR_FUNCTOR_TAG]))
 
 	/*
-	** Macros for dealing with complicated vectors.
+	** Macros for dealing with shared remote vectors.
 	*/
 
 typedef struct {
 	Word num_sharers;		
-	Word simple_vector1;
-/* other simple_vectors follow, num_sharers of them.
-**	Word simple_vector2;
+	Word functor_descriptor1;
+/* other functor descriptors follow, num_sharers of them.
+**	Word functor_descriptor2;
 ** 	...
 */
-} MR_TypeLayout_ComplicatedVector;
+} MR_TypeLayout_SharedRemoteVector;
 
-#define MR_TYPE_CTOR_LAYOUT_COMPLICATED_VECTOR_NUM_SHARERS(Vector) 	\
-	((MR_TypeLayout_ComplicatedVector *) (Vector))->num_sharers
+#define MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_NUM_SHARERS(Vector) 	\
+	(((MR_TypeLayout_SharedRemoteVector *) (Vector))->num_sharers)
 
-#define MR_TYPE_CTOR_LAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(Vector, N) 	\
-	( (Word *) strip_tag((&((MR_TypeLayout_ComplicatedVector *)	\
-		(Vector))->simple_vector1) [N]) )
+#define MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR( \
+		Vector, N)						 \
+	( (Word *) strip_tag((&((MR_TypeLayout_SharedRemoteVector *)	 \
+		(Vector))->functor_descriptor1) [N]) )
 		
 	/* 
 	** Macros for dealing with no_tag vectors 
@@ -648,7 +669,7 @@ typedef struct {
 	ConstString name;
 } MR_TypeLayout_NoTagVector;
 
-#define MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_IS_NO_TAG(Vector)			\
+#define MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_IS_NO_TAG(Vector)		\
 		((MR_TypeLayout_NoTagVector *) (Vector))->is_no_tag
 
 #define MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARITY(Vector)			\
@@ -671,7 +692,7 @@ typedef struct {
 
 #define MR_TYPE_CTOR_LAYOUT_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
 
-#define MR_TYPE_CTOR_LAYOUT_EQUIV_IS_EQUIV(Vector)				\
+#define MR_TYPE_CTOR_LAYOUT_EQUIV_IS_EQUIV(Vector)			\
 		(!((MR_TypeLayout_EquivVector *) (Vector))->is_no_tag)
 
 #define MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(Vector)				\
@@ -685,16 +706,16 @@ typedef struct {
 	** type_ctor_infos
 	*/
 
-#define MR_TYPEINFO_GET_TYPE_CTOR_INFO(TypeInfo)				\
+#define MR_TYPEINFO_GET_TYPE_CTOR_INFO(TypeInfo)			\
 		((*TypeInfo) ? (Word *) *TypeInfo : (Word *) (Word) TypeInfo)
 
 #define MR_TYPEINFO_GET_HIGHER_ARITY(TypeInfo)				\
 		((Integer) (Word *) (TypeInfo)[TYPEINFO_OFFSET_FOR_PRED_ARITY]) 
 
-#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(BaseTypeInfo)			\
+#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(BaseTypeInfo)		\
 		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_FUNCTORS])
 
-#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(BaseTypeInfo)			\
+#define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(BaseTypeInfo)		\
 		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_LAYOUT])
 
 #define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT_ENTRY(BaseTypeInfo, Tag)	\
@@ -772,20 +793,6 @@ typedef struct {
 	String type_ctor_name;
 	String type_ctor_module_name;
 } MR_TypeCtorInfo;
-
-typedef struct {
-	Word arity;
-	Word arg1;		
-/* other arguments follow, there are arity of them,
-** then followed by functor name, and functor tag.
-** 	Word arg2;
-** 	...
-** 	Word argarity;
-**	ConstString functorname;
-**	Word tag;
-*/
-} MR_TypeLayout_SimpleVector;
-
 
 typedef struct {
 	Word arity;
@@ -907,9 +914,9 @@ enum MR_DiscUnionTagRepresentation {
 */
 enum MR_DataRepresentation {
 	MR_DATAREP_ENUM,
-	MR_DATAREP_COMPLICATED_CONST,
-	MR_DATAREP_COMPLICATED,
-	MR_DATAREP_SIMPLE,
+	MR_DATAREP_SHARED_LOCAL,
+	MR_DATAREP_SHARED_REMOTE,
+	MR_DATAREP_UNSHARED,
 	MR_DATAREP_NOTAG,
 	MR_DATAREP_EQUIV,
 	MR_DATAREP_EQUIV_VAR,

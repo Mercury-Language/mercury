@@ -280,23 +280,27 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% represented as global data. The word just contains
 			% the address of the tabling pointer of the
 			% specified procedure.
-	;	simple_tag(tag_bits)
-			% This is for constants or functors which only
-			% require a simple tag.  (A "simple" tag is one
-			% which fits on the bottom of a pointer - i.e.
-			% two bits for 32-bit architectures, or three bits
-			% for 64-bit architectures).
+	;	unshared_tag(tag_bits)
+			% This is for constants or functors which can be
+			% distinguished with just a primary tag.
+			% An "unshared" tag is one which fits on the
+			% bottom of a pointer (i.e.  two bits for
+			% 32-bit architectures, or three bits for 64-bit
+			% architectures), and is used for just one
+			% functor.
 			% For constants we store a tagged zero, for functors
 			% we store a tagged pointer to the argument vector.
-	;	complicated_tag(tag_bits, int)
+	;	shared_remote_tag(tag_bits, int)
 			% This is for functors or constants which
 			% require more than just a two-bit tag. In this case,
 			% we use both a primary and a secondary tag.
+			% Several functors share the primary tag and are
+			% distinguished by the secondary tag.
 			% The secondary tag is stored as the first word of
 			% the argument vector. (If it is a constant, then
 			% in this case there is an argument vector of size 1
 			% which just holds the secondary tag.)
-	;	complicated_constant_tag(tag_bits, int)
+	;	shared_local_tag(tag_bits, int)
 			% This is for constants which require more than a
 			% two-bit tag. In this case, we use both a primary
 			% and a secondary tag, but this time the secondary
@@ -307,7 +311,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% In this case, we don't need to store the functor,
 			% and instead we store the argument directly.
 
-	% The type `tag_bits' holds a simple tag value.
+	% The type `tag_bits' holds a primary tag value.
 
 :- type tag_bits	==	int.	% actually only 2 (or maybe 3) bits
 

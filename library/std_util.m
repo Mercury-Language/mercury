@@ -1306,7 +1306,7 @@ void sys_init_unify_univ_module(void) {
 typedef struct ML_Construct_Info_Struct {
 	int vector_type;
 	int arity;
-	Word *functors_vector;
+	Word *functor_descriptor;
 	Word *argument_vector;
 	Word primary_tag;
 	Word secondary_tag;
@@ -1703,7 +1703,7 @@ Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
 				term_vector = (Word) &new_data;
 
 			} else if (tag(layout_entry) == 
-					TYPE_CTOR_LAYOUT_COMPLICATED_TAG) {
+					TYPE_CTOR_LAYOUT_SHARED_REMOTE_TAG) {
 
 				/*
 				** Create arity + 1 words, fill in the
@@ -1718,8 +1718,8 @@ Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
 
 				/* 
 				** If it's a du, and this tag is
-				** constant, it must be a complicated
-				** constant tag. 
+				** constant, it must be a shared local
+				** tag. 
 				*/
 
 				new_data = mkbody(info.secondary_tag);
@@ -1728,7 +1728,7 @@ Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
 			} else {
 
 				/*
-				** A simple tagged word, just need to
+				** An unshared tagged word, just need to
 				** create arguments.
 				*/
 
@@ -1797,42 +1797,48 @@ ML_get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 	switch (info->vector_type) {
 
 	case MR_TYPE_CTOR_FUNCTORS_ENUM:
-		info->functors_vector = MR_TYPE_CTOR_FUNCTORS_ENUM_FUNCTORS(
+		info->functor_descriptor = MR_TYPE_CTOR_FUNCTORS_ENUM_VECTOR(
 				type_ctor_functors);
 		info->arity = 0;
 		info->argument_vector = NULL;
 		info->primary_tag = 0;
 		info->secondary_tag = functor_number;
-		info->functor_name = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
-				info->functors_vector, functor_number);
+		info->functor_name =
+			MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
+				info->functor_descriptor, functor_number);
 		break; 
 
 	case MR_TYPE_CTOR_FUNCTORS_DU:
-		info->functors_vector = MR_TYPE_CTOR_FUNCTORS_DU_FUNCTOR_N(
+		info->functor_descriptor =
+			MR_TYPE_CTOR_FUNCTORS_DU_FUNCTOR_N(
 				type_ctor_functors, functor_number);
-		info->arity = MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARITY(
-			info->functors_vector);
-		info->argument_vector = MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARGS(
-				info->functors_vector);
-		info->primary_tag = tag(MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_TAG(
-			info->functors_vector));
+		info->arity = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(
+			info->functor_descriptor);
+		info->argument_vector =
+			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
+				info->functor_descriptor);
+		info->primary_tag = tag(
+			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TAG(
+				info->functor_descriptor));
 		info->secondary_tag = unmkbody(
-			body(MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_TAG(
-				info->functors_vector), info->primary_tag));
-		info->functor_name = MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(
-				info->functors_vector);
+			body(MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TAG(
+				info->functor_descriptor), info->primary_tag));
+		info->functor_name =
+			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
+				info->functor_descriptor);
 		break; 
 
 	case MR_TYPE_CTOR_FUNCTORS_NO_TAG:
-		info->functors_vector = MR_TYPE_CTOR_FUNCTORS_NO_TAG_FUNCTOR(
+		info->functor_descriptor =
+			MR_TYPE_CTOR_FUNCTORS_NO_TAG_FUNCTOR(
 				type_ctor_functors);
 		info->arity = 1;
 		info->argument_vector = MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
-				info->functors_vector);
+				info->functor_descriptor);
 		info->primary_tag = 0;
 		info->secondary_tag = 0;
 		info->functor_name = MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_FUNCTOR_NAME(
-				info->functors_vector);
+				info->functor_descriptor);
 		break; 
 
 	case MR_TYPE_CTOR_FUNCTORS_EQUIV: {
@@ -2245,7 +2251,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->type_info_vector = NULL;	
             break;
 
-        case MR_DATAREP_COMPLICATED_CONST:
+        case MR_DATAREP_SHARED_LOCAL:
             data_value = unmkbody(data_value);
             info->functor = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
                 entry_value, data_value);
@@ -2254,34 +2260,35 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
             info->type_info_vector = NULL;	
             break;
 
-        case MR_DATAREP_COMPLICATED: {
+        case MR_DATAREP_SHARED_REMOTE: {
             Word secondary_tag;
 
             secondary_tag = ((Word *) data_value)[0];
              
                 /* 
-                 * Look past the secondary tag, and get the simple vector,
-                 * then we can just use the code for simple tags.
-                 */
+                ** Look past the secondary tag, and get the functor
+                ** descriptor, then we can just use the code for
+                ** unshared tags.
+                */
             data_value = (Word) ((Word *) data_value + 1);
             entry_value = (Word)
-	    	MR_TYPE_CTOR_LAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
-		    entry_value, secondary_tag);
+            MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
+                entry_value, secondary_tag);
             entry_value = strip_tag(entry_value);
         }   /* fallthru */
 
-        case MR_DATAREP_SIMPLE: /* fallthru */
+        case MR_DATAREP_UNSHARED: /* fallthru */
         {
             int i;
-	    Word * simple_vector = (Word *) entry_value;
+	    Word * functor_descriptor = (Word *) entry_value;
 
             info->arity =
-	    MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARITY(simple_vector);
+	    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(functor_descriptor);
 	
             if (info->need_functor) {
                 make_aligned_string(info->functor, 
-                    MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(
-                    simple_vector));
+                    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
+                    functor_descriptor));
             }
 
             if (info->need_args) {
@@ -2293,7 +2300,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                     Word *arg_pseudo_type_info;
 
                     arg_pseudo_type_info = (Word *)
-                        MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARGS(simple_vector)[i];
+                        MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
+				functor_descriptor)[i];
                     info->type_info_vector[i] = (Word) MR_create_type_info(
                         type_info, arg_pseudo_type_info);
                 }
@@ -2304,21 +2312,22 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
         case MR_DATAREP_NOTAG:
         {
             int i;
-	    Word * simple_vector = (Word *) entry_value;
+	    Word * functor_descriptor = (Word *) entry_value;
 
             data_value = (Word) data_word_ptr;
 
-            info->arity = MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARITY(simple_vector);
+            info->arity = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(
+	    	functor_descriptor);
 	
             if (info->need_functor) {
                 make_aligned_string(info->functor, 
-                    MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(
-                    simple_vector));
+                    MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_FUNCTOR_NAME(
+                    functor_descriptor));
             }
 
             if (info->need_args) {
                     /* 
-                     * A NO_TAG is much like SIMPLE, but we use the
+                     * A NO_TAG is much like UNSHARED, but we use the
                      * data_word_ptr here to simulate an argument
                      * vector.
                      */
@@ -2330,7 +2339,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                     Word *arg_pseudo_type_info;
 
                     arg_pseudo_type_info = (Word *)
-                        MR_TYPE_CTOR_LAYOUT_SIMPLE_VECTOR_ARGS(simple_vector)[i];
+                        MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARGS(
+				functor_descriptor)[i];
                     info->type_info_vector[i] = (Word) MR_create_type_info(
                         type_info, arg_pseudo_type_info);
                 }

@@ -51,11 +51,11 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
 
     switch (data_rep) {
         case MR_DATAREP_ENUM:                   /* fallthru */
-        case MR_DATAREP_COMPLICATED_CONST:
+        case MR_DATAREP_SHARED_LOCAL:
             new_data = data;	/* just a copy of the actual item */
         break;
 
-        case MR_DATAREP_COMPLICATED: {
+        case MR_DATAREP_SHARED_REMOTE: {
             Word secondary_tag;
             Word *new_entry;
             Word *argument_vector, *type_info_vector;
@@ -69,10 +69,11 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                 secondary_tag = *data_value;
                 argument_vector = data_value + 1;
 
-                new_entry = MR_TYPE_CTOR_LAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+                new_entry = MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
 			entry_value, secondary_tag);
-                arity = new_entry[TYPE_CTOR_LAYOUT_SIMPLE_ARITY_OFFSET];
-                type_info_vector = new_entry + TYPE_CTOR_LAYOUT_SIMPLE_ARGS_OFFSET;
+                arity = new_entry[TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
+                type_info_vector = new_entry + 
+			TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET;
 
                 /* allocate space for new args, and secondary tag */
                 incr_saved_hp(new_data, arity + 1);
@@ -98,15 +99,16 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
             break;
         }
 
-        case MR_DATAREP_SIMPLE: {
+        case MR_DATAREP_UNSHARED: {
             int arity, i;
             Word *argument_vector, *type_info_vector;
             argument_vector = data_value;
 
             /* If the argument vector is in range, copy the arguments */
             if (in_range(argument_vector)) {
-                arity = entry_value[TYPE_CTOR_LAYOUT_SIMPLE_ARITY_OFFSET];
-                type_info_vector = entry_value + TYPE_CTOR_LAYOUT_SIMPLE_ARGS_OFFSET;
+                arity = entry_value[TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
+                type_info_vector = entry_value + 
+			TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET;
 
                 /* allocate space for new args. */
                 incr_saved_hp(new_data, arity);
