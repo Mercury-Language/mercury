@@ -427,8 +427,8 @@ ref_functor(Ref, Functor, Arity) -->
 		will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) MR_strip_tag(Ref);
-	ArgRef = (Word) &Ptr[Arg];
+	MR_Word *Ptr = (MR_Word *) MR_strip_tag((MR_Word) Ref);
+	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
 
@@ -436,8 +436,8 @@ ref_functor(Ref, Functor, Arity) -->
 				S0::di, S::uo), will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) MR_strip_tag(Val);
-	ArgRef = (Word) &Ptr[Arg];
+	MR_Word *Ptr = (MR_Word *) MR_strip_tag((MR_Word) Val);
+	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
 
