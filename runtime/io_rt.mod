@@ -186,12 +186,12 @@ mercury__io__write_string_3_0:
 	proceed();
 
 mercury__io__write_char_3_0:
-	fprintf(mercury_current_output->file, "%c", (int) r1);
+	fprintf(mercury_current_output->file, "%c", (char) r1);
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__write_int_3_0:
-	fprintf(mercury_current_output->file, "%d", (int) r1);
+	fprintf(mercury_current_output->file, "%ld", (long) (Integer) r1);
 	update_io(r2, r3);
 	proceed();
 
@@ -214,17 +214,17 @@ mercury__io__flush_output_2_0:
 /* output predicates - with output to the specified stream */
 
 mercury__io__write_string_4_0:
-	mercury_print_string((MercuryFile*)r1, (char *)r2);
+	mercury_print_string((MercuryFile*)r1, (char *) r2);
 	update_io(r3, r4);
 	proceed();
 
 mercury__io__write_char_4_0:
-	fprintf(((MercuryFile*)r1)->file, "%c", (int) r2);
+	fprintf(((MercuryFile*)r1)->file, "%c", (char) r2);
 	update_io(r3, r4);
 	proceed();
 
 mercury__io__write_int_4_0:
-	fprintf(((MercuryFile*)r1)->file, "%d", (int) r2);
+	fprintf(((MercuryFile*)r1)->file, "%ld", (long) (Integer) r2);
 	update_io(r3, r4);
 	proceed();
 
@@ -271,22 +271,22 @@ mercury____Write___io__stream_0_0:
 /********************************/
 
 mercury__io__stdin_stream_3_0:
-	r1 = (int) &mercury_stdin;
+	r1 = (Word) &mercury_stdin;
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__stdout_stream_3_0:
-	r1 = (int) &mercury_stdout;
+	r1 = (Word) &mercury_stdout;
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__stderr_stream_3_0:
-	r1 = (int) &mercury_stderr;
+	r1 = (Word) &mercury_stderr;
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__input_stream_3_0:
-	r1 = (int) mercury_current_input;
+	r1 = (Word) mercury_current_input;
 	update_io(r2, r3);
 	proceed();
 
@@ -301,7 +301,7 @@ mercury__io__get_line_number_4_0:
 	proceed();
 	
 mercury__io__output_stream_3_0:
-	r1 = (int) mercury_current_output;
+	r1 = (Word) mercury_current_output;
 	update_io(r2, r3);
 	proceed();
 
@@ -314,13 +314,13 @@ mercury__io__output_stream_3_0:
 %               Returns the previous stream.
 */
 mercury__io__set_input_stream_4_0:
-	r2 = (int) mercury_current_input;
+	r2 = (Word) mercury_current_input;
 	mercury_current_input = (MercuryFile*) r1;
 	update_io(r3, r4);
 	proceed();
 
 mercury__io__set_output_stream_4_0:
-	r2 = (int) mercury_current_output;
+	r2 = (Word) mercury_current_output;
 	mercury_current_output = (MercuryFile*) r1;
 	update_io(r3, r4);
 	proceed();
@@ -335,8 +335,8 @@ mercury__io__set_output_stream_4_0:
 %               Result is 0 for success, -1 for failure.
 */
 mercury__io__do_open_input_5_0:
-	r3 = (int)mercury_open((char*)r1, "r");
-	r2 = (r3) ? 0 : -1;
+	r3 = (Word) mercury_open((char *) r1, "r");
+	r2 = (r3 ? 0 : -1);
 	update_io(r4, r5);
 	proceed();
 
@@ -349,8 +349,8 @@ mercury__io__do_open_input_5_0:
 %               Result is 0 for success, -1 for failure.
 */
 mercury__io__do_open_output_5_0:
-	r3 = (int)mercury_open((char*)r1, "w");
-	r2 = (r3) ? 0 : -1;
+	r3 = (Word) mercury_open((char *) r1, "w");
+	r2 = (r3 ? 0 : -1);
 	update_io(r4, r5);
 	proceed();
 
@@ -363,8 +363,8 @@ mercury__io__do_open_output_5_0:
 %               Result is 0 for success, -1 for failure.
 */
 mercury__io__do_open_append_5_0:
-	r3 = (int)mercury_open((char*)r1, "a");
-	r2 = (r3) ? 0 : -1;
+	r3 = (Word) mercury_open((char *) r1, "a");
+	r2 = (r3 ? 0 : -1);
 	update_io(r4, r5);
 	proceed();
 
@@ -381,7 +381,7 @@ mercury__io__close_output_3_0:
 /* miscellaneous predicates */
 
 mercury__io__progname_4_0:
-	r2 = (progname ? (int) progname : r1);
+	r2 = (progname ? (Word) progname : r1);
 	update_io(r3, r4);
 	proceed();
 
@@ -626,7 +626,7 @@ mercury__string__to_int_list_2_1:
 	GOTO_LABEL(mercury__string__to_int_list_2_1_i4);
 mercury__string__to_int_list_2_1_i3:
 	r2 = list_tail(r2);
-	r4 = ((int) r4 + 1);
+	r4++;
 mercury__string__to_int_list_2_1_i4:
 	if (!list_is_empty(r2))
 		GOTO_LABEL(mercury__string__to_int_list_2_1_i3);
@@ -642,7 +642,7 @@ mercury__string__to_int_list_2_1_i4:
 	GOTO_LABEL(mercury__string__to_int_list_2_1_i5);
 mercury__string__to_int_list_2_1_i6:
 	((char *) r1) [r4] = (char) list_head(r3);
-	r4 = ((int) r4 + 1);
+	r4++;
 	r3 = list_tail(r3);
 mercury__string__to_int_list_2_1_i5:
 	if (!list_is_empty(r3))
@@ -658,7 +658,7 @@ mercury__string__to_int_list_2_1_i5:
 mercury__string__to_int_list_2_2:
 		/* mode (in, in) is semidet */
 	incr_sp(2);
-	detstackvar(1) = (int) succip;
+	detstackvar(1) = (Word) succip;
 	detstackvar(2) = r2;
 	r2 = r3;
 	localcall(mercury__string__to_int_list_2_1,
@@ -666,7 +666,7 @@ mercury__string__to_int_list_2_2:
 		LABEL(mercury__string__to_int_list_2_2));
 mercury__string__to_int_list_2_2_i1:
 	r1 = string_equal(r1, detstackvar(2));
-	LVALUE_CAST(Word,succip) = (int) detstackvar(1);
+	LVALUE_CAST(Word,succip) = (Word) detstackvar(1);
 	decr_sp(1);
 	proceed();
 
