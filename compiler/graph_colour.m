@@ -38,6 +38,7 @@ graph_colour__group_elements(Constraints, Colours) :-
 	graph_colour__find_all_colours(ConstraintList, AllVars, ColourList),
 	set__list_to_set(ColourList, Colours),
 	true.
+%	% performance reducing sanity check....
 %	(
 %		set__power_union(Colours, AllColours),
 %		(set__member(Var, AllVars) => set__member(Var, AllColours))

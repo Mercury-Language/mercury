@@ -298,21 +298,29 @@ implicitly_quantify_unify_rhs(functor(Functor, ArgVars), _,
 	quantification__set_nonlocals(Vars).
 implicitly_quantify_unify_rhs(lambda_goal(LambdaVars0, Modes, Det, Goal0),
 		Context, lambda_goal(LambdaVars, Modes, Det, Goal)) -->
+
 	quantification__get_outside(OutsideVars0),
 	{ set__list_to_set(LambdaVars0, QVars) },
-	{ set__intersect(OutsideVars0, QVars, RenameVars) },
+		% Figure out which variables have overlapping scopes
+		% because they occur outside the goal and are also
+		% lambda vars.
+	{ set__intersect(OutsideVars0, QVars, RenameVars0) },
 	(
-		{ set__empty(RenameVars) }
+		{ set__empty(RenameVars0) }
 	->
-		{ Goal1 = Goal0 },
-		{ LambdaVars = LambdaVars0 }
+		[]
 	;
-		quantification__warn_overlapping_scope(RenameVars, Context),
-		quantification__rename_apart(RenameVars, RenameMap,
-			Goal0, Goal1),
-		{ goal_util__rename_var_list(LambdaVars0, no, RenameMap,
-			LambdaVars) }
+		quantification__warn_overlapping_scope(RenameVars0, Context)
 	),
+		% We need to rename apart any of the lambda vars that
+		% we have already seen, since they are new instances.
+	quantification__get_seen(Seen0),
+	{ set__intersect(Seen0, QVars, RenameVars1) },
+
+	{ set__union(RenameVars0, RenameVars1, RenameVars) },
+	quantification__rename_apart(RenameVars, RenameMap, Goal0, Goal1),
+	{ goal_util__rename_var_list(LambdaVars0, no, RenameMap, LambdaVars) },
+
 		% Quantified variables cannot be pushed inside a lambda goal,
 		% so we insert the quantified vars into the outside vars set,
 		% and initialize the new quantified vars set to be empty.
@@ -473,7 +481,7 @@ goal_vars(Goal - _GoalInfo, Set) :-
 
 goal_vars_2(unify(A, B, _, _, _), Set0, Set) :-
 	set__insert(Set0, A, Set1),
-	unify_rhs_vars(B, Set1, Set).
+	quantification__unify_rhs_vars(B, Set1, Set).
 
 goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
@@ -516,14 +524,15 @@ goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, Set) :-
 goal_vars_2(pragma_c_code(_, _, _, ArgVars, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
-:- pred unify_rhs_vars(unify_rhs, set(var), set(var)).
-:- mode unify_rhs_vars(in, in, out) is det.
+:- pred quantification__unify_rhs_vars(unify_rhs, set(var), set(var)).
+:- mode quantification__unify_rhs_vars(in, in, out) is det.
 
-unify_rhs_vars(var(X), Set0, Set) :-
+quantification__unify_rhs_vars(var(X), Set0, Set) :-
 	set__insert(Set0, X, Set).
-unify_rhs_vars(functor(_Functor, ArgVars), Set0, Set) :-
+quantification__unify_rhs_vars(functor(_Functor, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
-unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Detism, Goal), Set0, Set) :-
+quantification__unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Detism, Goal),
+		Set0, Set) :-
 	goal_vars(Goal, GoalVars),
 	set__delete_list(GoalVars, LambdaVars, GoalVars1),
 	set__union(Set0, GoalVars1, Set).
