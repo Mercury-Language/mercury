@@ -22,6 +22,7 @@
 			;	term_string(string)
 			;	term_float(float).
 :- type variable.
+:- type var_supply.
 :- type term__context.
 
 %-----------------------------------------------------------------------------%
@@ -95,6 +96,29 @@
 %		true iff Var occurs in the term resulting after
 %		applying Substitution to Term0.
 
+:- pred term__relabel_variable(term, variable, variable, term).
+:- mode term__relabel_variable(input, input, input, output) is det.
+%	term__relabel_variable(Term0, OldVar, NewVar, Term) :
+%		replace all occurences of OldVar in Term0 with
+%		NewVar and put the result in Term.
+
+%-----------------------------------------------------------------------------%
+
+	% To manage a supply of variables, use the following 2 predicates
+	% XXX we need unique input and output to correctly manage the
+	% var_supply structure. fergus, can you correct the modes please?
+
+:- pred term__init_var_supply(var_supply).
+:- mode term__init_var_supply(output) is det.
+%	term__init_var_supply(VarSupply) :
+%		returns an fresh var_supply for producing fresh variables.
+
+:- pred term__create_var(var_supply, variable, var_supply).
+:- mode term__create_var(input, output, output) is det.
+%	term__create_var(VarSupply0, Variable, VarSupply) :
+%		create a fresh variable (Variable) and return the
+%		updated var_supply.
+	
 %-----------------------------------------------------------------------------%
 
 	% Given a term context, return the source line number.
@@ -124,6 +148,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type variable	==	int.
+:- type var_supply	==	int.
 
 %-----------------------------------------------------------------------------%
 
@@ -429,6 +454,39 @@ term__apply_substitution_to_list([Term0 | Terms0], Substitution,
 		[Term | Terms]) :-
 	term__apply_substitution(Term0, Substitution, Term),
 	term__apply_substitution_to_list(Terms0, Substitution, Terms).
+
+%-----------------------------------------------------------------------------%
+
+	% create a new supply of variables
+term__init_var_supply(0).
+
+	% create a fresh [unique] variable.
+term__create_var(VarSupply0, VarSupply0, VarSupply) :-
+	VarSupply is VarSupply0 + 1.
+
+%-----------------------------------------------------------------------------%
+
+	% substitute a variable name in a term.
+term__relabel_variable(term_functor(Const, Terms0, Cont), OldVar, NewVar,
+				term_functor(Const, Terms, Cont)) :-
+	term__relabel_variables(Terms0, OldVar, NewVar, Terms).
+term__relabel_variable(term_variable(Var0), OldVar, NewVar,
+				term_variable(Var)) :-
+	(if
+		Var0 = OldVar
+	then
+		Var = NewVar
+	else
+		Var = Var0
+	).
+
+:- pred term__relabel_variables(list(term), variable, variable, list(term)).
+:- mode term__relabel_variables(input, input, input, output) is det.
+
+term__relabel_variables([], _, _, []).
+term__relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
+	term_relabel_variable(Term0, OldVar, NewVar, Term),
+	term__relabel_variables(Terms0, OldVar, NewVar, Terms).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
