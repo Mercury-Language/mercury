@@ -1,0 +1,19 @@
+:- module change_func_r.
+
+:- interface.
+
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+:- import_module change_func_r_2, std_util.
+
+main -->
+	( { semidet_succeed, Str = changed_func("OK\n") } ->
+		io__write_string(Str)
+	;
+		io__write_string("failed\n")
+	).
+

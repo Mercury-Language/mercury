@@ -1,0 +1,12 @@
+:- module change_func_r_2.
+
+:- interface.
+
+:- func changed_func(string) = string is semidet.
+
+:- implementation.
+
+:- import_module std_util.
+
+changed_func(X) = X :-
+	semidet_succeed.

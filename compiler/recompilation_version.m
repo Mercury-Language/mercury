@@ -564,16 +564,29 @@ item_is_unchanged(nothing(A), Item2) =
 		( Item2 = nothing(A) -> yes ; no ).
 
 item_is_unchanged(Item1, Item2) = Result :-
-	% Ignore the determinism -- the modes and determinism should
-	% have been split into a separate declaration. This case
-	% can only happen if this was not a combined predicate and
-	% mode declaration. XXX We should warn about this somewhere. 
 	Item1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
-		Name, TypesAndModes1, _Det1, Cond, Purity, Constraints1),
+		Name, TypesAndModes1, Det1, Cond, Purity, Constraints1),
 	(
 		Item2 = pred_or_func(TVarSet2, _, ExistQVars2,
-			PredOrFunc, Name, TypesAndModes2, _Det2, Cond, Purity,
+			PredOrFunc, Name, TypesAndModes2, Det2, Cond, Purity,
 			Constraints2),
+
+		% For predicates, ignore the determinism -- the modes and
+		% determinism should have been split into a separate
+		% declaration. This case can only happen if this was
+		% not a combined predicate and mode declaration
+		% (XXX We should warn about this somewhere). 
+		% For functions a determinism declaration but no modes
+		% implies the default modes. The default modes are
+		% added later by make_hlds.m, so they won't have been
+		% split into a separate declaration here.
+		(
+			PredOrFunc = function,
+			Det1 = Det2
+		;
+			PredOrFunc = predicate
+		),
+
 		pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
 			TypesAndModes1, Constraints1, TVarSet2,
 			ExistQVars2, TypesAndModes2, Constraints2)

@@ -9,6 +9,7 @@ TESTS_SHOULD_SUCCEED="\
 	add_instance_2_r \
 	add_type_nr \
 	change_class_r \
+	change_func_r \
 	change_instance_r \
 	change_mode_r \
 	change_type_nr \
