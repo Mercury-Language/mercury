@@ -304,17 +304,17 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 		({
 			Dynamic = yes
 		->
-			relation__lookup_element(DynamicCallGraph0,
-				CallerName, CallerKey),
-			relation__lookup_element(DynamicCallGraph0,
-				CalleeName, CalleeKey),
-			relation__add(DynamicCallGraph0, CallerKey, 
-						CalleeKey, DynamicCallGraph1)
+			relation__add_element(DynamicCallGraph0,
+				CallerName, CallerKey, DynamicCallGraph1),
+			relation__add_element(DynamicCallGraph1,
+				CalleeName, CalleeKey, DynamicCallGraph2),
+			relation__add(DynamicCallGraph2, CallerKey, 
+				CalleeKey, DynamicCallGraph99)
 		;
-			DynamicCallGraph1 = DynamicCallGraph0
+			DynamicCallGraph99 = DynamicCallGraph0
 		}),
 			
-		process_addr_pair_2(DynamicCallGraph1, PNodeMap2, Dynamic,
+		process_addr_pair_2(DynamicCallGraph99, PNodeMap2, Dynamic,
 						DynamicCallGraph, ProfNodeMap)
 	;
 		{ MaybeLabelAddr = no },
