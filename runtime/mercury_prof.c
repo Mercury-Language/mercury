@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998,2000 The University of Melbourne.
+** Copyright (C) 1995-1998, 2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,9 +28,9 @@
 #include        "mercury_std.h"
 #include	"mercury_timing.h"
 
-#if defined(PROFILE_TIME)
+#include	<signal.h>		/* for SIGINT */
 
-#include	<signal.h>
+#if defined(PROFILE_TIME)
 
 #ifdef HAVE_SYS_TIME
 #include	<sys/time.h>
@@ -137,6 +137,9 @@ static volatile	int		in_profiling_code = FALSE;
 		MR_memprof_record *node);
 #endif
 
+#if defined(PROFILE_TIME) || defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
+  static void prof_handle_sigint(void);
+#endif
 
 /* ======================================================================== */
 
@@ -607,8 +610,21 @@ MR_prof_init(void)
 
 #if defined(PROFILE_TIME) || defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
 	checked_atexit(MR_prof_finish);
+  #ifdef SIGINT
+	MR_setup_signal(SIGINT, prof_handle_sigint, FALSE,
+		"Mercury runtime: cannot install signal handler");
+  #endif
 #endif
 }
+
+#if defined(PROFILE_TIME) || defined(PROFILE_CALLS) || defined(PROFILE_MEMORY)
+static void
+prof_handle_sigint(void)
+{
+  /* exit() will call MR_prof_finish(), which we registered with atexit(). */
+  exit(1);
+}
+#endif
 
 void
 MR_prof_finish(void)
