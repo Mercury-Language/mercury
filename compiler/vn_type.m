@@ -9,7 +9,7 @@
 :- module vn_type.
 
 :- interface.
-:- import_module llds, bintree_set, list.
+:- import_module llds, bintree_set, list, std_util.
 
 :- type vn == int.
 
