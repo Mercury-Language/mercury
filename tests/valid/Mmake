@@ -37,7 +37,6 @@ SOURCES= \
 	multidet_prune1.m \
 	multidet_test.m \
 	nasty_func_test.m \
-	name_mangling.m \
 	nondet_live.m \
 	qualified_cons_id.m \
 	semidet_disj.m \

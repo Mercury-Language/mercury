@@ -348,7 +348,8 @@ output_c_data_init_list([c_data(BaseName, DataName, _, _, _) | Ms])  -->
 		;
 			io__write_string(UnderscoresModule)
 		),
-		io__write_string(TypeName),
+		{ llds_out__name_mangle(TypeName, MangledTypeName) },
+		io__write_string(MangledTypeName),
 		io__write_string("_"),
 		io__write_int(Arity),
 		io__write_string("_0);\n")
