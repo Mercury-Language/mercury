@@ -855,9 +855,17 @@ det_infer_goal_2(some(Vars0, Goal0), _, InstMap0, SolnContext, MiscInfo, _, _,
 
 	% pragma_c_code must be deterministic.
 det_infer_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
-		_, _, _, _, _, _,
+		GoalInfo, _, SolnContext, MiscInfo, _, _,
 		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap),
-		det, []).
+		Detism, Msgs) :-
+	det_lookup_detism(MiscInfo, PredId, ProcId, Detism),
+	determinism_components(Detism, _, NumSolns),
+	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
+		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism,
+				PredId, ProcId)]
+	;
+		Msgs = []
+	).
 
 %-----------------------------------------------------------------------------%
 
