@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -42,7 +42,7 @@ is/2 is currently defined in int.m, for historical reasons.
 
 % Prolog's so-called "univ" operator, `=..'.
 % Note: this is not related to Mercury's "univ" type!
-% In Mercury, use `expand' (defined in module `std_util') instead.
+% In Mercury, use `deconstruct.deconstruct' instead.
 
 :- pred T =.. univ_result.
 :- mode in =.. out is det.
