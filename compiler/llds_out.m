@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module llds, prog_data, hlds_data, rl_file.
+:- import_module llds, builtin_ops, prog_data, hlds_data, rl_file.
 :- import_module set_bbbtree, bool, io, std_util.
 
 	% Given a 'c_file' structure, output the LLDS code inside it

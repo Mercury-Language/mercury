@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module globals, options, opt_util, prog_data.
+:- import_module builtin_ops, globals, options, opt_util, prog_data.
 :- import_module bool, int, list, require, std_util.
 
 transform_llds(LLDS0, LLDS) -->

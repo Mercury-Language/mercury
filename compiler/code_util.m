@@ -172,8 +172,9 @@
 
 :- implementation.
 
-:- import_module prog_data, type_util, term, varset, special_pred.
-:- import_module bool, char, int, string, set, map.
+:- import_module prog_data, builtin_ops, type_util, special_pred.
+
+:- import_module bool, char, int, string, set, map, term, varset.
 :- import_module require, std_util, assoc_list.
 
 %---------------------------------------------------------------------------%

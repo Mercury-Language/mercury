@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,7 +50,8 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_goal, hlds_data, code_gen, trace.
+:- import_module builtin_ops, hlds_module, code_gen, trace.
+
 :- import_module char, map, tree, int, std_util, require, list.
 
 dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,

@@ -37,9 +37,11 @@
 
 :- implementation.
 
+:- import_module builtin_ops.
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
 :- import_module globals, options, continuation_info, stack_layout.
+
 :- import_module term, bool, string, int, list, map, require, std_util.
 
 :- type uni_val		--->	ref(prog_var)

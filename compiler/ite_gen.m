@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,9 +31,10 @@
 
 :- implementation.
 
+:- import_module prog_data, tree, builtin_ops.
 :- import_module code_gen, code_util, trace, options, globals, instmap.
-:- import_module prog_data, term.
-:- import_module bool, set, tree, list, map, std_util, require.
+
+:- import_module bool, set, term, list, map, std_util, require.
 
 ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		-->

@@ -26,7 +26,7 @@
 
 :- implementation.
 
-:- import_module opt_debug, vn_debug, vn_util.
+:- import_module builtin_ops, opt_debug, vn_debug, vn_util.
 :- import_module map, set, string, std_util, require.
 
 vn_verify__ok(Instrs, Uinstr0, SeenIncr0, SeenIncr, Liveset0, Liveset,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -35,7 +35,7 @@
 
 :- implementation.
 
-:- import_module vn_util, vn_cost, opt_util, opt_debug.
+:- import_module builtin_ops, vn_util, vn_cost, opt_util, opt_debug.
 :- import_module map, int, string, require, std_util, assoc_list.
 
 %-----------------------------------------------------------------------------%

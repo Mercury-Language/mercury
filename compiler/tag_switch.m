@@ -27,8 +27,9 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, code_gen, trace.
+:- import_module builtin_ops, hlds_module, hlds_pred, code_gen, trace.
 :- import_module options, globals, type_util, prog_data.
+
 :- import_module assoc_list, map, tree, bool, int, string.
 :- import_module require, std_util.
 

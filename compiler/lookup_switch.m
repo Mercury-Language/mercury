@@ -68,10 +68,11 @@
 
 :- implementation.
 
-:- import_module int, require, bool, assoc_list.
-:- import_module code_gen, type_util, tree.
+:- import_module builtin_ops, code_gen, type_util, tree.
 :- import_module dense_switch, globals, options, mode_util.
 :- import_module exprn_aux, getopt, prog_data, instmap.
+
+:- import_module int, require, bool, assoc_list.
 
 	% Most of this predicate is taken from dense_switch.m
 

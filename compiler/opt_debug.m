@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module vn_type, vn_table, livemap.
-:- import_module llds, atsort.
+:- import_module llds, builtin_ops, atsort.
 
 :- import_module io, bool, list, assoc_list, std_util.
 

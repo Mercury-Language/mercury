@@ -82,7 +82,13 @@
 
 :- import_module code_util, hlds_pred, hlds_data, inst_match.
 :- import_module instmap, mode_util, tree, type_util, prog_out.
-:- import_module rl_out, llds, inlining, hlds_goal, prog_util.
+:- import_module rl_out, inlining, hlds_goal, prog_util.
+
+% Note: the reason that we need to import llds and builtin_ops here is that
+% we generate code for builtins by first converting the builtin to LLDS
+% and then converting the LLDS to RL.
+:- import_module llds, builtin_ops.
+
 :- import_module assoc_list, bool, char, int, map.
 :- import_module require, set, std_util, string, term, varset.
 
