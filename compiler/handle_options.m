@@ -501,8 +501,8 @@ long_usage -->
  	io__write_string("Copyright (C) 1993-1998 The University of Melbourne\n"),
 	io__write_string("Usage: mmc [<options>] <arguments>\n"),
 	io__write_string("Arguments:\n"),
-	io__write_string("\t\tArguments ending in `.m' are assumed to be source file names.\n"),
-	io__write_string("\t\tArguments that do not end in `.m' are assumed to be module names.\n"),
+	io__write_string("\tArguments ending in `.m' are assumed to be source file names.\n"),
+	io__write_string("\tArguments that do not end in `.m' are assumed to be module names.\n"),
 	io__write_string("Options:\n"),
 	options_help.
 
