@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------r
-% Copyright (C) 1993-2003 The University of Melbourne.
+% Copyright (C) 1993-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2772,12 +2772,18 @@ io__check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
 		Result = error(FileTypeError)
 	).
 
-:- pred have_dotnet_exec_permission(io__res, io__state, io__state).
-:- mode have_dotnet_exec_permission(out, di, uo) is det.
+:- pred have_dotnet_exec_permission(io__res::out, io__state::di, io__state::uo)
+	is det.
 
-have_dotnet_exec_permission(_, !IO) :-
-	error(
-	"io.have_dotnet_exec_permission invoked for non-.NET CLI backend").
+have_dotnet_exec_permission(Res, !IO) :-
+	% avoid determinism warnings
+	( semidet_succeed ->
+		error("io.have_dotnet_exec_permission invoked " ++
+			"for non-.NET CLI backend")
+	;
+		% never reached
+		Res = ok
+	).
 
 :- pragma foreign_proc("C#",
 	have_dotnet_exec_permission(Result::out, _IO0::di, _IO::uo),
@@ -2798,11 +2804,17 @@ have_dotnet_exec_permission(_, !IO) :-
 }").
 
 :- pred check_directory_accessibility_dotnet(string::in, int::in, int::in,
-		io__res::out, io__state::di, io__state::uo) is det.
+	io__res::out, io__state::di, io__state::uo) is det.
 
-check_directory_accessibility_dotnet(_, _, _, _, _, _) :-
-	error(
-"io.check_directory_accessibility_dotnet called for non-.NET CLI backend").
+check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
+	% avoid determinism warnings
+	( semidet_succeed ->
+		error("io.check_directory_accessibility_dotnet called " ++
+			"for non-.NET CLI backend")
+	;
+		% never reached
+		Res = ok
+	).
 
 :- pragma foreign_proc("C#",
 	check_directory_accessibility_dotnet(FileName::in, CheckRead::in,
