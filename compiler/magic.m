@@ -915,8 +915,9 @@ magic__interface_from_c(EntryPoints, CPredProcId, AditiPredProcId) -->
 			PredInfo1, ProcInfo, ModuleInfo) },
 		magic_info_set_module_info(ModuleInfo)
 	;
-		magic__create_input_join_proc(CPredProcId, AditiPredProcId,
-			JoinPredProcId),
+		{ magic__create_input_join_proc(CPredProcId, AditiPredProcId,
+			JoinPredProcId, ModuleInfo1, ModuleInfo) },
+		magic_info_set_module_info(ModuleInfo),
 		
 		%
 		% Create a procedure which is just a synonym
@@ -928,198 +929,135 @@ magic__interface_from_c(EntryPoints, CPredProcId, AditiPredProcId) -->
 	% Make a procedure which calls the Aditi predicate, then joins
 	% the result with the input and projects out the input arguments.
 :- pred magic__create_input_join_proc(pred_proc_id::in, pred_proc_id::in,
-		pred_proc_id::out, magic_info::in, magic_info::out) is det.		
-magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
-	magic_info_get_module_info(ModuleInfo0),
-	{ module_info_pred_proc_info(ModuleInfo0, CPredProcId,
-		CPredInfo, CProcInfo) },
-	{ proc_info_argmodes(CProcInfo, ArgModes0) },
-	{ pred_info_arg_types(CPredInfo, ArgTypes) },
-	{ type_util__remove_aditi_state(ArgTypes, ArgModes0, ArgModes) },
-	{ partition_args(ModuleInfo0, ArgModes, ArgModes,
-		InputArgModes, OutputArgModes) },
-	(
-		% If the Aditi procedure has no inputs we don't need to
-		% do anything unless it is a base relation.
-		{ InputArgModes = [] },
-		{ \+ hlds_pred__pred_info_is_base_relation(CPredInfo) }
-	->
-		% Set the procedure to exported.
-		{ AditiPredProcId = proc(AditiPredId, _) },
-		{ module_info_pred_info(ModuleInfo0,
-			AditiPredId, AditiPredInfo0) },
-		{ pred_info_set_import_status(AditiPredInfo0,
-			exported, AditiPredInfo) },
-		{ module_info_set_pred_info(ModuleInfo0,
-			AditiPredId, AditiPredInfo, ModuleInfo) },
-		magic_info_set_module_info(ModuleInfo),
-		{ JoinPredProcId = AditiPredProcId }
-	;	
-		{ hlds_pred__pred_info_is_base_relation(CPredInfo) },
-		{ InputArgModes = [] }
-	->
-		% No join with the input is needed for a base relation
-		% with no input arguments.
-		{ proc_info_headvars(CProcInfo, HeadVars0) },
-		{ type_util__remove_aditi_state(ArgTypes,
-			HeadVars0, HeadVars) },
+		pred_proc_id::out, module_info::in, module_info::out) is det.
 
-		% Build a call to the original C proc.
-		{ set__list_to_set(HeadVars, NonLocals) },
-		{ instmap_delta_from_mode_list(HeadVars0, ArgModes0,
-			ModuleInfo0, Delta) },
-		{ proc_info_inferred_determinism(CProcInfo, Detism) },
-		{ goal_info_init(NonLocals, Delta, Detism, CallGoalInfo) },
-		{ pred_info_module(CPredInfo, PredModule) },
-		{ pred_info_name(CPredInfo, PredName) },
-		{ AditiPredProcId = proc(AditiPredId, AditiProcId) },
-		{ CallGoal = call(AditiPredId, AditiProcId, HeadVars,
-			not_builtin, no, qualified(PredModule, PredName))
-				- CallGoalInfo },
+magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
+		ModuleInfo0, ModuleInfo) :-
+	module_info_pred_proc_info(ModuleInfo0, CPredProcId,
+		CPredInfo, CProcInfo),
+	proc_info_argmodes(CProcInfo, ArgModes0),
+	pred_info_arg_types(CPredInfo, ArgTypes),
+	type_util__remove_aditi_state(ArgTypes, ArgModes0, ArgModes),
+	partition_args(ModuleInfo0, ArgModes, ArgModes,
+		InputArgModes, OutputArgModes),
 
-		{ JoinProcInfo0 = CProcInfo },
-		{ proc_info_set_headvars(JoinProcInfo0,
-			HeadVars, JoinProcInfo1) },
-		{ proc_info_set_argmodes(JoinProcInfo1,
-			ArgModes, JoinProcInfo2) },
+	%
+	% The interface procedure on the Aditi side must have
+	% only one input closure argument.
+	%
+	proc_info_vartypes(CProcInfo, VarTypes0),
+	proc_info_headvars(CProcInfo, HeadVars0),
+	type_util__remove_aditi_state(ArgTypes,
+		HeadVars0, HeadVars),
 
-		% Imported procedures such as base relations have nothing
-		% in their vartypes field, so create it here.
-		{ map__from_corresponding_lists(HeadVars0,
-			ArgTypes, VarTypes) },
-		{ proc_info_set_vartypes(JoinProcInfo2,
-			VarTypes, JoinProcInfo3) },
-		{ proc_info_set_goal(JoinProcInfo3, CallGoal, JoinProcInfo) },
-		magic__build_join_pred_info(CPredProcId, CPredInfo,
-			JoinProcInfo, HeadVars, JoinPredProcId, _JoinPredInfo1)
+	partition_args(ModuleInfo0, ArgModes, HeadVars,
+		InputArgs, OutputArgs),
+
+	map__apply_to_list(InputArgs, VarTypes0, InputVarTypes),
+
+	construct_higher_order_type(predicate, (aditi_bottom_up),
+		InputVarTypes, ClosureVarType),
+	list__map(magic_util__mode_to_output_mode(ModuleInfo0),
+		InputArgModes, MagicArgModes),
+
+	JoinProcInfo0 = CProcInfo,
+	proc_info_create_var_from_type(JoinProcInfo0,
+		ClosureVarType, ClosureVar, JoinProcInfo1),
+
+
+	%
+	% Build a goal to call the input closure.
+	%
+
+	set__list_to_set([ClosureVar | InputArgs],
+		HOCallNonLocals),
+	instmap_delta_from_mode_list(InputArgs, MagicArgModes,
+		ModuleInfo0, HOCallDelta),
+	goal_info_init(HOCallNonLocals, HOCallDelta, nondet,
+		InputGoalInfo),
+	list__length(InputArgs, Arity),
+	InputGoal = generic_call(
+		higher_order(ClosureVar, predicate, Arity),
+		InputArgs, MagicArgModes, nondet) - InputGoalInfo,
+
+	ClosureInst = ground(shared,
+	    yes(pred_inst_info(predicate, MagicArgModes, nondet))),
+	ClosureMode = (ClosureInst -> ClosureInst),
+	proc_info_set_argmodes(JoinProcInfo1,
+		[ClosureMode | OutputArgModes], JoinProcInfo2),
+	proc_info_set_headvars(JoinProcInfo2,
+		[ClosureVar | OutputArgs], JoinProcInfo3),
+
+	magic__build_join_pred_info(CPredProcId, CPredInfo,
+		JoinProcInfo3, [ClosureVar | OutputArgs],
+		JoinPredProcId, JoinPredInfo, ModuleInfo0, ModuleInfo1),
+
+	%
+	% Build a call to the Aditi procedure.
+	%
+
+	AditiPredProcId = proc(AditiPredId, AditiProcId),
+	proc_info_goal(CProcInfo, _ - CallGoalInfo0),
+
+	% Convert input arguments to output arguments, producing
+	% the tests which will make up the join condition.
+	magic_util__create_input_test_unifications(ModuleInfo1, HeadVars,
+		InputArgs, ArgModes, CallArgs0, [], Tests,
+		CallGoalInfo0, CallGoalInfo, JoinProcInfo3, JoinProcInfo4),
+
+	( hlds_pred__pred_info_is_base_relation(CPredInfo) ->
+		CallArgs = CallArgs0
 	;
-		% The interface procedure on the Aditi side must have
-		% only one input closure argument.
-		{ proc_info_vartypes(CProcInfo, VarTypes0) },
-		{ proc_info_headvars(CProcInfo, HeadVars0) },
-		{ type_util__remove_aditi_state(ArgTypes,
-			HeadVars0, HeadVars) },
+		CallArgs = [ClosureVar | CallArgs0]
+	),
 
-		{ partition_args(ModuleInfo0, ArgModes, HeadVars,
-			InputArgs, OutputArgs) },
+	module_info_pred_info(ModuleInfo1, AditiPredId, AditiPredInfo),
+	pred_info_module(AditiPredInfo, PredModule),
+	pred_info_name(AditiPredInfo, PredName),
+	CallGoal = call(AditiPredId, AditiProcId, CallArgs, not_builtin,
+		no, qualified(PredModule, PredName)) - CallGoalInfo,
 
-		{ map__apply_to_list(InputArgs, VarTypes0, InputVarTypes) },
-
-		{ construct_higher_order_type(predicate, (aditi_bottom_up),
-			InputVarTypes, ClosureVarType) },
-		{ list__map(magic_util__mode_to_output_mode(ModuleInfo0),
-			InputArgModes, MagicArgModes) },
-	
-		{ JoinProcInfo0 = CProcInfo },
-		{ proc_info_create_var_from_type(JoinProcInfo0,
-			ClosureVarType, ClosureVar, JoinProcInfo1) },
-
-		% Build a goal to call the input closure.
-		{ set__list_to_set([ClosureVar | InputArgs],
-			HOCallNonLocals) },
-		{ instmap_delta_from_mode_list(InputArgs, MagicArgModes,
-			ModuleInfo0, HOCallDelta) },
-		{ goal_info_init(HOCallNonLocals, HOCallDelta, nondet,
-			InputGoalInfo) },
-		{ list__length(InputArgs, Arity) },
-		{ InputGoal = generic_call(
-			higher_order(ClosureVar, predicate, Arity),
-			InputArgs, MagicArgModes, nondet) - InputGoalInfo },
-
-		% Build a call to the original C proc.
-		{ CPredProcId = proc(CPredId, CProcId) },
-		{ proc_info_goal(CProcInfo, _ - CallGoalInfo) },
-		{ pred_info_module(CPredInfo, PredModule) },
-		{ pred_info_name(CPredInfo, PredName) },
-		{ CallGoal = call(CPredId, CProcId, HeadVars0, not_builtin,
-			no, qualified(PredModule, PredName)) - CallGoalInfo },
-		magic_info_get_magic_map(MagicMap),
-		(
-			{ magic_util__goal_is_aditi_call(ModuleInfo0,
-				MagicMap, CallGoal, DBCall0, _) }
-		->
-			{ DBCall = DBCall0 }	
-		;
-			{ error("magic__create_input_join_proc: not db_call") }
-		),
-
-		{ ClosureInst = ground(shared,
-		    yes(pred_inst_info(predicate, MagicArgModes, nondet))) },
-		{ ClosureMode = (ClosureInst -> ClosureInst) },
-		{ proc_info_set_argmodes(JoinProcInfo1,
-			[ClosureMode | OutputArgModes], JoinProcInfo2) },
-		{ proc_info_set_headvars(JoinProcInfo2,
-			[ClosureVar | OutputArgs], JoinProcInfo3) },
-
-		magic__build_join_pred_info(CPredProcId, CPredInfo,
-			JoinProcInfo3, [ClosureVar | OutputArgs],
-			JoinPredProcId, JoinPredInfo1),
-
-		% Transform the new goal.
-		magic_info_set_magic_vars([ClosureVar]),
-		% We don't want the call to be treated as recursive.
-		magic_info_set_scc([]),	
-		magic_info_set_pred_info(JoinPredInfo1),
-		magic_info_set_proc_info(JoinProcInfo3),
-
-		% Use the ho-call goal as input to the C proc, transforming
-		% the call to the C proc into a call to the corresponding
-		% Aditi proc.
-		{ set__list_to_set([ClosureVar | HeadVars], CallNonLocals) },
-		magic_util__setup_call([InputGoal], DBCall, 
-			CallNonLocals, Goals),
-
-		magic_info_get_module_info(ModuleInfo10),
-		{ instmap_delta_from_mode_list(OutputArgs, OutputArgModes,
-			ModuleInfo10, GoalDelta) },
-		{ set__list_to_set([ClosureVar | OutputArgs],
-			GoalNonLocals) },
-		{ goal_info_init(GoalNonLocals, GoalDelta, nondet, GoalInfo) },
-		{ conj_list_to_goal(Goals, GoalInfo, Goal) },
-		magic_info_get_proc_info(JoinProcInfo10),
-		{ proc_info_set_goal(JoinProcInfo10, Goal, JoinProcInfo) },
-		magic_info_get_pred_info(JoinPredInfo),
-		{ module_info_set_pred_proc_info(ModuleInfo10, JoinPredProcId,
-			JoinPredInfo, JoinProcInfo, ModuleInfo) },
-		magic_info_set_module_info(ModuleInfo)
-	).
+	instmap_delta_from_mode_list(OutputArgs, OutputArgModes,
+		ModuleInfo1, GoalDelta),
+	set__list_to_set([ClosureVar | OutputArgs],
+		GoalNonLocals),
+	goal_info_init(GoalNonLocals, GoalDelta, nondet, GoalInfo),
+	conj_list_to_goal([InputGoal, CallGoal | Tests], GoalInfo,
+		JoinGoal),
+	proc_info_set_goal(JoinProcInfo4, JoinGoal, JoinProcInfo),
+	module_info_set_pred_proc_info(ModuleInfo1, JoinPredProcId,
+		JoinPredInfo, JoinProcInfo, ModuleInfo).
 
 :- pred magic__build_join_pred_info(pred_proc_id::in, pred_info::in,
 		proc_info::in, list(prog_var)::in, pred_proc_id::out,
-		pred_info::out, magic_info::in, magic_info::out) is det.
+		pred_info::out, module_info::in, module_info::out) is det.
 
 magic__build_join_pred_info(CPredProcId, CPredInfo, JoinProcInfo,
-		Args, JoinPredProcId, JoinPredInfo1) -->
-	{ proc_info_vartypes(JoinProcInfo, JoinVarTypes) },
-	{ map__apply_to_list(Args, JoinVarTypes,
-		NewArgTypes) },
-	{ pred_info_module(CPredInfo, PredModule) },
-	{ CPredProcId = proc(_, CProcId) },
-	magic_util__make_pred_name(CPredInfo, CProcId,
-		"Aditi_C_Interface_Proc_For", no, NewPredName),
-	{ init_markers(Markers0) },
-	{ add_marker(Markers0, aditi, Markers1) },
-	{ add_marker(Markers1, aditi_no_memo, Markers2) },
-	{ add_marker(Markers2, naive, Markers) },
-	{ ClassContext = constraints([], []) },
-	{ pred_info_get_aditi_owner(CPredInfo, User) },
-	{ varset__init(TVarSet) },	% must be empty.
-	{ term__context_init(DummyContext) },
-	{ ExistQVars = [] },
-	{ set__init(Assertions) },
-	{ pred_info_create(PredModule, NewPredName,
+		Args, JoinPredProcId, JoinPredInfo1,
+		ModuleInfo0, ModuleInfo) :-
+	proc_info_vartypes(JoinProcInfo, JoinVarTypes),
+	map__apply_to_list(Args, JoinVarTypes, NewArgTypes),
+	pred_info_module(CPredInfo, PredModule),
+	rl__get_c_interface_proc_name(ModuleInfo0, CPredProcId, NewPredName),
+	init_markers(Markers0),
+	add_marker(Markers0, aditi, Markers1),
+	add_marker(Markers1, aditi_no_memo, Markers2),
+	add_marker(Markers2, naive, Markers),
+	ClassContext = constraints([], []),
+	pred_info_get_aditi_owner(CPredInfo, User),
+	varset__init(TVarSet),	% must be empty.
+	term__context_init(DummyContext),
+	ExistQVars = [],
+	set__init(Assertions),
+	pred_info_create(PredModule, qualified(PredModule, NewPredName),
 		TVarSet, ExistQVars, NewArgTypes, true, DummyContext,
 		exported, Markers, predicate, ClassContext, User, Assertions,
-		JoinProcInfo, JoinProcId, JoinPredInfo1) },
+		JoinProcInfo, JoinProcId, JoinPredInfo1),
 
-	magic_info_get_module_info(ModuleInfo0),
-	{ module_info_get_predicate_table(ModuleInfo0, Preds0) },
-	{ predicate_table_insert(Preds0, JoinPredInfo1,
-		JoinPredId, Preds) },
-	{ JoinPredProcId = proc(JoinPredId, JoinProcId) },
-	{ module_info_set_predicate_table(ModuleInfo0,
-		Preds, ModuleInfo) },
-	magic_info_set_module_info(ModuleInfo).
+	module_info_get_predicate_table(ModuleInfo0, Preds0),
+	predicate_table_insert(Preds0, JoinPredInfo1, JoinPredId, Preds),
+	JoinPredProcId = proc(JoinPredId, JoinProcId),
+	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo).
 
 	% The new procedure consists of a `aditi_call' goal,
 	% which call_gen.m generates as a call to do_*_aditi_call in

@@ -593,6 +593,30 @@
 :- pred rl__get_entry_proc_name(module_info::in, pred_proc_id::in,
 		rl_proc_name::out) is det.
 
+	% rl__get_modify_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
+	%
+	% Get the name of the RL procedure used to apply a modification
+	% to a base relation.
+:- pred rl__get_modify_proc_name(module_info::in,
+		pred_id::in, rl_proc_name::out) is det.
+
+	% rl__get_delete_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
+	%
+	% Get the name of the RL procedure used to apply a deletion
+	% to a base relation.
+:- pred rl__get_delete_proc_name(module_info::in,
+		pred_id::in, rl_proc_name::out) is det.
+
+	% rl__get_c_interface_proc_name(ModuleInfo, PredProcId, ProcName).
+	%
+	% Get the name of the RL procedure used to call an Aditi
+	% procedure from ordinary Mercury code.
+:- pred rl__get_c_interface_proc_name(module_info::in, pred_proc_id::in,
+		string::out) is det.
+
+:- pred rl__get_c_interface_rl_proc_name(module_info::in, pred_proc_id::in,
+		rl_proc_name::out) is det.
+
 	% Work out the name for a permanent relation.
 :- pred rl__permanent_relation_name(module_info::in,
 		pred_id::in, string::out) is det.
@@ -640,7 +664,7 @@
 :- implementation.
 
 :- import_module code_util, code_aux, globals, llds_out, options, prog_out.
-:- import_module prog_util, type_util.
+:- import_module prog_util, type_util, llds.
 :- import_module bool, int, require, string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-
@@ -1022,15 +1046,72 @@ rl__swap_tuple_num(two, one).
 
 %-----------------------------------------------------------------------------%
 
-rl__get_entry_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName) :-
-	code_util__make_proc_label(ModuleInfo, PredId, ProcId, Label),
-	llds_out__get_proc_label(Label, no, ProcLabel),
+rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) :-
+	PredProcId = proc(PredId, _),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, PredModule0),
-	pred_info_get_aditi_owner(PredInfo, Owner),
-	prog_out__sym_name_to_string(PredModule0, PredModule),
-	ProcName = rl_proc_name(Owner, PredModule, ProcLabel, 2).
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, Arity),
+	rl__get_entry_proc_name(ModuleInfo, PredProcId,
+		PredInfo, PredName, Arity, ProcName).
 
+:- pred rl__get_entry_proc_name(module_info::in, pred_proc_id::in,
+	pred_info::in, string::in, arity::in, rl_proc_name::out) is det.
+
+rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo, PredName, Arity,
+		ProcName) :-
+	PredProcId = proc(_, ProcId),
+	module_info_name(ModuleInfo, ModuleName),
+	pred_info_import_status(PredInfo, ImportStatus),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_module(PredInfo, PredModule),
+	pred_info_get_aditi_owner(PredInfo, Owner),
+	code_util__make_user_proc_label(ModuleName, ImportStatus,
+		PredOrFunc, PredModule, PredName, Arity, ProcId, ProcLabel),
+	llds_out__get_proc_label(ProcLabel, no, ProcLabelStr),
+	prog_out__sym_name_to_string(PredModule, PredModuleStr),
+	ProcName = rl_proc_name(Owner, PredModuleStr, ProcLabelStr, 2).
+
+rl__get_modify_proc_name(ModuleInfo, PredId, ProcName) :-
+	rl__get_update_proc_name(ModuleInfo, PredId,
+		"Aditi_Modify_Proc_For_", ProcName).
+
+rl__get_delete_proc_name(ModuleInfo, PredId, ProcName) :-
+	rl__get_update_proc_name(ModuleInfo, PredId,
+		"Aditi_Delete_Proc_For_", ProcName).
+
+:- pred rl__get_update_proc_name(module_info::in,
+		pred_id::in, string::in, rl_proc_name::out) is det.
+
+rl__get_update_proc_name(ModuleInfo, PredId, ProcNamePrefix, ProcName) :-
+	hlds_pred__initial_proc_id(ProcId),
+	rl__get_entry_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName0),
+	ProcName0 = rl_proc_name(Owner, Module, Name0, Arity),
+	string__append(ProcNamePrefix, Name0, Name),
+	ProcName = rl_proc_name(Owner, Module, Name, Arity).
+
+rl__get_c_interface_proc_name(ModuleInfo, PredProcId, PredName) :-
+	PredProcId = proc(PredId, ProcId),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_name(PredInfo, PredName0),
+	proc_id_to_int(ProcId, ProcInt),
+	string__int_to_string(ProcInt, ProcStr),
+	string__append_list(["Aditi_C_Interface_Proc_For_Mode_", ProcStr,
+		"_Of_", PredName0], PredName).
+
+rl__get_c_interface_rl_proc_name(ModuleInfo, PredProcId, ProcName) :-
+	rl__get_c_interface_proc_name(ModuleInfo, PredProcId, PredName),
+	PredProcId = proc(PredId, _),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	list__filter(type_is_aditi_state, ArgTypes, AditiStates),
+	list__length(AditiStates, NumAditiStates),
+	list__length(ArgTypes, OrigArity),
+
+	% The plus one is for the input closure argument.
+	InterfaceArity = OrigArity - NumAditiStates + 1,
+	rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo,
+		PredName, InterfaceArity, ProcName).
+			
 rl__permanent_relation_name(ModuleInfo, PredId, ProcName) :-
 	rl__get_permanent_relation_info(ModuleInfo, PredId, Owner,
 		Module, _, _, Name, _),

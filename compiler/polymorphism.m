@@ -869,10 +869,13 @@ polymorphism__process_goal_expr(GoalExpr0, GoalInfo0, Goal) -->
 	{ GoalExpr0 = generic_call(GenericCall, Args0, Modes0, Det) },
 
 	%
-	% For aditi_insert calls, we need to add type-infos for
-	% the tuple to insert.
+	% For `aditi_insert' and `aditi_delete' calls, we need to add
+	% type-infos for the tuple to insert.
 	% 
-	( { GenericCall = aditi_builtin(aditi_insert(_), _) } ->
+	(
+		{ GenericCall = aditi_builtin(
+				aditi_tuple_insert_delete(_, _), _) }
+	->
 		% Aditi base relations must be monomorphic. 
 		{ term__context_init(Context) },
 		

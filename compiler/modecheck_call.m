@@ -120,10 +120,10 @@ modecheck_aditi_builtin(AditiBuiltin, CallId,
 		Args0, Modes, Det, Args, ExtraGoals) -->
 	{ aditi_builtin_determinism(AditiBuiltin, Det) },
 
-	% `aditi_insert' goals have type_info arguments for each
-	% of the arguments of the tuple to insert added to the
-	% start of the argument list by polymorphism.m.
-	( { AditiBuiltin = aditi_insert(_) } ->
+	% `aditi_insert' and `aditi_delete' goals have type_info
+	% arguments for each of the arguments of the tuple to
+	% insert added to the start of the argument list by polymorphism.m.
+	( { AditiBuiltin = aditi_tuple_insert_delete(_, _) } ->
 		{ CallId = _ - _/Arity },
 		{ ArgOffset = -Arity }
 	;
@@ -140,10 +140,8 @@ modecheck_aditi_builtin(AditiBuiltin, CallId,
 aditi_builtin_determinism(aditi_call(_, _, _, _), _) :-
 	error(
 	"modecheck_call__aditi_builtin_determinism: unexpected Aditi call"). 
-aditi_builtin_determinism(aditi_insert(_), det).
-aditi_builtin_determinism(aditi_delete(_, _), det).
-aditi_builtin_determinism(aditi_bulk_operation(_, _), det).
-aditi_builtin_determinism(aditi_modify(_, _), det).
+aditi_builtin_determinism(aditi_tuple_insert_delete(_, _), det).
+aditi_builtin_determinism(aditi_insert_delete_modify(_, _, _), det).
 
 :- pred modecheck_arg_list(int, list(mode), extra_goals,
 		list(prog_var), list(prog_var), mode_info, mode_info).

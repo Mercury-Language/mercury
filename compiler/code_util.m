@@ -54,6 +54,15 @@
 :- pred code_util__make_proc_label(module_info, pred_id, proc_id, proc_label).
 :- mode code_util__make_proc_label(in, in, in, out) is det.
 
+	% code_util__make_user_proc_label(ModuleName, ImportStatus,
+	%	PredOrFunc, ModuleName, PredName, Arity, ProcId, Label)
+	%
+	% Make a proc_label for a user-defined procedure.
+:- pred code_util__make_user_proc_label(module_name, import_status,
+	pred_or_func, module_name, string, arity, proc_id, proc_label).
+:- mode code_util__make_user_proc_label(in, in,
+	in, in, in, in, in, out) is det.
+
 :- pred code_util__make_uni_label(module_info, type_id, proc_id, proc_label).
 :- mode code_util__make_uni_label(in, in, in, out) is det.
 
@@ -272,23 +281,32 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 			error(ErrorMessage)
 		)
 	;
-		(
-			% Work out which module supplies the code for
-			% the predicate.
-			ThisModule \= PredModule,
-			\+ pred_info_is_imported(PredInfo)
-		->
-			% This predicate is a specialized version of 
-			% a pred from a `.opt' file.
-			DefiningModule = ThisModule
-		;	
-			DefiningModule = PredModule
-		),
 		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-		pred_info_arity(PredInfo, Arity),
-		ProcLabel = proc(DefiningModule, PredOrFunc,
-			PredModule, PredName, Arity, ProcId)
+		pred_info_import_status(PredInfo, ImportStatus),
+		pred_info_arity(PredInfo, PredArity),
+		code_util__make_user_proc_label(ThisModule, ImportStatus,
+			PredOrFunc, PredModule, PredName, PredArity,
+			ProcId, ProcLabel)
 	).
+
+code_util__make_user_proc_label(ThisModule, ImportStatus,
+		PredOrFunc, PredModule, PredName, PredArity,
+		ProcId, ProcLabel) :-
+
+	(
+		% Work out which module supplies the code for
+		% the predicate.
+		ThisModule \= PredModule,
+		ImportStatus \= imported(_)
+	->
+		% This predicate is a specialized version of 
+		% a pred from a `.opt' file.
+		DefiningModule = ThisModule
+	;	
+		DefiningModule = PredModule
+	),
+	ProcLabel = proc(DefiningModule, PredOrFunc,
+		PredModule, PredName, PredArity, ProcId).
 
 code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 	module_info_name(ModuleInfo, ModuleName),

@@ -88,11 +88,11 @@
 	% Convert all modes to output, creating test unifications 
 	% where the original mode was input. This will result in
 	% a join on the input attributes.
-:- pred magic_util__create_input_test_unifications(list(prog_var)::in,
-		list(prog_var)::in, list(mode)::in, list(prog_var)::out,
-		list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred magic_util__create_input_test_unifications(module_info::in,
+		list(prog_var)::in, list(prog_var)::in, list(mode)::in,
+		list(prog_var)::out, list(hlds_goal)::in, list(hlds_goal)::out,
 		hlds_goal_info::in, hlds_goal_info::out,
-		magic_info::in, magic_info::out) is det.
+		proc_info::in, proc_info::out) is det.
 		
 	% Convert an input mode to output.
 :- pred magic_util__mode_to_output_mode(module_info::in,
@@ -372,14 +372,17 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 			% the input matches the output.
 			magic_info_get_module_info(ModuleInfo),
 			{ module_info_pred_proc_info(ModuleInfo, PredProcId,
-				PredInfo, ProcInfo) },
-			{ pred_info_module(PredInfo, PredModule) },
-			{ pred_info_name(PredInfo, PredName) },
+				CalledPredInfo, CalledProcInfo) },
+			{ pred_info_module(CalledPredInfo, PredModule) },
+			{ pred_info_name(CalledPredInfo, PredName) },
 			{ Name = qualified(PredModule, PredName) },
-			{ proc_info_argmodes(ProcInfo, ArgModes) },
-			magic_util__create_input_test_unifications(Args,
-				InputArgs, ArgModes, NewArgs, [], Tests,
-				CallGoalInfo0, CallGoalInfo1),
+			{ proc_info_argmodes(CalledProcInfo, ArgModes) },
+			magic_info_get_proc_info(ProcInfo0),
+			{ magic_util__create_input_test_unifications(
+				ModuleInfo, Args, InputArgs, ArgModes,
+				NewArgs, [], Tests, CallGoalInfo0,
+				CallGoalInfo1, ProcInfo0, ProcInfo) },
+			magic_info_set_proc_info(ProcInfo),
 			{ goal_info_get_nonlocals(CallGoalInfo1,
 				CallNonLocals1) },
 			magic_util__restrict_nonlocals(CallNonLocals1,
@@ -388,7 +391,7 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 				CallGoalInfo) },
 			{ CallGoal = call(PredId, ProcId, NewArgs,
 				not_builtin, no, Name) - CallGoalInfo }
-		;	
+		;
 			% Transform away the input arguments. 
 			magic_util__handle_input_args(PredProcId0, PredProcId,
 				PrevGoals, NonLocals, Args, InputArgs,
@@ -516,8 +519,12 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 
 	% Convert input args to outputs, and test that
 	% the input matches the output.
-	magic_util__create_input_test_unifications(Args, InputArgs,
-		OldArgModes, NewOutputArgs, [], Tests, GoalInfo0, GoalInfo1),
+	magic_info_get_module_info(ModuleInfo1),
+	magic_info_get_proc_info(ProcInfo0),
+	{ magic_util__create_input_test_unifications(ModuleInfo1,
+		Args, InputArgs, OldArgModes, NewOutputArgs, [], Tests,
+		GoalInfo0, GoalInfo1, ProcInfo0, ProcInfo) },
+	magic_info_set_proc_info(ProcInfo),
 
 	% All database predicates are considered nondet after this.
 	{ goal_info_set_determinism(GoalInfo1, 
@@ -549,76 +556,79 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 	{ CallGoal = call(PredId, ProcId, AllArgs, not_builtin, no,
 			qualified(PredModule, PredName)) - GoalInfo }.
 
-magic_util__create_input_test_unifications([], _, [_|_], _, _, _, _, _) --> 
-	{ error("magic_util__create_input_test_unifications") }.
-magic_util__create_input_test_unifications([_|_], _, [], _, _, _, _, _) -->
-	{ error("magic_util__create_input_test_unifications") }.
-magic_util__create_input_test_unifications([], _, [], [], Tests, Tests,
-		CallInfo, CallInfo) --> [].
-magic_util__create_input_test_unifications([Var | Vars], InputArgs,
+magic_util__create_input_test_unifications(_, [], _, [_|_],
+		_, _, _, _, _, _, _) :-
+	error("magic_util__create_input_test_unifications").
+magic_util__create_input_test_unifications(_, [_|_], _, [],
+		_, _, _, _, _, _, _) :-
+	error("magic_util__create_input_test_unifications").
+magic_util__create_input_test_unifications(_, [], _, [], [], Tests, Tests,
+		CallInfo, CallInfo, ProcInfo, ProcInfo).
+magic_util__create_input_test_unifications(ModuleInfo, [Var | Vars], InputArgs,
 		[Mode | Modes], [OutputVar | OutputVars], Tests0, Tests,
-		CallInfo0, CallInfo) -->
-	( { list__member(Var, InputArgs) } ->
-		magic_util__create_input_test_unification(Var, Mode,
-			OutputVar, Test, CallInfo0, CallInfo1),
-		{ Tests1 = [Test | Tests0] }
+		CallInfo0, CallInfo, ProcInfo0, ProcInfo) :-
+	( list__member(Var, InputArgs) ->
+		magic_util__create_input_test_unification(ModuleInfo,
+			Var, Mode, OutputVar, Test, CallInfo0, CallInfo1,
+			ProcInfo0, ProcInfo1),
+		Tests1 = [Test | Tests0]
 	;
-		{ OutputVar = Var },
-		{ CallInfo1 = CallInfo0 },
-		{ Tests1 = Tests0 }
+		ProcInfo1 = ProcInfo0,
+		OutputVar = Var,
+		CallInfo1 = CallInfo0,
+		Tests1 = Tests0
 	),	
-	magic_util__create_input_test_unifications(Vars, InputArgs, Modes, 
-		OutputVars, Tests1, Tests, CallInfo1, CallInfo).
+	magic_util__create_input_test_unifications(ModuleInfo, Vars, InputArgs,
+		Modes, OutputVars, Tests1, Tests, CallInfo1, CallInfo,
+		ProcInfo1, ProcInfo).
 
-:- pred magic_util__create_input_test_unification(prog_var::in, (mode)::in,
-		prog_var::out, hlds_goal::out, hlds_goal_info::in,
-		hlds_goal_info::out, magic_info::in, magic_info::out) is det.
+:- pred magic_util__create_input_test_unification(module_info::in,
+		prog_var::in, (mode)::in, prog_var::out,
+		hlds_goal::out, hlds_goal_info::in,
+		hlds_goal_info::out, proc_info::in, proc_info::out) is det.
 
-magic_util__create_input_test_unification(Var, Mode, OutputVar, Test,
-		CallInfo0, CallInfo) -->
-	magic_info_get_module_info(ModuleInfo0),
-	{ mode_get_insts(ModuleInfo0, Mode, _, FinalInst) }, 
-	magic_info_get_proc_info(ProcInfo0),
-	{ proc_info_varset(ProcInfo0, VarSet0) },
-	{ varset__new_var(VarSet0, OutputVar, VarSet) },
-	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
-	{ map__lookup(VarTypes0, Var, VarType) },
-	{ map__det_insert(VarTypes0, OutputVar, VarType, VarTypes) },
-	{ proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1) },
-	{ proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo) },
-	magic_info_set_proc_info(ProcInfo),
+magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
+		Test, CallInfo0, CallInfo, ProcInfo0, ProcInfo) :-
+	mode_get_insts(ModuleInfo, Mode, _, FinalInst), 
+	proc_info_varset(ProcInfo0, VarSet0),
+	varset__new_var(VarSet0, OutputVar, VarSet),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	map__lookup(VarTypes0, Var, VarType),
+	map__det_insert(VarTypes0, OutputVar, VarType, VarTypes),
+	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
+	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo),
 
-	{ set__list_to_set([Var, OutputVar], NonLocals) },
-	{ instmap_delta_init_reachable(InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, semidet, GoalInfo) },
-	( { type_is_atomic(VarType, ModuleInfo0) } ->
+	set__list_to_set([Var, OutputVar], NonLocals),
+	instmap_delta_init_reachable(InstMapDelta),
+	goal_info_init(NonLocals, InstMapDelta, semidet, GoalInfo),
+	( type_is_atomic(VarType, ModuleInfo) ->
 		%
 		% The type is a builtin, so create a simple_test unification.
 		%
-		{ Unification = simple_test(Var, OutputVar) },
-		{ UnifyMode = ((FinalInst -> FinalInst) 
-			- (FinalInst -> FinalInst)) },
-		{ Test = unify(Var, var(OutputVar), UnifyMode,
-			Unification, unify_context(explicit, [])) - GoalInfo }
-	; { type_to_type_id(VarType, _TypeId, _ArgTypes) } ->
+		Unification = simple_test(Var, OutputVar),
+		UnifyMode = ((FinalInst -> FinalInst) 
+			- (FinalInst -> FinalInst)),
+		Test = unify(Var, var(OutputVar), UnifyMode,
+			Unification, unify_context(explicit, [])) - GoalInfo
+	; type_to_type_id(VarType, _TypeId, _ArgTypes) ->
 		% XXX for now we pretend that the unification is
 		% a simple test, since otherwise we would have to
 		% go through the rigmarole of creating type_info variables
 		% (and then ignoring them in code generation).
-		{ Unification = simple_test(Var, OutputVar) },
-		{ UnifyMode = ((FinalInst -> FinalInst) 
-			- (FinalInst -> FinalInst)) },
-		{ Test = unify(Var, var(OutputVar), UnifyMode,
-			Unification, unify_context(explicit, [])) - GoalInfo }
+		Unification = simple_test(Var, OutputVar),
+		UnifyMode = ((FinalInst -> FinalInst) 
+			- (FinalInst -> FinalInst)),
+		Test = unify(Var, var(OutputVar), UnifyMode,
+			Unification, unify_context(explicit, [])) - GoalInfo
 
 		/*
 		% 
 		% The type is non-builtin, so look up the unification 
 		% procedure for the type.
 		%
-		{ module_info_get_special_pred_map(ModuleInfo0,
-			SpecialPredMap) },
-		{ map__lookup(SpecialPredMap, unify - TypeId, UniPredId) },
+		module_info_get_special_pred_map(ModuleInfo,
+			SpecialPredMap),
+		map__lookup(SpecialPredMap, unify - TypeId, UniPredId),
 
 		% It had better be an in-in unification, since Aditi
 		% relations cannot have non-ground arguments. This is 
@@ -626,23 +636,23 @@ magic_util__create_input_test_unification(Var, Mode, OutputVar, Test,
 		% XXX __Unify__/2 needs to be special cased in rl_exprn.m 
 		% because we don't add the type_info arguments.
 
-		{ hlds_pred__in_in_unification_proc_id(UniProcId) },
-		{ SymName = unqualified("__Unify__") },
-		{ ArgVars = [Var, OutputVar] },
-		{ Test = call(UniPredId, UniProcId, ArgVars, not_builtin,
-			no, SymName) - GoalInfo }
+		hlds_pred__in_in_unification_proc_id(UniProcId),
+		SymName = unqualified("__Unify__"),
+		ArgVars = [Var, OutputVar],
+		Test = call(UniPredId, UniProcId, ArgVars, not_builtin,
+			no, SymName) - GoalInfo
 		*/
 	;
-		{ error("magic_util__create_input_test_unifications: \
-			type_to_type_id failed") }
+		error("magic_util__create_input_test_unifications: \
+			type_to_type_id failed")
 	),
-	{ goal_info_get_nonlocals(CallInfo0, CallNonLocals0) },
-	{ set__delete(CallNonLocals0, Var, CallNonLocals1) },
-	{ set__insert(CallNonLocals1, OutputVar, CallNonLocals) },
-	{ goal_info_get_instmap_delta(CallInfo0, CallDelta0) },
-	{ instmap_delta_insert(CallDelta0, OutputVar, FinalInst, CallDelta) },
-	{ goal_info_set_nonlocals(CallInfo0, CallNonLocals, CallInfo1) },
-	{ goal_info_set_instmap_delta(CallInfo1, CallDelta, CallInfo) }.
+	goal_info_get_nonlocals(CallInfo0, CallNonLocals0),
+	set__delete(CallNonLocals0, Var, CallNonLocals1),
+	set__insert(CallNonLocals1, OutputVar, CallNonLocals),
+	goal_info_get_instmap_delta(CallInfo0, CallDelta0),
+	instmap_delta_insert(CallDelta0, OutputVar, FinalInst, CallDelta),
+	goal_info_set_nonlocals(CallInfo0, CallNonLocals, CallInfo1),
+	goal_info_set_instmap_delta(CallInfo1, CallDelta, CallInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1127,8 +1137,15 @@ magic_util__check_args_2([Var | Vars], [ArgMode | ArgModes],
 		magic_info_get_curr_pred_proc_id(PredProcId),
 		magic_info_get_module_info(ModuleInfo),
 		( { type_is_aditi_state(ArgType) } ->
-			( { \+  mode_is_input(ModuleInfo, ArgMode) } ->
-				% aditi__states must be input
+			(
+				{ \+ mode_is_input(ModuleInfo, ArgMode) },
+
+				% The second `aditi__state' of the closure
+				% passed to `aditi_bulk_modify' has mode
+				% `unused'.
+				{ \+ mode_is_unused(ModuleInfo, ArgMode) }
+			->
+				% aditi__states must not be output.
 				{ StateError =
 					[argument_error(output_aditi_state,
 						ArgId, PredProcId) - Context] }

@@ -417,7 +417,7 @@ livemap__special_code_addr(do_aditi_insert, no).
 livemap__special_code_addr(do_aditi_delete, no).
 livemap__special_code_addr(do_aditi_bulk_insert, no).
 livemap__special_code_addr(do_aditi_bulk_delete, no).
-livemap__special_code_addr(do_aditi_modify, no).
+livemap__special_code_addr(do_aditi_bulk_modify, no).
 livemap__special_code_addr(do_not_reached, no).
 
 %-----------------------------------------------------------------------------%

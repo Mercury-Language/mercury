@@ -1153,55 +1153,58 @@ typecheck_aditi_builtin(CallId, Args, Builtin0, Builtin) -->
 typecheck_aditi_builtin_2(_, _, aditi_call(_, _, _, _), _) -->
 	% There are only added by magic.m.
 	{ error("typecheck_aditi_builtin: unexpected aditi_call") }.
-typecheck_aditi_builtin_2(CallId, Args, aditi_insert(_),
-		aditi_insert(PredId)) -->
-	% The tuple to insert has the same argument types
-	% as the relation being inserted into.
+typecheck_aditi_builtin_2(CallId, Args,
+		aditi_tuple_insert_delete(InsertDelete, _),
+		aditi_tuple_insert_delete(InsertDelete, PredId)) -->
+	% The tuple to insert or delete has the same argument types
+	% as the relation being inserted into or deleted from.
 	typecheck_call_pred(CallId, Args, PredId).
-typecheck_aditi_builtin_2(CallId, Args, aditi_delete(_, Syntax),
-		aditi_delete(PredId, Syntax)) -->
-	typecheck_aditi_delete_or_bulk_operation_closure(CallId,
-		(aditi_top_down), Args, PredId).
-typecheck_aditi_builtin_2(CallId, Args, aditi_bulk_operation(BulkOp, _), 
-		aditi_bulk_operation(BulkOp, PredId)) -->
-	typecheck_aditi_delete_or_bulk_operation_closure(CallId,
-		(aditi_bottom_up), Args, PredId).
-typecheck_aditi_builtin_2(CallId, Args, aditi_modify(_, Syntax),
-		aditi_modify(PredId, Syntax)) -->
-	% `aditi_modify' takes a closure which takes two sets of arguments
-	% corresponding to those of the base relation - one set input
-	% and one set output.
-	{ AdjustArgTypes = 
-	    lambda([RelationArgTypes::in, AditiModifyTypes::out] is det, (
-			list__append(RelationArgTypes, RelationArgTypes,
-				ClosureArgTypes),
-			construct_higher_order_pred_type((aditi_top_down),
-				ClosureArgTypes, ClosureType),
-			AditiModifyTypes = [ClosureType]
-	    )) },
-	typecheck_aditi_builtin_closure(CallId, Args, AdjustArgTypes, PredId).
+typecheck_aditi_builtin_2(CallId, Args,
+		aditi_insert_delete_modify(InsertDelMod, _, Syntax),
+		aditi_insert_delete_modify(InsertDelMod, PredId, Syntax)) -->
+	{ aditi_insert_del_mod_eval_method(InsertDelMod, EvalMethod) },
 
-	% Typecheck the closure passed to an `aditi_delete',
-	% `aditi_bulk_insert' or `aditi_bulk_delete' which
-	% determines which tuples are inserted or deleted. 
-	% The argument types of the closure are the same as the
-	% argument types of the base relation being updated.
-:- pred typecheck_aditi_delete_or_bulk_operation_closure(simple_call_id,
-		lambda_eval_method, list(prog_var), pred_id,
-		typecheck_info, typecheck_info).
-:- mode typecheck_aditi_delete_or_bulk_operation_closure(in, in, in, out,
-		typecheck_info_di, typecheck_info_uo) is det.
-
-typecheck_aditi_delete_or_bulk_operation_closure(CallId,
-		EvalMethod, Args, PredId) -->
 	{ CallId = PredOrFunc - _ },
-	{ AdjustArgTypes = 
+	{ InsertDeleteAdjustArgTypes = 
 	    lambda([RelationArgTypes::in, UpdateArgTypes::out] is det, (
 			construct_higher_order_type(PredOrFunc,
 				EvalMethod, RelationArgTypes, ClosureType),
 			UpdateArgTypes = [ClosureType]
 	    )) },
+
+	% `aditi_modify' takes a closure which takes two sets of arguments
+	% corresponding to those of the base relation, one set for
+	% the tuple to delete, and one for the tuple to insert.
+	{ ModifyAdjustArgTypes = 
+	    lambda([RelationArgTypes::in, AditiModifyTypes::out] is det, (
+			list__append(RelationArgTypes, RelationArgTypes,
+				ClosureArgTypes),
+			construct_higher_order_pred_type(EvalMethod,
+				ClosureArgTypes, ClosureType),
+			AditiModifyTypes = [ClosureType]
+	    )) },
+
+	{
+		InsertDelMod = bulk_insert,
+		AdjustArgTypes = InsertDeleteAdjustArgTypes
+	;
+		InsertDelMod = delete(_),
+		AdjustArgTypes = InsertDeleteAdjustArgTypes
+	;
+		InsertDelMod = modify(_),
+		AdjustArgTypes = ModifyAdjustArgTypes
+	},
 	typecheck_aditi_builtin_closure(CallId, Args, AdjustArgTypes, PredId).
+
+:- pred aditi_insert_del_mod_eval_method(aditi_insert_delete_modify,
+		lambda_eval_method).
+:- mode aditi_insert_del_mod_eval_method(in, out) is det.
+
+aditi_insert_del_mod_eval_method(bulk_insert, (aditi_bottom_up)).
+aditi_insert_del_mod_eval_method(delete(filter), (aditi_top_down)).
+aditi_insert_del_mod_eval_method(delete(bulk), (aditi_bottom_up)).
+aditi_insert_del_mod_eval_method(modify(filter), (aditi_top_down)).
+aditi_insert_del_mod_eval_method(modify(bulk), (aditi_bottom_up)).
 
 	% Check that there is only one argument (other than the `aditi__state'
 	% arguments) passed to an `aditi_delete', `aditi_bulk_insert',
@@ -1243,10 +1246,9 @@ typecheck_aditi_state_args(Builtin, CallId, AditiState0Var, AditiStateVar) -->
 
 aditi_builtin_first_state_arg(aditi_call(_, _, _, _), _) = _ :-
 	error("aditi_builtin_first_state_arg: unexpected_aditi_call").
-aditi_builtin_first_state_arg(aditi_insert(_), _ - _/Arity) = Arity + 1.
-aditi_builtin_first_state_arg(aditi_delete(_, _), _) = 2.
-aditi_builtin_first_state_arg(aditi_bulk_operation(_, _), _) = 2.
-aditi_builtin_first_state_arg(aditi_modify(_, _), _) = 2.
+aditi_builtin_first_state_arg(aditi_tuple_insert_delete(_, _),
+		_ - _/Arity) = Arity + 1.
+aditi_builtin_first_state_arg(aditi_insert_delete_modify(_, _, _), _) = 2.
 
 %-----------------------------------------------------------------------------%
 
@@ -5701,11 +5703,12 @@ language_builtin("all", 2).
 language_builtin("some", 2).
 language_builtin("aditi_insert", 3).
 language_builtin("aditi_delete", 3).
-language_builtin("aditi_delete", 4).
+language_builtin("aditi_bulk_insert", 3).
 language_builtin("aditi_bulk_insert", 4).
+language_builtin("aditi_bulk_delete", 3).
 language_builtin("aditi_bulk_delete", 4).
-language_builtin("aditi_modify", 3).
-language_builtin("aditi_modify", 4).
+language_builtin("aditi_bulk_modify", 3).
+language_builtin("aditi_bulk_modify", 4).
 
 :- pred write_call_context(prog_context, call_id, int, unify_context,
 				io__state, io__state).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1009,13 +1009,11 @@ match_generic_call(aditi_builtin(Builtin1, CallId),
 	% The other fields are all implied by the pred_proc_id.
 match_aditi_builtin(aditi_call(PredProcId, _, _, _),
 		aditi_call(PredProcId, _, _, _)).
-match_aditi_builtin(aditi_insert(PredId), aditi_insert(PredId)).
+match_aditi_builtin(aditi_tuple_insert_delete(InsertDelete, PredId),
+		aditi_tuple_insert_delete(InsertDelete, PredId)).
 	% The syntax used does not change the result of the call.
-match_aditi_builtin(aditi_delete(PredId, _), aditi_delete(PredId, _)).
-match_aditi_builtin(aditi_bulk_operation(Op, PredId),
-		aditi_bulk_operation(Op, PredId)).
-	% The syntax used does not change the result of the call.
-match_aditi_builtin(aditi_modify(PredId, _), aditi_modify(PredId, _)).
+match_aditi_builtin(aditi_insert_delete_modify(Op, PredId, _),
+		aditi_insert_delete_modify(Op, PredId, _)).
 
 %-----------------------------------------------------------------------------%
 

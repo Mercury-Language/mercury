@@ -1411,7 +1411,7 @@ opt_util__livevals_addr(do_aditi_insert, yes).
 opt_util__livevals_addr(do_aditi_delete, yes).
 opt_util__livevals_addr(do_aditi_bulk_insert, yes).
 opt_util__livevals_addr(do_aditi_bulk_delete, yes).
-opt_util__livevals_addr(do_aditi_modify, yes).
+opt_util__livevals_addr(do_aditi_bulk_modify, yes).
 opt_util__livevals_addr(do_not_reached, no).
 
 opt_util__count_temps_instr_list([], R, R, F, F).
@@ -2067,7 +2067,8 @@ opt_util__replace_labels_code_addr(do_aditi_bulk_insert, _,
 		do_aditi_bulk_insert).
 opt_util__replace_labels_code_addr(do_aditi_bulk_delete, _,
 		do_aditi_bulk_delete).
-opt_util__replace_labels_code_addr(do_aditi_modify, _, do_aditi_modify).
+opt_util__replace_labels_code_addr(do_aditi_bulk_modify, _,
+		do_aditi_bulk_modify).
 opt_util__replace_labels_code_addr(do_not_reached, _, do_not_reached).
 
 :- pred opt_util__replace_labels_label_list(list(label)::in,

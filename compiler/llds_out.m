@@ -2788,7 +2788,7 @@ need_code_addr_decls(do_aditi_insert, yes) --> [].
 need_code_addr_decls(do_aditi_delete, yes) --> [].
 need_code_addr_decls(do_aditi_bulk_insert, yes) --> [].
 need_code_addr_decls(do_aditi_bulk_delete, yes) --> [].
-need_code_addr_decls(do_aditi_modify, yes) --> [].
+need_code_addr_decls(do_aditi_bulk_modify, yes) --> [].
 need_code_addr_decls(do_not_reached, yes) --> [].
 
 :- pred output_code_addr_decls(code_addr, io__state, io__state).
@@ -2844,8 +2844,8 @@ output_code_addr_decls(do_aditi_bulk_insert) -->
 	io__write_string("Declare_entry(do_aditi_bulk_insert);\n").
 output_code_addr_decls(do_aditi_bulk_delete) -->
 	io__write_string("Declare_entry(do_aditi_bulk_delete);\n").
-output_code_addr_decls(do_aditi_modify) -->
-	io__write_string("Declare_entry(do_aditi_modify);\n").
+output_code_addr_decls(do_aditi_bulk_modify) -->
+	io__write_string("Declare_entry(do_aditi_bulk_modify);\n").
 output_code_addr_decls(do_not_reached) -->
 	io__write_string("Declare_entry(do_not_reached);\n").
 
@@ -3106,8 +3106,8 @@ output_goto(do_aditi_bulk_delete, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_aditi_bulk_delete),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
-output_goto(do_aditi_modify, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(do_aditi_modify),\n\t\t"),
+output_goto(do_aditi_bulk_modify, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_aditi_bulk_modify),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
 output_goto(do_not_reached, CallerLabel) -->
@@ -3193,8 +3193,8 @@ output_code_addr(do_aditi_bulk_insert) -->
 	io__write_string("ENTRY(do_aditi_bulk_insert)").
 output_code_addr(do_aditi_bulk_delete) -->
 	io__write_string("ENTRY(do_aditi_bulk_delete)").
-output_code_addr(do_aditi_modify) -->
-	io__write_string("ENTRY(do_aditi_modify)").
+output_code_addr(do_aditi_bulk_modify) -->
+	io__write_string("ENTRY(do_aditi_bulk_modify)").
 output_code_addr(do_not_reached) -->
 	io__write_string("ENTRY(do_not_reached)").
 

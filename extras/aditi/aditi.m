@@ -14,6 +14,25 @@
 % (XXX this section in the manual is commented out, since Aditi is not yet
 % publicly available.)
 %
+%
+% Compilation grade notes (see the section "Compilation model options"
+% in the Mercury User's Guide for more information):
+%
+%	This module requires a compilation grade with conservative garbage 
+%	collection. Any grade containing `.gc' in its name, such as
+%	`asm_fast.gc' or `asm_fast.gc.tr', will do.
+%
+% 	When trailing is not being used (the compilation grade does not
+% 	contain `.tr'), resources will sometimes not be cleaned up until
+%	the end of a transaction.
+%	If there is a commit across a nondet database call, or an exception
+%	is thrown, or a database call is retried in the debugger, the output
+%	relation from the call and its cursor will not be cleaned up until the
+%	transaction ends.
+%	It is up to the programmer to decide whether imposing the overhead
+%	of trailing on the rest of the program is worthwhile.
+%
+%
 % The transaction interface used here is described in
 %	Kemp, Conway, Harris, Henderson, Ramamohanarao and Somogyi,
 % 	"Database transactions in a purely declarative 
@@ -84,16 +103,35 @@
 		io__state, io__state).
 :- mode aditi__disconnect(in, out, di, uo) is det.
 
+:- type aditi__transaction(T) == pred(T, aditi__state, aditi__state).
+:- inst aditi__transaction = (pred(out, aditi_di, aditi_uo) is det).
+
+	% aditi__transaction(Connection, Transaction, Result).
+	%
+	% Start a transaction with the Aditi database referred to by
+	% Connection, call Transaction, returning ok(Result) if the
+	% transaction is not aborted, or error(Error, Msg) if
+	% the transaction fails.
+	%
+	% If Transaction throws an exception, the transaction will
+	% be aborted and the exception will be rethrown to the caller.
+	%
+	% Predicates with `:- pragma aditi' or `:- pragma base_relation'
+	% markers can only be called from within a transaction -- there
+	% is no other way to get an `aditi__state' to pass to them.
+:- pred aditi__transaction(aditi__connection, aditi__transaction(T),
+		aditi__result(T), io__state, io__state).
+:- mode aditi__transaction(in, in(aditi__transaction), out, di, uo) is det.
+
 	% aditi__aggregate_compute_initial(Closure, UpdateAcc, 
 	% 		ComputeInitial, Results)
 	%
 	% When called, the query Closure returns the relation to be 
 	% aggregated over. This relation must have two attributes,
-	% the first being the attribute to group by. The relation is
-	% sorted and duplicates are removed before the aggregate is applied.
-	% The closure ComputeInitial computes an initial accumulator
-	% for each group given the first tuple in the group.
-	% The closure UpdateAcc is called for each tuple in each group to 
+	% the first being the attribute to group by. The closure 
+	% ComputeInitial computes an initial accumulator for each 
+	% group given the first tuple in the group. The closure
+	% UpdateAcc is called for each tuple in each group to 
 	% update the accumulator. The outputs are the group-by element
 	% and final accumulator for each group.
 	%
@@ -136,18 +174,11 @@
 		in, out, out) is nondet.
 */
 
-:- type aditi__transaction(T) == pred(T, aditi__state, aditi__state).
-:- inst aditi__transaction = (pred(out, aditi_di, aditi_uo) is det).
-
-:- pred aditi__transaction(aditi__connection, aditi__transaction(T),
-		aditi__result(T), io__state, io__state).
-:- mode aditi__transaction(in, in(aditi__transaction), out, di, uo) is det.
-
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bool, char, list, require, std_util, string, std_util.
+:- import_module bool, char, exception, list, require, std_util, string.
 
 :- type aditi__connection == int.
 :- type aditi__state == unit.
@@ -159,9 +190,31 @@
 :- pragma c_header_code("
 
 #include ""mercury_wrapper.h""
+#include ""mercury_ho_call.h""
+
+/* aditi_api_config.h must be included before aditi_clnt.h */
+#include ""aditi_api_config.h""
 #include ""aditi_clnt.h""
 
+#define MADITI_check(status) MADITI_do_check(status, __LINE__);
 #define MADITI_throw MR_longjmp(&MADITI_jmp_buf);
+
+typedef enum { MADITI_INSERT_TUPLE, MADITI_DELETE_TUPLE } MADITI_insert_delete;
+typedef enum { MADITI_INSERT, MADITI_DELETE, MADITI_MODIFY } MADITI_bulk_op;
+
+#ifdef MR_USE_TRAIL
+
+/*
+** Information used to clean up a call result if there is a commit
+** or an exception across a database call.
+*/
+typedef struct {
+	ticket *output_rel;
+	ticket *output_cursor;
+	bool cleaned_up;
+} MADITI_trail_cleanup_data;
+
+#endif /* MR_USE_TRAIL */
 
 static ticket MADITI_ticket;		/* Current connection ticket. */
 static MR_jmp_buf MADITI_jmp_buf;	/* jmp_buf to longjmp() to when
@@ -171,10 +224,26 @@ static int MADITI_status;		/* Return code of the last
 					** Aditi API call.
 					*/
 
-static void MADITI_do_call(void);
-static void MADITI_check(int);
+static void MADITI_do_nondet_call(void);
+static ticket * MADITI_run_procedure(String proc_name,
+		String input_schema, String input_tuple);
+static void MADITI_do_insert_delete_tuple(MADITI_insert_delete);
+static void MADITI_do_bulk_operation(MADITI_bulk_op operation);
+static void MADITI_do_bulk_insert_or_delete(MADITI_bulk_op operation,
+		String rel_name, ticket *call_result_ticket);
 static bool MADITI_get_output_tuple(int);
-static void MADITI_cleanup(void);
+static void MADITI_post_call_cleanup(void);
+static void MADITI_cleanup_call_output(ticket *output_rel, ticket *cursor);
+
+#ifdef MR_USE_TRAIL
+static void MADITI_trail_cleanup_call_output(void *cleanup_data,
+		MR_untrail_reason reason);
+#endif
+
+static String MADITI_construct_tuple(int num_input_args,
+		Word *input_typeinfos, Word *input_args);
+static void MADITI_do_check(int, int);
+static void MADITI_list_rel(ticket* rel);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -208,11 +277,7 @@ aditi__connect(Host, User, Passwd, Result) -->
 		*/
 		if ((Stat = ADITI_NAME(login)(User, Passwd)) == ADITI_OK) {
 
-			DEBUG(struct param_value pvalue);
-			DEBUG(pvalue.type = int_type);
-			DEBUG(pvalue.param_value_u.int_val = 1);
-			DEBUG(ADITI_NAME(setparam)(""debug"", &pvalue));
-			DEBUG(ADITI_NAME(disable_ping)());
+			DEBUG(ADITI_NAME(set_debug)());
 
 			DEBUG(printf(""logged in\\n""));
 			if ((Stat = MR_load_aditi_rl_code())
@@ -259,23 +324,29 @@ aditi__disconnect(Connection, Result) -->
 
 aditi__transaction(_Connection, Transaction, TransResult, IO0, IO) :-
 	aditi__do_transaction(Transaction, Results,
-		Status, IO0, IO),
-	( Status = 0 ->
-		TransResult = ok(Results)
+		Status, GotException, Exception, IO0, IO),
+	( GotException = 0 ->
+		( Status = 0 ->
+			TransResult = ok(Results)
+		;
+			aditi__error_code(Status, Error, String),
+			TransResult = error(Error, String) 
+		)
 	;
-		aditi__error_code(Status, Error, String),
-		TransResult = error(Error, String) 
+		rethrow(exception(Exception))
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred aditi__do_transaction(aditi__transaction(T),
-		T, int, io__state, io__state).
-:- mode aditi__do_transaction(in(aditi__transaction), out, out, di, uo) is det.
-:- pragma no_inline(aditi__do_transaction/5).	% contains labels
+		T, int, int, univ, io__state, io__state).
+:- mode aditi__do_transaction(in(aditi__transaction),
+		out, out, out, out, di, uo) is det.
+:- pragma no_inline(aditi__do_transaction/7).	% contains labels
 
 :- pragma c_code(aditi__do_transaction(Transaction::in(aditi__transaction), 
-		Results::out, Stat::out, IO0::di, IO::uo),
+		Results::out, Stat::out, GotException::out, Exception::out,
+		IO0::di, IO::uo),
 		may_call_mercury,
 "
 {
@@ -293,11 +364,18 @@ aditi__transaction(_Connection, Transaction, TransResult, IO0, IO) :-
 	MR_setjmp(&MADITI_jmp_buf, transaction_error);
 
 	MADITI__call_transaction(TypeInfo_for_T,
-		Transaction, &Results, 0, &DB);
+		Transaction, &Results, &GotException,
+		&Exception, (Word)0, &DB);
 
-	DEBUG(printf(""committing transaction...""));
-	Stat = ADITI_NAME(trans_commit)(&MADITI_ticket);
-	DEBUG(printf(""done\\n""));
+	if (GotException == 0) {
+		DEBUG(printf(""committing transaction...""));
+		Stat = ADITI_NAME(trans_commit)(&MADITI_ticket);
+		DEBUG(printf(""done\\n""));
+	} else {
+		DEBUG(printf(""got exception - aborting transaction...""));
+		Stat = ADITI_NAME(trans_abort)(&MADITI_ticket);
+		DEBUG(printf(""done\\n""));
+	}
 	
 	goto transaction_done;
 
@@ -306,37 +384,59 @@ transaction_error:
 	DEBUG(printf(""aborting transaction...""));
 	ADITI_NAME(trans_abort)(&MADITI_ticket);
 	DEBUG(printf(""done\\n""));
+	GotException = 0;
 	Stat = MADITI_status;
 
 transaction_done:
 }
 ").
 
-:- pred aditi__call_transaction(aditi__transaction(T), T,
+:- pred aditi__call_transaction(aditi__transaction(T), T, int, univ,
 		aditi__state, aditi__state).
-:- mode aditi__call_transaction(in(aditi__transaction), out,
-		aditi_di, aditi_uo) is det.
+:- mode aditi__call_transaction(in(aditi__transaction), out, out, out,
+		aditi_di, aditi_uo) is cc_multi.
 :- pragma export(
 		aditi__call_transaction(in(aditi__transaction), out,
-			aditi_di, aditi_uo),
+			out, out, aditi_di, aditi_uo),
 		"MADITI__call_transaction"
 	).
 
-aditi__call_transaction(Trans, Results) -->
-	call(Trans, Results).
+aditi__call_transaction(Trans, Results, GotException, Exception,
+		State0, State) :-
+	TryTransaction = 
+		(pred(Result - AditiState::out) is det :-
+			Trans(Result, State0, AditiState)
+		),
+	try(TryTransaction, ExceptionResult),
+	(
+		ExceptionResult = succeeded(Results - State),
+		GotException = 0,
+		make_dummy_value(Exception)
+	;
+		ExceptionResult = exception(Exception),
+		State = State0,
+		GotException = 1,
+		make_dummy_value(Results)
+	).	
 
-%-----------------------------------------------------------------------------%
+	% Pretend to bind a variable. The result must never be looked at.
+:- pred make_dummy_value(T::out) is det.
+:- pragma c_code(make_dummy_value(T::out),
+		[will_not_call_mercury, thread_safe],
+		"T = 0;").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma c_code("
 
 	/*
-	** We might allocate memory from may_call_mercury C code. XXX?
+	** We might allocate memory from may_call_mercury C code.
 	*/
 #ifndef CONSERVATIVE_GC
 #error The Aditi interface requires conservative garbage collection. \\
                 Use a compilation grade containing .gc.
 #endif /* ! CONSERVATIVE_GC */
+
 
 ").
 
@@ -378,8 +478,8 @@ INIT mercury_sys_init_aditi_call
 #define MADITI_input_schema			r3
 #define MADITI_num_output_args			r4
 
-	/* Register containing the first input argument */
-#define MADITI_FIRST_INPUT 5
+	/* Register containing the typeinfo for the first input argument */
+#define MADITI_CALL_FIRST_INPUT 5
 
 /*
 ** Output arguments from do_call_aditi are the same as for
@@ -410,17 +510,37 @@ Define_extern_entry(do_nondet_aditi_call);
 Declare_label(do_nondet_aditi_call_i1);
 Define_extern_entry(do_semidet_aditi_call);
 Define_extern_entry(do_det_aditi_call);
+Define_extern_entry(do_aditi_insert);
+Define_extern_entry(do_aditi_delete);
+Define_extern_entry(do_aditi_bulk_insert);
+Define_extern_entry(do_aditi_bulk_delete);
+Define_extern_entry(do_aditi_bulk_modify);
 
 MR_MAKE_PROC_LAYOUT(do_nondet_aditi_call, MR_DETISM_NON,
-	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
-	""private_builtin"", ""do_nondet_aditi_call"", 0, 0);
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
+	""aditi"", ""do_nondet_aditi_call"", 0, 0);
 MR_MAKE_INTERNAL_LAYOUT(do_nondet_aditi_call, 1);
 MR_MAKE_PROC_LAYOUT(do_semidet_aditi_call, MR_DETISM_NON,
-	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
-	""private_builtin"", ""do_semidet_aditi_call"", 0, 0);
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
+	""aditi"", ""do_semidet_aditi_call"", 0, 0);
 MR_MAKE_PROC_LAYOUT(do_det_aditi_call, MR_DETISM_NON,
-	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
-	""private_builtin"", ""do_semidet_aditi_call"", 0, 0);
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
+	""aditi"", ""do_det_aditi_call"", 0, 0);
+MR_MAKE_PROC_LAYOUT(do_aditi_insert, MR_DETISM_DET,
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
+	""aditi"", ""do_aditi_insert"", 0, 0);
+MR_MAKE_PROC_LAYOUT(do_aditi_delete, MR_DETISM_DET,
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
+	""aditi"", ""do_aditi_delete"", 0, 0);
+MR_MAKE_PROC_LAYOUT(do_aditi_bulk_insert, MR_DETISM_DET,
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
+	""aditi"", ""do_aditi_bulk_insert"", 0, 0);
+MR_MAKE_PROC_LAYOUT(do_aditi_bulk_delete, MR_DETISM_DET,
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
+	""aditi"", ""do_aditi_bulk_delete"", 0, 0);
+MR_MAKE_PROC_LAYOUT(do_aditi_bulk_modify, MR_DETISM_DET,
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN, MR_PREDICATE,
+	""aditi"", ""do_aditi_bulk_modify"", 0, 0);
 
 BEGIN_MODULE(do_aditi_call_module)
 	init_entry_sl(do_nondet_aditi_call);
@@ -430,16 +550,26 @@ BEGIN_MODULE(do_aditi_call_module)
 	MR_INIT_PROC_LAYOUT_ADDR(do_semidet_aditi_call);
 	init_entry_sl(do_det_aditi_call);
 	MR_INIT_PROC_LAYOUT_ADDR(do_det_aditi_call);
+	init_entry_sl(do_aditi_insert);
+	MR_INIT_PROC_LAYOUT_ADDR(do_aditi_insert);
+	init_entry_sl(do_aditi_delete);
+	MR_INIT_PROC_LAYOUT_ADDR(do_aditi_delete);
+	init_entry_sl(do_aditi_bulk_insert);
+	MR_INIT_PROC_LAYOUT_ADDR(do_aditi_bulk_insert);
+	init_entry_sl(do_aditi_bulk_delete);
+	MR_INIT_PROC_LAYOUT_ADDR(do_aditi_bulk_delete);
+	init_entry_sl(do_aditi_bulk_modify);
+	MR_INIT_PROC_LAYOUT_ADDR(do_aditi_bulk_modify);
 BEGIN_CODE
 
 Define_entry(do_nondet_aditi_call);
 {
-	mkframe(""do_nondet_aditi_call"",
+	MR_mkframe(""do_nondet_aditi_call"",
 		(MADITI_NUM_FRAME_VARS + MADITI_num_output_args),
 		LABEL(do_nondet_aditi_call_i1));
 
 	save_transient_registers();
-	MADITI_do_call();
+	MADITI_do_nondet_call();
 	restore_transient_registers();
 	GOTO(LABEL(do_nondet_aditi_call_i1));
 }
@@ -450,22 +580,22 @@ Define_label(do_nondet_aditi_call_i1);
 	/* Unpack the output tuple into r1 and upwards. */
 	if (MADITI_get_output_tuple(1)) {
 		restore_transient_registers();
-		succeed();
+		MR_succeed();
 	} else {
-		MADITI_cleanup();
+		MADITI_post_call_cleanup();
 		restore_transient_registers();
-		fail();
+		MR_fail();
 	}
 }
 
 Define_entry(do_semidet_aditi_call);
 {
-	mkframe(""do_semidet_aditi_call"",
+	MR_mkframe(""do_semidet_aditi_call"",
 		(MADITI_NUM_FRAME_VARS + MADITI_num_output_args),
 		ENTRY(do_not_reached));
 
 	save_transient_registers();
-	MADITI_do_call();
+	MADITI_do_nondet_call();
 
 	/* Unpack the output tuple into r2 and upwards for semidet code. */
 	if (MADITI_get_output_tuple(2)) {
@@ -475,25 +605,25 @@ Define_entry(do_semidet_aditi_call);
 		** We assume that any other solutions are duplicates
 		** of the one we just collected.
 		*/
-		MADITI_cleanup();
+		MADITI_post_call_cleanup();
 		restore_transient_registers();
 		r1 = 1;
 	} else {
-		MADITI_cleanup();
+		MADITI_post_call_cleanup();
 		restore_transient_registers();
 		r1 = 0;
 	}
-	succeed_discard();
+	MR_succeed_discard();
 }
 
 Define_entry(do_det_aditi_call);
 {
-	mkframe(""do_det_aditi_call"",
+	MR_mkframe(""do_det_aditi_call"",
 		(MADITI_NUM_FRAME_VARS + MADITI_num_output_args),
 		ENTRY(do_not_reached));
 
 	save_transient_registers();
-	MADITI_do_call();
+	MADITI_do_nondet_call();
 
 	/* Unpack the output tuple into r1 and upwards. */
 	if (!MADITI_get_output_tuple(1)) {
@@ -507,10 +637,75 @@ Define_entry(do_det_aditi_call);
 	** of the one we just collected.
 	*/
 
-	MADITI_cleanup();
+	MADITI_post_call_cleanup();
 	restore_transient_registers();
 
-	succeed_discard();
+	MR_succeed_discard();
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+** Insert or delete a single tuple into/from a relation.
+**
+** Input arguments:
+** r1 -> name of relation
+** r2 -> arity of relation
+** r3 -> name of the deletion procedure for the relation (aditi_delete only)
+** r4 -> schema of the relation (aditi_delete only)
+** r5 -> type_infos for arguments of tuple to insert
+**    -> arguments of tuple to insert
+**
+** There are no output arguments.
+*/
+Define_entry(do_aditi_insert);
+{
+	save_transient_registers();
+	DEBUG(printf(""do_aditi_insert\\n""));
+	MADITI_do_insert_delete_tuple(MADITI_INSERT_TUPLE);
+	restore_transient_registers();
+	proceed();	
+}
+Define_entry(do_aditi_delete);
+{
+	save_transient_registers();
+	DEBUG(printf(""do_aditi_delete\\n""));
+	MADITI_do_insert_delete_tuple(MADITI_DELETE_TUPLE);
+	restore_transient_registers();
+	proceed();	
+}
+
+
+/*
+** Insert/delete the tuples returned by the query argument
+** 
+** Input arguments:
+** r1 -> name of relation
+** r2 -> name of deletion or modification procedure
+** r3 -> closure
+*/
+Define_entry(do_aditi_bulk_insert);
+{
+	save_transient_registers();
+	DEBUG(printf(""do_aditi_bulk_insert\\n""));
+	MADITI_do_bulk_operation(MADITI_INSERT);
+	restore_transient_registers();
+	proceed();	
+}
+Define_entry(do_aditi_bulk_delete);
+{
+	save_transient_registers();
+	DEBUG(printf(""do_aditi_bulk_delete\\n""));
+	MADITI_do_bulk_operation(MADITI_DELETE);
+	restore_transient_registers();
+	proceed();	
+}
+Define_entry(do_aditi_bulk_modify);
+{
+	save_transient_registers();
+	DEBUG(printf(""do_aditi_bulk_modify\\n""));
+	MADITI_do_bulk_operation(MADITI_MODIFY);
+	restore_transient_registers();
+	proceed();	
 }
 
 END_MODULE
@@ -520,6 +715,7 @@ void mercury_sys_init_aditi_call(void) {
 }
 
 /*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 
 /*
 ** The functions below fiddle with the Mercury registers, so be sure
@@ -528,125 +724,437 @@ void mercury_sys_init_aditi_call(void) {
 
 /*
 ** Send the input tuple to the database then run the procedure.
+** Afterwards, setup for nondeterministic return of the output tuples.
 */
 static void
-MADITI_do_call(void)
-{ 
+MADITI_do_nondet_call(void)
+{
 	String proc_name;
 	int num_input_args;
+	Word *input_typeinfos;
+	Word *input_args;	
+
 	String input_schema;
+	String input_tuple = NULL;
+
 	int num_output_args;
 
-		/* Ticket identifying the input relation. */
-	ticket *input_ticket = NULL;
-		/* Ticket identifying the output relation. */
-	ticket *output_ticket = NULL;
-		/* Ticket identifying the cursor on the output relation. */
-	ticket *cursor = NULL;
-	
-		/* Used to hold the list of attributes of the input tuple
-		** as they are built up.
-		*/
-	Word tuple_list; 
-	Word new_tuple_list;
+	ticket *output_ticket = NULL;	/* ticket for the output relation */
+	ticket *cursor = NULL;		/* ticket for the output cursor */
 
-	char *tuple = NULL; /* The input tuple. */
+	int first_output_typeinfo;	/* register containing the first of the
+					** type-infos for the output arguments
+					*/
 	int i;
-		/* Register containing the first of the output type_infos. */
-	int first_output_typeinfo;
 
-		/* Memory used to hold copies of the input arguments. */
-	Word *input_save_area;
-	
 	restore_transient_registers();
 
 	proc_name = (String) MADITI_proc_name;
 	num_input_args = (int) MADITI_num_input_args;
 	input_schema = (String) MADITI_input_schema;
-	num_output_args = MADITI_num_output_args;
+
+	num_output_args = (int) MADITI_num_output_args;
 
 	/* save the number of output arguments */
 	MADITI_saved_num_output_args = num_output_args;
 
-	/* create temporary relation to hold the input tuple */
-	DEBUG(printf(""creating input temporary...""));
-	input_ticket = MR_NEW(ticket);
-	output_ticket = MR_NEW(ticket);
-	MADITI_check(ADITI_NAME(tmp_create)(&MADITI_ticket,
-		input_schema, input_ticket));
-	DEBUG(printf(""done\\n""));
 
-	/*
-	** Copy the input arguments and their type_infos out of the registers.
-	** This is done to avoid having to save/restore the
-	** registers around each call to MADITI__attr_to_string,
-	** which calls back into Mercury. 
-	*/
-	input_save_area = MR_GC_NEW_ARRAY(Word, num_input_args * 2);
+	DEBUG(printf(""Handling call to %s\\n"", proc_name));
+	DEBUG(printf(""%d input args; %d output args\\n"",
+		num_input_args, num_output_args));
+	DEBUG(printf(""input schema %s\\n"", input_schema));
+
+	/* extract the input arguments and their type-infos from registers */
+	input_args = MR_GC_NEW_ARRAY(Word, num_input_args);
+	input_typeinfos = MR_GC_NEW_ARRAY(Word, num_input_args);
 	save_registers();	
-	for (i = 0; i < num_input_args * 2; i++) {
-		input_save_area[i] = virtual_reg(MADITI_FIRST_INPUT + i);
+	for (i = 0; i < num_input_args; i++) {
+		input_typeinfos[i] = virtual_reg(MADITI_CALL_FIRST_INPUT + i);
+		input_args[i] =
+		    virtual_reg(MADITI_CALL_FIRST_INPUT + num_input_args + i);
 	}
 
 	/* store the output typeinfos in the nondet stack frame */
-	first_output_typeinfo = MADITI_FIRST_INPUT + num_input_args * 2;
+	first_output_typeinfo = MADITI_CALL_FIRST_INPUT + num_input_args * 2;
 	for (i = 0; i < num_output_args; i++) {
 		MADITI_OUTPUT_TYPEINFO(i) =
 			virtual_reg(first_output_typeinfo + i);
 	}
 
-	/*
-	** We're finished with the virtual_reg array.
-	** There's no need to restore the registers here since 
-	** we haven't altered any of the virtual_reg array entries.
-	*/
+	input_tuple = MADITI_construct_tuple(num_input_args,
+				input_typeinfos, input_args);
+	MR_GC_free(input_args);
+	MR_GC_free(input_typeinfos);
 
-	tuple_list = MR_list_empty();
-	DEBUG(printf(""building input tuple...""));
-	for (i = 0; i < num_input_args; i++) {
-		/* convert the argument to a string, adding it to the tuple */
-		MADITI__attr_to_string(input_save_area[i],
-			input_save_area[num_input_args + i],
-			tuple_list, &new_tuple_list);
-		tuple_list = new_tuple_list;
-	}
-	MADITI__reverse_append_string_list(tuple_list, &tuple);
-	DEBUG(printf(""done\\n""));
-
-	/*
-	** We're done with the saved input arguments.
-	*/
-	MR_GC_free(input_save_area);
-
-	/* insert the input tuple into the relation */
-	DEBUG(printf(""adding input tuple...%s"", tuple));
-	MADITI_check(ADITI_NAME(tmp_addtup)(input_ticket, tuple));
-	DEBUG(printf(""done\\n""));
-
-	/* run the procedure */
-	DEBUG(printf(""running procedure... ""));
-	MADITI_check(ADITI_NAME(run2)(proc_name, 100000, &MADITI_ticket,
-		input_ticket, output_ticket));
-	DEBUG(printf(""done\\n""));
-
-	/* drop the input relation */
-	DEBUG(printf(""dropping input temporary...""));
-	MADITI_check(ADITI_NAME(tmp_destroy)(input_ticket));
-	MR_free(input_ticket);
-	DEBUG(printf(""done\\n""));
+	output_ticket = MADITI_run_procedure(proc_name,
+				input_schema, input_tuple);
 
 	/* create cursor on the output relation */
 	DEBUG(printf(""opening output cursor...""));
-	cursor = MR_NEW(ticket);
-	MADITI_check(ADITI_NAME(tmp_cursor_create)(output_ticket, cursor));
+	/* XXX MR_GC_NEW_ATOMIC */
+	cursor = (ticket *) MR_GC_NEW(ticket);
+	MADITI_check(ADITI_NAME(rel_cursor_create)(output_ticket, cursor));
 	MADITI_check(ADITI_NAME(cursor_open)(cursor, CUR_FORWARD));
 	DEBUG(printf(""done\\n""));
 
 	MADITI_saved_output_rel = (Word) output_ticket;
 	MADITI_saved_cursor = (Word) cursor;
 
+#ifdef MR_USE_TRAIL
+	{
+		MADITI_trail_cleanup_data *cleanup_data;
+		cleanup_data = MR_GC_NEW(MADITI_trail_cleanup_data);
+		cleanup_data->output_rel = output_ticket;
+		cleanup_data->output_cursor = cursor;
+		cleanup_data->cleaned_up = FALSE;
+		MR_trail_function(MADITI_trail_cleanup_call_output,
+			(void *) cleanup_data);
+	}
+#endif /* MR_USE_TRAIL */
+
 	save_transient_registers();
 }
+
+#ifdef MR_USE_TRAIL
+static void
+MADITI_trail_cleanup_call_output(void *data, MR_untrail_reason reason)
+{
+	MADITI_trail_cleanup_data *cleanup_data;
+	switch (reason) {
+	    case MR_commit:
+	    case MR_exception:
+	    case MR_retry:
+		/*
+		** Cleanup the output relation.
+		*/
+		cleanup_data = (MADITI_trail_cleanup_data *) data;
+
+		if (cleanup_data->cleaned_up) {
+
+			/*
+			** This can happen if there is a commit followed
+			** by an exception -- the commit will not reset
+			** the trail.
+			*/
+			DEBUG(printf(
+	""MADITI_trail_cleanup_call_output: already cleaned up (%d)\n"",
+				reason));
+
+		} else {
+
+			DEBUG(printf(
+	""MADITI_trail_cleanup_call_output: cleaning up (%d)\n"",
+				reason));
+
+			MADITI_cleanup_call_output(cleanup_data->output_rel,
+				cleanup_data->output_cursor);
+			cleanup_data->cleaned_up = TRUE;
+		}
+		break;
+
+	    case MR_solve:
+	    case MR_undo:
+		/*
+		** Undo on backtracking will be handled by
+		** MADITI_post_call_cleanup, so that the 
+		** cleanup will happen even if trailing
+		** is not being used.
+		*/
+		break;
+
+	    case MR_gc:
+	    default:
+		fatal_error(""MADITI_trail_cleanup_call_output"");
+	}
+}
+#endif /* MR_USE_TRAIL */
+
+/* 
+** Given an RL procedure name, the schema of the input relation and a tuple
+** to insert into the input relation, run the procedure, returning a ticket
+** for the output relation.
+** MADITI_run_procedure does not look at the Mercury registers.
+*/
+static ticket *
+MADITI_run_procedure(String proc_name, String input_schema, String input_tuple)
+{
+		/* Ticket identifying the input relation. */
+	ticket input_ticket;
+		/* Ticket identifying the output relation. */
+	ticket *output_ticket = NULL;
+
+	/*
+	** Create a temporary relation to hold the input tuple.
+	*/
+	DEBUG(printf(""creating input temporary (schema %s)..."",
+		input_schema));
+	MADITI_check(ADITI_NAME(tmp_create)(&MADITI_ticket,
+		input_schema, &input_ticket));
+	DEBUG(printf(""done\\n""));
+
+	/*
+	** Insert the input tuple into the relation.
+	*/
+	DEBUG(printf(""adding input tuple...%s"", input_tuple));
+	MADITI_check(ADITI_NAME(tmp_addtup)(&input_ticket, input_tuple));
+	DEBUG(printf(""done\\n""));
+
+	/*
+	** Run the procedure.
+	*/
+	DEBUG(printf(""running procedure... ""));
+	/* XXX MR_GC_NEW_ATOMIC */
+	output_ticket = (ticket *) MR_GC_NEW(ticket);
+	MADITI_check(ADITI_NAME(run2_s)(proc_name, 100000, &MADITI_ticket,
+		&input_ticket, output_ticket));
+	DEBUG(printf(""done\\n""));
+
+	/*
+	** Drop the input relation.
+	*/
+	DEBUG(printf(""dropping input temporary...""));
+	MADITI_check(ADITI_NAME(tmp_destroy)(&input_ticket));
+	DEBUG(printf(""done\\n""));
+
+	DEBUG(printf(""output tuples\n""));
+	DEBUG(MADITI_list_rel(output_ticket));
+	DEBUG(printf(""\\n\\n""));
+
+	return output_ticket;
+}
+
+/*---------------------------------------------------------------------------*/
+
+static void
+MADITI_do_insert_delete_tuple(MADITI_insert_delete op)
+{
+	String rel_name;
+	int rel_arity;
+	String tuple;
+	String delete_proc_name;
+	String delete_input_schema;
+	Word *input_typeinfos;
+	Word *input_args;
+	int first_input_reg = 5;
+	int i;
+	ticket *delete_output_rel = NULL;
+
+	restore_transient_registers();
+	rel_name = (String) r1;
+	rel_arity = r2;
+	delete_proc_name = (String) r3;
+	delete_input_schema = (String) r4;
+
+	DEBUG(
+		switch (op) {
+			case MADITI_INSERT_TUPLE:
+				printf(""aditi_insert(%s)\\n"",
+					rel_name);	
+				break;
+			case MADITI_DELETE_TUPLE:
+				printf(""aditi_delete(%s)\\n"",
+					rel_name);	
+				break;
+		}
+	)
+
+	/* extract the input arguments and their type-infos from registers */
+	input_args = MR_GC_NEW_ARRAY(Word, rel_arity);
+	input_typeinfos = MR_GC_NEW_ARRAY(Word, rel_arity);
+	save_registers();
+	for (i = 0; i < rel_arity; i++) {
+		input_typeinfos[i] = virtual_reg(first_input_reg + i);
+		input_args[i] = virtual_reg(first_input_reg + rel_arity + i);
+	}
+
+	tuple = MADITI_construct_tuple(rel_arity, input_typeinfos, input_args);
+
+	MR_GC_free(input_args);
+	MR_GC_free(input_typeinfos);
+
+	switch (op) {
+		case MADITI_INSERT_TUPLE:
+			DEBUG(printf(""inserting tuple %s\\n"", tuple));
+			MADITI_check(ADITI_NAME(addtup)(rel_name, tuple));
+			break;
+		case MADITI_DELETE_TUPLE:
+			DEBUG(printf(""deleting tuple %s\\n"", tuple));
+			delete_output_rel =
+				MADITI_run_procedure(delete_proc_name,
+					delete_input_schema, tuple);
+			MADITI_check(ADITI_NAME(rel_close)(
+				delete_output_rel));
+			MR_GC_free(delete_output_rel);
+			break;
+	}
+}
+
+/*---------------------------------------------------------------------------*/
+
+static void
+MADITI_do_bulk_operation(MADITI_bulk_op operation)
+{
+	String rel_name;
+	int num_input_args;
+	Word *input_args;
+	Word *input_typeinfos;
+	MR_Closure *closure;
+	String called_proc_name;
+	String update_proc_name = NULL;
+	String input_schema;
+	String input_tuple;
+	ticket modified_rel_ticket;
+	ticket dummy_output_ticket;
+	ticket *call_result_ticket;
+
+	restore_transient_registers();
+
+	rel_name = (String) r1;
+	update_proc_name = (String) r2;
+	closure = (MR_Closure *) r3;
+
+	DEBUG(
+		switch (operation) {
+			case MADITI_INSERT:
+				printf(""aditi_bulk_insert(%s)\\n"",
+					rel_name);	
+				break;
+			case MADITI_DELETE:
+				printf(""aditi_bulk_delete(%s)\\n"",
+					rel_name);	
+				break;
+			case MADITI_MODIFY:
+				printf(""aditi_bulk_delete(%s)\\n"",
+					rel_name);	
+				break;
+		}
+	)
+
+	/*
+	** The 'code' passed to an aditi_bottom_up closure is
+	** actually a tuple containing the procedure name and
+	** the schema of the input relation.
+	*/
+	called_proc_name =
+		(String) MR_field(MR_mktag(0), closure->MR_closure_code, 0);
+	input_schema =
+		(String) MR_field(MR_mktag(0), closure->MR_closure_code, 1);
+
+	DEBUG(printf(""closure proc name %s\n"", called_proc_name));
+
+	num_input_args = closure->MR_closure_num_hidden_args;
+	input_args = (Word *) closure->MR_closure_hidden_args_0;
+	input_typeinfos =
+		(Word *) closure->MR_closure_layout->arg_pseudo_type_info;
+
+	input_tuple = MADITI_construct_tuple(num_input_args,
+				input_typeinfos, input_args);
+
+	call_result_ticket = MADITI_run_procedure(called_proc_name,
+				input_schema, input_tuple);
+
+	switch (operation) {
+		case MADITI_INSERT:
+			DEBUG(printf(""Inserting tuples into %s\\n"",
+				rel_name));	
+
+			MADITI_check(ADITI_NAME(perm_open)(&MADITI_ticket,
+					rel_name, &modified_rel_ticket));
+			MADITI_check(ADITI_NAME(add_tups_to)(
+					call_result_ticket,
+					&modified_rel_ticket));
+			MADITI_check(ADITI_NAME(perm_close)(
+					&modified_rel_ticket));
+			break;
+
+		case MADITI_DELETE:
+		case MADITI_MODIFY:
+			DEBUG(printf(""Doing delete/modify of %s\n"",
+				rel_name));
+			MADITI_check(ADITI_NAME(run2_s)(update_proc_name,
+				100000, &MADITI_ticket,
+				call_result_ticket, &dummy_output_ticket)
+			);
+			MADITI_check(
+				ADITI_NAME(rel_close)(&dummy_output_ticket)
+			);
+			break;
+	}
+
+
+	MADITI_check(ADITI_NAME(rel_close)(call_result_ticket));
+	MR_GC_free(call_result_ticket);
+
+	save_transient_registers();
+}
+
+static void 
+MADITI_list_rel(ticket* rel)
+{
+	size_t len;
+	char* ptr;
+	ticket cur;
+
+	MADITI_check(ADITI_NAME(tmp_cursor_create)(rel,&cur));
+	MADITI_check(ADITI_NAME(cursor_open)(&cur,CUR_FORWARD));
+	len = 0;
+	ptr = NULL;
+	fflush(stdout);
+	while (ADITI_NAME(cursor_next)(&cur,&len,&ptr) == ADITI_OK) {
+		fprintf(stdout,""tuple: [%.*s]\n"",(int)len,ptr);
+		free(ptr);
+		len = 0;
+		ptr = NULL;
+	}
+	MADITI_check(ADITI_NAME(cursor_close)(&cur));
+	MADITI_check(ADITI_NAME(cursor_destroy)(&cur));
+}
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Convert a list of arguments in registers into a string representation
+** suitable for sending to Aditi.
+** Starting at register `first_argument', there must be `num_input_args'
+** type_infos, followed by `num_input_args' data values.
+** save_transient_registers()/restore_transient_registers() must be done
+** around calls to this function.
+*/
+String MADITI_construct_tuple(int num_input_args,
+		Word *typeinfos, Word *input_args)
+{
+		/* Used to hold the list of attributes of the input tuple
+		** as they are built up.
+		*/
+	Word tuple_list; 
+	Word new_tuple_list;
+
+	String tuple;
+	int i;
+
+	restore_transient_registers();
+
+	/*
+	** This part calls back into Mercury to construct the tuple.
+	** The wrapper functions expect the registers to be saved,
+	** so do that here.
+	*/
+	save_registers();
+	tuple_list = MR_list_empty();
+	DEBUG(printf(""building input tuple...""));
+	for (i = 0; i < num_input_args; i++) {
+		/* convert the argument to a string, adding it to the tuple */
+		MADITI__attr_to_string(typeinfos[i], input_args[i],
+			tuple_list, &new_tuple_list);
+		tuple_list = new_tuple_list;
+	}
+	MADITI__reverse_append_string_list(tuple_list, &tuple);
+	DEBUG(printf(""done: tuple = %s\\n"", tuple));
+
+	return tuple;
+}
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** Get an output tuple from the database, return an indication of success.
@@ -666,6 +1174,7 @@ MADITI_get_output_tuple(int first_reg)
 	String tuple_str_copy;
 	Word arg;
 	int found_result;
+	ticket *output_cursor;
 	int num_output_args;
 	int rc;
 		/* Somewhere to put the output arguments before copying them
@@ -675,16 +1184,18 @@ MADITI_get_output_tuple(int first_reg)
 
 	restore_transient_registers();
 	num_output_args = MADITI_saved_num_output_args;
+	output_cursor = (ticket *)MADITI_saved_cursor;
 
 	/* advance cursor, get tuple string */
-	rc = ADITI_NAME(cursor_next)((ticket *)MADITI_saved_cursor,
+	DEBUG(printf(""getting output tuple\\n""));
+	rc = ADITI_NAME(cursor_next)(output_cursor,
 		&tuple_str_len, &tuple_str);
-	DEBUG(printf(""handling tuple %s %ld %d\\n"",
-		tuple_str, tuple_str_len, num_output_args));
-
 	if (rc != ADITI_OK) {
+		DEBUG(printf(""no more output tuples\\n""));
 		found_result = FALSE;
 	} else {
+		DEBUG(printf(""handling tuple %s %ld %d\\n"",
+			tuple_str, tuple_str_len, num_output_args));
 
 		/*
 		** Found another output tuple.
@@ -692,6 +1203,7 @@ MADITI_get_output_tuple(int first_reg)
 	
 		/* Copy out the tuple string. */
 		make_aligned_string_copy(tuple_str_copy, tuple_str);
+		/* The tuple is on the C heap. */
 		free(tuple_str);
 
 		/*
@@ -700,6 +1212,13 @@ MADITI_get_output_tuple(int first_reg)
 		*/
 		output_save_area = MR_GC_NEW_ARRAY(Word, num_output_args);
 	
+		/*
+		** This part calls back into Mercury to parse the
+		** tuple terms from the string returned from Aditi.
+		** The wrapper functions generated expect the registers
+		** to be saved, so do that here.
+		*/
+		save_registers();
 		/* convert tuple, put output args in stack slots */
 		MADITI__init_posn(&pos);
 		for (i = 0; i < num_output_args; i++) {
@@ -716,7 +1235,6 @@ MADITI_get_output_tuple(int first_reg)
 		}
 
 		/* Move the output arguments to their registers. */
-		save_registers();
 		for (i = 0; i < num_output_args; i++) {
 			virtual_reg(first_reg + i) = output_save_area[i];
 		}
@@ -729,43 +1247,49 @@ MADITI_get_output_tuple(int first_reg)
 	return found_result;
 }
 
+/*---------------------------------------------------------------------------*/
+
 /*
 ** Free all resources used by a database call.
 */
 static void
-MADITI_cleanup()
+MADITI_post_call_cleanup(void)
 { 
 	restore_transient_registers();
-
-	/* close cursor */
-	MADITI_check(ADITI_NAME(cursor_close)(
-		(ticket *)MADITI_saved_cursor));
-
-	/* destroy cursor */
-	MADITI_check(ADITI_NAME(cursor_destroy)(
-		(ticket *)MADITI_saved_cursor));
-	MR_free((ticket *)MADITI_saved_cursor);
-
-	/* destroy output temporary */
-	MADITI_check(ADITI_NAME(tmp_destroy)(
-		(ticket *)MADITI_saved_output_rel));
-	MR_free((ticket *)MADITI_saved_output_rel);
-
+	MADITI_cleanup_call_output((ticket *) MADITI_saved_output_rel,
+		(ticket *) MADITI_saved_cursor);
 	save_transient_registers();
 }
+
+static void
+MADITI_cleanup_call_output(ticket *output_rel, ticket *cursor)
+{
+	/* close cursor */
+	MADITI_check(ADITI_NAME(cursor_close)(cursor));
+
+	/* destroy cursor */
+	MADITI_check(ADITI_NAME(cursor_destroy)(cursor));
+	MR_GC_free(cursor);
+
+	/* close output temporary */
+	MADITI_check(ADITI_NAME(rel_close)(output_rel));
+	MR_GC_free(output_rel);
+}
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** If the status is not OK, abort the transaction.
 */
 static void
-MADITI_check(int status)
+MADITI_do_check(int status, int line)
 {
 	if (status != ADITI_OK) {
-		MADITI_status = status;
+		DEBUG(printf(""aditi.m:%d MADITI_check_failed, status %d\\n"",
+				line, status));
 		MR_longjmp(&MADITI_jmp_buf);
 	}
 }
-
 ").
 
 %-----------------------------------------------------------------------------%
@@ -848,12 +1372,11 @@ aditi__quote_atom(String0, Quoted) :-
 :- pragma export(aditi__reverse_append_string_list(in, out),
 		"MADITI__reverse_append_string_list").
 
-	% Yes, the output of this is meant to have unbalanced parentheses.
 aditi__reverse_append_string_list(Strings0, String) :-
 	( Strings0 = [] ->
 		String = "()\n"
 	;
-		aditi__construct_attr_list(Strings0, yes, ["\n"], Strings1),
+		aditi__construct_attr_list(Strings0, yes, [")\n"], Strings1),
 		string__append_list(Strings1, String)
 	).
 
@@ -956,7 +1479,7 @@ aditi__error_code_2(-35, general_failure).
 :- pragma c_code(aditi__error_message(Stat::in, Msg::out),
 		will_not_call_mercury,
 "
-	Msg = aditi_strerror(Stat);
+	Msg = aditi_strerror((int) Stat);
 ").
 
 %-----------------------------------------------------------------------------%

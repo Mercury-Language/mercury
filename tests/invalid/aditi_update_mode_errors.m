@@ -59,23 +59,23 @@ aditi_update_modes3 -->
 	{ aditi_insert(p(_, 1, 2), _, _) }.
 
 aditi_update_modes4 -->
-	aditi_delete(p(_, _X, _Y) :- X < 2).
+	aditi_bulk_delete(p(_, _X, _Y) :- X < 2).
 
 aditi_update_modes5 -->
-	aditi_delete(q(_, _X) = _Y :- X < 2).
+	aditi_bulk_delete(q(_, _X) = _Y :- X < 2).
 
 aditi_update_modes6 -->
 	{ DeleteP =
-		(aditi_top_down pred(_::unused, 1::out, 2::in) is semidet :-
+		(aditi_bottom_up pred(_::unused, 1::out, 2::in) is nondet :-
 			true
 		) },
-	aditi_delete(pred p/3, DeleteP).
+	aditi_bulk_delete(pred p/3, DeleteP).
 
 aditi_update_modes7 -->
 	{ DeleteQ =
-		(aditi_top_down func(_::unused, 1::out) = (2::in) is semidet)
+		(aditi_bottom_up func(_::unused, 1::out) = (2::in) is nondet)
 	},
-	aditi_delete(func q/2, DeleteQ).
+	aditi_bulk_delete(func q/2, DeleteQ).
 
 aditi_update_modes8 -->
 	{ InsertP =
@@ -99,28 +99,28 @@ aditi_update_modes9 -->
 	aditi_bulk_delete(func q/2, InsertQ).
 
 aditi_update_modes10 -->
-	aditi_modify(p(_, _X0, Y0) ==> p(_, X0 + 1, Y0 + 1)).
+	aditi_bulk_modify(p(_, _X0, Y0) ==> p(_, X0 + 1, Y0 + 1)).
 
 aditi_update_modes11 -->
-	aditi_modify((q(_, _X0) = Y0) ==> (q(_, X0 + 1) = (Y0 + 1))).
+	aditi_bulk_modify((q(_, _X0) = Y0) ==> (q(_, X0 + 1) = (Y0 + 1))).
 
 aditi_update_modes12 -->
 	{ ModifyP =
-	    (aditi_top_down pred(_::unused, X0::out, Y0::out,
+	    (aditi_bottom_up pred(_::unused, X0::out, Y0::out,
 			_::unused, X::in, Y::in) is semidet :-
 		X0 = 1,
 		X = X0 + Y0,
 		Y = X0 - Y0
 	    ) },
-	aditi_modify(pred p/3, ModifyP).
+	aditi_bulk_modify(pred p/3, ModifyP).
 
 aditi_update_modes13 -->
 	{ ModifyQ =
-	    (aditi_top_down pred(_::unused, X0::in, Y0::in,
-			_::unused, X::in, Y::in) is semidet :-
+	    (aditi_bottom_up pred(_::unused, X0::in, Y0::in,
+			_::unused, X::in, Y::in) is nondet :-
 		X0 = 1,
 		X = X0 + Y0,
 		Y = X0 - Y0
 	    ) },
-	aditi_modify(func q/2, ModifyQ).
+	aditi_bulk_modify(func q/2, ModifyQ).
 

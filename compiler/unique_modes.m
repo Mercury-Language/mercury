@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -446,11 +446,14 @@ unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
 		GenericCall = class_method(_, _, _, _),
 		ArgOffset = 0
 	;
-		% `aditi_insert' goals have type_info arguments for each
-		% of the arguments of the tuple to insert added to the
-		% start of the argument list by polymorphism.m.
+		% `aditi_insert' and `aditi_delete' goals have type_info
+		% arguments for each of the arguments of the tuple to insert
+		% added to the start of the argument list by polymorphism.m.
 		GenericCall = aditi_builtin(Builtin, UpdatedCallId),
-		( Builtin = aditi_insert(_), UpdatedCallId = _ - _/Arity ->
+		(
+			Builtin = aditi_tuple_insert_delete(_, _),
+			UpdatedCallId = _ - _/Arity
+		->
 			ArgOffset = -Arity
 		;
 			ArgOffset = 0

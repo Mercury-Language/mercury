@@ -150,6 +150,12 @@ rl_out__get_proc_schema(ModuleInfo, Relations, Args, SchemaString) :-
 			map__lookup(Relations, Arg, ArgInfo),
 			ArgInfo = relation_info(_, ArgSchema, _, _)
 		), Args, ArgSchemas),
+	rl_out__get_proc_schema(ModuleInfo, ArgSchemas, SchemaString).
+
+:- pred rl_out__get_proc_schema(module_info::in, list(list(type))::in,
+		string::out) is det.
+
+rl_out__get_proc_schema(ModuleInfo, ArgSchemas, SchemaString) :-
 	rl__schemas_to_strings(ModuleInfo, ArgSchemas,
 		TypeDecls, ArgSchemaStrings),
 	list__map_foldl(
@@ -163,7 +169,7 @@ rl_out__get_proc_schema(ModuleInfo, Relations, Args, SchemaString) :-
 				ArgSchemaString, ") "],
 				ArgSchemaDecl)
 		), ArgSchemaStrings, ArgSchemaDeclList, 1, _),
-	rl_out__get_proc_schema_2(1, Args, "", SchemaString0),
+	rl_out__get_proc_schema_2(1, ArgSchemaDeclList, "", SchemaString0),
 	list__condense([[TypeDecls | ArgSchemaDeclList], ["("],
 		[SchemaString0, ")"]], SchemaStrings),
 	string__append_list(SchemaStrings, SchemaString).
@@ -202,23 +208,27 @@ rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 	{ list__foldl(rl_out__generate_proc_bytecode, Procs, 
 		RLInfo0, RLInfo1) },
 
+	{ module_info_predids(ModuleInfo, PredIds) },
+	{ list__foldl(rl_out__generate_update_procs, PredIds,
+		RLInfo1, RLInfo2) },
+
 	globals__io_lookup_string_option(aditi_user, Owner),
 	{ rl_out_info_assign_const(string(Owner), OwnerIndex,
-		RLInfo1, RLInfo2) },
+		RLInfo2, RLInfo3) },
 	{ prog_out__sym_name_to_string(ModuleName0, ModuleName) },
 	module_name_to_file_name(ModuleName0, ".m", no, SourceFileName),
 	module_name_to_file_name(ModuleName0, ".int", no, IntFileName),
 	{ rl_out_info_assign_const(string(ModuleName), ModuleIndex, 
-		RLInfo2, RLInfo3) },
-	{ rl_out_info_assign_const(string(IntFileName), IntIndex, 
 		RLInfo3, RLInfo4) },
+	{ rl_out_info_assign_const(string(IntFileName), IntIndex, 
+		RLInfo4, RLInfo5) },
 	{ rl_out_info_assign_const(string(SourceFileName), 
-		SourceIndex, RLInfo4, RLInfo5) },
-	{ rl_out_info_get_procs(RLProcs, RLInfo5, RLInfo6) },
-	{ rl_out_info_get_consts(Consts, RLInfo6, RLInfo7) },
+		SourceIndex, RLInfo5, RLInfo6) },
+	{ rl_out_info_get_procs(RLProcs, RLInfo6, RLInfo7) },
+	{ rl_out_info_get_consts(Consts, RLInfo7, RLInfo8) },
 	{ rl_out_info_get_permanent_relations(PermRelsSet, 
-		RLInfo7, RLInfo8) },
-	{ rl_out_info_get_relation_variables(RelVars, RLInfo8, _) },
+		RLInfo8, RLInfo9) },
+	{ rl_out_info_get_relation_variables(RelVars, RLInfo9, _) },
 
 	{ map__to_assoc_list(Consts, ConstsAL) },
 	{ assoc_list__reverse_members(ConstsAL, ConstsLA0) },
@@ -331,6 +341,267 @@ rl_out__generate_rl_bytecode(_, _, MaybeRLFile) -->
 #endif
 	
 #if INCLUDE_ADITI_OUTPUT
+
+	% For each base relation defined in this module, generate
+	% a procedure to be used by aditi_bulk_modify to update
+	% the relation.
+	%
+	% In the procedure below, UpdateRel is the relation returned
+	% by the closure passed to aditi_bulk_modify. Each tuple returned
+	% by that closure contains two sets of arguments -- the tuple
+	% to delete, and the tuple to insert.
+	%
+	% DummyOutput is not actually used -- it is there just so
+	% that the procedure matches the usual convention for calling
+	% Aditi procedures from Mercury.
+	%
+	% ModifyProcFor__p_3(UpdateRel, DummyOutput)
+	% {
+	%	delete(p/3, project(UpdateRel, FirstTuple);
+	%	insert(p/3, project(UpdateRel, SecondTuple),
+	%	init(DummyOutput).
+	% }
+:- pred rl_out__generate_update_procs(pred_id::in, rl_out_info::in,
+		rl_out_info::out) is det.
+
+rl_out__generate_update_procs(PredId) -->
+	rl_out_info_get_module_info(ModuleInfo),
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ module_info_name(ModuleInfo, ModuleName) },
+	{ pred_info_module(PredInfo, PredModule) },
+	(
+		{ ModuleName = PredModule },
+		{ hlds_pred__pred_info_is_base_relation(PredInfo) }
+	->
+		rl_out__generate_update_proc(delete, PredId, PredInfo),
+		rl_out__generate_update_proc(modify, PredId, PredInfo)
+	;
+		[]
+	).
+
+:- type delete_or_modify
+	--->	delete
+	;	modify
+	.
+
+:- pred rl_out__generate_update_proc(delete_or_modify::in, pred_id::in,
+		pred_info::in, rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
+	{ map__init(Relations) },
+	rl_out_info_init_proc(Relations),
+
+	{ pred_info_arg_types(PredInfo, ArgTypes) },
+	{ pred_info_get_indexes(PredInfo, Indexes) },
+
+	rl_out__schema_to_string(ArgTypes, PermSchemaOffset),
+
+	rl_out_info_add_relation_variable(PermSchemaOffset,
+		PermanentAddr),
+	rl_out__collect_permanent_relation(PredId,
+		PermanentAddr, OpenPermanentCode, UnsetPermanentCode),
+
+	{ 
+		DeleteOrModify = delete,
+		InputRelTypes = ArgTypes
+	;
+		DeleteOrModify = modify,
+		list__append(ArgTypes, ArgTypes, InputRelTypes)
+	},
+
+	rl_out__schema_to_string(InputRelTypes, InputRelSchemaOffset),
+	rl_out_info_add_relation_variable(InputRelSchemaOffset,
+		InputRelAddr),
+
+	rl_out__schema_to_string([], NullSchemaOffset),
+	rl_out_info_add_relation_variable(NullSchemaOffset,
+		DummyOutputAddr),
+
+	rl_out_info_get_module_info(ModuleInfo),
+
+	{ LockSpec = 0 }, % default lock spec
+	(
+		{ DeleteOrModify = delete },
+		{ rl__get_delete_proc_name(ModuleInfo, PredId, ProcName) },
+		{ DeleteInputStream =
+			node([
+				rl_PROC_stream,
+				rl_PROC_var(InputRelAddr, LockSpec),
+				rl_PROC_stream_end
+			]) },
+		{ InsertCode = empty }
+	;
+		{ DeleteOrModify = modify },
+		{ rl__get_modify_proc_name(ModuleInfo, PredId, ProcName) },
+		rl_out__generate_modify_project_exprn(ArgTypes,
+			PermSchemaOffset, one, DeleteProjectExpr),
+		rl_out__generate_modify_project_exprn(ArgTypes,
+			PermSchemaOffset, two, InsertProjectExpr),
+
+		%
+		% Project the input relation onto
+		% the first half of its attributes,
+		% deleting the result from the base
+		% relation.
+		% 
+
+		{ DeleteInputStream =
+			node([
+				rl_PROC_stream,
+
+				rl_PROC_project_tee,
+				rl_PROC_stream,
+				rl_PROC_var(InputRelAddr, LockSpec),
+				rl_PROC_stream_end,
+				rl_PROC_expr(DeleteProjectExpr),
+				rl_PROC_var_list_nil,
+				rl_PROC_expr_list_nil,
+
+				rl_PROC_stream_end
+		]) },
+
+		{ InsertCode =
+			node([
+				%
+				% Project the input relation onto
+				% the second half of its attributes,
+				% inserting the result into the base
+				% relation.
+				% 
+				rl_PROC_materialise(1),
+				rl_PROC_stream,
+
+				rl_PROC_project_tee,
+				rl_PROC_stream,
+				rl_PROC_var(InputRelAddr, LockSpec),
+				rl_PROC_stream_end,
+				rl_PROC_expr(InsertProjectExpr),
+				rl_PROC_var_list_nil,
+				rl_PROC_expr_list_nil,
+
+				rl_PROC_stream_end,
+
+				rl_PROC_var_list_cons(PermanentAddr, LockSpec),
+				rl_PROC_var_list_nil
+			]) }
+	),
+
+	rl_out__generate_delete_code(PermanentAddr, Indexes, ArgTypes,
+		PermSchemaOffset, DeleteInputStream, DeleteCode),
+
+	{ Codes = tree(
+		%
+		% Open the permanent relation.
+		%
+		node([OpenPermanentCode]),
+
+		%
+		% Do the deletion.
+		% 
+		tree(DeleteCode,
+
+		%
+		% Do the insertion for an `aditi_bulk_modify' goal.
+		%
+		tree(InsertCode,	
+
+		node([
+			%
+			% Clean up.
+			%
+			UnsetPermanentCode,
+			rl_PROC_unsetrel(InputRelAddr),
+
+			%
+			% Create the dummy output variable.
+			%
+			rl_PROC_createtemprel(DummyOutputAddr,
+				NullSchemaOffset),
+
+			rl_PROC_ret
+		])
+	))) },
+	{ tree__flatten(Codes, CodeList) },
+	{ list__condense(CodeList, Code) },
+
+	{ ArgSchemas = [InputRelTypes, []] },
+	{ rl_out__get_proc_schema(ModuleInfo, ArgSchemas, ProcSchemaString) },
+	rl_out_info_assign_const(string(ProcSchemaString),
+		ProcSchemaConst),
+
+	{ Args = [InputRelAddr, DummyOutputAddr] },
+	rl_out__package_proc(ProcName, Args, Code, ProcSchemaConst).
+
+
+:- pred rl_out__generate_delete_code(int::in, list(index_spec)::in,
+		list(type)::in, int::in, byte_tree::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_delete_code(PermanentAddr, _Indexes, ArgTypes, SchemaOffset,
+		DeleteInputStream, DeleteCode) -->
+	(
+		{ ArgTypes = [] },
+		{ CondCode = 
+			tree(node([rl_PROC_empty]),
+			DeleteInputStream
+		) },
+		{ ThenCode = empty },
+
+		% We use clear here because otherwise the relation manager
+		% may complain about deleting a tuple from an empty relation.
+		{ ElseCode = node([rl_PROC_clear(PermanentAddr)]) },
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, DeleteCode)
+	;
+		{ ArgTypes = [_ | _] },
+
+		%
+		% The tuples to delete must come from the relation to
+		% delete from -- Aditi does the deletion by tuple-id,
+		% not tuple contents. To get the correct tuples, we must
+		% do a sem-join of the tuples to delete against the relation
+		% to delete from.
+		%
+		% Note that the indexed semi-join won't work because it returns
+		% tuples from the non-indexed relation, which are no good for
+		% deleting from the indexed relation.
+		%
+		% XXX For a permanent relation with a unique B-tree index
+		% on all attributes, we may be able to use a sort-merge
+		% semi-join to collect the tuples to delete.
+		%
+		{ list__length(ArgTypes, Arity) },
+		{ list__foldl2(
+			(pred(_::in, L0::in, L::out, N0::in, N::out) is det :-
+				L = [N0 | L0],
+				N = N0 - 1
+			),
+			ArgTypes, [], Attrs, Arity, _) },
+		rl_out__do_generate_hash_exprn(ArgTypes, SchemaOffset,
+			Attrs, HashExprn),
+		rl_out__do_generate_equijoin_exprn(ArgTypes, Attrs, JoinCond),
+		{ LockSpec = 0 }, % default lock spec
+		{ DeleteCode =
+			tree(node([
+				rl_PROC_delete(PermanentAddr),
+				rl_PROC_stream,
+				rl_PROC_semijoin_hj,
+				rl_PROC_stream,
+				rl_PROC_var(PermanentAddr, LockSpec),
+				rl_PROC_stream_end
+			]),
+			tree(DeleteInputStream,
+			node([
+				% Both relations can use the same
+				% hash expression.
+				rl_PROC_expr(HashExprn),
+				rl_PROC_expr(HashExprn),
+				rl_PROC_expr(JoinCond),
+
+				rl_PROC_stream_end
+			])
+		)) }
+	).
+
 :- pred rl_out__generate_proc_bytecode(rl_proc::in, 
 		rl_out_info::in, rl_out_info::out) is det.
 
@@ -338,10 +609,8 @@ rl_out__generate_proc_bytecode(Proc) -->
 	{ Proc = rl_proc(Name, Inputs, Outputs, MemoedRels,
 			Relations, RLInstrs, _) },
 
-	{ Name = rl_proc_name(Owner, Module, ProcName, _) },
-
 	{ list__append(Inputs, Outputs, Args) },
-	rl_out_info_init_proc(Relations, Args),
+	rl_out_info_init_proc(Relations),
 	rl_out__generate_instr_list(RLInstrs, RLInstrCodeTree0),
 	
 	{ set__to_sorted_list(MemoedRels, MemoedList) },
@@ -353,6 +622,7 @@ rl_out__generate_proc_bytecode(Proc) -->
 		% If one memoed relation is dropped, all must be 
 		% dropped for correctness. We could possibly be a
 		% little smarter about this.
+		{ Name = rl_proc_name(Owner, _, _, _) },
 		rl_out__collect_memoed_relations(Owner, Name, MemoedList, 0,
 			CollectCode, NameCode),
 		rl_out__get_rel_var_list(MemoedList, RelVarCodes),
@@ -361,10 +631,8 @@ rl_out__generate_proc_bytecode(Proc) -->
 
 	rl_out_info_get_relation_addrs(Addrs),
 	{ map__to_assoc_list(Addrs, AddrsAL) },
-	rl_out__collect_permanent_relations(AddrsAL, [], PermRelCodes),
-
-	rl_out_info_get_proc_expressions(Exprns),
-	{ list__length(Exprns, NumExprns) },
+	rl_out__collect_permanent_relations(AddrsAL, [],
+		PermRelCodes, [], PermUnsetCodes),
 
 	rl_out__resolve_proc_addresses(RLInstrCodeTree0, RLInstrCodeTree1),
 
@@ -374,22 +642,37 @@ rl_out__generate_proc_bytecode(Proc) -->
 		tree(RLInstrCodeTree1,
 		tree(node(NameCode),
 		tree(GroupCode,
+		tree(node(PermUnsetCodes),
 		node([rl_PROC_ret])	
-	))))) },
+	)))))) },
 	{ tree__flatten(RLInstrCodeTree, CodeLists) },
 	{ list__condense(CodeLists, Codes) },
+
+	list__map_foldl(rl_out_info_get_relation_addr, Args, ArgLocs),
+	rl_out__generate_proc_schema(Args, ProcSchemaConst),
+
+	rl_out__package_proc(Name, ArgLocs, Codes, ProcSchemaConst).
+
+:- pred rl_out__package_proc(rl_proc_name::in, list(int)::in,
+		list(bytecode)::in, int::in,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__package_proc(Name, ArgLocs, Codes, ProcSchemaConst) -->
+
+	{ Name = rl_proc_name(Owner, Module, ProcName, _) },
+
+	rl_out_info_get_proc_expressions(Exprns),
+	{ list__length(Exprns, NumExprns) },
 
 	rl_out_info_assign_const(string(Owner), OwnerConst),
 	rl_out_info_assign_const(string(Module), ModuleConst),
 	rl_out_info_assign_const(string(ProcName), NameConst),
 	{ rl_out__instr_code_size(node(Codes), CodeLength) },
 
-	{ list__length(Args, NumArgs) },
-	list__map_foldl(rl_out_info_get_relation_addr, Args, ArgLocs),
-	rl_out__generate_proc_schema(Args, SchemaConst),
+	{ list__length(ArgLocs, NumArgs) },
 
-	{ RLProc = procedure(OwnerConst, ModuleConst, NameConst, SchemaConst,
-			NumArgs, ArgLocs, NumExprns, Exprns,
+	{ RLProc = procedure(OwnerConst, ModuleConst, NameConst,
+			ProcSchemaConst, NumArgs, ArgLocs, NumExprns, Exprns,
 			CodeLength, Codes) },
 	rl_out_info_add_proc(RLProc).
 
@@ -460,45 +743,56 @@ rl_out__collect_memoed_relations(Owner, ProcName, [Rel | Rels], Counter0,
 	% Put pointers to all the permanent relations
 	% used by the procedure into variables.
 :- pred rl_out__collect_permanent_relations(assoc_list(relation_id, int)::in,
-		list(bytecode)::in, list(bytecode)::out,
-		rl_out_info::in, rl_out_info::out) is det.
+		list(bytecode)::in, list(bytecode)::out, list(bytecode)::in,
+		list(bytecode)::out, rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__collect_permanent_relations([], Codes, Codes) --> [].
+rl_out__collect_permanent_relations([], Codes, Codes,
+		UnsetCodes, UnsetCodes) --> [].
 rl_out__collect_permanent_relations([RelationId - Addr | Rels],
-		Codes0, Codes) -->
+		Codes0, Codes, UnsetCodes0, UnsetCodes) -->
 	rl_out_info_get_relations(Relations),
 	{ map__lookup(Relations, RelationId, RelInfo) },
 	{ RelInfo = relation_info(RelType, _Schema, _Index, _) },
 	(
 		{ RelType = permanent(proc(PredId, _)) }
 	->
-		rl_out_info_get_module_info(ModuleInfo),
-
-		{ rl__get_permanent_relation_info(ModuleInfo, PredId,
-			Owner, PredModule, _, _, RelName, SchemaString) },
-
-		rl_out_info_assign_const(string(Owner), OwnerConst), 
-		rl_out_info_assign_const(string(PredModule), PredModuleConst),
-		rl_out_info_assign_const(string(SchemaString), SchemaOffset),
-		rl_out_info_assign_const(string(RelName), RelNameConst),
-
-		rl_out_info_get_permanent_relations(PermRels0),
-		{ set__insert(PermRels0, 
-			relation(OwnerConst, PredModuleConst, 
-				RelNameConst, SchemaOffset), 
-			PermRels) },
-		rl_out_info_set_permanent_relations(PermRels),
-
-		{ string__format("%s/%s/%s", 
-			[s(Owner), s(PredModule), s(RelName)], Name) },
-		rl_out_info_assign_const(string(Name), RelNameOffset),
-		{ SetCode = rl_PROC_openpermrel(Addr, RelNameOffset, 
-				SchemaOffset) },
+		rl_out__collect_permanent_relation(PredId, Addr,
+			SetCode, UnsetCode),
+		{ UnsetCodes1 = [UnsetCode | UnsetCodes0] },
 		{ Codes1 = [SetCode | Codes0] }
 	;
+		{ UnsetCodes1 = UnsetCodes0 },
 		{ Codes1 = Codes0 }
 	),
-	rl_out__collect_permanent_relations(Rels, Codes1, Codes).
+	rl_out__collect_permanent_relations(Rels, Codes1, Codes,
+		UnsetCodes1, UnsetCodes).
+
+:- pred rl_out__collect_permanent_relation(pred_id::in, int::in,
+		bytecode::out, bytecode::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__collect_permanent_relation(PredId, Addr, SetCode, UnsetCode) -->
+	rl_out_info_get_module_info(ModuleInfo),
+	{ rl__get_permanent_relation_info(ModuleInfo, PredId,
+		Owner, PredModule, _, _, RelName, SchemaString) },
+
+	rl_out_info_assign_const(string(Owner), OwnerConst), 
+	rl_out_info_assign_const(string(PredModule), PredModuleConst),
+	rl_out_info_assign_const(string(SchemaString), SchemaOffset),
+	rl_out_info_assign_const(string(RelName), RelNameConst),
+
+	rl_out_info_get_permanent_relations(PermRels0),
+	{ set__insert(PermRels0, 
+		relation(OwnerConst, PredModuleConst, 
+			RelNameConst, SchemaOffset), 
+		PermRels) },
+	rl_out_info_set_permanent_relations(PermRels),
+
+	{ string__format("%s/%s/%s", 
+		[s(Owner), s(PredModule), s(RelName)], Name) },
+	rl_out_info_assign_const(string(Name), RelNameOffset),
+	{ SetCode = rl_PROC_openpermrel(Addr, RelNameOffset, SchemaOffset) },
+	{ UnsetCode = rl_PROC_unsetrel(Addr) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1980,9 +2274,18 @@ rl_out__generate_key_range(Range, RangeExprn) -->
 		rl_out_info::in, rl_out_info::out) is det.
 
 rl_out__generate_hash_exprn(Input, Attrs, ExprnNum) -->
-	rl_out_info_get_hash_exprns(HashExprns0),
 	rl_out_info_get_relation_schema(Input, InputSchema),
 	rl_out__schema_to_string(InputSchema, InputSchemaOffset),
+	rl_out__do_generate_hash_exprn(InputSchema,
+		InputSchemaOffset, Attrs, ExprnNum).
+
+:- pred rl_out__do_generate_hash_exprn(list(type)::in, int::in,
+		list(int)::in, int::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__do_generate_hash_exprn(InputSchema, InputSchemaOffset,
+		Attrs, ExprnNum) -->
+	rl_out_info_get_hash_exprns(HashExprns0),
 	( { map__search(HashExprns0, Attrs - InputSchemaOffset, ExprnNum0) } ->
 		{ ExprnNum = ExprnNum0 }
 	;
@@ -2002,6 +2305,50 @@ rl_out__generate_hash_exprn(Input, Attrs, ExprnNum) -->
 			ExprnNum, HashExprns) },
 		rl_out_info_set_hash_exprns(HashExprns)
 	).
+
+	% This is only used by the code to generate the modification
+	% and deletion procedures for base relations, so avoiding
+	% generating multiple copies of one of these is pointless --
+	% only one will ever be generated for each procedure.
+:- pred rl_out__do_generate_equijoin_exprn(list(type)::in, list(int)::in,
+		int::out, rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__do_generate_equijoin_exprn(InputSchema, Attrs, ExprnNum) -->
+	rl_out_info_get_module_info(ModuleInfo),
+	{ rl_exprn__generate_equijoin_exprn(ModuleInfo,
+		Attrs, InputSchema, ExprnCode) },
+
+	% Nothing is built on the stack, so this will be enough.
+	{ StackSize = 10 },
+	{ NumParams = 2 },
+	{ Decls = [] },
+	rl_out__schema_to_string([], EmptySchemaOffset),
+	rl_out__package_exprn(ExprnCode, NumParams, test,
+		EmptySchemaOffset, EmptySchemaOffset, StackSize,
+		Decls, ExprnNum).
+
+	% This is only used by the code to generate the modification
+	% procedures for base relations, so avoiding generating multiple
+	% copies of one of these is pointless -- only one will ever be
+	% generated for each procedure.
+:- pred rl_out__generate_modify_project_exprn(list(type)::in, int::in,
+		tuple_num::in, int::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_modify_project_exprn(Schema, SchemaOffset,
+		TupleNum, ExprnNum) -->
+	rl_out_info_get_module_info(ModuleInfo),
+	{ rl_exprn__generate_modify_project_exprn(ModuleInfo,
+		TupleNum, Schema, Code) },
+
+	% Nothing is built on the stack, so this will be enough.
+	{ StackSize = 10 },
+	{ NumParams = 1 },
+	{ ExprnMode = generate },
+	{ Decls = [] },
+	rl_out__schema_to_string([], EmptySchemaOffset),
+	rl_out__package_exprn(Code, NumParams, ExprnMode, SchemaOffset,
+		EmptySchemaOffset, StackSize, Decls, ExprnNum).
 
 :- pred rl_out__package_exprn(list(bytecode)::in, int::in, exprn_mode::in,
 		int::in, int::in, int::in, list(type)::in, int::out,
@@ -2123,9 +2470,9 @@ rl_out_info_init(ModuleInfo, Info0) :-
 			FirstExprn, TmpVars).
 
 :- pred rl_out_info_init_proc(map(relation_id, relation_info)::in,
-	list(relation_id)::in, rl_out_info::in, rl_out_info::out) is det.
+	rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_init_proc(Relations, _Args) -->
+rl_out_info_init_proc(Relations) -->
 	^ relations := Relations,
 
 	{ map__init(Labels) },

@@ -189,9 +189,6 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, ModuleInfo, ReportErrs,
 		list__filter(type_is_aditi_state, ArgTypes, AditiStateTypes),
 		( AditiStateTypes = [], ReportErrs = yes ->
 			report_no_aditi_state(PredInfo, IOState2, IOState)
-		; AditiStateTypes = [_, _ | _] ->
-			report_multiple_aditi_states(PredInfo,
-				IOState2, IOState)
 		;
 			IOState = IOState2
 		)
@@ -370,8 +367,8 @@ post_typecheck__finish_aditi_builtin(_, _, _, _, aditi_call(_, _, _, _),
 		_, _, _, _) -->
 	% These are only added by magic.m.
 	{ error("post_typecheck__finish_aditi_builtin: aditi_call") }.
-post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo,
-		Args, Context, aditi_insert(PredId0), Builtin,
+post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
+		aditi_tuple_insert_delete(InsertDelete, PredId0), Builtin,
 		PredOrFunc - SymName0/Arity, InsertCallId,
 		Modes, IO0, IO) :-
 	% make_hlds.m checks the arity, so this is guaranteed to succeed.
@@ -382,7 +379,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo,
 	post_typecheck__resolve_pred_overloading(PredId0, OtherArgs,
 		CallerPredInfo, ModuleInfo, SymName0, SymName, PredId),
 
-	Builtin = aditi_insert(PredId),
+	Builtin = aditi_tuple_insert_delete(InsertDelete, PredId),
 	InsertCallId = PredOrFunc - SymName/Arity,
 
 	module_info_pred_info(ModuleInfo, PredId, RelationPredInfo),
@@ -394,93 +391,106 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo,
 	% The other arguments all have mode `in'.
 	pred_info_arg_types(RelationPredInfo, ArgTypes),
 	in_mode(InMode),
-	aditi_builtin_modes(InMode, (aditi_top_down),
-		ArgTypes, InsertArgModes),
+	unused_mode(AditiStateMode),
+	aditi_builtin_modes(InMode, AditiStateMode, ArgTypes, InsertArgModes),
 	list__append(InsertArgModes, [aditi_di_mode, aditi_uo_mode], Modes).
 
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
-		aditi_delete(PredId0, Syntax), aditi_delete(PredId, Syntax),
-		PredOrFunc - SymName0/Arity, PredOrFunc - SymName/Arity,
-		Modes, IO0, IO) :-
-	AdjustArgTypes = (pred(X::in, X::out) is det),
-	resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
-		AdjustArgTypes, PredId0, PredId, SymName0, SymName),
-
-	Builtin = aditi_delete(PredId, Syntax),
-	DeleteCallId = PredOrFunc - SymName/Arity,
-
-	module_info_pred_info(ModuleInfo, PredId, RelationPredInfo),
-	check_base_relation(Context, RelationPredInfo,
-		Builtin, DeleteCallId, IO0, IO),
-
-	pred_info_arg_types(RelationPredInfo, ArgTypes),
-	in_mode(InMode),
-	aditi_builtin_modes(InMode, (aditi_top_down),
-		ArgTypes, DeleteArgModes),
-	Inst = ground(shared, yes(pred_inst_info(PredOrFunc,
-		DeleteArgModes, semidet))),
-	Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
-
-post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
-		aditi_bulk_operation(Op, PredId0), Builtin,
-		PredOrFunc - SymName0/Arity, BulkOpCallId, Modes, IO0, IO) :-
-	AdjustArgTypes = (pred(X::in, X::out) is det),
-	resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
-		AdjustArgTypes, PredId0, PredId, SymName0, SymName),
-
-	Builtin = aditi_bulk_operation(Op, PredId),
-	BulkOpCallId = PredOrFunc - SymName/Arity,
-
-	module_info_pred_info(ModuleInfo, PredId, RelationPredInfo),
-	check_base_relation(Context, RelationPredInfo,
-		Builtin, BulkOpCallId, IO0, IO),
-
-	pred_info_arg_types(RelationPredInfo, ArgTypes),
-	out_mode(OutMode),
-	aditi_builtin_modes(OutMode, (aditi_bottom_up), ArgTypes, OpArgModes),
-	Inst = ground(shared, yes(pred_inst_info(PredOrFunc,
-		OpArgModes, nondet))),
-	Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
-
-post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
-		aditi_modify(PredId0, Syntax), Builtin,
-		PredOrFunc - SymName0/Arity, ModifyCallId, Modes, IO0, IO) :-
-
-	% The argument types of the closure passed to `aditi_modify'
-	% contain two copies of the arguments of the base relation -
-	% one set input and one set output.
-	AdjustArgTypes =
-	    (pred(Types0::in, Types::out) is det :-
-		list__length(Types0, Length),
-		HalfLength is Length // 2,
-		( list__split_list(HalfLength, Types0, Types1, _) ->
-			Types = Types1
-		;
-			error(
+		Builtin0, Builtin, PredOrFunc - SymName0/Arity,
+		UpdateCallId, Modes, IO0, IO) :-
+	Builtin0 = aditi_insert_delete_modify(InsertDelMod, PredId0, Syntax),
+	UnchangedArgTypes = (pred(X::in, X::out) is det),
+	(
+		InsertDelMod = bulk_insert,
+		AdjustArgTypes = UnchangedArgTypes
+	;
+		InsertDelMod = delete(_),
+		AdjustArgTypes = UnchangedArgTypes
+	;
+		InsertDelMod = modify(_),
+		% The argument types of the closure passed to `aditi_modify'
+		% contain two copies of the arguments of the base relation -
+		% one set input and one set output.
+		AdjustArgTypes =
+		    (pred(Types0::in, Types::out) is det :-
+			list__length(Types0, Length),
+			HalfLength is Length // 2,
+			( list__split_list(HalfLength, Types0, Types1, _) ->
+				Types = Types1
+			;
+				error(
 			"post_typecheck__finish_aditi_builtin: aditi_modify")
-		)
-	    ),
+			)
+		    )
+	),
 	resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
 		AdjustArgTypes, PredId0, PredId, SymName0, SymName),
+	Builtin = aditi_insert_delete_modify(InsertDelMod, PredId, Syntax),
 
-	Builtin = aditi_modify(PredId, Syntax),
-	ModifyCallId = PredOrFunc - SymName/Arity,
+	UpdateCallId = PredOrFunc - SymName/Arity,
 
 	module_info_pred_info(ModuleInfo, PredId, RelationPredInfo),
 	check_base_relation(Context, RelationPredInfo,
-		Builtin, ModifyCallId, IO0, IO),
+		Builtin, UpdateCallId, IO0, IO),
 
-	% Set up the modes of the closure passed to the call to `aditi_modify'.
 	pred_info_arg_types(RelationPredInfo, ArgTypes),
-	in_mode(InMode),
-	out_mode(OutMode),
-	aditi_builtin_modes(InMode, (aditi_top_down), ArgTypes, InputArgModes),
-	aditi_builtin_modes(OutMode, (aditi_top_down),
-		ArgTypes, OutputArgModes),
-	list__append(InputArgModes, OutputArgModes, ModifyArgModes),
-	Inst = ground(shared,
-		yes(pred_inst_info(predicate, ModifyArgModes, semidet))),
+	post_typecheck__insert_delete_modify_closure_info(InsertDelMod,
+		PredOrFunc, ArgTypes, ClosurePredOrFunc,
+		ClosureArgModes, ClosureDetism),
+
+	Inst = ground(shared, yes(pred_inst_info(ClosurePredOrFunc,
+		ClosureArgModes, ClosureDetism))),
 	Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
+
+:- pred post_typecheck__insert_delete_modify_closure_info(
+		aditi_insert_delete_modify, pred_or_func, list(type),
+		pred_or_func, list(mode), determinism).
+:- mode post_typecheck__insert_delete_modify_closure_info(in, in, in,
+		out, out, out) is det.
+
+post_typecheck__insert_delete_modify_closure_info(bulk_insert, PredOrFunc,
+		ArgTypes, PredOrFunc, ClosureArgModes, nondet) :-
+	out_mode(OutMode),
+	AditiStateMode = aditi_ui_mode,
+	aditi_builtin_modes(OutMode, AditiStateMode,
+		ArgTypes, ClosureArgModes).
+post_typecheck__insert_delete_modify_closure_info(delete(BulkOrFilter),
+		PredOrFunc, ArgTypes, PredOrFunc, ClosureArgModes, nondet) :-
+	(
+		BulkOrFilter = bulk,
+		out_mode(ArgMode)
+	;
+		BulkOrFilter = filter,
+		in_mode(ArgMode)
+	),
+	AditiStateMode = aditi_ui_mode,
+	aditi_builtin_modes(ArgMode, AditiStateMode,
+		ArgTypes, ClosureArgModes).
+post_typecheck__insert_delete_modify_closure_info(modify(BulkOrFilter),
+		_PredOrFunc, ArgTypes, LambdaPredOrFunc,
+		ClosureArgModes, nondet) :-
+	LambdaPredOrFunc = predicate,
+	out_mode(OutMode),
+	in_mode(InMode),
+	unused_mode(UnusedMode),
+	(
+		BulkOrFilter = bulk,
+		DeleteArgMode = OutMode,
+		DeleteAditiStateMode = aditi_ui_mode
+	;
+		BulkOrFilter = filter,
+		DeleteArgMode = InMode,
+		DeleteAditiStateMode = UnusedMode
+	),
+
+	aditi_builtin_modes(DeleteArgMode, DeleteAditiStateMode,
+			ArgTypes, DeleteArgModes),
+
+	InsertArgMode = OutMode,
+	InsertAditiStateMode = UnusedMode,
+	aditi_builtin_modes(InsertArgMode, InsertAditiStateMode,
+		ArgTypes, InsertArgModes),
+	list__append(DeleteArgModes, InsertArgModes, ClosureArgModes).
 
 	% Use the type of the closure passed to an `aditi_delete',
 	% `aditi_bulk_insert', `aditi_bulk_delete' or `aditi_modify'
@@ -502,8 +512,9 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
 			pred_info_clauses_info(CallerPredInfo, ClausesInfo),
 			clauses_info_vartypes(ClausesInfo, VarTypes),
 			map__lookup(VarTypes, HOArg, HOArgType),
-			type_is_higher_order(HOArgType, predicate,
-				(aditi_top_down), ArgTypes0)
+			type_is_higher_order(HOArgType,
+				_, EvalMethod, ArgTypes0),
+			EvalMethod \= normal
 		->
 			call(AdjustArgTypes, ArgTypes0, ArgTypes),
 			typecheck__resolve_pred_overloading(ModuleInfo,
@@ -521,30 +532,18 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
 	% to an Aditi update.
 	% The `Mode' passed is the mode of all arguments apart
 	% from the `aditi__state'.
-:- pred aditi_builtin_modes((mode), lambda_eval_method,
-		list(type), list(mode)).
+:- pred aditi_builtin_modes((mode), (mode), list(type), list(mode)).
 :- mode aditi_builtin_modes(in, in, in, out) is det.
 
 aditi_builtin_modes(_, _, [], []).
-aditi_builtin_modes(Mode, EvalMethod, [ArgType | ArgTypes],
+aditi_builtin_modes(Mode, AditiStateMode, [ArgType | ArgTypes],
 		[ArgMode | ArgModes]) :-
 	( type_is_aditi_state(ArgType) ->
-		( EvalMethod = (aditi_top_down) ->
-			% The top-down Aditi closures are not allowed
-			% to call database predicates, so their aditi__state
-			% arguments must have mode `unused'.
-			% The `aditi__state's are passed even though
-			% they are not used so that the argument
-			% list of the closure matches the argument list
-			% of the relation being updated.
-			unused_mode(ArgMode)
-		;
-			ArgMode = aditi_ui_mode
-		)
+		ArgMode = AditiStateMode
 	;
 		ArgMode = Mode
 	),
-	aditi_builtin_modes(Mode, EvalMethod, ArgTypes, ArgModes).
+	aditi_builtin_modes(Mode, AditiStateMode, ArgTypes, ArgModes).
 
 	% Report an error if a predicate modified by an Aditi builtin
 	% is not a base relation.
@@ -735,24 +734,6 @@ report_no_aditi_state(PredInfo) -->
 	hlds_out__write_simple_call_id(PredOrFunc,
 		qualified(Module, Name), Arity),
 	io__write_string("  without an `aditi:state' argument.\n").
-
-:- pred report_multiple_aditi_states(pred_info, io__state, io__state).
-:- mode report_multiple_aditi_states(in, di, uo) is det.
-
-report_multiple_aditi_states(PredInfo) -->
-	io__set_exit_status(1),
-	{ pred_info_context(PredInfo, Context) },
-	prog_out__write_context(Context),
-	{ pred_info_module(PredInfo, Module) },
-	{ pred_info_name(PredInfo, Name) },
-	{ pred_info_arity(PredInfo, Arity) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	io__write_string("Error: `:- pragma aditi' declaration for "),
-	hlds_out__write_simple_call_id(PredOrFunc,
-		qualified(Module, Name), Arity),
-	io__nl,
-	prog_out__write_context(Context),
-	io__write_string("  with multiple `aditi:state' arguments.\n").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

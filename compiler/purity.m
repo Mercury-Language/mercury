@@ -536,8 +536,9 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, PredInfo0, PredInfo,
 			pred_info_clauses_info(PredInfo, ClausesInfo),
 			clauses_info_vartypes(ClausesInfo, VarTypes),
 			map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
-			fix_aditi_state_modes(StateMode, LambdaVarTypes,
-				Modes0, Modes)
+			SeenState = no,
+			fix_aditi_state_modes(SeenState, StateMode,
+				LambdaVarTypes, Modes0, Modes)
 		},
 		{ GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext) }
 	;
@@ -655,22 +656,36 @@ compute_cases_purity([case(Ctor,Goal0)|Goals0], [case(Ctor,Goal)|Goals],
 
 	% Make sure lambda expressions introduced by the compiler
 	% have the correct mode for their `aditi__state' arguments.
-:- pred fix_aditi_state_modes((mode), list(type), list(mode), list(mode)).
-:- mode fix_aditi_state_modes(in, in, in, out) is det.
+:- pred fix_aditi_state_modes(bool, (mode), list(type),
+		list(mode), list(mode)).
+:- mode fix_aditi_state_modes(in, in, in, in, out) is det.
 
-fix_aditi_state_modes(_, [], [], []).
-fix_aditi_state_modes(_, [_|_], [], []) :-
+fix_aditi_state_modes(_, _, [], [], []).
+fix_aditi_state_modes(_, _, [_|_], [], []) :-
 	error("purity:fix_aditi_state_modes").
-fix_aditi_state_modes(_, [], [_|_], []) :-
+fix_aditi_state_modes(_, _, [], [_|_], []) :-
 	error("purity:fix_aditi_state_modes").
-fix_aditi_state_modes(AditiStateMode, [Type | Types],
+fix_aditi_state_modes(SeenState0, AditiStateMode, [Type | Types],
 		[ArgMode0 | Modes0], [ArgMode | Modes]) :-
 	( type_is_aditi_state(Type) ->
-		ArgMode = AditiStateMode
+		(
+			SeenState0 = yes,
+			% The only Aditi builtin which takes a closure
+			% with two `aditi__state' arguments is
+			% `aditi_bulk_modify'.
+			% The second `aditi__state' argument has mode
+			% unused.
+			unused_mode(ArgMode)
+		;
+			SeenState0 = no,
+			ArgMode = AditiStateMode
+		),
+		SeenState = yes
 	;
-		ArgMode = ArgMode0
+		ArgMode = ArgMode0,
+		SeenState = SeenState0
 	),
-	fix_aditi_state_modes(AditiStateMode, Types, Modes0, Modes).
+	fix_aditi_state_modes(SeenState, AditiStateMode, Types, Modes0, Modes).
 
 %-----------------------------------------------------------------------------%
 %				Print error messages

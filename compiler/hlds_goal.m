@@ -241,44 +241,73 @@
 			int		% number of outputs
 		)
 
-		% Insert a single tuple into a predicate.
+		% Insert or delete a single tuple into/from a base relation.
 		% Arguments:
 		%   type-infos for the arguments of the tuple to insert
 		%   the arguments of tuple to insert
 		% aditi__state::di, aditi__state::uo
-	;	aditi_insert(
+	;	aditi_tuple_insert_delete(
+			aditi_insert_delete,
 			pred_id		% base relation to insert into
 		)
 
-		% Apply a filter to a relation.
-		% Arguments:
-		%   deletion condition (semidet `aditi_top_down' closure). 
-		%   aditi__state::di, aditi__state::uo
-	;	aditi_delete(
-			pred_id,	% base relation to delete from
+		% Insert/delete/modify operations which take
+		% an input closure.
+		% These operations all have two variants. 
+		%
+		% A pretty syntax:
+		%
+		% aditi_bulk_insert(p(DB, X, Y) :- q(DB, X, Y)).
+		% aditi_bulk_delete(p(DB, X, Y) :- q(DB, X, Y)).
+		% aditi_bulk_modify(
+		%	(p(DB, X0, Y0) ==> p(_, X, Y) :-
+		%		X = X0 + 1,
+		%		Y = Y0 + 3
+		%	)).
+		%
+		% An ugly syntax:
+		%
+		% InsertPred = (aditi_bottom_up
+		%	pred(DB::aditi_ui, X::out, Y::out) :- 
+		%		q(DB, X, Y)
+		% ),
+		% aditi_bulk_insert(pred p/3, InsertPred).
+		%
+		% DeletePred = (aditi_bottom_up
+		%	pred(DB::aditi_ui, X::out, Y::out) :- 
+		%		p(DB, X, Y),
+		%		q(DB, X, Y)
+		% ),
+		% aditi_bulk_delete(pred p/3, DeletePred).
+	;	aditi_insert_delete_modify(
+			aditi_insert_delete_modify,
+			pred_id,
 			aditi_builtin_syntax
 		)
+	.
 
-		% Insert or delete the tuples returned by a query.
-		% Arguments:
-		%   query to generate tuples to insert or delete
-		% 	(nondet `aditi_bottom_up' closure).
-		%   aditi__state::di, aditi__state::uo
-	;	aditi_bulk_operation(
-			aditi_bulk_operation,
-			pred_id		% base relation to insert into
-		)
+:- type aditi_insert_delete
+	--->	delete			% `aditi_delete'
+	;	insert			% `aditi_insert'
+	.
 
-		% Modify the tuples in a relation.
-		% Arguments:
-		%   semidet `aditi_top_down' closure to construct a
-		%	new tuple from the old tuple.
-		%	The tuple is not changed if the closure fails.
- 		%   aditi__state::di, aditi__state::uo.
-	;	aditi_modify(
-			pred_id,	% base relation to modify
-			aditi_builtin_syntax
-		)
+:- type aditi_insert_delete_modify
+	--->	delete(bulk_or_filter)	% `aditi_bulk_delete' or `aditi_filter'
+	;	bulk_insert		% `aditi_bulk_insert'
+	;	modify(bulk_or_filter)	% `aditi_bulk_modify' or `aditi_modify'
+	.
+
+	% Deletions and modifications can either be done by computing
+	% all tuples for which the update applies, then applying the
+	% update for all tuples in one go (`bulk'), or by applying
+	% the update to each tuple during a pass over the relation
+	% being modified (`filter').
+	%
+	% The `filter' updates are not yet implemented in Aditi, and
+	% it may be difficult to ever implement them.
+:- type bulk_or_filter
+	--->	bulk
+	;	filter
 	.
 
 	% Which syntax was used for an `aditi_delete' or `aditi_modify'
@@ -287,17 +316,13 @@
 	% (See the "Aditi update syntax" section of the Mercury Language
 	% Reference Manual).
 :- type aditi_builtin_syntax
-	--->	pred_term		% e.g.	aditi_delete(p(_, X) :- X = 1).
+	--->	pred_term		% e.g.
+					% aditi_bulk_insert(p(_, X) :- X = 1).
 	;	sym_name_and_closure	% e.g.
-					% aditi_delete(p/2,
-					%    (pred(_::in, X::in) is semidet :-
+					% aditi_insert(p/2,
+					%    (pred(_::in, X::out) is nondet:-
 					%	X = 1)
 					%    )
-	.
-
-:- type aditi_bulk_operation
-	--->	insert
-	;	delete
 	.
 
 :- type can_remove

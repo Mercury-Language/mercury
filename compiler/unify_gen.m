@@ -41,6 +41,7 @@
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
 :- import_module globals, options, continuation_info, stack_layout.
+:- import_module rl.
 
 :- import_module term, bool, string, int, list, map, require, std_util.
 
@@ -509,27 +510,42 @@ unify_gen__generate_construction_2(
 	    )
 	;
 		{ Code = empty },
+
+		code_info__make_entry_label(ModuleInfo,
+			PredId, ProcId, no, CodeAddr),
+		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
+			ProcLabel) },
 		(
-			{ EvalMethod = normal }
+			{ EvalMethod = normal },
+			{ AddrConst = const(code_addr_const(CodeAddr)) }
 		;
 			{ EvalMethod = (aditi_bottom_up) },
-			% XXX The closure_layout code needs to be changed
-			% to handle these.
-			{ error(
-			"Sorry, not implemented: `aditi_bottom_up' closures") }
+			{ rl__get_c_interface_rl_proc_name(ModuleInfo,
+				proc(PredId, ProcId), RLProcName) },
+			{ rl__proc_name_to_string(RLProcName, RLProcNameStr) },
+			list__map_foldl(code_info__variable_type,
+				Args, InputTypes),
+			{ rl__schema_to_string(ModuleInfo,
+				InputTypes, InputSchemaStr) },
+			{ AditiCallArgs = [
+				yes(const(string_const(RLProcNameStr))),
+				yes(const(string_const(InputSchemaStr)))
+			] },
+			code_info__get_next_cell_number(AditiCallCellNo),
+			{ Reuse = no },
+			{ AddrConst = create(0, AditiCallArgs, uniform(no),
+				must_be_static, AditiCallCellNo,
+				"aditi_call_info", Reuse) }
 		;
 			{ EvalMethod = (aditi_top_down) },
-			% XXX The closure_layout code needs to be changed
-			% to handle these.
+			% XXX Need to work out how to encode the procedure
+			% name. The update goals which take aditi_top_down
+			% closures aren't implemented on the Aditi side anyway.
 			{ error(
 			"Sorry, not implemented: `aditi_top_down' closures") }
 		),
 		{ continuation_info__generate_closure_layout(
 			ModuleInfo, PredId, ProcId, ClosureInfo) },
-		code_info__make_entry_label(ModuleInfo, PredId, ProcId, no,
-			CodeAddr),
-		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
-			ProcLabel) },
 		code_info__get_cell_count(CNum0),
 		{ stack_layout__construct_closure_layout(ProcLabel,
 			ClosureInfo, ClosureLayoutMaybeRvals,
@@ -545,7 +561,7 @@ unify_gen__generate_construction_2(
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [
 			yes(ClosureLayout),
-			yes(const(code_addr_const(CodeAddr))),
+			yes(AddrConst),
 			yes(const(int_const(NumArgs)))
 			| PredArgs
 		] },

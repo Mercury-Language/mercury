@@ -19,19 +19,18 @@ aditi_update -->
 	aditi_insert(p(_, 1, 2)),
 	aditi_insert(q(_, 1) = 2),
 
-	aditi_delete(p(_, X, _Y) :- X < 2),
-	aditi_delete(q(_, X) = _Y :- X < 2),
+	aditi_delete(p(_, 1, 2)),
+	aditi_delete(q(_, 1) = 2),
 
-	{ DeleteP =
-		(aditi_top_down pred(_::unused, 1::in, 2::in) is semidet :-
-			true
-		) },
-	aditi_delete(pred p/3, DeleteP),
+	aditi_bulk_insert(
+		(p(_, X, Y) :-
+			( X = 1, Y = 2
+			; X = 2, Y = 3
+			)
+		)),
 
-	{ DeleteQ =
-		(aditi_top_down func(_::unused, 1::in) = (2::in) is semidet)
-	},
-	aditi_delete(func q/2, DeleteQ),
+	aditi_bulk_delete(p(_, X, _) :- X < 2),
+	aditi_bulk_delete(q(_, X) = _ :- X < 2),
 
 	{ InsertP =
 	    (aditi_bottom_up pred(_::aditi_ui, A1::out, A2::out) is nondet :-
@@ -41,6 +40,14 @@ aditi_update -->
 	    ) },
 	aditi_bulk_insert(pred p/3, InsertP),
 	aditi_bulk_delete(pred p/3, InsertP),
+
+	aditi_bulk_insert(
+		(p(_, A1, A2) :-
+			( A1 = 1, A2 = 2
+			; A1 = 2, A2 = 3
+			)
+		)
+	),
 
 	{ InsertQ =
 	    (aditi_bottom_up func(_::aditi_ui, A1::out)
@@ -52,28 +59,38 @@ aditi_update -->
 	aditi_bulk_insert(func q/2, InsertQ),
 	aditi_bulk_delete(func q/2, InsertQ),
 
-	aditi_modify(p(_, X0, Y0) ==> p(_, X0 + 1, Y0 + 1)),
-	aditi_modify((p(_, X0, Y0) ==> p(_, X, Y) :-
+	aditi_bulk_insert(
+		(q(_, A1) = A2 :-
+			( A1 = 1, A2 = 2
+			; A1 = 2, A2 = 3
+			)
+		)
+	),
+
+	aditi_bulk_modify(p(_, X0, Y0) ==> p(_, X0 + 1, Y0 + 1)),
+	aditi_bulk_modify((p(_, X0, Y0) ==> p(_, X, Y) :-
 			X = X0 + 1,
 			Y = Y0 + 1
 		)),
-	aditi_modify((q(_, X0) = Y0) ==> (q(_, X0 + 1) = (Y0 + 1))),
+	aditi_bulk_modify((q(_, X0) = Y0) ==> (q(_, X0 + 1) = (Y0 + 1))),
 
-	{ ModifyP =
-	    (aditi_top_down pred(_::unused, X0::in, Y0::in,
-			_::unused, X::out, Y::out) is semidet :-
+	{ ModifyP1 =
+	    (aditi_bottom_up pred(DB::aditi_ui, X0::out, Y0::out,
+			_::unused, X::out, Y::out) is nondet :-
+		p(DB, X0, Y0),
 		X0 = 1,
 		X = X0 + Y0,
 		Y = X0 - Y0
 	    ) },
-	aditi_modify(pred p/3, ModifyP),
+	aditi_bulk_modify(pred p/3, ModifyP1),
 
 	{ ModifyQ =
-	    (aditi_top_down pred(_::unused, X0::in, Y0::in,
-			_::unused, X::out, Y::out) is semidet :-
+	    (aditi_bottom_up pred(DB::aditi_ui, X0::out, Y0::out,
+			_::unused, X::out, Y::out) is nondet :-
+		q(DB, X0) = Y0,
 		X0 = 1,
 		X = X0 + Y0,
 		Y = X0 - Y0
 	    ) },
-	aditi_modify(func q/2, ModifyQ).
+	aditi_bulk_modify(func q/2, ModifyQ).
 

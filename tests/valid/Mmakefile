@@ -27,6 +27,7 @@ TYPECLASS_SOURCES= \
 	instance_unconstrained_tvar.m
 
 OTHER_SOURCES= \
+	aditi_update.m \
 	base_relation.m \
 	base_relation2.m \
 	common_struct_bug.m \
@@ -135,10 +136,6 @@ OTHER_SOURCES= \
 	vn_float.m \
 	zero_arity.m
 
-# Code generation is not yet implemented for Aditi updates,
-# so don't attempt to compile to C.
-#	aditi_update.m
-
 # The mode system can't handle the following test cases yet:
 #	assoc_list.m
 #	determinism.m
@@ -233,7 +230,7 @@ MCFLAGS-zero_arity		= --infer-modes
 intermod_nested_module2.date: intermod_nested_module2.date0
 intermod_user_equality_nested2.date: intermod_user_equality_nested2.date0
 
-check:	objs aditi_update.err
+check:	objs
 
 objs:	$(OBJS)
 
