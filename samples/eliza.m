@@ -84,7 +84,7 @@ eliza__initial_state(state(ResMsg,RepMsg)) :-
 :- pred eliza__get_repeat(string, eliza__state, eliza__state).
 :- mode eliza__get_repeat(out, in, out) is det.
 eliza__get_repeat(MsgOut, state(Res, RepIn), state(Res, RepOut)) :-
-	( RepIn = [ Msg | Rest ] ->
+	( RepIn = [Msg | Rest] ->
 	    MsgOut = Msg,
 	    list__append(Rest, [Msg], RepOut)
 	;
@@ -108,7 +108,7 @@ eliza__get_response2(Type, MsgOut,
 		[Type2 - Msgs2 | RestIn], 
 		[Type2 - Msgs3 | RestOut]) :-
 	( Type = Type2 ->
-	    ( Msgs2 = [ MsgOut1 | MsgOutRest ] ->
+	    ( Msgs2 = [MsgOut1 | MsgOutRest] ->
 		MsgOut = MsgOut1,
 		RestOut = RestIn,
 		list__append(MsgOutRest, [MsgOut], Msgs3)
@@ -173,48 +173,48 @@ eliza__parse -->
 
 :- pred eliza__strip(list(char) :: in, list(char) :: out) is det.
 eliza__strip([], []).
-eliza__strip([ X | Xs ], Ys) :-
+eliza__strip([X | Xs], Ys) :-
 	( char__is_whitespace(X) ->
 	    eliza__strip(Xs, Ys)
 	;
-	    eliza__strip2([ X | Xs ], Ys)
+	    eliza__strip2([X | Xs], Ys)
 	).
 
 :- pred eliza__strip2(list(char) :: in, list(char) :: out) is det.
 eliza__strip2([], []).
-eliza__strip2([ X | Xs ], Ys) :-
+eliza__strip2([X | Xs], Ys) :-
 	( eliza__is_punct(X) ->
-	    eliza__strip2([ ' ' | Xs ], Ys)
+	    eliza__strip2([' ' | Xs], Ys)
 	;
 	     eliza__strip2(Xs, Ys1),
 	    ( char__is_whitespace(X), Ys1 = [] ->
 		Ys = []
 	    ;
-		Ys = [ X | Ys1 ] 
+		Ys = [X | Ys1] 
 	    ) 
 	).
 
 :- pred eliza__form_words(list(char), list(list(char))).
 :- mode eliza__form_words(in, out) is det.
 eliza__form_words([], []).
-eliza__form_words([ X | Xs ], Ys) :-
+eliza__form_words([X | Xs], Ys) :-
 	( char__is_whitespace(X) ->
 	    eliza__form_words(Xs, Ys)
 	;
 	    eliza__form_word(Xs, [X], Word, Rest),
 	    eliza__form_words(Rest, Words),
-	    Ys = [ Word | Words ] 
+	    Ys = [Word | Words] 
 	).
 
 :- pred eliza__form_word(list(char), list(char), list(char), list(char)).
 :- mode eliza__form_word(in, in, out, out) is det.
 eliza__form_word([], Word1, Word2, []) :-
 	list__reverse(Word1, Word2).
-eliza__form_word([ X | Xs ], WordIn, WordOut, Rest) :-
+eliza__form_word([X | Xs], WordIn, WordOut, Rest) :-
 	( char__is_whitespace(X) ->
 	    list__reverse(WordIn, WordOut), Rest = Xs
 	;
-	    eliza__form_word(Xs, [ X | WordIn ], WordOut, Rest) 
+	    eliza__form_word(Xs, [X | WordIn], WordOut, Rest) 
 	).
 
 :- pred eliza__words_to_strings(list(list(char)), list(string)).
@@ -248,7 +248,7 @@ eliza__generate_response(Words, StateIn, StateOut) -->
 	% Find out what sort of message we are dealing with.
 
 	{ eliza__find_handle(Words, MsgType, Rest) },
-	{ eliza__get_response(MsgType, Maybe-String, StateIn, StateOut) },
+	{ eliza__get_response(MsgType, Maybe - String, StateIn, StateOut) },
 	io__write_string(String),
 
 	% If we must parrot back part of the original message,
@@ -292,7 +292,7 @@ eliza__find_handle(In, MsgType, Out) :-
 		assoc_list(list(string), message_type)).
 :- mode eliza__find_handle2(in, out, out, in) is det.
 eliza__find_handle2(In, no_key_message, In, []).
-eliza__find_handle2(In, Type, Out, [ Prefix - Type2 | Handles ]) :-
+eliza__find_handle2(In, Type, Out, [Prefix - Type2 | Handles]) :-
 	( eliza__find_handle3(In, Prefix, Rest) ->
 	    Out = Rest, Type = Type2
 	;
@@ -301,8 +301,8 @@ eliza__find_handle2(In, Type, Out, [ Prefix - Type2 | Handles ]) :-
 
 :- pred eliza__find_handle3(list(string), list(string), list(string)).
 :- mode eliza__find_handle3(in, in, out) is semidet.
-eliza__find_handle3([ X | Xs ], Prefix, Rest) :-
-	( eliza__match_prefix(Prefix, [X|Xs], Rest2) ->
+eliza__find_handle3([X | Xs], Prefix, Rest) :-
+	( eliza__match_prefix(Prefix, [X | Xs], Rest2) ->
 	    Rest = Rest2
 	;
 	    eliza__find_handle3(Xs, Prefix, Rest) 
@@ -350,7 +350,7 @@ eliza__conjugate_map(MapOut) :-
 :- pred prepare_conj(assoc_list(string, string), assoc_list(string, string)).
 :- mode prepare_conj(in, out) is det.
 prepare_conj([], []).
-prepare_conj([X-V|Xs], [Y-V|Ys]) :-
+prepare_conj([X - V | Xs], [Y - V | Ys]) :-
 	string__to_upper(X,Y),
 	prepare_conj(Xs, Ys).
 
